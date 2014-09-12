@@ -41,8 +41,8 @@ struct EntryContext<'a> {
     non_main_fns: Vec<(NodeId, Span)> ,
 }
 
-impl<'a> Visitor<()> for EntryContext<'a> {
-    fn visit_item(&mut self, item: &Item, _:()) {
+impl<'a, 'v> Visitor<'v> for EntryContext<'a> {
+    fn visit_item(&mut self, item: &Item) {
         find_item(item, self);
     }
 }
@@ -72,7 +72,7 @@ pub fn find_entry_point(session: &Session, krate: &Crate, ast_map: &ast_map::Map
         non_main_fns: Vec::new(),
     };
 
-    visit::walk_crate(&mut ctxt, krate, ());
+    visit::walk_crate(&mut ctxt, krate);
 
     configure_main(&mut ctxt);
 }
@@ -118,7 +118,7 @@ fn find_item(item: &Item, ctxt: &mut EntryContext) {
         _ => ()
     }
 
-    visit::walk_item(ctxt, item, ());
+    visit::walk_item(ctxt, item);
 }
 
 fn configure_main(this: &mut EntryContext) {

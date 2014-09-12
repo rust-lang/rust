@@ -185,23 +185,23 @@ enum NameDefinition {
     ImportNameDefinition(Def, LastPrivate) //< The name identifies an import.
 }
 
-impl<'a> Visitor<()> for Resolver<'a> {
-    fn visit_item(&mut self, item: &Item, _: ()) {
+impl<'a, 'v> Visitor<'v> for Resolver<'a> {
+    fn visit_item(&mut self, item: &Item) {
         self.resolve_item(item);
     }
-    fn visit_arm(&mut self, arm: &Arm, _: ()) {
+    fn visit_arm(&mut self, arm: &Arm) {
         self.resolve_arm(arm);
     }
-    fn visit_block(&mut self, block: &Block, _: ()) {
+    fn visit_block(&mut self, block: &Block) {
         self.resolve_block(block);
     }
-    fn visit_expr(&mut self, expr: &Expr, _: ()) {
+    fn visit_expr(&mut self, expr: &Expr) {
         self.resolve_expr(expr);
     }
-    fn visit_local(&mut self, local: &Local, _: ()) {
+    fn visit_local(&mut self, local: &Local) {
         self.resolve_local(local);
     }
-    fn visit_ty(&mut self, ty: &Ty, _: ()) {
+    fn visit_ty(&mut self, ty: &Ty) {
         self.resolve_type(ty);
     }
 }
@@ -903,32 +903,40 @@ struct Resolver<'a> {
 
 struct BuildReducedGraphVisitor<'a, 'b:'a> {
     resolver: &'a mut Resolver<'b>,
+    parent: ReducedGraphParent
 }
 
-impl<'a, 'b> Visitor<ReducedGraphParent> for BuildReducedGraphVisitor<'a, 'b> {
+impl<'a, 'b, 'v> Visitor<'v> for BuildReducedGraphVisitor<'a, 'b> {
 
-    fn visit_item(&mut self, item: &Item, context: ReducedGraphParent) {
-        let p = self.resolver.build_reduced_graph_for_item(item, context);
-        visit::walk_item(self, item, p);
+    fn visit_item(&mut self, item: &Item) {
+        let p = self.resolver.build_reduced_graph_for_item(item, self.parent.clone());
+        let old_parent = replace(&mut self.parent, p);
+        visit::walk_item(self, item);
+        self.parent = old_parent;
     }
 
-    fn visit_foreign_item(&mut self, foreign_item: &ForeignItem,
-                          context: ReducedGraphParent) {
+    fn visit_foreign_item(&mut self, foreign_item: &ForeignItem) {
+        let parent = self.parent.clone();
         self.resolver.build_reduced_graph_for_foreign_item(foreign_item,
-                                                           context.clone(),
+                                                           parent.clone(),
                                                            |r| {
-            let mut v = BuildReducedGraphVisitor{ resolver: r };
-            visit::walk_foreign_item(&mut v, foreign_item, context.clone());
+            let mut v = BuildReducedGraphVisitor {
+                resolver: r,
+                parent: parent.clone()
+            };
+            visit::walk_foreign_item(&mut v, foreign_item);
         })
     }
 
-    fn visit_view_item(&mut self, view_item: &ViewItem, context: ReducedGraphParent) {
-        self.resolver.build_reduced_graph_for_view_item(view_item, context);
+    fn visit_view_item(&mut self, view_item: &ViewItem) {
+        self.resolver.build_reduced_graph_for_view_item(view_item, self.parent.clone());
     }
 
-    fn visit_block(&mut self, block: &Block, context: ReducedGraphParent) {
-        let np = self.resolver.build_reduced_graph_for_block(block, context);
-        visit::walk_block(self, block, np);
+    fn visit_block(&mut self, block: &Block) {
+        let np = self.resolver.build_reduced_graph_for_block(block, self.parent.clone());
+        let old_parent = replace(&mut self.parent, np);
+        visit::walk_block(self, block);
+        self.parent = old_parent;
     }
 
 }
@@ -937,10 +945,10 @@ struct UnusedImportCheckVisitor<'a, 'b:'a> {
     resolver: &'a mut Resolver<'b>
 }
 
-impl<'a, 'b> Visitor<()> for UnusedImportCheckVisitor<'a, 'b> {
-    fn visit_view_item(&mut self, vi: &ViewItem, _: ()) {
+impl<'a, 'b, 'v> Visitor<'v> for UnusedImportCheckVisitor<'a, 'b> {
+    fn visit_view_item(&mut self, vi: &ViewItem) {
         self.resolver.check_for_item_unused_imports(vi);
-        visit::walk_view_item(self, vi, ());
+        visit::walk_view_item(self, vi);
     }
 }
 
@@ -1019,11 +1027,12 @@ impl<'a> Resolver<'a> {
 
     /// Constructs the reduced graph for the entire crate.
     fn build_reduced_graph(&mut self, krate: &ast::Crate) {
-        let initial_parent =
-            ModuleReducedGraphParent(self.graph_root.get_module());
-
-        let mut visitor = BuildReducedGraphVisitor { resolver: self, };
-        visit::walk_crate(&mut visitor, krate, initial_parent);
+        let parent = ModuleReducedGraphParent(self.graph_root.get_module());
+        let mut visitor = BuildReducedGraphVisitor {
+            resolver: self,
+            parent: parent
+        };
+        visit::walk_crate(&mut visitor, krate);
     }
 
     /**
@@ -3889,7 +3898,7 @@ impl<'a> Resolver<'a> {
     fn resolve_crate(&mut self, krate: &ast::Crate) {
         debug!("(resolving crate) starting");
 
-        visit::walk_crate(self, krate, ());
+        visit::walk_crate(self, krate);
     }
 
     fn resolve_item(&mut self, item: &Item) {
@@ -3921,7 +3930,7 @@ impl<'a> Resolver<'a> {
                                              |this| {
                     this.resolve_type_parameters(&generics.ty_params);
                     this.resolve_where_clause(&generics.where_clause);
-                    visit::walk_item(this, item, ());
+                    visit::walk_item(this, item);
                 });
             }
 
@@ -3932,7 +3941,7 @@ impl<'a> Resolver<'a> {
                                                                ItemRibKind),
                                              |this| {
                     this.resolve_type_parameters(&generics.ty_params);
-                    visit::walk_item(this, item, ());
+                    visit::walk_item(this, item);
                 });
             }
 
@@ -4048,13 +4057,11 @@ impl<'a> Resolver<'a> {
                                         generics, FnSpace, foreign_item.id,
                                         ItemRibKind),
                                     |this| visit::walk_foreign_item(this,
-                                                                &**foreign_item,
-                                                                ()));
+                                                                    &**foreign_item));
                             }
                             ForeignItemStatic(..) => {
                                 visit::walk_foreign_item(this,
-                                                         &**foreign_item,
-                                                         ());
+                                                         &**foreign_item);
                             }
                         }
                     }
@@ -4074,7 +4081,7 @@ impl<'a> Resolver<'a> {
 
             ItemStatic(..) => {
                 self.with_constant_rib(|this| {
-                    visit::walk_item(this, item, ());
+                    visit::walk_item(this, item);
                 });
             }
 
@@ -4489,7 +4496,7 @@ impl<'a> Resolver<'a> {
                       _name: Ident, id: NodeId) {
         // Write the implementations in scope into the module metadata.
         debug!("(resolving module) resolving module ID {}", id);
-        visit::walk_mod(self, module, ());
+        visit::walk_mod(self, module);
     }
 
     fn resolve_local(&mut self, local: &Local) {
@@ -4586,7 +4593,7 @@ impl<'a> Resolver<'a> {
         // pat_idents are variants
         self.check_consistent_bindings(arm);
 
-        visit::walk_expr_opt(self, arm.guard, ());
+        visit::walk_expr_opt(self, &arm.guard);
         self.resolve_expr(&*arm.body);
 
         self.value_ribs.borrow_mut().pop();
@@ -4608,7 +4615,7 @@ impl<'a> Resolver<'a> {
         }
 
         // Descend into the block.
-        visit::walk_block(self, block, ());
+        visit::walk_block(self, block);
 
         // Move back up.
         self.current_module = orig_module;
@@ -4702,12 +4709,12 @@ impl<'a> Resolver<'a> {
             TyClosure(c) | TyProc(c) => {
                 self.resolve_type_parameter_bounds(ty.id, &c.bounds,
                                                    TraitBoundingTypeParameter);
-                visit::walk_ty(self, ty, ());
+                visit::walk_ty(self, ty);
             }
 
             _ => {
                 // Just resolve embedded types.
-                visit::walk_ty(self, ty, ());
+                visit::walk_ty(self, ty);
             }
         }
     }
@@ -5592,7 +5599,7 @@ impl<'a> Resolver<'a> {
                     }
                 }
 
-                visit::walk_expr(self, expr, ());
+                visit::walk_expr(self, expr);
             }
 
             ExprFnBlock(_, fn_decl, block) |
@@ -5618,7 +5625,7 @@ impl<'a> Resolver<'a> {
                     }
                 }
 
-                visit::walk_expr(self, expr, ());
+                visit::walk_expr(self, expr);
             }
 
             ExprLoop(_, Some(label)) | ExprWhile(_, _, Some(label)) => {
@@ -5633,7 +5640,7 @@ impl<'a> Resolver<'a> {
                         rib.bindings.borrow_mut().insert(renamed, def_like);
                     }
 
-                    visit::walk_expr(this, expr, ());
+                    visit::walk_expr(this, expr);
                 })
             }
 
@@ -5697,7 +5704,7 @@ impl<'a> Resolver<'a> {
             }
 
             _ => {
-                visit::walk_expr(self, expr, ());
+                visit::walk_expr(self, expr);
             }
         }
     }
@@ -5847,7 +5854,7 @@ impl<'a> Resolver<'a> {
 
     fn check_for_unused_imports(&mut self, krate: &ast::Crate) {
         let mut visitor = UnusedImportCheckVisitor{ resolver: self };
-        visit::walk_crate(&mut visitor, krate, ());
+        visit::walk_crate(&mut visitor, krate);
     }
 
     fn check_for_item_unused_imports(&mut self, vi: &ViewItem) {

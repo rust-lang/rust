@@ -51,10 +51,6 @@ struct MarkSymbolVisitor<'a, 'tcx: 'a> {
     worklist: Vec<ast::NodeId>,
     tcx: &'a ty::ctxt<'tcx>,
     live_symbols: Box<HashSet<ast::NodeId>>,
-}
-
-#[deriving(Clone)]
-struct MarkSymbolVisitorContext {
     struct_has_extern_repr: bool
 }
 
@@ -65,6 +61,7 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
             worklist: worklist,
             tcx: tcx,
             live_symbols: box HashSet::new(),
+            struct_has_extern_repr: false
         }
     }
 
@@ -199,66 +196,64 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
     }
 
     fn visit_node(&mut self, node: &ast_map::Node) {
-        let ctxt = MarkSymbolVisitorContext {
-            struct_has_extern_repr: false
-        };
+        let had_extern_repr = self.struct_has_extern_repr;
+        self.struct_has_extern_repr = false;
         match *node {
             ast_map::NodeItem(item) => {
                 match item.node {
                     ast::ItemStruct(..) => {
-                        let has_extern_repr = item.attrs.iter().fold(false, |acc, attr| {
-                            acc || attr::find_repr_attrs(self.tcx.sess.diagnostic(), attr)
-                                         .iter().any(|&x| x == attr::ReprExtern)
+                        self.struct_has_extern_repr = item.attrs.iter().any(|attr| {
+                            attr::find_repr_attrs(self.tcx.sess.diagnostic(), attr)
+                                .contains(&attr::ReprExtern)
                         });
 
-                        visit::walk_item(self, &*item, MarkSymbolVisitorContext {
-                            struct_has_extern_repr: has_extern_repr,
-                            ..(ctxt)
-                        });
+                        visit::walk_item(self, &*item);
                     }
                     ast::ItemFn(..)
                     | ast::ItemEnum(..)
                     | ast::ItemTy(..)
                     | ast::ItemStatic(..) => {
-                        visit::walk_item(self, &*item, ctxt);
+                        visit::walk_item(self, &*item);
                     }
                     _ => ()
                 }
             }
             ast_map::NodeTraitItem(trait_method) => {
-                visit::walk_trait_item(self, &*trait_method, ctxt);
+                visit::walk_trait_item(self, &*trait_method);
             }
             ast_map::NodeImplItem(impl_item) => {
                 match *impl_item {
                     ast::MethodImplItem(method) => {
-                        visit::walk_block(self, &*method.pe_body(), ctxt);
+                        visit::walk_block(self, &*method.pe_body());
                     }
                 }
             }
             ast_map::NodeForeignItem(foreign_item) => {
-                visit::walk_foreign_item(self, &*foreign_item, ctxt);
+                visit::walk_foreign_item(self, &*foreign_item);
             }
             _ => ()
         }
+        self.struct_has_extern_repr = had_extern_repr;
     }
 }
 
-impl<'a, 'tcx> Visitor<MarkSymbolVisitorContext> for MarkSymbolVisitor<'a, 'tcx> {
+impl<'a, 'tcx, 'v> Visitor<'v> for MarkSymbolVisitor<'a, 'tcx> {
 
-    fn visit_struct_def(&mut self, def: &ast::StructDef, _: ast::Ident, _: &ast::Generics,
-                        _: ast::NodeId, ctxt: MarkSymbolVisitorContext) {
+    fn visit_struct_def(&mut self, def: &ast::StructDef, _: ast::Ident,
+                        _: &ast::Generics, _: ast::NodeId) {
+        let has_extern_repr = self.struct_has_extern_repr;
         let live_fields = def.fields.iter().filter(|f| {
-            ctxt.struct_has_extern_repr || match f.node.kind {
+            has_extern_repr || match f.node.kind {
                 ast::NamedField(_, ast::Public) => true,
                 _ => false
             }
         });
         self.live_symbols.extend(live_fields.map(|f| f.node.id));
 
-        visit::walk_struct_def(self, def, ctxt);
+        visit::walk_struct_def(self, def);
     }
 
-    fn visit_expr(&mut self, expr: &ast::Expr, ctxt: MarkSymbolVisitorContext) {
+    fn visit_expr(&mut self, expr: &ast::Expr) {
         match expr.node {
             ast::ExprMethodCall(..) => {
                 self.lookup_and_handle_method(expr.id, expr.span);
@@ -272,10 +267,10 @@ impl<'a, 'tcx> Visitor<MarkSymbolVisitorContext> for MarkSymbolVisitor<'a, 'tcx>
             _ => ()
         }
 
-        visit::walk_expr(self, expr, ctxt);
+        visit::walk_expr(self, expr);
     }
 
-    fn visit_pat(&mut self, pat: &ast::Pat, ctxt: MarkSymbolVisitorContext) {
+    fn visit_pat(&mut self, pat: &ast::Pat) {
         match pat.node {
             ast::PatStruct(_, ref fields, _) => {
                 self.handle_field_pattern_match(pat, fields.as_slice());
@@ -287,15 +282,15 @@ impl<'a, 'tcx> Visitor<MarkSymbolVisitorContext> for MarkSymbolVisitor<'a, 'tcx>
             _ => ()
         }
 
-        visit::walk_pat(self, pat, ctxt);
+        visit::walk_pat(self, pat);
     }
 
-    fn visit_path(&mut self, path: &ast::Path, id: ast::NodeId, ctxt: MarkSymbolVisitorContext) {
+    fn visit_path(&mut self, path: &ast::Path, id: ast::NodeId) {
         self.lookup_and_handle_definition(&id);
-        visit::walk_path(self, path, ctxt);
+        visit::walk_path(self, path);
     }
 
-    fn visit_item(&mut self, _: &ast::Item, _: MarkSymbolVisitorContext) {
+    fn visit_item(&mut self, _: &ast::Item) {
         // Do not recurse into items. These items will be added to the
         // worklist and recursed into manually if necessary.
     }
@@ -334,8 +329,8 @@ struct LifeSeeder {
     worklist: Vec<ast::NodeId> ,
 }
 
-impl Visitor<()> for LifeSeeder {
-    fn visit_item(&mut self, item: &ast::Item, _: ()) {
+impl<'v> Visitor<'v> for LifeSeeder {
+    fn visit_item(&mut self, item: &ast::Item) {
         if has_allow_dead_code_or_lang_attr(item.attrs.as_slice()) {
             self.worklist.push(item.id);
         }
@@ -351,14 +346,14 @@ impl Visitor<()> for LifeSeeder {
             }
             _ => ()
         }
-        visit::walk_item(self, item, ());
+        visit::walk_item(self, item);
     }
 
-    fn visit_fn(&mut self, fk: &visit::FnKind,
-                _: &ast::FnDecl, block: &ast::Block,
-                _: codemap::Span, id: ast::NodeId, _: ()) {
+    fn visit_fn(&mut self, fk: visit::FnKind<'v>,
+                _: &'v ast::FnDecl, block: &'v ast::Block,
+                _: codemap::Span, id: ast::NodeId) {
         // Check for method here because methods are not ast::Item
-        match *fk {
+        match fk {
             visit::FkMethod(_, _, method) => {
                 if has_allow_dead_code_or_lang_attr(method.attrs.as_slice()) {
                     self.worklist.push(id);
@@ -366,7 +361,7 @@ impl Visitor<()> for LifeSeeder {
             }
             _ => ()
         }
-        visit::walk_block(self, block, ());
+        visit::walk_block(self, block);
     }
 }
 
@@ -398,7 +393,7 @@ fn create_and_seed_worklist(tcx: &ty::ctxt,
     let mut life_seeder = LifeSeeder {
         worklist: worklist
     };
-    visit::walk_crate(&mut life_seeder, krate, ());
+    visit::walk_crate(&mut life_seeder, krate);
 
     return life_seeder.worklist;
 }
@@ -504,51 +499,50 @@ impl<'a, 'tcx> DeadVisitor<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> Visitor<()> for DeadVisitor<'a, 'tcx> {
-    fn visit_item(&mut self, item: &ast::Item, _: ()) {
+impl<'a, 'tcx, 'v> Visitor<'v> for DeadVisitor<'a, 'tcx> {
+    fn visit_item(&mut self, item: &ast::Item) {
         let ctor_id = get_struct_ctor_id(item);
         if !self.symbol_is_live(item.id, ctor_id) && should_warn(item) {
             self.warn_dead_code(item.id, item.span, item.ident);
         }
-        visit::walk_item(self, item, ());
+        visit::walk_item(self, item);
     }
 
-    fn visit_foreign_item(&mut self, fi: &ast::ForeignItem, _: ()) {
+    fn visit_foreign_item(&mut self, fi: &ast::ForeignItem) {
         if !self.symbol_is_live(fi.id, None) {
             self.warn_dead_code(fi.id, fi.span, fi.ident);
         }
-        visit::walk_foreign_item(self, fi, ());
+        visit::walk_foreign_item(self, fi);
     }
 
-    fn visit_fn(&mut self, fk: &visit::FnKind,
-                _: &ast::FnDecl, block: &ast::Block,
-                span: codemap::Span, id: ast::NodeId, _: ()) {
+    fn visit_fn(&mut self, fk: visit::FnKind<'v>,
+                _: &'v ast::FnDecl, block: &'v ast::Block,
+                span: codemap::Span, id: ast::NodeId) {
         // Have to warn method here because methods are not ast::Item
-        match *fk {
-            visit::FkMethod(..) => {
-                let ident = visit::name_of_fn(fk);
+        match fk {
+            visit::FkMethod(name, _, _) => {
                 if !self.symbol_is_live(id, None) {
-                    self.warn_dead_code(id, span, ident);
+                    self.warn_dead_code(id, span, name);
                 }
             }
             _ => ()
         }
-        visit::walk_block(self, block, ());
+        visit::walk_block(self, block);
     }
 
-    fn visit_struct_field(&mut self, field: &ast::StructField, _: ()) {
+    fn visit_struct_field(&mut self, field: &ast::StructField) {
         if self.should_warn_about_field(&field.node) {
             self.warn_dead_code(field.node.id, field.span, field.node.ident().unwrap());
         }
 
-        visit::walk_struct_field(self, field, ());
+        visit::walk_struct_field(self, field);
     }
 
     // Overwrite so that we don't warn the trait method itself.
-    fn visit_trait_item(&mut self, trait_method: &ast::TraitItem, _: ()) {
+    fn visit_trait_item(&mut self, trait_method: &ast::TraitItem) {
         match *trait_method {
             ast::ProvidedMethod(ref method) => {
-                visit::walk_block(self, &*method.pe_body(), ())
+                visit::walk_block(self, &*method.pe_body())
             }
             ast::RequiredMethod(_) => ()
         }
@@ -562,5 +556,5 @@ pub fn check_crate(tcx: &ty::ctxt,
     let live_symbols = find_live(tcx, exported_items,
                                  reachable_symbols, krate);
     let mut visitor = DeadVisitor { tcx: tcx, live_symbols: live_symbols };
-    visit::walk_crate(&mut visitor, krate, ());
+    visit::walk_crate(&mut visitor, krate);
 }

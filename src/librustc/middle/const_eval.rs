@@ -268,8 +268,8 @@ impl<'a, 'tcx> ConstEvalVisitor<'a, 'tcx> {
 
 }
 
-impl<'a, 'tcx> Visitor<()> for ConstEvalVisitor<'a, 'tcx> {
-    fn visit_ty(&mut self, t: &Ty, _: ()) {
+impl<'a, 'tcx, 'v> Visitor<'v> for ConstEvalVisitor<'a, 'tcx> {
+    fn visit_ty(&mut self, t: &Ty) {
         match t.node {
             TyFixedLengthVec(_, expr) => {
                 check::check_const_in_type(self.tcx, &*expr, ty::mk_uint());
@@ -277,10 +277,10 @@ impl<'a, 'tcx> Visitor<()> for ConstEvalVisitor<'a, 'tcx> {
             _ => {}
         }
 
-        visit::walk_ty(self, t, ());
+        visit::walk_ty(self, t);
     }
 
-    fn visit_expr_post(&mut self, e: &Expr, _: ()) {
+    fn visit_expr_post(&mut self, e: &Expr) {
         self.classify(e);
     }
 }
@@ -291,7 +291,7 @@ pub fn process_crate(krate: &ast::Crate,
         tcx: tcx,
         ccache: DefIdMap::new(),
     };
-    visit::walk_crate(&mut v, krate, ());
+    visit::walk_crate(&mut v, krate);
     tcx.sess.abort_if_errors();
 }
 

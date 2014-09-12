@@ -116,8 +116,8 @@ impl<'a, 'tcx> IntrinsicCheckingVisitor<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> Visitor<()> for IntrinsicCheckingVisitor<'a, 'tcx> {
-    fn visit_expr(&mut self, expr: &ast::Expr, (): ()) {
+impl<'a, 'tcx, 'v> Visitor<'v> for IntrinsicCheckingVisitor<'a, 'tcx> {
+    fn visit_expr(&mut self, expr: &ast::Expr) {
         match expr.node {
             ast::ExprPath(..) => {
                 match ty::resolve_expr(self.tcx, expr) {
@@ -144,7 +144,7 @@ impl<'a, 'tcx> Visitor<()> for IntrinsicCheckingVisitor<'a, 'tcx> {
             _ => {}
         }
 
-        visit::walk_expr(self, expr, ());
+        visit::walk_expr(self, expr);
     }
 }
 
@@ -153,6 +153,6 @@ pub fn check_crate(tcx: &ctxt, krate: &ast::Crate) {
         tcx: tcx,
     };
 
-    visit::walk_crate(&mut visitor, krate, ());
+    visit::walk_crate(&mut visitor, krate);
 }
 

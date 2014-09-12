@@ -143,15 +143,15 @@ impl<'a> Context<'a> {
     }
 }
 
-impl<'a> Visitor<()> for Context<'a> {
-    fn visit_ident(&mut self, sp: Span, id: ast::Ident, _: ()) {
+impl<'a, 'v> Visitor<'v> for Context<'a> {
+    fn visit_ident(&mut self, sp: Span, id: ast::Ident) {
         if !token::get_ident(id).get().is_ascii() {
             self.gate_feature("non_ascii_idents", sp,
                               "non-ascii idents are not fully supported.");
         }
     }
 
-    fn visit_view_item(&mut self, i: &ast::ViewItem, _: ()) {
+    fn visit_view_item(&mut self, i: &ast::ViewItem) {
         match i.node {
             ast::ViewItemUse(ref path) => {
                 match path.node {
@@ -173,10 +173,10 @@ impl<'a> Visitor<()> for Context<'a> {
                 }
             }
         }
-        visit::walk_view_item(self, i, ())
+        visit::walk_view_item(self, i)
     }
 
-    fn visit_item(&mut self, i: &ast::Item, _:()) {
+    fn visit_item(&mut self, i: &ast::Item) {
         for attr in i.attrs.iter() {
             if attr.name().equiv(&("thread_local")) {
                 self.gate_feature("thread_local", i.span,
@@ -252,10 +252,10 @@ impl<'a> Visitor<()> for Context<'a> {
             _ => {}
         }
 
-        visit::walk_item(self, i, ());
+        visit::walk_item(self, i);
     }
 
-    fn visit_mac(&mut self, macro: &ast::Mac, _: ()) {
+    fn visit_mac(&mut self, macro: &ast::Mac) {
         let ast::MacInvocTT(ref path, _, _) = macro.node;
         let id = path.segments.last().unwrap().identifier;
         let quotes = ["quote_tokens", "quote_expr", "quote_ty",
@@ -299,16 +299,16 @@ impl<'a> Visitor<()> for Context<'a> {
         }
     }
 
-    fn visit_foreign_item(&mut self, i: &ast::ForeignItem, _: ()) {
+    fn visit_foreign_item(&mut self, i: &ast::ForeignItem) {
         if attr::contains_name(i.attrs.as_slice(), "linkage") {
             self.gate_feature("linkage", i.span,
                               "the `linkage` attribute is experimental \
                                and not portable across platforms")
         }
-        visit::walk_foreign_item(self, i, ())
+        visit::walk_foreign_item(self, i)
     }
 
-    fn visit_ty(&mut self, t: &ast::Ty, _: ()) {
+    fn visit_ty(&mut self, t: &ast::Ty) {
         match t.node {
             ast::TyClosure(closure) if closure.onceness == ast::Once => {
                 self.gate_feature("once_fns", t.span,
@@ -325,10 +325,10 @@ impl<'a> Visitor<()> for Context<'a> {
             _ => {}
         }
 
-        visit::walk_ty(self, t, ());
+        visit::walk_ty(self, t);
     }
 
-    fn visit_expr(&mut self, e: &ast::Expr, _: ()) {
+    fn visit_expr(&mut self, e: &ast::Expr) {
         match e.node {
             ast::ExprUnary(ast::UnBox, _) => {
                 self.gate_box(e.span);
@@ -346,10 +346,10 @@ impl<'a> Visitor<()> for Context<'a> {
             }
             _ => {}
         }
-        visit::walk_expr(self, e, ());
+        visit::walk_expr(self, e);
     }
 
-    fn visit_generics(&mut self, generics: &ast::Generics, _: ()) {
+    fn visit_generics(&mut self, generics: &ast::Generics) {
         for type_parameter in generics.ty_params.iter() {
             match type_parameter.default {
                 Some(ty) => {
@@ -360,10 +360,10 @@ impl<'a> Visitor<()> for Context<'a> {
                 None => {}
             }
         }
-        visit::walk_generics(self, generics, ());
+        visit::walk_generics(self, generics);
     }
 
-    fn visit_attribute(&mut self, attr: &ast::Attribute, _: ()) {
+    fn visit_attribute(&mut self, attr: &ast::Attribute) {
         if attr::contains_name([*attr], "lang") {
             self.gate_feature("lang_items",
                               attr.span,
@@ -371,7 +371,7 @@ impl<'a> Visitor<()> for Context<'a> {
         }
     }
 
-    fn visit_pat(&mut self, pattern: &ast::Pat, (): ()) {
+    fn visit_pat(&mut self, pattern: &ast::Pat) {
         match pattern.node {
             ast::PatVec(_, Some(_), ref last) if !last.is_empty() => {
                 self.gate_feature("advanced_slice_patterns",
@@ -382,25 +382,24 @@ impl<'a> Visitor<()> for Context<'a> {
             }
             _ => {}
         }
-        visit::walk_pat(self, pattern, ())
+        visit::walk_pat(self, pattern)
     }
 
     fn visit_fn(&mut self,
-                fn_kind: &visit::FnKind,
-                fn_decl: &ast::FnDecl,
-                block: &ast::Block,
+                fn_kind: visit::FnKind<'v>,
+                fn_decl: &'v ast::FnDecl,
+                block: &'v ast::Block,
                 span: Span,
-                _: NodeId,
-                (): ()) {
-        match *fn_kind {
-            visit::FkItemFn(_, _, _, ref abi) if *abi == RustIntrinsic => {
+                _: NodeId) {
+        match fn_kind {
+            visit::FkItemFn(_, _, _, abi) if abi == RustIntrinsic => {
                 self.gate_feature("intrinsics",
                                   span,
                                   "intrinsics are subject to change")
             }
             _ => {}
         }
-        visit::walk_fn(self, fn_kind, fn_decl, block, span, ());
+        visit::walk_fn(self, fn_kind, fn_decl, block, span);
     }
 }
 
@@ -453,7 +452,7 @@ pub fn check_crate(sess: &Session, krate: &ast::Crate) {
         }
     }
 
-    visit::walk_crate(&mut cx, krate, ());
+    visit::walk_crate(&mut cx, krate);
 
     sess.abort_if_errors();
 

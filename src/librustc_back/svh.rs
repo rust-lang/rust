@@ -86,7 +86,7 @@ impl Svh {
 
         {
             let mut visit = svh_visitor::make(&mut state);
-            visit::walk_crate(&mut visit, krate, ());
+            visit::walk_crate(&mut visit, krate);
         }
 
         // FIXME (#14132): This hash is still sensitive to e.g. the
@@ -322,12 +322,9 @@ mod svh_visitor {
     }
     fn content<K:InternKey>(k: K) -> token::InternedString { k.get_content() }
 
-    // local short-hand eases writing signatures of syntax::visit mod.
-    type E = ();
+    impl<'a, 'v> Visitor<'v> for StrictVersionHashVisitor<'a> {
 
-    impl<'a> Visitor<E> for StrictVersionHashVisitor<'a> {
-
-        fn visit_mac(&mut self, macro: &Mac, e: E) {
+        fn visit_mac(&mut self, macro: &Mac) {
             // macro invocations, namely macro_rules definitions,
             // *can* appear as items, even in the expanded crate AST.
 
@@ -350,7 +347,7 @@ mod svh_visitor {
                       pprust::to_string(|pp_state| pp_state.print_mac(macro)));
             }
 
-            visit::walk_mac(self, macro, e);
+            visit::walk_mac(self, macro);
 
             fn macro_name(macro: &Mac) -> token::InternedString {
                 match &macro.node {
@@ -364,26 +361,26 @@ mod svh_visitor {
         }
 
         fn visit_struct_def(&mut self, s: &StructDef, ident: Ident,
-                            g: &Generics, _: NodeId, e: E) {
+                            g: &Generics, _: NodeId) {
             SawStructDef(content(ident)).hash(self.st);
-            visit::walk_generics(self, g, e.clone());
-            visit::walk_struct_def(self, s, e)
+            visit::walk_generics(self, g);
+            visit::walk_struct_def(self, s)
         }
 
-        fn visit_variant(&mut self, v: &Variant, g: &Generics, e: E) {
+        fn visit_variant(&mut self, v: &Variant, g: &Generics) {
             SawVariant.hash(self.st);
             // walk_variant does not call walk_generics, so do it here.
-            visit::walk_generics(self, g, e.clone());
-            visit::walk_variant(self, v, g, e)
+            visit::walk_generics(self, g);
+            visit::walk_variant(self, v, g)
         }
 
-        fn visit_opt_lifetime_ref(&mut self, _: Span, l: &Option<Lifetime>, env: E) {
+        fn visit_opt_lifetime_ref(&mut self, _: Span, l: &Option<Lifetime>) {
             SawOptLifetimeRef.hash(self.st);
             // (This is a strange method in the visitor trait, in that
             // it does not expose a walk function to do the subroutine
             // calls.)
             match *l {
-                Some(ref l) => self.visit_lifetime_ref(l, env),
+                Some(ref l) => self.visit_lifetime_ref(l),
                 None => ()
             }
         }
@@ -402,15 +399,15 @@ mod svh_visitor {
         // (If you edit a method such that it deviates from the
         // pattern, please move that method up above this comment.)
 
-        fn visit_ident(&mut self, _: Span, ident: Ident, _: E) {
+        fn visit_ident(&mut self, _: Span, ident: Ident) {
             SawIdent(content(ident)).hash(self.st);
         }
 
-        fn visit_lifetime_ref(&mut self, l: &Lifetime, _: E) {
+        fn visit_lifetime_ref(&mut self, l: &Lifetime) {
             SawLifetimeRef(content(l.name)).hash(self.st);
         }
 
-        fn visit_lifetime_decl(&mut self, l: &LifetimeDef, _: E) {
+        fn visit_lifetime_decl(&mut self, l: &LifetimeDef) {
             SawLifetimeDecl(content(l.lifetime.name)).hash(self.st);
         }
 
@@ -419,15 +416,15 @@ mod svh_visitor {
         // monomorphization and cross-crate inlining generally implies
         // that a change to a crate body will require downstream
         // crates to be recompiled.
-        fn visit_expr(&mut self, ex: &Expr, e: E) {
-            SawExpr(saw_expr(&ex.node)).hash(self.st); visit::walk_expr(self, ex, e)
+        fn visit_expr(&mut self, ex: &Expr) {
+            SawExpr(saw_expr(&ex.node)).hash(self.st); visit::walk_expr(self, ex)
         }
 
-        fn visit_stmt(&mut self, s: &Stmt, e: E) {
-            SawStmt(saw_stmt(&s.node)).hash(self.st); visit::walk_stmt(self, s, e)
+        fn visit_stmt(&mut self, s: &Stmt) {
+            SawStmt(saw_stmt(&s.node)).hash(self.st); visit::walk_stmt(self, s)
         }
 
-        fn visit_view_item(&mut self, i: &ViewItem, e: E) {
+        fn visit_view_item(&mut self, i: &ViewItem) {
             // Two kinds of view items can affect the ABI for a crate:
             // exported `pub use` view items (since that may expose
             // items that downstream crates can call), and `use
@@ -437,79 +434,80 @@ mod svh_visitor {
             // The simplest approach to handling both of the above is
             // just to adopt the same simple-minded (fine-grained)
             // hash that I am deploying elsewhere here.
-            SawViewItem.hash(self.st); visit::walk_view_item(self, i, e)
+            SawViewItem.hash(self.st); visit::walk_view_item(self, i)
         }
 
-        fn visit_foreign_item(&mut self, i: &ForeignItem, e: E) {
+        fn visit_foreign_item(&mut self, i: &ForeignItem) {
             // FIXME (#14132) ideally we would incorporate privacy (or
             // perhaps reachability) somewhere here, so foreign items
             // that do not leak into downstream crates would not be
             // part of the ABI.
-            SawForeignItem.hash(self.st); visit::walk_foreign_item(self, i, e)
+            SawForeignItem.hash(self.st); visit::walk_foreign_item(self, i)
         }
 
-        fn visit_item(&mut self, i: &Item, e: E) {
+        fn visit_item(&mut self, i: &Item) {
             // FIXME (#14132) ideally would incorporate reachability
             // analysis somewhere here, so items that never leak into
             // downstream crates (e.g. via monomorphisation or
             // inlining) would not be part of the ABI.
-            SawItem.hash(self.st); visit::walk_item(self, i, e)
+            SawItem.hash(self.st); visit::walk_item(self, i)
         }
 
-        fn visit_mod(&mut self, m: &Mod, _s: Span, _n: NodeId, e: E) {
-            SawMod.hash(self.st); visit::walk_mod(self, m, e)
+        fn visit_mod(&mut self, m: &Mod, _s: Span, _n: NodeId) {
+            SawMod.hash(self.st); visit::walk_mod(self, m)
         }
 
-        fn visit_decl(&mut self, d: &Decl, e: E) {
-            SawDecl.hash(self.st); visit::walk_decl(self, d, e)
+        fn visit_decl(&mut self, d: &Decl) {
+            SawDecl.hash(self.st); visit::walk_decl(self, d)
         }
 
-        fn visit_ty(&mut self, t: &Ty, e: E) {
-            SawTy.hash(self.st); visit::walk_ty(self, t, e)
+        fn visit_ty(&mut self, t: &Ty) {
+            SawTy.hash(self.st); visit::walk_ty(self, t)
         }
 
-        fn visit_generics(&mut self, g: &Generics, e: E) {
-            SawGenerics.hash(self.st); visit::walk_generics(self, g, e)
+        fn visit_generics(&mut self, g: &Generics) {
+            SawGenerics.hash(self.st); visit::walk_generics(self, g)
         }
 
-        fn visit_fn(&mut self, fk: &FnKind, fd: &FnDecl, b: &Block, s: Span, _: NodeId, e: E) {
-            SawFn.hash(self.st); visit::walk_fn(self, fk, fd, b, s, e)
+        fn visit_fn(&mut self, fk: FnKind<'v>, fd: &'v FnDecl,
+                    b: &'v Block, s: Span, _: NodeId) {
+            SawFn.hash(self.st); visit::walk_fn(self, fk, fd, b, s)
         }
 
-        fn visit_ty_method(&mut self, t: &TypeMethod, e: E) {
-            SawTyMethod.hash(self.st); visit::walk_ty_method(self, t, e)
+        fn visit_ty_method(&mut self, t: &TypeMethod) {
+            SawTyMethod.hash(self.st); visit::walk_ty_method(self, t)
         }
 
-        fn visit_trait_item(&mut self, t: &TraitItem, e: E) {
-            SawTraitMethod.hash(self.st); visit::walk_trait_item(self, t, e)
+        fn visit_trait_item(&mut self, t: &TraitItem) {
+            SawTraitMethod.hash(self.st); visit::walk_trait_item(self, t)
         }
 
-        fn visit_struct_field(&mut self, s: &StructField, e: E) {
-            SawStructField.hash(self.st); visit::walk_struct_field(self, s, e)
+        fn visit_struct_field(&mut self, s: &StructField) {
+            SawStructField.hash(self.st); visit::walk_struct_field(self, s)
         }
 
-        fn visit_explicit_self(&mut self, es: &ExplicitSelf, e: E) {
-            SawExplicitSelf.hash(self.st); visit::walk_explicit_self(self, es, e)
+        fn visit_explicit_self(&mut self, es: &ExplicitSelf) {
+            SawExplicitSelf.hash(self.st); visit::walk_explicit_self(self, es)
         }
 
-        fn visit_path(&mut self, path: &Path, _: ast::NodeId, e: E) {
-            SawPath.hash(self.st); visit::walk_path(self, path, e)
+        fn visit_path(&mut self, path: &Path, _: ast::NodeId) {
+            SawPath.hash(self.st); visit::walk_path(self, path)
         }
 
-        fn visit_block(&mut self, b: &Block, e: E) {
-            SawBlock.hash(self.st); visit::walk_block(self, b, e)
+        fn visit_block(&mut self, b: &Block) {
+            SawBlock.hash(self.st); visit::walk_block(self, b)
         }
 
-        fn visit_pat(&mut self, p: &Pat, e: E) {
-            SawPat.hash(self.st); visit::walk_pat(self, p, e)
+        fn visit_pat(&mut self, p: &Pat) {
+            SawPat.hash(self.st); visit::walk_pat(self, p)
         }
 
-        fn visit_local(&mut self, l: &Local, e: E) {
-            SawLocal.hash(self.st); visit::walk_local(self, l, e)
+        fn visit_local(&mut self, l: &Local) {
+            SawLocal.hash(self.st); visit::walk_local(self, l)
         }
 
-        fn visit_arm(&mut self, a: &Arm, e: E) {
-            SawArm.hash(self.st); visit::walk_arm(self, a, e)
+        fn visit_arm(&mut self, a: &Arm) {
+            SawArm.hash(self.st); visit::walk_arm(self, a)
         }
     }
 }

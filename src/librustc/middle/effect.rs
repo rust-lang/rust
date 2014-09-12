@@ -86,11 +86,11 @@ impl<'a, 'tcx> EffectCheckVisitor<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> Visitor<()> for EffectCheckVisitor<'a, 'tcx> {
-    fn visit_fn(&mut self, fn_kind: &visit::FnKind, fn_decl: &ast::FnDecl,
-                block: &ast::Block, span: Span, _: ast::NodeId, _:()) {
+impl<'a, 'tcx, 'v> Visitor<'v> for EffectCheckVisitor<'a, 'tcx> {
+    fn visit_fn(&mut self, fn_kind: visit::FnKind<'v>, fn_decl: &'v ast::FnDecl,
+                block: &'v ast::Block, span: Span, _: ast::NodeId) {
 
-        let (is_item_fn, is_unsafe_fn) = match *fn_kind {
+        let (is_item_fn, is_unsafe_fn) = match fn_kind {
             visit::FkItemFn(_, _, fn_style, _) =>
                 (true, fn_style == ast::UnsafeFn),
             visit::FkMethod(_, _, method) =>
@@ -105,12 +105,12 @@ impl<'a, 'tcx> Visitor<()> for EffectCheckVisitor<'a, 'tcx> {
             self.unsafe_context = SafeContext
         }
 
-        visit::walk_fn(self, fn_kind, fn_decl, block, span, ());
+        visit::walk_fn(self, fn_kind, fn_decl, block, span);
 
         self.unsafe_context = old_unsafe_context
     }
 
-    fn visit_block(&mut self, block: &ast::Block, _:()) {
+    fn visit_block(&mut self, block: &ast::Block) {
         let old_unsafe_context = self.unsafe_context;
         match block.rules {
             ast::DefaultBlock => {}
@@ -136,12 +136,12 @@ impl<'a, 'tcx> Visitor<()> for EffectCheckVisitor<'a, 'tcx> {
             }
         }
 
-        visit::walk_block(self, block, ());
+        visit::walk_block(self, block);
 
         self.unsafe_context = old_unsafe_context
     }
 
-    fn visit_expr(&mut self, expr: &ast::Expr, _:()) {
+    fn visit_expr(&mut self, expr: &ast::Expr) {
         match expr.node {
             ast::ExprMethodCall(_, _, _) => {
                 let method_call = MethodCall::expr(expr.id);
@@ -193,7 +193,7 @@ impl<'a, 'tcx> Visitor<()> for EffectCheckVisitor<'a, 'tcx> {
             _ => {}
         }
 
-        visit::walk_expr(self, expr, ());
+        visit::walk_expr(self, expr);
     }
 }
 
@@ -203,5 +203,5 @@ pub fn check_crate(tcx: &ty::ctxt, krate: &ast::Crate) {
         unsafe_context: SafeContext,
     };
 
-    visit::walk_crate(&mut visitor, krate, ());
+    visit::walk_crate(&mut visitor, krate);
 }

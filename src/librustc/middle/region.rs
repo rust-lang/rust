@@ -84,7 +84,6 @@ pub struct RegionMaps {
     terminating_scopes: RefCell<HashSet<ast::NodeId>>,
 }
 
-#[deriving(Clone)]
 pub struct Context {
     var_parent: Option<ast::NodeId>,
 
@@ -97,6 +96,8 @@ struct RegionResolutionVisitor<'a> {
 
     // Generated maps:
     region_maps: &'a RegionMaps,
+
+    cx: Context
 }
 
 
@@ -370,20 +371,21 @@ impl RegionMaps {
 
 /// Records the current parent (if any) as the parent of `child_id`.
 fn record_superlifetime(visitor: &mut RegionResolutionVisitor,
-                        cx: Context,
                         child_id: ast::NodeId,
                         _sp: Span) {
-    for &parent_id in cx.parent.iter() {
-        visitor.region_maps.record_encl_scope(child_id, parent_id);
+    match visitor.cx.parent {
+        Some(parent_id) => {
+            visitor.region_maps.record_encl_scope(child_id, parent_id);
+        }
+        None => {}
     }
 }
 
 /// Records the lifetime of a local variable as `cx.var_parent`
 fn record_var_lifetime(visitor: &mut RegionResolutionVisitor,
-                       cx: Context,
                        var_id: ast::NodeId,
                        _sp: Span) {
-    match cx.var_parent {
+    match visitor.cx.var_parent {
         Some(parent_id) => {
             visitor.region_maps.record_var_scope(var_id, parent_id);
         }
@@ -395,13 +397,11 @@ fn record_var_lifetime(visitor: &mut RegionResolutionVisitor,
     }
 }
 
-fn resolve_block(visitor: &mut RegionResolutionVisitor,
-                 blk: &ast::Block,
-                 cx: Context) {
+fn resolve_block(visitor: &mut RegionResolutionVisitor, blk: &ast::Block) {
     debug!("resolve_block(blk.id={})", blk.id);
 
     // Record the parent of this block.
-    record_superlifetime(visitor, cx, blk.id, blk.span);
+    record_superlifetime(visitor, blk.id, blk.span);
 
     // We treat the tail expression in the block (if any) somewhat
     // differently from the statements. The issue has to do with
@@ -412,13 +412,13 @@ fn resolve_block(visitor: &mut RegionResolutionVisitor,
     //   }
     //
 
-    let subcx = Context {var_parent: Some(blk.id), parent: Some(blk.id)};
-    visit::walk_block(visitor, blk, subcx);
+    let prev_cx = visitor.cx;
+    visitor.cx = Context {var_parent: Some(blk.id), parent: Some(blk.id)};
+    visit::walk_block(visitor, blk);
+    visitor.cx = prev_cx;
 }
 
-fn resolve_arm(visitor: &mut RegionResolutionVisitor,
-               arm: &ast::Arm,
-               cx: Context) {
+fn resolve_arm(visitor: &mut RegionResolutionVisitor, arm: &ast::Arm) {
     visitor.region_maps.mark_as_terminating_scope(arm.body.id);
 
     match arm.guard {
@@ -428,48 +428,44 @@ fn resolve_arm(visitor: &mut RegionResolutionVisitor,
         None => { }
     }
 
-    visit::walk_arm(visitor, arm, cx);
+    visit::walk_arm(visitor, arm);
 }
 
-fn resolve_pat(visitor: &mut RegionResolutionVisitor,
-               pat: &ast::Pat,
-               cx: Context) {
-    record_superlifetime(visitor, cx, pat.id, pat.span);
+fn resolve_pat(visitor: &mut RegionResolutionVisitor, pat: &ast::Pat) {
+    record_superlifetime(visitor, pat.id, pat.span);
 
     // If this is a binding (or maybe a binding, I'm too lazy to check
     // the def map) then record the lifetime of that binding.
     match pat.node {
         ast::PatIdent(..) => {
-            record_var_lifetime(visitor, cx, pat.id, pat.span);
+            record_var_lifetime(visitor, pat.id, pat.span);
         }
         _ => { }
     }
 
-    visit::walk_pat(visitor, pat, cx);
+    visit::walk_pat(visitor, pat);
 }
 
-fn resolve_stmt(visitor: &mut RegionResolutionVisitor,
-                stmt: &ast::Stmt,
-                cx: Context) {
+fn resolve_stmt(visitor: &mut RegionResolutionVisitor, stmt: &ast::Stmt) {
     let stmt_id = stmt_id(stmt);
     debug!("resolve_stmt(stmt.id={})", stmt_id);
 
     visitor.region_maps.mark_as_terminating_scope(stmt_id);
-    record_superlifetime(visitor, cx, stmt_id, stmt.span);
+    record_superlifetime(visitor, stmt_id, stmt.span);
 
-    let subcx = Context {parent: Some(stmt_id), ..cx};
-    visit::walk_stmt(visitor, stmt, subcx);
+    let prev_parent = visitor.cx.parent;
+    visitor.cx.parent = Some(stmt_id);
+    visit::walk_stmt(visitor, stmt);
+    visitor.cx.parent = prev_parent;
 }
 
-fn resolve_expr(visitor: &mut RegionResolutionVisitor,
-                expr: &ast::Expr,
-                cx: Context) {
+fn resolve_expr(visitor: &mut RegionResolutionVisitor, expr: &ast::Expr) {
     debug!("resolve_expr(expr.id={})", expr.id);
 
-    record_superlifetime(visitor, cx, expr.id, expr.span);
+    record_superlifetime(visitor, expr.id, expr.span);
 
-    let mut new_cx = cx;
-    new_cx.parent = Some(expr.id);
+    let prev_cx = visitor.cx;
+    visitor.cx.parent = Some(expr.id);
     match expr.node {
         // Conditional or repeating scopes are always terminating
         // scopes, meaning that temporaries cannot outlive them.
@@ -506,11 +502,11 @@ fn resolve_expr(visitor: &mut RegionResolutionVisitor,
 
             // The variable parent of everything inside (most importantly, the
             // pattern) is the body.
-            new_cx.var_parent = Some(body.id);
+            visitor.cx.var_parent = Some(body.id);
         }
 
         ast::ExprMatch(..) => {
-            new_cx.var_parent = Some(expr.id);
+            visitor.cx.var_parent = Some(expr.id);
         }
 
         ast::ExprAssignOp(..) | ast::ExprIndex(..) |
@@ -538,17 +534,15 @@ fn resolve_expr(visitor: &mut RegionResolutionVisitor,
         _ => {}
     };
 
-
-    visit::walk_expr(visitor, expr, new_cx);
+    visit::walk_expr(visitor, expr);
+    visitor.cx = prev_cx;
 }
 
-fn resolve_local(visitor: &mut RegionResolutionVisitor,
-                 local: &ast::Local,
-                 cx: Context) {
+fn resolve_local(visitor: &mut RegionResolutionVisitor, local: &ast::Local) {
     debug!("resolve_local(local.id={},local.init={})",
            local.id,local.init.is_some());
 
-    let blk_id = match cx.var_parent {
+    let blk_id = match visitor.cx.var_parent {
         Some(id) => id,
         None => {
             visitor.sess.span_bug(
@@ -635,7 +629,7 @@ fn resolve_local(visitor: &mut RegionResolutionVisitor,
         None => { }
     }
 
-    visit::walk_local(visitor, local, cx);
+    visit::walk_local(visitor, local);
 
     fn is_binding_pat(pat: &ast::Pat) -> bool {
         /*!
@@ -793,21 +787,20 @@ fn resolve_local(visitor: &mut RegionResolutionVisitor,
     }
 }
 
-fn resolve_item(visitor: &mut RegionResolutionVisitor,
-                item: &ast::Item,
-                cx: Context) {
+fn resolve_item(visitor: &mut RegionResolutionVisitor, item: &ast::Item) {
     // Items create a new outer block scope as far as we're concerned.
-    let new_cx = Context {var_parent: None, parent: None, ..cx};
-    visit::walk_item(visitor, item, new_cx);
+    let prev_cx = visitor.cx;
+    visitor.cx = Context {var_parent: None, parent: None};
+    visit::walk_item(visitor, item);
+    visitor.cx = prev_cx;
 }
 
 fn resolve_fn(visitor: &mut RegionResolutionVisitor,
-              fk: &FnKind,
+              fk: FnKind,
               decl: &ast::FnDecl,
               body: &ast::Block,
               sp: Span,
-              id: ast::NodeId,
-              cx: Context) {
+              id: ast::NodeId) {
     debug!("region::resolve_fn(id={}, \
                                span={:?}, \
                                body.id={}, \
@@ -815,20 +808,24 @@ fn resolve_fn(visitor: &mut RegionResolutionVisitor,
            id,
            visitor.sess.codemap().span_to_string(sp),
            body.id,
-           cx.parent);
+           visitor.cx.parent);
 
     visitor.region_maps.mark_as_terminating_scope(body.id);
 
+    let outer_cx = visitor.cx;
+
     // The arguments and `self` are parented to the body of the fn.
-    let decl_cx = Context {parent: Some(body.id),
-                           var_parent: Some(body.id)};
-    visit::walk_fn_decl(visitor, decl, decl_cx);
+    visitor.cx = Context { parent: Some(body.id),
+                           var_parent: Some(body.id) };
+    visit::walk_fn_decl(visitor, decl);
 
     // The body of the fn itself is either a root scope (top-level fn)
     // or it continues with the inherited scope (closures).
-    let body_cx = match *fk {
+    match fk {
         visit::FkItemFn(..) | visit::FkMethod(..) => {
-            Context {parent: None, var_parent: None, ..cx}
+            visitor.cx = Context { parent: None, var_parent: None };
+            visitor.visit_block(body);
+            visitor.cx = outer_cx;
         }
         visit::FkFnBlock(..) => {
             // FIXME(#3696) -- at present we are place the closure body
@@ -838,40 +835,40 @@ fn resolve_fn(visitor: &mut RegionResolutionVisitor,
             // but the correct fix is a bit subtle, and I am also not sure
             // that the present approach is unsound -- it may not permit
             // any illegal programs. See issue for more details.
-            cx
+            visitor.cx = outer_cx;
+            visitor.visit_block(body);
         }
-    };
-    visitor.visit_block(body, body_cx);
+    }
 }
 
-impl<'a> Visitor<Context> for RegionResolutionVisitor<'a> {
+impl<'a, 'v> Visitor<'v> for RegionResolutionVisitor<'a> {
 
-    fn visit_block(&mut self, b: &Block, cx: Context) {
-        resolve_block(self, b, cx);
-    }
-
-    fn visit_item(&mut self, i: &Item, cx: Context) {
-        resolve_item(self, i, cx);
+    fn visit_block(&mut self, b: &Block) {
+        resolve_block(self, b);
     }
 
-    fn visit_fn(&mut self, fk: &FnKind, fd: &FnDecl,
-                b: &Block, s: Span, n: NodeId, cx: Context) {
-        resolve_fn(self, fk, fd, b, s, n, cx);
+    fn visit_item(&mut self, i: &Item) {
+        resolve_item(self, i);
     }
-    fn visit_arm(&mut self, a: &Arm, cx: Context) {
-        resolve_arm(self, a, cx);
+
+    fn visit_fn(&mut self, fk: FnKind<'v>, fd: &'v FnDecl,
+                b: &'v Block, s: Span, n: NodeId) {
+        resolve_fn(self, fk, fd, b, s, n);
     }
-    fn visit_pat(&mut self, p: &Pat, cx: Context) {
-        resolve_pat(self, p, cx);
+    fn visit_arm(&mut self, a: &Arm) {
+        resolve_arm(self, a);
     }
-    fn visit_stmt(&mut self, s: &Stmt, cx: Context) {
-        resolve_stmt(self, s, cx);
+    fn visit_pat(&mut self, p: &Pat) {
+        resolve_pat(self, p);
     }
-    fn visit_expr(&mut self, ex: &Expr, cx: Context) {
-        resolve_expr(self, ex, cx);
+    fn visit_stmt(&mut self, s: &Stmt) {
+        resolve_stmt(self, s);
     }
-    fn visit_local(&mut self, l: &Local, cx: Context) {
-        resolve_local(self, l, cx);
+    fn visit_expr(&mut self, ex: &Expr) {
+        resolve_expr(self, ex);
+    }
+    fn visit_local(&mut self, l: &Local) {
+        resolve_local(self, l);
     }
 }
 
@@ -886,10 +883,10 @@ pub fn resolve_crate(sess: &Session, krate: &ast::Crate) -> RegionMaps {
     {
         let mut visitor = RegionResolutionVisitor {
             sess: sess,
-            region_maps: &maps
+            region_maps: &maps,
+            cx: Context { parent: None, var_parent: None }
         };
-        let cx = Context { parent: None, var_parent: None };
-        visit::walk_crate(&mut visitor, krate, cx);
+        visit::walk_crate(&mut visitor, krate);
     }
     return maps;
 }
@@ -897,12 +894,11 @@ pub fn resolve_crate(sess: &Session, krate: &ast::Crate) -> RegionMaps {
 pub fn resolve_inlined_item(sess: &Session,
                             region_maps: &RegionMaps,
                             item: &ast::InlinedItem) {
-    let cx = Context {parent: None,
-                      var_parent: None};
     let mut visitor = RegionResolutionVisitor {
         sess: sess,
         region_maps: region_maps,
+        cx: Context { parent: None, var_parent: None }
     };
-    visit::walk_inlined_item(&mut visitor, item, cx);
+    visit::walk_inlined_item(&mut visitor, item);
 }
 

@@ -648,29 +648,29 @@ fn expand_arm(arm: &ast::Arm, fld: &mut MacroExpander) -> ast::Arm {
 /// array
 #[deriving(Clone)]
 struct PatIdentFinder {
-    ident_accumulator: Vec<ast::Ident> ,
+    ident_accumulator: Vec<ast::Ident>
 }
 
-impl Visitor<()> for PatIdentFinder {
-    fn visit_pat(&mut self, pattern: &ast::Pat, _: ()) {
+impl<'v> Visitor<'v> for PatIdentFinder {
+    fn visit_pat(&mut self, pattern: &ast::Pat) {
         match *pattern {
             ast::Pat { id: _, node: ast::PatIdent(_, ref path1, ref inner), span: _ } => {
                 self.ident_accumulator.push(path1.node);
                 // visit optional subpattern of PatIdent:
                 for subpat in inner.iter() {
-                    self.visit_pat(&**subpat, ())
+                    self.visit_pat(&**subpat)
                 }
             }
             // use the default traversal for non-PatIdents
-            _ => visit::walk_pat(self, pattern, ())
+            _ => visit::walk_pat(self, pattern)
         }
     }
 }
 
 /// find the PatIdent paths in a pattern
-fn pattern_bindings(pat : &ast::Pat) -> Vec<ast::Ident> {
+fn pattern_bindings(pat: &ast::Pat) -> Vec<ast::Ident> {
     let mut name_finder = PatIdentFinder{ident_accumulator:Vec::new()};
-    name_finder.visit_pat(pat,());
+    name_finder.visit_pat(pat);
     name_finder.ident_accumulator
 }
 
@@ -678,7 +678,7 @@ fn pattern_bindings(pat : &ast::Pat) -> Vec<ast::Ident> {
 fn fn_decl_arg_bindings(fn_decl: &ast::FnDecl) -> Vec<ast::Ident> {
     let mut pat_idents = PatIdentFinder{ident_accumulator:Vec::new()};
     for arg in fn_decl.inputs.iter() {
-        pat_idents.visit_pat(&*arg.pat, ());
+        pat_idents.visit_pat(&*arg.pat);
     }
     pat_idents.ident_accumulator
 }
@@ -1099,7 +1099,7 @@ fn original_span(cx: &ExtCtxt) -> Gc<codemap::ExpnInfo> {
 
 /// Check that there are no macro invocations left in the AST:
 pub fn check_for_macros(sess: &parse::ParseSess, krate: &ast::Crate) {
-    visit::walk_crate(&mut MacroExterminator{sess:sess}, krate, ());
+    visit::walk_crate(&mut MacroExterminator{sess:sess}, krate);
 }
 
 /// A visitor that ensures that no macro invocations remain in an AST.
@@ -1107,8 +1107,8 @@ struct MacroExterminator<'a>{
     sess: &'a parse::ParseSess
 }
 
-impl<'a> visit::Visitor<()> for MacroExterminator<'a> {
-    fn visit_mac(&mut self, macro: &ast::Mac, _:()) {
+impl<'a, 'v> Visitor<'v> for MacroExterminator<'a> {
+    fn visit_mac(&mut self, macro: &ast::Mac) {
         self.sess.span_diagnostic.span_bug(macro.span,
                                            "macro exterminator: expected AST \
                                            with no macro invocations");
@@ -1144,15 +1144,14 @@ mod test {
         path_accumulator: Vec<ast::Path> ,
     }
 
-    impl Visitor<()> for PathExprFinderContext {
-
-        fn visit_expr(&mut self, expr: &ast::Expr, _: ()) {
-            match *expr {
-                ast::Expr{id:_,span:_,node:ast::ExprPath(ref p)} => {
+    impl<'v> Visitor<'v> for PathExprFinderContext {
+        fn visit_expr(&mut self, expr: &ast::Expr) {
+            match expr.node {
+                ast::ExprPath(ref p) => {
                     self.path_accumulator.push(p.clone());
                     // not calling visit_path, but it should be fine.
                 }
-                _ => visit::walk_expr(self,expr,())
+                _ => visit::walk_expr(self, expr)
             }
         }
     }
@@ -1160,18 +1159,18 @@ mod test {
     // find the variable references in a crate
     fn crate_varrefs(the_crate : &ast::Crate) -> Vec<ast::Path> {
         let mut path_finder = PathExprFinderContext{path_accumulator:Vec::new()};
-        visit::walk_crate(&mut path_finder, the_crate, ());
+        visit::walk_crate(&mut path_finder, the_crate);
         path_finder.path_accumulator
     }
 
     /// A Visitor that extracts the identifiers from a thingy.
     // as a side note, I'm starting to want to abstract over these....
-    struct IdentFinder{
+    struct IdentFinder {
         ident_accumulator: Vec<ast::Ident>
     }
 
-    impl Visitor<()> for IdentFinder {
-        fn visit_ident(&mut self, _: codemap::Span, id: ast::Ident, _: ()){
+    impl<'v> Visitor<'v> for IdentFinder {
+        fn visit_ident(&mut self, _: codemap::Span, id: ast::Ident){
             self.ident_accumulator.push(id);
         }
     }
@@ -1179,7 +1178,7 @@ mod test {
     /// Find the idents in a crate
     fn crate_idents(the_crate: &ast::Crate) -> Vec<ast::Ident> {
         let mut ident_finder = IdentFinder{ident_accumulator: Vec::new()};
-        visit::walk_crate(&mut ident_finder, the_crate, ());
+        visit::walk_crate(&mut ident_finder, the_crate);
         ident_finder.ident_accumulator
     }
 
@@ -1277,7 +1276,7 @@ mod test {
     // find the pat_ident paths in a crate
     fn crate_bindings(the_crate : &ast::Crate) -> Vec<ast::Ident> {
         let mut name_finder = PatIdentFinder{ident_accumulator:Vec::new()};
-        visit::walk_crate(&mut name_finder, the_crate, ());
+        visit::walk_crate(&mut name_finder, the_crate);
         name_finder.ident_accumulator
     }
 

@@ -27,7 +27,6 @@
 use middle::ty;
 
 use syntax::ast;
-use syntax::codemap::Span;
 use syntax::visit::Visitor;
 use syntax::visit;
 use syntax::print::pprust;
@@ -54,41 +53,42 @@ fn safe_type_for_static_mut(cx: &ty::ctxt, e: &ast::Expr) -> Option<String> {
 
 struct CheckStaticVisitor<'a, 'tcx: 'a> {
     tcx: &'a ty::ctxt<'tcx>,
+    in_const: bool
 }
 
 pub fn check_crate(tcx: &ty::ctxt, krate: &ast::Crate) {
-    visit::walk_crate(&mut CheckStaticVisitor { tcx: tcx }, krate, false)
+    visit::walk_crate(&mut CheckStaticVisitor { tcx: tcx, in_const: false }, krate)
 }
 
 impl<'a, 'tcx> CheckStaticVisitor<'a, 'tcx> {
-    fn report_error(&self, span: Span, result: Option<String>) -> bool {
-        match result {
-            None => { false }
-            Some(msg) => {
-                self.tcx.sess.span_err(span, msg.as_slice());
-                true
-            }
-        }
+    fn with_const(&mut self, in_const: bool, f: |&mut CheckStaticVisitor<'a, 'tcx>|) {
+        let was_const = self.in_const;
+        self.in_const = in_const;
+        f(self);
+        self.in_const = was_const;
     }
 }
 
-impl<'a, 'tcx> Visitor<bool> for CheckStaticVisitor<'a, 'tcx> {
-
-    fn visit_item(&mut self, i: &ast::Item, _is_const: bool) {
+impl<'a, 'tcx, 'v> Visitor<'v> for CheckStaticVisitor<'a, 'tcx> {
+    fn visit_item(&mut self, i: &ast::Item) {
         debug!("visit_item(item={})", pprust::item_to_string(i));
         match i.node {
             ast::ItemStatic(_, mutability, ref expr) => {
                 match mutability {
                     ast::MutImmutable => {
-                        self.visit_expr(&**expr, true);
+                        self.with_const(true, |v| v.visit_expr(&**expr));
                     }
                     ast::MutMutable => {
-                        let safe = safe_type_for_static_mut(self.tcx, &**expr);
-                        self.report_error(expr.span, safe);
+                        match safe_type_for_static_mut(self.tcx, &**expr) {
+                            Some(msg) => {
+                                self.tcx.sess.span_err(expr.span, msg.as_slice());
+                            }
+                            None => {}
+                        }
                     }
                 }
             }
-            _ => { visit::walk_item(self, i, false) }
+            _ => self.with_const(false, |v| visit::walk_item(v, i))
         }
     }
 
@@ -98,17 +98,17 @@ impl<'a, 'tcx> Visitor<bool> for CheckStaticVisitor<'a, 'tcx> {
     /// every nested expression. if the expression is not part
     /// of a static item, this method does nothing but walking
     /// down through it.
-    fn visit_expr(&mut self, e: &ast::Expr, is_const: bool) {
+    fn visit_expr(&mut self, e: &ast::Expr) {
         debug!("visit_expr(expr={})", pprust::expr_to_string(e));
 
-        if !is_const {
-            return visit::walk_expr(self, e, is_const);
+        if !self.in_const {
+            return visit::walk_expr(self, e);
         }
 
         match e.node {
             ast::ExprField(..) | ast::ExprTupField(..) | ast::ExprVec(..) |
             ast::ExprBlock(..) | ast::ExprTup(..)  => {
-                visit::walk_expr(self, e, is_const);
+                visit::walk_expr(self, e);
             }
             ast::ExprAddrOf(ast::MutMutable, _) => {
                 span_err!(self.tcx.sess, e.span, E0020,
@@ -130,15 +130,14 @@ impl<'a, 'tcx> Visitor<bool> for CheckStaticVisitor<'a, 'tcx> {
                     ty::ty_struct(did, _) |
                     ty::ty_enum(did, _) => {
                         if ty::has_dtor(self.tcx, did) {
-                            self.report_error(e.span,
-                             Some("static items are not allowed to have \
-                                   destructors".to_string()));
+                            self.tcx.sess.span_err(e.span,
+                                "static items are not allowed to have destructors");
                             return;
                         }
                     }
                     _ => {}
                 }
-                visit::walk_expr(self, e, is_const);
+                visit::walk_expr(self, e);
             }
         }
     }
