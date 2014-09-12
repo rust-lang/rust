@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-windows (#17202)
 // ignore-tidy-linelength
 // ignore-android: FIXME(#10381)
 

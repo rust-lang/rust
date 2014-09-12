@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-windows (#17202)
 // ignore-android: FIXME(#10381)
 
 // This test case checks if function arguments already have the correct value when breaking at the
