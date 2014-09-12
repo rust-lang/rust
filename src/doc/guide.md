@@ -130,14 +130,15 @@ the documentation for your shell for more details.
 
 Let's make a new source file next. I'm going to use the syntax `editor
 filename` to represent editing a file in these examples, but you should use
-whatever method you want. We'll call our file `hello_world.rs`:
+whatever method you want. We'll call our file `main.rs`:
 
 ```{bash}
-$ editor hello_world.rs
+$ editor main.rs
 ```
 
 Rust files always end in a `.rs` extension. If you're using more than one word
-in your file name, use an underscore. `hello_world.rs` versus `goodbye.rs`.
+in your file name, use an underscore. `hello_world.rs` rather than
+`helloworld.rs`.
 
 Now that you've got your file open, type this in:
 
@@ -150,7 +151,7 @@ fn main() {
 Save the file, and then type this into your terminal window:
 
 ```{bash}
-$ rustc hello_world.rs
+$ rustc main.rs
 $ ./hello_world # or hello_world.exe on Windows
 Hello, world!
 ```
@@ -212,7 +213,7 @@ Finally, actually **compiling** and **running** our program. We can compile
 with our compiler, `rustc`, by passing it the name of our source file:
 
 ```{bash}
-$ rustc hello_world.rs
+$ rustc main.rs
 ```
 
 This is similar to `gcc` or `clang`, if you come from a C or C++ background. Rust
@@ -220,14 +221,14 @@ will output a binary executable. You can see it with `ls`:
 
 ```{bash}
 $ ls
-hello_world  hello_world.rs
+main  main.rs
 ```
 
 Or on Windows:
 
 ```{bash}
 $ dir
-hello_world.exe  hello_world.rs
+main.exe  main.rs
 ```
 
 There are now two files: our source code, with the `.rs` extension, and the
@@ -284,7 +285,7 @@ do that part first:
 
 ```{bash}
 $ mkdir src
-$ mv hello_world.rs src/hello_world.rs
+$ mv main.rs src/main.rs
 ```
 
 Cargo expects your source files to live inside a `src` directory. That leaves
@@ -452,9 +453,9 @@ let x;
 ...we'll get an error:
 
 ```{ignore}
-src/hello_world.rs:2:9: 2:10 error: cannot determine a type for this local variable: unconstrained type
-src/hello_world.rs:2     let x;
-                             ^
+src/main.rs:2:9: 2:10 error: cannot determine a type for this local variable: unconstrained type
+src/main.rs:2     let x;
+                      ^
 ```
 
 Giving it a type will compile, though:
@@ -463,7 +464,7 @@ Giving it a type will compile, though:
 let x: int;
 ```
 
-Let's try it out. Change your `src/hello_world.rs` file to look like this:
+Let's try it out. Change your `src/main.rs` file to look like this:
 
 ```{rust}
 fn main() {
@@ -478,8 +479,8 @@ but it will still print "Hello, world!":
 
 ```{ignore,notrust}
    Compiling hello_world v0.0.1 (file:///home/you/projects/hello_world)
-src/hello_world.rs:2:9: 2:10 warning: unused variable: `x`, #[warn(unused_variable)] on by default
-src/hello_world.rs:2     let x: int;
+src/main.rs:2:9: 2:10 warning: unused variable: `x`, #[warn(unused_variable)] on by default
+src/main.rs:2     let x: int;
                              ^
 ```
 
@@ -500,13 +501,13 @@ And try to build it. You'll get an error:
 ```{bash}
 $ cargo build
    Compiling hello_world v0.0.1 (file:///home/you/projects/hello_world)
-src/hello_world.rs:4:39: 4:40 error: use of possibly uninitialized variable: `x`
-src/hello_world.rs:4     println!("The value of x is: {}", x);
-                                                           ^
+src/main.rs:4:39: 4:40 error: use of possibly uninitialized variable: `x`
+src/main.rs:4     println!("The value of x is: {}", x);
+                                                    ^
 note: in expansion of format_args!
 <std macros>:2:23: 2:77 note: expansion site
 <std macros>:1:1: 3:2 note: in expansion of println!
-src/hello_world.rs:4:5: 4:42 note: expansion site
+src/main.rs:4:5: 4:42 note: expansion site
 error: aborting due to previous error
 Could not compile `hello_world`.
 ```
@@ -1318,10 +1319,7 @@ upper bound is exclusive, though, so our loop will print `0` through `9`, not
 
 Rust does not have the "C style" `for` loop on purpose. Manually controlling
 each element of the loop is complicated and error prone, even for experienced C
-developers. There's an old joke that goes, "There are two hard problems in
-computer science: naming things, cache invalidation, and off-by-one errors."
-The joke, of course, being that the setup says "two hard problems" but then
-lists three things. This happens quite a bit with "C style" `for` loops.
+developers. 
 
 We'll talk more about `for` when we cover **iterator**s, later in the Guide.
 
@@ -2745,197 +2743,8 @@ $ cargo run
 Hello, world!
 ```
 
-Nice!
-
-There's a common pattern when you're building an executable: you build both an
-executable and a library, and put most of your logic in the library. That way,
-other programs can use that library to build their own functionality.
-
-Let's do that with our project. If you remember, libraries and executables
-are both crates, so while our project has one crate now, let's make a second:
-one for the library, and one for the executable.
-
-To make the second crate, open up `src/lib.rs` and put this code in it:
-
-```{rust}
-mod hello {
-    pub fn print_hello() {
-        println!("Hello, world!");
-    }
-}
-```
-
-And change your `src/main.rs` to look like this:
-
-```{rust,ignore}
-extern crate modules;
-
-fn main() {
-    modules::hello::print_hello();
-}
-```
-
-There's been a few changes. First, we moved our `hello` module into its own
-file, `src/lib.rs`. This is the file that Cargo expects a library crate to
-be named, by convention.
-
-Next, we added an `extern crate modules` to the top of our `src/main.rs`. This,
-as you can guess, lets Rust know that our crate relies on another, external
-crate. We also had to modify our call to `print_hello`: now that it's in
-another crate, we need to specify that crate first.
-
-This doesn't _quite_ work yet. Try it:
-
-```{notrust,ignore}
-$ cargo build
-   Compiling modules v0.0.1 (file:///home/you/projects/modules)
-/home/you/projects/modules/src/lib.rs:2:5: 4:6 warning: code is never used: `print_hello`, #[warn(dead_code)] on by default
-/home/you/projects/modules/src/lib.rs:2     pub fn print_hello() {
-/home/you/projects/modules/src/lib.rs:3         println!("Hello, world!");
-/home/you/projects/modules/src/lib.rs:4     }
-/home/you/projects/modules/src/main.rs:4:5: 4:32 error: function `print_hello` is private
-/home/you/projects/modules/src/main.rs:4     modules::hello::print_hello();
-                                          ^~~~~~~~~~~~~~~~~~~~~~~~~~~
-error: aborting due to previous error
-Could not compile `modules`.
-```
-
-First, we get a warning that some code is never used. Odd. Next, we get an error:
-`print_hello` is private, so we can't call it. Notice that the first error came
-from `src/lib.rs`, and the second came from `src/main.rs`: cargo is smart enough
-to build it all with one command. Also, after seeing the second error, the warning
-makes sense: we never actually call `hello_world`, because we're not allowed to!
-
-Just like modules, crates also have private visibility by default. Any modules
-inside of a crate can only be used by other modules in the crate, unless they
-use `pub`. In `src/lib.rs`, change this line:
-
-```{rust,ignore}
-mod hello {
-```
-
-To this:
-
-```{rust,ignore}
-pub mod hello {
-```
-
-And everything should work:
-
-```{notrust,ignore}
-$ cargo run
-   Compiling modules v0.0.1 (file:///home/you/projects/modules)
-     Running `target/modules`
-Hello, world!
-```
-
-Let's do one more thing: add a `goodbye` module as well. Imagine a `src/lib.rs`
-that looks like this:
-
-```{rust,ignore}
-pub mod hello {
-    pub fn print_hello() {
-        println!("Hello, world!");
-    }
-}
-
-pub mod goodbye {
-    pub fn print_goodbye() {
-        println!("Goodbye for now!");
-    }
-}
-```
-
-Now, these two modules are pretty small, but imagine we've written a real, large
-program: they could both be huge. So maybe we want to move them into their own
-files. We can do that pretty easily, and there are two different conventions
-for doing it. Let's give each a try. First, make `src/lib.rs` look like this:
-
-```{rust,ignore}
-pub mod hello;
-pub mod goodbye;
-```
-
-This tells Rust that this crate has two public modules: `hello` and `goodbye`.
-
-Next, make a `src/hello.rs` that contains this:
-
-```{rust,ignore}
-pub fn print_hello() {
-    println!("Hello, world!");
-}
-```
-
-When we include a module like this, we don't need to make the `mod` declaration
-in `hello.rs`, because it's already been declared in `lib.rs`. `hello.rs` just
-contains the body of the module which is defined (by the `pub mod hello`) in
-`lib.rs`.  This helps prevent 'rightward drift': when you end up indenting so
-many times that your code is hard to read.
-
-Finally, make a new directory, `src/goodbye`, and make a new file in it,
-`src/goodbye/mod.rs`:
-
-```{rust,ignore}
-pub fn print_goodbye() {
-    println!("Bye for now!");
-}
-```
-
-Same deal, but we can make a folder with a `mod.rs` instead of `mod_name.rs` in
-the same directory. If you have a lot of modules, nested folders can make
-sense.  For example, if the `goodbye` module had its _own_ modules inside of
-it, putting all of that in a folder helps keep our directory structure tidy.
-And in fact, if you place the modules in separate files, they're required to be
-in separate folders.
-
-This should all compile as usual:
-
-```{notrust,ignore}
-$ cargo build
-   Compiling modules v0.0.1 (file:///home/you/projects/modules)
-```
-
-We've seen how the `::` operator can be used to call into modules, but when
-we have deep nesting like `modules::hello::say_hello`, it can get tedious.
-That's why we have the `use` keyword.
-
-`use` allows us to bring certain names into another scope. For example, here's
-our main program:
-
-```{rust,ignore}
-extern crate modules;
-
-fn main() {
-    modules::hello::print_hello();
-}
-```
-
-We could instead write this:
-
-```{rust,ignore}
-extern crate modules;
-
-use modules::hello::print_hello;
-
-fn main() {
-    print_hello();
-}
-```
-
-By bringing `print_hello` into scope, we don't need to qualify it anymore. However,
-it's considered proper style to do write this code like like this:
-
-```{rust,ignore}
-extern crate modules;
-
-use modules::hello;
-
-fn main() {
-    hello::print_hello();
-}
-```
-
-By just bringing the module into scope, we can keep one level of namespacing.
+Nice! There are more things we can do with modules, including moving them into
+their own files. This is enough detail for now.
 
 # Testing
 
@@ -3801,9 +3610,9 @@ Here's the second note, which lets us know where the first borrow would be over.
 This is useful, because if we wait to try to borrow `x` after this borrow is
 over, then everything will work.
 
-These rules are very simple, but that doesn't mean that they're easy. For more
-advanced patterns, please consult the [Lifetime Guide](guide-lifetimes.html).
-You'll also learn what this type signature with the `'a` syntax is:
+For more advanced patterns, please consult the [Lifetime
+Guide](guide-lifetimes.html).  You'll also learn what this type signature with
+the `'a` syntax is:
 
 ```{rust,ignore}
 pub fn as_maybe_owned(&self) -> MaybeOwned<'a> { ... }
@@ -4454,14 +4263,14 @@ for num in nums.iter() {
 }
 ```
 
-There are two reasons for this. First, this is more semantic. We iterate
-through the entire vector, rather than iterating through indexes, and then
-indexing the vector. Second, this version is more efficient: the first version
-will have extra bounds checking because it used indexing, `nums[i]`. But since
-we yield a reference to each element of the vector in turn with the iterator,
-there's no bounds checking in the second example. This is very common with
-iterators: we can ignore unnecessary bounds checks, but still know that we're
-safe.
+There are two reasons for this. First, this more directly expresses what we
+mean. We iterate through the entire vector, rather than iterating through
+indexes, and then indexing the vector. Second, this version is more efficient:
+the first version will have extra bounds checking because it used indexing,
+`nums[i]`. But since we yield a reference to each element of the vector in turn
+with the iterator, there's no bounds checking in the second example. This is
+very common with iterators: we can ignore unnecessary bounds checks, but still
+know that we're safe.
 
 There's another detail here that's not 100% clear because of how `println!`
 works. `num` is actually of type `&int`, that is, it's a reference to an `int`,
