@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern crate libc;
-
 use codemap::{Pos, Span};
 use codemap;
 use diagnostics;
