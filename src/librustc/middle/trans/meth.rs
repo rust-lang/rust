@@ -67,7 +67,7 @@ pub fn trans_impl(ccx: &CrateContext,
         for impl_item in impl_items.iter() {
             match *impl_item {
                 ast::MethodImplItem(method) => {
-                    visit::walk_method_helper(&mut v, &*method, ());
+                    visit::walk_method_helper(&mut v, &*method);
                 }
             }
         }
@@ -96,7 +96,7 @@ pub fn trans_impl(ccx: &CrateContext,
                 let mut v = TransItemVisitor {
                     ccx: ccx,
                 };
-                visit::walk_method_helper(&mut v, &*method, ());
+                visit::walk_method_helper(&mut v, &*method);
             }
         }
     }

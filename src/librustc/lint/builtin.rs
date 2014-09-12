@@ -366,13 +366,13 @@ impl<'a, 'tcx> CTypesVisitor<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> Visitor<()> for CTypesVisitor<'a, 'tcx> {
-    fn visit_ty(&mut self, ty: &ast::Ty, _: ()) {
+impl<'a, 'tcx> Visitor for CTypesVisitor<'a, 'tcx> {
+    fn visit_ty(&mut self, ty: &ast::Ty) {
         match ty.node {
             ast::TyPath(_, _, id) => self.check_def(ty.span, ty.id, id),
             _ => (),
         }
-        visit::walk_ty(self, ty, ());
+        visit::walk_ty(self, ty);
     }
 }
 
@@ -386,7 +386,7 @@ impl LintPass for CTypes {
     fn check_item(&mut self, cx: &Context, it: &ast::Item) {
         fn check_ty(cx: &Context, ty: &ast::Ty) {
             let mut vis = CTypesVisitor { cx: cx };
-            vis.visit_ty(ty, ());
+            vis.visit_ty(ty);
         }
 
         fn check_foreign_fn(cx: &Context, decl: &ast::FnDecl) {
@@ -500,18 +500,18 @@ struct RawPtrDerivingVisitor<'a, 'tcx: 'a> {
     cx: &'a Context<'a, 'tcx>
 }
 
-impl<'a, 'tcx> Visitor<()> for RawPtrDerivingVisitor<'a, 'tcx> {
-    fn visit_ty(&mut self, ty: &ast::Ty, _: ()) {
+impl<'a, 'tcx> Visitor for RawPtrDerivingVisitor<'a, 'tcx> {
+    fn visit_ty(&mut self, ty: &ast::Ty) {
         static MSG: &'static str = "use of `#[deriving]` with a raw pointer";
         match ty.node {
             ast::TyPtr(..) => self.cx.span_lint(RAW_POINTER_DERIVING, ty.span, MSG),
             _ => {}
         }
-        visit::walk_ty(self, ty, ());
+        visit::walk_ty(self, ty);
     }
     // explicit override to a no-op to reduce code bloat
-    fn visit_expr(&mut self, _: &ast::Expr, _: ()) {}
-    fn visit_block(&mut self, _: &ast::Block, _: ()) {}
+    fn visit_expr(&mut self, _: &ast::Expr) {}
+    fn visit_block(&mut self, _: &ast::Block) {}
 }
 
 pub struct RawPointerDeriving {
@@ -554,7 +554,7 @@ impl LintPass for RawPointerDeriving {
         match item.node {
             ast::ItemStruct(..) | ast::ItemEnum(..) => {
                 let mut visitor = RawPtrDerivingVisitor { cx: cx };
-                visit::walk_item(&mut visitor, &*item, ());
+                visit::walk_item(&mut visitor, &*item);
             }
             _ => {}
         }
