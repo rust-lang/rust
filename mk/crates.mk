@@ -59,7 +59,7 @@ CRATES := $(TARGET_CRATES) $(HOST_CRATES)
 TOOLS := compiletest rustdoc rustc
 
 DEPS_core :=
-DEPS_rlibc :=
+DEPS_rlibc := core
 DEPS_unicode := core
 DEPS_alloc := core libc native:jemalloc
 DEPS_debug := std

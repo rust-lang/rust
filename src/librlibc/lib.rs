@@ -35,12 +35,13 @@
 // LLVM to optimize these function calls to themselves!
 #![no_builtins]
 
+#[phase(plugin, link)] extern crate core;
+
 #[cfg(test)] extern crate native;
 #[cfg(test)] extern crate test;
 #[cfg(test)] extern crate debug;
 
 #[cfg(test)] #[phase(plugin, link)] extern crate std;
-#[cfg(test)] #[phase(plugin, link)] extern crate core;
 
 // Require the offset intrinsics for LLVM to properly optimize the
 // implementations below. If pointer arithmetic is done through integers the
