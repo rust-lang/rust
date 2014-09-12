@@ -379,6 +379,7 @@ impl IoError {
                      "file descriptor is not a TTY"),
                 libc::ETIMEDOUT => (TimedOut, "operation timed out"),
                 libc::ECANCELED => (TimedOut, "operation aborted"),
+                libc::ENOTEMPTY => (DirectoryNotEmpty, "directory is not empty"),
 
                 // These two constants can have the same value on some systems,
                 // but different values on others, so we can't use a match
@@ -478,6 +479,8 @@ pub enum IoErrorKind {
     InvalidInput,
     /// The I/O operation's timeout expired, causing it to be canceled.
     TimedOut,
+    /// The destination directory in `rename` is not empty.
+    DirectoryNotEmpty,
     /// This write operation failed to write all of its data.
     ///
     /// Normally the write() method on a Writer guarantees that all of its data
@@ -1662,6 +1665,7 @@ pub fn standard_error(kind: IoErrorKind) -> IoError {
         TimedOut => "operation timed out",
         ShortWrite(..) => "short write",
         NoProgress => "no progress",
+        DirectoryNotEmpty => "directory is not empty"
     };
     IoError {
         kind: kind,
