@@ -243,7 +243,7 @@ void trigger_callback() {
 }
 ~~~~
 
-In this example Rust's `main()` will call `do_callback()` in C,
+In this example Rust's `main()` will call `trigger_callback()` in C,
 which would, in turn, call back to `callback()` in Rust.
 
 
