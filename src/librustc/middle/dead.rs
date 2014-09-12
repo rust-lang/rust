@@ -102,17 +102,17 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
                     }
                     typeck::MethodStaticUnboxedClosure(_) => {}
                     typeck::MethodParam(typeck::MethodParam {
-                        trait_id: trait_id,
+                        trait_ref: ref trait_ref,
                         method_num: index,
                         ..
-                    })
-                    | typeck::MethodObject(typeck::MethodObject {
-                        trait_id: trait_id,
+                    }) |
+                    typeck::MethodObject(typeck::MethodObject {
+                        trait_ref: ref trait_ref,
                         method_num: index,
                         ..
                     }) => {
                         let trait_item = ty::trait_item(self.tcx,
-                                                        trait_id,
+                                                        trait_ref.def_id,
                                                         index);
                         match trait_item {
                             ty::MethodTraitItem(method) => {

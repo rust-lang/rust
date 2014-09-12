@@ -164,6 +164,11 @@ impl Substs {
         s
     }
 
+    pub fn erase_regions(self) -> Substs {
+        let Substs { types: types, regions: _ } = self;
+        Substs { types: types, regions: ErasedRegions }
+    }
+
     pub fn regions<'a>(&'a self) -> &'a VecPerParamSpace<ty::Region> {
         /*!
          * Since ErasedRegions are only to be used in trans, most of

@@ -782,19 +782,19 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
     }
 
     // Checks that a method is in scope.
-    fn check_method(&mut self, span: Span, origin: MethodOrigin,
+    fn check_method(&mut self, span: Span, origin: &MethodOrigin,
                     ident: ast::Ident) {
-        match origin {
+        match *origin {
             MethodStatic(method_id) => {
                 self.check_static_method(span, method_id, ident)
             }
             MethodStaticUnboxedClosure(_) => {}
             // Trait methods are always all public. The only controlling factor
             // is whether the trait itself is accessible or not.
-            MethodParam(MethodParam { trait_id: trait_id, .. }) |
-            MethodObject(MethodObject { trait_id: trait_id, .. }) => {
-                self.report_error(self.ensure_public(span, trait_id, None,
-                                                     "source trait"));
+            MethodParam(MethodParam { trait_ref: ref trait_ref, .. }) |
+            MethodObject(MethodObject { trait_ref: ref trait_ref, .. }) => {
+                self.report_error(self.ensure_public(span, trait_ref.def_id,
+                                                     None, "source trait"));
             }
         }
     }
@@ -835,7 +835,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for PrivacyVisitor<'a, 'tcx> {
                     }
                     Some(method) => {
                         debug!("(privacy checking) checking impl method");
-                        self.check_method(expr.span, method.origin, ident.node);
+                        self.check_method(expr.span, &method.origin, ident.node);
                     }
                 }
             }
