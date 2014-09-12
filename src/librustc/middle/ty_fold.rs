@@ -680,3 +680,28 @@ impl<'a, 'tcx> TypeFolder<'tcx> for RegionFolder<'a, 'tcx> {
         }
     }
 }
+
+///////////////////////////////////////////////////////////////////////////
+// Region eraser
+//
+// Replaces all free regions with 'static. Useful in trans.
+
+pub struct RegionEraser<'a, 'tcx: 'a> {
+    tcx: &'a ty::ctxt<'tcx>,
+}
+
+pub fn erase_regions<T:TypeFoldable>(tcx: &ty::ctxt, t: T) -> T {
+    let mut eraser = RegionEraser { tcx: tcx };
+    t.fold_with(&mut eraser)
+}
+
+impl<'a, 'tcx> TypeFolder<'tcx> for RegionEraser<'a, 'tcx> {
+    fn tcx<'a>(&'a self) -> &'a ty::ctxt<'tcx> { self.tcx }
+
+    fn fold_region(&mut self, r: ty::Region) -> ty::Region {
+        match r {
+            ty::ReLateBound(..) | ty::ReEarlyBound(..) => r,
+            _ => ty::ReStatic
+        }
+    }
+}

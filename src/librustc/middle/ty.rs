@@ -28,6 +28,7 @@ use middle::resolve_lifetime;
 use middle::stability;
 use middle::subst::{Subst, Substs, VecPerParamSpace};
 use middle::subst;
+use middle::traits;
 use middle::ty;
 use middle::typeck;
 use middle::ty_fold;
@@ -272,9 +273,7 @@ pub enum UnsizeKind {
     // An unsize coercion applied to the tail field of a struct.
     // The uint is the index of the type parameter which is unsized.
     UnsizeStruct(Box<UnsizeKind>, uint),
-    UnsizeVtable(ty::ExistentialBounds,
-                 ast::DefId, /* Trait ID */
-                 subst::Substs /* Trait substitutions */)
+    UnsizeVtable(TyTrait, /* the self type of the trait */ ty::t)
 }
 
 #[deriving(Clone)]
@@ -365,13 +364,13 @@ pub fn type_of_adjust(cx: &ctxt, adj: &AutoAdjustment) -> Option<t> {
     fn type_of_autoref(cx: &ctxt, autoref: &AutoRef) -> Option<t> {
         match autoref {
             &AutoUnsize(ref k) => match k {
-                &UnsizeVtable(bounds, def_id, ref substs) => {
+                &UnsizeVtable(TyTrait { def_id, substs: ref substs, bounds }, _) => {
                     Some(mk_trait(cx, def_id, substs.clone(), bounds))
                 }
                 _ => None
             },
             &AutoUnsizeUniq(ref k) => match k {
-                &UnsizeVtable(bounds, def_id, ref substs) => {
+                &UnsizeVtable(TyTrait { def_id, substs: ref substs, bounds }, _) => {
                     Some(mk_uniq(cx, mk_trait(cx, def_id, substs.clone(), bounds)))
                 }
                 _ => None
@@ -458,6 +457,10 @@ pub struct ctxt<'tcx> {
     pub trait_refs: RefCell<NodeMap<Rc<TraitRef>>>,
     pub trait_defs: RefCell<DefIdMap<Rc<TraitDef>>>,
 
+    /// Maps from node-id of a trait object cast (like `foo as
+    /// Box<Trait>`) to the trait reference.
+    pub object_cast_map: typeck::ObjectCastMap,
+
     pub map: ast_map::Map<'tcx>,
     pub intrinsic_defs: RefCell<DefIdMap<t>>,
     pub freevars: RefCell<freevars::freevar_map>,
@@ -499,7 +502,7 @@ pub struct ctxt<'tcx> {
     /// Maps a DefId of a type to a list of its inherent impls.
     /// Contains implementations of methods that are inherent to a type.
     /// Methods in these implementations don't need to be exported.
-    pub inherent_impls: RefCell<DefIdMap<Rc<RefCell<Vec<ast::DefId>>>>>,
+    pub inherent_impls: RefCell<DefIdMap<Rc<Vec<ast::DefId>>>>,
 
     /// Maps a DefId of an impl to a list of its items.
     /// Note that this contains all of the impls that we know about,
@@ -515,9 +518,6 @@ pub struct ctxt<'tcx> {
     /// some point. Local variable definitions not in this set can be warned
     /// about.
     pub used_mut_nodes: RefCell<NodeSet>,
-
-    /// vtable resolution information for impl declarations
-    pub impl_vtables: typeck::impl_vtable_map,
 
     /// The set of external nominal types whose implementations have been read.
     /// This is used for lazy resolution of methods.
@@ -536,7 +536,6 @@ pub struct ctxt<'tcx> {
     pub extern_const_variants: RefCell<DefIdMap<ast::NodeId>>,
 
     pub method_map: typeck::MethodMap,
-    pub vtable_map: typeck::vtable_map,
 
     pub dependency_formats: RefCell<dependency_format::Dependencies>,
 
@@ -1435,6 +1434,7 @@ pub fn mk_ctxt<'tcx>(s: Session,
         item_substs: RefCell::new(NodeMap::new()),
         trait_refs: RefCell::new(NodeMap::new()),
         trait_defs: RefCell::new(DefIdMap::new()),
+        object_cast_map: RefCell::new(NodeMap::new()),
         map: map,
         intrinsic_defs: RefCell::new(DefIdMap::new()),
         freevars: RefCell::new(freevars),
@@ -1463,14 +1463,12 @@ pub fn mk_ctxt<'tcx>(s: Session,
         impl_items: RefCell::new(DefIdMap::new()),
         used_unsafe: RefCell::new(NodeSet::new()),
         used_mut_nodes: RefCell::new(NodeSet::new()),
-        impl_vtables: RefCell::new(DefIdMap::new()),
         populated_external_types: RefCell::new(DefIdSet::new()),
         populated_external_traits: RefCell::new(DefIdSet::new()),
         upvar_borrow_map: RefCell::new(HashMap::new()),
         extern_const_statics: RefCell::new(DefIdMap::new()),
         extern_const_variants: RefCell::new(DefIdMap::new()),
         method_map: RefCell::new(FnvHashMap::new()),
-        vtable_map: RefCell::new(FnvHashMap::new()),
         dependency_formats: RefCell::new(HashMap::new()),
         unboxed_closures: RefCell::new(DefIdMap::new()),
         node_lint_levels: RefCell::new(HashMap::new()),
@@ -2944,13 +2942,17 @@ pub fn is_type_representable(cx: &ctxt, sp: Span, ty: t) -> Representability {
 }
 
 pub fn type_is_trait(ty: t) -> bool {
+    type_trait_info(ty).is_some()
+}
+
+pub fn type_trait_info(ty: t) -> Option<&'static TyTrait> {
     match get(ty).sty {
         ty_uniq(ty) | ty_rptr(_, mt { ty, ..}) | ty_ptr(mt { ty, ..}) => match get(ty).sty {
-            ty_trait(..) => true,
-            _ => false
+            ty_trait(ref t) => Some(&**t),
+            _ => None
         },
-        ty_trait(..) => true,
-        _ => false
+        ty_trait(ref t) => Some(&**t),
+        _ => None
     }
 }
 
@@ -3491,7 +3493,7 @@ pub fn unsize_ty(cx: &ctxt,
                                   format!("UnsizeStruct with bad sty: {}",
                                           ty_to_string(cx, ty)).as_slice())
         },
-        &UnsizeVtable(bounds, def_id, ref substs) => {
+        &UnsizeVtable(TyTrait { def_id, substs: ref substs, bounds }, _) => {
             mk_trait(cx, def_id, substs.clone(), bounds)
         }
     }
@@ -3511,10 +3513,10 @@ impl AutoRef {
 }
 
 pub fn method_call_type_param_defs<'tcx, T>(typer: &T,
-                                            origin: typeck::MethodOrigin)
+                                            origin: &typeck::MethodOrigin)
                                             -> VecPerParamSpace<TypeParameterDef>
                                             where T: mc::Typer<'tcx> {
-    match origin {
+    match *origin {
         typeck::MethodStatic(did) => {
             ty::lookup_item_type(typer.tcx(), did).generics.types.clone()
         }
@@ -3529,16 +3531,16 @@ pub fn method_call_type_param_defs<'tcx, T>(typer: &T,
             lookup_trait_def(typer.tcx(), def_id).generics.types.clone()
         }
         typeck::MethodParam(typeck::MethodParam{
-            trait_id: trt_id,
+            trait_ref: ref trait_ref,
             method_num: n_mth,
             ..
         }) |
         typeck::MethodObject(typeck::MethodObject{
-                trait_id: trt_id,
+                trait_ref: ref trait_ref,
                 method_num: n_mth,
                 ..
         }) => {
-            match ty::trait_item(typer.tcx(), trt_id, n_mth) {
+            match ty::trait_item(typer.tcx(), trait_ref.def_id, n_mth) {
                 ty::MethodTraitItem(method) => method.generics.types.clone(),
             }
         }
@@ -4407,14 +4409,6 @@ pub fn lookup_item_type(cx: &ctxt,
         || csearch::get_type(cx, did))
 }
 
-pub fn lookup_impl_vtables(cx: &ctxt,
-                           did: ast::DefId)
-                           -> typeck::vtable_res {
-    lookup_locally_or_in_crate_store(
-        "impl_vtables", did, &mut *cx.impl_vtables.borrow_mut(),
-        || csearch::get_impl_vtables(cx, did) )
-}
-
 /// Given the did of a trait, returns its canonical trait ref.
 pub fn lookup_trait_def(cx: &ctxt, did: ast::DefId) -> Rc<ty::TraitDef> {
     let mut trait_defs = cx.trait_defs.borrow_mut();
@@ -4958,6 +4952,7 @@ pub fn populate_implementations_for_type_if_necessary(tcx: &ctxt,
         return
     }
 
+    let mut inherent_impls = Vec::new();
     csearch::each_implementation_for_type(&tcx.sess.cstore, type_id,
             |impl_def_id| {
         let impl_items = csearch::get_impl_items(&tcx.sess.cstore,
@@ -4989,18 +4984,11 @@ pub fn populate_implementations_for_type_if_necessary(tcx: &ctxt,
 
         // If this is an inherent implementation, record it.
         if associated_traits.is_none() {
-            match tcx.inherent_impls.borrow().find(&type_id) {
-                Some(implementation_list) => {
-                    implementation_list.borrow_mut().push(impl_def_id);
-                    return;
-                }
-                None => {}
-            }
-            tcx.inherent_impls.borrow_mut().insert(type_id,
-                                                   Rc::new(RefCell::new(vec!(impl_def_id))));
+            inherent_impls.push(impl_def_id);
         }
     });
 
+    tcx.inherent_impls.borrow_mut().insert(type_id, Rc::new(inherent_impls));
     tcx.populated_external_types.borrow_mut().insert(type_id);
 }
 
@@ -5232,7 +5220,7 @@ pub fn hash_crate_independent(tcx: &ctxt, t: t, svh: &Svh) -> u64 {
                     }
                 }
             }
-            ty_trait(box ty::TyTrait { def_id: d, bounds, .. }) => {
+            ty_trait(box TyTrait { def_id: d, bounds, .. }) => {
                 byte!(17);
                 did(&mut state, d);
                 hash!(bounds);
@@ -5427,6 +5415,26 @@ impl BorrowKind {
         match m {
             ast::MutMutable => MutBorrow,
             ast::MutImmutable => ImmBorrow,
+        }
+    }
+
+    pub fn to_mutbl_lossy(self) -> ast::Mutability {
+        /*!
+         * Returns a mutability `m` such that an `&m T` pointer could
+         * be used to obtain this borrow kind. Because borrow kinds
+         * are richer than mutabilities, we sometimes have to pick a
+         * mutability that is stornger than necessary so that it at
+         * least *would permit* the borrow in question.
+         */
+
+        match self {
+            MutBorrow => ast::MutMutable,
+            ImmBorrow => ast::MutImmutable,
+
+            // We have no type correponding to a unique imm borrow, so
+            // use `&mut`. It gives all the capabilities of an `&uniq`
+            // and hence is a safe "over approximation".
+            UniqueImmBorrow => ast::MutMutable,
         }
     }
 
