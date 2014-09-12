@@ -166,6 +166,32 @@ mod imp {
     #[cfg(not(test))]
     extern {}
 
+    #[cfg(target_os = "linux")]
+    extern {
+        #[link_name = "mallocx"]
+        fn je_mallocx(size: size_t, flags: c_int) -> *mut c_void;
+        #[link_name = "rallocx"]
+        fn je_rallocx(ptr: *mut c_void, size: size_t,
+                      flags: c_int) -> *mut c_void;
+        #[link_name = "xallocx"]
+        fn je_xallocx(ptr: *mut c_void, size: size_t, extra: size_t,
+                      flags: c_int) -> size_t;
+        #[cfg(stage0)]
+        #[link_name = "dallocx"]
+        fn je_dallocx(ptr: *mut c_void, flags: c_int);
+        #[cfg(not(stage0))]
+        #[link_name = "sdallocx"]
+        fn je_sdallocx(ptr: *mut c_void, size: size_t, flags: c_int);
+        #[link_name = "nallocx"]
+        fn je_nallocx(size: size_t, flags: c_int) -> size_t;
+        #[link_name = "malloc_stats_print"]
+        fn je_malloc_stats_print(write_cb: Option<extern "C" fn(cbopaque: *mut c_void,
+                                                                *const c_char)>,
+                                 cbopaque: *mut c_void,
+                                 opts: *const c_char);
+    }
+
+    #[cfg(not(target_os = "linux"))]
     extern {
         fn je_mallocx(size: size_t, flags: c_int) -> *mut c_void;
         fn je_rallocx(ptr: *mut c_void, size: size_t,
