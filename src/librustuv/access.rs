@@ -136,7 +136,7 @@ impl<'a, T: Send> DerefMut<T> for Guard<'a, T> {
 }
 
 #[unsafe_destructor]
-impl<'a, T> Drop for Guard<'a, T> {
+impl<'a, T:Send> Drop for Guard<'a, T> {
     fn drop(&mut self) {
         // This guard's homing missile is still armed, so we're guaranteed to be
         // on the same I/O event loop, so this unsafety should be ok.
