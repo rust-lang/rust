@@ -36,8 +36,6 @@
 #[phase(plugin, link)]
 extern crate log;
 extern crate syntax;
-extern crate libc;
-extern crate flate;
 extern crate serialize;
 
 pub mod abi;

@@ -21,7 +21,7 @@ use middle::subst::{ParamSpace, FnSpace, TypeSpace};
 use middle::ty::{ExplicitSelfCategory, StaticExplicitSelfCategory};
 use util::nodemap::{NodeMap, DefIdSet, FnvHashMap};
 
-use syntax::ast::{Arm, BindByRef, BindByValue, BindingMode, Block, Crate};
+use syntax::ast::{Arm, BindByRef, BindByValue, BindingMode, Block, Crate, CrateNum};
 use syntax::ast::{DeclItem, DefId, Expr, ExprAgain, ExprBreak, ExprField};
 use syntax::ast::{ExprFnBlock, ExprForLoop, ExprLoop, ExprWhile, ExprMethodCall};
 use syntax::ast::{ExprPath, ExprProc, ExprStruct, ExprUnboxedFn, FnDecl};
@@ -899,6 +899,7 @@ struct Resolver<'a> {
     emit_errors: bool,
 
     used_imports: HashSet<(NodeId, Namespace)>,
+    used_crates: HashSet<CrateNum>,
 }
 
 struct BuildReducedGraphVisitor<'a, 'b:'a> {
@@ -995,6 +996,7 @@ impl<'a> Resolver<'a> {
             export_map2: RefCell::new(NodeMap::new()),
             trait_map: NodeMap::new(),
             used_imports: HashSet::new(),
+            used_crates: HashSet::new(),
             external_exports: DefIdSet::new(),
             last_private: NodeMap::new(),
 
@@ -2462,7 +2464,14 @@ impl<'a> Resolver<'a> {
                                     debug!("(resolving single import) found \
                                             import in ns {:?}", namespace);
                                     let id = import_resolution.id(namespace);
+                                    // track used imports and extern crates as well
                                     this.used_imports.insert((id, namespace));
+                                    match target_module.def_id.get() {
+                                        Some(DefId{krate: kid, ..}) => {
+                                            this.used_crates.insert(kid);
+                                        },
+                                        _ => {}
+                                    }
                                     return BoundResult(target_module, bindings);
                                 }
                             }
@@ -2505,6 +2514,11 @@ impl<'a> Resolver<'a> {
                     Some(module) => {
                         debug!("(resolving single import) found external \
                                 module");
+                        // track the module as used.
+                        match module.def_id.get() {
+                            Some(DefId{krate: kid, ..}) => { self.used_crates.insert(kid); },
+                            _ => {}
+                        }
                         let name_bindings =
                             Rc::new(Resolver::create_name_bindings_from_module(
                                 module));
@@ -3039,6 +3053,14 @@ impl<'a> Resolver<'a> {
                                         (_, _) => {
                                             search_module = module_def.clone();
 
+                                            // track extern crates for unused_extern_crate lint
+                                            match module_def.def_id.get() {
+                                                Some(did) => {
+                                                    self.used_crates.insert(did.krate);
+                                                }
+                                                _ => {}
+                                            }
+
                                             // Keep track of the closest
                                             // private module used when
                                             // resolving this import chain.
@@ -3222,7 +3244,12 @@ impl<'a> Resolver<'a> {
                     Some(target) => {
                         debug!("(resolving item in lexical scope) using \
                                 import resolution");
+                        // track used imports and extern crates as well
                         self.used_imports.insert((import_resolution.id(namespace), namespace));
+                        match target.target_module.def_id.get() {
+                            Some(DefId{krate: kid, ..}) => { self.used_crates.insert(kid); },
+                            _ => {}
+                        }
                         return Success((target, false));
                     }
                 }
@@ -3501,7 +3528,12 @@ impl<'a> Resolver<'a> {
                     Some(target) => {
                         debug!("(resolving name in module) resolved to \
                                 import");
+                        // track used imports and extern crates as well
                         self.used_imports.insert((import_resolution.id(namespace), namespace));
+                        match target.target_module.def_id.get() {
+                            Some(DefId{krate: kid, ..}) => { self.used_crates.insert(kid); },
+                            _ => {}
+                        }
                         return Success((target, true));
                     }
                 }
@@ -5068,7 +5100,14 @@ impl<'a> Resolver<'a> {
                             Some(def) => {
                                 // Found it.
                                 let id = import_resolution.id(namespace);
+                                // track imports and extern crates as well
                                 self.used_imports.insert((id, namespace));
+                                match target.target_module.def_id.get() {
+                                    Some(DefId{krate: kid, ..}) => {
+                                        self.used_crates.insert(kid);
+                                    },
+                                    _ => {}
+                                }
                                 return ImportNameDefinition(def, LastMod(AllPublic));
                             }
                             None => {
@@ -5092,6 +5131,8 @@ impl<'a> Resolver<'a> {
                     match module.def_id.get() {
                         None => {} // Continue.
                         Some(def_id) => {
+                            // track used crates
+                            self.used_crates.insert(def_id.krate);
                             let lp = if module.is_public {LastMod(AllPublic)} else {
                                 LastMod(DependsOn(def_id))
                             };
@@ -5174,6 +5215,10 @@ impl<'a> Resolver<'a> {
                 }
             },
             _ => (),
+        }
+        match containing_module.def_id.get() {
+            Some(DefId{krate: kid, ..}) => { self.used_crates.insert(kid); },
+            _ => {}
         }
         return Some(def);
     }
@@ -5794,6 +5839,10 @@ impl<'a> Resolver<'a> {
                 if self.trait_item_map.borrow().contains_key(&(name, did)) {
                     add_trait_info(&mut found_traits, did, name);
                     self.used_imports.insert((import.type_id, TypeNS));
+                    match target.target_module.def_id.get() {
+                        Some(DefId{krate: kid, ..}) => { self.used_crates.insert(kid); },
+                        _ => {}
+                    }
                 }
             }
 
@@ -5866,10 +5915,22 @@ impl<'a> Resolver<'a> {
         if vi.span == DUMMY_SP { return }
 
         match vi.node {
-            ViewItemExternCrate(..) => {} // ignore
+            ViewItemExternCrate(_, _, id) => {
+                match self.session.cstore.find_extern_mod_stmt_cnum(id)
+                {
+                    Some(crate_num) => if !self.used_crates.contains(&crate_num) {
+                    self.session.add_lint(lint::builtin::UNUSED_EXTERN_CRATE,
+                                          id,
+                                          vi.span,
+                                          "unused extern crate".to_string());
+                    },
+                    _ => {}
+                }
+            },
             ViewItemUse(ref p) => {
                 match p.node {
                     ViewPathSimple(_, _, id) => self.finalize_import(id, p.span),
+
                     ViewPathList(_, ref list, _) => {
                         for i in list.iter() {
                             self.finalize_import(i.node.id(), i.span);
