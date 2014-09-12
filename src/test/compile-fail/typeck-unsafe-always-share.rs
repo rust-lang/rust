@@ -39,5 +39,5 @@ fn main() {
 
     let ns = NoSync{m: marker::NoSync};
     test(ns);
-    //~^ ERROR instantiating a type parameter with an incompatible type `NoSync`, which does not fulfill `Sync`
+    //~^ ERROR `core::kinds::Sync` is not implemented
 }

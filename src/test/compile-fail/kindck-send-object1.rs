@@ -18,6 +18,7 @@ trait Dummy { }
 // careful with object types, who knows what they close over...
 fn test51<'a>() {
     assert_send::<&'a Dummy>(); //~ ERROR does not fulfill the required lifetime
+    //~^ ERROR the trait `core::kinds::Send` is not implemented
 }
 fn test52<'a>() {
     assert_send::<&'a Dummy+Send>(); //~ ERROR does not fulfill the required lifetime
@@ -35,10 +36,12 @@ fn test61() {
 // them not ok
 fn test_70<'a>() {
     assert_send::<proc():'a>(); //~ ERROR does not fulfill the required lifetime
+    //~^ ERROR the trait `core::kinds::Send` is not implemented
 }
 
 fn test_71<'a>() {
     assert_send::<Box<Dummy+'a>>(); //~ ERROR does not fulfill the required lifetime
+    //~^ ERROR the trait `core::kinds::Send` is not implemented
 }
 
 fn main() { }

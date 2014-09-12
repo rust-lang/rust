@@ -12,6 +12,6 @@
 
 trait Foo : Send { }
 
-impl <T: Sync> Foo for T { } //~ ERROR cannot implement this trait
+impl <T: Sync+'static> Foo for T { } //~ ERROR the trait `core::kinds::Send` is not implemented
 
 fn main() { }

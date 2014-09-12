@@ -14,5 +14,5 @@ fn foo<P:Send>(p: P) { }
 
 fn main()
 {
-    foo(marker::NoSend); //~ ERROR does not fulfill `Send`
+    foo(marker::NoSend); //~ ERROR the trait `core::kinds::Send` is not implemented
 }

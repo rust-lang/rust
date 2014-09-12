@@ -14,6 +14,6 @@
 trait Foo : Send { }
 
 impl <'a> Foo for &'a mut () { }
-//~^ ERROR which does not fulfill `Send`, cannot implement this trait
+//~^ ERROR does not fulfill the required lifetime
 
 fn main() { }

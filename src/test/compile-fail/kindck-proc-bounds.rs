@@ -13,10 +13,10 @@ fn is_freeze<T: Sync>() {}
 
 fn foo<'a>() {
     is_send::<proc()>();
-    //~^ ERROR: instantiating a type parameter with an incompatible type
+    //~^ ERROR: the trait `core::kinds::Send` is not implemented
 
     is_freeze::<proc()>();
-    //~^ ERROR: instantiating a type parameter with an incompatible type
+    //~^ ERROR: the trait `core::kinds::Sync` is not implemented
 }
 
 fn main() { }

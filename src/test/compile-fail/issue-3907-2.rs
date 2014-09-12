@@ -17,6 +17,6 @@ struct S {
     name: int
 }
 
-fn bar(_x: Foo) {} //~ ERROR variable `_x` has dynamically sized type
+fn bar(_x: Foo) {} //~ ERROR the trait `core::kinds::Sized` is not implemented
 
 fn main() {}

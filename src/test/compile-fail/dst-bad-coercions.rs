@@ -30,10 +30,9 @@ pub fn main() {
     let y: &T = x; //~ ERROR mismatched types
 
     // Test that we cannot convert an immutable ptr to a mutable one using *-ptrs
-    let x: &mut T = &S; //~ ERROR types differ in mutability
-    let x: *mut T = &S; //~ ERROR types differ in mutability
-    let x: *mut S = &S;
-    //~^ ERROR mismatched types
+    let x: &mut T = &S; //~ ERROR mismatched types
+    let x: *mut T = &S; //~ ERROR mismatched types
+    let x: *mut S = &S; //~ ERROR mismatched types
 
     // The below four sets of tests test that we cannot implicitly deref a *-ptr
     // during a coercion.

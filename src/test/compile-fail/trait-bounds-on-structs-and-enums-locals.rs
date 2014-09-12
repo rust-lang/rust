@@ -16,12 +16,11 @@ struct Foo<T:Trait> {
 
 fn main() {
     let foo = Foo {
-    //~^ ERROR failed to find an implementation
-    //~^^ ERROR instantiating a type parameter with an incompatible type
+    //~^ ERROR not implemented
         x: 3i
     };
+
     let baz: Foo<uint> = fail!();
-    //~^ ERROR failed to find an implementation
-    //~^^ ERROR instantiating a type parameter with an incompatible type
+    //~^ ERROR not implemented
 }
 

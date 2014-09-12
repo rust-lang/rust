@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,14 +8,19 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::kinds::marker;
+// aux-build:trait_bounds_on_structs_and_enums_xc.rs
 
-struct Foo { a: int, m: marker::NoSync }
+extern crate trait_bounds_on_structs_and_enums_xc;
 
-fn bar<T: Sync>(_: T) {}
+use trait_bounds_on_structs_and_enums_xc::{Bar, Foo, Trait};
 
 fn main() {
-    let x = Foo { a: 5, m: marker::NoSync };
-    bar(x);
-    //~^ ERROR the trait `core::kinds::Sync` is not implemented
+    let foo = Foo {
+    //~^ ERROR not implemented
+        x: 3i
+    };
+    let bar: Bar<f64> = return;
+    //~^ ERROR not implemented
+    let _ = bar;
 }
+

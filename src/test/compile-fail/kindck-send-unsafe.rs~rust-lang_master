@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,14 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::kinds::marker;
+fn assert_send<T:Send>() { }
 
-struct Foo { a: int, m: marker::NoSync }
-
-fn bar<T: Sync>(_: T) {}
+// unsafe ptrs are ok unless they point at unsendable things
+fn test70() {
+    assert_send::<*mut int>();
+}
+fn test71<'a>() {
+    assert_send::<*mut &'a int>(); //~ ERROR does not fulfill the required lifetime
+}
 
 fn main() {
-    let x = Foo { a: 5, m: marker::NoSync };
-    bar(x);
-    //~^ ERROR the trait `core::kinds::Sync` is not implemented
 }
