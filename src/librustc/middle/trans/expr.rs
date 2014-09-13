@@ -587,25 +587,7 @@ fn trans_datum_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             let contents_ty = expr_ty(bcx, &**contents);
             match ty::get(box_ty).sty {
                 ty::ty_uniq(..) => {
-                    let is_vec = match contents.node {
-                        ast::ExprRepeat(..) | ast::ExprVec(..) => true,
-                        ast::ExprLit(lit) => match lit.node {
-                            ast::LitStr(..) => true,
-                            _ => false
-                        },
-                        _ => false
-                    };
-
-                    if is_vec {
-                        // Special case for owned vectors.
-                        fcx.push_ast_cleanup_scope(contents.id);
-                        let datum = unpack_datum!(
-                            bcx, tvec::trans_uniq_vec(bcx, expr, &**contents));
-                        bcx = fcx.pop_and_trans_ast_cleanup_scope(bcx, contents.id);
-                        DatumBlock::new(bcx, datum)
-                    } else {
-                        trans_uniq_expr(bcx, box_ty, &**contents, contents_ty)
-                    }
+                    trans_uniq_expr(bcx, box_ty, &**contents, contents_ty)
                 }
                 ty::ty_box(..) => {
                     trans_managed_expr(bcx, box_ty, &**contents, contents_ty)
