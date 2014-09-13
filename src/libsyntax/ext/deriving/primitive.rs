@@ -16,14 +16,13 @@ use ext::build::AstBuilder;
 use ext::deriving::generic::*;
 use ext::deriving::generic::ty::*;
 use parse::token::InternedString;
-
-use std::gc::Gc;
+use ptr::P;
 
 pub fn expand_deriving_from_primitive(cx: &mut ExtCtxt,
                                       span: Span,
-                                      mitem: Gc<MetaItem>,
-                                      item: Gc<Item>,
-                                      push: |Gc<Item>|) {
+                                      mitem: &MetaItem,
+                                      item: &Item,
+                                      push: |P<Item>|) {
     let inline = cx.meta_word(span, InternedString::new("inline"));
     let attrs = vec!(cx.attribute(span, inline));
     let trait_def = TraitDef {
@@ -70,10 +69,9 @@ pub fn expand_deriving_from_primitive(cx: &mut ExtCtxt,
     trait_def.expand(cx, mitem, item, push)
 }
 
-fn cs_from(name: &str, cx: &mut ExtCtxt, trait_span: Span,
-           substr: &Substructure) -> Gc<Expr> {
+fn cs_from(name: &str, cx: &mut ExtCtxt, trait_span: Span, substr: &Substructure) -> P<Expr> {
     let n = match substr.nonself_args {
-        [n] => n,
+        [ref n] => n,
         _ => cx.span_bug(trait_span, "incorrect number of arguments in `deriving(FromPrimitive)`")
     };
 
@@ -106,8 +104,8 @@ fn cs_from(name: &str, cx: &mut ExtCtxt, trait_span: Span,
                         // expr for `$n == $variant as $name`
                         let variant = cx.expr_ident(span, variant.node.name);
                         let ty = cx.ty_ident(span, cx.ident_of(name));
-                        let cast = cx.expr_cast(span, variant, ty);
-                        let guard = cx.expr_binary(span, ast::BiEq, n, cast);
+                        let cast = cx.expr_cast(span, variant.clone(), ty);
+                        let guard = cx.expr_binary(span, ast::BiEq, n.clone(), cast);
 
                         // expr for `Some($variant)`
                         let body = cx.expr_some(span, variant);
@@ -141,7 +139,7 @@ fn cs_from(name: &str, cx: &mut ExtCtxt, trait_span: Span,
             };
             arms.push(arm);
 
-            cx.expr_match(trait_span, n, arms)
+            cx.expr_match(trait_span, n.clone(), arms)
         }
         _ => cx.span_bug(trait_span, "expected StaticEnum in deriving(FromPrimitive)")
     }

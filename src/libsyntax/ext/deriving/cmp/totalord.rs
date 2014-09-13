@@ -16,14 +16,13 @@ use ext::build::AstBuilder;
 use ext::deriving::generic::*;
 use ext::deriving::generic::ty::*;
 use parse::token::InternedString;
-
-use std::gc::Gc;
+use ptr::P;
 
 pub fn expand_deriving_totalord(cx: &mut ExtCtxt,
                                 span: Span,
-                                mitem: Gc<MetaItem>,
-                                item: Gc<Item>,
-                                push: |Gc<Item>|) {
+                                mitem: &MetaItem,
+                                item: &Item,
+                                push: |P<Item>|) {
     let inline = cx.meta_word(span, InternedString::new("inline"));
     let attrs = vec!(cx.attribute(span, inline));
     let trait_def = TraitDef {
@@ -53,14 +52,14 @@ pub fn expand_deriving_totalord(cx: &mut ExtCtxt,
 
 pub fn ordering_collapsed(cx: &mut ExtCtxt,
                           span: Span,
-                          self_arg_tags: &[ast::Ident]) -> Gc<ast::Expr> {
+                          self_arg_tags: &[ast::Ident]) -> P<ast::Expr> {
     let lft = cx.expr_ident(span, self_arg_tags[0]);
     let rgt = cx.expr_addr_of(span, cx.expr_ident(span, self_arg_tags[1]));
     cx.expr_method_call(span, lft, cx.ident_of("cmp"), vec![rgt])
 }
 
 pub fn cs_cmp(cx: &mut ExtCtxt, span: Span,
-              substr: &Substructure) -> Gc<Expr> {
+              substr: &Substructure) -> P<Expr> {
     let test_id = cx.ident_of("__test");
     let equals_path = cx.path_global(span,
                                      vec!(cx.ident_of("std"),

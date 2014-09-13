@@ -15,16 +15,14 @@ use ext::build::AstBuilder;
 use ext::deriving::generic::*;
 use ext::deriving::generic::ty::*;
 use parse::token::InternedString;
-
-use std::gc::Gc;
+use ptr::P;
 
 pub fn expand_deriving_totaleq(cx: &mut ExtCtxt,
                                span: Span,
-                               mitem: Gc<MetaItem>,
-                               item: Gc<Item>,
-                               push: |Gc<Item>|) {
-    fn cs_total_eq_assert(cx: &mut ExtCtxt, span: Span,
-                          substr: &Substructure) -> Gc<Expr> {
+                               mitem: &MetaItem,
+                               item: &Item,
+                               push: |P<Item>|) {
+    fn cs_total_eq_assert(cx: &mut ExtCtxt, span: Span, substr: &Substructure) -> P<Expr> {
         cs_same_method(|cx, span, exprs| {
             // create `a.<method>(); b.<method>(); c.<method>(); ...`
             // (where method is `assert_receiver_is_total_eq`)

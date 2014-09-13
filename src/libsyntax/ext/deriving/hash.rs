@@ -15,14 +15,13 @@ use ext::build::AstBuilder;
 use ext::deriving::generic::*;
 use ext::deriving::generic::ty::*;
 use parse::token::InternedString;
-
-use std::gc::Gc;
+use ptr::P;
 
 pub fn expand_deriving_hash(cx: &mut ExtCtxt,
                             span: Span,
-                            mitem: Gc<MetaItem>,
-                            item: Gc<Item>,
-                            push: |Gc<Item>|) {
+                            mitem: &MetaItem,
+                            item: &Item,
+                            push: |P<Item>|) {
 
     let (path, generics, args) = if cx.ecfg.deriving_hash_type_parameter {
         (Path::new_(vec!("std", "hash", "Hash"), None,
@@ -64,15 +63,14 @@ pub fn expand_deriving_hash(cx: &mut ExtCtxt,
     hash_trait_def.expand(cx, mitem, item, push);
 }
 
-fn hash_substructure(cx: &mut ExtCtxt, trait_span: Span,
-                     substr: &Substructure) -> Gc<Expr> {
+fn hash_substructure(cx: &mut ExtCtxt, trait_span: Span, substr: &Substructure) -> P<Expr> {
     let state_expr = match substr.nonself_args {
-        [state_expr] => state_expr,
+        [ref state_expr] => state_expr,
         _ => cx.span_bug(trait_span, "incorrect number of arguments in `deriving(Hash)`")
     };
     let hash_ident = substr.method_ident;
     let call_hash = |span, thing_expr| {
-        let expr = cx.expr_method_call(span, thing_expr, hash_ident, vec!(state_expr));
+        let expr = cx.expr_method_call(span, thing_expr, hash_ident, vec!(state_expr.clone()));
         cx.stmt_expr(expr)
     };
     let mut stmts = Vec::new();
@@ -83,7 +81,7 @@ fn hash_substructure(cx: &mut ExtCtxt, trait_span: Span,
             // Determine the discriminant. We will feed this value to the byte
             // iteration function.
             let discriminant = match variant.node.disr_expr {
-                Some(d) => d,
+                Some(ref d) => d.clone(),
                 None => cx.expr_uint(trait_span, index)
             };
 
@@ -94,8 +92,8 @@ fn hash_substructure(cx: &mut ExtCtxt, trait_span: Span,
         _ => cx.span_bug(trait_span, "impossible substructure in `deriving(Hash)`")
     };
 
-    for &FieldInfo { self_, span, .. } in fields.iter() {
-        stmts.push(call_hash(span, self_));
+    for &FieldInfo { ref self_, span, .. } in fields.iter() {
+        stmts.push(call_hash(span, self_.clone()));
     }
 
     if stmts.len() == 0 {

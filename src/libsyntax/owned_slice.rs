@@ -11,7 +11,7 @@
 use std::fmt;
 use std::default::Default;
 use std::hash;
-use std::{mem, raw, ptr, slice};
+use std::{mem, raw, ptr, slice, vec};
 use serialize::{Encodable, Decodable, Encoder, Decoder};
 
 /// A non-growable owned slice. This would preferably become `~[T]`
@@ -103,6 +103,10 @@ impl<T> OwnedSlice<T> {
 
     pub fn iter<'r>(&'r self) -> slice::Items<'r, T> {
         self.as_slice().iter()
+    }
+
+    pub fn move_iter(self) -> vec::MoveItems<T> {
+        self.into_vec().move_iter()
     }
 
     pub fn map<U>(&self, f: |&T| -> U) -> OwnedSlice<U> {

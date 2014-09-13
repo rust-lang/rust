@@ -21,14 +21,13 @@ use ext::deriving::generic::*;
 use ext::deriving::generic::ty::*;
 use parse::token::InternedString;
 use parse::token;
-
-use std::gc::Gc;
+use ptr::P;
 
 pub fn expand_deriving_decodable(cx: &mut ExtCtxt,
                                  span: Span,
-                                 mitem: Gc<MetaItem>,
-                                 item: Gc<Item>,
-                                 push: |Gc<Item>|) {
+                                 mitem: &MetaItem,
+                                 item: &Item,
+                                 push: |P<Item>|) {
     let trait_def = TraitDef {
         span: span,
         attributes: Vec::new(),
@@ -64,15 +63,15 @@ pub fn expand_deriving_decodable(cx: &mut ExtCtxt,
 }
 
 fn decodable_substructure(cx: &mut ExtCtxt, trait_span: Span,
-                          substr: &Substructure) -> Gc<Expr> {
-    let decoder = substr.nonself_args[0];
+                          substr: &Substructure) -> P<Expr> {
+    let decoder = substr.nonself_args[0].clone();
     let recurse = vec!(cx.ident_of("serialize"),
                     cx.ident_of("Decodable"),
                     cx.ident_of("decode"));
     // throw an underscore in front to suppress unused variable warnings
     let blkarg = cx.ident_of("_d");
     let blkdecoder = cx.expr_ident(trait_span, blkarg);
-    let calldecode = cx.expr_call_global(trait_span, recurse, vec!(blkdecoder));
+    let calldecode = cx.expr_call_global(trait_span, recurse, vec!(blkdecoder.clone()));
     let lambdadecode = cx.lambda_expr_1(trait_span, calldecode, blkarg);
 
     return match *substr.fields {
@@ -89,10 +88,10 @@ fn decodable_substructure(cx: &mut ExtCtxt, trait_span: Span,
                                               summary,
                                               |cx, span, name, field| {
                 cx.expr_try(span,
-                    cx.expr_method_call(span, blkdecoder, read_struct_field,
+                    cx.expr_method_call(span, blkdecoder.clone(), read_struct_field,
                                         vec!(cx.expr_str(span, name),
                                           cx.expr_uint(span, field),
-                                          lambdadecode)))
+                                          lambdadecode.clone())))
             });
             let result = cx.expr_ok(trait_span, result);
             cx.expr_method_call(trait_span,
@@ -121,8 +120,8 @@ fn decodable_substructure(cx: &mut ExtCtxt, trait_span: Span,
                                                    |cx, span, _, field| {
                     let idx = cx.expr_uint(span, field);
                     cx.expr_try(span,
-                        cx.expr_method_call(span, blkdecoder, rvariant_arg,
-                                            vec!(idx, lambdadecode)))
+                        cx.expr_method_call(span, blkdecoder.clone(), rvariant_arg,
+                                            vec!(idx, lambdadecode.clone())))
                 });
 
                 arms.push(cx.arm(v_span,
@@ -159,8 +158,8 @@ fn decode_static_fields(cx: &mut ExtCtxt,
                         trait_span: Span,
                         outer_pat_ident: Ident,
                         fields: &StaticFields,
-                        getarg: |&mut ExtCtxt, Span, InternedString, uint| -> Gc<Expr>)
-                        -> Gc<Expr> {
+                        getarg: |&mut ExtCtxt, Span, InternedString, uint| -> P<Expr>)
+                        -> P<Expr> {
     match *fields {
         Unnamed(ref fields) => {
             if fields.is_empty() {
