@@ -871,13 +871,17 @@ impl NonSnakeCase {
         fn to_snake_case(str: &str) -> String {
             let mut words = vec![];
             for s in str.split('_') {
+                let mut last_upper = false;
                 let mut buf = String::new();
                 if s.is_empty() { continue; }
                 for ch in s.chars() {
-                    if !buf.is_empty() && buf.as_slice() != "'" && ch.is_uppercase() {
+                    if !buf.is_empty() && buf.as_slice() != "'"
+                                       && ch.is_uppercase()
+                                       && !last_upper {
                         words.push(buf);
                         buf = String::new();
                     }
+                    last_upper = ch.is_uppercase();
                     buf.push_char(ch.to_lowercase());
                 }
                 words.push(buf);
