@@ -693,16 +693,6 @@ pub fn check_item(ccx: &CrateCtxt, it: &ast::Item) {
         debug!("ItemImpl {} with id {}", token::get_ident(it.ident), it.id);
 
         let impl_pty = ty::lookup_item_type(ccx.tcx, ast_util::local_def(it.id));
-        for impl_item in impl_items.iter() {
-            match *impl_item {
-                ast::MethodImplItem(ref m) => {
-                    check_method_body(ccx, &impl_pty.generics, &**m);
-                }
-                ast::TypeImplItem(_) => {
-                    // Nothing to do here.
-                }
-            }
-        }
 
         match *opt_trait_ref {
             Some(ref ast_trait_ref) => {
@@ -715,6 +705,17 @@ pub fn check_item(ccx: &CrateCtxt, it: &ast::Item) {
                                                impl_items.as_slice());
             }
             None => { }
+        }
+
+        for impl_item in impl_items.iter() {
+            match *impl_item {
+                ast::MethodImplItem(ref m) => {
+                    check_method_body(ccx, &impl_pty.generics, &**m);
+                }
+                ast::TypeImplItem(_) => {
+                    // Nothing to do here.
+                }
+            }
         }
 
       }
