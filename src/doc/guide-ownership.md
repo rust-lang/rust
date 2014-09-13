@@ -6,7 +6,7 @@ system too. A solid understanding of ownership is what separates an
 intermediate Rust programmer from a new one.
 
 At the same time, ownership is one of the more unique features that Rust has,
-and so it may seem a bit strange at first. With a little bit of studying, the
+and so it may seem a bit strange at first. With a little bit of practice, the
 ownership system will become second nature.
 
 # Ownership
@@ -28,14 +28,14 @@ The `box` keyword allocates memory on the heap, and places a `Box<int>` there.
 `x` is then used to refer to that heap memory.
 
 Each resource can have at most one **owner**. In this case, `x` is the owner of
-the box. An 'owner' is able to deallocate, de-provision, or otherwise free the
-particular resource in question. In the given example, since `x` owns the box,
-when `x` goes out of scope, the Rust compiler sees that the owner is going
-away, and therefore, frees the heap memory for us. This is the core of Rust's
-strategy for memory management. Instead of having the programmer manage
-deallocating resources, or having a garbage collector pick up after a
-programmer, Rust's compiler is able to analyze the ownership of your resource
-usage, and free the resource for you.
+the box. An 'owner' is responsible for deallocating, de-provisioning, or
+otherwise freeing the particular resource in question. In the given example,
+since `x` owns the box, when `x` goes out of scope, the Rust compiler sees that
+the owner is going away, and therefore, frees the heap memory for us. This is
+the core of Rust's strategy for memory management. Instead of having the
+programmer manage deallocating resources, or having a garbage collector pick up
+after a programmer, Rust's compiler is able to analyze the ownership of your
+resource usage, and free the resource for you.
 
 # Borrowing
 
@@ -113,7 +113,7 @@ haven't discussed yet: lifetimes.
 
 # Lifetimes
 
-A **lifetime** is defined as 'the length of time that a reference exists.' Why
+A **lifetime** is defined as 'the length of time that a reference is valid.' Why
 do we care about how long our references live?  Let's see some code:
 
 ```{rust,ignore}
@@ -139,20 +139,20 @@ struct SomeStruct {
 }
 
 fn main() {
-    let x = box SomeStruct { a_string: "A string" };
+    let x = SomeStruct { a_string: "A string" };
 }
 ```
 
-Here, `x` is a box with a `SomeStruct` inside. So we have this pointer to the
+Here, `x` is a a `SomeStruct`. So we have this pointer to the
 structure itself, but the structure _also_ contains a pointer to a `str`.  We
 have no guarantee that the reference inside of `a_string` is valid for the
 entire time that the reference to the `SomeStruct` itself. If it's not, then we
 could have a valid reference to a `SomeStruct` which contained an invalid
 reference in its `a_string`. That would lead to problems.
 
-We need a way to tell the compiler that we expect `a_string` must be valid
-as long as a reference to the struct itself is valid. We can do this with an
-**explicit lifetime annotation**:
+We need a way to tell the compiler that `a_string` must be valid as long as
+the struct itself is valid. We can do this with an **explicit
+lifetime annotation**:
 
 ```{rust}
 struct SomeStruct<'a> {
