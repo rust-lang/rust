@@ -1281,15 +1281,15 @@ two main looping constructs: `for` and `while`.
 
 The `for` loop is used to loop a particular number of times. Rust's `for` loops
 work a bit differently than in other systems languages, however. Rust's `for`
-loop doesn't look like this C `for` loop:
+loop doesn't look like this "C style" `for` loop:
 
-```{ignore,c}
+```{c}
 for (x = 0; x < 10; x++) {
     printf( "%d\n", x );
 }
 ```
 
-It looks like this:
+Instead, it looks like this:
 
 ```{rust}
 for x in range(0i, 10i) {
