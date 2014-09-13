@@ -40,7 +40,7 @@ use middle::subst;
 use middle::subst::{Substs};
 use middle::ty::{ImplContainer, ImplOrTraitItemContainer, TraitContainer};
 use middle::ty::{Polytype};
-use middle::ty;
+use middle::ty::{mod, Ty};
 use middle::ty_fold::TypeFolder;
 use middle::typeck::astconv::{AstConv, ty_of_arg};
 use middle::typeck::astconv::{ast_ty_to_ty, ast_region_to_region};
@@ -137,17 +137,17 @@ impl<'a, 'tcx, 'v> visit::Visitor<'v> for CollectItemTypesVisitor<'a, 'tcx> {
 // Utility types and common code for the above passes.
 
 pub trait ToTy {
-    fn to_ty<RS:RegionScope>(&self, rs: &RS, ast_ty: &ast::Ty) -> ty::t;
+    fn to_ty<RS:RegionScope>(&self, rs: &RS, ast_ty: &ast::Ty) -> Ty;
 }
 
 impl<'a,'tcx> ToTy for ImplCtxt<'a,'tcx> {
-    fn to_ty<RS:RegionScope>(&self, rs: &RS, ast_ty: &ast::Ty) -> ty::t {
+    fn to_ty<RS:RegionScope>(&self, rs: &RS, ast_ty: &ast::Ty) -> Ty {
         ast_ty_to_ty(self, rs, ast_ty)
     }
 }
 
 impl<'a,'tcx> ToTy for CrateCtxt<'a,'tcx> {
-    fn to_ty<RS:RegionScope>(&self, rs: &RS, ast_ty: &ast::Ty) -> ty::t {
+    fn to_ty<RS:RegionScope>(&self, rs: &RS, ast_ty: &ast::Ty) -> Ty {
         ast_ty_to_ty(self, rs, ast_ty)
     }
 }
@@ -181,23 +181,23 @@ impl<'a, 'tcx> AstConv<'tcx> for CrateCtxt<'a, 'tcx> {
         get_trait_def(self, id)
     }
 
-    fn ty_infer(&self, span: Span) -> ty::t {
+    fn ty_infer(&self, span: Span) -> Ty {
         span_err!(self.tcx.sess, span, E0121,
                   "the type placeholder `_` is not allowed within types on item signatures.");
         ty::mk_err()
     }
 
-    fn associated_types_of_trait_are_valid(&self, _: ty::t, _: ast::DefId)
+    fn associated_types_of_trait_are_valid(&self, _: Ty, _: ast::DefId)
                                            -> bool {
         false
     }
 
     fn associated_type_binding(&self,
                                span: Span,
-                               _: Option<ty::t>,
+                               _: Option<Ty>,
                                _: ast::DefId,
                                _: ast::DefId)
-                               -> ty::t {
+                               -> Ty {
         self.tcx().sess.span_err(span, "associated types may not be \
                                         referenced here");
         ty::mk_err()
@@ -205,7 +205,7 @@ impl<'a, 'tcx> AstConv<'tcx> for CrateCtxt<'a, 'tcx> {
 }
 
 pub fn get_enum_variant_types(ccx: &CrateCtxt,
-                              enum_ty: ty::t,
+                              enum_ty: Ty,
                               variants: &[P<ast::Variant>],
                               generics: &ast::Generics) {
     let tcx = ccx.tcx;
@@ -519,7 +519,7 @@ fn convert_methods<'a,I>(ccx: &CrateCtxt,
                          convert_method_context: ConvertMethodContext,
                          container: ImplOrTraitItemContainer,
                          mut ms: I,
-                         untransformed_rcvr_ty: ty::t,
+                         untransformed_rcvr_ty: Ty,
                          rcvr_ty_generics: &ty::Generics,
                          rcvr_visibility: ast::Visibility)
                          where I: Iterator<&'a ast::Method> {
@@ -568,7 +568,7 @@ fn convert_methods<'a,I>(ccx: &CrateCtxt,
                     convert_method_context: ConvertMethodContext,
                     container: ImplOrTraitItemContainer,
                     m: &ast::Method,
-                    untransformed_rcvr_ty: ty::t,
+                    untransformed_rcvr_ty: Ty,
                     rcvr_ty_generics: &ty::Generics,
                     rcvr_visibility: ast::Visibility)
                     -> ty::Method {
@@ -659,7 +659,7 @@ pub fn ensure_no_ty_param_bounds(ccx: &CrateCtxt,
     }
 }
 
-fn is_associated_type_valid_for_param(ty: ty::t,
+fn is_associated_type_valid_for_param(ty: Ty,
                                       trait_id: ast::DefId,
                                       generics: &ty::Generics)
                                       -> bool {
@@ -681,10 +681,10 @@ fn is_associated_type_valid_for_param(ty: ty::t,
 
 fn find_associated_type_in_generics(tcx: &ty::ctxt,
                                     span: Span,
-                                    ty: Option<ty::t>,
+                                    ty: Option<Ty>,
                                     associated_type_id: ast::DefId,
                                     generics: &ty::Generics)
-                                    -> ty::t {
+                                    -> Ty {
     let ty = match ty {
         None => {
             tcx.sess.span_bug(span,
@@ -721,7 +721,7 @@ fn find_associated_type_in_generics(tcx: &ty::ctxt,
     }
 }
 
-fn type_is_self(ty: ty::t) -> bool {
+fn type_is_self(ty: Ty) -> bool {
     match ty::get(ty).sty {
         ty::ty_param(ref param_ty) if param_ty.is_self() => true,
         _ => false,
@@ -748,12 +748,12 @@ impl<'a,'tcx> AstConv<'tcx> for ImplCtxt<'a,'tcx> {
         self.ccx.get_trait_def(id)
     }
 
-    fn ty_infer(&self, span: Span) -> ty::t {
+    fn ty_infer(&self, span: Span) -> Ty {
         self.ccx.ty_infer(span)
     }
 
     fn associated_types_of_trait_are_valid(&self,
-                                           ty: ty::t,
+                                           ty: Ty,
                                            trait_id: ast::DefId)
                                            -> bool {
         // OK if the trait with the associated type is the trait we're
@@ -774,10 +774,10 @@ impl<'a,'tcx> AstConv<'tcx> for ImplCtxt<'a,'tcx> {
 
     fn associated_type_binding(&self,
                                span: Span,
-                               ty: Option<ty::t>,
+                               ty: Option<Ty>,
                                trait_id: ast::DefId,
                                associated_type_id: ast::DefId)
-                               -> ty::t
+                               -> Ty
     {
         let trait_def = ty::lookup_trait_def(self.tcx(), trait_id);
         match self.opt_trait_ref_id {
@@ -837,12 +837,12 @@ impl<'a,'tcx> AstConv<'tcx> for FnCtxt<'a,'tcx> {
         self.ccx.get_trait_def(id)
     }
 
-    fn ty_infer(&self, span: Span) -> ty::t {
+    fn ty_infer(&self, span: Span) -> Ty {
         self.ccx.ty_infer(span)
     }
 
     fn associated_types_of_trait_are_valid(&self,
-                                           ty: ty::t,
+                                           ty: Ty,
                                            trait_id: ast::DefId)
                                            -> bool {
         // OK if the trait with the associated type is one of the traits in
@@ -852,10 +852,10 @@ impl<'a,'tcx> AstConv<'tcx> for FnCtxt<'a,'tcx> {
 
     fn associated_type_binding(&self,
                                span: Span,
-                               ty: Option<ty::t>,
+                               ty: Option<Ty>,
                                _: ast::DefId,
                                associated_type_id: ast::DefId)
-                               -> ty::t {
+                               -> Ty {
         debug!("collect::FnCtxt::associated_type_binding()");
 
         // The ID should map to an associated type on one of the traits in
@@ -886,12 +886,12 @@ impl<'a,'tcx> AstConv<'tcx> for ImplMethodCtxt<'a,'tcx> {
         self.ccx.get_trait_def(id)
     }
 
-    fn ty_infer(&self, span: Span) -> ty::t {
+    fn ty_infer(&self, span: Span) -> Ty {
         self.ccx.ty_infer(span)
     }
 
     fn associated_types_of_trait_are_valid(&self,
-                                           ty: ty::t,
+                                           ty: Ty,
                                            trait_id: ast::DefId)
                                            -> bool {
         is_associated_type_valid_for_param(ty, trait_id, self.method_generics)
@@ -899,10 +899,10 @@ impl<'a,'tcx> AstConv<'tcx> for ImplMethodCtxt<'a,'tcx> {
 
     fn associated_type_binding(&self,
                                span: Span,
-                               ty: Option<ty::t>,
+                               ty: Option<Ty>,
                                _: ast::DefId,
                                associated_type_id: ast::DefId)
-                               -> ty::t {
+                               -> Ty {
         debug!("collect::ImplMethodCtxt::associated_type_binding()");
 
         // The ID should map to an associated type on one of the traits in
@@ -935,12 +935,12 @@ impl<'a,'tcx> AstConv<'tcx> for TraitMethodCtxt<'a,'tcx> {
         self.ccx.get_trait_def(id)
     }
 
-    fn ty_infer(&self, span: Span) -> ty::t {
+    fn ty_infer(&self, span: Span) -> Ty {
         self.ccx.ty_infer(span)
     }
 
     fn associated_types_of_trait_are_valid(&self,
-                                           ty: ty::t,
+                                           ty: Ty,
                                            trait_id: ast::DefId)
                                            -> bool {
         // OK if the trait with the associated type is this trait.
@@ -955,10 +955,10 @@ impl<'a,'tcx> AstConv<'tcx> for TraitMethodCtxt<'a,'tcx> {
 
     fn associated_type_binding(&self,
                                span: Span,
-                               ty: Option<ty::t>,
+                               ty: Option<Ty>,
                                trait_id: ast::DefId,
                                associated_type_id: ast::DefId)
-                               -> ty::t {
+                               -> Ty {
         debug!("collect::TraitMethodCtxt::associated_type_binding()");
 
         // If this is one of our own associated types, return it.
@@ -1015,12 +1015,12 @@ impl<'a,'tcx,AC:AstConv<'tcx>> AstConv<'tcx> for GenericsCtxt<'a,AC> {
         self.chain.get_trait_def(id)
     }
 
-    fn ty_infer(&self, span: Span) -> ty::t {
+    fn ty_infer(&self, span: Span) -> Ty {
         self.chain.ty_infer(span)
     }
 
     fn associated_types_of_trait_are_valid(&self,
-                                           ty: ty::t,
+                                           ty: Ty,
                                            trait_id: ast::DefId)
                                            -> bool {
         // OK if the trait with the associated type is one of the traits in
@@ -1032,10 +1032,10 @@ impl<'a,'tcx,AC:AstConv<'tcx>> AstConv<'tcx> for GenericsCtxt<'a,AC> {
 
     fn associated_type_binding(&self,
                                span: Span,
-                               ty: Option<ty::t>,
+                               ty: Option<Ty>,
                                _: ast::DefId,
                                associated_type_id: ast::DefId)
-                               -> ty::t {
+                               -> Ty {
         debug!("collect::GenericsCtxt::associated_type_binding()");
 
         // The ID should map to an associated type on one of the traits in
@@ -2138,7 +2138,7 @@ pub fn mk_item_substs(ccx: &CrateCtxt,
 fn check_method_self_type<RS:RegionScope>(
     crate_context: &CrateCtxt,
     rs: &RS,
-    required_type: ty::t,
+    required_type: Ty,
     explicit_self: &ast::ExplicitSelf,
     body_id: ast::NodeId)
 {

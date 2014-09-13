@@ -11,7 +11,7 @@
 use middle::subst;
 use middle::subst::{Subst};
 use middle::traits;
-use middle::ty;
+use middle::ty::{mod, Ty};
 use middle::ty::liberate_late_bound_regions;
 use middle::ty_fold::{TypeFolder, TypeFoldable};
 use middle::typeck::astconv::AstConv;
@@ -29,7 +29,7 @@ use syntax::visit::Visitor;
 
 pub struct CheckTypeWellFormedVisitor<'ccx, 'tcx:'ccx> {
     ccx: &'ccx CrateCtxt<'ccx, 'tcx>,
-    cache: HashSet<ty::t>
+    cache: HashSet<Ty>
 }
 
 impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
@@ -139,7 +139,7 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
                 }
             }
 
-            let field_tys: Vec<ty::t> =
+            let field_tys: Vec<Ty> =
                 variants.iter().flat_map(|v| v.fields.iter().map(|f| f.ty)).collect();
 
             regionck::regionck_ensure_component_tys_wf(
@@ -256,14 +256,14 @@ pub struct BoundsChecker<'cx,'tcx:'cx> {
     span: Span,
     scope_id: ast::NodeId,
     binding_count: uint,
-    cache: Option<&'cx mut HashSet<ty::t>>,
+    cache: Option<&'cx mut HashSet<Ty>>,
 }
 
 impl<'cx,'tcx> BoundsChecker<'cx,'tcx> {
     pub fn new(fcx: &'cx FnCtxt<'cx,'tcx>,
                span: Span,
                scope_id: ast::NodeId,
-               cache: Option<&'cx mut HashSet<ty::t>>)
+               cache: Option<&'cx mut HashSet<Ty>>)
                -> BoundsChecker<'cx,'tcx> {
         BoundsChecker { fcx: fcx, span: span, scope_id: scope_id,
                         cache: cache, binding_count: 0 }
@@ -300,11 +300,11 @@ impl<'cx,'tcx> BoundsChecker<'cx,'tcx> {
         }
     }
 
-    pub fn check_ty(&mut self, ty: ty::t) {
+    pub fn check_ty(&mut self, ty: Ty) {
         ty.fold_with(self);
     }
 
-    fn check_traits_in_ty(&mut self, ty: ty::t) {
+    fn check_traits_in_ty(&mut self, ty: Ty) {
         // When checking types outside of a type def'n, we ignore
         // region obligations. See discussion below in fold_ty().
         self.binding_count += 1;
@@ -318,7 +318,7 @@ impl<'cx,'tcx> TypeFolder<'tcx> for BoundsChecker<'cx,'tcx> {
         self.fcx.tcx()
     }
 
-    fn fold_ty(&mut self, t: ty::t) -> ty::t {
+    fn fold_ty(&mut self, t: Ty) -> Ty {
         debug!("BoundsChecker t={}",
                t.repr(self.tcx()));
 
@@ -406,7 +406,7 @@ struct AdtVariant {
 }
 
 struct AdtField {
-    ty: ty::t,
+    ty: Ty,
     span: Span,
 }
 
@@ -459,7 +459,7 @@ fn enum_variants(fcx: &FnCtxt, enum_def: &ast::EnumDef) -> Vec<AdtVariant> {
 
 fn check_struct_safe_for_destructor(fcx: &FnCtxt,
                                     span: Span,
-                                    self_ty: ty::t,
+                                    self_ty: Ty,
                                     struct_did: ast::DefId) {
     let struct_tpt = ty::lookup_item_type(fcx.tcx(), struct_did);
     if !struct_tpt.generics.has_type_params(subst::TypeSpace)

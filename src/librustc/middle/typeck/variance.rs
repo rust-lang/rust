@@ -199,7 +199,7 @@ use arena::Arena;
 use middle::resolve_lifetime as rl;
 use middle::subst;
 use middle::subst::{ParamSpace, FnSpace, TypeSpace, SelfSpace, VecPerParamSpace};
-use middle::ty;
+use middle::ty::{mod, Ty};
 use std::fmt;
 use std::rc::Rc;
 use syntax::ast;
@@ -725,7 +725,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
     /// Adds constraints appropriate for an instance of `ty` appearing
     /// in a context with ambient variance `variance`
     fn add_constraints_from_ty(&mut self,
-                               ty: ty::t,
+                               ty: Ty,
                                variance: VarianceTermPtr<'a>) {
         debug!("add_constraints_from_ty(ty={})", ty.repr(self.tcx()));
 

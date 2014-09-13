@@ -23,7 +23,7 @@ use middle::subst::{Substs};
 use middle::ty::get;
 use middle::ty::{ImplContainer, ImplOrTraitItemId, MethodTraitItemId};
 use middle::ty::{TypeTraitItemId, lookup_item_type};
-use middle::ty::{t, ty_bool, ty_char, ty_enum, ty_err};
+use middle::ty::{Ty, ty_bool, ty_char, ty_enum, ty_err};
 use middle::ty::{ty_str, ty_vec, ty_float, ty_infer, ty_int, ty_open};
 use middle::ty::{ty_param, Polytype, ty_ptr};
 use middle::ty::{ty_rptr, ty_struct, ty_trait, ty_tup};
@@ -57,8 +57,8 @@ mod overlap;
 
 fn get_base_type(inference_context: &InferCtxt,
                  span: Span,
-                 original_type: t)
-                 -> Option<t> {
+                 original_type: Ty)
+                 -> Option<Ty> {
     let resolved_type = match resolve_type(inference_context,
                                            Some(span),
                                            original_type,
@@ -97,7 +97,7 @@ fn get_base_type(inference_context: &InferCtxt,
 // Returns the def ID of the base type, if there is one.
 fn get_base_type_def_id(inference_context: &InferCtxt,
                         span: Span,
-                        original_type: t)
+                        original_type: Ty)
                         -> Option<DefId> {
     match get_base_type(inference_context, span, original_type) {
         None => None,
@@ -489,7 +489,7 @@ pub fn make_substs_for_receiver_types(tcx: &ty::ctxt,
      * intact.
      */
 
-    let meth_tps: Vec<ty::t> =
+    let meth_tps: Vec<Ty> =
         method.generics.types.get_slice(subst::FnSpace)
               .iter()
               .map(|def| ty::mk_param_from_def(tcx, def))

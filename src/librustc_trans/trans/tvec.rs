@@ -27,7 +27,7 @@ use trans::machine;
 use trans::machine::{nonzero_llsize_of, llsize_of_alloc};
 use trans::type_::Type;
 use trans::type_of;
-use middle::ty;
+use middle::ty::{mod, Ty};
 use util::ppaux::ty_to_string;
 
 use syntax::ast;
@@ -52,7 +52,7 @@ pub fn pointer_add_byte(bcx: Block, ptr: ValueRef, bytes: ValueRef) -> ValueRef 
 
 pub fn make_drop_glue_unboxed<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                           vptr: ValueRef,
-                                          unit_ty: ty::t,
+                                          unit_ty: Ty,
                                           should_deallocate: bool)
                                           -> Block<'blk, 'tcx> {
     let not_null = IsNotNull(bcx, vptr);
@@ -90,7 +90,7 @@ pub fn make_drop_glue_unboxed<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 }
 
 pub struct VecTypes {
-    pub unit_ty: ty::t,
+    pub unit_ty: Ty,
     pub llunit_ty: Type,
     pub llunit_size: ValueRef,
     pub llunit_alloc_size: u64
@@ -342,7 +342,7 @@ pub fn vec_types_from_expr(bcx: Block, vec_expr: &ast::Expr) -> VecTypes {
     vec_types(bcx, ty::sequence_element_type(bcx.tcx(), vec_ty))
 }
 
-pub fn vec_types(bcx: Block, unit_ty: ty::t) -> VecTypes {
+pub fn vec_types(bcx: Block, unit_ty: Ty) -> VecTypes {
     let ccx = bcx.ccx();
     let llunit_ty = type_of::type_of(ccx, unit_ty);
     let llunit_size = nonzero_llsize_of(ccx, llunit_ty);
@@ -404,7 +404,7 @@ fn get_slice_base_and_len(bcx: Block,
 
 pub fn get_base_and_len(bcx: Block,
                         llval: ValueRef,
-                        vec_ty: ty::t)
+                        vec_ty: Ty)
                         -> (ValueRef, ValueRef) {
     /*!
      * Converts a vector into the slice pair.  The vector should be
@@ -437,7 +437,7 @@ pub fn get_base_and_len(bcx: Block,
 }
 
 pub type iter_vec_block<'a, 'blk, 'tcx> =
-    |Block<'blk, 'tcx>, ValueRef, ty::t|: 'a -> Block<'blk, 'tcx>;
+    |Block<'blk, 'tcx>, ValueRef, Ty|: 'a -> Block<'blk, 'tcx>;
 
 pub fn iter_vec_loop<'a, 'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                      data_ptr: ValueRef,
@@ -497,7 +497,7 @@ pub fn iter_vec_loop<'a, 'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
 pub fn iter_vec_raw<'a, 'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                     data_ptr: ValueRef,
-                                    unit_ty: ty::t,
+                                    unit_ty: Ty,
                                     len: ValueRef,
                                     f: iter_vec_block<'a, 'blk, 'tcx>)
                                     -> Block<'blk, 'tcx> {

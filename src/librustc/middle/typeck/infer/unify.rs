@@ -13,7 +13,7 @@ pub use self::VarValue::*;
 use std::kinds::marker;
 
 use middle::ty::{expected_found, IntVarValue};
-use middle::ty;
+use middle::ty::{mod, Ty};
 use middle::typeck::infer::{uok, ures};
 use middle::typeck::infer::InferCtxt;
 use std::cell::RefCell;
@@ -260,7 +260,7 @@ impl<K,V> sv::SnapshotVecDelegate<VarValue<K,V>,()> for Delegate {
  * relationship.
  */
 pub trait SimplyUnifiable : Clone + PartialEq + Repr {
-    fn to_type(&self) -> ty::t;
+    fn to_type(&self) -> Ty;
     fn to_type_err(expected_found<Self>) -> ty::type_err;
 }
 
@@ -289,7 +289,7 @@ pub trait InferCtxtMethodsForSimplyUnifiableTypes<V:SimplyUnifiable,
                     a_id: K,
                     b: V)
                     -> ures;
-    fn probe_var(&self, a_id: K) -> Option<ty::t>;
+    fn probe_var(&self, a_id: K) -> Option<Ty>;
 }
 
 impl<'a,'tcx,V:SimplyUnifiable,K:UnifyKey<Option<V>>>
@@ -375,7 +375,7 @@ impl<'a,'tcx,V:SimplyUnifiable,K:UnifyKey<Option<V>>>
         }
     }
 
-    fn probe_var(&self, a_id: K) -> Option<ty::t> {
+    fn probe_var(&self, a_id: K) -> Option<Ty> {
         let tcx = self.tcx;
         let table = UnifyKey::unification_table(self);
         let node_a = table.borrow_mut().get(tcx, a_id);
@@ -407,7 +407,7 @@ impl UnifyKey<Option<IntVarValue>> for ty::IntVid {
 }
 
 impl SimplyUnifiable for IntVarValue {
-    fn to_type(&self) -> ty::t {
+    fn to_type(&self) -> Ty {
         match *self {
             ty::IntType(i) => ty::mk_mach_int(i),
             ty::UintType(i) => ty::mk_mach_uint(i),
@@ -443,7 +443,7 @@ impl UnifyValue for Option<ast::FloatTy> {
 }
 
 impl SimplyUnifiable for ast::FloatTy {
-    fn to_type(&self) -> ty::t {
+    fn to_type(&self) -> Ty {
         ty::mk_mach_float(*self)
     }
 

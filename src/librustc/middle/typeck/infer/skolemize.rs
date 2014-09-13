@@ -40,7 +40,7 @@
  * it is reasonable to ask what the type inferencer knows "so far".
  */
 
-use middle::ty;
+use middle::ty::{mod, Ty};
 use middle::ty_fold;
 use middle::ty_fold::TypeFoldable;
 use middle::ty_fold::TypeFolder;
@@ -52,7 +52,7 @@ use super::unify::InferCtxtMethodsForSimplyUnifiableTypes;
 pub struct TypeSkolemizer<'a, 'tcx:'a> {
     infcx: &'a InferCtxt<'a, 'tcx>,
     skolemization_count: uint,
-    skolemization_map: hash_map::HashMap<ty::InferTy, ty::t>,
+    skolemization_map: hash_map::HashMap<ty::InferTy, Ty>,
 }
 
 impl<'a, 'tcx> TypeSkolemizer<'a, 'tcx> {
@@ -65,10 +65,10 @@ impl<'a, 'tcx> TypeSkolemizer<'a, 'tcx> {
     }
 
     fn skolemize(&mut self,
-                 opt_ty: Option<ty::t>,
+                 opt_ty: Option<Ty>,
                  key: ty::InferTy,
                  skolemizer: |uint| -> ty::InferTy)
-                 -> ty::t
+                 -> Ty
     {
         match opt_ty {
             Some(ty) => { return ty.fold_with(self); }
@@ -112,7 +112,7 @@ impl<'a, 'tcx> TypeFolder<'tcx> for TypeSkolemizer<'a, 'tcx> {
         }
     }
 
-    fn fold_ty(&mut self, t: ty::t) -> ty::t {
+    fn fold_ty(&mut self, t: Ty) -> Ty {
         match ty::get(t).sty {
             ty::ty_infer(ty::TyVar(v)) => {
                 self.skolemize(self.infcx.type_variables.borrow().probe(v),

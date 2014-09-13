@@ -20,7 +20,7 @@ use trans::base::{trans_fn, decl_internal_rust_fn};
 use trans::base;
 use trans::common::*;
 use trans::foreign;
-use middle::ty;
+use middle::ty::{mod, Ty};
 use util::ppaux::Repr;
 
 use syntax::abi;
@@ -286,5 +286,5 @@ pub fn monomorphic_fn(ccx: &CrateContext,
 #[deriving(PartialEq, Eq, Hash, Show)]
 pub struct MonoId {
     pub def: ast::DefId,
-    pub params: subst::VecPerParamSpace<ty::t>
+    pub params: subst::VecPerParamSpace<Ty>
 }

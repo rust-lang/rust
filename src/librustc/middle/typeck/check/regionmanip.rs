@@ -13,7 +13,7 @@
 pub use self::WfConstraint::*;
 
 use middle::subst::{ParamSpace, Subst, Substs};
-use middle::ty;
+use middle::ty::{mod, Ty};
 use middle::ty_fold::{TypeFolder};
 
 use syntax::ast;
@@ -23,19 +23,19 @@ use util::ppaux::Repr;
 // Helper functions related to manipulating region types.
 
 pub enum WfConstraint {
-    RegionSubRegionConstraint(Option<ty::t>, ty::Region, ty::Region),
-    RegionSubParamConstraint(Option<ty::t>, ty::Region, ty::ParamTy),
+    RegionSubRegionConstraint(Option<Ty>, ty::Region, ty::Region),
+    RegionSubParamConstraint(Option<Ty>, ty::Region, ty::ParamTy),
 }
 
 struct Wf<'a, 'tcx: 'a> {
     tcx: &'a ty::ctxt<'tcx>,
-    stack: Vec<(ty::Region, Option<ty::t>)>,
+    stack: Vec<(ty::Region, Option<Ty>)>,
     out: Vec<WfConstraint>,
 }
 
 pub fn region_wf_constraints(
     tcx: &ty::ctxt,
-    ty: ty::t,
+    ty: Ty,
     outer_region: ty::Region)
     -> Vec<WfConstraint>
 {
@@ -55,7 +55,7 @@ pub fn region_wf_constraints(
 }
 
 impl<'a, 'tcx> Wf<'a, 'tcx> {
-    fn accumulate_from_ty(&mut self, ty: ty::t) {
+    fn accumulate_from_ty(&mut self, ty: Ty) {
         debug!("Wf::accumulate_from_ty(ty={})",
                ty.repr(self.tcx));
 
@@ -146,9 +146,9 @@ impl<'a, 'tcx> Wf<'a, 'tcx> {
     }
 
     fn accumulate_from_rptr(&mut self,
-                            ty: ty::t,
+                            ty: Ty,
                             r_b: ty::Region,
-                            ty_b: ty::t) {
+                            ty_b: Ty) {
         // We are walking down a type like this, and current
         // position is indicated by caret:
         //
@@ -193,7 +193,7 @@ impl<'a, 'tcx> Wf<'a, 'tcx> {
     }
 
     fn push_sub_region_constraint(&mut self,
-                                  opt_ty: Option<ty::t>,
+                                  opt_ty: Option<Ty>,
                                   r_a: ty::Region,
                                   r_b: ty::Region) {
         /*! Pushes a constraint that `r_a <= r_b`, due to `opt_ty` */
@@ -213,14 +213,14 @@ impl<'a, 'tcx> Wf<'a, 'tcx> {
 
     fn push_param_constraint(&mut self,
                              region: ty::Region,
-                             opt_ty: Option<ty::t>,
+                             opt_ty: Option<Ty>,
                              param_ty: ty::ParamTy) {
         /*! Pushes a constraint that `region <= param_ty`, due to `opt_ty` */
         self.out.push(RegionSubParamConstraint(opt_ty, region, param_ty));
     }
 
     fn accumulate_from_adt(&mut self,
-                           ty: ty::t,
+                           ty: Ty,
                            def_id: ast::DefId,
                            substs: &Substs)
     {
@@ -322,7 +322,7 @@ impl<'a, 'tcx> Wf<'a, 'tcx> {
     }
 
     fn accumulate_from_closure_ty(&mut self,
-                                  ty: ty::t,
+                                  ty: Ty,
                                   c: &ty::ClosureTy)
     {
         match c.store {
@@ -336,7 +336,7 @@ impl<'a, 'tcx> Wf<'a, 'tcx> {
     }
 
     fn accumulate_from_object_ty(&mut self,
-                                 ty: ty::t,
+                                 ty: Ty,
                                  bounds: &ty::ExistentialBounds)
     {
         // Imagine a type like this:

@@ -69,7 +69,7 @@ use middle::def;
 use middle::resolve;
 use middle::subst;
 use middle::subst::VecPerParamSpace;
-use middle::ty;
+use middle::ty::{mod, Ty};
 use session::config;
 use util::common::time;
 use util::ppaux::Repr;
@@ -146,7 +146,7 @@ pub struct MethodObject {
 #[deriving(Clone)]
 pub struct MethodCallee {
     pub origin: MethodOrigin,
-    pub ty: ty::t,
+    pub ty: Ty,
     pub substs: subst::Substs
 }
 
@@ -179,7 +179,7 @@ pub enum ExprAdjustment {
 
 pub struct TypeAndSubsts {
     pub substs: subst::Substs,
-    pub ty: ty::t,
+    pub ty: Ty,
 }
 
 impl MethodCall {
@@ -285,7 +285,7 @@ pub struct CrateCtxt<'a, 'tcx: 'a> {
 }
 
 // Functions that write types into the node type table
-pub fn write_ty_to_tcx(tcx: &ty::ctxt, node_id: ast::NodeId, ty: ty::t) {
+pub fn write_ty_to_tcx(tcx: &ty::ctxt, node_id: ast::NodeId, ty: Ty) {
     debug!("write_ty_to_tcx({}, {})", node_id, ppaux::ty_to_string(tcx, ty));
     assert!(!ty::type_needs_infer(ty));
     tcx.node_types.borrow_mut().insert(node_id, ty);
@@ -318,7 +318,7 @@ pub fn lookup_def_ccx(ccx: &CrateCtxt, sp: Span, id: ast::NodeId)
     lookup_def_tcx(ccx.tcx, sp, id)
 }
 
-pub fn no_params(t: ty::t) -> ty::Polytype {
+pub fn no_params(t: Ty) -> ty::Polytype {
     ty::Polytype {
         generics: ty::Generics {types: VecPerParamSpace::empty(),
                                 regions: VecPerParamSpace::empty()},
@@ -330,8 +330,8 @@ pub fn require_same_types(tcx: &ty::ctxt,
                           maybe_infcx: Option<&infer::InferCtxt>,
                           t1_is_expected: bool,
                           span: Span,
-                          t1: ty::t,
-                          t2: ty::t,
+                          t1: Ty,
+                          t2: Ty,
                           msg: || -> String)
                           -> bool {
     let result = match maybe_infcx {

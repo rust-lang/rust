@@ -29,7 +29,7 @@ use middle::lang_items;
 use middle::resolve::{TraitItemKind, TypeTraitItemKind};
 use middle::subst;
 use middle::ty::{ImplContainer, TraitContainer};
-use middle::ty;
+use middle::ty::{mod, Ty};
 use middle::typeck;
 use middle::astencode::vtable_decoder_helpers;
 
@@ -224,7 +224,7 @@ fn variant_disr_val(d: rbml::Doc) -> Option<ty::Disr> {
     })
 }
 
-fn doc_type(doc: rbml::Doc, tcx: &ty::ctxt, cdata: Cmd) -> ty::t {
+fn doc_type(doc: rbml::Doc, tcx: &ty::ctxt, cdata: Cmd) -> Ty {
     let tp = reader::get_doc(doc, tag_items_data_item_type);
     parse_ty_data(tp.data, cdata.cnum, tp.start, tcx,
                   |_, did| translate_def_id(cdata, did))
@@ -237,7 +237,7 @@ fn doc_method_fty(doc: rbml::Doc, tcx: &ty::ctxt, cdata: Cmd) -> ty::BareFnTy {
 }
 
 pub fn item_type(_item_id: ast::DefId, item: rbml::Doc,
-                 tcx: &ty::ctxt, cdata: Cmd) -> ty::t {
+                 tcx: &ty::ctxt, cdata: Cmd) -> Ty {
     doc_type(item, tcx, cdata)
 }
 

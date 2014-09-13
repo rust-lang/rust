@@ -38,7 +38,7 @@ use middle::subst::{ErasedRegions, NonerasedRegions, Substs};
 use middle::ty::{FloatVar, FnSig, IntVar, TyVar};
 use middle::ty::{IntType, UintType};
 use middle::ty::{BuiltinBounds};
-use middle::ty;
+use middle::ty::{mod, Ty};
 use middle::ty_fold;
 use middle::typeck::infer::equate::Equate;
 use middle::typeck::infer::glb::Glb;
@@ -70,14 +70,14 @@ pub trait Combine<'tcx> {
     fn glb<'a>(&'a self) -> Glb<'a, 'tcx>;
 
     fn mts(&self, a: &ty::mt, b: &ty::mt) -> cres<ty::mt>;
-    fn contratys(&self, a: ty::t, b: ty::t) -> cres<ty::t>;
-    fn tys(&self, a: ty::t, b: ty::t) -> cres<ty::t>;
+    fn contratys(&self, a: Ty, b: Ty) -> cres<Ty>;
+    fn tys(&self, a: Ty, b: Ty) -> cres<Ty>;
 
     fn tps(&self,
            _: subst::ParamSpace,
-           as_: &[ty::t],
-           bs: &[ty::t])
-           -> cres<Vec<ty::t>> {
+           as_: &[Ty],
+           bs: &[Ty])
+           -> cres<Vec<Ty>> {
         // FIXME -- In general, we treat variance a bit wrong
         // here. For historical reasons, we treat tps and Self
         // as invariant. This is overly conservative.
@@ -90,7 +90,7 @@ pub trait Combine<'tcx> {
 
         try!(as_.iter().zip(bs.iter())
                 .map(|(a, b)| self.equate().tys(*a, *b))
-                .collect::<cres<Vec<ty::t>>>());
+                .collect::<cres<Vec<Ty>>>());
         Ok(as_.to_vec())
     }
 
@@ -237,7 +237,7 @@ pub trait Combine<'tcx> {
 
     fn fn_sigs(&self, a: &ty::FnSig, b: &ty::FnSig) -> cres<ty::FnSig>;
 
-    fn args(&self, a: ty::t, b: ty::t) -> cres<ty::t> {
+    fn args(&self, a: Ty, b: Ty) -> cres<Ty> {
         self.contratys(a, b).and_then(|t| Ok(t))
     }
 
@@ -323,7 +323,7 @@ pub fn expected_found<'tcx, C: Combine<'tcx>, T>(
     }
 }
 
-pub fn super_tys<'tcx, C: Combine<'tcx>>(this: &C, a: ty::t, b: ty::t) -> cres<ty::t> {
+pub fn super_tys<'tcx, C: Combine<'tcx>>(this: &C, a: Ty, b: Ty) -> cres<Ty> {
 
     let tcx = this.infcx().tcx;
     let a_sty = &ty::get(a).sty;
@@ -513,7 +513,7 @@ pub fn super_tys<'tcx, C: Combine<'tcx>>(this: &C, a: ty::t, b: ty::t) -> cres<t
         this: &C,
         vid_is_expected: bool,
         vid: ty::IntVid,
-        val: ty::IntVarValue) -> cres<ty::t>
+        val: ty::IntVarValue) -> cres<Ty>
     {
         try!(this.infcx().simple_var_t(vid_is_expected, vid, val));
         match val {
@@ -526,7 +526,7 @@ pub fn super_tys<'tcx, C: Combine<'tcx>>(this: &C, a: ty::t, b: ty::t) -> cres<t
         this: &C,
         vid_is_expected: bool,
         vid: ty::FloatVid,
-        val: ast::FloatTy) -> cres<ty::t>
+        val: ast::FloatTy) -> cres<Ty>
     {
         try!(this.infcx().simple_var_t(vid_is_expected, vid, val));
         Ok(ty::mk_mach_float(val))
@@ -550,7 +550,7 @@ impl<'f, 'tcx> CombineFields<'f, 'tcx> {
     }
 
     pub fn instantiate(&self,
-                       a_ty: ty::t,
+                       a_ty: Ty,
                        dir: RelationDir,
                        b_vid: ty::TyVid)
                        -> cres<()>
@@ -640,10 +640,10 @@ impl<'f, 'tcx> CombineFields<'f, 'tcx> {
     }
 
     fn generalize(&self,
-                  ty: ty::t,
+                  ty: Ty,
                   for_vid: ty::TyVid,
                   make_region_vars: bool)
-                  -> cres<ty::t>
+                  -> cres<Ty>
     {
         /*!
          * Attempts to generalize `ty` for the type variable
@@ -681,7 +681,7 @@ impl<'cx, 'tcx> ty_fold::TypeFolder<'tcx> for Generalizer<'cx, 'tcx> {
         self.infcx.tcx
     }
 
-    fn fold_ty(&mut self, t: ty::t) -> ty::t {
+    fn fold_ty(&mut self, t: Ty) -> Ty {
         // Check to see whether the type we are genealizing references
         // `vid`. At the same time, also update any type variables to
         // the values that they are bound to. This is needed to truly

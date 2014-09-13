@@ -26,8 +26,8 @@ use metadata::tyencode;
 use middle::mem_categorization::Typer;
 use middle::subst;
 use middle::subst::VecPerParamSpace;
-use middle::typeck::{MethodCall, MethodCallee, MethodOrigin};
-use middle::{ty, typeck};
+use middle::typeck::{mod, MethodCall, MethodCallee, MethodOrigin};
+use middle::ty::{mod, Ty};
 use util::ppaux::ty_to_string;
 
 use syntax::{ast, ast_map, ast_util, codemap, fold};
@@ -831,8 +831,8 @@ trait rbml_writer_helpers {
     fn emit_method_origin(&mut self,
                           ecx: &e::EncodeContext,
                           method_origin: &typeck::MethodOrigin);
-    fn emit_ty(&mut self, ecx: &e::EncodeContext, ty: ty::t);
-    fn emit_tys(&mut self, ecx: &e::EncodeContext, tys: &[ty::t]);
+    fn emit_ty(&mut self, ecx: &e::EncodeContext, ty: Ty);
+    fn emit_tys(&mut self, ecx: &e::EncodeContext, tys: &[Ty]);
     fn emit_type_param_def(&mut self,
                            ecx: &e::EncodeContext,
                            type_param_def: &ty::TypeParameterDef);
@@ -915,11 +915,11 @@ impl<'a> rbml_writer_helpers for Encoder<'a> {
         });
     }
 
-    fn emit_ty(&mut self, ecx: &e::EncodeContext, ty: ty::t) {
+    fn emit_ty(&mut self, ecx: &e::EncodeContext, ty: Ty) {
         self.emit_opaque(|this| Ok(e::write_type(ecx, this, ty)));
     }
 
-    fn emit_tys(&mut self, ecx: &e::EncodeContext, tys: &[ty::t]) {
+    fn emit_tys(&mut self, ecx: &e::EncodeContext, tys: &[Ty]) {
         self.emit_from_vec(tys, |this, ty| Ok(this.emit_ty(ecx, *ty)));
     }
 
@@ -1327,8 +1327,8 @@ impl<'a> doc_decoder_helpers for rbml::Doc<'a> {
 
 trait rbml_decoder_decoder_helpers {
     fn read_method_origin(&mut self, dcx: &DecodeContext) -> typeck::MethodOrigin;
-    fn read_ty(&mut self, dcx: &DecodeContext) -> ty::t;
-    fn read_tys(&mut self, dcx: &DecodeContext) -> Vec<ty::t>;
+    fn read_ty(&mut self, dcx: &DecodeContext) -> Ty;
+    fn read_tys(&mut self, dcx: &DecodeContext) -> Vec<Ty>;
     fn read_trait_ref(&mut self, dcx: &DecodeContext) -> Rc<ty::TraitRef>;
     fn read_type_param_def(&mut self, dcx: &DecodeContext)
                            -> ty::TypeParameterDef;
@@ -1351,10 +1351,10 @@ trait rbml_decoder_decoder_helpers {
     // Versions of the type reading functions that don't need the full
     // DecodeContext.
     fn read_ty_nodcx(&mut self,
-                     tcx: &ty::ctxt, cdata: &cstore::crate_metadata) -> ty::t;
+                     tcx: &ty::ctxt, cdata: &cstore::crate_metadata) -> Ty;
     fn read_tys_nodcx(&mut self,
                       tcx: &ty::ctxt,
-                      cdata: &cstore::crate_metadata) -> Vec<ty::t>;
+                      cdata: &cstore::crate_metadata) -> Vec<Ty>;
     fn read_substs_nodcx(&mut self, tcx: &ty::ctxt,
                          cdata: &cstore::crate_metadata)
                          -> subst::Substs;
@@ -1362,7 +1362,7 @@ trait rbml_decoder_decoder_helpers {
 
 impl<'a> rbml_decoder_decoder_helpers for reader::Decoder<'a> {
     fn read_ty_nodcx(&mut self,
-                     tcx: &ty::ctxt, cdata: &cstore::crate_metadata) -> ty::t {
+                     tcx: &ty::ctxt, cdata: &cstore::crate_metadata) -> Ty {
         self.read_opaque(|_, doc| {
             Ok(tydecode::parse_ty_data(
                 doc.data,
@@ -1375,7 +1375,7 @@ impl<'a> rbml_decoder_decoder_helpers for reader::Decoder<'a> {
 
     fn read_tys_nodcx(&mut self,
                       tcx: &ty::ctxt,
-                      cdata: &cstore::crate_metadata) -> Vec<ty::t> {
+                      cdata: &cstore::crate_metadata) -> Vec<Ty> {
         self.read_to_vec(|this| Ok(this.read_ty_nodcx(tcx, cdata)) )
             .unwrap()
             .into_iter()
@@ -1468,7 +1468,7 @@ impl<'a> rbml_decoder_decoder_helpers for reader::Decoder<'a> {
     }
 
 
-    fn read_ty(&mut self, dcx: &DecodeContext) -> ty::t {
+    fn read_ty(&mut self, dcx: &DecodeContext) -> Ty {
         // Note: regions types embed local node ids.  In principle, we
         // should translate these node ids into the new decode
         // context.  However, we do not bother, because region types
@@ -1496,7 +1496,7 @@ impl<'a> rbml_decoder_decoder_helpers for reader::Decoder<'a> {
         }
     }
 
-    fn read_tys(&mut self, dcx: &DecodeContext) -> Vec<ty::t> {
+    fn read_tys(&mut self, dcx: &DecodeContext) -> Vec<Ty> {
         self.read_to_vec(|this| Ok(this.read_ty(dcx))).unwrap().into_iter().collect()
     }
 

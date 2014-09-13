@@ -25,7 +25,7 @@ use trans::expr;
 use trans::monomorphize::MonoId;
 use trans::type_of::*;
 use trans::type_::Type;
-use middle::ty;
+use middle::ty::{mod, Ty};
 use middle::subst::{Subst, Substs};
 use session::config::FullDebugInfo;
 use util::ppaux::Repr;
@@ -115,7 +115,7 @@ impl EnvValue {
 // Given a closure ty, emits a corresponding tuple ty
 pub fn mk_closure_tys(tcx: &ty::ctxt,
                       bound_values: &[EnvValue])
-                   -> ty::t {
+                   -> Ty {
     // determine the types of the values in the env.  Note that this
     // is the actual types that will be stored in the map, not the
     // logical types as the user sees them, so by-ref upvars must be
@@ -131,14 +131,14 @@ pub fn mk_closure_tys(tcx: &ty::ctxt,
     return cdata_ty;
 }
 
-fn tuplify_box_ty(tcx: &ty::ctxt, t: ty::t) -> ty::t {
+fn tuplify_box_ty(tcx: &ty::ctxt, t: Ty) -> Ty {
     let ptr = ty::mk_imm_ptr(tcx, ty::mk_i8());
     ty::mk_tup(tcx, vec!(ty::mk_uint(), ty::mk_nil_ptr(tcx), ptr, ptr, t))
 }
 
 fn allocate_cbox<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                              store: ty::TraitStore,
-                             cdata_ty: ty::t)
+                             cdata_ty: Ty)
                              -> Result<'blk, 'tcx> {
     let _icx = push_ctxt("closure::allocate_cbox");
     let tcx = bcx.tcx();
@@ -158,7 +158,7 @@ fn allocate_cbox<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
 pub struct ClosureResult<'blk, 'tcx: 'blk> {
     llbox: ValueRef,    // llvalue of ptr to closure
-    cdata_ty: ty::t,    // type of the closure data
+    cdata_ty: Ty,    // type of the closure data
     bcx: Block<'blk, 'tcx>  // final bcx
 }
 
@@ -248,7 +248,7 @@ fn build_closure<'blk, 'tcx>(bcx0: Block<'blk, 'tcx>,
 // and a list of upvars, generate code to load and populate the environment
 // with the upvars and type descriptors.
 fn load_environment<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
-                                cdata_ty: ty::t,
+                                cdata_ty: Ty,
                                 freevars: &Vec<ty::Freevar>,
                                 store: ty::TraitStore)
                                 -> Block<'blk, 'tcx> {
@@ -553,7 +553,7 @@ pub fn trans_unboxed_closure<'blk, 'tcx>(
 }
 
 pub fn get_wrapper_for_bare_fn(ccx: &CrateContext,
-                               closure_ty: ty::t,
+                               closure_ty: Ty,
                                def: def::Def,
                                fn_ptr: ValueRef,
                                is_local: bool) -> ValueRef {
@@ -647,7 +647,7 @@ pub fn get_wrapper_for_bare_fn(ccx: &CrateContext,
 }
 
 pub fn make_closure_from_bare_fn<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
-                                             closure_ty: ty::t,
+                                             closure_ty: Ty,
                                              def: def::Def,
                                              fn_ptr: ValueRef)
                                              -> DatumBlock<'blk, 'tcx, Expr>  {

@@ -59,7 +59,7 @@ type MethodIndex = uint; // just for doc purposes
 pub fn exists(fcx: &FnCtxt,
               span: Span,
               method_name: ast::Name,
-              self_ty: ty::t,
+              self_ty: Ty,
               call_expr_id: ast::NodeId)
               -> bool
 {
@@ -77,8 +77,8 @@ pub fn exists(fcx: &FnCtxt,
 pub fn lookup(fcx: &FnCtxt,
               span: Span,
               method_name: ast::Name,
-              self_ty: ty::t,
-              supplied_method_types: Vec<ty::t>,
+              self_ty: Ty,
+              supplied_method_types: Vec<Ty>,
               call_expr_id: ast::NodeId,
               self_expr: &ast::Expr)
               -> Result<MethodCallee, MethodError>
@@ -115,8 +115,8 @@ pub fn lookup_in_trait<'a, 'tcx>(fcx: &'a FnCtxt<'a, 'tcx>,
                                  self_expr: Option<&'a ast::Expr>,
                                  m_name: ast::Name,
                                  trait_def_id: DefId,
-                                 self_ty: ty::t,
-                                 opt_input_types: Option<Vec<ty::t>>)
+                                 self_ty: Ty,
+                                 opt_input_types: Option<Vec<Ty>>)
                                  -> Option<MethodCallee>
 {
     lookup_in_trait_adjusted(fcx, span, self_expr, m_name, trait_def_id,
@@ -130,8 +130,8 @@ pub fn lookup_in_trait_adjusted<'a, 'tcx>(fcx: &'a FnCtxt<'a, 'tcx>,
                                           m_name: ast::Name,
                                           trait_def_id: DefId,
                                           autoderefref: ty::AutoDerefRef,
-                                          self_ty: ty::t,
-                                          opt_input_types: Option<Vec<ty::t>>)
+                                          self_ty: Ty,
+                                          opt_input_types: Option<Vec<Ty>>)
                                           -> Option<MethodCallee>
 {
     /*!
@@ -310,7 +310,7 @@ pub fn lookup_in_trait_adjusted<'a, 'tcx>(fcx: &'a FnCtxt<'a, 'tcx>,
 
 pub fn report_error(fcx: &FnCtxt,
                     span: Span,
-                    rcvr_ty: ty::t,
+                    rcvr_ty: Ty,
                     method_name: ast::Name,
                     error: MethodError)
 {

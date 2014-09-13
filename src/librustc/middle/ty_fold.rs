@@ -38,7 +38,7 @@
 
 use middle::subst;
 use middle::subst::VecPerParamSpace;
-use middle::ty;
+use middle::ty::{mod, Ty};
 use middle::traits;
 use middle::typeck;
 use std::rc::Rc;
@@ -73,7 +73,7 @@ pub trait TypeFolder<'tcx> {
     /// track the Debruijn index nesting level.
     fn exit_region_binder(&mut self) { }
 
-    fn fold_ty(&mut self, t: ty::t) -> ty::t {
+    fn fold_ty(&mut self, t: Ty) -> Ty {
         super_fold_ty(self, t)
     }
 
@@ -231,8 +231,8 @@ impl TypeFoldable for ty::TraitStore {
     }
 }
 
-impl TypeFoldable for ty::t {
-    fn fold_with<'tcx, F: TypeFolder<'tcx>>(&self, folder: &mut F) -> ty::t {
+impl TypeFoldable for Ty {
+    fn fold_with<'tcx, F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Ty {
         folder.fold_ty(*self)
     }
 }
@@ -487,8 +487,8 @@ impl TypeFoldable for traits::VtableParamData {
 // They should invoke `foo.fold_with()` to do recursive folding.
 
 pub fn super_fold_ty<'tcx, T: TypeFolder<'tcx>>(this: &mut T,
-                                                t: ty::t)
-                                                -> ty::t {
+                                                t: Ty)
+                                                -> Ty {
     let sty = ty::get(t).sty.fold_with(this);
     ty::mk_t(this.tcx(), sty)
 }
@@ -736,13 +736,13 @@ impl<T:HigherRankedFoldable> HigherRankedFoldable for Rc<T> {
 
 pub struct BottomUpFolder<'a, 'tcx: 'a> {
     pub tcx: &'a ty::ctxt<'tcx>,
-    pub fldop: |ty::t|: 'a -> ty::t,
+    pub fldop: |Ty|: 'a -> Ty,
 }
 
 impl<'a, 'tcx> TypeFolder<'tcx> for BottomUpFolder<'a, 'tcx> {
     fn tcx<'a>(&'a self) -> &'a ty::ctxt<'tcx> { self.tcx }
 
-    fn fold_ty(&mut self, ty: ty::t) -> ty::t {
+    fn fold_ty(&mut self, ty: Ty) -> Ty {
         let t1 = super_fold_ty(self, ty);
         (self.fldop)(t1)
     }
@@ -754,7 +754,7 @@ impl<'a, 'tcx> TypeFolder<'tcx> for BottomUpFolder<'a, 'tcx> {
 /// Folds over the substructure of a type, visiting its component
 /// types and all regions that occur *free* within it.
 ///
-/// That is, `ty::t` can contain function or method types that bind
+/// That is, `Ty` can contain function or method types that bind
 /// regions at the call site (`ReLateBound`), and occurrences of
 /// regions (aka "lifetimes") that are bound within a type are not
 /// visited by this folder; only regions that occur free will be

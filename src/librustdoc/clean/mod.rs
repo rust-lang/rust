@@ -1257,7 +1257,7 @@ impl Clean<Type> for ast::Ty {
     }
 }
 
-impl Clean<Type> for ty::t {
+impl Clean<Type> for Ty {
     fn clean(&self, cx: &DocContext) -> Type {
         match ty::get(*self).sty {
             ty::ty_bool => Primitive(Bool),
@@ -2255,7 +2255,7 @@ impl Clean<Item> for ast::Typedef {
 }
 
 fn lang_struct(cx: &DocContext, did: Option<ast::DefId>,
-               t: ty::t, name: &str,
+               t: Ty, name: &str,
                fallback: fn(Box<Type>) -> Type) -> Type {
     let did = match did {
         Some(did) => did,

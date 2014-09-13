@@ -22,7 +22,7 @@ use trans::common::{ExternMap,tydesc_info,BuilderRef_res};
 use trans::debuginfo;
 use trans::monomorphize::MonoId;
 use trans::type_::{Type, TypeNames};
-use middle::ty;
+use middle::ty::{mod, Ty};
 use session::config::NoDebugInfo;
 use session::Session;
 use util::ppaux::Repr;
@@ -70,7 +70,7 @@ pub struct SharedCrateContext<'tcx> {
     stats: Stats,
 
     available_monomorphizations: RefCell<FnvHashSet<String>>,
-    available_drop_glues: RefCell<FnvHashMap<ty::t, String>>,
+    available_drop_glues: RefCell<FnvHashMap<Ty, String>>,
 }
 
 /// The local portion of a `CrateContext`.  There is one `LocalCrateContext`
@@ -84,8 +84,8 @@ pub struct LocalCrateContext {
     tn: TypeNames,
     externs: RefCell<ExternMap>,
     item_vals: RefCell<NodeMap<ValueRef>>,
-    drop_glues: RefCell<FnvHashMap<ty::t, ValueRef>>,
-    tydescs: RefCell<FnvHashMap<ty::t, Rc<tydesc_info>>>,
+    drop_glues: RefCell<FnvHashMap<Ty, ValueRef>>,
+    tydescs: RefCell<FnvHashMap<Ty, Rc<tydesc_info>>>,
     /// Set when running emit_tydescs to enforce that no more tydescs are
     /// created.
     finished_tydescs: Cell<bool>,
@@ -98,7 +98,7 @@ pub struct LocalCrateContext {
     monomorphized: RefCell<FnvHashMap<MonoId, ValueRef>>,
     monomorphizing: RefCell<DefIdMap<uint>>,
     /// Cache generated vtables
-    vtables: RefCell<FnvHashMap<(ty::t,Rc<ty::TraitRef>), ValueRef>>,
+    vtables: RefCell<FnvHashMap<(Ty, Rc<ty::TraitRef>), ValueRef>>,
     /// Cache of constant strings,
     const_cstr_cache: RefCell<FnvHashMap<InternedString, ValueRef>>,
 
@@ -126,10 +126,10 @@ pub struct LocalCrateContext {
     /// Cache of closure wrappers for bare fn's.
     closure_bare_wrapper_cache: RefCell<FnvHashMap<ValueRef, ValueRef>>,
 
-    lltypes: RefCell<FnvHashMap<ty::t, Type>>,
-    llsizingtypes: RefCell<FnvHashMap<ty::t, Type>>,
-    adt_reprs: RefCell<FnvHashMap<ty::t, Rc<adt::Repr>>>,
-    type_hashcodes: RefCell<FnvHashMap<ty::t, String>>,
+    lltypes: RefCell<FnvHashMap<Ty, Type>>,
+    llsizingtypes: RefCell<FnvHashMap<Ty, Type>>,
+    adt_reprs: RefCell<FnvHashMap<Ty, Rc<adt::Repr>>>,
+    type_hashcodes: RefCell<FnvHashMap<Ty, String>>,
     all_llvm_symbols: RefCell<FnvHashSet<String>>,
     int_type: Type,
     opaque_vec_type: Type,
@@ -574,11 +574,11 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
         &self.shared.link_meta
     }
 
-    pub fn drop_glues<'a>(&'a self) -> &'a RefCell<FnvHashMap<ty::t, ValueRef>> {
+    pub fn drop_glues<'a>(&'a self) -> &'a RefCell<FnvHashMap<Ty, ValueRef>> {
         &self.local.drop_glues
     }
 
-    pub fn tydescs<'a>(&'a self) -> &'a RefCell<FnvHashMap<ty::t, Rc<tydesc_info>>> {
+    pub fn tydescs<'a>(&'a self) -> &'a RefCell<FnvHashMap<Ty, Rc<tydesc_info>>> {
         &self.local.tydescs
     }
 
@@ -602,7 +602,7 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
         &self.local.monomorphizing
     }
 
-    pub fn vtables<'a>(&'a self) -> &'a RefCell<FnvHashMap<(ty::t,Rc<ty::TraitRef>), ValueRef>> {
+    pub fn vtables<'a>(&'a self) -> &'a RefCell<FnvHashMap<(Ty, Rc<ty::TraitRef>), ValueRef>> {
         &self.local.vtables
     }
 
@@ -635,15 +635,15 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
         &self.local.closure_bare_wrapper_cache
     }
 
-    pub fn lltypes<'a>(&'a self) -> &'a RefCell<FnvHashMap<ty::t, Type>> {
+    pub fn lltypes<'a>(&'a self) -> &'a RefCell<FnvHashMap<Ty, Type>> {
         &self.local.lltypes
     }
 
-    pub fn llsizingtypes<'a>(&'a self) -> &'a RefCell<FnvHashMap<ty::t, Type>> {
+    pub fn llsizingtypes<'a>(&'a self) -> &'a RefCell<FnvHashMap<Ty, Type>> {
         &self.local.llsizingtypes
     }
 
-    pub fn adt_reprs<'a>(&'a self) -> &'a RefCell<FnvHashMap<ty::t, Rc<adt::Repr>>> {
+    pub fn adt_reprs<'a>(&'a self) -> &'a RefCell<FnvHashMap<Ty, Rc<adt::Repr>>> {
         &self.local.adt_reprs
     }
 
@@ -651,7 +651,7 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
         &self.shared.symbol_hasher
     }
 
-    pub fn type_hashcodes<'a>(&'a self) -> &'a RefCell<FnvHashMap<ty::t, String>> {
+    pub fn type_hashcodes<'a>(&'a self) -> &'a RefCell<FnvHashMap<Ty, String>> {
         &self.local.type_hashcodes
     }
 
@@ -667,7 +667,7 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
         &self.shared.available_monomorphizations
     }
 
-    pub fn available_drop_glues<'a>(&'a self) -> &'a RefCell<FnvHashMap<ty::t, String>> {
+    pub fn available_drop_glues<'a>(&'a self) -> &'a RefCell<FnvHashMap<Ty, String>> {
         &self.shared.available_drop_glues
     }
 
@@ -707,7 +707,7 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
         1<<31 /* FIXME #18069: select based on architecture */
     }
 
-    pub fn report_overbig_object(&self, obj: ty::t) -> ! {
+    pub fn report_overbig_object(&self, obj: Ty) -> ! {
         self.sess().fatal(
             format!("the type `{}` is too big for the current architecture",
                     obj.repr(self.tcx())).as_slice())

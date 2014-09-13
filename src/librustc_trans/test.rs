@@ -24,7 +24,7 @@ use middle::resolve_lifetime;
 use middle::stability;
 use middle::subst;
 use middle::subst::Subst;
-use middle::ty;
+use middle::ty::{mod, Ty};
 use middle::typeck::infer::combine::Combine;
 use middle::typeck::infer;
 use middle::typeck::infer::lub::Lub;
@@ -215,7 +215,7 @@ impl<'a, 'tcx> Env<'a, 'tcx> {
         }
     }
 
-    pub fn make_subtype(&self, a: ty::t, b: ty::t) -> bool {
+    pub fn make_subtype(&self, a: Ty, b: Ty) -> bool {
         match infer::mk_subty(self.infcx, true, infer::Misc(DUMMY_SP), a, b) {
             Ok(_) => true,
             Err(ref e) => panic!("Encountered error: {}",
@@ -223,14 +223,14 @@ impl<'a, 'tcx> Env<'a, 'tcx> {
         }
     }
 
-    pub fn is_subtype(&self, a: ty::t, b: ty::t) -> bool {
+    pub fn is_subtype(&self, a: Ty, b: Ty) -> bool {
         match infer::can_mk_subty(self.infcx, a, b) {
             Ok(_) => true,
             Err(_) => false
         }
     }
 
-    pub fn assert_subtype(&self, a: ty::t, b: ty::t) {
+    pub fn assert_subtype(&self, a: Ty, b: Ty) {
         if !self.is_subtype(a, b) {
             panic!("{} is not a subtype of {}, but it should be",
                   self.ty_to_string(a),
@@ -238,37 +238,36 @@ impl<'a, 'tcx> Env<'a, 'tcx> {
         }
     }
 
-    pub fn assert_eq(&self, a: ty::t, b: ty::t) {
+    pub fn assert_eq(&self, a: Ty, b: Ty) {
         self.assert_subtype(a, b);
         self.assert_subtype(b, a);
     }
 
-    pub fn ty_to_string(&self, a: ty::t) -> String {
+    pub fn ty_to_string(&self, a: Ty) -> String {
         ty_to_string(self.infcx.tcx, a)
     }
 
     pub fn t_fn(&self,
-                input_tys: &[ty::t],
-                output_ty: ty::t)
-                -> ty::t
+                input_tys: &[Ty],
+                output_ty: Ty)
+                -> Ty
     {
         ty::mk_ctor_fn(self.infcx.tcx, input_tys, output_ty)
     }
 
-    pub fn t_nil(&self) -> ty::t {
+    pub fn t_nil(&self) -> Ty {
         ty::mk_nil(self.infcx.tcx)
     }
 
-    pub fn t_pair(&self, ty1: ty::t, ty2: ty::t) -> ty::t
-    {
+    pub fn t_pair(&self, ty1: Ty, ty2: Ty) -> Ty {
         ty::mk_tup(self.infcx.tcx, vec![ty1, ty2])
     }
 
     pub fn t_closure(&self,
-                     input_tys: &[ty::t],
-                     output_ty: ty::t,
+                     input_tys: &[Ty],
+                     output_ty: Ty,
                      region_bound: ty::Region)
-                     -> ty::t
+                     -> Ty
     {
         ty::mk_closure(self.infcx.tcx, ty::ClosureTy {
             fn_style: ast::NormalFn,
@@ -284,7 +283,7 @@ impl<'a, 'tcx> Env<'a, 'tcx> {
         })
     }
 
-    pub fn t_param(&self, space: subst::ParamSpace, index: uint) -> ty::t {
+    pub fn t_param(&self, space: subst::ParamSpace, index: uint) -> Ty {
         ty::mk_param(self.infcx.tcx, space, index, ast_util::local_def(ast::DUMMY_NODE_ID))
     }
 
@@ -302,23 +301,23 @@ impl<'a, 'tcx> Env<'a, 'tcx> {
         ty::ReLateBound(debruijn, ty::BrAnon(id))
     }
 
-    pub fn t_rptr(&self, r: ty::Region) -> ty::t {
+    pub fn t_rptr(&self, r: ty::Region) -> Ty {
         ty::mk_imm_rptr(self.infcx.tcx, r, ty::mk_int())
     }
 
-    pub fn t_rptr_late_bound(&self, id: uint) -> ty::t {
+    pub fn t_rptr_late_bound(&self, id: uint) -> Ty {
         ty::mk_imm_rptr(self.infcx.tcx,
                         self.re_late_bound_with_debruijn(id, ty::DebruijnIndex::new(1)),
                         ty::mk_int())
     }
 
-    pub fn t_rptr_late_bound_with_debruijn(&self, id: uint, debruijn: ty::DebruijnIndex) -> ty::t {
+    pub fn t_rptr_late_bound_with_debruijn(&self, id: uint, debruijn: ty::DebruijnIndex) -> Ty {
         ty::mk_imm_rptr(self.infcx.tcx,
                         self.re_late_bound_with_debruijn(id, debruijn),
                         ty::mk_int())
     }
 
-    pub fn t_rptr_scope(&self, id: ast::NodeId) -> ty::t {
+    pub fn t_rptr_scope(&self, id: ast::NodeId) -> Ty {
         ty::mk_imm_rptr(self.infcx.tcx, ty::ReScope(id), ty::mk_int())
     }
 
@@ -327,11 +326,11 @@ impl<'a, 'tcx> Env<'a, 'tcx> {
                                    bound_region: ty::BrAnon(id)})
     }
 
-    pub fn t_rptr_free(&self, nid: ast::NodeId, id: uint) -> ty::t {
+    pub fn t_rptr_free(&self, nid: ast::NodeId, id: uint) -> Ty {
         ty::mk_imm_rptr(self.infcx.tcx, self.re_free(nid, id), ty::mk_int())
     }
 
-    pub fn t_rptr_static(&self) -> ty::t {
+    pub fn t_rptr_static(&self) -> Ty {
         ty::mk_imm_rptr(self.infcx.tcx, ty::ReStatic, ty::mk_int())
     }
 
@@ -349,7 +348,7 @@ impl<'a, 'tcx> Env<'a, 'tcx> {
         Glb(self.infcx.combine_fields(true, trace))
     }
 
-    pub fn make_lub_ty(&self, t1: ty::t, t2: ty::t) -> ty::t {
+    pub fn make_lub_ty(&self, t1: Ty, t2: Ty) -> Ty {
         match self.lub().tys(t1, t2) {
             Ok(t) => t,
             Err(ref e) => panic!("unexpected error computing LUB: {}",
@@ -358,7 +357,7 @@ impl<'a, 'tcx> Env<'a, 'tcx> {
     }
 
     /// Checks that `LUB(t1,t2) == t_lub`
-    pub fn check_lub(&self, t1: ty::t, t2: ty::t, t_lub: ty::t) {
+    pub fn check_lub(&self, t1: Ty, t2: Ty, t_lub: Ty) {
         match self.lub().tys(t1, t2) {
             Ok(t) => {
                 self.assert_eq(t, t_lub);
@@ -371,7 +370,7 @@ impl<'a, 'tcx> Env<'a, 'tcx> {
     }
 
     /// Checks that `GLB(t1,t2) == t_glb`
-    pub fn check_glb(&self, t1: ty::t, t2: ty::t, t_glb: ty::t) {
+    pub fn check_glb(&self, t1: Ty, t2: Ty, t_glb: Ty) {
         debug!("check_glb(t1={}, t2={}, t_glb={})",
                self.ty_to_string(t1),
                self.ty_to_string(t2),

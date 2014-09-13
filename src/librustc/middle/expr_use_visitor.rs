@@ -24,7 +24,7 @@ use middle::mem_categorization as mc;
 use middle::def;
 use middle::mem_categorization::Typer;
 use middle::pat_util;
-use middle::ty;
+use middle::ty::{mod, Ty};
 use middle::typeck::{MethodCall, MethodObject, MethodTraitObject};
 use middle::typeck::{MethodOrigin, MethodParam, MethodTypeParam};
 use middle::typeck::{MethodStatic, MethodStaticUnboxedClosure};
@@ -999,7 +999,7 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,TYPER> {
     }
 }
 
-fn copy_or_move(tcx: &ty::ctxt, ty: ty::t, move_reason: MoveReason) -> ConsumeMode {
+fn copy_or_move(tcx: &ty::ctxt, ty: Ty, move_reason: MoveReason) -> ConsumeMode {
     if ty::type_moves_by_default(tcx, ty) { Move(move_reason) } else { Copy }
 }
 

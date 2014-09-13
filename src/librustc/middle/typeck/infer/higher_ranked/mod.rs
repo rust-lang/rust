@@ -13,8 +13,7 @@
  * the end of the file for details.
  */
 
-use middle::ty;
-use middle::ty::replace_late_bound_regions;
+use middle::ty::{mod, Ty, replace_late_bound_regions};
 use middle::typeck::infer::{mod, combine, cres, InferCtxt};
 use middle::typeck::infer::combine::Combine;
 use middle::typeck::infer::region_inference::{RegionMark};
@@ -375,9 +374,9 @@ impl HigherRankedCombineable for ty::FnSig {
 
 
         fn argvecs<'tcx, C: Combine<'tcx>>(combiner: &C,
-                                           a_args: &[ty::t],
-                                           b_args: &[ty::t])
-                                           -> cres<Vec<ty::t>>
+                                           a_args: &[Ty],
+                                           b_args: &[Ty])
+                                           -> cres<Vec<Ty>>
         {
             if a_args.len() == b_args.len() {
                 a_args.iter().zip(b_args.iter())

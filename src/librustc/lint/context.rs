@@ -27,7 +27,7 @@ use self::TargetLint::*;
 
 use middle::privacy::ExportedItems;
 use middle::subst;
-use middle::ty;
+use middle::ty::{mod, Ty};
 use middle::typeck::astconv::AstConv;
 use middle::typeck::infer;
 use session::{early_error, Session};
@@ -554,11 +554,11 @@ impl<'a, 'tcx> AstConv<'tcx> for Context<'a, 'tcx>{
         ty::lookup_trait_def(self.tcx, id)
     }
 
-    fn ty_infer(&self, _span: Span) -> ty::t {
+    fn ty_infer(&self, _span: Span) -> Ty {
         infer::new_infer_ctxt(self.tcx).next_ty_var()
     }
 
-    fn associated_types_of_trait_are_valid(&self, _: ty::t, _: ast::DefId)
+    fn associated_types_of_trait_are_valid(&self, _: Ty, _: ast::DefId)
                                            -> bool {
         // FIXME(pcwalton): This is wrong.
         true
@@ -566,10 +566,10 @@ impl<'a, 'tcx> AstConv<'tcx> for Context<'a, 'tcx>{
 
     fn associated_type_binding(&self,
                                _: Span,
-                               _: Option<ty::t>,
+                               _: Option<Ty>,
                                trait_id: ast::DefId,
                                associated_type_id: ast::DefId)
-                               -> ty::t {
+                               -> Ty {
         // FIXME(pcwalton): This is wrong.
         let trait_def = self.get_trait_def(trait_id);
         let index = ty::associated_type_parameter_index(self.tcx,

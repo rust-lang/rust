@@ -22,7 +22,7 @@ use metadata::cstore;
 use metadata::decoder;
 use metadata::tyencode;
 use middle::ty::{lookup_item_type};
-use middle::ty;
+use middle::ty::{mod, Ty};
 use middle::stability;
 use middle;
 use util::nodemap::{FnvHashMap, NodeMap, NodeSet};
@@ -172,7 +172,7 @@ pub fn write_closure_type(ecx: &EncodeContext,
 
 pub fn write_type(ecx: &EncodeContext,
                   rbml_w: &mut Encoder,
-                  typ: ty::t) {
+                  typ: Ty) {
     let ty_str_ctxt = &tyencode::ctxt {
         diag: ecx.diag,
         ds: def_to_string,
@@ -223,7 +223,7 @@ fn encode_bounds(rbml_w: &mut Encoder,
 
 fn encode_type(ecx: &EncodeContext,
                rbml_w: &mut Encoder,
-               typ: ty::t) {
+               typ: Ty) {
     rbml_w.start_tag(tag_items_data_item_type);
     write_type(ecx, rbml_w, typ);
     rbml_w.end_tag();
@@ -2167,7 +2167,7 @@ fn encode_metadata_inner(wr: &mut SeekableMemWriter,
 }
 
 // Get the encoded string for a type
-pub fn encoded_ty(tcx: &ty::ctxt, t: ty::t) -> String {
+pub fn encoded_ty(tcx: &ty::ctxt, t: Ty) -> String {
     let mut wr = SeekableMemWriter::new();
     tyencode::enc_ty(&mut wr, &tyencode::ctxt {
         diag: tcx.sess.diagnostic(),

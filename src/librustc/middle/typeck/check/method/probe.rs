@@ -16,7 +16,7 @@ use middle::fast_reject;
 use middle::subst;
 use middle::subst::Subst;
 use middle::traits;
-use middle::ty;
+use middle::ty::{mod, Ty};
 use middle::ty_fold::HigherRankedFoldable;
 use middle::typeck::check;
 use middle::typeck::check::{FnCtxt, NoPreference};
@@ -46,12 +46,12 @@ struct ProbeContext<'a, 'tcx:'a> {
 }
 
 struct CandidateStep {
-    self_ty: ty::t,
+    self_ty: Ty,
     adjustment: PickAdjustment,
 }
 
 struct Candidate {
-    xform_self_ty: ty::t,
+    xform_self_ty: Ty,
     method_ty: Rc<ty::Method>,
     kind: CandidateKind,
 }
@@ -108,7 +108,7 @@ pub enum PickAdjustment {
 pub fn probe(fcx: &FnCtxt,
              span: Span,
              method_name: ast::Name,
-             self_ty: ty::t,
+             self_ty: Ty,
              call_expr_id: ast::NodeId)
              -> PickResult
 {
@@ -157,7 +157,7 @@ pub fn probe(fcx: &FnCtxt,
     })
 }
 
-fn create_steps(fcx: &FnCtxt, span: Span, self_ty: ty::t) -> Vec<CandidateStep> {
+fn create_steps(fcx: &FnCtxt, span: Span, self_ty: Ty) -> Vec<CandidateStep> {
     let mut steps = Vec::new();
 
     let (fully_dereferenced_ty, dereferences, _) =
@@ -182,7 +182,7 @@ fn create_steps(fcx: &FnCtxt, span: Span, self_ty: ty::t) -> Vec<CandidateStep> 
 
     return steps;
 
-    fn consider_reborrow(t: ty::t, d: uint) -> PickAdjustment {
+    fn consider_reborrow(t: Ty, d: uint) -> PickAdjustment {
         // Insert a `&*` or `&mut *` if this is a reference type:
         match ty::get(t).sty {
             ty::ty_rptr(_, ref mt) => AutoRef(mt.mutbl, box AutoDeref(d+1)),
@@ -230,7 +230,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
         }
     }
 
-    fn assemble_probe(&mut self, self_ty: ty::t) {
+    fn assemble_probe(&mut self, self_ty: Ty) {
         debug!("assemble_probe: self_ty={}",
                self_ty.repr(self.tcx()));
 
@@ -293,7 +293,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
     }
 
     fn assemble_inherent_candidates_from_object(&mut self,
-                                                self_ty: ty::t,
+                                                self_ty: Ty,
                                                 principal: &ty::TraitRef,
                                                 _bounds: ty::ExistentialBounds) {
         debug!("assemble_inherent_candidates_from_object(self_ty={})",
@@ -353,7 +353,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
     }
 
     fn assemble_inherent_candidates_from_param(&mut self,
-                                           _rcvr_ty: ty::t,
+                                           _rcvr_ty: Ty,
                                            param_ty: ty::ParamTy) {
         // FIXME -- Do we want to commit to this behavior for param bounds?
 
@@ -671,7 +671,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
 
     fn search_mutabilities(&mut self,
                            mk_adjustment: |ast::Mutability| -> PickAdjustment,
-                           mk_autoref_ty: |ast::Mutability, ty::Region| -> ty::t)
+                           mk_autoref_ty: |ast::Mutability, ty::Region| -> Ty)
                            -> Option<PickResult>
     {
         // In general, during probing we erase regions. See
@@ -700,7 +700,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
         }
     }
 
-    fn pick_method(&mut self, self_ty: ty::t) -> Option<PickResult> {
+    fn pick_method(&mut self, self_ty: Ty) -> Option<PickResult> {
         debug!("pick_method(self_ty={})", self.infcx().ty_to_string(self_ty));
 
         debug!("searching inherent candidates");
@@ -715,7 +715,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
         self.consider_candidates(self_ty, self.extension_candidates[])
     }
 
-    fn consider_candidates(&self, self_ty: ty::t, probes: &[Candidate]) -> Option<PickResult> {
+    fn consider_candidates(&self, self_ty: Ty, probes: &[Candidate]) -> Option<PickResult> {
         let mut applicable_candidates: Vec<_> =
             probes.iter()
                   .filter(|&probe| self.consider_probe(self_ty, probe))
@@ -741,7 +741,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
         })
     }
 
-    fn consider_probe(&self, self_ty: ty::t, probe: &Candidate) -> bool {
+    fn consider_probe(&self, self_ty: Ty, probe: &Candidate) -> bool {
         debug!("consider_probe: self_ty={} probe={}",
                self_ty.repr(self.tcx()),
                probe.repr(self.tcx()));
@@ -844,7 +844,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
     ///////////////////////////////////////////////////////////////////////////
     // MISCELLANY
 
-    fn make_sub_ty(&self, sub: ty::t, sup: ty::t) -> infer::ures {
+    fn make_sub_ty(&self, sub: Ty, sup: Ty) -> infer::ures {
         self.infcx().sub_types(false, infer::Misc(DUMMY_SP), sub, sup)
     }
 
@@ -874,7 +874,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
         self.static_candidates.push(source);
     }
 
-    fn xform_self_ty(&self, method: &Rc<ty::Method>, substs: &subst::Substs) -> ty::t {
+    fn xform_self_ty(&self, method: &Rc<ty::Method>, substs: &subst::Substs) -> Ty {
         debug!("xform_self_ty(self_ty={}, substs={})",
                method.fty.sig.inputs[0].repr(self.tcx()),
                substs.repr(self.tcx()));

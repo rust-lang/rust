@@ -29,7 +29,7 @@ use trans::machine;
 use trans::type_::Type;
 use trans::type_of;
 use trans::debuginfo;
-use middle::ty;
+use middle::ty::{mod, Ty};
 use util::ppaux::{Repr, ty_to_string};
 
 use std::c_str::ToCStr;
@@ -133,14 +133,14 @@ fn const_deref_ptr(cx: &CrateContext, v: ValueRef) -> ValueRef {
     }
 }
 
-fn const_deref_newtype(cx: &CrateContext, v: ValueRef, t: ty::t)
+fn const_deref_newtype(cx: &CrateContext, v: ValueRef, t: Ty)
     -> ValueRef {
     let repr = adt::represent_type(cx, t);
     adt::const_get_field(cx, &*repr, v, 0, 0)
 }
 
-fn const_deref(cx: &CrateContext, v: ValueRef, t: ty::t, explicit: bool)
-    -> (ValueRef, ty::t) {
+fn const_deref(cx: &CrateContext, v: ValueRef, t: Ty, explicit: bool)
+    -> (ValueRef, Ty) {
     match ty::deref(t, explicit) {
         Some(ref mt) => {
             match ty::get(t).sty {
@@ -187,7 +187,7 @@ pub fn get_const_val(cx: &CrateContext,
     cx.const_values().borrow()[def_id.node].clone()
 }
 
-pub fn const_expr(cx: &CrateContext, e: &ast::Expr) -> (ValueRef, ty::t) {
+pub fn const_expr(cx: &CrateContext, e: &ast::Expr) -> (ValueRef, Ty) {
     let llconst = const_expr_unadjusted(cx, e);
     let mut llconst = llconst;
     let ety = ty::expr_ty(cx.tcx(), e);
@@ -725,7 +725,7 @@ pub fn trans_static(ccx: &CrateContext, m: ast::Mutability, id: ast::NodeId) {
     }
 }
 
-fn get_static_val(ccx: &CrateContext, did: ast::DefId, ty: ty::t) -> ValueRef {
+fn get_static_val(ccx: &CrateContext, did: ast::DefId, ty: Ty) -> ValueRef {
     if ast_util::is_local(did) { return base::get_item_val(ccx, did.node) }
     base::trans_external_path(ccx, did, ty)
 }

@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use middle::ty;
+use middle::ty::{mod, Ty};
 use syntax::ast;
 
 use self::SimplifiedType::*;
@@ -34,7 +34,7 @@ pub enum SimplifiedType {
 }
 
 pub fn simplify_type(tcx: &ty::ctxt,
-                     ty: ty::t,
+                     ty: Ty,
                      can_simplify_params: bool)
                      -> Option<SimplifiedType>
 {
