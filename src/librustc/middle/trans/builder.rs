@@ -31,8 +31,8 @@ pub struct Builder<'a, 'tcx: 'a> {
 // This is a really awful way to get a zero-length c-string, but better (and a
 // lot more efficient) than doing str::as_c_str("", ...) every time.
 pub fn noname() -> *const c_char {
-    static cnull: c_char = 0;
-    &cnull as *const c_char
+    static CNULL: c_char = 0;
+    &CNULL as *const c_char
 }
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {

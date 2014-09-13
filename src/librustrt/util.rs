@@ -28,7 +28,9 @@ pub static ENFORCE_SANITY: bool = true || !cfg!(rtopt) || cfg!(rtdebug) ||
 
 pub struct Stdio(libc::c_int);
 
+#[allow(non_uppercase_statics)]
 pub static Stdout: Stdio = Stdio(libc::STDOUT_FILENO);
+#[allow(non_uppercase_statics)]
 pub static Stderr: Stdio = Stdio(libc::STDERR_FILENO);
 
 impl fmt::FormatWriter for Stdio {

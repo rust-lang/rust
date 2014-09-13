@@ -11,6 +11,7 @@
 //! Bindings for executing child processes
 
 #![allow(experimental)]
+#![allow(non_uppercase_statics)]
 
 use prelude::*;
 

@@ -218,13 +218,20 @@ use syntax::parse::token::special_idents;
 
 static DW_LANG_RUST: c_uint = 0x9000;
 
+#[allow(non_uppercase_statics)]
 static DW_TAG_auto_variable: c_uint = 0x100;
+#[allow(non_uppercase_statics)]
 static DW_TAG_arg_variable: c_uint = 0x101;
 
+#[allow(non_uppercase_statics)]
 static DW_ATE_boolean: c_uint = 0x02;
+#[allow(non_uppercase_statics)]
 static DW_ATE_float: c_uint = 0x04;
+#[allow(non_uppercase_statics)]
 static DW_ATE_signed: c_uint = 0x05;
+#[allow(non_uppercase_statics)]
 static DW_ATE_unsigned: c_uint = 0x07;
+#[allow(non_uppercase_statics)]
 static DW_ATE_unsigned_char: c_uint = 0x08;
 
 static UNKNOWN_LINE_NUMBER: c_uint = 0;

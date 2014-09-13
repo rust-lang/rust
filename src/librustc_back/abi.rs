@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![allow(non_uppercase_statics)]
+
 pub static box_field_refcnt: uint = 0u;
 pub static box_field_drop_glue: uint = 1u;
 pub static box_field_body: uint = 4u;
