@@ -115,8 +115,7 @@ use std::mem::transmute;
 use std::rc::Rc;
 use std::str;
 use std::uint;
-use syntax::ast;
-use syntax::ast::*;
+use syntax::ast::{mod, NodeId, Expr};
 use syntax::codemap::{BytePos, original_sp, Span};
 use syntax::parse::token::special_idents;
 use syntax::parse::token;
@@ -132,7 +131,7 @@ enum LoopKind<'a> {
     /// A `while` loop, with the given expression as condition.
     WhileLoop(&'a Expr),
     /// A `for` loop, with the given pattern to bind.
-    ForLoop(&'a Pat),
+    ForLoop(&'a ast::Pat),
 }
 
 #[deriving(PartialEq)]
@@ -179,13 +178,13 @@ fn live_node_kind_to_string(lnk: LiveNodeKind, cx: &ty::ctxt) -> String {
 }
 
 impl<'a, 'tcx, 'v> Visitor<'v> for IrMaps<'a, 'tcx> {
-    fn visit_fn(&mut self, fk: FnKind<'v>, fd: &'v FnDecl,
-                b: &'v Block, s: Span, n: NodeId) {
+    fn visit_fn(&mut self, fk: FnKind<'v>, fd: &'v ast::FnDecl,
+                b: &'v ast::Block, s: Span, n: NodeId) {
         visit_fn(self, fk, fd, b, s, n);
     }
     fn visit_local(&mut self, l: &ast::Local) { visit_local(self, l); }
     fn visit_expr(&mut self, ex: &Expr) { visit_expr(self, ex); }
-    fn visit_arm(&mut self, a: &Arm) { visit_arm(self, a); }
+    fn visit_arm(&mut self, a: &ast::Arm) { visit_arm(self, a); }
 }
 
 pub fn check_crate(tcx: &ty::ctxt) {
@@ -242,11 +241,11 @@ struct CaptureInfo {
 
 struct LocalInfo {
     id: NodeId,
-    ident: Ident
+    ident: ast::Ident
 }
 
 enum VarKind {
-    Arg(NodeId, Ident),
+    Arg(NodeId, ast::Ident),
     Local(LocalInfo),
     ImplicitRet
 }
@@ -343,7 +342,8 @@ impl<'a, 'tcx> IrMaps<'a, 'tcx> {
 }
 
 impl<'a, 'tcx, 'v> Visitor<'v> for Liveness<'a, 'tcx> {
-    fn visit_fn(&mut self, fk: FnKind<'v>, fd: &'v FnDecl, b: &'v Block, s: Span, n: NodeId) {
+    fn visit_fn(&mut self, fk: FnKind<'v>, fd: &'v ast::FnDecl,
+                b: &'v ast::Block, s: Span, n: NodeId) {
         check_fn(self, fk, fd, b, s, n);
     }
     fn visit_local(&mut self, l: &ast::Local) {
@@ -352,15 +352,15 @@ impl<'a, 'tcx, 'v> Visitor<'v> for Liveness<'a, 'tcx> {
     fn visit_expr(&mut self, ex: &Expr) {
         check_expr(self, ex);
     }
-    fn visit_arm(&mut self, a: &Arm) {
+    fn visit_arm(&mut self, a: &ast::Arm) {
         check_arm(self, a);
     }
 }
 
 fn visit_fn(ir: &mut IrMaps,
             fk: FnKind,
-            decl: &FnDecl,
-            body: &Block,
+            decl: &ast::FnDecl,
+            body: &ast::Block,
             sp: Span,
             id: NodeId) {
     debug!("visit_fn: id={}", id);
@@ -421,7 +421,7 @@ fn visit_local(ir: &mut IrMaps, local: &ast::Local) {
     visit::walk_local(ir, local);
 }
 
-fn visit_arm(ir: &mut IrMaps, arm: &Arm) {
+fn visit_arm(ir: &mut IrMaps, arm: &ast::Arm) {
     for pat in arm.pats.iter() {
         pat_util::pat_bindings(&ir.tcx.def_map, &**pat, |bm, p_id, sp, path1| {
             debug!("adding local variable {} from match with bm {:?}",
@@ -440,7 +440,7 @@ fn visit_arm(ir: &mut IrMaps, arm: &Arm) {
 fn visit_expr(ir: &mut IrMaps, expr: &Expr) {
     match expr.node {
       // live nodes required for uses or definitions of variables:
-      ExprPath(_) => {
+      ast::ExprPath(_) => {
         let def = ir.tcx.def_map.borrow().get_copy(&expr.id);
         debug!("expr {}: path that leads to {:?}", expr.id, def);
         match def {
@@ -449,7 +449,7 @@ fn visit_expr(ir: &mut IrMaps, expr: &Expr) {
         }
         visit::walk_expr(ir, expr);
       }
-      ExprFnBlock(..) | ExprProc(..) | ExprUnboxedFn(..) => {
+      ast::ExprFnBlock(..) | ast::ExprProc(..) | ast::ExprUnboxedFn(..) => {
         // Interesting control flow (for loops can contain labeled
         // breaks or continues)
         ir.add_live_node_for_node(expr.id, ExprNode(expr.span));
@@ -477,11 +477,11 @@ fn visit_expr(ir: &mut IrMaps, expr: &Expr) {
       }
 
       // live nodes required for interesting control flow:
-      ExprIf(..) | ExprMatch(..) | ExprWhile(..) | ExprLoop(..) => {
+      ast::ExprIf(..) | ast::ExprMatch(..) | ast::ExprWhile(..) | ast::ExprLoop(..) => {
         ir.add_live_node_for_node(expr.id, ExprNode(expr.span));
         visit::walk_expr(ir, expr);
       }
-      ExprForLoop(ref pat, _, _, _) => {
+      ast::ExprForLoop(ref pat, _, _, _) => {
         pat_util::pat_bindings(&ir.tcx.def_map, &**pat, |bm, p_id, sp, path1| {
             debug!("adding local variable {} from for loop with bm {:?}",
                    p_id, bm);
@@ -495,20 +495,21 @@ fn visit_expr(ir: &mut IrMaps, expr: &Expr) {
         ir.add_live_node_for_node(expr.id, ExprNode(expr.span));
         visit::walk_expr(ir, expr);
       }
-      ExprBinary(op, _, _) if ast_util::lazy_binop(op) => {
+      ast::ExprBinary(op, _, _) if ast_util::lazy_binop(op) => {
         ir.add_live_node_for_node(expr.id, ExprNode(expr.span));
         visit::walk_expr(ir, expr);
       }
 
       // otherwise, live nodes are not required:
-      ExprIndex(..) | ExprField(..) | ExprTupField(..) | ExprVec(..) |
-      ExprCall(..) | ExprMethodCall(..) | ExprTup(..) | ExprSlice(..) |
-      ExprBinary(..) | ExprAddrOf(..) |
-      ExprCast(..) | ExprUnary(..) | ExprBreak(_) |
-      ExprAgain(_) | ExprLit(_) | ExprRet(..) | ExprBlock(..) |
-      ExprAssign(..) | ExprAssignOp(..) | ExprMac(..) |
-      ExprStruct(..) | ExprRepeat(..) | ExprParen(..) |
-      ExprInlineAsm(..) | ExprBox(..) => {
+      ast::ExprIndex(..) | ast::ExprField(..) | ast::ExprTupField(..) |
+      ast::ExprVec(..) | ast::ExprCall(..) | ast::ExprMethodCall(..) |
+      ast::ExprTup(..) | ast::ExprBinary(..) | ast::ExprAddrOf(..) |
+      ast::ExprCast(..) | ast::ExprUnary(..) | ast::ExprBreak(_) |
+      ast::ExprAgain(_) | ast::ExprLit(_) | ast::ExprRet(..) |
+      ast::ExprBlock(..) | ast::ExprAssign(..) | ast::ExprAssignOp(..) |
+      ast::ExprMac(..) | ast::ExprStruct(..) | ast::ExprRepeat(..) |
+      ast::ExprParen(..) | ast::ExprInlineAsm(..) | ast::ExprBox(..) |
+      ast::ExprSlice(..) => {
           visit::walk_expr(ir, expr);
       }
     }
@@ -596,7 +597,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
     }
 
     fn pat_bindings(&mut self,
-                    pat: &Pat,
+                    pat: &ast::Pat,
                     f: |&mut Liveness<'a, 'tcx>, LiveNode, Variable, Span, NodeId|) {
         pat_util::pat_bindings(&self.ir.tcx.def_map, pat, |_bm, p_id, sp, _n| {
             let ln = self.live_node(p_id, sp);
@@ -606,7 +607,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
     }
 
     fn arm_pats_bindings(&mut self,
-                         pat: Option<&Pat>,
+                         pat: Option<&ast::Pat>,
                          f: |&mut Liveness<'a, 'tcx>, LiveNode, Variable, Span, NodeId|) {
         match pat {
             Some(pat) => {
@@ -616,12 +617,12 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         }
     }
 
-    fn define_bindings_in_pat(&mut self, pat: &Pat, succ: LiveNode)
+    fn define_bindings_in_pat(&mut self, pat: &ast::Pat, succ: LiveNode)
                               -> LiveNode {
         self.define_bindings_in_arm_pats(Some(pat), succ)
     }
 
-    fn define_bindings_in_arm_pats(&mut self, pat: Option<&Pat>, succ: LiveNode)
+    fn define_bindings_in_arm_pats(&mut self, pat: Option<&ast::Pat>, succ: LiveNode)
                                    -> LiveNode {
         let mut succ = succ;
         self.arm_pats_bindings(pat, |this, ln, var, _sp, _id| {
@@ -696,7 +697,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
     }
 
     fn find_loop_scope(&self,
-                       opt_label: Option<Ident>,
+                       opt_label: Option<ast::Ident>,
                        id: NodeId,
                        sp: Span)
                        -> NodeId {
@@ -831,7 +832,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 
     // _______________________________________________________________________
 
-    fn compute(&mut self, decl: &FnDecl, body: &Block) -> LiveNode {
+    fn compute(&mut self, decl: &ast::FnDecl, body: &ast::Block) -> LiveNode {
         // if there is a `break` or `again` at the top level, then it's
         // effectively a return---this only occurs in `for` loops,
         // where the body is really a closure.
@@ -856,7 +857,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         entry_ln
     }
 
-    fn propagate_through_fn_block(&mut self, _: &FnDecl, blk: &Block)
+    fn propagate_through_fn_block(&mut self, _: &ast::FnDecl, blk: &ast::Block)
                                   -> LiveNode {
         // the fallthrough exit is only for those cases where we do not
         // explicitly return:
@@ -869,7 +870,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         self.propagate_through_block(blk, s.fallthrough_ln)
     }
 
-    fn propagate_through_block(&mut self, blk: &Block, succ: LiveNode)
+    fn propagate_through_block(&mut self, blk: &ast::Block, succ: LiveNode)
                                -> LiveNode {
         let succ = self.propagate_through_opt_expr(blk.expr.as_ref().map(|e| &**e), succ);
         blk.stmts.iter().rev().fold(succ, |succ, stmt| {
@@ -877,30 +878,30 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         })
     }
 
-    fn propagate_through_stmt(&mut self, stmt: &Stmt, succ: LiveNode)
+    fn propagate_through_stmt(&mut self, stmt: &ast::Stmt, succ: LiveNode)
                               -> LiveNode {
         match stmt.node {
-            StmtDecl(ref decl, _) => {
+            ast::StmtDecl(ref decl, _) => {
                 self.propagate_through_decl(&**decl, succ)
             }
 
-            StmtExpr(ref expr, _) | StmtSemi(ref expr, _) => {
+            ast::StmtExpr(ref expr, _) | ast::StmtSemi(ref expr, _) => {
                 self.propagate_through_expr(&**expr, succ)
             }
 
-            StmtMac(..) => {
+            ast::StmtMac(..) => {
                 self.ir.tcx.sess.span_bug(stmt.span, "unexpanded macro");
             }
         }
     }
 
-    fn propagate_through_decl(&mut self, decl: &Decl, succ: LiveNode)
+    fn propagate_through_decl(&mut self, decl: &ast::Decl, succ: LiveNode)
                               -> LiveNode {
         match decl.node {
-            DeclLocal(ref local) => {
+            ast::DeclLocal(ref local) => {
                 self.propagate_through_local(&**local, succ)
             }
-            DeclItem(_) => succ,
+            ast::DeclItem(_) => succ,
         }
     }
 
@@ -947,21 +948,21 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         match expr.node {
           // Interesting cases with control flow or which gen/kill
 
-          ExprPath(_) => {
+          ast::ExprPath(_) => {
               self.access_path(expr, succ, ACC_READ | ACC_USE)
           }
 
-          ExprField(ref e, _, _) => {
+          ast::ExprField(ref e, _, _) => {
               self.propagate_through_expr(&**e, succ)
           }
 
-          ExprTupField(ref e, _, _) => {
+          ast::ExprTupField(ref e, _, _) => {
               self.propagate_through_expr(&**e, succ)
           }
 
-          ExprFnBlock(_, _, ref blk) |
-          ExprProc(_, ref blk) |
-          ExprUnboxedFn(_, _, _, ref blk) => {
+          ast::ExprFnBlock(_, _, ref blk) |
+          ast::ExprProc(_, ref blk) |
+          ast::ExprUnboxedFn(_, _, _, ref blk) => {
               debug!("{} is an ExprFnBlock, ExprProc, or ExprUnboxedFn",
                      expr_to_string(expr));
 
@@ -989,7 +990,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
               })
           }
 
-          ExprIf(ref cond, ref then, ref els) => {
+          ast::ExprIf(ref cond, ref then, ref els) => {
             //
             //     (cond)
             //       |
@@ -1011,22 +1012,22 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             self.propagate_through_expr(&**cond, ln)
           }
 
-          ExprWhile(ref cond, ref blk, _) => {
+          ast::ExprWhile(ref cond, ref blk, _) => {
             self.propagate_through_loop(expr, WhileLoop(&**cond), &**blk, succ)
           }
 
-          ExprForLoop(ref pat, ref head, ref blk, _) => {
+          ast::ExprForLoop(ref pat, ref head, ref blk, _) => {
             let ln = self.propagate_through_loop(expr, ForLoop(&**pat), &**blk, succ);
             self.propagate_through_expr(&**head, ln)
           }
 
           // Note that labels have been resolved, so we don't need to look
           // at the label ident
-          ExprLoop(ref blk, _) => {
+          ast::ExprLoop(ref blk, _) => {
             self.propagate_through_loop(expr, LoopLoop, &**blk, succ)
           }
 
-          ExprMatch(ref e, ref arms) => {
+          ast::ExprMatch(ref e, ref arms) => {
             //
             //      (e)
             //       |
@@ -1061,13 +1062,13 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             self.propagate_through_expr(&**e, ln)
           }
 
-          ExprRet(ref o_e) => {
+          ast::ExprRet(ref o_e) => {
             // ignore succ and subst exit_ln:
             let exit_ln = self.s.exit_ln;
             self.propagate_through_opt_expr(o_e.as_ref().map(|e| &**e), exit_ln)
           }
 
-          ExprBreak(opt_label) => {
+          ast::ExprBreak(opt_label) => {
               // Find which label this break jumps to
               let sc = self.find_loop_scope(opt_label, expr.id, expr.span);
 
@@ -1081,7 +1082,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
               }
           }
 
-          ExprAgain(opt_label) => {
+          ast::ExprAgain(opt_label) => {
               // Find which label this expr continues to
               let sc = self.find_loop_scope(opt_label, expr.id, expr.span);
 
@@ -1095,7 +1096,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
               }
           }
 
-          ExprAssign(ref l, ref r) => {
+          ast::ExprAssign(ref l, ref r) => {
             // see comment on lvalues in
             // propagate_through_lvalue_components()
             let succ = self.write_lvalue(&**l, succ, ACC_WRITE);
@@ -1103,7 +1104,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             self.propagate_through_expr(&**r, succ)
           }
 
-          ExprAssignOp(_, ref l, ref r) => {
+          ast::ExprAssignOp(_, ref l, ref r) => {
             // see comment on lvalues in
             // propagate_through_lvalue_components()
             let succ = self.write_lvalue(&**l, succ, ACC_WRITE|ACC_READ);
@@ -1113,23 +1114,23 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 
           // Uninteresting cases: just propagate in rev exec order
 
-          ExprVec(ref exprs) => {
+          ast::ExprVec(ref exprs) => {
             self.propagate_through_exprs(exprs.as_slice(), succ)
           }
 
-          ExprRepeat(ref element, ref count) => {
+          ast::ExprRepeat(ref element, ref count) => {
             let succ = self.propagate_through_expr(&**count, succ);
             self.propagate_through_expr(&**element, succ)
           }
 
-          ExprStruct(_, ref fields, ref with_expr) => {
+          ast::ExprStruct(_, ref fields, ref with_expr) => {
             let succ = self.propagate_through_opt_expr(with_expr.as_ref().map(|e| &**e), succ);
             fields.iter().rev().fold(succ, |succ, field| {
                 self.propagate_through_expr(&*field.expr, succ)
             })
           }
 
-          ExprCall(ref f, ref args) => {
+          ast::ExprCall(ref f, ref args) => {
             // calling a fn with bot return type means that the fn
             // will fail, and hence the successors can be ignored
             let is_bot = !self.ir.tcx.is_method_call(expr.id) && {
@@ -1145,7 +1146,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             self.propagate_through_expr(&**f, succ)
           }
 
-          ExprMethodCall(_, _, ref args) => {
+          ast::ExprMethodCall(_, _, ref args) => {
             // calling a method with bot return type means that the method
             // will fail, and hence the successors can be ignored
             let t_ret = ty::node_id_to_type(self.ir.tcx, expr.id);
@@ -1154,11 +1155,11 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             self.propagate_through_exprs(args.as_slice(), succ)
           }
 
-          ExprTup(ref exprs) => {
+          ast::ExprTup(ref exprs) => {
             self.propagate_through_exprs(exprs.as_slice(), succ)
           }
 
-          ExprBinary(op, ref l, ref r) if ast_util::lazy_binop(op) => {
+          ast::ExprBinary(op, ref l, ref r) if ast_util::lazy_binop(op) => {
             let r_succ = self.propagate_through_expr(&**r, succ);
 
             let ln = self.live_node(expr.id, expr.span);
@@ -1168,27 +1169,27 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             self.propagate_through_expr(&**l, ln)
           }
 
-          ExprIndex(ref l, ref r) |
-          ExprBinary(_, ref l, ref r) |
-          ExprBox(ref l, ref r) => {
+          ast::ExprIndex(ref l, ref r) |
+          ast::ExprBinary(_, ref l, ref r) |
+          ast::ExprBox(ref l, ref r) => {
             let r_succ = self.propagate_through_expr(&**r, succ);
             self.propagate_through_expr(&**l, r_succ)
           }
 
-          ExprSlice(ref e1, ref e2, ref e3, _) => {
+          ast::ExprSlice(ref e1, ref e2, ref e3, _) => {
             let succ = e3.as_ref().map_or(succ, |e| self.propagate_through_expr(&**e, succ));
             let succ = e2.as_ref().map_or(succ, |e| self.propagate_through_expr(&**e, succ));
             self.propagate_through_expr(&**e1, succ)
           }
 
-          ExprAddrOf(_, ref e) |
-          ExprCast(ref e, _) |
-          ExprUnary(_, ref e) |
-          ExprParen(ref e) => {
+          ast::ExprAddrOf(_, ref e) |
+          ast::ExprCast(ref e, _) |
+          ast::ExprUnary(_, ref e) |
+          ast::ExprParen(ref e) => {
             self.propagate_through_expr(&**e, succ)
           }
 
-          ExprInlineAsm(ref ia) => {
+          ast::ExprInlineAsm(ref ia) => {
 
             let succ = ia.outputs.iter().rev().fold(succ, |succ, &(_, ref expr, _)| {
                 // see comment on lvalues
@@ -1202,15 +1203,15 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             })
           }
 
-          ExprLit(..) => {
+          ast::ExprLit(..) => {
             succ
           }
 
-          ExprBlock(ref blk) => {
+          ast::ExprBlock(ref blk) => {
             self.propagate_through_block(&**blk, succ)
           }
 
-          ExprMac(..) => {
+          ast::ExprMac(..) => {
             self.ir.tcx.sess.span_bug(expr.span, "unexpanded macro");
           }
         }
@@ -1270,9 +1271,9 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         // just ignore such cases and treat them as reads.
 
         match expr.node {
-            ExprPath(_) => succ,
-            ExprField(ref e, _, _) => self.propagate_through_expr(&**e, succ),
-            ExprTupField(ref e, _, _) => self.propagate_through_expr(&**e, succ),
+            ast::ExprPath(_) => succ,
+            ast::ExprField(ref e, _, _) => self.propagate_through_expr(&**e, succ),
+            ast::ExprTupField(ref e, _, _) => self.propagate_through_expr(&**e, succ),
             _ => self.propagate_through_expr(expr, succ)
         }
     }
@@ -1281,7 +1282,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
     fn write_lvalue(&mut self, expr: &Expr, succ: LiveNode, acc: uint)
                     -> LiveNode {
         match expr.node {
-          ExprPath(_) => self.access_path(expr, succ, acc),
+          ast::ExprPath(_) => self.access_path(expr, succ, acc),
 
           // We do not track other lvalues, so just propagate through
           // to their subcomponents.  Also, it may happen that
@@ -1310,7 +1311,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
     fn propagate_through_loop(&mut self,
                               expr: &Expr,
                               kind: LoopKind,
-                              body: &Block,
+                              body: &ast::Block,
                               succ: LiveNode)
                               -> LiveNode {
 
@@ -1414,7 +1415,7 @@ fn check_local(this: &mut Liveness, local: &ast::Local) {
     visit::walk_local(this, local);
 }
 
-fn check_arm(this: &mut Liveness, arm: &Arm) {
+fn check_arm(this: &mut Liveness, arm: &ast::Arm) {
     // only consider the first pattern; any later patterns must have
     // the same bindings, and we also consider the first pattern to be
     // the "authoritative" set of ids
@@ -1426,20 +1427,20 @@ fn check_arm(this: &mut Liveness, arm: &Arm) {
 
 fn check_expr(this: &mut Liveness, expr: &Expr) {
     match expr.node {
-      ExprAssign(ref l, ref r) => {
+      ast::ExprAssign(ref l, ref r) => {
         this.check_lvalue(&**l);
         this.visit_expr(&**r);
 
         visit::walk_expr(this, expr);
       }
 
-      ExprAssignOp(_, ref l, _) => {
+      ast::ExprAssignOp(_, ref l, _) => {
         this.check_lvalue(&**l);
 
         visit::walk_expr(this, expr);
       }
 
-      ExprInlineAsm(ref ia) => {
+      ast::ExprInlineAsm(ref ia) => {
         for &(_, ref input) in ia.inputs.iter() {
           this.visit_expr(&**input);
         }
@@ -1453,21 +1454,23 @@ fn check_expr(this: &mut Liveness, expr: &Expr) {
         visit::walk_expr(this, expr);
       }
 
-      ExprForLoop(ref pat, _, _, _) => {
+      ast::ExprForLoop(ref pat, _, _, _) => {
         this.pat_bindings(&**pat, |this, ln, var, sp, id| {
             this.warn_about_unused(sp, id, ln, var);
         });
       }
 
       // no correctness conditions related to liveness
-      ExprCall(..) | ExprMethodCall(..) | ExprIf(..) | ExprMatch(..) |
-      ExprWhile(..) | ExprLoop(..) | ExprIndex(..) | ExprField(..) |
-      ExprTupField(..) | ExprVec(..) | ExprTup(..) | ExprBinary(..) |
-      ExprCast(..) | ExprUnary(..) | ExprRet(..) | ExprBreak(..) |
-      ExprAgain(..) | ExprLit(_) | ExprBlock(..) | ExprSlice(..) |
-      ExprMac(..) | ExprAddrOf(..) | ExprStruct(..) | ExprRepeat(..) |
-      ExprParen(..) | ExprFnBlock(..) | ExprProc(..) | ExprUnboxedFn(..) |
-      ExprPath(..) | ExprBox(..) => {
+      ast::ExprCall(..) | ast::ExprMethodCall(..) | ast::ExprIf(..) |
+      ast::ExprMatch(..) | ast::ExprWhile(..) | ast::ExprLoop(..) |
+      ast::ExprIndex(..) | ast::ExprField(..) | ast::ExprTupField(..) |
+      ast::ExprVec(..) | ast::ExprTup(..) | ast::ExprBinary(..) |
+      ast::ExprCast(..) | ast::ExprUnary(..) | ast::ExprRet(..) |
+      ast::ExprBreak(..) | ast::ExprAgain(..) | ast::ExprLit(_) |
+      ast::ExprBlock(..) | ast::ExprMac(..) | ast::ExprAddrOf(..) |
+      ast::ExprStruct(..) | ast::ExprRepeat(..) | ast::ExprParen(..) |
+      ast::ExprFnBlock(..) | ast::ExprProc(..) | ast::ExprUnboxedFn(..) |
+      ast::ExprPath(..) | ast::ExprBox(..) | ast::ExprSlice(..) => {
         visit::walk_expr(this, expr);
       }
     }
@@ -1475,8 +1478,8 @@ fn check_expr(this: &mut Liveness, expr: &Expr) {
 
 fn check_fn(_v: &Liveness,
             _fk: FnKind,
-            _decl: &FnDecl,
-            _body: &Block,
+            _decl: &ast::FnDecl,
+            _body: &ast::Block,
             _sp: Span,
             _id: NodeId) {
     // do not check contents of nested fns
@@ -1488,7 +1491,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                  sp: Span,
                  _fk: FnKind,
                  entry_ln: LiveNode,
-                 body: &Block) {
+                 body: &ast::Block) {
         if self.live_on_entry(entry_ln, self.s.no_ret_var).is_some() {
             // if no_ret_var is live, then we fall off the end of the
             // function without any kind of return expression:
@@ -1504,7 +1507,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                 let ends_with_stmt = match body.expr {
                     None if body.stmts.len() > 0 =>
                         match body.stmts.last().unwrap().node {
-                            StmtSemi(ref e, _) => {
+                            ast::StmtSemi(ref e, _) => {
                                 let t_stmt = ty::expr_ty(self.ir.tcx, &**e);
                                 ty::get(t_stmt).sty == ty::get(t_ret).sty
                             },
@@ -1532,7 +1535,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 
     fn check_lvalue(&mut self, expr: &Expr) {
         match expr.node {
-          ExprPath(_) => {
+          ast::ExprPath(_) => {
             match self.ir.tcx.def_map.borrow().get_copy(&expr.id) {
               DefLocal(nid) => {
                 // Assignment to an immutable variable or argument: only legal
@@ -1564,7 +1567,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         }
     }
 
-    fn warn_about_unused_args(&self, decl: &FnDecl, entry_ln: LiveNode) {
+    fn warn_about_unused_args(&self, decl: &ast::FnDecl, entry_ln: LiveNode) {
         for arg in decl.inputs.iter() {
             pat_util::pat_bindings(&self.ir.tcx.def_map,
                                    &*arg.pat,
@@ -1579,7 +1582,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         }
     }
 
-    fn warn_about_unused_or_dead_vars_in_pat(&mut self, pat: &Pat) {
+    fn warn_about_unused_or_dead_vars_in_pat(&mut self, pat: &ast::Pat) {
         self.pat_bindings(pat, |this, ln, var, sp, id| {
             if !this.warn_about_unused(sp, id, ln, var) {
                 this.warn_about_dead_assign(sp, id, ln, var);

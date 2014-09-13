@@ -16,7 +16,7 @@ use middle::ty_fold;
 use util::ppaux::{ty_to_string};
 use util::ppaux::UserString;
 
-use syntax::ast::*;
+use syntax::ast;
 use syntax::attr;
 use syntax::codemap::Span;
 use syntax::print::pprust::{expr_to_string, ident_to_string};
@@ -35,24 +35,24 @@ pub struct Context<'a,'tcx:'a> {
 }
 
 impl<'a, 'tcx, 'v> Visitor<'v> for Context<'a, 'tcx> {
-    fn visit_expr(&mut self, ex: &Expr) {
+    fn visit_expr(&mut self, ex: &ast::Expr) {
         check_expr(self, ex);
     }
 
-    fn visit_fn(&mut self, fk: visit::FnKind, fd: &'v FnDecl,
-                b: &'v Block, s: Span, n: NodeId) {
+    fn visit_fn(&mut self, fk: visit::FnKind, fd: &'v ast::FnDecl,
+                b: &'v ast::Block, s: Span, n: ast::NodeId) {
         check_fn(self, fk, fd, b, s, n);
     }
 
-    fn visit_ty(&mut self, t: &Ty) {
+    fn visit_ty(&mut self, t: &ast::Ty) {
         check_ty(self, t);
     }
 
-    fn visit_item(&mut self, i: &Item) {
+    fn visit_item(&mut self, i: &ast::Item) {
         check_item(self, i);
     }
 
-    fn visit_pat(&mut self, p: &Pat) {
+    fn visit_pat(&mut self, p: &ast::Pat) {
         check_pat(self, p);
     }
 }
@@ -79,7 +79,7 @@ impl<'a, 'tcx> ty_fold::TypeFolder<'tcx> for EmptySubstsFolder<'a, 'tcx> {
 
 fn check_struct_safe_for_destructor(cx: &mut Context,
                                     span: Span,
-                                    struct_did: DefId) {
+                                    struct_did: ast::DefId) {
     let struct_tpt = ty::lookup_item_type(cx.tcx, struct_did);
     if !struct_tpt.generics.has_type_params(subst::TypeSpace)
       && !struct_tpt.generics.has_region_params(subst::TypeSpace) {
@@ -102,7 +102,8 @@ fn check_struct_safe_for_destructor(cx: &mut Context,
     }
 }
 
-fn check_impl_of_trait(cx: &mut Context, it: &Item, trait_ref: &TraitRef, self_type: &Ty) {
+fn check_impl_of_trait(cx: &mut Context, it: &ast::Item,
+                       trait_ref: &ast::TraitRef, self_type: &ast::Ty) {
     let ast_trait_def = *cx.tcx.def_map.borrow()
                               .find(&trait_ref.ref_id)
                               .expect("trait ref not in def map!");
@@ -113,7 +114,7 @@ fn check_impl_of_trait(cx: &mut Context, it: &Item, trait_ref: &TraitRef, self_t
         !attr::contains_name(it.attrs.as_slice(), "unsafe_destructor")
     {
         match self_type.node {
-            TyPath(_, ref bounds, path_node_id) => {
+            ast::TyPath(_, ref bounds, path_node_id) => {
                 assert!(bounds.is_none());
                 let struct_def = cx.tcx.def_map.borrow().get_copy(&path_node_id);
                 let struct_did = struct_def.def_id();
@@ -127,9 +128,9 @@ fn check_impl_of_trait(cx: &mut Context, it: &Item, trait_ref: &TraitRef, self_t
     }
 }
 
-fn check_item(cx: &mut Context, item: &Item) {
+fn check_item(cx: &mut Context, item: &ast::Item) {
     match item.node {
-        ItemImpl(_, Some(ref trait_ref), ref self_type, _) => {
+        ast::ItemImpl(_, Some(ref trait_ref), ref self_type, _) => {
             check_impl_of_trait(cx, item, trait_ref, &**self_type);
         }
         _ => {}
@@ -142,7 +143,7 @@ fn check_item(cx: &mut Context, item: &Item) {
 // variables. `id` is the NodeId for some expression that creates the
 // closure.
 fn with_appropriate_checker(cx: &Context,
-                            id: NodeId,
+                            id: ast::NodeId,
                             fn_span: Span,
                             b: |checker: |&Context, &ty::Freevar||) {
     fn check_for_uniq(cx: &Context,
@@ -159,7 +160,7 @@ fn with_appropriate_checker(cx: &Context,
 
     fn check_for_block(cx: &Context,
                        fn_span: Span,
-                       fn_id: NodeId,
+                       fn_id: ast::NodeId,
                        fv: &ty::Freevar,
                        bounds: ty::BuiltinBounds) {
         let id = fv.def.def_id().node;
@@ -218,10 +219,10 @@ fn with_appropriate_checker(cx: &Context,
 fn check_fn(
     cx: &mut Context,
     fk: visit::FnKind,
-    decl: &FnDecl,
-    body: &Block,
+    decl: &ast::FnDecl,
+    body: &ast::Block,
     sp: Span,
-    fn_id: NodeId) {
+    fn_id: ast::NodeId) {
 
     // <Check kinds on free variables:
     with_appropriate_checker(cx, fn_id, sp, |chk| {
@@ -242,11 +243,11 @@ fn check_fn(
     }
 }
 
-pub fn check_expr(cx: &mut Context, e: &Expr) {
+pub fn check_expr(cx: &mut Context, e: &ast::Expr) {
     debug!("kind::check_expr({})", expr_to_string(e));
 
     match e.node {
-        ExprRepeat(ref element, ref count_expr) => {
+        ast::ExprRepeat(ref element, ref count_expr) => {
             let count = ty::eval_repeat_count(cx.tcx, &**count_expr);
             if count > 1 {
                 let element_ty = ty::expr_ty(cx.tcx, &**element);
@@ -254,14 +255,14 @@ pub fn check_expr(cx: &mut Context, e: &Expr) {
                            "repeated element will be copied");
             }
         }
-        ExprAssign(ref lhs, _) |
-        ExprAssignOp(_, ref lhs, _) => {
+        ast::ExprAssign(ref lhs, _) |
+        ast::ExprAssignOp(_, ref lhs, _) => {
             let lhs_ty = ty::expr_ty(cx.tcx, &**lhs);
             if !ty::type_is_sized(cx.tcx, lhs_ty) {
                 cx.tcx.sess.span_err(lhs.span, "dynamically sized type on lhs of assignment");
             }
         }
-        ExprStruct(..) => {
+        ast::ExprStruct(..) => {
             let e_ty = ty::expr_ty(cx.tcx, e);
             if !ty::type_is_sized(cx.tcx, e_ty) {
                 cx.tcx.sess.span_err(e.span, "trying to initialise a dynamically sized struct");
@@ -273,9 +274,9 @@ pub fn check_expr(cx: &mut Context, e: &Expr) {
     visit::walk_expr(cx, e);
 }
 
-fn check_ty(cx: &mut Context, aty: &Ty) {
+fn check_ty(cx: &mut Context, aty: &ast::Ty) {
     match aty.node {
-        TyPath(_, _, id) => {
+        ast::TyPath(_, _, id) => {
             match cx.tcx.item_substs.borrow().find(&id) {
                 None => {}
                 Some(ref item_substs) => {
@@ -388,10 +389,12 @@ fn check_sized(tcx: &ty::ctxt, ty: ty::t, name: String, sp: Span) {
 }
 
 // Check that any variables in a pattern have types with statically known size.
-fn check_pat(cx: &mut Context, pat: &Pat) {
+fn check_pat(cx: &mut Context, pat: &ast::Pat) {
     let var_name = match pat.node {
-        PatWild(PatWildSingle) => Some("_".to_string()),
-        PatIdent(_, ref path1, _) => Some(ident_to_string(&path1.node).to_string()),
+        ast::PatWild(ast::PatWildSingle) => Some("_".to_string()),
+        ast::PatIdent(_, ref path1, _) => {
+            Some(ident_to_string(&path1.node).to_string())
+        }
         _ => None
     };
 
