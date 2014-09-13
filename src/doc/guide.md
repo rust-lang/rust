@@ -152,7 +152,7 @@ Save the file, and then type this into your terminal window:
 
 ```{bash}
 $ rustc main.rs
-$ ./hello_world # or hello_world.exe on Windows
+$ ./main # or main.exe on Windows
 Hello, world!
 ```
 
@@ -232,10 +232,10 @@ main.exe  main.rs
 ```
 
 There are now two files: our source code, with the `.rs` extension, and the
-executable (`hello_world.exe` on Windows, `hello_world` everywhere else)
+executable (`main.exe` on Windows, `main` everywhere else)
 
 ```{bash}
-$ ./hello_world  # or hello_world.exe on Windows
+$ ./main  # or main.exe on Windows
 ```
 
 This prints out our `Hello, world!` text to our terminal.
