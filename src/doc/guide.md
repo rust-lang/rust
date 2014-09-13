@@ -1319,7 +1319,7 @@ upper bound is exclusive, though, so our loop will print `0` through `9`, not
 
 Rust does not have the "C style" `for` loop on purpose. Manually controlling
 each element of the loop is complicated and error prone, even for experienced C
-developers. 
+developers.
 
 We'll talk more about `for` when we cover **iterator**s, later in the Guide.
 
@@ -4273,7 +4273,7 @@ very common with iterators: we can ignore unnecessary bounds checks, but still
 know that we're safe.
 
 There's another detail here that's not 100% clear because of how `println!`
-works. `num` is actually of type `&int`, that is, it's a reference to an `int`,
+works. `num` is actually of type `&int`. That is, it's a reference to an `int`,
 not an `int` itself. `println!` handles the dereferencing for us, so we don't
 see it. This code works fine too:
 
