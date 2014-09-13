@@ -13,7 +13,7 @@
 use lint::{LintPassObject, LintId, Lint};
 
 use syntax::ext::base::{SyntaxExtension, NamedSyntaxExtension, NormalTT};
-use syntax::ext::base::{IdentTT, LetSyntaxTT, ItemDecorator, ItemModifier, BasicMacroExpander};
+use syntax::ext::base::{IdentTT, LetSyntaxTT, ItemDecorator, ItemModifier};
 use syntax::ext::base::{MacroExpanderFn};
 use syntax::codemap::Span;
 use syntax::parse::token;
@@ -71,15 +71,10 @@ impl Registry {
     /// Register a macro of the usual kind.
     ///
     /// This is a convenience wrapper for `register_syntax_extension`.
-    /// It builds for you a `NormalTT` with a `BasicMacroExpander`,
+    /// It builds for you a `NormalTT` that calls `expander`,
     /// and also takes care of interning the macro's name.
     pub fn register_macro(&mut self, name: &str, expander: MacroExpanderFn) {
-        self.register_syntax_extension(
-            token::intern(name),
-            NormalTT(box BasicMacroExpander {
-                expander: expander,
-                span: None,
-            }, None));
+        self.register_syntax_extension(token::intern(name), NormalTT(box expander, None));
     }
 
     /// Register a compiler lint pass.
