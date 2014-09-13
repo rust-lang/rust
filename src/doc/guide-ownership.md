@@ -77,7 +77,7 @@ foe to all Rustaceans.
 Your first interaction with the borrow checker probably resulted from an
 error message that looks a bit like this:
 
-```{rust}
+```{notrust}
 error: cannot borrow immutable local variable `x` as mutable
      let y = &mut x;
                   ^
@@ -85,7 +85,7 @@ error: cannot borrow immutable local variable `x` as mutable
 
 or maybe
 
-```{rust}
+```{notrust}
  2:19 error: missing lifetime specifier [E0106]
  a_string: &str,
            ^~~~
@@ -93,7 +93,7 @@ or maybe
 
 or even
 
-```{rust}
+```{notrust}
 34:29 error: cannot borrow `env` as mutable more than once at a time
         let e = &mut env;
                      ^~~
@@ -116,7 +116,7 @@ haven't discussed yet: lifetimes.
 A **lifetime** is defined as 'the length of time that a reference exists.' Why
 do we care about how long our references live?  Let's see some code:
 
-```{rust}
+```{rust,ignore}
 struct SomeStruct {
     a_string: &str,
 }
@@ -155,8 +155,8 @@ as long as a reference to the struct itself is valid. We can do this with an
 **explicit lifetime annotation**:
 
 ```{rust}
-struct SomeStruct<'struct> {
-    a_string: &'struct str,
+struct SomeStruct<'a> {
+    a_string: &'a str,
 }
 
 fn main() {
@@ -164,18 +164,15 @@ fn main() {
 }
 ```
 
-This code compiles. We have two additions: a `<'struct>` and a `&'struct`.
-These two are related. Changing `struct SomeStruct` to `struct
-SomeStruct<'struct>` adds a **lifetime parameter**.  This parameter gives a
-name to the lifetime of a reference to this struct. In this case, we've given
-it the name 'struct,' since that's what it's the lifetime of. You can use any
-identifer, for example, `<'a>`.  Since this is giving a name to a lifetime,
-giving it a descriptive name can help you remember what it's the lifetime of.
+This code compiles. We have two additions: a `<'a>` and a `&'a`. These two are
+related. Changing `struct SomeStruct` to `struct SomeStruct<'a>` adds a
+**lifetime parameter**. This parameter gives a name to the lifetime of a
+reference to this struct.
 
 Now that we've named the lifetime of a reference to the struct, we can use it
-inside the definition. We change `&str` to `&'struct str`, which says that
+inside the definition. We change `&str` to `&'a str`, which says that
 rather than having its own lifetime, `a_string` will have the lifetime of
-`'struct`, which is what we named the lifetime of the struct itself. Now,
+`'a`, which is what we named the lifetime of the struct itself. Now,
 we've tied the two together: we've told Rust that the lifetime of `a_string`
 will last as long as the reference to the struct itself. Since they live for
 the same amount of time, we'll never have an internal invalid reference, and so
