@@ -511,6 +511,9 @@ impl TypeMap {
                     unique_type_id.push_char('+');
                 }
             },
+            ty::ty_unboxed_closure(..) => {
+                unique_type_id.push_str("closure");
+            }
             _ => {
                 cx.sess().bug(format!("get_unique_type_id_of_type() - unexpected type: {}, {:?}",
                                       ppaux::ty_to_string(cx.tcx(), type_).as_slice(),
@@ -2979,6 +2982,13 @@ fn type_metadata(cx: &CrateContext,
                                    elements.as_slice(),
                                    unique_type_id,
                                    usage_site_span).finalize(cx)
+        }
+        ty::ty_unboxed_closure(def_id, _) => {
+            let unboxed_closures = cx.tcx().unboxed_closures.borrow();
+            let ref function_type = unboxed_closures.get(&def_id)
+                                                    .closure_type;
+
+            subroutine_type_metadata(cx, unique_type_id, &function_type.sig, usage_site_span)
         }
         _ => {
             cx.sess().bug(format!("debuginfo: unexpected type in type_metadata: {:?}",
