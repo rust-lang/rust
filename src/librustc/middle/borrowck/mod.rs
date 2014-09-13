@@ -602,6 +602,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                                          span: Span,
                                          kind: AliasableViolationKind,
                                          cause: mc::AliasableReason) {
+        let mut is_closure = false;
         let prefix = match kind {
             MutabilityViolation => {
                 "cannot assign to data"
@@ -625,6 +626,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
             }
 
             BorrowViolation(euv::ClosureInvocation) => {
+                is_closure = true;
                 "closure invocation"
             }
 
@@ -649,13 +651,19 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
             mc::AliasableManaged => {
                 self.tcx.sess.span_err(
                     span,
-                    format!("{} in a `@` pointer", prefix).as_slice());
+                    format!("{} in a `Gc` pointer", prefix).as_slice());
             }
             mc::AliasableBorrowed => {
                 self.tcx.sess.span_err(
                     span,
                     format!("{} in a `&` reference", prefix).as_slice());
             }
+        }
+
+        if is_closure {
+            self.tcx.sess.span_note(
+                span,
+                "closures behind references must be called via `&mut`");
         }
     }
 
