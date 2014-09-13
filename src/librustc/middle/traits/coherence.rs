@@ -16,7 +16,7 @@ use super::util;
 
 use middle::subst;
 use middle::subst::Subst;
-use middle::ty;
+use middle::ty::{mod, Ty};
 use middle::typeck::infer::{mod, InferCtxt};
 use syntax::ast;
 use syntax::codemap::DUMMY_SP;
@@ -76,10 +76,7 @@ pub fn impl_is_local(tcx: &ty::ctxt,
     trait_ref.input_types().iter().any(|&t| ty_is_local(tcx, t))
 }
 
-pub fn ty_is_local(tcx: &ty::ctxt,
-                   ty: ty::t)
-                   -> bool
-{
+pub fn ty_is_local(tcx: &ty::ctxt, ty: Ty) -> bool {
     debug!("ty_is_local({})", ty.repr(tcx));
 
     match ty::get(ty).sty {

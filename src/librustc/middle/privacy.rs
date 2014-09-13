@@ -19,7 +19,7 @@ use std::mem::replace;
 use metadata::csearch;
 use middle::def;
 use middle::resolve;
-use middle::ty;
+use middle::ty::{mod, Ty};
 use middle::typeck::{MethodCall, MethodMap, MethodOrigin, MethodParam, MethodTypeParam};
 use middle::typeck::{MethodStatic, MethodStaticUnboxedClosure, MethodObject, MethodTraitObject};
 use util::nodemap::{NodeMap, NodeSet};

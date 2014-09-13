@@ -30,7 +30,7 @@ use super::{util};
 use middle::fast_reject;
 use middle::mem_categorization::Typer;
 use middle::subst::{Subst, Substs, VecPerParamSpace};
-use middle::ty;
+use middle::ty::{mod, Ty};
 use middle::typeck::infer;
 use middle::typeck::infer::{InferCtxt, TypeSkolemizer};
 use middle::ty_fold::TypeFoldable;
@@ -142,7 +142,7 @@ struct CandidateSet {
 }
 
 enum BuiltinBoundConditions {
-    If(Vec<ty::t>),
+    If(Vec<Ty>),
     ParameterBuiltin,
     AmbiguousBuiltin
 }
@@ -221,7 +221,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     pub fn select_inherent_impl(&mut self,
                                 impl_def_id: ast::DefId,
                                 obligation_cause: ObligationCause,
-                                obligation_self_ty: ty::t)
+                                obligation_self_ty: Ty)
                                 -> SelectionResult<VtableImplData<Obligation>>
     {
         debug!("select_inherent_impl(impl_def_id={}, obligation_self_ty={})",
@@ -271,7 +271,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     fn evaluate_builtin_bound_recursively(&mut self,
                                           bound: ty::BuiltinBound,
                                           previous_stack: &ObligationStack,
-                                          ty: ty::t)
+                                          ty: Ty)
                                           -> EvaluationResult
     {
         let obligation =
@@ -434,8 +434,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     // the algorithm.
 
     pub fn evaluate_method_obligation(&mut self,
-                                      rcvr_ty: ty::t,
-                                      xform_self_ty: ty::t,
+                                      rcvr_ty: Ty,
+                                      xform_self_ty: Ty,
                                       obligation: &Obligation)
                                       -> MethodMatchResult
     {
@@ -562,8 +562,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     }
 
     pub fn confirm_method_match(&mut self,
-                                rcvr_ty: ty::t,
-                                xform_self_ty: ty::t,
+                                rcvr_ty: Ty,
+                                xform_self_ty: Ty,
                                 obligation: &Obligation,
                                 data: MethodMatchedData)
     {
@@ -596,8 +596,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     }
 
     fn match_method_precise(&mut self,
-                            rcvr_ty: ty::t,
-                            xform_self_ty: ty::t,
+                            rcvr_ty: Ty,
+                            xform_self_ty: Ty,
                             obligation: &Obligation)
                             -> Result<(),()>
     {
@@ -622,8 +622,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     }
 
     fn assemble_method_candidates_from_impls(&mut self,
-                                             rcvr_ty: ty::t,
-                                             xform_self_ty: ty::t,
+                                             rcvr_ty: Ty,
+                                             xform_self_ty: Ty,
                                              obligation: &Obligation)
                                              -> Vec<ast::DefId>
     {
@@ -650,8 +650,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
     fn match_method_coerce(&mut self,
                            impl_def_id: ast::DefId,
-                           rcvr_ty: ty::t,
-                           xform_self_ty: ty::t,
+                           rcvr_ty: Ty,
+                           xform_self_ty: Ty,
                            obligation: &Obligation)
                            -> Result<Substs, ()>
     {
@@ -683,8 +683,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
     fn winnow_method_impl(&mut self,
                           impl_def_id: ast::DefId,
-                          rcvr_ty: ty::t,
-                          xform_self_ty: ty::t,
+                          rcvr_ty: Ty,
+                          xform_self_ty: Ty,
                           obligation: &Obligation)
                           -> bool
     {
@@ -1227,7 +1227,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
     fn builtin_bound(&mut self,
                      bound: ty::BuiltinBound,
-                     self_ty: ty::t)
+                     self_ty: Ty)
                      -> Result<BuiltinBoundConditions,SelectionError>
     {
         let self_ty = self.infcx.shallow_resolve(self_ty);
@@ -1443,7 +1443,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     }
 
                     Some(freevars) => {
-                        let tys: Vec<ty::t> =
+                        let tys: Vec<Ty> =
                             freevars
                             .iter()
                             .map(|freevar| {
@@ -1458,7 +1458,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             }
 
             ty::ty_struct(def_id, ref substs) => {
-                let types: Vec<ty::t> =
+                let types: Vec<Ty> =
                     ty::struct_fields(self.tcx(), def_id, substs)
                     .iter()
                     .map(|f| f.mt.ty)
@@ -1467,7 +1467,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             }
 
             ty::ty_enum(def_id, ref substs) => {
-                let types: Vec<ty::t> =
+                let types: Vec<Ty> =
                     ty::substd_enum_variants(self.tcx(), def_id, substs)
                     .iter()
                     .flat_map(|variant| variant.args.iter())
@@ -1508,7 +1508,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         fn nominal(this: &mut SelectionContext,
                    bound: ty::BuiltinBound,
                    def_id: ast::DefId,
-                   types: Vec<ty::t>)
+                   types: Vec<Ty>)
                    -> Result<BuiltinBoundConditions,SelectionError>
         {
             // First check for markers and other nonsense.
@@ -1635,7 +1635,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     fn vtable_builtin_data(&mut self,
                            obligation: &Obligation,
                            bound: ty::BuiltinBound,
-                           nested: Vec<ty::t>)
+                           nested: Vec<Ty>)
                            -> VtableBuiltinData<Obligation>
     {
         let obligations = nested.iter().map(|&t| {
@@ -1829,7 +1829,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     fn match_inherent_impl(&mut self,
                            impl_def_id: ast::DefId,
                            obligation_cause: ObligationCause,
-                           obligation_self_ty: ty::t)
+                           obligation_self_ty: Ty)
                            -> Result<Substs,()>
     {
         /*!
@@ -1878,10 +1878,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         cause: ObligationCause,
 
                         // The self type provided by the impl/caller-obligation:
-                        provided_self_ty: ty::t,
+                        provided_self_ty: Ty,
 
                         // The self type the obligation is for:
-                        required_self_ty: ty::t)
+                        required_self_ty: Ty)
                         -> Result<(),()>
     {
         // FIXME(#5781) -- equating the types is stronger than

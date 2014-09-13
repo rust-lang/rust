@@ -64,7 +64,7 @@ use trans::datum;
 use trans::machine;
 use trans::type_::Type;
 use trans::type_of;
-use middle::ty;
+use middle::ty::{mod, Ty};
 use middle::ty::Disr;
 use syntax::ast;
 use syntax::attr;
@@ -105,8 +105,8 @@ pub enum Repr {
      */
     RawNullablePointer {
         nndiscr: Disr,
-        nnty: ty::t,
-        nullfields: Vec<ty::t>
+        nnty: Ty,
+        nullfields: Vec<Ty>
     },
     /**
      * Two cases distinguished by a nullable pointer: the case with discriminant
@@ -123,7 +123,7 @@ pub enum Repr {
         nonnull: Struct,
         nndiscr: Disr,
         ptrfield: PointerField,
-        nullfields: Vec<ty::t>,
+        nullfields: Vec<Ty>,
     }
 }
 
@@ -136,12 +136,12 @@ pub struct Struct {
     pub align: u32,
     pub sized: bool,
     pub packed: bool,
-    pub fields: Vec<ty::t>
+    pub fields: Vec<Ty>
 }
 
 /**
  * Convenience for `represent_type`.  There should probably be more or
- * these, for places in trans where the `ty::t` isn't directly
+ * these, for places in trans where the `Ty` isn't directly
  * available.
  */
 pub fn represent_node(bcx: Block, node: ast::NodeId) -> Rc<Repr> {
@@ -149,7 +149,7 @@ pub fn represent_node(bcx: Block, node: ast::NodeId) -> Rc<Repr> {
 }
 
 /// Decides how to represent a given type.
-pub fn represent_type(cx: &CrateContext, t: ty::t) -> Rc<Repr> {
+pub fn represent_type(cx: &CrateContext, t: Ty) -> Rc<Repr> {
     debug!("Representing: {}", ty_to_string(cx.tcx(), t));
     match cx.adt_reprs().borrow().get(&t) {
         Some(repr) => return repr.clone(),
@@ -162,7 +162,7 @@ pub fn represent_type(cx: &CrateContext, t: ty::t) -> Rc<Repr> {
     repr
 }
 
-fn represent_type_uncached(cx: &CrateContext, t: ty::t) -> Repr {
+fn represent_type_uncached(cx: &CrateContext, t: Ty) -> Repr {
     match ty::get(t).sty {
         ty::ty_tup(ref elems) => {
             return Univariant(mk_struct(cx, elems.as_slice(), false, t), false)
@@ -287,7 +287,7 @@ fn represent_type_uncached(cx: &CrateContext, t: ty::t) -> Repr {
 // this should probably all be in ty
 struct Case {
     discr: Disr,
-    tys: Vec<ty::t>
+    tys: Vec<Ty>
 }
 
 
@@ -298,7 +298,7 @@ pub enum PointerField {
 }
 
 impl Case {
-    fn is_zerolen(&self, cx: &CrateContext, scapegoat: ty::t) -> bool {
+    fn is_zerolen(&self, cx: &CrateContext, scapegoat: Ty) -> bool {
         mk_struct(cx, self.tys.as_slice(), false, scapegoat).size == 0
     }
 
@@ -345,7 +345,7 @@ fn get_cases(tcx: &ty::ctxt, def_id: ast::DefId, substs: &subst::Substs) -> Vec<
     }).collect()
 }
 
-fn mk_struct(cx: &CrateContext, tys: &[ty::t], packed: bool, scapegoat: ty::t) -> Struct {
+fn mk_struct(cx: &CrateContext, tys: &[Ty], packed: bool, scapegoat: Ty) -> Struct {
     let sized = tys.iter().all(|&ty| ty::type_is_sized(cx.tcx(), ty));
     let lltys : Vec<Type> = if sized {
         tys.iter()
@@ -450,7 +450,7 @@ fn bounds_usable(cx: &CrateContext, ity: IntType, bounds: &IntBounds) -> bool {
     }
 }
 
-pub fn ty_of_inttype(ity: IntType) -> ty::t {
+pub fn ty_of_inttype(ity: IntType) -> Ty {
     match ity {
         attr::SignedInt(t) => ty::mk_mach_int(t),
         attr::UnsignedInt(t) => ty::mk_mach_uint(t)
@@ -461,7 +461,7 @@ pub fn ty_of_inttype(ity: IntType) -> ty::t {
 fn ensure_struct_fits_in_address_space(ccx: &CrateContext,
                                        fields: &[Type],
                                        packed: bool,
-                                       scapegoat: ty::t) {
+                                       scapegoat: Ty) {
     let mut offset = 0;
     for &llty in fields.iter() {
         // Invariant: offset < ccx.max_obj_size() <= 1<<61
@@ -489,7 +489,7 @@ fn union_size_and_align(sts: &[Struct]) -> (machine::llsize, machine::llalign) {
 fn ensure_enum_fits_in_address_space(ccx: &CrateContext,
                                      discr: IntType,
                                      fields: &[Struct],
-                                     scapegoat: ty::t) {
+                                     scapegoat: Ty) {
     let discr_size = machine::llsize_of_alloc(ccx, ll_inttype(ccx, discr));
     let (field_size, field_align) = union_size_and_align(fields);
 

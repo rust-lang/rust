@@ -217,7 +217,7 @@ use trans::expr::{mod, Dest};
 use trans::tvec;
 use trans::type_of;
 use trans::debuginfo;
-use middle::ty;
+use middle::ty::{mod, Ty};
 use session::config::FullDebugInfo;
 use util::common::indenter;
 use util::nodemap::FnvHashMap;
@@ -339,7 +339,7 @@ pub struct BindingInfo {
     pub trmode: TransBindingMode,
     pub id: ast::NodeId,
     pub span: Span,
-    pub ty: ty::t,
+    pub ty: Ty,
 }
 
 type BindingsMap = FnvHashMap<Ident, BindingInfo>;
@@ -620,7 +620,7 @@ fn extract_variant_args<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     ExtractedBlock { vals: args, bcx: bcx }
 }
 
-fn match_datum(val: ValueRef, left_ty: ty::t) -> Datum<Lvalue> {
+fn match_datum(val: ValueRef, left_ty: Ty) -> Datum<Lvalue> {
     /*!
      * Helper for converting from the ValueRef that we pass around in
      * the match code, which is always an lvalue, into a Datum. Eventually
@@ -655,7 +655,7 @@ fn bind_subslice_pat(bcx: Block,
 }
 
 fn extract_vec_elems<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
-                                 left_ty: ty::t,
+                                 left_ty: Ty,
                                  before: uint,
                                  after: uint,
                                  val: ValueRef)
@@ -790,12 +790,12 @@ fn pick_column_to_specialize(def_map: &DefMap, m: &[Match]) -> Option<uint> {
 fn compare_values<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
                               lhs: ValueRef,
                               rhs: ValueRef,
-                              rhs_t: ty::t)
+                              rhs_t: Ty)
                               -> Result<'blk, 'tcx> {
     fn compare_str<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
                                lhs: ValueRef,
                                rhs: ValueRef,
-                               rhs_t: ty::t)
+                               rhs_t: Ty)
                                -> Result<'blk, 'tcx> {
         let did = langcall(cx,
                            None,
@@ -1560,7 +1560,7 @@ fn mk_binding_alloca<'blk, 'tcx, A>(bcx: Block<'blk, 'tcx>,
                                     ident: &ast::Ident,
                                     cleanup_scope: cleanup::ScopeId,
                                     arg: A,
-                                    populate: |A, Block<'blk, 'tcx>, ValueRef, ty::t|
+                                    populate: |A, Block<'blk, 'tcx>, ValueRef, Ty|
                                               -> Block<'blk, 'tcx>)
                                     -> Block<'blk, 'tcx> {
     let var_ty = node_id_type(bcx, p_id);

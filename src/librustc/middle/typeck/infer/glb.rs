@@ -10,7 +10,7 @@
 
 
 use middle::ty::{BuiltinBounds};
-use middle::ty;
+use middle::ty::{mod, Ty};
 use middle::typeck::infer::combine::*;
 use middle::typeck::infer::lattice::*;
 use middle::typeck::infer::equate::Equate;
@@ -77,7 +77,7 @@ impl<'f, 'tcx> Combine<'tcx> for Glb<'f, 'tcx> {
         }
     }
 
-    fn contratys(&self, a: ty::t, b: ty::t) -> cres<ty::t> {
+    fn contratys(&self, a: Ty, b: Ty) -> cres<Ty> {
         self.lub().tys(a, b)
     }
 
@@ -118,7 +118,7 @@ impl<'f, 'tcx> Combine<'tcx> for Glb<'f, 'tcx> {
         self.lub().regions(a, b)
     }
 
-    fn tys(&self, a: ty::t, b: ty::t) -> cres<ty::t> {
+    fn tys(&self, a: Ty, b: Ty) -> cres<Ty> {
         super_lattice_tys(self, a, b)
     }
 

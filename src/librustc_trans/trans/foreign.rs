@@ -23,7 +23,7 @@ use trans::type_::Type;
 use trans::type_of::*;
 use trans::type_of;
 use middle::ty::FnSig;
-use middle::ty;
+use middle::ty::{mod, Ty};
 use middle::subst::Subst;
 use std::cmp;
 use libc::c_uint;
@@ -161,7 +161,7 @@ pub fn register_static(ccx: &CrateContext,
     }
 }
 
-pub fn register_foreign_item_fn(ccx: &CrateContext, abi: Abi, fty: ty::t,
+pub fn register_foreign_item_fn(ccx: &CrateContext, abi: Abi, fty: Ty,
                                 name: &str) -> ValueRef {
     /*!
      * Registers a foreign function found in a library.
@@ -201,11 +201,11 @@ pub fn register_foreign_item_fn(ccx: &CrateContext, abi: Abi, fty: ty::t,
 }
 
 pub fn trans_native_call<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
-                                     callee_ty: ty::t,
+                                     callee_ty: Ty,
                                      llfn: ValueRef,
                                      llretptr: ValueRef,
                                      llargs_rust: &[ValueRef],
-                                     passed_arg_tys: Vec<ty::t> )
+                                     passed_arg_tys: Vec<Ty> )
                                      -> Block<'blk, 'tcx> {
     /*!
      * Prepares a call to a native function. This requires adapting
@@ -484,7 +484,7 @@ pub fn trans_foreign_mod(ccx: &CrateContext, foreign_mod: &ast::ForeignMod) {
 // correct code in the first place, but this is much simpler.
 
 pub fn decl_rust_fn_with_foreign_abi(ccx: &CrateContext,
-                                     t: ty::t,
+                                     t: Ty,
                                      name: &str)
                                      -> ValueRef {
     let tys = foreign_types_for_fn_ty(ccx, t);
@@ -593,7 +593,7 @@ pub fn trans_rust_fn_with_foreign_abi(ccx: &CrateContext,
                             llrustfn: ValueRef,
                             llwrapfn: ValueRef,
                             tys: &ForeignTypes,
-                            t: ty::t) {
+                            t: Ty) {
         let _icx = push_ctxt(
             "foreign::trans_rust_fn_with_foreign_abi::build_wrap_fn");
         let tcx = ccx.tcx();
@@ -832,7 +832,7 @@ pub fn link_name(i: &ast::ForeignItem) -> InternedString {
     }
 }
 
-fn foreign_signature(ccx: &CrateContext, fn_sig: &ty::FnSig, arg_tys: &[ty::t])
+fn foreign_signature(ccx: &CrateContext, fn_sig: &ty::FnSig, arg_tys: &[Ty])
                      -> LlvmSignature {
     /*!
      * The ForeignSignature is the LLVM types of the arguments/return type
@@ -862,7 +862,7 @@ fn foreign_types_for_id(ccx: &CrateContext,
 }
 
 fn foreign_types_for_fn_ty(ccx: &CrateContext,
-                           ty: ty::t) -> ForeignTypes {
+                           ty: Ty) -> ForeignTypes {
     let fn_sig = match ty::get(ty).sty {
         ty::ty_bare_fn(ref fn_ty) => fn_ty.sig.clone(),
         _ => ccx.sess().bug("foreign_types_for_fn_ty called on non-function type")
@@ -934,7 +934,7 @@ fn lltype_for_fn_from_foreign_types(ccx: &CrateContext, tys: &ForeignTypes) -> T
     }
 }
 
-pub fn lltype_for_foreign_fn(ccx: &CrateContext, ty: ty::t) -> Type {
+pub fn lltype_for_foreign_fn(ccx: &CrateContext, ty: Ty) -> Type {
     lltype_for_fn_from_foreign_types(ccx, &foreign_types_for_fn_ty(ccx, ty))
 }
 

@@ -30,7 +30,7 @@ use trans::glue;
 use trans::machine;
 use trans::type_::Type;
 use trans::type_of::*;
-use middle::ty;
+use middle::ty::{mod, Ty};
 use middle::typeck;
 use middle::typeck::MethodCall;
 use util::ppaux::Repr;
@@ -424,7 +424,7 @@ fn combine_impl_and_methods_tps(bcx: Block,
 }
 
 fn trans_trait_callee<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
-                                  method_ty: ty::t,
+                                  method_ty: Ty,
                                   n_method: uint,
                                   self_expr: &ast::Expr,
                                   arg_cleanup_scope: cleanup::ScopeId)
@@ -468,7 +468,7 @@ fn trans_trait_callee<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 }
 
 pub fn trans_trait_callee_from_llval<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
-                                                 callee_ty: ty::t,
+                                                 callee_ty: Ty,
                                                  n_method: uint,
                                                  llpair: ValueRef)
                                                  -> Callee<'blk, 'tcx> {
@@ -527,7 +527,7 @@ pub fn trans_trait_callee_from_llval<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 /// `Foo<T>`. This `box_ty` is primarily used to encode the destructor.
 /// This will hopefully change now that DST is underway.
 pub fn get_vtable(bcx: Block,
-                  box_ty: ty::t,
+                  box_ty: Ty,
                   trait_ref: Rc<ty::TraitRef>)
                   -> ValueRef
 {

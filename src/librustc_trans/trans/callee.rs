@@ -50,7 +50,7 @@ use trans::meth;
 use trans::monomorphize;
 use trans::type_::Type;
 use trans::type_of;
-use middle::ty;
+use middle::ty::{mod, Ty};
 use middle::typeck::coherence::make_substs_for_receiver_types;
 use middle::typeck::MethodCall;
 use util::ppaux::Repr;
@@ -671,7 +671,7 @@ pub fn trans_lang_call<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
 pub fn trans_call_inner<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                     call_info: Option<NodeInfo>,
-                                    callee_ty: ty::t,
+                                    callee_ty: Ty,
                                     get_callee: |bcx: Block<'blk, 'tcx>,
                                                 arg_cleanup_scope: cleanup::ScopeId|
                                                 -> Callee<'blk, 'tcx>,
@@ -913,7 +913,7 @@ pub enum CallArgs<'a> {
 fn trans_args_under_call_abi<'blk, 'tcx>(
                              mut bcx: Block<'blk, 'tcx>,
                              arg_exprs: &[P<ast::Expr>],
-                             fn_ty: ty::t,
+                             fn_ty: Ty,
                              llargs: &mut Vec<ValueRef>,
                              arg_cleanup_scope: cleanup::ScopeId,
                              ignore_self: bool)
@@ -973,7 +973,7 @@ fn trans_args_under_call_abi<'blk, 'tcx>(
 fn trans_overloaded_call_args<'blk, 'tcx>(
                               mut bcx: Block<'blk, 'tcx>,
                               arg_exprs: Vec<&ast::Expr>,
-                              fn_ty: ty::t,
+                              fn_ty: Ty,
                               llargs: &mut Vec<ValueRef>,
                               arg_cleanup_scope: cleanup::ScopeId,
                               ignore_self: bool)
@@ -1018,7 +1018,7 @@ fn trans_overloaded_call_args<'blk, 'tcx>(
 
 pub fn trans_args<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
                               args: CallArgs,
-                              fn_ty: ty::t,
+                              fn_ty: Ty,
                               llargs: &mut Vec<ValueRef> ,
                               arg_cleanup_scope: cleanup::ScopeId,
                               ignore_self: bool,
@@ -1108,7 +1108,7 @@ pub enum AutorefArg {
 }
 
 pub fn trans_arg_datum<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
-                                   formal_arg_ty: ty::t,
+                                   formal_arg_ty: Ty,
                                    arg_datum: Datum<Expr>,
                                    arg_cleanup_scope: cleanup::ScopeId,
                                    autoref_arg: AutorefArg)

@@ -122,7 +122,7 @@ use middle::def;
 use middle::mem_categorization as mc;
 use middle::traits;
 use middle::ty::{ReScope};
-use middle::ty;
+use middle::ty::{mod, Ty};
 use middle::typeck::astconv::AstConv;
 use middle::typeck::check::FnCtxt;
 use middle::typeck::check::regionmanip;
@@ -178,7 +178,7 @@ pub fn regionck_fn(fcx: &FnCtxt, id: ast::NodeId, blk: &ast::Block) {
 
 pub fn regionck_ensure_component_tys_wf(fcx: &FnCtxt,
                                         span: Span,
-                                        component_tys: &[ty::t]) {
+                                        component_tys: &[Ty]) {
     /*!
      * Checks that the types in `component_tys` are well-formed.
      * This will add constraints into the region graph.
@@ -282,7 +282,7 @@ impl<'a, 'tcx> Rcx<'a, 'tcx> {
         old_scope
     }
 
-    pub fn resolve_type(&self, unresolved_ty: ty::t) -> ty::t {
+    pub fn resolve_type(&self, unresolved_ty: Ty) -> Ty {
         /*!
          * Try to resolve the type for the given node, returning
          * t_err if an error results.  Note that we never care
@@ -319,19 +319,19 @@ impl<'a, 'tcx> Rcx<'a, 'tcx> {
     }
 
     /// Try to resolve the type for the given node.
-    fn resolve_node_type(&self, id: ast::NodeId) -> ty::t {
+    fn resolve_node_type(&self, id: ast::NodeId) -> Ty {
         let t = self.fcx.node_ty(id);
         self.resolve_type(t)
     }
 
-    fn resolve_method_type(&self, method_call: MethodCall) -> Option<ty::t> {
+    fn resolve_method_type(&self, method_call: MethodCall) -> Option<Ty> {
         let method_ty = self.fcx.inh.method_map.borrow()
                             .get(&method_call).map(|method| method.ty);
         method_ty.map(|method_ty| self.resolve_type(method_ty))
     }
 
     /// Try to resolve the type for the given node.
-    pub fn resolve_expr_type_adjusted(&mut self, expr: &ast::Expr) -> ty::t {
+    pub fn resolve_expr_type_adjusted(&mut self, expr: &ast::Expr) -> Ty {
         let ty_unadjusted = self.resolve_node_type(expr.id);
         if ty::type_is_error(ty_unadjusted) {
             ty_unadjusted
@@ -384,7 +384,7 @@ impl<'a, 'tcx> Rcx<'a, 'tcx> {
     }
 
     fn relate_free_regions(&mut self,
-                           fn_sig_tys: &[ty::t],
+                           fn_sig_tys: &[Ty],
                            body_id: ast::NodeId) {
         /*!
          * This method populates the region map's `free_region_map`.
@@ -457,12 +457,12 @@ impl<'fcx, 'tcx> mc::Typer<'tcx> for Rcx<'fcx, 'tcx> {
         self.fcx.ccx.tcx
     }
 
-    fn node_ty(&self, id: ast::NodeId) -> mc::McResult<ty::t> {
+    fn node_ty(&self, id: ast::NodeId) -> mc::McResult<Ty> {
         let t = self.resolve_node_type(id);
         if ty::type_is_error(t) {Err(())} else {Ok(t)}
     }
 
-    fn node_method_ty(&self, method_call: MethodCall) -> Option<ty::t> {
+    fn node_method_ty(&self, method_call: MethodCall) -> Option<Ty> {
         self.resolve_method_type(method_call)
     }
 
@@ -809,8 +809,8 @@ fn constrain_cast(rcx: &mut Rcx,
 
     fn walk_cast(rcx: &mut Rcx,
                  cast_expr: &ast::Expr,
-                 from_ty: ty::t,
-                 to_ty: ty::t) {
+                 from_ty: Ty,
+                 to_ty: Ty) {
         debug!("walk_cast(from_ty={}, to_ty={})",
                from_ty.repr(rcx.tcx()),
                to_ty.repr(rcx.tcx()));
@@ -1185,7 +1185,7 @@ fn constrain_call<'a, I: Iterator<&'a ast::Expr>>(rcx: &mut Rcx,
 fn constrain_autoderefs(rcx: &mut Rcx,
                         deref_expr: &ast::Expr,
                         derefs: uint,
-                        mut derefd_ty: ty::t) {
+                        mut derefd_ty: Ty) {
     /*!
      * Invoked on any auto-dereference that occurs.  Checks that if
      * this is a region pointer being dereferenced, the lifetime of
@@ -1260,7 +1260,7 @@ pub fn mk_subregion_due_to_dereference(rcx: &mut Rcx,
 
 fn constrain_index(rcx: &mut Rcx,
                    index_expr: &ast::Expr,
-                   indexed_ty: ty::t)
+                   indexed_ty: Ty)
 {
     /*!
      * Invoked on any index expression that occurs.  Checks that if
@@ -1912,7 +1912,7 @@ fn adjust_upvar_borrow_kind(rcx: &Rcx,
 
 fn type_must_outlive(rcx: &mut Rcx,
                      origin: infer::SubregionOrigin,
-                     ty: ty::t,
+                     ty: Ty,
                      region: ty::Region)
 {
     /*!

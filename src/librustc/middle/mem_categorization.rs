@@ -74,7 +74,7 @@ pub use self::deref_kind::*;
 pub use self::categorization::*;
 
 use middle::def;
-use middle::ty;
+use middle::ty::{mod, Ty};
 use middle::typeck;
 use util::nodemap::{DefIdMap, NodeMap};
 use util::ppaux::{ty_to_string, Repr};
@@ -180,7 +180,7 @@ pub struct cmt_ {
     pub span: Span,                // span of same expr/pat
     pub cat: categorization,       // categorization of expr
     pub mutbl: MutabilityCategory, // mutability of expr as lvalue
-    pub ty: ty::t,                 // type of the expr (*see WARNING above*)
+    pub ty: Ty,                    // type of the expr (*see WARNING above*)
     pub note: Note,                // Note about the provenance of this cmt
 }
 
@@ -196,7 +196,7 @@ pub enum deref_kind {
 // Categorizes a derefable type.  Note that we include vectors and strings as
 // derefable (we model an index as the combination of a deref and then a
 // pointer adjustment).
-pub fn opt_deref_kind(t: ty::t) -> Option<deref_kind> {
+pub fn opt_deref_kind(t: Ty) -> Option<deref_kind> {
     match ty::get(t).sty {
         ty::ty_uniq(_) |
         ty::ty_closure(box ty::ClosureTy {store: ty::UniqTraitStore, ..}) => {
@@ -232,7 +232,7 @@ pub fn opt_deref_kind(t: ty::t) -> Option<deref_kind> {
     }
 }
 
-pub fn deref_kind(tcx: &ty::ctxt, t: ty::t) -> deref_kind {
+pub fn deref_kind(tcx: &ty::ctxt, t: Ty) -> deref_kind {
     debug!("deref_kind {}", ty_to_string(tcx, t));
     match opt_deref_kind(t) {
       Some(k) => k,
@@ -285,8 +285,8 @@ pub type McResult<T> = Result<T, ()>;
  */
 pub trait Typer<'tcx> {
     fn tcx<'a>(&'a self) -> &'a ty::ctxt<'tcx>;
-    fn node_ty(&self, id: ast::NodeId) -> McResult<ty::t>;
-    fn node_method_ty(&self, method_call: typeck::MethodCall) -> Option<ty::t>;
+    fn node_ty(&self, id: ast::NodeId) -> McResult<Ty>;
+    fn node_method_ty(&self, method_call: typeck::MethodCall) -> Option<Ty>;
     fn adjustments<'a>(&'a self) -> &'a RefCell<NodeMap<ty::AutoAdjustment>>;
     fn is_method_call(&self, id: ast::NodeId) -> bool;
     fn temporary_scope(&self, rvalue_id: ast::NodeId) -> Option<ast::NodeId>;
@@ -393,22 +393,22 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
         self.typer.tcx()
     }
 
-    fn expr_ty(&self, expr: &ast::Expr) -> McResult<ty::t> {
+    fn expr_ty(&self, expr: &ast::Expr) -> McResult<Ty> {
         self.typer.node_ty(expr.id)
     }
 
-    fn expr_ty_adjusted(&self, expr: &ast::Expr) -> McResult<ty::t> {
+    fn expr_ty_adjusted(&self, expr: &ast::Expr) -> McResult<Ty> {
         let unadjusted_ty = if_ok!(self.expr_ty(expr));
         Ok(ty::adjust_ty(self.tcx(), expr.span, expr.id, unadjusted_ty,
                          self.typer.adjustments().borrow().get(&expr.id),
                          |method_call| self.typer.node_method_ty(method_call)))
     }
 
-    fn node_ty(&self, id: ast::NodeId) -> McResult<ty::t> {
+    fn node_ty(&self, id: ast::NodeId) -> McResult<Ty> {
         self.typer.node_ty(id)
     }
 
-    fn pat_ty(&self, pat: &ast::Pat) -> McResult<ty::t> {
+    fn pat_ty(&self, pat: &ast::Pat) -> McResult<Ty> {
         self.typer.node_ty(pat.id)
     }
 
@@ -546,7 +546,7 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
     pub fn cat_def(&self,
                    id: ast::NodeId,
                    span: Span,
-                   expr_ty: ty::t,
+                   expr_ty: Ty,
                    def: def::Def)
                    -> McResult<cmt> {
         debug!("cat_def: id={} expr={} def={}",
@@ -804,7 +804,7 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
     pub fn cat_rvalue_node(&self,
                            id: ast::NodeId,
                            span: Span,
-                           expr_ty: ty::t)
+                           expr_ty: Ty)
                            -> cmt {
         match self.typer.temporary_scope(id) {
             Some(scope) => {
@@ -823,7 +823,7 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
                       cmt_id: ast::NodeId,
                       span: Span,
                       temp_scope: ty::Region,
-                      expr_ty: ty::t) -> cmt {
+                      expr_ty: Ty) -> cmt {
         Rc::new(cmt_ {
             id:cmt_id,
             span:span,
@@ -838,7 +838,7 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
                                  node: &N,
                                  base_cmt: cmt,
                                  f_name: ast::Name,
-                                 f_ty: ty::t)
+                                 f_ty: Ty)
                                  -> cmt {
         Rc::new(cmt_ {
             id: node.id(),
@@ -854,7 +854,7 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
                                      node: &N,
                                      base_cmt: cmt,
                                      f_idx: uint,
-                                     f_ty: ty::t)
+                                     f_ty: Ty)
                                      -> cmt {
         Rc::new(cmt_ {
             id: node.id(),
@@ -909,7 +909,7 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
                                     node: &N,
                                     base_cmt: cmt,
                                     deref_cnt: uint,
-                                    deref_ty: ty::t,
+                                    deref_ty: Ty,
                                     implicit: bool)
                                     -> cmt {
         let (m, cat) = match deref_kind(self.tcx(), base_cmt.ty) {
@@ -990,9 +990,9 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
 
         fn interior<N: ast_node>(elt: &N,
                                  of_cmt: cmt,
-                                 vec_ty: ty::t,
+                                 vec_ty: Ty,
                                  mutbl: MutabilityCategory,
-                                 element_ty: ty::t) -> cmt
+                                 element_ty: Ty) -> cmt
         {
             Rc::new(cmt_ {
                 id:elt.id(),
@@ -1060,7 +1060,7 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
 
         fn vec_slice_info(tcx: &ty::ctxt,
                           pat: &ast::Pat,
-                          slice_ty: ty::t)
+                          slice_ty: Ty)
                           -> (ast::Mutability, ty::Region) {
             /*!
              * In a pattern like [a, b, ..c], normally `c` has slice type,
@@ -1086,7 +1086,7 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
     pub fn cat_imm_interior<N:ast_node>(&self,
                                         node: &N,
                                         base_cmt: cmt,
-                                        interior_ty: ty::t,
+                                        interior_ty: Ty,
                                         interior: InteriorKind)
                                         -> cmt {
         Rc::new(cmt_ {
@@ -1102,7 +1102,7 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
     pub fn cat_downcast<N:ast_node>(&self,
                                     node: &N,
                                     base_cmt: cmt,
-                                    downcast_ty: ty::t)
+                                    downcast_ty: Ty)
                                     -> cmt {
         Rc::new(cmt_ {
             id: node.id(),
@@ -1531,7 +1531,7 @@ impl Repr for InteriorKind {
     }
 }
 
-fn element_kind(t: ty::t) -> ElementKind {
+fn element_kind(t: Ty) -> ElementKind {
     match ty::get(t).sty {
         ty::ty_rptr(_, ty::mt{ty, ..}) |
         ty::ty_uniq(ty) => match ty::get(ty).sty {

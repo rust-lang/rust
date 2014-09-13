@@ -28,7 +28,7 @@ use trans::type_of;
 use trans::machine;
 use trans::machine::llsize_of;
 use trans::type_::Type;
-use middle::ty;
+use middle::ty::{mod, Ty};
 use syntax::abi::RustIntrinsic;
 use syntax::ast;
 use syntax::parse::token;
@@ -136,7 +136,7 @@ pub fn check_intrinsics(ccx: &CrateContext) {
 }
 
 pub fn trans_intrinsic_call<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>, node: ast::NodeId,
-                                        callee_ty: ty::t, cleanup_scope: cleanup::CustomScopeIndex,
+                                        callee_ty: Ty, cleanup_scope: cleanup::CustomScopeIndex,
                                         args: callee::CallArgs, dest: expr::Dest,
                                         substs: subst::Substs, call_info: NodeInfo)
                                         -> Result<'blk, 'tcx> {
@@ -554,7 +554,7 @@ pub fn trans_intrinsic_call<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>, node: ast::N
 }
 
 fn copy_intrinsic(bcx: Block, allow_overlap: bool, volatile: bool,
-                  tp_ty: ty::t, dst: ValueRef, src: ValueRef, count: ValueRef) -> ValueRef {
+                  tp_ty: Ty, dst: ValueRef, src: ValueRef, count: ValueRef) -> ValueRef {
     let ccx = bcx.ccx();
     let lltp_ty = type_of::type_of(ccx, tp_ty);
     let align = C_i32(ccx, type_of::align_of(ccx, tp_ty) as i32);
@@ -582,7 +582,7 @@ fn copy_intrinsic(bcx: Block, allow_overlap: bool, volatile: bool,
                       C_bool(ccx, volatile)], None)
 }
 
-fn memset_intrinsic(bcx: Block, volatile: bool, tp_ty: ty::t,
+fn memset_intrinsic(bcx: Block, volatile: bool, tp_ty: Ty,
                     dst: ValueRef, val: ValueRef, count: ValueRef) -> ValueRef {
     let ccx = bcx.ccx();
     let lltp_ty = type_of::type_of(ccx, tp_ty);
@@ -607,7 +607,7 @@ fn count_zeros_intrinsic(bcx: Block, name: &'static str, val: ValueRef) -> Value
     Call(bcx, llfn, &[val, y], None)
 }
 
-fn with_overflow_intrinsic(bcx: Block, name: &'static str, t: ty::t,
+fn with_overflow_intrinsic(bcx: Block, name: &'static str, t: Ty,
                            a: ValueRef, b: ValueRef) -> ValueRef {
     let llfn = bcx.ccx().get_intrinsic(&name);
 

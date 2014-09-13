@@ -21,7 +21,7 @@ use middle::expr_use_visitor::{WriteAndRead};
 use middle::mem_categorization::cmt;
 use middle::pat_util::*;
 use middle::ty::*;
-use middle::ty;
+use middle::ty::{mod, Ty};
 use std::fmt;
 use std::iter::AdditiveIterator;
 use std::iter::range_inclusive;
@@ -403,7 +403,7 @@ impl<'a, 'tcx> Folder for StaticInliner<'a, 'tcx> {
 /// left_ty: struct X { a: (bool, &'static str), b: uint}
 /// pats: [(false, "foo"), 42]  => X { a: (false, "foo"), b: 42 }
 fn construct_witness(cx: &MatchCheckCtxt, ctor: &Constructor,
-                     pats: Vec<&Pat>, left_ty: ty::t) -> P<Pat> {
+                     pats: Vec<&Pat>, left_ty: Ty) -> P<Pat> {
     let pats_len = pats.len();
     let mut pats = pats.into_iter().map(|p| P((*p).clone()));
     let pat = match ty::get(left_ty).sty {
@@ -483,7 +483,7 @@ fn construct_witness(cx: &MatchCheckCtxt, ctor: &Constructor,
 }
 
 fn missing_constructor(cx: &MatchCheckCtxt, &Matrix(ref rows): &Matrix,
-                       left_ty: ty::t, max_slice_length: uint) -> Option<Constructor> {
+                       left_ty: Ty, max_slice_length: uint) -> Option<Constructor> {
     let used_constructors: Vec<Constructor> = rows.iter()
         .flat_map(|row| pat_constructors(cx, row[0], left_ty, max_slice_length).into_iter())
         .collect();
@@ -496,7 +496,7 @@ fn missing_constructor(cx: &MatchCheckCtxt, &Matrix(ref rows): &Matrix,
 /// values of type `left_ty`. For vectors, this would normally be an infinite set
 /// but is instead bounded by the maximum fixed length of slice patterns in
 /// the column of patterns being analyzed.
-fn all_constructors(cx: &MatchCheckCtxt, left_ty: ty::t,
+fn all_constructors(cx: &MatchCheckCtxt, left_ty: Ty,
                     max_slice_length: uint) -> Vec<Constructor> {
     match ty::get(left_ty).sty {
         ty::ty_bool =>
@@ -616,7 +616,7 @@ fn is_useful(cx: &MatchCheckCtxt,
 }
 
 fn is_useful_specialized(cx: &MatchCheckCtxt, &Matrix(ref m): &Matrix,
-                         v: &[&Pat], ctor: Constructor, lty: ty::t,
+                         v: &[&Pat], ctor: Constructor, lty: Ty,
                          witness: WitnessPreference) -> Usefulness {
     let arity = constructor_arity(cx, &ctor, lty);
     let matrix = Matrix(m.iter().filter_map(|r| {
@@ -638,7 +638,7 @@ fn is_useful_specialized(cx: &MatchCheckCtxt, &Matrix(ref m): &Matrix,
 /// On the other hand, a wild pattern and an identifier pattern cannot be
 /// specialized in any way.
 fn pat_constructors(cx: &MatchCheckCtxt, p: &Pat,
-                    left_ty: ty::t, max_slice_length: uint) -> Vec<Constructor> {
+                    left_ty: Ty, max_slice_length: uint) -> Vec<Constructor> {
     let pat = raw_pat(p);
     match pat.node {
         ast::PatIdent(..) =>
@@ -695,7 +695,7 @@ fn pat_constructors(cx: &MatchCheckCtxt, p: &Pat,
 ///
 /// For instance, a tuple pattern (_, 42u, Some([])) has the arity of 3.
 /// A struct pattern's arity is the number of fields it contains, etc.
-pub fn constructor_arity(cx: &MatchCheckCtxt, ctor: &Constructor, ty: ty::t) -> uint {
+pub fn constructor_arity(cx: &MatchCheckCtxt, ctor: &Constructor, ty: Ty) -> uint {
     match ty::get(ty).sty {
         ty::ty_tup(ref fs) => fs.len(),
         ty::ty_uniq(_) => 1u,

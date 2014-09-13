@@ -13,7 +13,7 @@ use super::probe;
 use middle::subst;
 use middle::subst::Subst;
 use middle::traits;
-use middle::ty;
+use middle::ty::{mod, Ty};
 use middle::typeck::check;
 use middle::typeck::check::{FnCtxt, NoPreference, PreferMutLvalue};
 use middle::typeck::{MethodCall, MethodCallee, MethodObject, MethodOrigin,
@@ -57,9 +57,9 @@ struct InstantiatedMethodSig {
 pub fn confirm(fcx: &FnCtxt,
                span: Span,
                self_expr: &ast::Expr,
-               unadjusted_self_ty: ty::t,
+               unadjusted_self_ty: Ty,
                pick: probe::Pick,
-               supplied_method_types: Vec<ty::t>)
+               supplied_method_types: Vec<Ty>)
                -> MethodCallee
 {
     debug!("confirm(unadjusted_self_ty={}, pick={}, supplied_method_types={})",
@@ -81,9 +81,9 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
     }
 
     fn confirm(&mut self,
-               unadjusted_self_ty: ty::t,
+               unadjusted_self_ty: Ty,
                pick: probe::Pick,
-               supplied_method_types: Vec<ty::t>)
+               supplied_method_types: Vec<Ty>)
                -> MethodCallee
     {
         // Adjust the self expression the user provided and obtain the adjusted type.
@@ -136,9 +136,9 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
     // ADJUSTMENTS
 
     fn adjust_self_ty(&mut self,
-                      unadjusted_self_ty: ty::t,
+                      unadjusted_self_ty: Ty,
                       adjustment: &probe::PickAdjustment)
-                      -> ty::t
+                      -> Ty
     {
         // Construct the actual adjustment and write it into the table
         let auto_deref_ref = self.create_ty_adjustment(adjustment);
@@ -191,7 +191,7 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
     //
 
     fn fresh_receiver_substs(&mut self,
-                             self_ty: ty::t,
+                             self_ty: Ty,
                              pick: &probe::Pick)
                              -> (subst::Substs, MethodOrigin)
     {
@@ -292,8 +292,8 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
     }
 
     fn extract_trait_ref<R>(&mut self,
-                            self_ty: ty::t,
-                            closure: |&mut ConfirmContext<'a,'tcx>, ty::t, &ty::TyTrait| -> R)
+                            self_ty: Ty,
+                            closure: |&mut ConfirmContext<'a,'tcx>, Ty, &ty::TyTrait| -> R)
                             -> R
     {
         // If we specified that this is an object method, then the
@@ -324,8 +324,8 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
 
     fn instantiate_method_substs(&mut self,
                                  pick: &probe::Pick,
-                                 supplied_method_types: Vec<ty::t>)
-                                 -> (Vec<ty::t>, Vec<ty::Region>)
+                                 supplied_method_types: Vec<Ty>)
+                                 -> (Vec<Ty>, Vec<ty::Region>)
     {
         // Determine the values for the generic parameters of the method.
         // If they were not explicitly supplied, just construct fresh
@@ -361,8 +361,8 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
     }
 
     fn unify_receivers(&mut self,
-                       self_ty: ty::t,
-                       method_self_ty: ty::t)
+                       self_ty: Ty,
+                       method_self_ty: Ty)
     {
         match self.fcx.mk_subty(false, infer::Misc(self.span), self_ty, method_self_ty) {
             Ok(_) => {}

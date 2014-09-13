@@ -16,7 +16,7 @@ use middle::ty::{BoundRegion, BrAnon, BrNamed};
 use middle::ty::{ReEarlyBound, BrFresh, ctxt};
 use middle::ty::{ReFree, ReScope, ReInfer, ReStatic, Region, ReEmpty};
 use middle::ty::{ReSkolemized, ReVar, BrEnv};
-use middle::ty::{mt, t, ParamTy};
+use middle::ty::{mt, Ty, ParamTy};
 use middle::ty::{ty_bool, ty_char, ty_struct, ty_enum};
 use middle::ty::{ty_err, ty_str, ty_vec, ty_float, ty_bare_fn, ty_closure};
 use middle::ty::{ty_param, ty_ptr, ty_rptr, ty_tup, ty_open};
@@ -259,7 +259,7 @@ pub fn trait_ref_to_string(cx: &ctxt, trait_ref: &ty::TraitRef) -> String {
     trait_ref.user_string(cx).to_string()
 }
 
-pub fn ty_to_string(cx: &ctxt, typ: t) -> String {
+pub fn ty_to_string(cx: &ctxt, typ: Ty) -> String {
     fn bare_fn_to_string(cx: &ctxt,
                          fn_style: ast::FnStyle,
                          abi: abi::Abi,
@@ -539,7 +539,7 @@ pub fn parameterized(cx: &ctxt,
     }
 }
 
-pub fn ty_to_short_str(cx: &ctxt, typ: t) -> String {
+pub fn ty_to_short_str(cx: &ctxt, typ: Ty) -> String {
     let mut s = typ.repr(cx).to_string();
     if s.len() >= 32u {
         s = s.as_slice().slice(0u, 32u).to_string();
@@ -652,7 +652,7 @@ impl Repr for ty::RegionParameterDef {
     }
 }
 
-impl Repr for ty::t {
+impl Repr for Ty {
     fn repr(&self, tcx: &ctxt) -> String {
         ty_to_string(tcx, *self)
     }
@@ -1188,7 +1188,7 @@ impl UserString for ty::TraitRef {
     }
 }
 
-impl UserString for ty::t {
+impl UserString for Ty {
     fn user_string(&self, tcx: &ctxt) -> String {
         ty_to_string(tcx, *self)
     }

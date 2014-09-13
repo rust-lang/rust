@@ -11,7 +11,7 @@
 use middle::def;
 use middle::pat_util::{PatIdMap, pat_id_map, pat_is_binding, pat_is_const};
 use middle::subst::{Subst, Substs};
-use middle::ty;
+use middle::ty::{mod, Ty};
 use middle::typeck::check::{check_expr, check_expr_has_type, demand, FnCtxt};
 use middle::typeck::check::{instantiate_path, structurally_resolved_type, valid_range_bounds};
 use middle::typeck::infer::{mod, resolve};
@@ -27,7 +27,7 @@ use syntax::parse::token;
 use syntax::print::pprust;
 use syntax::ptr::P;
 
-pub fn check_pat(pcx: &pat_ctxt, pat: &ast::Pat, expected: ty::t) {
+pub fn check_pat(pcx: &pat_ctxt, pat: &ast::Pat, expected: Ty) {
     let fcx = pcx.fcx;
     let tcx = pcx.fcx.ccx.tcx;
 
@@ -207,7 +207,7 @@ pub fn check_pat(pcx: &pat_ctxt, pat: &ast::Pat, expected: ty::t) {
     }
 }
 
-pub fn check_dereferencable(pcx: &pat_ctxt, span: Span, expected: ty::t,
+pub fn check_dereferencable(pcx: &pat_ctxt, span: Span, expected: Ty,
                             inner: &ast::Pat) -> bool {
     let fcx = pcx.fcx;
     let tcx = pcx.fcx.ccx.tcx;
@@ -292,7 +292,7 @@ pub struct pat_ctxt<'a, 'tcx: 'a> {
 
 pub fn check_pat_struct(pcx: &pat_ctxt, pat: &ast::Pat,
                         path: &ast::Path, fields: &[Spanned<ast::FieldPat>],
-                        etc: bool, expected: ty::t) {
+                        etc: bool, expected: Ty) {
     let fcx = pcx.fcx;
     let tcx = pcx.fcx.ccx.tcx;
 
@@ -351,7 +351,7 @@ pub fn check_pat_struct(pcx: &pat_ctxt, pat: &ast::Pat,
 
 pub fn check_pat_enum(pcx: &pat_ctxt, pat: &ast::Pat,
                       path: &ast::Path, subpats: &Option<Vec<P<ast::Pat>>>,
-                      expected: ty::t) {
+                      expected: Ty) {
 
     // Typecheck the path.
     let fcx = pcx.fcx;

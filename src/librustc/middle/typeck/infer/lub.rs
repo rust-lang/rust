@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use middle::ty::{BuiltinBounds};
-use middle::ty;
+use middle::ty::{mod, Ty};
 use middle::typeck::infer::combine::*;
 use middle::typeck::infer::equate::Equate;
 use middle::typeck::infer::glb::Glb;
@@ -72,7 +72,7 @@ impl<'f, 'tcx> Combine<'tcx> for Lub<'f, 'tcx> {
         }
     }
 
-    fn contratys(&self, a: ty::t, b: ty::t) -> cres<ty::t> {
+    fn contratys(&self, a: Ty, b: Ty) -> cres<Ty> {
         self.glb().tys(a, b)
     }
 
@@ -117,7 +117,7 @@ impl<'f, 'tcx> Combine<'tcx> for Lub<'f, 'tcx> {
         self.higher_ranked_lub(a, b)
     }
 
-    fn tys(&self, a: ty::t, b: ty::t) -> cres<ty::t> {
+    fn tys(&self, a: Ty, b: Ty) -> cres<Ty> {
         super_lattice_tys(self, a, b)
     }
 
