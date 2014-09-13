@@ -165,45 +165,45 @@ pub fn binop_to_string(o: BinOp) -> &'static str {
 
 pub fn to_string(t: &Token) -> String {
     match *t {
-      EQ => "=".to_string(),
-      LT => "<".to_string(),
-      LE => "<=".to_string(),
-      EQEQ => "==".to_string(),
-      NE => "!=".to_string(),
-      GE => ">=".to_string(),
-      GT => ">".to_string(),
-      NOT => "!".to_string(),
-      TILDE => "~".to_string(),
-      OROR => "||".to_string(),
-      ANDAND => "&&".to_string(),
-      BINOP(op) => binop_to_string(op).to_string(),
+      EQ => "=".into_string(),
+      LT => "<".into_string(),
+      LE => "<=".into_string(),
+      EQEQ => "==".into_string(),
+      NE => "!=".into_string(),
+      GE => ">=".into_string(),
+      GT => ">".into_string(),
+      NOT => "!".into_string(),
+      TILDE => "~".into_string(),
+      OROR => "||".into_string(),
+      ANDAND => "&&".into_string(),
+      BINOP(op) => binop_to_string(op).into_string(),
       BINOPEQ(op) => {
-          let mut s = binop_to_string(op).to_string();
+          let mut s = binop_to_string(op).into_string();
           s.push_str("=");
           s
       }
 
       /* Structural symbols */
-      AT => "@".to_string(),
-      DOT => ".".to_string(),
-      DOTDOT => "..".to_string(),
-      DOTDOTDOT => "...".to_string(),
-      COMMA => ",".to_string(),
-      SEMI => ";".to_string(),
-      COLON => ":".to_string(),
-      MOD_SEP => "::".to_string(),
-      RARROW => "->".to_string(),
-      LARROW => "<-".to_string(),
-      FAT_ARROW => "=>".to_string(),
-      LPAREN => "(".to_string(),
-      RPAREN => ")".to_string(),
-      LBRACKET => "[".to_string(),
-      RBRACKET => "]".to_string(),
-      LBRACE => "{".to_string(),
-      RBRACE => "}".to_string(),
-      POUND => "#".to_string(),
-      DOLLAR => "$".to_string(),
-      QUESTION => "?".to_string(),
+      AT => "@".into_string(),
+      DOT => ".".into_string(),
+      DOTDOT => "..".into_string(),
+      DOTDOTDOT => "...".into_string(),
+      COMMA => ",".into_string(),
+      SEMI => ";".into_string(),
+      COLON => ":".into_string(),
+      MOD_SEP => "::".into_string(),
+      RARROW => "->".into_string(),
+      LARROW => "<-".into_string(),
+      FAT_ARROW => "=>".into_string(),
+      LPAREN => "(".into_string(),
+      RPAREN => ")".into_string(),
+      LBRACKET => "[".into_string(),
+      RBRACKET => "]".into_string(),
+      LBRACE => "{".into_string(),
+      RBRACE => "}".into_string(),
+      POUND => "#".into_string(),
+      DOLLAR => "$".into_string(),
+      QUESTION => "?".into_string(),
 
       /* Literals */
       LIT_BYTE(b) => {
@@ -213,7 +213,7 @@ pub fn to_string(t: &Token) -> String {
           format!("'{}'", c.as_str())
       }
       LIT_INTEGER(c) | LIT_FLOAT(c) => {
-          c.as_str().to_string()
+          c.as_str().into_string()
       }
 
       LIT_STR(s) => {
@@ -232,17 +232,17 @@ pub fn to_string(t: &Token) -> String {
       }
 
       /* Name components */
-      IDENT(s, _) => get_ident(s).get().to_string(),
+      IDENT(s, _) => get_ident(s).get().into_string(),
       LIFETIME(s) => {
           format!("{}", get_ident(s))
       }
-      UNDERSCORE => "_".to_string(),
+      UNDERSCORE => "_".into_string(),
 
       /* Other */
-      DOC_COMMENT(s) => s.as_str().to_string(),
-      EOF => "<eof>".to_string(),
-      WS => " ".to_string(),
-      COMMENT => "/* */".to_string(),
+      DOC_COMMENT(s) => s.as_str().into_string(),
+      EOF => "<eof>".into_string(),
+      WS => " ".into_string(),
+      COMMENT => "/* */".into_string(),
       SHEBANG(s) => format!("/* shebang: {}*/", s.as_str()),
 
       INTERPOLATED(ref nt) => {
@@ -252,7 +252,7 @@ pub fn to_string(t: &Token) -> String {
             &NtTy(ref e) => ::print::pprust::ty_to_string(&**e),
             &NtPath(ref e) => ::print::pprust::path_to_string(&**e),
             _ => {
-                let mut s = "an interpolated ".to_string();
+                let mut s = "an interpolated ".into_string();
                 match *nt {
                     NtItem(..) => s.push_str("item"),
                     NtBlock(..) => s.push_str("block"),
