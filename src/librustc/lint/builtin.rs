@@ -27,9 +27,10 @@
 
 use metadata::csearch;
 use middle::def::*;
+use middle::ty::{mod, Ty};
 use middle::typeck::astconv::ast_ty_to_ty;
-use middle::typeck::infer;
-use middle::{typeck, ty, def, pat_util, stability};
+use middle::typeck::{mod, infer};
+use middle::{def, pat_util, stability};
 use util::ppaux::{ty_to_string};
 use util::nodemap::NodeSet;
 use lint::{Context, LintPass, LintArray};
@@ -423,7 +424,7 @@ declare_lint!(HEAP_MEMORY, Allow,
 pub struct HeapMemory;
 
 impl HeapMemory {
-    fn check_heap_type(&self, cx: &Context, span: Span, ty: ty::t) {
+    fn check_heap_type(&self, cx: &Context, span: Span, ty: Ty) {
         let mut n_box = 0i;
         let mut n_uniq = 0i;
         ty::fold_ty(cx.tcx, ty, |t| {

@@ -13,7 +13,7 @@
  */
 
 use middle::subst;
-use middle::ty;
+use middle::ty::{mod, Ty};
 use middle::typeck::infer::InferCtxt;
 use std::rc::Rc;
 use syntax::ast;
@@ -66,7 +66,7 @@ pub enum ObligationCauseCode {
     ItemObligation(ast::DefId),
 
     /// Obligation incurred due to an object cast.
-    ObjectCastObligation(/* Object type */ ty::t),
+    ObjectCastObligation(/* Object type */ Ty),
 
     /// Various cases where expressions must be sized/copy/etc:
     AssignmentLhsSized,        // L = X implies that L is Sized
@@ -250,7 +250,7 @@ pub fn evaluate_impl(infcx: &InferCtxt,
                      unboxed_closures: &DefIdMap<ty::UnboxedClosure>,
                      cause: ObligationCause,
                      impl_def_id: ast::DefId,
-                     self_ty: ty::t)
+                     self_ty: Ty)
                      -> EvaluationResult
 {
     /*!
@@ -273,7 +273,7 @@ pub fn select_inherent_impl(infcx: &InferCtxt,
                             unboxed_closures: &DefIdMap<ty::UnboxedClosure>,
                             cause: ObligationCause,
                             impl_def_id: ast::DefId,
-                            self_ty: ty::t)
+                            self_ty: Ty)
                             -> SelectionResult<VtableImplData<Obligation>>
 {
     /*!
@@ -345,7 +345,7 @@ pub fn obligations_for_generics(tcx: &ty::ctxt,
 
 pub fn obligation_for_builtin_bound(tcx: &ty::ctxt,
                                     cause: ObligationCause,
-                                    source_ty: ty::t,
+                                    source_ty: Ty,
                                     builtin_bound: ty::BuiltinBound)
                                     -> Obligation
 {
@@ -363,7 +363,7 @@ impl Obligation {
         Obligation::new(ObligationCause::misc(span), trait_ref)
     }
 
-    pub fn self_ty(&self) -> ty::t {
+    pub fn self_ty(&self) -> Ty {
         self.trait_ref.self_ty()
     }
 }

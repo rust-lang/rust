@@ -15,7 +15,7 @@ use middle::traits::{SelectionError, Overflow,
 use middle::traits::{Obligation, obligation_for_builtin_bound};
 use middle::traits::{FulfillmentError, CodeSelectionError, CodeAmbiguity};
 use middle::traits::{ObligationCause};
-use middle::ty;
+use middle::ty::{mod, Ty};
 use middle::typeck::check::{FnCtxt,
                             structurally_resolved_type};
 use middle::typeck::infer;
@@ -39,7 +39,7 @@ pub enum ErrorReportingContext {
 pub fn check_object_cast(fcx: &FnCtxt,
                          cast_expr: &ast::Expr,
                          source_expr: &ast::Expr,
-                         target_object_ty: ty::t)
+                         target_object_ty: Ty)
 {
     debug!("check_object_cast(cast_expr={}, target_object_ty={})",
            cast_expr.repr(fcx.tcx()),
@@ -109,7 +109,7 @@ pub fn check_object_cast(fcx: &FnCtxt,
     // Because we currently give unsound lifetimes to the "ty_box", I
     // could have written &'static ty::TyTrait here, but it seems
     // gratuitously unsafe.
-    fn object_trait<'a>(t: &'a ty::t) -> &'a ty::TyTrait {
+    fn object_trait<'a>(t: &'a Ty) -> &'a ty::TyTrait {
         match ty::get(*t).sty {
             ty::ty_trait(ref ty_trait) => &**ty_trait,
             _ => fail!("expected ty_trait")
@@ -126,7 +126,7 @@ pub fn check_object_cast(fcx: &FnCtxt,
     fn push_cast_obligation(fcx: &FnCtxt,
                             cast_expr: &ast::Expr,
                             object_trait: &ty::TyTrait,
-                            referent_ty: ty::t) {
+                            referent_ty: Ty) {
         let object_trait_ref =
             register_object_cast_obligations(fcx,
                                              cast_expr.span,
@@ -143,7 +143,7 @@ pub fn check_object_cast(fcx: &FnCtxt,
 pub fn register_object_cast_obligations(fcx: &FnCtxt,
                                         span: Span,
                                         object_trait: &ty::TyTrait,
-                                        referent_ty: ty::t)
+                                        referent_ty: Ty)
                                         -> Rc<ty::TraitRef>
 {
     // This is just for better error reporting. Kinda goofy. The object type stuff
@@ -224,7 +224,7 @@ pub fn check_builtin_bound_obligations(fcx: &FnCtxt) {
 }
 
 fn resolve_trait_ref(fcx: &FnCtxt, obligation: &Obligation)
-                     -> (ty::TraitRef, ty::t)
+                     -> (ty::TraitRef, Ty)
 {
     let trait_ref =
         fcx.infcx().resolve_type_vars_in_trait_ref_if_possible(

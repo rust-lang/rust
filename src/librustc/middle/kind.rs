@@ -10,7 +10,7 @@
 
 use middle::mem_categorization::Typer;
 use middle::subst;
-use middle::ty;
+use middle::ty::{mod, Ty};
 use middle::ty_fold::TypeFoldable;
 use middle::ty_fold;
 use util::ppaux::{ty_to_string};
@@ -299,7 +299,7 @@ fn check_ty(cx: &mut Context, aty: &ast::Ty) {
 
 // Calls "any_missing" if any bounds were missing.
 pub fn check_builtin_bounds(cx: &Context,
-                            ty: ty::t,
+                            ty: Ty,
                             bounds: ty::BuiltinBounds,
                             any_missing: |ty::BuiltinBounds|) {
     let kind = ty::type_contents(cx.tcx, ty);
@@ -316,7 +316,7 @@ pub fn check_builtin_bounds(cx: &Context,
 
 pub fn check_typaram_bounds(cx: &Context,
                             sp: Span,
-                            ty: ty::t,
+                            ty: Ty,
                             type_param_def: &ty::TypeParameterDef) {
     check_builtin_bounds(cx,
                          ty,
@@ -330,8 +330,8 @@ pub fn check_typaram_bounds(cx: &Context,
     });
 }
 
-pub fn check_freevar_bounds(cx: &Context, fn_span: Span, sp: Span, ty: ty::t,
-                            bounds: ty::BuiltinBounds, referenced_ty: Option<ty::t>)
+pub fn check_freevar_bounds(cx: &Context, fn_span: Span, sp: Span, ty: Ty,
+                            bounds: ty::BuiltinBounds, referenced_ty: Option<Ty>)
 {
     check_builtin_bounds(cx, ty, bounds, |missing| {
         // Will be Some if the freevar is implicitly borrowed (stack closure).
@@ -356,7 +356,7 @@ pub fn check_freevar_bounds(cx: &Context, fn_span: Span, sp: Span, ty: ty::t,
     });
 }
 
-pub fn check_trait_cast_bounds(cx: &Context, sp: Span, ty: ty::t,
+pub fn check_trait_cast_bounds(cx: &Context, sp: Span, ty: Ty,
                                bounds: ty::BuiltinBounds) {
     check_builtin_bounds(cx, ty, bounds, |missing| {
         span_err!(cx.tcx.sess, sp, E0147,
@@ -367,7 +367,7 @@ pub fn check_trait_cast_bounds(cx: &Context, sp: Span, ty: ty::t,
     });
 }
 
-fn check_copy(cx: &Context, ty: ty::t, sp: Span, reason: &str) {
+fn check_copy(cx: &Context, ty: Ty, sp: Span, reason: &str) {
     debug!("type_contents({})={}",
            ty_to_string(cx.tcx, ty),
            ty::type_contents(cx.tcx, ty).to_string());
@@ -380,7 +380,7 @@ fn check_copy(cx: &Context, ty: ty::t, sp: Span, reason: &str) {
 }
 
 // Ensure that `ty` has a statically known size (i.e., it has the `Sized` bound).
-fn check_sized(tcx: &ty::ctxt, ty: ty::t, name: String, sp: Span) {
+fn check_sized(tcx: &ty::ctxt, ty: Ty, name: String, sp: Span) {
     if !ty::type_is_sized(tcx, ty) {
         span_err!(tcx.sess, sp, E0151,
             "variable `{}` has dynamically sized type `{}`",

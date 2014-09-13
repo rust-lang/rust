@@ -19,7 +19,7 @@ use std::collections::HashMap;
 use middle::subst;
 use middle::subst::VecPerParamSpace;
 use middle::ty::ParamTy;
-use middle::ty;
+use middle::ty::{mod, Ty};
 
 use syntax::abi::Abi;
 use syntax::ast;
@@ -46,9 +46,9 @@ pub struct ty_abbrev {
     s: String
 }
 
-pub type abbrev_map = RefCell<HashMap<ty::t, ty_abbrev>>;
+pub type abbrev_map = RefCell<HashMap<Ty, ty_abbrev>>;
 
-pub fn enc_ty(w: &mut SeekableMemWriter, cx: &ctxt, t: ty::t) {
+pub fn enc_ty(w: &mut SeekableMemWriter, cx: &ctxt, t: Ty) {
     match cx.abbrevs.borrow_mut().find(&t) {
         Some(a) => { w.write(a.s.as_bytes()); return; }
         None => {}

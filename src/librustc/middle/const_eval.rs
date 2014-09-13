@@ -15,7 +15,7 @@ use metadata::csearch;
 use middle::astencode;
 use middle::def;
 use middle::pat_util::def_to_path;
-use middle::ty;
+use middle::ty::{mod, Ty};
 use middle::typeck::astconv;
 use middle::typeck::check;
 use util::nodemap::{DefIdMap};

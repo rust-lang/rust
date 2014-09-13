@@ -22,7 +22,7 @@ use super::{VtableImplData, VtableParamData};
 use super::{util};
 
 use middle::subst::{Subst, Substs, VecPerParamSpace};
-use middle::ty;
+use middle::ty::{mod, Ty};
 use middle::typeck::check::regionmanip;
 use middle::typeck::infer;
 use middle::typeck::infer::InferCtxt;
@@ -44,7 +44,7 @@ pub struct SelectionContext<'cx, 'tcx:'cx> {
 // #[deriving(Hash,Eq,PartialEq)]
 // struct CacheKey {
 //     trait_def_id: ast::DefId,
-//     skol_obligation_self_ty: ty::t,
+//     skol_obligation_self_ty: Ty,
 // }
 
 enum MatchResult<T> {
@@ -142,7 +142,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     pub fn select_inherent_impl(&self,
                                 impl_def_id: ast::DefId,
                                 obligation_cause: ObligationCause,
-                                obligation_self_ty: ty::t)
+                                obligation_self_ty: Ty)
                                 -> SelectionResult<VtableImplData<Obligation>>
     {
         debug!("select_inherent_impl(impl_def_id={}, obligation_self_ty={})",
@@ -199,7 +199,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     pub fn evaluate_impl(&self,
                          impl_def_id: ast::DefId,
                          obligation_cause: ObligationCause,
-                         obligation_self_ty: ty::t)
+                         obligation_self_ty: Ty)
                          -> EvaluationResult
     {
         /*!
@@ -292,7 +292,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
     fn check_candidate_cache(&self,
                              _obligation: &Obligation,
-                             _skol_obligation_self_ty: ty::t)
+                             _skol_obligation_self_ty: Ty)
                              -> Option<Candidate>
     {
         // let cache_key = CacheKey::new(obligation.trait_ref.def_id,
@@ -304,7 +304,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
     fn insert_candidate_cache(&self,
                               _obligation: &Obligation,
-                              _skol_obligation_self_ty: ty::t,
+                              _skol_obligation_self_ty: Ty,
                               _candidate: Candidate)
     {
         // FIXME -- Enable caching. I think the right place to put the cache
@@ -320,7 +320,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
     fn assemble_candidates(&self,
                            obligation: &Obligation,
-                           skol_obligation_self_ty: ty::t)
+                           skol_obligation_self_ty: Ty)
                            -> Result<Vec<Candidate>, SelectionError>
     {
         // Check for overflow.
@@ -388,7 +388,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
     fn assemble_candidates_from_caller_bounds(&self,
                                               obligation: &Obligation,
-                                              skol_obligation_self_ty: ty::t,
+                                              skol_obligation_self_ty: Ty,
                                               candidates: &mut Vec<Candidate>)
                                               -> Result<(),SelectionError>
     {
@@ -449,7 +449,7 @@ v         */
 
     fn assemble_unboxed_candidates(&self,
                                    obligation: &Obligation,
-                                   skol_obligation_self_ty: ty::t,
+                                   skol_obligation_self_ty: Ty,
                                    candidates: &mut Vec<Candidate>)
                                    -> Result<(),SelectionError>
     {
@@ -503,7 +503,7 @@ v         */
 
     fn assemble_candidates_from_impls(&self,
                                       obligation: &Obligation,
-                                      skol_obligation_self_ty: ty::t,
+                                      skol_obligation_self_ty: Ty,
                                       candidates: &mut Vec<Candidate>)
                                       -> Result<(), SelectionError>
     {
@@ -531,7 +531,7 @@ v         */
     fn candidate_from_impl(&self,
                            impl_def_id: ast::DefId,
                            obligation_cause: ObligationCause,
-                           skol_obligation_self_ty: ty::t)
+                           skol_obligation_self_ty: Ty)
                            -> Option<ImplCandidate>
     {
         match self.match_impl_self_types(impl_def_id,
@@ -641,7 +641,7 @@ v         */
     fn confirm_inherent_impl_candidate(&self,
                                        impl_def_id: ast::DefId,
                                        obligation_cause: ObligationCause,
-                                       obligation_self_ty: ty::t,
+                                       obligation_self_ty: Ty,
                                        obligation_recursion_depth: uint)
                                        -> Result<VtableImplData<Obligation>,
                                                  SelectionError>
@@ -727,7 +727,7 @@ v         */
     fn match_impl_self_types(&self,
                              impl_def_id: ast::DefId,
                              obligation_cause: ObligationCause,
-                             obligation_self_ty: ty::t)
+                             obligation_self_ty: Ty)
                              -> MatchResult<Substs>
     {
         /*!
@@ -780,10 +780,10 @@ v         */
                         cause: ObligationCause,
 
                         // The self type provided by the impl/caller-obligation:
-                        provided_self_ty: ty::t,
+                        provided_self_ty: Ty,
 
                         // The self type the obligation is for:
-                        required_self_ty: ty::t)
+                        required_self_ty: Ty)
                         -> MatchResult<()>
     {
         // FIXME(#5781) -- equating the types is stronger than
@@ -1014,7 +1014,7 @@ impl Repr for ImplCandidate {
 
 // impl CacheKey {
 //     pub fn new(trait_def_id: ast::DefId,
-//                skol_obligation_self_ty: ty::t)
+//                skol_obligation_self_ty: Ty)
 //                -> CacheKey
 //     {
 //         CacheKey {

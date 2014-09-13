@@ -12,7 +12,7 @@
 use middle::subst;
 use middle::subst::{ParamSpace, Subst, Substs, VecPerParamSpace};
 use middle::typeck::infer::InferCtxt;
-use middle::ty;
+use middle::ty::{mod, Ty};
 use std::fmt;
 use std::rc::Rc;
 use syntax::ast;
@@ -216,7 +216,7 @@ pub fn obligation_for_builtin_bound(
     cause: ObligationCause,
     builtin_bound: ty::BuiltinBound,
     recursion_depth: uint,
-    param_ty: ty::t)
+    param_ty: Ty)
     -> Obligation
 {
     match tcx.lang_items.from_builtin_kind(builtin_bound) {

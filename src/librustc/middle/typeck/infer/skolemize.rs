@@ -39,7 +39,7 @@
  * it is reasonable to ask what the type inferencer knows "so far".
  */
 
-use middle::ty;
+use middle::ty::{mod, Ty};
 use middle::ty_fold;
 use middle::ty_fold::TypeFoldable;
 use middle::ty_fold::TypeFolder;
@@ -59,17 +59,17 @@ impl<'a, 'tcx> TypeSkolemizer<'a, 'tcx> {
         TypeSkolemizer { infcx: infcx, skolemization_count: 0 }
     }
 
-    fn probe_ty(&mut self, v: ty::TyVid) -> ty::t {
+    fn probe_ty(&mut self, v: ty::TyVid) -> Ty {
         self.skolemize_if_none(self.infcx.type_variables.borrow().probe(v), ty::SkolemizedTy)
     }
 
-    fn probe_unifiable<V:SimplyUnifiable,K:UnifyKey<Option<V>>>(&mut self, k: K) -> ty::t {
+    fn probe_unifiable<V:SimplyUnifiable,K:UnifyKey<Option<V>>>(&mut self, k: K) -> Ty {
         self.skolemize_if_none(self.infcx.probe_var(k), ty::SkolemizedIntTy)
     }
 
-    fn skolemize_if_none(&mut self, o: Option<ty::t>,
+    fn skolemize_if_none(&mut self, o: Option<Ty>,
                          skolemizer: |uint| -> ty::InferTy)
-                         -> ty::t {
+                         -> Ty {
         match o {
             Some(t) => t.fold_with(self),
             None => {
@@ -105,7 +105,7 @@ impl<'a, 'tcx> TypeFolder<'tcx> for TypeSkolemizer<'a, 'tcx> {
         }
     }
 
-    fn fold_ty(&mut self, t: ty::t) -> ty::t {
+    fn fold_ty(&mut self, t: Ty) -> Ty {
         match ty::get(t).sty {
             ty::ty_infer(ty::TyVar(v)) => {
                 self.probe_ty(v)

@@ -19,7 +19,7 @@ use middle::dataflow::DataFlowOperator;
 use middle::def;
 use middle::expr_use_visitor as euv;
 use middle::mem_categorization as mc;
-use middle::ty;
+use middle::ty::{mod, Ty};
 use util::ppaux::{note_and_explain_region, Repr, UserString};
 
 use std::rc::Rc;
@@ -447,7 +447,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
     pub fn cat_def(&self,
                    id: ast::NodeId,
                    span: Span,
-                   ty: ty::t,
+                   ty: Ty,
                    def: def::Def)
                    -> mc::cmt {
         match self.mc().cat_def(id, span, ty, def) {
@@ -583,7 +583,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
             }
         }
 
-        fn move_suggestion(tcx: &ty::ctxt, ty: ty::t, default_msg: &'static str)
+        fn move_suggestion(tcx: &ty::ctxt, ty: Ty, default_msg: &'static str)
                           -> &'static str {
             match ty::get(ty).sty {
                 ty::ty_closure(box ty::ClosureTy {

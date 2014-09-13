@@ -10,7 +10,7 @@
 
 
 use middle::ty::{BuiltinBounds};
-use middle::ty;
+use middle::ty::{mod, Ty};
 use middle::ty::TyVar;
 use middle::typeck::check::regionmanip::replace_late_bound_regions_in_fn_sig;
 use middle::typeck::infer::combine::*;
@@ -48,7 +48,7 @@ impl<'f, 'tcx> Combine<'tcx> for Sub<'f, 'tcx> {
     fn lub<'a>(&'a self) -> Lub<'a, 'tcx> { Lub(self.fields.clone()) }
     fn glb<'a>(&'a self) -> Glb<'a, 'tcx> { Glb(self.fields.clone()) }
 
-    fn contratys(&self, a: ty::t, b: ty::t) -> cres<ty::t> {
+    fn contratys(&self, a: Ty, b: Ty) -> cres<Ty> {
         Sub(self.fields.switch_expected()).tys(b, a)
     }
 
@@ -120,7 +120,7 @@ impl<'f, 'tcx> Combine<'tcx> for Sub<'f, 'tcx> {
         }
     }
 
-    fn tys(&self, a: ty::t, b: ty::t) -> cres<ty::t> {
+    fn tys(&self, a: Ty, b: Ty) -> cres<Ty> {
         debug!("{}.tys({}, {})", self.tag(),
                a.repr(self.fields.infcx.tcx), b.repr(self.fields.infcx.tcx));
         if a == b { return Ok(a); }

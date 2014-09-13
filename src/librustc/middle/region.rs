@@ -23,7 +23,7 @@ Most of the documentation on regions can be found in
 
 use driver::session::Session;
 use middle::ty::{FreeRegion};
-use middle::ty;
+use middle::ty::{mod, Ty};
 use util::nodemap::NodeMap;
 use util::common::can_reach;
 

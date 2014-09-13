@@ -62,7 +62,7 @@ time of error detection.
 use std::collections::HashSet;
 use middle::def;
 use middle::subst;
-use middle::ty;
+use middle::ty::{mod, Ty};
 use middle::ty::{Region, ReFree};
 use middle::typeck::infer;
 use middle::typeck::infer::InferCtxt;
@@ -1650,8 +1650,8 @@ trait Resolvable {
     fn contains_error(&self) -> bool;
 }
 
-impl Resolvable for ty::t {
-    fn resolve(&self, infcx: &InferCtxt) -> ty::t {
+impl Resolvable for Ty {
+    fn resolve(&self, infcx: &InferCtxt) -> Ty {
         infcx.resolve_type_vars_if_possible(*self)
     }
     fn contains_error(&self) -> bool {

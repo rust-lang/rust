@@ -29,7 +29,7 @@ use middle::trans::debuginfo;
 use middle::trans::type_::Type;
 use middle::trans::type_of;
 use middle::traits;
-use middle::ty;
+use middle::ty::{mod, Ty};
 use middle::ty_fold;
 use middle::typeck;
 use middle::typeck::infer;
@@ -52,7 +52,7 @@ use syntax::parse::token;
 
 pub use middle::trans::context::CrateContext;
 
-fn type_is_newtype_immediate(ccx: &CrateContext, ty: ty::t) -> bool {
+fn type_is_newtype_immediate(ccx: &CrateContext, ty: Ty) -> bool {
     match ty::get(ty).sty {
         ty::ty_struct(def_id, ref substs) => {
             let fields = ty::struct_fields(ccx.tcx(), def_id, substs);
@@ -65,7 +65,7 @@ fn type_is_newtype_immediate(ccx: &CrateContext, ty: ty::t) -> bool {
     }
 }
 
-pub fn type_is_immediate(ccx: &CrateContext, ty: ty::t) -> bool {
+pub fn type_is_immediate(ccx: &CrateContext, ty: Ty) -> bool {
     use middle::trans::machine::llsize_of_alloc;
     use middle::trans::type_of::sizing_type_of;
 
@@ -91,7 +91,7 @@ pub fn type_is_immediate(ccx: &CrateContext, ty: ty::t) -> bool {
     }
 }
 
-pub fn type_is_zero_size(ccx: &CrateContext, ty: ty::t) -> bool {
+pub fn type_is_zero_size(ccx: &CrateContext, ty: Ty) -> bool {
     /*!
      * Identify types which have size zero at runtime.
      */
@@ -102,7 +102,7 @@ pub fn type_is_zero_size(ccx: &CrateContext, ty: ty::t) -> bool {
     llsize_of_alloc(ccx, llty) == 0
 }
 
-pub fn return_type_is_void(ccx: &CrateContext, ty: ty::t) -> bool {
+pub fn return_type_is_void(ccx: &CrateContext, ty: Ty) -> bool {
     /*!
      * Identifies types which we declare to be equivalent to `void`
      * in C for the purpose of function return types. These are
@@ -124,7 +124,7 @@ pub fn gensym_name(name: &str) -> PathElem {
 }
 
 pub struct tydesc_info {
-    pub ty: ty::t,
+    pub ty: Ty,
     pub tydesc: ValueRef,
     pub size: ValueRef,
     pub align: ValueRef,
@@ -342,7 +342,7 @@ impl<'a, 'tcx> FunctionContext<'a, 'tcx> {
         self.llreturn.get().unwrap()
     }
 
-    pub fn get_ret_slot(&self, bcx: Block, ty: ty::t, name: &str) -> ValueRef {
+    pub fn get_ret_slot(&self, bcx: Block, ty: Ty, name: &str) -> ValueRef {
         if self.needs_ret_allocas {
             base::alloca_no_lifetime(bcx, type_of::type_of(bcx.ccx(), ty), name)
         } else {
@@ -480,7 +480,7 @@ impl<'blk, 'tcx> BlockS<'blk, 'tcx> {
         self.ccx().tn().type_to_string(ty)
     }
 
-    pub fn ty_to_string(&self, t: ty::t) -> String {
+    pub fn ty_to_string(&self, t: Ty) -> String {
         t.repr(self.tcx())
     }
 
@@ -494,11 +494,11 @@ impl<'blk, 'tcx> mc::Typer<'tcx> for BlockS<'blk, 'tcx> {
         self.tcx()
     }
 
-    fn node_ty(&self, id: ast::NodeId) -> mc::McResult<ty::t> {
+    fn node_ty(&self, id: ast::NodeId) -> mc::McResult<Ty> {
         Ok(node_id_type(self, id))
     }
 
-    fn node_method_ty(&self, method_call: typeck::MethodCall) -> Option<ty::t> {
+    fn node_method_ty(&self, method_call: typeck::MethodCall) -> Option<Ty> {
         self.tcx().method_map.borrow().find(&method_call).map(|method| method.ty)
     }
 
@@ -740,21 +740,21 @@ pub fn is_null(val: ValueRef) -> bool {
     }
 }
 
-pub fn monomorphize_type(bcx: &BlockS, t: ty::t) -> ty::t {
+pub fn monomorphize_type(bcx: &BlockS, t: Ty) -> Ty {
     t.subst(bcx.tcx(), &bcx.fcx.param_substs.substs)
 }
 
-pub fn node_id_type(bcx: &BlockS, id: ast::NodeId) -> ty::t {
+pub fn node_id_type(bcx: &BlockS, id: ast::NodeId) -> Ty {
     let tcx = bcx.tcx();
     let t = ty::node_id_to_type(tcx, id);
     monomorphize_type(bcx, t)
 }
 
-pub fn expr_ty(bcx: Block, ex: &ast::Expr) -> ty::t {
+pub fn expr_ty(bcx: Block, ex: &ast::Expr) -> Ty {
     node_id_type(bcx, ex.id)
 }
 
-pub fn expr_ty_adjusted(bcx: Block, ex: &ast::Expr) -> ty::t {
+pub fn expr_ty_adjusted(bcx: Block, ex: &ast::Expr) -> Ty {
     monomorphize_type(bcx, ty::expr_ty_adjusted(bcx.tcx(), ex))
 }
 

@@ -18,7 +18,7 @@
 
 use middle::subst;
 use middle::subst::VecPerParamSpace;
-use middle::ty;
+use middle::ty::{mod, Ty};
 
 use std::rc::Rc;
 use std::str;
@@ -28,7 +28,7 @@ use syntax::abi;
 use syntax::ast;
 use syntax::parse::token;
 
-// Compact string representation for ty::t values. API ty_str &
+// Compact string representation for Ty values. API ty_str &
 // parse_from_str. Extra parameters are for converting to/from def_ids in the
 // data buffer. Whatever format you choose should not contain pipe characters.
 
@@ -141,7 +141,7 @@ pub fn parse_ty_closure_data(data: &[u8],
 }
 
 pub fn parse_ty_data(data: &[u8], crate_num: ast::CrateNum, pos: uint, tcx: &ty::ctxt,
-                     conv: conv_did) -> ty::t {
+                     conv: conv_did) -> Ty {
     debug!("parse_ty_data {}", data_log_string(data, pos));
     let mut st = parse_state_from_data(data, crate_num, pos, tcx);
     parse_ty(&mut st, conv)
@@ -349,7 +349,7 @@ fn parse_trait_ref(st: &mut PState, conv: conv_did) -> ty::TraitRef {
     ty::TraitRef {def_id: def, substs: substs}
 }
 
-fn parse_ty(st: &mut PState, conv: conv_did) -> ty::t {
+fn parse_ty(st: &mut PState, conv: conv_did) -> Ty {
     match next(st) {
       'n' => return ty::mk_nil(),
       'z' => return ty::mk_bot(),

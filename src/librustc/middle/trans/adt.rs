@@ -62,7 +62,7 @@ use middle::trans::datum;
 use middle::trans::machine;
 use middle::trans::type_::Type;
 use middle::trans::type_of;
-use middle::ty;
+use middle::ty::{mod, Ty};
 use middle::ty::Disr;
 use syntax::abi::{X86, X86_64, Arm, Mips, Mipsel};
 use syntax::ast;
@@ -104,8 +104,8 @@ pub enum Repr {
      */
     RawNullablePointer {
         pub nndiscr: Disr,
-        pub nnty: ty::t,
-        pub nullfields: Vec<ty::t>
+        pub nnty: Ty,
+        pub nullfields: Vec<Ty>
     },
     /**
      * Two cases distinguished by a nullable pointer: the case with discriminant
@@ -122,7 +122,7 @@ pub enum Repr {
         pub nonnull: Struct,
         pub nndiscr: Disr,
         pub ptrfield: PointerField,
-        pub nullfields: Vec<ty::t>,
+        pub nullfields: Vec<Ty>,
     }
 }
 
@@ -135,12 +135,12 @@ pub struct Struct {
     pub align: u64,
     pub sized: bool,
     pub packed: bool,
-    pub fields: Vec<ty::t>
+    pub fields: Vec<Ty>
 }
 
 /**
  * Convenience for `represent_type`.  There should probably be more or
- * these, for places in trans where the `ty::t` isn't directly
+ * these, for places in trans where the `Ty` isn't directly
  * available.
  */
 pub fn represent_node(bcx: Block, node: ast::NodeId) -> Rc<Repr> {
@@ -148,7 +148,7 @@ pub fn represent_node(bcx: Block, node: ast::NodeId) -> Rc<Repr> {
 }
 
 /// Decides how to represent a given type.
-pub fn represent_type(cx: &CrateContext, t: ty::t) -> Rc<Repr> {
+pub fn represent_type(cx: &CrateContext, t: Ty) -> Rc<Repr> {
     debug!("Representing: {}", ty_to_string(cx.tcx(), t));
     match cx.adt_reprs().borrow().find(&t) {
         Some(repr) => return repr.clone(),
@@ -161,7 +161,7 @@ pub fn represent_type(cx: &CrateContext, t: ty::t) -> Rc<Repr> {
     repr
 }
 
-fn represent_type_uncached(cx: &CrateContext, t: ty::t) -> Repr {
+fn represent_type_uncached(cx: &CrateContext, t: Ty) -> Repr {
     match ty::get(t).sty {
         ty::ty_tup(ref elems) => {
             return Univariant(mk_struct(cx, elems.as_slice(), false), false)
@@ -278,7 +278,7 @@ fn represent_type_uncached(cx: &CrateContext, t: ty::t) -> Repr {
 // this should probably all be in ty
 struct Case {
     discr: Disr,
-    tys: Vec<ty::t>
+    tys: Vec<Ty>
 }
 
 
@@ -348,7 +348,7 @@ fn get_cases(tcx: &ty::ctxt, def_id: ast::DefId, substs: &subst::Substs) -> Vec<
     }).collect()
 }
 
-fn mk_struct(cx: &CrateContext, tys: &[ty::t], packed: bool) -> Struct {
+fn mk_struct(cx: &CrateContext, tys: &[Ty], packed: bool) -> Struct {
     if tys.iter().all(|&ty| ty::type_is_sized(cx.tcx(), ty)) {
         let lltys = tys.iter().map(|&ty| type_of::sizing_type_of(cx, ty)).collect::<Vec<_>>();
         let llty_rec = Type::struct_(cx, lltys.as_slice(), packed);
@@ -456,7 +456,7 @@ fn bounds_usable(cx: &CrateContext, ity: IntType, bounds: &IntBounds) -> bool {
     }
 }
 
-pub fn ty_of_inttype(ity: IntType) -> ty::t {
+pub fn ty_of_inttype(ity: IntType) -> Ty {
     match ity {
         attr::SignedInt(t) => ty::mk_mach_int(t),
         attr::UnsignedInt(t) => ty::mk_mach_uint(t)

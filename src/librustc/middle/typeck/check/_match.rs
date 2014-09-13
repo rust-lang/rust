@@ -14,7 +14,7 @@ use middle::def;
 use middle::pat_util::{PatIdMap, pat_id_map, pat_is_binding, pat_is_const};
 use middle::subst;
 use middle::subst::Subst;
-use middle::ty;
+use middle::ty::{mod, Ty};
 use middle::typeck::check::demand;
 use middle::typeck::check::{check_expr, check_expr_has_type, FnCtxt};
 use middle::typeck::check::{instantiate_path, lookup_def};
@@ -113,13 +113,13 @@ pub struct pat_ctxt<'a, 'tcx: 'a> {
 }
 
 pub fn check_pat_variant(pcx: &pat_ctxt, pat: &ast::Pat, path: &ast::Path,
-                         subpats: &Option<Vec<P<ast::Pat>>>, expected: ty::t) {
+                         subpats: &Option<Vec<P<ast::Pat>>>, expected: Ty) {
 
     // Typecheck the path.
     let fcx = pcx.fcx;
     let tcx = pcx.fcx.ccx.tcx;
 
-    let arg_types: Vec<ty::t> ;
+    let arg_types: Vec<Ty> ;
     let kind_name;
 
     // structure_of requires type variables to be resolved.
@@ -371,7 +371,7 @@ pub fn check_struct_pat(pcx: &pat_ctxt, span: Span,
 pub fn check_struct_like_enum_variant_pat(pcx: &pat_ctxt,
                                           pat_id: ast::NodeId,
                                           span: Span,
-                                          expected: ty::t,
+                                          expected: Ty,
                                           path: &ast::Path,
                                           fields: &[ast::FieldPat],
                                           etc: bool,
@@ -406,7 +406,7 @@ pub fn check_struct_like_enum_variant_pat(pcx: &pat_ctxt,
 
 // Pattern checking is top-down rather than bottom-up so that bindings get
 // their types immediately.
-pub fn check_pat(pcx: &pat_ctxt, pat: &ast::Pat, expected: ty::t) {
+pub fn check_pat(pcx: &pat_ctxt, pat: &ast::Pat, expected: Ty) {
     let fcx = pcx.fcx;
     let tcx = pcx.fcx.ccx.tcx;
 
@@ -726,10 +726,10 @@ fn check_pointer_pat(pcx: &pat_ctxt,
                      inner: &ast::Pat,
                      pat_id: ast::NodeId,
                      span: Span,
-                     expected: ty::t) {
+                     expected: Ty) {
     let fcx = pcx.fcx;
     let tcx = fcx.ccx.tcx;
-    let check_inner: |ty::t| = |e_inner| {
+    let check_inner: |Ty| = |e_inner| {
         match ty::get(e_inner).sty {
             ty::ty_trait(_) if pat_is_binding(&tcx.def_map, inner) => {
                 // This is "x = SomeTrait" being reduced from

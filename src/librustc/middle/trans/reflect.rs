@@ -22,7 +22,7 @@ use middle::trans::machine;
 use middle::trans::meth;
 use middle::trans::type_::Type;
 use middle::trans::type_of::*;
-use middle::ty;
+use middle::ty::{mod, Ty};
 use util::ppaux::ty_to_string;
 
 use arena::TypedArena;
@@ -63,7 +63,7 @@ impl<'a, 'blk, 'tcx> Reflector<'a, 'blk, 'tcx> {
         scratch.val
     }
 
-    pub fn c_size_and_align(&mut self, t: ty::t) -> Vec<ValueRef> {
+    pub fn c_size_and_align(&mut self, t: Ty) -> Vec<ValueRef> {
         let tr = type_of(self.bcx.ccx(), t);
         let s = machine::llsize_of_real(self.bcx.ccx(), tr);
         let a = align_of(self.bcx.ccx(), t);
@@ -71,7 +71,7 @@ impl<'a, 'blk, 'tcx> Reflector<'a, 'blk, 'tcx> {
              self.c_uint(a as uint));
     }
 
-    pub fn c_tydesc(&mut self, t: ty::t) -> ValueRef {
+    pub fn c_tydesc(&mut self, t: Ty) -> ValueRef {
         let bcx = self.bcx;
         let static_ti = get_tydesc(bcx.ccx(), t);
         glue::lazily_emit_visit_glue(bcx.ccx(), &*static_ti);
@@ -128,7 +128,7 @@ impl<'a, 'blk, 'tcx> Reflector<'a, 'blk, 'tcx> {
     }
 
     // Entrypoint
-    pub fn visit_ty(&mut self, t: ty::t) {
+    pub fn visit_ty(&mut self, t: Ty) {
         let bcx = self.bcx;
         let tcx = bcx.tcx();
         debug!("reflect::visit_ty {}", ty_to_string(bcx.tcx(), t));
@@ -421,7 +421,7 @@ impl<'a, 'blk, 'tcx> Reflector<'a, 'blk, 'tcx> {
 
 // Emit a sequence of calls to visit_ty::visit_foo
 pub fn emit_calls_to_trait_visit_ty<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
-                                                t: ty::t,
+                                                t: Ty,
                                                 visitor_val: ValueRef,
                                                 visitor_trait_id: DefId)
                                                 -> Block<'blk, 'tcx> {

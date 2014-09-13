@@ -12,7 +12,7 @@
 /// `unsafe`.
 
 use middle::def;
-use middle::ty;
+use middle::ty::{mod, Ty};
 use middle::typeck::MethodCall;
 use util::ppaux;
 
@@ -29,7 +29,7 @@ enum UnsafeContext {
     UnsafeBlock(ast::NodeId),
 }
 
-fn type_is_unsafe_function(ty: ty::t) -> bool {
+fn type_is_unsafe_function(ty: Ty) -> bool {
     match ty::get(ty).sty {
         ty::ty_bare_fn(ref f) => f.fn_style == ast::UnsafeFn,
         ty::ty_closure(ref f) => f.fn_style == ast::UnsafeFn,

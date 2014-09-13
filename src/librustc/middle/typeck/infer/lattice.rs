@@ -32,7 +32,7 @@
  */
 
 use middle::ty::{RegionVid, TyVar};
-use middle::ty;
+use middle::ty::{mod, Ty};
 use middle::typeck::infer::*;
 use middle::typeck::infer::combine::*;
 use middle::typeck::infer::glb::Glb;
@@ -44,19 +44,19 @@ use std::collections::HashMap;
 pub trait LatticeDir {
     // Relates the bottom type to `t` and returns LUB(t, _|_) or
     // GLB(t, _|_) as appropriate.
-    fn ty_bot(&self, t: ty::t) -> cres<ty::t>;
+    fn ty_bot(&self, t: Ty) -> cres<Ty>;
 
     // Relates the type `v` to `a` and `b` such that `v` represents
     // the LUB/GLB of `a` and `b` as appropriate.
-    fn relate_bound<'a>(&'a self, v: ty::t, a: ty::t, b: ty::t) -> cres<()>;
+    fn relate_bound<'a>(&'a self, v: Ty, a: Ty, b: Ty) -> cres<()>;
 }
 
 impl<'a, 'tcx> LatticeDir for Lub<'a, 'tcx> {
-    fn ty_bot(&self, t: ty::t) -> cres<ty::t> {
+    fn ty_bot(&self, t: Ty) -> cres<Ty> {
         Ok(t)
     }
 
-    fn relate_bound<'a>(&'a self, v: ty::t, a: ty::t, b: ty::t) -> cres<()> {
+    fn relate_bound<'a>(&'a self, v: Ty, a: Ty, b: Ty) -> cres<()> {
         let sub = self.sub();
         try!(sub.tys(a, v));
         try!(sub.tys(b, v));
@@ -65,11 +65,11 @@ impl<'a, 'tcx> LatticeDir for Lub<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> LatticeDir for Glb<'a, 'tcx> {
-    fn ty_bot(&self, _: ty::t) -> cres<ty::t> {
+    fn ty_bot(&self, _: Ty) -> cres<Ty> {
         Ok(ty::mk_bot())
     }
 
-    fn relate_bound<'a>(&'a self, v: ty::t, a: ty::t, b: ty::t) -> cres<()> {
+    fn relate_bound<'a>(&'a self, v: Ty, a: Ty, b: Ty) -> cres<()> {
         let sub = self.sub();
         try!(sub.tys(v, a));
         try!(sub.tys(v, b));
@@ -78,9 +78,9 @@ impl<'a, 'tcx> LatticeDir for Glb<'a, 'tcx> {
 }
 
 pub fn super_lattice_tys<'tcx, L:LatticeDir+Combine<'tcx>>(this: &L,
-                                                           a: ty::t,
-                                                           b: ty::t)
-                                                           -> cres<ty::t>
+                                                           a: Ty,
+                                                           b: Ty)
+                                                           -> cres<Ty>
 {
     debug!("{}.lattice_tys({}, {})",
            this.tag(),

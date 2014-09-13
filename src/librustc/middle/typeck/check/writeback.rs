@@ -14,7 +14,7 @@
 
 use middle::def;
 use middle::pat_util;
-use middle::ty;
+use middle::ty::{mod, Ty};
 use middle::ty_fold::{TypeFolder,TypeFoldable};
 use middle::typeck::astconv::AstConv;
 use middle::typeck::check::FnCtxt;
@@ -483,7 +483,7 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for Resolver<'cx, 'tcx> {
         self.tcx
     }
 
-    fn fold_ty(&mut self, t: ty::t) -> ty::t {
+    fn fold_ty(&mut self, t: Ty) -> Ty {
         if !ty::type_needs_infer(t) {
             return t;
         }

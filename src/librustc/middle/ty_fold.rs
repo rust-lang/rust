@@ -38,7 +38,7 @@
 
 use middle::subst;
 use middle::subst::VecPerParamSpace;
-use middle::ty;
+use middle::ty::{mod, Ty};
 use middle::traits;
 use middle::typeck;
 use std::rc::Rc;
@@ -63,7 +63,7 @@ pub trait TypeFoldable {
 pub trait TypeFolder<'tcx> {
     fn tcx<'a>(&'a self) -> &'a ty::ctxt<'tcx>;
 
-    fn fold_ty(&mut self, t: ty::t) -> ty::t {
+    fn fold_ty(&mut self, t: Ty) -> Ty {
         super_fold_ty(self, t)
     }
 
@@ -183,8 +183,8 @@ impl TypeFoldable for ty::TraitStore {
     }
 }
 
-impl TypeFoldable for ty::t {
-    fn fold_with<'tcx, F: TypeFolder<'tcx>>(&self, folder: &mut F) -> ty::t {
+impl TypeFoldable for Ty {
+    fn fold_with<'tcx, F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Ty {
         folder.fold_ty(*self)
     }
 }
@@ -387,8 +387,8 @@ impl TypeFoldable for traits::VtableParamData {
 //
 // They should invoke `foo.fold_with()` to do recursive folding.
 pub fn super_fold_ty<'tcx, T: TypeFolder<'tcx>>(this: &mut T,
-                                                t: ty::t)
-                                                -> ty::t {
+                                                t: Ty)
+                                                -> Ty {
     let sty = ty::get(t).sty.fold_with(this);
     ty::mk_t(this.tcx(), sty)
 }
@@ -577,13 +577,13 @@ pub fn super_fold_obligation<'tcx, T:TypeFolder<'tcx>>(this: &mut T,
 
 pub struct BottomUpFolder<'a, 'tcx: 'a> {
     pub tcx: &'a ty::ctxt<'tcx>,
-    pub fldop: |ty::t|: 'a -> ty::t,
+    pub fldop: |Ty|: 'a -> Ty,
 }
 
 impl<'a, 'tcx> TypeFolder<'tcx> for BottomUpFolder<'a, 'tcx> {
     fn tcx<'a>(&'a self) -> &'a ty::ctxt<'tcx> { self.tcx }
 
-    fn fold_ty(&mut self, ty: ty::t) -> ty::t {
+    fn fold_ty(&mut self, ty: Ty) -> Ty {
         let t1 = super_fold_ty(self, ty);
         (self.fldop)(t1)
     }
@@ -595,7 +595,7 @@ impl<'a, 'tcx> TypeFolder<'tcx> for BottomUpFolder<'a, 'tcx> {
 /// Folds over the substructure of a type, visiting its component
 /// types and all regions that occur *free* within it.
 ///
-/// That is, `ty::t` can contain function or method types that bind
+/// That is, `Ty` can contain function or method types that bind
 /// regions at the call site (`ReLateBound`), and occurrences of
 /// regions (aka "lifetimes") that are bound within a type are not
 /// visited by this folder; only regions that occur free will be
@@ -606,7 +606,7 @@ impl<'a, 'tcx> TypeFolder<'tcx> for BottomUpFolder<'a, 'tcx> {
 /// current position of the fold.)
 pub struct RegionFolder<'a, 'tcx: 'a> {
     tcx: &'a ty::ctxt<'tcx>,
-    fld_t: |ty::t|: 'a -> ty::t,
+    fld_t: |Ty|: 'a -> Ty,
     fld_r: |ty::Region|: 'a -> ty::Region,
     within_binder_ids: Vec<ast::NodeId>,
 }
@@ -614,7 +614,7 @@ pub struct RegionFolder<'a, 'tcx: 'a> {
 impl<'a, 'tcx> RegionFolder<'a, 'tcx> {
     pub fn general(tcx: &'a ty::ctxt<'tcx>,
                    fld_r: |ty::Region|: 'a -> ty::Region,
-                   fld_t: |ty::t|: 'a -> ty::t)
+                   fld_t: |Ty|: 'a -> Ty)
                    -> RegionFolder<'a, 'tcx> {
         RegionFolder {
             tcx: tcx,
@@ -626,7 +626,7 @@ impl<'a, 'tcx> RegionFolder<'a, 'tcx> {
 
     pub fn regions(tcx: &'a ty::ctxt<'tcx>, fld_r: |ty::Region|: 'a -> ty::Region)
                    -> RegionFolder<'a, 'tcx> {
-        fn noop(t: ty::t) -> ty::t { t }
+        fn noop(t: Ty) -> Ty { t }
 
         RegionFolder {
             tcx: tcx,
@@ -639,7 +639,7 @@ impl<'a, 'tcx> RegionFolder<'a, 'tcx> {
 
 /// If `ty` has `FnSig` (i.e. closure or fn), return its binder_id;
 /// else None.
-fn opt_binder_id_of_function(t: ty::t) -> Option<ast::NodeId> {
+fn opt_binder_id_of_function(t: Ty) -> Option<ast::NodeId> {
     match ty::get(t).sty {
         ty::ty_closure(ref f) => Some(f.sig.binder_id),
         ty::ty_bare_fn(ref f) => Some(f.sig.binder_id),
@@ -650,7 +650,7 @@ fn opt_binder_id_of_function(t: ty::t) -> Option<ast::NodeId> {
 impl<'a, 'tcx> TypeFolder<'tcx> for RegionFolder<'a, 'tcx> {
     fn tcx<'a>(&'a self) -> &'a ty::ctxt<'tcx> { self.tcx }
 
-    fn fold_ty(&mut self, ty: ty::t) -> ty::t {
+    fn fold_ty(&mut self, ty: Ty) -> Ty {
         debug!("RegionFolder.fold_ty({})", ty.repr(self.tcx()));
         let opt_binder_id = opt_binder_id_of_function(ty);
         match opt_binder_id {

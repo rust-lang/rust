@@ -20,7 +20,7 @@ use middle::trans::base::{trans_fn, decl_internal_rust_fn};
 use middle::trans::base;
 use middle::trans::common::*;
 use middle::trans::foreign;
-use middle::ty;
+use middle::ty::{mod, Ty};
 use middle::typeck;
 use util::ppaux::Repr;
 
@@ -288,13 +288,13 @@ pub fn monomorphic_fn(ccx: &CrateContext,
 // Used to identify cached monomorphized functions
 #[deriving(PartialEq, Eq, Hash)]
 pub struct MonoParamId {
-    pub subst: ty::t,
+    pub subst: Ty,
 }
 
 #[deriving(PartialEq, Eq, Hash)]
 pub struct MonoId {
     pub def: ast::DefId,
-    pub params: subst::VecPerParamSpace<ty::t>
+    pub params: subst::VecPerParamSpace<Ty>
 }
 
 pub fn make_vtable_id(_ccx: &CrateContext,

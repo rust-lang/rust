@@ -48,7 +48,7 @@
 
 use middle::ty::{FloatVar, FloatVid, IntVar, IntVid, RegionVid, TyVar, TyVid};
 use middle::ty::{IntType, UintType};
-use middle::ty;
+use middle::ty::{mod, Ty};
 use middle::ty_fold;
 use middle::typeck::infer::{fixup_err, fres, InferCtxt};
 use middle::typeck::infer::{unresolved_int_ty,unresolved_float_ty,unresolved_ty};
@@ -96,7 +96,7 @@ impl<'a, 'tcx> ty_fold::TypeFolder<'tcx> for ResolveState<'a, 'tcx> {
         self.infcx.tcx
     }
 
-    fn fold_ty(&mut self, t: ty::t) -> ty::t {
+    fn fold_ty(&mut self, t: Ty) -> Ty {
         self.resolve_type(t)
     }
 
@@ -110,10 +110,7 @@ impl<'a, 'tcx> ResolveState<'a, 'tcx> {
         (self.modes & mode) == mode
     }
 
-    pub fn resolve_type_chk(&mut self,
-                            typ: ty::t)
-                            -> fres<ty::t>
-    {
+    pub fn resolve_type_chk(&mut self, typ: Ty) -> fres<Ty> {
         self.err = None;
 
         debug!("Resolving {} (modes={:x})",
@@ -149,7 +146,7 @@ impl<'a, 'tcx> ResolveState<'a, 'tcx> {
         }
     }
 
-    pub fn resolve_type(&mut self, typ: ty::t) -> ty::t {
+    pub fn resolve_type(&mut self, typ: Ty) -> Ty {
         debug!("resolve_type({})", typ.repr(self.infcx.tcx));
 
         if !ty::type_needs_infer(typ) {
@@ -201,7 +198,7 @@ impl<'a, 'tcx> ResolveState<'a, 'tcx> {
         self.infcx.region_vars.resolve_var(rid)
     }
 
-    pub fn resolve_ty_var(&mut self, vid: TyVid) -> ty::t {
+    pub fn resolve_ty_var(&mut self, vid: TyVid) -> Ty {
         let tcx = self.infcx.tcx;
         let t1 = match self.infcx.type_variables.borrow().probe(vid) {
             Some(t) => {
@@ -217,7 +214,7 @@ impl<'a, 'tcx> ResolveState<'a, 'tcx> {
         return t1;
     }
 
-    pub fn resolve_int_var(&mut self, vid: IntVid) -> ty::t {
+    pub fn resolve_int_var(&mut self, vid: IntVid) -> Ty {
         if !self.should(resolve_ivar) {
             return ty::mk_int_var(self.infcx.tcx, vid);
         }
@@ -238,7 +235,7 @@ impl<'a, 'tcx> ResolveState<'a, 'tcx> {
         }
     }
 
-    pub fn resolve_float_var(&mut self, vid: FloatVid) -> ty::t {
+    pub fn resolve_float_var(&mut self, vid: FloatVid) -> Ty {
         if !self.should(resolve_fvar) {
             return ty::mk_float_var(self.infcx.tcx, vid);
         }

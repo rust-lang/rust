@@ -29,7 +29,7 @@ use middle::trans::machine;
 use middle::trans::type_::Type;
 use middle::trans::type_of;
 use middle::trans::debuginfo;
-use middle::ty;
+use middle::ty::{mod, Ty};
 use util::ppaux::{Repr, ty_to_string};
 
 use std::c_str::ToCStr;
@@ -139,14 +139,14 @@ fn const_deref_ptr(cx: &CrateContext, v: ValueRef) -> ValueRef {
     }
 }
 
-fn const_deref_newtype(cx: &CrateContext, v: ValueRef, t: ty::t)
+fn const_deref_newtype(cx: &CrateContext, v: ValueRef, t: Ty)
     -> ValueRef {
     let repr = adt::represent_type(cx, t);
     adt::const_get_field(cx, &*repr, v, 0, 0)
 }
 
-fn const_deref(cx: &CrateContext, v: ValueRef, t: ty::t, explicit: bool)
-    -> (ValueRef, ty::t) {
+fn const_deref(cx: &CrateContext, v: ValueRef, t: Ty, explicit: bool)
+    -> (ValueRef, Ty) {
     match ty::deref(t, explicit) {
         Some(ref mt) => {
             match ty::get(t).sty {
@@ -196,7 +196,7 @@ pub fn get_const_val(cx: &CrateContext,
      !cx.non_inlineable_statics().borrow().contains(&def_id.node))
 }
 
-pub fn const_expr(cx: &CrateContext, e: &ast::Expr, is_local: bool) -> (ValueRef, bool, ty::t) {
+pub fn const_expr(cx: &CrateContext, e: &ast::Expr, is_local: bool) -> (ValueRef, bool, Ty) {
     let (llconst, inlineable) = const_expr_unadjusted(cx, e, is_local);
     let mut llconst = llconst;
     let mut inlineable = inlineable;

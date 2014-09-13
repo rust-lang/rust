@@ -24,7 +24,7 @@ pub use middle::typeck::infer::resolve::{resolve_rvar};
 use middle::subst;
 use middle::subst::Substs;
 use middle::ty::{TyVid, IntVid, FloatVid, RegionVid};
-use middle::ty;
+use middle::ty::{mod, Ty};
 use middle::ty_fold;
 use middle::ty_fold::TypeFoldable;
 use middle::ty_fold::TypeFolder;
@@ -80,7 +80,7 @@ pub type CoerceResult = cres<Option<ty::AutoAdjustment>>;
 pub struct InferCtxt<'a, 'tcx: 'a> {
     pub tcx: &'a ty::ctxt<'tcx>,
 
-    // We instantiate UnificationTable with bounds<ty::t> because the
+    // We instantiate UnificationTable with bounds<Ty> because the
     // types that might instantiate a general type variable have an
     // order, represented by its upper and lower bounds.
     type_variables: RefCell<type_variable::TypeVariableTable>,
@@ -132,7 +132,7 @@ pub enum TypeOrigin {
 /// See `error_reporting.rs` for more details
 #[deriving(Clone)]
 pub enum ValuePairs {
-    Types(ty::expected_found<ty::t>),
+    Types(ty::expected_found<Ty>),
     TraitRefs(ty::expected_found<Rc<ty::TraitRef>>),
 }
 
@@ -179,11 +179,11 @@ pub enum SubregionOrigin {
 
     // When closing over a variable in a closure/proc, ensure that the
     // type of the variable outlives the lifetime bound.
-    RelateProcBound(Span, ast::NodeId, ty::t),
+    RelateProcBound(Span, ast::NodeId, Ty),
 
     // The given type parameter was instantiated with the given type,
     // and that type must outlive some region.
-    RelateParamBound(Span, ty::ParamTy, ty::t),
+    RelateParamBound(Span, ty::ParamTy, Ty),
 
     // The given region parameter was instantiated with a region
     // that must outlive some other region.
@@ -191,7 +191,7 @@ pub enum SubregionOrigin {
 
     // A bound placed on type parameters that states that must outlive
     // the moment of their instantiation.
-    RelateDefaultParamBound(Span, ty::t),
+    RelateDefaultParamBound(Span, Ty),
 
     // Creating a pointer `b` to contents of another reference
     Reborrow(Span),
@@ -200,10 +200,10 @@ pub enum SubregionOrigin {
     ReborrowUpvar(Span, ty::UpvarId),
 
     // (&'a &'b T) where a >= b
-    ReferenceOutlivesReferent(ty::t, Span),
+    ReferenceOutlivesReferent(Ty, Span),
 
     // The type T of an expression E must outlive the lifetime for E.
-    ExprTypeIsNotInScope(ty::t, Span),
+    ExprTypeIsNotInScope(Ty, Span),
 
     // A `ref b` whose region does not enclose the decl site
     BindingTypeIsNotValidAtDecl(Span),
@@ -309,9 +309,9 @@ pub fn new_infer_ctxt<'a, 'tcx>(tcx: &'a ty::ctxt<'tcx>)
 pub fn common_supertype(cx: &InferCtxt,
                         origin: TypeOrigin,
                         a_is_expected: bool,
-                        a: ty::t,
-                        b: ty::t)
-                        -> ty::t
+                        a: Ty,
+                        b: Ty)
+                        -> Ty
 {
     /*!
      * Computes the least upper-bound of `a` and `b`. If this is
@@ -340,8 +340,8 @@ pub fn common_supertype(cx: &InferCtxt,
 pub fn mk_subty(cx: &InferCtxt,
                 a_is_expected: bool,
                 origin: TypeOrigin,
-                a: ty::t,
-                b: ty::t)
+                a: Ty,
+                b: Ty)
                 -> ures
 {
     debug!("mk_subty({} <: {})", a.repr(cx.tcx), b.repr(cx.tcx));
@@ -350,7 +350,7 @@ pub fn mk_subty(cx: &InferCtxt,
     })
 }
 
-pub fn can_mk_subty(cx: &InferCtxt, a: ty::t, b: ty::t) -> ures {
+pub fn can_mk_subty(cx: &InferCtxt, a: Ty, b: Ty) -> ures {
     debug!("can_mk_subty({} <: {})", a.repr(cx.tcx), b.repr(cx.tcx));
     cx.probe(|| {
         let trace = TypeTrace {
@@ -361,7 +361,7 @@ pub fn can_mk_subty(cx: &InferCtxt, a: ty::t, b: ty::t) -> ures {
     })
 }
 
-pub fn can_mk_eqty(cx: &InferCtxt, a: ty::t, b: ty::t) -> ures {
+pub fn can_mk_eqty(cx: &InferCtxt, a: Ty, b: Ty) -> ures {
     debug!("can_mk_subty({} <: {})", a.repr(cx.tcx), b.repr(cx.tcx));
     cx.probe(|| {
         let trace = TypeTrace {
@@ -405,8 +405,8 @@ pub fn skolemize<T:TypeFoldable+Repr>(cx: &InferCtxt, a: T) -> T {
 pub fn mk_eqty(cx: &InferCtxt,
                a_is_expected: bool,
                origin: TypeOrigin,
-               a: ty::t,
-               b: ty::t)
+               a: Ty,
+               b: Ty)
             -> ures
 {
     debug!("mk_eqty({} <: {})", a.repr(cx.tcx), b.repr(cx.tcx));
@@ -442,8 +442,8 @@ fn expected_found<T>(a_is_expected: bool,
 pub fn mk_coercety(cx: &InferCtxt,
                    a_is_expected: bool,
                    origin: TypeOrigin,
-                   a: ty::t,
-                   b: ty::t)
+                   a: Ty,
+                   b: Ty)
                 -> CoerceResult {
     debug!("mk_coercety({} -> {})", a.repr(cx.tcx), b.repr(cx.tcx));
     indent(|| {
@@ -460,9 +460,9 @@ pub fn mk_coercety(cx: &InferCtxt,
 // See comment on the type `resolve_state` below
 pub fn resolve_type(cx: &InferCtxt,
                     span: Option<Span>,
-                    a: ty::t,
+                    a: Ty,
                     modes: uint)
-                    -> fres<ty::t> {
+                    -> fres<Ty> {
     let mut resolver = resolver(cx, modes, span);
     cx.commit_unconditionally(|| resolver.resolve_type_chk(a))
 }
@@ -644,8 +644,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     pub fn sub_types(&self,
                      a_is_expected: bool,
                      origin: TypeOrigin,
-                     a: ty::t,
-                     b: ty::t)
+                     a: Ty,
+                     b: Ty)
                      -> ures
     {
         debug!("sub_types({} <: {})", a.repr(self.tcx), b.repr(self.tcx));
@@ -659,8 +659,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     pub fn eq_types(&self,
                     a_is_expected: bool,
                     origin: TypeOrigin,
-                    a: ty::t,
-                    b: ty::t)
+                    a: Ty,
+                    b: Ty)
                     -> ures
     {
         let trace = TypeTrace {
@@ -697,11 +697,11 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             .new_var()
     }
 
-    pub fn next_ty_var(&self) -> ty::t {
+    pub fn next_ty_var(&self) -> Ty {
         ty::mk_var(self.tcx, self.next_ty_var_id())
     }
 
-    pub fn next_ty_vars(&self, n: uint) -> Vec<ty::t> {
+    pub fn next_ty_vars(&self, n: uint) -> Vec<Ty> {
         Vec::from_fn(n, |_i| self.next_ty_var())
     }
 
@@ -753,7 +753,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     pub fn fresh_substs_for_trait(&self,
                                   span: Span,
                                   generics: &ty::Generics,
-                                  self_ty: ty::t)
+                                  self_ty: Ty)
                                   -> subst::Substs
     {
         /*!
@@ -784,12 +784,12 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         self.report_region_errors(&errors); // see error_reporting.rs
     }
 
-    pub fn ty_to_string(&self, t: ty::t) -> String {
+    pub fn ty_to_string(&self, t: Ty) -> String {
         ty_to_string(self.tcx,
                   self.resolve_type_vars_if_possible(t))
     }
 
-    pub fn tys_to_string(&self, ts: &[ty::t]) -> String {
+    pub fn tys_to_string(&self, ts: &[Ty]) -> String {
         let tstrs: Vec<String> = ts.iter().map(|t| self.ty_to_string(*t)).collect();
         format!("({})", tstrs.connect(", "))
     }
@@ -799,7 +799,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         trait_ref_to_string(self.tcx, &t)
     }
 
-    pub fn contains_unbound_type_variables(&self, typ: ty::t) -> ty::t {
+    pub fn contains_unbound_type_variables(&self, typ: Ty) -> Ty {
         match resolve_type(self,
                            None,
                            typ, resolve_nested_tvar | resolve_ivar) {
@@ -808,7 +808,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         }
     }
 
-    pub fn resolve_type_vars_if_possible(&self, typ: ty::t) -> ty::t {
+    pub fn resolve_type_vars_if_possible(&self, typ: Ty) -> Ty {
         match resolve_type(self,
                            None,
                            typ, resolve_nested_tvar | resolve_ivar) {
@@ -867,7 +867,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                                                 mk_msg: |Option<String>,
                                                          String|
                                                          -> String,
-                                                expected_ty: Option<ty::t>,
+                                                expected_ty: Option<Ty>,
                                                 actual_ty: String,
                                                 err: Option<&ty::type_err>) {
         debug!("hi! expected_ty = {:?}, actual_ty = {}", expected_ty, actual_ty);
@@ -904,7 +904,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     pub fn type_error_message(&self,
                               sp: Span,
                               mk_msg: |String| -> String,
-                              actual_ty: ty::t,
+                              actual_ty: Ty,
                               err: Option<&ty::type_err>) {
         let actual_ty = self.resolve_type_vars_if_possible(actual_ty);
 
@@ -918,8 +918,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
     pub fn report_mismatched_types(&self,
                                    sp: Span,
-                                   e: ty::t,
-                                   a: ty::t,
+                                   e: Ty,
+                                   a: Ty,
                                    err: &ty::type_err) {
         let resolved_expected =
             self.resolve_type_vars_if_possible(e);

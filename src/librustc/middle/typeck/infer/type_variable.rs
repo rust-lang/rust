@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use middle::ty;
+use middle::ty::{mod, Ty};
 use std::mem;
 use util::snapshot_vec as sv;
 
@@ -21,7 +21,7 @@ struct TypeVariableData {
 }
 
 enum TypeVariableValue {
-    Known(ty::t),
+    Known(Ty),
     Bounded(Vec<Relation>),
 }
 
@@ -80,8 +80,8 @@ impl TypeVariableTable {
     pub fn instantiate_and_push(
         &mut self,
         vid: ty::TyVid,
-        ty: ty::t,
-        stack: &mut Vec<(ty::t, RelationDir, ty::TyVid)>)
+        ty: Ty,
+        stack: &mut Vec<(Ty, RelationDir, ty::TyVid)>)
     {
         /*!
          * Instantiates `vid` with the type `ty` and then pushes an
@@ -115,14 +115,14 @@ impl TypeVariableTable {
         ty::TyVid { index: index }
     }
 
-    pub fn probe(&self, vid: ty::TyVid) -> Option<ty::t> {
+    pub fn probe(&self, vid: ty::TyVid) -> Option<Ty> {
         match self.values.get(vid.index).value {
             Bounded(..) => None,
             Known(t) => Some(t)
         }
     }
 
-    pub fn replace_if_possible(&self, t: ty::t) -> ty::t {
+    pub fn replace_if_possible(&self, t: Ty) -> Ty {
         match ty::get(t).sty {
             ty::ty_infer(ty::TyVar(v)) => {
                 match self.probe(v) {
