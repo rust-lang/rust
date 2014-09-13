@@ -13,13 +13,13 @@ struct A { a: int, b: Box<int> }
 fn deref_after_move() {
     let x = A { a: 1, b: box 2 };
     drop(x.b);
-    drop(*x.b); //~ ERROR use of partially moved value: `*x.b`
+    drop(*x.b); //~ ERROR use of moved value: `*x.b`
 }
 
 fn deref_after_fu_move() {
     let x = A { a: 1, b: box 2 };
     let y = A { a: 3, .. x };
-    drop(*x.b); //~ ERROR use of partially moved value: `*x.b`
+    drop(*x.b); //~ ERROR use of moved value: `*x.b`
 }
 
 fn borrow_after_move() {
