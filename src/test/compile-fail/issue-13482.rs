@@ -12,7 +12,7 @@ fn main() {
   let x = [1,2];
   let y = match x {
     [] => None,
-//~^ ERROR expected `[<generic integer #0>, .. 2]`, found a fixed vector pattern of size 0
+//~^ ERROR expected `[<generic integer #0>, ..2]`, found a fixed vector pattern of size 0
     [a,_] => Some(a)
   };
 }

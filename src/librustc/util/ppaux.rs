@@ -427,7 +427,7 @@ pub fn ty_to_string(cx: &ctxt, typ: t) -> String {
       ty_vec(t, sz) => {
           match sz {
               Some(n) => {
-                  format!("[{}, .. {}]", ty_to_string(cx, t), n)
+                  format!("[{}, ..{}]", ty_to_string(cx, t), n)
               }
               None => format!("[{}]", ty_to_string(cx, t)),
           }
