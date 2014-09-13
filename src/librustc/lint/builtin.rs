@@ -631,7 +631,7 @@ impl LintPass for UnusedAttribute {
     }
 }
 
-declare_lint!(PATH_STATEMENT, Warn,
+declare_lint!(pub PATH_STATEMENT, Warn,
               "path statements with no effect")
 
 pub struct PathStatement;
@@ -655,10 +655,10 @@ impl LintPass for PathStatement {
     }
 }
 
-declare_lint!(UNUSED_MUST_USE, Warn,
+declare_lint!(pub UNUSED_MUST_USE, Warn,
               "unused result of a type flagged as #[must_use]")
 
-declare_lint!(UNUSED_RESULT, Allow,
+declare_lint!(pub UNUSED_RESULT, Allow,
               "unused result of an expression in a statement")
 
 pub struct UnusedResult;
@@ -1136,7 +1136,7 @@ impl LintPass for UnnecessaryImportBraces {
     }
 }
 
-declare_lint!(UNUSED_UNSAFE, Warn,
+declare_lint!(pub UNUSED_UNSAFE, Warn,
               "unnecessary use of an `unsafe` block")
 
 pub struct UnusedUnsafe;
