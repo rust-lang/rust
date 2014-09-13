@@ -16,14 +16,13 @@ use ext::build::AstBuilder;
 use ext::deriving::generic::*;
 use ext::deriving::generic::ty::*;
 use parse::token::InternedString;
-
-use std::gc::Gc;
+use ptr::P;
 
 pub fn expand_deriving_ord(cx: &mut ExtCtxt,
                            span: Span,
-                           mitem: Gc<MetaItem>,
-                           item: Gc<Item>,
-                           push: |Gc<Item>|) {
+                           mitem: &MetaItem,
+                           item: &Item,
+                           push: |P<Item>|) {
     macro_rules! md (
         ($name:expr, $op:expr, $equal:expr) => { {
             let inline = cx.meta_word(span, InternedString::new("inline"));
@@ -87,7 +86,7 @@ pub enum OrderingOp {
 pub fn some_ordering_collapsed(cx: &mut ExtCtxt,
                                span: Span,
                                op: OrderingOp,
-                               self_arg_tags: &[ast::Ident]) -> Gc<ast::Expr> {
+                               self_arg_tags: &[ast::Ident]) -> P<ast::Expr> {
     let lft = cx.expr_ident(span, self_arg_tags[0]);
     let rgt = cx.expr_addr_of(span, cx.expr_ident(span, self_arg_tags[1]));
     let op_str = match op {
@@ -99,7 +98,7 @@ pub fn some_ordering_collapsed(cx: &mut ExtCtxt,
 }
 
 pub fn cs_partial_cmp(cx: &mut ExtCtxt, span: Span,
-              substr: &Substructure) -> Gc<Expr> {
+              substr: &Substructure) -> P<Expr> {
     let test_id = cx.ident_of("__test");
     let ordering = cx.path_global(span,
                                   vec!(cx.ident_of("std"),
@@ -159,8 +158,8 @@ pub fn cs_partial_cmp(cx: &mut ExtCtxt, span: Span,
 }
 
 /// Strict inequality.
-fn cs_op(less: bool, equal: bool, cx: &mut ExtCtxt, span: Span,
-         substr: &Substructure) -> Gc<Expr> {
+fn cs_op(less: bool, equal: bool, cx: &mut ExtCtxt,
+         span: Span, substr: &Substructure) -> P<Expr> {
     let op = if less {ast::BiLt} else {ast::BiGt};
     cs_fold(
         false, // need foldr,
@@ -183,14 +182,14 @@ fn cs_op(less: bool, equal: bool, cx: &mut ExtCtxt, span: Span,
             layers of pointers, if the type includes pointers.
             */
             let other_f = match other_fs {
-                [o_f] => o_f,
+                [ref o_f] => o_f,
                 _ => cx.span_bug(span, "not exactly 2 arguments in `deriving(Ord)`")
             };
 
-            let cmp = cx.expr_binary(span, op, self_f, other_f);
+            let cmp = cx.expr_binary(span, op, self_f.clone(), other_f.clone());
 
             let not_cmp = cx.expr_unary(span, ast::UnNot,
-                                        cx.expr_binary(span, op, other_f, self_f));
+                                        cx.expr_binary(span, op, other_f.clone(), self_f));
 
             let and = cx.expr_binary(span, ast::BiAnd, not_cmp, subexpr);
             cx.expr_binary(span, ast::BiOr, cmp, and)

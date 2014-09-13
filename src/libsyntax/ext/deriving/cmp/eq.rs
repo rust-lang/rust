@@ -15,21 +15,20 @@ use ext::build::AstBuilder;
 use ext::deriving::generic::*;
 use ext::deriving::generic::ty::*;
 use parse::token::InternedString;
-
-use std::gc::Gc;
+use ptr::P;
 
 pub fn expand_deriving_eq(cx: &mut ExtCtxt,
                           span: Span,
-                          mitem: Gc<MetaItem>,
-                          item: Gc<Item>,
-                          push: |Gc<Item>|) {
+                          mitem: &MetaItem,
+                          item: &Item,
+                          push: |P<Item>|) {
     // structures are equal if all fields are equal, and non equal, if
     // any fields are not equal or if the enum variants are different
-    fn cs_eq(cx: &mut ExtCtxt, span: Span, substr: &Substructure) -> Gc<Expr> {
+    fn cs_eq(cx: &mut ExtCtxt, span: Span, substr: &Substructure) -> P<Expr> {
         cs_and(|cx, span, _, _| cx.expr_bool(span, false),
                                  cx, span, substr)
     }
-    fn cs_ne(cx: &mut ExtCtxt, span: Span, substr: &Substructure) -> Gc<Expr> {
+    fn cs_ne(cx: &mut ExtCtxt, span: Span, substr: &Substructure) -> P<Expr> {
         cs_or(|cx, span, _, _| cx.expr_bool(span, true),
               cx, span, substr)
     }

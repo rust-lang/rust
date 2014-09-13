@@ -181,12 +181,13 @@
 //! ~~~
 
 use std::cell::RefCell;
-use std::gc::{Gc, GC};
+use std::gc::GC;
+use std::vec;
 
 use abi::Abi;
 use abi;
 use ast;
-use ast::{P, EnumDef, Expr, Ident, Generics, StructDef};
+use ast::{EnumDef, Expr, Ident, Generics, StructDef};
 use ast_util;
 use attr;
 use attr::AttrMetaMethods;
@@ -194,9 +195,11 @@ use ext::base::ExtCtxt;
 use ext::build::AstBuilder;
 use codemap;
 use codemap::Span;
+use fold::MoveMap;
 use owned_slice::OwnedSlice;
 use parse::token::InternedString;
 use parse::token::special_idents;
+use ptr::P;
 
 use self::ty::{LifetimeBounds, Path, Ptr, PtrTy, Self, Ty};
 
@@ -251,9 +254,9 @@ pub struct Substructure<'a> {
     /// ident of the method
     pub method_ident: Ident,
     /// dereferenced access to any Self or Ptr(Self, _) arguments
-    pub self_args: &'a [Gc<Expr>],
+    pub self_args: &'a [P<Expr>],
     /// verbatim access to any other arguments
-    pub nonself_args: &'a [Gc<Expr>],
+    pub nonself_args: &'a [P<Expr>],
     pub fields: &'a SubstructureFields<'a>
 }
 
@@ -265,10 +268,10 @@ pub struct FieldInfo {
     pub name: Option<Ident>,
     /// The expression corresponding to this field of `self`
     /// (specifically, a reference to it).
-    pub self_: Gc<Expr>,
+    pub self_: P<Expr>,
     /// The expressions corresponding to references to this field in
     /// the other Self arguments.
-    pub other: Vec<Gc<Expr>>,
+    pub other: Vec<P<Expr>>,
 }
 
 /// Fields for a static method
@@ -298,7 +301,7 @@ pub enum SubstructureFields<'a> {
     Idents bound to the variant index values for each of the actual
     input Self arguments.
     */
-    EnumNonMatchingCollapsed(Vec<Ident>, &'a [Gc<ast::Variant>], &'a [Ident]),
+    EnumNonMatchingCollapsed(Vec<Ident>, &'a [P<ast::Variant>], &'a [Ident]),
 
     /// A static method where Self is a struct.
     StaticStruct(&'a ast::StructDef, StaticFields),
@@ -313,7 +316,7 @@ Combine the values of all the fields together. The last argument is
 all the fields of all the structures, see above for details.
 */
 pub type CombineSubstructureFunc<'a> =
-    |&mut ExtCtxt, Span, &Substructure|: 'a -> Gc<Expr>;
+    |&mut ExtCtxt, Span, &Substructure|: 'a -> P<Expr>;
 
 /**
 Deal with non-matching enum variants.  The tuple is a list of
@@ -324,10 +327,10 @@ last argument is all the non-Self args of the method being derived.
 */
 pub type EnumNonMatchCollapsedFunc<'a> =
     |&mut ExtCtxt,
-           Span,
-           (&[Ident], &[Ident]),
-           &[Gc<Expr>]|: 'a
-           -> Gc<Expr>;
+     Span,
+     (&[Ident], &[Ident]),
+     &[P<Expr>]|: 'a
+     -> P<Expr>;
 
 pub fn combine_substructure<'a>(f: CombineSubstructureFunc<'a>)
     -> RefCell<CombineSubstructureFunc<'a>> {
@@ -338,9 +341,9 @@ pub fn combine_substructure<'a>(f: CombineSubstructureFunc<'a>)
 impl<'a> TraitDef<'a> {
     pub fn expand(&self,
                   cx: &mut ExtCtxt,
-                  _mitem: Gc<ast::MetaItem>,
-                  item: Gc<ast::Item>,
-                  push: |Gc<ast::Item>|) {
+                  _mitem: &ast::MetaItem,
+                  item: &ast::Item,
+                  push: |P<ast::Item>|) {
         let newitem = match item.node {
             ast::ItemStruct(ref struct_def, ref generics) => {
                 self.expand_struct_def(cx,
@@ -365,10 +368,10 @@ impl<'a> TraitDef<'a> {
                 _ => false,
             }
         }).map(|a| a.clone()));
-        push(box(GC) ast::Item {
+        push(P(ast::Item {
             attrs: attrs,
             ..(*newitem).clone()
-        })
+        }))
     }
 
     /**
@@ -387,7 +390,7 @@ impl<'a> TraitDef<'a> {
                            cx: &mut ExtCtxt,
                            type_ident: Ident,
                            generics: &Generics,
-                           methods: Vec<Gc<ast::Method>> ) -> Gc<ast::Item> {
+                           methods: Vec<P<ast::Method>>) -> P<ast::Item> {
         let trait_path = self.path.to_path(cx, self.span, type_ident, generics);
 
         let Generics { mut lifetimes, ty_params, where_clause: _ } =
@@ -475,7 +478,7 @@ impl<'a> TraitDef<'a> {
                          cx: &mut ExtCtxt,
                          struct_def: &StructDef,
                          type_ident: Ident,
-                         generics: &Generics) -> Gc<ast::Item> {
+                         generics: &Generics) -> P<ast::Item> {
         let methods = self.methods.iter().map(|method_def| {
             let (explicit_self, self_args, nonself_args, tys) =
                 method_def.split_self_nonself_args(
@@ -515,7 +518,7 @@ impl<'a> TraitDef<'a> {
                        cx: &mut ExtCtxt,
                        enum_def: &EnumDef,
                        type_ident: Ident,
-                       generics: &Generics) -> Gc<ast::Item> {
+                       generics: &Generics) -> P<ast::Item> {
         let methods = self.methods.iter().map(|method_def| {
             let (explicit_self, self_args, nonself_args, tys) =
                 method_def.split_self_nonself_args(cx, self,
@@ -534,7 +537,7 @@ impl<'a> TraitDef<'a> {
                                                    self,
                                                    enum_def,
                                                    type_ident,
-                                                   self_args.as_slice(),
+                                                   self_args,
                                                    nonself_args.as_slice())
             };
 
@@ -553,7 +556,7 @@ impl<'a> TraitDef<'a> {
 }
 
 fn variant_to_pat(cx: &mut ExtCtxt, sp: Span, variant: &ast::Variant)
-                  -> Gc<ast::Pat> {
+                  -> P<ast::Pat> {
     let ident = cx.path_ident(sp, variant.node.name);
     cx.pat(sp, match variant.node.kind {
         ast::TupleVariantKind(..) => ast::PatEnum(ident, None),
@@ -566,10 +569,10 @@ impl<'a> MethodDef<'a> {
                                 cx: &mut ExtCtxt,
                                 trait_: &TraitDef,
                                 type_ident: Ident,
-                                self_args: &[Gc<Expr>],
-                                nonself_args: &[Gc<Expr>],
+                                self_args: &[P<Expr>],
+                                nonself_args: &[P<Expr>],
                                 fields: &SubstructureFields)
-        -> Gc<Expr> {
+        -> P<Expr> {
         let substructure = Substructure {
             type_ident: type_ident,
             method_ident: cx.ident_of(self.name),
@@ -600,8 +603,7 @@ impl<'a> MethodDef<'a> {
                                trait_: &TraitDef,
                                type_ident: Ident,
                                generics: &Generics)
-        -> (ast::ExplicitSelf, Vec<Gc<Expr>>, Vec<Gc<Expr>>,
-            Vec<(Ident, P<ast::Ty>)>) {
+        -> (ast::ExplicitSelf, Vec<P<Expr>>, Vec<P<Expr>>, Vec<(Ident, P<ast::Ty>)>) {
 
         let mut self_args = Vec::new();
         let mut nonself_args = Vec::new();
@@ -654,8 +656,7 @@ impl<'a> MethodDef<'a> {
                      abi: Abi,
                      explicit_self: ast::ExplicitSelf,
                      arg_types: Vec<(Ident, P<ast::Ty>)> ,
-                     body: Gc<Expr>)
-                     -> Gc<ast::Method> {
+                     body: P<Expr>) -> P<ast::Method> {
         // create the generics that aren't for Self
         let fn_generics = self.generics.to_generics(cx, trait_.span, type_ident, generics);
 
@@ -678,7 +679,7 @@ impl<'a> MethodDef<'a> {
         let body_block = cx.block_expr(body);
 
         // Create the method.
-        box(GC) ast::Method {
+        P(ast::Method {
             attrs: self.attributes.clone(),
             id: ast::DUMMY_NODE_ID,
             span: trait_.span,
@@ -690,7 +691,7 @@ impl<'a> MethodDef<'a> {
                                 fn_decl,
                                 body_block,
                                 ast::Inherited)
-        }
+        })
     }
 
     /**
@@ -719,9 +720,9 @@ impl<'a> MethodDef<'a> {
                                  trait_: &TraitDef,
                                  struct_def: &StructDef,
                                  type_ident: Ident,
-                                 self_args: &[Gc<Expr>],
-                                 nonself_args: &[Gc<Expr>])
-        -> Gc<Expr> {
+                                 self_args: &[P<Expr>],
+                                 nonself_args: &[P<Expr>])
+        -> P<Expr> {
 
         let mut raw_fields = Vec::new(); // ~[[fields of self],
                                  // [fields of next Self arg], [etc]]
@@ -740,20 +741,20 @@ impl<'a> MethodDef<'a> {
 
         // transpose raw_fields
         let fields = if raw_fields.len() > 0 {
-            raw_fields.get(0)
-                      .iter()
-                      .enumerate()
-                      .map(|(i, &(span, opt_id, field))| {
-                let other_fields = raw_fields.tail().iter().map(|l| {
-                    match l.get(i) {
-                        &(_, _, ex) => ex
-                    }
-                }).collect();
+            let mut raw_fields = raw_fields.move_iter().map(|v| v.move_iter());
+            let first_field = raw_fields.next().unwrap();
+            let mut other_fields: Vec<vec::MoveItems<(Span, Option<Ident>, P<Expr>)>>
+                = raw_fields.collect();
+            first_field.map(|(span, opt_id, field)| {
                 FieldInfo {
                     span: span,
                     name: opt_id,
                     self_: field,
-                    other: other_fields
+                    other: other_fields.mut_iter().map(|l| {
+                        match l.next().unwrap() {
+                            (_, _, ex) => ex
+                        }
+                    }).collect()
                 }
             }).collect()
         } else {
@@ -774,9 +775,9 @@ impl<'a> MethodDef<'a> {
         // make a series of nested matches, to destructure the
         // structs. This is actually right-to-left, but it shouldn't
         // matter.
-        for (&arg_expr, &pat) in self_args.iter().zip(patterns.iter()) {
-            body = cx.expr_match(trait_.span, arg_expr,
-                                     vec!( cx.arm(trait_.span, vec!(pat), body) ))
+        for (arg_expr, pat) in self_args.iter().zip(patterns.iter()) {
+            body = cx.expr_match(trait_.span, arg_expr.clone(),
+                                     vec!( cx.arm(trait_.span, vec!(pat.clone()), body) ))
         }
         body
     }
@@ -786,9 +787,9 @@ impl<'a> MethodDef<'a> {
                                         trait_: &TraitDef,
                                         struct_def: &StructDef,
                                         type_ident: Ident,
-                                        self_args: &[Gc<Expr>],
-                                        nonself_args: &[Gc<Expr>])
-        -> Gc<Expr> {
+                                        self_args: &[P<Expr>],
+                                        nonself_args: &[P<Expr>])
+        -> P<Expr> {
         let summary = trait_.summarise_struct(cx, struct_def);
 
         self.call_substructure_method(cx,
@@ -834,9 +835,9 @@ impl<'a> MethodDef<'a> {
                                trait_: &TraitDef,
                                enum_def: &EnumDef,
                                type_ident: Ident,
-                               self_args: &[Gc<Expr>],
-                               nonself_args: &[Gc<Expr>])
-                               -> Gc<Expr> {
+                               self_args: Vec<P<Expr>>,
+                               nonself_args: &[P<Expr>])
+                               -> P<Expr> {
         self.build_enum_match_tuple(
             cx, trait_, enum_def, type_ident, self_args, nonself_args)
     }
@@ -875,8 +876,8 @@ impl<'a> MethodDef<'a> {
         trait_: &TraitDef,
         enum_def: &EnumDef,
         type_ident: Ident,
-        self_args: &[Gc<Expr>],
-        nonself_args: &[Gc<Expr>]) -> Gc<Expr> {
+        self_args: Vec<P<Expr>>,
+        nonself_args: &[P<Expr>]) -> P<Expr> {
 
         let sp = trait_.span;
         let variants = &enum_def.variants;
@@ -898,7 +899,7 @@ impl<'a> MethodDef<'a> {
         // The `vi_idents` will be bound, solely in the catch-all, to
         // a series of let statements mapping each self_arg to a uint
         // corresponding to its variant index.
-        let vi_idents : Vec<ast::Ident> = self_arg_names.iter()
+        let vi_idents: Vec<ast::Ident> = self_arg_names.iter()
             .map(|name| { let vi_suffix = format!("{:s}_vi", name.as_slice());
                           cx.ident_of(vi_suffix.as_slice()) })
             .collect::<Vec<ast::Ident>>();
@@ -914,24 +915,29 @@ impl<'a> MethodDef<'a> {
         // (Variant2, Variant2, ...) => Body2
         // ...
         // where each tuple has length = self_args.len()
-        let mut match_arms : Vec<ast::Arm> = variants.iter().enumerate()
-            .map(|(index, &variant)| {
-
-                // These self_pats have form Variant1, Variant2, ...
-                let self_pats : Vec<(Gc<ast::Pat>,
-                                     Vec<(Span, Option<Ident>, Gc<Expr>)>)>;
-                self_pats = self_arg_names.iter()
-                    .map(|self_arg_name|
-                         trait_.create_enum_variant_pattern(
-                             cx, &*variant, self_arg_name.as_slice(),
-                             ast::MutImmutable))
-                    .collect();
+        let mut match_arms: Vec<ast::Arm> = variants.iter().enumerate()
+            .map(|(index, variant)| {
+                let mk_self_pat = |cx: &mut ExtCtxt, self_arg_name: &str| {
+                    let (p, idents) = trait_.create_enum_variant_pattern(cx, &**variant,
+                                                                         self_arg_name,
+                                                                         ast::MutImmutable);
+                    (cx.pat(sp, ast::PatRegion(p)), idents)
+                };
 
                 // A single arm has form (&VariantK, &VariantK, ...) => BodyK
                 // (see "Final wrinkle" note below for why.)
-                let subpats = self_pats.iter()
-                    .map(|&(p, ref _idents)| cx.pat(sp, ast::PatRegion(p)))
-                    .collect::<Vec<Gc<ast::Pat>>>();
+                let mut subpats = Vec::with_capacity(self_arg_names.len());
+                let mut self_pats_idents = Vec::with_capacity(self_arg_names.len() - 1);
+                let first_self_pat_idents = {
+                    let (p, idents) = mk_self_pat(cx, self_arg_names[0].as_slice());
+                    subpats.push(p);
+                    idents
+                };
+                for self_arg_name in self_arg_names.tail().iter() {
+                    let (p, idents) = mk_self_pat(cx, self_arg_name.as_slice());
+                    subpats.push(p);
+                    self_pats_idents.push(idents);
+                }
 
                 // Here is the pat = `(&VariantK, &VariantK, ...)`
                 let single_pat = cx.pat(sp, ast::PatTup(subpats));
@@ -941,39 +947,33 @@ impl<'a> MethodDef<'a> {
                 // we are in.
 
                 // All of the Self args have the same variant in these
-                // cases.  So we transpose the info in self_pats to
-                // gather the getter expressions together, in the form
-                // that EnumMatching expects.
+                // cases.  So we transpose the info in self_pats_idents
+                // to gather the getter expressions together, in the
+                // form that EnumMatching expects.
 
                 // The transposition is driven by walking across the
                 // arg fields of the variant for the first self pat.
-                let &(_, ref self_arg_fields) = self_pats.get(0);
-
-                let field_tuples : Vec<FieldInfo>;
-
-                field_tuples = self_arg_fields.iter().enumerate()
+                let field_tuples = first_self_pat_idents.move_iter().enumerate()
                     // For each arg field of self, pull out its getter expr ...
-                    .map(|(field_index, &(sp, opt_ident, self_getter_expr))| {
+                    .map(|(field_index, (sp, opt_ident, self_getter_expr))| {
                         // ... but FieldInfo also wants getter expr
                         // for matching other arguments of Self type;
-                        // so walk across the *other* self_pats and
-                        // pull out getter for same field in each of
-                        // them (using `field_index` tracked above).
+                        // so walk across the *other* self_pats_idents
+                        // and pull out getter for same field in each
+                        // of them (using `field_index` tracked above).
                         // That is the heart of the transposition.
-                        let others = self_pats.tail().iter()
-                            .map(|&(_pat, ref fields)| {
+                        let others = self_pats_idents.iter().map(|fields| {
+                            let &(_, _opt_ident, ref other_getter_expr) =
+                                fields.get(field_index);
 
-                                let &(_, _opt_ident, other_getter_expr) =
-                                    fields.get(field_index);
+                            // All Self args have same variant, so
+                            // opt_idents are the same.  (Assert
+                            // here to make it self-evident that
+                            // it is okay to ignore `_opt_ident`.)
+                            assert!(opt_ident == _opt_ident);
 
-                                // All Self args have same variant, so
-                                // opt_idents are the same.  (Assert
-                                // here to make it self-evident that
-                                // it is okay to ignore `_opt_ident`.)
-                                assert!(opt_ident == _opt_ident);
-
-                                other_getter_expr
-                            }).collect::<Vec<Gc<Expr>>>();
+                            other_getter_expr.clone()
+                        }).collect::<Vec<P<Expr>>>();
 
                         FieldInfo { span: sp,
                                     name: opt_ident,
@@ -987,10 +987,10 @@ impl<'a> MethodDef<'a> {
                 // Self arg, assuming all are instances of VariantK.
                 // Build up code associated with such a case.
                 let substructure = EnumMatching(index,
-                                                &*variant,
+                                                &**variant,
                                                 field_tuples);
                 let arm_expr = self.call_substructure_method(
-                    cx, trait_, type_ident, self_args, nonself_args,
+                    cx, trait_, type_ident, self_args.as_slice(), nonself_args,
                     &substructure);
 
                 cx.arm(sp, vec![single_pat], arm_expr)
@@ -1012,9 +1012,9 @@ impl<'a> MethodDef<'a> {
         //   unreachable-pattern error.
         //
         if variants.len() > 1 && self_args.len() > 1 {
-            let arms : Vec<ast::Arm> = variants.iter().enumerate()
-                .map(|(index, &variant)| {
-                    let pat = variant_to_pat(cx, sp, &*variant);
+            let arms: Vec<ast::Arm> = variants.iter().enumerate()
+                .map(|(index, variant)| {
+                    let pat = variant_to_pat(cx, sp, &**variant);
                     let lit = ast::LitInt(index as u64, ast::UnsignedIntLit(ast::TyU));
                     cx.arm(sp, vec![pat], cx.expr_lit(sp, lit))
                 }).collect();
@@ -1035,15 +1035,15 @@ impl<'a> MethodDef<'a> {
             //     A => 0u, B(..) => 1u, C(..) => 2u
             // };
             // ```
-            let mut index_let_stmts : Vec<Gc<ast::Stmt>> = Vec::new();
-            for (&ident, &self_arg) in vi_idents.iter().zip(self_args.iter()) {
-                let variant_idx = cx.expr_match(sp, self_arg, arms.clone());
+            let mut index_let_stmts: Vec<P<ast::Stmt>> = Vec::new();
+            for (&ident, self_arg) in vi_idents.iter().zip(self_args.iter()) {
+                let variant_idx = cx.expr_match(sp, self_arg.clone(), arms.clone());
                 let let_stmt = cx.stmt_let(sp, false, ident, variant_idx);
                 index_let_stmts.push(let_stmt);
             }
 
             let arm_expr = self.call_substructure_method(
-                cx, trait_, type_ident, self_args, nonself_args,
+                cx, trait_, type_ident, self_args.as_slice(), nonself_args,
                 &catch_all_substructure);
 
             // Builds the expression:
@@ -1124,9 +1124,7 @@ impl<'a> MethodDef<'a> {
         // them when they are fed as r-values into a tuple
         // expression; here add a layer of borrowing, turning
         // `(*self, *__arg_0, ...)` into `(&*self, &*__arg_0, ...)`.
-        let borrowed_self_args = self_args.iter()
-            .map(|&self_arg| cx.expr_addr_of(sp, self_arg))
-            .collect::<Vec<Gc<ast::Expr>>>();
+        let borrowed_self_args = self_args.move_map(|self_arg| cx.expr_addr_of(sp, self_arg));
         let match_arg = cx.expr(sp, ast::ExprTup(borrowed_self_args));
         cx.expr_match(sp, match_arg, match_arms)
     }
@@ -1136,9 +1134,9 @@ impl<'a> MethodDef<'a> {
                                       trait_: &TraitDef,
                                       enum_def: &EnumDef,
                                       type_ident: Ident,
-                                      self_args: &[Gc<Expr>],
-                                      nonself_args: &[Gc<Expr>])
-        -> Gc<Expr> {
+                                      self_args: &[P<Expr>],
+                                      nonself_args: &[P<Expr>])
+        -> P<Expr> {
         let summary = enum_def.variants.iter().map(|v| {
             let ident = v.node.name;
             let summary = match v.node.kind {
@@ -1210,11 +1208,11 @@ impl<'a> TraitDef<'a> {
                           cx: &mut ExtCtxt,
                           field_paths: Vec<ast::SpannedIdent> ,
                           mutbl: ast::Mutability)
-                          -> Vec<Gc<ast::Pat>> {
+                          -> Vec<P<ast::Pat>> {
         field_paths.iter().map(|path| {
             cx.pat(path.span,
                         ast::PatIdent(ast::BindByRef(mutbl), (*path).clone(), None))
-            }).collect()
+        }).collect()
     }
 
     fn create_struct_pattern(&self,
@@ -1223,7 +1221,7 @@ impl<'a> TraitDef<'a> {
                              struct_def: &StructDef,
                              prefix: &str,
                              mutbl: ast::Mutability)
-                             -> (Gc<ast::Pat>, Vec<(Span, Option<Ident>, Gc<Expr>)>) {
+                             -> (P<ast::Pat>, Vec<(Span, Option<Ident>, P<Expr>)>) {
         if struct_def.fields.is_empty() {
             return (
                 cx.pat_ident_binding_mode(
@@ -1266,7 +1264,7 @@ impl<'a> TraitDef<'a> {
         // struct_type is definitely not Unknown, since struct_def.fields
         // must be nonempty to reach here
         let pattern = if struct_type == Record {
-            let field_pats = subpats.iter().zip(ident_expr.iter()).map(|(&pat, &(_, id, _))| {
+            let field_pats = subpats.move_iter().zip(ident_expr.iter()).map(|(pat, &(_, id, _))| {
                 // id is guaranteed to be Some
                 ast::FieldPat { ident: id.unwrap(), pat: pat }
             }).collect();
@@ -1283,7 +1281,7 @@ impl<'a> TraitDef<'a> {
                                    variant: &ast::Variant,
                                    prefix: &str,
                                    mutbl: ast::Mutability)
-        -> (Gc<ast::Pat>, Vec<(Span, Option<Ident>, Gc<Expr>)> ) {
+        -> (P<ast::Pat>, Vec<(Span, Option<Ident>, P<Expr>)>) {
         let variant_ident = variant.node.name;
         match variant.node.kind {
             ast::TupleVariantKind(ref variant_args) => {
@@ -1327,13 +1325,13 @@ Fold the fields. `use_foldl` controls whether this is done
 left-to-right (`true`) or right-to-left (`false`).
 */
 pub fn cs_fold(use_foldl: bool,
-               f: |&mut ExtCtxt, Span, Gc<Expr>, Gc<Expr>, &[Gc<Expr>]| -> Gc<Expr>,
-               base: Gc<Expr>,
+               f: |&mut ExtCtxt, Span, P<Expr>, P<Expr>, &[P<Expr>]| -> P<Expr>,
+               base: P<Expr>,
                enum_nonmatch_f: EnumNonMatchCollapsedFunc,
                cx: &mut ExtCtxt,
                trait_span: Span,
                substructure: &Substructure)
-               -> Gc<Expr> {
+               -> P<Expr> {
     match *substructure.fields {
         EnumMatching(_, _, ref all_fields) | Struct(ref all_fields) => {
             if use_foldl {
@@ -1341,7 +1339,7 @@ pub fn cs_fold(use_foldl: bool,
                     f(cx,
                       field.span,
                       old,
-                      field.self_,
+                      field.self_.clone(),
                       field.other.as_slice())
                 })
             } else {
@@ -1349,7 +1347,7 @@ pub fn cs_fold(use_foldl: bool,
                     f(cx,
                       field.span,
                       old,
-                      field.self_,
+                      field.self_.clone(),
                       field.other.as_slice())
                 })
             }
@@ -1374,21 +1372,21 @@ f(cx, span, ~[self_1.method(__arg_1_1, __arg_2_1),
 ~~~
 */
 #[inline]
-pub fn cs_same_method(f: |&mut ExtCtxt, Span, Vec<Gc<Expr>>| -> Gc<Expr>,
+pub fn cs_same_method(f: |&mut ExtCtxt, Span, Vec<P<Expr>>| -> P<Expr>,
                       enum_nonmatch_f: EnumNonMatchCollapsedFunc,
                       cx: &mut ExtCtxt,
                       trait_span: Span,
                       substructure: &Substructure)
-                      -> Gc<Expr> {
+                      -> P<Expr> {
     match *substructure.fields {
         EnumMatching(_, _, ref all_fields) | Struct(ref all_fields) => {
             // call self_n.method(other_1_n, other_2_n, ...)
             let called = all_fields.iter().map(|field| {
                 cx.expr_method_call(field.span,
-                                    field.self_,
+                                    field.self_.clone(),
                                     substructure.method_ident,
                                     field.other.iter()
-                                               .map(|e| cx.expr_addr_of(field.span, *e))
+                                               .map(|e| cx.expr_addr_of(field.span, e.clone()))
                                                .collect())
             }).collect();
 
@@ -1410,21 +1408,21 @@ fields. `use_foldl` controls whether this is done left-to-right
 */
 #[inline]
 pub fn cs_same_method_fold(use_foldl: bool,
-                           f: |&mut ExtCtxt, Span, Gc<Expr>, Gc<Expr>| -> Gc<Expr>,
-                           base: Gc<Expr>,
+                           f: |&mut ExtCtxt, Span, P<Expr>, P<Expr>| -> P<Expr>,
+                           base: P<Expr>,
                            enum_nonmatch_f: EnumNonMatchCollapsedFunc,
                            cx: &mut ExtCtxt,
                            trait_span: Span,
                            substructure: &Substructure)
-                           -> Gc<Expr> {
+                           -> P<Expr> {
     cs_same_method(
         |cx, span, vals| {
             if use_foldl {
-                vals.iter().fold(base, |old, &new| {
+                vals.move_iter().fold(base.clone(), |old, new| {
                     f(cx, span, old, new)
                 })
             } else {
-                vals.iter().rev().fold(base, |old, &new| {
+                vals.move_iter().rev().fold(base.clone(), |old, new| {
                     f(cx, span, old, new)
                 })
             }
@@ -1438,10 +1436,10 @@ Use a given binop to combine the result of calling the derived method
 on all the fields.
 */
 #[inline]
-pub fn cs_binop(binop: ast::BinOp, base: Gc<Expr>,
+pub fn cs_binop(binop: ast::BinOp, base: P<Expr>,
                 enum_nonmatch_f: EnumNonMatchCollapsedFunc,
                 cx: &mut ExtCtxt, trait_span: Span,
-                substructure: &Substructure) -> Gc<Expr> {
+                substructure: &Substructure) -> P<Expr> {
     cs_same_method_fold(
         true, // foldl is good enough
         |cx, span, old, new| {
@@ -1459,7 +1457,7 @@ pub fn cs_binop(binop: ast::BinOp, base: Gc<Expr>,
 #[inline]
 pub fn cs_or(enum_nonmatch_f: EnumNonMatchCollapsedFunc,
              cx: &mut ExtCtxt, span: Span,
-             substructure: &Substructure) -> Gc<Expr> {
+             substructure: &Substructure) -> P<Expr> {
     cs_binop(ast::BiOr, cx.expr_bool(span, false),
              enum_nonmatch_f,
              cx, span, substructure)
@@ -1469,7 +1467,7 @@ pub fn cs_or(enum_nonmatch_f: EnumNonMatchCollapsedFunc,
 #[inline]
 pub fn cs_and(enum_nonmatch_f: EnumNonMatchCollapsedFunc,
               cx: &mut ExtCtxt, span: Span,
-              substructure: &Substructure) -> Gc<Expr> {
+              substructure: &Substructure) -> P<Expr> {
     cs_binop(ast::BiAnd, cx.expr_bool(span, true),
              enum_nonmatch_f,
              cx, span, substructure)

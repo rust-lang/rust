@@ -40,7 +40,7 @@ pub fn expand_syntax_ext<'cx>(cx: &'cx mut ExtCtxt,
     for expr in exprs.iter() {
         match expr.node {
             // expression is a literal
-            ast::ExprLit(lit) => match lit.node {
+            ast::ExprLit(ref lit) => match lit.node {
                 // string literal, push each byte to vector expression
                 ast::LitStr(ref s, _) => {
                     for byte in s.get().bytes() {

@@ -18,6 +18,7 @@ use parse;
 use parse::parser;
 use parse::token;
 use parse::token::{InternedString, intern, str_to_ident};
+use ptr::P;
 use util::small_vector::SmallVector;
 use ext::mtwt;
 use fold::Folder;
@@ -43,18 +44,18 @@ pub trait ItemDecorator {
     fn expand(&self,
               ecx: &mut ExtCtxt,
               sp: Span,
-              meta_item: Gc<ast::MetaItem>,
-              item: Gc<ast::Item>,
-              push: |Gc<ast::Item>|);
+              meta_item: &ast::MetaItem,
+              item: &ast::Item,
+              push: |P<ast::Item>|);
 }
 
-impl ItemDecorator for fn(&mut ExtCtxt, Span, Gc<ast::MetaItem>, Gc<ast::Item>, |Gc<ast::Item>|) {
+impl ItemDecorator for fn(&mut ExtCtxt, Span, &ast::MetaItem, &ast::Item, |P<ast::Item>|) {
     fn expand(&self,
               ecx: &mut ExtCtxt,
               sp: Span,
-              meta_item: Gc<ast::MetaItem>,
-              item: Gc<ast::Item>,
-              push: |Gc<ast::Item>|) {
+              meta_item: &ast::MetaItem,
+              item: &ast::Item,
+              push: |P<ast::Item>|) {
         (*self)(ecx, sp, meta_item, item, push)
     }
 }
@@ -63,18 +64,18 @@ pub trait ItemModifier {
     fn expand(&self,
               ecx: &mut ExtCtxt,
               span: Span,
-              meta_item: Gc<ast::MetaItem>,
-              item: Gc<ast::Item>)
-              -> Gc<ast::Item>;
+              meta_item: &ast::MetaItem,
+              item: P<ast::Item>)
+              -> P<ast::Item>;
 }
 
-impl ItemModifier for fn(&mut ExtCtxt, Span, Gc<ast::MetaItem>, Gc<ast::Item>) -> Gc<ast::Item> {
+impl ItemModifier for fn(&mut ExtCtxt, Span, &ast::MetaItem, P<ast::Item>) -> P<ast::Item> {
     fn expand(&self,
               ecx: &mut ExtCtxt,
               span: Span,
-              meta_item: Gc<ast::MetaItem>,
-              item: Gc<ast::Item>)
-              -> Gc<ast::Item> {
+              meta_item: &ast::MetaItem,
+              item: P<ast::Item>)
+              -> P<ast::Item> {
         (*self)(ecx, span, meta_item, item)
     }
 }
@@ -128,29 +129,29 @@ impl IdentMacroExpander for IdentMacroExpanderFn {
 /// methods are spliced into the AST at the callsite of the macro (or
 /// just into the compiler's internal macro table, for `make_def`).
 pub trait MacResult {
-    /// Define a new macro.
+    /// Attempt to define a new macro.
     // this should go away; the idea that a macro might expand into
     // either a macro definition or an expression, depending on what
     // the context wants, is kind of silly.
-    fn make_def(&self) -> Option<MacroDef> {
+    fn make_def(&mut self) -> Option<MacroDef> {
         None
     }
     /// Create an expression.
-    fn make_expr(&self) -> Option<Gc<ast::Expr>> {
+    fn make_expr(self: Box<Self>) -> Option<P<ast::Expr>> {
         None
     }
     /// Create zero or more items.
-    fn make_items(&self) -> Option<SmallVector<Gc<ast::Item>>> {
+    fn make_items(self: Box<Self>) -> Option<SmallVector<P<ast::Item>>> {
         None
     }
 
     /// Create zero or more methods.
-    fn make_methods(&self) -> Option<SmallVector<Gc<ast::Method>>> {
+    fn make_methods(self: Box<Self>) -> Option<SmallVector<P<ast::Method>>> {
         None
     }
 
     /// Create a pattern.
-    fn make_pat(&self) -> Option<Gc<ast::Pat>> {
+    fn make_pat(self: Box<Self>) -> Option<P<ast::Pat>> {
         None
     }
 
@@ -158,69 +159,69 @@ pub trait MacResult {
     ///
     /// By default this attempts to create an expression statement,
     /// returning None if that fails.
-    fn make_stmt(&self) -> Option<Gc<ast::Stmt>> {
+    fn make_stmt(self: Box<Self>) -> Option<P<ast::Stmt>> {
         self.make_expr()
-            .map(|e| box(GC) codemap::respan(e.span, ast::StmtExpr(e, ast::DUMMY_NODE_ID)))
+            .map(|e| P(codemap::respan(e.span, ast::StmtExpr(e, ast::DUMMY_NODE_ID))))
     }
 }
 
 /// A convenience type for macros that return a single expression.
 pub struct MacExpr {
-    e: Gc<ast::Expr>,
+    e: P<ast::Expr>
 }
 impl MacExpr {
-    pub fn new(e: Gc<ast::Expr>) -> Box<MacResult+'static> {
+    pub fn new(e: P<ast::Expr>) -> Box<MacResult+'static> {
         box MacExpr { e: e } as Box<MacResult+'static>
     }
 }
 impl MacResult for MacExpr {
-    fn make_expr(&self) -> Option<Gc<ast::Expr>> {
+    fn make_expr(self: Box<MacExpr>) -> Option<P<ast::Expr>> {
         Some(self.e)
     }
-    fn make_pat(&self) -> Option<Gc<ast::Pat>> {
+    fn make_pat(self: Box<MacExpr>) -> Option<P<ast::Pat>> {
         match self.e.node {
-            ast::ExprLit(_) => Some(box(GC) ast::Pat {
+            ast::ExprLit(_) => Some(P(ast::Pat {
                 id: ast::DUMMY_NODE_ID,
-                node: ast::PatLit(self.e),
-                span: self.e.span
-            }),
+                span: self.e.span,
+                node: ast::PatLit(self.e)
+            })),
             _ => None
         }
     }
 }
 /// A convenience type for macros that return a single pattern.
 pub struct MacPat {
-    p: Gc<ast::Pat>,
+    p: P<ast::Pat>
 }
 impl MacPat {
-    pub fn new(p: Gc<ast::Pat>) -> Box<MacResult+'static> {
+    pub fn new(p: P<ast::Pat>) -> Box<MacResult+'static> {
         box MacPat { p: p } as Box<MacResult+'static>
     }
 }
 impl MacResult for MacPat {
-    fn make_pat(&self) -> Option<Gc<ast::Pat>> {
+    fn make_pat(self: Box<MacPat>) -> Option<P<ast::Pat>> {
         Some(self.p)
     }
 }
 /// A convenience type for macros that return a single item.
 pub struct MacItem {
-    i: Gc<ast::Item>
+    i: P<ast::Item>
 }
 impl MacItem {
-    pub fn new(i: Gc<ast::Item>) -> Box<MacResult+'static> {
+    pub fn new(i: P<ast::Item>) -> Box<MacResult+'static> {
         box MacItem { i: i } as Box<MacResult+'static>
     }
 }
 impl MacResult for MacItem {
-    fn make_items(&self) -> Option<SmallVector<Gc<ast::Item>>> {
+    fn make_items(self: Box<MacItem>) -> Option<SmallVector<P<ast::Item>>> {
         Some(SmallVector::one(self.i))
     }
-    fn make_stmt(&self) -> Option<Gc<ast::Stmt>> {
-        Some(box(GC) codemap::respan(
+    fn make_stmt(self: Box<MacItem>) -> Option<P<ast::Stmt>> {
+        Some(P(codemap::respan(
             self.i.span,
             ast::StmtDecl(
-                box(GC) codemap::respan(self.i.span, ast::DeclItem(self.i)),
-                ast::DUMMY_NODE_ID)))
+                P(codemap::respan(self.i.span, ast::DeclItem(self.i))),
+                ast::DUMMY_NODE_ID))))
     }
 }
 
@@ -250,17 +251,17 @@ impl DummyResult {
     }
 
     /// A plain dummy expression.
-    pub fn raw_expr(sp: Span) -> Gc<ast::Expr> {
-        box(GC) ast::Expr {
+    pub fn raw_expr(sp: Span) -> P<ast::Expr> {
+        P(ast::Expr {
             id: ast::DUMMY_NODE_ID,
-            node: ast::ExprLit(box(GC) codemap::respan(sp, ast::LitNil)),
+            node: ast::ExprLit(P(codemap::respan(sp, ast::LitNil))),
             span: sp,
-        }
+        })
     }
 
     /// A plain dummy pattern.
-    pub fn raw_pat(sp: Span) -> Gc<ast::Pat> {
-        box(GC) ast::Pat {
+    pub fn raw_pat(sp: Span) -> ast::Pat {
+        ast::Pat {
             id: ast::DUMMY_NODE_ID,
             node: ast::PatWild(ast::PatWildSingle),
             span: sp,
@@ -270,13 +271,13 @@ impl DummyResult {
 }
 
 impl MacResult for DummyResult {
-    fn make_expr(&self) -> Option<Gc<ast::Expr>> {
+    fn make_expr(self: Box<DummyResult>) -> Option<P<ast::Expr>> {
         Some(DummyResult::raw_expr(self.span))
     }
-    fn make_pat(&self) -> Option<Gc<ast::Pat>> {
-        Some(DummyResult::raw_pat(self.span))
+    fn make_pat(self: Box<DummyResult>) -> Option<P<ast::Pat>> {
+        Some(P(DummyResult::raw_pat(self.span)))
     }
-    fn make_items(&self) -> Option<SmallVector<Gc<ast::Item>>> {
+    fn make_items(self: Box<DummyResult>) -> Option<SmallVector<P<ast::Item>>> {
         // this code needs a comment... why not always just return the Some() ?
         if self.expr_only {
             None
@@ -284,17 +285,17 @@ impl MacResult for DummyResult {
             Some(SmallVector::zero())
         }
     }
-    fn make_methods(&self) -> Option<SmallVector<Gc<ast::Method>>> {
+    fn make_methods(self: Box<DummyResult>) -> Option<SmallVector<P<ast::Method>>> {
         if self.expr_only {
             None
         } else {
             Some(SmallVector::zero())
         }
     }
-    fn make_stmt(&self) -> Option<Gc<ast::Stmt>> {
-        Some(box(GC) codemap::respan(self.span,
-                              ast::StmtExpr(DummyResult::raw_expr(self.span),
-                                            ast::DUMMY_NODE_ID)))
+    fn make_stmt(self: Box<DummyResult>) -> Option<P<ast::Stmt>> {
+        Some(P(codemap::respan(self.span,
+                               ast::StmtExpr(DummyResult::raw_expr(self.span),
+                                             ast::DUMMY_NODE_ID))))
     }
 }
 
@@ -461,7 +462,7 @@ pub struct ExtCtxt<'a> {
 
     pub mod_path: Vec<ast::Ident> ,
     pub trace_mac: bool,
-    pub exported_macros: Vec<Gc<ast::Item>>,
+    pub exported_macros: Vec<P<ast::Item>>,
 
     pub syntax_env: SyntaxEnv,
 }
@@ -482,7 +483,7 @@ impl<'a> ExtCtxt<'a> {
     }
 
     #[deprecated = "Replaced with `expander().fold_expr()`"]
-    pub fn expand_expr(&mut self, e: Gc<ast::Expr>) -> Gc<ast::Expr> {
+    pub fn expand_expr(&mut self, e: P<ast::Expr>) -> P<ast::Expr> {
         self.expander().fold_expr(e)
     }
 
@@ -595,12 +596,12 @@ impl<'a> ExtCtxt<'a> {
 /// Extract a string literal from the macro expanded version of `expr`,
 /// emitting `err_msg` if `expr` is not a string literal. This does not stop
 /// compilation on error, merely emits a non-fatal error and returns None.
-pub fn expr_to_string(cx: &mut ExtCtxt, expr: Gc<ast::Expr>, err_msg: &str)
-                   -> Option<(InternedString, ast::StrStyle)> {
+pub fn expr_to_string(cx: &mut ExtCtxt, expr: P<ast::Expr>, err_msg: &str)
+                      -> Option<(InternedString, ast::StrStyle)> {
     // we want to be able to handle e.g. concat("foo", "bar")
     let expr = cx.expander().fold_expr(expr);
     match expr.node {
-        ast::ExprLit(l) => match l.node {
+        ast::ExprLit(ref l) => match l.node {
             ast::LitStr(ref s, style) => return Some(((*s).clone(), style)),
             _ => cx.span_err(l.span, err_msg)
         },
@@ -651,7 +652,7 @@ pub fn get_single_str_from_tts(cx: &ExtCtxt,
 /// parsing error, emit a non-fatal error and return None.
 pub fn get_exprs_from_tts(cx: &mut ExtCtxt,
                           sp: Span,
-                          tts: &[ast::TokenTree]) -> Option<Vec<Gc<ast::Expr>>> {
+                          tts: &[ast::TokenTree]) -> Option<Vec<P<ast::Expr>>> {
     let mut p = cx.new_parser_from_tts(tts);
     let mut es = Vec::new();
     while p.token != token::EOF {
