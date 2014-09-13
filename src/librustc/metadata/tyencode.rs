@@ -23,7 +23,6 @@ use util::nodemap::FnvHashMap;
 
 use syntax::abi::Abi;
 use syntax::ast;
-use syntax::ast::*;
 use syntax::diagnostic::SpanHandler;
 use syntax::parse::token;
 
@@ -34,7 +33,7 @@ macro_rules! mywrite( ($($arg:tt)*) => ({ write!($($arg)*); }) )
 pub struct ctxt<'a, 'tcx: 'a> {
     pub diag: &'a SpanHandler,
     // Def -> str Callback:
-    pub ds: fn(DefId) -> String,
+    pub ds: fn(ast::DefId) -> String,
     // The type context.
     pub tcx: &'a ty::ctxt<'tcx>,
     pub abbrevs: &'a abbrev_map
@@ -75,8 +74,8 @@ pub fn enc_ty(w: &mut SeekableMemWriter, cx: &ctxt, t: ty::t) {
 
 fn enc_mutability(w: &mut SeekableMemWriter, mt: ast::Mutability) {
     match mt {
-        MutImmutable => (),
-        MutMutable => mywrite!(w, "m"),
+        ast::MutImmutable => (),
+        ast::MutMutable => mywrite!(w, "m"),
     }
 }
 
@@ -203,26 +202,26 @@ fn enc_sty(w: &mut SeekableMemWriter, cx: &ctxt, st: &ty::sty) {
         ty::ty_char => mywrite!(w, "c"),
         ty::ty_int(t) => {
             match t {
-                TyI => mywrite!(w, "i"),
-                TyI8 => mywrite!(w, "MB"),
-                TyI16 => mywrite!(w, "MW"),
-                TyI32 => mywrite!(w, "ML"),
-                TyI64 => mywrite!(w, "MD")
+                ast::TyI => mywrite!(w, "i"),
+                ast::TyI8 => mywrite!(w, "MB"),
+                ast::TyI16 => mywrite!(w, "MW"),
+                ast::TyI32 => mywrite!(w, "ML"),
+                ast::TyI64 => mywrite!(w, "MD")
             }
         }
         ty::ty_uint(t) => {
             match t {
-                TyU => mywrite!(w, "u"),
-                TyU8 => mywrite!(w, "Mb"),
-                TyU16 => mywrite!(w, "Mw"),
-                TyU32 => mywrite!(w, "Ml"),
-                TyU64 => mywrite!(w, "Md")
+                ast::TyU => mywrite!(w, "u"),
+                ast::TyU8 => mywrite!(w, "Mb"),
+                ast::TyU16 => mywrite!(w, "Mw"),
+                ast::TyU32 => mywrite!(w, "Ml"),
+                ast::TyU64 => mywrite!(w, "Md")
             }
         }
         ty::ty_float(t) => {
             match t {
-                TyF32 => mywrite!(w, "Mf"),
-                TyF64 => mywrite!(w, "MF"),
+                ast::TyF32 => mywrite!(w, "Mf"),
+                ast::TyF64 => mywrite!(w, "MF"),
             }
         }
         ty::ty_enum(def, ref substs) => {
@@ -295,10 +294,10 @@ fn enc_sty(w: &mut SeekableMemWriter, cx: &ctxt, st: &ty::sty) {
     }
 }
 
-fn enc_fn_style(w: &mut SeekableMemWriter, p: FnStyle) {
+fn enc_fn_style(w: &mut SeekableMemWriter, p: ast::FnStyle) {
     match p {
-        NormalFn => mywrite!(w, "n"),
-        UnsafeFn => mywrite!(w, "u"),
+        ast::NormalFn => mywrite!(w, "n"),
+        ast::UnsafeFn => mywrite!(w, "u"),
     }
 }
 
@@ -308,10 +307,10 @@ fn enc_abi(w: &mut SeekableMemWriter, abi: Abi) {
     mywrite!(w, "]")
 }
 
-fn enc_onceness(w: &mut SeekableMemWriter, o: Onceness) {
+fn enc_onceness(w: &mut SeekableMemWriter, o: ast::Onceness) {
     match o {
-        Once => mywrite!(w, "o"),
-        Many => mywrite!(w, "m")
+        ast::Once => mywrite!(w, "o"),
+        ast::Many => mywrite!(w, "m")
     }
 }
 
