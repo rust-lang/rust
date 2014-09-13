@@ -59,7 +59,7 @@ use middle::subst::{VecPerParamSpace};
 use middle::ty;
 use middle::typeck::lookup_def_tcx;
 use middle::typeck::infer;
-use middle::typeck::rscope::{ExplicitRscope, RegionScope, SpecificRscope};
+use middle::typeck::rscope::{UnelidableRscope, RegionScope, SpecificRscope};
 use middle::typeck::rscope;
 use middle::typeck::TypeAndSubsts;
 use middle::typeck;
@@ -67,10 +67,11 @@ use util::ppaux::{Repr, UserString};
 
 use std::collections::HashMap;
 use std::rc::Rc;
-use syntax::abi;
-use syntax::{ast, ast_util};
+use std::iter::AdditiveIterator;
+use syntax::{abi, ast, ast_util};
 use syntax::codemap::Span;
 use syntax::parse::token;
+use syntax::print::pprust;
 
 pub trait AstConv<'tcx> {
     fn tcx<'a>(&'a self) -> &'a ty::ctxt<'tcx>;
@@ -147,10 +148,49 @@ pub fn opt_ast_region_to_region<'tcx, AC: AstConv<'tcx>, RS: RegionScope>(
 
         None => {
             match rscope.anon_regions(default_span, 1) {
-                Err(()) => {
+                Err(v) => {
                     debug!("optional region in illegal location");
                     span_err!(this.tcx().sess, default_span, E0106,
                         "missing lifetime specifier");
+                    match v {
+                        Some(v) => {
+                            let mut m = String::new();
+                            let len = v.len();
+                            for (i, (name, n)) in v.move_iter().enumerate() {
+                                m.push_str(if n == 1 {
+                                    format!("`{}`", name)
+                                } else {
+                                    format!("one of `{}`'s {} elided lifetimes", name, n)
+                                }.as_slice());
+
+                                if len == 2 && i == 0 {
+                                    m.push_str(" or ");
+                                } else if i == len - 2 {
+                                    m.push_str(", or ");
+                                } else if i != len - 1 {
+                                    m.push_str(", ");
+                                }
+                            }
+                            if len == 1 {
+                                span_note!(this.tcx().sess, default_span,
+                                    "this function's return type contains a borrowed value, but \
+                                     the signature does not say which {} it is borrowed from",
+                                    m);
+                            } else if len == 0 {
+                                span_note!(this.tcx().sess, default_span,
+                                    "this function's return type contains a borrowed value, but \
+                                     there is no value for it to be borrowed from");
+                                span_note!(this.tcx().sess, default_span,
+                                    "consider giving it a 'static lifetime");
+                            } else {
+                                span_note!(this.tcx().sess, default_span,
+                                    "this function's return type contains a borrowed value, but \
+                                     the signature does not say whether it is borrowed from {}",
+                                    m);
+                            }
+                        }
+                        None => {},
+                    }
                     ty::ReStatic
                 }
 
@@ -217,7 +257,7 @@ fn ast_path_substs<'tcx,AC,RS>(
 
         match anon_regions {
             Ok(v) => v.into_iter().collect(),
-            Err(()) => Vec::from_fn(expected_num_region_params,
+            Err(_) => Vec::from_fn(expected_num_region_params,
                                     |_| ty::ReStatic) // hokey
         }
     };
@@ -1153,14 +1193,19 @@ fn ty_of_method_or_bare_fn<'tcx, AC: AstConv<'tcx>>(
     };
 
     // HACK(eddyb) replace the fake self type in the AST with the actual type.
-    let input_tys = if self_ty.is_some() {
+    let input_params = if self_ty.is_some() {
         decl.inputs.slice_from(1)
     } else {
         decl.inputs.as_slice()
     };
-    let input_tys = input_tys.iter().map(|a| ty_of_arg(this, &rb, a, None));
-    let self_and_input_tys: Vec<_> =
+    let input_tys = input_params.iter().map(|a| ty_of_arg(this, &rb, a, None));
+    let input_pats: Vec<String> = input_params.iter()
+                                              .map(|a| pprust::pat_to_string(&*a.pat))
+                                              .collect();
+    let self_and_input_tys: Vec<ty::t> =
         self_ty.into_iter().chain(input_tys).collect();
+
+    let mut lifetimes_for_params: Vec<(String, Vec<ty::Region>)> = Vec::new();
 
     // Second, if there was exactly one lifetime (either a substitution or a
     // reference) in the arguments, then any anonymous regions in the output
@@ -1172,14 +1217,24 @@ fn ty_of_method_or_bare_fn<'tcx, AC: AstConv<'tcx>>(
             drop(self_and_input_tys_iter.next())
         }
 
-        let mut accumulator = Vec::new();
-        for input_type in self_and_input_tys_iter {
-            ty::accumulate_lifetimes_in_type(&mut accumulator, *input_type)
+        for (input_type, input_pat) in self_and_input_tys_iter.zip(input_pats.into_iter()) {
+            let mut accumulator = Vec::new();
+            ty::accumulate_lifetimes_in_type(&mut accumulator, *input_type);
+            lifetimes_for_params.push((input_pat, accumulator));
         }
-        if accumulator.len() == 1 {
-            implied_output_region = Some(*accumulator.get(0));
+
+        if lifetimes_for_params.iter().map(|&(_, ref x)| x.len()).sum() == 1 {
+            implied_output_region =
+                Some(lifetimes_for_params.iter()
+                                         .filter_map(|&(_, ref x)|
+                                            if x.len() == 1 { Some(x[0]) } else { None })
+                                         .next().unwrap());
         }
     }
+
+    let param_lifetimes: Vec<(String, uint)> = lifetimes_for_params.into_iter()
+                                                                   .map(|(n, v)| (n, v.len()))
+                                                                   .collect();
 
     let output_ty = match decl.output.node {
         ast::TyInfer => this.ty_infer(decl.output.span),
@@ -1193,7 +1248,7 @@ fn ty_of_method_or_bare_fn<'tcx, AC: AstConv<'tcx>>(
                     // All regions must be explicitly specified in the output
                     // if the lifetime elision rules do not apply. This saves
                     // the user from potentially-confusing errors.
-                    let rb = ExplicitRscope;
+                    let rb = UnelidableRscope::new(param_lifetimes);
                     ast_ty_to_ty(this, &rb, &*decl.output)
                 }
             }

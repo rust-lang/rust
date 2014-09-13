@@ -1601,7 +1601,7 @@ impl<'a, 'tcx> RegionScope for infer::InferCtxt<'a, 'tcx> {
     }
 
     fn anon_regions(&self, span: Span, count: uint)
-                    -> Result<Vec<ty::Region> , ()> {
+                    -> Result<Vec<ty::Region>, Option<Vec<(String, uint)>>> {
         Ok(Vec::from_fn(count, |_| {
             self.next_region_var(infer::MiscVariable(span))
         }))

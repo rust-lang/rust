@@ -29,7 +29,7 @@ pub trait RegionScope {
     fn anon_regions(&self,
                     span: Span,
                     count: uint)
-                    -> Result<Vec<ty::Region> , ()>;
+                    -> Result<Vec<ty::Region>, Option<Vec<(String, uint)>>>;
 
     fn default_region_bound(&self, span: Span) -> Option<ty::Region>;
 }
@@ -46,8 +46,31 @@ impl RegionScope for ExplicitRscope {
     fn anon_regions(&self,
                     _span: Span,
                     _count: uint)
-                    -> Result<Vec<ty::Region> , ()> {
-        Err(())
+                    -> Result<Vec<ty::Region>, Option<Vec<(String, uint)>>> {
+        Err(None)
+    }
+}
+
+// Same as `ExplicitRscope`, but provides some extra information for diagnostics
+pub struct UnelidableRscope(Vec<(String, uint)>);
+
+impl UnelidableRscope {
+    pub fn new(v: Vec<(String, uint)>) -> UnelidableRscope {
+        UnelidableRscope(v)
+    }
+}
+
+impl RegionScope for UnelidableRscope {
+    fn default_region_bound(&self, _span: Span) -> Option<ty::Region> {
+        None
+    }
+
+    fn anon_regions(&self,
+                    _span: Span,
+                    _count: uint)
+                    -> Result<Vec<ty::Region>, Option<Vec<(String, uint)>>> {
+        let UnelidableRscope(ref v) = *self;
+        Err(Some(v.clone()))
     }
 }
 
@@ -72,7 +95,7 @@ impl RegionScope for SpecificRscope {
     fn anon_regions(&self,
                     _span: Span,
                     count: uint)
-                    -> Result<Vec<ty::Region> , ()>
+                    -> Result<Vec<ty::Region>, Option<Vec<(String, uint)>>>
     {
         Ok(Vec::from_elem(count, self.default))
     }
@@ -109,7 +132,7 @@ impl RegionScope for BindingRscope {
     fn anon_regions(&self,
                     _: Span,
                     count: uint)
-                    -> Result<Vec<ty::Region> , ()>
+                    -> Result<Vec<ty::Region>, Option<Vec<(String, uint)>>>
     {
         Ok(Vec::from_fn(count, |_| self.next_region()))
     }
