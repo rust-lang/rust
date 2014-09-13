@@ -230,32 +230,6 @@ pub struct creader_cache_key {
 
 pub type creader_cache = RefCell<HashMap<creader_cache_key, Ty>>;
 
-pub struct intern_key {
-    sty: *const sty,
-}
-
-// NB: Do not replace this with #[deriving(PartialEq)]. The automatically-derived
-// implementation will not recurse through sty and you will get stack
-// exhaustion.
-impl cmp::PartialEq for intern_key {
-    fn eq(&self, other: &intern_key) -> bool {
-        unsafe {
-            *self.sty == *other.sty
-        }
-    }
-    fn ne(&self, other: &intern_key) -> bool {
-        !self.eq(other)
-    }
-}
-
-impl Eq for intern_key {}
-
-impl<W:Writer> Hash<W> for intern_key {
-    fn hash(&self, s: &mut W) {
-        unsafe { (*self.sty).hash(s) }
-    }
-}
-
 pub enum ast_ty_to_ty_cache_entry {
     atttce_unresolved,  /* not resolved yet */
     atttce_resolved(Ty)  /* resolved to a type, irrespective of region */
@@ -434,11 +408,11 @@ pub struct TransmuteRestriction {
 /// later on.
 pub struct ctxt<'tcx> {
     /// The arena that types are allocated from.
-    type_arena: &'tcx TypedArena<t_box_>,
+    type_arena: &'tcx TypedArena<TyS>,
 
     /// Specifically use a speedy hash algorithm for this hash map, it's used
     /// quite often.
-    interner: RefCell<FnvHashMap<intern_key, &'tcx t_box_>>,
+    interner: RefCell<FnvHashMap<&'tcx sty, &'tcx TyS>>,
     pub next_id: Cell<uint>,
     pub sess: Session,
     pub def_map: resolve::DefMap,
@@ -593,25 +567,30 @@ pub enum tbox_flag {
     needs_subst = 1 | 2 | 8
 }
 
-pub type t_box = &'static t_box_;
-
 #[deriving(Show)]
-pub struct t_box_ {
+pub struct TyS {
     pub sty: sty,
     pub id: uint,
     pub flags: uint,
 }
 
-// To reduce refcounting cost, we're representing types as unsafe pointers
-// throughout the compiler. These are simply casted t_box values. Use ty::get
-// to cast them back to a box. (Without the cast, compiler performance suffers
-// ~15%.) This does mean that a Ty value relies on the ctxt to keep its box
-// alive, and using ty::get is unsafe when the ctxt is no longer alive.
-enum t_opaque {}
-
 #[allow(raw_pointer_deriving)]
-#[deriving(Clone, PartialEq, Eq, Hash)]
-pub struct Ty { inner: *const t_opaque }
+#[deriving(Clone)]
+pub struct Ty<'tcx> { inner: &'tcx TyS }
+
+impl<'tcx> PartialEq for Ty<'tcx> {
+    fn eq(&self, other: &Ty<'tcx>) -> bool {
+        (self.inner as *const _) == (other.inner as *const _)
+    }
+}
+
+impl<'tcx> Eq for Ty<'tcx> {}
+
+impl<'tcx, S: Writer> Hash<S> for Ty<'tcx> {
+    fn hash(&self, s: &mut S) {
+        (self.inner as *const _).hash(s)
+    }
+}
 
 impl fmt::Show for Ty {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -619,14 +598,11 @@ impl fmt::Show for Ty {
     }
 }
 
-pub fn get(ty: Ty) -> t_box {
-    unsafe {
-        let t2: t_box = mem::transmute(ty);
-        t2
-    }
+pub fn get(ty: Ty) -> &TyS {
+    ty.inner
 }
 
-pub fn tbox_has_flag(tb: t_box, flag: tbox_flag) -> bool {
+pub fn tbox_has_flag(tb: &'static TyS, flag: tbox_flag) -> bool {
     (tb.flags & (flag as uint)) != 0u
 }
 pub fn type_has_params(ty: Ty) -> bool {
@@ -868,13 +844,13 @@ pub enum BoundRegion {
 }
 
 mod primitives {
-    use super::t_box_;
+    use super::TyS;
 
     use syntax::ast;
 
     macro_rules! def_prim_ty(
         ($name:ident, $sty:expr, $id:expr) => (
-            pub static $name: t_box_ = t_box_ {
+            pub static $name: TyS = TyS {
                 sty: $sty,
                 id: $id,
                 flags: 0,
@@ -898,13 +874,13 @@ mod primitives {
     def_prim_ty!(TY_F32,    super::ty_float(ast::TyF32),    14)
     def_prim_ty!(TY_F64,    super::ty_float(ast::TyF64),    15)
 
-    pub static TY_BOT: t_box_ = t_box_ {
+    pub static TY_BOT: TyS = TyS {
         sty: super::ty_bot,
         id: 16,
         flags: super::has_ty_bot as uint,
     };
 
-    pub static TY_ERR: t_box_ = t_box_ {
+    pub static TY_ERR: TyS = TyS {
         sty: super::ty_err,
         id: 17,
         flags: super::has_ty_err as uint,
@@ -1457,7 +1433,7 @@ impl UnboxedClosureKind {
 }
 
 pub fn mk_ctxt<'tcx>(s: Session,
-                     type_arena: &'tcx TypedArena<t_box_>,
+                     type_arena: &'tcx TypedArena<TyS>,
                      dm: resolve::DefMap,
                      named_region_map: resolve_lifetime::NamedRegionMap,
                      map: ast_map::Map<'tcx>,
@@ -1544,10 +1520,8 @@ pub fn mk_t(cx: &ctxt, st: sty) -> Ty {
         _ => {}
     };
 
-    let key = intern_key { sty: &st };
-
-    match cx.interner.borrow().find(&key) {
-        Some(ty) => unsafe { return mem::transmute(&ty.sty); },
+    match cx.interner.borrow().find_equiv(&st) {
+        Some(ty) => return Ty { inner: ty },
         _ => ()
     }
 
@@ -1639,32 +1613,22 @@ pub fn mk_t(cx: &ctxt, st: sty) -> Ty {
       }
     }
 
-    let ty = cx.type_arena.alloc(t_box_ {
+    let ty = cx.type_arena.alloc(TyS {
         sty: st,
         id: cx.next_id.get(),
         flags: flags,
     });
 
-    let sty_ptr = &ty.sty as *const sty;
-
-    let key = intern_key {
-        sty: sty_ptr,
-    };
-
-    cx.interner.borrow_mut().insert(key, ty);
+    cx.interner.borrow_mut().insert(&ty.sty, ty);
 
     cx.next_id.set(cx.next_id.get() + 1);
 
-    unsafe {
-        mem::transmute::<*const sty, Ty>(sty_ptr)
-    }
+    Ty { inner: ty }
 }
 
 #[inline]
-pub fn mk_prim_t(primitive: &'static t_box_) -> Ty {
-    unsafe {
-        mem::transmute::<&'static t_box_, Ty>(primitive)
-    }
+pub fn mk_prim_t(primitive: &'static TyS) -> Ty {
+    Ty { inner: primitive }
 }
 
 #[inline]
