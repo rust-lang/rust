@@ -482,12 +482,12 @@ fn run_debuginfo_gdb_test(config: &Config, props: &TestProps, testfile: &Path) {
                         // GDB's script auto loading safe path ...
                         script_str.push_str(
                             format!("add-auto-load-safe-path {}\n",
-                                    rust_pp_module_abs_path.as_slice())
+                                    rust_pp_module_abs_path.replace("\\", "\\\\").as_slice())
                                 .as_slice());
                         // ... and also the test directory
                         script_str.push_str(
                             format!("add-auto-load-safe-path {}\n",
-                                    config.build_base.as_str().unwrap())
+                                    config.build_base.as_str().unwrap().replace("\\", "\\\\"))
                                 .as_slice());
                     }
                 }
@@ -499,7 +499,7 @@ fn run_debuginfo_gdb_test(config: &Config, props: &TestProps, testfile: &Path) {
 
             // Load the target executable
             script_str.push_str(format!("file {}\n",
-                                        exe_file.as_str().unwrap())
+                                        exe_file.as_str().unwrap().replace("\\", "\\\\"))
                                     .as_slice());
 
             script_str.push_str(cmds.as_slice());
