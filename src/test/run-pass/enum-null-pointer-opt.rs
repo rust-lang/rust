@@ -37,4 +37,9 @@ fn main() {
     assert_eq!(size_of::<Box<int>>(), size_of::<Option<Box<int>>>());
     assert_eq!(size_of::<Gc<int>>(), size_of::<Option<Gc<int>>>());
 
+
+    // The optimization can't apply to raw pointers
+    assert!(size_of::<Option<*const int>>() != size_of::<*const int>());
+    assert!(Some(0 as *const int).is_some()); // Can't collapse None to null
+
 }
