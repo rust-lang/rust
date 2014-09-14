@@ -265,7 +265,7 @@ impl<W: Writer> Writer for LineBufferedWriter<W> {
 struct InternalBufferedWriter<W>(BufferedWriter<W>);
 
 impl<W> InternalBufferedWriter<W> {
-    fn get_mut_ref<'a>(&'a mut self) -> &'a mut BufferedWriter<W> {
+    fn get_mut<'a>(&'a mut self) -> &'a mut BufferedWriter<W> {
         let InternalBufferedWriter(ref mut w) = *self;
         return w;
     }

@@ -449,7 +449,7 @@ enum Flavor<T> {
 #[doc(hidden)]
 trait UnsafeFlavor<T> {
     fn inner_unsafe<'a>(&'a self) -> &'a UnsafeCell<Flavor<T>>;
-    unsafe fn mut_inner<'a>(&'a self) -> &'a mut Flavor<T> {
+    unsafe fn inner_mut<'a>(&'a self) -> &'a mut Flavor<T> {
         &mut *self.inner_unsafe().get()
     }
     unsafe fn inner<'a>(&'a self) -> &'a Flavor<T> {

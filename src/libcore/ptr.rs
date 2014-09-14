@@ -113,6 +113,10 @@ pub use intrinsics::set_memory;
 #[unstable = "may need a different name after pending changes to pointer types"]
 pub fn null<T>() -> *const T { 0 as *const T }
 
+/// Deprecated: use `null_mut`.
+#[deprecated = "use null_mut"]
+pub fn mut_null<T>() -> *mut T { null_mut() }
+
 /// Create an unsafe mutable null pointer.
 ///
 /// # Example
@@ -125,7 +129,7 @@ pub fn null<T>() -> *const T { 0 as *const T }
 /// ```
 #[inline]
 #[unstable = "may need a different name after pending changes to pointer types"]
-pub fn mut_null<T>() -> *mut T { 0 as *mut T }
+pub fn null_mut<T>() -> *mut T { 0 as *mut T }
 
 /// Zeroes out `count * size_of::<T>` bytes of memory at `dst`
 #[inline]

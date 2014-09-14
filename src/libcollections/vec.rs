@@ -724,6 +724,12 @@ impl<T> Vec<T> {
         }
     }
 
+    /// Deprecated: use `into_iter`.
+    #[deprecated = "use into_iter"]
+    pub fn move_iter(self) -> MoveItems<T> {
+        self.into_iter()
+    }
+
     /// Creates a consuming iterator, that is, one that moves each
     /// value out of the vector (from start to end). The vector cannot
     /// be used after calling this.
@@ -738,7 +744,7 @@ impl<T> Vec<T> {
     /// }
     /// ```
     #[inline]
-    pub fn move_iter(self) -> MoveItems<T> {
+    pub fn into_iter(self) -> MoveItems<T> {
         unsafe {
             let iter = mem::transmute(self.as_slice().iter());
             let ptr = self.ptr;
@@ -822,6 +828,11 @@ impl<T> Vec<T> {
         self.as_slice().iter()
     }
 
+    /// Deprecated: use `iter_mut`.
+    #[deprecated = "use iter_mut"]
+    pub fn mut_iter<'a>(&'a mut self) -> MutItems<'a,T> {
+        self.iter_mut()
+    }
 
     /// Returns an iterator over mutable references to the elements of the
     /// vector in order.
@@ -835,7 +846,7 @@ impl<T> Vec<T> {
     /// }
     /// ```
     #[inline]
-    pub fn mut_iter<'a>(&'a mut self) -> MutItems<'a,T> {
+    pub fn iter_mut<'a>(&'a mut self) -> MutItems<'a,T> {
         self.as_mut_slice().mut_iter()
     }
 
@@ -927,6 +938,12 @@ impl<T> Vec<T> {
         self.as_slice().last()
     }
 
+    /// Deprecated: use `last_mut`.
+    #[deprecated = "use last_mut"]
+    pub fn mut_last<'a>(&'a mut self) -> Option<&'a mut T> {
+        self.last_mut()
+    }
+
     /// Returns a mutable reference to the last element of a vector, or `None`
     /// if it is empty.
     ///
@@ -938,7 +955,7 @@ impl<T> Vec<T> {
     /// assert_eq!(vec, vec![1i, 2, 4]);
     /// ```
     #[inline]
-    pub fn mut_last<'a>(&'a mut self) -> Option<&'a mut T> {
+    pub fn last_mut<'a>(&'a mut self) -> Option<&'a mut T> {
         self.as_mut_slice().mut_last()
     }
 
@@ -1105,6 +1122,13 @@ impl<T> Vec<T> {
         self.extend(other.move_iter());
     }
 
+    /// Deprecated: use `slice_mut`.
+    #[deprecated = "use slice_mut"]
+    pub fn mut_slice<'a>(&'a mut self, start: uint, end: uint)
+                         -> &'a mut [T] {
+        self.slice_mut(start, end)
+    }
+
     /// Returns a mutable slice of `self` between `start` and `end`.
     ///
     /// # Failure
@@ -1119,9 +1143,15 @@ impl<T> Vec<T> {
     /// assert!(vec.mut_slice(0, 2) == [1, 2]);
     /// ```
     #[inline]
-    pub fn mut_slice<'a>(&'a mut self, start: uint, end: uint)
+    pub fn slice_mut<'a>(&'a mut self, start: uint, end: uint)
                          -> &'a mut [T] {
         self.as_mut_slice().mut_slice(start, end)
+    }
+
+    /// Deprecated: use "slice_from_mut".
+    #[deprecated = "use slice_from_mut"]
+    pub fn mut_slice_from<'a>(&'a mut self, start: uint) -> &'a mut [T] {
+        self.slice_from_mut(start)
     }
 
     /// Returns a mutable slice of `self` from `start` to the end of the `Vec`.
@@ -1137,8 +1167,14 @@ impl<T> Vec<T> {
     /// assert!(vec.mut_slice_from(2) == [3, 4]);
     /// ```
     #[inline]
-    pub fn mut_slice_from<'a>(&'a mut self, start: uint) -> &'a mut [T] {
+    pub fn slice_from_mut<'a>(&'a mut self, start: uint) -> &'a mut [T] {
         self.as_mut_slice().mut_slice_from(start)
+    }
+
+    /// Deprecated: use `slice_to_mut`.
+    #[deprecated = "use slice_to_mut"]
+    pub fn mut_slice_to<'a>(&'a mut self, end: uint) -> &'a mut [T] {
+        self.slice_to_mut(end)
     }
 
     /// Returns a mutable slice of `self` from the start of the `Vec` to `end`.
@@ -1154,8 +1190,14 @@ impl<T> Vec<T> {
     /// assert!(vec.mut_slice_to(2) == [1, 2]);
     /// ```
     #[inline]
-    pub fn mut_slice_to<'a>(&'a mut self, end: uint) -> &'a mut [T] {
+    pub fn slice_to_mut<'a>(&'a mut self, end: uint) -> &'a mut [T] {
         self.as_mut_slice().mut_slice_to(end)
+    }
+
+    /// Deprecated: use `split_at_mut`.
+    #[deprecated = "use split_at_mut"]
+    pub fn mut_split_at<'a>(&'a mut self, mid: uint) -> (&'a mut [T], &'a mut [T]) {
+        self.split_at_mut(mid)
     }
 
     /// Returns a pair of mutable slices that divides the `Vec` at an index.
@@ -1193,7 +1235,7 @@ impl<T> Vec<T> {
     /// }
     /// ```
     #[inline]
-    pub fn mut_split_at<'a>(&'a mut self, mid: uint) -> (&'a mut [T], &'a mut [T]) {
+    pub fn split_at_mut<'a>(&'a mut self, mid: uint) -> (&'a mut [T], &'a mut [T]) {
         self.as_mut_slice().mut_split_at(mid)
     }
 
