@@ -8,8 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use ast::{Ident, Matcher_, Matcher, MatchTok, MatchNonterminal, MatchSeq};
-use ast::{TTDelim};
+use ast::{Ident, Matcher_, Matcher, MatchTok, MatchNonterminal, MatchSeq, TTDelim};
 use ast;
 use codemap::{Span, Spanned, DUMMY_SP};
 use ext::base::{ExtCtxt, MacResult, MacroDef};
@@ -24,11 +23,12 @@ use parse::token::{special_idents, gensym_ident};
 use parse::token::{FAT_ARROW, SEMI, NtMatchers, NtTT, EOF};
 use parse::token;
 use print;
+use ptr::P;
+
 use util::small_vector::SmallVector;
 
 use std::cell::RefCell;
 use std::rc::Rc;
-use std::gc::Gc;
 
 struct ParserAnyMacro<'a> {
     parser: RefCell<Parser<'a>>,
@@ -58,17 +58,17 @@ impl<'a> ParserAnyMacro<'a> {
 }
 
 impl<'a> MacResult for ParserAnyMacro<'a> {
-    fn make_expr(&self) -> Option<Gc<ast::Expr>> {
+    fn make_expr(self: Box<ParserAnyMacro<'a>>) -> Option<P<ast::Expr>> {
         let ret = self.parser.borrow_mut().parse_expr();
         self.ensure_complete_parse(true);
         Some(ret)
     }
-    fn make_pat(&self) -> Option<Gc<ast::Pat>> {
+    fn make_pat(self: Box<ParserAnyMacro<'a>>) -> Option<P<ast::Pat>> {
         let ret = self.parser.borrow_mut().parse_pat();
         self.ensure_complete_parse(false);
         Some(ret)
     }
-    fn make_items(&self) -> Option<SmallVector<Gc<ast::Item>>> {
+    fn make_items(self: Box<ParserAnyMacro<'a>>) -> Option<SmallVector<P<ast::Item>>> {
         let mut ret = SmallVector::zero();
         loop {
             let mut parser = self.parser.borrow_mut();
@@ -84,7 +84,7 @@ impl<'a> MacResult for ParserAnyMacro<'a> {
         Some(ret)
     }
 
-    fn make_methods(&self) -> Option<SmallVector<Gc<ast::Method>>> {
+    fn make_methods(self: Box<ParserAnyMacro<'a>>) -> Option<SmallVector<P<ast::Method>>> {
         let mut ret = SmallVector::zero();
         loop {
             let mut parser = self.parser.borrow_mut();
@@ -97,7 +97,7 @@ impl<'a> MacResult for ParserAnyMacro<'a> {
         Some(ret)
     }
 
-    fn make_stmt(&self) -> Option<Gc<ast::Stmt>> {
+    fn make_stmt(self: Box<ParserAnyMacro<'a>>) -> Option<P<ast::Stmt>> {
         let attrs = self.parser.borrow_mut().parse_outer_attributes();
         let ret = self.parser.borrow_mut().parse_stmt(attrs);
         self.ensure_complete_parse(true);
@@ -127,11 +127,11 @@ impl TTMacroExpander for MacroRulesMacroExpander {
 }
 
 struct MacroRulesDefiner {
-    def: RefCell<Option<MacroDef>>
+    def: Option<MacroDef>
 }
 impl MacResult for MacroRulesDefiner {
-    fn make_def(&self) -> Option<MacroDef> {
-        Some(self.def.borrow_mut().take().expect("MacroRulesDefiner expanded twice"))
+    fn make_def(&mut self) -> Option<MacroDef> {
+        Some(self.def.take().expect("empty MacroRulesDefiner"))
     }
 }
 
@@ -170,8 +170,8 @@ fn generic_extension<'cx>(cx: &'cx ExtCtxt,
               Success(named_matches) => {
                 let rhs = match *rhses[i] {
                     // okay, what's your transcriber?
-                    MatchedNonterminal(NtTT(tt)) => {
-                        match *tt {
+                    MatchedNonterminal(NtTT(ref tt)) => {
+                        match **tt {
                             // cut off delimiters; don't parse 'em
                             TTDelim(ref tts) => {
                                 (*tts).slice(1u,(*tts).len()-1u)
@@ -269,9 +269,9 @@ pub fn add_new_extension<'cx>(cx: &'cx mut ExtCtxt,
     };
 
     box MacroRulesDefiner {
-        def: RefCell::new(Some(MacroDef {
+        def: Some(MacroDef {
             name: token::get_ident(name).to_string(),
             ext: NormalTT(exp, Some(sp))
-        }))
+        })
     } as Box<MacResult+'cx>
 }

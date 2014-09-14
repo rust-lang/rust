@@ -53,10 +53,10 @@ use middle::typeck::MethodCall;
 use util::ppaux::Repr;
 use util::ppaux::ty_to_string;
 
-use std::gc::Gc;
 use syntax::abi as synabi;
 use syntax::ast;
 use syntax::ast_map;
+use syntax::ptr::P;
 
 pub struct MethodData {
     pub llfn: ValueRef,
@@ -902,7 +902,7 @@ pub fn trans_call_inner<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 pub enum CallArgs<'a> {
     // Supply value of arguments as a list of expressions that must be
     // translated. This is used in the common case of `foo(bar, qux)`.
-    ArgExprs(&'a [Gc<ast::Expr>]),
+    ArgExprs(&'a [P<ast::Expr>]),
 
     // Supply value of arguments as a list of LLVM value refs; frequently
     // used with lang items and so forth, when the argument is an internal
@@ -916,12 +916,12 @@ pub enum CallArgs<'a> {
 
     // Supply value of arguments as a list of expressions that must be
     // translated, for overloaded call operators.
-    ArgOverloadedCall(&'a [Gc<ast::Expr>]),
+    ArgOverloadedCall(Vec<&'a ast::Expr>),
 }
 
 fn trans_args_under_call_abi<'blk, 'tcx>(
                              mut bcx: Block<'blk, 'tcx>,
-                             arg_exprs: &[Gc<ast::Expr>],
+                             arg_exprs: &[P<ast::Expr>],
                              fn_ty: ty::t,
                              llargs: &mut Vec<ValueRef>,
                              arg_cleanup_scope: cleanup::ScopeId,
@@ -941,13 +941,13 @@ fn trans_args_under_call_abi<'blk, 'tcx>(
     }
 
     // Now untuple the rest of the arguments.
-    let tuple_expr = arg_exprs[1];
+    let tuple_expr = &arg_exprs[1];
     let tuple_type = node_id_type(bcx, tuple_expr.id);
 
     match ty::get(tuple_type).sty {
         ty::ty_tup(ref field_types) => {
             let tuple_datum = unpack_datum!(bcx,
-                                            expr::trans(bcx, &*tuple_expr));
+                                            expr::trans(bcx, &**tuple_expr));
             let tuple_lvalue_datum =
                 unpack_datum!(bcx,
                               tuple_datum.to_lvalue_datum(bcx,
@@ -982,7 +982,7 @@ fn trans_args_under_call_abi<'blk, 'tcx>(
 
 fn trans_overloaded_call_args<'blk, 'tcx>(
                               mut bcx: Block<'blk, 'tcx>,
-                              arg_exprs: &[Gc<ast::Expr>],
+                              arg_exprs: Vec<&ast::Expr>,
                               fn_ty: ty::t,
                               llargs: &mut Vec<ValueRef>,
                               arg_cleanup_scope: cleanup::ScopeId,
@@ -991,7 +991,7 @@ fn trans_overloaded_call_args<'blk, 'tcx>(
     // Translate the `self` argument first.
     let arg_tys = ty::ty_fn_args(fn_ty);
     if !ignore_self {
-        let arg_datum = unpack_datum!(bcx, expr::trans(bcx, &*arg_exprs[0]));
+        let arg_datum = unpack_datum!(bcx, expr::trans(bcx, arg_exprs[0]));
         llargs.push(unpack_result!(bcx, {
             trans_arg_datum(bcx,
                             *arg_tys.get(0),
@@ -1007,7 +1007,7 @@ fn trans_overloaded_call_args<'blk, 'tcx>(
         ty::ty_tup(ref field_types) => {
             for (i, &field_type) in field_types.iter().enumerate() {
                 let arg_datum =
-                    unpack_datum!(bcx, expr::trans(bcx, &*arg_exprs[i + 1]));
+                    unpack_datum!(bcx, expr::trans(bcx, arg_exprs[i + 1]));
                 llargs.push(unpack_result!(bcx, {
                     trans_arg_datum(bcx,
                                     field_type,

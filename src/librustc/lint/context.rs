@@ -278,7 +278,7 @@ pub fn gather_attrs(attrs: &[ast::Attribute])
 
         attr::mark_used(attr);
 
-        let meta = attr.node.value;
+        let meta = &attr.node.value;
         let metas = match meta.node {
             ast::MetaList(_, ref metas) => metas,
             _ => {
@@ -709,8 +709,8 @@ impl LintPass for GatherNodeLevels {
 ///
 /// Consumes the `lint_store` field of the `Session`.
 pub fn check_crate(tcx: &ty::ctxt,
-                   krate: &ast::Crate,
                    exported_items: &ExportedItems) {
+    let krate = tcx.map.krate();
     let mut cx = Context::new(tcx, krate, exported_items);
 
     // Visit the whole crate.

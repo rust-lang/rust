@@ -15,14 +15,13 @@ use ext::build::AstBuilder;
 use ext::deriving::generic::*;
 use ext::deriving::generic::ty::*;
 use parse::token::InternedString;
-
-use std::gc::Gc;
+use ptr::P;
 
 pub fn expand_deriving_clone(cx: &mut ExtCtxt,
                              span: Span,
-                             mitem: Gc<MetaItem>,
-                             item: Gc<Item>,
-                             push: |Gc<Item>|) {
+                             mitem: &MetaItem,
+                             item: &Item,
+                             push: |P<Item>|) {
     let inline = cx.meta_word(span, InternedString::new("inline"));
     let attrs = vec!(cx.attribute(span, inline));
     let trait_def = TraitDef {
@@ -52,12 +51,12 @@ pub fn expand_deriving_clone(cx: &mut ExtCtxt,
 fn cs_clone(
     name: &str,
     cx: &mut ExtCtxt, trait_span: Span,
-    substr: &Substructure) -> Gc<Expr> {
+    substr: &Substructure) -> P<Expr> {
     let clone_ident = substr.method_ident;
     let ctor_ident;
     let all_fields;
     let subcall = |field: &FieldInfo|
-        cx.expr_method_call(field.span, field.self_, clone_ident, Vec::new());
+        cx.expr_method_call(field.span, field.self_.clone(), clone_ident, Vec::new());
 
     match *substr.fields {
         Struct(ref af) => {

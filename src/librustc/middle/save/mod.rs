@@ -35,7 +35,6 @@ use middle::ty;
 use middle::typeck;
 
 use std::cell::Cell;
-use std::gc::Gc;
 use std::io;
 use std::io::File;
 use std::io::fs;
@@ -54,6 +53,7 @@ use syntax::owned_slice::OwnedSlice;
 use syntax::visit;
 use syntax::visit::Visitor;
 use syntax::print::pprust::{path_to_string,ty_to_string};
+use syntax::ptr::P;
 
 use middle::save::span_utils::SpanUtils;
 use middle::save::recorder::Recorder;
@@ -289,9 +289,9 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
                 NodeItem(item) => {
                     scope_id = item.id;
                     match item.node {
-                        ast::ItemImpl(_, _, ty, _) => {
+                        ast::ItemImpl(_, _, ref ty, _) => {
                             let mut result = String::from_str("<");
-                            result.push_str(ty_to_string(&*ty).as_slice());
+                            result.push_str(ty_to_string(&**ty).as_slice());
 
                             match ty::trait_of_item(&self.analysis.ty_cx,
                                                     ast_util::local_def(method.id)) {
@@ -466,9 +466,9 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
 
     fn process_fn(&mut self,
                   item: &ast::Item,
-                  decl: ast::P<ast::FnDecl>,
+                  decl: &ast::FnDecl,
                   ty_params: &ast::Generics,
-                  body: ast::P<ast::Block>) {
+                  body: &ast::Block) {
         let qualname = self.analysis.ty_cx.map.path_to_string(item.id);
 
         let sub_span = self.span.sub_span_after_keyword(item.span, keywords::Fn);
@@ -494,7 +494,7 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
 
     fn process_static(&mut self,
                       item: &ast::Item,
-                      typ: ast::P<ast::Ty>,
+                      typ: &ast::Ty,
                       mt: ast::Mutability,
                       expr: &ast::Expr)
     {
@@ -611,7 +611,7 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
                     item: &ast::Item,
                     type_parameters: &ast::Generics,
                     trait_ref: &Option<ast::TraitRef>,
-                    typ: ast::P<ast::Ty>,
+                    typ: &ast::Ty,
                     impl_items: &Vec<ast::ImplItem>) {
         match typ.node {
             ast::TyPath(ref path, _, id) => {
@@ -643,8 +643,8 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
         self.process_generic_params(type_parameters, item.span, "", item.id);
         for impl_item in impl_items.iter() {
             match *impl_item {
-                ast::MethodImplItem(method) => {
-                    visit::walk_method_helper(self, &*method)
+                ast::MethodImplItem(ref method) => {
+                    visit::walk_method_helper(self, &**method)
                 }
             }
         }
@@ -833,7 +833,7 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
                           ex: &ast::Expr,
                           path: &ast::Path,
                           fields: &Vec<ast::Field>,
-                          base: &Option<Gc<ast::Expr>>) {
+                          base: &Option<P<ast::Expr>>) {
         if generated_code(path.span) {
             return
         }
@@ -883,7 +883,7 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
 
     fn process_method_call(&mut self,
                            ex: &ast::Expr,
-                           args: &Vec<Gc<ast::Expr>>) {
+                           args: &Vec<P<ast::Expr>>) {
         let method_map = self.analysis.ty_cx.method_map.borrow();
         let method_callee = method_map.get(&typeck::MethodCall::expr(ex.id));
         let (def_id, decl_id) = match method_callee.origin {
@@ -1010,7 +1010,7 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
                 self.collected_paths.push((p.id, path, immut, recorder::VarRef));
                 match *optional_subpattern {
                     None => {}
-                    Some(subpattern) => self.visit_pat(&*subpattern),
+                    Some(ref subpattern) => self.visit_pat(&**subpattern)
                 }
             }
             _ => visit::walk_pat(self, p)
@@ -1025,28 +1025,28 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DxrVisitor<'l, 'tcx> {
         }
 
         match item.node {
-            ast::ItemFn(decl, _, _, ref ty_params, body) =>
-                self.process_fn(item, decl, ty_params, body),
-            ast::ItemStatic(typ, mt, expr) =>
-                self.process_static(item, typ, mt, &*expr),
-            ast::ItemStruct(def, ref ty_params) => self.process_struct(item, &*def, ty_params),
+            ast::ItemFn(ref decl, _, _, ref ty_params, ref body) =>
+                self.process_fn(item, &**decl, ty_params, &**body),
+            ast::ItemStatic(ref typ, mt, ref expr) =>
+                self.process_static(item, &**typ, mt, &**expr),
+            ast::ItemStruct(ref def, ref ty_params) => self.process_struct(item, &**def, ty_params),
             ast::ItemEnum(ref def, ref ty_params) => self.process_enum(item, def, ty_params),
             ast::ItemImpl(ref ty_params,
                           ref trait_ref,
-                          typ,
+                          ref typ,
                           ref impl_items) => {
                 self.process_impl(item,
                                   ty_params,
                                   trait_ref,
-                                  typ,
+                                  &**typ,
                                   impl_items)
             }
             ast::ItemTrait(ref generics, _, ref trait_refs, ref methods) =>
                 self.process_trait(item, generics, trait_refs, methods),
             ast::ItemMod(ref m) => self.process_mod(item, m),
-            ast::ItemTy(ty, ref ty_params) => {
+            ast::ItemTy(ref ty, ref ty_params) => {
                 let qualname = self.analysis.ty_cx.map.path_to_string(item.id);
-                let value = ty_to_string(&*ty);
+                let value = ty_to_string(&**ty);
                 let sub_span = self.span.sub_span_after_keyword(item.span, keywords::Type);
                 self.fmt.typedef_str(item.span,
                                      sub_span,
@@ -1054,7 +1054,7 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DxrVisitor<'l, 'tcx> {
                                      qualname.as_slice(),
                                      value.as_slice());
 
-                self.visit_ty(&*ty);
+                self.visit_ty(&**ty);
                 self.process_generic_params(ty_params, item.span, qualname.as_slice(), item.id);
             },
             ast::ItemMac(_) => (),
@@ -1073,8 +1073,8 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DxrVisitor<'l, 'tcx> {
                 }
             }
             match param.default {
-                Some(ty) => self.visit_ty(&*ty),
-                None => (),
+                Some(ref ty) => self.visit_ty(&**ty),
+                None => {}
             }
         }
     }
@@ -1139,7 +1139,7 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DxrVisitor<'l, 'tcx> {
                                             qualname,
                                             method_type.id);
             }
-            ast::ProvidedMethod(method) => self.process_method(&*method),
+            ast::ProvidedMethod(ref method) => self.process_method(&**method)
         }
     }
 
@@ -1269,7 +1269,7 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DxrVisitor<'l, 'tcx> {
         }
 
         match ex.node {
-            ast::ExprCall(_f, ref _args) => {
+            ast::ExprCall(ref _f, ref _args) => {
                 // Don't need to do anything for function calls,
                 // because just walking the callee path does what we want.
                 visit::walk_expr(self, ex);
@@ -1278,14 +1278,14 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DxrVisitor<'l, 'tcx> {
             ast::ExprStruct(ref path, ref fields, ref base) =>
                 self.process_struct_lit(ex, path, fields, base),
             ast::ExprMethodCall(_, _, ref args) => self.process_method_call(ex, args),
-            ast::ExprField(sub_ex, ident, _) => {
+            ast::ExprField(ref sub_ex, ident, _) => {
                 if generated_code(sub_ex.span) {
                     return
                 }
 
-                self.visit_expr(&*sub_ex);
+                self.visit_expr(&**sub_ex);
 
-                let t = ty::expr_ty_adjusted(&self.analysis.ty_cx, &*sub_ex);
+                let t = ty::expr_ty_adjusted(&self.analysis.ty_cx, &**sub_ex);
                 let t_box = ty::get(t);
                 match t_box.sty {
                     ty::ty_struct(def_id, _) => {
@@ -1306,14 +1306,14 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DxrVisitor<'l, 'tcx> {
                                             "Expected struct type, but not ty_struct"),
                 }
             },
-            ast::ExprTupField(sub_ex, idx, _) => {
+            ast::ExprTupField(ref sub_ex, idx, _) => {
                 if generated_code(sub_ex.span) {
                     return
                 }
 
-                self.visit_expr(&*sub_ex);
+                self.visit_expr(&**sub_ex);
 
-                let t = ty::expr_ty_adjusted(&self.analysis.ty_cx, &*sub_ex);
+                let t = ty::expr_ty_adjusted(&self.analysis.ty_cx, &**sub_ex);
                 let t_box = ty::get(t);
                 match t_box.sty {
                     ty::ty_struct(def_id, _) => {
@@ -1334,7 +1334,7 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DxrVisitor<'l, 'tcx> {
                                             "Expected struct type, but not ty_struct"),
                 }
             },
-            ast::ExprFnBlock(_, decl, body) => {
+            ast::ExprFnBlock(_, ref decl, ref body) => {
                 if generated_code(body.span) {
                     return
                 }
@@ -1349,7 +1349,7 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DxrVisitor<'l, 'tcx> {
                 self.visit_ty(&*decl.output);
 
                 // walk the body
-                self.nest(ex.id, |v| v.visit_block(&*body));
+                self.nest(ex.id, |v| v.visit_block(&**body));
             },
             _ => {
                 visit::walk_expr(self, ex)

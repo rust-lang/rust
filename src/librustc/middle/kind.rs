@@ -83,14 +83,13 @@ impl<'a, 'tcx, 'v> Visitor<'v> for Context<'a, 'tcx> {
     }
 }
 
-pub fn check_crate(tcx: &ty::ctxt,
-                   krate: &Crate) {
+pub fn check_crate(tcx: &ty::ctxt) {
     let mut ctx = Context {
         tcx: tcx,
         struct_and_enum_bounds_checked: HashSet::new(),
         parameter_environments: Vec::new(),
     };
-    visit::walk_crate(&mut ctx, krate);
+    visit::walk_crate(&mut ctx, tcx.map.krate());
     tcx.sess.abort_if_errors();
 }
 

@@ -27,7 +27,6 @@ use middle::typeck;
 use middle::typeck::check::regionmanip;
 use middle::typeck::infer;
 
-use std::gc::Gc;
 use std::rc::Rc;
 use syntax::abi;
 use syntax::ast_map;
@@ -546,9 +545,9 @@ impl<T:Repr> Repr for Rc<T> {
     }
 }
 
-impl<T:Repr + 'static> Repr for Gc<T> {
+impl<'a, T:Repr> Repr for &'a T {
     fn repr(&self, tcx: &ctxt) -> String {
-        (&**self).repr(tcx)
+        (*self).repr(tcx)
     }
 }
 
@@ -822,21 +821,19 @@ impl Repr for ast::DefId {
         // a path for a def-id, so I'll just make a best effort for now
         // and otherwise fallback to just printing the crate/node pair
         if self.krate == ast::LOCAL_CRATE {
-            {
-                match tcx.map.find(self.node) {
-                    Some(ast_map::NodeItem(..)) |
-                    Some(ast_map::NodeForeignItem(..)) |
-                    Some(ast_map::NodeImplItem(..)) |
-                    Some(ast_map::NodeTraitItem(..)) |
-                    Some(ast_map::NodeVariant(..)) |
-                    Some(ast_map::NodeStructCtor(..)) => {
-                        return format!(
+            match tcx.map.find(self.node) {
+                Some(ast_map::NodeItem(..)) |
+                Some(ast_map::NodeForeignItem(..)) |
+                Some(ast_map::NodeImplItem(..)) |
+                Some(ast_map::NodeTraitItem(..)) |
+                Some(ast_map::NodeVariant(..)) |
+                Some(ast_map::NodeStructCtor(..)) => {
+                    return format!(
                                 "{:?}:{}",
                                 *self,
                                 ty::item_path_str(tcx, *self))
-                    }
-                    _ => {}
                 }
+                _ => {}
             }
         }
         return format!("{:?}", *self)

@@ -8,18 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use rustc;
-use rustc::{driver, middle};
+use rustc::driver::{config, driver, session};
 use rustc::middle::{privacy, ty};
 use rustc::lint;
 use rustc::back::link;
 
-use syntax::ast;
+use syntax::{ast, ast_map, codemap, diagnostic};
 use syntax::parse::token;
-use syntax;
+use syntax::ptr::P;
 
 use std::cell::RefCell;
-use std::gc::GC;
 use std::os;
 use std::collections::{HashMap, HashSet};
 use arena::TypedArena;
@@ -30,15 +28,15 @@ use clean::Clean;
 
 /// Are we generating documentation (`Typed`) or tests (`NotTyped`)?
 pub enum MaybeTyped<'tcx> {
-    Typed(middle::ty::ctxt<'tcx>),
-    NotTyped(driver::session::Session)
+    Typed(ty::ctxt<'tcx>),
+    NotTyped(session::Session)
 }
 
 pub type ExternalPaths = RefCell<Option<HashMap<ast::DefId,
                                                 (Vec<String>, clean::TypeKind)>>>;
 
 pub struct DocContext<'tcx> {
-    pub krate: ast::Crate,
+    pub krate: &'tcx ast::Crate,
     pub maybe_typed: MaybeTyped<'tcx>,
     pub src: Path,
     pub external_paths: ExternalPaths,
@@ -49,7 +47,7 @@ pub struct DocContext<'tcx> {
 }
 
 impl<'tcx> DocContext<'tcx> {
-    pub fn sess<'a>(&'a self) -> &'a driver::session::Session {
+    pub fn sess<'a>(&'a self) -> &'a session::Session {
         match self.maybe_typed {
             Typed(ref tcx) => &tcx.sess,
             NotTyped(ref sess) => sess
@@ -80,64 +78,60 @@ pub struct CrateAnalysis {
 
 pub type Externs = HashMap<String, Vec<String>>;
 
-/// Parses, resolves, and typechecks the given crate
-fn get_ast_and_resolve<'tcx>(cpath: &Path, libs: Vec<Path>, cfgs: Vec<String>,
-                             externs: Externs, triple: Option<String>,
-                             type_arena: &'tcx TypedArena<ty::t_box_>)
-                             -> (DocContext<'tcx>, CrateAnalysis) {
-    use syntax::codemap::dummy_spanned;
-    use rustc::driver::driver::{FileInput,
-                                phase_1_parse_input,
-                                phase_2_configure_and_expand,
-                                phase_3_run_analysis_passes};
-    use rustc::driver::config::build_configuration;
+pub fn run_core(libs: Vec<Path>, cfgs: Vec<String>, externs: Externs,
+                cpath: &Path, triple: Option<String>)
+                -> (clean::Crate, CrateAnalysis) {
 
-    let input = FileInput(cpath.clone());
+    // Parse, resolve, and typecheck the given crate.
+
+    let input = driver::FileInput(cpath.clone());
 
     let warning_lint = lint::builtin::WARNINGS.name_lower();
 
-    let sessopts = driver::config::Options {
+    let sessopts = config::Options {
         maybe_sysroot: Some(os::self_exe_path().unwrap().dir_path()),
         addl_lib_search_paths: RefCell::new(libs),
-        crate_types: vec!(driver::config::CrateTypeRlib),
+        crate_types: vec!(config::CrateTypeRlib),
         lint_opts: vec!((warning_lint, lint::Allow)),
         externs: externs,
-        target_triple: triple.unwrap_or(driver::driver::host_triple().to_string()),
-        ..rustc::driver::config::basic_options().clone()
+        target_triple: triple.unwrap_or(driver::host_triple().to_string()),
+        ..config::basic_options().clone()
     };
 
 
-    let codemap = syntax::codemap::CodeMap::new();
-    let diagnostic_handler = syntax::diagnostic::default_handler(syntax::diagnostic::Auto, None);
+    let codemap = codemap::CodeMap::new();
+    let diagnostic_handler = diagnostic::default_handler(diagnostic::Auto, None);
     let span_diagnostic_handler =
-        syntax::diagnostic::mk_span_handler(diagnostic_handler, codemap);
+        diagnostic::mk_span_handler(diagnostic_handler, codemap);
 
-    let sess = driver::session::build_session_(sessopts,
-                                               Some(cpath.clone()),
-                                               span_diagnostic_handler);
+    let sess = session::build_session_(sessopts,
+                                       Some(cpath.clone()),
+                                       span_diagnostic_handler);
 
-    let mut cfg = build_configuration(&sess);
+    let mut cfg = config::build_configuration(&sess);
     for cfg_ in cfgs.move_iter() {
         let cfg_ = token::intern_and_get_ident(cfg_.as_slice());
-        cfg.push(box(GC) dummy_spanned(ast::MetaWord(cfg_)));
+        cfg.push(P(codemap::dummy_spanned(ast::MetaWord(cfg_))));
     }
 
-    let krate = phase_1_parse_input(&sess, cfg, &input);
+    let krate = driver::phase_1_parse_input(&sess, cfg, &input);
 
     let name = link::find_crate_name(Some(&sess), krate.attrs.as_slice(),
                                      &input);
 
-    let (krate, ast_map)
-        = phase_2_configure_and_expand(&sess, krate, name.as_slice(), None)
-            .expect("phase_2_configure_and_expand aborted in rustdoc!");
+    let krate = driver::phase_2_configure_and_expand(&sess, krate, name.as_slice(), None)
+                    .expect("phase_2_configure_and_expand aborted in rustdoc!");
 
-    let driver::driver::CrateAnalysis {
+    let mut forest = ast_map::Forest::new(krate);
+    let ast_map = driver::assign_node_ids_and_map(&sess, &mut forest);
+
+    let type_arena = TypedArena::new();
+    let driver::CrateAnalysis {
         exported_items, public_items, ty_cx, ..
-    } = phase_3_run_analysis_passes(sess, &krate, ast_map, type_arena, name);
+    } = driver::phase_3_run_analysis_passes(sess, ast_map, &type_arena, name);
 
-    debug!("crate: {:?}", krate);
-    (DocContext {
-        krate: krate,
+    let ctxt = DocContext {
+        krate: ty_cx.map.krate(),
         maybe_typed: Typed(ty_cx),
         src: cpath.clone(),
         external_traits: RefCell::new(Some(HashMap::new())),
@@ -145,26 +139,21 @@ fn get_ast_and_resolve<'tcx>(cpath: &Path, libs: Vec<Path>, cfgs: Vec<String>,
         external_paths: RefCell::new(Some(HashMap::new())),
         inlined: RefCell::new(Some(HashSet::new())),
         populated_crate_impls: RefCell::new(HashSet::new()),
-    }, CrateAnalysis {
+    };
+    debug!("crate: {:?}", ctxt.krate);
+
+    let analysis = CrateAnalysis {
         exported_items: exported_items,
         public_items: public_items,
         external_paths: RefCell::new(None),
         external_traits: RefCell::new(None),
         external_typarams: RefCell::new(None),
         inlined: RefCell::new(None),
-    })
-}
-
-pub fn run_core(libs: Vec<Path>, cfgs: Vec<String>, externs: Externs,
-                path: &Path, triple: Option<String>)
-                -> (clean::Crate, CrateAnalysis) {
-    let type_arena = TypedArena::new();
-    let (ctxt, analysis) = get_ast_and_resolve(path, libs, cfgs, externs,
-                                               triple, &type_arena);
+    };
 
     let krate = {
         let mut v = RustdocVisitor::new(&ctxt, Some(&analysis));
-        v.visit(&ctxt.krate);
+        v.visit(ctxt.krate);
         v.clean(&ctxt)
     };
 

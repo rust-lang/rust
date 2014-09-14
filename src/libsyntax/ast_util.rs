@@ -19,12 +19,12 @@ use codemap::Span;
 use owned_slice::OwnedSlice;
 use parse::token;
 use print::pprust;
+use ptr::P;
 use visit::Visitor;
 use visit;
 
 use std::cell::Cell;
 use std::cmp;
-use std::gc::{Gc, GC};
 use std::u32;
 
 pub fn path_name_i(idents: &[Ident]) -> String {
@@ -98,7 +98,7 @@ pub fn unop_to_string(op: UnOp) -> &'static str {
     }
 }
 
-pub fn is_path(e: Gc<Expr>) -> bool {
+pub fn is_path(e: P<Expr>) -> bool {
     return match e.node { ExprPath(_) => true, _ => false };
 }
 
@@ -166,21 +166,6 @@ pub fn float_ty_to_string(t: FloatTy) -> String {
     }
 }
 
-pub fn is_call_expr(e: Gc<Expr>) -> bool {
-    match e.node { ExprCall(..) => true, _ => false }
-}
-
-pub fn block_from_expr(e: Gc<Expr>) -> P<Block> {
-    P(Block {
-        view_items: Vec::new(),
-        stmts: Vec::new(),
-        expr: Some(e),
-        id: e.id,
-        rules: DefaultBlock,
-        span: e.span
-    })
-}
-
 // convert a span and an identifier to the corresponding
 // 1-segment path
 pub fn ident_to_path(s: Span, identifier: Ident) -> Path {
@@ -197,10 +182,12 @@ pub fn ident_to_path(s: Span, identifier: Ident) -> Path {
     }
 }
 
-pub fn ident_to_pat(id: NodeId, s: Span, i: Ident) -> Gc<Pat> {
-    box(GC) ast::Pat { id: id,
-                node: PatIdent(BindByValue(MutImmutable), codemap::Spanned{span:s, node:i}, None),
-                span: s }
+pub fn ident_to_pat(id: NodeId, s: Span, i: Ident) -> P<Pat> {
+    P(Pat {
+        id: id,
+        node: PatIdent(BindByValue(MutImmutable), codemap::Spanned{span:s, node:i}, None),
+        span: s
+    })
 }
 
 pub fn name_to_dummy_lifetime(name: Name) -> Lifetime {
@@ -224,57 +211,6 @@ pub fn impl_pretty_name(trait_ref: &Option<TraitRef>, ty: &Ty) -> Ident {
         None => {}
     }
     token::gensym_ident(pretty.as_slice())
-}
-
-pub fn trait_method_to_ty_method(method: &Method) -> TypeMethod {
-    match method.node {
-        MethDecl(ident,
-                 ref generics,
-                 abi,
-                 explicit_self,
-                 fn_style,
-                 decl,
-                 _,
-                 vis) => {
-            TypeMethod {
-                ident: ident,
-                attrs: method.attrs.clone(),
-                fn_style: fn_style,
-                decl: decl,
-                generics: generics.clone(),
-                explicit_self: explicit_self,
-                id: method.id,
-                span: method.span,
-                vis: vis,
-                abi: abi,
-            }
-        },
-        MethMac(_) => fail!("expected non-macro method declaration")
-    }
-}
-
-/// extract a TypeMethod from a TraitItem. if the TraitItem is
-/// a default, pull out the useful fields to make a TypeMethod
-//
-// NB: to be used only after expansion is complete, and macros are gone.
-pub fn trait_item_to_ty_method(method: &TraitItem) -> TypeMethod {
-    match *method {
-        RequiredMethod(ref m) => (*m).clone(),
-        ProvidedMethod(ref m) => trait_method_to_ty_method(&**m),
-    }
-}
-
-pub fn split_trait_methods(trait_methods: &[TraitItem])
-    -> (Vec<TypeMethod> , Vec<Gc<Method>> ) {
-    let mut reqd = Vec::new();
-    let mut provd = Vec::new();
-    for trt_method in trait_methods.iter() {
-        match *trt_method {
-            RequiredMethod(ref tm) => reqd.push((*tm).clone()),
-            ProvidedMethod(m) => provd.push(m)
-        }
-    };
-    (reqd, provd)
 }
 
 pub fn struct_field_visibility(field: ast::StructField) -> Visibility {
@@ -538,6 +474,14 @@ impl<'a, 'v, O: IdVisitingOperation> Visitor<'v> for IdVisitor<'a, O> {
         }
         visit::walk_trait_item(self, tm);
     }
+
+    fn visit_lifetime_ref(&mut self, lifetime: &'v Lifetime) {
+        self.operation.visit_id(lifetime.id);
+    }
+
+    fn visit_lifetime_decl(&mut self, def: &'v LifetimeDef) {
+        self.visit_lifetime_ref(&def.lifetime);
+    }
 }
 
 pub fn visit_ids_for_inlined_item<O: IdVisitingOperation>(item: &InlinedItem,
@@ -593,13 +537,6 @@ pub fn compute_id_range_for_fn_body(fk: visit::FnKind,
     };
     id_visitor.visit_fn(fk, decl, body, sp, id);
     visitor.result.get()
-}
-
-pub fn is_item_impl(item: Gc<ast::Item>) -> bool {
-    match item.node {
-        ItemImpl(..) => true,
-        _            => false
-    }
 }
 
 pub fn walk_pat(pat: &Pat, it: |&Pat| -> bool) -> bool {
@@ -670,7 +607,7 @@ pub fn struct_def_is_tuple_like(struct_def: &ast::StructDef) -> bool {
 
 /// Returns true if the given pattern consists solely of an identifier
 /// and false otherwise.
-pub fn pat_is_ident(pat: Gc<ast::Pat>) -> bool {
+pub fn pat_is_ident(pat: P<ast::Pat>) -> bool {
     match pat.node {
         ast::PatIdent(..) => true,
         _ => false,
@@ -705,25 +642,10 @@ pub fn segments_name_eq(a : &[ast::PathSegment], b : &[ast::PathSegment]) -> boo
 }
 
 /// Returns true if this literal is a string and false otherwise.
-pub fn lit_is_str(lit: Gc<Lit>) -> bool {
+pub fn lit_is_str(lit: &Lit) -> bool {
     match lit.node {
         LitStr(..) => true,
         _ => false,
-    }
-}
-
-pub fn get_inner_tys(ty: P<Ty>) -> Vec<P<Ty>> {
-    match ty.node {
-        ast::TyRptr(_, mut_ty) | ast::TyPtr(mut_ty) => {
-            vec!(mut_ty.ty)
-        }
-        ast::TyBox(ty)
-        | ast::TyVec(ty)
-        | ast::TyUniq(ty)
-        | ast::TyFixedLengthVec(ty, _) => vec!(ty),
-        ast::TyTup(ref tys) => tys.clone(),
-        ast::TyParen(ty) => get_inner_tys(ty),
-        _ => Vec::new()
     }
 }
 
@@ -749,13 +671,13 @@ pub trait PostExpansionMethod {
     fn pe_abi(&self) -> Abi;
     fn pe_explicit_self<'a>(&'a self) -> &'a ast::ExplicitSelf;
     fn pe_fn_style(&self) -> ast::FnStyle;
-    fn pe_fn_decl(&self) -> P<ast::FnDecl>;
-    fn pe_body(&self) -> P<ast::Block>;
+    fn pe_fn_decl<'a>(&'a self) -> &'a ast::FnDecl;
+    fn pe_body<'a>(&'a self) -> &'a ast::Block;
     fn pe_vis(&self) -> ast::Visibility;
 }
 
 macro_rules! mf_method{
-    ($meth_name:ident, $field_ty:ty, $field_pat:pat, $result:ident) => {
+    ($meth_name:ident, $field_ty:ty, $field_pat:pat, $result:expr) => {
         fn $meth_name<'a>(&'a self) -> $field_ty {
             match self.node {
                 $field_pat => $result,
@@ -776,8 +698,8 @@ impl PostExpansionMethod for Method {
     mf_method!(pe_explicit_self,&'a ast::ExplicitSelf,
                MethDecl(_,_,_,ref explicit_self,_,_,_,_),explicit_self)
     mf_method!(pe_fn_style,ast::FnStyle,MethDecl(_,_,_,_,fn_style,_,_,_),fn_style)
-    mf_method!(pe_fn_decl,P<ast::FnDecl>,MethDecl(_,_,_,_,_,decl,_,_),decl)
-    mf_method!(pe_body,P<ast::Block>,MethDecl(_,_,_,_,_,_,body,_),body)
+    mf_method!(pe_fn_decl,&'a ast::FnDecl,MethDecl(_,_,_,_,_,ref decl,_,_),&**decl)
+    mf_method!(pe_body,&'a ast::Block,MethDecl(_,_,_,_,_,_,ref body,_),&**body)
     mf_method!(pe_vis,ast::Visibility,MethDecl(_,_,_,_,_,_,_,vis),vis)
 }
 

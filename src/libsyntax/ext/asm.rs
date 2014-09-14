@@ -18,8 +18,7 @@ use ext::base;
 use ext::base::*;
 use parse::token::InternedString;
 use parse::token;
-
-use std::gc::GC;
+use ptr::P;
 
 enum State {
     Asm,
@@ -199,7 +198,7 @@ pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
         }
     }
 
-    MacExpr::new(box(GC) ast::Expr {
+    MacExpr::new(P(ast::Expr {
         id: ast::DUMMY_NODE_ID,
         node: ast::ExprInlineAsm(ast::InlineAsm {
             asm: token::intern_and_get_ident(asm.get()),
@@ -212,5 +211,5 @@ pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
             dialect: dialect
         }),
         span: sp
-    })
+    }))
 }

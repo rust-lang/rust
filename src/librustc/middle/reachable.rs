@@ -201,7 +201,7 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
             }
             Some(ast_map::NodeImplItem(impl_item)) => {
                 match *impl_item {
-                    ast::MethodImplItem(method) => {
+                    ast::MethodImplItem(ref method) => {
                         if generics_require_inlining(method.pe_generics()) ||
                                 attributes_specify_inlining(
                                     method.attrs.as_slice()) {
@@ -333,10 +333,10 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
             }
             ast_map::NodeImplItem(impl_item) => {
                 match *impl_item {
-                    ast::MethodImplItem(method) => {
+                    ast::MethodImplItem(ref method) => {
                         let did = self.tcx.map.get_parent_did(search_item);
-                        if method_might_be_inlined(self.tcx, &*method, did) {
-                            visit::walk_block(self, &*method.pe_body())
+                        if method_might_be_inlined(self.tcx, &**method, did) {
+                            visit::walk_block(self, method.pe_body())
                         }
                     }
                 }
