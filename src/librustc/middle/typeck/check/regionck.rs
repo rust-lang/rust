@@ -244,7 +244,7 @@ fn region_of_def(fcx: &FnCtxt, def: def::Def) -> ty::Region {
         def::DefLocal(node_id) => {
             tcx.region_maps.var_region(node_id)
         }
-        def::DefUpvar(node_id, _, _, _, body_id) => {
+        def::DefUpvar(node_id, _, body_id) => {
             if body_id == ast::DUMMY_NODE_ID {
                 tcx.region_maps.var_region(node_id)
             } else {
@@ -1029,7 +1029,7 @@ fn check_expr_fn_block(rcx: &mut Rcx,
             // determining the final borrow_kind) and propagate that as
             // a constraint on the outer closure.
             match freevar.def {
-                def::DefUpvar(var_id, _, _, outer_closure_id, _) => {
+                def::DefUpvar(var_id, outer_closure_id, _) => {
                     // thing being captured is itself an upvar:
                     let outer_upvar_id = ty::UpvarId {
                         var_id: var_id,
