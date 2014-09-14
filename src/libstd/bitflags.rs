@@ -170,6 +170,7 @@ macro_rules! bitflags {
             }
 
             /// Returns `true` all of the flags in `other` are contained within `self`.
+            #[inline]
             pub fn contains(&self, other: $BitFlags) -> bool {
                 (self & other) == other
             }
