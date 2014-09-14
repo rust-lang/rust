@@ -574,6 +574,9 @@ enum Searcher {
 impl Searcher {
     fn new(haystack: &[u8], needle: &[u8]) -> Searcher {
         // FIXME: Tune this.
+        // FIXME(#16715): This unsigned integer addition will probably not
+        // overflow because that would mean that the memory almost solely
+        // consists of the needle. Needs #16715 to be formally fixed.
         if needle.len() + 20 > haystack.len() {
             Naive(NaiveSearcher::new())
         } else {
