@@ -30,10 +30,12 @@ pub enum Def {
     DefPrimTy(ast::PrimTy),
     DefTyParam(ParamSpace, ast::DefId, uint),
     DefUse(ast::DefId),
-    DefUpvar(ast::NodeId,  // id of closed over var
-             Gc<Def>,     // closed over def
+    DefUpvar(ast::NodeId,  // id of closed over local
+             Gc<Def>,      // closed over def
+             u32,          // number of closures implicitely capturing this local
              ast::NodeId,  // expr node that creates the closure
-             ast::NodeId), // id for the block/body of the closure expr
+             ast::NodeId), // block node for the closest enclosing proc
+                           // or unboxed closure, DUMMY_NODE_ID otherwise
 
     /// Note that if it's a tuple struct's definition, the node id of the ast::DefId
     /// may either refer to the item definition's id or the StructDef.ctor_id.
@@ -68,7 +70,7 @@ impl Def {
             }
             DefLocal(id) |
             DefSelfTy(id) |
-            DefUpvar(id, _, _, _) |
+            DefUpvar(id, _, _, _,  _) |
             DefRegion(id) |
             DefTyParamBinder(id) |
             DefLabel(id) => {

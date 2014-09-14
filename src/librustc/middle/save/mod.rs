@@ -232,7 +232,7 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
             def::DefStatic(_, _) |
             def::DefLocal(_) |
             def::DefVariant(_, _, _) |
-            def::DefUpvar(_, _, _, _) => Some(recorder::VarRef),
+            def::DefUpvar(..) => Some(recorder::VarRef),
 
             def::DefFn(_, _) => Some(recorder::FnRef),
 

@@ -472,9 +472,10 @@ impl tr for def::Def {
           def::DefPrimTy(p) => def::DefPrimTy(p),
           def::DefTyParam(s, did, v) => def::DefTyParam(s, did.tr(dcx), v),
           def::DefUse(did) => def::DefUse(did.tr(dcx)),
-          def::DefUpvar(nid1, def, nid2, nid3) => {
+          def::DefUpvar(nid1, def, depth, nid2, nid3) => {
             def::DefUpvar(dcx.tr_id(nid1),
                            box(GC) (*def).tr(dcx),
+                           depth,
                            dcx.tr_id(nid2),
                            dcx.tr_id(nid3))
           }

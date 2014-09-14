@@ -277,9 +277,13 @@ enum RibKind {
     // No translation needs to be applied.
     NormalRibKind,
 
-    // We passed through a function scope at the given node ID. Translate
-    // upvars as appropriate.
-    FunctionRibKind(NodeId /* func id */, NodeId /* body id */),
+    // We passed through a closure scope at the given node ID.
+    // Translate upvars as appropriate.
+    ClosureRibKind(NodeId /* func id */),
+
+    // We passed through a proc or unboxed closure scope at the given node ID.
+    // Translate upvars as appropriate.
+    ProcRibKind(NodeId /* func id */, NodeId /* body id */),
 
     // We passed through an impl or trait and are now in one of its
     // methods. Allow references to ty params that impl or trait
@@ -3859,12 +3863,22 @@ impl<'a> Resolver<'a> {
                 NormalRibKind => {
                     // Nothing to do. Continue.
                 }
-                FunctionRibKind(function_id, body_id) => {
+                ClosureRibKind(function_id) => {
                     if !is_ty_param {
-                        def = DefUpvar(def.def_id().node,
-                                       box(GC) def,
-                                       function_id,
-                                       body_id);
+                        let (depth, block_id) = match def {
+                            DefUpvar(_, _, depth, _, block_id) => (depth + 1, block_id),
+                            _ => (0, ast::DUMMY_NODE_ID)
+                        };
+                        def = DefUpvar(def.def_id().node, box(GC) def, depth, function_id, block_id);
+                    }
+                }
+                ProcRibKind(function_id, block_id) => {
+                    if !is_ty_param {
+                        let depth = match def {
+                            DefUpvar(_, _, depth, _, _) => depth + 1,
+                            _ => 0
+                        };
+                        def = DefUpvar(def.def_id().node, box(GC) def, depth, function_id, block_id);
                     }
                 }
                 MethodRibKind(item_id, _) => {
@@ -5758,10 +5772,14 @@ impl<'a> Resolver<'a> {
                 visit::walk_expr(self, expr);
             }
 
-            ExprFnBlock(_, ref fn_decl, ref block) |
+            ExprFnBlock(_, ref fn_decl, ref block) => {
+                self.resolve_function(ClosureRibKind(expr.id),
+                                      Some(&**fn_decl), NoTypeParameters,
+                                      &**block);
+            }
             ExprProc(ref fn_decl, ref block) |
             ExprUnboxedFn(_, _, ref fn_decl, ref block) => {
-                self.resolve_function(FunctionRibKind(expr.id, block.id),
+                self.resolve_function(ProcRibKind(expr.id, block.id),
                                       Some(&**fn_decl), NoTypeParameters,
                                       &**block);
             }
