@@ -222,7 +222,6 @@ use std::rc::Rc;
 use syntax::ast;
 use syntax::ast::{DUMMY_NODE_ID, Ident};
 use syntax::codemap::Span;
-use syntax::fold::Folder;
 use syntax::ptr::P;
 
 struct ConstantExpr<'a>(&'a ast::Expr);
@@ -1351,7 +1350,9 @@ fn trans_match_inner<'blk, 'tcx>(scope_cx: Block<'blk, 'tcx>,
 
     let mut static_inliner = StaticInliner::new(scope_cx.tcx());
     let arm_pats: Vec<Vec<P<ast::Pat>>> = arm_datas.iter().map(|arm_data| {
-        arm_data.arm.pats.iter().map(|p| static_inliner.fold_pat((*p).clone())).collect()
+        arm_data.arm.pats.iter().map(|pat|
+            static_inliner.inline_if_necessary(pat.clone())
+        ).collect()
     }).collect();
     let mut matches = Vec::new();
     for (arm_data, pats) in arm_datas.iter().zip(arm_pats.iter()) {

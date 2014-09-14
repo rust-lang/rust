@@ -170,7 +170,7 @@ fn check_expr(cx: &mut MatchCheckCtxt, ex: &Expr) {
             let mut static_inliner = StaticInliner::new(cx.tcx);
             let inlined_arms = arms.iter().map(|arm| {
                 (arm.pats.iter().map(|pat| {
-                    static_inliner.fold_pat((*pat).clone())
+                    static_inliner.inline_if_necessary(pat.clone())
                 }).collect(), arm.guard.as_ref().map(|e| &**e))
             }).collect::<Vec<(Vec<P<Pat>>, Option<&Expr>)>>();
 
@@ -211,7 +211,8 @@ fn check_expr(cx: &mut MatchCheckCtxt, ex: &Expr) {
         },
         ExprForLoop(ref pat, _, _, _) => {
             let mut static_inliner = StaticInliner::new(cx.tcx);
-            is_refutable(cx, &*static_inliner.fold_pat((*pat).clone()), |uncovered_pat| {
+            let inlined_pat = static_inliner.inline_if_necessary(pat.clone());
+            is_refutable(cx, &*inlined_pat, |uncovered_pat| {
                 cx.tcx.sess.span_err(
                     pat.span,
                     format!("refutable pattern in `for` loop binding: \
@@ -220,7 +221,7 @@ fn check_expr(cx: &mut MatchCheckCtxt, ex: &Expr) {
             });
 
             // Check legality of move bindings.
-            check_legality_of_move_bindings(cx, false, slice::ref_slice(pat));
+            check_legality_of_move_bindings(cx, false, slice::ref_slice(&*pat));
             check_legality_of_bindings_in_at_patterns(cx, &**pat);
         }
         _ => ()
@@ -321,6 +322,19 @@ impl<'a, 'tcx> StaticInliner<'a, 'tcx> {
         StaticInliner {
             tcx: tcx,
             failed: false
+        }
+    }
+}
+
+impl<'a, 'tcx> StaticInliner<'a, 'tcx> {
+    fn needs_inlining(&self, pat: &Pat) -> bool {
+        !walk_pat(pat, |p| !pat_is_const(&self.tcx.def_map, &*p))
+    }
+    pub fn inline_if_necessary(&mut self, pat: P<Pat>) -> P<Pat> {
+        if self.needs_inlining(&*pat) {
+            self.fold_pat(pat)
+        } else {
+            pat
         }
     }
 }
@@ -864,7 +878,8 @@ fn check_local(cx: &mut MatchCheckCtxt, loc: &Local) {
     };
 
     let mut static_inliner = StaticInliner::new(cx.tcx);
-    is_refutable(cx, &*static_inliner.fold_pat(loc.pat.clone()), |pat| {
+    let inlined_pat = static_inliner.inline_if_necessary(loc.pat.clone());
+    is_refutable(cx, &*inlined_pat, |pat| {
         span_err!(cx.tcx.sess, loc.pat.span, E0005,
             "refutable pattern in {} binding: `{}` not covered",
             name, pat_to_string(pat)
