@@ -762,7 +762,7 @@
 
         $(".method").each(function() {
            if ($(this).next().is(".docblock")) {
-               $(this).children().first().after(toggle[0]);
+               $(this).children().first().after(toggle.clone());
            }
         });
 
