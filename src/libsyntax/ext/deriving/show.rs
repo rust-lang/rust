@@ -62,7 +62,7 @@ fn show_substructure(cx: &mut ExtCtxt, span: Span,
     // <field>: {}, ... }` based on the "shape".
     //
     // Easy start: they all start with the name.
-    let name = match *substr.fields {
+    let name = match substr.fields {
         Struct(_) => substr.type_ident,
         EnumMatching(_, v, _) => v.node.name,
         EnumNonMatchingCollapsed(..) | StaticStruct(..) | StaticEnum(..) => {
@@ -75,7 +75,7 @@ fn show_substructure(cx: &mut ExtCtxt, span: Span,
     let mut exprs = Vec::new();
 
     // Getting harder... making the format string:
-    match *substr.fields {
+    match substr.fields {
         // unit struct/nullary variant: no work necessary!
         Struct(ref fields) if fields.len() == 0 => {}
         EnumMatching(_, _, ref fields) if fields.len() == 0 => {}

@@ -77,7 +77,7 @@ fn hash_substructure(cx: &mut ExtCtxt, trait_span: Span,
     };
     let mut stmts = Vec::new();
 
-    let fields = match *substr.fields {
+    let fields = match substr.fields {
         Struct(ref fs) => fs,
         EnumMatching(index, variant, ref fs) => {
             // Determine the discriminant. We will feed this value to the byte

@@ -72,7 +72,7 @@ fn rand_substructure(cx: &mut ExtCtxt, trait_span: Span,
                             vec!( *rng.get(0) ))
     };
 
-    return match *substr.fields {
+    match substr.fields {
         StaticStruct(_, ref summary) => {
             rand_thing(cx, trait_span, substr.type_ident, summary, rand_call)
         }
@@ -130,30 +130,30 @@ fn rand_substructure(cx: &mut ExtCtxt, trait_span: Span,
             cx.expr_block(block)
         }
         _ => cx.bug("Non-static method in `deriving(Rand)`")
-    };
+    }
+}
 
-    fn rand_thing(cx: &mut ExtCtxt,
-                  trait_span: Span,
-                  ctor_ident: Ident,
-                  summary: &StaticFields,
-                  rand_call: |&mut ExtCtxt, Span| -> Gc<Expr>)
-                  -> Gc<Expr> {
-        match *summary {
-            Unnamed(ref fields) => {
-                if fields.is_empty() {
-                    cx.expr_ident(trait_span, ctor_ident)
-                } else {
-                    let exprs = fields.iter().map(|span| rand_call(cx, *span)).collect();
-                    cx.expr_call_ident(trait_span, ctor_ident, exprs)
-                }
+fn rand_thing(cx: &mut ExtCtxt,
+              trait_span: Span,
+              ctor_ident: Ident,
+              summary: &StaticFields,
+              rand_call: |&mut ExtCtxt, Span| -> Gc<Expr>)
+              -> Gc<Expr> {
+    match *summary {
+        Unnamed(ref fields) => {
+            if fields.is_empty() {
+                cx.expr_ident(trait_span, ctor_ident)
+            } else {
+                let exprs = fields.iter().map(|span| rand_call(cx, *span)).collect();
+                cx.expr_call_ident(trait_span, ctor_ident, exprs)
             }
-            Named(ref fields) => {
-                let rand_fields = fields.iter().map(|&(ident, span)| {
-                    let e = rand_call(cx, span);
-                    cx.field_imm(span, ident, e)
-                }).collect();
-                cx.expr_struct_ident(trait_span, ctor_ident, rand_fields)
-            }
+        }
+        Named(ref fields) => {
+            let rand_fields = fields.iter().map(|field| {
+                let e = rand_call(cx, field.span);
+                cx.field_imm(field.span, field.name, e)
+            }).collect();
+            cx.expr_struct_ident(trait_span, ctor_ident, rand_fields)
         }
     }
 }

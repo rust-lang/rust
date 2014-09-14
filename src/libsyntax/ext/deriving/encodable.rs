@@ -138,7 +138,7 @@ fn encodable_substructure(cx: &mut ExtCtxt, trait_span: Span,
     let blkencoder = cx.expr_ident(trait_span, blkarg);
     let encode = cx.ident_of("encode");
 
-    return match *substr.fields {
+    match substr.fields {
         Struct(ref fields) => {
             let emit_struct_field = cx.ident_of("emit_struct_field");
             let mut stmts = Vec::new();
@@ -245,5 +245,5 @@ fn encodable_substructure(cx: &mut ExtCtxt, trait_span: Span,
         }
 
         _ => cx.bug("expected Struct or EnumMatching in deriving(Encodable)")
-    };
+    }
 }

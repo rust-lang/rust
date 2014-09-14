@@ -77,7 +77,7 @@ fn cs_from(name: &str, cx: &mut ExtCtxt, trait_span: Span,
         _ => cx.span_bug(trait_span, "incorrect number of arguments in `deriving(FromPrimitive)`")
     };
 
-    match *substr.fields {
+    match substr.fields {
         StaticStruct(..) => {
             cx.span_err(trait_span, "`FromPrimitive` cannot be derived for structs");
             return cx.expr_fail(trait_span, InternedString::new(""));

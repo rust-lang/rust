@@ -926,7 +926,7 @@ pub enum Ty_ {
     TyProc(Gc<ClosureTy>),
     TyBareFn(Gc<BareFnTy>),
     TyUnboxedFn(Gc<UnboxedFnTy>),
-    TyTup(Vec<P<Ty>> ),
+    TyTup(Vec<P<Ty>>),
     TyPath(Path, Option<TyParamBounds>, NodeId), // for #7264; see above
     /// No-op; kept solely so that we can pretty-print faithfully
     TyParen(P<Ty>),

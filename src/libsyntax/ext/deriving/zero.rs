@@ -73,7 +73,7 @@ fn zero_substructure(cx: &mut ExtCtxt, trait_span: Span,
     );
     let zero_call = |span| cx.expr_call_global(span, zero_ident.clone(), Vec::new());
 
-    return match *substr.fields {
+    match substr.fields {
         StaticStruct(_, ref summary) => {
             match *summary {
                 Unnamed(ref fields) => {
@@ -85,8 +85,8 @@ fn zero_substructure(cx: &mut ExtCtxt, trait_span: Span,
                     }
                 }
                 Named(ref fields) => {
-                    let zero_fields = fields.iter().map(|&(ident, span)| {
-                        cx.field_imm(span, ident, zero_call(span))
+                    let zero_fields = fields.iter().map(|field| {
+                        cx.field_imm(field.span, field.name, zero_call(field.span))
                     }).collect();
                     cx.expr_struct_ident(trait_span, substr.type_ident, zero_fields)
                 }
@@ -98,5 +98,5 @@ fn zero_substructure(cx: &mut ExtCtxt, trait_span: Span,
             cx.expr_uint(trait_span, 0)
         }
         _ => cx.bug("Non-static method in `deriving(Zero)`")
-    };
+    }
 }

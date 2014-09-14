@@ -57,7 +57,7 @@ fn default_substructure(cx: &mut ExtCtxt, trait_span: Span,
     );
     let default_call = |span| cx.expr_call_global(span, default_ident.clone(), Vec::new());
 
-    return match *substr.fields {
+    match substr.fields {
         StaticStruct(_, ref summary) => {
             match *summary {
                 Unnamed(ref fields) => {
@@ -69,8 +69,8 @@ fn default_substructure(cx: &mut ExtCtxt, trait_span: Span,
                     }
                 }
                 Named(ref fields) => {
-                    let default_fields = fields.iter().map(|&(ident, span)| {
-                        cx.field_imm(span, ident, default_call(span))
+                    let default_fields = fields.iter().map(|field| {
+                        cx.field_imm(field.span, field.name, default_call(field.span))
                     }).collect();
                     cx.expr_struct_ident(trait_span, substr.type_ident, default_fields)
                 }
@@ -82,5 +82,5 @@ fn default_substructure(cx: &mut ExtCtxt, trait_span: Span,
             cx.expr_uint(trait_span, 0)
         }
         _ => cx.span_bug(trait_span, "Non-static method in `deriving(Default)`")
-    };
+    }
 }

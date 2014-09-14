@@ -254,11 +254,12 @@ pub struct Substructure<'a> {
     pub self_args: &'a [Gc<Expr>],
     /// verbatim access to any other arguments
     pub nonself_args: &'a [Gc<Expr>],
-    pub fields: &'a SubstructureFields<'a>
+    /// The data structure fields
+    pub fields: SubstructureFields<'a>
 }
 
 /// Summary of the relevant parts of a struct/enum field.
-pub struct FieldInfo {
+pub struct FieldInfo<'a> {
     pub span: Span,
     /// None for tuple structs/normal enum variants, Some for normal
     /// structs/struct enum variants.
@@ -269,26 +270,36 @@ pub struct FieldInfo {
     /// The expressions corresponding to references to this field in
     /// the other Self arguments.
     pub other: Vec<Gc<Expr>>,
+    /// The attributes attached to this field.
+    pub attrs: &'a [ast::Attribute],
+}
+
+pub struct StaticFieldInfo<'a> {
+    pub span: Span,
+    /// The field's ident.
+    pub name: Ident,
+    /// The attributes attached to this field.
+    pub attrs: &'a [ast::Attribute],
 }
 
 /// Fields for a static method
-pub enum StaticFields {
+pub enum StaticFields<'a> {
     /// Tuple structs/enum variants like this
     Unnamed(Vec<Span>),
     /// Normal structs/struct variants.
-    Named(Vec<(Ident, Span)>),
+    Named(Vec<(StaticFieldInfo<'a>)>),
 }
 
 /// A summary of the possible sets of fields. See above for details
 /// and examples
 pub enum SubstructureFields<'a> {
-    Struct(Vec<FieldInfo>),
+    Struct(Vec<FieldInfo<'a>>),
     /**
     Matching variants of the enum: variant index, ast::Variant,
     fields: the field name is only non-`None` in the case of a struct
     variant.
     */
-    EnumMatching(uint, &'a ast::Variant, Vec<FieldInfo>),
+    EnumMatching(uint, &'a ast::Variant, Vec<FieldInfo<'a>>),
 
     /**
     non-matching variants of the enum, but with all state hidden from
@@ -301,9 +312,9 @@ pub enum SubstructureFields<'a> {
     EnumNonMatchingCollapsed(Vec<Ident>, &'a [Gc<ast::Variant>], &'a [Ident]),
 
     /// A static method where Self is a struct.
-    StaticStruct(&'a ast::StructDef, StaticFields),
+    StaticStruct(&'a ast::StructDef, StaticFields<'a>),
     /// A static method where Self is an enum.
-    StaticEnum(&'a ast::EnumDef, Vec<(Ident, Span, StaticFields)>),
+    StaticEnum(&'a ast::EnumDef, Vec<(Ident, Span, StaticFields<'a>)>),
 }
 
 
@@ -471,11 +482,11 @@ impl<'a> TraitDef<'a> {
                                  }).collect()))
     }
 
-    fn expand_struct_def(&self,
-                         cx: &mut ExtCtxt,
-                         struct_def: &StructDef,
-                         type_ident: Ident,
-                         generics: &Generics) -> Gc<ast::Item> {
+    fn expand_struct_def<'b>(&self,
+                             cx: &mut ExtCtxt,
+                             struct_def: &'b StructDef,
+                             type_ident: Ident,
+                             generics: &Generics) -> Gc<ast::Item> {
         let methods = self.methods.iter().map(|method_def| {
             let (explicit_self, self_args, nonself_args, tys) =
                 method_def.split_self_nonself_args(
@@ -511,11 +522,11 @@ impl<'a> TraitDef<'a> {
         self.create_derived_impl(cx, type_ident, generics, methods)
     }
 
-    fn expand_enum_def(&self,
-                       cx: &mut ExtCtxt,
-                       enum_def: &EnumDef,
-                       type_ident: Ident,
-                       generics: &Generics) -> Gc<ast::Item> {
+    fn expand_enum_def<'b>(&self,
+                           cx: &mut ExtCtxt,
+                           enum_def: &'b EnumDef,
+                           type_ident: Ident,
+                           generics: &Generics) -> Gc<ast::Item> {
         let methods = self.methods.iter().map(|method_def| {
             let (explicit_self, self_args, nonself_args, tys) =
                 method_def.split_self_nonself_args(cx, self,
@@ -562,13 +573,13 @@ fn variant_to_pat(cx: &mut ExtCtxt, sp: Span, variant: &ast::Variant)
 }
 
 impl<'a> MethodDef<'a> {
-    fn call_substructure_method(&self,
-                                cx: &mut ExtCtxt,
-                                trait_: &TraitDef,
-                                type_ident: Ident,
-                                self_args: &[Gc<Expr>],
-                                nonself_args: &[Gc<Expr>],
-                                fields: &SubstructureFields)
+    fn call_substructure_method<'b>(&self,
+                                    cx: &mut ExtCtxt,
+                                    trait_: &TraitDef,
+                                    type_ident: Ident,
+                                    self_args: &'b [Gc<Expr>],
+                                    nonself_args: &'b [Gc<Expr>],
+                                    fields: SubstructureFields<'b>)
         -> Gc<Expr> {
         let substructure = Substructure {
             type_ident: type_ident,
@@ -714,13 +725,13 @@ impl<'a> MethodDef<'a> {
     }
    ~~~
     */
-    fn expand_struct_method_body(&self,
-                                 cx: &mut ExtCtxt,
-                                 trait_: &TraitDef,
-                                 struct_def: &StructDef,
-                                 type_ident: Ident,
-                                 self_args: &[Gc<Expr>],
-                                 nonself_args: &[Gc<Expr>])
+    fn expand_struct_method_body<'b>(&self,
+                                     cx: &mut ExtCtxt,
+                                     trait_: &TraitDef,
+                                     struct_def: &'b StructDef,
+                                     type_ident: Ident,
+                                     self_args: &'b [Gc<Expr>],
+                                     nonself_args: &'b [Gc<Expr>])
         -> Gc<Expr> {
 
         let mut raw_fields = Vec::new(); // ~[[fields of self],
@@ -743,17 +754,18 @@ impl<'a> MethodDef<'a> {
             raw_fields.get(0)
                       .iter()
                       .enumerate()
-                      .map(|(i, &(span, opt_id, field))| {
+                      .map(|(i, &(span, opt_id, field, attrs))| {
                 let other_fields = raw_fields.tail().iter().map(|l| {
                     match l.get(i) {
-                        &(_, _, ex) => ex
+                        &(_, _, ex, _) => ex
                     }
                 }).collect();
                 FieldInfo {
                     span: span,
                     name: opt_id,
                     self_: field,
-                    other: other_fields
+                    other: other_fields,
+                    attrs: attrs,
                 }
             }).collect()
         } else {
@@ -769,7 +781,7 @@ impl<'a> MethodDef<'a> {
             type_ident,
             self_args,
             nonself_args,
-            &Struct(fields));
+            Struct(fields));
 
         // make a series of nested matches, to destructure the
         // structs. This is actually right-to-left, but it shouldn't
@@ -781,13 +793,13 @@ impl<'a> MethodDef<'a> {
         body
     }
 
-    fn expand_static_struct_method_body(&self,
-                                        cx: &mut ExtCtxt,
-                                        trait_: &TraitDef,
-                                        struct_def: &StructDef,
-                                        type_ident: Ident,
-                                        self_args: &[Gc<Expr>],
-                                        nonself_args: &[Gc<Expr>])
+    fn expand_static_struct_method_body<'b>(&self,
+                                            cx: &mut ExtCtxt,
+                                            trait_: &TraitDef,
+                                            struct_def: &'b StructDef,
+                                            type_ident: Ident,
+                                            self_args: &[Gc<Expr>],
+                                            nonself_args: &[Gc<Expr>])
         -> Gc<Expr> {
         let summary = trait_.summarise_struct(cx, struct_def);
 
@@ -795,7 +807,7 @@ impl<'a> MethodDef<'a> {
                                       trait_,
                                       type_ident,
                                       self_args, nonself_args,
-                                      &StaticStruct(struct_def, summary))
+                                      StaticStruct(struct_def, summary))
     }
 
     /**
@@ -829,14 +841,14 @@ impl<'a> MethodDef<'a> {
      as their results are unused.  The point of `__self_vi` and
      `__arg_1_vi` is for `PartialOrd`; see #15503.)
     */
-    fn expand_enum_method_body(&self,
-                               cx: &mut ExtCtxt,
-                               trait_: &TraitDef,
-                               enum_def: &EnumDef,
-                               type_ident: Ident,
-                               self_args: &[Gc<Expr>],
-                               nonself_args: &[Gc<Expr>])
-                               -> Gc<Expr> {
+    fn expand_enum_method_body<'b>(&self,
+                                   cx: &mut ExtCtxt,
+                                   trait_: &TraitDef,
+                                   enum_def: &'b EnumDef,
+                                   type_ident: Ident,
+                                   self_args: &[Gc<Expr>],
+                                   nonself_args: &[Gc<Expr>])
+                                   -> Gc<Expr> {
         self.build_enum_match_tuple(
             cx, trait_, enum_def, type_ident, self_args, nonself_args)
     }
@@ -869,14 +881,14 @@ impl<'a> MethodDef<'a> {
     }
     ~~~
     */
-    fn build_enum_match_tuple(
-        &self,
-        cx: &mut ExtCtxt,
-        trait_: &TraitDef,
-        enum_def: &EnumDef,
-        type_ident: Ident,
-        self_args: &[Gc<Expr>],
-        nonself_args: &[Gc<Expr>]) -> Gc<Expr> {
+    fn build_enum_match_tuple<'b>(&self,
+                                  cx: &mut ExtCtxt,
+                                  trait_: &TraitDef,
+                                  enum_def: &'b EnumDef,
+                                  type_ident: Ident,
+                                  self_args: &[Gc<Expr>],
+                                  nonself_args: &[Gc<Expr>])
+                                  -> Gc<Expr> {
 
         let sp = trait_.span;
         let variants = &enum_def.variants;
@@ -919,7 +931,7 @@ impl<'a> MethodDef<'a> {
 
                 // These self_pats have form Variant1, Variant2, ...
                 let self_pats : Vec<(Gc<ast::Pat>,
-                                     Vec<(Span, Option<Ident>, Gc<Expr>)>)>;
+                                     Vec<(Span, Option<Ident>, Gc<Expr>, &[ast::Attribute])>)>;
                 self_pats = self_arg_names.iter()
                     .map(|self_arg_name|
                          trait_.create_enum_variant_pattern(
@@ -953,7 +965,7 @@ impl<'a> MethodDef<'a> {
 
                 field_tuples = self_arg_fields.iter().enumerate()
                     // For each arg field of self, pull out its getter expr ...
-                    .map(|(field_index, &(sp, opt_ident, self_getter_expr))| {
+                    .map(|(field_index, &(sp, opt_ident, self_getter_expr, attrs))| {
                         // ... but FieldInfo also wants getter expr
                         // for matching other arguments of Self type;
                         // so walk across the *other* self_pats and
@@ -963,7 +975,7 @@ impl<'a> MethodDef<'a> {
                         let others = self_pats.tail().iter()
                             .map(|&(_pat, ref fields)| {
 
-                                let &(_, _opt_ident, other_getter_expr) =
+                                let &(_, _opt_ident, other_getter_expr, _) =
                                     fields.get(field_index);
 
                                 // All Self args have same variant, so
@@ -979,6 +991,7 @@ impl<'a> MethodDef<'a> {
                                     name: opt_ident,
                                     self_: self_getter_expr,
                                     other: others,
+                                    attrs: attrs,
                         }
                     }).collect::<Vec<FieldInfo>>();
 
@@ -991,7 +1004,7 @@ impl<'a> MethodDef<'a> {
                                                 field_tuples);
                 let arm_expr = self.call_substructure_method(
                     cx, trait_, type_ident, self_args, nonself_args,
-                    &substructure);
+                    substructure);
 
                 cx.arm(sp, vec![single_pat], arm_expr)
             }).collect();
@@ -1044,7 +1057,7 @@ impl<'a> MethodDef<'a> {
 
             let arm_expr = self.call_substructure_method(
                 cx, trait_, type_ident, self_args, nonself_args,
-                &catch_all_substructure);
+                catch_all_substructure);
 
             // Builds the expression:
             // {
@@ -1131,13 +1144,13 @@ impl<'a> MethodDef<'a> {
         cx.expr_match(sp, match_arg, match_arms)
     }
 
-    fn expand_static_enum_method_body(&self,
-                                      cx: &mut ExtCtxt,
-                                      trait_: &TraitDef,
-                                      enum_def: &EnumDef,
-                                      type_ident: Ident,
-                                      self_args: &[Gc<Expr>],
-                                      nonself_args: &[Gc<Expr>])
+    fn expand_static_enum_method_body<'b>(&self,
+                                          cx: &mut ExtCtxt,
+                                          trait_: &TraitDef,
+                                          enum_def: &'b EnumDef,
+                                          type_ident: Ident,
+                                          self_args: &[Gc<Expr>],
+                                          nonself_args: &[Gc<Expr>])
         -> Gc<Expr> {
         let summary = enum_def.variants.iter().map(|v| {
             let ident = v.node.name;
@@ -1153,7 +1166,7 @@ impl<'a> MethodDef<'a> {
         }).collect();
         self.call_substructure_method(cx, trait_, type_ident,
                                       self_args, nonself_args,
-                                      &StaticEnum(enum_def, summary))
+                                      StaticEnum(enum_def, summary))
     }
 }
 
@@ -1182,25 +1195,37 @@ impl<'a> TraitDef<'a> {
         to_set
     }
 
-    fn summarise_struct(&self,
-                        cx: &mut ExtCtxt,
-                        struct_def: &StructDef) -> StaticFields {
-        let mut named_idents = Vec::new();
+    fn summarise_struct<'b>(&self,
+                            cx: &mut ExtCtxt,
+                            struct_def: &'b StructDef) -> StaticFields<'b> {
+        let mut named_fields = Vec::new();
         let mut just_spans = Vec::new();
-        for field in struct_def.fields.iter(){
-            let sp = self.set_expn_info(cx, field.span);
+
+        for field in struct_def.fields.iter() {
+            let span = self.set_expn_info(cx, field.span);
+
             match field.node.kind {
-                ast::NamedField(ident, _) => named_idents.push((ident, sp)),
-                ast::UnnamedField(..) => just_spans.push(sp),
+                ast::NamedField(ident, _) => {
+                    let field_info = StaticFieldInfo {
+                        span: span,
+                        name: ident,
+                        attrs: field.node.attrs.as_slice(),
+                    };
+
+                    named_fields.push(field_info);
+                }
+                ast::UnnamedField(..) => {
+                    just_spans.push(span);
+                }
             }
         }
 
-        match (just_spans.is_empty(), named_idents.is_empty()) {
+        match (just_spans.is_empty(), named_fields.is_empty()) {
             (false, false) => cx.span_bug(self.span,
                                           "a struct with named and unnamed \
                                           fields in generic `deriving`"),
             // named fields
-            (_, false) => Named(named_idents),
+            (_, false) => Named(named_fields),
             // tuple structs (includes empty structs)
             (_, _)     => Unnamed(just_spans)
         }
@@ -1217,13 +1242,13 @@ impl<'a> TraitDef<'a> {
             }).collect()
     }
 
-    fn create_struct_pattern(&self,
-                             cx: &mut ExtCtxt,
-                             struct_ident: Ident,
-                             struct_def: &StructDef,
-                             prefix: &str,
-                             mutbl: ast::Mutability)
-                             -> (Gc<ast::Pat>, Vec<(Span, Option<Ident>, Gc<Expr>)>) {
+    fn create_struct_pattern<'b>(&self,
+                                 cx: &mut ExtCtxt,
+                                 struct_ident: Ident,
+                                 struct_def: &'b StructDef,
+                                 prefix: &str,
+                                 mutbl: ast::Mutability)
+        -> (Gc<ast::Pat>, Vec<(Span, Option<Ident>, Gc<Expr>, &'b [ast::Attribute])>) {
         if struct_def.fields.is_empty() {
             return (
                 cx.pat_ident_binding_mode(
@@ -1258,7 +1283,7 @@ impl<'a> TraitDef<'a> {
             paths.push(codemap::Spanned{span: sp, node: ident});
             let val = cx.expr(
                 sp, ast::ExprParen(cx.expr_deref(sp, cx.expr_path(cx.path_ident(sp,ident)))));
-            ident_expr.push((sp, opt_id, val));
+            ident_expr.push((sp, opt_id, val, struct_field.node.attrs.as_slice()));
         }
 
         let subpats = self.create_subpatterns(cx, paths, mutbl);
@@ -1266,7 +1291,7 @@ impl<'a> TraitDef<'a> {
         // struct_type is definitely not Unknown, since struct_def.fields
         // must be nonempty to reach here
         let pattern = if struct_type == Record {
-            let field_pats = subpats.iter().zip(ident_expr.iter()).map(|(&pat, &(_, id, _))| {
+            let field_pats = subpats.iter().zip(ident_expr.iter()).map(|(&pat, &(_, id, _, _))| {
                 // id is guaranteed to be Some
                 ast::FieldPat { ident: id.unwrap(), pat: pat }
             }).collect();
@@ -1278,12 +1303,12 @@ impl<'a> TraitDef<'a> {
         (pattern, ident_expr)
     }
 
-    fn create_enum_variant_pattern(&self,
-                                   cx: &mut ExtCtxt,
-                                   variant: &ast::Variant,
-                                   prefix: &str,
-                                   mutbl: ast::Mutability)
-        -> (Gc<ast::Pat>, Vec<(Span, Option<Ident>, Gc<Expr>)> ) {
+    fn create_enum_variant_pattern<'a>(&self,
+                                       cx: &mut ExtCtxt,
+                                       variant: &'a ast::Variant,
+                                       prefix: &str,
+                                       mutbl: ast::Mutability)
+        -> (Gc<ast::Pat>, Vec<(Span, Option<Ident>, Gc<Expr>, &'a [ast::Attribute])>) {
         let variant_ident = variant.node.name;
         match variant.node.kind {
             ast::TupleVariantKind(ref variant_args) => {
@@ -1304,7 +1329,7 @@ impl<'a> TraitDef<'a> {
                     paths.push(path1);
                     let expr_path = cx.expr_path(cx.path_ident(sp, ident));
                     let val = cx.expr(sp, ast::ExprParen(cx.expr_deref(sp, expr_path)));
-                    ident_expr.push((sp, None, val));
+                    ident_expr.push((sp, None, val, variant.node.attrs.as_slice()));
                 }
 
                 let subpats = self.create_subpatterns(cx, paths, mutbl);
@@ -1334,7 +1359,7 @@ pub fn cs_fold(use_foldl: bool,
                trait_span: Span,
                substructure: &Substructure)
                -> Gc<Expr> {
-    match *substructure.fields {
+    match substructure.fields {
         EnumMatching(_, _, ref all_fields) | Struct(ref all_fields) => {
             if use_foldl {
                 all_fields.iter().fold(base, |old, field| {
@@ -1380,7 +1405,7 @@ pub fn cs_same_method(f: |&mut ExtCtxt, Span, Vec<Gc<Expr>>| -> Gc<Expr>,
                       trait_span: Span,
                       substructure: &Substructure)
                       -> Gc<Expr> {
-    match *substructure.fields {
+    match substructure.fields {
         EnumMatching(_, _, ref all_fields) | Struct(ref all_fields) => {
             // call self_n.method(other_1_n, other_2_n, ...)
             let called = all_fields.iter().map(|field| {

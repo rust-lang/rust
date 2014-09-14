@@ -75,7 +75,7 @@ fn decodable_substructure(cx: &mut ExtCtxt, trait_span: Span,
     let calldecode = cx.expr_call_global(trait_span, recurse, vec!(blkdecoder));
     let lambdadecode = cx.lambda_expr_1(trait_span, calldecode, blkarg);
 
-    return match *substr.fields {
+    match substr.fields {
         StaticStruct(_, ref summary) => {
             let nfields = match *summary {
                 Unnamed(ref fields) => fields.len(),
@@ -149,7 +149,7 @@ fn decodable_substructure(cx: &mut ExtCtxt, trait_span: Span,
             ))
         }
         _ => cx.bug("expected StaticEnum or StaticStruct in deriving(Decodable)")
-    };
+    }
 }
 
 /// Create a decoder for a single enum variant/struct:
@@ -178,9 +178,9 @@ fn decode_static_fields(cx: &mut ExtCtxt,
         }
         Named(ref fields) => {
             // use the field's span to get nicer error messages.
-            let fields = fields.iter().enumerate().map(|(i, &(name, span))| {
-                let arg = getarg(cx, span, token::get_ident(name), i);
-                cx.field_imm(span, name, arg)
+            let fields = fields.iter().enumerate().map(|(i, field)| {
+                let arg = getarg(cx, field.span, token::get_ident(field.name), i);
+                cx.field_imm(field.span, field.name, arg)
             }).collect();
             cx.expr_struct_ident(trait_span, outer_pat_ident, fields)
         }
