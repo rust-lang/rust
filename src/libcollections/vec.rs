@@ -1951,14 +1951,13 @@ impl<T> Vec<T> {
     /// ```
     /// let v = vec![0u, 1, 2];
     /// let w = v.map_in_place(|i| i + 3);
-    /// assert_eq!(w.as_slice(), &[3, 4, 5]);
+    /// assert_eq!(w.as_slice(), [3, 4, 5].as_slice());
     ///
-    /// let big_endian_u16s = vec![0x1122u16, 0x3344];
-    /// let u8s = big_endian_u16s.map_in_place(|x| [
-    ///     ((x >> 8) & 0xff) as u8,
-    ///     (x & 0xff) as u8
-    /// ]);
-    /// assert_eq!(u8s.as_slice(), &[[0x11, 0x22], [0x33, 0x44]]);
+    /// #[deriving(PartialEq, Show)]
+    /// struct Newtype(u8);
+    /// let bytes = vec![0x11, 0x22];
+    /// let newtyped_bytes = bytes.map_in_place(|x| Newtype(x));
+    /// assert_eq!(newtyped_bytes.as_slice(), [Newtype(0x11), Newtype(0x22)].as_slice());
     /// ```
     pub fn map_in_place<U>(self, f: |T| -> U) -> Vec<U> {
         let mut pv = PartialVec::from_vec(self);
@@ -2314,7 +2313,7 @@ mod tests {
     #[test]
     fn test_map_in_place() {
         let v = vec![0u, 1, 2];
-        assert_eq!(v.map_in_place(|i: uint| i as int - 1).as_slice(), &[-1i, 0, 1]);
+        assert_eq!(v.map_in_place(|i: uint| i as int - 1).as_slice(), [-1i, 0, 1].as_slice());
     }
 
     #[bench]
