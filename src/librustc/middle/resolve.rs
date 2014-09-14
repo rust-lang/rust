@@ -60,7 +60,6 @@ use syntax::visit::Visitor;
 
 use std::collections::{HashMap, HashSet};
 use std::cell::{Cell, RefCell};
-use std::gc::GC;
 use std::mem::replace;
 use std::rc::{Rc, Weak};
 use std::uint;
@@ -3849,7 +3848,6 @@ impl<'a> Resolver<'a> {
             DlDef(d @ DefLocal(_)) => {
                 let node_id = d.def_id().node;
                 let mut def = d;
-                let mut depth = 0;
                 let mut last_proc_body_id = ast::DUMMY_NODE_ID;
                 for rib in ribs.iter() {
                     match rib.kind {
@@ -3861,9 +3859,7 @@ impl<'a> Resolver<'a> {
                             if maybe_proc_body != ast::DUMMY_NODE_ID {
                                 last_proc_body_id = maybe_proc_body;
                             }
-                            def = DefUpvar(node_id, box(GC) def,
-                                           depth, function_id, last_proc_body_id);
-                            depth += 1;
+                            def = DefUpvar(node_id, function_id, last_proc_body_id);
 
                             let mut seen = self.freevars_seen.borrow_mut();
                             let seen = seen.find_or_insert(function_id, NodeSet::new());

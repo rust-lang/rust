@@ -12,8 +12,6 @@ use middle::subst::ParamSpace;
 use syntax::ast;
 use syntax::ast_util::local_def;
 
-use std::gc::Gc;
-
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
 pub enum Def {
     DefFn(ast::DefId, ast::FnStyle),
@@ -31,8 +29,6 @@ pub enum Def {
     DefTyParam(ParamSpace, ast::DefId, uint),
     DefUse(ast::DefId),
     DefUpvar(ast::NodeId,  // id of closed over local
-             Gc<Def>,      // closed over def
-             u32,          // number of closures implicitely capturing this local
              ast::NodeId,  // expr node that creates the closure
              ast::NodeId), // block node for the closest enclosing proc
                            // or unboxed closure, DUMMY_NODE_ID otherwise
@@ -70,7 +66,7 @@ impl Def {
             }
             DefLocal(id) |
             DefSelfTy(id) |
-            DefUpvar(id, _, _, _,  _) |
+            DefUpvar(id, _, _) |
             DefRegion(id) |
             DefTyParamBinder(id) |
             DefLabel(id) => {
