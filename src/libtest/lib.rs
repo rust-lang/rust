@@ -56,6 +56,7 @@ use std::f64;
 use std::fmt;
 use std::fmt::Show;
 use std::from_str::FromStr;
+use std::io::fs::PathExtensions;
 use std::io::stdio::StdWriter;
 use std::io::{File, ChanReader, ChanWriter};
 use std::io;

@@ -53,6 +53,8 @@ actually operates on the path; it is only intended for display.
 ## Example
 
 ```rust
+use std::io::fs::PathExtensions;
+
 let mut path = Path::new("/tmp/path");
 println!("path: {}", path.display());
 path.set_filename("foo");

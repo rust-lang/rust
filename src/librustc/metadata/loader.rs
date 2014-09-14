@@ -229,6 +229,7 @@ use util::fs;
 
 use std::c_str::ToCStr;
 use std::cmp;
+use std::io::fs::PathExtensions;
 use std::io;
 use std::mem;
 use std::ptr;

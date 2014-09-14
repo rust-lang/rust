@@ -82,6 +82,7 @@ use ptr::P;
 use owned_slice::OwnedSlice;
 
 use std::collections::HashSet;
+use std::io::fs::PathExtensions;
 use std::mem::replace;
 use std::mem;
 use std::rc::Rc;
