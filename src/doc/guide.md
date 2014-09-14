@@ -1843,9 +1843,9 @@ that page, but the best part is the search bar. Right up at the top, there's
 a box that you can enter in a search term. The search is pretty primitive
 right now, but is getting better all the time. If you type 'random' in that
 box, the page will update to [this
-one](http://doc.rust-lang.org/std/index.html?search=random). The very first
+one](std/index.html?search=random). The very first
 result is a link to
-[std::rand::random](http://doc.rust-lang.org/std/rand/fn.random.html). If we
+[std::rand::random](std/rand/fn.random.html). If we
 click on that result, we'll be taken to its documentation page.
 
 This page shows us a few things: the type signature of the function, some
@@ -3723,7 +3723,7 @@ If you use `Rc<T>` or `Arc<T>`, you have to be careful about introducing
 cycles. If you have two `Rc<T>`s that point to each other, the reference counts
 will never drop to zero, and you'll have a memory leak. To learn more, check
 out [the section on `Rc<T>` and `Arc<T>` in the pointers
-guide](http://doc.rust-lang.org/guide-pointers.html#rc-and-arc).
+guide](guide-pointers.html#rc-and-arc).
 
 # Patterns
 
@@ -5336,6 +5336,6 @@ you will have a firm grasp of basic Rust development. There's a whole lot more
 out there, we've just covered the surface. There's tons of topics that you can
 dig deeper into, and we've built specialized guides for many of them. To learn
 more, dig into the [full documentation
-index](http://doc.rust-lang.org/index.html).
+index](index.html).
 
 Happy hacking!
