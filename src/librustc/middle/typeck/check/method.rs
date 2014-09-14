@@ -348,6 +348,7 @@ struct Candidate {
 pub enum RcvrMatchCondition {
     RcvrMatchesIfObject(ast::DefId),
     RcvrMatchesIfSubtype(ty::t),
+    RcvrMatchesIfEqtype(ty::t)
 }
 
 impl<'a, 'tcx> LookupContext<'a, 'tcx> {
@@ -675,6 +676,14 @@ impl<'a, 'tcx> LookupContext<'a, 'tcx> {
                     }
                     _ => {}
                 }
+
+                let condition = match m.explicit_self {
+                    ByReferenceExplicitSelfCategory(_, mt) if mt == MutMutable =>
+                        RcvrMatchesIfEqtype(self_ty),
+                    _ =>
+                        RcvrMatchesIfSubtype(self_ty)
+                };
+
                 debug!("found match: trait_ref={} substs={} m={}",
                        trait_ref.repr(this.tcx()),
                        trait_ref.substs.repr(this.tcx()),
@@ -688,7 +697,7 @@ impl<'a, 'tcx> LookupContext<'a, 'tcx> {
                 assert_eq!(m.generics.regions.get_slice(subst::SelfSpace).len(),
                            trait_ref.substs.regions().get_slice(subst::SelfSpace).len());
                 Some(Candidate {
-                    rcvr_match_condition: RcvrMatchesIfSubtype(self_ty),
+                    rcvr_match_condition: condition,
                     rcvr_substs: trait_ref.substs.clone(),
                     method_ty: m,
                     origin: MethodParam(MethodParam {
@@ -822,6 +831,13 @@ impl<'a, 'tcx> LookupContext<'a, 'tcx> {
             ty: impl_ty
         } = impl_self_ty(&vcx, span, impl_did);
 
+        let condition = match method.explicit_self {
+            ByReferenceExplicitSelfCategory(_, mt) if mt == MutMutable =>
+                RcvrMatchesIfEqtype(impl_ty),
+            _ =>
+                RcvrMatchesIfSubtype(impl_ty)
+        };
+
         let candidates = if is_extension {
             &mut self.extension_candidates
         } else {
@@ -829,7 +845,7 @@ impl<'a, 'tcx> LookupContext<'a, 'tcx> {
         };
 
         candidates.push(Candidate {
-            rcvr_match_condition: RcvrMatchesIfSubtype(impl_ty),
+            rcvr_match_condition: condition,
             rcvr_substs: impl_substs,
             origin: MethodStatic(method.def_id),
             method_ty: method,
@@ -1525,7 +1541,7 @@ impl<'a, 'tcx> LookupContext<'a, 'tcx> {
                 RcvrMatchesIfObject(desired_did) => {
                     self_did == desired_did
                 }
-                RcvrMatchesIfSubtype(_) => {
+                RcvrMatchesIfSubtype(_) | RcvrMatchesIfEqtype(_) => {
                     false
                 }
             }
@@ -1540,6 +1556,9 @@ impl<'a, 'tcx> LookupContext<'a, 'tcx> {
                 }
                 RcvrMatchesIfSubtype(of_type) => {
                     fcx.can_mk_subty(rcvr_ty, of_type).is_ok()
+                }
+                RcvrMatchesIfEqtype(of_type) => {
+                    fcx.can_mk_eqty(rcvr_ty, of_type).is_ok()
                 }
             }
         }
@@ -1656,9 +1675,9 @@ impl Repr for RcvrMatchCondition {
             RcvrMatchesIfSubtype(t) => {
                 format!("RcvrMatchesIfSubtype({})", t.repr(tcx))
             }
+            RcvrMatchesIfEqtype(t) => {
+                format!("RcvrMatchesIfEqtype({})", t.repr(tcx))
+            }
         }
     }
 }
-
-
-

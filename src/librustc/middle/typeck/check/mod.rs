@@ -1743,6 +1743,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         infer::can_mk_subty(self.infcx(), sub, sup)
     }
 
+    pub fn can_mk_eqty(&self, sub: ty::t, sup: ty::t)
+                       -> Result<(), ty::type_err> {
+        infer::can_mk_eqty(self.infcx(), sub, sup)
+    }
+
     pub fn mk_assignty(&self,
                        expr: &ast::Expr,
                        sub: ty::t,
