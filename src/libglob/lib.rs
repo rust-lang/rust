@@ -37,6 +37,7 @@
 
 use std::cell::Cell;
 use std::{cmp, os, path};
+use std::io::fs::PathExtensions;
 use std::io::fs;
 use std::path::is_sep;
 use std::string::String;
