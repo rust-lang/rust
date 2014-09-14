@@ -674,14 +674,14 @@ impl<K, V> RawTable<K, V> {
         }
     }
 
-    pub fn mut_iter(&mut self) -> MutEntries<K, V> {
+    pub fn iter_mut(&mut self) -> MutEntries<K, V> {
         MutEntries {
             iter: self.raw_buckets(),
             elems_left: self.size(),
         }
     }
 
-    pub fn move_iter(self) -> MoveEntries<K, V> {
+    pub fn into_iter(self) -> MoveEntries<K, V> {
         MoveEntries {
             iter: self.raw_buckets(),
             table: self,

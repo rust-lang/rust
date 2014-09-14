@@ -267,6 +267,12 @@ impl<T> TrieMap<T> {
         iter
     }
 
+    /// Deprecated: use `iter_mut`.
+    #[deprecated = "use iter_mut"]
+    pub fn mut_iter<'a>(&'a mut self) -> MutEntries<'a, T> {
+        self.iter_mut()
+    }
+
     /// Gets an iterator over the key-value pairs in the map, with the
     /// ability to mutate the values.
     ///
@@ -284,7 +290,7 @@ impl<T> TrieMap<T> {
     /// assert_eq!(map.find(&2), Some(&-2));
     /// assert_eq!(map.find(&3), Some(&-3));
     /// ```
-    pub fn mut_iter<'a>(&'a mut self) -> MutEntries<'a, T> {
+    pub fn iter_mut<'a>(&'a mut self) -> MutEntries<'a, T> {
         let mut iter = unsafe {MutEntries::new()};
         iter.stack[0] = self.root.children.mut_iter();
         iter.length = 1;
@@ -425,11 +431,17 @@ impl<T> TrieMap<T> {
     }
     // If `upper` is true then returns upper_bound else returns lower_bound.
     #[inline]
-    fn mut_bound<'a>(&'a mut self, key: uint, upper: bool) -> MutEntries<'a, T> {
+    fn bound_mut<'a>(&'a mut self, key: uint, upper: bool) -> MutEntries<'a, T> {
         bound!(MutEntries, self = self,
                key = key, is_upper = upper,
                slice_from = mut_slice_from, iter = mut_iter,
                mutability = mut)
+    }
+
+    /// Deprecated: use `lower_bound_mut`.
+    #[deprecated = "use lower_bound_mut"]
+    pub fn mut_lower_bound<'a>(&'a mut self, key: uint) -> MutEntries<'a, T> {
+        self.lower_bound_mut(key)
     }
 
     /// Gets an iterator pointing to the first key-value pair whose key is not less than `key`.
@@ -453,8 +465,14 @@ impl<T> TrieMap<T> {
     /// assert_eq!(map.find(&4), Some(&"changed"));
     /// assert_eq!(map.find(&6), Some(&"changed"));
     /// ```
-    pub fn mut_lower_bound<'a>(&'a mut self, key: uint) -> MutEntries<'a, T> {
-        self.mut_bound(key, false)
+    pub fn lower_bound_mut<'a>(&'a mut self, key: uint) -> MutEntries<'a, T> {
+        self.bound_mut(key, false)
+    }
+
+    /// Deprecated: use `upper_bound_mut`.
+    #[deprecated = "use upper_bound_mut"]
+    pub fn mut_upper_bound<'a>(&'a mut self, key: uint) -> MutEntries<'a, T> {
+        self.upper_bound_mut(key)
     }
 
     /// Gets an iterator pointing to the first key-value pair whose key is greater than `key`.
@@ -478,8 +496,8 @@ impl<T> TrieMap<T> {
     /// assert_eq!(map.find(&4), Some(&"b"));
     /// assert_eq!(map.find(&6), Some(&"changed"));
     /// ```
-    pub fn mut_upper_bound<'a>(&'a mut self, key: uint) -> MutEntries<'a, T> {
-        self.mut_bound(key, true)
+    pub fn upper_bound_mut<'a>(&'a mut self, key: uint) -> MutEntries<'a, T> {
+        self.bound_mut(key, true)
     }
 }
 

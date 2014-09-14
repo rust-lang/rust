@@ -475,9 +475,15 @@ impl<T> DList<T> {
         Items{nelem: self.len(), head: &self.list_head, tail: self.list_tail}
     }
 
+    /// Deprecated: use `iter_mut`.
+    #[deprecated = "use iter_mut"]
+    pub fn mut_iter<'a>(&'a mut self) -> MutItems<'a, T> {
+        self.iter_mut()
+    }
+
     /// Provides a forward iterator with mutable references.
     #[inline]
-    pub fn mut_iter<'a>(&'a mut self) -> MutItems<'a, T> {
+    pub fn iter_mut<'a>(&'a mut self) -> MutItems<'a, T> {
         let head_raw = match self.list_head {
             Some(ref mut h) => Rawlink::some(&mut **h),
             None => Rawlink::none(),
@@ -490,10 +496,15 @@ impl<T> DList<T> {
         }
     }
 
+    /// Deprecated: use `into_iter`.
+    #[deprecated = "use into_iter"]
+    pub fn move_iter(self) -> MoveItems<T> {
+        self.into_iter()
+    }
 
     /// Consumes the list into an iterator yielding elements by value.
     #[inline]
-    pub fn move_iter(self) -> MoveItems<T> {
+    pub fn into_iter(self) -> MoveItems<T> {
         MoveItems{list: self}
     }
 }

@@ -1193,6 +1193,12 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
         Entries { inner: self.table.iter() }
     }
 
+    /// Deprecated: use `iter_mut`.
+    #[deprecated = "use iter_mut"]
+    pub fn mut_iter(&mut self) -> MutEntries<K, V> {
+        self.iter_mut()
+    }
+
     /// An iterator visiting all key-value pairs in arbitrary order,
     /// with mutable references to the values.
     /// Iterator element type is `(&'a K, &'a mut V)`.
@@ -1216,8 +1222,14 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     ///     println!("key: {} val: {}", key, val);
     /// }
     /// ```
-    pub fn mut_iter(&mut self) -> MutEntries<K, V> {
+    pub fn iter_mut(&mut self) -> MutEntries<K, V> {
         MutEntries { inner: self.table.mut_iter() }
+    }
+
+    /// Deprecated: use `into_iter`.
+    #[deprecated = "use into_iter"]
+    pub fn move_iter(self) -> MoveEntries<K, V> {
+        self.into_iter()
     }
 
     /// Creates a consuming iterator, that is, one that moves each key-value
@@ -1237,7 +1249,7 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     /// // Not possible with .iter()
     /// let vec: Vec<(&str, int)> = map.move_iter().collect();
     /// ```
-    pub fn move_iter(self) -> MoveEntries<K, V> {
+    pub fn into_iter(self) -> MoveEntries<K, V> {
         MoveEntries {
             inner: self.table.move_iter().map(|(_, k, v)| (k, v))
         }

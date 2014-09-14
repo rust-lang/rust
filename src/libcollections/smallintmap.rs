@@ -260,6 +260,12 @@ impl<V> SmallIntMap<V> {
         }
     }
 
+    /// Deprecated: use `iter_mut`
+    #[deprecated = "use iter_mut"]
+    pub fn mut_iter<'r>(&'r mut self) -> MutEntries<'r, V> {
+        self.iter_mut()
+    }
+
     /// Returns an iterator visiting all key-value pairs in ascending order by the keys,
     /// with mutable references to the values.
     /// The iterator's element type is `(uint, &'r mut V)`.
@@ -282,12 +288,20 @@ impl<V> SmallIntMap<V> {
     ///     assert_eq!(value, &"x");
     /// }
     /// ```
-    pub fn mut_iter<'r>(&'r mut self) -> MutEntries<'r, V> {
+    pub fn iter_mut<'r>(&'r mut self) -> MutEntries<'r, V> {
         MutEntries {
             front: 0,
             back: self.v.len(),
             iter: self.v.mut_iter()
         }
+    }
+
+    /// Deprecated: use `into_iter` instead.
+    #[deprecated = "use into_iter"]
+    pub fn move_iter(&mut self)
+        -> FilterMap<(uint, Option<V>), (uint, V),
+                Enumerate<vec::MoveItems<Option<V>>>> {
+        self.into_iter()
     }
 
     /// Returns an iterator visiting all key-value pairs in ascending order by
@@ -309,7 +323,7 @@ impl<V> SmallIntMap<V> {
     ///
     /// assert_eq!(vec, vec![(1, "a"), (2, "b"), (3, "c")]);
     /// ```
-    pub fn move_iter(&mut self)
+    pub fn into_iter(&mut self)
         -> FilterMap<(uint, Option<V>), (uint, V),
                 Enumerate<vec::MoveItems<Option<V>>>>
     {

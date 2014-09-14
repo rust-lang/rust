@@ -250,6 +250,12 @@ impl<T> RingBuf<T> {
         Items{index: 0, rindex: self.nelts, lo: self.lo, elts: self.elts.as_slice()}
     }
 
+    /// Deprecated: use `iter_mut`
+    #[deprecated = "use iter_mut"]
+    pub fn mut_iter<'a>(&'a mut self) -> MutItems<'a, T> {
+        self.iter_mut()
+    }
+
     /// Returns a front-to-back iterator which returns mutable references.
     ///
     /// # Example
@@ -267,7 +273,7 @@ impl<T> RingBuf<T> {
     /// let b: &[_] = &[&mut 3, &mut 1, &mut 2];
     /// assert_eq!(buf.mut_iter().collect::<Vec<&mut int>>().as_slice(), b);
     /// ```
-    pub fn mut_iter<'a>(&'a mut self) -> MutItems<'a, T> {
+    pub fn iter_mut<'a>(&'a mut self) -> MutItems<'a, T> {
         let start_index = raw_index(self.lo, self.elts.len(), 0);
         let end_index = raw_index(self.lo, self.elts.len(), self.nelts);
 
