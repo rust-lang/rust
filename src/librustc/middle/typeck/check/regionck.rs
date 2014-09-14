@@ -478,7 +478,7 @@ impl<'fcx, 'tcx> mc::Typer<'tcx> for Rcx<'fcx, 'tcx> {
     }
 
     fn capture_mode(&self, closure_expr_id: ast::NodeId)
-                    -> freevars::CaptureMode {
+                    -> ast::CaptureClause {
         self.tcx().capture_modes.borrow().get_copy(&closure_expr_id)
     }
 
@@ -851,7 +851,7 @@ fn check_expr_fn_block(rcx: &mut Rcx,
                                          ..}) => {
             // For closure, ensure that the variables outlive region
             // bound, since they are captured by reference.
-            freevars::with_freevars(tcx, expr.id, |freevars| {
+            ty::with_freevars(tcx, expr.id, |freevars| {
                 if freevars.is_empty() {
                     // No free variables means that the environment
                     // will be NULL at runtime and hence the closure
@@ -874,13 +874,13 @@ fn check_expr_fn_block(rcx: &mut Rcx,
                                          ..}) => {
             // For proc, ensure that the *types* of the variables
             // outlive region bound, since they are captured by value.
-            freevars::with_freevars(tcx, expr.id, |freevars| {
+            ty::with_freevars(tcx, expr.id, |freevars| {
                 ensure_free_variable_types_outlive_closure_bound(
                     rcx, bounds.region_bound, expr, freevars);
             });
         }
         ty::ty_unboxed_closure(_, region) => {
-            freevars::with_freevars(tcx, expr.id, |freevars| {
+            ty::with_freevars(tcx, expr.id, |freevars| {
                 // No free variables means that there is no environment and
                 // hence the closure has static lifetime. Otherwise, the
                 // closure must not outlive the variables it closes over
@@ -906,7 +906,7 @@ fn check_expr_fn_block(rcx: &mut Rcx,
                 store: ty::RegionTraitStore(..),
                 ..
             }) => {
-            freevars::with_freevars(tcx, expr.id, |freevars| {
+            ty::with_freevars(tcx, expr.id, |freevars| {
                 propagate_upupvar_borrow_kind(rcx, expr, freevars);
             })
         }
@@ -917,7 +917,7 @@ fn check_expr_fn_block(rcx: &mut Rcx,
         rcx: &mut Rcx,
         region_bound: ty::Region,
         expr: &ast::Expr,
-        freevars: &[freevars::freevar_entry])
+        freevars: &[ty::Freevar])
     {
         /*!
          * Make sure that the type of all free variables referenced
@@ -950,7 +950,7 @@ fn check_expr_fn_block(rcx: &mut Rcx,
         rcx: &mut Rcx,
         region_bound: ty::Region,
         expr: &ast::Expr,
-        freevars: &[freevars::freevar_entry])
+        freevars: &[ty::Freevar])
     {
         /*!
          * Make sure that all free variables referenced inside the
@@ -1000,7 +1000,7 @@ fn check_expr_fn_block(rcx: &mut Rcx,
 
     fn propagate_upupvar_borrow_kind(rcx: &mut Rcx,
                                      expr: &ast::Expr,
-                                     freevars: &[freevars::freevar_entry]) {
+                                     freevars: &[ty::Freevar]) {
         let tcx = rcx.fcx.ccx.tcx;
         debug!("propagate_upupvar_borrow_kind({})", expr.repr(tcx));
         for freevar in freevars.iter() {
