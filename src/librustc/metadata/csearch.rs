@@ -97,18 +97,18 @@ pub fn get_item_path(tcx: &ty::ctxt, def: ast::DefId) -> Vec<ast_map::PathElem> 
         path.as_slice())
 }
 
-pub enum found_ast {
-    found(ast::InlinedItem),
-    found_parent(ast::DefId, ast::InlinedItem),
+pub enum found_ast<'ast> {
+    found(&'ast ast::InlinedItem),
+    found_parent(ast::DefId, &'ast ast::InlinedItem),
     not_found,
 }
 
 // Finds the AST for this item in the crate metadata, if any.  If the item was
 // not marked for inlining, then the AST will not be present and hence none
 // will be returned.
-pub fn maybe_get_item_ast(tcx: &ty::ctxt, def: ast::DefId,
-                          decode_inlined_item: decoder::DecodeInlinedItem)
-                       -> found_ast {
+pub fn maybe_get_item_ast<'tcx>(tcx: &ty::ctxt<'tcx>, def: ast::DefId,
+                                decode_inlined_item: decoder::DecodeInlinedItem)
+                                -> found_ast<'tcx> {
     let cstore = &tcx.sess.cstore;
     let cdata = cstore.get_crate_data(def.krate);
     decoder::maybe_get_item_ast(&*cdata, tcx, def.node, decode_inlined_item)

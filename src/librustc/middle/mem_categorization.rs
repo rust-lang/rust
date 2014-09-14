@@ -490,7 +490,7 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
           }
 
           ast::ExprPath(_) => {
-            let def = self.tcx().def_map.borrow().get_copy(&expr.id);
+            let def = *self.tcx().def_map.borrow().get(&expr.id);
             self.cat_def(expr.id, expr.span, expr_ty, def)
           }
 
@@ -1154,7 +1154,7 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
             if_ok!(self.cat_pattern(subcmt, &**subpat, op));
           }
 
-          ast::PatVec(ref before, slice, ref after) => {
+          ast::PatVec(ref before, ref slice, ref after) => {
               let elt_cmt = self.cat_index(pat, self.deref_vec(pat, cmt));
               for before_pat in before.iter() {
                   if_ok!(self.cat_pattern(elt_cmt.clone(), &**before_pat,

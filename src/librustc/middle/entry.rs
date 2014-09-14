@@ -11,7 +11,7 @@
 
 use driver::config;
 use driver::session::Session;
-use syntax::ast::{Crate, Name, NodeId, Item, ItemFn};
+use syntax::ast::{Name, NodeId, Item, ItemFn};
 use syntax::ast_map;
 use syntax::attr;
 use syntax::codemap::Span;
@@ -19,10 +19,10 @@ use syntax::parse::token;
 use syntax::visit;
 use syntax::visit::Visitor;
 
-struct EntryContext<'a> {
+struct EntryContext<'a, 'ast: 'a> {
     session: &'a Session,
 
-    ast_map: &'a ast_map::Map,
+    ast_map: &'a ast_map::Map<'ast>,
 
     // The interned Name for "main".
     main_name: Name,
@@ -41,13 +41,13 @@ struct EntryContext<'a> {
     non_main_fns: Vec<(NodeId, Span)> ,
 }
 
-impl<'a, 'v> Visitor<'v> for EntryContext<'a> {
+impl<'a, 'ast, 'v> Visitor<'v> for EntryContext<'a, 'ast> {
     fn visit_item(&mut self, item: &Item) {
         find_item(item, self);
     }
 }
 
-pub fn find_entry_point(session: &Session, krate: &Crate, ast_map: &ast_map::Map) {
+pub fn find_entry_point(session: &Session, ast_map: &ast_map::Map) {
     let any_exe = session.crate_types.borrow().iter().any(|ty| {
         *ty == config::CrateTypeExecutable
     });
@@ -57,7 +57,7 @@ pub fn find_entry_point(session: &Session, krate: &Crate, ast_map: &ast_map::Map
     }
 
     // If the user wants no main function at all, then stop here.
-    if attr::contains_name(krate.attrs.as_slice(), "no_main") {
+    if attr::contains_name(ast_map.krate().attrs.as_slice(), "no_main") {
         session.entry_type.set(Some(config::EntryNone));
         return
     }
@@ -72,7 +72,7 @@ pub fn find_entry_point(session: &Session, krate: &Crate, ast_map: &ast_map::Map
         non_main_fns: Vec::new(),
     };
 
-    visit::walk_crate(&mut ctxt, krate);
+    visit::walk_crate(&mut ctxt, ast_map.krate());
 
     configure_main(&mut ctxt);
 }

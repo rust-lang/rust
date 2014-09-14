@@ -13,7 +13,6 @@ use middle::resolve;
 use middle::ty;
 
 use std::collections::HashMap;
-use std::gc::{Gc, GC};
 use syntax::ast::*;
 use syntax::ast_util::{walk_pat};
 use syntax::codemap::{Span, DUMMY_SP};
@@ -112,17 +111,6 @@ pub fn simple_identifier<'a>(pat: &'a Pat) -> Option<&'a Ident> {
         _ => {
             None
         }
-    }
-}
-
-pub fn wild() -> Gc<Pat> {
-    box (GC) Pat { id: 0, node: PatWild(PatWildSingle), span: DUMMY_SP }
-}
-
-pub fn raw_pat(p: Gc<Pat>) -> Gc<Pat> {
-    match p.node {
-        PatIdent(_, _, Some(s)) => { raw_pat(s) }
-        _ => { p }
     }
 }
 

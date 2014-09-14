@@ -141,7 +141,6 @@ use syntax::visit;
 use syntax::visit::Visitor;
 
 use std::cell::RefCell;
-use std::gc::Gc;
 
 ///////////////////////////////////////////////////////////////////////////
 // PUBLIC ENTRY POINTS
@@ -614,23 +613,20 @@ fn visit_expr(rcx: &mut Rcx, expr: &ast::Expr) {
     match expr.node {
         ast::ExprCall(ref callee, ref args) => {
             if has_method_map {
-                constrain_call(rcx, expr, Some(*callee),
-                               args.as_slice(), false);
+                constrain_call(rcx, expr, Some(&**callee),
+                               args.iter().map(|e| &**e), false);
             } else {
                 constrain_callee(rcx, callee.id, expr, &**callee);
-                constrain_call(rcx,
-                               expr,
-                               None,
-                               args.as_slice(),
-                               false);
+                constrain_call(rcx, expr, None,
+                               args.iter().map(|e| &**e), false);
             }
 
             visit::walk_expr(rcx, expr);
         }
 
         ast::ExprMethodCall(_, _, ref args) => {
-            constrain_call(rcx, expr, Some(*args.get(0)),
-                           args.slice_from(1), false);
+            constrain_call(rcx, expr, Some(&**args.get(0)),
+                           args.slice_from(1).iter().map(|e| &**e), false);
 
             visit::walk_expr(rcx, expr);
         }
@@ -642,8 +638,8 @@ fn visit_expr(rcx: &mut Rcx, expr: &ast::Expr) {
 
         ast::ExprAssignOp(_, ref lhs, ref rhs) => {
             if has_method_map {
-                constrain_call(rcx, expr, Some(lhs.clone()),
-                               [rhs.clone()], true);
+                constrain_call(rcx, expr, Some(&**lhs),
+                               Some(&**rhs).move_iter(), true);
             }
 
             adjust_borrow_kind_for_assignment_lhs(rcx, &**lhs);
@@ -657,15 +653,16 @@ fn visit_expr(rcx: &mut Rcx, expr: &ast::Expr) {
             // overloaded op.  Note that we (sadly) currently use an
             // implicit "by ref" sort of passing style here.  This
             // should be converted to an adjustment!
-            constrain_call(rcx, expr, Some(lhs.clone()),
-                           [rhs.clone()], true);
+            constrain_call(rcx, expr, Some(&**lhs),
+                           Some(&**rhs).move_iter(), true);
 
             visit::walk_expr(rcx, expr);
         }
 
         ast::ExprUnary(_, ref lhs) if has_method_map => {
             // As above.
-            constrain_call(rcx, expr, Some(lhs.clone()), [], true);
+            constrain_call(rcx, expr, Some(&**lhs),
+                           None::<ast::Expr>.iter(), true);
 
             visit::walk_expr(rcx, expr);
         }
@@ -683,7 +680,8 @@ fn visit_expr(rcx: &mut Rcx, expr: &ast::Expr) {
             let method_call = MethodCall::expr(expr.id);
             let base_ty = match rcx.fcx.inh.method_map.borrow().find(&method_call) {
                 Some(method) => {
-                    constrain_call(rcx, expr, Some(base.clone()), [], true);
+                    constrain_call(rcx, expr, Some(&**base),
+                                   None::<ast::Expr>.iter(), true);
                     ty::ty_fn_ret(method.ty)
                 }
                 None => rcx.resolve_node_type(base.id)
@@ -1080,11 +1078,11 @@ fn constrain_callee(rcx: &mut Rcx,
     }
 }
 
-fn constrain_call(rcx: &mut Rcx,
-                  call_expr: &ast::Expr,
-                  receiver: Option<Gc<ast::Expr>>,
-                  arg_exprs: &[Gc<ast::Expr>],
-                  implicitly_ref_args: bool) {
+fn constrain_call<'a, I: Iterator<&'a ast::Expr>>(rcx: &mut Rcx,
+                                                  call_expr: &ast::Expr,
+                                                  receiver: Option<&ast::Expr>,
+                                                  mut arg_exprs: I,
+                                                  implicitly_ref_args: bool) {
     //! Invoked on every call site (i.e., normal calls, method calls,
     //! and overloaded operators). Constrains the regions which appear
     //! in the type of the function. Also constrains the regions that
@@ -1093,11 +1091,9 @@ fn constrain_call(rcx: &mut Rcx,
     let tcx = rcx.fcx.tcx();
     debug!("constrain_call(call_expr={}, \
             receiver={}, \
-            arg_exprs={}, \
             implicitly_ref_args={:?})",
             call_expr.repr(tcx),
             receiver.repr(tcx),
-            arg_exprs.repr(tcx),
             implicitly_ref_args);
 
     // `callee_region` is the scope representing the time in which the
@@ -1109,7 +1105,7 @@ fn constrain_call(rcx: &mut Rcx,
 
     debug!("callee_region={}", callee_region.repr(tcx));
 
-    for arg_expr in arg_exprs.iter() {
+    for arg_expr in arg_exprs {
         debug!("Argument: {}", arg_expr.repr(tcx));
 
         // ensure that any regions appearing in the argument type are
@@ -1123,7 +1119,7 @@ fn constrain_call(rcx: &mut Rcx,
         // result. modes are going away and the "DerefArgs" code
         // should be ported to use adjustments
         if implicitly_ref_args {
-            link_by_ref(rcx, &**arg_expr, callee_scope);
+            link_by_ref(rcx, arg_expr, callee_scope);
         }
     }
 
@@ -1292,10 +1288,10 @@ fn link_local(rcx: &Rcx, local: &ast::Local) {
     debug!("regionck::for_local()");
     let init_expr = match local.init {
         None => { return; }
-        Some(ref expr) => expr,
+        Some(ref expr) => &**expr,
     };
     let mc = mc::MemCategorizationContext::new(rcx);
-    let discr_cmt = ignore_err!(mc.cat_expr(&**init_expr));
+    let discr_cmt = ignore_err!(mc.cat_expr(init_expr));
     link_pattern(rcx, mc, discr_cmt, &*local.pat);
 }
 

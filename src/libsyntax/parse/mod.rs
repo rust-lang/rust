@@ -15,9 +15,9 @@ use codemap::{Span, CodeMap, FileMap};
 use diagnostic::{SpanHandler, mk_span_handler, default_handler, Auto};
 use parse::attr::ParserAttr;
 use parse::parser::Parser;
+use ptr::P;
 
 use std::cell::RefCell;
-use std::gc::Gc;
 use std::io::File;
 use std::rc::Rc;
 use std::str;
@@ -106,7 +106,7 @@ pub fn parse_expr_from_source_str(name: String,
                                   source: String,
                                   cfg: ast::CrateConfig,
                                   sess: &ParseSess)
-                                  -> Gc<ast::Expr> {
+                                  -> P<ast::Expr> {
     let mut p = new_parser_from_source_str(sess, cfg, name, source);
     maybe_aborted(p.parse_expr(), p)
 }
@@ -115,7 +115,7 @@ pub fn parse_item_from_source_str(name: String,
                                   source: String,
                                   cfg: ast::CrateConfig,
                                   sess: &ParseSess)
-                                  -> Option<Gc<ast::Item>> {
+                                  -> Option<P<ast::Item>> {
     let mut p = new_parser_from_source_str(sess, cfg, name, source);
     maybe_aborted(p.parse_item_with_outer_attributes(),p)
 }
@@ -124,7 +124,7 @@ pub fn parse_meta_from_source_str(name: String,
                                   source: String,
                                   cfg: ast::CrateConfig,
                                   sess: &ParseSess)
-                                  -> Gc<ast::MetaItem> {
+                                  -> P<ast::MetaItem> {
     let mut p = new_parser_from_source_str(sess, cfg, name, source);
     maybe_aborted(p.parse_meta_item(),p)
 }
@@ -134,7 +134,7 @@ pub fn parse_stmt_from_source_str(name: String,
                                   cfg: ast::CrateConfig,
                                   attrs: Vec<ast::Attribute> ,
                                   sess: &ParseSess)
-                                  -> Gc<ast::Stmt> {
+                                  -> P<ast::Stmt> {
     let mut p = new_parser_from_source_str(
         sess,
         cfg,
@@ -702,7 +702,6 @@ pub fn integer_lit(s: &str, sd: &SpanHandler, sp: Span) -> ast::Lit_ {
 mod test {
     use super::*;
     use serialize::json;
-    use std::gc::GC;
     use codemap::{Span, BytePos, Spanned};
     use owned_slice::OwnedSlice;
     use ast;
@@ -711,6 +710,7 @@ mod test {
     use attr::AttrMetaMethods;
     use parse::parser::Parser;
     use parse::token::{str_to_ident};
+    use ptr::P;
     use util::parser_testing::{string_to_tts, string_to_parser};
     use util::parser_testing::{string_to_expr, string_to_item};
     use util::parser_testing::string_to_stmt;
@@ -722,7 +722,7 @@ mod test {
 
     #[test] fn path_exprs_1() {
         assert!(string_to_expr("a".to_string()) ==
-                   box(GC) ast::Expr{
+                   P(ast::Expr{
                     id: ast::DUMMY_NODE_ID,
                     node: ast::ExprPath(ast::Path {
                         span: sp(0, 1),
@@ -736,12 +736,12 @@ mod test {
                         ),
                     }),
                     span: sp(0, 1)
-                   })
+                   }))
     }
 
     #[test] fn path_exprs_2 () {
         assert!(string_to_expr("::a::b".to_string()) ==
-                   box(GC) ast::Expr {
+                   P(ast::Expr {
                     id: ast::DUMMY_NODE_ID,
                     node: ast::ExprPath(ast::Path {
                             span: sp(0, 6),
@@ -760,7 +760,7 @@ mod test {
                             )
                         }),
                     span: sp(0, 6)
-                   })
+                   }))
     }
 
     #[should_fail]
@@ -953,9 +953,9 @@ mod test {
 
     #[test] fn ret_expr() {
         assert!(string_to_expr("return d".to_string()) ==
-                   box(GC) ast::Expr{
+                   P(ast::Expr{
                     id: ast::DUMMY_NODE_ID,
-                    node:ast::ExprRet(Some(box(GC) ast::Expr{
+                    node:ast::ExprRet(Some(P(ast::Expr{
                         id: ast::DUMMY_NODE_ID,
                         node:ast::ExprPath(ast::Path{
                             span: sp(7, 8),
@@ -969,15 +969,15 @@ mod test {
                             ),
                         }),
                         span:sp(7,8)
-                    })),
+                    }))),
                     span:sp(0,8)
-                   })
+                   }))
     }
 
     #[test] fn parse_stmt_1 () {
         assert!(string_to_stmt("b;".to_string()) ==
-                   box(GC) Spanned{
-                       node: ast::StmtExpr(box(GC) ast::Expr {
+                   P(Spanned{
+                       node: ast::StmtExpr(P(ast::Expr {
                            id: ast::DUMMY_NODE_ID,
                            node: ast::ExprPath(ast::Path {
                                span:sp(0,1),
@@ -990,9 +990,9 @@ mod test {
                                 }
                                ),
                             }),
-                           span: sp(0,1)},
+                           span: sp(0,1)}),
                                            ast::DUMMY_NODE_ID),
-                       span: sp(0,1)})
+                       span: sp(0,1)}))
 
     }
 
@@ -1004,14 +1004,14 @@ mod test {
         let sess = new_parse_sess();
         let mut parser = string_to_parser(&sess, "b".to_string());
         assert!(parser.parse_pat()
-                == box(GC) ast::Pat{
+                == P(ast::Pat{
                 id: ast::DUMMY_NODE_ID,
                 node: ast::PatIdent(ast::BindByValue(ast::MutImmutable),
                                     Spanned{ span:sp(0, 1),
                                              node: str_to_ident("b")
                     },
                                     None),
-                span: sp(0,1)});
+                span: sp(0,1)}));
         parser_done(parser);
     }
 
@@ -1020,13 +1020,13 @@ mod test {
         // this test depends on the intern order of "fn" and "int"
         assert!(string_to_item("fn a (b : int) { b; }".to_string()) ==
                   Some(
-                      box(GC) ast::Item{ident:str_to_ident("a"),
+                      P(ast::Item{ident:str_to_ident("a"),
                             attrs:Vec::new(),
                             id: ast::DUMMY_NODE_ID,
-                            node: ast::ItemFn(ast::P(ast::FnDecl {
+                            node: ast::ItemFn(P(ast::FnDecl {
                                 inputs: vec!(ast::Arg{
-                                    ty: ast::P(ast::Ty{id: ast::DUMMY_NODE_ID,
-                                                       node: ast::TyPath(ast::Path{
+                                    ty: P(ast::Ty{id: ast::DUMMY_NODE_ID,
+                                                  node: ast::TyPath(ast::Path{
                                         span:sp(10,13),
                                         global:false,
                                         segments: vec!(
@@ -1040,7 +1040,7 @@ mod test {
                                         }, None, ast::DUMMY_NODE_ID),
                                         span:sp(10,13)
                                     }),
-                                    pat: box(GC) ast::Pat {
+                                    pat: P(ast::Pat {
                                         id: ast::DUMMY_NODE_ID,
                                         node: ast::PatIdent(
                                             ast::BindByValue(ast::MutImmutable),
@@ -1050,12 +1050,12 @@ mod test {
                                                 None
                                                     ),
                                             span: sp(6,7)
-                                        },
+                                    }),
                                         id: ast::DUMMY_NODE_ID
                                     }),
-                                output: ast::P(ast::Ty{id: ast::DUMMY_NODE_ID,
-                                                       node: ast::TyNil,
-                                                       span:sp(15,15)}), // not sure
+                                output: P(ast::Ty{id: ast::DUMMY_NODE_ID,
+                                                  node: ast::TyNil,
+                                                  span:sp(15,15)}), // not sure
                                 cf: ast::Return,
                                 variadic: false
                             }),
@@ -1069,10 +1069,10 @@ mod test {
                                             predicates: Vec::new(),
                                         }
                                     },
-                                    ast::P(ast::Block {
+                                    P(ast::Block {
                                         view_items: Vec::new(),
-                                        stmts: vec!(box(GC) Spanned{
-                                            node: ast::StmtSemi(box(GC) ast::Expr{
+                                        stmts: vec!(P(Spanned{
+                                            node: ast::StmtSemi(P(ast::Expr{
                                                 id: ast::DUMMY_NODE_ID,
                                                 node: ast::ExprPath(
                                                       ast::Path{
@@ -1090,28 +1090,28 @@ mod test {
                                                             }
                                                         ),
                                                       }),
-                                                span: sp(17,18)},
+                                                span: sp(17,18)}),
                                                 ast::DUMMY_NODE_ID),
-                                            span: sp(17,19)}),
+                                            span: sp(17,19)})),
                                         expr: None,
                                         id: ast::DUMMY_NODE_ID,
                                         rules: ast::DefaultBlock, // no idea
                                         span: sp(15,21),
                                     })),
                             vis: ast::Inherited,
-                            span: sp(0,21)}));
+                            span: sp(0,21)})));
     }
 
 
     #[test] fn parse_exprs () {
         // just make sure that they parse....
         string_to_expr("3 + 4".to_string());
-        string_to_expr("a::z.froob(b,box(GC)(987+3))".to_string());
+        string_to_expr("a::z.froob(b,&(987+3))".to_string());
     }
 
     #[test] fn attrs_fix_bug () {
         string_to_item("pub fn mk_file_writer(path: &Path, flags: &[FileFlag])
-                   -> Result<Gc<Writer>, String> {
+                   -> Result<Box<Writer>, String> {
     #[cfg(windows)]
     fn wb() -> c_int {
       (O_WRONLY | libc::consts::os::extra::O_BINARY) as c_int

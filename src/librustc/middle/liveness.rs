@@ -111,7 +111,6 @@ use lint;
 use util::nodemap::NodeMap;
 
 use std::fmt;
-use std::gc::Gc;
 use std::io;
 use std::mem::transmute;
 use std::rc::Rc;
@@ -122,16 +121,16 @@ use syntax::codemap::{BytePos, original_sp, Span};
 use syntax::parse::token::special_idents;
 use syntax::parse::token;
 use syntax::print::pprust::{expr_to_string, block_to_string};
+use syntax::ptr::P;
 use syntax::{visit, ast_util};
 use syntax::visit::{Visitor, FnKind};
 
 /// For use with `propagate_through_loop`.
-#[deriving(PartialEq, Eq)]
-enum LoopKind {
+enum LoopKind<'a> {
     /// An endless `loop` loop.
     LoopLoop,
     /// A `while` loop, with the given expression as condition.
-    WhileLoop(Gc<Expr>),
+    WhileLoop(&'a Expr),
     /// A `for` loop.
     ForLoop,
 }
@@ -189,9 +188,8 @@ impl<'a, 'tcx, 'v> Visitor<'v> for IrMaps<'a, 'tcx> {
     fn visit_arm(&mut self, a: &Arm) { visit_arm(self, a); }
 }
 
-pub fn check_crate(tcx: &ty::ctxt,
-                   krate: &Crate) {
-    visit::walk_crate(&mut IrMaps::new(tcx), krate);
+pub fn check_crate(tcx: &ty::ctxt) {
+    visit::walk_crate(&mut IrMaps::new(tcx), tcx.map.krate());
     tcx.sess.abort_if_errors();
 }
 
@@ -617,25 +615,25 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
     }
 
     fn arm_pats_bindings(&mut self,
-                         pats: &[Gc<Pat>],
+                         pat: Option<&Pat>,
                          f: |&mut Liveness<'a, 'tcx>, LiveNode, Variable, Span, NodeId|) {
-        // only consider the first pattern; any later patterns must have
-        // the same bindings, and we also consider the first pattern to be
-        // the "authoritative" set of ids
-        if !pats.is_empty() {
-            self.pat_bindings(&*pats[0], f)
+        match pat {
+            Some(pat) => {
+                self.pat_bindings(pat, f);
+            }
+            None => {}
         }
     }
 
-    fn define_bindings_in_pat(&mut self, pat: Gc<Pat>, succ: LiveNode)
+    fn define_bindings_in_pat(&mut self, pat: &Pat, succ: LiveNode)
                               -> LiveNode {
-        self.define_bindings_in_arm_pats([pat], succ)
+        self.define_bindings_in_arm_pats(Some(pat), succ)
     }
 
-    fn define_bindings_in_arm_pats(&mut self, pats: &[Gc<Pat>], succ: LiveNode)
+    fn define_bindings_in_arm_pats(&mut self, pat: Option<&Pat>, succ: LiveNode)
                                    -> LiveNode {
         let mut succ = succ;
-        self.arm_pats_bindings(pats, |this, ln, var, _sp, _id| {
+        self.arm_pats_bindings(pat, |this, ln, var, _sp, _id| {
             this.init_from_succ(ln, succ);
             this.define(ln, var);
             succ = ln;
@@ -882,7 +880,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 
     fn propagate_through_block(&mut self, blk: &Block, succ: LiveNode)
                                -> LiveNode {
-        let succ = self.propagate_through_opt_expr(blk.expr, succ);
+        let succ = self.propagate_through_opt_expr(blk.expr.as_ref().map(|e| &**e), succ);
         blk.stmts.iter().rev().fold(succ, |succ, stmt| {
             self.propagate_through_stmt(&**stmt, succ)
         })
@@ -931,11 +929,11 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         // initialization, which is mildly more complex than checking
         // once at the func header but otherwise equivalent.
 
-        let succ = self.propagate_through_opt_expr(local.init, succ);
-        self.define_bindings_in_pat(local.pat, succ)
+        let succ = self.propagate_through_opt_expr(local.init.as_ref().map(|e| &**e), succ);
+        self.define_bindings_in_pat(&*local.pat, succ)
     }
 
-    fn propagate_through_exprs(&mut self, exprs: &[Gc<Expr>], succ: LiveNode)
+    fn propagate_through_exprs(&mut self, exprs: &[P<Expr>], succ: LiveNode)
                                -> LiveNode {
         exprs.iter().rev().fold(succ, |succ, expr| {
             self.propagate_through_expr(&**expr, succ)
@@ -943,7 +941,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
     }
 
     fn propagate_through_opt_expr(&mut self,
-                                  opt_expr: Option<Gc<Expr>>,
+                                  opt_expr: Option<&Expr>,
                                   succ: LiveNode)
                                   -> LiveNode {
         opt_expr.iter().fold(succ, |succ, expr| {
@@ -1014,7 +1012,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             //    v     v
             //   (  succ  )
             //
-            let else_ln = self.propagate_through_opt_expr(els.clone(), succ);
+            let else_ln = self.propagate_through_opt_expr(els.as_ref().map(|e| &**e), succ);
             let then_ln = self.propagate_through_block(&**then, succ);
             let ln = self.live_node(expr.id, expr.span);
             self.init_from_succ(ln, else_ln);
@@ -1023,10 +1021,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
           }
 
           ExprWhile(ref cond, ref blk, _) => {
-            self.propagate_through_loop(expr,
-                                        WhileLoop(cond.clone()),
-                                        &**blk,
-                                        succ)
+            self.propagate_through_loop(expr, WhileLoop(&**cond), &**blk, succ)
           }
 
           ExprForLoop(_, ref head, ref blk, _) => {
@@ -1062,9 +1057,12 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                 let body_succ =
                     self.propagate_through_expr(&*arm.body, succ);
                 let guard_succ =
-                    self.propagate_through_opt_expr(arm.guard, body_succ);
+                    self.propagate_through_opt_expr(arm.guard.as_ref().map(|e| &**e), body_succ);
+                // only consider the first pattern; any later patterns must have
+                // the same bindings, and we also consider the first pattern to be
+                // the "authoritative" set of ids
                 let arm_succ =
-                    self.define_bindings_in_arm_pats(arm.pats.as_slice(),
+                    self.define_bindings_in_arm_pats(arm.pats.as_slice().head().map(|p| &**p),
                                                      guard_succ);
                 self.merge_from_succ(ln, arm_succ, first_merge);
                 first_merge = false;
@@ -1072,10 +1070,10 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             self.propagate_through_expr(&**e, ln)
           }
 
-          ExprRet(o_e) => {
+          ExprRet(ref o_e) => {
             // ignore succ and subst exit_ln:
             let exit_ln = self.s.exit_ln;
-            self.propagate_through_opt_expr(o_e, exit_ln)
+            self.propagate_through_opt_expr(o_e.as_ref().map(|e| &**e), exit_ln)
           }
 
           ExprBreak(opt_label) => {
@@ -1134,7 +1132,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
           }
 
           ExprStruct(_, ref fields, ref with_expr) => {
-            let succ = self.propagate_through_opt_expr(with_expr.clone(), succ);
+            let succ = self.propagate_through_opt_expr(with_expr.as_ref().map(|e| &**e), succ);
             fields.iter().rev().fold(succ, |succ, field| {
                 self.propagate_through_expr(&*field.expr, succ)
             })
@@ -1182,7 +1180,8 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
           ExprIndex(ref l, ref r) |
           ExprBinary(_, ref l, ref r) |
           ExprBox(ref l, ref r) => {
-            self.propagate_through_exprs([l.clone(), r.clone()], succ)
+            let r_succ = self.propagate_through_expr(&**r, succ);
+            self.propagate_through_expr(&**l, r_succ)
           }
 
           ExprAddrOf(_, ref e) |
@@ -1342,12 +1341,15 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         let mut first_merge = true;
         let ln = self.live_node(expr.id, expr.span);
         self.init_empty(ln, succ);
-        if kind != LoopLoop {
-            // If this is not a `loop` loop, then it's possible we bypass
-            // the body altogether. Otherwise, the only way is via a `break`
-            // in the loop body.
-            self.merge_from_succ(ln, succ, first_merge);
-            first_merge = false;
+        match kind {
+            LoopLoop => {}
+            _ => {
+                // If this is not a `loop` loop, then it's possible we bypass
+                // the body altogether. Otherwise, the only way is via a `break`
+                // in the loop body.
+                self.merge_from_succ(ln, succ, first_merge);
+                first_merge = false;
+            }
         }
         debug!("propagate_through_loop: using id for loop body {} {}",
                expr.id, block_to_string(body));
@@ -1413,7 +1415,10 @@ fn check_local(this: &mut Liveness, local: &Local) {
 }
 
 fn check_arm(this: &mut Liveness, arm: &Arm) {
-    this.arm_pats_bindings(arm.pats.as_slice(), |this, ln, var, sp, id| {
+    // only consider the first pattern; any later patterns must have
+    // the same bindings, and we also consider the first pattern to be
+    // the "authoritative" set of ids
+    this.arm_pats_bindings(arm.pats.as_slice().head().map(|p| &**p), |this, ln, var, sp, id| {
         this.warn_about_unused(sp, id, ln, var);
     });
     visit::walk_arm(this, arm);

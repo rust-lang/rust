@@ -22,8 +22,8 @@ use middle::cfg;
 pub type Node<'a> = (cfg::CFGIndex, &'a cfg::CFGNode);
 pub type Edge<'a> = &'a cfg::CFGEdge;
 
-pub struct LabelledCFG<'a>{
-    pub ast_map: &'a ast_map::Map,
+pub struct LabelledCFG<'a, 'ast: 'a> {
+    pub ast_map: &'a ast_map::Map<'ast>,
     pub cfg: &'a cfg::CFG,
     pub name: String,
 }
@@ -49,7 +49,7 @@ fn replace_newline_with_backslash_l(s: String) -> String {
     }
 }
 
-impl<'a> dot::Labeller<'a, Node<'a>, Edge<'a>> for LabelledCFG<'a> {
+impl<'a, 'ast> dot::Labeller<'a, Node<'a>, Edge<'a>> for LabelledCFG<'a, 'ast> {
     fn graph_id(&'a self) -> dot::Id<'a> { dot::Id::new(self.name.as_slice()) }
 
     fn node_id(&'a self, &(i,_): &Node<'a>) -> dot::Id<'a> {
@@ -110,7 +110,7 @@ impl<'a> dot::GraphWalk<'a, Node<'a>, Edge<'a>> for &'a cfg::CFG {
     }
 }
 
-impl<'a> dot::GraphWalk<'a, Node<'a>, Edge<'a>> for LabelledCFG<'a>
+impl<'a, 'ast> dot::GraphWalk<'a, Node<'a>, Edge<'a>> for LabelledCFG<'a, 'ast>
 {
     fn nodes(&self) -> dot::Nodes<'a, Node<'a>> { self.cfg.nodes() }
     fn edges(&self) -> dot::Edges<'a, Edge<'a>> { self.cfg.edges() }

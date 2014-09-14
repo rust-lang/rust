@@ -33,12 +33,12 @@ use middle::ty;
 use util::ppaux::{Repr, ty_to_string};
 
 use std::c_str::ToCStr;
-use std::gc::Gc;
 use std::vec;
 use libc::c_uint;
 use syntax::{ast, ast_util};
+use syntax::ptr::P;
 
-pub fn const_lit(cx: &CrateContext, e: &ast::Expr, lit: ast::Lit)
+pub fn const_lit(cx: &CrateContext, e: &ast::Expr, lit: &ast::Lit)
     -> ValueRef {
     let _icx = push_ctxt("trans_lit");
     debug!("const_lit: {}", lit);
@@ -102,7 +102,7 @@ fn first_two<R, S, T>((a, b, _): (R, S, T)) -> (R, S) {
 }
 
 fn const_vec(cx: &CrateContext, e: &ast::Expr,
-             es: &[Gc<ast::Expr>], is_local: bool) -> (ValueRef, Type, bool) {
+             es: &[P<ast::Expr>], is_local: bool) -> (ValueRef, Type, bool) {
     let vec_ty = ty::expr_ty(cx.tcx(), e);
     let unit_ty = ty::sequence_element_type(cx.tcx(), vec_ty);
     let llunitty = type_of::type_of(cx, unit_ty);
@@ -321,7 +321,7 @@ pub fn const_expr(cx: &CrateContext, e: &ast::Expr, is_local: bool) -> (ValueRef
 // if it's assigned to a static.
 fn const_expr_unadjusted(cx: &CrateContext, e: &ast::Expr,
                          is_local: bool) -> (ValueRef, bool) {
-    let map_list = |exprs: &[Gc<ast::Expr>]| {
+    let map_list = |exprs: &[P<ast::Expr>]| {
         exprs.iter().map(|e| first_two(const_expr(cx, &**e, is_local)))
              .fold((Vec::new(), true),
                    |(l, all_inlineable), (val, inlineable)| {
@@ -332,7 +332,7 @@ fn const_expr_unadjusted(cx: &CrateContext, e: &ast::Expr,
         let _icx = push_ctxt("const_expr");
         return match e.node {
           ast::ExprLit(ref lit) => {
-              (consts::const_lit(cx, e, (**lit).clone()), true)
+              (consts::const_lit(cx, e, &**lit), true)
           }
           ast::ExprBinary(b, ref e1, ref e2) => {
             let (te1, _, _) = const_expr(cx, &**e1, is_local);
@@ -653,7 +653,7 @@ fn const_expr_unadjusted(cx: &CrateContext, e: &ast::Expr,
                 }
             }
           }
-          ast::ExprCall(callee, ref args) => {
+          ast::ExprCall(ref callee, ref args) => {
               let opt_def = cx.tcx().def_map.borrow().find_copy(&callee.id);
               match opt_def {
                   Some(def::DefStruct(_)) => {

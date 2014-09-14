@@ -77,8 +77,7 @@ use middle::trans::type_::Type;
 use syntax::ast;
 use syntax::codemap;
 use syntax::print::pprust::{expr_to_string};
-
-use std::gc::Gc;
+use syntax::ptr::P;
 
 // Destinations
 
@@ -597,7 +596,7 @@ fn trans_datum_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             }
 
         }
-        ast::ExprLit(ref lit) => trans_immediate_lit(bcx, expr, (**lit).clone()),
+        ast::ExprLit(ref lit) => trans_immediate_lit(bcx, expr, &**lit),
         ast::ExprBinary(op, ref lhs, ref rhs) => {
             trans_binary(bcx, expr, op, &**lhs, &**rhs)
         }
@@ -882,8 +881,8 @@ fn trans_rvalue_stmt_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         ast::ExprAgain(label_opt) => {
             controlflow::trans_cont(bcx, expr.id, label_opt)
         }
-        ast::ExprRet(ex) => {
-            controlflow::trans_ret(bcx, ex)
+        ast::ExprRet(ref ex) => {
+            controlflow::trans_ret(bcx, ex.as_ref().map(|e| &**e))
         }
         ast::ExprWhile(ref cond, ref body, _) => {
             controlflow::trans_while(bcx, expr.id, &**cond, &**body)
@@ -891,7 +890,7 @@ fn trans_rvalue_stmt_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         ast::ExprForLoop(ref pat, ref head, ref body, _) => {
             controlflow::trans_for(bcx,
                                    expr_info(expr),
-                                   *pat,
+                                   &**pat,
                                    &**head,
                                    &**body)
         }
@@ -928,7 +927,7 @@ fn trans_rvalue_stmt_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             }
         }
         ast::ExprAssignOp(op, ref dst, ref src) => {
-            trans_assign_op(bcx, expr, op, &**dst, src.clone())
+            trans_assign_op(bcx, expr, op, &**dst, &**src)
         }
         ast::ExprInlineAsm(ref a) => {
             asm::trans_inline_asm(bcx, a)
@@ -958,8 +957,8 @@ fn trans_rvalue_dps_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         ast::ExprPath(_) => {
             trans_def_dps_unadjusted(bcx, expr, bcx.def(expr.id), dest)
         }
-        ast::ExprIf(ref cond, ref thn, els) => {
-            controlflow::trans_if(bcx, expr.id, &**cond, thn.clone(), els, dest)
+        ast::ExprIf(ref cond, ref thn, ref els) => {
+            controlflow::trans_if(bcx, expr.id, &**cond, &**thn, els.as_ref().map(|e| &**e), dest)
         }
         ast::ExprMatch(ref discr, ref arms) => {
             _match::trans_match(bcx, expr, &**discr, arms.as_slice(), dest)
@@ -967,20 +966,20 @@ fn trans_rvalue_dps_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         ast::ExprBlock(ref blk) => {
             controlflow::trans_block(bcx, &**blk, dest)
         }
-        ast::ExprStruct(_, ref fields, base) => {
+        ast::ExprStruct(_, ref fields, ref base) => {
             trans_struct(bcx,
                          fields.as_slice(),
-                         base,
+                         base.as_ref().map(|e| &**e),
                          expr.span,
                          expr.id,
                          dest)
         }
         ast::ExprTup(ref args) => {
-            let numbered_fields: Vec<(uint, Gc<ast::Expr>)> =
-                args.iter().enumerate().map(|(i, arg)| (i, *arg)).collect();
+            let numbered_fields: Vec<(uint, &ast::Expr)> =
+                args.iter().enumerate().map(|(i, arg)| (i, &**arg)).collect();
             trans_adt(bcx, expr_ty(bcx, expr), 0, numbered_fields.as_slice(), None, dest)
         }
-        ast::ExprLit(lit) => {
+        ast::ExprLit(ref lit) => {
             match lit.node {
                 ast::LitStr(ref s, _) => {
                     tvec::trans_lit_str(bcx, expr, (*s).clone(), dest)
@@ -1005,14 +1004,14 @@ fn trans_rvalue_dps_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                    expr_to_string(expr), expr_ty.repr(tcx));
             closure::trans_expr_fn(bcx, store, &**decl, &**body, expr.id, dest)
         }
-        ast::ExprUnboxedFn(_, _, decl, body) => {
-            closure::trans_unboxed_closure(bcx, &*decl, &*body, expr.id, dest)
+        ast::ExprUnboxedFn(_, _, ref decl, ref body) => {
+            closure::trans_unboxed_closure(bcx, &**decl, &**body, expr.id, dest)
         }
         ast::ExprCall(ref f, ref args) => {
             if bcx.tcx().is_method_call(expr.id) {
                 trans_overloaded_call(bcx,
                                       expr,
-                                      *f,
+                                      &**f,
                                       args.as_slice(),
                                       Some(dest))
             } else {
@@ -1061,7 +1060,7 @@ fn trans_rvalue_dps_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             }
         }
         ast::ExprAssignOp(op, ref dst, ref src) => {
-            trans_assign_op(bcx, expr, op, &**dst, src.clone())
+            trans_assign_op(bcx, expr, op, &**dst, &**src)
         }
         _ => {
             bcx.tcx().sess.span_bug(
@@ -1263,7 +1262,7 @@ pub fn with_field_tys<R>(tcx: &ty::ctxt,
 
 fn trans_struct<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                             fields: &[ast::Field],
-                            base: Option<Gc<ast::Expr>>,
+                       base: Option<&ast::Expr>,
                             expr_span: codemap::Span,
                             id: ast::NodeId,
                             dest: Dest) -> Block<'blk, 'tcx> {
@@ -1281,7 +1280,7 @@ fn trans_struct<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             match opt_pos {
                 Some(i) => {
                     *need_base.get_mut(i) = false;
-                    (i, field.expr)
+                    (i, &*field.expr)
                 }
                 None => {
                     tcx.sess.span_bug(field.span,
@@ -1320,11 +1319,12 @@ fn trans_struct<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
  * Note that `fields` may be empty; the base expression must always be
  * evaluated for side-effects.
  */
-pub struct StructBaseInfo {
+pub struct StructBaseInfo<'a> {
     /// The base expression; will be evaluated after all explicit fields.
-    expr: Gc<ast::Expr>,
+    expr: &'a ast::Expr,
     /// The indices of fields to copy paired with their types.
-    fields: Vec<(uint, ty::t)> }
+    fields: Vec<(uint, ty::t)>
+}
 
 /**
  * Constructs an ADT instance:
@@ -1339,7 +1339,7 @@ pub struct StructBaseInfo {
 pub fn trans_adt<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                              ty: ty::t,
                              discr: ty::Disr,
-                             fields: &[(uint, Gc<ast::Expr>)],
+                             fields: &[(uint, &ast::Expr)],
                              optbase: Option<StructBaseInfo>,
                              dest: Dest) -> Block<'blk, 'tcx> {
     let _icx = push_ctxt("trans_adt");
@@ -1407,7 +1407,7 @@ pub fn trans_adt<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
 
 fn trans_immediate_lit<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                    expr: &ast::Expr,
-                                   lit: ast::Lit)
+                                   lit: &ast::Lit)
                                    -> DatumBlock<'blk, 'tcx, Expr> {
     // must not be a string constant, that is a RvalueDpsExpr
     let _icx = push_ctxt("trans_immediate_lit");
@@ -1750,12 +1750,12 @@ fn trans_overloaded_op<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                              dest)
 }
 
-fn trans_overloaded_call<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
-                                     expr: &ast::Expr,
-                                     callee: Gc<ast::Expr>,
-                                     args: &[Gc<ast::Expr>],
-                                     dest: Option<Dest>)
-                                     -> Block<'blk, 'tcx> {
+fn trans_overloaded_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
+                                         expr: &ast::Expr,
+                                         callee: &'a ast::Expr,
+                                         args: &'a [P<ast::Expr>],
+                                         dest: Option<Dest>)
+                                         -> Block<'blk, 'tcx> {
     let method_call = MethodCall::expr(expr.id);
     let method_type = bcx.tcx()
                          .method_map
@@ -1763,7 +1763,7 @@ fn trans_overloaded_call<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                          .get(&method_call)
                          .ty;
     let mut all_args = vec!(callee);
-    all_args.push_all(args);
+    all_args.extend(args.iter().map(|e| &**e));
     unpack_result!(bcx,
                    callee::trans_call_inner(bcx,
                                             Some(expr_info(expr)),
@@ -1776,8 +1776,7 @@ fn trans_overloaded_call<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                                                     None,
                                                     arg_cleanup_scope)
                                             },
-                                            callee::ArgOverloadedCall(
-                                                all_args.as_slice()),
+                                            callee::ArgOverloadedCall(all_args),
                                             dest));
     bcx
 }
@@ -1957,7 +1956,7 @@ fn trans_assign_op<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                expr: &ast::Expr,
                                op: ast::BinOp,
                                dst: &ast::Expr,
-                               src: Gc<ast::Expr>)
+                               src: &ast::Expr)
                                -> Block<'blk, 'tcx> {
     let _icx = push_ctxt("trans_assign_op");
     let mut bcx = bcx;

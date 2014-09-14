@@ -91,13 +91,13 @@ pub fn parse_pretty(sess: &Session, name: &str) -> (PpMode, Option<UserIdentifie
 
 impl PpSourceMode {
     /// Constructs a `PrinterSupport` object and passes it to `f`.
-    fn call_with_pp_support<A,B>(&self,
-                                 sess: Session,
-                                 krate: &ast::Crate,
-                                 ast_map: Option<ast_map::Map>,
-                                 id: String,
-                                 payload: B,
-                                 f: |&PrinterSupport, B| -> A) -> A {
+    fn call_with_pp_support<'tcx, A, B>(&self,
+                                        sess: Session,
+                                        ast_map: Option<ast_map::Map<'tcx>>,
+                                        type_arena: &'tcx TypedArena<ty::t_box_>,
+                                        id: String,
+                                        payload: B,
+                                        f: |&PrinterSupport, B| -> A) -> A {
         match *self {
             PpmNormal | PpmExpanded => {
                 let annotation = NoAnn { sess: sess, ast_map: ast_map };
@@ -114,9 +114,8 @@ impl PpSourceMode {
             }
             PpmTyped => {
                 let ast_map = ast_map.expect("--pretty=typed missing ast_map");
-                let type_arena = TypedArena::new();
-                let analysis = driver::phase_3_run_analysis_passes(sess, krate, ast_map,
-                                                                   &type_arena, id);
+                let analysis = driver::phase_3_run_analysis_passes(sess, ast_map,
+                                                                   type_arena, id);
                 let annotation = TypedAnnotation { analysis: analysis };
                 f(&annotation, payload)
             }
@@ -124,69 +123,51 @@ impl PpSourceMode {
     }
 }
 
-trait SessionCarrier {
+trait PrinterSupport<'ast>: pprust::PpAnn {
     /// Provides a uniform interface for re-extracting a reference to a
     /// `Session` from a value that now owns it.
     fn sess<'a>(&'a self) -> &'a Session;
-}
 
-trait AstMapCarrier {
     /// Provides a uniform interface for re-extracting a reference to an
     /// `ast_map::Map` from a value that now owns it.
-    fn ast_map<'a>(&'a self) -> Option<&'a ast_map::Map>;
-}
+    fn ast_map<'a>(&'a self) -> Option<&'a ast_map::Map<'ast>>;
 
-trait PrinterSupport : SessionCarrier + AstMapCarrier {
     /// Produces the pretty-print annotation object.
-    ///
-    /// Usually implemented via `self as &pprust::PpAnn`.
     ///
     /// (Rust does not yet support upcasting from a trait object to
     /// an object for one of its super-traits.)
-    fn pp_ann<'a>(&'a self) -> &'a pprust::PpAnn;
-}
-
-struct NoAnn {
-    sess: Session,
-    ast_map: Option<ast_map::Map>,
-}
-
-impl PrinterSupport for NoAnn {
     fn pp_ann<'a>(&'a self) -> &'a pprust::PpAnn { self as &pprust::PpAnn }
 }
 
-impl SessionCarrier for NoAnn {
-    fn sess<'a>(&'a self) -> &'a Session { &self.sess }
+struct NoAnn<'ast> {
+    sess: Session,
+    ast_map: Option<ast_map::Map<'ast>>
 }
 
-impl AstMapCarrier for NoAnn {
-    fn ast_map<'a>(&'a self) -> Option<&'a ast_map::Map> {
+impl<'ast> PrinterSupport<'ast> for NoAnn<'ast> {
+    fn sess<'a>(&'a self) -> &'a Session { &self.sess }
+
+    fn ast_map<'a>(&'a self) -> Option<&'a ast_map::Map<'ast>> {
         self.ast_map.as_ref()
     }
 }
 
-impl pprust::PpAnn for NoAnn {}
+impl<'ast> pprust::PpAnn for NoAnn<'ast> {}
 
-struct IdentifiedAnnotation {
+struct IdentifiedAnnotation<'ast> {
     sess: Session,
-    ast_map: Option<ast_map::Map>,
+    ast_map: Option<ast_map::Map<'ast>>,
 }
 
-impl PrinterSupport for IdentifiedAnnotation {
-    fn pp_ann<'a>(&'a self) -> &'a pprust::PpAnn { self as &pprust::PpAnn }
-}
-
-impl SessionCarrier for IdentifiedAnnotation {
+impl<'ast> PrinterSupport<'ast> for IdentifiedAnnotation<'ast> {
     fn sess<'a>(&'a self) -> &'a Session { &self.sess }
-}
 
-impl AstMapCarrier for IdentifiedAnnotation {
-    fn ast_map<'a>(&'a self) -> Option<&'a ast_map::Map> {
+    fn ast_map<'a>(&'a self) -> Option<&'a ast_map::Map<'ast>> {
         self.ast_map.as_ref()
     }
 }
 
-impl pprust::PpAnn for IdentifiedAnnotation {
+impl<'ast> pprust::PpAnn for IdentifiedAnnotation<'ast> {
     fn pre(&self,
            s: &mut pprust::State,
            node: pprust::AnnNode) -> io::IoResult<()> {
@@ -222,26 +203,20 @@ impl pprust::PpAnn for IdentifiedAnnotation {
     }
 }
 
-struct HygieneAnnotation {
+struct HygieneAnnotation<'ast> {
     sess: Session,
-    ast_map: Option<ast_map::Map>,
+    ast_map: Option<ast_map::Map<'ast>>,
 }
 
-impl PrinterSupport for HygieneAnnotation {
-    fn pp_ann<'a>(&'a self) -> &'a pprust::PpAnn { self as &pprust::PpAnn }
-}
-
-impl SessionCarrier for HygieneAnnotation {
+impl<'ast> PrinterSupport<'ast> for HygieneAnnotation<'ast> {
     fn sess<'a>(&'a self) -> &'a Session { &self.sess }
-}
 
-impl AstMapCarrier for HygieneAnnotation {
-    fn ast_map<'a>(&'a self) -> Option<&'a ast_map::Map> {
+    fn ast_map<'a>(&'a self) -> Option<&'a ast_map::Map<'ast>> {
         self.ast_map.as_ref()
     }
 }
 
-impl pprust::PpAnn for HygieneAnnotation {
+impl<'ast> pprust::PpAnn for HygieneAnnotation<'ast> {
     fn post(&self,
             s: &mut pprust::State,
             node: pprust::AnnNode) -> io::IoResult<()> {
@@ -266,16 +241,10 @@ struct TypedAnnotation<'tcx> {
     analysis: CrateAnalysis<'tcx>,
 }
 
-impl<'tcx> PrinterSupport for TypedAnnotation<'tcx> {
-    fn pp_ann<'a>(&'a self) -> &'a pprust::PpAnn { self as &pprust::PpAnn }
-}
-
-impl<'tcx> SessionCarrier for TypedAnnotation<'tcx> {
+impl<'tcx> PrinterSupport<'tcx> for TypedAnnotation<'tcx> {
     fn sess<'a>(&'a self) -> &'a Session { &self.analysis.ty_cx.sess }
-}
 
-impl<'tcx> AstMapCarrier for TypedAnnotation<'tcx> {
-    fn ast_map<'a>(&'a self) -> Option<&'a ast_map::Map> {
+    fn ast_map<'a>(&'a self) -> Option<&'a ast_map::Map<'tcx>> {
         Some(&self.analysis.ty_cx.map)
     }
 }
@@ -347,12 +316,12 @@ impl FromStr for UserIdentifiedItem {
     }
 }
 
-enum NodesMatchingUII<'a> {
+enum NodesMatchingUII<'a, 'ast: 'a> {
     NodesMatchingDirect(option::Item<ast::NodeId>),
-    NodesMatchingSuffix(ast_map::NodesMatchingSuffix<'a, String>),
+    NodesMatchingSuffix(ast_map::NodesMatchingSuffix<'a, 'ast, String>),
 }
 
-impl<'a> Iterator<ast::NodeId> for NodesMatchingUII<'a> {
+impl<'a, 'ast> Iterator<ast::NodeId> for NodesMatchingUII<'a, 'ast> {
     fn next(&mut self) -> Option<ast::NodeId> {
         match self {
             &NodesMatchingDirect(ref mut iter) => iter.next(),
@@ -369,7 +338,8 @@ impl UserIdentifiedItem {
         }
     }
 
-    fn all_matching_node_ids<'a>(&'a self, map: &'a ast_map::Map) -> NodesMatchingUII<'a> {
+    fn all_matching_node_ids<'a, 'ast>(&'a self, map: &'a ast_map::Map<'ast>)
+                                       -> NodesMatchingUII<'a, 'ast> {
         match *self {
             ItemViaNode(node_id) =>
                 NodesMatchingDirect(Some(node_id).move_iter()),
@@ -443,15 +413,24 @@ pub fn pretty_print_input(sess: Session,
     let id = link::find_crate_name(Some(&sess), krate.attrs.as_slice(), input);
 
     let is_expanded = needs_expansion(&ppm);
-    let (krate, ast_map) = if needs_ast_map(&ppm, &opt_uii) {
-        let k = driver::phase_2_configure_and_expand(&sess, krate, id.as_slice(), None);
-        let (krate, ast_map) = match k {
+    let compute_ast_map = needs_ast_map(&ppm, &opt_uii);
+    let krate = if compute_ast_map {
+        match driver::phase_2_configure_and_expand(&sess, krate, id.as_slice(), None) {
             None => return,
-            Some(p) => p,
-        };
-        (krate, Some(ast_map))
+            Some(k) => k
+        }
     } else {
-        (krate, None)
+        krate
+    };
+
+    let mut forest = ast_map::Forest::new(krate);
+    let type_arena = TypedArena::new();
+
+    let (krate, ast_map) = if compute_ast_map {
+        let map = driver::assign_node_ids_and_map(&sess, &mut forest);
+        (map.krate(), Some(map))
+    } else {
+        (forest.krate(), None)
     };
 
     let src_name = driver::source_name(input);
@@ -476,12 +455,12 @@ pub fn pretty_print_input(sess: Session,
     match (ppm, opt_uii) {
         (PpmSource(s), None) =>
             s.call_with_pp_support(
-                sess, &krate, ast_map, id, out, |annotation, out| {
+                sess, ast_map, &type_arena, id, out, |annotation, out| {
                     debug!("pretty printing source code {}", s);
                     let sess = annotation.sess();
                     pprust::print_crate(sess.codemap(),
                                         sess.diagnostic(),
-                                        &krate,
+                                        krate,
                                         src_name.to_string(),
                                         &mut rdr,
                                         out,
@@ -491,7 +470,7 @@ pub fn pretty_print_input(sess: Session,
 
         (PpmSource(s), Some(uii)) =>
             s.call_with_pp_support(
-                sess, &krate, ast_map, id, (out,uii), |annotation, (out,uii)| {
+                sess, ast_map, &type_arena, id, (out,uii), |annotation, (out,uii)| {
                     debug!("pretty printing source code {}", s);
                     let sess = annotation.sess();
                     let ast_map = annotation.ast_map()
@@ -533,9 +512,8 @@ pub fn pretty_print_input(sess: Session,
             match code {
                 Some(code) => {
                     let variants = gather_flowgraph_variants(&sess);
-                    let type_arena = TypedArena::new();
-                    let analysis = driver::phase_3_run_analysis_passes(sess, &krate,
-                                                                       ast_map, &type_arena, id);
+                    let analysis = driver::phase_3_run_analysis_passes(sess, ast_map,
+                                                                       &type_arena, id);
                     print_flowgraph(variants, analysis, code, out)
                 }
                 None => {

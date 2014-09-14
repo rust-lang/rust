@@ -21,10 +21,10 @@ use syntax::owned_slice::OwnedSlice;
 use syntax::parse::token::InternedString;
 use syntax::parse::token::special_idents;
 use syntax::parse::token;
+use syntax::ptr::P;
 use syntax::util::small_vector::SmallVector;
 
 use std::mem;
-use std::gc::{Gc, GC};
 
 pub fn maybe_inject_crates_ref(sess: &Session, krate: ast::Crate)
                                -> ast::Crate {
@@ -149,7 +149,6 @@ impl<'a> fold::Folder for PreludeInjector<'a> {
         if !no_prelude(krate.attrs.as_slice()) {
             // only add `use std::prelude::*;` if there wasn't a
             // `#![no_implicit_prelude]` at the crate level.
-
             // fold_mod() will insert glob path.
             let globs_attr = attr::mk_attr_inner(attr::mk_attr_id(),
                                                  attr::mk_list_item(
@@ -161,23 +160,23 @@ impl<'a> fold::Folder for PreludeInjector<'a> {
             attr::mark_used(&globs_attr);
             krate.attrs.push(globs_attr);
 
-            krate.module = self.fold_mod(&krate.module);
+            krate.module = self.fold_mod(krate.module);
         }
         krate
     }
 
-    fn fold_item(&mut self, item: Gc<ast::Item>) -> SmallVector<Gc<ast::Item>> {
+    fn fold_item(&mut self, item: P<ast::Item>) -> SmallVector<P<ast::Item>> {
         if !no_prelude(item.attrs.as_slice()) {
             // only recur if there wasn't `#![no_implicit_prelude]`
             // on this item, i.e. this means that the prelude is not
             // implicitly imported though the whole subtree
-            fold::noop_fold_item(&*item, self)
+            fold::noop_fold_item(item, self)
         } else {
             SmallVector::one(item)
         }
     }
 
-    fn fold_mod(&mut self, module: &ast::Mod) -> ast::Mod {
+    fn fold_mod(&mut self, ast::Mod {inner, view_items, items}: ast::Mod) -> ast::Mod {
         let prelude_path = ast::Path {
             span: DUMMY_SP,
             global: false,
@@ -194,44 +193,41 @@ impl<'a> fold::Folder for PreludeInjector<'a> {
                 }),
         };
 
-        let vp = box(GC) codemap::dummy_spanned(ast::ViewPathGlob(prelude_path,
-                                                                  ast::DUMMY_NODE_ID));
-        let vi2 = ast::ViewItem {
-            node: ast::ViewItemUse(vp),
-            attrs: vec!(ast::Attribute {
-                span: DUMMY_SP,
-                node: ast::Attribute_ {
-                    id: attr::mk_attr_id(),
-                    style: ast::AttrOuter,
-                    value: box(GC) ast::MetaItem {
-                        span: DUMMY_SP,
-                        node: ast::MetaWord(token::get_name(
-                                special_idents::prelude_import.name)),
-                    },
-                    is_sugared_doc: false,
-                },
-            }),
-            vis: ast::Inherited,
-            span: DUMMY_SP,
-        };
-
-        let (crates, uses) = module.view_items.partitioned(|x| {
+        let (crates, uses) = view_items.partitioned(|x| {
             match x.node {
                 ast::ViewItemExternCrate(..) => true,
                 _ => false,
             }
         });
 
-        // add vi2 after any `extern crate` but before any `use`
+        // add prelude after any `extern crate` but before any `use`
         let mut view_items = crates;
-        view_items.push(vi2);
+        let vp = P(codemap::dummy_spanned(ast::ViewPathGlob(prelude_path, ast::DUMMY_NODE_ID)));
+        view_items.push(ast::ViewItem {
+            node: ast::ViewItemUse(vp),
+            attrs: vec![ast::Attribute {
+                span: DUMMY_SP,
+                node: ast::Attribute_ {
+                    id: attr::mk_attr_id(),
+                    style: ast::AttrOuter,
+                    value: P(ast::MetaItem {
+                        span: DUMMY_SP,
+                        node: ast::MetaWord(token::get_name(
+                                special_idents::prelude_import.name)),
+                    }),
+                    is_sugared_doc: false,
+                },
+            }],
+            vis: ast::Inherited,
+            span: DUMMY_SP,
+        });
         view_items.push_all_move(uses);
 
-        let new_module = ast::Mod {
+        fold::noop_fold_mod(ast::Mod {
+            inner: inner,
             view_items: view_items,
-            ..(*module).clone()
-        };
-        fold::noop_fold_mod(&new_module, self)
+            items: items
+        }, self)
     }
 }
 

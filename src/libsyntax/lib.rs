@@ -27,6 +27,7 @@
 #![feature(quote, struct_variant, unsafe_destructor, import_shadowing)]
 #![allow(deprecated)]
 
+extern crate arena;
 extern crate fmt_macros;
 extern crate debug;
 #[phase(plugin, link)] extern crate log;
@@ -63,6 +64,7 @@ pub mod diagnostic;
 pub mod fold;
 pub mod owned_slice;
 pub mod parse;
+pub mod ptr;
 pub mod visit;
 
 pub mod print {

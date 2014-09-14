@@ -33,6 +33,7 @@ use syntax::parse::token;
 use driver::session::Session;
 
 use std::cell::Cell;
+use std::slice;
 
 /// This is a list of all known features since the beginning of time. This list
 /// can never shrink, it may only be expanded (in order to prevent old programs
@@ -220,7 +221,7 @@ impl<'a, 'v> Visitor<'v> for Context<'a> {
                 }
             }
 
-            ast::ItemStruct(struct_definition, _) => {
+            ast::ItemStruct(ref struct_definition, _) => {
                 if attr::contains_name(i.attrs.as_slice(), "simd") {
                     self.gate_feature("simd", i.span,
                                       "SIMD types are experimental and possibly buggy");
@@ -310,7 +311,7 @@ impl<'a, 'v> Visitor<'v> for Context<'a> {
 
     fn visit_ty(&mut self, t: &ast::Ty) {
         match t.node {
-            ast::TyClosure(closure) if closure.onceness == ast::Once => {
+            ast::TyClosure(ref closure) if closure.onceness == ast::Once => {
                 self.gate_feature("once_fns", t.span,
                                   "once functions are \
                                    experimental and likely to be removed");
@@ -352,7 +353,7 @@ impl<'a, 'v> Visitor<'v> for Context<'a> {
     fn visit_generics(&mut self, generics: &ast::Generics) {
         for type_parameter in generics.ty_params.iter() {
             match type_parameter.default {
-                Some(ty) => {
+                Some(ref ty) => {
                     self.gate_feature("default_type_params", ty.span,
                                       "default type parameters are \
                                        experimental and possibly buggy");
@@ -364,7 +365,7 @@ impl<'a, 'v> Visitor<'v> for Context<'a> {
     }
 
     fn visit_attribute(&mut self, attr: &ast::Attribute) {
-        if attr::contains_name([*attr], "lang") {
+        if attr::contains_name(slice::ref_slice(attr), "lang") {
             self.gate_feature("lang_items",
                               attr.span,
                               "language items are subject to change");
@@ -420,7 +421,7 @@ pub fn check_crate(sess: &Session, krate: &ast::Crate) {
                                           expected #![feature(...)]");
             }
             Some(list) => {
-                for &mi in list.iter() {
+                for mi in list.iter() {
                     let name = match mi.node {
                         ast::MetaWord(ref word) => (*word).clone(),
                         _ => {

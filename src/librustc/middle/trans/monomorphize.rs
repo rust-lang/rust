@@ -221,13 +221,13 @@ pub fn monomorphic_fn(ccx: &CrateContext,
         }
         ast_map::NodeImplItem(ii) => {
             match *ii {
-                ast::MethodImplItem(mth) => {
+                ast::MethodImplItem(ref mth) => {
                     let d = mk_lldecl(abi::Rust);
                     let needs_body = setup_lldecl(d, mth.attrs.as_slice());
                     if needs_body {
                         trans_fn(ccx,
-                                 &*mth.pe_fn_decl(),
-                                 &*mth.pe_body(),
+                                 mth.pe_fn_decl(),
+                                 mth.pe_body(),
                                  d,
                                  &psubsts,
                                  mth.id,
@@ -239,11 +239,11 @@ pub fn monomorphic_fn(ccx: &CrateContext,
         }
         ast_map::NodeTraitItem(method) => {
             match *method {
-                ast::ProvidedMethod(mth) => {
+                ast::ProvidedMethod(ref mth) => {
                     let d = mk_lldecl(abi::Rust);
                     let needs_body = setup_lldecl(d, mth.attrs.as_slice());
                     if needs_body {
-                        trans_fn(ccx, &*mth.pe_fn_decl(), &*mth.pe_body(), d,
+                        trans_fn(ccx, mth.pe_fn_decl(), mth.pe_body(), d,
                                  &psubsts, mth.id, []);
                     }
                     d

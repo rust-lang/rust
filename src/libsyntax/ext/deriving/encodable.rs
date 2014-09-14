@@ -86,14 +86,13 @@ use ext::build::AstBuilder;
 use ext::deriving::generic::*;
 use ext::deriving::generic::ty::*;
 use parse::token;
-
-use std::gc::Gc;
+use ptr::P;
 
 pub fn expand_deriving_encodable(cx: &mut ExtCtxt,
                                  span: Span,
-                                 mitem: Gc<MetaItem>,
-                                 item: Gc<Item>,
-                                 push: |Gc<Item>|) {
+                                 mitem: &MetaItem,
+                                 item: &Item,
+                                 push: |P<Item>|) {
     let trait_def = TraitDef {
         span: span,
         attributes: Vec::new(),
@@ -131,8 +130,8 @@ pub fn expand_deriving_encodable(cx: &mut ExtCtxt,
 }
 
 fn encodable_substructure(cx: &mut ExtCtxt, trait_span: Span,
-                          substr: &Substructure) -> Gc<Expr> {
-    let encoder = substr.nonself_args[0];
+                          substr: &Substructure) -> P<Expr> {
+    let encoder = substr.nonself_args[0].clone();
     // throw an underscore in front to suppress unused variable warnings
     let blkarg = cx.ident_of("_e");
     let blkencoder = cx.expr_ident(trait_span, blkarg);
@@ -145,7 +144,7 @@ fn encodable_substructure(cx: &mut ExtCtxt, trait_span: Span,
             let last = fields.len() - 1;
             for (i, &FieldInfo {
                     name,
-                    self_,
+                    ref self_,
                     span,
                     ..
                 }) in fields.iter().enumerate() {
@@ -156,9 +155,10 @@ fn encodable_substructure(cx: &mut ExtCtxt, trait_span: Span,
                                                             i).as_slice())
                     }
                 };
-                let enc = cx.expr_method_call(span, self_, encode, vec!(blkencoder));
+                let enc = cx.expr_method_call(span, self_.clone(),
+                                              encode, vec!(blkencoder.clone()));
                 let lambda = cx.lambda_expr_1(span, enc, blkarg);
-                let call = cx.expr_method_call(span, blkencoder,
+                let call = cx.expr_method_call(span, blkencoder.clone(),
                                                emit_struct_field,
                                                vec!(cx.expr_str(span, name),
                                                  cx.expr_uint(span, i),
@@ -202,10 +202,11 @@ fn encodable_substructure(cx: &mut ExtCtxt, trait_span: Span,
             let emit_variant_arg = cx.ident_of("emit_enum_variant_arg");
             let mut stmts = Vec::new();
             let last = fields.len() - 1;
-            for (i, &FieldInfo { self_, span, .. }) in fields.iter().enumerate() {
-                let enc = cx.expr_method_call(span, self_, encode, vec!(blkencoder));
+            for (i, &FieldInfo { ref self_, span, .. }) in fields.iter().enumerate() {
+                let enc = cx.expr_method_call(span, self_.clone(),
+                                              encode, vec!(blkencoder.clone()));
                 let lambda = cx.lambda_expr_1(span, enc, blkarg);
-                let call = cx.expr_method_call(span, blkencoder,
+                let call = cx.expr_method_call(span, blkencoder.clone(),
                                                emit_variant_arg,
                                                vec!(cx.expr_uint(span, i),
                                                  lambda));

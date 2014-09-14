@@ -61,38 +61,42 @@ pub fn expand_option_env<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[ast::TokenT
 
 pub fn expand_env<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
                        -> Box<base::MacResult+'cx> {
-    let exprs = match get_exprs_from_tts(cx, sp, tts) {
+    let mut exprs = match get_exprs_from_tts(cx, sp, tts) {
         Some(ref exprs) if exprs.len() == 0 => {
             cx.span_err(sp, "env! takes 1 or 2 arguments");
             return DummyResult::expr(sp);
         }
         None => return DummyResult::expr(sp),
-        Some(exprs) => exprs
+        Some(exprs) => exprs.move_iter()
     };
 
     let var = match expr_to_string(cx,
-                                *exprs.get(0),
+                                exprs.next().unwrap(),
                                 "expected string literal") {
         None => return DummyResult::expr(sp),
         Some((v, _style)) => v
     };
-    let msg = match exprs.len() {
-        1 => {
+    let msg = match exprs.next() {
+        None => {
             token::intern_and_get_ident(format!("environment variable `{}` \
                                                  not defined",
                                                 var).as_slice())
         }
-        2 => {
-            match expr_to_string(cx, *exprs.get(1), "expected string literal") {
+        Some(second) => {
+            match expr_to_string(cx, second, "expected string literal") {
                 None => return DummyResult::expr(sp),
                 Some((s, _style)) => s
             }
         }
-        _ => {
+    };
+
+    match exprs.next() {
+        None => {}
+        Some(_) => {
             cx.span_err(sp, "env! takes 1 or 2 arguments");
             return DummyResult::expr(sp);
         }
-    };
+    }
 
     let e = match os::getenv(var.get()) {
         None => {
