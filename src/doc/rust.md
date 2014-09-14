@@ -1922,6 +1922,11 @@ type int8_t = i8;
   static may change depending on the current thread. The exact consequences of
   this are implementation-defined.
 
+### Implementation-only attributes
+
+- `no_default_methods` - force this implementation to implement all methods
+  in the trait so that default methods are not used.
+
 ### FFI attributes
 
 On an `extern` block, the following attributes are interpreted:

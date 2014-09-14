@@ -35,11 +35,12 @@ use util::nodemap::NodeSet;
 use lint::{Context, LintPass, LintArray};
 
 use std::cmp;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::{i8, i16, i32, i64, u8, u16, u32, u64, f32, f64};
 use std::gc::Gc;
 use syntax::abi;
 use syntax::ast_map;
+use syntax::ast_util::PostExpansionMethod;
 use syntax::attr::AttrMetaMethods;
 use syntax::attr;
 use syntax::codemap::Span;
@@ -1424,6 +1425,41 @@ impl LintPass for MissingDoc {
     fn check_variant(&mut self, cx: &Context, v: &ast::Variant, _: &ast::Generics) {
         self.check_missing_doc_attrs(cx, Some(v.node.id), v.node.attrs.as_slice(),
                                      v.span, "a variant");
+    }
+}
+
+declare_lint!(MISSING_OVERRIDE, Warn,
+              "detects missing override methods")
+
+pub struct MissingOverride;
+
+impl LintPass for MissingOverride {
+    fn get_lints(&self) -> LintArray {
+        lint_array!(MISSING_OVERRIDE)
+    }
+
+    fn check_item(&mut self, cx: &Context, item: &ast::Item) {
+        match item.node {
+            ast::ItemImpl(_, Some(ref ast_trait_ref), _, ref impl_methods) => {
+                let attr = match item.attrs.iter().find(|a| a.check_name("no_default_methods")) {
+                    Some(attr) => attr,
+                    None => return
+                };
+                let trait_ref = ty::node_id_to_trait_ref(cx.tcx, ast_trait_ref.ref_id);
+                let trait_methods = ty::trait_methods(cx.tcx, trait_ref.def_id);
+                let impl_set: HashSet<ast::Name> =
+                    impl_methods.iter().map(|m| { m.pe_ident().name }).collect();
+                let missing: Vec<String> = trait_methods.iter()
+                    .filter(|m| !impl_set.contains(&m.ident.name))
+                    .map(|m| format!("`{}`", token::get_name(m.ident.name))).collect();
+                if !missing.is_empty() {
+                    let msg = format!("some default methods are not overridden: {}",
+                                      missing.connect(", "));
+                    cx.span_lint(MISSING_OVERRIDE, attr.span, msg.as_slice());
+                }
+            }
+            _ => ()
+        }
     }
 }
 
