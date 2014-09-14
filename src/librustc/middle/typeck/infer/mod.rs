@@ -360,6 +360,17 @@ pub fn can_mk_subty(cx: &InferCtxt, a: ty::t, b: ty::t) -> ures {
     }).to_ures()
 }
 
+pub fn can_mk_eqty(cx: &InferCtxt, a: ty::t, b: ty::t) -> ures {
+    debug!("can_mk_subty({} <: {})", a.repr(cx.tcx), b.repr(cx.tcx));
+    cx.probe(|| {
+        let trace = TypeTrace {
+            origin: Misc(codemap::DUMMY_SP),
+            values: Types(expected_found(true, a, b))
+        };
+        cx.equate(true, trace).tys(a, b)
+    }).to_ures()
+}
+
 pub fn mk_subr(cx: &InferCtxt,
                origin: SubregionOrigin,
                a: ty::Region,
