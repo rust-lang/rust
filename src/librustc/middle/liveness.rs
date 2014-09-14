@@ -459,7 +459,7 @@ fn visit_expr(ir: &mut IrMaps, expr: &Expr) {
         // in better error messages than just pointing at the closure
         // construction site.
         let mut call_caps = Vec::new();
-        freevars::with_freevars(ir.tcx, expr.id, |freevars| {
+        ty::with_freevars(ir.tcx, expr.id, |freevars| {
             for fv in freevars.iter() {
                 match fv.def {
                     DefLocal(rv) => {

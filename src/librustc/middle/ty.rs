@@ -17,8 +17,6 @@ use metadata::csearch;
 use middle::const_eval;
 use middle::def;
 use middle::dependency_format;
-use middle::freevars::CaptureModeMap;
-use middle::freevars;
 use middle::lang_items::{FnTraitLangItem, FnMutTraitLangItem};
 use middle::lang_items::{FnOnceTraitLangItem, OpaqueStructLangItem};
 use middle::lang_items::{TyDescStructLangItem, TyVisitorTraitLangItem};
@@ -480,7 +478,7 @@ pub struct ctxt<'tcx> {
 
     pub map: ast_map::Map<'tcx>,
     pub intrinsic_defs: RefCell<DefIdMap<t>>,
-    pub freevars: RefCell<freevars::freevar_map>,
+    pub freevars: RefCell<FreevarMap>,
     pub tcache: type_cache,
     pub rcache: creader_cache,
     pub short_names_cache: RefCell<HashMap<t, String>>,
@@ -1463,8 +1461,8 @@ pub fn mk_ctxt<'tcx>(s: Session,
                      dm: resolve::DefMap,
                      named_region_map: resolve_lifetime::NamedRegionMap,
                      map: ast_map::Map<'tcx>,
-                     freevars: freevars::freevar_map,
-                     capture_modes: freevars::CaptureModeMap,
+                     freevars: FreevarMap,
+                     capture_modes: CaptureModeMap,
                      region_maps: middle::region::RegionMaps,
                      lang_items: middle::lang_items::LanguageItems,
                      stability: stability::Index) -> ctxt<'tcx> {
@@ -5615,7 +5613,7 @@ impl<'tcx> mc::Typer<'tcx> for ty::ctxt<'tcx> {
     }
 
     fn capture_mode(&self, closure_expr_id: ast::NodeId)
-                    -> freevars::CaptureMode {
+                    -> ast::CaptureClause {
         self.capture_modes.borrow().get_copy(&closure_expr_id)
     }
 
@@ -5685,4 +5683,25 @@ pub fn accumulate_lifetimes_in_type(accumulator: &mut Vec<ty::Region>,
             ty_err => {}
         }
     })
+}
+
+/// A free variable referred to in a function.
+#[deriving(Encodable, Decodable)]
+pub struct Freevar {
+    /// The variable being accessed free.
+    pub def: def::Def,
+
+    // First span where it is accessed (there can be multiple).
+    pub span: Span
+}
+
+pub type FreevarMap = NodeMap<Vec<Freevar>>;
+
+pub type CaptureModeMap = NodeMap<ast::CaptureClause>;
+
+pub fn with_freevars<T>(tcx: &ty::ctxt, fid: ast::NodeId, f: |&[Freevar]| -> T) -> T {
+    match tcx.freevars.borrow().find(&fid) {
+        None => fail!("with_freevars: {} has no freevars", fid),
+        Some(d) => f(d.as_slice())
+    }
 }

@@ -318,7 +318,7 @@ impl<'a, 'tcx> mem_categorization::Typer<'tcx> for FnCtxt<'a, 'tcx> {
         self.ccx.tcx.upvar_borrow(upvar_id)
     }
     fn capture_mode(&self, closure_expr_id: ast::NodeId)
-                    -> freevars::CaptureMode {
+                    -> ast::CaptureClause {
         self.ccx.tcx.capture_mode(closure_expr_id)
     }
     fn unboxed_closures<'a>(&'a self)

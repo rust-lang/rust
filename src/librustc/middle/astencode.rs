@@ -18,13 +18,12 @@ use driver::session::Session;
 use metadata::decoder;
 use middle::def;
 use metadata::encoder as e;
-use middle::freevars::{CaptureMode, freevar_entry};
-use middle::freevars;
 use middle::region;
 use metadata::tydecode;
 use metadata::tydecode::{DefIdSource, NominalType, TypeWithId, TypeParameter};
 use metadata::tydecode::{RegionParameter};
 use metadata::tyencode;
+use middle::mem_categorization::Typer;
 use middle::subst;
 use middle::subst::VecPerParamSpace;
 use middle::typeck::{MethodCall, MethodCallee, MethodOrigin};
@@ -540,36 +539,36 @@ impl tr for ty::TraitStore {
 // ______________________________________________________________________
 // Encoding and decoding of freevar information
 
-fn encode_freevar_entry(rbml_w: &mut Encoder, fv: &freevar_entry) {
+fn encode_freevar_entry(rbml_w: &mut Encoder, fv: &ty::Freevar) {
     (*fv).encode(rbml_w).unwrap();
 }
 
-fn encode_capture_mode(rbml_w: &mut Encoder, cm: CaptureMode) {
+fn encode_capture_mode(rbml_w: &mut Encoder, cm: ast::CaptureClause) {
     cm.encode(rbml_w).unwrap();
 }
 
 trait rbml_decoder_helper {
     fn read_freevar_entry(&mut self, dcx: &DecodeContext)
-                          -> freevar_entry;
-    fn read_capture_mode(&mut self) -> CaptureMode;
+                          -> ty::Freevar;
+    fn read_capture_mode(&mut self) -> ast::CaptureClause;
 }
 
 impl<'a> rbml_decoder_helper for reader::Decoder<'a> {
     fn read_freevar_entry(&mut self, dcx: &DecodeContext)
-                          -> freevar_entry {
-        let fv: freevar_entry = Decodable::decode(self).unwrap();
+                          -> ty::Freevar {
+        let fv: ty::Freevar = Decodable::decode(self).unwrap();
         fv.tr(dcx)
     }
 
-    fn read_capture_mode(&mut self) -> CaptureMode {
-        let cm: CaptureMode = Decodable::decode(self).unwrap();
+    fn read_capture_mode(&mut self) -> ast::CaptureClause {
+        let cm: ast::CaptureClause = Decodable::decode(self).unwrap();
         cm
     }
 }
 
-impl tr for freevar_entry {
-    fn tr(&self, dcx: &DecodeContext) -> freevar_entry {
-        freevar_entry {
+impl tr for ty::Freevar {
+    fn tr(&self, dcx: &DecodeContext) -> ty::Freevar {
+        ty::Freevar {
             def: self.def.tr(dcx),
             span: self.span.tr(dcx),
         }
@@ -1291,8 +1290,8 @@ fn encode_side_tables_for_id(ecx: &e::EncodeContext,
         });
 
         for freevar in fv.iter() {
-            match freevars::get_capture_mode(tcx, id) {
-                freevars::CaptureByRef => {
+            match tcx.capture_mode(id) {
+                ast::CaptureByRef => {
                     rbml_w.tag(c::tag_table_upvar_borrow_map, |rbml_w| {
                         rbml_w.id(id);
                         rbml_w.tag(c::tag_table_val, |rbml_w| {
