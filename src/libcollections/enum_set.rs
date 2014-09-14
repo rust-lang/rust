@@ -14,13 +14,29 @@
 //! representation to hold C-like enum variants.
 
 use core::prelude::*;
+use core::fmt;
 
-#[deriving(Clone, PartialEq, Eq, Hash, Show)]
+#[deriving(Clone, PartialEq, Eq, Hash)]
 /// A specialized `Set` implementation to use enum types.
 pub struct EnumSet<E> {
     // We must maintain the invariant that no bits are set
     // for which no variant exists
     bits: uint
+}
+
+impl<E:CLike+fmt::Show> fmt::Show for EnumSet<E> {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        try!(write!(fmt, "{{"));
+        let mut first = true;
+        for e in self.iter() {
+            if !first {
+                try!(write!(fmt, ", "));
+            }
+            try!(write!(fmt, "{}", e));
+            first = false;
+        }
+        write!(fmt, "}}")
+    }
 }
 
 /// An interface for casting C-like enum to uint and back.
@@ -163,6 +179,16 @@ mod test {
     fn test_empty() {
         let e: EnumSet<Foo> = EnumSet::empty();
         assert!(e.is_empty());
+    }
+
+    #[test]
+    fn test_show() {
+        let mut e = EnumSet::empty();
+        assert_eq!("{}", e.to_string().as_slice());
+        e.add(A);
+        assert_eq!("{A}", e.to_string().as_slice());
+        e.add(C);
+        assert_eq!("{A, C}", e.to_string().as_slice());
     }
 
     ///////////////////////////////////////////////////////////////////////////
