@@ -5027,7 +5027,7 @@ pub fn polytype_for_def(fcx: &FnCtxt,
                         defn: def::Def)
                         -> Polytype {
     match defn {
-      def::DefLocal(nid) => {
+      def::DefLocal(nid) | def::DefUpvar(nid, _, _, _, _) => {
           let typ = fcx.local_ty(sp, nid);
           return no_params(typ);
       }
@@ -5035,9 +5035,6 @@ pub fn polytype_for_def(fcx: &FnCtxt,
       def::DefStatic(id, _) | def::DefVariant(_, id, _) |
       def::DefStruct(id) => {
         return ty::lookup_item_type(fcx.ccx.tcx, id);
-      }
-      def::DefUpvar(_, inner, _, _) => {
-        return polytype_for_def(fcx, sp, *inner);
       }
       def::DefTrait(_) |
       def::DefTy(..) |

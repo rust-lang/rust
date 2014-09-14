@@ -547,7 +547,7 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
               }))
           }
 
-          def::DefUpvar(var_id, _, fn_node_id, _) => {
+          def::DefUpvar(var_id, _, _, fn_node_id, _) => {
               let ty = if_ok!(self.node_ty(fn_node_id));
               match ty::get(ty).sty {
                   ty::ty_closure(ref closure_ty) => {

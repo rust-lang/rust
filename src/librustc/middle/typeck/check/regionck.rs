@@ -245,10 +245,11 @@ fn region_of_def(fcx: &FnCtxt, def: def::Def) -> ty::Region {
         def::DefLocal(node_id) => {
             tcx.region_maps.var_region(node_id)
         }
-        def::DefUpvar(_, subdef, closure_id, body_id) => {
-            match ty::ty_closure_store(fcx.node_ty(closure_id)) {
-                ty::RegionTraitStore(..) => region_of_def(fcx, *subdef),
-                ty::UniqTraitStore => ReScope(body_id)
+        def::DefUpvar(node_id, _, _, _, body_id) => {
+            if body_id == ast::DUMMY_NODE_ID {
+                tcx.region_maps.var_region(node_id)
+            } else {
+                ReScope(body_id)
             }
         }
         _ => {
@@ -1029,7 +1030,7 @@ fn check_expr_fn_block(rcx: &mut Rcx,
             // determining the final borrow_kind) and propagate that as
             // a constraint on the outer closure.
             match freevar.def {
-                def::DefUpvar(var_id, _, outer_closure_id, _) => {
+                def::DefUpvar(var_id, _, _, outer_closure_id, _) => {
                     // thing being captured is itself an upvar:
                     let outer_upvar_id = ty::UpvarId {
                         var_id: var_id,
