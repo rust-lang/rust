@@ -1721,6 +1721,7 @@ pub enum FileType {
 /// # Example
 ///
 /// ```
+/// # use std::io::fs::PathExtensions;
 /// # fn main() {}
 /// # fn foo() {
 /// let info = match Path::new("foo.txt").stat() {

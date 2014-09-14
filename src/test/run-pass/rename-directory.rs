@@ -14,9 +14,10 @@
 extern crate libc;
 
 use std::io::TempDir;
-use std::os;
-use std::io;
+use std::io::fs::PathExtensions;
 use std::io::fs;
+use std::io;
+use std::os;
 
 fn rename_directory() {
     unsafe {

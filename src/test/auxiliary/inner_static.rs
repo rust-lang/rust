@@ -13,6 +13,18 @@ pub struct B<T>;
 
 pub mod test {
     pub struct A<T>;
+
+    impl<T> A<T> {
+        pub fn foo(&self) -> int {
+            static a: int = 5;
+            return a
+        }
+
+        pub fn bar(&self) -> int {
+            static a: int = 6;
+            return a;
+        }
+    }
 }
 
 impl<T> A<T> {
@@ -35,18 +47,6 @@ impl<T> B<T> {
 
     pub fn bar(&self) -> int {
         static a: int = 4;
-        return a;
-    }
-}
-
-impl<T> test::A<T> {
-    pub fn foo(&self) -> int {
-        static a: int = 5;
-        return a
-    }
-
-    pub fn bar(&self) -> int {
-        static a: int = 6;
         return a;
     }
 }

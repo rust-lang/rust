@@ -28,6 +28,7 @@ use util::ppaux;
 use util::sha2::{Digest, Sha256};
 
 use std::char;
+use std::io::fs::PathExtensions;
 use std::io::{fs, TempDir, Command};
 use std::io;
 use std::mem;

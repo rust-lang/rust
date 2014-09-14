@@ -1313,10 +1313,6 @@ impl<'a> Resolver<'a> {
                 // If this implements an anonymous trait, then add all the
                 // methods within to a new module, if the type was defined
                 // within this module.
-                //
-                // FIXME (#3785): This is quite unsatisfactory. Perhaps we
-                // should modify anonymous traits to only be implementable in
-                // the same module that declared the type.
 
                 // Create the module and add all methods.
                 match ty.node {
@@ -1400,7 +1396,13 @@ impl<'a> Resolver<'a> {
                             }
                         }
                     }
-                    _ => {}
+                    _ => {
+                        self.resolve_error(ty.span,
+                                           "inherent implementations may \
+                                            only be implemented in the same \
+                                            module as the type they are \
+                                            implemented for")
+                    }
                 }
 
                 parent
