@@ -69,3 +69,33 @@
 #endif
 
 void LLVMRustSetLastError(const char*);
+
+typedef struct OpaqueRustString *RustStringRef;
+typedef struct LLVMOpaqueTwine *LLVMTwineRef;
+typedef struct LLVMOpaqueDebugLoc *LLVMDebugLocRef;
+
+extern "C" void
+rust_llvm_string_write_impl(RustStringRef str, const char *ptr, size_t size);
+
+class raw_rust_string_ostream : public llvm::raw_ostream  {
+    RustStringRef str;
+    uint64_t pos;
+
+    void write_impl(const char *ptr, size_t size) override {
+        rust_llvm_string_write_impl(str, ptr, size);
+        pos += size;
+    }
+
+    uint64_t current_pos() const override {
+        return pos;
+    }
+
+public:
+    explicit raw_rust_string_ostream(RustStringRef str)
+        : str(str), pos(0) { }
+
+    ~raw_rust_string_ostream() {
+        // LLVM requires this.
+        flush();
+    }
+};
