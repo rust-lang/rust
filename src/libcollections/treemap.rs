@@ -8,9 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! An ordered map and set implemented as self-balancing binary search
-//! trees. The only requirement for the types is that the key implements
-//! `Ord`.
+//! Maps are collections of unique keys with corresponding values, and sets are
+//! just unique keys without a corresponding value. The `Map` and `Set` traits in
+//! `std::container` define the basic interface.
+//!
+//! This crate defines the `TreeMap` and `TreeSet` types. Their keys must implement `Ord`.
+//!
+//! `TreeMap`s are ordered.
 //!
 //! ## Example
 //!

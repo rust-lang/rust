@@ -8,8 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Ordered containers with unsigned integer keys,
-//! implemented as radix tries (`TrieSet` and `TrieMap` types).
+//! Maps are collections of unique keys with corresponding values, and sets are
+//! just unique keys without a corresponding value. The `Map` and `Set` traits in
+//! `std::container` define the basic interface.
+//!
+//! This crate defines `TrieMap` and `TrieSet`, which require `uint` keys.
+//!
+//! `TrieMap` is ordered.
 
 use core::prelude::*;
 
