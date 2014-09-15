@@ -167,7 +167,7 @@ impl Command {
             None => {
                 // if the env is currently just inheriting from the parent's,
                 // materialize the parent's env into a hashtable.
-                self.env = Some(os::env_as_bytes().move_iter()
+                self.env = Some(os::env_as_bytes().into_iter()
                                    .map(|(k, v)| (k.as_slice().to_c_str(),
                                                   v.as_slice().to_c_str()))
                                    .collect());
@@ -289,7 +289,7 @@ impl Command {
                 detach: self.detach,
             };
             io.spawn(cfg).map(|(p, io)| {
-                let mut io = io.move_iter().map(|p| {
+                let mut io = io.into_iter().map(|p| {
                     p.map(|p| io::PipeStream::new(p))
                 });
                 Process {

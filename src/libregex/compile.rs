@@ -165,7 +165,7 @@ impl<'r> Compiler<'r> {
                 self.push(Save(2 * cap + 1));
             }
             Cat(xs) => {
-                for x in xs.move_iter() {
+                for x in xs.into_iter() {
                     self.compile(x)
                 }
             }

@@ -213,7 +213,7 @@ fn test_mut_iter() {
 
     let mut x = Some(val);
     {
-        let mut it = x.mut_iter();
+        let mut it = x.iter_mut();
 
         assert_eq!(it.size_hint(), (1, Some(1)));
 
@@ -275,7 +275,7 @@ fn test_collect() {
     // test that it does not take more elements than it needs
     let mut functions = [|| Some(()), || None, || fail!()];
 
-    let v: Option<Vec<()>> = collect(functions.mut_iter().map(|f| (*f)()));
+    let v: Option<Vec<()>> = collect(functions.iter_mut().map(|f| (*f)()));
 
     assert!(v == None);
 }

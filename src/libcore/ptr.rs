@@ -124,7 +124,7 @@ pub fn mut_null<T>() -> *mut T { null_mut() }
 /// ```
 /// use std::ptr;
 ///
-/// let p: *mut int = ptr::mut_null();
+/// let p: *mut int = ptr::null_mut();
 /// assert!(p.is_null());
 /// ```
 #[inline]
@@ -327,7 +327,7 @@ impl<T> RawPtr<T> for *const T {
 
 impl<T> RawPtr<T> for *mut T {
     #[inline]
-    fn null() -> *mut T { mut_null() }
+    fn null() -> *mut T { null_mut() }
 
     #[inline]
     fn is_null(&self) -> bool { *self == RawPtr::null() }

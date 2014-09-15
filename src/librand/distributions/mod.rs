@@ -126,7 +126,7 @@ impl<'a, T: Clone> WeightedChoice<'a, T> {
         // we convert the list from individual weights to cumulative
         // weights so we can binary search. This *could* drop elements
         // with weight == 0 as an optimisation.
-        for item in items.mut_iter() {
+        for item in items.iter_mut() {
             running_total = match running_total.checked_add(&item.weight) {
                 Some(n) => n,
                 None => fail!("WeightedChoice::new called with a total weight \

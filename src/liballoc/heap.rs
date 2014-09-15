@@ -140,7 +140,7 @@ static MIN_ALIGN: uint = 16;
 #[cfg(jemalloc)]
 mod imp {
     use core::option::{None, Option};
-    use core::ptr::{RawPtr, mut_null, null};
+    use core::ptr::{RawPtr, null_mut, null};
     use core::num::Int;
     use libc::{c_char, c_int, c_void, size_t};
     use super::MIN_ALIGN;
@@ -230,7 +230,7 @@ mod imp {
 
     pub fn stats_print() {
         unsafe {
-            je_malloc_stats_print(None, mut_null(), null())
+            je_malloc_stats_print(None, null_mut(), null())
         }
     }
 }

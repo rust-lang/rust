@@ -448,7 +448,7 @@ impl<T> TypedArena<T> {
     #[inline]
     pub fn with_capacity(capacity: uint) -> TypedArena<T> {
         unsafe {
-            let chunk = TypedArenaChunk::<T>::new(ptr::mut_null(), capacity);
+            let chunk = TypedArenaChunk::<T>::new(ptr::null_mut(), capacity);
             TypedArena {
                 ptr: Cell::new((*chunk).start() as *const T),
                 end: Cell::new((*chunk).end() as *const T),

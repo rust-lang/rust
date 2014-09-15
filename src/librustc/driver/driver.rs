@@ -237,11 +237,11 @@ pub fn phase_2_configure_and_expand(sess: &Session,
 
     {
         let mut ls = sess.lint_store.borrow_mut();
-        for pass in lint_passes.move_iter() {
+        for pass in lint_passes.into_iter() {
             ls.register_pass(Some(sess), true, pass);
         }
 
-        for (name, to) in lint_groups.move_iter() {
+        for (name, to) in lint_groups.into_iter() {
             ls.register_group(Some(sess), true, name, to);
         }
     }
@@ -701,7 +701,7 @@ pub fn collect_crate_types(session: &Session,
     // will be found in crate attributes.
     let mut base = session.opts.crate_types.clone();
     if base.len() == 0 {
-        base.extend(attr_types.move_iter());
+        base.extend(attr_types.into_iter());
         if base.len() == 0 {
             base.push(link::default_output_for_target(session));
         }
@@ -709,7 +709,7 @@ pub fn collect_crate_types(session: &Session,
         base.dedup();
     }
 
-    base.move_iter().filter(|crate_type| {
+    base.into_iter().filter(|crate_type| {
         let res = !link::invalid_output_for_target(session, *crate_type);
 
         if !res {

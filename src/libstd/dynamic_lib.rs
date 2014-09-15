@@ -301,7 +301,7 @@ pub mod dl {
     }
 
     pub unsafe fn open_internal() -> *mut u8 {
-        let mut handle = ptr::mut_null();
+        let mut handle = ptr::null_mut();
         GetModuleHandleExW(0 as libc::DWORD, ptr::null(), &mut handle);
         handle as *mut u8
     }

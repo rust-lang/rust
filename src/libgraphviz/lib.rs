@@ -588,12 +588,12 @@ mod tests {
         fn to_opt_strs(self) -> Vec<Option<&'static str>> {
             match self {
                 UnlabelledNodes(len)
-                    => Vec::from_elem(len, None).move_iter().collect(),
+                    => Vec::from_elem(len, None).into_iter().collect(),
                 AllNodesLabelled(lbls)
-                    => lbls.move_iter().map(
+                    => lbls.into_iter().map(
                         |l|Some(l)).collect(),
                 SomeNodesLabelled(lbls)
-                    => lbls.move_iter().collect(),
+                    => lbls.into_iter().collect(),
             }
         }
     }

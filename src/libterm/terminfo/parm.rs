@@ -102,7 +102,7 @@ pub fn expand(cap: &[u8], params: &[Param], vars: &mut Variables)
         Number(0), Number(0), Number(0), Number(0), Number(0),
         Number(0), Number(0), Number(0), Number(0),
     ];
-    for (dst, src) in mparams.mut_iter().zip(params.iter()) {
+    for (dst, src) in mparams.iter_mut().zip(params.iter()) {
         *dst = (*src).clone();
     }
 
@@ -501,7 +501,7 @@ fn format(val: Param, op: FormatOp, flags: Flags) -> Result<Vec<u8> ,String> {
                     return Err("non-number on stack with %s".to_string())
                 }
             };
-            let mut s: Vec<u8> = s.move_iter().collect();
+            let mut s: Vec<u8> = s.into_iter().collect();
             if flags.precision > s.len() {
                 let mut s_ = Vec::with_capacity(flags.precision);
                 let n = flags.precision - s.len();
@@ -532,7 +532,7 @@ fn format(val: Param, op: FormatOp, flags: Flags) -> Result<Vec<u8> ,String> {
                          .to_ascii()
                          .to_upper()
                          .into_bytes()
-                         .move_iter()
+                         .into_iter()
                          .collect();
                     if flags.alternate {
                         let s_ = replace(&mut s, vec!(b'0', b'X'));

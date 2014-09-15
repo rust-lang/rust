@@ -78,11 +78,11 @@ fn reflect() {
 fn sub_expr() {
     // Test for a &[T] => &&[T] coercion in sub-expression position
     // (surpisingly, this can cause errors which are not caused by either of:
-    //    `let x = vec.mut_slice(0, 2);`
-    //    `foo(vec.mut_slice(0, 2));` ).
+    //    `let x = vec.slice_mut(0, 2);`
+    //    `foo(vec.slice_mut(0, 2));` ).
     let mut vec: Vec<int> = vec!(1, 2, 3, 4);
     let b: &mut [int] = [1, 2];
-    assert!(vec.mut_slice(0, 2) == b);
+    assert!(vec.slice_mut(0, 2) == b);
 }
 
 fn index() {

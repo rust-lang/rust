@@ -43,14 +43,14 @@ use std::sync::Future;
 
 fn rotate(x: &mut [i32]) {
     let mut prev = x[0];
-    for place in x.mut_iter().rev() {
+    for place in x.iter_mut().rev() {
         prev = mem::replace(place, prev)
     }
 }
 
 fn next_permutation(perm: &mut [i32], count: &mut [i32]) {
     for i in range(1, perm.len()) {
-        rotate(perm.mut_slice_to(i + 1));
+        rotate(perm.slice_to_mut(i + 1));
         let count_i = &mut count[i];
         if *count_i >= i as i32 {
             *count_i = 0;
@@ -91,7 +91,7 @@ impl Perm {
     fn get(&mut self, mut idx: i32) -> P {
         let mut pp = [0u8, .. 16];
         self.permcount = idx as u32;
-        for (i, place) in self.perm.p.mut_iter().enumerate() {
+        for (i, place) in self.perm.p.iter_mut().enumerate() {
             *place = i as i32 + 1;
         }
 
@@ -99,7 +99,7 @@ impl Perm {
             let d = idx / self.fact[i] as i32;
             self.cnt[i] = d;
             idx %= self.fact[i] as i32;
-            for (place, val) in pp.mut_iter().zip(self.perm.p.slice_to(i + 1).iter()) {
+            for (place, val) in pp.iter_mut().zip(self.perm.p.slice_to(i + 1).iter()) {
                 *place = (*val) as u8
             }
 
@@ -125,7 +125,7 @@ impl Perm {
 
 
 fn reverse(tperm: &mut [i32], mut k: uint) {
-    tperm.mut_slice_to(k).reverse()
+    tperm.slice_to_mut(k).reverse()
 }
 
 fn work(mut perm: Perm, n: uint, max: uint) -> (i32, i32) {
@@ -169,7 +169,7 @@ fn fannkuch(n: i32) -> (i32, i32) {
 
     let mut checksum = 0;
     let mut maxflips = 0;
-    for fut in futures.mut_iter() {
+    for fut in futures.iter_mut() {
         let (cs, mf) = fut.get();
         checksum += cs;
         maxflips = cmp::max(maxflips, mf);

@@ -142,7 +142,7 @@ impl FulfillmentContext {
 
             // Now go through all the successful ones,
             // registering any nested obligations for the future.
-            for selection in selections.move_iter() {
+            for selection in selections.into_iter() {
                 selection.map_move_nested(
                     |o| self.register_obligation(tcx, o));
             }
@@ -247,4 +247,3 @@ impl FulfillmentContext {
         }
     }
 }
-

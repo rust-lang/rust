@@ -283,7 +283,7 @@ fn get_sequence<R: Buffer>(r: &mut R, key: &str) -> Vec<u8> {
     {
         res.push_all(l.as_slice().trim().as_bytes());
     }
-    for b in res.mut_iter() {
+    for b in res.iter_mut() {
         *b = b.to_ascii().to_upper().to_byte();
     }
     res
@@ -307,10 +307,10 @@ fn main() {
         Future::spawn(proc() generate_frequencies(input.as_slice(), occ.len()))
     }).collect();
 
-    for (i, freq) in nb_freqs.move_iter() {
+    for (i, freq) in nb_freqs.into_iter() {
         print_frequencies(&freq.unwrap(), i);
     }
-    for (&occ, freq) in OCCURRENCES.iter().zip(occ_freqs.move_iter()) {
+    for (&occ, freq) in OCCURRENCES.iter().zip(occ_freqs.into_iter()) {
         print_occurrences(&mut freq.unwrap(), occ);
     }
 }

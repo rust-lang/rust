@@ -19,7 +19,7 @@ fn myvec_deref<X:Clone>(mv: myvec<X>) -> Vec<X> {
 
 fn myvec_elt<X>(mv: myvec<X>) -> X {
     let myvec(v) = mv;
-    return v.move_iter().next().unwrap();
+    return v.into_iter().next().unwrap();
 }
 
 pub fn main() {

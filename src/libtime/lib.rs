@@ -155,7 +155,7 @@ pub fn get_time() -> Timespec {
     unsafe fn os_get_time() -> (i64, i32) {
         use std::ptr;
         let mut tv = libc::timeval { tv_sec: 0, tv_usec: 0 };
-        imp::gettimeofday(&mut tv, ptr::mut_null());
+        imp::gettimeofday(&mut tv, ptr::null_mut());
         (tv.tv_sec as i64, tv.tv_usec * 1000)
     }
 

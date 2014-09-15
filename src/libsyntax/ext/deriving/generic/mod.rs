@@ -468,7 +468,7 @@ impl<'a> TraitDef<'a> {
             ast::ItemImpl(trait_generics,
                           opt_trait_ref,
                           self_type,
-                          methods.move_iter()
+                          methods.into_iter()
                                  .map(|method| {
                                      ast::MethodImplItem(method)
                                  }).collect()))
@@ -666,10 +666,10 @@ impl<'a> MethodDef<'a> {
             _ => Some(ast::Arg::new_self(trait_.span, ast::MutImmutable, special_idents::self_))
         };
         let args = {
-            let args = arg_types.move_iter().map(|(name, ty)| {
+            let args = arg_types.into_iter().map(|(name, ty)| {
                     cx.arg(trait_.span, name, ty)
                 });
-            self_arg.move_iter().chain(args).collect()
+            self_arg.into_iter().chain(args).collect()
         };
 
         let ret_type = self.get_ret_ty(cx, trait_, generics, type_ident);
@@ -741,7 +741,7 @@ impl<'a> MethodDef<'a> {
 
         // transpose raw_fields
         let fields = if raw_fields.len() > 0 {
-            let mut raw_fields = raw_fields.move_iter().map(|v| v.move_iter());
+            let mut raw_fields = raw_fields.into_iter().map(|v| v.into_iter());
             let first_field = raw_fields.next().unwrap();
             let mut other_fields: Vec<vec::MoveItems<(Span, Option<Ident>, P<Expr>)>>
                 = raw_fields.collect();
@@ -750,7 +750,7 @@ impl<'a> MethodDef<'a> {
                     span: span,
                     name: opt_id,
                     self_: field,
-                    other: other_fields.mut_iter().map(|l| {
+                    other: other_fields.iter_mut().map(|l| {
                         match l.next().unwrap() {
                             (_, _, ex) => ex
                         }
@@ -953,7 +953,7 @@ impl<'a> MethodDef<'a> {
 
                 // The transposition is driven by walking across the
                 // arg fields of the variant for the first self pat.
-                let field_tuples = first_self_pat_idents.move_iter().enumerate()
+                let field_tuples = first_self_pat_idents.into_iter().enumerate()
                     // For each arg field of self, pull out its getter expr ...
                     .map(|(field_index, (sp, opt_ident, self_getter_expr))| {
                         // ... but FieldInfo also wants getter expr
@@ -1264,7 +1264,7 @@ impl<'a> TraitDef<'a> {
         // struct_type is definitely not Unknown, since struct_def.fields
         // must be nonempty to reach here
         let pattern = if struct_type == Record {
-            let field_pats = subpats.move_iter().zip(ident_expr.iter()).map(|(pat, &(_, id, _))| {
+            let field_pats = subpats.into_iter().zip(ident_expr.iter()).map(|(pat, &(_, id, _))| {
                 // id is guaranteed to be Some
                 ast::FieldPat { ident: id.unwrap(), pat: pat }
             }).collect();
@@ -1418,11 +1418,11 @@ pub fn cs_same_method_fold(use_foldl: bool,
     cs_same_method(
         |cx, span, vals| {
             if use_foldl {
-                vals.move_iter().fold(base.clone(), |old, new| {
+                vals.into_iter().fold(base.clone(), |old, new| {
                     f(cx, span, old, new)
                 })
             } else {
-                vals.move_iter().rev().fold(base.clone(), |old, new| {
+                vals.into_iter().rev().fold(base.clone(), |old, new| {
                     f(cx, span, old, new)
                 })
             }

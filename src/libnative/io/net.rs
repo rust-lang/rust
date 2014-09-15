@@ -543,7 +543,7 @@ impl TcpAcceptor {
 
         while !self.inner.closed.load(atomic::SeqCst) {
             match retry(|| unsafe {
-                libc::accept(self.fd(), ptr::mut_null(), ptr::mut_null())
+                libc::accept(self.fd(), ptr::null_mut(), ptr::null_mut())
             }) {
                 -1 if util::wouldblock() => {}
                 -1 => return Err(os::last_error()),
@@ -608,7 +608,7 @@ impl TcpAcceptor {
 
             if wsaevents.lNetworkEvents & c::FD_ACCEPT == 0 { continue }
             match unsafe {
-                libc::accept(self.fd(), ptr::mut_null(), ptr::mut_null())
+                libc::accept(self.fd(), ptr::null_mut(), ptr::null_mut())
             } {
                 -1 if util::wouldblock() => {}
                 -1 => return Err(os::last_error()),

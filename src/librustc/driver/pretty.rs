@@ -342,7 +342,7 @@ impl UserIdentifiedItem {
                                        -> NodesMatchingUII<'a, 'ast> {
         match *self {
             ItemViaNode(node_id) =>
-                NodesMatchingDirect(Some(node_id).move_iter()),
+                NodesMatchingDirect(Some(node_id).into_iter()),
             ItemViaPath(ref parts) =>
                 NodesMatchingSuffix(map.nodes_matching_suffix(parts.as_slice())),
         }

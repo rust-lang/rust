@@ -80,7 +80,7 @@ pub fn trans_inline_asm<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, ia: &ast::InlineAsm)
     let mut constraints =
         String::from_str(constraints.iter()
                                     .map(|s| s.get().to_string())
-                                    .chain(ext_constraints.move_iter())
+                                    .chain(ext_constraints.into_iter())
                                     .collect::<Vec<String>>()
                                     .connect(",")
                                     .as_slice());

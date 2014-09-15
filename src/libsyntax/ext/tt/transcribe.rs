@@ -164,7 +164,7 @@ pub fn tt_next_token(r: &mut TtReader) -> TokenAndSpan {
         /* done with this set; pop or repeat? */
         if should_pop {
             let prev = r.stack.pop().unwrap();
-            match r.stack.mut_last() {
+            match r.stack.last_mut() {
                 None => {
                     r.cur_tok = EOF;
                     return ret_val;
@@ -178,8 +178,8 @@ pub fn tt_next_token(r: &mut TtReader) -> TokenAndSpan {
                 r.repeat_len.pop();
             }
         } else { /* repeat */
-            *r.repeat_idx.mut_last().unwrap() += 1u;
-            r.stack.mut_last().unwrap().idx = 0;
+            *r.repeat_idx.last_mut().unwrap() += 1u;
+            r.stack.last_mut().unwrap().idx = 0;
             match r.stack.last().unwrap().sep.clone() {
                 Some(tk) => {
                     r.cur_tok = tk; /* repeat same span, I guess */
@@ -209,7 +209,7 @@ pub fn tt_next_token(r: &mut TtReader) -> TokenAndSpan {
             TTTok(sp, tok) => {
                 r.cur_span = sp;
                 r.cur_tok = tok;
-                r.stack.mut_last().unwrap().idx += 1;
+                r.stack.last_mut().unwrap().idx += 1;
                 return ret_val;
             }
             TTSeq(sp, tts, sep, zerok) => {
@@ -234,7 +234,7 @@ pub fn tt_next_token(r: &mut TtReader) -> TokenAndSpan {
                                                      "this must repeat at least once");
                             }
 
-                            r.stack.mut_last().unwrap().idx += 1;
+                            r.stack.last_mut().unwrap().idx += 1;
                             return tt_next_token(r);
                         }
                         r.repeat_len.push(len);
@@ -250,7 +250,7 @@ pub fn tt_next_token(r: &mut TtReader) -> TokenAndSpan {
             }
             // FIXME #2887: think about span stuff here
             TTNonterminal(sp, ident) => {
-                r.stack.mut_last().unwrap().idx += 1;
+                r.stack.last_mut().unwrap().idx += 1;
                 match *lookup_cur_matched(r, ident) {
                     /* sidestep the interpolation tricks for ident because
                        (a) idents can be in lots of places, so it'd be a pain

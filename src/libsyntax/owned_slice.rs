@@ -49,7 +49,7 @@ impl<T> Drop for OwnedSlice<T> {
 
 impl<T> OwnedSlice<T> {
     pub fn empty() -> OwnedSlice<T> {
-        OwnedSlice  { data: ptr::mut_null(), len: 0 }
+        OwnedSlice  { data: ptr::null_mut(), len: 0 }
     }
 
     #[inline(never)]
@@ -106,7 +106,7 @@ impl<T> OwnedSlice<T> {
     }
 
     pub fn move_iter(self) -> vec::MoveItems<T> {
-        self.into_vec().move_iter()
+        self.into_vec().into_iter()
     }
 
     pub fn map<U>(&self, f: |&T| -> U) -> OwnedSlice<U> {

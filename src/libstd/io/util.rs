@@ -47,7 +47,7 @@ impl<R: Reader> Reader for LimitReader<R> {
         }
 
         let len = cmp::min(self.limit, buf.len());
-        let res = self.inner.read(buf.mut_slice_to(len));
+        let res = self.inner.read(buf.slice_to_mut(len));
         match res {
             Ok(len) => self.limit -= len,
             _ => {}
@@ -139,7 +139,7 @@ impl MultiWriter {
 impl Writer for MultiWriter {
     #[inline]
     fn write(&mut self, buf: &[u8]) -> io::IoResult<()> {
-        for writer in self.writers.mut_iter() {
+        for writer in self.writers.iter_mut() {
             try!(writer.write(buf));
         }
         Ok(())
@@ -147,7 +147,7 @@ impl Writer for MultiWriter {
 
     #[inline]
     fn flush(&mut self) -> io::IoResult<()> {
-        for writer in self.writers.mut_iter() {
+        for writer in self.writers.iter_mut() {
             try!(writer.flush());
         }
         Ok(())
@@ -251,7 +251,7 @@ impl<T: Iterator<u8>> Reader for IterReader<T> {
     #[inline]
     fn read(&mut self, buf: &mut [u8]) -> io::IoResult<uint> {
         let mut len = 0;
-        for (slot, elt) in buf.mut_iter().zip(self.iter.by_ref()) {
+        for (slot, elt) in buf.iter_mut().zip(self.iter.by_ref()) {
             *slot = elt;
             len += 1;
         }
@@ -364,7 +364,7 @@ mod test {
     fn test_chained_reader() {
         let rs = vec!(MemReader::new(vec!(0, 1)), MemReader::new(vec!()),
                       MemReader::new(vec!(2, 3)));
-        let mut r = ChainedReader::new(rs.move_iter());
+        let mut r = ChainedReader::new(rs.into_iter());
         assert_eq!(vec!(0, 1, 2, 3), r.read_to_end().unwrap());
     }
 

@@ -768,7 +768,7 @@ fn cleanup_debug_info_options(options: &Option<String>) -> Option<String> {
         "--debuginfo".to_string()
     ];
     let new_options =
-        split_maybe_args(options).move_iter()
+        split_maybe_args(options).into_iter()
                                  .filter(|x| !options_to_remove.contains(x))
                                  .collect::<Vec<String>>()
                                  .connect(" ");
@@ -1461,7 +1461,7 @@ fn _arm_exec_compiled_test(config: &Config,
 
     // run test via adb_run_wrapper
     runargs.push("shell".to_string());
-    for (key, val) in env.move_iter() {
+    for (key, val) in env.into_iter() {
         runargs.push(format!("{}={}", key, val));
     }
     runargs.push(format!("{}/adb_run_wrapper.sh", config.adb_test_dir));

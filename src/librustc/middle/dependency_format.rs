@@ -224,7 +224,7 @@ fn add_library(sess: &session::Session,
 fn attempt_static(sess: &session::Session) -> Option<DependencyList> {
     let crates = sess.cstore.get_used_crates(cstore::RequireStatic);
     if crates.iter().all(|&(_, ref p)| p.is_some()) {
-        Some(crates.move_iter().map(|_| Some(cstore::RequireStatic)).collect())
+        Some(crates.into_iter().map(|_| Some(cstore::RequireStatic)).collect())
     } else {
         None
     }
