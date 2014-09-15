@@ -234,6 +234,7 @@ pub enum ErrorCode {
     KeyMustBeAString,
     ExpectedColon,
     TrailingCharacters,
+    TrailingComma,
     InvalidEscape,
     InvalidUnicodeCodePoint,
     LoneLeadingSurrogateInHexEscape,
@@ -274,6 +275,7 @@ pub fn error_str(error: ErrorCode) -> &'static str {
         KeyMustBeAString => "key must be a string",
         ExpectedColon => "expected `:`",
         TrailingCharacters => "trailing characters",
+        TrailingComma => "trailing comma",
         InvalidEscape => "invalid escape",
         UnrecognizedHex => "invalid \\u escape (unrecognized hex)",
         NotFourDigit => "invalid \\u escape (not four digits)",
@@ -1681,7 +1683,11 @@ impl<T: Iterator<char>> Parser<T> {
     fn parse_object(&mut self, first: bool) -> JsonEvent {
         if self.ch_is('}') {
             if !first {
-                self.stack.pop();
+                if self.stack.is_empty() {
+                    return self.error_event(TrailingComma);
+                } else {
+                    self.stack.pop();
+                }
             }
             if self.stack.is_empty() {
                 self.state = ParseBeforeFinish;
@@ -2377,7 +2383,7 @@ mod tests {
                 F64Value, StringValue, NullValue, SyntaxError, Key, Index, Stack,
                 InvalidSyntax, InvalidNumber, EOFWhileParsingObject, EOFWhileParsingList,
                 EOFWhileParsingValue, EOFWhileParsingString, KeyMustBeAString, ExpectedColon,
-                TrailingCharacters};
+                TrailingCharacters, TrailingComma};
     use std::{i64, u64, f32, f64, io};
     use std::collections::TreeMap;
 
@@ -3379,6 +3385,7 @@ mod tests {
             }
         }
     }
+
     #[test]
     #[ignore(cfg(target_word_size = "32"))] // FIXME(#14064)
     fn test_read_object_streaming() {
@@ -3393,6 +3400,7 @@ mod tests {
         assert_eq!(last_event("{\"a\":1"),   Error(SyntaxError(EOFWhileParsingObject, 1, 7)));
         assert_eq!(last_event("{\"a\":1 1"), Error(SyntaxError(InvalidSyntax,         1, 8)));
         assert_eq!(last_event("{\"a\":1,"),  Error(SyntaxError(EOFWhileParsingObject, 1, 8)));
+        assert_eq!(last_event("{\"a\":1,}"), Error(SyntaxError(TrailingComma, 1, 8)));
 
         assert_stream_equal(
             "{}",
