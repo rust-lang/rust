@@ -8,12 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-static s: int = 1;
-static e: int = 42;
+// Test slicing expressions doesn't defeat the borrow checker.
 
-pub fn main() {
-    match 7 {
-        s...e => (),
-        _ => (),
+fn main() {
+    let y;
+    {
+        let x: &[int] = &[1, 2, 3, 4, 5]; //~ ERROR borrowed value does not live long enough
+        y = x[1..];
     }
 }

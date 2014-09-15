@@ -23,7 +23,7 @@ use ast::{DeclLocal, DefaultBlock, UnDeref, BiDiv, EMPTY_CTXT, EnumDef, Explicit
 use ast::{Expr, Expr_, ExprAddrOf, ExprMatch, ExprAgain};
 use ast::{ExprAssign, ExprAssignOp, ExprBinary, ExprBlock, ExprBox};
 use ast::{ExprBreak, ExprCall, ExprCast};
-use ast::{ExprField, ExprTupField, ExprFnBlock, ExprIf, ExprIndex};
+use ast::{ExprField, ExprTupField, ExprFnBlock, ExprIf, ExprIndex, ExprSlice};
 use ast::{ExprLit, ExprLoop, ExprMac};
 use ast::{ExprMethodCall, ExprParen, ExprPath, ExprProc};
 use ast::{ExprRepeat, ExprRet, ExprStruct, ExprTup, ExprUnary, ExprUnboxedFn};
@@ -1986,6 +1986,14 @@ impl<'a> Parser<'a> {
         ExprIndex(expr, idx)
     }
 
+    pub fn mk_slice(&mut self, expr: P<Expr>,
+                    start: Option<P<Expr>>,
+                    end: Option<P<Expr>>,
+                    mutbl: Mutability)
+                    -> ast::Expr_ {
+        ExprSlice(expr, start, end, mutbl)
+    }
+
     pub fn mk_field(&mut self, expr: P<Expr>, ident: ast::SpannedIdent,
                     tys: Vec<P<Ty>>) -> ast::Expr_ {
         ExprField(expr, ident, tys)
@@ -2400,13 +2408,87 @@ impl<'a> Parser<'a> {
               }
 
               // expr[...]
+              // Could be either an index expression or a slicing expression.
+              // Any slicing non-terminal can have a mutable version with `mut`
+              // after the opening square bracket.
               token::LBRACKET => {
                 self.bump();
-                let ix = self.parse_expr();
-                hi = self.span.hi;
-                self.commit_expr_expecting(&*ix, token::RBRACKET);
-                let index = self.mk_index(e, ix);
-                e = self.mk_expr(lo, hi, index)
+                let mutbl = if self.eat_keyword(keywords::Mut) {
+                    MutMutable
+                } else {
+                    MutImmutable
+                };
+                match self.token {
+                    // e[]
+                    token::RBRACKET => {
+                        self.bump();
+                        hi = self.span.hi;
+                        let slice = self.mk_slice(e, None, None, mutbl);
+                        e = self.mk_expr(lo, hi, slice)
+                    }
+                    // e[..e]
+                    token::DOTDOT => {
+                        self.bump();
+                        match self.token {
+                            // e[..]
+                            token::RBRACKET => {
+                                self.bump();
+                                hi = self.span.hi;
+                                let slice = self.mk_slice(e, None, None, mutbl);
+                                e = self.mk_expr(lo, hi, slice);
+
+                                self.span_err(e.span, "incorrect slicing expression: `[..]`");
+                                self.span_note(e.span,
+                                    "use `expr[]` to construct a slice of the whole of expr");
+                            }
+                            // e[..e]
+                            _ => {
+                                hi = self.span.hi;
+                                let e2 = self.parse_expr();
+                                self.commit_expr_expecting(&*e2, token::RBRACKET);
+                                let slice = self.mk_slice(e, None, Some(e2), mutbl);
+                                e = self.mk_expr(lo, hi, slice)
+                            }
+                        }
+                    }
+                    // e[e] | e[e..] | e[e..e]
+                    _ => {
+                        let ix = self.parse_expr();
+                        match self.token {
+                            // e[e..] | e[e..e]
+                            token::DOTDOT => {
+                                self.bump();
+                                let e2 = match self.token {
+                                    // e[e..]
+                                    token::RBRACKET => {
+                                        self.bump();
+                                        None
+                                    }
+                                    // e[e..e]
+                                    _ => {
+                                        let e2 = self.parse_expr();
+                                        self.commit_expr_expecting(&*e2, token::RBRACKET);
+                                        Some(e2)
+                                    }
+                                };
+                                hi = self.span.hi;
+                                let slice = self.mk_slice(e, Some(ix), e2, mutbl);
+                                e = self.mk_expr(lo, hi, slice)
+                            }
+                            // e[e]
+                            _ => {
+                                if mutbl == ast::MutMutable {
+                                    self.span_err(e.span,
+                                                  "`mut` keyword is invalid in index expressions");
+                                }
+                                hi = self.span.hi;
+                                self.commit_expr_expecting(&*ix, token::RBRACKET);
+                                let index = self.mk_index(e, ix);
+                                e = self.mk_expr(lo, hi, index)
+                            }
+                        }
+                    }
+                }
               }
 
               _ => return e
@@ -3153,7 +3235,8 @@ impl<'a> Parser<'a> {
             // These expressions are limited to literals (possibly
             // preceded by unary-minus) or identifiers.
             let val = self.parse_literal_maybe_minus();
-            if self.token == token::DOTDOT &&
+            // FIXME(#17295) remove the DOTDOT option.
+            if (self.token == token::DOTDOTDOT || self.token == token::DOTDOT) &&
                     self.look_ahead(1, |t| {
                         *t != token::COMMA && *t != token::RBRACKET
                     }) {
@@ -3198,12 +3281,16 @@ impl<'a> Parser<'a> {
                 }
             });
 
-            if self.look_ahead(1, |t| *t == token::DOTDOT) &&
+            // FIXME(#17295) remove the DOTDOT option.
+            if self.look_ahead(1, |t| *t == token::DOTDOTDOT || *t == token::DOTDOT) &&
                     self.look_ahead(2, |t| {
                         *t != token::COMMA && *t != token::RBRACKET
                     }) {
                 let start = self.parse_expr_res(RestrictionNoBarOp);
-                self.eat(&token::DOTDOT);
+                // FIXME(#17295) remove the DOTDOT option (self.eat(&token::DOTDOTDOT)).
+                if self.token == token::DOTDOTDOT || self.token == token::DOTDOT {
+                    self.bump();
+                }
                 let end = self.parse_expr_res(RestrictionNoBarOp);
                 pat = PatRange(start, end);
             } else if is_plain_ident(&self.token) && !can_be_enum_or_struct {

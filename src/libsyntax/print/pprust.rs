@@ -1651,6 +1651,28 @@ impl<'a> State<'a> {
                 try!(self.print_expr(&**index));
                 try!(word(&mut self.s, "]"));
             }
+            ast::ExprSlice(ref e, ref start, ref end, ref mutbl) => {
+                try!(self.print_expr(&**e));
+                try!(word(&mut self.s, "["));
+                if mutbl == &ast::MutMutable {
+                    try!(word(&mut self.s, "mut"));
+                    if start.is_some() || end.is_some() {
+                        try!(space(&mut self.s));
+                    }
+                }
+                match start {
+                    &Some(ref e) => try!(self.print_expr(&**e)),
+                    _ => {}
+                }
+                if start.is_some() || end.is_some() {
+                    try!(word(&mut self.s, ".."));
+                }
+                match end {
+                    &Some(ref e) => try!(self.print_expr(&**e)),
+                    _ => {}
+                }
+                try!(word(&mut self.s, "]"));
+            }
             ast::ExprPath(ref path) => try!(self.print_path(path, true)),
             ast::ExprBreak(opt_ident) => {
                 try!(word(&mut self.s, "break"));
@@ -1944,7 +1966,7 @@ impl<'a> State<'a> {
             ast::PatRange(ref begin, ref end) => {
                 try!(self.print_expr(&**begin));
                 try!(space(&mut self.s));
-                try!(word(&mut self.s, ".."));
+                try!(word(&mut self.s, "..."));
                 try!(self.print_expr(&**end));
             }
             ast::PatVec(ref before, ref slice, ref after) => {

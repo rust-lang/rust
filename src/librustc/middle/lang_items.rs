@@ -247,6 +247,8 @@ lets_do_this! {
     ShrTraitLangItem,                "shr",                     shr_trait;
     IndexTraitLangItem,              "index",                   index_trait;
     IndexMutTraitLangItem,           "index_mut",               index_mut_trait;
+    SliceTraitLangItem,              "slice",                   slice_trait;
+    SliceMutTraitLangItem,           "slice_mut",               slice_mut_trait;
 
     UnsafeTypeLangItem,              "unsafe",                  unsafe_type;
 
