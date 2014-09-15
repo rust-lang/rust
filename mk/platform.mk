@@ -433,36 +433,6 @@ CFG_RUN_mips-unknown-linux-gnu=
 CFG_RUN_TARG_mips-unknown-linux-gnu=
 RUSTC_FLAGS_mips-unknown-linux-gnu := -C target-cpu=mips32r2 -C target-feature="+mips32r2,+o32" -C soft-float
 
-# i686-pc-mingw32 configuration
-CC_i686-pc-mingw32=$(CC)
-CXX_i686-pc-mingw32=$(CXX)
-CPP_i686-pc-mingw32=$(CPP)
-AR_i686-pc-mingw32=$(AR)
-CFG_LIB_NAME_i686-pc-mingw32=$(1).dll
-CFG_STATIC_LIB_NAME_i686-pc-mingw32=$(1).lib
-CFG_LIB_GLOB_i686-pc-mingw32=$(1)-*.dll
-CFG_LIB_DSYM_GLOB_i686-pc-mingw32=$(1)-*.dylib.dSYM
-CFG_CFLAGS_mips-i686-pc-mingw32 := -m32 -march=i686 -D_WIN32_WINNT=0x0600 $(CFLAGS)
-CFG_GCCISH_CFLAGS_i686-pc-mingw32 := -Wall -Werror -g -m32 -march=i686 -D_WIN32_WINNT=0x0600 -I$(CFG_SRC_DIR)src/etc/mingw-fix-include $(CFLAGS)
-CFG_GCCISH_CXXFLAGS_i686-pc-mingw32 := -fno-rtti $(CXXFLAGS)
-CFG_GCCISH_LINK_FLAGS_i686-pc-mingw32 := -shared -fPIC -g -m32
-CFG_GCCISH_DEF_FLAG_i686-pc-mingw32 :=
-CFG_GCCISH_PRE_LIB_FLAGS_i686-pc-mingw32 :=
-CFG_GCCISH_POST_LIB_FLAGS_i686-pc-mingw32 :=
-CFG_DEF_SUFFIX_i686-pc-mingw32 := .mingw32.def
-CFG_LLC_FLAGS_i686-pc-mingw32 :=
-CFG_INSTALL_NAME_i686-pc-mingw32 =
-CFG_LIBUV_LINK_FLAGS_i686-pc-mingw32 := -lws2_32 -lpsapi -liphlpapi
-CFG_LLVM_BUILD_ENV_i686-pc-mingw32 := CPATH=$(CFG_SRC_DIR)src/etc/mingw-fix-include
-CFG_EXE_SUFFIX_i686-pc-mingw32 := .exe
-CFG_WINDOWSY_i686-pc-mingw32 := 1
-CFG_UNIXY_i686-pc-mingw32 :=
-CFG_PATH_MUNGE_i686-pc-mingw32 :=
-CFG_LDPATH_i686-pc-mingw32 :=$(CFG_LDPATH_i686-pc-mingw32):$(PATH)
-CFG_RUN_i686-pc-mingw32=PATH="$(CFG_LDPATH_i686-pc-mingw32):$(1)" $(2)
-CFG_RUN_TARG_i686-pc-mingw32=$(call CFG_RUN_i686-pc-mingw32,$(HLIB$(1)_H_$(CFG_BUILD)),$(2))
-RUSTC_FLAGS_i686-pc-mingw32=-C link-args="-Wl,--large-address-aware"
-
 # i586-mingw32msvc configuration
 CC_i586-mingw32msvc=$(CFG_MINGW32_CROSS_PATH)/bin/i586-mingw32msvc-gcc
 CXX_i586-mingw32msvc=$(CFG_MINGW32_CROSS_PATH)/bin/i586-mingw32msvc-g++
@@ -503,7 +473,7 @@ CFG_LIB_NAME_i686-w64-mingw32=$(1).dll
 CFG_STATIC_LIB_NAME_i686-w64-mingw32=$(1).lib
 CFG_LIB_GLOB_i686-w64-mingw32=$(1)-*.dll
 CFG_LIB_DSYM_GLOB_i686-w64-mingw32=$(1)-*.dylib.dSYM
-CFG_CFLAGS_i586-w64-mingw32 := -march=i586 -m32 -D_WIN32_WINNT=0x0600 $(CFLAGS)
+CFG_CFLAGS_i686-w64-mingw32 := -march=i686 -m32 -D_WIN32_WINNT=0x0600 $(CFLAGS)
 CFG_GCCISH_CFLAGS_i686-w64-mingw32 := -Wall -Werror -g -m32 -D_WIN32_WINNT=0x0600 $(CFLAGS)
 CFG_GCCISH_CXXFLAGS_i686-w64-mingw32 := -fno-rtti $(CXXFLAGS)
 CFG_GCCISH_LINK_FLAGS_i686-w64-mingw32 := -shared -g -m32
@@ -521,6 +491,8 @@ CFG_PATH_MUNGE_i686-w64-mingw32 :=
 CFG_LDPATH_i686-w64-mingw32 :=$(CFG_LDPATH_i686-w64-mingw32):$(PATH)
 CFG_RUN_i686-w64-mingw32=PATH="$(CFG_LDPATH_i686-w64-mingw32):$(1)" $(2)
 CFG_RUN_TARG_i686-w64-mingw32=$(call CFG_RUN_i686-w64-mingw32,$(HLIB$(1)_H_$(CFG_BUILD)),$(2))
+# Stop rustc from OOMing when building itself (I think)
+RUSTC_FLAGS_i686-w64-mingw32=-C link-args="-Wl,--large-address-aware"
 RUSTC_CROSS_FLAGS_i686-w64-mingw32 :=
 
 # x86_64-w64-mingw32 configuration
