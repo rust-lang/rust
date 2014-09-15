@@ -298,6 +298,51 @@ impl LoanPath {
             LpExtend(ref base, _, _) => base.kill_scope(tcx),
         }
     }
+
+    fn has_fork(&self, other: &LoanPath) -> bool {
+        match (self, other) {
+            (&LpExtend(ref base, _, LpInterior(id)), &LpExtend(ref base2, _, LpInterior(id2))) =>
+                if id == id2 {
+                    base.has_fork(&**base2)
+                } else {
+                    true
+                },
+            (&LpExtend(ref base, _, LpDeref(_)), _) => base.has_fork(other),
+            (_, &LpExtend(ref base, _, LpDeref(_))) => self.has_fork(&**base),
+            _ => false,
+        }
+    }
+
+    fn depth(&self) -> uint {
+        match *self {
+            LpExtend(ref base, _, LpDeref(_)) => base.depth(),
+            LpExtend(ref base, _, LpInterior(_)) => base.depth() + 1,
+            _ => 0,
+        }
+    }
+
+    fn common(&self, other: &LoanPath) -> Option<LoanPath> {
+        match (self, other) {
+            (&LpExtend(ref base, a, LpInterior(id)), &LpExtend(ref base2, _, LpInterior(id2))) =>
+                if id == id2 {
+                    base.common(&**base2).map(|x| {
+                        let xd = x.depth();
+                        if base.depth() == xd && base2.depth() == xd {
+                            LpExtend(Rc::new(x), a, LpInterior(id))
+                        } else {
+                            x
+                        }
+                    })
+                } else {
+                    base.common(&**base2)
+                },
+            (&LpExtend(ref base, _, LpDeref(_)), _) => base.common(other),
+            (_, &LpExtend(ref other, _, LpDeref(_))) => self.common(&**other),
+            (&LpVar(id), &LpVar(id2)) => if id == id2 { Some(LpVar(id)) } else { None },
+            (&LpUpvar(id), &LpUpvar(id2)) => if id == id2 { Some(LpUpvar(id)) } else { None },
+            _ => None,
+        }
+    }
 }
 
 pub fn opt_loan_path(cmt: &mc::cmt) -> Option<Rc<LoanPath>> {
