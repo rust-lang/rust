@@ -392,14 +392,10 @@ By the way, in these examples, `i` indicates that the number is an integer.
 
 Rust is a statically typed language, which means that we specify our types up
 front. So why does our first example compile? Well, Rust has this thing called
-"[Hindley-Milner type
-inference](http://en.wikipedia.org/wiki/Hindley%E2%80%93Milner_type_system)",
-named after some really smart type theorists. If you clicked that link, don't
-be scared: what this means for you is that Rust will attempt to infer the types
-in your program, and it's pretty good at it. If it can infer the type, Rust
+"type inference." If it can figure out what the type of something is, Rust
 doesn't require you to actually type it out.
 
-We can add the type if we want to. Types come after a colon (`:`):
+We can add the type if we want to, though. Types come after a colon (`:`):
 
 ```{rust}
 let x: int = 5;
