@@ -271,9 +271,12 @@ impl Loan {
 }
 
 #[deriving(PartialEq, Eq, Hash)]
+pub enum CaptureKind { CaptureByVal, CaptureByRef }
+
+#[deriving(PartialEq, Eq, Hash)]
 pub enum LoanPath {
-    LpVar(ast::NodeId),               // `x` in doc.rs
-    LpUpvar(ty::UpvarId),             // `x` captured by-value into closure
+    LpVar(ast::NodeId),                // `x` in doc.rs
+    LpUpvar(ty::UpvarId, CaptureKind), // `x` captured into closure
     LpExtend(Rc<LoanPath>, mc::MutabilityCategory, LoanPathElem)
 }
 
@@ -300,7 +303,7 @@ impl LoanPath {
     pub fn kill_scope(&self, tcx: &ty::ctxt) -> ast::NodeId {
         match *self {
             LpVar(local_id) => tcx.region_maps.var_scope(local_id),
-            LpUpvar(upvar_id) =>
+            LpUpvar(upvar_id, _) =>
                 closure_to_block(upvar_id.closure_expr_id, tcx),
             LpExtend(ref base, _, _) => base.kill_scope(tcx),
         }
@@ -326,9 +329,12 @@ pub fn opt_loan_path(cmt: &mc::cmt) -> Option<Rc<LoanPath>> {
             Some(Rc::new(LpVar(id)))
         }
 
-        mc::cat_upvar(upvar_id, _) |
-        mc::cat_copied_upvar(mc::CopiedUpvar { upvar_id, onceness: _ }) => {
-            Some(Rc::new(LpUpvar(upvar_id)))
+        mc::cat_upvar(upvar_id, _) => {
+            Some(Rc::new(LpUpvar(upvar_id, CaptureByRef)))
+        }
+
+        mc::cat_copied_upvar(mc::CopiedUpvar { upvar_id, onceness: _}) => {
+            Some(Rc::new(LpUpvar(upvar_id, CaptureByVal)))
         }
 
         mc::cat_deref(ref cmt_base, _, pk) => {
@@ -788,7 +794,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                                    loan_path: &LoanPath,
                                    out: &mut String) {
         match *loan_path {
-            LpUpvar(ty::UpvarId{ var_id: id, closure_expr_id: _ }) |
+            LpUpvar(ty::UpvarId{ var_id: id, closure_expr_id: _ }, _) |
             LpVar(id) => {
                 out.push_str(ty::local_var_name_str(self.tcx, id).get());
             }
@@ -892,7 +898,7 @@ impl Repr for LoanPath {
                 format!("$({})", tcx.map.node_to_string(id))
             }
 
-            &LpUpvar(ty::UpvarId{ var_id, closure_expr_id }) => {
+            &LpUpvar(ty::UpvarId{ var_id, closure_expr_id }, _) => {
                 let s = tcx.map.node_to_string(var_id);
                 format!("$({} captured by id={})", s, closure_expr_id)
             }

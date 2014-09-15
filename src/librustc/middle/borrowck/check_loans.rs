@@ -44,7 +44,7 @@ fn owned_ptr_base_path<'a>(loan_path: &'a LoanPath) -> &'a LoanPath {
 
     fn owned_ptr_base_path_helper<'a>(loan_path: &'a LoanPath) -> Option<&'a LoanPath> {
         match *loan_path {
-            LpVar(_) | LpUpvar(_) => None,
+            LpVar(_) | LpUpvar(..) => None,
             LpExtend(ref lp_base, _, LpDeref(mc::OwnedPtr)) => {
                 match owned_ptr_base_path_helper(&**lp_base) {
                     v @ Some(_) => v,
@@ -67,7 +67,7 @@ fn owned_ptr_base_path_rc(loan_path: &Rc<LoanPath>) -> Rc<LoanPath> {
 
     fn owned_ptr_base_path_helper(loan_path: &Rc<LoanPath>) -> Option<Rc<LoanPath>> {
         match **loan_path {
-            LpVar(_) | LpUpvar(_) => None,
+            LpVar(_) | LpUpvar(..) => None,
             LpExtend(ref lp_base, _, LpDeref(mc::OwnedPtr)) => {
                 match owned_ptr_base_path_helper(lp_base) {
                     v @ Some(_) => v,
@@ -294,7 +294,7 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
         let mut loan_path = loan_path;
         loop {
             match *loan_path {
-                LpVar(_) | LpUpvar(_) => {
+                LpVar(_) | LpUpvar(..) => {
                     break;
                 }
                 LpExtend(ref lp_base, _, _) => {
@@ -687,7 +687,7 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
          */
 
         match **lp {
-            LpVar(_) | LpUpvar(_) => {
+            LpVar(_) | LpUpvar(..) => {
                 // assigning to `x` does not require that `x` is initialized
             }
             LpExtend(ref lp_base, _, LpInterior(_)) => {

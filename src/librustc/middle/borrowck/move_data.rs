@@ -163,7 +163,7 @@ pub type AssignDataFlow<'a, 'tcx> = DataFlowContext<'a, 'tcx, AssignDataFlowOper
 
 fn loan_path_is_precise(loan_path: &LoanPath) -> bool {
     match *loan_path {
-        LpVar(_) | LpUpvar(_) => {
+        LpVar(_) | LpUpvar(..) => {
             true
         }
         LpExtend(_, _, LpInterior(mc::InteriorElement(_))) => {
@@ -435,7 +435,7 @@ impl MoveData {
                     let path = *self.path_map.borrow().get(&path.loan_path);
                     self.kill_moves(path, kill_id, dfcx_moves);
                 }
-                LpUpvar(ty::UpvarId { var_id: _, closure_expr_id }) => {
+                LpUpvar(ty::UpvarId { var_id: _, closure_expr_id }, _) => {
                     let kill_id = closure_to_block(closure_expr_id, tcx);
                     let path = *self.path_map.borrow().get(&path.loan_path);
                     self.kill_moves(path, kill_id, dfcx_moves);
@@ -452,7 +452,7 @@ impl MoveData {
                     let kill_id = tcx.region_maps.var_scope(id);
                     dfcx_assign.add_kill(kill_id, assignment_index);
                 }
-                LpUpvar(ty::UpvarId { var_id: _, closure_expr_id }) => {
+                LpUpvar(ty::UpvarId { var_id: _, closure_expr_id }, _) => {
                     let kill_id = closure_to_block(closure_expr_id, tcx);
                     dfcx_assign.add_kill(kill_id, assignment_index);
                 }

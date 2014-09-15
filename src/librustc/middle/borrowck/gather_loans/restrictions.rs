@@ -75,13 +75,13 @@ impl<'a, 'tcx> RestrictionsContext<'a, 'tcx> {
 
             mc::cat_upvar(upvar_id, _) => {
                 // R-Variable, captured into closure
-                let lp = Rc::new(LpUpvar(upvar_id));
+                let lp = Rc::new(LpUpvar(upvar_id, CaptureByRef));
                 SafeIf(lp.clone(), vec![lp])
             }
 
             mc::cat_copied_upvar(mc::CopiedUpvar { upvar_id, .. }) => {
                 // R-Variable, copied/moved into closure
-                let lp = Rc::new(LpVar(upvar_id.var_id));
+                let lp = Rc::new(LpUpvar(upvar_id, CaptureByVal));
                 SafeIf(lp.clone(), vec![lp])
             }
 
