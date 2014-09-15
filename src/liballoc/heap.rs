@@ -8,9 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// FIXME: #13994: port to the sized deallocation API when available
 // FIXME: #13996: mark the `allocate` and `reallocate` return value as `noalias`
-//                and `nonnull`
 
 #[cfg(not(test))] use core::raw;
 #[cfg(stage0, not(test))] use util;
