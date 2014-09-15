@@ -326,11 +326,8 @@ pub fn opt_loan_path(cmt: &mc::cmt) -> Option<Rc<LoanPath>> {
             Some(Rc::new(LpVar(id)))
         }
 
-        mc::cat_upvar(ty::UpvarId {var_id: id, closure_expr_id: proc_id}, _) |
-        mc::cat_copied_upvar(mc::CopiedUpvar { upvar_id: id,
-                                               onceness: _,
-                                               capturing_proc: proc_id }) => {
-            let upvar_id = ty::UpvarId{ var_id: id, closure_expr_id: proc_id };
+        mc::cat_upvar(upvar_id, _) |
+        mc::cat_copied_upvar(mc::CopiedUpvar { upvar_id, onceness: _ }) => {
             Some(Rc::new(LpUpvar(upvar_id)))
         }
 

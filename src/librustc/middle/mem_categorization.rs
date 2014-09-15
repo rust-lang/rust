@@ -96,9 +96,8 @@ pub enum categorization {
 
 #[deriving(Clone, PartialEq)]
 pub struct CopiedUpvar {
-    pub upvar_id: ast::NodeId,
+    pub upvar_id: ty::UpvarId,
     pub onceness: ast::Onceness,
-    pub capturing_proc: ast::NodeId,
 }
 
 // different kinds of pointers:
@@ -593,9 +592,11 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
                               id:id,
                               span:span,
                               cat:cat_copied_upvar(CopiedUpvar {
-                                  upvar_id: var_id,
+                                  upvar_id: ty::UpvarId {
+                                      var_id: var_id,
+                                      closure_expr_id: fn_node_id
+                                  },
                                   onceness: closure_ty.onceness,
-                                  capturing_proc: fn_node_id,
                               }),
                               mutbl: MutabilityCategory::from_def(&def),
                               ty:expr_ty
@@ -616,9 +617,11 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
                           id: id,
                           span: span,
                           cat: cat_copied_upvar(CopiedUpvar {
-                              upvar_id: var_id,
+                              upvar_id: ty::UpvarId {
+                                  var_id: var_id,
+                                  closure_expr_id: fn_node_id,
+                              },
                               onceness: onceness,
-                              capturing_proc: fn_node_id,
                           }),
                           mutbl: MutabilityCategory::from_def(&def),
                           ty: expr_ty
