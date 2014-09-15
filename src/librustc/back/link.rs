@@ -931,7 +931,12 @@ fn link_args(cmd: &mut Command,
     }
 
     // Rust does its' own LTO
-    cmd.arg("-fno-lto").arg("-fno-use-linker-plugin");
+    cmd.arg("-fno-lto");
+
+    // clang fails hard if -fno-use-linker-plugin is passed
+    if sess.targ_cfg.os == abi::OsWindows {
+        cmd.arg("-fno-use-linker-plugin");
+    }
 
     // If we're building a dylib, we don't use --gc-sections because LLVM has
     // already done the best it can do, and we also don't want to eliminate the
