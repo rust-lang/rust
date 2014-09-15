@@ -417,6 +417,7 @@ pub struct FileStat {
     pub kind: u64,
     pub perm: u64,
     pub created: u64,
+    pub changed: u64,
     pub modified: u64,
     pub accessed: u64,
     pub device: u64,
