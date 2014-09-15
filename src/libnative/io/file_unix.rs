@@ -460,11 +460,11 @@ fn mkstat(stat: &libc::stat) -> rtio::FileStat {
     #[cfg(target_os = "windows")]
     fn created(stat: &libc::stat) -> u64 { mktime(stat.st_ctime as u64, stat.st_ctime_nsec as u64) }
     #[cfg(target_os = "macos", target_arch = "x86_64")]
-    fn created(stat: &libc::stat) -> u64 { 
+    fn created(stat: &libc::stat) -> u64 {
         mktime(stat.st_birthtime as u64, stat.st_birthtime_nsec as u64)
     }
     #[cfg(target_os = "freebsd")]
-    fn created(stat: &libc::stat) -> u64 { 
+    fn created(stat: &libc::stat) -> u64 {
         mktime(stat.st_birthtime as u64, stat.st_birthtime_nsec as u64)
     }
     #[cfg(target_family = "unix")]
