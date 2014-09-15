@@ -11,9 +11,10 @@
 //! Used by plugin crates to tell `rustc` about the plugins they provide.
 
 use lint::{LintPassObject, LintId, Lint};
+use session::Session;
 
 use syntax::ext::base::{SyntaxExtension, NamedSyntaxExtension, NormalTT};
-use syntax::ext::base::{IdentTT, LetSyntaxTT, Decorator, Modifier};
+use syntax::ext::base::{IdentTT, Decorator, Modifier, MacroRulesTT};
 use syntax::ext::base::{MacroExpanderFn};
 use syntax::codemap::Span;
 use syntax::parse::token;
@@ -29,7 +30,11 @@ use std::collections::HashMap;
 /// This struct has public fields and other methods for use by `rustc`
 /// itself. They are not documented here, and plugin authors should
 /// not use them.
-pub struct Registry {
+pub struct Registry<'a> {
+    /// Compiler session. Useful if you want to emit diagnostic messages
+    /// from the plugin registrar.
+    pub sess: &'a Session,
+
     #[doc(hidden)]
     pub krate_span: Span,
 
@@ -43,10 +48,11 @@ pub struct Registry {
     pub lint_groups: HashMap<&'static str, Vec<LintId>>,
 }
 
-impl Registry {
+impl<'a> Registry<'a> {
     #[doc(hidden)]
-    pub fn new(krate: &ast::Crate) -> Registry {
+    pub fn new(sess: &'a Session, krate: &ast::Crate) -> Registry<'a> {
         Registry {
+            sess: sess,
             krate_span: krate.span,
             syntax_exts: vec!(),
             lint_passes: vec!(),
@@ -63,8 +69,11 @@ impl Registry {
             IdentTT(ext, _) => IdentTT(ext, Some(self.krate_span)),
             Decorator(ext) => Decorator(ext),
             Modifier(ext) => Modifier(ext),
-            // there's probably a nicer way to signal this:
-            LetSyntaxTT(_, _) => panic!("can't register a new LetSyntax!"),
+
+            MacroRulesTT => {
+                self.sess.err("plugin tried to register a new MacroRulesTT");
+                return;
+            }
         }));
     }
 

@@ -129,15 +129,6 @@ impl TTMacroExpander for MacroRulesMacroExpander {
     }
 }
 
-struct MacroRulesDefiner {
-    def: Option<MacroDef>
-}
-impl MacResult for MacroRulesDefiner {
-    fn make_def(&mut self) -> Option<MacroDef> {
-        Some(self.def.take().expect("empty MacroRulesDefiner"))
-    }
-}
-
 /// Given `lhses` and `rhses`, this is the new macro we create
 fn generic_extension<'cx>(cx: &'cx ExtCtxt,
                           sp: Span,
@@ -219,7 +210,7 @@ pub fn add_new_extension<'cx>(cx: &'cx mut ExtCtxt,
                               sp: Span,
                               name: Ident,
                               arg: Vec<ast::TokenTree> )
-                              -> Box<MacResult+'cx> {
+                              -> MacroDef {
 
     let lhs_nm =  gensym_ident("lhs");
     let rhs_nm =  gensym_ident("rhs");
@@ -279,10 +270,8 @@ pub fn add_new_extension<'cx>(cx: &'cx mut ExtCtxt,
         rhses: rhses,
     };
 
-    box MacroRulesDefiner {
-        def: Some(MacroDef {
-            name: token::get_ident(name).to_string(),
-            ext: NormalTT(exp, Some(sp))
-        })
-    } as Box<MacResult+'cx>
+    MacroDef {
+        name: token::get_ident(name).to_string(),
+        ext: NormalTT(exp, Some(sp))
+    }
 }

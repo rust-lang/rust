@@ -328,13 +328,8 @@ pub enum SyntaxExtension {
     ///
     IdentTT(Box<IdentMacroExpander + 'static>, Option<Span>),
 
-    /// An ident macro that has two properties:
-    /// - it adds a macro definition to the environment, and
-    /// - the definition it adds doesn't introduce any new
-    ///   identifiers.
-    ///
-    /// `macro_rules!` is a LetSyntaxTT
-    LetSyntaxTT(Box<IdentMacroExpander + 'static>, Option<Span>),
+    /// Represents `macro_rules!` itself.
+    MacroRulesTT,
 }
 
 pub type NamedSyntaxExtension = (Name, SyntaxExtension);
@@ -364,8 +359,7 @@ fn initial_syntax_expander_table(ecfg: &expand::ExpansionConfig) -> SyntaxEnv {
     }
 
     let mut syntax_expanders = SyntaxEnv::new();
-    syntax_expanders.insert(intern("macro_rules"),
-                            LetSyntaxTT(box ext::tt::macro_rules::add_new_extension, None));
+    syntax_expanders.insert(intern("macro_rules"), MacroRulesTT);
     syntax_expanders.insert(intern("fmt"),
                             builtin_normal_expander(
                                 ext::fmt::expand_syntax_ext));

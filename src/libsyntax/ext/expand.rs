@@ -7,7 +7,6 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
-use self::Either::*;
 
 use ast::{Block, Crate, DeclLocal, ExprMac, PatMac};
 use ast::{Local, Ident, MacInvocTT};
@@ -18,6 +17,7 @@ use ast;
 use ast_util::path_to_ident;
 use ext::mtwt;
 use ext::build::AstBuilder;
+use ext::tt::macro_rules;
 use attr;
 use attr::AttrMetaMethods;
 use codemap;
@@ -32,11 +32,6 @@ use ptr::P;
 use util::small_vector::SmallVector;
 use visit;
 use visit::Visitor;
-
-enum Either<L,R> {
-    Left(L),
-    Right(R)
-}
 
 pub fn expand_type(t: P<ast::Ty>,
                    fld: &mut MacroExpander,
@@ -548,8 +543,8 @@ pub fn expand_item_mac(it: P<ast::Item>, fld: &mut MacroExpander)
 
     let extnamestr = token::get_ident(extname);
     let fm = fresh_mark();
-    let def_or_items = {
-        let mut expanded = match fld.cx.syntax_env.find(&extname.name) {
+    let items = {
+        let expanded = match fld.cx.syntax_env.find(&extname.name) {
             None => {
                 fld.cx.span_err(path_span,
                                 format!("macro undefined: '{}!'",
@@ -600,11 +595,10 @@ pub fn expand_item_mac(it: P<ast::Item>, fld: &mut MacroExpander)
                     let marked_tts = mark_tts(tts[], fm);
                     expander.expand(fld.cx, it.span, it.ident, marked_tts)
                 }
-                LetSyntaxTT(ref expander, span) => {
+                MacroRulesTT => {
                     if it.ident.name == parse::token::special_idents::invalid.name {
                         fld.cx.span_err(path_span,
-                                        format!("macro {}! expects an ident argument",
-                                                extnamestr.get())[]);
+                                        format!("macro_rules! expects an ident argument")[]);
                         return SmallVector::zero();
                     }
                     fld.cx.bt_push(ExpnInfo {
@@ -612,11 +606,21 @@ pub fn expand_item_mac(it: P<ast::Item>, fld: &mut MacroExpander)
                         callee: NameAndSpan {
                             name: extnamestr.get().to_string(),
                             format: MacroBang,
-                            span: span
+                            span: None,
                         }
                     });
-                    // DON'T mark before expansion:
-                    expander.expand(fld.cx, it.span, it.ident, tts)
+                    // DON'T mark before expansion.
+                    let MacroDef { name, ext }
+                        = macro_rules::add_new_extension(fld.cx, it.span, it.ident, tts);
+
+                    fld.cx.syntax_env.insert(intern(name.as_slice()), ext);
+                    if attr::contains_name(it.attrs.as_slice(), "macro_export") {
+                        fld.cx.exported_macros.push(it);
+                    }
+
+                    // macro_rules! has a side effect but expands to nothing.
+                    fld.cx.bt_pop();
+                    return SmallVector::zero();
                 }
                 _ => {
                     fld.cx.span_err(it.span,
@@ -627,31 +631,17 @@ pub fn expand_item_mac(it: P<ast::Item>, fld: &mut MacroExpander)
             }
         };
 
-        match expanded.make_def() {
-            Some(def) => Left(def),
-            None => Right(expanded.make_items())
-        }
+        expanded.make_items()
     };
 
-    let items = match def_or_items {
-        Left(MacroDef { name, ext }) => {
-            // hidden invariant: this should only be possible as the
-            // result of expanding a LetSyntaxTT, and thus doesn't
-            // need to be marked. Not that it could be marked anyway.
-            // create issue to recommend refactoring here?
-            fld.cx.syntax_env.insert(intern(name[]), ext);
-            if attr::contains_name(it.attrs[], "macro_export") {
-                fld.cx.exported_macros.push(it);
-            }
-            SmallVector::zero()
-        }
-        Right(Some(items)) => {
+    let items = match items {
+        Some(items) => {
             items.into_iter()
                 .map(|i| mark_item(i, fm))
                 .flat_map(|i| fld.fold_item(i).into_iter())
                 .collect()
         }
-        Right(None) => {
+        None => {
             fld.cx.span_err(path_span,
                             format!("non-item macro in item position: {}",
                                     extnamestr.get())[]);
