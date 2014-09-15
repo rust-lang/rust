@@ -557,7 +557,7 @@ fn get_branches<'a, 'p, 'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let tcx = bcx.tcx();
 
     let mut found: Vec<Opt> = vec![];
-    for (i, br) in m.iter().enumerate() {
+    for br in m.iter() {
         let cur = *br.pats.get(col);
         let opt = match cur.node {
             ast::PatLit(ref l) => ConstantValue(ConstantExpr(&**l)),
