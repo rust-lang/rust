@@ -34,7 +34,7 @@ pub fn expand_option_env<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[ast::TokenT
       None => {
           cx.expr_path(cx.path_all(sp,
                                    true,
-                                   vec!(cx.ident_of("std"),
+                                   vec!(cx.ident_of_std("core"),
                                         cx.ident_of("option"),
                                         cx.ident_of("None")),
                                    Vec::new(),
@@ -48,7 +48,7 @@ pub fn expand_option_env<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[ast::TokenT
       }
       Some(s) => {
           cx.expr_call_global(sp,
-                              vec!(cx.ident_of("std"),
+                              vec!(cx.ident_of_std("core"),
                                    cx.ident_of("option"),
                                    cx.ident_of("Some")),
                               vec!(cx.expr_str(sp,

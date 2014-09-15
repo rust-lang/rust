@@ -70,10 +70,10 @@ use core::iter::{Chain, Enumerate, Repeat, Skip, Take};
 use core::iter;
 use core::slice;
 use core::uint;
-use std::hash;
 
 use {Mutable, Set, MutableSet, MutableSeq};
 use vec::Vec;
+use hash;
 
 type MatchWords<'a> = Chain<MaskWords<'a>, Skip<Take<Enumerate<Repeat<uint>>>>>;
 // Take two BitV's, and return iterators of their words, where the shorter one

@@ -976,6 +976,9 @@ fn new_span(cx: &ExtCtxt, sp: Span) -> Span {
 pub struct ExpansionConfig {
     pub deriving_hash_type_parameter: bool,
     pub crate_name: String,
+
+    // Do we refer to things through their std re-exports?
+    pub use_std: bool,
 }
 
 pub struct ExportedMacros {
@@ -1120,7 +1123,7 @@ impl<'a, 'v> Visitor<'v> for MacroExterminator<'a> {
 #[cfg(test)]
 mod test {
     use super::{pattern_bindings, expand_crate, contains_macro_escape};
-    use super::{PatIdentFinder, IdentRenamer, PatIdentRenamer};
+    use super::{PatIdentFinder, IdentRenamer, PatIdentRenamer, ExpansionConfig};
     use ast;
     use ast::{Attribute_, AttrOuter, MetaWord, Name};
     use attr;
@@ -1185,6 +1188,14 @@ mod test {
     // these following tests are quite fragile, in that they don't test what
     // *kind* of failure occurs.
 
+    fn test_ecfg() -> ExpansionConfig {
+        ExpansionConfig {
+            deriving_hash_type_parameter: false,
+            crate_name: "test".to_string(),
+            use_std: true,
+        }
+    }
+
     // make sure that macros can't escape fns
     #[should_fail]
     #[test] fn macros_cant_escape_fns_test () {
@@ -1196,11 +1207,7 @@ mod test {
             src,
             Vec::new(), &sess);
         // should fail:
-        let cfg = ::syntax::ext::expand::ExpansionConfig {
-            deriving_hash_type_parameter: false,
-            crate_name: "test".to_string(),
-        };
-        expand_crate(&sess,cfg,vec!(),vec!(),crate_ast);
+        expand_crate(&sess,test_ecfg(),vec!(),vec!(),crate_ast);
     }
 
     // make sure that macros can't escape modules
@@ -1213,11 +1220,7 @@ mod test {
             "<test>".to_string(),
             src,
             Vec::new(), &sess);
-        let cfg = ::syntax::ext::expand::ExpansionConfig {
-            deriving_hash_type_parameter: false,
-            crate_name: "test".to_string(),
-        };
-        expand_crate(&sess,cfg,vec!(),vec!(),crate_ast);
+        expand_crate(&sess,test_ecfg(),vec!(),vec!(),crate_ast);
     }
 
     // macro_escape modules should allow macros to escape
@@ -1229,11 +1232,7 @@ mod test {
             "<test>".to_string(),
             src,
             Vec::new(), &sess);
-        let cfg = ::syntax::ext::expand::ExpansionConfig {
-            deriving_hash_type_parameter: false,
-            crate_name: "test".to_string(),
-        };
-        expand_crate(&sess, cfg, vec!(), vec!(), crate_ast);
+        expand_crate(&sess, test_ecfg(), vec!(), vec!(), crate_ast);
     }
 
     #[test] fn test_contains_flatten (){
@@ -1266,11 +1265,7 @@ mod test {
         let ps = parse::new_parse_sess();
         let crate_ast = string_to_parser(&ps, crate_str).parse_crate_mod();
         // the cfg argument actually does matter, here...
-        let cfg = ::syntax::ext::expand::ExpansionConfig {
-            deriving_hash_type_parameter: false,
-            crate_name: "test".to_string(),
-        };
-        expand_crate(&ps,cfg,vec!(),vec!(),crate_ast)
+        expand_crate(&ps,test_ecfg(),vec!(),vec!(),crate_ast)
     }
 
     // find the pat_ident paths in a crate

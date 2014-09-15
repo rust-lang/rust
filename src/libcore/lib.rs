@@ -133,13 +133,20 @@ pub mod tuple;
 pub mod unit;
 pub mod fmt;
 
+// NOTE: Remove after next snapshot
 #[doc(hidden)]
-mod core {
-    pub use failure;
+#[cfg(stage0)]
+mod std {
+    pub use clone;
+    pub use cmp;
+    pub use kinds;
+    pub use option;
+    pub use fmt;
 }
 
 #[doc(hidden)]
-mod std {
+mod core {
+    pub use failure;
     pub use clone;
     pub use cmp;
     pub use kinds;

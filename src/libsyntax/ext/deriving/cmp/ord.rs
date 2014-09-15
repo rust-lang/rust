@@ -32,7 +32,7 @@ pub fn expand_deriving_ord(cx: &mut ExtCtxt,
                 generics: LifetimeBounds::empty(),
                 explicit_self: borrowed_explicit_self(),
                 args: vec!(borrowed_self()),
-                ret_ty: Literal(Path::new(vec!("bool"))),
+                ret_ty: Literal(quote_path!(bool)),
                 attributes: attrs,
                 combine_substructure: combine_substructure(|cx, span, substr| {
                     cs_op($op, $equal, cx, span, substr)
@@ -41,8 +41,8 @@ pub fn expand_deriving_ord(cx: &mut ExtCtxt,
         } }
     );
 
-    let ordering_ty = Literal(Path::new(vec!["std", "cmp", "Ordering"]));
-    let ret_ty = Literal(Path::new_(vec!["std", "option", "Option"],
+    let ordering_ty = Literal(quote_path_std!(cx, core::cmp::Ordering));
+    let ret_ty = Literal(Path::new_(quote_path_vec_std!(cx, core::option::Option),
                                     None,
                                     vec![box ordering_ty],
                                     true));
@@ -65,7 +65,7 @@ pub fn expand_deriving_ord(cx: &mut ExtCtxt,
     let trait_def = TraitDef {
         span: span,
         attributes: vec![],
-        path: Path::new(vec!["std", "cmp", "PartialOrd"]),
+        path: quote_path_std!(cx, core::cmp::PartialOrd),
         additional_bounds: vec![],
         generics: LifetimeBounds::empty(),
         methods: vec![
@@ -101,7 +101,7 @@ pub fn cs_partial_cmp(cx: &mut ExtCtxt, span: Span,
               substr: &Substructure) -> P<Expr> {
     let test_id = cx.ident_of("__test");
     let ordering = cx.path_global(span,
-                                  vec!(cx.ident_of("std"),
+                                  vec!(cx.ident_of_std("core"),
                                        cx.ident_of("cmp"),
                                        cx.ident_of("Equal")));
     let ordering = cx.expr_path(ordering);

@@ -29,9 +29,9 @@ use core::fmt;
 use core::iter;
 use core::mem;
 use core::ptr;
-use std::hash::{Writer, Hash};
 
 use {Mutable, Deque, MutableSeq};
+use hash::{Writer, Hash};
 
 /// A doubly-linked list.
 pub struct DList<T> {
@@ -742,13 +742,13 @@ impl<S: Writer, A: Hash<S>> Hash<S> for DList<A> {
 mod tests {
     use std::prelude::*;
     use std::rand;
-    use std::hash;
     use test::Bencher;
     use test;
 
     use {Deque, MutableSeq};
     use super::{DList, Node, ListInsertion};
     use vec::Vec;
+    use hash;
 
     pub fn check_links<T>(list: &DList<T>) {
         let mut len = 0u;

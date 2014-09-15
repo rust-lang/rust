@@ -13,7 +13,7 @@
 #![stable]
 
 use intrinsics;
-use std::kinds::marker;
+use kinds::marker;
 use cell::UnsafeCell;
 
 /// An atomic boolean type.

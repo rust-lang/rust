@@ -30,8 +30,8 @@ extern crate alloc;
 #[cfg(test)] extern crate native;
 #[cfg(test)] extern crate test;
 #[cfg(test)] extern crate debug;
+#[cfg(test)] extern crate std;
 
-#[cfg(test)] #[phase(plugin, link)] extern crate std;
 #[cfg(test)] #[phase(plugin, link)] extern crate log;
 
 use core::prelude::Option;
@@ -556,10 +556,12 @@ pub trait Deque<T> : MutableSeq<T> {
 #[doc(hidden)]
 pub fn fixme_14344_be_sure_to_link_to_collections() {}
 
+// NOTE: Remove after next snapshot
+#[cfg(stage0)]
 #[cfg(not(test))]
 mod std {
-    pub use core::fmt;      // necessary for fail!()
     pub use core::option;   // necessary for fail!()
+    pub use core::fmt;      // necessary for fail!()
     pub use core::clone;    // deriving(Clone)
     pub use core::cmp;      // deriving(Eq, Ord, etc.)
     pub use hash;           // deriving(Hash)
@@ -567,4 +569,10 @@ mod std {
     pub mod collections {
         pub use MutableSeq;
     }
+}
+
+mod collections {
+    pub use hash;     // deriving(Hsah)
+    pub use string;   // format!()
+    pub use vec;      // vec!()
 }

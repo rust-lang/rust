@@ -41,10 +41,12 @@ pub fn expand_deriving_bound(cx: &mut ExtCtxt,
         }
     };
 
+    let krate = if cx.ecfg.use_std { "std" } else { "core" };
+
     let trait_def = TraitDef {
         span: span,
         attributes: Vec::new(),
-        path: Path::new(vec!("std", "kinds", name)),
+        path: Path::new(vec!(krate, "kinds", name)),
         additional_bounds: Vec::new(),
         generics: LifetimeBounds::empty(),
         methods: vec!()

@@ -338,7 +338,7 @@ impl<'a, 'b> Context<'a, 'b> {
     }
 
     fn rtpath(ecx: &ExtCtxt, s: &str) -> Vec<ast::Ident> {
-        vec![ecx.ident_of("std"), ecx.ident_of("fmt"), ecx.ident_of("rt"), ecx.ident_of(s)]
+        vec![ecx.ident_of_std("core"), ecx.ident_of("fmt"), ecx.ident_of("rt"), ecx.ident_of(s)]
     }
 
     fn trans_count(&self, c: parse::Count) -> P<ast::Expr> {
@@ -595,7 +595,7 @@ impl<'a, 'b> Context<'a, 'b> {
         };
 
         let result = self.ecx.expr_call_global(self.fmtsp, vec!(
-                self.ecx.ident_of("std"),
+                self.ecx.ident_of_std("core"),
                 self.ecx.ident_of("fmt"),
                 self.ecx.ident_of("Arguments"),
                 self.ecx.ident_of(fn_name)), fn_args);
@@ -664,52 +664,57 @@ impl<'a, 'b> Context<'a, 'b> {
     fn format_arg(ecx: &ExtCtxt, sp: Span,
                   ty: &ArgumentType, arg: P<ast::Expr>)
                   -> P<ast::Expr> {
-        let (krate, fmt_fn) = match *ty {
+        let mut krate = ecx.ident_of_std("core");
+        let fmt_fn = match *ty {
             Known(ref tyname) => {
                 match tyname.as_slice() {
-                    ""  => ("std", "secret_show"),
-                    "?" => ("debug", "secret_poly"),
-                    "b" => ("std", "secret_bool"),
-                    "c" => ("std", "secret_char"),
-                    "d" | "i" => ("std", "secret_signed"),
-                    "e" => ("std", "secret_lower_exp"),
-                    "E" => ("std", "secret_upper_exp"),
-                    "f" => ("std", "secret_float"),
-                    "o" => ("std", "secret_octal"),
-                    "p" => ("std", "secret_pointer"),
-                    "s" => ("std", "secret_string"),
-                    "t" => ("std", "secret_binary"),
-                    "u" => ("std", "secret_unsigned"),
-                    "x" => ("std", "secret_lower_hex"),
-                    "X" => ("std", "secret_upper_hex"),
+                    "?" => {
+                        krate = ecx.ident_of("debug");
+                        "secret_poly"
+                    }
+
+                    ""  => "secret_show",
+                    "b" => "secret_bool",
+                    "c" => "secret_char",
+                    "d" | "i" => "secret_signed",
+                    "e" => "secret_lower_exp",
+                    "E" => "secret_upper_exp",
+                    "f" => "secret_float",
+                    "o" => "secret_octal",
+                    "p" => "secret_pointer",
+                    "s" => "secret_string",
+                    "t" => "secret_binary",
+                    "u" => "secret_unsigned",
+                    "x" => "secret_lower_hex",
+                    "X" => "secret_upper_hex",
                     _ => {
                         ecx.span_err(sp,
                                      format!("unknown format trait `{}`",
                                              *tyname).as_slice());
-                        ("std", "dummy")
+                        "dummy"
                     }
                 }
             }
             String => {
                 return ecx.expr_call_global(sp, vec![
-                        ecx.ident_of("std"),
+                        ecx.ident_of_std("core"),
                         ecx.ident_of("fmt"),
                         ecx.ident_of("argumentstr")], vec![arg])
             }
             Unsigned => {
                 return ecx.expr_call_global(sp, vec![
-                        ecx.ident_of("std"),
+                        ecx.ident_of_std("core"),
                         ecx.ident_of("fmt"),
                         ecx.ident_of("argumentuint")], vec![arg])
             }
         };
 
         let format_fn = ecx.path_global(sp, vec![
-                ecx.ident_of(krate),
+                krate,
                 ecx.ident_of("fmt"),
                 ecx.ident_of(fmt_fn)]);
         ecx.expr_call_global(sp, vec![
-                ecx.ident_of("std"),
+                ecx.ident_of_std("core"),
                 ecx.ident_of("fmt"),
                 ecx.ident_of("argument")], vec![ecx.expr_path(format_fn), arg])
     }

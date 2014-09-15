@@ -21,7 +21,7 @@ use num;
 use ops::{Add, Sub, Mul, Div, Rem, Neg};
 use option::{None, Option, Some};
 use slice::{ImmutableSlice, MutableSlice};
-use std::cmp::{PartialOrd, PartialEq};
+use cmp::{PartialOrd, PartialEq};
 use str::StrSlice;
 use string::String;
 use vec::Vec;

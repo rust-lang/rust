@@ -273,6 +273,7 @@ pub fn phase_2_configure_and_expand(sess: &Session,
             let cfg = syntax::ext::expand::ExpansionConfig {
                 deriving_hash_type_parameter: sess.features.default_type_params.get(),
                 crate_name: crate_name.to_string(),
+                use_std: front::std_inject::use_std(&krate),
             };
             let ret = syntax::ext::expand::expand_crate(&sess.parse_sess,
                                               cfg,

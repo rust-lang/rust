@@ -520,12 +520,13 @@ pub type Values<'a, T> =
 
 #[cfg(test)]
 mod test_map {
-    use std::prelude::*;
+    use core::prelude::*;
     use vec::Vec;
     use hash;
 
     use {Map, MutableMap, Mutable, MutableSeq};
     use super::SmallIntMap;
+    use string::String;
 
     #[test]
     fn test_find_mut() {
@@ -764,6 +765,8 @@ mod test_map {
 
     #[test]
     fn test_show() {
+        use std::to_string::ToString;
+
         let mut map = SmallIntMap::new();
         let empty = SmallIntMap::<int>::new();
 
@@ -773,7 +776,7 @@ mod test_map {
         let map_str = map.to_string();
         let map_str = map_str.as_slice();
         assert!(map_str == "{1: 2, 3: 4}" || map_str == "{3: 4, 1: 2}");
-        assert_eq!(format!("{}", empty), "{}".to_string());
+        assert_eq!(format!("{}", empty), String::from_str("{}"));
     }
 
     #[test]

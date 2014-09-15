@@ -1611,6 +1611,13 @@ impl<T> MutableSeq<T> for Vec<T> {
 
 }
 
+impl fmt::FormatWriter for Vec<u8> {
+    fn write(&mut self, bytes: &[u8]) -> fmt::Result {
+        self.push_all(bytes);
+        Ok(())
+    }
+}
+
 /// An iterator that moves out of a vector.
 pub struct MoveItems<T> {
     allocation: *mut T, // the block of memory allocated for the vector
@@ -2039,6 +2046,14 @@ mod tests {
         assert_eq!(vec.as_ptr(), ptr);
         assert_eq!(vec.capacity(), 7);
         assert_eq!(vec.len(), 0);
+    }
+
+    #[test]
+    fn test_format_writer() {
+        use core::fmt::FormatWriter;
+        let mut vec: Vec<u8> = vec!(b'x', b'y');
+        vec.write("abc".as_bytes());
+        assert_eq!(vec.as_slice(), b"xyabc");
     }
 
     #[bench]
