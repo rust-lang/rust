@@ -26,9 +26,10 @@ provides:
   of the string, but thereby also allows violation of the utf8 guarantee.
 
 * A `raw` submodule with a number of free functions, like `from_parts`, that
-  construct `String` instances from various raw-pointer-based representations,
-  as well as a `from_utf8` variant that does not actually check for utf8
-  validity.
+  constructs a `String` instances from a raw-pointer-based representation, a
+  `from_utf8` variant that does not actually check for utf8 validity, and so
+  on. The unifying theme is that all of these functions avoid checking some key
+  invariant.
 
 The problem is that currently, there is no clear/consistent guideline about
 which of these APIs should live as methods/static functions associated with a
