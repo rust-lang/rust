@@ -438,7 +438,7 @@ pub fn ast_ty_to_builtin_ty<'tcx, AC: AstConv<'tcx>, RS: RegionScope>(
             // FIXME(#12938): This is a hack until we have full support for
             // DST.
             match a_def {
-                def::DefTy(did) | def::DefStruct(did)
+                def::DefTy(did, _) | def::DefStruct(did)
                         if Some(did) == this.tcx().lang_items.owned_box() => {
                     if path.segments
                            .iter()
@@ -462,7 +462,7 @@ pub fn ast_ty_to_builtin_ty<'tcx, AC: AstConv<'tcx>, RS: RegionScope>(
                               "not enough type parameters supplied to `Box<T>`");
                     Some(ty::mk_err())
                 }
-                def::DefTy(did) | def::DefStruct(did)
+                def::DefTy(did, _) | def::DefStruct(did)
                         if Some(did) == this.tcx().lang_items.gc() => {
                     if path.segments
                            .iter()
@@ -833,7 +833,7 @@ pub fn ast_ty_to_ty<'tcx, AC: AstConv<'tcx>, RS: RegionScope>(
                                      result.substs.clone(),
                                      bounds)
                     }
-                    def::DefTy(did) | def::DefStruct(did) => {
+                    def::DefTy(did, _) | def::DefStruct(did) => {
                         ast_path_to_ty(this, rscope, did, path).ty
                     }
                     def::DefTyParam(space, id, n) => {

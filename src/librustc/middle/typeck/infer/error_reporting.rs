@@ -1235,7 +1235,7 @@ impl<'a, 'tcx> Rebuilder<'a, 'tcx> {
                         Some(&d) => d
                     };
                     match a_def {
-                        def::DefTy(did) | def::DefStruct(did) => {
+                        def::DefTy(did, _) | def::DefStruct(did) => {
                             let generics = ty::lookup_item_type(self.tcx, did).generics;
 
                             let expected =
