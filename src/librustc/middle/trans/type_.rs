@@ -21,11 +21,10 @@ use syntax::abi::{X86, X86_64, Arm, Mips, Mipsel};
 
 use std::c_str::ToCStr;
 use std::mem;
-use std::string;
 use std::cell::RefCell;
 use std::collections::HashMap;
 
-use libc::{c_uint, c_void, free};
+use libc::c_uint;
 
 #[deriving(Clone, PartialEq, Show)]
 pub struct Type {
@@ -339,12 +338,9 @@ impl TypeNames {
     }
 
     pub fn type_to_string(&self, ty: Type) -> String {
-        unsafe {
-            let s = llvm::LLVMTypeToString(ty.to_ref());
-            let ret = string::raw::from_buf(s as *const u8);
-            free(s as *mut c_void);
-            ret
-        }
+        llvm::build_string(|s| unsafe {
+                llvm::LLVMWriteTypeToString(ty.to_ref(), s);
+            }).expect("non-UTF8 type description from LLVM")
     }
 
     pub fn types_to_str(&self, tys: &[Type]) -> String {
@@ -353,11 +349,8 @@ impl TypeNames {
     }
 
     pub fn val_to_string(&self, val: ValueRef) -> String {
-        unsafe {
-            let s = llvm::LLVMValueToString(val);
-            let ret = string::raw::from_buf(s as *const u8);
-            free(s as *mut c_void);
-            ret
-        }
+        llvm::build_string(|s| unsafe {
+                llvm::LLVMWriteValueToString(val, s);
+            }).expect("nun-UTF8 value description from LLVM")
     }
 }
