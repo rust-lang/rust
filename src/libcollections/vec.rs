@@ -8,7 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! An owned, growable vector.
+//! A growable list type, written `Vec<T>` but pronounced 'vector.'
+//!
+//! Vectors have `O(1)` indexing, push (to the end) and pop (from the end).
 
 use core::prelude::*;
 

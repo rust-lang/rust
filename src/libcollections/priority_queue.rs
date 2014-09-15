@@ -10,6 +10,11 @@
 
 //! A priority queue implemented with a binary heap.
 //!
+//! Insertions have `O(log n)` time complexity and checking or popping the largest element is
+//! `O(1)`. Converting a vector to a priority queue can be done in-place, and has `O(n)`
+//! complexity. A priority queue can also be converted to a sorted vector in-place, allowing it to
+//! be used for an `O(n log n)` in-place heapsort.
+//!
 //! # Example
 //!
 //! This is a larger example which implements [Dijkstra's algorithm][dijkstra]
