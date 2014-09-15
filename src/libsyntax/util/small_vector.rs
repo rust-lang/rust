@@ -90,7 +90,7 @@ impl<T> SmallVector<T> {
     }
 
     pub fn push_all(&mut self, other: SmallVector<T>) {
-        for v in other.move_iter() {
+        for v in other.into_iter() {
             self.push(v);
         }
     }
@@ -108,7 +108,7 @@ impl<T> SmallVector<T> {
             One(v) => v,
             Many(v) => {
                 if v.len() == 1 {
-                    v.move_iter().next().unwrap()
+                    v.into_iter().next().unwrap()
                 } else {
                     fail!(err)
                 }
@@ -117,11 +117,17 @@ impl<T> SmallVector<T> {
         }
     }
 
+    /// Deprecated: use `into_iter`.
+    #[deprecated = "use into_iter"]
     pub fn move_iter(self) -> MoveItems<T> {
+        self.into_iter()
+    }
+
+    pub fn into_iter(self) -> MoveItems<T> {
         let repr = match self.repr {
             Zero => ZeroIterator,
             One(v) => OneIterator(v),
-            Many(vs) => ManyIterator(vs.move_iter())
+            Many(vs) => ManyIterator(vs.into_iter())
         };
         MoveItems { repr: repr }
     }
@@ -202,7 +208,7 @@ mod test {
 
     #[test]
     fn test_from_iter() {
-        let v: SmallVector<int> = (vec!(1i, 2, 3)).move_iter().collect();
+        let v: SmallVector<int> = (vec!(1i, 2, 3)).into_iter().collect();
         assert_eq!(3, v.len());
         assert_eq!(&1, v.get(0));
         assert_eq!(&2, v.get(1));
@@ -212,14 +218,14 @@ mod test {
     #[test]
     fn test_move_iter() {
         let v = SmallVector::zero();
-        let v: Vec<int> = v.move_iter().collect();
+        let v: Vec<int> = v.into_iter().collect();
         assert_eq!(Vec::new(), v);
 
         let v = SmallVector::one(1i);
-        assert_eq!(vec!(1i), v.move_iter().collect());
+        assert_eq!(vec!(1i), v.into_iter().collect());
 
         let v = SmallVector::many(vec!(1i, 2i, 3i));
-        assert_eq!(vec!(1i, 2i, 3i), v.move_iter().collect());
+        assert_eq!(vec!(1i, 2i, 3i), v.into_iter().collect());
     }
 
     #[test]

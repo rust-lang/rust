@@ -650,7 +650,7 @@ fn visit_expr(rcx: &mut Rcx, expr: &ast::Expr) {
         ast::ExprAssignOp(_, ref lhs, ref rhs) => {
             if has_method_map {
                 constrain_call(rcx, expr, Some(&**lhs),
-                               Some(&**rhs).move_iter(), true);
+                               Some(&**rhs).into_iter(), true);
             }
 
             adjust_borrow_kind_for_assignment_lhs(rcx, &**lhs);
@@ -665,7 +665,7 @@ fn visit_expr(rcx: &mut Rcx, expr: &ast::Expr) {
             // implicit "by ref" sort of passing style here.  This
             // should be converted to an adjustment!
             constrain_call(rcx, expr, Some(&**lhs),
-                           Some(&**rhs).move_iter(), true);
+                           Some(&**rhs).into_iter(), true);
 
             visit::walk_expr(rcx, expr);
         }

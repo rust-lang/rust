@@ -162,7 +162,7 @@
 //! // where the car is. The game host will never open the door with the car.
 //! fn game_host_open<R: Rng>(car: uint, choice: uint, rng: &mut R) -> uint {
 //!     let choices = free_doors(&[car, choice]);
-//!     rand::sample(rng, choices.move_iter(), 1)[0]
+//!     rand::sample(rng, choices.into_iter(), 1)[0]
 //! }
 //!
 //! // Returns the door we switch to, given our current choice and

@@ -83,7 +83,7 @@ fn run(args: &[String]) {
         server(&from_parent, &to_parent);
     });
 
-    for r in worker_results.move_iter() {
+    for r in worker_results.into_iter() {
         r.unwrap();
     }
 
@@ -107,7 +107,7 @@ fn main() {
     } else if args.len() <= 1u {
         vec!("".to_string(), "10000".to_string(), "4".to_string())
     } else {
-        args.clone().move_iter().map(|x| x.to_string()).collect()
+        args.clone().into_iter().map(|x| x.to_string()).collect()
     };
 
     println!("{:?}", args);

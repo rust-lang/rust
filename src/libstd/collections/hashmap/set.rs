@@ -245,6 +245,12 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S>> HashSet<T, H> {
         self.map.keys()
     }
 
+    /// Deprecated: use `into_iter`.
+    #[deprecated = "use into_iter"]
+    pub fn move_iter(self) -> SetMoveItems<T> {
+        self.into_iter()
+    }
+
     /// Creates a consuming iterator, that is, one that moves each value out
     /// of the set in arbitrary order. The set cannot be used after calling
     /// this.
@@ -258,15 +264,15 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S>> HashSet<T, H> {
     /// set.insert("b".to_string());
     ///
     /// // Not possible to collect to a Vec<String> with a regular `.iter()`.
-    /// let v: Vec<String> = set.move_iter().collect();
+    /// let v: Vec<String> = set.into_iter().collect();
     ///
     /// // Will print in an arbitrary order.
     /// for x in v.iter() {
     ///     println!("{}", x);
     /// }
     /// ```
-    pub fn move_iter(self) -> SetMoveItems<T> {
-        self.map.move_iter().map(|(k, _)| k)
+    pub fn into_iter(self) -> SetMoveItems<T> {
+        self.map.into_iter().map(|(k, _)| k)
     }
 
     /// Visit the values representing the difference.
@@ -661,7 +667,7 @@ mod test_set {
             hs
         };
 
-        let v = hs.move_iter().collect::<Vec<char>>();
+        let v = hs.into_iter().collect::<Vec<char>>();
         assert!(['a', 'b'] == v.as_slice() || ['b', 'a'] == v.as_slice());
     }
 

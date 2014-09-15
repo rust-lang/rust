@@ -430,7 +430,7 @@ fn rust_input(cratefile: &str, externs: core::Externs, matches: &getopts::Matche
         pm.add_plugin(plugin);
     }
     info!("loading plugins...");
-    for pname in plugins.move_iter() {
+    for pname in plugins.into_iter() {
         pm.load_plugin(pname);
     }
 
@@ -494,7 +494,7 @@ fn json_output(krate: clean::Crate, res: Vec<plugins::PluginJson> ,
     // }
     let mut json = std::collections::TreeMap::new();
     json.insert("schema".to_string(), json::String(SCHEMA_VERSION.to_string()));
-    let plugins_json = res.move_iter()
+    let plugins_json = res.into_iter()
                           .filter_map(|opt| {
                               match opt {
                                   None => None,

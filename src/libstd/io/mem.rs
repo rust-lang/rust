@@ -147,7 +147,7 @@ impl Reader for MemReader {
         let write_len = min(buf.len(), self.buf.len() - self.pos);
         {
             let input = self.buf.slice(self.pos, self.pos + write_len);
-            let output = buf.mut_slice(0, write_len);
+            let output = buf.slice_mut(0, write_len);
             assert_eq!(input.len(), output.len());
             slice::bytes::copy_memory(output, input);
         }
@@ -232,7 +232,7 @@ impl<'a> Writer for BufWriter<'a> {
             })
         }
 
-        slice::bytes::copy_memory(self.buf.mut_slice_from(self.pos), buf);
+        slice::bytes::copy_memory(self.buf.slice_from_mut(self.pos), buf);
         self.pos += buf.len();
         Ok(())
     }
@@ -293,7 +293,7 @@ impl<'a> Reader for BufReader<'a> {
         let write_len = min(buf.len(), self.buf.len() - self.pos);
         {
             let input = self.buf.slice(self.pos, self.pos + write_len);
-            let output = buf.mut_slice(0, write_len);
+            let output = buf.slice_mut(0, write_len);
             assert_eq!(input.len(), output.len());
             slice::bytes::copy_memory(output, input);
         }
@@ -548,7 +548,7 @@ mod test {
         assert!(r.read_at_least(buf.len(), buf).is_ok());
         let b: &[_] = &[1, 2, 3];
         assert_eq!(buf.as_slice(), b);
-        assert!(r.read_at_least(0, buf.mut_slice_to(0)).is_ok());
+        assert!(r.read_at_least(0, buf.slice_to_mut(0)).is_ok());
         assert_eq!(buf.as_slice(), b);
         assert!(r.read_at_least(buf.len(), buf).is_ok());
         let b: &[_] = &[4, 5, 6];

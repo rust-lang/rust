@@ -69,7 +69,7 @@ fn main() {
     } else if args.len() <= 1u {
         vec!("".to_string(), "10".to_string(), "100".to_string())
     } else {
-        args.clone().move_iter().collect()
+        args.clone().into_iter().collect()
     };
 
     let num_tasks = from_str::<uint>(args.get(1).as_slice()).unwrap();
@@ -97,7 +97,7 @@ fn main() {
     thread_ring(0, msg_per_task, num_chan, num_port);
 
     // synchronize
-    for f in futures.mut_iter() {
+    for f in futures.iter_mut() {
         let _ = f.get();
     }
 

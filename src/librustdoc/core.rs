@@ -109,7 +109,7 @@ pub fn run_core(libs: Vec<Path>, cfgs: Vec<String>, externs: Externs,
                                        span_diagnostic_handler);
 
     let mut cfg = config::build_configuration(&sess);
-    for cfg_ in cfgs.move_iter() {
+    for cfg_ in cfgs.into_iter() {
         let cfg_ = token::intern_and_get_ident(cfg_.as_slice());
         cfg.push(P(codemap::dummy_spanned(ast::MetaWord(cfg_))));
     }

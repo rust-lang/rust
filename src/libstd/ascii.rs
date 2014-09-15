@@ -464,7 +464,7 @@ impl<'a> AsciiExt<Vec<u8>> for &'a [u8] {
 impl OwnedAsciiExt for Vec<u8> {
     #[inline]
     fn into_ascii_upper(mut self) -> Vec<u8> {
-        for byte in self.mut_iter() {
+        for byte in self.iter_mut() {
             *byte = ASCII_UPPER_MAP[*byte as uint];
         }
         self
@@ -472,7 +472,7 @@ impl OwnedAsciiExt for Vec<u8> {
 
     #[inline]
     fn into_ascii_lower(mut self) -> Vec<u8> {
-        for byte in self.mut_iter() {
+        for byte in self.iter_mut() {
             *byte = ASCII_LOWER_MAP[*byte as uint];
         }
         self

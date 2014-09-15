@@ -245,14 +245,14 @@ pub fn last_meta_item_value_str_by_name(items: &[P<MetaItem>], name: &str)
 pub fn sort_meta_items(items: Vec<P<MetaItem>>) -> Vec<P<MetaItem>> {
     // This is sort of stupid here, but we need to sort by
     // human-readable strings.
-    let mut v = items.move_iter()
+    let mut v = items.into_iter()
         .map(|mi| (mi.name(), mi))
         .collect::<Vec<(InternedString, P<MetaItem>)>>();
 
     v.sort_by(|&(ref a, _), &(ref b, _)| a.cmp(b));
 
     // There doesn't seem to be a more optimal way to do this
-    v.move_iter().map(|(_, m)| m.map(|Spanned {node, span}| {
+    v.into_iter().map(|(_, m)| m.map(|Spanned {node, span}| {
         Spanned {
             node: match node {
                 MetaList(n, mis) => MetaList(n, sort_meta_items(mis)),

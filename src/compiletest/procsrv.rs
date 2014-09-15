@@ -40,7 +40,7 @@ pub fn run(lib_path: &str,
     let mut cmd = Command::new(prog);
     cmd.args(args);
     add_target_env(&mut cmd, lib_path, aux_path);
-    for (key, val) in env.move_iter() {
+    for (key, val) in env.into_iter() {
         cmd.env(key, val);
     }
 
@@ -72,7 +72,7 @@ pub fn run_background(lib_path: &str,
     let mut cmd = Command::new(prog);
     cmd.args(args);
     add_target_env(&mut cmd, lib_path, aux_path);
-    for (key, val) in env.move_iter() {
+    for (key, val) in env.into_iter() {
         cmd.env(key, val);
     }
 

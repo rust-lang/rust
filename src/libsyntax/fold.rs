@@ -37,7 +37,7 @@ pub trait MoveMap<T> {
 impl<T> MoveMap<T> for Vec<T> {
     fn move_map(mut self, f: |T| -> T) -> Vec<T> {
         use std::{mem, ptr};
-        for p in self.mut_iter() {
+        for p in self.iter_mut() {
             unsafe {
                 // FIXME(#5016) this shouldn't need to zero to be safe.
                 mem::move_val_init(p, f(ptr::read_and_zero(p)));
@@ -351,7 +351,7 @@ pub fn noop_fold_decl<T: Folder>(d: P<Decl>, fld: &mut T) -> SmallVector<P<Decl>
             node: DeclLocal(fld.fold_local(l)),
             span: fld.new_span(span)
         })),
-        DeclItem(it) => fld.fold_item(it).move_iter().map(|i| P(Spanned {
+        DeclItem(it) => fld.fold_item(it).into_iter().map(|i| P(Spanned {
             node: DeclItem(i),
             span: fld.new_span(span)
         })).collect()
@@ -819,7 +819,7 @@ pub fn noop_fold_block<T: Folder>(b: P<Block>, folder: &mut T) -> P<Block> {
     b.map(|Block {id, view_items, stmts, expr, rules, span}| Block {
         id: folder.new_id(id),
         view_items: view_items.move_map(|x| folder.fold_view_item(x)),
-        stmts: stmts.move_iter().flat_map(|s| folder.fold_stmt(s).move_iter()).collect(),
+        stmts: stmts.into_iter().flat_map(|s| folder.fold_stmt(s).into_iter()).collect(),
         expr: expr.map(|x| folder.fold_expr(x)),
         rules: rules,
         span: folder.new_span(span),
@@ -860,17 +860,17 @@ pub fn noop_fold_item_underscore<T: Folder>(i: Item_, folder: &mut T) -> Item_ {
             ItemImpl(folder.fold_generics(generics),
                      ifce.map(|p| folder.fold_trait_ref(p)),
                      folder.fold_ty(ty),
-                     impl_items.move_iter().flat_map(|impl_item| match impl_item {
+                     impl_items.into_iter().flat_map(|impl_item| match impl_item {
                         MethodImplItem(x) => {
-                            folder.fold_method(x).move_iter().map(|x| MethodImplItem(x))
+                            folder.fold_method(x).into_iter().map(|x| MethodImplItem(x))
                         }
                      }).collect())
         }
         ItemTrait(generics, unbound, bounds, methods) => {
             let bounds = folder.fold_bounds(bounds);
-            let methods = methods.move_iter().flat_map(|method| match method {
+            let methods = methods.into_iter().flat_map(|method| match method {
                 RequiredMethod(m) => {
-                    SmallVector::one(RequiredMethod(folder.fold_type_method(m))).move_iter()
+                    SmallVector::one(RequiredMethod(folder.fold_type_method(m))).into_iter()
                 }
                 ProvidedMethod(method) => {
                     // the awkward collect/iter idiom here is because
@@ -878,9 +878,9 @@ pub fn noop_fold_item_underscore<T: Folder>(i: Item_, folder: &mut T) -> Item_ {
                     // they're not actually the same type, so the method arms
                     // don't unify.
                     let methods: SmallVector<ast::TraitItem> =
-                        folder.fold_method(method).move_iter()
+                        folder.fold_method(method).into_iter()
                         .map(|m| ProvidedMethod(m)).collect();
-                    methods.move_iter()
+                    methods.into_iter()
                 }
             }).collect();
             ItemTrait(folder.fold_generics(generics),
@@ -912,7 +912,7 @@ pub fn noop_fold_mod<T: Folder>(Mod {inner, view_items, items}: Mod, folder: &mu
     Mod {
         inner: folder.new_span(inner),
         view_items: view_items.move_map(|x| folder.fold_view_item(x)),
-        items: items.move_iter().flat_map(|x| folder.fold_item(x).move_iter()).collect(),
+        items: items.into_iter().flat_map(|x| folder.fold_item(x).into_iter()).collect(),
     }
 }
 
@@ -1194,7 +1194,7 @@ pub fn noop_fold_stmt<T: Folder>(Spanned {node, span}: Stmt, folder: &mut T)
     match node {
         StmtDecl(d, id) => {
             let id = folder.new_id(id);
-            folder.fold_decl(d).move_iter().map(|d| P(Spanned {
+            folder.fold_decl(d).into_iter().map(|d| P(Spanned {
                 node: StmtDecl(d, id),
                 span: span
             })).collect()

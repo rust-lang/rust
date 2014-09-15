@@ -509,7 +509,7 @@ impl<'a, 'tcx> LookupContext<'a, 'tcx> {
         // find all the impls of that trait.  Each of those are
         // candidates.
         let opt_applicable_traits = self.fcx.ccx.trait_map.find(&expr_id);
-        for applicable_traits in opt_applicable_traits.move_iter() {
+        for applicable_traits in opt_applicable_traits.into_iter() {
             for trait_did in applicable_traits.iter() {
                 debug!("push_extension_candidates() found trait: {}",
                        if trait_did.krate == ast::LOCAL_CRATE {
@@ -1322,7 +1322,7 @@ impl<'a, 'tcx> LookupContext<'a, 'tcx> {
                 let args = fn_sig.inputs.slice_from(1).iter().map(|t| {
                     t.subst(tcx, &all_substs)
                 });
-                Some(*fn_sig.inputs.get(0)).move_iter().chain(args).collect()
+                Some(*fn_sig.inputs.get(0)).into_iter().chain(args).collect()
             }
             _ => fn_sig.inputs.subst(tcx, &all_substs)
         };

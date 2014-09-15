@@ -84,6 +84,6 @@ impl Registry {
 
     /// Register a lint group.
     pub fn register_lint_group(&mut self, name: &'static str, to: Vec<&'static Lint>) {
-        self.lint_groups.insert(name, to.move_iter().map(|x| LintId::of(x)).collect());
+        self.lint_groups.insert(name, to.into_iter().map(|x| LintId::of(x)).collect());
     }
 }

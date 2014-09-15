@@ -270,7 +270,7 @@ impl IoFactory for UvIoFactory {
         match Process::spawn(self, cfg) {
             Ok((p, io)) => {
                 Ok((p as Box<rtio::RtioProcess + Send>,
-                    io.move_iter().map(|i| i.map(|p| {
+                    io.into_iter().map(|i| i.map(|p| {
                         box p as Box<rtio::RtioPipe + Send>
                     })).collect()))
             }

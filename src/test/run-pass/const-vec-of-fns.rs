@@ -23,7 +23,7 @@ static mut closures: &'static mut [S<'static>] = &mut [S(f), S(f)];
 pub fn main() {
     unsafe {
         for &bare_fn in bare_fns.iter() { bare_fn() }
-        for closure in closures.mut_iter() {
+        for closure in closures.iter_mut() {
             let S(ref mut closure) = *closure;
             (*closure)()
         }

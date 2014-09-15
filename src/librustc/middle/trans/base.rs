@@ -1631,7 +1631,7 @@ fn copy_args_to_allocas<'blk, 'tcx>(fcx: &FunctionContext<'blk, 'tcx>,
 
     let arg_scope_id = cleanup::CustomScope(arg_scope);
 
-    for (i, arg_datum) in arg_datums.move_iter().enumerate() {
+    for (i, arg_datum) in arg_datums.into_iter().enumerate() {
         // For certain mode/type combinations, the raw llarg values are passed
         // by value.  However, within the fn body itself, we want to always
         // have all locals and arguments be by-ref so that we can cancel the
@@ -1662,7 +1662,7 @@ fn copy_unboxed_closure_args_to_allocas<'blk, 'tcx>(
 
     assert_eq!(arg_datums.len(), 1);
 
-    let arg_datum = arg_datums.move_iter().next().unwrap();
+    let arg_datum = arg_datums.into_iter().next().unwrap();
 
     // Untuple the rest of the arguments.
     let tuple_datum =
@@ -2062,7 +2062,7 @@ fn trans_enum_variant_or_tuple_like_struct(ccx: &CrateContext,
     if !type_is_zero_size(fcx.ccx, result_ty) {
         let dest = fcx.get_ret_slot(bcx, result_ty, "eret_slot");
         let repr = adt::represent_type(ccx, result_ty);
-        for (i, arg_datum) in arg_datums.move_iter().enumerate() {
+        for (i, arg_datum) in arg_datums.into_iter().enumerate() {
             let lldestptr = adt::trans_field_ptr(bcx,
                                                  &*repr,
                                                  dest,
@@ -3133,7 +3133,7 @@ pub fn trans_crate<'tcx>(analysis: CrateAnalysis<'tcx>)
     // the final product, so LTO needs to preserve them.
     shared_ccx.sess().cstore.iter_crate_data(|cnum, _| {
         let syms = csearch::get_reachable_extern_fns(&shared_ccx.sess().cstore, cnum);
-        reachable.extend(syms.move_iter().map(|did| {
+        reachable.extend(syms.into_iter().map(|did| {
             csearch::get_symbol(&shared_ccx.sess().cstore, did)
         }));
     });

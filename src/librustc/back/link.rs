@@ -378,7 +378,7 @@ pub fn mangle_internal_name_by_type_and_seq(ccx: &CrateContext,
 }
 
 pub fn mangle_internal_name_by_path_and_seq(path: PathElems, flav: &str) -> String {
-    mangle(path.chain(Some(gensym_name(flav)).move_iter()), None)
+    mangle(path.chain(Some(gensym_name(flav)).into_iter()), None)
 }
 
 pub fn get_cc_prog(sess: &Session) -> String {
@@ -780,7 +780,7 @@ fn link_staticlib(sess: &Session, obj_filename: &Path, out_filename: &Path) {
         ab.add_rlib(&p, name.as_slice(), sess.lto()).unwrap();
 
         let native_libs = csearch::get_native_libraries(&sess.cstore, cnum);
-        all_native_libs.extend(native_libs.move_iter());
+        all_native_libs.extend(native_libs.into_iter());
     }
 
     ab.update_symbols();
@@ -1381,7 +1381,7 @@ fn add_upstream_native_libraries(cmd: &mut Command, sess: &Session) {
     // we're just getting an ordering of crate numbers, we're not worried about
     // the paths.
     let crates = sess.cstore.get_used_crates(cstore::RequireStatic);
-    for (cnum, _) in crates.move_iter() {
+    for (cnum, _) in crates.into_iter() {
         let libs = csearch::get_native_libraries(&sess.cstore, cnum);
         for &(kind, ref lib) in libs.iter() {
             match kind {

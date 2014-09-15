@@ -872,7 +872,7 @@ impl<K, V> Drop for RawTable<K, V> {
             return;
         }
         // This is done in reverse because we've likely partially taken
-        // some elements out with `.move_iter()` from the front.
+        // some elements out with `.into_iter()` from the front.
         // Check if the size is 0, so we don't do a useless scan when
         // dropping empty tables such as on resize.
         // Also avoid double drop of elements that have been already moved out.

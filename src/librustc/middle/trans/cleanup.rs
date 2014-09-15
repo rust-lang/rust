@@ -382,7 +382,7 @@ impl<'blk, 'tcx> CleanupMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx> {
         debug!("schedule_clean_in_ast_scope(cleanup_scope={:?})",
                cleanup_scope);
 
-        for scope in self.scopes.borrow_mut().mut_iter().rev() {
+        for scope in self.scopes.borrow_mut().iter_mut().rev() {
             if scope.kind.is_ast_with_id(cleanup_scope) {
                 scope.cleanups.push(cleanup);
                 scope.clear_cached_exits();
@@ -712,7 +712,7 @@ impl<'blk, 'tcx> CleanupHelperMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx
         // Check if a landing pad block exists; if not, create one.
         {
             let mut scopes = self.scopes.borrow_mut();
-            let last_scope = scopes.mut_last().unwrap();
+            let last_scope = scopes.last_mut().unwrap();
             match last_scope.cached_landing_pad {
                 Some(llbb) => { return llbb; }
                 None => {

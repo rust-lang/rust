@@ -282,7 +282,7 @@ impl<T> TrieMap<T> {
     /// use std::collections::TrieMap;
     /// let mut map: TrieMap<int> = [(1, 2), (2, 4), (3, 6)].iter().map(|&x| x).collect();
     ///
-    /// for (key, value) in map.mut_iter() {
+    /// for (key, value) in map.iter_mut() {
     ///     *value = -(key as int);
     /// }
     ///
@@ -292,7 +292,7 @@ impl<T> TrieMap<T> {
     /// ```
     pub fn iter_mut<'a>(&'a mut self) -> MutEntries<'a, T> {
         let mut iter = unsafe {MutEntries::new()};
-        iter.stack[0] = self.root.children.mut_iter();
+        iter.stack[0] = self.root.children.iter_mut();
         iter.length = 1;
         iter.remaining_min = self.length;
         iter.remaining_max = self.length;
@@ -453,11 +453,11 @@ impl<T> TrieMap<T> {
     /// use std::collections::TrieMap;
     /// let mut map: TrieMap<&str> = [(2, "a"), (4, "b"), (6, "c")].iter().map(|&x| x).collect();
     ///
-    /// assert_eq!(map.mut_lower_bound(4).next(), Some((4, &mut "b")));
-    /// assert_eq!(map.mut_lower_bound(5).next(), Some((6, &mut "c")));
-    /// assert_eq!(map.mut_lower_bound(10).next(), None);
+    /// assert_eq!(map.lower_bound_mut(4).next(), Some((4, &mut "b")));
+    /// assert_eq!(map.lower_bound_mut(5).next(), Some((6, &mut "c")));
+    /// assert_eq!(map.lower_bound_mut(10).next(), None);
     ///
-    /// for (key, value) in map.mut_lower_bound(4) {
+    /// for (key, value) in map.lower_bound_mut(4) {
     ///     *value = "changed";
     /// }
     ///
@@ -484,11 +484,11 @@ impl<T> TrieMap<T> {
     /// use std::collections::TrieMap;
     /// let mut map: TrieMap<&str> = [(2, "a"), (4, "b"), (6, "c")].iter().map(|&x| x).collect();
     ///
-    /// assert_eq!(map.mut_upper_bound(4).next(), Some((6, &mut "c")));
-    /// assert_eq!(map.mut_upper_bound(5).next(), Some((6, &mut "c")));
-    /// assert_eq!(map.mut_upper_bound(10).next(), None);
+    /// assert_eq!(map.upper_bound_mut(4).next(), Some((6, &mut "c")));
+    /// assert_eq!(map.upper_bound_mut(5).next(), Some((6, &mut "c")));
+    /// assert_eq!(map.upper_bound_mut(10).next(), None);
     ///
-    /// for (key, value) in map.mut_upper_bound(4) {
+    /// for (key, value) in map.upper_bound_mut(4) {
     ///     *value = "changed";
     /// }
     ///
@@ -1195,7 +1195,7 @@ mod test_map {
     #[test]
     fn test_keys() {
         let vec = vec![(1, 'a'), (2, 'b'), (3, 'c')];
-        let map = vec.move_iter().collect::<TrieMap<char>>();
+        let map = vec.into_iter().collect::<TrieMap<char>>();
         let keys = map.keys().collect::<Vec<uint>>();
         assert_eq!(keys.len(), 3);
         assert!(keys.contains(&1));
@@ -1206,7 +1206,7 @@ mod test_map {
     #[test]
     fn test_values() {
         let vec = vec![(1, 'a'), (2, 'b'), (3, 'c')];
-        let map = vec.move_iter().collect::<TrieMap<char>>();
+        let map = vec.into_iter().collect::<TrieMap<char>>();
         let values = map.values().map(|&v| v).collect::<Vec<char>>();
         assert_eq!(values.len(), 3);
         assert!(values.contains(&'a'));
@@ -1239,7 +1239,7 @@ mod test_map {
     #[test]
     fn test_mut_iter() {
         let mut empty_map : TrieMap<uint> = TrieMap::new();
-        assert!(empty_map.mut_iter().next().is_none());
+        assert!(empty_map.iter_mut().next().is_none());
 
         let first = uint::MAX - 10000;
         let last = uint::MAX;
@@ -1250,7 +1250,7 @@ mod test_map {
         }
 
         let mut i = 0;
-        for (k, v) in map.mut_iter() {
+        for (k, v) in map.iter_mut() {
             assert_eq!(k, first + i);
             *v -= k / 2;
             i += 1;
@@ -1316,7 +1316,7 @@ mod test_map {
         }
 
         for i in range(0u, 199) {
-            let mut lb_it = m_lower.mut_lower_bound(i);
+            let mut lb_it = m_lower.lower_bound_mut(i);
             let (k, v) = lb_it.next().unwrap();
             let lb = i + i % 2;
             assert_eq!(lb, k);
@@ -1324,15 +1324,15 @@ mod test_map {
         }
 
         for i in range(0u, 198) {
-            let mut ub_it = m_upper.mut_upper_bound(i);
+            let mut ub_it = m_upper.upper_bound_mut(i);
             let (k, v) = ub_it.next().unwrap();
             let ub = i + 2 - i % 2;
             assert_eq!(ub, k);
             *v -= k;
         }
 
-        assert!(m_lower.mut_lower_bound(199).next().is_none());
-        assert!(m_upper.mut_upper_bound(198).next().is_none());
+        assert!(m_lower.lower_bound_mut(199).next().is_none());
+        assert!(m_upper.upper_bound_mut(198).next().is_none());
 
         assert!(m_lower.iter().all(|(_, &x)| x == 0));
         assert!(m_upper.iter().all(|(_, &x)| x == 0));

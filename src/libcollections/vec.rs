@@ -181,7 +181,7 @@ impl<T> Vec<T> {
             let mut xs = Vec::with_capacity(length);
             while xs.len < length {
                 let len = xs.len;
-                ptr::write(xs.as_mut_slice().unsafe_mut_ref(len), op(len));
+                ptr::write(xs.as_mut_slice().unsafe_mut(len), op(len));
                 xs.len += 1;
             }
             xs
@@ -252,7 +252,7 @@ impl<T> Vec<T> {
         let mut lefts  = Vec::new();
         let mut rights = Vec::new();
 
-        for elt in self.move_iter() {
+        for elt in self.into_iter() {
             if f(&elt) {
                 lefts.push(elt);
             } else {
@@ -311,7 +311,7 @@ impl<T: Clone> Vec<T> {
             let mut xs = Vec::with_capacity(length);
             while xs.len < length {
                 let len = xs.len;
-                ptr::write(xs.as_mut_slice().unsafe_mut_ref(len),
+                ptr::write(xs.as_mut_slice().unsafe_mut(len),
                            value.clone());
                 xs.len += 1;
             }
@@ -343,7 +343,7 @@ impl<T: Clone> Vec<T> {
             // during the loop can prevent this optimisation.
             unsafe {
                 ptr::write(
-                    self.as_mut_slice().unsafe_mut_ref(len),
+                    self.as_mut_slice().unsafe_mut(len),
                     other.unsafe_get(i).clone());
                 self.set_len(len + 1);
             }
@@ -437,7 +437,7 @@ impl<T:Clone> Clone for Vec<T> {
         }
 
         // reuse the contained values' allocations/resources.
-        for (place, thing) in self.mut_iter().zip(other.iter()) {
+        for (place, thing) in self.iter_mut().zip(other.iter()) {
             place.clone_from(thing)
         }
 
@@ -738,7 +738,7 @@ impl<T> Vec<T> {
     ///
     /// ```
     /// let v = vec!["a".to_string(), "b".to_string()];
-    /// for s in v.move_iter() {
+    /// for s in v.into_iter() {
     ///     // s has type String, not &String
     ///     println!("{}", s);
     /// }
@@ -841,13 +841,13 @@ impl<T> Vec<T> {
     ///
     /// ```
     /// let mut vec = vec![1i, 2, 3];
-    /// for num in vec.mut_iter() {
+    /// for num in vec.iter_mut() {
     ///     *num = 0;
     /// }
     /// ```
     #[inline]
     pub fn iter_mut<'a>(&'a mut self) -> MutItems<'a,T> {
-        self.as_mut_slice().mut_iter()
+        self.as_mut_slice().iter_mut()
     }
 
     /// Sorts the vector, in place, using `compare` to compare elements.
@@ -951,12 +951,12 @@ impl<T> Vec<T> {
     ///
     /// ```
     /// let mut vec = vec![1i, 2, 3];
-    /// *vec.mut_last().unwrap() = 4;
+    /// *vec.last_mut().unwrap() = 4;
     /// assert_eq!(vec, vec![1i, 2, 4]);
     /// ```
     #[inline]
     pub fn last_mut<'a>(&'a mut self) -> Option<&'a mut T> {
-        self.as_mut_slice().mut_last()
+        self.as_mut_slice().last_mut()
     }
 
     /// Removes an element from anywhere in the vector and return it, replacing
@@ -1119,7 +1119,7 @@ impl<T> Vec<T> {
     /// ```
     #[inline]
     pub fn push_all_move(&mut self, other: Vec<T>) {
-        self.extend(other.move_iter());
+        self.extend(other.into_iter());
     }
 
     /// Deprecated: use `slice_mut`.
@@ -1140,12 +1140,12 @@ impl<T> Vec<T> {
     ///
     /// ```
     /// let mut vec = vec![1i, 2, 3, 4];
-    /// assert!(vec.mut_slice(0, 2) == [1, 2]);
+    /// assert!(vec.slice_mut(0, 2) == [1, 2]);
     /// ```
     #[inline]
     pub fn slice_mut<'a>(&'a mut self, start: uint, end: uint)
                          -> &'a mut [T] {
-        self.as_mut_slice().mut_slice(start, end)
+        self.as_mut_slice().slice_mut(start, end)
     }
 
     /// Deprecated: use "slice_from_mut".
@@ -1164,11 +1164,11 @@ impl<T> Vec<T> {
     ///
     /// ```
     /// let mut vec = vec![1i, 2, 3, 4];
-    /// assert!(vec.mut_slice_from(2) == [3, 4]);
+    /// assert!(vec.slice_from_mut(2) == [3, 4]);
     /// ```
     #[inline]
     pub fn slice_from_mut<'a>(&'a mut self, start: uint) -> &'a mut [T] {
-        self.as_mut_slice().mut_slice_from(start)
+        self.as_mut_slice().slice_from_mut(start)
     }
 
     /// Deprecated: use `slice_to_mut`.
@@ -1187,11 +1187,11 @@ impl<T> Vec<T> {
     ///
     /// ```
     /// let mut vec = vec![1i, 2, 3, 4];
-    /// assert!(vec.mut_slice_to(2) == [1, 2]);
+    /// assert!(vec.slice_to_mut(2) == [1, 2]);
     /// ```
     #[inline]
     pub fn slice_to_mut<'a>(&'a mut self, end: uint) -> &'a mut [T] {
-        self.as_mut_slice().mut_slice_to(end)
+        self.as_mut_slice().slice_to_mut(end)
     }
 
     /// Deprecated: use `split_at_mut`.
@@ -1217,26 +1217,26 @@ impl<T> Vec<T> {
     ///
     /// // scoped to restrict the lifetime of the borrows
     /// {
-    ///    let (left, right) = vec.mut_split_at(0);
+    ///    let (left, right) = vec.split_at_mut(0);
     ///    assert!(left == &mut []);
     ///    assert!(right == &mut [1, 2, 3, 4, 5, 6]);
     /// }
     ///
     /// {
-    ///     let (left, right) = vec.mut_split_at(2);
+    ///     let (left, right) = vec.split_at_mut(2);
     ///     assert!(left == &mut [1, 2]);
     ///     assert!(right == &mut [3, 4, 5, 6]);
     /// }
     ///
     /// {
-    ///     let (left, right) = vec.mut_split_at(6);
+    ///     let (left, right) = vec.split_at_mut(6);
     ///     assert!(left == &mut [1, 2, 3, 4, 5, 6]);
     ///     assert!(right == &mut []);
     /// }
     /// ```
     #[inline]
     pub fn split_at_mut<'a>(&'a mut self, mid: uint) -> (&'a mut [T], &'a mut [T]) {
-        self.as_mut_slice().mut_split_at(mid)
+        self.as_mut_slice().split_at_mut(mid)
     }
 
     /// Reverses the order of elements in a vector, in place.
@@ -2111,9 +2111,9 @@ mod tests {
     fn test_mut_slice_from() {
         let mut values = Vec::from_slice([1u8,2,3,4,5]);
         {
-            let slice = values.mut_slice_from(2);
+            let slice = values.slice_from_mut(2);
             assert!(slice == [3, 4, 5]);
-            for p in slice.mut_iter() {
+            for p in slice.iter_mut() {
                 *p += 2;
             }
         }
@@ -2125,9 +2125,9 @@ mod tests {
     fn test_mut_slice_to() {
         let mut values = Vec::from_slice([1u8,2,3,4,5]);
         {
-            let slice = values.mut_slice_to(2);
+            let slice = values.slice_to_mut(2);
             assert!(slice == [1, 2]);
-            for p in slice.mut_iter() {
+            for p in slice.iter_mut() {
                 *p += 1;
             }
         }
@@ -2139,14 +2139,14 @@ mod tests {
     fn test_mut_split_at() {
         let mut values = Vec::from_slice([1u8,2,3,4,5]);
         {
-            let (left, right) = values.mut_split_at(2);
+            let (left, right) = values.split_at_mut(2);
             assert!(left.slice(0, left.len()) == [1, 2]);
-            for p in left.mut_iter() {
+            for p in left.iter_mut() {
                 *p += 1;
             }
 
             assert!(right.slice(0, right.len()) == [3, 4, 5]);
-            for p in right.mut_iter() {
+            for p in right.iter_mut() {
                 *p += 2;
             }
         }
@@ -2223,15 +2223,15 @@ mod tests {
 
         for &() in v.iter() {}
 
-        assert_eq!(v.mut_iter().count(), 2);
+        assert_eq!(v.iter_mut().count(), 2);
         v.push(());
-        assert_eq!(v.mut_iter().count(), 3);
+        assert_eq!(v.iter_mut().count(), 3);
         v.push(());
-        assert_eq!(v.mut_iter().count(), 4);
+        assert_eq!(v.iter_mut().count(), 4);
 
-        for &() in v.mut_iter() {}
+        for &() in v.iter_mut() {}
         unsafe { v.set_len(0); }
-        assert_eq!(v.mut_iter().count(), 0);
+        assert_eq!(v.iter_mut().count(), 0);
     }
 
     #[test]
@@ -2339,7 +2339,7 @@ mod tests {
         vec.push(1);
         vec.push(2);
         let ptr = vec.as_ptr();
-        vec = vec.move_iter().unwrap();
+        vec = vec.into_iter().unwrap();
         assert_eq!(vec.as_ptr(), ptr);
         assert_eq!(vec.capacity(), 7);
         assert_eq!(vec.len(), 0);
@@ -2495,7 +2495,7 @@ mod tests {
         b.bytes = src_len as u64;
 
         b.iter(|| {
-            let dst: Vec<uint> = FromIterator::from_iter(src.clone().move_iter());
+            let dst: Vec<uint> = FromIterator::from_iter(src.clone().into_iter());
             assert_eq!(dst.len(), src_len);
             assert!(dst.iter().enumerate().all(|(i, x)| i == *x));
         });
@@ -2529,7 +2529,7 @@ mod tests {
 
         b.iter(|| {
             let mut dst = dst.clone();
-            dst.extend(src.clone().move_iter());
+            dst.extend(src.clone().into_iter());
             assert_eq!(dst.len(), dst_len + src_len);
             assert!(dst.iter().enumerate().all(|(i, x)| i == *x));
         });
