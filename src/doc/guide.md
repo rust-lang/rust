@@ -943,8 +943,8 @@ fn main() {
 ```
 
 Even though Rust functions can only return one value, a tuple _is_ one value,
-that happens to be made up of two. You can also see in this example how you
-can destructure a pattern returned by a function, as well.
+that happens to contain multiple values. You can also see in this example how
+you can destructure a pattern returned by a function, as well.
 
 Tuples are a very simple data structure, and so are not often what you want.
 Let's move on to their bigger sibling, structs.
