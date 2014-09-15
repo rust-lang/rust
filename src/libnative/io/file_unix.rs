@@ -455,15 +455,19 @@ fn mkstat(stat: &libc::stat) -> rtio::FileStat {
     #[cfg(target_os = "linux")] #[cfg(target_os = "android")]
     fn gen(_stat: &libc::stat) -> u64 { 0 }
 
-    #[cfg(not(target_os = "linux"), not(target_os = "android"))]
-    fn created(stat: &libc::stat) -> u64 { mktime(stat.st_ctime as u64, stat.st_ctime_nsec as u64) }
-    #[cfg(target_os = "linux")] #[cfg(target_os = "android")]
+    #[cfg(target_os = "linux")]
     fn created(_stat: &libc::stat) -> u64 { 0 }
+    #[cfg(target_os = "windows")]
+    fn created(stat: &libc::stat) -> u64 { mktime(stat.st_ctime as u64, stat.st_ctime_nsec as u64) }
+    #[cfg(target_os = "macos", target_arch = "x86_64")]
+    fn created(stat: &libc::stat) -> u64 { mktime(stat.st_birthtime as u64, stat.st_birthtime_nsec as u64) }
+    #[cfg(target_os = "freebsd")]
+    fn created(stat: &libc::stat) -> u64 { mktime(stat.st_birthtime as u64, stat.st_birthtime_nsec as u64) }
 
-    #[cfg(not(target_os = "linux"), not(target_os = "android"))]
+    #[cfg(target_family = "unix")]
+    fn created(stat: &libc::stat) -> u64 { mktime(stat.st_ctime as u64, stat.st_ctime_nsec as u64) }
+    #[cfg(target_os = "windows")]
     fn changed(_stat: &libc::stat) -> u64 { 0 }
-    #[cfg(target_os = "linux")] #[cfg(target_os = "android")]
-    fn changed(stat: &libc::stat) -> u64 { mktime(stat.st_ctime as u64, stat.st_ctime_nsec as u64) }
 
     rtio::FileStat {
         size: stat.st_size as u64,
