@@ -235,6 +235,21 @@ pub fn debugging_opts_map() -> Vec<(&'static str, &'static str, u64)> {
                        --pretty flowgraph output", FLOWGRAPH_PRINT_ALL))
 }
 
+#[deriving(Clone)]
+pub enum Passes {
+    Passes(Vec<String>),
+    AllPasses,
+}
+
+impl Passes {
+    pub fn is_empty(&self) -> bool {
+        match *self {
+            Passes(ref v) => v.is_empty(),
+            AllPasses => false,
+        }
+    }
+}
+
 /// Declare a macro that will define all CodegenOptions fields and parsers all
 /// at once. The goal of this macro is to define an interface that can be
 /// programmatically used by the option parser in order to initialize the struct
@@ -261,7 +276,7 @@ macro_rules! cgoptions(
         &[ $( (stringify!($opt), cgsetters::$opt, $desc) ),* ];
 
     mod cgsetters {
-        use super::CodegenOptions;
+        use super::{CodegenOptions, Passes, AllPasses};
 
         $(
             pub fn $opt(cg: &mut CodegenOptions, v: Option<&str>) -> bool {
@@ -310,6 +325,24 @@ macro_rules! cgoptions(
                 None => false
             }
         }
+
+        fn parse_passes(slot: &mut Passes, v: Option<&str>) -> bool {
+            match v {
+                Some("all") => {
+                    *slot = AllPasses;
+                    true
+                }
+                v => {
+                    let mut passes = vec!();
+                    if parse_list(&mut passes, v) {
+                        *slot = Passes(passes);
+                        true
+                    } else {
+                        false
+                    }
+                }
+            }
+        }
     }
 ) )
 
@@ -356,6 +389,8 @@ cgoptions!(
          "extra data to put in each output filename"),
     codegen_units: uint = (1, parse_uint,
         "divide crate into N units to optimize in parallel"),
+    remark: Passes = (Passes(Vec::new()), parse_passes,
+        "print remarks for these optimization passes (space separated, or \"all\")"),
 )
 
 pub fn build_codegen_options(matches: &getopts::Matches) -> CodegenOptions
@@ -716,8 +751,8 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
             None      |
             Some("2") => FullDebugInfo,
             Some(arg) => {
-                early_error(format!("optimization level needs to be between \
-                                     0-3 (instead was `{}`)",
+                early_error(format!("debug info level needs to be between \
+                                     0-2 (instead was `{}`)",
                                     arg).as_slice());
             }
         }
@@ -743,6 +778,10 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
                     --print-file-name");
     }
     let cg = build_codegen_options(matches);
+
+    if !cg.remark.is_empty() && debuginfo == NoDebugInfo {
+        early_warn("-C remark will not show source locations without --debuginfo");
+    }
 
     let color = match matches.opt_str("color").as_ref().map(|s| s.as_slice()) {
         Some("auto")   => Auto,

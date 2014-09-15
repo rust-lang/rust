@@ -11,11 +11,11 @@
 use back::lto;
 use back::link::{get_cc_prog, remove};
 use driver::driver::{CrateTranslation, ModuleTranslation, OutputFilenames};
-use driver::config::NoDebugInfo;
+use driver::config::{NoDebugInfo, Passes, AllPasses};
 use driver::session::Session;
 use driver::config;
 use llvm;
-use llvm::{ModuleRef, TargetMachineRef, PassManagerRef};
+use llvm::{ModuleRef, TargetMachineRef, PassManagerRef, DiagnosticInfoRef, ContextRef};
 use util::common::time;
 use syntax::abi;
 use syntax::codemap;
@@ -28,9 +28,10 @@ use std::io::fs;
 use std::iter::Unfold;
 use std::ptr;
 use std::str;
+use std::mem;
 use std::sync::{Arc, Mutex};
 use std::task::TaskBuilder;
-use libc::{c_uint, c_int};
+use libc::{c_uint, c_int, c_void};
 
 
 #[deriving(Clone, PartialEq, PartialOrd, Ord, Eq)]
@@ -311,21 +312,49 @@ struct CodegenContext<'a> {
     lto_ctxt: Option<(&'a Session, &'a [String])>,
     // Handler to use for diagnostics produced during codegen.
     handler: &'a Handler,
+    // LLVM optimizations for which we want to print remarks.
+    remark: Passes,
 }
 
 impl<'a> CodegenContext<'a> {
-    fn new(handler: &'a Handler) -> CodegenContext<'a> {
-        CodegenContext {
-            lto_ctxt: None,
-            handler: handler,
-        }
-    }
-
     fn new_with_session(sess: &'a Session, reachable: &'a [String]) -> CodegenContext<'a> {
         CodegenContext {
             lto_ctxt: Some((sess, reachable)),
             handler: sess.diagnostic().handler(),
+            remark: sess.opts.cg.remark.clone(),
         }
+    }
+}
+
+struct DiagHandlerFreeVars<'a> {
+    llcx: ContextRef,
+    cgcx: &'a CodegenContext<'a>,
+}
+
+unsafe extern "C" fn diagnostic_handler(info: DiagnosticInfoRef, user: *mut c_void) {
+    let DiagHandlerFreeVars { llcx, cgcx }
+        = *mem::transmute::<_, *const DiagHandlerFreeVars>(user);
+
+    match llvm::diagnostic::Diagnostic::unpack(info) {
+        llvm::diagnostic::Optimization(opt) => {
+            let pass_name = CString::new(opt.pass_name, false);
+            let pass_name = pass_name.as_str().expect("got a non-UTF8 pass name from LLVM");
+            let enabled = match cgcx.remark {
+                AllPasses => true,
+                Passes(ref v) => v.iter().any(|s| s.as_slice() == pass_name),
+            };
+
+            if enabled {
+                let loc = llvm::debug_loc_to_string(llcx, opt.debug_loc);
+                cgcx.handler.note(format!("optimization {:s} for {:s} at {:s}: {:s}",
+                                          opt.kind.describe(),
+                                          pass_name,
+                                          if loc.is_empty() { "[unknown]" } else { loc.as_slice() },
+                                          llvm::twine_to_string(opt.message)).as_slice());
+            }
+        }
+
+        _ => (),
     }
 }
 
@@ -337,6 +366,17 @@ unsafe fn optimize_and_codegen(cgcx: &CodegenContext,
                                output_names: OutputFilenames) {
     let ModuleTranslation { llmod, llcx } = mtrans;
     let tm = config.tm;
+
+    // llcx doesn't outlive this function, so we can put this on the stack.
+    let fv = DiagHandlerFreeVars {
+        llcx: llcx,
+        cgcx: cgcx,
+    };
+    if !cgcx.remark.is_empty() {
+        llvm::LLVMContextSetDiagnosticHandler(llcx, diagnostic_handler,
+                                              &fv as *const DiagHandlerFreeVars
+                                                  as *mut c_void);
+    }
 
     if config.emit_no_opt_bc {
         let ext = format!("{}.no-opt.bc", name_extra);
@@ -785,13 +825,18 @@ fn run_work_multithreaded(sess: &Session,
     for i in range(0, num_workers) {
         let work_items_arc = work_items_arc.clone();
         let diag_emitter = diag_emitter.clone();
+        let remark = sess.opts.cg.remark.clone();
 
         let future = TaskBuilder::new().named(format!("codegen-{}", i)).try_future(proc() {
             let diag_handler = mk_handler(box diag_emitter);
 
             // Must construct cgcx inside the proc because it has non-Send
             // fields.
-            let cgcx = CodegenContext::new(&diag_handler);
+            let cgcx = CodegenContext {
+                lto_ctxt: None,
+                handler: &diag_handler,
+                remark: remark,
+            };
 
             loop {
                 // Avoid holding the lock for the entire duration of the match.

@@ -28,14 +28,17 @@
 extern crate libc;
 
 use std::c_str::ToCStr;
+use std::cell::RefCell;
+use std::{raw, mem};
 use libc::{c_uint, c_ushort, uint64_t, c_int, size_t, c_char};
-use libc::{c_longlong, c_ulonglong};
+use libc::{c_longlong, c_ulonglong, c_void};
 use debuginfo::{DIBuilderRef, DIDescriptor,
                 DIFile, DILexicalBlock, DISubprogram, DIType,
                 DIBasicType, DIDerivedType, DICompositeType,
                 DIVariable, DIGlobalVariable, DIArray, DISubrange};
 
 pub mod archive_ro;
+pub mod diagnostic;
 
 pub type Opcode = u32;
 pub type Bool = c_uint;
@@ -77,6 +80,15 @@ pub enum Linkage {
     PrivateLinkage = 9,
     ExternalWeakLinkage = 12,
     CommonLinkage = 14,
+}
+
+#[repr(C)]
+#[deriving(Show)]
+pub enum DiagnosticSeverity {
+    Error,
+    Warning,
+    Remark,
+    Note,
 }
 
 #[deriving(Clone)]
@@ -358,6 +370,18 @@ pub enum CodeGenModel {
     CodeModelLarge = 5,
 }
 
+#[repr(C)]
+pub enum DiagnosticKind {
+    DK_InlineAsm = 0,
+    DK_StackSize,
+    DK_DebugMetadataVersion,
+    DK_SampleProfile,
+    DK_OptimizationRemark,
+    DK_OptimizationRemarkMissed,
+    DK_OptimizationRemarkAnalysis,
+    DK_OptimizationFailure,
+}
+
 // Opaque pointer types
 pub enum Module_opaque {}
 pub type ModuleRef = *mut Module_opaque;
@@ -393,6 +417,14 @@ pub enum TargetMachine_opaque {}
 pub type TargetMachineRef = *mut TargetMachine_opaque;
 pub enum Archive_opaque {}
 pub type ArchiveRef = *mut Archive_opaque;
+pub enum Twine_opaque {}
+pub type TwineRef = *mut Twine_opaque;
+pub enum DiagnosticInfo_opaque {}
+pub type DiagnosticInfoRef = *mut DiagnosticInfo_opaque;
+pub enum DebugLoc_opaque {}
+pub type DebugLocRef = *mut DebugLoc_opaque;
+
+pub type DiagnosticHandler = unsafe extern "C" fn(DiagnosticInfoRef, *mut c_void);
 
 pub mod debuginfo {
     use super::{ValueRef};
@@ -1839,8 +1871,8 @@ extern {
                                         -> ValueRef;
 
     pub fn LLVMDICompositeTypeSetTypeArray(CompositeType: ValueRef, TypeArray: ValueRef);
-    pub fn LLVMTypeToString(Type: TypeRef) -> *const c_char;
-    pub fn LLVMValueToString(value_ref: ValueRef) -> *const c_char;
+    pub fn LLVMWriteTypeToString(Type: TypeRef, s: RustStringRef);
+    pub fn LLVMWriteValueToString(value_ref: ValueRef, s: RustStringRef);
 
     pub fn LLVMIsAArgument(value_ref: ValueRef) -> ValueRef;
 
@@ -1916,6 +1948,24 @@ extern {
 
     pub fn LLVMRustGetSectionName(SI: SectionIteratorRef,
                                   data: *mut *const c_char) -> c_int;
+
+    pub fn LLVMWriteTwineToString(T: TwineRef, s: RustStringRef);
+
+    pub fn LLVMContextSetDiagnosticHandler(C: ContextRef,
+                                           Handler: DiagnosticHandler,
+                                           DiagnosticContext: *mut c_void);
+
+    pub fn LLVMUnpackOptimizationDiagnostic(DI: DiagnosticInfoRef,
+                                            pass_name_out: *mut *const c_char,
+                                            function_out: *mut ValueRef,
+                                            debugloc_out: *mut DebugLocRef,
+                                            message_out: *mut TwineRef);
+
+    pub fn LLVMWriteDiagnosticInfoToString(DI: DiagnosticInfoRef, s: RustStringRef);
+    pub fn LLVMGetDiagInfoSeverity(DI: DiagnosticInfoRef) -> DiagnosticSeverity;
+    pub fn LLVMGetDiagInfoKind(DI: DiagnosticInfoRef) -> DiagnosticKind;
+
+    pub fn LLVMWriteDebugLocToString(C: ContextRef, DL: DebugLocRef, s: RustStringRef);
 }
 
 pub fn SetInstructionCallConv(instr: ValueRef, cc: CallConv) {
@@ -2044,6 +2094,40 @@ pub fn get_param(llfn: ValueRef, index: c_uint) -> ValueRef {
         assert!(index < LLVMCountParams(llfn));
         LLVMGetParam(llfn, index)
     }
+}
+
+pub enum RustString_opaque {}
+pub type RustStringRef = *mut RustString_opaque;
+type RustStringRepr = *mut RefCell<Vec<u8>>;
+
+/// Appending to a Rust string -- used by raw_rust_string_ostream.
+#[no_mangle]
+pub unsafe extern "C" fn rust_llvm_string_write_impl(sr: RustStringRef,
+                                                     ptr: *const c_char,
+                                                     size: size_t) {
+    let slice: &[u8] = mem::transmute(raw::Slice {
+        data: ptr as *const u8,
+        len: size as uint,
+    });
+
+    let sr: RustStringRepr = mem::transmute(sr);
+    (*sr).borrow_mut().push_all(slice);
+}
+
+pub fn build_string(f: |RustStringRef|) -> Option<String> {
+    let mut buf = RefCell::new(Vec::new());
+    f(&mut buf as RustStringRepr as RustStringRef);
+    String::from_utf8(buf.unwrap()).ok()
+}
+
+pub unsafe fn twine_to_string(tr: TwineRef) -> String {
+    build_string(|s| LLVMWriteTwineToString(tr, s))
+        .expect("got a non-UTF8 Twine from LLVM")
+}
+
+pub unsafe fn debug_loc_to_string(c: ContextRef, tr: DebugLocRef) -> String {
+    build_string(|s| LLVMWriteDebugLocToString(c, tr, s))
+        .expect("got a non-UTF8 DebugLoc from LLVM")
 }
 
 // FIXME #15460 - create a public function that actually calls our
