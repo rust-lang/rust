@@ -82,8 +82,9 @@ An API may define a contract that goes beyond the type checking enforced by the
 compiler. For example, slices support an indexing operation, with the contract
 that the supplied index must be in bounds.
 
-Contracts can be complex. For example, the `RefCell` type requires that
-`borrow_mut` not be called until all existing borrows have been relinquished.
+Contracts can be complex and involve more than a single function invocation. For
+example, the `RefCell` type requires that `borrow_mut` not be called until all
+existing borrows have been relinquished.
 
 ### For contract violations, fail the task.
 
@@ -114,13 +115,22 @@ contracts. However, here are some rough guidelines:
   patterns where the client does not want to check inputs before hand, but would
   rather attempt the operation and then find out whether the inputs were invalid.
 
+* When a contract violation is the *only* kind of error a function may encounter
+  -- i.e., there are no obstructions to its success other than "bad" inputs --
+  using `Result` or `Option` instead is especially warranted. Clients can then use
+  `unwrap` to assert that they have passed valid input, or re-use the error
+  checking done by the API for their own purposes.
+
 * When in doubt, use loose contracts and instead return a `Result` or `Option`.
 
 ## Obstructions
 
 An operation is *obstructed* if it cannot be completed for some reason, even
-though the operation's contract has been satisfied. Obstructed operations must
-still leave the relevant data structures in a coherent state.
+though the operation's contract has been satisfied. Obstructed operations may
+have (documented!) side effects -- they are not required to roll back after
+encountering an obstruction.  However, they should leave the data structures in
+a "coherent" state (satisfying their invariants, continuing to guarantee safety,
+etc.).
 
 Obstructions may involve external conditions (e.g., I/O), or they may involve
 aspects of the input that are not covered by the contract.
@@ -138,7 +148,8 @@ obstructions in a fine-grained way.
 If there are multiple ways an operation might be obstructed, or there is useful
 information about the obstruction (such as where in the input a parse error
 occurred), prefer to use `Result`. For operations with a single obvious
-obstruction (like popping from an empty stack), use `Option`.
+obstruction that can provide no additional information (e.g. popping from an
+empty stack), use `Option`.
 
 (Currently, `Option` does not interact well with other error-handling
 infrastructure like `try!`, but this will likely be improved in the future.)
@@ -156,7 +167,7 @@ intended as assertions.  If there is no other way to check in advance for the
 validity of invoking an operation `foo`, however, the API may provide a
 `foo_catch` variant that returns a `Result`.
 
-The main examples in `libstd` providing both variants are:
+The main examples in `libstd` that *currently* provide both variants are:
 
 * Channels, which are the primary point of failure propagation between tasks. As
   such, calling `recv()` is an _assertion_ that the other end of the channel is
@@ -176,6 +187,8 @@ The main examples in `libstd` providing both variants are:
 
   > Note: the `try_` prefix would be replaced by a `_catch` catch if this RFC is
   > accepted.
+
+(Note: it is unclear whether these APIs will continue to provide both variants.)
 
 # Drawbacks
 
@@ -203,3 +216,20 @@ As was
 however, mixing what might be seen as contract violations with obstructions can
 make it much more difficult to write obstruction-robust code; see the linked
 comment for more detail.
+
+## Naming
+
+There are numerous possible suffixes for a `Result`-producing variant:
+
+* `_catch`, as proposed above. As
+  [@kballard points out](https://github.com/rust-lang/rfcs/pull/236#issuecomment-55344336),
+  this name connotes exception handling, which could be considered
+  misleading. However, since it effectively prevents further unwinding, catching
+  an exception may indeed be the right analogy.
+
+* `_result`, which is straightforward but not as informative/suggestive as some
+  of the other proposed variants.
+
+* `try_` prefix. Also connotes exception handling, but has an unfortunately
+  overlap with the common use of `try_` for nonblocking variants (which is in
+  play for `recv` in particular).
