@@ -8,12 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-static s: int = 1;
-static e: int = 42;
+// Test mutability and slicing syntax.
 
-pub fn main() {
-    match 7 {
-        s...e => (),
-        _ => (),
-    }
+fn main() {
+    let x: &[int] = &[1, 2, 3, 4, 5];
+    // Can't mutably slice an immutable slice
+    let y = x[mut 2..4]; //~ ERROR cannot take a mutable slice of a value with type `&[int]`
 }

@@ -20,6 +20,7 @@ use core::default::Default;
 use core::fmt;
 use core::mem;
 use core::num;
+use core::ops;
 use core::ptr;
 use core::raw::Slice as RawSlice;
 use core::uint;
@@ -464,6 +465,47 @@ impl<T> Index<uint,T> for Vec<T> {
     }
 }*/
 
+impl<T> ops::Slice<uint, [T]> for Vec<T> {
+    #[inline]
+    fn as_slice_<'a>(&'a self) -> &'a [T] {
+        self.as_slice()
+    }
+
+    #[inline]
+    fn slice_from_<'a>(&'a self, start: &uint) -> &'a [T] {
+        self.as_slice().slice_from_(start)
+    }
+
+    #[inline]
+    fn slice_to_<'a>(&'a self, end: &uint) -> &'a [T] {
+        self.as_slice().slice_to_(end)
+    }
+    #[inline]
+    fn slice_<'a>(&'a self, start: &uint, end: &uint) -> &'a [T] {
+        self.as_slice().slice_(start, end)
+    }
+}
+
+impl<T> ops::SliceMut<uint, [T]> for Vec<T> {
+    #[inline]
+    fn as_mut_slice_<'a>(&'a mut self) -> &'a mut [T] {
+        self.as_mut_slice()
+    }
+
+    #[inline]
+    fn slice_from_mut_<'a>(&'a mut self, start: &uint) -> &'a mut [T] {
+        self.as_mut_slice().slice_from_mut_(start)
+    }
+
+    #[inline]
+    fn slice_to_mut_<'a>(&'a mut self, end: &uint) -> &'a mut [T] {
+        self.as_mut_slice().slice_to_mut_(end)
+    }
+    #[inline]
+    fn slice_mut_<'a>(&'a mut self, start: &uint, end: &uint) -> &'a mut [T] {
+        self.as_mut_slice().slice_mut_(start, end)
+    }
+}
 impl<T> FromIterator<T> for Vec<T> {
     #[inline]
     fn from_iter<I:Iterator<T>>(mut iterator: I) -> Vec<T> {
@@ -2326,6 +2368,44 @@ mod tests {
         let vec = vec!(1i, 2, 3);
         let _ = vec[3];
     }
+
+    // NOTE uncomment after snapshot
+    /*
+    #[test]
+    #[should_fail]
+    fn test_slice_out_of_bounds_1() {
+        let x: Vec<int> = vec![1, 2, 3, 4, 5];
+        x[-1..];
+    }
+
+    #[test]
+    #[should_fail]
+    fn test_slice_out_of_bounds_2() {
+        let x: Vec<int> = vec![1, 2, 3, 4, 5];
+        x[..6];
+    }
+
+    #[test]
+    #[should_fail]
+    fn test_slice_out_of_bounds_3() {
+        let x: Vec<int> = vec![1, 2, 3, 4, 5];
+        x[-1..4];
+    }
+
+    #[test]
+    #[should_fail]
+    fn test_slice_out_of_bounds_4() {
+        let x: Vec<int> = vec![1, 2, 3, 4, 5];
+        x[1..6];
+    }
+
+    #[test]
+    #[should_fail]
+    fn test_slice_out_of_bounds_5() {
+        let x: Vec<int> = vec![1, 2, 3, 4, 5];
+        x[3..2];
+    }
+    */
 
     #[test]
     fn test_swap_remove_empty() {

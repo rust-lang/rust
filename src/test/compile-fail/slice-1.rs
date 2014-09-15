@@ -8,12 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-static s: int = 1;
-static e: int = 42;
+// Test slicing expr[..] is an error and gives a helpful error message.
 
-pub fn main() {
-    match 7 {
-        s...e => (),
-        _ => (),
-    }
+struct Foo;
+
+fn main() {
+    let x = Foo;
+    x[..]; //~ ERROR incorrect slicing expression: `[..]`
+    //~^ NOTE use `expr[]` to construct a slice of the whole of expr
 }
