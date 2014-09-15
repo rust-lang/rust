@@ -1312,10 +1312,9 @@ valid for the loop body. Once the body is over, the next value is fetched from
 the iterator, and we loop another time. When there are no more values, the
 `for` loop is over.
 
-In our example, the `range` function is a function, provided by Rust, that
-takes a start and an end position, and gives an iterator over those values. The
-upper bound is exclusive, though, so our loop will print `0` through `9`, not
-`10`.
+In our example, `range` is a function that takes a start and an end position,
+and gives an iterator over those values. The upper bound is exclusive, though,
+so our loop will print `0` through `9`, not `10`.
 
 Rust does not have the "C style" `for` loop on purpose. Manually controlling
 each element of the loop is complicated and error prone, even for experienced C
