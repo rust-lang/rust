@@ -140,6 +140,11 @@ There are a few alternatives:
   some_string.slice_unchecked(start, end)
   ```
 
+* Another suggestion by @kballard is to keep the basic structure of `raw`
+  submodules, but use associated types to improve the ergonomics. Details (and
+  discussions of pros/cons) are in
+  [this comment](https://github.com/rust-lang/rfcs/pull/240/files#r17572875).
+
 * Use `raw` submodules to group together *all* manipulation of low-level
   representations. No module in `std` currently does this; existing modules
   provide some free functions in `raw`, and some unsafe methods, without a clear
