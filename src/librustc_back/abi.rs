@@ -9,7 +9,7 @@
 // except according to those terms.
 
 pub static box_field_refcnt: uint = 0u;
-pub static box_field_tydesc: uint = 1u;
+pub static box_field_drop_glue: uint = 1u;
 pub static box_field_body: uint = 4u;
 
 pub static tydesc_field_visit_glue: uint = 3u;
