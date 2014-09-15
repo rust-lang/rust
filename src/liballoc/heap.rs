@@ -86,10 +86,11 @@ pub fn stats_print() {
     imp::stats_print();
 }
 
-// The compiler never calls `exchange_free` on Box<ZeroSizeType>, so zero-size
-// allocations can point to this `static`. It would be incorrect to use a null
-// pointer, due to enums assuming types like unique pointers are never null.
-pub static mut EMPTY: uint = 12345;
+/// An arbitrary non-null address to represent zero-size allocations.
+///
+/// This preserves the non-null invariant for types like `Box<T>`. The address may overlap with
+/// non-zero-size memory allocations.
+pub static EMPTY: *mut () = 0x1 as *mut ();
 
 /// The allocator for unique pointers.
 #[cfg(not(test))]
@@ -97,7 +98,7 @@ pub static mut EMPTY: uint = 12345;
 #[inline]
 unsafe fn exchange_malloc(size: uint, align: uint) -> *mut u8 {
     if size == 0 {
-        &EMPTY as *const uint as *mut u8
+        EMPTY as *mut u8
     } else {
         allocate(size, align)
     }
