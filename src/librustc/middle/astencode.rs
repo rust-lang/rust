@@ -454,7 +454,7 @@ impl tr for def::Def {
             def::DefVariant(e_did.tr(dcx), v_did.tr(dcx), is_s)
           },
           def::DefTrait(did) => def::DefTrait(did.tr(dcx)),
-          def::DefTy(did) => def::DefTy(did.tr(dcx)),
+          def::DefTy(did, is_enum) => def::DefTy(did.tr(dcx), is_enum),
           def::DefPrimTy(p) => def::DefPrimTy(p),
           def::DefTyParam(s, did, v) => def::DefTyParam(s, did.tr(dcx), v),
           def::DefBinding(nid, bm) => def::DefBinding(dcx.tr_id(nid), bm),
