@@ -216,7 +216,7 @@ pub fn phase_2_configure_and_expand(sess: &Session,
         = time(time_passes, "plugin loading", (), |_|
                plugin::load::load_plugins(sess, &krate, addl_plugins.take().unwrap()));
 
-    let mut registry = Registry::new(&krate);
+    let mut registry = Registry::new(sess, &krate);
 
     time(time_passes, "plugin registration", (), |_| {
         if sess.features.borrow().rustc_diagnostic_macros {
