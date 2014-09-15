@@ -288,6 +288,10 @@ JEMALLOC_DEPS := $(wildcard \
 		   $(S)src/jemalloc/*/*/*/*)
 endif
 
+# See #17183 for details, this file is touched during the build process so we
+# don't want to consider it as a dependency.
+JEMALLOC_DEPS := $(filter-out $(S)src/jemalloc/VERSION,$(JEMALLOC_DEPS))
+
 JEMALLOC_NAME_$(1) := $$(call CFG_STATIC_LIB_NAME_$(1),jemalloc)
 ifeq ($$(CFG_WINDOWSY_$(1)),1)
   JEMALLOC_REAL_NAME_$(1) := $$(call CFG_STATIC_LIB_NAME_$(1),jemalloc_s)
