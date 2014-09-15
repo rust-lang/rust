@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use back::lto;
-use back::link::{get_cc_prog, remove};
+use back::link::{remove};
 use driver::driver::{CrateTranslation, ModuleTranslation, OutputFilenames};
 use driver::config::NoDebugInfo;
 use driver::session::Session;
@@ -632,8 +632,8 @@ pub fn run_passes(sess: &Session,
                 None
             };
 
-        let pname = get_cc_prog(sess);
-        let mut cmd = Command::new(pname.as_slice());
+        let pname = sess.get_cc_prog_str();
+        let mut cmd = Command::new(pname);
 
         cmd.args(sess.targ_cfg.target_strs.cc_args.as_slice());
         cmd.arg("-nostdlib");
@@ -828,8 +828,8 @@ fn run_work_multithreaded(sess: &Session,
 }
 
 pub fn run_assembler(sess: &Session, outputs: &OutputFilenames) {
-    let pname = get_cc_prog(sess);
-    let mut cmd = Command::new(pname.as_slice());
+    let pname = sess.get_cc_prog_str();
+    let mut cmd = Command::new(pname);
 
     cmd.arg("-c").arg("-o").arg(outputs.path(OutputTypeObject))
                            .arg(outputs.temp_path(OutputTypeAssembly));

@@ -16,6 +16,7 @@ use super::svh::Svh;
 use super::write::{OutputTypeBitcode, OutputTypeExe, OutputTypeObject};
 use driver::driver::{CrateTranslation, OutputFilenames, Input, FileInput};
 use driver::config::NoDebugInfo;
+use driver::session::{CcArgumentsFormat, GccArguments};
 use driver::session::Session;
 use driver::config;
 use metadata::common::LinkMeta;
@@ -72,7 +73,6 @@ pub static RLIB_BYTECODE_OBJECT_V1_DATASIZE_OFFSET: uint =
 // version 1
 pub static RLIB_BYTECODE_OBJECT_V1_DATA_OFFSET: uint =
     RLIB_BYTECODE_OBJECT_V1_DATASIZE_OFFSET + 8;
-
 
 /*
  * Name mangling and its relationship to metadata. This is complex. Read
@@ -379,29 +379,6 @@ pub fn mangle_internal_name_by_type_and_seq(ccx: &CrateContext,
 
 pub fn mangle_internal_name_by_path_and_seq(path: PathElems, flav: &str) -> String {
     mangle(path.chain(Some(gensym_name(flav)).move_iter()), None)
-}
-
-pub fn get_cc_prog(sess: &Session) -> String {
-    match sess.opts.cg.linker {
-        Some(ref linker) => return linker.to_string(),
-        None => {}
-    }
-
-    // In the future, FreeBSD will use clang as default compiler.
-    // It would be flexible to use cc (system's default C compiler)
-    // instead of hard-coded gcc.
-    // For Windows, there is no cc command, so we add a condition to make it use gcc.
-    match sess.targ_cfg.os {
-        abi::OsWindows => "gcc",
-        _ => "cc",
-    }.to_string()
-}
-
-pub fn get_ar_prog(sess: &Session) -> String {
-    match sess.opts.cg.ar {
-        Some(ref ar) => (*ar).clone(),
-        None => "ar".to_string()
-    }
 }
 
 pub fn remove(sess: &Session, path: &Path) {
@@ -812,11 +789,11 @@ fn link_natively(sess: &Session, trans: &CrateTranslation, dylib: bool,
     let tmpdir = TempDir::new("rustc").ok().expect("needs a temp dir");
 
     // The invocations of cc share some flags across platforms
-    let pname = get_cc_prog(sess);
-    let mut cmd = Command::new(pname.as_slice());
+    let (pname, args_fmt) = sess.get_cc_prog();
+    let mut cmd = Command::new(pname);
 
     cmd.args(sess.targ_cfg.target_strs.cc_args.as_slice());
-    link_args(&mut cmd, sess, dylib, tmpdir.path(),
+    link_args(&mut cmd, args_fmt, sess, dylib, tmpdir.path(),
               trans, obj_filename, out_filename);
 
     if (sess.opts.debugging_opts & config::PRINT_LINK_ARGS) != 0 {
@@ -868,6 +845,7 @@ fn link_natively(sess: &Session, trans: &CrateTranslation, dylib: bool,
 }
 
 fn link_args(cmd: &mut Command,
+             args_fmt: CcArgumentsFormat,
              sess: &Session,
              dylib: bool,
              tmpdir: &Path,
@@ -930,8 +908,13 @@ fn link_args(cmd: &mut Command,
         cmd.arg("-nodefaultlibs");
     }
 
-    // Rust does its' own LTO
-    cmd.arg("-fno-lto").arg("-fno-use-linker-plugin");
+    // Rust does its own LTO
+    cmd.arg("-fno-lto");
+
+    // clang fails hard if -fno-use-linker-plugin is passed
+    if args_fmt == GccArguments {
+        cmd.arg("-fno-use-linker-plugin");
+    }
 
     // If we're building a dylib, we don't use --gc-sections because LLVM has
     // already done the best it can do, and we also don't want to eliminate the

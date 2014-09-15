@@ -17,6 +17,7 @@ use metadata::filesearch;
 use lint;
 use util::nodemap::NodeMap;
 
+use syntax::abi;
 use syntax::ast::NodeId;
 use syntax::codemap::Span;
 use syntax::diagnostic;
@@ -26,8 +27,22 @@ use syntax::parse::token;
 use syntax::parse::ParseSess;
 use syntax::{ast, codemap};
 
-use std::os;
 use std::cell::{Cell, RefCell};
+use std::io::Command;
+use std::os;
+use std::str;
+
+/// The `cc` program used for linking will accept command line
+/// arguments according to one of the following formats.
+#[deriving(PartialEq, Show)]
+pub enum CcArgumentsFormat {
+    /// GNU compiler collection (GCC) compatible format.
+    GccArguments,
+    /// LLVM Clang front-end compatible format.
+    ClangArguments,
+    /// Unknown argument format; assume lowest common denominator among above.
+    UnknownCcArgumentFormat,
+}
 
 // Represents the data associated with a compilation
 // session for a single crate.
@@ -55,6 +70,11 @@ pub struct Session {
     /// The maximum recursion limit for potentially infinitely recursive
     /// operations such as auto-dereference and monomorphization.
     pub recursion_limit: Cell<uint>,
+
+    /// What command line options are acceptable to cc program;
+    /// locally memoized (i.e. initialized at most once).
+    /// See `Session::cc_prog` and `Session::cc_args_format`.
+    memo_cc_args_format: Cell<Option<CcArgumentsFormat>>,
 }
 
 impl Session {
@@ -202,6 +222,66 @@ impl Session {
             driver::host_triple(),
             &self.opts.addl_lib_search_paths)
     }
+
+    pub fn get_cc_prog_str(&self) -> &str {
+        match self.opts.cg.linker {
+            Some(ref linker) => return linker.as_slice(),
+            None => {}
+        }
+
+        // In the future, FreeBSD will use clang as default compiler.
+        // It would be flexible to use cc (system's default C compiler)
+        // instead of hard-coded gcc.
+        // For Windows, there is no cc command, so we add a condition to make it use gcc.
+        match self.targ_cfg.os {
+            abi::OsWindows => "gcc",
+            _ => "cc",
+        }
+    }
+
+    pub fn get_ar_prog_str(&self) -> &str {
+        match self.opts.cg.ar {
+            Some(ref ar) => ar.as_slice(),
+            None => "ar"
+        }
+    }
+
+    pub fn get_cc_args_format(&self) -> CcArgumentsFormat {
+        match self.memo_cc_args_format.get() {
+            Some(args_format) => return args_format,
+            None => {}
+        }
+
+        // Extract the args format: invoke `cc --version`, then search
+        // for identfying substrings.
+        let prog_str = self.get_cc_prog_str();
+        let mut command = Command::new(prog_str);
+        let presult = match command.arg("--version").output() {
+            Ok(p) => p,
+            Err(e) => fail!("failed to execute process: {}", e),
+        };
+
+        let output = str::from_utf8_lossy(presult.output.as_slice());
+        let output = output.as_slice();
+        let args_fmt = if output.contains("clang") {
+            ClangArguments
+        } else if output.contains("GCC") ||
+            output.contains("Free Software Foundation") {
+            GccArguments
+        } else {
+            UnknownCcArgumentFormat
+        };
+
+        // Memoize the args format.
+        self.memo_cc_args_format.set(Some(args_fmt));
+
+        args_fmt
+    }
+
+    pub fn get_cc_prog(&self) -> (&str, CcArgumentsFormat) {
+        (self.get_cc_prog_str(), self.get_cc_args_format())
+    }
+
 }
 
 pub fn build_session(sopts: config::Options,
@@ -256,6 +336,7 @@ pub fn build_session_(sopts: config::Options,
         crate_metadata: RefCell::new(Vec::new()),
         features: front::feature_gate::Features::new(),
         recursion_limit: Cell::new(64),
+        memo_cc_args_format: Cell::new(None),
     };
 
     sess.lint_store.borrow_mut().register_builtin(Some(&sess));
