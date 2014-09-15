@@ -374,7 +374,7 @@ fn from_rtio(s: rtio::FileStat) -> FileStat {
     type Mode = libc::mode_t;
 
     let rtio::FileStat {
-        size, kind, perm, created, modified,
+        size, kind, perm, created, changed, modified,
         accessed, device, inode, rdev,
         nlink, uid, gid, blksize, blocks, flags, gen
     } = s;
@@ -391,6 +391,7 @@ fn from_rtio(s: rtio::FileStat) -> FileStat {
         },
         perm: FilePermission::from_bits_truncate(perm as u32),
         created: created,
+        changed: changed,
         modified: modified,
         accessed: accessed,
         unstable: UnstableFileStat {

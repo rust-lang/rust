@@ -1748,6 +1748,9 @@ pub struct FileStat {
     /// The time that the file was created at, in platform-dependent
     /// milliseconds
     pub created: u64,
+    /// The time that the file was changed (in metadata or content)
+    /// in platform-dependent milliseconds
+    pub changed: u64,
     /// The time that this file was last modified, in platform-dependent
     /// milliseconds
     pub modified: u64,
