@@ -164,7 +164,7 @@ fn main() {
 }
 ```
 
-These two lines define a **function** in Rust. The `main` function is special:
+These lines define a **function** in Rust. The `main` function is special:
 it's the beginning of every Rust program. The first line says "I'm declaring a
 function named `main`, which takes no arguments and returns nothing." If there
 were arguments, they would go inside the parentheses (`(` and `)`), and because
