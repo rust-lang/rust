@@ -175,6 +175,7 @@ fn loan_path_is_precise(loan_path: &LoanPath) -> bool {
             // location, as there is no accurate tracking of the indices.
             false
         }
+        LpDowncast(ref lp_base, _) |
         LpExtend(ref lp_base, _, _) => {
             loan_path_is_precise(&**lp_base)
         }
@@ -266,6 +267,7 @@ impl MoveData {
                 index
             }
 
+            LpDowncast(ref base, _) |
             LpExtend(ref base, _, _) => {
                 let parent_index = self.move_path(tcx, base.clone());
 
@@ -324,6 +326,7 @@ impl MoveData {
             None => {
                 match **lp {
                     LpVar(..) | LpUpvar(..) => { }
+                    LpDowncast(ref b, _) |
                     LpExtend(ref b, _, _) => {
                         self.add_existing_base_paths(b, result);
                     }
@@ -434,15 +437,10 @@ impl MoveData {
         // of scope:
         for path in self.paths.borrow().iter() {
             match *path.loan_path {
-                LpVar(id) => {
-                    let kill_scope = tcx.region_maps.var_scope(id);
-                    let path = (*self.path_map.borrow())[path.loan_path];
+                LpVar(..) | LpUpvar(..) | LpDowncast(..) => {
+                    let kill_scope = path.loan_path.kill_scope(tcx);
+                    let path = *self.path_map.borrow().get(&path.loan_path);
                     self.kill_moves(path, kill_scope.node_id(), dfcx_moves);
-                }
-                LpUpvar(ty::UpvarId { var_id: _, closure_expr_id }) => {
-                    let kill_id = closure_to_block(closure_expr_id, tcx);
-                    let path = (*self.path_map.borrow())[path.loan_path];
-                    self.kill_moves(path, kill_id, dfcx_moves);
                 }
                 LpExtend(..) => {}
             }
@@ -451,14 +449,11 @@ impl MoveData {
         // Kill all assignments when the variable goes out of scope:
         for (assignment_index, assignment) in
                 self.var_assignments.borrow().iter().enumerate() {
-            match *self.path_loan_path(assignment.path) {
-                LpVar(id) => {
-                    let kill_scope = tcx.region_maps.var_scope(id);
+            let lp = self.path_loan_path(assignment.path);
+            match *lp {
+                LpVar(..) | LpUpvar(..) | LpDowncast(..) => {
+                    let kill_scope = lp.kill_scope(tcx);
                     dfcx_assign.add_kill(kill_scope.node_id(), assignment_index);
-                }
-                LpUpvar(ty::UpvarId { var_id: _, closure_expr_id }) => {
-                    let kill_id = closure_to_block(closure_expr_id, tcx);
-                    dfcx_assign.add_kill(kill_id, assignment_index);
                 }
                 LpExtend(..) => {
                     tcx.sess.bug("var assignment for non var path");
