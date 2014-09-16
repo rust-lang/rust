@@ -270,7 +270,7 @@ impl<'tcx> euv::Delegate<'tcx> for GlobalChecker {
                     break
                 }
                 mc::cat_deref(ref cmt, _, _) |
-                mc::cat_downcast(ref cmt) |
+                mc::cat_downcast(ref cmt, _) |
                 mc::cat_interior(ref cmt, _) => cur = cmt,
 
                 mc::cat_rvalue(..) |

@@ -52,6 +52,7 @@ fn owned_ptr_base_path<'a>(loan_path: &'a LoanPath) -> &'a LoanPath {
                     None => Some(&**lp_base)
                 }
             }
+            LpDowncast(ref lp_base, _) |
             LpExtend(ref lp_base, _, _) => owned_ptr_base_path_helper(&**lp_base)
         }
     }
@@ -75,6 +76,7 @@ fn owned_ptr_base_path_rc(loan_path: &Rc<LoanPath>) -> Rc<LoanPath> {
                     None => Some(lp_base.clone())
                 }
             }
+            LpDowncast(ref lp_base, _) |
             LpExtend(ref lp_base, _, _) => owned_ptr_base_path_helper(lp_base)
         }
     }
@@ -298,6 +300,7 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
                 LpVar(_) | LpUpvar(_) => {
                     break;
                 }
+                LpDowncast(ref lp_base, _) |
                 LpExtend(ref lp_base, _, _) => {
                     loan_path = &**lp_base;
                 }
@@ -726,6 +729,11 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
             LpVar(_) | LpUpvar(_) => {
                 // assigning to `x` does not require that `x` is initialized
             }
+            LpDowncast(ref lp_base, _) => {
+                // assigning to `(P->Variant).f` is ok if assigning to `P` is ok
+                self.check_if_assigned_path_is_moved(id, span,
+                                                     use_kind, lp_base);
+            }
             LpExtend(ref lp_base, _, LpInterior(_)) => {
                 // assigning to `P.f` is ok if assigning to `P` is ok
                 self.check_if_assigned_path_is_moved(id, span,
@@ -864,7 +872,7 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
                         cmt = b;
                     }
 
-                    mc::cat_downcast(b) |
+                    mc::cat_downcast(b, _) |
                     mc::cat_interior(b, _) => {
                         assert_eq!(cmt.mutbl, mc::McInherited);
                         cmt = b;
