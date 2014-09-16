@@ -29,8 +29,11 @@ $ curl -s https://static.rust-lang.org/rustup.sh | sudo sh
 (If you're concerned about `curl | sudo sh`, please keep reading. Disclaimer
 below.)
 
-If you're on Windows, please [download this .exe and run
-it](https://static.rust-lang.org/dist/rust-nightly-install.exe).
+If you're on Windows, please download either the [32-bit
+installer](https://static.rust-lang.org/dist/rust-nightly-i686-pc-mingw32.exe)
+or the [64-bit
+installer](https://static.rust-lang.org/dist/rust-nightly-x86_64-w64-mingw32.exe)
+and run it.
 
 If you decide you don't want Rust anymore, we'll be a bit sad, but that's okay.
 Not every programming language is great for everyone. Just pass an argument to
