@@ -490,7 +490,7 @@ impl tr for ty::Region {
             ty::ReScope(id) => {
                 ty::ReScope(dcx.tr_id(id))
             }
-            ty::ReEmpty | ty::ReStatic | ty::ReInfer(..) => {
+            ty::ReEmpty | ty::ReStatic | ty::ReInfer(..) | ty::ReFunction => {
                 *self
             }
             ty::ReFree(ref fr) => {

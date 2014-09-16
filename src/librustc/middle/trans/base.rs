@@ -3160,7 +3160,11 @@ pub fn trans_crate<'tcx>(analysis: CrateAnalysis<'tcx>)
         llcx: shared_ccx.metadata_llcx(),
         llmod: shared_ccx.metadata_llmod(),
     };
-    let formats = shared_ccx.tcx().dependency_formats.borrow().clone();
+    let formats;
+    {
+        let dependency_formats = shared_ccx.tcx().dependency_formats.borrow();
+        formats = dependency_formats.clone()
+    }
     let no_builtins = attr::contains_name(krate.attrs.as_slice(), "no_builtins");
 
     let translation = CrateTranslation {

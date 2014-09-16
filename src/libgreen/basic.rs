@@ -61,10 +61,13 @@ impl BasicLoop {
 
     fn remote_work(&mut self) {
         let messages = unsafe {
-            mem::replace(&mut *self.messages.lock(), Vec::new())
+            let lock = &mut *self.messages.lock();
+            mem::replace(lock, Vec::new())
         };
-        for message in messages.move_iter() {
-            self.message(message);
+        {
+            for message in messages.move_iter() {
+                self.message(message);
+            }
         }
     }
 

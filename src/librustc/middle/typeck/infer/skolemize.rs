@@ -98,6 +98,7 @@ impl<'a, 'tcx> TypeFolder<'tcx> for TypeSkolemizer<'a, 'tcx> {
             ty::ReFree(_) |
             ty::ReScope(_) |
             ty::ReInfer(_) |
+            ty::ReFunction |
             ty::ReEmpty => {
                 // replace all free regions with 'static
                 ty::ReStatic

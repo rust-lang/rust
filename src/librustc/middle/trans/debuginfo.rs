@@ -1292,7 +1292,9 @@ pub fn create_function_debug_context(cx: &CrateContext,
                        fn_metadata,
                        &mut *fn_debug_context.scope_map.borrow_mut());
 
-    return FunctionDebugContext { repr: FunctionDebugContext(fn_debug_context) };
+    return FunctionDebugContext {
+        repr: FunctionDebugContext(fn_debug_context)
+    };
 
     fn get_function_signature(cx: &CrateContext,
                               fn_ast_id: ast::NodeId,

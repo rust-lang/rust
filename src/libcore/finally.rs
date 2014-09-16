@@ -90,16 +90,22 @@ impl<T> Finally<T> for fn() -> T {
  *     })
  * ```
  */
-pub fn try_finally<T,U,R>(mutate: &mut T,
-                          drop: U,
-                          try_fn: |&mut T, U| -> R,
-                          finally_fn: |&mut T|)
-                          -> R {
-    let f = Finallyalizer {
-        mutate: mutate,
-        dtor: finally_fn,
-    };
-    try_fn(&mut *f.mutate, drop)
+pub fn try_finally<'a,
+                   T,
+                   U,
+                   R>(
+                   mutate: &'a mut T,
+                   drop: U,
+                   try_fn: |&mut T, U| -> R,
+                   finally_fn: |&mut T|:'a)
+                   -> R {
+    {
+        let f: Finallyalizer<'a,T> = Finallyalizer {
+            mutate: mutate,
+            dtor: finally_fn,
+        };
+        try_fn(&mut *f.mutate, drop)
+    }
 }
 
 struct Finallyalizer<'a,A:'a> {

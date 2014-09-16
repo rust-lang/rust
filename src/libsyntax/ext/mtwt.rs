@@ -168,7 +168,10 @@ fn with_resolve_table_mut<T>(op: |&mut ResolveTable| -> T) -> T {
         None => {
             let ts = Rc::new(RefCell::new(HashMap::new()));
             resolve_table_key.replace(Some(ts.clone()));
-            op(&mut *ts.borrow_mut())
+            {
+                let mut tsb = ts.borrow_mut();
+                op(&mut *tsb)
+            }
         }
     }
 }
@@ -257,9 +260,12 @@ fn marksof_internal(ctxt: SyntaxContext,
 /// FAILS when outside is not a mark.
 pub fn outer_mark(ctxt: SyntaxContext) -> Mrk {
     with_sctable(|sctable| {
-        match *sctable.table.borrow().get(ctxt as uint) {
-            Mark(mrk, _) => mrk,
-            _ => fail!("can't retrieve outer mark when outside is not a mark")
+        {
+            let table = sctable.table.borrow();
+            match *table.get(ctxt as uint) {
+                Mark(mrk, _) => mrk,
+                _ => fail!("can't retrieve outer mark when outside is not a mark")
+            }
         }
     })
 }

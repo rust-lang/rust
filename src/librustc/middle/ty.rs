@@ -676,19 +676,22 @@ pub enum Region {
     // some enclosing function signature.
     ReLateBound(/* binder_id */ ast::NodeId, BoundRegion),
 
+    /// Static data that has an "infinite" lifetime. Top in the region lattice.
+    ReStatic,
+
     /// When checking a function body, the types of all arguments and so forth
     /// that refer to bound region parameters are modified to refer to free
     /// region parameters.
     ReFree(FreeRegion),
 
+    /// The lifetime of the current function. This is a lifetime that is
+    /// conceptually shorter than free region variables but longer than the
+    /// function block. This is needed only when checking destructors for
+    /// safety.
+    ReFunction,
+
     /// A concrete region naming some expression within the current function.
     ReScope(NodeId),
-
-    /// Static data that has an "infinite" lifetime. Top in the region lattice.
-    ReStatic,
-
-    /// A region variable.  Should not exist after typeck.
-    ReInfer(InferRegion),
 
     /// Empty lifetime is for data that is never accessed.
     /// Bottom in the region lattice. We treat ReEmpty somewhat
@@ -698,6 +701,9 @@ pub enum Region {
     /// The only way to get an instance of ReEmpty is to have a region
     /// variable with no constraints.
     ReEmpty,
+
+    /// A region variable.  Should not exist after typeck.
+    ReInfer(InferRegion),
 }
 
 /**
@@ -4725,9 +4731,12 @@ pub fn normalize_ty(cx: &ctxt, t: t) -> t {
         fn tcx(&self) -> &ctxt<'tcx> { let TypeNormalizer(c) = *self; c }
 
         fn fold_ty(&mut self, t: ty::t) -> ty::t {
-            match self.tcx().normalized_cache.borrow().find_copy(&t) {
-                None => {}
-                Some(u) => return u
+            {
+                let normalized_cache = self.tcx().normalized_cache.borrow();
+                match normalized_cache.find_copy(&t) {
+                    None => {}
+                    Some(u) => return u
+                }
             }
 
             let t_norm = ty_fold::super_fold_ty(self, t);
@@ -5136,7 +5145,8 @@ pub fn hash_crate_independent(tcx: &ctxt, t: t, svh: &Svh) -> u64 {
             ReLateBound(..) |
             ReFree(..) |
             ReScope(..) |
-            ReInfer(..) => {
+            ReInfer(..) |
+            ReFunction => {
                 tcx.sess.bug("non-static region found when hashing a type")
             }
         }

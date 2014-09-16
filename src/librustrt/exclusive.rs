@@ -49,12 +49,14 @@ impl<T: Send> Exclusive<T> {
     /// This method is unsafe due to many of the same reasons that the
     /// NativeMutex itself is unsafe.
     pub unsafe fn lock<'a>(&'a self) -> ExclusiveGuard<'a, T> {
-        let guard = self.lock.lock();
-        let data = &mut *self.data.get();
+        {
+            let guard = self.lock.lock();
+            let data = &mut *self.data.get();
 
-        ExclusiveGuard {
-            _data: data,
-            _guard: guard,
+            ExclusiveGuard {
+                _data: data,
+                _guard: guard,
+            }
         }
     }
 }

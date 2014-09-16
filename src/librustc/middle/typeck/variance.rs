@@ -903,7 +903,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
             }
 
             ty::ReFree(..) | ty::ReScope(..) | ty::ReInfer(..) |
-            ty::ReEmpty => {
+            ty::ReFunction | ty::ReEmpty => {
                 // We don't expect to see anything but 'static or bound
                 // regions when visiting member types or method types.
                 self.tcx()

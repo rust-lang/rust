@@ -574,8 +574,8 @@ fn begin_unwind_inner(msg: Box<Any + Send>, file_line: &(&'static str, uint)) ->
                 let (file, line) = *file_line;
                 f(&*msg, file, line);
             }
-        }
-    };
+        };
+    }
 
     // Now that we've run all the necessary unwind callbacks, we actually
     // perform the unwinding. If we don't have a task, then it's time to die
@@ -599,7 +599,7 @@ fn begin_unwind_inner(msg: Box<Any + Send>, file_line: &(&'static str, uint)) ->
     // requires the task. We need a handle to its unwinder, however, so after
     // this we unsafely extract it and continue along.
     Local::put(task);
-    rust_fail(msg);
+    rust_fail(msg)
 }
 
 /// Register a callback to be invoked when a task unwinds.

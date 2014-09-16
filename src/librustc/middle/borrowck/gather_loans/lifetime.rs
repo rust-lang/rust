@@ -163,36 +163,7 @@ impl<'a, 'tcx> GuaranteeLifetimeContext<'a, 'tcx> {
 
         // See the SCOPE(LV) function in doc.rs
 
-        match cmt.cat {
-            mc::cat_rvalue(temp_scope) => {
-                temp_scope
-            }
-            mc::cat_upvar(..) |
-            mc::cat_copied_upvar(_) => {
-                ty::ReScope(self.item_scope_id)
-            }
-            mc::cat_static_item => {
-                ty::ReStatic
-            }
-            mc::cat_local(local_id) |
-            mc::cat_arg(local_id) => {
-                ty::ReScope(self.bccx.tcx.region_maps.var_scope(local_id))
-            }
-            mc::cat_deref(_, _, mc::UnsafePtr(..)) => {
-                ty::ReStatic
-            }
-            mc::cat_deref(_, _, mc::BorrowedPtr(_, r)) |
-            mc::cat_deref(_, _, mc::Implicit(_, r)) => {
-                r
-            }
-            mc::cat_downcast(ref cmt) |
-            mc::cat_deref(ref cmt, _, mc::OwnedPtr) |
-            mc::cat_deref(ref cmt, _, mc::GcPtr) |
-            mc::cat_interior(ref cmt, _) |
-            mc::cat_discr(ref cmt, _) => {
-                self.scope(cmt)
-            }
-        }
+        mc::scope(self.bccx.tcx, cmt, self.item_scope_id)
     }
 
     fn report_error(&self, code: bckerr_code) {

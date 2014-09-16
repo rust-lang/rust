@@ -513,14 +513,17 @@ impl CodeMap {
         let FileMapAndLine {fm: f, line: a} = self.lookup_line(pos);
         let line = a + 1u; // Line numbers start at 1
         let chpos = self.bytepos_to_file_charpos(pos);
-        let linebpos = *f.lines.borrow().get(a);
-        let linechpos = self.bytepos_to_file_charpos(linebpos);
-        debug!("byte pos {} is on the line at byte pos {}",
-               pos, linebpos);
-        debug!("char pos {} is on the line at char pos {}",
-               chpos, linechpos);
-        debug!("byte is on line: {}", line);
-        assert!(chpos >= linechpos);
+        let linechpos;
+        {
+            let linebpos = *f.lines.borrow().get(a);
+            linechpos = self.bytepos_to_file_charpos(linebpos);
+            debug!("byte pos {} is on the line at byte pos {}",
+                   pos, linebpos);
+            debug!("char pos {} is on the line at char pos {}",
+                   chpos, linechpos);
+            debug!("byte is on line: {}", line);
+            assert!(chpos >= linechpos);
+        }
         Loc {
             file: f,
             line: line,
