@@ -1406,7 +1406,8 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DxrVisitor<'l, 'tcx> {
                                                             self.cur_scope),
                 // FIXME(nrc) what is this doing here?
                 def::DefStatic(_, _) => {}
-                _ => error!("unexpected defintion kind when processing collected paths: {:?}", *def)
+                _ => error!("unexpected definition kind when processing collected paths: {:?}",
+                            *def)
             }
         }
         self.collected_paths.clear();

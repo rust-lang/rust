@@ -3698,7 +3698,7 @@ There are two varieties of pointer in Rust:
     they exist to support interoperability with foreign code,
     and writing performance-critical or low-level functions.
 
-The standard library contains addtional 'smart pointer' types beyond references
+The standard library contains additional 'smart pointer' types beyond references
 and raw pointers.
 
 ### Function types
