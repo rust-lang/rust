@@ -325,6 +325,12 @@ impl<'tcx> euv::Delegate<'tcx> for GlobalChecker {
               _assignment_span: Span,
               _assignee_cmt: mc::cmt,
               _mode: euv::MutateMode) {}
+
+    fn matched_pat(&mut self,
+                   _: &ast::Pat,
+                   _: mc::cmt,
+                   _: euv::MatchMode) {}
+
     fn consume_pat(&mut self,
                    _consume_pat: &ast::Pat,
                    _cmt: mc::cmt,
