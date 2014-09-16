@@ -21,7 +21,9 @@ use hash::{Hash, Hasher, RandomSipHasher};
 use iter::{Iterator, IteratorExt, IteratorCloneExt, FromIterator, Map, Chain, Extend};
 use ops::{BitOr, BitAnd, BitXor, Sub};
 use option::Option::{Some, None, self};
-use result::Result::{Ok, Err};
+
+// NOTE: for old macros; remove after the next snapshot
+#[cfg(stage0)] use result::Result::{Ok, Err};
 
 use super::map::{self, HashMap, Keys, INITIAL_CAPACITY};
 

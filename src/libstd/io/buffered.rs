@@ -18,10 +18,13 @@ use iter::ExactSizeIterator;
 use ops::Drop;
 use option::Option;
 use option::Option::{Some, None};
-use result::Result::{Ok, Err};
+use result::Result::Ok;
 use slice::{SliceExt};
 use slice;
 use vec::Vec;
+
+// NOTE: for old macros; remove after the next snapshot
+#[cfg(stage0)] use result::Result::Err;
 
 /// Wraps a Reader and buffers input from it
 ///

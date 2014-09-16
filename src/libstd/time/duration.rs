@@ -17,8 +17,10 @@ use ops::{Add, Sub, Mul, Div, Neg, FnOnce};
 use option::Option;
 use option::Option::{Some, None};
 use num::Int;
-use result::Result;
-use result::Result::{Ok, Err};
+use result::Result::Ok;
+
+// NOTE: for old macros; remove after the next snapshot
+#[cfg(stage0)] use result::Result::Err;
 
 /// The number of nanoseconds in a microsecond.
 const NANOS_PER_MICRO: i32 = 1000;

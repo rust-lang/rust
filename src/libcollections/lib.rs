@@ -51,6 +51,9 @@ pub use string::String;
 pub use vec::Vec;
 pub use vec_map::VecMap;
 
+// Needed for the vec! macro
+pub use alloc::boxed;
+
 mod macros;
 
 pub mod binary_heap;
