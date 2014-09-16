@@ -1,10 +1,10 @@
 - Start Date: 2014-08-28
-- RFC PR: (leave this empty)
-- Rust Issue: (leave this empty)
+- RFC PR: (https://github.com/rust-lang/rfcs/pull/216)
+- Rust Issue: (https://github.com/rust-lang/rust/issues/17320)
 
 # Summary
 
-Add additional iterator-like Entry objects to collections. 
+Add additional iterator-like Entry objects to collections.
 Entries provide a composable mechanism for in-place observation and mutation of a
 single element in the collection, without having to "re-find" the element multiple times.
 This deprecates several "internal mutation" methods like hashmap's `find_or_insert_with`.
@@ -47,7 +47,7 @@ combinatorially explosive. They all seem to return a mutable reference to the re
 accessed "just in case", and `find_with_or_insert_with` takes a magic argument `a` to
 try to work around the fact that the *two* closures it requires can't both close over
 the same value (even though only one will ever be called). `find_with_or_insert_with`
-is also actually performing the role of `insert_with_or_update_with`, 
+is also actually performing the role of `insert_with_or_update_with`,
 suggesting that these aren't well understood.
 
 Rust has been in this position before: internal iteration. Internal iteration was (author's note: I'm told)
@@ -58,13 +58,13 @@ composability. Thus, this RFC proposes the same solution to the internal mutatio
 # Detailed design
 
 A fully tested "proof of concept" draft of this design has been implemented on top of hashmap,
-as it seems to be the worst offender, while still being easy to work with. You can 
+as it seems to be the worst offender, while still being easy to work with. You can
 [read the diff here](https://github.com/Gankro/rust/commit/39a1fa7c7362a3e22e59ab6601ac09475daff39b).
 
 All the internal mutation methods are replaced with a single method on a collection: `entry`.
 The signature of `entry` will depend on the specific collection, but generally it will be similar to
 the signature for searching in that structure. `entry` will in turn return an `Entry` object, which
-captures the *state* of a completed search, and allows mutation of the area. 
+captures the *state* of a completed search, and allows mutation of the area.
 
 For convenience, we will use the hashmap draft as an example.
 
@@ -110,23 +110,23 @@ impl<'a, K, V> VacantEntry<'a, K, V> {
 }
 ```
 
-There are definitely some strange things here, so let's discuss the reasoning! 
+There are definitely some strange things here, so let's discuss the reasoning!
 
-First, `entry` takes a `key` by value, because this is the observed behaviour of the internal mutation 
-methods. Further, taking the `key` up-front allows implementations to avoid *validating* provided keys if 
-they require an owned `key` later for insertion. This key is effectively a *guarantor* of the entry. 
+First, `entry` takes a `key` by value, because this is the observed behaviour of the internal mutation
+methods. Further, taking the `key` up-front allows implementations to avoid *validating* provided keys if
+they require an owned `key` later for insertion. This key is effectively a *guarantor* of the entry.
 
 Taking the key by-value might change once collections reform lands, and Borrow and ToOwned are available.
-For now, it's an acceptable solution, because in particular, the primary use case of this functionality 
-is when you're *not sure* if you need to insert, in which case you should be prepared to insert. 
+For now, it's an acceptable solution, because in particular, the primary use case of this functionality
+is when you're *not sure* if you need to insert, in which case you should be prepared to insert.
 Otherwise, `find_mut` is likely sufficient.
 
 The result is actually an enum, that will either be Occupied or Vacant. These two variants correspond
-to concrete types for when the key matched something in the map, and when the key didn't, repsectively. 
+to concrete types for when the key matched something in the map, and when the key didn't, repsectively.
 
 If there isn't a match, the user has exactly one option: insert a value using `set`, which will also insert
 the guarantor, and destroy the Entry. This is to avoid the costs of maintaining the structure, which
-otherwise isn't particularly interesting anymore. 
+otherwise isn't particularly interesting anymore.
 
 If there is a match, a more robust set of options is provided. `get` and `get_mut` provide access to the
 value found in the location. `set` behaves as the vacant variant, but also yields the old value. `take`
@@ -151,15 +151,15 @@ One can now write something equivalent to the "intuitive" inefficient code, but 
 `insert_or_update` methods. In fact, this matches so closely to the inefficient manipulation
 that users could reasonable ignore Entries *until performance becomes an issue*. At which point
 it's an almost trivial migration. Closures also aren't needed to dance around the fact that one may
-want to avoid generating some values unless they have to, because that falls naturally out of 
+want to avoid generating some values unless they have to, because that falls naturally out of
 normal control flow.
 
 If you look at the actual patch that does this, you'll see that Entry itself is exceptionally
 simple to implement. Most of the logic is trivial. The biggest amount of work was just
 capturing the search state correctly, and even that was mostly a cut-and-paste job.
 
-With Entries, the gate is also opened for... *adaptors*! 
-Really want `insert_or_update` back? That can be written on top of this generically with ease. 
+With Entries, the gate is also opened for... *adaptors*!
+Really want `insert_or_update` back? That can be written on top of this generically with ease.
 However, such discussion is out-of-scope for this RFC. Adaptors can
 be tackled in a back-compat manner after this has landed, and usage is observed. Also, this
 proposal does not provide any generic trait for Entries, preferring concrete implementations for
@@ -167,7 +167,7 @@ the time-being.
 
 # Drawbacks
 
-* More structs, and more methods in the short-term 
+* More structs, and more methods in the short-term
 
 * More collection manipulation "modes" for the user to think about
 
@@ -176,17 +176,17 @@ found in the examples
 
 # Alternatives
 
-* Just put our foot down, say "no efficient complex manipulations", and drop 
+* Just put our foot down, say "no efficient complex manipulations", and drop
 all the internal mutation stuff without a replacement.
 
 * Try to build out saner/standard internal manipulation methods.
 
-* Try to make this functionality a subset of [Cursors](http://discuss.rust-lang.org/t/pseudo-rfc-cursors-reversible-iterators/386/7), 
+* Try to make this functionality a subset of [Cursors](http://discuss.rust-lang.org/t/pseudo-rfc-cursors-reversible-iterators/386/7),
 which would be effectively a bi-directional mut_iter
-where the returned references borrow the cursor preventing aliasing/safety issues, 
-so that mutation can be performed at the location of the cursor. 
+where the returned references borrow the cursor preventing aliasing/safety issues,
+so that mutation can be performed at the location of the cursor.
 However, preventing invalidation would be more expensive, and it's not clear that
-cursor semantics would make sense on e.g. a HashMap, as you can't insert *any* key 
+cursor semantics would make sense on e.g. a HashMap, as you can't insert *any* key
 in *any* location.
 
 * This RFC originally [proposed a design without enums that was substantially more complex]
