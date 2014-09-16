@@ -2692,15 +2692,16 @@ impl<'a> Parser<'a> {
     pub fn parse_assign_expr(&mut self) -> P<Expr> {
         let lo = self.span.lo;
         let lhs = self.parse_binops();
+        let restrictions = self.restrictions & RestrictionNoStructLiteral;
         match self.token {
           token::EQ => {
               self.bump();
-              let rhs = self.parse_expr();
+              let rhs = self.parse_expr_res(restrictions);
               self.mk_expr(lo, rhs.span.hi, ExprAssign(lhs, rhs))
           }
           token::BINOPEQ(op) => {
               self.bump();
-              let rhs = self.parse_expr();
+              let rhs = self.parse_expr_res(restrictions);
               let aop = match op {
                   token::PLUS =>    BiAdd,
                   token::MINUS =>   BiSub,
