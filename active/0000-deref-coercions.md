@@ -98,7 +98,7 @@ This RFC takes as a basic principle: **Coercions should never implicitly borrow 
 This is a key difference from the
 [cross-borrowing RFC](https://github.com/rust-lang/rfcs/pull/226).
 
-### Limit implicitly execution of arbitrary code
+### Limit implicit execution of arbitrary code
 
 Another positive aspect of Rust's current design is that a function call like
 `foo(bar, baz)` does not invoke arbitrary code (general implicit coercions, as
