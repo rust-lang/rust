@@ -152,7 +152,7 @@ fn check_and_get_illegal_move_origin(bccx: &BorrowckCtxt,
             None
         }
 
-        mc::cat_downcast(ref b) |
+        mc::cat_downcast(ref b, _) |
         mc::cat_interior(ref b, _) => {
             match ty::get(b.ty).sty {
                 ty::ty_struct(did, _) | ty::ty_enum(did, _) => {

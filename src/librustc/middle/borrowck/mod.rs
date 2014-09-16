@@ -275,9 +275,24 @@ pub enum CaptureKind { CaptureByVal, CaptureByRef }
 
 #[deriving(PartialEq, Eq, Hash)]
 pub enum LoanPath {
-    LpVar(ast::NodeId),                // `x` in doc.rs
-    LpUpvar(ty::UpvarId, CaptureKind), // `x` captured into closure
+    LpVar(ast::NodeId),                   // `x` in doc.rs
+    LpUpvar(ty::UpvarId, CaptureKind),    // `x` captured into closure
+    LpDowncast(Rc<LoanPath>, ast::DefId), // `x` downcast to particular enum variant
     LpExtend(Rc<LoanPath>, mc::MutabilityCategory, LoanPathElem)
+}
+
+impl LoanPath {
+    fn kill_id(&self, tcx: &ty::ctxt) -> ast::NodeId {
+        //! Returns the lifetime of the local variable that forms the base of this path.
+        match *self {
+            LpVar(id) =>
+                tcx.region_maps.var_scope(id),
+            LpUpvar(ty::UpvarId { var_id: _, closure_expr_id }, _) =>
+                closure_to_block(closure_expr_id, tcx),
+            LpDowncast(ref base_lp, _) | LpExtend(ref base_lp, _, _) =>
+                base_lp.kill_id(tcx),
+        }
+    }
 }
 
 #[deriving(PartialEq, Eq, Hash)]
@@ -305,6 +320,7 @@ impl LoanPath {
             LpVar(local_id) => tcx.region_maps.var_scope(local_id),
             LpUpvar(upvar_id, _) =>
                 closure_to_block(upvar_id.closure_expr_id, tcx),
+            LpDowncast(ref base, _) |
             LpExtend(ref base, _, _) => base.kill_scope(tcx),
         }
     }
@@ -349,7 +365,12 @@ pub fn opt_loan_path(cmt: &mc::cmt) -> Option<Rc<LoanPath>> {
             })
         }
 
-        mc::cat_downcast(ref cmt_base) |
+        mc::cat_downcast(ref cmt_base, variant_def_id) =>
+            opt_loan_path(cmt_base)
+            .map(|lp| {
+                Rc::new(LpDowncast(lp, variant_def_id))
+            }),
+
         mc::cat_discr(ref cmt_base, _) => {
             opt_loan_path(cmt_base)
         }
@@ -799,6 +820,15 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                 out.push_str(ty::local_var_name_str(self.tcx, id).get());
             }
 
+            LpDowncast(ref lp_base, variant_def_id) => {
+                out.push_char('(');
+                self.append_loan_path_to_string(&**lp_base, out);
+                out.push_str("->");
+                out.push_str(ty::item_path_str(self.tcx, variant_def_id).as_slice());
+                out.push_char(')');
+            }
+
+
             LpExtend(ref lp_base, _, LpInterior(mc::InteriorField(fname))) => {
                 self.append_autoderefd_loan_path_to_string(&**lp_base, out);
                 match fname {
@@ -834,6 +864,14 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                 // rules would normally allow users to omit the `*x`.
                 // So just serialize such paths to `x.f` or x[3]` respectively.
                 self.append_autoderefd_loan_path_to_string(&**lp_base, out)
+            }
+
+            LpDowncast(ref lp_base, variant_def_id) => {
+                out.push_char('(');
+                self.append_autoderefd_loan_path_to_string(&**lp_base, out);
+                out.push_char(':');
+                out.push_str(ty::item_path_str(self.tcx, variant_def_id).as_slice());
+                out.push_char(')');
             }
 
             LpVar(..) | LpUpvar(..) | LpExtend(_, _, LpInterior(..)) => {
@@ -901,6 +939,15 @@ impl Repr for LoanPath {
             &LpUpvar(ty::UpvarId{ var_id, closure_expr_id }, _) => {
                 let s = tcx.map.node_to_string(var_id);
                 format!("$({} captured by id={})", s, closure_expr_id)
+            }
+
+            &LpDowncast(ref lp, variant_def_id) => {
+                let variant_str = if variant_def_id.krate == ast::LOCAL_CRATE {
+                    ty::item_path_str(tcx, variant_def_id)
+                } else {
+                    variant_def_id.repr(tcx)
+                };
+                format!("({}->{})", lp.repr(tcx), variant_str)
             }
 
             &LpExtend(ref lp, _, LpDeref(_)) => {
