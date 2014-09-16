@@ -1660,6 +1660,8 @@ impl<T> DoubleEndedIterator<T> for MoveItems<T> {
     }
 }
 
+impl<T> ExactSize<T> for MoveItems<T> {}
+
 #[unsafe_destructor]
 impl<T> Drop for MoveItems<T> {
     fn drop(&mut self) {
