@@ -117,13 +117,18 @@
 
 #![reexport_test_harness_main = "test_main"]
 
+#![macro_reexport(assert, assert_eq, debug_assert, debug_assert_eq,
+    unreachable, unimplemented, write, writeln, vec)]
+
 #[cfg(test)] #[phase(plugin, link)] extern crate log;
 
-extern crate alloc;
-extern crate unicode;
+#[phase(plugin, link)]
 extern crate core;
+#[phase(plugin, link)]
 extern crate "collections" as core_collections;
 extern crate "rand" as core_rand;
+extern crate alloc;
+extern crate unicode;
 extern crate libc;
 
 // Make std testable by not duplicating lang items. See #2912
@@ -167,7 +172,8 @@ pub use unicode::char;
 
 /* Exported macros */
 
-pub mod macros;
+#[cfg(stage0)] pub mod macros_stage0;
+#[cfg(not(stage0))] pub mod macros;
 pub mod bitflags;
 
 mod rtdeps;
