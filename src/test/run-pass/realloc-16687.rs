@@ -26,7 +26,7 @@ fn main() {
 
 unsafe fn test_triangle() -> bool {
     static COUNT : uint = 16;
-    let mut ascend = Vec::from_elem(COUNT, ptr::mut_null());
+    let mut ascend = Vec::from_elem(COUNT, ptr::null_mut());
     let ascend = ascend.as_mut_slice();
     static ALIGN : uint = 1;
 

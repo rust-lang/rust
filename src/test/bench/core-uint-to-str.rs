@@ -18,7 +18,7 @@ fn main() {
     } else if args.len() <= 1u {
         vec!("".to_string(), "100000".to_string())
     } else {
-        args.move_iter().collect()
+        args.into_iter().collect()
     };
 
     let n = from_str::<uint>(args.get(1).as_slice()).unwrap();

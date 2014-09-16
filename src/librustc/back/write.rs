@@ -857,7 +857,7 @@ fn run_work_multithreaded(sess: &Session,
     }
 
     let mut failed = false;
-    for future in futures.move_iter() {
+    for future in futures.into_iter() {
         match future.unwrap() {
             Ok(()) => {},
             Err(_) => {

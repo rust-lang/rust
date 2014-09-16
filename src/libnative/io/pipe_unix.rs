@@ -50,7 +50,7 @@ fn addr_to_sockaddr_un(addr: &CString,
         })
     }
     s.sun_family = libc::AF_UNIX as libc::sa_family_t;
-    for (slot, value) in s.sun_path.mut_iter().zip(addr.iter()) {
+    for (slot, value) in s.sun_path.iter_mut().zip(addr.iter()) {
         *slot = value;
     }
 

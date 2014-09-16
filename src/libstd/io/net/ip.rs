@@ -109,7 +109,7 @@ impl<'a> Parser<'a> {
     // Return result of first successful parser
     fn read_or<T>(&mut self, parsers: &mut [|&mut Parser| -> Option<T>])
                -> Option<T> {
-        for pf in parsers.mut_iter() {
+        for pf in parsers.iter_mut() {
             match self.read_atomically(|p: &mut Parser| (*pf)(p)) {
                 Some(r) => return Some(r),
                 None => {}
@@ -233,7 +233,7 @@ impl<'a> Parser<'a> {
             assert!(head.len() + tail.len() <= 8);
             let mut gs = [0u16, ..8];
             gs.copy_from(head);
-            gs.mut_slice(8 - tail.len(), 8).copy_from(tail);
+            gs.slice_mut(8 - tail.len(), 8).copy_from(tail);
             Ipv6Addr(gs[0], gs[1], gs[2], gs[3], gs[4], gs[5], gs[6], gs[7])
         }
 

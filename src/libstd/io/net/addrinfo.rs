@@ -76,7 +76,7 @@ pub struct Info {
 /// Easy name resolution. Given a hostname, returns the list of IP addresses for
 /// that hostname.
 pub fn get_host_addresses(host: &str) -> IoResult<Vec<IpAddr>> {
-    lookup(Some(host), None, None).map(|a| a.move_iter().map(|i| i.address.ip).collect())
+    lookup(Some(host), None, None).map(|a| a.into_iter().map(|i| i.address.ip).collect())
 }
 
 /// Full-fledged resolution. This function will perform a synchronous call to
@@ -105,7 +105,7 @@ fn lookup(hostname: Option<&str>, servname: Option<&str>, hint: Option<Hint>)
     match LocalIo::maybe_raise(|io| {
         io.get_host_addresses(hostname, servname, hint)
     }) {
-        Ok(v) => Ok(v.move_iter().map(|info| {
+        Ok(v) => Ok(v.into_iter().map(|info| {
             Info {
                 address: SocketAddr {
                     ip: super::from_rtio(info.address.ip),

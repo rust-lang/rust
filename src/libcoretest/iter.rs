@@ -794,7 +794,7 @@ fn test_range_step_inclusive() {
 #[test]
 fn test_reverse() {
     let mut ys = [1i, 2, 3, 4, 5];
-    ys.mut_iter().reverse_();
+    ys.iter_mut().reverse_();
     assert!(ys == [5, 4, 3, 2, 1]);
 }
 

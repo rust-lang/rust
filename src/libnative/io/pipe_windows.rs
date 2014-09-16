@@ -104,7 +104,7 @@ struct Event(libc::HANDLE);
 impl Event {
     fn new(manual_reset: bool, initial_state: bool) -> IoResult<Event> {
         let event = unsafe {
-            libc::CreateEventW(ptr::mut_null(),
+            libc::CreateEventW(ptr::null_mut(),
                                manual_reset as libc::BOOL,
                                initial_state as libc::BOOL,
                                ptr::null())
@@ -164,7 +164,7 @@ unsafe fn pipe(name: *const u16, init: bool) -> libc::HANDLE {
         65536,
         65536,
         0,
-        ptr::mut_null()
+        ptr::null_mut()
     )
 }
 
@@ -225,10 +225,10 @@ impl UnixStream {
             libc::CreateFileW(p,
                 libc::GENERIC_READ | libc::GENERIC_WRITE,
                 0,
-                ptr::mut_null(),
+                ptr::null_mut(),
                 libc::OPEN_EXISTING,
                 libc::FILE_FLAG_OVERLAPPED,
-                ptr::mut_null())
+                ptr::null_mut())
         };
         if result != libc::INVALID_HANDLE_VALUE {
             return Some(result)
@@ -240,10 +240,10 @@ impl UnixStream {
                 libc::CreateFileW(p,
                     libc::GENERIC_READ | libc::FILE_WRITE_ATTRIBUTES,
                     0,
-                    ptr::mut_null(),
+                    ptr::null_mut(),
                     libc::OPEN_EXISTING,
                     libc::FILE_FLAG_OVERLAPPED,
-                    ptr::mut_null())
+                    ptr::null_mut())
             };
             if result != libc::INVALID_HANDLE_VALUE {
                 return Some(result)
@@ -255,10 +255,10 @@ impl UnixStream {
                 libc::CreateFileW(p,
                     libc::GENERIC_WRITE | libc::FILE_READ_ATTRIBUTES,
                     0,
-                    ptr::mut_null(),
+                    ptr::null_mut(),
                     libc::OPEN_EXISTING,
                     libc::FILE_FLAG_OVERLAPPED,
-                    ptr::mut_null())
+                    ptr::null_mut())
             };
             if result != libc::INVALID_HANDLE_VALUE {
                 return Some(result)
@@ -280,8 +280,8 @@ impl UnixStream {
                     let ret = unsafe {
                         libc::SetNamedPipeHandleState(inner.handle,
                                                       &mut mode,
-                                                      ptr::mut_null(),
-                                                      ptr::mut_null())
+                                                      ptr::null_mut(),
+                                                      ptr::null_mut())
                     };
                     return if ret == 0 {
                         Err(super::last_error())
@@ -341,7 +341,7 @@ impl UnixStream {
     }
 
     fn cancel_io(&self) -> IoResult<()> {
-        match unsafe { c::CancelIoEx(self.handle(), ptr::mut_null()) } {
+        match unsafe { c::CancelIoEx(self.handle(), ptr::null_mut()) } {
             0 if os::errno() == libc::ERROR_NOT_FOUND as uint => {
                 Ok(())
             }

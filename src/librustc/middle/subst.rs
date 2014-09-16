@@ -32,7 +32,7 @@ trait HomogeneousTuple3<T> {
     fn as_slice<'a>(&'a self) -> &'a [T];
     fn as_mut_slice<'a>(&'a mut self) -> &'a mut [T];
     fn iter<'a>(&'a self) -> Items<'a, T>;
-    fn mut_iter<'a>(&'a mut self) -> MutItems<'a, T>;
+    fn iter_mut<'a>(&'a mut self) -> MutItems<'a, T>;
     fn get<'a>(&'a self, index: uint) -> Option<&'a T>;
     fn get_mut<'a>(&'a mut self, index: uint) -> Option<&'a mut T>;
 }
@@ -63,8 +63,8 @@ impl<T> HomogeneousTuple3<T> for (T, T, T) {
         slice.iter()
     }
 
-    fn mut_iter<'a>(&'a mut self) -> MutItems<'a, T> {
-        self.as_mut_slice().mut_iter()
+    fn iter_mut<'a>(&'a mut self) -> MutItems<'a, T> {
+        self.as_mut_slice().iter_mut()
     }
 
     fn get<'a>(&'a self, index: uint) -> Option<&'a T> {
@@ -350,7 +350,7 @@ impl<T> VecPerParamSpace<T> {
 
     pub fn sort(t: Vec<T>, space: |&T| -> ParamSpace) -> VecPerParamSpace<T> {
         let mut result = VecPerParamSpace::empty();
-        for t in t.move_iter() {
+        for t in t.into_iter() {
             result.push(space(&t), t);
         }
         result
@@ -394,7 +394,7 @@ impl<T> VecPerParamSpace<T> {
     pub fn replace(&mut self, space: ParamSpace, elems: Vec<T>) {
         // FIXME (#15435): slow; O(n^2); could enhance vec to make it O(n).
         self.truncate(space, 0);
-        for t in elems.move_iter() {
+        for t in elems.into_iter() {
             self.push(space, t);
         }
     }
@@ -420,7 +420,7 @@ impl<T> VecPerParamSpace<T> {
 
     pub fn get_mut_slice<'a>(&'a mut self, space: ParamSpace) -> &'a mut [T] {
         let (start, limit) = self.limits(space);
-        self.content.mut_slice(start, limit)
+        self.content.slice_mut(start, limit)
     }
 
     pub fn opt_get<'a>(&'a self,
@@ -471,9 +471,9 @@ impl<T> VecPerParamSpace<T> {
 
     pub fn map_move<U>(self, pred: |T| -> U) -> VecPerParamSpace<U> {
         let (t, s, f) = self.split();
-        VecPerParamSpace::new(t.move_iter().map(|p| pred(p)).collect(),
-                              s.move_iter().map(|p| pred(p)).collect(),
-                              f.move_iter().map(|p| pred(p)).collect())
+        VecPerParamSpace::new(t.into_iter().map(|p| pred(p)).collect(),
+                              s.into_iter().map(|p| pred(p)).collect(),
+                              f.into_iter().map(|p| pred(p)).collect())
     }
 
     pub fn map_rev<U>(&self, pred: |&T| -> U) -> VecPerParamSpace<U> {

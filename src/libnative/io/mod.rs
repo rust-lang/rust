@@ -267,7 +267,7 @@ impl rtio::IoFactory for IoFactory {
                          Vec<Option<Box<rtio::RtioPipe + Send>>>)> {
         process::Process::spawn(cfg).map(|(p, io)| {
             (box p as Box<rtio::RtioProcess + Send>,
-             io.move_iter().map(|p| p.map(|p| {
+             io.into_iter().map(|p| p.map(|p| {
                  box p as Box<rtio::RtioPipe + Send>
              })).collect())
         })

@@ -52,7 +52,7 @@ pub fn try_inline(cx: &DocContext, id: ast::NodeId, into: Option<ast::Ident>)
     let did = def.def_id();
     if ast_util::is_local(did) { return None }
     try_inline_def(cx, tcx, def).map(|vec| {
-        vec.move_iter().map(|mut item| {
+        vec.into_iter().map(|mut item| {
             match into {
                 Some(into) if item.name.is_some() => {
                     item.name = Some(into.clean(cx));
@@ -84,12 +84,12 @@ fn try_inline_def(cx: &DocContext, tcx: &ty::ctxt,
         }
         def::DefStruct(did) => {
             record_extern_fqn(cx, did, clean::TypeStruct);
-            ret.extend(build_impls(cx, tcx, did).move_iter());
+            ret.extend(build_impls(cx, tcx, did).into_iter());
             clean::StructItem(build_struct(cx, tcx, did))
         }
         def::DefTy(did) => {
             record_extern_fqn(cx, did, clean::TypeEnum);
-            ret.extend(build_impls(cx, tcx, did).move_iter());
+            ret.extend(build_impls(cx, tcx, did).into_iter());
             build_type(cx, tcx, did)
         }
         // Assume that the enum type is reexported next to the variant, and
@@ -123,7 +123,7 @@ pub fn load_attrs(cx: &DocContext, tcx: &ty::ctxt,
                   did: ast::DefId) -> Vec<clean::Attribute> {
     let mut attrs = Vec::new();
     csearch::get_item_attrs(&tcx.sess.cstore, did, |v| {
-        attrs.extend(v.move_iter().map(|a| {
+        attrs.extend(v.into_iter().map(|a| {
             a.clean(cx)
         }));
     });
@@ -138,7 +138,7 @@ pub fn record_extern_fqn(cx: &DocContext, did: ast::DefId, kind: clean::TypeKind
     match cx.tcx_opt() {
         Some(tcx) => {
             let fqn = csearch::get_item_path(tcx, did);
-            let fqn = fqn.move_iter().map(|i| i.to_string()).collect();
+            let fqn = fqn.into_iter().map(|i| i.to_string()).collect();
             cx.external_paths.borrow_mut().as_mut().unwrap().insert(did, (fqn, kind));
         }
         None => {}
@@ -150,7 +150,7 @@ pub fn build_external_trait(cx: &DocContext, tcx: &ty::ctxt,
     let def = ty::lookup_trait_def(tcx, did);
     let trait_items = ty::trait_items(tcx, did).clean(cx);
     let provided = ty::provided_trait_methods(tcx, did);
-    let mut items = trait_items.move_iter().map(|trait_item| {
+    let mut items = trait_items.into_iter().map(|trait_item| {
         if provided.iter().any(|a| a.def_id == trait_item.def_id) {
             clean::ProvidedMethod(trait_item)
         } else {
@@ -262,7 +262,7 @@ fn build_impls(cx: &DocContext, tcx: &ty::ctxt,
         }
     }
 
-    impls.move_iter().filter_map(|a| a).collect()
+    impls.into_iter().filter_map(|a| a).collect()
 }
 
 fn build_impl(cx: &DocContext, tcx: &ty::ctxt,
@@ -369,7 +369,7 @@ fn build_module(cx: &DocContext, tcx: &ty::ctxt,
                 }
                 decoder::DlDef(def) if vis == ast::Public => {
                     match try_inline_def(cx, tcx, def) {
-                        Some(i) => items.extend(i.move_iter()),
+                        Some(i) => items.extend(i.into_iter()),
                         None => {}
                     }
                 }

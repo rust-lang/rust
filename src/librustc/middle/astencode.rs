@@ -330,7 +330,7 @@ struct NestedItemsDropper;
 impl Folder for NestedItemsDropper {
     fn fold_block(&mut self, blk: P<ast::Block>) -> P<ast::Block> {
         blk.and_then(|ast::Block {id, stmts, expr, rules, span, ..}| {
-            let stmts_sans_items = stmts.move_iter().filter_map(|stmt| {
+            let stmts_sans_items = stmts.into_iter().filter_map(|stmt| {
                 let use_stmt = match stmt.node {
                     ast::StmtExpr(_, _) | ast::StmtSemi(_, _) => true,
                     ast::StmtDecl(ref decl, _) => {
@@ -810,7 +810,7 @@ impl<'a> vtable_decoder_helpers for reader::Decoder<'a> {
                              tcx: &ty::ctxt, cdata: &cstore::crate_metadata)
                       -> typeck::vtable_param_res {
         self.read_to_vec(|this| Ok(this.read_vtable_origin(tcx, cdata)))
-             .unwrap().move_iter().collect()
+             .unwrap().into_iter().collect()
     }
 
     fn read_vtable_origin(&mut self,
@@ -1466,7 +1466,7 @@ impl<'a> rbml_decoder_decoder_helpers for reader::Decoder<'a> {
                       cdata: &cstore::crate_metadata) -> Vec<ty::t> {
         self.read_to_vec(|this| Ok(this.read_ty_nodcx(tcx, cdata)) )
             .unwrap()
-            .move_iter()
+            .into_iter()
             .collect()
     }
 
@@ -1585,7 +1585,7 @@ impl<'a> rbml_decoder_decoder_helpers for reader::Decoder<'a> {
     }
 
     fn read_tys(&mut self, dcx: &DecodeContext) -> Vec<ty::t> {
-        self.read_to_vec(|this| Ok(this.read_ty(dcx))).unwrap().move_iter().collect()
+        self.read_to_vec(|this| Ok(this.read_ty(dcx))).unwrap().into_iter().collect()
     }
 
     fn read_trait_ref(&mut self, dcx: &DecodeContext) -> Rc<ty::TraitRef> {
@@ -1917,7 +1917,7 @@ fn decode_side_tables(dcx: &DecodeContext,
                     c::tag_table_freevars => {
                         let fv_info = val_dsr.read_to_vec(|val_dsr| {
                             Ok(val_dsr.read_freevar_entry(dcx))
-                        }).unwrap().move_iter().collect();
+                        }).unwrap().into_iter().collect();
                         dcx.tcx.freevars.borrow_mut().insert(id, fv_info);
                     }
                     c::tag_table_upvar_borrow_map => {

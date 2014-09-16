@@ -67,16 +67,16 @@ fn filter_view_item(cx: &mut Context, view_item: ast::ViewItem) -> Option<ast::V
 fn fold_mod(cx: &mut Context, ast::Mod {inner, view_items, items}: ast::Mod) -> ast::Mod {
     ast::Mod {
         inner: inner,
-        view_items: view_items.move_iter().filter_map(|a| {
+        view_items: view_items.into_iter().filter_map(|a| {
             filter_view_item(cx, a).map(|x| cx.fold_view_item(x))
         }).collect(),
-        items: items.move_iter().filter_map(|a| {
+        items: items.into_iter().filter_map(|a| {
             if item_in_cfg(cx, &*a) {
                 Some(cx.fold_item(a))
             } else {
                 None
             }
-        }).flat_map(|x| x.move_iter()).collect()
+        }).flat_map(|x| x.into_iter()).collect()
     }
 }
 
@@ -93,10 +93,10 @@ fn fold_foreign_mod(cx: &mut Context, ast::ForeignMod {abi, view_items, items}: 
                     -> ast::ForeignMod {
     ast::ForeignMod {
         abi: abi,
-        view_items: view_items.move_iter().filter_map(|a| {
+        view_items: view_items.into_iter().filter_map(|a| {
             filter_view_item(cx, a).map(|x| cx.fold_view_item(x))
         }).collect(),
-        items: items.move_iter()
+        items: items.into_iter()
                     .filter_map(|a| filter_foreign_item(cx, a))
                     .collect()
     }
@@ -105,13 +105,13 @@ fn fold_foreign_mod(cx: &mut Context, ast::ForeignMod {abi, view_items, items}: 
 fn fold_item_underscore(cx: &mut Context, item: ast::Item_) -> ast::Item_ {
     let item = match item {
         ast::ItemImpl(a, b, c, impl_items) => {
-            let impl_items = impl_items.move_iter()
+            let impl_items = impl_items.into_iter()
                                        .filter(|ii| impl_item_in_cfg(cx, ii))
                                        .collect();
             ast::ItemImpl(a, b, c, impl_items)
         }
         ast::ItemTrait(a, b, c, methods) => {
-            let methods = methods.move_iter()
+            let methods = methods.into_iter()
                                  .filter(|m| trait_method_in_cfg(cx, m))
                                  .collect();
             ast::ItemTrait(a, b, c, methods)
@@ -120,7 +120,7 @@ fn fold_item_underscore(cx: &mut Context, item: ast::Item_) -> ast::Item_ {
             ast::ItemStruct(fold_struct(cx, def), generics)
         }
         ast::ItemEnum(def, generics) => {
-            let mut variants = def.variants.move_iter().filter_map(|v| {
+            let mut variants = def.variants.into_iter().filter_map(|v| {
                 if !(cx.in_cfg)(v.node.attrs.as_slice()) {
                     None
                 } else {
@@ -158,7 +158,7 @@ fn fold_item_underscore(cx: &mut Context, item: ast::Item_) -> ast::Item_ {
 fn fold_struct(cx: &mut Context, def: P<ast::StructDef>) -> P<ast::StructDef> {
     def.map(|ast::StructDef {fields, ctor_id, super_struct, is_virtual}| {
         ast::StructDef {
-            fields: fields.move_iter().filter(|m| {
+            fields: fields.into_iter().filter(|m| {
                 (cx.in_cfg)(m.node.attrs.as_slice())
             }).collect(),
             ctor_id: ctor_id,
@@ -185,11 +185,11 @@ fn retain_stmt(cx: &mut Context, stmt: &ast::Stmt) -> bool {
 fn fold_block(cx: &mut Context, b: P<ast::Block>) -> P<ast::Block> {
     b.map(|ast::Block {id, view_items, stmts, expr, rules, span}| {
         let resulting_stmts: Vec<P<ast::Stmt>> =
-            stmts.move_iter().filter(|a| retain_stmt(cx, &**a)).collect();
-        let resulting_stmts = resulting_stmts.move_iter()
-            .flat_map(|stmt| cx.fold_stmt(stmt).move_iter())
+            stmts.into_iter().filter(|a| retain_stmt(cx, &**a)).collect();
+        let resulting_stmts = resulting_stmts.into_iter()
+            .flat_map(|stmt| cx.fold_stmt(stmt).into_iter())
             .collect();
-        let filtered_view_items = view_items.move_iter().filter_map(|a| {
+        let filtered_view_items = view_items.into_iter().filter_map(|a| {
             filter_view_item(cx, a).map(|x| cx.fold_view_item(x))
         }).collect();
         ast::Block {
@@ -209,7 +209,7 @@ fn fold_expr(cx: &mut Context, expr: P<ast::Expr>) -> P<ast::Expr> {
             id: id,
             node: match node {
                 ast::ExprMatch(m, arms) => {
-                    ast::ExprMatch(m, arms.move_iter()
+                    ast::ExprMatch(m, arms.into_iter()
                                         .filter(|a| (cx.in_cfg)(a.attrs.as_slice()))
                                         .collect())
                 }

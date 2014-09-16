@@ -170,7 +170,7 @@ Available lint options:
 ");
 
     fn sort_lints(lints: Vec<(&'static Lint, bool)>) -> Vec<&'static Lint> {
-        let mut lints: Vec<_> = lints.move_iter().map(|(x, _)| x).collect();
+        let mut lints: Vec<_> = lints.into_iter().map(|(x, _)| x).collect();
         lints.sort_by(|x: &&Lint, y: &&Lint| {
             match x.default_level.cmp(&y.default_level) {
                 // The sort doesn't case-fold but it's doubtful we care.
@@ -183,7 +183,7 @@ Available lint options:
 
     fn sort_lint_groups(lints: Vec<(&'static str, Vec<lint::LintId>, bool)>)
                      -> Vec<(&'static str, Vec<lint::LintId>)> {
-        let mut lints: Vec<_> = lints.move_iter().map(|(x, y, _)| (x, y)).collect();
+        let mut lints: Vec<_> = lints.into_iter().map(|(x, y, _)| (x, y)).collect();
         lints.sort_by(|&(x, _): &(&'static str, Vec<lint::LintId>),
                        &(y, _): &(&'static str, Vec<lint::LintId>)| {
             x.cmp(&y)
@@ -211,7 +211,7 @@ Available lint options:
     println!("    {}  {:7.7s}  {}", padded("----"), "-------", "-------");
 
     let print_lints = |lints: Vec<&Lint>| {
-        for lint in lints.move_iter() {
+        for lint in lints.into_iter() {
             let name = lint.name_lower().replace("_", "-");
             println!("    {}  {:7.7s}  {}",
                      padded(name.as_slice()), lint.default_level.as_str(), lint.desc);
@@ -235,10 +235,10 @@ Available lint options:
     println!("    {}  {}", padded("----"), "---------");
 
     let print_lint_groups = |lints: Vec<(&'static str, Vec<lint::LintId>)>| {
-        for (name, to) in lints.move_iter() {
+        for (name, to) in lints.into_iter() {
             let name = name.chars().map(|x| x.to_lowercase())
                            .collect::<String>().replace("_", "-");
-            let desc = to.move_iter().map(|x| x.as_str()).collect::<Vec<String>>().connect(", ");
+            let desc = to.into_iter().map(|x| x.as_str()).collect::<Vec<String>>().connect(", ");
             println!("    {}  {}",
                      padded(name.as_slice()), desc);
         }
@@ -401,7 +401,7 @@ fn parse_crate_attrs(sess: &Session, input: &Input) ->
                 &sess.parse_sess)
         }
     };
-    result.move_iter().collect()
+    result.into_iter().collect()
 }
 
 pub fn early_error(msg: &str) -> ! {

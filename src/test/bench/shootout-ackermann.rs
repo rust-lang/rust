@@ -29,7 +29,7 @@ fn main() {
     } else if args.len() <= 1u {
         vec!("".to_string(), "8".to_string())
     } else {
-        args.move_iter().collect()
+        args.into_iter().collect()
     };
     let n = from_str::<int>(args.get(1).as_slice()).unwrap();
     println!("Ack(3,{}): {}\n", n, ack(3, n));

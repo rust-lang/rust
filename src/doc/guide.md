@@ -1319,7 +1319,7 @@ upper bound is exclusive, though, so our loop will print `0` through `9`, not
 
 Rust does not have the "C style" `for` loop on purpose. Manually controlling
 each element of the loop is complicated and error prone, even for experienced C
-developers. 
+developers.
 
 We'll talk more about `for` when we cover **iterator**s, later in the Guide.
 

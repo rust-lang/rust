@@ -179,7 +179,7 @@ pub fn check_pat_variant(pcx: &pat_ctxt, pat: &ast::Pat, path: &ast::Path,
                     kind_name = "[error]";
                     arg_types = subpats.clone()
                                        .unwrap_or_default()
-                                       .move_iter()
+                                       .into_iter()
                                        .map(|_| ty::mk_err())
                                        .collect();
                 }

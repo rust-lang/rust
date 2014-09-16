@@ -560,7 +560,7 @@ pub fn get_vtable(bcx: Block,
                     impl_def_id: id,
                     substs: substs,
                     nested: _ }) => {
-                emit_vtable_methods(bcx, id, substs).move_iter()
+                emit_vtable_methods(bcx, id, substs).into_iter()
             }
             traits::VtableUnboxedClosure(closure_def_id) => {
                 let callee_substs =
@@ -626,7 +626,7 @@ pub fn get_vtable(bcx: Block,
                     }
                 }
 
-                (vec!(llfn)).move_iter()
+                (vec!(llfn)).into_iter()
             }
             traits::VtableBuiltin |
             traits::VtableParam(..) => {
@@ -662,7 +662,7 @@ pub fn make_vtable<I: Iterator<ValueRef>>(ccx: &CrateContext,
     let _icx = push_ctxt("meth::make_vtable");
 
     let head = vec![drop_glue, size, align];
-    let components: Vec<_> = head.move_iter().chain(ptrs).collect();
+    let components: Vec<_> = head.into_iter().chain(ptrs).collect();
 
     unsafe {
         let tbl = C_struct(ccx, components.as_slice(), false);

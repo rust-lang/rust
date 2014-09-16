@@ -486,38 +486,80 @@ pub trait MutableSlice<'a, T> {
     /// Primarily intended for getting a &mut [T] from a [T, ..N].
     fn as_mut_slice(self) -> &'a mut [T];
 
+    /// Deprecated: use `slice_mut`.
+    #[deprecated = "use slice_mut"]
+    fn mut_slice(self, start: uint, end: uint) -> &'a mut [T] {
+        self.slice_mut(start, end)
+    }
+
     /// Returns a mutable subslice spanning the interval [`start`, `end`).
     ///
     /// Fails when the end of the new slice lies beyond the end of the
     /// original slice (i.e. when `end > self.len()`) or when `start > end`.
     ///
     /// Slicing with `start` equal to `end` yields an empty slice.
-    fn mut_slice(self, start: uint, end: uint) -> &'a mut [T];
+    fn slice_mut(self, start: uint, end: uint) -> &'a mut [T];
+
+    /// Deprecated: use `slice_from_mut`.
+    #[deprecated = "use slice_from_mut"]
+    fn mut_slice_from(self, start: uint) -> &'a mut [T] {
+        self.slice_from_mut(start)
+    }
 
     /// Returns a mutable subslice from `start` to the end of the slice.
     ///
     /// Fails when `start` is strictly greater than the length of the original slice.
     ///
     /// Slicing from `self.len()` yields an empty slice.
-    fn mut_slice_from(self, start: uint) -> &'a mut [T];
+    fn slice_from_mut(self, start: uint) -> &'a mut [T];
+
+    /// Deprecated: use `slice_to_mut`.
+    #[deprecated = "use slice_to_mut"]
+    fn mut_slice_to(self, end: uint) -> &'a mut [T] {
+        self.slice_to_mut(end)
+    }
 
     /// Returns a mutable subslice from the start of the slice to `end`.
     ///
     /// Fails when `end` is strictly greater than the length of the original slice.
     ///
     /// Slicing to `0` yields an empty slice.
-    fn mut_slice_to(self, end: uint) -> &'a mut [T];
+    fn slice_to_mut(self, end: uint) -> &'a mut [T];
+
+    /// Deprecated: use `iter_mut`.
+    #[deprecated = "use iter_mut"]
+    fn mut_iter(self) -> MutItems<'a, T> {
+        self.iter_mut()
+    }
 
     /// Returns an iterator that allows modifying each value
-    fn mut_iter(self) -> MutItems<'a, T>;
+    fn iter_mut(self) -> MutItems<'a, T>;
+
+    /// Deprecated: use `last_mut`.
+    #[deprecated = "use last_mut"]
+    fn mut_last(self) -> Option<&'a mut T> {
+        self.last_mut()
+    }
 
     /// Returns a mutable pointer to the last item in the vector.
-    fn mut_last(self) -> Option<&'a mut T>;
+    fn last_mut(self) -> Option<&'a mut T>;
+
+    /// Deprecated: use `split_mut`.
+    #[deprecated = "use split_mut"]
+    fn mut_split(self, pred: |&T|: 'a -> bool) -> MutSplits<'a, T> {
+        self.split_mut(pred)
+    }
 
     /// Returns an iterator over the mutable subslices of the vector
     /// which are separated by elements that match `pred`.  The
     /// matched element is not contained in the subslices.
-    fn mut_split(self, pred: |&T|: 'a -> bool) -> MutSplits<'a, T>;
+    fn split_mut(self, pred: |&T|: 'a -> bool) -> MutSplits<'a, T>;
+
+    /// Deprecated: use `chunks_mut`.
+    #[deprecated = "use chunks_mut"]
+    fn mut_chunks(self, chunk_size: uint) -> MutChunks<'a, T> {
+        self.chunks_mut(chunk_size)
+    }
 
     /**
      * Returns an iterator over `chunk_size` elements of the vector at a time.
@@ -529,7 +571,7 @@ pub trait MutableSlice<'a, T> {
      *
      * Fails if `chunk_size` is 0.
      */
-    fn mut_chunks(self, chunk_size: uint) -> MutChunks<'a, T>;
+    fn chunks_mut(self, chunk_size: uint) -> MutChunks<'a, T>;
 
     /**
      * Returns a mutable reference to the first element in this slice
@@ -541,7 +583,7 @@ pub trait MutableSlice<'a, T> {
      * ```ignore
      *     if self.len() == 0 { return None; }
      *     let head = &mut self[0];
-     *     *self = self.mut_slice_from(1);
+     *     *self = self.slice_from_mut(1);
      *     Some(head)
      * ```
      *
@@ -560,7 +602,7 @@ pub trait MutableSlice<'a, T> {
      * ```ignore
      *     if self.len() == 0 { return None; }
      *     let tail = &mut self[self.len() - 1];
-     *     *self = self.mut_slice_to(self.len() - 1);
+     *     *self = self.slice_to_mut(self.len() - 1);
      *     Some(tail)
      * ```
      *
@@ -587,6 +629,11 @@ pub trait MutableSlice<'a, T> {
     /// ```
     fn swap(self, a: uint, b: uint);
 
+    /// Deprecated: use `split_at_mut`.
+    #[deprecated = "use split_at_mut"]
+    fn mut_split_at(self, mid: uint) -> (&'a mut [T], &'a mut [T]) {
+        self.split_at_mut(mid)
+    }
 
     /// Divides one `&mut` into two at an index.
     ///
@@ -603,24 +650,24 @@ pub trait MutableSlice<'a, T> {
     ///
     /// // scoped to restrict the lifetime of the borrows
     /// {
-    ///    let (left, right) = v.mut_split_at(0);
+    ///    let (left, right) = v.split_at_mut(0);
     ///    assert!(left == &mut []);
     ///    assert!(right == &mut [1i, 2, 3, 4, 5, 6]);
     /// }
     ///
     /// {
-    ///     let (left, right) = v.mut_split_at(2);
+    ///     let (left, right) = v.split_at_mut(2);
     ///     assert!(left == &mut [1i, 2]);
     ///     assert!(right == &mut [3i, 4, 5, 6]);
     /// }
     ///
     /// {
-    ///     let (left, right) = v.mut_split_at(6);
+    ///     let (left, right) = v.split_at_mut(6);
     ///     assert!(left == &mut [1i, 2, 3, 4, 5, 6]);
     ///     assert!(right == &mut []);
     /// }
     /// ```
-    fn mut_split_at(self, mid: uint) -> (&'a mut [T], &'a mut [T]);
+    fn split_at_mut(self, mid: uint) -> (&'a mut [T], &'a mut [T]);
 
     /// Reverse the order of elements in a vector, in place.
     ///
@@ -633,8 +680,14 @@ pub trait MutableSlice<'a, T> {
     /// ```
     fn reverse(self);
 
+    /// Deprecated: use `unsafe_mut`.
+    #[deprecated = "use unsafe_mut"]
+    unsafe fn unsafe_mut_ref(self, index: uint) -> &'a mut T {
+        self.unsafe_mut(index)
+    }
+
     /// Returns an unsafe mutable pointer to the element in index
-    unsafe fn unsafe_mut_ref(self, index: uint) -> &'a mut T;
+    unsafe fn unsafe_mut(self, index: uint) -> &'a mut T;
 
     /// Return an unsafe mutable pointer to the vector's buffer.
     ///
@@ -701,7 +754,7 @@ impl<'a,T> MutableSlice<'a, T> for &'a mut [T] {
     #[inline]
     fn as_mut_slice(self) -> &'a mut [T] { self }
 
-    fn mut_slice(self, start: uint, end: uint) -> &'a mut [T] {
+    fn slice_mut(self, start: uint, end: uint) -> &'a mut [T] {
         assert!(start <= end);
         assert!(end <= self.len());
         unsafe {
@@ -713,27 +766,27 @@ impl<'a,T> MutableSlice<'a, T> for &'a mut [T] {
     }
 
     #[inline]
-    fn mut_slice_from(self, start: uint) -> &'a mut [T] {
+    fn slice_from_mut(self, start: uint) -> &'a mut [T] {
         let len = self.len();
-        self.mut_slice(start, len)
+        self.slice_mut(start, len)
     }
 
     #[inline]
-    fn mut_slice_to(self, end: uint) -> &'a mut [T] {
-        self.mut_slice(0, end)
+    fn slice_to_mut(self, end: uint) -> &'a mut [T] {
+        self.slice_mut(0, end)
     }
 
     #[inline]
-    fn mut_split_at(self, mid: uint) -> (&'a mut [T], &'a mut [T]) {
+    fn split_at_mut(self, mid: uint) -> (&'a mut [T], &'a mut [T]) {
         unsafe {
             let len = self.len();
             let self2: &'a mut [T] = mem::transmute_copy(&self);
-            (self.mut_slice(0, mid), self2.mut_slice(mid, len))
+            (self.slice_mut(0, mid), self2.slice_mut(mid, len))
         }
     }
 
     #[inline]
-    fn mut_iter(self) -> MutItems<'a, T> {
+    fn iter_mut(self) -> MutItems<'a, T> {
         unsafe {
             let p = self.as_mut_ptr();
             if mem::size_of::<T>() == 0 {
@@ -751,19 +804,19 @@ impl<'a,T> MutableSlice<'a, T> for &'a mut [T] {
     }
 
     #[inline]
-    fn mut_last(self) -> Option<&'a mut T> {
+    fn last_mut(self) -> Option<&'a mut T> {
         let len = self.len();
         if len == 0 { return None; }
         Some(&mut self[len - 1])
     }
 
     #[inline]
-    fn mut_split(self, pred: |&T|: 'a -> bool) -> MutSplits<'a, T> {
+    fn split_mut(self, pred: |&T|: 'a -> bool) -> MutSplits<'a, T> {
         MutSplits { v: self, pred: pred, finished: false }
     }
 
     #[inline]
-    fn mut_chunks(self, chunk_size: uint) -> MutChunks<'a, T> {
+    fn chunks_mut(self, chunk_size: uint) -> MutChunks<'a, T> {
         assert!(chunk_size > 0);
         MutChunks { v: self, chunk_size: chunk_size }
     }
@@ -808,8 +861,8 @@ impl<'a,T> MutableSlice<'a, T> for &'a mut [T] {
         while i < ln / 2 {
             // Unsafe swap to avoid the bounds check in safe swap.
             unsafe {
-                let pa: *mut T = self.unsafe_mut_ref(i);
-                let pb: *mut T = self.unsafe_mut_ref(ln - i - 1);
+                let pa: *mut T = self.unsafe_mut(i);
+                let pb: *mut T = self.unsafe_mut(ln - i - 1);
                 ptr::swap(pa, pb);
             }
             i += 1;
@@ -817,7 +870,7 @@ impl<'a,T> MutableSlice<'a, T> for &'a mut [T] {
     }
 
     #[inline]
-    unsafe fn unsafe_mut_ref(self, index: uint) -> &'a mut T {
+    unsafe fn unsafe_mut(self, index: uint) -> &'a mut T {
         transmute((self.repr().data as *mut T).offset(index as int))
     }
 
@@ -828,7 +881,7 @@ impl<'a,T> MutableSlice<'a, T> for &'a mut [T] {
 
     #[inline]
     unsafe fn unsafe_set(self, index: uint, val: T) {
-        *self.unsafe_mut_ref(index) = val;
+        *self.unsafe_mut(index) = val;
     }
 
     #[inline]
@@ -965,7 +1018,7 @@ pub trait MutableCloneableSlice<T> {
 impl<'a, T:Clone> MutableCloneableSlice<T> for &'a mut [T] {
     #[inline]
     fn clone_from_slice(self, src: &[T]) -> uint {
-        for (a, b) in self.mut_iter().zip(src.iter()) {
+        for (a, b) in self.iter_mut().zip(src.iter()) {
             a.clone_from(b);
         }
         cmp::min(self.len(), src.len())
@@ -1221,14 +1274,14 @@ impl<'a, T> Iterator<&'a mut [T]> for MutSplits<'a, T> {
                 self.finished = true;
                 let tmp = mem::replace(&mut self.v, &mut []);
                 let len = tmp.len();
-                let (head, tail) = tmp.mut_split_at(len);
+                let (head, tail) = tmp.split_at_mut(len);
                 self.v = tail;
                 Some(head)
             }
             Some(idx) => {
                 let tmp = mem::replace(&mut self.v, &mut []);
-                let (head, tail) = tmp.mut_split_at(idx);
-                self.v = tail.mut_slice_from(1);
+                let (head, tail) = tmp.split_at_mut(idx);
+                self.v = tail.slice_from_mut(1);
                 Some(head)
             }
         }
@@ -1261,9 +1314,9 @@ impl<'a, T> DoubleEndedIterator<&'a mut [T]> for MutSplits<'a, T> {
             }
             Some(idx) => {
                 let tmp = mem::replace(&mut self.v, &mut []);
-                let (head, tail) = tmp.mut_split_at(idx);
+                let (head, tail) = tmp.split_at_mut(idx);
                 self.v = head;
-                Some(tail.mut_slice_from(1))
+                Some(tail.slice_from_mut(1))
             }
         }
     }
@@ -1430,7 +1483,7 @@ impl<'a, T> Iterator<&'a mut [T]> for MutChunks<'a, T> {
         } else {
             let sz = cmp::min(self.v.len(), self.chunk_size);
             let tmp = mem::replace(&mut self.v, &mut []);
-            let (head, tail) = tmp.mut_split_at(sz);
+            let (head, tail) = tmp.split_at_mut(sz);
             self.v = tail;
             Some(head)
         }
@@ -1459,7 +1512,7 @@ impl<'a, T> DoubleEndedIterator<&'a mut [T]> for MutChunks<'a, T> {
             let sz = if remainder != 0 { remainder } else { self.chunk_size };
             let tmp = mem::replace(&mut self.v, &mut []);
             let tmp_len = tmp.len();
-            let (head, tail) = tmp.mut_split_at(tmp_len - sz);
+            let (head, tail) = tmp.split_at_mut(tmp_len - sz);
             self.v = head;
             Some(tail)
         }

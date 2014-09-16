@@ -114,9 +114,9 @@ fn transform(piece: Vec<(int, int)> , all: bool) -> Vec<Vec<(int, int)>> {
         }).collect();
 
     // translating to (0, 0) as minimum coordinates.
-    for cur_piece in res.mut_iter() {
+    for cur_piece in res.iter_mut() {
         let (dy, dx) = *cur_piece.iter().min_by(|e| *e).unwrap();
-        for &(ref mut y, ref mut x) in cur_piece.mut_iter() {
+        for &(ref mut y, ref mut x) in cur_piece.iter_mut() {
             *y -= dy; *x -= dx;
         }
     }
@@ -163,7 +163,7 @@ fn make_masks() -> Vec<Vec<Vec<u64> > > {
     // transformation must be taken except for one piece (piece 3
     // here).
     let transforms: Vec<Vec<Vec<(int, int)>>> =
-        pieces.move_iter().enumerate()
+        pieces.into_iter().enumerate()
         .map(|(id, p)| transform(p, id != 3))
         .collect();
 

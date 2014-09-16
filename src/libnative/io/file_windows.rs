@@ -52,7 +52,7 @@ impl FileDesc {
         let ret = unsafe {
             libc::ReadFile(self.handle(), buf.as_ptr() as libc::LPVOID,
                            buf.len() as libc::DWORD, &mut read,
-                           ptr::mut_null())
+                           ptr::null_mut())
         };
         if ret != 0 {
             Ok(read as uint)
@@ -68,7 +68,7 @@ impl FileDesc {
             let ret = unsafe {
                 libc::WriteFile(self.handle(), cur as libc::LPVOID,
                                 remaining as libc::DWORD, &mut amt,
-                                ptr::mut_null())
+                                ptr::null_mut())
             };
             if ret != 0 {
                 remaining -= amt as uint;
@@ -313,10 +313,10 @@ pub fn open(path: &CString, fm: rtio::FileMode, fa: rtio::FileAccess)
         libc::CreateFileW(path.as_ptr(),
                           dwDesiredAccess,
                           dwShareMode,
-                          ptr::mut_null(),
+                          ptr::null_mut(),
                           dwCreationDisposition,
                           dwFlagsAndAttributes,
-                          ptr::mut_null())
+                          ptr::null_mut())
     };
     if handle == libc::INVALID_HANDLE_VALUE {
         Err(super::last_error())
@@ -337,7 +337,7 @@ pub fn mkdir(p: &CString, _mode: uint) -> IoResult<()> {
     let p = try!(to_utf16(p));
     super::mkerr_winbool(unsafe {
         // FIXME: turn mode into something useful? #2623
-        libc::CreateDirectoryW(p.as_ptr(), ptr::mut_null())
+        libc::CreateDirectoryW(p.as_ptr(), ptr::null_mut())
     })
 }
 
@@ -346,7 +346,7 @@ pub fn readdir(p: &CString) -> IoResult<Vec<CString>> {
         let root = unsafe { CString::new(root.as_ptr(), false) };
         let root = Path::new(root);
 
-        dirs.move_iter().filter(|path| {
+        dirs.into_iter().filter(|path| {
             path.as_vec() != b"." && path.as_vec() != b".."
         }).map(|path| root.join(path).to_c_str()).collect()
     }
@@ -428,10 +428,10 @@ pub fn readlink(p: &CString) -> IoResult<CString> {
         libc::CreateFileW(p.as_ptr(),
                           libc::GENERIC_READ,
                           libc::FILE_SHARE_READ,
-                          ptr::mut_null(),
+                          ptr::null_mut(),
                           libc::OPEN_EXISTING,
                           libc::FILE_ATTRIBUTE_NORMAL,
-                          ptr::mut_null())
+                          ptr::null_mut())
     };
     if handle == libc::INVALID_HANDLE_VALUE {
         return Err(super::last_error())
@@ -468,7 +468,7 @@ pub fn link(src: &CString, dst: &CString) -> IoResult<()> {
     let src = try!(to_utf16(src));
     let dst = try!(to_utf16(dst));
     super::mkerr_winbool(unsafe {
-        libc::CreateHardLinkW(dst.as_ptr(), src.as_ptr(), ptr::mut_null())
+        libc::CreateHardLinkW(dst.as_ptr(), src.as_ptr(), ptr::null_mut())
     })
 }
 

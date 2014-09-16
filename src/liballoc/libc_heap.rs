@@ -12,7 +12,7 @@
 //! The global (exchange) heap.
 
 use libc::{c_void, size_t, free, malloc, realloc};
-use core::ptr::{RawPtr, mut_null};
+use core::ptr::{RawPtr, null_mut};
 
 /// A wrapper around libc::malloc, aborting on out-of-memory.
 #[inline]
@@ -20,7 +20,7 @@ pub unsafe fn malloc_raw(size: uint) -> *mut u8 {
     // `malloc(0)` may allocate, but it may also return a null pointer
     // http://pubs.opengroup.org/onlinepubs/9699919799/functions/malloc.html
     if size == 0 {
-        mut_null()
+        null_mut()
     } else {
         let p = malloc(size as size_t);
         if p.is_null() {
@@ -37,7 +37,7 @@ pub unsafe fn realloc_raw(ptr: *mut u8, size: uint) -> *mut u8 {
     // http://pubs.opengroup.org/onlinepubs/9699919799/functions/realloc.html
     if size == 0 {
         free(ptr as *mut c_void);
-        mut_null()
+        null_mut()
     } else {
         let p = realloc(ptr as *mut c_void, size as size_t);
         if p.is_null() {

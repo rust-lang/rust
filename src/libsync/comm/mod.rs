@@ -449,7 +449,7 @@ enum Flavor<T> {
 #[doc(hidden)]
 trait UnsafeFlavor<T> {
     fn inner_unsafe<'a>(&'a self) -> &'a UnsafeCell<Flavor<T>>;
-    unsafe fn mut_inner<'a>(&'a self) -> &'a mut Flavor<T> {
+    unsafe fn inner_mut<'a>(&'a self) -> &'a mut Flavor<T> {
         &mut *self.inner_unsafe().get()
     }
     unsafe fn inner<'a>(&'a self) -> &'a Flavor<T> {
@@ -654,7 +654,7 @@ impl<T: Send> Sender<T> {
 
         unsafe {
             let tmp = Sender::new(Stream(new_inner));
-            mem::swap(self.mut_inner(), tmp.mut_inner());
+            mem::swap(self.inner_mut(), tmp.inner_mut());
         }
         return ret;
     }
@@ -695,7 +695,7 @@ impl<T: Send> Clone for Sender<T> {
             (*packet.get()).inherit_blocker(sleeper);
 
             let tmp = Sender::new(Shared(packet.clone()));
-            mem::swap(self.mut_inner(), tmp.mut_inner());
+            mem::swap(self.inner_mut(), tmp.inner_mut());
         }
         Sender::new(Shared(packet))
     }
@@ -704,7 +704,7 @@ impl<T: Send> Clone for Sender<T> {
 #[unsafe_destructor]
 impl<T: Send> Drop for Sender<T> {
     fn drop(&mut self) {
-        match *unsafe { self.mut_inner() } {
+        match *unsafe { self.inner_mut() } {
             Oneshot(ref mut p) => unsafe { (*p.get()).drop_chan(); },
             Stream(ref mut p) => unsafe { (*p.get()).drop_chan(); },
             Shared(ref mut p) => unsafe { (*p.get()).drop_chan(); },
@@ -895,8 +895,8 @@ impl<T: Send> Receiver<T> {
                 }
             };
             unsafe {
-                mem::swap(self.mut_inner(),
-                          new_port.mut_inner());
+                mem::swap(self.inner_mut(),
+                          new_port.inner_mut());
             }
         }
     }
@@ -943,7 +943,7 @@ impl<T: Send> Receiver<T> {
                 Sync(ref p) => return unsafe { (*p.get()).recv() }
             };
             unsafe {
-                mem::swap(self.mut_inner(), new_port.mut_inner());
+                mem::swap(self.inner_mut(), new_port.inner_mut());
             }
         }
     }
@@ -980,8 +980,8 @@ impl<T: Send> select::Packet for Receiver<T> {
                 }
             };
             unsafe {
-                mem::swap(self.mut_inner(),
-                          new_port.mut_inner());
+                mem::swap(self.inner_mut(),
+                          new_port.inner_mut());
             }
         }
     }
@@ -1012,8 +1012,8 @@ impl<T: Send> select::Packet for Receiver<T> {
             };
             task = t;
             unsafe {
-                mem::swap(self.mut_inner(),
-                          new_port.mut_inner());
+                mem::swap(self.inner_mut(),
+                          new_port.inner_mut());
             }
         }
     }
@@ -1036,8 +1036,8 @@ impl<T: Send> select::Packet for Receiver<T> {
             let new_port = match result { Ok(b) => return b, Err(p) => p };
             was_upgrade = true;
             unsafe {
-                mem::swap(self.mut_inner(),
-                          new_port.mut_inner());
+                mem::swap(self.inner_mut(),
+                          new_port.inner_mut());
             }
         }
     }
@@ -1051,7 +1051,7 @@ impl<'a, T: Send> Iterator<T> for Messages<'a, T> {
 #[unsafe_destructor]
 impl<T: Send> Drop for Receiver<T> {
     fn drop(&mut self) {
-        match *unsafe { self.mut_inner() } {
+        match *unsafe { self.inner_mut() } {
             Oneshot(ref mut p) => unsafe { (*p.get()).drop_port(); },
             Stream(ref mut p) => unsafe { (*p.get()).drop_port(); },
             Shared(ref mut p) => unsafe { (*p.get()).drop_port(); },

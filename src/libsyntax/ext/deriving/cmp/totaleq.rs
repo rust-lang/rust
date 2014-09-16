@@ -26,7 +26,7 @@ pub fn expand_deriving_totaleq(cx: &mut ExtCtxt,
         cs_same_method(|cx, span, exprs| {
             // create `a.<method>(); b.<method>(); c.<method>(); ...`
             // (where method is `assert_receiver_is_total_eq`)
-            let stmts = exprs.move_iter().map(|e| cx.stmt_expr(e)).collect();
+            let stmts = exprs.into_iter().map(|e| cx.stmt_expr(e)).collect();
             let block = cx.block(span, stmts, None);
             cx.expr_block(block)
         },
