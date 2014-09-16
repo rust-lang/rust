@@ -72,9 +72,9 @@ impl<'a> fmt::Show for Matrix<'a> {
         let total_width = column_widths.iter().map(|n| *n).sum() + column_count * 3 + 1;
         let br = String::from_char(total_width, '+');
         try!(write!(f, "{}\n", br));
-        for row in pretty_printed_matrix.move_iter() {
+        for row in pretty_printed_matrix.into_iter() {
             try!(write!(f, "+"));
-            for (column, pat_str) in row.move_iter().enumerate() {
+            for (column, pat_str) in row.into_iter().enumerate() {
                 try!(write!(f, " "));
                 f.width = Some(*column_widths.get(column));
                 try!(f.pad(pat_str.as_slice()));
@@ -369,7 +369,7 @@ impl<'a, 'tcx> Folder for StaticInliner<'a, 'tcx> {
 fn construct_witness(cx: &MatchCheckCtxt, ctor: &Constructor,
                      pats: Vec<&Pat>, left_ty: ty::t) -> P<Pat> {
     let pats_len = pats.len();
-    let mut pats = pats.move_iter().map(|p| P((*p).clone()));
+    let mut pats = pats.into_iter().map(|p| P((*p).clone()));
     let pat = match ty::get(left_ty).sty {
         ty::ty_tup(_) => PatTup(pats.collect()),
 
@@ -383,7 +383,7 @@ fn construct_witness(cx: &MatchCheckCtxt, ctor: &Constructor,
             };
             if is_structure {
                 let fields = ty::lookup_struct_fields(cx.tcx, vid);
-                let field_pats: Vec<FieldPat> = fields.move_iter()
+                let field_pats: Vec<FieldPat> = fields.into_iter()
                     .zip(pats)
                     .filter(|&(_, ref pat)| pat.node != PatWild(PatWildSingle))
                     .map(|(field, pat)| FieldPat {
@@ -450,10 +450,10 @@ fn construct_witness(cx: &MatchCheckCtxt, ctor: &Constructor,
 fn missing_constructor(cx: &MatchCheckCtxt, &Matrix(ref rows): &Matrix,
                        left_ty: ty::t, max_slice_length: uint) -> Option<Constructor> {
     let used_constructors: Vec<Constructor> = rows.iter()
-        .flat_map(|row| pat_constructors(cx, *row.get(0), left_ty, max_slice_length).move_iter())
+        .flat_map(|row| pat_constructors(cx, *row.get(0), left_ty, max_slice_length).into_iter())
         .collect();
     all_constructors(cx, left_ty, max_slice_length)
-        .move_iter()
+        .into_iter()
         .find(|c| !used_constructors.contains(c))
 }
 
@@ -536,7 +536,7 @@ fn is_useful(cx: &MatchCheckCtxt,
     if constructors.is_empty() {
         match missing_constructor(cx, matrix, left_ty, max_slice_length) {
             None => {
-                all_constructors(cx, left_ty, max_slice_length).move_iter().map(|c| {
+                all_constructors(cx, left_ty, max_slice_length).into_iter().map(|c| {
                     match is_useful_specialized(cx, matrix, v, c.clone(), left_ty, witness) {
                         UsefulWithWitness(pats) => UsefulWithWitness({
                             let arity = constructor_arity(cx, &c, left_ty);
@@ -547,7 +547,7 @@ fn is_useful(cx: &MatchCheckCtxt,
                                 });
                                 vec![construct_witness(cx, &c, subpats, left_ty)]
                             };
-                            result.extend(pats.move_iter().skip(arity));
+                            result.extend(pats.into_iter().skip(arity));
                             result
                         }),
                         result => result
@@ -569,7 +569,7 @@ fn is_useful(cx: &MatchCheckCtxt,
                         let wild_pats = Vec::from_elem(arity, &DUMMY_WILD_PAT);
                         let enum_pat = construct_witness(cx, &constructor, wild_pats, left_ty);
                         let mut new_pats = vec![enum_pat];
-                        new_pats.extend(pats.move_iter());
+                        new_pats.extend(pats.into_iter());
                         UsefulWithWitness(new_pats)
                     },
                     result => result
@@ -577,7 +577,7 @@ fn is_useful(cx: &MatchCheckCtxt,
             }
         }
     } else {
-        constructors.move_iter().map(|c|
+        constructors.into_iter().map(|c|
             is_useful_specialized(cx, matrix, v, c.clone(), left_ty, witness)
         ).find(|result| result != &NotUseful).unwrap_or(NotUseful)
     }

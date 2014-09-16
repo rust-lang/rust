@@ -197,7 +197,7 @@ pub fn store_environment<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
     // Copy expr values into boxed bindings.
     let mut bcx = bcx;
-    for (i, bv) in bound_values.move_iter().enumerate() {
+    for (i, bv) in bound_values.into_iter().enumerate() {
         debug!("Copy {} into closure", bv.to_string(ccx));
 
         if ccx.sess().asm_comments() {

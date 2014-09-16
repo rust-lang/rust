@@ -73,7 +73,7 @@ impl<T> CVec<T> {
     /// * base - A raw pointer to a buffer
     /// * len - The number of elements in the buffer
     pub unsafe fn new(base: *mut T, len: uint) -> CVec<T> {
-        assert!(base != ptr::mut_null());
+        assert!(base != ptr::null_mut());
         CVec {
             base: base,
             len: len,
@@ -94,7 +94,7 @@ impl<T> CVec<T> {
     ///          for freeing the buffer, etc.
     pub unsafe fn new_with_dtor(base: *mut T, len: uint,
                                 dtor: proc():Send) -> CVec<T> {
-        assert!(base != ptr::mut_null());
+        assert!(base != ptr::null_mut());
         CVec {
             base: base,
             len: len,
@@ -191,7 +191,7 @@ mod tests {
     #[should_fail]
     fn test_fail_at_null() {
         unsafe {
-            CVec::new(ptr::mut_null::<u8>(), 9);
+            CVec::new(ptr::null_mut::<u8>(), 9);
         }
     }
 

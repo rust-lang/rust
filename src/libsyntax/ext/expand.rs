@@ -271,8 +271,8 @@ pub fn expand_item(it: P<ast::Item>, fld: &mut MacroExpander)
                     let mut items: SmallVector<P<ast::Item>> = SmallVector::zero();
                     dec.expand(fld.cx, attr.span, &*attr.node.value, &*it,
                                |item| items.push(item));
-                    decorator_items.extend(items.move_iter()
-                        .flat_map(|item| expand_item(item, fld).move_iter()));
+                    decorator_items.extend(items.into_iter()
+                        .flat_map(|item| expand_item(item, fld).into_iter()));
 
                     fld.cx.bt_pop();
                 }
@@ -485,9 +485,9 @@ pub fn expand_item_mac(it: P<ast::Item>, fld: &mut MacroExpander)
             SmallVector::zero()
         }
         Right(Some(items)) => {
-            items.move_iter()
+            items.into_iter()
                 .map(|i| mark_item(i, fm))
-                .flat_map(|i| fld.fold_item(i).move_iter())
+                .flat_map(|i| fld.fold_item(i).into_iter())
                 .collect()
         }
         Right(None) => {
@@ -525,7 +525,7 @@ fn expand_stmt(s: Stmt, fld: &mut MacroExpander) -> SmallVector<P<Stmt>> {
     fld.cx.bt_pop();
 
     if semi {
-        fully_expanded.move_iter().map(|s| s.map(|Spanned {node, span}| {
+        fully_expanded.into_iter().map(|s| s.map(|Spanned {node, span}| {
             Spanned {
                 node: match node {
                     StmtExpr(e, stmt_id) => StmtSemi(e, stmt_id),
@@ -620,7 +620,7 @@ fn expand_arm(arm: ast::Arm, fld: &mut MacroExpander) -> ast::Arm {
     // all of the pats must have the same set of bindings, so use the
     // first one to extract them and generate new names:
     let idents = pattern_bindings(&**expanded_pats.get(0));
-    let new_renames = idents.move_iter().map(|id| (id, fresh_name(&id))).collect();
+    let new_renames = idents.into_iter().map(|id| (id, fresh_name(&id))).collect();
     // apply the renaming, but only to the PatIdents:
     let mut rename_pats_fld = PatIdentRenamer{renames:&new_renames};
     let rewritten_pats = expanded_pats.move_map(|pat| rename_pats_fld.fold_pat(pat));
@@ -687,8 +687,8 @@ pub fn expand_block(blk: P<Block>, fld: &mut MacroExpander) -> P<Block> {
 // expand the elements of a block.
 pub fn expand_block_elts(b: P<Block>, fld: &mut MacroExpander) -> P<Block> {
     b.map(|Block {id, view_items, stmts, expr, rules, span}| {
-        let new_view_items = view_items.move_iter().map(|x| fld.fold_view_item(x)).collect();
-        let new_stmts = stmts.move_iter().flat_map(|x| {
+        let new_view_items = view_items.into_iter().map(|x| fld.fold_view_item(x)).collect();
+        let new_stmts = stmts.into_iter().flat_map(|x| {
             // perform all pending renames
             let renamed_stmt = {
                 let pending_renames = &mut fld.cx.syntax_env.info().pending_renames;
@@ -696,7 +696,7 @@ pub fn expand_block_elts(b: P<Block>, fld: &mut MacroExpander) -> P<Block> {
                 rename_fld.fold_stmt(x).expect_one("rename_fold didn't return one value")
             };
             // expand macros in the statement
-            fld.fold_stmt(renamed_stmt).move_iter()
+            fld.fold_stmt(renamed_stmt).into_iter()
         }).collect();
         let new_expr = expr.map(|x| {
             let expr = {
@@ -897,7 +897,7 @@ fn expand_method(m: P<ast::Method>, fld: &mut MacroExpander) -> SmallVector<P<as
             };
 
             // expand again if necessary
-            new_methods.move_iter().flat_map(|m| fld.fold_method(m).move_iter()).collect()
+            new_methods.into_iter().flat_map(|m| fld.fold_method(m).into_iter()).collect()
         }
     })
 }
@@ -994,11 +994,11 @@ pub fn expand_crate(parse_sess: &parse::ParseSess,
         cx: &mut cx,
     };
 
-    for ExportedMacros { crate_name, macros } in imported_macros.move_iter() {
+    for ExportedMacros { crate_name, macros } in imported_macros.into_iter() {
         let name = format!("<{} macros>", token::get_ident(crate_name))
             .into_string();
 
-        for source in macros.move_iter() {
+        for source in macros.into_iter() {
             let item = parse::parse_item_from_source_str(name.clone(),
                                                          source,
                                                          expander.cx.cfg(),
@@ -1008,7 +1008,7 @@ pub fn expand_crate(parse_sess: &parse::ParseSess,
         }
     }
 
-    for (name, extension) in user_exts.move_iter() {
+    for (name, extension) in user_exts.into_iter() {
         expander.cx.syntax_env.insert(name, extension);
     }
 

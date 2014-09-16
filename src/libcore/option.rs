@@ -372,17 +372,29 @@ impl<T> Option<T> {
         Item{opt: self.as_ref()}
     }
 
+    /// Deprecated: use `iter_mut`
+    #[deprecated = "use iter_mut"]
+    pub fn mut_iter<'r>(&'r mut self) -> Item<&'r mut T> {
+        self.iter_mut()
+    }
+
     /// Returns a mutable iterator over the possibly contained value.
     #[inline]
     #[unstable = "waiting for iterator conventions"]
-    pub fn mut_iter<'r>(&'r mut self) -> Item<&'r mut T> {
+    pub fn iter_mut<'r>(&'r mut self) -> Item<&'r mut T> {
         Item{opt: self.as_mut()}
+    }
+
+    /// Deprecated: use `into_iter`.
+    #[deprecated = "use into_iter"]
+    pub fn move_iter(self) -> Item<T> {
+        self.into_iter()
     }
 
     /// Returns a consuming iterator over the possibly contained value.
     #[inline]
     #[unstable = "waiting for iterator conventions"]
-    pub fn move_iter(self) -> Item<T> {
+    pub fn into_iter(self) -> Item<T> {
         Item{opt: self}
     }
 

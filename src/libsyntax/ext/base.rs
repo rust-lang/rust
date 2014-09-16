@@ -712,7 +712,7 @@ impl SyntaxEnv {
     }
 
     fn find_escape_frame<'a>(&'a mut self) -> &'a mut MapChainFrame {
-        for (i, frame) in self.chain.mut_iter().enumerate().rev() {
+        for (i, frame) in self.chain.iter_mut().enumerate().rev() {
             if !frame.info.macros_escape || i == 0 {
                 return frame
             }

@@ -382,7 +382,7 @@ impl Path {
                         let n = if is_abs { comps.len() } else { comps.len() - 1} +
                                 comps.iter().map(|v| v.len()).sum();
                         let mut v = Vec::with_capacity(n);
-                        let mut it = comps.move_iter();
+                        let mut it = comps.into_iter();
                         if !is_abs {
                             match it.next() {
                                 None => (),
@@ -1201,7 +1201,7 @@ mod tests {
                     assert!(comps == exps, "components: Expected {:?}, found {:?}",
                             comps, exps);
                     let comps = path.components().rev().collect::<Vec<&[u8]>>();
-                    let exps = exps.move_iter().rev().collect::<Vec<&[u8]>>();
+                    let exps = exps.into_iter().rev().collect::<Vec<&[u8]>>();
                     assert!(comps == exps, "rev_components: Expected {:?}, found {:?}",
                             comps, exps);
                 }

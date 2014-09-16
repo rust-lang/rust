@@ -85,11 +85,11 @@ fn warn_if_multiple_versions(diag: &SpanHandler, cstore: &CStore) {
         map.find_or_insert_with(data.name(), |_| Vec::new()).push(cnum);
     });
 
-    for (name, dupes) in map.move_iter() {
+    for (name, dupes) in map.into_iter() {
         if dupes.len() == 1 { continue }
         diag.handler().warn(
             format!("using multiple versions of crate `{}`", name).as_slice());
-        for dupe in dupes.move_iter() {
+        for dupe in dupes.into_iter() {
             let data = cstore.get_crate_data(dupe);
             diag.span_note(data.span, "used here");
             loader::note_crate_name(diag, data.name().as_slice());

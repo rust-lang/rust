@@ -259,7 +259,7 @@ pub fn run_tests(config: &Config) {
     // parallel (especially when we have lots and lots of child processes).
     // For context, see #8904
     io::test::raise_fd_limit();
-    let res = test::run_tests_console(&opts, tests.move_iter().collect());
+    let res = test::run_tests_console(&opts, tests.into_iter().collect());
     match res {
         Ok(true) => {}
         Ok(false) => fail!("Some tests failed"),

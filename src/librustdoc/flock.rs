@@ -192,10 +192,10 @@ mod imp {
                                   libc::FILE_SHARE_READ |
                                     libc::FILE_SHARE_DELETE |
                                     libc::FILE_SHARE_WRITE,
-                                  ptr::mut_null(),
+                                  ptr::null_mut(),
                                   libc::CREATE_ALWAYS,
                                   libc::FILE_ATTRIBUTE_NORMAL,
-                                  ptr::mut_null())
+                                  ptr::null_mut())
             };
             if handle == libc::INVALID_HANDLE_VALUE {
                 fail!("create file error: {}", os::last_os_error());

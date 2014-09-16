@@ -418,13 +418,13 @@ impl<'a> Parser<'a> {
                     if ranges.len() > 0 {
                         let flags = negated | (self.flags & FLAG_NOCASE);
                         let mut ast = Class(combine_ranges(ranges), flags);
-                        for alt in alts.move_iter() {
+                        for alt in alts.into_iter() {
                             ast = Alt(box alt, box ast)
                         }
                         self.push(ast);
                     } else if alts.len() > 0 {
                         let mut ast = alts.pop().unwrap();
-                        for alt in alts.move_iter() {
+                        for alt in alts.into_iter() {
                             ast = Alt(box alt, box ast)
                         }
                         self.push(ast);
@@ -961,7 +961,7 @@ fn combine_ranges(unordered: Vec<(char, char)>) -> Vec<(char, char)> {
     // This is currently O(n^2), but I think with sufficient cleverness,
     // it can be reduced to O(n) **if necessary**.
     let mut ordered: Vec<(char, char)> = Vec::with_capacity(unordered.len());
-    for (us, ue) in unordered.move_iter() {
+    for (us, ue) in unordered.into_iter() {
         let (mut us, mut ue) = (us, ue);
         assert!(us <= ue);
         let mut which: Option<uint> = None;

@@ -1843,7 +1843,7 @@ impl<T: Iterator<char>> Builder<T> {
 
         loop {
             if self.token == Some(ListEnd) {
-                return Ok(List(values.move_iter().collect()));
+                return Ok(List(values.into_iter().collect()));
             }
             match self.build_value() {
                 Ok(v) => values.push(v),
@@ -2059,7 +2059,7 @@ impl ::Decoder<DecoderError> for Decoder {
                 };
                 match o.pop(&"fields".to_string()) {
                     Some(List(l)) => {
-                        for field in l.move_iter().rev() {
+                        for field in l.into_iter().rev() {
                             self.stack.push(field);
                         }
                     },
@@ -2186,7 +2186,7 @@ impl ::Decoder<DecoderError> for Decoder {
         debug!("read_seq()");
         let list = try!(expect!(self.pop(), List));
         let len = list.len();
-        for v in list.move_iter().rev() {
+        for v in list.into_iter().rev() {
             self.stack.push(v);
         }
         f(self, len)
@@ -2203,7 +2203,7 @@ impl ::Decoder<DecoderError> for Decoder {
         debug!("read_map()");
         let obj = try!(expect!(self.pop(), Object));
         let len = obj.len();
-        for (key, value) in obj.move_iter() {
+        for (key, value) in obj.into_iter() {
             self.stack.push(value);
             self.stack.push(String(key));
         }

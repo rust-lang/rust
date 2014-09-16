@@ -47,7 +47,7 @@ pub fn get_rpath_flags(config: RPathConfig) -> Vec<String> {
     debug!("preparing the RPATH!");
 
     let libs = config.used_crates.clone();
-    let libs = libs.move_iter().filter_map(|(_, l)| {
+    let libs = libs.into_iter().filter_map(|(_, l)| {
         l.map(|p| p.clone())
     }).collect::<Vec<_>>();
 

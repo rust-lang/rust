@@ -83,13 +83,13 @@ fn f80() {
 
 fn f100() {
     let x = vec!("hi".to_string());
-    let _y = x.move_iter().next().unwrap();
+    let _y = x.into_iter().next().unwrap();
     touch(&x); //~ ERROR use of moved value: `x`
 }
 
 fn f110() {
     let x = vec!("hi".to_string());
-    let _y = [x.move_iter().next().unwrap(), ..1];
+    let _y = [x.into_iter().next().unwrap(), ..1];
     touch(&x); //~ ERROR use of moved value: `x`
 }
 

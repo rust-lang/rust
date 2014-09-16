@@ -229,7 +229,7 @@ impl<'a, 'tcx, O:DataFlowOperator> DataFlowContext<'a, 'tcx, O> {
 
         let cfgidx = to_cfgidx_or_die(id, &self.nodeid_to_index);
         let (start, end) = self.compute_id_range(cfgidx);
-        let gens = self.gens.mut_slice(start, end);
+        let gens = self.gens.slice_mut(start, end);
         set_bit(gens, bit);
     }
 
@@ -242,7 +242,7 @@ impl<'a, 'tcx, O:DataFlowOperator> DataFlowContext<'a, 'tcx, O> {
 
         let cfgidx = to_cfgidx_or_die(id, &self.nodeid_to_index);
         let (start, end) = self.compute_id_range(cfgidx);
-        let kills = self.kills.mut_slice(start, end);
+        let kills = self.kills.slice_mut(start, end);
         set_bit(kills, bit);
     }
 
@@ -415,7 +415,7 @@ impl<'a, 'tcx, O:DataFlowOperator> DataFlowContext<'a, 'tcx, O> {
             }
 
             if changed {
-                let bits = self.kills.mut_slice(start, end);
+                let bits = self.kills.slice_mut(start, end);
                 debug!("{:s} add_kills_from_flow_exits flow_exit={} bits={} [before]",
                        self.analysis_name, flow_exit, mut_bits_to_string(bits));
                 bits.copy_from(orig_kills.as_slice());
@@ -498,7 +498,7 @@ impl<'a, 'b, 'tcx, O:DataFlowOperator> PropagationContext<'a, 'b, 'tcx, O> {
 
     fn reset(&mut self, bits: &mut [uint]) {
         let e = if self.dfcx.oper.initial_value() {uint::MAX} else {0};
-        for b in bits.mut_iter() {
+        for b in bits.iter_mut() {
             *b = e;
         }
     }
@@ -525,7 +525,7 @@ impl<'a, 'b, 'tcx, O:DataFlowOperator> PropagationContext<'a, 'b, 'tcx, O> {
         let (start, end) = self.dfcx.compute_id_range(cfgidx);
         let changed = {
             // (scoping mutable borrow of self.dfcx.on_entry)
-            let on_entry = self.dfcx.on_entry.mut_slice(start, end);
+            let on_entry = self.dfcx.on_entry.slice_mut(start, end);
             bitwise(on_entry, pred_bits, &self.dfcx.oper)
         };
         if changed {
@@ -566,7 +566,7 @@ fn bitwise<Op:BitwiseOperator>(out_vec: &mut [uint],
                                op: &Op) -> bool {
     assert_eq!(out_vec.len(), in_vec.len());
     let mut changed = false;
-    for (out_elt, in_elt) in out_vec.mut_iter().zip(in_vec.iter()) {
+    for (out_elt, in_elt) in out_vec.iter_mut().zip(in_vec.iter()) {
         let old_val = *out_elt;
         let new_val = op.join(old_val, *in_elt);
         *out_elt = new_val;

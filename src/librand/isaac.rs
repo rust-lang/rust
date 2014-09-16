@@ -207,7 +207,7 @@ impl<'a> SeedableRng<&'a [u32]> for IsaacRng {
         // - 1], 0, 0, ...], to fill rng.rsl.
         let seed_iter = seed.iter().map(|&x| x).chain(Repeat::new(0u32));
 
-        for (rsl_elem, seed_elem) in self.rsl.mut_iter().zip(seed_iter) {
+        for (rsl_elem, seed_elem) in self.rsl.iter_mut().zip(seed_iter) {
             *rsl_elem = seed_elem;
         }
         self.cnt = 0;
@@ -442,7 +442,7 @@ impl<'a> SeedableRng<&'a [u64]> for Isaac64Rng {
         // - 1], 0, 0, ...], to fill rng.rsl.
         let seed_iter = seed.iter().map(|&x| x).chain(Repeat::new(0u64));
 
-        for (rsl_elem, seed_elem) in self.rsl.mut_iter().zip(seed_iter) {
+        for (rsl_elem, seed_elem) in self.rsl.iter_mut().zip(seed_iter) {
             *rsl_elem = seed_elem;
         }
         self.cnt = 0;

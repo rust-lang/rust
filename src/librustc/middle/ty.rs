@@ -4488,7 +4488,7 @@ pub fn lookup_repr_hints(tcx: &ctxt, did: DefId) -> Vec<attr::ReprAttr> {
     let mut acc = Vec::new();
 
     ty::each_attr(tcx, did, |meta| {
-        acc.extend(attr::find_repr_attrs(tcx.sess.diagnostic(), meta).move_iter());
+        acc.extend(attr::find_repr_attrs(tcx.sess.diagnostic(), meta).into_iter());
         true
     });
 

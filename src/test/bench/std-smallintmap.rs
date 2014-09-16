@@ -37,7 +37,7 @@ fn main() {
     } else if args.len() <= 1u {
         vec!("".to_string(), "10000".to_string(), "50".to_string())
     } else {
-        args.move_iter().collect()
+        args.into_iter().collect()
     };
     let max = from_str::<uint>(args.get(1).as_slice()).unwrap();
     let rep = from_str::<uint>(args.get(2).as_slice()).unwrap();

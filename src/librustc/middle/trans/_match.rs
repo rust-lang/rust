@@ -1735,7 +1735,7 @@ fn bind_irrefutable_pat<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 .iter()
                 .chain(slice.iter())
                 .chain(after.iter())
-                .zip(extracted.vals.move_iter())
+                .zip(extracted.vals.into_iter())
                 .fold(bcx, |bcx, (inner, elem)|
                     bind_irrefutable_pat(bcx, &**inner, elem, binding_mode, cleanup_scope)
                 );

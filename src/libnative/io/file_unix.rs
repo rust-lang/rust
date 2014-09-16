@@ -355,7 +355,7 @@ pub fn readdir(p: &CString) -> IoResult<Vec<CString>> {
         let root = unsafe { CString::new(root.as_ptr(), false) };
         let root = Path::new(root);
 
-        dirs.move_iter().filter(|path| {
+        dirs.into_iter().filter(|path| {
             path.as_vec() != b"." && path.as_vec() != b".."
         }).map(|path| root.join(path).to_c_str()).collect()
     }

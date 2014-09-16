@@ -560,7 +560,7 @@ pub fn convert(ccx: &CrateCtxt, it: &ast::Item) {
 
             convert_methods(ccx,
                             ImplContainer(local_def(it.id)),
-                            methods.move_iter(),
+                            methods.into_iter(),
                             selfty,
                             &ty_generics,
                             parent_visibility);
@@ -1273,10 +1273,10 @@ fn conv_param_bounds(ccx: &CrateCtxt,
                                      unboxed_fn_ty_bounds } =
         astconv::partition_bounds(ccx.tcx, span, all_bounds.as_slice());
     let unboxed_fn_ty_bounds =
-        unboxed_fn_ty_bounds.move_iter()
+        unboxed_fn_ty_bounds.into_iter()
         .map(|b| instantiate_unboxed_fn_ty(ccx, b, param_ty));
     let trait_bounds: Vec<Rc<ty::TraitRef>> =
-        trait_bounds.move_iter()
+        trait_bounds.into_iter()
         .map(|b| instantiate_trait_ref(ccx, b, param_ty.to_ty(ccx.tcx)))
         .chain(unboxed_fn_ty_bounds)
         .collect();
