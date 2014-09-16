@@ -353,8 +353,8 @@ Potentially also:
 The laws should be sufficient to rule out any "icky" impls. For example, an impl
 for `Vec` where an exception is represented as the empty vector, and a normal
 result as a single-element vector: here the third law fails, because if the
-`Vec` has more than element *to begin with*, then it's not possible to translate
-to a different carrier type and then back without losing information.
+`Vec` has more than one element *to begin with*, then it's not possible to 
+translate to a different carrier type and then back without losing information.
 
 The `bool` impl may be surprising, or not useful, but it *is* well-behaved:
 `bool` is, after all, isomorphic to `Result<(), ()>`. This `impl` may be
@@ -585,6 +585,15 @@ carrier types, here are some things which should be true:
  * Do nothing.
 
  * Only add the `?` operator, but not any of the other constructs.
+
+ * Instead of a built-in `try`..`catch` construct, attempt to define one using
+   macros. However, this is likely to be awkward because, at least, macros may
+   only have their contents as a single block, rather than two. Furthermore,
+   macros are excellent as a "safety net" for features which we forget to add
+   to the language itself, or which only have specialized use cases; but after
+   seeing this proposal, we need not forget `try`..`catch`, and its prevalence
+   in nearly every existing language suggests that it is, in fact, generally 
+   useful.
 
  * Instead of a general `Carrier` trait, define everything directly in terms of
    `Result`. This has precedent in that, for example, the `if`..`else` construct
