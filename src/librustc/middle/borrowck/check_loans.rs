@@ -103,6 +103,11 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for CheckLoanCtxt<'a, 'tcx> {
         self.consume_common(consume_id, consume_span, cmt, mode);
     }
 
+    fn matched_pat(&mut self,
+                   _matched_pat: &ast::Pat,
+                   _cmt: mc::cmt,
+                   _mode: euv::MatchMode) { }
+
     fn consume_pat(&mut self,
                    consume_pat: &ast::Pat,
                    cmt: mc::cmt<'tcx>,
