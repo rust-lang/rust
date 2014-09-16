@@ -114,6 +114,10 @@ Of course, method dispatch can implicitly execute code via `Deref`. But `Deref`
 is a pretty specialized tool:
 
 * Each type `T` can only deref to *one* other type.
+
+  (Note: this restriction is not currently enforced, but will be enforceable
+  once [associated types](https://github.com/rust-lang/rfcs/pull/195) land.)
+
 * Deref makes all the methods of the target type visible on the source type.
 * The source and target types are both references, limiting what the `deref`
   code can do.
