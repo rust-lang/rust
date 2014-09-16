@@ -616,7 +616,12 @@ pub fn expand_item_mac(it: P<ast::Item>,
                                                          imported_from, tts);
 
                     fld.cx.syntax_env.insert(intern(name.as_slice()), ext);
-                    if attr::contains_name(it.attrs.as_slice(), "macro_export") {
+
+                    if match imported_from {
+                        None => attr::contains_name(it.attrs.as_slice(), "macro_export"),
+                        Some(_) => fld.cx.ecfg.reexported_macros.iter()
+                                       .any(|e| e.as_slice() == name.as_slice()),
+                    } {
                         fld.cx.exported_macros.push(it);
                     }
 
@@ -1156,6 +1161,7 @@ pub struct ExpansionConfig {
     pub deriving_hash_type_parameter: bool,
     pub enable_quotes: bool,
     pub recursion_limit: uint,
+    pub reexported_macros: Vec<String>,
 }
 
 impl ExpansionConfig {
@@ -1165,6 +1171,7 @@ impl ExpansionConfig {
             deriving_hash_type_parameter: false,
             enable_quotes: false,
             recursion_limit: 64,
+            reexported_macros: vec![],
         }
     }
 }
