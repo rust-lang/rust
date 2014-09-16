@@ -17,7 +17,7 @@ use parse::attr::ParserAttr;
 use parse::parser::Parser;
 use ptr::P;
 
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::io::File;
 use std::rc::Rc;
 use std::str;

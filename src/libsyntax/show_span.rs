@@ -22,10 +22,10 @@ struct ShowSpanVisitor<'a> {
     span_diagnostic: &'a diagnostic::SpanHandler,
 }
 
-impl<'a> Visitor<()> for ShowSpanVisitor<'a> {
-    fn visit_expr(&mut self, e: &ast::Expr, _: ()) {
+impl<'a, 'v> Visitor<'v> for ShowSpanVisitor<'a> {
+    fn visit_expr(&mut self, e: &ast::Expr) {
         self.span_diagnostic.span_note(e.span, "expression");
-        visit::walk_expr(self, e, ());
+        visit::walk_expr(self, e);
     }
 
     fn visit_mac(&mut self, macro: &ast::Mac) {

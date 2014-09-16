@@ -15,7 +15,6 @@ use ast_util::PostExpansionMethod;
 use codemap::{DUMMY_SP, Span, Spanned};
 use fold::Folder;
 use parse::token;
-use parse::ParseSess;
 use print::pprust;
 use visit::{mod, Visitor};
 
@@ -251,7 +250,6 @@ pub struct Map<'ast> {
 }
 
 impl<'ast> Map<'ast> {
-impl Map {
     fn entry_count(&self) -> uint {
         self.map.borrow().len()
     }
