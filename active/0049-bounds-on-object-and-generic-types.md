@@ -44,8 +44,8 @@ bound, and not just `'static`:
 
      fn foo<'a, A:'a>(x: A) { ... }
 
-Explicit lifetime bounds like this are in fact only rarely necessary,
-for two reasons:
+Explicit lifetime bounds are in fact only rarely necessary, for two
+reasons:
 
 1. The compiler is often able to infer this relationship from the argument
    and return types. More on this below.
@@ -68,24 +68,6 @@ declared:
     
 Here, the constraint `T:'a` indicates that the data being iterated
 over must live at least as long as the collection (logically enough).
-
-### At most one explicit lifetime bound is permitted
-
-For simplicity, we permit at most one *explicit* lifetime bound on any
-given parameter type. That means that the following function is illegal:
-
-    fn foo<'a,'b,A:'a+'b>() { ... }
-
-Remember that if there are multiple lifetime bounds, it implies that
-all of them must hold. That means that if, in fact, `A` outlives both
-`'a` and `'b` then either one of them is shorter than the other, the
-two are the same, or there is a third lifetime that outlives them
-both. Therefore, the function above can be rewritten as follows (using
-explicit lifetime bounds, specified below):
-
-    fn foo<'a,'b,'c:'a+'b,A:'c>() { ... }
-
-As far as I know, this situation has not arisen once in the codebase.
 
 ## Lifetime bounds on object types
 
@@ -113,9 +95,9 @@ Here are some examples:
     // IsStatic+'a        'static+'a
     // IsStatic+Is<'a>+'b 'static,'a,'b
 
-In general no object type is permitted to have zero bounds. Therefore,
-if an object type with no derivable bounds appears, we will supply a
-default lifetime using the normal rules:
+Object types must have exactly one bound -- zero bounds is not
+acceptable. Therefore, if an object type with no derivable bounds
+appears, we will supply a default lifetime using the normal rules:
 
     trait Writer { /* no derivable bounds */ }
     struct Foo<'a> {
