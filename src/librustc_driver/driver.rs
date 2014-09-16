@@ -275,6 +275,8 @@ pub fn phase_2_configure_and_expand(sess: &Session,
                 deriving_hash_type_parameter: sess.features.borrow().default_type_params,
                 enable_quotes: sess.features.borrow().quote,
                 recursion_limit: sess.recursion_limit.get(),
+                reexported_macros: syntax::ext::tt::reexport::gather(sess.diagnostic(),
+                                                                     &krate),
             };
             let ret = syntax::ext::expand::expand_crate(&sess.parse_sess,
                                               cfg,
