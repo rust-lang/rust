@@ -30,7 +30,7 @@ $ curl -s https://static.rust-lang.org/rustup.sh | sudo sh
 below.)
 
 If you're on Windows, please download either the [32-bit
-installer](https://static.rust-lang.org/dist/rust-nightly-i686-pc-mingw32.exe)
+installer](https://static.rust-lang.org/dist/rust-nightly-i686-w64-mingw32.exe)
 or the [64-bit
 installer](https://static.rust-lang.org/dist/rust-nightly-x86_64-w64-mingw32.exe)
 and run it.
