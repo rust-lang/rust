@@ -71,6 +71,14 @@ pub fn run_metrics(config: Config, testfile: String, mm: &mut MetricMap) {
     }
 }
 
+fn get_output(props: &TestProps, proc_res: &ProcRes) -> String {
+    if props.check_stdout {
+        format!("{}{}", proc_res.stdout, proc_res.stderr)
+    } else {
+        proc_res.stderr.clone()
+    }
+}
+
 fn run_cfail_test(config: &Config, props: &TestProps, testfile: &Path) {
     let proc_res = compile_test(config, props, testfile);
 
@@ -81,6 +89,11 @@ fn run_cfail_test(config: &Config, props: &TestProps, testfile: &Path) {
 
     check_correct_failure_status(&proc_res);
 
+    if proc_res.status.success() {
+        fatal("process did not return an error status");
+    }
+
+    let output_to_check = get_output(props, &proc_res);
     let expected_errors = errors::load_errors(&config.cfail_regex, testfile);
     if !expected_errors.is_empty() {
         if !props.error_patterns.is_empty() {
@@ -88,9 +101,10 @@ fn run_cfail_test(config: &Config, props: &TestProps, testfile: &Path) {
         }
         check_expected_errors(expected_errors, testfile, &proc_res);
     } else {
-        check_error_patterns(props, testfile, &proc_res);
+        check_error_patterns(props, testfile, output_to_check.as_slice(), &proc_res);
     }
     check_no_compiler_crash(&proc_res);
+    check_forbid_output(props, output_to_check.as_slice(), &proc_res);
 }
 
 fn run_rfail_test(config: &Config, props: &TestProps, testfile: &Path) {
@@ -112,8 +126,9 @@ fn run_rfail_test(config: &Config, props: &TestProps, testfile: &Path) {
         fatal_proc_rec("run-fail test isn't valgrind-clean!", &proc_res);
     }
 
+    let output_to_check = get_output(props, &proc_res);
     check_correct_failure_status(&proc_res);
-    check_error_patterns(props, testfile, &proc_res);
+    check_error_patterns(props, testfile, output_to_check.as_slice(), &proc_res);
 }
 
 fn check_correct_failure_status(proc_res: &ProcRes) {
@@ -834,24 +849,15 @@ fn check_debugger_output(debugger_run_result: &ProcRes, check_lines: &[String]) 
 
 fn check_error_patterns(props: &TestProps,
                         testfile: &Path,
+                        output_to_check: &str,
                         proc_res: &ProcRes) {
     if props.error_patterns.is_empty() {
         fatal(format!("no error pattern specified in {}",
                       testfile.display()).as_slice());
     }
-
-    if proc_res.status.success() {
-        fatal("process did not return an error status");
-    }
-
     let mut next_err_idx = 0u;
     let mut next_err_pat = &props.error_patterns[next_err_idx];
     let mut done = false;
-    let output_to_check = if props.check_stdout {
-        format!("{}{}", proc_res.stdout, proc_res.stderr)
-    } else {
-        proc_res.stderr.clone()
-    };
     for line in output_to_check.as_slice().lines() {
         if line.contains(next_err_pat.as_slice()) {
             debug!("found error pattern {}", next_err_pat);
@@ -886,6 +892,16 @@ fn check_no_compiler_crash(proc_res: &ProcRes) {
         if line.starts_with("error: internal compiler error:") {
             fatal_proc_rec("compiler encountered internal error",
                           proc_res);
+        }
+    }
+}
+
+fn check_forbid_output(props: &TestProps,
+                       output_to_check: &str,
+                       proc_res: &ProcRes) {
+    for pat in props.forbid_output.iter() {
+        if output_to_check.contains(pat.as_slice()) {
+            fatal_proc_rec("forbidden pattern found in compiler output", proc_res);
         }
     }
 }
