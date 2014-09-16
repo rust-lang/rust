@@ -265,7 +265,6 @@ lets_do_this! {
     BeginUnwindLangItem,             "begin_unwind",            begin_unwind;
 
     ExchangeMallocFnLangItem,        "exchange_malloc",         exchange_malloc_fn;
-    ClosureExchangeMallocFnLangItem, "closure_exchange_malloc", closure_exchange_malloc_fn;
     ExchangeFreeFnLangItem,          "exchange_free",           exchange_free_fn;
     MallocFnLangItem,                "malloc",                  malloc_fn;
     FreeFnLangItem,                  "free",                    free_fn;
