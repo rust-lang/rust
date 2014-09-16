@@ -12,6 +12,7 @@ use std::fmt;
 use std::default::Default;
 use std::hash;
 use std::{mem, raw, ptr, slice, vec};
+use std::rt::heap::EMPTY;
 use serialize::{Encodable, Decodable, Encoder, Decoder};
 
 /// A non-growable owned slice. This would preferably become `~[T]`
@@ -81,10 +82,9 @@ impl<T> OwnedSlice<T> {
     }
 
     pub fn as_slice<'a>(&'a self) -> &'a [T] {
-        static PTR_MARKER: u8 = 0;
         let ptr = if self.data.is_null() {
             // length zero, i.e. this will never be read as a T.
-            &PTR_MARKER as *const u8 as *const T
+            EMPTY as *const T
         } else {
             self.data as *const T
         };

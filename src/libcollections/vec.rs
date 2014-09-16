@@ -14,7 +14,7 @@
 
 use core::prelude::*;
 
-use alloc::heap::{allocate, reallocate, deallocate};
+use alloc::heap::{EMPTY, allocate, reallocate, deallocate};
 use core::cmp::max;
 use core::default::Default;
 use core::fmt;
@@ -27,10 +27,6 @@ use core::uint;
 use {Mutable, MutableSeq};
 use slice::{MutableOrdSlice, MutableSliceAllocating, CloneableVector};
 use slice::{Items, MutItems};
-
-
-#[doc(hidden)]
-pub static PTR_MARKER: u8 = 0;
 
 /// An owned, growable vector.
 ///
@@ -124,7 +120,7 @@ impl<T> Vec<T> {
         // non-null value which is fine since we never call deallocate on the ptr
         // if cap is 0. The reason for this is because the pointer of a slice
         // being NULL would break the null pointer optimization for enums.
-        Vec { len: 0, cap: 0, ptr: &PTR_MARKER as *const _ as *mut T }
+        Vec { len: 0, cap: 0, ptr: EMPTY as *mut T }
     }
 
     /// Constructs a new, empty `Vec` with the specified capacity.
@@ -157,7 +153,7 @@ impl<T> Vec<T> {
     #[inline]
     pub fn with_capacity(capacity: uint) -> Vec<T> {
         if mem::size_of::<T>() == 0 {
-            Vec { len: 0, cap: uint::MAX, ptr: &PTR_MARKER as *const _ as *mut T }
+            Vec { len: 0, cap: uint::MAX, ptr: EMPTY as *mut T }
         } else if capacity == 0 {
             Vec::new()
         } else {
