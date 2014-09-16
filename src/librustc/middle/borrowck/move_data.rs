@@ -495,6 +495,35 @@ impl MoveData {
         }
     }
 
+    pub fn add_variant_match(&self,
+                             tcx: &ty::ctxt,
+                             lp: Rc<LoanPath>,
+                             pattern_id: ast::NodeId,
+                             base_lp: Rc<LoanPath>,
+                             mode: euv::MatchMode) {
+        /*!
+         * Adds a new record for a match of `base_lp`, downcast to
+         * variant `lp`, that occurs at location `pattern_id`.  (One
+         * should be able to recover the span info from the
+         * `pattern_id` and the ast_map, I think.)
+         */
+        debug!("add_variant_match(lp={}, pattern_id={:?})",
+               lp.repr(tcx), pattern_id);
+
+        let path_index = self.move_path(tcx, lp.clone());
+        let base_path_index = self.move_path(tcx, base_lp.clone());
+
+        self.nonfragments.borrow_mut().push(path_index);
+        let variant_match = VariantMatch {
+            path: path_index,
+            base_path: base_path_index,
+            id: pattern_id,
+            mode: mode,
+        };
+
+        self.variant_matches.borrow_mut().push(variant_match);
+    }
+
     fn add_gen_kills(&self,
                      tcx: &ty::ctxt,
                      dfcx_moves: &mut MoveDataFlow,

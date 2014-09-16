@@ -61,6 +61,35 @@ pub fn gather_move_from_expr(bccx: &BorrowckCtxt,
     gather_move(bccx, move_data, move_error_collector, move_info);
 }
 
+pub fn gather_match_variant(bccx: &BorrowckCtxt,
+                                move_data: &MoveData,
+                                _move_error_collector: &MoveErrorCollector,
+                                move_pat: &ast::Pat,
+                                cmt: mc::cmt,
+                                mode: euv::MatchMode) {
+    debug!("gather_match_variant(move_pat={}, cmt={}, mode={})",
+           move_pat.id, cmt.repr(bccx.tcx), mode);
+
+    let opt_lp = opt_loan_path(&cmt);
+    let opt_base_lp = match cmt.cat {
+        mc::cat_downcast(ref base_cmt, _variant_def_id) => opt_loan_path(base_cmt),
+        _ => fail!("should only encounter move_into_variant on cat_downcast."),
+    };
+    match (opt_lp, opt_base_lp) {
+        (Some(loan_path), Some(base_loan_path)) => {
+            move_data.add_variant_match(bccx.tcx,
+                                        loan_path,
+                                        move_pat.id,
+                                        base_loan_path,
+                                        mode);
+        }
+        (lp, base_lp) => {
+            debug!("add_variant_match body for ({:?}, {:?}) NOT YET IMPLEMENTED", lp, base_lp);
+        }
+    }
+
+}
+
 pub fn gather_move_from_pat(bccx: &BorrowckCtxt,
                             move_data: &MoveData,
                             move_error_collector: &MoveErrorCollector,
