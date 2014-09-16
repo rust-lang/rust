@@ -15,12 +15,12 @@
 //! success and containing a value, and `Err(E)`, representing error
 //! and containing an error value.
 //!
-//! ~~~
+//! ```
 //! enum Result<T, E> {
 //!    Ok(T),
 //!    Err(E)
 //! }
-//! ~~~
+//! ```
 //!
 //! Functions return `Result` whenever errors are expected and
 //! recoverable. In the `std` crate `Result` is most prominently used
@@ -29,7 +29,7 @@
 //! A simple function returning `Result` might be
 //! defined and used like so:
 //!
-//! ~~~
+//! ```
 //! #[deriving(Show)]
 //! enum Version { Version1, Version2 }
 //!
@@ -53,13 +53,13 @@
 //!         println!("error parsing header: {}", e);
 //!     }
 //! }
-//! ~~~
+//! ```
 //!
 //! Pattern matching on `Result`s is clear and straightforward for
 //! simple cases, but `Result` comes with some convenience methods
 //! that make working it more succinct.
 //!
-//! ~~~
+//! ```
 //! let good_result: Result<int, int> = Ok(10);
 //! let bad_result: Result<int, int> = Err(10);
 //!
@@ -79,7 +79,7 @@
 //!
 //! // Consume the result and return the contents with `unwrap`.
 //! let final_awesome_result = good_result.ok().unwrap();
-//! ~~~
+//! ```
 //!
 //! # Results must be used
 //!
@@ -94,13 +94,13 @@
 //! Consider the `write_line` method defined for I/O types
 //! by the [`Writer`](../io/trait.Writer.html) trait:
 //!
-//! ~~~
+//! ```
 //! use std::io::IoError;
 //!
 //! trait Writer {
 //!     fn write_line(&mut self, s: &str) -> Result<(), IoError>;
 //! }
-//! ~~~
+//! ```
 //!
 //! *Note: The actual definition of `Writer` uses `IoResult`, which
 //! is just a synonym for `Result<T, IoError>`.*
@@ -109,7 +109,7 @@
 //! fail. It's crucial to handle the error case, and *not* write
 //! something like this:
 //!
-//! ~~~ignore
+//! ```{.ignore}
 //! use std::io::{File, Open, Write};
 //!
 //! let mut file = File::open_mode(&Path::new("valuable_data.txt"), Open, Write);
@@ -117,7 +117,7 @@
 //! // value is ignored.
 //! file.write_line("important message");
 //! drop(file);
-//! ~~~
+//! ```
 //!
 //! If you *do* write that in Rust, the compiler will by give you a
 //! warning (by default, controlled by the `unused_must_use` lint).
@@ -127,27 +127,27 @@
 //! success with `expect`. This will fail if the write fails, proving
 //! a marginally useful message indicating why:
 //!
-//! ~~~no_run
+//! ```{.no_run}
 //! use std::io::{File, Open, Write};
 //!
 //! let mut file = File::open_mode(&Path::new("valuable_data.txt"), Open, Write);
 //! file.write_line("important message").ok().expect("failed to write message");
 //! drop(file);
-//! ~~~
+//! ```
 //!
 //! You might also simply assert success:
 //!
-//! ~~~no_run
+//! ```{.no_run}
 //! # use std::io::{File, Open, Write};
 //!
 //! # let mut file = File::open_mode(&Path::new("valuable_data.txt"), Open, Write);
 //! assert!(file.write_line("important message").is_ok());
 //! # drop(file);
-//! ~~~
+//! ```
 //!
 //! Or propagate the error up the call stack with `try!`:
 //!
-//! ~~~
+//! ```
 //! # use std::io::{File, Open, Write, IoError};
 //! fn write_message() -> Result<(), IoError> {
 //!     let mut file = File::open_mode(&Path::new("valuable_data.txt"), Open, Write);
@@ -155,7 +155,7 @@
 //!     drop(file);
 //!     return Ok(());
 //! }
-//! ~~~
+//! ```
 //!
 //! # The `try!` macro
 //!
@@ -166,7 +166,7 @@
 //!
 //! It replaces this:
 //!
-//! ~~~
+//! ```
 //! use std::io::{File, Open, Write, IoError};
 //!
 //! struct Info {
@@ -188,11 +188,11 @@
 //!     }
 //!     return file.write_line(format!("rating: {}", info.rating).as_slice());
 //! }
-//! ~~~
+//! ```
 //!
 //! With this:
 //!
-//! ~~~
+//! ```
 //! use std::io::{File, Open, Write, IoError};
 //!
 //! struct Info {
@@ -209,7 +209,7 @@
 //!     try!(file.write_line(format!("rating: {}", info.rating).as_slice()));
 //!     return Ok(());
 //! }
-//! ~~~
+//! ```
 //!
 //! *It's much nicer!*
 //!
@@ -218,13 +218,13 @@
 //! `Err` is returned early from the enclosing function. Its simple definition
 //! makes it clear:
 //!
-//! ~~~
+//! ```
 //! # #![feature(macro_rules)]
 //! macro_rules! try(
 //!     ($e:expr) => (match $e { Ok(e) => e, Err(e) => return Err(e) })
 //! )
 //! # fn main() { }
-//! ~~~
+//! ```
 //!
 //! `try!` is imported by the prelude, and is available everywhere.
 //!
@@ -245,10 +245,10 @@
 //!
 //! Converting to an `Option` with `ok()` to handle an error:
 //!
-//! ~~~
+//! ```
 //! use std::io::Timer;
 //! let mut t = Timer::new().ok().expect("failed to create timer!");
-//! ~~~
+//! ```
 //!
 //! # `Result` vs. `fail!`
 //!
@@ -440,12 +440,12 @@ impl<T, E> Result<T, E> {
     ///
     /// This function can be used to compose the results of two functions.
     ///
-    /// # Examples
+    /// # Example
     ///
     /// Sum the lines of a buffer by mapping strings to numbers,
     /// ignoring I/O and parse errors:
     ///
-    /// ~~~
+    /// ```
     /// use std::io::{BufReader, IoResult};
     ///
     /// let buffer = "1\n2\n3\n4\n";
@@ -464,7 +464,7 @@ impl<T, E> Result<T, E> {
     /// }
     ///
     /// assert!(sum == 10);
-    /// ~~~
+    /// ```
     #[inline]
     #[unstable = "waiting for unboxed closures"]
     pub fn map<U>(self, op: |T| -> U) -> Result<U,E> {
