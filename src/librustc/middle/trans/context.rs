@@ -16,6 +16,7 @@ use llvm::{TargetData};
 use llvm::mk_target_data;
 use metadata::common::LinkMeta;
 use middle::resolve;
+use middle::traits;
 use middle::trans::adt;
 use middle::trans::base;
 use middle::trans::builder::Builder;
@@ -103,7 +104,7 @@ pub struct LocalCrateContext {
     monomorphized: RefCell<HashMap<MonoId, ValueRef>>,
     monomorphizing: RefCell<DefIdMap<uint>>,
     /// Cache generated vtables
-    vtables: RefCell<HashMap<(ty::t, MonoId), ValueRef>>,
+    vtables: RefCell<HashMap<(ty::t,Rc<ty::TraitRef>), ValueRef>>,
     /// Cache of constant strings,
     const_cstr_cache: RefCell<HashMap<InternedString, ValueRef>>,
 
@@ -150,6 +151,9 @@ pub struct LocalCrateContext {
     /// This is used to perform some basic load-balancing to keep all LLVM
     /// contexts around the same size.
     n_llvm_insns: Cell<uint>,
+
+    trait_cache: RefCell<HashMap<Rc<ty::TraitRef>,
+                                 traits::Vtable<()>>>,
 }
 
 pub struct CrateContext<'a, 'tcx: 'a> {
@@ -426,6 +430,7 @@ impl LocalCrateContext {
                 eh_personality: RefCell::new(None),
                 intrinsics: RefCell::new(HashMap::new()),
                 n_llvm_insns: Cell::new(0u),
+                trait_cache: RefCell::new(HashMap::new()),
             };
 
             local_ccx.int_type = Type::int(&local_ccx.dummy_ccx(shared));
@@ -617,7 +622,7 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
         &self.local.monomorphizing
     }
 
-    pub fn vtables<'a>(&'a self) -> &'a RefCell<HashMap<(ty::t, MonoId), ValueRef>> {
+    pub fn vtables<'a>(&'a self) -> &'a RefCell<HashMap<(ty::t,Rc<ty::TraitRef>), ValueRef>> {
         &self.local.vtables
     }
 
@@ -712,6 +717,10 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
 
     pub fn count_llvm_insn(&self) {
         self.local.n_llvm_insns.set(self.local.n_llvm_insns.get() + 1);
+    }
+
+    pub fn trait_cache(&self) -> &RefCell<HashMap<Rc<ty::TraitRef>, traits::Vtable<()>>> {
+        &self.local.trait_cache
     }
 }
 

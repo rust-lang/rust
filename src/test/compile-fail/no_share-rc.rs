@@ -16,6 +16,5 @@ fn bar<T: Sync>(_: T) {}
 fn main() {
     let x = Rc::new(RefCell::new(5i));
     bar(x);
-    //~^ ERROR instantiating a type parameter with an incompatible type
-    //         `std::rc::Rc<std::cell::RefCell<int>>`, which does not fulfill `Sync`
+    //~^ ERROR the trait `core::kinds::Sync` is not implemented
 }

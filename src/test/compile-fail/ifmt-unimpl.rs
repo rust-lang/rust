@@ -10,5 +10,5 @@
 
 fn main() {
     format!("{:d}", "3");
-    //~^ ERROR: failed to find an implementation of trait core::fmt::Signed
+    //~^ ERROR: the trait `core::fmt::Signed` is not implemented
 }

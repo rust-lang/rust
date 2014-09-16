@@ -28,5 +28,5 @@ pub fn main() {
     let f1 = Fat { ptr: Foo };
     let f2: &Fat<Foo> = &f1;
     let f3: &Fat<Bar> = f2;
-    //~^ ERROR failed to find an implementation of trait Bar for Foo
+    //~^ ERROR the trait `Bar` is not implemented for the type `Foo`
 }

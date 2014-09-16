@@ -15,9 +15,6 @@ struct Struct;
 
 fn main() {
     drop(equal(&Struct, &Struct))
-    //~^ ERROR failed to find an implementation of trait core::cmp::Eq
-    //~^^ ERROR failed to find an implementation of trait core::cmp::PartialEq
-    //~^^^ ERROR failed to find an implementation of trait core::cmp::Eq
-    //~^^^^ ERROR failed to find an implementation of trait core::cmp::PartialEq
+    //~^ ERROR the trait `core::cmp::Eq` is not implemented
 }
 

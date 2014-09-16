@@ -15,8 +15,7 @@ struct Foo<T:Trait> {
 }
 
 static X: Foo<uint> = Foo {
-//~^ ERROR failed to find an implementation
-//~^^ ERROR instantiating a type parameter with an incompatible type
+//~^ ERROR not implemented
     x: 1,
 };
 

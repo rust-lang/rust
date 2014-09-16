@@ -87,7 +87,7 @@ struct Deque<T> {
 /// There may only be one worker per deque.
 pub struct Worker<T> {
     deque: Arc<Deque<T>>,
-    noshare: marker::NoSync,
+    _noshare: marker::NoSync,
 }
 
 /// The stealing half of the work-stealing deque. Stealers have access to the
@@ -95,7 +95,7 @@ pub struct Worker<T> {
 /// `steal` method.
 pub struct Stealer<T> {
     deque: Arc<Deque<T>>,
-    noshare: marker::NoSync,
+    _noshare: marker::NoSync,
 }
 
 /// When stealing some data, this is an enumeration of the possible outcomes.
@@ -153,8 +153,8 @@ impl<T: Send> BufferPool<T> {
     pub fn deque(&self) -> (Worker<T>, Stealer<T>) {
         let a = Arc::new(Deque::new(self.clone()));
         let b = a.clone();
-        (Worker { deque: a, noshare: marker::NoSync },
-         Stealer { deque: b, noshare: marker::NoSync })
+        (Worker { deque: a, _noshare: marker::NoSync },
+         Stealer { deque: b, _noshare: marker::NoSync })
     }
 
     fn alloc(&mut self, bits: uint) -> Box<Buffer<T>> {
@@ -217,7 +217,7 @@ impl<T: Send> Stealer<T> {
 
 impl<T: Send> Clone for Stealer<T> {
     fn clone(&self) -> Stealer<T> {
-        Stealer { deque: self.deque.clone(), noshare: marker::NoSync }
+        Stealer { deque: self.deque.clone(), _noshare: marker::NoSync }
     }
 }
 

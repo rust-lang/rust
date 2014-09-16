@@ -75,7 +75,6 @@ use middle::trans::type_of;
 use middle::trans::type_of::*;
 use middle::trans::value::Value;
 use middle::ty;
-use middle::typeck;
 use util::common::indenter;
 use util::ppaux::{Repr, ty_to_string};
 use util::sha2::Sha256;
@@ -540,8 +539,7 @@ pub fn get_res_dtor(ccx: &CrateContext,
         // Since we're in trans we don't care for any region parameters
         let ref substs = subst::Substs::erased(substs.types.clone());
 
-        let vtables = typeck::check::vtable::trans_resolve_method(ccx.tcx(), did.node, substs);
-        let (val, _) = monomorphize::monomorphic_fn(ccx, did, substs, vtables, None);
+        let (val, _) = monomorphize::monomorphic_fn(ccx, did, substs, None);
 
         val
     } else if did.krate == ast::LOCAL_CRATE {

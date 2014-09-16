@@ -17,6 +17,5 @@ fn bar<T: Sync>(_: T) {}
 fn main() {
     let x = Foo { a: 5, m: marker::NoSync };
     bar(x);
-    //~^ ERROR instantiating a type parameter with an incompatible type `Foo`,
-    //         which does not fulfill `Sync`
+    //~^ ERROR the trait `core::kinds::Sync` is not implemented
 }

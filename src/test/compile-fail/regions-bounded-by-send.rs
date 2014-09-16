@@ -58,6 +58,7 @@ fn box_with_region_not_ok<'a>() {
 
 fn object_with_random_bound_not_ok<'a>() {
     assert_send::<&'a Dummy+'a>(); //~ ERROR does not fulfill
+    //~^ ERROR not implemented
 }
 
 fn object_with_send_bound_not_ok<'a>() {
@@ -66,10 +67,12 @@ fn object_with_send_bound_not_ok<'a>() {
 
 fn proc_with_lifetime_not_ok<'a>() {
     assert_send::<proc():'a>(); //~ ERROR does not fulfill
+    //~^ ERROR not implemented
 }
 
 fn closure_with_lifetime_not_ok<'a>() {
     assert_send::<||:'a>(); //~ ERROR does not fulfill
+    //~^ ERROR not implemented
 }
 
 // unsafe pointers are ok unless they point at unsendable things

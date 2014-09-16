@@ -20,9 +20,7 @@ use metadata::cstore;
 use metadata::decoder;
 use metadata::tyencode;
 use middle::ty::{lookup_item_type};
-use middle::astencode;
 use middle::ty;
-use middle::typeck;
 use middle::stability;
 use middle;
 use util::nodemap::{NodeMap, NodeSet};
@@ -125,14 +123,6 @@ fn encode_trait_ref(rbml_w: &mut Encoder,
     rbml_w.end_tag();
 }
 
-fn encode_impl_vtables(rbml_w: &mut Encoder,
-                       ecx: &EncodeContext,
-                       vtables: &typeck::vtable_res) {
-    rbml_w.start_tag(tag_item_impl_vtables);
-    astencode::encode_vtable_res(ecx, rbml_w, vtables);
-    rbml_w.end_tag();
-}
-
 // Item info table encoding
 fn encode_family(rbml_w: &mut Encoder, c: char) {
     rbml_w.start_tag(tag_items_data_item_family);
@@ -189,6 +179,18 @@ pub fn write_type(ecx: &EncodeContext,
         abbrevs: &ecx.type_abbrevs
     };
     tyencode::enc_ty(rbml_w.writer, ty_str_ctxt, typ);
+}
+
+pub fn write_trait_ref(ecx: &EncodeContext,
+                       rbml_w: &mut Encoder,
+                       trait_ref: &ty::TraitRef) {
+    let ty_str_ctxt = &tyencode::ctxt {
+        diag: ecx.diag,
+        ds: def_to_string,
+        tcx: ecx.tcx,
+        abbrevs: &ecx.type_abbrevs
+    };
+    tyencode::enc_trait_ref(rbml_w.writer, ty_str_ctxt, trait_ref);
 }
 
 pub fn write_region(ecx: &EncodeContext,
@@ -399,7 +401,7 @@ fn encode_reexported_static_base_methods(ecx: &EncodeContext,
     let impl_items = ecx.tcx.impl_items.borrow();
     match ecx.tcx.inherent_impls.borrow().find(&exp.def_id) {
         Some(implementations) => {
-            for base_impl_did in implementations.borrow().iter() {
+            for base_impl_did in implementations.iter() {
                 for &method_did in impl_items.get(base_impl_did).iter() {
                     let impl_item = ty::impl_or_trait_item(
                         ecx.tcx,
@@ -946,7 +948,7 @@ fn encode_inherent_implementations(ecx: &EncodeContext,
     match ecx.tcx.inherent_impls.borrow().find(&def_id) {
         None => {}
         Some(implementations) => {
-            for &impl_def_id in implementations.borrow().iter() {
+            for &impl_def_id in implementations.iter() {
                 rbml_w.start_tag(tag_items_data_item_inherent_impl);
                 encode_def_id(rbml_w, impl_def_id);
                 rbml_w.end_tag();
@@ -1203,8 +1205,6 @@ fn encode_info_for_item(ecx: &EncodeContext,
             let trait_ref = ty::node_id_to_trait_ref(
                 tcx, ast_trait_ref.ref_id);
             encode_trait_ref(rbml_w, ecx, &*trait_ref, tag_item_trait_ref);
-            let impl_vtables = ty::lookup_impl_vtables(tcx, def_id);
-            encode_impl_vtables(rbml_w, ecx, &impl_vtables);
         }
         encode_path(rbml_w, path.clone());
         encode_stability(rbml_w, stab);

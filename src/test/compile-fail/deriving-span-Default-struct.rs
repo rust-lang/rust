@@ -18,7 +18,7 @@ struct Error;
 
 #[deriving(Default)]
 struct Struct {
-    x: Error //~ ERROR
+    x: Error //~ ERROR `core::default::Default` is not implemented
 }
 
 fn main() {}

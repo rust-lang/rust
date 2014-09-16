@@ -555,11 +555,9 @@ pub fn check_pat(pcx: &pat_ctxt, pat: &ast::Pat, expected: ty::t) {
                             None);
                 match tcx.def_map.borrow().find(&pat.id) {
                     Some(def) => {
-                        let item_type = ty::lookup_item_type(tcx, def.def_id());
-                        let substitutions = fcx.infcx().fresh_substs_for_type(
-                            pat.span, &item_type.generics);
+                        let struct_ty = fcx.instantiate_item_type(pat.span, def.def_id());
                         check_struct_pat(pcx, pat.span, fields.as_slice(),
-                                         etc, def.def_id(), &substitutions);
+                                         etc, def.def_id(), &struct_ty.substs);
                     }
                     None => {
                         tcx.sess.span_bug(pat.span,

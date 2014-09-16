@@ -14,5 +14,5 @@ fn foo<P: Sync>(p: P) { }
 
 fn main()
 {
-    foo(marker::NoSync); //~ ERROR does not fulfill `Sync`
+    foo(marker::NoSync); //~ ERROR the trait `core::kinds::Sync` is not implemented
 }

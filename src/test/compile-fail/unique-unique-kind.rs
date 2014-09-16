@@ -16,5 +16,5 @@ fn f<T:Send>(_i: T) {
 
 fn main() {
     let i = box box(GC) 100i;
-    f(i); //~ ERROR does not fulfill `Send`
+    f(i); //~ ERROR `core::kinds::Send` is not implemented
 }
