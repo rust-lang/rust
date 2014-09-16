@@ -1520,11 +1520,12 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                     sp, "not all control paths return a value");
                 if ends_with_stmt {
                     let last_stmt = body.stmts.last().unwrap();
-                    let original_span = original_sp(last_stmt.span, sp);
+                    let original_span = original_sp(self.ir.tcx.sess.codemap(),
+                                                    last_stmt.span, sp);
                     let span_semicolon = Span {
                         lo: original_span.hi - BytePos(1),
                         hi: original_span.hi,
-                        expn_info: original_span.expn_info
+                        expn_id: original_span.expn_id
                     };
                     self.ir.tcx.sess.span_note(
                         span_semicolon, "consider removing this semicolon:");
