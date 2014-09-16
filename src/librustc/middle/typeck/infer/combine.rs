@@ -34,7 +34,7 @@
 
 
 use middle::subst;
-use middle::subst::Substs;
+use middle::subst::{ErasedRegions, NonerasedRegions, Substs};
 use middle::ty::{FloatVar, FnSig, IntVar, TyVar};
 use middle::ty::{IntType, UintType};
 use middle::ty::{BuiltinBounds};
@@ -113,29 +113,40 @@ pub trait Combine<'tcx> {
             let a_tps = a_subst.types.get_slice(space);
             let b_tps = b_subst.types.get_slice(space);
             let tps = try!(self.tps(space, a_tps, b_tps));
-
-            let a_regions = a_subst.regions().get_slice(space);
-            let b_regions = b_subst.regions().get_slice(space);
-
-            let mut invariance = Vec::new();
-            let r_variances = match variances {
-                Some(ref variances) => variances.regions.get_slice(space),
-                None => {
-                    for _ in a_regions.iter() {
-                        invariance.push(ty::Invariant);
-                    }
-                    invariance.as_slice()
-                }
-            };
-
-            let regions = try!(relate_region_params(self,
-                                                    item_def_id,
-                                                    r_variances,
-                                                    a_regions,
-                                                    b_regions));
-
             substs.types.replace(space, tps);
-            substs.mut_regions().replace(space, regions);
+        }
+
+        match (&a_subst.regions, &b_subst.regions) {
+            (&ErasedRegions, _) | (_, &ErasedRegions) => {
+                substs.regions = ErasedRegions;
+            }
+
+            (&NonerasedRegions(ref a), &NonerasedRegions(ref b)) => {
+                for &space in subst::ParamSpace::all().iter() {
+                    let a_regions = a.get_slice(space);
+                    let b_regions = b.get_slice(space);
+
+                    let mut invariance = Vec::new();
+                    let r_variances = match variances {
+                        Some(ref variances) => {
+                            variances.regions.get_slice(space)
+                        }
+                        None => {
+                            for _ in a_regions.iter() {
+                                invariance.push(ty::Invariant);
+                            }
+                            invariance.as_slice()
+                        }
+                    };
+
+                    let regions = try!(relate_region_params(self,
+                                                            item_def_id,
+                                                            r_variances,
+                                                            a_regions,
+                                                            b_regions));
+                    substs.mut_regions().replace(space, regions);
+                }
+            }
         }
 
         return Ok(substs);

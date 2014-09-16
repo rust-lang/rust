@@ -8,11 +8,38 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Generalized type folding mechanism.
+/*!
+ * Generalized type folding mechanism. The setup is a bit convoluted
+ * but allows for convenient usage. Let T be an instance of some
+ * "foldable type" (one which implements `TypeFoldable`) and F be an
+ * instance of a "folder" (a type which implements `TypeFolder`). Then
+ * the setup is intended to be:
+ *
+ *     T.fold_with(F) --calls--> F.fold_T(T) --calls--> super_fold_T(F, T)
+ *
+ * This way, when you define a new folder F, you can override
+ * `fold_T()` to customize the behavior, and invoke `super_fold_T()`
+ * to get the original behavior. Meanwhile, to actually fold
+ * something, you can just write `T.fold_with(F)`, which is
+ * convenient. (Note that `fold_with` will also transparently handle
+ * things like a `Vec<T>` where T is foldable and so on.)
+ *
+ * In this ideal setup, the only function that actually *does*
+ * anything is `super_fold_T`, which traverses the type `T`. Moreover,
+ * `super_fold_T` should only ever call `T.fold_with()`.
+ *
+ * In some cases, we follow a degenerate pattern where we do not have
+ * a `fold_T` nor `super_fold_T` method. Instead, `T.fold_with`
+ * traverses the structure directly. This is suboptimal because the
+ * behavior cannot be overriden, but it's much less work to implement.
+ * If you ever *do* need an override that doesn't exist, it's not hard
+ * to convert the degenerate pattern into the proper thing.
+ */
 
 use middle::subst;
 use middle::subst::VecPerParamSpace;
 use middle::ty;
+use middle::traits;
 use middle::typeck;
 use std::rc::Rc;
 use syntax::ast;
@@ -97,6 +124,10 @@ pub trait TypeFolder<'tcx> {
     fn fold_item_substs(&mut self, i: ty::ItemSubsts) -> ty::ItemSubsts {
         super_fold_item_substs(self, i)
     }
+
+    fn fold_obligation(&mut self, o: &traits::Obligation) -> traits::Obligation {
+        super_fold_obligation(self, o)
+    }
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -109,6 +140,12 @@ pub trait TypeFolder<'tcx> {
 // override the behavior, but there are a lot of random types and one
 // can easily refactor the folding into the TypeFolder trait as
 // needed.
+
+impl TypeFoldable for () {
+    fn fold_with<'tcx, F:TypeFolder<'tcx>>(&self, _: &mut F) -> () {
+        ()
+    }
+}
 
 impl<T:TypeFoldable> TypeFoldable for Option<T> {
     fn fold_with<'tcx, F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Option<T> {
@@ -296,9 +333,50 @@ impl TypeFoldable for ty::UnsizeKind {
         match *self {
             ty::UnsizeLength(len) => ty::UnsizeLength(len),
             ty::UnsizeStruct(box ref k, n) => ty::UnsizeStruct(box k.fold_with(folder), n),
-            ty::UnsizeVtable(bounds, def_id, ref substs) => {
-                ty::UnsizeVtable(bounds.fold_with(folder), def_id, substs.fold_with(folder))
+            ty::UnsizeVtable(ty::TyTrait{bounds, def_id, substs: ref substs}, self_ty) => {
+                ty::UnsizeVtable(
+                    ty::TyTrait {
+                        bounds: bounds.fold_with(folder),
+                        def_id: def_id,
+                        substs: substs.fold_with(folder)
+                    },
+                    self_ty.fold_with(folder))
             }
+        }
+    }
+}
+
+impl TypeFoldable for traits::Obligation {
+    fn fold_with<'tcx, F:TypeFolder<'tcx>>(&self, folder: &mut F) -> traits::Obligation {
+        folder.fold_obligation(self)
+    }
+}
+
+impl<N:TypeFoldable> TypeFoldable for traits::VtableImpl<N> {
+    fn fold_with<'tcx, F:TypeFolder<'tcx>>(&self, folder: &mut F) -> traits::VtableImpl<N> {
+        traits::VtableImpl {
+            impl_def_id: self.impl_def_id,
+            substs: self.substs.fold_with(folder),
+            nested: self.nested.fold_with(folder),
+        }
+    }
+}
+
+impl<N:TypeFoldable> TypeFoldable for traits::Vtable<N> {
+    fn fold_with<'tcx, F:TypeFolder<'tcx>>(&self, folder: &mut F) -> traits::Vtable<N> {
+        match *self {
+            traits::VtableImpl(ref v) => traits::VtableImpl(v.fold_with(folder)),
+            traits::VtableUnboxedClosure(d) => traits::VtableUnboxedClosure(d),
+            traits::VtableParam(ref p) => traits::VtableParam(p.fold_with(folder)),
+            traits::VtableBuiltin => traits::VtableBuiltin,
+        }
+    }
+}
+
+impl TypeFoldable for traits::VtableParam {
+    fn fold_with<'tcx, F:TypeFolder<'tcx>>(&self, folder: &mut F) -> traits::VtableParam {
+        traits::VtableParam {
+            bound: self.bound.fold_with(folder),
         }
     }
 }
@@ -482,6 +560,17 @@ pub fn super_fold_item_substs<'tcx, T: TypeFolder<'tcx>>(this: &mut T,
     }
 }
 
+pub fn super_fold_obligation<'tcx, T:TypeFolder<'tcx>>(this: &mut T,
+                                                       obligation: &traits::Obligation)
+                                                       -> traits::Obligation
+{
+    traits::Obligation {
+        cause: obligation.cause,
+        recursion_depth: obligation.recursion_depth,
+        trait_ref: obligation.trait_ref.fold_with(this),
+    }
+}
+
 ///////////////////////////////////////////////////////////////////////////
 // Some sample folders
 
@@ -588,6 +677,31 @@ impl<'a, 'tcx> TypeFolder<'tcx> for RegionFolder<'a, 'tcx> {
                 debug!("RegionFolder.fold_region({}) folding free region", r.repr(self.tcx()));
                 (self.fld_r)(r)
             }
+        }
+    }
+}
+
+///////////////////////////////////////////////////////////////////////////
+// Region eraser
+//
+// Replaces all free regions with 'static. Useful in trans.
+
+pub struct RegionEraser<'a, 'tcx: 'a> {
+    tcx: &'a ty::ctxt<'tcx>,
+}
+
+pub fn erase_regions<T:TypeFoldable>(tcx: &ty::ctxt, t: T) -> T {
+    let mut eraser = RegionEraser { tcx: tcx };
+    t.fold_with(&mut eraser)
+}
+
+impl<'a, 'tcx> TypeFolder<'tcx> for RegionEraser<'a, 'tcx> {
+    fn tcx<'a>(&'a self) -> &'a ty::ctxt<'tcx> { self.tcx }
+
+    fn fold_region(&mut self, r: ty::Region) -> ty::Region {
+        match r {
+            ty::ReLateBound(..) | ty::ReEarlyBound(..) => r,
+            _ => ty::ReStatic
         }
     }
 }

@@ -8,12 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-
-type Foo = Vec<u8>;
-
-impl Drop for Foo {
-//~^ ERROR cannot provide an extension implementation
+impl Drop for int {
+    //~^ ERROR the Drop trait may only be implemented on structures
+    //~^^ ERROR cannot provide an extension implementation
     fn drop(&mut self) {
         println!("kaboom");
     }

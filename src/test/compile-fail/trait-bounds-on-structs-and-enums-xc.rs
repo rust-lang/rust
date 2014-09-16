@@ -15,22 +15,11 @@ extern crate trait_bounds_on_structs_and_enums_xc;
 use trait_bounds_on_structs_and_enums_xc::{Bar, Foo, Trait};
 
 fn explode(x: Foo<uint>) {}
-//~^ ERROR failed to find an implementation
-//~^^ ERROR instantiating a type parameter with an incompatible type
+//~^ ERROR not implemented
 
 fn kaboom(y: Bar<f32>) {}
-//~^ ERROR failed to find an implementation
-//~^^ ERROR instantiating a type parameter with an incompatible type
+//~^ ERROR not implemented
 
 fn main() {
-    let foo = Foo {
-    //~^ ERROR failed to find an implementation
-    //~^^ ERROR instantiating a type parameter with an incompatible type
-        x: 3i
-    };
-    let bar: Bar<f64> = return;
-    //~^ ERROR failed to find an implementation
-    //~^^ ERROR instantiating a type parameter with an incompatible type
-    let _ = bar;
 }
 

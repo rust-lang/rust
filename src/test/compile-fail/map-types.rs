@@ -18,6 +18,5 @@ fn main() {
     let x: Box<HashMap<int, int>> = box HashMap::new();
     let x: Box<Map<int, int>> = x;
     let y: Box<Map<uint, int>> = box x;
-    //~^ ERROR failed to find an implementation of trait collections::Map<uint,int>
-    //~^^ ERROR failed to find an implementation of trait core::collections::Collection
+    //~^ ERROR the trait `collections::Map<uint,int>` is not implemented
 }

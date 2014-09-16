@@ -1470,17 +1470,17 @@ impl LintPass for Stability {
                                 def_id
                             }
                             typeck::MethodParam(typeck::MethodParam {
-                                trait_id: trait_id,
+                                trait_ref: ref trait_ref,
                                 method_num: index,
                                 ..
-                            })
-                            | typeck::MethodObject(typeck::MethodObject {
-                                trait_id: trait_id,
+                            }) |
+                            typeck::MethodObject(typeck::MethodObject {
+                                trait_ref: ref trait_ref,
                                 method_num: index,
                                 ..
                             }) => {
                                 match ty::trait_item(cx.tcx,
-                                                     trait_id,
+                                                     trait_ref.def_id,
                                                      index) {
                                     ty::MethodTraitItem(method) => {
                                         method.def_id

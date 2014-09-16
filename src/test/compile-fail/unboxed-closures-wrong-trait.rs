@@ -17,6 +17,6 @@ fn c<F:|: int, int| -> int>(f: F) -> int {
 fn main() {
     let z: int = 7;
     assert_eq!(c(|&: x: int, y| x + y + z), 10);
-    //~^ ERROR failed to find an implementation
+    //~^ ERROR not implemented
 }
 

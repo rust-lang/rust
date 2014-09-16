@@ -28,6 +28,6 @@ fn foo(i:int, j: Gc<String>) -> foo {
 
 fn main() {
   let cat = "kitty".to_string();
-  let (tx, _) = channel(); //~ ERROR does not fulfill `Send`
-  tx.send(foo(42, box(GC) (cat))); //~ ERROR does not fulfill `Send`
+  let (tx, _) = channel(); //~ ERROR `core::kinds::Send` is not implemented
+  tx.send(foo(42, box(GC) (cat))); //~ ERROR `core::kinds::Send` is not implemented
 }

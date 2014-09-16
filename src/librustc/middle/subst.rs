@@ -164,6 +164,11 @@ impl Substs {
         s
     }
 
+    pub fn erase_regions(self) -> Substs {
+        let Substs { types: types, regions: _ } = self;
+        Substs { types: types, regions: ErasedRegions }
+    }
+
     pub fn regions<'a>(&'a self) -> &'a VecPerParamSpace<ty::Region> {
         /*!
          * Since ErasedRegions are only to be used in trans, most of
@@ -333,6 +338,16 @@ impl<T> VecPerParamSpace<T> {
         }
     }
 
+    fn new_internal(content: Vec<T>, type_limit: uint, self_limit: uint)
+                    -> VecPerParamSpace<T>
+    {
+        VecPerParamSpace {
+            type_limit: type_limit,
+            self_limit: self_limit,
+            content: content,
+        }
+    }
+
     pub fn sort(t: Vec<T>, space: |&T| -> ParamSpace) -> VecPerParamSpace<T> {
         let mut result = VecPerParamSpace::empty();
         for t in t.move_iter() {
@@ -448,13 +463,17 @@ impl<T> VecPerParamSpace<T> {
     }
 
     pub fn map<U>(&self, pred: |&T| -> U) -> VecPerParamSpace<U> {
-        // FIXME (#15418): this could avoid allocating the intermediate
-        // Vec's, but note that the values of type_limit and self_limit
-        // also need to be kept in sync during construction.
-        VecPerParamSpace::new(
-            self.get_slice(TypeSpace).iter().map(|p| pred(p)).collect(),
-            self.get_slice(SelfSpace).iter().map(|p| pred(p)).collect(),
-            self.get_slice(FnSpace).iter().map(|p| pred(p)).collect())
+        let result = self.iter().map(pred).collect();
+        VecPerParamSpace::new_internal(result,
+                                       self.type_limit,
+                                       self.self_limit)
+    }
+
+    pub fn map_move<U>(self, pred: |T| -> U) -> VecPerParamSpace<U> {
+        let (t, s, f) = self.split();
+        VecPerParamSpace::new(t.move_iter().map(|p| pred(p)).collect(),
+                              s.move_iter().map(|p| pred(p)).collect(),
+                              f.move_iter().map(|p| pred(p)).collect())
     }
 
     pub fn map_rev<U>(&self, pred: |&T| -> U) -> VecPerParamSpace<U> {

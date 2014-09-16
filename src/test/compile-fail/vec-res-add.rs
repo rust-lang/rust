@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern: failed to find an implementation
-
 struct r {
   i:int
 }
@@ -25,5 +23,7 @@ fn main() {
     let i = vec!(r(0));
     let j = vec!(r(1));
     let k = i + j;
+    //~^ ERROR not implemented
     println!("{}", j);
+    //~^ ERROR not implemented
 }

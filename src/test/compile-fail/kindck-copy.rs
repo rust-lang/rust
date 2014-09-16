@@ -34,14 +34,14 @@ fn test<'a,T,U:Copy>(_: &'a int) {
     assert_copy::<&'a [int]>();
 
     // ...unless they are mutable
-    assert_copy::<&'static mut int>(); //~ ERROR does not fulfill
-    assert_copy::<&'a mut int>();  //~ ERROR does not fulfill
+    assert_copy::<&'static mut int>(); //~ ERROR `core::kinds::Copy` is not implemented
+    assert_copy::<&'a mut int>();  //~ ERROR `core::kinds::Copy` is not implemented
 
     // ~ pointers are not ok
-    assert_copy::<Box<int>>();   //~ ERROR does not fulfill
-    assert_copy::<String>();   //~ ERROR does not fulfill
-    assert_copy::<Vec<int> >(); //~ ERROR does not fulfill
-    assert_copy::<Box<&'a mut int>>(); //~ ERROR does not fulfill
+    assert_copy::<Box<int>>();   //~ ERROR `core::kinds::Copy` is not implemented
+    assert_copy::<String>();   //~ ERROR `core::kinds::Copy` is not implemented
+    assert_copy::<Vec<int> >(); //~ ERROR `core::kinds::Copy` is not implemented
+    assert_copy::<Box<&'a mut int>>(); //~ ERROR `core::kinds::Copy` is not implemented
 
     // borrowed object types are generally ok
     assert_copy::<&'a Dummy>();
@@ -49,14 +49,14 @@ fn test<'a,T,U:Copy>(_: &'a int) {
     assert_copy::<&'static Dummy+Copy>();
 
     // owned object types are not ok
-    assert_copy::<Box<Dummy>>(); //~ ERROR does not fulfill
-    assert_copy::<Box<Dummy+Copy>>(); //~ ERROR does not fulfill
+    assert_copy::<Box<Dummy>>(); //~ ERROR `core::kinds::Copy` is not implemented
+    assert_copy::<Box<Dummy+Copy>>(); //~ ERROR `core::kinds::Copy` is not implemented
 
     // mutable object types are not ok
-    assert_copy::<&'a mut Dummy+Copy>();  //~ ERROR does not fulfill
+    assert_copy::<&'a mut Dummy+Copy>();  //~ ERROR `core::kinds::Copy` is not implemented
 
     // closures are like an `&mut` object
-    assert_copy::<||>(); //~ ERROR does not fulfill
+    assert_copy::<||>(); //~ ERROR `core::kinds::Copy` is not implemented
 
     // unsafe ptrs are ok
     assert_copy::<*const int>();
@@ -74,11 +74,11 @@ fn test<'a,T,U:Copy>(_: &'a int) {
     assert_copy::<MyStruct>();
 
     // structs containing non-POD are not ok
-    assert_copy::<MyNoncopyStruct>(); //~ ERROR does not fulfill
+    assert_copy::<MyNoncopyStruct>(); //~ ERROR `core::kinds::Copy` is not implemented
 
     // managed or ref counted types are not ok
-    assert_copy::<Gc<int>>();   //~ ERROR does not fulfill
-    assert_copy::<Rc<int>>();   //~ ERROR does not fulfill
+    assert_copy::<Gc<int>>();   //~ ERROR `core::kinds::Copy` is not implemented
+    assert_copy::<Rc<int>>();   //~ ERROR `core::kinds::Copy` is not implemented
 }
 
 pub fn main() {

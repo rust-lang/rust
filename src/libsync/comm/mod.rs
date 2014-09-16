@@ -379,7 +379,7 @@ pub struct Receiver<T> {
     inner: UnsafeCell<Flavor<T>>,
     receives: Cell<uint>,
     // can't share in an arc
-    marker: marker::NoSync,
+    _marker: marker::NoSync,
 }
 
 /// An iterator over messages on a receiver, this iterator will block
@@ -397,7 +397,7 @@ pub struct Sender<T> {
     inner: UnsafeCell<Flavor<T>>,
     sends: Cell<uint>,
     // can't share in an arc
-    marker: marker::NoSync,
+    _marker: marker::NoSync,
 }
 
 /// The sending-half of Rust's synchronous channel type. This half can only be
@@ -406,7 +406,7 @@ pub struct Sender<T> {
 pub struct SyncSender<T> {
     inner: Arc<UnsafeCell<sync::Packet<T>>>,
     // can't share in an arc
-    marker: marker::NoSync,
+    _marker: marker::NoSync,
 }
 
 /// This enumeration is the list of the possible reasons that try_recv could not
@@ -543,7 +543,7 @@ impl<T: Send> Sender<T> {
         Sender {
             inner: UnsafeCell::new(inner),
             sends: Cell::new(0),
-            marker: marker::NoSync,
+            _marker: marker::NoSync,
         }
     }
 
@@ -719,7 +719,7 @@ impl<T: Send> Drop for Sender<T> {
 
 impl<T: Send> SyncSender<T> {
     fn new(inner: Arc<UnsafeCell<sync::Packet<T>>>) -> SyncSender<T> {
-        SyncSender { inner: inner, marker: marker::NoSync }
+        SyncSender { inner: inner, _marker: marker::NoSync }
     }
 
     /// Sends a value on this synchronous channel.
@@ -807,7 +807,7 @@ impl<T: Send> Drop for SyncSender<T> {
 
 impl<T: Send> Receiver<T> {
     fn new(inner: Flavor<T>) -> Receiver<T> {
-        Receiver { inner: UnsafeCell::new(inner), receives: Cell::new(0), marker: marker::NoSync }
+        Receiver { inner: UnsafeCell::new(inner), receives: Cell::new(0), _marker: marker::NoSync }
     }
 
     /// Blocks waiting for a value on this receiver

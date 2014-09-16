@@ -16,11 +16,9 @@ extern crate rand;
 
 struct Error;
 
-#[deriving(Zero)]   //~ ERROR failed to find an implementation
+#[deriving(Zero)]   //~ ERROR not implemented
 struct Struct {
-    x: Error //~ ERROR failed to find an implementation
-    //~^ ERROR failed to find an implementation
-    //~^^ ERROR type `Error` does not implement any method in scope
+    x: Error
 }
 
 fn main() {}

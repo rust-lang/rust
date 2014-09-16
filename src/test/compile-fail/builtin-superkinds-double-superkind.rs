@@ -13,9 +13,9 @@
 
 trait Foo : Send+Sync { }
 
-impl <T: Sync> Foo for (T,) { } //~ ERROR cannot implement this trait
+impl <T: Sync+'static> Foo for (T,) { } //~ ERROR the trait `core::kinds::Send` is not implemented
 
-impl <T: Send> Foo for (T,T) { } //~ ERROR cannot implement this trait
+impl <T: Send> Foo for (T,T) { } //~ ERROR the trait `core::kinds::Sync` is not implemented
 
 impl <T: Send+Sync> Foo for (T,T,T) { } // (ok)
 

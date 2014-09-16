@@ -15,6 +15,5 @@ fn bar<T: Send>(_: T) {}
 fn main() {
     let x = Rc::new(5i);
     bar(x);
-    //~^ ERROR instantiating a type parameter with an incompatible type `alloc::rc::Rc<int>`,
-    //         which does not fulfill `Send`
+    //~^ ERROR `core::kinds::Send` is not implemented
 }
