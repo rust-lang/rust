@@ -49,7 +49,6 @@ exceptions = [
     "test/bench/shootout-mandelbrot.rs", # BSD
     "test/bench/shootout-meteor.rs", # BSD
     "test/bench/shootout-nbody.rs", # BSD
-    "test/bench/shootout-pidigits.rs", # BSD
     "test/bench/shootout-regex-dna.rs", # BSD
     "test/bench/shootout-reverse-complement.rs", # BSD
     "test/bench/shootout-threadring.rs", # BSD

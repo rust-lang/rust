@@ -46,7 +46,9 @@
 #![feature(default_type_params)]
 
 #![crate_name = "num"]
-#![experimental]
+#![deprecated = "This is now a cargo package located at: \
+                 https://github.com/rust-lang/num"]
+#![allow(deprecated)]
 #![crate_type = "rlib"]
 #![crate_type = "dylib"]
 #![license = "MIT/ASL2"]
