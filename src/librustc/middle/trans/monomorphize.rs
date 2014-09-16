@@ -34,17 +34,14 @@ use std::hash::{sip, Hash};
 pub fn monomorphic_fn(ccx: &CrateContext,
                       fn_id: ast::DefId,
                       real_substs: &subst::Substs,
-                      vtables: typeck::vtable_res,
                       ref_id: Option<ast::NodeId>)
     -> (ValueRef, bool) {
     debug!("monomorphic_fn(\
             fn_id={}, \
             real_substs={}, \
-            vtables={}, \
             ref_id={:?})",
            fn_id.repr(ccx.tcx()),
            real_substs.repr(ccx.tcx()),
-           vtables.repr(ccx.tcx()),
            ref_id);
 
     assert!(real_substs.types.all(|t| {
@@ -69,7 +66,6 @@ pub fn monomorphic_fn(ccx: &CrateContext,
 
     let psubsts = param_substs {
         substs: (*real_substs).clone(),
-        vtables: vtables,
     };
 
     debug!("monomorphic_fn(\
@@ -286,7 +282,7 @@ pub fn monomorphic_fn(ccx: &CrateContext,
     (lldecl, true)
 }
 
-// Used to identify cached monomorphized functions and vtables
+// Used to identify cached monomorphized functions
 #[deriving(PartialEq, Eq, Hash)]
 pub struct MonoParamId {
     pub subst: ty::t,

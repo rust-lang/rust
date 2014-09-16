@@ -14,5 +14,5 @@ fn foo<P:Copy>(p: P) { }
 
 fn main()
 {
-    foo(marker::NoCopy); //~ ERROR does not fulfill
+    foo(marker::NoCopy); //~ ERROR the trait `core::kinds::Copy` is not implemented
 }

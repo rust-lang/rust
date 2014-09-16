@@ -102,17 +102,17 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
                     }
                     typeck::MethodStaticUnboxedClosure(_) => {}
                     typeck::MethodParam(typeck::MethodParam {
-                        trait_id: trait_id,
+                        trait_ref: ref trait_ref,
                         method_num: index,
                         ..
-                    })
-                    | typeck::MethodObject(typeck::MethodObject {
-                        trait_id: trait_id,
+                    }) |
+                    typeck::MethodObject(typeck::MethodObject {
+                        trait_ref: ref trait_ref,
                         method_num: index,
                         ..
                     }) => {
                         let trait_item = ty::trait_item(self.tcx,
-                                                        trait_id,
+                                                        trait_ref.def_id,
                                                         index);
                         match trait_item {
                             ty::MethodTraitItem(method) => {
@@ -470,7 +470,7 @@ impl<'a, 'tcx> DeadVisitor<'a, 'tcx> {
         match self.tcx.inherent_impls.borrow().find(&local_def(id)) {
             None => (),
             Some(impl_list) => {
-                for impl_did in impl_list.borrow().iter() {
+                for impl_did in impl_list.iter() {
                     for item_did in impl_items.get(impl_did).iter() {
                         if self.live_symbols.contains(&item_did.def_id()
                                                                .node) {

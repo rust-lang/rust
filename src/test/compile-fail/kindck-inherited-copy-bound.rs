@@ -23,8 +23,8 @@ fn take_param<T:Foo>(foo: &T) { }
 
 fn main() {
     let x = box 3i;
-    take_param(&x); //~ ERROR does not fulfill `Copy`
+    take_param(&x); //~ ERROR `core::kinds::Copy` is not implemented
 
     let y = &x;
-    let z = &x as &Foo; //~ ERROR does not fulfill `Copy`
+    let z = &x as &Foo; //~ ERROR `core::kinds::Copy` is not implemented
 }

@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![no_std]
-
 fn a<'a, 'b:'a>(x: &mut &'a int, y: &mut &'b int) {
     // Note: this is legal because of the `'b:'a` declaration.
     *x = *y;

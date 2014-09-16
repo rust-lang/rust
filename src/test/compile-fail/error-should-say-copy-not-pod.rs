@@ -13,5 +13,5 @@
 fn check_bound<T:Copy>(_: T) {}
 
 fn main() {
-    check_bound("nocopy".to_string()); //~ ERROR does not fulfill `Copy`
+    check_bound("nocopy".to_string()); //~ ERROR the trait `core::kinds::Copy` is not implemented
 }

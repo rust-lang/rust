@@ -29,8 +29,11 @@ use middle::trans::datum;
 use middle::trans::debuginfo;
 use middle::trans::type_::Type;
 use middle::trans::type_of;
+use middle::traits;
 use middle::ty;
+use middle::ty_fold;
 use middle::typeck;
+use middle::typeck::infer;
 use util::ppaux::Repr;
 use util::nodemap::{DefIdMap, NodeMap};
 
@@ -39,6 +42,7 @@ use std::collections::HashMap;
 use libc::{c_uint, c_longlong, c_ulonglong, c_char};
 use std::c_str::ToCStr;
 use std::cell::{Cell, RefCell};
+use std::rc::Rc;
 use std::vec::Vec;
 use syntax::ast::Ident;
 use syntax::ast;
@@ -188,14 +192,12 @@ pub type ExternMap = HashMap<String, ValueRef>;
 // will only be set in the case of default methods.
 pub struct param_substs {
     pub substs: subst::Substs,
-    pub vtables: typeck::vtable_res,
 }
 
 impl param_substs {
     pub fn empty() -> param_substs {
         param_substs {
             substs: subst::Substs::trans_empty(),
-            vtables: subst::VecPerParamSpace::empty(),
         }
     }
 
@@ -204,15 +206,9 @@ impl param_substs {
     }
 }
 
-fn param_substs_to_string(this: &param_substs, tcx: &ty::ctxt) -> String {
-    format!("param_substs(substs={},vtables={})",
-            this.substs.repr(tcx),
-            this.vtables.repr(tcx))
-}
-
 impl Repr for param_substs {
     fn repr(&self, tcx: &ty::ctxt) -> String {
-        param_substs_to_string(self, tcx)
+        self.substs.repr(tcx)
     }
 }
 
@@ -766,6 +762,98 @@ pub fn expr_ty_adjusted(bcx: Block, ex: &ast::Expr) -> ty::t {
     monomorphize_type(bcx, ty::expr_ty_adjusted(bcx.tcx(), ex))
 }
 
+pub fn fulfill_obligation(ccx: &CrateContext,
+                          span: Span,
+                          trait_ref: Rc<ty::TraitRef>)
+                          -> traits::Vtable<()>
+{
+    /*!
+     * Attempts to resolve an obligation. The result is a shallow
+     * vtable resolution -- meaning that we do not (necessarily) resolve
+     * all nested obligations on the impl. Note that type check should
+     * guarantee to us that all nested obligations *could be* resolved
+     * if we wanted to.
+     */
+
+    let tcx = ccx.tcx();
+
+    // Remove any references to regions; this helps improve caching.
+    let trait_ref = ty_fold::erase_regions(tcx, trait_ref);
+
+    // First check the cache.
+    match ccx.trait_cache().borrow().find(&trait_ref) {
+        Some(vtable) => {
+            info!("Cache hit: {}", trait_ref.repr(ccx.tcx()));
+            return (*vtable).clone();
+        }
+        None => { }
+    }
+
+    ty::populate_implementations_for_trait_if_necessary(tcx, trait_ref.def_id);
+    let infcx = infer::new_infer_ctxt(tcx);
+
+    // Parameter environment is used to give details about type parameters,
+    // but since we are in trans, everything is fully monomorphized.
+    let param_env = ty::empty_parameter_environment();
+    let unboxed_closures = tcx.unboxed_closures.borrow();
+
+    // Do the initial selection for the obligation. This yields the
+    // shallow result we are looking for -- that is, what specific impl.
+    let selcx = traits::SelectionContext::new(&infcx, &param_env,
+                                              &*unboxed_closures);
+    let obligation = traits::Obligation::misc(span, trait_ref.clone());
+    let selection = match selcx.select(&obligation) {
+        Ok(Some(selection)) => selection,
+        Ok(None) => {
+            tcx.sess.span_bug(
+                span,
+                format!("Encountered ambiguity selecting `{}` during trans",
+                        trait_ref.repr(tcx)).as_slice())
+        }
+        Err(e) => {
+            tcx.sess.span_bug(
+                span,
+                format!("Encountered error `{}` selecting `{}` during trans",
+                        e.repr(tcx),
+                        trait_ref.repr(tcx)).as_slice())
+        }
+    };
+
+    // Currently, we use a fulfillment context to completely resolve
+    // all nested obligations. This is because they can inform the
+    // inference of the impl's type parameters. However, in principle,
+    // we only need to do this until the impl's type parameters are
+    // fully bound. It could be a slight optimization to stop
+    // iterating early.
+    let mut fulfill_cx = traits::FulfillmentContext::new();
+    let vtable = selection.map_move_nested(|obligation| {
+        fulfill_cx.register_obligation(tcx, obligation);
+    });
+    match fulfill_cx.select_all_or_error(&infcx, &param_env, &*unboxed_closures) {
+        Ok(()) => { }
+        Err(e) => {
+            tcx.sess.span_bug(
+                span,
+                format!("Encountered errors `{}` fulfilling `{}` during trans",
+                        e.repr(tcx),
+                        trait_ref.repr(tcx)).as_slice());
+        }
+    }
+
+    // Use skolemize to simultaneously replace all type variables with
+    // their bindings and replace all regions with 'static.  This is
+    // sort of overkill because we do not expect there to be any
+    // unbound type variables, hence no skolemized types should ever
+    // be inserted.
+    let vtable = infer::skolemize(&infcx, vtable);
+
+    info!("Cache miss: {}", trait_ref.repr(ccx.tcx()));
+    ccx.trait_cache().borrow_mut().insert(trait_ref,
+                                          vtable.clone());
+
+    vtable
+}
+
 // Key used to lookup values supplied for type parameters in an expr.
 #[deriving(PartialEq)]
 pub enum ExprOrMethodCall {
@@ -778,7 +866,8 @@ pub enum ExprOrMethodCall {
 
 pub fn node_id_substs(bcx: Block,
                       node: ExprOrMethodCall)
-                      -> subst::Substs {
+                      -> subst::Substs
+{
     let tcx = bcx.tcx();
 
     let substs = match node {
@@ -798,85 +887,8 @@ pub fn node_id_substs(bcx: Block,
                     substs.repr(bcx.tcx())).as_slice());
     }
 
+    let substs = substs.erase_regions();
     substs.substp(tcx, bcx.fcx.param_substs)
-}
-
-pub fn node_vtables(bcx: Block, id: typeck::MethodCall)
-                 -> typeck::vtable_res {
-    bcx.tcx().vtable_map.borrow().find(&id).map(|vts| {
-        resolve_vtables_in_fn_ctxt(bcx.fcx, vts)
-    }).unwrap_or_else(|| subst::VecPerParamSpace::empty())
-}
-
-// Apply the typaram substitutions in the FunctionContext to some
-// vtables. This should eliminate any vtable_params.
-pub fn resolve_vtables_in_fn_ctxt(fcx: &FunctionContext,
-                                  vts: &typeck::vtable_res)
-                                  -> typeck::vtable_res {
-    resolve_vtables_under_param_substs(fcx.ccx.tcx(),
-                                       fcx.param_substs,
-                                       vts)
-}
-
-pub fn resolve_vtables_under_param_substs(tcx: &ty::ctxt,
-                                          param_substs: &param_substs,
-                                          vts: &typeck::vtable_res)
-                                          -> typeck::vtable_res
-{
-    vts.map(|ds| {
-        resolve_param_vtables_under_param_substs(tcx,
-                                                 param_substs,
-                                                 ds)
-    })
-}
-
-pub fn resolve_param_vtables_under_param_substs(tcx: &ty::ctxt,
-                                                param_substs: &param_substs,
-                                                ds: &typeck::vtable_param_res)
-                                                -> typeck::vtable_param_res
-{
-    ds.iter().map(|d| {
-        resolve_vtable_under_param_substs(tcx,
-                                          param_substs,
-                                          d)
-    }).collect()
-}
-
-
-
-pub fn resolve_vtable_under_param_substs(tcx: &ty::ctxt,
-                                         param_substs: &param_substs,
-                                         vt: &typeck::vtable_origin)
-                                         -> typeck::vtable_origin
-{
-    match *vt {
-        typeck::vtable_static(trait_id, ref vtable_substs, ref sub) => {
-            let vtable_substs = vtable_substs.substp(tcx, param_substs);
-            typeck::vtable_static(
-                trait_id,
-                vtable_substs,
-                resolve_vtables_under_param_substs(tcx, param_substs, sub))
-        }
-        typeck::vtable_param(n_param, n_bound) => {
-            find_vtable(tcx, param_substs, n_param, n_bound)
-        }
-        typeck::vtable_unboxed_closure(def_id) => {
-            typeck::vtable_unboxed_closure(def_id)
-        }
-        typeck::vtable_error => typeck::vtable_error
-    }
-}
-
-pub fn find_vtable(tcx: &ty::ctxt,
-                   ps: &param_substs,
-                   n_param: typeck::param_index,
-                   n_bound: uint)
-                   -> typeck::vtable_origin {
-    debug!("find_vtable(n_param={:?}, n_bound={}, ps={})",
-           n_param, n_bound, ps.repr(tcx));
-
-    let param_bounds = ps.vtables.get(n_param.space, n_param.index);
-    param_bounds.get(n_bound).clone()
 }
 
 pub fn langcall(bcx: Block,

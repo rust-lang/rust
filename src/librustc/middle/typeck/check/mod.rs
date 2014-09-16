@@ -87,6 +87,7 @@ use middle::pat_util::pat_id_map;
 use middle::pat_util;
 use middle::subst;
 use middle::subst::{Subst, Substs, VecPerParamSpace, ParamSpace};
+use middle::traits;
 use middle::ty::{FnSig, VariantInfo};
 use middle::ty::{Polytype};
 use middle::ty::{Disr, ParamTy, ParameterEnvironment};
@@ -102,15 +103,14 @@ use middle::typeck::check::method::{CheckTraitsAndInherentMethods};
 use middle::typeck::check::method::{DontAutoderefReceiver};
 use middle::typeck::check::method::{IgnoreStaticMethods, ReportStaticMethods};
 use middle::typeck::check::regionmanip::replace_late_bound_regions_in_fn_sig;
-use middle::typeck::check::vtable::VtableContext;
 use middle::typeck::CrateCtxt;
 use middle::typeck::infer::{resolve_type, force_tvar};
 use middle::typeck::infer;
 use middle::typeck::rscope::RegionScope;
 use middle::typeck::{lookup_def_ccx};
 use middle::typeck::no_params;
-use middle::typeck::{require_same_types, vtable_map};
-use middle::typeck::{MethodCall, MethodMap};
+use middle::typeck::{require_same_types};
+use middle::typeck::{MethodCall, MethodMap, ObjectCastMap};
 use middle::typeck::{TypeAndSubsts};
 use middle::typeck;
 use middle::lang_items::TypeIdLangItem;
@@ -143,12 +143,13 @@ use syntax::visit::Visitor;
 use syntax;
 
 pub mod _match;
-pub mod vtable;
+pub mod vtable2; // New trait code
 pub mod writeback;
 pub mod regionmanip;
 pub mod regionck;
 pub mod demand;
 pub mod method;
+pub mod wf;
 
 /// Fields that are part of a `FnCtxt` which are inherited by
 /// closures defined within the function.  For example:
@@ -170,9 +171,9 @@ pub struct Inherited<'a, 'tcx: 'a> {
     item_substs: RefCell<NodeMap<ty::ItemSubsts>>,
     adjustments: RefCell<NodeMap<ty::AutoAdjustment>>,
     method_map: MethodMap,
-    vtable_map: vtable_map,
     upvar_borrow_map: RefCell<ty::UpvarBorrowMap>,
     unboxed_closures: RefCell<DefIdMap<ty::UnboxedClosure>>,
+    object_cast_map: ObjectCastMap,
 
     // A mapping from each fn's id to its signature, with all bound
     // regions replaced with free ones. Unlike the other tables, this
@@ -190,7 +191,7 @@ pub struct Inherited<'a, 'tcx: 'a> {
     // then in some expression `let x = Foo { ... }` it will
     // instantiate the type parameter `T` with a fresh type `$0`. At
     // the same time, it will record a region obligation of
-    // `$0:'static`. This will get checked later by regionck.  (We
+    // `$0:'static`. This will get checked later by regionck. (We
     // can't generally check these things right away because we have
     // to wait until types are resolved.)
     //
@@ -204,6 +205,9 @@ pub struct Inherited<'a, 'tcx: 'a> {
     // obligations (otherwise, it's easy to fail to walk to a
     // particular node-id).
     region_obligations: RefCell<NodeMap<Vec<RegionObligation>>>,
+
+    // Tracks trait obligations incurred during this function body.
+    fulfillment_cx: RefCell<traits::FulfillmentContext>,
 }
 
 struct RegionObligation {
@@ -335,11 +339,12 @@ impl<'a, 'tcx> Inherited<'a, 'tcx> {
             item_substs: RefCell::new(NodeMap::new()),
             adjustments: RefCell::new(NodeMap::new()),
             method_map: RefCell::new(FnvHashMap::new()),
-            vtable_map: RefCell::new(FnvHashMap::new()),
+            object_cast_map: RefCell::new(NodeMap::new()),
             upvar_borrow_map: RefCell::new(HashMap::new()),
             unboxed_closures: RefCell::new(DefIdMap::new()),
             fn_sig_map: RefCell::new(NodeMap::new()),
             region_obligations: RefCell::new(NodeMap::new()),
+            fulfillment_cx: RefCell::new(traits::FulfillmentContext::new()),
         }
     }
 }
@@ -369,20 +374,12 @@ fn static_inherited_fields<'a, 'tcx>(ccx: &'a CrateCtxt<'a, 'tcx>)
         free_substs: subst::Substs::empty(),
         bounds: subst::VecPerParamSpace::empty(),
         implicit_region_bound: ty::ReStatic,
+        caller_obligations: subst::VecPerParamSpace::empty(),
     };
     Inherited::new(ccx.tcx, param_env)
 }
 
 struct CheckItemTypesVisitor<'a, 'tcx: 'a> { ccx: &'a CrateCtxt<'a, 'tcx> }
-struct CheckTypeWellFormedVisitor<'a, 'tcx: 'a> { ccx: &'a CrateCtxt<'a, 'tcx> }
-
-impl<'a, 'tcx, 'v> Visitor<'v> for CheckTypeWellFormedVisitor<'a, 'tcx> {
-    fn visit_item(&mut self, i: &ast::Item) {
-        check_type_well_formed(self.ccx, i);
-        visit::walk_item(self, i);
-    }
-}
-
 
 impl<'a, 'tcx, 'v> Visitor<'v> for CheckItemTypesVisitor<'a, 'tcx> {
     fn visit_item(&mut self, i: &ast::Item) {
@@ -404,8 +401,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for CheckItemSizedTypesVisitor<'a, 'tcx> {
 
 pub fn check_item_types(ccx: &CrateCtxt) {
     let krate = ccx.tcx.map.krate();
-
-    let mut visit = CheckTypeWellFormedVisitor { ccx: ccx };
+    let mut visit = wf::CheckTypeWellFormedVisitor::new(ccx);
     visit::walk_crate(&mut visit, krate);
 
     // If types are not well-formed, it leads to all manner of errors
@@ -437,9 +433,10 @@ fn check_bare_fn(ccx: &CrateCtxt,
             let fcx = check_fn(ccx, fn_ty.fn_style, id, &fn_ty.sig,
                                decl, id, body, &inh);
 
-            vtable::resolve_in_block(&fcx, body);
+            vtable2::select_all_fcx_obligations_or_error(&fcx);
             regionck::regionck_fn(&fcx, id, body);
             writeback::resolve_type_vars_in_fn(&fcx, decl, body);
+            vtable2::check_builtin_bound_obligations(&fcx); // must happen after writeback
         }
         _ => ccx.tcx.sess.impossible_case(body.span,
                                  "check_bare_fn: function type expected")
@@ -451,19 +448,21 @@ struct GatherLocalsVisitor<'a, 'tcx: 'a> {
 }
 
 impl<'a, 'tcx> GatherLocalsVisitor<'a, 'tcx> {
-    fn assign(&mut self, nid: ast::NodeId, ty_opt: Option<ty::t>) {
-            match ty_opt {
-                None => {
-                    // infer the variable's type
-                    let var_id = self.fcx.infcx().next_ty_var_id();
-                    let var_ty = ty::mk_var(self.fcx.tcx(), var_id);
-                    self.fcx.inh.locals.borrow_mut().insert(nid, var_ty);
-                }
-                Some(typ) => {
-                    // take type that the user specified
-                    self.fcx.inh.locals.borrow_mut().insert(nid, typ);
-                }
+    fn assign(&mut self, _span: Span, nid: ast::NodeId, ty_opt: Option<ty::t>) -> ty::t {
+        match ty_opt {
+            None => {
+                // infer the variable's type
+                let var_id = self.fcx.infcx().next_ty_var_id();
+                let var_ty = ty::mk_var(self.fcx.tcx(), var_id);
+                self.fcx.inh.locals.borrow_mut().insert(nid, var_ty);
+                var_ty
             }
+            Some(typ) => {
+                // take type that the user specified
+                self.fcx.inh.locals.borrow_mut().insert(nid, typ);
+                typ
+            }
+        }
     }
 }
 
@@ -474,7 +473,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for GatherLocalsVisitor<'a, 'tcx> {
             ast::TyInfer => None,
             _ => Some(self.fcx.to_ty(&*local.ty))
         };
-        self.assign(local.id, o_ty);
+        self.assign(local.span, local.id, o_ty);
         debug!("Local variable {} is assigned type {}",
                self.fcx.pat_to_string(&*local.pat),
                self.fcx.infcx().ty_to_string(
@@ -484,19 +483,23 @@ impl<'a, 'tcx, 'v> Visitor<'v> for GatherLocalsVisitor<'a, 'tcx> {
 
     // Add pattern bindings.
     fn visit_pat(&mut self, p: &ast::Pat) {
-            match p.node {
-              ast::PatIdent(_, ref path1, _)
-                  if pat_util::pat_is_binding(&self.fcx.ccx.tcx.def_map, p) => {
-                self.assign(p.id, None);
-                debug!("Pattern binding {} is assigned to {}",
-                       token::get_ident(path1.node),
-                       self.fcx.infcx().ty_to_string(
-                           self.fcx.inh.locals.borrow().get_copy(&p.id)));
-              }
-              _ => {}
-            }
-            visit::walk_pat(self, p);
+        match p.node {
+            ast::PatIdent(_, ref path1, _)
+                if pat_util::pat_is_binding(&self.fcx.ccx.tcx.def_map, p) => {
+                    let var_ty = self.assign(p.span, p.id, None);
 
+                    self.fcx.require_type_is_sized(var_ty, p.span,
+                                                   traits::VariableType(p.id));
+
+                    debug!("Pattern binding {} is assigned to {} with type {}",
+                           token::get_ident(path1.node),
+                           self.fcx.infcx().ty_to_string(
+                               self.fcx.inh.locals.borrow().get_copy(&p.id)),
+                           var_ty.repr(self.fcx.tcx()));
+                }
+            _ => {}
+        }
+        visit::walk_pat(self, p);
     }
 
     fn visit_block(&mut self, b: &ast::Block) {
@@ -592,11 +595,14 @@ fn check_fn<'a, 'tcx>(ccx: &'a CrateCtxt<'a, 'tcx>,
         // Add formal parameters.
         for (arg_ty, input) in arg_tys.iter().zip(decl.inputs.iter()) {
             // Create type variables for each argument.
-            pat_util::pat_bindings(&tcx.def_map,
-                                   &*input.pat,
-                                   |_bm, pat_id, _sp, _path| {
-                                       visit.assign(pat_id, None);
-                                   });
+            pat_util::pat_bindings(
+                &tcx.def_map,
+                &*input.pat,
+                |_bm, pat_id, sp, _path| {
+                    let var_ty = visit.assign(sp, pat_id, None);
+                    fcx.require_type_is_sized(var_ty, sp,
+                                              traits::VariableType(pat_id));
+                });
 
             // Check the pattern.
             let pcx = pat_ctxt {
@@ -713,71 +719,6 @@ pub fn check_struct(ccx: &CrateCtxt, id: ast::NodeId, span: Span) {
     }
 }
 
-fn check_type_well_formed(ccx: &CrateCtxt, item: &ast::Item) {
-    /*!
-     * Checks that the field types (in a struct def'n) or
-     * argument types (in an enum def'n) are well-formed,
-     * meaning that they do not require any constraints not
-     * declared in the struct definition itself.
-     * For example, this definition would be illegal:
-     *
-     *     struct Ref<'a, T> { x: &'a T }
-     *
-     * because the type did not declare that `T:'a`.
-     *
-     * We do this check as a pre-pass before checking fn bodies
-     * because if these constraints are not included it frequently
-     * leads to confusing errors in fn bodies. So it's better to check
-     * the types first.
-     */
-
-    debug!("check_type_well_formed(it.id={}, it.ident={})",
-           item.id,
-           ty::item_path_str(ccx.tcx, local_def(item.id)));
-
-    match item.node {
-        ast::ItemStruct(..) => {
-            check_type_defn(ccx, item, |fcx| {
-                ty::struct_fields(ccx.tcx, local_def(item.id),
-                                  &fcx.inh.param_env.free_substs)
-                    .iter()
-                    .map(|f| f.mt.ty)
-                    .collect()
-            });
-        }
-        ast::ItemEnum(..) => {
-            check_type_defn(ccx, item, |fcx| {
-                ty::substd_enum_variants(ccx.tcx, local_def(item.id),
-                                         &fcx.inh.param_env.free_substs)
-                    .iter()
-                    .flat_map(|variant| {
-                        variant.args
-                            .iter()
-                            .map(|&arg_ty| arg_ty)
-                    })
-                    .collect()
-            });
-        }
-        _ => {}
-    }
-
-    fn check_type_defn(ccx: &CrateCtxt,
-                       item: &ast::Item,
-                       lookup_fields: |&FnCtxt| -> Vec<ty::t>)
-    {
-        let item_def_id = local_def(item.id);
-        let polytype = ty::lookup_item_type(ccx.tcx, item_def_id);
-        let param_env =
-            ty::construct_parameter_environment(ccx.tcx,
-                                                &polytype.generics,
-                                                item.id);
-        let inh = Inherited::new(ccx.tcx, param_env);
-        let fcx = blank_fn_ctxt(ccx, &inh, polytype.ty, item.id);
-        let field_tys = lookup_fields(&fcx);
-        regionck::regionck_type_defn(&fcx, item.span, field_tys.as_slice());
-    }
-}
-
 pub fn check_item_sized(ccx: &CrateCtxt, it: &ast::Item) {
     debug!("check_item(it.id={}, it.ident={})",
            it.id,
@@ -836,7 +777,6 @@ pub fn check_item(ccx: &CrateCtxt, it: &ast::Item) {
                                                ast_trait_ref,
                                                &*impl_trait_ref,
                                                impl_items.as_slice());
-                vtable::resolve_impl(ccx.tcx, it, &impl_pty.generics, &*impl_trait_ref);
             }
             None => { }
         }
@@ -1409,10 +1349,12 @@ fn compare_impl_method(tcx: &ty::ctxt,
 }
 
 fn check_cast(fcx: &FnCtxt,
+              cast_expr: &ast::Expr,
               e: &ast::Expr,
-              t: &ast::Ty,
-              id: ast::NodeId,
-              span: Span) {
+              t: &ast::Ty) {
+    let id = cast_expr.id;
+    let span = cast_expr.span;
+
     // Find the type of `e`. Supply hints based on the type we are casting to,
     // if appropriate.
     let t_1 = fcx.to_ty(t);
@@ -1443,6 +1385,7 @@ fn check_cast(fcx: &FnCtxt,
 
     if ty::type_is_trait(t_1) {
         // This will be looked up later on.
+        vtable2::check_object_cast(fcx, cast_expr, e, t_1);
         fcx.write_ty(id, t_1);
         return
     }
@@ -1582,14 +1525,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub fn err_count_since_creation(&self) -> uint {
         self.ccx.tcx.sess.err_count() - self.err_count_on_creation
     }
-
-    pub fn vtable_context<'a>(&'a self) -> VtableContext<'a, 'tcx> {
-        VtableContext {
-            infcx: self.infcx(),
-            param_env: &self.inh.param_env,
-            unboxed_closures: &self.inh.unboxed_closures,
-        }
-    }
 }
 
 impl<'a, 'tcx> RegionScope for infer::InferCtxt<'a, 'tcx> {
@@ -1629,6 +1564,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.inh.node_types.borrow_mut().insert(node_id, ty);
     }
 
+    pub fn write_object_cast(&self,
+                             key: ast::NodeId,
+                             trait_ref: Rc<ty::TraitRef>) {
+        debug!("write_object_cast key={} trait_ref={}",
+               key, trait_ref.repr(self.tcx()));
+        self.inh.object_cast_map.borrow_mut().insert(key, trait_ref);
+    }
+
     pub fn write_substs(&self, node_id: ast::NodeId, substs: ty::ItemSubsts) {
         if !substs.substs.is_noop() {
             debug!("write_substs({}, {}) in fcx {}",
@@ -1651,10 +1594,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     pub fn write_autoderef_adjustment(&self,
                                       node_id: ast::NodeId,
+                                      span: Span,
                                       derefs: uint) {
         if derefs == 0 { return; }
         self.write_adjustment(
             node_id,
+            span,
             ty::AutoDerefRef(ty::AutoDerefRef {
                 autoderefs: derefs,
                 autoref: None })
@@ -1663,9 +1608,107 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     pub fn write_adjustment(&self,
                             node_id: ast::NodeId,
+                            span: Span,
                             adj: ty::AutoAdjustment) {
         debug!("write_adjustment(node_id={:?}, adj={:?})", node_id, adj);
+
+        // Careful: adjustments can imply trait obligations if we are
+        // casting from a concrete type to an object type. I think
+        // it'd probably be nicer to move the logic that creates the
+        // obligation into the code that creates the adjustment, but
+        // that's a bit awkward, so instead we go digging and pull the
+        // obligation out here.
+        self.register_adjustment_obligations(span, &adj);
         self.inh.adjustments.borrow_mut().insert(node_id, adj);
+    }
+
+    fn register_adjustment_obligations(&self,
+                                       span: Span,
+                                       adj: &ty::AutoAdjustment) {
+        match *adj {
+            ty::AutoAddEnv(..) => { }
+            ty::AutoDerefRef(ref d_r) => {
+                match d_r.autoref {
+                    Some(ref a_r) => {
+                        self.register_autoref_obligations(span, a_r);
+                    }
+                    None => {}
+                }
+            }
+        }
+    }
+
+    fn register_autoref_obligations(&self,
+                                    span: Span,
+                                    autoref: &ty::AutoRef) {
+        match *autoref {
+            ty::AutoUnsize(ref unsize) => {
+                self.register_unsize_obligations(span, unsize);
+            }
+            ty::AutoPtr(_, _, None) |
+            ty::AutoUnsafe(_, None) => {
+            }
+            ty::AutoPtr(_, _, Some(ref a_r)) |
+            ty::AutoUnsafe(_, Some(ref a_r)) => {
+                self.register_autoref_obligations(span, &**a_r)
+            }
+            ty::AutoUnsizeUniq(ref unsize) => {
+                self.register_unsize_obligations(span, unsize);
+            }
+        }
+    }
+
+    fn register_unsize_obligations(&self,
+                                   span: Span,
+                                   unsize: &ty::UnsizeKind) {
+        debug!("register_unsize_obligations: unsize={:?}", unsize);
+
+        match *unsize {
+            ty::UnsizeLength(..) => {}
+            ty::UnsizeStruct(ref u, _) => {
+                self.register_unsize_obligations(span, &**u)
+            }
+            ty::UnsizeVtable(ref ty_trait, self_ty) => {
+                vtable2::register_object_cast_obligations(self,
+                                                          span,
+                                                          ty_trait,
+                                                          self_ty);
+            }
+        }
+    }
+
+    pub fn instantiate_item_type(&self,
+                                 span: Span,
+                                 def_id: ast::DefId)
+                                 -> TypeAndSubsts
+    {
+        /*!
+         * Returns the type of `def_id` with all generics replaced by
+         * by fresh type/region variables. Also returns the
+         * substitution from the type parameters on `def_id` to the
+         * fresh variables.  Registers any trait obligations specified
+         * on `def_id` at the same time.
+         */
+
+        let polytype =
+            ty::lookup_item_type(self.tcx(), def_id);
+        let substs =
+            self.infcx().fresh_substs_for_generics(
+                span,
+                &polytype.generics);
+        self.add_obligations_for_parameters(
+            traits::ObligationCause::new(
+                span,
+                traits::ItemObligation(def_id)),
+            &substs,
+            &polytype.generics);
+        let monotype =
+            polytype.ty.subst(self.tcx(), &substs);
+
+        TypeAndSubsts {
+            ty: monotype,
+            substs: substs
+        }
     }
 
     pub fn write_nil(&self, node_id: ast::NodeId) {
@@ -1678,8 +1721,56 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.write_ty(node_id, ty::mk_err());
     }
 
+    pub fn require_type_meets(&self,
+                              ty: ty::t,
+                              span: Span,
+                              code: traits::ObligationCauseCode,
+                              bound: ty::BuiltinBound)
+    {
+        self.register_obligation(
+            traits::obligation_for_builtin_bound(
+                self.tcx(),
+                traits::ObligationCause::new(span, code),
+                ty,
+                bound));
+    }
+
+    pub fn require_type_is_sized(&self,
+                                 ty: ty::t,
+                                 span: Span,
+                                 code: traits::ObligationCauseCode)
+    {
+        self.require_type_meets(ty, span, code, ty::BoundSized);
+    }
+
+    pub fn require_expr_have_sized_type(&self,
+                                        expr: &ast::Expr,
+                                        code: traits::ObligationCauseCode)
+    {
+        self.require_type_is_sized(self.expr_ty(expr), expr.span, code);
+    }
+
+    pub fn register_obligation(&self,
+                               obligation: traits::Obligation)
+    {
+        debug!("register_obligation({})",
+               obligation.repr(self.tcx()));
+
+        self.inh.fulfillment_cx
+            .borrow_mut()
+            .register_obligation(self.tcx(), obligation);
+    }
+
     pub fn to_ty(&self, ast_t: &ast::Ty) -> ty::t {
-        ast_ty_to_ty(self, self.infcx(), ast_t)
+        let t = ast_ty_to_ty(self, self.infcx(), ast_t);
+
+        let mut bounds_checker = wf::BoundsChecker::new(self,
+                                                        ast_t.span,
+                                                        self.body_id,
+                                                        None);
+        bounds_checker.check_ty(t);
+
+        t
     }
 
     pub fn pat_to_string(&self, pat: &ast::Pat) -> String {
@@ -1761,7 +1852,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             Ok(None) => Ok(()),
             Err(ref e) => Err((*e)),
             Ok(Some(adjustment)) => {
-                self.write_adjustment(expr.id, adjustment);
+                self.write_adjustment(expr.id, expr.span, adjustment);
                 Ok(())
             }
         }
@@ -1829,10 +1920,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                   origin: origin });
     }
 
-    pub fn add_region_obligations_for_parameters(&self,
-                                                 span: Span,
-                                                 substs: &Substs,
-                                                 generics: &ty::Generics)
+    pub fn add_obligations_for_parameters(&self,
+                                          cause: traits::ObligationCause,
+                                          substs: &Substs,
+                                          generics: &ty::Generics)
     {
         /*!
          * Given a set of generic parameter definitions (`generics`)
@@ -1853,10 +1944,31 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
          * locally.
          */
 
-        debug!("add_region_obligations_for_parameters(substs={}, generics={})",
+        debug!("add_obligations_for_parameters(substs={}, generics={})",
                substs.repr(self.tcx()),
                generics.repr(self.tcx()));
 
+        self.add_trait_obligations_for_generics(cause, substs, generics);
+        self.add_region_obligations_for_generics(cause, substs, generics);
+    }
+
+    fn add_trait_obligations_for_generics(&self,
+                                          cause: traits::ObligationCause,
+                                          substs: &Substs,
+                                          generics: &ty::Generics) {
+        let obligations =
+            traits::obligations_for_generics(self.tcx(),
+                                             cause,
+                                             generics,
+                                             substs);
+        obligations.map_move(|o| self.register_obligation(o));
+    }
+
+    fn add_region_obligations_for_generics(&self,
+                                           cause: traits::ObligationCause,
+                                           substs: &Substs,
+                                           generics: &ty::Generics)
+    {
         assert_eq!(generics.types.iter().len(),
                    substs.types.iter().len());
         for (type_def, &type_param) in
@@ -1867,8 +1979,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                          idx: type_def.index,
                                          def_id: type_def.def_id };
             let bounds = type_def.bounds.subst(self.tcx(), substs);
-            add_region_obligations_for_type_parameter(
-                self, span, param_ty, &bounds, type_param);
+            self.add_region_obligations_for_type_parameter(
+                cause.span, param_ty, &bounds, type_param);
         }
 
         assert_eq!(generics.regions.iter().len(),
@@ -1878,42 +1990,40 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 substs.regions().iter())
         {
             let bounds = region_def.bounds.subst(self.tcx(), substs);
-            add_region_obligations_for_region_parameter(
-                self, span, bounds.as_slice(), region_param);
+            self.add_region_obligations_for_region_parameter(
+                cause.span, bounds.as_slice(), region_param);
         }
+    }
 
-        fn add_region_obligations_for_type_parameter(
-            fcx: &FnCtxt,
-            span: Span,
-            param_ty: ty::ParamTy,
-            param_bound: &ty::ParamBounds,
-            ty: ty::t)
-        {
-            // For each declared region bound `T:r`, `T` must outlive `r`.
-            let region_bounds =
-                ty::required_region_bounds(
-                    fcx.tcx(),
-                    param_bound.opt_region_bound.as_slice(),
-                    param_bound.builtin_bounds,
-                    param_bound.trait_bounds.as_slice());
-            for &r in region_bounds.iter() {
-                let origin = infer::RelateParamBound(span, param_ty, ty);
-                fcx.register_region_obligation(origin, ty, r);
-            }
+    fn add_region_obligations_for_type_parameter(&self,
+                                                 span: Span,
+                                                 param_ty: ty::ParamTy,
+                                                 param_bound: &ty::ParamBounds,
+                                                 ty: ty::t)
+    {
+        // For each declared region bound `T:r`, `T` must outlive `r`.
+        let region_bounds =
+            ty::required_region_bounds(
+                self.tcx(),
+                param_bound.opt_region_bound.as_slice(),
+                param_bound.builtin_bounds,
+                param_bound.trait_bounds.as_slice());
+        for &r in region_bounds.iter() {
+            let origin = infer::RelateParamBound(span, param_ty, ty);
+            self.register_region_obligation(origin, ty, r);
         }
+    }
 
-        fn add_region_obligations_for_region_parameter(
-            fcx: &FnCtxt,
-            span: Span,
-            region_bounds: &[ty::Region],
-            region_param: ty::Region)
-        {
-            for &b in region_bounds.iter() {
-                // For each bound `region:b`, `b <= region` must hold
-                // (i.e., `region` must outlive `b`).
-                let origin = infer::RelateRegionParamBound(span);
-                fcx.mk_subr(origin, b, region_param);
-            }
+    fn add_region_obligations_for_region_parameter(&self,
+                                                   span: Span,
+                                                   region_bounds: &[ty::Region],
+                                                   region_param: ty::Region)
+    {
+        for &b in region_bounds.iter() {
+            // For each bound `region:b`, `b <= region` must hold
+            // (i.e., `region` must outlive `b`).
+            let origin = infer::RelateRegionParamBound(span);
+            self.mk_subr(origin, b, region_param);
         }
     }
 }
@@ -2272,7 +2382,7 @@ fn check_method_argument_types(fcx: &FnCtxt,
 fn check_argument_types(fcx: &FnCtxt,
                         sp: Span,
                         fn_inputs: &[ty::t],
-                        callee_expr: &ast::Expr,
+                        _callee_expr: &ast::Expr,
                         args: &[P<ast::Expr>],
                         deref_args: DerefArgs,
                         variadic: bool,
@@ -2369,7 +2479,7 @@ fn check_argument_types(fcx: &FnCtxt,
         // an "opportunistic" vtable resolution of any trait
         // bounds on the call.
         if check_blocks {
-            vtable::early_resolve_expr(callee_expr, fcx, true);
+            vtable2::select_fcx_obligations_where_possible(fcx);
         }
 
         // For variadic functions, we don't have a declared type for all of
@@ -2568,16 +2678,15 @@ fn check_expr_with_lvalue_pref(fcx: &FnCtxt, expr: &ast::Expr,
     check_expr_with_unifier(fcx, expr, NoExpectation, lvalue_pref, || ())
 }
 
-
 // determine the `self` type, using fresh variables for all variables
 // declared on the impl declaration e.g., `impl<A,B> for ~[(A,B)]`
 // would return ($0, $1) where $0 and $1 are freshly instantiated type
 // variables.
-pub fn impl_self_ty(vcx: &VtableContext,
+pub fn impl_self_ty(fcx: &FnCtxt,
                     span: Span, // (potential) receiver for this impl
                     did: ast::DefId)
                     -> TypeAndSubsts {
-    let tcx = vcx.tcx();
+    let tcx = fcx.tcx();
 
     let ity = ty::lookup_item_type(tcx, did);
     let (n_tps, rps, raw_ty) =
@@ -2585,8 +2694,8 @@ pub fn impl_self_ty(vcx: &VtableContext,
          ity.generics.regions.get_slice(subst::TypeSpace),
          ity.ty);
 
-    let rps = vcx.infcx.region_vars_for_defs(span, rps);
-    let tps = vcx.infcx.next_ty_vars(n_tps);
+    let rps = fcx.inh.infcx.region_vars_for_defs(span, rps);
+    let tps = fcx.inh.infcx.next_ty_vars(n_tps);
     let substs = subst::Substs::new_type(tps, rps);
     let substd_ty = raw_ty.subst(tcx, &substs);
 
@@ -3260,7 +3369,7 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
         match field_ty {
             Some(field_ty) => {
                 fcx.write_ty(expr.id, field_ty);
-                fcx.write_autoderef_adjustment(base.id, autoderefs);
+                fcx.write_autoderef_adjustment(base.id, base.span, autoderefs);
                 return;
             }
             None => {}
@@ -3344,7 +3453,7 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
         match field_ty {
             Some(field_ty) => {
                 fcx.write_ty(expr.id, field_ty);
-                fcx.write_autoderef_adjustment(base.id, autoderefs);
+                fcx.write_autoderef_adjustment(base.id, base.span, autoderefs);
                 return;
             }
             None => {}
@@ -3467,15 +3576,11 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
                                 base_expr: Option<&ast::Expr>) {
         let tcx = fcx.ccx.tcx;
 
-        // Look up the number of type parameters and the raw type, and
-        // determine whether the class is region-parameterized.
-        let item_type = ty::lookup_item_type(tcx, class_id);
-        let raw_type = item_type.ty;
-
         // Generate the struct type.
-        let substitutions = fcx.infcx().fresh_substs_for_type(
-            span, &item_type.generics);
-        let mut struct_type = raw_type.subst(tcx, &substitutions);
+        let TypeAndSubsts {
+            ty: mut struct_type,
+            substs: struct_substs
+        } = fcx.instantiate_item_type(span, class_id);
 
         // Look up and check the fields.
         let class_fields = ty::lookup_struct_fields(tcx, class_id);
@@ -3484,7 +3589,7 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
                                        span,
                                        class_id,
                                        id,
-                                       substitutions,
+                                       struct_substs,
                                        class_fields.as_slice(),
                                        fields,
                                        base_expr.is_none());
@@ -3517,9 +3622,10 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
 
         // Look up the number of type parameters and the raw type, and
         // determine whether the enum is region-parameterized.
-        let item_type = ty::lookup_item_type(tcx, enum_id);
-        let substitutions = fcx.infcx().fresh_substs_for_type(span, &item_type.generics);
-        let enum_type = item_type.ty.subst(tcx, &substitutions);
+        let TypeAndSubsts {
+            ty: enum_type,
+            substs: substitutions
+        } = fcx.instantiate_item_type(span, enum_id);
 
         // Look up and check the enum variant fields.
         let variant_fields = ty::lookup_struct_fields(tcx, variant_id);
@@ -3618,6 +3724,8 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
         if !ty::expr_is_lval(tcx, &**lhs) {
             span_err!(tcx.sess, lhs.span, E0067, "illegal left-hand side expression");
         }
+
+        fcx.require_expr_have_sized_type(&**lhs, traits::AssignmentLhsSized);
 
         // Overwrite result of check_binop...this preserves existing behavior
         // but seems quite dubious with regard to user-defined methods
@@ -3833,6 +3941,8 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
         check_expr_has_type(fcx, &**rhs, lhs_ty);
         let rhs_ty = fcx.expr_ty(&**rhs);
 
+        fcx.require_expr_have_sized_type(&**lhs, traits::AssignmentLhsSized);
+
         if ty::type_is_error(lhs_ty) || ty::type_is_error(rhs_ty) {
             fcx.write_error(id);
         } else if ty::type_is_bot(lhs_ty) || ty::type_is_bot(rhs_ty) {
@@ -3863,7 +3973,7 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
       ast::ExprForLoop(ref pat, ref head, ref block, _) => {
         check_expr(fcx, &**head);
         let typ = lookup_method_for_for_loop(fcx, &**head, expr.id);
-        vtable::early_resolve_expr(expr, fcx, true);
+        vtable2::select_fcx_obligations_where_possible(fcx);
 
         let pcx = pat_ctxt {
             fcx: fcx,
@@ -3958,7 +4068,7 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
             }
             _ => {}
         }
-        check_cast(fcx, &**e, &**t, id, expr.span);
+        check_cast(fcx, expr, &**e, &**t);
       }
       ast::ExprVec(ref args) => {
         let uty = match expected {
@@ -4014,6 +4124,16 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
                 (fcx.expr_ty(&**element), t)
             }
         };
+
+        if count > 1 {
+            // For [foo, ..n] where n > 1, `foo` must have
+            // Copy type:
+            fcx.require_type_meets(
+                t,
+                expr.span,
+                traits::RepeatVec,
+                ty::BoundCopy);
+        }
 
         if ty::type_is_error(element_ty) {
             fcx.write_error(id);
@@ -4143,6 +4263,8 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
                 }
             }
         }
+
+        fcx.require_expr_have_sized_type(expr, traits::StructInitializerSized);
       }
       ast::ExprField(ref base, ref field, ref tys) => {
         check_field(fcx, expr, lvalue_pref, &**base, field, tys.as_slice());
@@ -4167,7 +4289,7 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
                   Some(ty) => {
                       check_expr_has_type(fcx, &**idx, ty::mk_uint());
                       fcx.write_ty(id, ty);
-                      fcx.write_autoderef_adjustment(base.id, autoderefs);
+                      fcx.write_autoderef_adjustment(base.id, base.span, autoderefs);
                   }
                   None => {
                       // This is an overloaded method.
@@ -4520,8 +4642,10 @@ pub fn check_const_with_ty(fcx: &FnCtxt,
 
     check_expr_with_hint(fcx, e, declty);
     demand::coerce(fcx, e.span, declty, e);
+    vtable2::select_all_fcx_obligations_or_error(fcx);
     regionck::regionck_expr(fcx, e);
     writeback::resolve_type_vars_in_expr(fcx, e);
+    vtable2::check_builtin_bound_obligations(fcx);
 }
 
 /// Checks whether a type can be represented in memory. In particular, it
@@ -5009,8 +5133,11 @@ pub fn instantiate_path(fcx: &FnCtxt,
         assert_eq!(substs.regions().len(space), region_defs.len(space));
     }
 
-    fcx.add_region_obligations_for_parameters(
-        span, &substs, &polytype.generics);
+    fcx.add_obligations_for_parameters(
+        traits::ObligationCause::new(span,
+                                     traits::ItemObligation(def.def_id())),
+        &substs,
+        &polytype.generics);
 
     fcx.write_ty_substs(node_id, polytype.ty, ty::ItemSubsts {
         substs: substs,

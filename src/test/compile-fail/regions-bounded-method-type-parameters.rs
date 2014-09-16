@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![no_std]
-
 // Check that explicit region bounds are allowed on the various
 // nominal types (but not on other types) and that they are type
 // checked.

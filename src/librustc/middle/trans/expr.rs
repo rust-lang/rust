@@ -41,6 +41,7 @@ use middle::def;
 use middle::lang_items::MallocFnLangItem;
 use middle::mem_categorization::Typer;
 use middle::subst;
+use middle::subst::Subst;
 use middle::trans::_match;
 use middle::trans::adt;
 use middle::trans::asm;
@@ -78,6 +79,7 @@ use syntax::ast;
 use syntax::codemap;
 use syntax::print::pprust::{expr_to_string};
 use syntax::ptr::P;
+use std::rc::Rc;
 
 // Destinations
 
@@ -319,10 +321,18 @@ fn apply_adjustments<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 _ => bcx.sess().bug(format!("UnsizeStruct with bad sty: {}",
                                           bcx.ty_to_string(unsized_ty)).as_slice())
             },
-            &ty::UnsizeVtable(..) =>
+            &ty::UnsizeVtable(ty::TyTrait { def_id: def_id, substs: ref substs, .. }, _) => {
+                let substs = substs.with_self_ty(unsized_ty);
+                let trait_ref =
+                    Rc::new(ty::TraitRef { def_id: def_id,
+                                           substs: substs });
+                let trait_ref =
+                    trait_ref.subst(bcx.tcx(), &bcx.fcx.param_substs.substs);
+                let box_ty = mk_ty(unsized_ty);
                 PointerCast(bcx,
-                            meth::vtable_ptr(bcx, id, mk_ty(unsized_ty)),
+                            meth::get_vtable(bcx, box_ty, trait_ref),
                             Type::vtable_ptr(bcx.ccx()))
+            }
         }
     }
 
@@ -1052,8 +1062,16 @@ fn trans_rvalue_dps_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         ast::ExprCast(ref val, _) => {
             // DPS output mode means this is a trait cast:
             if ty::type_is_trait(node_id_type(bcx, expr.id)) {
+                let trait_ref =
+                    bcx.tcx().object_cast_map.borrow()
+                                             .find(&expr.id)
+                                             .map(|t| (*t).clone())
+                                             .unwrap();
+                let trait_ref =
+                    trait_ref.subst(bcx.tcx(), &bcx.fcx.param_substs.substs);
                 let datum = unpack_datum!(bcx, trans(bcx, &**val));
-                meth::trans_trait_cast(bcx, datum, expr.id, dest)
+                meth::trans_trait_cast(bcx, datum, expr.id,
+                                       trait_ref, dest)
             } else {
                 bcx.tcx().sess.span_bug(expr.span,
                                         "expr_cast of non-trait");

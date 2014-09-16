@@ -258,6 +258,7 @@ impl<K,V> sv::SnapshotVecDelegate<VarValue<K,V>,()> for Delegate {
  * relationship.
  */
 pub trait SimplyUnifiable : Clone + PartialEq + Repr {
+    fn to_type(&self) -> ty::t;
     fn to_type_err(expected_found<Self>) -> ty::type_err;
 }
 
@@ -286,6 +287,7 @@ pub trait InferCtxtMethodsForSimplyUnifiableTypes<V:SimplyUnifiable,
                     a_id: K,
                     b: V)
                     -> ures;
+    fn probe_var(&self, a_id: K) -> Option<ty::t>;
 }
 
 impl<'a,'tcx,V:SimplyUnifiable,K:UnifyKey<Option<V>>>
@@ -370,6 +372,16 @@ impl<'a,'tcx,V:SimplyUnifiable,K:UnifyKey<Option<V>>>
             }
         }
     }
+
+    fn probe_var(&self, a_id: K) -> Option<ty::t> {
+        let tcx = self.tcx;
+        let table = UnifyKey::unification_table(self);
+        let node_a = table.borrow_mut().get(tcx, a_id);
+        match node_a.value {
+            None => None,
+            Some(ref a_t) => Some(a_t.to_type())
+        }
+    }
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -393,6 +405,13 @@ impl UnifyKey<Option<IntVarValue>> for ty::IntVid {
 }
 
 impl SimplyUnifiable for IntVarValue {
+    fn to_type(&self) -> ty::t {
+        match *self {
+            ty::IntType(i) => ty::mk_mach_int(i),
+            ty::UintType(i) => ty::mk_mach_uint(i),
+        }
+    }
+
     fn to_type_err(err: expected_found<IntVarValue>) -> ty::type_err {
         return ty::terr_int_mismatch(err);
     }
@@ -422,6 +441,10 @@ impl UnifyValue for Option<ast::FloatTy> {
 }
 
 impl SimplyUnifiable for ast::FloatTy {
+    fn to_type(&self) -> ty::t {
+        ty::mk_mach_float(*self)
+    }
+
     fn to_type_err(err: expected_found<ast::FloatTy>) -> ty::type_err {
         return ty::terr_float_mismatch(err);
     }

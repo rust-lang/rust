@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern: instantiating a type parameter with an incompatible type
 fn bar<T: Sized>() { }
-fn foo<Sized? T>() { bar::<T>() }
+fn foo<Sized? T>() { bar::<T>() } //~ ERROR the trait `core::kinds::Sized` is not implemented
 fn main() { }

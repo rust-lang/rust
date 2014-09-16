@@ -8,15 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern: conflicting implementations for trait `Foo`
 trait Foo {
 }
 
-impl Foo for int {
+impl Foo for int { //~ ERROR conflicting implementations
 
 }
 
-impl<A> Foo for A {
+impl<A> Foo for A { //~ NOTE conflicting implementation here
 
 }
 
