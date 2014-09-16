@@ -432,7 +432,7 @@ pub fn expand_item(it: P<ast::Item>, fld: &mut MacroExpander)
     }
 
     let mut new_items = match it.node {
-        ast::ItemMac(..) => expand_item_mac(it, fld),
+        ast::ItemMac(..) => expand_item_mac(it, None, fld),
         ast::ItemMod(_) | ast::ItemForeignMod(_) => {
             let valid_ident =
                 it.ident.name != parse::token::special_idents::invalid.name;
@@ -529,8 +529,9 @@ fn contains_macro_escape(attrs: &[ast::Attribute]) -> bool {
 
 // Support for item-position macro invocations, exactly the same
 // logic as for expression-position macro invocations.
-pub fn expand_item_mac(it: P<ast::Item>, fld: &mut MacroExpander)
-                       -> SmallVector<P<ast::Item>> {
+pub fn expand_item_mac(it: P<ast::Item>,
+                       imported_from: Option<ast::Ident>,
+                       fld: &mut MacroExpander) -> SmallVector<P<ast::Item>> {
     let (extname, path_span, tts) = match it.node {
         ItemMac(codemap::Spanned {
             node: MacInvocTT(ref pth, ref tts, _),
@@ -611,7 +612,8 @@ pub fn expand_item_mac(it: P<ast::Item>, fld: &mut MacroExpander)
                     });
                     // DON'T mark before expansion.
                     let MacroDef { name, ext }
-                        = macro_rules::add_new_extension(fld.cx, it.span, it.ident, tts);
+                        = macro_rules::add_new_extension(fld.cx, it.span, it.ident,
+                                                         imported_from, tts);
 
                     fld.cx.syntax_env.insert(intern(name.as_slice()), ext);
                     if attr::contains_name(it.attrs.as_slice(), "macro_export") {
@@ -1190,7 +1192,7 @@ pub fn expand_crate(parse_sess: &parse::ParseSess,
                                                          expander.cx.cfg(),
                                                          expander.cx.parse_sess())
                     .expect("expected a serialized item");
-            expand_item_mac(item, &mut expander);
+            expand_item_mac(item, Some(crate_name), &mut expander);
         }
     }
 

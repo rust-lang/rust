@@ -110,6 +110,7 @@ impl<'a> MacResult for ParserAnyMacro<'a> {
 
 struct MacroRulesMacroExpander {
     name: Ident,
+    imported_from: Option<Ident>,
     lhses: Vec<Rc<NamedMatch>>,
     rhses: Vec<Rc<NamedMatch>>,
 }
@@ -123,6 +124,7 @@ impl TTMacroExpander for MacroRulesMacroExpander {
         generic_extension(cx,
                           sp,
                           self.name,
+                          self.imported_from,
                           arg,
                           self.lhses[],
                           self.rhses[])
@@ -133,6 +135,7 @@ impl TTMacroExpander for MacroRulesMacroExpander {
 fn generic_extension<'cx>(cx: &'cx ExtCtxt,
                           sp: Span,
                           name: Ident,
+                          imported_from: Option<Ident>,
                           arg: &[ast::TokenTree],
                           lhses: &[Rc<NamedMatch>],
                           rhses: &[Rc<NamedMatch>])
@@ -157,6 +160,7 @@ fn generic_extension<'cx>(cx: &'cx ExtCtxt,
             // `None` is because we're not interpolating
             let mut arg_rdr = new_tt_reader(&cx.parse_sess().span_diagnostic,
                                             None,
+                                            None,
                                             arg.iter()
                                                .map(|x| (*x).clone())
                                                .collect());
@@ -177,6 +181,7 @@ fn generic_extension<'cx>(cx: &'cx ExtCtxt,
                 // rhs has holes ( `$id` and `$(...)` that need filled)
                 let trncbr = new_tt_reader(&cx.parse_sess().span_diagnostic,
                                            Some(named_matches),
+                                           imported_from,
                                            rhs);
                 let p = Parser::new(cx.parse_sess(), cx.cfg(), box trncbr);
                 // Let the context choose how to interpret the result.
@@ -209,6 +214,7 @@ fn generic_extension<'cx>(cx: &'cx ExtCtxt,
 pub fn add_new_extension<'cx>(cx: &'cx mut ExtCtxt,
                               sp: Span,
                               name: Ident,
+                              imported_from: Option<Ident>,
                               arg: Vec<ast::TokenTree> )
                               -> MacroDef {
 
@@ -247,6 +253,7 @@ pub fn add_new_extension<'cx>(cx: &'cx mut ExtCtxt,
     // Parse the macro_rules! invocation (`none` is for no interpolations):
     let arg_reader = new_tt_reader(&cx.parse_sess().span_diagnostic,
                                    None,
+                                   None,
                                    arg.clone());
     let argument_map = parse_or_else(cx.parse_sess(),
                                      cx.cfg(),
@@ -266,6 +273,7 @@ pub fn add_new_extension<'cx>(cx: &'cx mut ExtCtxt,
 
     let exp = box MacroRulesMacroExpander {
         name: name,
+        imported_from: imported_from,
         lhses: lhses,
         rhses: rhses,
     };

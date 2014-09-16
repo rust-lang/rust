@@ -75,8 +75,8 @@ use parse::classify;
 use parse::common::{SeqSep, seq_sep_none, seq_sep_trailing_allowed};
 use parse::lexer::{Reader, TokenAndSpan};
 use parse::obsolete::*;
-use parse::token::{self, MatchNt, SubstNt, InternedString};
-use parse::token::{keywords, special_idents};
+use parse::token::{self, MatchNt, SubstNt, SpecialVarNt, InternedString};
+use parse::token::{keywords, special_idents, SpecialMacroVar};
 use parse::{new_sub_parser_from_file, ParseSess};
 use print::pprust;
 use ptr::P;
@@ -2747,6 +2747,9 @@ impl<'a> Parser<'a> {
                                    op: repeat,
                                    num_captures: name_num
                                }))
+                } else if p.token.is_keyword_allow_following_colon(keywords::Crate) {
+                    p.bump();
+                    TtToken(sp, SpecialVarNt(SpecialMacroVar::CrateMacroVar))
                 } else {
                     // A nonterminal that matches or not
                     let namep = match p.token { token::Ident(_, p) => p, _ => token::Plain };
