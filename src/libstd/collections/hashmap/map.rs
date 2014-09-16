@@ -696,7 +696,7 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
 
         if new_capacity < old_table.capacity() {
             // Shrink the table. Naive algorithm for resizing:
-            for (h, k, v) in old_table.move_iter() {
+            for (h, k, v) in old_table.into_iter() {
                 self.insert_hashed_nocheck(h, k, v);
             }
         } else {
@@ -943,7 +943,7 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     ///
     /// let new = vec!["a key", "b key", "z key"];
     ///
-    /// for k in new.move_iter() {
+    /// for k in new.into_iter() {
     ///     map.find_with_or_insert_with(
     ///         k, "new value",
     ///         // if the key does exist either prepend or append this
@@ -1193,6 +1193,12 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
         Entries { inner: self.table.iter() }
     }
 
+    /// Deprecated: use `iter_mut`.
+    #[deprecated = "use iter_mut"]
+    pub fn mut_iter(&mut self) -> MutEntries<K, V> {
+        self.iter_mut()
+    }
+
     /// An iterator visiting all key-value pairs in arbitrary order,
     /// with mutable references to the values.
     /// Iterator element type is `(&'a K, &'a mut V)`.
@@ -1208,7 +1214,7 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     /// map.insert("c", 3);
     ///
     /// // Update all values
-    /// for (_, val) in map.mut_iter() {
+    /// for (_, val) in map.iter_mut() {
     ///     *val *= 2;
     /// }
     ///
@@ -1216,8 +1222,14 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     ///     println!("key: {} val: {}", key, val);
     /// }
     /// ```
-    pub fn mut_iter(&mut self) -> MutEntries<K, V> {
-        MutEntries { inner: self.table.mut_iter() }
+    pub fn iter_mut(&mut self) -> MutEntries<K, V> {
+        MutEntries { inner: self.table.iter_mut() }
+    }
+
+    /// Deprecated: use `into_iter`.
+    #[deprecated = "use into_iter"]
+    pub fn move_iter(self) -> MoveEntries<K, V> {
+        self.into_iter()
     }
 
     /// Creates a consuming iterator, that is, one that moves each key-value
@@ -1235,11 +1247,11 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     /// map.insert("c", 3);
     ///
     /// // Not possible with .iter()
-    /// let vec: Vec<(&str, int)> = map.move_iter().collect();
+    /// let vec: Vec<(&str, int)> = map.into_iter().collect();
     /// ```
-    pub fn move_iter(self) -> MoveEntries<K, V> {
+    pub fn into_iter(self) -> MoveEntries<K, V> {
         MoveEntries {
-            inner: self.table.move_iter().map(|(_, k, v)| (k, v))
+            inner: self.table.into_iter().map(|(_, k, v)| (k, v))
         }
     }
 }
@@ -1561,7 +1573,7 @@ mod test_map {
         drop(hm.clone());
 
         {
-            let mut half = hm.move_iter().take(50);
+            let mut half = hm.into_iter().take(50);
 
             let v = drop_vector.get().unwrap();
             for i in range(0u, 200) {
@@ -1785,7 +1797,7 @@ mod test_map {
     #[test]
     fn test_keys() {
         let vec = vec![(1i, 'a'), (2i, 'b'), (3i, 'c')];
-        let map = vec.move_iter().collect::<HashMap<int, char>>();
+        let map = vec.into_iter().collect::<HashMap<int, char>>();
         let keys = map.keys().map(|&k| k).collect::<Vec<int>>();
         assert_eq!(keys.len(), 3);
         assert!(keys.contains(&1));
@@ -1796,7 +1808,7 @@ mod test_map {
     #[test]
     fn test_values() {
         let vec = vec![(1i, 'a'), (2i, 'b'), (3i, 'c')];
-        let map = vec.move_iter().collect::<HashMap<int, char>>();
+        let map = vec.into_iter().collect::<HashMap<int, char>>();
         let values = map.values().map(|&v| v).collect::<Vec<char>>();
         assert_eq!(values.len(), 3);
         assert!(values.contains(&'a'));
@@ -1985,7 +1997,7 @@ mod test_map {
 
         let mut map: HashMap<int, int> = xs.iter().map(|&x| x).collect();
 
-        let mut iter = map.mut_iter();
+        let mut iter = map.iter_mut();
 
         for _ in iter.by_ref().take(3) {}
 

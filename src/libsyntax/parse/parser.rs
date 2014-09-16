@@ -1295,7 +1295,7 @@ impl<'a> Parser<'a> {
                 let (inner_attrs, body) =
                     p.parse_inner_attrs_and_block();
                 let mut attrs = attrs;
-                attrs.extend(inner_attrs.move_iter());
+                attrs.extend(inner_attrs.into_iter());
                 ProvidedMethod(P(ast::Method {
                     attrs: attrs,
                     id: ast::DUMMY_NODE_ID,
@@ -1404,7 +1404,7 @@ impl<'a> Parser<'a> {
 
                 if ts.len() == 1 && !one_tuple {
                     self.expect(&token::RPAREN);
-                    TyParen(ts.move_iter().nth(0).unwrap())
+                    TyParen(ts.into_iter().nth(0).unwrap())
                 } else {
                     let t = TyTup(ts);
                     self.expect(&token::RPAREN);
@@ -2011,7 +2011,7 @@ impl<'a> Parser<'a> {
                 self.commit_expr_expecting(&**es.last().unwrap(), token::RPAREN);
 
                 return if es.len() == 1 && !trailing_comma {
-                   self.mk_expr(lo, hi, ExprParen(es.move_iter().nth(0).unwrap()))
+                   self.mk_expr(lo, hi, ExprParen(es.into_iter().nth(0).unwrap()))
                 } else {
                     self.mk_expr(lo, hi, ExprTup(es))
                 }
@@ -3500,7 +3500,7 @@ impl<'a> Parser<'a> {
         } = self.parse_items_and_view_items(first_item_attrs,
                                             false, false);
 
-        for item in items.move_iter() {
+        for item in items.into_iter() {
             let span = item.span;
             let decl = P(spanned(span.lo, span.hi, DeclItem(item)));
             stmts.push(P(spanned(span.lo, span.hi, StmtDecl(decl, ast::DUMMY_NODE_ID))));
@@ -3898,7 +3898,7 @@ impl<'a> Parser<'a> {
                           "variadic function must be declared with at least one named argument");
         }
 
-        let args = args.move_iter().map(|x| x.unwrap()).collect();
+        let args = args.into_iter().map(|x| x.unwrap()).collect();
 
         (args, variadic)
     }
@@ -4958,7 +4958,7 @@ impl<'a> Parser<'a> {
                     seq_sep_trailing_allowed(token::COMMA),
                     |p| p.parse_ty(true)
                 );
-                for ty in arg_tys.move_iter() {
+                for ty in arg_tys.into_iter() {
                     args.push(ast::VariantArg {
                         ty: ty,
                         id: ast::DUMMY_NODE_ID,
@@ -5057,7 +5057,7 @@ impl<'a> Parser<'a> {
                 self.bump();
                 let mut attrs = attrs;
                 mem::swap(&mut item.attrs, &mut attrs);
-                item.attrs.extend(attrs.move_iter());
+                item.attrs.extend(attrs.into_iter());
                 return IoviItem(P(item));
             }
             None => {}
@@ -5408,7 +5408,7 @@ impl<'a> Parser<'a> {
             let path = ast::Path {
                 span: span,
                 global: false,
-                segments: path.move_iter().map(|identifier| {
+                segments: path.into_iter().map(|identifier| {
                     ast::PathSegment {
                         identifier: identifier,
                         lifetimes: Vec::new(),
@@ -5443,7 +5443,7 @@ impl<'a> Parser<'a> {
                     let path = ast::Path {
                         span: mk_sp(lo, self.span.hi),
                         global: false,
-                        segments: path.move_iter().map(|identifier| {
+                        segments: path.into_iter().map(|identifier| {
                             ast::PathSegment {
                                 identifier: identifier,
                                 lifetimes: Vec::new(),
@@ -5461,7 +5461,7 @@ impl<'a> Parser<'a> {
                     let path = ast::Path {
                         span: mk_sp(lo, self.span.hi),
                         global: false,
-                        segments: path.move_iter().map(|identifier| {
+                        segments: path.into_iter().map(|identifier| {
                             ast::PathSegment {
                                 identifier: identifier,
                                 lifetimes: Vec::new(),
@@ -5483,7 +5483,7 @@ impl<'a> Parser<'a> {
         let path = ast::Path {
             span: mk_sp(lo, self.span.hi),
             global: false,
-            segments: path.move_iter().map(|identifier| {
+            segments: path.into_iter().map(|identifier| {
                 ast::PathSegment {
                     identifier: identifier,
                     lifetimes: Vec::new(),

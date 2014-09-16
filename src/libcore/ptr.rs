@@ -113,6 +113,10 @@ pub use intrinsics::set_memory;
 #[unstable = "may need a different name after pending changes to pointer types"]
 pub fn null<T>() -> *const T { 0 as *const T }
 
+/// Deprecated: use `null_mut`.
+#[deprecated = "use null_mut"]
+pub fn mut_null<T>() -> *mut T { null_mut() }
+
 /// Create an unsafe mutable null pointer.
 ///
 /// # Example
@@ -120,12 +124,12 @@ pub fn null<T>() -> *const T { 0 as *const T }
 /// ```
 /// use std::ptr;
 ///
-/// let p: *mut int = ptr::mut_null();
+/// let p: *mut int = ptr::null_mut();
 /// assert!(p.is_null());
 /// ```
 #[inline]
 #[unstable = "may need a different name after pending changes to pointer types"]
-pub fn mut_null<T>() -> *mut T { 0 as *mut T }
+pub fn null_mut<T>() -> *mut T { 0 as *mut T }
 
 /// Zeroes out `count * size_of::<T>` bytes of memory at `dst`
 #[inline]
@@ -323,7 +327,7 @@ impl<T> RawPtr<T> for *const T {
 
 impl<T> RawPtr<T> for *mut T {
     #[inline]
-    fn null() -> *mut T { mut_null() }
+    fn null() -> *mut T { null_mut() }
 
     #[inline]
     fn is_null(&self) -> bool { *self == RawPtr::null() }

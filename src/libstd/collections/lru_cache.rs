@@ -84,8 +84,8 @@ impl<K, V> LruEntry<K, V> {
         LruEntry {
             key: k,
             value: v,
-            next: ptr::mut_null(),
-            prev: ptr::mut_null(),
+            next: ptr::null_mut(),
+            prev: ptr::null_mut(),
         }
     }
 }

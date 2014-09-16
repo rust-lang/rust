@@ -302,7 +302,7 @@ fn has_allow_dead_code_or_lang_attr(attrs: &[ast::Attribute]) -> bool {
     }
 
     let dead_code = lint::builtin::DEAD_CODE.name_lower();
-    for attr in lint::gather_attrs(attrs).move_iter() {
+    for attr in lint::gather_attrs(attrs).into_iter() {
         match attr {
             Ok((ref name, lint::Allow, _))
                 if name.get() == dead_code.as_slice() => return true,

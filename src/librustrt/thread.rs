@@ -171,8 +171,8 @@ mod imp {
         // kernel does, might as well make it explicit.  With the current
         // 20 kB red zone, that makes for a 64 kB minimum stack.
         let stack_size = (cmp::max(stack, RED_ZONE) + 0xfffe) & (-0xfffe - 1);
-        let ret = CreateThread(ptr::mut_null(), stack_size as libc::size_t,
-                               super::thread_start, arg, 0, ptr::mut_null());
+        let ret = CreateThread(ptr::null_mut(), stack_size as libc::size_t,
+                               super::thread_start, arg, 0, ptr::null_mut());
 
         if ret as uint == 0 {
             // be sure to not leak the closure
@@ -268,7 +268,7 @@ mod imp {
     }
 
     pub unsafe fn join(native: rust_thread) {
-        assert_eq!(pthread_join(native, ptr::mut_null()), 0);
+        assert_eq!(pthread_join(native, ptr::null_mut()), 0);
     }
 
     pub unsafe fn detach(native: rust_thread) {

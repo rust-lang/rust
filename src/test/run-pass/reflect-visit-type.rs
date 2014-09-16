@@ -141,7 +141,7 @@ pub fn main() {
         println!("type: {}", (*s).clone());
     }
 
-    let vec_types: Vec<String> = v.types.clone().move_iter().collect();
+    let vec_types: Vec<String> = v.types.clone().into_iter().collect();
     assert_eq!(vec_types, vec!("bool".to_string(), "int".to_string(),
                                "i8".to_string(), "i16".to_string()));
 }

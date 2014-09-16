@@ -61,7 +61,7 @@ pub fn main() {
     assert_eq!(map.find(&Owned("def".to_string())), Some(&d));
 
     assert!(map.pop(&Slice("foo")).is_some());
-    assert_eq!(map.move_iter().map(|(k, v)| format!("{}{}", k, v))
+    assert_eq!(map.into_iter().map(|(k, v)| format!("{}{}", k, v))
                               .collect::<Vec<String>>()
                               .concat(),
                "abc50bcd51cde52def53".to_string());

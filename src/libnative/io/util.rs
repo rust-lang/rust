@@ -155,15 +155,15 @@ pub fn connect_timeout(fd: net::sock_t,
             // undefined what the value of the 'tv' is after select
             // returns EINTR).
             let mut tv = ms_to_timeval(timeout - (::io::timer::now() - start));
-            c::select(fd + 1, ptr::mut_null(), set as *mut _,
-                      ptr::mut_null(), &mut tv)
+            c::select(fd + 1, ptr::null_mut(), set as *mut _,
+                      ptr::null_mut(), &mut tv)
         })
     }
     #[cfg(windows)]
     fn await(_fd: net::sock_t, set: &mut c::fd_set,
              timeout: u64) -> libc::c_int {
         let mut tv = ms_to_timeval(timeout);
-        unsafe { c::select(1, ptr::mut_null(), set, ptr::mut_null(), &mut tv) }
+        unsafe { c::select(1, ptr::null_mut(), set, ptr::null_mut(), &mut tv) }
     }
 }
 
@@ -180,15 +180,15 @@ pub fn await(fds: &[net::sock_t], deadline: Option<u64>,
     }
 
     let (read, write) = match status {
-        Readable => (&mut set as *mut _, ptr::mut_null()),
-        Writable => (ptr::mut_null(), &mut set as *mut _),
+        Readable => (&mut set as *mut _, ptr::null_mut()),
+        Writable => (ptr::null_mut(), &mut set as *mut _),
     };
     let mut tv: libc::timeval = unsafe { mem::zeroed() };
 
     match retry(|| {
         let now = ::io::timer::now();
         let tvp = match deadline {
-            None => ptr::mut_null(),
+            None => ptr::null_mut(),
             Some(deadline) => {
                 // If we're past the deadline, then pass a 0 timeout to
                 // select() so we can poll the status
@@ -198,7 +198,7 @@ pub fn await(fds: &[net::sock_t], deadline: Option<u64>,
             }
         };
         let r = unsafe {
-            c::select(max as libc::c_int, read, write, ptr::mut_null(), tvp)
+            c::select(max as libc::c_int, read, write, ptr::null_mut(), tvp)
         };
         r
     }) {

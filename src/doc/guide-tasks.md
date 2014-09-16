@@ -238,7 +238,7 @@ fn main() {
     let mut futures = Vec::from_fn(1000, |ind| Future::spawn( proc() { partial_sum(ind) }));
 
     let mut final_res = 0f64;
-    for ft in futures.mut_iter()  {
+    for ft in futures.iter_mut()  {
         final_res += ft.get();
     }
     println!("π^2/6 is not far from : {}", final_res);

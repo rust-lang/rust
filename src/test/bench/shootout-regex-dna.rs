@@ -87,7 +87,7 @@ fn main() {
             (regex!("Y"), "(c|t)"),
         ];
         let mut seq = seq;
-        for (re, replacement) in substs.move_iter() {
+        for (re, replacement) in substs.into_iter() {
             seq = re.replace_all(seq.as_slice(), NoExpand(replacement));
         }
         seq.len()
@@ -105,7 +105,7 @@ fn main() {
         regex!("agggtaa[cgt]|[acg]ttaccct"),
     ];
     let (mut variant_strs, mut counts) = (vec!(), vec!());
-    for variant in variants.move_iter() {
+    for variant in variants.into_iter() {
         let seq_arc_copy = seq_arc.clone();
         variant_strs.push(variant.to_string());
         counts.push(Future::spawn(proc() {

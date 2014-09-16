@@ -26,7 +26,7 @@ fn main() {
     {
         let mut fragments = vec![Fragment, Fragment, Fragment];
         let _new_fragments: Vec<Fragment> = mem::replace(&mut fragments, vec![])
-            .move_iter()
+            .into_iter()
             .skip_while(|_fragment| {
                 true
             }).collect();

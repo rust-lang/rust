@@ -67,7 +67,7 @@ pub fn expand_env<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
             return DummyResult::expr(sp);
         }
         None => return DummyResult::expr(sp),
-        Some(exprs) => exprs.move_iter()
+        Some(exprs) => exprs.into_iter()
     };
 
     let var = match expr_to_string(cx,

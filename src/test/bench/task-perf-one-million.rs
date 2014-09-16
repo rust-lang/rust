@@ -28,20 +28,20 @@ fn calc(children: uint, parent_wait_chan: &Sender<Sender<Sender<int>>>) {
     });
 
     let child_start_chans: Vec<Sender<Sender<int>>> =
-        wait_ports.move_iter().map(|port| port.recv()).collect();
+        wait_ports.into_iter().map(|port| port.recv()).collect();
 
     let (start_port, start_chan) = stream::<Sender<int>>();
     parent_wait_chan.send(start_chan);
     let parent_result_chan: Sender<int> = start_port.recv();
 
     let child_sum_ports: Vec<Reciever<int>> =
-        child_start_chans.move_iter().map(|child_start_chan| {
+        child_start_chans.into_iter().map(|child_start_chan| {
             let (child_sum_port, child_sum_chan) = stream::<int>();
             child_start_chan.send(child_sum_chan);
             child_sum_port
     }).collect();
 
-    let sum = child_sum_ports.move_iter().fold(0, |sum, sum_port| sum + sum_port.recv() );
+    let sum = child_sum_ports.into_iter().fold(0, |sum, sum_port| sum + sum_port.recv() );
 
     parent_result_chan.send(sum + 1);
 }

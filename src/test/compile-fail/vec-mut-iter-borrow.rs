@@ -11,7 +11,7 @@
 fn main() {
     let mut xs: Vec<int> = vec!();
 
-    for x in xs.mut_iter() {
+    for x in xs.iter_mut() {
         xs.push(1i) //~ ERROR cannot borrow `xs`
     }
 }

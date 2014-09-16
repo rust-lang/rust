@@ -218,7 +218,7 @@ fn with_env_lock<T>(f: || -> T) -> T {
 /// }
 /// ```
 pub fn env() -> Vec<(String,String)> {
-    env_as_bytes().move_iter().map(|(k,v)| {
+    env_as_bytes().into_iter().map(|(k,v)| {
         let k = String::from_utf8_lossy(k.as_slice()).into_string();
         let v = String::from_utf8_lossy(v.as_slice()).into_string();
         (k,v)
@@ -663,14 +663,14 @@ pub fn self_exe_name() -> Option<Path> {
                                -1 as c_int];
             let mut sz: libc::size_t = 0;
             let err = sysctl(mib.as_mut_ptr(), mib.len() as ::libc::c_uint,
-                             ptr::mut_null(), &mut sz, ptr::mut_null(),
+                             ptr::null_mut(), &mut sz, ptr::null_mut(),
                              0u as libc::size_t);
             if err != 0 { return None; }
             if sz == 0 { return None; }
             let mut v: Vec<u8> = Vec::with_capacity(sz as uint);
             let err = sysctl(mib.as_mut_ptr(), mib.len() as ::libc::c_uint,
                              v.as_mut_ptr() as *mut c_void, &mut sz,
-                             ptr::mut_null(), 0u as libc::size_t);
+                             ptr::null_mut(), 0u as libc::size_t);
             if err != 0 { return None; }
             if sz == 0 { return None; }
             v.set_len(sz as uint - 1); // chop off trailing NUL
@@ -695,7 +695,7 @@ pub fn self_exe_name() -> Option<Path> {
         unsafe {
             use libc::funcs::extra::_NSGetExecutablePath;
             let mut sz: u32 = 0;
-            _NSGetExecutablePath(ptr::mut_null(), &mut sz);
+            _NSGetExecutablePath(ptr::null_mut(), &mut sz);
             if sz == 0 { return None; }
             let mut v: Vec<u8> = Vec::with_capacity(sz as uint);
             let err = _NSGetExecutablePath(v.as_mut_ptr() as *mut i8, &mut sz);
@@ -1045,7 +1045,7 @@ pub fn error_string(errnum: uint) -> String {
         unsafe {
             let res = FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM |
                                      FORMAT_MESSAGE_IGNORE_INSERTS,
-                                     ptr::mut_null(),
+                                     ptr::null_mut(),
                                      errnum as DWORD,
                                      langId,
                                      buf.as_mut_ptr(),
@@ -1192,7 +1192,7 @@ fn real_args_as_bytes() -> Vec<Vec<u8>> {
 
 #[cfg(not(windows))]
 fn real_args() -> Vec<String> {
-    real_args_as_bytes().move_iter()
+    real_args_as_bytes().into_iter()
                         .map(|v| {
                             String::from_utf8_lossy(v.as_slice()).into_string()
                         }).collect()
@@ -1229,7 +1229,7 @@ fn real_args() -> Vec<String> {
 
 #[cfg(windows)]
 fn real_args_as_bytes() -> Vec<Vec<u8>> {
-    real_args().move_iter().map(|s| s.into_bytes()).collect()
+    real_args().into_iter().map(|s| s.into_bytes()).collect()
 }
 
 type LPCWSTR = *const u16;
@@ -1529,7 +1529,7 @@ impl MemoryMap {
     pub fn new(min_len: uint, options: &[MapOption]) -> Result<MemoryMap, MapError> {
         use libc::types::os::arch::extra::{LPVOID, DWORD, SIZE_T, HANDLE};
 
-        let mut lpAddress: LPVOID = ptr::mut_null();
+        let mut lpAddress: LPVOID = ptr::null_mut();
         let mut readable = false;
         let mut writable = false;
         let mut executable = false;
@@ -1589,12 +1589,12 @@ impl MemoryMap {
             unsafe {
                 let hFile = libc::get_osfhandle(fd) as HANDLE;
                 let mapping = libc::CreateFileMappingW(hFile,
-                                                       ptr::mut_null(),
+                                                       ptr::null_mut(),
                                                        flProtect,
                                                        0,
                                                        0,
                                                        ptr::null());
-                if mapping == ptr::mut_null() {
+                if mapping == ptr::null_mut() {
                     return Err(ErrCreateFileMappingW(errno()));
                 }
                 if errno() as c_int == libc::ERROR_ALREADY_EXISTS {

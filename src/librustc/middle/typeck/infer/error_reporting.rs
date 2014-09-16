@@ -335,7 +335,7 @@ impl<'a, 'tcx> ErrorReporting for InferCtxt<'a, 'tcx> {
                                   same_frs: &FreeRegionsFromSameFn) {
             let scope_id = same_frs.scope_id;
             let (sub_fr, sup_fr) = (same_frs.sub_fr, same_frs.sup_fr);
-            for sr in same_regions.mut_iter() {
+            for sr in same_regions.iter_mut() {
                 if sr.contains(&sup_fr.bound_region)
                    && scope_id == sr.scope_id {
                     sr.push(sub_fr.bound_region);
@@ -1328,7 +1328,7 @@ impl<'a, 'tcx> Rebuilder<'a, 'tcx> {
                         ast::TyFixedLengthVec(build_to(ty, to), e)
                     }
                     ast::TyTup(tys) => {
-                        ast::TyTup(tys.move_iter().map(|ty| build_to(ty, to)).collect())
+                        ast::TyTup(tys.into_iter().map(|ty| build_to(ty, to)).collect())
                     }
                     ast::TyParen(typ) => ast::TyParen(build_to(typ, to)),
                     other => other

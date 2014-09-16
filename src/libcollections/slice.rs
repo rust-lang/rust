@@ -77,7 +77,7 @@
 //! }
 //! ```
 //!
-//! * `.mut_iter()` returns an iterator that allows modifying each value.
+//! * `.iter_mut()` returns an iterator that allows modifying each value.
 //! * Further iterators exist that split, chunk or permute the slice.
 
 #![doc(primitive = "slice")]
@@ -195,7 +195,7 @@ impl Iterator<(uint, uint)> for ElementSwaps {
                 self.sdir.as_mut_slice().swap(i, j);
 
                 // Swap the direction of each larger SizeDirection
-                for x in self.sdir.mut_iter() {
+                for x in self.sdir.iter_mut() {
                     if x.size > sd.size {
                         x.dir = match x.dir { Pos => Neg, Neg => Pos };
                     }
@@ -606,7 +606,7 @@ impl<'a,T> MutableSliceAllocating<'a, T> for &'a mut [T] {
 
     #[inline]
     fn move_from(self, mut src: Vec<T>, start: uint, end: uint) -> uint {
-        for (a, b) in self.mut_iter().zip(src.mut_slice(start, end).mut_iter()) {
+        for (a, b) in self.iter_mut().zip(src.slice_mut(start, end).iter_mut()) {
             mem::swap(a, b);
         }
         cmp::min(self.len(), end-start)
@@ -698,7 +698,7 @@ impl<'a, T: Ord> MutableOrdSlice<T> for &'a mut [T] {
         self.swap(j, i-1);
 
         // Step 4: Reverse the (previously) weakly decreasing part
-        self.mut_slice_from(i).reverse();
+        self.slice_from_mut(i).reverse();
 
         true
     }
@@ -719,7 +719,7 @@ impl<'a, T: Ord> MutableOrdSlice<T> for &'a mut [T] {
         }
 
         // Step 2: Reverse the weakly increasing part
-        self.mut_slice_from(i).reverse();
+        self.slice_from_mut(i).reverse();
 
         // Step 3: Find the rightmost element equal to or bigger than the pivot (i-1)
         let mut j = self.len() - 1;
@@ -1685,7 +1685,7 @@ mod tests {
     fn test_iter_size_hints() {
         let mut xs = [1i, 2, 5, 10, 11];
         assert_eq!(xs.iter().size_hint(), (5, Some(5)));
-        assert_eq!(xs.mut_iter().size_hint(), (5, Some(5)));
+        assert_eq!(xs.iter_mut().size_hint(), (5, Some(5)));
     }
 
     #[test]
@@ -1702,7 +1702,7 @@ mod tests {
     #[test]
     fn test_mut_iterator() {
         let mut xs = [1i, 2, 3, 4, 5];
-        for x in xs.mut_iter() {
+        for x in xs.iter_mut() {
             *x += 1;
         }
         assert!(xs == [2, 3, 4, 5, 6])
@@ -1724,7 +1724,7 @@ mod tests {
     #[test]
     fn test_mut_rev_iterator() {
         let mut xs = [1u, 2, 3, 4, 5];
-        for (i,x) in xs.mut_iter().rev().enumerate() {
+        for (i,x) in xs.iter_mut().rev().enumerate() {
             *x += i;
         }
         assert!(xs == [5, 5, 5, 5, 5])
@@ -1733,13 +1733,13 @@ mod tests {
     #[test]
     fn test_move_iterator() {
         let xs = vec![1u,2,3,4,5];
-        assert_eq!(xs.move_iter().fold(0, |a: uint, b: uint| 10*a + b), 12345);
+        assert_eq!(xs.into_iter().fold(0, |a: uint, b: uint| 10*a + b), 12345);
     }
 
     #[test]
     fn test_move_rev_iterator() {
         let xs = vec![1u,2,3,4,5];
-        assert_eq!(xs.move_iter().rev().fold(0, |a: uint, b: uint| 10*a + b), 54321);
+        assert_eq!(xs.into_iter().rev().fold(0, |a: uint, b: uint| 10*a + b), 54321);
     }
 
     #[test]
@@ -1892,7 +1892,7 @@ mod tests {
         assert!(a == [7i,2,3,4]);
         let mut a = [1i,2,3,4,5];
         let b = vec![5i,6,7,8,9,0];
-        assert_eq!(a.mut_slice(2,4).move_from(b,1,6), 2);
+        assert_eq!(a.slice_mut(2,4).move_from(b,1,6), 2);
         assert!(a == [1i,2,6,7,5]);
     }
 
@@ -1911,7 +1911,7 @@ mod tests {
     #[test]
     fn test_reverse_part() {
         let mut values = [1i,2,3,4,5];
-        values.mut_slice(1, 4).reverse();
+        values.slice_mut(1, 4).reverse();
         assert!(values == [1,4,3,2,5]);
     }
 
@@ -1958,9 +1958,9 @@ mod tests {
     fn test_bytes_set_memory() {
         use slice::bytes::MutableByteVector;
         let mut values = [1u8,2,3,4,5];
-        values.mut_slice(0,5).set_memory(0xAB);
+        values.slice_mut(0,5).set_memory(0xAB);
         assert!(values == [0xAB, 0xAB, 0xAB, 0xAB, 0xAB]);
-        values.mut_slice(2,4).set_memory(0xFF);
+        values.slice_mut(2,4).set_memory(0xFF);
         assert!(values == [0xAB, 0xAB, 0xFF, 0xFF, 0xAB]);
     }
 
@@ -1985,14 +1985,14 @@ mod tests {
     fn test_mut_split_at() {
         let mut values = [1u8,2,3,4,5];
         {
-            let (left, right) = values.mut_split_at(2);
+            let (left, right) = values.split_at_mut(2);
             assert!(left.slice(0, left.len()) == [1, 2]);
-            for p in left.mut_iter() {
+            for p in left.iter_mut() {
                 *p += 1;
             }
 
             assert!(right.slice(0, right.len()) == [3, 4, 5]);
-            for p in right.mut_iter() {
+            for p in right.iter_mut() {
                 *p += 2;
             }
         }
@@ -2021,13 +2021,13 @@ mod tests {
         }
         assert_eq!(cnt, 5);
 
-        for f in v.mut_iter() {
+        for f in v.iter_mut() {
             assert!(*f == Foo);
             cnt += 1;
         }
         assert_eq!(cnt, 8);
 
-        for f in v.move_iter() {
+        for f in v.into_iter() {
             assert!(f == Foo);
             cnt += 1;
         }
@@ -2113,14 +2113,14 @@ mod tests {
     #[test]
     fn test_mut_splitator() {
         let mut xs = [0i,1,0,2,3,0,0,4,5,0];
-        assert_eq!(xs.mut_split(|x| *x == 0).count(), 6);
-        for slice in xs.mut_split(|x| *x == 0) {
+        assert_eq!(xs.split_mut(|x| *x == 0).count(), 6);
+        for slice in xs.split_mut(|x| *x == 0) {
             slice.reverse();
         }
         assert!(xs == [0,1,0,3,2,0,0,5,4,0]);
 
         let mut xs = [0i,1,0,2,3,0,0,4,5,0,6,7];
-        for slice in xs.mut_split(|x| *x == 0).take(5) {
+        for slice in xs.split_mut(|x| *x == 0).take(5) {
             slice.reverse();
         }
         assert!(xs == [0,1,0,3,2,0,0,5,4,0,6,7]);
@@ -2129,7 +2129,7 @@ mod tests {
     #[test]
     fn test_mut_splitator_rev() {
         let mut xs = [1i,2,0,3,4,0,0,5,6,0];
-        for slice in xs.mut_split(|x| *x == 0).rev().take(4) {
+        for slice in xs.split_mut(|x| *x == 0).rev().take(4) {
             slice.reverse();
         }
         assert!(xs == [1,2,0,4,3,0,0,6,5,0]);
@@ -2148,8 +2148,8 @@ mod tests {
     #[test]
     fn test_mut_chunks() {
         let mut v = [0u8, 1, 2, 3, 4, 5, 6];
-        for (i, chunk) in v.mut_chunks(3).enumerate() {
-            for x in chunk.mut_iter() {
+        for (i, chunk) in v.chunks_mut(3).enumerate() {
+            for x in chunk.iter_mut() {
                 *x = i as u8;
             }
         }
@@ -2160,8 +2160,8 @@ mod tests {
     #[test]
     fn test_mut_chunks_rev() {
         let mut v = [0u8, 1, 2, 3, 4, 5, 6];
-        for (i, chunk) in v.mut_chunks(3).rev().enumerate() {
-            for x in chunk.mut_iter() {
+        for (i, chunk) in v.chunks_mut(3).rev().enumerate() {
+            for x in chunk.iter_mut() {
                 *x = i as u8;
             }
         }
@@ -2173,7 +2173,7 @@ mod tests {
     #[should_fail]
     fn test_mut_chunks_0() {
         let mut v = [1i, 2, 3, 4];
-        let _it = v.mut_chunks(0);
+        let _it = v.chunks_mut(0);
     }
 
     #[test]
@@ -2207,11 +2207,11 @@ mod tests {
     #[test]
     fn test_mut_last() {
         let mut x = [1i, 2, 3, 4, 5];
-        let h = x.mut_last();
+        let h = x.last_mut();
         assert_eq!(*h.unwrap(), 5);
 
         let y: &mut [int] = [];
-        assert!(y.mut_last().is_none());
+        assert!(y.last_mut().is_none());
     }
 }
 
@@ -2248,7 +2248,7 @@ mod bench {
 
         b.iter(|| {
             let mut i = 0i;
-            for x in v.mut_iter() {
+            for x in v.iter_mut() {
                 *x = i;
                 i += 1;
             }
@@ -2382,7 +2382,7 @@ mod bench {
             unsafe {
                 v.set_len(1024);
             }
-            for x in v.mut_iter() {
+            for x in v.iter_mut() {
                 *x = 0i;
             }
             v

@@ -70,7 +70,7 @@ impl TtyWatcher {
                 // handle, so our only cleanup is to free the handle itself
                 if cfg!(windows) {
                     unsafe { uvll::free_handle(handle); }
-                    watcher.tty = ptr::mut_null();
+                    watcher.tty = ptr::null_mut();
                 }
                 Err(UvError(n))
             }

@@ -160,7 +160,7 @@ impl<'a> fold::Folder for TestHarnessGenerator<'a> {
                 ast::Item {
                     id: id,
                     ident: ident,
-                    attrs: attrs.move_iter().filter_map(|attr| {
+                    attrs: attrs.into_iter().filter_map(|attr| {
                         if !attr.check_name("main") {
                             Some(attr)
                         } else {
@@ -195,11 +195,11 @@ fn mk_reexport_mod(cx: &mut TestCtxt, tests: Vec<ast::Ident>,
     let mut view_items = Vec::new();
     let super_ = token::str_to_ident("super");
 
-    view_items.extend(tests.move_iter().map(|r| {
+    view_items.extend(tests.into_iter().map(|r| {
         cx.ext_cx.view_use_simple(DUMMY_SP, ast::Public,
                                   cx.ext_cx.path(DUMMY_SP, vec![super_, r]))
     }));
-    view_items.extend(tested_submods.move_iter().map(|(r, sym)| {
+    view_items.extend(tested_submods.into_iter().map(|(r, sym)| {
         let path = cx.ext_cx.path(DUMMY_SP, vec![super_, r, sym]);
         cx.ext_cx.view_use_simple_(DUMMY_SP, ast::Public, r, path)
     }));
@@ -444,7 +444,7 @@ fn path_node(ids: Vec<ast::Ident> ) -> ast::Path {
     ast::Path {
         span: DUMMY_SP,
         global: false,
-        segments: ids.move_iter().map(|identifier| ast::PathSegment {
+        segments: ids.into_iter().map(|identifier| ast::PathSegment {
             identifier: identifier,
             lifetimes: Vec::new(),
             types: OwnedSlice::empty(),
@@ -552,7 +552,7 @@ fn mk_test_desc_and_fn_rec(cx: &TestCtxt, test: &Test) -> P<ast::Expr> {
             );
         }
     };
-    visible_path.extend(path.move_iter());
+    visible_path.extend(path.into_iter());
 
     let fn_expr = ecx.expr_path(ecx.path_global(span, visible_path));
 

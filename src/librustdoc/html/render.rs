@@ -299,7 +299,7 @@ pub fn run(mut krate: clean::Crate, external_html: &ExternalHtml, dst: Path) -> 
     let paths: HashMap<ast::DefId, (Vec<String>, ItemType)> =
       analysis.as_ref().map(|a| {
         let paths = a.external_paths.borrow_mut().take().unwrap();
-        paths.move_iter().map(|(k, (v, t))| {
+        paths.into_iter().map(|(k, (v, t))| {
             (k, (v, match t {
                 clean::TypeStruct => item_type::Struct,
                 clean::TypeEnum => item_type::Enum,
@@ -950,7 +950,7 @@ impl DocFolder for Cache {
                         use clean::{FixedVector, Slice, Tuple, PrimitiveTuple};
 
                         // extract relevant documentation for this impl
-                        let dox = match attrs.move_iter().find(|a| {
+                        let dox = match attrs.into_iter().find(|a| {
                             match *a {
                                 clean::NameValue(ref x, _)
                                         if "doc" == x.as_slice() => {
@@ -1207,7 +1207,7 @@ impl Context {
                         _ => unreachable!()
                     };
                     this.sidebar = build_sidebar(&m);
-                    for item in m.items.move_iter() {
+                    for item in m.items.into_iter() {
                         f(this,item);
                     }
                     Ok(())
@@ -2143,7 +2143,7 @@ fn build_sidebar(m: &clean::Module) -> HashMap<String, Vec<String>> {
         v.push(myname);
     }
 
-    for (_, items) in map.mut_iter() {
+    for (_, items) in map.iter_mut() {
         items.as_mut_slice().sort();
     }
     return map;

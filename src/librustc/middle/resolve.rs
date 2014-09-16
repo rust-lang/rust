@@ -6045,7 +6045,7 @@ impl<'a> Resolver<'a> {
         if idents.len() == 0 {
             return "???".to_string();
         }
-        self.idents_to_string(idents.move_iter().rev()
+        self.idents_to_string(idents.into_iter().rev()
                                  .collect::<Vec<ast::Ident>>()
                                  .as_slice())
     }

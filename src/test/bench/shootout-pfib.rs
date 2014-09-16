@@ -82,7 +82,7 @@ fn stress(num_tasks: int) {
             stress_task(i);
         }));
     }
-    for r in results.move_iter() {
+    for r in results.into_iter() {
         r.unwrap();
     }
 }
@@ -94,7 +94,7 @@ fn main() {
     } else if args.len() <= 1u {
         vec!("".to_string(), "8".to_string())
     } else {
-        args.move_iter().map(|x| x.to_string()).collect()
+        args.into_iter().map(|x| x.to_string()).collect()
     };
 
     let opts = parse_opts(args.clone());

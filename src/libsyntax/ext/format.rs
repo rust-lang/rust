@@ -500,7 +500,7 @@ impl<'a, 'b> Context<'a, 'b> {
         let mut heads = Vec::new();
 
         // First, declare all of our methods that are statics
-        for method in self.method_statics.move_iter() {
+        for method in self.method_statics.into_iter() {
             let decl = respan(self.fmtsp, ast::DeclItem(method));
             lets.push(P(respan(self.fmtsp,
                                ast::StmtDecl(P(decl), ast::DUMMY_NODE_ID))));
@@ -543,7 +543,7 @@ impl<'a, 'b> Context<'a, 'b> {
         // format! string are shoved into locals. Furthermore, we shove the address
         // of each variable because we don't want to move out of the arguments
         // passed to this function.
-        for (i, e) in self.args.move_iter().enumerate() {
+        for (i, e) in self.args.into_iter().enumerate() {
             let arg_ty = match self.arg_types.get(i).as_ref() {
                 Some(ty) => ty,
                 None => continue // error already generated
@@ -577,8 +577,8 @@ impl<'a, 'b> Context<'a, 'b> {
         // Now create a vector containing all the arguments
         let slicename = self.ecx.ident_of("__args_vec");
         {
-            let args = names.move_iter().map(|a| a.unwrap());
-            let mut args = locals.move_iter().chain(args);
+            let args = names.into_iter().map(|a| a.unwrap());
+            let mut args = locals.into_iter().chain(args);
             let args = self.ecx.expr_vec_slice(self.fmtsp, args.collect());
             lets.push(self.ecx.stmt_let(self.fmtsp, false, slicename, args));
         }
