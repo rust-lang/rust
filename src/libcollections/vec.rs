@@ -1687,7 +1687,7 @@ impl<T> MutableSeq<T> for Vec<T> {
             unsafe { mem::forget(value); }
             return
         }
-        if self.len == self.cap {
+        if unlikely!(self.len == self.cap) {
             let old_size = self.cap * mem::size_of::<T>();
             let size = max(old_size, 2 * mem::size_of::<T>()) * 2;
             if old_size > size { fail!("capacity overflow") }

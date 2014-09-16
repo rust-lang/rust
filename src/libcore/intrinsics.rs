@@ -616,8 +616,37 @@ extern "rust-intrinsic" {
     pub fn u32_mul_with_overflow(x: u32, y: u32) -> (u32, bool);
     /// Performs checked `u64` multiplication.
     pub fn u64_mul_with_overflow(x: u64, y: u64) -> (u64, bool);
+
+    /// Inform the optimizer that `expected_val` is the expected (most probable) value of `val`.
+    #[cfg(not(stage0))]
+    pub fn expect8(val: u8, expected_val: u8) -> u8;
+    /// Inform the optimizer that `expected_val` is the expected (most probable) value of `val`.
+    #[cfg(not(stage0))]
+    pub fn expect16(val: u16, expected_val: u16) -> u16;
+    /// Inform the optimizer that `expected_val` is the expected (most probable) value of `val`.
+    #[cfg(not(stage0))]
+    pub fn expect32(val: u32, expected_val: u32) -> u32;
+    /// Inform the optimizer that `expected_val` is the expected (most probable) value of `val`.
+    #[cfg(not(stage0))]
+    pub fn expect64(val: u64, expected_val: u64) -> u64;
 }
 
+/// Inform the optimizer that `expected_val` is the expected (most probable) value of `val`.
+#[cfg(stage0)]
+#[inline(always)]
+pub unsafe fn expect8(val: u8, _expected_val: u8) -> u8 { val }
+/// Inform the optimizer that `expected_val` is the expected (most probable) value of `val`.
+#[cfg(stage0)]
+#[inline(always)]
+pub unsafe fn expect16(val: u16, _expected_val: u16) -> u16 { val }
+/// Inform the optimizer that `expected_val` is the expected (most probable) value of `val`.
+#[cfg(stage0)]
+#[inline(always)]
+pub unsafe fn expect32(val: u32, _expected_val: u32) -> u32 { val }
+/// Inform the optimizer that `expected_val` is the expected (most probable) value of `val`.
+#[cfg(stage0)]
+#[inline(always)]
+pub unsafe fn expect64(val: u64, _expected_val: u64) -> u64 { val }
 
 /// `TypeId` represents a globally unique identifier for a type
 #[lang="type_id"] // This needs to be kept in lockstep with the code in trans/intrinsic.rs and

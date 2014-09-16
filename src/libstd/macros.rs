@@ -214,6 +214,30 @@ macro_rules! unreachable(
     () => (fail!("internal error: entered unreachable code"))
 )
 
+// FIXME: #17316: should be marked experimental
+/// Inform the optimizer that a boolean condition is likely.
+#[macro_export]
+macro_rules! likely(
+    ($val:expr) => {
+        {
+            let x: bool = $val;
+            unsafe { ::std::intrinsics::expect8(x as u8, 1) != 0 }
+        }
+    }
+)
+
+// FIXME: #17316: should be marked experimental
+/// Inform the optimizer that a boolean condition is unlikely.
+#[macro_export]
+macro_rules! unlikely(
+    ($val:expr) => {
+        {
+            let x: bool = $val;
+            unsafe { ::std::intrinsics::expect8(x as u8, 0) != 0 }
+        }
+    }
+)
+
 /// A standardised placeholder for marking unfinished code. It fails with the
 /// message `"not yet implemented"` when executed.
 #[macro_export]
