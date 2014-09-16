@@ -31,7 +31,7 @@
 //! that requires an input file to be specified, accepts an optional output
 //! file name following `-o`, and accepts both `-h` and `--help` as optional flags.
 //!
-//! ~~~{.rust}
+//! ```{.rust}
 //! extern crate getopts;
 //! use getopts::{optopt,optflag,getopts,OptGroup};
 //! use std::os;
@@ -76,7 +76,7 @@
 //!     };
 //!     do_work(input.as_slice(), output);
 //! }
-//! ~~~
+//! ```
 
 #![crate_name = "getopts"]
 #![experimental]
