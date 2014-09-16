@@ -383,13 +383,9 @@ pub fn malloc_raw_dyn<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     Result::new(r.bcx, PointerCast(r.bcx, r.val, llty_ptr))
 }
 
-pub fn malloc_raw_dyn_proc<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
-                                       t: ty::t, alloc_fn: LangItem)
-                                       -> Result<'blk, 'tcx> {
+pub fn malloc_raw_dyn_proc<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, t: ty::t) -> Result<'blk, 'tcx> {
     let _icx = push_ctxt("malloc_raw_dyn_proc");
     let ccx = bcx.ccx();
-
-    let langcall = require_alloc_fn(bcx, t, alloc_fn);
 
     // Grab the TypeRef type of ptr_ty.
     let ptr_ty = ty::mk_uniq(bcx.tcx(), t);
@@ -399,18 +395,15 @@ pub fn malloc_raw_dyn_proc<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let size = llsize_of(bcx.ccx(), llty);
     let llalign = C_uint(ccx, llalign_of_min(bcx.ccx(), llty) as uint);
 
-    // Allocate space:
-    let drop_glue = glue::get_drop_glue(ccx, ty::mk_uniq(bcx.tcx(), t));
-    let r = callee::trans_lang_call(
-        bcx,
-        langcall,
-        [
-            PointerCast(bcx, drop_glue, Type::glue_fn(ccx, Type::i8p(ccx)).ptr_to()),
-            size,
-            llalign
-        ],
-        None);
-    Result::new(r.bcx, PointerCast(r.bcx, r.val, ptr_llty))
+    // Allocate space and store the destructor pointer:
+    let Result {bcx: bcx, val: llbox} = malloc_raw_dyn(bcx, ptr_llty, t, size, llalign);
+    let dtor_ptr = GEPi(bcx, llbox, [0u, abi::box_field_drop_glue]);
+    let drop_glue_field_ty = type_of(ccx, ty::mk_nil_ptr(bcx.tcx()));
+    let drop_glue = PointerCast(bcx, glue::get_drop_glue(ccx, ty::mk_uniq(bcx.tcx(), t)),
+                                drop_glue_field_ty);
+    Store(bcx, drop_glue, dtor_ptr);
+
+    Result::new(bcx, llbox)
 }
 
 
