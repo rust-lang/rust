@@ -183,7 +183,7 @@ fn use_rc(t: Rc<T>) {
     use_ref(&t);   // what you'd be able to write
 }
 
-fn use_mut(t: &mut Box<T>) {
+fn use_mut_box(t: &mut Box<T>) {
     use_mut(&mut *t); // what you have to write today
     use_mut(t);       // what you'd be able to write
 
