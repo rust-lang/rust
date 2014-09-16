@@ -291,7 +291,7 @@ pub fn filemap_to_tts(sess: &ParseSess, filemap: Rc<FileMap>)
 pub fn tts_to_parser<'a>(sess: &'a ParseSess,
                          tts: Vec<ast::TokenTree>,
                          cfg: ast::CrateConfig) -> Parser<'a> {
-    let trdr = lexer::new_tt_reader(&sess.span_diagnostic, None, tts);
+    let trdr = lexer::new_tt_reader(&sess.span_diagnostic, None, None, tts);
     Parser::new(sess, cfg, box trdr)
 }
 
