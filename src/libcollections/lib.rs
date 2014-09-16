@@ -37,7 +37,7 @@ extern crate alloc;
 use core::prelude::Option;
 
 pub use bitv::{Bitv, BitvSet};
-pub use btree::BTree;
+pub use btree::{BTreeMap, BTreeSet};
 pub use core::prelude::Collection;
 pub use dlist::DList;
 pub use enum_set::EnumSet;
