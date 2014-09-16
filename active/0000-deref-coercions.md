@@ -36,8 +36,8 @@ language, coercions included things like auto-borrowing (taking `T` to `&T`),
 auto-slicing (taking `Vec<T>` to `&[T]`) and "cross-borrowing" (taking `Box<T>`
 to `&T`).  As built-in types migrated to the library, these coercions have
 disappeared: none of them apply today. That means that you have to write code
-like `&**v` to convert `Rc<Box<T>>` to `&T` and `v.as_slice()` to convert
-`Vec<T>` to `&T`.
+like `&**v` to convert `&Box<T>` or `Rc<RefCell<T>>` to `&T` and `v.as_slice()`
+to convert `Vec<T>` to `&T`.
 
 The ergonomic regression was coupled with a promise that we'd improve things in
 a more general way later on.
@@ -176,15 +176,24 @@ Under this coercion design, we'd see the following ergonomic improvements for
 
 ```rust
 fn use_ref(t: &T) { ... }
+fn use_mut(t: &mut T) { ... }
 
 fn use_rc(t: Rc<T>) {
     use_ref(&*t);  // what you have to write today
     use_ref(&t);   // what you'd be able to write
 }
 
-fn use_nested(t: Rc<Box<T>>) {
+fn use_mut(t: &mut Box<T>) {
+    use_mut(&mut *t); // what you have to write today
+    use_mut(t);       // what you'd be able to write
+
+    use_ref(*t);      // what you have to write today
+    use_ref(t);       // what you'd be able to write
+}
+
+fn use_nested(t: &Box<T>) {
     use_ref(&**t);  // what you have to write today
-    use_ref(&t);    // what you'd be able to write (note: recursive deref)
+    use_ref(t);     // what you'd be able to write (note: recursive deref)
 }
 ```
 
