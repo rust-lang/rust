@@ -1188,7 +1188,7 @@ pub fn trans_local_var<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 }
             }
         }
-        def::DefLocal(nid, _) => {
+        def::DefLocal(nid) => {
             let datum = match bcx.fcx.lllocals.borrow().find(&nid) {
                 Some(&v) => v,
                 None => {

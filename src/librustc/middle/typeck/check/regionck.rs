@@ -242,7 +242,7 @@ fn region_of_def(fcx: &FnCtxt, def: def::Def) -> ty::Region {
 
     let tcx = fcx.tcx();
     match def {
-        def::DefLocal(node_id, _) => {
+        def::DefLocal(node_id) => {
             tcx.region_maps.var_region(node_id)
         }
         def::DefUpvar(_, subdef, closure_id, body_id) => {

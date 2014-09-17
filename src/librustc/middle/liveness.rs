@@ -462,7 +462,7 @@ fn visit_expr(ir: &mut IrMaps, expr: &Expr) {
         freevars::with_freevars(ir.tcx, expr.id, |freevars| {
             for fv in freevars.iter() {
                 match fv.def {
-                    DefLocal(rv, _) => {
+                    DefLocal(rv) => {
                         let fv_ln = ir.add_live_node(FreeVarNode(fv.span));
                         call_caps.push(CaptureInfo {ln: fv_ln,
                                                     var_nid: rv});
@@ -1288,7 +1288,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
     fn access_path(&mut self, expr: &Expr, succ: LiveNode, acc: uint)
                    -> LiveNode {
         match self.ir.tcx.def_map.borrow().get_copy(&expr.id) {
-          DefLocal(nid, _) => {
+          DefLocal(nid) => {
             let ln = self.live_node(expr.id, expr.span);
             if acc != 0u {
                 self.init_from_succ(ln, succ);
@@ -1527,7 +1527,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         match expr.node {
           ExprPath(_) => {
             match self.ir.tcx.def_map.borrow().get_copy(&expr.id) {
-              DefLocal(nid, _) => {
+              DefLocal(nid) => {
                 // Assignment to an immutable variable or argument: only legal
                 // if there is no later assignment. If this local is actually
                 // mutable, then check for a reassignment to flag the mutability
