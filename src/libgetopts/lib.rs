@@ -683,7 +683,9 @@ pub fn usage(brief: &str, opts: &[OptGroup]) -> String {
 
         // short option
         match short_name.len() {
-            0 => {}
+            0 => {
+                row.push_str("   ");
+            }
             1 => {
                 row.push_char('-');
                 row.push_str(short_name.as_slice());
