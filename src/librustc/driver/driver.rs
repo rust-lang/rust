@@ -414,6 +414,9 @@ pub fn phase_3_run_analysis_passes<'tcx>(sess: Session,
     let stability_index = time(time_passes, "stability index", (), |_|
                                stability::Index::build(krate));
 
+    time(time_passes, "static item recursion checking", (), |_|
+         middle::check_static_recursion::check_crate(&sess, krate, &def_map, &ast_map));
+
     let ty_cx = ty::mk_ctxt(sess,
                             type_arena,
                             def_map,

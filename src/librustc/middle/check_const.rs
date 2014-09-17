@@ -9,15 +9,13 @@
 // except according to those terms.
 
 
-use driver::session::Session;
 use middle::def::*;
-use middle::resolve;
 use middle::ty;
 use middle::typeck;
 use util::ppaux;
 
 use syntax::ast::*;
-use syntax::{ast_util, ast_map};
+use syntax::ast_util;
 use syntax::visit::Visitor;
 use syntax::visit;
 
@@ -63,7 +61,6 @@ fn check_item(v: &mut CheckCrateVisitor, it: &Item) {
     match it.node {
         ItemStatic(_, _, ref ex) => {
             v.inside_const(|v| v.visit_expr(&**ex));
-            check_item_recursion(&v.tcx.sess, &v.tcx.map, &v.tcx.def_map, it);
         }
         ItemEnum(ref enum_definition, _) => {
             for var in (*enum_definition).variants.iter() {
@@ -213,56 +210,4 @@ fn check_expr(v: &mut CheckCrateVisitor, e: &Expr) {
         }
     }
     visit::walk_expr(v, e);
-}
-
-struct CheckItemRecursionVisitor<'a, 'ast: 'a> {
-    root_it: &'a Item,
-    sess: &'a Session,
-    ast_map: &'a ast_map::Map<'ast>,
-    def_map: &'a resolve::DefMap,
-    idstack: Vec<NodeId>
-}
-
-// Make sure a const item doesn't recursively refer to itself
-// FIXME: Should use the dependency graph when it's available (#1356)
-pub fn check_item_recursion<'a>(sess: &'a Session,
-                                ast_map: &'a ast_map::Map,
-                                def_map: &'a resolve::DefMap,
-                                it: &'a Item) {
-
-    let mut visitor = CheckItemRecursionVisitor {
-        root_it: it,
-        sess: sess,
-        ast_map: ast_map,
-        def_map: def_map,
-        idstack: Vec::new()
-    };
-    visitor.visit_item(it);
-}
-
-impl<'a, 'ast, 'v> Visitor<'v> for CheckItemRecursionVisitor<'a, 'ast> {
-    fn visit_item(&mut self, it: &Item) {
-        if self.idstack.iter().any(|x| x == &(it.id)) {
-            self.sess.span_fatal(self.root_it.span, "recursive constant");
-        }
-        self.idstack.push(it.id);
-        visit::walk_item(self, it);
-        self.idstack.pop();
-    }
-
-    fn visit_expr(&mut self, e: &Expr) {
-        match e.node {
-            ExprPath(..) => {
-                match self.def_map.borrow().find(&e.id) {
-                    Some(&DefStatic(def_id, _)) if
-                            ast_util::is_local(def_id) => {
-                        self.visit_item(&*self.ast_map.expect_item(def_id.node));
-                    }
-                    _ => ()
-                }
-            },
-            _ => ()
-        }
-        visit::walk_expr(self, e);
-    }
 }

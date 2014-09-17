@@ -80,6 +80,7 @@ pub mod middle {
     pub mod borrowck;
     pub mod cfg;
     pub mod check_const;
+    pub mod check_static_recursion;
     pub mod check_loop;
     pub mod check_match;
     pub mod check_rvalues;
