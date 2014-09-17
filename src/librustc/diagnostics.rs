@@ -109,11 +109,6 @@ register_diagnostics!(
     E0092,
     E0093,
     E0094,
-    E0095,
-    E0096,
-    E0097,
-    E0098,
-    E0099,
     E0100,
     E0101,
     E0102,
@@ -153,7 +148,6 @@ register_diagnostics!(
     E0139,
     E0140,
     E0141,
-    E0142,
     E0143,
     E0144,
     E0145,
@@ -169,6 +163,5 @@ register_diagnostics!(
     E0157,
     E0158,
     E0159,
-    E0160,
     E0161
 )
