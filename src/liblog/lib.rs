@@ -283,7 +283,7 @@ pub fn log(level: u32, loc: &'static LogLocation, args: &fmt::Arguments) {
     // Test the literal string from args against the current filter, if there
     // is one.
     match unsafe { FILTER.as_ref() } {
-        Some(filter) if filter.is_match(args.to_string().as_slice()) => return,
+        Some(filter) if !filter.is_match(args.to_string().as_slice()) => return,
         _ => {}
     }
 
@@ -383,7 +383,7 @@ fn enabled(level: u32,
 
 /// Initialize logging for the current process.
 ///
-/// This is not threadsafe at all, so initialization os performed through a
+/// This is not threadsafe at all, so initialization is performed through a
 /// `Once` primitive (and this function is called from that primitive).
 fn init() {
     let (mut directives, filter) = match os::getenv("RUST_LOG") {
