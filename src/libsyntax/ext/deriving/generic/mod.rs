@@ -181,7 +181,6 @@
 //! ~~~
 
 use std::cell::RefCell;
-use std::gc::GC;
 use std::vec;
 
 use abi::Abi;
@@ -1169,7 +1168,7 @@ impl<'a> TraitDef<'a> {
             None => cx.span_bug(self.span, "trait with empty path in generic `deriving`"),
             Some(name) => *name
         };
-        to_set.expn_info = Some(box(GC) codemap::ExpnInfo {
+        to_set.expn_id = cx.codemap().record_expansion(codemap::ExpnInfo {
             call_site: to_set,
             callee: codemap::NameAndSpan {
                 name: format!("deriving({})", trait_name),
