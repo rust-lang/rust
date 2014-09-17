@@ -263,7 +263,6 @@ pub mod fmt;
 
 // FIXME #7809: This shouldn't be pub, and it should be reexported under 'unstable'
 // but name resolution doesn't work without it being pub.
-#[unstable]
 pub mod rt;
 mod failure;
 
