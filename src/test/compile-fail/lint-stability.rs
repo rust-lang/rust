@@ -109,12 +109,14 @@ mod cross_crate {
         let _ = FrozenTupleStruct (1);
         let _ = LockedTupleStruct (1);
 
-        // At the moment, the following just checks that the stability
-        // level of expanded code does not trigger the
-        // lint. Eventually, we will want to lint the contents of the
+        // At the moment, the lint checker only checks stability in
+        // in the arguments of macros.
+        // Eventually, we will want to lint the contents of the
         // macro in the module *defining* it. Also, stability levels
         // on macros themselves are not yet linted.
         macro_test!();
+        macro_test_arg!(deprecated_text()); //~ ERROR use of deprecated item: text
+        macro_test_arg_nested!(deprecated_text);
     }
 
     fn test_method_param<F: Trait>(foo: F) {
