@@ -235,7 +235,7 @@ fn partial_sum(start: uint) -> f64 {
 }
 
 fn main() {
-    let mut futures = Vec::from_fn(1000, |ind| Future::spawn( proc() { partial_sum(ind) }));
+    let mut futures = Vec::from_fn(200, |ind| Future::spawn( proc() { partial_sum(ind) }));
 
     let mut final_res = 0f64;
     for ft in futures.iter_mut()  {
