@@ -276,14 +276,13 @@ pub struct FieldInfo {
 
 /// Fields for a static method
 pub enum StaticFields {
-    /// Tuple structs/enum variants like this
+    /// Tuple structs/enum variants like this.
     Unnamed(Vec<Span>),
     /// Normal structs/struct variants.
     Named(Vec<(Ident, Span)>),
 }
 
-/// A summary of the possible sets of fields. See above for details
-/// and examples
+/// A summary of the possible sets of fields.
 pub enum SubstructureFields<'a> {
     Struct(Vec<FieldInfo>),
     /// Matching variants of the enum: variant index, ast::Variant,
@@ -308,7 +307,7 @@ pub enum SubstructureFields<'a> {
 
 
 /// Combine the values of all the fields together. The last argument is
-/// all the fields of all the structures, see above for details.
+/// all the fields of all the structures.
 pub type CombineSubstructureFunc<'a> =
     |&mut ExtCtxt, Span, &Substructure|: 'a -> P<Expr>;
 
