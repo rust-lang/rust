@@ -477,12 +477,6 @@ fi
 step_msg "validating $CFG_SELF args"
 validate_opt
 
-# Temporarily support the old windows triples while the bots make the transition
-# XXX Remove me
-CFG_BUILD=`echo "${CFG_BUILD}" | sed 's/-pc-mingw32/-w64-mingw32/g'`
-CFG_HOST=`echo "${CFG_HOST}" | sed 's/-pc-mingw32/-w64-mingw32/g'`
-CFG_TARGET=`echo "${CFG_TARGET}" | sed 's/-pc-mingw32/-w64-mingw32/g'`
-
 # Validate the release channel
 case "$CFG_RELEASE_CHANNEL" in
     (source | nightly | beta | stable)
