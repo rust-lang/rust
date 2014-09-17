@@ -87,7 +87,12 @@ fn try_inline_def(cx: &DocContext, tcx: &ty::ctxt,
             ret.extend(build_impls(cx, tcx, did).into_iter());
             clean::StructItem(build_struct(cx, tcx, did))
         }
-        def::DefTy(did) => {
+        def::DefTy(did, false) => {
+            record_extern_fqn(cx, did, clean::TypeTypedef);
+            ret.extend(build_impls(cx, tcx, did).into_iter());
+            build_type(cx, tcx, did)
+        }
+        def::DefTy(did, true) => {
             record_extern_fqn(cx, did, clean::TypeEnum);
             ret.extend(build_impls(cx, tcx, did).into_iter());
             build_type(cx, tcx, did)

@@ -1252,7 +1252,7 @@ impl<'a> Resolver<'a> {
                                    sp);
 
                 name_bindings.define_type
-                    (DefTy(local_def(item.id)), sp, is_public);
+                    (DefTy(local_def(item.id), false), sp, is_public);
                 parent
             }
 
@@ -1264,7 +1264,7 @@ impl<'a> Resolver<'a> {
                                    sp);
 
                 name_bindings.define_type
-                    (DefTy(local_def(item.id)), sp, is_public);
+                    (DefTy(local_def(item.id), true), sp, is_public);
 
                 for variant in (*enum_definition).variants.iter() {
                     self.build_reduced_graph_for_variant(
@@ -1287,7 +1287,7 @@ impl<'a> Resolver<'a> {
                 let name_bindings = self.add_child(ident, parent.clone(), forbid, sp);
 
                 // Define a name in the type namespace.
-                name_bindings.define_type(DefTy(local_def(item.id)), sp, is_public);
+                name_bindings.define_type(DefTy(local_def(item.id), false), sp, is_public);
 
                 // If this is a newtype or unit-like struct, define a name
                 // in the value namespace as well
@@ -1732,7 +1732,7 @@ impl<'a> Resolver<'a> {
 
         match def {
           DefMod(def_id) | DefForeignMod(def_id) | DefStruct(def_id) |
-          DefTy(def_id) => {
+          DefTy(def_id, _) => {
             let type_def = child_name_bindings.type_def.borrow().clone();
             match type_def {
               Some(TypeNsDef { module_def: Some(module_def), .. }) => {
@@ -1823,7 +1823,7 @@ impl<'a> Resolver<'a> {
                                                   is_public,
                                                   DUMMY_SP)
           }
-          DefTy(_) => {
+          DefTy(..) => {
               debug!("(building reduced graph for external \
                       crate) building type {}", final_ident);
 
@@ -4320,7 +4320,7 @@ impl<'a> Resolver<'a> {
 
                         // If it's a typedef, give a note
                         match def {
-                            DefTy(_) => {
+                            DefTy(..) => {
                                 self.session.span_note(
                                                 trait_reference.path.span,
                                                 format!("`type` aliases cannot \
@@ -4381,7 +4381,7 @@ impl<'a> Resolver<'a> {
                 Some(ref t) => match t.node {
                     TyPath(ref path, None, path_id) => {
                         match this.resolve_path(id, path, TypeNS, true) {
-                            Some((DefTy(def_id), lp)) if this.structs.contains_key(&def_id) => {
+                            Some((DefTy(def_id, _), lp)) if this.structs.contains_key(&def_id) => {
                                 let def = DefStruct(def_id);
                                 debug!("(resolving struct) resolved `{}` to type {:?}",
                                        token::get_ident(path.segments
@@ -5440,7 +5440,7 @@ impl<'a> Resolver<'a> {
         if allowed == Everything {
             // Look for a field with the same name in the current self_type.
             match self.def_map.borrow().find(&node_id) {
-                 Some(&DefTy(did))
+                 Some(&DefTy(did, _))
                 | Some(&DefStruct(did))
                 | Some(&DefVariant(_, did, _)) => match self.structs.find(&did) {
                     None => {}
@@ -5582,7 +5582,7 @@ impl<'a> Resolver<'a> {
                         // structs, which wouldn't result in this error.)
                         match self.with_no_errors(|this|
                             this.resolve_path(expr.id, path, TypeNS, false)) {
-                            Some((DefTy(struct_id), _))
+                            Some((DefTy(struct_id, _), _))
                               if self.structs.contains_key(&struct_id) => {
                                 self.resolve_error(expr.span,
                                         format!("`{}` is a structure name, but \

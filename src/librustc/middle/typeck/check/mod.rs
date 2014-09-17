@@ -4937,7 +4937,7 @@ pub fn polytype_for_def(fcx: &FnCtxt,
         return polytype_for_def(fcx, sp, *inner);
       }
       def::DefTrait(_) |
-      def::DefTy(_) |
+      def::DefTy(..) |
       def::DefPrimTy(_) |
       def::DefTyParam(..)=> {
         fcx.ccx.tcx.sess.span_bug(sp, "expected value, found type");
