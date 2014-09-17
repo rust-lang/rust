@@ -21,8 +21,7 @@ use mem;
 use option::{Option, Some, None};
 use slice::{ImmutableSlice, MutableSlice, Slice};
 use str::{Str, StrSlice};
-use str;
-use string::String;
+use string::{mod, String};
 use to_string::IntoStr;
 use vec::Vec;
 
@@ -113,7 +112,7 @@ impl Ascii {
     /// Check if the character is a letter or number
     #[inline]
     pub fn is_alphanumeric(&self) -> bool {
-        self.is_alpha() || self.is_digit()
+        self.is_alphabetic() || self.is_digit()
     }
 
     /// Check if the character is a space or horizontal tab
@@ -169,7 +168,7 @@ impl Ascii {
     /// Checks if the character is punctuation
     #[inline]
     pub fn is_punctuation(&self) -> bool {
-        self.is_graph() && !self.is_alnum()
+        self.is_graph() && !self.is_alphanumeric()
     }
 
     /// Checks if the character is a valid hex digit
@@ -338,12 +337,12 @@ impl<'a> AsciiStr for &'a [Ascii] {
 
     #[inline]
     fn to_lower(&self) -> Vec<Ascii> {
-        self.iter().map(|a| a.to_lower()).collect()
+        self.iter().map(|a| a.to_lowercase()).collect()
     }
 
     #[inline]
     fn to_upper(&self) -> Vec<Ascii> {
-        self.iter().map(|a| a.to_upper()).collect()
+        self.iter().map(|a| a.to_uppercase()).collect()
     }
 
     #[inline]
@@ -410,13 +409,13 @@ impl<'a> AsciiExt<String> for &'a str {
     #[inline]
     fn to_ascii_upper(&self) -> String {
         // Vec<u8>::to_ascii_upper() preserves the UTF-8 invariant.
-        unsafe { str::raw::from_utf8_owned(self.as_bytes().to_ascii_upper()) }
+        unsafe { string::raw::from_utf8(self.as_bytes().to_ascii_upper()) }
     }
 
     #[inline]
     fn to_ascii_lower(&self) -> String {
         // Vec<u8>::to_ascii_lower() preserves the UTF-8 invariant.
-        unsafe { str::raw::from_utf8_owned(self.as_bytes().to_ascii_lower()) }
+        unsafe { string::raw::from_utf8(self.as_bytes().to_ascii_lower()) }
     }
 
     #[inline]
@@ -429,13 +428,13 @@ impl OwnedAsciiExt for String {
     #[inline]
     fn into_ascii_upper(self) -> String {
         // Vec<u8>::into_ascii_upper() preserves the UTF-8 invariant.
-        unsafe { str::raw::from_utf8_owned(self.into_bytes().into_ascii_upper()) }
+        unsafe { string::raw::from_utf8(self.into_bytes().into_ascii_upper()) }
     }
 
     #[inline]
     fn into_ascii_lower(self) -> String {
         // Vec<u8>::into_ascii_lower() preserves the UTF-8 invariant.
-        unsafe { str::raw::from_utf8_owned(self.into_bytes().into_ascii_lower()) }
+        unsafe { string::raw::from_utf8(self.into_bytes().into_ascii_lower()) }
     }
 }
 
