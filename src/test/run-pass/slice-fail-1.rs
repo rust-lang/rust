@@ -8,12 +8,24 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Test slicing expr[..] is an error and gives a helpful error message.
+// Test that is a slicing expr[..] fails, the correct cleanups happen.
+
+use std::task;
 
 struct Foo;
 
+static mut DTOR_COUNT: int = 0;
+
+impl Drop for Foo {
+    fn drop(&mut self) { unsafe { DTOR_COUNT += 1; } }
+}
+
+fn foo() {
+    let x: &[_] = &[Foo, Foo];
+    x[3..4];
+}
+
 fn main() {
-    let x = Foo;
-    x[..]; //~ ERROR incorrect slicing expression: `[..]`
-    //~^ NOTE use `expr[]` to construct a slice of the whole of expr
+    let _ = task::try(proc() foo());
+    unsafe { assert!(DTOR_COUNT == 2); }
 }
