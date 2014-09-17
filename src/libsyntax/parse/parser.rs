@@ -4143,20 +4143,20 @@ impl<'a> Parser<'a> {
                 (optional_unboxed_closure_kind, args)
             }
         };
-        let output = if self.eat(&token::RARROW) {
-            self.parse_ty(true)
+        let (style, output) = if self.token == token::RARROW {
+            self.parse_ret_ty()
         } else {
-            P(Ty {
+            (Return, P(Ty {
                 id: ast::DUMMY_NODE_ID,
                 node: TyInfer,
                 span: self.span,
-            })
+            }))
         };
 
         (P(FnDecl {
             inputs: inputs_captures,
             output: output,
-            cf: Return,
+            cf: style,
             variadic: false
         }), optional_unboxed_closure_kind)
     }
@@ -4169,20 +4169,20 @@ impl<'a> Parser<'a> {
                                      seq_sep_trailing_allowed(token::COMMA),
                                      |p| p.parse_fn_block_arg());
 
-        let output = if self.eat(&token::RARROW) {
-            self.parse_ty(true)
+        let (style, output) = if self.token == token::RARROW {
+            self.parse_ret_ty()
         } else {
-            P(Ty {
+            (Return, P(Ty {
                 id: ast::DUMMY_NODE_ID,
                 node: TyInfer,
                 span: self.span,
-            })
+            }))
         };
 
         P(FnDecl {
             inputs: inputs,
             output: output,
-            cf: Return,
+            cf: style,
             variadic: false
         })
     }

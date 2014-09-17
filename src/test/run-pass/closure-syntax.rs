@@ -78,6 +78,10 @@ fn bar<'b>() {
 
     let a = A;
     a.foo::<<'a>||>();
+
+    // issue #13490
+    let _ = || -> ! loop {};
+    let _ = proc() -> ! loop {};
 }
 
 struct B<T>;
