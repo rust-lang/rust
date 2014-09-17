@@ -18,6 +18,7 @@
 //! approximate a square root to arbitrary precision:
 //!
 //! ```
+//! # #![allow(deprecated)]
 //! extern crate num;
 //!
 //! use num::bigint::BigInt;
