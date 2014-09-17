@@ -2622,10 +2622,17 @@ impl<'a> Parser<'a> {
                 if !self.eat(&token::RPAREN) {
                     let place = self.parse_expr();
                     self.expect(&token::RPAREN);
-                    let subexpression = self.parse_prefix_expr();
-                    hi = subexpression.span.hi;
-                    ex = ExprBox(place, subexpression);
-                    return self.mk_expr(lo, hi, ex);
+                    if can_begin_expr(&self.token) {
+                        let subexpression = self.parse_prefix_expr();
+                        hi = subexpression.span.hi;
+                        ex = ExprBox(place, subexpression);
+                        return self.mk_expr(lo, hi, ex);
+                    } else { // Support `box(EXPR)` == `box EXPR`.
+                        let subexpression = place;
+                        hi = subexpression.span.hi;
+                        ex = self.mk_unary(UnUniq, subexpression);
+                        return self.mk_expr(lo, hi, ex);
+                    }
                 }
             }
 
