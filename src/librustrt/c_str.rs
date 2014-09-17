@@ -36,6 +36,11 @@ not tied to the lifetime of the original string/data buffer). If C strings are
 heavily used in applications, then caching may be advisable to prevent
 unnecessary amounts of allocations.
 
+Be carefull to remember that the memory is managed by libc's malloc and not
+by jemalloc which is the 'normal' rust memory allocator.
+That means that the CString pointers should only be freed with 
+alloc::libc_heap::malloc_raw if you intend to do that on your own.
+
 An example of creating and using a C string would be:
 
 ```rust
@@ -91,8 +96,8 @@ pub struct CString {
 
 impl Clone for CString {
     /// Clone this CString into a new, uniquely owned CString. For safety
-    /// reasons, this is always a deep clone, rather than the usual shallow
-    /// clone.
+    /// reasons, this is always a deep clone with the memory allocated
+    /// with libc's malloc, rather than the usual shallow clone.
     fn clone(&self) -> CString {
         let len = self.len() + 1;
         let buf = unsafe { malloc_raw(len) } as *mut libc::c_char;
@@ -131,7 +136,8 @@ impl<S: hash::Writer> hash::Hash<S> for CString {
 }
 
 impl CString {
-    /// Create a C String from a pointer.
+    /// Create a C String from a pointer, with memory managed by libc's malloc,
+    /// so do not call it with a pointer allocated by jemalloc.
     ///
     ///# Failure
     ///
@@ -265,7 +271,8 @@ impl CString {
     /// forgotten, meaning that the backing allocation of this
     /// `CString` is not automatically freed if it owns the
     /// allocation. In this case, a user of `.unwrap()` should ensure
-    /// the allocation is freed, to avoid leaking memory.
+    /// the allocation is freed, to avoid leaking memory. You have to
+    /// use libc's memory allocator in this case.
     ///
     /// Prefer `.as_ptr()` when just retrieving a pointer to the
     /// string data, as that does not relinquish ownership.
