@@ -253,7 +253,7 @@ pub struct Substructure<'a> {
     pub type_ident: Ident,
     /// ident of the method
     pub method_ident: Ident,
-    /// dereferenced access to any Self or Ptr(Self, _) arguments
+    /// dereferenced access to any `Self` or `Ptr(Self, _)` arguments
     pub self_args: &'a [P<Expr>],
     /// verbatim access to any other arguments
     pub nonself_args: &'a [P<Expr>],
@@ -270,7 +270,7 @@ pub struct FieldInfo {
     /// (specifically, a reference to it).
     pub self_: P<Expr>,
     /// The expressions corresponding to references to this field in
-    /// the other Self arguments.
+    /// the other `Self` arguments.
     pub other: Vec<P<Expr>>,
 }
 
@@ -291,17 +291,17 @@ pub enum SubstructureFields<'a> {
     /// variant.
     EnumMatching(uint, &'a ast::Variant, Vec<FieldInfo>),
 
-    /// non-matching variants of the enum, but with all state hidden from
-    /// the consequent code.  The first component holds Idents for all of
-    /// the Self arguments; the second component is a slice of all of the
+    /// Non-matching variants of the enum, but with all state hidden from
+    /// the consequent code.  The first component holds `Ident`s for all of
+    /// the `Self` arguments; the second component is a slice of all of the
     /// variants for the enum itself, and the third component is a list of
-    /// Idents bound to the variant index values for each of the actual
-    /// input Self arguments.
+    /// `Ident`s bound to the variant index values for each of the actual
+    /// input `Self` arguments.
     EnumNonMatchingCollapsed(Vec<Ident>, &'a [P<ast::Variant>], &'a [Ident]),
 
-    /// A static method where Self is a struct.
+    /// A static method where `Self` is a struct.
     StaticStruct(&'a ast::StructDef, StaticFields),
-    /// A static method where Self is an enum.
+    /// A static method where `Self` is an enum.
     StaticEnum(&'a ast::EnumDef, Vec<(Ident, Span, StaticFields)>),
 }
 
@@ -313,10 +313,10 @@ pub type CombineSubstructureFunc<'a> =
     |&mut ExtCtxt, Span, &Substructure|: 'a -> P<Expr>;
 
 /// Deal with non-matching enum variants.  The tuple is a list of
-/// identifiers (one for each Self argument, which could be any of the
+/// identifiers (one for each `Self` argument, which could be any of the
 /// variants since they have been collapsed together) and the identifiers
-/// holding the variant index value for each of the Self arguments.  The
-/// last argument is all the non-Self args of the method being derived.
+/// holding the variant index value for each of the `Self` arguments.  The
+/// last argument is all the non-`Self` args of the method being derived.
 pub type EnumNonMatchCollapsedFunc<'a> =
     |&mut ExtCtxt,
      Span,
@@ -370,7 +370,7 @@ impl<'a> TraitDef<'a> {
     /// 'z, A, ..., Z>`, creates an impl like:
     ///
     /// ```ignore
-    ///      impl<'a, ..., 'z, A:Tr B1 B2, ..., Z: Tr B1 B2> Tr for T<A, ..., Z> { ... }
+    /// impl<'a, ..., 'z, A:Tr B1 B2, ..., Z: Tr B1 B2> Tr for T<A, ..., Z> { ... }
     /// ```
     ///
     /// where B1, B2, ... are the bounds given by `bounds_paths`.'

@@ -327,7 +327,7 @@ impl<T> Option<T> {
     /// Instead, prefer to use pattern matching and handle the `None`
     /// case explicitly.
     ///
-    /// # Examle
+    /// # Example
     ///
     /// ```
     /// let x = Some("air");
