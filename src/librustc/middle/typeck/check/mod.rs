@@ -2131,7 +2131,7 @@ fn try_overloaded_call(fcx: &FnCtxt,
         fcx.inh.method_map.borrow_mut().insert(method_call, method_callee);
         write_call(fcx, call_expression, output_type);
 
-        if !fcx.tcx().sess.features.overloaded_calls.get() {
+        if !fcx.tcx().sess.features.borrow().overloaded_calls {
             span_err!(fcx.tcx().sess, call_expression.span, E0056,
                 "overloaded calls are experimental");
             span_note!(fcx.tcx().sess, call_expression.span,

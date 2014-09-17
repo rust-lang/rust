@@ -8,10 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use syntax::fold::Folder;
-use syntax::{ast, fold, attr};
-use syntax::codemap::Spanned;
-use syntax::ptr::P;
+use fold::Folder;
+use {ast, fold, attr};
+use codemap::Spanned;
+use ptr::P;
 
 /// A folder that strips out items that do not belong in the current
 /// configuration.

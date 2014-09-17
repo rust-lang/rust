@@ -8,36 +8,33 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use driver::config;
-use driver::session::Session;
-
-use syntax::ast;
-use syntax::attr;
-use syntax::codemap::DUMMY_SP;
-use syntax::codemap;
-use syntax::fold::Folder;
-use syntax::fold;
-use syntax::owned_slice::OwnedSlice;
-use syntax::parse::token::InternedString;
-use syntax::parse::token::special_idents;
-use syntax::parse::token;
-use syntax::ptr::P;
-use syntax::util::small_vector::SmallVector;
+use ast;
+use attr;
+use codemap::DUMMY_SP;
+use codemap;
+use fold::Folder;
+use fold;
+use owned_slice::OwnedSlice;
+use parse::token::InternedString;
+use parse::token::special_idents;
+use parse::token;
+use ptr::P;
+use util::small_vector::SmallVector;
 
 use std::mem;
 
-pub fn maybe_inject_crates_ref(sess: &Session, krate: ast::Crate)
+pub fn maybe_inject_crates_ref(krate: ast::Crate, alt_std_name: Option<String>, any_exe: bool)
                                -> ast::Crate {
     if use_std(&krate) {
-        inject_crates_ref(sess, krate)
+        inject_crates_ref(krate, alt_std_name, any_exe)
     } else {
         krate
     }
 }
 
-pub fn maybe_inject_prelude(sess: &Session, krate: ast::Crate) -> ast::Crate {
+pub fn maybe_inject_prelude(krate: ast::Crate) -> ast::Crate {
     if use_std(&krate) {
-        inject_prelude(sess, krate)
+        inject_prelude(krate)
     } else {
         krate
     }
@@ -56,14 +53,15 @@ fn no_prelude(attrs: &[ast::Attribute]) -> bool {
 }
 
 struct StandardLibraryInjector<'a> {
-    sess: &'a Session,
+    alt_std_name: Option<String>,
+    any_exe: bool,
 }
 
 impl<'a> fold::Folder for StandardLibraryInjector<'a> {
     fn fold_crate(&mut self, mut krate: ast::Crate) -> ast::Crate {
 
         // The name to use in `extern crate "name" as std;`
-        let actual_crate_name = match self.sess.opts.alt_std_name {
+        let actual_crate_name = match self.alt_std_name {
             Some(ref s) => token::intern_and_get_ident(s.as_slice()),
             None => token::intern_and_get_ident("std"),
         };
@@ -83,10 +81,7 @@ impl<'a> fold::Folder for StandardLibraryInjector<'a> {
             span: DUMMY_SP
         });
 
-        let any_exe = self.sess.crate_types.borrow().iter().any(|ty| {
-            *ty == config::CrateTypeExecutable
-        });
-        if use_start(&krate) && any_exe {
+        if use_start(&krate) && self.any_exe {
             let visible_rt_name = "rt";
             let actual_rt_name = "native";
             // Gensym the ident so it can't be named
@@ -124,9 +119,12 @@ impl<'a> fold::Folder for StandardLibraryInjector<'a> {
     }
 }
 
-fn inject_crates_ref(sess: &Session, krate: ast::Crate) -> ast::Crate {
+fn inject_crates_ref(krate: ast::Crate,
+                     alt_std_name: Option<String>,
+                     any_exe: bool) -> ast::Crate {
     let mut fold = StandardLibraryInjector {
-        sess: sess,
+        alt_std_name: alt_std_name,
+        any_exe: any_exe,
     };
     fold.fold_crate(krate)
 }
@@ -231,7 +229,7 @@ impl<'a> fold::Folder for PreludeInjector<'a> {
     }
 }
 
-fn inject_prelude(_: &Session, krate: ast::Crate) -> ast::Crate {
+fn inject_prelude(krate: ast::Crate) -> ast::Crate {
     let mut fold = PreludeInjector;
     fold.fold_crate(krate)
 }
