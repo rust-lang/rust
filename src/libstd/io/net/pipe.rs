@@ -46,7 +46,7 @@ impl UnixStream {
     ///
     /// ```rust
     /// # #![allow(unused_must_use)]
-    /// use std::io::net::unix::UnixStream;
+    /// use std::io::net::pipe::UnixStream;
     ///
     /// let server = Path::new("path/to/my/socket");
     /// let mut stream = UnixStream::connect(&server);
@@ -164,7 +164,7 @@ impl UnixListener {
     /// # fn main() {}
     /// # fn foo() {
     /// # #![allow(unused_must_use)]
-    /// use std::io::net::unix::UnixListener;
+    /// use std::io::net::pipe::UnixListener;
     /// use std::io::{Listener, Acceptor};
     ///
     /// let server = Path::new("/path/to/my/socket");
