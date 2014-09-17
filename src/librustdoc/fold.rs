@@ -55,6 +55,12 @@ pub trait DocFolder {
                                 None => return None,
                             }
                         },
+                        TypeTraitItem(it) => {
+                            match this.fold_item(it) {
+                                Some(x) => return Some(TypeTraitItem(x)),
+                                None => return None,
+                            }
+                        }
                     }
                 }
                 let mut foo = Vec::new(); swap(&mut foo, &mut i.items);

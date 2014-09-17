@@ -97,30 +97,37 @@ impl ImplOrTraitItemContainer {
 #[deriving(Clone)]
 pub enum ImplOrTraitItem {
     MethodTraitItem(Rc<Method>),
+    TypeTraitItem(Rc<AssociatedType>),
 }
 
 impl ImplOrTraitItem {
     fn id(&self) -> ImplOrTraitItemId {
         match *self {
             MethodTraitItem(ref method) => MethodTraitItemId(method.def_id),
+            TypeTraitItem(ref associated_type) => {
+                TypeTraitItemId(associated_type.def_id)
+            }
         }
     }
 
     pub fn def_id(&self) -> ast::DefId {
         match *self {
             MethodTraitItem(ref method) => method.def_id,
+            TypeTraitItem(ref associated_type) => associated_type.def_id,
         }
     }
 
     pub fn ident(&self) -> ast::Ident {
         match *self {
             MethodTraitItem(ref method) => method.ident,
+            TypeTraitItem(ref associated_type) => associated_type.ident,
         }
     }
 
     pub fn container(&self) -> ImplOrTraitItemContainer {
         match *self {
             MethodTraitItem(ref method) => method.container,
+            TypeTraitItem(ref associated_type) => associated_type.container,
         }
     }
 }
@@ -128,12 +135,14 @@ impl ImplOrTraitItem {
 #[deriving(Clone)]
 pub enum ImplOrTraitItemId {
     MethodTraitItemId(ast::DefId),
+    TypeTraitItemId(ast::DefId),
 }
 
 impl ImplOrTraitItemId {
     pub fn def_id(&self) -> ast::DefId {
         match *self {
             MethodTraitItemId(def_id) => def_id,
+            TypeTraitItemId(def_id) => def_id,
         }
     }
 }
@@ -180,6 +189,14 @@ impl Method {
             ImplContainer(id) => id,
         }
     }
+}
+
+#[deriving(Clone)]
+pub struct AssociatedType {
+    pub ident: ast::Ident,
+    pub vis: ast::Visibility,
+    pub def_id: ast::DefId,
+    pub container: ImplOrTraitItemContainer,
 }
 
 #[deriving(Clone, PartialEq, Eq, Hash, Show)]
@@ -556,6 +573,13 @@ pub struct ctxt<'tcx> {
 
     /// Maps closures to their capture clauses.
     pub capture_modes: RefCell<CaptureModeMap>,
+
+    /// Maps def IDs to true if and only if they're associated types.
+    pub associated_types: RefCell<DefIdMap<bool>>,
+
+    /// Maps def IDs of traits to information about their associated types.
+    pub trait_associated_types:
+        RefCell<DefIdMap<Rc<Vec<AssociatedTypeInfo>>>>,
 }
 
 pub enum tbox_flag {
@@ -1179,6 +1203,7 @@ pub struct TypeParameterDef {
     pub def_id: ast::DefId,
     pub space: subst::ParamSpace,
     pub index: uint,
+    pub associated_with: Option<ast::DefId>,
     pub bounds: ParamBounds,
     pub default: Option<ty::t>,
 }
@@ -1238,7 +1263,7 @@ pub struct ParameterEnvironment {
     /// the "outer" view of a type or method to the "inner" view.
     /// In general, this means converting from bound parameters to
     /// free parameters. Since we currently represent bound/free type
-    /// parameters in the same way, this only has an affect on regions.
+    /// parameters in the same way, this only has an effect on regions.
     pub free_substs: Substs,
 
     /// Bounds on the various type parameters
@@ -1275,7 +1300,18 @@ impl ParameterEnvironment {
                                     method_generics,
                                     method.pe_body().id)
                             }
+                            TypeTraitItem(_) => {
+                                cx.sess
+                                  .bug("ParameterEnvironment::from_item(): \
+                                        can't create a parameter environment \
+                                        for type trait items")
+                            }
                         }
+                    }
+                    ast::TypeImplItem(_) => {
+                        cx.sess.bug("ParameterEnvironment::from_item(): \
+                                     can't create a parameter environment \
+                                     for type impl items")
                     }
                 }
             }
@@ -1299,7 +1335,18 @@ impl ParameterEnvironment {
                                     method_generics,
                                     method.pe_body().id)
                             }
+                            TypeTraitItem(_) => {
+                                cx.sess
+                                  .bug("ParameterEnvironment::from_item(): \
+                                        can't create a parameter environment \
+                                        for type trait items")
+                            }
                         }
+                    }
+                    ast::TypeTraitItem(_) => {
+                        cx.sess.bug("ParameterEnvironment::from_item(): \
+                                     can't create a parameter environment \
+                                     for type trait items")
                     }
                 }
             }
@@ -1476,6 +1523,8 @@ pub fn mk_ctxt<'tcx>(s: Session,
         transmute_restrictions: RefCell::new(Vec::new()),
         stability: RefCell::new(stability),
         capture_modes: RefCell::new(capture_modes),
+        associated_types: RefCell::new(DefIdMap::new()),
+        trait_associated_types: RefCell::new(DefIdMap::new()),
     }
 }
 
@@ -1893,6 +1942,10 @@ impl ParamTy {
 
     pub fn to_ty(self, tcx: &ty::ctxt) -> ty::t {
         ty::mk_param(tcx, self.space, self.idx, self.def_id)
+    }
+
+    pub fn is_self(&self) -> bool {
+        self.space == subst::SelfSpace && self.idx == 0
     }
 }
 
@@ -3543,6 +3596,10 @@ pub fn method_call_type_param_defs<'tcx, T>(typer: &T,
         }) => {
             match ty::trait_item(typer.tcx(), trait_ref.def_id, n_mth) {
                 ty::MethodTraitItem(method) => method.generics.types.clone(),
+                ty::TypeTraitItem(_) => {
+                    typer.tcx().sess.bug("method_call_type_param_defs() \
+                                          called on associated type")
+                }
             }
         }
     }
@@ -4007,12 +4064,19 @@ pub fn provided_trait_methods(cx: &ctxt, id: ast::DefId) -> Vec<Rc<Method>> {
             Some(ast_map::NodeItem(item)) => {
                 match item.node {
                     ItemTrait(_, _, _, ref ms) => {
-                        ms.iter().filter_map(|m| match *m {
-                            ast::RequiredMethod(_) => None,
-                            ast::ProvidedMethod(ref m) => {
-                                match impl_or_trait_item(cx,
-                                        ast_util::local_def(m.id)) {
-                                    MethodTraitItem(m) => Some(m),
+                        let (_, p) =
+                            ast_util::split_trait_methods(ms.as_slice());
+                        p.iter()
+                         .map(|m| {
+                            match impl_or_trait_item(
+                                    cx,
+                                    ast_util::local_def(m.id)) {
+                                MethodTraitItem(m) => m,
+                                TypeTraitItem(_) => {
+                                    cx.sess.bug("provided_trait_methods(): \
+                                                 split_trait_methods() put \
+                                                 associated types in the \
+                                                 provided method bucket?!")
                                 }
                             }
                          }).collect()
@@ -4095,6 +4159,75 @@ pub fn impl_or_trait_item(cx: &ctxt, id: ast::DefId) -> ImplOrTraitItem {
                                      || {
         csearch::get_impl_or_trait_item(cx, id)
     })
+}
+
+/// Returns true if the given ID refers to an associated type and false if it
+/// refers to anything else.
+pub fn is_associated_type(cx: &ctxt, id: ast::DefId) -> bool {
+    let result = match cx.associated_types.borrow_mut().find(&id) {
+        Some(result) => return *result,
+        None if id.krate == ast::LOCAL_CRATE => {
+            match cx.impl_or_trait_items.borrow().find(&id) {
+                Some(ref item) => {
+                    match **item {
+                        TypeTraitItem(_) => true,
+                        MethodTraitItem(_) => false,
+                    }
+                }
+                None => false,
+            }
+        }
+        None => {
+            csearch::is_associated_type(&cx.sess.cstore, id)
+        }
+    };
+
+    cx.associated_types.borrow_mut().insert(id, result);
+    result
+}
+
+/// Returns the parameter index that the given associated type corresponds to.
+pub fn associated_type_parameter_index(cx: &ctxt,
+                                       trait_def: &TraitDef,
+                                       associated_type_id: ast::DefId)
+                                       -> uint {
+    for type_parameter_def in trait_def.generics.types.iter() {
+        if type_parameter_def.def_id == associated_type_id {
+            return type_parameter_def.index
+        }
+    }
+    cx.sess.bug("couldn't find associated type parameter index")
+}
+
+#[deriving(PartialEq, Eq)]
+pub struct AssociatedTypeInfo {
+    pub def_id: ast::DefId,
+    pub index: uint,
+    pub ident: ast::Ident,
+}
+
+impl PartialOrd for AssociatedTypeInfo {
+    fn partial_cmp(&self, other: &AssociatedTypeInfo) -> Option<Ordering> {
+        Some(self.index.cmp(&other.index))
+    }
+}
+
+impl Ord for AssociatedTypeInfo {
+    fn cmp(&self, other: &AssociatedTypeInfo) -> Ordering {
+        self.index.cmp(&other.index)
+    }
+}
+
+/// Returns the associated types belonging to the given trait, in parameter
+/// order.
+pub fn associated_types_for_trait(cx: &ctxt, trait_id: ast::DefId)
+                                  -> Rc<Vec<AssociatedTypeInfo>> {
+    cx.trait_associated_types
+      .borrow()
+      .find(&trait_id)
+      .expect("associated_types_for_trait(): trait not found, try calling \
+               ensure_associated_types()")
+      .clone()
 }
 
 pub fn trait_item_def_ids(cx: &ctxt, id: ast::DefId)
@@ -4978,6 +5111,7 @@ pub fn populate_implementations_for_type_if_necessary(tcx: &ctxt,
                            .insert(method_def_id, source);
                     }
                 }
+                TypeTraitItem(_) => {}
             }
         }
 
@@ -5025,6 +5159,7 @@ pub fn populate_implementations_for_trait_if_necessary(
                            .insert(method_def_id, source);
                     }
                 }
+                TypeTraitItem(_) => {}
             }
         }
 
@@ -5108,9 +5243,7 @@ pub fn trait_item_of_item(tcx: &ctxt, def_id: ast::DefId)
         Some(m) => m.clone(),
         None => return None,
     };
-    let name = match impl_item {
-        MethodTraitItem(method) => method.ident.name,
-    };
+    let name = impl_item.ident().name;
     match trait_of_item(tcx, def_id) {
         Some(trait_did) => {
             let trait_items = ty::trait_items(tcx, trait_did);
@@ -5364,6 +5497,11 @@ pub fn construct_parameter_environment(
                             space: subst::ParamSpace,
                             defs: &[TypeParameterDef]) {
         for (i, def) in defs.iter().enumerate() {
+            debug!("construct_parameter_environment(): push_types_from_defs: \
+                    space={} def={} index={}",
+                   space,
+                   def.repr(tcx),
+                   i);
             let ty = ty::mk_param(tcx, space, i, def.def_id);
             types.push(space, ty);
         }

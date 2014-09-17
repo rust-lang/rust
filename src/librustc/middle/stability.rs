@@ -16,8 +16,9 @@ use syntax::codemap::Span;
 use syntax::{attr, visit};
 use syntax::ast;
 use syntax::ast::{Attribute, Block, Crate, DefId, FnDecl, NodeId, Variant};
-use syntax::ast::{Item, RequiredMethod, ProvidedMethod, TraitItem, TypeMethod, Method};
-use syntax::ast::{Generics, StructDef, StructField, Ident};
+use syntax::ast::{Item, RequiredMethod, ProvidedMethod, TraitItem};
+use syntax::ast::{TypeMethod, Method, Generics, StructDef, StructField};
+use syntax::ast::{Ident, TypeTraitItem};
 use syntax::ast_util::is_local;
 use syntax::attr::Stability;
 use syntax::visit::{FnKind, FkMethod, Visitor};
@@ -79,9 +80,13 @@ impl<'v> Visitor<'v> for Annotator {
             RequiredMethod(TypeMethod {id, ref attrs, ..}) => (id, attrs),
 
             // work around lack of pattern matching for @ types
-            ProvidedMethod(ref method) => match **method {
-                Method {id, ref attrs, ..} => (id, attrs)
+            ProvidedMethod(ref method) => {
+                match **method {
+                    Method {attrs: ref attrs, id: id, ..} => (id, attrs),
+                }
             }
+
+            TypeTraitItem(ref typedef) => (typedef.id, &typedef.attrs),
         };
         self.annotate(id, attrs, |v| visit::walk_trait_item(v, t));
     }

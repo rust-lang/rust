@@ -10,7 +10,7 @@
 
 #[deriving(PartialEq)]
 struct thing(uint);
-impl PartialOrd for thing { //~ ERROR not all trait methods implemented, missing: `partial_cmp`
+impl PartialOrd for thing { //~ ERROR not all trait items implemented, missing: `partial_cmp`
     fn le(&self, other: &thing) -> bool { true }
     fn ge(&self, other: &thing) -> bool { true }
 }

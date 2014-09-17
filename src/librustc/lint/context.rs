@@ -25,6 +25,7 @@
 //! for all lint attributes.
 
 use middle::privacy::ExportedItems;
+use middle::subst;
 use middle::ty;
 use middle::typeck::astconv::AstConv;
 use middle::typeck::infer;
@@ -490,6 +491,26 @@ impl<'a, 'tcx> AstConv<'tcx> for Context<'a, 'tcx>{
 
     fn ty_infer(&self, _span: Span) -> ty::t {
         infer::new_infer_ctxt(self.tcx).next_ty_var()
+    }
+
+    fn associated_types_of_trait_are_valid(&self, _: ty::t, _: ast::DefId)
+                                           -> bool {
+        // FIXME(pcwalton): This is wrong.
+        true
+    }
+
+    fn associated_type_binding(&self,
+                               _: Span,
+                               _: Option<ty::t>,
+                               trait_id: ast::DefId,
+                               associated_type_id: ast::DefId)
+                               -> ty::t {
+        // FIXME(pcwalton): This is wrong.
+        let trait_def = self.get_trait_def(trait_id);
+        let index = ty::associated_type_parameter_index(self.tcx,
+                                                        &*trait_def,
+                                                        associated_type_id);
+        ty::mk_param(self.tcx, subst::TypeSpace, index, associated_type_id)
     }
 }
 

@@ -92,6 +92,7 @@ impl<'a, 'blk, 'tcx> Reflector<'a, 'blk, 'tcx> {
                 format!("couldn't find visit method for {}", ty_name).as_slice());
         let method = match self.visitor_items[mth_idx] {
             ty::MethodTraitItem(ref method) => (*method).clone(),
+            ty::TypeTraitItem(_) => return,
         };
         let mth_ty = ty::mk_bare_fn(tcx, method.fty.clone());
         debug!("Emit call visit method: visit_{}: {}", ty_name, ty_to_string(tcx, mth_ty));

@@ -156,6 +156,9 @@ fn instantiate_inline(ccx: &CrateContext, fn_id: ast::DefId)
                     // don't.
                     local_def(mth.id)
                 }
+                ast::TypeTraitItem(_) => {
+                    ccx.sess().bug("found TypeTraitItem IITraitItem")
+                }
             }
         }
         csearch::found(&ast::IIImplItem(impl_did, ref impl_item)) => {
@@ -184,6 +187,9 @@ fn instantiate_inline(ccx: &CrateContext, fn_id: ast::DefId)
                         SetLinkage(llfn, InternalLinkage);
                     }
                     local_def(mth.id)
+                }
+                ast::TypeImplItem(_) => {
+                    ccx.sess().bug("found TypeImplItem IIImplItem")
                 }
             }
         }

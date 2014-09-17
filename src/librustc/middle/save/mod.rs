@@ -227,6 +227,7 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
             def::DefForeignMod(_) => Some(recorder::ModRef),
             def::DefStruct(_) => Some(recorder::StructRef),
             def::DefTy(..) |
+            def::DefAssociatedTy(..) |
             def::DefTrait(_) => Some(recorder::TypeRef),
             def::DefStatic(_, _) |
             def::DefBinding(_, _) |
@@ -355,11 +356,12 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
                     ty::MethodTraitItemId(def_id) => {
                         method.id != 0 && def_id.node == 0
                     }
+                    ty::TypeTraitItemId(_) => false,
                 }
             });
         let decl_id = match decl_id {
             None => None,
-            Some(ty::MethodTraitItemId(def_id)) => Some(def_id),
+            Some(id) => Some(id.def_id()),
         };
 
         let sub_span = self.span.sub_span_after_keyword(method.span, keywords::Fn);
@@ -646,6 +648,9 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
                 ast::MethodImplItem(ref method) => {
                     visit::walk_method_helper(self, &**method)
                 }
+                ast::TypeImplItem(ref typedef) => {
+                    visit::walk_ty(self, &*typedef.typ)
+                }
             }
         }
     }
@@ -764,12 +769,7 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
                                                  def_id)
                                     .iter()
                                     .find(|mr| {
-                                        match **mr {
-                                            ty::MethodTraitItem(ref mr) => {
-                                                mr.ident.name == ti.ident()
-                                                                   .name
-                                            }
-                                        }
+                                        mr.ident().name == ti.ident().name
                                     })
                                     .unwrap()
                                     .def_id())
@@ -782,18 +782,13 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
                             Some(impl_items.get(&def_id)
                                            .iter()
                                            .find(|mr| {
-                                            match **mr {
-                                                ty::MethodTraitItemId(mr) => {
-                                                    ty::impl_or_trait_item(
-                                                            &self.analysis
-                                                                 .ty_cx,
-                                                            mr).ident()
-                                                               .name ==
-                                                        ti.ident().name
-                                                    }
-                                                }
-                                            }).unwrap()
-                                              .def_id())
+                                            ty::impl_or_trait_item(
+                                                &self.analysis.ty_cx,
+                                                mr.def_id()).ident().name ==
+                                                ti.ident().name
+                                            })
+                                           .unwrap()
+                                           .def_id())
                         }
                     }
                 } else {
@@ -894,7 +889,7 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
                     match ty::trait_item_of_item(&self.analysis.ty_cx,
                                                  def_id) {
                         None => None,
-                        Some(ty::MethodTraitItemId(decl_id)) => Some(decl_id),
+                        Some(decl_id) => Some(decl_id.def_id()),
                     };
 
                 // This incantation is required if the method referenced is a
@@ -905,6 +900,7 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
                     ty::MethodTraitItem(method) => {
                         method.provided_source.unwrap_or(def_id)
                     }
+                    ty::TypeTraitItem(_) => def_id,
                 };
                 (Some(def_id), decl_id)
             }
@@ -913,23 +909,15 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
                 let trait_item = ty::trait_item(&self.analysis.ty_cx,
                                                 mp.trait_ref.def_id,
                                                 mp.method_num);
-                match trait_item {
-                    ty::MethodTraitItem(method) => {
-                        (None, Some(method.def_id))
-                    }
-                }
-            },
+                (None, Some(trait_item.def_id()))
+            }
             typeck::MethodObject(ref mo) => {
                 // method invoked on a trait instance
                 let trait_item = ty::trait_item(&self.analysis.ty_cx,
                                                 mo.trait_ref.def_id,
                                                 mo.method_num);
-                match trait_item {
-                    ty::MethodTraitItem(method) => {
-                        (None, Some(method.def_id))
-                    }
-                }
-            },
+                (None, Some(trait_item.def_id()))
+            }
         };
         let sub_span = self.span.sub_span_for_meth_name(ex.span);
         self.fmt.meth_call_str(ex.span,
@@ -1139,7 +1127,8 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DxrVisitor<'l, 'tcx> {
                                             qualname,
                                             method_type.id);
             }
-            ast::ProvidedMethod(ref method) => self.process_method(&**method)
+            ast::ProvidedMethod(ref method) => self.process_method(&**method),
+            ast::TypeTraitItem(_) => {}
         }
     }
 

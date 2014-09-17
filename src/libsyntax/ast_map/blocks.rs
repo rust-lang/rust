@@ -207,6 +207,9 @@ impl<'a> FnLikeNode<'a> {
             ast_map::NodeImplItem(ii) => {
                 match *ii {
                     ast::MethodImplItem(ref m) => method(&**m),
+                    ast::TypeImplItem(_) => {
+                        fail!("impl method FnLikeNode that is not fn-like")
+                    }
                 }
             }
             ast_map::NodeExpr(e) => match e.node {

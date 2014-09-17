@@ -71,6 +71,7 @@ pub fn trans_impl(ccx: &CrateContext,
                 ast::MethodImplItem(ref method) => {
                     visit::walk_method_helper(&mut v, &**method);
                 }
+                ast::TypeImplItem(_) => {}
             }
         }
         return;
@@ -100,6 +101,7 @@ pub fn trans_impl(ccx: &CrateContext,
                 };
                 visit::walk_method_helper(&mut v, &**method);
             }
+            ast::TypeImplItem(_) => {}
         }
     }
 }
@@ -183,7 +185,11 @@ pub fn trans_static_method_callee(bcx: Block,
             ast_map::NodeTraitItem(method) => {
                 let ident = match *method {
                     ast::RequiredMethod(ref m) => m.ident,
-                    ast::ProvidedMethod(ref m) => m.pe_ident()
+                    ast::ProvidedMethod(ref m) => m.pe_ident(),
+                    ast::TypeTraitItem(_) => {
+                        bcx.tcx().sess.bug("trans_static_method_callee() on \
+                                            an associated type?!")
+                    }
                 };
                 ident.name
             }
@@ -294,14 +300,10 @@ fn method_with_name(ccx: &CrateContext, impl_id: ast::DefId, name: ast::Name)
                   .expect("could not find impl while translating");
     let meth_did = impl_items.iter()
                              .find(|&did| {
-                                match *did {
-                                    ty::MethodTraitItemId(did) => {
-                                        ty::impl_or_trait_item(ccx.tcx(),
-                                                               did).ident()
-                                                                   .name ==
-                                            name
-                                    }
-                                }
+                                ty::impl_or_trait_item(ccx.tcx(),
+                                                       did.def_id()).ident()
+                                                                    .name ==
+                                    name
                              }).expect("could not find method while \
                                         translating");
 
@@ -323,6 +325,10 @@ fn trans_monomorphized_callee<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             let impl_did = vtable_impl.impl_def_id;
             let mname = match ty::trait_item(ccx.tcx(), trait_id, n_method) {
                 ty::MethodTraitItem(method) => method.ident,
+                ty::TypeTraitItem(_) => {
+                    bcx.tcx().sess.bug("can't monomorphize an associated \
+                                        type")
+                }
             };
             let mth_id = method_with_name(bcx.ccx(), impl_did, mname.name);
 
@@ -693,7 +699,7 @@ fn emit_vtable_methods(bcx: Block,
     ty::populate_implementations_for_trait_if_necessary(bcx.tcx(), trt_id);
 
     let trait_item_def_ids = ty::trait_item_def_ids(tcx, trt_id);
-    trait_item_def_ids.iter().map(|method_def_id| {
+    trait_item_def_ids.iter().flat_map(|method_def_id| {
         let method_def_id = method_def_id.def_id();
         let ident = ty::impl_or_trait_item(tcx, method_def_id).ident();
         // The substitutions we have are on the impl, so we grab
@@ -710,7 +716,7 @@ fn emit_vtable_methods(bcx: Block,
                     debug!("(making impl vtable) method has self or type \
                             params: {}",
                            token::get_ident(ident));
-                    C_null(Type::nil(ccx).ptr_to())
+                    Some(C_null(Type::nil(ccx).ptr_to())).move_iter()
                 } else {
                     let mut fn_ref = trans_fn_ref_with_substs(
                         bcx,
@@ -724,8 +730,11 @@ fn emit_vtable_methods(bcx: Block,
                                                      m_id,
                                                      substs.clone());
                     }
-                    fn_ref
+                    Some(fn_ref).move_iter()
                 }
+            }
+            ty::TypeTraitItem(_) => {
+                None.move_iter()
             }
         }
     }).collect()

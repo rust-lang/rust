@@ -349,3 +349,9 @@ pub fn get_stability(cstore: &cstore::CStore,
     let cdata = cstore.get_crate_data(def.krate);
     decoder::get_stability(&*cdata, def.node)
 }
+
+pub fn is_associated_type(cstore: &cstore::CStore, def: ast::DefId) -> bool {
+    let cdata = cstore.get_crate_data(def.krate);
+    decoder::is_associated_type(&*cdata, def.node)
+}
+

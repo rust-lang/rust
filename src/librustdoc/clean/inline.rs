@@ -316,6 +316,10 @@ fn build_impl(cx: &DocContext, tcx: &ty::ctxt,
                 };
                 Some(item)
             }
+            ty::TypeTraitItem(_) => {
+                // FIXME(pcwalton): Implement.
+                None
+            }
         }
     }).collect();
     return Some(clean::Item {

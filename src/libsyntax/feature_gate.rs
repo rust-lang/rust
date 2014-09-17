@@ -68,6 +68,7 @@ static KNOWN_FEATURES: &'static [(&'static str, Status)] = &[
     ("import_shadowing", Active),
     ("advanced_slice_patterns", Active),
     ("tuple_indexing", Active),
+    ("associated_types", Active),
 
     // if you change this list without updating src/doc/rust.md, cmr will be sad
 
@@ -235,7 +236,7 @@ impl<'a, 'v> Visitor<'v> for Context<'a> {
                 }
             }
 
-            ast::ItemImpl(..) => {
+            ast::ItemImpl(_, _, _, ref items) => {
                 if attr::contains_name(i.attrs.as_slice(),
                                        "unsafe_destructor") {
                     self.gate_feature("unsafe_destructor",
@@ -244,12 +245,35 @@ impl<'a, 'v> Visitor<'v> for Context<'a> {
                                        many unsafe patterns and may be \
                                        removed in the future");
                 }
+
+                for item in items.iter() {
+                    match *item {
+                        ast::MethodImplItem(_) => {}
+                        ast::TypeImplItem(ref typedef) => {
+                            self.gate_feature("associated_types",
+                                              typedef.span,
+                                              "associated types are \
+                                               experimental")
+                        }
+                    }
+                }
             }
 
             _ => {}
         }
 
         visit::walk_item(self, i);
+    }
+
+    fn visit_trait_item(&mut self, trait_item: &ast::TraitItem) {
+        match *trait_item {
+            ast::RequiredMethod(_) | ast::ProvidedMethod(_) => {}
+            ast::TypeTraitItem(ref ti) => {
+                self.gate_feature("associated_types",
+                                  ti.span,
+                                  "associated types are experimental")
+            }
+        }
     }
 
     fn visit_mac(&mut self, macro: &ast::Mac) {

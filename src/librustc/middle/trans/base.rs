@@ -1375,6 +1375,10 @@ fn has_nested_returns(tcx: &ty::ctxt, id: ast::NodeId) -> bool {
                     tcx.sess.bug("unexpected variant: required trait method \
                                   in has_nested_returns")
                 }
+                ast::TypeTraitItem(_) => {
+                    tcx.sess.bug("unexpected variant: type trait item in \
+                                  has_nested_returns")
+                }
             }
         }
         Some(ast_map::NodeImplItem(ii)) => {
@@ -1390,6 +1394,10 @@ fn has_nested_returns(tcx: &ty::ctxt, id: ast::NodeId) -> bool {
                         }
                         ast::MethMac(_) => tcx.sess.bug("unexpanded macro")
                     }
+                }
+                ast::TypeImplItem(_) => {
+                    tcx.sess.bug("unexpected variant: type impl item in \
+                                  has_nested_returns")
                 }
             }
         }
@@ -2779,9 +2787,9 @@ pub fn get_item_val(ccx: &CrateContext, id: ast::NodeId) -> ValueRef {
         ast_map::NodeTraitItem(trait_method) => {
             debug!("get_item_val(): processing a NodeTraitItem");
             match *trait_method {
-                ast::RequiredMethod(_) => {
-                    ccx.sess().bug("unexpected variant: required trait method in \
-                                   get_item_val()");
+                ast::RequiredMethod(_) | ast::TypeTraitItem(_) => {
+                    ccx.sess().bug("unexpected variant: required trait \
+                                    method in get_item_val()");
                 }
                 ast::ProvidedMethod(ref m) => {
                     register_method(ccx, id, &**m)
@@ -2792,6 +2800,11 @@ pub fn get_item_val(ccx: &CrateContext, id: ast::NodeId) -> ValueRef {
         ast_map::NodeImplItem(ii) => {
             match *ii {
                 ast::MethodImplItem(ref m) => register_method(ccx, id, &**m),
+                ast::TypeImplItem(ref typedef) => {
+                    ccx.sess().span_bug(typedef.span,
+                                        "unexpected variant: required impl \
+                                         method in get_item_val()")
+                }
             }
         }
 

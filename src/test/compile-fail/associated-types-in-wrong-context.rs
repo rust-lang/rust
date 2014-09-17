@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,24 +8,25 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-trait animal {
-  fn eat(&self);
+#![feature(associated_types)]
+
+trait Get {
+    type Value;
+    fn get(&self) -> <Self as Get>::Value;
 }
 
-struct cat {
-  meows: uint,
+fn get(x: int) -> <int as Get>::Value {}
+//~^ ERROR this associated type is not allowed in this context
+
+struct Struct {
+    x: int,
 }
 
-impl animal for cat {
-    //~^ ERROR not all trait items implemented, missing: `eat`
-}
-
-fn cat(in_x : uint) -> cat {
-    cat {
-        meows: in_x
-    }
+impl Struct {
+    fn uhoh<T>(foo: <T as Get>::Value) {}
+    //~^ ERROR this associated type is not allowed in this context
 }
 
 fn main() {
-  let nyan = cat(0u);
 }
+

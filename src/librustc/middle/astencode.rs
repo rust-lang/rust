@@ -83,7 +83,9 @@ pub fn encode_inlined_item(ecx: &e::EncodeContext,
         e::IIForeignRef(i) => i.id,
         e::IITraitItemRef(_, &ast::ProvidedMethod(ref m)) => m.id,
         e::IITraitItemRef(_, &ast::RequiredMethod(ref m)) => m.id,
-        e::IIImplItemRef(_, &ast::MethodImplItem(ref m)) => m.id
+        e::IITraitItemRef(_, &ast::TypeTraitItem(ref ti)) => ti.id,
+        e::IIImplItemRef(_, &ast::MethodImplItem(ref m)) => m.id,
+        e::IIImplItemRef(_, &ast::TypeImplItem(ref ti)) => ti.id,
     };
     debug!("> Encoding inlined item: {} ({})",
            ecx.tcx.map.path_to_string(id),
@@ -155,12 +157,14 @@ pub fn decode_inlined_item<'tcx>(cdata: &cstore::crate_metadata,
             ast::IITraitItem(_, ref ti) => {
                 match *ti {
                     ast::ProvidedMethod(ref m) => m.pe_ident(),
-                    ast::RequiredMethod(ref ty_m) => ty_m.ident
+                    ast::RequiredMethod(ref ty_m) => ty_m.ident,
+                    ast::TypeTraitItem(ref ti) => ti.ident,
                 }
             },
             ast::IIImplItem(_, ref m) => {
                 match *m {
-                    ast::MethodImplItem(ref m) => m.pe_ident()
+                    ast::MethodImplItem(ref m) => m.pe_ident(),
+                    ast::TypeImplItem(ref ti) => ti.ident,
                 }
             }
         };
@@ -392,6 +396,12 @@ fn simplify_ast(ii: e::InlinedItemRef) -> ast::InlinedItem {
                     ast::RequiredMethod(
                         fold::noop_fold_type_method(ty_m.clone(), &mut fld))
                 }
+                ast::TypeTraitItem(ref associated_type) => {
+                    ast::TypeTraitItem(
+                        P(fold::noop_fold_associated_type(
+                            (**associated_type).clone(),
+                            &mut fld)))
+                }
             })
         }
         e::IIImplItemRef(d, m) => {
@@ -401,6 +411,10 @@ fn simplify_ast(ii: e::InlinedItemRef) -> ast::InlinedItem {
                         fold::noop_fold_method(m.clone(), &mut fld)
                             .expect_one("noop_fold_method must produce \
                                          exactly one method"))
+                }
+                ast::TypeImplItem(ref td) => {
+                    ast::TypeImplItem(
+                        P(fold::noop_fold_typedef((**td).clone(), &mut fld)))
                 }
             })
         }
@@ -455,6 +469,7 @@ impl tr for def::Def {
           },
           def::DefTrait(did) => def::DefTrait(did.tr(dcx)),
           def::DefTy(did, is_enum) => def::DefTy(did.tr(dcx), is_enum),
+          def::DefAssociatedTy(did) => def::DefAssociatedTy(did.tr(dcx)),
           def::DefPrimTy(p) => def::DefPrimTy(p),
           def::DefTyParam(s, did, v) => def::DefTyParam(s, did.tr(dcx), v),
           def::DefBinding(nid, bm) => def::DefBinding(dcx.tr_id(nid), bm),
