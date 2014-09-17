@@ -273,16 +273,7 @@ impl<T> Vec<T> {
 }
 
 impl<T: Clone> Vec<T> {
-    /// Iterates over the `second` vector, copying each element and appending it to
-    /// the `first`. Afterwards, the `first` is then returned for use again.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// let vec = vec![1i, 2i];
-    /// let vec = vec.append([3i, 4i]);
-    /// assert_eq!(vec, vec![1, 2, 3, 4]);
-    /// ```
+    /// Deprecated, call `extend` instead.
     #[inline]
     #[deprecated = "this function has been deprecated in favor of extend()"]
     pub fn append(mut self, second: &[T]) -> Vec<T> {
@@ -290,21 +281,10 @@ impl<T: Clone> Vec<T> {
         self
     }
 
-    /// Constructs a `Vec` by cloning elements of a slice.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// let slice = [1i, 2, 3];
-    /// let vec = Vec::from_slice(slice);
-    /// ```
+    /// Deprecated, call `to_vec()` instead
     #[inline]
     #[deprecated = "this function has been deprecated in favor of to_vec()"]
-    pub fn from_slice(values: &[T]) -> Vec<T> {
-        let mut vector = Vec::new();
-        vector.push_all(values);
-        vector
-    }
+    pub fn from_slice(values: &[T]) -> Vec<T> { values.to_vec() }
 
     /// Constructs a `Vec` with copies of a value.
     ///
@@ -442,9 +422,7 @@ impl<T: Clone> Vec<T> {
 
 #[unstable]
 impl<T:Clone> Clone for Vec<T> {
-    fn clone(&self) -> Vec<T> {
-        Vec::from_slice(self.as_slice())
-    }
+    fn clone(&self) -> Vec<T> { self.as_slice().to_vec() }
 
     fn clone_from(&mut self, other: &Vec<T>) {
         // drop anything in self that will not be overwritten
@@ -736,16 +714,7 @@ impl<T> Vec<T> {
         }
     }
 
-    /// Appends one element to the vector provided. The vector itself is then
-    /// returned for use again.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// let vec = vec![1i, 2];
-    /// let vec = vec.append_one(3);
-    /// assert_eq!(vec, vec![1, 2, 3]);
-    /// ```
+    /// Deprecated, call `push` instead
     #[inline]
     #[deprecated = "call .push() instead"]
     pub fn append_one(mut self, x: T) -> Vec<T> {
@@ -765,7 +734,7 @@ impl<T> Vec<T> {
     /// vec.truncate(2);
     /// assert_eq!(vec, vec![1, 2]);
     /// ```
-    #[stable]
+    #[unstable = "waiting on failure semantics"]
     pub fn truncate(&mut self, len: uint) {
         unsafe {
             // drop any extra elements
@@ -1123,7 +1092,7 @@ impl<T> Vec<T> {
     /// vec.insert(4, 5);
     /// assert_eq!(vec, vec![1, 4, 2, 3, 5]);
     /// ```
-    #[stable]
+    #[unstable = "failure semantics need settling"]
     pub fn insert(&mut self, index: uint, element: T) {
         let len = self.len();
         assert!(index <= len);
@@ -1160,7 +1129,7 @@ impl<T> Vec<T> {
     /// // v is unchanged:
     /// assert_eq!(v, vec![1, 3]);
     /// ```
-    #[stable]
+    #[unstable = "failure semantics need settling"]
     pub fn remove(&mut self, index: uint) -> Option<T> {
         let len = self.len();
         if index < len {
@@ -1192,11 +1161,13 @@ impl<T> Vec<T> {
     /// # Example
     ///
     /// ```
+    /// # #![allow(deprecated)]
     /// let mut vec = vec![box 1i];
     /// vec.push_all_move(vec![box 2, box 3, box 4]);
     /// assert_eq!(vec, vec![box 1, box 2, box 3, box 4]);
     /// ```
     #[inline]
+    #[deprecated = "use .extend(other.into_iter())"]
     pub fn push_all_move(&mut self, other: Vec<T>) {
         self.extend(other.into_iter());
     }
