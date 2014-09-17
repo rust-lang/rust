@@ -29,8 +29,11 @@ $ curl -s https://static.rust-lang.org/rustup.sh | sudo sh
 (If you're concerned about `curl | sudo sh`, please keep reading. Disclaimer
 below.)
 
-If you're on Windows, please [download this .exe and run
-it](https://static.rust-lang.org/dist/rust-nightly-install.exe).
+If you're on Windows, please download either the [32-bit
+installer](https://static.rust-lang.org/dist/rust-nightly-i686-w64-mingw32.exe)
+or the [64-bit
+installer](https://static.rust-lang.org/dist/rust-nightly-x86_64-w64-mingw32.exe)
+and run it.
 
 If you decide you don't want Rust anymore, we'll be a bit sad, but that's okay.
 Not every programming language is great for everyone. Just pass an argument to
@@ -185,8 +188,8 @@ Next up is this line:
 This line does all of the work in our little program. There are a number of
 details that are important here. The first is that it's indented with four
 spaces, not tabs. Please configure your editor of choice to insert four spaces
-with the tab key. We provide some sample configurations for various editors
-[here](https://github.com/rust-lang/rust/tree/master/src/etc).
+with the tab key. We provide some [sample configurations for various
+editors](https://github.com/rust-lang/rust/tree/master/src/etc).
 
 The second point is the `println!()` part. This is calling a Rust **macro**,
 which is how metaprogramming is done in Rust. If it were a function instead, it
@@ -392,14 +395,10 @@ By the way, in these examples, `i` indicates that the number is an integer.
 
 Rust is a statically typed language, which means that we specify our types up
 front. So why does our first example compile? Well, Rust has this thing called
-"[Hindley-Milner type
-inference](http://en.wikipedia.org/wiki/Hindley%E2%80%93Milner_type_system)",
-named after some really smart type theorists. If you clicked that link, don't
-be scared: what this means for you is that Rust will attempt to infer the types
-in your program, and it's pretty good at it. If it can infer the type, Rust
+"type inference." If it can figure out what the type of something is, Rust
 doesn't require you to actually type it out.
 
-We can add the type if we want to. Types come after a colon (`:`):
+We can add the type if we want to, though. Types come after a colon (`:`):
 
 ```{rust}
 let x: int = 5;
@@ -1281,15 +1280,15 @@ two main looping constructs: `for` and `while`.
 
 The `for` loop is used to loop a particular number of times. Rust's `for` loops
 work a bit differently than in other systems languages, however. Rust's `for`
-loop doesn't look like this C `for` loop:
+loop doesn't look like this "C style" `for` loop:
 
-```{ignore,c}
+```{c}
 for (x = 0; x < 10; x++) {
     printf( "%d\n", x );
 }
 ```
 
-It looks like this:
+Instead, it looks like this:
 
 ```{rust}
 for x in range(0i, 10i) {
@@ -1312,10 +1311,9 @@ valid for the loop body. Once the body is over, the next value is fetched from
 the iterator, and we loop another time. When there are no more values, the
 `for` loop is over.
 
-In our example, the `range` function is a function, provided by Rust, that
-takes a start and an end position, and gives an iterator over those values. The
-upper bound is exclusive, though, so our loop will print `0` through `9`, not
-`10`.
+In our example, `range` is a function that takes a start and an end position,
+and gives an iterator over those values. The upper bound is exclusive, though,
+so our loop will print `0` through `9`, not `10`.
 
 Rust does not have the "C style" `for` loop on purpose. Manually controlling
 each element of the loop is complicated and error prone, even for experienced C

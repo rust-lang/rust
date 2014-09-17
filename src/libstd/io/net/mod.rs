@@ -19,8 +19,7 @@ pub mod addrinfo;
 pub mod tcp;
 pub mod udp;
 pub mod ip;
-// FIXME(#12093) - this should not be called unix
-pub mod unix;
+pub mod pipe;
 
 fn to_rtio(ip: IpAddr) -> rtio::IpAddr {
     match ip {

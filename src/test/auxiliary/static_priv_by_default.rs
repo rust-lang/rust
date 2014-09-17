@@ -24,6 +24,7 @@ mod foo {
     pub fn b() {}
     pub struct c;
     pub enum d {}
+    pub type e = int;
 
     pub struct A(());
 
@@ -36,6 +37,7 @@ mod foo {
     pub fn reexported_b() {}
     pub struct reexported_c;
     pub enum reexported_d {}
+    pub type reexported_e = int;
 }
 
 pub mod bar {
@@ -43,14 +45,17 @@ pub mod bar {
     pub use foo::reexported_b as f;
     pub use foo::reexported_c as g;
     pub use foo::reexported_d as h;
+    pub use foo::reexported_e as i;
 }
 
 pub static a: int = 0;
 pub fn b() {}
 pub struct c;
 pub enum d {}
+pub type e = int;
 
-static i: int = 0;
-fn j() {}
-struct k;
-enum l {}
+static j: int = 0;
+fn k() {}
+struct l;
+enum m {}
+type n = int;

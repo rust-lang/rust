@@ -2005,7 +2005,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let region_bounds =
             ty::required_region_bounds(
                 self.tcx(),
-                param_bound.opt_region_bound.as_slice(),
+                param_bound.region_bounds.as_slice(),
                 param_bound.builtin_bounds,
                 param_bound.trait_bounds.as_slice());
         for &r in region_bounds.iter() {
@@ -4937,7 +4937,7 @@ pub fn polytype_for_def(fcx: &FnCtxt,
         return polytype_for_def(fcx, sp, *inner);
       }
       def::DefTrait(_) |
-      def::DefTy(_) |
+      def::DefTy(..) |
       def::DefPrimTy(_) |
       def::DefTyParam(..)=> {
         fcx.ccx.tcx.sess.span_bug(sp, "expected value, found type");

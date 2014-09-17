@@ -689,11 +689,7 @@ impl LintPass for UnusedResult {
             ast::StmtSemi(ref expr, _) => &**expr,
             _ => return
         };
-        let t = ty::expr_ty(cx.tcx, expr);
-        match ty::get(t).sty {
-            ty::ty_nil | ty::ty_bot | ty::ty_bool => return,
-            _ => {}
-        }
+
         match expr.node {
             ast::ExprRet(..) => return,
             _ => {}
@@ -702,6 +698,7 @@ impl LintPass for UnusedResult {
         let t = ty::expr_ty(cx.tcx, expr);
         let mut warned = false;
         match ty::get(t).sty {
+            ty::ty_nil | ty::ty_bot | ty::ty_bool => return,
             ty::ty_struct(did, _) |
             ty::ty_enum(did, _) => {
                 if ast_util::is_local(did) {
@@ -1104,6 +1101,41 @@ impl LintPass for UnnecessaryParens {
             _ => return
         };
         self.check_unnecessary_parens_core(cx, &**value, msg, false);
+    }
+}
+
+declare_lint!(UNNECESSARY_IMPORT_BRACES, Allow,
+              "unnecessary braces around an imported item")
+
+pub struct UnnecessaryImportBraces;
+
+impl LintPass for UnnecessaryImportBraces {
+    fn get_lints(&self) -> LintArray {
+        lint_array!(UNNECESSARY_IMPORT_BRACES)
+    }
+
+    fn check_view_item(&mut self, cx: &Context, view_item: &ast::ViewItem) {
+        match view_item.node {
+            ast::ViewItemUse(ref view_path) => {
+                match view_path.node {
+                    ast::ViewPathList(_, ref items, _) => {
+                        if items.len() == 1 {
+                            match items[0].node {
+                                ast::PathListIdent {ref name, ..} => {
+                                    let m = format!("braces around {} is unnecessary",
+                                                    token::get_ident(*name).get());
+                                    cx.span_lint(UNNECESSARY_IMPORT_BRACES, view_item.span,
+                                                 m.as_slice());
+                                },
+                                _ => ()
+                            }
+                        }
+                    }
+                    _ => ()
+                }
+            },
+            _ => ()
+        }
     }
 }
 

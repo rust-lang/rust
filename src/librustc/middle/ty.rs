@@ -1008,7 +1008,7 @@ pub enum type_err {
 /// as well as the existential type parameter in an object type.
 #[deriving(PartialEq, Eq, Hash, Clone, Show)]
 pub struct ParamBounds {
-    pub opt_region_bound: Option<ty::Region>,
+    pub region_bounds: Vec<ty::Region>,
     pub builtin_bounds: BuiltinBounds,
     pub trait_bounds: Vec<Rc<TraitRef>>
 }
@@ -1016,7 +1016,8 @@ pub struct ParamBounds {
 /// Bounds suitable for an existentially quantified type parameter
 /// such as those that appear in object types or closure types. The
 /// major difference between this case and `ParamBounds` is that
-/// general purpose trait bounds are omitted.
+/// general purpose trait bounds are omitted and there must be
+/// *exactly one* region.
 #[deriving(PartialEq, Eq, Hash, Clone, Show)]
 pub struct ExistentialBounds {
     pub region_bound: ty::Region,
@@ -3789,7 +3790,8 @@ pub fn ty_sort_string(cx: &ctxt, t: t) -> String {
         ty_enum(id, _) => format!("enum {}", item_path_str(cx, id)),
         ty_box(_) => "Gc-ptr".to_string(),
         ty_uniq(_) => "box".to_string(),
-        ty_vec(_, _) => "vector".to_string(),
+        ty_vec(_, Some(_)) => "array".to_string(),
+        ty_vec(_, None) => "unsized array".to_string(),
         ty_ptr(_) => "*-ptr".to_string(),
         ty_rptr(_, _) => "&-ptr".to_string(),
         ty_bare_fn(_) => "extern fn".to_string(),
@@ -4864,7 +4866,7 @@ pub fn required_region_bounds(tcx: &ctxt,
         trait_bounds,
         |trait_ref| {
             let bounds = ty::bounds_for_trait_ref(tcx, &*trait_ref);
-            push_region_bounds(bounds.opt_region_bound.as_slice(),
+            push_region_bounds(bounds.region_bounds.as_slice(),
                                bounds.builtin_bounds,
                                &mut all_bounds);
             debug!("from {}: bounds={} all_bounds={}",

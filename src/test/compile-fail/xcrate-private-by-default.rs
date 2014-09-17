@@ -20,22 +20,26 @@ fn main() {
     static_priv_by_default::b;
     static_priv_by_default::c;
     foo::<static_priv_by_default::d>();
+    foo::<static_priv_by_default::e>();
 
     // publicly re-exported items should be available
     static_priv_by_default::bar::e;
     static_priv_by_default::bar::f;
     static_priv_by_default::bar::g;
     foo::<static_priv_by_default::bar::h>();
+    foo::<static_priv_by_default::bar::i>();
 
     // private items at the top should be inaccessible
-    static_priv_by_default::i;
-    //~^ ERROR: static `i` is private
     static_priv_by_default::j;
-    //~^ ERROR: function `j` is private
+    //~^ ERROR: static `j` is private
     static_priv_by_default::k;
-    //~^ ERROR: struct `k` is private
-    foo::<static_priv_by_default::l>();
-    //~^ ERROR: type `l` is private
+    //~^ ERROR: function `k` is private
+    static_priv_by_default::l;
+    //~^ ERROR: struct `l` is private
+    foo::<static_priv_by_default::m>();
+    //~^ ERROR: enum `m` is private
+    foo::<static_priv_by_default::n>();
+    //~^ ERROR: type `n` is private
 
     // public items in a private mod should be inaccessible
     static_priv_by_default::foo::a;
@@ -45,5 +49,7 @@ fn main() {
     static_priv_by_default::foo::c;
     //~^ ERROR: struct `c` is private
     foo::<static_priv_by_default::foo::d>();
-    //~^ ERROR: type `d` is private
+    //~^ ERROR: enum `d` is private
+    foo::<static_priv_by_default::foo::e>();
+    //~^ ERROR: type `e` is private
 }

@@ -325,7 +325,7 @@ fn item_to_def_like(item: rbml::Doc, did: ast::DefId, cnum: ast::CrateNum)
             };
             DlDef(def::DefStaticMethod(did, provenance, fn_style))
         }
-        Type | ForeignType => DlDef(def::DefTy(did)),
+        Type | ForeignType => DlDef(def::DefTy(did, false)),
         Mod => DlDef(def::DefMod(did)),
         ForeignMod => DlDef(def::DefForeignMod(did)),
         StructVariant => {
@@ -337,7 +337,7 @@ fn item_to_def_like(item: rbml::Doc, did: ast::DefId, cnum: ast::CrateNum)
             DlDef(def::DefVariant(enum_did, did, false))
         }
         Trait => DlDef(def::DefTrait(did)),
-        Enum => DlDef(def::DefTy(did)),
+        Enum => DlDef(def::DefTy(did, true)),
         Impl => DlImpl(did),
         PublicField | InheritedField => DlField,
     }
