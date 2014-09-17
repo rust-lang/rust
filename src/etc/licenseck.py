@@ -52,6 +52,7 @@ exceptions = [
     "test/bench/shootout-pidigits.rs", # BSD
     "test/bench/shootout-regex-dna.rs", # BSD
     "test/bench/shootout-reverse-complement.rs", # BSD
+    "test/bench/shootout-spectralnorm.rs", # BSD
     "test/bench/shootout-threadring.rs", # BSD
 ]
 
