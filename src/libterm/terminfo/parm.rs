@@ -505,8 +505,8 @@ fn format(val: Param, op: FormatOp, flags: Flags) -> Result<Vec<u8> ,String> {
             if flags.precision > s.len() {
                 let mut s_ = Vec::with_capacity(flags.precision);
                 let n = flags.precision - s.len();
-                s_.grow(n, &b'0');
-                s_.push_all_move(s);
+                s_.grow(n, b'0');
+                s_.extend(s.into_iter());
                 s = s_;
             }
             assert!(!s.is_empty(), "string conversion produced empty result");
@@ -524,7 +524,7 @@ fn format(val: Param, op: FormatOp, flags: Flags) -> Result<Vec<u8> ,String> {
                 FormatHex => {
                     if flags.alternate {
                         let s_ = replace(&mut s, vec!(b'0', b'x'));
-                        s.push_all_move(s_);
+                        s.extend(s_.into_iter());
                     }
                 }
                 FormatHEX => {
@@ -536,7 +536,7 @@ fn format(val: Param, op: FormatOp, flags: Flags) -> Result<Vec<u8> ,String> {
                          .collect();
                     if flags.alternate {
                         let s_ = replace(&mut s, vec!(b'0', b'X'));
-                        s.push_all_move(s_);
+                        s.extend(s_.into_iter());
                     }
                 }
                 FormatString => unreachable!()
@@ -546,7 +546,7 @@ fn format(val: Param, op: FormatOp, flags: Flags) -> Result<Vec<u8> ,String> {
         Words(s) => {
             match op {
                 FormatString => {
-                    let mut s = Vec::from_slice(s.as_bytes());
+                    let mut s = s.as_bytes().to_vec();
                     if flags.precision > 0 && flags.precision < s.len() {
                         s.truncate(flags.precision);
                     }
@@ -562,11 +562,11 @@ fn format(val: Param, op: FormatOp, flags: Flags) -> Result<Vec<u8> ,String> {
     if flags.width > s.len() {
         let n = flags.width - s.len();
         if flags.left {
-            s.grow(n, &b' ');
+            s.grow(n, b' ');
         } else {
             let mut s_ = Vec::with_capacity(flags.width);
-            s_.grow(n, &b' ');
-            s_.push_all_move(s);
+            s_.grow(n, b' ');
+            s_.extend(s.into_iter());
             s = s_;
         }
     }

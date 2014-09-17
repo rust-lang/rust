@@ -505,7 +505,7 @@ fn external_path(cx: &DocContext, name: &str, substs: &subst::Substs) -> Path {
                     .iter()
                     .filter_map(|v| v.clean(cx))
                     .collect();
-    let types = Vec::from_slice(substs.types.get_slice(subst::TypeSpace));
+    let types = substs.types.get_slice(subst::TypeSpace).to_vec();
     let types = types.clean(cx);
     Path {
         global: false,
@@ -661,8 +661,8 @@ impl<'a> Clean<Generics> for (&'a ty::Generics, subst::ParamSpace) {
     fn clean(&self, cx: &DocContext) -> Generics {
         let (me, space) = *self;
         Generics {
-            type_params: Vec::from_slice(me.types.get_slice(space)).clean(cx),
-            lifetimes: Vec::from_slice(me.regions.get_slice(space)).clean(cx),
+            type_params: me.types.get_slice(space).to_vec().clean(cx),
+            lifetimes: me.regions.get_slice(space).to_vec().clean(cx),
         }
     }
 }
@@ -991,7 +991,7 @@ impl Clean<Item> for ty::Method {
                                                self.fty.sig.clone()),
             s => {
                 let sig = ty::FnSig {
-                    inputs: Vec::from_slice(self.fty.sig.inputs.slice_from(1)),
+                    inputs: self.fty.sig.inputs.slice_from(1).to_vec(),
                     ..self.fty.sig.clone()
                 };
                 let s = match s {

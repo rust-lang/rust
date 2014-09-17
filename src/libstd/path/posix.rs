@@ -399,7 +399,7 @@ impl Path {
             }
         };
         match val {
-            None => Vec::from_slice(v.as_slice()),
+            None => v.as_slice().to_vec(),
             Some(val) => val
         }
     }
