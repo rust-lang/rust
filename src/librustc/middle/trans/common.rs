@@ -267,10 +267,7 @@ pub struct FunctionContext<'a, 'tcx: 'a> {
     // points to, but if this value is false, that slot will be a local alloca.
     pub caller_expects_out_pointer: bool,
 
-    // Maps arguments to allocas created for them in llallocas.
-    pub llargs: RefCell<NodeMap<LvalueDatum>>,
-
-    // Maps the def_ids for local variables to the allocas created for
+    // Maps the DefId's for local variables to the allocas created for
     // them in llallocas.
     pub lllocals: RefCell<NodeMap<LvalueDatum>>,
 

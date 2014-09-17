@@ -1005,11 +1005,11 @@ pub fn create_argument_metadata(bcx: Block, arg: &ast::Arg) {
     let scope_metadata = bcx.fcx.debug_context.get_ref(cx, arg.pat.span).fn_metadata;
 
     pat_util::pat_bindings(def_map, &*arg.pat, |_, node_id, span, path1| {
-        let llarg = match bcx.fcx.llargs.borrow().find_copy(&node_id) {
+        let llarg = match bcx.fcx.lllocals.borrow().find_copy(&node_id) {
             Some(v) => v,
             None => {
                 bcx.sess().span_bug(span,
-                    format!("no entry in llargs table for {:?}",
+                    format!("no entry in lllocals table for {:?}",
                             node_id).as_slice());
             }
         };

@@ -321,8 +321,7 @@ pub fn opt_loan_path(cmt: &mc::cmt) -> Option<Rc<LoanPath>> {
             None
         }
 
-        mc::cat_local(id) |
-        mc::cat_arg(id) => {
+        mc::cat_local(id) => {
             Some(Rc::new(LpVar(id)))
         }
 
