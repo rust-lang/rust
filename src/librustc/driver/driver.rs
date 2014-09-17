@@ -13,7 +13,6 @@ use back::link;
 use back::write;
 use driver::session::Session;
 use driver::config;
-use front;
 use lint;
 use llvm::{ContextRef, ModuleRef};
 use metadata::common::LinkMeta;
@@ -166,7 +165,7 @@ pub fn phase_1_parse_input(sess: &Session, cfg: ast::CrateConfig, input: &Input)
     }
 
     if sess.show_span() {
-        front::show_span::run(sess, &krate);
+        syntax::show_span::run(sess.diagnostic(), &krate);
     }
 
     krate
@@ -194,11 +193,29 @@ pub fn phase_2_configure_and_expand(sess: &Session,
     *sess.crate_metadata.borrow_mut() =
         collect_crate_metadata(sess, krate.attrs.as_slice());
 
-    time(time_passes, "gated feature checking", (), |_|
-         front::feature_gate::check_crate(sess, &krate));
+    time(time_passes, "gated feature checking", (), |_| {
+        let (features, unknown_features) =
+            syntax::feature_gate::check_crate(&sess.parse_sess.span_diagnostic, &krate);
+
+        for uf in unknown_features.iter() {
+            sess.add_lint(lint::builtin::UNKNOWN_FEATURES,
+                          ast::CRATE_NODE_ID,
+                          *uf,
+                          "unknown feature".to_string());
+        }
+
+        sess.abort_if_errors();
+        *sess.features.borrow_mut() = features;
+    });
+
+    let any_exe = sess.crate_types.borrow().iter().any(|ty| {
+        *ty == config::CrateTypeExecutable
+    });
 
     krate = time(time_passes, "crate injection", krate, |krate|
-                 front::std_inject::maybe_inject_crates_ref(sess, krate));
+                 syntax::std_inject::maybe_inject_crates_ref(krate,
+                                                             sess.opts.alt_std_name.clone(),
+                                                             any_exe));
 
     // strip before expansion to allow macros to depend on
     // configuration variables e.g/ in
@@ -209,7 +226,7 @@ pub fn phase_2_configure_and_expand(sess: &Session,
     // baz! should not use this definition unless foo is enabled.
 
     krate = time(time_passes, "configuration 1", krate, |krate|
-                 front::config::strip_unconfigured_items(krate));
+                 syntax::config::strip_unconfigured_items(krate));
 
     let mut addl_plugins = Some(addl_plugins);
     let Plugins { macros, registrars }
@@ -219,7 +236,7 @@ pub fn phase_2_configure_and_expand(sess: &Session,
     let mut registry = Registry::new(&krate);
 
     time(time_passes, "plugin registration", (), |_| {
-        if sess.features.rustc_diagnostic_macros.get() {
+        if sess.features.borrow().rustc_diagnostic_macros {
             registry.register_macro("__diagnostic_used",
                 diagnostics::plugin::expand_diagnostic_used);
             registry.register_macro("__register_diagnostic",
@@ -271,7 +288,7 @@ pub fn phase_2_configure_and_expand(sess: &Session,
                 os::setenv("PATH", os::join_paths(new_path.as_slice()).unwrap());
             }
             let cfg = syntax::ext::expand::ExpansionConfig {
-                deriving_hash_type_parameter: sess.features.default_type_params.get(),
+                deriving_hash_type_parameter: sess.features.borrow().default_type_params,
                 crate_name: crate_name.to_string(),
             };
             let ret = syntax::ext::expand::expand_crate(&sess.parse_sess,
@@ -290,13 +307,16 @@ pub fn phase_2_configure_and_expand(sess: &Session,
 
     // strip again, in case expansion added anything with a #[cfg].
     krate = time(time_passes, "configuration 2", krate, |krate|
-                 front::config::strip_unconfigured_items(krate));
+                 syntax::config::strip_unconfigured_items(krate));
 
     krate = time(time_passes, "maybe building test harness", krate, |krate|
-                 front::test::modify_for_testing(sess, krate));
+                 syntax::test::modify_for_testing(&sess.parse_sess,
+                                                  &sess.opts.cfg,
+                                                  krate,
+                                                  sess.diagnostic()));
 
     krate = time(time_passes, "prelude injection", krate, |krate|
-                 front::std_inject::maybe_inject_prelude(sess, krate));
+                 syntax::std_inject::maybe_inject_prelude(krate));
 
     time(time_passes, "checking that all macro invocations are gone", &krate, |krate|
          syntax::ext::expand::check_for_macros(&sess.parse_sess, krate));

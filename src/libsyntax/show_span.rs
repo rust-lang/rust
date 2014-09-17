@@ -13,19 +13,18 @@
 //! This module shows spans for all expressions in the crate
 //! to help with compiler debugging.
 
-use syntax::ast;
-use syntax::visit;
-use syntax::visit::Visitor;
-
-use driver::session::Session;
+use ast;
+use diagnostic;
+use visit;
+use visit::Visitor;
 
 struct ShowSpanVisitor<'a> {
-    sess: &'a Session
+    span_diagnostic: &'a diagnostic::SpanHandler,
 }
 
 impl<'a, 'v> Visitor<'v> for ShowSpanVisitor<'a> {
     fn visit_expr(&mut self, e: &ast::Expr) {
-        self.sess.span_note(e.span, "expression");
+        self.span_diagnostic.span_note(e.span, "expression");
         visit::walk_expr(self, e);
     }
 
@@ -34,7 +33,7 @@ impl<'a, 'v> Visitor<'v> for ShowSpanVisitor<'a> {
     }
 }
 
-pub fn run(sess: &Session, krate: &ast::Crate) {
-    let mut v = ShowSpanVisitor { sess: sess };
+pub fn run(span_diagnostic: &diagnostic::SpanHandler, krate: &ast::Crate) {
+    let mut v = ShowSpanVisitor { span_diagnostic: span_diagnostic };
     visit::walk_crate(&mut v, krate);
 }

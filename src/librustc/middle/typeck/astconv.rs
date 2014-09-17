@@ -235,7 +235,7 @@ fn ast_path_substs<'tcx, AC: AstConv<'tcx>, RS: RegionScope>(
     }
 
     if supplied_ty_param_count > required_ty_param_count
-        && !this.tcx().sess.features.default_type_params.get() {
+        && !this.tcx().sess.features.borrow().default_type_params {
         span_err!(this.tcx().sess, path.span, E0108,
             "default type parameters are experimental and possibly buggy");
         span_note!(this.tcx().sess, path.span,

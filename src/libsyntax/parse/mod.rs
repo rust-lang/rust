@@ -17,7 +17,7 @@ use parse::attr::ParserAttr;
 use parse::parser::Parser;
 use ptr::P;
 
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::io::File;
 use std::rc::Rc;
 use std::str;
@@ -37,12 +37,14 @@ pub struct ParseSess {
     pub span_diagnostic: SpanHandler, // better be the same as the one in the reader!
     /// Used to determine and report recursive mod inclusions
     included_mod_stack: RefCell<Vec<Path>>,
+    pub node_id: Cell<ast::NodeId>,
 }
 
 pub fn new_parse_sess() -> ParseSess {
     ParseSess {
         span_diagnostic: mk_span_handler(default_handler(Auto, None), CodeMap::new()),
         included_mod_stack: RefCell::new(Vec::new()),
+        node_id: Cell::new(1),
     }
 }
 
@@ -50,6 +52,23 @@ pub fn new_parse_sess_special_handler(sh: SpanHandler) -> ParseSess {
     ParseSess {
         span_diagnostic: sh,
         included_mod_stack: RefCell::new(Vec::new()),
+        node_id: Cell::new(1),
+    }
+}
+
+impl ParseSess {
+    pub fn next_node_id(&self) -> ast::NodeId {
+        self.reserve_node_ids(1)
+    }
+    pub fn reserve_node_ids(&self, count: ast::NodeId) -> ast::NodeId {
+        let v = self.node_id.get();
+
+        match v.checked_add(&count) {
+            Some(next) => { self.node_id.set(next); }
+            None => fail!("Input too large, ran out of node ids!")
+        }
+
+        v
     }
 }
 

@@ -18,21 +18,17 @@
 //! Features are enabled in programs via the crate-level attributes of
 //! `#![feature(...)]` with a comma-separated list of features.
 
-use lint;
+use abi::RustIntrinsic;
+use ast::NodeId;
+use ast;
+use attr;
+use attr::AttrMetaMethods;
+use codemap::Span;
+use diagnostic::SpanHandler;
+use visit;
+use visit::Visitor;
+use parse::token;
 
-use syntax::abi::RustIntrinsic;
-use syntax::ast::NodeId;
-use syntax::ast;
-use syntax::attr;
-use syntax::attr::AttrMetaMethods;
-use syntax::codemap::Span;
-use syntax::visit;
-use syntax::visit::Visitor;
-use syntax::parse::token;
-
-use driver::session::Session;
-
-use std::cell::Cell;
 use std::slice;
 
 /// This is a list of all known features since the beginning of time. This list
@@ -99,35 +95,35 @@ enum Status {
 
 /// A set of features to be used by later passes.
 pub struct Features {
-    pub default_type_params: Cell<bool>,
-    pub overloaded_calls: Cell<bool>,
-    pub rustc_diagnostic_macros: Cell<bool>,
-    pub import_shadowing: Cell<bool>,
+    pub default_type_params: bool,
+    pub overloaded_calls: bool,
+    pub rustc_diagnostic_macros: bool,
+    pub import_shadowing: bool,
 }
 
 impl Features {
     pub fn new() -> Features {
         Features {
-            default_type_params: Cell::new(false),
-            overloaded_calls: Cell::new(false),
-            rustc_diagnostic_macros: Cell::new(false),
-            import_shadowing: Cell::new(false),
+            default_type_params: false,
+            overloaded_calls: false,
+            rustc_diagnostic_macros: false,
+            import_shadowing: false,
         }
     }
 }
 
 struct Context<'a> {
     features: Vec<&'static str>,
-    sess: &'a Session,
+    span_handler: &'a SpanHandler,
 }
 
 impl<'a> Context<'a> {
     fn gate_feature(&self, feature: &str, span: Span, explain: &str) {
         if !self.has_feature(feature) {
-            self.sess.span_err(span, explain);
-            self.sess.span_note(span, format!("add #![feature({})] to the \
-                                               crate attributes to enable",
-                                              feature).as_slice());
+            self.span_handler.span_err(span, explain);
+            self.span_handler.span_note(span, format!("add #![feature({})] to the \
+                                                       crate attributes to enable",
+                                                      feature).as_slice());
         }
     }
 
@@ -404,11 +400,13 @@ impl<'a, 'v> Visitor<'v> for Context<'a> {
     }
 }
 
-pub fn check_crate(sess: &Session, krate: &ast::Crate) {
+pub fn check_crate(span_handler: &SpanHandler, krate: &ast::Crate) -> (Features, Vec<Span>) {
     let mut cx = Context {
         features: Vec::new(),
-        sess: sess,
+        span_handler: span_handler,
     };
+
+    let mut unknown_features = Vec::new();
 
     for attr in krate.attrs.iter() {
         if !attr.check_name("feature") {
@@ -417,17 +415,17 @@ pub fn check_crate(sess: &Session, krate: &ast::Crate) {
 
         match attr.meta_item_list() {
             None => {
-                sess.span_err(attr.span, "malformed feature attribute, \
-                                          expected #![feature(...)]");
+                span_handler.span_err(attr.span, "malformed feature attribute, \
+                                                  expected #![feature(...)]");
             }
             Some(list) => {
                 for mi in list.iter() {
                     let name = match mi.node {
                         ast::MetaWord(ref word) => (*word).clone(),
                         _ => {
-                            sess.span_err(mi.span,
-                                          "malformed feature, expected just \
-                                           one word");
+                            span_handler.span_err(mi.span,
+                                                  "malformed feature, expected just \
+                                                   one word");
                             continue
                         }
                     };
@@ -435,17 +433,14 @@ pub fn check_crate(sess: &Session, krate: &ast::Crate) {
                                         .find(|& &(n, _)| name.equiv(&n)) {
                         Some(&(name, Active)) => { cx.features.push(name); }
                         Some(&(_, Removed)) => {
-                            sess.span_err(mi.span, "feature has been removed");
+                            span_handler.span_err(mi.span, "feature has been removed");
                         }
                         Some(&(_, Accepted)) => {
-                            sess.span_warn(mi.span, "feature has been added to Rust, \
-                                                     directive not necessary");
+                            span_handler.span_warn(mi.span, "feature has been added to Rust, \
+                                                             directive not necessary");
                         }
                         None => {
-                            sess.add_lint(lint::builtin::UNKNOWN_FEATURES,
-                                          ast::CRATE_NODE_ID,
-                                          mi.span,
-                                          "unknown feature".to_string());
+                            unknown_features.push(mi.span);
                         }
                     }
                 }
@@ -455,11 +450,12 @@ pub fn check_crate(sess: &Session, krate: &ast::Crate) {
 
     visit::walk_crate(&mut cx, krate);
 
-    sess.abort_if_errors();
-
-    sess.features.default_type_params.set(cx.has_feature("default_type_params"));
-    sess.features.overloaded_calls.set(cx.has_feature("overloaded_calls"));
-    sess.features.rustc_diagnostic_macros.set(cx.has_feature("rustc_diagnostic_macros"));
-    sess.features.import_shadowing.set(cx.has_feature("import_shadowing"));
+    (Features {
+        default_type_params: cx.has_feature("default_type_params"),
+        overloaded_calls: cx.has_feature("overloaded_calls"),
+        rustc_diagnostic_macros: cx.has_feature("rustc_diagnostic_macros"),
+        import_shadowing: cx.has_feature("import_shadowing"),
+    },
+    unknown_features)
 }
 

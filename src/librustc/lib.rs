@@ -116,14 +116,6 @@ pub mod middle {
     pub mod weak_lang_items;
 }
 
-pub mod front {
-    pub mod config;
-    pub mod test;
-    pub mod std_inject;
-    pub mod feature_gate;
-    pub mod show_span;
-}
-
 pub mod metadata;
 
 pub mod driver;
