@@ -11,7 +11,6 @@
 use ast;
 use codemap;
 use codemap::{Pos, Span};
-use codemap::{ExpnInfo, NameAndSpan};
 use ext::base::*;
 use ext::base;
 use ext::build::AstBuilder;
@@ -19,7 +18,6 @@ use parse;
 use parse::token;
 use print::pprust;
 
-use std::gc::Gc;
 use std::io::File;
 use std::rc::Rc;
 
@@ -32,10 +30,10 @@ pub fn expand_line(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
                    -> Box<base::MacResult+'static> {
     base::check_zero_tts(cx, sp, tts, "line!");
 
-    let topmost = topmost_expn_info(cx.backtrace().unwrap());
-    let loc = cx.codemap().lookup_char_pos(topmost.call_site.lo);
+    let topmost = cx.original_span_in_file();
+    let loc = cx.codemap().lookup_char_pos(topmost.lo);
 
-    base::MacExpr::new(cx.expr_uint(topmost.call_site, loc.line))
+    base::MacExpr::new(cx.expr_uint(topmost, loc.line))
 }
 
 /* col!(): expands to the current column number */
@@ -43,9 +41,9 @@ pub fn expand_col(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
                   -> Box<base::MacResult+'static> {
     base::check_zero_tts(cx, sp, tts, "col!");
 
-    let topmost = topmost_expn_info(cx.backtrace().unwrap());
-    let loc = cx.codemap().lookup_char_pos(topmost.call_site.lo);
-    base::MacExpr::new(cx.expr_uint(topmost.call_site, loc.col.to_uint()))
+    let topmost = cx.original_span_in_file();
+    let loc = cx.codemap().lookup_char_pos(topmost.lo);
+    base::MacExpr::new(cx.expr_uint(topmost, loc.col.to_uint()))
 }
 
 /// file!(): expands to the current filename */
@@ -55,10 +53,10 @@ pub fn expand_file(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
                    -> Box<base::MacResult+'static> {
     base::check_zero_tts(cx, sp, tts, "file!");
 
-    let topmost = topmost_expn_info(cx.backtrace().unwrap());
-    let loc = cx.codemap().lookup_char_pos(topmost.call_site.lo);
+    let topmost = cx.original_span_in_file();
+    let loc = cx.codemap().lookup_char_pos(topmost.lo);
     let filename = token::intern_and_get_ident(loc.file.name.as_slice());
-    base::MacExpr::new(cx.expr_str(topmost.call_site, filename))
+    base::MacExpr::new(cx.expr_str(topmost, filename))
 }
 
 pub fn expand_stringify(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
@@ -158,32 +156,6 @@ pub fn expand_include_bin(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
         Ok(bytes) => {
             let bytes = bytes.iter().map(|x| *x).collect();
             base::MacExpr::new(cx.expr_lit(sp, ast::LitBinary(Rc::new(bytes))))
-        }
-    }
-}
-
-// recur along an ExpnInfo chain to find the original expression
-fn topmost_expn_info(expn_info: Gc<codemap::ExpnInfo>) -> Gc<codemap::ExpnInfo> {
-    match *expn_info {
-        ExpnInfo { call_site: ref call_site, .. } => {
-            match call_site.expn_info {
-                Some(next_expn_info) => {
-                    match *next_expn_info {
-                        ExpnInfo {
-                            callee: NameAndSpan { name: ref name, .. },
-                            ..
-                        } => {
-                            // Don't recurse into file using "include!"
-                            if "include" == name.as_slice() {
-                                expn_info
-                            } else {
-                                topmost_expn_info(next_expn_info)
-                            }
-                        }
-                    }
-                },
-                None => expn_info
-            }
         }
     }
 }
