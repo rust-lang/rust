@@ -17,7 +17,7 @@ use syntax::ast_util;
 use syntax::ast_util::PostExpansionMethod;
 use syntax::attr;
 use syntax::attr::{AttributeMethods, AttrMetaMethods};
-use syntax::codemap::Pos;
+use syntax::codemap::{DUMMY_SP, Pos};
 use syntax::parse::token::InternedString;
 use syntax::parse::token;
 use syntax::ptr::P;
@@ -317,6 +317,7 @@ pub enum ItemEnum {
     ForeignStaticItem(Static),
     MacroItem(Macro),
     PrimitiveItem(Primitive),
+    AssociatedTypeItem,
 }
 
 #[deriving(Clone, Encodable, Decodable)]
@@ -933,6 +934,7 @@ impl Clean<Type> for ast::TraitRef {
 pub enum TraitItem {
     RequiredMethod(Item),
     ProvidedMethod(Item),
+    TypeTraitItem(Item),
 }
 
 impl TraitItem {
@@ -952,6 +954,7 @@ impl TraitItem {
         match *self {
             RequiredMethod(ref item) => item,
             ProvidedMethod(ref item) => item,
+            TypeTraitItem(ref item) => item,
         }
     }
 }
@@ -961,6 +964,7 @@ impl Clean<TraitItem> for ast::TraitItem {
         match self {
             &ast::RequiredMethod(ref t) => RequiredMethod(t.clean(cx)),
             &ast::ProvidedMethod(ref t) => ProvidedMethod(t.clean(cx)),
+            &ast::TypeTraitItem(ref t) => TypeTraitItem(t.clean(cx)),
         }
     }
 }
@@ -968,12 +972,14 @@ impl Clean<TraitItem> for ast::TraitItem {
 #[deriving(Clone, Encodable, Decodable)]
 pub enum ImplItem {
     MethodImplItem(Item),
+    TypeImplItem(Item),
 }
 
 impl Clean<ImplItem> for ast::ImplItem {
     fn clean(&self, cx: &DocContext) -> ImplItem {
         match self {
             &ast::MethodImplItem(ref t) => MethodImplItem(t.clean(cx)),
+            &ast::TypeImplItem(ref t) => TypeImplItem(t.clean(cx)),
         }
     }
 }
@@ -1028,6 +1034,7 @@ impl Clean<Item> for ty::ImplOrTraitItem {
     fn clean(&self, cx: &DocContext) -> Item {
         match *self {
             ty::MethodTraitItem(ref mti) => mti.clean(cx),
+            ty::TypeTraitItem(ref tti) => tti.clean(cx),
         }
     }
 }
@@ -1743,6 +1750,7 @@ impl Clean<Item> for doctree::Impl {
                 items: self.items.clean(cx).into_iter().map(|ti| {
                         match ti {
                             MethodImplItem(i) => i,
+                            TypeImplItem(i) => i,
                         }
                     }).collect(),
                 derived: detect_derived(self.attrs.as_slice()),
@@ -2121,6 +2129,54 @@ impl Clean<Stability> for attr::Stability {
             level: self.level,
             text: self.text.as_ref().map_or("".to_string(),
                                             |interned| interned.get().to_string()),
+        }
+    }
+}
+
+impl Clean<Item> for ast::AssociatedType {
+    fn clean(&self, cx: &DocContext) -> Item {
+        Item {
+            source: self.span.clean(cx),
+            name: Some(self.ident.clean(cx)),
+            attrs: self.attrs.clean(cx),
+            inner: AssociatedTypeItem,
+            visibility: None,
+            def_id: ast_util::local_def(self.id),
+            stability: None,
+        }
+    }
+}
+
+impl Clean<Item> for ty::AssociatedType {
+    fn clean(&self, cx: &DocContext) -> Item {
+        Item {
+            source: DUMMY_SP.clean(cx),
+            name: Some(self.ident.clean(cx)),
+            attrs: Vec::new(),
+            inner: AssociatedTypeItem,
+            visibility: None,
+            def_id: self.def_id,
+            stability: None,
+        }
+    }
+}
+
+impl Clean<Item> for ast::Typedef {
+    fn clean(&self, cx: &DocContext) -> Item {
+        Item {
+            source: self.span.clean(cx),
+            name: Some(self.ident.clean(cx)),
+            attrs: self.attrs.clean(cx),
+            inner: TypedefItem(Typedef {
+                type_: self.typ.clean(cx),
+                generics: Generics {
+                    lifetimes: Vec::new(),
+                    type_params: Vec::new(),
+                },
+            }),
+            visibility: None,
+            def_id: ast_util::local_def(self.id),
+            stability: None,
         }
     }
 }

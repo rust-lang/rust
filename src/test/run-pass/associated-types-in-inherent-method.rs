@@ -8,16 +8,34 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(macro_rules)]
+#![feature(associated_types)]
 
-struct A;
-
-macro_rules! make_thirteen_method {() => (fn thirteen(&self)->int {13})}
-impl A { make_thirteen_method!() }
-
-fn main() {
-    assert_eq!(A.thirteen(),13);
+trait Get {
+    type Value;
+    fn get(&self) -> &<Self as Get>::Value;
 }
 
+struct Struct {
+    x: int,
+}
 
+impl Get for Struct {
+    type Value = int;
+    fn get(&self) -> &int {
+        &self.x
+    }
+}
+
+impl Struct {
+    fn grab<T:Get>(x: &T) -> &<T as Get>::Value {
+        x.get()
+    }
+}
+
+fn main() {
+    let s = Struct {
+        x: 100,
+    };
+    assert_eq!(*Struct::grab(&s), 100);
+}
 

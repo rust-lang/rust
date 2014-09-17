@@ -235,13 +235,15 @@ fn view_item_in_cfg(cx: &mut Context, item: &ast::ViewItem) -> bool {
 fn trait_method_in_cfg(cx: &mut Context, meth: &ast::TraitItem) -> bool {
     match *meth {
         ast::RequiredMethod(ref meth) => (cx.in_cfg)(meth.attrs.as_slice()),
-        ast::ProvidedMethod(ref meth) => (cx.in_cfg)(meth.attrs.as_slice())
+        ast::ProvidedMethod(ref meth) => (cx.in_cfg)(meth.attrs.as_slice()),
+        ast::TypeTraitItem(ref typ) => (cx.in_cfg)(typ.attrs.as_slice()),
     }
 }
 
 fn impl_item_in_cfg(cx: &mut Context, impl_item: &ast::ImplItem) -> bool {
     match *impl_item {
         ast::MethodImplItem(ref meth) => (cx.in_cfg)(meth.attrs.as_slice()),
+        ast::TypeImplItem(ref typ) => (cx.in_cfg)(typ.attrs.as_slice()),
     }
 }
 

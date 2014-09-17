@@ -555,6 +555,18 @@ pub enum Expr_ {
     ExprParen(P<Expr>)
 }
 
+/// A "qualified path":
+///
+///     <Vec<T> as SomeTrait>::SomeAssociatedItem
+///      ^~~~~     ^~~~~~~~~   ^~~~~~~~~~~~~~~~~~
+///      for_type  trait_name  item_name
+#[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
+pub struct QPath {
+    pub for_type: P<Ty>,
+    pub trait_name: Path,
+    pub item_name: Ident,
+}
+
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
 pub enum CaptureClause {
     CaptureByValue,
@@ -766,11 +778,31 @@ pub struct TypeMethod {
 pub enum TraitItem {
     RequiredMethod(TypeMethod),
     ProvidedMethod(P<Method>),
+    TypeTraitItem(P<AssociatedType>),
 }
 
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
 pub enum ImplItem {
     MethodImplItem(P<Method>),
+    TypeImplItem(P<Typedef>),
+}
+
+#[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
+pub struct AssociatedType {
+    pub id: NodeId,
+    pub span: Span,
+    pub ident: Ident,
+    pub attrs: Vec<Attribute>,
+}
+
+#[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
+pub struct Typedef {
+    pub id: NodeId,
+    pub span: Span,
+    pub ident: Ident,
+    pub vis: Visibility,
+    pub attrs: Vec<Attribute>,
+    pub typ: P<Ty>,
 }
 
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash)]
@@ -917,6 +949,8 @@ pub enum Ty_ {
     TyUnboxedFn(P<UnboxedFnTy>),
     TyTup(Vec<P<Ty>> ),
     TyPath(Path, Option<TyParamBounds>, NodeId), // for #7264; see above
+    /// A "qualified path", e.g. `<Vec<T> as SomeTrait>::SomeType`
+    TyQPath(P<QPath>),
     /// No-op; kept solely so that we can pretty-print faithfully
     TyParen(P<Ty>),
     TyTypeof(P<Expr>),

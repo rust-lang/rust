@@ -871,6 +871,7 @@ impl<'a, 'tcx> ErrorReporting for InferCtxt<'a, 'tcx> {
                                   Some(&m.pe_explicit_self().node),
                                   m.span))
                         }
+                        ast::TypeImplItem(_) => None,
                     }
                 },
                 _ => None
@@ -1687,6 +1688,7 @@ fn lifetimes_in_scope(tcx: &ty::ctxt,
                         taken.push_all(m.pe_generics().lifetimes.as_slice());
                         Some(m.id)
                     }
+                    ast::TypeImplItem(_) => None,
                 }
             }
             _ => None

@@ -70,14 +70,30 @@ use std::rc::Rc;
 use syntax::abi;
 use syntax::{ast, ast_util};
 use syntax::codemap::Span;
+use syntax::parse::token;
 
 pub trait AstConv<'tcx> {
     fn tcx<'a>(&'a self) -> &'a ty::ctxt<'tcx>;
     fn get_item_ty(&self, id: ast::DefId) -> ty::Polytype;
     fn get_trait_def(&self, id: ast::DefId) -> Rc<ty::TraitDef>;
 
-    // what type should we use when a type is omitted?
+    /// What type should we use when a type is omitted?
     fn ty_infer(&self, span: Span) -> ty::t;
+
+    /// Returns true if associated types from the given trait and type are
+    /// allowed to be used here and false otherwise.
+    fn associated_types_of_trait_are_valid(&self,
+                                           ty: ty::t,
+                                           trait_id: ast::DefId)
+                                           -> bool;
+
+    /// Returns the binding of the given associated type for some type.
+    fn associated_type_binding(&self,
+                               span: Span,
+                               ty: Option<ty::t>,
+                               trait_id: ast::DefId,
+                               associated_type_id: ast::DefId)
+                               -> ty::t;
 }
 
 pub fn ast_region_to_region(tcx: &ty::ctxt, lifetime: &ast::Lifetime)
@@ -152,13 +168,16 @@ pub fn opt_ast_region_to_region<'tcx, AC: AstConv<'tcx>, RS: RegionScope>(
     r
 }
 
-fn ast_path_substs<'tcx, AC: AstConv<'tcx>, RS: RegionScope>(
-    this: &AC,
-    rscope: &RS,
-    decl_generics: &ty::Generics,
-    self_ty: Option<ty::t>,
-    path: &ast::Path) -> Substs
-{
+fn ast_path_substs<'tcx,AC,RS>(
+                   this: &AC,
+                   rscope: &RS,
+                   decl_def_id: ast::DefId,
+                   decl_generics: &ty::Generics,
+                   self_ty: Option<ty::t>,
+                   associated_ty: Option<ty::t>,
+                   path: &ast::Path)
+                   -> Substs
+                   where AC: AstConv<'tcx>, RS: RegionScope {
     /*!
      * Given a path `path` that refers to an item `I` with the
      * declared generics `decl_generics`, returns an appropriate
@@ -206,10 +225,17 @@ fn ast_path_substs<'tcx, AC: AstConv<'tcx>, RS: RegionScope>(
     // Convert the type parameters supplied by the user.
     let ty_param_defs = decl_generics.types.get_slice(TypeSpace);
     let supplied_ty_param_count = path.segments.iter().flat_map(|s| s.types.iter()).count();
-    let formal_ty_param_count = ty_param_defs.len();
-    let required_ty_param_count = ty_param_defs.iter()
-                                               .take_while(|x| x.default.is_none())
-                                               .count();
+    let formal_ty_param_count =
+        ty_param_defs.iter()
+                     .take_while(|x| !ty::is_associated_type(tcx, x.def_id))
+                     .count();
+    let required_ty_param_count =
+        ty_param_defs.iter()
+                     .take_while(|x| {
+                        x.default.is_none() &&
+                        !ty::is_associated_type(tcx, x.def_id)
+                     })
+                     .count();
     if supplied_ty_param_count < required_ty_param_count {
         let expected = if required_ty_param_count < formal_ty_param_count {
             "expected at least"
@@ -242,9 +268,11 @@ fn ast_path_substs<'tcx, AC: AstConv<'tcx>, RS: RegionScope>(
             "add #![feature(default_type_params)] to the crate attributes to enable");
     }
 
-    let tps = path.segments.iter().flat_map(|s| s.types.iter())
-                            .map(|a_t| ast_ty_to_ty(this, rscope, &**a_t))
-                            .collect();
+    let tps = path.segments
+                  .iter()
+                  .flat_map(|s| s.types.iter())
+                  .map(|a_t| ast_ty_to_ty(this, rscope, &**a_t))
+                  .collect();
 
     let mut substs = Substs::new_type(tps, regions);
 
@@ -263,24 +291,48 @@ fn ast_path_substs<'tcx, AC: AstConv<'tcx>, RS: RegionScope>(
     }
 
     for param in ty_param_defs.slice_from(supplied_ty_param_count).iter() {
-        let default = param.default.unwrap();
-        let default = default.subst_spanned(tcx, &substs, Some(path.span));
-        substs.types.push(TypeSpace, default);
+        match param.default {
+            Some(default) => {
+                // This is a default type parameter.
+                let default = default.subst_spanned(tcx,
+                                                    &substs,
+                                                    Some(path.span));
+                substs.types.push(TypeSpace, default);
+            }
+            None => {
+                // This is an associated type.
+                substs.types.push(
+                    TypeSpace,
+                    this.associated_type_binding(path.span,
+                                                 associated_ty,
+                                                 decl_def_id,
+                                                 param.def_id))
+            }
+        }
     }
 
     substs
 }
 
-pub fn ast_path_to_trait_ref<'tcx, AC: AstConv<'tcx>, RS: RegionScope>(
-        this: &AC,
-        rscope: &RS,
-        trait_def_id: ast::DefId,
-        self_ty: Option<ty::t>,
-        path: &ast::Path) -> Rc<ty::TraitRef> {
+pub fn ast_path_to_trait_ref<'tcx,AC,RS>(this: &AC,
+                                         rscope: &RS,
+                                         trait_def_id: ast::DefId,
+                                         self_ty: Option<ty::t>,
+                                         associated_type: Option<ty::t>,
+                                         path: &ast::Path)
+                                         -> Rc<ty::TraitRef>
+                                         where AC: AstConv<'tcx>,
+                                               RS: RegionScope {
     let trait_def = this.get_trait_def(trait_def_id);
     Rc::new(ty::TraitRef {
         def_id: trait_def_id,
-        substs: ast_path_substs(this, rscope, &trait_def.generics, self_ty, path)
+        substs: ast_path_substs(this,
+                                rscope,
+                                trait_def_id,
+                                &trait_def.generics,
+                                self_ty,
+                                associated_type,
+                                path)
     })
 }
 
@@ -289,15 +341,20 @@ pub fn ast_path_to_ty<'tcx, AC: AstConv<'tcx>, RS: RegionScope>(
     rscope: &RS,
     did: ast::DefId,
     path: &ast::Path)
-    -> TypeAndSubsts
-{
+    -> TypeAndSubsts {
     let tcx = this.tcx();
     let ty::Polytype {
         generics: generics,
         ty: decl_ty
     } = this.get_item_ty(did);
 
-    let substs = ast_path_substs(this, rscope, &generics, None, path);
+    let substs = ast_path_substs(this,
+                                 rscope,
+                                 did,
+                                 &generics,
+                                 None,
+                                 None,
+                                 path);
     let ty = decl_ty.subst(tcx, &substs);
     TypeAndSubsts { substs: substs, ty: ty }
 }
@@ -333,7 +390,7 @@ pub fn ast_path_to_ty_relaxed<'tcx, AC: AstConv<'tcx>,
         Substs::new(VecPerParamSpace::params_from_type(type_params),
                     VecPerParamSpace::params_from_type(region_params))
     } else {
-        ast_path_substs(this, rscope, &generics, None, path)
+        ast_path_substs(this, rscope, did, &generics, None, None, path)
     };
 
     let ty = decl_ty.subst(tcx, &substs);
@@ -639,8 +696,12 @@ fn mk_pointer<'tcx, AC: AstConv<'tcx>, RS: RegionScope>(
                     }
                 }
                 Some(&def::DefTrait(trait_def_id)) => {
-                    let result = ast_path_to_trait_ref(
-                        this, rscope, trait_def_id, None, path);
+                    let result = ast_path_to_trait_ref(this,
+                                                       rscope,
+                                                       trait_def_id,
+                                                       None,
+                                                       None,
+                                                       path);
                     let bounds = match *opt_bounds {
                         None => {
                             conv_existential_bounds(this,
@@ -684,6 +745,52 @@ fn mk_pointer<'tcx, AC: AstConv<'tcx>, RS: RegionScope>(
     }
 
     constr(ast_ty_to_ty(this, rscope, a_seq_ty))
+}
+
+fn associated_ty_to_ty<'tcx,AC,RS>(this: &AC,
+                                   rscope: &RS,
+                                   trait_path: &ast::Path,
+                                   for_ast_type: &ast::Ty,
+                                   trait_type_id: ast::DefId,
+                                   span: Span)
+                                   -> ty::t
+                                   where AC: AstConv<'tcx>, RS: RegionScope {
+    // Find the trait that this associated type belongs to.
+    let trait_did = match ty::impl_or_trait_item(this.tcx(),
+                                                 trait_type_id).container() {
+        ty::ImplContainer(_) => {
+            this.tcx().sess.span_bug(span,
+                                     "associated_ty_to_ty(): impl associated \
+                                      types shouldn't go through this \
+                                      function")
+        }
+        ty::TraitContainer(trait_id) => trait_id,
+    };
+
+    let for_type = ast_ty_to_ty(this, rscope, for_ast_type);
+    if !this.associated_types_of_trait_are_valid(for_type, trait_did) {
+        this.tcx().sess.span_err(span,
+                                 "this associated type is not \
+                                  allowed in this context");
+        return ty::mk_err()
+    }
+
+    let trait_ref = ast_path_to_trait_ref(this,
+                                          rscope,
+                                          trait_did,
+                                          None,
+                                          Some(for_type),
+                                          trait_path);
+    let trait_def = this.get_trait_def(trait_did);
+    for type_parameter in trait_def.generics.types.iter() {
+        if type_parameter.def_id == trait_type_id {
+            return *trait_ref.substs.types.get(type_parameter.space,
+                                               type_parameter.index)
+        }
+    }
+    this.tcx().sess.span_bug(span,
+                             "this associated type didn't get added \
+                              as a parameter for some reason")
 }
 
 // Parses the programmer's textual representation of a type into our
@@ -816,8 +923,12 @@ pub fn ast_ty_to_ty<'tcx, AC: AstConv<'tcx>, RS: RegionScope>(
                 }
                 match a_def {
                     def::DefTrait(trait_def_id) => {
-                        let result = ast_path_to_trait_ref(
-                            this, rscope, trait_def_id, None, path);
+                        let result = ast_path_to_trait_ref(this,
+                                                           rscope,
+                                                           trait_def_id,
+                                                           None,
+                                                           None,
+                                                           path);
                         let empty_bounds: &[ast::TyParamBound] = &[];
                         let ast_bounds = match *bounds {
                             Some(ref b) => b.as_slice(),
@@ -856,11 +967,50 @@ pub fn ast_ty_to_ty<'tcx, AC: AstConv<'tcx>, RS: RegionScope>(
                     def::DefPrimTy(_) => {
                         fail!("DefPrimTy arm missed in previous ast_ty_to_prim_ty call");
                     }
+                    def::DefAssociatedTy(trait_type_id) => {
+                        let path_str = tcx.map.path_to_string(
+                            tcx.map.get_parent(trait_type_id.node));
+                        tcx.sess.span_err(ast_ty.span,
+                                          format!("ambiguous associated \
+                                                   type; specify the type \
+                                                   using the syntax `<Type \
+                                                   as {}>::{}`",
+                                                  path_str,
+                                                  token::get_ident(
+                                                      path.segments
+                                                          .last()
+                                                          .unwrap()
+                                                          .identifier)
+                                                  .get()).as_slice());
+                        ty::mk_err()
+                    }
                     _ => {
                         tcx.sess.span_fatal(ast_ty.span,
                                             format!("found value name used \
                                                      as a type: {:?}",
                                                     a_def).as_slice());
+                    }
+                }
+            }
+            ast::TyQPath(ref qpath) => {
+                match tcx.def_map.borrow().find(&ast_ty.id) {
+                    None => {
+                        tcx.sess.span_bug(ast_ty.span,
+                                          "unbound qualified path")
+                    }
+                    Some(&def::DefAssociatedTy(trait_type_id)) => {
+                        associated_ty_to_ty(this,
+                                            rscope,
+                                            &qpath.trait_name,
+                                            &*qpath.for_type,
+                                            trait_type_id,
+                                            ast_ty.span)
+                    }
+                    Some(_) => {
+                        tcx.sess.span_err(ast_ty.span,
+                                          "this qualified path does not name \
+                                           an associated type");
+                        ty::mk_err()
                     }
                 }
             }

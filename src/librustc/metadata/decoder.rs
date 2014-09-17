@@ -23,7 +23,7 @@ use metadata::tydecode::{parse_ty_data, parse_region_data, parse_def_id,
                          parse_bare_fn_ty_data, parse_trait_ref_data};
 use middle::def;
 use middle::lang_items;
-use middle::resolve::TraitItemKind;
+use middle::resolve::{TraitItemKind, TypeTraitItemKind};
 use middle::subst;
 use middle::ty::{ImplContainer, TraitContainer};
 use middle::ty;
@@ -167,6 +167,8 @@ fn item_visibility(item: rbml::Doc) -> ast::Visibility {
 }
 
 fn item_sort(item: rbml::Doc) -> char {
+    // NB(pcwalton): The default of 'r' here is relied upon in
+    // `is_associated_type` below.
     let mut ret = 'r';
     reader::tagged_docs(item, tag_item_trait_item_sort, |doc| {
         ret = doc.as_str_slice().as_bytes()[0] as char;
@@ -714,6 +716,7 @@ pub fn get_impl_items(cdata: Cmd, impl_id: ast::NodeId)
         let def_id = item_def_id(doc, cdata);
         match item_sort(doc) {
             'r' | 'p' => impl_items.push(ty::MethodTraitItemId(def_id)),
+            't' => impl_items.push(ty::TypeTraitItemId(def_id)),
             _ => fail!("unknown impl item sort"),
         }
         true
@@ -733,6 +736,7 @@ pub fn get_trait_item_name_and_kind(intr: Rc<IdentInterner>,
             let explicit_self = get_explicit_self(doc);
             (name, TraitItemKind::from_explicit_self_category(explicit_self))
         }
+        't' => (name, TypeTraitItemKind),
         c => {
             fail!("get_trait_item_name_and_kind(): unknown trait item kind \
                    in metadata: `{}`", c)
@@ -758,13 +762,13 @@ pub fn get_impl_or_trait_item(intr: Rc<IdentInterner>,
     };
 
     let name = item_name(&*intr, method_doc);
+    let vis = item_visibility(method_doc);
 
     match item_sort(method_doc) {
         'r' | 'p' => {
             let generics = doc_generics(method_doc, tcx, cdata,
                                         tag_method_ty_generics);
             let fty = doc_method_fty(method_doc, tcx, cdata);
-            let vis = item_visibility(method_doc);
             let explicit_self = get_explicit_self(method_doc);
             let provided_source = get_provided_source(method_doc, cdata);
 
@@ -776,6 +780,14 @@ pub fn get_impl_or_trait_item(intr: Rc<IdentInterner>,
                                                         def_id,
                                                         container,
                                                         provided_source)))
+        }
+        't' => {
+            ty::TypeTraitItem(Rc::new(ty::AssociatedType {
+                ident: name,
+                vis: vis,
+                def_id: def_id,
+                container: container,
+            }))
         }
         _ => fail!("unknown impl/trait item sort"),
     }
@@ -790,6 +802,7 @@ pub fn get_trait_item_def_ids(cdata: Cmd, id: ast::NodeId)
         let def_id = item_def_id(mth, cdata);
         match item_sort(mth) {
             'r' | 'p' => result.push(ty::MethodTraitItemId(def_id)),
+            't' => result.push(ty::TypeTraitItemId(def_id)),
             _ => fail!("unknown trait item sort"),
         }
         true
@@ -827,6 +840,7 @@ pub fn get_provided_trait_methods(intr: Rc<IdentInterner>,
                 ty::MethodTraitItem(ref method) => {
                     result.push((*method).clone())
                 }
+                ty::TypeTraitItem(_) => {}
             }
         }
         true
@@ -1394,3 +1408,12 @@ fn doc_generics(base_doc: rbml::Doc,
 
     ty::Generics { types: types, regions: regions }
 }
+
+pub fn is_associated_type(cdata: Cmd, id: ast::NodeId) -> bool {
+    let items = reader::get_doc(rbml::Doc::new(cdata.data()), tag_items);
+    match maybe_find_item(id, items) {
+        None => false,
+        Some(item) => item_sort(item) == 't',
+    }
+}
+

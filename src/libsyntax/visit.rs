@@ -116,12 +116,19 @@ pub trait Visitor<'v> {
     fn visit_attribute(&mut self, _attr: &'v Attribute) {}
 }
 
-pub fn walk_inlined_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v InlinedItem) {
+pub fn walk_inlined_item<'v,V>(visitor: &mut V, item: &'v InlinedItem)
+                         where V: Visitor<'v> {
     match *item {
         IIItem(ref i) => visitor.visit_item(&**i),
         IIForeign(ref i) => visitor.visit_foreign_item(&**i),
         IITraitItem(_, ref ti) => visitor.visit_trait_item(ti),
-        IIImplItem(_, MethodImplItem(ref m)) => walk_method_helper(visitor, &**m)
+        IIImplItem(_, MethodImplItem(ref m)) => {
+            walk_method_helper(visitor, &**m)
+        }
+        IIImplItem(_, TypeImplItem(ref typedef)) => {
+            visitor.visit_ident(typedef.span, typedef.ident);
+            visitor.visit_ty(&*typedef.typ);
+        }
     }
 }
 
@@ -248,6 +255,10 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item) {
                     MethodImplItem(ref method) => {
                         walk_method_helper(visitor, &**method)
                     }
+                    TypeImplItem(ref typedef) => {
+                        visitor.visit_ident(typedef.span, typedef.ident);
+                        visitor.visit_ty(&*typedef.typ);
+                    }
                 }
             }
         }
@@ -365,6 +376,11 @@ pub fn walk_ty<'v, V: Visitor<'v>>(visitor: &mut V, typ: &'v Ty) {
                 }
                 None => { }
             }
+        }
+        TyQPath(ref qpath) => {
+            visitor.visit_ty(&*qpath.for_type);
+            visitor.visit_path(&qpath.trait_name, typ.id);
+            visitor.visit_ident(typ.span, qpath.item_name);
         }
         TyFixedLengthVec(ref ty, ref expression) => {
             visitor.visit_ty(&**ty);
@@ -573,10 +589,11 @@ pub fn walk_ty_method<'v, V: Visitor<'v>>(visitor: &mut V, method_type: &'v Type
 
 pub fn walk_trait_item<'v, V: Visitor<'v>>(visitor: &mut V, trait_method: &'v TraitItem) {
     match *trait_method {
-        RequiredMethod(ref method_type) => {
-            visitor.visit_ty_method(method_type)
-        }
+        RequiredMethod(ref method_type) => visitor.visit_ty_method(method_type),
         ProvidedMethod(ref method) => walk_method_helper(visitor, &**method),
+        TypeTraitItem(ref associated_type) => {
+            visitor.visit_ident(associated_type.span, associated_type.ident)
+        }
     }
 }
 
