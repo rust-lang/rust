@@ -276,17 +276,18 @@ pub fn env_as_bytes() -> Vec<(Vec<u8>,Vec<u8>)> {
             extern {
                 fn rust_env_pairs() -> *const *const c_char;
             }
-            let environ = rust_env_pairs();
+            let mut environ = rust_env_pairs();
             if environ as uint == 0 {
                 fail!("os::env() failure getting env string from OS: {}",
                        os::last_os_error());
             }
             let mut result = Vec::new();
-            ptr::array_each(environ, |e| {
+            while *environ != 0 as *const _ {
                 let env_pair =
-                    Vec::from_slice(CString::new(e, false).as_bytes_no_nul());
+                    Vec::from_slice(CString::new(*environ, false).as_bytes_no_nul());
                 result.push(env_pair);
-            });
+                environ = environ.offset(1);
+            }
             result
         }
 

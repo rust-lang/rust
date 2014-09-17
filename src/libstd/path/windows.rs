@@ -264,10 +264,10 @@ impl GenericPathUnsafe for Path {
             let repr = me.repr.as_slice();
             match me.prefix {
                 Some(DiskPrefix) => {
-                    repr.as_bytes()[0] == path.as_bytes()[0].to_ascii().to_upper().to_byte()
+                    repr.as_bytes()[0] == path.as_bytes()[0].to_ascii().to_uppercase().to_byte()
                 }
                 Some(VerbatimDiskPrefix) => {
-                    repr.as_bytes()[4] == path.as_bytes()[0].to_ascii().to_upper().to_byte()
+                    repr.as_bytes()[4] == path.as_bytes()[0].to_ascii().to_uppercase().to_byte()
                 }
                 _ => false
             }
@@ -776,9 +776,9 @@ impl Path {
                                 let mut s = String::from_str(s.slice_to(len));
                                 unsafe {
                                     let v = s.as_mut_vec();
-                                    *v.get_mut(0) = v.get(0)
+                                    *v.get_mut(0) = (*v)[0]
                                                      .to_ascii()
-                                                     .to_upper()
+                                                     .to_uppercase()
                                                      .to_byte();
                                 }
                                 if is_abs {
@@ -794,7 +794,7 @@ impl Path {
                                 let mut s = String::from_str(s.slice_to(len));
                                 unsafe {
                                     let v = s.as_mut_vec();
-                                    *v.get_mut(4) = v.get(4).to_ascii().to_upper().to_byte();
+                                    *v.get_mut(4) = (*v)[4].to_ascii().to_uppercase().to_byte();
                                 }
                                 Some(s)
                             }
@@ -815,12 +815,12 @@ impl Path {
                         let mut s = String::with_capacity(n);
                         match prefix {
                             Some(DiskPrefix) => {
-                                s.push_char(prefix_.as_bytes()[0].to_ascii().to_upper().to_char());
+                                s.push_char(prefix_.as_bytes()[0].to_ascii().to_uppercase().to_char());
                                 s.push_char(':');
                             }
                             Some(VerbatimDiskPrefix) => {
                                 s.push_str(prefix_.slice_to(4));
-                                s.push_char(prefix_.as_bytes()[4].to_ascii().to_upper().to_char());
+                                s.push_char(prefix_.as_bytes()[4].to_ascii().to_uppercase().to_char());
                                 s.push_str(prefix_.slice_from(5));
                             }
                             Some(UNCPrefix(a,b)) => {

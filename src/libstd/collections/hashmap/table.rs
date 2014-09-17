@@ -846,8 +846,8 @@ impl<K: Clone, V: Clone> Clone for RawTable<K, V> {
                                 (full.hash(), k.clone(), v.clone())
                             };
                             *new_buckets.raw.hash = h.inspect();
-                            mem::overwrite(new_buckets.raw.key, k);
-                            mem::overwrite(new_buckets.raw.val, v);
+                            ptr::write(new_buckets.raw.key, k);
+                            ptr::write(new_buckets.raw.val, v);
                         }
                         Empty(..) => {
                             *new_buckets.raw.hash = EMPTY_BUCKET;

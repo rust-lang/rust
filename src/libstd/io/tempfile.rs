@@ -79,7 +79,7 @@ impl TempDir {
 
     /// Access the wrapped `std::path::Path` to the temporary directory.
     pub fn path<'a>(&'a self) -> &'a Path {
-        self.path.get_ref()
+        self.path.as_ref().unwrap()
     }
 
     /// Close and remove the temporary directory
