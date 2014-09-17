@@ -88,14 +88,13 @@ use std::mem;
 use std::rc::Rc;
 use std::iter;
 
-#[allow(non_camel_case_types)]
-#[deriving(PartialEq)]
-pub enum restriction {
-    UNRESTRICTED,
-    RESTRICT_STMT_EXPR,
-    RESTRICT_NO_BAR_OP,
-    RESTRICT_NO_BAR_OR_DOUBLEBAR_OP,
-    RESTRICT_NO_STRUCT_LITERAL,
+bitflags! {
+    flags Restrictions: u8 {
+        static Unrestricted               = 0b0000,
+        static RestrictionStmtExpr        = 0b0001,
+        static RestrictionNoBarOp         = 0b0010,
+        static RestrictionNoStructLiteral = 0b0100
+    }
 }
 
 type ItemInfo = (Ident, Item_, Option<Vec<Attribute> >);
@@ -314,7 +313,7 @@ pub struct Parser<'a> {
     pub buffer_start: int,
     pub buffer_end: int,
     pub tokens_consumed: uint,
-    pub restriction: restriction,
+    pub restrictions: Restrictions,
     pub quote_depth: uint, // not (yet) related to the quasiquoter
     pub reader: Box<Reader+'a>,
     pub interner: Rc<token::IdentInterner>,
@@ -383,7 +382,7 @@ impl<'a> Parser<'a> {
             buffer_start: 0,
             buffer_end: 0,
             tokens_consumed: 0,
-            restriction: UNRESTRICTED,
+            restrictions: Unrestricted,
             quote_depth: 0,
             obsolete_set: HashSet::new(),
             mod_path_stack: Vec::new(),
@@ -2189,7 +2188,7 @@ impl<'a> Parser<'a> {
                     if self.token == token::LBRACE {
                         // This is a struct literal, unless we're prohibited
                         // from parsing struct literals here.
-                        if self.restriction != RESTRICT_NO_STRUCT_LITERAL {
+                        if !self.restrictions.contains(RestrictionNoStructLiteral) {
                             // It's a struct literal.
                             self.bump();
                             let mut fields = Vec::new();
@@ -2651,12 +2650,9 @@ impl<'a> Parser<'a> {
 
         // Prevent dynamic borrow errors later on by limiting the
         // scope of the borrows.
-        match (&self.token, &self.restriction) {
-            (&token::BINOP(token::OR), &RESTRICT_NO_BAR_OP) => return lhs,
-            (&token::BINOP(token::OR),
-                &RESTRICT_NO_BAR_OR_DOUBLEBAR_OP) => return lhs,
-            (&token::OROR, &RESTRICT_NO_BAR_OR_DOUBLEBAR_OP) => return lhs,
-            _ => { }
+        if self.token == token::BINOP(token::OR) &&
+            self.restrictions.contains(RestrictionNoBarOp) {
+            return lhs;
         }
 
         let cur_opt = token_to_binop(&self.token);
@@ -2696,15 +2692,16 @@ impl<'a> Parser<'a> {
     pub fn parse_assign_expr(&mut self) -> P<Expr> {
         let lo = self.span.lo;
         let lhs = self.parse_binops();
+        let restrictions = self.restrictions & RestrictionNoStructLiteral;
         match self.token {
           token::EQ => {
               self.bump();
-              let rhs = self.parse_expr();
+              let rhs = self.parse_expr_res(restrictions);
               self.mk_expr(lo, rhs.span.hi, ExprAssign(lhs, rhs))
           }
           token::BINOPEQ(op) => {
               self.bump();
-              let rhs = self.parse_expr();
+              let rhs = self.parse_expr_res(restrictions);
               let aop = match op {
                   token::PLUS =>    BiAdd,
                   token::MINUS =>   BiSub,
@@ -2730,7 +2727,7 @@ impl<'a> Parser<'a> {
     /// Parse an 'if' expression ('if' token already eaten)
     pub fn parse_if_expr(&mut self) -> P<Expr> {
         let lo = self.last_span.lo;
-        let cond = self.parse_expr_res(RESTRICT_NO_STRUCT_LITERAL);
+        let cond = self.parse_expr_res(RestrictionNoStructLiteral);
         let thn = self.parse_block();
         let mut els: Option<P<Expr>> = None;
         let mut hi = thn.span.hi;
@@ -2791,7 +2788,7 @@ impl<'a> Parser<'a> {
         let lo = self.last_span.lo;
         let pat = self.parse_pat();
         self.expect_keyword(keywords::In);
-        let expr = self.parse_expr_res(RESTRICT_NO_STRUCT_LITERAL);
+        let expr = self.parse_expr_res(RestrictionNoStructLiteral);
         let loop_block = self.parse_block();
         let hi = self.span.hi;
 
@@ -2800,7 +2797,7 @@ impl<'a> Parser<'a> {
 
     pub fn parse_while_expr(&mut self, opt_ident: Option<ast::Ident>) -> P<Expr> {
         let lo = self.last_span.lo;
-        let cond = self.parse_expr_res(RESTRICT_NO_STRUCT_LITERAL);
+        let cond = self.parse_expr_res(RestrictionNoStructLiteral);
         let body = self.parse_block();
         let hi = body.span.hi;
         return self.mk_expr(lo, hi, ExprWhile(cond, body, opt_ident));
@@ -2815,7 +2812,7 @@ impl<'a> Parser<'a> {
 
     fn parse_match_expr(&mut self) -> P<Expr> {
         let lo = self.last_span.lo;
-        let discriminant = self.parse_expr_res(RESTRICT_NO_STRUCT_LITERAL);
+        let discriminant = self.parse_expr_res(RestrictionNoStructLiteral);
         self.commit_expr_expecting(&*discriminant, token::LBRACE);
         let mut arms: Vec<Arm> = Vec::new();
         while self.token != token::RBRACE {
@@ -2834,7 +2831,7 @@ impl<'a> Parser<'a> {
             guard = Some(self.parse_expr());
         }
         self.expect(&token::FAT_ARROW);
-        let expr = self.parse_expr_res(RESTRICT_STMT_EXPR);
+        let expr = self.parse_expr_res(RestrictionStmtExpr);
 
         let require_comma =
             !classify::expr_is_simple_block(&*expr)
@@ -2856,15 +2853,15 @@ impl<'a> Parser<'a> {
 
     /// Parse an expression
     pub fn parse_expr(&mut self) -> P<Expr> {
-        return self.parse_expr_res(UNRESTRICTED);
+        return self.parse_expr_res(Unrestricted);
     }
 
-    /// Parse an expression, subject to the given restriction
-    pub fn parse_expr_res(&mut self, r: restriction) -> P<Expr> {
-        let old = self.restriction;
-        self.restriction = r;
+    /// Parse an expression, subject to the given restrictions
+    pub fn parse_expr_res(&mut self, r: Restrictions) -> P<Expr> {
+        let old = self.restrictions;
+        self.restrictions = r;
         let e = self.parse_assign_expr();
-        self.restriction = old;
+        self.restrictions = old;
         return e;
     }
 
@@ -3153,9 +3150,9 @@ impl<'a> Parser<'a> {
                     self.look_ahead(2, |t| {
                         *t != token::COMMA && *t != token::RBRACKET
                     }) {
-                let start = self.parse_expr_res(RESTRICT_NO_BAR_OP);
+                let start = self.parse_expr_res(RestrictionNoBarOp);
                 self.eat(&token::DOTDOT);
-                let end = self.parse_expr_res(RESTRICT_NO_BAR_OP);
+                let end = self.parse_expr_res(RestrictionNoBarOp);
                 pat = PatRange(start, end);
             } else if is_plain_ident(&self.token) && !can_be_enum_or_struct {
                 let id = self.parse_ident();
@@ -3441,7 +3438,7 @@ impl<'a> Parser<'a> {
                     check_expected_item(self, found_attrs);
 
                     // Remainder are line-expr stmts.
-                    let e = self.parse_expr_res(RESTRICT_STMT_EXPR);
+                    let e = self.parse_expr_res(RestrictionStmtExpr);
                     P(spanned(lo, e.span.hi, StmtExpr(e, ast::DUMMY_NODE_ID)))
                 }
             }
@@ -3450,7 +3447,7 @@ impl<'a> Parser<'a> {
 
     /// Is this expression a successfully-parsed statement?
     fn expr_is_complete(&mut self, e: &Expr) -> bool {
-        self.restriction == RESTRICT_STMT_EXPR &&
+        self.restrictions.contains(RestrictionStmtExpr) &&
             !classify::expr_requires_semi_to_be_stmt(e)
     }
 

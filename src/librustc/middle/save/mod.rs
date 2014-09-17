@@ -226,7 +226,7 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
             def::DefMod(_) |
             def::DefForeignMod(_) => Some(recorder::ModRef),
             def::DefStruct(_) => Some(recorder::StructRef),
-            def::DefTy(_) |
+            def::DefTy(..) |
             def::DefTrait(_) => Some(recorder::TypeRef),
             def::DefStatic(_, _) |
             def::DefBinding(_, _) |

@@ -308,6 +308,7 @@ pub fn run(mut krate: clean::Crate, external_html: &ExternalHtml, dst: Path) -> 
                 clean::TypeModule => item_type::Module,
                 clean::TypeStatic => item_type::Static,
                 clean::TypeVariant => item_type::Variant,
+                clean::TypeTypedef => item_type::Typedef,
             }))
         }).collect()
     }).unwrap_or(HashMap::new());

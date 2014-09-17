@@ -82,5 +82,23 @@ fn f4b() -> int {
     }
 }
 
+fn f5a() {
+    for x in range(1i, 10) { }
+    //~^ ERROR unused variable: `x`
+}
+
+fn f5b() {
+    for (x, _) in [1i, 2, 3].iter().enumerate() { }
+    //~^ ERROR unused variable: `x`
+}
+
+fn f5c() {
+    for (_, x) in [1i, 2, 3].iter().enumerate() {
+    //~^ ERROR unused variable: `x`
+        continue;
+        std::os::set_exit_status(*x); //~ WARNING unreachable statement
+    }
+}
+
 fn main() {
 }

@@ -1380,7 +1380,11 @@ pub fn trans_adt<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
         assert_eq!(discr, 0);
 
         match ty::expr_kind(bcx.tcx(), &*base.expr) {
-            ty::LvalueExpr => {
+            ty::RvalueDpsExpr | ty::RvalueDatumExpr if !ty::type_needs_drop(bcx.tcx(), ty) => {
+                bcx = trans_into(bcx, &*base.expr, SaveIn(addr));
+            },
+            ty::RvalueStmtExpr => bcx.tcx().sess.bug("unexpected expr kind for struct base expr"),
+            _ => {
                 let base_datum = unpack_datum!(bcx, trans_to_lvalue(bcx, &*base.expr, "base"));
                 for &(i, t) in base.fields.iter() {
                     let datum = base_datum.get_element(
@@ -1389,11 +1393,7 @@ pub fn trans_adt<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                     let dest = adt::trans_field_ptr(bcx, &*repr, addr, discr, i);
                     bcx = datum.store_to(bcx, dest);
                 }
-            },
-            ty::RvalueDpsExpr | ty::RvalueDatumExpr => {
-                bcx = trans_into(bcx, &*base.expr, SaveIn(addr));
-            },
-            ty::RvalueStmtExpr => bcx.tcx().sess.bug("unexpected expr kind for struct base expr")
+            }
         }
     }
 

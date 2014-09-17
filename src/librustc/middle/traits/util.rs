@@ -250,9 +250,7 @@ pub fn search_trait_and_supertraits_from_bound(tcx: &ty::ctxt,
      * is the path to that trait/supertrait. Else `None`.
      */
 
-    for (bound_index, bound) in
-        transitive_bounds(tcx, &[caller_bound]).enumerate()
-    {
+    for bound in transitive_bounds(tcx, &[caller_bound]) {
         if test(bound.def_id) {
             let vtable_param = VtableParam { bound: bound };
             return Some(vtable_param);

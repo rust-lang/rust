@@ -14,13 +14,6 @@
 //! These definitions are similar to their `ct` equivalents, but differ in that
 //! these can be statically allocated and are slightly optimized for the runtime
 
-#[cfg(stage0)]
-#[doc(hidden)]
-pub enum Piece<'a> {
-    String(&'a str),
-    Argument(Argument<'a>),
-}
-
 #[doc(hidden)]
 pub struct Argument<'a> {
     pub position: Position,

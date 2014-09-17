@@ -1094,6 +1094,7 @@ pub enum TypeKind {
     TypeStruct,
     TypeTrait,
     TypeVariant,
+    TypeTypedef,
 }
 
 impl Primitive {
@@ -2049,7 +2050,8 @@ fn resolve_type(cx: &DocContext, path: Path,
 fn register_def(cx: &DocContext, def: def::Def) -> ast::DefId {
     let (did, kind) = match def {
         def::DefFn(i, _) => (i, TypeFunction),
-        def::DefTy(i) => (i, TypeEnum),
+        def::DefTy(i, false) => (i, TypeTypedef),
+        def::DefTy(i, true) => (i, TypeEnum),
         def::DefTrait(i) => (i, TypeTrait),
         def::DefStruct(i) => (i, TypeStruct),
         def::DefMod(i) => (i, TypeModule),

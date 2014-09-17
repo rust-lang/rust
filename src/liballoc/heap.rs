@@ -10,9 +10,6 @@
 
 // FIXME: #13996: mark the `allocate` and `reallocate` return value as `noalias`
 
-#[cfg(stage0, not(test))] use core::raw;
-#[cfg(stage0, not(test))] use util;
-
 /// Returns a pointer to `size` bytes of memory.
 ///
 /// Behavior is undefined if the requested size is 0 or the alignment is not a
@@ -111,21 +108,6 @@ unsafe fn exchange_free(ptr: *mut u8, size: uint, align: uint) {
     deallocate(ptr, size, align);
 }
 
-#[cfg(stage0, not(test))]
-#[lang="closure_exchange_malloc"]
-#[inline]
-#[allow(deprecated)]
-unsafe fn closure_exchange_malloc(drop_glue: fn(*mut u8), size: uint,
-                                  align: uint) -> *mut u8 {
-    let total_size = util::get_box_size(size, align);
-    let p = allocate(total_size, 8);
-
-    let alloc = p as *mut raw::Box<()>;
-    (*alloc).drop_glue = drop_glue;
-
-    alloc as *mut u8
-}
-
 // The minimum alignment guaranteed by the architecture. This value is used to
 // add fast paths for low alignment values. In practice, the alignment is a
 // constant at the call site and the branch will be optimized out.
@@ -155,9 +137,6 @@ mod imp {
                       flags: c_int) -> *mut c_void;
         fn je_xallocx(ptr: *mut c_void, size: size_t, extra: size_t,
                       flags: c_int) -> size_t;
-        #[cfg(stage0)]
-        fn je_dallocx(ptr: *mut c_void, flags: c_int);
-        #[cfg(not(stage0))]
         fn je_sdallocx(ptr: *mut c_void, size: size_t, flags: c_int);
         fn je_nallocx(size: size_t, flags: c_int) -> size_t;
         fn je_malloc_stats_print(write_cb: Option<extern "C" fn(cbopaque: *mut c_void,
@@ -209,14 +188,6 @@ mod imp {
     }
 
     #[inline]
-    #[cfg(stage0)]
-    pub unsafe fn deallocate(ptr: *mut u8, _size: uint, align: uint) {
-        let flags = align_to_flags(align);
-        je_dallocx(ptr as *mut c_void, flags)
-    }
-
-    #[inline]
-    #[cfg(not(stage0))]
     pub unsafe fn deallocate(ptr: *mut u8, size: uint, align: uint) {
         let flags = align_to_flags(align);
         je_sdallocx(ptr as *mut c_void, size as size_t, flags)
