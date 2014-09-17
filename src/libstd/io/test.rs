@@ -34,7 +34,7 @@ macro_rules! iotest (
             use io::net::ip::*;
             use io::net::udp::*;
             #[cfg(unix)]
-            use io::net::unix::*;
+            use io::net::pipe::*;
             use io::timer::*;
             use io::process::*;
             use rt::running_on_valgrind;
