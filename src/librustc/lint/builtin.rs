@@ -954,7 +954,7 @@ impl LintPass for NonSnakeCase {
         match &p.node {
             &ast::PatIdent(_, ref path1, _) => {
                 match cx.tcx.def_map.borrow().find(&p.id) {
-                    Some(&def::DefLocal(_, _)) => {
+                    Some(&def::DefLocal(_)) => {
                         self.check_snake_case(cx, "variable", path1.node, p.span);
                     }
                     _ => {}

@@ -4940,7 +4940,7 @@ impl<'a> Resolver<'a> {
                             debug!("(resolving pattern) binding `{}`",
                                    token::get_name(renamed));
 
-                            let def = DefLocal(pattern.id, binding_mode);
+                            let def = DefLocal(pattern.id);
 
                             // Record the definition so that later passes
                             // will be able to distinguish variants from

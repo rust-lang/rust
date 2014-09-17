@@ -1226,7 +1226,7 @@ pub fn trans_match<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 fn is_discr_reassigned(bcx: Block, discr: &ast::Expr, body: &ast::Expr) -> bool {
     match discr.node {
         ast::ExprPath(..) => match bcx.def(discr.id) {
-            def::DefLocal(vid, _) | def::DefUpvar(vid, _, _, _) => {
+            def::DefLocal(vid) | def::DefUpvar(vid, _, _, _) => {
                 let mut rc = ReassignmentChecker {
                     node: vid,
                     reassigned: false
