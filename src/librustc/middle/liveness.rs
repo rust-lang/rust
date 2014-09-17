@@ -131,8 +131,8 @@ enum LoopKind<'a> {
     LoopLoop,
     /// A `while` loop, with the given expression as condition.
     WhileLoop(&'a Expr),
-    /// A `for` loop.
-    ForLoop,
+    /// A `for` loop, with the given pattern to bind.
+    ForLoop(&'a Pat),
 }
 
 #[deriving(PartialEq)]
@@ -1024,8 +1024,8 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             self.propagate_through_loop(expr, WhileLoop(&**cond), &**blk, succ)
           }
 
-          ExprForLoop(_, ref head, ref blk, _) => {
-            let ln = self.propagate_through_loop(expr, ForLoop, &**blk, succ);
+          ExprForLoop(ref pat, ref head, ref blk, _) => {
+            let ln = self.propagate_through_loop(expr, ForLoop(&**pat), &**blk, succ);
             self.propagate_through_expr(&**head, ln)
           }
 
@@ -1355,7 +1355,8 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                expr.id, block_to_string(body));
 
         let cond_ln = match kind {
-            LoopLoop | ForLoop => ln,
+            LoopLoop => ln,
+            ForLoop(ref pat) => self.define_bindings_in_pat(*pat, ln),
             WhileLoop(ref cond) => self.propagate_through_expr(&**cond, ln),
         };
         let body_ln = self.with_loop_nodes(expr.id, succ, ln, |this| {
@@ -1367,7 +1368,10 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             first_merge = false;
 
             let new_cond_ln = match kind {
-                LoopLoop | ForLoop => ln,
+                LoopLoop => ln,
+                ForLoop(ref pat) => {
+                    self.define_bindings_in_pat(*pat, ln)
+                }
                 WhileLoop(ref cond) => {
                     self.propagate_through_expr(&**cond, ln)
                 }
@@ -1453,6 +1457,12 @@ fn check_expr(this: &mut Liveness, expr: &Expr) {
         visit::walk_expr(this, expr);
       }
 
+      ExprForLoop(ref pat, _, _, _) => {
+        this.pat_bindings(&**pat, |this, ln, var, sp, id| {
+            this.warn_about_unused(sp, id, ln, var);
+        });
+      }
+
       // no correctness conditions related to liveness
       ExprCall(..) | ExprMethodCall(..) | ExprIf(..) | ExprMatch(..) |
       ExprWhile(..) | ExprLoop(..) | ExprIndex(..) | ExprField(..) |
@@ -1461,7 +1471,7 @@ fn check_expr(this: &mut Liveness, expr: &Expr) {
       ExprAgain(..) | ExprLit(_) | ExprBlock(..) |
       ExprMac(..) | ExprAddrOf(..) | ExprStruct(..) | ExprRepeat(..) |
       ExprParen(..) | ExprFnBlock(..) | ExprProc(..) | ExprUnboxedFn(..) |
-      ExprPath(..) | ExprBox(..) | ExprForLoop(..) => {
+      ExprPath(..) | ExprBox(..) => {
         visit::walk_expr(this, expr);
       }
     }
