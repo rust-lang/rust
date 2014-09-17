@@ -270,8 +270,8 @@ enum TypeParameters<'a> {
         RibKind)
 }
 
-// The rib kind controls the translation of argument or local definitions
-// (`def_arg` or `def_local`) to upvars (`def_upvar`).
+// The rib kind controls the translation of local
+// definitions (`DefLocal`) to upvars (`DefUpvar`).
 
 enum RibKind {
     // No translation needs to be applied.
@@ -1895,8 +1895,7 @@ impl<'a> Resolver<'a> {
                       ignoring {:?}", def);
               // Ignored; handled elsewhere.
           }
-          DefArg(..) | DefLocal(..) | DefPrimTy(..) |
-          DefTyParam(..) | DefBinding(..) |
+          DefLocal(..) | DefPrimTy(..) | DefTyParam(..) |
           DefUse(..) | DefUpvar(..) | DefRegion(..) |
           DefTyParamBinder(..) | DefLabel(..) | DefSelfTy(..) => {
             fail!("didn't expect `{:?}`", def);
@@ -3840,8 +3839,7 @@ impl<'a> Resolver<'a> {
         let is_ty_param;
 
         match def_like {
-            DlDef(d @ DefLocal(..)) | DlDef(d @ DefUpvar(..)) |
-            DlDef(d @ DefArg(..)) | DlDef(d @ DefBinding(..)) => {
+            DlDef(d @ DefLocal(..)) | DlDef(d @ DefUpvar(..)) => {
                 def = d;
                 is_ty_param = false;
             }
@@ -4942,22 +4940,7 @@ impl<'a> Resolver<'a> {
                             debug!("(resolving pattern) binding `{}`",
                                    token::get_name(renamed));
 
-                            let def = match mode {
-                                RefutableMode => {
-                                    // For pattern arms, we must use
-                                    // `def_binding` definitions.
-
-                                    DefBinding(pattern.id, binding_mode)
-                                }
-                                LocalIrrefutableMode => {
-                                    // But for locals, we use `def_local`.
-                                    DefLocal(pattern.id, binding_mode)
-                                }
-                                ArgumentIrrefutableMode => {
-                                    // And for function arguments, `def_arg`.
-                                    DefArg(pattern.id, binding_mode)
-                                }
-                            };
+                            let def = DefLocal(pattern.id, binding_mode);
 
                             // Record the definition so that later passes
                             // will be able to distinguish variants from

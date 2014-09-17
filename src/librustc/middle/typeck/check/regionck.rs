@@ -119,7 +119,6 @@ and report an error, and it just seems like more mess in the end.)
 */
 
 use middle::def;
-use middle::def::{DefArg, DefBinding, DefLocal, DefUpvar};
 use middle::freevars;
 use middle::mem_categorization as mc;
 use middle::ty::{ReScope};
@@ -243,11 +242,10 @@ fn region_of_def(fcx: &FnCtxt, def: def::Def) -> ty::Region {
 
     let tcx = fcx.tcx();
     match def {
-        DefLocal(node_id, _) | DefArg(node_id, _) |
-        DefBinding(node_id, _) => {
+        def::DefLocal(node_id, _) => {
             tcx.region_maps.var_region(node_id)
         }
-        DefUpvar(_, subdef, closure_id, body_id) => {
+        def::DefUpvar(_, subdef, closure_id, body_id) => {
             match ty::ty_closure_store(fcx.node_ty(closure_id)) {
                 ty::RegionTraitStore(..) => region_of_def(fcx, *subdef),
                 ty::UniqTraitStore => ReScope(body_id)
@@ -1475,7 +1473,6 @@ fn link_region(rcx: &Rcx,
             mc::cat_static_item |
             mc::cat_copied_upvar(..) |
             mc::cat_local(..) |
-            mc::cat_arg(..) |
             mc::cat_upvar(..) |
             mc::cat_rvalue(..) => {
                 // These are all "base cases" with independent lifetimes
@@ -1701,7 +1698,6 @@ fn adjust_upvar_borrow_kind_for_mut(rcx: &Rcx,
             mc::cat_rvalue(_) |
             mc::cat_copied_upvar(_) |
             mc::cat_local(_) |
-            mc::cat_arg(_) |
             mc::cat_upvar(..) => {
                 return;
             }
@@ -1753,7 +1749,6 @@ fn adjust_upvar_borrow_kind_for_unique(rcx: &Rcx, cmt: mc::cmt) {
             mc::cat_rvalue(_) |
             mc::cat_copied_upvar(_) |
             mc::cat_local(_) |
-            mc::cat_arg(_) |
             mc::cat_upvar(..) => {
                 return;
             }
