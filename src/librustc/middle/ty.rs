@@ -3062,6 +3062,11 @@ pub fn type_is_c_like_enum(cx: &ctxt, ty: t) -> bool {
                 false
             } else {
                 variants.iter().all(|v| v.args.len() == 0)
+                    || lookup_repr_hints(cx, did).iter().any(|a|
+                        match a {
+                            &attr::ReprInt(..) => true,
+                            _ => false
+                        })
             }
         }
         _ => false
