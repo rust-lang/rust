@@ -355,7 +355,10 @@ pub fn trans_for<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
 
     // Codegen the body.
     body_bcx_out = trans_block(body_bcx_out, body, expr::Ignore);
-    body_bcx_out.fcx.pop_custom_cleanup_scope(binding_cleanup_scope);
+    body_bcx_out =
+        body_bcx_out.fcx
+                    .pop_and_trans_custom_cleanup_scope(body_bcx_out,
+                                                        binding_cleanup_scope);
     body_bcx_out =
         body_bcx_out.fcx
                     .pop_and_trans_custom_cleanup_scope(body_bcx_out,
