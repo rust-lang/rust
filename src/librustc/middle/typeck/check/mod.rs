@@ -2005,7 +2005,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let region_bounds =
             ty::required_region_bounds(
                 self.tcx(),
-                param_bound.opt_region_bound.as_slice(),
+                param_bound.region_bounds.as_slice(),
                 param_bound.builtin_bounds,
                 param_bound.trait_bounds.as_slice());
         for &r in region_bounds.iter() {

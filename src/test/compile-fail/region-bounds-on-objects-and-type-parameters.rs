@@ -35,10 +35,10 @@ fn test<
     'a,
     'b,
     A:IsStatic,
-    B:Is<'a>+Is2<'b>,    //~ ERROR ambiguous lifetime bound
+    B:Is<'a>+Is2<'b>, // OK in a parameter, but not an object type.
     C:'b+Is<'a>+Is2<'b>,
     D:Is<'a>+Is2<'static>,
-    E:'a+'b //~ ERROR only a single explicit lifetime bound is permitted
+    E:'a+'b           // OK in a parameter, but not an object type.
 >() { }
 
 fn main() { }
