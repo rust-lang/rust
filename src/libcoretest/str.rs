@@ -26,6 +26,12 @@ fn strslice_issue_16589() {
     check_contains_all_substrings("012345678901234567890123456789bcdabcdabcd");
 }
 
+#[test]
+fn strslice_issue_16878() {
+    assert!(!"1234567ah012345678901ah".contains("hah"));
+    assert!(!"00abc01234567890123456789abc".contains("bcabc"));
+}
+
 
 #[test]
 fn test_strslice_contains() {

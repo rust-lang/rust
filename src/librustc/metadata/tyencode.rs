@@ -366,7 +366,7 @@ pub fn enc_existential_bounds(w: &mut SeekableMemWriter, cx: &ctxt, bs: &ty::Exi
 pub fn enc_bounds(w: &mut SeekableMemWriter, cx: &ctxt, bs: &ty::ParamBounds) {
     enc_builtin_bounds(w, cx, &bs.builtin_bounds);
 
-    for &r in bs.opt_region_bound.iter() {
+    for &r in bs.region_bounds.iter() {
         mywrite!(w, "R");
         enc_region(w, cx, r);
     }

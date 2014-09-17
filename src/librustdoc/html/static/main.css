@@ -229,6 +229,8 @@ nav.sub {
 .content .highlighted.enum { background-color: #b4d1b9; }
 .content .highlighted.struct { background-color: #e7b1a0; }
 .content .highlighted.fn { background-color: #c6afb3; }
+.content .highlighted.method { background-color: #c6afb3; }
+.content .highlighted.ffi { background-color: #c6afb3; }
 
 .docblock.short.nowrap {
     display: block;
@@ -336,11 +338,13 @@ a {
 p a { color: #4e8bca; }
 p a:hover { text-decoration: underline; }
 
-.content span.trait, .block a.current.trait { color: #ed9603; }
-.content span.mod, .block a.current.mod { color: #4d76ae; }
-.content span.enum, .block a.current.enum { color: #5e9766; }
-.content span.struct, .block a.current.struct { color: #e53700; }
-.content span.fn, .block a.current.fn { color: #8c6067; }
+.content span.trait, .content a.trait, .block a.current.trait { color: #ed9603; }
+.content span.mod, .content a.mod, block a.current.mod { color: #4d76ae; }
+.content span.enum, .content a.enum, .block a.current.enum { color: #5e9766; }
+.content span.struct, .content a.struct, .block a.current.struct { color: #e53700; }
+.content span.fn, .content a.fn, .block a.current.fn { color: #8c6067; }
+.content span.method, .content a.method, .block a.current.method { color: #8c6067; }
+.content span.ffi, .content a.ffi, .block a.current.ffi { color: #8c6067; }
 .content .fnname { color: #8c6067; }
 
 .search-input {

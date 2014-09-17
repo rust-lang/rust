@@ -419,8 +419,76 @@ struct TwoWaySearcher {
     memory: uint
 }
 
-// This is the Two-Way search algorithm, which was introduced in the paper:
-// Crochemore, M., Perrin, D., 1991, Two-way string-matching, Journal of the ACM 38(3):651-675.
+/*
+    This is the Two-Way search algorithm, which was introduced in the paper:
+    Crochemore, M., Perrin, D., 1991, Two-way string-matching, Journal of the ACM 38(3):651-675.
+
+    Here's some background information.
+
+    A *word* is a string of symbols. The *length* of a word should be a familiar
+    notion, and here we denote it for any word x by |x|.
+    (We also allow for the possibility of the *empty word*, a word of length zero).
+
+    If x is any non-empty word, then an integer p with 0 < p <= |x| is said to be a
+    *period* for x iff for all i with 0 <= i <= |x| - p - 1, we have x[i] == x[i+p].
+    For example, both 1 and 2 are periods for the string "aa". As another example,
+    the only period of the string "abcd" is 4.
+
+    We denote by period(x) the *smallest* period of x (provided that x is non-empty).
+    This is always well-defined since every non-empty word x has at least one period,
+    |x|. We sometimes call this *the period* of x.
+
+    If u, v and x are words such that x = uv, where uv is the concatenation of u and
+    v, then we say that (u, v) is a *factorization* of x.
+
+    Let (u, v) be a factorization for a word x. Then if w is a non-empty word such
+    that both of the following hold
+
+      - either w is a suffix of u or u is a suffix of w
+      - either w is a prefix of v or v is a prefix of w
+
+    then w is said to be a *repetition* for the factorization (u, v).
+
+    Just to unpack this, there are four possibilities here. Let w = "abc". Then we
+    might have:
+
+      - w is a suffix of u and w is a prefix of v. ex: ("lolabc", "abcde")
+      - w is a suffix of u and v is a prefix of w. ex: ("lolabc", "ab")
+      - u is a suffix of w and w is a prefix of v. ex: ("bc", "abchi")
+      - u is a suffix of w and v is a prefix of w. ex: ("bc", "a")
+
+    Note that the word vu is a repetition for any factorization (u,v) of x = uv,
+    so every factorization has at least one repetition.
+
+    If x is a string and (u, v) is a factorization for x, then a *local period* for
+    (u, v) is an integer r such that there is some word w such that |w| = r and w is
+    a repetition for (u, v).
+
+    We denote by local_period(u, v) the smallest local period of (u, v). We sometimes
+    call this *the local period* of (u, v). Provided that x = uv is non-empty, this
+    is well-defined (because each non-empty word has at least one factorization, as
+    noted above).
+
+    It can be proven that the following is an equivalent definition of a local period
+    for a factorization (u, v): any positive integer r such that x[i] == x[i+r] for
+    all i such that |u| - r <= i <= |u| - 1 and such that both x[i] and x[i+r] are
+    defined. (i.e. i > 0 and i + r < |x|).
+
+    Using the above reformulation, it is easy to prove that
+
+        1 <= local_period(u, v) <= period(uv)
+
+    A factorization (u, v) of x such that local_period(u,v) = period(x) is called a
+    *critical factorization*.
+
+    The algorithm hinges on the following theorem, which is stated without proof:
+
+    **Critical Factorization Theorem** Any word x has at least one critical
+    factorization (u, v) such that |u| < period(x).
+
+    The purpose of maximal_suffix is to find such a critical factorization.
+
+*/
 impl TwoWaySearcher {
     fn new(needle: &[u8]) -> TwoWaySearcher {
         let (crit_pos1, period1) = TwoWaySearcher::maximal_suffix(needle, false);
@@ -436,15 +504,19 @@ impl TwoWaySearcher {
             period = period2;
         }
 
+        // This isn't in the original algorithm, as far as I'm aware.
         let byteset = needle.iter()
                             .fold(0, |a, &b| (1 << ((b & 0x3f) as uint)) | a);
 
-        // The logic here (calculating crit_pos and period, the final if statement to see which
-        // period to use for the TwoWaySearcher) is essentially an implementation of the
-        // "small-period" function from the paper (p. 670)
+        // A particularly readable explanation of what's going on here can be found
+        // in Crochemore and Rytter's book "Text Algorithms", ch 13. Specifically
+        // see the code for "Algorithm CP" on p. 323.
         //
-        // In the paper they check whether `needle.slice_to(crit_pos)` is a suffix of
-        // `needle.slice(crit_pos, crit_pos + period)`, which is precisely what this does
+        // What's going on is we have some critical factorization (u, v) of the
+        // needle, and we want to determine whether u is a suffix of
+        // v.slice_to(period). If it is, we use "Algorithm CP1". Otherwise we use
+        // "Algorithm CP2", which is optimized for when the period of the needle
+        // is large.
         if needle.slice_to(crit_pos) == needle.slice(period, period + crit_pos) {
             TwoWaySearcher {
                 crit_pos: crit_pos,
@@ -466,6 +538,11 @@ impl TwoWaySearcher {
         }
     }
 
+    // One of the main ideas of Two-Way is that we factorize the needle into
+    // two halves, (u, v), and begin trying to find v in the haystack by scanning
+    // left to right. If v matches, we try to match u by scanning right to left.
+    // How far we can jump when we encounter a mismatch is all based on the fact
+    // that (u, v) is a critical factorization for the needle.
     #[inline]
     fn next(&mut self, haystack: &[u8], needle: &[u8], long_period: bool) -> Option<(uint, uint)> {
         'search: loop {
@@ -479,6 +556,9 @@ impl TwoWaySearcher {
                     ((haystack[self.position + needle.len() - 1] & 0x3f)
                      as uint)) & 1 == 0 {
                 self.position += needle.len();
+                if !long_period {
+                    self.memory = 0;
+                }
                 continue 'search;
             }
 
@@ -517,9 +597,9 @@ impl TwoWaySearcher {
         }
     }
 
-    // returns (i, p) where i is the "critical position", the starting index of
-    // of maximal suffix, and p is the period of the suffix
-    // see p. 668 of the paper
+    // Computes a critical factorization (u, v) of `arr`.
+    // Specifically, returns (i, p), where i is the starting index of v in some
+    // critical factorization (u, v) and p = period(v)
     #[inline]
     fn maximal_suffix(arr: &[u8], reversed: bool) -> (uint, uint) {
         let mut left = -1; // Corresponds to i in the paper

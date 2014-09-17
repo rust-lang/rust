@@ -453,6 +453,8 @@ valopt datadir "${CFG_PREFIX}/share" "install data"
 valopt infodir "${CFG_PREFIX}/share/info" "install additional info"
 valopt mandir "${CFG_PREFIX}/share/man" "install man pages in PATH"
 
+valopt release-channel "source" "the name of the release channel to build"
+
 # On windows we just store the libraries in the bin directory because
 # there's no rpath. This is where the build system itself puts libraries;
 # --libdir is used to configure the installation directory.
@@ -480,6 +482,23 @@ validate_opt
 CFG_BUILD=`echo "${CFG_BUILD}" | sed 's/-pc-mingw32/-w64-mingw32/g'`
 CFG_HOST=`echo "${CFG_HOST}" | sed 's/-pc-mingw32/-w64-mingw32/g'`
 CFG_TARGET=`echo "${CFG_TARGET}" | sed 's/-pc-mingw32/-w64-mingw32/g'`
+
+# Validate the release channel
+case "$CFG_RELEASE_CHANNEL" in
+    (source | nightly | beta | stable)
+	;;
+    (*)
+        err "release channel must be 'source', 'nightly', 'beta' or 'stable'"
+        ;;
+esac
+
+# Continue supporting the old --enable-nightly flag to transition the bots
+# XXX Remove me
+if [ $CFG_ENABLE_NIGHTLY -eq 1 ]
+then
+    CFG_RELEASE_CHANNEL=nightly
+    putvar CFG_RELEASE_CHANNEL
+fi
 
 step_msg "looking for build programs"
 
@@ -636,7 +655,7 @@ then
             # check that gcc, cc and g++ all point to the same compiler.
             # note that for xcode 5, g++ points to clang, not clang++
             if !((chk_cc gcc clang  && chk_cc g++ clang) ||
-                (chk_cc gcc gcc  &&( chk_cc g++ g++ || chk g++ gcc))) then
+                (chk_cc gcc gcc  &&( chk_cc g++ g++ || chk g++ gcc))); then
                 err "the gcc and g++ in your path point to different compilers.
     Check which versions are in your path with gcc --version and g++ --version.
     To resolve this problem, either fix your PATH  or run configure with --enable-clang"

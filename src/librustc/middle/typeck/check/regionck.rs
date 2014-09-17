@@ -1880,7 +1880,7 @@ fn param_must_outlive(rcx: &Rcx,
     let param_bound = param_env.bounds.get(param_ty.space, param_ty.idx);
     param_bounds =
         ty::required_region_bounds(rcx.tcx(),
-                                   param_bound.opt_region_bound.as_slice(),
+                                   param_bound.region_bounds.as_slice(),
                                    param_bound.builtin_bounds,
                                    param_bound.trait_bounds.as_slice());
 

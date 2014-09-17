@@ -19,6 +19,7 @@
 //! ## Example
 //!
 //! ```rust
+//! # #![allow(deprecated)]
 //! use num::bigint::BigUint;
 //! use std::num::{Zero, One};
 //! use std::mem::replace;
@@ -42,6 +43,7 @@
 //! It's easy to generate large random numbers:
 //!
 //! ```rust
+//! # #![allow(deprecated)]
 //! use num::bigint::{ToBigInt, RandBigInt};
 //! use std::rand;
 //!
