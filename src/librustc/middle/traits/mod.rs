@@ -22,6 +22,7 @@ use syntax::codemap::{Span, DUMMY_SP};
 
 pub use self::fulfill::FulfillmentContext;
 pub use self::select::SelectionContext;
+pub use self::select::SelectionCache;
 pub use self::util::supertraits;
 pub use self::util::transitive_bounds;
 pub use self::util::Supertraits;

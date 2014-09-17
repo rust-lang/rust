@@ -579,6 +579,10 @@ pub struct ctxt<'tcx> {
     /// Maps def IDs of traits to information about their associated types.
     pub trait_associated_types:
         RefCell<DefIdMap<Rc<Vec<AssociatedTypeInfo>>>>,
+
+    /// Caches the results of trait selection. This cache is used
+    /// for things that do not have to do with the parameters in scope.
+    pub selection_cache: traits::SelectionCache,
 }
 
 pub enum tbox_flag {
@@ -1281,6 +1285,10 @@ pub struct ParameterEnvironment {
     /// Note: This effectively *duplicates* the `bounds` array for
     /// now.
     pub caller_obligations: VecPerParamSpace<traits::Obligation>,
+
+    /// Caches the results of trait selection. This cache is used
+    /// for things that have to do with the parameters in scope.
+    pub selection_cache: traits::SelectionCache,
 }
 
 impl ParameterEnvironment {
@@ -1524,7 +1532,8 @@ pub fn mk_ctxt<'tcx>(s: Session,
         capture_modes: capture_modes,
         associated_types: RefCell::new(DefIdMap::new()),
         trait_associated_types: RefCell::new(DefIdMap::new()),
-    }
+        selection_cache: traits::SelectionCache::new(),
+   }
 }
 
 // Type constructors
@@ -5324,7 +5333,8 @@ pub fn empty_parameter_environment() -> ParameterEnvironment {
     ty::ParameterEnvironment { free_substs: Substs::empty(),
                                bounds: VecPerParamSpace::empty(),
                                caller_obligations: VecPerParamSpace::empty(),
-                               implicit_region_bound: ty::ReEmpty }
+                               implicit_region_bound: ty::ReEmpty,
+                               selection_cache: traits::SelectionCache::new(), }
 }
 
 pub fn construct_parameter_environment(
@@ -5396,6 +5406,7 @@ pub fn construct_parameter_environment(
         bounds: bounds,
         implicit_region_bound: ty::ReScope(free_id),
         caller_obligations: obligations,
+        selection_cache: traits::SelectionCache::new(),
     };
 
     fn push_region_params(regions: &mut VecPerParamSpace<ty::Region>,
