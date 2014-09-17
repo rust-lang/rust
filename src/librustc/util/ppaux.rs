@@ -603,9 +603,11 @@ impl Repr for def::Def {
 
 impl Repr for ty::TypeParameterDef {
     fn repr(&self, tcx: &ctxt) -> String {
-        format!("TypeParameterDef({}, {})",
-                self.def_id.repr(tcx),
-                self.bounds.repr(tcx))
+        format!("TypeParameterDef({}, {}, {}/{})",
+                self.def_id,
+                self.bounds.repr(tcx),
+                self.space,
+                self.index)
     }
 }
 

@@ -844,6 +844,17 @@ fn method_context(cx: &Context, m: &ast::Method) -> MethodContext {
                         }
                     }
                 }
+                ty::TypeTraitItem(typedef) => {
+                    match typedef.container {
+                        ty::TraitContainer(..) => TraitDefaultImpl,
+                        ty::ImplContainer(cid) => {
+                            match ty::impl_trait_ref(cx.tcx, cid) {
+                                Some(..) => TraitImpl,
+                                None => PlainImpl
+                            }
+                        }
+                    }
+                }
             }
         }
     }
@@ -1511,13 +1522,9 @@ impl LintPass for Stability {
                                 method_num: index,
                                 ..
                             }) => {
-                                match ty::trait_item(cx.tcx,
-                                                     trait_ref.def_id,
-                                                     index) {
-                                    ty::MethodTraitItem(method) => {
-                                        method.def_id
-                                    }
-                                }
+                                ty::trait_item(cx.tcx,
+                                               trait_ref.def_id,
+                                               index).def_id()
                             }
                         }
                     }

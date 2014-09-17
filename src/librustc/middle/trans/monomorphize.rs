@@ -231,6 +231,9 @@ pub fn monomorphic_fn(ccx: &CrateContext,
                     }
                     d
                 }
+                ast::TypeImplItem(_) => {
+                    ccx.sess().bug("can't monomorphize an associated type")
+                }
             }
         }
         ast_map::NodeTraitItem(method) => {

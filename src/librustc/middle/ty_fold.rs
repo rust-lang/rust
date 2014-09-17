@@ -301,6 +301,7 @@ impl TypeFoldable for ty::TypeParameterDef {
             def_id: self.def_id,
             space: self.space,
             index: self.index,
+            associated_with: self.associated_with,
             bounds: self.bounds.fold_with(folder),
             default: self.default.fold_with(folder),
         }

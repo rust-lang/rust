@@ -2557,6 +2557,8 @@ The currently implemented features of the reference compiler are:
 
 * `tuple_indexing` - Allows use of tuple indexing (expressions like `expr.0`)
 
+* `associated_types` - Allows type aliases in traits. Experimental.
+
 If a feature is promoted to a language feature, then all existing programs will
 start to receive compilation warnings about #[feature] directives which enabled
 the new feature (because the directive is no longer necessary). However, if

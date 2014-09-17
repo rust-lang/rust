@@ -9,10 +9,11 @@
 // except according to those terms.
 
 use abi;
-use ast::{FnMutUnboxedClosureKind, FnOnceUnboxedClosureKind};
-use ast::{FnUnboxedClosureKind, MethodImplItem};
-use ast::{RegionTyParamBound, TraitTyParamBound, UnboxedClosureKind};
-use ast::{UnboxedFnTyParamBound, RequiredMethod, ProvidedMethod};
+use ast::{FnUnboxedClosureKind, FnMutUnboxedClosureKind};
+use ast::{FnOnceUnboxedClosureKind};
+use ast::{MethodImplItem, RegionTyParamBound, TraitTyParamBound};
+use ast::{RequiredMethod, ProvidedMethod, TypeImplItem, TypeTraitItem};
+use ast::{UnboxedClosureKind, UnboxedFnTyParamBound};
 use ast;
 use ast_util;
 use owned_slice::OwnedSlice;
@@ -660,6 +661,16 @@ impl<'a> State<'a> {
             ast::TyPath(ref path, ref bounds, _) => {
                 try!(self.print_bounded_path(path, bounds));
             }
+            ast::TyQPath(ref qpath) => {
+                try!(word(&mut self.s, "<"));
+                try!(self.print_type(&*qpath.for_type));
+                try!(space(&mut self.s));
+                try!(self.word_space("as"));
+                try!(self.print_path(&qpath.trait_name, false));
+                try!(word(&mut self.s, ">"));
+                try!(word(&mut self.s, "::"));
+                try!(self.print_ident(qpath.item_name));
+            }
             ast::TyFixedLengthVec(ref ty, ref v) => {
                 try!(word(&mut self.s, "["));
                 try!(self.print_type(&**ty));
@@ -706,6 +717,22 @@ impl<'a> State<'a> {
                 self.end() // end the outer cbox
             }
         }
+    }
+
+    fn print_associated_type(&mut self, typedef: &ast::AssociatedType)
+                             -> IoResult<()> {
+        try!(self.word_space("type"));
+        try!(self.print_ident(typedef.ident));
+        word(&mut self.s, ";")
+    }
+
+    fn print_typedef(&mut self, typedef: &ast::Typedef) -> IoResult<()> {
+        try!(self.word_space("type"));
+        try!(self.print_ident(typedef.ident));
+        try!(space(&mut self.s));
+        try!(self.word_space("="));
+        try!(self.print_type(&*typedef.typ));
+        word(&mut self.s, ";")
     }
 
     /// Pretty-print an item
@@ -824,6 +851,9 @@ impl<'a> State<'a> {
                     match *impl_item {
                         ast::MethodImplItem(ref meth) => {
                             try!(self.print_method(&**meth));
+                        }
+                        ast::TypeImplItem(ref typ) => {
+                            try!(self.print_typedef(&**typ));
                         }
                     }
                 }
@@ -1071,13 +1101,15 @@ impl<'a> State<'a> {
                               m: &ast::TraitItem) -> IoResult<()> {
         match *m {
             RequiredMethod(ref ty_m) => self.print_ty_method(ty_m),
-            ProvidedMethod(ref m) => self.print_method(&**m)
+            ProvidedMethod(ref m) => self.print_method(&**m),
+            TypeTraitItem(ref t) => self.print_associated_type(&**t),
         }
     }
 
     pub fn print_impl_item(&mut self, ii: &ast::ImplItem) -> IoResult<()> {
         match *ii {
             MethodImplItem(ref m) => self.print_method(&**m),
+            TypeImplItem(ref td) => self.print_typedef(&**td),
         }
     }
 

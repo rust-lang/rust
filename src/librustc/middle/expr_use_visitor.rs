@@ -134,6 +134,9 @@ impl OverloadedCallType {
             ty::MethodTraitItem(ref method_descriptor) => {
                 (*method_descriptor).clone()
             }
+            ty::TypeTraitItem(_) => {
+                tcx.sess.bug("overloaded call method wasn't in method map")
+            }
         };
         let impl_id = match method_descriptor.container {
             ty::TraitContainer(_) => {

@@ -522,6 +522,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for ConstraintContext<'a, 'tcx> {
                             self.add_constraints_from_sig(&method.fty.sig,
                                                           self.covariant);
                         }
+                        ty::TypeTraitItem(_) => {}
                     }
                 }
             }

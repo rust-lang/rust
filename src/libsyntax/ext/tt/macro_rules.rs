@@ -90,7 +90,10 @@ impl<'a> MacResult for ParserAnyMacro<'a> {
             let mut parser = self.parser.borrow_mut();
             match parser.token {
                 EOF => break,
-                _ => ret.push(parser.parse_method(None))
+                _ => {
+                    let attrs = parser.parse_outer_attributes();
+                    ret.push(parser.parse_method(attrs, ast::Inherited))
+                }
             }
         }
         self.ensure_complete_parse(false);
