@@ -108,6 +108,12 @@ impl Session {
     pub fn note(&self, msg: &str) {
         self.diagnostic().handler().note(msg)
     }
+    pub fn opt_span_bug(&self, opt_sp: Option<Span>, msg: &str) -> ! {
+        match opt_sp {
+            Some(sp) => self.span_bug(sp, msg),
+            None => self.bug(msg),
+        }
+    }
     pub fn span_bug(&self, sp: Span, msg: &str) -> ! {
         self.diagnostic().span_bug(sp, msg)
     }

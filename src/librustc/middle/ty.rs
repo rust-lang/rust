@@ -3194,6 +3194,56 @@ pub fn array_element_ty(t: t) -> Option<t> {
     }
 }
 
+/// Returns the type of element at index `i` in tuple or tuple-like type.
+/// requires variant_id be Some(_) iff t represents a ty_enum.
+pub fn positional_element_ty(cx: &ctxt, t: t, i: uint, variant_id: Option<ast::DefId>) -> Option<t> {
+
+    match (&get(t).sty, variant_id) {
+        (&ty_tup(ref v), None) => v.as_slice().get(i).map(|&t| t),
+
+
+        (&ty_struct(def_id, ref substs), None) => lookup_struct_fields(cx, def_id)
+            .as_slice().get(i)
+            .map(|&t|lookup_item_type(cx, t.id).ty.subst(cx, substs)),
+
+        (&ty_enum(def_id, ref substs), Some(variant_def_id)) => {
+            let variant_info = enum_variant_with_id(cx, def_id, variant_def_id);
+            variant_info.args.as_slice().get(i).map(|t|t.subst(cx, substs))
+        }
+
+        (&ty_enum(def_id, ref substs), None) => {
+            assert!(enum_is_univariant(cx, def_id));
+            let enum_variants = enum_variants(cx, def_id);
+            let variant_info = enum_variants.get(0);
+            variant_info.args.as_slice().get(i).map(|t|t.subst(cx, substs))
+        }
+
+        _ => None
+    }
+}
+
+/// Returns the type of element at field `n` in struct or struct-like type.
+/// requires variant_id is Some(_) iff t represents a ty_enum.
+pub fn named_element_ty(cx: &ctxt, t: t, n: ast::Name, variant_id: Option<ast::DefId>) -> Option<t> {
+
+    match (&get(t).sty, variant_id) {
+        (&ty_struct(def_id, ref substs), None) => {
+            let r = lookup_struct_fields(cx, def_id);
+            r.iter().find(|f| f.name == n)
+                .map(|&f| lookup_field_type(cx, def_id, f.id, substs))
+        }
+        (&ty_enum(def_id, ref substs), Some(variant_def_id)) => {
+            let variant_info = enum_variant_with_id(cx, def_id, variant_def_id);
+            variant_info.arg_names.as_ref()
+                .expect("must have struct enum variant if accessing a named fields")
+                .iter().zip(variant_info.args.iter())
+                .find(|&(ident, _)| ident.name == n)
+                .map(|(_ident, arg_t)| arg_t.subst(cx, substs))
+        }
+        _ => None
+    }
+}
+
 pub fn node_id_to_trait_ref(cx: &ctxt, id: ast::NodeId) -> Rc<ty::TraitRef> {
     match cx.trait_refs.borrow().find(&id) {
         Some(t) => t.clone(),

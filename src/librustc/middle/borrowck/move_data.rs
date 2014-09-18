@@ -438,8 +438,10 @@ impl MoveData {
                id,
                kind);
 
-        let path_index = self.move_path(tcx, lp);
+        let path_index = self.move_path(tcx, lp.clone());
         let move_index = MoveIndex(self.moves.borrow().len());
+
+        self.nonfragments.borrow_mut().push(path_index);
 
         let next_move = self.path_first_move(path_index);
         self.set_path_first_move(path_index, move_index);
@@ -450,6 +452,8 @@ impl MoveData {
             kind: kind,
             next_move: next_move
         });
+
+        self.add_fragment_siblings(tcx, lp, id);
     }
 
     pub fn add_assignment(&self,
@@ -468,6 +472,8 @@ impl MoveData {
                lp.repr(tcx), assign_id, assignee_id);
 
         let path_index = self.move_path(tcx, lp.clone());
+
+        self.nonfragments.borrow_mut().push(path_index);
 
         match mode {
             euv::Init | euv::JustWrite => {
@@ -522,6 +528,200 @@ impl MoveData {
         };
 
         self.variant_matches.borrow_mut().push(variant_match);
+    }
+
+    fn add_fragment_siblings(&self,
+                             tcx: &ty::ctxt,
+                             lp: Rc<LoanPath>,
+                             origin_id: ast::NodeId) {
+        /*! Adds all of the precisely-tracked siblings of `lp` as
+         * potential move paths of interest. For example, if `lp`
+         * represents `s.x.j`, then adds moves paths for `s.x.i` and
+         * `s.x.k`, the siblings of `s.x.j`.
+         */
+        debug!("add_fragment_siblings(lp={}, origin_id={})",
+               lp.repr(tcx), origin_id);
+
+        match lp.variant {
+            LpVar(_) | LpUpvar(..) => {} // Local variables have no siblings.
+
+            LpDowncast(..) => {} // an enum variant (on its own) has no siblings.
+
+            // *LV for OwnedPtr consumes the contents of the box (at
+            // least when it is non-copy...), so propagate inward.
+            LpExtend(ref loan_parent, _, LpDeref(mc::OwnedPtr)) => {
+                self.add_fragment_siblings(tcx, loan_parent.clone(), origin_id);
+            }
+
+            // *LV has no siblings
+            LpExtend(_, _, LpDeref(_)) => {}
+
+            // LV[j] is not tracked precisely
+            LpExtend(_, _, LpInterior(mc::InteriorElement(_))) => {}
+
+            // field access LV.x and tuple access LV#k are the cases
+            // we are interested in
+            LpExtend(ref loan_parent, mc,
+                     LpInterior(mc::InteriorField(ref field_name))) => {
+                let enum_variant_info = match loan_parent.variant {
+                    LpDowncast(ref loan_parent_2, variant_def_id) =>
+                        Some((variant_def_id, loan_parent_2.clone())),
+                    LpExtend(..) | LpVar(..) | LpUpvar(..) =>
+                        None,
+                };
+                self.add_fragment_siblings_for_extension(
+                    tcx, loan_parent, mc, field_name, &lp, origin_id, enum_variant_info);
+            }
+        }
+    }
+
+    fn add_fragment_siblings_for_extension(&self,
+                                           tcx: &ty::ctxt,
+                                           parent_lp: &Rc<LoanPath>,
+                                           mc: mc::MutabilityCategory,
+                                           origin_field_name: &mc::FieldName,
+                                           origin_lp: &Rc<LoanPath>,
+                                           origin_id: ast::NodeId,
+                                           enum_variant_info: Option<(ast::DefId, Rc<LoanPath>)>) {
+        /*! We have determined that `origin_lp` destructures to
+         * LpExtend(parent, original_field_name). Based on this,
+         * add move paths for all of the siblings of `origin_lp`.
+         */
+        let parent_ty = parent_lp.to_type();
+
+        let add_fragment_sibling = |field_name, _field_type| {
+            self.add_fragment_sibling(
+                tcx, parent_lp.clone(), mc, field_name, origin_lp);
+        };
+
+        match (&ty::get(parent_ty).sty, enum_variant_info) {
+            (&ty::ty_tup(ref v), None) => {
+                let tuple_idx = match *origin_field_name {
+                    mc::PositionalField(tuple_idx) => tuple_idx,
+                    mc::NamedField(_) =>
+                        fail!("tuple type {} should not have named fields.",
+                              parent_ty.repr(tcx)),
+                };
+                let tuple_len = v.len();
+                for i in range(0, tuple_len) {
+                    if i == tuple_idx { continue }
+                    let field_type =
+                        // v[i];
+                        ();
+                    let field_name = mc::PositionalField(i);
+                    add_fragment_sibling(field_name, field_type);
+                }
+            }
+
+            (&ty::ty_struct(def_id, ref _substs), None) => {
+                let fields = ty::lookup_struct_fields(tcx, def_id);
+                match *origin_field_name {
+                    mc::NamedField(ast_name) => {
+                        for f in fields.iter() {
+                            if f.name == ast_name {
+                                continue;
+                            }
+                            let field_name = mc::NamedField(f.name);
+                            let field_type = ();
+                            add_fragment_sibling(field_name, field_type);
+                        }
+                    }
+                    mc::PositionalField(tuple_idx) => {
+                        for (i, _f) in fields.iter().enumerate() {
+                            if i == tuple_idx {
+                                continue
+                            }
+                            let field_name = mc::PositionalField(i);
+                            let field_type = ();
+                            add_fragment_sibling(field_name, field_type);
+                        }
+                    }
+                }
+            }
+
+            (&ty::ty_enum(enum_def_id, ref substs), ref enum_variant_info) => {
+                let variant_info = {
+                    let mut variants = ty::substd_enum_variants(tcx, enum_def_id, substs);
+                    match *enum_variant_info {
+                        Some((variant_def_id, ref _lp2)) =>
+                            variants.iter()
+                            .find(|variant| variant.id == variant_def_id)
+                            .expect("enum_variant_with_id(): no variant exists with that ID")
+                            .clone(),
+                        None => {
+                            assert_eq!(variants.len(), 1);
+                            variants.pop().unwrap()
+                        }
+                    }
+                };
+                match *origin_field_name {
+                    mc::NamedField(ast_name) => {
+                        let variant_arg_names = variant_info.arg_names.as_ref().unwrap();
+                        let variant_arg_types = &variant_info.args;
+                        for (variant_arg_ident, _variant_arg_ty) in variant_arg_names.iter().zip(variant_arg_types.iter()) {
+                            if variant_arg_ident.name == ast_name {
+                                continue;
+                            }
+                            let field_name = mc::NamedField(variant_arg_ident.name);
+                            let field_type = ();
+                            add_fragment_sibling(field_name, field_type);
+                        }
+                    }
+                    mc::PositionalField(tuple_idx) => {
+                        let variant_arg_types = &variant_info.args;
+                        for (i, _variant_arg_ty) in variant_arg_types.iter().enumerate() {
+                            if tuple_idx == i {
+                                continue;
+                            }
+                            let field_name = mc::PositionalField(i);
+                            let field_type = ();
+                            add_fragment_sibling(field_name, field_type);
+                        }
+                    }
+                }
+            }
+
+            ref sty_and_variant_info => {
+                let msg = format!("type {} ({:?}) is not fragmentable",
+                                  parent_ty.repr(tcx), sty_and_variant_info);
+                tcx.sess.opt_span_bug(tcx.map.opt_span(origin_id),
+                                      msg.as_slice())
+            }
+        }
+    }
+
+    fn add_fragment_sibling(&self,
+                            tcx: &ty::ctxt,
+                            parent: Rc<LoanPath>,
+                            mc: mc::MutabilityCategory,
+                            new_field_name: mc::FieldName,
+                            origin_lp: &Rc<LoanPath>) -> MovePathIndex {
+        /*! Adds the single sibling `LpExtend(parent, new_field_name)`
+         * of `origin_lp` (the original loan-path).
+         */
+        let opt_variant_did = match parent.variant {
+            LpDowncast(_, variant_did) => Some(variant_did),
+            LpVar(..) | LpUpvar(..) | LpExtend(..) => None,
+        };
+
+        let loan_path_elem = LpInterior(mc::InteriorField(new_field_name));
+        let new_lp_type = match new_field_name {
+            mc::NamedField(ast_name) =>
+                ty::named_element_ty(tcx, parent.to_type(), ast_name, opt_variant_did),
+            mc::PositionalField(idx) =>
+                ty::positional_element_ty(tcx, parent.to_type(), idx, opt_variant_did),
+        };
+        let new_lp_variant = LpExtend(parent, mc, loan_path_elem);
+        let new_lp = LoanPath::new(new_lp_variant, new_lp_type.unwrap());
+        debug!("add_fragment_sibling(new_lp={}, origin_lp={})",
+               new_lp.repr(tcx), origin_lp.repr(tcx));
+        let mp = self.move_path(tcx, Rc::new(new_lp));
+
+        // Do not worry about checking for duplicates here; if
+        // necessary, we will sort and dedup after all are added.
+        self.fragments.borrow_mut().push(mp);
+
+        mp
     }
 
     fn add_gen_kills(&self,
