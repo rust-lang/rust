@@ -12,7 +12,7 @@
 
 #![allow(non_camel_case_types)]
 
-pub use self::LoanPath::*;
+pub use self::LoanPathKind::*;
 pub use self::LoanPathElem::*;
 pub use self::bckerr_code::*;
 pub use self::AliasableViolationKind::*;
@@ -125,7 +125,7 @@ fn borrowck_item(this: &mut BorrowckCtxt, item: &ast::Item) {
 
 /// Collection of conclusions determined via borrow checker analyses.
 pub struct AnalysisData<'a, 'tcx: 'a> {
-    pub all_loans: Vec<Loan>,
+    pub all_loans: Vec<Loan<'tcx>>,
     pub loans: DataFlowContext<'a, 'tcx, LoanDataFlowOperator>,
     pub move_data: move_data::FlowedMoveData<'a, 'tcx>,
 }
@@ -254,11 +254,11 @@ pub type BckResult<'tcx, T> = Result<T, BckError<'tcx>>;
 // Loans and loan paths
 
 /// Record of a loan that was issued.
-pub struct Loan {
+pub struct Loan<'tcx> {
     index: uint,
-    loan_path: Rc<LoanPath>,
+    loan_path: Rc<LoanPath<'tcx>>,
     kind: ty::BorrowKind,
-    restricted_paths: Vec<Rc<LoanPath>>,
+    restricted_paths: Vec<Rc<LoanPath<'tcx>>>,
 
     /// gen_scope indicates where loan is introduced. Typically the
     /// loan is introduced at the point of the borrow, but in some
@@ -276,33 +276,31 @@ pub struct Loan {
     cause: euv::LoanCause,
 }
 
-impl Loan {
-    pub fn loan_path(&self) -> Rc<LoanPath> {
+impl<'tcx> Loan<'tcx> {
+    pub fn loan_path(&self) -> Rc<LoanPath<'tcx>> {
         self.loan_path.clone()
     }
 }
 
 #[deriving(PartialEq, Eq, Hash, Show)]
-pub enum LoanPath {
-    LpVar(ast::NodeId),                   // `x` in doc.rs
-    LpUpvar(ty::UpvarId),                 // `x` captured by-value into closure
-    LpDowncast(Rc<LoanPath>, ast::DefId), // `x` downcast to particular enum variant
-    LpExtend(Rc<LoanPath>, mc::MutabilityCategory, LoanPathElem)
+pub struct LoanPath<'tcx> {
+    kind: LoanPathKind<'tcx>,
+    ty: ty::Ty<'tcx>,
 }
 
-impl LoanPath {
-    fn kill_id(&self, tcx: &ty::ctxt) -> ast::NodeId {
-        //! Returns the lifetime of the local variable that forms the
-        //! base of this path.  (See move_data::add_gen_kills.)
-        match *self {
-            LpVar(id) =>
-                tcx.region_maps.var_scope(id),
-            LpUpvar(ty::UpvarId { var_id: _, closure_expr_id }) =>
-                closure_to_block(closure_expr_id, tcx),
-            LpDowncast(ref base_lp, _) | LpExtend(ref base_lp, _, _) =>
-                base_lp.kill_id(tcx),
-        }
+#[deriving(PartialEq, Eq, Hash, Show)]
+pub enum LoanPathKind<'tcx> {
+    LpVar(ast::NodeId),                         // `x` in doc.rs
+    LpUpvar(ty::UpvarId),                       // `x` captured by-value into closure
+    LpDowncast(Rc<LoanPath<'tcx>>, ast::DefId), // `x` downcast to particular enum variant
+    LpExtend(Rc<LoanPath<'tcx>>, mc::MutabilityCategory, LoanPathElem)
+}
+
+impl<'tcx> LoanPath<'tcx> {
+    fn new(kind: LoanPathKind<'tcx>, ty: ty::Ty<'tcx>) -> LoanPath<'tcx> {
+        LoanPath { kind: kind, ty: ty }
     }
+
 }
 
 #[deriving(PartialEq, Eq, Hash, Show)]
@@ -312,7 +310,7 @@ pub enum LoanPathElem {
 }
 
 pub fn closure_to_block(closure_id: ast::NodeId,
-                    tcx: &ty::ctxt) -> ast::NodeId {
+                        tcx: &ty::ctxt) -> ast::NodeId {
     match tcx.map.get(closure_id) {
         ast_map::NodeExpr(expr) => match expr.node {
             ast::ExprProc(_, ref block) |
@@ -327,9 +325,9 @@ pub fn closure_to_block(closure_id: ast::NodeId,
     }
 }
 
-impl LoanPath {
-    pub fn kill_scope(&self, tcx: &ty::ctxt) -> region::CodeExtent {
-        match *self {
+impl<'tcx> LoanPath<'tcx> {
+    pub fn kill_scope(&self, tcx: &ty::ctxt<'tcx>) -> region::CodeExtent {
+        match self.kind {
             LpVar(local_id) => tcx.region_maps.var_scope(local_id),
             LpUpvar(upvar_id) => {
                 let block_id = closure_to_block(upvar_id.closure_expr_id, tcx);
@@ -340,8 +338,8 @@ impl LoanPath {
         }
     }
 
-    fn has_fork(&self, other: &LoanPath) -> bool {
-        match (self, other) {
+    fn has_fork(&self, other: &LoanPath<'tcx>) -> bool {
+        match (&self.kind, &other.kind) {
             (&LpExtend(ref base, _, LpInterior(id)), &LpExtend(ref base2, _, LpInterior(id2))) =>
                 if id == id2 {
                     base.has_fork(&**base2)
@@ -355,43 +353,65 @@ impl LoanPath {
     }
 
     fn depth(&self) -> uint {
-        match *self {
+        match self.kind {
             LpExtend(ref base, _, LpDeref(_)) => base.depth(),
             LpExtend(ref base, _, LpInterior(_)) => base.depth() + 1,
             _ => 0,
         }
     }
 
-    fn common(&self, other: &LoanPath) -> Option<LoanPath> {
-        match (self, other) {
-            (&LpExtend(ref base, a, LpInterior(id)), &LpExtend(ref base2, _, LpInterior(id2))) =>
+    fn common(&self, other: &LoanPath<'tcx>) -> Option<LoanPath<'tcx>> {
+        match (&self.kind, &other.kind) {
+            (&LpExtend(ref base, a, LpInterior(id)),
+             &LpExtend(ref base2, _, LpInterior(id2))) => {
                 if id == id2 {
+                    assert!(self.ty == other.ty);
                     base.common(&**base2).map(|x| {
                         let xd = x.depth();
                         if base.depth() == xd && base2.depth() == xd {
-                            LpExtend(Rc::new(x), a, LpInterior(id))
+                            LoanPath {
+                                kind: LpExtend(Rc::new(x), a, LpInterior(id)),
+                                ty: self.ty,
+                            }
                         } else {
                             x
                         }
                     })
                 } else {
                     base.common(&**base2)
-                },
+                }
+            }
             (&LpExtend(ref base, _, LpDeref(_)), _) => base.common(other),
             (_, &LpExtend(ref other, _, LpDeref(_))) => self.common(&**other),
-            (&LpVar(id), &LpVar(id2)) => if id == id2 { Some(LpVar(id)) } else { None },
-            (&LpUpvar(id), &LpUpvar(id2)) => if id == id2 { Some(LpUpvar(id)) } else { None },
+            (&LpVar(id), &LpVar(id2)) => {
+                if id == id2 {
+                    assert!(self.ty == other.ty);
+                    Some(LoanPath { kind: LpVar(id), ty: self.ty })
+                } else {
+                    None
+                }
+            }
+            (&LpUpvar(id), &LpUpvar(id2)) => {
+                if id == id2 {
+                    assert!(self.ty == other.ty);
+                    Some(LoanPath { kind: LpUpvar(id), ty: self.ty })
+                } else {
+                    None
+                }
+            }
             _ => None,
         }
     }
 }
 
-pub fn opt_loan_path(cmt: &mc::cmt) -> Option<Rc<LoanPath>> {
+pub fn opt_loan_path<'tcx>(cmt: &mc::cmt<'tcx>) -> Option<Rc<LoanPath<'tcx>>> {
     //! Computes the `LoanPath` (if any) for a `cmt`.
     //! Note that this logic is somewhat duplicated in
     //! the method `compute()` found in `gather_loans::restrictions`,
     //! which allows it to share common loan path pieces as it
     //! traverses the CMT.
+
+    let new_lp = |v: LoanPathKind<'tcx>| Rc::new(LoanPath::new(v, cmt.ty));
 
     match cmt.cat {
         mc::cat_rvalue(..) |
@@ -400,29 +420,29 @@ pub fn opt_loan_path(cmt: &mc::cmt) -> Option<Rc<LoanPath>> {
         }
 
         mc::cat_local(id) => {
-            Some(Rc::new(LpVar(id)))
+            Some(new_lp(LpVar(id)))
         }
 
         mc::cat_upvar(mc::Upvar { id, .. }) => {
-            Some(Rc::new(LpUpvar(id)))
+            Some(new_lp(LpUpvar(id)))
         }
 
         mc::cat_deref(ref cmt_base, _, pk) => {
             opt_loan_path(cmt_base).map(|lp| {
-                Rc::new(LpExtend(lp, cmt.mutbl, LpDeref(pk)))
+                new_lp(LpExtend(lp, cmt.mutbl, LpDeref(pk)))
             })
         }
 
         mc::cat_interior(ref cmt_base, ik) => {
             opt_loan_path(cmt_base).map(|lp| {
-                Rc::new(LpExtend(lp, cmt.mutbl, LpInterior(ik)))
+                new_lp(LpExtend(lp, cmt.mutbl, LpInterior(ik)))
             })
         }
 
         mc::cat_downcast(ref cmt_base, variant_def_id) =>
             opt_loan_path(cmt_base)
             .map(|lp| {
-                Rc::new(LpDowncast(lp, variant_def_id))
+                new_lp(LpDowncast(lp, variant_def_id))
             }),
 
     }
@@ -492,9 +512,9 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
     pub fn report_use_of_moved_value(&self,
                                      use_span: Span,
                                      use_kind: MovedValueUseKind,
-                                     lp: &LoanPath,
+                                     lp: &LoanPath<'tcx>,
                                      the_move: &move_data::Move,
-                                     moved_lp: &LoanPath) {
+                                     moved_lp: &LoanPath<'tcx>) {
         let verb = match use_kind {
             MovedInUse => "use",
             MovedInCapture => "capture",
@@ -643,7 +663,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
 
     pub fn report_reassigned_immutable_variable(&self,
                                                 span: Span,
-                                                lp: &LoanPath,
+                                                lp: &LoanPath<'tcx>,
                                                 assign:
                                                 &move_data::Assignment) {
         self.tcx.sess.span_err(
@@ -874,9 +894,9 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
     }
 
     pub fn append_loan_path_to_string(&self,
-                                   loan_path: &LoanPath,
-                                   out: &mut String) {
-        match *loan_path {
+                                      loan_path: &LoanPath<'tcx>,
+                                      out: &mut String) {
+        match loan_path.kind {
             LpUpvar(ty::UpvarId{ var_id: id, closure_expr_id: _ }) |
             LpVar(id) => {
                 out.push_str(ty::local_var_name_str(self.tcx, id).get());
@@ -918,9 +938,9 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
     }
 
     pub fn append_autoderefd_loan_path_to_string(&self,
-                                              loan_path: &LoanPath,
-                                              out: &mut String) {
-        match *loan_path {
+                                                 loan_path: &LoanPath<'tcx>,
+                                                 out: &mut String) {
+        match loan_path.kind {
             LpExtend(ref lp_base, _, LpDeref(_)) => {
                 // For a path like `(*x).f` or `(*x)[3]`, autoderef
                 // rules would normally allow users to omit the `*x`.
@@ -942,7 +962,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
         }
     }
 
-    pub fn loan_path_to_string(&self, loan_path: &LoanPath) -> String {
+    pub fn loan_path_to_string(&self, loan_path: &LoanPath<'tcx>) -> String {
         let mut result = String::new();
         self.append_loan_path_to_string(loan_path, &mut result);
         result
@@ -979,8 +999,8 @@ impl DataFlowOperator for LoanDataFlowOperator {
     }
 }
 
-impl<'tcx> Repr<'tcx> for Loan {
-    fn repr(&self, tcx: &ty::ctxt) -> String {
+impl<'tcx> Repr<'tcx> for Loan<'tcx> {
+    fn repr(&self, tcx: &ty::ctxt<'tcx>) -> String {
         format!("Loan_{}({}, {}, {}-{}, {})",
                  self.index,
                  self.loan_path.repr(tcx),
@@ -991,19 +1011,19 @@ impl<'tcx> Repr<'tcx> for Loan {
     }
 }
 
-impl<'tcx> Repr<'tcx> for LoanPath {
-    fn repr(&self, tcx: &ty::ctxt) -> String {
-        match self {
-            &LpVar(id) => {
+impl<'tcx> Repr<'tcx> for LoanPath<'tcx> {
+    fn repr(&self, tcx: &ty::ctxt<'tcx>) -> String {
+        match self.kind {
+            LpVar(id) => {
                 format!("$({})", tcx.map.node_to_string(id))
             }
 
-            &LpUpvar(ty::UpvarId{ var_id, closure_expr_id }) => {
+            LpUpvar(ty::UpvarId{ var_id, closure_expr_id }) => {
                 let s = tcx.map.node_to_string(var_id);
                 format!("$({} captured by id={})", s, closure_expr_id)
             }
 
-            &LpDowncast(ref lp, variant_def_id) => {
+            LpDowncast(ref lp, variant_def_id) => {
                 let variant_str = if variant_def_id.krate == ast::LOCAL_CRATE {
                     ty::item_path_str(tcx, variant_def_id)
                 } else {
@@ -1012,11 +1032,11 @@ impl<'tcx> Repr<'tcx> for LoanPath {
                 format!("({}->{})", lp.repr(tcx), variant_str)
             }
 
-            &LpExtend(ref lp, _, LpDeref(_)) => {
+            LpExtend(ref lp, _, LpDeref(_)) => {
                 format!("{}.*", lp.repr(tcx))
             }
 
-            &LpExtend(ref lp, _, LpInterior(ref interior)) => {
+            LpExtend(ref lp, _, LpInterior(ref interior)) => {
                 format!("{}.{}", lp.repr(tcx), interior.repr(tcx))
             }
         }

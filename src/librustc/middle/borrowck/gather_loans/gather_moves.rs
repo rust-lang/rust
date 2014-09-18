@@ -13,6 +13,7 @@
  */
 
 use middle::borrowck::*;
+use middle::borrowck::LoanPathKind::*;
 use middle::borrowck::gather_loans::move_error::MoveSpanAndPath;
 use middle::borrowck::gather_loans::move_error::{MoveError, MoveErrorCollector};
 use middle::borrowck::move_data::*;
@@ -32,17 +33,18 @@ struct GatherMoveInfo<'tcx> {
     span_path_opt: Option<MoveSpanAndPath>
 }
 
-pub fn gather_decl(bccx: &BorrowckCtxt,
-                   move_data: &MoveData,
-                   decl_id: ast::NodeId,
-                   _decl_span: Span,
-                   var_id: ast::NodeId) {
-    let loan_path = Rc::new(LpVar(var_id));
+pub fn gather_decl<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
+                             move_data: &MoveData<'tcx>,
+                             decl_id: ast::NodeId,
+                             _decl_span: Span,
+                             var_id: ast::NodeId) {
+    let ty = ty::node_id_to_type(bccx.tcx, var_id);
+    let loan_path = Rc::new(LoanPath::new(LpVar(var_id), ty));
     move_data.add_move(bccx.tcx, loan_path, decl_id, Declared);
 }
 
 pub fn gather_move_from_expr<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
-                                       move_data: &MoveData,
+                                       move_data: &MoveData<'tcx>,
                                        move_error_collector: &MoveErrorCollector<'tcx>,
                                        move_expr_id: ast::NodeId,
                                        cmt: mc::cmt<'tcx>,
@@ -61,7 +63,7 @@ pub fn gather_move_from_expr<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
 }
 
 pub fn gather_move_from_pat<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
-                                      move_data: &MoveData,
+                                      move_data: &MoveData<'tcx>,
                                       move_error_collector: &MoveErrorCollector<'tcx>,
                                       move_pat: &ast::Pat,
                                       cmt: mc::cmt<'tcx>) {
@@ -82,7 +84,7 @@ pub fn gather_move_from_pat<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
 }
 
 fn gather_move<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
-                         move_data: &MoveData,
+                         move_data: &MoveData<'tcx>,
                          move_error_collector: &MoveErrorCollector<'tcx>,
                          move_info: GatherMoveInfo<'tcx>) {
     debug!("gather_move(move_id={}, cmt={})",
@@ -112,13 +114,13 @@ fn gather_move<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
     }
 }
 
-pub fn gather_assignment(bccx: &BorrowckCtxt,
-                         move_data: &MoveData,
-                         assignment_id: ast::NodeId,
-                         assignment_span: Span,
-                         assignee_loan_path: Rc<LoanPath>,
-                         assignee_id: ast::NodeId,
-                         mode: euv::MutateMode) {
+pub fn gather_assignment<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
+                                   move_data: &MoveData<'tcx>,
+                                   assignment_id: ast::NodeId,
+                                   assignment_span: Span,
+                                   assignee_loan_path: Rc<LoanPath<'tcx>>,
+                                   assignee_id: ast::NodeId,
+                                   mode: euv::MutateMode) {
     move_data.add_assignment(bccx.tcx,
                              assignee_loan_path,
                              assignment_id,
