@@ -1363,7 +1363,7 @@ mod test {
                 inner: Span {
                     lo: BytePos(11),
                     hi: BytePos(19),
-                    expn_info: None,
+                    expn_id: NO_EXPANSION,
                 },
                 view_items: Vec::new(),
                 items: Vec::new(),
@@ -1373,7 +1373,7 @@ mod test {
             span: Span {
                 lo: BytePos(10),
                 hi: BytePos(20),
-                expn_info: None,
+                expn_id: NO_EXPANSION,
             },
             exported_macros: Vec::new(),
         };

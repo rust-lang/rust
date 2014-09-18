@@ -686,7 +686,7 @@ mod test {
     fn t7() {
         // Test span_to_lines for a span ending at the end of filemap
         let cm = init_code_map();
-        let span = Span {lo: BytePos(12), hi: BytePos(23), expn_info: None};
+        let span = Span {lo: BytePos(12), hi: BytePos(23), expn_id: NO_EXPANSION};
         let file_lines = cm.span_to_lines(span);
 
         assert_eq!(file_lines.file.name, "blork.rs".to_string());
@@ -698,7 +698,7 @@ mod test {
     fn t8() {
         // Test span_to_snippet for a span ending at the end of filemap
         let cm = init_code_map();
-        let span = Span {lo: BytePos(12), hi: BytePos(23), expn_info: None};
+        let span = Span {lo: BytePos(12), hi: BytePos(23), expn_id: NO_EXPANSION};
         let snippet = cm.span_to_snippet(span);
 
         assert_eq!(snippet, Some("second line".to_string()));
@@ -708,7 +708,7 @@ mod test {
     fn t9() {
         // Test span_to_str for a span ending at the end of filemap
         let cm = init_code_map();
-        let span = Span {lo: BytePos(12), hi: BytePos(23), expn_info: None};
+        let span = Span {lo: BytePos(12), hi: BytePos(23), expn_id: NO_EXPANSION};
         let sstr =  cm.span_to_string(span);
 
         assert_eq!(sstr, "blork.rs:2:1: 2:12".to_string());

@@ -1406,7 +1406,7 @@ fn ident_continue(c: Option<char>) -> bool {
 mod test {
     use super::*;
 
-    use codemap::{BytePos, CodeMap, Span};
+    use codemap::{BytePos, CodeMap, Span, NO_EXPANSION};
     use diagnostic;
     use parse::token;
     use parse::token::{str_to_ident};
@@ -1436,7 +1436,7 @@ mod test {
         let tok1 = string_reader.next_token();
         let tok2 = TokenAndSpan{
             tok:token::IDENT(id, false),
-            sp:Span {lo:BytePos(21),hi:BytePos(23),expn_info: None}};
+            sp:Span {lo:BytePos(21),hi:BytePos(23),expn_id: NO_EXPANSION}};
         assert_eq!(tok1,tok2);
         assert_eq!(string_reader.next_token().tok, token::WS);
         // the 'main' id is already read:
@@ -1445,7 +1445,7 @@ mod test {
         let tok3 = string_reader.next_token();
         let tok4 = TokenAndSpan{
             tok:token::IDENT(str_to_ident("main"), false),
-            sp:Span {lo:BytePos(24),hi:BytePos(28),expn_info: None}};
+            sp:Span {lo:BytePos(24),hi:BytePos(28),expn_id: NO_EXPANSION}};
         assert_eq!(tok3,tok4);
         // the lparen is already read:
         assert_eq!(string_reader.last_pos.clone(), BytePos(29))
