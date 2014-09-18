@@ -831,9 +831,11 @@ mod imp {
     mod arch {
         use libc::{c_longlong, c_ulonglong};
         use libc::types::os::arch::extra::{WORD, DWORD, DWORDLONG};
+        use simd;
 
         #[repr(C)]
         pub struct CONTEXT {
+            _align_hack: [simd::u64x2, ..0], // FIXME align on 16-byte
             P1Home: DWORDLONG,
             P2Home: DWORDLONG,
             P3Home: DWORDLONG,
@@ -892,12 +894,14 @@ mod imp {
 
         #[repr(C)]
         pub struct M128A {
+            _align_hack: [simd::u64x2, ..0], // FIXME align on 16-byte
             Low:  c_ulonglong,
             High: c_longlong
         }
 
         #[repr(C)]
         pub struct FLOATING_SAVE_AREA {
+            _align_hack: [simd::u64x2, ..0], // FIXME align on 16-byte
             _Dummy: [u8, ..512] // FIXME: Fill this out
         }
 
