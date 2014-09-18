@@ -11,5 +11,5 @@
 // Issue #5062
 
 fn main() {
-    None; //~ ERROR cannot determine a type for this expression: unconstrained type
+    None; //~ ERROR type annotations required
 }

@@ -8,9 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use middle::mem_categorization::Typer;
 use middle::ty;
-use middle::typeck::infer::{InferCtxt, skolemize};
-use util::nodemap::DefIdMap;
+use middle::typeck::infer::InferCtxt;
 use util::ppaux::Repr;
 
 use super::CodeAmbiguity;
@@ -18,7 +18,6 @@ use super::Obligation;
 use super::FulfillmentError;
 use super::CodeSelectionError;
 use super::select::SelectionContext;
-use super::Unimplemented;
 
 /**
  * The fulfillment context is used to drive trait resolution.  It
@@ -36,17 +35,12 @@ pub struct FulfillmentContext {
     // A list of all obligations that have been registered with this
     // fulfillment context.
     trait_obligations: Vec<Obligation>,
-
-    // For semi-hacky reasons (see FIXME below) we keep the builtin
-    // trait obligations segregated.
-    builtin_obligations: Vec<Obligation>,
 }
 
 impl FulfillmentContext {
     pub fn new() -> FulfillmentContext {
         FulfillmentContext {
             trait_obligations: Vec::new(),
-            builtin_obligations: Vec::new()
         }
     }
 
@@ -55,24 +49,16 @@ impl FulfillmentContext {
                                obligation: Obligation)
     {
         debug!("register_obligation({})", obligation.repr(tcx));
-        match tcx.lang_items.to_builtin_kind(obligation.trait_ref.def_id) {
-            Some(_) => {
-                self.builtin_obligations.push(obligation);
-            }
-            None => {
-                self.trait_obligations.push(obligation);
-            }
-        }
+        self.trait_obligations.push(obligation);
     }
 
-    pub fn select_all_or_error(&mut self,
-                               infcx: &InferCtxt,
-                               param_env: &ty::ParameterEnvironment,
-                               unboxed_closures: &DefIdMap<ty::UnboxedClosure>)
-                               -> Result<(),Vec<FulfillmentError>>
+    pub fn select_all_or_error<'a,'tcx>(&mut self,
+                                        infcx: &InferCtxt<'a,'tcx>,
+                                        param_env: &ty::ParameterEnvironment,
+                                        typer: &Typer<'tcx>)
+                                        -> Result<(),Vec<FulfillmentError>>
     {
-        try!(self.select_where_possible(infcx, param_env,
-                                        unboxed_closures));
+        try!(self.select_where_possible(infcx, param_env, typer));
 
         // Anything left is ambiguous.
         let errors: Vec<FulfillmentError> =
@@ -88,15 +74,14 @@ impl FulfillmentContext {
         }
     }
 
-    pub fn select_where_possible(&mut self,
-                                 infcx: &InferCtxt,
-                                 param_env: &ty::ParameterEnvironment,
-                                 unboxed_closures: &DefIdMap<ty::UnboxedClosure>)
-                                 -> Result<(),Vec<FulfillmentError>>
+    pub fn select_where_possible<'a,'tcx>(&mut self,
+                                          infcx: &InferCtxt<'a,'tcx>,
+                                          param_env: &ty::ParameterEnvironment,
+                                          typer: &Typer<'tcx>)
+                                          -> Result<(),Vec<FulfillmentError>>
     {
         let tcx = infcx.tcx;
-        let selcx = SelectionContext::new(infcx, param_env,
-                                          unboxed_closures);
+        let mut selcx = SelectionContext::new(infcx, param_env, typer);
 
         debug!("select_where_possible({} obligations) start",
                self.trait_obligations.len());
@@ -153,94 +138,6 @@ impl FulfillmentContext {
                errors.len());
 
         if errors.len() == 0 {
-            Ok(())
-        } else {
-            Err(errors)
-        }
-    }
-
-    pub fn check_builtin_bound_obligations(
-        &self,
-        infcx: &InferCtxt)
-        -> Result<(),Vec<FulfillmentError>>
-    {
-        let tcx = infcx.tcx;
-        let mut errors = Vec::new();
-        debug!("check_builtin_bound_obligations");
-        for obligation in self.builtin_obligations.iter() {
-            debug!("obligation={}", obligation.repr(tcx));
-
-            let def_id = obligation.trait_ref.def_id;
-            let bound = match tcx.lang_items.to_builtin_kind(def_id) {
-                Some(bound) => { bound }
-                None => { continue; }
-            };
-
-            let unskol_self_ty = obligation.self_ty();
-
-            // Skolemize the self-type so that it no longer contains
-            // inference variables. Note that this also replaces
-            // regions with 'static. You might think that this is not
-            // ok, because checking whether something is `Send`
-            // implies checking whether it is 'static: that's true,
-            // but in fact the region bound is fed into region
-            // inference separately and enforced there (and that has
-            // even already been done before this code executes,
-            // generally speaking).
-            let self_ty = skolemize(infcx, unskol_self_ty);
-
-            debug!("bound={} self_ty={}", bound, self_ty.repr(tcx));
-            if ty::type_is_error(self_ty) {
-                // Indicates an error that was/will-be
-                // reported elsewhere.
-                continue;
-            }
-
-            // Determine if builtin bound is met.
-            let tc = ty::type_contents(tcx, self_ty);
-            debug!("tc={}", tc);
-            let met = match bound {
-                ty::BoundSend   => tc.is_sendable(tcx),
-                ty::BoundSized  => tc.is_sized(tcx),
-                ty::BoundCopy   => tc.is_copy(tcx),
-                ty::BoundSync   => tc.is_sync(tcx),
-            };
-
-            if met {
-                continue;
-            }
-
-            // FIXME -- This is kind of a hack: it requently happens
-            // that some earlier error prevents types from being fully
-            // inferred, and then we get a bunch of uninteresting
-            // errors saying something like "<generic #0> doesn't
-            // implement Sized".  It may even be true that we could
-            // just skip over all checks where the self-ty is an
-            // inference variable, but I was afraid that there might
-            // be an inference variable created, registered as an
-            // obligation, and then never forced by writeback, and
-            // hence by skipping here we'd be ignoring the fact that
-            // we don't KNOW the type works out. Though even that
-            // would probably be harmless, given that we're only
-            // talking about builtin traits, which are known to be
-            // inhabited. But in any case I just threw in this check
-            // for has_errors() to be sure that compilation isn't
-            // happening anyway. In that case, why inundate the user.
-            if ty::type_needs_infer(self_ty) &&
-                tcx.sess.has_errors()
-            {
-                debug!("skipping printout because self_ty={}",
-                       self_ty.repr(tcx));
-                continue;
-            }
-
-            errors.push(
-                FulfillmentError::new(
-                    (*obligation).clone(),
-                    CodeSelectionError(Unimplemented)));
-        }
-
-        if errors.is_empty() {
             Ok(())
         } else {
             Err(errors)

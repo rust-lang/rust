@@ -13,6 +13,7 @@ use middle::subst;
 use middle::subst::{ParamSpace, Subst, Substs, VecPerParamSpace};
 use middle::typeck::infer::InferCtxt;
 use middle::ty;
+use std::collections::HashSet;
 use std::fmt;
 use std::rc::Rc;
 use syntax::ast;
@@ -27,6 +28,7 @@ use super::{Obligation, ObligationCause, VtableImpl, VtableParam, VtableParamDat
 pub struct Supertraits<'cx, 'tcx:'cx> {
     tcx: &'cx ty::ctxt<'tcx>,
     stack: Vec<SupertraitEntry>,
+    visited: HashSet<Rc<ty::TraitRef>>,
 }
 
 struct SupertraitEntry {
@@ -62,15 +64,34 @@ pub fn transitive_bounds<'cx, 'tcx>(tcx: &'cx ty::ctxt<'tcx>,
                                     -> Supertraits<'cx, 'tcx>
 {
     let bounds = Vec::from_fn(bounds.len(), |i| bounds[i].clone());
+
+    let visited: HashSet<Rc<ty::TraitRef>> =
+        bounds.iter()
+              .map(|b| (*b).clone())
+              .collect();
+
     let entry = SupertraitEntry { position: 0, supertraits: bounds };
-    Supertraits { tcx: tcx, stack: vec![entry] }
+    Supertraits { tcx: tcx, stack: vec![entry], visited: visited }
 }
 
 impl<'cx, 'tcx> Supertraits<'cx, 'tcx> {
     fn push(&mut self, trait_ref: &ty::TraitRef) {
-        let bounds = ty::bounds_for_trait_ref(self.tcx, trait_ref);
-        let entry = SupertraitEntry { position: 0,
-                                      supertraits: bounds.trait_bounds };
+        let ty::ParamBounds { builtin_bounds, mut trait_bounds, .. } =
+            ty::bounds_for_trait_ref(self.tcx, trait_ref);
+        for builtin_bound in builtin_bounds.iter() {
+            let bound_trait_ref = trait_ref_for_builtin_bound(self.tcx,
+                                                              builtin_bound,
+                                                              trait_ref.self_ty());
+            trait_bounds.push(bound_trait_ref);
+        }
+
+        // Only keep those bounds that we haven't already seen.  This
+        // is necessary to prevent infinite recursion in some cases.
+        // One common case is when people define `trait Sized { }`
+        // rather than `trait Sized for Sized? { }`.
+        trait_bounds.retain(|r| self.visited.insert((*r).clone()));
+
+        let entry = SupertraitEntry { position: 0, supertraits: trait_bounds };
         self.stack.push(entry);
     }
 
@@ -211,6 +232,25 @@ fn push_obligations_for_param_bounds(
     }
 }
 
+pub fn trait_ref_for_builtin_bound(
+    tcx: &ty::ctxt,
+    builtin_bound: ty::BuiltinBound,
+    param_ty: ty::t)
+    -> Rc<ty::TraitRef>
+{
+    match tcx.lang_items.from_builtin_kind(builtin_bound) {
+        Ok(def_id) => {
+            Rc::new(ty::TraitRef {
+                def_id: def_id,
+                substs: Substs::empty().with_self_ty(param_ty)
+            })
+        }
+        Err(e) => {
+            tcx.sess.bug(e.as_slice());
+        }
+    }
+}
+
 pub fn obligation_for_builtin_bound(
     tcx: &ty::ctxt,
     cause: ObligationCause,
@@ -219,20 +259,11 @@ pub fn obligation_for_builtin_bound(
     param_ty: ty::t)
     -> Obligation
 {
-    match tcx.lang_items.from_builtin_kind(builtin_bound) {
-        Ok(def_id) => {
-            Obligation {
-                cause: cause,
-                recursion_depth: recursion_depth,
-                trait_ref: Rc::new(ty::TraitRef {
-                    def_id: def_id,
-                    substs: Substs::empty().with_self_ty(param_ty),
-                }),
-            }
-        }
-        Err(e) => {
-            tcx.sess.span_bug(cause.span, e.as_slice());
-        }
+    let trait_ref = trait_ref_for_builtin_bound(tcx, builtin_bound, param_ty);
+    Obligation {
+        cause: cause,
+        recursion_depth: recursion_depth,
+        trait_ref: trait_ref
     }
 }
 

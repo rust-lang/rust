@@ -110,7 +110,6 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
         f(self, &fcx);
         vtable2::select_all_fcx_obligations_or_error(&fcx);
         regionck::regionck_item(&fcx, item);
-        vtable2::check_builtin_bound_obligations(&fcx);
     }
 
     fn check_type_defn(&mut self,

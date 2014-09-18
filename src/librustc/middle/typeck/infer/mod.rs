@@ -13,20 +13,20 @@
 #![allow(non_camel_case_types)]
 
 pub use middle::ty::IntVarValue;
-pub use middle::typeck::infer::resolve::resolve_and_force_all_but_regions;
-pub use middle::typeck::infer::resolve::{force_all, not_regions};
-pub use middle::typeck::infer::resolve::{force_ivar};
-pub use middle::typeck::infer::resolve::{force_tvar, force_rvar};
-pub use middle::typeck::infer::resolve::{resolve_ivar, resolve_all};
-pub use middle::typeck::infer::resolve::{resolve_nested_tvar};
-pub use middle::typeck::infer::resolve::{resolve_rvar};
+pub use self::resolve::resolve_and_force_all_but_regions;
+pub use self::resolve::{force_all, not_regions};
+pub use self::resolve::{force_ivar};
+pub use self::resolve::{force_tvar, force_rvar};
+pub use self::resolve::{resolve_ivar, resolve_all};
+pub use self::resolve::{resolve_nested_tvar};
+pub use self::resolve::{resolve_rvar};
+pub use self::skolemize::TypeSkolemizer;
 
 use middle::subst;
 use middle::subst::Substs;
 use middle::ty::{TyVid, IntVid, FloatVid, RegionVid};
 use middle::ty;
 use middle::ty_fold;
-use middle::ty_fold::TypeFoldable;
 use middle::ty_fold::TypeFolder;
 use middle::typeck::check::regionmanip::replace_late_bound_regions_in_fn_sig;
 use middle::typeck::infer::coercion::Coerce;
@@ -382,13 +382,6 @@ pub fn verify_param_bound(cx: &InferCtxt,
     cx.region_vars.verify_param_bound(origin, param_ty, a, bs);
 }
 
-pub fn skolemize<T:TypeFoldable+Repr>(cx: &InferCtxt, a: T) -> T {
-    let mut skol = skolemize::TypeSkolemizer::new(cx);
-    let b = a.fold_with(&mut skol);
-    debug!("skol(a={}) -> {}", a.repr(cx.tcx), b.repr(cx.tcx));
-    b
-}
-
 pub fn mk_eqty(cx: &InferCtxt,
                a_is_expected: bool,
                origin: TypeOrigin,
@@ -513,6 +506,10 @@ pub struct CombinedSnapshot {
 }
 
 impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
+    pub fn skolemizer<'a>(&'a self) -> TypeSkolemizer<'a, 'tcx> {
+        skolemize::TypeSkolemizer::new(self)
+    }
+
     pub fn combine_fields<'a>(&'a self, a_is_expected: bool, trace: TypeTrace)
                               -> CombineFields<'a, 'tcx> {
         CombineFields {infcx: self,

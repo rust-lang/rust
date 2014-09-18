@@ -298,30 +298,29 @@ impl<'a, 'tcx> mem_categorization::Typer<'tcx> for FnCtxt<'a, 'tcx> {
         self.ccx.tcx
     }
     fn node_ty(&self, id: ast::NodeId) -> McResult<ty::t> {
-        self.ccx.tcx.node_ty(id)
+        Ok(self.node_ty(id))
     }
     fn node_method_ty(&self, method_call: typeck::MethodCall)
                       -> Option<ty::t> {
-        self.ccx.tcx.node_method_ty(method_call)
+        self.inh.method_map.borrow().find(&method_call).map(|m| m.ty)
     }
     fn adjustments<'a>(&'a self) -> &'a RefCell<NodeMap<ty::AutoAdjustment>> {
-        self.ccx.tcx.adjustments()
+        &self.inh.adjustments
     }
     fn is_method_call(&self, id: ast::NodeId) -> bool {
-        self.ccx.tcx.is_method_call(id)
+        self.inh.method_map.borrow().contains_key(&typeck::MethodCall::expr(id))
     }
     fn temporary_scope(&self, rvalue_id: ast::NodeId) -> Option<ast::NodeId> {
-        self.ccx.tcx.temporary_scope(rvalue_id)
+        self.tcx().temporary_scope(rvalue_id)
     }
     fn upvar_borrow(&self, upvar_id: ty::UpvarId) -> ty::UpvarBorrow {
-        self.ccx.tcx.upvar_borrow(upvar_id)
+        self.inh.upvar_borrow_map.borrow().get_copy(&upvar_id)
     }
     fn capture_mode(&self, closure_expr_id: ast::NodeId)
                     -> ast::CaptureClause {
         self.ccx.tcx.capture_mode(closure_expr_id)
     }
-    fn unboxed_closures<'a>(&'a self)
-                        -> &'a RefCell<DefIdMap<ty::UnboxedClosure>> {
+    fn unboxed_closures<'a>(&'a self) -> &'a RefCell<DefIdMap<ty::UnboxedClosure>> {
         &self.inh.unboxed_closures
     }
 }
@@ -435,7 +434,6 @@ fn check_bare_fn(ccx: &CrateCtxt,
             vtable2::select_all_fcx_obligations_or_error(&fcx);
             regionck::regionck_fn(&fcx, id, body);
             writeback::resolve_type_vars_in_fn(&fcx, decl, body);
-            vtable2::check_builtin_bound_obligations(&fcx); // must happen after writeback
         }
         _ => ccx.tcx.sess.impossible_case(body.span,
                                  "check_bare_fn: function type expected")
@@ -4866,7 +4864,6 @@ pub fn check_const_with_ty(fcx: &FnCtxt,
     vtable2::select_all_fcx_obligations_or_error(fcx);
     regionck::regionck_expr(fcx, e);
     writeback::resolve_type_vars_in_expr(fcx, e);
-    vtable2::check_builtin_bound_obligations(fcx);
 }
 
 /// Checks whether a type can be represented in memory. In particular, it
