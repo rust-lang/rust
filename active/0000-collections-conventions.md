@@ -111,7 +111,8 @@ fn find_equiv<Q: Hash<S> + Equiv<K>>(&self, k: &Q) -> Option<&V>
 There are a few downsides to this approach:
 
 * It requires a duplicated `_equiv` variant of each method taking a reference to
-  the key.
+  the key. (This downside could likely be mitigated using
+  [multidispatch](https://github.com/rust-lang/rfcs/pull/195).)
 
 * Its correctness depends on equivalent values producing the same hash, which is
   not checked.
@@ -120,6 +121,9 @@ There are a few downsides to this approach:
   headlong into the problem. First, `find` will fail to work in the expected
   way. But the signature of `find_equiv` is more difficult to understand than
   `find`, and it it's not immediately obvious that it solves the problem.
+
+* It is the right API for `HashMap`, but not helpful for e.g. `TreeMap`, which
+  would want an analog for `Ord`.
 
 The `TreeMap` API currently deals with this problem in an entirely different
 way:
@@ -235,8 +239,10 @@ defaulted to `HashMap`.
 
 * *Centering on `Iterator`s*. The `Iterator` trait is a strength of Rust's
   collections library. Because so many APIs can produce iterators, adding an API
-  that consumes one is very powerful -- and conversely as well. Thus, whenever
-  possible, collection APIs should strive to work with iterators.
+  that consumes one is very powerful -- and conversely as well.  Moreover,
+  iterators are highly efficient, since you can chain several layers of
+  modification without having to materialize intermediate results.  Thus,
+  whenever possible, collection APIs should strive to work with iterators.
 
   In particular, some existing convenience methods avoid iterators for either
   performance or ergonomic reasons. We should instead improve the ergonomics and
@@ -257,7 +263,7 @@ defaulted to `HashMap`.
   collections APIs. In general, APIs should be very clearly motivated by a wide
   variety of use cases, either for expressiveness, performance, or ergonomics.
 
-## Deprecating the traits
+## Removing the traits
 
 This RFC proposes a somewhat radical step for the collections traits: rather
 than reform them, we should eliminate them altogether -- *for now*.
@@ -330,9 +336,9 @@ However, persistent collection APIs have not been thoroughly explored in Rust;
 it would be hasty to standardize on a set of traits until we have more
 experience.
 
-### Downsides of deprecation
+### Downsides of removal
 
-There are two main downsides to deprecating the traits without a replacement:
+There are two main downsides to removing the traits without a replacement:
 
 1. It becomes impossible to write code using generics over a "kind" of
    collection (like `Map`).
@@ -354,10 +360,10 @@ those, which should make it easy to add traits later on.
 
 ### Why not leave the traits as "experimental"?
 
-An alternative to deprecation would be to leave the traits intact, but marked as
+An alternative to removal would be to leave the traits intact, but marked as
 experimental, with the intent to radically change them later.
 
-Such a strategy doesn't buy much relative to deprecation (given the arguments
+Such a strategy doesn't buy much relative to removal (given the arguments
 above), but risks the traits becoming "de facto" stable if people begin using
 them en masse.
 
@@ -380,43 +386,25 @@ in a generic fashion:
 
 ```rust
 /// A trait for borrowing.
-/// If `T: Borrow` then `&T` represents data borrowed from `T::Owned`.
-trait Borrow for Sized? {
-    /// The type being borrowed from.
-    type Owned;
-
+trait Borrow<Sized? B> {
     /// Immutably borrow from an owned value.
-    fn borrow(&Owned) -> &Self;
+    fn borrow(&self) -> &B;
 
     /// Mutably borrow from an owned value.
-    fn borrow_mut(&mut Owned) -> &mut Self;
+    fn borrow_mut(&mut self) -> &mut B;
 }
 
-trait ToOwned: Borrow {
-    /// Produce a new owned value, usually by cloning.
-    fn to_owned(&self) -> Owned;
-}
-
-// This has an implicit Sized bound, so the impls below would
-// be allowed with full trait reform
-impl<A> Borrow for A {
-    type Owned = A;
-    fn borrow(a: &A) -> &A {
+// The Sized bound means that this impl does not overlap with the impls below.
+impl<T: Sized> Borrow<T> for T {
+    fn borrow(a: &T) -> &T {
         a
     }
-    fn borrow_mut(a: &mut A) -> &mut A {
+    fn borrow_mut(a: &mut T) -> &mut T {
         a
     }
 }
 
-impl<A: Clone> ToOwned for A {
-    fn to_owned(&self) -> A {
-        self.clone()
-    }
-}
-
-impl Borrow for str {
-    type Owned = String;
+impl Borrow<str> for String {
     fn borrow(s: &String) -> &str {
         s.as_slice()
     }
@@ -425,14 +413,7 @@ impl Borrow for str {
     }
 }
 
-impl ToOwned for str {
-    fn to_owned(&self) -> String {
-        self.to_string()
-    }
-}
-
-impl<T> Borrow for [T] {
-    type Owned = Vec<T>;
+impl<T> Borrow<[T]> for Vec<T> {
     fn borrow(s: &Vec<T>) -> &[T] {
         s.as_slice()
     }
@@ -440,36 +421,17 @@ impl<T> Borrow for [T] {
         s.as_mut_slice()
     }
 }
-
-impl<T> ToOwned for [T] {
-    fn to_owned(&self) -> Vec<T> {
-        self.to_vec()
-    }
-}
 ```
 
-The design of the `Borrow` trait is a bit subtle. One of the main goals of the
-design was allowing a *blanket* `impl` for non-sliceable types (the first `impl`
-above). This blanket `impl` ensures that all new sized, cloneable types are
-automatically borrowable; new `impl`s are required only for new *unsized* types,
-which are rare. (Note that the first `impl` *implicitly* applies to only sized
-types, which is why the additional `impl`s for particular unsized types are
-allowed.)
+*(Note: thanks to @epdtry for [suggesting this variation](https://github.com/rust-lang/rfcs/pull/235#issuecomment-55337168)! The original proposal
+ is listed [in the Alternatives](#variants-of-borrow).)*
 
-The desire for the blanket `impl` precludes several other possible designs:
-
-* An alternative design would swap the role of `Borrow` and `Owned`, making the
-  trait represent owned data with an associated `Borrowed` type. That's appealing,
-  because it would be a generic way to go from `T` to `&T` but from `Vec<T>` to `&[T]`.
-  Unfortunately, there's no way to provide a blanket `impl` for such a trait. Since
-  the trait would need to be implemented for virtually *every* type, this is a non-starter.
-
-* Sticking with the structure of the `Borrow` trait, one question is why
-  implement it on e.g. `str` rather than `&str`. There are two reasons. First,
-  in order to use the sized/unsized distinction, we need the trait to talk
-  directly about `str`. Second, the `borrow` methods need to tie the lifetime of
-  the borrow to the input lifetime, whereas an implementation for `&str` would
-  have to specify a lifetime up front.
+A primary goal of the design is allowing a *blanket* `impl` for non-sliceable
+types (the first `impl` above). This blanket `impl` ensures that all new sized,
+cloneable types are automatically borrowable; new `impl`s are required only for
+new *unsized* types, which are rare. The `Sized` bound on the initial impl means
+that we can freely add impls for unsized types (like `str` and `[T]`) without
+running afoul of coherence.
 
 Because of the blanket `impl`, the `Borrow` trait can largely be ignored except
 when it is actually used -- which we describe next.
@@ -480,30 +442,54 @@ With the `Borrow` trait in place, we can eliminate the `_equiv` method variants
 by asking map keys to be `Borrow`:
 
 ```rust
-impl<K,V> HashMap<K,V> where K: Borrow + Hash + Eq {
-    fn find(&self, k: &K) -> &V { ... }
-    fn insert(&mut self, k: K::Owned, v: V) -> Option<V> { ... }
+impl<K,V> HashMap<K,V> where K: Hash + Eq {
+    fn find<Q>(&self, k: &Q) -> &V where K: Borrow<Q>, Q: Hash + Eq { ... }
+    fn contains_key<Q>(&self, k: &Q) -> bool where K: Borrow<Q>, Q: Hash + Eq { ... }
+    fn insert(&mut self, k: K, v: V) -> Option<V> { ... }
+
     ...
 }
 ```
 
-For string keys, we would use `HashMap<str, V>`. Then, the `find` method would
-take an `&str` key argument, while `insert` would take an owned `String`. On the
-other hand, for some other type `Foo` a `HashMap<Foo, V>` would take
-`&Foo` for `find` and `Foo` for `insert`. (More discussion on the choice of
-ownership is given in the [alternatives section](#ownership-management-for-keys).
+The benefits of this approach over `_equiv` are:
 
-Aside from removing the `_equiv` variants, this approach retains a quite natural
-signature for the map's methods, while retaining the flexibility that `_equiv`
-methods offered.
+* The `Borrow` trait captures the borrowing relationship between an owned data
+  structure and both references to it and slices from it -- once and for all.
+  This means that it can be used *anywhere* we need to program generically over
+  "borrowed" data. In particular, the single trait works for both `HashMap` and
+  `TreeMap`, and should work for other kinds of data structures as well. It also
+  helps generalize `MaybeOwned`, for similar reasons (see below.)
 
-The same approach works for `TreeMap`, and should work in general for generic
-data structures that need to work with both owned and borrowed values.
+  A *very important* consequence is that the map methods using `Borrow` can
+  potentially be put into a common `Map` trait that's implemented by `HashMap`,
+  `TreeMap`, and others. While we do not propose to do so now, we definitely
+  want to do so later on.
 
-Unlike the current `_equiv` or `find_with` methods, the above approach
-guarantees coherence about hashing or ordering. For example, `HashMap` above
-requires that `K` (the borrowed key type) is `Hash`, and will produce hashes
-from owned keys by first borrowing from them.
+* When using a `HashMap<String, T>`, all of the basic methods like `find`,
+  `contains_key` and `insert` "just work", without forcing you to think about
+  `&String` vs `&str`.
+
+* We don't need separate `_equiv` variants of methods. (However, this could
+  probably be addressed with
+  [multidispatch](https://github.com/rust-lang/rfcs/pull/195) by providing a
+  blanket `Equiv` implementation.)
+
+On the other hand, this approach retains some of the downsides of `_equiv`:
+
+* The signature for methods like `find` and `contains_key` is more complex than
+  their current signatures. There are two counterpoints. First, over time the
+  `Borrow` trait is likely to become a well-known concept, so the signature will
+  not appear completely alien. Second, what is perhaps more important than the
+  signature is that, when using `find` on `HashMap<String, T>`, various method
+  arguments *just work* as expected.
+
+* The API does not guarantee "coherence": the `Hash` and `Eq` (or `Ord`, for
+  `TreeMap`) implementations for the owned and borrowed keys might differ,
+  breaking key invariants of the data structure. This is already the case with
+  `_equiv`.
+
+The [Alternatives section](#variants-of-borrow) includes a variant of `Borrow`
+that doesn't suffer from these downsides, but has some downsides of its own.
 
 ### Clone-on-write (`Cow`) pointers
 
@@ -511,17 +497,23 @@ A side-benefit of the `Borrow` trait is that we can give a more general version
 of the `MaybeOwned` as a "clone-on-write" smart pointer:
 
 ```rust
-pub enum Cow<'a, T> where T: ToOwned {
-    Shared(&'a T),
-    Owned(T::Owned)
+/// A generalization of Clone.
+trait FromBorrow<Sized? B>: Borrow<B> {
+    fn from_borrow(b: &B) -> Self;
 }
 
-impl<'a, T> Cow<'a, T> where T: ToOwned {
-    pub fn new(shared: &'a T) -> Cow<'a, T> {
+/// A clone-on-write smart pointer
+pub enum Cow<'a, T, B> where T: FromBorrow<B> {
+    Shared(&'a B),
+    Owned(T)
+}
+
+impl<'a, T, B> Cow<'a, T, B> where T: FromBorrow<B> {
+    pub fn new(shared: &'a B) -> Cow<'a, T, B> {
         Shared(shared)
     }
 
-    pub fn new_owned(owned: T::Owned) -> Cow<'static, T> {
+    pub fn new_owned(owned: T) -> Cow<'static, T, B> {
         Owned(owned)
     }
 
@@ -532,42 +524,42 @@ impl<'a, T> Cow<'a, T> where T: ToOwned {
         }
     }
 
-    pub fn to_owned_mut(&mut self) -> &mut T::Owned {
+    pub fn to_owned_mut(&mut self) -> &mut T {
         match *self {
             Shared(shared) => {
-                *self = Owned(shared.to_owned());
+                *self = Owned(FromBorrow::from_borrow(shared));
                 self.to_owned_mut()
             }
             Owned(ref mut owned) => owned
         }
     }
 
-    pub fn into_owned(self) -> T::Owned {
+    pub fn into_owned(self) -> T {
         match self {
-            Shared(shared) => shared.to_owned(),
+            Shared(shared) => FromBorrow::from_borrow(shared),
             Owned(owned) => owned
         }
     }
 }
 
-impl<'a, T> Deref<T> for Cow<'a, T> where T: ToOwned  {
-    fn deref(&self) -> &T {
+impl<'a, T, B> Deref<B> for Cow<'a, T, B> where T: FromBorrow<B>  {
+    fn deref(&self) -> &B {
         match *self {
             Shared(shared) => shared,
-            Owned(ref owned) => T::borrow(owned)
+            Owned(ref owned) => owned.borrow()
         }
     }
 }
 
-impl<'a, T> DerefMut<T> for Cow<'a, T> where T: ToOwned {
-    fn deref_mut(&mut self) -> &mut T {
-        T::borrow_mut(self.to_owned_mut())
+impl<'a, T, B> DerefMut<B> for Cow<'a, T, B> where T: FromBorrow<B> {
+    fn deref_mut(&mut self) -> &mut B {
+        self.to_owned_mut().borrow_mut()
     }
 }
 ```
 
-The type `Cow<'a, str>` is roughly equivalent to today's `MaybeOwned<'a>`
-(and `Cow<'a, [T]>` to `MaybeOwnedVector<'a, T>`).
+The type `Cow<'a, String, str>` is roughly equivalent to today's `MaybeOwned<'a>`
+(and `Cow<'a, Vec<T>, [T]>` to `MaybeOwnedVector<'a, T>`).
 
 By implementing `Deref` and `DerefMut`, the `Cow` type acts as a smart pointer
 -- but in particular, the `mut` variant actually *clones* if the pointed-to
@@ -979,7 +971,7 @@ Operation | Collections
 `fn push(&mut self, T)`         | `Vec`, `BinaryHeap`, `String`
 `fn push_front(&mut self, T)`   | `DList`, `RingBuf`
 `fn push_back(&mut self, T)`    | `DList`, `RingBuf`
-`fn insert(&mut self, uint, T)` | `Vec`, `RingBuf`
+`fn insert(&mut self, uint, T)` | `Vec`, `RingBuf`, `String`
 `fn insert(&mut self, K::Owned) -> bool` | `HashSet`, `TreeSet`, `TrieSet`, `BitvSet`
 `fn insert(&mut self, K::Owned, V) -> Option<V>`    | `HashMap`, `TreeMap`, `TrieMap`, `SmallIntMap`
 `fn append(&mut self, Self)`        | `DList`
@@ -1030,7 +1022,7 @@ Operation | Collections
 `fn pop(&mut self) -> Option<T>` | `Vec`, `BinaryHeap`, `String`
 `fn pop_front(&mut self) -> Option<T>` | `DList`, `RingBuf`
 `fn pop_back(&mut self) -> Option<T>` | `DList`, `RingBuf`
-`fn remove(&mut self, uint) -> Option<T>` | `Vec`, `RingBuf`
+`fn remove(&mut self, uint) -> Option<T>` | `Vec`, `RingBuf`, `String`
 `fn remove(&mut self, &K) -> bool` | `HashSet`, `TreeSet`, `TrieSet`, `BitvSet`
 `fn remove(&mut self, &K) -> Option<V>` | `HashMap`, `TreeMap`, `TrieMap`, `SmallIntMap`
 `fn truncate(&mut self, len: uint)` | `Vec`, `String`, `Bitv`, `DList`, `RingBuf`
@@ -1192,16 +1184,27 @@ Some of the maps (e.g. `TreeMap`) currently offer specialized iterators over
 their entries starting at a given key (called `lower_bound`) and above a given
 key (called `upper_bound`), along with `_mut` variants. While the functionality
 is worthwhile, the names are not very clear, so this RFC proposes the following
-renaming:
+replacement API (thanks to [@Gankro for the suggestion](https://github.com/rust-lang/rfcs/pull/235#issuecomment-55512788)):
 
 ```rust
-// Returns an iterator starting with the first key-value pair whose key is not less than k.
-fn iter_from(&self, k: &K) -> Entries<'a, K, V>
-fn iter_from_mut(&mut self, k: &K) -> EntriesMut<'a, K, V>
+Bound<T> {
+    /// An inclusive bound
+    Included(T),
 
-// Returns an iterator starting with the first key-value pair whose key is greater than k.
-fn iter_above(&self, k: &K) -> Entries<'a, K, V>
-fn iter_above_mut(&mut self, k: &K) -> EntriesMut <'a, K, V>
+    /// An exclusive bound
+    Excluded(T),
+
+    Unbounded,
+}
+
+/// Creates a double-ended iterator over a sub-range of the collection's items,
+/// starting at min, and ending at max. If min is `Unbounded`, then it will
+/// be treated as "negative infinity", and if max is `Unbounded`, then it will
+/// be treated as "positive infinity". Thus range(Unbounded, Unbounded) will yield
+/// the whole collection.
+fn range(&self, min: Bound<&T>, max: Bound<&T>) -> RangedItems<'a, T>;
+
+fn range_mut(&self, min: Bound<&T>, max: Bound<&T>) -> RangedItemsMut<'a, T>;
 ```
 
 These iterators should be provided for any maps over ordered keys (`TreeMap`,
@@ -1494,7 +1497,140 @@ methods will probably still be included with "experimental" status.)
 
 # Alternatives
 
-## For the `Equiv` problem
+## `Borrow` and the `Equiv` problem
+
+### Variants of `Borrow`
+
+The original version of `Borrow` was somewhat more subtle:
+
+```rust
+/// A trait for borrowing.
+/// If `T: Borrow` then `&T` represents data borrowed from `T::Owned`.
+trait Borrow for Sized? {
+    /// The type being borrowed from.
+    type Owned;
+
+    /// Immutably borrow from an owned value.
+    fn borrow(&Owned) -> &Self;
+
+    /// Mutably borrow from an owned value.
+    fn borrow_mut(&mut Owned) -> &mut Self;
+}
+
+trait ToOwned: Borrow {
+    /// Produce a new owned value, usually by cloning.
+    fn to_owned(&self) -> Owned;
+}
+
+impl<A: Sized> Borrow for A {
+    type Owned = A;
+    fn borrow(a: &A) -> &A {
+        a
+    }
+    fn borrow_mut(a: &mut A) -> &mut A {
+        a
+    }
+}
+
+impl<A: Clone> ToOwned for A {
+    fn to_owned(&self) -> A {
+        self.clone()
+    }
+}
+
+impl Borrow for str {
+    type Owned = String;
+    fn borrow(s: &String) -> &str {
+        s.as_slice()
+    }
+    fn borrow_mut(s: &mut String) -> &mut str {
+        s.as_mut_slice()
+    }
+}
+
+impl ToOwned for str {
+    fn to_owned(&self) -> String {
+        self.to_string()
+    }
+}
+
+impl<T> Borrow for [T] {
+    type Owned = Vec<T>;
+    fn borrow(s: &Vec<T>) -> &[T] {
+        s.as_slice()
+    }
+    fn borrow_mut(s: &mut Vec<T>) -> &mut [T] {
+        s.as_mut_slice()
+    }
+}
+
+impl<T> ToOwned for [T] {
+    fn to_owned(&self) -> Vec<T> {
+        self.to_vec()
+    }
+}
+
+impl<K,V> HashMap<K,V> where K: Borrow + Hash + Eq {
+    fn find(&self, k: &K) -> &V { ... }
+    fn insert(&mut self, k: K::Owned, v: V) -> Option<V> { ... }
+    ...
+}
+
+pub enum Cow<'a, T> where T: ToOwned {
+    Shared(&'a T),
+    Owned(T::Owned)
+}
+```
+
+This approach ties `Borrow` directly to the borrowed data, and uses an
+associated type to *uniquely determine* the corresponding owned data type.
+
+For string keys, we would use `HashMap<str, V>`. Then, the `find` method would
+take an `&str` key argument, while `insert` would take an owned `String`. On the
+other hand, for some other type `Foo` a `HashMap<Foo, V>` would take
+`&Foo` for `find` and `Foo` for `insert`. (More discussion on the choice of
+ownership is given in the [alternatives section](#ownership-management-for-keys).
+
+**Benefits of this alternative**:
+
+* Unlike the current `_equiv` or `find_with` methods, or the proposal in the
+RFC, this approach guarantees coherence about hashing or ordering. For example,
+`HashMap` above requires that `K` (the borrowed key type) is `Hash`, and will
+produce hashes from owned keys by first borrowing from them.
+
+* Unlike the proposal in this RFC, the signature of the methods for maps is
+  *very simple* -- essentially the same as the current `find`, `insert`, etc.
+
+* Like the proposal in this RFC, there is only a single `Borrow`
+  trait, so it would be possible to standardize on a `Map` trait later
+  on and include these APIs. The trait could be made somewhat simpler
+  with this alternative form of `Borrow`, but can be provided in
+  either case; see
+  [these](https://github.com/rust-lang/rfcs/pull/235#issuecomment-55976755)
+  [comments](https://github.com/rust-lang/rfcs/pull/235#issuecomment-56070223)
+  for details.
+
+* The `Cow` data type is simpler than in the RFC's proposal, since it does not
+  need a type parameter for the owned data.
+
+**Drawbacks of this alternative**:
+
+* It's quite subtle that you want to use `HashMap<str, T>` rather than
+  `HashMap<String, T>`. That is, if you try to use a map in the "obvious way"
+  you will not be able to use string slices for lookup, which is part of what
+  this RFC is trying to achieve. The same applies to `Cow`.
+
+* The design is somewhat less flexible than the one in the RFC, because (1)
+  there is a fixed choice of owned type corresponding to each borrowed type and
+  (2) you cannot use multiple borrow types for lookups at different types
+  (e.g. using `&String` sometimes and `&str` other times). On the other hand,
+  these restrictions guarantee coherence of hashing/equality/comparison.
+
+* This version of `Borrow`, mapping from borrowed to owned data, is
+  somewhat less intuitive.
+
+On the balance, the approach proposed in the RFC seems better, because using the
+map APIs in the obvious ways works by default.
 
 ### The `HashMapKey` trait and friends
 
@@ -1566,6 +1702,10 @@ The fact that `for x in v` moves elements from `v`, while `for x in v.iter()`
 yields references, may be a bit surprising. On the other hand, moving is the
 default almost everywhere in Rust, and with the proposed approach you get to use `&` and
 `&mut` to easily select other forms of iteration.
+
+(See
+[@huon's comment](https://github.com/rust-lang/rfcs/pull/235/files#r17697796)
+for additional drawbacks.)
 
 Unfortunately, it's a bit tricky to make for use by-ref iterators instead. The
 problem is that an iterator is `IntoIterator`, but it is not `Iterable` (or
