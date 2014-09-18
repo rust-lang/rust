@@ -21,6 +21,8 @@ use std::cell::RefCell;
 use std::rc::Rc;
 use std::uint;
 use middle::borrowck::*;
+use middle::borrowck::LoanPathKind::{LpVar, LpUpvar, LpDowncast, LpExtend};
+use middle::borrowck::LoanPathElem::{LpInterior};
 use middle::cfg;
 use middle::dataflow::DataFlowContext;
 use middle::dataflow::BitwiseOperator;
@@ -34,12 +36,12 @@ use syntax::codemap::Span;
 use util::nodemap::{FnvHashMap, NodeSet};
 use util::ppaux::Repr;
 
-pub struct MoveData {
+pub struct MoveData<'tcx> {
     /// Move paths. See section "Move paths" in `doc.rs`.
-    pub paths: RefCell<Vec<MovePath>>,
+    pub paths: RefCell<Vec<MovePath<'tcx>>>,
 
     /// Cache of loan path to move path index, for easy lookup.
-    pub path_map: RefCell<FnvHashMap<Rc<LoanPath>, MovePathIndex>>,
+    pub path_map: RefCell<FnvHashMap<Rc<LoanPath<'tcx>>, MovePathIndex>>,
 
     /// Each move or uninitialized variable gets an entry here.
     pub moves: RefCell<Vec<Move>>,
@@ -59,7 +61,7 @@ pub struct MoveData {
 }
 
 pub struct FlowedMoveData<'a, 'tcx: 'a> {
-    pub move_data: MoveData,
+    pub move_data: MoveData<'tcx>,
 
     pub dfcx_moves: MoveDataFlow<'a, 'tcx>,
 
@@ -103,9 +105,9 @@ impl MoveIndex {
 static InvalidMoveIndex: MoveIndex =
     MoveIndex(uint::MAX);
 
-pub struct MovePath {
+pub struct MovePath<'tcx> {
     /// Loan path corresponding to this move path
-    pub loan_path: Rc<LoanPath>,
+    pub loan_path: Rc<LoanPath<'tcx>>,
 
     /// Parent pointer, `InvalidMovePathIndex` if root
     pub parent: MovePathIndex,
@@ -166,7 +168,7 @@ pub struct AssignDataFlowOperator;
 pub type AssignDataFlow<'a, 'tcx> = DataFlowContext<'a, 'tcx, AssignDataFlowOperator>;
 
 fn loan_path_is_precise(loan_path: &LoanPath) -> bool {
-    match *loan_path {
+    match loan_path.kind {
         LpVar(_) | LpUpvar(_) => {
             true
         }
@@ -182,8 +184,8 @@ fn loan_path_is_precise(loan_path: &LoanPath) -> bool {
     }
 }
 
-impl MoveData {
-    pub fn new() -> MoveData {
+impl<'tcx> MoveData<'tcx> {
+    pub fn new() -> MoveData<'tcx> {
         MoveData {
             paths: RefCell::new(Vec::new()),
             path_map: RefCell::new(FnvHashMap::new()),
@@ -194,7 +196,7 @@ impl MoveData {
         }
     }
 
-    pub fn path_loan_path(&self, index: MovePathIndex) -> Rc<LoanPath> {
+    pub fn path_loan_path(&self, index: MovePathIndex) -> Rc<LoanPath<'tcx>> {
         (*self.paths.borrow())[index.get()].loan_path.clone()
     }
 
@@ -237,8 +239,8 @@ impl MoveData {
     }
 
     pub fn move_path(&self,
-                     tcx: &ty::ctxt,
-                     lp: Rc<LoanPath>) -> MovePathIndex {
+                     tcx: &ty::ctxt<'tcx>,
+                     lp: Rc<LoanPath<'tcx>>) -> MovePathIndex {
         /*!
          * Returns the existing move path index for `lp`, if any,
          * and otherwise adds a new index for `lp` and any of its
@@ -252,7 +254,7 @@ impl MoveData {
             None => {}
         }
 
-        let index = match *lp {
+        let index = match lp.kind {
             LpVar(..) | LpUpvar(..) => {
                 let index = MovePathIndex(self.paths.borrow().len());
 
@@ -297,19 +299,19 @@ impl MoveData {
         return index;
     }
 
-    fn existing_move_path(&self, lp: &Rc<LoanPath>)
+    fn existing_move_path(&self, lp: &Rc<LoanPath<'tcx>>)
                           -> Option<MovePathIndex> {
         self.path_map.borrow().get(lp).cloned()
     }
 
-    fn existing_base_paths(&self, lp: &Rc<LoanPath>)
+    fn existing_base_paths(&self, lp: &Rc<LoanPath<'tcx>>)
                            -> Vec<MovePathIndex> {
         let mut result = vec!();
         self.add_existing_base_paths(lp, &mut result);
         result
     }
 
-    fn add_existing_base_paths(&self, lp: &Rc<LoanPath>,
+    fn add_existing_base_paths(&self, lp: &Rc<LoanPath<'tcx>>,
                                result: &mut Vec<MovePathIndex>) {
         /*!
          * Adds any existing move path indices for `lp` and any base
@@ -324,7 +326,7 @@ impl MoveData {
                 });
             }
             None => {
-                match **lp {
+                match lp.kind {
                     LpVar(..) | LpUpvar(..) => { }
                     LpDowncast(ref b, _) |
                     LpExtend(ref b, _, _) => {
@@ -337,8 +339,8 @@ impl MoveData {
     }
 
     pub fn add_move(&self,
-                    tcx: &ty::ctxt,
-                    lp: Rc<LoanPath>,
+                    tcx: &ty::ctxt<'tcx>,
+                    lp: Rc<LoanPath<'tcx>>,
                     id: ast::NodeId,
                     kind: MoveKind) {
         /*!
@@ -366,8 +368,8 @@ impl MoveData {
     }
 
     pub fn add_assignment(&self,
-                          tcx: &ty::ctxt,
-                          lp: Rc<LoanPath>,
+                          tcx: &ty::ctxt<'tcx>,
+                          lp: Rc<LoanPath<'tcx>>,
                           assign_id: ast::NodeId,
                           span: Span,
                           assignee_id: ast::NodeId,
@@ -409,7 +411,7 @@ impl MoveData {
     }
 
     fn add_gen_kills(&self,
-                     tcx: &ty::ctxt,
+                     tcx: &ty::ctxt<'tcx>,
                      dfcx_moves: &mut MoveDataFlow,
                      dfcx_assign: &mut AssignDataFlow) {
         /*!
@@ -436,10 +438,10 @@ impl MoveData {
         // Kill all moves related to a variable `x` when it goes out
         // of scope:
         for path in self.paths.borrow().iter() {
-            match *path.loan_path {
+            match path.loan_path.kind {
                 LpVar(..) | LpUpvar(..) | LpDowncast(..) => {
                     let kill_scope = path.loan_path.kill_scope(tcx);
-                    let path = *self.path_map.borrow().get(&path.loan_path);
+                    let path = self.path_map.borrow()[path.loan_path];
                     self.kill_moves(path, kill_scope.node_id(), dfcx_moves);
                 }
                 LpExtend(..) => {}
@@ -450,7 +452,7 @@ impl MoveData {
         for (assignment_index, assignment) in
                 self.var_assignments.borrow().iter().enumerate() {
             let lp = self.path_loan_path(assignment.path);
-            match *lp {
+            match lp.kind {
                 LpVar(..) | LpUpvar(..) | LpDowncast(..) => {
                     let kill_scope = lp.kill_scope(tcx);
                     dfcx_assign.add_kill(kill_scope.node_id(), assignment_index);
@@ -531,7 +533,7 @@ impl MoveData {
 }
 
 impl<'a, 'tcx> FlowedMoveData<'a, 'tcx> {
-    pub fn new(move_data: MoveData,
+    pub fn new(move_data: MoveData<'tcx>,
                tcx: &'a ty::ctxt<'tcx>,
                cfg: &cfg::CFG,
                id_range: ast_util::IdRange,
@@ -569,7 +571,7 @@ impl<'a, 'tcx> FlowedMoveData<'a, 'tcx> {
 
     pub fn kind_of_move_of_path(&self,
                                 id: ast::NodeId,
-                                loan_path: &Rc<LoanPath>)
+                                loan_path: &Rc<LoanPath<'tcx>>)
                                 -> Option<MoveKind> {
         //! Returns the kind of a move of `loan_path` by `id`, if one exists.
 
@@ -591,8 +593,8 @@ impl<'a, 'tcx> FlowedMoveData<'a, 'tcx> {
 
     pub fn each_move_of(&self,
                         id: ast::NodeId,
-                        loan_path: &Rc<LoanPath>,
-                        f: |&Move, &LoanPath| -> bool)
+                        loan_path: &Rc<LoanPath<'tcx>>,
+                        f: |&Move, &LoanPath<'tcx>| -> bool)
                         -> bool {
         /*!
          * Iterates through each move of `loan_path` (or some base path
@@ -651,7 +653,7 @@ impl<'a, 'tcx> FlowedMoveData<'a, 'tcx> {
 
     pub fn each_assignment_of(&self,
                               id: ast::NodeId,
-                              loan_path: &Rc<LoanPath>,
+                              loan_path: &Rc<LoanPath<'tcx>>,
                               f: |&Assignment| -> bool)
                               -> bool {
         /*!

@@ -98,7 +98,7 @@ pub enum categorization<'tcx> {
     cat_local(ast::NodeId),                    // local variable
     cat_deref(cmt<'tcx>, uint, PointerKind),   // deref of a ptr
     cat_interior(cmt<'tcx>, InteriorKind),     // something interior: field, tuple, etc
-    cat_downcast(cmt, ast::DefId),             // selects a particular enum variant (*1)
+    cat_downcast(cmt<'tcx>, ast::DefId),       // selects a particular enum variant (*1)
 
     // (*1) downcast is only required if the enum has more than one variant
 }
@@ -1118,7 +1118,7 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
     pub fn cat_pattern(&self,
                        cmt: cmt<'tcx>,
                        pat: &ast::Pat,
-                       op: |&MemCategorizationContext<TYPER>,
+                       op: |&MemCategorizationContext<'t,TYPER>,
                             cmt<'tcx>,
                             &ast::Pat|)
                        -> McResult<()> {
