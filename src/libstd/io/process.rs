@@ -24,9 +24,10 @@ use rt::rtio::{RtioProcess, ProcessConfig, IoFactory, LocalIo};
 use rt::rtio;
 use c_str::CString;
 use collections::HashMap;
-use std::hash::Hash;
-use std::hash::sip::SipState;
+use hash::Hash;
 use clone::Clone;
+#[cfg(windows)]
+use std::hash::sip::SipState;
 
 /// Signal a process to exit, without forcibly killing it. Corresponds to
 /// SIGTERM on unix platforms.
