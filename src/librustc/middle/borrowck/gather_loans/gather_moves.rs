@@ -37,7 +37,8 @@ pub fn gather_decl(bccx: &BorrowckCtxt,
                    decl_id: ast::NodeId,
                    _decl_span: Span,
                    var_id: ast::NodeId) {
-    let loan_path = Rc::new(LpVar(var_id));
+    let ty = ty::node_id_to_type(bccx.tcx, var_id);
+    let loan_path = Rc::new(LoanPath::new(LpVar(var_id), ty));
     move_data.add_move(bccx.tcx, loan_path, decl_id, Declared);
 }
 

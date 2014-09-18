@@ -56,6 +56,8 @@ impl<'a, 'tcx> RestrictionsContext<'a, 'tcx> {
                 cmt: mc::cmt) -> RestrictionResult {
         debug!("restrict(cmt={})", cmt.repr(self.bccx.tcx));
 
+        let new_lp = |v: LoanPathVariant| Rc::new(LoanPath::new(v, cmt.ty));
+
         match cmt.cat.clone() {
             mc::cat_rvalue(..) => {
                 // Effectively, rvalues are stored into a
@@ -69,19 +71,19 @@ impl<'a, 'tcx> RestrictionsContext<'a, 'tcx> {
             mc::cat_local(local_id) |
             mc::cat_arg(local_id) => {
                 // R-Variable, locally declared
-                let lp = Rc::new(LpVar(local_id));
+                let lp = new_lp(LpVar(local_id));
                 SafeIf(lp.clone(), vec![lp])
             }
 
             mc::cat_upvar(upvar_id, _) => {
                 // R-Variable, captured into closure
-                let lp = Rc::new(LpUpvar(upvar_id, CaptureByRef));
+                let lp = new_lp(LpUpvar(upvar_id, CaptureByRef));
                 SafeIf(lp.clone(), vec![lp])
             }
 
             mc::cat_copied_upvar(mc::CopiedUpvar { upvar_id, .. }) => {
                 // R-Variable, copied/moved into closure
-                let lp = Rc::new(LpUpvar(upvar_id, CaptureByVal));
+                let lp = new_lp(LpUpvar(upvar_id, CaptureByVal));
                 SafeIf(lp.clone(), vec![lp])
             }
 
@@ -99,7 +101,7 @@ impl<'a, 'tcx> RestrictionsContext<'a, 'tcx> {
                 // the memory, so no additional restrictions are
                 // needed.
                 let result = self.restrict(cmt_base);
-                self.extend(result, cmt.mutbl, LpInterior(i))
+                self.extend(result, cmt.mutbl, LpInterior(i), cmt.ty)
             }
 
             mc::cat_deref(cmt_base, _, pk @ mc::OwnedPtr) |
@@ -115,7 +117,7 @@ impl<'a, 'tcx> RestrictionsContext<'a, 'tcx> {
                 // Eventually we should make these non-special and
                 // just rely on Deref<T> implementation.
                 let result = self.restrict(cmt_base);
-                self.extend(result, cmt.mutbl, LpDeref(pk))
+                self.extend(result, cmt.mutbl, LpDeref(pk), cmt.ty)
             }
 
             mc::cat_static_item(..) => {
@@ -157,7 +159,7 @@ impl<'a, 'tcx> RestrictionsContext<'a, 'tcx> {
                         }
 
                         let result = self.restrict(cmt_base);
-                        self.extend(result, cmt.mutbl, LpDeref(pk))
+                        self.extend(result, cmt.mutbl, LpDeref(pk), cmt.ty)
                     }
                     mc::UnsafePtr(..) => {
                         // We are very trusting when working with unsafe
@@ -181,11 +183,13 @@ impl<'a, 'tcx> RestrictionsContext<'a, 'tcx> {
     fn extend(&self,
               result: RestrictionResult,
               mc: mc::MutabilityCategory,
-              elem: LoanPathElem) -> RestrictionResult {
+              elem: LoanPathElem,
+              ty: ty::t) -> RestrictionResult {
         match result {
             Safe => Safe,
             SafeIf(base_lp, mut base_vec) => {
-                let lp = Rc::new(LpExtend(base_lp, mc, elem));
+                let v = LpExtend(base_lp, mc, elem);
+                let lp = Rc::new(LoanPath::new(v, ty));
                 base_vec.push(lp.clone());
                 SafeIf(lp, base_vec)
             }

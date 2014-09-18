@@ -162,7 +162,7 @@ pub struct AssignDataFlowOperator;
 pub type AssignDataFlow<'a, 'tcx> = DataFlowContext<'a, 'tcx, AssignDataFlowOperator>;
 
 fn loan_path_is_precise(loan_path: &LoanPath) -> bool {
-    match *loan_path {
+    match loan_path.variant {
         LpVar(_) | LpUpvar(..) => {
             true
         }
@@ -248,7 +248,7 @@ impl MoveData {
             None => {}
         }
 
-        let index = match *lp {
+        let index = match lp.variant {
             LpVar(..) | LpUpvar(..) => {
                 let index = MovePathIndex(self.paths.borrow().len());
 
@@ -320,7 +320,7 @@ impl MoveData {
                 });
             }
             None => {
-                match **lp {
+                match lp.variant {
                     LpVar(..) | LpUpvar(..) => { }
                     LpDowncast(ref b, _) |
                     LpExtend(ref b, _, _) => {
@@ -433,7 +433,7 @@ impl MoveData {
         // of scope:
         for path in self.paths.borrow().iter() {
             let kill_id = path.loan_path.kill_id(tcx);
-            match *path.loan_path {
+            match path.loan_path.variant {
                 LpVar(..) | LpUpvar(..) | LpDowncast(..) => {
                     let path = *self.path_map.borrow().get(&path.loan_path);
                     self.kill_moves(path, kill_id, dfcx_moves);

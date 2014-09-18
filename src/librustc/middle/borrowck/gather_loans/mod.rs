@@ -396,7 +396,7 @@ impl<'a, 'tcx> GatherLoanCtxt<'a, 'tcx> {
         //! For mutable loans of content whose mutability derives
         //! from a local variable, mark the mutability decl as necessary.
 
-        match *loan_path {
+        match loan_path.variant {
             LpVar(local_id) |
             LpUpvar(ty::UpvarId{ var_id: local_id, closure_expr_id: _ }, _) => {
                 self.tcx().used_mut_nodes.borrow_mut().insert(local_id);

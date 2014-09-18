@@ -43,7 +43,7 @@ fn owned_ptr_base_path<'a>(loan_path: &'a LoanPath) -> &'a LoanPath {
     };
 
     fn owned_ptr_base_path_helper<'a>(loan_path: &'a LoanPath) -> Option<&'a LoanPath> {
-        match *loan_path {
+        match loan_path.variant {
             LpVar(_) | LpUpvar(..) => None,
             LpExtend(ref lp_base, _, LpDeref(mc::OwnedPtr)) => {
                 match owned_ptr_base_path_helper(&**lp_base) {
@@ -67,7 +67,7 @@ fn owned_ptr_base_path_rc(loan_path: &Rc<LoanPath>) -> Rc<LoanPath> {
     };
 
     fn owned_ptr_base_path_helper(loan_path: &Rc<LoanPath>) -> Option<Rc<LoanPath>> {
-        match **loan_path {
+        match loan_path.variant {
             LpVar(_) | LpUpvar(..) => None,
             LpExtend(ref lp_base, _, LpDeref(mc::OwnedPtr)) => {
                 match owned_ptr_base_path_helper(lp_base) {
@@ -295,7 +295,7 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
 
         let mut loan_path = loan_path;
         loop {
-            match *loan_path {
+            match loan_path.variant {
                 LpVar(_) | LpUpvar(..) => {
                     break;
                 }
@@ -689,7 +689,7 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
          *     (*p).x = 22; // not ok, p is uninitialized, can't deref
          */
 
-        match **lp {
+        match lp.variant {
             LpVar(_) | LpUpvar(..) => {
                 // assigning to `x` does not require that `x` is initialized
             }
