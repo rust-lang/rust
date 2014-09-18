@@ -1,147 +1,271 @@
-- Start Date: 2014-03-24
-- RFC PR: [rust-lang/rfcs#19](https://github.com/rust-lang/rfcs/pull/19)
-- Rust Issue: [rust-lang/rust#13231](https://github.com/rust-lang/rust/issues/13231)
+- Start Date: 2014-09-18
+- RFC PR #: #127
+- Rust Issue #: #13231
 
 # Summary
 
-- Rather than determining membership in the builtin traits
-  automatically, use `impl` (and `#\[deriving]`) declarations as with
-  other traits.
-- The compiler will check that for each such `impl` declaration the
-  type meets certain criteria (i.e., to implement `Send` for a struct
-  `S`, all fields of `S` must have types which are `Send`).
-- To check for membership in a builtin trait, we employ a slightly
-  modified version of the standard trait matching algorithm.
-  Modifications are needed because the language cannot express the
-  full set of impls we would require.
-- Rename `Pod` trait to `Copy`.
+The high-level idea is to add language features that simultaneously
+achieve three goals:
+
+1. move `Send` and `Share` out of the language entirely and into the
+   standard library, providing mechanisms for end users to easily
+   implement and use similar "marker" traits of their own devising;
+2. make "normal" Rust types sendable and sharable by default, without
+   the need for explicit opt-in; and,
+3. continue to require "unsafe" Rust types (those that manipulate
+   unsafe pointers or implement special abstractions) to "opt-in" to
+   sendability and sharability with an unsafe declaration.
+   
+These goals are achieved by two changes:
+
+1. **Unsafe traits:** An *unsafe trait* is a trait that is unsafe to
+   implement, because it represents some kind of trusted
+   assertion. Note that unsafe traits are perfectly safe to
+   *use*. `Send` and `Share` are examples of unsafe traits:
+   implementing these traits is effectively an assertion that your
+   type is safe for threading.
+2. **Default and negative impls:** A *default impl* is one that
+   applies to all types, except for those types that explicitly *opt
+   out*. For example, there would be a default impl for `Send`,
+   indicating that all types are `Send` "by default".
+   
+   To counteract a default impl, one uses a *negative impl* that
+   explicitly opts out for a given type `T` and any type that contains
+   `T`. For example, this RFC proposes that unsafe pointers `*T` will
+   opt out of `Send` and `Share`. This implies that unsafe pointers
+   cannot be sent or shared between threads by default. It also
+   implies that any structs which contain an unsafe pointer cannot be
+   sent. In all examples encountered thus far, the set of negative
+   impls is fixed and can easily be declared along with the trait
+   itself.
+   
+   Safe wrappers like `Arc`, `Atomic`, or `Mutex` can opt to implement
+   `Send` and `Share` explicitly. This will then make them be
+   considered sendable (or sharable) even though they contain unsafe
+   pointers etc.
+   
+Based on these two mechanisms, we can remove the notion of `Send` and
+`Share` as builtin concepts. Instead, these would become unsafe traits
+with default impls (defined purely in the library). The library would
+explicitly *opt out* of `Send`/`Share` for certain types, like unsafe
+pointers (`*T`) or interior mutability (`Unsafe<T>`). Any type,
+therefore, which contains an unsafe pointer would be confined (by
+default) to a single thread. Safe wrappers around those types, like
+`Arc`, `Atomic`, or `Mutex`, can then opt back in by explicitly
+implementing `Send` (these impls would have to be designed as unsafe).
 
 # Motivation
 
-In today's Rust, there are a number of builtin traits (sometimes
-called "kinds"): `Send`, `Share`, and `Pod` (in the future, perhaps
-`Sized`, but the details of that differ and will addressed in the DST
-RFC). These are expressed as traits, but they are quite unlike other
-traits in certain ways. One way is that they do not have any methods;
-instead, implementing a trait like `Send` indicates that the type has
-certain properties (defined below). The biggest difference, though, is
-that these traits are not implemented manually by users. Instead, the
-compiler decides automatically whether or not a type implements them
-based on the contents of the type.
+Since proposing opt-in builtin traits, I have become increasingly
+concerned about the notion of having `Send` and `Share` be strictly
+opt-in. There are two main reasons for my concern:
 
-This RFC argues to change this system and instead have users manually
-implement the builtin traits for new types that they define.
-Naturally there would be `#[deriving]` options as well for
-convenience. The compiler's rules (e.g., that a sendable value cannot
-reach a non-sendable value) would still be enforced, but at the point
-where a builtin trait is explicitly implemented, rather than being
-automatically deduced.
+1. Rust is very close to being a language where computations can be
+   parallelized by default. Making `Send`, and *especially* `Share`,
+   opt-in makes that harder to achieve.
+2. The model followed by `Send`/`Share` cannot easily be extended to
+   other traits in the future nor can it be extended by end-users with
+   their own similar traits. It is worrisome that I have come across
+   several use cases already which might require such extension
+   (described below).   
 
-There are a couple of reasons to make this change:
+To elaborate on those two points: With respect to parallelization: for
+the most part, Rust types are threadsafe "by default". To make
+something non-threadsafe, you must employ unsychronized interior
+mutability (e.g., `Cell`, `RefCell`) or unsychronized shared ownership
+(`Rc`). In both cases, there are also synchronized variants available
+(`Mutex`, `Arc`, etc). This implies that we can make APIs to enable
+intra-task parallelism and they will work ubiquitously, so long as
+people avoid `Cell` and `Rc` when not needed. Explicit opt-in
+threatens that future, however, because fewer types will implement
+`Share`, even if they are in fact threadsafe.
+   
+With respect to extensibility, it is partiularly worrisome that if a
+library forgets to implement `Send` or `Share`, downstream clients are
+stuck. They cannot, for example, use a newtype wrapper, because it
+would be illegal to implement `Send` on the newtype. This implies that
+all libraries must be vigilant about implementing `Send` and `Share`
+(even more so than with other pervasive traits like `Eq` or `Ord`).
+The current plan is to address this via lints and perhaps some
+convenient deriving syntax, which may be adequate for `Send` and
+`Share`. But if we wish to add new "classification" traits in the
+future, these new traits won't have been around from the start, and
+hence won't be implemented by all existing code.
 
-1. **Consistency.** All other traits are opt-in, including very common
-   traits like `Eq` and `Clone`. It is somewhat surprising that the
-   builtin traits act differently.
-2. **API Stability.** The builtin traits that are implemented by a
-   type are really part of its public API, but unlike other similar
-   things they are not declared. This means that seemingly innocent
-   changes to the definition of a type can easily break downstream
-   users. For example, imagine a type that changes from POD to non-POD
-   -- suddenly, all references to instances of that type go from
-   copies to moves. Similarly, a type that goes from sendable to
-   non-sendable can no longer be used as a message.  By opting in to
-   being POD (or sendable, etc), library authors make explicit what
-   properties they expect to maintain, and which they do not.
-3. **Pedagogy.** Many users find the distinction between pod types
-   (which copy) and linear types (which move) to be surprising. Making
-   pod-ness opt-in would help to ease this confusion.
-4. **Safety and correctness.** In the presence of unsafe code,
-   compiler inference is unsound, and it is unfortunate that users
-   must remember to "opt out" from inapplicable kinds. There are also
-   concerns about future compatibility. Even in safe code, it can also
-   be useful to impose additional usage constriants beyond those
-   strictly required for type soundness.
+Another concern of mine is that end users cannot define classification
+traits of their own. For example, one might like to define a trait for
+"tainted" data, and then test to ensure that tainted data doesn't pass
+through some generic routine. There is no particular way to do this
+today.
 
-More details about these points are provided after the
-`Detailed design` section.
+More examples of classification traits that have come up recently in
+various discussions:
+
+- `Snapshot` (nee `Freeze`), which defines *logical* immutability
+  rather than *physical* immutability. `Rc<int>`, for example, would
+  be considered `Snapshot`. `Snapshot` could be useful because
+  `Snapshot+Clone` indicates a type whose value can be safely
+  "preserved" by cloning it.
+- `NoManaged`, a type which does not contain managed data. This might
+  be useful for integrating garbage collection with custom allocators
+  which do not wish to serve as potential roots.
+- `NoDrop`, a type which does not contain an explicit destructor. This
+  can be used to avoid nasty GC quandries.
+
+All three of these (`Snapshot`, `NoManaged`, `NoDrop`) can be easily
+defined using traits with default impls.
+
+A final, somewhat weaker, motivator is aesthetics. Ownership has allowed
+us to move threading almost entirely into libaries. The one exception
+is that the `Send` and `Share` types remain built-in. Opt-in traits
+makes them *less* built-in, but still requires custom logic in the
+"impl matching" code as well as special safety checks when
+`Safe` or `Share` are implemented.
+
+After the changes I propose, the only traits which would be
+specicially understood by the compiler are `Copy` and `Sized`. I
+consider this acceptable, since those two traits are intimately tied
+to the core Rust type system, unlike `Send` and `Share`.
 
 # Detailed design
 
-I will first cover the existing builtin traits and define what they
-are used for. I will then explain each of the above reasons in more
-detail.  Finally, I'll give some syntax examples.
+## Unsafe traits
 
-## The builtin traits
+Certain traits like `Send` and `Share` are critical to memory safety.
+Nonetheless, it is not feasible to check the thread-safety of all
+types that implement `Send` and `Share`. Therefore, we introduce a
+notion of an *unsafe trait* -- this is a trait that is unsafe to
+implement, because implementing it carries semantic guarantees that,
+if compromised, threaten memory safety in a deep way.
 
-We currently define the following builtin traits:
+An unsafe trait is declared like so:
 
-- `Send` -- a type that deeply owns all its contents.
-  (Examples: `int`, `~int`, `Cell<int>`, not `&int` or `Rc<int>`)
-- `Pod` -- "plain old data" which can be safely copied via memcpy.
-  (Examples: `int`, `&int`, not `~int` or `&mut int`)
-- `Share` -- a type which is threadsafe when accessed via an `&T`
-  reference. (Examples: `int`, `~int`, `&int`, `&mut int`,
-  `Atomic<int>`, not `Cell<int>` or `Rc<int>`)
+    unsafe trait Foo { ... }
+    
+To implement an unsafe trait, one must mark the impl as unsafe:
 
-Note that `Pod` is a proper subset of `Send`, but `Send` and `Share`
-are unrelated:
+    unsafe impl Foo for Bar { ... }
+    
+Designating an impl as unsafe does not automatically mean that the
+body of the methods is an unsafe block. Each method in the trait must
+also be declared as unsafe if it to be considered unsafe.
 
-- `Cell<uint>` is `Send` but not `Share`.
-- `&uint` is `Share` but not `Send`.
+Unsafe traits are only unsafe to *implement*. It is always safe to
+reference an unsafe trait. For example, the following function is
+safe:
 
-## Proposed syntax
+    fn foo<T:Send>(x: T) { ... }
+    
+It is also safe to *opt out* of an unsafe trait (as discussed in the
+next section).
+    
+## Default and negative impls
 
-Under this proposal, for a struct or enum to be considered send,
-share, or pod, those traits must be explicitly implemented:
+We add a notion of a *default impl*, written:
 
-    struct Foo { ... }
-    impl Send for Foo { }
-    impl Pod for Foo { }
-    impl Share for Foo { }
+    impl Trait for .. { }
+    
+Default impls are subject to various limitations:
 
-As usual, deriving forms would be available.
+1. The default impl must appear in the same module as `Trait` (or a submodule).
+2. `Trait` must not define any methods.
 
-Builtin traits can only be implemented for struct or enum types and
-only within the crate in which that struct or enum is defined (see the
-section on *Matching and Coherence* below). Whenever a builtin trait
-is implemented, the compiler will enforce that all fields or that
-struct/enum are of a type which implements the trait (or else of
-`Unsafe` type, which matches all traits, see *Matching and
-Coherence*).
+We further add the notion of a *negative impl*, written:
 
-    struct Foo<'a> { x: &'a int }
+    impl !Trait for Foo { }
+    
+Negative impls are only permitted if `Trait` has a default impl.
+Negative impls are subject to the usual orphan rules, but they are
+permitting to be overlapping. This makes sense because negative impls
+are not providing an implementation and hence we are not forced to
+select between them. For similar reasons, negative impls never need to
+be marked unsafe, even if they reference an unsafe trait.
 
-    // ERROR: Cannot implement `Send` because the field `x` has type
-    // `&'a int` which is not sendable.
-    impl<'a> Send for Foo<'a> { }
+Intuitively, to check whether a trait `Foo` that contains a default
+impl is implemented for some type `T`, we first check for explicit
+(positive) impls that apply to `T`. If any are found, then `T`
+implements `Foo`. Otherwise, we check for negative impls. If any are
+found, then `T` does not implement `Foo`. If neither positive nor
+negative impls were found, we proceed to check the component types of
+`T` (i.e., the types of a struct's fields) to determine whether all of
+them implement `Foo`. If so, then `Foo` is considered implemented by
+`T`.
 
-For generic types, conditional impls are often required to avoid
-errors. In the case of `Option<T>`, for example, we must know that the
-type `T` implements (e.g.) `Send` before we can implement `Send` for
-`Option<T>`:
+Oe non-obvious part of the procedure is that, as we recursively
+examine the component types of `T`, we add to our list of assumptions
+that `T` implements `Foo`. This allows recursive types like
 
-    enum Option<T> { Some(T), None }
-    impl<T> Send for Option<T> { }      // ERROR: T may not implement `Send`
+    struct List<T> { data: T, next: Option<List<T>> }
 
-Rewriting that code using a conditional impl would be fine:
+to be checked successfully. Otherwise, we would recursive infinitely.
+(This procedure is directly analagous to what the existing
+`TypeContents` code does.)
 
-    enum Option<T> { Some(T), None }
-    impl<T:Send> Send for Option<T> { }      // ERROR: T may not implement `Send`
+Note that there exist types that expand to an infinite tree of types.
+Such types cannot be successfully checked with a recursive impl; they
+will simply overflow the builtin depth checking. However, such types
+also break code generation under monomorphization (we cannot create a
+finite set of LLVM types that correspond to them) and are in general
+not supported. Here is an example of such a type:
 
-(This is of course precisely what `#[deriving(Send)]` would generate.)
+    struct Foo<A> {
+        data: Option<Foo<Vec<A>>>
+    }
 
-## Naming of Pod
+The difference between `Foo` and `List` above is that `Foo<A>`
+references `Foo<Vec<A>>`, which will then in turn reference
+`Foo<Vec<Vec<A>>>` and so on.
 
-Part of the proposal is to rename `Pod` to `Copy` so as to better
-align the names of the builtin traits (they would not all be verbs).
+## Modeling Send and Share using default traits
 
-## Copy and linearity
+The `Send` and `Share` traits will be modeled entirely in the library
+as follows. First, we declare the two traits as follows:
 
-One of the most important aspects of this proposal is that the `Copy`
-trait would be something that one "opts in" to. This means that
-structs and enums would *move by default* unless their type is
-explicitly declared to be `Copy`. So, for example, the following code
-would be in error:
+    unsafe trait Send { }
+    unsafe impl Send for .. { }
+    
+    unsafe trait Share { }
+    unsafe impl Share for .. { }
+    
+Both traits are declared as unsafe because declaring that a type if
+`Send` and `Share` has ramifications for memory safety (and data-race
+freedom) that the compiler cannot, itself, check.
+
+Next, we will add *opt out* impls of `Send` and `Share` for the
+various unsafe types:
+
+    impl<T> !Send for *T { }
+    impl<T> !Share for *T { }
+
+    impl<T> !Send for *mut T { }
+    impl<T> !Share for *mut T { }
+
+    impl<T> !Share for Unsafe<T> { }
+    
+Note that it is not necessary to write unsafe to *opt out* of an
+unsafe trait, as that is the default state.
+
+Finally, we will add *opt in* impls of `Send` and `Share` for the
+various safe wrapper types as needed. Here I give one example, which
+is `Mutex`. `Mutex` is interesting because it has the property that it
+converts a type `T` from being `Sendable` to something `Sharable`:
+
+    unsafe impl<T:Send> Send for Mutex<T> { }
+    unsafe impl<T:Send> Share for Mutex<T> { }
+
+## The `Copy` and `Sized` traits
+
+The final two builtin traits are `Copy` and `Share`. This RFC does not
+propose any changes to those two traits but rather relies on the
+specification from [the original opt-in RFC](0003-opt-in-builtin-traits.md).
+
+### Controlling copy vs move with the `Copy` trait
+
+The `Copy` trait is "opt-in" for user-declared structs and enums. A
+struct or enum type is considered to implement the `Copy` trait only
+if it implements the `Copy` trait.  This means that structs and enums
+would *move by default* unless their type is explicitly declared to be
+`Copy`. So, for example, the following code would be in error:
 
     struct Point { x: int, y: int }
     ...
@@ -158,7 +282,7 @@ To allow that example, one would have to impl `Copy` for `Point`:
     let q = p;  // copies p, because Point is Pod
     print(p.x); // OK
 
-Effectively this change introduces a three step ladder for types:
+Effectively, there is a three step ladder for types:
 
 1. If you do nothing, your type is *linear*, meaning that it moves
    from place to place and can never be copied in any way. (We need a
@@ -174,7 +298,14 @@ Effectively this change introduces a three step ladder for types:
 What is nice about this change is that when a type is defined, the
 user makes an *explicit choice* between these three options.
 
-## Matching and coherence
+### Determining whether a type is `Sized`
+
+Per the DST specification, the array types `[T]` and object types like
+`Trait` are unsized, as are any structs that embed one of those
+types. The `Sized` trait can never be explicitly implemented and
+membership in the trait is always automatically determined.
+
+### Matching and coherence for the builtin types `Copy` and `Sized`
 
 In general, determining whether a type implements a builtin trait can
 follow the existing trait matching algorithm, but it will have to be
@@ -185,253 +316,216 @@ we would want must be "hard-coded".
 Specifically we are limited around tuples, fixed-length array types,
 proc types, closure types, and trait types:
 
-- *Fixed-length arrays:* A fixed-length array `[T, ..n]` is `Send/Copy/Share`
-  if `T` is `Send/Copy/Share`, regardless of `n`. (Conceivably, we could
-  also say that if `n` is `0`, then `[T, ..n]` is `Send/Copy/Share` regardless
-  of `T`).
-- *Tuples*: A tuple `(T_0, ..., T_n)` is `Send/Copy/Share` depending
-  if, for all `i`, `T_i` is `Send/Copy/Share`.
-- *Closures*: A closure type `|T_0, ..., T_n|:K -> T_n+1` is never
-  `Send` nor `Copy`. It is `Share` iff `K` is `Share`.
-- *Procs*: A proc type `proc(T_0, ..., T_n):K -> T_n+1` is
-  never `Copy`. It is `Send/Share` iff `K` is `Send/Share`.
-- *Trait objects*: A trait object type `Trait:K` (assuming DST here ;) is
-  never `Copy`. It may be `Send/Share` iff `K` is `Send/Share`.
+- *Fixed-length arrays:* A fixed-length array `[T, ..n]` is `Copy`
+  if `T` is `Copy`. It is always `Sized` as `T` is required to be `Sized`.
+- *Tuples*: A tuple `(T_0, ..., T_n)` is `Copy/Sized` depending if,
+  for all `i`, `T_i` is `Copy/Sized`.
+- *Trait objects* (including procs and closures): A trait object type
+  `Trait:K` (assuming DST here ;) is never `Copy` nor `Sized`.
 
 We cannot currently express the above conditions using impls. We may
 at some point in the future grow the ability to express some of them.
-For now, though, these "impls" will be hardcoded into the algorithm.
-
-Otherwise, the complete list of builtin impls is roughly like this
-(undoubtedly I am missing a few things):
-
-    trait Send;
-    trait Share;
-    trait Copy; // aka Pod
-
-    impl Copy for "scalars like uint, u8, etc" { }
-    impl<T> Copy for *T { }
-    impl<'a,T> Copy for &'a T { }
-
-    impl Send for "scalars like uint, u8, etc" { }
-    impl<T:Send> for *T { }
-    impl<T:Send> for ~T { }
-
-    impl Share for "scalars like uint, u8, etc" { }
-    impl<T:Share> for *T { }
-    impl<T:Share> for ~T { }
-    impl<'a,T:Share> for &'a T { }
-    impl<'a,T:Share> for &'a mut T { } // (if this surprises you, see * below)
+For now, though, these "impls" will be hardcoded into the algorithm as
+if they were written in libstd.
 
 Per the usual coherence rules, since we will have the above impls in
 `libstd`, and we will have impls for types like tuples and
 fixed-length arrays baked in, the only impls that end users are
 permitted to write are impls for struct and enum types that they
-define themselves. This is simply an extra coherence rule, hard-coded
-because some of the impls (e.g., for tuples) are hard-coded.
+define themselves. Although this rule is in the general spirit of the
+coherence checks, it will have to be written specially.
 
-(\*) Wait, `&mut T` is `Share`? How is that threadsafe?
+# Design discussion
 
-Somewhat surprisingly, `&mut T` is share. Remember, a type `U` is
-share if all possible operations on `&U` are threadsafe. In this case,
-`U` is `&mut T`, this means we have to consider what operations are
-possible on a `& &mut T`. In that case ,the `&mut T` is found in an
-aliasable location and hence is immutable (if you can find a counter
-example, that's definitely a bug).
+#### Why unsafe traits
 
-Moreover, there is one further exception to the rules.  The
-`Unsafe<T>` type is *always* considered to implement `Share`, no
-matter the type `T`. `Send` and `Copy` are implemented if `T` is
-`Send` and `Copy`. The motivation here is that we want to be able to
-permit a type like `Mutex` to be `Share` even if it closes over data
-that is not `Share`.
+Without unsafe traits, it would be possible to
+create data races without using the `unsafe` keyword:
 
-# Implementation plan
+    struct MyStruct { foo: Cell<int> }
+    impl Share for MyStruct { }
 
-Here is a loose implementation plan that @flaper87 and I worked
-out. No doubt things will change along the way.
+#### Balancing abstraction, safety, and convenience.
 
-1. Create a nicely encapsulated subroutine S to check whether type T
-   meets bound B For example, to test that some type T is Pod. @eddyb
-   did something recently you can use as an example, where he added
-   some code to do vtable matching for the Drop trait from trans.  One
-   catch is that we will definitely want some sort of cache.
+In general, the existence of default traits is *anti-abstraction*, in
+the sense that it exposes implementation details a library might
+prefer to hide. Specifically, adding new private fields can cause your
+types to become non-sendable or non-sharable, which may break
+downstream clients without your knowing. This is a known challenge
+with parallelism: knowing whether it is safe to parallelize relies on
+implementation details we have traditionally tried to keep secret from
+clients (often it is said that parallelism is "anti-modular" or
+"anti-compositional" for this reason).
 
-2. Modify the vtable code to handle builtin bounds and add builtin
-   impls (see below)
-   - We'll need special code to accommodate the types detailed above
+I think this risk must be weighed against the limitations of requiring
+total opt in. Requiring total opt in not only means that some types
+will accidentally fail to implement send or share when they could, but
+it also means that libraries which wish to employ marker traits cannot
+be composed with other libraries that are not aware of those marker
+traits. In effect, opt-in is anti-modular in its own way.
 
-3. Use the subroutine S in moves.rs to do the "is pod" check.
+To be more specific, imagine that library A wishes to define a
+`Untainted` trait, and it specifically opts out of `Untainted` for
+some base set of types. It then wishes to have routines that only
+operate on `Untained` data. Now imagine that there is some other
+library B that defines a nifty replacement for `Vector`,
+`NiftyVector`. Finally, some library C wishes to use a
+`NiftyVector<uint>`, which should not be considered tainted, because
+it doesn't reference any tainted strings. However, `NiftyVector<uint>`
+does not implement `Untainted` (nor can it, without either library A
+or libary B knowing about one another). Similar problems arise for any
+trait, of course, due to our coherence rules, but often they can be
+overcome with new types. Not so with `Send` and `Share`.
 
-4. Same for rustc::middle::kind, except that we should move the "check
-   bounds on type parameters" into type check.
-   - Why do this? Because these checks will now be so close to vtable
-     matching it no longer makes sense to do them in `kind.rs`
+#### Other use cases
 
-5. Check to make sure that the impls the user provides are safe:
-   - User-defined impls can only apply to enums or structs
-    - If implementing a builtin trait T for a struct type S, each
-      field of S must have a type that implements S.
-    - same for enums, but "for each variant, for each argument" essentially
+Part of the design involves making space for other use cases. I'd like
+to skech out how some of those use cases can be implemented briefly.
+This is not included in the *Detailed design* section of the RFC
+because these traits generally concern other features and would be
+added under RFCs of their own.
 
-# Expanded motivation
+**Isolating snapshot types.** It is useful to be able to identify
+types which, when cloned, result in a logical *snapshot*. That is, a
+value which can never be mutated.  Note that there may in fact be
+mutation under the covers, but this mutation is not visible to the
+user. An example of such a type is `Rc<T>` -- although the ref count
+on the `Rc` may change, the user has no direct access and so `Rc<T>`
+is still logically snapshotable.  However, not all `Rc` instances are
+snapshottable -- in particular, something like `Rc<Cell<int>>` is not.
 
-Now that the detailed design is presented, I wanted to expand more on
-the motivation.
+    trait Snapshot { }
+    impl Snapshot for .. { }
+    
+    // In general, anything that can reach interior mutability is not
+    // snapshotable.
+    impl<T> !Snapshot for Unsafe<T> { }
+    
+    // But it's ok for Rc<T>.
+    impl<T:Snapshot> Snapshot for Rc<T> { }
 
-## Consistency
+Note that these definitions could all occur in a library. That is, the
+`Rc` type itself doesn't need to know about the `Snapshot` trait.
 
-This change would bring the builtin traits more in line with other
-common traits, such as `Eq` and `Clone`. On a historical note, this
-proposal continues a trend, in that both of those operations used to
-be natively implemented by the compiler as well.
+**Preventing access to managed data.** As part of the GC design, we
+expect it will be useful to write specialized allocators or smart
+pointers that explicitly do *not* support tracing, so as to avoid any
+kind of GC overhead. The general idea is that there should be a bound,
+let's call it `NoManaged`, that indicates that a type cannot reach
+managed data and hence does not need to be part of the GC's root
+set. This trait could be implemented as follows:
 
-## API Stability
+    unsafe trait NoManaged { }
+    unsafe impl NoManaged for .. { }
+    impl<T> !NoManaged for Gc<T> { }
 
-The set of builtin traits implemented by a type must be considered
-part of its public inferface. At present, though, it's quite invisible
-and not under user control. If a type is changed from `Pod` to
-non-pod, or `Send` to non-send, no error message will result until
-client code attempts to use an instance of that type. In general we
-have tried to avoid this sort of situation, and instead have each
-declaration contain enough information to check it indepenently of its
-uses. Issue #12202 describes this same concern, specifically with
-respect to stability attributes.
+**Preventing access to destructors.** It is generally recognized that
+allowing destructors to escape into managed data -- frequently
+referred to as finalizers -- is a bad idea.  Therefore, we would
+generally like to ensure that anything is placed into a managed box
+does not implement the drop trait. Instead, we would prefer to regular
+the use of drop through a guardian-like API, which basically means
+that destructors are not asynchronously executed by the GC, as they
+would be in Java, but rather enqueued for the mutator thread to run
+synchronously at its leisure. In order to handle this, though, we
+presumably need some sort of guardian wrapper types that can take a
+value which has a destructor and allow it to be embedded within
+managed data. We can summarize this in a trait `GcSafe` as follows:
 
-Making opt-in explicit effectively solves this problem. It is clearly
-written out which traits a type is expected to fulfill, and if the
-type is changed in such a way as to violate one of these traits, an
-error will be reported at the `impl` site (or `#[deriving]`
-declaration).
+    unsafe trait GcSafe { }
+    unsafe impl GcSafe for .. { }
 
-## Pedagogy
+    // By default, anything which has drop trait is not GcSafe.
+    impl<T:Drop> !GcSafe for T { }
+    
+    // But guardians are, even if `T` has drop.
+    impl<T> GcSafe for Guardian<T> { }
 
-When users first start with Rust, ownership and ownership transfer is
-one of the first things that they must learn. This is made more
-confusing by the fact that types are automatically divided into pod
-and non-pod without any sort of declaration. It is not necessarily
-obvious why a `T` and `~T` value, which are *semantically equivalent*,
-behave so differently by default. Makes the pod category something you
-opt into means that types will all be linear by default, which can
-make teaching and leaning easier.
+#### Why are `Copy` and `Sized` different?
 
-## Safety and correctness: unsafe code
+The `Copy` and `Sized` traits remain builtin to the compiler. This
+makes sense because they are intimately tied to analyses the compiler
+performs. For example, the running of destructors and tracking of
+moves requires knowing which types are `Copy`. Similarly, the
+allocation of stack frames need to know whether types are fully
+`Sized`. In contrast, sendability and sharability has been fully
+exported to libraries at this point.
 
-For safe code, the compiler's rules for deciding whether or not a type
-is sendable (and so forth) are perfectly sound. However, when unsafe
-code is involved, the compiler may draw the wrong conclusion. For such
-cases, types must *opt out* of the builtin traits.
+In addition, opting in to `Copy` makes sense for several reasons:
 
-In general, the *opt out* approach seems to be hard to reason about:
-many people (including myself) find it easier to think about what
-properties a type *has* than what properties it *does not* have,
-though clearly the two are logically equivalent in this binary world
-we programmer's inhabit.
+- Experience has shown that "data-like structs", for which `Copy` is
+  most appropriate, are a very small percentage of the total.
+- Changing a public API from being copyable to being only movable has
+  a outsized impact on users of the API. It is common however that as
+  APIs evolve they will come to require owned data (like a `Vec`),
+  even if they do not initially, and hence will change from being
+  copyable to only movable. Opting in to `Copy` is a way of saying
+  that you never foresee this coming to pass.
+- Often it is useful to create linear "tokens" that do not themselves
+  have data but represent permissions. This can be done today using
+  markers but it is awkward. It becomes much more natural under this
+  proposal.
 
-More concretely, opt out is dangerous because it means that types with
-unsafe methods are generally *wrong by default*. As an example,
-consider the definition of the `Cell` type:
+# Drawbacks
 
-    struct Cell<T> {
-        priv value: T
-    }
+**API stability.** The main drawback of this approach over the
+existing opt-in approach seems to be that a type may be "accidentally"
+sendable or sharable. I discuss this above under the heading of
+"balancing abstraction, safety, and convenience". One point I would
+like to add here, as it specifically pertains to API stability, is
+that a library may, if they choose, opt out of `Send` and `Share`
+pre-emptively, in order to "reserve the right" to add non-sendable
+things in the future.
 
-This is a perfectly ordinary struct, and hence the compiler would
-conclude that cells are freezable (if `T` is freezable) and so forth.
-However, the *methods* attached to `Cell` use unsafe magic to mutate
-`value`, even when the `Cell` is aliased:
+# Alternatives
 
-    impl<T:Pod> Cell<T> {
-        pub fn set(&self, value: T) {
-            unsafe {
-                *cast::transmute_mut(&self.value) = value
-            }
-        }
-    }
+- The existing opt-in design is of course an alternative.
 
-To accommodate this, we currently use *marker types* -- special types
-known to the compiler which are considered nonpod and so forth. Therefore,
-the full definition of `Cell` is in fact:
+- We could also simply add the notion of `unsafe` traits and *not*
+  default impls and then allow types to unsafely implement `Send` or
+  `Share`, bypassing the normal safety guidelines. This gives an
+  escape valve for a downstream client to assert that something is
+  sendable which was not declared as sendable. However, such a
+  solution is deeply unsatisfactory, because it rests on the
+  downstream client making an assertion about the implementation of
+  the library it uses. If that library should be updated, the client's
+  assumptions could be invalidated, but no compilation errors will
+  result (the impl was already declared as unsafe, after all).
 
-    pub struct Cell<T> {
-        priv value: T,
-        priv marker1: marker::InvariantType<T>,
-        priv marker2: marker::NoFreeze,
-    }
+# Phasing
 
-Note the two markers. The first, `marker1`, is a hint to the variance
-engine indicating that the type `Cell` must be invariant with respect
-to its type argument. The second, `marker2`, indicates that `Cell` is
-non-freeze. This then informs the compiler that the referent of a
-`&Cell<T>` can't be considered immutable. The problem here is that, if
-you don't know to opt-out, you'll wind up with a type definition that
-is unsafe.
+Many of the mechanisms described in this RFC are not needed
+immediately.  Therefore, we would like to implement a minimal
+"forwards compatible" set of changes now and then leave the remaining
+work for after the 1.0 release. The builtin rules that the compiler
+currently implements for send and share are quite close to what is
+proposed in this RFC. The major change is that unsafe pointers and the
+`UnsafeCell` type are currently considered sendable.
 
-This argument is rather weakened by the continued necessity of a
-`marker::InvariantType` marker. This could be read as an argument
-towards explicit variance. However, I think that in this particular
-case, the better solution is to introduce the `Mut<T>` type described
-in #12577 -- the `Mut<T>` type would give us the invariance.
+Therefore, to be forwards compatible in the short term, we can use the
+same hybrid of builtin and explicit impls for `Send` and `Share` that
+we use for `Copy`, with the rule that unsafe pointers and `UnsafeCell`
+are not considered sendable. We must also implement the `unsafe trait`
+and `unsafe impl` concept.
 
-Using `Mut<T>` brings us back to a world where any type that uses
-`Mut<T>` to obtain interior mutability is correct by default, at least
-with respect to the builtin kinds. Types like `Atomic<T>` and
-`Volatile<T>`, which guarantee data race freedom, would therefore have
-to *opt in* to the `Share` kind, and types like `Cell<T>` would simply
-do nothing.
-
-## Safety and correctness: future compatibility
-
-Another concern about having the compiler automatically infer
-membership into builtin bounds is that we may find cause to add new
-bounds in the future. In that case, existing Rust code which uses
-unsafe methods might be inferred incorrectly, because it would not
-know to opt out of those future bounds. Therefore, any future bounds
-will *have* to be opt out anyway, so perhaps it is best to be
-consistent from the start.
-
-## Safety and correctness: semantic constraints
-
-Even if type safety is maintained, some types ought not to be copied
-for semantic reasons. An example from the compiler is the
-`Datum<Rvalue>` type, which is used in code generation to represent
-the computed result of an rvalue expression. At present, the type
-`Rvalue` implements a (empty) destructor -- the sole purpose of this
-destructor is to ensure that datums are not consumed more than once,
-because this would likely correspond to a code gen bug, as it would
-mean that the result of the expression evaluation is consumed more
-than once. Another example might be a newtype'd integer used for
-indexing into a thread-local array: such a value ought not to be
-sendable. And so forth. Using marker types for these kinds of
-situations, or empty destructors, is very awkward. Under this
-proposal, users needs merely refrain from implementing the relevant
-traits.
-
-# Alternatives and counterarguments
-
-The downsides of this proposal are:
-
-- There is some annotation burden. I had intended to gather statistics
-  to try and measure this but have not had the time.
-
-- If a library forgets to implement all the relevant traits for a
-  type, there is little recourse for users of that library beyond pull
-  requests to the original repository. This is already true with
-  traits like `Eq` and `Ord`. However, as SiegeLord noted on IRC, that
-  you can often work around the absence of `Eq` with a newtype
-  wrapper, but this is not true if a type fails to implement `Send` or
-  `Copy`. This danger (forgetting to implement traits) is essentially
-  the counterbalance to the "forward compatbility" case made above:
-  where implementing traits by default means types may implement too
-  much, forcing explicit opt in means types may implement too little.
-  One way to mitigate this problem would be to have a lint for when an
-  impl of some kind (etc) would be legal, but isn't implemented, at
-  least for publicly exported types in library crates.
-
-What other designs have been considered? What is the impact of not doing this?
+What this means in practice is that using `*const T`, `*mut T`, and
+`UnsafeCell` will make a type `T` non-sendable and non-sharable, and
+`T` must then explicitly implement `Send` or `Share`.
 
 # Unresolved questions
 
-Do we want some kind of shorthand for common trait combinations?  I
-originally proposed `Data` but we couldn't settle on what a useful set
-of trait combinations would be. This can easily be added later.
+- The terminology of "unsafe trait" seems somewhat misleading, since
+  it seems to suggest that "using" the trait is unsafe, rather than
+  implementing it. One suggestion for an alternate keyword was
+  `trusted trait`, which might dovetail with the use of `trusted` to
+  specify a trusted block of code. If we did use `trusted trait`, it
+  seems that all impls would also have to be `trusted impl`.
+- Perhaps we should declare a trait as a "default trait" directly,
+  rather than using the `impl Drop for ..` syntax. I don't know
+  precisely what syntax to use, though.
+- Currently, there are special rules relating to object types and
+  the builtin traits. If the "builtin" traits are no longer builtin,
+  we will have to generalize object types to be simply a set of trait
+  references. This is already planned but merits a second RFC. Note
+  that no changes here are required for the 1.0, since the phasing
+  plan dictates that builtin traits remain special until after 1.0.
