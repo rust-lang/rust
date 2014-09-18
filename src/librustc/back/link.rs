@@ -1024,7 +1024,9 @@ fn link_args(cmd: &mut Command,
 
         // Mark all dynamic libraries and executables as compatible with ASLR
         // FIXME #17098: ASLR breaks gdb
-        // cmd.arg("-Wl,--dynamicbase");
+        if sess.opts.debuginfo == NoDebugInfo {
+            cmd.arg("-Wl,--dynamicbase");
+        }
 
         // Mark all dynamic libraries and executables as compatible with the larger 4GiB address
         // space available to x86 Windows binaries on x86_64.
