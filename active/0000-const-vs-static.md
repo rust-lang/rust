@@ -40,7 +40,7 @@ times. There are number of interrelated issues:
   can write `static MY_COUNTER: AtomicUint = INIT_ZERO` or some
   such. It should not be possible to modify these initializer
   constants.
-  
+
 The current design is that we have only one keyword, `static`, which
 declares a global variable. By default, global variables do not have a
 significant address and can be inlined into the program. You can make
@@ -98,10 +98,10 @@ have generic parameters. For example, the following constant is legal:
 
     struct WrappedOption<T> { value: Option<T> }
     const NONE<T> = WrappedOption { value: None }
-    
+
 Note that this makes no sense for a `static` variable, which represents
 a memory location and hence must have a concrete type.
-    
+
 ### Possible extension: constant functions
 
 It is possible to imagine constant functions as well. This could help
@@ -111,7 +111,7 @@ we can limit them syntactically to a single constant expression that
 can be expanded at compilation time (no recursion).
 
     struct LockedData<T:Send> { lock: Lock, value: T }
-    
+
     const LOCKED<T:Send>(t: T) -> LockedData<T> {
         LockedData { lock: INIT_LOCK, value: t }
     }
@@ -135,7 +135,37 @@ an `UnsafeCell` in its interior, the compiler may place it in
 read-only memory, but otherwise it must be placed in mutable memory.
 
 `mut` statics may have any type. All access is considered unsafe.
-They may not be placed in read-only memory and their values may
+They may not be placed in read-only memory.
+
+## Globals referencing Globals
+
+It is possible to create a `const` or a `static` which references another
+`const` or another `static` by its address. For example:
+
+    struct SomeStruct { x: uint }
+    const FOO: SomeStruct = SomeStruct { x: 1 };
+    const BAR: &'static SomeStruct = &FOO;
+
+Constants are generally inlined into the stack frame from which they are
+referenced, but in a static context there is no stack frame. Instead, the
+compiler will reinterpret this as if it were written as:
+
+    struct SomeStruct { x: uint }
+    const FOO: SomeStruct = SomeStruct { x: 1 };
+    const BAR: &'static SomeStruct = {
+        static TMP: SomeStruct = FOO;
+        &TMP
+    };
+
+Here a `static` is introduced to be able to give the `const` a pointer which
+does indeed have the `'static` lifetime. Due to this rewriting, the compiler
+will disallow `SomeStruct` from containing an `UnsafeCell` (interior
+mutability). In general a constant A cannot reference the address of another
+constant B if B contains an `UnsafeCell` in its interior.
+
+If a `static` references the address of a `const`, then a similar rewriting
+happens, but there is no interior mutability restriction (only a `Sync`
+restriction).
 
 # Drawbacks
 
