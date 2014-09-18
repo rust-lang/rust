@@ -79,7 +79,6 @@ type parameter).
 
 use middle::const_eval;
 use middle::def;
-use middle::freevars;
 use middle::lang_items::IteratorItem;
 use middle::mem_categorization::McResult;
 use middle::mem_categorization;

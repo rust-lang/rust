@@ -17,7 +17,6 @@ use llvm;
 use llvm::{ValueRef, BasicBlockRef, BuilderRef, ContextRef};
 use llvm::{True, False, Bool};
 use middle::def;
-use middle::freevars;
 use middle::lang_items::LangItem;
 use middle::mem_categorization as mc;
 use middle::subst;

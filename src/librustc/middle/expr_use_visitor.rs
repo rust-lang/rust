@@ -16,7 +16,6 @@
 
 use middle::mem_categorization as mc;
 use middle::def;
-use middle::freevars;
 use middle::mem_categorization::Typer;
 use middle::pat_util;
 use middle::ty;

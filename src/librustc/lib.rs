@@ -93,7 +93,6 @@ pub mod middle {
     pub mod effect;
     pub mod entry;
     pub mod expr_use_visitor;
-    pub mod freevars;
     pub mod graph;
     pub mod intrinsicck;
     pub mod kind;

@@ -119,7 +119,6 @@ and report an error, and it just seems like more mess in the end.)
 */
 
 use middle::def;
-use middle::freevars;
 use middle::mem_categorization as mc;
 use middle::ty::{ReScope};
 use middle::ty;
