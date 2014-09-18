@@ -237,6 +237,7 @@ use std::slice;
 use std::string;
 
 use std::collections::{HashMap, HashSet};
+use std::collections::hashmap::{Occupied, Vacant};
 use flate;
 use time;
 
@@ -428,15 +429,18 @@ impl<'a> Context<'a> {
                 return FileDoesntMatch
             };
             info!("lib candidate: {}", path.display());
-            let slot = candidates.find_or_insert_with(hash.to_string(), |_| {
-                (HashSet::new(), HashSet::new())
-            });
+
+            let slot = match candidates.entry(hash.to_string()) {
+                Occupied(entry) => entry.into_mut(),
+                Vacant(entry) => entry.set((HashSet::new(), HashSet::new())),
+            };
             let (ref mut rlibs, ref mut dylibs) = *slot;
             if rlib {
                 rlibs.insert(fs::realpath(path).unwrap());
             } else {
                 dylibs.insert(fs::realpath(path).unwrap());
             }
+
             FileMatches
         });
 
