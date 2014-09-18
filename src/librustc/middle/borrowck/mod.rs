@@ -143,6 +143,9 @@ fn borrowck_fn(this: &mut BorrowckCtxt,
                        move_data:flowed_moves } =
         build_borrowck_dataflow_data(this, fk, decl, &cfg, body, sp, id);
 
+    move_data::fragments::instrument_move_fragments(&flowed_moves.move_data,
+                                                    this.tcx, sp, id);
+
     check_loans::check_loans(this, &loan_dfcx, flowed_moves,
                              all_loans.as_slice(), decl, body);
 
@@ -322,7 +325,13 @@ impl<'tcx> LoanPath<'tcx> {
         LoanPath { kind: kind, ty: ty }
     }
 
+    fn to_type(&self) -> ty::Ty<'tcx> { self.ty }
 }
+
+// FIXME (pnkfelix): See discussion here
+// https://github.com/pnkfelix/rust/commit/
+//     b2b39e8700e37ad32b486b9a8409b50a8a53aa51#commitcomment-7892003
+static DOWNCAST_PRINTED_OPERATOR : &'static str = " as ";
 
 #[deriving(PartialEq, Eq, Hash, Show)]
 pub enum LoanPathElem {
@@ -927,7 +936,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
             LpDowncast(ref lp_base, variant_def_id) => {
                 out.push('(');
                 self.append_loan_path_to_string(&**lp_base, out);
-                out.push_str("->");
+                out.push_str(DOWNCAST_PRINTED_OPERATOR);
                 out.push_str(ty::item_path_str(self.tcx, variant_def_id).as_slice());
                 out.push(')');
             }
@@ -1051,7 +1060,7 @@ impl<'tcx> Repr<'tcx> for LoanPath<'tcx> {
                 } else {
                     variant_def_id.repr(tcx)
                 };
-                format!("({}->{})", lp.repr(tcx), variant_str)
+                format!("({}{}{})", lp.repr(tcx), DOWNCAST_PRINTED_OPERATOR, variant_str)
             }
 
             LpExtend(ref lp, _, LpDeref(_)) => {
@@ -1060,6 +1069,38 @@ impl<'tcx> Repr<'tcx> for LoanPath<'tcx> {
 
             LpExtend(ref lp, _, LpInterior(ref interior)) => {
                 format!("{}.{}", lp.repr(tcx), interior.repr(tcx))
+            }
+        }
+    }
+}
+
+impl<'tcx> UserString<'tcx> for LoanPath<'tcx> {
+    fn user_string(&self, tcx: &ty::ctxt<'tcx>) -> String {
+        match self.kind {
+            LpVar(id) => {
+                format!("$({})", tcx.map.node_to_user_string(id))
+            }
+
+            LpUpvar(ty::UpvarId{ var_id, closure_expr_id: _ }) => {
+                let s = tcx.map.node_to_user_string(var_id);
+                format!("$({} captured by closure)", s)
+            }
+
+            LpDowncast(ref lp, variant_def_id) => {
+                let variant_str = if variant_def_id.krate == ast::LOCAL_CRATE {
+                    ty::item_path_str(tcx, variant_def_id)
+                } else {
+                    variant_def_id.repr(tcx)
+                };
+                format!("({}{}{})", lp.user_string(tcx), DOWNCAST_PRINTED_OPERATOR, variant_str)
+            }
+
+            LpExtend(ref lp, _, LpDeref(_)) => {
+                format!("{}.*", lp.user_string(tcx))
+            }
+
+            LpExtend(ref lp, _, LpInterior(ref interior)) => {
+                format!("{}.{}", lp.user_string(tcx), interior.repr(tcx))
             }
         }
     }

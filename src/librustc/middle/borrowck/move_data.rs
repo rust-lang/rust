@@ -11,7 +11,7 @@
 /*!
 
 Data structures used for tracking moves. Please see the extensive
-comments in the section "Moves and initialization" and in `doc.rs`.
+comments in the section "Moves and initialization" in `doc.rs`.
 
 */
 
@@ -36,6 +36,9 @@ use syntax::codemap::Span;
 use util::nodemap::{FnvHashMap, NodeSet};
 use util::ppaux::Repr;
 
+#[path="fragments.rs"]
+pub mod fragments;
+
 pub struct MoveData<'tcx> {
     /// Move paths. See section "Move paths" in `doc.rs`.
     pub paths: RefCell<Vec<MovePath<'tcx>>>,
@@ -56,8 +59,15 @@ pub struct MoveData<'tcx> {
     /// kill move bits.
     pub path_assignments: RefCell<Vec<Assignment>>,
 
+    /// Enum variant matched within a pattern on some match arm, like
+    /// `SomeStruct{ f: Variant1(x, y) } => ...`
+    pub variant_matches: RefCell<Vec<VariantMatch>>,
+
     /// Assignments to a variable or path, like `x = foo`, but not `x += foo`.
     pub assignee_ids: RefCell<NodeSet>,
+
+    /// Path-fragments from moves in to or out of parts of structured data.
+    pub fragments: RefCell<fragments::FragmentSets>,
 }
 
 pub struct FlowedMoveData<'a, 'tcx: 'a> {
@@ -72,7 +82,7 @@ pub struct FlowedMoveData<'a, 'tcx: 'a> {
 }
 
 /// Index into `MoveData.paths`, used like a pointer
-#[deriving(PartialEq, Show)]
+#[deriving(PartialEq, Eq, PartialOrd, Ord, Show)]
 pub struct MovePathIndex(uint);
 
 impl MovePathIndex {
@@ -157,6 +167,20 @@ pub struct Assignment {
     pub span: Span,
 }
 
+pub struct VariantMatch {
+    /// downcast to the variant.
+    pub path: MovePathIndex,
+
+    /// path being downcast to the variant.
+    pub base_path: MovePathIndex,
+
+    /// id where variant's pattern occurs
+    pub id: ast::NodeId,
+
+    /// says if variant established by move (and why), by copy, or by borrow.
+    pub mode: euv::MatchMode
+}
+
 #[deriving(Clone)]
 pub struct MoveDataFlowOperator;
 
@@ -184,6 +208,37 @@ fn loan_path_is_precise(loan_path: &LoanPath) -> bool {
     }
 }
 
+impl Move {
+    pub fn to_string<'tcx>(&self, move_data: &MoveData<'tcx>, tcx: &ty::ctxt<'tcx>) -> String {
+        format!("Move{} path: {}, id: {}, kind: {} {}",
+                "{",
+                move_data.path_loan_path(self.path).repr(tcx),
+                self.id,
+                self.kind,
+                "}")
+    }
+}
+
+impl Assignment {
+    pub fn to_string<'tcx>(&self, move_data: &MoveData<'tcx>, tcx: &ty::ctxt<'tcx>) -> String {
+        format!("Assignment{} path: {}, id: {} {}",
+                "{",
+                move_data.path_loan_path(self.path).repr(tcx),
+                self.id,
+                "}")
+    }
+}
+
+impl VariantMatch {
+    pub fn to_string<'tcx>(&self, move_data: &MoveData<'tcx>, tcx: &ty::ctxt<'tcx>) -> String {
+        format!("VariantMatch{} path: {}, id: {} {}",
+                "{",
+                move_data.path_loan_path(self.path).repr(tcx),
+                self.id,
+                "}")
+    }
+}
+
 impl<'tcx> MoveData<'tcx> {
     pub fn new() -> MoveData<'tcx> {
         MoveData {
@@ -192,7 +247,9 @@ impl<'tcx> MoveData<'tcx> {
             moves: RefCell::new(Vec::new()),
             path_assignments: RefCell::new(Vec::new()),
             var_assignments: RefCell::new(Vec::new()),
+            variant_matches: RefCell::new(Vec::new()),
             assignee_ids: RefCell::new(NodeSet::new()),
+            fragments: RefCell::new(fragments::FragmentSets::new()),
         }
     }
 
@@ -208,6 +265,8 @@ impl<'tcx> MoveData<'tcx> {
         (*self.paths.borrow())[index.get()].first_move
     }
 
+    /// Returns the index of first child, or `InvalidMovePathIndex` if
+    /// `index` is leaf.
     fn path_first_child(&self, index: MovePathIndex) -> MovePathIndex {
         (*self.paths.borrow())[index.get()].first_child
     }
@@ -353,8 +412,10 @@ impl<'tcx> MoveData<'tcx> {
                id,
                kind);
 
-        let path_index = self.move_path(tcx, lp);
+        let path_index = self.move_path(tcx, lp.clone());
         let move_index = MoveIndex(self.moves.borrow().len());
+
+        self.fragments.borrow_mut().add_move(path_index);
 
         let next_move = self.path_first_move(path_index);
         self.set_path_first_move(path_index, move_index);
@@ -384,6 +445,8 @@ impl<'tcx> MoveData<'tcx> {
 
         let path_index = self.move_path(tcx, lp.clone());
 
+        self.fragments.borrow_mut().add_assignment(path_index);
+
         match mode {
             euv::Init | euv::JustWrite => {
                 self.assignee_ids.borrow_mut().insert(assignee_id);
@@ -408,6 +471,40 @@ impl<'tcx> MoveData<'tcx> {
 
             self.path_assignments.borrow_mut().push(assignment);
         }
+    }
+
+    pub fn add_variant_match(&self,
+                             tcx: &ty::ctxt<'tcx>,
+                             lp: Rc<LoanPath<'tcx>>,
+                             pattern_id: ast::NodeId,
+                             base_lp: Rc<LoanPath<'tcx>>,
+                             mode: euv::MatchMode) {
+        /*!
+         * Adds a new record for a match of `base_lp`, downcast to
+         * variant `lp`, that occurs at location `pattern_id`.  (One
+         * should be able to recover the span info from the
+         * `pattern_id` and the ast_map, I think.)
+         */
+        debug!("add_variant_match(lp={}, pattern_id={})",
+               lp.repr(tcx), pattern_id);
+
+        let path_index = self.move_path(tcx, lp.clone());
+        let base_path_index = self.move_path(tcx, base_lp.clone());
+
+        self.fragments.borrow_mut().add_assignment(path_index);
+
+        let variant_match = VariantMatch {
+            path: path_index,
+            base_path: base_path_index,
+            id: pattern_id,
+            mode: mode,
+        };
+
+        self.variant_matches.borrow_mut().push(variant_match);
+    }
+
+    fn fixup_fragment_sets(&self, tcx: &ty::ctxt<'tcx>) {
+        fragments::fixup_fragment_sets(self, tcx)
     }
 
     fn add_gen_kills(&self,
@@ -435,8 +532,8 @@ impl<'tcx> MoveData<'tcx> {
             self.kill_moves(assignment.path, assignment.id, dfcx_moves);
         }
 
-        // Kill all moves related to a variable `x` when it goes out
-        // of scope:
+        // Kill all moves related to a variable `x` when
+        // it goes out of scope:
         for path in self.paths.borrow().iter() {
             match path.loan_path.kind {
                 LpVar(..) | LpUpvar(..) | LpDowncast(..) => {
@@ -556,9 +653,16 @@ impl<'a, 'tcx> FlowedMoveData<'a, 'tcx> {
                                  AssignDataFlowOperator,
                                  id_range,
                                  move_data.var_assignments.borrow().len());
-        move_data.add_gen_kills(tcx, &mut dfcx_moves, &mut dfcx_assign);
+
+        move_data.fixup_fragment_sets(tcx);
+
+        move_data.add_gen_kills(tcx,
+                                &mut dfcx_moves,
+                                &mut dfcx_assign);
+
         dfcx_moves.add_kills_from_flow_exits(cfg);
         dfcx_assign.add_kills_from_flow_exits(cfg);
+
         dfcx_moves.propagate(cfg, body);
         dfcx_assign.propagate(cfg, body);
 
