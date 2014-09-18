@@ -38,8 +38,9 @@ unnecessary amounts of allocations.
 
 Be carefull to remember that the memory is managed by C allocator API and not
 by Rust allocator API.
-That means that the CString pointers should only be freed with C allocator API
-if you intend to do that on your own.
+That means that the CString pointers should be freed with C allocator API
+if you intend to do that on your own, as the behaviour if you free them with
+Rust's allocator API is not well defined
 
 An example of creating and using a C string would be:
 
@@ -137,8 +138,8 @@ impl<S: hash::Writer> hash::Hash<S> for CString {
 
 impl CString {
     /// Create a C String from a pointer, with memory managed by C's allocator
-    /// API, so do not call it with a pointer to memory managed by Rust's
-    /// allocator API.
+    /// API, so avoid calling it with a pointer to memory managed by Rust's
+    /// allocator API, as the behaviour would not be well defined.
     ///
     ///# Failure
     ///
@@ -272,7 +273,7 @@ impl CString {
     /// forgotten, meaning that the backing allocation of this
     /// `CString` is not automatically freed if it owns the
     /// allocation. In this case, a user of `.unwrap()` should ensure
-    /// the allocation is freed, to avoid leaking memory. You have to
+    /// the allocation is freed, to avoid leaking memory. You should
     /// use libc's memory allocator in this case.
     ///
     /// Prefer `.as_ptr()` when just retrieving a pointer to the
