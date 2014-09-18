@@ -20,6 +20,7 @@ use middle::def;
 use middle::expr_use_visitor as euv;
 use middle::mem_categorization as mc;
 use middle::ty;
+use middle::subst::Subst;
 use util::ppaux::{note_and_explain_region, Repr, UserString};
 
 use std::rc::Rc;
@@ -135,6 +136,8 @@ fn borrowck_fn(this: &mut BorrowckCtxt,
                        loans: loan_dfcx,
                        move_data:flowed_moves } =
         build_borrowck_dataflow_data(this, fk, decl, &cfg, body, sp, id);
+
+    // check_drops::check_drops(this, &flowed_moves, id, &cfg, decl, body);
 
     check_loans::check_loans(this, &loan_dfcx, flowed_moves,
                              all_loans.as_slice(), decl, body);
@@ -309,6 +312,114 @@ impl LoanPathVariant {
             LpDowncast(ref base_lp, _) | LpExtend(ref base_lp, _, _) =>
                 base_lp.kill_id(tcx),
         }
+    }
+}
+
+impl LoanPath {
+    fn to_type(&self) -> ty::t { self.ty }
+
+    fn needs_drop(&self, tcx: &ty::ctxt) -> bool {
+        //! Returns true if and only if assigning to this loan path
+        //! introduces a new drop obligation.
+
+        debug!("needs_drop(tcx) self={}", self.repr(tcx));
+
+        match self.variant {
+            LpVar(_) | LpUpvar(..) =>
+                // Variables are the easiest case: just use their
+                // types to determine whether they introduce a drop
+                // obligation when assigned.  (FSK well, at the
+                // *moment* they are easy; we may put in
+                // flow-sensitivity in some form.  Or maybe not, we
+                // will see.)
+                self.ty.is_drop_obligation(tcx),
+
+            LpExtend(_, _, LpDeref(mc::BorrowedPtr(..))) |
+            LpExtend(_, _, LpDeref(mc::Implicit(..)))    =>
+                // A path through a `&` or `&mut` reference cannot
+                // introduce a drop obligation; e.g. the assignment
+                // `*p = box 3u` installs a pointer elsewhere that is
+                // the responsibility of someone else (e.g. a caller).
+                false,
+
+            LpExtend(_, _, LpDeref(mc::OwnedPtr)) =>
+                // However, an assignment to a deref of a Box<T> is
+                // conceptually owned by the parent and thus does
+                // introduce a drop obligation.
+                true,
+
+            LpExtend(_, _, LpDeref(mc::GcPtr))     |
+            LpExtend(_, _, LpDeref(mc::UnsafePtr(_))) =>
+                // An assignment through a GcPtr or UnsafePtr cannot
+                // affect the local drop obligation state.
+                false,
+
+            LpExtend(ref base_lp, _cat, LpInterior(_)) =>
+                // 1. Ensure base_lp does not nullify the drop
+                //    obligation (e.g. if it is through a LpDeref,
+                //    such as an example like `*x.p = box 3u` (which
+                //    in the source code may look like `x.p = box 3u`
+                //    due to autoderef).
+                base_lp.needs_drop(tcx) &&
+
+                // 2. Even if the base_lp needs drop, this particular
+                //    field might not.  E.g. for `x.q = 3u`, `x` may
+                //    itself introduce a drop obligation, but the type
+                //    of `q` means that that particular field does not
+                //    affect dropping.
+                self.ty.is_drop_obligation(tcx),
+
+            LpDowncast(_, def_id) => self.enum_variant_needs_drop(tcx, def_id),
+        }
+    }
+
+    fn enum_variant_needs_drop(&self,
+                               tcx: &ty::ctxt,
+                               variant_def_id: ast::DefId) -> bool {
+        //! Handle a particular enum variant as a special case, since
+        //! the type of an enum variant, like `None` has type
+        //! `Option<T>`, can indicate that it needs-drop, even though
+        //! that particular variant does not introduce a
+        //! drop-obligation.
+
+        match ty::get(self.ty).sty {
+            ty::ty_enum(enum_def_id, ref substs) => {
+                let variant_info = ty::enum_variant_with_id(tcx, enum_def_id, variant_def_id);
+                let type_contents = ty::TypeContents::union(
+                    variant_info.args.as_slice(),
+                    |arg_ty| {
+                        let arg_ty_subst = arg_ty.subst(tcx, substs);
+                        debug!("needs_drop(tcx) self={} arg_ty={:s} arg_ty_subst={:s}",
+                               self.repr(tcx), arg_ty.repr(tcx), arg_ty_subst.repr(tcx));
+                        ty::type_contents(tcx, arg_ty_subst)
+                    });
+
+                type_contents.is_drop_obligation(tcx)
+            }
+            _ => {
+                debug!("needs_drop encountered LpDowncast on non-enum base type: {}",
+                       self.ty.repr(tcx));
+                let msg = format!("encountered LpDowncast on non-enum base type: {}.",
+                                  self.ty.repr(tcx));
+                tcx.sess.opt_span_warn(tcx.map.opt_span(self.kill_id(tcx)),
+                                       msg.as_slice());
+                false
+            }
+        }
+    }
+}
+
+trait DropObligation {
+    fn is_drop_obligation(&self, tcx: &ty::ctxt) -> bool;
+}
+impl DropObligation for ty::TypeContents {
+    fn is_drop_obligation(&self, tcx: &ty::ctxt) -> bool {
+        self.moves_by_default(tcx)
+    }
+}
+impl DropObligation for ty::t {
+    fn is_drop_obligation(&self, tcx: &ty::ctxt) -> bool {
+        ty::type_contents(tcx, *self).is_drop_obligation(tcx)
     }
 }
 
