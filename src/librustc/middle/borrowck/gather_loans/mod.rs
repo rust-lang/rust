@@ -96,6 +96,14 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for GatherLoanCtxt<'a, 'tcx> {
                matched_pat.repr(self.tcx()),
                cmt.repr(self.tcx()),
                mode);
+
+        match cmt.cat {
+            mc::cat_downcast(..) =>
+                gather_moves::gather_match_variant(
+                    self.bccx, &self.move_data, &self.move_error_collector,
+                    matched_pat, cmt, mode),
+            _ => {}
+        }
     }
 
     fn consume_pat(&mut self,
