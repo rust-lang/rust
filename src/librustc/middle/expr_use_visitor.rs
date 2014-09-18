@@ -1000,6 +1000,37 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,TYPER> {
                         debug!("walk_pat binding consuming pat");
                         delegate.consume_pat(pat, cmt_pat, mode);
                     }
+
+                    ast::PatWild(_) => {
+                        match match_mode {
+                            NonBindingMatch |
+                            BorrowingMatch |
+                            CopyingMatch  => {}
+
+                            MovingMatch => {
+                                // On `enum E { Variant(Box<T>) }`, both of
+                                // the match arms:
+                                //
+                                //    Variant(a) => ...
+                                //    Variant(_) => ...
+                                //
+                                // are conceptually moving into the `Variant`
+                                // pattern, while the match arm:
+                                //
+                                //    a @ Variant(_) => ...
+                                //
+                                // is *not* moving into the `Variant(_)`.
+                                // Thus check the `pat_already_bound` flag to
+                                // distinguish the latter two cases.
+
+                                if !mc.pat_is_already_bound_by_value {
+                                    let mode = copy_or_move(typer.tcx(), cmt_pat.ty, PatBindingMove);
+                                    delegate.consume_pat(pat, cmt_pat, mode);
+                                }
+                            }
+                        }
+                    }
+
                     _ => {
                         typer.tcx().sess.span_bug(
                             pat.span,
