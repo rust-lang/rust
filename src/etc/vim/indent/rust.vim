@@ -154,6 +154,43 @@ function GetRustIndent(lnum)
 		return indent(prevlinenum)
 	endif
 
+	if !has("patch-7.4.355")
+		" cindent before 7.4.355 doesn't do the module scope well at all; e.g.::
+		"
+		" static FOO : &'static [bool] = [
+		" true,
+		"	 false,
+		"	 false,
+		"	 true,
+		"	 ];
+		"
+		"	 uh oh, next statement is indented further!
+
+		" Note that this does *not* apply the line continuation pattern properly;
+		" that's too hard to do correctly for my liking at present, so I'll just
+		" start with these two main cases (square brackets and not returning to
+		" column zero)
+
+		call cursor(a:lnum, 1)
+		if searchpair('{\|(', '', '}\|)', 'nbW',
+					\ 's:is_string_comment(line("."), col("."))') == 0
+			if searchpair('\[', '', '\]', 'nbW',
+						\ 's:is_string_comment(line("."), col("."))') == 0
+				" Global scope, should be zero
+				return 0
+			else
+				" At the module scope, inside square brackets only
+				"if getline(a:lnum)[0] == ']' || search('\[', '', '\]', 'nW') == a:lnum
+				if line =~ "^\\s*]"
+					" It's the closing line, dedent it
+					return 0
+				else
+					return &shiftwidth
+				endif
+			endif
+		endif
+	endif
+
 	" Fall back on cindent, which does it mostly right
 	return cindent(a:lnum)
 endfunction
