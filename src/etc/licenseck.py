@@ -45,12 +45,14 @@ exceptions = [
     "test/bench/shootout-binarytrees.rs", # BSD
     "test/bench/shootout-chameneos-redux.rs", # BSD
     "test/bench/shootout-fannkuch-redux.rs", # BSD
+    "test/bench/shootout-fasta.rs", # BSD
     "test/bench/shootout-k-nucleotide.rs", # BSD
     "test/bench/shootout-mandelbrot.rs", # BSD
     "test/bench/shootout-meteor.rs", # BSD
     "test/bench/shootout-nbody.rs", # BSD
     "test/bench/shootout-regex-dna.rs", # BSD
     "test/bench/shootout-reverse-complement.rs", # BSD
+    "test/bench/shootout-spectralnorm.rs", # BSD
     "test/bench/shootout-threadring.rs", # BSD
 ]
 
