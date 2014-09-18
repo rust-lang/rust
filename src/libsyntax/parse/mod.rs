@@ -721,7 +721,7 @@ pub fn integer_lit(s: &str, sd: &SpanHandler, sp: Span) -> ast::Lit_ {
 mod test {
     use super::*;
     use serialize::json;
-    use codemap::{Span, BytePos, Spanned};
+    use codemap::{Span, BytePos, Spanned, NO_EXPANSION};
     use owned_slice::OwnedSlice;
     use ast;
     use abi;
@@ -736,7 +736,7 @@ mod test {
 
     // produce a codemap::span
     fn sp(a: u32, b: u32) -> Span {
-        Span{lo:BytePos(a),hi:BytePos(b),expn_info:None}
+        Span {lo: BytePos(a), hi: BytePos(b), expn_id: NO_EXPANSION}
     }
 
     #[test] fn path_exprs_1() {

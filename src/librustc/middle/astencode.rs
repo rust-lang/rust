@@ -2035,7 +2035,7 @@ impl fake_ext_ctxt for parse::ParseSess {
         codemap::Span {
             lo: codemap::BytePos(0),
             hi: codemap::BytePos(0),
-            expn_info: None
+            expn_id: codemap::NO_EXPANSION
         }
     }
     fn ident_of(&self, st: &str) -> ast::Ident {
