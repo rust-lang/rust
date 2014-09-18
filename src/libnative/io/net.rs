@@ -86,6 +86,7 @@ fn addr_to_sockaddr(addr: rtio::SocketAddr,
                 (*storage).sin6_family = libc::AF_INET6 as libc::sa_family_t;
                 (*storage).sin6_port = htons(addr.port);
                 (*storage).sin6_addr = inaddr;
+                (*storage).sin6_flowinfo = 0;
                 mem::size_of::<libc::sockaddr_in6>()
             }
         };
