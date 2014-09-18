@@ -1461,8 +1461,8 @@ pub fn mk_ctxt<'tcx>(s: Session,
                      dm: resolve::DefMap,
                      named_region_map: resolve_lifetime::NamedRegionMap,
                      map: ast_map::Map<'tcx>,
-                     freevars: FreevarMap,
-                     capture_modes: CaptureModeMap,
+                     freevars: RefCell<FreevarMap>,
+                     capture_modes: RefCell<CaptureModeMap>,
                      region_maps: middle::region::RegionMaps,
                      lang_items: middle::lang_items::LanguageItems,
                      stability: stability::Index) -> ctxt<'tcx> {
@@ -1483,7 +1483,7 @@ pub fn mk_ctxt<'tcx>(s: Session,
         object_cast_map: RefCell::new(NodeMap::new()),
         map: map,
         intrinsic_defs: RefCell::new(DefIdMap::new()),
-        freevars: RefCell::new(freevars),
+        freevars: freevars,
         tcache: RefCell::new(DefIdMap::new()),
         rcache: RefCell::new(HashMap::new()),
         short_names_cache: RefCell::new(HashMap::new()),
@@ -1520,7 +1520,7 @@ pub fn mk_ctxt<'tcx>(s: Session,
         node_lint_levels: RefCell::new(HashMap::new()),
         transmute_restrictions: RefCell::new(Vec::new()),
         stability: RefCell::new(stability),
-        capture_modes: RefCell::new(capture_modes),
+        capture_modes: capture_modes,
         associated_types: RefCell::new(DefIdMap::new()),
         trait_associated_types: RefCell::new(DefIdMap::new()),
     }
@@ -4755,7 +4755,7 @@ pub fn unboxed_closure_upvars(tcx: &ctxt, closure_id: ast::DefId)
                               -> Vec<UnboxedClosureUpvar> {
     if closure_id.krate == ast::LOCAL_CRATE {
         match tcx.freevars.borrow().find(&closure_id.node) {
-            None => tcx.sess.bug("no freevars for unboxed closure?!"),
+            None => vec![],
             Some(ref freevars) => {
                 freevars.iter().map(|freevar| {
                     let freevar_def_id = freevar.def.def_id();
@@ -5701,7 +5701,7 @@ pub type CaptureModeMap = NodeMap<ast::CaptureClause>;
 
 pub fn with_freevars<T>(tcx: &ty::ctxt, fid: ast::NodeId, f: |&[Freevar]| -> T) -> T {
     match tcx.freevars.borrow().find(&fid) {
-        None => fail!("with_freevars: {} has no freevars", fid),
+        None => f(&[]),
         Some(d) => f(d.as_slice())
     }
 }

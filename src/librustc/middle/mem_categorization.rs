@@ -63,7 +63,6 @@
 #![allow(non_camel_case_types)]
 
 use middle::def;
-use middle::freevars;
 use middle::ty;
 use middle::typeck;
 use util::nodemap::{DefIdMap, NodeMap};
