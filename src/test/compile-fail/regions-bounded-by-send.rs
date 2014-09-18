@@ -57,21 +57,22 @@ fn box_with_region_not_ok<'a>() {
 // objects with insufficient bounds no ok
 
 fn object_with_random_bound_not_ok<'a>() {
-    assert_send::<&'a Dummy+'a>(); //~ ERROR does not fulfill
+    assert_send::<&'a Dummy+'a>();
     //~^ ERROR not implemented
 }
 
 fn object_with_send_bound_not_ok<'a>() {
-    assert_send::<&'a Dummy+Send>(); //~ ERROR does not fulfill
+    assert_send::<&'a Dummy+Send>();
+    //~^ ERROR does not fulfill
 }
 
 fn proc_with_lifetime_not_ok<'a>() {
-    assert_send::<proc():'a>(); //~ ERROR does not fulfill
+    assert_send::<proc():'a>();
     //~^ ERROR not implemented
 }
 
 fn closure_with_lifetime_not_ok<'a>() {
-    assert_send::<||:'a>(); //~ ERROR does not fulfill
+    assert_send::<||:'a>();
     //~^ ERROR not implemented
 }
 

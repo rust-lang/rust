@@ -14,7 +14,7 @@ pub struct MyState;
 pub fn foo<State>(_: TypeWithState<State>) {}
 
 pub fn bar() {
-   foo(TypeWithState); //~ ERROR: cannot determine a type for this expression: unconstrained type
+   foo(TypeWithState);  //~ ERROR type annotations required
 }
 
 fn main() {

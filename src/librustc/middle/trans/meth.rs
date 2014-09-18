@@ -561,6 +561,9 @@ pub fn get_vtable(bcx: Block,
                                         DUMMY_SP,
                                         trait_ref.clone());
         match vtable {
+            traits::VtableBuiltin => {
+                Vec::new().into_iter()
+            }
             traits::VtableImpl(
                 traits::VtableImplData {
                     impl_def_id: id,
@@ -634,7 +637,6 @@ pub fn get_vtable(bcx: Block,
 
                 (vec!(llfn)).into_iter()
             }
-            traits::VtableBuiltin |
             traits::VtableParam(..) => {
                 bcx.sess().bug(
                     format!("resolved vtable for {} to bad vtable {} in trans",
