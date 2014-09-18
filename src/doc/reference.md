@@ -598,6 +598,14 @@ names, and invoked through a consistent syntax: `name!(...)`. Examples include:
 
 All of the above extensions are expressions with values.
 
+Users of `rustc` can define new syntax extensions in two ways:
+
+* [Compiler plugins](guide-plugin.html#syntax-extensions) can include arbitrary
+  Rust code that manipulates syntax trees at compile time.
+
+* [Macros](guide-macros.html) define new syntax in a higher-level,
+  declarative way.
+
 ## Macros
 
 ```{.ebnf .gram}
@@ -615,7 +623,7 @@ transcriber : '(' transcriber * ')' | '[' transcriber * ']'
 
 User-defined syntax extensions are called "macros", and the `macro_rules`
 syntax extension defines them. Currently, user-defined macros can expand to
-expressions, statements, or items.
+expressions, statements, items, or patterns.
 
 (A `sep_token` is any token other than `*` and `+`. A `non_special_token` is
 any token other than a delimiter or `$`.)
@@ -1912,7 +1920,7 @@ type int8_t = i8;
 - `main` - indicates that this function should be passed to the entry point,
   rather than the function in the crate root named `main`.
 - `plugin_registrar` - mark this function as the registration point for
-  compiler plugins, such as loadable syntax extensions.
+  [compiler plugins][plugin], such as loadable syntax extensions.
 - `start` - indicates that this function should be used as the entry point,
   overriding the "start" language item. See the "start" [language
   item](#language-items) for more details.
@@ -1972,8 +1980,8 @@ On `struct`s:
   align fields.
 - `phase` - on `extern crate` statements, allows specifying which "phase" of
   compilation the crate should be loaded for. Currently, there are two
-  choices: `link` and `plugin`. `link` is the default. `plugin` will load the
-  crate at compile-time and use any syntax extensions or lints that the crate
+  choices: `link` and `plugin`. `link` is the default. `plugin` will [load the
+  crate at compile-time][plugin] and use any syntax extensions or lints that the crate
   defines. They can both be specified, `#[phase(link, plugin)]` to use a crate
   both at runtime and compiletime.
 - `simd` - on certain tuple structs, derive the arithmetic operators, which
@@ -2061,7 +2069,8 @@ For any lint check `C`:
 * `warn(C)` warns about violations of `C` but continues compilation.
 
 The lint checks supported by the compiler can be found via `rustc -W help`,
-along with their default settings.
+along with their default settings.  [Compiler
+plugins](guide-plugin.html#lint-plugins) can provide additional lint checks.
 
 ```{.ignore}
 mod m1 {
@@ -2490,7 +2499,7 @@ The currently implemented features of the reference compiler are:
             considered unwholesome and in need of overhaul, and it is not clear
             what they will look like moving forward.
 
-* `plugin_registrar` - Indicates that a crate has compiler plugins that it
+* `plugin_registrar` - Indicates that a crate has [compiler plugins][plugin] that it
                        wants to load. As with `phase`, the implementation is
                        in need of a overhaul, and it is not clear that plugins
                        defined using this will continue to work.
@@ -4304,3 +4313,4 @@ Additional specific influences can be seen from the following languages:
 * The block syntax of Ruby.
 
 [ffi]: guide-ffi.html
+[plugin]: guide-plugin.html
