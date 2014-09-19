@@ -297,17 +297,17 @@ pub enum TypeKind {
 
 #[repr(C)]
 pub enum AtomicBinOp {
-    Xchg = 0,
-    Add  = 1,
-    Sub  = 2,
-    And  = 3,
-    Nand = 4,
-    Or   = 5,
-    Xor  = 6,
-    Max  = 7,
-    Min  = 8,
-    UMax = 9,
-    UMin = 10,
+    AtomicXchg = 0,
+    AtomicAdd  = 1,
+    AtomicSub  = 2,
+    AtomicAnd  = 3,
+    AtomicNand = 4,
+    AtomicOr   = 5,
+    AtomicXor  = 6,
+    AtomicMax  = 7,
+    AtomicMin  = 8,
+    AtomicUMax = 9,
+    AtomicUMin = 10,
 }
 
 #[repr(C)]

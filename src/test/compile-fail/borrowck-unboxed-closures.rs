@@ -17,7 +17,7 @@ fn a<F:Fn(int, int) -> int>(mut f: F) {
 }
 
 fn b<F:FnMut(int, int) -> int>(f: F) {
-    f(1, 2);    //~ ERROR cannot borrow immutable argument
+    f(1, 2);    //~ ERROR cannot borrow immutable local variable
 }
 
 fn c<F:FnOnce(int, int) -> int>(f: F) {
