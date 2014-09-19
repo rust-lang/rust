@@ -1093,6 +1093,12 @@ fn main() {
 }
 ```
 
+Note that this lacks the above `Ordering` declaration.  Doing so would override
+the one from the standard library (and cause problems since we haven't yet
+shown you how to implement equality checking). A list of all things
+automatically imported can be found [here]
+(http://doc.rust-lang.org/std/prelude/index.html).
+
 `cmp` is a function that compares two things, and returns an `Ordering`. We
 return either `Less`, `Greater`, or `Equal`, depending on if the two values
 are greater, less, or equal.
