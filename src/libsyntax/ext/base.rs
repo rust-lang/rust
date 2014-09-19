@@ -203,25 +203,20 @@ impl MacResult for MacPat {
         Some(self.p)
     }
 }
-/// A convenience type for macros that return a single item.
-pub struct MacItem {
-    i: P<ast::Item>
+/// A type for macros that return multiple items.
+pub struct MacItems {
+    items: SmallVector<P<ast::Item>>
 }
-impl MacItem {
-    pub fn new(i: P<ast::Item>) -> Box<MacResult+'static> {
-        box MacItem { i: i } as Box<MacResult+'static>
+
+impl MacItems {
+    pub fn new<I: Iterator<P<ast::Item>>>(mut it: I) -> Box<MacResult+'static> {
+        box MacItems { items: it.collect() } as Box<MacResult+'static>
     }
 }
-impl MacResult for MacItem {
-    fn make_items(self: Box<MacItem>) -> Option<SmallVector<P<ast::Item>>> {
-        Some(SmallVector::one(self.i))
-    }
-    fn make_stmt(self: Box<MacItem>) -> Option<P<ast::Stmt>> {
-        Some(P(codemap::respan(
-            self.i.span,
-            ast::StmtDecl(
-                P(codemap::respan(self.i.span, ast::DeclItem(self.i))),
-                ast::DUMMY_NODE_ID))))
+
+impl MacResult for MacItems {
+    fn make_items(self: Box<MacItems>) -> Option<SmallVector<P<ast::Item>>> {
+        Some(self.items)
     }
 }
 
