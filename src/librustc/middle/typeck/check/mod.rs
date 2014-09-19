@@ -109,7 +109,7 @@ use middle::typeck::rscope::RegionScope;
 use middle::typeck::{lookup_def_ccx};
 use middle::typeck::no_params;
 use middle::typeck::{require_same_types};
-use middle::typeck::{MethodCall, MethodMap, ObjectCastMap};
+use middle::typeck::{MethodCall, MethodCallee, MethodMap, ObjectCastMap};
 use middle::typeck::{TypeAndSubsts};
 use middle::typeck;
 use middle::lang_items::TypeIdLangItem;
@@ -123,7 +123,6 @@ use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
 use std::mem::replace;
 use std::rc::Rc;
-use std::slice;
 use syntax::abi;
 use syntax::ast::{ProvidedMethod, RequiredMethod, TypeTraitItem};
 use syntax::ast;
@@ -2187,12 +2186,12 @@ pub fn autoderef<T>(fcx: &FnCtxt, sp: Span, base_ty: ty::t,
 }
 
 /// Attempts to resolve a call expression as an overloaded call.
-fn try_overloaded_call(fcx: &FnCtxt,
-                       call_expression: &ast::Expr,
-                       callee: &ast::Expr,
-                       callee_type: ty::t,
-                       args: &[P<ast::Expr>])
-                       -> bool {
+fn try_overloaded_call<'a>(fcx: &FnCtxt,
+                           call_expression: &ast::Expr,
+                           callee: &ast::Expr,
+                           callee_type: ty::t,
+                           args: &[&'a P<ast::Expr>])
+                           -> bool {
     // Bail out if the callee is a bare function or a closure. We check those
     // manually.
     match *structure_of(fcx, callee.span, callee_type) {
@@ -2275,18 +2274,125 @@ fn try_overloaded_deref(fcx: &FnCtxt,
         (method, _) => method
     };
 
+    make_return_type(fcx, method_call, method)
+}
+
+fn get_method_ty(method: &Option<MethodCallee>) -> ty::t {
+    match method {
+        &Some(ref method) => method.ty,
+        &None => ty::mk_err()
+    }
+}
+
+fn make_return_type(fcx: &FnCtxt,
+                    method_call: Option<MethodCall>,
+                    method: Option<MethodCallee>)
+                    -> Option<ty::mt> {
     match method {
         Some(method) => {
             let ref_ty = ty::ty_fn_ret(method.ty);
             match method_call {
                 Some(method_call) => {
-                    fcx.inh.method_map.borrow_mut().insert(method_call, method);
+                    fcx.inh.method_map.borrow_mut().insert(method_call,
+                                                           method);
                 }
                 None => {}
             }
             ty::deref(ref_ty, true)
         }
-        None => None
+        None => None,
+    }
+}
+
+fn try_overloaded_slice(fcx: &FnCtxt,
+                        method_call: Option<MethodCall>,
+                        expr: &ast::Expr,
+                        base_expr: &ast::Expr,
+                        base_ty: ty::t,
+                        start_expr: &Option<P<ast::Expr>>,
+                        end_expr: &Option<P<ast::Expr>>,
+                        mutbl: &ast::Mutability)
+                        -> Option<ty::mt> {
+    let method = if mutbl == &ast::MutMutable {
+        // Try `SliceMut` first, if preferred.
+        match fcx.tcx().lang_items.slice_mut_trait() {
+            Some(trait_did) => {
+                let method_name = match (start_expr, end_expr) {
+                    (&Some(_), &Some(_)) => "slice_mut_",
+                    (&Some(_), &None) => "slice_from_mut_",
+                    (&None, &Some(_)) => "slice_to_mut_",
+                    (&None, &None) => "as_mut_slice_",
+                };
+
+                method::lookup_in_trait(fcx,
+                                        expr.span,
+                                        Some(&*base_expr),
+                                        token::intern(method_name),
+                                        trait_did,
+                                        base_ty,
+                                        [],
+                                        DontAutoderefReceiver,
+                                        IgnoreStaticMethods)
+            }
+            _ => None,
+        }
+    } else {
+        // Otherwise, fall back to `Slice`.
+        // FIXME(#17293) this will not coerce base_expr, so we miss the Slice
+        // trait for `&mut [T]`.
+        match fcx.tcx().lang_items.slice_trait() {
+            Some(trait_did) => {
+                let method_name = match (start_expr, end_expr) {
+                    (&Some(_), &Some(_)) => "slice_",
+                    (&Some(_), &None) => "slice_from_",
+                    (&None, &Some(_)) => "slice_to_",
+                    (&None, &None) => "as_slice_",
+                };
+
+                method::lookup_in_trait(fcx,
+                                        expr.span,
+                                        Some(&*base_expr),
+                                        token::intern(method_name),
+                                        trait_did,
+                                        base_ty,
+                                        [],
+                                        DontAutoderefReceiver,
+                                        IgnoreStaticMethods)
+            }
+            _ => None,
+        }
+    };
+
+
+    // Regardless of whether the lookup succeeds, check the method arguments
+    // so that we have *some* type for each argument.
+    let method_type = get_method_ty(&method);
+
+    let mut args = vec![];
+    start_expr.as_ref().map(|x| args.push(x));
+    end_expr.as_ref().map(|x| args.push(x));
+
+    check_method_argument_types(fcx,
+                                expr.span,
+                                method_type,
+                                expr,
+                                args.as_slice(),
+                                DoDerefArgs,
+                                DontTupleArguments);
+
+    match method {
+        Some(method) => {
+            let result_ty = ty::ty_fn_ret(method.ty);
+            match method_call {
+                Some(method_call) => {
+                    fcx.inh.method_map.borrow_mut().insert(method_call,
+                                                           method);
+                }
+                None => {}
+            }
+            Some(ty::mt { ty: result_ty, mutbl: ast::MutImmutable })
+        }
+        None => None,
     }
 }
 
@@ -2332,32 +2438,16 @@ fn try_overloaded_index(fcx: &FnCtxt,
 
     // Regardless of whether the lookup succeeds, check the method arguments
     // so that we have *some* type for each argument.
-    let method_type = match method {
-        Some(ref method) => method.ty,
-        None => ty::mk_err()
-    };
+    let method_type = get_method_ty(&method);
     check_method_argument_types(fcx,
                                 expr.span,
                                 method_type,
                                 expr,
-                                slice::ref_slice(index_expr),
+                                &[index_expr],
                                 DoDerefArgs,
                                 DontTupleArguments);
 
-    match method {
-        Some(method) => {
-            let ref_ty = ty::ty_fn_ret(method.ty);
-            match method_call {
-                Some(method_call) => {
-                    fcx.inh.method_map.borrow_mut().insert(method_call,
-                                                           method);
-                }
-                None => {}
-            }
-            ty::deref(ref_ty, true)
-        }
-        None => None,
-    }
+    make_return_type(fcx, method_call, method)
 }
 
 /// Given the head of a `for` expression, looks up the `next` method in the
@@ -2441,14 +2531,14 @@ fn lookup_method_for_for_loop(fcx: &FnCtxt,
     }
 }
 
-fn check_method_argument_types(fcx: &FnCtxt,
-                               sp: Span,
-                               method_fn_ty: ty::t,
-                               callee_expr: &ast::Expr,
-                               args_no_rcvr: &[P<ast::Expr>],
-                               deref_args: DerefArgs,
-                               tuple_arguments: TupleArgumentsFlag)
-                               -> ty::t {
+fn check_method_argument_types<'a>(fcx: &FnCtxt,
+                                   sp: Span,
+                                   method_fn_ty: ty::t,
+                                   callee_expr: &ast::Expr,
+                                   args_no_rcvr: &[&'a P<ast::Expr>],
+                                   deref_args: DerefArgs,
+                                   tuple_arguments: TupleArgumentsFlag)
+                                   -> ty::t {
     if ty::type_is_error(method_fn_ty) {
        let err_inputs = err_args(args_no_rcvr.len());
         check_argument_types(fcx,
@@ -2482,14 +2572,14 @@ fn check_method_argument_types(fcx: &FnCtxt,
     }
 }
 
-fn check_argument_types(fcx: &FnCtxt,
-                        sp: Span,
-                        fn_inputs: &[ty::t],
-                        _callee_expr: &ast::Expr,
-                        args: &[P<ast::Expr>],
-                        deref_args: DerefArgs,
-                        variadic: bool,
-                        tuple_arguments: TupleArgumentsFlag) {
+fn check_argument_types<'a>(fcx: &FnCtxt,
+                            sp: Span,
+                            fn_inputs: &[ty::t],
+                            _callee_expr: &ast::Expr,
+                            args: &[&'a P<ast::Expr>],
+                            deref_args: DerefArgs,
+                            variadic: bool,
+                            tuple_arguments: TupleArgumentsFlag) {
     /*!
      *
      * Generic function that factors out common logic from
@@ -2626,7 +2716,7 @@ fn check_argument_types(fcx: &FnCtxt,
                     DontDerefArgs => {}
                 }
 
-                check_expr_coercable_to_type(fcx, &**arg, formal_ty);
+                check_expr_coercable_to_type(fcx, &***arg, formal_ty);
             }
         }
     }
@@ -2635,12 +2725,12 @@ fn check_argument_types(fcx: &FnCtxt,
     // arguments which we skipped above.
     if variadic {
         for arg in args.iter().skip(expected_arg_count) {
-            check_expr(fcx, &**arg);
+            check_expr(fcx, &***arg);
 
             // There are a few types which get autopromoted when passed via varargs
             // in C but we just error out instead and require explicit casts.
             let arg_ty = structurally_resolved_type(fcx, arg.span,
-                                                    fcx.expr_ty(&**arg));
+                                                    fcx.expr_ty(&***arg));
             match ty::get(arg_ty).sty {
                 ty::ty_float(ast::TyF32) => {
                     fcx.type_error_message(arg.span,
@@ -2876,10 +2966,10 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
            expr.repr(fcx.tcx()), expected.repr(fcx.tcx()));
 
     // A generic function for doing all of the checking for call expressions
-    fn check_call(fcx: &FnCtxt,
-                  call_expr: &ast::Expr,
-                  f: &ast::Expr,
-                  args: &[P<ast::Expr>]) {
+    fn check_call<'a>(fcx: &FnCtxt,
+                      call_expr: &ast::Expr,
+                      f: &ast::Expr,
+                      args: &[&'a P<ast::Expr>]) {
         // Store the type of `f` as the type of the callee
         let fn_ty = fcx.expr_ty(f);
 
@@ -2989,11 +3079,12 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
         };
 
         // Call the generic checker.
+        let args: Vec<_> = args.slice_from(1).iter().map(|x| x).collect();
         let ret_ty = check_method_argument_types(fcx,
                                                  method_name.span,
                                                  fn_ty,
                                                  expr,
-                                                 args.slice_from(1),
+                                                 args.as_slice(),
                                                  DontDerefArgs,
                                                  DontTupleArguments);
 
@@ -3084,12 +3175,8 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
             None => None
         };
         let args = match rhs {
-            Some(rhs) => slice::ref_slice(rhs),
-            None => {
-                // Work around the lack of coercion.
-                let empty: &[_] = &[];
-                empty
-            }
+            Some(rhs) => vec![rhs],
+            None => vec![]
         };
         match method {
             Some(method) => {
@@ -3101,7 +3188,7 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
                                             op_ex.span,
                                             method_ty,
                                             op_ex,
-                                            args,
+                                            args.as_slice(),
                                             DoDerefArgs,
                                             DontTupleArguments)
             }
@@ -3114,7 +3201,7 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
                                             op_ex.span,
                                             expected_ty,
                                             op_ex,
-                                            args,
+                                            args.as_slice(),
                                             DoDerefArgs,
                                             DontTupleArguments);
                 ty::mk_err()
@@ -4135,12 +4222,13 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
           check_expr(fcx, &**f);
           let f_ty = fcx.expr_ty(&**f);
 
+          let args: Vec<_> = args.iter().map(|x| x).collect();
           if !try_overloaded_call(fcx, expr, &**f, f_ty, args.as_slice()) {
               check_call(fcx, expr, &**f, args.as_slice());
               let (args_bot, args_err) = args.iter().fold((false, false),
                  |(rest_bot, rest_err), a| {
                      // is this not working?
-                     let a_ty = fcx.expr_ty(&**a);
+                     let a_ty = fcx.expr_ty(&***a);
                      (rest_bot || ty::type_is_bot(a_ty),
                       rest_err || ty::type_is_error(a_ty))});
               if ty::type_is_error(f_ty) || args_err {
@@ -4422,6 +4510,61 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
                                 fcx.write_ty(id, ty::mk_err())
                           }
                       }
+                  }
+              }
+          }
+       }
+       ast::ExprSlice(ref base, ref start, ref end, ref mutbl) => {
+          check_expr_with_lvalue_pref(fcx, &**base, lvalue_pref);
+          let raw_base_t = fcx.expr_ty(&**base);
+
+          let mut some_err = false;
+          if ty::type_is_error(raw_base_t) || ty::type_is_bot(raw_base_t) {
+              fcx.write_ty(id, raw_base_t);
+              some_err = true;
+          }
+
+          {
+              let check_slice_idx = |e: &ast::Expr| {
+                  check_expr(fcx, e);
+                  let e_t = fcx.expr_ty(e);
+                  if ty::type_is_error(e_t) || ty::type_is_bot(e_t) {
+                    fcx.write_ty(id, e_t);
+                    some_err = true;
+                  }
+              };
+              start.as_ref().map(|e| check_slice_idx(&**e));
+              end.as_ref().map(|e| check_slice_idx(&**e));
+          }
+
+          if !some_err {
+              let base_t = structurally_resolved_type(fcx,
+                                                      expr.span,
+                                                      raw_base_t);
+              let method_call = MethodCall::expr(expr.id);
+              match try_overloaded_slice(fcx,
+                                         Some(method_call),
+                                         expr,
+                                         &**base,
+                                         base_t,
+                                         start,
+                                         end,
+                                         mutbl) {
+                  Some(mt) => fcx.write_ty(id, mt.ty),
+                  None => {
+                        fcx.type_error_message(expr.span,
+                           |actual| {
+                                format!("cannot take a {}slice of a value with type `{}`",
+                                        if mutbl == &ast::MutMutable {
+                                            "mutable "
+                                        } else {
+                                            ""
+                                        },
+                                        actual)
+                           },
+                           base_t,
+                           None);
+                        fcx.write_ty(id, ty::mk_err())
                   }
               }
           }

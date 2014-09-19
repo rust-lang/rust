@@ -42,6 +42,7 @@ use cmp;
 use default::Default;
 use iter::*;
 use num::{CheckedAdd, Saturating, div_rem};
+use ops;
 use option::{None, Option, Some};
 use ptr;
 use ptr::RawPtr;
@@ -471,6 +472,63 @@ impl<'a,T> ImmutableSlice<'a, T> for &'a [T] {
                 Some(p) => Some(&*p),
                 None => None
             }
+        }
+    }
+}
+
+impl<T> ops::Slice<uint, [T]> for [T] {
+    #[inline]
+    fn as_slice_<'a>(&'a self) -> &'a [T] {
+        self
+    }
+
+    #[inline]
+    fn slice_from_<'a>(&'a self, start: &uint) -> &'a [T] {
+        self.slice_(start, &self.len())
+    }
+
+    #[inline]
+    fn slice_to_<'a>(&'a self, end: &uint) -> &'a [T] {
+        self.slice_(&0, end)
+    }
+    #[inline]
+    fn slice_<'a>(&'a self, start: &uint, end: &uint) -> &'a [T] {
+        assert!(*start <= *end);
+        assert!(*end <= self.len());
+        unsafe {
+            transmute(RawSlice {
+                    data: self.as_ptr().offset(*start as int),
+                    len: (*end - *start)
+                })
+        }
+    }
+}
+
+impl<T> ops::SliceMut<uint, [T]> for [T] {
+    #[inline]
+    fn as_mut_slice_<'a>(&'a mut self) -> &'a mut [T] {
+        self
+    }
+
+    #[inline]
+    fn slice_from_mut_<'a>(&'a mut self, start: &uint) -> &'a mut [T] {
+        let len = &self.len();
+        self.slice_mut_(start, len)
+    }
+
+    #[inline]
+    fn slice_to_mut_<'a>(&'a mut self, end: &uint) -> &'a mut [T] {
+        self.slice_mut_(&0, end)
+    }
+    #[inline]
+    fn slice_mut_<'a>(&'a mut self, start: &uint, end: &uint) -> &'a mut [T] {
+        assert!(*start <= *end);
+        assert!(*end <= self.len());
+        unsafe {
+            transmute(RawSlice {
+                    data: self.as_ptr().offset(*start as int),
+                    len: (*end - *start)
+                })
         }
     }
 }
