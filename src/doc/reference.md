@@ -4098,7 +4098,7 @@ reclamation when the last reference to it drops.
 
 # Runtime services, linkage and debugging
 
-The Rust _runtime_ is a relatively compact collection of C++ and Rust code that
+The Rust _runtime_ is a relatively compact collection of Rust code that
 provides fundamental services and datatypes to all Rust tasks at run-time. It
 is smaller and simpler than many modern language runtimes. It is tightly
 integrated into the language's execution model of memory, tasks, communication
