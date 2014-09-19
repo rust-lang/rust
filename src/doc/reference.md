@@ -1689,7 +1689,7 @@ of an item to see whether it should be allowed or not. This is where privacy
 warnings are generated, or otherwise "you used a private item of another module
 and weren't allowed to."
 
-By default, everything in rust is *private*, with one exception. Enum variants
+By default, everything in Rust is *private*, with one exception. Enum variants
 in a `pub` enum are also public by default. You are allowed to alter this
 default visibility with the `priv` keyword. When an item is declared as `pub`,
 it can be thought of as being accessible to the outside world. For example:
