@@ -299,11 +299,11 @@ pub enum SyntaxExtension {
     /// based upon it.
     ///
     /// `#[deriving(...)]` is an `ItemDecorator`.
-    ItemDecorator(Box<ItemDecorator + 'static>),
+    Decorator(Box<ItemDecorator + 'static>),
 
     /// A syntax extension that is attached to an item and modifies it
     /// in-place.
-    ItemModifier(Box<ItemModifier + 'static>),
+    Modifier(Box<ItemModifier + 'static>),
 
     /// A normal, function-like syntax extension.
     ///
@@ -381,7 +381,7 @@ fn initial_syntax_expander_table() -> SyntaxEnv {
                             builtin_normal_expander(
                                     ext::log_syntax::expand_syntax_ext));
     syntax_expanders.insert(intern("deriving"),
-                            ItemDecorator(box ext::deriving::expand_meta_deriving));
+                            Decorator(box ext::deriving::expand_meta_deriving));
 
     // Quasi-quoting expanders
     syntax_expanders.insert(intern("quote_tokens"),

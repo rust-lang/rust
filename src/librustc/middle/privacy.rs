@@ -19,8 +19,8 @@ use middle::def;
 use lint;
 use middle::resolve;
 use middle::ty;
-use middle::typeck::{MethodCall, MethodMap, MethodOrigin, MethodParam};
-use middle::typeck::{MethodStatic, MethodStaticUnboxedClosure, MethodObject};
+use middle::typeck::{MethodCall, MethodMap, MethodOrigin, MethodParam, MethodTypeParam};
+use middle::typeck::{MethodStatic, MethodStaticUnboxedClosure, MethodObject, MethodTraitObject};
 use util::nodemap::{NodeMap, NodeSet};
 
 use syntax::ast;
@@ -829,8 +829,8 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
             MethodStaticUnboxedClosure(_) => {}
             // Trait methods are always all public. The only controlling factor
             // is whether the trait itself is accessible or not.
-            MethodParam(MethodParam { trait_ref: ref trait_ref, .. }) |
-            MethodObject(MethodObject { trait_ref: ref trait_ref, .. }) => {
+            MethodTypeParam(MethodParam { trait_ref: ref trait_ref, .. }) |
+            MethodTraitObject(MethodObject { trait_ref: ref trait_ref, .. }) => {
                 self.report_error(self.ensure_public(span, trait_ref.def_id,
                                                      None, "source trait"));
             }

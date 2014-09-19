@@ -272,6 +272,7 @@ pub fn check_expr(cx: &mut Context, e: &Expr) {
 
     visit::walk_expr(cx, e);
 }
+
 fn check_ty(cx: &mut Context, aty: &Ty) {
     match aty.node {
         TyPath(_, _, id) => {

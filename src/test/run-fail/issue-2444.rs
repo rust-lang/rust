@@ -12,7 +12,7 @@
 
 use std::sync::Arc;
 
-enum e<T> { e(Arc<T>) }
+enum e<T> { ee(Arc<T>) }
 
 fn foo() -> e<int> {fail!();}
 

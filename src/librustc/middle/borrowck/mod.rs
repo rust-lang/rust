@@ -424,12 +424,12 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                                adj: &ty::AutoAdjustment)
                                -> mc::cmt {
         let r = match *adj {
-            ty::AutoDerefRef(
+            ty::AdjustDerefRef(
                 ty::AutoDerefRef {
                     autoderefs: autoderefs, ..}) => {
                 self.mc().cat_expr_autoderefd(expr, autoderefs)
             }
-            ty::AutoAddEnv(..) => {
+            ty::AdjustAddEnv(..) => {
                 // no autoderefs
                 self.mc().cat_expr_unadjusted(expr)
             }

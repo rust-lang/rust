@@ -277,7 +277,7 @@ fn path(w: &mut fmt::Formatter, path: &clean::Path, print_all: bool,
 }
 
 fn primitive_link(f: &mut fmt::Formatter,
-                  prim: clean::Primitive,
+                  prim: clean::PrimitiveType,
                   name: &str) -> fmt::Result {
     let m = cache_key.get().unwrap();
     let mut needs_termination = false;

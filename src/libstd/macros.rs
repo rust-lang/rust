@@ -304,10 +304,10 @@ macro_rules! println(
 #[macro_export]
 macro_rules! local_data_key(
     ($name:ident: $ty:ty) => (
-        static $name: ::std::local_data::Key<$ty> = &::std::local_data::Key;
+        static $name: ::std::local_data::Key<$ty> = &::std::local_data::KeyValueKey;
     );
     (pub $name:ident: $ty:ty) => (
-        pub static $name: ::std::local_data::Key<$ty> = &::std::local_data::Key;
+        pub static $name: ::std::local_data::Key<$ty> = &::std::local_data::KeyValueKey;
     );
 )
 

@@ -64,7 +64,7 @@ use middle::trans::inline;
 use middle::trans::tvec;
 use middle::trans::type_of;
 use middle::ty::{struct_fields, tup_fields};
-use middle::ty::{AutoDerefRef, AutoAddEnv, AutoUnsafe};
+use middle::ty::{AdjustDerefRef, AdjustAddEnv, AutoUnsafe};
 use middle::ty::{AutoPtr};
 use middle::ty;
 use middle::typeck;
@@ -189,10 +189,10 @@ fn apply_adjustments<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     debug!("unadjusted datum for expr {}: {}",
            expr.id, datum.to_string(bcx.ccx()));
     match adjustment {
-        AutoAddEnv(..) => {
+        AdjustAddEnv(..) => {
             datum = unpack_datum!(bcx, add_env(bcx, expr, datum));
         }
-        AutoDerefRef(ref adj) => {
+        AdjustDerefRef(ref adj) => {
             let (autoderefs, use_autoref) = match adj.autoref {
                 // Extracting a value from a box counts as a deref, but if we are
                 // just converting Box<[T, ..n]> to Box<[T]> we aren't really doing
