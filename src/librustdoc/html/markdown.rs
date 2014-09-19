@@ -108,7 +108,6 @@ struct MyOpaque {
     dfltblk: extern "C" fn(*mut hoedown_buffer, *const hoedown_buffer,
                            *const hoedown_buffer, *mut libc::c_void),
     toc_builder: Option<TocBuilder>,
-    math_enabled: bool,
     math_seen: bool,
 }
 
@@ -167,9 +166,8 @@ fn stripped_filtered_line<'a>(s: &'a str) -> Option<&'a str> {
 fn hoedown_extensions() -> libc::c_uint {
     let mut extensions = HOEDOWN_EXTENSIONS;
 
-    match use_mathjax.get().as_ref() {
-        Some(use_math) if **use_math => { extensions |= HOEDOWN_EXT_MATH; }
-        _ => {}
+    if enable_math.get().map_or(false, |x| *x) {
+        extensions |= HOEDOWN_EXT_MATH;
     }
 
     extensions
@@ -179,7 +177,7 @@ local_data_key!(used_header_map: RefCell<HashMap<String, uint>>)
 local_data_key!(test_idx: Cell<uint>)
 // None == render an example, but there's no crate name
 local_data_key!(pub playground_krate: Option<String>)
-local_data_key!(pub use_mathjax: bool)
+local_data_key!(pub enable_math: bool)
 local_data_key!(pub math_seen: bool)
 
 pub fn render(w: &mut fmt::Formatter, s: &str, print_toc: bool) -> fmt::Result {
@@ -305,9 +303,7 @@ pub fn render(w: &mut fmt::Formatter, s: &str, print_toc: bool) -> fmt::Result {
 
         opaque.math_seen = true;
 
-        let (open, close) = if !opaque.math_enabled {
-            ("$$", "$$")
-        } else if display_mode == 1 {
+        let (open, close) = if display_mode == 1 {
             ("\\[", "\\]")
         } else {
             ("\\(", "\\)")
@@ -332,7 +328,6 @@ pub fn render(w: &mut fmt::Formatter, s: &str, print_toc: bool) -> fmt::Result {
         let mut opaque = MyOpaque {
             dfltblk: (*renderer).blockcode.unwrap(),
             toc_builder: if print_toc {Some(TocBuilder::new())} else {None},
-            math_enabled: use_mathjax.get().map_or(false, |x| *x),
             math_seen: false,
         };
         (*(*renderer).opaque).opaque = &mut opaque as *mut _ as *mut libc::c_void;

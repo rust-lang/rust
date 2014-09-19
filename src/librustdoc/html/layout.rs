@@ -21,7 +21,7 @@ pub struct Layout {
     pub external_html: ExternalHtml,
     pub krate: String,
     pub playground_url: String,
-    pub use_mathjax: bool,
+    pub enable_math: bool,
 }
 
 pub struct Page<'a> {
@@ -165,7 +165,7 @@ r##"<!DOCTYPE html>
 
     // this must be done after everything is rendered, so that
     // `math_seen` captures all possible $$'s on this page.
-    if layout.use_mathjax && markdown::math_seen.get().map_or(false, |x| *x) {
+    if layout.enable_math && markdown::math_seen.get().map_or(false, |x| *x) {
         try!(dst.write_str("\
 <script async src=\"https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS_HTML\"></script>"));
     }

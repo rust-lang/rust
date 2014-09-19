@@ -247,13 +247,13 @@ pub fn run(mut krate: clean::Crate, external_html: &ExternalHtml, dst: Path) -> 
             external_html: external_html.clone(),
             krate: krate.name.clone(),
             playground_url: "".to_string(),
-            use_mathjax: false,
+            enable_math: false,
         },
         include_sources: true,
         render_redirect_pages: false,
     };
 
-    markdown::use_mathjax.replace(None);
+    markdown::enable_math.replace(None);
 
     try!(mkdir(&cx.dst));
 
@@ -290,9 +290,9 @@ pub fn run(mut krate: clean::Crate, external_html: &ExternalHtml, dst: Path) -> 
                         cx.include_sources = false;
                     }
                     clean::Word(ref x)
-                            if "enable_mathjax" == x.as_slice() => {
-                        cx.layout.use_mathjax = true;
-                        markdown::use_mathjax.replace(Some(true));
+                            if "enable_math" == x.as_slice() => {
+                        cx.layout.enable_math = true;
+                        markdown::enable_math.replace(Some(true));
                     }
                     _ => {}
                 }
