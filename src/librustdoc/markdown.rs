@@ -41,7 +41,9 @@ fn extract_leading_metadata<'a>(s: &'a str) -> (Vec<&'a str>, &'a str) {
 /// Render `input` (e.g. "foo.md") into an HTML file in `output`
 /// (e.g. output = "bar" => "bar/foo.html").
 pub fn render(input: &str, mut output: Path, matches: &getopts::Matches,
-              external_html: &ExternalHtml, include_toc: bool) -> int {
+              external_html: &ExternalHtml,
+              include_toc: bool,
+              enable_math: bool) -> int {
     let input_p = Path::new(input);
     output.push(input_p.filestem().unwrap());
     output.set_extension("html");
@@ -79,11 +81,17 @@ pub fn render(input: &str, mut output: Path, matches: &getopts::Matches,
 
     reset_headers();
 
+    if enable_math {
+        markdown::enable_math.replace(Some(true));
+    }
+
     let rendered = if include_toc {
         format!("{}", MarkdownWithToc(text))
     } else {
         format!("{}", Markdown(text))
     };
+
+    let saw_math = enable_math && markdown::math_seen.get().map_or(false, |x| *x);
 
     let err = write!(
         &mut out,
@@ -95,6 +103,7 @@ pub fn render(input: &str, mut output: Path, matches: &getopts::Matches,
     <title>{title}</title>
 
     {css}
+    {math_css}
     {in_header}
 </head>
 <body class="rustdoc">
@@ -112,6 +121,7 @@ pub fn render(input: &str, mut output: Path, matches: &getopts::Matches,
         window.playgroundUrl = "{playground}";
     </script>
     {after_content}
+    {math_js}
 </body>
 </html>"#,
         title = Escape(title),
@@ -121,6 +131,26 @@ pub fn render(input: &str, mut output: Path, matches: &getopts::Matches,
         text = rendered,
         after_content = external_html.after_content,
         playground = playground,
+
+        math_css = if saw_math {
+            "<link rel=\"stylesheet\" type=\"text/css\" href=\"katex/katex.min.css\">
+<style>.math-display { text-align: center; }</style>"
+        } else {
+            ""
+        },
+        math_js = if saw_math {
+            r#"<script src="katex/katex.min.js"></script>
+<script type="text/javascript">
+var elements = document.getElementsByClassName("latex-math");
+for (var i = 0; i < elements.length; i++) {
+   var e = elements[i];
+   var style = e.tagName == "P" ? "display" : "text";
+   katex.render("\\" + style + "style " + e.textContent, e);
+}
+</script>"#
+        } else {
+            ""
+        }
         );
 
     match err {

@@ -174,7 +174,9 @@ pub fn opts() -> Vec<getopts::OptGroup> {
                  "FILES"),
         optopt("", "markdown-playground-url",
                "URL to send code snippets to", "URL"),
-        optflag("", "markdown-no-toc", "don't include table of contents")
+        optflag("", "markdown-no-toc", "don't include table of contents"),
+        optflag("", "markdown-enable-math",
+                "render LaTeX expressions surrounded by `$$` via the KaTeX javascript library."),
     )
 }
 
@@ -265,7 +267,8 @@ pub fn main_args(args: &[String]) -> int {
         }
         (false, true) => return markdown::render(input, output.unwrap_or(Path::new("doc")),
                                                  &matches, &external_html,
-                                                 !matches.opt_present("markdown-no-toc")),
+                                                 !matches.opt_present("markdown-no-toc"),
+                                                 matches.opt_present("markdown-enable-math")),
         (false, false) => {}
     }
 

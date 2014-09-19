@@ -253,8 +253,6 @@ pub fn run(mut krate: clean::Crate, external_html: &ExternalHtml, dst: Path) -> 
         render_redirect_pages: false,
     };
 
-    markdown::enable_math.replace(None);
-
     try!(mkdir(&cx.dst));
 
     // Crawl the crate, building a summary of the stability levels.  NOTE: this
