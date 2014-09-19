@@ -1575,8 +1575,6 @@ we haven't seen before. Here's a simple program that reads some input,
 and then prints it back out:
 
 ```{rust,ignore}
-use std::io;
-
 fn main() {
     println!("Type something!");
 
