@@ -12,8 +12,6 @@ use middle::subst::ParamSpace;
 use syntax::ast;
 use syntax::ast_util::local_def;
 
-use std::gc::Gc;
-
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
 pub enum Def {
     DefFn(ast::DefId, ast::FnStyle),
@@ -22,20 +20,18 @@ pub enum Def {
     DefMod(ast::DefId),
     DefForeignMod(ast::DefId),
     DefStatic(ast::DefId, bool /* is_mutbl */),
-    DefArg(ast::NodeId, ast::BindingMode),
-    DefLocal(ast::NodeId, ast::BindingMode),
+    DefLocal(ast::NodeId),
     DefVariant(ast::DefId /* enum */, ast::DefId /* variant */, bool /* is_structure */),
     DefTy(ast::DefId, bool /* is_enum */),
     DefAssociatedTy(ast::DefId),
     DefTrait(ast::DefId),
     DefPrimTy(ast::PrimTy),
     DefTyParam(ParamSpace, ast::DefId, uint),
-    DefBinding(ast::NodeId, ast::BindingMode),
     DefUse(ast::DefId),
-    DefUpvar(ast::NodeId,  // id of closed over var
-             Gc<Def>,     // closed over def
+    DefUpvar(ast::NodeId,  // id of closed over local
              ast::NodeId,  // expr node that creates the closure
-             ast::NodeId), // id for the block/body of the closure expr
+             ast::NodeId), // block node for the closest enclosing proc
+                           // or unboxed closure, DUMMY_NODE_ID otherwise
 
     /// Note that if it's a tuple struct's definition, the node id of the ast::DefId
     /// may either refer to the item definition's id or the StructDef.ctor_id.
@@ -68,11 +64,9 @@ impl Def {
             DefMethod(id, _) => {
                 id
             }
-            DefArg(id, _) |
-            DefLocal(id, _) |
+            DefLocal(id) |
             DefSelfTy(id) |
-            DefUpvar(id, _, _, _) |
-            DefBinding(id, _) |
+            DefUpvar(id, _, _) |
             DefRegion(id) |
             DefTyParamBinder(id) |
             DefLabel(id) => {

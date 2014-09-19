@@ -22,7 +22,6 @@ use driver::diagnostic;
 use driver::diagnostic::Emitter;
 use driver::driver;
 use driver::session;
-use middle::freevars;
 use middle::lang_items;
 use middle::region;
 use middle::resolve;
@@ -125,10 +124,8 @@ fn test_env(_test_name: &str,
 
     // run just enough stuff to build a tcx:
     let lang_items = lang_items::collect_language_items(krate, &sess);
-    let resolve::CrateMap { def_map: def_map, .. } =
+    let resolve::CrateMap { def_map, freevars, capture_mode_map, .. } =
         resolve::resolve_crate(&sess, &lang_items, krate);
-    let (freevars_map, captures_map) = freevars::annotate_freevars(&def_map,
-                                                                   krate);
     let named_region_map = resolve_lifetime::krate(&sess, krate);
     let region_map = region::resolve_crate(&sess, krate);
     let stability_index = stability::Index::build(krate);
@@ -138,8 +135,8 @@ fn test_env(_test_name: &str,
                           def_map,
                           named_region_map,
                           ast_map,
-                          freevars_map,
-                          captures_map,
+                          freevars,
+                          capture_mode_map,
                           region_map,
                           lang_items,
                           stability_index);

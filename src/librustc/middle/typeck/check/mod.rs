@@ -79,7 +79,6 @@ type parameter).
 
 use middle::const_eval;
 use middle::def;
-use middle::freevars;
 use middle::lang_items::IteratorItem;
 use middle::mem_categorization::McResult;
 use middle::mem_categorization;
@@ -318,7 +317,7 @@ impl<'a, 'tcx> mem_categorization::Typer<'tcx> for FnCtxt<'a, 'tcx> {
         self.ccx.tcx.upvar_borrow(upvar_id)
     }
     fn capture_mode(&self, closure_expr_id: ast::NodeId)
-                    -> freevars::CaptureMode {
+                    -> ast::CaptureClause {
         self.ccx.tcx.capture_mode(closure_expr_id)
     }
     fn unboxed_closures<'a>(&'a self)
@@ -5027,8 +5026,7 @@ pub fn polytype_for_def(fcx: &FnCtxt,
                         defn: def::Def)
                         -> Polytype {
     match defn {
-      def::DefArg(nid, _) | def::DefLocal(nid, _) |
-      def::DefBinding(nid, _) => {
+      def::DefLocal(nid) | def::DefUpvar(nid, _, _) => {
           let typ = fcx.local_ty(sp, nid);
           return no_params(typ);
       }
@@ -5036,9 +5034,6 @@ pub fn polytype_for_def(fcx: &FnCtxt,
       def::DefStatic(id, _) | def::DefVariant(_, id, _) |
       def::DefStruct(id) => {
         return ty::lookup_item_type(fcx.ccx.tcx, id);
-      }
-      def::DefUpvar(_, inner, _, _) => {
-        return polytype_for_def(fcx, sp, *inner);
       }
       def::DefTrait(_) |
       def::DefTy(..) |
@@ -5183,10 +5178,8 @@ pub fn instantiate_path(fcx: &FnCtxt,
         // elsewhere. (I hope)
         def::DefMod(..) |
         def::DefForeignMod(..) |
-        def::DefArg(..) |
         def::DefLocal(..) |
         def::DefMethod(..) |
-        def::DefBinding(..) |
         def::DefUse(..) |
         def::DefRegion(..) |
         def::DefLabel(..) |
