@@ -10,7 +10,7 @@
 
 #![feature(lang_items, overloaded_calls, unboxed_closures)]
 
-fn c<F:|: int, int| -> int>(f: F) -> int {
+fn c<F:FnOnce(int, int) -> int>(f: F) -> int {
     f(5, 6)
 }
 

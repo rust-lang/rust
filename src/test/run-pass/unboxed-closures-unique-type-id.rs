@@ -21,8 +21,7 @@
 
 use std::ptr;
 
-pub fn replace_map<'a, T, F>(src: &mut T, prod: F)
-where F: |: T| -> T {
+pub fn replace_map<'a, T, F>(src: &mut T, prod: F) where F: FnOnce(T) -> T {
     unsafe { *src = prod(ptr::read(src as *mut T as *const T)); }
 }
 

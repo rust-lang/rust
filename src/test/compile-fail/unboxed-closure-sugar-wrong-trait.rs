@@ -8,22 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(overloaded_calls)]
+trait Trait {}
 
-fn a<F:Fn(int, int) -> int>(mut f: F) {
-    let g = &mut f;
-    f(1, 2);    //~ ERROR cannot borrow `f` as immutable
-    //~^ ERROR cannot borrow `f` as immutable
-}
-
-fn b<F:FnMut(int, int) -> int>(f: F) {
-    f(1, 2);    //~ ERROR cannot borrow immutable argument
-}
-
-fn c<F:FnOnce(int, int) -> int>(f: F) {
-    f(1, 2);
-    f(1, 2);    //~ ERROR use of moved value
-}
+fn f<F:Trait(int) -> int>(x: F) {}
+//~^ ERROR unboxed function trait must be one of `Fn`, `FnMut`, or `FnOnce`
 
 fn main() {}
 
