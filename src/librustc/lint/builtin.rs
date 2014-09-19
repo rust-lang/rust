@@ -42,7 +42,7 @@ use syntax::abi;
 use syntax::ast_map;
 use syntax::attr::AttrMetaMethods;
 use syntax::attr;
-use syntax::codemap::Span;
+use syntax::codemap::{Span, NO_EXPANSION};
 use syntax::parse::token;
 use syntax::{ast, ast_util, visit};
 use syntax::ptr::P;
@@ -1491,7 +1491,7 @@ impl LintPass for Stability {
 
     fn check_expr(&mut self, cx: &Context, e: &ast::Expr) {
         // if the expression was produced by a macro expansion,
-        if e.span.expn_info.is_some() { return }
+        if e.span.expn_id != NO_EXPANSION { return }
 
         let id = match e.node {
             ast::ExprPath(..) | ast::ExprStruct(..) => {
