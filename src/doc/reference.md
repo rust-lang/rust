@@ -4104,8 +4104,6 @@ is smaller and simpler than many modern language runtimes. It is tightly
 integrated into the language's execution model of memory, tasks, communication
 and logging.
 
-> **Note:** The runtime library will merge with the `std` library in future versions of Rust.
-
 ### Memory allocation
 
 The runtime memory-management system is based on a _service-provider
