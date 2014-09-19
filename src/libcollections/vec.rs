@@ -10,7 +10,7 @@
 
 //! A growable list type, written `Vec<T>` but pronounced 'vector.'
 //!
-//! Vectors have `O(1)` indexing, push (to the end) and pop (from the end).
+//! Vectors have $$O(1)$$ indexing, push (to the end) and pop (from the end).
 
 use core::prelude::*;
 
@@ -897,8 +897,8 @@ impl<T> Vec<T> {
 
     /// Sorts the vector, in place, using `compare` to compare elements.
     ///
-    /// This sort is `O(n log n)` worst-case and stable, but allocates
-    /// approximately `2 * n`, where `n` is the length of `self`.
+    /// This sort is $$O(n \log n)$$ worst-case and stable, but allocates
+    /// approximately `2 * n` elements, where `n` is the length of `self`.
     ///
     /// # Example
     ///
@@ -1006,7 +1006,7 @@ impl<T> Vec<T> {
     }
 
     /// Removes an element from anywhere in the vector and return it, replacing
-    /// it with the last element. This does not preserve ordering, but is O(1).
+    /// it with the last element. This does not preserve ordering, but is $$O(1)$$ .
     ///
     /// Returns `None` if `index` is out of bounds.
     ///
@@ -1039,7 +1039,7 @@ impl<T> Vec<T> {
     ///
     /// # Warning
     ///
-    /// This is an O(n) operation as it requires copying every element in the
+    /// This is an $$O(n)$$ operation as it requires copying every element in the
     /// vector.
     ///
     /// # Example
@@ -1060,7 +1060,7 @@ impl<T> Vec<T> {
     ///
     /// # Warning
     ///
-    /// This is an O(n) operation as it requires copying every element in the
+    /// This is an $$O(n)$$ operation as it requires copying every element in the
     /// vector.
     ///
     /// # Example
@@ -1464,7 +1464,7 @@ impl<T> Vec<T> {
 impl<T:Ord> Vec<T> {
     /// Sorts the vector in place.
     ///
-    /// This sort is `O(n log n)` worst-case and stable, but allocates
+    /// This sort is $$O(n \log n)$$ worst-case and stable, but allocates
     /// approximately `2 * n`, where `n` is the length of `self`.
     ///
     /// # Example

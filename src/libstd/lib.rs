@@ -103,7 +103,8 @@
 #![doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
        html_favicon_url = "http://www.rust-lang.org/favicon.ico",
        html_root_url = "http://doc.rust-lang.org/master/",
-       html_playground_url = "http://play.rust-lang.org/")]
+       html_playground_url = "http://play.rust-lang.org/",
+       enable_math)]
 
 #![feature(macro_rules, globs, managed_boxes, linkage)]
 #![feature(default_type_params, phase, lang_items, unsafe_destructor)]

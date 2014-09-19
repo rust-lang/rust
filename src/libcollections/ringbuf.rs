@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! This crate implements a double-ended queue with `O(1)` amortized inserts and removals from both
-//! ends of the container. It also has `O(1)` indexing like a vector. The contained elements are
+//! This crate implements a double-ended queue with $$O(1)$$ amortized inserts and removals from both
+//! ends of the container. It also has $$O(1)$$ indexing like a vector. The contained elements are
 //! not required to be copyable, and the queue will be sendable if the contained type is sendable.
 //! Its interface `Deque` is defined in `collections`.
 

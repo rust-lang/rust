@@ -132,7 +132,7 @@ fn link_with_prev<T>(mut next: Box<Node<T>>, prev: Rawlink<Node<T>>)
 impl<T> Collection for DList<T> {
     /// Returns `true` if the `DList` is empty.
     ///
-    /// This operation should compute in O(1) time.
+    /// This operation should compute in $$O(1)$$ time.
     #[inline]
     fn is_empty(&self) -> bool {
         self.list_head.is_none()
@@ -140,7 +140,7 @@ impl<T> Collection for DList<T> {
 
     /// Returns the length of the `DList`.
     ///
-    /// This operation should compute in O(1) time.
+    /// This operation should compute in $$O(1)$$ time.
     #[inline]
     fn len(&self) -> uint {
         self.length
@@ -248,7 +248,7 @@ impl<T> Deque<T> for DList<T> {
 
     /// Adds an element first in the list.
     ///
-    /// This operation should compute in O(1) time.
+    /// This operation should compute in $$O(1)$$ time.
     fn push_front(&mut self, elt: T) {
         self.push_front_node(box Node::new(elt))
     }
@@ -256,7 +256,7 @@ impl<T> Deque<T> for DList<T> {
     /// Removes the first element and returns it, or `None` if the list is
     /// empty.
     ///
-    /// This operation should compute in O(1) time.
+    /// This operation should compute in $$O(1)$$ time.
     fn pop_front(&mut self) -> Option<T> {
         self.pop_front_node().map(|box Node{value, ..}| value)
     }
@@ -339,7 +339,7 @@ impl<T> DList<T> {
 
     /// Adds all elements from `other` to the end of the list.
     ///
-    /// This operation should compute in O(1) time.
+    /// This operation should compute in $$O(1)$$ time.
     ///
     /// # Example
     ///
@@ -380,7 +380,7 @@ impl<T> DList<T> {
 
     /// Adds all elements from `other` to the beginning of the list.
     ///
-    /// This operation should compute in O(1) time.
+    /// This operation should compute in $$O(1)$$ time.
     ///
     /// # Example
     ///
@@ -409,7 +409,7 @@ impl<T> DList<T> {
     /// Inserts `elt` before the first `x` in the list where `f(x, elt)` is
     /// true, or at the end.
     ///
-    /// This operation should compute in O(N) time.
+    /// This operation should compute in $$O(N)$$ time.
     ///
     /// # Example
     ///
@@ -448,7 +448,7 @@ impl<T> DList<T> {
     /// Iterates both `DList`s with `a` from self and `b` from `other`, and
     /// put `a` in the result if `f(a, b)` is true, and otherwise `b`.
     ///
-    /// This operation should compute in O(max(N, M)) time.
+    /// This operation should compute in $$O(\max(N, M))$$ time.
     pub fn merge(&mut self, mut other: DList<T>, f: |&T, &T| -> bool) {
         {
             let mut it = self.iter_mut();
@@ -512,7 +512,7 @@ impl<T> DList<T> {
 impl<T: Ord> DList<T> {
     /// Inserts `elt` sorted in ascending order.
     ///
-    /// This operation should compute in O(N) time.
+    /// This operation should compute in $$O(N)$$ time.
     #[inline]
     pub fn insert_ordered(&mut self, elt: T) {
         self.insert_when(elt, |a, b| a >= b)
