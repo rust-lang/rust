@@ -3950,16 +3950,16 @@ to each function as the task executes. A stack allocation is reclaimed when
 control leaves the frame containing it.
 
 The _heap_ is a general term that describes two separate sets of boxes: managed
-boxes &mdash; which may be subject to garbage collection &mdash; and owned
-boxes. The lifetime of an allocation in the heap depends on the lifetime of
-the box values pointing to it. Since box values may themselves be passed in and
-out of frames, or stored in the heap, heap allocations may outlive the frame
-they are allocated within.
+boxes &mdash; which may be subject to garbage collection &mdash; and boxes. The
+lifetime of an allocation in the heap depends on the lifetime of the box values
+pointing to it. Since box values may themselves be passed in and out of frames,
+or stored in the heap, heap allocations may outlive the frame they are
+allocated within.
 
 ### Memory ownership
 
 A task owns all memory it can *safely* reach through local variables, as well
-as managed, owned boxes and references.
+as managed, boxes and references.
 
 When a task sends a value that has the `Send` trait to another task, it loses
 ownership of the value sent and can no longer refer to it. This is statically
@@ -4013,23 +4013,22 @@ state. Subsequent statements within a function may or may not initialize the
 local variables. Local variables can be used only after they have been
 initialized; this is enforced by the compiler.
 
-### Owned boxes
+### Boxes
 
-An  _owned box_ is a reference to a heap allocation holding another value,
-which is constructed by the prefix operator `box`. When the standard library is
-in use, the type of an owned box is `std::owned::Box<T>`.
+An  _box_ is a reference to a heap allocation holding another value, which is
+constructed by the prefix operator `box`. When the standard library is in use,
+the type of an box is `std::owned::Box<T>`.
 
-An example of an owned box type and value:
+An example of an box type and value:
 
 ```
 let x: Box<int> = box 10;
 ```
 
-Owned box values exist in 1:1 correspondence with their heap allocation,
-copying an owned box value makes a shallow copy of the pointer. Rust will
-consider a shallow copy of an owned box to move ownership of the value. After a
-value has been moved, the source location cannot be used unless it is
-reinitialized.
+Box values exist in 1:1 correspondence with their heap allocation, copying an
+box value makes a shallow copy of the pointer. Rust will consider a shallow
+copy of an box to move ownership of the value. After a value has been moved,
+the source location cannot be used unless it is reinitialized.
 
 ```
 let x: Box<int> = box 10;
