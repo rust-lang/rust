@@ -19,7 +19,9 @@ help acquire such background familiarity.
 
 This document also does not serve as a reference to the [standard] library
 included in the language distribution. Those libraries are documented
-separately by extracting documentation attributes from their source code.
+separately by extracting documentation attributes from their source code. Many
+of the features that one might expect to be language features are library
+features in Rust, so what you're looking for may be there, not here.
 
 [guide]: guide.html
 [standard]: std/index.html
