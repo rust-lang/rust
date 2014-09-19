@@ -1144,9 +1144,9 @@ standard library.
 Rust's type system is a conservative approximation of the dynamic safety
 requirements, so in some cases there is a performance cost to using safe code.
 For example, a doubly-linked list is not a tree structure and can only be
-represented with managed or reference-counted pointers in safe code. By using
-`unsafe` blocks to represent the reverse links as raw pointers, it can be
-implemented with only owned pointers.
+represented with reference-counted pointers in safe code. By using `unsafe`
+blocks to represent the reverse links as raw pointers, it can be implemented
+with only boxes.
 
 ##### Behavior considered unsafe
 
@@ -2216,8 +2216,6 @@ These types help drive the compiler's analysis
 
 * `begin_unwind`
   : ___Needs filling in___
-* `managed_bound`
-  : This type implements "managed"
 * `no_copy_bound`
   : This type does not implement "copy", even if eligible
 * `no_send_bound`
@@ -2241,8 +2239,6 @@ These types help drive the compiler's analysis
 * `gc`
   : ___Needs filling in___
 * `exchange_heap`
-  : ___Needs filling in___
-* `managed_heap`
   : ___Needs filling in___
 * `iterator`
   : ___Needs filling in___
@@ -2471,13 +2467,6 @@ The currently implemented features of the reference compiler are:
                   location in which they are defined. Macro definitions are
                   likely to change slightly in the future, so they are
                   currently hidden behind this feature.
-
-* `managed_boxes` - Usage of `@` is gated due to many
-                    planned changes to this feature. In the past, this has
-                    meant "a GC pointer", but the current implementation uses
-                    reference counting and will likely change drastically over
-                    time. Additionally, the `@` syntax will no longer be used
-                    to create GC boxes.
 
 * `non_ascii_idents` - The compiler supports the use of non-ascii identifiers,
                        but the implementation is a little rough around the
@@ -3949,33 +3938,24 @@ A task's _stack_ consists of activation frames automatically allocated on entry
 to each function as the task executes. A stack allocation is reclaimed when
 control leaves the frame containing it.
 
-The _heap_ is a general term that describes two separate sets of boxes: managed
-boxes &mdash; which may be subject to garbage collection &mdash; and boxes. The
-lifetime of an allocation in the heap depends on the lifetime of the box values
-pointing to it. Since box values may themselves be passed in and out of frames,
-or stored in the heap, heap allocations may outlive the frame they are
-allocated within.
+The _heap_ is a general term that describes boxes.  The lifetime of an
+allocation in the heap depends on the lifetime of the box values pointing to
+it. Since box values may themselves be passed in and out of frames, or stored
+in the heap, heap allocations may outlive the frame they are allocated within.
 
 ### Memory ownership
 
 A task owns all memory it can *safely* reach through local variables, as well
-as managed, boxes and references.
+as boxes and references.
 
 When a task sends a value that has the `Send` trait to another task, it loses
 ownership of the value sent and can no longer refer to it. This is statically
 guaranteed by the combined use of "move semantics", and the compiler-checked
 _meaning_ of the `Send` trait: it is only instantiated for (transitively)
-sendable kinds of data constructor and pointers, never including managed boxes
-or references.
+sendable kinds of data constructor and pointers, never including references.
 
 When a stack frame is exited, its local allocations are all released, and its
-references to boxes (both managed and owned) are dropped.
-
-A managed box may (in the case of a recursive, mutable managed type) be cyclic;
-in this case the release of memory inside the managed structure may be deferred
-until task-local garbage collection can reclaim it. Code can ensure no such
-delayed deallocation occurs by restricting itself to owned boxes and similar
-unmanaged kinds of data.
+references to boxes are dropped.
 
 When a task finishes, its stack is necessarily empty and it therefore has no
 references to any boxes; the remainder of its heap is immediately freed.
@@ -4052,10 +4032,10 @@ races on memory are prohibited by the type system.
 
 When you wish to send data between tasks, the values are restricted to the
 [`Send` type-kind](#type-kinds). Restricting communication interfaces to this
-kind ensures that no references or managed pointers move between tasks. Thus
-access to an entire data structure can be mediated through its owning "root"
-value; no further locking or copying is required to avoid data races within the
-substructure of such a value.
+kind ensures that no references move between tasks. Thus access to an entire
+data structure can be mediated through its owning "root" value; no further
+locking or copying is required to avoid data races within the substructure of
+such a value.
 
 ### Task lifecycle
 
