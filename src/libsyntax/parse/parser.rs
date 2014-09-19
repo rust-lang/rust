@@ -55,7 +55,8 @@ use ast::{TyTypeof, TyInfer, TypeMethod};
 use ast::{TyNil, TyParam, TyParamBound, TyParen, TyPath, TyPtr, TyQPath};
 use ast::{TyRptr, TyTup, TyU32, TyUnboxedFn, TyUniq, TyVec, UnUniq};
 use ast::{TypeImplItem, TypeTraitItem, Typedef, UnboxedClosureKind};
-use ast::{UnboxedFnTy, UnboxedFnTyParamBound, UnnamedField, UnsafeBlock};
+use ast::{UnboxedFnBound, UnboxedFnTy, UnboxedFnTyParamBound};
+use ast::{UnnamedField, UnsafeBlock};
 use ast::{UnsafeFn, ViewItem, ViewItem_, ViewItemExternCrate, ViewItemUse};
 use ast::{ViewPath, ViewPathGlob, ViewPathList, ViewPathSimple};
 use ast::{Visibility, WhereClause, WherePredicate};
@@ -3666,39 +3667,6 @@ impl<'a> Parser<'a> {
         })
     }
 
-    fn parse_unboxed_function_type(&mut self) -> UnboxedFnTy {
-        let (optional_unboxed_closure_kind, inputs) =
-            if self.eat(&token::OROR) {
-                (None, Vec::new())
-            } else {
-                self.expect_or();
-
-                let optional_unboxed_closure_kind =
-                    self.parse_optional_unboxed_closure_kind();
-
-                let inputs = self.parse_seq_to_before_or(&token::COMMA,
-                                                         |p| {
-                    p.parse_arg_general(false)
-                });
-                self.expect_or();
-                (optional_unboxed_closure_kind, inputs)
-            };
-
-        let (return_style, output) = self.parse_ret_ty();
-        UnboxedFnTy {
-            decl: P(FnDecl {
-                inputs: inputs,
-                output: output,
-                cf: return_style,
-                variadic: false,
-            }),
-            kind: match optional_unboxed_closure_kind {
-                Some(kind) => kind,
-                None => FnMutUnboxedClosureKind,
-            },
-        }
-    }
-
     // Parses a sequence of bounds if a `:` is found,
     // otherwise returns empty list.
     fn parse_colon_then_ty_param_bounds(&mut self)
@@ -3730,13 +3698,31 @@ impl<'a> Parser<'a> {
                     self.bump();
                 }
                 token::MOD_SEP | token::IDENT(..) => {
-                    let tref = self.parse_trait_ref();
-                    result.push(TraitTyParamBound(tref));
-                }
-                token::BINOP(token::OR) | token::OROR => {
-                    let unboxed_function_type =
-                        self.parse_unboxed_function_type();
-                    result.push(UnboxedFnTyParamBound(unboxed_function_type));
+                    let path =
+                        self.parse_path(LifetimeAndTypesWithoutColons).path;
+                    if self.token == token::LPAREN {
+                        self.bump();
+                        let inputs = self.parse_seq_to_end(
+                            &token::RPAREN,
+                            seq_sep_trailing_allowed(token::COMMA),
+                            |p| p.parse_arg_general(false));
+                        let (return_style, output) = self.parse_ret_ty();
+                        result.push(UnboxedFnTyParamBound(P(UnboxedFnBound {
+                            path: path,
+                            decl: P(FnDecl {
+                                inputs: inputs,
+                                output: output,
+                                cf: return_style,
+                                variadic: false,
+                            }),
+                            ref_id: ast::DUMMY_NODE_ID,
+                        })));
+                    } else {
+                        result.push(TraitTyParamBound(ast::TraitRef {
+                            path: path,
+                            ref_id: ast::DUMMY_NODE_ID,
+                        }))
+                    }
                 }
                 _ => break,
             }
@@ -4421,14 +4407,6 @@ impl<'a> Parser<'a> {
         (ident,
          ItemImpl(generics, opt_trait, ty, impl_items),
          Some(attrs))
-    }
-
-    /// Parse a::B<String,int>
-    fn parse_trait_ref(&mut self) -> TraitRef {
-        ast::TraitRef {
-            path: self.parse_path(LifetimeAndTypesWithoutColons).path,
-            ref_id: ast::DUMMY_NODE_ID,
-        }
     }
 
     /// Parse struct Foo { ... }

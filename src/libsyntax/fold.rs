@@ -657,16 +657,26 @@ pub fn noop_fold_fn_decl<T: Folder>(decl: P<FnDecl>, fld: &mut T) -> P<FnDecl> {
     })
 }
 
-pub fn noop_fold_ty_param_bound<T: Folder>(tpb: TyParamBound, fld: &mut T)
-                                           -> TyParamBound {
+pub fn noop_fold_ty_param_bound<T>(tpb: TyParamBound, fld: &mut T)
+                                   -> TyParamBound
+                                   where T: Folder {
     match tpb {
         TraitTyParamBound(ty) => TraitTyParamBound(fld.fold_trait_ref(ty)),
         RegionTyParamBound(lifetime) => RegionTyParamBound(fld.fold_lifetime(lifetime)),
-        UnboxedFnTyParamBound(UnboxedFnTy {decl, kind}) => {
-            UnboxedFnTyParamBound(UnboxedFnTy {
-                decl: fld.fold_fn_decl(decl),
-                kind: kind,
-            })
+        UnboxedFnTyParamBound(bound) => {
+            match *bound {
+                UnboxedFnBound {
+                    ref path,
+                    ref decl,
+                    ref_id
+                } => {
+                    UnboxedFnTyParamBound(P(UnboxedFnBound {
+                        path: fld.fold_path(path.clone()),
+                        decl: fld.fold_fn_decl(decl.clone()),
+                        ref_id: fld.new_id(ref_id),
+                    }))
+                }
+            }
         }
     }
 }

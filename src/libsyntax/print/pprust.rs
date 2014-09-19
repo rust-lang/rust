@@ -2190,16 +2190,13 @@ impl<'a> State<'a> {
                         self.print_lifetime(lt)
                     }
                     UnboxedFnTyParamBound(ref unboxed_function_type) => {
-                        self.print_ty_fn(None,
-                                         None,
-                                         ast::NormalFn,
-                                         ast::Many,
-                                         &*unboxed_function_type.decl,
-                                         None,
-                                         &OwnedSlice::empty(),
-                                         None,
-                                         None,
-                                         Some(unboxed_function_type.kind))
+                        try!(self.print_path(&unboxed_function_type.path,
+                                             false));
+                        try!(self.popen());
+                        try!(self.print_fn_args(&*unboxed_function_type.decl,
+                                                None));
+                        try!(self.pclose());
+                        self.print_fn_output(&*unboxed_function_type.decl)
                     }
                 })
             }
@@ -2430,6 +2427,23 @@ impl<'a> State<'a> {
         self.end()
     }
 
+    pub fn print_fn_output(&mut self, decl: &ast::FnDecl) -> IoResult<()> {
+        match decl.output.node {
+            ast::TyNil => Ok(()),
+            _ => {
+                try!(self.space_if_not_bol());
+                try!(self.ibox(indent_unit));
+                try!(self.word_space("->"));
+                if decl.cf == ast::NoReturn {
+                    try!(self.word_nbsp("!"));
+                } else {
+                    try!(self.print_type(&*decl.output));
+                }
+                self.end()
+            }
+        }
+    }
+
     pub fn print_ty_fn(&mut self,
                        opt_abi: Option<abi::Abi>,
                        opt_sigil: Option<char>,
@@ -2510,20 +2524,7 @@ impl<'a> State<'a> {
 
         try!(self.maybe_print_comment(decl.output.span.lo));
 
-        match decl.output.node {
-            ast::TyNil => {}
-            _ => {
-                try!(self.space_if_not_bol());
-                try!(self.ibox(indent_unit));
-                try!(self.word_space("->"));
-                if decl.cf == ast::NoReturn {
-                    try!(self.word_nbsp("!"));
-                } else {
-                    try!(self.print_type(&*decl.output));
-                }
-                try!(self.end());
-            }
-        }
+        try!(self.print_fn_output(decl));
 
         match generics {
             Some(generics) => try!(self.print_where_clause(generics)),
