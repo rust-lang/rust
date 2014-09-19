@@ -16,7 +16,6 @@ use std::mem::replace;
 
 use metadata::csearch;
 use middle::def;
-use lint;
 use middle::resolve;
 use middle::ty;
 use middle::typeck::{MethodCall, MethodMap, MethodOrigin, MethodParam, MethodTypeParam};
@@ -1289,18 +1288,37 @@ impl<'a, 'tcx> VisiblePrivateTypesVisitor<'a, 'tcx> {
         };
         // A path can only be private if:
         // it's in this crate...
-        is_local(did) &&
-            // ... it's not exported (obviously) ...
-            !self.exported_items.contains(&did.node) &&
-            // .. and it corresponds to a type in the AST (this returns None for
-            // type parameters)
-            self.tcx.map.find(did.node).is_some()
+        if !is_local(did) {
+            return false
+        }
+        // .. and it corresponds to a private type in the AST (this returns
+        // None for type parameters)
+        match self.tcx.map.find(did.node) {
+            Some(ast_map::NodeItem(ref item)) => item.vis != ast::Public,
+            Some(_) | None => false,
+        }
     }
 
     fn trait_is_public(&self, trait_id: ast::NodeId) -> bool {
         // FIXME: this would preferably be using `exported_items`, but all
         // traits are exported currently (see `EmbargoVisitor.exported_trait`)
         self.public_items.contains(&trait_id)
+    }
+
+    fn check_ty_param_bound(&self,
+                            span: Span,
+                            ty_param_bound: &ast::TyParamBound) {
+        match *ty_param_bound {
+            ast::TraitTyParamBound(ref trait_ref) => {
+                if !self.tcx.sess.features.borrow().visible_private_types &&
+                        self.path_is_private_type(trait_ref.ref_id) {
+                    self.tcx.sess.span_err(span,
+                                           "private type in exported type \
+                                            parameter bound");
+                }
+            }
+            _ => {}
+        }
     }
 }
 
@@ -1338,7 +1356,15 @@ impl<'a, 'tcx, 'v> Visitor<'v> for VisiblePrivateTypesVisitor<'a, 'tcx> {
             // namespace (the contents have their own privacies).
             ast::ItemForeignMod(_) => {}
 
-            ast::ItemTrait(..) if !self.trait_is_public(item.id) => return,
+            ast::ItemTrait(_, _, ref bounds, _) => {
+                if !self.trait_is_public(item.id) {
+                    return
+                }
+
+                for bound in bounds.iter() {
+                    self.check_ty_param_bound(item.span, bound)
+                }
+            }
 
             // impls need some special handling to try to offer useful
             // error messages without (too many) false positives
@@ -1471,6 +1497,19 @@ impl<'a, 'tcx, 'v> Visitor<'v> for VisiblePrivateTypesVisitor<'a, 'tcx> {
         visit::walk_item(self, item);
     }
 
+    fn visit_generics(&mut self, generics: &ast::Generics) {
+        for ty_param in generics.ty_params.iter() {
+            for bound in ty_param.bounds.iter() {
+                self.check_ty_param_bound(ty_param.span, bound)
+            }
+        }
+        for predicate in generics.where_clause.predicates.iter() {
+            for bound in predicate.bounds.iter() {
+                self.check_ty_param_bound(predicate.span, bound)
+            }
+        }
+    }
+
     fn visit_foreign_item(&mut self, item: &ast::ForeignItem) {
         if self.exported_items.contains(&item.id) {
             visit::walk_foreign_item(self, item)
@@ -1488,12 +1527,11 @@ impl<'a, 'tcx, 'v> Visitor<'v> for VisiblePrivateTypesVisitor<'a, 'tcx> {
     fn visit_ty(&mut self, t: &ast::Ty) {
         match t.node {
             ast::TyPath(ref p, _, path_id) => {
-                if self.path_is_private_type(path_id) {
-                    self.tcx.sess.add_lint(
-                        lint::builtin::VISIBLE_PRIVATE_TYPES,
-                        path_id, p.span,
-                        "private type in exported type \
-                         signature".to_string());
+                if !self.tcx.sess.features.borrow().visible_private_types &&
+                        self.path_is_private_type(path_id) {
+                    self.tcx.sess.span_err(p.span,
+                                           "private type in exported type \
+                                            signature");
                 }
             }
             _ => {}

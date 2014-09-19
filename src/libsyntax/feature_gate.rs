@@ -69,6 +69,7 @@ static KNOWN_FEATURES: &'static [(&'static str, Status)] = &[
     ("advanced_slice_patterns", Active),
     ("tuple_indexing", Active),
     ("associated_types", Active),
+    ("visible_private_types", Active),
 
     // if you change this list without updating src/doc/rust.md, cmr will be sad
 
@@ -100,6 +101,7 @@ pub struct Features {
     pub overloaded_calls: bool,
     pub rustc_diagnostic_macros: bool,
     pub import_shadowing: bool,
+    pub visible_private_types: bool,
 }
 
 impl Features {
@@ -109,6 +111,7 @@ impl Features {
             overloaded_calls: false,
             rustc_diagnostic_macros: false,
             import_shadowing: false,
+            visible_private_types: false,
         }
     }
 }
@@ -479,6 +482,7 @@ pub fn check_crate(span_handler: &SpanHandler, krate: &ast::Crate) -> (Features,
         overloaded_calls: cx.has_feature("overloaded_calls"),
         rustc_diagnostic_macros: cx.has_feature("rustc_diagnostic_macros"),
         import_shadowing: cx.has_feature("import_shadowing"),
+        visible_private_types: cx.has_feature("visible_private_types"),
     },
     unknown_features)
 }

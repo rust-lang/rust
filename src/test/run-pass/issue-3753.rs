@@ -14,7 +14,7 @@
 
 use std::f64;
 
-struct Point {
+pub struct Point {
     x: f64,
     y: f64
 }

@@ -16,7 +16,7 @@ pub enum MaybeOwned<'a> {
     Borrowed(&'a int)
 }
 
-struct Inv<'a> { // invariant w/r/t 'a
+pub struct Inv<'a> { // invariant w/r/t 'a
     x: &'a mut &'a int
 }
 

@@ -94,7 +94,7 @@ pub enum Void { }
 pub trait Any: AnyPrivate {}
 
 /// An inner trait to ensure that only this module can call `get_type_id()`.
-trait AnyPrivate {
+pub trait AnyPrivate {
     /// Get the `TypeId` of `self`
     fn get_type_id(&self) -> TypeId;
 }
