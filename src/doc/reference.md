@@ -2810,9 +2810,8 @@ array_expr : '[' "mut" ? vec_elems? ']' ;
 array_elems : [expr [',' expr]*] | [expr ',' ".." expr] ;
 ```
 
-An [array](#vector,-array,-and-slice-types) _expression_ is written by
-enclosing zero or more comma-separated expressions of uniform type in square
-brackets.
+An [array](#array,-and-slice-types) _expression_ is written by enclosing zero
+or more comma-separated expressions of uniform type in square brackets.
 
 In the `[expr ',' ".." expr]` form, the expression after the `".."` must be a
 constant expression that can be evaluated at compile time, such as a
@@ -2831,7 +2830,7 @@ constant expression that can be evaluated at compile time, such as a
 idx_expr : expr '[' expr ']' ;
 ```
 
-[Array](#vector,-array,-and-slice-types)-typed expressions can be indexed by
+[Array](#array,-and-slice-types)-typed expressions can be indexed by
 writing a square-bracket-enclosed expression (the index) after them. When the
 array is mutable, the resulting [lvalue](#lvalues,-rvalues-and-temporaries) can
 be assigned to.
@@ -3551,23 +3550,17 @@ let (a, b) = p;
 assert!(b != "world");
 ```
 
-### Vector, Array, and Slice types
+### Array, and Slice types
 
-Rust has three different types for a list of items:
+Rust has two different types for a list of items:
 
-* `Vec<T>`, a 'vector'
 * `[T ..N]`, an 'array'
 * `&[T]`, a 'slice'.
-
-A vector is a heap-allocated list of `T`. A vector has ownership over the data
-inside of it. It is also able to grow and change in size. It's important to
-note that `Vec<T>` is a library type, it's not actually part of the core
-language.
 
 An array has a fixed size, and can be allocated on either the stack or the
 heap.
 
-A slice is a 'view' into a vector or array. It doesn't own the data it points
+A slice is a 'view' into an array. It doesn't own the data it points
 to, it borrows it.
 
 An example of each kind:
@@ -3581,8 +3574,8 @@ let s: &[int]      = vec.as_slice();
 As you can see, the `vec!` macro allows you to create a `Vec<T>` easily. The
 `vec!` macro is also part of the standard library, rather than the language.
 
-All in-bounds elements of vectors, arrays, and slices are always initialized,
-and access to a vector, array, or slice is always bounds-checked.
+All in-bounds elements of arrays, and slices are always initialized, and access
+to an array or slice is always bounds-checked.
 
 ### Structure types
 
@@ -3644,7 +3637,7 @@ enclosing `enum` or `struct` type itself. Such recursion has restrictions:
 
 * Recursive types must include a nominal type in the recursion
   (not mere [type definitions](#type-definitions),
-   or other structural types such as [arrays](#vector,-array,-and-slice-types) or [tuples](#tuple-types)).
+   or other structural types such as [arrays](#array,-and-slice-types) or [tuples](#tuple-types)).
 * A recursive `enum` item must have at least one non-recursive constructor
   (in order to give the recursion a basis case).
 * The size of a recursive type must be finite;
