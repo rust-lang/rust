@@ -2867,7 +2867,7 @@ operators, before the expression they apply to.
     two's complement representation of the value.
 * `box`
   : [Boxing](#pointer-types) operators. Allocate a box to hold the value they
-    are applied to, and store the value in it. `box` creates an owned box.
+    are applied to, and store the value in it. `box` creates a box.
 * `&`
   : Borrow operator. Returns a reference, pointing to its operand. The operand
     of a borrow is statically proven to outlive the resulting pointer. If the
@@ -3855,7 +3855,7 @@ components of the type. The kinds are:
 
 * `Send`
   : Types of this kind can be safely sent between tasks.
-    This kind includes scalars, owning pointers, owned closures, and
+    This kind includes scalars, boxes, procs, and
     structural types containing only other owned types.
     All `Send` types are `'static`.
 * `Copy`
