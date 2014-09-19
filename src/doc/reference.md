@@ -693,7 +693,7 @@ govern the behavior of programs at run-time. A program that fails to compile
 due to violation of a compile-time rule has no defined dynamic semantics; the
 compiler should halt with an error report, and produce no executable artifact.
 
-The compilation model centres on artifacts called _crates_. Each compilation
+The compilation model centers on artifacts called _crates_. Each compilation
 processes a single crate in source form, and if successful, produces a single
 crate in binary form: either an executable or a library.[^cratesourcefile]
 
