@@ -4041,47 +4041,20 @@ let y = x;
 An executing Rust program consists of a tree of tasks. A Rust _task_ consists
 of an entry function, a stack, a set of outgoing communication channels and
 incoming communication ports, and ownership of some portion of the heap of a
-single operating-system process. (We expect that many programs will not use
-channels and ports directly, but will instead use higher-level abstractions
-provided in standard libraries, such as pipes.)
-
-Multiple Rust tasks may coexist in a single operating-system process. The
-runtime scheduler maps tasks to a certain number of operating-system threads.
-By default, the scheduler chooses the number of threads based on the number of
-concurrent physical CPUs detected at startup. It's also possible to override
-this choice at runtime. When the number of tasks exceeds the number of threads
-&mdash; which is likely &mdash; the scheduler multiplexes the tasks onto
-threads.[^mnscheduler]
-
-[^mnscheduler]: This is an M:N scheduler, which is known to give suboptimal
-    results for CPU-bound concurrency problems. In such cases, running with the
-    same number of threads and tasks can yield better results. Rust has M:N
-    scheduling in order to support very large numbers of tasks in contexts where
-    threads are too resource-intensive to use in large number. The cost of
-    threads varies substantially per operating system, and is sometimes quite
-    low, so this flexibility is not always worth exploiting.
+single operating-system process.
 
 ### Communication between tasks
 
-Rust tasks are isolated and generally unable to interfere with one another's memory directly,
-except through [`unsafe` code](#unsafe-functions).
-All contact between tasks is mediated by safe forms of ownership transfer,
-and data races on memory are prohibited by the type system.
+Rust tasks are isolated and generally unable to interfere with one another's
+memory directly, except through [`unsafe` code](#unsafe-functions).  All
+contact between tasks is mediated by safe forms of ownership transfer, and data
+races on memory are prohibited by the type system.
 
-Inter-task communication and co-ordination facilities are provided in the
-standard library. These include:
-
-- synchronous and asynchronous communication channels with various
-  communication topologies
-- read-only and read-write shared variables with various safe mutual exclusion
-  patterns
-- simple locks and semaphores
-
-When such facilities carry values, the values are restricted to the [`Send`
-type-kind](#type-kinds). Restricting communication interfaces to this kind
-ensures that no references or managed pointers move between tasks. Thus access
-to an entire data structure can be mediated through its owning "root" value; no
-further locking or copying is required to avoid data races within the
+When you wish to send data between tasks, the values are restricted to the
+[`Send` type-kind](#type-kinds). Restricting communication interfaces to this
+kind ensures that no references or managed pointers move between tasks. Thus
+access to an entire data structure can be mediated through its owning "root"
+value; no further locking or copying is required to avoid data races within the
 substructure of such a value.
 
 ### Task lifecycle
@@ -4122,16 +4095,6 @@ A hard failure currently results in the process aborting.
 A task in the *dead* state cannot transition to other states; it exists only to
 have its termination status inspected by other tasks, and/or to await
 reclamation when the last reference to it drops.
-
-### Task scheduling
-
-The currently scheduled task is given a finite *time slice* in which to
-execute, after which it is *descheduled* at a loop-edge or similar preemption
-point, and another task within is scheduled, pseudo-randomly.
-
-An executing task can yield control at any time, by making a library call to
-`std::task::yield`, which deschedules it immediately. Entering any other
-non-executing state (blocked, dead) similarly deschedules the task.
 
 # Runtime services, linkage and debugging
 
