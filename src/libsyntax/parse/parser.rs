@@ -3591,7 +3591,7 @@ impl<'a> Parser<'a> {
                                     let span_with_semi = Span {
                                         lo: span.lo,
                                         hi: self.last_span.hi,
-                                        expn_info: span.expn_info,
+                                        expn_id: span.expn_id,
                                     };
                                     stmts.push(P(Spanned {
                                         node: StmtSemi(e, stmt_id),

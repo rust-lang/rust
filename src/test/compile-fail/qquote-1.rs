@@ -39,7 +39,7 @@ impl fake_ext_ctxt for fake_session {
         codemap::span {
             lo: codemap::BytePos(0),
             hi: codemap::BytePos(0),
-            expn_info: None
+            expn_id: NO_EXPANSION
         }
     }
     fn ident_of(st: &str) -> ast::ident {

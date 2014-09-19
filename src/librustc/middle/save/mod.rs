@@ -71,7 +71,7 @@ fn escape(s: String) -> String {
 
 // If the expression is a macro expansion or other generated code, run screaming and don't index.
 fn generated_code(span: Span) -> bool {
-    span.expn_info.is_some() || span  == DUMMY_SP
+    span.expn_id != NO_EXPANSION || span  == DUMMY_SP
 }
 
 struct DxrVisitor<'l, 'tcx: 'l> {
