@@ -26,29 +26,6 @@ features in Rust, so what you're looking for may be there, not here.
 [guide]: guide.html
 [standard]: std/index.html
 
-## Disclaimer
-
-Rust is a work in progress. The language continues to evolve as the design
-shifts and is fleshed out in working code. Certain parts work, certain parts do
-not, certain parts will be removed or changed.
-
-This manual is a snapshot written in the present tense. All features described
-exist in working code unless otherwise noted, but some are quite primitive or
-remain to be further modified by planned work. Some may be temporary. It is a
-*draft*, and we ask that you not take anything you read here as final.
-
-If you have suggestions to make, please try to focus them on *reductions* to
-the language: possible features that can be combined or omitted. We aim to keep
-the size and complexity of the language under control.
-
-> **Note:** The grammar for Rust given in this document is rough and very
-> incomplete; only a modest number of sections have accompanying grammar rules.
-> Formalizing the grammar accepted by the Rust parser is ongoing work, but
-> future versions of this document will contain a complete grammar. Moreover,
-> we hope that this grammar will be extracted and verified as LL(1) by an
-> automated grammar-analysis tool, and further tested against the Rust sources.
-> Preliminary versions of this automation exist, but are not yet complete.
-
 # Notation
 
 Rust's grammar is defined over Unicode codepoints, each conventionally denoted
