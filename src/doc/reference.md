@@ -2851,14 +2851,9 @@ Indices are zero-based, and may be of any integral type. Vector access is
 bounds-checked at run-time. When the check fails, it will put the task in a
 _failing state_.
 
-```{.ignore}
-# use std::task;
-# task::spawn(proc() {
-
+```{should-fail}
 ([1, 2, 3, 4])[0];
 (["a", "b"])[10]; // fails
-
-# })
 ```
 
 ### Unary operator expressions
