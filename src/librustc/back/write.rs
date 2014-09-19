@@ -11,7 +11,7 @@
 use back::lto;
 use back::link::{get_cc_prog, remove};
 use driver::driver::{CrateTranslation, ModuleTranslation, OutputFilenames};
-use driver::config::{NoDebugInfo, Passes, AllPasses};
+use driver::config::{NoDebugInfo, Passes, SomePasses, AllPasses};
 use driver::session::Session;
 use driver::config;
 use llvm;
@@ -341,7 +341,7 @@ unsafe extern "C" fn diagnostic_handler(info: DiagnosticInfoRef, user: *mut c_vo
             let pass_name = pass_name.as_str().expect("got a non-UTF8 pass name from LLVM");
             let enabled = match cgcx.remark {
                 AllPasses => true,
-                Passes(ref v) => v.iter().any(|s| s.as_slice() == pass_name),
+                SomePasses(ref v) => v.iter().any(|s| s.as_slice() == pass_name),
             };
 
             if enabled {
@@ -482,14 +482,14 @@ unsafe fn optimize_and_codegen(cgcx: &CodegenContext,
         if config.emit_asm {
             let path = output_names.with_extension(format!("{}.s", name_extra).as_slice());
             with_codegen(tm, llmod, config.no_builtins, |cpm| {
-                write_output_file(cgcx.handler, tm, cpm, llmod, &path, llvm::AssemblyFile);
+                write_output_file(cgcx.handler, tm, cpm, llmod, &path, llvm::AssemblyFileType);
             });
         }
 
         if config.emit_obj {
             let path = output_names.with_extension(format!("{}.o", name_extra).as_slice());
             with_codegen(tm, llmod, config.no_builtins, |cpm| {
-                write_output_file(cgcx.handler, tm, cpm, llmod, &path, llvm::ObjectFile);
+                write_output_file(cgcx.handler, tm, cpm, llmod, &path, llvm::ObjectFileType);
             });
         }
     });

@@ -18,6 +18,7 @@ use super::{SelectionError, Unimplemented, Overflow,
 use super::{Selection};
 use super::{SelectionResult};
 use super::{VtableBuiltin, VtableImpl, VtableParam, VtableUnboxedClosure};
+use super::{VtableImplData, VtableParamData};
 use super::{util};
 
 use middle::subst::{Subst, Substs, VecPerParamSpace};
@@ -82,7 +83,7 @@ enum MatchResult<T> {
 enum Candidate {
     MatchedBuiltinCandidate,
     AmbiguousBuiltinCandidate,
-    MatchedParamCandidate(VtableParam),
+    MatchedParamCandidate(VtableParamData),
     AmbiguousParamCandidate,
     Impl(ImplCandidate),
     MatchedUnboxedClosureCandidate(/* closure */ ast::DefId)
@@ -142,7 +143,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                 impl_def_id: ast::DefId,
                                 obligation_cause: ObligationCause,
                                 obligation_self_ty: ty::t)
-                                -> SelectionResult<VtableImpl<Obligation>>
+                                -> SelectionResult<VtableImplData<Obligation>>
     {
         debug!("select_inherent_impl(impl_def_id={}, obligation_self_ty={})",
                impl_def_id.repr(self.tcx()),
@@ -597,8 +598,8 @@ v         */
 
     fn confirm_param_candidate(&self,
                                obligation: &Obligation,
-                               param: VtableParam)
-                               -> Result<VtableParam,SelectionError>
+                               param: VtableParamData)
+                               -> Result<VtableParamData,SelectionError>
     {
         debug!("confirm_param_candidate({},{})",
                obligation.repr(self.tcx()),
@@ -613,7 +614,7 @@ v         */
     fn confirm_impl_candidate(&self,
                               obligation: &Obligation,
                               impl_def_id: ast::DefId)
-                              -> Result<VtableImpl<Obligation>,SelectionError>
+                              -> Result<VtableImplData<Obligation>,SelectionError>
     {
         debug!("confirm_impl_candidate({},{})",
                obligation.repr(self.tcx()),
@@ -642,7 +643,7 @@ v         */
                                        obligation_cause: ObligationCause,
                                        obligation_self_ty: ty::t,
                                        obligation_recursion_depth: uint)
-                                       -> Result<VtableImpl<Obligation>,
+                                       -> Result<VtableImplData<Obligation>,
                                                  SelectionError>
     {
         let substs = match self.match_impl_self_types(impl_def_id,
@@ -663,7 +664,7 @@ v         */
                                   obligation_recursion_depth,
                                   impl_def_id,
                                   &substs);
-        let vtable_impl = VtableImpl { impl_def_id: impl_def_id,
+        let vtable_impl = VtableImplData { impl_def_id: impl_def_id,
                                        substs: substs,
                                        nested: impl_obligations };
 

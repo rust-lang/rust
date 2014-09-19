@@ -67,7 +67,7 @@ use task::{Task, LocalStorage};
 pub type Key<T> = &'static KeyValue<T>;
 
 #[allow(missing_doc)]
-pub enum KeyValue<T> { Key }
+pub enum KeyValue<T> { KeyValueKey }
 
 // The task-local-map stores all TLD information for the currently running
 // task. It is stored as an owned pointer into the runtime, and it's only
@@ -417,7 +417,7 @@ mod tests {
 
     #[test]
     fn test_tls_multitask() {
-        static my_key: Key<String> = &Key;
+        static my_key: Key<String> = &KeyValueKey;
         my_key.replace(Some("parent data".to_string()));
         task::spawn(proc() {
             // TLD shouldn't carry over.
@@ -435,7 +435,7 @@ mod tests {
 
     #[test]
     fn test_tls_overwrite() {
-        static my_key: Key<String> = &Key;
+        static my_key: Key<String> = &KeyValueKey;
         my_key.replace(Some("first data".to_string()));
         my_key.replace(Some("next data".to_string())); // Shouldn't leak.
         assert!(my_key.get().unwrap().as_slice() == "next data");
@@ -443,7 +443,7 @@ mod tests {
 
     #[test]
     fn test_tls_pop() {
-        static my_key: Key<String> = &Key;
+        static my_key: Key<String> = &KeyValueKey;
         my_key.replace(Some("weasel".to_string()));
         assert!(my_key.replace(None).unwrap() == "weasel".to_string());
         // Pop must remove the data from the map.
@@ -458,7 +458,7 @@ mod tests {
         // to get recorded as something within a rust stack segment. Then a
         // subsequent upcall (esp. for logging, think vsnprintf) would run on
         // a stack smaller than 1 MB.
-        static my_key: Key<String> = &Key;
+        static my_key: Key<String> = &KeyValueKey;
         task::spawn(proc() {
             my_key.replace(Some("hax".to_string()));
         });
@@ -466,9 +466,9 @@ mod tests {
 
     #[test]
     fn test_tls_multiple_types() {
-        static str_key: Key<String> = &Key;
-        static box_key: Key<Gc<()>> = &Key;
-        static int_key: Key<int> = &Key;
+        static str_key: Key<String> = &KeyValueKey;
+        static box_key: Key<Gc<()>> = &KeyValueKey;
+        static int_key: Key<int> = &KeyValueKey;
         task::spawn(proc() {
             str_key.replace(Some("string data".to_string()));
             box_key.replace(Some(box(GC) ()));
@@ -478,9 +478,9 @@ mod tests {
 
     #[test]
     fn test_tls_overwrite_multiple_types() {
-        static str_key: Key<String> = &Key;
-        static box_key: Key<Gc<()>> = &Key;
-        static int_key: Key<int> = &Key;
+        static str_key: Key<String> = &KeyValueKey;
+        static box_key: Key<Gc<()>> = &KeyValueKey;
+        static int_key: Key<int> = &KeyValueKey;
         task::spawn(proc() {
             str_key.replace(Some("string data".to_string()));
             str_key.replace(Some("string data 2".to_string()));
@@ -497,9 +497,9 @@ mod tests {
     #[test]
     #[should_fail]
     fn test_tls_cleanup_on_failure() {
-        static str_key: Key<String> = &Key;
-        static box_key: Key<Gc<()>> = &Key;
-        static int_key: Key<int> = &Key;
+        static str_key: Key<String> = &KeyValueKey;
+        static box_key: Key<Gc<()>> = &KeyValueKey;
+        static int_key: Key<int> = &KeyValueKey;
         str_key.replace(Some("parent data".to_string()));
         box_key.replace(Some(box(GC) ()));
         task::spawn(proc() {
@@ -524,7 +524,7 @@ mod tests {
                 self.tx.send(());
             }
         }
-        static key: Key<Dropper> = &Key;
+        static key: Key<Dropper> = &KeyValueKey;
         let _ = task::try(proc() {
             key.replace(Some(Dropper{ tx: tx }));
         });
@@ -535,14 +535,14 @@ mod tests {
 
     #[test]
     fn test_static_pointer() {
-        static key: Key<&'static int> = &Key;
+        static key: Key<&'static int> = &KeyValueKey;
         static VALUE: int = 0;
         key.replace(Some(&VALUE));
     }
 
     #[test]
     fn test_owned() {
-        static key: Key<Box<int>> = &Key;
+        static key: Key<Box<int>> = &KeyValueKey;
         key.replace(Some(box 1));
 
         {
@@ -559,11 +559,11 @@ mod tests {
 
     #[test]
     fn test_same_key_type() {
-        static key1: Key<int> = &Key;
-        static key2: Key<int> = &Key;
-        static key3: Key<int> = &Key;
-        static key4: Key<int> = &Key;
-        static key5: Key<int> = &Key;
+        static key1: Key<int> = &KeyValueKey;
+        static key2: Key<int> = &KeyValueKey;
+        static key3: Key<int> = &KeyValueKey;
+        static key4: Key<int> = &KeyValueKey;
+        static key5: Key<int> = &KeyValueKey;
         key1.replace(Some(1));
         key2.replace(Some(2));
         key3.replace(Some(3));
@@ -580,7 +580,7 @@ mod tests {
     #[test]
     #[should_fail]
     fn test_nested_get_set1() {
-        static key: Key<int> = &Key;
+        static key: Key<int> = &KeyValueKey;
         assert_eq!(key.replace(Some(4)), None);
 
         let _k = key.get();
@@ -602,7 +602,7 @@ mod tests {
 
     #[bench]
     fn bench_replace_none(b: &mut test::Bencher) {
-        static key: Key<uint> = &Key;
+        static key: Key<uint> = &KeyValueKey;
         let _clear = ClearKey(key);
         key.replace(None);
         b.iter(|| {
@@ -612,7 +612,7 @@ mod tests {
 
     #[bench]
     fn bench_replace_some(b: &mut test::Bencher) {
-        static key: Key<uint> = &Key;
+        static key: Key<uint> = &KeyValueKey;
         let _clear = ClearKey(key);
         key.replace(Some(1u));
         b.iter(|| {
@@ -622,7 +622,7 @@ mod tests {
 
     #[bench]
     fn bench_replace_none_some(b: &mut test::Bencher) {
-        static key: Key<uint> = &Key;
+        static key: Key<uint> = &KeyValueKey;
         let _clear = ClearKey(key);
         key.replace(Some(0u));
         b.iter(|| {
@@ -634,7 +634,7 @@ mod tests {
 
     #[bench]
     fn bench_100_keys_replace_last(b: &mut test::Bencher) {
-        static keys: [KeyValue<uint>, ..100] = [Key, ..100];
+        static keys: [KeyValue<uint>, ..100] = [KeyValueKey, ..100];
         let _clear = keys.iter().map(ClearKey).collect::<Vec<ClearKey<uint>>>();
         for (i, key) in keys.iter().enumerate() {
             key.replace(Some(i));
@@ -647,7 +647,7 @@ mod tests {
 
     #[bench]
     fn bench_1000_keys_replace_last(b: &mut test::Bencher) {
-        static keys: [KeyValue<uint>, ..1000] = [Key, ..1000];
+        static keys: [KeyValue<uint>, ..1000] = [KeyValueKey, ..1000];
         let _clear = keys.iter().map(ClearKey).collect::<Vec<ClearKey<uint>>>();
         for (i, key) in keys.iter().enumerate() {
             key.replace(Some(i));
@@ -661,7 +661,7 @@ mod tests {
 
     #[bench]
     fn bench_get(b: &mut test::Bencher) {
-        static key: Key<uint> = &Key;
+        static key: Key<uint> = &KeyValueKey;
         let _clear = ClearKey(key);
         key.replace(Some(42));
         b.iter(|| {
@@ -671,7 +671,7 @@ mod tests {
 
     #[bench]
     fn bench_100_keys_get_last(b: &mut test::Bencher) {
-        static keys: [KeyValue<uint>, ..100] = [Key, ..100];
+        static keys: [KeyValue<uint>, ..100] = [KeyValueKey, ..100];
         let _clear = keys.iter().map(ClearKey).collect::<Vec<ClearKey<uint>>>();
         for (i, key) in keys.iter().enumerate() {
             key.replace(Some(i));
@@ -684,7 +684,7 @@ mod tests {
 
     #[bench]
     fn bench_1000_keys_get_last(b: &mut test::Bencher) {
-        static keys: [KeyValue<uint>, ..1000] = [Key, ..1000];
+        static keys: [KeyValue<uint>, ..1000] = [KeyValueKey, ..1000];
         let _clear = keys.iter().map(ClearKey).collect::<Vec<ClearKey<uint>>>();
         for (i, key) in keys.iter().enumerate() {
             key.replace(Some(i));

@@ -65,7 +65,7 @@ we may want to adjust precisely when coercions occur.
 */
 
 use middle::subst;
-use middle::ty::{AutoPtr, AutoDerefRef, AutoUnsize, AutoUnsafe};
+use middle::ty::{AutoPtr, AutoDerefRef, AdjustDerefRef, AutoUnsize, AutoUnsafe};
 use middle::ty::{mt};
 use middle::ty;
 use middle::typeck::infer::{CoerceResult, resolve_type, Coercion};
@@ -270,7 +270,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                                      mt {ty: inner_ty, mutbl: mutbl_b});
         try!(sub.tys(a_borrowed, b));
 
-        Ok(Some(AutoDerefRef(AutoDerefRef {
+        Ok(Some(AdjustDerefRef(AutoDerefRef {
             autoderefs: 1,
             autoref: Some(AutoPtr(r_borrow, mutbl_b, None))
         })))
@@ -295,7 +295,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                 let unsized_ty = ty::mk_slice(self.get_ref().infcx.tcx, r_borrow,
                                               mt {ty: t_a, mutbl: mutbl_b});
                 try!(self.get_ref().infcx.try(|| sub.tys(unsized_ty, b)));
-                Ok(Some(AutoDerefRef(AutoDerefRef {
+                Ok(Some(AdjustDerefRef(AutoDerefRef {
                     autoderefs: 0,
                     autoref: Some(ty::AutoPtr(r_borrow,
                                               mutbl_b,
@@ -343,7 +343,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                             try!(self.get_ref().infcx.try(|| sub.tys(ty, b)));
                             debug!("Success, coerced with AutoDerefRef(1, \
                                     AutoPtr(AutoUnsize({:?})))", kind);
-                            Ok(Some(AutoDerefRef(AutoDerefRef {
+                            Ok(Some(AdjustDerefRef(AutoDerefRef {
                                 autoderefs: 1,
                                 autoref: Some(ty::AutoPtr(r_borrow, mt_b.mutbl,
                                                           Some(box AutoUnsize(kind))))
@@ -366,7 +366,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                             try!(self.get_ref().infcx.try(|| sub.tys(ty, b)));
                             debug!("Success, coerced with AutoDerefRef(1, \
                                     AutoPtr(AutoUnsize({:?})))", kind);
-                            Ok(Some(AutoDerefRef(AutoDerefRef {
+                            Ok(Some(AdjustDerefRef(AutoDerefRef {
                                 autoderefs: 1,
                                 autoref: Some(ty::AutoUnsafe(mt_b.mutbl,
                                                              Some(box AutoUnsize(kind))))
@@ -384,7 +384,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                             try!(self.get_ref().infcx.try(|| sub.tys(ty, b)));
                             debug!("Success, coerced with AutoDerefRef(1, \
                                     AutoUnsizeUniq({:?}))", kind);
-                            Ok(Some(AutoDerefRef(AutoDerefRef {
+                            Ok(Some(AdjustDerefRef(AutoDerefRef {
                                 autoderefs: 1,
                                 autoref: Some(ty::AutoUnsizeUniq(kind))
                             })))
@@ -537,7 +537,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
 
                     let tr = ty::mk_trait(tcx, def_id, substs.clone(), bounds);
                     try!(self.subtype(mk_ty(tr), b));
-                    Ok(Some(AutoDerefRef(AutoDerefRef {
+                    Ok(Some(AdjustDerefRef(AutoDerefRef {
                         autoderefs: 1,
                         autoref: Some(mk_adjust())
                     })))
@@ -593,7 +593,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                 _ => return self.subtype(a, b)
             };
 
-            let adj = ty::AutoAddEnv(fn_ty_b.store);
+            let adj = ty::AdjustAddEnv(fn_ty_b.store);
             let a_closure = ty::mk_closure(self.get_ref().infcx.tcx,
                                            ty::ClosureTy {
                                                 sig: fn_ty_a.sig.clone(),
@@ -630,7 +630,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         // Although references and unsafe ptrs have the same
         // representation, we still register an AutoDerefRef so that
         // regionck knows that the region for `a` must be valid here.
-        Ok(Some(AutoDerefRef(AutoDerefRef {
+        Ok(Some(AdjustDerefRef(AutoDerefRef {
             autoderefs: 1,
             autoref: Some(ty::AutoUnsafe(mutbl_b, None))
         })))

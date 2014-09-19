@@ -277,8 +277,8 @@ pub enum Variance {
 
 #[deriving(Clone)]
 pub enum AutoAdjustment {
-    AutoAddEnv(ty::TraitStore),
-    AutoDerefRef(AutoDerefRef)
+    AdjustAddEnv(ty::TraitStore),
+    AdjustDerefRef(AutoDerefRef)
 }
 
 #[deriving(Clone, PartialEq)]
@@ -350,7 +350,7 @@ fn autoref_object_region(autoref: &AutoRef) -> (bool, bool, Option<Region>) {
 // returns the region of the borrowed reference.
 pub fn adjusted_object_region(adj: &AutoAdjustment) -> Option<Region> {
     match adj {
-        &AutoDerefRef(AutoDerefRef{autoref: Some(ref autoref), ..}) => {
+        &AdjustDerefRef(AutoDerefRef{autoref: Some(ref autoref), ..}) => {
             let (b, _, r) = autoref_object_region(autoref);
             if b {
                 r
@@ -365,7 +365,7 @@ pub fn adjusted_object_region(adj: &AutoAdjustment) -> Option<Region> {
 // Returns true if there is a trait cast at the bottom of the adjustment.
 pub fn adjust_is_object(adj: &AutoAdjustment) -> bool {
     match adj {
-        &AutoDerefRef(AutoDerefRef{autoref: Some(ref autoref), ..}) => {
+        &AdjustDerefRef(AutoDerefRef{autoref: Some(ref autoref), ..}) => {
             let (b, _, _) = autoref_object_region(autoref);
             b
         }
@@ -407,7 +407,7 @@ pub fn type_of_adjust(cx: &ctxt, adj: &AutoAdjustment) -> Option<t> {
     }
 
     match adj {
-        &AutoDerefRef(AutoDerefRef{autoref: Some(ref autoref), ..}) => {
+        &AdjustDerefRef(AutoDerefRef{autoref: Some(ref autoref), ..}) => {
             type_of_autoref(cx, autoref)
         }
         _ => None
@@ -3423,7 +3423,7 @@ pub fn adjust_ty(cx: &ctxt,
     return match adjustment {
         Some(adjustment) => {
             match *adjustment {
-                AutoAddEnv(store) => {
+                AdjustAddEnv(store) => {
                     match ty::get(unadjusted_ty).sty {
                         ty::ty_bare_fn(ref b) => {
                             let bounds = ty::ExistentialBounds {
@@ -3449,7 +3449,7 @@ pub fn adjust_ty(cx: &ctxt,
                     }
                 }
 
-                AutoDerefRef(ref adj) => {
+                AdjustDerefRef(ref adj) => {
                     let mut adjusted_ty = unadjusted_ty;
 
                     if !ty::type_is_error(adjusted_ty) {
@@ -3582,12 +3582,12 @@ pub fn method_call_type_param_defs<'tcx, T>(typer: &T,
                               .trait_did(typer.tcx());
             lookup_trait_def(typer.tcx(), def_id).generics.types.clone()
         }
-        typeck::MethodParam(typeck::MethodParam{
+        typeck::MethodTypeParam(typeck::MethodParam{
             trait_ref: ref trait_ref,
             method_num: n_mth,
             ..
         }) |
-        typeck::MethodObject(typeck::MethodObject{
+        typeck::MethodTraitObject(typeck::MethodObject{
                 trait_ref: ref trait_ref,
                 method_num: n_mth,
                 ..

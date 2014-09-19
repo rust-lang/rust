@@ -895,14 +895,14 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
                 };
                 (Some(def_id), decl_id)
             }
-            typeck::MethodParam(ref mp) => {
+            typeck::MethodTypeParam(ref mp) => {
                 // method invoked on a type parameter
                 let trait_item = ty::trait_item(&self.analysis.ty_cx,
                                                 mp.trait_ref.def_id,
                                                 mp.method_num);
                 (None, Some(trait_item.def_id()))
             }
-            typeck::MethodObject(ref mo) => {
+            typeck::MethodTraitObject(ref mo) => {
                 // method invoked on a trait instance
                 let trait_item = ty::trait_item(&self.analysis.ty_cx,
                                                 mo.trait_ref.def_id,

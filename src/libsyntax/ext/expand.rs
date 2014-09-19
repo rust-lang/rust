@@ -252,7 +252,7 @@ pub fn expand_item(it: P<ast::Item>, fld: &mut MacroExpander)
 
         match fld.cx.syntax_env.find(&intern(mname.get())) {
             Some(rc) => match *rc {
-                ItemDecorator(ref dec) => {
+                Decorator(ref dec) => {
                     attr::mark_used(attr);
 
                     fld.cx.bt_push(ExpnInfo {
@@ -309,7 +309,7 @@ fn expand_item_modifiers(mut it: P<ast::Item>, fld: &mut MacroExpander)
     // partition the attributes into ItemModifiers and others
     let (modifiers, other_attrs) = it.attrs.partitioned(|attr| {
         match fld.cx.syntax_env.find(&intern(attr.name().get())) {
-            Some(rc) => match *rc { ItemModifier(_) => true, _ => false },
+            Some(rc) => match *rc { Modifier(_) => true, _ => false },
             _ => false
         }
     });
@@ -328,7 +328,7 @@ fn expand_item_modifiers(mut it: P<ast::Item>, fld: &mut MacroExpander)
 
         match fld.cx.syntax_env.find(&intern(mname.get())) {
             Some(rc) => match *rc {
-                ItemModifier(ref mac) => {
+                Modifier(ref mac) => {
                     attr::mark_used(attr);
                     fld.cx.bt_push(ExpnInfo {
                         call_site: attr.span,

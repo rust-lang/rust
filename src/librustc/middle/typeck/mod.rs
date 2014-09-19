@@ -102,10 +102,10 @@ pub enum MethodOrigin {
     MethodStaticUnboxedClosure(ast::DefId),
 
     // method invoked on a type parameter with a bounded trait
-    MethodParam(MethodParam),
+    MethodTypeParam(MethodParam),
 
     // method invoked on a trait instance
-    MethodObject(MethodObject),
+    MethodTraitObject(MethodObject),
 
 }
 
