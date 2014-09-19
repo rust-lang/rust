@@ -34,6 +34,7 @@ use syntax::parse::token;
 use syntax::visit;
 use syntax::visit::{Visitor, FnKind};
 use syntax::ast::{FnDecl, Block, NodeId};
+use syntax::attr::AttrMetaMethods;
 
 macro_rules! if_ok(
     ($inp: expr) => (
@@ -172,12 +173,33 @@ fn build_borrowck_dataflow_data<'a, 'tcx>(this: &mut BorrowckCtxt<'a, 'tcx>,
     loan_dfcx.add_kills_from_flow_exits(cfg);
     loan_dfcx.propagate(cfg, body);
 
+    let instrument_drop_obligations_as_errors = {
+        let attrs : &[ast::Attribute];
+        attrs = match this.tcx.map.find(id) {
+            Some(ast_map::NodeItem(ref item)) =>
+                item.attrs.as_slice(),
+            Some(ast_map::NodeImplItem(&ast::MethodImplItem(ref m))) =>
+                m.attrs.as_slice(),
+            Some(ast_map::NodeTraitItem(&ast::ProvidedMethod(ref m))) =>
+                m.attrs.as_slice(),
+            _ => [].as_slice(),
+        };
+
+        attrs.iter().any(|a| a.check_name("rustc_drop_obligations"))
+    };
+
+    let mut flags = vec![];
+    if instrument_drop_obligations_as_errors {
+        flags.push(move_data::InstrumentDropObligationsAsErrors)
+    }
+
     let flowed_moves = move_data::FlowedMoveData::new(move_data,
                                                       this.tcx,
                                                       cfg,
                                                       id_range,
                                                       decl,
-                                                      body);
+                                                      body,
+                                                      flags.as_slice());
 
     AnalysisData { all_loans: all_loans,
                    loans: loan_dfcx,
@@ -1086,6 +1108,38 @@ impl Repr for LoanPath {
 
             LpExtend(ref lp, _, LpInterior(ref interior)) => {
                 format!("{}.{}", lp.repr(tcx), interior.repr(tcx))
+            }
+        }
+    }
+}
+
+impl UserString for LoanPath {
+    fn user_string(&self, tcx: &ty::ctxt) -> String {
+        match self.variant {
+            LpVar(id) => {
+                format!("$({})", tcx.map.node_to_user_string(id))
+            }
+
+            LpUpvar(ty::UpvarId{ var_id, closure_expr_id }, _) => {
+                let s = tcx.map.node_to_user_string(var_id);
+                format!("$({} captured by id={})", s, closure_expr_id)
+            }
+
+            LpDowncast(ref lp, variant_def_id) => {
+                let variant_str = if variant_def_id.krate == ast::LOCAL_CRATE {
+                    ty::item_path_str(tcx, variant_def_id)
+                } else {
+                    variant_def_id.repr(tcx)
+                };
+                format!("({}->{})", lp.user_string(tcx), variant_str)
+            }
+
+            LpExtend(ref lp, _, LpDeref(_)) => {
+                format!("{}.*", lp.user_string(tcx))
+            }
+
+            LpExtend(ref lp, _, LpInterior(ref interior)) => {
+                format!("{}.{}", lp.user_string(tcx), interior.repr(tcx))
             }
         }
     }

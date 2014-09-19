@@ -30,7 +30,7 @@ use middle::ty;
 use syntax::ast;
 use syntax::ast_util;
 use syntax::codemap::Span;
-use util::ppaux::Repr;
+use util::ppaux::{Repr, UserString};
 
 pub struct MoveData {
     /// Move paths. See section "Move paths" in `doc.rs`.
@@ -727,7 +727,8 @@ impl MoveData {
     fn add_gen_kills(&self,
                      tcx: &ty::ctxt,
                      dfcx_moves: &mut MoveDataFlow,
-                     dfcx_assign: &mut AssignDataFlow) {
+                     dfcx_assign: &mut AssignDataFlow,
+                     flags: &[FlowedMoveDataFlag]) {
         /*!
          * Adds the gen/kills for the various moves and
          * assignments into the provided data flow contexts.
@@ -764,11 +765,30 @@ impl MoveData {
             }
         }
 
+        let instrument_drop_obligations_as_errors =
+            flags.iter().any(|f| *f == InstrumentDropObligationsAsErrors);
+
+        // Each move `<path> = <expr>` overwrites `<path>`, removing future obligation to drop it.
         for (i, move) in self.moves.borrow().iter().enumerate() {
             dfcx_moves.add_gen(move.id, i);
             debug!("remove_drop_obligations move {}", move.to_string(self, tcx));
-            self.remove_drop_obligations(tcx, move);
+            self.remove_drop_obligations(
+                tcx,
+                move,
+                instrument_drop_obligations_as_errors);
         }
+
+        // A moving match replaces the general drop obligation (of any
+        // of the potential variants) with the more specific drop
+        // obligation (of the particular variant we have matched).
+        //
+        // In addition, when the particular variant is itself not a
+        // drop-obligation, then we register the original path (before
+        // the downcast) as ignored (aka whitelisted), denoting that
+        // on this particular control flow branch, we know that any
+        // attempt to drop would be a no-op anyway, and thus we can
+        // treat it as a "wildcard", that can successfully merge with
+        // another arm that either drops the path or does not drop it.
 
         for variant_match in self.variant_matches.borrow().iter() {
             match variant_match.mode {
@@ -776,28 +796,44 @@ impl MoveData {
                 euv::BorrowingMatch |
                 euv::CopyingMatch => {}
                 euv::MovingMatch => {
+
                     debug!("remove_drop_obligations variant_match {}", variant_match.to_string(self, tcx));
-                    self.remove_drop_obligations(tcx, variant_match);
+                    self.remove_drop_obligations(
+                        tcx,
+                        variant_match,
+                        instrument_drop_obligations_as_errors);
                     debug!("add_drop_obligations variant_match {}", variant_match.to_string(self, tcx));
-                    self.add_drop_obligations(tcx, variant_match);
+                    self.add_drop_obligations(
+                        tcx,
+                        variant_match,
+                        instrument_drop_obligations_as_errors);
                 }
             }
 
             debug!("add_ignored_drops variant_match {}", variant_match.to_string(self, tcx));
-            self.add_ignored_drops(tcx, variant_match);
+            self.add_ignored_drops(
+                tcx,
+                variant_match,
+                instrument_drop_obligations_as_errors);
         }
  
         for (i, assignment) in self.var_assignments.borrow().iter().enumerate() {
             dfcx_assign.add_gen(assignment.id, i);
             self.kill_moves(assignment.path, assignment.id, dfcx_moves);
             debug!("add_drop_obligations var_assignment {}", assignment.to_string(self, tcx));
-            self.add_drop_obligations(tcx, assignment);
+            self.add_drop_obligations(
+                tcx,
+                assignment,
+                instrument_drop_obligations_as_errors);
         }
 
         for assignment in self.path_assignments.borrow().iter() {
             self.kill_moves(assignment.path, assignment.id, dfcx_moves);
             debug!("add_drop_obligations path_assignment {}", assignment.to_string(self, tcx));
-            self.add_drop_obligations(tcx, assignment);
+            self.add_drop_obligations(
+                tcx,
+                assignment,
+                instrument_drop_obligations_as_errors);
         }
 
         // Kill all moves and drop-obligations related to a variable `x` when
@@ -810,8 +846,10 @@ impl MoveData {
                     self.kill_moves(move_path_index, kill_id, dfcx_moves);
                     debug!("remove_drop_obligations scope {} {}",
                            kill_id, path.loan_path.repr(tcx));
-                    let rm = Removed { where_: kill_id, what_path: move_path_index };
-                    self.remove_drop_obligations(tcx, &rm);
+                    let rm = ScopeRemoved { where_: kill_id, what_path: move_path_index };
+                    self.remove_drop_obligations(tcx,
+                                                 &rm,
+                                                 instrument_drop_obligations_as_errors);
                 }
                 LpExtend(..) => {}
             }
@@ -953,9 +991,11 @@ impl MoveData {
         }
     }
 
-    fn add_drop_obligations<A:AddNeedsDropArg>(&self,
-                                               tcx: &ty::ctxt,
-                                               a: &A) {
+    fn add_drop_obligations<A:AddNeedsDropArg>(
+        &self,
+        tcx: &ty::ctxt,
+        a: &A,
+        instrument_drop_obligations_as_errors: bool) {
         let a_path = a.path_being_established();
 
         let add_gen = |move_path_index| {
@@ -966,9 +1006,15 @@ impl MoveData {
             }
 
             if self.path_needs_drop(tcx, move_path_index) {
+                let print = || self.path_loan_path(move_path_index).user_string(tcx);
                 debug!("add_drop_obligations(a={}) adds {}",
-                       a.to_string_(self, tcx),
-                       self.path_loan_path(move_path_index).repr(tcx));
+                       a.to_string_(self, tcx), print())
+
+                if instrument_drop_obligations_as_errors {
+                    let sp = tcx.map.span(a.node_id_adding_obligation());
+                    let msg = format!("{} adds drop-obl `{}`", a.kind(), print());
+                    tcx.sess.span_err(sp, msg.as_slice());
+                }
             } else {
                 debug!("add_drop_obligations(a={}) skips non-drop {}",
                        a.to_string_(self, tcx),
@@ -985,9 +1031,11 @@ impl MoveData {
         self.for_each_leaf(tcx, a_path, add_gen, report_variant);
     }
 
-    fn remove_drop_obligations<A:RemoveNeedsDropArg>(&self,
-                                                     tcx: &ty::ctxt,
-                                                     a: &A) {
+    fn remove_drop_obligations<A:RemoveNeedsDropArg>(
+        &self,
+        tcx: &ty::ctxt,
+        a: &A,
+        instrument_drop_obligations_as_errors: bool) {
         //! Kills all of the fragment leaves of path.
         //!
         //! Also kills all parents of path: while we do normalize a
@@ -1000,9 +1048,15 @@ impl MoveData {
         let path : MovePathIndex = a.path_being_moved();
 
         let add_kill = |move_path_index| {
+            let print = || self.path_loan_path(move_path_index).user_string(tcx);
+
             if self.type_moves_by_default(tcx, move_path_index) {
-                debug!("remove_drop_obligations(id={}) removes {}",
-                       id, self.path_loan_path(move_path_index).repr(tcx));
+                debug!("remove_drop_obligations(id={}) removes {}", id, print());
+                if instrument_drop_obligations_as_errors {
+                    let sp = tcx.map.span(id);
+                    let msg = format!("{} removes drop-obl `{}`", a.kind(), print());
+                    tcx.sess.span_end_err(sp, msg.as_slice());
+                }
             } else {
                 debug!("remove_drop_obligations(id={}) skips copyable {}",
                        id, self.path_loan_path(move_path_index).repr(tcx));
@@ -1019,13 +1073,19 @@ impl MoveData {
 
     fn add_ignored_drops(&self,
                          tcx: &ty::ctxt,
-                         variant_match: &VariantMatch) {
+                         variant_match: &VariantMatch,
+                         instrument_drop_obligations_as_errors: bool) {
         let path_lp = self.path_loan_path(variant_match.path);
         let base_path_lp = self.path_loan_path(variant_match.base_path);
+        let print = || base_path_lp.user_string(tcx);
 
         if !self.path_needs_drop(tcx, variant_match.path) {
             debug!("add_ignored_drops(id={} lp={}) adds {}",
-                   variant_match.id, path_lp.repr(tcx), base_path_lp.repr(tcx));
+                   variant_match.id, path_lp.repr(tcx), print());
+            if instrument_drop_obligations_as_errors {
+                let sp = tcx.map.span(variant_match.id);
+                tcx.sess.span_err(sp, format!("match whitelists drop-obl `{}`", print()).as_slice())
+            }
         } else {
             debug!("add_ignored_drops(id={} lp={}) skipped {}",
                    variant_match.id, path_lp.repr(tcx), base_path_lp.repr(tcx));
@@ -1034,39 +1094,50 @@ impl MoveData {
 }
 
 trait AddNeedsDropArg {
+    fn kind(&self) -> &'static str;
     fn node_id_adding_obligation(&self) -> ast::NodeId;
     fn path_being_established(&self) -> MovePathIndex;
     fn to_string_(&self, move_data: &MoveData, tcx: &ty::ctxt) -> String;
 }
 impl AddNeedsDropArg for Assignment {
+    fn kind(&self) -> &'static str { "assignment" }
     fn node_id_adding_obligation(&self) -> ast::NodeId { self.id }
     fn path_being_established(&self) -> MovePathIndex { self.path }
     fn to_string_(&self, md: &MoveData, tcx: &ty::ctxt) -> String { self.to_string(md, tcx) }
 }
 impl AddNeedsDropArg for VariantMatch {
+    fn kind(&self) -> &'static str { "match" }
     fn node_id_adding_obligation(&self) -> ast::NodeId { self.id }
     fn path_being_established(&self) -> MovePathIndex { self.path }
     fn to_string_(&self, md: &MoveData, tcx: &ty::ctxt) -> String { self.to_string(md, tcx) }
 }
 
 trait RemoveNeedsDropArg {
+    fn kind(&self) -> &'static str;
     fn node_id_removing_obligation(&self) -> ast::NodeId;
     fn path_being_moved(&self) -> MovePathIndex;
 }
-struct Removed { where_: ast::NodeId, what_path: MovePathIndex }
-impl RemoveNeedsDropArg for Removed {
+struct ScopeRemoved { where_: ast::NodeId, what_path: MovePathIndex }
+impl RemoveNeedsDropArg for ScopeRemoved {
+    fn kind(&self) -> &'static str { "scope-end" }
     fn node_id_removing_obligation(&self) -> ast::NodeId { self.where_ }
     fn path_being_moved(&self) -> MovePathIndex { self.what_path }
 }
 impl<'a> RemoveNeedsDropArg for Move {
+    fn kind(&self) -> &'static str { "move" }
     fn node_id_removing_obligation(&self) -> ast::NodeId { self.id }
     fn path_being_moved(&self) -> MovePathIndex { self.path }
 }
 impl<'a> RemoveNeedsDropArg for VariantMatch {
+    fn kind(&self) -> &'static str { "refinement" }
     fn node_id_removing_obligation(&self) -> ast::NodeId { self.id }
     fn path_being_moved(&self) -> MovePathIndex { self.base_path }
 }
 
+#[deriving(PartialEq, Clone, Show)]
+pub enum FlowedMoveDataFlag {
+    InstrumentDropObligationsAsErrors,
+}
 
 impl<'a, 'tcx> FlowedMoveData<'a, 'tcx> {
     pub fn new(move_data: MoveData,
@@ -1074,7 +1145,8 @@ impl<'a, 'tcx> FlowedMoveData<'a, 'tcx> {
                cfg: &cfg::CFG,
                id_range: ast_util::IdRange,
                decl: &ast::FnDecl,
-               body: &ast::Block)
+               body: &ast::Block,
+               flags: &[FlowedMoveDataFlag])
                -> FlowedMoveData<'a, 'tcx> {
         let mut dfcx_moves =
             DataFlowContext::new(tcx,
@@ -1095,7 +1167,8 @@ impl<'a, 'tcx> FlowedMoveData<'a, 'tcx> {
 
         move_data.add_gen_kills(tcx,
                                 &mut dfcx_moves,
-                                &mut dfcx_assign);
+                                &mut dfcx_assign,
+                                flags);
 
         dfcx_moves.add_kills_from_flow_exits(cfg);
         dfcx_assign.add_kills_from_flow_exits(cfg);
