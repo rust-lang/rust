@@ -102,7 +102,6 @@ pub fn is_match(regex: &str, text: &str) -> Result<bool, parse::Error> {
 /// More details about the `regex!` macro can be found in the `regex` crate
 /// documentation.
 #[deriving(Clone)]
-#[allow(visible_private_types)]
 pub enum Regex {
     // The representation of `Regex` is exported to support the `regex!`
     // syntax extension. Do not rely on it.
@@ -516,7 +515,6 @@ impl Regex {
     }
 
     #[doc(hidden)]
-    #[allow(visible_private_types)]
     #[experimental]
     pub fn names_iter<'a>(&'a self) -> NamesIter<'a> {
         match *self {
@@ -534,7 +532,7 @@ impl Regex {
 
 }
 
-enum NamesIter<'a> {
+pub enum NamesIter<'a> {
     NamesIterNative(::std::slice::Items<'a, Option<&'static str>>),
     NamesIterDynamic(::std::slice::Items<'a, Option<String>>)
 }

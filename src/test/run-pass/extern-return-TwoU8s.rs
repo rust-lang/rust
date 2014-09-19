@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct TwoU8s {
+pub struct TwoU8s {
     one: u8, two: u8
 }
 

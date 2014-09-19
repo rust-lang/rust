@@ -9,16 +9,16 @@
 // except according to those terms.
 
 pub mod two_tuple {
-    trait T {}
-    struct P<'a>(&'a T + 'a, &'a T + 'a);
+    pub trait T {}
+    pub struct P<'a>(&'a T + 'a, &'a T + 'a);
     pub fn f<'a>(car: &'a T, cdr: &'a T) -> P<'a> {
         P(car, cdr)
     }
 }
 
 pub mod two_fields {
-    trait T {}
-    struct P<'a> { car: &'a T + 'a, cdr: &'a T + 'a }
+    pub trait T {}
+    pub struct P<'a> { car: &'a T + 'a, cdr: &'a T + 'a }
     pub fn f<'a>(car: &'a T, cdr: &'a T) -> P<'a> {
         P{ car: car, cdr: cdr }
     }
