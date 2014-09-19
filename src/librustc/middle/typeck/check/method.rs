@@ -174,9 +174,7 @@ pub fn lookup_in_trait<'a, 'tcx>(
         m_name: ast::Name,                  // The name `b`.
         trait_did: DefId,                   // The trait to limit the lookup to.
         self_ty: ty::t,                     // The type of `a`.
-        supplied_tps: &'a [ty::t],          // The list of types X, Y, ... .
-        autoderef_receiver: AutoderefReceiverFlag,
-        report_statics: StaticMethodsFlag)
+        supplied_tps: &'a [ty::t])          // The list of types X, Y, ... .
      -> Option<MethodCallee> {
     let mut lcx = LookupContext {
         fcx: fcx,
@@ -189,8 +187,8 @@ pub fn lookup_in_trait<'a, 'tcx>(
         extension_candidates: Vec::new(),
         deref_args: check::DoDerefArgs,
         check_traits: CheckTraitsOnly,
-        autoderef_receiver: autoderef_receiver,
-        report_statics: report_statics,
+        autoderef_receiver: DontAutoderefReceiver,
+        report_statics: IgnoreStaticMethods,
     };
 
     debug!("method lookup_in_trait(self_ty={}, self_expr={})",
