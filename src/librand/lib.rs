@@ -39,6 +39,7 @@ extern crate core;
 use core::prelude::*;
 
 pub use isaac::{IsaacRng, Isaac64Rng};
+pub use chacha::ChaChaRng;
 
 use distributions::{Range, IndependentSample};
 use distributions::range::SampleRange;
@@ -48,6 +49,7 @@ static RAND_BENCH_N: u64 = 100;
 
 pub mod distributions;
 pub mod isaac;
+pub mod chacha;
 pub mod reseeding;
 mod rand_impls;
 
