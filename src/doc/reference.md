@@ -1832,16 +1832,6 @@ When re-exporting a private item, it can be thought of as allowing the "privacy
 chain" being short-circuited through the reexport instead of passing through
 the namespace hierarchy as it normally would.
 
-### Glob imports and Visibility
-
-Currently glob imports are considered an "experimental" language feature. For
-sanity purpose along with helping the implementation, glob imports will only
-import public items from their destination, not private items.
-
-> **Note:** This is subject to change, glob exports may be removed entirely or
-> they could possibly import private items for a privacy error to later be
-> issued if the item is used.
-
 ## Attributes
 
 ```{.ebnf .gram}
@@ -2454,12 +2444,6 @@ The currently implemented features of the reference compiler are:
 
 * `default_type_params` - Allows use of default type parameters. The future of
                           this feature is uncertain.
-
-* `globs` - Importing everything in a module through `*`. This is currently a
-            large source of bugs in name resolution for Rust, and it's not
-            clear whether this will continue as a feature or not. For these
-            reasons, the glob import statement has been hidden behind this
-            feature flag.
 
 * `intrinsics` - Allows use of the "rust-intrinsics" ABI. Compiler intrinsics
                  are inherently unstable and no promise about them is made.
