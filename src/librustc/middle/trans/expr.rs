@@ -71,7 +71,6 @@ use middle::typeck;
 use middle::typeck::MethodCall;
 use util::common::indenter;
 use util::ppaux::Repr;
-use util::nodemap::NodeMap;
 use middle::trans::machine::{llsize_of, llsize_of_alloc};
 use middle::trans::type_::Type;
 
@@ -1176,8 +1175,8 @@ pub fn trans_local_var<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
     let _icx = push_ctxt("trans_local_var");
 
-    return match def {
-        def::DefUpvar(nid, _, _, _) => {
+    match def {
+        def::DefUpvar(nid, _, _) => {
             // Can't move upvars, so this is never a ZeroMemLastUse.
             let local_ty = node_id_type(bcx, nid);
             match bcx.fcx.llupvars.borrow().find(&nid) {
@@ -1189,34 +1188,24 @@ pub fn trans_local_var<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 }
             }
         }
-        def::DefArg(nid, _) => {
-            take_local(bcx, &*bcx.fcx.llargs.borrow(), nid)
-        }
-        def::DefLocal(nid, _) | def::DefBinding(nid, _) => {
-            take_local(bcx, &*bcx.fcx.lllocals.borrow(), nid)
+        def::DefLocal(nid) => {
+            let datum = match bcx.fcx.lllocals.borrow().find(&nid) {
+                Some(&v) => v,
+                None => {
+                    bcx.sess().bug(format!(
+                        "trans_local_var: no datum for local/arg {:?} found",
+                        nid).as_slice());
+                }
+            };
+            debug!("take_local(nid={:?}, v={}, ty={})",
+                   nid, bcx.val_to_string(datum.val), bcx.ty_to_string(datum.ty));
+            datum
         }
         _ => {
             bcx.sess().unimpl(format!(
                 "unsupported def type in trans_local_var: {:?}",
                 def).as_slice());
         }
-    };
-
-    fn take_local<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
-                              table: &NodeMap<Datum<Lvalue>>,
-                              nid: ast::NodeId)
-                              -> Datum<Lvalue> {
-        let datum = match table.find(&nid) {
-            Some(&v) => v,
-            None => {
-                bcx.sess().bug(format!(
-                    "trans_local_var: no datum for local/arg {:?} found",
-                    nid).as_slice());
-            }
-        };
-        debug!("take_local(nid={:?}, v={}, ty={})",
-               nid, bcx.val_to_string(datum.val), bcx.ty_to_string(datum.ty));
-        datum
     }
 }
 

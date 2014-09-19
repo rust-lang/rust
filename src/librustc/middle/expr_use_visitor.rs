@@ -16,7 +16,7 @@
 
 use middle::mem_categorization as mc;
 use middle::def;
-use middle::freevars;
+use middle::mem_categorization::Typer;
 use middle::pat_util;
 use middle::ty;
 use middle::typeck::{MethodCall, MethodObject, MethodOrigin, MethodParam};
@@ -911,12 +911,12 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,TYPER> {
         debug!("walk_captures({})", closure_expr.repr(self.tcx()));
 
         let tcx = self.typer.tcx();
-        freevars::with_freevars(tcx, closure_expr.id, |freevars| {
-            match freevars::get_capture_mode(self.tcx(), closure_expr.id) {
-                freevars::CaptureByRef => {
+        ty::with_freevars(tcx, closure_expr.id, |freevars| {
+            match self.tcx().capture_mode(closure_expr.id) {
+                ast::CaptureByRef => {
                     self.walk_by_ref_captures(closure_expr, freevars);
                 }
-                freevars::CaptureByValue => {
+                ast::CaptureByValue => {
                     self.walk_by_value_captures(closure_expr, freevars);
                 }
             }
@@ -925,7 +925,7 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,TYPER> {
 
     fn walk_by_ref_captures(&mut self,
                             closure_expr: &ast::Expr,
-                            freevars: &[freevars::freevar_entry]) {
+                            freevars: &[ty::Freevar]) {
         for freevar in freevars.iter() {
             let id_var = freevar.def.def_id().node;
             let cmt_var = return_if_err!(self.cat_captured_var(closure_expr.id,
@@ -950,7 +950,7 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,TYPER> {
 
     fn walk_by_value_captures(&mut self,
                               closure_expr: &ast::Expr,
-                              freevars: &[freevars::freevar_entry]) {
+                              freevars: &[ty::Freevar]) {
         for freevar in freevars.iter() {
             let cmt_var = return_if_err!(self.cat_captured_var(closure_expr.id,
                                                                closure_expr.span,

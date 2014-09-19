@@ -69,7 +69,6 @@ impl<'a, 'tcx> GuaranteeLifetimeContext<'a, 'tcx> {
             mc::cat_rvalue(..) |
             mc::cat_copied_upvar(..) |                  // L-Local
             mc::cat_local(..) |                         // L-Local
-            mc::cat_arg(..) |                           // L-Local
             mc::cat_upvar(..) |
             mc::cat_deref(_, _, mc::BorrowedPtr(..)) |  // L-Deref-Borrowed
             mc::cat_deref(_, _, mc::Implicit(..)) |
@@ -174,8 +173,7 @@ impl<'a, 'tcx> GuaranteeLifetimeContext<'a, 'tcx> {
             mc::cat_static_item => {
                 ty::ReStatic
             }
-            mc::cat_local(local_id) |
-            mc::cat_arg(local_id) => {
+            mc::cat_local(local_id) => {
                 ty::ReScope(self.bccx.tcx.region_maps.var_scope(local_id))
             }
             mc::cat_deref(_, _, mc::UnsafePtr(..)) => {

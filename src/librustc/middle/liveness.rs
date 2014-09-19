@@ -103,7 +103,6 @@
  */
 
 use middle::def::*;
-use middle::freevars;
 use middle::mem_categorization::Typer;
 use middle::pat_util;
 use middle::ty;
@@ -437,24 +436,15 @@ fn visit_arm(ir: &mut IrMaps, arm: &Arm) {
     visit::walk_arm(ir, arm);
 }
 
-fn moved_variable_node_id_from_def(def: Def) -> Option<NodeId> {
-    match def {
-        DefBinding(nid, _) |
-        DefArg(nid, _) |
-        DefLocal(nid, _) => Some(nid),
-
-      _ => None
-    }
-}
-
 fn visit_expr(ir: &mut IrMaps, expr: &Expr) {
     match expr.node {
       // live nodes required for uses or definitions of variables:
       ExprPath(_) => {
         let def = ir.tcx.def_map.borrow().get_copy(&expr.id);
         debug!("expr {}: path that leads to {:?}", expr.id, def);
-        if moved_variable_node_id_from_def(def).is_some() {
-            ir.add_live_node_for_node(expr.id, ExprNode(expr.span));
+        match def {
+            DefLocal(..) => ir.add_live_node_for_node(expr.id, ExprNode(expr.span)),
+            _ => {}
         }
         visit::walk_expr(ir, expr);
       }
@@ -468,15 +458,15 @@ fn visit_expr(ir: &mut IrMaps, expr: &Expr) {
         // in better error messages than just pointing at the closure
         // construction site.
         let mut call_caps = Vec::new();
-        freevars::with_freevars(ir.tcx, expr.id, |freevars| {
+        ty::with_freevars(ir.tcx, expr.id, |freevars| {
             for fv in freevars.iter() {
-                match moved_variable_node_id_from_def(fv.def) {
-                    Some(rv) => {
+                match fv.def {
+                    DefLocal(rv) => {
                         let fv_ln = ir.add_live_node(FreeVarNode(fv.span));
                         call_caps.push(CaptureInfo {ln: fv_ln,
                                                     var_nid: rv});
                     }
-                    None => {}
+                    _ => {}
                 }
             }
         });
@@ -1296,9 +1286,8 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 
     fn access_path(&mut self, expr: &Expr, succ: LiveNode, acc: uint)
                    -> LiveNode {
-        let def = self.ir.tcx.def_map.borrow().get_copy(&expr.id);
-        match moved_variable_node_id_from_def(def) {
-          Some(nid) => {
+        match self.ir.tcx.def_map.borrow().get_copy(&expr.id) {
+          DefLocal(nid) => {
             let ln = self.live_node(expr.id, expr.span);
             if acc != 0u {
                 self.init_from_succ(ln, succ);
@@ -1307,7 +1296,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             }
             ln
           }
-          None => succ
+          _ => succ
         }
     }
 
@@ -1537,7 +1526,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         match expr.node {
           ExprPath(_) => {
             match self.ir.tcx.def_map.borrow().get_copy(&expr.id) {
-              DefLocal(nid, _) => {
+              DefLocal(nid) => {
                 // Assignment to an immutable variable or argument: only legal
                 // if there is no later assignment. If this local is actually
                 // mutable, then check for a reassignment to flag the mutability
@@ -1546,16 +1535,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                 let var = self.variable(nid, expr.span);
                 self.warn_about_dead_assign(expr.span, expr.id, ln, var);
               }
-              def => {
-                match moved_variable_node_id_from_def(def) {
-                  Some(nid) => {
-                    let ln = self.live_node(expr.id, expr.span);
-                    let var = self.variable(nid, expr.span);
-                    self.warn_about_dead_assign(expr.span, expr.id, ln, var);
-                  }
-                  None => {}
-                }
-              }
+              _ => {}
             }
           }
 
