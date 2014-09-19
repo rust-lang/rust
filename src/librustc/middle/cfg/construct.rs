@@ -424,6 +424,13 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
                 self.call(expr, pred, &**l, Some(&**r).into_iter())
             }
 
+            ast::ExprSlice(ref base, ref start, ref end, _) => {
+                self.call(expr,
+                          pred,
+                          &**base,
+                          start.iter().chain(end.iter()).map(|x| &**x))
+            }
+
             ast::ExprUnary(_, ref e) if self.is_method_call(expr) => {
                 self.call(expr, pred, &**e, None::<ast::Expr>.iter())
             }

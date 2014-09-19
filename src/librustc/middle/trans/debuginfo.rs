@@ -3479,6 +3479,12 @@ fn populate_scope_map(cx: &CrateContext,
                 walk_expr(cx, &**rhs, scope_stack, scope_map);
             }
 
+            ast::ExprSlice(ref base, ref start, ref end, _) => {
+                walk_expr(cx, &**base, scope_stack, scope_map);
+                start.as_ref().map(|x| walk_expr(cx, &**x, scope_stack, scope_map));
+                end.as_ref().map(|x| walk_expr(cx, &**x, scope_stack, scope_map));
+            }
+
             ast::ExprVec(ref init_expressions) |
             ast::ExprTup(ref init_expressions) => {
                 for ie in init_expressions.iter() {

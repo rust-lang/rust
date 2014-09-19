@@ -8,12 +8,28 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-static s: int = 1;
-static e: int = 42;
+// Test that is a slicing expr[..] fails, the correct cleanups happen.
 
-pub fn main() {
-    match 7 {
-        s...e => (),
-        _ => (),
-    }
+use std::task;
+
+struct Foo;
+
+static mut DTOR_COUNT: int = 0;
+
+impl Drop for Foo {
+    fn drop(&mut self) { unsafe { DTOR_COUNT += 1; } }
+}
+
+fn bar() -> uint {
+    fail!();
+}
+
+fn foo() {
+    let x: &[_] = &[Foo, Foo];
+    x[3..bar()];
+}
+
+fn main() {
+    let _ = task::try(proc() foo());
+    unsafe { assert!(DTOR_COUNT == 2); }
 }

@@ -501,7 +501,7 @@ fn visit_expr(ir: &mut IrMaps, expr: &Expr) {
 
       // otherwise, live nodes are not required:
       ExprIndex(..) | ExprField(..) | ExprTupField(..) | ExprVec(..) |
-      ExprCall(..) | ExprMethodCall(..) | ExprTup(..) |
+      ExprCall(..) | ExprMethodCall(..) | ExprTup(..) | ExprSlice(..) |
       ExprBinary(..) | ExprAddrOf(..) |
       ExprCast(..) | ExprUnary(..) | ExprBreak(_) |
       ExprAgain(_) | ExprLit(_) | ExprRet(..) | ExprBlock(..) |
@@ -1174,6 +1174,12 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             self.propagate_through_expr(&**l, r_succ)
           }
 
+          ExprSlice(ref e1, ref e2, ref e3, _) => {
+            let succ = e3.as_ref().map_or(succ, |e| self.propagate_through_expr(&**e, succ));
+            let succ = e2.as_ref().map_or(succ, |e| self.propagate_through_expr(&**e, succ));
+            self.propagate_through_expr(&**e1, succ)
+          }
+
           ExprAddrOf(_, ref e) |
           ExprCast(ref e, _) |
           ExprUnary(_, ref e) |
@@ -1457,7 +1463,7 @@ fn check_expr(this: &mut Liveness, expr: &Expr) {
       ExprWhile(..) | ExprLoop(..) | ExprIndex(..) | ExprField(..) |
       ExprTupField(..) | ExprVec(..) | ExprTup(..) | ExprBinary(..) |
       ExprCast(..) | ExprUnary(..) | ExprRet(..) | ExprBreak(..) |
-      ExprAgain(..) | ExprLit(_) | ExprBlock(..) |
+      ExprAgain(..) | ExprLit(_) | ExprBlock(..) | ExprSlice(..) |
       ExprMac(..) | ExprAddrOf(..) | ExprStruct(..) | ExprRepeat(..) |
       ExprParen(..) | ExprFnBlock(..) | ExprProc(..) | ExprUnboxedFn(..) |
       ExprPath(..) | ExprBox(..) => {

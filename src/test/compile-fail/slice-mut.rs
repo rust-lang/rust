@@ -8,12 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-static s: int = 1;
-static e: int = 42;
+// Test mutability and slicing syntax.
 
-pub fn main() {
-    match 7 {
-        s...e => (),
-        _ => (),
-    }
+fn main() {
+    let x: &[int] = &[1, 2, 3, 4, 5];
+    // Immutable slices are not mutable.
+    let y: &mut[_] = x[2..4]; //~ ERROR cannot borrow immutable dereference of `&`-pointer as mutabl
+
+    let x: &mut [int] = &mut [1, 2, 3, 4, 5];
+    // Can't borrow mutably twice
+    let y = x[mut 1..2];
+    let y = x[mut 4..5]; //~ERROR cannot borrow
 }

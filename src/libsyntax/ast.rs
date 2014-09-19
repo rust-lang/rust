@@ -538,6 +538,7 @@ pub enum Expr_ {
     ExprField(P<Expr>, SpannedIdent, Vec<P<Ty>>),
     ExprTupField(P<Expr>, Spanned<uint>, Vec<P<Ty>>),
     ExprIndex(P<Expr>, P<Expr>),
+    ExprSlice(P<Expr>, Option<P<Expr>>, Option<P<Expr>>, Mutability),
 
     /// Variable reference, possibly containing `::` and/or
     /// type parameters, e.g. foo::bar::<baz>
