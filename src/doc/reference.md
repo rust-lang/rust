@@ -185,24 +185,37 @@ grammar as double-quoted strings. Other tokens have exact rules given.
 
 ### Keywords
 
-The keywords are the following strings:
+The keywords are the following strings, organized by first letter:
 
-```{.text .keyword}
-as
-box break
-continue crate
-else enum extern
-false fn for
-if impl in
-let loop
-match mod mut
-priv proc pub
-ref return
-self static struct super
-true trait type
-unsafe use
-while
-```
+|----------|--------|--------|-------|
+| as       |        |        |       |
+|----------|--------|--------|-------|
+| box      | break  |        |       |
+|----------|--------|--------|-------|
+| continue | crate  |        |       |
+|----------|--------|--------|-------|
+| else     | enum   | extern |       |
+|----------|--------|--------|-------|
+| false    | fn     | for    |       |
+|----------|--------|--------|-------|
+| if       | impl   | in     |       |
+|----------|--------|--------|-------|
+| let      | loop   |        |       |
+|----------|--------|--------|-------|
+| match    | mod    | mut    |       |
+|----------|--------|--------|-------|
+| priv     | proc   | pub    |       |
+|----------|--------|--------|-------|
+| ref      | return |        |       |
+|----------|--------|--------|-------|
+| self     | static | struct | super |
+|----------|--------|--------|-------|
+| trait    | true   | type   |       |
+|----------|--------|--------|-------|
+| unsafe   | use    |        |       |
+|----------|--------|--------|-------|
+| while    |        |        |       |
+|----------|--------|--------|-------|
 
 Each of these keywords has special meaning in its grammar, and all of them are
 excluded from the `ident` rule.
