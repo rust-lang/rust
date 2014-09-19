@@ -46,7 +46,7 @@ development of Rust itself is discussed.
 # Specification
 
 Rust does not have an exact specification, but an effort to describe as much of
-the language in as much detail as possible is in [the manual](rust.html).
+the language in as much detail as possible is in [the reference](reference.html).
 
 # Guides
 
