@@ -304,6 +304,10 @@ nav.sub {
 
 .content .impl-methods .docblock { margin-left: 40px; }
 
+.math-display {
+    text-align: center;
+}
+
 nav {
     border-bottom: 1px solid #e0e0e0;
     padding-bottom: 10px;

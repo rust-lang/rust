@@ -9,7 +9,7 @@
 // except according to those terms.
 
 /*jslint browser: true, es5: true */
-/*globals $: true, rootPath: true */
+/*globals $: true, rootPath: true, useKaTeX: true, katex: true */
 
 (function() {
     "use strict";
@@ -775,4 +775,15 @@
         $("#main > .docblock").before(wrapper);
     });
 
+    $(function() {
+        if (!useKaTeX) { return }
+        $(".latex-math").each(function() {
+            if (!katex) {
+                console.error("KaTeX not loaded on page requiring it")
+            }
+            var style = this.tagName == "P" ? "display" : "text";
+
+            katex.render("\\" + style + "style " + this.textContent, this);
+        })
+    })
 }());

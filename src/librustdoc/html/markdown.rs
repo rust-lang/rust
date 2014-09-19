@@ -304,17 +304,17 @@ pub fn render(w: &mut fmt::Formatter, s: &str, print_toc: bool) -> fmt::Result {
         opaque.math_seen = true;
 
         let (open, close) = if display_mode == 1 {
-            ("\\[", "\\]")
+            ("<p class=\"latex-math math-display\">", "</p>")
         } else {
-            ("\\(", "\\)")
+            ("<span class=\"latex-math math-text\">", "</span>")
         };
 
-        open.with_c_str(|open| {
-            close.with_c_str(|close| {
+        open.with_c_str(|o| {
+            close.with_c_str(|c| {
                 unsafe {
-                    hoedown_buffer_put(ob, open as *const libc::c_void, 2);
+                    hoedown_buffer_put(ob, o as *const libc::c_void, open.len() as libc::size_t);
                     hoedown_escape_html(ob, (*text).data, (*text).size, 0);
-                    hoedown_buffer_put(ob, close as *const libc::c_void, 2);
+                    hoedown_buffer_put(ob, c as *const libc::c_void, close.len() as libc::size_t);
                 }
             })
         });

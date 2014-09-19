@@ -53,6 +53,7 @@ r##"<!DOCTYPE html>
     <title>{title}</title>
 
     <link rel="stylesheet" type="text/css" href="{root_path}main.css">
+    <link rel="stylesheet" type="text/css" href="{root_path}katex/katex.min.css">
 
     {favicon}
     {in_header}
@@ -125,6 +126,7 @@ r##"<!DOCTYPE html>
         window.rootPath = "{root_path}";
         window.currentCrate = "{krate}";
         window.playgroundUrl = "{play_url}";
+        window.useKaTeX = true;
     </script>
     <script src="{root_path}jquery.js"></script>
     <script src="{root_path}main.js"></script>
@@ -163,11 +165,13 @@ r##"<!DOCTYPE html>
     },
     ));
 
-    // this must be done after everything is rendered, so that
+    // This must be done after everything is rendered, so that
     // `math_seen` captures all possible $$'s on this page.
+    //
+    // We conditionally insert only the JS, since it's 5x larger than
+    // the CSS.
     if layout.enable_math && markdown::math_seen.get().map_or(false, |x| *x) {
-        try!(dst.write_str("\
-<script async src=\"https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS_HTML\"></script>"));
+        try!(write!(dst, "<script src=\"{}katex/katex.min.js\"></script>", page.root_path));
     }
 
     dst.write_str("</body>\n</html>")

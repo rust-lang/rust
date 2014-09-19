@@ -291,6 +291,8 @@ pub fn run(mut krate: clean::Crate, external_html: &ExternalHtml, dst: Path) -> 
                     }
                     clean::Word(ref x)
                             if "enable_math" == x.as_slice() => {
+                        // Possible extension: allow specifying
+                        // alternate engines etc.
                         cx.layout.enable_math = true;
                         markdown::enable_math.replace(Some(true));
                     }
@@ -487,27 +489,70 @@ fn write_shared(cx: &Context,
 
     // Add all the static files. These may already exist, but we just
     // overwrite them anyway to make sure that they're fresh and up-to-date.
-    try!(write(cx.dst.join("jquery.js"),
-               include_bin!("static/jquery-2.1.0.min.js")));
-    try!(write(cx.dst.join("main.js"), include_bin!("static/main.js")));
-    try!(write(cx.dst.join("playpen.js"), include_bin!("static/playpen.js")));
-    try!(write(cx.dst.join("main.css"), include_bin!("static/main.css")));
-    try!(write(cx.dst.join("normalize.css"),
-               include_bin!("static/normalize.css")));
-    try!(write(cx.dst.join("FiraSans-Regular.woff"),
-               include_bin!("static/FiraSans-Regular.woff")));
-    try!(write(cx.dst.join("FiraSans-Medium.woff"),
-               include_bin!("static/FiraSans-Medium.woff")));
-    try!(write(cx.dst.join("Heuristica-Italic.woff"),
-               include_bin!("static/Heuristica-Italic.woff")));
-    try!(write(cx.dst.join("SourceSerifPro-Regular.woff"),
-               include_bin!("static/SourceSerifPro-Regular.woff")));
-    try!(write(cx.dst.join("SourceSerifPro-Bold.woff"),
-               include_bin!("static/SourceSerifPro-Bold.woff")));
-    try!(write(cx.dst.join("SourceCodePro-Regular.woff"),
-               include_bin!("static/SourceCodePro-Regular.woff")));
-    try!(write(cx.dst.join("SourceCodePro-Semibold.woff"),
-               include_bin!("static/SourceCodePro-Semibold.woff")));
+    macro_rules! write_files {
+        ( $($input: tt => $output: tt,)* ) => {{
+            $(
+                try!(write(cx.dst.join($output),
+                           include_bin!($input)));
+                )*
+        }}
+    }
+
+    try!(fs::mkdir_recursive(&cx.dst.join("katex/fonts"), io::UserRWX));
+
+    write_files! {
+        "static/jquery-2.1.0.min.js" => "jquery.js",
+        "static/main.js" => "main.js",
+        "static/playpen.js" => "playpen.js",
+
+        "static/main.css" => "main.css",
+        "static/normalize.css" => "normalize.css",
+
+        "static/FiraSans-Regular.woff" => "FiraSans-Regular.woff",
+        "static/FiraSans-Medium.woff" => "FiraSans-Medium.woff",
+        "static/Heuristica-Italic.woff" => "Heuristica-Italic.woff",
+        "static/SourceSerifPro-Regular.woff" => "SourceSerifPro-Regular.woff",
+        "static/SourceSerifPro-Bold.woff" => "SourceSerifPro-Bold.woff",
+        "static/SourceCodePro-Regular.woff" => "SourceCodePro-Regular.woff",
+        "static/SourceCodePro-Semibold.woff" => "SourceCodePro-Semibold.woff",
+
+        "static/katex/katex.min.css" => "katex/katex.min.css",
+        "static/katex/katex.min.js" => "katex/katex.min.js",
+        "static/katex/fonts/KaTeX_AMS-Regular.eot" => "katex/fonts/KaTeX_AMS-Regular.eot",
+        "static/katex/fonts/KaTeX_AMS-Regular.ttf" => "katex/fonts/KaTeX_AMS-Regular.ttf",
+        "static/katex/fonts/KaTeX_AMS-Regular.woff" => "katex/fonts/KaTeX_AMS-Regular.woff",
+        "static/katex/fonts/KaTeX_Main-Bold.eot" => "katex/fonts/KaTeX_Main-Bold.eot",
+        "static/katex/fonts/KaTeX_Main-Bold.ttf" => "katex/fonts/KaTeX_Main-Bold.ttf",
+        "static/katex/fonts/KaTeX_Main-Bold.woff" => "katex/fonts/KaTeX_Main-Bold.woff",
+        "static/katex/fonts/KaTeX_Main-Italic.eot" => "katex/fonts/KaTeX_Main-Italic.eot",
+        "static/katex/fonts/KaTeX_Main-Italic.ttf" => "katex/fonts/KaTeX_Main-Italic.ttf",
+        "static/katex/fonts/KaTeX_Main-Italic.woff" => "katex/fonts/KaTeX_Main-Italic.woff",
+        "static/katex/fonts/KaTeX_Main-Regular.eot" => "katex/fonts/KaTeX_Main-Regular.eot",
+        "static/katex/fonts/KaTeX_Main-Regular.ttf" => "katex/fonts/KaTeX_Main-Regular.ttf",
+        "static/katex/fonts/KaTeX_Main-Regular.woff" => "katex/fonts/KaTeX_Main-Regular.woff",
+        "static/katex/fonts/KaTeX_Math-BoldItalic.eot" => "katex/fonts/KaTeX_Math-BoldItalic.eot",
+        "static/katex/fonts/KaTeX_Math-BoldItalic.ttf" => "katex/fonts/KaTeX_Math-BoldItalic.ttf",
+        "static/katex/fonts/KaTeX_Math-BoldItalic.woff" => "katex/fonts/KaTeX_Math-BoldItalic.woff",
+        "static/katex/fonts/KaTeX_Math-Italic.eot" => "katex/fonts/KaTeX_Math-Italic.eot",
+        "static/katex/fonts/KaTeX_Math-Italic.ttf" => "katex/fonts/KaTeX_Math-Italic.ttf",
+        "static/katex/fonts/KaTeX_Math-Italic.woff" => "katex/fonts/KaTeX_Math-Italic.woff",
+        "static/katex/fonts/KaTeX_Math-Regular.eot" => "katex/fonts/KaTeX_Math-Regular.eot",
+        "static/katex/fonts/KaTeX_Math-Regular.ttf" => "katex/fonts/KaTeX_Math-Regular.ttf",
+        "static/katex/fonts/KaTeX_Math-Regular.woff" => "katex/fonts/KaTeX_Math-Regular.woff",
+        "static/katex/fonts/KaTeX_Size1-Regular.eot" => "katex/fonts/KaTeX_Size1-Regular.eot",
+        "static/katex/fonts/KaTeX_Size1-Regular.ttf" => "katex/fonts/KaTeX_Size1-Regular.ttf",
+        "static/katex/fonts/KaTeX_Size1-Regular.woff" => "katex/fonts/KaTeX_Size1-Regular.woff",
+        "static/katex/fonts/KaTeX_Size2-Regular.eot" => "katex/fonts/KaTeX_Size2-Regular.eot",
+        "static/katex/fonts/KaTeX_Size2-Regular.ttf" => "katex/fonts/KaTeX_Size2-Regular.ttf",
+        "static/katex/fonts/KaTeX_Size2-Regular.woff" => "katex/fonts/KaTeX_Size2-Regular.woff",
+        "static/katex/fonts/KaTeX_Size3-Regular.eot" => "katex/fonts/KaTeX_Size3-Regular.eot",
+        "static/katex/fonts/KaTeX_Size3-Regular.ttf" => "katex/fonts/KaTeX_Size3-Regular.ttf",
+        "static/katex/fonts/KaTeX_Size3-Regular.woff" => "katex/fonts/KaTeX_Size3-Regular.woff",
+        "static/katex/fonts/KaTeX_Size4-Regular.eot" => "katex/fonts/KaTeX_Size4-Regular.eot",
+        "static/katex/fonts/KaTeX_Size4-Regular.ttf" => "katex/fonts/KaTeX_Size4-Regular.ttf",
+        "static/katex/fonts/KaTeX_Size4-Regular.woff" => "katex/fonts/KaTeX_Size4-Regular.woff",
+    }
+
 
     fn collect(path: &Path, krate: &str,
                key: &str) -> io::IoResult<Vec<String>> {
