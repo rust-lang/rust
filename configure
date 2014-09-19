@@ -306,7 +306,7 @@ case $CFG_OSTYPE in
         # instead, msys defines $MSYSTEM which is MINGW32 on i686 and
         # MINGW64 on x86_64.
         CFG_CPUTYPE=i686
-        CFG_OSTYPE=pc-mingw32
+        CFG_OSTYPE=w64-mingw32
         if [ "$MSYSTEM" = MINGW64 ]
         then
             CFG_CPUTYPE=x86_64
