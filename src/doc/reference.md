@@ -1388,7 +1388,7 @@ global data section (such as string constants and static items) can have the
 `static` lifetime. Static items are declared with the `static` keyword. A
 static item must have a _constant expression_ giving its definition.
 
-Static items must be explicitly typed. The type may be ```bool```, ```char```,
+Static items must be explicitly typed. The type may be `bool`, `char`,
 a number, or a type derived from those primitive types. The derived types are
 references with the `static` lifetime, fixed-size arrays, tuples, and structs.
 
@@ -1412,16 +1412,16 @@ static bits_n_strings: BitsNStrings<'static> = BitsNStrings {
 
 #### Mutable statics
 
-If a static item is declared with the ```mut``` keyword, then it is allowed to
+If a static item is declared with the `mut` keyword, then it is allowed to
 be modified by the program. One of Rust's goals is to make concurrency bugs
 hard to run into, and this is obviously a very large source of race conditions
-or other bugs. For this reason, an ```unsafe``` block is required when either
+or other bugs. For this reason, an `unsafe` block is required when either
 reading or writing a mutable static variable. Care should be taken to ensure
 that modifications to a mutable static are safe with respect to other tasks
 running in the same process.
 
 Mutable statics are still very useful, however. They can be used with C
-libraries and can also be bound from C libraries (in an ```extern``` block).
+libraries and can also be bound from C libraries (in an `extern` block).
 
 ```
 # fn atomic_add(_: &mut uint, _: uint) -> uint { 2 }
