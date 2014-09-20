@@ -243,12 +243,6 @@ struct BorrowStats {
 
 pub type BckResult<T> = Result<T, BckError>;
 
-#[deriving(PartialEq)]
-pub enum PartialTotal {
-    Partial,   // Loan affects some portion
-    Total      // Loan affects entire path
-}
-
 ///////////////////////////////////////////////////////////////////////////
 // Loans and loan paths
 

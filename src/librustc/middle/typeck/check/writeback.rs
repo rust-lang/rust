@@ -361,7 +361,6 @@ enum ResolveReason {
     ResolvingLocal(Span),
     ResolvingPattern(Span),
     ResolvingUpvar(ty::UpvarId),
-    ResolvingImplRes(Span),
     ResolvingUnboxedClosure(ast::DefId),
 }
 
@@ -374,7 +373,6 @@ impl ResolveReason {
             ResolvingUpvar(upvar_id) => {
                 ty::expr_span(tcx, upvar_id.closure_expr_id)
             }
-            ResolvingImplRes(s) => s,
             ResolvingUnboxedClosure(did) => {
                 if did.krate == ast::LOCAL_CRATE {
                     ty::expr_span(tcx, did.node)
@@ -460,11 +458,6 @@ impl<'cx, 'tcx> Resolver<'cx, 'tcx> {
                         "cannot resolve lifetime for captured variable `{}`: {}",
                         ty::local_var_name_str(self.tcx, upvar_id.var_id).get().to_string(),
                         infer::fixup_err_to_string(e));
-                }
-
-                ResolvingImplRes(span) => {
-                    span_err!(self.tcx.sess, span, E0105,
-                        "cannot determine a type for impl supertrait");
                 }
 
                 ResolvingUnboxedClosure(_) => {
