@@ -271,9 +271,7 @@ pub enum RegionVariableOrigin {
 pub enum fixup_err {
     unresolved_int_ty(IntVid),
     unresolved_float_ty(FloatVid),
-    unresolved_ty(TyVid),
-    unresolved_region(RegionVid),
-    region_var_bound_by_region_var(RegionVid, RegionVid)
+    unresolved_ty(TyVid)
 }
 
 pub fn fixup_err_to_string(f: fixup_err) -> String {
@@ -287,11 +285,6 @@ pub fn fixup_err_to_string(f: fixup_err) -> String {
            the type explicitly".to_string()
       }
       unresolved_ty(_) => "unconstrained type".to_string(),
-      unresolved_region(_) => "unconstrained region".to_string(),
-      region_var_bound_by_region_var(r1, r2) => {
-        format!("region var {:?} bound by another region var {:?}; \
-                 this is a bug in rustc", r1, r2)
-      }
     }
 }
 

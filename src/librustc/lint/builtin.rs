@@ -1269,11 +1269,6 @@ impl LintPass for UnusedMut {
     }
 }
 
-enum Allocation {
-    VectorAllocation,
-    BoxAllocation
-}
-
 declare_lint!(UNNECESSARY_ALLOCATION, Warn,
               "detects unnecessary allocations that can be eliminated")
 
@@ -1285,30 +1280,21 @@ impl LintPass for UnnecessaryAllocation {
     }
 
     fn check_expr(&mut self, cx: &Context, e: &ast::Expr) {
-        // Warn if boxing expressions are immediately borrowed.
-        let allocation = match e.node {
-            ast::ExprUnary(ast::UnUniq, _) |
-            ast::ExprUnary(ast::UnBox, _) => BoxAllocation,
-
+        match e.node {
+            ast::ExprUnary(ast::UnUniq, _) | ast::ExprUnary(ast::UnBox, _) => (),
             _ => return
-        };
+        }
 
         match cx.tcx.adjustments.borrow().find(&e.id) {
             Some(adjustment) => {
                 match *adjustment {
                     ty::AdjustDerefRef(ty::AutoDerefRef { ref autoref, .. }) => {
-                        match (allocation, autoref) {
-                            (VectorAllocation, &Some(ty::AutoPtr(_, _, None))) => {
-                                cx.span_lint(UNNECESSARY_ALLOCATION, e.span,
-                                             "unnecessary allocation, the sigil can be removed");
-                            }
-                            (BoxAllocation,
-                             &Some(ty::AutoPtr(_, ast::MutImmutable, None))) => {
+                        match autoref {
+                            &Some(ty::AutoPtr(_, ast::MutImmutable, None)) => {
                                 cx.span_lint(UNNECESSARY_ALLOCATION, e.span,
                                              "unnecessary allocation, use & instead");
                             }
-                            (BoxAllocation,
-                             &Some(ty::AutoPtr(_, ast::MutMutable, None))) => {
+                            &Some(ty::AutoPtr(_, ast::MutMutable, None)) => {
                                 cx.span_lint(UNNECESSARY_ALLOCATION, e.span,
                                              "unnecessary allocation, use &mut instead");
                             }
