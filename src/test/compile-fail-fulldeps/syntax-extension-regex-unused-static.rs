@@ -26,5 +26,5 @@ extern crate regex;
 // unused variable warning).
 
 fn main() {
-    static fubar: regex::Regex = regex!("abc"); //~ ERROR code is never used: `fubar`
+    static fubar: regex::Regex = regex!("abc"); //~ ERROR static item is never used: `fubar`
 }

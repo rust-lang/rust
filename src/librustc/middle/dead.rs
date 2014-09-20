@@ -507,7 +507,8 @@ impl<'a, 'tcx> DeadVisitor<'a, 'tcx> {
     fn warn_dead_code(&mut self,
                       id: ast::NodeId,
                       span: codemap::Span,
-                      ident: ast::Ident) {
+                      ident: ast::Ident,
+                      node_type: &str) {
         let name = ident.as_str();
         if !name.starts_with("_") {
             self.tcx
@@ -515,7 +516,7 @@ impl<'a, 'tcx> DeadVisitor<'a, 'tcx> {
                 .add_lint(lint::builtin::DEAD_CODE,
                           id,
                           span,
-                          format!("code is never used: `{}`", name));
+                          format!("{} is never used: `{}`", node_type, name));
         }
     }
 }
@@ -523,13 +524,14 @@ impl<'a, 'tcx> DeadVisitor<'a, 'tcx> {
 impl<'a, 'tcx, 'v> Visitor<'v> for DeadVisitor<'a, 'tcx> {
     fn visit_item(&mut self, item: &ast::Item) {
         if self.should_warn_about_item(item) {
-            self.warn_dead_code(item.id, item.span, item.ident);
+            self.warn_dead_code(item.id, item.span, item.ident, item.node.descriptive_variant());
         } else {
             match item.node {
                 ast::ItemEnum(ref enum_def, _) => {
                     for variant in enum_def.variants.iter() {
                         if self.should_warn_about_variant(&variant.node) {
-                            self.warn_dead_code(variant.node.id, variant.span, variant.node.name);
+                            self.warn_dead_code(variant.node.id, variant.span,
+                                                variant.node.name, "variant");
                         }
                     }
                 },
@@ -541,7 +543,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for DeadVisitor<'a, 'tcx> {
 
     fn visit_foreign_item(&mut self, fi: &ast::ForeignItem) {
         if !self.symbol_is_live(fi.id, None) {
-            self.warn_dead_code(fi.id, fi.span, fi.ident);
+            self.warn_dead_code(fi.id, fi.span, fi.ident, fi.node.descriptive_variant());
         }
         visit::walk_foreign_item(self, fi);
     }
@@ -553,7 +555,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for DeadVisitor<'a, 'tcx> {
         match fk {
             visit::FkMethod(name, _, _) => {
                 if !self.symbol_is_live(id, None) {
-                    self.warn_dead_code(id, span, name);
+                    self.warn_dead_code(id, span, name, "method");
                 }
             }
             _ => ()
@@ -563,7 +565,8 @@ impl<'a, 'tcx, 'v> Visitor<'v> for DeadVisitor<'a, 'tcx> {
 
     fn visit_struct_field(&mut self, field: &ast::StructField) {
         if self.should_warn_about_field(&field.node) {
-            self.warn_dead_code(field.node.id, field.span, field.node.ident().unwrap());
+            self.warn_dead_code(field.node.id, field.span,
+                                field.node.ident().unwrap(), "struct field");
         }
 
         visit::walk_struct_field(self, field);
