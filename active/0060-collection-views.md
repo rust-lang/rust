@@ -99,7 +99,7 @@ impl<'a, K, V> OccupiedEntry<'a, K, V> {
     pub fn into_mut(self) -> &'a mut V;
 
     /// Sets the value stored in this Entry
-    pub fn set(self, value: V) -> V;
+    pub fn set(&mut self, value: V) -> V;
 
     /// Takes the value stored in this Entry
     pub fn take(self) -> V;
@@ -130,8 +130,8 @@ the guarantor, and destroy the Entry. This is to avoid the costs of maintaining 
 otherwise isn't particularly interesting anymore.
 
 If there is a match, a more robust set of options is provided. `get` and `get_mut` provide access to the
-value found in the location. `set` behaves as the vacant variant, but also yields the old value. `take`
-simply removes the found value, and destroys the entry for similar reasons as `set`.
+value found in the location. `set` behaves as the vacant variant, but without destroying the entry. 
+It also yields the old value. `take` simply removes the found value, and destroys the entry for similar reasons as `set`.
 
 Let's look at how we one now writes `insert_or_update`:
 
