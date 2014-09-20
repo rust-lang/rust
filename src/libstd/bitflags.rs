@@ -223,7 +223,7 @@ macro_rules! bitflags {
     }) => {
         bitflags! {
             $(#[$attr])*
-            flags $BitFlags: u32 {
+            flags $BitFlags: $T {
                 $($(#[$Flag_attr])* static $Flag = $value),+
             }
         }
@@ -252,6 +252,12 @@ mod tests {
             static FlagABC     = FlagA.bits
                                | FlagB.bits
                                | FlagC.bits,
+        }
+    }
+
+    bitflags! {
+        flags AnotherSetOfFlags: uint {
+            static AnotherFlag = 1u,
         }
     }
 
