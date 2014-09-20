@@ -28,8 +28,8 @@ fn field_read(f: Foo) -> uint {
 }
 
 enum XYZ {
-    X,
-    Y {
+    X, //~ ERROR variant is never used
+    Y { //~ ERROR variant is never used
         a: String,
         b: int //~ ERROR: code is never used
     },

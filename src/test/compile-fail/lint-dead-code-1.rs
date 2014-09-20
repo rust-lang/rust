@@ -63,8 +63,12 @@ pub struct PubStruct2 {
 pub enum pub_enum { foo1, bar1 }
 pub enum pub_enum2 { a(*const StructUsedInEnum) }
 pub enum pub_enum3 { Foo = STATIC_USED_IN_ENUM_DISCRIMINANT }
+
 enum priv_enum { foo2, bar2 } //~ ERROR: code is never used
-enum used_enum { foo3, bar3 }
+enum used_enum {
+    foo3,
+    bar3 //~ ERROR code is never used
+}
 
 fn f<T>() {}
 
