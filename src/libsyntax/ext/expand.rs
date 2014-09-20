@@ -895,7 +895,10 @@ fn expand_method(m: P<ast::Method>, fld: &mut MacroExpander) -> SmallVector<P<as
             };
 
             // expand again if necessary
-            new_methods.into_iter().flat_map(|m| fld.fold_method(m).into_iter()).collect()
+            let new_methods = new_methods.move_iter()
+                                  .flat_map(|m| fld.fold_method(m).into_iter()).collect();
+            fld.cx.bt_pop();
+            new_methods
         }
     })
 }
