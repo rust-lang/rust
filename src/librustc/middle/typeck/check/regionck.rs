@@ -213,26 +213,6 @@ pub struct Rcx<'a, 'tcx: 'a> {
     repeating_scope: ast::NodeId,
 }
 
-/// When entering a function, we can derive relationships from the
-/// signature between various regions and type parameters. Consider
-/// a function like:
-///
-///     fn foo<'a, A>(x: &'a A) { ... }
-///
-/// Here, we can derive that `A` must outlive `'a`, because otherwise
-/// the caller would be illegal. We record this by storing a series of
-/// pairs (in this case, `('a, A)`). These pairs will be consulted
-/// later during regionck.
-///
-/// In the case of nested fns, additional relationships may be
-/// derived.  The result is a link list walking up the stack (hence
-/// the `previous` field).
-#[deriving(Clone)]
-pub struct RegionSubParamConstraints<'a> {
-    pairs: Vec<(ty::Region, ty::ParamTy)>,
-    previous: Option<&'a RegionSubParamConstraints<'a>>,
-}
-
 fn region_of_def(fcx: &FnCtxt, def: def::Def) -> ty::Region {
     /*!
      * Returns the validity region of `def` -- that is, how long

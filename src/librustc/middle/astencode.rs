@@ -662,30 +662,6 @@ impl tr for MethodOrigin {
     }
 }
 
-// ______________________________________________________________________
-// Encoding and decoding vtable_res
-
-pub fn encode_vtable_res(ecx: &e::EncodeContext,
-                         rbml_w: &mut Encoder,
-                         dr: &typeck::vtable_res) {
-    // can't autogenerate this code because automatic code of
-    // ty::t doesn't work, and there is no way (atm) to have
-    // hand-written encoding routines combine with auto-generated
-    // ones. perhaps we should fix this.
-    encode_vec_per_param_space(
-        rbml_w, dr,
-        |rbml_w, param_tables| encode_vtable_param_res(ecx, rbml_w,
-                                                       param_tables))
-}
-
-pub fn encode_vtable_param_res(ecx: &e::EncodeContext,
-                     rbml_w: &mut Encoder,
-                     param_tables: &typeck::vtable_param_res) {
-    rbml_w.emit_from_vec(param_tables.as_slice(), |rbml_w, vtable_origin| {
-        Ok(encode_vtable_origin(ecx, rbml_w, vtable_origin))
-    }).unwrap()
-}
-
 pub fn encode_unboxed_closure_kind(ebml_w: &mut Encoder,
                                    kind: ty::UnboxedClosureKind) {
     use serialize::Encoder;
@@ -710,55 +686,6 @@ pub fn encode_unboxed_closure_kind(ebml_w: &mut Encoder,
                     Ok(())
                 })
             }
-        }
-    }).unwrap()
-}
-
-pub fn encode_vtable_origin(ecx: &e::EncodeContext,
-                            rbml_w: &mut Encoder,
-                            vtable_origin: &typeck::vtable_origin) {
-    use serialize::Encoder;
-
-    rbml_w.emit_enum("vtable_origin", |rbml_w| {
-        match *vtable_origin {
-          typeck::vtable_static(def_id, ref substs, ref vtable_res) => {
-            rbml_w.emit_enum_variant("vtable_static", 0u, 3u, |rbml_w| {
-                rbml_w.emit_enum_variant_arg(0u, |rbml_w| {
-                    Ok(rbml_w.emit_def_id(def_id))
-                });
-                rbml_w.emit_enum_variant_arg(1u, |rbml_w| {
-                    Ok(rbml_w.emit_substs(ecx, substs))
-                });
-                rbml_w.emit_enum_variant_arg(2u, |rbml_w| {
-                    Ok(encode_vtable_res(ecx, rbml_w, vtable_res))
-                })
-            })
-          }
-          typeck::vtable_param(pn, bn) => {
-            rbml_w.emit_enum_variant("vtable_param", 1u, 3u, |rbml_w| {
-                rbml_w.emit_enum_variant_arg(0u, |rbml_w| {
-                    pn.encode(rbml_w)
-                });
-                rbml_w.emit_enum_variant_arg(1u, |rbml_w| {
-                    rbml_w.emit_uint(bn)
-                })
-            })
-          }
-          typeck::vtable_unboxed_closure(def_id) => {
-              rbml_w.emit_enum_variant("vtable_unboxed_closure",
-                                       2u,
-                                       1u,
-                                       |rbml_w| {
-                rbml_w.emit_enum_variant_arg(0u, |rbml_w| {
-                    Ok(rbml_w.emit_def_id(def_id))
-                })
-              })
-          }
-          typeck::vtable_error => {
-            rbml_w.emit_enum_variant("vtable_error", 3u, 3u, |_rbml_w| {
-                Ok(())
-            })
-          }
         }
     }).unwrap()
 }

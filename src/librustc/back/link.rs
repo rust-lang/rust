@@ -397,13 +397,6 @@ pub fn get_cc_prog(sess: &Session) -> String {
     }.to_string()
 }
 
-pub fn get_ar_prog(sess: &Session) -> String {
-    match sess.opts.cg.ar {
-        Some(ref ar) => (*ar).clone(),
-        None => "ar".to_string()
-    }
-}
-
 pub fn remove(sess: &Session, path: &Path) {
     match fs::unlink(path) {
         Ok(..) => {}

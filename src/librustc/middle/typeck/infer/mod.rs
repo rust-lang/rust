@@ -66,12 +66,6 @@ pub mod unify;
 
 pub type Bound<T> = Option<T>;
 
-#[deriving(PartialEq,Clone)]
-pub struct Bounds<T> {
-    pub lb: Bound<T>,
-    pub ub: Bound<T>
-}
-
 pub type cres<T> = Result<T,ty::type_err>; // "combine result"
 pub type ures = cres<()>; // "unify result"
 pub type fres<T> = Result<T, fixup_err>; // "fixup result"
