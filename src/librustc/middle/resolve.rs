@@ -1423,12 +1423,27 @@ impl<'a> Resolver<'a> {
                             }
                         }
                     }
-                    _ => {
-                        self.resolve_error(ty.span,
-                                           "inherent implementations may \
-                                            only be implemented in the same \
-                                            module as the type they are \
-                                            implemented for")
+                    _ => for impl_item in impl_items.iter() {
+                        // Forbid static methods and associated items.
+                        match *impl_item {
+                            MethodImplItem(ref method) => {
+                                match method.pe_explicit_self().node {
+                                    SelfStatic => {
+                                        self.resolve_error(method.span,
+                                            "inherent implementations in a different \
+                                             module than the type they are implemented \
+                                             for may not contain static methods")
+                                    }
+                                    _ => {}
+                                }
+                            }
+                            TypeImplItem(ref typedef) => {
+                                self.resolve_error(typedef.span,
+                                    "inherent implementations in a different \
+                                     module than the type they are implemented \
+                                     for may not contain associated items")
+                            }
+                        }
                     }
                 }
 
