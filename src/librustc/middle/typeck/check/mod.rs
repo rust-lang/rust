@@ -3869,13 +3869,18 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
         check_expr_with_expectation_and_lvalue_pref(
             fcx, &**oprnd, expected_inner, lvalue_pref);
         let mut oprnd_t = fcx.expr_ty(&**oprnd);
-        if !ty::type_is_error(oprnd_t) && !ty::type_is_bot(oprnd_t) {
+
+        if !ty::type_is_error(oprnd_t) {
             match unop {
                 ast::UnBox => {
-                    oprnd_t = ty::mk_box(tcx, oprnd_t)
+                    if !ty::type_is_bot(oprnd_t) {
+                        oprnd_t = ty::mk_box(tcx, oprnd_t)
+                    }
                 }
                 ast::UnUniq => {
-                    oprnd_t = ty::mk_uniq(tcx, oprnd_t);
+                    if !ty::type_is_bot(oprnd_t) {
+                        oprnd_t = ty::mk_uniq(tcx, oprnd_t);
+                    }
                 }
                 ast::UnDeref => {
                     oprnd_t = structurally_resolved_type(fcx, expr.span, oprnd_t);
@@ -3912,23 +3917,27 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
                     };
                 }
                 ast::UnNot => {
-                    oprnd_t = structurally_resolved_type(fcx, oprnd.span,
-                                                         oprnd_t);
-                    if !(ty::type_is_integral(oprnd_t) ||
-                         ty::get(oprnd_t).sty == ty::ty_bool) {
-                        oprnd_t = check_user_unop(fcx, "!", "not",
-                                                  tcx.lang_items.not_trait(),
-                                                  expr, &**oprnd, oprnd_t);
+                    if !ty::type_is_bot(oprnd_t) {
+                        oprnd_t = structurally_resolved_type(fcx, oprnd.span,
+                                                             oprnd_t);
+                        if !(ty::type_is_integral(oprnd_t) ||
+                             ty::get(oprnd_t).sty == ty::ty_bool) {
+                            oprnd_t = check_user_unop(fcx, "!", "not",
+                                                      tcx.lang_items.not_trait(),
+                                                      expr, &**oprnd, oprnd_t);
+                        }
                     }
                 }
                 ast::UnNeg => {
-                    oprnd_t = structurally_resolved_type(fcx, oprnd.span,
-                                                         oprnd_t);
-                    if !(ty::type_is_integral(oprnd_t) ||
-                         ty::type_is_fp(oprnd_t)) {
-                        oprnd_t = check_user_unop(fcx, "-", "neg",
-                                                  tcx.lang_items.neg_trait(),
-                                                  expr, &**oprnd, oprnd_t);
+                    if !ty::type_is_bot(oprnd_t) {
+                        oprnd_t = structurally_resolved_type(fcx, oprnd.span,
+                                                             oprnd_t);
+                        if !(ty::type_is_integral(oprnd_t) ||
+                             ty::type_is_fp(oprnd_t)) {
+                            oprnd_t = check_user_unop(fcx, "-", "neg",
+                                                      tcx.lang_items.neg_trait(),
+                                                      expr, &**oprnd, oprnd_t);
+                        }
                     }
                 }
             }
