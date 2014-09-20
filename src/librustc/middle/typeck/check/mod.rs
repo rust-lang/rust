@@ -4330,7 +4330,7 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
         // Resolve the path.
         let def = tcx.def_map.borrow().find(&id).map(|i| *i);
         let struct_id = match def {
-            Some(def::DefVariant(enum_id, variant_id, _)) => {
+            Some(def::DefVariant(enum_id, variant_id, true)) => {
                 check_struct_enum_variant(fcx, id, expr.span, enum_id,
                                           variant_id, fields.as_slice());
                 enum_id
