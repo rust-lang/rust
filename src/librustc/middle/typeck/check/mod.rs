@@ -4394,21 +4394,21 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
           check_expr(fcx, &**idx);
           let raw_base_t = fcx.expr_ty(&**base);
           let idx_t = fcx.expr_ty(&**idx);
-          if ty::type_is_error(raw_base_t) || ty::type_is_bot(raw_base_t) {
+          if ty::type_is_error(raw_base_t) {
               fcx.write_ty(id, raw_base_t);
-          } else if ty::type_is_error(idx_t) || ty::type_is_bot(idx_t) {
+          } else if ty::type_is_error(idx_t) {
               fcx.write_ty(id, idx_t);
           } else {
               let (_, autoderefs, field_ty) =
                 autoderef(fcx, expr.span, raw_base_t, Some(base.id),
                           lvalue_pref, |base_t, _| ty::index(base_t));
               match field_ty {
-                  Some(ty) => {
+                  Some(ty) if !ty::type_is_bot(ty) => {
                       check_expr_has_type(fcx, &**idx, ty::mk_uint());
                       fcx.write_ty(id, ty);
                       fcx.write_autoderef_adjustment(base.id, base.span, autoderefs);
                   }
-                  None => {
+                  _ => {
                       // This is an overloaded method.
                       let base_t = structurally_resolved_type(fcx,
                                                               expr.span,
