@@ -25,7 +25,6 @@ use middle::ty::{ty_uniq, ty_trait, ty_int, ty_uint, ty_infer};
 use middle::ty;
 use middle::typeck;
 use middle::typeck::check::regionmanip;
-use middle::typeck::infer;
 
 use std::rc::Rc;
 use syntax::abi;
@@ -1178,14 +1177,6 @@ impl Repr for ast::UintTy {
 impl Repr for ast::FloatTy {
     fn repr(&self, _tcx: &ctxt) -> String {
         format!("{:?}", *self)
-    }
-}
-
-impl<T:Repr> Repr for infer::Bounds<T> {
-    fn repr(&self, tcx: &ctxt) -> String {
-        format!("({} <= {})",
-                self.lb.repr(tcx),
-                self.ub.repr(tcx))
     }
 }
 

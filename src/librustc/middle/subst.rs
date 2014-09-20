@@ -195,11 +195,6 @@ impl Substs {
         }
     }
 
-    pub fn with_method_from(self, substs: &Substs) -> Substs {
-        self.with_method(Vec::from_slice(substs.types.get_slice(FnSpace)),
-                         Vec::from_slice(substs.regions().get_slice(FnSpace)))
-    }
-
     pub fn with_method(self,
                        m_types: Vec<ty::t>,
                        m_regions: Vec<ty::Region>)
@@ -292,15 +287,6 @@ impl<T:fmt::Show> fmt::Show for VecPerParamSpace<T> {
     }
 }
 
-impl<T:Clone> VecPerParamSpace<T> {
-    pub fn push_all(&mut self, space: ParamSpace, values: &[T]) {
-        // FIXME (#15435): slow; O(n^2); could enhance vec to make it O(n).
-        for t in values.iter() {
-            self.push(space, t.clone());
-        }
-    }
-}
-
 impl<T> VecPerParamSpace<T> {
     fn limits(&self, space: ParamSpace) -> (uint, uint) {
         match space {
@@ -346,14 +332,6 @@ impl<T> VecPerParamSpace<T> {
             self_limit: self_limit,
             content: content,
         }
-    }
-
-    pub fn sort(t: Vec<T>, space: |&T| -> ParamSpace) -> VecPerParamSpace<T> {
-        let mut result = VecPerParamSpace::empty();
-        for t in t.into_iter() {
-            result.push(space(&t), t);
-        }
-        result
     }
 
     /// Appends `value` to the vector associated with `space`.
@@ -435,12 +413,6 @@ impl<T> VecPerParamSpace<T> {
         &self.get_slice(space)[index]
     }
 
-    pub fn get_mut<'a>(&'a mut self,
-                       space: ParamSpace,
-                       index: uint) -> &'a mut T {
-        &mut self.get_mut_slice(space)[index]
-    }
-
     pub fn iter<'a>(&'a self) -> Items<'a,T> {
         self.content.iter()
     }
@@ -474,30 +446,6 @@ impl<T> VecPerParamSpace<T> {
         VecPerParamSpace::new(t.into_iter().map(|p| pred(p)).collect(),
                               s.into_iter().map(|p| pred(p)).collect(),
                               f.into_iter().map(|p| pred(p)).collect())
-    }
-
-    pub fn map_rev<U>(&self, pred: |&T| -> U) -> VecPerParamSpace<U> {
-        /*!
-         * Executes the map but in reverse order. For hacky reasons, we rely
-         * on this in table.
-         *
-         * FIXME(#5527) -- order of eval becomes irrelevant with newer
-         * trait reform, which features an idempotent algorithm that
-         * can be run to a fixed point
-         */
-
-        let mut fns: Vec<U> = self.get_slice(FnSpace).iter().rev().map(|p| pred(p)).collect();
-
-        // NB: Calling foo.rev().map().rev() causes the calls to map
-        // to occur in the wrong order. This was somewhat surprising
-        // to me, though it makes total sense.
-        fns.reverse();
-
-        let mut selfs: Vec<U> = self.get_slice(SelfSpace).iter().rev().map(|p| pred(p)).collect();
-        selfs.reverse();
-        let mut tys: Vec<U> = self.get_slice(TypeSpace).iter().rev().map(|p| pred(p)).collect();
-        tys.reverse();
-        VecPerParamSpace::new(tys, selfs, fns)
     }
 
     pub fn split(self) -> (Vec<T>, Vec<T>, Vec<T>) {

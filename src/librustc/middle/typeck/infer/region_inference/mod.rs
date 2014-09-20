@@ -525,17 +525,6 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
         }
     }
 
-    pub fn max_regions(&self,
-                       a: Region,
-                       b: Region)
-                       -> Option<Region>
-    {
-        match self.glb_concrete_regions(a, b) {
-            Ok(r) => Some(r),
-            Err(_) => None
-        }
-    }
-
     pub fn resolve_var(&self, rid: RegionVid) -> ty::Region {
         match *self.values.borrow() {
             None => {
