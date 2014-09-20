@@ -3480,22 +3480,32 @@ impl<'a> Parser<'a> {
         })
     }
 
+    /// Get an expected item after attributes error message.
+    fn expected_item_err(attrs: &[Attribute]) -> &'static str {
+        match attrs.last() {
+            Some(&Attribute { node: ast::Attribute_ { is_sugared_doc: true, .. }, .. }) => {
+                "expected item after doc comment"
+            }
+            _ => "expected item after attributes",
+        }
+    }
+
     /// Parse a statement. may include decl.
     /// Precondition: any attributes are parsed already
     pub fn parse_stmt(&mut self, item_attrs: Vec<Attribute>) -> P<Stmt> {
         maybe_whole!(self, NtStmt);
 
-        fn check_expected_item(p: &mut Parser, found_attrs: bool) {
+        fn check_expected_item(p: &mut Parser, attrs: &[Attribute]) {
             // If we have attributes then we should have an item
-            if found_attrs {
+            if !attrs.is_empty() {
                 let last_span = p.last_span;
-                p.span_err(last_span, "expected item after attributes");
+                p.span_err(last_span, Parser::expected_item_err(attrs));
             }
         }
 
         let lo = self.span.lo;
         if self.is_keyword(keywords::Let) {
-            check_expected_item(self, !item_attrs.is_empty());
+            check_expected_item(self, item_attrs.as_slice());
             self.expect_keyword(keywords::Let);
             let decl = self.parse_let();
             P(spanned(lo, decl.span.hi, StmtDecl(decl, ast::DUMMY_NODE_ID)))
@@ -3504,7 +3514,7 @@ impl<'a> Parser<'a> {
             && self.look_ahead(1, |t| *t == token::NOT) {
             // it's a macro invocation:
 
-            check_expected_item(self, !item_attrs.is_empty());
+            check_expected_item(self, item_attrs.as_slice());
 
             // Potential trouble: if we allow macros with paths instead of
             // idents, we'd need to look ahead past the whole path here...
@@ -3561,6 +3571,7 @@ impl<'a> Parser<'a> {
 
         } else {
             let found_attrs = !item_attrs.is_empty();
+            let item_err = Parser::expected_item_err(item_attrs.as_slice());
             match self.parse_item_or_view_item(item_attrs, false) {
                 IoviItem(i) => {
                     let hi = i.span.hi;
@@ -3575,7 +3586,10 @@ impl<'a> Parser<'a> {
                     self.fatal("foreign items are not allowed here");
                 }
                 IoviNone(_) => {
-                    check_expected_item(self, found_attrs);
+                    if found_attrs {
+                        let last_span = self.last_span;
+                        self.span_err(last_span, item_err);
+                    }
 
                     // Remainder are line-expr stmts.
                     let e = self.parse_expr_res(RestrictionStmtExpr);
@@ -3653,7 +3667,8 @@ impl<'a> Parser<'a> {
                 token::SEMI => {
                     if !attributes_box.is_empty() {
                         let last_span = self.last_span;
-                        self.span_err(last_span, "expected item after attributes");
+                        self.span_err(last_span,
+                                      Parser::expected_item_err(attributes_box.as_slice()));
                         attributes_box = Vec::new();
                     }
                     self.bump(); // empty
@@ -3739,7 +3754,8 @@ impl<'a> Parser<'a> {
 
         if !attributes_box.is_empty() {
             let last_span = self.last_span;
-            self.span_err(last_span, "expected item after attributes");
+            self.span_err(last_span,
+                          Parser::expected_item_err(attributes_box.as_slice()));
         }
 
         let hi = self.span.hi;
@@ -4685,7 +4701,8 @@ impl<'a> Parser<'a> {
         if first && attrs_remaining_len > 0u {
             // We parsed attributes for the first item but didn't find it
             let last_span = self.last_span;
-            self.span_err(last_span, "expected item after attributes");
+            self.span_err(last_span,
+                          Parser::expected_item_err(attrs_remaining.as_slice()));
         }
 
         ast::Mod {
@@ -4919,10 +4936,10 @@ impl<'a> Parser<'a> {
             items: _,
             foreign_items: foreign_items
         } = self.parse_foreign_items(first_item_attrs, true);
-        if ! attrs_remaining.is_empty() {
+        if !attrs_remaining.is_empty() {
             let last_span = self.last_span;
             self.span_err(last_span,
-                          "expected item after attributes");
+                          Parser::expected_item_err(attrs_remaining.as_slice()));
         }
         assert!(self.token == token::RBRACE);
         ast::ForeignMod {
