@@ -14,7 +14,7 @@
 
 enum Enum1 {
     Variant1(int),
-    Variant2 //~ ERROR: code is never used
+    Variant2 //~ ERROR: variant is never used
 }
 
 enum Enum2 {

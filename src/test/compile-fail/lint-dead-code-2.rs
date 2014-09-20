@@ -28,10 +28,10 @@ impl Bar for Foo {
 
 fn live_fn() {}
 
-fn dead_fn() {} //~ ERROR: code is never used
+fn dead_fn() {} //~ ERROR: function is never used
 
 #[main]
-fn dead_fn2() {} //~ ERROR: code is never used
+fn dead_fn2() {} //~ ERROR: function is never used
 
 fn used_fn() {}
 
@@ -44,7 +44,7 @@ fn start(_: int, _: *const *const u8) -> int {
 }
 
 // this is not main
-fn main() { //~ ERROR: code is never used
+fn main() { //~ ERROR: function is never used
     dead_fn();
     dead_fn2();
 }
