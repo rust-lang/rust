@@ -207,7 +207,7 @@ pub fn const_expr(cx: &CrateContext, e: &ast::Expr, is_local: bool) -> (ValueRef
         None => { }
         Some(adj) => {
             match adj {
-                ty::AutoAddEnv(ty::RegionTraitStore(ty::ReStatic, _)) => {
+                ty::AdjustAddEnv(ty::RegionTraitStore(ty::ReStatic, _)) => {
                     let def = ty::resolve_expr(cx.tcx(), e);
                     let wrapper = closure::get_wrapper_for_bare_fn(cx,
                                                                    ety_adjusted,
@@ -216,13 +216,13 @@ pub fn const_expr(cx: &CrateContext, e: &ast::Expr, is_local: bool) -> (ValueRef
                                                                    is_local);
                     llconst = C_struct(cx, [wrapper, C_null(Type::i8p(cx))], false)
                 }
-                ty::AutoAddEnv(store) => {
+                ty::AdjustAddEnv(store) => {
                     cx.sess()
                       .span_bug(e.span,
                                 format!("unexpected static function: {:?}",
                                         store).as_slice())
                 }
-                ty::AutoDerefRef(ref adj) => {
+                ty::AdjustDerefRef(ref adj) => {
                     let mut ty = ety;
                     // Save the last autoderef in case we can avoid it.
                     if adj.autoderefs > 0 {

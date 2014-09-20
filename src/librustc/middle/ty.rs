@@ -17,8 +17,6 @@ use metadata::csearch;
 use middle::const_eval;
 use middle::def;
 use middle::dependency_format;
-use middle::freevars::CaptureModeMap;
-use middle::freevars;
 use middle::lang_items::{FnTraitLangItem, FnMutTraitLangItem};
 use middle::lang_items::{FnOnceTraitLangItem, OpaqueStructLangItem};
 use middle::lang_items::{TyDescStructLangItem, TyVisitorTraitLangItem};
@@ -279,8 +277,8 @@ pub enum Variance {
 
 #[deriving(Clone)]
 pub enum AutoAdjustment {
-    AutoAddEnv(ty::TraitStore),
-    AutoDerefRef(AutoDerefRef)
+    AdjustAddEnv(ty::TraitStore),
+    AdjustDerefRef(AutoDerefRef)
 }
 
 #[deriving(Clone, PartialEq)]
@@ -352,7 +350,7 @@ fn autoref_object_region(autoref: &AutoRef) -> (bool, bool, Option<Region>) {
 // returns the region of the borrowed reference.
 pub fn adjusted_object_region(adj: &AutoAdjustment) -> Option<Region> {
     match adj {
-        &AutoDerefRef(AutoDerefRef{autoref: Some(ref autoref), ..}) => {
+        &AdjustDerefRef(AutoDerefRef{autoref: Some(ref autoref), ..}) => {
             let (b, _, r) = autoref_object_region(autoref);
             if b {
                 r
@@ -367,7 +365,7 @@ pub fn adjusted_object_region(adj: &AutoAdjustment) -> Option<Region> {
 // Returns true if there is a trait cast at the bottom of the adjustment.
 pub fn adjust_is_object(adj: &AutoAdjustment) -> bool {
     match adj {
-        &AutoDerefRef(AutoDerefRef{autoref: Some(ref autoref), ..}) => {
+        &AdjustDerefRef(AutoDerefRef{autoref: Some(ref autoref), ..}) => {
             let (b, _, _) = autoref_object_region(autoref);
             b
         }
@@ -409,7 +407,7 @@ pub fn type_of_adjust(cx: &ctxt, adj: &AutoAdjustment) -> Option<t> {
     }
 
     match adj {
-        &AutoDerefRef(AutoDerefRef{autoref: Some(ref autoref), ..}) => {
+        &AdjustDerefRef(AutoDerefRef{autoref: Some(ref autoref), ..}) => {
             type_of_autoref(cx, autoref)
         }
         _ => None
@@ -480,7 +478,7 @@ pub struct ctxt<'tcx> {
 
     pub map: ast_map::Map<'tcx>,
     pub intrinsic_defs: RefCell<DefIdMap<t>>,
-    pub freevars: RefCell<freevars::freevar_map>,
+    pub freevars: RefCell<FreevarMap>,
     pub tcache: type_cache,
     pub rcache: creader_cache,
     pub short_names_cache: RefCell<HashMap<t, String>>,
@@ -1463,8 +1461,8 @@ pub fn mk_ctxt<'tcx>(s: Session,
                      dm: resolve::DefMap,
                      named_region_map: resolve_lifetime::NamedRegionMap,
                      map: ast_map::Map<'tcx>,
-                     freevars: freevars::freevar_map,
-                     capture_modes: freevars::CaptureModeMap,
+                     freevars: RefCell<FreevarMap>,
+                     capture_modes: RefCell<CaptureModeMap>,
                      region_maps: middle::region::RegionMaps,
                      lang_items: middle::lang_items::LanguageItems,
                      stability: stability::Index) -> ctxt<'tcx> {
@@ -1485,7 +1483,7 @@ pub fn mk_ctxt<'tcx>(s: Session,
         object_cast_map: RefCell::new(NodeMap::new()),
         map: map,
         intrinsic_defs: RefCell::new(DefIdMap::new()),
-        freevars: RefCell::new(freevars),
+        freevars: freevars,
         tcache: RefCell::new(DefIdMap::new()),
         rcache: RefCell::new(HashMap::new()),
         short_names_cache: RefCell::new(HashMap::new()),
@@ -1522,7 +1520,7 @@ pub fn mk_ctxt<'tcx>(s: Session,
         node_lint_levels: RefCell::new(HashMap::new()),
         transmute_restrictions: RefCell::new(Vec::new()),
         stability: RefCell::new(stability),
-        capture_modes: RefCell::new(capture_modes),
+        capture_modes: capture_modes,
         associated_types: RefCell::new(DefIdMap::new()),
         trait_associated_types: RefCell::new(DefIdMap::new()),
     }
@@ -3425,7 +3423,7 @@ pub fn adjust_ty(cx: &ctxt,
     return match adjustment {
         Some(adjustment) => {
             match *adjustment {
-                AutoAddEnv(store) => {
+                AdjustAddEnv(store) => {
                     match ty::get(unadjusted_ty).sty {
                         ty::ty_bare_fn(ref b) => {
                             let bounds = ty::ExistentialBounds {
@@ -3451,7 +3449,7 @@ pub fn adjust_ty(cx: &ctxt,
                     }
                 }
 
-                AutoDerefRef(ref adj) => {
+                AdjustDerefRef(ref adj) => {
                     let mut adjusted_ty = unadjusted_ty;
 
                     if !ty::type_is_error(adjusted_ty) {
@@ -3584,12 +3582,12 @@ pub fn method_call_type_param_defs<'tcx, T>(typer: &T,
                               .trait_did(typer.tcx());
             lookup_trait_def(typer.tcx(), def_id).generics.types.clone()
         }
-        typeck::MethodParam(typeck::MethodParam{
+        typeck::MethodTypeParam(typeck::MethodParam{
             trait_ref: ref trait_ref,
             method_num: n_mth,
             ..
         }) |
-        typeck::MethodObject(typeck::MethodObject{
+        typeck::MethodTraitObject(typeck::MethodObject{
                 trait_ref: ref trait_ref,
                 method_num: n_mth,
                 ..
@@ -3648,6 +3646,9 @@ pub fn expr_kind(tcx: &ctxt, expr: &ast::Expr) -> ExprKind {
             // the index method invoked for `a[i]` always yields an `&T`
             ast::ExprIndex(..) => LvalueExpr,
 
+            // the slice method invoked for `a[..]` always yields an `&T`
+            ast::ExprSlice(..) => LvalueExpr,
+
             // `for` loops are statements
             ast::ExprForLoop(..) => RvalueStmtExpr,
 
@@ -3684,9 +3685,7 @@ pub fn expr_kind(tcx: &ctxt, expr: &ast::Expr) -> ExprKind {
                 // DefArg's, particularly those of immediate type, ought to
                 // considered rvalues.
                 def::DefStatic(..) |
-                def::DefBinding(..) |
                 def::DefUpvar(..) |
-                def::DefArg(..) |
                 def::DefLocal(..) => LvalueExpr,
 
                 def => {
@@ -3702,7 +3701,8 @@ pub fn expr_kind(tcx: &ctxt, expr: &ast::Expr) -> ExprKind {
         ast::ExprUnary(ast::UnDeref, _) |
         ast::ExprField(..) |
         ast::ExprTupField(..) |
-        ast::ExprIndex(..) => {
+        ast::ExprIndex(..) |
+        ast::ExprSlice(..) => {
             LvalueExpr
         }
 
@@ -4759,7 +4759,7 @@ pub fn unboxed_closure_upvars(tcx: &ctxt, closure_id: ast::DefId)
                               -> Vec<UnboxedClosureUpvar> {
     if closure_id.krate == ast::LOCAL_CRATE {
         match tcx.freevars.borrow().find(&closure_id.node) {
-            None => tcx.sess.bug("no freevars for unboxed closure?!"),
+            None => vec![],
             Some(ref freevars) => {
                 freevars.iter().map(|freevar| {
                     let freevar_def_id = freevar.def.def_id();
@@ -5617,7 +5617,7 @@ impl<'tcx> mc::Typer<'tcx> for ty::ctxt<'tcx> {
     }
 
     fn capture_mode(&self, closure_expr_id: ast::NodeId)
-                    -> freevars::CaptureMode {
+                    -> ast::CaptureClause {
         self.capture_modes.borrow().get_copy(&closure_expr_id)
     }
 
@@ -5687,4 +5687,25 @@ pub fn accumulate_lifetimes_in_type(accumulator: &mut Vec<ty::Region>,
             ty_err => {}
         }
     })
+}
+
+/// A free variable referred to in a function.
+#[deriving(Encodable, Decodable)]
+pub struct Freevar {
+    /// The variable being accessed free.
+    pub def: def::Def,
+
+    // First span where it is accessed (there can be multiple).
+    pub span: Span
+}
+
+pub type FreevarMap = NodeMap<Vec<Freevar>>;
+
+pub type CaptureModeMap = NodeMap<ast::CaptureClause>;
+
+pub fn with_freevars<T>(tcx: &ty::ctxt, fid: ast::NodeId, f: |&[Freevar]| -> T) -> T {
+    match tcx.freevars.borrow().find(&fid) {
+        None => f(&[]),
+        Some(d) => f(d.as_slice())
+    }
 }

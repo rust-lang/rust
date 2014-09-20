@@ -30,8 +30,6 @@ use util::small_vector::SmallVector;
 use visit;
 use visit::Visitor;
 
-use std::gc::Gc;
-
 enum Either<L,R> {
     Left(L),
     Right(R)
@@ -161,11 +159,11 @@ fn expand_mac_invoc<T>(mac: ast::Mac, span: codemap::Span,
                         // be the root of the call stack. That's the most
                         // relevant span and it's the actual invocation of
                         // the macro.
-                        let mac_span = original_span(fld.cx);
+                        let mac_span = fld.cx.original_span();
 
                         let opt_parsed = {
                             let expanded = expandfun.expand(fld.cx,
-                                                            mac_span.call_site,
+                                                            mac_span,
                                                             marked_before.as_slice());
                             parse_thunk(expanded)
                         };
@@ -254,7 +252,7 @@ pub fn expand_item(it: P<ast::Item>, fld: &mut MacroExpander)
 
         match fld.cx.syntax_env.find(&intern(mname.get())) {
             Some(rc) => match *rc {
-                ItemDecorator(ref dec) => {
+                Decorator(ref dec) => {
                     attr::mark_used(attr);
 
                     fld.cx.bt_push(ExpnInfo {
@@ -311,7 +309,7 @@ fn expand_item_modifiers(mut it: P<ast::Item>, fld: &mut MacroExpander)
     // partition the attributes into ItemModifiers and others
     let (modifiers, other_attrs) = it.attrs.partitioned(|attr| {
         match fld.cx.syntax_env.find(&intern(attr.name().get())) {
-            Some(rc) => match *rc { ItemModifier(_) => true, _ => false },
+            Some(rc) => match *rc { Modifier(_) => true, _ => false },
             _ => false
         }
     });
@@ -330,7 +328,7 @@ fn expand_item_modifiers(mut it: P<ast::Item>, fld: &mut MacroExpander)
 
         match fld.cx.syntax_env.find(&intern(mname.get())) {
             Some(rc) => match *rc {
-                ItemModifier(ref mac) => {
+                Modifier(ref mac) => {
                     attr::mark_used(attr);
                     fld.cx.bt_push(ExpnInfo {
                         call_site: attr.span,
@@ -759,9 +757,9 @@ fn expand_pat(p: P<ast::Pat>, fld: &mut MacroExpander) -> P<ast::Pat> {
 
                     let fm = fresh_mark();
                     let marked_before = mark_tts(tts.as_slice(), fm);
-                    let mac_span = original_span(fld.cx);
+                    let mac_span = fld.cx.original_span();
                     let expanded = match expander.expand(fld.cx,
-                                        mac_span.call_site,
+                                        mac_span,
                                         marked_before.as_slice()).make_pat() {
                         Some(e) => e,
                         None => {
@@ -969,7 +967,7 @@ fn new_span(cx: &ExtCtxt, sp: Span) -> Span {
     Span {
         lo: sp.lo,
         hi: sp.hi,
-        expn_info: cx.backtrace(),
+        expn_id: cx.backtrace(),
     }
 }
 
@@ -1081,21 +1079,6 @@ fn mark_item(expr: P<ast::Item>, m: Mrk) -> P<ast::Item> {
 fn mark_method(expr: P<ast::Method>, m: Mrk) -> P<ast::Method> {
     Marker{mark:m}.fold_method(expr)
         .expect_one("marking an item didn't return exactly one method")
-}
-
-fn original_span(cx: &ExtCtxt) -> Gc<codemap::ExpnInfo> {
-    let mut relevant_info = cx.backtrace();
-    let mut einfo = relevant_info.unwrap();
-    loop {
-        match relevant_info {
-            None => { break }
-            Some(e) => {
-                einfo = e;
-                relevant_info = einfo.call_site.expn_info;
-            }
-        }
-    }
-    return einfo;
 }
 
 /// Check that there are no macro invocations left in the AST:

@@ -131,7 +131,7 @@ pub fn trans_method_callee<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             }
         }
 
-        typeck::MethodParam(typeck::MethodParam {
+        typeck::MethodTypeParam(typeck::MethodParam {
             trait_ref: ref trait_ref,
             method_num: method_num
         }) => {
@@ -147,7 +147,7 @@ pub fn trans_method_callee<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                        method_num, origin)
         }
 
-        typeck::MethodObject(ref mt) => {
+        typeck::MethodTraitObject(ref mt) => {
             let self_expr = match self_expr {
                 Some(self_expr) => self_expr,
                 None => {
@@ -243,7 +243,7 @@ pub fn trans_static_method_callee(bcx: Block,
     // Now that we know which impl is being used, we can dispatch to
     // the actual function:
     match vtbl {
-        traits::VtableImpl(traits::VtableImpl {
+        traits::VtableImpl(traits::VtableImplData {
             impl_def_id: impl_did,
             substs: impl_substs,
             nested: _ }) =>
@@ -562,7 +562,7 @@ pub fn get_vtable(bcx: Block,
                                         trait_ref.clone());
         match vtable {
             traits::VtableImpl(
-                traits::VtableImpl {
+                traits::VtableImplData {
                     impl_def_id: id,
                     substs: substs,
                     nested: _ }) => {

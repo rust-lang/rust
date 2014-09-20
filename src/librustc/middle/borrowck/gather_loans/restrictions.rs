@@ -66,8 +66,7 @@ impl<'a, 'tcx> RestrictionsContext<'a, 'tcx> {
                 Safe
             }
 
-            mc::cat_local(local_id) |
-            mc::cat_arg(local_id) => {
+            mc::cat_local(local_id) => {
                 // R-Variable, locally declared
                 let lp = Rc::new(LpVar(local_id));
                 SafeIf(lp.clone(), vec![lp])

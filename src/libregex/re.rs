@@ -110,14 +110,14 @@ pub enum Regex {
     // See the comments for the `program` module in `lib.rs` for a more
     // detailed explanation for what `regex!` requires.
     #[doc(hidden)]
-    Dynamic(Dynamic),
+    Dynamic(ExDynamic),
     #[doc(hidden)]
-    Native(Native),
+    Native(ExNative),
 }
 
 #[deriving(Clone)]
 #[doc(hidden)]
-pub struct Dynamic {
+pub struct ExDynamic {
     original: String,
     names: Vec<Option<String>>,
     #[doc(hidden)]
@@ -125,7 +125,7 @@ pub struct Dynamic {
 }
 
 #[doc(hidden)]
-pub struct Native {
+pub struct ExNative {
     #[doc(hidden)]
     pub original: &'static str,
     #[doc(hidden)]
@@ -134,8 +134,8 @@ pub struct Native {
     pub prog: fn(MatchKind, &str, uint, uint) -> Vec<Option<uint>>
 }
 
-impl Clone for Native {
-    fn clone(&self) -> Native { *self }
+impl Clone for ExNative {
+    fn clone(&self) -> ExNative { *self }
 }
 
 impl fmt::Show for Regex {
@@ -156,7 +156,7 @@ impl Regex {
     pub fn new(re: &str) -> Result<Regex, parse::Error> {
         let ast = try!(parse::parse(re));
         let (prog, names) = Program::new(ast);
-        Ok(Dynamic(Dynamic {
+        Ok(Dynamic(ExDynamic {
             original: re.to_string(),
             names: names,
             prog: prog,
@@ -510,8 +510,8 @@ impl Regex {
     /// Returns the original string of this regex.
     pub fn as_str<'a>(&'a self) -> &'a str {
         match *self {
-            Dynamic(Dynamic { ref original, .. }) => original.as_slice(),
-            Native(Native { ref original, .. }) => original.as_slice(),
+            Dynamic(ExDynamic { ref original, .. }) => original.as_slice(),
+            Native(ExNative { ref original, .. }) => original.as_slice(),
         }
     }
 
@@ -915,8 +915,8 @@ fn exec(re: &Regex, which: MatchKind, input: &str) -> CaptureLocs {
 fn exec_slice(re: &Regex, which: MatchKind,
               input: &str, s: uint, e: uint) -> CaptureLocs {
     match *re {
-        Dynamic(Dynamic { ref prog, .. }) => vm::run(which, prog, input, s, e),
-        Native(Native { prog, .. }) => prog(which, input, s, e),
+        Dynamic(ExDynamic { ref prog, .. }) => vm::run(which, prog, input, s, e),
+        Native(ExNative { prog, .. }) => prog(which, input, s, e),
     }
 }
 

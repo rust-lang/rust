@@ -585,32 +585,29 @@ pub fn trait_ref_for_unboxed_function<'tcx, AC: AstConv<'tcx>,
                                       RS:RegionScope>(
                                       this: &AC,
                                       rscope: &RS,
-                                      unboxed_function: &ast::UnboxedFnTy,
+                                      kind: ast::UnboxedClosureKind,
+                                      decl: &ast::FnDecl,
                                       self_ty: Option<ty::t>)
                                       -> ty::TraitRef {
-    let lang_item = match unboxed_function.kind {
+    let lang_item = match kind {
         ast::FnUnboxedClosureKind => FnTraitLangItem,
         ast::FnMutUnboxedClosureKind => FnMutTraitLangItem,
         ast::FnOnceUnboxedClosureKind => FnOnceTraitLangItem,
     };
     let trait_did = this.tcx().lang_items.require(lang_item).unwrap();
-    let input_types =
-        unboxed_function.decl
-                        .inputs
-                        .iter()
-                        .map(|input| {
+    let input_types = decl.inputs
+                          .iter()
+                          .map(|input| {
                             ast_ty_to_ty(this, rscope, &*input.ty)
-                        }).collect::<Vec<_>>();
+                          }).collect::<Vec<_>>();
     let input_tuple = if input_types.len() == 0 {
         ty::mk_nil()
     } else {
         ty::mk_tup(this.tcx(), input_types)
     };
-    let output_type = ast_ty_to_ty(this,
-                                   rscope,
-                                   &*unboxed_function.decl.output);
+    let output_type = ast_ty_to_ty(this, rscope, &*decl.output);
     let mut substs = Substs::new_type(vec!(input_tuple, output_type),
-                                             Vec::new());
+                                      Vec::new());
 
     match self_ty {
         Some(s) => substs.types.push(SelfSpace, s),
@@ -648,7 +645,8 @@ fn mk_pointer<'tcx, AC: AstConv<'tcx>, RS: RegionScope>(
                 substs
             } = trait_ref_for_unboxed_function(this,
                                                rscope,
-                                               &**unboxed_function,
+                                               unboxed_function.kind,
+                                               &*unboxed_function.decl,
                                                None);
             let r = ptr_ty.default_region();
             let tr = ty::mk_trait(this.tcx(),
@@ -1510,7 +1508,7 @@ fn compute_region_bound<'tcx, AC: AstConv<'tcx>, RS:RegionScope>(
 pub struct PartitionedBounds<'a> {
     pub builtin_bounds: ty::BuiltinBounds,
     pub trait_bounds: Vec<&'a ast::TraitRef>,
-    pub unboxed_fn_ty_bounds: Vec<&'a ast::UnboxedFnTy>,
+    pub unboxed_fn_ty_bounds: Vec<&'a ast::UnboxedFnBound>,
     pub region_bounds: Vec<&'a ast::Lifetime>,
 }
 
@@ -1574,7 +1572,7 @@ pub fn partition_bounds<'a>(tcx: &ty::ctxt,
                 region_bounds.push(l);
             }
             ast::UnboxedFnTyParamBound(ref unboxed_function) => {
-                unboxed_fn_ty_bounds.push(unboxed_function);
+                unboxed_fn_ty_bounds.push(&**unboxed_function);
             }
         }
     }

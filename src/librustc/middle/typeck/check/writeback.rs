@@ -282,7 +282,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
             Some(adjustment) => {
                 let adj_object = ty::adjust_is_object(&adjustment);
                 let resolved_adjustment = match adjustment {
-                    ty::AutoAddEnv(store) => {
+                    ty::AdjustAddEnv(store) => {
                         // FIXME(eddyb) #2190 Allow only statically resolved
                         // bare functions to coerce to a closure to avoid
                         // constructing (slower) indirect call wrappers.
@@ -298,10 +298,10 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                             }
                         }
 
-                        ty::AutoAddEnv(self.resolve(&store, reason))
+                        ty::AdjustAddEnv(self.resolve(&store, reason))
                     }
 
-                    ty::AutoDerefRef(adj) => {
+                    ty::AdjustDerefRef(adj) => {
                         for autoderef in range(0, adj.autoderefs) {
                             let method_call = MethodCall::autoderef(id, autoderef);
                             self.visit_method_map_entry(reason, method_call);
@@ -312,7 +312,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                             self.visit_method_map_entry(reason, method_call);
                         }
 
-                        ty::AutoDerefRef(ty::AutoDerefRef {
+                        ty::AdjustDerefRef(ty::AutoDerefRef {
                             autoderefs: adj.autoderefs,
                             autoref: self.resolve(&adj.autoref, reason),
                         })

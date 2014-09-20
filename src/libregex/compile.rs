@@ -16,7 +16,7 @@ use std::cmp;
 use parse;
 use parse::{
     Flags, FLAG_EMPTY,
-    Nothing, Literal, Dot, Class, Begin, End, WordBoundary, Capture, Cat, Alt,
+    Nothing, Literal, Dot, AstClass, Begin, End, WordBoundary, Capture, Cat, Alt,
     Rep,
     ZeroOne, ZeroMore, OneMore,
 };
@@ -148,7 +148,7 @@ impl<'r> Compiler<'r> {
             Nothing => {},
             Literal(c, flags) => self.push(OneChar(c, flags)),
             Dot(nl) => self.push(Any(nl)),
-            Class(ranges, flags) =>
+            AstClass(ranges, flags) =>
                 self.push(CharClass(ranges, flags)),
             Begin(flags) => self.push(EmptyBegin(flags)),
             End(flags) => self.push(EmptyEnd(flags)),

@@ -213,11 +213,18 @@ pub static DUMMY_NODE_ID: NodeId = -1;
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
 pub enum TyParamBound {
     TraitTyParamBound(TraitRef),
-    UnboxedFnTyParamBound(UnboxedFnTy),
+    UnboxedFnTyParamBound(P<UnboxedFnBound>),
     RegionTyParamBound(Lifetime)
 }
 
 pub type TyParamBounds = OwnedSlice<TyParamBound>;
+
+#[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
+pub struct UnboxedFnBound {
+    pub path: Path,
+    pub decl: P<FnDecl>,
+    pub ref_id: NodeId,
+}
 
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
 pub struct TyParam {
@@ -531,6 +538,7 @@ pub enum Expr_ {
     ExprField(P<Expr>, SpannedIdent, Vec<P<Ty>>),
     ExprTupField(P<Expr>, Spanned<uint>, Vec<P<Ty>>),
     ExprIndex(P<Expr>, P<Expr>),
+    ExprSlice(P<Expr>, Option<P<Expr>>, Option<P<Expr>>, Mutability),
 
     /// Variable reference, possibly containing `::` and/or
     /// type parameters, e.g. foo::bar::<baz>
@@ -1363,7 +1371,7 @@ mod test {
                 inner: Span {
                     lo: BytePos(11),
                     hi: BytePos(19),
-                    expn_info: None,
+                    expn_id: NO_EXPANSION,
                 },
                 view_items: Vec::new(),
                 items: Vec::new(),
@@ -1373,7 +1381,7 @@ mod test {
             span: Span {
                 lo: BytePos(10),
                 hi: BytePos(20),
-                expn_info: None,
+                expn_id: NO_EXPANSION,
             },
             exported_macros: Vec::new(),
         };

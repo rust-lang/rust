@@ -17,7 +17,6 @@ use llvm;
 use llvm::{ValueRef, BasicBlockRef, BuilderRef, ContextRef};
 use llvm::{True, False, Bool};
 use middle::def;
-use middle::freevars;
 use middle::lang_items::LangItem;
 use middle::mem_categorization as mc;
 use middle::subst;
@@ -267,10 +266,7 @@ pub struct FunctionContext<'a, 'tcx: 'a> {
     // points to, but if this value is false, that slot will be a local alloca.
     pub caller_expects_out_pointer: bool,
 
-    // Maps arguments to allocas created for them in llallocas.
-    pub llargs: RefCell<NodeMap<LvalueDatum>>,
-
-    // Maps the def_ids for local variables to the allocas created for
+    // Maps the DefId's for local variables to the allocas created for
     // them in llallocas.
     pub lllocals: RefCell<NodeMap<LvalueDatum>>,
 
@@ -528,7 +524,7 @@ impl<'blk, 'tcx> mc::Typer<'tcx> for BlockS<'blk, 'tcx> {
     }
 
     fn capture_mode(&self, closure_expr_id: ast::NodeId)
-                    -> freevars::CaptureMode {
+                    -> ast::CaptureClause {
         self.tcx().capture_modes.borrow().get_copy(&closure_expr_id)
     }
 }
