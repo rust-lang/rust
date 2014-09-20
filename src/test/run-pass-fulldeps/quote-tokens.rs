@@ -35,6 +35,8 @@ fn syntax_extension(cx: &ExtCtxt) {
 
     let i: Option<P<syntax::ast::Item>> = quote_item!(cx, #[deriving(Eq)] struct Foo; );
     assert!(i.is_some());
+
+    let _j: P<syntax::ast::Method> = quote_method!(cx, fn foo(&self) {});
 }
 
 fn main() {
