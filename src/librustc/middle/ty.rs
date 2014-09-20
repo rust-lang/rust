@@ -3308,7 +3308,7 @@ pub fn ty_region(tcx: &ctxt,
         ref s => {
             tcx.sess.span_bug(
                 span,
-                format!("ty_region() invoked on in appropriate ty: {:?}",
+                format!("ty_region() invoked on an inappropriate ty: {:?}",
                         s).as_slice());
         }
     }

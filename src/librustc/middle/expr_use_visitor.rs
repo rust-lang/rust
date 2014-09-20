@@ -82,6 +82,7 @@ pub enum LoanCause {
     OverloadedOperator,
     ClosureInvocation,
     ForLoop,
+    MatchDiscriminant
 }
 
 #[deriving(PartialEq,Show)]
@@ -374,10 +375,10 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,TYPER> {
             }
 
             ast::ExprMatch(ref discr, ref arms) => {
-                // treatment of the discriminant is handled while
-                // walking the arms:
-                self.walk_expr(&**discr);
                 let discr_cmt = return_if_err!(self.mc.cat_expr(&**discr));
+                self.borrow_expr(&**discr, ty::ReEmpty, ty::ImmBorrow, MatchDiscriminant);
+
+                // treatment of the discriminant is handled while walking the arms.
                 for arm in arms.iter() {
                     self.walk_arm(discr_cmt.clone(), arm);
                 }

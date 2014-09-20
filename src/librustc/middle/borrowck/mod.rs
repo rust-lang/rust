@@ -648,7 +648,8 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                     euv::AddrOf |
                     euv::RefBinding |
                     euv::AutoRef |
-                    euv::ForLoop => {
+                    euv::ForLoop |
+                    euv::MatchDiscriminant => {
                         format!("cannot borrow {} as mutable", descr)
                     }
                     euv::ClosureInvocation => {
@@ -702,7 +703,8 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
             BorrowViolation(euv::OverloadedOperator) |
             BorrowViolation(euv::AddrOf) |
             BorrowViolation(euv::AutoRef) |
-            BorrowViolation(euv::RefBinding) => {
+            BorrowViolation(euv::RefBinding) |
+            BorrowViolation(euv::MatchDiscriminant) => {
                 "cannot borrow data mutably"
             }
 
