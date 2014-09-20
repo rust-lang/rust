@@ -15,7 +15,7 @@ use util::ppaux::UserString;
 
 use syntax::ast::*;
 use syntax::codemap::Span;
-use syntax::print::pprust::{expr_to_string, ident_to_string};
+use syntax::print::pprust::{ident_to_string};
 use syntax::visit::Visitor;
 use syntax::visit;
 
@@ -31,10 +31,6 @@ pub struct Context<'a,'tcx:'a> {
 }
 
 impl<'a, 'tcx, 'v> Visitor<'v> for Context<'a, 'tcx> {
-    fn visit_expr(&mut self, ex: &Expr) {
-        check_expr(self, ex);
-    }
-
     fn visit_fn(&mut self, fk: visit::FnKind, fd: &'v FnDecl,
                 b: &'v Block, s: Span, n: NodeId) {
         check_fn(self, fk, fd, b, s, n);
@@ -161,37 +157,6 @@ fn check_fn(
     }
 }
 
-pub fn check_expr(cx: &mut Context, e: &Expr) {
-    debug!("kind::check_expr({})", expr_to_string(e));
-
-    match e.node {
-        ExprRepeat(ref element, ref count_expr) => {
-            let count = ty::eval_repeat_count(cx.tcx, &**count_expr);
-            if count > 1 {
-                let element_ty = ty::expr_ty(cx.tcx, &**element);
-                check_copy(cx, element_ty, element.span,
-                           "repeated element will be copied");
-            }
-        }
-        ExprAssign(ref lhs, _) |
-        ExprAssignOp(_, ref lhs, _) => {
-            let lhs_ty = ty::expr_ty(cx.tcx, &**lhs);
-            if !ty::type_is_sized(cx.tcx, lhs_ty) {
-                cx.tcx.sess.span_err(lhs.span, "dynamically sized type on lhs of assignment");
-            }
-        }
-        ExprStruct(..) => {
-            let e_ty = ty::expr_ty(cx.tcx, e);
-            if !ty::type_is_sized(cx.tcx, e_ty) {
-                cx.tcx.sess.span_err(e.span, "trying to initialise a dynamically sized struct");
-            }
-        }
-        _ => {}
-    }
-
-    visit::walk_expr(cx, e);
-}
-
 fn check_ty(cx: &mut Context, aty: &Ty) {
     match aty.node {
         TyPath(_, _, id) => {
@@ -272,18 +237,6 @@ pub fn check_freevar_bounds(cx: &Context, fn_span: Span, sp: Span, ty: ty::t,
             "this closure's environment must satisfy `{}`",
             bounds.user_string(cx.tcx));
     });
-}
-
-fn check_copy(cx: &Context, ty: ty::t, sp: Span, reason: &str) {
-    debug!("type_contents({})={}",
-           ty_to_string(cx.tcx, ty),
-           ty::type_contents(cx.tcx, ty).to_string());
-    if ty::type_moves_by_default(cx.tcx, ty) {
-        span_err!(cx.tcx.sess, sp, E0148,
-            "copying a value of non-copyable type `{}`",
-            ty_to_string(cx.tcx, ty));
-        span_note!(cx.tcx.sess, sp, "{}", reason.as_slice());
-    }
 }
 
 // Ensure that `ty` has a statically known size (i.e., it has the `Sized` bound).
