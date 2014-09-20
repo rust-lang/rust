@@ -99,7 +99,7 @@ pub struct Crate {
     pub name: String,
     pub module: Option<Item>,
     pub externs: Vec<(ast::CrateNum, ExternalCrate)>,
-    pub primitives: Vec<Primitive>,
+    pub primitives: Vec<PrimitiveType>,
 }
 
 impl<'a, 'tcx> Clean<Crate> for visit_ast::RustdocVisitor<'a, 'tcx> {
@@ -147,7 +147,7 @@ impl<'a, 'tcx> Clean<Crate> for visit_ast::RustdocVisitor<'a, 'tcx> {
                     ModuleItem(ref mut m) => m,
                     _ => continue,
                 };
-                let prim = match Primitive::find(child.attrs.as_slice()) {
+                let prim = match PrimitiveType::find(child.attrs.as_slice()) {
                     Some(prim) => prim,
                     None => continue,
                 };
@@ -187,7 +187,7 @@ impl<'a, 'tcx> Clean<Crate> for visit_ast::RustdocVisitor<'a, 'tcx> {
 pub struct ExternalCrate {
     pub name: String,
     pub attrs: Vec<Attribute>,
-    pub primitives: Vec<Primitive>,
+    pub primitives: Vec<PrimitiveType>,
 }
 
 impl Clean<ExternalCrate> for cstore::crate_metadata {
@@ -202,7 +202,7 @@ impl Clean<ExternalCrate> for cstore::crate_metadata {
                     _ => return
                 };
                 let attrs = inline::load_attrs(cx, tcx, did);
-                Primitive::find(attrs.as_slice()).map(|prim| primitives.push(prim));
+                PrimitiveType::find(attrs.as_slice()).map(|prim| primitives.push(prim));
             })
         });
         ExternalCrate {
@@ -316,7 +316,7 @@ pub enum ItemEnum {
     /// `static`s from an extern block
     ForeignStaticItem(Static),
     MacroItem(Macro),
-    PrimitiveItem(Primitive),
+    PrimitiveItem(PrimitiveType),
     AssociatedTypeItem,
 }
 
@@ -901,7 +901,7 @@ impl Clean<RetStyle> for ast::RetStyle {
 
 #[deriving(Clone, Encodable, Decodable)]
 pub struct Trait {
-    pub items: Vec<TraitItem>,
+    pub items: Vec<TraitMethod>,
     pub generics: Generics,
     pub bounds: Vec<TyParamBound>,
 }
@@ -931,13 +931,13 @@ impl Clean<Type> for ast::TraitRef {
 }
 
 #[deriving(Clone, Encodable, Decodable)]
-pub enum TraitItem {
+pub enum TraitMethod {
     RequiredMethod(Item),
     ProvidedMethod(Item),
     TypeTraitItem(Item),
 }
 
-impl TraitItem {
+impl TraitMethod {
     pub fn is_req(&self) -> bool {
         match self {
             &RequiredMethod(..) => true,
@@ -959,8 +959,8 @@ impl TraitItem {
     }
 }
 
-impl Clean<TraitItem> for ast::TraitItem {
-    fn clean(&self, cx: &DocContext) -> TraitItem {
+impl Clean<TraitMethod> for ast::TraitItem {
+    fn clean(&self, cx: &DocContext) -> TraitMethod {
         match self {
             &ast::RequiredMethod(ref t) => RequiredMethod(t.clean(cx)),
             &ast::ProvidedMethod(ref t) => ProvidedMethod(t.clean(cx)),
@@ -970,13 +970,13 @@ impl Clean<TraitItem> for ast::TraitItem {
 }
 
 #[deriving(Clone, Encodable, Decodable)]
-pub enum ImplItem {
+pub enum ImplMethod {
     MethodImplItem(Item),
     TypeImplItem(Item),
 }
 
-impl Clean<ImplItem> for ast::ImplItem {
-    fn clean(&self, cx: &DocContext) -> ImplItem {
+impl Clean<ImplMethod> for ast::ImplItem {
+    fn clean(&self, cx: &DocContext) -> ImplMethod {
         match self {
             &ast::MethodImplItem(ref t) => MethodImplItem(t.clean(cx)),
             &ast::TypeImplItem(ref t) => TypeImplItem(t.clean(cx)),
@@ -1058,7 +1058,7 @@ pub enum Type {
     /// For references to self
     Self(ast::DefId),
     /// Primitives are just the fixed-size numeric types (plus int/uint/float), and char.
-    Primitive(Primitive),
+    Primitive(PrimitiveType),
     Closure(Box<ClosureDecl>),
     Proc(Box<ClosureDecl>),
     /// extern "ABI" fn
@@ -1080,7 +1080,7 @@ pub enum Type {
 }
 
 #[deriving(Clone, Encodable, Decodable, PartialEq, Eq, Hash)]
-pub enum Primitive {
+pub enum PrimitiveType {
     Int, I8, I16, I32, I64,
     Uint, U8, U16, U32, U64,
     F32, F64,
@@ -1104,8 +1104,8 @@ pub enum TypeKind {
     TypeTypedef,
 }
 
-impl Primitive {
-    fn from_str(s: &str) -> Option<Primitive> {
+impl PrimitiveType {
+    fn from_str(s: &str) -> Option<PrimitiveType> {
         match s.as_slice() {
             "int" => Some(Int),
             "i8" => Some(I8),
@@ -1129,7 +1129,7 @@ impl Primitive {
         }
     }
 
-    fn find(attrs: &[Attribute]) -> Option<Primitive> {
+    fn find(attrs: &[Attribute]) -> Option<PrimitiveType> {
         for attr in attrs.iter() {
             let list = match *attr {
                 List(ref k, ref l) if k.as_slice() == "doc" => l,
@@ -1141,7 +1141,7 @@ impl Primitive {
                         if k.as_slice() == "primitive" => v.as_slice(),
                     _ => continue,
                 };
-                match Primitive::from_str(value) {
+                match PrimitiveType::from_str(value) {
                     Some(p) => return Some(p),
                     None => {}
                 }

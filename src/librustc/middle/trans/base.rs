@@ -191,21 +191,13 @@ pub fn decl_fn(ccx: &CrateContext, name: &str, cc: llvm::CallConv,
     match ty::get(output).sty {
         // functions returning bottom may unwind, but can never return normally
         ty::ty_bot => {
-            unsafe {
-                llvm::LLVMAddFunctionAttribute(llfn,
-                                               llvm::FunctionIndex as c_uint,
-                                               llvm::NoReturnAttribute as uint64_t)
-            }
+            llvm::SetFunctionAttribute(llfn, llvm::NoReturnAttribute)
         }
         _ => {}
     }
 
     if ccx.tcx().sess.opts.cg.no_redzone {
-        unsafe {
-            llvm::LLVMAddFunctionAttribute(llfn,
-                                           llvm::FunctionIndex as c_uint,
-                                           llvm::NoRedZoneAttribute as uint64_t)
-        }
+        llvm::SetFunctionAttribute(llfn, llvm::NoRedZoneAttribute)
     }
 
     llvm::SetFunctionCallConv(llfn, cc);
@@ -1468,7 +1460,6 @@ pub fn new_fn_ctxt<'a, 'tcx>(ccx: &'a CrateContext<'a, 'tcx>,
           needs_ret_allocas: nested_returns,
           personality: Cell::new(None),
           caller_expects_out_pointer: uses_outptr,
-          llargs: RefCell::new(NodeMap::new()),
           lllocals: RefCell::new(NodeMap::new()),
           llupvars: RefCell::new(NodeMap::new()),
           id: id,

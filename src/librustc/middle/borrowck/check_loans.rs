@@ -514,9 +514,9 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
         true
     }
 
-    pub fn is_local_variable_or_arg(&self, cmt: mc::cmt) -> bool {
+    fn is_local_variable_or_arg(&self, cmt: mc::cmt) -> bool {
         match cmt.cat {
-          mc::cat_local(_) | mc::cat_arg(_) => true,
+          mc::cat_local(_) => true,
           _ => false
         }
     }
@@ -775,7 +775,7 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
                 debug!("mark_variable_as_used_mut(cmt={})", cmt.repr(this.tcx()));
                 match cmt.cat.clone() {
                     mc::cat_copied_upvar(mc::CopiedUpvar { upvar_id: id, .. }) |
-                    mc::cat_local(id) | mc::cat_arg(id) => {
+                    mc::cat_local(id) => {
                         this.tcx().used_mut_nodes.borrow_mut().insert(id);
                         return;
                     }

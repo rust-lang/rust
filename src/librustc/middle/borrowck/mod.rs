@@ -321,8 +321,7 @@ pub fn opt_loan_path(cmt: &mc::cmt) -> Option<Rc<LoanPath>> {
             None
         }
 
-        mc::cat_local(id) |
-        mc::cat_arg(id) => {
+        mc::cat_local(id) => {
             Some(Rc::new(LpVar(id)))
         }
 
@@ -425,12 +424,12 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                                adj: &ty::AutoAdjustment)
                                -> mc::cmt {
         let r = match *adj {
-            ty::AutoDerefRef(
+            ty::AdjustDerefRef(
                 ty::AutoDerefRef {
                     autoderefs: autoderefs, ..}) => {
                 self.mc().cat_expr_autoderefd(expr, autoderefs)
             }
-            ty::AutoAddEnv(..) => {
+            ty::AdjustAddEnv(..) => {
                 // no autoderefs
                 self.mc().cat_expr_unadjusted(expr)
             }

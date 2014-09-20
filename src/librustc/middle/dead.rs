@@ -101,12 +101,12 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
                         }
                     }
                     typeck::MethodStaticUnboxedClosure(_) => {}
-                    typeck::MethodParam(typeck::MethodParam {
+                    typeck::MethodTypeParam(typeck::MethodParam {
                         trait_ref: ref trait_ref,
                         method_num: index,
                         ..
                     }) |
-                    typeck::MethodObject(typeck::MethodObject {
+                    typeck::MethodTraitObject(typeck::MethodObject {
                         trait_ref: ref trait_ref,
                         method_num: index,
                         ..

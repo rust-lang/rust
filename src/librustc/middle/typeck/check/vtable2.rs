@@ -13,7 +13,7 @@ use middle::traits;
 use middle::traits::{SelectionError, Overflow,
                      OutputTypeParameterMismatch, Unimplemented};
 use middle::traits::{Obligation, obligation_for_builtin_bound};
-use middle::traits::{FulfillmentError, Ambiguity};
+use middle::traits::{FulfillmentError, CodeSelectionError, CodeAmbiguity};
 use middle::traits::{ObligationCause};
 use middle::ty;
 use middle::typeck::check::{FnCtxt,
@@ -244,10 +244,10 @@ pub fn report_fulfillment_errors(fcx: &FnCtxt,
 pub fn report_fulfillment_error(fcx: &FnCtxt,
                                 error: &FulfillmentError) {
     match error.code {
-        SelectionError(ref e) => {
+        CodeSelectionError(ref e) => {
             report_selection_error(fcx, &error.obligation, e);
         }
-        Ambiguity => {
+        CodeAmbiguity => {
             maybe_report_ambiguity(fcx, &error.obligation);
         }
     }

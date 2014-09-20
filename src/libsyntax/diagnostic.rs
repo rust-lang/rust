@@ -389,7 +389,7 @@ fn emit(dst: &mut EmitterWriter, cm: &codemap::CodeMap, rsp: RenderSpan,
         // we want to tell compiletest/runtest to look at the last line of the
         // span (since `custom_highlight_lines` displays an arrow to the end of
         // the span)
-        let span_end = Span { lo: sp.hi, hi: sp.hi, expn_info: sp.expn_info};
+        let span_end = Span { lo: sp.hi, hi: sp.hi, expn_id: sp.expn_id};
         let ses = cm.span_to_string(span_end);
         try!(print_diagnostic(dst, ses.as_slice(), lvl, msg, code));
         if rsp.is_full_span() {
@@ -523,24 +523,24 @@ fn print_macro_backtrace(w: &mut EmitterWriter,
                          cm: &codemap::CodeMap,
                          sp: Span)
                          -> io::IoResult<()> {
-    for ei in sp.expn_info.iter() {
-        let ss = ei.callee
-                   .span
-                   .as_ref()
-                   .map_or("".to_string(), |span| cm.span_to_string(*span));
-        let (pre, post) = match ei.callee.format {
-            codemap::MacroAttribute => ("#[", "]"),
-            codemap::MacroBang => ("", "!")
-        };
-        try!(print_diagnostic(w, ss.as_slice(), Note,
-                              format!("in expansion of {}{}{}", pre,
-                                      ei.callee.name,
-                                      post).as_slice(), None));
-        let ss = cm.span_to_string(ei.call_site);
-        try!(print_diagnostic(w, ss.as_slice(), Note, "expansion site", None));
-        try!(print_macro_backtrace(w, cm, ei.call_site));
-    }
-    Ok(())
+    let cs = try!(cm.with_expn_info(sp.expn_id, |expn_info| match expn_info {
+        Some(ei) => {
+            let ss = ei.callee.span.map_or(String::new(), |span| cm.span_to_string(span));
+            let (pre, post) = match ei.callee.format {
+                codemap::MacroAttribute => ("#[", "]"),
+                codemap::MacroBang => ("", "!")
+            };
+            try!(print_diagnostic(w, ss.as_slice(), Note,
+                                  format!("in expansion of {}{}{}", pre,
+                                          ei.callee.name,
+                                          post).as_slice(), None));
+            let ss = cm.span_to_string(ei.call_site);
+            try!(print_diagnostic(w, ss.as_slice(), Note, "expansion site", None));
+            Ok(Some(ei.call_site))
+        }
+        None => Ok(None)
+    }));
+    cs.map_or(Ok(()), |call_site| print_macro_backtrace(w, cm, call_site))
 }
 
 pub fn expect<T>(diag: &SpanHandler, opt: Option<T>, msg: || -> String) -> T {

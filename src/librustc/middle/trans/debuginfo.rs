@@ -664,7 +664,7 @@ pub struct FunctionDebugContext {
 }
 
 enum FunctionDebugContextRepr {
-    FunctionDebugContext(Box<FunctionDebugContextData>),
+    DebugInfo(Box<FunctionDebugContextData>),
     DebugInfoDisabled,
     FunctionWithoutDebugInfo,
 }
@@ -675,7 +675,7 @@ impl FunctionDebugContext {
                    span: Span)
                    -> &'a FunctionDebugContextData {
         match self.repr {
-            FunctionDebugContext(box ref data) => data,
+            DebugInfo(box ref data) => data,
             DebugInfoDisabled => {
                 cx.sess().span_bug(span,
                                    FunctionDebugContext::debuginfo_disabled_message());
@@ -999,11 +999,11 @@ pub fn create_argument_metadata(bcx: Block, arg: &ast::Arg) {
     let scope_metadata = bcx.fcx.debug_context.get_ref(cx, arg.pat.span).fn_metadata;
 
     pat_util::pat_bindings(def_map, &*arg.pat, |_, node_id, span, path1| {
-        let llarg = match bcx.fcx.llargs.borrow().find_copy(&node_id) {
+        let llarg = match bcx.fcx.lllocals.borrow().find_copy(&node_id) {
             Some(v) => v,
             None => {
                 bcx.sess().span_bug(span,
-                    format!("no entry in llargs table for {:?}",
+                    format!("no entry in lllocals table for {:?}",
                             node_id).as_slice());
             }
         };
@@ -1044,7 +1044,7 @@ pub fn set_source_location(fcx: &FunctionContext,
             set_debug_location(fcx.ccx, UnknownLocation);
             return;
         }
-        FunctionDebugContext(box ref function_debug_context) => {
+        DebugInfo(box ref function_debug_context) => {
             let cx = fcx.ccx;
 
             debug!("set_source_location: {}", cx.sess().codemap().span_to_string(span));
@@ -1082,7 +1082,7 @@ pub fn clear_source_location(fcx: &FunctionContext) {
 /// first real statement/expression of the function is translated.
 pub fn start_emitting_source_locations(fcx: &FunctionContext) {
     match fcx.debug_context.repr {
-        FunctionDebugContext(box ref data) => {
+        DebugInfo(box ref data) => {
             data.source_locations_enabled.set(true)
         },
         _ => { /* safe to ignore */ }
@@ -1291,7 +1291,7 @@ pub fn create_function_debug_context(cx: &CrateContext,
                        fn_metadata,
                        &mut *fn_debug_context.scope_map.borrow_mut());
 
-    return FunctionDebugContext { repr: FunctionDebugContext(fn_debug_context) };
+    return FunctionDebugContext { repr: DebugInfo(fn_debug_context) };
 
     fn get_function_signature(cx: &CrateContext,
                               fn_ast_id: ast::NodeId,
@@ -3134,7 +3134,7 @@ fn DIB(cx: &CrateContext) -> DIBuilderRef {
 
 fn fn_should_be_ignored(fcx: &FunctionContext) -> bool {
     match fcx.debug_context.repr {
-        FunctionDebugContext(_) => false,
+        DebugInfo(_) => false,
         _ => true
     }
 }
@@ -3477,6 +3477,12 @@ fn populate_scope_map(cx: &CrateContext,
             ast::ExprBinary(_, ref lhs, ref rhs)    => {
                 walk_expr(cx, &**lhs, scope_stack, scope_map);
                 walk_expr(cx, &**rhs, scope_stack, scope_map);
+            }
+
+            ast::ExprSlice(ref base, ref start, ref end, _) => {
+                walk_expr(cx, &**base, scope_stack, scope_map);
+                start.as_ref().map(|x| walk_expr(cx, &**x, scope_stack, scope_map));
+                end.as_ref().map(|x| walk_expr(cx, &**x, scope_stack, scope_map));
             }
 
             ast::ExprVec(ref init_expressions) |

@@ -91,34 +91,35 @@ pub enum DiagnosticSeverity {
     Note,
 }
 
-#[deriving(Clone)]
-pub enum Attribute {
-    ZExtAttribute = 1 << 0,
-    SExtAttribute = 1 << 1,
-    NoReturnAttribute = 1 << 2,
-    InRegAttribute = 1 << 3,
-    StructRetAttribute = 1 << 4,
-    NoUnwindAttribute = 1 << 5,
-    NoAliasAttribute = 1 << 6,
-    ByValAttribute = 1 << 7,
-    NestAttribute = 1 << 8,
-    ReadNoneAttribute = 1 << 9,
-    ReadOnlyAttribute = 1 << 10,
-    NoInlineAttribute = 1 << 11,
-    AlwaysInlineAttribute = 1 << 12,
-    OptimizeForSizeAttribute = 1 << 13,
-    StackProtectAttribute = 1 << 14,
-    StackProtectReqAttribute = 1 << 15,
-    AlignmentAttribute = 31 << 16,
-    NoCaptureAttribute = 1 << 21,
-    NoRedZoneAttribute = 1 << 22,
-    NoImplicitFloatAttribute = 1 << 23,
-    NakedAttribute = 1 << 24,
-    InlineHintAttribute = 1 << 25,
-    StackAttribute = 7 << 26,
-    ReturnsTwiceAttribute = 1 << 29,
-    UWTableAttribute = 1 << 30,
-    NonLazyBindAttribute = 1 << 31,
+bitflags! {
+    flags Attribute : u32 {
+        static ZExtAttribute = 1 << 0,
+        static SExtAttribute = 1 << 1,
+        static NoReturnAttribute = 1 << 2,
+        static InRegAttribute = 1 << 3,
+        static StructRetAttribute = 1 << 4,
+        static NoUnwindAttribute = 1 << 5,
+        static NoAliasAttribute = 1 << 6,
+        static ByValAttribute = 1 << 7,
+        static NestAttribute = 1 << 8,
+        static ReadNoneAttribute = 1 << 9,
+        static ReadOnlyAttribute = 1 << 10,
+        static NoInlineAttribute = 1 << 11,
+        static AlwaysInlineAttribute = 1 << 12,
+        static OptimizeForSizeAttribute = 1 << 13,
+        static StackProtectAttribute = 1 << 14,
+        static StackProtectReqAttribute = 1 << 15,
+        static AlignmentAttribute = 31 << 16,
+        static NoCaptureAttribute = 1 << 21,
+        static NoRedZoneAttribute = 1 << 22,
+        static NoImplicitFloatAttribute = 1 << 23,
+        static NakedAttribute = 1 << 24,
+        static InlineHintAttribute = 1 << 25,
+        static StackAttribute = 7 << 26,
+        static ReturnsTwiceAttribute = 1 << 29,
+        static UWTableAttribute = 1 << 30,
+        static NonLazyBindAttribute = 1 << 31,
+    }
 }
 
 #[repr(u64)]
@@ -160,13 +161,13 @@ trait AttrHelper {
 impl AttrHelper for Attribute {
     fn apply_llfn(&self, idx: c_uint, llfn: ValueRef) {
         unsafe {
-            LLVMAddFunctionAttribute(llfn, idx, *self as uint64_t);
+            LLVMAddFunctionAttribute(llfn, idx, self.bits() as uint64_t);
         }
     }
 
     fn apply_callsite(&self, idx: c_uint, callsite: ValueRef) {
         unsafe {
-            LLVMAddCallSiteAttribute(callsite, idx, *self as uint64_t);
+            LLVMAddCallSiteAttribute(callsite, idx, self.bits() as uint64_t);
         }
     }
 }
@@ -296,17 +297,17 @@ pub enum TypeKind {
 
 #[repr(C)]
 pub enum AtomicBinOp {
-    Xchg = 0,
-    Add  = 1,
-    Sub  = 2,
-    And  = 3,
-    Nand = 4,
-    Or   = 5,
-    Xor  = 6,
-    Max  = 7,
-    Min  = 8,
-    UMax = 9,
-    UMin = 10,
+    AtomicXchg = 0,
+    AtomicAdd  = 1,
+    AtomicSub  = 2,
+    AtomicAnd  = 3,
+    AtomicNand = 4,
+    AtomicOr   = 5,
+    AtomicXor  = 6,
+    AtomicMax  = 7,
+    AtomicMin  = 8,
+    AtomicUMax = 9,
+    AtomicUMin = 10,
 }
 
 #[repr(C)]
@@ -324,11 +325,11 @@ pub enum AtomicOrdering {
 // Consts for the LLVMCodeGenFileType type (in include/llvm/c/TargetMachine.h)
 #[repr(C)]
 pub enum FileType {
-    AssemblyFile = 0,
-    ObjectFile = 1
+    AssemblyFileType = 0,
+    ObjectFileType = 1
 }
 
-pub enum Metadata {
+pub enum MetadataType {
     MD_dbg = 0,
     MD_tbaa = 1,
     MD_prof = 2,
@@ -2009,7 +2010,7 @@ pub fn ConstFCmp(pred: RealPredicate, v1: ValueRef, v2: ValueRef) -> ValueRef {
 
 pub fn SetFunctionAttribute(fn_: ValueRef, attr: Attribute) {
     unsafe {
-        LLVMAddFunctionAttribute(fn_, FunctionIndex as c_uint, attr as uint64_t)
+        LLVMAddFunctionAttribute(fn_, FunctionIndex as c_uint, attr.bits() as uint64_t)
     }
 }
 

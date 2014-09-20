@@ -97,8 +97,8 @@ pub struct FulfillmentError {
 
 #[deriving(Clone)]
 pub enum FulfillmentErrorCode {
-    SelectionError(SelectionError),
-    Ambiguity,
+    CodeSelectionError(SelectionError),
+    CodeAmbiguity,
 }
 
 /**
@@ -110,7 +110,7 @@ pub enum FulfillmentErrorCode {
  *   to inconclusive type inference.
  * - `Err(e)`: error `e` occurred
  */
-pub type SelectionResult<T> = Result<Option<T>,SelectionError>;
+pub type SelectionResult<T> = Result<Option<T>, SelectionError>;
 
 #[deriving(PartialEq,Eq,Show)]
 pub enum EvaluationResult {
@@ -157,12 +157,12 @@ pub enum EvaluationResult {
  *
  * ### The type parameter `N`
  *
- * See explanation on `VtableImpl`.
+ * See explanation on `VtableImplData`.
  */
 #[deriving(Show,Clone)]
 pub enum Vtable<N> {
     /// Vtable identifying a particular impl.
-    VtableImpl(VtableImpl<N>),
+    VtableImpl(VtableImplData<N>),
 
     /// Vtable automatically generated for an unboxed closure. The def
     /// ID is the ID of the closure expression. This is a `VtableImpl`
@@ -172,7 +172,7 @@ pub enum Vtable<N> {
 
     /// Successful resolution to an obligation provided by the caller
     /// for some type parameter.
-    VtableParam(VtableParam),
+    VtableParam(VtableParamData),
 
     /// Successful resolution for a builtin trait.
     VtableBuiltin,
@@ -191,7 +191,7 @@ pub enum Vtable<N> {
  * impl, and nested obligations are satisfied later.
  */
 #[deriving(Clone)]
-pub struct VtableImpl<N> {
+pub struct VtableImplData<N> {
     pub impl_def_id: ast::DefId,
     pub substs: subst::Substs,
     pub nested: subst::VecPerParamSpace<N>
@@ -203,7 +203,7 @@ pub struct VtableImpl<N> {
  * on an instance of `T`, the vtable would be of type `VtableParam`.
  */
 #[deriving(Clone)]
-pub struct VtableParam {
+pub struct VtableParamData {
     // In the above example, this would `Eq`
     pub bound: Rc<ty::TraitRef>,
 }
@@ -274,7 +274,7 @@ pub fn select_inherent_impl(infcx: &InferCtxt,
                             cause: ObligationCause,
                             impl_def_id: ast::DefId,
                             self_ty: ty::t)
-                            -> SelectionResult<VtableImpl<Obligation>>
+                            -> SelectionResult<VtableImplData<Obligation>>
 {
     /*!
      * Matches the self type of the inherent impl `impl_def_id`
@@ -398,21 +398,21 @@ impl<N> Vtable<N> {
     }
 }
 
-impl<N> VtableImpl<N> {
+impl<N> VtableImplData<N> {
     pub fn map_nested<M>(&self,
                          op: |&N| -> M)
-                         -> VtableImpl<M>
+                         -> VtableImplData<M>
     {
-        VtableImpl {
+        VtableImplData {
             impl_def_id: self.impl_def_id,
             substs: self.substs.clone(),
             nested: self.nested.map(op)
         }
     }
 
-    pub fn map_move_nested<M>(self, op: |N| -> M) -> VtableImpl<M> {
-        let VtableImpl { impl_def_id, substs, nested } = self;
-        VtableImpl {
+    pub fn map_move_nested<M>(self, op: |N| -> M) -> VtableImplData<M> {
+        let VtableImplData { impl_def_id, substs, nested } = self;
+        VtableImplData {
             impl_def_id: impl_def_id,
             substs: substs,
             nested: nested.map_move(op)

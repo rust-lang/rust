@@ -35,7 +35,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
     reg.register_macro("identity", expand_identity);
     reg.register_syntax_extension(
         token::intern("into_foo"),
-        ItemModifier(box expand_into_foo));
+        Modifier(box expand_into_foo));
 }
 
 fn expand_make_a_1(cx: &mut ExtCtxt, sp: Span, tts: &[TokenTree])

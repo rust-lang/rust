@@ -962,10 +962,10 @@ impl Repr for typeck::MethodOrigin {
             &typeck::MethodStaticUnboxedClosure(def_id) => {
                 format!("MethodStaticUnboxedClosure({})", def_id.repr(tcx))
             }
-            &typeck::MethodParam(ref p) => {
+            &typeck::MethodTypeParam(ref p) => {
                 p.repr(tcx)
             }
-            &typeck::MethodObject(ref p) => {
+            &typeck::MethodTraitObject(ref p) => {
                 p.repr(tcx)
             }
         }

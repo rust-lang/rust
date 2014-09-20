@@ -618,7 +618,7 @@ impl ToBigUint for BigInt {
     fn to_biguint(&self) -> Option<BigUint> {
         if self.sign == Plus {
             Some(self.data.clone())
-        } else if self.sign == Zero {
+        } else if self.sign == NoSign {
             Some(Zero::zero())
         } else {
             None
@@ -838,7 +838,7 @@ fn get_radix_base(radix: uint) -> (DoubleBigDigit, uint) {
 
 /// A Sign is a `BigInt`'s composing element.
 #[deriving(PartialEq, PartialOrd, Eq, Ord, Clone, Show)]
-pub enum Sign { Minus, Zero, Plus }
+pub enum Sign { Minus, NoSign, Plus }
 
 impl Neg<Sign> for Sign {
     /// Negate Sign value.
@@ -846,7 +846,7 @@ impl Neg<Sign> for Sign {
     fn neg(&self) -> Sign {
         match *self {
           Minus => Plus,
-          Zero  => Zero,
+          NoSign  => NoSign,
           Plus  => Minus
         }
     }
@@ -882,7 +882,7 @@ impl Ord for BigInt {
         if scmp != Equal { return scmp; }
 
         match self.sign {
-            Zero  => Equal,
+            NoSign  => Equal,
             Plus  => self.data.cmp(&other.data),
             Minus => other.data.cmp(&self.data),
         }
@@ -933,11 +933,11 @@ impl Shr<uint, BigInt> for BigInt {
 impl Zero for BigInt {
     #[inline]
     fn zero() -> BigInt {
-        BigInt::from_biguint(Zero, Zero::zero())
+        BigInt::from_biguint(NoSign, Zero::zero())
     }
 
     #[inline]
-    fn is_zero(&self) -> bool { self.sign == Zero }
+    fn is_zero(&self) -> bool { self.sign == NoSign }
 }
 
 impl One for BigInt {
@@ -951,7 +951,7 @@ impl Signed for BigInt {
     #[inline]
     fn abs(&self) -> BigInt {
         match self.sign {
-            Plus | Zero => self.clone(),
+            Plus | NoSign => self.clone(),
             Minus => BigInt::from_biguint(Plus, self.data.clone())
         }
     }
@@ -966,7 +966,7 @@ impl Signed for BigInt {
         match self.sign {
             Plus  => BigInt::from_biguint(Plus, One::one()),
             Minus => BigInt::from_biguint(Minus, One::one()),
-            Zero  => Zero::zero(),
+            NoSign  => Zero::zero(),
         }
     }
 
@@ -981,8 +981,8 @@ impl Add<BigInt, BigInt> for BigInt {
     #[inline]
     fn add(&self, other: &BigInt) -> BigInt {
         match (self.sign, other.sign) {
-            (Zero, _)      => other.clone(),
-            (_,    Zero)   => self.clone(),
+            (NoSign, _)      => other.clone(),
+            (_,    NoSign)   => self.clone(),
             (Plus, Plus)   => BigInt::from_biguint(Plus, self.data + other.data),
             (Plus, Minus)  => self - (-*other),
             (Minus, Plus)  => other - (-*self),
@@ -995,8 +995,8 @@ impl Sub<BigInt, BigInt> for BigInt {
     #[inline]
     fn sub(&self, other: &BigInt) -> BigInt {
         match (self.sign, other.sign) {
-            (Zero, _)    => -other,
-            (_,    Zero) => self.clone(),
+            (NoSign, _)    => -other,
+            (_,    NoSign) => self.clone(),
             (Plus, Plus) => match self.data.cmp(&other.data) {
                 Less    => BigInt::from_biguint(Minus, other.data - self.data),
                 Greater => BigInt::from_biguint(Plus, self.data - other.data),
@@ -1013,7 +1013,7 @@ impl Mul<BigInt, BigInt> for BigInt {
     #[inline]
     fn mul(&self, other: &BigInt) -> BigInt {
         match (self.sign, other.sign) {
-            (Zero, _)     | (_,     Zero)  => Zero::zero(),
+            (NoSign, _)     | (_,     NoSign)  => Zero::zero(),
             (Plus, Plus)  | (Minus, Minus) => {
                 BigInt::from_biguint(Plus, self.data * other.data)
             },
@@ -1087,9 +1087,9 @@ impl Integer for BigInt {
         let d = BigInt::from_biguint(Plus, d_ui);
         let r = BigInt::from_biguint(Plus, r_ui);
         match (self.sign, other.sign) {
-            (_,    Zero)   => fail!(),
-            (Plus, Plus)  | (Zero, Plus)  => ( d,  r),
-            (Plus, Minus) | (Zero, Minus) => (-d,  r),
+            (_,    NoSign)   => fail!(),
+            (Plus, Plus)  | (NoSign, Plus)  => ( d,  r),
+            (Plus, Minus) | (NoSign, Minus) => (-d,  r),
             (Minus, Plus)                 => (-d, -r),
             (Minus, Minus)                => ( d, -r)
         }
@@ -1113,9 +1113,9 @@ impl Integer for BigInt {
         let d = BigInt::from_biguint(Plus, d_ui);
         let m = BigInt::from_biguint(Plus, m_ui);
         match (self.sign, other.sign) {
-            (_,    Zero)   => fail!(),
-            (Plus, Plus)  | (Zero, Plus)  => (d, m),
-            (Plus, Minus) | (Zero, Minus) => if m.is_zero() {
+            (_,    NoSign)   => fail!(),
+            (Plus, Plus)  | (NoSign, Plus)  => (d, m),
+            (Plus, Minus) | (NoSign, Minus) => if m.is_zero() {
                 (-d, Zero::zero())
             } else {
                 (-d - One::one(), m + *other)
@@ -1166,7 +1166,7 @@ impl ToPrimitive for BigInt {
     fn to_i64(&self) -> Option<i64> {
         match self.sign {
             Plus  => self.data.to_i64(),
-            Zero  => Some(0),
+            NoSign  => Some(0),
             Minus => {
                 self.data.to_u64().and_then(|n| {
                     let m: u64 = 1 << 63;
@@ -1186,7 +1186,7 @@ impl ToPrimitive for BigInt {
     fn to_u64(&self) -> Option<u64> {
         match self.sign {
             Plus => self.data.to_u64(),
-            Zero => Some(0),
+            NoSign => Some(0),
             Minus => None
         }
     }
@@ -1272,7 +1272,7 @@ impl ToStrRadix for BigInt {
     fn to_str_radix(&self, radix: uint) -> String {
         match self.sign {
             Plus  => self.data.to_str_radix(radix),
-            Zero  => "0".to_string(),
+            NoSign  => "0".to_string(),
             Minus => format!("-{}", self.data.to_str_radix(radix)),
         }
     }
@@ -1334,7 +1334,7 @@ impl<R: Rng> RandBigInt for R {
             if self.gen() {
                 return self.gen_bigint(bit_size);
             } else {
-                Zero
+                NoSign
             }
         } else if self.gen() {
             Plus
@@ -1385,8 +1385,8 @@ impl BigInt {
     /// The digits are be in base 2^32.
     #[inline]
     pub fn from_biguint(sign: Sign, data: BigUint) -> BigInt {
-        if sign == Zero || data.is_zero() {
-            return BigInt { sign: Zero, data: Zero::zero() };
+        if sign == NoSign || data.is_zero() {
+            return BigInt { sign: NoSign, data: Zero::zero() };
         }
         BigInt { sign: sign, data: data }
     }
@@ -1415,7 +1415,7 @@ impl BigInt {
     pub fn to_biguint(&self) -> Option<BigUint> {
         match self.sign {
             Plus => Some(self.data.clone()),
-            Zero => Some(Zero::zero()),
+            NoSign => Some(Zero::zero()),
             Minus => None
         }
     }
@@ -2288,7 +2288,7 @@ mod biguint_tests {
 mod bigint_tests {
     use Integer;
     use super::{BigDigit, BigUint, ToBigUint};
-    use super::{Sign, Minus, Zero, Plus, BigInt, RandBigInt, ToBigInt};
+    use super::{Sign, Minus, NoSign, Plus, BigInt, RandBigInt, ToBigInt};
 
     use std::cmp::{Less, Equal, Greater};
     use std::i64;
@@ -2307,9 +2307,9 @@ mod bigint_tests {
             assert_eq!(inp, ans);
         }
         check(Plus, 1, Plus, 1);
-        check(Plus, 0, Zero, 0);
+        check(Plus, 0, NoSign, 0);
         check(Minus, 1, Minus, 1);
-        check(Zero, 1, Zero, 0);
+        check(NoSign, 1, NoSign, 0);
     }
 
     #[test]
@@ -2357,8 +2357,8 @@ mod bigint_tests {
 
     #[test]
     fn test_hash() {
-        let a = BigInt::new(Zero, vec!());
-        let b = BigInt::new(Zero, vec!(0));
+        let a = BigInt::new(NoSign, vec!());
+        let b = BigInt::new(NoSign, vec!(0));
         let c = BigInt::new(Plus, vec!(1));
         let d = BigInt::new(Plus, vec!(1,0,0,0,0,0));
         let e = BigInt::new(Plus, vec!(0,0,0,0,0,1));

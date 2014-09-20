@@ -40,8 +40,8 @@ pub trait DocFolder {
                 EnumItem(i)
             },
             TraitItem(mut i) => {
-                fn vtrm<T: DocFolder>(this: &mut T, trm: TraitItem)
-                        -> Option<TraitItem> {
+                fn vtrm<T: DocFolder>(this: &mut T, trm: TraitMethod)
+                        -> Option<TraitMethod> {
                     match trm {
                         RequiredMethod(it) => {
                             match this.fold_item(it) {

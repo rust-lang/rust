@@ -16,10 +16,11 @@
 
 use middle::mem_categorization as mc;
 use middle::def;
-use middle::freevars;
+use middle::mem_categorization::Typer;
 use middle::pat_util;
 use middle::ty;
-use middle::typeck::{MethodCall, MethodObject, MethodOrigin, MethodParam};
+use middle::typeck::{MethodCall, MethodObject, MethodTraitObject};
+use middle::typeck::{MethodOrigin, MethodParam, MethodTypeParam};
 use middle::typeck::{MethodStatic, MethodStaticUnboxedClosure};
 use middle::typeck;
 use util::ppaux::Repr;
@@ -177,8 +178,8 @@ impl OverloadedCallType {
             MethodStaticUnboxedClosure(def_id) => {
                 OverloadedCallType::from_unboxed_closure(tcx, def_id)
             }
-            MethodParam(MethodParam { trait_ref: ref trait_ref, .. }) |
-            MethodObject(MethodObject { trait_ref: ref trait_ref, .. }) => {
+            MethodTypeParam(MethodParam { trait_ref: ref trait_ref, .. }) |
+            MethodTraitObject(MethodObject { trait_ref: ref trait_ref, .. }) => {
                 OverloadedCallType::from_trait_id(tcx, trait_ref.def_id)
             }
         }
@@ -316,7 +317,7 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,TYPER> {
             ast::ExprPath(..) => { }
 
             ast::ExprUnary(ast::UnDeref, ref base) => {      // *base
-                if !self.walk_overloaded_operator(expr, &**base, None) {
+                if !self.walk_overloaded_operator(expr, &**base, Vec::new()) {
                     self.select_from_expr(&**base);
                 }
             }
@@ -330,10 +331,21 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,TYPER> {
             }
 
             ast::ExprIndex(ref lhs, ref rhs) => {       // lhs[rhs]
-                if !self.walk_overloaded_operator(expr, &**lhs, Some(&**rhs)) {
+                if !self.walk_overloaded_operator(expr, &**lhs, vec![&**rhs]) {
                     self.select_from_expr(&**lhs);
                     self.consume_expr(&**rhs);
                 }
+            }
+
+            ast::ExprSlice(ref base, ref start, ref end, _) => {    // base[start..end]
+                let args = match (start, end) {
+                    (&Some(ref e1), &Some(ref e2)) => vec![&**e1, &**e2],
+                    (&Some(ref e), &None) => vec![&**e],
+                    (&None, &Some(ref e)) => vec![&**e],
+                    (&None, &None) => Vec::new()
+                };
+                let overloaded = self.walk_overloaded_operator(expr, &**base, args);
+                assert!(overloaded);
             }
 
             ast::ExprCall(ref callee, ref args) => {    // callee(args)
@@ -430,13 +442,13 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,TYPER> {
             }
 
             ast::ExprUnary(_, ref lhs) => {
-                if !self.walk_overloaded_operator(expr, &**lhs, None) {
+                if !self.walk_overloaded_operator(expr, &**lhs, Vec::new()) {
                     self.consume_expr(&**lhs);
                 }
             }
 
             ast::ExprBinary(_, ref lhs, ref rhs) => {
-                if !self.walk_overloaded_operator(expr, &**lhs, Some(&**rhs)) {
+                if !self.walk_overloaded_operator(expr, &**lhs, vec![&**rhs]) {
                     self.consume_expr(&**lhs);
                     self.consume_expr(&**rhs);
                 }
@@ -673,7 +685,7 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,TYPER> {
             None => { }
             Some(adjustment) => {
                 match *adjustment {
-                    ty::AutoAddEnv(..) => {
+                    ty::AdjustAddEnv(..) => {
                         // Creating a closure consumes the input and stores it
                         // into the resulting rvalue.
                         debug!("walk_adjustment(AutoAddEnv)");
@@ -681,7 +693,7 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,TYPER> {
                             return_if_err!(self.mc.cat_expr_unadjusted(expr));
                         self.delegate_consume(expr.id, expr.span, cmt_unadjusted);
                     }
-                    ty::AutoDerefRef(ty::AutoDerefRef {
+                    ty::AdjustDerefRef(ty::AutoDerefRef {
                         autoref: ref opt_autoref,
                         autoderefs: n
                     }) => {
@@ -774,7 +786,7 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,TYPER> {
     fn walk_overloaded_operator(&mut self,
                                 expr: &ast::Expr,
                                 receiver: &ast::Expr,
-                                rhs: Option<&ast::Expr>)
+                                rhs: Vec<&ast::Expr>)
                                 -> bool
     {
         if !self.typer.is_method_call(expr.id) {
@@ -911,12 +923,12 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,TYPER> {
         debug!("walk_captures({})", closure_expr.repr(self.tcx()));
 
         let tcx = self.typer.tcx();
-        freevars::with_freevars(tcx, closure_expr.id, |freevars| {
-            match freevars::get_capture_mode(self.tcx(), closure_expr.id) {
-                freevars::CaptureByRef => {
+        ty::with_freevars(tcx, closure_expr.id, |freevars| {
+            match self.tcx().capture_mode(closure_expr.id) {
+                ast::CaptureByRef => {
                     self.walk_by_ref_captures(closure_expr, freevars);
                 }
-                freevars::CaptureByValue => {
+                ast::CaptureByValue => {
                     self.walk_by_value_captures(closure_expr, freevars);
                 }
             }
@@ -925,7 +937,7 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,TYPER> {
 
     fn walk_by_ref_captures(&mut self,
                             closure_expr: &ast::Expr,
-                            freevars: &[freevars::freevar_entry]) {
+                            freevars: &[ty::Freevar]) {
         for freevar in freevars.iter() {
             let id_var = freevar.def.def_id().node;
             let cmt_var = return_if_err!(self.cat_captured_var(closure_expr.id,
@@ -950,7 +962,7 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,TYPER> {
 
     fn walk_by_value_captures(&mut self,
                               closure_expr: &ast::Expr,
-                              freevars: &[freevars::freevar_entry]) {
+                              freevars: &[ty::Freevar]) {
         for freevar in freevars.iter() {
             let cmt_var = return_if_err!(self.cat_captured_var(closure_expr.id,
                                                                closure_expr.span,

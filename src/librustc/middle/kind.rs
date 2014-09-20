@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use middle::freevars::freevar_entry;
-use middle::freevars;
 use middle::mem_categorization::Typer;
 use middle::subst;
 use middle::ty;
@@ -146,10 +144,10 @@ fn check_item(cx: &mut Context, item: &Item) {
 fn with_appropriate_checker(cx: &Context,
                             id: NodeId,
                             fn_span: Span,
-                            b: |checker: |&Context, &freevar_entry||) {
+                            b: |checker: |&Context, &ty::Freevar||) {
     fn check_for_uniq(cx: &Context,
                       fn_span: Span,
-                      fv: &freevar_entry,
+                      fv: &ty::Freevar,
                       bounds: ty::BuiltinBounds) {
         // all captured data must be owned, regardless of whether it is
         // moved in or copied in.
@@ -162,7 +160,7 @@ fn with_appropriate_checker(cx: &Context,
     fn check_for_block(cx: &Context,
                        fn_span: Span,
                        fn_id: NodeId,
-                       fv: &freevar_entry,
+                       fv: &ty::Freevar,
                        bounds: ty::BuiltinBounds) {
         let id = fv.def.def_id().node;
         let var_t = ty::node_id_to_type(cx.tcx, id);
@@ -177,7 +175,7 @@ fn with_appropriate_checker(cx: &Context,
                              bounds, Some(var_t));
     }
 
-    fn check_for_bare(cx: &Context, fv: &freevar_entry) {
+    fn check_for_bare(cx: &Context, fv: &ty::Freevar) {
         span_err!(cx.tcx.sess, fv.span, E0143,
                   "can't capture dynamic environment in a fn item; \
                    use the || {} closure form instead", "{ ... }");
@@ -227,7 +225,7 @@ fn check_fn(
 
     // <Check kinds on free variables:
     with_appropriate_checker(cx, fn_id, sp, |chk| {
-        freevars::with_freevars(cx.tcx, fn_id, |freevars| {
+        ty::with_freevars(cx.tcx, fn_id, |freevars| {
             for fv in freevars.iter() {
                 chk(cx, fv);
             }
@@ -274,6 +272,7 @@ pub fn check_expr(cx: &mut Context, e: &Expr) {
 
     visit::walk_expr(cx, e);
 }
+
 fn check_ty(cx: &mut Context, aty: &Ty) {
     match aty.node {
         TyPath(_, _, id) => {

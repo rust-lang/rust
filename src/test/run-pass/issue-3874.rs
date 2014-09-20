@@ -8,10 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-enum PureCounter { PureCounter(uint) }
+enum PureCounter { PureCounterVariant(uint) }
 
 fn each(thing: PureCounter, blk: |v: &uint|) {
-    let PureCounter(ref x) = thing;
+    let PureCounterVariant(ref x) = thing;
     blk(x);
 }
 

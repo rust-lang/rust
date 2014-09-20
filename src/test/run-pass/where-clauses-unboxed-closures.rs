@@ -13,7 +13,7 @@
 struct Bencher;
 
 // ICE
-fn warm_up<'a, F>(f: F) where F: |&: &'a mut Bencher| {
+fn warm_up<'a, F>(f: F) where F: Fn(&'a mut Bencher) {
 }
 
 fn main() {

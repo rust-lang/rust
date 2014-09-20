@@ -90,8 +90,8 @@ use middle::typeck::check::{FnCtxt, PreferMutLvalue, impl_self_ty};
 use middle::typeck::check;
 use middle::typeck::infer;
 use middle::typeck::MethodCallee;
-use middle::typeck::{MethodOrigin, MethodParam};
-use middle::typeck::{MethodStatic, MethodStaticUnboxedClosure, MethodObject};
+use middle::typeck::{MethodOrigin, MethodParam, MethodTypeParam};
+use middle::typeck::{MethodStatic, MethodStaticUnboxedClosure, MethodObject, MethodTraitObject};
 use middle::typeck::check::regionmanip::replace_late_bound_regions_in_fn_sig;
 use middle::typeck::TypeAndSubsts;
 use util::common::indenter;
@@ -636,7 +636,7 @@ impl<'a, 'tcx> LookupContext<'a, 'tcx> {
                     rcvr_match_condition: RcvrMatchesIfObject(did),
                     rcvr_substs: new_trait_ref.substs.clone(),
                     method_ty: Rc::new(m),
-                    origin: MethodObject(MethodObject {
+                    origin: MethodTraitObject(MethodObject {
                         trait_ref: new_trait_ref,
                         object_trait_id: did,
                         method_num: method_num,
@@ -702,7 +702,7 @@ impl<'a, 'tcx> LookupContext<'a, 'tcx> {
                     rcvr_match_condition: condition,
                     rcvr_substs: trait_ref.substs.clone(),
                     method_ty: m,
-                    origin: MethodParam(MethodParam {
+                    origin: MethodTypeParam(MethodParam {
                         trait_ref: trait_ref,
                         method_num: method_num,
                     })
@@ -874,7 +874,7 @@ impl<'a, 'tcx> LookupContext<'a, 'tcx> {
         }
 
         let (self_ty, auto_deref_ref) = self.consider_reborrow(self_ty, autoderefs);
-        let adjustment = Some((self.self_expr.unwrap().id, ty::AutoDerefRef(auto_deref_ref)));
+        let adjustment = Some((self.self_expr.unwrap().id, ty::AdjustDerefRef(auto_deref_ref)));
 
         match self.search_for_method(self_ty) {
             None => None,
@@ -1159,7 +1159,7 @@ impl<'a, 'tcx> LookupContext<'a, 'tcx> {
                             self.fcx.write_adjustment(
                                 self_expr_id,
                                 self.span,
-                                ty::AutoDerefRef(ty::AutoDerefRef {
+                                ty::AdjustDerefRef(ty::AutoDerefRef {
                                     autoderefs: autoderefs,
                                     autoref: Some(kind(region, *mutbl))
                                 }));
@@ -1245,7 +1245,7 @@ impl<'a, 'tcx> LookupContext<'a, 'tcx> {
                        candidate_a.repr(self.tcx()),
                        candidate_b.repr(self.tcx()));
                 match (&candidate_a.origin, &candidate_b.origin) {
-                    (&MethodParam(ref p1), &MethodParam(ref p2)) => {
+                    (&MethodTypeParam(ref p1), &MethodTypeParam(ref p2)) => {
                         let same_trait =
                             p1.trait_ref.def_id == p2.trait_ref.def_id;
                         let same_method =
@@ -1330,7 +1330,7 @@ impl<'a, 'tcx> LookupContext<'a, 'tcx> {
 
         let fn_sig = &bare_fn_ty.sig;
         let inputs = match candidate.origin {
-            MethodObject(..) => {
+            MethodTraitObject(..) => {
                 // For annoying reasons, we've already handled the
                 // substitution of self for object calls.
                 let args = fn_sig.inputs.slice_from(1).iter().map(|t| {
@@ -1403,11 +1403,11 @@ impl<'a, 'tcx> LookupContext<'a, 'tcx> {
 
         match candidate.origin {
             MethodStatic(..) |
-            MethodParam(..) |
+            MethodTypeParam(..) |
             MethodStaticUnboxedClosure(..) => {
                 return; // not a call to a trait instance
             }
-            MethodObject(..) => {}
+            MethodTraitObject(..) => {}
         }
 
         match candidate.method_ty.explicit_self {
@@ -1463,8 +1463,8 @@ impl<'a, 'tcx> LookupContext<'a, 'tcx> {
             MethodStaticUnboxedClosure(_) => bad = false,
             // FIXME: does this properly enforce this on everything now
             // that self has been merged in? -sully
-            MethodParam(MethodParam { trait_ref: ref trait_ref, .. }) |
-            MethodObject(MethodObject { trait_ref: ref trait_ref, .. }) => {
+            MethodTypeParam(MethodParam { trait_ref: ref trait_ref, .. }) |
+            MethodTraitObject(MethodObject { trait_ref: ref trait_ref, .. }) => {
                 bad = self.tcx().destructor_for_type.borrow()
                           .contains_key(&trait_ref.def_id);
             }
@@ -1612,10 +1612,10 @@ impl<'a, 'tcx> LookupContext<'a, 'tcx> {
             MethodStaticUnboxedClosure(did) => {
                 self.report_static_candidate(idx, did)
             }
-            MethodParam(ref mp) => {
+            MethodTypeParam(ref mp) => {
                 self.report_param_candidate(idx, mp.trait_ref.def_id)
             }
-            MethodObject(ref mo) => {
+            MethodTraitObject(ref mo) => {
                 self.report_trait_candidate(idx, mo.trait_ref.def_id)
             }
         }

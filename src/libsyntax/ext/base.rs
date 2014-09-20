@@ -11,7 +11,7 @@
 use ast;
 use ast::Name;
 use codemap;
-use codemap::{CodeMap, Span, ExpnInfo};
+use codemap::{CodeMap, Span, ExpnId, ExpnInfo, NO_EXPANSION};
 use ext;
 use ext::expand;
 use parse;
@@ -24,7 +24,6 @@ use ext::mtwt;
 use fold::Folder;
 
 use std::collections::HashMap;
-use std::gc::{Gc, GC};
 use std::rc::Rc;
 
 // new-style macro! tt code:
@@ -203,25 +202,20 @@ impl MacResult for MacPat {
         Some(self.p)
     }
 }
-/// A convenience type for macros that return a single item.
-pub struct MacItem {
-    i: P<ast::Item>
+/// A type for macros that return multiple items.
+pub struct MacItems {
+    items: SmallVector<P<ast::Item>>
 }
-impl MacItem {
-    pub fn new(i: P<ast::Item>) -> Box<MacResult+'static> {
-        box MacItem { i: i } as Box<MacResult+'static>
+
+impl MacItems {
+    pub fn new<I: Iterator<P<ast::Item>>>(mut it: I) -> Box<MacResult+'static> {
+        box MacItems { items: it.collect() } as Box<MacResult+'static>
     }
 }
-impl MacResult for MacItem {
-    fn make_items(self: Box<MacItem>) -> Option<SmallVector<P<ast::Item>>> {
-        Some(SmallVector::one(self.i))
-    }
-    fn make_stmt(self: Box<MacItem>) -> Option<P<ast::Stmt>> {
-        Some(P(codemap::respan(
-            self.i.span,
-            ast::StmtDecl(
-                P(codemap::respan(self.i.span, ast::DeclItem(self.i))),
-                ast::DUMMY_NODE_ID))))
+
+impl MacResult for MacItems {
+    fn make_items(self: Box<MacItems>) -> Option<SmallVector<P<ast::Item>>> {
+        Some(self.items)
     }
 }
 
@@ -305,11 +299,11 @@ pub enum SyntaxExtension {
     /// based upon it.
     ///
     /// `#[deriving(...)]` is an `ItemDecorator`.
-    ItemDecorator(Box<ItemDecorator + 'static>),
+    Decorator(Box<ItemDecorator + 'static>),
 
     /// A syntax extension that is attached to an item and modifies it
     /// in-place.
-    ItemModifier(Box<ItemModifier + 'static>),
+    Modifier(Box<ItemModifier + 'static>),
 
     /// A normal, function-like syntax extension.
     ///
@@ -387,7 +381,7 @@ fn initial_syntax_expander_table() -> SyntaxEnv {
                             builtin_normal_expander(
                                     ext::log_syntax::expand_syntax_ext));
     syntax_expanders.insert(intern("deriving"),
-                            ItemDecorator(box ext::deriving::expand_meta_deriving));
+                            Decorator(box ext::deriving::expand_meta_deriving));
 
     // Quasi-quoting expanders
     syntax_expanders.insert(intern("quote_tokens"),
@@ -457,7 +451,7 @@ fn initial_syntax_expander_table() -> SyntaxEnv {
 pub struct ExtCtxt<'a> {
     pub parse_sess: &'a parse::ParseSess,
     pub cfg: ast::CrateConfig,
-    pub backtrace: Option<Gc<ExpnInfo>>,
+    pub backtrace: ExpnId,
     pub ecfg: expand::ExpansionConfig,
 
     pub mod_path: Vec<ast::Ident> ,
@@ -473,7 +467,7 @@ impl<'a> ExtCtxt<'a> {
         ExtCtxt {
             parse_sess: parse_sess,
             cfg: cfg,
-            backtrace: None,
+            backtrace: NO_EXPANSION,
             mod_path: Vec::new(),
             ecfg: ecfg,
             trace_mac: false,
@@ -501,13 +495,49 @@ impl<'a> ExtCtxt<'a> {
     pub fn parse_sess(&self) -> &'a parse::ParseSess { self.parse_sess }
     pub fn cfg(&self) -> ast::CrateConfig { self.cfg.clone() }
     pub fn call_site(&self) -> Span {
-        match self.backtrace {
+        self.codemap().with_expn_info(self.backtrace, |ei| match ei {
             Some(expn_info) => expn_info.call_site,
             None => self.bug("missing top span")
-        }
+        })
     }
     pub fn print_backtrace(&self) { }
-    pub fn backtrace(&self) -> Option<Gc<ExpnInfo>> { self.backtrace }
+    pub fn backtrace(&self) -> ExpnId { self.backtrace }
+    pub fn original_span(&self) -> Span {
+        let mut expn_id = self.backtrace;
+        let mut call_site = None;
+        loop {
+            match self.codemap().with_expn_info(expn_id, |ei| ei.map(|ei| ei.call_site)) {
+                None => break,
+                Some(cs) => {
+                    call_site = Some(cs);
+                    expn_id = cs.expn_id;
+                }
+            }
+        }
+        call_site.expect("missing expansion backtrace")
+    }
+    pub fn original_span_in_file(&self) -> Span {
+        let mut expn_id = self.backtrace;
+        let mut call_site = None;
+        loop {
+            let expn_info = self.codemap().with_expn_info(expn_id, |ei| {
+                ei.map(|ei| (ei.call_site, ei.callee.name.as_slice() == "include"))
+            });
+            match expn_info {
+                None => break,
+                Some((cs, is_include)) => {
+                    if is_include {
+                        // Don't recurse into file using "include!".
+                        break;
+                    }
+                    call_site = Some(cs);
+                    expn_id = cs.expn_id;
+                }
+            }
+        }
+        call_site.expect("missing expansion backtrace")
+    }
+
     pub fn mod_push(&mut self, i: ast::Ident) { self.mod_path.push(i); }
     pub fn mod_pop(&mut self) { self.mod_path.pop().unwrap(); }
     pub fn mod_path(&self) -> Vec<ast::Ident> {
@@ -516,22 +546,22 @@ impl<'a> ExtCtxt<'a> {
         v.extend(self.mod_path.iter().map(|a| *a));
         return v;
     }
-    pub fn bt_push(&mut self, ei: codemap::ExpnInfo) {
-        match ei {
-            ExpnInfo {call_site: cs, callee: ref callee} => {
-                self.backtrace =
-                    Some(box(GC) ExpnInfo {
-                        call_site: Span {lo: cs.lo, hi: cs.hi,
-                                         expn_info: self.backtrace.clone()},
-                        callee: (*callee).clone()
-                    });
-            }
-        }
+    pub fn bt_push(&mut self, ei: ExpnInfo) {
+        let mut call_site = ei.call_site;
+        call_site.expn_id = self.backtrace;
+        self.backtrace = self.codemap().record_expansion(ExpnInfo {
+            call_site: call_site,
+            callee: ei.callee
+        });
     }
     pub fn bt_pop(&mut self) {
         match self.backtrace {
-            Some(expn_info) => self.backtrace = expn_info.call_site.expn_info,
-            _ => self.bug("tried to pop without a push")
+            NO_EXPANSION => self.bug("tried to pop without a push"),
+            expn_id => {
+                self.backtrace = self.codemap().with_expn_info(expn_id, |expn_info| {
+                    expn_info.map_or(NO_EXPANSION, |ei| ei.call_site.expn_id)
+                });
+            }
         }
     }
     /// Emit `msg` attached to `sp`, and stop compilation immediately.

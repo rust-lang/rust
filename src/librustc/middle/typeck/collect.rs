@@ -1427,7 +1427,8 @@ pub fn instantiate_unboxed_fn_ty<'tcx,AC>(this: &AC,
     let param_ty = param_ty.to_ty(this.tcx());
     Rc::new(astconv::trait_ref_for_unboxed_function(this,
                                                     &rscope,
-                                                    unboxed_function,
+                                                    unboxed_function.kind,
+                                                    &*unboxed_function.decl,
                                                     Some(param_ty)))
 }
 
@@ -2165,9 +2166,42 @@ fn conv_param_bounds<'tcx,AC>(this: &AC,
                                      region_bounds,
                                      unboxed_fn_ty_bounds } =
         astconv::partition_bounds(this.tcx(), span, all_bounds.as_slice());
-    let unboxed_fn_ty_bounds =
-        unboxed_fn_ty_bounds.into_iter()
-        .map(|b| instantiate_unboxed_fn_ty(this, b, param_ty));
+
+    let unboxed_fn_ty_bounds = unboxed_fn_ty_bounds.move_iter().map(|b| {
+        let trait_id = this.tcx().def_map.borrow().get(&b.ref_id).def_id();
+        let mut kind = None;
+        for &(lang_item, this_kind) in [
+            (this.tcx().lang_items.fn_trait(), ast::FnUnboxedClosureKind),
+            (this.tcx().lang_items.fn_mut_trait(),
+             ast::FnMutUnboxedClosureKind),
+            (this.tcx().lang_items.fn_once_trait(),
+             ast::FnOnceUnboxedClosureKind)
+        ].iter() {
+            if Some(trait_id) == lang_item {
+                kind = Some(this_kind);
+                break
+            }
+        }
+
+        let kind = match kind {
+            Some(kind) => kind,
+            None => {
+                this.tcx().sess.span_err(b.path.span,
+                                         "unboxed function trait must be one \
+                                          of `Fn`, `FnMut`, or `FnOnce`");
+                ast::FnMutUnboxedClosureKind
+            }
+        };
+
+        let rscope = ExplicitRscope;
+        let param_ty = param_ty.to_ty(this.tcx());
+        Rc::new(astconv::trait_ref_for_unboxed_function(this,
+                                                        &rscope,
+                                                        kind,
+                                                        &*b.decl,
+                                                        Some(param_ty)))
+    });
+
     let trait_bounds: Vec<Rc<ty::TraitRef>> =
         trait_bounds.into_iter()
         .map(|b| {

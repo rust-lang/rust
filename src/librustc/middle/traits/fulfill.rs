@@ -13,10 +13,10 @@ use middle::typeck::infer::{InferCtxt, skolemize};
 use util::nodemap::DefIdMap;
 use util::ppaux::Repr;
 
-use super::Ambiguity;
+use super::CodeAmbiguity;
 use super::Obligation;
 use super::FulfillmentError;
-use super::SelectionError;
+use super::CodeSelectionError;
 use super::select::SelectionContext;
 use super::Unimplemented;
 
@@ -78,7 +78,7 @@ impl FulfillmentContext {
         let errors: Vec<FulfillmentError> =
             self.trait_obligations
             .iter()
-            .map(|o| FulfillmentError::new((*o).clone(), Ambiguity))
+            .map(|o| FulfillmentError::new((*o).clone(), CodeAmbiguity))
             .collect();
 
         if errors.is_empty() {
@@ -129,7 +129,7 @@ impl FulfillmentContext {
 
                         errors.push(FulfillmentError::new(
                             (*obligation).clone(),
-                            SelectionError(selection_err)));
+                            CodeSelectionError(selection_err)));
                         false
                     }
                 }
@@ -237,7 +237,7 @@ impl FulfillmentContext {
             errors.push(
                 FulfillmentError::new(
                     (*obligation).clone(),
-                    SelectionError(Unimplemented)));
+                    CodeSelectionError(Unimplemented)));
         }
 
         if errors.is_empty() {

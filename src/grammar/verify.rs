@@ -211,7 +211,7 @@ fn parse_antlr_token(s: &str, tokens: &HashMap<String, Token>) -> TokenAndSpan {
     let sp = syntax::codemap::Span {
         lo: syntax::codemap::BytePos(from_str::<u32>(start).unwrap() - offset),
         hi: syntax::codemap::BytePos(from_str::<u32>(end).unwrap() + 1),
-        expn_info: None
+        expn_id: syntax::codemap::NO_EXPANSION
     };
 
     TokenAndSpan {

@@ -353,9 +353,9 @@ impl TypeFoldable for traits::Obligation {
     }
 }
 
-impl<N:TypeFoldable> TypeFoldable for traits::VtableImpl<N> {
-    fn fold_with<'tcx, F:TypeFolder<'tcx>>(&self, folder: &mut F) -> traits::VtableImpl<N> {
-        traits::VtableImpl {
+impl<N:TypeFoldable> TypeFoldable for traits::VtableImplData<N> {
+    fn fold_with<'tcx, F:TypeFolder<'tcx>>(&self, folder: &mut F) -> traits::VtableImplData<N> {
+        traits::VtableImplData {
             impl_def_id: self.impl_def_id,
             substs: self.substs.fold_with(folder),
             nested: self.nested.fold_with(folder),
@@ -374,9 +374,9 @@ impl<N:TypeFoldable> TypeFoldable for traits::Vtable<N> {
     }
 }
 
-impl TypeFoldable for traits::VtableParam {
-    fn fold_with<'tcx, F:TypeFolder<'tcx>>(&self, folder: &mut F) -> traits::VtableParam {
-        traits::VtableParam {
+impl TypeFoldable for traits::VtableParamData {
+    fn fold_with<'tcx, F:TypeFolder<'tcx>>(&self, folder: &mut F) -> traits::VtableParamData {
+        traits::VtableParamData {
             bound: self.bound.fold_with(folder),
         }
     }

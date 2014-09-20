@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-enum Nil {Nil}
+enum Nil {NilValue}
 struct Cons<T> {head:int, tail:T}
 trait Dot {fn dot(&self, other:Self) -> int;}
 impl Dot for Nil {
@@ -29,6 +29,6 @@ fn test<T:Dot> (n:int, i:int, first:T, second:T) ->int {
   }
 }
 pub fn main() {
-  let n = test(1, 0, Nil, Nil);
+  let n = test(1, 0, NilValue, NilValue);
   println!("{}", n);
 }
