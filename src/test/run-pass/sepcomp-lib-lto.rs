@@ -8,12 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Make sure we give a sane error message when the user requests LTO with a
-// library built with -C codegen-units > 1.
+// Check that we can use `-Z lto` when linking against libraries that were
+// separately compiled.
 
 // aux-build:sepcomp_lib.rs
 // compile-flags: -Z lto
-// error-pattern:missing compressed bytecode
 // no-prefer-dynamic
 
 extern crate sepcomp_lib;

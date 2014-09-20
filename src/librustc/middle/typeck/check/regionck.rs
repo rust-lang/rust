@@ -119,8 +119,6 @@ and report an error, and it just seems like more mess in the end.)
 */
 
 use middle::def;
-use middle::def::{DefArg, DefBinding, DefLocal, DefUpvar};
-use middle::freevars;
 use middle::mem_categorization as mc;
 use middle::ty::{ReScope};
 use middle::ty;
@@ -243,14 +241,14 @@ fn region_of_def(fcx: &FnCtxt, def: def::Def) -> ty::Region {
 
     let tcx = fcx.tcx();
     match def {
-        DefLocal(node_id, _) | DefArg(node_id, _) |
-        DefBinding(node_id, _) => {
+        def::DefLocal(node_id) => {
             tcx.region_maps.var_region(node_id)
         }
-        DefUpvar(_, subdef, closure_id, body_id) => {
-            match ty::ty_closure_store(fcx.node_ty(closure_id)) {
-                ty::RegionTraitStore(..) => region_of_def(fcx, *subdef),
-                ty::UniqTraitStore => ReScope(body_id)
+        def::DefUpvar(node_id, _, body_id) => {
+            if body_id == ast::DUMMY_NODE_ID {
+                tcx.region_maps.var_region(node_id)
+            } else {
+                ReScope(body_id)
             }
         }
         _ => {
@@ -479,7 +477,7 @@ impl<'fcx, 'tcx> mc::Typer<'tcx> for Rcx<'fcx, 'tcx> {
     }
 
     fn capture_mode(&self, closure_expr_id: ast::NodeId)
-                    -> freevars::CaptureMode {
+                    -> ast::CaptureClause {
         self.tcx().capture_modes.borrow().get_copy(&closure_expr_id)
     }
 
@@ -592,7 +590,7 @@ fn visit_expr(rcx: &mut Rcx, expr: &ast::Expr) {
     for &adjustment in rcx.fcx.inh.adjustments.borrow().find(&expr.id).iter() {
         debug!("adjustment={:?}", adjustment);
         match *adjustment {
-            ty::AutoDerefRef(ty::AutoDerefRef {autoderefs, autoref: ref opt_autoref}) => {
+            ty::AdjustDerefRef(ty::AutoDerefRef {autoderefs, autoref: ref opt_autoref}) => {
                 let expr_ty = rcx.resolve_node_type(expr.id);
                 constrain_autoderefs(rcx, expr, autoderefs, expr_ty);
                 for autoref in opt_autoref.iter() {
@@ -852,7 +850,7 @@ fn check_expr_fn_block(rcx: &mut Rcx,
                                          ..}) => {
             // For closure, ensure that the variables outlive region
             // bound, since they are captured by reference.
-            freevars::with_freevars(tcx, expr.id, |freevars| {
+            ty::with_freevars(tcx, expr.id, |freevars| {
                 if freevars.is_empty() {
                     // No free variables means that the environment
                     // will be NULL at runtime and hence the closure
@@ -875,13 +873,13 @@ fn check_expr_fn_block(rcx: &mut Rcx,
                                          ..}) => {
             // For proc, ensure that the *types* of the variables
             // outlive region bound, since they are captured by value.
-            freevars::with_freevars(tcx, expr.id, |freevars| {
+            ty::with_freevars(tcx, expr.id, |freevars| {
                 ensure_free_variable_types_outlive_closure_bound(
                     rcx, bounds.region_bound, expr, freevars);
             });
         }
         ty::ty_unboxed_closure(_, region) => {
-            freevars::with_freevars(tcx, expr.id, |freevars| {
+            ty::with_freevars(tcx, expr.id, |freevars| {
                 // No free variables means that there is no environment and
                 // hence the closure has static lifetime. Otherwise, the
                 // closure must not outlive the variables it closes over
@@ -907,7 +905,7 @@ fn check_expr_fn_block(rcx: &mut Rcx,
                 store: ty::RegionTraitStore(..),
                 ..
             }) => {
-            freevars::with_freevars(tcx, expr.id, |freevars| {
+            ty::with_freevars(tcx, expr.id, |freevars| {
                 propagate_upupvar_borrow_kind(rcx, expr, freevars);
             })
         }
@@ -918,7 +916,7 @@ fn check_expr_fn_block(rcx: &mut Rcx,
         rcx: &mut Rcx,
         region_bound: ty::Region,
         expr: &ast::Expr,
-        freevars: &[freevars::freevar_entry])
+        freevars: &[ty::Freevar])
     {
         /*!
          * Make sure that the type of all free variables referenced
@@ -951,7 +949,7 @@ fn check_expr_fn_block(rcx: &mut Rcx,
         rcx: &mut Rcx,
         region_bound: ty::Region,
         expr: &ast::Expr,
-        freevars: &[freevars::freevar_entry])
+        freevars: &[ty::Freevar])
     {
         /*!
          * Make sure that all free variables referenced inside the
@@ -1001,7 +999,7 @@ fn check_expr_fn_block(rcx: &mut Rcx,
 
     fn propagate_upupvar_borrow_kind(rcx: &mut Rcx,
                                      expr: &ast::Expr,
-                                     freevars: &[freevars::freevar_entry]) {
+                                     freevars: &[ty::Freevar]) {
         let tcx = rcx.fcx.ccx.tcx;
         debug!("propagate_upupvar_borrow_kind({})", expr.repr(tcx));
         for freevar in freevars.iter() {
@@ -1031,7 +1029,7 @@ fn check_expr_fn_block(rcx: &mut Rcx,
             // determining the final borrow_kind) and propagate that as
             // a constraint on the outer closure.
             match freevar.def {
-                def::DefUpvar(var_id, _, outer_closure_id, _) => {
+                def::DefUpvar(var_id, outer_closure_id, _) => {
                     // thing being captured is itself an upvar:
                     let outer_upvar_id = ty::UpvarId {
                         var_id: var_id,
@@ -1475,7 +1473,6 @@ fn link_region(rcx: &Rcx,
             mc::cat_static_item |
             mc::cat_copied_upvar(..) |
             mc::cat_local(..) |
-            mc::cat_arg(..) |
             mc::cat_upvar(..) |
             mc::cat_rvalue(..) => {
                 // These are all "base cases" with independent lifetimes
@@ -1701,7 +1698,6 @@ fn adjust_upvar_borrow_kind_for_mut(rcx: &Rcx,
             mc::cat_rvalue(_) |
             mc::cat_copied_upvar(_) |
             mc::cat_local(_) |
-            mc::cat_arg(_) |
             mc::cat_upvar(..) => {
                 return;
             }
@@ -1753,7 +1749,6 @@ fn adjust_upvar_borrow_kind_for_unique(rcx: &Rcx, cmt: mc::cmt) {
             mc::cat_rvalue(_) |
             mc::cat_copied_upvar(_) |
             mc::cat_local(_) |
-            mc::cat_arg(_) |
             mc::cat_upvar(..) => {
                 return;
             }

@@ -23,7 +23,7 @@ use ast::{DeclLocal, DefaultBlock, UnDeref, BiDiv, EMPTY_CTXT, EnumDef, Explicit
 use ast::{Expr, Expr_, ExprAddrOf, ExprMatch, ExprAgain};
 use ast::{ExprAssign, ExprAssignOp, ExprBinary, ExprBlock, ExprBox};
 use ast::{ExprBreak, ExprCall, ExprCast};
-use ast::{ExprField, ExprTupField, ExprFnBlock, ExprIf, ExprIndex};
+use ast::{ExprField, ExprTupField, ExprFnBlock, ExprIf, ExprIndex, ExprSlice};
 use ast::{ExprLit, ExprLoop, ExprMac};
 use ast::{ExprMethodCall, ExprParen, ExprPath, ExprProc};
 use ast::{ExprRepeat, ExprRet, ExprStruct, ExprTup, ExprUnary, ExprUnboxedFn};
@@ -55,7 +55,8 @@ use ast::{TyTypeof, TyInfer, TypeMethod};
 use ast::{TyNil, TyParam, TyParamBound, TyParen, TyPath, TyPtr, TyQPath};
 use ast::{TyRptr, TyTup, TyU32, TyUnboxedFn, TyUniq, TyVec, UnUniq};
 use ast::{TypeImplItem, TypeTraitItem, Typedef, UnboxedClosureKind};
-use ast::{UnboxedFnTy, UnboxedFnTyParamBound, UnnamedField, UnsafeBlock};
+use ast::{UnboxedFnBound, UnboxedFnTy, UnboxedFnTyParamBound};
+use ast::{UnnamedField, UnsafeBlock};
 use ast::{UnsafeFn, ViewItem, ViewItem_, ViewItemExternCrate, ViewItemUse};
 use ast::{ViewPath, ViewPathGlob, ViewPathList, ViewPathSimple};
 use ast::{Visibility, WhereClause, WherePredicate};
@@ -1986,6 +1987,14 @@ impl<'a> Parser<'a> {
         ExprIndex(expr, idx)
     }
 
+    pub fn mk_slice(&mut self, expr: P<Expr>,
+                    start: Option<P<Expr>>,
+                    end: Option<P<Expr>>,
+                    mutbl: Mutability)
+                    -> ast::Expr_ {
+        ExprSlice(expr, start, end, mutbl)
+    }
+
     pub fn mk_field(&mut self, expr: P<Expr>, ident: ast::SpannedIdent,
                     tys: Vec<P<Ty>>) -> ast::Expr_ {
         ExprField(expr, ident, tys)
@@ -2400,13 +2409,87 @@ impl<'a> Parser<'a> {
               }
 
               // expr[...]
+              // Could be either an index expression or a slicing expression.
+              // Any slicing non-terminal can have a mutable version with `mut`
+              // after the opening square bracket.
               token::LBRACKET => {
                 self.bump();
-                let ix = self.parse_expr();
-                hi = self.span.hi;
-                self.commit_expr_expecting(&*ix, token::RBRACKET);
-                let index = self.mk_index(e, ix);
-                e = self.mk_expr(lo, hi, index)
+                let mutbl = if self.eat_keyword(keywords::Mut) {
+                    MutMutable
+                } else {
+                    MutImmutable
+                };
+                match self.token {
+                    // e[]
+                    token::RBRACKET => {
+                        self.bump();
+                        hi = self.span.hi;
+                        let slice = self.mk_slice(e, None, None, mutbl);
+                        e = self.mk_expr(lo, hi, slice)
+                    }
+                    // e[..e]
+                    token::DOTDOT => {
+                        self.bump();
+                        match self.token {
+                            // e[..]
+                            token::RBRACKET => {
+                                self.bump();
+                                hi = self.span.hi;
+                                let slice = self.mk_slice(e, None, None, mutbl);
+                                e = self.mk_expr(lo, hi, slice);
+
+                                self.span_err(e.span, "incorrect slicing expression: `[..]`");
+                                self.span_note(e.span,
+                                    "use `expr[]` to construct a slice of the whole of expr");
+                            }
+                            // e[..e]
+                            _ => {
+                                hi = self.span.hi;
+                                let e2 = self.parse_expr();
+                                self.commit_expr_expecting(&*e2, token::RBRACKET);
+                                let slice = self.mk_slice(e, None, Some(e2), mutbl);
+                                e = self.mk_expr(lo, hi, slice)
+                            }
+                        }
+                    }
+                    // e[e] | e[e..] | e[e..e]
+                    _ => {
+                        let ix = self.parse_expr();
+                        match self.token {
+                            // e[e..] | e[e..e]
+                            token::DOTDOT => {
+                                self.bump();
+                                let e2 = match self.token {
+                                    // e[e..]
+                                    token::RBRACKET => {
+                                        self.bump();
+                                        None
+                                    }
+                                    // e[e..e]
+                                    _ => {
+                                        let e2 = self.parse_expr();
+                                        self.commit_expr_expecting(&*e2, token::RBRACKET);
+                                        Some(e2)
+                                    }
+                                };
+                                hi = self.span.hi;
+                                let slice = self.mk_slice(e, Some(ix), e2, mutbl);
+                                e = self.mk_expr(lo, hi, slice)
+                            }
+                            // e[e]
+                            _ => {
+                                if mutbl == ast::MutMutable {
+                                    self.span_err(e.span,
+                                                  "`mut` keyword is invalid in index expressions");
+                                }
+                                hi = self.span.hi;
+                                self.commit_expr_expecting(&*ix, token::RBRACKET);
+                                let index = self.mk_index(e, ix);
+                                e = self.mk_expr(lo, hi, index)
+                            }
+                        }
+                    }
+                }
               }
 
               _ => return e
@@ -3153,7 +3236,8 @@ impl<'a> Parser<'a> {
             // These expressions are limited to literals (possibly
             // preceded by unary-minus) or identifiers.
             let val = self.parse_literal_maybe_minus();
-            if self.token == token::DOTDOT &&
+            // FIXME(#17295) remove the DOTDOT option.
+            if (self.token == token::DOTDOTDOT || self.token == token::DOTDOT) &&
                     self.look_ahead(1, |t| {
                         *t != token::COMMA && *t != token::RBRACKET
                     }) {
@@ -3198,12 +3282,16 @@ impl<'a> Parser<'a> {
                 }
             });
 
-            if self.look_ahead(1, |t| *t == token::DOTDOT) &&
+            // FIXME(#17295) remove the DOTDOT option.
+            if self.look_ahead(1, |t| *t == token::DOTDOTDOT || *t == token::DOTDOT) &&
                     self.look_ahead(2, |t| {
                         *t != token::COMMA && *t != token::RBRACKET
                     }) {
                 let start = self.parse_expr_res(RestrictionNoBarOp);
-                self.eat(&token::DOTDOT);
+                // FIXME(#17295) remove the DOTDOT option (self.eat(&token::DOTDOTDOT)).
+                if self.token == token::DOTDOTDOT || self.token == token::DOTDOT {
+                    self.bump();
+                }
                 let end = self.parse_expr_res(RestrictionNoBarOp);
                 pat = PatRange(start, end);
             } else if is_plain_ident(&self.token) && !can_be_enum_or_struct {
@@ -3590,7 +3678,7 @@ impl<'a> Parser<'a> {
                                     let span_with_semi = Span {
                                         lo: span.lo,
                                         hi: self.last_span.hi,
-                                        expn_info: span.expn_info,
+                                        expn_id: span.expn_id,
                                     };
                                     stmts.push(P(Spanned {
                                         node: StmtSemi(e, stmt_id),
@@ -3666,39 +3754,6 @@ impl<'a> Parser<'a> {
         })
     }
 
-    fn parse_unboxed_function_type(&mut self) -> UnboxedFnTy {
-        let (optional_unboxed_closure_kind, inputs) =
-            if self.eat(&token::OROR) {
-                (None, Vec::new())
-            } else {
-                self.expect_or();
-
-                let optional_unboxed_closure_kind =
-                    self.parse_optional_unboxed_closure_kind();
-
-                let inputs = self.parse_seq_to_before_or(&token::COMMA,
-                                                         |p| {
-                    p.parse_arg_general(false)
-                });
-                self.expect_or();
-                (optional_unboxed_closure_kind, inputs)
-            };
-
-        let (return_style, output) = self.parse_ret_ty();
-        UnboxedFnTy {
-            decl: P(FnDecl {
-                inputs: inputs,
-                output: output,
-                cf: return_style,
-                variadic: false,
-            }),
-            kind: match optional_unboxed_closure_kind {
-                Some(kind) => kind,
-                None => FnMutUnboxedClosureKind,
-            },
-        }
-    }
-
     // Parses a sequence of bounds if a `:` is found,
     // otherwise returns empty list.
     fn parse_colon_then_ty_param_bounds(&mut self)
@@ -3730,13 +3785,31 @@ impl<'a> Parser<'a> {
                     self.bump();
                 }
                 token::MOD_SEP | token::IDENT(..) => {
-                    let tref = self.parse_trait_ref();
-                    result.push(TraitTyParamBound(tref));
-                }
-                token::BINOP(token::OR) | token::OROR => {
-                    let unboxed_function_type =
-                        self.parse_unboxed_function_type();
-                    result.push(UnboxedFnTyParamBound(unboxed_function_type));
+                    let path =
+                        self.parse_path(LifetimeAndTypesWithoutColons).path;
+                    if self.token == token::LPAREN {
+                        self.bump();
+                        let inputs = self.parse_seq_to_end(
+                            &token::RPAREN,
+                            seq_sep_trailing_allowed(token::COMMA),
+                            |p| p.parse_arg_general(false));
+                        let (return_style, output) = self.parse_ret_ty();
+                        result.push(UnboxedFnTyParamBound(P(UnboxedFnBound {
+                            path: path,
+                            decl: P(FnDecl {
+                                inputs: inputs,
+                                output: output,
+                                cf: return_style,
+                                variadic: false,
+                            }),
+                            ref_id: ast::DUMMY_NODE_ID,
+                        })));
+                    } else {
+                        result.push(TraitTyParamBound(ast::TraitRef {
+                            path: path,
+                            ref_id: ast::DUMMY_NODE_ID,
+                        }))
+                    }
                 }
                 _ => break,
             }
@@ -4421,14 +4494,6 @@ impl<'a> Parser<'a> {
         (ident,
          ItemImpl(generics, opt_trait, ty, impl_items),
          Some(attrs))
-    }
-
-    /// Parse a::B<String,int>
-    fn parse_trait_ref(&mut self) -> TraitRef {
-        ast::TraitRef {
-            path: self.parse_path(LifetimeAndTypesWithoutColons).path,
-            ref_id: ast::DUMMY_NODE_ID,
-        }
     }
 
     /// Parse struct Foo { ... }

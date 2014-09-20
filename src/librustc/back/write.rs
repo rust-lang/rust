@@ -11,7 +11,7 @@
 use back::lto;
 use back::link::{get_cc_prog, remove};
 use driver::driver::{CrateTranslation, ModuleTranslation, OutputFilenames};
-use driver::config::{NoDebugInfo, Passes, AllPasses};
+use driver::config::{NoDebugInfo, Passes, SomePasses, AllPasses};
 use driver::session::Session;
 use driver::config;
 use llvm;
@@ -341,7 +341,7 @@ unsafe extern "C" fn diagnostic_handler(info: DiagnosticInfoRef, user: *mut c_vo
             let pass_name = pass_name.as_str().expect("got a non-UTF8 pass name from LLVM");
             let enabled = match cgcx.remark {
                 AllPasses => true,
-                Passes(ref v) => v.iter().any(|s| s.as_slice() == pass_name),
+                SomePasses(ref v) => v.iter().any(|s| s.as_slice() == pass_name),
             };
 
             if enabled {
@@ -482,14 +482,14 @@ unsafe fn optimize_and_codegen(cgcx: &CodegenContext,
         if config.emit_asm {
             let path = output_names.with_extension(format!("{}.s", name_extra).as_slice());
             with_codegen(tm, llmod, config.no_builtins, |cpm| {
-                write_output_file(cgcx.handler, tm, cpm, llmod, &path, llvm::AssemblyFile);
+                write_output_file(cgcx.handler, tm, cpm, llmod, &path, llvm::AssemblyFileType);
             });
         }
 
         if config.emit_obj {
             let path = output_names.with_extension(format!("{}.o", name_extra).as_slice());
             with_codegen(tm, llmod, config.no_builtins, |cpm| {
-                write_output_file(cgcx.handler, tm, cpm, llmod, &path, llvm::ObjectFile);
+                write_output_file(cgcx.handler, tm, cpm, llmod, &path, llvm::ObjectFileType);
             });
         }
     });
@@ -540,13 +540,12 @@ pub fn run_passes(sess: &Session,
         metadata_config.emit_bc = true;
     }
 
-    // Emit a bitcode file for the crate if we're emitting an rlib.
+    // Emit bitcode files for the crate if we're emitting an rlib.
     // Whenever an rlib is created, the bitcode is inserted into the
     // archive in order to allow LTO against it.
     let needs_crate_bitcode =
             sess.crate_types.borrow().contains(&config::CrateTypeRlib) &&
-            sess.opts.output_types.contains(&OutputTypeExe) &&
-            sess.opts.cg.codegen_units == 1;
+            sess.opts.output_types.contains(&OutputTypeExe);
     if needs_crate_bitcode {
         modules_config.emit_bc = true;
     }
@@ -602,19 +601,8 @@ pub fn run_passes(sess: &Session,
     // Process the work items, optionally using worker threads.
     if sess.opts.cg.codegen_units == 1 {
         run_work_singlethreaded(sess, trans.reachable.as_slice(), work_items);
-
-        if needs_crate_bitcode {
-            // The only bitcode file produced (aside from metadata) was
-            // "crate.0.bc".  Rename to "crate.bc" since that's what
-            // `link_rlib` expects to find.
-            fs::copy(&crate_output.with_extension("0.bc"),
-                     &crate_output.temp_path(OutputTypeBitcode)).unwrap();
-        }
     } else {
         run_work_multithreaded(sess, work_items, sess.opts.cg.codegen_units);
-
-        assert!(!needs_crate_bitcode,
-               "can't produce a crate bitcode file from multiple compilation units");
     }
 
     // All codegen is finished.
@@ -624,14 +612,14 @@ pub fn run_passes(sess: &Session,
 
     // Produce final compile outputs.
 
-    let copy_if_one_unit = |ext: &str, output_type: OutputType| {
+    let copy_if_one_unit = |ext: &str, output_type: OutputType, keep_numbered: bool| {
         // Three cases:
         if sess.opts.cg.codegen_units == 1 {
             // 1) Only one codegen unit.  In this case it's no difficulty
             //    to copy `foo.0.x` to `foo.x`.
             fs::copy(&crate_output.with_extension(ext),
                      &crate_output.path(output_type)).unwrap();
-            if !sess.opts.cg.save_temps {
+            if !sess.opts.cg.save_temps && !keep_numbered {
                 // The user just wants `foo.x`, not `foo.0.x`.
                 remove(sess, &crate_output.with_extension(ext));
             }
@@ -716,17 +704,18 @@ pub fn run_passes(sess: &Session,
     // Flag to indicate whether the user explicitly requested bitcode.
     // Otherwise, we produced it only as a temporary output, and will need
     // to get rid of it.
-    // FIXME: Since we don't support LTO anyway, maybe we can avoid
-    // producing the temporary .0.bc's in the first place?
-    let mut save_bitcode = false;
+    let mut user_wants_bitcode = false;
     for output_type in output_types.iter() {
         match *output_type {
             OutputTypeBitcode => {
-                save_bitcode = true;
-                copy_if_one_unit("0.bc", OutputTypeBitcode);
+                user_wants_bitcode = true;
+                // Copy to .bc, but always keep the .0.bc.  There is a later
+                // check to figure out if we should delete .0.bc files, or keep
+                // them for making an rlib.
+                copy_if_one_unit("0.bc", OutputTypeBitcode, true);
             },
-            OutputTypeLlvmAssembly => { copy_if_one_unit("0.ll", OutputTypeLlvmAssembly); },
-            OutputTypeAssembly => { copy_if_one_unit("0.s", OutputTypeAssembly); },
+            OutputTypeLlvmAssembly => { copy_if_one_unit("0.ll", OutputTypeLlvmAssembly, false); },
+            OutputTypeAssembly => { copy_if_one_unit("0.s", OutputTypeAssembly, false); },
             OutputTypeObject => { link_obj(&crate_output.path(OutputTypeObject)); },
             OutputTypeExe => {
                 // If OutputTypeObject is already in the list, then
@@ -739,7 +728,7 @@ pub fn run_passes(sess: &Session,
             },
         }
     }
-    let save_bitcode = save_bitcode;
+    let user_wants_bitcode = user_wants_bitcode;
 
     // Clean up unwanted temporary files.
 
@@ -755,22 +744,36 @@ pub fn run_passes(sess: &Session,
 
     if !sess.opts.cg.save_temps {
         // Remove the temporary .0.o objects.  If the user didn't
-        // explicitly request bitcode (with --emit=bc), we must remove
-        // .0.bc as well.  (We don't touch the crate.bc that may have been
-        // produced earlier.)
+        // explicitly request bitcode (with --emit=bc), and the bitcode is not
+        // needed for building an rlib, then we must remove .0.bc as well.
+
+        // Specific rules for keeping .0.bc:
+        //  - If we're building an rlib (`needs_crate_bitcode`), then keep
+        //    it.
+        //  - If the user requested bitcode (`user_wants_bitcode`), and
+        //    codegen_units > 1, then keep it.
+        //  - If the user requested bitcode but codegen_units == 1, then we
+        //    can toss .0.bc because we copied it to .bc earlier.
+        //  - If we're not building an rlib and the user didn't request
+        //    bitcode, then delete .0.bc.
+        // If you change how this works, also update back::link::link_rlib,
+        // where .0.bc files are (maybe) deleted after making an rlib.
+        let keep_numbered_bitcode = needs_crate_bitcode ||
+                (user_wants_bitcode && sess.opts.cg.codegen_units > 1);
+
         for i in range(0, trans.modules.len()) {
             if modules_config.emit_obj {
                 let ext = format!("{}.o", i);
                 remove(sess, &crate_output.with_extension(ext.as_slice()));
             }
 
-            if modules_config.emit_bc && !save_bitcode {
+            if modules_config.emit_bc && !keep_numbered_bitcode {
                 let ext = format!("{}.bc", i);
                 remove(sess, &crate_output.with_extension(ext.as_slice()));
             }
         }
 
-        if metadata_config.emit_bc && !save_bitcode {
+        if metadata_config.emit_bc && !user_wants_bitcode {
             remove(sess, &crate_output.with_extension("metadata.bc"));
         }
     }

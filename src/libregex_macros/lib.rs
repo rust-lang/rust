@@ -42,7 +42,7 @@ use regex::Regex;
 use regex::native::{
     OneChar, CharClass, Any, Save, Jump, Split,
     Match, EmptyBegin, EmptyEnd, EmptyWordBoundary,
-    Program, Dynamic, Native,
+    Program, Dynamic, ExDynamic, Native,
     FLAG_NOCASE, FLAG_MULTI, FLAG_DOTNL, FLAG_NEGATED,
 };
 
@@ -91,7 +91,7 @@ fn native(cx: &mut ExtCtxt, sp: codemap::Span, tts: &[ast::TokenTree])
         }
     };
     let prog = match re {
-        Dynamic(Dynamic { ref prog, .. }) => prog.clone(),
+        Dynamic(ExDynamic { ref prog, .. }) => prog.clone(),
         Native(_) => unreachable!(),
     };
 
@@ -322,7 +322,7 @@ fn exec<'t>(which: ::regex::native::MatchKind, input: &'t str,
     }
 }
 
-::regex::native::Native(::regex::native::Native {
+::regex::native::Native(::regex::native::ExNative {
     original: $regex,
     names: CAP_NAMES,
     prog: exec,

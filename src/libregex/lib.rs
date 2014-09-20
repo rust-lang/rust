@@ -425,7 +425,7 @@ pub mod native {
         FLAG_EMPTY, FLAG_NOCASE, FLAG_MULTI, FLAG_DOTNL,
         FLAG_SWAP_GREED, FLAG_NEGATED,
     };
-    pub use re::{Dynamic, Native};
+    pub use re::{Dynamic, ExDynamic, Native, ExNative};
     pub use vm::{
         MatchKind, Exists, Location, Submatches,
         StepState, StepMatchEarlyReturn, StepMatch, StepContinue,

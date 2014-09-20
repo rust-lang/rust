@@ -11,7 +11,7 @@
 #![allow(non_uppercase_statics)]
 
 use llvm;
-use llvm::{SequentiallyConsistent, Acquire, Release, Xchg, ValueRef};
+use llvm::{SequentiallyConsistent, Acquire, Release, AtomicXchg, ValueRef};
 use middle::subst;
 use middle::subst::FnSpace;
 use middle::trans::base::*;
@@ -510,17 +510,17 @@ pub fn trans_intrinsic_call<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>, node: ast::N
                 // These are all AtomicRMW ops
                 op => {
                     let atom_op = match op {
-                        "xchg"  => llvm::Xchg,
-                        "xadd"  => llvm::Add,
-                        "xsub"  => llvm::Sub,
-                        "and"   => llvm::And,
-                        "nand"  => llvm::Nand,
-                        "or"    => llvm::Or,
-                        "xor"   => llvm::Xor,
-                        "max"   => llvm::Max,
-                        "min"   => llvm::Min,
-                        "umax"  => llvm::UMax,
-                        "umin"  => llvm::UMin,
+                        "xchg"  => llvm::AtomicXchg,
+                        "xadd"  => llvm::AtomicAdd,
+                        "xsub"  => llvm::AtomicSub,
+                        "and"   => llvm::AtomicAnd,
+                        "nand"  => llvm::AtomicNand,
+                        "or"    => llvm::AtomicOr,
+                        "xor"   => llvm::AtomicXor,
+                        "max"   => llvm::AtomicMax,
+                        "min"   => llvm::AtomicMin,
+                        "umax"  => llvm::AtomicUMax,
+                        "umin"  => llvm::AtomicUMin,
                         _ => ccx.sess().fatal("unknown atomic operation")
                     };
 

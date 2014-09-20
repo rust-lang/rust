@@ -659,19 +659,18 @@ fn link_rlib<'a>(sess: &'a Session,
             ab.add_file(&metadata).unwrap();
             remove(sess, &metadata);
 
-            if sess.opts.cg.codegen_units == 1 {
-                // For LTO purposes, the bytecode of this library is also
-                // inserted into the archive.  We currently do this only when
-                // codegen_units == 1, so we don't have to deal with multiple
-                // bitcode files per crate.
-                //
+            // For LTO purposes, the bytecode of this library is also inserted
+            // into the archive.  If codegen_units > 1, we insert each of the
+            // bitcode files.
+            for i in range(0, sess.opts.cg.codegen_units) {
                 // Note that we make sure that the bytecode filename in the
                 // archive is never exactly 16 bytes long by adding a 16 byte
                 // extension to it. This is to work around a bug in LLDB that
                 // would cause it to crash if the name of a file in an archive
                 // was exactly 16 bytes.
-                let bc_filename = obj_filename.with_extension("bc");
-                let bc_deflated_filename = obj_filename.with_extension("bytecode.deflate");
+                let bc_filename = obj_filename.with_extension(format!("{}.bc", i).as_slice());
+                let bc_deflated_filename = obj_filename.with_extension(
+                    format!("{}.bytecode.deflate", i).as_slice());
 
                 let bc_data = match fs::File::open(&bc_filename).read_to_end() {
                     Ok(buffer) => buffer,
@@ -705,8 +704,13 @@ fn link_rlib<'a>(sess: &'a Session,
 
                 ab.add_file(&bc_deflated_filename).unwrap();
                 remove(sess, &bc_deflated_filename);
-                if !sess.opts.cg.save_temps &&
-                   !sess.opts.output_types.contains(&OutputTypeBitcode) {
+
+                // See the bottom of back::write::run_passes for an explanation
+                // of when we do and don't keep .0.bc files around.
+                let user_wants_numbered_bitcode =
+                        sess.opts.output_types.contains(&OutputTypeBitcode) &&
+                        sess.opts.cg.codegen_units > 1;
+                if !sess.opts.cg.save_temps && !user_wants_numbered_bitcode {
                     remove(sess, &bc_filename);
                 }
             }
@@ -1024,7 +1028,9 @@ fn link_args(cmd: &mut Command,
 
         // Mark all dynamic libraries and executables as compatible with ASLR
         // FIXME #17098: ASLR breaks gdb
-        // cmd.arg("-Wl,--dynamicbase");
+        if sess.opts.debuginfo == NoDebugInfo {
+            cmd.arg("-Wl,--dynamicbase");
+        }
 
         // Mark all dynamic libraries and executables as compatible with the larger 4GiB address
         // space available to x86 Windows binaries on x86_64.

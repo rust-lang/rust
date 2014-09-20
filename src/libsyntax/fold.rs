@@ -657,16 +657,26 @@ pub fn noop_fold_fn_decl<T: Folder>(decl: P<FnDecl>, fld: &mut T) -> P<FnDecl> {
     })
 }
 
-pub fn noop_fold_ty_param_bound<T: Folder>(tpb: TyParamBound, fld: &mut T)
-                                           -> TyParamBound {
+pub fn noop_fold_ty_param_bound<T>(tpb: TyParamBound, fld: &mut T)
+                                   -> TyParamBound
+                                   where T: Folder {
     match tpb {
         TraitTyParamBound(ty) => TraitTyParamBound(fld.fold_trait_ref(ty)),
         RegionTyParamBound(lifetime) => RegionTyParamBound(fld.fold_lifetime(lifetime)),
-        UnboxedFnTyParamBound(UnboxedFnTy {decl, kind}) => {
-            UnboxedFnTyParamBound(UnboxedFnTy {
-                decl: fld.fold_fn_decl(decl),
-                kind: kind,
-            })
+        UnboxedFnTyParamBound(bound) => {
+            match *bound {
+                UnboxedFnBound {
+                    ref path,
+                    ref decl,
+                    ref_id
+                } => {
+                    UnboxedFnTyParamBound(P(UnboxedFnBound {
+                        path: fld.fold_path(path.clone()),
+                        decl: fld.fold_fn_decl(decl.clone()),
+                        ref_id: fld.new_id(ref_id),
+                    }))
+                }
+            }
         }
     }
 }
@@ -1241,6 +1251,12 @@ pub fn noop_fold_expr<T: Folder>(Expr {id, node, span}: Expr, folder: &mut T) ->
             }
             ExprIndex(el, er) => {
                 ExprIndex(folder.fold_expr(el), folder.fold_expr(er))
+            }
+            ExprSlice(e, e1, e2, m) => {
+                ExprSlice(folder.fold_expr(e),
+                          e1.map(|x| folder.fold_expr(x)),
+                          e2.map(|x| folder.fold_expr(x)),
+                          m)
             }
             ExprPath(pth) => ExprPath(folder.fold_path(pth)),
             ExprBreak(opt_ident) => ExprBreak(opt_ident.map(|x| folder.fold_ident(x))),

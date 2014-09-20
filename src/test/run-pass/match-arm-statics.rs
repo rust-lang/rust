@@ -88,10 +88,10 @@ fn issue_14576() {
 }
 
 fn issue_13731() {
-    enum A { A(()) }
-    static B: A = A(());
+    enum A { AA(()) }
+    static B: A = AA(());
 
-    match A(()) {
+    match AA(()) {
         B => ()
     }
 }

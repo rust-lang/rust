@@ -19,7 +19,8 @@ use middle::lang_items::LanguageItems;
 use middle::pat_util::pat_bindings;
 use middle::subst::{ParamSpace, FnSpace, TypeSpace};
 use middle::ty::{ExplicitSelfCategory, StaticExplicitSelfCategory};
-use util::nodemap::{NodeMap, DefIdSet, FnvHashMap};
+use middle::ty::{CaptureModeMap, Freevar, FreevarMap};
+use util::nodemap::{NodeMap, NodeSet, DefIdSet, FnvHashMap};
 
 use syntax::ast::{Arm, BindByRef, BindByValue, BindingMode, Block, Crate, CrateNum};
 use syntax::ast::{DeclItem, DefId, Expr, ExprAgain, ExprBreak, ExprField};
@@ -28,7 +29,7 @@ use syntax::ast::{ExprPath, ExprProc, ExprStruct, ExprUnboxedFn, FnDecl};
 use syntax::ast::{ForeignItem, ForeignItemFn, ForeignItemStatic, Generics};
 use syntax::ast::{Ident, ImplItem, Item, ItemEnum, ItemFn, ItemForeignMod};
 use syntax::ast::{ItemImpl, ItemMac, ItemMod, ItemStatic, ItemStruct};
-use syntax::ast::{ItemTrait, ItemTy, LOCAL_CRATE, Local, Method};
+use syntax::ast::{ItemTrait, ItemTy, LOCAL_CRATE, Local};
 use syntax::ast::{MethodImplItem, Mod, Name, NamedField, NodeId};
 use syntax::ast::{Pat, PatEnum, PatIdent, PatLit};
 use syntax::ast::{PatRange, PatStruct, Path, PathListIdent, PathListMod};
@@ -59,7 +60,6 @@ use syntax::visit::Visitor;
 
 use std::collections::{HashMap, HashSet};
 use std::cell::{Cell, RefCell};
-use std::gc::GC;
 use std::mem::replace;
 use std::rc::{Rc, Weak};
 use std::uint;
@@ -270,16 +270,16 @@ enum TypeParameters<'a> {
         RibKind)
 }
 
-// The rib kind controls the translation of argument or local definitions
-// (`def_arg` or `def_local`) to upvars (`def_upvar`).
+// The rib kind controls the translation of local
+// definitions (`DefLocal`) to upvars (`DefUpvar`).
 
 enum RibKind {
     // No translation needs to be applied.
     NormalRibKind,
 
-    // We passed through a function scope at the given node ID. Translate
-    // upvars as appropriate.
-    FunctionRibKind(NodeId /* func id */, NodeId /* body id */),
+    // We passed through a closure scope at the given node ID.
+    // Translate upvars as appropriate.
+    ClosureRibKind(NodeId /* func id */, NodeId /* body id if proc or unboxed */),
 
     // We passed through an impl or trait and are now in one of its
     // methods. Allow references to ty params that impl or trait
@@ -891,6 +891,9 @@ struct Resolver<'a> {
     primitive_type_table: PrimitiveTypeTable,
 
     def_map: DefMap,
+    freevars: RefCell<FreevarMap>,
+    freevars_seen: RefCell<NodeMap<NodeSet>>,
+    capture_mode_map: RefCell<CaptureModeMap>,
     export_map2: ExportMap2,
     trait_map: TraitMap,
     external_exports: ExternalExports,
@@ -996,6 +999,9 @@ impl<'a> Resolver<'a> {
             primitive_type_table: PrimitiveTypeTable::new(),
 
             def_map: RefCell::new(NodeMap::new()),
+            freevars: RefCell::new(NodeMap::new()),
+            freevars_seen: RefCell::new(NodeMap::new()),
+            capture_mode_map: RefCell::new(NodeMap::new()),
             export_map2: RefCell::new(NodeMap::new()),
             trait_map: NodeMap::new(),
             used_imports: HashSet::new(),
@@ -1523,33 +1529,31 @@ impl<'a> Resolver<'a> {
     }
 
     // Constructs the reduced graph for one variant. Variants exist in the
-    // type and/or value namespaces.
+    // type and value namespaces.
     fn build_reduced_graph_for_variant(&mut self,
                                        variant: &Variant,
                                        item_id: DefId,
                                        parent: ReducedGraphParent,
                                        is_public: bool) {
         let ident = variant.node.name;
-
-        match variant.node.kind {
-            TupleVariantKind(_) => {
-                let child = self.add_child(ident, parent, ForbidDuplicateValues, variant.span);
-                child.define_value(DefVariant(item_id,
-                                              local_def(variant.node.id), false),
-                                   variant.span, is_public);
-            }
+        let is_exported = match variant.node.kind {
+            TupleVariantKind(_) => false,
             StructVariantKind(_) => {
-                let child = self.add_child(ident, parent,
-                                           ForbidDuplicateTypesAndValues,
-                                           variant.span);
-                child.define_type(DefVariant(item_id,
-                                             local_def(variant.node.id), true),
-                                  variant.span, is_public);
-
                 // Not adding fields for variants as they are not accessed with a self receiver
                 self.structs.insert(local_def(variant.node.id), Vec::new());
+                true
             }
-        }
+        };
+
+        let child = self.add_child(ident, parent,
+                                   ForbidDuplicateTypesAndValues,
+                                   variant.span);
+        child.define_value(DefVariant(item_id,
+                                      local_def(variant.node.id), is_exported),
+                           variant.span, is_public);
+        child.define_type(DefVariant(item_id,
+                                     local_def(variant.node.id), is_exported),
+                          variant.span, is_public);
     }
 
     /// Constructs the reduced graph for one 'view item'. View items consist
@@ -1895,8 +1899,7 @@ impl<'a> Resolver<'a> {
                       ignoring {:?}", def);
               // Ignored; handled elsewhere.
           }
-          DefArg(..) | DefLocal(..) | DefPrimTy(..) |
-          DefTyParam(..) | DefBinding(..) |
+          DefLocal(..) | DefPrimTy(..) | DefTyParam(..) |
           DefUse(..) | DefUpvar(..) | DefRegion(..) |
           DefTyParamBinder(..) | DefLabel(..) | DefSelfTy(..) => {
             fail!("didn't expect `{:?}`", def);
@@ -3828,130 +3831,143 @@ impl<'a> Resolver<'a> {
         self.current_module = orig_module;
     }
 
-    /// Wraps the given definition in the appropriate number of `def_upvar`
+    /// Wraps the given definition in the appropriate number of `DefUpvar`
     /// wrappers.
     fn upvarify(&self,
                 ribs: &[Rib],
-                rib_index: uint,
                 def_like: DefLike,
                 span: Span)
                 -> Option<DefLike> {
-        let mut def;
-        let is_ty_param;
-
         match def_like {
-            DlDef(d @ DefLocal(..)) | DlDef(d @ DefUpvar(..)) |
-            DlDef(d @ DefArg(..)) | DlDef(d @ DefBinding(..)) => {
-                def = d;
-                is_ty_param = false;
+            DlDef(d @ DefUpvar(..)) => {
+                self.session.span_bug(span,
+                    format!("unexpected {} in bindings", d).as_slice())
             }
-            DlDef(d @ DefTyParam(..)) |
-            DlDef(d @ DefSelfTy(..)) => {
-                def = d;
-                is_ty_param = true;
+            DlDef(d @ DefLocal(_)) => {
+                let node_id = d.def_id().node;
+                let mut def = d;
+                let mut last_proc_body_id = ast::DUMMY_NODE_ID;
+                for rib in ribs.iter() {
+                    match rib.kind {
+                        NormalRibKind => {
+                            // Nothing to do. Continue.
+                        }
+                        ClosureRibKind(function_id, maybe_proc_body) => {
+                            let prev_def = def;
+                            if maybe_proc_body != ast::DUMMY_NODE_ID {
+                                last_proc_body_id = maybe_proc_body;
+                            }
+                            def = DefUpvar(node_id, function_id, last_proc_body_id);
+
+                            let mut seen = self.freevars_seen.borrow_mut();
+                            let seen = seen.find_or_insert(function_id, NodeSet::new());
+                            if seen.contains(&node_id) {
+                                continue;
+                            }
+                            self.freevars.borrow_mut().find_or_insert(function_id, vec![])
+                                         .push(Freevar { def: prev_def, span: span });
+                            seen.insert(node_id);
+                        }
+                        MethodRibKind(item_id, _) => {
+                            // If the def is a ty param, and came from the parent
+                            // item, it's ok
+                            match def {
+                                DefTyParam(_, did, _) if {
+                                    self.def_map.borrow().find_copy(&did.node)
+                                        == Some(DefTyParamBinder(item_id))
+                                } => {} // ok
+                                DefSelfTy(did) if did == item_id => {} // ok
+                                _ => {
+                                    // This was an attempt to access an upvar inside a
+                                    // named function item. This is not allowed, so we
+                                    // report an error.
+
+                                    self.resolve_error(
+                                        span,
+                                        "can't capture dynamic environment in a fn item; \
+                                        use the || { ... } closure form instead");
+
+                                    return None;
+                                }
+                            }
+                        }
+                        ItemRibKind => {
+                            // This was an attempt to access an upvar inside a
+                            // named function item. This is not allowed, so we
+                            // report an error.
+
+                            self.resolve_error(
+                                span,
+                                "can't capture dynamic environment in a fn item; \
+                                use the || { ... } closure form instead");
+
+                            return None;
+                        }
+                        ConstantItemRibKind => {
+                            // Still doesn't deal with upvars
+                            self.resolve_error(span,
+                                               "attempt to use a non-constant \
+                                                value in a constant");
+
+                        }
+                    }
+                }
+                Some(DlDef(def))
             }
-            _ => {
-                return Some(def_like);
+            DlDef(def @ DefTyParam(..)) |
+            DlDef(def @ DefSelfTy(..)) => {
+                for rib in ribs.iter() {
+                    match rib.kind {
+                        NormalRibKind | ClosureRibKind(..) => {
+                            // Nothing to do. Continue.
+                        }
+                        MethodRibKind(item_id, _) => {
+                            // If the def is a ty param, and came from the parent
+                            // item, it's ok
+                            match def {
+                                DefTyParam(_, did, _) if {
+                                    self.def_map.borrow().find_copy(&did.node)
+                                        == Some(DefTyParamBinder(item_id))
+                                } => {} // ok
+                                DefSelfTy(did) if did == item_id => {} // ok
+
+                                _ => {
+                                    // This was an attempt to use a type parameter outside
+                                    // its scope.
+
+                                    self.resolve_error(span,
+                                                        "can't use type parameters from \
+                                                        outer function; try using a local \
+                                                        type parameter instead");
+
+                                    return None;
+                                }
+                            }
+                        }
+                        ItemRibKind => {
+                            // This was an attempt to use a type parameter outside
+                            // its scope.
+
+                            self.resolve_error(span,
+                                               "can't use type parameters from \
+                                                outer function; try using a local \
+                                                type parameter instead");
+
+                            return None;
+                        }
+                        ConstantItemRibKind => {
+                            // see #9186
+                            self.resolve_error(span,
+                                               "cannot use an outer type \
+                                                parameter in this context");
+
+                        }
+                    }
+                }
+                Some(DlDef(def))
             }
+            _ => Some(def_like)
         }
-
-        let mut rib_index = rib_index + 1;
-        while rib_index < ribs.len() {
-            match ribs[rib_index].kind {
-                NormalRibKind => {
-                    // Nothing to do. Continue.
-                }
-                FunctionRibKind(function_id, body_id) => {
-                    if !is_ty_param {
-                        def = DefUpvar(def.def_id().node,
-                                       box(GC) def,
-                                       function_id,
-                                       body_id);
-                    }
-                }
-                MethodRibKind(item_id, _) => {
-                  // If the def is a ty param, and came from the parent
-                  // item, it's ok
-                  match def {
-                    DefTyParam(_, did, _) if {
-                        self.def_map.borrow().find(&did.node).map(|x| *x)
-                            == Some(DefTyParamBinder(item_id))
-                    } => {
-                      // ok
-                    }
-
-                    DefSelfTy(did) if {
-                        did == item_id
-                    } => {
-                      // ok
-                    }
-
-                    _ => {
-                    if !is_ty_param {
-                        // This was an attempt to access an upvar inside a
-                        // named function item. This is not allowed, so we
-                        // report an error.
-
-                        self.resolve_error(
-                            span,
-                            "can't capture dynamic environment in a fn item; \
-                            use the || { ... } closure form instead");
-                    } else {
-                        // This was an attempt to use a type parameter outside
-                        // its scope.
-
-                        self.resolve_error(span,
-                                              "can't use type parameters from \
-                                              outer function; try using a local \
-                                              type parameter instead");
-                    }
-
-                    return None;
-                    }
-                  }
-                }
-                ItemRibKind => {
-                    if !is_ty_param {
-                        // This was an attempt to access an upvar inside a
-                        // named function item. This is not allowed, so we
-                        // report an error.
-
-                        self.resolve_error(
-                            span,
-                            "can't capture dynamic environment in a fn item; \
-                            use the || { ... } closure form instead");
-                    } else {
-                        // This was an attempt to use a type parameter outside
-                        // its scope.
-
-                        self.resolve_error(span,
-                                              "can't use type parameters from \
-                                              outer function; try using a local \
-                                              type parameter instead");
-                    }
-
-                    return None;
-                }
-                ConstantItemRibKind => {
-                    if is_ty_param {
-                        // see #9186
-                        self.resolve_error(span,
-                                              "cannot use an outer type \
-                                               parameter in this context");
-                    } else {
-                        // Still doesn't deal with upvars
-                        self.resolve_error(span,
-                                              "attempt to use a non-constant \
-                                               value in a constant");
-                    }
-
-                }
-            }
-
-            rib_index += 1;
-        }
-
-        return Some(DlDef(def));
     }
 
     fn search_ribs(&self,
@@ -3959,16 +3975,12 @@ impl<'a> Resolver<'a> {
                    name: Name,
                    span: Span)
                    -> Option<DefLike> {
-        // FIXME #4950: This should not use a while loop.
         // FIXME #4950: Try caching?
 
-        let mut i = ribs.len();
-        while i != 0 {
-            i -= 1;
-            let binding_opt = ribs[i].bindings.borrow().find_copy(&name);
-            match binding_opt {
+        for (i, rib) in ribs.iter().enumerate().rev() {
+            match rib.bindings.borrow().find_copy(&name) {
                 Some(def_like) => {
-                    return self.upvarify(ribs, i, def_like, span);
+                    return self.upvarify(ribs.slice_from(i + 1), def_like, span);
                 }
                 None => {
                     // Continue.
@@ -3976,7 +3988,7 @@ impl<'a> Resolver<'a> {
             }
         }
 
-        return None;
+        None
     }
 
     fn resolve_crate(&mut self, krate: &ast::Crate) {
@@ -4328,6 +4340,34 @@ impl<'a> Resolver<'a> {
                 self.resolve_trait_reference(id, tref, reference_type)
             }
             UnboxedFnTyParamBound(ref unboxed_function) => {
+                match self.resolve_path(unboxed_function.ref_id,
+                                        &unboxed_function.path,
+                                        TypeNS,
+                                        true) {
+                    None => {
+                        let path_str = self.path_idents_to_string(
+                            &unboxed_function.path);
+                        self.resolve_error(unboxed_function.path.span,
+                                           format!("unresolved trait `{}`",
+                                                   path_str).as_slice())
+                    }
+                    Some(def) => {
+                        match def {
+                            (DefTrait(_), _) => {
+                                self.record_def(unboxed_function.ref_id, def);
+                            }
+                            _ => {
+                                let msg =
+                                    format!("`{}` is not a trait",
+                                            self.path_idents_to_string(
+                                                &unboxed_function.path));
+                                self.resolve_error(unboxed_function.path.span,
+                                                   msg.as_slice());
+                            }
+                        }
+                    }
+                }
+
                 for argument in unboxed_function.decl.inputs.iter() {
                     self.resolve_type(&*argument.ty);
                 }
@@ -4471,7 +4511,7 @@ impl<'a> Resolver<'a> {
     // to be NormalRibKind?
     fn resolve_method(&mut self,
                       rib_kind: RibKind,
-                      method: &Method) {
+                      method: &ast::Method) {
         let method_generics = method.pe_generics();
         let type_parameters = HasTypeParameters(method_generics,
                                                 FnSpace,
@@ -4942,22 +4982,7 @@ impl<'a> Resolver<'a> {
                             debug!("(resolving pattern) binding `{}`",
                                    token::get_name(renamed));
 
-                            let def = match mode {
-                                RefutableMode => {
-                                    // For pattern arms, we must use
-                                    // `def_binding` definitions.
-
-                                    DefBinding(pattern.id, binding_mode)
-                                }
-                                LocalIrrefutableMode => {
-                                    // But for locals, we use `def_local`.
-                                    DefLocal(pattern.id, binding_mode)
-                                }
-                                ArgumentIrrefutableMode => {
-                                    // And for function arguments, `def_arg`.
-                                    DefArg(pattern.id, binding_mode)
-                                }
-                            };
+                            let def = DefLocal(pattern.id);
 
                             // Record the definition so that later passes
                             // will be able to distinguish variants from
@@ -5775,10 +5800,24 @@ impl<'a> Resolver<'a> {
                 visit::walk_expr(self, expr);
             }
 
-            ExprFnBlock(_, ref fn_decl, ref block) |
-            ExprProc(ref fn_decl, ref block) |
-            ExprUnboxedFn(_, _, ref fn_decl, ref block) => {
-                self.resolve_function(FunctionRibKind(expr.id, block.id),
+            ExprFnBlock(_, ref fn_decl, ref block) => {
+                // NOTE(stage0): After snapshot, change to:
+                //
+                //self.capture_mode_map.borrow_mut().insert(expr.id, capture_clause);
+                self.capture_mode_map.borrow_mut().insert(expr.id, ast::CaptureByRef);
+                self.resolve_function(ClosureRibKind(expr.id, ast::DUMMY_NODE_ID),
+                                      Some(&**fn_decl), NoTypeParameters,
+                                      &**block);
+            }
+            ExprProc(ref fn_decl, ref block) => {
+                self.capture_mode_map.borrow_mut().insert(expr.id, ast::CaptureByValue);
+                self.resolve_function(ClosureRibKind(expr.id, block.id),
+                                      Some(&**fn_decl), NoTypeParameters,
+                                      &**block);
+            }
+            ExprUnboxedFn(capture_clause, _, ref fn_decl, ref block) => {
+                self.capture_mode_map.borrow_mut().insert(expr.id, capture_clause);
+                self.resolve_function(ClosureRibKind(expr.id, block.id),
                                       Some(&**fn_decl), NoTypeParameters,
                                       &**block);
             }
@@ -6209,6 +6248,8 @@ impl<'a> Resolver<'a> {
 
 pub struct CrateMap {
     pub def_map: DefMap,
+    pub freevars: RefCell<FreevarMap>,
+    pub capture_mode_map: RefCell<CaptureModeMap>,
     pub exp_map2: ExportMap2,
     pub trait_map: TraitMap,
     pub external_exports: ExternalExports,
@@ -6222,13 +6263,13 @@ pub fn resolve_crate(session: &Session,
                   -> CrateMap {
     let mut resolver = Resolver::new(session, krate.span);
     resolver.resolve(krate);
-    let Resolver { def_map, export_map2, trait_map, last_private,
-                   external_exports, .. } = resolver;
     CrateMap {
-        def_map: def_map,
-        exp_map2: export_map2,
-        trait_map: trait_map,
-        external_exports: external_exports,
-        last_private_map: last_private,
+        def_map: resolver.def_map,
+        freevars: resolver.freevars,
+        capture_mode_map: resolver.capture_mode_map,
+        exp_map2: resolver.export_map2,
+        trait_map: resolver.trait_map,
+        external_exports: resolver.external_exports,
+        last_private_map: resolver.last_private,
     }
 }

@@ -13,7 +13,7 @@ use std::collections::HashMap;
 use ast;
 use ast::{Ident, Name, TokenTree};
 use codemap::Span;
-use ext::base::{ExtCtxt, MacExpr, MacItem, MacResult};
+use ext::base::{ExtCtxt, MacExpr, MacResult, MacItems};
 use ext::build::AstBuilder;
 use parse::token;
 use ptr::P;
@@ -102,7 +102,7 @@ pub fn expand_register_diagnostic<'cx>(ecx: &'cx mut ExtCtxt,
     let sym = Ident::new(token::gensym((
         "__register_diagnostic_".to_string() + token::get_ident(*code).get()
     ).as_slice()));
-    MacItem::new(quote_item!(ecx, mod $sym {}).unwrap())
+    MacItems::new(vec![quote_item!(ecx, mod $sym {}).unwrap()].into_iter())
 }
 
 pub fn expand_build_diagnostic_array<'cx>(ecx: &'cx mut ExtCtxt,
@@ -133,7 +133,7 @@ pub fn expand_build_diagnostic_array<'cx>(ecx: &'cx mut ExtCtxt,
             (descriptions.len(), ecx.expr_vec(span, descriptions))
         })
     });
-    MacItem::new(quote_item!(ecx,
+    MacItems::new(vec![quote_item!(ecx,
         pub static $name: [(&'static str, &'static str), ..$count] = $expr;
-    ).unwrap())
+    ).unwrap()].into_iter())
 }

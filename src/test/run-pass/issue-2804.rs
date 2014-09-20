@@ -22,7 +22,7 @@ enum object {
     int_value(i64),
 }
 
-fn lookup(table: json::Object, key: String, default: String) -> String
+fn lookup(table: json::JsonObject, key: String, default: String) -> String
 {
     match table.find(&key.to_string()) {
         option::Some(&json::String(ref s)) => {

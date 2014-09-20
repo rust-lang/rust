@@ -17,7 +17,7 @@ struct Foo<T>(T);
 
 #[deriving(PartialEq, Show)]
 enum Bar<T> {
-    Bar(T)
+    Baz(T)
 }
 
 pub fn main() {
@@ -33,11 +33,11 @@ pub fn main() {
     let f: proc(int) -> Foo<int> = Foo;
     assert_eq!(f(5), Foo(5));
 
-    let f: |int| -> Bar<int> = Bar;
-    assert_eq!(f(5), Bar(5));
+    let f: |int| -> Bar<int> = Baz;
+    assert_eq!(f(5), Baz(5));
 
-    let f: proc(int) -> Bar<int> = Bar;
-    assert_eq!(f(5), Bar(5));
+    let f: proc(int) -> Bar<int> = Baz;
+    assert_eq!(f(5), Baz(5));
 
     let f: |int| -> Option<int> = Some;
     assert_eq!(f(5), Some(5));

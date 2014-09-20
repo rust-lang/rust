@@ -103,7 +103,6 @@
  */
 
 use middle::def::*;
-use middle::freevars;
 use middle::mem_categorization::Typer;
 use middle::pat_util;
 use middle::ty;
@@ -116,6 +115,7 @@ use std::mem::transmute;
 use std::rc::Rc;
 use std::str;
 use std::uint;
+use syntax::ast;
 use syntax::ast::*;
 use syntax::codemap::{BytePos, original_sp, Span};
 use syntax::parse::token::special_idents;
@@ -183,7 +183,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for IrMaps<'a, 'tcx> {
                 b: &'v Block, s: Span, n: NodeId) {
         visit_fn(self, fk, fd, b, s, n);
     }
-    fn visit_local(&mut self, l: &Local) { visit_local(self, l); }
+    fn visit_local(&mut self, l: &ast::Local) { visit_local(self, l); }
     fn visit_expr(&mut self, ex: &Expr) { visit_expr(self, ex); }
     fn visit_arm(&mut self, a: &Arm) { visit_arm(self, a); }
 }
@@ -346,7 +346,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for Liveness<'a, 'tcx> {
     fn visit_fn(&mut self, fk: FnKind<'v>, fd: &'v FnDecl, b: &'v Block, s: Span, n: NodeId) {
         check_fn(self, fk, fd, b, s, n);
     }
-    fn visit_local(&mut self, l: &Local) {
+    fn visit_local(&mut self, l: &ast::Local) {
         check_local(self, l);
     }
     fn visit_expr(&mut self, ex: &Expr) {
@@ -408,7 +408,7 @@ fn visit_fn(ir: &mut IrMaps,
     lsets.warn_about_unused_args(decl, entry_ln);
 }
 
-fn visit_local(ir: &mut IrMaps, local: &Local) {
+fn visit_local(ir: &mut IrMaps, local: &ast::Local) {
     pat_util::pat_bindings(&ir.tcx.def_map, &*local.pat, |_, p_id, sp, path1| {
         debug!("adding local variable {}", p_id);
         let name = path1.node;
@@ -437,24 +437,15 @@ fn visit_arm(ir: &mut IrMaps, arm: &Arm) {
     visit::walk_arm(ir, arm);
 }
 
-fn moved_variable_node_id_from_def(def: Def) -> Option<NodeId> {
-    match def {
-        DefBinding(nid, _) |
-        DefArg(nid, _) |
-        DefLocal(nid, _) => Some(nid),
-
-      _ => None
-    }
-}
-
 fn visit_expr(ir: &mut IrMaps, expr: &Expr) {
     match expr.node {
       // live nodes required for uses or definitions of variables:
       ExprPath(_) => {
         let def = ir.tcx.def_map.borrow().get_copy(&expr.id);
         debug!("expr {}: path that leads to {:?}", expr.id, def);
-        if moved_variable_node_id_from_def(def).is_some() {
-            ir.add_live_node_for_node(expr.id, ExprNode(expr.span));
+        match def {
+            DefLocal(..) => ir.add_live_node_for_node(expr.id, ExprNode(expr.span)),
+            _ => {}
         }
         visit::walk_expr(ir, expr);
       }
@@ -468,15 +459,15 @@ fn visit_expr(ir: &mut IrMaps, expr: &Expr) {
         // in better error messages than just pointing at the closure
         // construction site.
         let mut call_caps = Vec::new();
-        freevars::with_freevars(ir.tcx, expr.id, |freevars| {
+        ty::with_freevars(ir.tcx, expr.id, |freevars| {
             for fv in freevars.iter() {
-                match moved_variable_node_id_from_def(fv.def) {
-                    Some(rv) => {
+                match fv.def {
+                    DefLocal(rv) => {
                         let fv_ln = ir.add_live_node(FreeVarNode(fv.span));
                         call_caps.push(CaptureInfo {ln: fv_ln,
                                                     var_nid: rv});
                     }
-                    None => {}
+                    _ => {}
                 }
             }
         });
@@ -511,7 +502,7 @@ fn visit_expr(ir: &mut IrMaps, expr: &Expr) {
 
       // otherwise, live nodes are not required:
       ExprIndex(..) | ExprField(..) | ExprTupField(..) | ExprVec(..) |
-      ExprCall(..) | ExprMethodCall(..) | ExprTup(..) |
+      ExprCall(..) | ExprMethodCall(..) | ExprTup(..) | ExprSlice(..) |
       ExprBinary(..) | ExprAddrOf(..) |
       ExprCast(..) | ExprUnary(..) | ExprBreak(_) |
       ExprAgain(_) | ExprLit(_) | ExprRet(..) | ExprBlock(..) |
@@ -913,7 +904,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         }
     }
 
-    fn propagate_through_local(&mut self, local: &Local, succ: LiveNode)
+    fn propagate_through_local(&mut self, local: &ast::Local, succ: LiveNode)
                                -> LiveNode {
         // Note: we mark the variable as defined regardless of whether
         // there is an initializer.  Initially I had thought to only mark
@@ -1184,6 +1175,12 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             self.propagate_through_expr(&**l, r_succ)
           }
 
+          ExprSlice(ref e1, ref e2, ref e3, _) => {
+            let succ = e3.as_ref().map_or(succ, |e| self.propagate_through_expr(&**e, succ));
+            let succ = e2.as_ref().map_or(succ, |e| self.propagate_through_expr(&**e, succ));
+            self.propagate_through_expr(&**e1, succ)
+          }
+
           ExprAddrOf(_, ref e) |
           ExprCast(ref e, _) |
           ExprUnary(_, ref e) |
@@ -1296,9 +1293,8 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 
     fn access_path(&mut self, expr: &Expr, succ: LiveNode, acc: uint)
                    -> LiveNode {
-        let def = self.ir.tcx.def_map.borrow().get_copy(&expr.id);
-        match moved_variable_node_id_from_def(def) {
-          Some(nid) => {
+        match self.ir.tcx.def_map.borrow().get_copy(&expr.id) {
+          DefLocal(nid) => {
             let ln = self.live_node(expr.id, expr.span);
             if acc != 0u {
                 self.init_from_succ(ln, succ);
@@ -1307,7 +1303,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             }
             ln
           }
-          None => succ
+          _ => succ
         }
     }
 
@@ -1403,7 +1399,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 // _______________________________________________________________________
 // Checking for error conditions
 
-fn check_local(this: &mut Liveness, local: &Local) {
+fn check_local(this: &mut Liveness, local: &ast::Local) {
     match local.init {
         Some(_) => {
             this.warn_about_unused_or_dead_vars_in_pat(&*local.pat);
@@ -1468,7 +1464,7 @@ fn check_expr(this: &mut Liveness, expr: &Expr) {
       ExprWhile(..) | ExprLoop(..) | ExprIndex(..) | ExprField(..) |
       ExprTupField(..) | ExprVec(..) | ExprTup(..) | ExprBinary(..) |
       ExprCast(..) | ExprUnary(..) | ExprRet(..) | ExprBreak(..) |
-      ExprAgain(..) | ExprLit(_) | ExprBlock(..) |
+      ExprAgain(..) | ExprLit(_) | ExprBlock(..) | ExprSlice(..) |
       ExprMac(..) | ExprAddrOf(..) | ExprStruct(..) | ExprRepeat(..) |
       ExprParen(..) | ExprFnBlock(..) | ExprProc(..) | ExprUnboxedFn(..) |
       ExprPath(..) | ExprBox(..) => {
@@ -1520,11 +1516,12 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                     sp, "not all control paths return a value");
                 if ends_with_stmt {
                     let last_stmt = body.stmts.last().unwrap();
-                    let original_span = original_sp(last_stmt.span, sp);
+                    let original_span = original_sp(self.ir.tcx.sess.codemap(),
+                                                    last_stmt.span, sp);
                     let span_semicolon = Span {
                         lo: original_span.hi - BytePos(1),
                         hi: original_span.hi,
-                        expn_info: original_span.expn_info
+                        expn_id: original_span.expn_id
                     };
                     self.ir.tcx.sess.span_note(
                         span_semicolon, "consider removing this semicolon:");
@@ -1537,7 +1534,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         match expr.node {
           ExprPath(_) => {
             match self.ir.tcx.def_map.borrow().get_copy(&expr.id) {
-              DefLocal(nid, _) => {
+              DefLocal(nid) => {
                 // Assignment to an immutable variable or argument: only legal
                 // if there is no later assignment. If this local is actually
                 // mutable, then check for a reassignment to flag the mutability
@@ -1546,16 +1543,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                 let var = self.variable(nid, expr.span);
                 self.warn_about_dead_assign(expr.span, expr.id, ln, var);
               }
-              def => {
-                match moved_variable_node_id_from_def(def) {
-                  Some(nid) => {
-                    let ln = self.live_node(expr.id, expr.span);
-                    let var = self.variable(nid, expr.span);
-                    self.warn_about_dead_assign(expr.span, expr.id, ln, var);
-                  }
-                  None => {}
-                }
-              }
+              _ => {}
             }
           }
 
