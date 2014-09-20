@@ -42,6 +42,8 @@ pub struct TestProps {
     pub pretty_mode: String,
     // Only compare pretty output and don't try compiling
     pub pretty_compare_only: bool,
+    // Patterns which must not appear in the output of a cfail test.
+    pub forbid_output: Vec<String>,
 }
 
 // Load any test directives embedded in the file
@@ -59,6 +61,7 @@ pub fn load_props(testfile: &Path) -> TestProps {
     let mut no_pretty_expanded = false;
     let mut pretty_mode = None;
     let mut pretty_compare_only = false;
+    let mut forbid_output = Vec::new();
     iter_header(testfile, |ln| {
         match parse_error_pattern(ln) {
           Some(ep) => error_patterns.push(ep),
@@ -116,6 +119,11 @@ pub fn load_props(testfile: &Path) -> TestProps {
             None => ()
         };
 
+        match parse_forbid_output(ln) {
+            Some(of) => forbid_output.push(of),
+            None => (),
+        }
+
         true
     });
 
@@ -132,7 +140,8 @@ pub fn load_props(testfile: &Path) -> TestProps {
         no_prefer_dynamic: no_prefer_dynamic,
         no_pretty_expanded: no_pretty_expanded,
         pretty_mode: pretty_mode.unwrap_or("normal".to_string()),
-        pretty_compare_only: pretty_compare_only
+        pretty_compare_only: pretty_compare_only,
+        forbid_output: forbid_output,
     }
 }
 
@@ -208,6 +217,10 @@ fn iter_header(testfile: &Path, it: |&str| -> bool) -> bool {
 
 fn parse_error_pattern(line: &str) -> Option<String> {
     parse_name_value_directive(line, "error-pattern")
+}
+
+fn parse_forbid_output(line: &str) -> Option<String> {
+    parse_name_value_directive(line, "forbid-output")
 }
 
 fn parse_aux_build(line: &str) -> Option<String> {
