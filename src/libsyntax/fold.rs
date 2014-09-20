@@ -682,14 +682,15 @@ pub fn noop_fold_ty_param_bound<T>(tpb: TyParamBound, fld: &mut T)
 }
 
 pub fn noop_fold_ty_param<T: Folder>(tp: TyParam, fld: &mut T) -> TyParam {
-    let TyParam {id, ident, bounds, unbound, default, span} = tp;
+    let TyParam {id, ident, bounds, unbound, default, span, kind} = tp;
     TyParam {
         id: fld.new_id(id),
         ident: ident,
         bounds: fld.fold_bounds(bounds),
         unbound: unbound.map(|x| fld.fold_ty_param_bound(x)),
         default: default.map(|x| fld.fold_ty(x)),
-        span: span
+        span: span,
+        kind: kind.clone()
     }
 }
 

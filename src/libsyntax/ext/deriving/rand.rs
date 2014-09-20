@@ -34,8 +34,9 @@ pub fn expand_deriving_rand(cx: &mut ExtCtxt,
                 generics: LifetimeBounds {
                     lifetimes: Vec::new(),
                     bounds: vec!(("R",
+                                  ast::Star,
                                   None,
-                                  vec!( Path::new(vec!("std", "rand", "Rng")) )))
+                                  vec!( Path::new(vec!("std", "rand", "Rng")) ))),
                 },
                 explicit_self: None,
                 args: vec!(

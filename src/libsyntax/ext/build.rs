@@ -69,7 +69,8 @@ pub trait AstBuilder {
                id: ast::Ident,
                bounds: OwnedSlice<ast::TyParamBound>,
                unbound: Option<ast::TyParamBound>,
-               default: Option<P<ast::Ty>>) -> ast::TyParam;
+               default: Option<P<ast::Ty>>,
+               kind: ast::TyKind) -> ast::TyParam;
 
     fn trait_ref(&self, path: ast::Path) -> ast::TraitRef;
     fn typarambound(&self, path: ast::Path) -> ast::TyParamBound;
@@ -409,14 +410,16 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
                id: ast::Ident,
                bounds: OwnedSlice<ast::TyParamBound>,
                unbound: Option<ast::TyParamBound>,
-               default: Option<P<ast::Ty>>) -> ast::TyParam {
+               default: Option<P<ast::Ty>>,
+               kind: ast::TyKind) -> ast::TyParam {
         ast::TyParam {
             ident: id,
             id: ast::DUMMY_NODE_ID,
             bounds: bounds,
             unbound: unbound,
             default: default,
-            span: span
+            span: span,
+            kind: kind
         }
     }
 
