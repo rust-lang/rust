@@ -69,6 +69,9 @@ pub enum ObligationCauseCode {
     /// Obligation incurred due to an object cast.
     ObjectCastObligation(/* Object type */ ty::t),
 
+    /// To implement drop, type must be sendable.
+    DropTrait,
+
     /// Various cases where expressions must be sized/copy/etc:
     AssignmentLhsSized,        // L = X implies that L is Sized
     StructInitializerSized,    // S { ... } must be Sized

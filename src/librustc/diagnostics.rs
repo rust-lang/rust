@@ -130,7 +130,6 @@ register_diagnostics!(
     E0121,
     E0122,
     E0124,
-    E0125,
     E0126,
     E0127,
     E0128,

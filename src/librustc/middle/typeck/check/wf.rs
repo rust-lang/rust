@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use middle::subst;
 use middle::subst::{Subst};
 use middle::traits;
 use middle::ty;
@@ -21,6 +22,7 @@ use util::ppaux::Repr;
 use std::collections::HashSet;
 use syntax::ast;
 use syntax::ast_util::{local_def};
+use syntax::attr;
 use syntax::codemap::Span;
 use syntax::visit;
 use syntax::visit::Visitor;
@@ -164,6 +166,22 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
                 Some(t) => { t }
             };
             let trait_ref = (*trait_ref).subst(fcx.tcx(), &fcx.inh.param_env.free_substs);
+
+            // There are special rules that apply to drop.
+            if
+                fcx.tcx().lang_items.drop_trait() == Some(trait_ref.def_id) &&
+                !attr::contains_name(item.attrs.as_slice(), "unsafe_destructor")
+            {
+                match ty::get(self_ty).sty {
+                    ty::ty_struct(def_id, _) |
+                    ty::ty_enum(def_id, _) => {
+                        check_struct_safe_for_destructor(fcx, item.span, self_ty, def_id);
+                    }
+                    _ => {
+                        // Coherence already reports an error in this case.
+                    }
+                }
+            }
 
             // We are stricter on the trait-ref in an impl than the
             // self-type.  In particular, we enforce region
@@ -360,5 +378,33 @@ impl<'cx,'tcx> TypeFolder<'tcx> for BoundsChecker<'cx,'tcx> {
         }
 
         t // we're not folding to produce a new type, so just return `t` here
+    }
+}
+
+///////////////////////////////////////////////////////////////////////////
+// Special drop trait checking
+
+fn check_struct_safe_for_destructor(fcx: &FnCtxt,
+                                    span: Span,
+                                    self_ty: ty::t,
+                                    struct_did: ast::DefId) {
+    let struct_tpt = ty::lookup_item_type(fcx.tcx(), struct_did);
+    if !struct_tpt.generics.has_type_params(subst::TypeSpace)
+        && !struct_tpt.generics.has_region_params(subst::TypeSpace)
+    {
+        let cause = traits::ObligationCause::new(span, traits::DropTrait);
+        fcx.register_obligation(
+            traits::obligation_for_builtin_bound(
+                fcx.tcx(),
+                cause,
+                self_ty,
+                ty::BoundSend));
+    } else {
+        span_err!(fcx.tcx().sess, span, E0141,
+                  "cannot implement a destructor on a structure \
+                       with type parameters");
+            span_note!(fcx.tcx().sess, span,
+                       "use \"#[unsafe_destructor]\" on the implementation \
+                        to force the compiler to allow this");
     }
 }

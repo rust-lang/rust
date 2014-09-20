@@ -9,15 +9,11 @@
 // except according to those terms.
 
 use middle::mem_categorization::Typer;
-use middle::subst;
 use middle::ty;
-use middle::ty_fold::TypeFoldable;
-use middle::ty_fold;
 use util::ppaux::{ty_to_string};
 use util::ppaux::UserString;
 
 use syntax::ast::*;
-use syntax::attr;
 use syntax::codemap::Span;
 use syntax::print::pprust::{expr_to_string, ident_to_string};
 use syntax::visit::Visitor;
@@ -48,10 +44,6 @@ impl<'a, 'tcx, 'v> Visitor<'v> for Context<'a, 'tcx> {
         check_ty(self, t);
     }
 
-    fn visit_item(&mut self, i: &Item) {
-        check_item(self, i);
-    }
-
     fn visit_pat(&mut self, p: &Pat) {
         check_pat(self, p);
     }
@@ -63,79 +55,6 @@ pub fn check_crate(tcx: &ty::ctxt) {
     };
     visit::walk_crate(&mut ctx, tcx.map.krate());
     tcx.sess.abort_if_errors();
-}
-
-struct EmptySubstsFolder<'a, 'tcx: 'a> {
-    tcx: &'a ty::ctxt<'tcx>
-}
-impl<'a, 'tcx> ty_fold::TypeFolder<'tcx> for EmptySubstsFolder<'a, 'tcx> {
-    fn tcx<'a>(&'a self) -> &'a ty::ctxt<'tcx> {
-        self.tcx
-    }
-    fn fold_substs(&mut self, _: &subst::Substs) -> subst::Substs {
-        subst::Substs::empty()
-    }
-}
-
-fn check_struct_safe_for_destructor(cx: &mut Context,
-                                    span: Span,
-                                    struct_did: DefId) {
-    let struct_tpt = ty::lookup_item_type(cx.tcx, struct_did);
-    if !struct_tpt.generics.has_type_params(subst::TypeSpace)
-      && !struct_tpt.generics.has_region_params(subst::TypeSpace) {
-        let mut folder = EmptySubstsFolder { tcx: cx.tcx };
-        if !ty::type_is_sendable(cx.tcx, struct_tpt.ty.fold_with(&mut folder)) {
-            span_err!(cx.tcx.sess, span, E0125,
-                      "cannot implement a destructor on a \
-                       structure or enumeration that does not satisfy Send");
-            span_note!(cx.tcx.sess, span,
-                       "use \"#[unsafe_destructor]\" on the implementation \
-                        to force the compiler to allow this");
-        }
-    } else {
-        span_err!(cx.tcx.sess, span, E0141,
-                  "cannot implement a destructor on a structure \
-                   with type parameters");
-        span_note!(cx.tcx.sess, span,
-                   "use \"#[unsafe_destructor]\" on the implementation \
-                    to force the compiler to allow this");
-    }
-}
-
-fn check_impl_of_trait(cx: &mut Context, it: &Item, trait_ref: &TraitRef, self_type: &Ty) {
-    let ast_trait_def = *cx.tcx.def_map.borrow()
-                              .find(&trait_ref.ref_id)
-                              .expect("trait ref not in def map!");
-    let trait_def_id = ast_trait_def.def_id();
-
-    // If this is a destructor, check kinds.
-    if cx.tcx.lang_items.drop_trait() == Some(trait_def_id) &&
-        !attr::contains_name(it.attrs.as_slice(), "unsafe_destructor")
-    {
-        match self_type.node {
-            TyPath(_, ref bounds, path_node_id) => {
-                assert!(bounds.is_none());
-                let struct_def = cx.tcx.def_map.borrow().get_copy(&path_node_id);
-                let struct_did = struct_def.def_id();
-                check_struct_safe_for_destructor(cx, self_type.span, struct_did);
-            }
-            _ => {
-                cx.tcx.sess.span_bug(self_type.span,
-                    "the self type for the Drop trait impl is not a path");
-            }
-        }
-    }
-}
-
-fn check_item(cx: &mut Context, item: &Item) {
-    match item.node {
-        ItemImpl(_, Some(ref trait_ref), ref self_type, _) => {
-            check_impl_of_trait(cx, item, trait_ref, &**self_type);
-        }
-        _ => {}
-    }
-
-    visit::walk_item(cx, item)
 }
 
 // Yields the appropriate function to check the kind of closed over

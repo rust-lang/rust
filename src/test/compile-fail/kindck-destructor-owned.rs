@@ -16,7 +16,27 @@ struct Foo {
 }
 
 impl Drop for Foo {
-//~^ ERROR cannot implement a destructor on a structure or enumeration that does not satisfy Send
+//~^ ERROR the trait `core::kinds::Send` is not implemented for the type `Foo`
+//~^^ NOTE cannot implement a destructor on a structure or enumeration that does not satisfy Send
+    fn drop(&mut self) {
+    }
+}
+
+struct Bar<'a> {
+    f: &'a int,
+}
+
+impl<'a> Drop for Bar<'a> {
+//~^ ERROR E0141
+    fn drop(&mut self) {
+    }
+}
+
+struct Baz {
+    f: &'static int,
+}
+
+impl Drop for Baz {
     fn drop(&mut self) {
     }
 }
