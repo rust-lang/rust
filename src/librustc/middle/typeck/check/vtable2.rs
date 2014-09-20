@@ -390,5 +390,13 @@ fn note_obligation_cause(fcx: &FnCtxt,
                 obligation.cause.span,
                 "structs must have a statically known size to be initialized");
         }
+        traits::DropTrait => {
+            span_note!(tcx.sess, obligation.cause.span,
+                      "cannot implement a destructor on a \
+                      structure or enumeration that does not satisfy Send");
+            span_note!(tcx.sess, obligation.cause.span,
+                       "use \"#[unsafe_destructor]\" on the implementation \
+                       to force the compiler to allow this");
+        }
     }
 }
