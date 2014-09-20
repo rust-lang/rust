@@ -2156,6 +2156,10 @@ pub fn autoderef<T>(fcx: &FnCtxt, sp: Span, base_ty: ty::t,
     for autoderefs in range(0, fcx.tcx().sess.recursion_limit.get()) {
         let resolved_t = structurally_resolved_type(fcx, sp, t);
 
+        if ty::type_is_bot(resolved_t) {
+            return (resolved_t, autoderefs, None);
+        }
+
         match should_stop(resolved_t, autoderefs) {
             Some(x) => return (resolved_t, autoderefs, Some(x)),
             None => {}
