@@ -701,7 +701,7 @@ mod imp {
     static IMAGE_FILE_MACHINE_IA64: libc::DWORD = 0x0200;
     static IMAGE_FILE_MACHINE_AMD64: libc::DWORD = 0x8664;
 
-    #[repr(C, packed)]
+    #[repr(C)]
     struct SYMBOL_INFO {
         SizeOfStruct: libc::c_ulong,
         TypeIndex: libc::c_ulong,
@@ -983,8 +983,10 @@ mod imp {
             try!(write!(w, "  {:2}: {:#2$x}", i, addr, super::HEX_WIDTH));
             let mut info: SYMBOL_INFO = unsafe { intrinsics::init() };
             info.MaxNameLen = MAX_SYM_NAME as libc::c_ulong;
-            info.SizeOfStruct = (mem::size_of::<SYMBOL_INFO>() -
-                                 info.Name.len() + 1) as libc::c_ulong;
+            // the struct size in C.  the value is different to
+            // `size_of::<SYMBOL_INFO>() - MAX_SYM_NAME + 1` (== 81)
+            // due to struct alignment.
+            info.SizeOfStruct = 88;
 
             let mut displacement = 0u64;
             let ret = SymFromAddr(process, addr as u64, &mut displacement,
