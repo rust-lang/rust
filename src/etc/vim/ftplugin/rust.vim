@@ -35,8 +35,6 @@ silent! setlocal formatoptions+=j
 " otherwise it's better than nothing.
 setlocal smartindent nocindent
 
-setlocal tabstop=4 shiftwidth=4 softtabstop=4 expandtab
-
 setlocal textwidth=99
 
 " This includeexpr isn't perfect, but it's a good start
