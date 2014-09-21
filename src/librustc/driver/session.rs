@@ -168,7 +168,7 @@ impl Session {
         self.debugging_opt(config::PRINT_LLVM_PASSES)
     }
     pub fn lto(&self) -> bool {
-        self.debugging_opt(config::LTO)
+        self.opts.cg.lto
     }
     pub fn no_landing_pads(&self) -> bool {
         self.debugging_opt(config::NO_LANDING_PADS)

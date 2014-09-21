@@ -4,6 +4,6 @@
 CC := $(CC:-g=)
 
 all:
-	$(RUSTC) foo.rs -Z lto
+	$(RUSTC) foo.rs -C lto
 	$(CC) bar.c -lfoo -o $(call RUN_BINFILE,bar) $(EXTRACFLAGS) -lstdc++
 	$(call RUN,bar)

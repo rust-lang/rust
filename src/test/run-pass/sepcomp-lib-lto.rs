@@ -8,11 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Check that we can use `-Z lto` when linking against libraries that were
+// Check that we can use `-C lto` when linking against libraries that were
 // separately compiled.
 
 // aux-build:sepcomp_lib.rs
-// compile-flags: -Z lto
+// compile-flags: -C lto
 // no-prefer-dynamic
 
 extern crate sepcomp_lib;
