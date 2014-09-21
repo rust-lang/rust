@@ -5069,7 +5069,7 @@ impl<'a> Parser<'a> {
     fn parse_enum_def(&mut self, _generics: &ast::Generics) -> EnumDef {
         let mut variants = Vec::new();
         let mut all_nullary = true;
-        let mut have_disr = false;
+        let mut any_disr = None;
         while self.token != token::RBRACE {
             let variant_attrs = self.parse_outer_attributes();
             let vlo = self.span.lo;
@@ -5101,8 +5101,8 @@ impl<'a> Parser<'a> {
                 }
                 kind = TupleVariantKind(args);
             } else if self.eat(&token::EQ) {
-                have_disr = true;
                 disr_expr = Some(self.parse_expr());
+                any_disr = disr_expr.as_ref().map(|expr| expr.span);
                 kind = TupleVariantKind(args);
             } else {
                 kind = TupleVariantKind(Vec::new());
@@ -5121,9 +5121,11 @@ impl<'a> Parser<'a> {
             if !self.eat(&token::COMMA) { break; }
         }
         self.expect(&token::RBRACE);
-        if have_disr && !all_nullary {
-            self.fatal("discriminator values can only be used with a c-like \
-                        enum");
+        match any_disr {
+            Some(disr_span) if !all_nullary =>
+                self.span_err(disr_span,
+                    "discriminator values can only be used with a c-like enum"),
+            _ => ()
         }
 
         ast::EnumDef { variants: variants }
