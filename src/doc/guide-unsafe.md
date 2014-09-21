@@ -706,7 +706,7 @@ Other features provided by lang items include:
   `==`, `<`, dereferencing (`*`) and `+` (etc.) operators are all
   marked with lang items; those specific four are `eq`, `ord`,
   `deref`, and `add` respectively.
-- stack unwinding and general failure; the `eh_personality`, `fail_`
+- stack unwinding and general failure; the `eh_personality`, `fail`
   and `fail_bounds_checks` lang items.
 - the traits in `std::kinds` used to indicate types that satisfy
   various kinds; lang items `send`, `sync` and `copy`.
