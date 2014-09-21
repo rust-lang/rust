@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags: -Z lto -C prefer-dynamic
+// compile-flags: -C lto -C prefer-dynamic
 
 // error-pattern: cannot prefer dynamic linking
 
