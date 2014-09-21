@@ -23,8 +23,20 @@ use Terminal;
 /// A Terminal implementation which uses the Win32 Console API.
 pub struct WinConsole<T> {
     buf: T,
+    def_foreground: color::Color,
+    def_background: color::Color,
     foreground: color::Color,
     background: color::Color,
+}
+
+#[allow(non_snake_case)]
+#[repr(C)]
+struct CONSOLE_SCREEN_BUFFER_INFO {
+    dwSize: [libc::c_short, ..2],
+    dwCursorPosition: [libc::c_short, ..2],
+    wAttributes: libc::WORD,
+    srWindow: [libc::c_short, ..4],
+    dwMaximumWindowSize: [libc::c_short, ..2],
 }
 
 #[allow(non_snake_case)]
@@ -32,6 +44,8 @@ pub struct WinConsole<T> {
 extern "system" {
     fn SetConsoleTextAttribute(handle: libc::HANDLE, attr: libc::WORD) -> libc::BOOL;
     fn GetStdHandle(which: libc::DWORD) -> libc::HANDLE;
+    fn GetConsoleScreenBufferInfo(handle: libc::HANDLE,
+                                  info: *mut CONSOLE_SCREEN_BUFFER_INFO) -> libc::BOOL;
 }
 
 fn color_to_bits(color: color::Color) -> u16 {
@@ -53,6 +67,26 @@ fn color_to_bits(color: color::Color) -> u16 {
         bits | 0x8
     } else {
         bits
+    }
+}
+
+fn bits_to_color(bits: u16) -> color::Color {
+    let color = match bits & 0x7 {
+        0 => color::BLACK,
+        0x1 => color::BLUE,
+        0x2 => color::GREEN,
+        0x4 => color::RED,
+        0x6 => color::YELLOW,
+        0x5 => color::MAGENTA,
+        0x3 => color::CYAN,
+        0x7 => color::WHITE,
+        _ => unreachable!()
+    };
+
+    if bits >= 8 {
+        color | 0x8
+    } else {
+        color
     }
 }
 
@@ -91,7 +125,21 @@ impl<T: Writer> Writer for WinConsole<T> {
 
 impl<T: Writer> Terminal<T> for WinConsole<T> {
     fn new(out: T) -> Option<WinConsole<T>> {
-        Some(WinConsole { buf: out, foreground: color::WHITE, background: color::BLACK })
+        let fg;
+        let bg;
+        unsafe {
+            let mut buffer_info = ::std::mem::uninitialized();
+            if GetConsoleScreenBufferInfo(GetStdHandle(-11), &mut buffer_info) != 0 {
+                fg = bits_to_color(buffer_info.wAttributes);
+                bg = bits_to_color(buffer_info.wAttributes >> 4);
+            } else {
+                fg = color::WHITE;
+                bg = color::BLACK;
+            }
+        }
+        Some(WinConsole { buf: out,
+                          def_foreground: fg, def_background: bg,
+                          foreground: fg, background: bg } )
     }
 
     fn fg(&mut self, color: color::Color) -> IoResult<bool> {
@@ -134,8 +182,8 @@ impl<T: Writer> Terminal<T> for WinConsole<T> {
     }
 
     fn reset(&mut self) -> IoResult<()> {
-        self.foreground = color::WHITE;
-        self.background = color::BLACK;
+        self.foreground = self.def_foreground;
+        self.background = self.def_background;
         self.apply();
 
         Ok(())
