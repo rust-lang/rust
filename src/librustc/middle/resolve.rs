@@ -2928,7 +2928,7 @@ impl<'a> Resolver<'a> {
                             Some(span) => {
                                 self.session
                                     .span_note(span,
-                                               "note conflicting value here");
+                                               "conflicting value here");
                             }
                         }
                     }
@@ -2951,7 +2951,7 @@ impl<'a> Resolver<'a> {
                             Some(span) => {
                                 self.session
                                     .span_note(span,
-                                               "note conflicting type here")
+                                               "conflicting type here")
                             }
                         }
                     }
