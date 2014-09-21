@@ -58,15 +58,15 @@ def make_win_dist(dist_root, target_triple):
     for src in rustc_dlls:
         shutil.copy(src, dist_bin_dir)
 
-    # Copy platform tools (and another copy of runtime dlls) to platform-spcific bin directory
-    target_bin_dir = os.path.join(dist_root, "bin", "rustlib", target_triple, "bin")
+    # Copy platform tools to platform-specific bin directory
+    target_bin_dir = os.path.join(dist_root, "bin", "rustlib", target_triple, "gcc", "bin")
     if not os.path.exists(target_bin_dir):
         os.makedirs(target_bin_dir)
     for src in target_tools:
         shutil.copy(src, target_bin_dir)
 
     # Copy platform libs to platform-spcific lib directory
-    target_lib_dir = os.path.join(dist_root, "bin", "rustlib", target_triple, "lib")
+    target_lib_dir = os.path.join(dist_root, "bin", "rustlib", target_triple, "gcc", "lib")
     if not os.path.exists(target_lib_dir):
         os.makedirs(target_lib_dir)
     for src in target_libs:

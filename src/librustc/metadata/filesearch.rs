@@ -150,8 +150,12 @@ impl<'a> FileSearch<'a> {
         p.push(find_libdir(self.sysroot));
         p.push(rustlibdir());
         p.push(self.triple);
-        p.push("bin");
-        vec![p]
+        let mut p1 = p.clone();
+        p1.push("bin");
+        let mut p2 = p.clone();
+        p2.push("gcc");
+        p2.push("bin");
+        vec![p1, p2]
     }
 }
 
