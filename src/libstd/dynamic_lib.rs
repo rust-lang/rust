@@ -260,7 +260,7 @@ pub mod dl {
         dlclose(handle as *mut libc::c_void); ()
     }
 
-    pub enum RTLD {
+    pub enum Rtld {
         Lazy = 1,
         Now = 2,
         Global = 256,
