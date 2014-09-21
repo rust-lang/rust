@@ -573,8 +573,8 @@ pub extern fn dot_product(a: *const u32, a_len: u32,
     return ret;
 }
 
-#[lang = "begin_unwind"]
-extern fn begin_unwind(args: &core::fmt::Arguments,
+#[lang = "fail_fmt"]
+extern fn fail_fmt(args: &core::fmt::Arguments,
                        file: &str,
                        line: uint) -> ! {
     loop {}
@@ -587,8 +587,8 @@ extern fn begin_unwind(args: &core::fmt::Arguments,
 ```
 
 Note that there is one extra lang item here which differs from the examples
-above, `begin_unwind`. This must be defined by consumers of libcore because the
-core library declares failure, but it does not define it. The `begin_unwind`
+above, `fail_fmt`. This must be defined by consumers of libcore because the
+core library declares failure, but it does not define it. The `fail_fmt`
 lang item is this crate's definition of failure, and it must be guaranteed to
 never return.
 

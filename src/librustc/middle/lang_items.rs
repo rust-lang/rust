@@ -275,7 +275,7 @@ lets_do_this! {
     // lang item, but do not have it defined.
     FailFnLangItem,                  "fail_",                   fail_fn;
     FailBoundsCheckFnLangItem,       "fail_bounds_check",       fail_bounds_check_fn;
-    BeginUnwindLangItem,             "begin_unwind",            begin_unwind;
+    FailFmtLangItem,                 "fail_fmt",                fail_fmt;
 
     ExchangeMallocFnLangItem,        "exchange_malloc",         exchange_malloc_fn;
     ExchangeFreeFnLangItem,          "exchange_free",           exchange_free_fn;
