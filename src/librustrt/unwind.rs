@@ -489,11 +489,22 @@ pub mod eabi {
 
 // Entry point of failure from the libcore crate
 #[cfg(not(test))]
+#[cfg(not(stage0))]
+#[lang = "fail_fmt"]
+pub extern fn rust_begin_unwind1(msg: &fmt::Arguments,
+                                file: &'static str, line: uint) -> ! {
+    begin_unwind_fmt(msg, &(file, line))
+}
+//
+// Entry point of failure from the libcore crate
+#[cfg(not(test))]
+#[cfg(stage0)]
 #[lang = "begin_unwind"]
 pub extern fn rust_begin_unwind(msg: &fmt::Arguments,
                                 file: &'static str, line: uint) -> ! {
     begin_unwind_fmt(msg, &(file, line))
 }
+
 
 /// The entry point for unwinding with a formatted message.
 ///

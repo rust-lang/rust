@@ -64,9 +64,17 @@ pub fn begin_unwind_string(msg: &str, file: &(&'static str, uint)) -> ! {
 pub fn begin_unwind(fmt: &fmt::Arguments, file_line: &(&'static str, uint)) -> ! {
     #[allow(ctypes)]
     extern {
+
+        #[cfg(stage0)]
         #[lang = "begin_unwind"]
         fn begin_unwind(fmt: &fmt::Arguments, file: &'static str,
                         line: uint) -> !;
+
+        #[cfg(not(stage0))]
+        #[lang = "fail_fmt"]
+        fn begin_unwind(fmt: &fmt::Arguments, file: &'static str,
+                        line: uint) -> !;
+
     }
     let (file, line) = *file_line;
     unsafe { begin_unwind(fmt, file, line) }
