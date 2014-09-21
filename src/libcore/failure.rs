@@ -16,7 +16,7 @@
 //! interface for failure is:
 //!
 //! ```ignore
-//! fn begin_unwind(fmt: &fmt::Arguments, &(&'static str, uint)) -> !;
+//! fn fail_impl(fmt: &fmt::Arguments, &(&'static str, uint)) -> !;
 //! ```
 //!
 //! This definition allows for failing with any general message, but it does not
@@ -39,7 +39,7 @@ fn fail_(expr_file_line: &(&'static str, &'static str, uint)) -> ! {
     let (expr, file, line) = *expr_file_line;
     let ref file_line = (file, line);
     format_args!(|args| -> () {
-        begin_unwind(args, file_line);
+        fail_impl(args, file_line);
     }, "{}", expr);
 
     unsafe { intrinsics::abort() }
@@ -50,33 +50,33 @@ fn fail_(expr_file_line: &(&'static str, &'static str, uint)) -> ! {
 fn fail_bounds_check(file_line: &(&'static str, uint),
                      index: uint, len: uint) -> ! {
     format_args!(|args| -> () {
-        begin_unwind(args, file_line);
+        fail_impl(args, file_line);
     }, "index out of bounds: the len is {} but the index is {}", len, index);
     unsafe { intrinsics::abort() }
 }
 
 #[cold] #[inline(never)]
-pub fn begin_unwind_string(msg: &str, file: &(&'static str, uint)) -> ! {
-    format_args!(|fmt| begin_unwind(fmt, file), "{}", msg)
+pub fn fail_impl_string(msg: &str, file: &(&'static str, uint)) -> ! {
+    format_args!(|fmt| fail_impl(fmt, file), "{}", msg)
 }
 
 #[cold] #[inline(never)]
-pub fn begin_unwind(fmt: &fmt::Arguments, file_line: &(&'static str, uint)) -> ! {
+pub fn fail_impl(fmt: &fmt::Arguments, file_line: &(&'static str, uint)) -> ! {
     #[allow(ctypes)]
     extern {
 
         #[cfg(stage0)]
         #[lang = "begin_unwind"]
-        fn begin_unwind(fmt: &fmt::Arguments, file: &'static str,
+        fn fail_impl(fmt: &fmt::Arguments, file: &'static str,
                         line: uint) -> !;
 
         #[cfg(not(stage0))]
         #[lang = "fail_fmt"]
-        fn begin_unwind(fmt: &fmt::Arguments, file: &'static str,
+        fn fail_impl(fmt: &fmt::Arguments, file: &'static str,
                         line: uint) -> !;
 
     }
     let (file, line) = *file_line;
-    unsafe { begin_unwind(fmt, file, line) }
+    unsafe { fail_impl(fmt, file, line) }
 }
 
