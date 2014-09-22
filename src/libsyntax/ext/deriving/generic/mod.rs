@@ -101,32 +101,32 @@
 //!
 //! When generating the `expr` for the `A` impl, the `SubstructureFields` is
 //!
-//! ~~~text
+//! ```{.text}
 //! Struct(~[FieldInfo {
 //!            span: <span of x>
 //!            name: Some(<ident of x>),
 //!            self_: <expr for &self.x>,
 //!            other: ~[<expr for &other.x]
 //!          }])
-//! ~~~
+//! ```
 //!
 //! For the `B` impl, called with `B(a)` and `B(b)`,
 //!
-//! ~~~text
+//! ```{.text}
 //! Struct(~[FieldInfo {
 //!           span: <span of `int`>,
 //!           name: None,
 //!           <expr for &a>
 //!           ~[<expr for &b>]
 //!          }])
-//! ~~~
+//! ```
 //!
 //! ## Enums
 //!
 //! When generating the `expr` for a call with `self == C0(a)` and `other
 //! == C0(b)`, the SubstructureFields is
 //!
-//! ~~~text
+//! ```{.text}
 //! EnumMatching(0, <ast::Variant for C0>,
 //!              ~[FieldInfo {
 //!                 span: <span of int>
@@ -134,11 +134,11 @@
 //!                 self_: <expr for &a>,
 //!                 other: ~[<expr for &b>]
 //!               }])
-//! ~~~
+//! ```
 //!
 //! For `C1 {x}` and `C1 {x}`,
 //!
-//! ~~~text
+//! ```{.text}
 //! EnumMatching(1, <ast::Variant for C1>,
 //!              ~[FieldInfo {
 //!                 span: <span of x>
@@ -146,16 +146,16 @@
 //!                 self_: <expr for &self.x>,
 //!                 other: ~[<expr for &other.x>]
 //!                }])
-//! ~~~
+//! ```
 //!
 //! For `C0(a)` and `C1 {x}` ,
 //!
-//! ~~~text
+//! ```{.text}
 //! EnumNonMatchingCollapsed(
 //!     ~[<ident of self>, <ident of __arg_1>],
 //!     &[<ast::Variant for C0>, <ast::Variant for C1>],
 //!     &[<ident for self index value>, <ident of __arg_1 index value>])
-//! ~~~
+//! ```
 //!
 //! It is the same for when the arguments are flipped to `C1 {x}` and
 //! `C0(a)`; the only difference is what the values of the identifiers
@@ -170,7 +170,7 @@
 //!
 //! A static method on the above would result in,
 //!
-//! ~~~text
+//! ```{.text}
 //! StaticStruct(<ast::StructDef of A>, Named(~[(<ident of x>, <span of x>)]))
 //!
 //! StaticStruct(<ast::StructDef of B>, Unnamed(~[<span of x>]))
@@ -178,7 +178,7 @@
 //! StaticEnum(<ast::EnumDef of C>, ~[(<ident of C0>, <span of C0>, Unnamed(~[<span of int>])),
 //!                                   (<ident of C1>, <span of C1>,
 //!                                    Named(~[(<ident of x>, <span of x>)]))])
-//! ~~~
+//! ```
 
 use std::cell::RefCell;
 use std::vec;
@@ -252,7 +252,7 @@ pub struct Substructure<'a> {
     pub type_ident: Ident,
     /// ident of the method
     pub method_ident: Ident,
-    /// dereferenced access to any Self or Ptr(Self, _) arguments
+    /// dereferenced access to any `Self` or `Ptr(Self, _)` arguments
     pub self_args: &'a [P<Expr>],
     /// verbatim access to any other arguments
     pub nonself_args: &'a [P<Expr>],
@@ -269,61 +269,52 @@ pub struct FieldInfo {
     /// (specifically, a reference to it).
     pub self_: P<Expr>,
     /// The expressions corresponding to references to this field in
-    /// the other Self arguments.
+    /// the other `Self` arguments.
     pub other: Vec<P<Expr>>,
 }
 
 /// Fields for a static method
 pub enum StaticFields {
-    /// Tuple structs/enum variants like this
+    /// Tuple structs/enum variants like this.
     Unnamed(Vec<Span>),
     /// Normal structs/struct variants.
     Named(Vec<(Ident, Span)>),
 }
 
-/// A summary of the possible sets of fields. See above for details
-/// and examples
+/// A summary of the possible sets of fields.
 pub enum SubstructureFields<'a> {
     Struct(Vec<FieldInfo>),
-    /**
-    Matching variants of the enum: variant index, ast::Variant,
-    fields: the field name is only non-`None` in the case of a struct
-    variant.
-    */
+    /// Matching variants of the enum: variant index, ast::Variant,
+    /// fields: the field name is only non-`None` in the case of a struct
+    /// variant.
     EnumMatching(uint, &'a ast::Variant, Vec<FieldInfo>),
 
-    /**
-    non-matching variants of the enum, but with all state hidden from
-    the consequent code.  The first component holds Idents for all of
-    the Self arguments; the second component is a slice of all of the
-    variants for the enum itself, and the third component is a list of
-    Idents bound to the variant index values for each of the actual
-    input Self arguments.
-    */
+    /// Non-matching variants of the enum, but with all state hidden from
+    /// the consequent code.  The first component holds `Ident`s for all of
+    /// the `Self` arguments; the second component is a slice of all of the
+    /// variants for the enum itself, and the third component is a list of
+    /// `Ident`s bound to the variant index values for each of the actual
+    /// input `Self` arguments.
     EnumNonMatchingCollapsed(Vec<Ident>, &'a [P<ast::Variant>], &'a [Ident]),
 
-    /// A static method where Self is a struct.
+    /// A static method where `Self` is a struct.
     StaticStruct(&'a ast::StructDef, StaticFields),
-    /// A static method where Self is an enum.
+    /// A static method where `Self` is an enum.
     StaticEnum(&'a ast::EnumDef, Vec<(Ident, Span, StaticFields)>),
 }
 
 
 
-/**
-Combine the values of all the fields together. The last argument is
-all the fields of all the structures, see above for details.
-*/
+/// Combine the values of all the fields together. The last argument is
+/// all the fields of all the structures.
 pub type CombineSubstructureFunc<'a> =
     |&mut ExtCtxt, Span, &Substructure|: 'a -> P<Expr>;
 
-/**
-Deal with non-matching enum variants.  The tuple is a list of
-identifiers (one for each Self argument, which could be any of the
-variants since they have been collapsed together) and the identifiers
-holding the variant index value for each of the Self arguments.  The
-last argument is all the non-Self args of the method being derived.
-*/
+/// Deal with non-matching enum variants.  The tuple is a list of
+/// identifiers (one for each `Self` argument, which could be any of the
+/// variants since they have been collapsed together) and the identifiers
+/// holding the variant index value for each of the `Self` arguments.  The
+/// last argument is all the non-`Self` args of the method being derived.
 pub type EnumNonMatchCollapsedFunc<'a> =
     |&mut ExtCtxt,
      Span,
@@ -373,18 +364,14 @@ impl<'a> TraitDef<'a> {
         }))
     }
 
-    /**
-     *
-     * Given that we are deriving a trait `Tr` for a type `T<'a, ...,
-     * 'z, A, ..., Z>`, creates an impl like:
-     *
-     * ```ignore
-     *      impl<'a, ..., 'z, A:Tr B1 B2, ..., Z: Tr B1 B2> Tr for T<A, ..., Z> { ... }
-     * ```
-     *
-     * where B1, B2, ... are the bounds given by `bounds_paths`.'
-     *
-     */
+    /// Given that we are deriving a trait `Tr` for a type `T<'a, ...,
+    /// 'z, A, ..., Z>`, creates an impl like:
+    ///
+    /// ```ignore
+    /// impl<'a, ..., 'z, A:Tr B1 B2, ..., Z: Tr B1 B2> Tr for T<A, ..., Z> { ... }
+    /// ```
+    ///
+    /// where B1, B2, ... are the bounds given by `bounds_paths`.'
     fn create_derived_impl(&self,
                            cx: &mut ExtCtxt,
                            type_ident: Ident,
@@ -693,27 +680,25 @@ impl<'a> MethodDef<'a> {
         })
     }
 
-    /**
-   ~~~
-    #[deriving(PartialEq)]
-    struct A { x: int, y: int }
-
-    // equivalent to:
-    impl PartialEq for A {
-        fn eq(&self, __arg_1: &A) -> bool {
-            match *self {
-                A {x: ref __self_0_0, y: ref __self_0_1} => {
-                    match *__arg_1 {
-                        A {x: ref __self_1_0, y: ref __self_1_1} => {
-                            __self_0_0.eq(__self_1_0) && __self_0_1.eq(__self_1_1)
-                        }
-                    }
-                }
-            }
-        }
-    }
-   ~~~
-    */
+    /// ```
+    /// #[deriving(PartialEq)]
+    /// struct A { x: int, y: int }
+    ///
+    /// // equivalent to:
+    /// impl PartialEq for A {
+    ///     fn eq(&self, __arg_1: &A) -> bool {
+    ///         match *self {
+    ///             A {x: ref __self_0_0, y: ref __self_0_1} => {
+    ///                 match *__arg_1 {
+    ///                     A {x: ref __self_1_0, y: ref __self_1_1} => {
+    ///                         __self_0_0.eq(__self_1_0) && __self_0_1.eq(__self_1_1)
+    ///                     }
+    ///                 }
+    ///             }
+    ///         }
+    ///     }
+    /// }
+    /// ```
     fn expand_struct_method_body(&self,
                                  cx: &mut ExtCtxt,
                                  trait_: &TraitDef,
@@ -798,37 +783,35 @@ impl<'a> MethodDef<'a> {
                                       &StaticStruct(struct_def, summary))
     }
 
-    /**
-   ~~~
-    #[deriving(PartialEq)]
-    enum A {
-        A1,
-        A2(int)
-    }
-
-    // is equivalent to
-
-    impl PartialEq for A {
-        fn eq(&self, __arg_1: &A) -> ::bool {
-            match (&*self, &*__arg_1) {
-                (&A1, &A1) => true,
-                (&A2(ref __self_0),
-                 &A2(ref __arg_1_0)) => (*__self_0).eq(&(*__arg_1_0)),
-                _ => {
-                    let __self_vi = match *self { A1(..) => 0u, A2(..) => 1u };
-                    let __arg_1_vi = match *__arg_1 { A1(..) => 0u, A2(..) => 1u };
-                    false
-                }
-            }
-        }
-    }
-   ~~~
-
-    (Of course `__self_vi` and `__arg_1_vi` are unused for
-     `PartialEq`, and those subcomputations will hopefully be removed
-     as their results are unused.  The point of `__self_vi` and
-     `__arg_1_vi` is for `PartialOrd`; see #15503.)
-    */
+    /// ```
+    /// #[deriving(PartialEq)]
+    /// enum A {
+    ///     A1,
+    ///     A2(int)
+    /// }
+    ///
+    /// // is equivalent to
+    ///
+    /// impl PartialEq for A {
+    ///     fn eq(&self, __arg_1: &A) -> ::bool {
+    ///         match (&*self, &*__arg_1) {
+    ///             (&A1, &A1) => true,
+    ///             (&A2(ref __self_0),
+    ///              &A2(ref __arg_1_0)) => (*__self_0).eq(&(*__arg_1_0)),
+    ///             _ => {
+    ///                 let __self_vi = match *self { A1(..) => 0u, A2(..) => 1u };
+    ///                 let __arg_1_vi = match *__arg_1 { A1(..) => 0u, A2(..) => 1u };
+    ///                 false
+    ///             }
+    ///         }
+    ///     }
+    /// }
+    /// ```
+    ///
+    /// (Of course `__self_vi` and `__arg_1_vi` are unused for
+    /// `PartialEq`, and those subcomputations will hopefully be removed
+    /// as their results are unused.  The point of `__self_vi` and
+    /// `__arg_1_vi` is for `PartialOrd`; see #15503.)
     fn expand_enum_method_body(&self,
                                cx: &mut ExtCtxt,
                                trait_: &TraitDef,
@@ -842,33 +825,31 @@ impl<'a> MethodDef<'a> {
     }
 
 
-    /**
-    Creates a match for a tuple of all `self_args`, where either all
-    variants match, or it falls into a catch-all for when one variant
-    does not match.
+    /// Creates a match for a tuple of all `self_args`, where either all
+    /// variants match, or it falls into a catch-all for when one variant
+    /// does not match.
 
-    There are N + 1 cases because is a case for each of the N
-    variants where all of the variants match, and one catch-all for
-    when one does not match.
+    /// There are N + 1 cases because is a case for each of the N
+    /// variants where all of the variants match, and one catch-all for
+    /// when one does not match.
 
-    The catch-all handler is provided access the variant index values
-    for each of the self-args, carried in precomputed variables. (Nota
-    bene: the variant index values are not necessarily the
-    discriminant values.  See issue #15523.)
+    /// The catch-all handler is provided access the variant index values
+    /// for each of the self-args, carried in precomputed variables. (Nota
+    /// bene: the variant index values are not necessarily the
+    /// discriminant values.  See issue #15523.)
 
-    ~~~text
-    match (this, that, ...) {
-      (Variant1, Variant1, Variant1) => ... // delegate Matching on Variant1
-      (Variant2, Variant2, Variant2) => ... // delegate Matching on Variant2
-      ...
-      _ => {
-        let __this_vi = match this { Variant1 => 0u, Variant2 => 1u, ... };
-        let __that_vi = match that { Variant1 => 0u, Variant2 => 1u, ... };
-        ... // catch-all remainder can inspect above variant index values.
-      }
-    }
-    ~~~
-    */
+    /// ```{.text}
+    /// match (this, that, ...) {
+    ///   (Variant1, Variant1, Variant1) => ... // delegate Matching on Variant1
+    ///   (Variant2, Variant2, Variant2) => ... // delegate Matching on Variant2
+    ///   ...
+    ///   _ => {
+    ///     let __this_vi = match this { Variant1 => 0u, Variant2 => 1u, ... };
+    ///     let __that_vi = match that { Variant1 => 0u, Variant2 => 1u, ... };
+    ///     ... // catch-all remainder can inspect above variant index values.
+    ///   }
+    /// }
+    /// ```
     fn build_enum_match_tuple(
         &self,
         cx: &mut ExtCtxt,
@@ -1319,10 +1300,8 @@ impl<'a> TraitDef<'a> {
 
 /* helpful premade recipes */
 
-/**
-Fold the fields. `use_foldl` controls whether this is done
-left-to-right (`true`) or right-to-left (`false`).
-*/
+/// Fold the fields. `use_foldl` controls whether this is done
+/// left-to-right (`true`) or right-to-left (`false`).
 pub fn cs_fold(use_foldl: bool,
                f: |&mut ExtCtxt, Span, P<Expr>, P<Expr>, &[P<Expr>]| -> P<Expr>,
                base: P<Expr>,
@@ -1361,15 +1340,13 @@ pub fn cs_fold(use_foldl: bool,
 }
 
 
-/**
-Call the method that is being derived on all the fields, and then
-process the collected results. i.e.
-
-~~~
-f(cx, span, ~[self_1.method(__arg_1_1, __arg_2_1),
-              self_2.method(__arg_1_2, __arg_2_2)])
-~~~
-*/
+/// Call the method that is being derived on all the fields, and then
+/// process the collected results. i.e.
+///
+/// ```
+/// f(cx, span, ~[self_1.method(__arg_1_1, __arg_2_1),
+///              self_2.method(__arg_1_2, __arg_2_2)])
+/// ```
 #[inline]
 pub fn cs_same_method(f: |&mut ExtCtxt, Span, Vec<P<Expr>>| -> P<Expr>,
                       enum_nonmatch_f: EnumNonMatchCollapsedFunc,
@@ -1400,11 +1377,9 @@ pub fn cs_same_method(f: |&mut ExtCtxt, Span, Vec<P<Expr>>| -> P<Expr>,
     }
 }
 
-/**
-Fold together the results of calling the derived method on all the
-fields. `use_foldl` controls whether this is done left-to-right
-(`true`) or right-to-left (`false`).
-*/
+/// Fold together the results of calling the derived method on all the
+/// fields. `use_foldl` controls whether this is done left-to-right
+/// (`true`) or right-to-left (`false`).
 #[inline]
 pub fn cs_same_method_fold(use_foldl: bool,
                            f: |&mut ExtCtxt, Span, P<Expr>, P<Expr>| -> P<Expr>,
@@ -1430,10 +1405,8 @@ pub fn cs_same_method_fold(use_foldl: bool,
         cx, trait_span, substructure)
 }
 
-/**
-Use a given binop to combine the result of calling the derived method
-on all the fields.
-*/
+/// Use a given binop to combine the result of calling the derived method
+/// on all the fields.
 #[inline]
 pub fn cs_binop(binop: ast::BinOp, base: P<Expr>,
                 enum_nonmatch_f: EnumNonMatchCollapsedFunc,

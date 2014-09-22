@@ -192,7 +192,7 @@ macro_rules! debug_assert_eq(
 ///
 /// # Example
 ///
-/// ~~~rust
+/// ```{.rust}
 /// struct Item { weight: uint }
 ///
 /// fn choose_weighted_item(v: &[Item]) -> Item {
@@ -208,7 +208,7 @@ macro_rules! debug_assert_eq(
 ///     // type checker that it isn't possible to get down here
 ///     unreachable!();
 /// }
-/// ~~~
+/// ```
 #[macro_export]
 macro_rules! unreachable(
     () => (fail!("internal error: entered unreachable code"))
