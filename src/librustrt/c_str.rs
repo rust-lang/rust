@@ -326,6 +326,9 @@ pub trait ToCStr {
     /// Fails the task if the receiver has an interior null.
     fn to_c_str(&self) -> CString;
 
+    /// Variant of to_c_str that returns None if the receiver has an interior null.
+    fn to_c_str_opt(&self) -> Option<CString>;
+
     /// Unsafe variant of `to_c_str()` that doesn't check for nulls.
     unsafe fn to_c_str_unchecked(&self) -> CString;
 
@@ -353,6 +356,12 @@ pub trait ToCStr {
         f(c_str.as_ptr())
     }
 
+    /// Variant of with_c_str that returns None if the receiver has an interior null.
+    #[inline]
+    fn with_c_str_opt<T>(&self, f: |*const libc::c_char| -> T) -> Option<T> {
+        self.to_c_str_opt().map( |c_str| f(c_str.as_ptr()) )
+    }
+
     /// Unsafe variant of `with_c_str()` that doesn't check for nulls.
     #[inline]
     unsafe fn with_c_str_unchecked<T>(&self, f: |*const libc::c_char| -> T) -> T {
@@ -376,6 +385,11 @@ impl<'a> ToCStr for &'a str {
     }
 
     #[inline]
+    fn to_c_str_opt(&self) -> Option<CString> {
+        self.as_bytes().to_c_str_opt()
+    }
+
+    #[inline]
     unsafe fn to_c_str_unchecked(&self) -> CString {
         self.as_bytes().to_c_str_unchecked()
     }
@@ -383,6 +397,11 @@ impl<'a> ToCStr for &'a str {
     #[inline]
     fn with_c_str<T>(&self, f: |*const libc::c_char| -> T) -> T {
         self.as_bytes().with_c_str(f)
+    }
+
+     #[inline]
+    fn with_c_str_opt<T>(&self, f: |*const libc::c_char| -> T) -> Option<T> {
+        self.as_bytes().with_c_str_opt(f)
     }
 
     #[inline]
@@ -397,6 +416,11 @@ impl ToCStr for String {
         self.as_bytes().to_c_str()
     }
 
+     #[inline]
+    fn to_c_str_opt(&self) -> Option<CString> {
+        self.as_bytes().to_c_str_opt()
+    }
+
     #[inline]
     unsafe fn to_c_str_unchecked(&self) -> CString {
         self.as_bytes().to_c_str_unchecked()
@@ -405,6 +429,11 @@ impl ToCStr for String {
     #[inline]
     fn with_c_str<T>(&self, f: |*const libc::c_char| -> T) -> T {
         self.as_bytes().with_c_str(f)
+    }
+
+     #[inline]
+    fn with_c_str_opt<T>(&self, f: |*const libc::c_char| -> T) -> Option<T> {
+        self.as_bytes().with_c_str_opt(f)
     }
 
     #[inline]
@@ -418,9 +447,19 @@ static BUF_LEN: uint = 128;
 
 impl<'a> ToCStr for &'a [u8] {
     fn to_c_str(&self) -> CString {
+        match self.to_c_str_opt() {
+            Some(c) => c,
+            None=> fail!( "{} contains an internal NULL byte", self)
+        }
+    }
+
+    fn to_c_str_opt(&self) -> Option<CString> {
         let mut cs = unsafe { self.to_c_str_unchecked() };
-        check_for_null(*self, cs.as_mut_ptr());
-        cs
+        if check_for_null(*self, cs.as_mut_ptr()) {
+            None
+        } else {
+            Some(cs)
+        }
     }
 
     unsafe fn to_c_str_unchecked(&self) -> CString {
@@ -434,45 +473,61 @@ impl<'a> ToCStr for &'a [u8] {
     }
 
     fn with_c_str<T>(&self, f: |*const libc::c_char| -> T) -> T {
-        unsafe { with_c_str(*self, true, f) }
+        unsafe {
+            match with_c_str(*self, true, f) {
+                Some(l) => l,
+                None => fail!("{} contains an internal NULL byte.\n", self)
+            }
+        }
+    }
+
+    fn with_c_str_opt<T>(&self, f: |*const libc::c_char| -> T) -> Option<T> {
+        unsafe {
+            with_c_str(*self, true, f )
+        }
     }
 
     unsafe fn with_c_str_unchecked<T>(&self, f: |*const libc::c_char| -> T) -> T {
-        with_c_str(*self, false, f)
+        with_c_str(*self, false, f).unwrap() //with_c_str never returns none if checked is false
     }
 }
 
 // Unsafe function that handles possibly copying the &[u8] into a stack array.
+// Returns None if checked is true and and v contains a null byte, and Some(T) otherwise.
 unsafe fn with_c_str<T>(v: &[u8], checked: bool,
-                        f: |*const libc::c_char| -> T) -> T {
-    let c_str = if v.len() < BUF_LEN {
+                        f: |*const libc::c_char| -> T) -> Option<T> {
+    if v.len() < BUF_LEN {
         let mut buf: [u8, .. BUF_LEN] = mem::uninitialized();
         slice::bytes::copy_memory(buf, v);
         buf[v.len()] = 0;
 
         let buf = buf.as_mut_ptr();
-        if checked {
-            check_for_null(v, buf as *mut libc::c_char);
+        if checked && check_for_null(v, buf as *mut libc::c_char) {
+            None
+        } else {
+            Some(f(buf as *const libc::c_char))
         }
-
-        return f(buf as *const libc::c_char)
-    } else if checked {
-        v.to_c_str()
     } else {
-        v.to_c_str_unchecked()
-    };
-
-    f(c_str.as_ptr())
+        let c_str_opt = if checked {
+            v.to_c_str_opt()
+        } else {
+            Some(v.to_c_str_unchecked())
+        };
+        c_str_opt.map( |c_str| f(c_str.as_ptr()))
+    }
 }
 
 #[inline]
-fn check_for_null(v: &[u8], buf: *mut libc::c_char) {
+fn check_for_null(v: &[u8], buf: *mut libc::c_char) -> bool {
     for i in range(0, v.len()) {
         unsafe {
             let p = buf.offset(i as int);
-            assert!(*p != 0);
+            if *p == 0 {
+                return true
+            }
         }
     }
+    false
 }
 
 /// External iterator for a CString's bytes.
