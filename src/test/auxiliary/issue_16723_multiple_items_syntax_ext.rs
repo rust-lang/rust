@@ -7,8 +7,10 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
-//
+
 // ignore-stage1
+// force-host
+
 #![feature(plugin_registrar, managed_boxes, quote)]
 #![crate_type = "dylib"]
 
