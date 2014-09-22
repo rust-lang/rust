@@ -146,7 +146,6 @@ register_diagnostics!(
     E0139,
     E0140,
     E0141,
-    E0144,
     E0152,
     E0153,
     E0154,
