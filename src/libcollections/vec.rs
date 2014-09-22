@@ -960,6 +960,7 @@ impl<T> Vec<T> {
     /// # Example
     ///
     /// ```
+    /// #![allow(deprecated)]
     /// let vec = vec![1i, 2, 3, 4];
     /// assert!(vec.tailn(2) == [3, 4]);
     /// ```
@@ -1065,6 +1066,7 @@ impl<T> Vec<T> {
     /// # Example
     ///
     /// ```
+    /// #![allow(deprecated)]
     /// let mut vec = vec![1i, 2, 3];
     /// assert!(vec.shift() == Some(1));
     /// assert_eq!(vec, vec![2, 3]);

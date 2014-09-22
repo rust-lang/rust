@@ -1142,7 +1142,7 @@ mod tests {
           Ok(ref m) => {
             // The next variable after the flag is just a free argument
 
-            assert!(*m.free.get(0) == "20".to_string());
+            assert!(m.free[0] == "20".to_string());
           }
           _ => fail!()
         }
@@ -1298,8 +1298,8 @@ mod tests {
               assert!(m.opt_present("t"));
               assert_eq!(m.opt_str("t").unwrap(), "20".to_string());
               let pair = m.opt_strs("test");
-              assert!(*pair.get(0) == "20".to_string());
-              assert!(*pair.get(1) == "30".to_string());
+              assert!(pair[0] == "20".to_string());
+              assert!(pair[1] == "30".to_string());
           }
           _ => fail!()
         }
@@ -1351,19 +1351,19 @@ mod tests {
         let rs = getopts(args.as_slice(), opts.as_slice());
         match rs {
           Ok(ref m) => {
-            assert!(*m.free.get(0) == "prog".to_string());
-            assert!(*m.free.get(1) == "free1".to_string());
+            assert!(m.free[0] == "prog".to_string());
+            assert!(m.free[1] == "free1".to_string());
             assert_eq!(m.opt_str("s").unwrap(), "20".to_string());
-            assert!(*m.free.get(2) == "free2".to_string());
+            assert!(m.free[2] == "free2".to_string());
             assert!((m.opt_present("flag")));
             assert_eq!(m.opt_str("long").unwrap(), "30".to_string());
             assert!((m.opt_present("f")));
             let pair = m.opt_strs("m");
-            assert!(*pair.get(0) == "40".to_string());
-            assert!(*pair.get(1) == "50".to_string());
+            assert!(pair[0] == "40".to_string());
+            assert!(pair[1] == "50".to_string());
             let pair = m.opt_strs("n");
-            assert!(*pair.get(0) == "-A B".to_string());
-            assert!(*pair.get(1) == "-60 70".to_string());
+            assert!(pair[0] == "-A B".to_string());
+            assert!(pair[1] == "-60 70".to_string());
             assert!((!m.opt_present("notpresent")));
           }
           _ => fail!()

@@ -18,6 +18,7 @@ pub trait Integer: Num + PartialOrd
     /// # Examples
     ///
     /// ```
+    /// # #![allow(deprecated)]
     /// # use num::Integer;
     /// assert!(( 8i).div_floor(& 3) ==  2);
     /// assert!(( 8i).div_floor(&-3) == -3);
@@ -34,6 +35,7 @@ pub trait Integer: Num + PartialOrd
     /// Floored integer modulo, satisfying:
     ///
     /// ```
+    /// # #![allow(deprecated)]
     /// # use num::Integer;
     /// # let n = 1i; let d = 1i;
     /// assert!(n.div_floor(&d) * d + n.mod_floor(&d) == n)
@@ -42,6 +44,7 @@ pub trait Integer: Num + PartialOrd
     /// # Examples
     ///
     /// ```
+    /// # #![allow(deprecated)]
     /// # use num::Integer;
     /// assert!(( 8i).mod_floor(& 3) ==  2);
     /// assert!(( 8i).mod_floor(&-3) == -1);
@@ -60,6 +63,7 @@ pub trait Integer: Num + PartialOrd
     /// # Examples
     ///
     /// ```
+    /// # #![allow(deprecated)]
     /// # use num::Integer;
     /// assert_eq!(6i.gcd(&8), 2);
     /// assert_eq!(7i.gcd(&3), 1);
@@ -71,6 +75,7 @@ pub trait Integer: Num + PartialOrd
     /// # Examples
     ///
     /// ```
+    /// # #![allow(deprecated)]
     /// # use num::Integer;
     /// assert_eq!(7i.lcm(&3), 21);
     /// assert_eq!(2i.lcm(&4), 4);
@@ -86,6 +91,7 @@ pub trait Integer: Num + PartialOrd
     /// # Examples
     ///
     /// ```
+    /// # #![allow(deprecated)]
     /// # use num::Integer;
     /// assert_eq!(9i.is_multiple_of(&3), true);
     /// assert_eq!(3i.is_multiple_of(&9), false);
@@ -97,6 +103,7 @@ pub trait Integer: Num + PartialOrd
     /// # Examples
     ///
     /// ```
+    /// # #![allow(deprecated)]
     /// # use num::Integer;
     /// assert_eq!(3i.is_even(), false);
     /// assert_eq!(4i.is_even(), true);
@@ -108,6 +115,7 @@ pub trait Integer: Num + PartialOrd
     /// # Examples
     ///
     /// ```
+    /// # #![allow(deprecated)]
     /// # use num::Integer;
     /// assert_eq!(3i.is_odd(), true);
     /// assert_eq!(4i.is_odd(), false);
@@ -120,6 +128,7 @@ pub trait Integer: Num + PartialOrd
     /// # Examples
     ///
     /// ```
+    /// # #![allow(deprecated)]
     /// # use num::Integer;
     /// assert_eq!(( 8i).div_rem( &3), ( 2,  2));
     /// assert_eq!(( 8i).div_rem(&-3), (-2,  2));
@@ -142,6 +151,7 @@ pub trait Integer: Num + PartialOrd
     /// # Examples
     ///
     /// ```
+    /// # #![allow(deprecated)]
     /// # use num::Integer;
     /// assert_eq!(( 8i).div_mod_floor( &3), ( 2,  2));
     /// assert_eq!(( 8i).div_mod_floor(&-3), (-3, -1));

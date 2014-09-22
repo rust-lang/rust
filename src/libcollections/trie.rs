@@ -434,7 +434,7 @@ impl<T> TrieMap<T> {
     fn bound_mut<'a>(&'a mut self, key: uint, upper: bool) -> MutEntries<'a, T> {
         bound!(MutEntries, self = self,
                key = key, is_upper = upper,
-               slice_from = mut_slice_from, iter = mut_iter,
+               slice_from = slice_from_mut, iter = iter_mut,
                mutability = mut)
     }
 
@@ -1020,7 +1020,7 @@ macro_rules! iterator_impl {
 }
 
 iterator_impl! { Entries, iter = iter, mutability = }
-iterator_impl! { MutEntries, iter = mut_iter, mutability = mut }
+iterator_impl! { MutEntries, iter = iter_mut, mutability = mut }
 
 /// A forward iterator over a set.
 pub struct SetItems<'a> {

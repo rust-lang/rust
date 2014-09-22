@@ -348,11 +348,11 @@ impl<V:Clone> SmallIntMap<V> {
     /// let mut map = SmallIntMap::new();
     ///
     /// // Key does not exist, will do a simple insert
-    /// assert!(map.update(1, vec![1i, 2], |old, new| old.append(new.as_slice())));
+    /// assert!(map.update(1, vec![1i, 2], |mut old, new| { old.extend(new.into_iter()); old }));
     /// assert_eq!(map[1], vec![1i, 2]);
     ///
     /// // Key exists, update the value
-    /// assert!(!map.update(1, vec![3i, 4], |old, new| old.append(new.as_slice())));
+    /// assert!(!map.update(1, vec![3i, 4], |mut old, new| { old.extend(new.into_iter()); old }));
     /// assert_eq!(map[1], vec![1i, 2, 3, 4]);
     /// ```
     pub fn update(&mut self, key: uint, newval: V, ff: |V, V| -> V) -> bool {
@@ -452,7 +452,7 @@ impl<V> Index<uint, V> for SmallIntMap<V> {
 }*/
 
 macro_rules! iterator {
-    (impl $name:ident -> $elem:ty, $getter:ident) => {
+    (impl $name:ident -> $elem:ty, $($getter:ident),+) => {
         impl<'a, T> Iterator<$elem> for $name<'a, T> {
             #[inline]
             fn next(&mut self) -> Option<$elem> {
@@ -462,7 +462,7 @@ macro_rules! iterator {
                             if elem.is_some() {
                                 let index = self.front;
                                 self.front += 1;
-                                return Some((index, elem. $getter ()));
+                                return Some((index, elem $(. $getter ())+));
                             }
                         }
                         _ => ()
@@ -481,7 +481,7 @@ macro_rules! iterator {
 }
 
 macro_rules! double_ended_iterator {
-    (impl $name:ident -> $elem:ty, $getter:ident) => {
+    (impl $name:ident -> $elem:ty, $($getter:ident),+) => {
         impl<'a, T> DoubleEndedIterator<$elem> for $name<'a, T> {
             #[inline]
             fn next_back(&mut self) -> Option<$elem> {
@@ -490,7 +490,7 @@ macro_rules! double_ended_iterator {
                         Some(elem) => {
                             if elem.is_some() {
                                 self.back -= 1;
-                                return Some((self.back, elem. $getter ()));
+                                return Some((self.back, elem$(. $getter ())+));
                             }
                         }
                         _ => ()
@@ -510,8 +510,8 @@ pub struct Entries<'a, T:'a> {
     iter: slice::Items<'a, Option<T>>
 }
 
-iterator!(impl Entries -> (uint, &'a T), get_ref)
-double_ended_iterator!(impl Entries -> (uint, &'a T), get_ref)
+iterator!(impl Entries -> (uint, &'a T), as_ref, unwrap)
+double_ended_iterator!(impl Entries -> (uint, &'a T), as_ref, unwrap)
 
 /// Forward iterator over the key-value pairs of a map, with the
 /// values being mutable.
@@ -521,8 +521,8 @@ pub struct MutEntries<'a, T:'a> {
     iter: slice::MutItems<'a, Option<T>>
 }
 
-iterator!(impl MutEntries -> (uint, &'a mut T), get_mut_ref)
-double_ended_iterator!(impl MutEntries -> (uint, &'a mut T), get_mut_ref)
+iterator!(impl MutEntries -> (uint, &'a mut T), as_mut, unwrap)
+double_ended_iterator!(impl MutEntries -> (uint, &'a mut T), as_mut, unwrap)
 
 /// Forward iterator over the keys of a map
 pub type Keys<'a, T> =
