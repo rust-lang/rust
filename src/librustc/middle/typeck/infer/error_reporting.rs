@@ -1560,7 +1560,7 @@ impl<'a, 'tcx> ErrorReportingHelpers for InferCtxt<'a, 'tcx> {
                     "...so that it can be closed over into an object");
             }
             infer::RelateProcBound(span, var_node_id, _ty) => {
-                self.tcx.sess.span_err(
+                self.tcx.sess.span_note(
                     span,
                     format!(
                         "...so that the variable `{}` can be captured \

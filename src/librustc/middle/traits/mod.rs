@@ -77,11 +77,11 @@ pub enum ObligationCauseCode {
     StructInitializerSized,    // S { ... } must be Sized
     VariableType(ast::NodeId), // Type of each variable must be Sized
     RepeatVec,                 // [T,..n] --> T must be Copy
-}
 
-pub static DUMMY_CAUSE: ObligationCause =
-    ObligationCause { span: DUMMY_SP,
-                      code: MiscObligation };
+    // Captures of variable the given id by a closure (span is the
+    // span of the closure)
+    ClosureCapture(ast::NodeId, Span)
+}
 
 pub type Obligations = subst::VecPerParamSpace<Obligation>;
 
@@ -357,6 +357,10 @@ impl ObligationCause {
 
     pub fn misc(span: Span) -> ObligationCause {
         ObligationCause { span: span, code: MiscObligation }
+    }
+
+    pub fn dummy() -> ObligationCause {
+        ObligationCause { span: DUMMY_SP, code: MiscObligation }
     }
 }
 

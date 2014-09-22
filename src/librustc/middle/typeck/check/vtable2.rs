@@ -398,5 +398,13 @@ fn note_obligation_cause(fcx: &FnCtxt,
                        "use \"#[unsafe_destructor]\" on the implementation \
                        to force the compiler to allow this");
         }
+        traits::ClosureCapture(var_id, closure_span) => {
+            let name = ty::local_var_name_str(tcx, var_id);
+            span_note!(tcx.sess, closure_span,
+                       "the closure that captures `{}` requires that all captured variables \"
+                       implement the trait `{}`",
+                       name,
+                       trait_name);
+        }
     }
 }

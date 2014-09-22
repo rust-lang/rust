@@ -30,11 +30,6 @@ pub struct Context<'a,'tcx:'a> {
 }
 
 impl<'a, 'tcx, 'v> Visitor<'v> for Context<'a, 'tcx> {
-    fn visit_fn(&mut self, fk: visit::FnKind, fd: &'v FnDecl,
-                b: &'v Block, s: Span, n: NodeId) {
-        check_fn(self, fk, fd, b, s, n);
-    }
-
     fn visit_ty(&mut self, t: &Ty) {
         check_ty(self, t);
     }
@@ -46,110 +41,6 @@ pub fn check_crate(tcx: &ty::ctxt) {
     };
     visit::walk_crate(&mut ctx, tcx.map.krate());
     tcx.sess.abort_if_errors();
-}
-
-// Yields the appropriate function to check the kind of closed over
-// variables. `id` is the NodeId for some expression that creates the
-// closure.
-fn with_appropriate_checker(cx: &Context,
-                            id: NodeId,
-                            fn_span: Span,
-                            b: |checker: |&Context, &ty::Freevar||) {
-    fn check_for_uniq(cx: &Context,
-                      fn_span: Span,
-                      fv: &ty::Freevar,
-                      bounds: ty::BuiltinBounds) {
-        // all captured data must be owned, regardless of whether it is
-        // moved in or copied in.
-        let id = fv.def.def_id().node;
-        let var_t = ty::node_id_to_type(cx.tcx, id);
-
-        check_freevar_bounds(cx, fn_span, fv.span, var_t, bounds, None);
-    }
-
-    fn check_for_block(cx: &Context,
-                       fn_span: Span,
-                       fn_id: NodeId,
-                       fv: &ty::Freevar,
-                       bounds: ty::BuiltinBounds) {
-        let id = fv.def.def_id().node;
-        let var_t = ty::node_id_to_type(cx.tcx, id);
-        let upvar_id = ty::UpvarId { var_id: id, closure_expr_id: fn_id };
-        let upvar_borrow = cx.tcx.upvar_borrow(upvar_id);
-        let implicit_borrowed_type =
-            ty::mk_rptr(cx.tcx,
-                        upvar_borrow.region,
-                        ty::mt { mutbl: upvar_borrow.kind.to_mutbl_lossy(),
-                                 ty: var_t });
-        check_freevar_bounds(cx, fn_span, fv.span, implicit_borrowed_type,
-                             bounds, Some(var_t));
-    }
-
-    fn check_for_bare(cx: &Context, fv: &ty::Freevar) {
-        span_err!(cx.tcx.sess, fv.span, E0143,
-                  "can't capture dynamic environment in a fn item; \
-                   use the || {} closure form instead", "{ ... }");
-    } // same check is done in resolve.rs, but shouldn't be done
-
-    let fty = ty::node_id_to_type(cx.tcx, id);
-    match ty::get(fty).sty {
-        ty::ty_closure(box ty::ClosureTy {
-            store: ty::UniqTraitStore,
-            bounds: bounds,
-            ..
-        }) => {
-            b(|cx, fv| check_for_uniq(cx, fn_span, fv,
-                                      bounds.builtin_bounds))
-        }
-
-        ty::ty_closure(box ty::ClosureTy {
-            store: ty::RegionTraitStore(..), bounds, ..
-        }) => {
-            b(|cx, fv| check_for_block(cx, fn_span, id, fv,
-                                       bounds.builtin_bounds))
-        }
-
-        ty::ty_bare_fn(_) => {
-            b(check_for_bare)
-        }
-
-        ty::ty_unboxed_closure(..) => {}
-
-        ref s => {
-            cx.tcx.sess.bug(format!("expect fn type in kind checker, not \
-                                     {:?}",
-                                    s).as_slice());
-        }
-    }
-}
-
-// Check that the free variables used in a shared/sendable closure conform
-// to the copy/move kind bounds. Then recursively check the function body.
-fn check_fn(
-    cx: &mut Context,
-    fk: visit::FnKind,
-    decl: &FnDecl,
-    body: &Block,
-    sp: Span,
-    fn_id: NodeId) {
-
-    // <Check kinds on free variables:
-    with_appropriate_checker(cx, fn_id, sp, |chk| {
-        ty::with_freevars(cx.tcx, fn_id, |freevars| {
-            for fv in freevars.iter() {
-                chk(cx, fv);
-            }
-        });
-    });
-
-    match fk {
-        visit::FkFnBlock(..) => {
-            visit::walk_fn(cx, fk, decl, body, sp)
-        }
-        visit::FkItemFn(..) | visit::FkMethod(..) => {
-            visit::walk_fn(cx, fk, decl, body, sp);
-        }
-    }
 }
 
 fn check_ty(cx: &mut Context, aty: &Ty) {
@@ -205,32 +96,6 @@ pub fn check_typaram_bounds(cx: &Context,
                    `{}`, which does not fulfill `{}`",
                    ty_to_string(cx.tcx, ty),
                    missing.user_string(cx.tcx));
-    });
-}
-
-pub fn check_freevar_bounds(cx: &Context, fn_span: Span, sp: Span, ty: ty::t,
-                            bounds: ty::BuiltinBounds, referenced_ty: Option<ty::t>)
-{
-    check_builtin_bounds(cx, ty, bounds, |missing| {
-        // Will be Some if the freevar is implicitly borrowed (stack closure).
-        // Emit a less mysterious error message in this case.
-        match referenced_ty {
-            Some(rty) => {
-                span_err!(cx.tcx.sess, sp, E0145,
-                    "cannot implicitly borrow variable of type `{}` in a \
-                     bounded stack closure (implicit reference does not fulfill `{}`)",
-                    ty_to_string(cx.tcx, rty), missing.user_string(cx.tcx));
-            }
-            None => {
-                span_err!(cx.tcx.sess, sp, E0146,
-                    "cannot capture variable of type `{}`, which does \
-                     not fulfill `{}`, in a bounded closure",
-                    ty_to_string(cx.tcx, ty), missing.user_string(cx.tcx));
-            }
-        }
-        span_note!(cx.tcx.sess, fn_span,
-            "this closure's environment must satisfy `{}`",
-            bounds.user_string(cx.tcx));
     });
 }
 
