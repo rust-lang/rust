@@ -131,7 +131,7 @@ pub trait MutableMap<K, V>: Map<K, V> + Mutable {
     /// let mut map = HashMap::new();
     /// assert_eq!(map.insert("key", 2i), true);
     /// assert_eq!(map.insert("key", 9i), false);
-    /// assert_eq!(map.get(&"key"), &9i);
+    /// assert_eq!(map["key"], 9i);
     /// ```
     #[inline]
     fn insert(&mut self, key: K, value: V) -> bool {
@@ -171,7 +171,7 @@ pub trait MutableMap<K, V>: Map<K, V> + Mutable {
     ///
     /// map.insert("a", 1i);
     /// assert_eq!(map.swap("a", 37i), Some(1i));
-    /// assert_eq!(map.get(&"a"), &37i);
+    /// assert_eq!(map["a"], 37i);
     /// ```
     fn swap(&mut self, k: K, v: V) -> Option<V>;
 
@@ -203,7 +203,7 @@ pub trait MutableMap<K, V>: Map<K, V> + Mutable {
     ///     Some(x) => *x = 7i,
     ///     None => (),
     /// }
-    /// assert_eq!(map.get(&"a"), &7i);
+    /// assert_eq!(map["a"], 7i);
     /// ```
     fn find_mut<'a>(&'a mut self, key: &K) -> Option<&'a mut V>;
 }
