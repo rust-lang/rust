@@ -19,7 +19,7 @@ Part of the planned, in progress DST work is to allow trait objects where a
 trait is expected. Example:
 
 ```
-fn foo<T: SomeTrait>(y: &T) { ... }
+fn foo<Sized? T: SomeTrait>(y: &T) { ... }
 
 fn bar(x: &SomeTrait) {
     foo(x)
@@ -45,7 +45,7 @@ trait SomeTrait {
     fn foo(&self, other: &Self) { ... } // assume self and other have the same concrete type
 }
 
-fn bar<T: SomeTrait>(x: &T, y: &T) {
+fn bar<Sized? T: SomeTrait>(x: &T, y: &T) {
     x.foo(y); // x and y may have different concrete types, pre-DST we could
         // assume that x and y had the same concrete types.
 }
@@ -77,7 +77,8 @@ To be precise about object-safety, an object-safe method:
 * must not have any type parameters,
 * must not take `self` by value,
 * must not use `Self` (in the future, where we allow arbitrary types for the
-  receiver, `Self` may only be used for the type of the receiver).
+  receiver, `Self` may only be used for the type of the receiver and only where
+  we allow `Sized?` types).
 
 A trait is object-safe if all of its methods are object-safe.
 
@@ -135,6 +136,14 @@ is called with a trait object, we would check that all methods are object-safe
 as part of the check that the actual type parameter satisfies the formal bounds.
 We could probably give a different error message if the bounds are met, but the
 trait is not object-safe.
+
+Rather than the restriction on taking `self` by value, we could require a trait
+is `for Sized?` in order to be object safe. The purpose of forbidding self by
+value is to enforce that we always have statically known size and that we have a
+vtable for dynamic dispatch. If the programmer were going to manually provide
+`impl`s for each trait, we would require the `Sized?` bound on the trait to
+ensure that `self` was not dereferenced. However, with the compiler-driven
+approach, this is not necessary.
 
 # Unresolved questions
 
