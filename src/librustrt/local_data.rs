@@ -423,7 +423,7 @@ mod tests {
             // TLD shouldn't carry over.
             assert!(my_key.get().is_none());
             my_key.replace(Some("child data".to_string()));
-            assert!(my_key.get().get_ref().as_slice() == "child data");
+            assert!(my_key.get().as_ref().unwrap().as_slice() == "child data");
             // should be cleaned up for us
         });
 
