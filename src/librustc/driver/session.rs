@@ -69,6 +69,9 @@ impl Session {
     pub fn span_err_with_code(&self, sp: Span, msg: &str, code: &str) {
         self.diagnostic().span_err_with_code(sp, msg, code)
     }
+    pub fn span_end_err(&self, sp: Span, msg: &str) {
+        self.diagnostic().span_end_err(sp, msg)
+    }
     pub fn err(&self, msg: &str) {
         self.diagnostic().handler().err(msg)
     }

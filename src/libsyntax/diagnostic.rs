@@ -93,6 +93,10 @@ impl SpanHandler {
         self.handler.emit_with_code(Some((&self.cm, sp)), msg, code, Error);
         self.handler.bump_err_count();
     }
+    pub fn span_end_err(&self, sp: Span, msg: &str) {
+        self.handler.custom_emit(&self.cm, FullSpan(sp), msg, Error);
+        self.handler.bump_err_count();
+    }
     pub fn span_warn(&self, sp: Span, msg: &str) {
         self.handler.emit(Some((&self.cm, sp)), msg, Warning);
     }
