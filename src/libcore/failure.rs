@@ -41,7 +41,7 @@ fn fail_(expr_file_line: &(&'static str, &'static str, uint)) -> ! {
     let (expr, file, line) = *expr_file_line;
     let ref file_line = (file, line);
     format_args!(|args| -> () {
-        fail_impl(args, file_line);
+        fail_fmt(args, file_line);
     }, "{}", expr);
 
     unsafe { intrinsics::abort() }
@@ -54,7 +54,7 @@ fn fail(expr_file_line: &(&'static str, &'static str, uint)) -> ! {
     let (expr, file, line) = *expr_file_line;
     let ref file_line = (file, line);
     format_args!(|args| -> () {
-        fail_impl(args, file_line);
+        fail_fmt(args, file_line);
     }, "{}", expr);
 
     unsafe { intrinsics::abort() }
@@ -65,18 +65,18 @@ fn fail(expr_file_line: &(&'static str, &'static str, uint)) -> ! {
 fn fail_bounds_check(file_line: &(&'static str, uint),
                      index: uint, len: uint) -> ! {
     format_args!(|args| -> () {
-        fail_impl(args, file_line);
+        fail_fmt(args, file_line);
     }, "index out of bounds: the len is {} but the index is {}", len, index);
     unsafe { intrinsics::abort() }
 }
 
 #[cold] #[inline(never)]
-pub fn fail_impl_string(msg: &str, file: &(&'static str, uint)) -> ! {
-    format_args!(|fmt| fail_impl(fmt, file), "{}", msg)
+pub fn fail_str(msg: &str, file: &(&'static str, uint)) -> ! {
+    format_args!(|fmt| fail_fmt(fmt, file), "{}", msg)
 }
 
 #[cold] #[inline(never)]
-pub fn fail_impl(fmt: &fmt::Arguments, file_line: &(&'static str, uint)) -> ! {
+pub fn fail_fmt(fmt: &fmt::Arguments, file_line: &(&'static str, uint)) -> ! {
     #[allow(ctypes)]
     extern {
 
