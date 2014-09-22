@@ -42,6 +42,7 @@ fn test_ordering_order() {
 }
 
 #[test]
+#[allow(deprecated)]
 fn test_lexical_ordering() {
     fn t(o1: Ordering, o2: Ordering, e: Ordering) {
         assert_eq!(lexical_ordering(o1, o2), e);

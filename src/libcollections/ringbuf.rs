@@ -542,6 +542,7 @@ mod tests {
     use vec::Vec;
 
     #[test]
+    #[allow(deprecated)]
     fn test_simple() {
         let mut d = RingBuf::new();
         assert_eq!(d.len(), 0u);
@@ -587,6 +588,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(deprecated)]
     fn test_boxes() {
         let a: Gc<int> = box(GC) 5;
         let b: Gc<int> = box(GC) 72;

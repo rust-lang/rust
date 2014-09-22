@@ -904,6 +904,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(deprecated)]
     fn test_initn() {
         let mut a = vec![11i, 12, 13];
         let b: &[int] = &[11, 12, 13];
@@ -1303,6 +1304,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(deprecated)]
     fn test_bsearch_elem() {
         assert_eq!([1i,2,3,4,5].bsearch_elem(&5), Some(4));
         assert_eq!([1i,2,3,4,5].bsearch_elem(&4), Some(3));
@@ -1350,11 +1352,11 @@ mod tests {
     #[test]
     fn test_reverse() {
         let mut v: Vec<int> = vec![10i, 20];
-        assert_eq!(*v.get(0), 10);
-        assert_eq!(*v.get(1), 20);
+        assert_eq!(v[0], 10);
+        assert_eq!(v[1], 20);
         v.reverse();
-        assert_eq!(*v.get(0), 20);
-        assert_eq!(*v.get(1), 10);
+        assert_eq!(v[0], 20);
+        assert_eq!(v[1], 10);
 
         let mut v3: Vec<int> = vec![];
         v3.reverse();
@@ -1462,6 +1464,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(deprecated)]
     fn test_shift() {
         let mut x = vec![1i, 2, 3];
         assert_eq!(x.shift(), Some(1));
@@ -1901,6 +1904,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(deprecated)]
     fn test_copy_from() {
         let mut a = [1i,2,3,4,5];
         let b = [6i,7,8];
