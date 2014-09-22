@@ -300,8 +300,7 @@ Here's some code:
 use std::sync::Arc;
 
 fn main() {
-    let numbers = vec![1i, 2i, 3i];
-    let numbers = Arc::new(numbers);
+    let numbers = Arc::new(vec![1i, 2i, 3i]);
 
     for num in range(0u, 3) {
         let (tx, rx)  = channel();
@@ -346,8 +345,7 @@ and modify it to mutate the shared state:
 use std::sync::{Arc, Mutex};
 
 fn main() {
-    let numbers = vec![1i, 2i, 3i];
-    let numbers_lock = Arc::new(Mutex::new(numbers));
+    let numbers_lock = Arc::new(Mutex::new(vec![1i, 2i, 3i]));
 
     for num in range(0u, 3) {
         let (tx, rx)  = channel();
