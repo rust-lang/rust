@@ -19,7 +19,11 @@ pub enum CharacterSet {
     /// The standard character set (uses `+` and `/`)
     Standard,
     /// The URL safe character set (uses `-` and `_`)
-    UrlSafe
+    UrlSafe,
+    /// The XML/Name character set (uses `_` and `:`)
+    XmlName,
+    /// The XML/Nmtoken character set (uses `.` and `-`)
+    XmlNmtoken,
 }
 
 /// Contains configuration parameters for `to_base64`.
@@ -44,6 +48,14 @@ pub static URL_SAFE: Config =
 pub static MIME: Config =
     Config {char_set: Standard, pad: true, line_length: Some(76)};
 
+/// Configuration for base64 encoding acceptable in XML element names
+pub static XML_NAME: Config =
+    Config {char_set: XmlName, pad: false, line_length: None};
+
+/// Configuration for base64 encoding acceptable in XML NMTOKENs
+pub static XML_NMTOKEN: Config =
+    Config {char_set: XmlNmtoken, pad: false, line_length: None};
+
 static STANDARD_CHARS: &'static[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZ\
                                         abcdefghijklmnopqrstuvwxyz\
                                         0123456789+/";
@@ -51,6 +63,14 @@ static STANDARD_CHARS: &'static[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZ\
 static URLSAFE_CHARS: &'static[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZ\
                                        abcdefghijklmnopqrstuvwxyz\
                                        0123456789-_";
+
+static XML_NAME_CHARS: &'static[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZ\
+                                        abcdefghijklmnopqrstuvwxyz\
+                                        0123456789_:";
+
+static XML_NMTOKEN_CHARS: &'static[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZ\
+                                           abcdefghijklmnopqrstuvwxyz\
+                                           0123456789.-";
 
 /// A trait for converting a value to base64 encoding.
 pub trait ToBase64 {
@@ -78,7 +98,9 @@ impl<'a> ToBase64 for &'a [u8] {
     fn to_base64(&self, config: Config) -> String {
         let bytes = match config.char_set {
             Standard => STANDARD_CHARS,
-            UrlSafe => URLSAFE_CHARS
+            UrlSafe => URLSAFE_CHARS,
+            XmlNmtoken => XML_NMTOKEN_CHARS,
+            XmlName => XML_NAME_CHARS,
         };
 
         let mut v = Vec::new();
@@ -157,7 +179,7 @@ impl<'a> ToBase64 for &'a [u8] {
 pub trait FromBase64 {
     /// Converts the value of `self`, interpreted as base64 encoded data, into
     /// an owned vector of bytes, returning the vector.
-    fn from_base64(&self) -> Result<Vec<u8>, FromBase64Error>;
+    fn from_base64(&self, config: Config) -> Result<Vec<u8>, FromBase64Error>;
 }
 
 /// Errors that can occur when decoding a base64 encoded string
@@ -197,7 +219,7 @@ impl<'a> FromBase64 for &'a str {
      * fn main () {
      *     let hello_str = b"Hello, World".to_base64(STANDARD);
      *     println!("base64 output: {}", hello_str);
-     *     let res = hello_str.as_slice().from_base64();
+     *     let res = hello_str.as_slice().from_base64(STANDARD);
      *     if res.is_ok() {
      *       let opt_bytes = String::from_utf8(res.unwrap());
      *       if opt_bytes.is_ok() {
@@ -208,16 +230,25 @@ impl<'a> FromBase64 for &'a str {
      * ```
      */
     #[inline]
-    fn from_base64(&self) -> Result<Vec<u8>, FromBase64Error> {
-        self.as_bytes().from_base64()
+    fn from_base64(&self, config: Config) -> Result<Vec<u8>, FromBase64Error> {
+        self.as_bytes().from_base64(config)
     }
 }
 
 impl<'a> FromBase64 for &'a [u8] {
-    fn from_base64(&self) -> Result<Vec<u8>, FromBase64Error> {
+    fn from_base64(&self, config: Config) -> Result<Vec<u8>, FromBase64Error> {
         let mut r = Vec::new();
         let mut buf: u32 = 0;
         let mut modulus = 0i;
+
+        let chars = match config.char_set {
+            Standard => STANDARD_CHARS,
+            UrlSafe => URLSAFE_CHARS,
+            XmlNmtoken => XML_NMTOKEN_CHARS,
+            XmlName => XML_NAME_CHARS,
+        };
+
+        let (c62, c63) = (chars[62], chars[63]);
 
         let mut it = self.iter().enumerate();
         for (idx, &byte) in it {
@@ -227,8 +258,8 @@ impl<'a> FromBase64 for &'a [u8] {
                 b'A'..b'Z' => buf |= val - 0x41,
                 b'a'..b'z' => buf |= val - 0x47,
                 b'0'..b'9' => buf |= val + 0x04,
-                b'+' | b'-' => buf |= 0x3E,
-                b'/' | b'_' => buf |= 0x3F,
+                b if (b == c62) => buf |= 0x3E,
+                b if (b == c63) => buf |= 0x3F,
                 b'\r' | b'\n' => continue,
                 b'=' => break,
                 _ => return Err(InvalidBase64Byte(self[idx], idx)),
@@ -271,7 +302,7 @@ impl<'a> FromBase64 for &'a [u8] {
 mod tests {
     extern crate test;
     use self::test::Bencher;
-    use base64::{Config, FromBase64, ToBase64, STANDARD, URL_SAFE};
+    use base64::{Config, FromBase64, ToBase64, STANDARD, URL_SAFE, XML_NAME, XML_NMTOKEN};
 
     #[test]
     fn test_to_base64_basic() {
@@ -307,43 +338,65 @@ mod tests {
     }
 
     #[test]
+    fn test_to_base64_xml_token() {
+        assert_eq!([251, 255].to_base64(XML_NMTOKEN), ".-8".to_string());
+    }
+
+    #[test]
+    fn test_to_base64_xml_name() {
+        assert_eq!([251, 255].to_base64(XML_NAME), "_:8".to_string());
+    }
+
+    #[test]
     fn test_from_base64_basic() {
-        assert_eq!("".from_base64().unwrap().as_slice(), "".as_bytes());
-        assert_eq!("Zg==".from_base64().unwrap().as_slice(), "f".as_bytes());
-        assert_eq!("Zm8=".from_base64().unwrap().as_slice(), "fo".as_bytes());
-        assert_eq!("Zm9v".from_base64().unwrap().as_slice(), "foo".as_bytes());
-        assert_eq!("Zm9vYg==".from_base64().unwrap().as_slice(), "foob".as_bytes());
-        assert_eq!("Zm9vYmE=".from_base64().unwrap().as_slice(), "fooba".as_bytes());
-        assert_eq!("Zm9vYmFy".from_base64().unwrap().as_slice(), "foobar".as_bytes());
+        assert_eq!("".from_base64(STANDARD).unwrap().as_slice(), "".as_bytes());
+        assert_eq!("Zg==".from_base64(STANDARD).unwrap().as_slice(), "f".as_bytes());
+        assert_eq!("Zm8=".from_base64(STANDARD).unwrap().as_slice(), "fo".as_bytes());
+        assert_eq!("Zm9v".from_base64(STANDARD).unwrap().as_slice(), "foo".as_bytes());
+        assert_eq!("Zm9vYg==".from_base64(STANDARD).unwrap().as_slice(), "foob".as_bytes());
+        assert_eq!("Zm9vYmE=".from_base64(STANDARD).unwrap().as_slice(), "fooba".as_bytes());
+        assert_eq!("Zm9vYmFy".from_base64(STANDARD).unwrap().as_slice(), "foobar".as_bytes());
     }
 
     #[test]
     fn test_from_base64_bytes() {
-        assert_eq!(b"Zm9vYmFy".from_base64().unwrap().as_slice(), "foobar".as_bytes());
+        assert_eq!(b"Zm9vYmFy".from_base64(STANDARD).unwrap().as_slice(), "foobar".as_bytes());
     }
 
     #[test]
     fn test_from_base64_newlines() {
-        assert_eq!("Zm9v\r\nYmFy".from_base64().unwrap().as_slice(),
+        assert_eq!("Zm9v\r\nYmFy".from_base64(STANDARD).unwrap().as_slice(),
                    "foobar".as_bytes());
-        assert_eq!("Zm9vYg==\r\n".from_base64().unwrap().as_slice(),
+        assert_eq!("Zm9vYg==\r\n".from_base64(STANDARD).unwrap().as_slice(),
                    "foob".as_bytes());
     }
 
     #[test]
     fn test_from_base64_urlsafe() {
-        assert_eq!("-_8".from_base64().unwrap(), "+/8=".from_base64().unwrap());
+        assert_eq!("-_8".from_base64(URL_SAFE).unwrap(), "+/8=".from_base64(STANDARD).unwrap());
+    }
+
+    #[test]
+    fn test_from_base64_xml_name() {
+        let plain_text = "+/8=".from_base64(STANDARD).unwrap();
+        assert_eq!("_:8".from_base64(XML_NAME).unwrap(), plain_text);
+    }
+
+    #[test]
+    fn test_from_base64_xml_nmtoken() {
+        let plain_text = "+/8=".from_base64(STANDARD).unwrap();
+        assert_eq!(".-8".from_base64(XML_NMTOKEN).unwrap(), plain_text);
     }
 
     #[test]
     fn test_from_base64_invalid_char() {
-        assert!("Zm$=".from_base64().is_err())
-        assert!("Zg==$".from_base64().is_err());
+        assert!("Zm$=".from_base64(STANDARD).is_err())
+        assert!("Zg==$".from_base64(STANDARD).is_err());
     }
 
     #[test]
     fn test_from_base64_invalid_padding() {
-        assert!("Z===".from_base64().is_err());
+        assert!("Z===".from_base64(STANDARD).is_err());
     }
 
     #[test]
@@ -356,7 +409,7 @@ mod tests {
             assert_eq!(v.as_slice()
                         .to_base64(STANDARD)
                         .as_slice()
-                        .from_base64()
+                        .from_base64(STANDARD)
                         .unwrap()
                         .as_slice(),
                        v.as_slice());
@@ -379,9 +432,8 @@ mod tests {
                  ウヰノオクヤマ ケフコエテ アサキユメミシ ヱヒモセスン";
         let sb = s.as_bytes().to_base64(STANDARD);
         b.iter(|| {
-            sb.as_slice().from_base64().unwrap();
+            sb.as_slice().from_base64(STANDARD).unwrap();
         });
         b.bytes = sb.len() as u64;
     }
-
 }
