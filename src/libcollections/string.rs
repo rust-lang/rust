@@ -727,35 +727,78 @@ impl String {
         self.vec.remove(0)
     }
 
-    /// Removes the first character from the string buffer and returns it.
-    /// Returns `None` if this string buffer is empty.
+    /// Deprecated, call `remove(0)` instead
+    #[deprecated = "call .remove(0) instead"]
+    pub fn shift_char(&mut self) -> Option<char> {
+        self.remove(0)
+    }
+
+    /// Removes the character from the string buffer at byte position `idx` and
+    /// returns it. Returns `None` if `idx` is out of bounds.
     ///
     /// # Warning
     ///
-    /// This is a O(n) operation as it requires copying every element in the buffer.
+    /// This is a O(n) operation as it requires copying every element in the
+    /// buffer.
+    ///
+    /// # Failure
+    ///
+    /// If `idx` does not lie on a character boundary, then this function will
+    /// fail.
     ///
     /// # Example
     ///
     /// ```
     /// let mut s = String::from_str("foo");
-    /// assert_eq!(s.shift_char(), Some('f'));
-    /// assert_eq!(s.shift_char(), Some('o'));
-    /// assert_eq!(s.shift_char(), Some('o'));
-    /// assert_eq!(s.shift_char(), None);
+    /// assert_eq!(s.remove(0), Some('f'));
+    /// assert_eq!(s.remove(1), Some('o'));
+    /// assert_eq!(s.remove(0), Some('o'));
+    /// assert_eq!(s.remove(0), None);
     /// ```
-    pub fn shift_char(&mut self) -> Option<char> {
+    #[unstable = "the failure semantics of this function and return type \
+                  may change"]
+    pub fn remove(&mut self, idx: uint) -> Option<char> {
         let len = self.len();
-        if len == 0 {
-            return None
-        }
+        if idx >= len { return None }
 
-        let CharRange {ch, next} = self.as_slice().char_range_at(0);
-        let new_len = len - next;
+        let CharRange { ch, next } = self.as_slice().char_range_at(idx);
         unsafe {
-            ptr::copy_memory(self.vec.as_mut_ptr(), self.vec.as_ptr().offset(next as int), new_len);
-            self.vec.set_len(new_len);
+            ptr::copy_memory(self.vec.as_mut_ptr().offset(idx as int),
+                             self.vec.as_ptr().offset(next as int),
+                             len - next);
+            self.vec.set_len(len - (next - idx));
         }
         Some(ch)
+    }
+
+    /// Insert a character into the string buffer at byte position `idx`.
+    ///
+    /// # Warning
+    ///
+    /// This is a O(n) operation as it requires copying every element in the
+    /// buffer.
+    ///
+    /// # Failure
+    ///
+    /// If `idx` does not lie on a character boundary or is out of bounds, then
+    /// this function will fail.
+    pub fn insert(&mut self, idx: uint, ch: char) {
+        let len = self.len();
+        assert!(idx <= len);
+        assert!(self.as_slice().is_char_boundary(idx));
+        self.vec.reserve_additional(4);
+        let mut bits = [0, ..4];
+        let amt = ch.encode_utf8(bits).unwrap();
+
+        unsafe {
+            ptr::copy_memory(self.vec.as_mut_ptr().offset((idx + amt) as int),
+                             self.vec.as_ptr().offset(idx as int),
+                             len - idx);
+            ptr::copy_memory(self.vec.as_mut_ptr().offset(idx as int),
+                             bits.as_ptr(),
+                             amt);
+            self.vec.set_len(len + amt);
+        }
     }
 
     /// Views the string buffer as a mutable sequence of bytes.
@@ -1208,6 +1251,35 @@ mod tests {
         assert_eq!(b.len(), 7);
         assert_eq!(b.as_slice(), "1234522");
     }
+
+    #[test]
+    fn remove() {
+        let mut s = "ศไทย中华Việt Nam; foobar".to_string();;
+        assert_eq!(s.remove(0), Some('ศ'));
+        assert_eq!(s.len(), 33);
+        assert_eq!(s.as_slice(), "ไทย中华Việt Nam; foobar");
+        assert_eq!(s.remove(33), None);
+        assert_eq!(s.remove(300), None);
+        assert_eq!(s.remove(17), Some('ệ'));
+        assert_eq!(s.as_slice(), "ไทย中华Vit Nam; foobar");
+    }
+
+    #[test] #[should_fail]
+    fn remove_bad() {
+        "ศ".to_string().remove(1);
+    }
+
+    #[test]
+    fn insert() {
+        let mut s = "foobar".to_string();
+        s.insert(0, 'ệ');
+        assert_eq!(s.as_slice(), "ệfoobar");
+        s.insert(6, 'ย');
+        assert_eq!(s.as_slice(), "ệfooยbar");
+    }
+
+    #[test] #[should_fail] fn insert_bad1() { "".to_string().insert(1, 't'); }
+    #[test] #[should_fail] fn insert_bad2() { "ệ".to_string().insert(1, 't'); }
 
     #[bench]
     fn bench_with_capacity(b: &mut Bencher) {
