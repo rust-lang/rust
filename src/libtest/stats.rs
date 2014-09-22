@@ -352,10 +352,9 @@ pub fn write_5_number_summary<T: Float + Show>(w: &mut io::Writer,
 /// As an example, the summary with 5-number-summary `(min=15, q1=17, med=20, q3=24, max=31)` might
 /// display as:
 ///
-/// ~~~~ignore
+/// ```{.ignore}
 ///   10 |        [--****#******----------]          | 40
-/// ~~~~
-
+/// ```
 pub fn write_boxplot<T: Float + Show + FromPrimitive>(
                      w: &mut io::Writer,
                      s: &Summary<T>,
