@@ -336,6 +336,7 @@ impl Pattern {
      * # Example
      *
      * ```rust
+     * #![allow(deprecated)]
      * use glob::Pattern;
      *
      * assert!(Pattern::new("c?t").matches("cat"));
