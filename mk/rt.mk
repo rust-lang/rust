@@ -228,6 +228,9 @@ else ifeq ($(OSTYPE_$(1)), apple-ios) # iOS
 $$(LIBUV_XCODEPROJ_$(1)): $$(LIBUV_DEPS) $$(MKFILE_DEPS) $$(LIBUV_STAMP_$(1))
 	cp -rf $(S)src/libuv/ $$(LIBUV_BUILD_DIR_$(1))
 	(cd $$(LIBUV_BUILD_DIR_$(1)) && \
+	CC="$$(CC_$(1))" \
+	CXX="$$(CXX_$(1))" \
+	AR="$$(AR_$(1))" \
 	 $$(CFG_PYTHON) ./gyp_uv.py -f xcode \
 	   -D ninja \
 	   -R libuv)
