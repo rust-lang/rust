@@ -25,9 +25,7 @@ the `clone` method.
 
 /// A common trait for cloning an object.
 pub trait Clone {
-    /// Returns a copy of the value. The contents of owned pointers
-    /// are copied to maintain uniqueness, while the contents of
-    /// managed pointers are not copied.
+    /// Returns a copy of the value.
     fn clone(&self) -> Self;
 
     /// Perform copy-assignment from `source`.
