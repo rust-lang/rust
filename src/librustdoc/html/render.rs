@@ -1080,7 +1080,8 @@ impl Context {
             let mut json_out = BufferedWriter::new(try!(File::create(json_dst)));
             try!(stability.encode(&mut json::Encoder::new(&mut json_out)));
 
-            let title = stability.name.clone().append(" - Stability dashboard");
+            let mut title = stability.name.clone();
+            title.push_str(" - Stability dashboard");
             let desc = format!("API stability overview for the Rust `{}` crate.",
                                this.layout.krate);
             let page = layout::Page {

@@ -426,7 +426,7 @@ impl<'a> LabelText<'a> {
     fn escape_str(s: &str) -> String {
         let mut out = String::with_capacity(s.len());
         for c in s.chars() {
-            LabelText::escape_char(c, |c| out.push_char(c));
+            LabelText::escape_char(c, |c| out.push(c));
         }
         out
     }
@@ -461,9 +461,11 @@ impl<'a> LabelText<'a> {
 
     /// Puts `suffix` on a line below this label, with a blank line separator.
     pub fn suffix_line(self, suffix: LabelText) -> LabelText<'static> {
-        let prefix = self.pre_escaped_content().into_string();
+        let mut prefix = self.pre_escaped_content().into_string();
         let suffix = suffix.pre_escaped_content();
-        EscStr(str::Owned(prefix.append(r"\n\n").append(suffix.as_slice())))
+        prefix.push_str(r"\n\n");
+        prefix.push_str(suffix.as_slice());
+        EscStr(str::Owned(prefix))
     }
 }
 
