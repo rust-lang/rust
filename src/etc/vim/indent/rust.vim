@@ -1,7 +1,7 @@
 " Vim indent file
 " Language:         Rust
 " Author:           Chris Morgan <me@chrismorgan.info>
-" Last Change:      2013 Oct 29
+" Last Change:      2014 Sep 13
 
 " Only load this indent file when no other was loaded.
 if exists("b:did_indent")
@@ -10,7 +10,7 @@ endif
 let b:did_indent = 1
 
 setlocal cindent
-setlocal cinoptions=L0,(0,Ws,JN,j1
+setlocal cinoptions=L0,(0,Ws,J1,j1
 setlocal cinkeys=0{,0},!^F,o,O,0[,0]
 " Don't think cinwords will actually do anything at all... never mind
 setlocal cinwords=for,if,else,while,loop,impl,mod,unsafe,trait,struct,enum,fn,extern
@@ -151,40 +151,42 @@ function GetRustIndent(lnum)
 		"
 		" There are probably other cases where we don't want to do this as
 		" well. Add them as needed.
-		return GetRustIndent(a:lnum - 1)
+		return indent(prevlinenum)
 	endif
 
-	" cindent doesn't do the module scope well at all; e.g.::
-	"
-	" static FOO : &'static [bool] = [
-	" true,
-	"     false,
-	"     false,
-	"     true,
-	"     ];
-	"
-	"     uh oh, next statement is indented further!
+	if !has("patch-7.4.355")
+		" cindent before 7.4.355 doesn't do the module scope well at all; e.g.::
+		"
+		" static FOO : &'static [bool] = [
+		" true,
+		"	 false,
+		"	 false,
+		"	 true,
+		"	 ];
+		"
+		"	 uh oh, next statement is indented further!
 
-	" Note that this does *not* apply the line continuation pattern properly;
-	" that's too hard to do correctly for my liking at present, so I'll just
-	" start with these two main cases (square brackets and not returning to
-	" column zero)
+		" Note that this does *not* apply the line continuation pattern properly;
+		" that's too hard to do correctly for my liking at present, so I'll just
+		" start with these two main cases (square brackets and not returning to
+		" column zero)
 
-	call cursor(a:lnum, 1)
-	if searchpair('{\|(', '', '}\|)', 'nbW',
-				\ 's:is_string_comment(line("."), col("."))') == 0
-		if searchpair('\[', '', '\]', 'nbW',
+		call cursor(a:lnum, 1)
+		if searchpair('{\|(', '', '}\|)', 'nbW',
 					\ 's:is_string_comment(line("."), col("."))') == 0
-			" Global scope, should be zero
-			return 0
-		else
-			" At the module scope, inside square brackets only
-			"if getline(a:lnum)[0] == ']' || search('\[', '', '\]', 'nW') == a:lnum
-			if line =~ "^\\s*]"
-				" It's the closing line, dedent it
+			if searchpair('\[', '', '\]', 'nbW',
+						\ 's:is_string_comment(line("."), col("."))') == 0
+				" Global scope, should be zero
 				return 0
 			else
-				return &shiftwidth
+				" At the module scope, inside square brackets only
+				"if getline(a:lnum)[0] == ']' || search('\[', '', '\]', 'nW') == a:lnum
+				if line =~ "^\\s*]"
+					" It's the closing line, dedent it
+					return 0
+				else
+					return &shiftwidth
+				endif
 			endif
 		endif
 	endif
