@@ -67,6 +67,7 @@ use core::prelude::{range};
 use {Deque, MutableSeq};
 use hash;
 use ringbuf::RingBuf;
+use slice::CloneableVector;
 use string::String;
 use unicode;
 use vec::Vec;
@@ -754,7 +755,7 @@ pub trait StrAllocating: Str {
     #[inline]
     fn to_owned(&self) -> String {
         unsafe {
-            mem::transmute(Vec::from_slice(self.as_slice().as_bytes()))
+            mem::transmute(self.as_slice().as_bytes().to_vec())
         }
     }
 

@@ -290,9 +290,8 @@ pub fn parse(file: &mut io::Reader, longnames: bool)
             match nulpos {
                 Some(len) => {
                     string_map.insert(name.to_string(),
-                                      Vec::from_slice(
-                                          string_table.slice(offset as uint,
-                                          offset as uint + len)))
+                                      string_table.slice(offset as uint,
+                                          offset as uint + len).to_vec())
                 },
                 None => {
                     return Err("invalid file: missing NUL in \
@@ -314,10 +313,10 @@ pub fn parse(file: &mut io::Reader, longnames: bool)
 /// Create a dummy TermInfo struct for msys terminals
 pub fn msys_terminfo() -> Box<TermInfo> {
     let mut strings = HashMap::new();
-    strings.insert("sgr0".to_string(), Vec::from_slice(b"\x1B[0m"));
-    strings.insert("bold".to_string(), Vec::from_slice(b"\x1B[1m"));
-    strings.insert("setaf".to_string(), Vec::from_slice(b"\x1B[3%p1%dm"));
-    strings.insert("setab".to_string(), Vec::from_slice(b"\x1B[4%p1%dm"));
+    strings.insert("sgr0".to_string(), b"\x1B[0m".to_vec());
+    strings.insert("bold".to_string(), b"\x1B[1m".to_vec());
+    strings.insert("setaf".to_string(), b"\x1B[3%p1%dm".to_vec());
+    strings.insert("setab".to_string(), b"\x1B[4%p1%dm".to_vec());
     box TermInfo {
         names: vec!("cygwin".to_string()), // msys is a fork of an older cygwin version
         bools: HashMap::new(),

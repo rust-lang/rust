@@ -47,6 +47,7 @@ mod imp {
     use core::prelude::*;
 
     use alloc::boxed::Box;
+    use collections::slice::CloneableVector;
     use collections::vec::Vec;
     use core::mem;
     use core::slice;
@@ -106,7 +107,7 @@ mod imp {
             let mut len = 0;
             while *base.offset(len) != 0 { len += 1; }
             slice::raw::buf_as_slice(base, len as uint, |slice| {
-                Vec::from_slice(slice)
+                slice.to_vec()
             })
         })
     }

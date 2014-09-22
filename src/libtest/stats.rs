@@ -261,13 +261,13 @@ impl<'a, T: FloatMath + FromPrimitive> Stats<T> for &'a [T] {
     }
 
     fn percentile(self, pct: T) -> T {
-        let mut tmp = Vec::from_slice(self);
+        let mut tmp = self.to_vec();
         local_sort(tmp.as_mut_slice());
         percentile_of_sorted(tmp.as_slice(), pct)
     }
 
     fn quartiles(self) -> (T,T,T) {
-        let mut tmp = Vec::from_slice(self);
+        let mut tmp = self.to_vec();
         local_sort(tmp.as_mut_slice());
         let first = FromPrimitive::from_uint(25).unwrap();
         let a = percentile_of_sorted(tmp.as_slice(), first);
@@ -318,7 +318,7 @@ fn percentile_of_sorted<T: Float + FromPrimitive>(sorted_samples: &[T],
 ///
 /// See: http://en.wikipedia.org/wiki/Winsorising
 pub fn winsorize<T: Float + FromPrimitive>(samples: &mut [T], pct: T) {
-    let mut tmp = Vec::from_slice(samples);
+    let mut tmp = samples.to_vec();
     local_sort(tmp.as_mut_slice());
     let lo = percentile_of_sorted(tmp.as_slice(), pct);
     let hundred: T = FromPrimitive::from_uint(100).unwrap();

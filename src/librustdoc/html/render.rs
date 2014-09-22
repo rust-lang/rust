@@ -740,8 +740,9 @@ impl<'a> SourceCollector<'a> {
             root_path.push_str("../");
         });
 
-        cur.push(Vec::from_slice(p.filename().expect("source has no filename"))
-                 .append(b".html"));
+        let mut fname = p.filename().expect("source has no filename").to_vec();
+        fname.extend(".html".bytes());
+        cur.push(fname);
         let mut w = BufferedWriter::new(try!(File::create(&cur)));
 
         let title = format!("{} -- source", cur.filename_display());

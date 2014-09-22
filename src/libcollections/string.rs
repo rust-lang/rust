@@ -23,6 +23,7 @@ use core::raw::Slice as RawSlice;
 
 use {Mutable, MutableSeq};
 use hash;
+use slice::CloneableVector;
 use str;
 use str::{CharRange, StrAllocating, MaybeOwned, Owned};
 use str::Slice as MaybeOwnedSlice; // So many `Slice`s...
@@ -75,9 +76,7 @@ impl String {
     /// ```
     #[inline]
     pub fn from_str(string: &str) -> String {
-        String {
-            vec: Vec::from_slice(string.as_bytes())
-        }
+        String { vec: string.as_bytes().to_vec() }
     }
 
     /// Deprecated. Replaced by `string::raw::from_parts`

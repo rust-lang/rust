@@ -87,7 +87,7 @@ impl Writer for SeekableMemWriter {
             // currently are
             let difference = self.pos as i64 - self.buf.len() as i64;
             if difference > 0 {
-                self.buf.grow(difference as uint, &0);
+                self.buf.grow(difference as uint, 0);
             }
 
             // Figure out what bytes will be used to overwrite what's currently
