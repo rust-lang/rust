@@ -2701,9 +2701,14 @@ pub fn get_item_val(ccx: &CrateContext, id: ast::NodeId) -> ValueRef {
 
                     unsafe {
                         let llty = llvm::LLVMTypeOf(v);
-                        let g = sym.as_slice().with_c_str(|buf| {
+                        let g = match sym.as_slice().with_c_str_opt(|buf| {
                             llvm::LLVMAddGlobal(ccx.llmod(), llty, buf)
-                        });
+                            }) {
+                                Some(x) => x,
+                                None => ccx.sess().fatal(
+                                    format!("Internal null byte in export_name value: `{}`",
+                                            sym).as_slice())
+                        };
 
                         // Apply the `unnamed_addr` attribute if
                         // requested
@@ -2765,9 +2770,14 @@ pub fn get_item_val(ccx: &CrateContext, id: ast::NodeId) -> ValueRef {
             match attr::first_attr_value_str_by_name(i.attrs.as_slice(),
                                                      "link_section") {
                 Some(sect) => unsafe {
-                    sect.get().with_c_str(|buf| {
+                    match sect.get().with_c_str_opt(|buf| {
                         llvm::LLVMSetSection(v, buf);
-                    })
+                    }) {
+                        Some(_) => (),
+                        None => ccx.sess().fatal(
+                            format!("Internal null byte in link_section value: `{}`",
+                                    sect.get()).as_slice())
+                    }
                 },
                 None => ()
             }
