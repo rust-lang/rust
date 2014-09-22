@@ -1288,7 +1288,7 @@ impl<K: Eq + Hash<S>, V: Clone, S, H: Hasher<S>> HashMap<K, V, H> {
     /// let s: String = map.get_copy(&1);
     /// ```
     pub fn get_copy(&self, k: &K) -> V {
-        (*self.get(k)).clone()
+        self[*k].clone()
     }
 }
 
@@ -1325,6 +1325,7 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S> + Default> Default for HashMap<K, V, H>
 
 impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> Index<K, V> for HashMap<K, V, H> {
     #[inline]
+    #[allow(deprecated)]
     fn index<'a>(&'a self, index: &K) -> &'a V {
         self.get(index)
     }

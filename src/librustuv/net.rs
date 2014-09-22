@@ -655,7 +655,7 @@ impl rtio::RtioUdpSocket for UdpWatcher {
 
         // see comments in StreamWatcher::write for why we may allocate a buffer
         // here.
-        let data = if guard.can_timeout {Some(Vec::from_slice(buf))} else {None};
+        let data = if guard.can_timeout {Some(buf.to_vec())} else {None};
         let uv_buf = if guard.can_timeout {
             slice_to_uv_buf(data.as_ref().unwrap().as_slice())
         } else {

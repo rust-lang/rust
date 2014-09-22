@@ -986,9 +986,9 @@ fn combine_ranges(unordered: Vec<(char, char)>) -> Vec<(char, char)> {
 // (or any of their negated forms). Note that this does not handle negation.
 fn perl_unicode_class(which: char) -> Vec<(char, char)> {
     match which.to_lowercase() {
-        'd' => Vec::from_slice(PERLD),
-        's' => Vec::from_slice(PERLS),
-        'w' => Vec::from_slice(PERLW),
+        'd' => PERLD.to_vec(),
+        's' => PERLS.to_vec(),
+        'w' => PERLW.to_vec(),
         _ => unreachable!(),
     }
 }
@@ -997,7 +997,7 @@ fn perl_unicode_class(which: char) -> Vec<(char, char)> {
 // `Cat` expression will never be a direct child of another `Cat` expression.
 fn concat_flatten(x: Ast, y: Ast) -> Ast {
     match (x, y) {
-        (Cat(mut xs), Cat(ys)) => { xs.push_all_move(ys); Cat(xs) }
+        (Cat(mut xs), Cat(ys)) => { xs.extend(ys.into_iter()); Cat(xs) }
         (Cat(mut xs), ast) => { xs.push(ast); Cat(xs) }
         (ast, Cat(mut xs)) => { xs.insert(0, ast); Cat(xs) }
         (ast1, ast2) => Cat(vec!(ast1, ast2)),
@@ -1019,7 +1019,7 @@ fn is_valid_cap(c: char) -> bool {
 
 fn find_class(classes: NamedClasses, name: &str) -> Option<Vec<(char, char)>> {
     match classes.binary_search(|&(s, _)| s.cmp(&name)) {
-        slice::Found(i) => Some(Vec::from_slice(classes[i].val1())),
+        slice::Found(i) => Some(classes[i].val1().to_vec()),
         slice::NotFound(_) => None,
     }
 }

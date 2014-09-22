@@ -61,7 +61,7 @@ use io::{IoResult, IoError, FileStat, SeekStyle, Seek, Writer, Reader};
 use io::{Read, Truncate, SeekCur, SeekSet, ReadWrite, SeekEnd, Append};
 use io::UpdateIoError;
 use io;
-use iter::Iterator;
+use iter::{Iterator, Extendable};
 use kinds::Send;
 use libc;
 use option::{Some, None, Option};
@@ -688,7 +688,7 @@ impl Iterator<Path> for Directories {
                                                 e, path.display()));
 
                     match result {
-                        Ok(dirs) => { self.stack.push_all_move(dirs); }
+                        Ok(dirs) => { self.stack.extend(dirs.into_iter()); }
                         Err(..) => {}
                     }
                 }

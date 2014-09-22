@@ -631,7 +631,7 @@ impl Bitv {
         let old_size = self.storage.len();
         let size = (size + uint::BITS - 1) / uint::BITS;
         if old_size < size {
-            self.storage.grow(size - old_size, &0);
+            self.storage.grow(size - old_size, 0);
         }
     }
 
@@ -687,7 +687,7 @@ impl Bitv {
         // Allocate new words, if needed
         if new_nwords > self.storage.len() {
           let to_add = new_nwords - self.storage.len();
-          self.storage.grow(to_add, &full_value);
+          self.storage.grow(to_add, full_value);
         }
         // Adjust internal bit count
         self.nbits = new_nbits;

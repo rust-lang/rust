@@ -170,7 +170,7 @@ impl<'a,T:Clone> MaybeOwnedVector<'a,T> {
     pub fn into_vec(self) -> Vec<T> {
         match self {
             Growable(v) => v,
-            Borrowed(v) => Vec::from_slice(v),
+            Borrowed(v) => v.to_vec(),
         }
     }
 }
