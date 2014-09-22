@@ -112,7 +112,6 @@
 // Don't link to std. We are std.
 #![no_std]
 
-#![allow(deprecated)]
 #![deny(missing_doc)]
 
 #![reexport_test_harness_main = "test_main"]

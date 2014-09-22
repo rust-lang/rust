@@ -133,7 +133,7 @@ impl<'a> NfaGen<'a> {
         let init_groups = self.vec_expr(range(0, num_cap_locs),
                                         |cx, _| cx.expr_none(self.sp));
 
-        let prefix_lit = Rc::new(Vec::from_slice(self.prog.prefix.as_slice().as_bytes()));
+        let prefix_lit = Rc::new(self.prog.prefix.as_slice().as_bytes().to_vec());
         let prefix_bytes = self.cx.expr_lit(self.sp, ast::LitBinary(prefix_lit));
 
         let check_prefix = self.check_prefix();

@@ -162,7 +162,7 @@ impl<W: Writer> BufferedWriter<W> {
 
     fn flush_buf(&mut self) -> IoResult<()> {
         if self.pos != 0 {
-            let ret = self.inner.get_mut_ref().write(self.buf.slice_to(self.pos));
+            let ret = self.inner.as_mut().unwrap().write(self.buf.slice_to(self.pos));
             self.pos = 0;
             ret
         } else {
@@ -174,7 +174,7 @@ impl<W: Writer> BufferedWriter<W> {
     ///
     /// This type does not expose the ability to get a mutable reference to the
     /// underlying reader because that could possibly corrupt the buffer.
-    pub fn get_ref<'a>(&'a self) -> &'a W { self.inner.get_ref() }
+    pub fn get_ref<'a>(&'a self) -> &'a W { self.inner.as_ref().unwrap() }
 
     /// Unwraps this `BufferedWriter`, returning the underlying writer.
     ///
@@ -193,7 +193,7 @@ impl<W: Writer> Writer for BufferedWriter<W> {
         }
 
         if buf.len() > self.buf.len() {
-            self.inner.get_mut_ref().write(buf)
+            self.inner.as_mut().unwrap().write(buf)
         } else {
             let dst = self.buf.slice_from_mut(self.pos);
             slice::bytes::copy_memory(dst, buf);
@@ -203,7 +203,7 @@ impl<W: Writer> Writer for BufferedWriter<W> {
     }
 
     fn flush(&mut self) -> IoResult<()> {
-        self.flush_buf().and_then(|()| self.inner.get_mut_ref().flush())
+        self.flush_buf().and_then(|()| self.inner.as_mut().unwrap().flush())
     }
 }
 
@@ -273,7 +273,7 @@ impl<W> InternalBufferedWriter<W> {
 
 impl<W: Reader> Reader for InternalBufferedWriter<W> {
     fn read(&mut self, buf: &mut [u8]) -> IoResult<uint> {
-        self.get_mut().inner.get_mut_ref().read(buf)
+        self.get_mut().inner.as_mut().unwrap().read(buf)
     }
 }
 

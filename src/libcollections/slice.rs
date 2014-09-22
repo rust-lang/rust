@@ -283,7 +283,11 @@ pub trait CloneableVector<T> {
 impl<'a, T: Clone> CloneableVector<T> for &'a [T] {
     /// Returns a copy of `v`.
     #[inline]
-    fn to_vec(&self) -> Vec<T> { Vec::from_slice(*self) }
+    fn to_vec(&self) -> Vec<T> {
+        let mut vector = Vec::with_capacity(self.len());
+        vector.push_all(*self);
+        vector
+    }
 
     #[inline(always)]
     fn into_vec(self) -> Vec<T> { self.to_vec() }
@@ -1039,7 +1043,7 @@ mod tests {
     fn test_grow() {
         // Test on-stack grow().
         let mut v = vec![];
-        v.grow(2u, &1i);
+        v.grow(2u, 1i);
         {
             let v = v.as_slice();
             assert_eq!(v.len(), 2u);
@@ -1048,7 +1052,7 @@ mod tests {
         }
 
         // Test on-heap grow().
-        v.grow(3u, &2i);
+        v.grow(3u, 2i);
         {
             let v = v.as_slice();
             assert_eq!(v.len(), 5u);
