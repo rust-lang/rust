@@ -348,11 +348,11 @@ impl<V:Clone> SmallIntMap<V> {
     /// let mut map = SmallIntMap::new();
     ///
     /// // Key does not exist, will do a simple insert
-    /// assert!(map.update(1, vec![1i, 2], |old, new| old.append(new.as_slice())));
+    /// assert!(map.update(1, vec![1i, 2], |mut old, new| { old.extend(new.into_iter()); old }));
     /// assert_eq!(map[1], vec![1i, 2]);
     ///
     /// // Key exists, update the value
-    /// assert!(!map.update(1, vec![3i, 4], |old, new| old.append(new.as_slice())));
+    /// assert!(!map.update(1, vec![3i, 4], |mut old, new| { old.extend(new.into_iter()); old }));
     /// assert_eq!(map[1], vec![1i, 2, 3, 4]);
     /// ```
     pub fn update(&mut self, key: uint, newval: V, ff: |V, V| -> V) -> bool {
