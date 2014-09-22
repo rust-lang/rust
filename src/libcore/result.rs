@@ -15,12 +15,12 @@
 //! success and containing a value, and `Err(E)`, representing error
 //! and containing an error value.
 //!
-//! ~~~
+//! ```
 //! enum Result<T, E> {
 //!    Ok(T),
 //!    Err(E)
 //! }
-//! ~~~
+//! ```
 //!
 //! Functions return `Result` whenever errors are expected and
 //! recoverable. In the `std` crate `Result` is most prominently used
@@ -29,7 +29,7 @@
 //! A simple function returning `Result` might be
 //! defined and used like so:
 //!
-//! ~~~
+//! ```
 //! #[deriving(Show)]
 //! enum Version { Version1, Version2 }
 //!
@@ -53,13 +53,13 @@
 //!         println!("error parsing header: {}", e);
 //!     }
 //! }
-//! ~~~
+//! ```
 //!
 //! Pattern matching on `Result`s is clear and straightforward for
 //! simple cases, but `Result` comes with some convenience methods
 //! that make working it more succinct.
 //!
-//! ~~~
+//! ```
 //! let good_result: Result<int, int> = Ok(10);
 //! let bad_result: Result<int, int> = Err(10);
 //!
@@ -79,7 +79,7 @@
 //!
 //! // Consume the result and return the contents with `unwrap`.
 //! let final_awesome_result = good_result.ok().unwrap();
-//! ~~~
+//! ```
 //!
 //! # Results must be used
 //!
@@ -94,13 +94,13 @@
 //! Consider the `write_line` method defined for I/O types
 //! by the [`Writer`](../io/trait.Writer.html) trait:
 //!
-//! ~~~
+//! ```
 //! use std::io::IoError;
 //!
 //! trait Writer {
 //!     fn write_line(&mut self, s: &str) -> Result<(), IoError>;
 //! }
-//! ~~~
+//! ```
 //!
 //! *Note: The actual definition of `Writer` uses `IoResult`, which
 //! is just a synonym for `Result<T, IoError>`.*
@@ -109,7 +109,7 @@
 //! fail. It's crucial to handle the error case, and *not* write
 //! something like this:
 //!
-//! ~~~ignore
+//! ```{.ignore}
 //! use std::io::{File, Open, Write};
 //!
 //! let mut file = File::open_mode(&Path::new("valuable_data.txt"), Open, Write);
@@ -117,7 +117,7 @@
 //! // value is ignored.
 //! file.write_line("important message");
 //! drop(file);
-//! ~~~
+//! ```
 //!
 //! If you *do* write that in Rust, the compiler will by give you a
 //! warning (by default, controlled by the `unused_must_use` lint).
@@ -127,27 +127,27 @@
 //! success with `expect`. This will fail if the write fails, proving
 //! a marginally useful message indicating why:
 //!
-//! ~~~no_run
+//! ```{.no_run}
 //! use std::io::{File, Open, Write};
 //!
 //! let mut file = File::open_mode(&Path::new("valuable_data.txt"), Open, Write);
 //! file.write_line("important message").ok().expect("failed to write message");
 //! drop(file);
-//! ~~~
+//! ```
 //!
 //! You might also simply assert success:
 //!
-//! ~~~no_run
+//! ```{.no_run}
 //! # use std::io::{File, Open, Write};
 //!
 //! # let mut file = File::open_mode(&Path::new("valuable_data.txt"), Open, Write);
 //! assert!(file.write_line("important message").is_ok());
 //! # drop(file);
-//! ~~~
+//! ```
 //!
 //! Or propagate the error up the call stack with `try!`:
 //!
-//! ~~~
+//! ```
 //! # use std::io::{File, Open, Write, IoError};
 //! fn write_message() -> Result<(), IoError> {
 //!     let mut file = File::open_mode(&Path::new("valuable_data.txt"), Open, Write);
@@ -155,7 +155,7 @@
 //!     drop(file);
 //!     return Ok(());
 //! }
-//! ~~~
+//! ```
 //!
 //! # The `try!` macro
 //!
@@ -166,7 +166,7 @@
 //!
 //! It replaces this:
 //!
-//! ~~~
+//! ```
 //! use std::io::{File, Open, Write, IoError};
 //!
 //! struct Info {
@@ -188,11 +188,11 @@
 //!     }
 //!     return file.write_line(format!("rating: {}", info.rating).as_slice());
 //! }
-//! ~~~
+//! ```
 //!
 //! With this:
 //!
-//! ~~~
+//! ```
 //! use std::io::{File, Open, Write, IoError};
 //!
 //! struct Info {
@@ -209,7 +209,7 @@
 //!     try!(file.write_line(format!("rating: {}", info.rating).as_slice()));
 //!     return Ok(());
 //! }
-//! ~~~
+//! ```
 //!
 //! *It's much nicer!*
 //!
@@ -218,13 +218,13 @@
 //! `Err` is returned early from the enclosing function. Its simple definition
 //! makes it clear:
 //!
-//! ~~~
+//! ```
 //! # #![feature(macro_rules)]
 //! macro_rules! try(
 //!     ($e:expr) => (match $e { Ok(e) => e, Err(e) => return Err(e) })
 //! )
 //! # fn main() { }
-//! ~~~
+//! ```
 //!
 //! `try!` is imported by the prelude, and is available everywhere.
 //!
@@ -245,10 +245,10 @@
 //!
 //! Converting to an `Option` with `ok()` to handle an error:
 //!
-//! ~~~
+//! ```
 //! use std::io::Timer;
 //! let mut t = Timer::new().ok().expect("failed to create timer!");
-//! ~~~
+//! ```
 //!
 //! # `Result` vs. `fail!`
 //!
@@ -311,14 +311,13 @@ impl<T, E> Result<T, E> {
     ///
     /// # Example
     ///
-    /// ~~~
-    /// use std::io::{File, Open, Write};
+    /// ```
+    /// let x: Result<int, &str> = Ok(-3);
+    /// assert_eq!(x.is_ok(), true);
     ///
-    /// # fn do_not_run_example() { // creates a file
-    /// let mut file = File::open_mode(&Path::new("secret.txt"), Open, Write);
-    /// assert!(file.write_line("it's cold in here").is_ok());
-    /// # }
-    /// ~~~
+    /// let x: Result<int, &str> = Err("Some error message");
+    /// assert_eq!(x.is_ok(), false);
+    /// ```
     #[inline]
     #[stable]
     pub fn is_ok(&self) -> bool {
@@ -332,14 +331,13 @@ impl<T, E> Result<T, E> {
     ///
     /// # Example
     ///
-    /// ~~~
-    /// use std::io::{File, Open, Read};
+    /// ```
+    /// let x: Result<int, &str> = Ok(-3);
+    /// assert_eq!(x.is_err(), false);
     ///
-    /// // When opening with `Read` access, if the file does not exist
-    /// // then `open_mode` returns an error.
-    /// let bogus = File::open_mode(&Path::new("not_a_file.txt"), Open, Read);
-    /// assert!(bogus.is_err());
-    /// ~~~
+    /// let x: Result<int, &str> = Err("Some error message");
+    /// assert_eq!(x.is_err(), true);
+    /// ```
     #[inline]
     #[stable]
     pub fn is_err(&self) -> bool {
@@ -356,18 +354,15 @@ impl<T, E> Result<T, E> {
     /// Converts `self` into an `Option<T>`, consuming `self`,
     /// and discarding the error, if any.
     ///
-    /// To convert to an `Option` without discarding the error value,
-    /// use `as_ref` to first convert the `Result<T, E>` into a
-    /// `Result<&T, &E>`.
+    /// # Example
     ///
-    /// # Examples
+    /// ```
+    /// let x: Result<uint, &str> = Ok(2);
+    /// assert_eq!(x.ok(), Some(2));
     ///
-    /// ~~~{.should_fail}
-    /// use std::io::{File, IoResult};
-    ///
-    /// let bdays: IoResult<File> = File::open(&Path::new("important_birthdays.txt"));
-    /// let bdays: File = bdays.ok().expect("unable to open birthday file");
-    /// ~~~
+    /// let x: Result<uint, &str> = Err("Nothing here");
+    /// assert_eq!(x.ok(), None);
+    /// ```
     #[inline]
     #[stable]
     pub fn ok(self) -> Option<T> {
@@ -381,6 +376,16 @@ impl<T, E> Result<T, E> {
     ///
     /// Converts `self` into an `Option<T>`, consuming `self`,
     /// and discarding the value, if any.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// let x: Result<uint, &str> = Ok(2);
+    /// assert_eq!(x.err(), None);
+    ///
+    /// let x: Result<uint, &str> = Err("Nothing here");
+    /// assert_eq!(x.err(), Some("Nothing here"));
+    /// ```
     #[inline]
     #[stable]
     pub fn err(self) -> Option<E> {
@@ -398,6 +403,14 @@ impl<T, E> Result<T, E> {
     ///
     /// Produces a new `Result`, containing a reference
     /// into the original, leaving the original in place.
+    ///
+    /// ```
+    /// let x: Result<uint, &str> = Ok(2);
+    /// assert_eq!(x.as_ref(), Ok(&2));
+    ///
+    /// let x: Result<uint, &str> = Err("Error");
+    /// assert_eq!(x.as_ref(), Err(&"Error"));
+    /// ```
     #[inline]
     #[stable]
     pub fn as_ref<'r>(&'r self) -> Result<&'r T, &'r E> {
@@ -408,6 +421,23 @@ impl<T, E> Result<T, E> {
     }
 
     /// Convert from `Result<T, E>` to `Result<&mut T, &mut E>`
+    ///
+    /// ```
+    /// fn mutate(r: &mut Result<int, int>) {
+    ///     match r.as_mut() {
+    ///         Ok(&ref mut v) => *v = 42,
+    ///         Err(&ref mut e) => *e = 0,
+    ///     }
+    /// }
+    ///
+    /// let mut x: Result<int, int> = Ok(2);
+    /// mutate(&mut x);
+    /// assert_eq!(x.unwrap(), 42);
+    ///
+    /// let mut x: Result<int, int> = Err(13);
+    /// mutate(&mut x);
+    /// assert_eq!(x.unwrap_err(), 0);
+    /// ```
     #[inline]
     #[unstable = "waiting for mut conventions"]
     pub fn as_mut<'r>(&'r mut self) -> Result<&'r mut T, &'r mut E> {
@@ -418,6 +448,20 @@ impl<T, E> Result<T, E> {
     }
 
     /// Convert from `Result<T, E>` to `&mut [T]` (without copying)
+    ///
+    /// ```
+    /// let mut x: Result<&str, uint> = Ok("Gold");
+    /// {
+    ///     let v = x.as_mut_slice();
+    ///     assert!(v == ["Gold"]);
+    ///     v[0] = "Silver";
+    ///     assert!(v == ["Silver"]);
+    /// }
+    /// assert_eq!(x, Ok("Silver"));
+    ///
+    /// let mut x: Result<&str, uint> = Err(45);
+    /// assert!(x.as_mut_slice() == []);
+    /// ```
     #[inline]
     #[unstable = "waiting for mut conventions"]
     pub fn as_mut_slice<'r>(&'r mut self) -> &'r mut [T] {
@@ -440,12 +484,12 @@ impl<T, E> Result<T, E> {
     ///
     /// This function can be used to compose the results of two functions.
     ///
-    /// # Examples
+    /// # Example
     ///
     /// Sum the lines of a buffer by mapping strings to numbers,
     /// ignoring I/O and parse errors:
     ///
-    /// ~~~
+    /// ```
     /// use std::io::{BufReader, IoResult};
     ///
     /// let buffer = "1\n2\n3\n4\n";
@@ -464,7 +508,7 @@ impl<T, E> Result<T, E> {
     /// }
     ///
     /// assert!(sum == 10);
-    /// ~~~
+    /// ```
     #[inline]
     #[unstable = "waiting for unboxed closures"]
     pub fn map<U>(self, op: |T| -> U) -> Result<U,E> {
@@ -479,6 +523,18 @@ impl<T, E> Result<T, E> {
     ///
     /// This function can be used to pass through a successful result while handling
     /// an error.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// fn stringify(x: uint) -> String { format!("error code: {}", x) }
+    ///
+    /// let x: Result<uint, uint> = Ok(2u);
+    /// assert_eq!(x.map_err(stringify), Ok(2u));
+    ///
+    /// let x: Result<uint, uint> = Err(13);
+    /// assert_eq!(x.map_err(stringify), Err("error code: 13".to_string()));
+    /// ```
     #[inline]
     #[unstable = "waiting for unboxed closures"]
     pub fn map_err<F>(self, op: |E| -> F) -> Result<T,F> {
@@ -494,6 +550,16 @@ impl<T, E> Result<T, E> {
     /////////////////////////////////////////////////////////////////////////
 
     /// Returns an iterator over the possibly contained value.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// let x: Result<uint, &str> = Ok(7);
+    /// assert_eq!(x.iter().next(), Some(&7));
+    ///
+    /// let x: Result<uint, &str> = Err("nothing!");
+    /// assert_eq!(x.iter().next(), None);
+    /// ```
     #[inline]
     #[unstable = "waiting for iterator conventions"]
     pub fn iter<'r>(&'r self) -> Item<&'r T> {
@@ -507,6 +573,20 @@ impl<T, E> Result<T, E> {
     }
 
     /// Returns a mutable iterator over the possibly contained value.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// let mut x: Result<uint, &str> = Ok(7);
+    /// match x.iter_mut().next() {
+    ///     Some(&ref mut x) => *x = 40,
+    ///     None => {},
+    /// }
+    /// assert_eq!(x, Ok(40));
+    ///
+    /// let mut x: Result<uint, &str> = Err("nothing!");
+    /// assert_eq!(x.iter_mut().next(), None);
+    /// ```
     #[inline]
     #[unstable = "waiting for iterator conventions"]
     pub fn iter_mut<'r>(&'r mut self) -> Item<&'r mut T> {
@@ -520,6 +600,18 @@ impl<T, E> Result<T, E> {
     }
 
     /// Returns a consuming iterator over the possibly contained value.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// let x: Result<uint, &str> = Ok(5);
+    /// let v: Vec<uint> = x.into_iter().collect();
+    /// assert_eq!(v, vec![5u]);
+    ///
+    /// let x: Result<uint, &str> = Err("nothing!");
+    /// let v: Vec<uint> = x.into_iter().collect();
+    /// assert_eq!(v, vec![]);
+    /// ```
     #[inline]
     #[unstable = "waiting for iterator conventions"]
     pub fn into_iter(self) -> Item<T> {
@@ -531,6 +623,26 @@ impl<T, E> Result<T, E> {
     /////////////////////////////////////////////////////////////////////////
 
     /// Returns `res` if the result is `Ok`, otherwise returns the `Err` value of `self`.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// let x: Result<uint, &str> = Ok(2);
+    /// let y: Result<&str, &str> = Err("late error");
+    /// assert_eq!(x.and(y), Err("late error"));
+    ///
+    /// let x: Result<uint, &str> = Err("early error");
+    /// let y: Result<&str, &str> = Ok("foo");
+    /// assert_eq!(x.and(y), Err("early error"));
+    ///
+    /// let x: Result<uint, &str> = Err("not a 2");
+    /// let y: Result<&str, &str> = Err("late error");
+    /// assert_eq!(x.and(y), Err("not a 2"));
+    ///
+    /// let x: Result<uint, &str> = Ok(2);
+    /// let y: Result<&str, &str> = Ok("different result type");
+    /// assert_eq!(x.and(y), Ok("different result type"));
+    /// ```
     #[inline]
     #[stable]
     pub fn and<U>(self, res: Result<U, E>) -> Result<U, E> {
@@ -542,7 +654,19 @@ impl<T, E> Result<T, E> {
 
     /// Calls `op` if the result is `Ok`, otherwise returns the `Err` value of `self`.
     ///
-    /// This function can be used for control flow based on result values
+    /// This function can be used for control flow based on result values.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// fn sq(x: uint) -> Result<uint, uint> { Ok(x * x) }
+    /// fn err(x: uint) -> Result<uint, uint> { Err(x) }
+    ///
+    /// assert_eq!(Ok(2).and_then(sq).and_then(sq), Ok(16));
+    /// assert_eq!(Ok(2).and_then(sq).and_then(err), Err(4));
+    /// assert_eq!(Ok(2).and_then(err).and_then(sq), Err(2));
+    /// assert_eq!(Err(3).and_then(sq).and_then(sq), Err(3));
+    /// ```
     #[inline]
     #[unstable = "waiting for unboxed closures"]
     pub fn and_then<U>(self, op: |T| -> Result<U, E>) -> Result<U, E> {
@@ -553,6 +677,26 @@ impl<T, E> Result<T, E> {
     }
 
     /// Returns `res` if the result is `Err`, otherwise returns the `Ok` value of `self`.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// let x: Result<uint, &str> = Ok(2);
+    /// let y: Result<uint, &str> = Err("late error");
+    /// assert_eq!(x.or(y), Ok(2));
+    ///
+    /// let x: Result<uint, &str> = Err("early error");
+    /// let y: Result<uint, &str> = Ok(2);
+    /// assert_eq!(x.or(y), Ok(2));
+    ///
+    /// let x: Result<uint, &str> = Err("not a 2");
+    /// let y: Result<uint, &str> = Err("late error");
+    /// assert_eq!(x.or(y), Err("late error"));
+    ///
+    /// let x: Result<uint, &str> = Ok(2);
+    /// let y: Result<uint, &str> = Ok(100);
+    /// assert_eq!(x.or(y), Ok(2));
+    /// ```
     #[inline]
     #[stable]
     pub fn or(self, res: Result<T, E>) -> Result<T, E> {
@@ -564,7 +708,19 @@ impl<T, E> Result<T, E> {
 
     /// Calls `op` if the result is `Err`, otherwise returns the `Ok` value of `self`.
     ///
-    /// This function can be used for control flow based on result values
+    /// This function can be used for control flow based on result values.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// fn sq(x: uint) -> Result<uint, uint> { Ok(x * x) }
+    /// fn err(x: uint) -> Result<uint, uint> { Err(x) }
+    ///
+    /// assert_eq!(Ok(2).or_else(sq).or_else(sq), Ok(2));
+    /// assert_eq!(Ok(2).or_else(err).or_else(sq), Ok(2));
+    /// assert_eq!(Err(3).or_else(sq).or_else(err), Ok(9));
+    /// assert_eq!(Err(3).or_else(err).or_else(err), Err(3));
+    /// ```
     #[inline]
     #[unstable = "waiting for unboxed closures"]
     pub fn or_else<F>(self, op: |E| -> Result<T, F>) -> Result<T, F> {
@@ -576,6 +732,17 @@ impl<T, E> Result<T, E> {
 
     /// Unwraps a result, yielding the content of an `Ok`.
     /// Else it returns `optb`.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// let optb = 2u;
+    /// let x: Result<uint, &str> = Ok(9u);
+    /// assert_eq!(x.unwrap_or(optb), 9u);
+    ///
+    /// let x: Result<uint, &str> = Err("error");
+    /// assert_eq!(x.unwrap_or(optb), optb);
+    /// ```
     #[inline]
     #[unstable = "waiting for conventions"]
     pub fn unwrap_or(self, optb: T) -> T {
@@ -587,6 +754,15 @@ impl<T, E> Result<T, E> {
 
     /// Unwraps a result, yielding the content of an `Ok`.
     /// If the value is an `Err` then it calls `op` with its value.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// fn count(x: &str) -> uint { x.len() }
+    ///
+    /// assert_eq!(Ok(2u).unwrap_or_else(count), 2u);
+    /// assert_eq!(Err("foo").unwrap_or_else(count), 3u);
+    /// ```
     #[inline]
     #[unstable = "waiting for conventions"]
     pub fn unwrap_or_else(self, op: |E| -> T) -> T {
@@ -611,6 +787,18 @@ impl<T, E: Show> Result<T, E> {
     ///
     /// Fails if the value is an `Err`, with a custom failure message provided
     /// by the `Err`'s value.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// let x: Result<uint, &str> = Ok(2u);
+    /// assert_eq!(x.unwrap(), 2u);
+    /// ```
+    ///
+    /// ```{.should_fail}
+    /// let x: Result<uint, &str> = Err("emergency failure");
+    /// x.unwrap(); // fails with `emergency failure`
+    /// ```
     #[inline]
     #[unstable = "waiting for conventions"]
     pub fn unwrap(self) -> T {
@@ -629,6 +817,18 @@ impl<T: Show, E> Result<T, E> {
     ///
     /// Fails if the value is an `Ok`, with a custom failure message provided
     /// by the `Ok`'s value.
+    ///
+    /// # Example
+    ///
+    /// ```{.should_fail}
+    /// let x: Result<uint, &str> = Ok(2u);
+    /// x.unwrap_err(); // fails with `2`
+    /// ```
+    ///
+    /// ```
+    /// let x: Result<uint, &str> = Err("emergency failure");
+    /// assert_eq!(x.unwrap_err(), "emergency failure");
+    /// ```
     #[inline]
     #[unstable = "waiting for conventions"]
     pub fn unwrap_err(self) -> E {
@@ -666,7 +866,7 @@ impl<T, E> Slice<T> for Result<T, E> {
 
 /// A `Result` iterator that yields either one or zero elements
 ///
-/// The `Item` iterator is returned by the `iter`, `mut_iter` and `move_iter`
+/// The `Item` iterator is returned by the `iter`, `iter_mut` and `into_iter`
 /// methods on `Result`.
 #[deriving(Clone)]
 #[unstable = "waiting for iterator conventions"]

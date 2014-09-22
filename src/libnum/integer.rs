@@ -17,7 +17,7 @@ pub trait Integer: Num + PartialOrd
     ///
     /// # Examples
     ///
-    /// ~~~
+    /// ```
     /// # use num::Integer;
     /// assert!(( 8i).div_floor(& 3) ==  2);
     /// assert!(( 8i).div_floor(&-3) == -3);
@@ -28,20 +28,20 @@ pub trait Integer: Num + PartialOrd
     /// assert!(( 1i).div_floor(&-2) == -1);
     /// assert!((-1i).div_floor(& 2) == -1);
     /// assert!((-1i).div_floor(&-2) ==  0);
-    /// ~~~
+    /// ```
     fn div_floor(&self, other: &Self) -> Self;
 
     /// Floored integer modulo, satisfying:
     ///
-    /// ~~~
+    /// ```
     /// # use num::Integer;
     /// # let n = 1i; let d = 1i;
     /// assert!(n.div_floor(&d) * d + n.mod_floor(&d) == n)
-    /// ~~~
+    /// ```
     ///
     /// # Examples
     ///
-    /// ~~~
+    /// ```
     /// # use num::Integer;
     /// assert!(( 8i).mod_floor(& 3) ==  2);
     /// assert!(( 8i).mod_floor(&-3) == -1);
@@ -52,29 +52,29 @@ pub trait Integer: Num + PartialOrd
     /// assert!(( 1i).mod_floor(&-2) == -1);
     /// assert!((-1i).mod_floor(& 2) ==  1);
     /// assert!((-1i).mod_floor(&-2) == -1);
-    /// ~~~
+    /// ```
     fn mod_floor(&self, other: &Self) -> Self;
 
     /// Greatest Common Divisor (GCD).
     ///
     /// # Examples
     ///
-    /// ~~~
+    /// ```
     /// # use num::Integer;
     /// assert_eq!(6i.gcd(&8), 2);
     /// assert_eq!(7i.gcd(&3), 1);
-    /// ~~~
+    /// ```
     fn gcd(&self, other: &Self) -> Self;
 
     /// Lowest Common Multiple (LCM).
     ///
     /// # Examples
     ///
-    /// ~~~
+    /// ```
     /// # use num::Integer;
     /// assert_eq!(7i.lcm(&3), 21);
     /// assert_eq!(2i.lcm(&4), 4);
-    /// ~~~
+    /// ```
     fn lcm(&self, other: &Self) -> Self;
 
     /// Deprecated, use `is_multiple_of` instead.
@@ -85,33 +85,33 @@ pub trait Integer: Num + PartialOrd
     ///
     /// # Examples
     ///
-    /// ~~~
+    /// ```
     /// # use num::Integer;
     /// assert_eq!(9i.is_multiple_of(&3), true);
     /// assert_eq!(3i.is_multiple_of(&9), false);
-    /// ~~~
+    /// ```
     fn is_multiple_of(&self, other: &Self) -> bool;
 
     /// Returns `true` if the number is even.
     ///
     /// # Examples
     ///
-    /// ~~~
+    /// ```
     /// # use num::Integer;
     /// assert_eq!(3i.is_even(), false);
     /// assert_eq!(4i.is_even(), true);
-    /// ~~~
+    /// ```
     fn is_even(&self) -> bool;
 
     /// Returns `true` if the number is odd.
     ///
     /// # Examples
     ///
-    /// ~~~
+    /// ```
     /// # use num::Integer;
     /// assert_eq!(3i.is_odd(), true);
     /// assert_eq!(4i.is_odd(), false);
-    /// ~~~
+    /// ```
     fn is_odd(&self) -> bool;
 
     /// Simultaneous truncated integer division and modulus.
@@ -119,7 +119,7 @@ pub trait Integer: Num + PartialOrd
     ///
     /// # Examples
     ///
-    /// ~~~
+    /// ```
     /// # use num::Integer;
     /// assert_eq!(( 8i).div_rem( &3), ( 2,  2));
     /// assert_eq!(( 8i).div_rem(&-3), (-2,  2));
@@ -130,7 +130,7 @@ pub trait Integer: Num + PartialOrd
     /// assert_eq!(( 1i).div_rem(&-2), ( 0,  1));
     /// assert_eq!((-1i).div_rem( &2), ( 0, -1));
     /// assert_eq!((-1i).div_rem(&-2), ( 0, -1));
-    /// ~~~
+    /// ```
     #[inline]
     fn div_rem(&self, other: &Self) -> (Self, Self) {
         (*self / *other, *self % *other)
@@ -141,7 +141,7 @@ pub trait Integer: Num + PartialOrd
     ///
     /// # Examples
     ///
-    /// ~~~
+    /// ```
     /// # use num::Integer;
     /// assert_eq!(( 8i).div_mod_floor( &3), ( 2,  2));
     /// assert_eq!(( 8i).div_mod_floor(&-3), (-3, -1));
@@ -152,7 +152,7 @@ pub trait Integer: Num + PartialOrd
     /// assert_eq!(( 1i).div_mod_floor(&-2), (-1, -1));
     /// assert_eq!((-1i).div_mod_floor( &2), (-1,  1));
     /// assert_eq!((-1i).div_mod_floor(&-2), ( 0, -1));
-    /// ~~~
+    /// ```
     fn div_mod_floor(&self, other: &Self) -> (Self, Self) {
         (self.div_floor(other), self.mod_floor(other))
     }
