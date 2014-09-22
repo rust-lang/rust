@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! # The Unicode Library
+//! The Unicode Library
 //!
 //! Unicode-intensive functions for `char` and `str` types.
 //!

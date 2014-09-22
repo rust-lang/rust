@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+//! Provides the Encodable and Decodable implementations
+//!
 //! The compiler code necessary to implement the `#[deriving(Encodable)]`
 //! (and `Decodable`, in decodable.rs) extension.  The idea here is that
 //! type-defining items may be tagged with `#[deriving(Encodable, Decodable)]`.
