@@ -23,7 +23,7 @@ pub fn expand_syntax_ext<'cx>(cx: &'cx mut ExtCtxt,
                               -> Box<base::MacResult+'cx> {
     cx.span_warn(sp, "`bytes!` is deprecated, use `b\"foo\"` literals instead");
     cx.parse_sess.span_diagnostic.span_note(sp,
-        "see http://doc.rust-lang.org/rust.html#byte-and-byte-string-literals \
+        "see http://doc.rust-lang.org/reference.html#byte-and-byte-string-literals \
          for documentation");
     cx.parse_sess.span_diagnostic.span_note(sp,
         "see https://github.com/rust-lang/rust/blob/master/src/etc/2014-06-rewrite-bytes-macros.py \
