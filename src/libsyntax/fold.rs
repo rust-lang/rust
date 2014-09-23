@@ -668,11 +668,13 @@ pub fn noop_fold_ty_param_bound<T>(tpb: TyParamBound, fld: &mut T)
                 UnboxedFnBound {
                     ref path,
                     ref decl,
+                    ref lifetimes,
                     ref_id
                 } => {
                     UnboxedFnTyParamBound(P(UnboxedFnBound {
                         path: fld.fold_path(path.clone()),
                         decl: fld.fold_fn_decl(decl.clone()),
+                        lifetimes: fld.fold_lifetime_defs(lifetimes.clone()),
                         ref_id: fld.new_id(ref_id),
                     }))
                 }
@@ -808,10 +810,17 @@ pub fn noop_fold_struct_def<T: Folder>(struct_def: P<StructDef>, fld: &mut T) ->
     })
 }
 
-pub fn noop_fold_trait_ref<T: Folder>(TraitRef {ref_id, path}: TraitRef, fld: &mut T) -> TraitRef {
-    TraitRef {
-        ref_id: fld.new_id(ref_id),
+pub fn noop_fold_trait_ref<T: Folder>(p: TraitRef, fld: &mut T) -> TraitRef {
+    let id = fld.new_id(p.ref_id);
+    let TraitRef {
+        path,
+        lifetimes,
+        ..
+    } = p;
+    ast::TraitRef {
         path: fld.fold_path(path),
+        ref_id: id,
+        lifetimes: fld.fold_lifetime_defs(lifetimes),
     }
 }
 

@@ -34,7 +34,8 @@ use ast::{FnOnceUnboxedClosureKind};
 use ast::{ForeignItem, ForeignItemStatic, ForeignItemFn, ForeignMod};
 use ast::{Ident, NormalFn, Inherited, ImplItem, Item, Item_, ItemStatic};
 use ast::{ItemEnum, ItemFn, ItemForeignMod, ItemImpl};
-use ast::{ItemMac, ItemMod, ItemStruct, ItemTrait, ItemTy, Lit, Lit_};
+use ast::{ItemMac, ItemMod, ItemStruct, ItemTrait, ItemTy};
+use ast::{LifetimeDef, Lit, Lit_};
 use ast::{LitBool, LitChar, LitByte, LitBinary};
 use ast::{LitNil, LitStr, LitInt, Local, LocalLet};
 use ast::{MutImmutable, MutMutable, Mac_, MacInvocTT, Matcher, MatchNonterminal};
@@ -3791,8 +3792,21 @@ impl<'a> Parser<'a> {
     {
         let mut result = vec!();
         loop {
+            let lifetime_defs = if self.eat(&token::LT) {
+                let lifetime_defs = self.parse_lifetime_defs();
+                self.expect_gt();
+                lifetime_defs
+            } else {
+                Vec::new()
+            };
             match self.token {
                 token::LIFETIME(lifetime) => {
+                    if lifetime_defs.len() > 0 {
+                        let span = self.last_span;
+                        self.span_err(span, "lifetime declarations are not \
+                                             allowed here")
+                    }
+
                     result.push(RegionTyParamBound(ast::Lifetime {
                         id: ast::DUMMY_NODE_ID,
                         span: self.span,
@@ -3818,12 +3832,14 @@ impl<'a> Parser<'a> {
                                 cf: return_style,
                                 variadic: false,
                             }),
+                            lifetimes: lifetime_defs,
                             ref_id: ast::DUMMY_NODE_ID,
                         })));
                     } else {
                         result.push(TraitTyParamBound(ast::TraitRef {
                             path: path,
                             ref_id: ast::DUMMY_NODE_ID,
+                            lifetimes: lifetime_defs,
                         }))
                     }
                 }
@@ -3852,6 +3868,7 @@ impl<'a> Parser<'a> {
         ast::TraitRef {
             path: path,
             ref_id: ast::DUMMY_NODE_ID,
+            lifetimes: Vec::new(),
         }
     }
 
@@ -4482,8 +4499,11 @@ impl<'a> Parser<'a> {
             // New-style trait. Reinterpret the type as a trait.
             let opt_trait_ref = match ty.node {
                 TyPath(ref path, None, node_id) => {
-                    Some(TraitRef { path: (*path).clone(),
-                                    ref_id: node_id })
+                    Some(TraitRef {
+                        path: (*path).clone(),
+                        ref_id: node_id,
+                        lifetimes: Vec::new(),
+                    })
                 }
                 TyPath(_, Some(_), _) => {
                     self.span_err(ty.span,

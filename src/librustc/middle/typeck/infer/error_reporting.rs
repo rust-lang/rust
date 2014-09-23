@@ -1110,6 +1110,7 @@ impl<'a, 'tcx> Rebuilder<'a, 'tcx> {
                     ast::TraitTyParamBound(ast::TraitRef {
                         path: new_path,
                         ref_id: tr.ref_id,
+                        lifetimes: tr.lifetimes.clone(),
                     })
                 }
             }
