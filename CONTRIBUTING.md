@@ -4,6 +4,12 @@ If you're just reporting a bug, please see:
 
 http://doc.rust-lang.org/complement-bugreport.html
 
+## Submitting an issue
+
+Please submit issues here for bug reports or implementation details. For feature
+requests, language changes, or major changes to the libraries, please submit an
+issue against the [RFCs repository](https://github.com/rust-lang/rfcs).
+
 ## Pull request procedure
 
 Pull requests should be targeted at Rust's `master` branch.
