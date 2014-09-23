@@ -2151,13 +2151,9 @@ In this case, we say `x` is a `uint` explicitly, so Rust is able to properly
 tell `random()` what to generate. In a similar fashion, both of these work:
 
 ```{rust,ignore}
-let input_num = from_str::<Option<uint>>("5");
+let input_num = from_str::<uint>("5");
 let input_num: Option<uint> = from_str("5");
 ```
-
-In this case, I happen to prefer the latter, and in the `random()` case, I prefer
-the former. I think the nested `<>`s make the first option especially ugly and
-a bit harder to read.
 
 Anyway, with us now converting our input to a number, our code looks like this:
 
