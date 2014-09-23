@@ -30,7 +30,7 @@ To generate an HTML version of a doc from Markdown manually, you can do
 something like:
 
 ~~~~
-pandoc --from=markdown --to=html5 --number-sections -o rust.html rust.md
+pandoc --from=markdown --to=html5 --number-sections -o reference.html reference.md
 ~~~~
 
 (rust.md being the Rust Reference Manual.)
