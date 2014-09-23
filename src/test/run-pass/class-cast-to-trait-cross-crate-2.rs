@@ -15,7 +15,7 @@ use std::to_string::ToString;
 use cci_class_cast::kitty::cat;
 
 fn print_out(thing: Box<ToString>, expected: String) {
-  let actual = thing.to_string();
+  let actual = (*thing).to_string();
   println!("{}", actual);
   assert_eq!(actual.to_string(), expected);
 }
