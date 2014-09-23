@@ -19,9 +19,7 @@ is *already* in the map, and when it's *not*. One way to do this is the followin
 
 ```
 if map.contains_key(&key) {
-    let v = map.find_mut(&key).unwrap();
-    let new_v = *v + 1;
-    *v = new_v;
+    *map.find_mut(&key).unwrap() += 1;
 } else {
     map.insert(key, 1);
 }
@@ -58,8 +56,8 @@ composability. Thus, this RFC proposes the same solution to the internal mutatio
 # Detailed design
 
 A fully tested "proof of concept" draft of this design has been implemented on top of hashmap,
-as it seems to be the worst offender, while still being easy to work with. You can
-[read the diff here](https://github.com/Gankro/rust/commit/39a1fa7c7362a3e22e59ab6601ac09475daff39b).
+as it seems to be the worst offender, while still being easy to work with. It sits as a pull request
+[here](https://github.com/rust-lang/rust/pull/17378).
 
 All the internal mutation methods are replaced with a single method on a collection: `entry`.
 The signature of `entry` will depend on the specific collection, but generally it will be similar to
@@ -87,26 +85,29 @@ pub enum Entry<'a, K, V> {
 }
 ```
 
-Of course, the real meat of the API is in the View's interface (impl details removed):
+Of course, the real meat of the API is in the Entry's interface (impl details removed):
 
 ```
 impl<'a, K, V> OccupiedEntry<'a, K, V> {
-    /// Get a reference to the value of this Entry
+    /// Gets a reference to the value of this Entry
     pub fn get(&self) -> &V;
 
-    /// Get a mutable reference to the value of this Entry
+    /// Gets a mutable reference to the value of this Entry
     pub fn get_mut(&mut self) -> &mut V;
 
-    /// Set the value stored in this Entry
-    pub fn set(mut self, value: V) -> V;
+    /// Converts the entry into a mutable reference to its value
+    pub fn into_mut(self) -> &'a mut V;
 
-    /// Take the value stored in this Entry
+    /// Sets the value stored in this Entry
+    pub fn set(&mut self, value: V) -> V;
+
+    /// Takes the value stored in this Entry
     pub fn take(self) -> V;
 }
 
 impl<'a, K, V> VacantEntry<'a, K, V> {
-    /// Set the value stored in this Entry
-    pub fn set(self, value: V);
+    /// Set the value stored in this Entry, and returns a reference to it
+    pub fn set(self, value: V) -> &'a mut V;
 }
 ```
 
@@ -129,27 +130,35 @@ the guarantor, and destroy the Entry. This is to avoid the costs of maintaining 
 otherwise isn't particularly interesting anymore.
 
 If there is a match, a more robust set of options is provided. `get` and `get_mut` provide access to the
-value found in the location. `set` behaves as the vacant variant, but also yields the old value. `take`
-simply removes the found value, and destroys the entry for similar reasons as `set`.
+value found in the location. `set` behaves as the vacant variant, but without destroying the entry. 
+It also yields the old value. `take` simply removes the found value, and destroys the entry for similar reasons as `set`.
 
 Let's look at how we one now writes `insert_or_update`:
 
+There are two options. We can either do the following:
+
 ```
+// cleaner, and more flexible if logic is more complex
+let val = match map.entry(key) {
+    Vacant(entry) => entry.set(0),
+    Occupied(entry) => entry.into_mut(),
+};
+*val += 1;
+```
+
+or
+
+```
+// closer to the original, and more compact
 match map.entry(key) {
-    Occupied(entry) => {
-        let v = entry.get_mut();
-        let new_v = *v + 1;
-        *v = new_v;
-    }
-    Vacant(entry) => {
-        entry.set(1);
-    }
+    Vacant(entry) => { entry.set(1); },
+    Occupied(mut entry) => { *entry.get_mut() += 1; },
 }
 ```
 
-One can now write something equivalent to the "intuitive" inefficient code, but it is now as efficient as the complex
+Either way, one can now write something equivalent to the "intuitive" inefficient code, but it is now as efficient as the complex
 `insert_or_update` methods. In fact, this matches so closely to the inefficient manipulation
-that users could reasonable ignore Entries *until performance becomes an issue*. At which point
+that users could reasonable ignore Entries *until performance becomes an issue*, at which point
 it's an almost trivial migration. Closures also aren't needed to dance around the fact that one may
 want to avoid generating some values unless they have to, because that falls naturally out of
 normal control flow.
@@ -195,11 +204,5 @@ However it had some interesting ideas about Key manipulation, so we mention it h
 historical purposes.
 
 # Unresolved questions
-The internal mutation methods cannot actually be implemented in terms of the View, because
-they return a mutable reference at the end, and there's no way to do that with the current
-View design. However, it's not clear why this is done by them. We believe it's simply to
-validate what the method *actually did*. If this is the case, then Views make this functionality
-obsolete. However, if this is *still* desirable, `set` could be tweaked to do this as well.
-However for some structures it may incur additional cost. Is this desirable functionality?
 
 Naming bikesheds!
