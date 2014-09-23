@@ -86,6 +86,10 @@ pub enum ObligationCauseCode {
     FieldSized,
 }
 
+// An error has already been reported to the user, so no need to continue checking.
+#[deriving(Clone,Show)]
+pub struct ErrorReported;
+
 pub type Obligations = subst::VecPerParamSpace<Obligation>;
 
 pub type Selection = Vtable<Obligation>;
@@ -332,7 +336,7 @@ pub fn obligation_for_builtin_bound(tcx: &ty::ctxt,
                                     cause: ObligationCause,
                                     source_ty: ty::t,
                                     builtin_bound: ty::BuiltinBound)
-                                    -> Obligation
+                                    -> Result<Obligation, ErrorReported>
 {
     util::obligation_for_builtin_bound(tcx, cause, builtin_bound, 0, source_ty)
 }
