@@ -290,6 +290,9 @@ impl FileMap {
     }
 
     /// get a line from the list of pre-computed line-beginnings
+    ///
+    /// NOTE(stage0, pcwalton): Remove `#[allow(unused_mut)]` after snapshot.
+    #[allow(unused_mut)]
     pub fn get_line(&self, line: int) -> String {
         let mut lines = self.lines.borrow_mut();
         let begin: BytePos = *lines.get(line as uint) - self.start_pos;
@@ -512,6 +515,8 @@ impl CodeMap {
         return a;
     }
 
+    // NOTE(stage0, pcwalton): Remove `#[allow(unused_mut)]` after snapshot.
+    #[allow(unused_mut)]
     fn lookup_line(&self, pos: BytePos) -> FileMapAndLine {
         let idx = self.lookup_filemap_idx(pos);
 

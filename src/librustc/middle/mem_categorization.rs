@@ -405,6 +405,8 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
             Some(adjustment) => {
                 match *adjustment {
                     ty::AdjustAddEnv(..) => {
+                        debug!("cat_expr(AdjustAddEnv): {}",
+                               expr.repr(self.tcx()));
                         // Convert a bare fn to a closure by adding NULL env.
                         // Result is an rvalue.
                         let expr_ty = if_ok!(self.expr_ty_adjusted(expr));
@@ -414,6 +416,8 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
                     ty::AdjustDerefRef(
                         ty::AutoDerefRef {
                             autoref: Some(_), ..}) => {
+                        debug!("cat_expr(AdjustDerefRef): {}",
+                               expr.repr(self.tcx()));
                         // Equivalent to &*expr or something similar.
                         // Result is an rvalue.
                         let expr_ty = if_ok!(self.expr_ty_adjusted(expr));
@@ -436,6 +440,9 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
                                autoderefs: uint)
                                -> McResult<cmt> {
         let mut cmt = if_ok!(self.cat_expr_unadjusted(expr));
+        debug!("cat_expr_autoderefd: autoderefs={}, cmt={}",
+               autoderefs,
+               cmt.repr(self.tcx()));
         for deref in range(1u, autoderefs + 1) {
             cmt = self.cat_deref(expr, cmt, deref, false);
         }
@@ -454,6 +461,10 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
 
           ast::ExprField(ref base, f_name, _) => {
             let base_cmt = if_ok!(self.cat_expr(&**base));
+            debug!("cat_expr(cat_field): id={} expr={} base={}",
+                   expr.id,
+                   expr.repr(self.tcx()),
+                   base_cmt.repr(self.tcx()));
             Ok(self.cat_field(expr, base_cmt, f_name.node, expr_ty))
           }
 
