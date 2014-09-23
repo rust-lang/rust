@@ -67,8 +67,7 @@ export LC_ALL=C
 # If we're running perf then set this environment variable
 # to put the benchmarks into 'hard mode'
 ifeq ($(MAKECMDGOALS),perf)
-  RUST_BENCH=1
-  export RUST_BENCH
+  export RUST_BENCH=1
 endif
 
 TEST_LOG_FILE=tmp/check-stage$(1)-T-$(2)-H-$(3)-$(4).log
