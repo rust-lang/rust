@@ -223,6 +223,7 @@ pub type TyParamBounds = OwnedSlice<TyParamBound>;
 pub struct UnboxedFnBound {
     pub path: Path,
     pub decl: P<FnDecl>,
+    pub lifetimes: Vec<LifetimeDef>,
     pub ref_id: NodeId,
 }
 
@@ -1219,6 +1220,7 @@ pub struct Attribute_ {
 pub struct TraitRef {
     pub path: Path,
     pub ref_id: NodeId,
+    pub lifetimes: Vec<LifetimeDef>,
 }
 
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
