@@ -1173,9 +1173,7 @@ fn real_args_as_bytes() -> Vec<Vec<u8>> {
             let utf_c_str: *const libc::c_char =
                 mem::transmute(objc_msgSend(tmp, utf8Sel));
             let s = CString::new(utf_c_str, false);
-            if s.is_not_null() {
-                res.push(s.as_bytes_no_nul().to_vec())
-            }
+            res.push(s.as_bytes_no_nul().to_vec())
         }
     }
 
