@@ -2244,34 +2244,24 @@ def_type_content_sets!(
         OwnsAll                             = 0b0000_0000__1111_1111__0000,
 
         // Things that are reachable by the value in any way (fourth nibble):
-        ReachesNonsendAnnot                 = 0b0000_0001__0000_0000__0000,
         ReachesBorrowed                     = 0b0000_0010__0000_0000__0000,
         // ReachesManaged /* see [1] below */  = 0b0000_0100__0000_0000__0000,
         ReachesMutable                      = 0b0000_1000__0000_0000__0000,
-        ReachesNoSync                       = 0b0001_0000__0000_0000__0000,
         ReachesFfiUnsafe                    = 0b0010_0000__0000_0000__0000,
         ReachesAll                          = 0b0011_1111__0000_0000__0000,
 
-        // Things that cause values to *move* rather than *copy*
+        // Things that cause values to *move* rather than *copy*. This
+        // is almost the same as the `Copy` trait, but for managed
+        // data -- atm, we consider managed data to copy, not move,
+        // but it does not impl Copy as a pure memcpy is not good
+        // enough. Yuck.
         Moves                               = 0b0000_0000__0000_1011__0000,
 
         // Things that mean drop glue is necessary
         NeedsDrop                           = 0b0000_0000__0000_0111__0000,
 
-        // Things that prevent values from being sent
-        //
-        // Note: For checking whether something is sendable, it'd
-        //       be sufficient to have ReachesManaged. However, we include
-        //       both ReachesManaged and OwnsManaged so that when
-        //       a parameter has a bound T:Send, we are able to deduce
-        //       that it neither reaches nor owns a managed pointer.
-        Nonsendable                         = 0b0000_0111__0000_0100__0000,
-
         // Things that prevent values from being considered sized
         Nonsized                            = 0b0000_0000__0000_0000__0001,
-
-        // Things that prevent values from being sync
-        Nonsync                             = 0b0001_0000__0000_0000__0000,
 
         // Things that make values considered not POD (would be same
         // as `Moves`, but for the fact that managed data `@` is
@@ -2291,29 +2281,12 @@ def_type_content_sets!(
 )
 
 impl TypeContents {
-    pub fn meets_builtin_bound(&self, cx: &ctxt, bb: BuiltinBound) -> bool {
-        match bb {
-            BoundSend => self.is_sendable(cx),
-            BoundSized => self.is_sized(cx),
-            BoundCopy => self.is_copy(cx),
-            BoundSync => self.is_sync(cx),
-        }
-    }
-
     pub fn when(&self, cond: bool) -> TypeContents {
         if cond {*self} else {TC::None}
     }
 
     pub fn intersects(&self, tc: TypeContents) -> bool {
         (self.bits & tc.bits) != 0
-    }
-
-    pub fn is_sendable(&self, _: &ctxt) -> bool {
-        !self.intersects(TC::Nonsendable)
-    }
-
-    pub fn is_sync(&self, _: &ctxt) -> bool {
-        !self.intersects(TC::Nonsync)
     }
 
     pub fn owns_managed(&self) -> bool {
@@ -2326,10 +2299,6 @@ impl TypeContents {
 
     pub fn is_sized(&self, _: &ctxt) -> bool {
         !self.intersects(TC::Nonsized)
-    }
-
-    pub fn is_copy(&self, _: &ctxt) -> bool {
-        !self.intersects(TC::Noncopy)
     }
 
     pub fn interior_unsafe(&self) -> bool {
@@ -2414,10 +2383,6 @@ impl fmt::Show for TypeContents {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "TypeContents({:t})", self.bits)
     }
-}
-
-pub fn type_is_sendable(cx: &ctxt, t: ty::t) -> bool {
-    type_contents(cx, t).is_sendable(cx)
 }
 
 pub fn type_interior_is_unsafe(cx: &ctxt, t: ty::t) -> bool {
@@ -2661,19 +2626,14 @@ pub fn type_contents(cx: &ctxt, ty: t) -> TypeContents {
     fn apply_lang_items(cx: &ctxt,
                         did: ast::DefId,
                         tc: TypeContents)
-                        -> TypeContents {
-        if Some(did) == cx.lang_items.no_send_bound() {
-            tc | TC::ReachesNonsendAnnot
-        } else if Some(did) == cx.lang_items.managed_bound() {
+                        -> TypeContents
+    {
+        if Some(did) == cx.lang_items.managed_bound() {
             tc | TC::Managed
         } else if Some(did) == cx.lang_items.no_copy_bound() {
             tc | TC::OwnsAffine
-        } else if Some(did) == cx.lang_items.no_sync_bound() {
-            tc | TC::ReachesNoSync
         } else if Some(did) == cx.lang_items.unsafe_type() {
-            // FIXME(#13231): This shouldn't be needed after
-            // opt-in built-in bounds are implemented.
-            (tc | TC::InteriorUnsafe) - TC::Nonsync
+            tc | TC::InteriorUnsafe
         } else {
             tc
         }
@@ -2733,10 +2693,9 @@ pub fn type_contents(cx: &ctxt, ty: t) -> TypeContents {
         let mut tc = TC::All;
         each_inherited_builtin_bound(cx, bounds, traits, |bound| {
             tc = tc - match bound {
-                BoundSend => TC::Nonsendable,
+                BoundSync | BoundSend => TC::None,
                 BoundSized => TC::Nonsized,
                 BoundCopy => TC::Noncopy,
-                BoundSync => TC::Nonsync,
             };
         });
         return tc;
