@@ -1601,9 +1601,6 @@ declare_lint!(pub DEAD_ASSIGNMENT, Warn,
 declare_lint!(pub DEAD_CODE, Warn,
               "detect piece of code that will never be used")
 
-declare_lint!(pub VISIBLE_PRIVATE_TYPES, Warn,
-              "detect use of private types in exported type signatures")
-
 declare_lint!(pub UNREACHABLE_CODE, Warn,
               "detects unreachable code")
 
@@ -1636,7 +1633,6 @@ impl LintPass for HardwiredLints {
             UNUSED_VARIABLE,
             DEAD_ASSIGNMENT,
             DEAD_CODE,
-            VISIBLE_PRIVATE_TYPES,
             UNREACHABLE_CODE,
             WARNINGS,
             UNKNOWN_FEATURES,

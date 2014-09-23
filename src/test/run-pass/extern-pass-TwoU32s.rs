@@ -12,7 +12,7 @@
 // by value.
 
 #[deriving(PartialEq, Show)]
-struct TwoU32s {
+pub struct TwoU32s {
     one: u32, two: u32
 }
 

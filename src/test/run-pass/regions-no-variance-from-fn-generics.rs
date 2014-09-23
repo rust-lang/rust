@@ -12,7 +12,7 @@
 // should not upset the variance inference for actual occurrences of
 // that lifetime in type expressions.
 
-trait HasLife<'a> { }
+pub trait HasLife<'a> { }
 
 trait UseLife01 {
     fn refs<'a, H: HasLife<'a>>(&'a self) -> H;
@@ -23,7 +23,7 @@ trait UseLife02 {
 }
 
 
-trait HasType<T> { }
+pub trait HasType<T> { }
 
 trait UseLife03<T> {
     fn refs<'a, H: HasType<&'a T>>(&'a self) -> H;

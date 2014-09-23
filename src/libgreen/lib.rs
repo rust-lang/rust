@@ -218,7 +218,7 @@
 
 // NB this does *not* include globs, please keep it that way.
 #![feature(macro_rules, phase, default_type_params)]
-#![allow(visible_private_types, deprecated)]
+#![allow(deprecated)]
 
 #[cfg(test)] #[phase(plugin, link)] extern crate log;
 #[cfg(test)] extern crate rustuv;
@@ -385,7 +385,7 @@ pub struct SchedPool {
 /// keep track of how many tasks are currently running in the pool and then
 /// sending on a channel once the entire pool has been drained of all tasks.
 #[deriving(Clone)]
-struct TaskState {
+pub struct TaskState {
     cnt: Arc<AtomicUint>,
     done: Sender<()>,
 }

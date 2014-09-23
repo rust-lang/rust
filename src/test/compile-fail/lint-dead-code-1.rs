@@ -11,7 +11,6 @@
 #![no_std]
 #![allow(unused_variable)]
 #![allow(non_camel_case_types)]
-#![allow(visible_private_types)]
 #![deny(dead_code)]
 #![feature(lang_items)]
 
@@ -54,7 +53,7 @@ impl SemiUsedStruct {
     fn la_la_la() {}
 }
 struct StructUsedAsField;
-struct StructUsedInEnum;
+pub struct StructUsedInEnum;
 struct StructUsedInGeneric;
 pub struct PubStruct2 {
     #[allow(dead_code)]
