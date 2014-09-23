@@ -623,7 +623,7 @@ Convert the line-column information from that list into a buffer position value.
       (move-to-column column)
       (point))))
 
-;;; TODO: Maybe add an ERT explainer function (something that shows the
+;;; FIXME: Maybe add an ERT explainer function (something that shows the
 ;;; surrounding code of the final point, not just the position).
 (defun rust-test-motion (source-code init-pos final-pos manip-func &optional &rest args)
   "Test that MANIP-FUNC moves point from INIT-POS to FINAL-POS.
