@@ -237,7 +237,6 @@ fn rust_exception_class() -> uw::_Unwind_Exception_Class {
 
 #[cfg(not(target_arch = "arm"), not(windows, target_arch = "x86_64"), not(test))]
 #[doc(hidden)]
-#[allow(visible_private_types)]
 pub mod eabi {
     use libunwind as uw;
     use libc::c_int;
@@ -291,7 +290,6 @@ pub mod eabi {
 
 #[cfg(target_os = "ios", target_arch = "arm", not(test))]
 #[doc(hidden)]
-#[allow(visible_private_types)]
 pub mod eabi {
     use libunwind as uw;
     use libc::c_int;
@@ -347,7 +345,6 @@ pub mod eabi {
 // but otherwise works the same.
 #[cfg(target_arch = "arm", not(target_os = "ios"), not(test))]
 #[doc(hidden)]
-#[allow(visible_private_types)]
 pub mod eabi {
     use libunwind as uw;
     use libc::c_int;
@@ -397,21 +394,20 @@ pub mod eabi {
 
 #[cfg(windows, target_arch = "x86_64", not(test))]
 #[doc(hidden)]
-#[allow(visible_private_types)]
 #[allow(non_camel_case_types, non_snake_case)]
 pub mod eabi {
     use libunwind as uw;
     use libc::{c_void, c_int};
 
     #[repr(C)]
-    struct EXCEPTION_RECORD;
+    pub struct EXCEPTION_RECORD;
     #[repr(C)]
-    struct CONTEXT;
+    pub struct CONTEXT;
     #[repr(C)]
-    struct DISPATCHER_CONTEXT;
+    pub struct DISPATCHER_CONTEXT;
 
     #[repr(C)]
-    enum EXCEPTION_DISPOSITION {
+    pub enum EXCEPTION_DISPOSITION {
         ExceptionContinueExecution,
         ExceptionContinueSearch,
         ExceptionNestedException,
