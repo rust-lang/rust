@@ -1768,6 +1768,7 @@ pub mod bytes {
     /// `src` and `dst` must not overlap. Fails if the length of `dst`
     /// is less than the length of `src`.
     #[inline]
+    #[allow(deprecated)]
     pub fn copy_memory(dst: &mut [u8], src: &[u8]) {
         // Bound checks are done at .copy_memory.
         unsafe { dst.copy_memory(src) }
