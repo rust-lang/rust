@@ -80,7 +80,10 @@ pub enum ObligationCauseCode {
 
     // Captures of variable the given id by a closure (span is the
     // span of the closure)
-    ClosureCapture(ast::NodeId, Span)
+    ClosureCapture(ast::NodeId, Span),
+
+    // Types of fields (other than the last) in a struct must be sized.
+    FieldSized,
 }
 
 pub type Obligations = subst::VecPerParamSpace<Obligation>;

@@ -12,25 +12,25 @@
 // Test `Sized?` types not allowed in fields (except the last one).
 
 struct S1<Sized? X> {
-    f1: X, //~ ERROR type `f1` is dynamically sized. dynamically sized types may only appear as the
+    f1: X, //~ ERROR `core::kinds::Sized` is not implemented
     f2: int,
 }
 struct S2<Sized? X> {
     f: int,
-    g: X, //~ ERROR type `g` is dynamically sized. dynamically sized types may only appear as the ty
+    g: X, //~ ERROR `core::kinds::Sized` is not implemented
     h: int,
 }
 struct S3 {
-    f: str, //~ ERROR type `f` is dynamically sized. dynamically sized types may only appear
+    f: str, //~ ERROR `core::kinds::Sized` is not implemented
     g: [uint]
 }
 struct S4 {
-    f: str, //~ ERROR type `f` is dynamically sized. dynamically sized types may only appear
+    f: str, //~ ERROR `core::kinds::Sized` is not implemented
     g: uint
 }
 enum E<Sized? X> {
-    V1(X, int), //~ERROR type `X` is dynamically sized. dynamically sized types may only appear as t
-    V2{f1: X, f: int}, //~ERROR type `f1` is dynamically sized. dynamically sized types may only app
+    V1(X, int), //~ERROR `core::kinds::Sized` is not implemented
+    V2{f1: X, f: int}, //~ERROR `core::kinds::Sized` is not implemented
 }
 
 pub fn main() {

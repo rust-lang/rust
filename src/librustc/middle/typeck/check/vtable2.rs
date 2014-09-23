@@ -406,5 +406,10 @@ fn note_obligation_cause(fcx: &FnCtxt,
                        name,
                        trait_name);
         }
+        traits::FieldSized => {
+            span_note!(tcx.sess, obligation.cause.span,
+                       "only the last field of a struct or enum variant \
+                       may have a dynamically sized type")
+        }
     }
 }

@@ -381,17 +381,6 @@ impl<'a, 'tcx, 'v> Visitor<'v> for CheckItemTypesVisitor<'a, 'tcx> {
     }
 }
 
-struct CheckItemSizedTypesVisitor<'a, 'tcx: 'a> {
-    ccx: &'a CrateCtxt<'a, 'tcx>
-}
-
-impl<'a, 'tcx, 'v> Visitor<'v> for CheckItemSizedTypesVisitor<'a, 'tcx> {
-    fn visit_item(&mut self, i: &ast::Item) {
-        check_item_sized(self.ccx, i);
-        visit::walk_item(self, i);
-    }
-}
-
 pub fn check_item_types(ccx: &CrateCtxt) {
     let krate = ccx.tcx.map.krate();
     let mut visit = wf::CheckTypeWellFormedVisitor::new(ccx);
@@ -405,9 +394,6 @@ pub fn check_item_types(ccx: &CrateCtxt) {
     visit::walk_crate(&mut visit, krate);
 
     ccx.tcx.sess.abort_if_errors();
-
-    let mut visit = CheckItemSizedTypesVisitor { ccx: ccx };
-    visit::walk_crate(&mut visit, krate);
 }
 
 fn check_bare_fn(ccx: &CrateCtxt,
@@ -670,33 +656,6 @@ fn check_for_field_shadowing(tcx: &ty::ctxt,
     }
 }
 
-fn check_fields_sized(tcx: &ty::ctxt,
-                      struct_def: &ast::StructDef) {
-    let len = struct_def.fields.len();
-    if len == 0 {
-        return;
-    }
-    for f in struct_def.fields.slice_to(len - 1).iter() {
-        let t = ty::node_id_to_type(tcx, f.node.id);
-        if !ty::type_is_sized(tcx, t) {
-            match f.node.kind {
-                ast::NamedField(ident, _) => {
-                    span_err!(tcx.sess, f.span, E0042,
-                        "type `{}` is dynamically sized. \
-                         dynamically sized types may only \
-                         appear as the type of the final \
-                         field in a struct",
-                        token::get_ident(ident));
-                }
-                ast::UnnamedField(_) => {
-                    span_err!(tcx.sess, f.span, E0043,
-                        "dynamically sized type in field");
-                }
-            }
-        }
-    }
-}
-
 pub fn check_struct(ccx: &CrateCtxt, id: ast::NodeId, span: Span) {
     let tcx = ccx.tcx;
 
@@ -708,24 +667,6 @@ pub fn check_struct(ccx: &CrateCtxt, id: ast::NodeId, span: Span) {
 
     if ty::lookup_simd(tcx, local_def(id)) {
         check_simd(tcx, span, id);
-    }
-}
-
-pub fn check_item_sized(ccx: &CrateCtxt, it: &ast::Item) {
-    debug!("check_item(it.id={}, it.ident={})",
-           it.id,
-           ty::item_path_str(ccx.tcx, local_def(it.id)));
-    let _indenter = indenter();
-
-    match it.node {
-        ast::ItemEnum(ref enum_definition, _) => {
-            check_enum_variants_sized(ccx,
-                                      enum_definition.variants.as_slice());
-        }
-        ast::ItemStruct(..) => {
-            check_fields_sized(ccx.tcx, &*ccx.tcx.map.expect_struct(it.id));
-        }
-        _ => {}
     }
 }
 
@@ -4943,39 +4884,6 @@ pub fn check_simd(tcx: &ty::ctxt, sp: Span, id: ast::NodeId) {
             }
         }
         _ => ()
-    }
-}
-
-
-pub fn check_enum_variants_sized(ccx: &CrateCtxt,
-                                 vs: &[P<ast::Variant>]) {
-    for v in vs.iter() {
-        match v.node.kind {
-            ast::TupleVariantKind(ref args) if args.len() > 0 => {
-                let ctor_ty = ty::node_id_to_type(ccx.tcx, v.node.id);
-                let arg_tys: Vec<ty::t> = ty::ty_fn_args(ctor_ty).iter().map(|a| *a).collect();
-                let len = arg_tys.len();
-                if len == 0 {
-                    return;
-                }
-                for (i, t) in arg_tys.slice_to(len - 1).iter().enumerate() {
-                    // Allow the last field in an enum to be unsized.
-                    // We want to do this so that we can support smart pointers.
-                    // A struct value with an unsized final field is itself
-                    // unsized and we must track this in the type system.
-                    if !ty::type_is_sized(ccx.tcx, *t) {
-                        span_err!(ccx.tcx.sess, args.get(i).ty.span, E0078,
-                            "type `{}` is dynamically sized. dynamically sized types may only \
-                             appear as the final type in a variant",
-                             ppaux::ty_to_string(ccx.tcx, *t));
-                    }
-                }
-            },
-            ast::StructVariantKind(ref struct_def) => {
-                check_fields_sized(ccx.tcx, &**struct_def)
-            }
-            _ => {}
-        }
     }
 }
 

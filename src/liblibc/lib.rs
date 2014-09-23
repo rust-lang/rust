@@ -79,6 +79,8 @@
 #![allow(missing_doc)]
 #![allow(non_snake_case)]
 
+extern crate core;
+
 #[cfg(test)] extern crate std;
 #[cfg(test)] extern crate test;
 #[cfg(test)] extern crate native;
