@@ -494,7 +494,8 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
                 euv::AutoRef(..) |
                 euv::ClosureInvocation(..) |
                 euv::ForLoop(..) |
-                euv::RefBinding(..) => {
+                euv::RefBinding(..) |
+                euv::MatchDiscriminant(..) => {
                     format!("previous borrow of `{}` occurs here",
                             self.bccx.loan_path_to_string(&*old_loan.loan_path))
                 }
