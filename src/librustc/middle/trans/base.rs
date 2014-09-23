@@ -2671,12 +2671,7 @@ fn exported_name(ccx: &CrateContext, id: ast::NodeId,
 }
 
 fn contains_null(s: &str) -> bool {
-    for b in s.bytes() {
-        if b == 0 {
-            return true
-        }
-    }
-    false
+    s.bytes().any(|b| b == 0)
 }
 
 pub fn get_item_val(ccx: &CrateContext, id: ast::NodeId) -> ValueRef {
