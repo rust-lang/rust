@@ -29,9 +29,9 @@ DOCS := index intro tutorial guide guide-ffi guide-macros guide-lifetimes \
 	guide-tasks guide-container guide-pointers guide-testing \
 	guide-runtime complement-bugreport \
 	complement-lang-faq complement-design-faq complement-project-faq rust \
-    rustdoc guide-unsafe guide-strings
+    rustdoc guide-unsafe guide-strings reference
 
-PDF_DOCS := guide rust
+PDF_DOCS := guide reference
 
 RUSTDOC_DEPS_rust := doc/full-toc.inc
 RUSTDOC_FLAGS_rust := --html-in-header=doc/full-toc.inc
