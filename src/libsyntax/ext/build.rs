@@ -435,7 +435,8 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
     fn trait_ref(&self, path: ast::Path) -> ast::TraitRef {
         ast::TraitRef {
             path: path,
-            ref_id: ast::DUMMY_NODE_ID
+            ref_id: ast::DUMMY_NODE_ID,
+            lifetimes: Vec::new(),
         }
     }
 

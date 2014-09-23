@@ -900,6 +900,16 @@ impl<'a> State<'a> {
     }
 
     fn print_trait_ref(&mut self, t: &ast::TraitRef) -> IoResult<()> {
+        if t.lifetimes.len() > 0 {
+            try!(self.print_generics(&ast::Generics {
+                lifetimes: t.lifetimes.clone(),
+                ty_params: OwnedSlice::empty(),
+                where_clause: ast::WhereClause {
+                    id: ast::DUMMY_NODE_ID,
+                    predicates: Vec::new(),
+                },
+            }));
+        }
         self.print_path(&t.path, false)
     }
 
