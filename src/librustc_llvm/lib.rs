@@ -153,7 +153,7 @@ pub enum AttributeSet {
     FunctionIndex = !0
 }
 
-trait AttrHelper {
+pub trait AttrHelper {
     fn apply_llfn(&self, idx: c_uint, llfn: ValueRef);
     fn apply_callsite(&self, idx: c_uint, callsite: ValueRef);
 }

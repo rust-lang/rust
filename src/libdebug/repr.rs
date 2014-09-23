@@ -32,7 +32,7 @@ macro_rules! try( ($me:expr, $e:expr) => (
 
 /// Representations
 
-trait Repr {
+pub trait Repr {
     fn write_repr(&self, writer: &mut io::Writer) -> io::IoResult<()>;
 }
 

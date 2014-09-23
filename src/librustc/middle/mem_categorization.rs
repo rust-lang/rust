@@ -224,7 +224,7 @@ pub fn deref_kind(tcx: &ty::ctxt, t: ty::t) -> deref_kind {
     }
 }
 
-trait ast_node {
+pub trait ast_node {
     fn id(&self) -> ast::NodeId;
     fn span(&self) -> Span;
 }

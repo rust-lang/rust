@@ -2178,7 +2178,6 @@ pub type Iterate<'a, T> = Unfold<'a, T, IterateState<'a, T>>;
 
 /// Creates a new iterator that produces an infinite sequence of
 /// repeated applications of the given function `f`.
-#[allow(visible_private_types)]
 pub fn iterate<'a, T: Clone>(seed: T, f: |T|: 'a -> T) -> Iterate<'a, T> {
     Unfold::new((f, Some(seed), true), |st| {
         let &(ref mut f, ref mut val, ref mut first) = st;

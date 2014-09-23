@@ -19,7 +19,7 @@ use net;
 use super::{Loop, UvError, Request, wait_until_woken_after, wakeup};
 use uvll;
 
-struct Addrinfo {
+pub struct Addrinfo {
     handle: *const libc::addrinfo,
 }
 
