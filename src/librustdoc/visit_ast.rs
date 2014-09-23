@@ -46,12 +46,15 @@ pub struct RustdocVisitor<'a, 'tcx: 'a> {
 impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
     pub fn new(cx: &'a core::DocContext<'tcx>,
                analysis: Option<&'a core::CrateAnalysis>) -> RustdocVisitor<'a, 'tcx> {
+        // If the root is reexported, terminate all recursion.
+        let mut stack = HashSet::new();
+        stack.insert(ast::CRATE_NODE_ID);
         RustdocVisitor {
             module: Module::new(None),
             attrs: Vec::new(),
             cx: cx,
             analysis: analysis,
-            view_item_stack: HashSet::new(),
+            view_item_stack: stack,
         }
     }
 
@@ -232,7 +235,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         if !please_inline && analysis.public_items.contains(&def.node) {
             return false
         }
-        if !self.view_item_stack.insert(id) { return false }
+        if !self.view_item_stack.insert(def.node) { return false }
 
         let ret = match tcx.map.get(def.node) {
             ast_map::NodeItem(it) => {
