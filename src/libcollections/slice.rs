@@ -851,6 +851,16 @@ mod tests {
     }
 
     #[test]
+    fn test_head_mut() {
+        let mut a = vec![];
+        assert_eq!(a.as_mut_slice().head_mut(), None);
+        a = vec![11i];
+        assert_eq!(*a.as_mut_slice().head_mut().unwrap(), 11);
+        a = vec![11i, 12];
+        assert_eq!(*a.as_mut_slice().head_mut().unwrap(), 11);
+    }
+
+    #[test]
     fn test_tail() {
         let mut a = vec![11i];
         let b: &[int] = &[];
@@ -861,6 +871,16 @@ mod tests {
     }
 
     #[test]
+    fn test_tail_mut() {
+        let mut a = vec![11i];
+        let b: &mut [int] = &mut [];
+        assert!(a.as_mut_slice().tail_mut() == b);
+        a = vec![11i, 12];
+        let b: &mut [int] = &mut [12];
+        assert!(a.as_mut_slice().tail_mut() == b);
+    }
+
+    #[test]
     #[should_fail]
     fn test_tail_empty() {
         let a: Vec<int> = vec![];
@@ -868,14 +888,21 @@ mod tests {
     }
 
     #[test]
+    #[should_fail]
+    fn test_tail_mut_empty() {
+        let mut a: Vec<int> = vec![];
+        a.as_mut_slice().tail_mut();
+    }
+
+    #[test]
     #[allow(deprecated)]
     fn test_tailn() {
         let mut a = vec![11i, 12, 13];
-        let b: &[int] = &[11, 12, 13];
-        assert_eq!(a.tailn(0), b);
+        let b: &mut [int] = &mut [11, 12, 13];
+        assert!(a.tailn(0) == b);
         a = vec![11i, 12, 13];
-        let b: &[int] = &[13];
-        assert_eq!(a.tailn(2), b);
+        let b: &mut [int] = &mut [13];
+        assert!(a.tailn(2) == b);
     }
 
     #[test]
@@ -897,10 +924,27 @@ mod tests {
     }
 
     #[test]
+    fn test_init_mut() {
+        let mut a = vec![11i];
+        let b: &mut [int] = &mut [];
+        assert!(a.as_mut_slice().init_mut() == b);
+        a = vec![11i, 12];
+        let b: &mut [int] = &mut [11];
+        assert!(a.as_mut_slice().init_mut() == b);
+    }
+
+    #[test]
     #[should_fail]
     fn test_init_empty() {
         let a: Vec<int> = vec![];
         a.init();
+    }
+
+    #[test]
+    #[should_fail]
+    fn test_init_mut_empty() {
+        let mut a: Vec<int> = vec![];
+        a.as_mut_slice().init_mut();
     }
 
     #[test]
@@ -930,6 +974,16 @@ mod tests {
         assert_eq!(a.as_slice().last().unwrap(), &11);
         a = vec![11i, 12];
         assert_eq!(a.as_slice().last().unwrap(), &12);
+    }
+
+    #[test]
+    fn test_last_mut() {
+        let mut a = vec![];
+        assert_eq!(a.as_mut_slice().last_mut(), None);
+        a = vec![11i];
+        assert_eq!(*a.as_mut_slice().last_mut().unwrap(), 11);
+        a = vec![11i, 12];
+        assert_eq!(*a.as_mut_slice().last_mut().unwrap(), 12);
     }
 
     #[test]
@@ -1077,6 +1131,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(deprecated)]
     fn test_grow_set() {
         let mut v = vec![1i, 2, 3];
         v.grow_set(4u, &4, 5);
@@ -1610,6 +1665,7 @@ mod tests {
 
     #[test]
     #[should_fail]
+    #[allow(deprecated)]
     fn test_copy_memory_oob() {
         unsafe {
             let mut a = [1i, 2, 3, 4];
@@ -1791,6 +1847,26 @@ mod tests {
         let xs: &[int] = &[];
         let splits: &[&[int]] = &[&[]];
         assert_eq!(xs.splitn(1, |x| *x == 5).collect::<Vec<&[int]>>().as_slice(), splits);
+    }
+
+    #[test]
+    fn test_splitnator_mut() {
+        let xs = &mut [1i,2,3,4,5];
+
+        let splits: &[&mut [int]] = &[&mut [1,2,3,4,5]];
+        assert_eq!(xs.splitn_mut(0, |x| *x % 2 == 0).collect::<Vec<&mut [int]>>().as_slice(),
+                   splits);
+        let splits: &[&mut [int]] = &[&mut [1], &mut [3,4,5]];
+        assert_eq!(xs.splitn_mut(1, |x| *x % 2 == 0).collect::<Vec<&mut [int]>>().as_slice(),
+                   splits);
+        let splits: &[&mut [int]] = &[&mut [], &mut [], &mut [], &mut [4,5]];
+        assert_eq!(xs.splitn_mut(3, |_| true).collect::<Vec<&mut [int]>>().as_slice(),
+                   splits);
+
+        let xs: &mut [int] = &mut [];
+        let splits: &[&mut [int]] = &[&mut []];
+        assert_eq!(xs.splitn_mut(1, |x| *x == 5).collect::<Vec<&mut [int]>>().as_slice(),
+                   splits);
     }
 
     #[test]
