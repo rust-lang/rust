@@ -8,18 +8,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![crate_type = "lib"]
 #![feature(globs)]
 
-mod m {
-    pub use self::a::Foo;
+pub mod longhands {
+    pub use super::*;
 
-    mod a {
-        pub struct Foo;
-    }
+    pub use super::common_types::computed::compute_CSSColor as to_computed_value;
 
-    mod b {
-        pub use super::*;
-    }
+    pub fn computed_as_specified() {}
 }
 
+pub mod common_types {
+    pub mod computed {
+        pub use super::super::longhands::computed_as_specified as compute_CSSColor;
+    }
+}
