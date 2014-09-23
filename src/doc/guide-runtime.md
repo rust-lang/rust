@@ -182,73 +182,16 @@ the appropriate time comes.
 
 Upon reading `libgreen`, you may notice that there is no I/O implementation
 inside of the library, but rather just the infrastructure for maintaining a set
-of green schedulers which switch among Rust tasks. The actual I/O implementation
-is found in `librustuv` which are the Rust bindings to libuv. This distinction
-is made to allow for other I/O implementations not built on libuv (but none
-exist at this time).
+of green schedulers which switch among Rust tasks.
 
-Some benefits of using libgreen are:
-
-* Fast task spawning. When using M:N threading, spawning a new task can avoid
-  executing a syscall entirely, which can lead to more efficient task spawning
-  times.
-* Fast task switching. Because context switching is implemented in user-space,
-  all task contention operations (mutexes, channels, etc) never execute
-  syscalls, leading to much faster implementations and runtimes. An efficient
-  context switch also leads to higher throughput servers than 1:1 threading
-  because tasks can be switched out much more efficiently.
-
-### Pools of Schedulers
-
-M:N threading is built upon the concept of a pool of M OS threads (which
-libgreen refers to as schedulers), able to run N Rust tasks. This abstraction is
-encompassed in libgreen's [`SchedPool`](green/struct.SchedPool.html) type. This type allows for
-fine-grained control over the pool of schedulers which will be used to run Rust
-tasks.
-
-In addition the `SchedPool` type is the *only* way through which a new M:N task
-can be spawned. Sibling tasks to Rust tasks themselves (created through
-`std::task::spawn`) will be spawned into the same pool of schedulers that the
-original task was home to. New tasks must previously have some form of handle
-into the pool of schedulers in order to spawn a new task.
-
-## Which to choose?
-
-With two implementations of the runtime available, a choice obviously needs to
-be made to see which will be used. The compiler itself will always by-default
-link to one of these runtimes.
-
-Having a default decision made in the compiler is done out of necessity and
-convenience. The compiler's decision of runtime to link to is *not* an
-endorsement of one over the other. As always, this decision can be overridden.
+As per [RFC 62](https://github.com/rust-lang/rfcs/blob/master/active/0062-remove-runtime.md),
+`libgreen` is currently in the process of being removed from Rust. It is
+currently in a transitional phase, with librustuv I/O support already removed.
 
 For example, this program will be linked to "the default runtime". The current
 default runtime is to use libnative.
 
 ~~~{.rust}
-fn main() {}
-~~~
-
-### Force booting with libgreen
-
-In this example, the `main` function will be booted with I/O support powered by
-libuv. This is done by linking to the `rustuv` crate and specifying the
-`rustuv::event_loop` function as the event loop factory.
-
-To create a pool of green tasks which have no I/O support, you may shed the
-`rustuv` dependency and use the `green::basic::event_loop` function instead of
-`rustuv::event_loop`. All tasks will have no I/O support, but they will still be
-able to deschedule/reschedule (use channels, locks, etc).
-
-~~~{.rust}
-extern crate green;
-extern crate rustuv;
-
-#[start]
-fn start(argc: int, argv: *const *const u8) -> int {
-    green::start(argc, argv, rustuv::event_loop, main)
-}
-
 fn main() {}
 ~~~
 
@@ -275,10 +218,7 @@ The actual code for the runtime is spread out among a few locations:
 * [std::rt][stdrt]
 * [libnative][libnative]
 * [libgreen][libgreen]
-* [librustuv][librustuv]
 
-[libuv]: https://github.com/joyent/libuv/
 [stdrt]: std/rt/index.html
 [libnative]: native/index.html
 [libgreen]: green/index.html
-[librustuv]: rustuv/index.html

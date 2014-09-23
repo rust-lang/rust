@@ -19,8 +19,6 @@ use std::io::Command;
 use std::io;
 use std::os;
 
-green_start!(main)
-
 fn main() {
     let args = os::args();
     if args.len() > 1 && args.get(1).as_slice() == "child" {

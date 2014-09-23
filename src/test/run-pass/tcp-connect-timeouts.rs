@@ -22,12 +22,6 @@
 
 extern crate native;
 extern crate green;
-extern crate rustuv;
-
-#[cfg(test)] #[start]
-fn start(argc: int, argv: *const *const u8) -> int {
-    green::start(argc, argv, rustuv::event_loop, test_main)
-}
 
 macro_rules! iotest (
     { fn $name:ident() $b:block $(#[$a:meta])* } => (

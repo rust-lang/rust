@@ -18,8 +18,6 @@ use std::io::{TempDir, Command, fs};
 use std::os;
 use std::task::TaskBuilder;
 
-green_start!(main)
-
 fn main() {
     // If we're the child, make sure we were invoked correctly
     let args = os::args();

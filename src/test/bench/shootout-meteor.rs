@@ -40,12 +40,7 @@
 
 // no-pretty-expanded FIXME #15189
 
-#![feature(phase)]
-#[phase(plugin)] extern crate green;
-
 use std::sync::Arc;
-
-green_start!(main)
 
 //
 // Utilities.

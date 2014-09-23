@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+//! Note: libgreen is currently scheduled to be removed as per RFC 62.
+//!
 //! The "green scheduling" library
 //!
 //! This library provides M:N threading for rust programs. Internally this has
@@ -128,34 +130,7 @@
 //! > **Note**: This `main` function in this example does *not* have I/O
 //! >           support. The basic event loop does not provide any support
 //!
-//! # Starting with I/O support in libgreen
-//!
-//! ```rust
-//! extern crate green;
-//! extern crate rustuv;
-//!
-//! #[start]
-//! fn start(argc: int, argv: *const *const u8) -> int {
-//!     green::start(argc, argv, rustuv::event_loop, main)
-//! }
-//!
-//! fn main() {
-//!     // this code is running in a pool of schedulers all powered by libuv
-//! }
-//! ```
-//!
-//! The above code can also be shortened with a macro from libgreen.
-//!
-//! ```
-//! #![feature(phase)]
-//! #[phase(plugin)] extern crate green;
-//!
-//! green_start!(main)
-//!
-//! fn main() {
-//!     // run inside of a green pool
-//! }
-//! ```
+//!I/O support with libgreen is being removed. [RFC 62](https://github.com/rust-lang/rfcs/blob/master/active/0062-remove-runtime.md)
 //!
 //! # Using a scheduler pool
 //!
@@ -165,16 +140,12 @@
 //!
 //! ```rust
 //! extern crate green;
-//! extern crate rustuv;
 //!
 //! # fn main() {
 //! use std::task::TaskBuilder;
 //! use green::{SchedPool, PoolConfig, GreenTaskBuilder};
 //!
 //! let mut config = PoolConfig::new();
-//!
-//! // Optional: Set the event loop to be rustuv's to allow I/O to work
-//! config.event_loop_factory = rustuv::event_loop;
 //!
 //! let mut pool = SchedPool::new(config);
 //!
@@ -221,7 +192,6 @@
 #![allow(deprecated)]
 
 #[cfg(test)] #[phase(plugin, link)] extern crate log;
-#[cfg(test)] extern crate rustuv;
 extern crate libc;
 extern crate alloc;
 
@@ -252,33 +222,6 @@ pub mod sched;
 pub mod sleeper_list;
 pub mod stack;
 pub mod task;
-
-/// A helper macro for booting a program with libgreen
-///
-/// # Example
-///
-/// ```
-/// #![feature(phase)]
-/// #[phase(plugin)] extern crate green;
-///
-/// green_start!(main)
-///
-/// fn main() {
-///     // running with libgreen
-/// }
-/// ```
-#[macro_export]
-macro_rules! green_start( ($f:ident) => (
-    mod __start {
-        extern crate green;
-        extern crate rustuv;
-
-        #[start]
-        fn start(argc: int, argv: *const *const u8) -> int {
-            green::start(argc, argv, rustuv::event_loop, super::$f)
-        }
-    }
-) )
 
 /// Set up a default runtime configuration, given compiler-supplied arguments.
 ///

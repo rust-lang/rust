@@ -27,8 +27,6 @@ use native::NativeTaskBuilder;
 static N: uint = 8;
 static M: uint = 20;
 
-green_start!(main)
-
 fn main() {
     test();
 

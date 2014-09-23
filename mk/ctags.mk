@@ -16,13 +16,11 @@
 .PHONY: TAGS.emacs TAGS.vi
 
 # This is using a blacklist approach, probably more durable than a whitelist.
-# We exclude: external dependencies (llvm, libuv, gyp, rt/{msvc,sundown,vg}),
+# We exclude: external dependencies (llvm, rt/{msvc,sundown,vg}),
 # tests (compiletest, test) and a couple of other things (rt/arch, etc)
 CTAGS_LOCATIONS=$(patsubst ${CFG_SRC_DIR}src/llvm,, \
-				$(patsubst ${CFG_SRC_DIR}src/libuv,, \
 				$(patsubst ${CFG_SRC_DIR}src/compiletest,, \
 				$(patsubst ${CFG_SRC_DIR}src/test,, \
-				$(patsubst ${CFG_SRC_DIR}src/gyp,, \
 				$(patsubst ${CFG_SRC_DIR}src/etc,, \
 				$(patsubst ${CFG_SRC_DIR}src/rt,, \
 				$(patsubst ${CFG_SRC_DIR}src/rt/arch,, \
