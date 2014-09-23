@@ -11,17 +11,11 @@
 // ignore-fast
 
 extern crate green;
-extern crate rustuv;
 extern crate native;
 
 use std::os;
 use std::io;
 use std::str;
-
-#[start]
-fn start(argc: int, argv: *const *const u8) -> int {
-    green::start(argc, argv, rustuv::event_loop, main)
-}
 
 fn main() {
     let args = os::args();

@@ -22,7 +22,6 @@ extern crate libc;
 
 extern crate native;
 extern crate green;
-extern crate rustuv;
 
 use std::io::{Process, Command};
 use std::time::Duration;
@@ -55,11 +54,6 @@ macro_rules! iotest (
         }
     )
 )
-
-#[cfg(test)] #[start]
-fn start(argc: int, argv: *const *const u8) -> int {
-    green::start(argc, argv, rustuv::event_loop, test_main)
-}
 
 iotest!(fn test_destroy_once() {
     let mut p = sleeper();

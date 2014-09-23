@@ -183,7 +183,7 @@ the appropriate time comes.
 Upon reading `libgreen`, you may notice that there is no I/O implementation
 inside of the library, but rather just the infrastructure for maintaining a set
 of green schedulers which switch among Rust tasks. The actual I/O implementation
-is found in `librustuv` which are the Rust bindings to libuv. This distinction
+was found in `librustuv` which are the Rust bindings to libuv. This distinction
 is made to allow for other I/O implementations not built on libuv (but none
 exist at this time).
 
@@ -226,29 +226,6 @@ For example, this program will be linked to "the default runtime". The current
 default runtime is to use libnative.
 
 ~~~{.rust}
-fn main() {}
-~~~
-
-### Force booting with libgreen
-
-In this example, the `main` function will be booted with I/O support powered by
-libuv. This is done by linking to the `rustuv` crate and specifying the
-`rustuv::event_loop` function as the event loop factory.
-
-To create a pool of green tasks which have no I/O support, you may shed the
-`rustuv` dependency and use the `green::basic::event_loop` function instead of
-`rustuv::event_loop`. All tasks will have no I/O support, but they will still be
-able to deschedule/reschedule (use channels, locks, etc).
-
-~~~{.rust}
-extern crate green;
-extern crate rustuv;
-
-#[start]
-fn start(argc: int, argv: *const *const u8) -> int {
-    green::start(argc, argv, rustuv::event_loop, main)
-}
-
 fn main() {}
 ~~~
 
