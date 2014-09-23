@@ -27,7 +27,6 @@ impl DerefMut<[uint]> for Arr {
 }
 
 pub fn foo(arr: &mut Arr) {
-    assert!(arr.len() == 3);
     let x: &mut [uint] = &mut **arr;
     assert!(x[0] == 1);
     assert!(x[1] == 2);

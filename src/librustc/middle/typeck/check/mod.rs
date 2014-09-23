@@ -2078,6 +2078,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 }
 
+#[deriving(Show)]
 pub enum LvaluePreference {
     PreferMutLvalue,
     NoPreference

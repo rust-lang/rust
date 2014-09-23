@@ -86,10 +86,11 @@ use middle::traits;
 use middle::ty::*;
 use middle::ty;
 use middle::typeck::astconv::AstConv;
-use middle::typeck::check::{FnCtxt, PreferMutLvalue, impl_self_ty};
+use middle::typeck::check::{FnCtxt, NoPreference, PreferMutLvalue};
+use middle::typeck::check::{impl_self_ty};
 use middle::typeck::check;
 use middle::typeck::infer;
-use middle::typeck::MethodCallee;
+use middle::typeck::{MethodCall, MethodCallee};
 use middle::typeck::{MethodOrigin, MethodParam, MethodTypeParam};
 use middle::typeck::{MethodStatic, MethodStaticUnboxedClosure, MethodObject, MethodTraitObject};
 use middle::typeck::check::regionmanip::replace_late_bound_regions_in_fn_sig;
@@ -353,11 +354,15 @@ impl<'a, 'tcx> LookupContext<'a, 'tcx> {
 
         let (_, _, result) =
             check::autoderef(
-                self.fcx, span, self_ty, self_expr_id, PreferMutLvalue,
+                self.fcx, span, self_ty, self_expr_id, NoPreference,
                 |self_ty, autoderefs| self.search_step(self_ty, autoderefs));
 
         match result {
-            Some(Some(result)) => Some(result),
+            Some(Some(result)) => {
+                self.fixup_derefs_on_method_receiver_if_necessary(&result,
+                                                                  self_ty);
+                Some(result)
+            }
             _ => None
         }
     }
@@ -430,7 +435,7 @@ impl<'a, 'tcx> LookupContext<'a, 'tcx> {
          */
 
         let span = self.self_expr.map_or(self.span, |e| e.span);
-        check::autoderef(self.fcx, span, self_ty, None, PreferMutLvalue, |self_ty, _| {
+        check::autoderef(self.fcx, span, self_ty, None, NoPreference, |self_ty, _| {
             match get(self_ty).sty {
                 ty_trait(box TyTrait { def_id, ref substs, bounds, .. }) => {
                     self.push_inherent_candidates_from_object(
@@ -458,7 +463,7 @@ impl<'a, 'tcx> LookupContext<'a, 'tcx> {
 
     fn push_bound_candidates(&mut self, self_ty: ty::t, restrict_to: Option<DefId>) {
         let span = self.self_expr.map_or(self.span, |e| e.span);
-        check::autoderef(self.fcx, span, self_ty, None, PreferMutLvalue, |self_ty, _| {
+        check::autoderef(self.fcx, span, self_ty, None, NoPreference, |self_ty, _| {
             match get(self_ty).sty {
                 ty_param(p) => {
                     self.push_inherent_candidates_from_param(self_ty, restrict_to, p);
@@ -1135,7 +1140,7 @@ impl<'a, 'tcx> LookupContext<'a, 'tcx> {
         };
 
         // This is hokey. We should have mutability inference as a
-        // variable.  But for now, try &const, then &, then &mut:
+        // variable.  But for now, try &, then &mut:
         let region =
             self.infcx().next_region_var(infer::Autoref(self.span));
         for mutbl in mutbls.iter() {
@@ -1378,6 +1383,77 @@ impl<'a, 'tcx> LookupContext<'a, 'tcx> {
             origin: candidate.origin.clone(),
             ty: fty,
             substs: all_substs
+        }
+    }
+
+    fn fixup_derefs_on_method_receiver_if_necessary(
+            &self,
+            method_callee: &MethodCallee,
+            self_ty: ty::t) {
+        let sig = match ty::get(method_callee.ty).sty {
+            ty::ty_bare_fn(ref f) => f.sig.clone(),
+            ty::ty_closure(ref f) => f.sig.clone(),
+            _ => return,
+        };
+
+        match ty::get(*sig.inputs.get(0)).sty {
+            ty::ty_rptr(_, ty::mt {
+                ty: _,
+                mutbl: ast::MutMutable,
+            }) => {}
+            _ => return,
+        }
+
+        // Fix up autoderefs and derefs.
+        let mut self_expr = match self.self_expr {
+            Some(expr) => expr,
+            None => return,
+        };
+        loop {
+            // Count autoderefs.
+            let autoderef_count = match self.fcx
+                                            .inh
+                                            .adjustments
+                                            .borrow()
+                                            .find(&self_expr.id) {
+                Some(&ty::AdjustDerefRef(ty::AutoDerefRef {
+                    autoderefs: autoderef_count,
+                    autoref: _
+                })) if autoderef_count > 0 => autoderef_count,
+                Some(_) | None => return,
+            };
+
+            check::autoderef(self.fcx,
+                             self_expr.span,
+                             self.fcx.expr_ty(self_expr),
+                             Some(self_expr.id),
+                             PreferMutLvalue,
+                             |_, autoderefs| {
+                                 if autoderefs == autoderef_count + 1 {
+                                     Some(())
+                                 } else {
+                                     None
+                                 }
+                             });
+
+            match self_expr.node {
+                ast::ExprParen(ref expr) |
+                ast::ExprIndex(ref expr, _) |
+                ast::ExprField(ref expr, _, _) |
+                ast::ExprTupField(ref expr, _, _) |
+                ast::ExprSlice(ref expr, _, _, _) => self_expr = &**expr,
+                ast::ExprUnary(ast::UnDeref, ref expr) => {
+                    drop(check::try_overloaded_deref(
+                            self.fcx,
+                            self_expr.span,
+                            Some(MethodCall::expr(self_expr.id)),
+                            Some(self_expr),
+                            self_ty,
+                            PreferMutLvalue));
+                    self_expr = &**expr
+                }
+                _ => break,
+            }
         }
     }
 
