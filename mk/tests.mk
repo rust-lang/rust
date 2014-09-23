@@ -60,6 +60,10 @@ ifdef VERBOSE
   CTEST_TESTARGS += --verbose
 endif
 
+# Setting locale ensures that gdb's output remains consistent.
+# This prevents tests from failing with some locales (fixes #17423).
+export LC_ALL=C
+
 # If we're running perf then set this environment variable
 # to put the benchmarks into 'hard mode'
 ifeq ($(MAKECMDGOALS),perf)
