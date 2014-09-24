@@ -4489,7 +4489,7 @@ This will print
 ```
 
 `filter()` is an adapter that takes a closure as an argument. This closure
-returns `true` or `false`. The new iterator `filter()` produces returns
+returns `true` or `false`. The new iterator `filter()` produces
 only the elements that that closure returned `true` for:
 
 ```{rust}
