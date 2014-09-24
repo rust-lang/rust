@@ -13,21 +13,20 @@
 // from live codes are live, and everything else is dead.
 
 use middle::def;
-use lint;
+use middle::pat_util;
 use middle::privacy;
 use middle::ty;
 use middle::typeck;
+use lint;
 use util::nodemap::NodeSet;
 
 use std::collections::HashSet;
 use syntax::ast;
 use syntax::ast_map;
 use syntax::ast_util::{local_def, is_local, PostExpansionMethod};
-use syntax::attr::AttrMetaMethods;
-use syntax::attr;
+use syntax::attr::{mod, AttrMetaMethods};
 use syntax::codemap;
-use syntax::visit::Visitor;
-use syntax::visit;
+use syntax::visit::{mod, Visitor};
 
 // Any local node that may call something in its body block should be
 // explored. For example, if it's a live NodeItem that is a
@@ -51,7 +50,8 @@ struct MarkSymbolVisitor<'a, 'tcx: 'a> {
     worklist: Vec<ast::NodeId>,
     tcx: &'a ty::ctxt<'tcx>,
     live_symbols: Box<HashSet<ast::NodeId>>,
-    struct_has_extern_repr: bool
+    struct_has_extern_repr: bool,
+    ignore_paths: bool
 }
 
 impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
@@ -61,7 +61,8 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
             worklist: worklist,
             tcx: tcx,
             live_symbols: box HashSet::new(),
-            struct_has_extern_repr: false
+            struct_has_extern_repr: false,
+            ignore_paths: false
         }
     }
 
@@ -73,19 +74,18 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
     }
 
     fn lookup_and_handle_definition(&mut self, id: &ast::NodeId) {
-        let def = match self.tcx.def_map.borrow().find(id) {
-            Some(&def) => def,
-            None => return
-        };
-        let def_id = match def {
-            def::DefVariant(enum_id, _, _) => Some(enum_id),
-            def::DefPrimTy(_) => None,
-            _ => Some(def.def_id())
-        };
-        match def_id {
-            Some(def_id) => self.check_def_id(def_id),
-            None => (),
-        }
+        self.tcx.def_map.borrow().find(id).map(|def| {
+            match def {
+                &def::DefPrimTy(_) => (),
+                &def::DefVariant(enum_id, variant_id, _) => {
+                    self.check_def_id(enum_id);
+                    self.check_def_id(variant_id);
+                }
+                _ => {
+                    self.check_def_id(def.def_id());
+                }
+            }
+        });
     }
 
     fn lookup_and_handle_method(&mut self, id: ast::NodeId,
@@ -275,22 +275,27 @@ impl<'a, 'tcx, 'v> Visitor<'v> for MarkSymbolVisitor<'a, 'tcx> {
     }
 
     fn visit_pat(&mut self, pat: &ast::Pat) {
+        let def_map = &self.tcx.def_map;
         match pat.node {
             ast::PatStruct(_, ref fields, _) => {
                 self.handle_field_pattern_match(pat, fields.as_slice());
             }
-            ast::PatIdent(_, _, _) => {
+            _ if pat_util::pat_is_const(def_map, pat) => {
                 // it might be the only use of a static:
                 self.lookup_and_handle_definition(&pat.id)
             }
             _ => ()
         }
 
+        self.ignore_paths = true;
         visit::walk_pat(self, pat);
+        self.ignore_paths = false;
     }
 
     fn visit_path(&mut self, path: &ast::Path, id: ast::NodeId) {
-        self.lookup_and_handle_definition(&id);
+        if !self.ignore_paths {
+            self.lookup_and_handle_definition(&id);
+        }
         visit::walk_path(self, path);
     }
 
@@ -330,15 +335,19 @@ fn has_allow_dead_code_or_lang_attr(attrs: &[ast::Attribute]) -> bool {
 //   2) We are not sure to be live or not
 //     * Implementation of a trait method
 struct LifeSeeder {
-    worklist: Vec<ast::NodeId> ,
+    worklist: Vec<ast::NodeId>
 }
 
 impl<'v> Visitor<'v> for LifeSeeder {
     fn visit_item(&mut self, item: &ast::Item) {
-        if has_allow_dead_code_or_lang_attr(item.attrs.as_slice()) {
+        let allow_dead_code = has_allow_dead_code_or_lang_attr(item.attrs.as_slice());
+        if allow_dead_code {
             self.worklist.push(item.id);
         }
         match item.node {
+            ast::ItemEnum(ref enum_def, _) if allow_dead_code => {
+                self.worklist.extend(enum_def.variants.iter().map(|variant| variant.node.id));
+            }
             ast::ItemImpl(_, Some(ref _trait_ref), _, ref impl_items) => {
                 for impl_item in impl_items.iter() {
                     match *impl_item {
@@ -415,16 +424,6 @@ fn find_live(tcx: &ty::ctxt,
     symbol_visitor.live_symbols
 }
 
-fn should_warn(item: &ast::Item) -> bool {
-    match item.node {
-        ast::ItemStatic(..)
-        | ast::ItemFn(..)
-        | ast::ItemEnum(..)
-        | ast::ItemStruct(..) => true,
-        _ => false
-    }
-}
-
 fn get_struct_ctor_id(item: &ast::Item) -> Option<ast::NodeId> {
     match item.node {
         ast::ItemStruct(ref struct_def, _) => struct_def.ctor_id,
@@ -438,6 +437,18 @@ struct DeadVisitor<'a, 'tcx: 'a> {
 }
 
 impl<'a, 'tcx> DeadVisitor<'a, 'tcx> {
+    fn should_warn_about_item(&mut self, item: &ast::Item) -> bool {
+        let should_warn = match item.node {
+            ast::ItemStatic(..)
+            | ast::ItemFn(..)
+            | ast::ItemEnum(..)
+            | ast::ItemStruct(..) => true,
+            _ => false
+        };
+        let ctor_id = get_struct_ctor_id(item);
+        should_warn && !self.symbol_is_live(item.id, ctor_id)
+    }
+
     fn should_warn_about_field(&mut self, node: &ast::StructField_) -> bool {
         let is_named = node.ident().is_some();
         let field_type = ty::node_id_to_type(self.tcx, node.id);
@@ -449,6 +460,11 @@ impl<'a, 'tcx> DeadVisitor<'a, 'tcx> {
             && !self.symbol_is_live(node.id, None)
             && !is_marker_field
             && !has_allow_dead_code_or_lang_attr(node.attrs.as_slice())
+    }
+
+    fn should_warn_about_variant(&mut self, variant: &ast::Variant_) -> bool {
+        !self.symbol_is_live(variant.id, None)
+            && !has_allow_dead_code_or_lang_attr(variant.attrs.as_slice())
     }
 
     // id := node id of an item's definition.
@@ -491,7 +507,8 @@ impl<'a, 'tcx> DeadVisitor<'a, 'tcx> {
     fn warn_dead_code(&mut self,
                       id: ast::NodeId,
                       span: codemap::Span,
-                      ident: ast::Ident) {
+                      ident: ast::Ident,
+                      node_type: &str) {
         let name = ident.as_str();
         if !name.starts_with("_") {
             self.tcx
@@ -499,23 +516,34 @@ impl<'a, 'tcx> DeadVisitor<'a, 'tcx> {
                 .add_lint(lint::builtin::DEAD_CODE,
                           id,
                           span,
-                          format!("code is never used: `{}`", name));
+                          format!("{} is never used: `{}`", node_type, name));
         }
     }
 }
 
 impl<'a, 'tcx, 'v> Visitor<'v> for DeadVisitor<'a, 'tcx> {
     fn visit_item(&mut self, item: &ast::Item) {
-        let ctor_id = get_struct_ctor_id(item);
-        if !self.symbol_is_live(item.id, ctor_id) && should_warn(item) {
-            self.warn_dead_code(item.id, item.span, item.ident);
+        if self.should_warn_about_item(item) {
+            self.warn_dead_code(item.id, item.span, item.ident, item.node.descriptive_variant());
+        } else {
+            match item.node {
+                ast::ItemEnum(ref enum_def, _) => {
+                    for variant in enum_def.variants.iter() {
+                        if self.should_warn_about_variant(&variant.node) {
+                            self.warn_dead_code(variant.node.id, variant.span,
+                                                variant.node.name, "variant");
+                        }
+                    }
+                },
+                _ => ()
+            }
         }
         visit::walk_item(self, item);
     }
 
     fn visit_foreign_item(&mut self, fi: &ast::ForeignItem) {
         if !self.symbol_is_live(fi.id, None) {
-            self.warn_dead_code(fi.id, fi.span, fi.ident);
+            self.warn_dead_code(fi.id, fi.span, fi.ident, fi.node.descriptive_variant());
         }
         visit::walk_foreign_item(self, fi);
     }
@@ -527,7 +555,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for DeadVisitor<'a, 'tcx> {
         match fk {
             visit::FkMethod(name, _, _) => {
                 if !self.symbol_is_live(id, None) {
-                    self.warn_dead_code(id, span, name);
+                    self.warn_dead_code(id, span, name, "method");
                 }
             }
             _ => ()
@@ -537,7 +565,8 @@ impl<'a, 'tcx, 'v> Visitor<'v> for DeadVisitor<'a, 'tcx> {
 
     fn visit_struct_field(&mut self, field: &ast::StructField) {
         if self.should_warn_about_field(&field.node) {
-            self.warn_dead_code(field.node.id, field.span, field.node.ident().unwrap());
+            self.warn_dead_code(field.node.id, field.span,
+                                field.node.ident().unwrap(), "struct field");
         }
 
         visit::walk_struct_field(self, field);

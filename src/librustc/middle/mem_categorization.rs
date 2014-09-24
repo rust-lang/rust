@@ -735,10 +735,6 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
         })
     }
 
-    pub fn cat_deref_obj<N:ast_node>(&self, node: &N, base_cmt: cmt) -> cmt {
-        self.cat_deref_common(node, base_cmt, 0, ty::mk_nil(), false)
-    }
-
     fn cat_deref<N:ast_node>(&self,
                              node: &N,
                              base_cmt: cmt,

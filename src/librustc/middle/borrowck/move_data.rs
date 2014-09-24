@@ -568,22 +568,6 @@ impl<'a, 'tcx> FlowedMoveData<'a, 'tcx> {
         }
     }
 
-    pub fn each_path_moved_by(&self,
-                              id: ast::NodeId,
-                              f: |&Move, &LoanPath| -> bool)
-                              -> bool {
-        /*!
-         * Iterates through each path moved by `id`
-         */
-
-        self.dfcx_moves.each_gen_bit(id, |index| {
-            let move = self.move_data.moves.borrow();
-            let move = move.get(index);
-            let moved_path = move.path;
-            f(move, &*self.move_data.path_loan_path(moved_path))
-        })
-    }
-
     pub fn kind_of_move_of_path(&self,
                                 id: ast::NodeId,
                                 loan_path: &Rc<LoanPath>)
@@ -663,13 +647,6 @@ impl<'a, 'tcx> FlowedMoveData<'a, 'tcx> {
             }
             ret
         })
-    }
-
-    pub fn is_assignee(&self,
-                       id: ast::NodeId)
-                       -> bool {
-        //! True if `id` is the id of the LHS of an assignment
-        self.move_data.assignee_ids.borrow().iter().any(|x| x == &id)
     }
 
     pub fn each_assignment_of(&self,

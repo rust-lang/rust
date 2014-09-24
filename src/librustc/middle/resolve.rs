@@ -488,7 +488,6 @@ enum ParentLink {
 #[deriving(PartialEq)]
 enum ModuleKind {
     NormalModuleKind,
-    ExternModuleKind,
     TraitModuleKind,
     ImplModuleKind,
     AnonymousModuleKind,
@@ -3348,7 +3347,6 @@ impl<'a> Resolver<'a> {
                                     parents");
                             return Failed(None);
                         }
-                        ExternModuleKind |
                         TraitModuleKind |
                         ImplModuleKind |
                         AnonymousModuleKind => {
@@ -3446,7 +3444,6 @@ impl<'a> Resolver<'a> {
                     let new_module = new_module.upgrade().unwrap();
                     match new_module.kind.get() {
                         NormalModuleKind => return Some(new_module),
-                        ExternModuleKind |
                         TraitModuleKind |
                         ImplModuleKind |
                         AnonymousModuleKind => module_ = new_module,
@@ -3462,7 +3459,6 @@ impl<'a> Resolver<'a> {
                                                 -> Rc<Module> {
         match module_.kind.get() {
             NormalModuleKind => return module_,
-            ExternModuleKind |
             TraitModuleKind |
             ImplModuleKind |
             AnonymousModuleKind => {

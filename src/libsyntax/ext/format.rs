@@ -24,8 +24,7 @@ use std::string;
 #[deriving(PartialEq)]
 enum ArgumentType {
     Known(string::String),
-    Unsigned,
-    String,
+    Unsigned
 }
 
 enum Position {
@@ -690,12 +689,6 @@ impl<'a, 'b> Context<'a, 'b> {
                         ("std", "dummy")
                     }
                 }
-            }
-            String => {
-                return ecx.expr_call_global(sp, vec![
-                        ecx.ident_of("std"),
-                        ecx.ident_of("fmt"),
-                        ecx.ident_of("argumentstr")], vec![arg])
             }
             Unsigned => {
                 return ecx.expr_call_global(sp, vec![

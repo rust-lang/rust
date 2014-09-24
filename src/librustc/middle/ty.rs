@@ -1915,13 +1915,6 @@ pub fn fold_ty(cx: &ctxt, t0: t, fldop: |t| -> t) -> t {
     f.fold_ty(t0)
 }
 
-pub fn walk_regions_and_ty(cx: &ctxt, ty: t, fldr: |r: Region|, fldt: |t: t|)
-                           -> t {
-    ty_fold::RegionFolder::general(cx,
-                                   |r| { fldr(r); r },
-                                   |t| { fldt(t); t }).fold_ty(ty)
-}
-
 impl ParamTy {
     pub fn new(space: subst::ParamSpace,
                index: uint,
@@ -3551,58 +3544,6 @@ pub fn unsize_ty(cx: &ctxt,
     }
 }
 
-impl AutoRef {
-    pub fn map_region(&self, f: |Region| -> Region) -> AutoRef {
-        match *self {
-            ty::AutoPtr(r, m, None) => ty::AutoPtr(f(r), m, None),
-            ty::AutoPtr(r, m, Some(ref a)) => ty::AutoPtr(f(r), m, Some(box a.map_region(f))),
-            ty::AutoUnsize(ref k) => ty::AutoUnsize(k.clone()),
-            ty::AutoUnsizeUniq(ref k) => ty::AutoUnsizeUniq(k.clone()),
-            ty::AutoUnsafe(m, None) => ty::AutoUnsafe(m, None),
-            ty::AutoUnsafe(m, Some(ref a)) => ty::AutoUnsafe(m, Some(box a.map_region(f))),
-        }
-    }
-}
-
-pub fn method_call_type_param_defs<'tcx, T>(typer: &T,
-                                            origin: &typeck::MethodOrigin)
-                                            -> VecPerParamSpace<TypeParameterDef>
-                                            where T: mc::Typer<'tcx> {
-    match *origin {
-        typeck::MethodStatic(did) => {
-            ty::lookup_item_type(typer.tcx(), did).generics.types.clone()
-        }
-        typeck::MethodStaticUnboxedClosure(did) => {
-            let def_id = typer.unboxed_closures()
-                              .borrow()
-                              .find(&did)
-                              .expect("method_call_type_param_defs: didn't \
-                                       find unboxed closure")
-                              .kind
-                              .trait_did(typer.tcx());
-            lookup_trait_def(typer.tcx(), def_id).generics.types.clone()
-        }
-        typeck::MethodTypeParam(typeck::MethodParam{
-            trait_ref: ref trait_ref,
-            method_num: n_mth,
-            ..
-        }) |
-        typeck::MethodTraitObject(typeck::MethodObject{
-                trait_ref: ref trait_ref,
-                method_num: n_mth,
-                ..
-        }) => {
-            match ty::trait_item(typer.tcx(), trait_ref.def_id, n_mth) {
-                ty::MethodTraitItem(method) => method.generics.types.clone(),
-                ty::TypeTraitItem(_) => {
-                    typer.tcx().sess.bug("method_call_type_param_defs() \
-                                          called on associated type")
-                }
-            }
-        }
-    }
-}
-
 pub fn resolve_expr(tcx: &ctxt, expr: &ast::Expr) -> def::Def {
     match tcx.def_map.borrow().find(&expr.id) {
         Some(&def) => def,
@@ -3819,22 +3760,6 @@ pub fn field_idx_strict(tcx: &ctxt, name: ast::Name, fields: &[field])
 pub fn impl_or_trait_item_idx(id: ast::Ident, trait_items: &[ImplOrTraitItem])
                               -> Option<uint> {
     trait_items.iter().position(|m| m.ident() == id)
-}
-
-/// Returns a vector containing the indices of all type parameters that appear
-/// in `ty`.  The vector may contain duplicates.  Probably should be converted
-/// to a bitset or some other representation.
-pub fn param_tys_in_type(ty: t) -> Vec<ParamTy> {
-    let mut rslt = Vec::new();
-    walk_ty(ty, |ty| {
-        match get(ty).sty {
-          ty_param(p) => {
-            rslt.push(p);
-          }
-          _ => ()
-        }
-    });
-    rslt
 }
 
 pub fn ty_sort_string(cx: &ctxt, t: t) -> String {
@@ -4704,17 +4629,6 @@ pub fn lookup_struct_fields(cx: &ctxt, did: ast::DefId) -> Vec<field_ty> {
 pub fn is_tuple_struct(cx: &ctxt, did: ast::DefId) -> bool {
     let fields = lookup_struct_fields(cx, did);
     !fields.is_empty() && fields.iter().all(|f| f.name == token::special_names::unnamed_field)
-}
-
-pub fn lookup_struct_field(cx: &ctxt,
-                           parent: ast::DefId,
-                           field_id: ast::DefId)
-                        -> field_ty {
-    let r = lookup_struct_fields(cx, parent);
-    match r.iter().find(|f| f.id.node == field_id.node) {
-        Some(t) => t.clone(),
-        None => cx.sess.bug("struct ID not found in parent's fields")
-    }
 }
 
 // Returns a list of fields corresponding to the struct's items. trans uses

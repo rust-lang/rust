@@ -21,15 +21,15 @@ extern {
     fn extern_foo();
 }
 
-struct Foo; //~ ERROR: code is never used
+struct Foo; //~ ERROR: struct is never used
 impl Foo {
-    fn foo(&self) { //~ ERROR: code is never used
+    fn foo(&self) { //~ ERROR: method is never used
         bar()
     }
 }
 
-fn bar() { //~ ERROR: code is never used
-    fn baz() {} //~ ERROR: code is never used
+fn bar() { //~ ERROR: function is never used
+    fn baz() {} //~ ERROR: function is never used
 
     Foo.foo();
     baz();
@@ -68,9 +68,9 @@ mod blah {
     }
 }
 
-enum c_void {} //~ ERROR: code is never used
+enum c_void {} //~ ERROR: enum is never used
 extern {
-    fn free(p: *const c_void); //~ ERROR: code is never used
+    fn free(p: *const c_void); //~ ERROR: foreign function is never used
 }
 
 // Check provided method
