@@ -2084,7 +2084,7 @@ impl<'a> Parser<'a> {
                                     ExprBlock(blk));
             },
             token::BINOP(token::OR) |  token::OROR => {
-                return self.parse_lambda_expr(CaptureByValue);
+                return self.parse_lambda_expr(CaptureByRef);
             },
             // FIXME #13626: Should be able to stick in
             // token::SELF_KEYWORD_NAME
@@ -2135,8 +2135,8 @@ impl<'a> Parser<'a> {
                 hi = self.last_span.hi;
             }
             _ => {
-                if self.eat_keyword(keywords::Ref) {
-                    return self.parse_lambda_expr(CaptureByRef);
+                if self.eat_keyword(keywords::Move) {
+                    return self.parse_lambda_expr(CaptureByValue);
                 }
                 if self.eat_keyword(keywords::Proc) {
                     let decl = self.parse_proc_decl();

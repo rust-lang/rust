@@ -2176,8 +2176,8 @@ impl<'a> State<'a> {
     pub fn print_capture_clause(&mut self, capture_clause: ast::CaptureClause)
                                 -> IoResult<()> {
         match capture_clause {
-            ast::CaptureByValue => Ok(()),
-            ast::CaptureByRef => self.word_space("ref"),
+            ast::CaptureByValue => self.word_space("move"),
+            ast::CaptureByRef => Ok(()),
         }
     }
 
