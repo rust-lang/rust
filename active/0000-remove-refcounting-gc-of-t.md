@@ -117,7 +117,7 @@ that Rust will never have a `Gc<T>`.
 
 Users may be using `Gc<T>` today, and they would have to switch to
 some other option (such as `Rc<T>`, though note that the two are not
-100% equivalent).
+100% equivalent; see [Gc versus Rc] appendix).
 
 # Alternatives
 
@@ -133,3 +133,84 @@ and pull that band-aid off now.
 # Unresolved questions
 
 None yet.
+
+# Appendices
+
+## Gc versus Rc
+
+There are performance differences between the current ref-counting
+`Gc<T>` and the library type `Rc<T>`, but such differences are beneath
+the level of abstraction of interest to this RFC.  The main user
+observable difference between the ref-counting `Gc<T>` and the library
+type `Rc<T>` is that cyclic structure allocated via `Gc<T>` will be
+torn down when the task itself terminates successfully or via unwind.
+
+The following program illustrates this difference.  If you have a
+program that is using `Gc` and is relying on this tear-down behavior
+at task death, then switching to `Rc` will not suffice.
+
+```rust
+use std::cell::RefCell;
+use std::gc::{GC,Gc};
+use std::io::timer;
+use std::rc::Rc;
+use std::time::Duration;
+
+struct AnnounceDrop { name: String }
+
+#[allow(non_snake_case)]
+fn AnnounceDrop<S:Str>(s:S) -> AnnounceDrop {
+    AnnounceDrop { name: s.as_slice().to_string() }
+}
+
+impl Drop for AnnounceDrop{ 
+    fn drop(&mut self) {
+       println!("dropping {}", self.name);
+    }
+}
+
+struct RcCyclic<D> { _on_drop: D, recur: Option<Rc<RefCell<RcCyclic<D>>>> }
+struct GcCyclic<D> { _on_drop: D, recur: Option<Gc<RefCell<GcCyclic<D>>>> }
+
+type RRRcell<D> = Rc<RefCell<RcCyclic<D>>>;
+type GRRcell<D> = Gc<RefCell<GcCyclic<D>>>;
+
+fn make_rc_and_gc<S:Str>(name: S) -> (RRRcell<AnnounceDrop>, GRRcell<AnnounceDrop>) {
+    let name = name.as_slice().to_string();
+    let rc_cyclic = Rc::new(RefCell::new(RcCyclic {
+        _on_drop: AnnounceDrop(name.clone().append("-rc_cyclic")),
+        recur: None,
+    }));
+
+    let gc_cyclic = box (GC) RefCell::new(GcCyclic {
+        _on_drop: AnnounceDrop(name.append("-gc_cyclic")),
+        recur: None,
+    });
+
+    (rc_cyclic, gc_cyclic)
+}
+
+fn make_proc(name: &str, sleep_time: i64, and_then: proc():Send) -> proc():Send {
+    let name = name.to_string();
+    proc() {
+        let (rc_cyclic, gc_cyclic) = make_rc_and_gc(name);
+
+        rc_cyclic.borrow_mut().recur = Some(rc_cyclic.clone());
+        gc_cyclic.borrow_mut().recur = Some(gc_cyclic);
+
+        timer::sleep(Duration::seconds(sleep_time));
+
+        and_then();
+    }
+}
+
+fn main() {
+    let (_rc_noncyclic, _gc_noncyclic) = make_rc_and_gc("main");
+
+    spawn(make_proc("success", 2, proc () {}));
+
+    spawn(make_proc("failure", 1, proc () { fail!("Oop"); }));
+
+    println!("Hello, world!")
+}
+```
