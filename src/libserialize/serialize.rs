@@ -503,7 +503,7 @@ macro_rules! tuple (
                 $(let $name = $name; n += 1;)*
                 s.emit_tuple(n, |s| {
                     let mut i = 0;
-                    $(try!(s.emit_seq_elt({ i+=1; i-1 }, |s| $name.encode(s)));)*
+                    $(try!(s.emit_tuple_arg({ i+=1; i-1 }, |s| $name.encode(s)));)*
                     Ok(())
                 })
             }
