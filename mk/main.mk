@@ -105,7 +105,6 @@ CFG_JEMALLOC_FLAGS :=
 ifdef CFG_DISABLE_OPTIMIZE
   $(info cfg: disabling rustc optimization (CFG_DISABLE_OPTIMIZE))
   CFG_RUSTC_FLAGS +=
-  CFG_JEMALLOC_FLAGS += --enable-debug
 else
   # The rtopt cfg turns off runtime sanity checks
   CFG_RUSTC_FLAGS += -O --cfg rtopt
@@ -113,13 +112,14 @@ endif
 
 CFG_JEMALLOC_FLAGS += $(JEMALLOC_FLAGS)
 
-ifdef CFG_DISABLE_DEBUG
+ifndef CFG_ENABLE_DEBUG
   CFG_RUSTC_FLAGS += --cfg ndebug
   CFG_GCCISH_CFLAGS += -DRUST_NDEBUG
 else
   $(info cfg: enabling more debugging (CFG_ENABLE_DEBUG))
   CFG_RUSTC_FLAGS += --cfg debug
   CFG_GCCISH_CFLAGS += -DRUST_DEBUG
+  CFG_JEMALLOC_FLAGS += --enable-debug
 endif
 
 ifdef SAVE_TEMPS
