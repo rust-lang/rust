@@ -90,10 +90,10 @@ impl<R: Reader> BufferedReader<R> {
 impl<R: Reader> Buffer for BufferedReader<R> {
     fn fill_buf<'a>(&'a mut self) -> IoResult<&'a [u8]> {
         if self.pos == self.cap {
-            self.cap = try!(self.inner.read(self.buf.as_mut_slice()));
+            self.cap = try!(self.inner.read(self.buf[mut]));
             self.pos = 0;
         }
-        Ok(self.buf.slice(self.pos, self.cap))
+        Ok(self.buf[self.pos..self.cap])
     }
 
     fn consume(&mut self, amt: uint) {
@@ -107,7 +107,7 @@ impl<R: Reader> Reader for BufferedReader<R> {
         let nread = {
             let available = try!(self.fill_buf());
             let nread = cmp::min(available.len(), buf.len());
-            slice::bytes::copy_memory(buf, available.slice_to(nread));
+            slice::bytes::copy_memory(buf, available[..nread]);
             nread
         };
         self.pos += nread;
@@ -162,7 +162,7 @@ impl<W: Writer> BufferedWriter<W> {
 
     fn flush_buf(&mut self) -> IoResult<()> {
         if self.pos != 0 {
-            let ret = self.inner.as_mut().unwrap().write(self.buf.slice_to(self.pos));
+            let ret = self.inner.as_mut().unwrap().write(self.buf[..self.pos]);
             self.pos = 0;
             ret
         } else {
@@ -195,7 +195,7 @@ impl<W: Writer> Writer for BufferedWriter<W> {
         if buf.len() > self.buf.len() {
             self.inner.as_mut().unwrap().write(buf)
         } else {
-            let dst = self.buf.slice_from_mut(self.pos);
+            let dst = self.buf[mut self.pos..];
             slice::bytes::copy_memory(dst, buf);
             self.pos += buf.len();
             Ok(())
@@ -250,9 +250,9 @@ impl<W: Writer> Writer for LineBufferedWriter<W> {
     fn write(&mut self, buf: &[u8]) -> IoResult<()> {
         match buf.iter().rposition(|&b| b == b'\n') {
             Some(i) => {
-                try!(self.inner.write(buf.slice_to(i + 1)));
+                try!(self.inner.write(buf[..i + 1]));
                 try!(self.inner.flush());
-                try!(self.inner.write(buf.slice_from(i + 1)));
+                try!(self.inner.write(buf[i + 1..]));
                 Ok(())
             }
             None => self.inner.write(buf),
