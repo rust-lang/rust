@@ -200,11 +200,7 @@ pub unsafe fn record_sp_limit(limit: uint) {
         asm!("movq $0, %fs:112" :: "r"(limit) :: "volatile")
     }
     #[cfg(target_arch = "x86_64", target_os = "windows")] #[inline(always)]
-    unsafe fn target_record_sp_limit(limit: uint) {
-        // see: http://en.wikipedia.org/wiki/Win32_Thread_Information_Block
-        // store this inside of the "arbitrary data slot", but double the size
-        // because this is 64 bit instead of 32 bit
-        asm!("movq $0, %gs:0x28" :: "r"(limit) :: "volatile")
+    unsafe fn target_record_sp_limit(_: uint) {
     }
     #[cfg(target_arch = "x86_64", target_os = "freebsd")] #[inline(always)]
     unsafe fn target_record_sp_limit(limit: uint) {
@@ -228,10 +224,7 @@ pub unsafe fn record_sp_limit(limit: uint) {
         asm!("movl $0, %gs:48" :: "r"(limit) :: "volatile")
     }
     #[cfg(target_arch = "x86", target_os = "windows")] #[inline(always)]
-    unsafe fn target_record_sp_limit(limit: uint) {
-        // see: http://en.wikipedia.org/wiki/Win32_Thread_Information_Block
-        // store this inside of the "arbitrary data slot"
-        asm!("movl $0, %fs:0x14" :: "r"(limit) :: "volatile")
+    unsafe fn target_record_sp_limit(_: uint) {
     }
 
     // mips, arm - Some brave soul can port these to inline asm, but it's over
@@ -282,9 +275,7 @@ pub unsafe fn get_sp_limit() -> uint {
     }
     #[cfg(target_arch = "x86_64", target_os = "windows")] #[inline(always)]
     unsafe fn target_get_sp_limit() -> uint {
-        let limit;
-        asm!("movq %gs:0x28, $0" : "=r"(limit) ::: "volatile");
-        return limit;
+        return 1024;
     }
     #[cfg(target_arch = "x86_64", target_os = "freebsd")] #[inline(always)]
     unsafe fn target_get_sp_limit() -> uint {
@@ -318,9 +309,7 @@ pub unsafe fn get_sp_limit() -> uint {
     }
     #[cfg(target_arch = "x86", target_os = "windows")] #[inline(always)]
     unsafe fn target_get_sp_limit() -> uint {
-        let limit;
-        asm!("movl %fs:0x14, $0" : "=r"(limit) ::: "volatile");
-        return limit;
+        return 1024;
     }
 
     // mips, arm - Some brave soul can port these to inline asm, but it's over
