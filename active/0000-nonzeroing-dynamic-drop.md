@@ -1,4 +1,4 @@
-- Start Date: (fill me in with today's date, YYYY-MM-DD)
+- Start Date: 2014-09-24
 - RFC PR: (leave this empty)
 - Rust Issue: (leave this empty)
 
@@ -36,8 +36,7 @@ However, the above implementation is sub-optimal; problems include:
    expect `struct Foo { x: u32, y: u32 }` to occupy 8 bytes, but if
    `Foo` implements `Drop`, the hidden drop flag will cause it to
    double in size (16 bytes).
-   See the ["Program illustrating space impact of hidden drop flag"]
-   (#program-illustrating-space-impact-of-hidden-drop-flag)
+   See the [Program illustrating semantic impact of hidden drop flag]
    appendix for a concrete illustration.  Note that when `Foo`
    implements `Drop`, each instance of `Foo` carries a drop-flag, even
    in contexts like a `Vec<Foo>` where a program
@@ -118,10 +117,10 @@ P_1, P_2, ..., P_k with drop obligation sets S_1, S_2, ... S_k, we
  * First identify the set of drop obligations that differ between the
    predecessor nodes, i.e. the set:
 
-     `(S_1 | S_2 | ... | S_k) - (S_1 &amp; S_2 &amp; ... &amp; S_k)`
+     `(S_1 | S_2 | ... | S_k) \ (S_1 & S_2 & ... & S_k)`
 
-   where `|` denotes set-union, `&amp;` denotes set-intersection, and
-   `-` denotes set-difference.  These are the dynamic drop obligations
+   where `|` denotes set-union, `&` denotes set-intersection, 
+   `\` denotes set-difference.  These are the dynamic drop obligations
    induced by this merge point.  Note that if `S_1 = S_2 = ... = S_k`,
    the above set is empty.
 
@@ -134,18 +133,20 @@ P_1, P_2, ..., P_k with drop obligation sets S_1, S_2, ... S_k, we
    no difference to the static analysis, since all of the elements of
    the difference
 
-     `(S_1 | S_2 | ... | S_k) - (S_1 &amp; S_2 &amp; ... &amp; S_k)`
+     `(S_1 | S_2 | ... | S_k) \ (S_1 & S_2 & ... & S_k)`
 
    have already been added to the set of dynamic drop obligations.
    But the overall code transformation is clearer if one keeps
-   the dynamic drop obligations *in* the set of drop obligations.)
+   the dynamic drop obligations in the set of drop obligations.)
 
 ## Stack-local drop flags
 
 For every dynamic drop obligation induced by a merge point, the compiler
 is responsible for ensure that its drop code is run at some point.
 If necessary, it will inject and maintain boolean flag analogous to
-`enum NeedsDropFlag { NeedsLocalDrop, DoNotDrop }`
+```rust
+enum NeedsDropFlag { NeedsLocalDrop, DoNotDrop }
+```
 
 Some compiler analysis may be able to identify dynamic drop
 obligations that do not actually need to be tracked.  Therefore, we do
@@ -469,7 +470,13 @@ to the end of the function.
 
 ## Remove implicit memory zeroing
 
-The main impact of this
+With the above in place, the remainder is relatively trivial.
+The compiler can be revised to no longer inject a drop flag into
+structs and enums that implement `Drop`, and likewise memory zeroing can
+be removed.
+
+Beyond that, the libraries will obviously need to be audited for
+dependence on implicit memory zeroing.
 
 # Drawbacks
 
