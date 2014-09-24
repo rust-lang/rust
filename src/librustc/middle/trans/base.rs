@@ -2670,6 +2670,10 @@ fn exported_name(ccx: &CrateContext, id: ast::NodeId,
     }
 }
 
+fn contains_null(s: &str) -> bool {
+    s.bytes().any(|b| b == 0)
+}
+
 pub fn get_item_val(ccx: &CrateContext, id: ast::NodeId) -> ValueRef {
     debug!("get_item_val(id=`{:?}`)", id);
 
@@ -2701,6 +2705,11 @@ pub fn get_item_val(ccx: &CrateContext, id: ast::NodeId) -> ValueRef {
 
                     unsafe {
                         let llty = llvm::LLVMTypeOf(v);
+                        if contains_null(sym.as_slice()) {
+                            ccx.sess().fatal(
+                                format!("Illegal null byte in export_name value: `{}`",
+                                        sym).as_slice());
+                        }
                         let g = sym.as_slice().with_c_str(|buf| {
                             llvm::LLVMAddGlobal(ccx.llmod(), llty, buf)
                         });
@@ -2764,10 +2773,16 @@ pub fn get_item_val(ccx: &CrateContext, id: ast::NodeId) -> ValueRef {
 
             match attr::first_attr_value_str_by_name(i.attrs.as_slice(),
                                                      "link_section") {
-                Some(sect) => unsafe {
-                    sect.get().with_c_str(|buf| {
-                        llvm::LLVMSetSection(v, buf);
-                    })
+                Some(sect) => {
+                    if contains_null(sect.get()) {
+                        ccx.sess().fatal(format!("Illegal null byte in link_section value: `{}`",
+                                                 sect.get()).as_slice());
+                    }
+                    unsafe {
+                        sect.get().with_c_str(|buf| {
+                            llvm::LLVMSetSection(v, buf);
+                        })
+                    }
                 },
                 None => ()
             }
