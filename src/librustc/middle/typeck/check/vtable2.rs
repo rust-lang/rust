@@ -25,17 +25,6 @@ use syntax::codemap::Span;
 use util::ppaux::UserString;
 use util::ppaux::Repr;
 
-/// When reporting an error about a failed trait obligation, it's nice
-/// to include some context indicating why we were checking that
-/// obligation in the first place. The span is often enough but
-/// sometimes it's not. Currently this enum is a bit of a hack and I
-/// suspect it should be carried in the obligation or more deeply
-/// integrated somehow.
-pub enum ErrorReportingContext {
-    GenericContext,
-    ImplSupertraitCheck,
-}
-
 pub fn check_object_cast(fcx: &FnCtxt,
                          cast_expr: &ast::Expr,
                          source_expr: &ast::Expr,

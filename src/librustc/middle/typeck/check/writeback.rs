@@ -22,7 +22,6 @@ use middle::typeck::infer::{force_all, resolve_all, resolve_region};
 use middle::typeck::infer::resolve_type;
 use middle::typeck::infer;
 use middle::typeck::{MethodCall, MethodCallee};
-use middle::typeck::vtable_res;
 use middle::typeck::write_substs_to_tcx;
 use middle::typeck::write_ty_to_tcx;
 use util::ppaux::Repr;
@@ -65,17 +64,6 @@ pub fn resolve_type_vars_in_fn(fcx: &FnCtxt,
     wbcx.visit_upvar_borrow_map();
     wbcx.visit_unboxed_closures();
     wbcx.visit_object_cast_map();
-}
-
-pub fn resolve_impl_res(infcx: &infer::InferCtxt,
-                        span: Span,
-                        vtable_res: &vtable_res)
-                        -> vtable_res {
-    let errors = Cell::new(false); // nobody cares
-    let mut resolver = Resolver::from_infcx(infcx,
-                                            &errors,
-                                            ResolvingImplRes(span));
-    vtable_res.resolve_in(&mut resolver)
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -361,7 +349,6 @@ enum ResolveReason {
     ResolvingLocal(Span),
     ResolvingPattern(Span),
     ResolvingUpvar(ty::UpvarId),
-    ResolvingImplRes(Span),
     ResolvingUnboxedClosure(ast::DefId),
 }
 
@@ -374,7 +361,6 @@ impl ResolveReason {
             ResolvingUpvar(upvar_id) => {
                 ty::expr_span(tcx, upvar_id.closure_expr_id)
             }
-            ResolvingImplRes(s) => s,
             ResolvingUnboxedClosure(did) => {
                 if did.krate == ast::LOCAL_CRATE {
                     ty::expr_span(tcx, did.node)
@@ -415,10 +401,7 @@ impl<'cx, 'tcx> Resolver<'cx, 'tcx> {
            reason: ResolveReason)
            -> Resolver<'cx, 'tcx>
     {
-        Resolver { infcx: fcx.infcx(),
-                   tcx: fcx.tcx(),
-                   writeback_errors: &fcx.writeback_errors,
-                   reason: reason }
+        Resolver::from_infcx(fcx.infcx(), &fcx.writeback_errors, reason)
     }
 
     fn from_infcx(infcx: &'cx infer::InferCtxt<'cx, 'tcx>,
@@ -460,11 +443,6 @@ impl<'cx, 'tcx> Resolver<'cx, 'tcx> {
                         "cannot resolve lifetime for captured variable `{}`: {}",
                         ty::local_var_name_str(self.tcx, upvar_id.var_id).get().to_string(),
                         infer::fixup_err_to_string(e));
-                }
-
-                ResolvingImplRes(span) => {
-                    span_err!(self.tcx.sess, span, E0105,
-                        "cannot determine a type for impl supertrait");
                 }
 
                 ResolvingUnboxedClosure(_) => {

@@ -16,7 +16,6 @@ use middle::cfg;
 use middle::dataflow::DataFlowContext;
 use middle::dataflow::BitwiseOperator;
 use middle::dataflow::DataFlowOperator;
-use middle::def;
 use middle::expr_use_visitor as euv;
 use middle::mem_categorization as mc;
 use middle::ty;
@@ -243,12 +242,6 @@ struct BorrowStats {
 
 pub type BckResult<T> = Result<T, BckError>;
 
-#[deriving(PartialEq)]
-pub enum PartialTotal {
-    Partial,   // Loan affects some portion
-    Total      // Loan affects entire path
-}
-
 ///////////////////////////////////////////////////////////////////////////
 // Loans and loan paths
 
@@ -392,11 +385,6 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
         self.tcx.region_maps.is_subregion_of(r_sub, r_sup)
     }
 
-    pub fn is_subscope_of(&self, r_sub: ast::NodeId, r_sup: ast::NodeId)
-                          -> bool {
-        self.tcx.region_maps.is_subscope_of(r_sub, r_sup)
-    }
-
     pub fn mc(&self) -> mc::MemCategorizationContext<'a, ty::ctxt<'tcx>> {
         mc::MemCategorizationContext::new(self.tcx)
     }
@@ -408,82 +396,6 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                 self.tcx.sess.span_bug(expr.span, "error in mem categorization");
             }
         }
-    }
-
-    pub fn cat_expr_unadjusted(&self, expr: &ast::Expr) -> mc::cmt {
-        match self.mc().cat_expr_unadjusted(expr) {
-            Ok(c) => c,
-            Err(()) => {
-                self.tcx.sess.span_bug(expr.span, "error in mem categorization");
-            }
-        }
-    }
-
-    pub fn cat_expr_autoderefd(&self,
-                               expr: &ast::Expr,
-                               adj: &ty::AutoAdjustment)
-                               -> mc::cmt {
-        let r = match *adj {
-            ty::AdjustDerefRef(
-                ty::AutoDerefRef {
-                    autoderefs: autoderefs, ..}) => {
-                self.mc().cat_expr_autoderefd(expr, autoderefs)
-            }
-            ty::AdjustAddEnv(..) => {
-                // no autoderefs
-                self.mc().cat_expr_unadjusted(expr)
-            }
-        };
-
-        match r {
-            Ok(c) => c,
-            Err(()) => {
-                self.tcx.sess.span_bug(expr.span,
-                                       "error in mem categorization");
-            }
-        }
-    }
-
-    pub fn cat_def(&self,
-                   id: ast::NodeId,
-                   span: Span,
-                   ty: ty::t,
-                   def: def::Def)
-                   -> mc::cmt {
-        match self.mc().cat_def(id, span, ty, def) {
-            Ok(c) => c,
-            Err(()) => {
-                self.tcx.sess.span_bug(span, "error in mem categorization");
-            }
-        }
-    }
-
-    pub fn cat_captured_var(&self,
-                            closure_id: ast::NodeId,
-                            closure_span: Span,
-                            upvar_def: def::Def)
-                            -> mc::cmt {
-        // Create the cmt for the variable being borrowed, from the
-        // caller's perspective
-        let var_id = upvar_def.def_id().node;
-        let var_ty = ty::node_id_to_type(self.tcx, var_id);
-        self.cat_def(closure_id, closure_span, var_ty, upvar_def)
-    }
-
-    pub fn cat_discr(&self, cmt: mc::cmt, match_id: ast::NodeId) -> mc::cmt {
-        Rc::new(mc::cmt_ {
-            cat: mc::cat_discr(cmt.clone(), match_id),
-            mutbl: cmt.mutbl.inherit(),
-            ..*cmt
-        })
-    }
-
-    pub fn cat_pattern(&self,
-                       cmt: mc::cmt,
-                       pat: &ast::Pat,
-                       op: |mc::cmt, &ast::Pat|) {
-        let r = self.mc().cat_pattern(cmt, pat, |_,x,y| op(x,y));
-        assert!(r.is_ok());
     }
 
     pub fn report(&self, err: BckError) {

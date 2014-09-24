@@ -15,7 +15,7 @@
 #[phase(link, plugin)] extern crate core;
 
 
-fn foo() { //~ ERROR code is never used
+fn foo() { //~ ERROR function is never used
 
     // none of these should have any dead_code exposed to the user
     fail!();

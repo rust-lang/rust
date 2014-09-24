@@ -21,7 +21,6 @@ use middle::trans::base;
 use middle::trans::common::*;
 use middle::trans::foreign;
 use middle::ty;
-use middle::typeck;
 use util::ppaux::Repr;
 
 use syntax::abi;
@@ -285,37 +284,8 @@ pub fn monomorphic_fn(ccx: &CrateContext,
     (lldecl, true)
 }
 
-// Used to identify cached monomorphized functions
-#[deriving(PartialEq, Eq, Hash)]
-pub struct MonoParamId {
-    pub subst: ty::t,
-}
-
 #[deriving(PartialEq, Eq, Hash)]
 pub struct MonoId {
     pub def: ast::DefId,
     pub params: subst::VecPerParamSpace<ty::t>
-}
-
-pub fn make_vtable_id(_ccx: &CrateContext,
-                      origin: &typeck::vtable_origin)
-                      -> MonoId {
-    match origin {
-        &typeck::vtable_static(impl_id, ref substs, _) => {
-            MonoId {
-                def: impl_id,
-                params: substs.types.clone()
-            }
-        }
-
-        &typeck::vtable_unboxed_closure(def_id) => {
-            MonoId {
-                def: def_id,
-                params: subst::VecPerParamSpace::empty(),
-            }
-        }
-
-        // can't this be checked at the callee?
-        _ => fail!("make_vtable_id needs vtable_static")
-    }
 }
