@@ -203,6 +203,9 @@ LIBUV_CFLAGS_$(1) := $(subst -Werror,,$(CFG_GCCISH_CFLAGS_$(1)))
 
 $$(LIBUV_MAKEFILE_$(1)): $$(LIBUV_DEPS) $$(MKFILE_DEPS) $$(LIBUV_STAMP_$(1))
 	(cd $(S)src/libuv/ && \
+	CC="$$(CC_$(1))" \
+	CXX="$$(CXX_$(1))" \
+	AR="$$(AR_$(1))" \
 	 $$(CFG_PYTHON) ./gyp_uv.py -f make -Dtarget_arch=$$(LIBUV_ARCH_$(1)) \
 	   -D ninja \
 	   -DOS=$$(LIBUV_OSTYPE_$(1)) \
@@ -225,6 +228,9 @@ else ifeq ($(OSTYPE_$(1)), apple-ios) # iOS
 $$(LIBUV_XCODEPROJ_$(1)): $$(LIBUV_DEPS) $$(MKFILE_DEPS) $$(LIBUV_STAMP_$(1))
 	cp -rf $(S)src/libuv/ $$(LIBUV_BUILD_DIR_$(1))
 	(cd $$(LIBUV_BUILD_DIR_$(1)) && \
+	CC="$$(CC_$(1))" \
+	CXX="$$(CXX_$(1))" \
+	AR="$$(AR_$(1))" \
 	 $$(CFG_PYTHON) ./gyp_uv.py -f xcode \
 	   -D ninja \
 	   -R libuv)
