@@ -1323,6 +1323,22 @@ pub enum Item_ {
     ItemMac(Mac),
 }
 
+impl Item_ {
+    pub fn descriptive_variant(&self) -> &str {
+        match *self {
+            ItemStatic(..) => "static item",
+            ItemFn(..) => "function",
+            ItemMod(..) => "module",
+            ItemForeignMod(..) => "foreign module",
+            ItemTy(..) => "type alias",
+            ItemEnum(..) => "enum",
+            ItemStruct(..) => "struct",
+            ItemTrait(..) => "trait",
+            _ => "item"
+        }
+    }
+}
+
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
 pub struct ForeignItem {
     pub ident: Ident,
@@ -1337,6 +1353,15 @@ pub struct ForeignItem {
 pub enum ForeignItem_ {
     ForeignItemFn(P<FnDecl>, Generics),
     ForeignItemStatic(P<Ty>, /* is_mutbl */ bool),
+}
+
+impl ForeignItem_ {
+    pub fn descriptive_variant(&self) -> &str {
+        match *self {
+            ForeignItemFn(..) => "foreign function",
+            ForeignItemStatic(..) => "foreign static item"
+        }
+    }
 }
 
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]

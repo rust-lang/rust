@@ -28,21 +28,12 @@ pub enum ExponentFormat {
     /// Use exponential notation with the exponent having a base of 10 and the
     /// exponent sign being `e` or `E`. For example, 1000 would be printed
     /// 1e3.
-    ExpDec,
-    /// Use exponential notation with the exponent having a base of 2 and the
-    /// exponent sign being `p` or `P`. For example, 8 would be printed 1p3.
-    ExpBin,
+    ExpDec
 }
 
 /// The number of digits used for emitting the fractional part of a number, if
 /// any.
 pub enum SignificantDigits {
-    /// All calculable digits will be printed.
-    ///
-    /// Note that bignums or fractions may cause a surprisingly large number
-    /// of digits to be printed.
-    DigAll,
-
     /// At most the given number of digits will be printed, truncating any
     /// trailing zeroes.
     DigMax(uint),
@@ -53,17 +44,11 @@ pub enum SignificantDigits {
 
 /// How to emit the sign of a number.
 pub enum SignFormat {
-    /// No sign will be printed. The exponent sign will also be emitted.
-    SignNone,
     /// `-` will be printed for negative values, but no sign will be emitted
     /// for positive numbers.
-    SignNeg,
-    /// `+` will be printed for positive values, and `-` will be printed for
-    /// negative values.
-    SignAll,
+    SignNeg
 }
 
-static DIGIT_P_RADIX: uint = ('p' as uint) - ('a' as uint) + 11u;
 static DIGIT_E_RADIX: uint = ('e' as uint) - ('a' as uint) + 11u;
 
 /**
@@ -111,9 +96,6 @@ pub fn float_to_str_bytes_common<T: Primitive + Float, U>(
         ExpDec if radix >= DIGIT_E_RADIX       // decimal exponent 'e'
           => fail!("float_to_str_bytes_common: radix {} incompatible with \
                     use of 'e' as decimal exponent", radix),
-        ExpBin if radix >= DIGIT_P_RADIX       // binary exponent 'p'
-          => fail!("float_to_str_bytes_common: radix {} incompatible with \
-                    use of 'p' as binary exponent", radix),
         _ => ()
     }
 
@@ -123,16 +105,10 @@ pub fn float_to_str_bytes_common<T: Primitive + Float, U>(
     match num.classify() {
         FPNaN => return f("NaN".as_bytes()),
         FPInfinite if num > _0 => {
-            return match sign {
-                SignAll => return f("+inf".as_bytes()),
-                _       => return f("inf".as_bytes()),
-            };
+            return f("inf".as_bytes());
         }
         FPInfinite if num < _0 => {
-            return match sign {
-                SignNone => return f("inf".as_bytes()),
-                _        => return f("-inf".as_bytes()),
-            };
+            return f("-inf".as_bytes());
         }
         _ => {}
     }
@@ -147,11 +123,10 @@ pub fn float_to_str_bytes_common<T: Primitive + Float, U>(
 
     let (num, exp) = match exp_format {
         ExpNone => (num, 0i32),
-        ExpDec | ExpBin if num == _0 => (num, 0i32),
-        ExpDec | ExpBin => {
+        ExpDec if num == _0 => (num, 0i32),
+        ExpDec => {
             let (exp, exp_base) = match exp_format {
                 ExpDec => (num.abs().log10().floor(), cast::<f64, T>(10.0f64).unwrap()),
-                ExpBin => (num.abs().log2().floor(), cast::<f64, T>(2.0f64).unwrap()),
                 ExpNone => fail!("unreachable"),
             };
 
@@ -185,19 +160,14 @@ pub fn float_to_str_bytes_common<T: Primitive + Float, U>(
 
     // If limited digits, calculate one digit more for rounding.
     let (limit_digits, digit_count, exact) = match digits {
-        DigAll          => (false, 0u,      false),
-        DigMax(count)   => (true,  count+1, false),
-        DigExact(count) => (true,  count+1, true)
+        DigMax(count)   => (true, count + 1, false),
+        DigExact(count) => (true, count + 1, true)
     };
 
     // Decide what sign to put in front
     match sign {
-        SignNeg | SignAll if neg => {
+        SignNeg if neg => {
             buf[end] = b'-';
-            end += 1;
-        }
-        SignAll => {
-            buf[end] = b'+';
             end += 1;
         }
         _ => ()
@@ -329,8 +299,6 @@ pub fn float_to_str_bytes_common<T: Primitive + Float, U>(
             buf[end] = match exp_format {
                 ExpDec if exp_upper => 'E',
                 ExpDec if !exp_upper => 'e',
-                ExpBin if exp_upper => 'P',
-                ExpBin if !exp_upper => 'p',
                 _ => fail!("unreachable"),
             } as u8;
             end += 1;
@@ -355,11 +323,6 @@ pub fn float_to_str_bytes_common<T: Primitive + Float, U>(
                     let _ = format_args!(|args| {
                         fmt::write(&mut filler, args)
                     }, "{:-}", exp);
-                }
-                SignNone | SignAll => {
-                    let _ = format_args!(|args| {
-                        fmt::write(&mut filler, args)
-                    }, "{}", exp);
                 }
             }
         }

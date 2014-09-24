@@ -355,17 +355,6 @@ pub fn check_freevar_bounds(cx: &Context, fn_span: Span, sp: Span, ty: ty::t,
     });
 }
 
-pub fn check_trait_cast_bounds(cx: &Context, sp: Span, ty: ty::t,
-                               bounds: ty::BuiltinBounds) {
-    check_builtin_bounds(cx, ty, bounds, |missing| {
-        span_err!(cx.tcx.sess, sp, E0147,
-            "cannot pack type `{}`, which does not fulfill `{}`, as a trait bounded by {}",
-            ty_to_string(cx.tcx, ty),
-            missing.user_string(cx.tcx),
-            bounds.user_string(cx.tcx));
-    });
-}
-
 fn check_copy(cx: &Context, ty: ty::t, sp: Span, reason: &str) {
     debug!("type_contents({})={}",
            ty_to_string(cx.tcx, ty),
