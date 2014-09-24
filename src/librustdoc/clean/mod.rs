@@ -1961,9 +1961,9 @@ fn lit_to_string(lit: &ast::Lit) -> String {
         ast::LitByte(b) => {
             let mut res = String::from_str("b'");
             (b as char).escape_default(|c| {
-                res.push_char(c);
+                res.push(c);
             });
-            res.push_char('\'');
+            res.push('\'');
             res
         },
         ast::LitChar(c) => format!("'{}'", c),
