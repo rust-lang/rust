@@ -212,7 +212,7 @@ impl GenericPathUnsafe for Path {
             None if ".." == self.repr.as_slice() => {
                 let mut s = String::with_capacity(3 + filename.len());
                 s.push_str("..");
-                s.push_char(SEP);
+                s.push(SEP);
                 s.push_str(filename);
                 self.update_normalized(s);
             }
@@ -222,7 +222,7 @@ impl GenericPathUnsafe for Path {
             Some((_,idxa,end)) if self.repr.as_slice().slice(idxa,end) == ".." => {
                 let mut s = String::with_capacity(end + 1 + filename.len());
                 s.push_str(self.repr.as_slice().slice_to(end));
-                s.push_char(SEP);
+                s.push(SEP);
                 s.push_str(filename);
                 self.update_normalized(s);
             }
@@ -235,7 +235,7 @@ impl GenericPathUnsafe for Path {
             Some((idxb,_,_)) => {
                 let mut s = String::with_capacity(idxb + 1 + filename.len());
                 s.push_str(self.repr.as_slice().slice_to(idxb));
-                s.push_char(SEP);
+                s.push(SEP);
                 s.push_str(filename);
                 self.update_normalized(s);
             }
@@ -299,7 +299,7 @@ impl GenericPathUnsafe for Path {
             match me.prefix {
                 Some(DiskPrefix) if me.repr.len() == plen => (),
                 _ if !(me.repr.len() > plen && me.repr.as_bytes()[me.repr.len()-1] == SEP_BYTE) => {
-                    s.push_char(SEP);
+                    s.push(SEP);
                 }
                 _ => ()
             }
@@ -745,7 +745,7 @@ impl Path {
                 Some(VerbatimUNCPrefix(x, 0)) if s.len() == 8 + x => {
                     // the server component has no trailing '\'
                     let mut s = String::from_str(s);
-                    s.push_char(SEP);
+                    s.push(SEP);
                     Some(s)
                 }
                 _ => None
@@ -815,20 +815,20 @@ impl Path {
                         let mut s = String::with_capacity(n);
                         match prefix {
                             Some(DiskPrefix) => {
-                                s.push_char(prefix_.as_bytes()[0].to_ascii()
+                                s.push(prefix_.as_bytes()[0].to_ascii()
                                                    .to_uppercase().to_char());
-                                s.push_char(':');
+                                s.push(':');
                             }
                             Some(VerbatimDiskPrefix) => {
                                 s.push_str(prefix_.slice_to(4));
-                                s.push_char(prefix_.as_bytes()[4].to_ascii()
+                                s.push(prefix_.as_bytes()[4].to_ascii()
                                                    .to_uppercase().to_char());
                                 s.push_str(prefix_.slice_from(5));
                             }
                             Some(UNCPrefix(a,b)) => {
                                 s.push_str("\\\\");
                                 s.push_str(prefix_.slice(2, a+2));
-                                s.push_char(SEP);
+                                s.push(SEP);
                                 s.push_str(prefix_.slice(3+a, 3+a+b));
                             }
                             Some(_) => s.push_str(prefix_),
@@ -842,7 +842,7 @@ impl Path {
                             }
                         }
                         for comp in it {
-                            s.push_char(SEP);
+                            s.push(SEP);
                             s.push_str(comp);
                         }
                         Some(s)

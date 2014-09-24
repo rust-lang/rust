@@ -685,9 +685,9 @@ pub fn usage(brief: &str, opts: &[OptGroup]) -> String {
         match short_name.len() {
             0 => {}
             1 => {
-                row.push_char('-');
+                row.push('-');
                 row.push_str(short_name.as_slice());
-                row.push_char(' ');
+                row.push(' ');
             }
             _ => fail!("the short name should only be 1 ascii char long"),
         }
@@ -698,7 +698,7 @@ pub fn usage(brief: &str, opts: &[OptGroup]) -> String {
             _ => {
                 row.push_str("--");
                 row.push_str(long_name.as_slice());
-                row.push_char(' ');
+                row.push(' ');
             }
         }
 
@@ -707,9 +707,9 @@ pub fn usage(brief: &str, opts: &[OptGroup]) -> String {
             No => {}
             Yes => row.push_str(hint.as_slice()),
             Maybe => {
-                row.push_char('[');
+                row.push('[');
                 row.push_str(hint.as_slice());
-                row.push_char(']');
+                row.push(']');
             }
         }
 
@@ -718,7 +718,7 @@ pub fn usage(brief: &str, opts: &[OptGroup]) -> String {
         let rowlen = row.as_slice().char_len();
         if rowlen < 24 {
             for _ in range(0, 24 - rowlen) {
-                row.push_char(' ');
+                row.push(' ');
             }
         } else {
             row.push_str(desc_sep.as_slice())
@@ -728,7 +728,7 @@ pub fn usage(brief: &str, opts: &[OptGroup]) -> String {
         let mut desc_normalized_whitespace = String::new();
         for word in desc.as_slice().words() {
             desc_normalized_whitespace.push_str(word);
-            desc_normalized_whitespace.push_char(' ');
+            desc_normalized_whitespace.push(' ');
         }
 
         // FIXME: #5516 should be graphemes not codepoints
@@ -755,12 +755,12 @@ fn format_option(opt: &OptGroup) -> String {
     let mut line = String::new();
 
     if opt.occur != Req {
-        line.push_char('[');
+        line.push('[');
     }
 
     // Use short_name is possible, but fallback to long_name.
     if opt.short_name.len() > 0 {
-        line.push_char('-');
+        line.push('-');
         line.push_str(opt.short_name.as_slice());
     } else {
         line.push_str("--");
@@ -768,18 +768,18 @@ fn format_option(opt: &OptGroup) -> String {
     }
 
     if opt.hasarg != No {
-        line.push_char(' ');
+        line.push(' ');
         if opt.hasarg == Maybe {
-            line.push_char('[');
+            line.push('[');
         }
         line.push_str(opt.hint.as_slice());
         if opt.hasarg == Maybe {
-            line.push_char(']');
+            line.push(']');
         }
     }
 
     if opt.occur != Req {
-        line.push_char(']');
+        line.push(']');
     }
     if opt.occur == Multi {
         line.push_str("..");

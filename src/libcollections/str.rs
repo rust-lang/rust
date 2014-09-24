@@ -698,7 +698,7 @@ pub trait StrAllocating: Str {
         let me = self.as_slice();
         let mut out = String::with_capacity(me.len());
         for c in me.chars() {
-            c.escape_default(|c| out.push_char(c));
+            c.escape_default(|c| out.push(c));
         }
         out
     }
@@ -708,7 +708,7 @@ pub trait StrAllocating: Str {
         let me = self.as_slice();
         let mut out = String::with_capacity(me.len());
         for c in me.chars() {
-            c.escape_unicode(|c| out.push_char(c));
+            c.escape_unicode(|c| out.push(c));
         }
         out
     }

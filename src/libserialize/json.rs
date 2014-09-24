@@ -1514,14 +1514,14 @@ impl<T: Iterator<char>> Parser<T> {
 
             if escape {
                 match self.ch_or_null() {
-                    '"' => res.push_char('"'),
-                    '\\' => res.push_char('\\'),
-                    '/' => res.push_char('/'),
-                    'b' => res.push_char('\x08'),
-                    'f' => res.push_char('\x0c'),
-                    'n' => res.push_char('\n'),
-                    'r' => res.push_char('\r'),
-                    't' => res.push_char('\t'),
+                    '"' => res.push('"'),
+                    '\\' => res.push('\\'),
+                    '/' => res.push('/'),
+                    'b' => res.push('\x08'),
+                    'f' => res.push('\x0c'),
+                    'n' => res.push('\n'),
+                    'r' => res.push('\r'),
+                    't' => res.push('\t'),
                     'u' => match try!(self.decode_hex_escape()) {
                         0xDC00 .. 0xDFFF => return self.error(LoneLeadingSurrogateInHexEscape),
 
@@ -1535,13 +1535,13 @@ impl<T: Iterator<char>> Parser<T> {
 
                             let buf = [n1, try!(self.decode_hex_escape())];
                             match str::utf16_items(buf.as_slice()).next() {
-                                Some(ScalarValue(c)) => res.push_char(c),
+                                Some(ScalarValue(c)) => res.push(c),
                                 _ => return self.error(LoneLeadingSurrogateInHexEscape),
                             }
                         }
 
                         n => match char::from_u32(n as u32) {
-                            Some(c) => res.push_char(c),
+                            Some(c) => res.push(c),
                             None => return self.error(InvalidUnicodeCodePoint),
                         },
                     },
@@ -1556,7 +1556,7 @@ impl<T: Iterator<char>> Parser<T> {
                         self.bump();
                         return Ok(res);
                     },
-                    Some(c) => res.push_char(c),
+                    Some(c) => res.push(c),
                     None => unreachable!()
                 }
             }
