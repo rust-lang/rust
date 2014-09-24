@@ -18,8 +18,6 @@ use std::io::{process, Command};
 use std::os;
 use std::task::TaskBuilder;
 
-green_start!(main)
-
 fn main() {
     let len = os::args().len();
 

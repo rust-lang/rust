@@ -12,13 +12,7 @@
 // expose is still present.
 
 extern crate green;
-extern crate rustuv;
 extern crate native;
-
-#[start]
-fn start(argc: int, argv: *const *const u8) -> int {
-    green::start(argc, argv, rustuv::event_loop, main)
-}
 
 fn helper(rx: Receiver<Sender<()>>) {
     for tx in rx.iter() {

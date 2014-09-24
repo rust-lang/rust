@@ -39,8 +39,6 @@
 // OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #![feature(phase)]
-#[phase(plugin)] extern crate green;
-green_start!(main)
 
 fn start(n_tasks: int, token: int) {
     let (tx, mut rx) = channel();

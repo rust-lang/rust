@@ -119,7 +119,6 @@
 // When testing libstd, bring in libuv as the I/O backend so tests can print
 // things and all of the std::io tests have an I/O interface to run on top
 // of
-#[cfg(test)] extern crate rustuv;
 #[cfg(test)] extern crate native;
 #[cfg(test)] extern crate green;
 #[cfg(test)] extern crate debug;
@@ -186,12 +185,6 @@ pub use rustrt::local_data;
 pub use unicode::char;
 
 pub use core_sync::comm;
-
-// Run tests with libgreen instead of libnative.
-#[cfg(test)] #[start]
-fn start(argc: int, argv: *const *const u8) -> int {
-    green::start(argc, argv, rustuv::event_loop, test_main)
-}
 
 /* Exported macros */
 

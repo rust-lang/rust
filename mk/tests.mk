@@ -259,9 +259,7 @@ tidy:
 		@$(call E, check: formatting)
 		$(Q)find $(S)src -name '*.r[sc]' \
 		| grep '^$(S)src/jemalloc' -v \
-		| grep '^$(S)src/libuv' -v \
 		| grep '^$(S)src/llvm' -v \
-		| grep '^$(S)src/gyp' -v \
 		| grep '^$(S)src/libbacktrace' -v \
 		| xargs -n 10 $(CFG_PYTHON) $(S)src/etc/tidy.py
 		$(Q)find $(S)src/etc -name '*.py' \
@@ -284,10 +282,8 @@ tidy:
 		    -not -name '*.rs' -and -not -name '*.py' \
 		    -and -not -name '*.sh' \
 		| grep '^$(S)src/jemalloc' -v \
-		| grep '^$(S)src/libuv' -v \
 		| grep '^$(S)src/llvm' -v \
 		| grep '^$(S)src/rt/hoedown' -v \
-		| grep '^$(S)src/gyp' -v \
 		| grep '^$(S)src/etc' -v \
 		| grep '^$(S)src/doc' -v \
 		| grep '^$(S)src/compiler-rt' -v \
