@@ -276,7 +276,7 @@ pub fn collapse_docs(krate: clean::Crate) -> plugins::PluginResult {
                     clean::NameValue(ref x, ref s)
                             if "doc" == x.as_slice() => {
                         docstr.push_str(s.as_slice());
-                        docstr.push_char('\n');
+                        docstr.push('\n');
                     },
                     _ => ()
                 }

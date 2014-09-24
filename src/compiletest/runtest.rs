@@ -444,7 +444,8 @@ fn run_debuginfo_gdb_test(config: &Config, props: &TestProps, testfile: &Path) {
                      "-nx".to_string(),
                      format!("-command={}", debugger_script.as_str().unwrap()));
 
-            let gdb_path = tool_path.append("/bin/arm-linux-androideabi-gdb");
+            let mut gdb_path = tool_path;
+            gdb_path.push_str("/bin/arm-linux-androideabi-gdb");
             let procsrv::Result {
                 out,
                 err,
