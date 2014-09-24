@@ -55,13 +55,13 @@ fn c<F:FnOnce(int, int) -> int>(f: F) -> int {
 
 fn test_fn() {
     {
-        a(|&: a: int, b| { a + b });
+        a(move |&: a: int, b| { a + b });
     }
     assert_eq!(drop_count(), 0);
 
     {
         let z = &Droppable::new();
-        a(|&: a: int, b| { z; a + b });
+        a(move |&: a: int, b| { z; a + b });
         assert_eq!(drop_count(), 0);
     }
     assert_eq!(drop_count(), 1);
@@ -69,7 +69,7 @@ fn test_fn() {
     {
         let z = &Droppable::new();
         let zz = &Droppable::new();
-        a(|&: a: int, b| { z; zz; a + b });
+        a(move |&: a: int, b| { z; zz; a + b });
         assert_eq!(drop_count(), 1);
     }
     assert_eq!(drop_count(), 3);
@@ -77,13 +77,13 @@ fn test_fn() {
 
 fn test_fn_mut() {
     {
-        b(|&mut: a: int, b| { a + b });
+        b(move |&mut: a: int, b| { a + b });
     }
     assert_eq!(drop_count(), 3);
 
     {
         let z = &Droppable::new();
-        b(|&mut: a: int, b| { z; a + b });
+        b(move |&mut: a: int, b| { z; a + b });
         assert_eq!(drop_count(), 3);
     }
     assert_eq!(drop_count(), 4);
@@ -91,7 +91,7 @@ fn test_fn_mut() {
     {
         let z = &Droppable::new();
         let zz = &Droppable::new();
-        b(|&mut: a: int, b| { z; zz; a + b });
+        b(move |&mut: a: int, b| { z; zz; a + b });
         assert_eq!(drop_count(), 4);
     }
     assert_eq!(drop_count(), 6);
@@ -99,13 +99,13 @@ fn test_fn_mut() {
 
 fn test_fn_once() {
     {
-        c(|: a: int, b| { a + b });
+        c(move |: a: int, b| { a + b });
     }
     assert_eq!(drop_count(), 6);
 
     {
         let z = Droppable::new();
-        c(|: a: int, b| { z; a + b });
+        c(move |: a: int, b| { z; a + b });
         assert_eq!(drop_count(), 7);
     }
     assert_eq!(drop_count(), 7);
@@ -113,7 +113,7 @@ fn test_fn_once() {
     {
         let z = Droppable::new();
         let zz = Droppable::new();
-        c(|: a: int, b| { z; zz; a + b });
+        c(move |: a: int, b| { z; zz; a + b });
         assert_eq!(drop_count(), 9);
     }
     assert_eq!(drop_count(), 9);

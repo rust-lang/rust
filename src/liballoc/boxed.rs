@@ -96,12 +96,6 @@ pub trait BoxAny {
     /// `Err(Self)` if it isn't.
     #[unstable = "naming conventions around accessing innards may change"]
     fn downcast<T: 'static>(self) -> Result<Box<T>, Self>;
-
-    /// Deprecated; this method has been renamed to `downcast`.
-    #[deprecated = "use downcast instead"]
-    fn move<T: 'static>(self) -> Result<Box<T>, Self> {
-        self.downcast::<T>()
-    }
 }
 
 #[stable]
