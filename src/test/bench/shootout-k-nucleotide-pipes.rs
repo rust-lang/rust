@@ -97,11 +97,11 @@ fn windows_with_carry(bb: &[u8], nn: uint, it: |window: &[u8]|) -> Vec<u8> {
 
    let len = bb.len();
    while ii < len - (nn - 1u) {
-      it(bb.slice(ii, ii+nn));
+      it(bb[ii..ii+nn]);
       ii += 1u;
    }
 
-   return Vec::from_slice(bb.slice(len - (nn - 1u), len));
+   return Vec::from_slice(bb[len - (nn - 1u)..len]);
 }
 
 fn make_sequence_processor(sz: uint,

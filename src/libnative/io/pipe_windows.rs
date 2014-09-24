@@ -448,7 +448,7 @@ impl rtio::RtioPipe for UnixStream {
             }
             let ret = unsafe {
                 libc::WriteFile(self.handle(),
-                                buf.slice_from(offset).as_ptr() as libc::LPVOID,
+                                buf[offset..].as_ptr() as libc::LPVOID,
                                 (buf.len() - offset) as libc::DWORD,
                                 &mut bytes_written,
                                 &mut overlapped)

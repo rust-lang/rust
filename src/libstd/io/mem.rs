@@ -19,7 +19,7 @@ use result::{Err, Ok};
 use io;
 use io::{Reader, Writer, Seek, Buffer, IoError, SeekStyle, IoResult};
 use slice;
-use slice::{Slice, ImmutableSlice, MutableSlice};
+use slice::Slice;
 use vec::Vec;
 
 static BUF_CAPACITY: uint = 128;
@@ -146,8 +146,8 @@ impl Reader for MemReader {
 
         let write_len = min(buf.len(), self.buf.len() - self.pos);
         {
-            let input = self.buf.slice(self.pos, self.pos + write_len);
-            let output = buf.slice_mut(0, write_len);
+            let input = self.buf[self.pos.. self.pos + write_len];
+            let output = buf[mut ..write_len];
             assert_eq!(input.len(), output.len());
             slice::bytes::copy_memory(output, input);
         }
@@ -174,7 +174,7 @@ impl Buffer for MemReader {
     #[inline]
     fn fill_buf<'a>(&'a mut self) -> IoResult<&'a [u8]> {
         if self.pos < self.buf.len() {
-            Ok(self.buf.slice_from(self.pos))
+            Ok(self.buf[self.pos..])
         } else {
             Err(io::standard_error(io::EndOfFile))
         }
@@ -232,7 +232,7 @@ impl<'a> Writer for BufWriter<'a> {
             })
         }
 
-        slice::bytes::copy_memory(self.buf.slice_from_mut(self.pos), buf);
+        slice::bytes::copy_memory(self.buf[mut self.pos..], buf);
         self.pos += buf.len();
         Ok(())
     }
@@ -292,8 +292,8 @@ impl<'a> Reader for BufReader<'a> {
 
         let write_len = min(buf.len(), self.buf.len() - self.pos);
         {
-            let input = self.buf.slice(self.pos, self.pos + write_len);
-            let output = buf.slice_mut(0, write_len);
+            let input = self.buf[self.pos.. self.pos + write_len];
+            let output = buf[mut ..write_len];
             assert_eq!(input.len(), output.len());
             slice::bytes::copy_memory(output, input);
         }
@@ -320,7 +320,7 @@ impl<'a> Buffer for BufReader<'a> {
     #[inline]
     fn fill_buf<'a>(&'a mut self) -> IoResult<&'a [u8]> {
         if self.pos < self.buf.len() {
-            Ok(self.buf.slice_from(self.pos))
+            Ok(self.buf[self.pos..])
         } else {
             Err(io::standard_error(io::EndOfFile))
         }
@@ -427,7 +427,7 @@ mod test {
         assert_eq!(buf.as_slice(), b);
         assert_eq!(reader.read(buf), Ok(3));
         let b: &[_] = &[5, 6, 7];
-        assert_eq!(buf.slice(0, 3), b);
+        assert_eq!(buf[0..3], b);
         assert!(reader.read(buf).is_err());
         let mut reader = MemReader::new(vec!(0, 1, 2, 3, 4, 5, 6, 7));
         assert_eq!(reader.read_until(3).unwrap(), vec!(0, 1, 2, 3));
@@ -454,7 +454,7 @@ mod test {
         assert_eq!(buf.as_slice(), b);
         assert_eq!(reader.read(buf), Ok(3));
         let b: &[_] = &[5, 6, 7];
-        assert_eq!(buf.slice(0, 3), b);
+        assert_eq!(buf[0..3], b);
         assert!(reader.read(buf).is_err());
         let mut reader = BufReader::new(in_buf.as_slice());
         assert_eq!(reader.read_until(3).unwrap(), vec!(0, 1, 2, 3));
@@ -548,7 +548,7 @@ mod test {
         assert!(r.read_at_least(buf.len(), buf).is_ok());
         let b: &[_] = &[1, 2, 3];
         assert_eq!(buf.as_slice(), b);
-        assert!(r.read_at_least(0, buf.slice_to_mut(0)).is_ok());
+        assert!(r.read_at_least(0, buf[mut ..0]).is_ok());
         assert_eq!(buf.as_slice(), b);
         assert!(r.read_at_least(buf.len(), buf).is_ok());
         let b: &[_] = &[4, 5, 6];
