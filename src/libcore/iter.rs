@@ -811,8 +811,7 @@ impl<A: Add<A, A> + Zero, T: Iterator<A>> AdditiveIterator<A> for T {
     }
 }
 
-/// A trait for iterators over elements whose elements can be multiplied
-/// together.
+/// A trait for iterators over elements which can be multiplied together.
 pub trait MultiplicativeIterator<A> {
     /// Iterates over the entire iterator, multiplying all the elements
     ///
@@ -840,7 +839,6 @@ impl<A: Mul<A, A> + One, T: Iterator<A>> MultiplicativeIterator<A> for T {
 }
 
 /// A trait for iterators over elements which can be compared to one another.
-/// The type of each element must ascribe to the `PartialOrd` trait.
 pub trait OrdIterator<A> {
     /// Consumes the entire iterator to return the maximum element.
     ///
