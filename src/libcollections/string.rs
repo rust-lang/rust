@@ -31,6 +31,7 @@ use vec::Vec;
 
 /// A growable string stored as a UTF-8 encoded buffer.
 #[deriving(Clone, PartialEq, PartialOrd, Eq, Ord)]
+#[stable]
 pub struct String {
     vec: Vec<u8>,
 }
@@ -44,6 +45,7 @@ impl String {
     /// let mut s = String::new();
     /// ```
     #[inline]
+    #[stable]
     pub fn new() -> String {
         String {
             vec: Vec::new(),
@@ -60,6 +62,7 @@ impl String {
     /// let mut s = String::with_capacity(10);
     /// ```
     #[inline]
+    #[stable]
     pub fn with_capacity(capacity: uint) -> String {
         String {
             vec: Vec::with_capacity(capacity),
@@ -75,6 +78,7 @@ impl String {
     /// assert_eq!(s.as_slice(), "hello");
     /// ```
     #[inline]
+    #[experimental = "needs investigation to see if to_string() can match perf"]
     pub fn from_str(string: &str) -> String {
         String { vec: string.as_bytes().to_vec() }
     }
@@ -111,6 +115,7 @@ impl String {
     /// assert_eq!(s, Err(vec![240, 144, 128]));
     /// ```
     #[inline]
+    #[unstable = "error type may change"]
     pub fn from_utf8(vec: Vec<u8>) -> Result<String, Vec<u8>> {
         if str::is_utf8(vec.as_slice()) {
             Ok(String { vec: vec })
@@ -129,6 +134,7 @@ impl String {
     /// let output = String::from_utf8_lossy(input);
     /// assert_eq!(output.as_slice(), "Hello \uFFFDWorld");
     /// ```
+    #[unstable = "return type may change"]
     pub fn from_utf8_lossy<'a>(v: &'a [u8]) -> MaybeOwned<'a> {
         if str::is_utf8(v) {
             return MaybeOwnedSlice(unsafe { mem::transmute(v) })
@@ -153,7 +159,7 @@ impl String {
 
         if i > 0 {
             unsafe {
-                res.push_bytes(v.slice_to(i))
+                res.as_mut_vec().push_all(v.slice_to(i))
             };
         }
 
@@ -170,10 +176,10 @@ impl String {
             macro_rules! error(() => ({
                 unsafe {
                     if subseqidx != i_ {
-                        res.push_bytes(v.slice(subseqidx, i_));
+                        res.as_mut_vec().push_all(v.slice(subseqidx, i_));
                     }
                     subseqidx = i;
-                    res.push_bytes(REPLACEMENT);
+                    res.as_mut_vec().push_all(REPLACEMENT);
                 }
             }))
 
@@ -239,7 +245,7 @@ impl String {
         }
         if subseqidx < total {
             unsafe {
-                res.push_bytes(v.slice(subseqidx, total))
+                res.as_mut_vec().push_all(v.slice(subseqidx, total))
             };
         }
         Owned(res.into_string())
@@ -260,11 +266,12 @@ impl String {
     /// v[4] = 0xD800;
     /// assert_eq!(String::from_utf16(v), None);
     /// ```
+    #[unstable = "error value in return may change"]
     pub fn from_utf16(v: &[u16]) -> Option<String> {
         let mut s = String::with_capacity(v.len() / 2);
         for c in str::utf16_items(v) {
             match c {
-                str::ScalarValue(c) => s.push_char(c),
+                str::ScalarValue(c) => s.push(c),
                 str::LoneSurrogate(_) => return None
             }
         }
@@ -284,6 +291,7 @@ impl String {
     /// assert_eq!(String::from_utf16_lossy(v),
     ///            "𝄞mus\uFFFDic\uFFFD".to_string());
     /// ```
+    #[stable]
     pub fn from_utf16_lossy(v: &[u16]) -> String {
         str::utf16_items(v).map(|c| c.to_char_lossy()).collect()
     }
@@ -298,6 +306,7 @@ impl String {
     /// assert_eq!(s.as_slice(), "hello");
     /// ```
     #[inline]
+    #[unstable = "may be removed in favor of .collect()"]
     pub fn from_chars(chs: &[char]) -> String {
         chs.iter().map(|c| *c).collect()
     }
@@ -312,6 +321,7 @@ impl String {
     /// assert_eq!(bytes, vec![104, 101, 108, 108, 111]);
     /// ```
     #[inline]
+    #[stable]
     pub fn into_bytes(self) -> Vec<u8> {
         self.vec
     }
@@ -322,6 +332,7 @@ impl String {
     /// # Example
     ///
     /// ```
+    /// # #![allow(deprecated)]
     /// let s = String::from_str("hello");
     /// let big = s.append(" ").append("world").append("!");
     /// // s has now been moved and cannot be used
@@ -329,6 +340,7 @@ impl String {
     /// assert_eq!(big.as_slice(), "hello world!");
     /// ```
     #[inline]
+    #[deprecated = "use .push_str() instead"]
     pub fn append(mut self, second: &str) -> String {
         self.push_str(second);
         self
@@ -343,17 +355,19 @@ impl String {
     /// assert_eq!(s.as_slice(), "aaaaa");
     /// ```
     #[inline]
+    #[unstable = "may be replaced with iterators, questionable usability, and \
+                  the name may change"]
     pub fn from_char(length: uint, ch: char) -> String {
         if length == 0 {
             return String::new()
         }
 
         let mut buf = String::new();
-        buf.push_char(ch);
+        buf.push(ch);
         let size = buf.len() * length;
         buf.reserve(size);
         for _ in range(1, length) {
-            buf.push_char(ch)
+            buf.push(ch)
         }
         buf
     }
@@ -367,9 +381,11 @@ impl String {
     /// # Example
     ///
     /// ```rust
+    /// # #![allow(deprecated)]
     /// let s = String::from_byte(104);
     /// assert_eq!(s.as_slice(), "h");
     /// ```
+    #[deprecated = "use str::from_utf8 with a slice of one byte instead"]
     pub fn from_byte(b: u8) -> String {
         assert!(b < 128u8);
         String::from_char(1, b as char)
@@ -385,6 +401,7 @@ impl String {
     /// assert_eq!(s.as_slice(), "foobar");
     /// ```
     #[inline]
+    #[unstable = "extra variants of `push`, could possibly be based on iterators"]
     pub fn push_str(&mut self, string: &str) {
         self.vec.push_all(string.as_bytes())
     }
@@ -399,9 +416,10 @@ impl String {
     /// assert_eq!(s.as_slice(), "fooZZZZZ");
     /// ```
     #[inline]
+    #[unstable = "duplicate of iterator-based functionality"]
     pub fn grow(&mut self, count: uint, ch: char) {
         for _ in range(0, count) {
-            self.push_char(ch)
+            self.push(ch)
         }
     }
 
@@ -410,11 +428,27 @@ impl String {
     /// # Example
     ///
     /// ```
+    /// # #![allow(deprecated)]
     /// let s = String::with_capacity(10);
     /// assert!(s.byte_capacity() >= 10);
     /// ```
     #[inline]
+    #[deprecated = "renamed to .capacity()"]
     pub fn byte_capacity(&self) -> uint {
+        self.vec.capacity()
+    }
+
+    /// Returns the number of bytes that this string buffer can hold without reallocating.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// let s = String::with_capacity(10);
+    /// assert!(s.capacity() >= 10);
+    /// ```
+    #[inline]
+    #[unstable = "just implemented, needs to prove itself"]
+    pub fn capacity(&self) -> uint {
         self.vec.capacity()
     }
 
@@ -424,9 +458,9 @@ impl String {
     ///
     /// ```
     /// let mut s = String::with_capacity(10);
-    /// let before = s.byte_capacity();
+    /// let before = s.capacity();
     /// s.reserve_additional(100);
-    /// assert!(s.byte_capacity() - before >= 100);
+    /// assert!(s.capacity() - before >= 100);
     /// ```
     #[inline]
     pub fn reserve_additional(&mut self, extra: uint) {
@@ -440,7 +474,7 @@ impl String {
     /// ```
     /// let mut s = String::new();
     /// s.reserve(10);
-    /// assert!(s.byte_capacity() >= 10);
+    /// assert!(s.capacity() >= 10);
     /// ```
     #[inline]
     pub fn reserve(&mut self, capacity: uint) {
@@ -454,7 +488,7 @@ impl String {
     /// ```
     /// let mut s = String::new();
     /// s.reserve_exact(10);
-    /// assert_eq!(s.byte_capacity(), 10);
+    /// assert_eq!(s.capacity(), 10);
     /// ```
     #[inline]
     pub fn reserve_exact(&mut self, capacity: uint) {
@@ -468,13 +502,20 @@ impl String {
     /// ```
     /// let mut s = String::from_str("foo");
     /// s.reserve(100);
-    /// assert!(s.byte_capacity() >= 100);
+    /// assert!(s.capacity() >= 100);
     /// s.shrink_to_fit();
-    /// assert_eq!(s.byte_capacity(), 3);
+    /// assert_eq!(s.capacity(), 3);
     /// ```
     #[inline]
     pub fn shrink_to_fit(&mut self) {
         self.vec.shrink_to_fit()
+    }
+
+    /// Deprecated, use .push() instead.
+    #[inline]
+    #[deprecated = "renamed to .push()"]
+    pub fn push_char(&mut self, ch: char) {
+        self.push(ch)
     }
 
     /// Adds the given character to the end of the string.
@@ -483,13 +524,14 @@ impl String {
     ///
     /// ```
     /// let mut s = String::from_str("abc");
-    /// s.push_char('1');
-    /// s.push_char('2');
-    /// s.push_char('3');
+    /// s.push('1');
+    /// s.push('2');
+    /// s.push('3');
     /// assert_eq!(s.as_slice(), "abc123");
     /// ```
     #[inline]
-    pub fn push_char(&mut self, ch: char) {
+    #[stable = "function just renamed from push"]
+    pub fn push(&mut self, ch: char) {
         let cur_len = self.len();
         // This may use up to 4 bytes.
         self.vec.reserve_additional(4);
@@ -513,6 +555,7 @@ impl String {
     /// # Example
     ///
     /// ```
+    /// # #![allow(deprecated)]
     /// let mut s = String::new();
     /// unsafe {
     ///     s.push_bytes([104, 101, 108, 108, 111]);
@@ -520,6 +563,7 @@ impl String {
     /// assert_eq!(s.as_slice(), "hello");
     /// ```
     #[inline]
+    #[deprecated = "call .as_mut_vec() and push onto that"]
     pub unsafe fn push_bytes(&mut self, bytes: &[u8]) {
         self.vec.push_all(bytes)
     }
@@ -534,6 +578,7 @@ impl String {
     /// assert_eq!(s.as_bytes(), b);
     /// ```
     #[inline]
+    #[stable]
     pub fn as_bytes<'a>(&'a self) -> &'a [u8] {
         self.vec.as_slice()
     }
@@ -546,6 +591,7 @@ impl String {
     /// # Example
     ///
     /// ```
+    /// # #![allow(deprecated)]
     /// let mut s = String::from_str("hello");
     /// unsafe {
     ///     let bytes = s.as_mut_bytes();
@@ -557,6 +603,7 @@ impl String {
     /// assert_eq!(s.as_slice(), "h3ll0")
     /// ```
     #[inline]
+    #[deprecated = "call .as_mut_vec().as_mut_slice() instead"]
     pub unsafe fn as_mut_bytes<'a>(&'a mut self) -> &'a mut [u8] {
         self.vec.as_mut_slice()
     }
@@ -575,6 +622,7 @@ impl String {
     /// assert_eq!(s.as_slice(), "he");
     /// ```
     #[inline]
+    #[unstable = "the failure conventions for strings are under development"]
     pub fn truncate(&mut self, len: uint) {
         assert!(self.as_slice().is_char_boundary(len));
         self.vec.truncate(len)
@@ -588,6 +636,7 @@ impl String {
     /// # Example
     ///
     /// ```
+    /// # #![allow(deprecated)]
     /// let mut s = String::from_str("hell");
     /// unsafe {
     ///     s.push_byte(111);
@@ -595,6 +644,7 @@ impl String {
     /// assert_eq!(s.as_slice(), "hello");
     /// ```
     #[inline]
+    #[deprecated = "call .as_mut_vec().push() instead"]
     pub unsafe fn push_byte(&mut self, byte: u8) {
         self.vec.push(byte)
     }
@@ -608,6 +658,7 @@ impl String {
     /// # Example
     ///
     /// ```
+    /// # #![allow(deprecated)]
     /// let mut s = String::from_str("foo");
     /// unsafe {
     ///     assert_eq!(s.pop_byte(), Some(111));
@@ -617,6 +668,7 @@ impl String {
     /// }
     /// ```
     #[inline]
+    #[deprecated = "call .as_mut_vec().pop() instead"]
     pub unsafe fn pop_byte(&mut self) -> Option<u8> {
         let len = self.len();
         if len == 0 {
@@ -628,6 +680,11 @@ impl String {
         Some(byte)
     }
 
+    /// Deprecated. Renamed to `pop`.
+    #[inline]
+    #[deprecated = "renamed to .pop()"]
+    pub fn pop_char(&mut self) -> Option<char> { self.pop() }
+
     /// Removes the last character from the string buffer and returns it.
     /// Returns `None` if this string buffer is empty.
     ///
@@ -635,13 +692,14 @@ impl String {
     ///
     /// ```
     /// let mut s = String::from_str("foo");
-    /// assert_eq!(s.pop_char(), Some('o'));
-    /// assert_eq!(s.pop_char(), Some('o'));
-    /// assert_eq!(s.pop_char(), Some('f'));
-    /// assert_eq!(s.pop_char(), None);
+    /// assert_eq!(s.pop(), Some('o'));
+    /// assert_eq!(s.pop(), Some('o'));
+    /// assert_eq!(s.pop(), Some('f'));
+    /// assert_eq!(s.pop(), None);
     /// ```
     #[inline]
-    pub fn pop_char(&mut self) -> Option<char> {
+    #[unstable = "this function was just renamed from pop_char"]
+    pub fn pop(&mut self) -> Option<char> {
         let len = self.len();
         if len == 0 {
             return None
@@ -663,6 +721,7 @@ impl String {
     /// # Example
     ///
     /// ```
+    /// # #![allow(deprecated)]
     /// let mut s = String::from_str("foo");
     /// unsafe {
     ///     assert_eq!(s.shift_byte(), Some(102));
@@ -671,39 +730,84 @@ impl String {
     ///     assert_eq!(s.shift_byte(), None);
     /// }
     /// ```
+    #[deprecated = "call .as_mut_vec().remove(0)"]
     pub unsafe fn shift_byte(&mut self) -> Option<u8> {
         self.vec.remove(0)
     }
 
-    /// Removes the first character from the string buffer and returns it.
-    /// Returns `None` if this string buffer is empty.
+    /// Deprecated, call `remove(0)` instead
+    #[deprecated = "call .remove(0) instead"]
+    pub fn shift_char(&mut self) -> Option<char> {
+        self.remove(0)
+    }
+
+    /// Removes the character from the string buffer at byte position `idx` and
+    /// returns it. Returns `None` if `idx` is out of bounds.
     ///
     /// # Warning
     ///
-    /// This is a O(n) operation as it requires copying every element in the buffer.
+    /// This is a O(n) operation as it requires copying every element in the
+    /// buffer.
+    ///
+    /// # Failure
+    ///
+    /// If `idx` does not lie on a character boundary, then this function will
+    /// fail.
     ///
     /// # Example
     ///
     /// ```
     /// let mut s = String::from_str("foo");
-    /// assert_eq!(s.shift_char(), Some('f'));
-    /// assert_eq!(s.shift_char(), Some('o'));
-    /// assert_eq!(s.shift_char(), Some('o'));
-    /// assert_eq!(s.shift_char(), None);
+    /// assert_eq!(s.remove(0), Some('f'));
+    /// assert_eq!(s.remove(1), Some('o'));
+    /// assert_eq!(s.remove(0), Some('o'));
+    /// assert_eq!(s.remove(0), None);
     /// ```
-    pub fn shift_char(&mut self) -> Option<char> {
+    #[unstable = "the failure semantics of this function and return type \
+                  may change"]
+    pub fn remove(&mut self, idx: uint) -> Option<char> {
         let len = self.len();
-        if len == 0 {
-            return None
-        }
+        if idx >= len { return None }
 
-        let CharRange {ch, next} = self.as_slice().char_range_at(0);
-        let new_len = len - next;
+        let CharRange { ch, next } = self.as_slice().char_range_at(idx);
         unsafe {
-            ptr::copy_memory(self.vec.as_mut_ptr(), self.vec.as_ptr().offset(next as int), new_len);
-            self.vec.set_len(new_len);
+            ptr::copy_memory(self.vec.as_mut_ptr().offset(idx as int),
+                             self.vec.as_ptr().offset(next as int),
+                             len - next);
+            self.vec.set_len(len - (next - idx));
         }
         Some(ch)
+    }
+
+    /// Insert a character into the string buffer at byte position `idx`.
+    ///
+    /// # Warning
+    ///
+    /// This is a O(n) operation as it requires copying every element in the
+    /// buffer.
+    ///
+    /// # Failure
+    ///
+    /// If `idx` does not lie on a character boundary or is out of bounds, then
+    /// this function will fail.
+    #[unstable = "the failure semantics of this function are uncertain"]
+    pub fn insert(&mut self, idx: uint, ch: char) {
+        let len = self.len();
+        assert!(idx <= len);
+        assert!(self.as_slice().is_char_boundary(idx));
+        self.vec.reserve_additional(4);
+        let mut bits = [0, ..4];
+        let amt = ch.encode_utf8(bits).unwrap();
+
+        unsafe {
+            ptr::copy_memory(self.vec.as_mut_ptr().offset((idx + amt) as int),
+                             self.vec.as_ptr().offset(idx as int),
+                             len - idx);
+            ptr::copy_memory(self.vec.as_mut_ptr().offset(idx as int),
+                             bits.as_ptr(),
+                             amt);
+            self.vec.set_len(len + amt);
+        }
     }
 
     /// Views the string buffer as a mutable sequence of bytes.
@@ -722,25 +826,31 @@ impl String {
     /// }
     /// assert_eq!(s.as_slice(), "olleh");
     /// ```
+    #[unstable = "the name of this method may be changed"]
     pub unsafe fn as_mut_vec<'a>(&'a mut self) -> &'a mut Vec<u8> {
         &mut self.vec
     }
 }
 
+#[experimental = "collection traits will probably be removed"]
 impl Collection for String {
     #[inline]
+    #[stable]
     fn len(&self) -> uint {
         self.vec.len()
     }
 }
 
+#[experimental = "collection traits will probably be removed"]
 impl Mutable for String {
     #[inline]
+    #[stable]
     fn clear(&mut self) {
         self.vec.clear()
     }
 }
 
+#[experimental = "waiting on FromIterator stabilization"]
 impl FromIterator<char> for String {
     fn from_iter<I:Iterator<char>>(iterator: I) -> String {
         let mut buf = String::new();
@@ -749,16 +859,19 @@ impl FromIterator<char> for String {
     }
 }
 
+#[experimental = "waiting on Extendable stabilization"]
 impl Extendable<char> for String {
     fn extend<I:Iterator<char>>(&mut self, mut iterator: I) {
         for ch in iterator {
-            self.push_char(ch)
+            self.push(ch)
         }
     }
 }
 
+#[experimental = "waiting on Str stabilization"]
 impl Str for String {
     #[inline]
+    #[stable]
     fn as_slice<'a>(&'a self) -> &'a str {
         unsafe {
             mem::transmute(self.vec.as_slice())
@@ -766,6 +879,7 @@ impl Str for String {
     }
 }
 
+#[experimental = "waiting on StrAllocating stabilization"]
 impl StrAllocating for String {
     #[inline]
     fn into_string(self) -> String {
@@ -773,18 +887,21 @@ impl StrAllocating for String {
     }
 }
 
+#[stable]
 impl Default for String {
     fn default() -> String {
         String::new()
     }
 }
 
+#[experimental = "waiting on Show stabilization"]
 impl fmt::Show for String {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.as_slice().fmt(f)
     }
 }
 
+#[experimental = "waiting on Hash stabilization"]
 impl<H: hash::Writer> hash::Hash<H> for String {
     #[inline]
     fn hash(&self, hasher: &mut H) {
@@ -792,6 +909,7 @@ impl<H: hash::Writer> hash::Hash<H> for String {
     }
 }
 
+#[experimental = "waiting on Equiv stabilization"]
 impl<'a, S: Str> Equiv<S> for String {
     #[inline]
     fn equiv(&self, other: &S) -> bool {
@@ -799,6 +917,7 @@ impl<'a, S: Str> Equiv<S> for String {
     }
 }
 
+#[experimental = "waiting on Add stabilization"]
 impl<S: Str> Add<S, String> for String {
     fn add(&self, other: &S) -> String {
         let mut s = String::from_str(self.as_slice());
@@ -808,6 +927,7 @@ impl<S: Str> Add<S, String> for String {
 }
 
 /// Unsafe operations
+#[unstable = "waiting on raw module conventions"]
 pub mod raw {
     use core::mem;
     use core::ptr::RawPtr;
@@ -1060,13 +1180,13 @@ mod tests {
     }
 
     #[test]
-    fn test_push_char() {
+    fn test_push() {
         let mut data = String::from_str("ประเทศไทย中");
-        data.push_char('华');
-        data.push_char('b'); // 1 byte
-        data.push_char('¢'); // 2 byte
-        data.push_char('€'); // 3 byte
-        data.push_char('𤭢'); // 4 byte
+        data.push('华');
+        data.push('b'); // 1 byte
+        data.push('¢'); // 2 byte
+        data.push('€'); // 3 byte
+        data.push('𤭢'); // 4 byte
         assert_eq!(data.as_slice(), "ประเทศไทย中华b¢€𤭢");
     }
 
@@ -1140,6 +1260,35 @@ mod tests {
         assert_eq!(b.len(), 7);
         assert_eq!(b.as_slice(), "1234522");
     }
+
+    #[test]
+    fn remove() {
+        let mut s = "ศไทย中华Việt Nam; foobar".to_string();;
+        assert_eq!(s.remove(0), Some('ศ'));
+        assert_eq!(s.len(), 33);
+        assert_eq!(s.as_slice(), "ไทย中华Việt Nam; foobar");
+        assert_eq!(s.remove(33), None);
+        assert_eq!(s.remove(300), None);
+        assert_eq!(s.remove(17), Some('ệ'));
+        assert_eq!(s.as_slice(), "ไทย中华Vit Nam; foobar");
+    }
+
+    #[test] #[should_fail]
+    fn remove_bad() {
+        "ศ".to_string().remove(1);
+    }
+
+    #[test]
+    fn insert() {
+        let mut s = "foobar".to_string();
+        s.insert(0, 'ệ');
+        assert_eq!(s.as_slice(), "ệfoobar");
+        s.insert(6, 'ย');
+        assert_eq!(s.as_slice(), "ệfooยbar");
+    }
+
+    #[test] #[should_fail] fn insert_bad1() { "".to_string().insert(1, 't'); }
+    #[test] #[should_fail] fn insert_bad2() { "ệ".to_string().insert(1, 't'); }
 
     #[bench]
     fn bench_with_capacity(b: &mut Bencher) {

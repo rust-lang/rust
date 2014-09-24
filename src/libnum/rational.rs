@@ -139,12 +139,29 @@ impl<T: Clone + Integer + PartialOrd>
     /// Rounds to the nearest integer. Rounds half-way cases away from zero.
     #[inline]
     pub fn round(&self) -> Ratio<T> {
-        if *self < Zero::zero() {
-            // a/b - 1/2 = (2*a - b)/(2*b)
-            Ratio::from_integer((self.numer + self.numer - self.denom) / (self.denom + self.denom))
+        let one: T = One::one();
+        let two: T = one + one;
+
+        // Find unsigned fractional part of rational number
+        let fractional = self.fract().abs();
+
+        // The algorithm compares the unsigned fractional part with 1/2, that
+        // is, a/b >= 1/2, or a >= b/2. For odd denominators, we use
+        // a >= (b/2)+1. This avoids overflow issues.
+        let half_or_larger = if fractional.denom().is_even() {
+            *fractional.numer() >= *fractional.denom() / two
         } else {
-            // a/b + 1/2 = (2*a + b)/(2*b)
-            Ratio::from_integer((self.numer + self.numer + self.denom) / (self.denom + self.denom))
+            *fractional.numer() >= (*fractional.denom() / two) + one
+        };
+
+        if half_or_larger {
+            if *self >= Zero::zero() {
+                self.trunc() + One::one()
+            } else {
+                self.trunc() - One::one()
+            }
+        } else {
+            self.trunc()
         }
     }
 
@@ -382,6 +399,7 @@ mod test {
     use std::from_str::FromStr;
     use std::hash::hash;
     use std::num;
+    use std::i32;
 
     pub static _0 : Rational = Ratio { numer: 0, denom: 1};
     pub static _1 : Rational = Ratio { numer: 1, denom: 1};
@@ -616,6 +634,27 @@ mod test {
         assert_eq!(_1.floor(), _1);
         assert_eq!(_1.round(), _1);
         assert_eq!(_1.trunc(), _1);
+
+        // Overflow checks
+
+        let _neg1 = Ratio::from_integer(-1);
+        let _large_rat1 = Ratio::new(i32::MAX, i32::MAX-1);
+        let _large_rat2 = Ratio::new(i32::MAX-1, i32::MAX);
+        let _large_rat3 = Ratio::new(i32::MIN+2, i32::MIN+1);
+        let _large_rat4 = Ratio::new(i32::MIN+1, i32::MIN+2);
+        let _large_rat5 = Ratio::new(i32::MIN+2, i32::MAX);
+        let _large_rat6 = Ratio::new(i32::MAX, i32::MIN+2);
+        let _large_rat7 = Ratio::new(1, i32::MIN+1);
+        let _large_rat8 = Ratio::new(1, i32::MAX);
+
+        assert_eq!(_large_rat1.round(), One::one());
+        assert_eq!(_large_rat2.round(), One::one());
+        assert_eq!(_large_rat3.round(), One::one());
+        assert_eq!(_large_rat4.round(), One::one());
+        assert_eq!(_large_rat5.round(), _neg1);
+        assert_eq!(_large_rat6.round(), _neg1);
+        assert_eq!(_large_rat7.round(), Zero::zero());
+        assert_eq!(_large_rat8.round(), Zero::zero());
     }
 
     #[test]

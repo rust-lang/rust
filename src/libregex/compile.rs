@@ -104,7 +104,7 @@ impl Program {
         let mut pre = String::with_capacity(5);
         for inst in c.insts.slice_from(1).iter() {
             match *inst {
-                OneChar(c, FLAG_EMPTY) => pre.push_char(c),
+                OneChar(c, FLAG_EMPTY) => pre.push(c),
                 _ => break
             }
         }
