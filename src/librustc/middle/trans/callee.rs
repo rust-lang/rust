@@ -714,8 +714,12 @@ pub fn trans_call_inner<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             fcx.pop_custom_cleanup_scope(arg_cleanup_scope);
 
             let ctor_ty = callee_ty.subst(bcx.tcx(), &substs);
-            return base::trans_named_tuple_constructor(bcx, ctor_ty, disr,
-                                                       args, dest.unwrap());
+            return base::trans_named_tuple_constructor(bcx,
+                                                       ctor_ty,
+                                                       disr,
+                                                       args,
+                                                       dest.unwrap(),
+                                                       call_info);
         }
     };
 
@@ -835,7 +839,7 @@ pub fn trans_call_inner<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     match (dest, opt_llretslot) {
         (Some(expr::Ignore), Some(llretslot)) => {
             // drop the value if it is not being saved.
-            bcx = glue::drop_ty(bcx, llretslot, ret_ty);
+            bcx = glue::drop_ty(bcx, llretslot, ret_ty, call_info);
             call_lifetime_end(bcx, llretslot);
         }
         _ => {}
