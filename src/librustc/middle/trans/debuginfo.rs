@@ -931,7 +931,7 @@ pub fn create_captured_var_metadata(bcx: Block,
 
     let variable_access = IndirectVariable {
         alloca: env_pointer,
-        address_operations: address_operations.slice_to(address_op_count)
+        address_operations: address_operations[..address_op_count]
     };
 
     declare_local(bcx,
