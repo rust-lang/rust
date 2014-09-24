@@ -136,7 +136,6 @@ mod imp {
     use os;
     use rand::Rng;
     use result::{Ok, Err};
-    use rt::stack;
     use self::libc::{DWORD, BYTE, LPCSTR, BOOL};
     use self::libc::types::os::arch::extra::{LONG_PTR};
     use slice::MutableSlice;
@@ -159,7 +158,6 @@ mod imp {
     static PROV_RSA_FULL: DWORD = 1;
     static CRYPT_SILENT: DWORD = 64;
     static CRYPT_VERIFYCONTEXT: DWORD = 0xF0000000;
-    static NTE_BAD_SIGNATURE: DWORD = 0x80090006;
 
     #[allow(non_snake_case)]
     extern "system" {
@@ -178,47 +176,11 @@ mod imp {
         /// Create a new `OsRng`.
         pub fn new() -> IoResult<OsRng> {
             let mut hcp = 0;
-            let mut ret = unsafe {
+            let ret = unsafe {
                 CryptAcquireContextA(&mut hcp, 0 as LPCSTR, 0 as LPCSTR,
                                      PROV_RSA_FULL,
                                      CRYPT_VERIFYCONTEXT | CRYPT_SILENT)
             };
-
-            // FIXME #13259:
-            // It turns out that if we can't acquire a context with the
-            // NTE_BAD_SIGNATURE error code, the documentation states:
-            //
-            //     The provider DLL signature could not be verified. Either the
-            //     DLL or the digital signature has been tampered with.
-            //
-            // Sounds fishy, no? As it turns out, our signature can be bad
-            // because our Thread Information Block (TIB) isn't exactly what it
-            // expects. As to why, I have no idea. The only data we store in the
-            // TIB is the stack limit for each thread, but apparently that's
-            // enough to make the signature valid.
-            //
-            // Furthermore, this error only happens the *first* time we call
-            // CryptAcquireContext, so we don't have to worry about future
-            // calls.
-            //
-            // Anyway, the fix employed here is that if we see this error, we
-            // pray that we're not close to the end of the stack, temporarily
-            // set the stack limit to 0 (what the TIB originally was), acquire a
-            // context, and then reset the stack limit.
-            //
-            // Again, I'm not sure why this is the fix, nor why we're getting
-            // this error. All I can say is that this seems to allow libnative
-            // to progress where it otherwise would be hindered. Who knew?
-            if ret == 0 && os::errno() as DWORD == NTE_BAD_SIGNATURE {
-                unsafe {
-                    let limit = stack::get_sp_limit();
-                    stack::record_sp_limit(0);
-                    ret = CryptAcquireContextA(&mut hcp, 0 as LPCSTR, 0 as LPCSTR,
-                                               PROV_RSA_FULL,
-                                               CRYPT_VERIFYCONTEXT | CRYPT_SILENT);
-                    stack::record_sp_limit(limit);
-                }
-            }
 
             if ret == 0 {
                 Err(IoError::last_error())
