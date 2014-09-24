@@ -119,10 +119,13 @@ pub fn trans_into<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     }
 
     debug!("trans_into() expr={}", expr.repr(bcx.tcx()));
+
+    let cleanup_debug_loc = debuginfo::get_cleanup_debug_loc_for_ast_node(expr.id,
+                                                                          expr.span,
+                                                                          false);
+    bcx.fcx.push_ast_cleanup_scope(cleanup_debug_loc);
+
     debuginfo::set_source_location(bcx.fcx, expr.id, expr.span);
-
-    bcx.fcx.push_ast_cleanup_scope(expr.id);
-
     let kind = ty::expr_kind(bcx.tcx(), expr);
     bcx = match kind {
         ty::LvalueExpr | ty::RvalueDatumExpr => {
@@ -154,7 +157,10 @@ pub fn trans<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let mut bcx = bcx;
     let fcx = bcx.fcx;
 
-    fcx.push_ast_cleanup_scope(expr.id);
+    let cleanup_debug_loc = debuginfo::get_cleanup_debug_loc_for_ast_node(expr.id,
+                                                                          expr.span,
+                                                                          false);
+    fcx.push_ast_cleanup_scope(cleanup_debug_loc);
     let datum = unpack_datum!(bcx, trans_unadjusted(bcx, expr));
     let datum = unpack_datum!(bcx, apply_adjustments(bcx, expr, datum));
     bcx = fcx.pop_and_trans_ast_cleanup_scope(bcx, expr.id);
@@ -644,7 +650,9 @@ fn trans_datum_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             match x.node {
                 ast::ExprRepeat(..) | ast::ExprVec(..) => {
                     // Special case for slices.
-                    fcx.push_ast_cleanup_scope(x.id);
+                    let cleanup_debug_loc =
+                        debuginfo::get_cleanup_debug_loc_for_ast_node(x.id, x.span, false);
+                    fcx.push_ast_cleanup_scope(cleanup_debug_loc);
                     let datum = unpack_datum!(
                         bcx, tvec::trans_slice_vec(bcx, expr, &**x));
                     bcx = fcx.pop_and_trans_ast_cleanup_scope(bcx, x.id);
@@ -908,6 +916,8 @@ fn trans_rvalue_stmt_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         return bcx;
     }
 
+    debuginfo::set_source_location(bcx.fcx, expr.id, expr.span);
+
     match expr.node {
         ast::ExprParen(ref e) => {
             trans_into(bcx, &**e, Ignore)
@@ -954,10 +964,14 @@ fn trans_rvalue_stmt_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 //
                 // We could avoid this intermediary with some analysis
                 // to determine whether `dst` may possibly own `src`.
+                debuginfo::set_source_location(bcx.fcx, expr.id, expr.span);
                 let src_datum = unpack_datum!(bcx, trans(bcx, &**src));
                 let src_datum = unpack_datum!(
                     bcx, src_datum.to_rvalue_datum(bcx, "ExprAssign"));
-                bcx = glue::drop_ty(bcx, dst_datum.val, dst_datum.ty);
+                bcx = glue::drop_ty(bcx,
+                                    dst_datum.val,
+                                    dst_datum.ty,
+                                    Some(NodeInfo { id: expr.id, span: expr.span }));
                 src_datum.store_to(bcx, dst_datum.val)
             } else {
                 trans_into(bcx, &**src, SaveIn(dst_datum.to_llref()))
@@ -987,6 +1001,8 @@ fn trans_rvalue_dps_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let mut bcx = bcx;
     let tcx = bcx.tcx();
 
+    debuginfo::set_source_location(bcx.fcx, expr.id, expr.span);
+
     match expr.node {
         ast::ExprParen(ref e) => {
             trans_into(bcx, &**e, dest)
@@ -1014,7 +1030,13 @@ fn trans_rvalue_dps_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         ast::ExprTup(ref args) => {
             let numbered_fields: Vec<(uint, &ast::Expr)> =
                 args.iter().enumerate().map(|(i, arg)| (i, &**arg)).collect();
-            trans_adt(bcx, expr_ty(bcx, expr), 0, numbered_fields.as_slice(), None, dest)
+            trans_adt(bcx,
+                      expr_ty(bcx, expr),
+                      0,
+                      numbered_fields.as_slice(),
+                      None,
+                      dest,
+                      Some(NodeInfo { id: expr.id, span: expr.span }))
         }
         ast::ExprLit(ref lit) => {
             match lit.node {
@@ -1297,15 +1319,15 @@ pub fn with_field_tys<R>(tcx: &ty::ctxt,
 
 fn trans_struct<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                             fields: &[ast::Field],
-                       base: Option<&ast::Expr>,
+                            base: Option<&ast::Expr>,
                             expr_span: codemap::Span,
-                            id: ast::NodeId,
+                            expr_id: ast::NodeId,
                             dest: Dest) -> Block<'blk, 'tcx> {
     let _icx = push_ctxt("trans_rec");
 
-    let ty = node_id_type(bcx, id);
+    let ty = node_id_type(bcx, expr_id);
     let tcx = bcx.tcx();
-    with_field_tys(tcx, ty, Some(id), |discr, field_tys| {
+    with_field_tys(tcx, ty, Some(expr_id), |discr, field_tys| {
         let mut need_base = Vec::from_elem(field_tys.len(), true);
 
         let numbered_fields = fields.iter().map(|field| {
@@ -1342,7 +1364,13 @@ fn trans_struct<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             }
         };
 
-        trans_adt(bcx, ty, discr, numbered_fields.as_slice(), optbase, dest)
+        trans_adt(bcx,
+                  ty,
+                  discr,
+                  numbered_fields.as_slice(),
+                  optbase,
+                  dest,
+                  Some(NodeInfo { id: expr_id, span: expr_span }))
     })
 }
 
@@ -1376,10 +1404,19 @@ pub fn trans_adt<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                              discr: ty::Disr,
                              fields: &[(uint, &ast::Expr)],
                              optbase: Option<StructBaseInfo>,
-                             dest: Dest) -> Block<'blk, 'tcx> {
+                             dest: Dest,
+                             source_location: Option<NodeInfo>)
+                          -> Block<'blk, 'tcx> {
     let _icx = push_ctxt("trans_adt");
     let fcx = bcx.fcx;
     let repr = adt::represent_type(bcx.ccx(), ty);
+
+    match source_location {
+        Some(src_loc) => debuginfo::set_source_location(bcx.fcx,
+                                                        src_loc.id,
+                                                        src_loc.span),
+        None => {}
+    };
 
     // If we don't care about the result, just make a
     // temporary stack slot
@@ -1414,6 +1451,13 @@ pub fn trans_adt<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
         }
     }
 
+    match source_location {
+        Some(src_loc) => debuginfo::set_source_location(bcx.fcx,
+                                                        src_loc.id,
+                                                        src_loc.span),
+        None => {}
+    };
+
     // Now, we just overwrite the fields we've explicitly specified
     for &(i, ref e) in fields.iter() {
         let dest = adt::trans_field_ptr(bcx, &*repr, addr, discr, i);
@@ -1432,7 +1476,7 @@ pub fn trans_adt<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
     match dest {
         SaveIn(_) => bcx,
         Ignore => {
-            bcx = glue::drop_ty(bcx, addr, ty);
+            bcx = glue::drop_ty(bcx, addr, ty, source_location);
             base::call_lifetime_end(bcx, addr);
             bcx
         }

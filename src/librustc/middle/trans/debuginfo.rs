@@ -1030,6 +1030,55 @@ pub fn create_argument_metadata(bcx: Block, arg: &ast::Arg) {
     })
 }
 
+pub fn get_cleanup_debug_loc_for_ast_node(node_id: ast::NodeId,
+                                          node_span: Span,
+                                          is_block: bool)
+                                          -> NodeInfo {
+    // A debug location needs two things:
+    // (1) A span (of which only the beginning will actually be used)
+    // (2) An AST node-id which will be used to look up the lexical scope
+    //     for the location in the functions scope-map
+    //
+    // This function will calculate the debug location for compiler-generated
+    // cleanup calls that are executed when control-flow leaves the
+    // scope identified by `node_id`.
+    //
+    // For everything but block-like things we can simply take id and span of
+    // the given expression, meaning that from a debugger's view cleanup code is
+    // executed at the same source location as the statement/expr itself.
+    //
+    // Blocks are a special case. Here we want the cleanup to be linked to the
+    // closing curly brace of the block. The *scope* the cleanup is executed in
+    // is up to debate: It could either still be *within* the block being
+    // cleaned up, meaning that locals from the block are still visible in the
+    // debugger.
+    // Or it could be in the scope that the block is contained in, so any locals
+    // from within the block are already considered out-of-scope and thus not
+    // accessible in the debugger anymore.
+    //
+    // The current implementation opts for the second option: cleanup of a block
+    // already happens in the parent scope of the block. The main reason for
+    // this decision is that scoping becomes controlflow dependent when variable
+    // shadowing is involved and it's impossible to decide statically which
+    // scope is actually left when the cleanup code is executed.
+    // In practice it shouldn't make much of a difference.
+
+    let cleanup_span = if is_block {
+        Span {
+            lo: node_span.hi - codemap::BytePos(1), // closing brace should always be 1 byte...
+            hi: node_span.hi,
+            expn_id: node_span.expn_id
+        }
+    } else {
+        node_span
+    };
+
+    NodeInfo {
+        id: node_id,
+        span: cleanup_span
+    }
+}
+
 /// Sets the current debug location at the beginning of the span.
 ///
 /// Maps to a call to llvm::LLVMSetCurrentDebugLocation(...). The node_id
@@ -1107,7 +1156,9 @@ pub fn create_function_debug_context(cx: &CrateContext,
     // Do this here already, in case we do an early exit from this function.
     set_debug_location(cx, UnknownLocation);
 
-    if fn_ast_id == -1 {
+    if fn_ast_id == ast::DUMMY_NODE_ID {
+        // This is a function not linked to any source location, so don't
+        // generate debuginfo for it.
         return FunctionDebugContext { repr: FunctionWithoutDebugInfo };
     }
 
@@ -1289,6 +1340,7 @@ pub fn create_function_debug_context(cx: &CrateContext,
                        fn_decl.inputs.as_slice(),
                        &*top_level_block,
                        fn_metadata,
+                       fn_ast_id,
                        &mut *fn_debug_context.scope_map.borrow_mut());
 
     return FunctionDebugContext { repr: DebugInfo(fn_debug_context) };
@@ -1297,7 +1349,7 @@ pub fn create_function_debug_context(cx: &CrateContext,
                               fn_ast_id: ast::NodeId,
                               fn_decl: &ast::FnDecl,
                               param_substs: &param_substs,
-                              error_span: Span) -> DIArray {
+                              error_reporting_span: Span) -> DIArray {
         if cx.sess().opts.debuginfo == LimitedDebugInfo {
             return create_DIArray(DIB(cx), []);
         }
@@ -1310,7 +1362,7 @@ pub fn create_function_debug_context(cx: &CrateContext,
                 signature.push(ptr::null_mut());
             }
             _ => {
-                assert_type_for_node_id(cx, fn_ast_id, error_span);
+                assert_type_for_node_id(cx, fn_ast_id, error_reporting_span);
 
                 let return_type = ty::node_id_to_type(cx.tcx(), fn_ast_id);
                 let return_type = return_type.substp(cx.tcx(), param_substs);
@@ -1634,15 +1686,17 @@ fn file_metadata(cx: &CrateContext, full_path: &str) -> DIFile {
 /// Finds the scope metadata node for the given AST node.
 fn scope_metadata(fcx: &FunctionContext,
                   node_id: ast::NodeId,
-                  span: Span)
+                  error_reporting_span: Span)
                -> DIScope {
-    let scope_map = &fcx.debug_context.get_ref(fcx.ccx, span).scope_map;
+    let scope_map = &fcx.debug_context
+                        .get_ref(fcx.ccx, error_reporting_span)
+                        .scope_map;
     match scope_map.borrow().find_copy(&node_id) {
         Some(scope_metadata) => scope_metadata,
         None => {
             let node = fcx.ccx.tcx().map.get(node_id);
 
-            fcx.ccx.sess().span_bug(span,
+            fcx.ccx.sess().span_bug(error_reporting_span,
                 format!("debuginfo: Could not find scope info for node {:?}",
                         node).as_slice());
         }
@@ -3139,9 +3193,12 @@ fn fn_should_be_ignored(fcx: &FunctionContext) -> bool {
     }
 }
 
-fn assert_type_for_node_id(cx: &CrateContext, node_id: ast::NodeId, error_span: Span) {
+fn assert_type_for_node_id(cx: &CrateContext,
+                           node_id: ast::NodeId,
+                           error_reporting_span: Span) {
     if !cx.tcx().node_types.borrow().contains_key(&(node_id as uint)) {
-        cx.sess().span_bug(error_span, "debuginfo: Could not find type for node id!");
+        cx.sess().span_bug(error_reporting_span,
+                           "debuginfo: Could not find type for node id!");
     }
 }
 
@@ -3169,6 +3226,7 @@ fn populate_scope_map(cx: &CrateContext,
                       args: &[ast::Arg],
                       fn_entry_block: &ast::Block,
                       fn_metadata: DISubprogram,
+                      fn_ast_id: ast::NodeId,
                       scope_map: &mut HashMap<ast::NodeId, DIScope>) {
     let def_map = &cx.tcx().def_map;
 
@@ -3179,13 +3237,15 @@ fn populate_scope_map(cx: &CrateContext,
 
     let mut scope_stack = vec!(ScopeStackEntry { scope_metadata: fn_metadata,
                                                  ident: None });
+    scope_map.insert(fn_ast_id, fn_metadata);
 
     // Push argument identifiers onto the stack so arguments integrate nicely
     // with variable shadowing.
     for arg in args.iter() {
-        pat_util::pat_bindings(def_map, &*arg.pat, |_, _, _, path1| {
+        pat_util::pat_bindings(def_map, &*arg.pat, |_, node_id, _, path1| {
             scope_stack.push(ScopeStackEntry { scope_metadata: fn_metadata,
                                                ident: Some(path1.node) });
+            scope_map.insert(node_id, fn_metadata);
         })
     }
 

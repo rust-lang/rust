@@ -541,7 +541,7 @@ pub fn trans_intrinsic_call<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>, node: ast::N
     // If we made a temporary stack slot, let's clean it up
     match dest {
         expr::Ignore => {
-            bcx = glue::drop_ty(bcx, llresult, ret_ty);
+            bcx = glue::drop_ty(bcx, llresult, ret_ty, Some(call_info));
         }
         expr::SaveIn(_) => {}
     }
