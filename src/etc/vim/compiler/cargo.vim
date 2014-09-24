@@ -1,7 +1,7 @@
 " Vim compiler file
 " Compiler:         Cargo Compiler
 " Maintainer:       Damien Radtke <damienradtke@gmail.com>
-" Latest Revision:  2014 Sep 18
+" Latest Revision:  2014 Sep 24
 
 if exists("current_compiler")
   finish
@@ -12,18 +12,18 @@ if exists(":CompilerSet") != 2
     command -nargs=* CompilerSet setlocal <args>
 endif
 
-CompilerSet errorformat&
+CompilerSet errorformat=%A%f:%l:%c:\ %m,%-Z%p^,%-C%.%#
 CompilerSet makeprg=cargo\ $*
 
 " Allow a configurable global Cargo.toml name. This makes it easy to
 " support variations like 'cargo.toml'.
-if !exists('g:cargo_toml_name')
-    let g:cargo_toml_name = 'Cargo.toml'
+if !exists('g:cargo_manifest_name')
+    let g:cargo_manifest_name = 'Cargo.toml'
 endif
 
-let s:toml_dir = fnamemodify(findfile(g:cargo_toml_name, '.;'), ':p:h').'/'
+let s:local_manifest = fnamemodify(findfile(g:cargo_manifest_name, '.;'), ':p:h').'/'
 
-if s:toml_dir != ''
+if s:local_manifest != ''
     augroup cargo
         au!
         au QuickfixCmdPost make call s:FixPaths()
@@ -33,15 +33,25 @@ if s:toml_dir != ''
     " to be relative to the current directory instead of Cargo.toml.
     function! s:FixPaths()
         let qflist = getqflist()
+        let manifest = s:local_manifest
         for qf in qflist
             if !qf['valid']
+                let m = matchlist(qf['text'], '\v.*\(file://(.*)\)$')
+                if len(m) > 0
+                    let manifest = m[1].'/'
+                    " Manually strip another slash if needed; usually just an
+                    " issue on Windows.
+                    if manifest =~ '^/[A-Z]*:/'
+                        let manifest = manifest[1:]
+                    endif
+                endif
                 continue
             endif
             let filename = bufname(qf['bufnr'])
-            if stridx(filename, s:toml_dir) == -1
-                let filename = s:toml_dir.filename
+            if filereadable(filename)
+                continue
             endif
-            let qf['filename'] = simplify(s:toml_dir.bufname(qf['bufnr']))
+            let qf['filename'] = simplify(manifest.filename)
             call remove(qf, 'bufnr')
         endfor
         call setqflist(qflist, 'r')
