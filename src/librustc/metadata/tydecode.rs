@@ -91,7 +91,7 @@ fn scan<R>(st: &mut PState, is_last: |char| -> bool, op: |&[u8]| -> R) -> R {
     }
     let end_pos = st.pos;
     st.pos += 1;
-    return op(st.data.slice(start_pos, end_pos));
+    return op(st.data[start_pos..end_pos]);
 }
 
 pub fn parse_ident(st: &mut PState, last: char) -> ast::Ident {
@@ -599,8 +599,8 @@ pub fn parse_def_id(buf: &[u8]) -> ast::DefId {
         fail!();
     }
 
-    let crate_part = buf.slice(0u, colon_idx);
-    let def_part = buf.slice(colon_idx + 1u, len);
+    let crate_part = buf[0u..colon_idx];
+    let def_part = buf[colon_idx + 1u..len];
 
     let crate_num = match uint::parse_bytes(crate_part, 10u) {
        Some(cn) => cn as ast::CrateNum,

@@ -550,7 +550,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             for (small_vec_e, &ix) in small_vec.iter_mut().zip(ixs.iter()) {
                 *small_vec_e = C_i32(self.ccx, ix as i32);
             }
-            self.inbounds_gep(base, small_vec.slice(0, ixs.len()))
+            self.inbounds_gep(base, small_vec[..ixs.len()])
         } else {
             let v = ixs.iter().map(|i| C_i32(self.ccx, *i as i32)).collect::<Vec<ValueRef>>();
             self.count_insn("gepi");

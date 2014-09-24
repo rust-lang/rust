@@ -93,7 +93,7 @@ fn make_fasta<W: Writer, I: Iterator<u8>>(
         }
         n -= nb;
         line[nb] = '\n' as u8;
-        wr.write(line.slice_to(nb + 1));
+        wr.write(line[..nb+1]);
     }
 }
 

@@ -735,7 +735,7 @@ impl BigUint {
         let mut power: BigUint  = One::one();
         loop {
             let start = cmp::max(end, unit_len) - unit_len;
-            match uint::parse_bytes(buf.slice(start, end), radix) {
+            match uint::parse_bytes(buf[start..end], radix) {
                 Some(d) => {
                     let d: Option<BigUint> = FromPrimitive::from_uint(d);
                     match d {
@@ -1406,7 +1406,7 @@ impl BigInt {
             sign  = Minus;
             start = 1;
         }
-        return BigUint::parse_bytes(buf.slice(start, buf.len()), radix)
+        return BigUint::parse_bytes(buf[start..], radix)
             .map(|bu| BigInt::from_biguint(sign, bu));
     }
 
