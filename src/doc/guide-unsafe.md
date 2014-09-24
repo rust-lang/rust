@@ -496,7 +496,7 @@ pub extern fn main(argc: int, argv: *const *const u8) -> int {
 
 The compiler currently makes a few assumptions about symbols which are available
 in the executable to call. Normally these functions are provided by the standard
-xlibrary, but without it you must define your own.
+library, but without it you must define your own.
 
 The first of these two functions, `stack_exhausted`, is invoked whenever stack
 overflow is detected.  This function has a number of restrictions about how it
