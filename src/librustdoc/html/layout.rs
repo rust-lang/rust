@@ -53,7 +53,7 @@ r##"<!DOCTYPE html>
     <title>{title}</title>
 
     <link rel="stylesheet" type="text/css" href="{root_path}main.css">
-    <link rel="stylesheet" type="text/css" href="{root_path}katex/katex.min.css">
+    {katex_css}
 
     {favicon}
     {in_header}
@@ -163,13 +163,22 @@ r##"<!DOCTYPE html>
     } else {
         format!(r#"<script src="{}playpen.js"></script>"#, page.root_path)
     },
+    katex_css = if layout.enable_math {
+        // this is inserted even for pages for which there is no
+        // actual mathematics (unlike the JS), but this CSS is quite
+        // small, and it's harder to insert this conditionally, since
+        // that would require rendering the whole thing into memory
+        // and then printing this, and only then print the
+        // markdown.
+        format!(r#"<link rel="stylesheet" type="text/css" href="{}katex/katex.min.css">"#,
+                page.root_path)
+    } else {
+        "".to_string()
+    },
     ));
 
     // This must be done after everything is rendered, so that
     // `math_seen` captures all possible $$'s on this page.
-    //
-    // We conditionally insert only the JS, since it's 5x larger than
-    // the CSS.
     if layout.enable_math && markdown::math_seen.get().map_or(false, |x| *x) {
         try!(write!(dst, "<script src=\"{}katex/katex.min.js\"></script>", page.root_path));
     }
