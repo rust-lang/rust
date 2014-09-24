@@ -362,6 +362,12 @@ pub struct IoError {
     pub detail: Option<String>,
 }
 
+impl fmt::Show for IoError{
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        write!(fmt,"Code:{}, Extra:{}, detail:{}", self.code, self.extra, self.detail)
+    }
+}
+
 pub type IoResult<T> = Result<T, IoError>;
 
 #[deriving(PartialEq, Eq)]
