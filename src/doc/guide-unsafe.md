@@ -466,7 +466,7 @@ fn start(_argc: int, _argv: *const *const u8) -> int {
 // provided by libstd.
 #[lang = "stack_exhausted"] extern fn stack_exhausted() {}
 #[lang = "eh_personality"] extern fn eh_personality() {}
-#[lang = "sized"] trait Sized { }
+#[lang = "fail_fmt"] fn fail_fmt() -> ! { loop {} }
 # // fn main() {} tricked you, rustdoc!
 ```
 
@@ -489,32 +489,28 @@ pub extern fn main(argc: int, argv: *const *const u8) -> int {
 
 #[lang = "stack_exhausted"] extern fn stack_exhausted() {}
 #[lang = "eh_personality"] extern fn eh_personality() {}
-#[lang = "sized"] trait Sized { }
+#[lang = "fail_fmt"] fn fail_fmt() -> ! { loop {} }
 # // fn main() {} tricked you, rustdoc!
 ```
 
 
 The compiler currently makes a few assumptions about symbols which are available
 in the executable to call. Normally these functions are provided by the standard
-xlibrary, but without it you must define your own.
+library, but without it you must define your own.
 
-The first of these two functions, `stack_exhausted`, is invoked whenever stack
+The first of these three functions, `stack_exhausted`, is invoked whenever stack
 overflow is detected.  This function has a number of restrictions about how it
 can be called and what it must do, but if the stack limit register is not being
 maintained then a task always has an "infinite stack" and this function
 shouldn't get triggered.
 
-The second of these two functions, `eh_personality`, is used by the failure
-mechanisms of the compiler. This is often mapped to GCC's personality function
-(see the [libstd implementation](std/rt/unwind/index.html) for more
-information), but crates which do not trigger failure can be assured that this
-function is never called.
-
-The final item in the example is a trait called `Sized`. This a trait
-that represents data of a known static size: it is integral to the
-Rust type system, and so the compiler expects the standard library to
-provide it. Since you are not using the standard library, you have to
-provide it yourself.
+The second of these three functions, `eh_personality`, is used by the
+failure mechanisms of the compiler. This is often mapped to GCC's
+personality function (see the
+[libstd implementation](std/rt/unwind/index.html) for more
+information), but crates which do not trigger failure can be assured
+that this function is never called. The final function, `fail_fmt`, is
+also used by the failure mechanisms of the compiler.
 
 ## Using libcore
 
@@ -694,7 +690,7 @@ fn main(argc: int, argv: *const *const u8) -> int {
 
 #[lang = "stack_exhausted"] extern fn stack_exhausted() {}
 #[lang = "eh_personality"] extern fn eh_personality() {}
-#[lang = "sized"] trait Sized {}
+#[lang = "fail_fmt"] fn fail_fmt() -> ! { loop {} }
 ```
 
 Note the use of `abort`: the `exchange_malloc` lang item is assumed to

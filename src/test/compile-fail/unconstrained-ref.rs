@@ -13,5 +13,5 @@ struct S<'a, T:'a> {
 }
 
 fn main() {
-    S { o: &None }; //~ ERROR cannot determine a type for this expression: unconstrained type
+    S { o: &None }; //~ ERROR type annotations required
 }

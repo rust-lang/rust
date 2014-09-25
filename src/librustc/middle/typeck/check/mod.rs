@@ -298,30 +298,29 @@ impl<'a, 'tcx> mem_categorization::Typer<'tcx> for FnCtxt<'a, 'tcx> {
         self.ccx.tcx
     }
     fn node_ty(&self, id: ast::NodeId) -> McResult<ty::t> {
-        self.ccx.tcx.node_ty(id)
+        Ok(self.node_ty(id))
     }
     fn node_method_ty(&self, method_call: typeck::MethodCall)
                       -> Option<ty::t> {
-        self.ccx.tcx.node_method_ty(method_call)
+        self.inh.method_map.borrow().find(&method_call).map(|m| m.ty)
     }
     fn adjustments<'a>(&'a self) -> &'a RefCell<NodeMap<ty::AutoAdjustment>> {
-        self.ccx.tcx.adjustments()
+        &self.inh.adjustments
     }
     fn is_method_call(&self, id: ast::NodeId) -> bool {
-        self.ccx.tcx.is_method_call(id)
+        self.inh.method_map.borrow().contains_key(&typeck::MethodCall::expr(id))
     }
     fn temporary_scope(&self, rvalue_id: ast::NodeId) -> Option<ast::NodeId> {
-        self.ccx.tcx.temporary_scope(rvalue_id)
+        self.tcx().temporary_scope(rvalue_id)
     }
     fn upvar_borrow(&self, upvar_id: ty::UpvarId) -> ty::UpvarBorrow {
-        self.ccx.tcx.upvar_borrow(upvar_id)
+        self.inh.upvar_borrow_map.borrow().get_copy(&upvar_id)
     }
     fn capture_mode(&self, closure_expr_id: ast::NodeId)
                     -> ast::CaptureClause {
         self.ccx.tcx.capture_mode(closure_expr_id)
     }
-    fn unboxed_closures<'a>(&'a self)
-                        -> &'a RefCell<DefIdMap<ty::UnboxedClosure>> {
+    fn unboxed_closures<'a>(&'a self) -> &'a RefCell<DefIdMap<ty::UnboxedClosure>> {
         &self.inh.unboxed_closures
     }
 }
@@ -369,12 +368,7 @@ fn static_inherited_fields<'a, 'tcx>(ccx: &'a CrateCtxt<'a, 'tcx>)
                                     -> Inherited<'a, 'tcx> {
     // It's kind of a kludge to manufacture a fake function context
     // and statement context, but we might as well do write the code only once
-    let param_env = ty::ParameterEnvironment {
-        free_substs: subst::Substs::empty(),
-        bounds: subst::VecPerParamSpace::empty(),
-        implicit_region_bound: ty::ReStatic,
-        caller_obligations: subst::VecPerParamSpace::empty(),
-    };
+    let param_env = ty::empty_parameter_environment();
     Inherited::new(ccx.tcx, param_env)
 }
 
@@ -383,17 +377,6 @@ struct CheckItemTypesVisitor<'a, 'tcx: 'a> { ccx: &'a CrateCtxt<'a, 'tcx> }
 impl<'a, 'tcx, 'v> Visitor<'v> for CheckItemTypesVisitor<'a, 'tcx> {
     fn visit_item(&mut self, i: &ast::Item) {
         check_item(self.ccx, i);
-        visit::walk_item(self, i);
-    }
-}
-
-struct CheckItemSizedTypesVisitor<'a, 'tcx: 'a> {
-    ccx: &'a CrateCtxt<'a, 'tcx>
-}
-
-impl<'a, 'tcx, 'v> Visitor<'v> for CheckItemSizedTypesVisitor<'a, 'tcx> {
-    fn visit_item(&mut self, i: &ast::Item) {
-        check_item_sized(self.ccx, i);
         visit::walk_item(self, i);
     }
 }
@@ -411,9 +394,6 @@ pub fn check_item_types(ccx: &CrateCtxt) {
     visit::walk_crate(&mut visit, krate);
 
     ccx.tcx.sess.abort_if_errors();
-
-    let mut visit = CheckItemSizedTypesVisitor { ccx: ccx };
-    visit::walk_crate(&mut visit, krate);
 }
 
 fn check_bare_fn(ccx: &CrateCtxt,
@@ -435,7 +415,6 @@ fn check_bare_fn(ccx: &CrateCtxt,
             vtable2::select_all_fcx_obligations_or_error(&fcx);
             regionck::regionck_fn(&fcx, id, body);
             writeback::resolve_type_vars_in_fn(&fcx, decl, body);
-            vtable2::check_builtin_bound_obligations(&fcx); // must happen after writeback
         }
         _ => ccx.tcx.sess.impossible_case(body.span,
                                  "check_bare_fn: function type expected")
@@ -677,33 +656,6 @@ fn check_for_field_shadowing(tcx: &ty::ctxt,
     }
 }
 
-fn check_fields_sized(tcx: &ty::ctxt,
-                      struct_def: &ast::StructDef) {
-    let len = struct_def.fields.len();
-    if len == 0 {
-        return;
-    }
-    for f in struct_def.fields.slice_to(len - 1).iter() {
-        let t = ty::node_id_to_type(tcx, f.node.id);
-        if !ty::type_is_sized(tcx, t) {
-            match f.node.kind {
-                ast::NamedField(ident, _) => {
-                    span_err!(tcx.sess, f.span, E0042,
-                        "type `{}` is dynamically sized. \
-                         dynamically sized types may only \
-                         appear as the type of the final \
-                         field in a struct",
-                        token::get_ident(ident));
-                }
-                ast::UnnamedField(_) => {
-                    span_err!(tcx.sess, f.span, E0043,
-                        "dynamically sized type in field");
-                }
-            }
-        }
-    }
-}
-
 pub fn check_struct(ccx: &CrateCtxt, id: ast::NodeId, span: Span) {
     let tcx = ccx.tcx;
 
@@ -715,24 +667,6 @@ pub fn check_struct(ccx: &CrateCtxt, id: ast::NodeId, span: Span) {
 
     if ty::lookup_simd(tcx, local_def(id)) {
         check_simd(tcx, span, id);
-    }
-}
-
-pub fn check_item_sized(ccx: &CrateCtxt, it: &ast::Item) {
-    debug!("check_item(it.id={}, it.ident={})",
-           it.id,
-           ty::item_path_str(ccx.tcx, local_def(it.id)));
-    let _indenter = indenter();
-
-    match it.node {
-        ast::ItemEnum(ref enum_definition, _) => {
-            check_enum_variants_sized(ccx,
-                                      enum_definition.variants.as_slice());
-        }
-        ast::ItemStruct(..) => {
-            check_fields_sized(ccx.tcx, &*ccx.tcx.map.expect_struct(it.id));
-        }
-        _ => {}
     }
 }
 
@@ -4866,7 +4800,6 @@ pub fn check_const_with_ty(fcx: &FnCtxt,
     vtable2::select_all_fcx_obligations_or_error(fcx);
     regionck::regionck_expr(fcx, e);
     writeback::resolve_type_vars_in_expr(fcx, e);
-    vtable2::check_builtin_bound_obligations(fcx);
 }
 
 /// Checks whether a type can be represented in memory. In particular, it
@@ -4951,39 +4884,6 @@ pub fn check_simd(tcx: &ty::ctxt, sp: Span, id: ast::NodeId) {
             }
         }
         _ => ()
-    }
-}
-
-
-pub fn check_enum_variants_sized(ccx: &CrateCtxt,
-                                 vs: &[P<ast::Variant>]) {
-    for v in vs.iter() {
-        match v.node.kind {
-            ast::TupleVariantKind(ref args) if args.len() > 0 => {
-                let ctor_ty = ty::node_id_to_type(ccx.tcx, v.node.id);
-                let arg_tys: Vec<ty::t> = ty::ty_fn_args(ctor_ty).iter().map(|a| *a).collect();
-                let len = arg_tys.len();
-                if len == 0 {
-                    return;
-                }
-                for (i, t) in arg_tys.slice_to(len - 1).iter().enumerate() {
-                    // Allow the last field in an enum to be unsized.
-                    // We want to do this so that we can support smart pointers.
-                    // A struct value with an unsized final field is itself
-                    // unsized and we must track this in the type system.
-                    if !ty::type_is_sized(ccx.tcx, *t) {
-                        span_err!(ccx.tcx.sess, args.get(i).ty.span, E0078,
-                            "type `{}` is dynamically sized. dynamically sized types may only \
-                             appear as the final type in a variant",
-                             ppaux::ty_to_string(ccx.tcx, *t));
-                    }
-                }
-            },
-            ast::StructVariantKind(ref struct_def) => {
-                check_fields_sized(ccx.tcx, &**struct_def)
-            }
-            _ => {}
-        }
     }
 }
 

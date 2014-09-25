@@ -15,8 +15,8 @@ fn foo(_x: Gc<uint>) {}
 
 fn main() {
     let x = box(GC) 3u;
-    let _: proc():Send = proc() foo(x); //~ ERROR does not fulfill `Send`
-    let _: proc():Send = proc() foo(x); //~ ERROR does not fulfill `Send`
-    let _: proc():Send = proc() foo(x); //~ ERROR does not fulfill `Send`
+    let _: proc():Send = proc() foo(x); //~ ERROR `core::kinds::Send` is not implemented
+    let _: proc():Send = proc() foo(x); //~ ERROR `core::kinds::Send` is not implemented
+    let _: proc():Send = proc() foo(x); //~ ERROR `core::kinds::Send` is not implemented
     let _: proc() = proc() foo(x);
 }

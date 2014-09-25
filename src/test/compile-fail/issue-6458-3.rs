@@ -11,5 +11,6 @@
 use std::mem;
 
 fn main() {
-    mem::transmute(0);  //~ ERROR: cannot determine a type for this expression: unconstrained type
+    mem::transmute(0);
+    //~^ ERROR type annotations required
 }
