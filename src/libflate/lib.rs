@@ -10,11 +10,13 @@
 
 /*!
 
-Simple [DEFLATE][def]-based compression. This is a wrapper around the
-[`miniz`][mz] library, which is a one-file pure-C implementation of zlib.
+Simple DEFLATE-based compression
 
-[def]: https://en.wikipedia.org/wiki/DEFLATE
-[mz]: https://code.google.com/p/miniz/
+[DEFLATE](https://en.wikipedia.org/wiki/DEFLATE) is a data compression
+algorithm that uses a combination of the LZ77 algorithm and Huffman coding.
+
+This crate is a wrapper around the [miniz](https://code.google.com/p/miniz/)
+library, which is a one-file pure-C implementation of zlib.
 
 */
 

@@ -65,10 +65,10 @@ pub trait PartialEq {
     fn ne(&self, other: &Self) -> bool { !self.eq(other) }
 }
 
-/// Trait for equality comparisons which are [equivalence relations](
-/// https://en.wikipedia.org/wiki/Equivalence_relation).
+/// Trait for equality comparisons which are equivalence relation
 ///
-/// This means, that in addition to `a == b` and `a != b` being strict
+/// [Equivalence relation](https://en.wikipedia.org/wiki/Equivalence_relation)
+/// means, that in addition to `a == b` and `a != b` being strict
 /// inverses, the equality must be (for all `a`, `b` and `c`):
 ///
 /// - reflexive: `a == a`;
@@ -92,11 +92,11 @@ pub trait Eq: PartialEq {
 #[deriving(Clone, PartialEq, Show)]
 #[stable]
 pub enum Ordering {
-   /// An ordering where a compared value is less [than another].
+   /// An ordering where a compared value is less (than another)
    Less = -1i,
-   /// An ordering where a compared value is equal [to another].
+   /// An ordering where a compared value is equal (to another)
    Equal = 0i,
-   /// An ordering where a compared value is greater [than another].
+   /// An ordering where a compared value is greater (than another)
    Greater = 1i,
 }
 
@@ -135,10 +135,10 @@ impl Ordering {
     }
 }
 
-/// Trait for types that form a [total order](
-/// https://en.wikipedia.org/wiki/Total_order).
+/// Trait for types that form a total order
 ///
-/// An order is a total order if it is (for all `a`, `b` and `c`):
+/// An order is a [total order](https://en.wikipedia.org/wiki/Total_order)
+/// if it is (for all `a`, `b` and `c`):
 ///
 /// - total and antisymmetric: exactly one of `a < b`, `a == b` or `a > b` is
 ///   true; and

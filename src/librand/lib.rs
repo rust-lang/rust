@@ -331,10 +331,9 @@ pub trait SeedableRng<Seed>: Rng {
     fn from_seed(seed: Seed) -> Self;
 }
 
-/// An Xorshift[1] random number
-/// generator.
+/// An Xorshift random number generator
 ///
-/// The Xorshift algorithm is not suitable for cryptographic purposes
+/// The Xorshift algorithm[1] is not suitable for cryptographic purposes
 /// but is very fast. If you do not know for sure that it fits your
 /// requirements, use a more secure one such as `IsaacRng` or `OsRng`.
 ///

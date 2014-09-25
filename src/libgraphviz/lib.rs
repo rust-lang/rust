@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*! Generate files suitable for use with [Graphviz](http://www.graphviz.org/)
+/*! Generate files suitable for use with Graphviz
 
 The `render` function generates output (e.g. an `output.dot` file) for
 use with [Graphviz](http://www.graphviz.org/) by walking a labelled
