@@ -108,5 +108,5 @@ fn g() { h(); }
 fn h() {}
 
 // Similarly, lang items are live
-#[lang="fail_"]
+#[lang="fail"]
 fn fail(_: *const u8, _: *const u8, _: uint) -> ! { loop {} }
