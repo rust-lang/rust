@@ -4490,7 +4490,7 @@ This will print
 
 `filter()` is an adapter that takes a closure as an argument. This closure
 returns `true` or `false`. The new iterator `filter()` produces
-only the elements that that closure returned `true` for:
+only the elements that that closure returns `true` for:
 
 ```{rust}
 for i in range(1i, 100i).filter(|x| x % 2 == 0) {
