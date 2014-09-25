@@ -307,6 +307,32 @@ pub fn requests_inline(attrs: &[Attribute]) -> bool {
     }
 }
 
+/// Tests if a cfg-pattern matches the cfg set
+pub fn cfg_matches(diagnostic: &SpanHandler, cfgs: &[P<MetaItem>], cfg: &ast::MetaItem) -> bool {
+    match cfg.node {
+        ast::MetaList(ref pred, ref mis) if pred.get() == "any" =>
+            mis.iter().any(|mi| cfg_matches(diagnostic, cfgs, &**mi)),
+        ast::MetaList(ref pred, ref mis) if pred.get() == "all" =>
+            mis.iter().all(|mi| cfg_matches(diagnostic, cfgs, &**mi)),
+        ast::MetaList(ref pred, ref mis) if pred.get() == "not" => {
+            // NOTE: turn on after snapshot
+            /*
+            if mis.len() != 1 {
+                diagnostic.span_warn(cfg.span, "the use of multiple cfgs in the same `not` \
+                                                statement is deprecated. Change `not(a, b)` to \
+                                                `not(all(a, b))`.");
+            }
+            */
+            !mis.iter().all(|mi| cfg_matches(diagnostic, cfgs, &**mi))
+        }
+        ast::MetaList(ref pred, _) => {
+            diagnostic.span_err(cfg.span, format!("invalid predicate `{}`", pred).as_slice());
+            false
+        },
+        ast::MetaWord(_) | ast::MetaNameValue(..) => contains(cfgs, cfg),
+    }
+}
+
 /// Tests if any `cfg(...)` meta items in `metas` match `cfg`. e.g.
 ///
 /// test_cfg(`[foo="a", bar]`, `[cfg(foo), cfg(bar)]`) == true
