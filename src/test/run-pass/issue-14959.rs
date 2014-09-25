@@ -33,6 +33,14 @@ impl Alloy {
     }
 }
 
+impl<'a, 'b> FnOnce<(&'b mut Response+'b,),()> for SendFile<'a> {
+    extern "rust-call" fn call_once(self, (_res,): (&'b mut Response+'b,)) {}
+}
+
+impl<'a, 'b> FnMut<(&'b mut Response+'b,),()> for SendFile<'a> {
+    extern "rust-call" fn call_mut(&mut self, (_res,): (&'b mut Response+'b,)) {}
+}
+
 impl<'a, 'b> Fn<(&'b mut Response+'b,),()> for SendFile<'a> {
     extern "rust-call" fn call(&self, (_res,): (&'b mut Response+'b,)) {}
 }

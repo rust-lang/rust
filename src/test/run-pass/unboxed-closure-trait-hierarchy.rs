@@ -8,15 +8,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(lang_items, overloaded_calls, unboxed_closures)]
+#![feature(overloaded_calls, unboxed_closures)]
 
-fn c<F:Fn(int, int) -> int>(f: F) -> int {
-    f(5, 6)
+fn foo<F>(f: F) -> int where F: FnOnce(int) -> int {
+    f(1i)
+}
+
+fn bar<F>(mut f: F) -> int where F: FnMut(int) -> int {
+    f(1i)
 }
 
 fn main() {
-    let z: int = 7;
-    assert_eq!(c(|&mut : x: int, y| x + y + z), 10);
-    //~^ ERROR not implemented
+    assert_eq!(foo(|&mut: x: int| x + 3), 4i);
+    assert_eq!(bar(|&: x: int| x + 7), 8i);
 }
 

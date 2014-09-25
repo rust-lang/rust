@@ -11,7 +11,7 @@
 #![macro_escape]
 
 use abi;
-use ast::{AssociatedType, BareFnTy, ClosureTy};
+use ast::{AssociatedType, AuxiliaryUnboxedClosureIds, BareFnTy, ClosureTy};
 use ast::{RegionTyParamBound, TraitTyParamBound};
 use ast::{ProvidedMethod, Public, FnStyle};
 use ast::{Mod, BiAdd, Arg, Arm, Attribute, BindByRef, BindByValue};
@@ -2893,10 +2893,16 @@ impl<'a> Parser<'a> {
 
         match optional_unboxed_closure_kind {
             Some(unboxed_closure_kind) => {
+                let ids = P(AuxiliaryUnboxedClosureIds {
+                    fn_id: ast::DUMMY_NODE_ID,
+                    fn_mut_id: ast::DUMMY_NODE_ID,
+                    fn_once_id: ast::DUMMY_NODE_ID,
+                });
                 self.mk_expr(lo,
                              fakeblock.span.hi,
                              ExprUnboxedFn(capture_clause,
                                            unboxed_closure_kind,
+                                           ids,
                                            decl,
                                            fakeblock))
             }

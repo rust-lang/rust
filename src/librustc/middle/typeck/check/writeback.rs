@@ -121,12 +121,20 @@ impl<'cx, 'tcx, 'v> Visitor<'v> for WritebackCx<'cx, 'tcx> {
 
         match e.node {
             ast::ExprFnBlock(_, ref decl, _) |
-            ast::ExprProc(ref decl, _) |
-            ast::ExprUnboxedFn(_, _, ref decl, _) => {
+            ast::ExprProc(ref decl, _) => {
                 for input in decl.inputs.iter() {
                     let _ = self.visit_node_id(ResolvingExpr(e.span),
                                                input.id);
                 }
+            }
+            ast::ExprUnboxedFn(_, _, ref ids, ref decl, _) => {
+                for input in decl.inputs.iter() {
+                    let _ = self.visit_node_id(ResolvingExpr(e.span),
+                                               input.id);
+                }
+                self.visit_node_id(ResolvingExpr(e.span), ids.fn_id);
+                self.visit_node_id(ResolvingExpr(e.span), ids.fn_mut_id);
+                self.visit_node_id(ResolvingExpr(e.span), ids.fn_once_id);
             }
             _ => {}
         }
@@ -213,6 +221,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                                           ResolvingUnboxedClosure(*def_id));
             let unboxed_closure = ty::UnboxedClosure {
                 closure_type: closure_ty,
+                expr_id: unboxed_closure.expr_id,
                 kind: unboxed_closure.kind,
             };
             self.fcx

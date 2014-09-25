@@ -1332,6 +1332,7 @@ fn encode_side_tables_for_id(ecx: &e::EncodeContext,
             rbml_w.id(id);
             rbml_w.tag(c::tag_table_val, |rbml_w| {
                 rbml_w.emit_closure_type(ecx, &unboxed_closure.closure_type);
+                rbml_w.emit_def_id(unboxed_closure.expr_id);
                 encode_unboxed_closure_kind(rbml_w, unboxed_closure.kind)
             })
         })
@@ -1750,6 +1751,7 @@ impl<'a> rbml_decoder_decoder_helpers for reader::Decoder<'a> {
                 dcx.tcx,
                 |s, a| this.convert_def_id(dcx, s, a)))
         }).unwrap();
+        let expr_id = self.read_def_id(dcx);
         let variants = [
             "FnUnboxedClosureKind",
             "FnMutUnboxedClosureKind",
@@ -1765,6 +1767,7 @@ impl<'a> rbml_decoder_decoder_helpers for reader::Decoder<'a> {
         }).unwrap();
         ty::UnboxedClosure {
             closure_type: closure_type,
+            expr_id: expr_id,
             kind: kind,
         }
     }

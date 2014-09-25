@@ -14,6 +14,14 @@ trait Foo {}
 
 struct Bar;
 
+impl<'a> std::ops::FnOnce<(&'a Foo+'a,), ()> for Bar {
+    extern "rust-call" fn call_once(self, _: (&'a Foo,)) {}
+}
+
+impl<'a> std::ops::FnMut<(&'a Foo+'a,), ()> for Bar {
+    extern "rust-call" fn call_mut(&mut self, _: (&'a Foo,)) {}
+}
+
 impl<'a> std::ops::Fn<(&'a Foo+'a,), ()> for Bar {
     extern "rust-call" fn call(&self, _: (&'a Foo,)) {}
 }

@@ -302,7 +302,8 @@ fn load_unboxed_closure_environment<'blk, 'tcx>(
                                     bcx: Block<'blk, 'tcx>,
                                     arg_scope_id: ScopeId,
                                     freevars: &Vec<ty::Freevar>,
-                                    closure_id: ast::DefId)
+                                    auxiliary_id: ast::DefId,
+                                    expr_id: ast::DefId)
                                     -> Block<'blk, 'tcx> {
     let _icx = push_ctxt("closure::load_environment");
 
@@ -311,8 +312,10 @@ fn load_unboxed_closure_environment<'blk, 'tcx>(
     }
 
     // Special case for small by-value selfs.
-    let self_type = self_type_for_unboxed_closure(bcx.ccx(), closure_id);
-    let kind = kind_for_unboxed_closure(bcx.ccx(), closure_id);
+    let self_type = self_type_for_unboxed_closure(bcx.ccx(),
+                                                  auxiliary_id,
+                                                  expr_id);
+    let kind = kind_for_unboxed_closure(bcx.ccx(), auxiliary_id);
     let llenv = if kind == ty::FnOnceUnboxedClosureKind &&
             !arg_is_indirect(bcx.ccx(), self_type) {
         let datum = rvalue_scratch_datum(bcx,
@@ -381,7 +384,9 @@ pub fn trans_expr_fn<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let s = tcx.map.with_path(id, |path| {
         mangle_internal_name_by_path_and_seq(path, "closure")
     });
-    let llfn = decl_internal_rust_fn(ccx, fty, s.as_slice());
+    let llfn = decl_internal_rust_fn(ccx,
+                                     NormalFunctionType(fty),
+                                     s.as_slice());
 
     // set an inline hint for all closures
     set_inline_hint(llfn);
@@ -431,14 +436,13 @@ pub fn get_or_create_declaration_if_unboxed_closure(ccx: &CrateContext,
         None => {}
     }
 
-    let function_type = ty::mk_unboxed_closure(ccx.tcx(),
-                                               closure_id,
-                                               ty::ReStatic);
     let symbol = ccx.tcx().map.with_path(closure_id.node, |path| {
         mangle_internal_name_by_path_and_seq(path, "unboxed_closure")
     });
 
-    let llfn = decl_internal_rust_fn(ccx, function_type, symbol.as_slice());
+    let llfn = decl_internal_rust_fn(ccx,
+                                     UnboxedClosureFunctionType(closure_id),
+                                     symbol.as_slice());
 
     // set an inline hint for all closures
     set_inline_hint(llfn);
@@ -456,46 +460,63 @@ pub fn trans_unboxed_closure<'blk, 'tcx>(
                              mut bcx: Block<'blk, 'tcx>,
                              decl: &ast::FnDecl,
                              body: &ast::Block,
-                             id: ast::NodeId,
+                             expr_id: ast::NodeId,
+                             auxiliary_ids: &ast::AuxiliaryUnboxedClosureIds,
                              dest: expr::Dest)
                              -> Block<'blk, 'tcx> {
     let _icx = push_ctxt("closure::trans_unboxed_closure");
 
     debug!("trans_unboxed_closure()");
 
-    let closure_id = ast_util::local_def(id);
-    let llfn = get_or_create_declaration_if_unboxed_closure(
-        bcx.ccx(),
-        closure_id).unwrap();
-
-    let unboxed_closures = bcx.tcx().unboxed_closures.borrow();
-    let function_type = unboxed_closures.get(&closure_id)
-                                        .closure_type
-                                        .clone();
-    let function_type = ty::mk_closure(bcx.tcx(), function_type);
+    // FIXME(pcwalton): We probably want to not eagerly generate unboxed
+    // closure bodies and only do so lazily for the traits that matter.
 
     let freevars: Vec<ty::Freevar> =
-        ty::with_freevars(bcx.tcx(), id, |fv| fv.iter().map(|&fv| fv).collect());
+        ty::with_freevars(bcx.tcx(),
+                          expr_id,
+                          |fv| fv.iter().map(|&fv| fv).collect());
     let freevars_ptr = &freevars;
 
-    trans_closure(bcx.ccx(),
-                  decl,
-                  body,
-                  llfn,
-                  bcx.fcx.param_substs,
-                  id,
-                  [],
-                  ty::ty_fn_args(function_type),
-                  ty::ty_fn_ret(function_type),
-                  ty::ty_fn_abi(function_type),
-                  true,
-                  IsUnboxedClosure,
-                  |bcx, arg_scope| {
-                      load_unboxed_closure_environment(bcx,
-                                                       arg_scope,
-                                                       freevars_ptr,
-                                                       closure_id)
-                  });
+    for &auxiliary_id in [
+        auxiliary_ids.fn_id,
+        auxiliary_ids.fn_mut_id,
+        auxiliary_ids.fn_once_id
+    ].iter() {
+        let auxiliary_id = ast_util::local_def(auxiliary_id);
+        let unboxed_closures = bcx.tcx().unboxed_closures.borrow();
+        let unboxed_closure = match unboxed_closures.find(&auxiliary_id) {
+            None => continue,
+            Some(unboxed_closure) => unboxed_closure,
+        };
+
+        let llfn = get_or_create_declaration_if_unboxed_closure(
+            bcx.ccx(),
+            auxiliary_id).unwrap();
+
+        let function_type = unboxed_closure.closure_type.clone();
+        let function_type = ty::mk_closure(bcx.tcx(), function_type);
+
+        trans_closure(bcx.ccx(),
+                      decl,
+                      body,
+                      llfn,
+                      bcx.fcx.param_substs,
+                      expr_id,
+                      [],
+                      ty::ty_fn_args(function_type),
+                      ty::ty_fn_ret(function_type),
+                      ty::ty_fn_abi(function_type),
+                      true,
+                      IsUnboxedClosure,
+                      |bcx, arg_scope| {
+                          load_unboxed_closure_environment(
+                              bcx,
+                              arg_scope,
+                              freevars_ptr,
+                              auxiliary_id,
+                              ast_util::local_def(expr_id))
+                      });
+    }
 
     // Don't hoist this to the top of the function. It's perfectly legitimate
     // to have a zero-size unboxed closure (in which case dest will be
@@ -508,7 +529,7 @@ pub fn trans_unboxed_closure<'blk, 'tcx>(
         }
     };
 
-    let repr = adt::represent_type(bcx.ccx(), node_id_type(bcx, id));
+    let repr = adt::represent_type(bcx.ccx(), node_id_type(bcx, expr_id));
 
     // Create the closure.
     for (i, freevar) in freevars_ptr.iter().enumerate() {
@@ -564,9 +585,11 @@ pub fn get_wrapper_for_bare_fn(ccx: &CrateContext,
         mangle_internal_name_by_path_and_seq(path, "as_closure")
     });
     let llfn = if is_local {
-        decl_internal_rust_fn(ccx, closure_ty, name.as_slice())
+        decl_internal_rust_fn(ccx,
+                              NormalFunctionType(closure_ty),
+                              name.as_slice())
     } else {
-        decl_rust_fn(ccx, closure_ty, name.as_slice())
+        decl_rust_fn(ccx, NormalFunctionType(closure_ty), name.as_slice())
     };
 
     ccx.closure_bare_wrapper_cache().borrow_mut().insert(fn_ptr, llfn);

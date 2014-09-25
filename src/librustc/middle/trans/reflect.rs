@@ -339,7 +339,7 @@ impl<'a, 'blk, 'tcx> Reflector<'a, 'blk, 'tcx> {
                 let fn_ty = ty::mk_ctor_fn(ccx.tcx(), ast::DUMMY_NODE_ID,
                                            [opaqueptrty], ty::mk_u64());
                 let llfdecl = decl_internal_rust_fn(ccx,
-                                                    fn_ty,
+                                                    NormalFunctionType(fn_ty),
                                                     sym.as_slice());
                 let arena = TypedArena::new();
                 let empty_param_substs = param_substs::empty();

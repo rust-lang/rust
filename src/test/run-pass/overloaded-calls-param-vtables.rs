@@ -16,6 +16,18 @@ use std::ops::Fn;
 
 struct G;
 
+impl<'a, A: Add<int, int>> FnOnce<(A,), int> for G {
+    extern "rust-call" fn call_once(self, (arg,): (A,)) -> int {
+        self.call((arg,))
+    }
+}
+
+impl<'a, A: Add<int, int>> FnMut<(A,), int> for G {
+    extern "rust-call" fn call_mut(&mut self, (arg,): (A,)) -> int {
+        self.call((arg,))
+    }
+}
+
 impl<'a, A: Add<int, int>> Fn<(A,), int> for G {
     extern "rust-call" fn call(&self, (arg,): (A,)) -> int {
         arg.add(&1)

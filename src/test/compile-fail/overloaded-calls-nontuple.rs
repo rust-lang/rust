@@ -23,6 +23,12 @@ impl FnMut<int,int> for S {
     }
 }
 
+impl FnOnce<int,int> for S {
+    extern "rust-call" fn call_once(mut self, z: int) -> int {
+        self.call_mut(z)
+    }
+}
+
 fn main() {
     let mut s = S {
         x: 1,

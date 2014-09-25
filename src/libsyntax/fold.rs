@@ -1233,11 +1233,16 @@ pub fn noop_fold_expr<T: Folder>(Expr {id, node, span}: Expr, folder: &mut T) ->
                 ExprProc(folder.fold_fn_decl(decl),
                          folder.fold_block(body))
             }
-            ExprUnboxedFn(capture_clause, kind, decl, body) => {
+            ExprUnboxedFn(capture_clause, kind, ids, decl, body) => {
                 ExprUnboxedFn(capture_clause,
-                            kind,
-                            folder.fold_fn_decl(decl),
-                            folder.fold_block(body))
+                              kind,
+                              P(AuxiliaryUnboxedClosureIds {
+                                  fn_id: folder.new_id(ids.fn_id),
+                                  fn_mut_id: folder.new_id(ids.fn_mut_id),
+                                  fn_once_id: folder.new_id(ids.fn_once_id),
+                              }),
+                              folder.fold_fn_decl(decl),
+                              folder.fold_block(body))
             }
             ExprBlock(blk) => ExprBlock(folder.fold_block(blk)),
             ExprAssign(el, er) => {

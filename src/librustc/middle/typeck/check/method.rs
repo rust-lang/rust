@@ -474,9 +474,9 @@ impl<'a, 'tcx> LookupContext<'a, 'tcx> {
                 ty_param(p) => {
                     self.push_inherent_candidates_from_param(self_ty, restrict_to, p);
                 }
-                ty_unboxed_closure(closure_did, _) => {
+                ty_unboxed_closure(closure_expr_did, _) => {
                     self.push_unboxed_closure_call_candidates_if_applicable(
-                        closure_did);
+                        closure_expr_did);
                 }
                 _ => { /* No bound methods in these types */ }
             }
@@ -526,7 +526,8 @@ impl<'a, 'tcx> LookupContext<'a, 'tcx> {
     fn push_unboxed_closure_call_candidate_if_applicable(
             &mut self,
             trait_did: DefId,
-            closure_did: DefId,
+            closure_expr_did: DefId,
+            closure_auxiliary_did: DefId,
             closure_function_type: &ClosureTy) {
         let trait_item = ty::trait_items(self.tcx(), trait_did).get(0)
                                                                .clone();
@@ -550,9 +551,10 @@ impl<'a, 'tcx> LookupContext<'a, 'tcx> {
 
         let closure_region =
             self.fcx.infcx().next_region_var(infer::MiscVariable(self.span));
-        let unboxed_closure_type = ty::mk_unboxed_closure(self.tcx(),
-                                                          closure_did,
-                                                          closure_region);
+        let unboxed_closure_type = ty::mk_unboxed_closure(
+            self.tcx(),
+            closure_expr_did,
+            closure_region);
         self.extension_candidates.push(Candidate {
             rcvr_match_condition:
                 RcvrMatchesIfSubtype(unboxed_closure_type),
@@ -561,31 +563,36 @@ impl<'a, 'tcx> LookupContext<'a, 'tcx> {
                 vec![],
                 *self.fcx.infcx().next_ty_vars(1).get(0)),
             method_ty: method,
-            origin: MethodStaticUnboxedClosure(closure_did),
+            origin: MethodStaticUnboxedClosure(closure_auxiliary_did),
         });
     }
 
     fn push_unboxed_closure_call_candidates_if_applicable(
             &mut self,
-            closure_did: DefId) {
-        match self.tcx().unboxed_closures.borrow().find(&closure_did) {
+            closure_expr_did: DefId) {
+        let auxiliary_did = ty::auxiliary_def_id_for_unboxed_closure(
+            self.tcx(),
+            closure_expr_did.node);
+        match self.tcx().unboxed_closures.borrow().find(&auxiliary_did) {
             None => {}  // Fall through to try inherited.
             Some(closure) => {
                 let tcx = self.tcx();
                 self.push_unboxed_closure_call_candidate_if_applicable(
                     closure.kind.trait_did(tcx),
-                    closure_did,
+                    closure_expr_did,
+                    auxiliary_did,
                     &closure.closure_type);
                 return
             }
         }
 
-        match self.fcx.inh.unboxed_closures.borrow().find(&closure_did) {
+        match self.fcx.inh.unboxed_closures.borrow().find(&auxiliary_did) {
             Some(closure) => {
                 let tcx = self.tcx();
                 self.push_unboxed_closure_call_candidate_if_applicable(
                     closure.kind.trait_did(tcx),
-                    closure_did,
+                    closure_expr_did,
+                    auxiliary_did,
                     &closure.closure_type);
                 return
             }

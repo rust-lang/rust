@@ -16,6 +16,16 @@ struct Shower<T> {
     x: T
 }
 
+impl<T: fmt::Show> ops::FnOnce<(), ()> for Shower<T> {
+    extern "rust-call" fn call_once(self, _args: ()) {
+    }
+}
+
+impl<T: fmt::Show> ops::FnMut<(), ()> for Shower<T> {
+    extern "rust-call" fn call_mut(&mut self, _args: ()) {
+    }
+}
+
 impl<T: fmt::Show> ops::Fn<(), ()> for Shower<T> {
     fn call(&self, _args: ()) {
 //~^ ERROR `call` has an incompatible type for trait: expected "rust-call" fn, found "Rust" fn

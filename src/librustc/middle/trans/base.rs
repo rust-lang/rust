@@ -211,6 +211,11 @@ pub fn decl_fn(ccx: &CrateContext, name: &str, cc: llvm::CallConv,
     llfn
 }
 
+pub enum FunctionType {
+    NormalFunctionType(ty::t),
+    UnboxedClosureFunctionType(ast::DefId),
+}
+
 // only use this for foreign function ABIs and glue, use `decl_rust_fn` for Rust functions
 pub fn decl_cdecl_fn(ccx: &CrateContext,
                      name: &str,
@@ -236,7 +241,11 @@ pub fn get_extern_fn(ccx: &CrateContext,
     f
 }
 
-fn get_extern_rust_fn(ccx: &CrateContext, fn_ty: ty::t, name: &str, did: ast::DefId) -> ValueRef {
+fn get_extern_rust_fn(ccx: &CrateContext,
+                      fn_ty: FunctionType,
+                      name: &str,
+                      did: ast::DefId)
+                      -> ValueRef {
     match ccx.externs().borrow().find_equiv(&name) {
         Some(n) => return *n,
         None => ()
@@ -253,13 +262,14 @@ fn get_extern_rust_fn(ccx: &CrateContext, fn_ty: ty::t, name: &str, did: ast::De
 }
 
 pub fn self_type_for_unboxed_closure(ccx: &CrateContext,
-                                     closure_id: ast::DefId)
+                                     auxiliary_id: ast::DefId,
+                                     expr_id: ast::DefId)
                                      -> ty::t {
     let unboxed_closure_type = ty::mk_unboxed_closure(ccx.tcx(),
-                                                      closure_id,
+                                                      expr_id,
                                                       ty::ReStatic);
     let unboxed_closures = ccx.tcx().unboxed_closures.borrow();
-    let unboxed_closure = unboxed_closures.get(&closure_id);
+    let unboxed_closure = unboxed_closures.get(&auxiliary_id);
     match unboxed_closure.kind {
         ty::FnUnboxedClosureKind => {
             ty::mk_imm_rptr(ccx.tcx(), ty::ReStatic, unboxed_closure_type)
@@ -277,26 +287,37 @@ pub fn kind_for_unboxed_closure(ccx: &CrateContext, closure_id: ast::DefId)
     unboxed_closures.get(&closure_id).kind
 }
 
-pub fn decl_rust_fn(ccx: &CrateContext, fn_ty: ty::t, name: &str) -> ValueRef {
-    let (inputs, output, abi, env) = match ty::get(fn_ty).sty {
-        ty::ty_bare_fn(ref f) => {
-            (f.sig.inputs.clone(), f.sig.output, f.abi, None)
+pub fn decl_rust_fn(ccx: &CrateContext, fn_ty: FunctionType, name: &str)
+                    -> ValueRef {
+    let (inputs, output, abi, env) = match fn_ty {
+        NormalFunctionType(fn_ty) => {
+            match ty::get(fn_ty).sty {
+                ty::ty_bare_fn(ref f) => {
+                    (f.sig.inputs.clone(), f.sig.output, f.abi, None)
+                }
+                ty::ty_closure(ref f) => {
+                    (f.sig.inputs.clone(),
+                     f.sig.output,
+                     f.abi,
+                     Some(Type::i8p(ccx)))
+                }
+                _ => fail!("expected closure or fn"),
+            }
         }
-        ty::ty_closure(ref f) => {
-            (f.sig.inputs.clone(), f.sig.output, f.abi, Some(Type::i8p(ccx)))
-        }
-        ty::ty_unboxed_closure(closure_did, _) => {
+        UnboxedClosureFunctionType(closure_did) => {
             let unboxed_closures = ccx.tcx().unboxed_closures.borrow();
             let unboxed_closure = unboxed_closures.get(&closure_did);
             let function_type = unboxed_closure.closure_type.clone();
-            let self_type = self_type_for_unboxed_closure(ccx, closure_did);
+            let self_type = self_type_for_unboxed_closure(
+                ccx,
+                closure_did,
+                unboxed_closure.expr_id);
             let llenvironment_type = type_of_explicit_arg(ccx, self_type);
             (function_type.sig.inputs.clone(),
              function_type.sig.output,
              RustCall,
              Some(llenvironment_type))
         }
-        _ => fail!("expected closure or fn")
     };
 
     let llfty = type_of_rust_fn(ccx, env, inputs.as_slice(), output, abi);
@@ -311,7 +332,10 @@ pub fn decl_rust_fn(ccx: &CrateContext, fn_ty: ty::t, name: &str) -> ValueRef {
     llfn
 }
 
-pub fn decl_internal_rust_fn(ccx: &CrateContext, fn_ty: ty::t, name: &str) -> ValueRef {
+pub fn decl_internal_rust_fn(ccx: &CrateContext,
+                             fn_ty: FunctionType,
+                             name: &str)
+                             -> ValueRef {
     let llfn = decl_rust_fn(ccx, fn_ty, name);
     llvm::SetLinkage(llfn, llvm::InternalLinkage);
     llfn
@@ -950,7 +974,10 @@ pub fn trans_external_path(ccx: &CrateContext, did: ast::DefId, t: ty::t) -> Val
             match fn_ty.abi.for_target(ccx.sess().targ_cfg.os,
                                        ccx.sess().targ_cfg.arch) {
                 Some(Rust) | Some(RustCall) => {
-                    get_extern_rust_fn(ccx, t, name.as_slice(), did)
+                    get_extern_rust_fn(ccx,
+                                       NormalFunctionType(t),
+                                       name.as_slice(),
+                                       did)
                 }
                 Some(RustIntrinsic) => {
                     ccx.sess().bug("unexpected intrinsic in trans_external_path")
@@ -962,7 +989,10 @@ pub fn trans_external_path(ccx: &CrateContext, did: ast::DefId, t: ty::t) -> Val
             }
         }
         ty::ty_closure(_) => {
-            get_extern_rust_fn(ccx, t, name.as_slice(), did)
+            get_extern_rust_fn(ccx,
+                               NormalFunctionType(t),
+                               name.as_slice(),
+                               did)
         }
         _ => {
             let llty = type_of(ccx, t);
@@ -993,7 +1023,7 @@ pub fn invoke<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let attributes = if is_lang_item {
         llvm::AttrBuilder::new()
     } else {
-        get_fn_llvm_attributes(bcx.ccx(), fn_ty)
+        get_fn_llvm_attributes(bcx.ccx(), NormalFunctionType(fn_ty))
     };
 
     match bcx.opt_node_id {
@@ -1397,7 +1427,7 @@ fn has_nested_returns(tcx: &ty::ctxt, id: ast::NodeId) -> bool {
             match e.node {
                 ast::ExprFnBlock(_, _, ref blk) |
                 ast::ExprProc(_, ref blk) |
-                ast::ExprUnboxedFn(_, _, _, ref blk) => {
+                ast::ExprUnboxedFn(_, _, _, _, ref blk) => {
                     let mut explicit = CheckForNestedReturnsVisitor::explicit();
                     let mut implicit = CheckForNestedReturnsVisitor::implicit();
                     visit::walk_expr(&mut explicit, e);
@@ -2342,26 +2372,32 @@ fn register_fn(ccx: &CrateContext,
         _ => fail!("expected bare rust fn")
     };
 
-    let llfn = decl_rust_fn(ccx, node_type, sym.as_slice());
+    let llfn = decl_rust_fn(ccx,
+                            NormalFunctionType(node_type),
+                            sym.as_slice());
     finish_register_fn(ccx, sp, sym, node_id, llfn);
     llfn
 }
 
-pub fn get_fn_llvm_attributes(ccx: &CrateContext, fn_ty: ty::t)
+pub fn get_fn_llvm_attributes(ccx: &CrateContext, fn_ty: FunctionType)
                               -> llvm::AttrBuilder {
     use middle::ty::{BrAnon, ReLateBound};
 
-    let (fn_sig, abi, has_env) = match ty::get(fn_ty).sty {
-        ty::ty_closure(ref f) => (f.sig.clone(), f.abi, true),
-        ty::ty_bare_fn(ref f) => (f.sig.clone(), f.abi, false),
-        ty::ty_unboxed_closure(closure_did, _) => {
+    let (fn_sig, abi, has_env) = match fn_ty {
+        NormalFunctionType(fn_ty) => {
+            match ty::get(fn_ty).sty {
+                ty::ty_closure(ref f) => (f.sig.clone(), f.abi, true),
+                ty::ty_bare_fn(ref f) => (f.sig.clone(), f.abi, false),
+                _ => ccx.sess().bug("expected closure or function."),
+            }
+        }
+        UnboxedClosureFunctionType(closure_did) => {
             let unboxed_closures = ccx.tcx().unboxed_closures.borrow();
             let ref function_type = unboxed_closures.get(&closure_did)
                                                     .closure_type;
 
             (function_type.sig.clone(), RustCall, true)
         }
-        _ => ccx.sess().bug("expected closure or function.")
     };
 
 
@@ -2373,8 +2409,8 @@ pub fn get_fn_llvm_attributes(ccx: &CrateContext, fn_ty: ty::t)
 
     // These have an odd calling convention, so we need to manually
     // unpack the input ty's
-    let input_tys = match ty::get(fn_ty).sty {
-        ty::ty_unboxed_closure(_, _) => {
+    let input_tys = match fn_ty {
+        UnboxedClosureFunctionType(..) => {
             assert!(abi == RustCall);
 
             match ty::get(fn_sig.inputs[0]).sty {
@@ -2383,16 +2419,22 @@ pub fn get_fn_llvm_attributes(ccx: &CrateContext, fn_ty: ty::t)
                 _ => ccx.sess().bug("expected tuple'd inputs")
             }
         },
-        ty::ty_bare_fn(_) if abi == RustCall => {
-            let inputs = vec![fn_sig.inputs[0]];
+        NormalFunctionType(fn_ty) => {
+            match ty::get(fn_ty).sty {
+                ty::ty_bare_fn(_) if abi == RustCall => {
+                    let inputs = vec![fn_sig.inputs[0]];
 
-            match ty::get(fn_sig.inputs[1]).sty {
-                ty::ty_nil => inputs,
-                ty::ty_tup(ref t_in) => inputs.append(t_in.as_slice()),
-                _ => ccx.sess().bug("expected tuple'd inputs")
+                    match ty::get(fn_sig.inputs[1]).sty {
+                        ty::ty_nil => inputs,
+                        ty::ty_tup(ref t_in) => {
+                            inputs.append(t_in.as_slice())
+                        }
+                        _ => ccx.sess().bug("expected tuple'd inputs")
+                    }
+                }
+                _ => fn_sig.inputs.clone()
             }
         }
-        _ => fn_sig.inputs.clone()
     };
 
     // A function pointer is called without the declaration

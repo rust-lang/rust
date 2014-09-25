@@ -1041,8 +1041,13 @@ fn trans_rvalue_dps_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                    expr_to_string(expr), expr_ty.repr(tcx));
             closure::trans_expr_fn(bcx, store, &**decl, &**body, expr.id, dest)
         }
-        ast::ExprUnboxedFn(_, _, ref decl, ref body) => {
-            closure::trans_unboxed_closure(bcx, &**decl, &**body, expr.id, dest)
+        ast::ExprUnboxedFn(_, _, ref ids, ref decl, ref body) => {
+            closure::trans_unboxed_closure(bcx,
+                                           &**decl,
+                                           &**body,
+                                           expr.id,
+                                           &**ids,
+                                           dest)
         }
         ast::ExprCall(ref f, ref args) => {
             if bcx.tcx().is_method_call(expr.id) {

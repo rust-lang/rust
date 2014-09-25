@@ -13,7 +13,7 @@ use back::{link};
 use llvm::{ValueRef, CallConv, Linkage, get_param};
 use llvm;
 use middle::weak_lang_items;
-use middle::trans::base::push_ctxt;
+use middle::trans::base::{NormalFunctionType, push_ctxt};
 use middle::trans::base;
 use middle::trans::build::*;
 use middle::trans::cabi;
@@ -639,7 +639,9 @@ pub fn trans_rust_fn_with_foreign_abi(ccx: &CrateContext,
                ccx.tcx().map.path_to_string(id),
                id, t.repr(tcx));
 
-        let llfn = base::decl_internal_rust_fn(ccx, t, ps.as_slice());
+        let llfn = base::decl_internal_rust_fn(ccx,
+                                               NormalFunctionType(t),
+                                               ps.as_slice());
         base::set_llvm_fn_attrs(attrs, llfn);
         base::trans_fn(ccx, decl, body, llfn, param_substs, id, []);
         llfn
@@ -809,7 +811,8 @@ pub fn trans_rust_fn_with_foreign_abi(ccx: &CrateContext,
         // Perform the call itself
         debug!("calling llrustfn = {}, t = {}",
                ccx.tn().val_to_string(llrustfn), t.repr(ccx.tcx()));
-        let attributes = base::get_fn_llvm_attributes(ccx, t);
+        let attributes = base::get_fn_llvm_attributes(ccx,
+                                                      NormalFunctionType(t));
         let llrust_ret_val = builder.call(llrustfn, llrust_args.as_slice(), Some(attributes));
 
         // Get the return value where the foreign fn expects it.
