@@ -31,6 +31,7 @@ use syntax::parse;
 use syntax::parse::token::InternedString;
 
 use std::collections::HashMap;
+use std::collections::hashmap::{Occupied, Vacant};
 use getopts::{optopt, optmulti, optflag, optflagopt};
 use getopts;
 use std::cell::{RefCell};
@@ -804,8 +805,11 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
             Some(s) => s,
             None => early_error("--extern value must be of the format `foo=bar`"),
         };
-        let locs = externs.find_or_insert(name.to_string(), Vec::new());
-        locs.push(location.to_string());
+
+        match externs.entry(name.to_string()) {
+            Vacant(entry) => { entry.set(vec![location.to_string()]); },
+            Occupied(mut entry) => { entry.get_mut().push(location.to_string()); },
+        }
     }
 
     let crate_name = matches.opt_str("crate-name");

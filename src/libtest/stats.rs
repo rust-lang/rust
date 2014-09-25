@@ -11,6 +11,7 @@
 #![allow(missing_doc)]
 
 use std::collections::hashmap;
+use std::collections::hashmap::{Occupied, Vacant};
 use std::fmt::Show;
 use std::hash::Hash;
 use std::io;
@@ -442,7 +443,10 @@ pub fn write_boxplot<T: Float + Show + FromPrimitive>(
 pub fn freq_count<T: Iterator<U>, U: Eq+Hash>(mut iter: T) -> hashmap::HashMap<U, uint> {
     let mut map: hashmap::HashMap<U,uint> = hashmap::HashMap::new();
     for elem in iter {
-        map.insert_or_update_with(elem, 1, |_, count| *count += 1);
+        match map.entry(elem) {
+            Occupied(mut entry) => { *entry.get_mut() += 1; },
+            Vacant(entry) => { entry.set(1); },
+        }
     }
     map
 }
