@@ -48,6 +48,7 @@ use std::mem;
 use std::ops;
 use std::rc::Rc;
 use std::collections::{HashMap, HashSet};
+use std::collections::hashmap::{Occupied, Vacant};
 use arena::TypedArena;
 use syntax::abi;
 use syntax::ast::{CrateNum, DefId, FnStyle, Ident, ItemTrait, LOCAL_CRATE};
@@ -4566,9 +4567,10 @@ pub fn lookup_field_type(tcx: &ctxt,
         node_id_to_type(tcx, id.node)
     } else {
         let mut tcache = tcx.tcache.borrow_mut();
-        let pty = tcache.find_or_insert_with(id, |_| {
-            csearch::get_field_type(tcx, struct_id, id)
-        });
+        let pty = match tcache.entry(id) {
+            Occupied(entry) => entry.into_mut(),
+            Vacant(entry) => entry.set(csearch::get_field_type(tcx, struct_id, id)),
+        };
         pty.ty
     };
     t.subst(tcx, substs)

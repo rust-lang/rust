@@ -36,6 +36,7 @@ use lint::{Context, LintPass, LintArray};
 
 use std::cmp;
 use std::collections::HashMap;
+use std::collections::hashmap::{Occupied, Vacant};
 use std::slice;
 use std::{i8, i16, i32, i64, u8, u16, u32, u64, f32, f64};
 use syntax::abi;
@@ -1203,6 +1204,7 @@ impl UnusedMut {
     fn check_unused_mut_pat(&self, cx: &Context, pats: &[P<ast::Pat>]) {
         // collect all mutable pattern and group their NodeIDs by their Identifier to
         // avoid false warnings in match arms with multiple patterns
+
         let mut mutables = HashMap::new();
         for p in pats.iter() {
             pat_util::pat_bindings(&cx.tcx.def_map, &**p, |mode, id, _, path1| {
@@ -1210,8 +1212,10 @@ impl UnusedMut {
                 match mode {
                     ast::BindByValue(ast::MutMutable) => {
                         if !token::get_ident(ident).get().starts_with("_") {
-                            mutables.insert_or_update_with(ident.name.uint(),
-                                vec!(id), |_, old| { old.push(id); });
+                            match mutables.entry(ident.name.uint()) {
+                                Vacant(entry) => { entry.set(vec![id]); },
+                                Occupied(mut entry) => { entry.get_mut().push(id); },
+                            }
                         }
                     }
                     _ => {
