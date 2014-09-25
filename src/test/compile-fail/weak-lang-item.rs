@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // aux-build:weak-lang-items.rs
-// error-pattern: language item required, but not found: `begin_unwind`
+// error-pattern: language item required, but not found: `fail_fmt`
 // error-pattern: language item required, but not found: `stack_exhausted`
 // error-pattern: language item required, but not found: `eh_personality`
 

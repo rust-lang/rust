@@ -118,7 +118,7 @@ impl<'a, 'v> Visitor<'v> for Context<'a> {
 ) )
 
 weak_lang_items!(
-    begin_unwind,       BeginUnwindLangItem,        rust_begin_unwind;
+    fail_fmt,           FailFmtLangItem,            rust_begin_unwind;
     stack_exhausted,    StackExhaustedLangItem,     rust_stack_exhausted;
     eh_personality,     EhPersonalityLangItem,      rust_eh_personality;
 )

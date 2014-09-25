@@ -11,7 +11,7 @@
 #![no_std]
 #![feature(lang_items)]
 
-#[lang="fail_"]
+#[lang="fail"]
 fn fail(_: &(&'static str, &'static str, uint)) -> ! { loop {} }
 
 #[lang = "stack_exhausted"]
