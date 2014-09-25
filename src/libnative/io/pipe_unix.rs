@@ -173,7 +173,7 @@ impl rtio::RtioPipe for UnixStream {
         let dowrite = |nb: bool, buf: *const u8, len: uint| unsafe {
             let flags = if nb {c::MSG_DONTWAIT} else {0};
             libc::send(fd,
-                       buf as *mut libc::c_void,
+                       buf as *const _,
                        len as libc::size_t,
                        flags) as i64
         };
