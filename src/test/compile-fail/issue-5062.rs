@@ -10,4 +10,5 @@
 
 extern crate debug;
 
-fn main() { format!("{:?}", None); } //~ ERROR unconstrained type
+fn main() { format!("{:?}", None); }
+    //~^ ERROR type annotations required

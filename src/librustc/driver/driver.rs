@@ -17,7 +17,7 @@ use lint;
 use llvm::{ContextRef, ModuleRef};
 use metadata::common::LinkMeta;
 use metadata::creader;
-use middle::{trans, stability, kind, ty, typeck, reachable};
+use middle::{trans, stability, ty, typeck, reachable};
 use middle::dependency_format;
 use middle;
 use plugin::load::Plugins;
@@ -462,8 +462,12 @@ pub fn phase_3_run_analysis_passes<'tcx>(sess: Session,
     time(time_passes, "rvalue checking", (), |_|
          middle::check_rvalues::check_crate(&ty_cx, krate));
 
-    time(time_passes, "kind checking", (), |_|
-         kind::check_crate(&ty_cx));
+    // Avoid overwhelming user with errors if type checking failed.
+    // I'm not sure how helpful this is, to be honest, but it avoids a
+    // lot of annoying errors in the compile-fail tests (basically,
+    // lint warnings and so on -- kindck used to do this abort, but
+    // kindck is gone now). -nmatsakis
+    ty_cx.sess.abort_if_errors();
 
     let reachable_map =
         time(time_passes, "reachability checking", (), |_|

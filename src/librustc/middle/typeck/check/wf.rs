@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use middle::subst;
 use middle::subst::{Subst};
 use middle::traits;
 use middle::ty;
@@ -21,6 +22,7 @@ use util::ppaux::Repr;
 use std::collections::HashSet;
 use syntax::ast;
 use syntax::ast_util::{local_def};
+use syntax::attr;
 use syntax::codemap::Span;
 use syntax::visit;
 use syntax::visit::Visitor;
@@ -57,7 +59,6 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
                item.id,
                ty::item_path_str(ccx.tcx, local_def(item.id)));
 
-        let ccx = self.ccx;
         match item.node {
             ast::ItemImpl(..) => {
                 self.check_impl(item);
@@ -68,26 +69,14 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
             ast::ItemStatic(..) => {
                 self.check_item_type(item);
             }
-            ast::ItemStruct(..) => {
+            ast::ItemStruct(ref struct_def, _) => {
                 self.check_type_defn(item, |fcx| {
-                    ty::struct_fields(ccx.tcx, local_def(item.id),
-                                      &fcx.inh.param_env.free_substs)
-                        .iter()
-                        .map(|f| f.mt.ty)
-                        .collect()
+                    vec![struct_variant(fcx, &**struct_def)]
                 });
             }
-            ast::ItemEnum(..) => {
+            ast::ItemEnum(ref enum_def, _) => {
                 self.check_type_defn(item, |fcx| {
-                    ty::substd_enum_variants(ccx.tcx, local_def(item.id),
-                                             &fcx.inh.param_env.free_substs)
-                        .iter()
-                        .flat_map(|variant| {
-                            variant.args
-                                .iter()
-                                .map(|&arg_ty| arg_ty)
-                        })
-                        .collect()
+                    enum_variants(fcx, enum_def)
                 });
             }
             _ => {}
@@ -110,12 +99,11 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
         f(self, &fcx);
         vtable2::select_all_fcx_obligations_or_error(&fcx);
         regionck::regionck_item(&fcx, item);
-        vtable2::check_builtin_bound_obligations(&fcx);
     }
 
     fn check_type_defn(&mut self,
                        item: &ast::Item,
-                       lookup_fields: |&FnCtxt| -> Vec<ty::t>)
+                       lookup_fields: |&FnCtxt| -> Vec<AdtVariant>)
     {
         /*!
          * In a type definition, we check that to ensure that the types of the fields are
@@ -123,13 +111,30 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
          */
 
         self.with_fcx(self.ccx, item, |this, fcx| {
-            let field_tys = lookup_fields(fcx);
+            let variants = lookup_fields(fcx);
             let mut bounds_checker = BoundsChecker::new(fcx, item.span,
                                                         item.id, Some(&mut this.cache));
-            for &ty in field_tys.iter() {
-                // Regions are checked below.
-                bounds_checker.check_traits_in_ty(ty);
+            for variant in variants.iter() {
+                for field in variant.fields.iter() {
+                    // Regions are checked below.
+                    bounds_checker.check_traits_in_ty(field.ty);
+                }
+
+                // For DST, all intermediate types must be sized.
+                if variant.fields.len() > 0 {
+                    for field in variant.fields.init().iter() {
+                        let cause = traits::ObligationCause::new(field.span, traits::FieldSized);
+                        fcx.register_obligation(
+                            traits::obligation_for_builtin_bound(fcx.tcx(),
+                                                                 cause,
+                                                                 field.ty,
+                                                                 ty::BoundSized));
+                    }
+                }
             }
+
+            let field_tys: Vec<ty::t> =
+                variants.iter().flat_map(|v| v.fields.iter().map(|f| f.ty)).collect();
 
             regionck::regionck_ensure_component_tys_wf(
                 fcx, item.span, field_tys.as_slice());
@@ -165,6 +170,22 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
                 Some(t) => { t }
             };
             let trait_ref = (*trait_ref).subst(fcx.tcx(), &fcx.inh.param_env.free_substs);
+
+            // There are special rules that apply to drop.
+            if
+                fcx.tcx().lang_items.drop_trait() == Some(trait_ref.def_id) &&
+                !attr::contains_name(item.attrs.as_slice(), "unsafe_destructor")
+            {
+                match ty::get(self_ty).sty {
+                    ty::ty_struct(def_id, _) |
+                    ty::ty_enum(def_id, _) => {
+                        check_struct_safe_for_destructor(fcx, item.span, self_ty, def_id);
+                    }
+                    _ => {
+                        // Coherence already reports an error in this case.
+                    }
+                }
+            }
 
             // We are stricter on the trait-ref in an impl than the
             // self-type.  In particular, we enforce region
@@ -361,5 +382,89 @@ impl<'cx,'tcx> TypeFolder<'tcx> for BoundsChecker<'cx,'tcx> {
         }
 
         t // we're not folding to produce a new type, so just return `t` here
+    }
+}
+
+///////////////////////////////////////////////////////////////////////////
+// ADT
+
+struct AdtVariant {
+    fields: Vec<AdtField>,
+}
+
+struct AdtField {
+    ty: ty::t,
+    span: Span,
+}
+
+fn struct_variant(fcx: &FnCtxt, struct_def: &ast::StructDef) -> AdtVariant {
+    let fields =
+        struct_def.fields
+        .iter()
+        .map(|field| {
+            let field_ty = ty::node_id_to_type(fcx.tcx(), field.node.id);
+            let field_ty = field_ty.subst(fcx.tcx(), &fcx.inh.param_env.free_substs);
+            AdtField { ty: field_ty, span: field.span }
+        })
+        .collect();
+    AdtVariant { fields: fields }
+}
+
+fn enum_variants(fcx: &FnCtxt, enum_def: &ast::EnumDef) -> Vec<AdtVariant> {
+    enum_def.variants.iter()
+        .map(|variant| {
+            match variant.node.kind {
+                ast::TupleVariantKind(ref args) if args.len() > 0 => {
+                    let ctor_ty = ty::node_id_to_type(fcx.tcx(), variant.node.id);
+                    let arg_tys = ty::ty_fn_args(ctor_ty);
+                    AdtVariant {
+                        fields: args.iter().enumerate().map(|(index, arg)| {
+                            let arg_ty = arg_tys[index];
+                            let arg_ty = arg_ty.subst(fcx.tcx(), &fcx.inh.param_env.free_substs);
+                            AdtField {
+                                ty: arg_ty,
+                                span: arg.ty.span
+                            }
+                        }).collect()
+                    }
+                }
+                ast::TupleVariantKind(_) => {
+                    AdtVariant {
+                        fields: Vec::new()
+                    }
+                }
+                ast::StructVariantKind(ref struct_def) => {
+                    struct_variant(fcx, &**struct_def)
+                }
+            }
+        })
+        .collect()
+}
+
+///////////////////////////////////////////////////////////////////////////
+// Special drop trait checking
+
+fn check_struct_safe_for_destructor(fcx: &FnCtxt,
+                                    span: Span,
+                                    self_ty: ty::t,
+                                    struct_did: ast::DefId) {
+    let struct_tpt = ty::lookup_item_type(fcx.tcx(), struct_did);
+    if !struct_tpt.generics.has_type_params(subst::TypeSpace)
+        && !struct_tpt.generics.has_region_params(subst::TypeSpace)
+    {
+        let cause = traits::ObligationCause::new(span, traits::DropTrait);
+        fcx.register_obligation(
+            traits::obligation_for_builtin_bound(
+                fcx.tcx(),
+                cause,
+                self_ty,
+                ty::BoundSend));
+    } else {
+        span_err!(fcx.tcx().sess, span, E0141,
+                  "cannot implement a destructor on a structure \
+                       with type parameters");
+            span_note!(fcx.tcx().sess, span,
+                       "use \"#[unsafe_destructor]\" on the implementation \
+                        to force the compiler to allow this");
     }
 }

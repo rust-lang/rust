@@ -120,11 +120,13 @@ and report an error, and it just seems like more mess in the end.)
 
 use middle::def;
 use middle::mem_categorization as mc;
+use middle::traits;
 use middle::ty::{ReScope};
 use middle::ty;
 use middle::typeck::astconv::AstConv;
 use middle::typeck::check::FnCtxt;
 use middle::typeck::check::regionmanip;
+use middle::typeck::check::vtable2;
 use middle::typeck::infer::resolve_and_force_all_but_regions;
 use middle::typeck::infer::resolve_type;
 use middle::typeck::infer;
@@ -165,6 +167,11 @@ pub fn regionck_fn(fcx: &FnCtxt, id: ast::NodeId, blk: &ast::Block) {
         // regionck assumes typeck succeeded
         rcx.visit_fn_body(id, blk);
     }
+
+    // Region checking a fn can introduce new trait obligations,
+    // particularly around closure bounds.
+    vtable2::select_all_fcx_obligations_or_error(fcx);
+
     fcx.infcx().resolve_regions_and_report_errors();
 }
 
@@ -848,16 +855,6 @@ fn check_expr_fn_block(rcx: &mut Rcx,
                 }
             });
         }
-        ty::ty_closure(box ty::ClosureTy{store: ty::UniqTraitStore,
-                                         bounds: ref bounds,
-                                         ..}) => {
-            // For proc, ensure that the *types* of the variables
-            // outlive region bound, since they are captured by value.
-            ty::with_freevars(tcx, expr.id, |freevars| {
-                ensure_free_variable_types_outlive_closure_bound(
-                    rcx, bounds.region_bound, expr, freevars);
-            });
-        }
         ty::ty_unboxed_closure(_, region) => {
             ty::with_freevars(tcx, expr.id, |freevars| {
                 // No free variables means that there is no environment and
@@ -868,8 +865,9 @@ fn check_expr_fn_block(rcx: &mut Rcx,
                 // NDM -- this seems wrong, discuss with pcwalton, should
                 // be straightforward enough.
                 if !freevars.is_empty() {
+                    let bounds = ty::region_existential_bound(region);
                     ensure_free_variable_types_outlive_closure_bound(
-                        rcx, region, expr, freevars);
+                        rcx, bounds, expr, freevars);
                 }
             })
         }
@@ -881,20 +879,26 @@ fn check_expr_fn_block(rcx: &mut Rcx,
     rcx.set_repeating_scope(repeating_scope);
 
     match ty::get(function_type).sty {
-        ty::ty_closure(box ty::ClosureTy {
-                store: ty::RegionTraitStore(..),
-                ..
-            }) => {
+        ty::ty_closure(box ty::ClosureTy { store: ty::RegionTraitStore(..), .. }) => {
             ty::with_freevars(tcx, expr.id, |freevars| {
                 propagate_upupvar_borrow_kind(rcx, expr, freevars);
             })
         }
-        _ => ()
+        _ => {}
+    }
+
+    match ty::get(function_type).sty {
+        ty::ty_closure(box ty::ClosureTy {bounds, ..}) => {
+            ty::with_freevars(tcx, expr.id, |freevars| {
+                ensure_free_variable_types_outlive_closure_bound(rcx, bounds, expr, freevars);
+            })
+        }
+        _ => {}
     }
 
     fn ensure_free_variable_types_outlive_closure_bound(
         rcx: &mut Rcx,
-        region_bound: ty::Region,
+        bounds: ty::ExistentialBounds,
         expr: &ast::Expr,
         freevars: &[ty::Freevar])
     {
@@ -908,7 +912,7 @@ fn check_expr_fn_block(rcx: &mut Rcx,
         let tcx = rcx.fcx.ccx.tcx;
 
         debug!("ensure_free_variable_types_outlive_closure_bound({}, {})",
-               region_bound.repr(tcx), expr.repr(tcx));
+               bounds.region_bound.repr(tcx), expr.repr(tcx));
 
         for freevar in freevars.iter() {
             let var_node_id = {
@@ -917,11 +921,35 @@ fn check_expr_fn_block(rcx: &mut Rcx,
                 def_id.node
             };
 
-            let var_ty = rcx.resolve_node_type(var_node_id);
+            // Compute the type of the field in the environment that
+            // represents `var_node_id`.  For a by-value closure, this
+            // will be the same as the type of the variable.  For a
+            // by-reference closure, this will be `&T` where `T` is
+            // the type of the variable.
+            let raw_var_ty = rcx.resolve_node_type(var_node_id);
+            let upvar_id = ty::UpvarId { var_id: var_node_id,
+                                         closure_expr_id: expr.id };
+            let var_ty = match rcx.fcx.inh.upvar_borrow_map.borrow().find(&upvar_id) {
+                Some(upvar_borrow) => {
+                    ty::mk_rptr(rcx.tcx(),
+                                upvar_borrow.region,
+                                ty::mt { mutbl: upvar_borrow.kind.to_mutbl_lossy(),
+                                         ty: raw_var_ty })
+                }
+                None => raw_var_ty
+            };
 
+            // Check that the type meets the criteria of the existential bounds:
+            for builtin_bound in bounds.builtin_bounds.iter() {
+                let code = traits::ClosureCapture(var_node_id, expr.span);
+                let cause = traits::ObligationCause::new(freevar.span, code);
+                let obligation = traits::obligation_for_builtin_bound(rcx.tcx(), cause,
+                                                                      var_ty, builtin_bound);
+                rcx.fcx.inh.fulfillment_cx.borrow_mut().register_obligation(rcx.tcx(), obligation);
+            }
             type_must_outlive(
                 rcx, infer::RelateProcBound(expr.span, var_node_id, var_ty),
-                var_ty, region_bound);
+                var_ty, bounds.region_bound);
         }
     }
 

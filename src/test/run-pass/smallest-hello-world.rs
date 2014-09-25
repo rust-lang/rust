@@ -22,7 +22,7 @@ extern "rust-intrinsic" { fn transmute<T, U>(t: T) -> U; }
 
 #[lang = "stack_exhausted"] extern fn stack_exhausted() {}
 #[lang = "eh_personality"] extern fn eh_personality() {}
-#[lang = "sized"] pub trait Sized {}
+#[lang = "fail_fmt"] fn fail_fmt() -> ! { loop {} }
 
 #[start]
 #[no_split_stack]

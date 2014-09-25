@@ -25,19 +25,19 @@ pub use self::Sync as Share;
 
 /// Types able to be transferred across task boundaries.
 #[lang="send"]
-pub trait Send {
+pub trait Send for Sized? {
     // empty.
 }
 
 /// Types with a constant size known at compile-time.
 #[lang="sized"]
-pub trait Sized {
+pub trait Sized for Sized? {
     // Empty.
 }
 
 /// Types that can be copied by simply copying bits (i.e. `memcpy`).
 #[lang="copy"]
-pub trait Copy {
+pub trait Copy for Sized? {
     // Empty.
 }
 
@@ -87,7 +87,7 @@ pub trait Copy {
 /// reference; not doing this is undefined behaviour (for example,
 /// `transmute`-ing from `&T` to `&mut T` is illegal).
 #[lang="sync"]
-pub trait Sync {
+pub trait Sync for Sized? {
     // Empty
 }
 

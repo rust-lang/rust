@@ -186,27 +186,10 @@ pub fn select_all_fcx_obligations_or_error(fcx: &FnCtxt) {
     debug!("select_all_fcx_obligations_or_error");
 
     let mut fulfillment_cx = fcx.inh.fulfillment_cx.borrow_mut();
-    let r =
-        fulfillment_cx.select_all_or_error(
-            fcx.infcx(),
-            &fcx.inh.param_env,
-            &*fcx.inh.unboxed_closures.borrow());
+    let r = fulfillment_cx.select_all_or_error(fcx.infcx(),
+                                               &fcx.inh.param_env,
+                                               fcx);
     match r {
-        Ok(()) => { }
-        Err(errors) => { report_fulfillment_errors(fcx, &errors); }
-    }
-}
-
-pub fn check_builtin_bound_obligations(fcx: &FnCtxt) {
-    /*!
-     * Hacky second pass to check builtin-bounds obligations *after*
-     * writeback occurs.
-     */
-
-    match
-        fcx.inh.fulfillment_cx.borrow()
-                              .check_builtin_bound_obligations(fcx.infcx())
-    {
         Ok(()) => { }
         Err(errors) => { report_fulfillment_errors(fcx, &errors); }
     }
@@ -244,7 +227,8 @@ pub fn report_fulfillment_error(fcx: &FnCtxt,
 
 pub fn report_selection_error(fcx: &FnCtxt,
                               obligation: &Obligation,
-                              error: &SelectionError) {
+                              error: &SelectionError)
+{
     match *error {
         Unimplemented => {
             let (trait_ref, self_ty) = resolve_trait_ref(fcx, obligation);
@@ -309,15 +293,31 @@ pub fn maybe_report_ambiguity(fcx: &FnCtxt, obligation: &Obligation) {
            obligation.repr(fcx.tcx()));
     if ty::type_is_error(self_ty) {
     } else if ty::type_needs_infer(self_ty) {
-        fcx.tcx().sess.span_err(
-            obligation.cause.span,
-            format!(
-                "unable to infer enough type information to \
-             locate the impl of the trait `{}` for \
-             the type `{}`; type annotations required",
-            trait_ref.user_string(fcx.tcx()),
-            self_ty.user_string(fcx.tcx())).as_slice());
-        note_obligation_cause(fcx, obligation);
+        // This is kind of a hack: it frequently happens that some earlier
+        // error prevents types from being fully inferred, and then we get
+        // a bunch of uninteresting errors saying something like "<generic
+        // #0> doesn't implement Sized".  It may even be true that we
+        // could just skip over all checks where the self-ty is an
+        // inference variable, but I was afraid that there might be an
+        // inference variable created, registered as an obligation, and
+        // then never forced by writeback, and hence by skipping here we'd
+        // be ignoring the fact that we don't KNOW the type works
+        // out. Though even that would probably be harmless, given that
+        // we're only talking about builtin traits, which are known to be
+        // inhabited. But in any case I just threw in this check for
+        // has_errors() to be sure that compilation isn't happening
+        // anyway. In that case, why inundate the user.
+        if !fcx.tcx().sess.has_errors() {
+            fcx.tcx().sess.span_err(
+                obligation.cause.span,
+                format!(
+                    "unable to infer enough type information to \
+                     locate the impl of the trait `{}` for \
+                     the type `{}`; type annotations required",
+                    trait_ref.user_string(fcx.tcx()),
+                    self_ty.user_string(fcx.tcx())).as_slice());
+            note_obligation_cause(fcx, obligation);
+        }
     } else if fcx.tcx().sess.err_count() == 0 {
          // Ambiguity. Coherence should have reported an error.
         fcx.tcx().sess.span_bug(
@@ -337,9 +337,7 @@ pub fn select_fcx_obligations_where_possible(fcx: &FnCtxt) {
     match
         fcx.inh.fulfillment_cx
         .borrow_mut()
-        .select_where_possible(fcx.infcx(),
-                               &fcx.inh.param_env,
-                               &*fcx.inh.unboxed_closures.borrow())
+        .select_where_possible(fcx.infcx(), &fcx.inh.param_env, fcx)
     {
         Ok(()) => { }
         Err(errors) => { report_fulfillment_errors(fcx, &errors); }
@@ -391,6 +389,27 @@ fn note_obligation_cause(fcx: &FnCtxt,
             tcx.sess.span_note(
                 obligation.cause.span,
                 "structs must have a statically known size to be initialized");
+        }
+        traits::DropTrait => {
+            span_note!(tcx.sess, obligation.cause.span,
+                      "cannot implement a destructor on a \
+                      structure or enumeration that does not satisfy Send");
+            span_note!(tcx.sess, obligation.cause.span,
+                       "use \"#[unsafe_destructor]\" on the implementation \
+                       to force the compiler to allow this");
+        }
+        traits::ClosureCapture(var_id, closure_span) => {
+            let name = ty::local_var_name_str(tcx, var_id);
+            span_note!(tcx.sess, closure_span,
+                       "the closure that captures `{}` requires that all captured variables \"
+                       implement the trait `{}`",
+                       name,
+                       trait_name);
+        }
+        traits::FieldSized => {
+            span_note!(tcx.sess, obligation.cause.span,
+                       "only the last field of a struct or enum variant \
+                       may have a dynamically sized type")
         }
     }
 }

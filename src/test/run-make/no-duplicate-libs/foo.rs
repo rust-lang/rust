@@ -19,3 +19,4 @@ pub extern fn foo() {}
 
 #[lang = "stack_exhausted"] fn stack_exhausted() {}
 #[lang = "eh_personality"] fn eh_personality() {}
+#[lang = "fail_fmt"] fn fail_fmt() -> ! { loop {} }

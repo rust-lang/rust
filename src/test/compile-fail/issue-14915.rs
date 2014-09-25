@@ -15,8 +15,5 @@ fn main() {
     let y: Gc<int> = box (GC) 0;
 
     println!("{}", x + 1); //~ ERROR binary operation `+` cannot be applied to type `Box<int>`
-    //~^ ERROR unable to infer enough type information
-    println!("{}", y + 1);
-    //~^ ERROR binary operation `+` cannot be applied to type `Gc<int>`
-    //~^^ ERROR unable to infer enough type information
+    println!("{}", y + 1); //~ ERROR binary operation `+` cannot be applied to type `Gc<int>`
 }
