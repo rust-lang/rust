@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! The Rust Standard Library
+//! # The Rust Standard Library
 //!
 //! The Rust Standard Library provides the essential runtime
 //! functionality for building portable Rust software.

@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! The Rust core allocation library
+//! # The Rust core allocation library
 //!
 //! This is the lowest level library through which allocation in Rust can be
 //! performed where the allocation is assumed to succeed. This library will
