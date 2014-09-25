@@ -23,6 +23,7 @@ use core::num;
 use core::ops;
 use core::ptr;
 use core::raw::Slice as RawSlice;
+use core::slice::Slice as SliceSlice;
 use core::uint;
 
 use {Mutable, MutableSeq};
@@ -459,6 +460,36 @@ impl<T> Index<uint,T> for Vec<T> {
     }
 }*/
 
+// Annoying helper function because there are two Slice::as_slice functions in
+// scope.
+#[inline]
+fn slice_to_slice<'a, T, U: Slice<T>>(this: &'a U) -> &'a [T] {
+    this.as_slice()
+}
+
+
+#[cfg(not(stage0))]
+impl<T> ops::Slice<uint, [T]> for Vec<T> {
+    #[inline]
+    fn as_slice<'a>(&'a self) -> &'a [T] {
+        slice_to_slice(self)
+    }
+
+    #[inline]
+    fn slice_from<'a>(&'a self, start: &uint) -> &'a [T] {
+        slice_to_slice(self).slice_from(start)
+    }
+
+    #[inline]
+    fn slice_to<'a>(&'a self, end: &uint) -> &'a [T] {
+        slice_to_slice(self).slice_to(end)
+    }
+    #[inline]
+    fn slice<'a>(&'a self, start: &uint, end: &uint) -> &'a [T] {
+        slice_to_slice(self).slice(start, end)
+    }
+}
+#[cfg(stage0)]
 impl<T> ops::Slice<uint, [T]> for Vec<T> {
     #[inline]
     fn as_slice_<'a>(&'a self) -> &'a [T] {
@@ -480,6 +511,28 @@ impl<T> ops::Slice<uint, [T]> for Vec<T> {
     }
 }
 
+#[cfg(not(stage0))]
+impl<T> ops::SliceMut<uint, [T]> for Vec<T> {
+    #[inline]
+    fn as_mut_slice<'a>(&'a mut self) -> &'a mut [T] {
+        self.as_mut_slice()
+    }
+
+    #[inline]
+    fn slice_from_mut<'a>(&'a mut self, start: &uint) -> &'a mut [T] {
+        self.as_mut_slice().slice_from_mut(start)
+    }
+
+    #[inline]
+    fn slice_to_mut<'a>(&'a mut self, end: &uint) -> &'a mut [T] {
+        self.as_mut_slice().slice_to_mut(end)
+    }
+    #[inline]
+    fn slice_mut<'a>(&'a mut self, start: &uint, end: &uint) -> &'a mut [T] {
+        self.as_mut_slice().slice_mut(start, end)
+    }
+}
+#[cfg(stage0)]
 impl<T> ops::SliceMut<uint, [T]> for Vec<T> {
     #[inline]
     fn as_mut_slice_<'a>(&'a mut self) -> &'a mut [T] {

@@ -373,7 +373,7 @@ fn test_all() {
     assert!(v.iter().all(|&x| x < 10));
     assert!(!v.iter().all(|&x| x % 2 == 0));
     assert!(!v.iter().all(|&x| x > 100));
-    assert!(v.slice_(&0, &0).iter().all(|_| fail!()));
+    assert!(v.slice(&0, &0).iter().all(|_| fail!()));
 }
 
 #[test]
@@ -382,7 +382,7 @@ fn test_any() {
     assert!(v.iter().any(|&x| x < 10));
     assert!(v.iter().any(|&x| x % 2 == 0));
     assert!(!v.iter().any(|&x| x > 100));
-    assert!(!v.slice_(&0, &0).iter().any(|_| fail!()));
+    assert!(!v.slice(&0, &0).iter().any(|_| fail!()));
 }
 
 #[test]
