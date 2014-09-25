@@ -8,27 +8,27 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags: --cfg foo --cfg bar(baz) --cfg qux="foo"
+// compile-flags: --cfg foo --cfg qux="foo"
 
 pub fn main() {
     // check
     if ! cfg!(foo) { fail!() }
     if   cfg!(not(foo)) { fail!() }
 
-    if ! cfg!(bar(baz)) { fail!() }
-    if   cfg!(not(bar(baz))) { fail!() }
-
     if ! cfg!(qux="foo") { fail!() }
     if   cfg!(not(qux="foo")) { fail!() }
 
-    if ! cfg!(foo, bar(baz), qux="foo") { fail!() }
-    if   cfg!(not(foo, bar(baz), qux="foo")) { fail!() }
+    if ! cfg!(foo, qux="foo") { fail!() }
+    if   cfg!(not(foo, qux="foo")) { fail!() }
+    if   cfg!(all(not(foo, qux="foo"))) { fail!() }
 
     if cfg!(not_a_cfg) { fail!() }
-    if cfg!(not_a_cfg, foo, bar(baz), qux="foo") { fail!() }
+    if cfg!(not_a_cfg, foo, qux="foo") { fail!() }
+    if cfg!(all(not_a_cfg, foo, qux="foo")) { fail!() }
+    if ! cfg!(any(not_a_cfg, foo)) { fail!() }
 
     if ! cfg!(not(not_a_cfg)) { fail!() }
-    if ! cfg!(not(not_a_cfg), foo, bar(baz), qux="foo") { fail!() }
+    if ! cfg!(not(not_a_cfg), foo, qux="foo") { fail!() }
 
     if cfg!(trailing_comma, ) { fail!() }
 }
