@@ -35,9 +35,9 @@ ifeq ($(CFG_RELEASE_CHANNEL),nightly)
 CFG_RELEASE=$(CFG_RELEASE_NUM)-nightly
 CFG_PACKAGE_VERS=nightly
 endif
-ifeq ($(CFG_RELEASE_CHANNEL),source)
-CFG_RELEASE=$(CFG_RELEASE_NUM)-pre
-CFG_PACKAGE_VERS=$(CFG_RELEASE_NUM)-pre
+ifeq ($(CFG_RELEASE_CHANNEL),dev)
+CFG_RELEASE=$(CFG_RELEASE_NUM)-dev
+CFG_PACKAGE_VERS=$(CFG_RELEASE_NUM)-dev
 endif
 
 # The name of the package to use for creating tarballs, installers etc.
