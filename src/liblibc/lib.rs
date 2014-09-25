@@ -4633,7 +4633,7 @@ pub mod funcs {
                               option_len: socklen_t) -> c_int;
             pub fn recv(socket: c_int, buf: *mut c_void, len: size_t,
                         flags: c_int) -> ssize_t;
-            pub fn send(socket: c_int, buf: *mut c_void, len: size_t,
+            pub fn send(socket: c_int, buf: *const c_void, len: size_t,
                         flags: c_int) -> ssize_t;
             pub fn recvfrom(socket: c_int, buf: *mut c_void, len: size_t,
                             flags: c_int, addr: *mut sockaddr,
@@ -4673,7 +4673,7 @@ pub mod funcs {
             pub fn closesocket(socket: SOCKET) -> c_int;
             pub fn recv(socket: SOCKET, buf: *mut c_void, len: c_int,
                         flags: c_int) -> c_int;
-            pub fn send(socket: SOCKET, buf: *mut c_void, len: c_int,
+            pub fn send(socket: SOCKET, buf: *const c_void, len: c_int,
                         flags: c_int) -> c_int;
             pub fn recvfrom(socket: SOCKET, buf: *mut c_void, len: c_int,
                             flags: c_int, addr: *mut sockaddr,

@@ -303,7 +303,7 @@ impl rtio::RtioFileStream for CFile {
         self.flush().and_then(|()| self.fd.fsync())
     }
     fn datasync(&mut self) -> IoResult<()> {
-        self.flush().and_then(|()| self.fd.fsync())
+        self.flush().and_then(|()| self.fd.datasync())
     }
     fn truncate(&mut self, offset: i64) -> IoResult<()> {
         self.flush().and_then(|()| self.fd.truncate(offset))
