@@ -11,6 +11,8 @@
 //! Rust AST Visitor. Extracts useful information and massages it into a form
 //! usable for clean
 
+use std::collections::HashSet;
+
 use syntax::abi;
 use syntax::ast;
 use syntax::ast_util;
@@ -38,16 +40,21 @@ pub struct RustdocVisitor<'a, 'tcx: 'a> {
     pub attrs: Vec<ast::Attribute>,
     pub cx: &'a core::DocContext<'tcx>,
     pub analysis: Option<&'a core::CrateAnalysis>,
+    view_item_stack: HashSet<ast::NodeId>,
 }
 
 impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
     pub fn new(cx: &'a core::DocContext<'tcx>,
                analysis: Option<&'a core::CrateAnalysis>) -> RustdocVisitor<'a, 'tcx> {
+        // If the root is reexported, terminate all recursion.
+        let mut stack = HashSet::new();
+        stack.insert(ast::CRATE_NODE_ID);
         RustdocVisitor {
             module: Module::new(None),
             attrs: Vec::new(),
             cx: cx,
             analysis: analysis,
+            view_item_stack: stack,
         }
     }
 
@@ -228,8 +235,9 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         if !please_inline && analysis.public_items.contains(&def.node) {
             return false
         }
+        if !self.view_item_stack.insert(def.node) { return false }
 
-        match tcx.map.get(def.node) {
+        let ret = match tcx.map.get(def.node) {
             ast_map::NodeItem(it) => {
                 if glob {
                     match it.node {
@@ -249,7 +257,9 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                 true
             }
             _ => false,
-        }
+        };
+        self.view_item_stack.remove(&id);
+        return ret;
     }
 
     pub fn visit_item(&mut self, item: &ast::Item,
