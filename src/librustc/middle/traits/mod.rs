@@ -12,16 +12,17 @@
  * Trait Resolution. See doc.rs.
  */
 
+use middle::mem_categorization::Typer;
 use middle::subst;
 use middle::ty;
 use middle::typeck::infer::InferCtxt;
 use std::rc::Rc;
 use syntax::ast;
 use syntax::codemap::{Span, DUMMY_SP};
-use util::nodemap::DefIdMap;
 
 pub use self::fulfill::FulfillmentContext;
 pub use self::select::SelectionContext;
+pub use self::select::SelectionCache;
 pub use self::util::supertraits;
 pub use self::util::transitive_bounds;
 pub use self::util::Supertraits;
@@ -68,16 +69,22 @@ pub enum ObligationCauseCode {
     /// Obligation incurred due to an object cast.
     ObjectCastObligation(/* Object type */ ty::t),
 
+    /// To implement drop, type must be sendable.
+    DropTrait,
+
     /// Various cases where expressions must be sized/copy/etc:
     AssignmentLhsSized,        // L = X implies that L is Sized
     StructInitializerSized,    // S { ... } must be Sized
     VariableType(ast::NodeId), // Type of each variable must be Sized
     RepeatVec,                 // [T,..n] --> T must be Copy
-}
 
-pub static DUMMY_CAUSE: ObligationCause =
-    ObligationCause { span: DUMMY_SP,
-                      code: MiscObligation };
+    // Captures of variable the given id by a closure (span is the
+    // span of the closure)
+    ClosureCapture(ast::NodeId, Span),
+
+    // Types of fields (other than the last) in a struct must be sized.
+    FieldSized,
+}
 
 pub type Obligations = subst::VecPerParamSpace<Obligation>;
 
@@ -208,31 +215,11 @@ pub struct VtableParamData {
     pub bound: Rc<ty::TraitRef>,
 }
 
-pub fn try_select_obligation(infcx: &InferCtxt,
-                             param_env: &ty::ParameterEnvironment,
-                             unboxed_closures: &DefIdMap<ty::UnboxedClosure>,
-                             obligation: &Obligation)
-                             -> SelectionResult<Selection>
-{
-    /*!
-     * Attempts to select the impl/bound/etc for the obligation
-     * given. Returns `None` if we are unable to resolve, either
-     * because of ambiguity or due to insufficient inference.  Note
-     * that selection is a shallow process and hence the result may
-     * contain nested obligations that must be resolved. The caller is
-     * responsible for ensuring that those get resolved. (But see
-     * `try_select_obligation_deep` below.)
-     */
-
-    let selcx = select::SelectionContext::new(infcx, param_env, unboxed_closures);
-    selcx.select(obligation)
-}
-
-pub fn evaluate_obligation(infcx: &InferCtxt,
-                           param_env: &ty::ParameterEnvironment,
-                           obligation: &Obligation,
-                           unboxed_closures: &DefIdMap<ty::UnboxedClosure>)
-                           -> EvaluationResult
+pub fn evaluate_obligation<'a,'tcx>(infcx: &InferCtxt<'a,'tcx>,
+                                    param_env: &ty::ParameterEnvironment,
+                                    obligation: &Obligation,
+                                    typer: &Typer<'tcx>)
+                                    -> EvaluationResult
 {
     /*!
      * Attempts to resolve the obligation given. Returns `None` if
@@ -240,18 +227,17 @@ pub fn evaluate_obligation(infcx: &InferCtxt,
      * due to insufficient inference.
      */
 
-    let selcx = select::SelectionContext::new(infcx, param_env,
-                                              unboxed_closures);
+    let mut selcx = select::SelectionContext::new(infcx, param_env, typer);
     selcx.evaluate_obligation(obligation)
 }
 
-pub fn evaluate_impl(infcx: &InferCtxt,
-                     param_env: &ty::ParameterEnvironment,
-                     unboxed_closures: &DefIdMap<ty::UnboxedClosure>,
-                     cause: ObligationCause,
-                     impl_def_id: ast::DefId,
-                     self_ty: ty::t)
-                     -> EvaluationResult
+pub fn evaluate_impl<'a,'tcx>(infcx: &InferCtxt<'a,'tcx>,
+                              param_env: &ty::ParameterEnvironment,
+                              typer: &Typer<'tcx>,
+                              cause: ObligationCause,
+                              impl_def_id: ast::DefId,
+                              self_ty: ty::t)
+                              -> EvaluationResult
 {
     /*!
      * Tests whether the impl `impl_def_id` can be applied to the self
@@ -264,17 +250,17 @@ pub fn evaluate_impl(infcx: &InferCtxt,
      *   (yes/no/unknown).
      */
 
-    let selcx = select::SelectionContext::new(infcx, param_env, unboxed_closures);
+    let mut selcx = select::SelectionContext::new(infcx, param_env, typer);
     selcx.evaluate_impl(impl_def_id, cause, self_ty)
 }
 
-pub fn select_inherent_impl(infcx: &InferCtxt,
-                            param_env: &ty::ParameterEnvironment,
-                            unboxed_closures: &DefIdMap<ty::UnboxedClosure>,
-                            cause: ObligationCause,
-                            impl_def_id: ast::DefId,
-                            self_ty: ty::t)
-                            -> SelectionResult<VtableImplData<Obligation>>
+pub fn select_inherent_impl<'a,'tcx>(infcx: &InferCtxt<'a,'tcx>,
+                                     param_env: &ty::ParameterEnvironment,
+                                     typer: &Typer<'tcx>,
+                                     cause: ObligationCause,
+                                     impl_def_id: ast::DefId,
+                                     self_ty: ty::t)
+                                     -> SelectionResult<VtableImplData<Obligation>>
 {
     /*!
      * Matches the self type of the inherent impl `impl_def_id`
@@ -293,8 +279,7 @@ pub fn select_inherent_impl(infcx: &InferCtxt,
     // `try_resolve_obligation()`.
     assert!(ty::impl_trait_ref(infcx.tcx, impl_def_id).is_none());
 
-    let selcx = select::SelectionContext::new(infcx, param_env,
-                                              unboxed_closures);
+    let mut selcx = select::SelectionContext::new(infcx, param_env, typer);
     selcx.select_inherent_impl(impl_def_id, cause, self_ty)
 }
 
@@ -375,6 +360,10 @@ impl ObligationCause {
 
     pub fn misc(span: Span) -> ObligationCause {
         ObligationCause { span: span, code: MiscObligation }
+    }
+
+    pub fn dummy() -> ObligationCause {
+        ObligationCause { span: DUMMY_SP, code: MiscObligation }
     }
 }
 

@@ -10,7 +10,7 @@
 
 fn foo(b: bool) -> Result<bool,String> {
     Err("bar".to_string());
-    //~^ ERROR: cannot determine a type for this expression: unconstrained type
+    //~^ ERROR type annotations required
 }
 
 fn main() {

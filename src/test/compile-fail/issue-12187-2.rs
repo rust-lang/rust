@@ -14,5 +14,5 @@ fn new<'r, T>() -> &'r T {
 
 fn main() {
     let &v = new();
-    //~^ ERROR cannot determine a type for this local variable: unconstrained type
+    //~^ ERROR type annotations required
 }

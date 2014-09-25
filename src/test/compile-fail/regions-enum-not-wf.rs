@@ -10,7 +10,6 @@
 
 // Various examples of structs whose fields are not well-formed.
 
-#![no_std]
 #![allow(dead_code)]
 
 enum Ref1<'a, T> { //~ ERROR the parameter type `T` may not live long enough

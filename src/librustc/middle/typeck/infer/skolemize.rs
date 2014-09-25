@@ -119,9 +119,16 @@ impl<'a, 'tcx> TypeFolder<'tcx> for TypeSkolemizer<'a, 'tcx> {
                 self.probe_unifiable(v)
             }
 
-            ty::ty_infer(ty::SkolemizedTy(_)) |
-            ty::ty_infer(ty::SkolemizedIntTy(_)) => {
-                self.tcx().sess.bug("Cannot skolemize a skolemized type");
+            ty::ty_infer(ty::SkolemizedTy(c)) |
+            ty::ty_infer(ty::SkolemizedIntTy(c)) => {
+                if c >= self.skolemization_count {
+                    self.tcx().sess.bug(
+                        format!("Encountered a skolemized type with id {} \
+                                 but our counter is only at {}",
+                                c,
+                                self.skolemization_count).as_slice());
+                }
+                t
             }
 
             ty::ty_open(..) => {
