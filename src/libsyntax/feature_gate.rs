@@ -73,7 +73,7 @@ static KNOWN_FEATURES: &'static [(&'static str, Status)] = &[
 
     ("if_let", Active),
 
-    // if you change this list without updating src/doc/rust.md, cmr will be sad
+    // if you change this list without updating src/doc/reference.md, cmr will be sad
 
     // A temporary feature gate used to enable parser extensions needed
     // to bootstrap fix for #5723.
