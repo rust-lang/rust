@@ -14,6 +14,7 @@ use c_str::{CString, ToCStr};
 use clone::Clone;
 use cmp::{PartialEq, Eq, PartialOrd, Ord, Ordering};
 use collections::{Collection, MutableSeq};
+use fmt;
 use from_str::FromStr;
 use hash;
 use io::Writer;
@@ -21,6 +22,7 @@ use iter::{DoubleEndedIterator, AdditiveIterator, Extendable, Iterator, Map};
 use option::{Option, None, Some};
 use str::Str;
 use str;
+use string::String;
 use slice::{CloneableVector, Splits, Slice, VectorVector,
             ImmutablePartialEqSlice, ImmutableSlice};
 use vec::Vec;
@@ -140,6 +142,12 @@ impl<'a> BytesContainer for &'a Path {
     #[inline]
     fn container_as_bytes<'a>(&'a self) -> &'a [u8] {
         self.as_vec()
+    }
+}
+
+impl fmt::Show for Path {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        String::from_utf8_lossy( self.as_vec() ).as_slice().fmt(f)
     }
 }
 

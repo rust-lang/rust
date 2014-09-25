@@ -17,6 +17,7 @@ use c_str::{CString, ToCStr};
 use clone::Clone;
 use cmp::{PartialEq, Eq, PartialOrd, Ord, Ordering};
 use collections::{Collection, MutableSeq};
+use fmt;
 use from_str::FromStr;
 use hash;
 use io::Writer;
@@ -185,6 +186,14 @@ impl<'a> BytesContainer for &'a Path {
     #[inline]
     fn is_str(_: Option<&'a Path>) -> bool { true }
 }
+
+
+impl fmt::Show for Path {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        String::from_utf8_lossy( self.as_vec() ).as_slice().fmt(f)
+    }
+}
+
 
 impl GenericPathUnsafe for Path {
     /// See `GenericPathUnsafe::from_vec_unchecked`.
