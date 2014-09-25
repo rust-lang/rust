@@ -39,7 +39,7 @@
 
 #![stable]
 
-use option::{Option, Some};
+use option::{Option, Some, None};
 
 /// Trait for values that can be compared for equality and inequality.
 ///
@@ -266,6 +266,32 @@ pub fn min<T: Ord>(v1: T, v2: T) -> T {
 #[stable]
 pub fn max<T: Ord>(v1: T, v2: T) -> T {
     if v1 > v2 { v1 } else { v2 }
+}
+
+/// Compare and return the minimum of two values if there is one.
+///
+/// Returns the first argument if the comparison determines them to be equal.
+#[inline]
+#[experimental]
+pub fn partial_min<T: PartialOrd>(v1: T, v2: T) -> Option<T> {
+    match v1.partial_cmp(&v2) {
+        Some(Less) | Some(Equal) => Some(v1),
+        Some(Greater) => Some(v2),
+        None => None
+    }
+}
+
+/// Compare and return the maximum of two values if there is one.
+///
+/// Returns the first argument if the comparison determines them to be equal.
+#[inline]
+#[experimental]
+pub fn partial_max<T: PartialOrd>(v1: T, v2: T) -> Option<T> {
+    match v1.partial_cmp(&v2) {
+        Some(Less) => Some(v2),
+        Some(Equal) | Some(Greater) => Some(v1),
+        None => None
+    }
 }
 
 // Implementation of PartialEq, Eq, PartialOrd and Ord for primitive types

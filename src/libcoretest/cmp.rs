@@ -9,6 +9,7 @@
 // except according to those terms.
 
 use core::cmp::lexical_ordering;
+use core::cmp::{ partial_min, partial_max };
 
 #[test]
 fn test_int_totalord() {
@@ -54,6 +55,72 @@ fn test_lexical_ordering() {
         t(Equal, o, o);
         t(Greater, o, Greater);
      }
+}
+
+#[test]
+fn test_partial_min() {
+    use core::f64::NAN;
+    let data_integer = [
+        // a, b, result
+        (0i, 0i, Some(0i)),
+        (1i, 0i, Some(0i)),
+        (0i, 1i, Some(0i)),
+        (-1i, 0i, Some(-1i)),
+        (0i, -1i, Some(-1i))
+    ];
+
+    let data_float = [
+        // a, b, result
+        (0.0f64, 0.0f64, Some(0.0f64)),
+        (1.0f64, 0.0f64, Some(0.0f64)),
+        (0.0f64, 1.0f64, Some(0.0f64)),
+        (-1.0f64, 0.0f64, Some(-1.0f64)),
+        (0.0f64, -1.0f64, Some(-1.0f64)),
+        (NAN, NAN, None),
+        (NAN, 1.0f64, None),
+        (1.0f64, NAN, None)
+    ];
+
+    for &(a, b, result) in data_integer.iter() {
+        assert!(partial_min(a, b) == result);
+    }
+
+    for &(a, b, result) in data_float.iter() {
+        assert!(partial_min(a, b) == result);
+    }
+}
+
+#[test]
+fn test_partial_max() {
+    use core::f64::NAN;
+    let data_integer = [
+        // a, b, result
+        (0i, 0i, Some(0i)),
+        (1i, 0i, Some(1i)),
+        (0i, 1i, Some(1i)),
+        (-1i, 0i, Some(0i)),
+        (0i, -1i, Some(0i))
+    ];
+
+    let data_float = [
+        // a, b, result
+        (0.0f64, 0.0f64, Some(0.0f64)),
+        (1.0f64, 0.0f64, Some(1.0f64)),
+        (0.0f64, 1.0f64, Some(1.0f64)),
+        (-1.0f64, 0.0f64, Some(0.0f64)),
+        (0.0f64, -1.0f64, Some(0.0f64)),
+        (NAN, NAN, None),
+        (NAN, 1.0f64, None),
+        (1.0f64, NAN, None)
+    ];
+
+    for &(a, b, result) in data_integer.iter() {
+        assert!(partial_max(a, b) == result);
+    }
+
+    for &(a, b, result) in data_float.iter() {
+        assert!(partial_max(a, b) == result);
+    }
 }
 
 #[test]
