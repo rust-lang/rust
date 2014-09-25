@@ -178,12 +178,12 @@ type GRRcell<D> = Gc<RefCell<GcCyclic<D>>>;
 fn make_rc_and_gc<S:Str>(name: S) -> (RRRcell<AnnounceDrop>, GRRcell<AnnounceDrop>) {
     let name = name.as_slice().to_string();
     let rc_cyclic = Rc::new(RefCell::new(RcCyclic {
-        _on_drop: AnnounceDrop(name.clone().append("-rc_cyclic")),
+        _on_drop: AnnounceDrop(name.clone().append("-rc")),
         recur: None,
     }));
 
     let gc_cyclic = box (GC) RefCell::new(GcCyclic {
-        _on_drop: AnnounceDrop(name.append("-gc_cyclic")),
+        _on_drop: AnnounceDrop(name.append("-gc")),
         recur: None,
     });
 
@@ -205,12 +205,33 @@ fn make_proc(name: &str, sleep_time: i64, and_then: proc():Send) -> proc():Send 
 }
 
 fn main() {
-    let (_rc_noncyclic, _gc_noncyclic) = make_rc_and_gc("main");
+    let (_rc_noncyclic, _gc_noncyclic) = make_rc_and_gc("main-noncyclic");
 
-    spawn(make_proc("success", 2, proc () {}));
+    spawn(make_proc("success-cyclic", 2, proc () {}));
 
-    spawn(make_proc("failure", 1, proc () { fail!("Oop"); }));
+    spawn(make_proc("failure-cyclic", 1, proc () { fail!("Oop"); }));
 
     println!("Hello, world!")
 }
 ```
+
+The above program produces output as follows:
+
+```
+% rustc gc-vs-rc-sample.rs && ./gc-vs-rc-sample
+Hello, world!
+dropping main-noncyclic-gc
+dropping main-noncyclic-rc
+task '<unnamed>' failed at 'Oop', gc-vs-rc-sample.rs:60
+dropping failure-cyclic-gc
+dropping success-cyclic-gc
+```
+
+This illustrates that both `Gc<T>` and `Rc<T>` will be reclaimed when
+used to represent non-cyclic data (the cases labelled
+`main-noncyclic-gc` and `main-noncyclic-rc`. But when you actually
+complete the cyclic structure, then in the tasks that run to
+completion (either successfully or unwinding from a failure), we still
+manage to drop the `Gc<T>` cyclic structures, illustrated by the
+printouts from the cases labelled `failure-cyclic-gc` and
+`success-cyclic-gc`.
