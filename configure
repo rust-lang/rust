@@ -488,7 +488,7 @@ esac
 
 # Continue supporting the old --enable-nightly flag to transition the bots
 # XXX Remove me
-if [ $CFG_ENABLE_NIGHTLY -eq 1 ]
+if [ ! -z "$CFG_ENABLE_NIGHTLY" ]
 then
     CFG_RELEASE_CHANNEL=nightly
     putvar CFG_RELEASE_CHANNEL
