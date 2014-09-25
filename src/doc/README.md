@@ -1,4 +1,6 @@
-# Dependencies
+# Rust documentations
+
+## Dependencies
 
 [Pandoc](http://johnmacfarlane.net/pandoc/installing.html), a universal
 document converter, is required to generate docs as HTML from Rust's
@@ -10,7 +12,7 @@ docs from the master (English) docs.
 [GNU gettext](http://www.gnu.org/software/gettext/) is required for managing
 the translation data.
 
-# Building
+## Building
 
 To generate all the docs, just run `make docs` from the root of the repository.
 This will convert the distributed Markdown docs to HTML and generate HTML doc
@@ -24,7 +26,7 @@ rustdoc --output html-doc/ --output-format html ../src/libstd/path.rs
 
 (This, of course, requires a working build of the `rustdoc` tool.)
 
-# Additional notes
+## Additional notes
 
 To generate an HTML version of a doc from Markdown manually, you can do
 something like:
@@ -33,37 +35,39 @@ something like:
 pandoc --from=markdown --to=html5 --number-sections -o reference.html reference.md
 ~~~~
 
-(reference.md being the Rust Reference Manual.)
+(`reference.md` being the Rust Reference Manual.)
 
 The syntax for pandoc flavored markdown can be found at:
-http://johnmacfarlane.net/pandoc/README.html#pandocs-markdown
+
+- http://johnmacfarlane.net/pandoc/README.html#pandocs-markdown
 
 A nice quick reference (for non-pandoc markdown) is at:
-http://kramdown.rubyforge.org/quickref.html
 
-# Notes for translators
+- http://kramdown.gettalong.org/quickref.html
+
+## Notes for translators
 
 Notice: The procedure described below is a work in progress. We are working on
 translation system but the procedure contains some manual operations for now.
 
-To start the translation for a new language, see po4a.conf at first.
+To start the translation for a new language, see `po4a.conf` at first.
 
-To generate .pot and .po files, do something like:
+To generate `.pot` and `.po` files, do something like:
 
 ~~~~
 po4a --copyright-holder="The Rust Project Developers" \
     --package-name="Rust" \
-    --package-version="0.11.0" \
+    --package-version="0.13.0" \
     -M UTF-8 -L UTF-8 \
     src/doc/po4a.conf
 ~~~~
 
-(the version number must be changed if it is not 0.11.0 now.)
+(the version number must be changed if it is not `0.13.0` now.)
 
-Now you can translate documents with .po files, commonly used with gettext. If
+Now you can translate documents with `.po` files, commonly used with gettext. If
 you are not familiar with gettext-based translation, please read the online
 manual linked from http://www.gnu.org/software/gettext/ . We use UTF-8 as the
-file encoding of .po files.
+file encoding of `.po` files.
 
 When you want to make a commit, do the command below before staging your
 change:
@@ -79,4 +83,4 @@ for f in src/doc/po/**/*.po; do
 done
 ~~~~
 
-This removes untranslated entries from .po files to save disk space.
+This removes untranslated entries from `.po` files to save disk space.
