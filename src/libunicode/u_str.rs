@@ -198,8 +198,9 @@ impl<'a> DoubleEndedIterator<(uint, &'a str)> for GraphemeIndices<'a> {
     }
 }
 
-/// External iterator for a string's
-/// [grapheme clusters](http://www.unicode.org/reports/tr29/#Grapheme_Cluster_Boundaries).
+/// External iterator for a string's grapheme clusters
+///
+/// http://www.unicode.org/reports/tr29/#Grapheme_Cluster_Boundaries
 #[deriving(Clone)]
 pub struct Graphemes<'a> {
     string: &'a str,
