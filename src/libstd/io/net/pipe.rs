@@ -751,6 +751,7 @@ mod tests {
         assert!(a2.accept().is_ok());
     })
 
+    #[cfg(not(windows))] // FIXME #17553
     iotest!(fn clone_accept_concurrent() {
         let addr = next_test_unix();
         let l = UnixListener::bind(&addr);
