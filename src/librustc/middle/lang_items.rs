@@ -264,7 +264,7 @@ lets_do_this! {
 
     StrEqFnLangItem,                 "str_eq",                  str_eq_fn;
 
-    // A number of failure-related lang items. The `fail_` item corresponds to
+    // A number of failure-related lang items. The `fail` item corresponds to
     // divide-by-zero and various failure cases with `match`. The
     // `fail_bounds_check` item is for indexing arrays.
     //
@@ -273,9 +273,9 @@ lets_do_this! {
     // defined to use it, but a final product is required to define it
     // somewhere. Additionally, there are restrictions on crates that use a weak
     // lang item, but do not have it defined.
-    FailFnLangItem,                  "fail_",                   fail_fn;
+    FailFnLangItem,                  "fail",                    fail_fn;
     FailBoundsCheckFnLangItem,       "fail_bounds_check",       fail_bounds_check_fn;
-    BeginUnwindLangItem,             "begin_unwind",            begin_unwind;
+    FailFmtLangItem,                 "fail_fmt",                fail_fmt;
 
     ExchangeMallocFnLangItem,        "exchange_malloc",         exchange_malloc_fn;
     ExchangeFreeFnLangItem,          "exchange_free",           exchange_free_fn;
