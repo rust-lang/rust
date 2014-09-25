@@ -34,6 +34,7 @@
 //! both occur before the crate is rendered.
 
 use std::collections::{HashMap, HashSet};
+use std::collections::hashmap::{Occupied, Vacant};
 use std::fmt;
 use std::io::fs::PathExtensions;
 use std::io::{fs, File, BufferedWriter, MemWriter, BufferedReader};
@@ -802,9 +803,10 @@ impl DocFolder for Cache {
             clean::ImplItem(ref i) => {
                 match i.trait_ {
                     Some(clean::ResolvedPath{ did, .. }) => {
-                        let v = self.implementors.find_or_insert_with(did, |_| {
-                            Vec::new()
-                        });
+                        let v = match self.implementors.entry(did) {
+                            Vacant(entry) => entry.set(Vec::with_capacity(1)),
+                            Occupied(entry) => entry.into_mut(),
+                        };
                         v.push(Implementor {
                             def_id: item.def_id,
                             generics: i.generics.clone(),
@@ -999,9 +1001,10 @@ impl DocFolder for Cache {
 
                         match did {
                             Some(did) => {
-                                let v = self.impls.find_or_insert_with(did, |_| {
-                                    Vec::new()
-                                });
+                                let v = match self.impls.entry(did) {
+                                    Vacant(entry) => entry.set(Vec::with_capacity(1)),
+                                    Occupied(entry) => entry.into_mut(),
+                                };
                                 v.push(Impl {
                                     impl_: i,
                                     dox: dox,
@@ -2143,7 +2146,10 @@ fn build_sidebar(m: &clean::Module) -> HashMap<String, Vec<String>> {
             None => continue,
             Some(ref s) => s.to_string(),
         };
-        let v = map.find_or_insert_with(short.to_string(), |_| Vec::new());
+        let v = match map.entry(short.to_string()) {
+            Vacant(entry) => entry.set(Vec::with_capacity(1)),
+            Occupied(entry) => entry.into_mut(),
+        };
         v.push(myname);
     }
 

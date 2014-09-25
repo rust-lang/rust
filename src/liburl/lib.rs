@@ -23,6 +23,7 @@
 #![feature(default_type_params)]
 
 use std::collections::HashMap;
+use std::collections::hashmap::{Occupied, Vacant};
 use std::fmt;
 use std::from_str::FromStr;
 use std::hash;
@@ -342,8 +343,10 @@ pub fn decode_form_urlencoded(s: &[u8])
                         key: String,
                         value: String) {
         if key.len() > 0 && value.len() > 0 {
-            let values = map.find_or_insert_with(key, |_| vec!());
-            values.push(value);
+            match map.entry(key) {
+                Vacant(entry) => { entry.set(vec![value]); },
+                Occupied(mut entry) => { entry.get_mut().push(value); },
+            }
         }
     }
 

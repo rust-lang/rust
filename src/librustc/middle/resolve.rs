@@ -59,6 +59,7 @@ use syntax::visit;
 use syntax::visit::Visitor;
 
 use std::collections::{HashMap, HashSet};
+use std::collections::hashmap::{Occupied, Vacant};
 use std::cell::{Cell, RefCell};
 use std::mem::replace;
 use std::rc::{Rc, Weak};
@@ -2815,10 +2816,13 @@ impl<'a> Resolver<'a> {
         let is_public = import_directive.is_public;
 
         let mut import_resolutions = module_.import_resolutions.borrow_mut();
-        let dest_import_resolution = import_resolutions.find_or_insert_with(name, |_| {
-            // Create a new import resolution from this child.
-            ImportResolution::new(id, is_public)
-        });
+        let dest_import_resolution = match import_resolutions.entry(name) {
+            Occupied(entry) => entry.into_mut(),
+            Vacant(entry) => {
+                // Create a new import resolution from this child.
+                entry.set(ImportResolution::new(id, is_public))
+            }
+        };
 
         debug!("(resolving glob import) writing resolution `{}` in `{}` \
                to `{}`",
@@ -6026,19 +6030,21 @@ impl<'a> Resolver<'a> {
         assert!(match lp {LastImport{..} => false, _ => true},
                 "Import should only be used for `use` directives");
         self.last_private.insert(node_id, lp);
-        self.def_map.borrow_mut().insert_or_update_with(node_id, def, |_, old_value| {
+
+        match self.def_map.borrow_mut().entry(node_id) {
             // Resolve appears to "resolve" the same ID multiple
             // times, so here is a sanity check it at least comes to
             // the same conclusion! - nmatsakis
-            if def != *old_value {
+            Occupied(entry) => if def != *entry.get() {
                 self.session
                     .bug(format!("node_id {:?} resolved first to {:?} and \
                                   then {:?}",
                                  node_id,
-                                 *old_value,
+                                 *entry.get(),
                                  def).as_slice());
-            }
-        });
+            },
+            Vacant(entry) => { entry.set(def); },
+        }
     }
 
     fn enforce_default_binding_mode(&mut self,

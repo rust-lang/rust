@@ -24,6 +24,7 @@ use plugin::load::PluginMetadata;
 
 use std::rc::Rc;
 use std::collections::HashMap;
+use std::collections::hashmap::{Occupied, Vacant};
 use syntax::ast;
 use syntax::abi;
 use syntax::attr;
@@ -82,7 +83,10 @@ fn dump_crates(cstore: &CStore) {
 fn warn_if_multiple_versions(diag: &SpanHandler, cstore: &CStore) {
     let mut map = HashMap::new();
     cstore.iter_crate_data(|cnum, data| {
-        map.find_or_insert_with(data.name(), |_| Vec::new()).push(cnum);
+        match map.entry(data.name()) {
+            Vacant(entry) => { entry.set(vec![cnum]); },
+            Occupied(mut entry) => { entry.get_mut().push(cnum); },
+        }
     });
 
     for (name, dupes) in map.into_iter() {

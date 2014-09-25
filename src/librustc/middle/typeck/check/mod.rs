@@ -121,6 +121,7 @@ use util::nodemap::{DefIdMap, FnvHashMap, NodeMap};
 
 use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
+use std::collections::hashmap::{Occupied, Vacant};
 use std::mem::replace;
 use std::rc::Rc;
 use syntax::abi;
@@ -1991,11 +1992,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
          */
 
         let mut region_obligations = self.inh.region_obligations.borrow_mut();
-        let v = region_obligations.find_or_insert_with(self.body_id,
-                                                       |_| Vec::new());
-        v.push(RegionObligation { sub_region: r,
+        let region_obligation = RegionObligation { sub_region: r,
                                   sup_type: ty,
-                                  origin: origin });
+                                  origin: origin };
+
+        match region_obligations.entry(self.body_id) {
+            Vacant(entry) => { entry.set(vec![region_obligation]); },
+            Occupied(mut entry) => { entry.get_mut().push(region_obligation); },
+        }
     }
 
     pub fn add_obligations_for_parameters(&self,
