@@ -368,7 +368,8 @@
        html_root_url = "http://doc.rust-lang.org/master/",
        html_playground_url = "http://play.rust-lang.org/")]
 
-#![feature(macro_rules, phase)]
+#![allow(unknown_features)]
+#![feature(macro_rules, phase, slicing_syntax)]
 #![deny(missing_doc)]
 
 #[cfg(test)]

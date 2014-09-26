@@ -10,6 +10,8 @@
 
 // Test that slicing syntax gives errors if we have not implemented the trait.
 
+#![feature(slicing_syntax)]
+
 struct Foo;
 
 fn main() {
