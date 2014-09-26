@@ -560,6 +560,10 @@ because it first moves the entire array into `foo`, and then `foo`
 returns the second element, but still needs to drop the rest of the
 array.
 
+Embedded drop flags and zeroing support this seamlessly, of course.
+But the whole point of this RFC is to get rid of the embedded
+per-value drop-flags.
+
 If we want to continue supporting moving out of `a[i]` (and we
 probably do, I have been converted on this point), then the drop flag
 needs to handle this case.  Our current thinking is that we can
