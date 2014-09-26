@@ -72,7 +72,7 @@ The error message will point them to the syntax they need to adopt.
 
 # Detailed design
 
-In string literal contexts, `\xXX` inputs with higher numbers are
+In string literal contexts, `\xXX` inputs with `XX > 0x7F`  are
 rejected (with an error message that mentions either, or both, of
 `\uNNNN` escapes and the byte-string literal format `b".."`).
 
