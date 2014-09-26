@@ -158,13 +158,7 @@ pub fn lookup<'a, 'tcx>(
 
     debug!("searching inherent candidates");
     lcx.push_inherent_candidates(self_ty);
-    let mme = lcx.search(self_ty);
-    if mme.is_some() {
-        return mme;
-    }
-
     debug!("searching extension candidates");
-    lcx.reset_candidates();
     lcx.push_bound_candidates(self_ty, None);
     lcx.push_extension_candidates(expr.id);
     lcx.search(self_ty)
@@ -424,11 +418,6 @@ impl<'a, 'tcx> LookupContext<'a, 'tcx> {
 
     // ______________________________________________________________________
     // Candidate collection (see comment at start of file)
-
-    fn reset_candidates(&mut self) {
-        self.inherent_candidates = Vec::new();
-        self.extension_candidates = Vec::new();
-    }
 
     fn push_inherent_candidates(&mut self, self_ty: ty::t) {
         /*!
