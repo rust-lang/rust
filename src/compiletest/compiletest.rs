@@ -9,7 +9,7 @@
 // except according to those terms.
 
 #![crate_type = "bin"]
-#![feature(phase)]
+#![feature(phase, slicing_syntax)]
 
 #![deny(warnings)]
 

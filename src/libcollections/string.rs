@@ -160,7 +160,7 @@ impl String {
 
         if i > 0 {
             unsafe {
-                res.as_mut_vec().push_all(v.[..i])
+                res.as_mut_vec().push_all(v[..i])
             };
         }
 
@@ -177,7 +177,7 @@ impl String {
             macro_rules! error(() => ({
                 unsafe {
                     if subseqidx != i_ {
-                        res.as_mut_vec().push_all(vv[subseqidx..i_]);
+                        res.as_mut_vec().push_all(v[subseqidx..i_]);
                     }
                     subseqidx = i;
                     res.as_mut_vec().push_all(REPLACEMENT);
