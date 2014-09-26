@@ -545,6 +545,7 @@ mod test {
         serv_rx.recv();
     })
 
+    #[cfg(not(windows))] // FIXME #17553
     iotest!(fn recv_from_timeout() {
         let addr1 = next_test_ip4();
         let addr2 = next_test_ip4();
