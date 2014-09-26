@@ -514,6 +514,63 @@ reported.  The expected benefits of this are:
 
 # Unresolved questions
 
+## How to handle moves out of `array[index_expr]`
+
+Niko pointed out to me today that my prototype was not addressing
+moves out of `array[index_expr]` properly.  I was assuming
+that we would just make such an expression illegal (or that they
+should already be illegal).
+
+But they are not already illegal, and above assumption that we
+would make it illegal should have been explicit.  That, or we
+should address the problem in some other way.
+
+To make this concrete, here is some code that runs today:
+
+```rust
+#[deriving(Show)]
+struct AnnounceDrop { name: &'static str }
+
+impl Drop for AnnounceDrop {
+    fn drop(&mut self) { println!("dropping {}", self.name); }
+}
+
+fn foo<A>(a: [A, ..3], i: uint) -> A {
+    a[i]
+}
+
+fn main() {
+    let a = [AnnounceDrop { name: "fst" },
+             AnnounceDrop { name: "snd" },
+             AnnounceDrop { name: "thd" }];
+    let r = foo(a, 1);
+    println!("foo returned {}", r);
+}
+```
+
+This prints:
+```
+dropping fst
+dropping thd
+foo returned AnnounceDrop { name: snd }
+dropping snd
+```
+
+because it first moves the entire array into `foo`, and then `foo`
+returns the second element, but still needs to drop the rest of the
+array.
+
+If we want to continue supporting moving out of `a[i]` (and we
+probably do, I have been converted on this point), then the drop flag
+needs to handle this case.  Our current thinking is that we can
+support it by using a single *`uint`* flag (as opposed to the booleans
+used elsewhere) for such array that has been moved out of.  The `uint`
+flag represents "drop all elements from the array *except* for the one
+listed in the flag."  (If it is only moved out of on one branch and
+not another, then we would either use an `Option<uint>`, or still use
+`uint` and just represent unmoved case via some value that is not
+valid index, such as the length of the array).
+
 ## Should we keep `#[unsafe_no_drop_flag]` ?
 
 Currently there is an `unsafe_no_drop_flag` attribute that is used to
