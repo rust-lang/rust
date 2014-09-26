@@ -56,7 +56,10 @@ summer 2012, when we did not have byte-string literals.)
 We are in a different world now.  The fact that now `\xXX` denotes a
 code unit in a byte-string literal, but in a string literal denotes a
 codepoint, does not seem elegant; it rather seems like a source of
-confusion.
+confusion.  (Caveat: While Felix does believe this assertion, this
+context-dependent interpretation of `\xXX` does have precedent
+in both Python and Racket; see [Racket example] and [Python example]
+appendices.)
 
 By restricting `\xXX` to the range `0x00`--`0x7F`, we side-step the
 question of "is it a code unit or a code point?" entirely (which was
@@ -284,3 +287,55 @@ that is good.  The problem is the behavior of `\xXX` for `XX > 0x7F`
 in string-literal contexts, namely in the fourth and fifth examples
 where the `.as_bytes()` invocations are showing that the underlying
 byte array has two elements instead of one.
+
+## Racket example
+[Racket example]: #racket-example
+
+```
+% racket
+Welcome to Racket v5.93.
+> (define a-string "\xbb\n")
+> (display a-string)
+»
+> (bytes-length (string->bytes/utf-8 a-string))
+3
+> (define a-byte-string #"\xc2\xbb\n")
+> (bytes-length a-byte-string)
+3
+> (display a-byte-string)
+»
+> (exit)
+%
+```
+
+The above code illustrates that in Racket, the `\xXX` escape sequence
+denotes a code unit in byte-string context (`#".."` in that language),
+while it denotes a code point in string context (`".."`).
+
+## Python example
+[Python example]: #python-example
+
+```
+% python
+Python 2.7.5 (default, Mar  9 2014, 22:15:05) 
+[GCC 4.2.1 Compatible Apple LLVM 5.0 (clang-500.0.68)] on darwin
+Type "help", "copyright", "credits" or "license" for more information.
+>>> a_string = u"\xbb\n";
+>>> print a_string
+»
+
+>>> len(a_string.encode("utf-8"))
+3
+>>> a_byte_string = "\xc2\xbb\n";
+>>> len(a_byte_string)
+3
+>>> print a_byte_string
+»
+
+>>> exit()
+%
+```
+
+The above code illustrates that in Python, the `\xXX` escape sequence
+denotes a code unit in byte-string context (`".."` in that language),
+while it denotes a code point in *unicode* string context (`u".."`).
