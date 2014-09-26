@@ -10,5 +10,8 @@
 
 fn main() {
     box ( () ) 0;
-    //~^ ERROR: only the managed heap and exchange heap are currently supported
+    //~^ ERROR: is not implemented for the type `()`
+
+    // FIXME (pnkfelix): can we improve on the expected error (or
+    // better still, improve the actual error itself)?
 }
