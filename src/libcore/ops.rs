@@ -684,7 +684,7 @@ pub trait IndexMut<Index, Result> {
  * A trivial implementation of `Slice`. When `Foo[..Foo]` happens, it ends up
  * calling `slice_to`, and therefore, `main` prints `Slicing!`.
  *
- * ```
+ * ```ignore
  * struct Foo;
  *
  * impl ::core::ops::Slice<Foo, Foo> for Foo {
@@ -749,7 +749,7 @@ pub trait Slice<Idx, Sized? Result> for Sized? {
  * A trivial implementation of `SliceMut`. When `Foo[Foo..]` happens, it ends up
  * calling `slice_from_mut`, and therefore, `main` prints `Slicing!`.
  *
- * ```
+ * ```ignore
  * struct Foo;
  *
  * impl ::core::ops::SliceMut<Foo, Foo> for Foo {
@@ -771,7 +771,7 @@ pub trait Slice<Idx, Sized? Result> for Sized? {
  *     }
  * }
  *
- * fn main() {
+ * pub fn main() {
  *     Foo[mut Foo..];
  * }
  * ```

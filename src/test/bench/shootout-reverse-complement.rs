@@ -41,6 +41,8 @@
 // ignore-pretty very bad with line comments
 // ignore-android doesn't terminate?
 
+#![feature(slicing_syntax)]
+
 use std::iter::range_step;
 use std::io::{stdin, stdout, File};
 
