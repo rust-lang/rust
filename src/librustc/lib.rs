@@ -29,8 +29,9 @@ This API is completely unstable and subject to change.
       html_root_url = "http://doc.rust-lang.org/master/")]
 
 #![allow(deprecated)]
+#![allow(unknown_features)]
 #![feature(macro_rules, globs, struct_variant, quote)]
-#![feature(default_type_params, phase, unsafe_destructor)]
+#![feature(default_type_params, phase, unsafe_destructor, slicing_syntax)]
 
 #![feature(rustc_diagnostic_macros)]
 #![feature(import_shadowing)]

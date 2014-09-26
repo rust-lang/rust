@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(slicing_syntax)]
+
 fn main() {
     let mut array = [1, 2, 3];
 //~^ ERROR cannot determine a type for this local variable: cannot determine the type of this integ

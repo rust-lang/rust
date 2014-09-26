@@ -10,6 +10,8 @@
 
 // Test slicing expressions doesn't defeat the borrow checker.
 
+#![feature(slicing_syntax)]
+
 fn main() {
     let y;
     {

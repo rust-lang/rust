@@ -3837,7 +3837,7 @@ type signature of `print`, and the cast expression in `main`.
 Within the body of an item that has type parameter declarations, the names of
 its type parameters are types:
 
-```
+```ignore
 fn map<A: Clone, B: Clone>(f: |A| -> B, xs: &[A]) -> Vec<B> {
     if xs.len() == 0 {
        return vec![];

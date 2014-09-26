@@ -43,7 +43,8 @@
 //!
 //! [newt]: https://en.wikipedia.org/wiki/Methods_of_computing_square_roots#Babylonian_method
 
-#![feature(macro_rules)]
+#![allow(unknown_features)]
+#![feature(macro_rules, slicing_syntax)]
 #![feature(default_type_params)]
 
 #![crate_name = "num"]
