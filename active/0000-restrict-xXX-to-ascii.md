@@ -108,9 +108,11 @@ Some reasons not to do this:
 The thesis of this RFC is that the first bullet is a falsehood.
 
 While there is some precedent for the "`\xXX` is code point"
-interpretation in some languages, the majority do seem to favor the
+interpretation in some languages, the [majority] do seem to favor the
 "`\xXX` is code unit" point of view.  The proposal of this RFC is
 side-stepping the distinction by limiting the input range for `\xXX`.
+
+[majority]: https://mail.mozilla.org/pipermail/rust-dev/2012-July/002025.html
 
 The third bullet is a strawman since we have not yet released 1.0, and
 thus everything is up for change.
