@@ -217,39 +217,44 @@ fn variant_disr_val(d: rbml::Doc) -> Option<ty::Disr> {
     })
 }
 
-fn doc_type(doc: rbml::Doc, tcx: &ty::ctxt, cdata: Cmd) -> Ty {
+fn doc_type<'tcx>(doc: rbml::Doc, tcx: &ty::ctxt<'tcx>, cdata: Cmd) -> Ty<'tcx> {
     let tp = reader::get_doc(doc, tag_items_data_item_type);
     parse_ty_data(tp.data, cdata.cnum, tp.start, tcx,
                   |_, did| translate_def_id(cdata, did))
 }
 
-fn doc_method_fty(doc: rbml::Doc, tcx: &ty::ctxt, cdata: Cmd) -> ty::BareFnTy {
+fn doc_method_fty<'tcx>(doc: rbml::Doc, tcx: &ty::ctxt<'tcx>,
+                        cdata: Cmd) -> ty::BareFnTy<'tcx> {
     let tp = reader::get_doc(doc, tag_item_method_fty);
     parse_bare_fn_ty_data(tp.data, cdata.cnum, tp.start, tcx,
                           |_, did| translate_def_id(cdata, did))
 }
 
-pub fn item_type(_item_id: ast::DefId, item: rbml::Doc,
-                 tcx: &ty::ctxt, cdata: Cmd) -> Ty {
+pub fn item_type<'tcx>(_item_id: ast::DefId, item: rbml::Doc,
+                       tcx: &ty::ctxt<'tcx>, cdata: Cmd) -> Ty<'tcx> {
     doc_type(item, tcx, cdata)
 }
 
-fn doc_trait_ref(doc: rbml::Doc, tcx: &ty::ctxt, cdata: Cmd) -> ty::TraitRef {
+fn doc_trait_ref<'tcx>(doc: rbml::Doc, tcx: &ty::ctxt<'tcx>, cdata: Cmd)
+                       -> ty::TraitRef<'tcx> {
     parse_trait_ref_data(doc.data, cdata.cnum, doc.start, tcx,
                          |_, did| translate_def_id(cdata, did))
 }
 
-fn item_trait_ref(doc: rbml::Doc, tcx: &ty::ctxt, cdata: Cmd) -> ty::TraitRef {
+fn item_trait_ref<'tcx>(doc: rbml::Doc, tcx: &ty::ctxt<'tcx>, cdata: Cmd)
+                        -> ty::TraitRef<'tcx> {
     let tp = reader::get_doc(doc, tag_item_trait_ref);
     doc_trait_ref(tp, tcx, cdata)
 }
 
-fn doc_bounds(doc: rbml::Doc, tcx: &ty::ctxt, cdata: Cmd) -> ty::ParamBounds {
+fn doc_bounds<'tcx>(doc: rbml::Doc, tcx: &ty::ctxt<'tcx>, cdata: Cmd)
+                    -> ty::ParamBounds<'tcx> {
     parse_bounds_data(doc.data, cdata.cnum, doc.start, tcx,
                       |_, did| translate_def_id(cdata, did))
 }
 
-fn trait_def_bounds(doc: rbml::Doc, tcx: &ty::ctxt, cdata: Cmd) -> ty::ParamBounds {
+fn trait_def_bounds<'tcx>(doc: rbml::Doc, tcx: &ty::ctxt<'tcx>, cdata: Cmd)
+                          -> ty::ParamBounds<'tcx> {
     let d = reader::get_doc(doc, tag_trait_def_bounds);
     doc_bounds(d, tcx, cdata)
 }
@@ -345,9 +350,9 @@ fn item_to_def_like(item: rbml::Doc, did: ast::DefId, cnum: ast::CrateNum)
     }
 }
 
-pub fn get_trait_def(cdata: Cmd,
-                     item_id: ast::NodeId,
-                     tcx: &ty::ctxt) -> ty::TraitDef
+pub fn get_trait_def<'tcx>(cdata: Cmd,
+                           item_id: ast::NodeId,
+                           tcx: &ty::ctxt<'tcx>) -> ty::TraitDef<'tcx>
 {
     let item_doc = lookup_item(item_id, cdata.data());
     let generics = doc_generics(item_doc, tcx, cdata, tag_item_generics);
@@ -360,8 +365,8 @@ pub fn get_trait_def(cdata: Cmd,
     }
 }
 
-pub fn get_type(cdata: Cmd, id: ast::NodeId, tcx: &ty::ctxt)
-    -> ty::Polytype {
+pub fn get_type<'tcx>(cdata: Cmd, id: ast::NodeId, tcx: &ty::ctxt<'tcx>)
+    -> ty::Polytype<'tcx> {
 
     let item = lookup_item(id, cdata.data());
 
@@ -384,9 +389,10 @@ pub fn get_stability(cdata: Cmd, id: ast::NodeId) -> Option<attr::Stability> {
     })
 }
 
-pub fn get_impl_trait(cdata: Cmd,
-                      id: ast::NodeId,
-                      tcx: &ty::ctxt) -> Option<Rc<ty::TraitRef>>
+pub fn get_impl_trait<'tcx>(cdata: Cmd,
+                            id: ast::NodeId,
+                            tcx: &ty::ctxt<'tcx>)
+                            -> Option<Rc<ty::TraitRef<'tcx>>>
 {
     let item_doc = lookup_item(id, cdata.data());
     reader::maybe_get_doc(item_doc, tag_item_trait_ref).map(|tp| {
@@ -394,10 +400,10 @@ pub fn get_impl_trait(cdata: Cmd,
     })
 }
 
-pub fn get_impl_vtables(cdata: Cmd,
-                        id: ast::NodeId,
-                        tcx: &ty::ctxt)
-                        -> typeck::vtable_res
+pub fn get_impl_vtables<'tcx>(cdata: Cmd,
+                              id: ast::NodeId,
+                              tcx: &ty::ctxt<'tcx>)
+                              -> typeck::vtable_res<'tcx>
 {
     let item_doc = lookup_item(id, cdata.data());
     let vtables_doc = reader::get_doc(item_doc, tag_item_impl_vtables);
@@ -645,8 +651,8 @@ pub fn maybe_get_item_ast<'tcx>(cdata: Cmd, tcx: &ty::ctxt<'tcx>, id: ast::NodeI
     }
 }
 
-pub fn get_enum_variants(intr: Rc<IdentInterner>, cdata: Cmd, id: ast::NodeId,
-                     tcx: &ty::ctxt) -> Vec<Rc<ty::VariantInfo>> {
+pub fn get_enum_variants<'tcx>(intr: Rc<IdentInterner>, cdata: Cmd, id: ast::NodeId,
+                               tcx: &ty::ctxt<'tcx>) -> Vec<Rc<ty::VariantInfo<'tcx>>> {
     let data = cdata.data();
     let items = reader::get_doc(rbml::Doc::new(data), tag_items);
     let item = find_item(id, items);
@@ -744,11 +750,11 @@ pub fn get_trait_item_name_and_kind(intr: Rc<IdentInterner>,
     }
 }
 
-pub fn get_impl_or_trait_item(intr: Rc<IdentInterner>,
-                              cdata: Cmd,
-                              id: ast::NodeId,
-                              tcx: &ty::ctxt)
-                              -> ty::ImplOrTraitItem {
+pub fn get_impl_or_trait_item<'tcx>(intr: Rc<IdentInterner>,
+                                    cdata: Cmd,
+                                    id: ast::NodeId,
+                                    tcx: &ty::ctxt<'tcx>)
+                                    -> ty::ImplOrTraitItem<'tcx> {
     let method_doc = lookup_item(id, cdata.data());
 
     let def_id = item_def_id(method_doc, cdata);
@@ -818,11 +824,11 @@ pub fn get_item_variances(cdata: Cmd, id: ast::NodeId) -> ty::ItemVariances {
     Decodable::decode(&mut decoder).unwrap()
 }
 
-pub fn get_provided_trait_methods(intr: Rc<IdentInterner>,
-                                  cdata: Cmd,
-                                  id: ast::NodeId,
-                                  tcx: &ty::ctxt)
-                                  -> Vec<Rc<ty::Method>> {
+pub fn get_provided_trait_methods<'tcx>(intr: Rc<IdentInterner>,
+                                        cdata: Cmd,
+                                        id: ast::NodeId,
+                                        tcx: &ty::ctxt<'tcx>)
+                                        -> Vec<Rc<ty::Method<'tcx>>> {
     let data = cdata.data();
     let item = lookup_item(id, data);
     let mut result = Vec::new();
@@ -850,8 +856,8 @@ pub fn get_provided_trait_methods(intr: Rc<IdentInterner>,
 }
 
 /// Returns the supertraits of the given trait.
-pub fn get_supertraits(cdata: Cmd, id: ast::NodeId, tcx: &ty::ctxt)
-                    -> Vec<Rc<ty::TraitRef>> {
+pub fn get_supertraits<'tcx>(cdata: Cmd, id: ast::NodeId, tcx: &ty::ctxt<'tcx>)
+                             -> Vec<Rc<ty::TraitRef<'tcx>>> {
     let mut results = Vec::new();
     let item_doc = lookup_item(id, cdata.data());
     reader::tagged_docs(item_doc, tag_item_super_trait_ref, |trait_doc| {
@@ -1355,11 +1361,11 @@ pub fn is_typedef(cdata: Cmd, id: ast::NodeId) -> bool {
     }
 }
 
-fn doc_generics(base_doc: rbml::Doc,
-                tcx: &ty::ctxt,
-                cdata: Cmd,
-                tag: uint)
-                -> ty::Generics
+fn doc_generics<'tcx>(base_doc: rbml::Doc,
+                      tcx: &ty::ctxt<'tcx>,
+                      cdata: Cmd,
+                      tag: uint)
+                      -> ty::Generics<'tcx>
 {
     let doc = reader::get_doc(base_doc, tag);
 

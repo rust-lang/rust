@@ -59,17 +59,18 @@ impl<'a, 'tcx> TypeSkolemizer<'a, 'tcx> {
         TypeSkolemizer { infcx: infcx, skolemization_count: 0 }
     }
 
-    fn probe_ty(&mut self, v: ty::TyVid) -> Ty {
+    fn probe_ty(&mut self, v: ty::TyVid) -> Ty<'tcx> {
         self.skolemize_if_none(self.infcx.type_variables.borrow().probe(v), ty::SkolemizedTy)
     }
 
-    fn probe_unifiable<V:SimplyUnifiable,K:UnifyKey<Option<V>>>(&mut self, k: K) -> Ty {
+    fn probe_unifiable<V:SimplyUnifiable<'tcx>,K:UnifyKey<'tcx, Option<V>>>(&mut self, k: K)
+                                                                            -> Ty<'tcx> {
         self.skolemize_if_none(self.infcx.probe_var(k), ty::SkolemizedIntTy)
     }
 
-    fn skolemize_if_none(&mut self, o: Option<Ty>,
+    fn skolemize_if_none(&mut self, o: Option<Ty<'tcx>>,
                          skolemizer: |uint| -> ty::InferTy)
-                         -> Ty {
+                         -> Ty<'tcx> {
         match o {
             Some(t) => t.fold_with(self),
             None => {
@@ -105,7 +106,7 @@ impl<'a, 'tcx> TypeFolder<'tcx> for TypeSkolemizer<'a, 'tcx> {
         }
     }
 
-    fn fold_ty(&mut self, t: Ty) -> Ty {
+    fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
         match ty::get(t).sty {
             ty::ty_infer(ty::TyVar(v)) => {
                 self.probe_ty(v)

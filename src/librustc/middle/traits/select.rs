@@ -33,8 +33,8 @@ use util::ppaux::Repr;
 
 pub struct SelectionContext<'cx, 'tcx:'cx> {
     infcx: &'cx InferCtxt<'cx, 'tcx>,
-    param_env: &'cx ty::ParameterEnvironment,
-    unboxed_closures: &'cx DefIdMap<ty::UnboxedClosure>,
+    param_env: &'cx ty::ParameterEnvironment<'tcx>,
+    unboxed_closures: &'cx DefIdMap<ty::UnboxedClosure<'tcx>>,
 }
 
 // pub struct SelectionCache {
@@ -80,10 +80,10 @@ enum MatchResult<T> {
  * parameters) that would have to be inferred from the impl.
  */
 #[deriving(Clone)]
-enum Candidate {
+enum Candidate<'tcx> {
     MatchedBuiltinCandidate,
     AmbiguousBuiltinCandidate,
-    MatchedParamCandidate(VtableParamData),
+    MatchedParamCandidate(VtableParamData<'tcx>),
     AmbiguousParamCandidate,
     Impl(ImplCandidate),
     MatchedUnboxedClosureCandidate(/* closure */ ast::DefId)
@@ -97,8 +97,8 @@ enum ImplCandidate {
 
 impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     pub fn new(infcx: &'cx InferCtxt<'cx, 'tcx>,
-               param_env: &'cx ty::ParameterEnvironment,
-               unboxed_closures: &'cx DefIdMap<ty::UnboxedClosure>)
+               param_env: &'cx ty::ParameterEnvironment<'tcx>,
+               unboxed_closures: &'cx DefIdMap<ty::UnboxedClosure<'tcx>>)
                -> SelectionContext<'cx, 'tcx> {
         SelectionContext { infcx: infcx, param_env: param_env,
                            unboxed_closures: unboxed_closures }
@@ -123,7 +123,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     //    is `Vec<Foo>:Iterable<Bar>`, but the impl specifies
     //    `impl<T> Iterable<T> for Vec<T>`, than an error would result.
 
-    pub fn select(&self, obligation: &Obligation) -> SelectionResult<Selection> {
+    pub fn select(&self, obligation: &Obligation<'tcx>)
+                  -> SelectionResult<'tcx, Selection<'tcx>> {
         /*!
          * Evaluates whether the obligation can be satisfied. Returns
          * an indication of whether the obligation can be satisfied
@@ -141,9 +142,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
     pub fn select_inherent_impl(&self,
                                 impl_def_id: ast::DefId,
-                                obligation_cause: ObligationCause,
-                                obligation_self_ty: Ty)
-                                -> SelectionResult<VtableImplData<Obligation>>
+                                obligation_cause: ObligationCause<'tcx>,
+                                obligation_self_ty: Ty<'tcx>)
+                                -> SelectionResult<'tcx, VtableImplData<'tcx, Obligation<'tcx>>>
     {
         debug!("select_inherent_impl(impl_def_id={}, obligation_self_ty={})",
                impl_def_id.repr(self.tcx()),
@@ -178,7 +179,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     // hence completely ignores output type parameters.
 
     pub fn evaluate_obligation(&self,
-                               obligation: &Obligation)
+                               obligation: &Obligation<'tcx>)
                                -> EvaluationResult
     {
         /*!
@@ -199,7 +200,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     pub fn evaluate_impl(&self,
                          impl_def_id: ast::DefId,
                          obligation_cause: ObligationCause,
-                         obligation_self_ty: Ty)
+                         obligation_self_ty: Ty<'tcx>)
                          -> EvaluationResult
     {
         /*!
@@ -227,8 +228,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     // caller obligations, and so forth and assembling a list of
     // candidates. See `doc.rs` and the `Candidate` type for more details.
 
-    fn candidate_from_obligation(&self, obligation: &Obligation)
-                                 -> SelectionResult<Candidate>
+    fn candidate_from_obligation(&self, obligation: &Obligation<'tcx>)
+                                 -> SelectionResult<'tcx, Candidate<'tcx>>
     {
         debug!("candidate_from_obligation({}, self_ty={})",
                obligation.repr(self.tcx()),
@@ -291,9 +292,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     }
 
     fn check_candidate_cache(&self,
-                             _obligation: &Obligation,
-                             _skol_obligation_self_ty: Ty)
-                             -> Option<Candidate>
+                             _obligation: &Obligation<'tcx>,
+                             _skol_obligation_self_ty: Ty<'tcx>)
+                             -> Option<Candidate<'tcx>>
     {
         // let cache_key = CacheKey::new(obligation.trait_ref.def_id,
         //                               skol_obligation_self_ty);
@@ -303,9 +304,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     }
 
     fn insert_candidate_cache(&self,
-                              _obligation: &Obligation,
-                              _skol_obligation_self_ty: Ty,
-                              _candidate: Candidate)
+                              _obligation: &Obligation<'tcx>,
+                              _skol_obligation_self_ty: Ty<'tcx>,
+                              _candidate: Candidate<'tcx>)
     {
         // FIXME -- Enable caching. I think the right place to put the cache
         // is in the ParameterEnvironment, not the tcx, because otherwise
@@ -319,9 +320,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     }
 
     fn assemble_candidates(&self,
-                           obligation: &Obligation,
-                           skol_obligation_self_ty: Ty)
-                           -> Result<Vec<Candidate>, SelectionError>
+                           obligation: &Obligation<'tcx>,
+                           skol_obligation_self_ty: Ty<'tcx>)
+                           -> Result<Vec<Candidate<'tcx>>, SelectionError<'tcx>>
     {
         // Check for overflow.
 
@@ -387,10 +388,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     }
 
     fn assemble_candidates_from_caller_bounds(&self,
-                                              obligation: &Obligation,
-                                              skol_obligation_self_ty: Ty,
-                                              candidates: &mut Vec<Candidate>)
-                                              -> Result<(),SelectionError>
+                                              obligation: &Obligation<'tcx>,
+                                              skol_obligation_self_ty: Ty<'tcx>,
+                                              candidates: &mut Vec<Candidate<'tcx>>)
+                                              -> Result<(),SelectionError<'tcx>>
     {
         /*!
          * Given an obligation like `<SomeTrait for T>`, search the obligations
@@ -448,10 +449,10 @@ v         */
     }
 
     fn assemble_unboxed_candidates(&self,
-                                   obligation: &Obligation,
-                                   skol_obligation_self_ty: Ty,
-                                   candidates: &mut Vec<Candidate>)
-                                   -> Result<(),SelectionError>
+                                   obligation: &Obligation<'tcx>,
+                                   skol_obligation_self_ty: Ty<'tcx>,
+                                   candidates: &mut Vec<Candidate<'tcx>>)
+                                   -> Result<(),SelectionError<'tcx>>
     {
         /*!
          * Check for the artificial impl that the compiler will create
@@ -502,10 +503,10 @@ v         */
     }
 
     fn assemble_candidates_from_impls(&self,
-                                      obligation: &Obligation,
-                                      skol_obligation_self_ty: Ty,
-                                      candidates: &mut Vec<Candidate>)
-                                      -> Result<(), SelectionError>
+                                      obligation: &Obligation<'tcx>,
+                                      skol_obligation_self_ty: Ty<'tcx>,
+                                      candidates: &mut Vec<Candidate<'tcx>>)
+                                      -> Result<(), SelectionError<'tcx>>
     {
         /*!
          * Search for impls that might apply to `obligation`.
@@ -531,7 +532,7 @@ v         */
     fn candidate_from_impl(&self,
                            impl_def_id: ast::DefId,
                            obligation_cause: ObligationCause,
-                           skol_obligation_self_ty: Ty)
+                           skol_obligation_self_ty: Ty<'tcx>)
                            -> Option<ImplCandidate>
     {
         match self.match_impl_self_types(impl_def_id,
@@ -559,9 +560,9 @@ v         */
     // type error.  See `doc.rs` for more details.
 
     fn confirm_candidate(&self,
-                         obligation: &Obligation,
-                         candidate: Candidate)
-                         -> SelectionResult<Selection>
+                         obligation: &Obligation<'tcx>,
+                         candidate: Candidate<'tcx>)
+                         -> SelectionResult<'tcx, Selection<'tcx>>
     {
         debug!("confirm_candidate({}, {})",
                obligation.repr(self.tcx()),
@@ -597,9 +598,10 @@ v         */
     }
 
     fn confirm_param_candidate(&self,
-                               obligation: &Obligation,
-                               param: VtableParamData)
-                               -> Result<VtableParamData,SelectionError>
+                               obligation: &Obligation<'tcx>,
+                               param: VtableParamData<'tcx>)
+                               -> Result<VtableParamData<'tcx>,
+                                         SelectionError<'tcx>>
     {
         debug!("confirm_param_candidate({},{})",
                obligation.repr(self.tcx()),
@@ -612,9 +614,10 @@ v         */
     }
 
     fn confirm_impl_candidate(&self,
-                              obligation: &Obligation,
+                              obligation: &Obligation<'tcx>,
                               impl_def_id: ast::DefId)
-                              -> Result<VtableImplData<Obligation>,SelectionError>
+                              -> Result<VtableImplData<'tcx, Obligation<'tcx>>,
+                                        SelectionError<'tcx>>
     {
         debug!("confirm_impl_candidate({},{})",
                obligation.repr(self.tcx()),
@@ -640,11 +643,11 @@ v         */
 
     fn confirm_inherent_impl_candidate(&self,
                                        impl_def_id: ast::DefId,
-                                       obligation_cause: ObligationCause,
-                                       obligation_self_ty: Ty,
+                                       obligation_cause: ObligationCause<'tcx>,
+                                       obligation_self_ty: Ty<'tcx>,
                                        obligation_recursion_depth: uint)
-                                       -> Result<VtableImplData<Obligation>,
-                                                 SelectionError>
+                                       -> Result<VtableImplData<'tcx, Obligation<'tcx>>,
+                                                 SelectionError<'tcx>>
     {
         let substs = match self.match_impl_self_types(impl_def_id,
                                                       obligation_cause,
@@ -672,9 +675,9 @@ v         */
     }
 
     fn confirm_unboxed_closure_candidate(&self,
-                                         obligation: &Obligation,
+                                         obligation: &Obligation<'tcx>,
                                          closure_def_id: ast::DefId)
-                                         -> Result<(),SelectionError>
+                                         -> Result<(),SelectionError<'tcx>>
     {
         debug!("confirm_unboxed_closure_candidate({},{})",
                obligation.repr(self.tcx()),
@@ -727,8 +730,8 @@ v         */
     fn match_impl_self_types(&self,
                              impl_def_id: ast::DefId,
                              obligation_cause: ObligationCause,
-                             obligation_self_ty: Ty)
-                             -> MatchResult<Substs>
+                             obligation_self_ty: Ty<'tcx>)
+                             -> MatchResult<Substs<'tcx>>
     {
         /*!
          * Determines whether the self type declared against
@@ -780,10 +783,10 @@ v         */
                         cause: ObligationCause,
 
                         // The self type provided by the impl/caller-obligation:
-                        provided_self_ty: Ty,
+                        provided_self_ty: Ty<'tcx>,
 
                         // The self type the obligation is for:
-                        required_self_ty: Ty)
+                        required_self_ty: Ty<'tcx>)
                         -> MatchResult<()>
     {
         // FIXME(#5781) -- equating the types is stronger than
@@ -823,10 +826,10 @@ v         */
 
     fn confirm_impl_vtable(&self,
                            impl_def_id: ast::DefId,
-                           obligation_cause: ObligationCause,
-                           obligation_trait_ref: Rc<ty::TraitRef>,
-                           substs: &Substs)
-                           -> Result<(), SelectionError>
+                           obligation_cause: ObligationCause<'tcx>,
+                           obligation_trait_ref: Rc<ty::TraitRef<'tcx>>,
+                           substs: &Substs<'tcx>)
+                           -> Result<(), SelectionError<'tcx>>
     {
         /*!
          * Relates the output type parameters from an impl to the
@@ -853,9 +856,9 @@ v         */
 
     fn confirm(&self,
                obligation_cause: ObligationCause,
-               obligation_trait_ref: Rc<ty::TraitRef>,
-               expected_trait_ref: Rc<ty::TraitRef>)
-               -> Result<(), SelectionError>
+               obligation_trait_ref: Rc<ty::TraitRef<'tcx>>,
+               expected_trait_ref: Rc<ty::TraitRef<'tcx>>)
+               -> Result<(), SelectionError<'tcx>>
     {
         /*!
          * After we have determined which impl applies, and with what
@@ -912,11 +915,11 @@ v         */
     }
 
     fn impl_obligations(&self,
-                        cause: ObligationCause,
+                        cause: ObligationCause<'tcx>,
                         recursion_depth: uint,
                         impl_def_id: ast::DefId,
-                        impl_substs: &Substs)
-                        -> VecPerParamSpace<Obligation>
+                        impl_substs: &Substs<'tcx>)
+                        -> VecPerParamSpace<Obligation<'tcx>>
     {
         let impl_generics = ty::lookup_item_type(self.tcx(),
                                                  impl_def_id).generics;
@@ -925,7 +928,7 @@ v         */
     }
 
     fn trait_ref_unconstrained(&self,
-                               trait_ref: &ty::TraitRef)
+                               trait_ref: &ty::TraitRef<'tcx>)
                                -> bool
     {
         /*!
@@ -950,7 +953,7 @@ v         */
     }
 }
 
-impl Candidate {
+impl<'tcx> Candidate<'tcx> {
     fn to_evaluation_result(&self) -> EvaluationResult {
         match *self {
             Impl(ref i) => i.to_evaluation_result(),
@@ -978,8 +981,8 @@ impl ImplCandidate {
     }
 }
 
-impl Repr for Candidate {
-    fn repr(&self, tcx: &ty::ctxt) -> String {
+impl<'tcx> Repr<'tcx> for Candidate<'tcx> {
+    fn repr(&self, tcx: &ty::ctxt<'tcx>) -> String {
         match *self {
             MatchedBuiltinCandidate => format!("MatchedBuiltinCandidate"),
             AmbiguousBuiltinCandidate => format!("AmbiguousBuiltinCandidate"),
@@ -992,7 +995,7 @@ impl Repr for Candidate {
     }
 }
 
-impl Repr for ImplCandidate {
+impl<'tcx> Repr<'tcx> for ImplCandidate {
     fn repr(&self, tcx: &ty::ctxt) -> String {
         match *self {
             MatchedImplCandidate(ref d) => format!("MatchedImplCandidate({})",

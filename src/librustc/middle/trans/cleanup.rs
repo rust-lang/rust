@@ -34,7 +34,7 @@ pub struct CleanupScope<'blk, 'tcx: 'blk> {
     kind: CleanupScopeKind<'blk, 'tcx>,
 
     // Cleanups to run upon scope exit.
-    cleanups: Vec<CleanupObj>,
+    cleanups: Vec<CleanupObj<'tcx>>,
 
     cached_early_exits: Vec<CachedEarlyExit>,
     cached_landing_pad: Option<BasicBlockRef>,
@@ -66,13 +66,13 @@ pub struct CachedEarlyExit {
     cleanup_block: BasicBlockRef,
 }
 
-pub trait Cleanup {
+pub trait Cleanup<'tcx> {
     fn must_unwind(&self) -> bool;
     fn clean_on_unwind(&self) -> bool;
-    fn trans<'blk, 'tcx>(&self, bcx: Block<'blk, 'tcx>) -> Block<'blk, 'tcx>;
+    fn trans<'blk>(&self, bcx: Block<'blk, 'tcx>) -> Block<'blk, 'tcx>;
 }
 
-pub type CleanupObj = Box<Cleanup+'static>;
+pub type CleanupObj<'tcx> = Box<Cleanup<'tcx>+'tcx>;
 
 pub enum ScopeId {
     AstScope(ast::NodeId),
@@ -245,7 +245,7 @@ impl<'blk, 'tcx> CleanupMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx> {
     fn schedule_drop_mem(&self,
                          cleanup_scope: ScopeId,
                          val: ValueRef,
-                         ty: Ty) {
+                         ty: Ty<'tcx>) {
         /*!
          * Schedules a (deep) drop of `val`, which is a pointer to an
          * instance of `ty`
@@ -271,7 +271,7 @@ impl<'blk, 'tcx> CleanupMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx> {
     fn schedule_drop_and_zero_mem(&self,
                                   cleanup_scope: ScopeId,
                                   val: ValueRef,
-                                  ty: Ty) {
+                                  ty: Ty<'tcx>) {
         /*!
          * Schedules a (deep) drop and zero-ing of `val`, which is a pointer
          * to an instance of `ty`
@@ -298,7 +298,7 @@ impl<'blk, 'tcx> CleanupMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx> {
     fn schedule_drop_immediate(&self,
                                cleanup_scope: ScopeId,
                                val: ValueRef,
-                               ty: Ty) {
+                               ty: Ty<'tcx>) {
         /*!
          * Schedules a (deep) drop of `val`, which is an instance of `ty`
          */
@@ -324,7 +324,7 @@ impl<'blk, 'tcx> CleanupMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx> {
                            cleanup_scope: ScopeId,
                            val: ValueRef,
                            heap: Heap,
-                           content_ty: Ty) {
+                           content_ty: Ty<'tcx>) {
         /*!
          * Schedules a call to `free(val)`. Note that this is a shallow
          * operation.
@@ -363,7 +363,7 @@ impl<'blk, 'tcx> CleanupMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx> {
 
     fn schedule_clean(&self,
                       cleanup_scope: ScopeId,
-                      cleanup: CleanupObj) {
+                      cleanup: CleanupObj<'tcx>) {
         match cleanup_scope {
             AstScope(id) => self.schedule_clean_in_ast_scope(id, cleanup),
             CustomScope(id) => self.schedule_clean_in_custom_scope(id, cleanup),
@@ -372,7 +372,7 @@ impl<'blk, 'tcx> CleanupMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx> {
 
     fn schedule_clean_in_ast_scope(&self,
                                    cleanup_scope: ast::NodeId,
-                                   cleanup: CleanupObj) {
+                                   cleanup: CleanupObj<'tcx>) {
         /*!
          * Schedules a cleanup to occur upon exit from `cleanup_scope`.
          * If `cleanup_scope` is not provided, then the cleanup is scheduled
@@ -400,7 +400,7 @@ impl<'blk, 'tcx> CleanupMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx> {
 
     fn schedule_clean_in_custom_scope(&self,
                                       custom_scope: CustomScopeIndex,
-                                      cleanup: CleanupObj) {
+                                      cleanup: CleanupObj<'tcx>) {
         /*!
          * Schedules a cleanup to occur in the top-most scope,
          * which must be a temporary scope.
@@ -497,7 +497,7 @@ impl<'blk, 'tcx> CleanupHelperMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx
 
     fn trans_scope_cleanups(&self, // cannot borrow self, will recurse
                             bcx: Block<'blk, 'tcx>,
-                            scope: &CleanupScope) -> Block<'blk, 'tcx> {
+                            scope: &CleanupScope<'blk, 'tcx>) -> Block<'blk, 'tcx> {
         /*! Generates the cleanups for `scope` into `bcx` */
 
         let mut bcx = bcx;
@@ -885,15 +885,15 @@ impl EarlyExitLabel {
 ///////////////////////////////////////////////////////////////////////////
 // Cleanup types
 
-pub struct DropValue {
+pub struct DropValue<'tcx> {
     is_immediate: bool,
     must_unwind: bool,
     val: ValueRef,
-    ty: Ty,
+    ty: Ty<'tcx>,
     zero: bool
 }
 
-impl Cleanup for DropValue {
+impl<'tcx> Cleanup<'tcx> for DropValue<'tcx> {
     fn must_unwind(&self) -> bool {
         self.must_unwind
     }
@@ -902,7 +902,7 @@ impl Cleanup for DropValue {
         self.must_unwind
     }
 
-    fn trans<'blk, 'tcx>(&self, bcx: Block<'blk, 'tcx>) -> Block<'blk, 'tcx> {
+    fn trans<'blk>(&self, bcx: Block<'blk, 'tcx>) -> Block<'blk, 'tcx> {
         let bcx = if self.is_immediate {
             glue::drop_ty_immediate(bcx, self.val, self.ty)
         } else {
@@ -920,13 +920,13 @@ pub enum Heap {
     HeapExchange
 }
 
-pub struct FreeValue {
+pub struct FreeValue<'tcx> {
     ptr: ValueRef,
     heap: Heap,
-    content_ty: Ty
+    content_ty: Ty<'tcx>
 }
 
-impl Cleanup for FreeValue {
+impl<'tcx> Cleanup<'tcx> for FreeValue<'tcx> {
     fn must_unwind(&self) -> bool {
         true
     }
@@ -935,7 +935,7 @@ impl Cleanup for FreeValue {
         true
     }
 
-    fn trans<'blk, 'tcx>(&self, bcx: Block<'blk, 'tcx>) -> Block<'blk, 'tcx> {
+    fn trans<'blk>(&self, bcx: Block<'blk, 'tcx>) -> Block<'blk, 'tcx> {
         match self.heap {
             HeapManaged => {
                 glue::trans_free(bcx, self.ptr)
@@ -954,7 +954,7 @@ pub struct FreeSlice {
     heap: Heap,
 }
 
-impl Cleanup for FreeSlice {
+impl<'tcx> Cleanup<'tcx> for FreeSlice {
     fn must_unwind(&self) -> bool {
         true
     }
@@ -979,7 +979,7 @@ pub struct LifetimeEnd {
     ptr: ValueRef,
 }
 
-impl Cleanup for LifetimeEnd {
+impl<'tcx> Cleanup<'tcx> for LifetimeEnd {
     fn must_unwind(&self) -> bool {
         false
     }
@@ -1055,20 +1055,20 @@ pub trait CleanupMethods<'blk, 'tcx> {
     fn schedule_drop_mem(&self,
                          cleanup_scope: ScopeId,
                          val: ValueRef,
-                         ty: Ty);
+                         ty: Ty<'tcx>);
     fn schedule_drop_and_zero_mem(&self,
                                   cleanup_scope: ScopeId,
                                   val: ValueRef,
-                                  ty: Ty);
+                                  ty: Ty<'tcx>);
     fn schedule_drop_immediate(&self,
                                cleanup_scope: ScopeId,
                                val: ValueRef,
-                               ty: Ty);
+                               ty: Ty<'tcx>);
     fn schedule_free_value(&self,
                            cleanup_scope: ScopeId,
                            val: ValueRef,
                            heap: Heap,
-                           content_ty: Ty);
+                           content_ty: Ty<'tcx>);
     fn schedule_free_slice(&self,
                            cleanup_scope: ScopeId,
                            val: ValueRef,
@@ -1077,13 +1077,13 @@ pub trait CleanupMethods<'blk, 'tcx> {
                            heap: Heap);
     fn schedule_clean(&self,
                       cleanup_scope: ScopeId,
-                      cleanup: CleanupObj);
+                      cleanup: CleanupObj<'tcx>);
     fn schedule_clean_in_ast_scope(&self,
                                    cleanup_scope: ast::NodeId,
-                                   cleanup: CleanupObj);
+                                   cleanup: CleanupObj<'tcx>);
     fn schedule_clean_in_custom_scope(&self,
                                     custom_scope: CustomScopeIndex,
-                                    cleanup: CleanupObj);
+                                    cleanup: CleanupObj<'tcx>);
     fn needs_invoke(&self) -> bool;
     fn get_landing_pad(&'blk self) -> BasicBlockRef;
 }

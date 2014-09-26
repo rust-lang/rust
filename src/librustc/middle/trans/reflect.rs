@@ -33,9 +33,9 @@ use syntax::ast_map;
 use syntax::parse::token::{InternedString, special_idents};
 use syntax::parse::token;
 
-pub struct Reflector<'a, 'blk, 'tcx: 'blk> {
+pub struct Reflector<'a, 'blk, 'tcx: 'a + 'blk> {
     visitor_val: ValueRef,
-    visitor_items: &'a [ty::ImplOrTraitItem],
+    visitor_items: &'a [ty::ImplOrTraitItem<'tcx>],
     final_bcx: Block<'blk, 'tcx>,
     tydesc_ty: Type,
     bcx: Block<'blk, 'tcx>
@@ -63,7 +63,7 @@ impl<'a, 'blk, 'tcx> Reflector<'a, 'blk, 'tcx> {
         scratch.val
     }
 
-    pub fn c_size_and_align(&mut self, t: Ty) -> Vec<ValueRef> {
+    pub fn c_size_and_align(&mut self, t: Ty<'tcx>) -> Vec<ValueRef> {
         let tr = type_of(self.bcx.ccx(), t);
         let s = machine::llsize_of_real(self.bcx.ccx(), tr);
         let a = align_of(self.bcx.ccx(), t);
@@ -71,14 +71,14 @@ impl<'a, 'blk, 'tcx> Reflector<'a, 'blk, 'tcx> {
              self.c_uint(a as uint));
     }
 
-    pub fn c_tydesc(&mut self, t: Ty) -> ValueRef {
+    pub fn c_tydesc(&mut self, t: Ty<'tcx>) -> ValueRef {
         let bcx = self.bcx;
         let static_ti = get_tydesc(bcx.ccx(), t);
         glue::lazily_emit_visit_glue(bcx.ccx(), &*static_ti);
         PointerCast(bcx, static_ti.tydesc, self.tydesc_ty.ptr_to())
     }
 
-    pub fn c_mt(&mut self, mt: &ty::mt) -> Vec<ValueRef> {
+    pub fn c_mt(&mut self, mt: &ty::mt<'tcx>) -> Vec<ValueRef> {
         vec!(self.c_uint(mt.mutbl as uint),
           self.c_tydesc(mt.ty))
     }
@@ -117,7 +117,7 @@ impl<'a, 'blk, 'tcx> Reflector<'a, 'blk, 'tcx> {
     pub fn bracketed(&mut self,
                      bracket_name: &str,
                      extra: &[ValueRef],
-                     inner: |&mut Reflector|) {
+                     inner: |&mut Reflector<'a, 'blk, 'tcx>|) {
         self.visit(format!("enter_{}", bracket_name).as_slice(), extra);
         inner(self);
         self.visit(format!("leave_{}", bracket_name).as_slice(), extra);
@@ -128,7 +128,7 @@ impl<'a, 'blk, 'tcx> Reflector<'a, 'blk, 'tcx> {
     }
 
     // Entrypoint
-    pub fn visit_ty(&mut self, t: Ty) {
+    pub fn visit_ty(&mut self, t: Ty<'tcx>) {
         let bcx = self.bcx;
         let tcx = bcx.tcx();
         debug!("reflect::visit_ty {}", ty_to_string(bcx.tcx(), t));
@@ -404,7 +404,7 @@ impl<'a, 'blk, 'tcx> Reflector<'a, 'blk, 'tcx> {
         }
     }
 
-    pub fn visit_sig(&mut self, retval: uint, sig: &ty::FnSig) {
+    pub fn visit_sig(&mut self, retval: uint, sig: &ty::FnSig<'tcx>) {
         for (i, arg) in sig.inputs.iter().enumerate() {
             let modeval = 5u;   // "by copy"
             let extra = vec!(self.c_uint(i),
@@ -421,7 +421,7 @@ impl<'a, 'blk, 'tcx> Reflector<'a, 'blk, 'tcx> {
 
 // Emit a sequence of calls to visit_ty::visit_foo
 pub fn emit_calls_to_trait_visit_ty<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
-                                                t: Ty,
+                                                t: Ty<'tcx>,
                                                 visitor_val: ValueRef,
                                                 visitor_trait_id: DefId)
                                                 -> Block<'blk, 'tcx> {

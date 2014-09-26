@@ -72,7 +72,7 @@ impl<'a, 'tcx> ty_fold::TypeFolder<'tcx> for EmptySubstsFolder<'a, 'tcx> {
     fn tcx<'a>(&'a self) -> &'a ty::ctxt<'tcx> {
         self.tcx
     }
-    fn fold_substs(&mut self, _: &subst::Substs) -> subst::Substs {
+    fn fold_substs(&mut self, _: &subst::Substs) -> subst::Substs<'tcx> {
         subst::Substs::empty()
     }
 }
@@ -298,10 +298,10 @@ fn check_ty(cx: &mut Context, aty: &ast::Ty) {
 }
 
 // Calls "any_missing" if any bounds were missing.
-pub fn check_builtin_bounds(cx: &Context,
-                            ty: Ty,
-                            bounds: ty::BuiltinBounds,
-                            any_missing: |ty::BuiltinBounds|) {
+pub fn check_builtin_bounds<'a, 'tcx>(cx: &Context<'a, 'tcx>,
+                                      ty: Ty<'tcx>,
+                                      bounds: ty::BuiltinBounds,
+                                      any_missing: |ty::BuiltinBounds|) {
     let kind = ty::type_contents(cx.tcx, ty);
     let mut missing = ty::empty_builtin_bounds();
     for bound in bounds.iter() {
@@ -314,10 +314,10 @@ pub fn check_builtin_bounds(cx: &Context,
     }
 }
 
-pub fn check_typaram_bounds(cx: &Context,
-                            sp: Span,
-                            ty: Ty,
-                            type_param_def: &ty::TypeParameterDef) {
+pub fn check_typaram_bounds<'a, 'tcx>(cx: &Context<'a, 'tcx>,
+                                      sp: Span,
+                                      ty: Ty<'tcx>,
+                                      type_param_def: &ty::TypeParameterDef<'tcx>) {
     check_builtin_bounds(cx,
                          ty,
                          type_param_def.bounds.builtin_bounds,
@@ -330,8 +330,9 @@ pub fn check_typaram_bounds(cx: &Context,
     });
 }
 
-pub fn check_freevar_bounds(cx: &Context, fn_span: Span, sp: Span, ty: Ty,
-                            bounds: ty::BuiltinBounds, referenced_ty: Option<Ty>)
+pub fn check_freevar_bounds<'a, 'tcx>(cx: &Context<'a,'tcx>, fn_span: Span, sp: Span,
+                                      ty: Ty<'tcx>, bounds: ty::BuiltinBounds,
+                                      referenced_ty: Option<Ty<'tcx>>)
 {
     check_builtin_bounds(cx, ty, bounds, |missing| {
         // Will be Some if the freevar is implicitly borrowed (stack closure).
@@ -356,8 +357,8 @@ pub fn check_freevar_bounds(cx: &Context, fn_span: Span, sp: Span, ty: Ty,
     });
 }
 
-pub fn check_trait_cast_bounds(cx: &Context, sp: Span, ty: Ty,
-                               bounds: ty::BuiltinBounds) {
+pub fn check_trait_cast_bounds<'a, 'tcx>(cx: &Context<'a, 'tcx>, sp: Span, ty: Ty<'tcx>,
+                                         bounds: ty::BuiltinBounds) {
     check_builtin_bounds(cx, ty, bounds, |missing| {
         span_err!(cx.tcx.sess, sp, E0147,
             "cannot pack type `{}`, which does not fulfill `{}`, as a trait bounded by {}",
@@ -367,7 +368,7 @@ pub fn check_trait_cast_bounds(cx: &Context, sp: Span, ty: Ty,
     });
 }
 
-fn check_copy(cx: &Context, ty: Ty, sp: Span, reason: &str) {
+fn check_copy<'a, 'tcx>(cx: &Context<'a, 'tcx>, ty: Ty<'tcx>, sp: Span, reason: &str) {
     debug!("type_contents({})={}",
            ty_to_string(cx.tcx, ty),
            ty::type_contents(cx.tcx, ty).to_string());
@@ -380,7 +381,7 @@ fn check_copy(cx: &Context, ty: Ty, sp: Span, reason: &str) {
 }
 
 // Ensure that `ty` has a statically known size (i.e., it has the `Sized` bound).
-fn check_sized(tcx: &ty::ctxt, ty: Ty, name: String, sp: Span) {
+fn check_sized<'tcx>(tcx: &ty::ctxt<'tcx>, ty: Ty<'tcx>, name: String, sp: Span) {
     if !ty::type_is_sized(tcx, ty) {
         span_err!(tcx.sess, sp, E0151,
             "variable `{}` has dynamically sized type `{}`",

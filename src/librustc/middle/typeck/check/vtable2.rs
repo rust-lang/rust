@@ -36,10 +36,10 @@ pub enum ErrorReportingContext {
     ImplSupertraitCheck,
 }
 
-pub fn check_object_cast(fcx: &FnCtxt,
-                         cast_expr: &ast::Expr,
-                         source_expr: &ast::Expr,
-                         target_object_ty: Ty)
+pub fn check_object_cast<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
+                                   cast_expr: &ast::Expr,
+                                   source_expr: &ast::Expr,
+                                   target_object_ty: Ty<'tcx>)
 {
     debug!("check_object_cast(cast_expr={}, target_object_ty={})",
            cast_expr.repr(fcx.tcx()),
@@ -106,10 +106,7 @@ pub fn check_object_cast(fcx: &FnCtxt,
         }
     }
 
-    // Because we currently give unsound lifetimes to the "ty_box", I
-    // could have written &'static ty::TyTrait here, but it seems
-    // gratuitously unsafe.
-    fn object_trait<'a>(t: &'a Ty) -> &'a ty::TyTrait {
+    fn object_trait<'a, 'tcx>(t: &'a Ty<'tcx>) -> &'a ty::TyTrait<'tcx> {
         match ty::get(*t).sty {
             ty::ty_trait(ref ty_trait) => &**ty_trait,
             _ => fail!("expected ty_trait")
@@ -123,10 +120,10 @@ pub fn check_object_cast(fcx: &FnCtxt,
             (a_mutbl == ast::MutMutable && b_mutbl == ast::MutImmutable)
     }
 
-    fn push_cast_obligation(fcx: &FnCtxt,
-                            cast_expr: &ast::Expr,
-                            object_trait: &ty::TyTrait,
-                            referent_ty: Ty) {
+    fn push_cast_obligation<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
+                                      cast_expr: &ast::Expr,
+                                      object_trait: &ty::TyTrait<'tcx>,
+                                      referent_ty: Ty<'tcx>) {
         let object_trait_ref =
             register_object_cast_obligations(fcx,
                                              cast_expr.span,
@@ -140,11 +137,11 @@ pub fn check_object_cast(fcx: &FnCtxt,
     }
 }
 
-pub fn register_object_cast_obligations(fcx: &FnCtxt,
-                                        span: Span,
-                                        object_trait: &ty::TyTrait,
-                                        referent_ty: Ty)
-                                        -> Rc<ty::TraitRef>
+pub fn register_object_cast_obligations<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
+                                                  span: Span,
+                                                  object_trait: &ty::TyTrait<'tcx>,
+                                                  referent_ty: Ty<'tcx>)
+                                                  -> Rc<ty::TraitRef<'tcx>>
 {
     // This is just for better error reporting. Kinda goofy. The object type stuff
     // needs some refactoring so there is a more convenient type to pass around.
@@ -223,8 +220,8 @@ pub fn check_builtin_bound_obligations(fcx: &FnCtxt) {
     }
 }
 
-fn resolve_trait_ref(fcx: &FnCtxt, obligation: &Obligation)
-                     -> (ty::TraitRef, Ty)
+fn resolve_trait_ref<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>, obligation: &Obligation<'tcx>)
+                               -> (ty::TraitRef<'tcx>, Ty<'tcx>)
 {
     let trait_ref =
         fcx.infcx().resolve_type_vars_in_trait_ref_if_possible(
@@ -234,15 +231,15 @@ fn resolve_trait_ref(fcx: &FnCtxt, obligation: &Obligation)
     (trait_ref, self_ty)
 }
 
-pub fn report_fulfillment_errors(fcx: &FnCtxt,
-                                 errors: &Vec<FulfillmentError>) {
+pub fn report_fulfillment_errors<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
+                                           errors: &Vec<FulfillmentError<'tcx>>) {
     for error in errors.iter() {
         report_fulfillment_error(fcx, error);
     }
 }
 
-pub fn report_fulfillment_error(fcx: &FnCtxt,
-                                error: &FulfillmentError) {
+pub fn report_fulfillment_error<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
+                                          error: &FulfillmentError<'tcx>) {
     match error.code {
         CodeSelectionError(ref e) => {
             report_selection_error(fcx, &error.obligation, e);
@@ -253,9 +250,9 @@ pub fn report_fulfillment_error(fcx: &FnCtxt,
     }
 }
 
-pub fn report_selection_error(fcx: &FnCtxt,
-                              obligation: &Obligation,
-                              error: &SelectionError) {
+pub fn report_selection_error<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
+                                        obligation: &Obligation<'tcx>,
+                                        error: &SelectionError<'tcx>) {
     match *error {
         Unimplemented => {
             let (trait_ref, self_ty) = resolve_trait_ref(fcx, obligation);
@@ -293,7 +290,8 @@ pub fn report_selection_error(fcx: &FnCtxt,
     }
 }
 
-pub fn report_overflow(fcx: &FnCtxt, obligation: &Obligation) {
+pub fn report_overflow<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
+                                 obligation: &Obligation<'tcx>) {
     let (trait_ref, self_ty) = resolve_trait_ref(fcx, obligation);
     if ty::type_is_error(self_ty) {
         fcx.tcx().sess.span_err(
@@ -308,7 +306,8 @@ pub fn report_overflow(fcx: &FnCtxt, obligation: &Obligation) {
     }
 }
 
-pub fn maybe_report_ambiguity(fcx: &FnCtxt, obligation: &Obligation) {
+pub fn maybe_report_ambiguity<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
+                                        obligation: &Obligation<'tcx>) {
     // Unable to successfully determine, probably means
     // insufficient type information, but could mean
     // ambiguous impls. The latter *ought* to be a
@@ -357,8 +356,8 @@ pub fn select_fcx_obligations_where_possible(fcx: &FnCtxt) {
     }
 }
 
-fn note_obligation_cause(fcx: &FnCtxt,
-                         obligation: &Obligation) {
+fn note_obligation_cause<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
+                                   obligation: &Obligation<'tcx>) {
     let tcx = fcx.tcx();
     let trait_name = ty::item_path_str(tcx, obligation.trait_ref.def_id);
     match obligation.cause.code {

@@ -112,8 +112,8 @@ pub struct pat_ctxt<'a, 'tcx: 'a> {
     pub map: PatIdMap,
 }
 
-pub fn check_pat_variant(pcx: &pat_ctxt, pat: &ast::Pat, path: &ast::Path,
-                         subpats: &Option<Vec<P<ast::Pat>>>, expected: Ty) {
+pub fn check_pat_variant<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>, pat: &ast::Pat, path: &ast::Path,
+                                   subpats: &Option<Vec<P<ast::Pat>>>, expected: Ty<'tcx>) {
 
     // Typecheck the path.
     let fcx = pcx.fcx;
@@ -292,13 +292,13 @@ pub fn check_pat_variant(pcx: &pat_ctxt, pat: &ast::Pat, path: &ast::Path,
 /// `substitutions` are the type substitutions applied to this struct type
 /// (e.g. K,V in HashMap<K,V>).
 /// `etc` is true if the pattern said '...' and false otherwise.
-pub fn check_struct_pat_fields(pcx: &pat_ctxt,
-                               span: Span,
-                               fields: &[ast::FieldPat],
-                               class_fields: Vec<ty::field_ty>,
-                               class_id: ast::DefId,
-                               substitutions: &subst::Substs,
-                               etc: bool) {
+pub fn check_struct_pat_fields<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
+                                         span: Span,
+                                         fields: &[ast::FieldPat],
+                                         class_fields: Vec<ty::field_ty>,
+                                         class_id: ast::DefId,
+                                         substitutions: &subst::Substs<'tcx>,
+                                         etc: bool) {
     let tcx = pcx.fcx.ccx.tcx;
 
     // Index the class fields. The second argument in the tuple is whether the
@@ -355,10 +355,10 @@ pub fn check_struct_pat_fields(pcx: &pat_ctxt,
     }
 }
 
-pub fn check_struct_pat(pcx: &pat_ctxt, span: Span,
-                        fields: &[ast::FieldPat], etc: bool,
-                        struct_id: ast::DefId,
-                        substitutions: &subst::Substs) {
+pub fn check_struct_pat<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>, span: Span,
+                                  fields: &[ast::FieldPat], etc: bool,
+                                  struct_id: ast::DefId,
+                                  substitutions: &subst::Substs<'tcx>) {
     let _fcx = pcx.fcx;
     let tcx = pcx.fcx.ccx.tcx;
 
@@ -368,15 +368,15 @@ pub fn check_struct_pat(pcx: &pat_ctxt, span: Span,
                             substitutions, etc);
 }
 
-pub fn check_struct_like_enum_variant_pat(pcx: &pat_ctxt,
-                                          pat_id: ast::NodeId,
-                                          span: Span,
-                                          expected: Ty,
-                                          path: &ast::Path,
-                                          fields: &[ast::FieldPat],
-                                          etc: bool,
-                                          enum_id: ast::DefId,
-                                          substitutions: &subst::Substs) {
+pub fn check_struct_like_enum_variant_pat<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
+                                                    pat_id: ast::NodeId,
+                                                    span: Span,
+                                                    expected: Ty<'tcx>,
+                                                    path: &ast::Path,
+                                                    fields: &[ast::FieldPat],
+                                                    etc: bool,
+                                                    enum_id: ast::DefId,
+                                                    substitutions: &subst::Substs<'tcx>) {
     let fcx = pcx.fcx;
     let tcx = pcx.fcx.ccx.tcx;
 
@@ -406,7 +406,8 @@ pub fn check_struct_like_enum_variant_pat(pcx: &pat_ctxt,
 
 // Pattern checking is top-down rather than bottom-up so that bindings get
 // their types immediately.
-pub fn check_pat(pcx: &pat_ctxt, pat: &ast::Pat, expected: Ty) {
+pub fn check_pat<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
+                           pat: &ast::Pat, expected: Ty<'tcx>) {
     let fcx = pcx.fcx;
     let tcx = pcx.fcx.ccx.tcx;
 
@@ -721,15 +722,15 @@ pub fn check_pat(pcx: &pat_ctxt, pat: &ast::Pat, expected: Ty) {
 }
 
 // Helper function to check gc, box and & patterns
-fn check_pointer_pat(pcx: &pat_ctxt,
-                     pointer_kind: PointerKind,
-                     inner: &ast::Pat,
-                     pat_id: ast::NodeId,
-                     span: Span,
-                     expected: Ty) {
+fn check_pointer_pat<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
+                               pointer_kind: PointerKind,
+                               inner: &ast::Pat,
+                               pat_id: ast::NodeId,
+                               span: Span,
+                               expected: Ty<'tcx>) {
     let fcx = pcx.fcx;
     let tcx = fcx.ccx.tcx;
-    let check_inner: |Ty| = |e_inner| {
+    let check_inner: |Ty<'tcx>| = |e_inner| {
         match ty::get(e_inner).sty {
             ty::ty_trait(_) if pat_is_binding(&tcx.def_map, inner) => {
                 // This is "x = SomeTrait" being reduced from

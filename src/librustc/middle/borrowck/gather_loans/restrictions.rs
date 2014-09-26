@@ -26,11 +26,12 @@ pub enum RestrictionResult {
     SafeIf(Rc<LoanPath>, Vec<Rc<LoanPath>>)
 }
 
-pub fn compute_restrictions(bccx: &BorrowckCtxt,
-                            span: Span,
-                            cause: euv::LoanCause,
-                            cmt: mc::cmt,
-                            loan_region: ty::Region) -> RestrictionResult {
+pub fn compute_restrictions<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
+                                      span: Span,
+                                      cause: euv::LoanCause,
+                                      cmt: mc::cmt<'tcx>,
+                                      loan_region: ty::Region)
+                                      -> RestrictionResult {
     let ctxt = RestrictionsContext {
         bccx: bccx,
         span: span,
@@ -53,7 +54,7 @@ struct RestrictionsContext<'a, 'tcx: 'a> {
 
 impl<'a, 'tcx> RestrictionsContext<'a, 'tcx> {
     fn restrict(&self,
-                cmt: mc::cmt) -> RestrictionResult {
+                cmt: mc::cmt<'tcx>) -> RestrictionResult {
         debug!("restrict(cmt={})", cmt.repr(self.bccx.tcx));
 
         match cmt.cat.clone() {

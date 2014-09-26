@@ -134,18 +134,18 @@ impl<'a, 'tcx, 'v> visit::Visitor<'v> for CollectItemTypesVisitor<'a, 'tcx> {
 ///////////////////////////////////////////////////////////////////////////
 // Utility types and common code for the above passes.
 
-pub trait ToTy {
-    fn to_ty<RS:RegionScope>(&self, rs: &RS, ast_ty: &ast::Ty) -> Ty;
+pub trait ToTy<'tcx> {
+    fn to_ty<RS:RegionScope>(&self, rs: &RS, ast_ty: &ast::Ty) -> Ty<'tcx>;
 }
 
-impl<'a,'tcx> ToTy for ImplCtxt<'a,'tcx> {
-    fn to_ty<RS:RegionScope>(&self, rs: &RS, ast_ty: &ast::Ty) -> Ty {
+impl<'a,'tcx> ToTy<'tcx> for ImplCtxt<'a,'tcx> {
+    fn to_ty<RS:RegionScope>(&self, rs: &RS, ast_ty: &ast::Ty) -> Ty<'tcx> {
         ast_ty_to_ty(self, rs, ast_ty)
     }
 }
 
-impl<'a,'tcx> ToTy for CrateCtxt<'a,'tcx> {
-    fn to_ty<RS:RegionScope>(&self, rs: &RS, ast_ty: &ast::Ty) -> Ty {
+impl<'a,'tcx> ToTy<'tcx> for CrateCtxt<'a,'tcx> {
+    fn to_ty<RS:RegionScope>(&self, rs: &RS, ast_ty: &ast::Ty) -> Ty<'tcx> {
         ast_ty_to_ty(self, rs, ast_ty)
     }
 }
@@ -153,7 +153,7 @@ impl<'a,'tcx> ToTy for CrateCtxt<'a,'tcx> {
 impl<'a, 'tcx> AstConv<'tcx> for CrateCtxt<'a, 'tcx> {
     fn tcx<'a>(&'a self) -> &'a ty::ctxt<'tcx> { self.tcx }
 
-    fn get_item_ty(&self, id: ast::DefId) -> ty::Polytype {
+    fn get_item_ty(&self, id: ast::DefId) -> ty::Polytype<'tcx> {
         if id.krate != ast::LOCAL_CRATE {
             return csearch::get_type(self.tcx, id)
         }
@@ -175,37 +175,37 @@ impl<'a, 'tcx> AstConv<'tcx> for CrateCtxt<'a, 'tcx> {
         }
     }
 
-    fn get_trait_def(&self, id: ast::DefId) -> Rc<ty::TraitDef> {
+    fn get_trait_def(&self, id: ast::DefId) -> Rc<ty::TraitDef<'tcx>> {
         get_trait_def(self, id)
     }
 
-    fn ty_infer(&self, span: Span) -> Ty {
+    fn ty_infer(&self, span: Span) -> Ty<'tcx> {
         span_err!(self.tcx.sess, span, E0121,
                   "the type placeholder `_` is not allowed within types on item signatures.");
         ty::mk_err()
     }
 
-    fn associated_types_of_trait_are_valid(&self, _: Ty, _: ast::DefId)
+    fn associated_types_of_trait_are_valid(&self, _: Ty<'tcx>, _: ast::DefId)
                                            -> bool {
         false
     }
 
     fn associated_type_binding(&self,
                                span: Span,
-                               _: Option<Ty>,
+                               _: Option<Ty<'tcx>>,
                                _: ast::DefId,
                                _: ast::DefId)
-                               -> Ty {
+                               -> Ty<'tcx> {
         self.tcx().sess.span_err(span, "associated types may not be \
                                         referenced here");
         ty::mk_err()
     }
 }
 
-pub fn get_enum_variant_types(ccx: &CrateCtxt,
-                              enum_ty: Ty,
-                              variants: &[P<ast::Variant>],
-                              generics: &ast::Generics) {
+pub fn get_enum_variant_types<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
+                                        enum_ty: Ty<'tcx>,
+                                        variants: &[P<ast::Variant>],
+                                        generics: &ast::Generics) {
     let tcx = ccx.tcx;
 
     // Create a set of parameter types shared among all the variants.
@@ -255,9 +255,9 @@ pub fn get_enum_variant_types(ccx: &CrateCtxt,
     }
 }
 
-fn collect_trait_methods(ccx: &CrateCtxt,
-                         trait_id: ast::NodeId,
-                         trait_def: &ty::TraitDef) {
+fn collect_trait_methods<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
+                                   trait_id: ast::NodeId,
+                                   trait_def: &ty::TraitDef<'tcx>) {
     let tcx = ccx.tcx;
     match tcx.map.get(trait_id) {
         ast_map::NodeItem(item) => {
@@ -364,7 +364,8 @@ fn collect_trait_methods(ccx: &CrateCtxt,
         _ => { /* Ignore things that aren't traits */ }
     }
 
-    fn make_static_method_ty(ccx: &CrateCtxt, m: &ty::Method) {
+    fn make_static_method_ty<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
+                                       m: &ty::Method<'tcx>) {
         ccx.tcx.tcache.borrow_mut().insert(
             m.def_id,
             Polytype {
@@ -372,18 +373,18 @@ fn collect_trait_methods(ccx: &CrateCtxt,
                 ty: ty::mk_bare_fn(ccx.tcx, m.fty.clone()) });
     }
 
-    fn ty_method_of_trait_method(ccx: &CrateCtxt,
-                                 trait_id: ast::NodeId,
-                                 trait_generics: &ty::Generics,
-                                 trait_items: &[ast::TraitItem],
-                                 m_id: &ast::NodeId,
-                                 m_ident: &ast::Ident,
-                                 m_explicit_self: &ast::ExplicitSelf,
-                                 m_abi: abi::Abi,
-                                 m_generics: &ast::Generics,
-                                 m_fn_style: &ast::FnStyle,
-                                 m_decl: &ast::FnDecl)
-                                 -> ty::Method {
+    fn ty_method_of_trait_method<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
+                                           trait_id: ast::NodeId,
+                                           trait_generics: &ty::Generics<'tcx>,
+                                           trait_items: &[ast::TraitItem],
+                                           m_id: &ast::NodeId,
+                                           m_ident: &ast::Ident,
+                                           m_explicit_self: &ast::ExplicitSelf,
+                                           m_abi: abi::Abi,
+                                           m_generics: &ast::Generics,
+                                           m_fn_style: &ast::FnStyle,
+                                           m_decl: &ast::FnDecl)
+                                           -> ty::Method<'tcx> {
         let ty_generics =
             ty_generics_for_fn_or_method(
                 ccx,
@@ -423,10 +424,10 @@ fn collect_trait_methods(ccx: &CrateCtxt,
     }
 }
 
-pub fn convert_field(ccx: &CrateCtxt,
-                     struct_generics: &ty::Generics,
-                     v: &ast::StructField,
-                     origin: ast::DefId) -> ty::field_ty {
+pub fn convert_field<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
+                                struct_generics: &ty::Generics<'tcx>,
+                                v: &ast::StructField,
+                                origin: ast::DefId) -> ty::field_ty {
     let tt = ccx.to_ty(&ExplicitRscope, &*v.node.ty);
     write_ty_to_tcx(ccx.tcx, v.node.id, tt);
     /* add the field to the tcache */
@@ -456,10 +457,10 @@ pub fn convert_field(ccx: &CrateCtxt,
     }
 }
 
-fn convert_associated_type(ccx: &CrateCtxt,
-                           trait_def: &ty::TraitDef,
-                           associated_type: &ast::AssociatedType)
-                           -> ty::Polytype {
+fn convert_associated_type<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
+                                     trait_def: &ty::TraitDef<'tcx>,
+                                     associated_type: &ast::AssociatedType)
+                                     -> ty::Polytype<'tcx> {
     // Find the type parameter ID corresponding to this
     // associated type.
     let type_parameter_def = trait_def.generics
@@ -515,14 +516,14 @@ enum ConvertMethodContext<'a> {
     TraitConvertMethodContext(ast::DefId, &'a [ast::TraitItem]),
 }
 
-fn convert_methods<'a,I>(ccx: &CrateCtxt,
-                         convert_method_context: ConvertMethodContext,
-                         container: ImplOrTraitItemContainer,
-                         mut ms: I,
-                         untransformed_rcvr_ty: Ty,
-                         rcvr_ty_generics: &ty::Generics,
-                         rcvr_visibility: ast::Visibility)
-                         where I: Iterator<&'a ast::Method> {
+fn convert_methods<'a,'tcx,'i,I>(ccx: &CrateCtxt<'a, 'tcx>,
+                                 convert_method_context: ConvertMethodContext,
+                                 container: ImplOrTraitItemContainer,
+                                 mut ms: I,
+                                 untransformed_rcvr_ty: Ty<'tcx>,
+                                 rcvr_ty_generics: &ty::Generics<'tcx>,
+                                 rcvr_visibility: ast::Visibility)
+                                 where I: Iterator<&'i ast::Method> {
     debug!("convert_methods(untransformed_rcvr_ty={}, \
             rcvr_ty_generics={})",
            untransformed_rcvr_ty.repr(ccx.tcx),
@@ -564,14 +565,14 @@ fn convert_methods<'a,I>(ccx: &CrateCtxt,
            .insert(mty.def_id, ty::MethodTraitItem(mty));
     }
 
-    fn ty_of_method(ccx: &CrateCtxt,
+    fn ty_of_method<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                     convert_method_context: ConvertMethodContext,
-                    container: ImplOrTraitItemContainer,
-                    m: &ast::Method,
-                    untransformed_rcvr_ty: Ty,
-                    rcvr_ty_generics: &ty::Generics,
-                    rcvr_visibility: ast::Visibility)
-                    -> ty::Method {
+                              container: ImplOrTraitItemContainer,
+                              m: &ast::Method,
+                              untransformed_rcvr_ty: Ty<'tcx>,
+                              rcvr_ty_generics: &ty::Generics<'tcx>,
+                              rcvr_visibility: ast::Visibility)
+                              -> ty::Method<'tcx> {
         // FIXME(pcwalton): Hack until we have syntax in stage0 for snapshots.
         let real_abi = match container {
             ty::TraitContainer(trait_id) => {
@@ -686,12 +687,12 @@ fn is_associated_type_valid_for_param(ty: Ty,
     false
 }
 
-fn find_associated_type_in_generics(tcx: &ty::ctxt,
-                                    span: Span,
-                                    ty: Option<Ty>,
-                                    associated_type_id: ast::DefId,
-                                    generics: &ty::Generics)
-                                    -> Ty {
+fn find_associated_type_in_generics<'tcx>(tcx: &ty::ctxt<'tcx>,
+                                          span: Span,
+                                          ty: Option<Ty<'tcx>>,
+                                          associated_type_id: ast::DefId,
+                                          generics: &ty::Generics<'tcx>)
+                                          -> Ty<'tcx> {
     let ty = match ty {
         None => {
             tcx.sess.span_bug(span,
@@ -739,7 +740,7 @@ struct ImplCtxt<'a,'tcx:'a> {
     ccx: &'a CrateCtxt<'a,'tcx>,
     opt_trait_ref_id: Option<ast::DefId>,
     impl_items: &'a [ast::ImplItem],
-    impl_generics: &'a ty::Generics,
+    impl_generics: &'a ty::Generics<'tcx>,
 }
 
 impl<'a,'tcx> AstConv<'tcx> for ImplCtxt<'a,'tcx> {
@@ -747,20 +748,20 @@ impl<'a,'tcx> AstConv<'tcx> for ImplCtxt<'a,'tcx> {
         self.ccx.tcx
     }
 
-    fn get_item_ty(&self, id: ast::DefId) -> ty::Polytype {
+    fn get_item_ty(&self, id: ast::DefId) -> ty::Polytype<'tcx> {
         self.ccx.get_item_ty(id)
     }
 
-    fn get_trait_def(&self, id: ast::DefId) -> Rc<ty::TraitDef> {
+    fn get_trait_def(&self, id: ast::DefId) -> Rc<ty::TraitDef<'tcx>> {
         self.ccx.get_trait_def(id)
     }
 
-    fn ty_infer(&self, span: Span) -> Ty {
+    fn ty_infer(&self, span: Span) -> Ty<'tcx> {
         self.ccx.ty_infer(span)
     }
 
     fn associated_types_of_trait_are_valid(&self,
-                                           ty: Ty,
+                                           ty: Ty<'tcx>,
                                            trait_id: ast::DefId)
                                            -> bool {
         // OK if the trait with the associated type is the trait we're
@@ -781,10 +782,10 @@ impl<'a,'tcx> AstConv<'tcx> for ImplCtxt<'a,'tcx> {
 
     fn associated_type_binding(&self,
                                span: Span,
-                               ty: Option<Ty>,
+                               ty: Option<Ty<'tcx>>,
                                trait_id: ast::DefId,
                                associated_type_id: ast::DefId)
-                               -> Ty {
+                               -> Ty<'tcx> {
         ensure_associated_types(self, trait_id);
         let associated_type_ids = ty::associated_types_for_trait(self.ccx.tcx,
                                                                  trait_id);
@@ -837,7 +838,7 @@ impl<'a,'tcx> AstConv<'tcx> for ImplCtxt<'a,'tcx> {
 
 struct FnCtxt<'a,'tcx:'a> {
     ccx: &'a CrateCtxt<'a,'tcx>,
-    generics: &'a ty::Generics,
+    generics: &'a ty::Generics<'tcx>,
 }
 
 impl<'a,'tcx> AstConv<'tcx> for FnCtxt<'a,'tcx> {
@@ -845,20 +846,20 @@ impl<'a,'tcx> AstConv<'tcx> for FnCtxt<'a,'tcx> {
         self.ccx.tcx
     }
 
-    fn get_item_ty(&self, id: ast::DefId) -> ty::Polytype {
+    fn get_item_ty(&self, id: ast::DefId) -> ty::Polytype<'tcx> {
         self.ccx.get_item_ty(id)
     }
 
-    fn get_trait_def(&self, id: ast::DefId) -> Rc<ty::TraitDef> {
+    fn get_trait_def(&self, id: ast::DefId) -> Rc<ty::TraitDef<'tcx>> {
         self.ccx.get_trait_def(id)
     }
 
-    fn ty_infer(&self, span: Span) -> Ty {
+    fn ty_infer(&self, span: Span) -> Ty<'tcx> {
         self.ccx.ty_infer(span)
     }
 
     fn associated_types_of_trait_are_valid(&self,
-                                           ty: Ty,
+                                           ty: Ty<'tcx>,
                                            trait_id: ast::DefId)
                                            -> bool {
         // OK if the trait with the associated type is one of the traits in
@@ -868,10 +869,10 @@ impl<'a,'tcx> AstConv<'tcx> for FnCtxt<'a,'tcx> {
 
     fn associated_type_binding(&self,
                                span: Span,
-                               ty: Option<Ty>,
+                               ty: Option<Ty<'tcx>>,
                                _: ast::DefId,
                                associated_type_id: ast::DefId)
-                               -> Ty {
+                               -> Ty<'tcx> {
         debug!("collect::FnCtxt::associated_type_binding()");
 
         // The ID should map to an associated type on one of the traits in
@@ -886,7 +887,7 @@ impl<'a,'tcx> AstConv<'tcx> for FnCtxt<'a,'tcx> {
 
 struct ImplMethodCtxt<'a,'tcx:'a> {
     ccx: &'a CrateCtxt<'a,'tcx>,
-    method_generics: &'a ty::Generics,
+    method_generics: &'a ty::Generics<'tcx>,
 }
 
 impl<'a,'tcx> AstConv<'tcx> for ImplMethodCtxt<'a,'tcx> {
@@ -894,20 +895,20 @@ impl<'a,'tcx> AstConv<'tcx> for ImplMethodCtxt<'a,'tcx> {
         self.ccx.tcx
     }
 
-    fn get_item_ty(&self, id: ast::DefId) -> ty::Polytype {
+    fn get_item_ty(&self, id: ast::DefId) -> ty::Polytype<'tcx> {
         self.ccx.get_item_ty(id)
     }
 
-    fn get_trait_def(&self, id: ast::DefId) -> Rc<ty::TraitDef> {
+    fn get_trait_def(&self, id: ast::DefId) -> Rc<ty::TraitDef<'tcx>> {
         self.ccx.get_trait_def(id)
     }
 
-    fn ty_infer(&self, span: Span) -> Ty {
+    fn ty_infer(&self, span: Span) -> Ty<'tcx> {
         self.ccx.ty_infer(span)
     }
 
     fn associated_types_of_trait_are_valid(&self,
-                                           ty: Ty,
+                                           ty: Ty<'tcx>,
                                            trait_id: ast::DefId)
                                            -> bool {
         is_associated_type_valid_for_param(ty, trait_id, self.method_generics)
@@ -915,10 +916,10 @@ impl<'a,'tcx> AstConv<'tcx> for ImplMethodCtxt<'a,'tcx> {
 
     fn associated_type_binding(&self,
                                span: Span,
-                               ty: Option<Ty>,
+                               ty: Option<Ty<'tcx>>,
                                _: ast::DefId,
                                associated_type_id: ast::DefId)
-                               -> Ty {
+                               -> Ty<'tcx> {
         debug!("collect::ImplMethodCtxt::associated_type_binding()");
 
         // The ID should map to an associated type on one of the traits in
@@ -935,7 +936,7 @@ struct TraitMethodCtxt<'a,'tcx:'a> {
     ccx: &'a CrateCtxt<'a,'tcx>,
     trait_id: ast::DefId,
     trait_items: &'a [ast::TraitItem],
-    method_generics: &'a ty::Generics,
+    method_generics: &'a ty::Generics<'tcx>,
 }
 
 impl<'a,'tcx> AstConv<'tcx> for TraitMethodCtxt<'a,'tcx> {
@@ -943,20 +944,20 @@ impl<'a,'tcx> AstConv<'tcx> for TraitMethodCtxt<'a,'tcx> {
         self.ccx.tcx
     }
 
-    fn get_item_ty(&self, id: ast::DefId) -> ty::Polytype {
+    fn get_item_ty(&self, id: ast::DefId) -> ty::Polytype<'tcx> {
         self.ccx.get_item_ty(id)
     }
 
-    fn get_trait_def(&self, id: ast::DefId) -> Rc<ty::TraitDef> {
+    fn get_trait_def(&self, id: ast::DefId) -> Rc<ty::TraitDef<'tcx>> {
         self.ccx.get_trait_def(id)
     }
 
-    fn ty_infer(&self, span: Span) -> Ty {
+    fn ty_infer(&self, span: Span) -> Ty<'tcx> {
         self.ccx.ty_infer(span)
     }
 
     fn associated_types_of_trait_are_valid(&self,
-                                           ty: Ty,
+                                           ty: Ty<'tcx>,
                                            trait_id: ast::DefId)
                                            -> bool {
         // OK if the trait with the associated type is this trait.
@@ -971,10 +972,10 @@ impl<'a,'tcx> AstConv<'tcx> for TraitMethodCtxt<'a,'tcx> {
 
     fn associated_type_binding(&self,
                                span: Span,
-                               ty: Option<Ty>,
+                               ty: Option<Ty<'tcx>>,
                                trait_id: ast::DefId,
                                associated_type_id: ast::DefId)
-                               -> Ty {
+                               -> Ty<'tcx> {
         debug!("collect::TraitMethodCtxt::associated_type_binding()");
 
         // If this is one of our own associated types, return it.
@@ -1013,30 +1014,30 @@ impl<'a,'tcx> AstConv<'tcx> for TraitMethodCtxt<'a,'tcx> {
     }
 }
 
-struct GenericsCtxt<'a,AC:'a> {
+struct GenericsCtxt<'a,'tcx:'a,AC:'a> {
     chain: &'a AC,
-    associated_types_generics: &'a ty::Generics,
+    associated_types_generics: &'a ty::Generics<'tcx>,
 }
 
-impl<'a,'tcx,AC:AstConv<'tcx>> AstConv<'tcx> for GenericsCtxt<'a,AC> {
+impl<'a,'tcx,AC:AstConv<'tcx>> AstConv<'tcx> for GenericsCtxt<'a,'tcx,AC> {
     fn tcx<'a>(&'a self) -> &'a ty::ctxt<'tcx> {
         self.chain.tcx()
     }
 
-    fn get_item_ty(&self, id: ast::DefId) -> ty::Polytype {
+    fn get_item_ty(&self, id: ast::DefId) -> ty::Polytype<'tcx> {
         self.chain.get_item_ty(id)
     }
 
-    fn get_trait_def(&self, id: ast::DefId) -> Rc<ty::TraitDef> {
+    fn get_trait_def(&self, id: ast::DefId) -> Rc<ty::TraitDef<'tcx>> {
         self.chain.get_trait_def(id)
     }
 
-    fn ty_infer(&self, span: Span) -> Ty {
+    fn ty_infer(&self, span: Span) -> Ty<'tcx> {
         self.chain.ty_infer(span)
     }
 
     fn associated_types_of_trait_are_valid(&self,
-                                           ty: Ty,
+                                           ty: Ty<'tcx>,
                                            trait_id: ast::DefId)
                                            -> bool {
         // OK if the trait with the associated type is one of the traits in
@@ -1048,10 +1049,10 @@ impl<'a,'tcx,AC:AstConv<'tcx>> AstConv<'tcx> for GenericsCtxt<'a,AC> {
 
     fn associated_type_binding(&self,
                                span: Span,
-                               ty: Option<Ty>,
+                               ty: Option<Ty<'tcx>>,
                                _: ast::DefId,
                                associated_type_id: ast::DefId)
-                               -> Ty {
+                               -> Ty<'tcx> {
         debug!("collect::GenericsCtxt::associated_type_binding()");
 
         // The ID should map to an associated type on one of the traits in
@@ -1261,10 +1262,10 @@ pub fn convert(ccx: &CrateCtxt, it: &ast::Item) {
     }
 }
 
-pub fn convert_struct(ccx: &CrateCtxt,
-                      struct_def: &ast::StructDef,
-                      pty: ty::Polytype,
-                      id: ast::NodeId) {
+pub fn convert_struct<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
+                                struct_def: &ast::StructDef,
+                                pty: ty::Polytype<'tcx>,
+                                id: ast::NodeId) {
     let tcx = ccx.tcx;
 
     // Write the type of each of the members and check for duplicate fields.
@@ -1380,9 +1381,9 @@ pub fn convert_foreign(ccx: &CrateCtxt, i: &ast::ForeignItem) {
 
 pub fn instantiate_trait_ref<'tcx,AC>(this: &AC,
                                       ast_trait_ref: &ast::TraitRef,
-                                      self_ty: Ty,
-                                      associated_type: Option<Ty>)
-                                      -> Rc<ty::TraitRef>
+                                      self_ty: Ty<'tcx>,
+                                      associated_type: Option<Ty<'tcx>>)
+                                      -> Rc<ty::TraitRef<'tcx>>
                                       where AC: AstConv<'tcx> {
     /*!
      * Instantiates the path for the given trait reference, assuming that
@@ -1421,7 +1422,7 @@ pub fn instantiate_trait_ref<'tcx,AC>(this: &AC,
 pub fn instantiate_unboxed_fn_ty<'tcx,AC>(this: &AC,
                                           unboxed_function: &ast::UnboxedFnTy,
                                           param_ty: ty::ParamTy)
-                                          -> Rc<ty::TraitRef>
+                                          -> Rc<ty::TraitRef<'tcx>>
                                           where AC: AstConv<'tcx> {
     let rscope = ExplicitRscope;
     let param_ty = param_ty.to_ty(this.tcx());
@@ -1432,7 +1433,9 @@ pub fn instantiate_unboxed_fn_ty<'tcx,AC>(this: &AC,
                                                     Some(param_ty)))
 }
 
-fn get_trait_def(ccx: &CrateCtxt, trait_id: ast::DefId) -> Rc<ty::TraitDef> {
+fn get_trait_def<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
+                           trait_id: ast::DefId)
+                           -> Rc<ty::TraitDef<'tcx>> {
     if trait_id.krate != ast::LOCAL_CRATE {
         return ty::lookup_trait_def(ccx.tcx, trait_id)
     }
@@ -1446,7 +1449,9 @@ fn get_trait_def(ccx: &CrateCtxt, trait_id: ast::DefId) -> Rc<ty::TraitDef> {
     }
 }
 
-pub fn trait_def_of_item(ccx: &CrateCtxt, it: &ast::Item) -> Rc<ty::TraitDef> {
+pub fn trait_def_of_item<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
+                                   it: &ast::Item)
+                                   -> Rc<ty::TraitDef<'tcx>> {
     let def_id = local_def(it.id);
     let tcx = ccx.tcx;
     match tcx.trait_defs.borrow().find(&def_id) {
@@ -1495,11 +1500,11 @@ pub fn trait_def_of_item(ccx: &CrateCtxt, it: &ast::Item) -> Rc<ty::TraitDef> {
 
     return trait_def;
 
-    fn mk_trait_substs(ccx: &CrateCtxt,
-                       trait_id: ast::NodeId,
-                       generics: &ast::Generics,
-                       items: &[ast::TraitItem])
-                        -> subst::Substs {
+    fn mk_trait_substs<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
+                                 trait_id: ast::NodeId,
+                                 generics: &ast::Generics,
+                                 items: &[ast::TraitItem])
+                                 -> subst::Substs<'tcx> {
         // Creates a no-op substitution for the trait's type parameters.
         let regions =
             generics.lifetimes
@@ -1541,8 +1546,8 @@ pub fn trait_def_of_item(ccx: &CrateCtxt, it: &ast::Item) -> Rc<ty::TraitDef> {
     }
 }
 
-pub fn ty_of_item(ccx: &CrateCtxt, it: &ast::Item)
-                  -> ty::Polytype {
+pub fn ty_of_item<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>, it: &ast::Item)
+                            -> ty::Polytype<'tcx> {
     let def_id = local_def(it.id);
     let tcx = ccx.tcx;
     match tcx.tcache.borrow().find(&def_id) {
@@ -1645,9 +1650,9 @@ pub fn ty_of_item(ccx: &CrateCtxt, it: &ast::Item)
     }
 }
 
-pub fn ty_of_foreign_item(ccx: &CrateCtxt,
-                          it: &ast::ForeignItem,
-                          abi: abi::Abi) -> ty::Polytype
+pub fn ty_of_foreign_item<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
+                                    it: &ast::ForeignItem,
+                                    abi: abi::Abi) -> ty::Polytype<'tcx>
 {
     match it.node {
         ast::ForeignItemFn(ref fn_decl, ref generics) => {
@@ -1666,8 +1671,9 @@ pub fn ty_of_foreign_item(ccx: &CrateCtxt,
     }
 }
 
-fn ty_of_trait_item(ccx: &CrateCtxt, trait_item: &ast::TraitItem)
-                    -> ty::Polytype {
+fn ty_of_trait_item<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
+                              trait_item: &ast::TraitItem)
+                              -> ty::Polytype<'tcx> {
     match *trait_item {
         ast::RequiredMethod(ref m) => {
             ccx.tcx.sess.span_bug(m.span,
@@ -1692,11 +1698,11 @@ fn ty_of_trait_item(ccx: &CrateCtxt, trait_item: &ast::TraitItem)
     }
 }
 
-fn ty_generics_for_type(ccx: &CrateCtxt,
-                        generics: &ast::Generics,
-                        create_type_parameters_for_associated_types:
-                            CreateTypeParametersForAssociatedTypesFlag)
-                        -> ty::Generics {
+fn ty_generics_for_type<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
+                                  generics: &ast::Generics,
+                                  create_type_parameters_for_associated_types:
+                                      CreateTypeParametersForAssociatedTypesFlag)
+                                  -> ty::Generics<'tcx> {
     ty_generics(ccx,
                 subst::TypeSpace,
                 generics.lifetimes.as_slice(),
@@ -1706,12 +1712,12 @@ fn ty_generics_for_type(ccx: &CrateCtxt,
                 create_type_parameters_for_associated_types)
 }
 
-fn ty_generics_for_trait(ccx: &CrateCtxt,
-                         trait_id: ast::NodeId,
-                         substs: &subst::Substs,
-                         generics: &ast::Generics,
-                         items: &[ast::TraitItem])
-                         -> ty::Generics {
+fn ty_generics_for_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
+                                   trait_id: ast::NodeId,
+                                   substs: &subst::Substs<'tcx>,
+                                   generics: &ast::Generics,
+                                   items: &[ast::TraitItem])
+                                   -> ty::Generics<'tcx> {
     let mut generics =
         ty_generics(ccx,
                     subst::TypeSpace,
@@ -1780,10 +1786,10 @@ fn ty_generics_for_trait(ccx: &CrateCtxt,
 fn ty_generics_for_fn_or_method<'tcx,AC>(
         this: &AC,
         generics: &ast::Generics,
-        base_generics: ty::Generics,
+        base_generics: ty::Generics<'tcx>,
         create_type_parameters_for_associated_types:
         CreateTypeParametersForAssociatedTypesFlag)
-        -> ty::Generics
+        -> ty::Generics<'tcx>
         where AC: AstConv<'tcx> {
     let early_lifetimes = resolve_lifetime::early_bound_lifetimes(generics);
     ty_generics(this,
@@ -1913,11 +1919,11 @@ fn ty_generics<'tcx,AC>(this: &AC,
                         space: subst::ParamSpace,
                         lifetime_defs: &[ast::LifetimeDef],
                         types: &[ast::TyParam],
-                        base_generics: ty::Generics,
+                        base_generics: ty::Generics<'tcx>,
                         where_clause: &ast::WhereClause,
                         create_type_parameters_for_associated_types:
                         CreateTypeParametersForAssociatedTypesFlag)
-                        -> ty::Generics
+                        -> ty::Generics<'tcx>
                         where AC: AstConv<'tcx> {
     let mut result = base_generics;
 
@@ -2031,13 +2037,12 @@ fn ty_generics<'tcx,AC>(this: &AC,
 
     return result;
 
-    fn get_or_create_type_parameter_def<'tcx,AC>(
-                                        this: &AC,
-                                        space: subst::ParamSpace,
-                                        param: &ast::TyParam,
-                                        index: uint,
-                                        where_clause: &ast::WhereClause)
-                                        -> ty::TypeParameterDef
+    fn get_or_create_type_parameter_def<'tcx,AC>(this: &AC,
+                                                 space: subst::ParamSpace,
+                                                 param: &ast::TyParam,
+                                                 index: uint,
+                                                 where_clause: &ast::WhereClause)
+                                                 -> ty::TypeParameterDef<'tcx>
                                         where AC: AstConv<'tcx> {
         match this.tcx().ty_param_defs.borrow().find(&param.id) {
             Some(d) => { return (*d).clone(); }
@@ -2096,7 +2101,7 @@ fn compute_bounds<'tcx,AC>(this: &AC,
                            unbound: &Option<ast::TyParamBound>,
                            span: Span,
                            where_clause: &ast::WhereClause)
-                           -> ty::ParamBounds
+                           -> ty::ParamBounds<'tcx>
                            where AC: AstConv<'tcx> {
     /*!
      * Translate the AST's notion of ty param bounds (which are an
@@ -2128,10 +2133,10 @@ fn compute_bounds<'tcx,AC>(this: &AC,
     param_bounds
 }
 
-fn check_bounds_compatible(tcx: &ty::ctxt,
-                           name_of_bounded_thing: ast::Name,
-                           param_bounds: &ty::ParamBounds,
-                           span: Span) {
+fn check_bounds_compatible<'tcx>(tcx: &ty::ctxt<'tcx>,
+                                 name_of_bounded_thing: ast::Name,
+                                 param_bounds: &ty::ParamBounds<'tcx>,
+                                 span: Span) {
     // Currently the only bound which is incompatible with other bounds is
     // Sized/Unsized.
     if !param_bounds.builtin_bounds.contains_elem(ty::BoundSized) {
@@ -2157,7 +2162,7 @@ fn conv_param_bounds<'tcx,AC>(this: &AC,
                               param_ty: ty::ParamTy,
                               ast_bounds: &[ast::TyParamBound],
                               where_clause: &ast::WhereClause)
-                              -> ty::ParamBounds
+                              -> ty::ParamBounds<'tcx>
                               where AC: AstConv<'tcx> {
     let all_bounds =
         merge_param_bounds(this.tcx(), param_ty, ast_bounds, where_clause);
@@ -2258,12 +2263,12 @@ fn merge_param_bounds<'a>(tcx: &ty::ctxt,
     result
 }
 
-pub fn ty_of_foreign_fn_decl(ccx: &CrateCtxt,
-                             decl: &ast::FnDecl,
-                             def_id: ast::DefId,
-                             ast_generics: &ast::Generics,
-                             abi: abi::Abi)
-                             -> ty::Polytype {
+pub fn ty_of_foreign_fn_decl<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
+                                       decl: &ast::FnDecl,
+                                       def_id: ast::DefId,
+                                       ast_generics: &ast::Generics,
+                                       abi: abi::Abi)
+                                       -> ty::Polytype<'tcx> {
     for i in decl.inputs.iter() {
         match (*i).pat.node {
             ast::PatIdent(_, _, _) => (),
@@ -2307,9 +2312,9 @@ pub fn ty_of_foreign_fn_decl(ccx: &CrateCtxt,
     return pty;
 }
 
-pub fn mk_item_substs(ccx: &CrateCtxt,
-                      ty_generics: &ty::Generics)
-                      -> subst::Substs
+pub fn mk_item_substs<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
+                                ty_generics: &ty::Generics<'tcx>)
+                                -> subst::Substs<'tcx>
 {
     let types =
         ty_generics.types.map(
@@ -2325,10 +2330,10 @@ pub fn mk_item_substs(ccx: &CrateCtxt,
 
 /// Verifies that the explicit self type of a method matches the impl or
 /// trait.
-fn check_method_self_type<RS:RegionScope>(
-                          crate_context: &CrateCtxt,
+fn check_method_self_type<'a, 'tcx, RS:RegionScope>(
+                          crate_context: &CrateCtxt<'a, 'tcx>,
                           rs: &RS,
-                          required_type: Ty,
+                          required_type: Ty<'tcx>,
                           explicit_self: &ast::ExplicitSelf) {
     match explicit_self.node {
         ast::SelfExplicit(ref ast_type, _) => {

@@ -57,7 +57,7 @@ pub struct Stats {
 /// crate, so it must not contain references to any LLVM data structures
 /// (aside from metadata-related ones).
 pub struct SharedCrateContext<'tcx> {
-    local_ccxs: Vec<LocalCrateContext>,
+    local_ccxs: Vec<LocalCrateContext<'tcx>>,
 
     metadata_llmod: ModuleRef,
     metadata_llcx: ContextRef,
@@ -75,23 +75,23 @@ pub struct SharedCrateContext<'tcx> {
     stats: Stats,
 
     available_monomorphizations: RefCell<HashSet<String>>,
-    available_drop_glues: RefCell<HashMap<Ty, String>>,
-    available_visit_glues: RefCell<HashMap<Ty, String>>,
+    available_drop_glues: RefCell<HashMap<Ty<'tcx>, String>>,
+    available_visit_glues: RefCell<HashMap<Ty<'tcx>, String>>,
 }
 
 /// The local portion of a `CrateContext`.  There is one `LocalCrateContext`
 /// per compilation unit.  Each one has its own LLVM `ContextRef` so that
 /// several compilation units may be optimized in parallel.  All other LLVM
 /// data structures in the `LocalCrateContext` are tied to that `ContextRef`.
-pub struct LocalCrateContext {
+pub struct LocalCrateContext<'tcx> {
     llmod: ModuleRef,
     llcx: ContextRef,
     td: TargetData,
     tn: TypeNames,
     externs: RefCell<ExternMap>,
     item_vals: RefCell<NodeMap<ValueRef>>,
-    drop_glues: RefCell<HashMap<Ty, ValueRef>>,
-    tydescs: RefCell<HashMap<Ty, Rc<tydesc_info>>>,
+    drop_glues: RefCell<HashMap<Ty<'tcx>, ValueRef>>,
+    tydescs: RefCell<HashMap<Ty<'tcx>, Rc<tydesc_info<'tcx>>>>,
     /// Set when running emit_tydescs to enforce that no more tydescs are
     /// created.
     finished_tydescs: Cell<bool>,
@@ -101,10 +101,10 @@ pub struct LocalCrateContext {
     /// came from)
     external_srcs: RefCell<NodeMap<ast::DefId>>,
     /// Cache instances of monomorphized functions
-    monomorphized: RefCell<HashMap<MonoId, ValueRef>>,
+    monomorphized: RefCell<HashMap<MonoId<'tcx>, ValueRef>>,
     monomorphizing: RefCell<DefIdMap<uint>>,
     /// Cache generated vtables
-    vtables: RefCell<HashMap<(Ty, Rc<ty::TraitRef>), ValueRef>>,
+    vtables: RefCell<HashMap<(Ty<'tcx>, Rc<ty::TraitRef<'tcx>>), ValueRef>>,
     /// Cache of constant strings,
     const_cstr_cache: RefCell<HashMap<InternedString, ValueRef>>,
 
@@ -129,10 +129,10 @@ pub struct LocalCrateContext {
     /// Cache of closure wrappers for bare fn's.
     closure_bare_wrapper_cache: RefCell<HashMap<ValueRef, ValueRef>>,
 
-    lltypes: RefCell<HashMap<Ty, Type>>,
-    llsizingtypes: RefCell<HashMap<Ty, Type>>,
-    adt_reprs: RefCell<HashMap<Ty, Rc<adt::Repr>>>,
-    type_hashcodes: RefCell<HashMap<Ty, String>>,
+    lltypes: RefCell<HashMap<Ty<'tcx>, Type>>,
+    llsizingtypes: RefCell<HashMap<Ty<'tcx>, Type>>,
+    adt_reprs: RefCell<HashMap<Ty<'tcx>, Rc<adt::Repr<'tcx>>>>,
+    type_hashcodes: RefCell<HashMap<Ty<'tcx>, String>>,
     all_llvm_symbols: RefCell<HashSet<String>>,
     int_type: Type,
     opaque_vec_type: Type,
@@ -152,13 +152,13 @@ pub struct LocalCrateContext {
     /// contexts around the same size.
     n_llvm_insns: Cell<uint>,
 
-    trait_cache: RefCell<HashMap<Rc<ty::TraitRef>,
-                                 traits::Vtable<()>>>,
+    trait_cache: RefCell<HashMap<Rc<ty::TraitRef<'tcx>>,
+                                 traits::Vtable<'tcx, ()>>>,
 }
 
 pub struct CrateContext<'a, 'tcx: 'a> {
     shared: &'a SharedCrateContext<'tcx>,
-    local: &'a LocalCrateContext,
+    local: &'a LocalCrateContext<'tcx>,
     /// The index of `local` in `shared.local_ccxs`.  This is used in
     /// `maybe_iter(true)` to identify the original `LocalCrateContext`.
     index: uint,
@@ -376,10 +376,10 @@ impl<'tcx> SharedCrateContext<'tcx> {
     }
 }
 
-impl LocalCrateContext {
-    fn new(shared: &SharedCrateContext,
+impl<'tcx> LocalCrateContext<'tcx> {
+    fn new(shared: &SharedCrateContext<'tcx>,
            name: &str)
-           -> LocalCrateContext {
+           -> LocalCrateContext<'tcx> {
         unsafe {
             let (llcx, llmod) = create_context_and_module(&shared.tcx.sess, name);
 
@@ -464,8 +464,8 @@ impl LocalCrateContext {
     /// This is used in the `LocalCrateContext` constructor to allow calling
     /// functions that expect a complete `CrateContext`, even before the local
     /// portion is fully initialized and attached to the `SharedCrateContext`.
-    fn dummy_ccx<'a, 'tcx>(&'a self, shared: &'a SharedCrateContext<'tcx>)
-                           -> CrateContext<'a, 'tcx> {
+    fn dummy_ccx<'a>(&'a self, shared: &'a SharedCrateContext<'tcx>)
+                     -> CrateContext<'a, 'tcx> {
         CrateContext {
             shared: shared,
             local: self,
@@ -479,7 +479,7 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
         self.shared
     }
 
-    pub fn local(&self) -> &'b LocalCrateContext {
+    pub fn local(&self) -> &'b LocalCrateContext<'tcx> {
         self.local
     }
 
@@ -590,11 +590,11 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
         &self.shared.link_meta
     }
 
-    pub fn drop_glues<'a>(&'a self) -> &'a RefCell<HashMap<Ty, ValueRef>> {
+    pub fn drop_glues<'a>(&'a self) -> &'a RefCell<HashMap<Ty<'tcx>, ValueRef>> {
         &self.local.drop_glues
     }
 
-    pub fn tydescs<'a>(&'a self) -> &'a RefCell<HashMap<Ty, Rc<tydesc_info>>> {
+    pub fn tydescs<'a>(&'a self) -> &'a RefCell<HashMap<Ty<'tcx>, Rc<tydesc_info<'tcx>>>> {
         &self.local.tydescs
     }
 
@@ -614,7 +614,7 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
         &self.shared.non_inlineable_statics
     }
 
-    pub fn monomorphized<'a>(&'a self) -> &'a RefCell<HashMap<MonoId, ValueRef>> {
+    pub fn monomorphized<'a>(&'a self) -> &'a RefCell<HashMap<MonoId<'tcx>, ValueRef>> {
         &self.local.monomorphized
     }
 
@@ -622,7 +622,7 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
         &self.local.monomorphizing
     }
 
-    pub fn vtables<'a>(&'a self) -> &'a RefCell<HashMap<(Ty, Rc<ty::TraitRef>), ValueRef>> {
+    pub fn vtables<'a>(&'a self) -> &'a RefCell<HashMap<(Ty<'tcx>, Rc<ty::TraitRef<'tcx>>), ValueRef>> {
         &self.local.vtables
     }
 
@@ -651,15 +651,15 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
         &self.local.closure_bare_wrapper_cache
     }
 
-    pub fn lltypes<'a>(&'a self) -> &'a RefCell<HashMap<Ty, Type>> {
+    pub fn lltypes<'a>(&'a self) -> &'a RefCell<HashMap<Ty<'tcx>, Type>> {
         &self.local.lltypes
     }
 
-    pub fn llsizingtypes<'a>(&'a self) -> &'a RefCell<HashMap<Ty, Type>> {
+    pub fn llsizingtypes<'a>(&'a self) -> &'a RefCell<HashMap<Ty<'tcx>, Type>> {
         &self.local.llsizingtypes
     }
 
-    pub fn adt_reprs<'a>(&'a self) -> &'a RefCell<HashMap<Ty, Rc<adt::Repr>>> {
+    pub fn adt_reprs<'a>(&'a self) -> &'a RefCell<HashMap<Ty<'tcx>, Rc<adt::Repr<'tcx>>>> {
         &self.local.adt_reprs
     }
 
@@ -667,7 +667,7 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
         &self.shared.symbol_hasher
     }
 
-    pub fn type_hashcodes<'a>(&'a self) -> &'a RefCell<HashMap<Ty, String>> {
+    pub fn type_hashcodes<'a>(&'a self) -> &'a RefCell<HashMap<Ty<'tcx>, String>> {
         &self.local.type_hashcodes
     }
 
@@ -683,11 +683,11 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
         &self.shared.available_monomorphizations
     }
 
-    pub fn available_drop_glues<'a>(&'a self) -> &'a RefCell<HashMap<Ty, String>> {
+    pub fn available_drop_glues<'a>(&'a self) -> &'a RefCell<HashMap<Ty<'tcx>, String>> {
         &self.shared.available_drop_glues
     }
 
-    pub fn available_visit_glues<'a>(&'a self) -> &'a RefCell<HashMap<Ty, String>> {
+    pub fn available_visit_glues<'a>(&'a self) -> &'a RefCell<HashMap<Ty<'tcx>, String>> {
         &self.shared.available_visit_glues
     }
 
@@ -719,7 +719,8 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
         self.local.n_llvm_insns.set(self.local.n_llvm_insns.get() + 1);
     }
 
-    pub fn trait_cache(&self) -> &RefCell<HashMap<Rc<ty::TraitRef>, traits::Vtable<()>>> {
+    pub fn trait_cache(&self) -> &RefCell<HashMap<Rc<ty::TraitRef<'tcx>>,
+                                                  traits::Vtable<'tcx, ()>>> {
         &self.local.trait_cache
     }
 }

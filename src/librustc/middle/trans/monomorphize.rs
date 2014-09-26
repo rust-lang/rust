@@ -31,10 +31,10 @@ use syntax::ast_util::{local_def, PostExpansionMethod};
 use syntax::attr;
 use std::hash::{sip, Hash};
 
-pub fn monomorphic_fn(ccx: &CrateContext,
-                      fn_id: ast::DefId,
-                      real_substs: &subst::Substs,
-                      ref_id: Option<ast::NodeId>)
+pub fn monomorphic_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
+                                fn_id: ast::DefId,
+                                real_substs: &subst::Substs<'tcx>,
+                                ref_id: Option<ast::NodeId>)
     -> (ValueRef, bool) {
     debug!("monomorphic_fn(\
             fn_id={}, \
@@ -287,19 +287,17 @@ pub fn monomorphic_fn(ccx: &CrateContext,
 
 // Used to identify cached monomorphized functions
 #[deriving(PartialEq, Eq, Hash)]
-pub struct MonoParamId {
-    pub subst: Ty,
+pub struct MonoParamId<'tcx> {
+    pub subst: Ty<'tcx>,
 }
 
 #[deriving(PartialEq, Eq, Hash)]
-pub struct MonoId {
+pub struct MonoId<'tcx> {
     pub def: ast::DefId,
-    pub params: subst::VecPerParamSpace<Ty>
+    pub params: subst::VecPerParamSpace<Ty<'tcx>>
 }
 
-pub fn make_vtable_id(_ccx: &CrateContext,
-                      origin: &typeck::vtable_origin)
-                      -> MonoId {
+pub fn make_vtable_id<'tcx>(origin: &typeck::vtable_origin<'tcx>) -> MonoId<'tcx> {
     match origin {
         &typeck::vtable_static(impl_id, ref substs, _) => {
             MonoId {

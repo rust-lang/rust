@@ -32,7 +32,7 @@ use util::snapshot_vec as sv;
  *
  * Implementations of this trait are at the end of this file.
  */
-pub trait UnifyKey<V> : Clone + Show + PartialEq + Repr {
+pub trait UnifyKey<'tcx, V> : Clone + Show + PartialEq + Repr<'tcx> {
     fn index(&self) -> uint;
 
     fn from_index(u: uint) -> Self;
@@ -55,7 +55,7 @@ pub trait UnifyKey<V> : Clone + Show + PartialEq + Repr {
  *
  * Implementations of this trait are at the end of this file.
  */
-pub trait UnifyValue : Clone + Repr + PartialEq {
+pub trait UnifyValue<'tcx> : Clone + Repr<'tcx> + PartialEq {
 }
 
 /**
@@ -112,7 +112,7 @@ pub struct Delegate;
 // other type parameter U, and we have no way to say
 // Option<U>:LatticeValue.
 
-impl<V:PartialEq+Clone+Repr,K:UnifyKey<V>> UnificationTable<K,V> {
+impl<'tcx, V:PartialEq+Clone+Repr<'tcx>, K:UnifyKey<'tcx, V>> UnificationTable<K,V> {
     pub fn new() -> UnificationTable<K,V> {
         UnificationTable {
             values: sv::SnapshotVec::new(Delegate),
@@ -187,7 +187,7 @@ impl<V:PartialEq+Clone+Repr,K:UnifyKey<V>> UnificationTable<K,V> {
     }
 
     pub fn set(&mut self,
-               tcx: &ty::ctxt,
+               tcx: &ty::ctxt<'tcx>,
                key: K,
                new_value: VarValue<K,V>)
     {
@@ -206,7 +206,7 @@ impl<V:PartialEq+Clone+Repr,K:UnifyKey<V>> UnificationTable<K,V> {
     }
 
     pub fn unify(&mut self,
-                 tcx: &ty::ctxt,
+                 tcx: &ty::ctxt<'tcx>,
                  node_a: &Node<K,V>,
                  node_b: &Node<K,V>)
                  -> (K, uint)
@@ -257,15 +257,15 @@ impl<K,V> sv::SnapshotVecDelegate<VarValue<K,V>,()> for Delegate {
  * Indicates a type that does not have any kind of subtyping
  * relationship.
  */
-pub trait SimplyUnifiable : Clone + PartialEq + Repr {
-    fn to_type(&self) -> Ty;
-    fn to_type_err(expected_found<Self>) -> ty::type_err;
+pub trait SimplyUnifiable<'tcx> : Clone + PartialEq + Repr<'tcx> {
+    fn to_type(&self) -> Ty<'tcx>;
+    fn to_type_err(expected_found<Self>) -> ty::type_err<'tcx>;
 }
 
-pub fn err<V:SimplyUnifiable>(a_is_expected: bool,
-                              a_t: V,
-                              b_t: V)
-                              -> ures {
+pub fn err<'tcx, V:SimplyUnifiable<'tcx>>(a_is_expected: bool,
+                                          a_t: V,
+                                          b_t: V)
+                                          -> ures<'tcx> {
     if a_is_expected {
         Err(SimplyUnifiable::to_type_err(
             ty::expected_found {expected: a_t, found: b_t}))
@@ -275,29 +275,29 @@ pub fn err<V:SimplyUnifiable>(a_is_expected: bool,
     }
 }
 
-pub trait InferCtxtMethodsForSimplyUnifiableTypes<V:SimplyUnifiable,
-                                                  K:UnifyKey<Option<V>>> {
+pub trait InferCtxtMethodsForSimplyUnifiableTypes<'tcx, V:SimplyUnifiable<'tcx>,
+                                                  K:UnifyKey<'tcx, Option<V>>> {
     fn simple_vars(&self,
                    a_is_expected: bool,
                    a_id: K,
                    b_id: K)
-                   -> ures;
+                   -> ures<'tcx>;
     fn simple_var_t(&self,
                     a_is_expected: bool,
                     a_id: K,
                     b: V)
-                    -> ures;
-    fn probe_var(&self, a_id: K) -> Option<Ty>;
+                    -> ures<'tcx>;
+    fn probe_var(&self, a_id: K) -> Option<Ty<'tcx>>;
 }
 
-impl<'a,'tcx,V:SimplyUnifiable,K:UnifyKey<Option<V>>>
-    InferCtxtMethodsForSimplyUnifiableTypes<V,K> for InferCtxt<'a, 'tcx>
+impl<'a,'tcx,V:SimplyUnifiable<'tcx>,K:UnifyKey<'tcx, Option<V>>>
+    InferCtxtMethodsForSimplyUnifiableTypes<'tcx, V, K> for InferCtxt<'a, 'tcx>
 {
     fn simple_vars(&self,
                    a_is_expected: bool,
                    a_id: K,
                    b_id: K)
-                   -> ures
+                   -> ures<'tcx>
     {
         /*!
          * Unifies two simple keys.  Because simple keys do
@@ -343,7 +343,7 @@ impl<'a,'tcx,V:SimplyUnifiable,K:UnifyKey<Option<V>>>
                     a_is_expected: bool,
                     a_id: K,
                     b: V)
-                    -> ures
+                    -> ures<'tcx>
     {
         /*!
          * Sets the value of the key `a_id` to `b`.  Because
@@ -373,7 +373,7 @@ impl<'a,'tcx,V:SimplyUnifiable,K:UnifyKey<Option<V>>>
         }
     }
 
-    fn probe_var(&self, a_id: K) -> Option<Ty> {
+    fn probe_var(&self, a_id: K) -> Option<Ty<'tcx>> {
         let tcx = self.tcx;
         let table = UnifyKey::unification_table(self);
         let node_a = table.borrow_mut().get(tcx, a_id);
@@ -388,7 +388,7 @@ impl<'a,'tcx,V:SimplyUnifiable,K:UnifyKey<Option<V>>>
 
 // Integral type keys
 
-impl UnifyKey<Option<IntVarValue>> for ty::IntVid {
+impl<'tcx> UnifyKey<'tcx, Option<IntVarValue>> for ty::IntVid {
     fn index(&self) -> uint { self.index }
 
     fn from_index(i: uint) -> ty::IntVid { ty::IntVid { index: i } }
@@ -404,24 +404,24 @@ impl UnifyKey<Option<IntVarValue>> for ty::IntVid {
     }
 }
 
-impl SimplyUnifiable for IntVarValue {
-    fn to_type(&self) -> Ty {
+impl<'tcx> SimplyUnifiable<'tcx> for IntVarValue {
+    fn to_type(&self) -> Ty<'tcx> {
         match *self {
             ty::IntType(i) => ty::mk_mach_int(i),
             ty::UintType(i) => ty::mk_mach_uint(i),
         }
     }
 
-    fn to_type_err(err: expected_found<IntVarValue>) -> ty::type_err {
+    fn to_type_err(err: expected_found<IntVarValue>) -> ty::type_err<'tcx> {
         return ty::terr_int_mismatch(err);
     }
 }
 
-impl UnifyValue for Option<IntVarValue> { }
+impl<'tcx> UnifyValue<'tcx> for Option<IntVarValue> { }
 
 // Floating point type keys
 
-impl UnifyKey<Option<ast::FloatTy>> for ty::FloatVid {
+impl<'tcx> UnifyKey<'tcx, Option<ast::FloatTy>> for ty::FloatVid {
     fn index(&self) -> uint { self.index }
 
     fn from_index(i: uint) -> ty::FloatVid { ty::FloatVid { index: i } }
@@ -437,21 +437,21 @@ impl UnifyKey<Option<ast::FloatTy>> for ty::FloatVid {
     }
 }
 
-impl UnifyValue for Option<ast::FloatTy> {
+impl<'tcx> UnifyValue<'tcx> for Option<ast::FloatTy> {
 }
 
-impl SimplyUnifiable for ast::FloatTy {
-    fn to_type(&self) -> Ty {
+impl<'tcx> SimplyUnifiable<'tcx> for ast::FloatTy {
+    fn to_type(&self) -> Ty<'tcx> {
         ty::mk_mach_float(*self)
     }
 
-    fn to_type_err(err: expected_found<ast::FloatTy>) -> ty::type_err {
-        return ty::terr_float_mismatch(err);
+    fn to_type_err(err: expected_found<ast::FloatTy>) -> ty::type_err<'tcx> {
+        ty::terr_float_mismatch(err)
     }
 }
 
-impl<K:Repr,V:Repr> Repr for VarValue<K,V> {
-    fn repr(&self, tcx: &ty::ctxt) -> String {
+impl<'tcx, K:Repr<'tcx>, V:Repr<'tcx>> Repr<'tcx> for VarValue<K,V> {
+    fn repr(&self, tcx: &ty::ctxt<'tcx>) -> String {
         match *self {
             Redirect(ref k) => format!("Redirect({})", k.repr(tcx)),
             Root(ref v, r) => format!("Root({}, {})", v.repr(tcx), r)

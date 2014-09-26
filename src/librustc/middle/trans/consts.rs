@@ -139,14 +139,15 @@ fn const_deref_ptr(cx: &CrateContext, v: ValueRef) -> ValueRef {
     }
 }
 
-fn const_deref_newtype(cx: &CrateContext, v: ValueRef, t: Ty)
+fn const_deref_newtype<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, v: ValueRef, t: Ty<'tcx>)
     -> ValueRef {
     let repr = adt::represent_type(cx, t);
     adt::const_get_field(cx, &*repr, v, 0, 0)
 }
 
-fn const_deref(cx: &CrateContext, v: ValueRef, t: Ty, explicit: bool)
-    -> (ValueRef, Ty) {
+fn const_deref<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, v: ValueRef,
+                         t: Ty<'tcx>, explicit: bool)
+                         -> (ValueRef, Ty<'tcx>) {
     match ty::deref(t, explicit) {
         Some(ref mt) => {
             match ty::get(t).sty {
@@ -196,7 +197,8 @@ pub fn get_const_val(cx: &CrateContext,
      !cx.non_inlineable_statics().borrow().contains(&def_id.node))
 }
 
-pub fn const_expr(cx: &CrateContext, e: &ast::Expr, is_local: bool) -> (ValueRef, bool, Ty) {
+pub fn const_expr<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, e: &ast::Expr, is_local: bool)
+                            -> (ValueRef, bool, Ty<'tcx>) {
     let (llconst, inlineable) = const_expr_unadjusted(cx, e, is_local);
     let mut llconst = llconst;
     let mut inlineable = inlineable;

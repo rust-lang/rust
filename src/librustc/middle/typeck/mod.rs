@@ -94,7 +94,7 @@ pub struct param_index {
 }
 
 #[deriving(Clone)]
-pub enum MethodOrigin {
+pub enum MethodOrigin<'tcx> {
     // fully statically resolved method
     MethodStatic(ast::DefId),
 
@@ -102,20 +102,20 @@ pub enum MethodOrigin {
     MethodStaticUnboxedClosure(ast::DefId),
 
     // method invoked on a type parameter with a bounded trait
-    MethodTypeParam(MethodParam),
+    MethodTypeParam(MethodParam<'tcx>),
 
     // method invoked on a trait instance
-    MethodTraitObject(MethodObject),
+    MethodTraitObject(MethodObject<'tcx>),
 
 }
 
 // details for a method invoked with a receiver whose type is a type parameter
 // with a bounded trait.
 #[deriving(Clone)]
-pub struct MethodParam {
+pub struct MethodParam<'tcx> {
     // the precise trait reference that occurs as a bound -- this may
     // be a supertrait of what the user actually typed.
-    pub trait_ref: Rc<ty::TraitRef>,
+    pub trait_ref: Rc<ty::TraitRef<'tcx>>,
 
     // index of uint in the list of methods for the trait
     pub method_num: uint,
@@ -123,9 +123,9 @@ pub struct MethodParam {
 
 // details for a method invoked with a receiver whose type is an object
 #[deriving(Clone)]
-pub struct MethodObject {
+pub struct MethodObject<'tcx> {
     // the (super)trait containing the method to be invoked
-    pub trait_ref: Rc<ty::TraitRef>,
+    pub trait_ref: Rc<ty::TraitRef<'tcx>>,
 
     // the actual base trait id of the object
     pub object_trait_id: ast::DefId,
@@ -141,10 +141,10 @@ pub struct MethodObject {
 }
 
 #[deriving(Clone)]
-pub struct MethodCallee {
-    pub origin: MethodOrigin,
-    pub ty: Ty,
-    pub substs: subst::Substs
+pub struct MethodCallee<'tcx> {
+    pub origin: MethodOrigin<'tcx>,
+    pub ty: Ty<'tcx>,
+    pub substs: subst::Substs<'tcx>
 }
 
 /**
@@ -174,9 +174,9 @@ pub enum ExprAdjustment {
     AutoObject
 }
 
-pub struct TypeAndSubsts {
-    pub substs: subst::Substs,
-    pub ty: Ty,
+pub struct TypeAndSubsts<'tcx> {
+    pub substs: subst::Substs<'tcx>,
+    pub ty: Ty<'tcx>,
 }
 
 impl MethodCall {
@@ -204,21 +204,21 @@ impl MethodCall {
 
 // maps from an expression id that corresponds to a method call to the details
 // of the method to be invoked
-pub type MethodMap = RefCell<FnvHashMap<MethodCall, MethodCallee>>;
+pub type MethodMap<'tcx> = RefCell<FnvHashMap<MethodCall, MethodCallee<'tcx>>>;
 
-pub type vtable_param_res = Vec<vtable_origin>;
+pub type vtable_param_res<'tcx> = Vec<vtable_origin<'tcx>>;
 
 // Resolutions for bounds of all parameters, left to right, for a given path.
-pub type vtable_res = VecPerParamSpace<vtable_param_res>;
+pub type vtable_res<'tcx> = VecPerParamSpace<vtable_param_res<'tcx>>;
 
 #[deriving(Clone)]
-pub enum vtable_origin {
+pub enum vtable_origin<'tcx> {
     /*
       Statically known vtable. def_id gives the impl item
       from whence comes the vtable, and tys are the type substs.
       vtable_res is the vtable itself.
      */
-    vtable_static(ast::DefId, subst::Substs, vtable_res),
+    vtable_static(ast::DefId, subst::Substs<'tcx>, vtable_res<'tcx>),
 
     /*
       Dynamic vtable, comes from a parameter that has a bound on it:
@@ -245,8 +245,8 @@ pub enum vtable_origin {
     vtable_error,
 }
 
-impl Repr for vtable_origin {
-    fn repr(&self, tcx: &ty::ctxt) -> String {
+impl<'tcx> Repr<'tcx> for vtable_origin<'tcx> {
+    fn repr(&self, tcx: &ty::ctxt<'tcx>) -> String {
         match *self {
             vtable_static(def_id, ref tys, ref vtable_res) => {
                 format!("vtable_static({:?}:{}, {}, {})",
@@ -273,7 +273,7 @@ impl Repr for vtable_origin {
 
 // For every explicit cast into an object type, maps from the cast
 // expr to the associated trait ref.
-pub type ObjectCastMap = RefCell<NodeMap<Rc<ty::TraitRef>>>;
+pub type ObjectCastMap<'tcx> = RefCell<NodeMap<Rc<ty::TraitRef<'tcx>>>>;
 
 pub struct CrateCtxt<'a, 'tcx: 'a> {
     // A mapping from method call sites to traits that have that method.
@@ -282,14 +282,14 @@ pub struct CrateCtxt<'a, 'tcx: 'a> {
 }
 
 // Functions that write types into the node type table
-pub fn write_ty_to_tcx(tcx: &ty::ctxt, node_id: ast::NodeId, ty: Ty) {
+pub fn write_ty_to_tcx<'tcx>(tcx: &ty::ctxt<'tcx>, node_id: ast::NodeId, ty: Ty<'tcx>) {
     debug!("write_ty_to_tcx({}, {})", node_id, ppaux::ty_to_string(tcx, ty));
     assert!(!ty::type_needs_infer(ty));
     tcx.node_types.borrow_mut().insert(node_id as uint, ty);
 }
-pub fn write_substs_to_tcx(tcx: &ty::ctxt,
-                           node_id: ast::NodeId,
-                           item_substs: ty::ItemSubsts) {
+pub fn write_substs_to_tcx<'tcx>(tcx: &ty::ctxt<'tcx>,
+                                 node_id: ast::NodeId,
+                                 item_substs: ty::ItemSubsts<'tcx>) {
     if !item_substs.is_noop() {
         debug!("write_substs_to_tcx({}, {})",
                node_id,
@@ -322,14 +322,14 @@ pub fn no_params(t: Ty) -> ty::Polytype {
     }
 }
 
-pub fn require_same_types(tcx: &ty::ctxt,
-                          maybe_infcx: Option<&infer::InferCtxt>,
-                          t1_is_expected: bool,
-                          span: Span,
-                          t1: Ty,
-                          t2: Ty,
-                          msg: || -> String)
-                          -> bool {
+pub fn require_same_types<'a, 'tcx>(tcx: &ty::ctxt<'tcx>,
+                                    maybe_infcx: Option<&infer::InferCtxt<'a, 'tcx>>,
+                                    t1_is_expected: bool,
+                                    span: Span,
+                                    t1: Ty<'tcx>,
+                                    t2: Ty<'tcx>,
+                                    msg: || -> String)
+                                    -> bool {
     let result = match maybe_infcx {
         None => {
             let infcx = infer::new_infer_ctxt(tcx);

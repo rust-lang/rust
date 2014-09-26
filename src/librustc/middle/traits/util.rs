@@ -26,16 +26,16 @@ use super::{Obligation, ObligationCause, VtableImpl, VtableParam, VtableParamDat
 
 pub struct Supertraits<'cx, 'tcx:'cx> {
     tcx: &'cx ty::ctxt<'tcx>,
-    stack: Vec<SupertraitEntry>,
+    stack: Vec<SupertraitEntry<'tcx>>,
 }
 
-struct SupertraitEntry {
+struct SupertraitEntry<'tcx> {
     position: uint,
-    supertraits: Vec<Rc<ty::TraitRef>>,
+    supertraits: Vec<Rc<ty::TraitRef<'tcx>>>,
 }
 
 pub fn supertraits<'cx, 'tcx>(tcx: &'cx ty::ctxt<'tcx>,
-                              trait_ref: Rc<ty::TraitRef>)
+                              trait_ref: Rc<ty::TraitRef<'tcx>>)
                               -> Supertraits<'cx, 'tcx>
 {
     /*!
@@ -58,7 +58,7 @@ pub fn supertraits<'cx, 'tcx>(tcx: &'cx ty::ctxt<'tcx>,
 }
 
 pub fn transitive_bounds<'cx, 'tcx>(tcx: &'cx ty::ctxt<'tcx>,
-                                    bounds: &[Rc<ty::TraitRef>])
+                                    bounds: &[Rc<ty::TraitRef<'tcx>>])
                                     -> Supertraits<'cx, 'tcx>
 {
     let bounds = Vec::from_fn(bounds.len(), |i| bounds[i].clone());
@@ -67,7 +67,7 @@ pub fn transitive_bounds<'cx, 'tcx>(tcx: &'cx ty::ctxt<'tcx>,
 }
 
 impl<'cx, 'tcx> Supertraits<'cx, 'tcx> {
-    fn push(&mut self, trait_ref: &ty::TraitRef) {
+    fn push(&mut self, trait_ref: &ty::TraitRef<'tcx>) {
         let bounds = ty::bounds_for_trait_ref(self.tcx, trait_ref);
         let entry = SupertraitEntry { position: 0,
                                       supertraits: bounds.trait_bounds };
@@ -84,8 +84,8 @@ impl<'cx, 'tcx> Supertraits<'cx, 'tcx> {
     }
 }
 
-impl<'cx, 'tcx> Iterator<Rc<ty::TraitRef>> for Supertraits<'cx, 'tcx> {
-    fn next(&mut self) -> Option<Rc<ty::TraitRef>> {
+impl<'cx, 'tcx> Iterator<Rc<ty::TraitRef<'tcx>>> for Supertraits<'cx, 'tcx> {
+    fn next(&mut self) -> Option<Rc<ty::TraitRef<'tcx>>> {
         loop {
             // Extract next item from top-most stack frame, if any.
             let next_trait = match self.stack.mut_last() {
@@ -127,34 +127,34 @@ impl<'cx, 'tcx> Iterator<Rc<ty::TraitRef>> for Supertraits<'cx, 'tcx> {
 // declared on the impl declaration e.g., `impl<A,B> for ~[(A,B)]`
 // would return ($0, $1) where $0 and $1 are freshly instantiated type
 // variables.
-pub fn fresh_substs_for_impl(infcx: &InferCtxt,
-                             span: Span,
-                             impl_def_id: ast::DefId)
-                             -> Substs
+pub fn fresh_substs_for_impl<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
+                                       span: Span,
+                                       impl_def_id: ast::DefId)
+                                       -> Substs<'tcx>
 {
     let tcx = infcx.tcx;
     let impl_generics = ty::lookup_item_type(tcx, impl_def_id).generics;
     infcx.fresh_substs_for_generics(span, &impl_generics)
 }
 
-impl<N> fmt::Show for VtableImplData<N> {
+impl<'tcx, N> fmt::Show for VtableImplData<'tcx, N> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "VtableImpl({})", self.impl_def_id)
     }
 }
 
-impl fmt::Show for VtableParamData {
+impl<'tcx> fmt::Show for VtableParamData<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "VtableParam(...)")
     }
 }
 
-pub fn obligations_for_generics(tcx: &ty::ctxt,
-                                cause: ObligationCause,
-                                recursion_depth: uint,
-                                generics: &ty::Generics,
-                                substs: &Substs)
-                                -> VecPerParamSpace<Obligation>
+pub fn obligations_for_generics<'tcx>(tcx: &ty::ctxt<'tcx>,
+                                      cause: ObligationCause<'tcx>,
+                                      recursion_depth: uint,
+                                      generics: &ty::Generics<'tcx>,
+                                      substs: &Substs<'tcx>)
+                                      -> VecPerParamSpace<Obligation<'tcx>>
 {
     /*! See `super::obligations_for_generics` */
 
@@ -179,15 +179,15 @@ pub fn obligations_for_generics(tcx: &ty::ctxt,
     return obligations;
 }
 
-fn push_obligations_for_param_bounds(
-    tcx: &ty::ctxt,
-    cause: ObligationCause,
+fn push_obligations_for_param_bounds<'tcx>(
+    tcx: &ty::ctxt<'tcx>,
+    cause: ObligationCause<'tcx>,
     recursion_depth: uint,
     space: subst::ParamSpace,
     index: uint,
-    param_bounds: &ty::ParamBounds,
-    param_substs: &Substs,
-    obligations: &mut VecPerParamSpace<Obligation>)
+    param_bounds: &ty::ParamBounds<'tcx>,
+    param_substs: &Substs<'tcx>,
+    obligations: &mut VecPerParamSpace<Obligation<'tcx>>)
 {
     let param_ty = *param_substs.types.get(space, index);
 
@@ -211,13 +211,13 @@ fn push_obligations_for_param_bounds(
     }
 }
 
-pub fn obligation_for_builtin_bound(
-    tcx: &ty::ctxt,
-    cause: ObligationCause,
+pub fn obligation_for_builtin_bound<'tcx>(
+    tcx: &ty::ctxt<'tcx>,
+    cause: ObligationCause<'tcx>,
     builtin_bound: ty::BuiltinBound,
     recursion_depth: uint,
-    param_ty: Ty)
-    -> Obligation
+    param_ty: Ty<'tcx>)
+    -> Obligation<'tcx>
 {
     match tcx.lang_items.from_builtin_kind(builtin_bound) {
         Ok(def_id) => {
@@ -236,10 +236,10 @@ pub fn obligation_for_builtin_bound(
     }
 }
 
-pub fn search_trait_and_supertraits_from_bound(tcx: &ty::ctxt,
-                                               caller_bound: Rc<ty::TraitRef>,
-                                               test: |ast::DefId| -> bool)
-                                               -> Option<VtableParamData>
+pub fn search_trait_and_supertraits_from_bound<'tcx>(tcx: &ty::ctxt<'tcx>,
+                                                     caller_bound: Rc<ty::TraitRef<'tcx>>,
+                                                     test: |ast::DefId| -> bool)
+                                                     -> Option<VtableParamData<'tcx>>
 {
     /*!
      * Starting from a caller obligation `caller_bound` (which has
@@ -260,16 +260,16 @@ pub fn search_trait_and_supertraits_from_bound(tcx: &ty::ctxt,
     return None;
 }
 
-impl Repr for super::Obligation {
-    fn repr(&self, tcx: &ty::ctxt) -> String {
+impl<'tcx> Repr<'tcx> for super::Obligation<'tcx> {
+    fn repr(&self, tcx: &ty::ctxt<'tcx>) -> String {
         format!("Obligation(trait_ref={},depth={})",
                 self.trait_ref.repr(tcx),
                 self.recursion_depth)
     }
 }
 
-impl<N:Repr> Repr for super::Vtable<N> {
-    fn repr(&self, tcx: &ty::ctxt) -> String {
+impl<'tcx, N:Repr<'tcx>> Repr<'tcx> for super::Vtable<'tcx, N> {
+    fn repr(&self, tcx: &ty::ctxt<'tcx>) -> String {
         match *self {
             super::VtableImpl(ref v) =>
                 v.repr(tcx),
@@ -287,8 +287,8 @@ impl<N:Repr> Repr for super::Vtable<N> {
     }
 }
 
-impl<N:Repr> Repr for super::VtableImplData<N> {
-    fn repr(&self, tcx: &ty::ctxt) -> String {
+impl<'tcx, N:Repr<'tcx>> Repr<'tcx> for super::VtableImplData<'tcx, N> {
+    fn repr(&self, tcx: &ty::ctxt<'tcx>) -> String {
         format!("VtableImpl(impl_def_id={}, substs={}, nested={})",
                 self.impl_def_id.repr(tcx),
                 self.substs.repr(tcx),
@@ -296,15 +296,15 @@ impl<N:Repr> Repr for super::VtableImplData<N> {
     }
 }
 
-impl Repr for super::VtableParamData {
-    fn repr(&self, tcx: &ty::ctxt) -> String {
+impl<'tcx> Repr<'tcx> for super::VtableParamData<'tcx> {
+    fn repr(&self, tcx: &ty::ctxt<'tcx>) -> String {
         format!("VtableParam(bound={})",
                 self.bound.repr(tcx))
     }
 }
 
-impl Repr for super::SelectionError {
-    fn repr(&self, tcx: &ty::ctxt) -> String {
+impl<'tcx> Repr<'tcx> for super::SelectionError<'tcx> {
+    fn repr(&self, tcx: &ty::ctxt<'tcx>) -> String {
         match *self {
             super::Unimplemented =>
                 format!("Unimplemented"),
@@ -320,16 +320,16 @@ impl Repr for super::SelectionError {
     }
 }
 
-impl Repr for super::FulfillmentError {
-    fn repr(&self, tcx: &ty::ctxt) -> String {
+impl<'tcx> Repr<'tcx> for super::FulfillmentError<'tcx> {
+    fn repr(&self, tcx: &ty::ctxt<'tcx>) -> String {
         format!("FulfillmentError({},{})",
                 self.obligation.repr(tcx),
                 self.code.repr(tcx))
     }
 }
 
-impl Repr for super::FulfillmentErrorCode {
-    fn repr(&self, tcx: &ty::ctxt) -> String {
+impl<'tcx> Repr<'tcx> for super::FulfillmentErrorCode<'tcx> {
+    fn repr(&self, tcx: &ty::ctxt<'tcx>) -> String {
         match *self {
             super::CodeSelectionError(ref o) => o.repr(tcx),
             super::CodeAmbiguity => format!("Ambiguity")
@@ -337,7 +337,7 @@ impl Repr for super::FulfillmentErrorCode {
     }
 }
 
-impl fmt::Show for super::FulfillmentErrorCode {
+impl<'tcx> fmt::Show for super::FulfillmentErrorCode<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             super::CodeSelectionError(ref e) => write!(f, "{}", e),
@@ -346,8 +346,8 @@ impl fmt::Show for super::FulfillmentErrorCode {
     }
 }
 
-impl Repr for ty::type_err {
-    fn repr(&self, tcx: &ty::ctxt) -> String {
+impl<'tcx> Repr<'tcx> for ty::type_err<'tcx> {
+    fn repr(&self, tcx: &ty::ctxt<'tcx>) -> String {
         ty::type_err_to_str(tcx, self)
     }
 }

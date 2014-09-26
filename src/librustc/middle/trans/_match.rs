@@ -239,16 +239,16 @@ impl<'a> ConstantExpr<'a> {
 }
 
 // An option identifying a branch (either a literal, an enum variant or a range)
-enum Opt<'a> {
+enum Opt<'a, 'tcx> {
     ConstantValue(ConstantExpr<'a>),
     ConstantRange(ConstantExpr<'a>, ConstantExpr<'a>),
-    Variant(ty::Disr, Rc<adt::Repr>, ast::DefId),
+    Variant(ty::Disr, Rc<adt::Repr<'tcx>>, ast::DefId),
     SliceLengthEqual(uint),
     SliceLengthGreaterOrEqual(/* prefix length */ uint, /* suffix length */ uint),
 }
 
-impl<'a> Opt<'a> {
-    fn eq(&self, other: &Opt<'a>, tcx: &ty::ctxt) -> bool {
+impl<'a, 'tcx> Opt<'a, 'tcx> {
+    fn eq(&self, other: &Opt<'a, 'tcx>, tcx: &ty::ctxt<'tcx>) -> bool {
         match (self, other) {
             (&ConstantValue(a), &ConstantValue(b)) => a.eq(b, tcx),
             (&ConstantRange(a1, a2), &ConstantRange(b1, b2)) => {
@@ -265,7 +265,7 @@ impl<'a> Opt<'a> {
         }
     }
 
-    fn trans<'blk, 'tcx>(&self, mut bcx: Block<'blk, 'tcx>) -> OptResult<'blk, 'tcx> {
+    fn trans<'blk>(&self, mut bcx: Block<'blk, 'tcx>) -> OptResult<'blk, 'tcx> {
         let _icx = push_ctxt("match::trans_opt");
         let ccx = bcx.ccx();
         match *self {
@@ -325,20 +325,20 @@ pub enum TransBindingMode {
  * - `id` is the node id of the binding
  * - `ty` is the Rust type of the binding */
  #[deriving(Clone)]
-pub struct BindingInfo {
+pub struct BindingInfo<'tcx> {
     pub llmatch: ValueRef,
     pub trmode: TransBindingMode,
     pub id: ast::NodeId,
     pub span: Span,
-    pub ty: Ty,
+    pub ty: Ty<'tcx>,
 }
 
-type BindingsMap = HashMap<Ident, BindingInfo>;
+type BindingsMap<'tcx> = HashMap<Ident, BindingInfo<'tcx>>;
 
 struct ArmData<'p, 'blk, 'tcx: 'blk> {
     bodycx: Block<'blk, 'tcx>,
     arm: &'p ast::Arm,
-    bindings_map: BindingsMap
+    bindings_map: BindingsMap<'tcx>
 }
 
 /**
@@ -353,7 +353,7 @@ struct Match<'a, 'p: 'a, 'blk: 'a, 'tcx: 'blk> {
     bound_ptrs: Vec<(Ident, ValueRef)>
 }
 
-impl<'a, 'p, 'blk, 'tcx> Repr for Match<'a, 'p, 'blk, 'tcx> {
+impl<'a, 'p, 'blk, 'tcx> Repr<'tcx> for Match<'a, 'p, 'blk, 'tcx> {
     fn repr(&self, tcx: &ty::ctxt) -> String {
         if tcx.sess.verbose() {
             // for many programs, this just take too long to serialize
@@ -553,7 +553,7 @@ fn enter_opt<'a, 'p, 'blk, 'tcx>(
 // on a set of enum variants or a literal.
 fn get_branches<'a, 'p, 'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                     m: &[Match<'a, 'p, 'blk, 'tcx>], col: uint)
-                                    -> Vec<Opt<'p>> {
+                                    -> Vec<Opt<'p, 'tcx>> {
     let tcx = bcx.tcx();
 
     let mut found: Vec<Opt> = vec![];
@@ -597,7 +597,7 @@ struct ExtractedBlock<'blk, 'tcx: 'blk> {
 }
 
 fn extract_variant_args<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
-                                    repr: &adt::Repr,
+                                    repr: &adt::Repr<'tcx>,
                                     disr_val: ty::Disr,
                                     val: ValueRef)
                                     -> ExtractedBlock<'blk, 'tcx> {
@@ -772,12 +772,12 @@ fn pick_col(m: &[Match]) -> uint {
 fn compare_values<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
                               lhs: ValueRef,
                               rhs: ValueRef,
-                              rhs_t: Ty)
+                              rhs_t: Ty<'tcx>)
                               -> Result<'blk, 'tcx> {
     fn compare_str<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
                                lhs: ValueRef,
                                rhs: ValueRef,
-                               rhs_t: Ty)
+                               rhs_t: Ty<'tcx>)
                                -> Result<'blk, 'tcx> {
         let did = langcall(cx,
                            None,
@@ -814,7 +814,7 @@ fn compare_values<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
 }
 
 fn insert_lllocals<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
-                               bindings_map: &BindingsMap,
+                               bindings_map: &BindingsMap<'tcx>,
                                cs: Option<cleanup::ScopeId>)
                                -> Block<'blk, 'tcx> {
     /*!
@@ -871,7 +871,7 @@ fn insert_lllocals<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
 
 fn compile_guard<'a, 'p, 'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                      guard_expr: &ast::Expr,
-                                     data: &ArmData,
+                                     data: &ArmData<'p, 'blk, 'tcx>,
                                      m: &[Match<'a, 'p, 'blk, 'tcx>],
                                      vals: &[ValueRef],
                                      chk: &FailureHandler,
@@ -1248,7 +1248,7 @@ struct ReassignmentChecker {
     reassigned: bool
 }
 
-impl euv::Delegate for ReassignmentChecker {
+impl<'tcx> euv::Delegate<'tcx> for ReassignmentChecker {
     fn consume(&mut self, _: ast::NodeId, _: Span, _: mc::cmt, _: euv::ConsumeMode) {}
     fn consume_pat(&mut self, _: &ast::Pat, _: mc::cmt, _: euv::ConsumeMode) {}
     fn borrow(&mut self, _: ast::NodeId, _: Span, _: mc::cmt, _: ty::Region,
@@ -1264,8 +1264,9 @@ impl euv::Delegate for ReassignmentChecker {
     }
 }
 
-fn create_bindings_map(bcx: Block, pat: &ast::Pat,
-                      discr: &ast::Expr, body: &ast::Expr) -> BindingsMap {
+fn create_bindings_map<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, pat: &ast::Pat,
+                                   discr: &ast::Expr, body: &ast::Expr)
+                                   -> BindingsMap<'tcx> {
     // Create the bindings map, which is a mapping from each binding name
     // to an alloca() that will be the value for that local variable.
     // Note that we use the names because each binding will have many ids
@@ -1462,7 +1463,7 @@ pub fn store_local<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
 pub fn store_arg<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                              pat: &ast::Pat,
-                             arg: Datum<Rvalue>,
+                             arg: Datum<'tcx, Rvalue>,
                              arg_scope: cleanup::ScopeId)
                              -> Block<'blk, 'tcx> {
     /*!
@@ -1540,7 +1541,7 @@ fn mk_binding_alloca<'blk, 'tcx, A>(bcx: Block<'blk, 'tcx>,
                                     ident: &ast::Ident,
                                     cleanup_scope: cleanup::ScopeId,
                                     arg: A,
-                                    populate: |A, Block<'blk, 'tcx>, ValueRef, Ty|
+                                    populate: |A, Block<'blk, 'tcx>, ValueRef, Ty<'tcx>|
                                               -> Block<'blk, 'tcx>)
                                     -> Block<'blk, 'tcx> {
     let var_ty = node_id_type(bcx, p_id);

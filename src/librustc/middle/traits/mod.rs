@@ -41,23 +41,23 @@ mod util;
  * scope. The eventual result is usually a `Selection` (defined below).
  */
 #[deriving(Clone)]
-pub struct Obligation {
-    pub cause: ObligationCause,
+pub struct Obligation<'tcx> {
+    pub cause: ObligationCause<'tcx>,
     pub recursion_depth: uint,
-    pub trait_ref: Rc<ty::TraitRef>,
+    pub trait_ref: Rc<ty::TraitRef<'tcx>>,
 }
 
 /**
  * Why did we incur this obligation? Used for error reporting.
  */
 #[deriving(Clone)]
-pub struct ObligationCause {
+pub struct ObligationCause<'tcx> {
     pub span: Span,
-    pub code: ObligationCauseCode
+    pub code: ObligationCauseCode<'tcx>
 }
 
 #[deriving(Clone)]
-pub enum ObligationCauseCode {
+pub enum ObligationCauseCode<'tcx> {
     /// Not well classified or should be obvious from span.
     MiscObligation,
 
@@ -66,7 +66,7 @@ pub enum ObligationCauseCode {
     ItemObligation(ast::DefId),
 
     /// Obligation incurred due to an object cast.
-    ObjectCastObligation(/* Object type */ Ty),
+    ObjectCastObligation(/* Object type */ Ty<'tcx>),
 
     /// Various cases where expressions must be sized/copy/etc:
     AssignmentLhsSized,        // L = X implies that L is Sized
@@ -75,29 +75,29 @@ pub enum ObligationCauseCode {
     RepeatVec,                 // [T,..n] --> T must be Copy
 }
 
-pub static DUMMY_CAUSE: ObligationCause =
+pub static DUMMY_CAUSE: ObligationCause<'static> =
     ObligationCause { span: DUMMY_SP,
                       code: MiscObligation };
 
-pub type Obligations = subst::VecPerParamSpace<Obligation>;
+pub type Obligations<'tcx> = subst::VecPerParamSpace<Obligation<'tcx>>;
 
-pub type Selection = Vtable<Obligation>;
+pub type Selection<'tcx> = Vtable<'tcx, Obligation<'tcx>>;
 
 #[deriving(Clone,Show)]
-pub enum SelectionError {
+pub enum SelectionError<'tcx> {
     Unimplemented,
     Overflow,
-    OutputTypeParameterMismatch(Rc<ty::TraitRef>, ty::type_err)
+    OutputTypeParameterMismatch(Rc<ty::TraitRef<'tcx>>, ty::type_err<'tcx>)
 }
 
-pub struct FulfillmentError {
-    pub obligation: Obligation,
-    pub code: FulfillmentErrorCode
+pub struct FulfillmentError<'tcx> {
+    pub obligation: Obligation<'tcx>,
+    pub code: FulfillmentErrorCode<'tcx>
 }
 
 #[deriving(Clone)]
-pub enum FulfillmentErrorCode {
-    CodeSelectionError(SelectionError),
+pub enum FulfillmentErrorCode<'tcx> {
+    CodeSelectionError(SelectionError<'tcx>),
     CodeAmbiguity,
 }
 
@@ -110,7 +110,7 @@ pub enum FulfillmentErrorCode {
  *   to inconclusive type inference.
  * - `Err(e)`: error `e` occurred
  */
-pub type SelectionResult<T> = Result<Option<T>, SelectionError>;
+pub type SelectionResult<'tcx, T> = Result<Option<T>, SelectionError<'tcx>>;
 
 #[deriving(PartialEq,Eq,Show)]
 pub enum EvaluationResult {
@@ -160,9 +160,9 @@ pub enum EvaluationResult {
  * See explanation on `VtableImplData`.
  */
 #[deriving(Show,Clone)]
-pub enum Vtable<N> {
+pub enum Vtable<'tcx, N> {
     /// Vtable identifying a particular impl.
-    VtableImpl(VtableImplData<N>),
+    VtableImpl(VtableImplData<'tcx, N>),
 
     /// Vtable automatically generated for an unboxed closure. The def
     /// ID is the ID of the closure expression. This is a `VtableImpl`
@@ -172,7 +172,7 @@ pub enum Vtable<N> {
 
     /// Successful resolution to an obligation provided by the caller
     /// for some type parameter.
-    VtableParam(VtableParamData),
+    VtableParam(VtableParamData<'tcx>),
 
     /// Successful resolution for a builtin trait.
     VtableBuiltin,
@@ -191,9 +191,9 @@ pub enum Vtable<N> {
  * impl, and nested obligations are satisfied later.
  */
 #[deriving(Clone)]
-pub struct VtableImplData<N> {
+pub struct VtableImplData<'tcx, N> {
     pub impl_def_id: ast::DefId,
-    pub substs: subst::Substs,
+    pub substs: subst::Substs<'tcx>,
     pub nested: subst::VecPerParamSpace<N>
 }
 
@@ -203,16 +203,16 @@ pub struct VtableImplData<N> {
  * on an instance of `T`, the vtable would be of type `VtableParam`.
  */
 #[deriving(Clone)]
-pub struct VtableParamData {
+pub struct VtableParamData<'tcx> {
     // In the above example, this would `Eq`
-    pub bound: Rc<ty::TraitRef>,
+    pub bound: Rc<ty::TraitRef<'tcx>>,
 }
 
-pub fn try_select_obligation(infcx: &InferCtxt,
-                             param_env: &ty::ParameterEnvironment,
-                             unboxed_closures: &DefIdMap<ty::UnboxedClosure>,
-                             obligation: &Obligation)
-                             -> SelectionResult<Selection>
+pub fn try_select_obligation<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
+                                       param_env: &ty::ParameterEnvironment<'tcx>,
+                                       unboxed_closures: &DefIdMap<ty::UnboxedClosure<'tcx>>,
+                                       obligation: &Obligation<'tcx>)
+                                       -> SelectionResult<'tcx, Selection<'tcx>>
 {
     /*!
      * Attempts to select the impl/bound/etc for the obligation
@@ -228,11 +228,11 @@ pub fn try_select_obligation(infcx: &InferCtxt,
     selcx.select(obligation)
 }
 
-pub fn evaluate_obligation(infcx: &InferCtxt,
-                           param_env: &ty::ParameterEnvironment,
-                           obligation: &Obligation,
-                           unboxed_closures: &DefIdMap<ty::UnboxedClosure>)
-                           -> EvaluationResult
+pub fn evaluate_obligation<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
+                                     param_env: &ty::ParameterEnvironment<'tcx>,
+                                     obligation: &Obligation<'tcx>,
+                                     unboxed_closures: &DefIdMap<ty::UnboxedClosure<'tcx>>)
+                                     -> EvaluationResult
 {
     /*!
      * Attempts to resolve the obligation given. Returns `None` if
@@ -245,13 +245,13 @@ pub fn evaluate_obligation(infcx: &InferCtxt,
     selcx.evaluate_obligation(obligation)
 }
 
-pub fn evaluate_impl(infcx: &InferCtxt,
-                     param_env: &ty::ParameterEnvironment,
-                     unboxed_closures: &DefIdMap<ty::UnboxedClosure>,
-                     cause: ObligationCause,
-                     impl_def_id: ast::DefId,
-                     self_ty: Ty)
-                     -> EvaluationResult
+pub fn evaluate_impl<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
+                               param_env: &ty::ParameterEnvironment<'tcx>,
+                               unboxed_closures: &DefIdMap<ty::UnboxedClosure<'tcx>>,
+                               cause: ObligationCause<'tcx>,
+                               impl_def_id: ast::DefId,
+                               self_ty: Ty<'tcx>)
+                               -> EvaluationResult
 {
     /*!
      * Tests whether the impl `impl_def_id` can be applied to the self
@@ -268,13 +268,14 @@ pub fn evaluate_impl(infcx: &InferCtxt,
     selcx.evaluate_impl(impl_def_id, cause, self_ty)
 }
 
-pub fn select_inherent_impl(infcx: &InferCtxt,
-                            param_env: &ty::ParameterEnvironment,
-                            unboxed_closures: &DefIdMap<ty::UnboxedClosure>,
-                            cause: ObligationCause,
-                            impl_def_id: ast::DefId,
-                            self_ty: Ty)
-                            -> SelectionResult<VtableImplData<Obligation>>
+pub fn select_inherent_impl<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
+                                      param_env: &ty::ParameterEnvironment<'tcx>,
+                                      unboxed_closures: &DefIdMap<ty::UnboxedClosure<'tcx>>,
+                                      cause: ObligationCause<'tcx>,
+                                      impl_def_id: ast::DefId,
+                                      self_ty: Ty<'tcx>)
+                                      -> SelectionResult<'tcx, VtableImplData<'tcx,
+                                                                              Obligation<'tcx>>>
 {
     /*!
      * Matches the self type of the inherent impl `impl_def_id`
@@ -324,11 +325,11 @@ pub fn overlapping_impls(infcx: &InferCtxt,
     coherence::impl_can_satisfy(infcx, impl2_def_id, impl1_def_id)
 }
 
-pub fn obligations_for_generics(tcx: &ty::ctxt,
-                                cause: ObligationCause,
-                                generics: &ty::Generics,
-                                substs: &subst::Substs)
-                                -> subst::VecPerParamSpace<Obligation>
+pub fn obligations_for_generics<'tcx>(tcx: &ty::ctxt<'tcx>,
+                                      cause: ObligationCause<'tcx>,
+                                      generics: &ty::Generics<'tcx>,
+                                      substs: &subst::Substs<'tcx>)
+                                      -> subst::VecPerParamSpace<Obligation<'tcx>>
 {
     /*!
      * Given generics for an impl like:
@@ -343,43 +344,45 @@ pub fn obligations_for_generics(tcx: &ty::ctxt,
     util::obligations_for_generics(tcx, cause, 0, generics, substs)
 }
 
-pub fn obligation_for_builtin_bound(tcx: &ty::ctxt,
-                                    cause: ObligationCause,
-                                    source_ty: Ty,
-                                    builtin_bound: ty::BuiltinBound)
-                                    -> Obligation
+pub fn obligation_for_builtin_bound<'tcx>(tcx: &ty::ctxt<'tcx>,
+                                          cause: ObligationCause<'tcx>,
+                                          source_ty: Ty<'tcx>,
+                                          builtin_bound: ty::BuiltinBound)
+                                          -> Obligation<'tcx>
 {
     util::obligation_for_builtin_bound(tcx, cause, builtin_bound, 0, source_ty)
 }
 
-impl Obligation {
-    pub fn new(cause: ObligationCause, trait_ref: Rc<ty::TraitRef>) -> Obligation {
+impl<'tcx> Obligation<'tcx> {
+    pub fn new(cause: ObligationCause<'tcx>, trait_ref: Rc<ty::TraitRef<'tcx>>)
+               -> Obligation<'tcx> {
         Obligation { cause: cause,
                      recursion_depth: 0,
                      trait_ref: trait_ref }
     }
 
-    pub fn misc(span: Span, trait_ref: Rc<ty::TraitRef>) -> Obligation {
+    pub fn misc(span: Span, trait_ref: Rc<ty::TraitRef<'tcx>>) -> Obligation<'tcx> {
         Obligation::new(ObligationCause::misc(span), trait_ref)
     }
 
-    pub fn self_ty(&self) -> Ty {
+    pub fn self_ty(&self) -> Ty<'tcx> {
         self.trait_ref.self_ty()
     }
 }
 
-impl ObligationCause {
-    pub fn new(span: Span, code: ObligationCauseCode) -> ObligationCause {
+impl<'tcx> ObligationCause<'tcx> {
+    pub fn new(span: Span, code: ObligationCauseCode<'tcx>)
+               -> ObligationCause<'tcx> {
         ObligationCause { span: span, code: code }
     }
 
-    pub fn misc(span: Span) -> ObligationCause {
+    pub fn misc(span: Span) -> ObligationCause<'tcx> {
         ObligationCause { span: span, code: MiscObligation }
     }
 }
 
-impl<N> Vtable<N> {
-    pub fn map_nested<M>(&self, op: |&N| -> M) -> Vtable<M> {
+impl<'tcx, N> Vtable<'tcx, N> {
+    pub fn map_nested<M>(&self, op: |&N| -> M) -> Vtable<'tcx, M> {
         match *self {
             VtableImpl(ref i) => VtableImpl(i.map_nested(op)),
             VtableUnboxedClosure(d) => VtableUnboxedClosure(d),
@@ -388,7 +391,7 @@ impl<N> Vtable<N> {
         }
     }
 
-    pub fn map_move_nested<M>(self, op: |N| -> M) -> Vtable<M> {
+    pub fn map_move_nested<M>(self, op: |N| -> M) -> Vtable<'tcx, M> {
         match self {
             VtableImpl(i) => VtableImpl(i.map_move_nested(op)),
             VtableUnboxedClosure(d) => VtableUnboxedClosure(d),
@@ -398,10 +401,10 @@ impl<N> Vtable<N> {
     }
 }
 
-impl<N> VtableImplData<N> {
+impl<'tcx, N> VtableImplData<'tcx, N> {
     pub fn map_nested<M>(&self,
                          op: |&N| -> M)
-                         -> VtableImplData<M>
+                         -> VtableImplData<'tcx, M>
     {
         VtableImplData {
             impl_def_id: self.impl_def_id,
@@ -410,7 +413,8 @@ impl<N> VtableImplData<N> {
         }
     }
 
-    pub fn map_move_nested<M>(self, op: |N| -> M) -> VtableImplData<M> {
+    pub fn map_move_nested<M>(self, op: |N| -> M)
+                              -> VtableImplData<'tcx, M> {
         let VtableImplData { impl_def_id, substs, nested } = self;
         VtableImplData {
             impl_def_id: impl_def_id,
@@ -429,9 +433,9 @@ impl EvaluationResult {
     }
 }
 
-impl FulfillmentError {
-    fn new(obligation: Obligation, code: FulfillmentErrorCode)
-           -> FulfillmentError
+impl<'tcx> FulfillmentError<'tcx> {
+    fn new(obligation: Obligation<'tcx>, code: FulfillmentErrorCode<'tcx>)
+           -> FulfillmentError<'tcx>
     {
         FulfillmentError { obligation: obligation, code: code }
     }

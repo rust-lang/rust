@@ -241,7 +241,7 @@ struct BorrowStats {
     guaranteed_paths: uint
 }
 
-pub type BckResult<T> = Result<T, BckError>;
+pub type BckResult<'tcx, T> = Result<T, BckError<'tcx>>;
 
 #[deriving(PartialEq)]
 pub enum PartialTotal {
@@ -366,10 +366,10 @@ pub enum bckerr_code {
 // Combination of an error code and the categorization of the expression
 // that caused it
 #[deriving(PartialEq)]
-pub struct BckError {
+pub struct BckError<'tcx> {
     span: Span,
     cause: euv::LoanCause,
-    cmt: mc::cmt,
+    cmt: mc::cmt<'tcx>,
     code: bckerr_code
 }
 
@@ -401,7 +401,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
         mc::MemCategorizationContext::new(self.tcx)
     }
 
-    pub fn cat_expr(&self, expr: &ast::Expr) -> mc::cmt {
+    pub fn cat_expr(&self, expr: &ast::Expr) -> mc::cmt<'tcx> {
         match self.mc().cat_expr(expr) {
             Ok(c) => c,
             Err(()) => {
@@ -410,7 +410,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
         }
     }
 
-    pub fn cat_expr_unadjusted(&self, expr: &ast::Expr) -> mc::cmt {
+    pub fn cat_expr_unadjusted(&self, expr: &ast::Expr) -> mc::cmt<'tcx> {
         match self.mc().cat_expr_unadjusted(expr) {
             Ok(c) => c,
             Err(()) => {
@@ -421,8 +421,8 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
 
     pub fn cat_expr_autoderefd(&self,
                                expr: &ast::Expr,
-                               adj: &ty::AutoAdjustment)
-                               -> mc::cmt {
+                               adj: &ty::AutoAdjustment<'tcx>)
+                               -> mc::cmt<'tcx> {
         let r = match *adj {
             ty::AdjustDerefRef(
                 ty::AutoDerefRef {
@@ -447,9 +447,9 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
     pub fn cat_def(&self,
                    id: ast::NodeId,
                    span: Span,
-                   ty: Ty,
+                   ty: Ty<'tcx>,
                    def: def::Def)
-                   -> mc::cmt {
+                   -> mc::cmt<'tcx> {
         match self.mc().cat_def(id, span, ty, def) {
             Ok(c) => c,
             Err(()) => {
@@ -462,7 +462,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                             closure_id: ast::NodeId,
                             closure_span: Span,
                             upvar_def: def::Def)
-                            -> mc::cmt {
+                            -> mc::cmt<'tcx> {
         // Create the cmt for the variable being borrowed, from the
         // caller's perspective
         let var_id = upvar_def.def_id().node;
@@ -470,7 +470,9 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
         self.cat_def(closure_id, closure_span, var_ty, upvar_def)
     }
 
-    pub fn cat_discr(&self, cmt: mc::cmt, match_id: ast::NodeId) -> mc::cmt {
+    pub fn cat_discr(&self, cmt: mc::cmt<'tcx>,
+                     match_id: ast::NodeId)
+                     -> mc::cmt<'tcx> {
         Rc::new(mc::cmt_ {
             cat: mc::cat_discr(cmt.clone(), match_id),
             mutbl: cmt.mutbl.inherit(),
@@ -479,14 +481,14 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
     }
 
     pub fn cat_pattern(&self,
-                       cmt: mc::cmt,
+                       cmt: mc::cmt<'tcx>,
                        pat: &ast::Pat,
-                       op: |mc::cmt, &ast::Pat|) {
+                       op: |mc::cmt<'tcx>, &ast::Pat|) {
         let r = self.mc().cat_pattern(cmt, pat, |_,x,y| op(x,y));
         assert!(r.is_ok());
     }
 
-    pub fn report(&self, err: BckError) {
+    pub fn report(&self, err: BckError<'tcx>) {
         self.span_err(
             err.span,
             self.bckerr_to_string(&err).as_slice());
@@ -583,8 +585,9 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
             }
         }
 
-        fn move_suggestion(tcx: &ty::ctxt, ty: Ty, default_msg: &'static str)
-                          -> &'static str {
+        fn move_suggestion<'tcx>(tcx: &ty::ctxt<'tcx>, ty: Ty<'tcx>,
+                                 default_msg: &'static str)
+                                 -> &'static str {
             match ty::get(ty).sty {
                 ty::ty_closure(box ty::ClosureTy {
                         store: ty::RegionTraitStore(..),
@@ -623,7 +626,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
         self.tcx.sess.span_end_note(s, m);
     }
 
-    pub fn bckerr_to_string(&self, err: &BckError) -> String {
+    pub fn bckerr_to_string(&self, err: &BckError<'tcx>) -> String {
         match err.code {
             err_mutbl => {
                 let descr = match opt_loan_path(&err.cmt) {
@@ -741,7 +744,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
         }
     }
 
-    pub fn note_and_explain_bckerr(&self, err: BckError) {
+    pub fn note_and_explain_bckerr(&self, err: BckError<'tcx>) {
         let code = err.code;
         match code {
             err_mutbl(..) => { }
@@ -844,7 +847,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
         result
     }
 
-    pub fn cmt_to_string(&self, cmt: &mc::cmt_) -> String {
+    pub fn cmt_to_string(&self, cmt: &mc::cmt_<'tcx>) -> String {
         self.mc().cmt_to_string(cmt)
     }
 }
@@ -875,7 +878,7 @@ impl DataFlowOperator for LoanDataFlowOperator {
     }
 }
 
-impl Repr for Loan {
+impl<'tcx> Repr<'tcx> for Loan {
     fn repr(&self, tcx: &ty::ctxt) -> String {
         format!("Loan_{:?}({}, {:?}, {:?}-{:?}, {})",
                  self.index,
@@ -887,7 +890,7 @@ impl Repr for Loan {
     }
 }
 
-impl Repr for LoanPath {
+impl<'tcx> Repr<'tcx> for LoanPath {
     fn repr(&self, tcx: &ty::ctxt) -> String {
         match self {
             &LpVar(id) => {

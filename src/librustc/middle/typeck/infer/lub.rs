@@ -42,14 +42,14 @@ impl<'f, 'tcx> Combine<'tcx> for Lub<'f, 'tcx> {
     fn infcx<'a>(&'a self) -> &'a InferCtxt<'a, 'tcx> { self.fields.infcx }
     fn tag(&self) -> String { "lub".to_string() }
     fn a_is_expected(&self) -> bool { self.fields.a_is_expected }
-    fn trace(&self) -> TypeTrace { self.fields.trace.clone() }
+    fn trace(&self) -> TypeTrace<'tcx> { self.fields.trace.clone() }
 
     fn equate<'a>(&'a self) -> Equate<'a, 'tcx> { Equate(self.fields.clone()) }
     fn sub<'a>(&'a self) -> Sub<'a, 'tcx> { Sub(self.fields.clone()) }
     fn lub<'a>(&'a self) -> Lub<'a, 'tcx> { Lub(self.fields.clone()) }
     fn glb<'a>(&'a self) -> Glb<'a, 'tcx> { Glb(self.fields.clone()) }
 
-    fn mts(&self, a: &ty::mt, b: &ty::mt) -> cres<ty::mt> {
+    fn mts(&self, a: &ty::mt<'tcx>, b: &ty::mt<'tcx>) -> cres<'tcx, ty::mt<'tcx>> {
         let tcx = self.fields.infcx.tcx;
 
         debug!("{}.mts({}, {})",
@@ -75,18 +75,18 @@ impl<'f, 'tcx> Combine<'tcx> for Lub<'f, 'tcx> {
         }
     }
 
-    fn contratys(&self, a: Ty, b: Ty) -> cres<Ty> {
+    fn contratys(&self, a: Ty<'tcx>, b: Ty<'tcx>) -> cres<'tcx, Ty<'tcx>> {
         self.glb().tys(a, b)
     }
 
-    fn fn_styles(&self, a: FnStyle, b: FnStyle) -> cres<FnStyle> {
+    fn fn_styles(&self, a: FnStyle, b: FnStyle) -> cres<'tcx, FnStyle> {
         match (a, b) {
           (UnsafeFn, _) | (_, UnsafeFn) => Ok(UnsafeFn),
           (NormalFn, NormalFn) => Ok(NormalFn),
         }
     }
 
-    fn oncenesses(&self, a: Onceness, b: Onceness) -> cres<Onceness> {
+    fn oncenesses(&self, a: Onceness, b: Onceness) -> cres<'tcx, Onceness> {
         match (a, b) {
             (Once, _) | (_, Once) => Ok(Once),
             (Many, Many) => Ok(Many)
@@ -96,18 +96,18 @@ impl<'f, 'tcx> Combine<'tcx> for Lub<'f, 'tcx> {
     fn builtin_bounds(&self,
                       a: ty::BuiltinBounds,
                       b: ty::BuiltinBounds)
-                      -> cres<ty::BuiltinBounds> {
+                      -> cres<'tcx, ty::BuiltinBounds> {
         // More bounds is a subtype of fewer bounds, so
         // the LUB (mutual supertype) is the intersection.
         Ok(a.intersection(b))
     }
 
     fn contraregions(&self, a: ty::Region, b: ty::Region)
-                    -> cres<ty::Region> {
+                    -> cres<'tcx, ty::Region> {
         self.glb().regions(a, b)
     }
 
-    fn regions(&self, a: ty::Region, b: ty::Region) -> cres<ty::Region> {
+    fn regions(&self, a: ty::Region, b: ty::Region) -> cres<'tcx, ty::Region> {
         debug!("{}.regions({}, {})",
                self.tag(),
                a.repr(self.fields.infcx.tcx),
@@ -116,7 +116,8 @@ impl<'f, 'tcx> Combine<'tcx> for Lub<'f, 'tcx> {
         Ok(self.fields.infcx.region_vars.lub_regions(Subtype(self.trace()), a, b))
     }
 
-    fn fn_sigs(&self, a: &ty::FnSig, b: &ty::FnSig) -> cres<ty::FnSig> {
+    fn fn_sigs(&self, a: &ty::FnSig<'tcx>, b: &ty::FnSig<'tcx>)
+               -> cres<'tcx, ty::FnSig<'tcx>> {
         // Note: this is a subtle algorithm.  For a full explanation,
         // please see the large comment in `region_inference.rs`.
 
@@ -196,7 +197,7 @@ impl<'f, 'tcx> Combine<'tcx> for Lub<'f, 'tcx> {
         }
     }
 
-    fn tys(&self, a: Ty, b: Ty) -> cres<Ty> {
+    fn tys(&self, a: Ty<'tcx>, b: Ty<'tcx>) -> cres<'tcx, Ty<'tcx>> {
         super_lattice_tys(self, a, b)
     }
 }

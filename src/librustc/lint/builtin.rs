@@ -424,7 +424,8 @@ declare_lint!(HEAP_MEMORY, Allow,
 pub struct HeapMemory;
 
 impl HeapMemory {
-    fn check_heap_type(&self, cx: &Context, span: Span, ty: Ty) {
+    fn check_heap_type<'a, 'tcx>(&self, cx: &Context<'a, 'tcx>,
+                                 span: Span, ty: Ty<'tcx>) {
         let mut n_box = 0i;
         let mut n_uniq = 0i;
         ty::fold_ty(cx.tcx, ty, |t| {

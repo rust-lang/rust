@@ -67,10 +67,10 @@ pub fn resolve_type_vars_in_fn(fcx: &FnCtxt,
     wbcx.visit_object_cast_map();
 }
 
-pub fn resolve_impl_res(infcx: &infer::InferCtxt,
-                        span: Span,
-                        vtable_res: &vtable_res)
-                        -> vtable_res {
+pub fn resolve_impl_res<'a, 'tcx>(infcx: &infer::InferCtxt<'a, 'tcx>,
+                                  span: Span,
+                                  vtable_res: &vtable_res<'tcx>)
+                                  -> vtable_res<'tcx> {
     let errors = Cell::new(false); // nobody cares
     let mut resolver = Resolver::from_infcx(infcx,
                                             &errors,
@@ -348,7 +348,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         }
     }
 
-    fn resolve<T:ResolveIn>(&self, t: &T, reason: ResolveReason) -> T {
+    fn resolve<T:ResolveIn<'tcx>>(&self, t: &T, reason: ResolveReason) -> T {
         t.resolve_in(&mut Resolver::new(self.fcx, reason))
     }
 }
@@ -389,12 +389,12 @@ impl ResolveReason {
 ///////////////////////////////////////////////////////////////////////////
 // Convenience methods for resolving different kinds of things.
 
-trait ResolveIn {
-    fn resolve_in(&self, resolver: &mut Resolver) -> Self;
+trait ResolveIn<'tcx> {
+    fn resolve_in<'a>(&self, resolver: &mut Resolver<'a, 'tcx>) -> Self;
 }
 
-impl<T:TypeFoldable> ResolveIn for T {
-    fn resolve_in(&self, resolver: &mut Resolver) -> T {
+impl<'tcx, T: TypeFoldable<'tcx>> ResolveIn<'tcx> for T {
+    fn resolve_in<'a>(&self, resolver: &mut Resolver<'a, 'tcx>) -> T {
         self.fold_with(resolver)
     }
 }
@@ -483,7 +483,7 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for Resolver<'cx, 'tcx> {
         self.tcx
     }
 
-    fn fold_ty(&mut self, t: Ty) -> Ty {
+    fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
         if !ty::type_needs_infer(t) {
             return t;
         }

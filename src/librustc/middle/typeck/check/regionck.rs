@@ -168,9 +168,9 @@ pub fn regionck_fn(fcx: &FnCtxt, id: ast::NodeId, blk: &ast::Block) {
     fcx.infcx().resolve_regions_and_report_errors();
 }
 
-pub fn regionck_ensure_component_tys_wf(fcx: &FnCtxt,
-                                        span: Span,
-                                        component_tys: &[Ty]) {
+pub fn regionck_ensure_component_tys_wf<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
+                                                  span: Span,
+                                                  component_tys: &[Ty<'tcx>]) {
     /*!
      * Checks that the types in `component_tys` are well-formed.
      * This will add constraints into the region graph.
@@ -276,7 +276,7 @@ impl<'a, 'tcx> Rcx<'a, 'tcx> {
         old_scope
     }
 
-    pub fn resolve_type(&self, unresolved_ty: Ty) -> Ty {
+    pub fn resolve_type(&self, unresolved_ty: Ty<'tcx>) -> Ty<'tcx> {
         /*!
          * Try to resolve the type for the given node, returning
          * t_err if an error results.  Note that we never care
@@ -313,19 +313,19 @@ impl<'a, 'tcx> Rcx<'a, 'tcx> {
     }
 
     /// Try to resolve the type for the given node.
-    fn resolve_node_type(&self, id: ast::NodeId) -> Ty {
+    fn resolve_node_type(&self, id: ast::NodeId) -> Ty<'tcx> {
         let t = self.fcx.node_ty(id);
         self.resolve_type(t)
     }
 
-    fn resolve_method_type(&self, method_call: MethodCall) -> Option<Ty> {
+    fn resolve_method_type(&self, method_call: MethodCall) -> Option<Ty<'tcx>> {
         let method_ty = self.fcx.inh.method_map.borrow()
                             .find(&method_call).map(|method| method.ty);
         method_ty.map(|method_ty| self.resolve_type(method_ty))
     }
 
     /// Try to resolve the type for the given node.
-    pub fn resolve_expr_type_adjusted(&mut self, expr: &ast::Expr) -> Ty {
+    pub fn resolve_expr_type_adjusted(&mut self, expr: &ast::Expr) -> Ty<'tcx> {
         let ty_unadjusted = self.resolve_node_type(expr.id);
         if ty::type_is_error(ty_unadjusted) || ty::type_is_bot(ty_unadjusted) {
             ty_unadjusted
@@ -378,7 +378,7 @@ impl<'a, 'tcx> Rcx<'a, 'tcx> {
     }
 
     fn relate_free_regions(&mut self,
-                           fn_sig_tys: &[Ty],
+                           fn_sig_tys: &[Ty<'tcx>],
                            body_id: ast::NodeId) {
         /*!
          * This method populates the region map's `free_region_map`.
@@ -451,16 +451,16 @@ impl<'fcx, 'tcx> mc::Typer<'tcx> for Rcx<'fcx, 'tcx> {
         self.fcx.ccx.tcx
     }
 
-    fn node_ty(&self, id: ast::NodeId) -> mc::McResult<Ty> {
+    fn node_ty(&self, id: ast::NodeId) -> mc::McResult<Ty<'tcx>> {
         let t = self.resolve_node_type(id);
         if ty::type_is_error(t) {Err(())} else {Ok(t)}
     }
 
-    fn node_method_ty(&self, method_call: MethodCall) -> Option<Ty> {
+    fn node_method_ty(&self, method_call: MethodCall) -> Option<Ty<'tcx>> {
         self.resolve_method_type(method_call)
     }
 
-    fn adjustments<'a>(&'a self) -> &'a RefCell<NodeMap<ty::AutoAdjustment>> {
+    fn adjustments<'a>(&'a self) -> &'a RefCell<NodeMap<ty::AutoAdjustment<'tcx>>> {
         &self.fcx.inh.adjustments
     }
 
@@ -482,7 +482,7 @@ impl<'fcx, 'tcx> mc::Typer<'tcx> for Rcx<'fcx, 'tcx> {
     }
 
     fn unboxed_closures<'a>(&'a self)
-                        -> &'a RefCell<DefIdMap<ty::UnboxedClosure>> {
+                        -> &'a RefCell<DefIdMap<ty::UnboxedClosure<'tcx>>> {
         &self.fcx.inh.unboxed_closures
     }
 }
@@ -805,10 +805,10 @@ fn constrain_cast(rcx: &mut Rcx,
 
     walk_cast(rcx, cast_expr, source_ty, target_ty);
 
-    fn walk_cast(rcx: &mut Rcx,
-                 cast_expr: &ast::Expr,
-                 from_ty: Ty,
-                 to_ty: Ty) {
+    fn walk_cast<'a, 'tcx>(rcx: &mut Rcx<'a, 'tcx>,
+                           cast_expr: &ast::Expr,
+                           from_ty: Ty<'tcx>,
+                           to_ty: Ty<'tcx>) {
         debug!("walk_cast(from_ty={}, to_ty={})",
                from_ty.repr(rcx.tcx()),
                to_ty.repr(rcx.tcx()));
@@ -1144,10 +1144,10 @@ fn constrain_call<'a, I: Iterator<&'a ast::Expr>>(rcx: &mut Rcx,
     }
 }
 
-fn constrain_autoderefs(rcx: &mut Rcx,
-                        deref_expr: &ast::Expr,
-                        derefs: uint,
-                        mut derefd_ty: Ty) {
+fn constrain_autoderefs<'a, 'tcx>(rcx: &mut Rcx<'a, 'tcx>,
+                                  deref_expr: &ast::Expr,
+                                  derefs: uint,
+                                  mut derefd_ty: Ty<'tcx>) {
     /*!
      * Invoked on any auto-dereference that occurs.  Checks that if
      * this is a region pointer being dereferenced, the lifetime of
@@ -1215,9 +1215,9 @@ pub fn mk_subregion_due_to_dereference(rcx: &mut Rcx,
 }
 
 
-fn constrain_index(rcx: &mut Rcx,
-                   index_expr: &ast::Expr,
-                   indexed_ty: Ty)
+fn constrain_index<'a, 'tcx>(rcx: &mut Rcx<'a, 'tcx>,
+                             index_expr: &ast::Expr,
+                             indexed_ty: Ty<'tcx>)
 {
     /*!
      * Invoked on any index expression that occurs.  Checks that if
@@ -1242,9 +1242,9 @@ fn constrain_index(rcx: &mut Rcx,
     }
 }
 
-fn type_of_node_must_outlive(
-    rcx: &mut Rcx,
-    origin: infer::SubregionOrigin,
+fn type_of_node_must_outlive<'a, 'tcx>(
+    rcx: &mut Rcx<'a, 'tcx>,
+    origin: infer::SubregionOrigin<'tcx>,
     id: ast::NodeId,
     minimum_lifetime: ty::Region)
 {
@@ -1322,10 +1322,10 @@ fn link_match(rcx: &Rcx, discr: &ast::Expr, arms: &[ast::Arm]) {
     }
 }
 
-fn link_pattern(rcx: &Rcx,
-                mc: mc::MemCategorizationContext<Rcx>,
-                discr_cmt: mc::cmt,
-                root_pat: &ast::Pat) {
+fn link_pattern<'a, 'tcx>(rcx: &Rcx<'a, 'tcx>,
+                          mc: mc::MemCategorizationContext<Rcx<'a, 'tcx>>,
+                          discr_cmt: mc::cmt<'tcx>,
+                          root_pat: &ast::Pat) {
     /*!
      * Link lifetimes of any ref bindings in `root_pat` to
      * the pointers found in the discriminant, if needed.
@@ -1398,11 +1398,11 @@ fn link_by_ref(rcx: &Rcx,
     link_region(rcx, expr.span, borrow_region, ty::ImmBorrow, expr_cmt);
 }
 
-fn link_region_from_node_type(rcx: &Rcx,
-                              span: Span,
-                              id: ast::NodeId,
-                              mutbl: ast::Mutability,
-                              cmt_borrowed: mc::cmt) {
+fn link_region_from_node_type<'a, 'tcx>(rcx: &Rcx<'a, 'tcx>,
+                                        span: Span,
+                                        id: ast::NodeId,
+                                        mutbl: ast::Mutability,
+                                        cmt_borrowed: mc::cmt<'tcx>) {
     /*!
      * Like `link_region()`, except that the region is
      * extracted from the type of `id`, which must be some
@@ -1419,11 +1419,11 @@ fn link_region_from_node_type(rcx: &Rcx,
     }
 }
 
-fn link_region(rcx: &Rcx,
-               span: Span,
-               borrow_region: ty::Region,
-               borrow_kind: ty::BorrowKind,
-               borrow_cmt: mc::cmt) {
+fn link_region<'a, 'tcx>(rcx: &Rcx<'a, 'tcx>,
+                         span: Span,
+                         borrow_region: ty::Region,
+                         borrow_kind: ty::BorrowKind,
+                         borrow_cmt: mc::cmt<'tcx>) {
     /*!
      * Informs the inference engine that `borrow_cmt` is being
      * borrowed with kind `borrow_kind` and lifetime `borrow_region`.
@@ -1483,14 +1483,14 @@ fn link_region(rcx: &Rcx,
     }
 }
 
-fn link_reborrowed_region(rcx: &Rcx,
-                          span: Span,
-                          borrow_region: ty::Region,
-                          borrow_kind: ty::BorrowKind,
-                          ref_cmt: mc::cmt,
-                          ref_region: ty::Region,
-                          ref_kind: ty::BorrowKind)
-                          -> Option<(mc::cmt, ty::BorrowKind)>
+fn link_reborrowed_region<'a, 'tcx>(rcx: &Rcx<'a, 'tcx>,
+                                    span: Span,
+                                    borrow_region: ty::Region,
+                                    borrow_kind: ty::BorrowKind,
+                                    ref_cmt: mc::cmt<'tcx>,
+                                    ref_region: ty::Region,
+                                    ref_kind: ty::BorrowKind)
+                                    -> Option<(mc::cmt<'tcx>, ty::BorrowKind)>
 {
     /*!
      * This is the most complicated case: the path being borrowed is
@@ -1644,8 +1644,8 @@ fn adjust_borrow_kind_for_assignment_lhs(rcx: &Rcx,
     adjust_upvar_borrow_kind_for_mut(rcx, cmt);
 }
 
-fn adjust_upvar_borrow_kind_for_mut(rcx: &Rcx,
-                                    cmt: mc::cmt) {
+fn adjust_upvar_borrow_kind_for_mut<'a, 'tcx>(rcx: &Rcx<'a, 'tcx>,
+                                              cmt: mc::cmt<'tcx>) {
     /*!
      * Indicates that `cmt` is being directly mutated (e.g., assigned
      * to).  If cmt contains any by-ref upvars, this implies that
@@ -1705,7 +1705,7 @@ fn adjust_upvar_borrow_kind_for_mut(rcx: &Rcx,
     }
 }
 
-fn adjust_upvar_borrow_kind_for_unique(rcx: &Rcx, cmt: mc::cmt) {
+fn adjust_upvar_borrow_kind_for_unique<'a, 'tcx>(rcx: &Rcx<'a, 'tcx>, cmt: mc::cmt<'tcx>) {
     let mut cmt = cmt;
     loop {
         debug!("adjust_upvar_borrow_kind_for_unique(cmt={})",
@@ -1818,10 +1818,10 @@ fn adjust_upvar_borrow_kind(upvar_id: ty::UpvarId,
     }
 }
 
-fn type_must_outlive(rcx: &mut Rcx,
-                     origin: infer::SubregionOrigin,
-                     ty: Ty,
-                     region: ty::Region)
+fn type_must_outlive<'a, 'tcx>(rcx: &mut Rcx<'a, 'tcx>,
+                               origin: infer::SubregionOrigin<'tcx>,
+                               ty: Ty<'tcx>,
+                               region: ty::Region)
 {
     /*!
      * Ensures that all borrowed data reachable via `ty` outlives `region`.
@@ -1857,10 +1857,10 @@ fn type_must_outlive(rcx: &mut Rcx,
     }
 }
 
-fn param_must_outlive(rcx: &Rcx,
-                      origin: infer::SubregionOrigin,
-                      region: ty::Region,
-                      param_ty: ty::ParamTy) {
+fn param_must_outlive<'a, 'tcx>(rcx: &Rcx<'a, 'tcx>,
+                                origin: infer::SubregionOrigin<'tcx>,
+                                region: ty::Region,
+                                param_ty: ty::ParamTy) {
     let param_env = &rcx.fcx.inh.param_env;
 
     debug!("param_must_outlive(region={}, param_ty={})",

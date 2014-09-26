@@ -71,7 +71,7 @@ pub fn impl_is_local(tcx: &ty::ctxt,
     return ty_is_local(tcx, self_ty);
 }
 
-pub fn ty_is_local(tcx: &ty::ctxt, ty: Ty) -> bool {
+pub fn ty_is_local<'tcx>(tcx: &ty::ctxt<'tcx>, ty: Ty<'tcx>) -> bool {
     debug!("ty_is_local({})", ty.repr(tcx));
 
     match ty::get(ty).sty {

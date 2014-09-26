@@ -85,8 +85,8 @@ impl<T> HomogeneousTuple3<T> for (T, T, T) {
  * `ParamSpace`).
  */
 #[deriving(Clone, PartialEq, Eq, Hash, Show)]
-pub struct Substs {
-    pub types: VecPerParamSpace<Ty>,
+pub struct Substs<'tcx> {
+    pub types: VecPerParamSpace<Ty<'tcx>>,
     pub regions: RegionSubsts,
 }
 
@@ -100,44 +100,44 @@ pub enum RegionSubsts {
     NonerasedRegions(VecPerParamSpace<ty::Region>)
 }
 
-impl Substs {
-    pub fn new(t: VecPerParamSpace<Ty>,
+impl<'tcx> Substs<'tcx> {
+    pub fn new(t: VecPerParamSpace<Ty<'tcx>>,
                r: VecPerParamSpace<ty::Region>)
-               -> Substs
+               -> Substs<'tcx>
     {
         Substs { types: t, regions: NonerasedRegions(r) }
     }
 
-    pub fn new_type(t: Vec<Ty>,
+    pub fn new_type(t: Vec<Ty<'tcx>>,
                     r: Vec<ty::Region>)
-                    -> Substs
+                    -> Substs<'tcx>
     {
         Substs::new(VecPerParamSpace::new(t, Vec::new(), Vec::new()),
                     VecPerParamSpace::new(r, Vec::new(), Vec::new()))
     }
 
-    pub fn new_trait(t: Vec<Ty>,
+    pub fn new_trait(t: Vec<Ty<'tcx>>,
                      r: Vec<ty::Region>,
-                     s: Ty)
-                    -> Substs
+                     s: Ty<'tcx>)
+                    -> Substs<'tcx>
     {
         Substs::new(VecPerParamSpace::new(t, vec!(s), Vec::new()),
                     VecPerParamSpace::new(r, Vec::new(), Vec::new()))
     }
 
-    pub fn erased(t: VecPerParamSpace<Ty>) -> Substs
+    pub fn erased(t: VecPerParamSpace<Ty<'tcx>>) -> Substs<'tcx>
     {
         Substs { types: t, regions: ErasedRegions }
     }
 
-    pub fn empty() -> Substs {
+    pub fn empty() -> Substs<'tcx> {
         Substs {
             types: VecPerParamSpace::empty(),
             regions: NonerasedRegions(VecPerParamSpace::empty()),
         }
     }
 
-    pub fn trans_empty() -> Substs {
+    pub fn trans_empty() -> Substs<'tcx> {
         Substs {
             types: VecPerParamSpace::empty(),
             regions: ErasedRegions
@@ -153,18 +153,18 @@ impl Substs {
         regions_is_noop && self.types.is_empty()
     }
 
-    pub fn self_ty(&self) -> Option<Ty> {
+    pub fn self_ty(&self) -> Option<Ty<'tcx>> {
         self.types.get_self().map(|&t| t)
     }
 
-    pub fn with_self_ty(&self, self_ty: Ty) -> Substs {
+    pub fn with_self_ty(&self, self_ty: Ty<'tcx>) -> Substs<'tcx> {
         assert!(self.self_ty().is_none());
         let mut s = (*self).clone();
         s.types.push(SelfSpace, self_ty);
         s
     }
 
-    pub fn erase_regions(self) -> Substs {
+    pub fn erase_regions(self) -> Substs<'tcx> {
         let Substs { types: types, regions: _ } = self;
         Substs { types: types, regions: ErasedRegions }
     }
@@ -195,15 +195,15 @@ impl Substs {
         }
     }
 
-    pub fn with_method_from(self, substs: &Substs) -> Substs {
+    pub fn with_method_from(self, substs: &Substs<'tcx>) -> Substs<'tcx> {
         self.with_method(Vec::from_slice(substs.types.get_slice(FnSpace)),
                          Vec::from_slice(substs.regions().get_slice(FnSpace)))
     }
 
     pub fn with_method(self,
-                       m_types: Vec<Ty>,
+                       m_types: Vec<Ty<'tcx>>,
                        m_regions: Vec<ty::Region>)
-                       -> Substs
+                       -> Substs<'tcx>
     {
         let Substs { types, regions } = self;
         let types = types.with_vec(FnSpace, m_types);
@@ -537,21 +537,21 @@ impl<T> VecPerParamSpace<T> {
 // `foo`. Or use `foo.subst_spanned(tcx, substs, Some(span))` when
 // there is more information available (for better errors).
 
-pub trait Subst {
-    fn subst(&self, tcx: &ty::ctxt, substs: &Substs) -> Self {
+pub trait Subst<'tcx> {
+    fn subst(&self, tcx: &ty::ctxt<'tcx>, substs: &Substs<'tcx>) -> Self {
         self.subst_spanned(tcx, substs, None)
     }
 
-    fn subst_spanned(&self, tcx: &ty::ctxt,
-                     substs: &Substs,
+    fn subst_spanned(&self, tcx: &ty::ctxt<'tcx>,
+                     substs: &Substs<'tcx>,
                      span: Option<Span>)
                      -> Self;
 }
 
-impl<T:TypeFoldable> Subst for T {
+impl<'tcx, T: TypeFoldable<'tcx>> Subst<'tcx> for T {
     fn subst_spanned(&self,
-                     tcx: &ty::ctxt,
-                     substs: &Substs,
+                     tcx: &ty::ctxt<'tcx>,
+                     substs: &Substs<'tcx>,
                      span: Option<Span>)
                      -> T
     {
@@ -569,13 +569,13 @@ impl<T:TypeFoldable> Subst for T {
 
 struct SubstFolder<'a, 'tcx: 'a> {
     tcx: &'a ty::ctxt<'tcx>,
-    substs: &'a Substs,
+    substs: &'a Substs<'tcx>,
 
     // The location for which the substitution is performed, if available.
     span: Option<Span>,
 
     // The root type that is being substituted, if available.
-    root_ty: Option<Ty>,
+    root_ty: Option<Ty<'tcx>>,
 
     // Depth of type stack
     ty_stack_depth: uint,
@@ -616,7 +616,7 @@ impl<'a, 'tcx> TypeFolder<'tcx> for SubstFolder<'a, 'tcx> {
         }
     }
 
-    fn fold_ty(&mut self, t: Ty) -> Ty {
+    fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
         if !ty::type_needs_subst(t) {
             return t;
         }
@@ -650,13 +650,13 @@ impl<'a, 'tcx> TypeFolder<'tcx> for SubstFolder<'a, 'tcx> {
 
         return t1;
 
-        fn check(this: &SubstFolder,
-                 p: ty::ParamTy,
-                 source_ty: Ty,
-                 opt_ty: Option<&Ty>,
-                 space: ParamSpace,
-                 index: uint)
-                 -> Ty {
+        fn check<'a, 'tcx>(this: &SubstFolder<'a, 'tcx>,
+                           p: ty::ParamTy,
+                           source_ty: Ty<'tcx>,
+                           opt_ty: Option<&Ty<'tcx>>,
+                           space: ParamSpace,
+                           index: uint)
+                           -> Ty<'tcx> {
             match opt_ty {
                 Some(t) => *t,
                 None => {

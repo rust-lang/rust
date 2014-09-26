@@ -32,18 +32,18 @@ use super::Unimplemented;
  * method `select_all_or_error` can be used to report any remaining
  * ambiguous cases as errors.
  */
-pub struct FulfillmentContext {
+pub struct FulfillmentContext<'tcx> {
     // A list of all obligations that have been registered with this
     // fulfillment context.
-    trait_obligations: Vec<Obligation>,
+    trait_obligations: Vec<Obligation<'tcx>>,
 
     // For semi-hacky reasons (see FIXME below) we keep the builtin
     // trait obligations segregated.
-    builtin_obligations: Vec<Obligation>,
+    builtin_obligations: Vec<Obligation<'tcx>>,
 }
 
-impl FulfillmentContext {
-    pub fn new() -> FulfillmentContext {
+impl<'tcx> FulfillmentContext<'tcx> {
+    pub fn new() -> FulfillmentContext<'tcx> {
         FulfillmentContext {
             trait_obligations: Vec::new(),
             builtin_obligations: Vec::new()
@@ -51,8 +51,8 @@ impl FulfillmentContext {
     }
 
     pub fn register_obligation(&mut self,
-                               tcx: &ty::ctxt,
-                               obligation: Obligation)
+                               tcx: &ty::ctxt<'tcx>,
+                               obligation: Obligation<'tcx>)
     {
         debug!("register_obligation({})", obligation.repr(tcx));
         match tcx.lang_items.to_builtin_kind(obligation.trait_ref.def_id) {
@@ -65,11 +65,11 @@ impl FulfillmentContext {
         }
     }
 
-    pub fn select_all_or_error(&mut self,
-                               infcx: &InferCtxt,
-                               param_env: &ty::ParameterEnvironment,
-                               unboxed_closures: &DefIdMap<ty::UnboxedClosure>)
-                               -> Result<(),Vec<FulfillmentError>>
+    pub fn select_all_or_error<'a>(&mut self,
+                                   infcx: &InferCtxt<'a, 'tcx>,
+                                   param_env: &ty::ParameterEnvironment<'tcx>,
+                                   unboxed_closures: &DefIdMap<ty::UnboxedClosure<'tcx>>)
+                                   -> Result<(),Vec<FulfillmentError<'tcx>>>
     {
         try!(self.select_where_possible(infcx, param_env,
                                         unboxed_closures));
@@ -88,11 +88,11 @@ impl FulfillmentContext {
         }
     }
 
-    pub fn select_where_possible(&mut self,
-                                 infcx: &InferCtxt,
-                                 param_env: &ty::ParameterEnvironment,
-                                 unboxed_closures: &DefIdMap<ty::UnboxedClosure>)
-                                 -> Result<(),Vec<FulfillmentError>>
+    pub fn select_where_possible<'a>(&mut self,
+                                     infcx: &InferCtxt<'a, 'tcx>,
+                                     param_env: &ty::ParameterEnvironment<'tcx>,
+                                     unboxed_closures: &DefIdMap<ty::UnboxedClosure<'tcx>>)
+                                     -> Result<(),Vec<FulfillmentError<'tcx>>>
     {
         let tcx = infcx.tcx;
         let selcx = SelectionContext::new(infcx, param_env,
@@ -159,10 +159,10 @@ impl FulfillmentContext {
         }
     }
 
-    pub fn check_builtin_bound_obligations(
+    pub fn check_builtin_bound_obligations<'a>(
         &self,
-        infcx: &InferCtxt)
-        -> Result<(),Vec<FulfillmentError>>
+        infcx: &InferCtxt<'a, 'tcx>)
+        -> Result<(),Vec<FulfillmentError<'tcx>>>
     {
         let tcx = infcx.tcx;
         let mut errors = Vec::new();

@@ -23,8 +23,8 @@ use syntax::parse::token;
 use syntax::visit::Visitor;
 use syntax::visit;
 
-fn type_size_is_affected_by_type_parameters(tcx: &ty::ctxt, typ: Ty)
-                                            -> bool {
+fn type_size_is_affected_by_type_parameters<'tcx>(tcx: &ty::ctxt<'tcx>, typ: Ty<'tcx>)
+                                                  -> bool {
     let mut result = false;
     ty::maybe_walk_ty(typ, |typ| {
         match ty::get(typ).sty {
@@ -96,7 +96,7 @@ impl<'a, 'tcx> IntrinsicCheckingVisitor<'a, 'tcx> {
         }
     }
 
-    fn check_transmute(&self, span: Span, from: Ty, to: Ty, id: ast::NodeId) {
+    fn check_transmute(&self, span: Span, from: Ty<'tcx>, to: Ty<'tcx>, id: ast::NodeId) {
         if type_size_is_affected_by_type_parameters(self.tcx, from) {
             span_err!(self.tcx.sess, span, E0139,
                       "cannot transmute from a type that contains type parameters");

@@ -94,7 +94,7 @@ impl PpSourceMode {
     fn call_with_pp_support<'tcx, A, B>(&self,
                                         sess: Session,
                                         ast_map: Option<ast_map::Map<'tcx>>,
-                                        type_arena: &'tcx TypedArena<ty::t_box_>,
+                                        type_arena: &'tcx TypedArena<ty::TyS<'tcx>>,
                                         id: String,
                                         payload: B,
                                         f: |&PrinterSupport, B| -> A) -> A {
