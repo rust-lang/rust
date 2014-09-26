@@ -234,7 +234,14 @@ pub struct TyParam {
     pub bounds: TyParamBounds,
     pub unbound: Option<TyParamBound>,
     pub default: Option<P<Ty>>,
-    pub span: Span
+    pub span: Span,
+    pub kind: TyKind
+}
+
+#[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
+pub enum TyKind {
+    Star,
+    Arrow(Box<TyKind>, Box<TyKind>)
 }
 
 /// Represents lifetimes and type parameters attached to a declaration

@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use ast::{MetaItem, Item, Expr, MutMutable};
+use ast::{MetaItem, Item, Expr, MutMutable, Star};
 use codemap::Span;
 use ext::base::ExtCtxt;
 use ext::build::AstBuilder;
@@ -28,7 +28,7 @@ pub fn expand_deriving_hash(cx: &mut ExtCtxt,
                     vec!(box Literal(Path::new_local("__S"))), true),
          LifetimeBounds {
              lifetimes: Vec::new(),
-             bounds: vec!(("__S", None,
+             bounds: vec!(("__S", Star, None,
                            vec!(Path::new(vec!("std", "hash", "Writer"))))),
          },
          Path::new_local("__S"))

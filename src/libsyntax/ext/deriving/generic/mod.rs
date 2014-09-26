@@ -409,7 +409,8 @@ impl<'a> TraitDef<'a> {
                        ty_param.ident,
                        OwnedSlice::from_vec(bounds),
                        ty_param.unbound.clone(),
-                       None)
+                       None,
+                       ty_param.kind.clone())
         }));
         let trait_generics = Generics {
             lifetimes: lifetimes,

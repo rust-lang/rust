@@ -79,7 +79,7 @@
 //!     }
 //! ```
 
-use ast::{MetaItem, Item, Expr, ExprRet, MutMutable, LitNil};
+use ast::{MetaItem, Item, Expr, ExprRet, MutMutable, LitNil, Star};
 use codemap::Span;
 use ext::base::ExtCtxt;
 use ext::build::AstBuilder;
@@ -102,10 +102,10 @@ pub fn expand_deriving_encodable(cx: &mut ExtCtxt,
         additional_bounds: Vec::new(),
         generics: LifetimeBounds {
             lifetimes: Vec::new(),
-            bounds: vec!(("__S", None, vec!(Path::new_(
+            bounds: vec!(("__S", Star, None, vec!(Path::new_(
                             vec!("serialize", "Encoder"), None,
                             vec!(box Literal(Path::new_local("__E"))), true))),
-                         ("__E", None, vec!()))
+                         ("__E", Star, None, vec!()))
         },
         methods: vec!(
             MethodDef {
