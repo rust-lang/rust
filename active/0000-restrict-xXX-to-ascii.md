@@ -5,11 +5,12 @@
 # Summary
 
 In string literal contexts, restrict `\xXX` escape sequences to just
-the range of ASCII characters, `\x00` -- `\x7F`.  `\xXX` inputs with
-higher numbers are rejected (with an error message suggesting that one
-use an `\uNNNN` escape).
+the range of ASCII characters, `\x00` -- `\x7F`.  `\xXX` inputs in
+string literals with higher numbers are rejected (with an error
+message suggesting that one use an `\uNNNN` escape).
 
 # Motivation
+[Motivation]: #motivation
 
 In a string literal context, the current `\xXX` character escape
 sequence is potentially confusing when given inputs greater than
@@ -41,9 +42,33 @@ comments that suggest exactly the strategy of this RFC.
  * https://github.com/rust-lang/rust/issues/2800#issuecomment-31477259
  * https://github.com/rust-lang/rfcs/pull/69#issuecomment-43002505
  * https://github.com/rust-lang/rust/issues/12769#issuecomment-43574856
+ * https://github.com/rust-lang/meeting-minutes/blob/master/weekly-meetings/2014-01-21.md#xnn-escapes-in-strings
+ * https://mail.mozilla.org/pipermail/rust-dev/2012-July/002025.html
 
-The expected outcome is reduced confusion for C/C++ programmers, and
-any other language where `\xXX` never results in more than one byte.
+Note in particular the meeting minutes bullet, where the team
+explicitly decided to keep things "as they are".
+
+However, at the time of that meeting, Rust did not have byte string
+literals; people were converting string-literals into byte arrays via
+the `bytes!` macro.  (Likewise, the rust-dev post is also from a time,
+summer 2012, when we did not have byte-string literals.)
+
+We are in a different world now.  The fact that now `\xXX` denotes a
+code unit in a byte-string literal, but in a string literal denotes a
+codepoint, does not seem elegant; it rather seems like a source of
+confusion.
+
+By restricting `\xXX` to the range `0x00`--`0x7F`, we side-step the
+question of "is it a code unit or a code point?" entirely (which was
+the *real* context of both the rust-dev thread and the meeting minutes
+bullet).  This RFC is a far more conservative choice that we can
+safely make for the short term (i.e. for the 1.0 release) than it
+would have been to switch to a "`\xXX` is a code unit" interpretation.
+
+The expected outcome is reduced confusion for C/C++ programmers (which
+is, after all, our primary target audience for conversion), and any
+other language where `\xXX` never results in more than one byte.
+The error message will point them to the syntax they need to adopt.
 
 # Detailed design
 
@@ -58,29 +83,47 @@ Raw strings by design do not offer escape sequences, so they are
 unchanged.
 
 Character and string escaping routines (such as
-`core::char::escape_unicode`, and such as used by the "{:?}"
+`core::char::escape_unicode`, and such as used by the `"{:?}"`
 formatter) are updated so that string inputs that previously would
 previously have printed `\xXX` with `XX > 0x7F` are updated to use
 `\uNNNN` escapes instead.
 
 # Drawbacks
 
-The only reasons not to do this are either:
+Some reasons not to do this:
 
- * we think that the current behavior is intuitive, or
+ * we think that the current behavior is intuitive,
 
- * existing libraries are relying on this behavior.
+ * it is consistent with language X (and thus has precedent),
+
+ * existing libraries are relying on this behavior, or
+
+ * we want to optimize for inputting characters with codepoints
+   in the range above `0x7F` in string-literals, rather than
+   optimizing for ASCII.
 
 The thesis of this RFC is that the first bullet is a falsehood.
 
-The latter bullet is a strawman since we have not yet released 1.0,
-and thus everything is up for change.
+While there is some precedent for the "`\xXX` is code point"
+interpretation in some languages, the majority do seem to favor the
+"`\xXX` is code unit" point of view.  The proposal of this RFC is
+side-stepping the distinction by limiting the input range for `\xXX`.
+
+The third bullet is a strawman since we have not yet released 1.0, and
+thus everything is up for change.
+
+This RFC makes no comment on the validity of the fourth bullet.
 
 # Alternatives
 
-We could remove `\xXX` entirely from string literals.  This would
-require people to use the `\uNNNN` escape format even for bytes in the
-range `00`--`0x7F`, which seems annoying.
+* We could remove `\xXX` entirely from string literals.  This would
+  require people to use the `\uNNNN` escape format even for bytes in the
+  range `00`--`0x7F`, which seems annoying.
+
+* We could switch `\xXX` from meaning code point to meaning code unit
+  in both string literal and byte-string literal contexts.  This
+  was previously considered and explicitly rejected in an earlier
+  meeting, as discussed in the [Motivation] section.
 
 # Unresolved questions
 
