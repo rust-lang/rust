@@ -1,5 +1,14 @@
 % The Rust Macros Guide
 
+<div class="unstable-feature">
+<b>Warning:</b> There are currently various problems with invoking macros, how
+they interact with their environment, and how they are used outside of the
+location in which they are defined. Macro definitions are likely to change
+slightly in the future. For this reason, they are hidden behind the
+<code>macro_rules</code> <a href="reference.html#compiler-features">feature
+attribute</a>.
+</div>
+
 # Introduction
 
 Functions are the primary tool that programmers can use to build abstractions.

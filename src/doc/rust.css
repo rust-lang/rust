@@ -338,6 +338,11 @@ pre.rust { position: relative; }
     transform: scaleX(-1);
 }
 
+.unstable-feature {
+    border: 2px solid red;
+    padding: 5px;
+}
+
 @media (min-width: 1170px) {
     pre {
         font-size: 15px;
