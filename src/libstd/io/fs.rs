@@ -153,7 +153,7 @@ impl File {
                 }
             })
         }).map_err(IoError::from_rtio_error);
-        err.update_err("couldn't open file", |e| {
+        err.update_err("Couldn't open file", |e| {
             format!("{}; path={}; mode={}; access={}", e, path.display(),
                 mode_string(mode), access_string(access))
         })
@@ -208,7 +208,7 @@ impl File {
     /// operation.
     pub fn fsync(&mut self) -> IoResult<()> {
         let err = self.fd.fsync().map_err(IoError::from_rtio_error);
-        err.update_err("couldn't fsync file",
+        err.update_err("Couldn't fsync file",
                        |e| format!("{}; path={}", e, self.path.display()))
     }
 
@@ -218,7 +218,7 @@ impl File {
     /// of this method is to reduce disk operations.
     pub fn datasync(&mut self) -> IoResult<()> {
         let err = self.fd.datasync().map_err(IoError::from_rtio_error);
-        err.update_err("couldn't datasync file",
+        err.update_err("Couldn't datasync file",
                        |e| format!("{}; path={}", e, self.path.display()))
     }
 
@@ -232,7 +232,7 @@ impl File {
     /// in with 0s.
     pub fn truncate(&mut self, size: i64) -> IoResult<()> {
         let err = self.fd.truncate(size).map_err(IoError::from_rtio_error);
-        err.update_err("couldn't truncate file", |e| {
+        err.update_err("Couldn't truncate file", |e| {
             format!("{}; path={}; size={}", e, self.path.display(), size)
         })
     }
@@ -256,7 +256,7 @@ impl File {
             Ok(s) => Ok(from_rtio(s)),
             Err(e) => Err(IoError::from_rtio_error(e)),
         };
-        err.update_err("couldn't fstat file",
+        err.update_err("Couldn't fstat file",
                        |e| format!("{}; path={}", e, self.path.display()))
     }
 }
@@ -315,7 +315,7 @@ pub fn unlink(path: &Path) -> IoResult<()> {
         let err = LocalIo::maybe_raise(|io| {
             io.fs_unlink(&path.to_c_str())
         }).map_err(IoError::from_rtio_error);
-        err.update_err("couldn't unlink path",
+        err.update_err("Couldn't unlink path",
                        |e| format!("{}; path={}", e, path.display()))
     }
 }
@@ -346,7 +346,7 @@ pub fn stat(path: &Path) -> IoResult<FileStat> {
         Ok(s) => Ok(from_rtio(s)),
         Err(e) => Err(IoError::from_rtio_error(e)),
     };
-    err.update_err("couldn't stat path",
+    err.update_err("Couldn't stat path",
                    |e| format!("{}; path={}", e, path.display()))
 }
 
@@ -363,7 +363,7 @@ pub fn lstat(path: &Path) -> IoResult<FileStat> {
         Ok(s) => Ok(from_rtio(s)),
         Err(e) => Err(IoError::from_rtio_error(e)),
     };
-    err.update_err("couldn't lstat path",
+    err.update_err("Couldn't lstat path",
                    |e| format!("{}; path={}", e, path.display()))
 }
 
@@ -428,7 +428,7 @@ pub fn rename(from: &Path, to: &Path) -> IoResult<()> {
     let err = LocalIo::maybe_raise(|io| {
         io.fs_rename(&from.to_c_str(), &to.to_c_str())
     }).map_err(IoError::from_rtio_error);
-    err.update_err("couldn't rename path", |e| {
+    err.update_err("Couldn't rename path", |e| {
         format!("{}; from={}; to={}", e, from.display(), to.display())
     })
 }
@@ -463,14 +463,14 @@ pub fn rename(from: &Path, to: &Path) -> IoResult<()> {
 /// being created and then destroyed by this operation.
 pub fn copy(from: &Path, to: &Path) -> IoResult<()> {
     fn update_err<T>(result: IoResult<T>, from: &Path, to: &Path) -> IoResult<T> {
-        result.update_err("couldn't copy path",
+        result.update_err("Couldn't copy path",
             |e| format!("{}; from={}; to={}", e, from.display(), to.display()))
     }
 
     if !from.is_file() {
         return update_err(Err(IoError {
             kind: io::MismatchedFileTypeForOperation,
-            desc: "the source path is not an existing file",
+            desc: "The source path is not an existing file",
             detail: None
         }), from, to)
     }
@@ -516,7 +516,7 @@ pub fn chmod(path: &Path, mode: io::FilePermission) -> IoResult<()> {
     let err = LocalIo::maybe_raise(|io| {
         io.fs_chmod(&path.to_c_str(), mode.bits() as uint)
     }).map_err(IoError::from_rtio_error);
-    err.update_err("couldn't chmod path", |e| {
+    err.update_err("Couldn't chmod path", |e| {
         format!("{}; path={}; mode={}", e, path.display(), mode)
     })
 }
