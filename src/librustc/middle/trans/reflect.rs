@@ -129,9 +129,8 @@ impl<'a, 'blk, 'tcx> Reflector<'a, 'blk, 'tcx> {
 
     // Entrypoint
     pub fn visit_ty(&mut self, t: Ty<'tcx>) {
-        let bcx = self.bcx;
-        let tcx = bcx.tcx();
-        debug!("reflect::visit_ty {}", ty_to_string(bcx.tcx(), t));
+        let tcx = self.bcx.tcx();
+        debug!("reflect::visit_ty {}", ty_to_string(self.bcx.tcx(), t));
 
         match ty::get(t).sty {
           ty::ty_bot => self.leaf("bot"),
@@ -159,7 +158,7 @@ impl<'a, 'blk, 'tcx> Reflector<'a, 'blk, 'tcx> {
               fail!("Can't reflect unsized type")
           }
           // FIXME(15049) Reflection for unsized structs.
-          ty::ty_struct(..) if !ty::type_is_sized(bcx.tcx(), t) => {
+          ty::ty_struct(..) if !ty::type_is_sized(tcx, t) => {
               fail!("Can't reflect unsized type")
           }
 
