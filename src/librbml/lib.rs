@@ -558,9 +558,15 @@ pub mod reader {
         }
 
         fn read_tuple<T>(&mut self,
-                         f: |&mut Decoder<'doc>, uint| -> DecodeResult<T>) -> DecodeResult<T> {
+                         tuple_len: uint,
+                         f: |&mut Decoder<'doc>| -> DecodeResult<T>) -> DecodeResult<T> {
             debug!("read_tuple()");
-            self.read_seq(f)
+            self.read_seq(|d, len| {
+                assert!(len == tuple_len,
+                        "expected tuple of length `{}`, found tuple \
+                         of length `{}`", tuple_len, len);
+                f(d)
+            })
         }
 
         fn read_tuple_arg<T>(&mut self, idx: uint, f: |&mut Decoder<'doc>| -> DecodeResult<T>)
@@ -571,10 +577,11 @@ pub mod reader {
 
         fn read_tuple_struct<T>(&mut self,
                                 name: &str,
-                                f: |&mut Decoder<'doc>, uint| -> DecodeResult<T>)
+                                len: uint,
+                                f: |&mut Decoder<'doc>| -> DecodeResult<T>)
                                 -> DecodeResult<T> {
             debug!("read_tuple_struct(name={})", name);
-            self.read_tuple(f)
+            self.read_tuple(len, f)
         }
 
         fn read_tuple_struct_arg<T>(&mut self,
