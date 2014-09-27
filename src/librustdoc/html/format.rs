@@ -478,7 +478,25 @@ impl fmt::Show for clean::Type {
                     Some(ref l) => format!("{} ", *l),
                     _ => "".to_string(),
                 };
-                write!(f, "&amp;{}{}{}", lt, MutableSpace(mutability), **ty)
+                let m = MutableSpace(mutability);
+                match **ty {
+                    clean::Vector(ref bt) => { // BorrowedRef{ ... Vector(T) } is &[T]
+                        match **bt {
+                            clean::Generic(_) =>
+                                primitive_link(f, clean::Slice,
+                                    format!("&amp;{}{}[{}]", lt, m, **bt).as_slice()),
+                            _ => {
+                                try!(primitive_link(f, clean::Slice,
+                                    format!("&amp;{}{}[", lt, m).as_slice()));
+                                try!(write!(f, "{}", **bt));
+                                primitive_link(f, clean::Slice, "]")
+                            }
+                        }
+                    }
+                    _ => {
+                        write!(f, "&amp;{}{}{}", lt, m, **ty)
+                    }
+                }
             }
             clean::Unique(..) => {
                 fail!("should have been cleaned")
