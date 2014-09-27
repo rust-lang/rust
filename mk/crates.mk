@@ -52,13 +52,14 @@
 TARGET_CRATES := libc std green native flate arena glob term semver \
                  uuid serialize sync getopts collections num test time rand \
                  url log regex graphviz core rbml rlibc alloc debug rustrt \
-                 unicode
+                 unicode tls
 HOST_CRATES := syntax rustc rustdoc fourcc hexfloat regex_macros fmt_macros \
 	       rustc_llvm rustc_back
 CRATES := $(TARGET_CRATES) $(HOST_CRATES)
 TOOLS := compiletest rustdoc rustc
 
 DEPS_core :=
+DEPS_tls := core
 DEPS_libc := core
 DEPS_rlibc := core
 DEPS_unicode := core
@@ -115,6 +116,7 @@ ONLY_RLIB_alloc := 1
 ONLY_RLIB_rand := 1
 ONLY_RLIB_collections := 1
 ONLY_RLIB_unicode := 1
+ONLY_RLIB_tls := 1
 
 ################################################################################
 # You should not need to edit below this line
