@@ -530,7 +530,7 @@ impl String {
     /// assert_eq!(s.as_slice(), "abc123");
     /// ```
     #[inline]
-    #[stable = "function just renamed from push"]
+    #[stable = "function just renamed from push_char"]
     pub fn push(&mut self, ch: char) {
         let cur_len = self.len();
         // This may use up to 4 bytes.
