@@ -288,8 +288,9 @@ pub fn phase_2_configure_and_expand(sess: &Session,
                 os::setenv("PATH", os::join_paths(new_path.as_slice()).unwrap());
             }
             let cfg = syntax::ext::expand::ExpansionConfig {
-                deriving_hash_type_parameter: sess.features.borrow().default_type_params,
                 crate_name: crate_name.to_string(),
+                deriving_hash_type_parameter: sess.features.borrow().default_type_params,
+                enable_quotes: sess.features.borrow().quote,
             };
             let ret = syntax::ext::expand::expand_crate(&sess.parse_sess,
                                               cfg,
