@@ -1392,14 +1392,14 @@ impl<T: Iterator<char>> Parser<T> {
 
                 // A leading '0' must be the only digit before the decimal point.
                 match self.ch_or_null() {
-                    '0' .. '9' => return self.error(InvalidNumber),
+                    '0' ... '9' => return self.error(InvalidNumber),
                     _ => ()
                 }
             },
-            '1' .. '9' => {
+            '1' ... '9' => {
                 while !self.eof() {
                     match self.ch_or_null() {
-                        c @ '0' .. '9' => {
+                        c @ '0' ... '9' => {
                             accum *= 10;
                             accum += (c as u64) - ('0' as u64);
 
@@ -1423,14 +1423,14 @@ impl<T: Iterator<char>> Parser<T> {
 
         // Make sure a digit follows the decimal place.
         match self.ch_or_null() {
-            '0' .. '9' => (),
+            '0' ... '9' => (),
              _ => return self.error(InvalidNumber)
         }
 
         let mut dec = 1.0;
         while !self.eof() {
             match self.ch_or_null() {
-                c @ '0' .. '9' => {
+                c @ '0' ... '9' => {
                     dec /= 10.0;
                     res += (((c as int) - ('0' as int)) as f64) * dec;
                     self.bump();
@@ -1457,12 +1457,12 @@ impl<T: Iterator<char>> Parser<T> {
 
         // Make sure a digit follows the exponent place.
         match self.ch_or_null() {
-            '0' .. '9' => (),
+            '0' ... '9' => (),
             _ => return self.error(InvalidNumber)
         }
         while !self.eof() {
             match self.ch_or_null() {
-                c @ '0' .. '9' => {
+                c @ '0' ... '9' => {
                     exp *= 10;
                     exp += (c as uint) - ('0' as uint);
 
@@ -1488,7 +1488,7 @@ impl<T: Iterator<char>> Parser<T> {
         while i < 4 && !self.eof() {
             self.bump();
             n = match self.ch_or_null() {
-                c @ '0' .. '9' => n * 16 + ((c as u16) - ('0' as u16)),
+                c @ '0' ... '9' => n * 16 + ((c as u16) - ('0' as u16)),
                 'a' | 'A' => n * 16 + 10,
                 'b' | 'B' => n * 16 + 11,
                 'c' | 'C' => n * 16 + 12,
@@ -1530,11 +1530,13 @@ impl<T: Iterator<char>> Parser<T> {
                     'r' => res.push('\r'),
                     't' => res.push('\t'),
                     'u' => match try!(self.decode_hex_escape()) {
-                        0xDC00 .. 0xDFFF => return self.error(LoneLeadingSurrogateInHexEscape),
+                        0xDC00 ... 0xDFFF => {
+                            return self.error(LoneLeadingSurrogateInHexEscape)
+                        }
 
                         // Non-BMP characters are encoded as a sequence of
                         // two hex escapes, representing UTF-16 surrogates.
-                        n1 @ 0xD800 .. 0xDBFF => {
+                        n1 @ 0xD800 ... 0xDBFF => {
                             match (self.next_char(), self.next_char()) {
                                 (Some('\\'), Some('u')) => (),
                                 _ => return self.error(UnexpectedEndOfHexEscape),
@@ -1768,7 +1770,7 @@ impl<T: Iterator<char>> Parser<T> {
             'n' => { self.parse_ident("ull", NullValue) }
             't' => { self.parse_ident("rue", BooleanValue(true)) }
             'f' => { self.parse_ident("alse", BooleanValue(false)) }
-            '0' .. '9' | '-' => self.parse_number(),
+            '0' ... '9' | '-' => self.parse_number(),
             '"' => match self.parse_str() {
                 Ok(s) => StringValue(s),
                 Err(e) => Error(e),

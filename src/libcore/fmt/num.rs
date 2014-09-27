@@ -99,13 +99,13 @@ macro_rules! radix {
     }
 }
 
-radix!(Binary,    2, "0b", x @  0 .. 2 => b'0' + x)
-radix!(Octal,     8, "0o", x @  0 .. 7 => b'0' + x)
-radix!(Decimal,  10, "",   x @  0 .. 9 => b'0' + x)
-radix!(LowerHex, 16, "0x", x @  0 .. 9 => b'0' + x,
-                           x @ 10 ..15 => b'a' + (x - 10))
-radix!(UpperHex, 16, "0x", x @  0 .. 9 => b'0' + x,
-                           x @ 10 ..15 => b'A' + (x - 10))
+radix!(Binary,    2, "0b", x @  0 ...  2 => b'0' + x)
+radix!(Octal,     8, "0o", x @  0 ...  7 => b'0' + x)
+radix!(Decimal,  10, "",   x @  0 ...  9 => b'0' + x)
+radix!(LowerHex, 16, "0x", x @  0 ...  9 => b'0' + x,
+                           x @ 10 ... 15 => b'a' + (x - 10))
+radix!(UpperHex, 16, "0x", x @  0 ...  9 => b'0' + x,
+                           x @ 10 ... 15 => b'A' + (x - 10))
 
 /// A radix with in the range of `2..36`.
 #[deriving(Clone, PartialEq)]
@@ -124,7 +124,7 @@ impl GenericRadix for Radix {
     fn base(&self) -> u8 { self.base }
     fn digit(&self, x: u8) -> u8 {
         match x {
-            x @  0 ..9 => b'0' + x,
+            x @  0 ... 9 => b'0' + x,
             x if x < self.base() => b'a' + (x - 10),
             x => fail!("number not in the range 0..{}: {}", self.base() - 1, x),
         }

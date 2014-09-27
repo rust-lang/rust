@@ -3408,7 +3408,7 @@ may be specified with `..`. For example:
 
 let message = match x {
   0 | 1  => "not many",
-  2 .. 9 => "a few",
+  2 ... 9 => "a few",
   _      => "lots"
 };
 ```

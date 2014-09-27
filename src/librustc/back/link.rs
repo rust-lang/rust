@@ -277,9 +277,9 @@ pub fn sanitize(s: &str) -> String {
             '-' | ':' => result.push_char('.'),
 
             // These are legal symbols
-            'a' .. 'z'
-            | 'A' .. 'Z'
-            | '0' .. '9'
+            'a' ... 'z'
+            | 'A' ... 'Z'
+            | '0' ... '9'
             | '_' | '.' | '$' => result.push_char(c),
 
             _ => {
