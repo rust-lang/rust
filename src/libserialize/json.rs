@@ -3352,7 +3352,7 @@ mod tests {
         }
     }
     #[test]
-    #[ignore(cfg(target_word_size = "32"))] // FIXME(#14064)
+    #[cfg_attr(target_word_size = "32", ignore)] // FIXME(#14064)
     fn test_streaming_parser() {
         assert_stream_equal(
             r#"{ "foo":"bar", "array" : [0, 1, 2, 3, 4, 5], "idents":[null,true,false]}"#,
@@ -3388,7 +3388,7 @@ mod tests {
     }
 
     #[test]
-    #[ignore(cfg(target_word_size = "32"))] // FIXME(#14064)
+    #[cfg_attr(target_word_size = "32", ignore)] // FIXME(#14064)
     fn test_read_object_streaming() {
         assert_eq!(last_event("{ "),      Error(SyntaxError(EOFWhileParsingObject, 1, 3)));
         assert_eq!(last_event("{1"),      Error(SyntaxError(KeyMustBeAString,      1, 2)));
@@ -3461,7 +3461,7 @@ mod tests {
         );
     }
     #[test]
-    #[ignore(cfg(target_word_size = "32"))] // FIXME(#14064)
+    #[cfg_attr(target_word_size = "32", ignore)] // FIXME(#14064)
     fn test_read_list_streaming() {
         assert_stream_equal(
             "[]",
