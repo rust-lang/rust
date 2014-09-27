@@ -145,10 +145,11 @@
 
 use cmp::{PartialEq, Eq, Ord};
 use default::Default;
-use slice::Slice;
 use iter::{Iterator, DoubleEndedIterator, FromIterator, ExactSize};
 use mem;
+use result::{Result, Ok, Err};
 use slice;
+use slice::Slice;
 
 // Note that this is not a lang item per se, but it has a hidden dependency on
 // `Iterator`, which is one. The compiler assumes that the `next` method of
@@ -437,6 +438,48 @@ impl<T> Option<T> {
     #[unstable = "waiting for unboxed closures"]
     pub fn map_or_else<U>(self, def: || -> U, f: |T| -> U) -> U {
         match self { None => def(), Some(t) => f(t) }
+    }
+
+    /// Transforms the `Option<T>` into a `Result<T, E>`, mapping `Some(v)` to
+    /// `Ok(v)` and `None` to `Err(err)`.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// let x = Some("foo");
+    /// assert_eq!(x.ok_or(0i), Ok("foo"));
+    ///
+    /// let x: Option<&str> = None;
+    /// assert_eq!(x.ok_or(0i), Err(0i));
+    /// ```
+    #[inline]
+    #[experimental]
+    pub fn ok_or<E>(self, err: E) -> Result<T, E> {
+        match self {
+            Some(v) => Ok(v),
+            None => Err(err),
+        }
+    }
+
+    /// Transforms the `Option<T>` into a `Result<T, E>`, mapping `Some(v)` to
+    /// `Ok(v)` and `None` to `Err(err())`.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// let x = Some("foo");
+    /// assert_eq!(x.ok_or_else(|| 0i), Ok("foo"));
+    ///
+    /// let x: Option<&str> = None;
+    /// assert_eq!(x.ok_or_else(|| 0i), Err(0i));
+    /// ```
+    #[inline]
+    #[experimental]
+    pub fn ok_or_else<E>(self, err: || -> E) -> Result<T, E> {
+        match self {
+            Some(v) => Ok(v),
+            None => Err(err()),
+        }
     }
 
     /// Deprecated.
