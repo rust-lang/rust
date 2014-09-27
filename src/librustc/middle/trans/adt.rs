@@ -167,7 +167,7 @@ fn represent_type_uncached<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                      t: Ty<'tcx>) -> Repr<'tcx> {
     match ty::get(t).sty {
         ty::ty_tup(ref elems) => {
-            fail!()//Univariant(mk_struct(cx, elems.as_slice(), false), false)
+            Univariant(mk_struct(cx, elems.as_slice(), false), false)
         }
         ty::ty_struct(def_id, ref substs) => {
             let fields = ty::lookup_struct_fields(cx.tcx(), def_id);

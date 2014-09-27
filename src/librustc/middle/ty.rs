@@ -935,8 +935,8 @@ pub enum sty<'tcx> {
 }
 
 impl<'tcx> Equiv<&'tcx sty<'tcx>> for sty<'tcx> {
-    fn equiv(&self, other: &sty<'tcx>) -> bool {
-        *self == *other
+    fn equiv(&self, other: &&sty<'tcx>) -> bool {
+        *self == **other
     }
 }
 
@@ -1632,54 +1632,46 @@ pub fn mk_t<'tcx>(cx: &ctxt<'tcx>, st: sty<'tcx>) -> Ty<'tcx> {
     Ty { inner: ty }
 }
 
-// just put these in a macro and we're done
-#[inline]
-pub fn mk_nil<'tcx>() -> Ty<'tcx> { Ty { inner: &primitives::TY_NIL } }
+macro_rules! def_mk_prim(
+    ($name:ident, $prim_name:ident) => (
+        #[inline]
+        pub fn $name<'tcx>() -> Ty<'tcx> {
+            // sty (and Ty) are not contravariant in their lifetime parameter.
+            // This is semantically correct - most sty's belong to a specific
+            // type context, and need to stay bound to it.
+            // However, the primitive statics are the same for every type
+            // context - they are of a variant that does not depend
+            // on the type context - so the transmute is needed here,
+            // because Rust does not allow enum variants to have differing
+            // variances.
+            Ty {
+                inner: unsafe {
+                    mem::transmute::<&TyS, &TyS>(&(primitives::$prim_name))
+                }
+            }
+        }
+    )
+)
 
-#[inline]
-pub fn mk_err<'tcx>() -> Ty<'tcx> { Ty { inner: &primitives::TY_ERR } }
+def_mk_prim!(mk_nil, TY_NIL)
+def_mk_prim!(mk_err, TY_ERR)
+def_mk_prim!(mk_bot, TY_BOT)
+def_mk_prim!(mk_bool, TY_BOOL)
 
-#[inline]
-pub fn mk_bot<'tcx>() -> Ty<'tcx> { Ty { inner: &primitives::TY_BOT } }
+def_mk_prim!(mk_f32, TY_F32)
+def_mk_prim!(mk_f64, TY_F64)
 
-#[inline]
-pub fn mk_bool<'tcx>() -> Ty<'tcx> { Ty { inner: &primitives::TY_BOOL } }
+def_mk_prim!(mk_int, TY_INT)
+def_mk_prim!(mk_i8,  TY_I8)
+def_mk_prim!(mk_i16, TY_I16)
+def_mk_prim!(mk_i32, TY_I32)
+def_mk_prim!(mk_i64, TY_I64)
 
-#[inline]
-pub fn mk_int<'tcx>() -> Ty<'tcx> { Ty { inner: &primitives::TY_INT } }
-
-#[inline]
-pub fn mk_i8<'tcx>() -> Ty<'tcx> { Ty { inner: &primitives::TY_I8 } }
-
-#[inline]
-pub fn mk_i16<'tcx>() -> Ty<'tcx> { Ty { inner: &primitives::TY_I16 } }
-
-#[inline]
-pub fn mk_i32<'tcx>() -> Ty<'tcx> { Ty { inner: &primitives::TY_I32 } }
-
-#[inline]
-pub fn mk_i64<'tcx>() -> Ty<'tcx> { Ty { inner: &primitives::TY_I64 } }
-
-#[inline]
-pub fn mk_f32<'tcx>() -> Ty<'tcx> { Ty { inner: &primitives::TY_F32 } }
-
-#[inline]
-pub fn mk_f64<'tcx>() -> Ty<'tcx> { Ty { inner: &primitives::TY_F64 } }
-
-#[inline]
-pub fn mk_uint<'tcx>() -> Ty<'tcx> { Ty { inner: &primitives::TY_UINT } }
-
-#[inline]
-pub fn mk_u8<'tcx>() -> Ty<'tcx> { Ty { inner: &primitives::TY_U8 } }
-
-#[inline]
-pub fn mk_u16<'tcx>() -> Ty<'tcx> { Ty { inner: &primitives::TY_U16 } }
-
-#[inline]
-pub fn mk_u32<'tcx>() -> Ty<'tcx> { Ty { inner: &primitives::TY_U32 } }
-
-#[inline]
-pub fn mk_u64<'tcx>() -> Ty<'tcx> { Ty { inner: &primitives::TY_U64 } }
+def_mk_prim!(mk_uint, TY_UINT)
+def_mk_prim!(mk_u8,   TY_U8)
+def_mk_prim!(mk_u16,  TY_U16)
+def_mk_prim!(mk_u32,  TY_U32)
+def_mk_prim!(mk_u64,  TY_U64)
 
 pub fn mk_mach_int<'tcx>(tm: ast::IntTy) -> Ty<'tcx> {
     match tm {
@@ -1708,8 +1700,7 @@ pub fn mk_mach_float<'tcx>(tm: ast::FloatTy) -> Ty<'tcx> {
     }
 }
 
-#[inline]
-pub fn mk_char<'tcx>() -> Ty<'tcx> { Ty { inner: &primitives::TY_CHAR } }
+def_mk_prim!(mk_char, TY_CHAR)
 
 pub fn mk_str<'tcx>(cx: &ctxt<'tcx>) -> Ty<'tcx> {
     mk_t(cx, ty_str)
