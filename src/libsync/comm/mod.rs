@@ -138,8 +138,8 @@
 //!
 //! loop {
 //!     select! {
-//!         val = rx.recv() => println!("Received {}", val),
-//!         () = timeout.recv() => {
+//!         val from rx => println!("Received {}", val),
+//!         _ from timeout => {
 //!             println!("timed out, total time was more than 10 seconds")
 //!             break;
 //!         }
@@ -162,8 +162,8 @@
 //!     let timeout = timer.oneshot(Duration::seconds(5));
 //!
 //!     select! {
-//!         val = rx.recv() => println!("Received {}", val),
-//!         () = timeout.recv() => {
+//!         val from rx => println!("Received {}", val),
+//!         _ from timeout => {
 //!             println!("timed out, no message received in 5 seconds")
 //!             break;
 //!         }
@@ -332,7 +332,6 @@ use core::cell::UnsafeCell;
 use rustrt::local::Local;
 use rustrt::task::{Task, BlockedTask};
 
-pub use comm::select::{Select, Handle};
 pub use comm::duplex::{DuplexStream, duplex};
 
 macro_rules! test (
@@ -363,7 +362,6 @@ macro_rules! test (
 
 mod duplex;
 mod oneshot;
-mod select;
 mod shared;
 mod stream;
 mod sync;
@@ -956,7 +954,14 @@ impl<T: Send> Receiver<T> {
     }
 }
 
-impl<T: Send> select::Packet for Receiver<T> {
+#[doc(hidden)]
+pub trait Packet {
+    fn can_recv(&self) -> bool;
+    fn start_selection(&self, task: BlockedTask) -> Result<(), BlockedTask>;
+    fn abort_selection(&self) -> bool;
+}
+
+impl<T: Send> Packet for Receiver<T> {
     fn can_recv(&self) -> bool {
         loop {
             let new_port = match *unsafe { self.inner() } {

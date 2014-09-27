@@ -35,8 +35,8 @@ fn test() {
         let (tx2, rx2) = channel();
         tx.send(tx2);
         select! {
-            () = rx2.recv() => (),
-            _ = rcv.recv() => ()
+            () from rx2 => (),
+            _ from rcv => ()
         }
     }
 }
