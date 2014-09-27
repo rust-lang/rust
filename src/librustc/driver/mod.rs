@@ -29,16 +29,13 @@ use syntax::diagnostics;
 
 use getopts;
 
-
 pub mod driver;
 pub mod session;
 pub mod config;
 pub mod pretty;
 
-
-pub fn main_args(args: &[String]) -> int {
-    let owned_args = args.to_vec();
-    monitor(proc() run_compiler(owned_args.as_slice()));
+pub fn run(args: Vec<String>) -> int {
+    monitor(proc() run_compiler(args.as_slice()));
     0
 }
 
