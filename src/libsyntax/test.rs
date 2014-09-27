@@ -339,6 +339,12 @@ fn is_ignored(cx: &TestCtxt, i: &ast::Item) -> bool {
         // check ignore(cfg(foo, bar))
         attr.check_name("ignore") && match attr.meta_item_list() {
             Some(ref cfgs) => {
+                if cfgs.iter().any(|cfg| cfg.check_name("cfg")) {
+                    cx.span_diagnostic.span_warn(attr.span,
+                            "The use of cfg filters in #[ignore] is \
+                             deprecated. Use #[cfg_attr(<cfg pattern>, \
+                             ignore)] instead.");
+                }
                 attr::test_cfg(cx.config.as_slice(), cfgs.iter())
             }
             None => true

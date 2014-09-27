@@ -83,6 +83,7 @@ pub mod ext {
     pub mod build;
     pub mod bytes;
     pub mod cfg;
+    pub mod cfg_attr;
     pub mod concat;
     pub mod concat_idents;
     pub mod deriving;

@@ -219,7 +219,7 @@ mod test {
     }
 
     #[test]
-    #[ignore(cfg(target_arch = "x86"))]
+    #[cfg_attr(target_arch = "x86", ignore)]
     // FIXME #7158: (maybe?) currently failing on x86.
     fn test_norm() {
         fn test(c: Complex64, ns: f64) {
