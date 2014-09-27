@@ -1348,6 +1348,21 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
         let hash = self.make_hash(&key);
         search_entry_hashed(&mut self.table, hash, key)
     }
+
+    /// Gets the given equivalent key's corresponding entry in the map for in-place manipulation
+    /// `map_key` is only called if there is no existing entry
+    #[experimental]
+    pub fn entry_equiv<'a, Q:Hash<S> + Equiv<K>>(&'a mut self, k: &Q, map_key: |&Q| -> K) -> Entry<'a, K, V> {
+        // Gotta resize now, and we don't know which direction, so try both?
+        let size = self.table.size();
+        self.make_some_room(size + 1);
+        if size > 0 {
+            self.make_some_room(size - 1);
+        }
+
+        let hash = self.make_hash(k);
+        search_entry_hashed_equiv(&mut self.table, hash, k, map_key)
+    }
 }
 
 fn search_entry_hashed<'a, K: Eq, V>(table: &'a mut RawTable<K,V>, hash: SafeHash, k: K)
@@ -1390,6 +1405,55 @@ fn search_entry_hashed<'a, K: Eq, V>(table: &'a mut RawTable<K,V>, hash: SafeHas
             return Vacant(VacantEntry {
                 hash: hash,
                 key: k,
+                elem: NeqElem(bucket, robin_ib as uint),
+            });
+        }
+
+        probe = bucket.next();
+        assert!(probe.index() != ib + size + 1);
+    }
+}
+
+fn search_entry_hashed_equiv<'a, Q: Equiv<K>, K: Eq, V>(table: &'a mut RawTable<K,V>, hash: SafeHash, k: &Q, map_key: |&Q| -> K)
+        -> Entry<'a, K, V> {
+    // Worst case, we'll find one empty bucket among `size + 1` buckets.
+    let size = table.size();
+    let mut probe = Bucket::new(table, &hash);
+    let ib = probe.index();
+
+    loop {
+        let bucket = match probe.peek() {
+            Empty(bucket) => {
+                // Found a hole!
+                return Vacant(VacantEntry {
+                    hash: hash,
+                    key: map_key(k),
+                    elem: NoElem(bucket),
+                });
+            },
+            Full(bucket) => bucket
+        };
+
+        if bucket.hash() == hash {
+            let is_eq = {
+                let (bucket_k, _) = bucket.read();
+                k.equiv(bucket_k)
+            };
+
+            if is_eq {
+                return Occupied(OccupiedEntry{
+                    elem: bucket,
+                });
+            }
+        }
+
+        let robin_ib = bucket.index() as int - bucket.distance() as int;
+
+        if (ib as int) < robin_ib {
+            // Found a luckier bucket than me. Better steal his spot.
+            return Vacant(VacantEntry {
+                hash: hash,
+                key: map_key(k),
                 elem: NeqElem(bucket, robin_ib as uint),
             });
         }
@@ -2301,6 +2365,59 @@ mod test_map {
             }
         }
         assert_eq!(map.find(&10).unwrap(), &1000);
+        assert_eq!(map.len(), 6);
+    }
+
+    #[test]
+    fn test_entry_equiv(){
+        let xs = [("a", 10i), ("b", 20), ("c", 30), ("d", 40), ("e", 50), ("f", 60)];
+        let xs: Vec<(String, int)> = xs.iter().map(|&(k, v)| (k.to_string(), v)).collect();
+
+        let mut map: HashMap<String, int> = xs.into_iter().collect();
+
+        // Existing key (insert)
+        match map.entry_equiv::<&str>(&"a", |s| String::from_str(*s)) {
+            Vacant(_) => unreachable!(),
+            Occupied(mut view) => {
+                assert_eq!(view.get(), &10);
+                assert_eq!(view.set(100), 10);
+            }
+        }
+        assert_eq!(map.find_equiv(&"a").unwrap(), &100);
+        assert_eq!(map.len(), 6);
+
+
+        // Existing key (update)
+        match map.entry_equiv::<&str>(&"b", |s| String::from_str(*s)) {
+            Vacant(_) => unreachable!(),
+            Occupied(mut view) => {
+                let v = view.get_mut();
+                let new_v = (*v) * 10;
+                *v = new_v;
+            }
+        }
+        assert_eq!(map.find_equiv(&"b").unwrap(), &200);
+        assert_eq!(map.len(), 6);
+
+        // Existing key (take)
+        match map.entry_equiv::<&str>(&"c", |s| String::from_str(*s)) {
+            Vacant(_) => unreachable!(),
+            Occupied(view) => {
+                assert_eq!(view.take(), 30);
+            }
+        }
+        assert_eq!(map.find_equiv(&"c"), None);
+        assert_eq!(map.len(), 5);
+
+
+        // Inexistent key (insert)
+        match map.entry_equiv::<&str>(&"k", |s| String::from_str(*s)) {
+            Occupied(_) => unreachable!(),
+            Vacant(view) => {
+                assert_eq!(*view.set(1000), 1000);
+            }
+        }
+        assert_eq!(map.find_equiv(&"k").unwrap(), &1000);
         assert_eq!(map.len(), 6);
     }
 }
