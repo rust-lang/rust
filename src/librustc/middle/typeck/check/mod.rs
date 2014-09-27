@@ -1405,6 +1405,37 @@ fn check_cast(fcx: &FnCtxt,
         return
     }
 
+    if !ty::type_is_sized(fcx.tcx(), t_1) {
+        let tstr = fcx.infcx().ty_to_string(t_1);
+        fcx.type_error_message(span, |actual| {
+            format!("cast to unsized type: `{}` as `{}`", actual, tstr)
+        }, t_e, None);
+        match ty::get(t_e).sty {
+            ty::ty_rptr(_, ty::mt { mutbl: mt, .. }) => {
+                let mtstr = match mt {
+                    ast::MutMutable => "mut ",
+                    ast::MutImmutable => ""
+                };
+                if ty::type_is_trait(t_1) {
+                    span_note!(fcx.tcx().sess, t.span, "did you mean `&{}{}`?", mtstr, tstr);
+                } else {
+                    span_note!(fcx.tcx().sess, span,
+                               "consider using an implicit coercion to `&{}{}` instead",
+                               mtstr, tstr);
+                }
+            }
+            ty::ty_uniq(..) => {
+                span_note!(fcx.tcx().sess, t.span, "did you mean `Box<{}>`?", tstr);
+            }
+            _ => {
+                span_note!(fcx.tcx().sess, e.span,
+                           "consider using a box or reference as appropriate");
+            }
+        }
+        fcx.write_error(id);
+        return
+    }
+
     if ty::type_is_trait(t_1) {
         // This will be looked up later on.
         vtable2::check_object_cast(fcx, cast_expr, e, t_1);
