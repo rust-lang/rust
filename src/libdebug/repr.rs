@@ -227,7 +227,7 @@ impl<'a> ReprVisitor<'a> {
                     self.writer.write("\"".as_bytes())
                 }
             }
-            '\x20'..'\x7e' => self.writer.write([ch as u8]),
+            '\x20'...'\x7e' => self.writer.write([ch as u8]),
             _ => {
                 char::escape_unicode(ch, |c| {
                     let _ = self.writer.write([c as u8]);

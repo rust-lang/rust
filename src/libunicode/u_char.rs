@@ -22,7 +22,7 @@ use tables::{derived_property, property, general_category, conversions, charwidt
 /// code point
 pub fn is_alphabetic(c: char) -> bool {
     match c {
-        'a' .. 'z' | 'A' .. 'Z' => true,
+        'a' ... 'z' | 'A' ... 'Z' => true,
         c if c > '\x7f' => derived_property::Alphabetic(c),
         _ => false
     }
@@ -52,7 +52,7 @@ pub fn is_XID_continue(c: char) -> bool { derived_property::XID_Continue(c) }
 #[inline]
 pub fn is_lowercase(c: char) -> bool {
     match c {
-        'a' .. 'z' => true,
+        'a' ... 'z' => true,
         c if c > '\x7f' => derived_property::Lowercase(c),
         _ => false
     }
@@ -66,7 +66,7 @@ pub fn is_lowercase(c: char) -> bool {
 #[inline]
 pub fn is_uppercase(c: char) -> bool {
     match c {
-        'A' .. 'Z' => true,
+        'A' ... 'Z' => true,
         c if c > '\x7f' => derived_property::Uppercase(c),
         _ => false
     }
@@ -80,7 +80,7 @@ pub fn is_uppercase(c: char) -> bool {
 #[inline]
 pub fn is_whitespace(c: char) -> bool {
     match c {
-        ' ' | '\x09' .. '\x0d' => true,
+        ' ' | '\x09' ... '\x0d' => true,
         c if c > '\x7f' => property::White_Space(c),
         _ => false
     }
@@ -111,7 +111,7 @@ pub fn is_control(c: char) -> bool { general_category::Cc(c) }
 #[inline]
 pub fn is_digit(c: char) -> bool {
     match c {
-        '0' .. '9' => true,
+        '0' ... '9' => true,
         c if c > '\x7f' => general_category::N(c),
         _ => false
     }

@@ -637,7 +637,7 @@ impl<'a> StringReader<'a> {
                 'b' => { self.bump(); base = 2; num_digits = self.scan_digits(2); }
                 'o' => { self.bump(); base = 8; num_digits = self.scan_digits(8); }
                 'x' => { self.bump(); base = 16; num_digits = self.scan_digits(16); }
-                '0'..'9' | '_' | '.' => {
+                '0'...'9' | '_' | '.' => {
                     num_digits = self.scan_digits(10) + 1;
                 }
                 'u' | 'i' => {

@@ -224,9 +224,9 @@ impl<'a> FromBase64 for &'a [u8] {
             let val = byte as u32;
 
             match byte {
-                b'A'..b'Z' => buf |= val - 0x41,
-                b'a'..b'z' => buf |= val - 0x47,
-                b'0'..b'9' => buf |= val + 0x04,
+                b'A'...b'Z' => buf |= val - 0x41,
+                b'a'...b'z' => buf |= val - 0x47,
+                b'0'...b'9' => buf |= val + 0x04,
                 b'+' | b'-' => buf |= 0x3E,
                 b'/' | b'_' => buf |= 0x3F,
                 b'\r' | b'\n' => continue,
