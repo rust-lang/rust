@@ -983,7 +983,8 @@ pub struct InlineAsm {
     pub clobbers: InternedString,
     pub volatile: bool,
     pub alignstack: bool,
-    pub dialect: AsmDialect
+    pub dialect: AsmDialect,
+    pub expn_id: u32,
 }
 
 /// represents an argument in a function header

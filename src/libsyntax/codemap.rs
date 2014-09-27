@@ -224,7 +224,7 @@ pub struct ExpnInfo {
 }
 
 #[deriving(PartialEq, Eq, Clone, Show, Hash)]
-pub struct ExpnId(u32);
+pub struct ExpnId(pub u32);
 
 pub static NO_EXPANSION: ExpnId = ExpnId(-1);
 

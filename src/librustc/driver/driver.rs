@@ -556,6 +556,8 @@ pub fn phase_5_run_llvm_passes(sess: &Session,
                               sess.opts.output_types.as_slice(),
                               outputs));
     }
+
+    sess.abort_if_errors();
 }
 
 /// Run the linker on any artifacts that resulted from the LLVM run.
