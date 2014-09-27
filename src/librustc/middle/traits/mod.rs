@@ -79,6 +79,14 @@ pub static DUMMY_CAUSE: ObligationCause<'static> =
     ObligationCause { span: DUMMY_SP,
                       code: MiscObligation };
 
+// FIXME: ObligationCause is not contravariant in its lifetime parameter
+// (perhaps wrongly), but this specific variant certainly is, so this is an
+// explicit <'tcx> ObligationCause<'tcx> constructor.
+pub fn dummy_cause<'tcx>() -> ObligationCause<'tcx> {
+    ObligationCause { span: DUMMY_SP,
+                      code: MiscObligation }
+}
+
 pub type Obligations<'tcx> = subst::VecPerParamSpace<Obligation<'tcx>>;
 
 pub type Selection<'tcx> = Vtable<'tcx, Obligation<'tcx>>;

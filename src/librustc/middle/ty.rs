@@ -934,6 +934,12 @@ pub enum sty<'tcx> {
             // on non-useful type error messages)
 }
 
+impl<'tcx> Equiv<&'tcx sty<'tcx>> for sty<'tcx> {
+    fn equiv(&self, other: &sty<'tcx>) -> bool {
+        *self == *other
+    }
+}
+
 #[deriving(Clone, PartialEq, Eq, Hash, Show)]
 pub struct TyTrait<'tcx> {
     pub def_id: DefId,
@@ -1626,58 +1632,54 @@ pub fn mk_t<'tcx>(cx: &ctxt<'tcx>, st: sty<'tcx>) -> Ty<'tcx> {
     Ty { inner: ty }
 }
 
+// just put these in a macro and we're done
 #[inline]
-pub fn mk_prim_t<'tcx>(primitive: &'tcx TyS<'static>) -> Ty<'tcx> {
-    Ty { inner: primitive }
-}
+pub fn mk_nil<'tcx>() -> Ty<'tcx> { Ty { inner: &primitives::TY_NIL } }
 
 #[inline]
-pub fn mk_nil<'tcx>() -> Ty<'tcx> { mk_prim_t(&primitives::TY_NIL) }
+pub fn mk_err<'tcx>() -> Ty<'tcx> { Ty { inner: &primitives::TY_ERR } }
 
 #[inline]
-pub fn mk_err<'tcx>() -> Ty<'tcx> { mk_prim_t(&primitives::TY_ERR) }
+pub fn mk_bot<'tcx>() -> Ty<'tcx> { Ty { inner: &primitives::TY_BOT } }
 
 #[inline]
-pub fn mk_bot<'tcx>() -> Ty<'tcx> { mk_prim_t(&primitives::TY_BOT) }
+pub fn mk_bool<'tcx>() -> Ty<'tcx> { Ty { inner: &primitives::TY_BOOL } }
 
 #[inline]
-pub fn mk_bool<'tcx>() -> Ty<'tcx> { mk_prim_t(&primitives::TY_BOOL) }
+pub fn mk_int<'tcx>() -> Ty<'tcx> { Ty { inner: &primitives::TY_INT } }
 
 #[inline]
-pub fn mk_int<'tcx>() -> Ty<'tcx> { mk_prim_t(&primitives::TY_INT) }
+pub fn mk_i8<'tcx>() -> Ty<'tcx> { Ty { inner: &primitives::TY_I8 } }
 
 #[inline]
-pub fn mk_i8<'tcx>() -> Ty<'tcx> { mk_prim_t(&primitives::TY_I8) }
+pub fn mk_i16<'tcx>() -> Ty<'tcx> { Ty { inner: &primitives::TY_I16 } }
 
 #[inline]
-pub fn mk_i16<'tcx>() -> Ty<'tcx> { mk_prim_t(&primitives::TY_I16) }
+pub fn mk_i32<'tcx>() -> Ty<'tcx> { Ty { inner: &primitives::TY_I32 } }
 
 #[inline]
-pub fn mk_i32<'tcx>() -> Ty<'tcx> { mk_prim_t(&primitives::TY_I32) }
+pub fn mk_i64<'tcx>() -> Ty<'tcx> { Ty { inner: &primitives::TY_I64 } }
 
 #[inline]
-pub fn mk_i64<'tcx>() -> Ty<'tcx> { mk_prim_t(&primitives::TY_I64) }
+pub fn mk_f32<'tcx>() -> Ty<'tcx> { Ty { inner: &primitives::TY_F32 } }
 
 #[inline]
-pub fn mk_f32<'tcx>() -> Ty<'tcx> { mk_prim_t(&primitives::TY_F32) }
+pub fn mk_f64<'tcx>() -> Ty<'tcx> { Ty { inner: &primitives::TY_F64 } }
 
 #[inline]
-pub fn mk_f64<'tcx>() -> Ty<'tcx> { mk_prim_t(&primitives::TY_F64) }
+pub fn mk_uint<'tcx>() -> Ty<'tcx> { Ty { inner: &primitives::TY_UINT } }
 
 #[inline]
-pub fn mk_uint<'tcx>() -> Ty<'tcx> { mk_prim_t(&primitives::TY_UINT) }
+pub fn mk_u8<'tcx>() -> Ty<'tcx> { Ty { inner: &primitives::TY_U8 } }
 
 #[inline]
-pub fn mk_u8<'tcx>() -> Ty<'tcx> { mk_prim_t(&primitives::TY_U8) }
+pub fn mk_u16<'tcx>() -> Ty<'tcx> { Ty { inner: &primitives::TY_U16 } }
 
 #[inline]
-pub fn mk_u16<'tcx>() -> Ty<'tcx> { mk_prim_t(&primitives::TY_U16) }
+pub fn mk_u32<'tcx>() -> Ty<'tcx> { Ty { inner: &primitives::TY_U32 } }
 
 #[inline]
-pub fn mk_u32<'tcx>() -> Ty<'tcx> { mk_prim_t(&primitives::TY_U32) }
-
-#[inline]
-pub fn mk_u64<'tcx>() -> Ty<'tcx> { mk_prim_t(&primitives::TY_U64) }
+pub fn mk_u64<'tcx>() -> Ty<'tcx> { Ty { inner: &primitives::TY_U64 } }
 
 pub fn mk_mach_int<'tcx>(tm: ast::IntTy) -> Ty<'tcx> {
     match tm {
@@ -1707,7 +1709,7 @@ pub fn mk_mach_float<'tcx>(tm: ast::FloatTy) -> Ty<'tcx> {
 }
 
 #[inline]
-pub fn mk_char<'tcx>() -> Ty<'tcx> { mk_prim_t(&primitives::TY_CHAR) }
+pub fn mk_char<'tcx>() -> Ty<'tcx> { Ty { inner: &primitives::TY_CHAR } }
 
 pub fn mk_str<'tcx>(cx: &ctxt<'tcx>) -> Ty<'tcx> {
     mk_t(cx, ty_str)

@@ -10,7 +10,7 @@
 
 /*! See `doc.rs` for high-level documentation */
 
-use super::DUMMY_CAUSE;
+use super::dummy_cause;
 use super::{EvaluatedToMatch, EvaluatedToAmbiguity, EvaluatedToUnmatch};
 use super::{evaluate_impl};
 use super::util;
@@ -41,7 +41,7 @@ pub fn impl_can_satisfy(infcx: &InferCtxt,
     // same types.
     let param_env = ty::empty_parameter_environment();
     let unboxed_closures = DefIdMap::new();
-    match evaluate_impl(infcx, &param_env, &unboxed_closures, DUMMY_CAUSE,
+    match evaluate_impl(infcx, &param_env, &unboxed_closures, dummy_cause(),
                         impl2_def_id, impl1_self_ty) {
         EvaluatedToMatch | EvaluatedToAmbiguity => true,
         EvaluatedToUnmatch => false,

@@ -465,7 +465,8 @@ fn bounds_usable(cx: &CrateContext, ity: IntType, bounds: &IntBounds) -> bool {
     }
 }
 
-pub fn ty_of_inttype(ity: IntType) -> Ty<'static> {
+// FIXME: Ty should be contravariant
+pub fn ty_of_inttype<'tcx>(ity: IntType) -> Ty<'tcx> {
     match ity {
         attr::SignedInt(t) => ty::mk_mach_int(t),
         attr::UnsignedInt(t) => ty::mk_mach_uint(t)

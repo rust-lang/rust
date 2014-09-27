@@ -324,6 +324,7 @@ impl<'a, 'blk, 'tcx> Reflector<'a, 'blk, 'tcx> {
           // let the visitor tell us if it wants to visit only a particular
           // variant?
           ty::ty_enum(did, ref substs) => {
+            let bcx = self.bcx; // FIXME: helps borrowck to with this MEGAMOTH
             let ccx = bcx.ccx();
             let repr = adt::represent_type(bcx.ccx(), t);
             let variants = ty::substd_enum_variants(ccx.tcx(), did, substs);
