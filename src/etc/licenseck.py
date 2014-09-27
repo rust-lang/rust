@@ -46,6 +46,7 @@ exceptions = [
     "test/bench/shootout-chameneos-redux.rs", # BSD
     "test/bench/shootout-fannkuch-redux.rs", # BSD
     "test/bench/shootout-fasta.rs", # BSD
+    "test/bench/shootout-fasta-redux.rs", # BSD
     "test/bench/shootout-k-nucleotide.rs", # BSD
     "test/bench/shootout-mandelbrot.rs", # BSD
     "test/bench/shootout-meteor.rs", # BSD
