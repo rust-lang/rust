@@ -505,6 +505,7 @@ As being similar to this C code:
 {
     int *x;
     x = (int *)malloc(sizeof(int));
+    *x = 5;
 
     // stuff happens
 
