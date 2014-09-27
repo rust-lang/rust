@@ -89,7 +89,7 @@ impl<T: Default + 'static> Default for Gc<T> {
     }
 }
 
-impl<T: 'static> raw::Repr<*const raw::Box<T>> for Gc<T> {}
+impl<T: 'static> raw::Repr<*const raw::GcBox<T>> for Gc<T> {}
 
 impl<S: hash::Writer, T: hash::Hash<S> + 'static> hash::Hash<S> for Gc<T> {
     fn hash(&self, s: &mut S) {
