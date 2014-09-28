@@ -116,12 +116,19 @@ pub trait Visitor<'v> {
     fn visit_attribute(&mut self, _attr: &'v Attribute) {}
 }
 
-pub fn walk_inlined_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v InlinedItem) {
+pub fn walk_inlined_item<'v,V>(visitor: &mut V, item: &'v InlinedItem)
+                         where V: Visitor<'v> {
     match *item {
         IIItem(ref i) => visitor.visit_item(&**i),
         IIForeign(ref i) => visitor.visit_foreign_item(&**i),
         IITraitItem(_, ref ti) => visitor.visit_trait_item(ti),
-        IIImplItem(_, MethodImplItem(ref m)) => walk_method_helper(visitor, &**m)
+        IIImplItem(_, MethodImplItem(ref m)) => {
+            walk_method_helper(visitor, &**m)
+        }
+        IIImplItem(_, TypeImplItem(ref typedef)) => {
+            visitor.visit_ident(typedef.span, typedef.ident);
+            visitor.visit_ty(&*typedef.typ);
+        }
     }
 }
 
@@ -195,7 +202,9 @@ pub fn walk_explicit_self<'v, V: Visitor<'v>>(visitor: &mut V,
 
 /// Like with walk_method_helper this doesn't correspond to a method
 /// in Visitor, and so it gets a _helper suffix.
-pub fn walk_trait_ref_helper<'v, V: Visitor<'v>>(visitor: &mut V, trait_ref: &'v TraitRef) {
+pub fn walk_trait_ref_helper<'v,V>(visitor: &mut V, trait_ref: &'v TraitRef)
+                                   where V: Visitor<'v> {
+    walk_lifetime_decls(visitor, &trait_ref.lifetimes);
     visitor.visit_path(&trait_ref.path, trait_ref.ref_id)
 }
 
@@ -247,6 +256,10 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item) {
                 match *impl_item {
                     MethodImplItem(ref method) => {
                         walk_method_helper(visitor, &**method)
+                    }
+                    TypeImplItem(ref typedef) => {
+                        visitor.visit_ident(typedef.span, typedef.ident);
+                        visitor.visit_ty(&*typedef.typ);
                     }
                 }
             }
@@ -366,6 +379,11 @@ pub fn walk_ty<'v, V: Visitor<'v>>(visitor: &mut V, typ: &'v Ty) {
                 None => { }
             }
         }
+        TyQPath(ref qpath) => {
+            visitor.visit_ty(&*qpath.for_type);
+            visitor.visit_path(&qpath.trait_name, typ.id);
+            visitor.visit_ident(typ.span, qpath.item_name);
+        }
         TyFixedLengthVec(ref ty, ref expression) => {
             visitor.visit_ty(&**ty);
             visitor.visit_expr(&**expression)
@@ -479,6 +497,7 @@ pub fn walk_ty_param_bounds<'v, V: Visitor<'v>>(visitor: &mut V,
                     visitor.visit_ty(&*argument.ty)
                 }
                 visitor.visit_ty(&*function_declaration.decl.output);
+                walk_lifetime_decls(visitor, &function_declaration.lifetimes);
             }
             RegionTyParamBound(ref lifetime) => {
                 visitor.visit_lifetime_ref(lifetime);
@@ -573,10 +592,11 @@ pub fn walk_ty_method<'v, V: Visitor<'v>>(visitor: &mut V, method_type: &'v Type
 
 pub fn walk_trait_item<'v, V: Visitor<'v>>(visitor: &mut V, trait_method: &'v TraitItem) {
     match *trait_method {
-        RequiredMethod(ref method_type) => {
-            visitor.visit_ty_method(method_type)
-        }
+        RequiredMethod(ref method_type) => visitor.visit_ty_method(method_type),
         ProvidedMethod(ref method) => walk_method_helper(visitor, &**method),
+        TypeTraitItem(ref associated_type) => {
+            visitor.visit_ident(associated_type.span, associated_type.ident)
+        }
     }
 }
 
@@ -767,6 +787,11 @@ pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr) {
         ExprIndex(ref main_expression, ref index_expression) => {
             visitor.visit_expr(&**main_expression);
             visitor.visit_expr(&**index_expression)
+        }
+        ExprSlice(ref main_expression, ref start, ref end, _) => {
+            visitor.visit_expr(&**main_expression);
+            walk_expr_opt(visitor, start);
+            walk_expr_opt(visitor, end)
         }
         ExprPath(ref path) => {
             visitor.visit_path(path, expression.id)

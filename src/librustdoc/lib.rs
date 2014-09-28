@@ -31,6 +31,7 @@ extern crate time;
 use std::io;
 use std::io::{File, MemWriter};
 use std::collections::HashMap;
+use std::collections::hashmap::{Occupied, Vacant};
 use serialize::{json, Decodable, Encodable};
 use externalfiles::ExternalHtml;
 
@@ -340,7 +341,10 @@ fn parse_externs(matches: &getopts::Matches) -> Result<core::Externs, String> {
                 return Err("--extern value must be of the format `foo=bar`".to_string());
             }
         };
-        let locs = externs.find_or_insert(name.to_string(), Vec::new());
+        let locs = match externs.entry(name.to_string()) {
+            Vacant(entry) => entry.set(Vec::with_capacity(1)),
+            Occupied(entry) => entry.into_mut(),
+        };
         locs.push(location.to_string());
     }
     Ok(externs)

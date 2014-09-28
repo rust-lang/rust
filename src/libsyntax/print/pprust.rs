@@ -9,10 +9,11 @@
 // except according to those terms.
 
 use abi;
-use ast::{FnMutUnboxedClosureKind, FnOnceUnboxedClosureKind};
-use ast::{FnUnboxedClosureKind, MethodImplItem};
-use ast::{RegionTyParamBound, TraitTyParamBound, UnboxedClosureKind};
-use ast::{UnboxedFnTyParamBound, RequiredMethod, ProvidedMethod};
+use ast::{FnUnboxedClosureKind, FnMutUnboxedClosureKind};
+use ast::{FnOnceUnboxedClosureKind};
+use ast::{MethodImplItem, RegionTyParamBound, TraitTyParamBound};
+use ast::{RequiredMethod, ProvidedMethod, TypeImplItem, TypeTraitItem};
+use ast::{UnboxedClosureKind, UnboxedFnTyParamBound};
 use ast;
 use ast_util;
 use owned_slice::OwnedSlice;
@@ -660,6 +661,16 @@ impl<'a> State<'a> {
             ast::TyPath(ref path, ref bounds, _) => {
                 try!(self.print_bounded_path(path, bounds));
             }
+            ast::TyQPath(ref qpath) => {
+                try!(word(&mut self.s, "<"));
+                try!(self.print_type(&*qpath.for_type));
+                try!(space(&mut self.s));
+                try!(self.word_space("as"));
+                try!(self.print_path(&qpath.trait_name, false));
+                try!(word(&mut self.s, ">"));
+                try!(word(&mut self.s, "::"));
+                try!(self.print_ident(qpath.item_name));
+            }
             ast::TyFixedLengthVec(ref ty, ref v) => {
                 try!(word(&mut self.s, "["));
                 try!(self.print_type(&**ty));
@@ -706,6 +717,22 @@ impl<'a> State<'a> {
                 self.end() // end the outer cbox
             }
         }
+    }
+
+    fn print_associated_type(&mut self, typedef: &ast::AssociatedType)
+                             -> IoResult<()> {
+        try!(self.word_space("type"));
+        try!(self.print_ident(typedef.ident));
+        word(&mut self.s, ";")
+    }
+
+    fn print_typedef(&mut self, typedef: &ast::Typedef) -> IoResult<()> {
+        try!(self.word_space("type"));
+        try!(self.print_ident(typedef.ident));
+        try!(space(&mut self.s));
+        try!(self.word_space("="));
+        try!(self.print_type(&*typedef.typ));
+        word(&mut self.s, ";")
     }
 
     /// Pretty-print an item
@@ -825,6 +852,9 @@ impl<'a> State<'a> {
                         ast::MethodImplItem(ref meth) => {
                             try!(self.print_method(&**meth));
                         }
+                        ast::TypeImplItem(ref typ) => {
+                            try!(self.print_typedef(&**typ));
+                        }
                     }
                 }
                 try!(self.bclose(item.span));
@@ -870,6 +900,16 @@ impl<'a> State<'a> {
     }
 
     fn print_trait_ref(&mut self, t: &ast::TraitRef) -> IoResult<()> {
+        if t.lifetimes.len() > 0 {
+            try!(self.print_generics(&ast::Generics {
+                lifetimes: t.lifetimes.clone(),
+                ty_params: OwnedSlice::empty(),
+                where_clause: ast::WhereClause {
+                    id: ast::DUMMY_NODE_ID,
+                    predicates: Vec::new(),
+                },
+            }));
+        }
         self.print_path(&t.path, false)
     }
 
@@ -1071,13 +1111,15 @@ impl<'a> State<'a> {
                               m: &ast::TraitItem) -> IoResult<()> {
         match *m {
             RequiredMethod(ref ty_m) => self.print_ty_method(ty_m),
-            ProvidedMethod(ref m) => self.print_method(&**m)
+            ProvidedMethod(ref m) => self.print_method(&**m),
+            TypeTraitItem(ref t) => self.print_associated_type(&**t),
         }
     }
 
     pub fn print_impl_item(&mut self, ii: &ast::ImplItem) -> IoResult<()> {
         match *ii {
             MethodImplItem(ref m) => self.print_method(&**m),
+            TypeImplItem(ref td) => self.print_typedef(&**td),
         }
     }
 
@@ -1619,6 +1661,28 @@ impl<'a> State<'a> {
                 try!(self.print_expr(&**index));
                 try!(word(&mut self.s, "]"));
             }
+            ast::ExprSlice(ref e, ref start, ref end, ref mutbl) => {
+                try!(self.print_expr(&**e));
+                try!(word(&mut self.s, "["));
+                if mutbl == &ast::MutMutable {
+                    try!(word(&mut self.s, "mut"));
+                    if start.is_some() || end.is_some() {
+                        try!(space(&mut self.s));
+                    }
+                }
+                match start {
+                    &Some(ref e) => try!(self.print_expr(&**e)),
+                    _ => {}
+                }
+                if start.is_some() || end.is_some() {
+                    try!(word(&mut self.s, ".."));
+                }
+                match end {
+                    &Some(ref e) => try!(self.print_expr(&**e)),
+                    _ => {}
+                }
+                try!(word(&mut self.s, "]"));
+            }
             ast::ExprPath(ref path) => try!(self.print_path(path, true)),
             ast::ExprBreak(opt_ident) => {
                 try!(word(&mut self.s, "break"));
@@ -1912,7 +1976,7 @@ impl<'a> State<'a> {
             ast::PatRange(ref begin, ref end) => {
                 try!(self.print_expr(&**begin));
                 try!(space(&mut self.s));
-                try!(word(&mut self.s, ".."));
+                try!(word(&mut self.s, "..."));
                 try!(self.print_expr(&**end));
             }
             ast::PatVec(ref before, ref slice, ref after) => {
@@ -2158,16 +2222,13 @@ impl<'a> State<'a> {
                         self.print_lifetime(lt)
                     }
                     UnboxedFnTyParamBound(ref unboxed_function_type) => {
-                        self.print_ty_fn(None,
-                                         None,
-                                         ast::NormalFn,
-                                         ast::Many,
-                                         &*unboxed_function_type.decl,
-                                         None,
-                                         &OwnedSlice::empty(),
-                                         None,
-                                         None,
-                                         Some(unboxed_function_type.kind))
+                        try!(self.print_path(&unboxed_function_type.path,
+                                             false));
+                        try!(self.popen());
+                        try!(self.print_fn_args(&*unboxed_function_type.decl,
+                                                None));
+                        try!(self.pclose());
+                        self.print_fn_output(&*unboxed_function_type.decl)
                     }
                 })
             }
@@ -2398,6 +2459,23 @@ impl<'a> State<'a> {
         self.end()
     }
 
+    pub fn print_fn_output(&mut self, decl: &ast::FnDecl) -> IoResult<()> {
+        match decl.output.node {
+            ast::TyNil => Ok(()),
+            _ => {
+                try!(self.space_if_not_bol());
+                try!(self.ibox(indent_unit));
+                try!(self.word_space("->"));
+                if decl.cf == ast::NoReturn {
+                    try!(self.word_nbsp("!"));
+                } else {
+                    try!(self.print_type(&*decl.output));
+                }
+                self.end()
+            }
+        }
+    }
+
     pub fn print_ty_fn(&mut self,
                        opt_abi: Option<abi::Abi>,
                        opt_sigil: Option<char>,
@@ -2478,20 +2556,7 @@ impl<'a> State<'a> {
 
         try!(self.maybe_print_comment(decl.output.span.lo));
 
-        match decl.output.node {
-            ast::TyNil => {}
-            _ => {
-                try!(self.space_if_not_bol());
-                try!(self.ibox(indent_unit));
-                try!(self.word_space("->"));
-                if decl.cf == ast::NoReturn {
-                    try!(self.word_nbsp("!"));
-                } else {
-                    try!(self.print_type(&*decl.output));
-                }
-                try!(self.end());
-            }
-        }
+        try!(self.print_fn_output(decl));
 
         match generics {
             Some(generics) => try!(self.print_where_clause(generics)),

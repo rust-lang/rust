@@ -212,7 +212,7 @@ impl GenericPathUnsafe for Path {
             None if ".." == self.repr.as_slice() => {
                 let mut s = String::with_capacity(3 + filename.len());
                 s.push_str("..");
-                s.push_char(SEP);
+                s.push(SEP);
                 s.push_str(filename);
                 self.update_normalized(s);
             }
@@ -222,7 +222,7 @@ impl GenericPathUnsafe for Path {
             Some((_,idxa,end)) if self.repr.as_slice().slice(idxa,end) == ".." => {
                 let mut s = String::with_capacity(end + 1 + filename.len());
                 s.push_str(self.repr.as_slice().slice_to(end));
-                s.push_char(SEP);
+                s.push(SEP);
                 s.push_str(filename);
                 self.update_normalized(s);
             }
@@ -235,7 +235,7 @@ impl GenericPathUnsafe for Path {
             Some((idxb,_,_)) => {
                 let mut s = String::with_capacity(idxb + 1 + filename.len());
                 s.push_str(self.repr.as_slice().slice_to(idxb));
-                s.push_char(SEP);
+                s.push(SEP);
                 s.push_str(filename);
                 self.update_normalized(s);
             }
@@ -264,10 +264,10 @@ impl GenericPathUnsafe for Path {
             let repr = me.repr.as_slice();
             match me.prefix {
                 Some(DiskPrefix) => {
-                    repr.as_bytes()[0] == path.as_bytes()[0].to_ascii().to_upper().to_byte()
+                    repr.as_bytes()[0] == path.as_bytes()[0].to_ascii().to_uppercase().to_byte()
                 }
                 Some(VerbatimDiskPrefix) => {
-                    repr.as_bytes()[4] == path.as_bytes()[0].to_ascii().to_upper().to_byte()
+                    repr.as_bytes()[4] == path.as_bytes()[0].to_ascii().to_uppercase().to_byte()
                 }
                 _ => false
             }
@@ -299,7 +299,7 @@ impl GenericPathUnsafe for Path {
             match me.prefix {
                 Some(DiskPrefix) if me.repr.len() == plen => (),
                 _ if !(me.repr.len() > plen && me.repr.as_bytes()[me.repr.len()-1] == SEP_BYTE) => {
-                    s.push_char(SEP);
+                    s.push(SEP);
                 }
                 _ => ()
             }
@@ -371,7 +371,7 @@ impl GenericPath for Path {
 
     #[inline]
     fn into_vec(self) -> Vec<u8> {
-        Vec::from_slice(self.repr.as_bytes())
+        self.repr.into_bytes()
     }
 
     #[inline]
@@ -745,7 +745,7 @@ impl Path {
                 Some(VerbatimUNCPrefix(x, 0)) if s.len() == 8 + x => {
                     // the server component has no trailing '\'
                     let mut s = String::from_str(s);
-                    s.push_char(SEP);
+                    s.push(SEP);
                     Some(s)
                 }
                 _ => None
@@ -776,9 +776,9 @@ impl Path {
                                 let mut s = String::from_str(s.slice_to(len));
                                 unsafe {
                                     let v = s.as_mut_vec();
-                                    *v.get_mut(0) = v.get(0)
+                                    *v.get_mut(0) = (*v)[0]
                                                      .to_ascii()
-                                                     .to_upper()
+                                                     .to_uppercase()
                                                      .to_byte();
                                 }
                                 if is_abs {
@@ -794,7 +794,7 @@ impl Path {
                                 let mut s = String::from_str(s.slice_to(len));
                                 unsafe {
                                     let v = s.as_mut_vec();
-                                    *v.get_mut(4) = v.get(4).to_ascii().to_upper().to_byte();
+                                    *v.get_mut(4) = (*v)[4].to_ascii().to_uppercase().to_byte();
                                 }
                                 Some(s)
                             }
@@ -815,18 +815,20 @@ impl Path {
                         let mut s = String::with_capacity(n);
                         match prefix {
                             Some(DiskPrefix) => {
-                                s.push_char(prefix_.as_bytes()[0].to_ascii().to_upper().to_char());
-                                s.push_char(':');
+                                s.push(prefix_.as_bytes()[0].to_ascii()
+                                                   .to_uppercase().to_char());
+                                s.push(':');
                             }
                             Some(VerbatimDiskPrefix) => {
                                 s.push_str(prefix_.slice_to(4));
-                                s.push_char(prefix_.as_bytes()[4].to_ascii().to_upper().to_char());
+                                s.push(prefix_.as_bytes()[4].to_ascii()
+                                                   .to_uppercase().to_char());
                                 s.push_str(prefix_.slice_from(5));
                             }
                             Some(UNCPrefix(a,b)) => {
                                 s.push_str("\\\\");
                                 s.push_str(prefix_.slice(2, a+2));
-                                s.push_char(SEP);
+                                s.push(SEP);
                                 s.push_str(prefix_.slice(3+a, 3+a+b));
                             }
                             Some(_) => s.push_str(prefix_),
@@ -840,7 +842,7 @@ impl Path {
                             }
                         }
                         for comp in it {
-                            s.push_char(SEP);
+                            s.push(SEP);
                             s.push_str(comp);
                         }
                         Some(s)
@@ -1619,7 +1621,7 @@ mod tests {
         t!(s: "a\\b\\c", ["d".to_string(), "e".to_string()], "a\\b\\c\\d\\e");
         t!(v: b"a\\b\\c", [b"d", b"e"], b"a\\b\\c\\d\\e");
         t!(v: b"a\\b\\c", [b"d", b"\\e", b"f"], b"\\e\\f");
-        t!(v: b"a\\b\\c", [Vec::from_slice(b"d"), Vec::from_slice(b"e")],
+        t!(v: b"a\\b\\c", [b"d".to_vec(), b"e".to_vec()],
            b"a\\b\\c\\d\\e");
     }
 
@@ -1759,7 +1761,7 @@ mod tests {
         t!(s: "a\\b\\c", ["d", "\\e", "f"], "\\e\\f");
         t!(s: "a\\b\\c", ["d".to_string(), "e".to_string()], "a\\b\\c\\d\\e");
         t!(v: b"a\\b\\c", [b"d", b"e"], b"a\\b\\c\\d\\e");
-        t!(v: b"a\\b\\c", [Vec::from_slice(b"d"), Vec::from_slice(b"e")],
+        t!(v: b"a\\b\\c", [b"d".to_vec(), b"e".to_vec()],
            b"a\\b\\c\\d\\e");
     }
 

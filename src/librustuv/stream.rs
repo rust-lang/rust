@@ -159,7 +159,7 @@ impl StreamWatcher {
         //
         // To do this, the write context has an optionally owned vector of
         // bytes.
-        let data = if may_timeout {Some(Vec::from_slice(buf))} else {None};
+        let data = if may_timeout {Some(buf.to_vec())} else {None};
         let uv_buf = if may_timeout {
             slice_to_uv_buf(data.as_ref().unwrap().as_slice())
         } else {

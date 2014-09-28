@@ -196,14 +196,12 @@ fn trans<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, expr: &ast::Expr)
                 }
             }
             def::DefStatic(..) |
-            def::DefArg(..) |
             def::DefLocal(..) |
-            def::DefBinding(..) |
             def::DefUpvar(..) => {
                 datum_callee(bcx, ref_expr)
             }
             def::DefMod(..) | def::DefForeignMod(..) | def::DefTrait(..) |
-            def::DefTy(..) | def::DefPrimTy(..) |
+            def::DefTy(..) | def::DefPrimTy(..) | def::DefAssociatedTy(..) |
             def::DefUse(..) | def::DefTyParamBinder(..) |
             def::DefRegion(..) | def::DefLabel(..) | def::DefTyParam(..) |
             def::DefSelfTy(..) | def::DefMethod(..) => {
@@ -457,6 +455,10 @@ pub fn trans_fn_ref_with_substs(
                            first_subst.repr(tcx), new_substs.repr(tcx));
 
                     (true, source_id, new_substs)
+                }
+                ty::TypeTraitItem(_) => {
+                    bcx.tcx().sess.bug("trans_fn_ref_with_vtables() tried \
+                                        to translate an associated type?!")
                 }
             }
         }
@@ -856,10 +858,10 @@ pub enum CallArgs<'a> {
     // value.
     ArgVals(&'a [ValueRef]),
 
-    // For overloaded operators: `(lhs, Option(rhs, rhs_id))`. `lhs`
+    // For overloaded operators: `(lhs, Vec(rhs, rhs_id))`. `lhs`
     // is the left-hand-side and `rhs/rhs_id` is the datum/expr-id of
-    // the right-hand-side (if any).
-    ArgOverloadedOp(Datum<Expr>, Option<(Datum<Expr>, ast::NodeId)>),
+    // the right-hand-side arguments (if any).
+    ArgOverloadedOp(Datum<Expr>, Vec<(Datum<Expr>, ast::NodeId)>),
 
     // Supply value of arguments as a list of expressions that must be
     // translated, for overloaded call operators.
@@ -1043,17 +1045,13 @@ pub fn trans_args<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
                                 DontAutorefArg)
             }));
 
-            match rhs {
-                Some((rhs, rhs_id)) => {
-                    assert_eq!(arg_tys.len(), 2);
-
-                    llargs.push(unpack_result!(bcx, {
-                        trans_arg_datum(bcx, *arg_tys.get(1), rhs,
-                                        arg_cleanup_scope,
-                                        DoAutorefArg(rhs_id))
-                    }));
-                }
-                None => assert_eq!(arg_tys.len(), 1)
+            assert_eq!(arg_tys.len(), 1 + rhs.len());
+            for (rhs, rhs_id) in rhs.move_iter() {
+                llargs.push(unpack_result!(bcx, {
+                    trans_arg_datum(bcx, *arg_tys.get(1), rhs,
+                                    arg_cleanup_scope,
+                                    DoAutorefArg(rhs_id))
+                }));
             }
         }
         ArgVals(vs) => {

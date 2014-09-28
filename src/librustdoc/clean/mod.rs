@@ -17,7 +17,7 @@ use syntax::ast_util;
 use syntax::ast_util::PostExpansionMethod;
 use syntax::attr;
 use syntax::attr::{AttributeMethods, AttrMetaMethods};
-use syntax::codemap::Pos;
+use syntax::codemap::{DUMMY_SP, Pos};
 use syntax::parse::token::InternedString;
 use syntax::parse::token;
 use syntax::ptr::P;
@@ -99,7 +99,7 @@ pub struct Crate {
     pub name: String,
     pub module: Option<Item>,
     pub externs: Vec<(ast::CrateNum, ExternalCrate)>,
-    pub primitives: Vec<Primitive>,
+    pub primitives: Vec<PrimitiveType>,
 }
 
 impl<'a, 'tcx> Clean<Crate> for visit_ast::RustdocVisitor<'a, 'tcx> {
@@ -147,7 +147,7 @@ impl<'a, 'tcx> Clean<Crate> for visit_ast::RustdocVisitor<'a, 'tcx> {
                     ModuleItem(ref mut m) => m,
                     _ => continue,
                 };
-                let prim = match Primitive::find(child.attrs.as_slice()) {
+                let prim = match PrimitiveType::find(child.attrs.as_slice()) {
                     Some(prim) => prim,
                     None => continue,
                 };
@@ -187,7 +187,7 @@ impl<'a, 'tcx> Clean<Crate> for visit_ast::RustdocVisitor<'a, 'tcx> {
 pub struct ExternalCrate {
     pub name: String,
     pub attrs: Vec<Attribute>,
-    pub primitives: Vec<Primitive>,
+    pub primitives: Vec<PrimitiveType>,
 }
 
 impl Clean<ExternalCrate> for cstore::crate_metadata {
@@ -202,7 +202,7 @@ impl Clean<ExternalCrate> for cstore::crate_metadata {
                     _ => return
                 };
                 let attrs = inline::load_attrs(cx, tcx, did);
-                Primitive::find(attrs.as_slice()).map(|prim| primitives.push(prim));
+                PrimitiveType::find(attrs.as_slice()).map(|prim| primitives.push(prim));
             })
         });
         ExternalCrate {
@@ -316,7 +316,8 @@ pub enum ItemEnum {
     /// `static`s from an extern block
     ForeignStaticItem(Static),
     MacroItem(Macro),
-    PrimitiveItem(Primitive),
+    PrimitiveItem(PrimitiveType),
+    AssociatedTypeItem,
 }
 
 #[deriving(Clone, Encodable, Decodable)]
@@ -504,7 +505,7 @@ fn external_path(cx: &DocContext, name: &str, substs: &subst::Substs) -> Path {
                     .iter()
                     .filter_map(|v| v.clean(cx))
                     .collect();
-    let types = Vec::from_slice(substs.types.get_slice(subst::TypeSpace));
+    let types = substs.types.get_slice(subst::TypeSpace).to_vec();
     let types = types.clean(cx);
     Path {
         global: false,
@@ -660,8 +661,8 @@ impl<'a> Clean<Generics> for (&'a ty::Generics, subst::ParamSpace) {
     fn clean(&self, cx: &DocContext) -> Generics {
         let (me, space) = *self;
         Generics {
-            type_params: Vec::from_slice(me.types.get_slice(space)).clean(cx),
-            lifetimes: Vec::from_slice(me.regions.get_slice(space)).clean(cx),
+            type_params: me.types.get_slice(space).to_vec().clean(cx),
+            lifetimes: me.regions.get_slice(space).to_vec().clean(cx),
         }
     }
 }
@@ -900,7 +901,7 @@ impl Clean<RetStyle> for ast::RetStyle {
 
 #[deriving(Clone, Encodable, Decodable)]
 pub struct Trait {
-    pub items: Vec<TraitItem>,
+    pub items: Vec<TraitMethod>,
     pub generics: Generics,
     pub bounds: Vec<TyParamBound>,
 }
@@ -930,12 +931,13 @@ impl Clean<Type> for ast::TraitRef {
 }
 
 #[deriving(Clone, Encodable, Decodable)]
-pub enum TraitItem {
+pub enum TraitMethod {
     RequiredMethod(Item),
     ProvidedMethod(Item),
+    TypeTraitItem(Item),
 }
 
-impl TraitItem {
+impl TraitMethod {
     pub fn is_req(&self) -> bool {
         match self {
             &RequiredMethod(..) => true,
@@ -952,28 +954,32 @@ impl TraitItem {
         match *self {
             RequiredMethod(ref item) => item,
             ProvidedMethod(ref item) => item,
+            TypeTraitItem(ref item) => item,
         }
     }
 }
 
-impl Clean<TraitItem> for ast::TraitItem {
-    fn clean(&self, cx: &DocContext) -> TraitItem {
+impl Clean<TraitMethod> for ast::TraitItem {
+    fn clean(&self, cx: &DocContext) -> TraitMethod {
         match self {
             &ast::RequiredMethod(ref t) => RequiredMethod(t.clean(cx)),
             &ast::ProvidedMethod(ref t) => ProvidedMethod(t.clean(cx)),
+            &ast::TypeTraitItem(ref t) => TypeTraitItem(t.clean(cx)),
         }
     }
 }
 
 #[deriving(Clone, Encodable, Decodable)]
-pub enum ImplItem {
+pub enum ImplMethod {
     MethodImplItem(Item),
+    TypeImplItem(Item),
 }
 
-impl Clean<ImplItem> for ast::ImplItem {
-    fn clean(&self, cx: &DocContext) -> ImplItem {
+impl Clean<ImplMethod> for ast::ImplItem {
+    fn clean(&self, cx: &DocContext) -> ImplMethod {
         match self {
             &ast::MethodImplItem(ref t) => MethodImplItem(t.clean(cx)),
+            &ast::TypeImplItem(ref t) => TypeImplItem(t.clean(cx)),
         }
     }
 }
@@ -985,7 +991,7 @@ impl Clean<Item> for ty::Method {
                                                self.fty.sig.clone()),
             s => {
                 let sig = ty::FnSig {
-                    inputs: Vec::from_slice(self.fty.sig.inputs.slice_from(1)),
+                    inputs: self.fty.sig.inputs.slice_from(1).to_vec(),
                     ..self.fty.sig.clone()
                 };
                 let s = match s {
@@ -1028,6 +1034,7 @@ impl Clean<Item> for ty::ImplOrTraitItem {
     fn clean(&self, cx: &DocContext) -> Item {
         match *self {
             ty::MethodTraitItem(ref mti) => mti.clean(cx),
+            ty::TypeTraitItem(ref tti) => tti.clean(cx),
         }
     }
 }
@@ -1051,7 +1058,7 @@ pub enum Type {
     /// For references to self
     Self(ast::DefId),
     /// Primitives are just the fixed-size numeric types (plus int/uint/float), and char.
-    Primitive(Primitive),
+    Primitive(PrimitiveType),
     Closure(Box<ClosureDecl>),
     Proc(Box<ClosureDecl>),
     /// extern "ABI" fn
@@ -1073,7 +1080,7 @@ pub enum Type {
 }
 
 #[deriving(Clone, Encodable, Decodable, PartialEq, Eq, Hash)]
-pub enum Primitive {
+pub enum PrimitiveType {
     Int, I8, I16, I32, I64,
     Uint, U8, U16, U32, U64,
     F32, F64,
@@ -1094,10 +1101,11 @@ pub enum TypeKind {
     TypeStruct,
     TypeTrait,
     TypeVariant,
+    TypeTypedef,
 }
 
-impl Primitive {
-    fn from_str(s: &str) -> Option<Primitive> {
+impl PrimitiveType {
+    fn from_str(s: &str) -> Option<PrimitiveType> {
         match s.as_slice() {
             "int" => Some(Int),
             "i8" => Some(I8),
@@ -1121,7 +1129,7 @@ impl Primitive {
         }
     }
 
-    fn find(attrs: &[Attribute]) -> Option<Primitive> {
+    fn find(attrs: &[Attribute]) -> Option<PrimitiveType> {
         for attr in attrs.iter() {
             let list = match *attr {
                 List(ref k, ref l) if k.as_slice() == "doc" => l,
@@ -1133,7 +1141,7 @@ impl Primitive {
                         if k.as_slice() == "primitive" => v.as_slice(),
                     _ => continue,
                 };
-                match Primitive::from_str(value) {
+                match PrimitiveType::from_str(value) {
                     Some(p) => return Some(p),
                     None => {}
                 }
@@ -1742,6 +1750,7 @@ impl Clean<Item> for doctree::Impl {
                 items: self.items.clean(cx).into_iter().map(|ti| {
                         match ti {
                             MethodImplItem(i) => i,
+                            TypeImplItem(i) => i,
                         }
                     }).collect(),
                 derived: detect_derived(self.attrs.as_slice()),
@@ -1952,9 +1961,9 @@ fn lit_to_string(lit: &ast::Lit) -> String {
         ast::LitByte(b) => {
             let mut res = String::from_str("b'");
             (b as char).escape_default(|c| {
-                res.push_char(c);
+                res.push(c);
             });
-            res.push_char('\'');
+            res.push('\'');
             res
         },
         ast::LitChar(c) => format!("'{}'", c),
@@ -2049,7 +2058,8 @@ fn resolve_type(cx: &DocContext, path: Path,
 fn register_def(cx: &DocContext, def: def::Def) -> ast::DefId {
     let (did, kind) = match def {
         def::DefFn(i, _) => (i, TypeFunction),
-        def::DefTy(i) => (i, TypeEnum),
+        def::DefTy(i, false) => (i, TypeTypedef),
+        def::DefTy(i, true) => (i, TypeEnum),
         def::DefTrait(i) => (i, TypeTrait),
         def::DefStruct(i) => (i, TypeStruct),
         def::DefMod(i) => (i, TypeModule),
@@ -2119,6 +2129,54 @@ impl Clean<Stability> for attr::Stability {
             level: self.level,
             text: self.text.as_ref().map_or("".to_string(),
                                             |interned| interned.get().to_string()),
+        }
+    }
+}
+
+impl Clean<Item> for ast::AssociatedType {
+    fn clean(&self, cx: &DocContext) -> Item {
+        Item {
+            source: self.span.clean(cx),
+            name: Some(self.ident.clean(cx)),
+            attrs: self.attrs.clean(cx),
+            inner: AssociatedTypeItem,
+            visibility: None,
+            def_id: ast_util::local_def(self.id),
+            stability: None,
+        }
+    }
+}
+
+impl Clean<Item> for ty::AssociatedType {
+    fn clean(&self, cx: &DocContext) -> Item {
+        Item {
+            source: DUMMY_SP.clean(cx),
+            name: Some(self.ident.clean(cx)),
+            attrs: Vec::new(),
+            inner: AssociatedTypeItem,
+            visibility: None,
+            def_id: self.def_id,
+            stability: None,
+        }
+    }
+}
+
+impl Clean<Item> for ast::Typedef {
+    fn clean(&self, cx: &DocContext) -> Item {
+        Item {
+            source: self.span.clean(cx),
+            name: Some(self.ident.clean(cx)),
+            attrs: self.attrs.clean(cx),
+            inner: TypedefItem(Typedef {
+                type_: self.typ.clean(cx),
+                generics: Generics {
+                    lifetimes: Vec::new(),
+                    type_params: Vec::new(),
+                },
+            }),
+            visibility: None,
+            def_id: ast_util::local_def(self.id),
+            stability: None,
         }
     }
 }

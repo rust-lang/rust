@@ -435,7 +435,8 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
     fn trait_ref(&self, path: ast::Path) -> ast::TraitRef {
         ast::TraitRef {
             path: path,
-            ref_id: ast::DUMMY_NODE_ID
+            ref_id: ast::DUMMY_NODE_ID,
+            lifetimes: Vec::new(),
         }
     }
 
@@ -573,7 +574,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
         let field_span = Span {
             lo: sp.lo - Pos::from_uint(field_name.get().len()),
             hi: sp.hi,
-            expn_info: sp.expn_info,
+            expn_id: sp.expn_id,
         };
 
         let id = Spanned { node: ident, span: field_span };
@@ -583,7 +584,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
         let field_span = Span {
             lo: sp.lo - Pos::from_uint(idx.to_string().len()),
             hi: sp.hi,
-            expn_info: sp.expn_info,
+            expn_id: sp.expn_id,
         };
 
         let id = Spanned { node: idx, span: field_span };

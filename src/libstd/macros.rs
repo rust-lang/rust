@@ -192,7 +192,7 @@ macro_rules! debug_assert_eq(
 ///
 /// # Example
 ///
-/// ~~~rust
+/// ```{.rust}
 /// struct Item { weight: uint }
 ///
 /// fn choose_weighted_item(v: &[Item]) -> Item {
@@ -208,7 +208,7 @@ macro_rules! debug_assert_eq(
 ///     // type checker that it isn't possible to get down here
 ///     unreachable!();
 /// }
-/// ~~~
+/// ```
 #[macro_export]
 macro_rules! unreachable(
     () => (fail!("internal error: entered unreachable code"))
@@ -304,10 +304,10 @@ macro_rules! println(
 #[macro_export]
 macro_rules! local_data_key(
     ($name:ident: $ty:ty) => (
-        static $name: ::std::local_data::Key<$ty> = &::std::local_data::Key;
+        static $name: ::std::local_data::Key<$ty> = &::std::local_data::KeyValueKey;
     );
     (pub $name:ident: $ty:ty) => (
-        pub static $name: ::std::local_data::Key<$ty> = &::std::local_data::Key;
+        pub static $name: ::std::local_data::Key<$ty> = &::std::local_data::KeyValueKey;
     );
 )
 
@@ -434,8 +434,8 @@ pub mod builtin {
     /// # Example
     ///
     /// ```rust
-    /// let home: &'static str = env!("HOME");
-    /// println!("the home directory at the time of compiling was: {}", home);
+    /// let path: &'static str = env!("PATH");
+    /// println!("the $PATH variable at the time of compiling was: {}", path);
     /// ```
     #[macro_export]
     macro_rules! env( ($name:expr) => ({ /* compiler built-in */ }) )

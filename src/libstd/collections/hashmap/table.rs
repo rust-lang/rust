@@ -663,7 +663,8 @@ impl<K, V> RawTable<K, V> {
             raw: self.first_bucket_raw(),
             hashes_end: unsafe {
                 self.hashes.offset(self.capacity as int)
-            }
+            },
+            marker: marker::ContravariantLifetime,
         }
     }
 
@@ -682,8 +683,14 @@ impl<K, V> RawTable<K, V> {
     }
 
     pub fn into_iter(self) -> MoveEntries<K, V> {
+        let RawBuckets { raw, hashes_end, .. } = self.raw_buckets();
+        // Replace the marker regardless of lifetime bounds on parameters.
         MoveEntries {
-            iter: self.raw_buckets(),
+            iter: RawBuckets {
+                raw: raw,
+                hashes_end: hashes_end,
+                marker: marker::ContravariantLifetime,
+            },
             table: self,
         }
     }
@@ -695,7 +702,8 @@ impl<K, V> RawTable<K, V> {
         RevMoveBuckets {
             raw: raw_bucket.offset(self.capacity as int),
             hashes_end: raw_bucket.hash,
-            elems_left: self.size
+            elems_left: self.size,
+            marker:     marker::ContravariantLifetime,
         }
     }
 }
@@ -704,7 +712,8 @@ impl<K, V> RawTable<K, V> {
 /// this interface is safe, it's not used outside this module.
 struct RawBuckets<'a, K, V> {
     raw: RawBucket<K, V>,
-    hashes_end: *mut u64
+    hashes_end: *mut u64,
+    marker: marker::ContravariantLifetime<'a>,
 }
 
 impl<'a, K, V> Iterator<RawBucket<K, V>> for RawBuckets<'a, K, V> {
@@ -730,7 +739,8 @@ impl<'a, K, V> Iterator<RawBucket<K, V>> for RawBuckets<'a, K, V> {
 struct RevMoveBuckets<'a, K, V> {
     raw: RawBucket<K, V>,
     hashes_end: *mut u64,
-    elems_left: uint
+    elems_left: uint,
+    marker: marker::ContravariantLifetime<'a>,
 }
 
 impl<'a, K, V> Iterator<(K, V)> for RevMoveBuckets<'a, K, V> {
@@ -846,8 +856,8 @@ impl<K: Clone, V: Clone> Clone for RawTable<K, V> {
                                 (full.hash(), k.clone(), v.clone())
                             };
                             *new_buckets.raw.hash = h.inspect();
-                            mem::overwrite(new_buckets.raw.key, k);
-                            mem::overwrite(new_buckets.raw.val, v);
+                            ptr::write(new_buckets.raw.key, k);
+                            ptr::write(new_buckets.raw.val, v);
                         }
                         Empty(..) => {
                             *new_buckets.raw.hash = EMPTY_BUCKET;

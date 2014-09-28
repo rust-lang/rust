@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-trait Trait {
+pub trait Trait {
     fn method(&self) -> int;
 }
 

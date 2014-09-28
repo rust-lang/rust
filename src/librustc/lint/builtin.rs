@@ -36,13 +36,14 @@ use lint::{Context, LintPass, LintArray};
 
 use std::cmp;
 use std::collections::HashMap;
+use std::collections::hashmap::{Occupied, Vacant};
 use std::slice;
 use std::{i8, i16, i32, i64, u8, u16, u32, u64, f32, f64};
 use syntax::abi;
 use syntax::ast_map;
 use syntax::attr::AttrMetaMethods;
 use syntax::attr;
-use syntax::codemap::Span;
+use syntax::codemap::{Span, NO_EXPANSION};
 use syntax::parse::token;
 use syntax::{ast, ast_util, visit};
 use syntax::ptr::P;
@@ -689,11 +690,7 @@ impl LintPass for UnusedResult {
             ast::StmtSemi(ref expr, _) => &**expr,
             _ => return
         };
-        let t = ty::expr_ty(cx.tcx, expr);
-        match ty::get(t).sty {
-            ty::ty_nil | ty::ty_bot | ty::ty_bool => return,
-            _ => {}
-        }
+
         match expr.node {
             ast::ExprRet(..) => return,
             _ => {}
@@ -702,6 +699,7 @@ impl LintPass for UnusedResult {
         let t = ty::expr_ty(cx.tcx, expr);
         let mut warned = false;
         match ty::get(t).sty {
+            ty::ty_nil | ty::ty_bot | ty::ty_bool => return,
             ty::ty_struct(did, _) |
             ty::ty_enum(did, _) => {
                 if ast_util::is_local(did) {
@@ -847,6 +845,17 @@ fn method_context(cx: &Context, m: &ast::Method) -> MethodContext {
                         }
                     }
                 }
+                ty::TypeTraitItem(typedef) => {
+                    match typedef.container {
+                        ty::TraitContainer(..) => TraitDefaultImpl,
+                        ty::ImplContainer(cid) => {
+                            match ty::impl_trait_ref(cx.tcx, cid) {
+                                Some(..) => TraitImpl,
+                                None => PlainImpl
+                            }
+                        }
+                    }
+                }
             }
         }
     }
@@ -946,8 +955,7 @@ impl LintPass for NonSnakeCase {
         match &p.node {
             &ast::PatIdent(_, ref path1, _) => {
                 match cx.tcx.def_map.borrow().find(&p.id) {
-                    Some(&def::DefLocal(_, _)) | Some(&def::DefBinding(_, _)) |
-                            Some(&def::DefArg(_, _)) => {
+                    Some(&def::DefLocal(_)) => {
                         self.check_snake_case(cx, "variable", path1.node, p.span);
                     }
                     _ => {}
@@ -1107,6 +1115,41 @@ impl LintPass for UnnecessaryParens {
     }
 }
 
+declare_lint!(UNNECESSARY_IMPORT_BRACES, Allow,
+              "unnecessary braces around an imported item")
+
+pub struct UnnecessaryImportBraces;
+
+impl LintPass for UnnecessaryImportBraces {
+    fn get_lints(&self) -> LintArray {
+        lint_array!(UNNECESSARY_IMPORT_BRACES)
+    }
+
+    fn check_view_item(&mut self, cx: &Context, view_item: &ast::ViewItem) {
+        match view_item.node {
+            ast::ViewItemUse(ref view_path) => {
+                match view_path.node {
+                    ast::ViewPathList(_, ref items, _) => {
+                        if items.len() == 1 {
+                            match items[0].node {
+                                ast::PathListIdent {ref name, ..} => {
+                                    let m = format!("braces around {} is unnecessary",
+                                                    token::get_ident(*name).get());
+                                    cx.span_lint(UNNECESSARY_IMPORT_BRACES, view_item.span,
+                                                 m.as_slice());
+                                },
+                                _ => ()
+                            }
+                        }
+                    }
+                    _ => ()
+                }
+            },
+            _ => ()
+        }
+    }
+}
+
 declare_lint!(UNUSED_UNSAFE, Warn,
               "unnecessary use of an `unsafe` block")
 
@@ -1161,6 +1204,7 @@ impl UnusedMut {
     fn check_unused_mut_pat(&self, cx: &Context, pats: &[P<ast::Pat>]) {
         // collect all mutable pattern and group their NodeIDs by their Identifier to
         // avoid false warnings in match arms with multiple patterns
+
         let mut mutables = HashMap::new();
         for p in pats.iter() {
             pat_util::pat_bindings(&cx.tcx.def_map, &**p, |mode, id, _, path1| {
@@ -1168,8 +1212,10 @@ impl UnusedMut {
                 match mode {
                     ast::BindByValue(ast::MutMutable) => {
                         if !token::get_ident(ident).get().starts_with("_") {
-                            mutables.insert_or_update_with(ident.name.uint(),
-                                vec!(id), |_, old| { old.push(id); });
+                            match mutables.entry(ident.name.uint()) {
+                                Vacant(entry) => { entry.set(vec![id]); },
+                                Occupied(mut entry) => { entry.get_mut().push(id); },
+                            }
                         }
                     }
                     _ => {
@@ -1227,11 +1273,6 @@ impl LintPass for UnusedMut {
     }
 }
 
-enum Allocation {
-    VectorAllocation,
-    BoxAllocation
-}
-
 declare_lint!(UNNECESSARY_ALLOCATION, Warn,
               "detects unnecessary allocations that can be eliminated")
 
@@ -1243,30 +1284,21 @@ impl LintPass for UnnecessaryAllocation {
     }
 
     fn check_expr(&mut self, cx: &Context, e: &ast::Expr) {
-        // Warn if boxing expressions are immediately borrowed.
-        let allocation = match e.node {
-            ast::ExprUnary(ast::UnUniq, _) |
-            ast::ExprUnary(ast::UnBox, _) => BoxAllocation,
-
+        match e.node {
+            ast::ExprUnary(ast::UnUniq, _) | ast::ExprUnary(ast::UnBox, _) => (),
             _ => return
-        };
+        }
 
         match cx.tcx.adjustments.borrow().find(&e.id) {
             Some(adjustment) => {
                 match *adjustment {
-                    ty::AutoDerefRef(ty::AutoDerefRef { ref autoref, .. }) => {
-                        match (allocation, autoref) {
-                            (VectorAllocation, &Some(ty::AutoPtr(_, _, None))) => {
-                                cx.span_lint(UNNECESSARY_ALLOCATION, e.span,
-                                             "unnecessary allocation, the sigil can be removed");
-                            }
-                            (BoxAllocation,
-                             &Some(ty::AutoPtr(_, ast::MutImmutable, None))) => {
+                    ty::AdjustDerefRef(ty::AutoDerefRef { ref autoref, .. }) => {
+                        match autoref {
+                            &Some(ty::AutoPtr(_, ast::MutImmutable, None)) => {
                                 cx.span_lint(UNNECESSARY_ALLOCATION, e.span,
                                              "unnecessary allocation, use & instead");
                             }
-                            (BoxAllocation,
-                             &Some(ty::AutoPtr(_, ast::MutMutable, None))) => {
+                            &Some(ty::AutoPtr(_, ast::MutMutable, None)) => {
                                 cx.span_lint(UNNECESSARY_ALLOCATION, e.span,
                                              "unnecessary allocation, use &mut instead");
                             }
@@ -1448,8 +1480,27 @@ impl LintPass for Stability {
     }
 
     fn check_expr(&mut self, cx: &Context, e: &ast::Expr) {
-        // if the expression was produced by a macro expansion,
-        if e.span.expn_info.is_some() { return }
+        // skip if `e` is not from macro arguments
+        let skip = cx.tcx.sess.codemap().with_expn_info(e.span.expn_id, |expninfo| {
+            match expninfo {
+                Some(ref info) => {
+                    if info.call_site.expn_id != NO_EXPANSION ||
+                       !( e.span.lo > info.call_site.lo && e.span.hi < info.call_site.hi ) {
+                        // This code is not from the arguments,
+                        // or this macro call was generated by an other macro
+                        // We can't handle it.
+                        true
+                    } else if info.callee.span.is_none() {
+                        // We don't want to mess with compiler builtins.
+                        true
+                    } else {
+                        false
+                    }
+                },
+                _ => { false }
+            }
+        });
+        if skip { return; }
 
         let id = match e.node {
             ast::ExprPath(..) | ast::ExprStruct(..) => {
@@ -1469,23 +1520,19 @@ impl LintPass for Stability {
                             typeck::MethodStaticUnboxedClosure(def_id) => {
                                 def_id
                             }
-                            typeck::MethodParam(typeck::MethodParam {
+                            typeck::MethodTypeParam(typeck::MethodParam {
                                 trait_ref: ref trait_ref,
                                 method_num: index,
                                 ..
                             }) |
-                            typeck::MethodObject(typeck::MethodObject {
+                            typeck::MethodTraitObject(typeck::MethodObject {
                                 trait_ref: ref trait_ref,
                                 method_num: index,
                                 ..
                             }) => {
-                                match ty::trait_item(cx.tcx,
-                                                     trait_ref.def_id,
-                                                     index) {
-                                    ty::MethodTraitItem(method) => {
-                                        method.def_id
-                                    }
-                                }
+                                ty::trait_item(cx.tcx,
+                                               trait_ref.def_id,
+                                               index).def_id()
                             }
                         }
                     }
@@ -1544,9 +1591,6 @@ declare_lint!(pub DEAD_ASSIGNMENT, Warn,
 declare_lint!(pub DEAD_CODE, Warn,
               "detect piece of code that will never be used")
 
-declare_lint!(pub VISIBLE_PRIVATE_TYPES, Warn,
-              "detect use of private types in exported type signatures")
-
 declare_lint!(pub UNREACHABLE_CODE, Warn,
               "detects unreachable code")
 
@@ -1579,7 +1623,6 @@ impl LintPass for HardwiredLints {
             UNUSED_VARIABLE,
             DEAD_ASSIGNMENT,
             DEAD_CODE,
-            VISIBLE_PRIVATE_TYPES,
             UNREACHABLE_CODE,
             WARNINGS,
             UNKNOWN_FEATURES,

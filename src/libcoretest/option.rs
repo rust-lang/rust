@@ -244,6 +244,7 @@ fn test_ord() {
 }
 
 #[test]
+#[allow(deprecated)]
 fn test_mutate() {
     let mut x = Some(3i);
     assert!(x.mutate(|i| i+1));

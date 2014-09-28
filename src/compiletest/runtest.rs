@@ -71,6 +71,14 @@ pub fn run_metrics(config: Config, testfile: String, mm: &mut MetricMap) {
     }
 }
 
+fn get_output(props: &TestProps, proc_res: &ProcRes) -> String {
+    if props.check_stdout {
+        format!("{}{}", proc_res.stdout, proc_res.stderr)
+    } else {
+        proc_res.stderr.clone()
+    }
+}
+
 fn run_cfail_test(config: &Config, props: &TestProps, testfile: &Path) {
     let proc_res = compile_test(config, props, testfile);
 
@@ -81,6 +89,11 @@ fn run_cfail_test(config: &Config, props: &TestProps, testfile: &Path) {
 
     check_correct_failure_status(&proc_res);
 
+    if proc_res.status.success() {
+        fatal("process did not return an error status");
+    }
+
+    let output_to_check = get_output(props, &proc_res);
     let expected_errors = errors::load_errors(&config.cfail_regex, testfile);
     if !expected_errors.is_empty() {
         if !props.error_patterns.is_empty() {
@@ -88,9 +101,10 @@ fn run_cfail_test(config: &Config, props: &TestProps, testfile: &Path) {
         }
         check_expected_errors(expected_errors, testfile, &proc_res);
     } else {
-        check_error_patterns(props, testfile, &proc_res);
+        check_error_patterns(props, testfile, output_to_check.as_slice(), &proc_res);
     }
     check_no_compiler_crash(&proc_res);
+    check_forbid_output(props, output_to_check.as_slice(), &proc_res);
 }
 
 fn run_rfail_test(config: &Config, props: &TestProps, testfile: &Path) {
@@ -112,8 +126,9 @@ fn run_rfail_test(config: &Config, props: &TestProps, testfile: &Path) {
         fatal_proc_rec("run-fail test isn't valgrind-clean!", &proc_res);
     }
 
+    let output_to_check = get_output(props, &proc_res);
     check_correct_failure_status(&proc_res);
-    check_error_patterns(props, testfile, &proc_res);
+    check_error_patterns(props, testfile, output_to_check.as_slice(), &proc_res);
 }
 
 fn check_correct_failure_status(proc_res: &ProcRes) {
@@ -258,8 +273,8 @@ fn run_pretty_test(config: &Config, props: &TestProps, testfile: &Path) {
                             format!("--target={}", config.target),
                             "-L".to_string(),
                             aux_dir.as_str().unwrap().to_string());
-        args.push_all_move(split_maybe_args(&config.target_rustcflags));
-        args.push_all_move(split_maybe_args(&props.compile_flags));
+        args.extend(split_maybe_args(&config.target_rustcflags).into_iter());
+        args.extend(split_maybe_args(&props.compile_flags).into_iter());
         return ProcArgs {
             prog: config.rustc_path.as_str().unwrap().to_string(),
             args: args,
@@ -306,8 +321,8 @@ actual:\n\
                             config.build_base.as_str().unwrap().to_string(),
                             "-L".to_string(),
                             aux_dir.as_str().unwrap().to_string());
-        args.push_all_move(split_maybe_args(&config.target_rustcflags));
-        args.push_all_move(split_maybe_args(&props.compile_flags));
+        args.extend(split_maybe_args(&config.target_rustcflags).into_iter());
+        args.extend(split_maybe_args(&props.compile_flags).into_iter());
         // FIXME (#9639): This needs to handle non-utf8 paths
         return ProcArgs {
             prog: config.rustc_path.as_str().unwrap().to_string(),
@@ -429,7 +444,8 @@ fn run_debuginfo_gdb_test(config: &Config, props: &TestProps, testfile: &Path) {
                      "-nx".to_string(),
                      format!("-command={}", debugger_script.as_str().unwrap()));
 
-            let gdb_path = tool_path.append("/bin/arm-linux-androideabi-gdb");
+            let mut gdb_path = tool_path;
+            gdb_path.push_str("/bin/arm-linux-androideabi-gdb");
             let procsrv::Result {
                 out,
                 err,
@@ -834,24 +850,15 @@ fn check_debugger_output(debugger_run_result: &ProcRes, check_lines: &[String]) 
 
 fn check_error_patterns(props: &TestProps,
                         testfile: &Path,
+                        output_to_check: &str,
                         proc_res: &ProcRes) {
     if props.error_patterns.is_empty() {
         fatal(format!("no error pattern specified in {}",
                       testfile.display()).as_slice());
     }
-
-    if proc_res.status.success() {
-        fatal("process did not return an error status");
-    }
-
     let mut next_err_idx = 0u;
     let mut next_err_pat = &props.error_patterns[next_err_idx];
     let mut done = false;
-    let output_to_check = if props.check_stdout {
-        format!("{}{}", proc_res.stdout, proc_res.stderr)
-    } else {
-        proc_res.stderr.clone()
-    };
     for line in output_to_check.as_slice().lines() {
         if line.contains(next_err_pat.as_slice()) {
             debug!("found error pattern {}", next_err_pat);
@@ -886,6 +893,16 @@ fn check_no_compiler_crash(proc_res: &ProcRes) {
         if line.starts_with("error: internal compiler error:") {
             fatal_proc_rec("compiler encountered internal error",
                           proc_res);
+        }
+    }
+}
+
+fn check_forbid_output(props: &TestProps,
+                       output_to_check: &str,
+                       proc_res: &ProcRes) {
+    for pat in props.forbid_output.iter() {
+        if output_to_check.contains(pat.as_slice()) {
+            fatal_proc_rec("forbidden pattern found in compiler output", proc_res);
         }
     }
 }
@@ -1079,11 +1096,12 @@ fn compile_test_(config: &Config, props: &TestProps,
                  testfile: &Path, extra_args: &[String]) -> ProcRes {
     let aux_dir = aux_output_dir_name(config, testfile);
     // FIXME (#9639): This needs to handle non-utf8 paths
-    let link_args = vec!("-L".to_string(),
-                         aux_dir.as_str().unwrap().to_string());
+    let mut link_args = vec!("-L".to_string(),
+                             aux_dir.as_str().unwrap().to_string());
+    link_args.extend(extra_args.iter().map(|s| s.clone()));
     let args = make_compile_args(config,
                                  props,
-                                 link_args.append(extra_args),
+                                 link_args,
                                  |a, b| ThisFile(make_exe_name(a, b)), testfile);
     compose_and_run_compiler(config, props, testfile, args, None)
 }
@@ -1130,16 +1148,16 @@ fn compose_and_run_compiler(
     for rel_ab in props.aux_builds.iter() {
         let abs_ab = config.aux_base.join(rel_ab.as_slice());
         let aux_props = header::load_props(&abs_ab);
-        let crate_type = if aux_props.no_prefer_dynamic {
+        let mut crate_type = if aux_props.no_prefer_dynamic {
             Vec::new()
         } else {
             vec!("--crate-type=dylib".to_string())
         };
+        crate_type.extend(extra_link_args.clone().into_iter());
         let aux_args =
             make_compile_args(config,
                               &aux_props,
-                              crate_type.append(
-                                  extra_link_args.as_slice()),
+                              crate_type,
                               |a,b| {
                                   let f = make_lib_name(a, b, testfile);
                                   ThisDirectory(f.dir_path())
@@ -1230,11 +1248,11 @@ fn make_compile_args(config: &Config,
     };
     args.push(path.as_str().unwrap().to_string());
     if props.force_host {
-        args.push_all_move(split_maybe_args(&config.host_rustcflags));
+        args.extend(split_maybe_args(&config.host_rustcflags).into_iter());
     } else {
-        args.push_all_move(split_maybe_args(&config.target_rustcflags));
+        args.extend(split_maybe_args(&config.target_rustcflags).into_iter());
     }
-    args.push_all_move(split_maybe_args(&props.compile_flags));
+    args.extend(split_maybe_args(&props.compile_flags).into_iter());
     return ProcArgs {
         prog: config.rustc_path.as_str().unwrap().to_string(),
         args: args,
@@ -1251,10 +1269,9 @@ fn make_lib_name(config: &Config, auxfile: &Path, testfile: &Path) -> Path {
 fn make_exe_name(config: &Config, testfile: &Path) -> Path {
     let mut f = output_base_name(config, testfile);
     if !os::consts::EXE_SUFFIX.is_empty() {
-        match f.filename().map(|s| Vec::from_slice(s).append(os::consts::EXE_SUFFIX.as_bytes())) {
-            Some(v) => f.set_filename(v),
-            None => ()
-        }
+        let mut fname = f.filename().unwrap().to_vec();
+        fname.extend(os::consts::EXE_SUFFIX.bytes());
+        f.set_filename(fname);
     }
     f
 }
@@ -1270,7 +1287,7 @@ fn make_run_args(config: &Config, props: &TestProps, testfile: &Path) ->
     args.push(exe_file.as_str().unwrap().to_string());
 
     // Add the arguments in the run_flags directive
-    args.push_all_move(split_maybe_args(&props.run_flags));
+    args.extend(split_maybe_args(&props.run_flags).into_iter());
 
     let prog = args.remove(0).unwrap();
     return ProcArgs {
@@ -1365,12 +1382,10 @@ fn make_out_name(config: &Config, testfile: &Path, extension: &str) -> Path {
 }
 
 fn aux_output_dir_name(config: &Config, testfile: &Path) -> Path {
-    let mut f = output_base_name(config, testfile);
-    match f.filename().map(|s| Vec::from_slice(s).append(b".libaux")) {
-        Some(v) => f.set_filename(v),
-        None => ()
-    }
-    f
+    let f = output_base_name(config, testfile);
+    let mut fname = f.filename().unwrap().to_vec();
+    fname.extend("libaux".bytes());
+    f.with_filename(fname)
 }
 
 fn output_testname(testfile: &Path) -> Path {
@@ -1582,8 +1597,10 @@ fn append_suffix_to_stem(p: &Path, suffix: &str) -> Path {
     if suffix.len() == 0 {
         (*p).clone()
     } else {
-        let stem = p.filestem().unwrap();
-        p.with_filename(Vec::from_slice(stem).append(b"-").append(suffix.as_bytes()))
+        let mut stem = p.filestem().unwrap().to_vec();
+        stem.extend("-".bytes());
+        stem.extend(suffix.bytes());
+        p.with_filename(stem)
     }
 }
 
@@ -1591,13 +1608,14 @@ fn compile_test_and_save_bitcode(config: &Config, props: &TestProps,
                                  testfile: &Path) -> ProcRes {
     let aux_dir = aux_output_dir_name(config, testfile);
     // FIXME (#9639): This needs to handle non-utf8 paths
-    let link_args = vec!("-L".to_string(),
-                         aux_dir.as_str().unwrap().to_string());
+    let mut link_args = vec!("-L".to_string(),
+                             aux_dir.as_str().unwrap().to_string());
     let llvm_args = vec!("--emit=bc,obj".to_string(),
                          "--crate-type=lib".to_string());
+    link_args.extend(llvm_args.into_iter());
     let args = make_compile_args(config,
                                  props,
-                                 link_args.append(llvm_args.as_slice()),
+                                 link_args,
                                  |a, b| ThisDirectory(output_base_name(a, b).dir_path()),
                                  testfile);
     compose_and_run_compiler(config, props, testfile, args, None)

@@ -15,7 +15,7 @@ use comm::{Sender, Receiver};
 use io;
 use option::{None, Option, Some};
 use result::{Ok, Err};
-use slice::{bytes, MutableSlice, ImmutableSlice};
+use slice::{bytes, MutableSlice, ImmutableSlice, CloneableVector};
 use str::StrSlice;
 use super::{Reader, Writer, IoResult};
 use vec::Vec;
@@ -118,7 +118,7 @@ impl Clone for ChanWriter {
 
 impl Writer for ChanWriter {
     fn write(&mut self, buf: &[u8]) -> IoResult<()> {
-        self.tx.send_opt(Vec::from_slice(buf)).map_err(|_| {
+        self.tx.send_opt(buf.to_vec()).map_err(|_| {
             io::IoError {
                 kind: io::BrokenPipe,
                 desc: "Pipe closed",

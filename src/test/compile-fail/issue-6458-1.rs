@@ -9,4 +9,5 @@
 // except according to those terms.
 
 fn foo<T>(t: T) {}
-fn main() { foo(fail!()) } //~ ERROR cannot determine a type for this expression: unconstrained type
+fn main() { foo(fail!()) }
+    //~^ ERROR type annotations required

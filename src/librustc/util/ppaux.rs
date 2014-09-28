@@ -25,7 +25,6 @@ use middle::ty::{ty_uniq, ty_trait, ty_int, ty_uint, ty_infer};
 use middle::ty;
 use middle::typeck;
 use middle::typeck::check::regionmanip;
-use middle::typeck::infer;
 
 use std::rc::Rc;
 use syntax::abi;
@@ -603,9 +602,11 @@ impl Repr for def::Def {
 
 impl Repr for ty::TypeParameterDef {
     fn repr(&self, tcx: &ctxt) -> String {
-        format!("TypeParameterDef({}, {})",
-                self.def_id.repr(tcx),
-                self.bounds.repr(tcx))
+        format!("TypeParameterDef({}, {}, {}/{})",
+                self.def_id,
+                self.bounds.repr(tcx),
+                self.space,
+                self.index)
     }
 }
 
@@ -880,7 +881,8 @@ impl Repr for ty::Variance {
         // The first `.to_string()` returns a &'static str (it is not an implementation
         // of the ToString trait). Because of that, we need to call `.to_string()` again
         // if we want to have a `String`.
-        self.to_string().to_string()
+        let result: &'static str = (*self).to_string();
+        result.to_string()
     }
 }
 
@@ -960,10 +962,10 @@ impl Repr for typeck::MethodOrigin {
             &typeck::MethodStaticUnboxedClosure(def_id) => {
                 format!("MethodStaticUnboxedClosure({})", def_id.repr(tcx))
             }
-            &typeck::MethodParam(ref p) => {
+            &typeck::MethodTypeParam(ref p) => {
                 p.repr(tcx)
             }
-            &typeck::MethodObject(ref p) => {
+            &typeck::MethodTraitObject(ref p) => {
                 p.repr(tcx)
             }
         }
@@ -1176,14 +1178,6 @@ impl Repr for ast::UintTy {
 impl Repr for ast::FloatTy {
     fn repr(&self, _tcx: &ctxt) -> String {
         format!("{:?}", *self)
-    }
-}
-
-impl<T:Repr> Repr for infer::Bounds<T> {
-    fn repr(&self, tcx: &ctxt) -> String {
-        format!("({} <= {})",
-                self.lb.repr(tcx),
-                self.ub.repr(tcx))
     }
 }
 

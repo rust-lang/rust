@@ -2,5 +2,5 @@
 
 all:
 	$(RUSTC) lib.rs
-	$(RUSTC) main.rs -Z lto
+	$(RUSTC) main.rs -C lto
 	$(call RUN,main)

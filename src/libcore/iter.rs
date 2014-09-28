@@ -811,8 +811,7 @@ impl<A: Add<A, A> + Zero, T: Iterator<A>> AdditiveIterator<A> for T {
     }
 }
 
-/// A trait for iterators over elements whose elements can be multiplied
-/// together.
+/// A trait for iterators over elements which can be multiplied together.
 pub trait MultiplicativeIterator<A> {
     /// Iterates over the entire iterator, multiplying all the elements
     ///
@@ -840,7 +839,6 @@ impl<A: Mul<A, A> + One, T: Iterator<A>> MultiplicativeIterator<A> for T {
 }
 
 /// A trait for iterators over elements which can be compared to one another.
-/// The type of each element must ascribe to the `PartialOrd` trait.
 pub trait OrdIterator<A> {
     /// Consumes the entire iterator to return the maximum element.
     ///
@@ -2178,7 +2176,6 @@ pub type Iterate<'a, T> = Unfold<'a, T, IterateState<'a, T>>;
 
 /// Creates a new iterator that produces an infinite sequence of
 /// repeated applications of the given function `f`.
-#[allow(visible_private_types)]
 pub fn iterate<'a, T: Clone>(seed: T, f: |T|: 'a -> T) -> Iterate<'a, T> {
     Unfold::new((f, Some(seed), true), |st| {
         let &(ref mut f, ref mut val, ref mut first) = st;

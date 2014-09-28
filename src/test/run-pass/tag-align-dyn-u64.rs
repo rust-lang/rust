@@ -14,7 +14,7 @@
 use std::mem;
 
 enum Tag<A> {
-    Tag(A)
+    Tag2(A)
 }
 
 struct Rec {
@@ -23,7 +23,7 @@ struct Rec {
 }
 
 fn mk_rec() -> Rec {
-    return Rec { c8:0u8, t:Tag(0u64) };
+    return Rec { c8:0u8, t:Tag2(0u64) };
 }
 
 fn is_8_byte_aligned(u: &Tag<u64>) -> bool {

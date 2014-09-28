@@ -28,6 +28,7 @@ use syntax::visit;
 use syntax::{ast, ast_map, ast_util};
 
 use std::rc::Rc;
+use std::collections::hashmap::Vacant;
 
 //
 // This pass classifies expressions by their constant-ness.
@@ -321,7 +322,10 @@ pub fn const_expr_to_pat(tcx: &ty::ctxt, expr: &Expr) -> P<Pat> {
 
         ExprCall(ref callee, ref args) => {
             let def = tcx.def_map.borrow().get_copy(&callee.id);
-            tcx.def_map.borrow_mut().find_or_insert(expr.id, def);
+            match tcx.def_map.borrow_mut().entry(expr.id) {
+              Vacant(entry) => { entry.set(def); }
+              _ => {}
+            };
             let path = match def {
                 def::DefStruct(def_id) => def_to_path(tcx, def_id),
                 def::DefVariant(_, variant_did, _) => def_to_path(tcx, variant_did),

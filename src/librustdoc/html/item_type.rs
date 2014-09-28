@@ -38,6 +38,7 @@ pub enum ItemType {
     ForeignStatic   = 14,
     Macro           = 15,
     Primitive       = 16,
+    AssociatedType  = 17,
 }
 
 impl ItemType {
@@ -45,7 +46,7 @@ impl ItemType {
         match *self {
             Module          => "mod",
             Struct          => "struct",
-            Enum            => "type",
+            Enum            => "enum",
             Function        => "fn",
             Typedef         => "type",
             Static          => "static",
@@ -60,6 +61,7 @@ impl ItemType {
             ForeignStatic   => "ffs",
             Macro           => "macro",
             Primitive       => "primitive",
+            AssociatedType  => "associatedtype",
         }
     }
 }
@@ -95,6 +97,7 @@ pub fn shortty(item: &clean::Item) -> ItemType {
         clean::ForeignStaticItem(..)   => ForeignStatic,
         clean::MacroItem(..)           => Macro,
         clean::PrimitiveItem(..)       => Primitive,
+        clean::AssociatedTypeItem      => AssociatedType,
     }
 }
 

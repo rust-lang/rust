@@ -12,8 +12,9 @@ fn bar(blk: ||:'static) {
 }
 
 fn foo(x: &()) {
-    bar(|| {
-        let _ = x; //~ ERROR captured variable `x` does not outlive
+    bar(|| { //~ ERROR cannot infer an appropriate lifetime
+        let _ = x;
+        //~^ ERROR captured variable `x` does not outlive
     })
 }
 

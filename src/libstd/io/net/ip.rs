@@ -103,7 +103,12 @@ impl<'a> Parser<'a> {
     // Commit only if parser read till EOF
     fn read_till_eof<T>(&mut self, cb: |&mut Parser| -> Option<T>)
                      -> Option<T> {
-        self.read_atomically(|p| cb(p).filtered(|_| p.is_eof()))
+        self.read_atomically(|p| {
+            match cb(p) {
+                Some(x) => if p.is_eof() {Some(x)} else {None},
+                None => None,
+            }
+        })
     }
 
     // Return result of first successful parser
@@ -152,7 +157,10 @@ impl<'a> Parser<'a> {
     // Return char and advance iff next char is equal to requested
     fn read_given_char(&mut self, c: char) -> Option<char> {
         self.read_atomically(|p| {
-            p.read_char().filtered(|&next| next == c)
+            match p.read_char() {
+                Some(next) if next == c => Some(next),
+                _ => None,
+            }
         })
     }
 
@@ -232,8 +240,8 @@ impl<'a> Parser<'a> {
         fn ipv6_addr_from_head_tail(head: &[u16], tail: &[u16]) -> IpAddr {
             assert!(head.len() + tail.len() <= 8);
             let mut gs = [0u16, ..8];
-            gs.copy_from(head);
-            gs.slice_mut(8 - tail.len(), 8).copy_from(tail);
+            gs.clone_from_slice(head);
+            gs.slice_mut(8 - tail.len(), 8).clone_from_slice(tail);
             Ipv6Addr(gs[0], gs[1], gs[2], gs[3], gs[4], gs[5], gs[6], gs[7])
         }
 

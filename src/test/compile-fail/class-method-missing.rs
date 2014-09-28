@@ -17,7 +17,7 @@ struct cat {
 }
 
 impl animal for cat {
-    //~^ ERROR not all trait methods implemented, missing: `eat`
+    //~^ ERROR not all trait items implemented, missing: `eat`
 }
 
 fn cat(in_x : uint) -> cat {

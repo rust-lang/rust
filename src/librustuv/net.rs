@@ -655,7 +655,7 @@ impl rtio::RtioUdpSocket for UdpWatcher {
 
         // see comments in StreamWatcher::write for why we may allocate a buffer
         // here.
-        let data = if guard.can_timeout {Some(Vec::from_slice(buf))} else {None};
+        let data = if guard.can_timeout {Some(buf.to_vec())} else {None};
         let uv_buf = if guard.can_timeout {
             slice_to_uv_buf(data.as_ref().unwrap().as_slice())
         } else {
@@ -1085,7 +1085,7 @@ mod test {
     }
 
     #[test]
-    #[ignore(cfg(windows))] // FIXME(#10102) server never sees second packet
+    #[cfg_attr(windows, ignore)] // FIXME(#10102) server never sees second packet
     fn test_udp_twice() {
         let server_addr = ::next_test_ip4();
         let client_addr = ::next_test_ip4();

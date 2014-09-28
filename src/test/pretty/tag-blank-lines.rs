@@ -11,8 +11,8 @@
 // pp-exact
 
 enum foo {
-    foo, // a foo.
-    bar,
+    bar, // a bar.
+    baz,
 }
 
 fn main() { }

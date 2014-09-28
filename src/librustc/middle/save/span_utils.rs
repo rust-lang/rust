@@ -57,7 +57,7 @@ impl<'a> SpanUtils<'a> {
                 Some(Span {
                     lo: base + self.sess.codemap().lookup_byte_offset(sub.lo).pos,
                     hi: base + self.sess.codemap().lookup_byte_offset(sub.hi).pos,
-                    expn_info: None,
+                    expn_id: NO_EXPANSION,
                 })
             }
         }

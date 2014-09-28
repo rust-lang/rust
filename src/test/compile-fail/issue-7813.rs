@@ -9,6 +9,6 @@
 // except according to those terms.
 
 fn main() {
-    let v = &[]; //~ ERROR cannot determine a type for this local variable: unconstrained type
-    let it = v.iter();
+    let v = &[];
+    let it = v.iter(); //~ ERROR type annotations required
 }

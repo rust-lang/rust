@@ -311,13 +311,13 @@ mod tests {
 
         task::spawn(proc() {
             let arc_v: Arc<Vec<int>> = rx.recv();
-            assert_eq!(*arc_v.get(3), 4);
+            assert_eq!((*arc_v)[3], 4);
         });
 
         tx.send(arc_v.clone());
 
-        assert_eq!(*arc_v.get(2), 3);
-        assert_eq!(*arc_v.get(4), 5);
+        assert_eq!((*arc_v)[2], 3);
+        assert_eq!((*arc_v)[4], 5);
 
         info!("{:?}", arc_v);
     }

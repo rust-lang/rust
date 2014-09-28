@@ -19,7 +19,8 @@ use middle::lang_items::LanguageItems;
 use middle::pat_util::pat_bindings;
 use middle::subst::{ParamSpace, FnSpace, TypeSpace};
 use middle::ty::{ExplicitSelfCategory, StaticExplicitSelfCategory};
-use util::nodemap::{NodeMap, DefIdSet, FnvHashMap};
+use middle::ty::{CaptureModeMap, Freevar, FreevarMap};
+use util::nodemap::{NodeMap, NodeSet, DefIdSet, FnvHashMap};
 
 use syntax::ast::{Arm, BindByRef, BindByValue, BindingMode, Block, Crate, CrateNum};
 use syntax::ast::{DeclItem, DefId, Expr, ExprAgain, ExprBreak, ExprField};
@@ -28,7 +29,7 @@ use syntax::ast::{ExprPath, ExprProc, ExprStruct, ExprUnboxedFn, FnDecl};
 use syntax::ast::{ForeignItem, ForeignItemFn, ForeignItemStatic, Generics};
 use syntax::ast::{Ident, ImplItem, Item, ItemEnum, ItemFn, ItemForeignMod};
 use syntax::ast::{ItemImpl, ItemMac, ItemMod, ItemStatic, ItemStruct};
-use syntax::ast::{ItemTrait, ItemTy, LOCAL_CRATE, Local, Method};
+use syntax::ast::{ItemTrait, ItemTy, LOCAL_CRATE, Local};
 use syntax::ast::{MethodImplItem, Mod, Name, NamedField, NodeId};
 use syntax::ast::{Pat, PatEnum, PatIdent, PatLit};
 use syntax::ast::{PatRange, PatStruct, Path, PathListIdent, PathListMod};
@@ -37,13 +38,15 @@ use syntax::ast::{RegionTyParamBound, StmtDecl, StructField};
 use syntax::ast::{StructVariantKind, TraitRef, TraitTyParamBound};
 use syntax::ast::{TupleVariantKind, Ty, TyBool, TyChar, TyClosure, TyF32};
 use syntax::ast::{TyF64, TyFloat, TyI, TyI8, TyI16, TyI32, TyI64, TyInt};
-use syntax::ast::{TyParam, TyParamBound, TyPath, TyPtr, TyProc, TyRptr};
-use syntax::ast::{TyStr, TyU, TyU8, TyU16, TyU32, TyU64, TyUint};
-use syntax::ast::{UnboxedFnTyParamBound, UnnamedField, UnsafeFn, Variant};
-use syntax::ast::{ViewItem, ViewItemExternCrate, ViewItemUse, ViewPathGlob};
-use syntax::ast::{ViewPathList, ViewPathSimple, Visibility};
+use syntax::ast::{TyParam, TyParamBound, TyPath, TyPtr, TyProc, TyQPath};
+use syntax::ast::{TyRptr, TyStr, TyU, TyU8, TyU16, TyU32, TyU64, TyUint};
+use syntax::ast::{TypeImplItem, UnboxedFnTyParamBound, UnnamedField};
+use syntax::ast::{UnsafeFn, Variant, ViewItem, ViewItemExternCrate};
+use syntax::ast::{ViewItemUse, ViewPathGlob, ViewPathList, ViewPathSimple};
+use syntax::ast::{Visibility};
 use syntax::ast;
 use syntax::ast_util::{PostExpansionMethod, local_def, walk_pat};
+use syntax::ast_util;
 use syntax::attr::AttrMetaMethods;
 use syntax::ext::mtwt;
 use syntax::parse::token::special_names;
@@ -56,8 +59,8 @@ use syntax::visit;
 use syntax::visit::Visitor;
 
 use std::collections::{HashMap, HashSet};
+use std::collections::hashmap::{Occupied, Vacant};
 use std::cell::{Cell, RefCell};
-use std::gc::GC;
 use std::mem::replace;
 use std::rc::{Rc, Weak};
 use std::uint;
@@ -268,16 +271,16 @@ enum TypeParameters<'a> {
         RibKind)
 }
 
-// The rib kind controls the translation of argument or local definitions
-// (`def_arg` or `def_local`) to upvars (`def_upvar`).
+// The rib kind controls the translation of local
+// definitions (`DefLocal`) to upvars (`DefUpvar`).
 
 enum RibKind {
     // No translation needs to be applied.
     NormalRibKind,
 
-    // We passed through a function scope at the given node ID. Translate
-    // upvars as appropriate.
-    FunctionRibKind(NodeId /* func id */, NodeId /* body id */),
+    // We passed through a closure scope at the given node ID.
+    // Translate upvars as appropriate.
+    ClosureRibKind(NodeId /* func id */, NodeId /* body id if proc or unboxed */),
 
     // We passed through an impl or trait and are now in one of its
     // methods. Allow references to ty params that impl or trait
@@ -313,6 +316,7 @@ enum ModulePrefixResult {
 pub enum TraitItemKind {
     NonstaticMethodTraitItemKind,
     StaticMethodTraitItemKind,
+    TypeTraitItemKind,
 }
 
 impl TraitItemKind {
@@ -485,7 +489,6 @@ enum ParentLink {
 #[deriving(PartialEq)]
 enum ModuleKind {
     NormalModuleKind,
-    ExternModuleKind,
     TraitModuleKind,
     ImplModuleKind,
     AnonymousModuleKind,
@@ -888,6 +891,9 @@ struct Resolver<'a> {
     primitive_type_table: PrimitiveTypeTable,
 
     def_map: DefMap,
+    freevars: RefCell<FreevarMap>,
+    freevars_seen: RefCell<NodeMap<NodeSet>>,
+    capture_mode_map: RefCell<CaptureModeMap>,
     export_map2: ExportMap2,
     trait_map: TraitMap,
     external_exports: ExternalExports,
@@ -993,6 +999,9 @@ impl<'a> Resolver<'a> {
             primitive_type_table: PrimitiveTypeTable::new(),
 
             def_map: RefCell::new(NodeMap::new()),
+            freevars: RefCell::new(NodeMap::new()),
+            freevars_seen: RefCell::new(NodeMap::new()),
+            capture_mode_map: RefCell::new(NodeMap::new()),
             export_map2: RefCell::new(NodeMap::new()),
             trait_map: NodeMap::new(),
             used_imports: HashSet::new(),
@@ -1252,7 +1261,7 @@ impl<'a> Resolver<'a> {
                                    sp);
 
                 name_bindings.define_type
-                    (DefTy(local_def(item.id)), sp, is_public);
+                    (DefTy(local_def(item.id), false), sp, is_public);
                 parent
             }
 
@@ -1264,7 +1273,7 @@ impl<'a> Resolver<'a> {
                                    sp);
 
                 name_bindings.define_type
-                    (DefTy(local_def(item.id)), sp, is_public);
+                    (DefTy(local_def(item.id), true), sp, is_public);
 
                 for variant in (*enum_definition).variants.iter() {
                     self.build_reduced_graph_for_variant(
@@ -1287,7 +1296,7 @@ impl<'a> Resolver<'a> {
                 let name_bindings = self.add_child(ident, parent.clone(), forbid, sp);
 
                 // Define a name in the type namespace.
-                name_bindings.define_type(DefTy(local_def(item.id)), sp, is_public);
+                name_bindings.define_type(DefTy(local_def(item.id), false), sp, is_public);
 
                 // If this is a newtype or unit-like struct, define a name
                 // in the value namespace as well
@@ -1393,6 +1402,24 @@ impl<'a> Resolver<'a> {
                                         method.span,
                                         is_public);
                                 }
+                                TypeImplItem(ref typedef) => {
+                                    // Add the typedef to the module.
+                                    let ident = typedef.ident;
+                                    let typedef_name_bindings =
+                                        self.add_child(
+                                            ident,
+                                            new_parent.clone(),
+                                            ForbidDuplicateTypesAndModules,
+                                            typedef.span);
+                                    let def = DefAssociatedTy(local_def(
+                                            typedef.id));
+                                    let is_public = typedef.vis ==
+                                        ast::Public;
+                                    typedef_name_bindings.define_type(
+                                        def,
+                                        typedef.span,
+                                        is_public);
+                                }
                             }
                         }
                     }
@@ -1432,42 +1459,66 @@ impl<'a> Resolver<'a> {
 
                 // Add the names of all the methods to the trait info.
                 for method in methods.iter() {
-                    let (m_id, m_ident, m_fn_style, m_self, m_span) = match *method {
-                        ast::RequiredMethod(ref m) => {
-                            (m.id, m.ident, m.fn_style, &m.explicit_self, m.span)
+                    let (ident, kind) = match *method {
+                        ast::RequiredMethod(_) |
+                        ast::ProvidedMethod(_) => {
+                            let ty_m =
+                                ast_util::trait_item_to_ty_method(method);
+
+                            let ident = ty_m.ident;
+
+                            // Add it as a name in the trait module.
+                            let (def, static_flag) = match ty_m.explicit_self
+                                                               .node {
+                                SelfStatic => {
+                                    // Static methods become
+                                    // `def_static_method`s.
+                                    (DefStaticMethod(
+                                            local_def(ty_m.id),
+                                            FromTrait(local_def(item.id)),
+                                            ty_m.fn_style),
+                                     StaticMethodTraitItemKind)
+                                }
+                                _ => {
+                                    // Non-static methods become
+                                    // `def_method`s.
+                                    (DefMethod(local_def(ty_m.id),
+                                               Some(local_def(item.id))),
+                                     NonstaticMethodTraitItemKind)
+                                }
+                            };
+
+                            let method_name_bindings =
+                                self.add_child(ident,
+                                               module_parent.clone(),
+                                               ForbidDuplicateTypesAndValues,
+                                               ty_m.span);
+                            method_name_bindings.define_value(def,
+                                                              ty_m.span,
+                                                              true);
+
+                            (ident, static_flag)
                         }
-                        ast::ProvidedMethod(ref m) => {
-                            (m.id, m.pe_ident(), m.pe_fn_style(), m.pe_explicit_self(), m.span)
+                        ast::TypeTraitItem(ref associated_type) => {
+                            let def = DefAssociatedTy(local_def(
+                                    associated_type.id));
+
+                            let name_bindings =
+                                self.add_child(associated_type.ident,
+                                               module_parent.clone(),
+                                               ForbidDuplicateTypesAndValues,
+                                               associated_type.span);
+                            name_bindings.define_type(def,
+                                                      associated_type.span,
+                                                      true);
+
+                            (associated_type.ident, TypeTraitItemKind)
                         }
                     };
-
-                    // Add it as a name in the trait module.
-                    let (def, static_flag) = match m_self.node {
-                        SelfStatic => {
-                            // Static methods become `def_static_method`s.
-                            (DefStaticMethod(local_def(m_id),
-                                              FromTrait(local_def(item.id)),
-                                              m_fn_style),
-                             StaticMethodTraitItemKind)
-                        }
-                        _ => {
-                            // Non-static methods become `def_method`s.
-                            (DefMethod(local_def(m_id),
-                                       Some(local_def(item.id))),
-                             NonstaticMethodTraitItemKind)
-                        }
-                    };
-
-                    let method_name_bindings =
-                        self.add_child(m_ident,
-                                       module_parent.clone(),
-                                       ForbidDuplicateValues,
-                                       m_span);
-                    method_name_bindings.define_value(def, m_span, true);
 
                     self.trait_item_map
                         .borrow_mut()
-                        .insert((m_ident.name, def_id), static_flag);
+                        .insert((ident.name, def_id), kind);
                 }
 
                 name_bindings.define_type(DefTrait(def_id), sp, is_public);
@@ -1478,33 +1529,31 @@ impl<'a> Resolver<'a> {
     }
 
     // Constructs the reduced graph for one variant. Variants exist in the
-    // type and/or value namespaces.
+    // type and value namespaces.
     fn build_reduced_graph_for_variant(&mut self,
                                        variant: &Variant,
                                        item_id: DefId,
                                        parent: ReducedGraphParent,
                                        is_public: bool) {
         let ident = variant.node.name;
-
-        match variant.node.kind {
-            TupleVariantKind(_) => {
-                let child = self.add_child(ident, parent, ForbidDuplicateValues, variant.span);
-                child.define_value(DefVariant(item_id,
-                                              local_def(variant.node.id), false),
-                                   variant.span, is_public);
-            }
+        let is_exported = match variant.node.kind {
+            TupleVariantKind(_) => false,
             StructVariantKind(_) => {
-                let child = self.add_child(ident, parent,
-                                           ForbidDuplicateTypesAndValues,
-                                           variant.span);
-                child.define_type(DefVariant(item_id,
-                                             local_def(variant.node.id), true),
-                                  variant.span, is_public);
-
                 // Not adding fields for variants as they are not accessed with a self receiver
                 self.structs.insert(local_def(variant.node.id), Vec::new());
+                true
             }
-        }
+        };
+
+        let child = self.add_child(ident, parent,
+                                   ForbidDuplicateTypesAndValues,
+                                   variant.span);
+        child.define_value(DefVariant(item_id,
+                                      local_def(variant.node.id), is_exported),
+                           variant.span, is_public);
+        child.define_type(DefVariant(item_id,
+                                     local_def(variant.node.id), is_exported),
+                          variant.span, is_public);
     }
 
     /// Constructs the reduced graph for one 'view item'. View items consist
@@ -1732,7 +1781,7 @@ impl<'a> Resolver<'a> {
 
         match def {
           DefMod(def_id) | DefForeignMod(def_id) | DefStruct(def_id) |
-          DefTy(def_id) => {
+          DefTy(def_id, _) => {
             let type_def = child_name_bindings.type_def.borrow().clone();
             match type_def {
               Some(TypeNsDef { module_def: Some(module_def), .. }) => {
@@ -1823,7 +1872,7 @@ impl<'a> Resolver<'a> {
                                                   is_public,
                                                   DUMMY_SP)
           }
-          DefTy(_) => {
+          DefTy(..) | DefAssociatedTy(..) => {
               debug!("(building reduced graph for external \
                       crate) building type {}", final_ident);
 
@@ -1850,8 +1899,7 @@ impl<'a> Resolver<'a> {
                       ignoring {:?}", def);
               // Ignored; handled elsewhere.
           }
-          DefArg(..) | DefLocal(..) | DefPrimTy(..) |
-          DefTyParam(..) | DefBinding(..) |
+          DefLocal(..) | DefPrimTy(..) | DefTyParam(..) |
           DefUse(..) | DefUpvar(..) | DefRegion(..) |
           DefTyParamBinder(..) | DefLabel(..) | DefSelfTy(..) => {
             fail!("didn't expect `{:?}`", def);
@@ -2768,10 +2816,13 @@ impl<'a> Resolver<'a> {
         let is_public = import_directive.is_public;
 
         let mut import_resolutions = module_.import_resolutions.borrow_mut();
-        let dest_import_resolution = import_resolutions.find_or_insert_with(name, |_| {
-            // Create a new import resolution from this child.
-            ImportResolution::new(id, is_public)
-        });
+        let dest_import_resolution = match import_resolutions.entry(name) {
+            Occupied(entry) => entry.into_mut(),
+            Vacant(entry) => {
+                // Create a new import resolution from this child.
+                entry.set(ImportResolution::new(id, is_public))
+            }
+        };
 
         debug!("(resolving glob import) writing resolution `{}` in `{}` \
                to `{}`",
@@ -2880,7 +2931,7 @@ impl<'a> Resolver<'a> {
                             Some(span) => {
                                 self.session
                                     .span_note(span,
-                                               "note conflicting value here");
+                                               "conflicting value here");
                             }
                         }
                     }
@@ -2903,7 +2954,7 @@ impl<'a> Resolver<'a> {
                             Some(span) => {
                                 self.session
                                     .span_note(span,
-                                               "note conflicting type here")
+                                               "conflicting type here")
                             }
                         }
                     }
@@ -3300,7 +3351,6 @@ impl<'a> Resolver<'a> {
                                     parents");
                             return Failed(None);
                         }
-                        ExternModuleKind |
                         TraitModuleKind |
                         ImplModuleKind |
                         AnonymousModuleKind => {
@@ -3398,7 +3448,6 @@ impl<'a> Resolver<'a> {
                     let new_module = new_module.upgrade().unwrap();
                     match new_module.kind.get() {
                         NormalModuleKind => return Some(new_module),
-                        ExternModuleKind |
                         TraitModuleKind |
                         ImplModuleKind |
                         AnonymousModuleKind => module_ = new_module,
@@ -3414,7 +3463,6 @@ impl<'a> Resolver<'a> {
                                                 -> Rc<Module> {
         match module_.kind.get() {
             NormalModuleKind => return module_,
-            ExternModuleKind |
             TraitModuleKind |
             ImplModuleKind |
             AnonymousModuleKind => {
@@ -3783,130 +3831,143 @@ impl<'a> Resolver<'a> {
         self.current_module = orig_module;
     }
 
-    /// Wraps the given definition in the appropriate number of `def_upvar`
+    /// Wraps the given definition in the appropriate number of `DefUpvar`
     /// wrappers.
     fn upvarify(&self,
                 ribs: &[Rib],
-                rib_index: uint,
                 def_like: DefLike,
                 span: Span)
                 -> Option<DefLike> {
-        let mut def;
-        let is_ty_param;
-
         match def_like {
-            DlDef(d @ DefLocal(..)) | DlDef(d @ DefUpvar(..)) |
-            DlDef(d @ DefArg(..)) | DlDef(d @ DefBinding(..)) => {
-                def = d;
-                is_ty_param = false;
+            DlDef(d @ DefUpvar(..)) => {
+                self.session.span_bug(span,
+                    format!("unexpected {} in bindings", d).as_slice())
             }
-            DlDef(d @ DefTyParam(..)) |
-            DlDef(d @ DefSelfTy(..)) => {
-                def = d;
-                is_ty_param = true;
+            DlDef(d @ DefLocal(_)) => {
+                let node_id = d.def_id().node;
+                let mut def = d;
+                let mut last_proc_body_id = ast::DUMMY_NODE_ID;
+                for rib in ribs.iter() {
+                    match rib.kind {
+                        NormalRibKind => {
+                            // Nothing to do. Continue.
+                        }
+                        ClosureRibKind(function_id, maybe_proc_body) => {
+                            let prev_def = def;
+                            if maybe_proc_body != ast::DUMMY_NODE_ID {
+                                last_proc_body_id = maybe_proc_body;
+                            }
+                            def = DefUpvar(node_id, function_id, last_proc_body_id);
+
+                            let mut seen = self.freevars_seen.borrow_mut();
+                            let seen = seen.find_or_insert(function_id, NodeSet::new());
+                            if seen.contains(&node_id) {
+                                continue;
+                            }
+                            self.freevars.borrow_mut().find_or_insert(function_id, vec![])
+                                         .push(Freevar { def: prev_def, span: span });
+                            seen.insert(node_id);
+                        }
+                        MethodRibKind(item_id, _) => {
+                            // If the def is a ty param, and came from the parent
+                            // item, it's ok
+                            match def {
+                                DefTyParam(_, did, _) if {
+                                    self.def_map.borrow().find_copy(&did.node)
+                                        == Some(DefTyParamBinder(item_id))
+                                } => {} // ok
+                                DefSelfTy(did) if did == item_id => {} // ok
+                                _ => {
+                                    // This was an attempt to access an upvar inside a
+                                    // named function item. This is not allowed, so we
+                                    // report an error.
+
+                                    self.resolve_error(
+                                        span,
+                                        "can't capture dynamic environment in a fn item; \
+                                        use the || { ... } closure form instead");
+
+                                    return None;
+                                }
+                            }
+                        }
+                        ItemRibKind => {
+                            // This was an attempt to access an upvar inside a
+                            // named function item. This is not allowed, so we
+                            // report an error.
+
+                            self.resolve_error(
+                                span,
+                                "can't capture dynamic environment in a fn item; \
+                                use the || { ... } closure form instead");
+
+                            return None;
+                        }
+                        ConstantItemRibKind => {
+                            // Still doesn't deal with upvars
+                            self.resolve_error(span,
+                                               "attempt to use a non-constant \
+                                                value in a constant");
+
+                        }
+                    }
+                }
+                Some(DlDef(def))
             }
-            _ => {
-                return Some(def_like);
+            DlDef(def @ DefTyParam(..)) |
+            DlDef(def @ DefSelfTy(..)) => {
+                for rib in ribs.iter() {
+                    match rib.kind {
+                        NormalRibKind | ClosureRibKind(..) => {
+                            // Nothing to do. Continue.
+                        }
+                        MethodRibKind(item_id, _) => {
+                            // If the def is a ty param, and came from the parent
+                            // item, it's ok
+                            match def {
+                                DefTyParam(_, did, _) if {
+                                    self.def_map.borrow().find_copy(&did.node)
+                                        == Some(DefTyParamBinder(item_id))
+                                } => {} // ok
+                                DefSelfTy(did) if did == item_id => {} // ok
+
+                                _ => {
+                                    // This was an attempt to use a type parameter outside
+                                    // its scope.
+
+                                    self.resolve_error(span,
+                                                        "can't use type parameters from \
+                                                        outer function; try using a local \
+                                                        type parameter instead");
+
+                                    return None;
+                                }
+                            }
+                        }
+                        ItemRibKind => {
+                            // This was an attempt to use a type parameter outside
+                            // its scope.
+
+                            self.resolve_error(span,
+                                               "can't use type parameters from \
+                                                outer function; try using a local \
+                                                type parameter instead");
+
+                            return None;
+                        }
+                        ConstantItemRibKind => {
+                            // see #9186
+                            self.resolve_error(span,
+                                               "cannot use an outer type \
+                                                parameter in this context");
+
+                        }
+                    }
+                }
+                Some(DlDef(def))
             }
+            _ => Some(def_like)
         }
-
-        let mut rib_index = rib_index + 1;
-        while rib_index < ribs.len() {
-            match ribs[rib_index].kind {
-                NormalRibKind => {
-                    // Nothing to do. Continue.
-                }
-                FunctionRibKind(function_id, body_id) => {
-                    if !is_ty_param {
-                        def = DefUpvar(def.def_id().node,
-                                       box(GC) def,
-                                       function_id,
-                                       body_id);
-                    }
-                }
-                MethodRibKind(item_id, _) => {
-                  // If the def is a ty param, and came from the parent
-                  // item, it's ok
-                  match def {
-                    DefTyParam(_, did, _) if {
-                        self.def_map.borrow().find(&did.node).map(|x| *x)
-                            == Some(DefTyParamBinder(item_id))
-                    } => {
-                      // ok
-                    }
-
-                    DefSelfTy(did) if {
-                        did == item_id
-                    } => {
-                      // ok
-                    }
-
-                    _ => {
-                    if !is_ty_param {
-                        // This was an attempt to access an upvar inside a
-                        // named function item. This is not allowed, so we
-                        // report an error.
-
-                        self.resolve_error(
-                            span,
-                            "can't capture dynamic environment in a fn item; \
-                            use the || { ... } closure form instead");
-                    } else {
-                        // This was an attempt to use a type parameter outside
-                        // its scope.
-
-                        self.resolve_error(span,
-                                              "can't use type parameters from \
-                                              outer function; try using a local \
-                                              type parameter instead");
-                    }
-
-                    return None;
-                    }
-                  }
-                }
-                ItemRibKind => {
-                    if !is_ty_param {
-                        // This was an attempt to access an upvar inside a
-                        // named function item. This is not allowed, so we
-                        // report an error.
-
-                        self.resolve_error(
-                            span,
-                            "can't capture dynamic environment in a fn item; \
-                            use the || { ... } closure form instead");
-                    } else {
-                        // This was an attempt to use a type parameter outside
-                        // its scope.
-
-                        self.resolve_error(span,
-                                              "can't use type parameters from \
-                                              outer function; try using a local \
-                                              type parameter instead");
-                    }
-
-                    return None;
-                }
-                ConstantItemRibKind => {
-                    if is_ty_param {
-                        // see #9186
-                        self.resolve_error(span,
-                                              "cannot use an outer type \
-                                               parameter in this context");
-                    } else {
-                        // Still doesn't deal with upvars
-                        self.resolve_error(span,
-                                              "attempt to use a non-constant \
-                                               value in a constant");
-                    }
-
-                }
-            }
-
-            rib_index += 1;
-        }
-
-        return Some(DlDef(def));
     }
 
     fn search_ribs(&self,
@@ -3914,16 +3975,12 @@ impl<'a> Resolver<'a> {
                    name: Name,
                    span: Span)
                    -> Option<DefLike> {
-        // FIXME #4950: This should not use a while loop.
         // FIXME #4950: Try caching?
 
-        let mut i = ribs.len();
-        while i != 0 {
-            i -= 1;
-            let binding_opt = ribs[i].bindings.borrow().find_copy(&name);
-            match binding_opt {
+        for (i, rib) in ribs.iter().enumerate().rev() {
+            match rib.bindings.borrow().find_copy(&name) {
                 Some(def_like) => {
-                    return self.upvarify(ribs, i, def_like, span);
+                    return self.upvarify(ribs.slice_from(i + 1), def_like, span);
                 }
                 None => {
                     // Continue.
@@ -3931,7 +3988,7 @@ impl<'a> Resolver<'a> {
             }
         }
 
-        return None;
+        None
     }
 
     fn resolve_crate(&mut self, krate: &ast::Crate) {
@@ -4064,6 +4121,9 @@ impl<'a> Resolver<'a> {
                               this.resolve_method(MethodRibKind(item.id,
                                                                 ProvidedMethod(m.id)),
                                                   &**m)
+                          }
+                          ast::TypeTraitItem(_) => {
+                              visit::walk_trait_item(this, method);
                           }
                         }
                     }
@@ -4280,6 +4340,34 @@ impl<'a> Resolver<'a> {
                 self.resolve_trait_reference(id, tref, reference_type)
             }
             UnboxedFnTyParamBound(ref unboxed_function) => {
+                match self.resolve_path(unboxed_function.ref_id,
+                                        &unboxed_function.path,
+                                        TypeNS,
+                                        true) {
+                    None => {
+                        let path_str = self.path_idents_to_string(
+                            &unboxed_function.path);
+                        self.resolve_error(unboxed_function.path.span,
+                                           format!("unresolved trait `{}`",
+                                                   path_str).as_slice())
+                    }
+                    Some(def) => {
+                        match def {
+                            (DefTrait(_), _) => {
+                                self.record_def(unboxed_function.ref_id, def);
+                            }
+                            _ => {
+                                let msg =
+                                    format!("`{}` is not a trait",
+                                            self.path_idents_to_string(
+                                                &unboxed_function.path));
+                                self.resolve_error(unboxed_function.path.span,
+                                                   msg.as_slice());
+                            }
+                        }
+                    }
+                }
+
                 for argument in unboxed_function.decl.inputs.iter() {
                     self.resolve_type(&*argument.ty);
                 }
@@ -4320,7 +4408,7 @@ impl<'a> Resolver<'a> {
 
                         // If it's a typedef, give a note
                         match def {
-                            DefTy(_) => {
+                            DefTy(..) => {
                                 self.session.span_note(
                                                 trait_reference.path.span,
                                                 format!("`type` aliases cannot \
@@ -4381,7 +4469,7 @@ impl<'a> Resolver<'a> {
                 Some(ref t) => match t.node {
                     TyPath(ref path, None, path_id) => {
                         match this.resolve_path(id, path, TypeNS, true) {
-                            Some((DefTy(def_id), lp)) if this.structs.contains_key(&def_id) => {
+                            Some((DefTy(def_id, _), lp)) if this.structs.contains_key(&def_id) => {
                                 let def = DefStruct(def_id);
                                 debug!("(resolving struct) resolved `{}` to type {:?}",
                                        token::get_ident(path.segments
@@ -4423,7 +4511,7 @@ impl<'a> Resolver<'a> {
     // to be NormalRibKind?
     fn resolve_method(&mut self,
                       rib_kind: RibKind,
-                      method: &Method) {
+                      method: &ast::Method) {
         let method_generics = method.pe_generics();
         let type_parameters = HasTypeParameters(method_generics,
                                                 FnSpace,
@@ -4508,6 +4596,14 @@ impl<'a> Resolver<'a> {
                                     MethodRibKind(id,
                                                   ProvidedMethod(method.id)),
                                     &**method);
+                            }
+                            TypeImplItem(ref typedef) => {
+                                // If this is a trait impl, ensure the method
+                                // exists in trait
+                                this.check_trait_item(typedef.ident,
+                                                      typedef.span);
+
+                                this.resolve_type(&*typedef.typ);
                             }
                         }
                     }
@@ -4745,9 +4841,73 @@ impl<'a> Resolver<'a> {
                 });
             }
 
+            TyQPath(ref qpath) => {
+                self.resolve_type(&*qpath.for_type);
+
+                let current_module = self.current_module.clone();
+                let module_path_idents: Vec<_> =
+                    qpath.trait_name
+                         .segments
+                         .iter()
+                         .map(|ps| ps.identifier)
+                         .collect();
+                match self.resolve_module_path(
+                        current_module,
+                        module_path_idents.as_slice(),
+                        UseLexicalScope,
+                        qpath.trait_name.span,
+                        PathSearch) {
+                    Success((ref module, _)) if module.kind.get() ==
+                            TraitModuleKind => {
+                        match self.resolve_definition_of_name_in_module(
+                                (*module).clone(),
+                                qpath.item_name.name,
+                                TypeNS) {
+                            ChildNameDefinition(def, lp) |
+                            ImportNameDefinition(def, lp) => {
+                                match def {
+                                    DefAssociatedTy(trait_type_id) => {
+                                        let def = DefAssociatedTy(
+                                            trait_type_id);
+                                        self.record_def(ty.id, (def, lp));
+                                    }
+                                    _ => {
+                                        self.resolve_error(
+                                            ty.span,
+                                            "not an associated type");
+                                    }
+                                }
+                            }
+                            NoNameDefinition => {
+                                self.resolve_error(ty.span,
+                                                   "unresolved associated \
+                                                    type");
+                            }
+                        }
+                    }
+                    Success(..) => self.resolve_error(ty.span, "not a trait"),
+                    Indeterminate => {
+                        self.session.span_bug(ty.span,
+                                              "indeterminate result when \
+                                               resolving associated type")
+                    }
+                    Failed(error) => {
+                        let (span, help) = match error {
+                            Some((span, msg)) => (span, format!("; {}", msg)),
+                            None => (ty.span, String::new()),
+                        };
+                        self.resolve_error(span,
+                                           format!("unresolved trait: {}",
+                                                   help).as_slice())
+                    }
+                }
+            }
+
             TyClosure(ref c) | TyProc(ref c) => {
-                self.resolve_type_parameter_bounds(ty.id, &c.bounds,
-                                                   TraitBoundingTypeParameter);
+                self.resolve_type_parameter_bounds(
+                    ty.id,
+                    &c.bounds,
+                    TraitBoundingTypeParameter);
                 visit::walk_ty(self, ty);
             }
 
@@ -4822,22 +4982,7 @@ impl<'a> Resolver<'a> {
                             debug!("(resolving pattern) binding `{}`",
                                    token::get_name(renamed));
 
-                            let def = match mode {
-                                RefutableMode => {
-                                    // For pattern arms, we must use
-                                    // `def_binding` definitions.
-
-                                    DefBinding(pattern.id, binding_mode)
-                                }
-                                LocalIrrefutableMode => {
-                                    // But for locals, we use `def_local`.
-                                    DefLocal(pattern.id, binding_mode)
-                                }
-                                ArgumentIrrefutableMode => {
-                                    // And for function arguments, `def_arg`.
-                                    DefArg(pattern.id, binding_mode)
-                                }
-                            };
+                            let def = DefLocal(pattern.id);
 
                             // Record the definition so that later passes
                             // will be able to distinguish variants from
@@ -5210,8 +5355,9 @@ impl<'a> Resolver<'a> {
                     Some(def_id) => {
                         match self.trait_item_map.borrow().find(&(ident.name, def_id)) {
                             Some(&StaticMethodTraitItemKind) => (),
+                            Some(&TypeTraitItemKind) => (),
                             None => (),
-                            _ => {
+                            Some(&NonstaticMethodTraitItemKind) => {
                                 debug!("containing module was a trait or impl \
                                 and name was a method -> not resolved");
                                 return None;
@@ -5440,7 +5586,7 @@ impl<'a> Resolver<'a> {
         if allowed == Everything {
             // Look for a field with the same name in the current self_type.
             match self.def_map.borrow().find(&node_id) {
-                 Some(&DefTy(did))
+                 Some(&DefTy(did, _))
                 | Some(&DefStruct(did))
                 | Some(&DefVariant(_, did, _)) => match self.structs.find(&did) {
                     None => {}
@@ -5582,7 +5728,7 @@ impl<'a> Resolver<'a> {
                         // structs, which wouldn't result in this error.)
                         match self.with_no_errors(|this|
                             this.resolve_path(expr.id, path, TypeNS, false)) {
-                            Some((DefTy(struct_id), _))
+                            Some((DefTy(struct_id, _), _))
                               if self.structs.contains_key(&struct_id) => {
                                 self.resolve_error(expr.span,
                                         format!("`{}` is a structure name, but \
@@ -5654,10 +5800,24 @@ impl<'a> Resolver<'a> {
                 visit::walk_expr(self, expr);
             }
 
-            ExprFnBlock(_, ref fn_decl, ref block) |
-            ExprProc(ref fn_decl, ref block) |
-            ExprUnboxedFn(_, _, ref fn_decl, ref block) => {
-                self.resolve_function(FunctionRibKind(expr.id, block.id),
+            ExprFnBlock(_, ref fn_decl, ref block) => {
+                // NOTE(stage0): After snapshot, change to:
+                //
+                //self.capture_mode_map.borrow_mut().insert(expr.id, capture_clause);
+                self.capture_mode_map.borrow_mut().insert(expr.id, ast::CaptureByRef);
+                self.resolve_function(ClosureRibKind(expr.id, ast::DUMMY_NODE_ID),
+                                      Some(&**fn_decl), NoTypeParameters,
+                                      &**block);
+            }
+            ExprProc(ref fn_decl, ref block) => {
+                self.capture_mode_map.borrow_mut().insert(expr.id, ast::CaptureByValue);
+                self.resolve_function(ClosureRibKind(expr.id, block.id),
+                                      Some(&**fn_decl), NoTypeParameters,
+                                      &**block);
+            }
+            ExprUnboxedFn(capture_clause, _, ref fn_decl, ref block) => {
+                self.capture_mode_map.borrow_mut().insert(expr.id, capture_clause);
+                self.resolve_function(ClosureRibKind(expr.id, block.id),
                                       Some(&**fn_decl), NoTypeParameters,
                                       &**block);
             }
@@ -5870,19 +6030,21 @@ impl<'a> Resolver<'a> {
         assert!(match lp {LastImport{..} => false, _ => true},
                 "Import should only be used for `use` directives");
         self.last_private.insert(node_id, lp);
-        self.def_map.borrow_mut().insert_or_update_with(node_id, def, |_, old_value| {
+
+        match self.def_map.borrow_mut().entry(node_id) {
             // Resolve appears to "resolve" the same ID multiple
             // times, so here is a sanity check it at least comes to
             // the same conclusion! - nmatsakis
-            if def != *old_value {
+            Occupied(entry) => if def != *entry.get() {
                 self.session
                     .bug(format!("node_id {:?} resolved first to {:?} and \
                                   then {:?}",
                                  node_id,
-                                 *old_value,
+                                 *entry.get(),
                                  def).as_slice());
-            }
-        });
+            },
+            Vacant(entry) => { entry.set(def); },
+        }
     }
 
     fn enforce_default_binding_mode(&mut self,
@@ -6088,6 +6250,8 @@ impl<'a> Resolver<'a> {
 
 pub struct CrateMap {
     pub def_map: DefMap,
+    pub freevars: RefCell<FreevarMap>,
+    pub capture_mode_map: RefCell<CaptureModeMap>,
     pub exp_map2: ExportMap2,
     pub trait_map: TraitMap,
     pub external_exports: ExternalExports,
@@ -6101,13 +6265,13 @@ pub fn resolve_crate(session: &Session,
                   -> CrateMap {
     let mut resolver = Resolver::new(session, krate.span);
     resolver.resolve(krate);
-    let Resolver { def_map, export_map2, trait_map, last_private,
-                   external_exports, .. } = resolver;
     CrateMap {
-        def_map: def_map,
-        exp_map2: export_map2,
-        trait_map: trait_map,
-        external_exports: external_exports,
-        last_private_map: last_private,
+        def_map: resolver.def_map,
+        freevars: resolver.freevars,
+        capture_mode_map: resolver.capture_mode_map,
+        exp_map2: resolver.export_map2,
+        trait_map: resolver.trait_map,
+        external_exports: resolver.external_exports,
+        last_private_map: resolver.last_private,
     }
 }

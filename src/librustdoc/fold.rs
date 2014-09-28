@@ -40,8 +40,8 @@ pub trait DocFolder {
                 EnumItem(i)
             },
             TraitItem(mut i) => {
-                fn vtrm<T: DocFolder>(this: &mut T, trm: TraitItem)
-                        -> Option<TraitItem> {
+                fn vtrm<T: DocFolder>(this: &mut T, trm: TraitMethod)
+                        -> Option<TraitMethod> {
                     match trm {
                         RequiredMethod(it) => {
                             match this.fold_item(it) {
@@ -55,6 +55,12 @@ pub trait DocFolder {
                                 None => return None,
                             }
                         },
+                        TypeTraitItem(it) => {
+                            match this.fold_item(it) {
+                                Some(x) => return Some(TypeTraitItem(x)),
+                                None => return None,
+                            }
+                        }
                     }
                 }
                 let mut foo = Vec::new(); swap(&mut foo, &mut i.items);

@@ -46,7 +46,6 @@ via `close` and `delete` methods.
 
 #![feature(macro_rules, unsafe_destructor)]
 #![deny(unused_result, unused_must_use)]
-#![allow(visible_private_types)]
 
 #![reexport_test_harness_main = "test_main"]
 

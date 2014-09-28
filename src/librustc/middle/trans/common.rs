@@ -17,7 +17,6 @@ use llvm;
 use llvm::{ValueRef, BasicBlockRef, BuilderRef, ContextRef};
 use llvm::{True, False, Bool};
 use middle::def;
-use middle::freevars;
 use middle::lang_items::LangItem;
 use middle::mem_categorization as mc;
 use middle::subst;
@@ -32,6 +31,7 @@ use middle::trans::type_of;
 use middle::traits;
 use middle::ty;
 use middle::ty_fold;
+use middle::ty_fold::TypeFoldable;
 use middle::typeck;
 use middle::typeck::infer;
 use util::ppaux::Repr;
@@ -267,10 +267,7 @@ pub struct FunctionContext<'a, 'tcx: 'a> {
     // points to, but if this value is false, that slot will be a local alloca.
     pub caller_expects_out_pointer: bool,
 
-    // Maps arguments to allocas created for them in llallocas.
-    pub llargs: RefCell<NodeMap<LvalueDatum>>,
-
-    // Maps the def_ids for local variables to the allocas created for
+    // Maps the DefId's for local variables to the allocas created for
     // them in llallocas.
     pub lllocals: RefCell<NodeMap<LvalueDatum>>,
 
@@ -528,7 +525,7 @@ impl<'blk, 'tcx> mc::Typer<'tcx> for BlockS<'blk, 'tcx> {
     }
 
     fn capture_mode(&self, closure_expr_id: ast::NodeId)
-                    -> freevars::CaptureMode {
+                    -> ast::CaptureClause {
         self.tcx().capture_modes.borrow().get_copy(&closure_expr_id)
     }
 }
@@ -795,12 +792,10 @@ pub fn fulfill_obligation(ccx: &CrateContext,
     // Parameter environment is used to give details about type parameters,
     // but since we are in trans, everything is fully monomorphized.
     let param_env = ty::empty_parameter_environment();
-    let unboxed_closures = tcx.unboxed_closures.borrow();
 
     // Do the initial selection for the obligation. This yields the
     // shallow result we are looking for -- that is, what specific impl.
-    let selcx = traits::SelectionContext::new(&infcx, &param_env,
-                                              &*unboxed_closures);
+    let mut selcx = traits::SelectionContext::new(&infcx, &param_env, tcx);
     let obligation = traits::Obligation::misc(span, trait_ref.clone());
     let selection = match selcx.select(&obligation) {
         Ok(Some(selection)) => selection,
@@ -829,7 +824,7 @@ pub fn fulfill_obligation(ccx: &CrateContext,
     let vtable = selection.map_move_nested(|obligation| {
         fulfill_cx.register_obligation(tcx, obligation);
     });
-    match fulfill_cx.select_all_or_error(&infcx, &param_env, &*unboxed_closures) {
+    match fulfill_cx.select_all_or_error(&infcx, &param_env, tcx) {
         Ok(()) => { }
         Err(e) => {
             tcx.sess.span_bug(
@@ -845,7 +840,7 @@ pub fn fulfill_obligation(ccx: &CrateContext,
     // sort of overkill because we do not expect there to be any
     // unbound type variables, hence no skolemized types should ever
     // be inserted.
-    let vtable = infer::skolemize(&infcx, vtable);
+    let vtable = vtable.fold_with(&mut infcx.skolemizer());
 
     info!("Cache miss: {}", trait_ref.repr(ccx.tcx()));
     ccx.trait_cache().borrow_mut().insert(trait_ref,

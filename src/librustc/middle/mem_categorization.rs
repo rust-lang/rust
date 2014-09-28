@@ -63,7 +63,6 @@
 #![allow(non_camel_case_types)]
 
 use middle::def;
-use middle::freevars;
 use middle::ty;
 use middle::typeck;
 use util::nodemap::{DefIdMap, NodeMap};
@@ -71,6 +70,7 @@ use util::ppaux::{ty_to_string, Repr};
 
 use syntax::ast::{MutImmutable, MutMutable};
 use syntax::ast;
+use syntax::ast_map;
 use syntax::codemap::Span;
 use syntax::print::pprust;
 use syntax::parse::token;
@@ -85,7 +85,6 @@ pub enum categorization {
     cat_copied_upvar(CopiedUpvar),     // upvar copied into proc env
     cat_upvar(ty::UpvarId, ty::UpvarBorrow), // by ref upvar from stack closure
     cat_local(ast::NodeId),            // local variable
-    cat_arg(ast::NodeId),              // formal argument
     cat_deref(cmt, uint, PointerKind), // deref of a ptr
     cat_interior(cmt, InteriorKind),   // something interior: field, tuple, etc
     cat_downcast(cmt),                 // selects a particular enum variant (*1)
@@ -225,7 +224,7 @@ pub fn deref_kind(tcx: &ty::ctxt, t: ty::t) -> deref_kind {
     }
 }
 
-trait ast_node {
+pub trait ast_node {
     fn id(&self) -> ast::NodeId;
     fn span(&self) -> Span;
 }
@@ -273,7 +272,7 @@ pub trait Typer<'tcx> {
     fn temporary_scope(&self, rvalue_id: ast::NodeId) -> Option<ast::NodeId>;
     fn upvar_borrow(&self, upvar_id: ty::UpvarId) -> ty::UpvarBorrow;
     fn capture_mode(&self, closure_expr_id: ast::NodeId)
-                    -> freevars::CaptureMode;
+                    -> ast::CaptureClause;
     fn unboxed_closures<'a>(&'a self)
                         -> &'a RefCell<DefIdMap<ty::UnboxedClosure>>;
 }
@@ -312,26 +311,19 @@ impl MutabilityCategory {
         }
     }
 
-    fn from_def(def: &def::Def) -> MutabilityCategory {
-        match *def {
-            def::DefFn(..) | def::DefStaticMethod(..) | def::DefSelfTy(..) |
-            def::DefMod(..) | def::DefForeignMod(..) | def::DefVariant(..) |
-            def::DefTy(..) | def::DefTrait(..) | def::DefPrimTy(..) |
-            def::DefTyParam(..) | def::DefUse(..) | def::DefStruct(..) |
-            def::DefTyParamBinder(..) | def::DefRegion(..) | def::DefLabel(..) |
-            def::DefMethod(..) => fail!("no MutabilityCategory for def: {}", *def),
-
-            def::DefStatic(_, false) => McImmutable,
-            def::DefStatic(_, true) => McDeclared,
-
-            def::DefArg(_, binding_mode) |
-            def::DefBinding(_, binding_mode) |
-            def::DefLocal(_, binding_mode)  => match binding_mode {
-                ast::BindByValue(ast::MutMutable) => McDeclared,
-                _ => McImmutable
+    fn from_local(tcx: &ty::ctxt, id: ast::NodeId) -> MutabilityCategory {
+        match tcx.map.get(id) {
+            ast_map::NodeLocal(p) | ast_map::NodeArg(p) => match p.node {
+                ast::PatIdent(bind_mode, _, _) => {
+                    if bind_mode == ast::BindByValue(ast::MutMutable) {
+                        McDeclared
+                    } else {
+                        McImmutable
+                    }
+                }
+                _ => tcx.sess.span_bug(p.span, "expected identifier pattern")
             },
-
-            def::DefUpvar(_, def, _, _) => MutabilityCategory::from_def(&*def)
+            _ => tcx.sess.span_bug(tcx.map.span(id), "expected identifier pattern")
         }
     }
 
@@ -412,14 +404,14 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
 
             Some(adjustment) => {
                 match *adjustment {
-                    ty::AutoAddEnv(..) => {
+                    ty::AdjustAddEnv(..) => {
                         // Convert a bare fn to a closure by adding NULL env.
                         // Result is an rvalue.
                         let expr_ty = if_ok!(self.expr_ty_adjusted(expr));
                         Ok(self.cat_rvalue_node(expr.id(), expr.span(), expr_ty))
                     }
 
-                    ty::AutoDerefRef(
+                    ty::AdjustDerefRef(
                         ty::AutoDerefRef {
                             autoref: Some(_), ..}) => {
                         // Equivalent to &*expr or something similar.
@@ -428,7 +420,7 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
                         Ok(self.cat_rvalue_node(expr.id(), expr.span(), expr_ty))
                     }
 
-                    ty::AutoDerefRef(
+                    ty::AdjustDerefRef(
                         ty::AutoDerefRef {
                             autoref: None, autoderefs: autoderefs}) => {
                         // Equivalent to *expr or something similar.
@@ -502,7 +494,7 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
           ast::ExprAssign(..) | ast::ExprAssignOp(..) |
           ast::ExprFnBlock(..) | ast::ExprProc(..) |
           ast::ExprUnboxedFn(..) | ast::ExprRet(..) |
-          ast::ExprUnary(..) |
+          ast::ExprUnary(..) | ast::ExprSlice(..) |
           ast::ExprMethodCall(..) | ast::ExprCast(..) |
           ast::ExprVec(..) | ast::ExprTup(..) | ast::ExprIf(..) |
           ast::ExprBinary(..) | ast::ExprWhile(..) |
@@ -531,9 +523,10 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
                 Ok(self.cat_rvalue_node(id, span, expr_ty))
           }
           def::DefMod(_) | def::DefForeignMod(_) | def::DefUse(_) |
-          def::DefTrait(_) | def::DefTy(_) | def::DefPrimTy(_) |
+          def::DefTrait(_) | def::DefTy(..) | def::DefPrimTy(_) |
           def::DefTyParam(..) | def::DefTyParamBinder(..) | def::DefRegion(_) |
-          def::DefLabel(_) | def::DefSelfTy(..) | def::DefMethod(..) => {
+          def::DefLabel(_) | def::DefSelfTy(..) | def::DefMethod(..) |
+          def::DefAssociatedTy(..) => {
               Ok(Rc::new(cmt_ {
                   id:id,
                   span:span,
@@ -543,30 +536,17 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
               }))
           }
 
-          def::DefStatic(_, _) => {
+          def::DefStatic(_, mutbl) => {
               Ok(Rc::new(cmt_ {
                   id:id,
                   span:span,
                   cat:cat_static_item,
-                  mutbl: MutabilityCategory::from_def(&def),
+                  mutbl: if mutbl { McDeclared } else { McImmutable},
                   ty:expr_ty
               }))
           }
 
-          def::DefArg(vid, _) => {
-            // Idea: make this could be rewritten to model by-ref
-            // stuff as `&const` and `&mut`?
-
-            Ok(Rc::new(cmt_ {
-                id: id,
-                span: span,
-                cat: cat_arg(vid),
-                mutbl: MutabilityCategory::from_def(&def),
-                ty:expr_ty
-            }))
-          }
-
-          def::DefUpvar(var_id, _, fn_node_id, _) => {
+          def::DefUpvar(var_id, fn_node_id, _) => {
               let ty = if_ok!(self.node_ty(fn_node_id));
               match ty::get(ty).sty {
                   ty::ty_closure(ref closure_ty) => {
@@ -594,7 +574,7 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
                                   onceness: closure_ty.onceness,
                                   capturing_proc: fn_node_id,
                               }),
-                              mutbl: MutabilityCategory::from_def(&def),
+                              mutbl: MutabilityCategory::from_local(self.tcx(), var_id),
                               ty:expr_ty
                           }))
                       }
@@ -617,7 +597,7 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
                               onceness: onceness,
                               capturing_proc: fn_node_id,
                           }),
-                          mutbl: MutabilityCategory::from_def(&def),
+                          mutbl: MutabilityCategory::from_local(self.tcx(), var_id),
                           ty: expr_ty
                       }))
                   }
@@ -631,14 +611,12 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
               }
           }
 
-          def::DefLocal(vid, _) |
-          def::DefBinding(vid, _) => {
-            // by-value/by-ref bindings are local variables
+          def::DefLocal(vid) => {
             Ok(Rc::new(cmt_ {
                 id: id,
                 span: span,
                 cat: cat_local(vid),
-                mutbl: MutabilityCategory::from_def(&def),
+                mutbl: MutabilityCategory::from_local(self.tcx(), vid),
                 ty: expr_ty
             }))
           }
@@ -755,10 +733,6 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
             cat: cat_interior(base_cmt, InteriorField(PositionalField(f_idx))),
             ty: f_ty
         })
-    }
-
-    pub fn cat_deref_obj<N:ast_node>(&self, node: &N, base_cmt: cmt) -> cmt {
-        self.cat_deref_common(node, base_cmt, 0, ty::mk_nil(), false)
     }
 
     fn cat_deref<N:ast_node>(&self,
@@ -1193,11 +1167,13 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
           cat_rvalue(..) => {
               "non-lvalue".to_string()
           }
-          cat_local(_) => {
-              "local variable".to_string()
-          }
-          cat_arg(..) => {
-              "argument".to_string()
+          cat_local(vid) => {
+              match self.tcx().map.find(vid) {
+                  Some(ast_map::NodeArg(_)) => {
+                      "argument".to_string()
+                  }
+                  _ => "local variable".to_string()
+              }
           }
           cat_deref(ref base, _, pk) => {
               match base.cat {
@@ -1264,7 +1240,6 @@ impl cmt_ {
             cat_static_item |
             cat_copied_upvar(..) |
             cat_local(..) |
-            cat_arg(..) |
             cat_deref(_, _, UnsafePtr(..)) |
             cat_deref(_, _, GcPtr(..)) |
             cat_deref(_, _, BorrowedPtr(..)) |
@@ -1308,7 +1283,6 @@ impl cmt_ {
             cat_rvalue(..) |
             cat_local(..) |
             cat_upvar(..) |
-            cat_arg(_) |
             cat_deref(_, _, UnsafePtr(..)) => { // yes, it's aliasable, but...
                 None
             }
@@ -1360,8 +1334,7 @@ impl Repr for categorization {
             cat_rvalue(..) |
             cat_copied_upvar(..) |
             cat_local(..) |
-            cat_upvar(..) |
-            cat_arg(..) => {
+            cat_upvar(..) => {
                 format!("{:?}", *self)
             }
             cat_deref(ref cmt, derefs, ptr) => {

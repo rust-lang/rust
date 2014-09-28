@@ -844,6 +844,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(deprecated)]
     fn test_append() {
         {
             let mut m = DList::new();

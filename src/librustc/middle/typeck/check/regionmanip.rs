@@ -18,6 +18,7 @@ use middle::ty_fold::TypeFolder;
 use syntax::ast;
 
 use std::collections::HashMap;
+use std::collections::hashmap::{Occupied, Vacant};
 use util::ppaux::Repr;
 
 // Helper functions related to manipulating region types.
@@ -35,7 +36,10 @@ pub fn replace_late_bound_regions_in_fn_sig(
             debug!("region r={}", r.to_string());
             match r {
                 ty::ReLateBound(s, br) if s == fn_sig.binder_id => {
-                    *map.find_or_insert_with(br, |_| mapf(br))
+                    * match map.entry(br) {
+                        Vacant(entry) => entry.set(mapf(br)),
+                        Occupied(entry) => entry.into_mut(),
+                    }
                 }
                 _ => r
             }
@@ -327,7 +331,7 @@ impl<'a, 'tcx> Wf<'a, 'tcx> {
 
                 // Inspect bounds on this type parameter for any
                 // region bounds.
-                for &r in type_param_def.bounds.opt_region_bound.iter() {
+                for &r in type_param_def.bounds.region_bounds.iter() {
                     self.stack.push((r, Some(ty)));
                     self.accumulate_from_ty(type_param_ty);
                     self.stack.pop().unwrap();

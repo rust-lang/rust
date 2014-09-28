@@ -64,7 +64,7 @@ pub fn load_external_files(names: &[String]) -> Option<String> {
     let mut out = String::new();
     for name in names.iter() {
         out.push_str(load_or_return!(name.as_slice(), None, None).as_slice());
-        out.push_char('\n');
+        out.push('\n');
     }
     Some(out)
 }

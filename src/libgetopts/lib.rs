@@ -31,7 +31,7 @@
 //! that requires an input file to be specified, accepts an optional output
 //! file name following `-o`, and accepts both `-h` and `--help` as optional flags.
 //!
-//! ~~~{.rust}
+//! ```{.rust}
 //! extern crate getopts;
 //! use getopts::{optopt,optflag,getopts,OptGroup};
 //! use std::os;
@@ -76,7 +76,7 @@
 //!     };
 //!     do_work(input.as_slice(), output);
 //! }
-//! ~~~
+//! ```
 
 #![crate_name = "getopts"]
 #![experimental]
@@ -685,9 +685,9 @@ pub fn usage(brief: &str, opts: &[OptGroup]) -> String {
         match short_name.len() {
             0 => {}
             1 => {
-                row.push_char('-');
+                row.push('-');
                 row.push_str(short_name.as_slice());
-                row.push_char(' ');
+                row.push(' ');
             }
             _ => fail!("the short name should only be 1 ascii char long"),
         }
@@ -698,7 +698,7 @@ pub fn usage(brief: &str, opts: &[OptGroup]) -> String {
             _ => {
                 row.push_str("--");
                 row.push_str(long_name.as_slice());
-                row.push_char(' ');
+                row.push(' ');
             }
         }
 
@@ -707,9 +707,9 @@ pub fn usage(brief: &str, opts: &[OptGroup]) -> String {
             No => {}
             Yes => row.push_str(hint.as_slice()),
             Maybe => {
-                row.push_char('[');
+                row.push('[');
                 row.push_str(hint.as_slice());
-                row.push_char(']');
+                row.push(']');
             }
         }
 
@@ -718,7 +718,7 @@ pub fn usage(brief: &str, opts: &[OptGroup]) -> String {
         let rowlen = row.as_slice().char_len();
         if rowlen < 24 {
             for _ in range(0, 24 - rowlen) {
-                row.push_char(' ');
+                row.push(' ');
             }
         } else {
             row.push_str(desc_sep.as_slice())
@@ -728,7 +728,7 @@ pub fn usage(brief: &str, opts: &[OptGroup]) -> String {
         let mut desc_normalized_whitespace = String::new();
         for word in desc.as_slice().words() {
             desc_normalized_whitespace.push_str(word);
-            desc_normalized_whitespace.push_char(' ');
+            desc_normalized_whitespace.push(' ');
         }
 
         // FIXME: #5516 should be graphemes not codepoints
@@ -755,12 +755,12 @@ fn format_option(opt: &OptGroup) -> String {
     let mut line = String::new();
 
     if opt.occur != Req {
-        line.push_char('[');
+        line.push('[');
     }
 
     // Use short_name is possible, but fallback to long_name.
     if opt.short_name.len() > 0 {
-        line.push_char('-');
+        line.push('-');
         line.push_str(opt.short_name.as_slice());
     } else {
         line.push_str("--");
@@ -768,18 +768,18 @@ fn format_option(opt: &OptGroup) -> String {
     }
 
     if opt.hasarg != No {
-        line.push_char(' ');
+        line.push(' ');
         if opt.hasarg == Maybe {
-            line.push_char('[');
+            line.push('[');
         }
         line.push_str(opt.hint.as_slice());
         if opt.hasarg == Maybe {
-            line.push_char(']');
+            line.push(']');
         }
     }
 
     if opt.occur != Req {
-        line.push_char(']');
+        line.push(']');
     }
     if opt.occur == Multi {
         line.push_str("..");
@@ -1142,7 +1142,7 @@ mod tests {
           Ok(ref m) => {
             // The next variable after the flag is just a free argument
 
-            assert!(*m.free.get(0) == "20".to_string());
+            assert!(m.free[0] == "20".to_string());
           }
           _ => fail!()
         }
@@ -1298,8 +1298,8 @@ mod tests {
               assert!(m.opt_present("t"));
               assert_eq!(m.opt_str("t").unwrap(), "20".to_string());
               let pair = m.opt_strs("test");
-              assert!(*pair.get(0) == "20".to_string());
-              assert!(*pair.get(1) == "30".to_string());
+              assert!(pair[0] == "20".to_string());
+              assert!(pair[1] == "30".to_string());
           }
           _ => fail!()
         }
@@ -1351,19 +1351,19 @@ mod tests {
         let rs = getopts(args.as_slice(), opts.as_slice());
         match rs {
           Ok(ref m) => {
-            assert!(*m.free.get(0) == "prog".to_string());
-            assert!(*m.free.get(1) == "free1".to_string());
+            assert!(m.free[0] == "prog".to_string());
+            assert!(m.free[1] == "free1".to_string());
             assert_eq!(m.opt_str("s").unwrap(), "20".to_string());
-            assert!(*m.free.get(2) == "free2".to_string());
+            assert!(m.free[2] == "free2".to_string());
             assert!((m.opt_present("flag")));
             assert_eq!(m.opt_str("long").unwrap(), "30".to_string());
             assert!((m.opt_present("f")));
             let pair = m.opt_strs("m");
-            assert!(*pair.get(0) == "40".to_string());
-            assert!(*pair.get(1) == "50".to_string());
+            assert!(pair[0] == "40".to_string());
+            assert!(pair[1] == "50".to_string());
             let pair = m.opt_strs("n");
-            assert!(*pair.get(0) == "-A B".to_string());
-            assert!(*pair.get(1) == "-60 70".to_string());
+            assert!(pair[0] == "-A B".to_string());
+            assert!(pair[1] == "-60 70".to_string());
             assert!((!m.opt_present("notpresent")));
           }
           _ => fail!()

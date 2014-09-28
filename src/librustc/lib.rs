@@ -29,7 +29,7 @@ This API is completely unstable and subject to change.
       html_root_url = "http://doc.rust-lang.org/master/")]
 
 #![allow(deprecated)]
-#![feature(macro_rules, globs, struct_variant, managed_boxes, quote)]
+#![feature(macro_rules, globs, struct_variant, quote)]
 #![feature(default_type_params, phase, unsafe_destructor)]
 
 #![allow(unknown_features)] // NOTE: Remove after next snapshot
@@ -80,6 +80,7 @@ pub mod middle {
     pub mod borrowck;
     pub mod cfg;
     pub mod check_const;
+    pub mod check_static_recursion;
     pub mod check_loop;
     pub mod check_match;
     pub mod check_rvalues;
@@ -92,10 +93,8 @@ pub mod middle {
     pub mod effect;
     pub mod entry;
     pub mod expr_use_visitor;
-    pub mod freevars;
     pub mod graph;
     pub mod intrinsicck;
-    pub mod kind;
     pub mod lang_items;
     pub mod liveness;
     pub mod mem_categorization;

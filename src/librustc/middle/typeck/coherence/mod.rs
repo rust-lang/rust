@@ -22,7 +22,7 @@ use middle::subst;
 use middle::subst::{Substs};
 use middle::ty::get;
 use middle::ty::{ImplContainer, ImplOrTraitItemId, MethodTraitItemId};
-use middle::ty::{lookup_item_type};
+use middle::ty::{TypeTraitItemId, lookup_item_type};
 use middle::ty::{t, ty_bool, ty_char, ty_bot, ty_box, ty_enum, ty_err};
 use middle::ty::{ty_str, ty_vec, ty_float, ty_infer, ty_int, ty_nil, ty_open};
 use middle::ty::{ty_param, Polytype, ty_ptr};
@@ -332,6 +332,9 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
                                     MethodTraitItemId(
                                         local_def(ast_method.id))
                                 }
+                                ast::TypeImplItem(ref typedef) => {
+                                    TypeTraitItemId(local_def(typedef.id))
+                                }
                             }
                         }).collect();
 
@@ -393,6 +396,7 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
                            .insert(item_def_id.def_id(), source);
                     }
                 }
+                ty::TypeTraitItem(_) => {}
             }
         }
 

@@ -283,7 +283,11 @@ pub trait CloneableVector<T> {
 impl<'a, T: Clone> CloneableVector<T> for &'a [T] {
     /// Returns a copy of `v`.
     #[inline]
-    fn to_vec(&self) -> Vec<T> { Vec::from_slice(*self) }
+    fn to_vec(&self) -> Vec<T> {
+        let mut vector = Vec::with_capacity(self.len());
+        vector.push_all(*self);
+        vector
+    }
 
     #[inline(always)]
     fn into_vec(self) -> Vec<T> { self.to_vec() }
@@ -847,6 +851,16 @@ mod tests {
     }
 
     #[test]
+    fn test_head_mut() {
+        let mut a = vec![];
+        assert_eq!(a.as_mut_slice().head_mut(), None);
+        a = vec![11i];
+        assert_eq!(*a.as_mut_slice().head_mut().unwrap(), 11);
+        a = vec![11i, 12];
+        assert_eq!(*a.as_mut_slice().head_mut().unwrap(), 11);
+    }
+
+    #[test]
     fn test_tail() {
         let mut a = vec![11i];
         let b: &[int] = &[];
@@ -857,6 +871,16 @@ mod tests {
     }
 
     #[test]
+    fn test_tail_mut() {
+        let mut a = vec![11i];
+        let b: &mut [int] = &mut [];
+        assert!(a.as_mut_slice().tail_mut() == b);
+        a = vec![11i, 12];
+        let b: &mut [int] = &mut [12];
+        assert!(a.as_mut_slice().tail_mut() == b);
+    }
+
+    #[test]
     #[should_fail]
     fn test_tail_empty() {
         let a: Vec<int> = vec![];
@@ -864,14 +888,21 @@ mod tests {
     }
 
     #[test]
+    #[should_fail]
+    fn test_tail_mut_empty() {
+        let mut a: Vec<int> = vec![];
+        a.as_mut_slice().tail_mut();
+    }
+
+    #[test]
     #[allow(deprecated)]
     fn test_tailn() {
         let mut a = vec![11i, 12, 13];
-        let b: &[int] = &[11, 12, 13];
-        assert_eq!(a.tailn(0), b);
+        let b: &mut [int] = &mut [11, 12, 13];
+        assert!(a.tailn(0) == b);
         a = vec![11i, 12, 13];
-        let b: &[int] = &[13];
-        assert_eq!(a.tailn(2), b);
+        let b: &mut [int] = &mut [13];
+        assert!(a.tailn(2) == b);
     }
 
     #[test]
@@ -893,6 +924,16 @@ mod tests {
     }
 
     #[test]
+    fn test_init_mut() {
+        let mut a = vec![11i];
+        let b: &mut [int] = &mut [];
+        assert!(a.as_mut_slice().init_mut() == b);
+        a = vec![11i, 12];
+        let b: &mut [int] = &mut [11];
+        assert!(a.as_mut_slice().init_mut() == b);
+    }
+
+    #[test]
     #[should_fail]
     fn test_init_empty() {
         let a: Vec<int> = vec![];
@@ -900,6 +941,14 @@ mod tests {
     }
 
     #[test]
+    #[should_fail]
+    fn test_init_mut_empty() {
+        let mut a: Vec<int> = vec![];
+        a.as_mut_slice().init_mut();
+    }
+
+    #[test]
+    #[allow(deprecated)]
     fn test_initn() {
         let mut a = vec![11i, 12, 13];
         let b: &[int] = &[11, 12, 13];
@@ -925,6 +974,16 @@ mod tests {
         assert_eq!(a.as_slice().last().unwrap(), &11);
         a = vec![11i, 12];
         assert_eq!(a.as_slice().last().unwrap(), &12);
+    }
+
+    #[test]
+    fn test_last_mut() {
+        let mut a = vec![];
+        assert_eq!(a.as_mut_slice().last_mut(), None);
+        a = vec![11i];
+        assert_eq!(*a.as_mut_slice().last_mut().unwrap(), 11);
+        a = vec![11i, 12];
+        assert_eq!(*a.as_mut_slice().last_mut().unwrap(), 12);
     }
 
     #[test]
@@ -1039,7 +1098,7 @@ mod tests {
     fn test_grow() {
         // Test on-stack grow().
         let mut v = vec![];
-        v.grow(2u, &1i);
+        v.grow(2u, 1i);
         {
             let v = v.as_slice();
             assert_eq!(v.len(), 2u);
@@ -1048,7 +1107,7 @@ mod tests {
         }
 
         // Test on-heap grow().
-        v.grow(3u, &2i);
+        v.grow(3u, 2i);
         {
             let v = v.as_slice();
             assert_eq!(v.len(), 5u);
@@ -1072,6 +1131,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(deprecated)]
     fn test_grow_set() {
         let mut v = vec![1i, 2, 3];
         v.grow_set(4u, &4, 5);
@@ -1299,6 +1359,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(deprecated)]
     fn test_bsearch_elem() {
         assert_eq!([1i,2,3,4,5].bsearch_elem(&5), Some(4));
         assert_eq!([1i,2,3,4,5].bsearch_elem(&4), Some(3));
@@ -1346,11 +1407,11 @@ mod tests {
     #[test]
     fn test_reverse() {
         let mut v: Vec<int> = vec![10i, 20];
-        assert_eq!(*v.get(0), 10);
-        assert_eq!(*v.get(1), 20);
+        assert_eq!(v[0], 10);
+        assert_eq!(v[1], 20);
         v.reverse();
-        assert_eq!(*v.get(0), 20);
-        assert_eq!(*v.get(1), 10);
+        assert_eq!(v[0], 20);
+        assert_eq!(v[1], 10);
 
         let mut v3: Vec<int> = vec![];
         v3.reverse();
@@ -1458,6 +1519,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(deprecated)]
     fn test_shift() {
         let mut x = vec![1i, 2, 3];
         assert_eq!(x.shift(), Some(1));
@@ -1603,6 +1665,7 @@ mod tests {
 
     #[test]
     #[should_fail]
+    #[allow(deprecated)]
     fn test_copy_memory_oob() {
         unsafe {
             let mut a = [1i, 2, 3, 4];
@@ -1787,6 +1850,26 @@ mod tests {
     }
 
     #[test]
+    fn test_splitnator_mut() {
+        let xs = &mut [1i,2,3,4,5];
+
+        let splits: &[&mut [int]] = &[&mut [1,2,3,4,5]];
+        assert_eq!(xs.splitn_mut(0, |x| *x % 2 == 0).collect::<Vec<&mut [int]>>().as_slice(),
+                   splits);
+        let splits: &[&mut [int]] = &[&mut [1], &mut [3,4,5]];
+        assert_eq!(xs.splitn_mut(1, |x| *x % 2 == 0).collect::<Vec<&mut [int]>>().as_slice(),
+                   splits);
+        let splits: &[&mut [int]] = &[&mut [], &mut [], &mut [], &mut [4,5]];
+        assert_eq!(xs.splitn_mut(3, |_| true).collect::<Vec<&mut [int]>>().as_slice(),
+                   splits);
+
+        let xs: &mut [int] = &mut [];
+        let splits: &[&mut [int]] = &[&mut []];
+        assert_eq!(xs.splitn_mut(1, |x| *x == 5).collect::<Vec<&mut [int]>>().as_slice(),
+                   splits);
+    }
+
+    #[test]
     fn test_rsplitator() {
         let xs = &[1i,2,3,4,5];
 
@@ -1897,6 +1980,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(deprecated)]
     fn test_copy_from() {
         let mut a = [1i,2,3,4,5];
         let b = [6i,7,8];

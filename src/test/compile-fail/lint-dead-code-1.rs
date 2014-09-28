@@ -11,7 +11,6 @@
 #![no_std]
 #![allow(unused_variable)]
 #![allow(non_camel_case_types)]
-#![allow(visible_private_types)]
 #![deny(dead_code)]
 #![feature(lang_items)]
 
@@ -23,7 +22,7 @@ pub use foo2::Bar2;
 pub trait Sized {}
 
 mod foo {
-    pub struct Bar; //~ ERROR: code is never used
+    pub struct Bar; //~ ERROR: struct is never used
 }
 
 mod foo2 {
@@ -31,7 +30,7 @@ mod foo2 {
 }
 
 pub static pub_static: int = 0;
-static priv_static: int = 0; //~ ERROR: code is never used
+static priv_static: int = 0; //~ ERROR: static item is never used
 static used_static: int = 0;
 pub static used_static2: int = used_static;
 static USED_STATIC: int = 0;
@@ -39,7 +38,7 @@ static STATIC_USED_IN_ENUM_DISCRIMINANT: int = 10;
 
 pub type typ = *const UsedStruct4;
 pub struct PubStruct;
-struct PrivStruct; //~ ERROR: code is never used
+struct PrivStruct; //~ ERROR: struct is never used
 struct UsedStruct1 {
     #[allow(dead_code)]
     x: int
@@ -54,7 +53,7 @@ impl SemiUsedStruct {
     fn la_la_la() {}
 }
 struct StructUsedAsField;
-struct StructUsedInEnum;
+pub struct StructUsedInEnum;
 struct StructUsedInGeneric;
 pub struct PubStruct2 {
     #[allow(dead_code)]
@@ -64,8 +63,12 @@ pub struct PubStruct2 {
 pub enum pub_enum { foo1, bar1 }
 pub enum pub_enum2 { a(*const StructUsedInEnum) }
 pub enum pub_enum3 { Foo = STATIC_USED_IN_ENUM_DISCRIMINANT }
-enum priv_enum { foo2, bar2 } //~ ERROR: code is never used
-enum used_enum { foo3, bar3 }
+
+enum priv_enum { foo2, bar2 } //~ ERROR: enum is never used
+enum used_enum {
+    foo3,
+    bar3 //~ ERROR variant is never used
+}
 
 fn f<T>() {}
 
@@ -84,17 +87,17 @@ pub fn pub_fn() {
     }
     f::<StructUsedInGeneric>();
 }
-fn priv_fn() { //~ ERROR: code is never used
+fn priv_fn() { //~ ERROR: function is never used
     let unused_struct = PrivStruct;
 }
 fn used_fn() {}
 
-fn foo() { //~ ERROR: code is never used
+fn foo() { //~ ERROR: function is never used
     bar();
     let unused_enum = foo2;
 }
 
-fn bar() { //~ ERROR: code is never used
+fn bar() { //~ ERROR: function is never used
     foo();
 }
 
@@ -105,5 +108,5 @@ fn g() { h(); }
 fn h() {}
 
 // Similarly, lang items are live
-#[lang="fail_"]
+#[lang="fail"]
 fn fail(_: *const u8, _: *const u8, _: uint) -> ! { loop {} }

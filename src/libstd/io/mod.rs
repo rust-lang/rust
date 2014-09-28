@@ -946,11 +946,14 @@ pub trait Reader {
 }
 
 impl<'a> Reader for Box<Reader+'a> {
-    fn read(&mut self, buf: &mut [u8]) -> IoResult<uint> { self.read(buf) }
+    fn read(&mut self, buf: &mut [u8]) -> IoResult<uint> {
+        let reader: &mut Reader = &mut **self;
+        reader.read(buf)
+    }
 }
 
 impl<'a> Reader for &'a mut Reader+'a {
-    fn read(&mut self, buf: &mut [u8]) -> IoResult<uint> { self.read(buf) }
+    fn read(&mut self, buf: &mut [u8]) -> IoResult<uint> { (*self).read(buf) }
 }
 
 /// Returns a slice of `v` between `start` and `end`.
@@ -1281,10 +1284,14 @@ pub trait Writer {
 
 impl<'a> Writer for Box<Writer+'a> {
     #[inline]
-    fn write(&mut self, buf: &[u8]) -> IoResult<()> { self.write(buf) }
+    fn write(&mut self, buf: &[u8]) -> IoResult<()> {
+        (&mut **self).write(buf)
+    }
 
     #[inline]
-    fn flush(&mut self) -> IoResult<()> { self.flush() }
+    fn flush(&mut self) -> IoResult<()> {
+        (&mut **self).flush()
+    }
 }
 
 impl<'a> Writer for &'a mut Writer+'a {

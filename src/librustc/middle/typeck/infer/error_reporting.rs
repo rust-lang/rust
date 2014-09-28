@@ -871,6 +871,7 @@ impl<'a, 'tcx> ErrorReporting for InferCtxt<'a, 'tcx> {
                                   Some(&m.pe_explicit_self().node),
                                   m.span))
                         }
+                        ast::TypeImplItem(_) => None,
                     }
                 },
                 _ => None
@@ -1109,6 +1110,7 @@ impl<'a, 'tcx> Rebuilder<'a, 'tcx> {
                     ast::TraitTyParamBound(ast::TraitRef {
                         path: new_path,
                         ref_id: tr.ref_id,
+                        lifetimes: tr.lifetimes.clone(),
                     })
                 }
             }
@@ -1235,7 +1237,7 @@ impl<'a, 'tcx> Rebuilder<'a, 'tcx> {
                         Some(&d) => d
                     };
                     match a_def {
-                        def::DefTy(did) | def::DefStruct(did) => {
+                        def::DefTy(did, _) | def::DefStruct(did) => {
                             let generics = ty::lookup_item_type(self.tcx, did).generics;
 
                             let expected =
@@ -1558,7 +1560,7 @@ impl<'a, 'tcx> ErrorReportingHelpers for InferCtxt<'a, 'tcx> {
                     "...so that it can be closed over into an object");
             }
             infer::RelateProcBound(span, var_node_id, _ty) => {
-                self.tcx.sess.span_err(
+                self.tcx.sess.span_note(
                     span,
                     format!(
                         "...so that the variable `{}` can be captured \
@@ -1644,7 +1646,7 @@ impl<'a, 'tcx> ErrorReportingHelpers for InferCtxt<'a, 'tcx> {
     }
 }
 
-trait Resolvable {
+pub trait Resolvable {
     fn resolve(&self, infcx: &InferCtxt) -> Self;
     fn contains_error(&self) -> bool;
 }
@@ -1687,6 +1689,7 @@ fn lifetimes_in_scope(tcx: &ty::ctxt,
                         taken.push_all(m.pe_generics().lifetimes.as_slice());
                         Some(m.id)
                     }
+                    ast::TypeImplItem(_) => None,
                 }
             }
             _ => None

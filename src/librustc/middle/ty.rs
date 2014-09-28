@@ -17,8 +17,6 @@ use metadata::csearch;
 use middle::const_eval;
 use middle::def;
 use middle::dependency_format;
-use middle::freevars::CaptureModeMap;
-use middle::freevars;
 use middle::lang_items::{FnTraitLangItem, FnMutTraitLangItem};
 use middle::lang_items::{FnOnceTraitLangItem, OpaqueStructLangItem};
 use middle::lang_items::{TyDescStructLangItem, TyVisitorTraitLangItem};
@@ -50,6 +48,7 @@ use std::mem;
 use std::ops;
 use std::rc::Rc;
 use std::collections::{HashMap, HashSet};
+use std::collections::hashmap::{Occupied, Vacant};
 use arena::TypedArena;
 use syntax::abi;
 use syntax::ast::{CrateNum, DefId, FnStyle, Ident, ItemTrait, LOCAL_CRATE};
@@ -97,30 +96,37 @@ impl ImplOrTraitItemContainer {
 #[deriving(Clone)]
 pub enum ImplOrTraitItem {
     MethodTraitItem(Rc<Method>),
+    TypeTraitItem(Rc<AssociatedType>),
 }
 
 impl ImplOrTraitItem {
     fn id(&self) -> ImplOrTraitItemId {
         match *self {
             MethodTraitItem(ref method) => MethodTraitItemId(method.def_id),
+            TypeTraitItem(ref associated_type) => {
+                TypeTraitItemId(associated_type.def_id)
+            }
         }
     }
 
     pub fn def_id(&self) -> ast::DefId {
         match *self {
             MethodTraitItem(ref method) => method.def_id,
+            TypeTraitItem(ref associated_type) => associated_type.def_id,
         }
     }
 
     pub fn ident(&self) -> ast::Ident {
         match *self {
             MethodTraitItem(ref method) => method.ident,
+            TypeTraitItem(ref associated_type) => associated_type.ident,
         }
     }
 
     pub fn container(&self) -> ImplOrTraitItemContainer {
         match *self {
             MethodTraitItem(ref method) => method.container,
+            TypeTraitItem(ref associated_type) => associated_type.container,
         }
     }
 }
@@ -128,12 +134,14 @@ impl ImplOrTraitItem {
 #[deriving(Clone)]
 pub enum ImplOrTraitItemId {
     MethodTraitItemId(ast::DefId),
+    TypeTraitItemId(ast::DefId),
 }
 
 impl ImplOrTraitItemId {
     pub fn def_id(&self) -> ast::DefId {
         match *self {
             MethodTraitItemId(def_id) => def_id,
+            TypeTraitItemId(def_id) => def_id,
         }
     }
 }
@@ -180,6 +188,14 @@ impl Method {
             ImplContainer(id) => id,
         }
     }
+}
+
+#[deriving(Clone)]
+pub struct AssociatedType {
+    pub ident: ast::Ident,
+    pub vis: ast::Visibility,
+    pub def_id: ast::DefId,
+    pub container: ImplOrTraitItemContainer,
 }
 
 #[deriving(Clone, PartialEq, Eq, Hash, Show)]
@@ -262,8 +278,8 @@ pub enum Variance {
 
 #[deriving(Clone)]
 pub enum AutoAdjustment {
-    AutoAddEnv(ty::TraitStore),
-    AutoDerefRef(AutoDerefRef)
+    AdjustAddEnv(ty::TraitStore),
+    AdjustDerefRef(AutoDerefRef)
 }
 
 #[deriving(Clone, PartialEq)]
@@ -335,7 +351,7 @@ fn autoref_object_region(autoref: &AutoRef) -> (bool, bool, Option<Region>) {
 // returns the region of the borrowed reference.
 pub fn adjusted_object_region(adj: &AutoAdjustment) -> Option<Region> {
     match adj {
-        &AutoDerefRef(AutoDerefRef{autoref: Some(ref autoref), ..}) => {
+        &AdjustDerefRef(AutoDerefRef{autoref: Some(ref autoref), ..}) => {
             let (b, _, r) = autoref_object_region(autoref);
             if b {
                 r
@@ -350,7 +366,7 @@ pub fn adjusted_object_region(adj: &AutoAdjustment) -> Option<Region> {
 // Returns true if there is a trait cast at the bottom of the adjustment.
 pub fn adjust_is_object(adj: &AutoAdjustment) -> bool {
     match adj {
-        &AutoDerefRef(AutoDerefRef{autoref: Some(ref autoref), ..}) => {
+        &AdjustDerefRef(AutoDerefRef{autoref: Some(ref autoref), ..}) => {
             let (b, _, _) = autoref_object_region(autoref);
             b
         }
@@ -392,7 +408,7 @@ pub fn type_of_adjust(cx: &ctxt, adj: &AutoAdjustment) -> Option<t> {
     }
 
     match adj {
-        &AutoDerefRef(AutoDerefRef{autoref: Some(ref autoref), ..}) => {
+        &AdjustDerefRef(AutoDerefRef{autoref: Some(ref autoref), ..}) => {
             type_of_autoref(cx, autoref)
         }
         _ => None
@@ -463,7 +479,7 @@ pub struct ctxt<'tcx> {
 
     pub map: ast_map::Map<'tcx>,
     pub intrinsic_defs: RefCell<DefIdMap<t>>,
-    pub freevars: RefCell<freevars::freevar_map>,
+    pub freevars: RefCell<FreevarMap>,
     pub tcache: type_cache,
     pub rcache: creader_cache,
     pub short_names_cache: RefCell<HashMap<t, String>>,
@@ -556,6 +572,17 @@ pub struct ctxt<'tcx> {
 
     /// Maps closures to their capture clauses.
     pub capture_modes: RefCell<CaptureModeMap>,
+
+    /// Maps def IDs to true if and only if they're associated types.
+    pub associated_types: RefCell<DefIdMap<bool>>,
+
+    /// Maps def IDs of traits to information about their associated types.
+    pub trait_associated_types:
+        RefCell<DefIdMap<Rc<Vec<AssociatedTypeInfo>>>>,
+
+    /// Caches the results of trait selection. This cache is used
+    /// for things that do not have to do with the parameters in scope.
+    pub selection_cache: traits::SelectionCache,
 }
 
 pub enum tbox_flag {
@@ -1008,7 +1035,7 @@ pub enum type_err {
 /// as well as the existential type parameter in an object type.
 #[deriving(PartialEq, Eq, Hash, Clone, Show)]
 pub struct ParamBounds {
-    pub opt_region_bound: Option<ty::Region>,
+    pub region_bounds: Vec<ty::Region>,
     pub builtin_bounds: BuiltinBounds,
     pub trait_bounds: Vec<Rc<TraitRef>>
 }
@@ -1016,7 +1043,8 @@ pub struct ParamBounds {
 /// Bounds suitable for an existentially quantified type parameter
 /// such as those that appear in object types or closure types. The
 /// major difference between this case and `ParamBounds` is that
-/// general purpose trait bounds are omitted.
+/// general purpose trait bounds are omitted and there must be
+/// *exactly one* region.
 #[deriving(PartialEq, Eq, Hash, Clone, Show)]
 pub struct ExistentialBounds {
     pub region_bound: ty::Region,
@@ -1178,6 +1206,7 @@ pub struct TypeParameterDef {
     pub def_id: ast::DefId,
     pub space: subst::ParamSpace,
     pub index: uint,
+    pub associated_with: Option<ast::DefId>,
     pub bounds: ParamBounds,
     pub default: Option<ty::t>,
 }
@@ -1237,7 +1266,7 @@ pub struct ParameterEnvironment {
     /// the "outer" view of a type or method to the "inner" view.
     /// In general, this means converting from bound parameters to
     /// free parameters. Since we currently represent bound/free type
-    /// parameters in the same way, this only has an affect on regions.
+    /// parameters in the same way, this only has an effect on regions.
     pub free_substs: Substs,
 
     /// Bounds on the various type parameters
@@ -1256,6 +1285,10 @@ pub struct ParameterEnvironment {
     /// Note: This effectively *duplicates* the `bounds` array for
     /// now.
     pub caller_obligations: VecPerParamSpace<traits::Obligation>,
+
+    /// Caches the results of trait selection. This cache is used
+    /// for things that have to do with the parameters in scope.
+    pub selection_cache: traits::SelectionCache,
 }
 
 impl ParameterEnvironment {
@@ -1274,7 +1307,18 @@ impl ParameterEnvironment {
                                     method_generics,
                                     method.pe_body().id)
                             }
+                            TypeTraitItem(_) => {
+                                cx.sess
+                                  .bug("ParameterEnvironment::from_item(): \
+                                        can't create a parameter environment \
+                                        for type trait items")
+                            }
                         }
+                    }
+                    ast::TypeImplItem(_) => {
+                        cx.sess.bug("ParameterEnvironment::from_item(): \
+                                     can't create a parameter environment \
+                                     for type impl items")
                     }
                 }
             }
@@ -1298,7 +1342,18 @@ impl ParameterEnvironment {
                                     method_generics,
                                     method.pe_body().id)
                             }
+                            TypeTraitItem(_) => {
+                                cx.sess
+                                  .bug("ParameterEnvironment::from_item(): \
+                                        can't create a parameter environment \
+                                        for type trait items")
+                            }
                         }
+                    }
+                    ast::TypeTraitItem(_) => {
+                        cx.sess.bug("ParameterEnvironment::from_item(): \
+                                     can't create a parameter environment \
+                                     for type trait items")
                     }
                 }
             }
@@ -1415,8 +1470,8 @@ pub fn mk_ctxt<'tcx>(s: Session,
                      dm: resolve::DefMap,
                      named_region_map: resolve_lifetime::NamedRegionMap,
                      map: ast_map::Map<'tcx>,
-                     freevars: freevars::freevar_map,
-                     capture_modes: freevars::CaptureModeMap,
+                     freevars: RefCell<FreevarMap>,
+                     capture_modes: RefCell<CaptureModeMap>,
                      region_maps: middle::region::RegionMaps,
                      lang_items: middle::lang_items::LanguageItems,
                      stability: stability::Index) -> ctxt<'tcx> {
@@ -1437,7 +1492,7 @@ pub fn mk_ctxt<'tcx>(s: Session,
         object_cast_map: RefCell::new(NodeMap::new()),
         map: map,
         intrinsic_defs: RefCell::new(DefIdMap::new()),
-        freevars: RefCell::new(freevars),
+        freevars: freevars,
         tcache: RefCell::new(DefIdMap::new()),
         rcache: RefCell::new(HashMap::new()),
         short_names_cache: RefCell::new(HashMap::new()),
@@ -1474,8 +1529,11 @@ pub fn mk_ctxt<'tcx>(s: Session,
         node_lint_levels: RefCell::new(HashMap::new()),
         transmute_restrictions: RefCell::new(Vec::new()),
         stability: RefCell::new(stability),
-        capture_modes: RefCell::new(capture_modes),
-    }
+        capture_modes: capture_modes,
+        associated_types: RefCell::new(DefIdMap::new()),
+        trait_associated_types: RefCell::new(DefIdMap::new()),
+        selection_cache: traits::SelectionCache::new(),
+   }
 }
 
 // Type constructors
@@ -1867,13 +1925,6 @@ pub fn fold_ty(cx: &ctxt, t0: t, fldop: |t| -> t) -> t {
     f.fold_ty(t0)
 }
 
-pub fn walk_regions_and_ty(cx: &ctxt, ty: t, fldr: |r: Region|, fldt: |t: t|)
-                           -> t {
-    ty_fold::RegionFolder::general(cx,
-                                   |r| { fldr(r); r },
-                                   |t| { fldt(t); t }).fold_ty(ty)
-}
-
 impl ParamTy {
     pub fn new(space: subst::ParamSpace,
                index: uint,
@@ -1892,6 +1943,10 @@ impl ParamTy {
 
     pub fn to_ty(self, tcx: &ty::ctxt) -> ty::t {
         ty::mk_param(tcx, self.space, self.idx, self.def_id)
+    }
+
+    pub fn is_self(&self) -> bool {
+        self.space == subst::SelfSpace && self.idx == 0
     }
 }
 
@@ -2189,34 +2244,24 @@ def_type_content_sets!(
         OwnsAll                             = 0b0000_0000__1111_1111__0000,
 
         // Things that are reachable by the value in any way (fourth nibble):
-        ReachesNonsendAnnot                 = 0b0000_0001__0000_0000__0000,
         ReachesBorrowed                     = 0b0000_0010__0000_0000__0000,
         // ReachesManaged /* see [1] below */  = 0b0000_0100__0000_0000__0000,
         ReachesMutable                      = 0b0000_1000__0000_0000__0000,
-        ReachesNoSync                       = 0b0001_0000__0000_0000__0000,
         ReachesFfiUnsafe                    = 0b0010_0000__0000_0000__0000,
         ReachesAll                          = 0b0011_1111__0000_0000__0000,
 
-        // Things that cause values to *move* rather than *copy*
+        // Things that cause values to *move* rather than *copy*. This
+        // is almost the same as the `Copy` trait, but for managed
+        // data -- atm, we consider managed data to copy, not move,
+        // but it does not impl Copy as a pure memcpy is not good
+        // enough. Yuck.
         Moves                               = 0b0000_0000__0000_1011__0000,
 
         // Things that mean drop glue is necessary
         NeedsDrop                           = 0b0000_0000__0000_0111__0000,
 
-        // Things that prevent values from being sent
-        //
-        // Note: For checking whether something is sendable, it'd
-        //       be sufficient to have ReachesManaged. However, we include
-        //       both ReachesManaged and OwnsManaged so that when
-        //       a parameter has a bound T:Send, we are able to deduce
-        //       that it neither reaches nor owns a managed pointer.
-        Nonsendable                         = 0b0000_0111__0000_0100__0000,
-
         // Things that prevent values from being considered sized
         Nonsized                            = 0b0000_0000__0000_0000__0001,
-
-        // Things that prevent values from being sync
-        Nonsync                             = 0b0001_0000__0000_0000__0000,
 
         // Things that make values considered not POD (would be same
         // as `Moves`, but for the fact that managed data `@` is
@@ -2236,29 +2281,12 @@ def_type_content_sets!(
 )
 
 impl TypeContents {
-    pub fn meets_builtin_bound(&self, cx: &ctxt, bb: BuiltinBound) -> bool {
-        match bb {
-            BoundSend => self.is_sendable(cx),
-            BoundSized => self.is_sized(cx),
-            BoundCopy => self.is_copy(cx),
-            BoundSync => self.is_sync(cx),
-        }
-    }
-
     pub fn when(&self, cond: bool) -> TypeContents {
         if cond {*self} else {TC::None}
     }
 
     pub fn intersects(&self, tc: TypeContents) -> bool {
         (self.bits & tc.bits) != 0
-    }
-
-    pub fn is_sendable(&self, _: &ctxt) -> bool {
-        !self.intersects(TC::Nonsendable)
-    }
-
-    pub fn is_sync(&self, _: &ctxt) -> bool {
-        !self.intersects(TC::Nonsync)
     }
 
     pub fn owns_managed(&self) -> bool {
@@ -2271,10 +2299,6 @@ impl TypeContents {
 
     pub fn is_sized(&self, _: &ctxt) -> bool {
         !self.intersects(TC::Nonsized)
-    }
-
-    pub fn is_copy(&self, _: &ctxt) -> bool {
-        !self.intersects(TC::Noncopy)
     }
 
     pub fn interior_unsafe(&self) -> bool {
@@ -2359,10 +2383,6 @@ impl fmt::Show for TypeContents {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "TypeContents({:t})", self.bits)
     }
-}
-
-pub fn type_is_sendable(cx: &ctxt, t: ty::t) -> bool {
-    type_contents(cx, t).is_sendable(cx)
 }
 
 pub fn type_interior_is_unsafe(cx: &ctxt, t: ty::t) -> bool {
@@ -2606,19 +2626,14 @@ pub fn type_contents(cx: &ctxt, ty: t) -> TypeContents {
     fn apply_lang_items(cx: &ctxt,
                         did: ast::DefId,
                         tc: TypeContents)
-                        -> TypeContents {
-        if Some(did) == cx.lang_items.no_send_bound() {
-            tc | TC::ReachesNonsendAnnot
-        } else if Some(did) == cx.lang_items.managed_bound() {
+                        -> TypeContents
+    {
+        if Some(did) == cx.lang_items.managed_bound() {
             tc | TC::Managed
         } else if Some(did) == cx.lang_items.no_copy_bound() {
             tc | TC::OwnsAffine
-        } else if Some(did) == cx.lang_items.no_sync_bound() {
-            tc | TC::ReachesNoSync
         } else if Some(did) == cx.lang_items.unsafe_type() {
-            // FIXME(#13231): This shouldn't be needed after
-            // opt-in built-in bounds are implemented.
-            (tc | TC::InteriorUnsafe) - TC::Nonsync
+            tc | TC::InteriorUnsafe
         } else {
             tc
         }
@@ -2678,10 +2693,9 @@ pub fn type_contents(cx: &ctxt, ty: t) -> TypeContents {
         let mut tc = TC::All;
         each_inherited_builtin_bound(cx, bounds, traits, |bound| {
             tc = tc - match bound {
-                BoundSend => TC::Nonsendable,
+                BoundSync | BoundSend => TC::None,
                 BoundSized => TC::Nonsized,
                 BoundCopy => TC::Noncopy,
-                BoundSync => TC::Nonsync,
             };
         });
         return tc;
@@ -3256,7 +3270,7 @@ pub fn ty_region(tcx: &ctxt,
         ref s => {
             tcx.sess.span_bug(
                 span,
-                format!("ty_region() invoked on in appropriate ty: {:?}",
+                format!("ty_region() invoked on an inappropriate ty: {:?}",
                         s).as_slice());
         }
     }
@@ -3371,7 +3385,7 @@ pub fn adjust_ty(cx: &ctxt,
     return match adjustment {
         Some(adjustment) => {
             match *adjustment {
-                AutoAddEnv(store) => {
+                AdjustAddEnv(store) => {
                     match ty::get(unadjusted_ty).sty {
                         ty::ty_bare_fn(ref b) => {
                             let bounds = ty::ExistentialBounds {
@@ -3397,7 +3411,7 @@ pub fn adjust_ty(cx: &ctxt,
                     }
                 }
 
-                AutoDerefRef(ref adj) => {
+                AdjustDerefRef(ref adj) => {
                     let mut adjusted_ty = unadjusted_ty;
 
                     if !ty::type_is_error(adjusted_ty) {
@@ -3499,54 +3513,6 @@ pub fn unsize_ty(cx: &ctxt,
     }
 }
 
-impl AutoRef {
-    pub fn map_region(&self, f: |Region| -> Region) -> AutoRef {
-        match *self {
-            ty::AutoPtr(r, m, None) => ty::AutoPtr(f(r), m, None),
-            ty::AutoPtr(r, m, Some(ref a)) => ty::AutoPtr(f(r), m, Some(box a.map_region(f))),
-            ty::AutoUnsize(ref k) => ty::AutoUnsize(k.clone()),
-            ty::AutoUnsizeUniq(ref k) => ty::AutoUnsizeUniq(k.clone()),
-            ty::AutoUnsafe(m, None) => ty::AutoUnsafe(m, None),
-            ty::AutoUnsafe(m, Some(ref a)) => ty::AutoUnsafe(m, Some(box a.map_region(f))),
-        }
-    }
-}
-
-pub fn method_call_type_param_defs<'tcx, T>(typer: &T,
-                                            origin: &typeck::MethodOrigin)
-                                            -> VecPerParamSpace<TypeParameterDef>
-                                            where T: mc::Typer<'tcx> {
-    match *origin {
-        typeck::MethodStatic(did) => {
-            ty::lookup_item_type(typer.tcx(), did).generics.types.clone()
-        }
-        typeck::MethodStaticUnboxedClosure(did) => {
-            let def_id = typer.unboxed_closures()
-                              .borrow()
-                              .find(&did)
-                              .expect("method_call_type_param_defs: didn't \
-                                       find unboxed closure")
-                              .kind
-                              .trait_did(typer.tcx());
-            lookup_trait_def(typer.tcx(), def_id).generics.types.clone()
-        }
-        typeck::MethodParam(typeck::MethodParam{
-            trait_ref: ref trait_ref,
-            method_num: n_mth,
-            ..
-        }) |
-        typeck::MethodObject(typeck::MethodObject{
-                trait_ref: ref trait_ref,
-                method_num: n_mth,
-                ..
-        }) => {
-            match ty::trait_item(typer.tcx(), trait_ref.def_id, n_mth) {
-                ty::MethodTraitItem(method) => method.generics.types.clone(),
-            }
-        }
-    }
-}
-
 pub fn resolve_expr(tcx: &ctxt, expr: &ast::Expr) -> def::Def {
     match tcx.def_map.borrow().find(&expr.id) {
         Some(&def) => def,
@@ -3590,6 +3556,9 @@ pub fn expr_kind(tcx: &ctxt, expr: &ast::Expr) -> ExprKind {
             // the index method invoked for `a[i]` always yields an `&T`
             ast::ExprIndex(..) => LvalueExpr,
 
+            // the slice method invoked for `a[..]` always yields an `&T`
+            ast::ExprSlice(..) => LvalueExpr,
+
             // `for` loops are statements
             ast::ExprForLoop(..) => RvalueStmtExpr,
 
@@ -3626,9 +3595,7 @@ pub fn expr_kind(tcx: &ctxt, expr: &ast::Expr) -> ExprKind {
                 // DefArg's, particularly those of immediate type, ought to
                 // considered rvalues.
                 def::DefStatic(..) |
-                def::DefBinding(..) |
                 def::DefUpvar(..) |
-                def::DefArg(..) |
                 def::DefLocal(..) => LvalueExpr,
 
                 def => {
@@ -3644,7 +3611,8 @@ pub fn expr_kind(tcx: &ctxt, expr: &ast::Expr) -> ExprKind {
         ast::ExprUnary(ast::UnDeref, _) |
         ast::ExprField(..) |
         ast::ExprTupField(..) |
-        ast::ExprIndex(..) => {
+        ast::ExprIndex(..) |
+        ast::ExprSlice(..) => {
             LvalueExpr
         }
 
@@ -3763,22 +3731,6 @@ pub fn impl_or_trait_item_idx(id: ast::Ident, trait_items: &[ImplOrTraitItem])
     trait_items.iter().position(|m| m.ident() == id)
 }
 
-/// Returns a vector containing the indices of all type parameters that appear
-/// in `ty`.  The vector may contain duplicates.  Probably should be converted
-/// to a bitset or some other representation.
-pub fn param_tys_in_type(ty: t) -> Vec<ParamTy> {
-    let mut rslt = Vec::new();
-    walk_ty(ty, |ty| {
-        match get(ty).sty {
-          ty_param(p) => {
-            rslt.push(p);
-          }
-          _ => ()
-        }
-    });
-    rslt
-}
-
 pub fn ty_sort_string(cx: &ctxt, t: t) -> String {
     match get(t).sty {
         ty_nil | ty_bot | ty_bool | ty_char | ty_int(_) |
@@ -3789,7 +3741,8 @@ pub fn ty_sort_string(cx: &ctxt, t: t) -> String {
         ty_enum(id, _) => format!("enum {}", item_path_str(cx, id)),
         ty_box(_) => "Gc-ptr".to_string(),
         ty_uniq(_) => "box".to_string(),
-        ty_vec(_, _) => "vector".to_string(),
+        ty_vec(_, Some(_)) => "array".to_string(),
+        ty_vec(_, None) => "unsized array".to_string(),
         ty_ptr(_) => "*-ptr".to_string(),
         ty_rptr(_, _) => "&-ptr".to_string(),
         ty_bare_fn(_) => "extern fn".to_string(),
@@ -4005,12 +3958,19 @@ pub fn provided_trait_methods(cx: &ctxt, id: ast::DefId) -> Vec<Rc<Method>> {
             Some(ast_map::NodeItem(item)) => {
                 match item.node {
                     ItemTrait(_, _, _, ref ms) => {
-                        ms.iter().filter_map(|m| match *m {
-                            ast::RequiredMethod(_) => None,
-                            ast::ProvidedMethod(ref m) => {
-                                match impl_or_trait_item(cx,
-                                        ast_util::local_def(m.id)) {
-                                    MethodTraitItem(m) => Some(m),
+                        let (_, p) =
+                            ast_util::split_trait_methods(ms.as_slice());
+                        p.iter()
+                         .map(|m| {
+                            match impl_or_trait_item(
+                                    cx,
+                                    ast_util::local_def(m.id)) {
+                                MethodTraitItem(m) => m,
+                                TypeTraitItem(_) => {
+                                    cx.sess.bug("provided_trait_methods(): \
+                                                 split_trait_methods() put \
+                                                 associated types in the \
+                                                 provided method bucket?!")
                                 }
                             }
                          }).collect()
@@ -4093,6 +4053,75 @@ pub fn impl_or_trait_item(cx: &ctxt, id: ast::DefId) -> ImplOrTraitItem {
                                      || {
         csearch::get_impl_or_trait_item(cx, id)
     })
+}
+
+/// Returns true if the given ID refers to an associated type and false if it
+/// refers to anything else.
+pub fn is_associated_type(cx: &ctxt, id: ast::DefId) -> bool {
+    let result = match cx.associated_types.borrow_mut().find(&id) {
+        Some(result) => return *result,
+        None if id.krate == ast::LOCAL_CRATE => {
+            match cx.impl_or_trait_items.borrow().find(&id) {
+                Some(ref item) => {
+                    match **item {
+                        TypeTraitItem(_) => true,
+                        MethodTraitItem(_) => false,
+                    }
+                }
+                None => false,
+            }
+        }
+        None => {
+            csearch::is_associated_type(&cx.sess.cstore, id)
+        }
+    };
+
+    cx.associated_types.borrow_mut().insert(id, result);
+    result
+}
+
+/// Returns the parameter index that the given associated type corresponds to.
+pub fn associated_type_parameter_index(cx: &ctxt,
+                                       trait_def: &TraitDef,
+                                       associated_type_id: ast::DefId)
+                                       -> uint {
+    for type_parameter_def in trait_def.generics.types.iter() {
+        if type_parameter_def.def_id == associated_type_id {
+            return type_parameter_def.index
+        }
+    }
+    cx.sess.bug("couldn't find associated type parameter index")
+}
+
+#[deriving(PartialEq, Eq)]
+pub struct AssociatedTypeInfo {
+    pub def_id: ast::DefId,
+    pub index: uint,
+    pub ident: ast::Ident,
+}
+
+impl PartialOrd for AssociatedTypeInfo {
+    fn partial_cmp(&self, other: &AssociatedTypeInfo) -> Option<Ordering> {
+        Some(self.index.cmp(&other.index))
+    }
+}
+
+impl Ord for AssociatedTypeInfo {
+    fn cmp(&self, other: &AssociatedTypeInfo) -> Ordering {
+        self.index.cmp(&other.index)
+    }
+}
+
+/// Returns the associated types belonging to the given trait, in parameter
+/// order.
+pub fn associated_types_for_trait(cx: &ctxt, trait_id: ast::DefId)
+                                  -> Rc<Vec<AssociatedTypeInfo>> {
+    cx.trait_associated_types
+      .borrow()
+      .find(&trait_id)
+      .expect("associated_types_for_trait(): trait not found, try calling \
+               ensure_associated_types()")
+      .clone()
 }
 
 pub fn trait_item_def_ids(cx: &ctxt, id: ast::DefId)
@@ -4506,9 +4535,10 @@ pub fn lookup_field_type(tcx: &ctxt,
         node_id_to_type(tcx, id.node)
     } else {
         let mut tcache = tcx.tcache.borrow_mut();
-        let pty = tcache.find_or_insert_with(id, |_| {
-            csearch::get_field_type(tcx, struct_id, id)
-        });
+        let pty = match tcache.entry(id) {
+            Occupied(entry) => entry.into_mut(),
+            Vacant(entry) => entry.set(csearch::get_field_type(tcx, struct_id, id)),
+        };
         pty.ty
     };
     t.subst(tcx, substs)
@@ -4571,17 +4601,6 @@ pub fn is_tuple_struct(cx: &ctxt, did: ast::DefId) -> bool {
     !fields.is_empty() && fields.iter().all(|f| f.name == token::special_names::unnamed_field)
 }
 
-pub fn lookup_struct_field(cx: &ctxt,
-                           parent: ast::DefId,
-                           field_id: ast::DefId)
-                        -> field_ty {
-    let r = lookup_struct_fields(cx, parent);
-    match r.iter().find(|f| f.id.node == field_id.node) {
-        Some(t) => t.clone(),
-        None => cx.sess.bug("struct ID not found in parent's fields")
-    }
-}
-
 // Returns a list of fields corresponding to the struct's items. trans uses
 // this. Takes a list of substs with which to instantiate field types.
 pub fn struct_fields(cx: &ctxt, did: ast::DefId, substs: &Substs)
@@ -4624,7 +4643,7 @@ pub fn unboxed_closure_upvars(tcx: &ctxt, closure_id: ast::DefId)
                               -> Vec<UnboxedClosureUpvar> {
     if closure_id.krate == ast::LOCAL_CRATE {
         match tcx.freevars.borrow().find(&closure_id.node) {
-            None => tcx.sess.bug("no freevars for unboxed closure?!"),
+            None => vec![],
             Some(ref freevars) => {
                 freevars.iter().map(|freevar| {
                     let freevar_def_id = freevar.def.def_id();
@@ -4864,7 +4883,7 @@ pub fn required_region_bounds(tcx: &ctxt,
         trait_bounds,
         |trait_ref| {
             let bounds = ty::bounds_for_trait_ref(tcx, &*trait_ref);
-            push_region_bounds(bounds.opt_region_bound.as_slice(),
+            push_region_bounds(bounds.region_bounds.as_slice(),
                                bounds.builtin_bounds,
                                &mut all_bounds);
             debug!("from {}: bounds={} all_bounds={}",
@@ -4976,6 +4995,7 @@ pub fn populate_implementations_for_type_if_necessary(tcx: &ctxt,
                            .insert(method_def_id, source);
                     }
                 }
+                TypeTraitItem(_) => {}
             }
         }
 
@@ -5023,6 +5043,7 @@ pub fn populate_implementations_for_trait_if_necessary(
                            .insert(method_def_id, source);
                     }
                 }
+                TypeTraitItem(_) => {}
             }
         }
 
@@ -5106,9 +5127,7 @@ pub fn trait_item_of_item(tcx: &ctxt, def_id: ast::DefId)
         Some(m) => m.clone(),
         None => return None,
     };
-    let name = match impl_item {
-        MethodTraitItem(method) => method.ident.name,
-    };
+    let name = impl_item.ident().name;
     match trait_of_item(tcx, def_id) {
         Some(trait_did) => {
             let trait_items = ty::trait_items(tcx, trait_did);
@@ -5273,7 +5292,8 @@ pub fn empty_parameter_environment() -> ParameterEnvironment {
     ty::ParameterEnvironment { free_substs: Substs::empty(),
                                bounds: VecPerParamSpace::empty(),
                                caller_obligations: VecPerParamSpace::empty(),
-                               implicit_region_bound: ty::ReEmpty }
+                               implicit_region_bound: ty::ReEmpty,
+                               selection_cache: traits::SelectionCache::new(), }
 }
 
 pub fn construct_parameter_environment(
@@ -5345,6 +5365,7 @@ pub fn construct_parameter_environment(
         bounds: bounds,
         implicit_region_bound: ty::ReScope(free_id),
         caller_obligations: obligations,
+        selection_cache: traits::SelectionCache::new(),
     };
 
     fn push_region_params(regions: &mut VecPerParamSpace<ty::Region>,
@@ -5362,6 +5383,11 @@ pub fn construct_parameter_environment(
                             space: subst::ParamSpace,
                             defs: &[TypeParameterDef]) {
         for (i, def) in defs.iter().enumerate() {
+            debug!("construct_parameter_environment(): push_types_from_defs: \
+                    space={} def={} index={}",
+                   space,
+                   def.repr(tcx),
+                   i);
             let ty = ty::mk_param(tcx, space, i, def.def_id);
             types.push(space, ty);
         }
@@ -5477,7 +5503,7 @@ impl<'tcx> mc::Typer<'tcx> for ty::ctxt<'tcx> {
     }
 
     fn capture_mode(&self, closure_expr_id: ast::NodeId)
-                    -> freevars::CaptureMode {
+                    -> ast::CaptureClause {
         self.capture_modes.borrow().get_copy(&closure_expr_id)
     }
 
@@ -5547,4 +5573,25 @@ pub fn accumulate_lifetimes_in_type(accumulator: &mut Vec<ty::Region>,
             ty_err => {}
         }
     })
+}
+
+/// A free variable referred to in a function.
+#[deriving(Encodable, Decodable)]
+pub struct Freevar {
+    /// The variable being accessed free.
+    pub def: def::Def,
+
+    // First span where it is accessed (there can be multiple).
+    pub span: Span
+}
+
+pub type FreevarMap = NodeMap<Vec<Freevar>>;
+
+pub type CaptureModeMap = NodeMap<ast::CaptureClause>;
+
+pub fn with_freevars<T>(tcx: &ty::ctxt, fid: ast::NodeId, f: |&[Freevar]| -> T) -> T {
+    match tcx.freevars.borrow().find(&fid) {
+        None => f(&[]),
+        Some(d) => f(d.as_slice())
+    }
 }

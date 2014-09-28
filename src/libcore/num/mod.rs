@@ -61,10 +61,10 @@ pub trait Zero: Add<Self, Self> {
     ///
     /// # Laws
     ///
-    /// ~~~text
+    /// ```{.text}
     /// a + 0 = a       ∀ a ∈ Self
     /// 0 + a = a       ∀ a ∈ Self
-    /// ~~~
+    /// ```
     ///
     /// # Purity
     ///
@@ -114,10 +114,10 @@ pub trait One: Mul<Self, Self> {
     ///
     /// # Laws
     ///
-    /// ~~~text
+    /// ```{.text}
     /// a * 1 = a       ∀ a ∈ Self
     /// 1 * a = a       ∀ a ∈ Self
-    /// ~~~
+    /// ```
     ///
     /// # Purity
     ///

@@ -15,7 +15,7 @@ pub fn main() {
   }
 
   fn to_string(t: Box<Text>) {
-    println!("{}", t.to_string());
+    println!("{}", (*t).to_string());
   }
 
 }

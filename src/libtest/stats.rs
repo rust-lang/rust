@@ -11,6 +11,7 @@
 #![allow(missing_doc)]
 
 use std::collections::hashmap;
+use std::collections::hashmap::{Occupied, Vacant};
 use std::fmt::Show;
 use std::hash::Hash;
 use std::io;
@@ -261,13 +262,13 @@ impl<'a, T: FloatMath + FromPrimitive> Stats<T> for &'a [T] {
     }
 
     fn percentile(self, pct: T) -> T {
-        let mut tmp = Vec::from_slice(self);
+        let mut tmp = self.to_vec();
         local_sort(tmp.as_mut_slice());
         percentile_of_sorted(tmp.as_slice(), pct)
     }
 
     fn quartiles(self) -> (T,T,T) {
-        let mut tmp = Vec::from_slice(self);
+        let mut tmp = self.to_vec();
         local_sort(tmp.as_mut_slice());
         let first = FromPrimitive::from_uint(25).unwrap();
         let a = percentile_of_sorted(tmp.as_slice(), first);
@@ -318,7 +319,7 @@ fn percentile_of_sorted<T: Float + FromPrimitive>(sorted_samples: &[T],
 ///
 /// See: http://en.wikipedia.org/wiki/Winsorising
 pub fn winsorize<T: Float + FromPrimitive>(samples: &mut [T], pct: T) {
-    let mut tmp = Vec::from_slice(samples);
+    let mut tmp = samples.to_vec();
     local_sort(tmp.as_mut_slice());
     let lo = percentile_of_sorted(tmp.as_slice(), pct);
     let hundred: T = FromPrimitive::from_uint(100).unwrap();
@@ -352,10 +353,9 @@ pub fn write_5_number_summary<T: Float + Show>(w: &mut io::Writer,
 /// As an example, the summary with 5-number-summary `(min=15, q1=17, med=20, q3=24, max=31)` might
 /// display as:
 ///
-/// ~~~~ignore
+/// ```{.ignore}
 ///   10 |        [--****#******----------]          | 40
-/// ~~~~
-
+/// ```
 pub fn write_boxplot<T: Float + Show + FromPrimitive>(
                      w: &mut io::Writer,
                      s: &Summary<T>,
@@ -443,7 +443,10 @@ pub fn write_boxplot<T: Float + Show + FromPrimitive>(
 pub fn freq_count<T: Iterator<U>, U: Eq+Hash>(mut iter: T) -> hashmap::HashMap<U, uint> {
     let mut map: hashmap::HashMap<U,uint> = hashmap::HashMap::new();
     for elem in iter {
-        map.insert_or_update_with(elem, 1, |_, count| *count += 1);
+        match map.entry(elem) {
+            Occupied(mut entry) => { *entry.get_mut() += 1; },
+            Vacant(entry) => { entry.set(1); },
+        }
     }
     map
 }

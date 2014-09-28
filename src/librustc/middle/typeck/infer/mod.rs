@@ -13,20 +13,20 @@
 #![allow(non_camel_case_types)]
 
 pub use middle::ty::IntVarValue;
-pub use middle::typeck::infer::resolve::resolve_and_force_all_but_regions;
-pub use middle::typeck::infer::resolve::{force_all, not_regions};
-pub use middle::typeck::infer::resolve::{force_ivar};
-pub use middle::typeck::infer::resolve::{force_tvar, force_rvar};
-pub use middle::typeck::infer::resolve::{resolve_ivar, resolve_all};
-pub use middle::typeck::infer::resolve::{resolve_nested_tvar};
-pub use middle::typeck::infer::resolve::{resolve_rvar};
+pub use self::resolve::resolve_and_force_all_but_regions;
+pub use self::resolve::{force_all, not_regions};
+pub use self::resolve::{force_ivar};
+pub use self::resolve::{force_tvar, force_rvar};
+pub use self::resolve::{resolve_ivar, resolve_all};
+pub use self::resolve::{resolve_nested_tvar};
+pub use self::resolve::{resolve_rvar};
+pub use self::skolemize::TypeSkolemizer;
 
 use middle::subst;
 use middle::subst::Substs;
 use middle::ty::{TyVid, IntVid, FloatVid, RegionVid};
 use middle::ty;
 use middle::ty_fold;
-use middle::ty_fold::TypeFoldable;
 use middle::ty_fold::TypeFolder;
 use middle::typeck::check::regionmanip::replace_late_bound_regions_in_fn_sig;
 use middle::typeck::infer::coercion::Coerce;
@@ -65,12 +65,6 @@ pub mod type_variable;
 pub mod unify;
 
 pub type Bound<T> = Option<T>;
-
-#[deriving(PartialEq,Clone)]
-pub struct Bounds<T> {
-    pub lb: Bound<T>,
-    pub ub: Bound<T>
-}
 
 pub type cres<T> = Result<T,ty::type_err>; // "combine result"
 pub type ures = cres<()>; // "unify result"
@@ -271,9 +265,7 @@ pub enum RegionVariableOrigin {
 pub enum fixup_err {
     unresolved_int_ty(IntVid),
     unresolved_float_ty(FloatVid),
-    unresolved_ty(TyVid),
-    unresolved_region(RegionVid),
-    region_var_bound_by_region_var(RegionVid, RegionVid)
+    unresolved_ty(TyVid)
 }
 
 pub fn fixup_err_to_string(f: fixup_err) -> String {
@@ -287,11 +279,6 @@ pub fn fixup_err_to_string(f: fixup_err) -> String {
            the type explicitly".to_string()
       }
       unresolved_ty(_) => "unconstrained type".to_string(),
-      unresolved_region(_) => "unconstrained region".to_string(),
-      region_var_bound_by_region_var(r1, r2) => {
-        format!("region var {:?} bound by another region var {:?}; \
-                 this is a bug in rustc", r1, r2)
-      }
     }
 }
 
@@ -393,13 +380,6 @@ pub fn verify_param_bound(cx: &InferCtxt,
            bs.repr(cx.tcx));
 
     cx.region_vars.verify_param_bound(origin, param_ty, a, bs);
-}
-
-pub fn skolemize<T:TypeFoldable+Repr>(cx: &InferCtxt, a: T) -> T {
-    let mut skol = skolemize::TypeSkolemizer::new(cx);
-    let b = a.fold_with(&mut skol);
-    debug!("skol(a={}) -> {}", a.repr(cx.tcx), b.repr(cx.tcx));
-    b
 }
 
 pub fn mk_eqty(cx: &InferCtxt,
@@ -526,6 +506,10 @@ pub struct CombinedSnapshot {
 }
 
 impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
+    pub fn skolemizer<'a>(&'a self) -> TypeSkolemizer<'a, 'tcx> {
+        skolemize::TypeSkolemizer::new(self)
+    }
+
     pub fn combine_fields<'a>(&'a self, a_is_expected: bool, trace: TypeTrace)
                               -> CombineFields<'a, 'tcx> {
         CombineFields {infcx: self,

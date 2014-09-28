@@ -8,7 +8,7 @@
 
 all:
 	$(RUSTC) foo.rs --crate-type=rlib
-	$(RUSTC) bar.rs --crate-type=staticlib -Zlto -L. -o $(TMPDIR)/libbar.a
+	$(RUSTC) bar.rs --crate-type=staticlib -C lto -L. -o $(TMPDIR)/libbar.a
 	$(CC) foo.c -lbar -o $(call RUN_BINFILE,foo) $(EXTRACFLAGS)
 	$(call RUN,foo)
 

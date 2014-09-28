@@ -366,7 +366,7 @@ pub fn enc_existential_bounds(w: &mut SeekableMemWriter, cx: &ctxt, bs: &ty::Exi
 pub fn enc_bounds(w: &mut SeekableMemWriter, cx: &ctxt, bs: &ty::ParamBounds) {
     enc_builtin_bounds(w, cx, &bs.builtin_bounds);
 
-    for &r in bs.opt_region_bound.iter() {
+    for &r in bs.region_bounds.iter() {
         mywrite!(w, "R");
         enc_region(w, cx, r);
     }
@@ -383,6 +383,8 @@ pub fn enc_type_param_def(w: &mut SeekableMemWriter, cx: &ctxt, v: &ty::TypePara
     mywrite!(w, "{}:{}|{}|{}|",
              token::get_ident(v.ident), (cx.ds)(v.def_id),
              v.space.to_uint(), v.index);
+    enc_opt(w, v.associated_with, |w, did| mywrite!(w, "{}", (cx.ds)(did)));
+    mywrite!(w, "|");
     enc_bounds(w, cx, &v.bounds);
     enc_opt(w, v.default, |w, t| enc_ty(w, cx, t));
 }

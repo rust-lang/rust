@@ -555,7 +555,7 @@
         // `rustdoc::html::item_type::ItemType` type in Rust.
         var itemTypes = ["mod",
                          "struct",
-                         "type",
+                         "enum",
                          "fn",
                          "type",
                          "static",

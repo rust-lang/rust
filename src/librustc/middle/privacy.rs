@@ -16,11 +16,10 @@ use std::mem::replace;
 
 use metadata::csearch;
 use middle::def;
-use lint;
 use middle::resolve;
 use middle::ty;
-use middle::typeck::{MethodCall, MethodMap, MethodOrigin, MethodParam};
-use middle::typeck::{MethodStatic, MethodStaticUnboxedClosure, MethodObject};
+use middle::typeck::{MethodCall, MethodMap, MethodOrigin, MethodParam, MethodTypeParam};
+use middle::typeck::{MethodStatic, MethodStaticUnboxedClosure, MethodObject, MethodTraitObject};
 use util::nodemap::{NodeMap, NodeSet};
 
 use syntax::ast;
@@ -82,8 +81,13 @@ impl<'v> Visitor<'v> for ParentVisitor {
             ast::ItemTrait(_, _, _, ref methods) if item.vis != ast::Public => {
                 for m in methods.iter() {
                     match *m {
-                        ast::ProvidedMethod(ref m) => self.parents.insert(m.id, item.id),
-                        ast::RequiredMethod(ref m) => self.parents.insert(m.id, item.id),
+                        ast::ProvidedMethod(ref m) => {
+                            self.parents.insert(m.id, item.id);
+                        }
+                        ast::RequiredMethod(ref m) => {
+                            self.parents.insert(m.id, item.id);
+                        }
+                        ast::TypeTraitItem(_) => {}
                     };
                 }
             }
@@ -272,6 +276,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EmbargoVisitor<'a, 'tcx> {
                                     self.exported_items.insert(method.id);
                                 }
                             }
+                            ast::TypeImplItem(_) => {}
                         }
                     }
                 }
@@ -289,6 +294,10 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EmbargoVisitor<'a, 'tcx> {
                         ast::RequiredMethod(ref m) => {
                             debug!("required {}", m.id);
                             self.exported_items.insert(m.id);
+                        }
+                        ast::TypeTraitItem(ref t) => {
+                            debug!("typedef {}", t.id);
+                            self.exported_items.insert(t.id);
                         }
                     }
                 }
@@ -419,6 +428,31 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
                         }
                     }
                 }
+                Some(&ty::TypeTraitItem(ref typedef)) => {
+                    match typedef.container {
+                        ty::TraitContainer(id) => {
+                            debug!("privacy - recursing on trait {:?}", id);
+                            self.def_privacy(id)
+                        }
+                        ty::ImplContainer(id) => {
+                            match ty::impl_trait_ref(self.tcx, id) {
+                                Some(t) => {
+                                    debug!("privacy - impl of trait {:?}", id);
+                                    self.def_privacy(t.def_id)
+                                }
+                                None => {
+                                    debug!("privacy - found a typedef {:?}",
+                                            typedef.vis);
+                                    if typedef.vis == ast::Public {
+                                        Allowable
+                                    } else {
+                                        ExternallyDenied
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
                 None => {
                     debug!("privacy - nope, not even a method");
                     ExternallyDenied
@@ -469,6 +503,7 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
                                 _ => m.pe_vis()
                             }
                         }
+                        ast::TypeImplItem(_) => return Allowable,
                     }
                 }
                 Some(ast_map::NodeTraitItem(_)) => {
@@ -670,6 +705,7 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
             ty::MethodTraitItem(method_type) => {
                 method_type.provided_source.unwrap_or(method_id)
             }
+            ty::TypeTraitItem(_) => method_id,
         };
 
         let string = token::get_ident(name);
@@ -771,7 +807,8 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
             def::DefFn(..) => ck("function"),
             def::DefStatic(..) => ck("static"),
             def::DefVariant(..) => ck("variant"),
-            def::DefTy(..) => ck("type"),
+            def::DefTy(_, false) => ck("type"),
+            def::DefTy(_, true) => ck("enum"),
             def::DefTrait(..) => ck("trait"),
             def::DefStruct(..) => ck("struct"),
             def::DefMethod(_, Some(..)) => ck("trait method"),
@@ -791,8 +828,8 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
             MethodStaticUnboxedClosure(_) => {}
             // Trait methods are always all public. The only controlling factor
             // is whether the trait itself is accessible or not.
-            MethodParam(MethodParam { trait_ref: ref trait_ref, .. }) |
-            MethodObject(MethodObject { trait_ref: ref trait_ref, .. }) => {
+            MethodTypeParam(MethodParam { trait_ref: ref trait_ref, .. }) |
+            MethodTraitObject(MethodObject { trait_ref: ref trait_ref, .. }) => {
                 self.report_error(self.ensure_public(span, trait_ref.def_id,
                                                      None, "source trait"));
             }
@@ -1109,6 +1146,7 @@ impl<'a, 'tcx> SanePrivacyVisitor<'a, 'tcx> {
                         ast::MethodImplItem(ref m) => {
                             check_inherited(m.span, m.pe_vis(), "");
                         }
+                        ast::TypeImplItem(_) => {}
                     }
                 }
             }
@@ -1148,6 +1186,7 @@ impl<'a, 'tcx> SanePrivacyVisitor<'a, 'tcx> {
                             check_inherited(m.span, m.vis,
                                             "unnecessary visibility");
                         }
+                        ast::TypeTraitItem(_) => {}
                     }
                 }
             }
@@ -1183,6 +1222,7 @@ impl<'a, 'tcx> SanePrivacyVisitor<'a, 'tcx> {
                         ast::MethodImplItem(ref m) => {
                             check_inherited(tcx, m.span, m.pe_vis());
                         }
+                        ast::TypeImplItem(_) => {}
                     }
                 }
             }
@@ -1210,6 +1250,7 @@ impl<'a, 'tcx> SanePrivacyVisitor<'a, 'tcx> {
                         ast::RequiredMethod(..) => {}
                         ast::ProvidedMethod(ref m) => check_inherited(tcx, m.span,
                                                                 m.pe_vis()),
+                        ast::TypeTraitItem(_) => {}
                     }
                 }
             }
@@ -1247,18 +1288,37 @@ impl<'a, 'tcx> VisiblePrivateTypesVisitor<'a, 'tcx> {
         };
         // A path can only be private if:
         // it's in this crate...
-        is_local(did) &&
-            // ... it's not exported (obviously) ...
-            !self.exported_items.contains(&did.node) &&
-            // .. and it corresponds to a type in the AST (this returns None for
-            // type parameters)
-            self.tcx.map.find(did.node).is_some()
+        if !is_local(did) {
+            return false
+        }
+        // .. and it corresponds to a private type in the AST (this returns
+        // None for type parameters)
+        match self.tcx.map.find(did.node) {
+            Some(ast_map::NodeItem(ref item)) => item.vis != ast::Public,
+            Some(_) | None => false,
+        }
     }
 
     fn trait_is_public(&self, trait_id: ast::NodeId) -> bool {
         // FIXME: this would preferably be using `exported_items`, but all
         // traits are exported currently (see `EmbargoVisitor.exported_trait`)
         self.public_items.contains(&trait_id)
+    }
+
+    fn check_ty_param_bound(&self,
+                            span: Span,
+                            ty_param_bound: &ast::TyParamBound) {
+        match *ty_param_bound {
+            ast::TraitTyParamBound(ref trait_ref) => {
+                if !self.tcx.sess.features.borrow().visible_private_types &&
+                        self.path_is_private_type(trait_ref.ref_id) {
+                    self.tcx.sess.span_err(span,
+                                           "private type in exported type \
+                                            parameter bound");
+                }
+            }
+            _ => {}
+        }
     }
 }
 
@@ -1296,7 +1356,15 @@ impl<'a, 'tcx, 'v> Visitor<'v> for VisiblePrivateTypesVisitor<'a, 'tcx> {
             // namespace (the contents have their own privacies).
             ast::ItemForeignMod(_) => {}
 
-            ast::ItemTrait(..) if !self.trait_is_public(item.id) => return,
+            ast::ItemTrait(_, _, ref bounds, _) => {
+                if !self.trait_is_public(item.id) {
+                    return
+                }
+
+                for bound in bounds.iter() {
+                    self.check_ty_param_bound(item.span, bound)
+                }
+            }
 
             // impls need some special handling to try to offer useful
             // error messages without (too many) false positives
@@ -1350,6 +1418,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for VisiblePrivateTypesVisitor<'a, 'tcx> {
                                       ast::MethodImplItem(ref m) => {
                                           self.exported_items.contains(&m.id)
                                       }
+                                      ast::TypeImplItem(_) => false,
                                   }
                               });
 
@@ -1366,6 +1435,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for VisiblePrivateTypesVisitor<'a, 'tcx> {
                                     ast::MethodImplItem(ref method) => {
                                         visit::walk_method_helper(self, &**method)
                                     }
+                                    ast::TypeImplItem(_) => {}
                                 }
                             }
                         }
@@ -1400,6 +1470,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for VisiblePrivateTypesVisitor<'a, 'tcx> {
                                     visit::walk_method_helper(self, &**method);
                                 }
                             }
+                            ast::TypeImplItem(_) => {}
                         }
                     }
                     if found_pub_static {
@@ -1426,6 +1497,19 @@ impl<'a, 'tcx, 'v> Visitor<'v> for VisiblePrivateTypesVisitor<'a, 'tcx> {
         visit::walk_item(self, item);
     }
 
+    fn visit_generics(&mut self, generics: &ast::Generics) {
+        for ty_param in generics.ty_params.iter() {
+            for bound in ty_param.bounds.iter() {
+                self.check_ty_param_bound(ty_param.span, bound)
+            }
+        }
+        for predicate in generics.where_clause.predicates.iter() {
+            for bound in predicate.bounds.iter() {
+                self.check_ty_param_bound(predicate.span, bound)
+            }
+        }
+    }
+
     fn visit_foreign_item(&mut self, item: &ast::ForeignItem) {
         if self.exported_items.contains(&item.id) {
             visit::walk_foreign_item(self, item)
@@ -1443,12 +1527,11 @@ impl<'a, 'tcx, 'v> Visitor<'v> for VisiblePrivateTypesVisitor<'a, 'tcx> {
     fn visit_ty(&mut self, t: &ast::Ty) {
         match t.node {
             ast::TyPath(ref p, _, path_id) => {
-                if self.path_is_private_type(path_id) {
-                    self.tcx.sess.add_lint(
-                        lint::builtin::VISIBLE_PRIVATE_TYPES,
-                        path_id, p.span,
-                        "private type in exported type \
-                         signature".to_string());
+                if !self.tcx.sess.features.borrow().visible_private_types &&
+                        self.path_is_private_type(path_id) {
+                    self.tcx.sess.span_err(p.span,
+                                           "private type in exported type \
+                                            signature");
                 }
             }
             _ => {}

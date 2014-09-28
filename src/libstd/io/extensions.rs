@@ -16,13 +16,14 @@
 // FIXME: Iteration should probably be considered separately
 
 use collections::{Collection, MutableSeq};
-use iter::Iterator;
-use option::{Option, Some, None};
-use result::{Ok, Err};
-use io;
 use io::{IoError, IoResult, Reader};
-use slice::{ImmutableSlice, Slice};
+use io;
+use iter::Iterator;
+use num::Int;
+use option::{Option, Some, None};
 use ptr::RawPtr;
+use result::{Ok, Err};
+use slice::{ImmutableSlice, Slice};
 
 /// An iterator that reads a single byte on each iteration,
 /// until `.read_byte()` returns `EndOfFile`.
@@ -76,16 +77,15 @@ impl<'r, R: Reader> Iterator<IoResult<u8>> for Bytes<'r, R> {
 ///
 /// This function returns the value returned by the callback, for convenience.
 pub fn u64_to_le_bytes<T>(n: u64, size: uint, f: |v: &[u8]| -> T) -> T {
-    use mem::{to_le16, to_le32, to_le64};
     use mem::transmute;
 
     // LLVM fails to properly optimize this when using shifts instead of the to_le* intrinsics
     assert!(size <= 8u);
     match size {
       1u => f(&[n as u8]),
-      2u => f(unsafe { transmute::<_, [u8, ..2]>(to_le16(n as u16)) }),
-      4u => f(unsafe { transmute::<_, [u8, ..4]>(to_le32(n as u32)) }),
-      8u => f(unsafe { transmute::<_, [u8, ..8]>(to_le64(n)) }),
+      2u => f(unsafe { transmute::<_, [u8, ..2]>((n as u16).to_le()) }),
+      4u => f(unsafe { transmute::<_, [u8, ..4]>((n as u32).to_le()) }),
+      8u => f(unsafe { transmute::<_, [u8, ..8]>(n.to_le()) }),
       _ => {
 
         let mut bytes = vec!();
@@ -116,16 +116,15 @@ pub fn u64_to_le_bytes<T>(n: u64, size: uint, f: |v: &[u8]| -> T) -> T {
 ///
 /// This function returns the value returned by the callback, for convenience.
 pub fn u64_to_be_bytes<T>(n: u64, size: uint, f: |v: &[u8]| -> T) -> T {
-    use mem::{to_be16, to_be32, to_be64};
     use mem::transmute;
 
     // LLVM fails to properly optimize this when using shifts instead of the to_be* intrinsics
     assert!(size <= 8u);
     match size {
       1u => f(&[n as u8]),
-      2u => f(unsafe { transmute::<_, [u8, ..2]>(to_be16(n as u16)) }),
-      4u => f(unsafe { transmute::<_, [u8, ..4]>(to_be32(n as u32)) }),
-      8u => f(unsafe { transmute::<_, [u8, ..8]>(to_be64(n)) }),
+      2u => f(unsafe { transmute::<_, [u8, ..2]>((n as u16).to_be()) }),
+      4u => f(unsafe { transmute::<_, [u8, ..4]>((n as u32).to_be()) }),
+      8u => f(unsafe { transmute::<_, [u8, ..8]>(n.to_be()) }),
       _ => {
         let mut bytes = vec!();
         let mut i = size;
@@ -152,7 +151,6 @@ pub fn u64_to_be_bytes<T>(n: u64, size: uint, f: |v: &[u8]| -> T) -> T {
 ///           32-bit value is parsed.
 pub fn u64_from_be_bytes(data: &[u8], start: uint, size: uint) -> u64 {
     use ptr::{copy_nonoverlapping_memory};
-    use mem::from_be64;
     use slice::MutableSlice;
 
     assert!(size <= 8u);
@@ -166,7 +164,7 @@ pub fn u64_from_be_bytes(data: &[u8], start: uint, size: uint) -> u64 {
         let ptr = data.as_ptr().offset(start as int);
         let out = buf.as_mut_ptr();
         copy_nonoverlapping_memory(out.offset((8 - size) as int), ptr, size);
-        from_be64(*(out as *const u64))
+        (*(out as *const u64)).to_be()
     }
 }
 

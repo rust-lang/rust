@@ -303,7 +303,7 @@ impl rtio::RtioFileStream for CFile {
         self.flush().and_then(|()| self.fd.fsync())
     }
     fn datasync(&mut self) -> IoResult<()> {
-        self.flush().and_then(|()| self.fd.fsync())
+        self.flush().and_then(|()| self.fd.datasync())
     }
     fn truncate(&mut self, offset: i64) -> IoResult<()> {
         self.flush().and_then(|()| self.fd.truncate(offset))
@@ -506,7 +506,7 @@ mod tests {
     use std::os;
     use std::rt::rtio::{RtioFileStream, SeekSet};
 
-    #[ignore(cfg(target_os = "freebsd"))] // hmm, maybe pipes have a tiny buffer
+    #[cfg_attr(target_os = "freebsd", ignore)] // hmm, maybe pipes have a tiny buffer
     #[test]
     fn test_file_desc() {
         // Run this test with some pipes so we don't have to mess around with

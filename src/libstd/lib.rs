@@ -112,7 +112,6 @@
 // Don't link to std. We are std.
 #![no_std]
 
-#![allow(deprecated)]
 #![deny(missing_doc)]
 
 #![reexport_test_harness_main = "test_main"]
@@ -263,7 +262,6 @@ pub mod fmt;
 
 // FIXME #7809: This shouldn't be pub, and it should be reexported under 'unstable'
 // but name resolution doesn't work without it being pub.
-#[unstable]
 pub mod rt;
 mod failure;
 

@@ -10,17 +10,17 @@
 
 #![feature(overloaded_calls)]
 
-fn a<F:|&: int, int| -> int>(mut f: F) {
+fn a<F:Fn(int, int) -> int>(mut f: F) {
     let g = &mut f;
     f(1, 2);    //~ ERROR cannot borrow `f` as immutable
     //~^ ERROR cannot borrow `f` as immutable
 }
 
-fn b<F:|&mut: int, int| -> int>(f: F) {
-    f(1, 2);    //~ ERROR cannot borrow immutable argument
+fn b<F:FnMut(int, int) -> int>(f: F) {
+    f(1, 2);    //~ ERROR cannot borrow immutable local variable
 }
 
-fn c<F:|: int, int| -> int>(f: F) {
+fn c<F:FnOnce(int, int) -> int>(f: F) {
     f(1, 2);
     f(1, 2);    //~ ERROR use of moved value
 }

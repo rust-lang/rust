@@ -21,7 +21,7 @@
 ///
 /// # Example
 ///
-/// ~~~rust
+/// ```{.rust}
 /// bitflags! {
 ///     flags Flags: u32 {
 ///         static FlagA       = 0x00000001,
@@ -41,11 +41,11 @@
 ///     assert!((e1 - e2) == FlagA);     // set difference
 ///     assert!(!e2 == FlagA);           // set complement
 /// }
-/// ~~~
+/// ```
 ///
 /// The generated `struct`s can also be extended with type and trait implementations:
 ///
-/// ~~~rust
+/// ```{.rust}
 /// use std::fmt;
 ///
 /// bitflags! {
@@ -74,7 +74,7 @@
 ///     assert!(flags.is_empty());
 ///     assert_eq!(format!("{}", flags).as_slice(), "hi!");
 /// }
-/// ~~~
+/// ```
 ///
 /// # Attributes
 ///
@@ -170,6 +170,7 @@ macro_rules! bitflags {
             }
 
             /// Returns `true` all of the flags in `other` are contained within `self`.
+            #[inline]
             pub fn contains(&self, other: $BitFlags) -> bool {
                 (self & other) == other
             }
@@ -222,7 +223,7 @@ macro_rules! bitflags {
     }) => {
         bitflags! {
             $(#[$attr])*
-            flags $BitFlags: u32 {
+            flags $BitFlags: $T {
                 $($(#[$Flag_attr])* static $Flag = $value),+
             }
         }
@@ -251,6 +252,12 @@ mod tests {
             static FlagABC     = FlagA.bits
                                | FlagB.bits
                                | FlagC.bits,
+        }
+    }
+
+    bitflags! {
+        flags AnotherSetOfFlags: uint {
+            static AnotherFlag = 1u,
         }
     }
 

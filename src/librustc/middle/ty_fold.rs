@@ -287,7 +287,7 @@ impl TypeFoldable for ty::ExistentialBounds {
 impl TypeFoldable for ty::ParamBounds {
     fn fold_with<'tcx, F: TypeFolder<'tcx>>(&self, folder: &mut F) -> ty::ParamBounds {
         ty::ParamBounds {
-            opt_region_bound: self.opt_region_bound.fold_with(folder),
+            region_bounds: self.region_bounds.fold_with(folder),
             builtin_bounds: self.builtin_bounds.fold_with(folder),
             trait_bounds: self.trait_bounds.fold_with(folder),
         }
@@ -301,6 +301,7 @@ impl TypeFoldable for ty::TypeParameterDef {
             def_id: self.def_id,
             space: self.space,
             index: self.index,
+            associated_with: self.associated_with,
             bounds: self.bounds.fold_with(folder),
             default: self.default.fold_with(folder),
         }
@@ -352,9 +353,9 @@ impl TypeFoldable for traits::Obligation {
     }
 }
 
-impl<N:TypeFoldable> TypeFoldable for traits::VtableImpl<N> {
-    fn fold_with<'tcx, F:TypeFolder<'tcx>>(&self, folder: &mut F) -> traits::VtableImpl<N> {
-        traits::VtableImpl {
+impl<N:TypeFoldable> TypeFoldable for traits::VtableImplData<N> {
+    fn fold_with<'tcx, F:TypeFolder<'tcx>>(&self, folder: &mut F) -> traits::VtableImplData<N> {
+        traits::VtableImplData {
             impl_def_id: self.impl_def_id,
             substs: self.substs.fold_with(folder),
             nested: self.nested.fold_with(folder),
@@ -373,9 +374,9 @@ impl<N:TypeFoldable> TypeFoldable for traits::Vtable<N> {
     }
 }
 
-impl TypeFoldable for traits::VtableParam {
-    fn fold_with<'tcx, F:TypeFolder<'tcx>>(&self, folder: &mut F) -> traits::VtableParam {
-        traits::VtableParam {
+impl TypeFoldable for traits::VtableParamData {
+    fn fold_with<'tcx, F:TypeFolder<'tcx>>(&self, folder: &mut F) -> traits::VtableParamData {
+        traits::VtableParamData {
             bound: self.bound.fold_with(folder),
         }
     }

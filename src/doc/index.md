@@ -46,7 +46,7 @@ development of Rust itself is discussed.
 # Specification
 
 Rust does not have an exact specification, but an effort to describe as much of
-the language in as much detail as possible is in [the manual](rust.html).
+the language in as much detail as possible is in [the reference](reference.html).
 
 # Guides
 
@@ -86,10 +86,10 @@ There are questions that are asked quite often, and so we've made FAQs for them:
 
 # The standard library
 
-You can find function-level documentation for the entire standard library
-[here](std/index.html). There's a list of crates on the left with more specific
-sections, or you can use the search bar at the top to search for something if
-you know its name.
+We have [API documentation for the entire standard
+library](std/index.html). There's a list of crates on the left with more
+specific sections, or you can use the search bar at the top to search for
+something if you know its name.
 
 # External documentation
 

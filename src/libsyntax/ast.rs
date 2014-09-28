@@ -213,11 +213,19 @@ pub static DUMMY_NODE_ID: NodeId = -1;
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
 pub enum TyParamBound {
     TraitTyParamBound(TraitRef),
-    UnboxedFnTyParamBound(UnboxedFnTy),
+    UnboxedFnTyParamBound(P<UnboxedFnBound>),
     RegionTyParamBound(Lifetime)
 }
 
 pub type TyParamBounds = OwnedSlice<TyParamBound>;
+
+#[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
+pub struct UnboxedFnBound {
+    pub path: Path,
+    pub decl: P<FnDecl>,
+    pub lifetimes: Vec<LifetimeDef>,
+    pub ref_id: NodeId,
+}
 
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
 pub struct TyParam {
@@ -531,6 +539,7 @@ pub enum Expr_ {
     ExprField(P<Expr>, SpannedIdent, Vec<P<Ty>>),
     ExprTupField(P<Expr>, Spanned<uint>, Vec<P<Ty>>),
     ExprIndex(P<Expr>, P<Expr>),
+    ExprSlice(P<Expr>, Option<P<Expr>>, Option<P<Expr>>, Mutability),
 
     /// Variable reference, possibly containing `::` and/or
     /// type parameters, e.g. foo::bar::<baz>
@@ -553,6 +562,18 @@ pub enum Expr_ {
 
     /// No-op: used solely so we can pretty-print faithfully
     ExprParen(P<Expr>)
+}
+
+/// A "qualified path":
+///
+///     <Vec<T> as SomeTrait>::SomeAssociatedItem
+///      ^~~~~     ^~~~~~~~~   ^~~~~~~~~~~~~~~~~~
+///      for_type  trait_name  item_name
+#[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
+pub struct QPath {
+    pub for_type: P<Ty>,
+    pub trait_name: Path,
+    pub item_name: Ident,
 }
 
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
@@ -766,11 +787,31 @@ pub struct TypeMethod {
 pub enum TraitItem {
     RequiredMethod(TypeMethod),
     ProvidedMethod(P<Method>),
+    TypeTraitItem(P<AssociatedType>),
 }
 
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
 pub enum ImplItem {
     MethodImplItem(P<Method>),
+    TypeImplItem(P<Typedef>),
+}
+
+#[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
+pub struct AssociatedType {
+    pub id: NodeId,
+    pub span: Span,
+    pub ident: Ident,
+    pub attrs: Vec<Attribute>,
+}
+
+#[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
+pub struct Typedef {
+    pub id: NodeId,
+    pub span: Span,
+    pub ident: Ident,
+    pub vis: Visibility,
+    pub attrs: Vec<Attribute>,
+    pub typ: P<Ty>,
 }
 
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash)]
@@ -917,6 +958,8 @@ pub enum Ty_ {
     TyUnboxedFn(P<UnboxedFnTy>),
     TyTup(Vec<P<Ty>> ),
     TyPath(Path, Option<TyParamBounds>, NodeId), // for #7264; see above
+    /// A "qualified path", e.g. `<Vec<T> as SomeTrait>::SomeType`
+    TyQPath(P<QPath>),
     /// No-op; kept solely so that we can pretty-print faithfully
     TyParen(P<Ty>),
     TyTypeof(P<Expr>),
@@ -1177,6 +1220,7 @@ pub struct Attribute_ {
 pub struct TraitRef {
     pub path: Path,
     pub ref_id: NodeId,
+    pub lifetimes: Vec<LifetimeDef>,
 }
 
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
@@ -1279,6 +1323,22 @@ pub enum Item_ {
     ItemMac(Mac),
 }
 
+impl Item_ {
+    pub fn descriptive_variant(&self) -> &str {
+        match *self {
+            ItemStatic(..) => "static item",
+            ItemFn(..) => "function",
+            ItemMod(..) => "module",
+            ItemForeignMod(..) => "foreign module",
+            ItemTy(..) => "type alias",
+            ItemEnum(..) => "enum",
+            ItemStruct(..) => "struct",
+            ItemTrait(..) => "trait",
+            _ => "item"
+        }
+    }
+}
+
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
 pub struct ForeignItem {
     pub ident: Ident,
@@ -1293,6 +1353,15 @@ pub struct ForeignItem {
 pub enum ForeignItem_ {
     ForeignItemFn(P<FnDecl>, Generics),
     ForeignItemStatic(P<Ty>, /* is_mutbl */ bool),
+}
+
+impl ForeignItem_ {
+    pub fn descriptive_variant(&self) -> &str {
+        match *self {
+            ForeignItemFn(..) => "foreign function",
+            ForeignItemStatic(..) => "foreign static item"
+        }
+    }
 }
 
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
@@ -1329,7 +1398,7 @@ mod test {
                 inner: Span {
                     lo: BytePos(11),
                     hi: BytePos(19),
-                    expn_info: None,
+                    expn_id: NO_EXPANSION,
                 },
                 view_items: Vec::new(),
                 items: Vec::new(),
@@ -1339,7 +1408,7 @@ mod test {
             span: Span {
                 lo: BytePos(10),
                 hi: BytePos(20),
-                expn_info: None,
+                expn_id: NO_EXPANSION,
             },
             exported_macros: Vec::new(),
         };

@@ -12,5 +12,6 @@ extern crate debug;
 
 fn main() {
     // Unconstrained type:
-    format!("{:?}", None); //~ ERROR: E0101
+    format!("{:?}", None);
+    //~^ ERROR type annotations required
 }

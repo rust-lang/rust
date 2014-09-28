@@ -46,7 +46,7 @@ impl UnixStream {
     ///
     /// ```rust
     /// # #![allow(unused_must_use)]
-    /// use std::io::net::unix::UnixStream;
+    /// use std::io::net::pipe::UnixStream;
     ///
     /// let server = Path::new("path/to/my/socket");
     /// let mut stream = UnixStream::connect(&server);
@@ -164,7 +164,7 @@ impl UnixListener {
     /// # fn main() {}
     /// # fn foo() {
     /// # #![allow(unused_must_use)]
-    /// use std::io::net::unix::UnixListener;
+    /// use std::io::net::pipe::UnixListener;
     /// use std::io::{Listener, Acceptor};
     ///
     /// let server = Path::new("/path/to/my/socket");
@@ -320,7 +320,7 @@ mod tests {
         }, proc(_client) {
             // drop the client
         })
-    } #[ignore(cfg(windows))]) // FIXME(#12516)
+    } #[cfg_attr(windows, ignore)]) // FIXME(#12516)
 
     iotest!(fn write_begone() {
         smalltest(proc(mut server) {
@@ -751,6 +751,7 @@ mod tests {
         assert!(a2.accept().is_ok());
     })
 
+    #[cfg(not(windows))] // FIXME #17553
     iotest!(fn clone_accept_concurrent() {
         let addr = next_test_unix();
         let l = UnixListener::bind(&addr);

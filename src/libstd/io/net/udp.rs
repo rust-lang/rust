@@ -273,7 +273,7 @@ mod test {
             Ok(..) => fail!(),
             Err(e) => assert_eq!(e.kind, PermissionDenied),
         }
-    } #[ignore(cfg(windows))] #[ignore(cfg(target_os = "android"))])
+    } #[cfg_attr(any(windows, target_os = "android"), ignore)])
 
     iotest!(fn socket_smoke_test_ip4() {
         let server_ip = next_test_ip4();
@@ -545,6 +545,7 @@ mod test {
         serv_rx.recv();
     })
 
+    #[cfg(not(windows))] // FIXME #17553
     iotest!(fn recv_from_timeout() {
         let addr1 = next_test_ip4();
         let addr2 = next_test_ip4();

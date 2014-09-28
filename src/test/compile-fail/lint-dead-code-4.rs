@@ -19,7 +19,7 @@ use std::num;
 
 struct Foo {
     x: uint,
-    b: bool, //~ ERROR: code is never used
+    b: bool, //~ ERROR: struct field is never used
     marker: std::kinds::marker::NoCopy
 }
 
@@ -28,10 +28,10 @@ fn field_read(f: Foo) -> uint {
 }
 
 enum XYZ {
-    X,
-    Y {
+    X, //~ ERROR variant is never used
+    Y { //~ ERROR variant is never used
         a: String,
-        b: int //~ ERROR: code is never used
+        b: int //~ ERROR: struct field is never used
     },
     Z
 }
@@ -44,7 +44,7 @@ fn field_match_in_patterns(b: XYZ) -> String {
 }
 
 struct Bar {
-    x: uint, //~ ERROR: code is never used
+    x: uint, //~ ERROR: struct field is never used
     b: bool,
     _guard: ()
 }

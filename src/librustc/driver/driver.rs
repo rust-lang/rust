@@ -17,7 +17,7 @@ use lint;
 use llvm::{ContextRef, ModuleRef};
 use metadata::common::LinkMeta;
 use metadata::creader;
-use middle::{trans, freevars, stability, kind, ty, typeck, reachable};
+use middle::{trans, stability, ty, typeck, reachable};
 use middle::dependency_format;
 use middle;
 use plugin::load::Plugins;
@@ -378,11 +378,13 @@ pub fn phase_3_run_analysis_passes<'tcx>(sess: Session,
                           middle::lang_items::collect_language_items(krate, &sess));
 
     let middle::resolve::CrateMap {
-        def_map: def_map,
-        exp_map2: exp_map2,
-        trait_map: trait_map,
-        external_exports: external_exports,
-        last_private_map: last_private_map
+        def_map,
+        freevars,
+        capture_mode_map,
+        exp_map2,
+        trait_map,
+        external_exports,
+        last_private_map
     } =
         time(time_passes, "resolution", (), |_|
              middle::resolve::resolve_crate(&sess, &lang_items, krate));
@@ -401,10 +403,6 @@ pub fn phase_3_run_analysis_passes<'tcx>(sess: Session,
             plugin::build::find_plugin_registrar(
                 sess.diagnostic(), krate)));
 
-    let (freevars, capture_modes) =
-        time(time_passes, "freevar finding", (), |_|
-             freevars::annotate_freevars(&def_map, krate));
-
     let region_map = time(time_passes, "region resolution", (), |_|
                           middle::region::resolve_crate(&sess, krate));
 
@@ -414,13 +412,16 @@ pub fn phase_3_run_analysis_passes<'tcx>(sess: Session,
     let stability_index = time(time_passes, "stability index", (), |_|
                                stability::Index::build(krate));
 
+    time(time_passes, "static item recursion checking", (), |_|
+         middle::check_static_recursion::check_crate(&sess, krate, &def_map, &ast_map));
+
     let ty_cx = ty::mk_ctxt(sess,
                             type_arena,
                             def_map,
                             named_region_map,
                             ast_map,
                             freevars,
-                            capture_modes,
+                            capture_mode_map,
                             region_map,
                             lang_items,
                             stability_index);
@@ -461,8 +462,12 @@ pub fn phase_3_run_analysis_passes<'tcx>(sess: Session,
     time(time_passes, "rvalue checking", (), |_|
          middle::check_rvalues::check_crate(&ty_cx, krate));
 
-    time(time_passes, "kind checking", (), |_|
-         kind::check_crate(&ty_cx));
+    // Avoid overwhelming user with errors if type checking failed.
+    // I'm not sure how helpful this is, to be honest, but it avoids a
+    // lot of annoying errors in the compile-fail tests (basically,
+    // lint warnings and so on -- kindck used to do this abort, but
+    // kindck is gone now). -nmatsakis
+    ty_cx.sess.abort_if_errors();
 
     let reachable_map =
         time(time_passes, "reachability checking", (), |_|

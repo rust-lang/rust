@@ -175,6 +175,9 @@ impl<'a> fold::DocFolder for Stripper<'a> {
 
             // Primitives are never stripped
             clean::PrimitiveItem(..) => {}
+
+            // Associated types are never stripped
+            clean::AssociatedTypeItem(..) => {}
         }
 
         let fastreturn = match i.inner {
@@ -273,7 +276,7 @@ pub fn collapse_docs(krate: clean::Crate) -> plugins::PluginResult {
                     clean::NameValue(ref x, ref s)
                             if "doc" == x.as_slice() => {
                         docstr.push_str(s.as_slice());
-                        docstr.push_char('\n');
+                        docstr.push('\n');
                     },
                     _ => ()
                 }

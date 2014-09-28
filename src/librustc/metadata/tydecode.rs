@@ -630,6 +630,10 @@ fn parse_type_param_def(st: &mut PState, conv: conv_did) -> ty::TypeParameterDef
     assert_eq!(next(st), '|');
     let index = parse_uint(st);
     assert_eq!(next(st), '|');
+    let associated_with = parse_opt(st, |st| {
+        parse_def(st, NominalType, |x,y| conv(x,y))
+    });
+    assert_eq!(next(st), '|');
     let bounds = parse_bounds(st, |x,y| conv(x,y));
     let default = parse_opt(st, |st| parse_ty(st, |x,y| conv(x,y)));
 
@@ -638,6 +642,7 @@ fn parse_type_param_def(st: &mut PState, conv: conv_did) -> ty::TypeParameterDef
         def_id: def_id,
         space: space,
         index: index,
+        associated_with: associated_with,
         bounds: bounds,
         default: default
     }
@@ -680,14 +685,14 @@ fn parse_bounds(st: &mut PState, conv: conv_did) -> ty::ParamBounds {
     let builtin_bounds = parse_builtin_bounds(st, |x,y| conv(x,y));
 
     let mut param_bounds = ty::ParamBounds {
-        opt_region_bound: None,
+        region_bounds: Vec::new(),
         builtin_bounds: builtin_bounds,
         trait_bounds: Vec::new()
     };
     loop {
         match next(st) {
             'R' => {
-                param_bounds.opt_region_bound = Some(parse_region(st, |x, y| conv (x, y)));
+                param_bounds.region_bounds.push(parse_region(st, |x, y| conv (x, y)));
             }
             'I' => {
                 param_bounds.trait_bounds.push(Rc::new(parse_trait_ref(st, |x,y| conv(x,y))));

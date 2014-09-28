@@ -34,6 +34,7 @@
 //! both occur before the crate is rendered.
 
 use std::collections::{HashMap, HashSet};
+use std::collections::hashmap::{Occupied, Vacant};
 use std::fmt;
 use std::io::fs::PathExtensions;
 use std::io::{fs, File, BufferedWriter, MemWriter, BufferedReader};
@@ -177,7 +178,7 @@ pub struct Cache {
     pub extern_locations: HashMap<ast::CrateNum, ExternalLocation>,
 
     /// Cache of where documentation for primitives can be found.
-    pub primitive_locations: HashMap<clean::Primitive, ast::CrateNum>,
+    pub primitive_locations: HashMap<clean::PrimitiveType, ast::CrateNum>,
 
     /// Set of definitions which have been inlined from external crates.
     pub inlined: HashSet<ast::DefId>,
@@ -308,6 +309,7 @@ pub fn run(mut krate: clean::Crate, external_html: &ExternalHtml, dst: Path) -> 
                 clean::TypeModule => item_type::Module,
                 clean::TypeStatic => item_type::Static,
                 clean::TypeVariant => item_type::Variant,
+                clean::TypeTypedef => item_type::Typedef,
             }))
         }).collect()
     }).unwrap_or(HashMap::new());
@@ -739,8 +741,9 @@ impl<'a> SourceCollector<'a> {
             root_path.push_str("../");
         });
 
-        cur.push(Vec::from_slice(p.filename().expect("source has no filename"))
-                 .append(b".html"));
+        let mut fname = p.filename().expect("source has no filename").to_vec();
+        fname.extend(".html".bytes());
+        cur.push(fname);
         let mut w = BufferedWriter::new(try!(File::create(&cur)));
 
         let title = format!("{} -- source", cur.filename_display());
@@ -800,9 +803,10 @@ impl DocFolder for Cache {
             clean::ImplItem(ref i) => {
                 match i.trait_ {
                     Some(clean::ResolvedPath{ did, .. }) => {
-                        let v = self.implementors.find_or_insert_with(did, |_| {
-                            Vec::new()
-                        });
+                        let v = match self.implementors.entry(did) {
+                            Vacant(entry) => entry.set(Vec::with_capacity(1)),
+                            Occupied(entry) => entry.into_mut(),
+                        };
                         v.push(Implementor {
                             def_id: item.def_id,
                             generics: i.generics.clone(),
@@ -997,9 +1001,10 @@ impl DocFolder for Cache {
 
                         match did {
                             Some(did) => {
-                                let v = self.impls.find_or_insert_with(did, |_| {
-                                    Vec::new()
-                                });
+                                let v = match self.impls.entry(did) {
+                                    Vacant(entry) => entry.set(Vec::with_capacity(1)),
+                                    Occupied(entry) => entry.into_mut(),
+                                };
                                 v.push(Impl {
                                     impl_: i,
                                     dox: dox,
@@ -1078,7 +1083,8 @@ impl Context {
             let mut json_out = BufferedWriter::new(try!(File::create(json_dst)));
             try!(stability.encode(&mut json::Encoder::new(&mut json_out)));
 
-            let title = stability.name.clone().append(" - Stability dashboard");
+            let mut title = stability.name.clone();
+            title.push_str(" - Stability dashboard");
             let desc = format!("API stability overview for the Rust `{}` crate.",
                                this.layout.krate);
             let page = layout::Page {
@@ -1511,6 +1517,7 @@ fn item_module(w: &mut fmt::Formatter, cx: &Context,
                 clean::ForeignStaticItem(..)   => ("ffi-statics", "Foreign Statics"),
                 clean::MacroItem(..)           => ("macros", "Macros"),
                 clean::PrimitiveItem(..)       => ("primitives", "Primitive Types"),
+                clean::AssociatedTypeItem(..)  => ("associated-types", "Associated Types"),
             };
             try!(write!(w,
                         "<h2 id='{id}' class='section-header'>\
@@ -1635,7 +1642,7 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
                                   _ => false,
                               }
                           })
-                          .collect::<Vec<&clean::TraitItem>>();
+                          .collect::<Vec<&clean::TraitMethod>>();
     let provided = t.items.iter()
                           .filter(|m| {
                               match **m {
@@ -1643,7 +1650,7 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
                                   _ => false,
                               }
                           })
-                          .collect::<Vec<&clean::TraitItem>>();
+                          .collect::<Vec<&clean::TraitMethod>>();
 
     if t.items.len() == 0 {
         try!(write!(w, "{{ }}"));
@@ -1669,7 +1676,7 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
     // Trait documentation
     try!(document(w, it));
 
-    fn trait_item(w: &mut fmt::Formatter, m: &clean::TraitItem)
+    fn trait_item(w: &mut fmt::Formatter, m: &clean::TraitMethod)
                   -> fmt::Result {
         try!(write!(w, "<h3 id='{}.{}' class='method'>{}<code>",
                     shortty(m.item()),
@@ -2139,7 +2146,10 @@ fn build_sidebar(m: &clean::Module) -> HashMap<String, Vec<String>> {
             None => continue,
             Some(ref s) => s.to_string(),
         };
-        let v = map.find_or_insert_with(short.to_string(), |_| Vec::new());
+        let v = match map.entry(short.to_string()) {
+            Vacant(entry) => entry.set(Vec::with_capacity(1)),
+            Occupied(entry) => entry.into_mut(),
+        };
         v.push(myname);
     }
 
@@ -2178,7 +2188,7 @@ fn item_macro(w: &mut fmt::Formatter, it: &clean::Item,
 
 fn item_primitive(w: &mut fmt::Formatter,
                   it: &clean::Item,
-                  _p: &clean::Primitive) -> fmt::Result {
+                  _p: &clean::PrimitiveType) -> fmt::Result {
     try!(document(w, it));
     render_methods(w, it)
 }
