@@ -12,9 +12,9 @@
 
 fn foo(x: int) { println!("{}", x); }
 
-#[cfg(target_arch = "x86")]
-#[cfg(target_arch = "x86_64")]
-#[cfg(target_arch = "arm")]
+#[cfg(any(target_arch = "x86",
+          target_arch = "x86_64",
+          target_arch = "arm"))]
 pub fn main() {
     let x: int;
     x = 1; //~ NOTE prior assignment occurs here
@@ -25,5 +25,5 @@ pub fn main() {
     foo(x);
 }
 
-#[cfg(not(target_arch = "x86"), not(target_arch = "x86_64"), not(target_arch = "arm"))]
+#[cfg(not(any(target_arch = "x86", target_arch = "x86_64", target_arch = "arm")))]
 pub fn main() {}
