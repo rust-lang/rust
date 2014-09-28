@@ -25,33 +25,10 @@ pub fn expand(cx: &mut ExtCtxt, sp: Span, mi: &ast::MetaItem, it: P<ast::Item>) 
     };
 
     let mut out = (*it).clone();
-    if cfg_matches(cx, &**cfg) {
+    if attr::cfg_matches(&cx.parse_sess.span_diagnostic, cx.cfg.as_slice(), &**cfg) {
         out.attrs.push(cx.attribute(attr.span, attr.clone()));
     }
 
     P(out)
 }
 
-fn cfg_matches(cx: &mut ExtCtxt, cfg: &ast::MetaItem) -> bool {
-    match cfg.node {
-        ast::MetaList(ref pred, ref mis) if pred.get() == "any" =>
-            mis.iter().any(|mi| cfg_matches(cx, &**mi)),
-        ast::MetaList(ref pred, ref mis) if pred.get() == "all" =>
-            mis.iter().all(|mi| cfg_matches(cx, &**mi)),
-        ast::MetaList(ref pred, ref mis) if pred.get() == "not" => {
-            if mis.len() != 1 {
-                cx.span_err(cfg.span, format!("expected 1 value, got {}",
-                                              mis.len()).as_slice());
-                return false;
-            }
-            !cfg_matches(cx, &*mis[0])
-        }
-        ast::MetaList(ref pred, _) => {
-            cx.span_err(cfg.span,
-                        format!("invalid predicate `{}`", pred).as_slice());
-            false
-        },
-        ast::MetaWord(_) | ast::MetaNameValue(..) =>
-            attr::contains(cx.cfg.as_slice(), cfg),
-    }
-}
