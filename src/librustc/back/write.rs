@@ -345,7 +345,7 @@ unsafe extern "C" fn inline_asm_handler(diag: SMDiagnosticRef,
 
     match cgcx.lto_ctxt {
         Some((sess, _)) => {
-            sess.codemap().with_expn_info(ExpnId(cookie as u32), |info| match info {
+            sess.codemap().with_expn_info(ExpnId::from_llvm_cookie(cookie), |info| match info {
                 Some(ei) => sess.span_err(ei.call_site, msg.as_slice()),
                 None     => sess.err(msg.as_slice()),
             });

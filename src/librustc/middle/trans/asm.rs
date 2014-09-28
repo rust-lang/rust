@@ -149,7 +149,7 @@ pub fn trans_inline_asm<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, ia: &ast::InlineAsm)
         let kind = llvm::LLVMGetMDKindIDInContext(bcx.ccx().llcx(),
             key.as_ptr() as *const c_char, key.len() as c_uint);
 
-        let val: llvm::ValueRef = C_i32(bcx.ccx(), ia.expn_id as i32);
+        let val: llvm::ValueRef = C_i32(bcx.ccx(), ia.expn_id.to_llvm_cookie());
 
         llvm::LLVMSetMetadata(r, kind,
             llvm::LLVMMDNodeInContext(bcx.ccx().llcx(), &val, 1));
