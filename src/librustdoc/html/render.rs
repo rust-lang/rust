@@ -1304,7 +1304,7 @@ impl<'a> Item<'a> {
 impl<'a> fmt::Show for Item<'a> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         // Write the breadcrumb trail header for the top
-        try!(write!(fmt, "\n<h1 class='fqn'><div class='in-band'>"));
+        try!(write!(fmt, "\n<h1 class='fqn'><span class='in-band'>"));
         match self.item.inner {
             clean::ModuleItem(ref m) => if m.is_crate {
                     try!(write!(fmt, "Crate "));
@@ -1337,8 +1337,9 @@ impl<'a> fmt::Show for Item<'a> {
         // Write stability level
         try!(write!(fmt, "<wbr>{}", Stability(&self.item.stability)));
 
+        try!(write!(fmt, "</span>")); // in-band
         // Links to out-of-band information, i.e. src and stability dashboard
-        try!(write!(fmt, "</div><div class='out-of-band'>"));
+        try!(write!(fmt, "<span class='out-of-band'>"));
 
         // Write stability dashboard link
         match self.item.inner {
@@ -1370,7 +1371,7 @@ impl<'a> fmt::Show for Item<'a> {
             }
         }
 
-        try!(write!(fmt, "</div>"));
+        try!(write!(fmt, "</span>")); // out-of-band
 
         try!(write!(fmt, "</h1>\n"));
 
