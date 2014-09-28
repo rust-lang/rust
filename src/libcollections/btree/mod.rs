@@ -15,6 +15,8 @@ pub use self::map::MoveEntries;
 pub use self::map::Keys;
 pub use self::map::Values;
 pub use self::map::Entry;
+pub use self::map::Occupied;
+pub use self::map::Vacant;
 pub use self::map::OccupiedEntry;
 pub use self::map::VacantEntry;
 

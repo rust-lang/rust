@@ -905,6 +905,97 @@ impl<K, V> BTreeMap<K, V> {
 
 impl<K: Ord, V> BTreeMap<K, V> {
     /// Gets the given key's corresponding entry in the map for in-place manipulation.
+    ///
+    /// The `entry` API is intended to provide an efficient mechanism for manipulating
+    /// the contents of a map conditionally on the presence of a key or not. The primary
+    /// motivating use case for this is to provide efficient accumulator maps. For instance,
+    /// if one wishes to maintain a *count* of the number of times each key has been seen,
+    /// they will have to perform some conditional logic on whether this is the first time
+    /// the key has been seen or not. Normally, this would require a `find` followed by an
+    /// `insert`, effectively duplicating the search effort on each insertion.
+    ///
+    /// When a user calls `map.entry(key)`, the map will search for the key and then yield
+    /// a variant of the `Entry` enum.
+    ///
+    /// If a `Vacant(entry)` is yielded, then the key *was not* found. In this case the
+    /// only valid operation is to `set` the value of the entry. When this is done,
+    /// the vacant entry is consumed and converted into a mutable reference to the
+    /// the value that was inserted. This allows for further manipulation of the value
+    /// beyond the lifetime of the search itself. This is useful if complex logic needs to
+    /// be performed on the value *regardless* of whether the value was just inserted.
+    ///
+    /// If an `Occupied(entry)` is yielded, then the key *was* found. In this case, the user
+    /// has several options: they can `get`, `set`, or `take` the value of the occupied
+    /// entry. Additionally, they can convert the occupied entry into a mutable reference
+    /// to its value, providing symmetry to the vacant `set` case.
+    ///
+    /// # Examples
+    ///
+    /// Here are the two primary ways in which `entry` is used. First, a simple example
+    /// where the logic performed on the values is trivial.
+    ///
+    /// ## Counting the number of times each character in a string occurs
+    ///
+    /// ```
+    ///     use std::collections::btree::{BTreeMap, Occupied, Vacant};
+    ///
+    ///     let mut count = BTreeMap::new();
+    ///     let message = "she sells sea shells by the sea shore";
+    ///
+    ///     for c in message.chars() {
+    ///         match count.entry(c) {
+    ///             Vacant(entry) => { entry.set(1u); },
+    ///             Occupied(mut entry) => *entry.get_mut() += 1,
+    ///         }
+    ///     }
+    ///
+    ///     assert_eq!(count.find(&'s'), Some(&8));
+    ///
+    ///     println!("Number of occurences of each character");
+    ///     for (char, count) in count.iter() {
+    ///         println!("{}: {}", char, count);
+    ///     }
+    /// ```
+    ///
+    /// When the logic to be performed on the value is more complex, we may simply use
+    /// the `entry` API to ensure that the value is initialized, and perform the logic
+    /// afterwards.
+    ///
+    /// ## Tracking the inebriation of customers at a bar
+    ///
+    /// ```
+    ///     use std::collections::btree::{BTreeMap, Occupied, Vacant};
+    ///
+    ///     // A client of the bar. They have an id and a blood alcohol level.
+    ///     struct Person { id: u32, blood_alcohol: f32 };
+    ///
+    ///     // All the orders made to the bar, by client id.
+    ///     let orders = vec![1,2,1,2,3,4,1,2,2,3,4,1,1,1];
+    ///
+    ///     // Our clients.
+    ///     let mut blood_alcohol = BTreeMap::new();
+    ///
+    ///     for id in orders.into_iter() {
+    ///         // If this is the first time we've seen this customer, initialize them
+    ///         // with no blood alcohol. Otherwise, just retrieve them.
+    ///         let person = match blood_alcohol.entry(id) {
+    ///             Vacant(entry) => entry.set(Person{id: id, blood_alcohol: 0.0}),
+    ///             Occupied(entry) => entry.into_mut(),
+    ///         };
+    ///
+    ///         // Reduce their blood alcohol level. It takes time to order and drink a beer!
+    ///         person.blood_alcohol *= 0.9;
+    ///
+    ///         // Check if they're sober enough to have another beer.
+    ///         if person.blood_alcohol > 0.3 {
+    ///             // Too drunk... for now.
+    ///             println!("Sorry {}, I have to cut you off", person.id);
+    ///         } else {
+    ///             // Have another!
+    ///             person.blood_alcohol += 0.1;
+    ///         }
+    ///     }
+    /// ```
     pub fn entry<'a>(&'a mut self, key: K) -> Entry<'a, K, V> {
         // same basic logic of `swap` and `pop`, blended together
         let mut stack = stack::PartialSearchStack::new(self);
