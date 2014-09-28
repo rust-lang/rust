@@ -33,6 +33,7 @@ extern crate debug;
 #[phase(plugin, link)] extern crate log;
 extern crate serialize;
 extern crate term;
+extern crate libc;
 
 pub mod util {
     pub mod interner;
