@@ -4571,7 +4571,7 @@ pub fn lookup_struct_fields(cx: &ctxt, did: ast::DefId) -> Vec<field_ty> {
     if did.krate == ast::LOCAL_CRATE {
         // We store the fields which are syntactically in each struct in cx. So
         // we have to walk the inheritance chain of the struct to get all the
-        // structs (explicit and inherited) for a struct. If this is expensive
+        // fields (explicit and inherited) for a struct. If this is expensive
         // we could cache the whole list of fields here.
         let struct_fields = cx.struct_fields.borrow();
         let mut results: SmallVector<&[field_ty]> = SmallVector::zero();
