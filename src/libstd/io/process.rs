@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -1095,6 +1095,151 @@ mod tests {
         let _ = cmd.stdout(InheritFd(fdes.fd()));
         assert!(cmd.status().unwrap().success());
         assert!(fdes.inner_write("extra write\n".as_bytes()).is_ok());
+    })
+
+    #[cfg(unix)]
+    iotest!(fn test_extra_io() {
+        let (shell, cflag) = if cfg!(windows) {
+            ("cmd", "/c")
+        } else {
+            ("bash", "-c")
+        };
+
+        let mut cmd = Command::new(shell);
+        cmd.arg(cflag)
+            .arg("echo hello world 1>&3")
+            .stdin(Ignored)
+            .stdout(Ignored)
+            .stderr(Ignored)
+            .extra_io(CreatePipe(false, true));
+
+        let mut process = cmd.spawn().ok().expect("command failed to spawn");
+        let mut pipe = process.extra_io.pop()
+            .expect("no pipe entry found in process.extra_io")
+            .expect("a pipe was not opened to child");
+
+        let read = pipe.read_to_string().unwrap();
+        assert_eq!(read, "hello world\n".to_string());
+    })
+
+    #[cfg(unix)]
+    iotest!(fn test_extra_io_with_pipe() {
+        use native::io::process;
+
+        let (shell, cflag) = if cfg!(windows) {
+            ("cmd", "/c")
+        } else {
+            ("bash", "-c")
+        };
+
+        let (mut reader, writer) = match process::pipe() {
+            Ok((r, w)) => (r, w),
+            Err(_) => fail!("unable to create an OS pipe"),
+        };
+
+        let mut cmd = Command::new(shell);
+        let _ = cmd.arg(cflag)
+            .arg("echo hello world 1>&3")
+            .stdin(Ignored)
+            .stdout(Ignored)
+            .stderr(Ignored)
+            .extra_io(InheritFd(writer.fd()));
+
+        let process = cmd.spawn().ok().expect("command failed to spawn");
+        assert_eq!(process.extra_io.len(), 1);
+        assert!(process.extra_io[0].is_none());
+
+        drop(writer);
+        let mut buf = [0u8, ..32];
+        let output = match reader.inner_read(buf) {
+            Ok(num_read) => {
+                let mut string = String::from_utf8(buf.into_vec()).unwrap();
+                string.truncate(num_read);
+                string
+            },
+            Err(..) => fail!("unable to read from pipe"),
+        };
+
+        assert_eq!(output.as_slice(), "hello world\n");
+    })
+
+    #[cfg(unix)]
+    iotest!(fn test_extra_io_with_hole() {
+        let (shell, cflag) = if cfg!(windows) {
+            ("cmd", "/c")
+        } else {
+            ("bash", "-c")
+        };
+
+        let mut cmd = Command::new(shell);
+        let _ = cmd.arg(cflag)
+            .arg("echo hello world 1>&4")
+            .stdin(Ignored)
+            .stdout(Ignored)
+            .stderr(Ignored)
+            .extra_io(Ignored)
+            .extra_io(CreatePipe(false, true));
+
+        let mut process = cmd.spawn().ok().expect("command failed to spawn");
+        assert_eq!(process.extra_io.len(), 2);
+        assert!(process.extra_io[0].is_none());
+        assert!(process.extra_io[1].is_some());
+
+        let mut pipe = process.extra_io.pop()
+            .expect("no pipe entry found in process.extra_io")
+            .expect("a pipe was not opened to child");
+
+        let read = pipe.read_to_string().unwrap();
+        assert_eq!(read, "hello world\n".to_string());
+    })
+
+    #[cfg(unix)]
+    iotest!(fn test_extra_io_reorder_fds() {
+        use native::io::file;
+        use native::io::process;
+
+        let (shell, cflag) = if cfg!(windows) {
+            ("cmd", "/c")
+        } else {
+            ("bash", "-c")
+        };
+
+        let (reader2, writer2) = process::pipe().ok().expect("unable to create OS pipe");
+        let (reader3, writer3) = process::pipe().ok().expect("unable to create OS pipe");
+        let (reader1, writer1) = process::pipe().ok().expect("unable to create OS pipe");
+
+        let mut cmd = Command::new(shell);
+        let _ = cmd.arg(cflag)
+            .arg("echo one 1>&3; echo two 1>&4; echo three 1>&5")
+            .stdin(Ignored)
+            .stdout(Ignored)
+            .stderr(Ignored)
+            .extra_io(InheritFd(writer1.fd()))
+            .extra_io(InheritFd(writer2.fd()))
+            .extra_io(InheritFd(writer3.fd()));
+
+        let process = cmd.spawn().ok().expect("command failed to spawn");
+        assert_eq!(process.extra_io.len(), 3);
+
+        drop(writer1);
+        drop(writer2);
+        drop(writer3);
+
+        let read_pipe = |mut reader: file::FileDesc| -> String {
+            let mut buf = [0, ..32];
+            match reader.inner_read(buf) {
+                Ok(num_read) => {
+                    let mut string = String::from_utf8(buf.into_vec()).unwrap();
+                    string.truncate(num_read);
+                    string
+                },
+                Err(..) => fail!("unable to read from pipe"),
+            }
+        };
+
+        assert_eq!(read_pipe(reader1).as_slice(), "one\n");
+        assert_eq!(read_pipe(reader2).as_slice(), "two\n");
+        assert_eq!(read_pipe(reader3).as_slice(), "three\n");
     })
 
     #[test]
