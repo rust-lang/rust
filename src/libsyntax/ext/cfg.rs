@@ -22,7 +22,6 @@ use ext::build::AstBuilder;
 use attr;
 use attr::*;
 use parse::attr::ParserAttr;
-use parse::token::InternedString;
 use parse::token;
 
 
@@ -39,11 +38,17 @@ pub fn expand_cfg<'cx>(cx: &mut ExtCtxt,
         p.expect(&token::COMMA);
     }
 
-    // test_cfg searches for meta items looking like `cfg(foo, ...)`
-    let in_cfg = Some(cx.meta_list(sp, InternedString::new("cfg"), cfgs));
+    // NOTE: turn on after snapshot
+    /*
+    if cfgs.len() != 1 {
+        cx.span_warn(sp, "The use of multiple cfgs at the top level of `cfg!` \
+                          is deprecated. Change `cfg!(a, b)` to \
+                          `cfg!(all(a, b))`.");
+    }
+    */
 
-    let matches_cfg = attr::test_cfg(cx.cfg().as_slice(),
-                                     in_cfg.iter());
-    let e = cx.expr_bool(sp, matches_cfg);
-    MacExpr::new(e)
+    let matches_cfg = cfgs.iter().all(|cfg| attr::cfg_matches(&cx.parse_sess.span_diagnostic,
+                                                              cx.cfg.as_slice(), &**cfg));
+
+    MacExpr::new(cx.expr_bool(sp, matches_cfg))
 }

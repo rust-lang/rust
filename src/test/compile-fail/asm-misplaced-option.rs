@@ -14,8 +14,8 @@
 
 #![allow(dead_code)]
 
-#[cfg(target_arch = "x86")]
-#[cfg(target_arch = "x86_64")]
+#[cfg(any(target_arch = "x86",
+          target_arch = "x86_64"))]
 pub fn main() {
     // assignment not dead
     let mut x: int = 0;

@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use attr::AttrMetaMethods;
+use diagnostic::SpanHandler;
 use fold::Folder;
 use {ast, fold, attr};
 use codemap::Spanned;
@@ -21,9 +23,9 @@ struct Context<'a> {
 
 // Support conditional compilation by transforming the AST, stripping out
 // any items that do not belong in the current configuration
-pub fn strip_unconfigured_items(krate: ast::Crate) -> ast::Crate {
+pub fn strip_unconfigured_items(diagnostic: &SpanHandler, krate: ast::Crate) -> ast::Crate {
     let config = krate.config.clone();
-    strip_items(krate, |attrs| in_cfg(config.as_slice(), attrs))
+    strip_items(krate, |attrs| in_cfg(diagnostic, config.as_slice(), attrs))
 }
 
 impl<'a> fold::Folder for Context<'a> {
@@ -249,7 +251,34 @@ fn impl_item_in_cfg(cx: &mut Context, impl_item: &ast::ImplItem) -> bool {
 
 // Determine if an item should be translated in the current crate
 // configuration based on the item's attributes
-fn in_cfg(cfg: &[P<ast::MetaItem>], attrs: &[ast::Attribute]) -> bool {
-    attr::test_cfg(cfg, attrs.iter())
+fn in_cfg(diagnostic: &SpanHandler, cfg: &[P<ast::MetaItem>], attrs: &[ast::Attribute]) -> bool {
+    let mut in_cfg = false;
+    let mut seen_cfg = false;
+    for attr in attrs.iter() {
+        let mis = match attr.node.value.node {
+            ast::MetaList(_, ref mis) if attr.check_name("cfg") => mis,
+            _ => continue
+        };
+
+        // NOTE: turn on after snapshot
+        /*
+        if mis.len() != 1 {
+            diagnostic.span_warn(attr.span, "The use of multiple cfgs in the top level of \
+                                             `#[cfg(..)]` is deprecated. Change `#[cfg(a, b)]` to \
+                                             `#[cfg(all(a, b))]`.");
+        }
+
+        if seen_cfg {
+            diagnostic.span_warn(attr.span, "The semantics of multiple `#[cfg(..)]` attributes on \
+                                             same item are changing from the union of the cfgs to \
+                                             the intersection of the cfgs. Change `#[cfg(a)] \
+                                             #[cfg(b)]` to `#[cfg(any(a, b))]`.");
+        }
+        */
+
+        seen_cfg = true;
+        in_cfg |= mis.iter().all(|mi| attr::cfg_matches(diagnostic, cfg, &**mi));
+    }
+    in_cfg | !seen_cfg
 }
 
