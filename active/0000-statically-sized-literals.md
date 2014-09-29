@@ -4,7 +4,7 @@
 
 # Summary
 
-Change the types of array, byte string and string literals to be (references to) statically sized types.
+Change the types of array, byte string and string literals to be statically sized types (references to ones).
 Introduce strings of fixed size.
 
 # Motivation
@@ -15,9 +15,9 @@ This RFC suggests to change the types to `&'static [u8, ..N]` and `&'static str[
 Additionally this RFC suggests to change the types of array literals from `[T, ..N]` to `&'a [T, ..N]` for consistency and ergonomics.
 
 Today, given the lack of non-type generic parameters and compile time (function) evaluation (CTE), strings of fixed size are not very useful.
-But after introducing CTE the need in compile time string operations will raise quickly.
-Even without CTE but with non-type generic parameters alone strings of fixed size can be used in runtime for "heapless" string operations, which are useful in constrained environments or for optimization.  
-So the main motivation for changes today is forward compatibility and before 1.0 `str[..N]` can be implemented as minimally as possible to allow the change of the types of string literals.
+But after introduction of CTE the need in compile time string operations will raise rapidly.
+Even without CTE but with non-type generic parameters alone fixed size strings can be used in runtime for "heapless" string operations, which are useful in constrained environments or for optimization.  
+So the main motivation for changes today is forward compatibility and before 1.0 `str[..N]` can be implemented as marginally as possible to allow the change of the types of string literals.
 
 Examples of use for new literals, that are not possible with old literals:
 
@@ -71,7 +71,7 @@ Array literals can be used both as slices, when a view to array is sufficient to
 The exact estimation of the frequencies of both uses is problematic, but some regex search in the Rust codebase gives the next statistics:  
 In approximately *70%* of cases array literals are used as slices (explicit `&` on array literals, immutable bindings).  
 In approximately *20%* of cases array literals are used as values (initialization of struct fields, mutable bindings,   boxes).  
-In approximately *10%* of cases the use is unclear.  
+In the rest *10%* of cases the usage is unclear.  
 
 So, in most cases the change to the types of array literals will lead to shorter notation.
 
@@ -93,7 +93,7 @@ fn main() {
 fn g(arg: &[int]) {}
 g([1i, 2, 3]); // DST coercion &[int, ..3] -> &[int]
 ```
-Unfortunately, autocoercions from arrays of fixed size to slices was prohibited too soon and a lot of array literals like `[1, 2, 3]` were changed to `&[1, 2, 3]`. These changes have to be reverted (but the prohibition of autocoercions stays in place).
+Unfortunately, autocoercions from arrays of fixed size to slices was prohibited too soon and a lot of array literals like `[1, 2, 3]` were changed to `&[1, 2, 3]`. These changes have to be reverted (but the prohibition of autocoercions should stay in place).
 
 Code using array literals as values is broken, but can be fixed easily.
 ```
@@ -121,7 +121,7 @@ Some breakage for array literals. See "Backward compatibility" section.
 
 # Alternatives
 
-The alternative design is to make the literals values and not references.
+The alternative design is to make the literals the values and not the references.
 
 ### The changes
 
@@ -215,7 +215,7 @@ struct StrImpl<T> { underlying_array: T }
 type str = StrImpl<[u8]>;
 type<N: uint> str_of_fixed_size_bikeshed<N> = StrImpl<[u8, ..N]>; // Non-type generic parameters are required
 ```
-Then `&str_of_fixed_size_bikeshed<N>` (the type of string literals) should somehow autocoerce to `&str` and this coercion is not covered by current rules.
+Then `&str_of_fixed_size_bikeshed<N>` (the type of string literals) should somehow autocoerce to `&str` and this coercion is not covered by the current rules.
 
 One possible solution is to make `str` a "not-so-smart" pointer to unsized type and not the unsized type itself.
 ```
@@ -230,6 +230,6 @@ In this case string literals have types `ref_to_str_of_fixed_size_bikeshed<'stat
 And the coercion from `ref_to_str_of_fixed_size_bikeshed<'a, N>` to `str<'a>` (`StrImplRef<'a, [u8, ..N]> -> StrImplRef<'a, [u8]>`) is an usual DST coercion.  
 And dereference on `ref_to_str_of_fixed_size_bikeshed<'a, N>` should return `&'a str_of_fixed_size_bikeshed<N>`.  
 And every `&'a str` has to be rewritten as `str<'a>` (and `&str` as `str`), which is a terribly backward incompatible change (but automatically fixable).  
-I suppose this change to `str` may be useful by itself and can be proposed by a separate RFC.
+I suppose this change to `str` may be useful by itself and can be proposed as a separate RFC.
 
  [1]: http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2014/n4121.pdf
