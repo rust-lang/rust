@@ -840,18 +840,17 @@ fn free_handle(_handle: *mut ()) {
 #[cfg(unix)]
 fn translate_status(status: c_int) -> rtio::ProcessExit {
     #![allow(non_snake_case)]
-    #[cfg(target_os = "linux")]
-    #[cfg(target_os = "android")]
+    #[cfg(any(target_os = "linux", target_os = "android"))]
     mod imp {
         pub fn WIFEXITED(status: i32) -> bool { (status & 0xff) == 0 }
         pub fn WEXITSTATUS(status: i32) -> i32 { (status >> 8) & 0xff }
         pub fn WTERMSIG(status: i32) -> i32 { status & 0x7f }
     }
 
-    #[cfg(target_os = "macos")]
-    #[cfg(target_os = "ios")]
-    #[cfg(target_os = "freebsd")]
-    #[cfg(target_os = "dragonfly")]
+    #[cfg(any(target_os = "macos",
+              target_os = "ios",
+              target_os = "freebsd",
+              target_os = "dragonfly"))]
     mod imp {
         pub fn WIFEXITED(status: i32) -> bool { (status & 0x7f) == 0 }
         pub fn WEXITSTATUS(status: i32) -> i32 { status >> 8 }
