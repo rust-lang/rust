@@ -15,7 +15,9 @@
 extern crate trait_impl_conflict;
 use trait_impl_conflict::Foo;
 
-impl<A> Foo for A { //~ ERROR E0117
+impl<A> Foo for A {
+    //~^ ERROR E0117
+    //~^^ ERROR E0119
 }
 
 fn main() {

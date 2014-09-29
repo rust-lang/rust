@@ -49,8 +49,8 @@ impl<'cx, 'tcx> OverlapChecker<'cx, 'tcx> {
 
         // FIXME -- it seems like this method actually pushes
         // duplicate impls onto the list
-        ty::populate_implementations_for_type_if_necessary(self.tcx,
-                                                           trait_def_id);
+        ty::populate_implementations_for_trait_if_necessary(self.tcx,
+                                                            trait_def_id);
 
         let mut impls = Vec::new();
         self.push_impls_of_trait(trait_def_id, &mut impls);
