@@ -28,11 +28,10 @@ pub struct Stack {
 //
 // DragonFly BSD also seems to suffer from the same problem. When MAP_STACK is
 // used, it returns the same `ptr` multiple times.
-#[cfg(not(windows), not(target_os = "freebsd"), not(target_os = "dragonfly"))]
+#[cfg(not(any(windows, target_os = "freebsd", target_os = "dragonfly")))]
 static STACK_FLAGS: libc::c_int = libc::MAP_STACK | libc::MAP_PRIVATE |
                                   libc::MAP_ANON;
-#[cfg(target_os = "freebsd")]
-#[cfg(target_os = "dragonfly")]
+#[cfg(any(target_os = "freebsd", target_os = "dragonfly"))]
 static STACK_FLAGS: libc::c_int = libc::MAP_PRIVATE | libc::MAP_ANON;
 #[cfg(windows)]
 static STACK_FLAGS: libc::c_int = 0;
