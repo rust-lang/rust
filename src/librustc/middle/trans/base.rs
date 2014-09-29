@@ -1791,7 +1791,7 @@ pub fn trans_closure(ccx: &CrateContext,
                      body: &ast::Block,
                      llfndecl: ValueRef,
                      param_substs: &param_substs,
-                     id: ast::NodeId,
+                     fn_ast_id: ast::NodeId,
                      _attributes: &[ast::Attribute],
                      arg_types: Vec<ty::t>,
                      output_type: ty::t,
@@ -1811,7 +1811,7 @@ pub fn trans_closure(ccx: &CrateContext,
     let arena = TypedArena::new();
     let fcx = new_fn_ctxt(ccx,
                           llfndecl,
-                          id,
+                          fn_ast_id,
                           has_env,
                           output_type,
                           param_substs,
@@ -1820,7 +1820,9 @@ pub fn trans_closure(ccx: &CrateContext,
     let mut bcx = init_function(&fcx, false, output_type);
 
     // cleanup scope for the incoming arguments
-    let arg_scope = fcx.push_custom_cleanup_scope();
+    let fn_cleanup_debug_loc =
+        debuginfo::get_cleanup_debug_loc_for_ast_node(fn_ast_id, body.span, true);
+    let arg_scope = fcx.push_custom_cleanup_scope_with_debug_loc(fn_cleanup_debug_loc);
 
     let block_ty = node_id_type(bcx, body.id);
 
@@ -1969,7 +1971,9 @@ pub fn trans_named_tuple_constructor<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                                                  ctor_ty: ty::t,
                                                  disr: ty::Disr,
                                                  args: callee::CallArgs,
-                                                 dest: expr::Dest) -> Result<'blk, 'tcx> {
+                                                 dest: expr::Dest,
+                                                 call_info: Option<NodeInfo>)
+                                                 -> Result<'blk, 'tcx> {
 
     let ccx = bcx.fcx.ccx;
     let tcx = ccx.tcx();
@@ -1999,8 +2003,13 @@ pub fn trans_named_tuple_constructor<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
         match args {
             callee::ArgExprs(exprs) => {
                 let fields = exprs.iter().map(|x| &**x).enumerate().collect::<Vec<_>>();
-                bcx = expr::trans_adt(bcx, result_ty, disr, fields.as_slice(),
-                                      None, expr::SaveIn(llresult));
+                bcx = expr::trans_adt(bcx,
+                                      result_ty,
+                                      disr,
+                                      fields.as_slice(),
+                                      None,
+                                      expr::SaveIn(llresult),
+                                      call_info);
             }
             _ => ccx.sess().bug("expected expr as arguments for variant/struct tuple constructor")
         }
@@ -2010,7 +2019,9 @@ pub fn trans_named_tuple_constructor<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
     // drop the temporary we made
     let bcx = match dest {
         expr::SaveIn(_) => bcx,
-        expr::Ignore => glue::drop_ty(bcx, llresult, result_ty)
+        expr::Ignore => {
+            glue::drop_ty(bcx, llresult, result_ty, call_info)
+        }
     };
 
     Result::new(bcx, llresult)

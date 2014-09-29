@@ -28,6 +28,7 @@ use middle::trans::cleanup;
 use middle::trans::cleanup::CleanupMethods;
 use middle::trans::common::*;
 use middle::trans::datum;
+use middle::trans::debuginfo;
 use middle::trans::expr;
 use middle::trans::machine::*;
 use middle::trans::reflect;
@@ -125,7 +126,10 @@ pub fn get_drop_glue_type(ccx: &CrateContext, t: ty::t) -> ty::t {
     }
 }
 
-pub fn drop_ty<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, v: ValueRef, t: ty::t)
+pub fn drop_ty<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+                           v: ValueRef,
+                           t: ty::t,
+                           source_location: Option<NodeInfo>)
                            -> Block<'blk, 'tcx> {
     // NB: v is an *alias* of type t here, not a direct value.
     debug!("drop_ty(t={})", t.repr(bcx.tcx()));
@@ -139,17 +143,26 @@ pub fn drop_ty<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, v: ValueRef, t: ty::t)
         } else {
             v
         };
+
+        match source_location {
+            Some(sl) => debuginfo::set_source_location(bcx.fcx, sl.id, sl.span),
+            None => debuginfo::clear_source_location(bcx.fcx)
+        };
+
         Call(bcx, glue, [ptr], None);
     }
     bcx
 }
 
-pub fn drop_ty_immediate<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, v: ValueRef, t: ty::t)
+pub fn drop_ty_immediate<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+                                     v: ValueRef,
+                                     t: ty::t,
+                                     source_location: Option<NodeInfo>)
                                      -> Block<'blk, 'tcx> {
     let _icx = push_ctxt("drop_ty_immediate");
     let vp = alloca(bcx, type_of(bcx.ccx(), t), "");
     Store(bcx, v, vp);
-    drop_ty(bcx, vp, t)
+    drop_ty(bcx, vp, t, source_location)
 }
 
 pub fn get_drop_glue(ccx: &CrateContext, t: ty::t) -> ValueRef {
@@ -464,7 +477,7 @@ fn make_drop_glue<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, v0: ValueRef, t: ty::t)
                     let llbox = Load(bcx, llval);
                     let not_null = IsNotNull(bcx, llbox);
                     with_cond(bcx, not_null, |bcx| {
-                        let bcx = drop_ty(bcx, v0, content_ty);
+                        let bcx = drop_ty(bcx, v0, content_ty, None);
                         let info = GEPi(bcx, v0, [0, abi::slice_elt_len]);
                         let info = Load(bcx, info);
                         let (llsize, llalign) = size_and_align_of_dst(bcx, content_ty, info);
@@ -477,7 +490,7 @@ fn make_drop_glue<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, v0: ValueRef, t: ty::t)
                     let llbox = Load(bcx, llval);
                     let not_null = IsNotNull(bcx, llbox);
                     with_cond(bcx, not_null, |bcx| {
-                        let bcx = drop_ty(bcx, llbox, content_ty);
+                        let bcx = drop_ty(bcx, llbox, content_ty, None);
                         trans_exchange_free_ty(bcx, llbox, content_ty)
                     })
                 }
@@ -508,11 +521,14 @@ fn make_drop_glue<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, v0: ValueRef, t: ty::t)
                 }
                 ty::NoDtor => {
                     // No dtor? Just the default case
-                    iter_structural_ty(bcx, v0, t, drop_ty)
+                    iter_structural_ty(bcx, v0, t, |bb, vv, tt| drop_ty(bb, vv, tt, None))
                 }
             }
         }
-        ty::ty_unboxed_closure(..) => iter_structural_ty(bcx, v0, t, drop_ty),
+        ty::ty_unboxed_closure(..) => iter_structural_ty(bcx,
+                                                         v0,
+                                                         t,
+                                                         |bb, vv, tt| drop_ty(bb, vv, tt, None)),
         ty::ty_closure(ref f) if f.store == ty::UniqTraitStore => {
             let box_cell_v = GEPi(bcx, v0, [0u, abi::fn_field_box]);
             let env = Load(bcx, box_cell_v);
@@ -544,7 +560,7 @@ fn make_drop_glue<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, v0: ValueRef, t: ty::t)
             assert!(ty::type_is_sized(bcx.tcx(), t));
             if ty::type_needs_drop(bcx.tcx(), t) &&
                 ty::type_is_structural(t) {
-                iter_structural_ty(bcx, v0, t, drop_ty)
+                iter_structural_ty(bcx, v0, t, |bb, vv, tt| drop_ty(bb, vv, tt, None))
             } else {
                 bcx
             }
@@ -574,7 +590,7 @@ fn decr_refcnt_maybe_free<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
     let v = Load(free_bcx, box_ptr_ptr);
     let body = GEPi(free_bcx, v, [0u, abi::box_field_body]);
-    let free_bcx = drop_ty(free_bcx, body, t);
+    let free_bcx = drop_ty(free_bcx, body, t, None);
     let free_bcx = trans_free(free_bcx, v);
     Br(free_bcx, next_bcx.llbb);
 
