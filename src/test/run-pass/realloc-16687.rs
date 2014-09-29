@@ -56,6 +56,13 @@ unsafe fn test_triangle() -> bool {
 
         ret
     }
+    unsafe fn deallocate(ptr: *mut u8, size: uint, align: uint) {
+        if PRINT { println!("deallocate(ptr=0x{:010x} size={:u} align={:u})",
+                            ptr as uint, size, align);
+        }
+
+        heap::deallocate(ptr, size, align);
+    }
     unsafe fn reallocate(ptr: *mut u8, size: uint, align: uint,
                              old_size: uint) -> *mut u8 {
         if PRINT {
@@ -95,10 +102,16 @@ unsafe fn test_triangle() -> bool {
     }
 
     sanity_check(ascend.as_slice());
-    test_1(ascend);
-    test_2(ascend);
-    test_3(ascend);
-    test_4(ascend);
+    test_1(ascend); // triangle -> square
+    test_2(ascend); // square -> triangle
+    test_3(ascend); // triangle -> square
+    test_4(ascend); // square -> triangle
+
+    for i in range(0u, COUNT / 2) {
+        let size = idx_to_size(i);
+        deallocate(ascend[2*i], size, ALIGN);
+        deallocate(ascend[2*i+1], size, ALIGN);
+    }
 
     return true;
 
