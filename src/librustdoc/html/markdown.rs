@@ -49,14 +49,14 @@ pub struct Markdown<'a>(pub &'a str);
 pub struct MarkdownWithToc<'a>(pub &'a str);
 
 static DEF_OUNIT: libc::size_t = 64;
-static HOEDOWN_EXT_NO_INTRA_EMPHASIS: libc::c_uint = 1 << 10;
+static HOEDOWN_EXT_NO_INTRA_EMPHASIS: libc::c_uint = 1 << 11;
 static HOEDOWN_EXT_TABLES: libc::c_uint = 1 << 0;
 static HOEDOWN_EXT_FENCED_CODE: libc::c_uint = 1 << 1;
 static HOEDOWN_EXT_AUTOLINK: libc::c_uint = 1 << 3;
 static HOEDOWN_EXT_STRIKETHROUGH: libc::c_uint = 1 << 4;
 static HOEDOWN_EXT_SUPERSCRIPT: libc::c_uint = 1 << 8;
 static HOEDOWN_EXT_FOOTNOTES: libc::c_uint = 1 << 2;
-static HOEDOWN_EXT_MATH: libc::c_uint = 1 << 13;
+static HOEDOWN_EXT_MATH: libc::c_uint = 1 << 9;
 
 static HOEDOWN_EXTENSIONS: libc::c_uint =
     HOEDOWN_EXT_NO_INTRA_EMPHASIS | HOEDOWN_EXT_TABLES |
