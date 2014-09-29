@@ -84,8 +84,7 @@ mod imp {
         pub static F_SETLKW: libc::c_int = 9;
     }
 
-    #[cfg(target_os = "macos")]
-    #[cfg(target_os = "ios")]
+    #[cfg(any(target_os = "macos", target_os = "ios"))]
     mod os {
         use libc;
 
