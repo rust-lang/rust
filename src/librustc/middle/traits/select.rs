@@ -228,6 +228,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 bound,
                 previous_stack.obligation.recursion_depth + 1,
                 ty);
+        let obligation = match obligation {
+            Ok(ob) => ob,
+            _ => return EvaluatedToMatch
+        };
+
         self.evaluate_obligation_recursively(previous_stack, &obligation)
     }
 

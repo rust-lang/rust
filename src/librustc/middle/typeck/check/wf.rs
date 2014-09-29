@@ -124,11 +124,14 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
                 if variant.fields.len() > 0 {
                     for field in variant.fields.init().iter() {
                         let cause = traits::ObligationCause::new(field.span, traits::FieldSized);
-                        fcx.register_obligation(
-                            traits::obligation_for_builtin_bound(fcx.tcx(),
-                                                                 cause,
-                                                                 field.ty,
-                                                                 ty::BoundSized));
+                        let obligation = traits::obligation_for_builtin_bound(fcx.tcx(),
+                                                                              cause,
+                                                                              field.ty,
+                                                                              ty::BoundSized);
+                        match obligation {
+                            Ok(obligation) => fcx.register_obligation(obligation),
+                            _ => {}
+                        }
                     }
                 }
             }
@@ -213,11 +216,14 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
                                                           &trait_def.bounds,
                                                           trait_ref.self_ty());
             for builtin_bound in trait_def.bounds.builtin_bounds.iter() {
-                fcx.register_obligation(
-                    traits::obligation_for_builtin_bound(fcx.tcx(),
-                                                         cause,
-                                                         trait_ref.self_ty(),
-                                                         builtin_bound));
+                let obligation = traits::obligation_for_builtin_bound(fcx.tcx(),
+                                                                      cause,
+                                                                      trait_ref.self_ty(),
+                                                                      builtin_bound);
+                match obligation {
+                    Ok (obligation) => fcx.register_obligation(obligation),
+                    _ => {}
+                }
             }
             for trait_bound in trait_def.bounds.trait_bounds.iter() {
                 let trait_bound = trait_bound.subst(fcx.tcx(), &trait_ref.substs);
@@ -453,12 +459,14 @@ fn check_struct_safe_for_destructor(fcx: &FnCtxt,
         && !struct_tpt.generics.has_region_params(subst::TypeSpace)
     {
         let cause = traits::ObligationCause::new(span, traits::DropTrait);
-        fcx.register_obligation(
-            traits::obligation_for_builtin_bound(
-                fcx.tcx(),
-                cause,
-                self_ty,
-                ty::BoundSend));
+        let obligation = traits::obligation_for_builtin_bound(fcx.tcx(),
+                                                              cause,
+                                                              self_ty,
+                                                              ty::BoundSend);
+        match obligation {
+            Ok(obligation) => fcx.register_obligation(obligation),
+            _ => {}
+        }
     } else {
         span_err!(fcx.tcx().sess, span, E0141,
                   "cannot implement a destructor on a structure \
