@@ -38,14 +38,11 @@ pub fn expand_cfg<'cx>(cx: &mut ExtCtxt,
         p.expect(&token::COMMA);
     }
 
-    // NOTE: turn on after snapshot
-    /*
     if cfgs.len() != 1 {
         cx.span_warn(sp, "The use of multiple cfgs at the top level of `cfg!` \
                           is deprecated. Change `cfg!(a, b)` to \
                           `cfg!(all(a, b))`.");
     }
-    */
 
     let matches_cfg = cfgs.iter().all(|cfg| attr::cfg_matches(&cx.parse_sess.span_diagnostic,
                                                               cx.cfg.as_slice(), &**cfg));
