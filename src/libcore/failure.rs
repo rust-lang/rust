@@ -35,6 +35,10 @@ use intrinsics;
 
 // NOTE: remove after next snapshot
 #[cfg(stage0)]
+pub use self::fail_ as fail;
+
+// NOTE: remove after next snapshot
+#[cfg(stage0)]
 #[cold] #[inline(never)] // this is the slow path, always
 #[lang="fail_"]
 fn fail_(expr_file_line: &(&'static str, &'static str, uint)) -> ! {
@@ -50,7 +54,7 @@ fn fail_(expr_file_line: &(&'static str, &'static str, uint)) -> ! {
 #[cfg(not(stage0))]
 #[cold] #[inline(never)] // this is the slow path, always
 #[lang="fail"]
-fn fail(expr_file_line: &(&'static str, &'static str, uint)) -> ! {
+pub fn fail(expr_file_line: &(&'static str, &'static str, uint)) -> ! {
     let (expr, file, line) = *expr_file_line;
     let ref file_line = (file, line);
     format_args!(|args| -> () {
@@ -68,11 +72,6 @@ fn fail_bounds_check(file_line: &(&'static str, uint),
         fail_fmt(args, file_line);
     }, "index out of bounds: the len is {} but the index is {}", len, index);
     unsafe { intrinsics::abort() }
-}
-
-#[cold] #[inline(never)]
-pub fn fail_str(msg: &str, file: &(&'static str, uint)) -> ! {
-    format_args!(|fmt| fail_fmt(fmt, file), "{}", msg)
 }
 
 #[cold] #[inline(never)]
