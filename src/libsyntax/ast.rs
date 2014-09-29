@@ -10,7 +10,7 @@
 
 // The Rust abstract syntax tree.
 
-use codemap::{Span, Spanned, DUMMY_SP};
+use codemap::{Span, Spanned, DUMMY_SP, ExpnId};
 use abi::Abi;
 use ast_util;
 use owned_slice::OwnedSlice;
@@ -983,7 +983,8 @@ pub struct InlineAsm {
     pub clobbers: InternedString,
     pub volatile: bool,
     pub alignstack: bool,
-    pub dialect: AsmDialect
+    pub dialect: AsmDialect,
+    pub expn_id: ExpnId,
 }
 
 /// represents an argument in a function header

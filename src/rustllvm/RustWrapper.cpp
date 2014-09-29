@@ -871,3 +871,18 @@ extern "C" void LLVMWriteDebugLocToString(
     raw_rust_string_ostream os(str);
     unwrap(dl)->print(*unwrap(C), os);
 }
+
+DEFINE_SIMPLE_CONVERSION_FUNCTIONS(SMDiagnostic, LLVMSMDiagnosticRef)
+
+extern "C" void LLVMSetInlineAsmDiagnosticHandler(
+    LLVMContextRef C,
+    LLVMContext::InlineAsmDiagHandlerTy H,
+    void *CX)
+{
+    unwrap(C)->setInlineAsmDiagnosticHandler(H, CX);
+}
+
+extern "C" void LLVMWriteSMDiagnosticToString(LLVMSMDiagnosticRef d, RustStringRef str) {
+    raw_rust_string_ostream os(str);
+    unwrap(d)->print("", os);
+}
