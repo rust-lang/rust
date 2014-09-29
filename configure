@@ -453,12 +453,12 @@ valopt datadir "${CFG_PREFIX}/share" "install data"
 valopt infodir "${CFG_PREFIX}/share/info" "install additional info"
 valopt mandir "${CFG_PREFIX}/share/man" "install man pages in PATH"
 
-valopt release-channel "source" "the name of the release channel to build"
+valopt release-channel "dev" "the name of the release channel to build"
 
 # On windows we just store the libraries in the bin directory because
 # there's no rpath. This is where the build system itself puts libraries;
 # --libdir is used to configure the installation directory.
-# FIXME: Thise needs to parameterized over target triples. Do it in platform.mk
+# FIXME: This needs to parameterized over target triples. Do it in platform.mk
 CFG_LIBDIR_RELATIVE=lib
 if [ "$CFG_OSTYPE" = "pc-mingw32" ] || [ "$CFG_OSTYPE" = "w64-mingw32" ]
 then
@@ -479,10 +479,10 @@ validate_opt
 
 # Validate the release channel
 case "$CFG_RELEASE_CHANNEL" in
-    (source | nightly | beta | stable)
+    (dev | nightly | beta | stable)
 	;;
     (*)
-        err "release channel must be 'source', 'nightly', 'beta' or 'stable'"
+        err "release channel must be 'dev', 'nightly', 'beta' or 'stable'"
         ;;
 esac
 

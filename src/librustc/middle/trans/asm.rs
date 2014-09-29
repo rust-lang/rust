@@ -25,6 +25,7 @@ use middle::trans::type_::Type;
 use std::c_str::ToCStr;
 use std::string::String;
 use syntax::ast;
+use libc::{c_uint, c_char};
 
 // Take an inline assembly expression and splat it out via LLVM
 pub fn trans_inline_asm<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, ia: &ast::InlineAsm)
@@ -139,6 +140,19 @@ pub fn trans_inline_asm<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, ia: &ast::InlineAsm)
             let v = ExtractValue(bcx, r, i);
             Store(bcx, v, *o);
         }
+    }
+
+    // Store expn_id in a metadata node so we can map LLVM errors
+    // back to source locations.  See #17552.
+    unsafe {
+        let key = "srcloc";
+        let kind = llvm::LLVMGetMDKindIDInContext(bcx.ccx().llcx(),
+            key.as_ptr() as *const c_char, key.len() as c_uint);
+
+        let val: llvm::ValueRef = C_i32(bcx.ccx(), ia.expn_id.to_llvm_cookie());
+
+        llvm::LLVMSetMetadata(r, kind,
+            llvm::LLVMMDNodeInContext(bcx.ccx().llcx(), &val, 1));
     }
 
     return bcx;

@@ -16,6 +16,7 @@ use driver::session::Session;
 use driver::config;
 use llvm;
 use llvm::{ModuleRef, TargetMachineRef, PassManagerRef, DiagnosticInfoRef, ContextRef};
+use llvm::SMDiagnosticRef;
 use util::common::time;
 use syntax::abi;
 use syntax::codemap;
@@ -326,14 +327,40 @@ impl<'a> CodegenContext<'a> {
     }
 }
 
-struct DiagHandlerFreeVars<'a> {
+struct HandlerFreeVars<'a> {
     llcx: ContextRef,
     cgcx: &'a CodegenContext<'a>,
 }
 
+unsafe extern "C" fn inline_asm_handler(diag: SMDiagnosticRef,
+                                        user: *const c_void,
+                                        cookie: c_uint) {
+    use syntax::codemap::ExpnId;
+
+    let HandlerFreeVars { cgcx, .. }
+        = *mem::transmute::<_, *const HandlerFreeVars>(user);
+
+    let msg = llvm::build_string(|s| llvm::LLVMWriteSMDiagnosticToString(diag, s))
+        .expect("non-UTF8 SMDiagnostic");
+
+    match cgcx.lto_ctxt {
+        Some((sess, _)) => {
+            sess.codemap().with_expn_info(ExpnId::from_llvm_cookie(cookie), |info| match info {
+                Some(ei) => sess.span_err(ei.call_site, msg.as_slice()),
+                None     => sess.err(msg.as_slice()),
+            });
+        }
+
+        None => {
+            cgcx.handler.err(msg.as_slice());
+            cgcx.handler.note("build without -C codegen-units for more exact errors");
+        }
+    }
+}
+
 unsafe extern "C" fn diagnostic_handler(info: DiagnosticInfoRef, user: *mut c_void) {
-    let DiagHandlerFreeVars { llcx, cgcx }
-        = *mem::transmute::<_, *const DiagHandlerFreeVars>(user);
+    let HandlerFreeVars { llcx, cgcx }
+        = *mem::transmute::<_, *const HandlerFreeVars>(user);
 
     match llvm::diagnostic::Diagnostic::unpack(info) {
         llvm::diagnostic::Optimization(opt) => {
@@ -368,14 +395,16 @@ unsafe fn optimize_and_codegen(cgcx: &CodegenContext,
     let tm = config.tm;
 
     // llcx doesn't outlive this function, so we can put this on the stack.
-    let fv = DiagHandlerFreeVars {
+    let fv = HandlerFreeVars {
         llcx: llcx,
         cgcx: cgcx,
     };
+    let fv = &fv as *const HandlerFreeVars as *mut c_void;
+
+    llvm::LLVMSetInlineAsmDiagnosticHandler(llcx, inline_asm_handler, fv);
+
     if !cgcx.remark.is_empty() {
-        llvm::LLVMContextSetDiagnosticHandler(llcx, diagnostic_handler,
-                                              &fv as *const DiagHandlerFreeVars
-                                                  as *mut c_void);
+        llvm::LLVMContextSetDiagnosticHandler(llcx, diagnostic_handler, fv);
     }
 
     if config.emit_no_opt_bc {

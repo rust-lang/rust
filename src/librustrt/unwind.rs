@@ -37,11 +37,11 @@
 //! In the cleanup phase, personality routines invoke cleanup code associated
 //! with their stack frames (i.e. destructors).  Once stack has been unwound down
 //! to the handler frame level, unwinding stops and the last personality routine
-//! transfers control to its' catch block.
+//! transfers control to its catch block.
 //!
 //! ## Frame unwind info registration
 //!
-//! Each module has its' own frame unwind info section (usually ".eh_frame"), and
+//! Each module has its own frame unwind info section (usually ".eh_frame"), and
 //! unwinder needs to know about all of them in order for unwinding to be able to
 //! cross module boundaries.
 //!
@@ -488,17 +488,8 @@ pub mod eabi {
 }
 
 // Entry point of failure from the libcore crate
-#[cfg(not(test), not(stage0))]
+#[cfg(not(test))]
 #[lang = "fail_fmt"]
-pub extern fn rust_begin_unwind(msg: &fmt::Arguments,
-                                file: &'static str, line: uint) -> ! {
-    begin_unwind_fmt(msg, &(file, line))
-}
-
-//
-// Entry point of failure from the libcore crate
-#[cfg(stage0, not(test))]
-#[lang = "begin_unwind"]
 pub extern fn rust_begin_unwind(msg: &fmt::Arguments,
                                 file: &'static str, line: uint) -> ! {
     begin_unwind_fmt(msg, &(file, line))

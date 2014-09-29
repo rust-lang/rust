@@ -13,7 +13,8 @@
 use std::ops::FnMut;
 
  fn make_adder(x: int) -> Box<FnMut<(int,),int>+'static> {
-    (box |&mut: y: int| -> int { x + y }) as Box<FnMut<(int,),int>+'static>
+    (box move |&mut: y: int| -> int { x + y }) as
+        Box<FnMut<(int,),int>+'static>
 }
 
 pub fn main() {

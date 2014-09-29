@@ -8,7 +8,7 @@
 SetupIconFile=rust-logo.ico
 AppName=Rust
 AppVersion={#CFG_RELEASE}
-AppCopyright=Copyright (C) 2006-2013 Mozilla Foundation, MIT license
+AppCopyright=Copyright (C) 2006-2014 Mozilla Foundation, MIT license
 AppPublisher=Mozilla Foundation
 AppPublisherURL=http://www.rust-lang.org
 VersionInfoVersion={#CFG_VERSION_WIN}
@@ -43,7 +43,7 @@ Source: "tmp/dist/win/*.*" ; DestDir: "{app}"; Flags: ignoreversion recursesubdi
 [Code]
 const
 	ModPathName = 'modifypath';
-	ModPathType = 'user';
+	ModPathType = 'system';
 
 function ModPathDir(): TArrayOfString;
 begin

@@ -312,7 +312,7 @@ impl<T> Option<T> {
     pub fn expect(self, msg: &str) -> T {
         match self {
             Some(val) => val,
-            None => fail!(msg),
+            None => fail!("{}", msg),
         }
     }
 

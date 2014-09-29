@@ -108,8 +108,8 @@ impl<'a, 'tcx> DataflowLabeller<'a, 'tcx> {
         let move_index_to_path = |move_index| {
             let move_data = &self.analysis_data.move_data.move_data;
             let moves = move_data.moves.borrow();
-            let move = moves.get(move_index);
-            move_data.path_loan_path(move.path)
+            let the_move = moves.get(move_index);
+            move_data.path_loan_path(the_move.path)
         };
         self.build_set(e, cfgidx, dfcx, move_index_to_path)
     }

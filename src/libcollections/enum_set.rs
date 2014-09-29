@@ -16,7 +16,7 @@
 use core::prelude::*;
 use core::fmt;
 
-#[deriving(Clone, PartialEq, Eq, Hash)]
+#[deriving(Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 /// A specialized `Set` implementation to use enum types.
 pub struct EnumSet<E> {
     // We must maintain the invariant that no bits are set

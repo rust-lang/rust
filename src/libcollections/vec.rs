@@ -2393,8 +2393,6 @@ mod tests {
         let _ = vec[3];
     }
 
-    // NOTE uncomment after snapshot
-    /*
     #[test]
     #[should_fail]
     fn test_slice_out_of_bounds_1() {
@@ -2429,7 +2427,6 @@ mod tests {
         let x: Vec<int> = vec![1, 2, 3, 4, 5];
         x[3..2];
     }
-    */
 
     #[test]
     fn test_swap_remove_empty() {
