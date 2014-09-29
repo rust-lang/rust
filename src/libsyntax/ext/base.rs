@@ -344,7 +344,7 @@ impl BlockInfo {
 
 /// The base map of methods for expanding syntax extension
 /// AST nodes into full ASTs
-fn initial_syntax_expander_table() -> SyntaxEnv {
+fn initial_syntax_expander_table(ecfg: &expand::ExpansionConfig) -> SyntaxEnv {
     // utility function to simplify creating NormalTT syntax extensions
     fn builtin_normal_expander(f: MacroExpanderFn) -> SyntaxExtension {
         NormalTT(box f, None)
@@ -383,31 +383,33 @@ fn initial_syntax_expander_table() -> SyntaxEnv {
     syntax_expanders.insert(intern("deriving"),
                             Decorator(box ext::deriving::expand_meta_deriving));
 
-    // Quasi-quoting expanders
-    syntax_expanders.insert(intern("quote_tokens"),
-                       builtin_normal_expander(
-                            ext::quote::expand_quote_tokens));
-    syntax_expanders.insert(intern("quote_expr"),
-                       builtin_normal_expander(
-                            ext::quote::expand_quote_expr));
-    syntax_expanders.insert(intern("quote_ty"),
-                       builtin_normal_expander(
-                            ext::quote::expand_quote_ty));
-    syntax_expanders.insert(intern("quote_method"),
-                       builtin_normal_expander(
-                            ext::quote::expand_quote_method));
-    syntax_expanders.insert(intern("quote_item"),
-                       builtin_normal_expander(
-                            ext::quote::expand_quote_item));
-    syntax_expanders.insert(intern("quote_pat"),
-                       builtin_normal_expander(
-                            ext::quote::expand_quote_pat));
-    syntax_expanders.insert(intern("quote_arm"),
-                       builtin_normal_expander(
-                            ext::quote::expand_quote_arm));
-    syntax_expanders.insert(intern("quote_stmt"),
-                       builtin_normal_expander(
-                            ext::quote::expand_quote_stmt));
+    if ecfg.enable_quotes {
+        // Quasi-quoting expanders
+        syntax_expanders.insert(intern("quote_tokens"),
+                           builtin_normal_expander(
+                                ext::quote::expand_quote_tokens));
+        syntax_expanders.insert(intern("quote_expr"),
+                           builtin_normal_expander(
+                                ext::quote::expand_quote_expr));
+        syntax_expanders.insert(intern("quote_ty"),
+                           builtin_normal_expander(
+                                ext::quote::expand_quote_ty));
+        syntax_expanders.insert(intern("quote_method"),
+                           builtin_normal_expander(
+                                ext::quote::expand_quote_method));
+        syntax_expanders.insert(intern("quote_item"),
+                           builtin_normal_expander(
+                                ext::quote::expand_quote_item));
+        syntax_expanders.insert(intern("quote_pat"),
+                           builtin_normal_expander(
+                                ext::quote::expand_quote_pat));
+        syntax_expanders.insert(intern("quote_arm"),
+                           builtin_normal_expander(
+                                ext::quote::expand_quote_arm));
+        syntax_expanders.insert(intern("quote_stmt"),
+                           builtin_normal_expander(
+                                ext::quote::expand_quote_stmt));
+    }
 
     syntax_expanders.insert(intern("line"),
                             builtin_normal_expander(
@@ -466,6 +468,7 @@ pub struct ExtCtxt<'a> {
 impl<'a> ExtCtxt<'a> {
     pub fn new<'a>(parse_sess: &'a parse::ParseSess, cfg: ast::CrateConfig,
                    ecfg: expand::ExpansionConfig) -> ExtCtxt<'a> {
+        let env = initial_syntax_expander_table(&ecfg);
         ExtCtxt {
             parse_sess: parse_sess,
             cfg: cfg,
@@ -474,7 +477,7 @@ impl<'a> ExtCtxt<'a> {
             ecfg: ecfg,
             trace_mac: false,
             exported_macros: Vec::new(),
-            syntax_env: initial_syntax_expander_table(),
+            syntax_env: env,
         }
     }
 
