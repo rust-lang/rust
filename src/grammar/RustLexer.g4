@@ -120,10 +120,9 @@ LIT_INTEGER
   | '0x' [0-9a-fA-F][0-9a-fA-F_]* INT_SUFFIX?
   ;
 
-FLOAT_SUFFIX
+fragment FLOAT_SUFFIX
   : 'f32'
   | 'f64'
-  | 'f128'
   ;
 
 LIT_FLOAT
