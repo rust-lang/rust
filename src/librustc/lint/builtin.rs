@@ -474,7 +474,8 @@ declare_lint!(BOX_POINTERS, Allow,
 pub struct BoxPointers;
 
 impl BoxPointers {
-    fn check_heap_type(&self, cx: &Context, span: Span, ty: Ty) {
+    fn check_heap_type<'a, 'tcx>(&self, cx: &Context<'a, 'tcx>,
+                                 span: Span, ty: Ty<'tcx>) {
         let mut n_uniq = 0i;
         ty::fold_ty(cx.tcx, ty, |t| {
             match ty::get(t).sty {

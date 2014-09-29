@@ -30,10 +30,10 @@ use syntax::ast_util::{local_def, PostExpansionMethod};
 use syntax::attr;
 use std::hash::{sip, Hash};
 
-pub fn monomorphic_fn(ccx: &CrateContext,
-                      fn_id: ast::DefId,
-                      real_substs: &subst::Substs,
-                      ref_id: Option<ast::NodeId>)
+pub fn monomorphic_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
+                                fn_id: ast::DefId,
+                                real_substs: &subst::Substs<'tcx>,
+                                ref_id: Option<ast::NodeId>)
     -> (ValueRef, bool) {
     debug!("monomorphic_fn(\
             fn_id={}, \
@@ -284,7 +284,7 @@ pub fn monomorphic_fn(ccx: &CrateContext,
 }
 
 #[deriving(PartialEq, Eq, Hash, Show)]
-pub struct MonoId {
+pub struct MonoId<'tcx> {
     pub def: ast::DefId,
-    pub params: subst::VecPerParamSpace<Ty>
+    pub params: subst::VecPerParamSpace<Ty<'tcx>>
 }

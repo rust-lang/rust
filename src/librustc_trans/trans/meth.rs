@@ -328,7 +328,7 @@ fn trans_monomorphized_callee<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                           method_call: MethodCall,
                                           trait_id: ast::DefId,
                                           n_method: uint,
-                                          vtable: traits::Vtable<()>)
+                                          vtable: traits::Vtable<'tcx, ()>)
                                           -> Callee<'blk, 'tcx> {
     let _icx = push_ctxt("meth::trans_monomorphized_callee");
     match vtable {
@@ -378,10 +378,10 @@ fn trans_monomorphized_callee<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     }
 }
 
-fn combine_impl_and_methods_tps(bcx: Block,
-                                node: ExprOrMethodCall,
-                                rcvr_substs: subst::Substs)
-                                -> subst::Substs
+fn combine_impl_and_methods_tps<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+                                            node: ExprOrMethodCall,
+                                            rcvr_substs: subst::Substs<'tcx>)
+                                            -> subst::Substs<'tcx>
 {
     /*!
      * Creates a concatenated set of substitutions which includes
@@ -424,7 +424,7 @@ fn combine_impl_and_methods_tps(bcx: Block,
 }
 
 fn trans_trait_callee<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
-                                  method_ty: Ty,
+                                  method_ty: Ty<'tcx>,
                                   n_method: uint,
                                   self_expr: &ast::Expr,
                                   arg_cleanup_scope: cleanup::ScopeId)
@@ -468,7 +468,7 @@ fn trans_trait_callee<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 }
 
 pub fn trans_trait_callee_from_llval<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
-                                                 callee_ty: Ty,
+                                                 callee_ty: Ty<'tcx>,
                                                  n_method: uint,
                                                  llpair: ValueRef)
                                                  -> Callee<'blk, 'tcx> {
@@ -526,10 +526,10 @@ pub fn trans_trait_callee_from_llval<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 /// `trait_ref` would map `T:Trait`, but `box_ty` would be
 /// `Foo<T>`. This `box_ty` is primarily used to encode the destructor.
 /// This will hopefully change now that DST is underway.
-pub fn get_vtable(bcx: Block,
-                  box_ty: Ty,
-                  trait_ref: Rc<ty::TraitRef>)
-                  -> ValueRef
+pub fn get_vtable<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+                              box_ty: Ty<'tcx>,
+                              trait_ref: Rc<ty::TraitRef<'tcx>>)
+                              -> ValueRef
 {
     debug!("get_vtable(box_ty={}, trait_ref={})",
            box_ty.repr(bcx.tcx()),
@@ -677,10 +677,10 @@ pub fn make_vtable<I: Iterator<ValueRef>>(ccx: &CrateContext,
     }
 }
 
-fn emit_vtable_methods(bcx: Block,
-                       impl_id: ast::DefId,
-                       substs: subst::Substs)
-                       -> Vec<ValueRef> {
+fn emit_vtable_methods<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+                                   impl_id: ast::DefId,
+                                   substs: subst::Substs<'tcx>)
+                                   -> Vec<ValueRef> {
     let ccx = bcx.ccx();
     let tcx = ccx.tcx();
 
@@ -735,9 +735,9 @@ fn emit_vtable_methods(bcx: Block,
 }
 
 pub fn trans_trait_cast<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
-                                    datum: Datum<Expr>,
+                                    datum: Datum<'tcx, Expr>,
                                     id: ast::NodeId,
-                                    trait_ref: Rc<ty::TraitRef>,
+                                    trait_ref: Rc<ty::TraitRef<'tcx>>,
                                     dest: expr::Dest)
                                     -> Block<'blk, 'tcx> {
     /*!

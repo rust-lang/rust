@@ -55,7 +55,8 @@ use syntax::parse::token;
 
 pub use trans::context::CrateContext;
 
-fn type_is_newtype_immediate(ccx: &CrateContext, ty: Ty) -> bool {
+fn type_is_newtype_immediate<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
+                                       ty: Ty<'tcx>) -> bool {
     match ty::get(ty).sty {
         ty::ty_struct(def_id, ref substs) => {
             let fields = ty::struct_fields(ccx.tcx(), def_id, substs);
@@ -68,7 +69,7 @@ fn type_is_newtype_immediate(ccx: &CrateContext, ty: Ty) -> bool {
     }
 }
 
-pub fn type_is_immediate(ccx: &CrateContext, ty: Ty) -> bool {
+pub fn type_is_immediate<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>) -> bool {
     use trans::machine::llsize_of_alloc;
     use trans::type_of::sizing_type_of;
 
@@ -93,7 +94,7 @@ pub fn type_is_immediate(ccx: &CrateContext, ty: Ty) -> bool {
     }
 }
 
-pub fn type_is_zero_size(ccx: &CrateContext, ty: Ty) -> bool {
+pub fn type_is_zero_size<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>) -> bool {
     /*!
      * Identify types which have size zero at runtime.
      */
@@ -125,8 +126,8 @@ pub fn gensym_name(name: &str) -> PathElem {
     PathName(token::gensym(format!("{}:{}", name, num).as_slice()))
 }
 
-pub struct tydesc_info {
-    pub ty: Ty,
+pub struct tydesc_info<'tcx> {
+    pub ty: Ty<'tcx>,
     pub tydesc: ValueRef,
     pub size: ValueRef,
     pub align: ValueRef,
@@ -190,23 +191,23 @@ pub type ExternMap = FnvHashMap<String, ValueRef>;
 
 // Here `self_ty` is the real type of the self parameter to this method. It
 // will only be set in the case of default methods.
-pub struct param_substs {
-    substs: subst::Substs,
+pub struct param_substs<'tcx> {
+    substs: subst::Substs<'tcx>,
 }
 
-impl param_substs {
-    pub fn new(substs: subst::Substs) -> param_substs {
+impl<'tcx> param_substs<'tcx> {
+    pub fn new(substs: subst::Substs<'tcx>) -> param_substs<'tcx> {
         assert!(substs.types.all(|t| !ty::type_needs_infer(*t)));
         assert!(substs.types.all(|t| !ty::type_has_params(*t)));
         assert!(substs.types.all(|t| !ty::type_has_escaping_regions(*t)));
         param_substs { substs: substs.erase_regions() }
     }
 
-    pub fn substs(&self) -> &subst::Substs {
+    pub fn substs(&self) -> &subst::Substs<'tcx> {
         &self.substs
     }
 
-    pub fn empty() -> param_substs {
+    pub fn empty() -> param_substs<'tcx> {
         param_substs {
             substs: subst::Substs::trans_empty(),
         }
@@ -217,26 +218,26 @@ impl param_substs {
     }
 }
 
-impl Repr for param_substs {
-    fn repr(&self, tcx: &ty::ctxt) -> String {
+impl<'tcx> Repr<'tcx> for param_substs<'tcx> {
+    fn repr(&self, tcx: &ty::ctxt<'tcx>) -> String {
         self.substs.repr(tcx)
     }
 }
 
-pub trait SubstP {
-    fn substp(&self, tcx: &ty::ctxt, param_substs: &param_substs)
+pub trait SubstP<'tcx> {
+    fn substp(&self, tcx: &ty::ctxt<'tcx>, param_substs: &param_substs<'tcx>)
               -> Self;
 }
 
-impl<T: Subst + Clone> SubstP for T {
-    fn substp(&self, tcx: &ty::ctxt, substs: &param_substs) -> T {
+impl<'tcx, T: Subst<'tcx> + Clone> SubstP<'tcx> for T {
+    fn substp(&self, tcx: &ty::ctxt<'tcx>, substs: &param_substs<'tcx>) -> T {
         self.subst(tcx, &substs.substs)
     }
 }
 
 // work around bizarre resolve errors
-pub type RvalueDatum = datum::Datum<datum::Rvalue>;
-pub type LvalueDatum = datum::Datum<datum::Lvalue>;
+pub type RvalueDatum<'tcx> = datum::Datum<'tcx, datum::Rvalue>;
+pub type LvalueDatum<'tcx> = datum::Datum<'tcx, datum::Lvalue>;
 
 // Function context.  Every LLVM function we create will have one of
 // these.
@@ -280,7 +281,7 @@ pub struct FunctionContext<'a, 'tcx: 'a> {
 
     // Maps the DefId's for local variables to the allocas created for
     // them in llallocas.
-    pub lllocals: RefCell<NodeMap<LvalueDatum>>,
+    pub lllocals: RefCell<NodeMap<LvalueDatum<'tcx>>>,
 
     // Same as above, but for closure upvars
     pub llupvars: RefCell<NodeMap<ValueRef>>,
@@ -291,7 +292,7 @@ pub struct FunctionContext<'a, 'tcx: 'a> {
 
     // If this function is being monomorphized, this contains the type
     // substitutions used.
-    pub param_substs: &'a param_substs,
+    pub param_substs: &'a param_substs<'tcx>,
 
     // The source span and nesting context where this function comes from, for
     // error reporting and symbol generation.
@@ -354,7 +355,9 @@ impl<'a, 'tcx> FunctionContext<'a, 'tcx> {
         self.llreturn.get().unwrap()
     }
 
-    pub fn get_ret_slot(&self, bcx: Block, output: ty::FnOutput, name: &str) -> ValueRef {
+    pub fn get_ret_slot(&self, bcx: Block<'a, 'tcx>,
+                        output: ty::FnOutput<'tcx>,
+                        name: &str) -> ValueRef {
         if self.needs_ret_allocas {
             base::alloca_no_lifetime(bcx, match output {
                 ty::FnConverging(output_type) => type_of::type_of(bcx.ccx(), output_type),
@@ -495,7 +498,7 @@ impl<'blk, 'tcx> BlockS<'blk, 'tcx> {
         self.ccx().tn().type_to_string(ty)
     }
 
-    pub fn ty_to_string(&self, t: Ty) -> String {
+    pub fn ty_to_string(&self, t: Ty<'tcx>) -> String {
         t.repr(self.tcx())
     }
 
@@ -509,11 +512,11 @@ impl<'blk, 'tcx> mc::Typer<'tcx> for BlockS<'blk, 'tcx> {
         self.tcx()
     }
 
-    fn node_ty(&self, id: ast::NodeId) -> mc::McResult<Ty> {
+    fn node_ty(&self, id: ast::NodeId) -> mc::McResult<Ty<'tcx>> {
         Ok(node_id_type(self, id))
     }
 
-    fn node_method_ty(&self, method_call: typeck::MethodCall) -> Option<Ty> {
+    fn node_method_ty(&self, method_call: typeck::MethodCall) -> Option<Ty<'tcx>> {
         self.tcx()
             .method_map
             .borrow()
@@ -521,7 +524,7 @@ impl<'blk, 'tcx> mc::Typer<'tcx> for BlockS<'blk, 'tcx> {
             .map(|method| monomorphize_type(self, method.ty))
     }
 
-    fn adjustments<'a>(&'a self) -> &'a RefCell<NodeMap<ty::AutoAdjustment>> {
+    fn adjustments<'a>(&'a self) -> &'a RefCell<NodeMap<ty::AutoAdjustment<'tcx>>> {
         &self.tcx().adjustments
     }
 
@@ -534,7 +537,7 @@ impl<'blk, 'tcx> mc::Typer<'tcx> for BlockS<'blk, 'tcx> {
     }
 
     fn unboxed_closures<'a>(&'a self)
-                        -> &'a RefCell<DefIdMap<ty::UnboxedClosure>> {
+                        -> &'a RefCell<DefIdMap<ty::UnboxedClosure<'tcx>>> {
         &self.tcx().unboxed_closures
     }
 
@@ -788,28 +791,28 @@ pub fn is_null(val: ValueRef) -> bool {
     }
 }
 
-pub fn monomorphize_type(bcx: &BlockS, t: Ty) -> Ty {
+pub fn monomorphize_type<'blk, 'tcx>(bcx: &BlockS<'blk, 'tcx>, t: Ty<'tcx>) -> Ty<'tcx> {
     t.subst(bcx.tcx(), &bcx.fcx.param_substs.substs)
 }
 
-pub fn node_id_type(bcx: &BlockS, id: ast::NodeId) -> Ty {
+pub fn node_id_type<'blk, 'tcx>(bcx: &BlockS<'blk, 'tcx>, id: ast::NodeId) -> Ty<'tcx> {
     let tcx = bcx.tcx();
     let t = ty::node_id_to_type(tcx, id);
     monomorphize_type(bcx, t)
 }
 
-pub fn expr_ty(bcx: Block, ex: &ast::Expr) -> Ty {
+pub fn expr_ty<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, ex: &ast::Expr) -> Ty<'tcx> {
     node_id_type(bcx, ex.id)
 }
 
-pub fn expr_ty_adjusted(bcx: Block, ex: &ast::Expr) -> Ty {
+pub fn expr_ty_adjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, ex: &ast::Expr) -> Ty<'tcx> {
     monomorphize_type(bcx, ty::expr_ty_adjusted(bcx.tcx(), ex))
 }
 
-pub fn fulfill_obligation(ccx: &CrateContext,
-                          span: Span,
-                          trait_ref: Rc<ty::TraitRef>)
-                          -> traits::Vtable<()>
+pub fn fulfill_obligation<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
+                                    span: Span,
+                                    trait_ref: Rc<ty::TraitRef<'tcx>>)
+                                    -> traits::Vtable<'tcx, ()>
 {
     /*!
      * Attempts to resolve an obligation. The result is a shallow
@@ -923,9 +926,9 @@ pub enum ExprOrMethodCall {
     MethodCall(typeck::MethodCall)
 }
 
-pub fn node_id_substs(bcx: Block,
-                      node: ExprOrMethodCall)
-                      -> subst::Substs
+pub fn node_id_substs<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+                                  node: ExprOrMethodCall)
+                                  -> subst::Substs<'tcx>
 {
     let tcx = bcx.tcx();
 

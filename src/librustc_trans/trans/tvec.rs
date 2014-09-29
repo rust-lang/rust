@@ -52,7 +52,7 @@ pub fn pointer_add_byte(bcx: Block, ptr: ValueRef, bytes: ValueRef) -> ValueRef 
 
 pub fn make_drop_glue_unboxed<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                           vptr: ValueRef,
-                                          unit_ty: Ty,
+                                          unit_ty: Ty<'tcx>,
                                           should_deallocate: bool)
                                           -> Block<'blk, 'tcx> {
     let not_null = IsNotNull(bcx, vptr);
@@ -89,15 +89,15 @@ pub fn make_drop_glue_unboxed<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     })
 }
 
-pub struct VecTypes {
-    pub unit_ty: Ty,
+pub struct VecTypes<'tcx> {
+    pub unit_ty: Ty<'tcx>,
     pub llunit_ty: Type,
     pub llunit_size: ValueRef,
     pub llunit_alloc_size: u64
 }
 
-impl VecTypes {
-    pub fn to_string(&self, ccx: &CrateContext) -> String {
+impl<'tcx> VecTypes<'tcx> {
+    pub fn to_string<'a>(&self, ccx: &CrateContext<'a, 'tcx>) -> String {
         format!("VecTypes {{unit_ty={}, llunit_ty={}, \
                  llunit_size={}, llunit_alloc_size={}}}",
                 ty_to_string(ccx.tcx(), self.unit_ty),
@@ -240,7 +240,7 @@ pub fn trans_lit_str<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 }
 
 pub fn write_content<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
-                                 vt: &VecTypes,
+                                 vt: &VecTypes<'tcx>,
                                  vstore_expr: &ast::Expr,
                                  content_expr: &ast::Expr,
                                  dest: Dest)
@@ -337,12 +337,16 @@ pub fn write_content<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     }
 }
 
-pub fn vec_types_from_expr(bcx: Block, vec_expr: &ast::Expr) -> VecTypes {
+pub fn vec_types_from_expr<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+                                       vec_expr: &ast::Expr)
+                                       -> VecTypes<'tcx> {
     let vec_ty = node_id_type(bcx, vec_expr.id);
     vec_types(bcx, ty::sequence_element_type(bcx.tcx(), vec_ty))
 }
 
-pub fn vec_types(bcx: Block, unit_ty: Ty) -> VecTypes {
+pub fn vec_types<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+                             unit_ty: Ty<'tcx>)
+                             -> VecTypes<'tcx> {
     let ccx = bcx.ccx();
     let llunit_ty = type_of::type_of(ccx, unit_ty);
     let llunit_size = nonzero_llsize_of(ccx, llunit_ty);
@@ -437,11 +441,11 @@ pub fn get_base_and_len(bcx: Block,
 }
 
 pub type iter_vec_block<'a, 'blk, 'tcx> =
-    |Block<'blk, 'tcx>, ValueRef, Ty|: 'a -> Block<'blk, 'tcx>;
+    |Block<'blk, 'tcx>, ValueRef, Ty<'tcx>|: 'a -> Block<'blk, 'tcx>;
 
 pub fn iter_vec_loop<'a, 'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                      data_ptr: ValueRef,
-                                     vt: &VecTypes,
+                                     vt: &VecTypes<'tcx>,
                                      count: ValueRef,
                                      f: iter_vec_block<'a, 'blk, 'tcx>)
                                      -> Block<'blk, 'tcx> {
@@ -497,7 +501,7 @@ pub fn iter_vec_loop<'a, 'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
 pub fn iter_vec_raw<'a, 'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                     data_ptr: ValueRef,
-                                    unit_ty: Ty,
+                                    unit_ty: Ty<'tcx>,
                                     len: ValueRef,
                                     f: iter_vec_block<'a, 'blk, 'tcx>)
                                     -> Block<'blk, 'tcx> {

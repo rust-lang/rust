@@ -1024,7 +1024,7 @@ struct MutationChecker<'a, 'tcx: 'a> {
     cx: &'a MatchCheckCtxt<'a, 'tcx>,
 }
 
-impl<'a, 'tcx> Delegate for MutationChecker<'a, 'tcx> {
+impl<'a, 'tcx> Delegate<'tcx> for MutationChecker<'a, 'tcx> {
     fn consume(&mut self, _: NodeId, _: Span, _: cmt, _: ConsumeMode) {}
     fn consume_pat(&mut self, _: &Pat, _: cmt, _: ConsumeMode) {}
     fn borrow(&mut self,

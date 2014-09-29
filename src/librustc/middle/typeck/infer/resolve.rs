@@ -98,7 +98,7 @@ impl<'a, 'tcx> ty_fold::TypeFolder<'tcx> for ResolveState<'a, 'tcx> {
         self.infcx.tcx
     }
 
-    fn fold_ty(&mut self, t: Ty) -> Ty {
+    fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
         self.resolve_type(t)
     }
 
@@ -112,7 +112,7 @@ impl<'a, 'tcx> ResolveState<'a, 'tcx> {
         (self.modes & mode) == mode
     }
 
-    pub fn resolve_type_chk(&mut self, typ: Ty) -> fres<Ty> {
+    pub fn resolve_type_chk(&mut self, typ: Ty<'tcx>) -> fres<Ty<'tcx>> {
         self.err = None;
 
         debug!("Resolving {} (modes={:x})",
@@ -148,7 +148,7 @@ impl<'a, 'tcx> ResolveState<'a, 'tcx> {
         }
     }
 
-    pub fn resolve_type(&mut self, typ: Ty) -> Ty {
+    pub fn resolve_type(&mut self, typ: Ty<'tcx>) -> Ty<'tcx> {
         debug!("resolve_type({})", typ.repr(self.infcx.tcx));
 
         if !ty::type_needs_infer(typ) {
@@ -200,7 +200,7 @@ impl<'a, 'tcx> ResolveState<'a, 'tcx> {
         self.infcx.region_vars.resolve_var(rid)
     }
 
-    pub fn resolve_ty_var(&mut self, vid: TyVid) -> Ty {
+    pub fn resolve_ty_var(&mut self, vid: TyVid) -> Ty<'tcx> {
         let tcx = self.infcx.tcx;
         let tv = self.infcx.type_variables.borrow();
         match tv.probe(vid) {
@@ -216,7 +216,7 @@ impl<'a, 'tcx> ResolveState<'a, 'tcx> {
         }
     }
 
-    pub fn resolve_int_var(&mut self, vid: IntVid) -> Ty {
+    pub fn resolve_int_var(&mut self, vid: IntVid) -> Ty<'tcx> {
         if !self.should(resolve_ivar) {
             return ty::mk_int_var(self.infcx.tcx, vid);
         }
@@ -237,7 +237,7 @@ impl<'a, 'tcx> ResolveState<'a, 'tcx> {
         }
     }
 
-    pub fn resolve_float_var(&mut self, vid: FloatVid) -> Ty {
+    pub fn resolve_float_var(&mut self, vid: FloatVid) -> Ty<'tcx> {
         if !self.should(resolve_fvar) {
             return ty::mk_float_var(self.infcx.tcx, vid);
         }

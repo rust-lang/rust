@@ -16,17 +16,17 @@ use middle::ty::{mod, Ty};
 use std::mem;
 use util::snapshot_vec as sv;
 
-pub struct TypeVariableTable {
-    values: sv::SnapshotVec<TypeVariableData,UndoEntry,Delegate>,
+pub struct TypeVariableTable<'tcx> {
+    values: sv::SnapshotVec<TypeVariableData<'tcx>,UndoEntry,Delegate>,
 }
 
-struct TypeVariableData {
-    value: TypeVariableValue,
+struct TypeVariableData<'tcx> {
+    value: TypeVariableValue<'tcx>,
     diverging: bool
 }
 
-enum TypeVariableValue {
-    Known(Ty),
+enum TypeVariableValue<'tcx> {
+    Known(Ty<'tcx>),
     Bounded(Vec<Relation>),
 }
 
@@ -59,8 +59,8 @@ impl RelationDir {
     }
 }
 
-impl TypeVariableTable {
-    pub fn new() -> TypeVariableTable {
+impl<'tcx> TypeVariableTable<'tcx> {
+    pub fn new() -> TypeVariableTable<'tcx> {
         TypeVariableTable { values: sv::SnapshotVec::new(Delegate) }
     }
 
@@ -89,8 +89,8 @@ impl TypeVariableTable {
     pub fn instantiate_and_push(
         &mut self,
         vid: ty::TyVid,
-        ty: Ty,
-        stack: &mut Vec<(Ty, RelationDir, ty::TyVid)>)
+        ty: Ty<'tcx>,
+        stack: &mut Vec<(Ty<'tcx>, RelationDir, ty::TyVid)>)
     {
         /*!
          * Instantiates `vid` with the type `ty` and then pushes an
@@ -125,14 +125,14 @@ impl TypeVariableTable {
         ty::TyVid { index: index }
     }
 
-    pub fn probe(&self, vid: ty::TyVid) -> Option<Ty> {
+    pub fn probe(&self, vid: ty::TyVid) -> Option<Ty<'tcx>> {
         match self.values.get(vid.index).value {
             Bounded(..) => None,
             Known(t) => Some(t)
         }
     }
 
-    pub fn replace_if_possible(&self, t: Ty) -> Ty {
+    pub fn replace_if_possible(&self, t: Ty<'tcx>) -> Ty<'tcx> {
         match ty::get(t).sty {
             ty::ty_infer(ty::TyVar(v)) => {
                 match self.probe(v) {
@@ -157,7 +157,7 @@ impl TypeVariableTable {
     }
 }
 
-impl sv::SnapshotVecDelegate<TypeVariableData,UndoEntry> for Delegate {
+impl<'tcx> sv::SnapshotVecDelegate<TypeVariableData<'tcx>,UndoEntry> for Delegate {
     fn reverse(&mut self,
                values: &mut Vec<TypeVariableData>,
                action: UndoEntry) {

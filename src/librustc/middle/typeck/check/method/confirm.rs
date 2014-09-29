@@ -33,34 +33,33 @@ struct ConfirmContext<'a, 'tcx:'a> {
     self_expr: &'a ast::Expr,
 }
 
-struct InstantiatedMethodSig {
+struct InstantiatedMethodSig<'tcx> {
     /// Function signature of the method being invoked. The 0th
     /// argument is the receiver.
-    method_sig: ty::FnSig,
+    method_sig: ty::FnSig<'tcx>,
 
     /// Substitutions for all types/early-bound-regions declared on
     /// the method.
-    all_substs: subst::Substs,
+    all_substs: subst::Substs<'tcx>,
 
     /// Substitution to use when adding obligations from the method
     /// bounds. Normally equal to `all_substs` except for object
     /// receivers. See FIXME in instantiate_method_sig() for
     /// explanation.
-    method_bounds_substs: subst::Substs,
+    method_bounds_substs: subst::Substs<'tcx>,
 
     /// Generic bounds on the method's parameters which must be added
     /// as pending obligations.
-    method_bounds: ty::GenericBounds,
+    method_bounds: ty::GenericBounds<'tcx>,
 }
 
-
-pub fn confirm(fcx: &FnCtxt,
-               span: Span,
-               self_expr: &ast::Expr,
-               unadjusted_self_ty: Ty,
-               pick: probe::Pick,
-               supplied_method_types: Vec<Ty>)
-               -> MethodCallee
+pub fn confirm<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
+                         span: Span,
+                         self_expr: &ast::Expr,
+                         unadjusted_self_ty: Ty<'tcx>,
+                         pick: probe::Pick<'tcx>,
+                         supplied_method_types: Vec<Ty<'tcx>>)
+                         -> MethodCallee<'tcx>
 {
     debug!("confirm(unadjusted_self_ty={}, pick={}, supplied_method_types={})",
            unadjusted_self_ty.repr(fcx.tcx()),
@@ -81,10 +80,10 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
     }
 
     fn confirm(&mut self,
-               unadjusted_self_ty: Ty,
-               pick: probe::Pick,
-               supplied_method_types: Vec<Ty>)
-               -> MethodCallee
+               unadjusted_self_ty: Ty<'tcx>,
+               pick: probe::Pick<'tcx>,
+               supplied_method_types: Vec<Ty<'tcx>>)
+               -> MethodCallee<'tcx>
     {
         // Adjust the self expression the user provided and obtain the adjusted type.
         let self_ty = self.adjust_self_ty(unadjusted_self_ty, &pick.adjustment);
@@ -136,9 +135,9 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
     // ADJUSTMENTS
 
     fn adjust_self_ty(&mut self,
-                      unadjusted_self_ty: Ty,
+                      unadjusted_self_ty: Ty<'tcx>,
                       adjustment: &probe::PickAdjustment)
-                      -> Ty
+                      -> Ty<'tcx>
     {
         // Construct the actual adjustment and write it into the table
         let auto_deref_ref = self.create_ty_adjustment(adjustment);
@@ -164,7 +163,7 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
 
     fn create_ty_adjustment(&mut self,
                             adjustment: &probe::PickAdjustment)
-                            -> ty::AutoDerefRef
+                            -> ty::AutoDerefRef<'tcx>
     {
         match *adjustment {
             probe::AutoDeref(num) => {
@@ -191,9 +190,9 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
     //
 
     fn fresh_receiver_substs(&mut self,
-                             self_ty: Ty,
-                             pick: &probe::Pick)
-                             -> (subst::Substs, MethodOrigin)
+                             self_ty: Ty<'tcx>,
+                             pick: &probe::Pick<'tcx>)
+                             -> (subst::Substs<'tcx>, MethodOrigin<'tcx>)
     {
         /*!
          * Returns a set of substitutions for the method *receiver*
@@ -292,8 +291,9 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
     }
 
     fn extract_trait_ref<R>(&mut self,
-                            self_ty: Ty,
-                            closure: |&mut ConfirmContext<'a,'tcx>, Ty, &ty::TyTrait| -> R)
+                            self_ty: Ty<'tcx>,
+                            closure: |&mut ConfirmContext<'a,'tcx>,
+                                      Ty<'tcx>, &ty::TyTrait<'tcx>| -> R)
                             -> R
     {
         // If we specified that this is an object method, then the
@@ -323,9 +323,9 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
     }
 
     fn instantiate_method_substs(&mut self,
-                                 pick: &probe::Pick,
-                                 supplied_method_types: Vec<Ty>)
-                                 -> (Vec<Ty>, Vec<ty::Region>)
+                                 pick: &probe::Pick<'tcx>,
+                                 supplied_method_types: Vec<Ty<'tcx>>)
+                                 -> (Vec<Ty<'tcx>>, Vec<ty::Region>)
     {
         // Determine the values for the generic parameters of the method.
         // If they were not explicitly supplied, just construct fresh
@@ -361,8 +361,8 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
     }
 
     fn unify_receivers(&mut self,
-                       self_ty: Ty,
-                       method_self_ty: Ty)
+                       self_ty: Ty<'tcx>,
+                       method_self_ty: Ty<'tcx>)
     {
         match self.fcx.mk_subty(false, infer::Misc(self.span), self_ty, method_self_ty) {
             Ok(_) => {}
@@ -381,9 +381,9 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
     //
 
     fn instantiate_method_sig(&mut self,
-                              pick: &probe::Pick,
-                              all_substs: subst::Substs)
-                              -> InstantiatedMethodSig
+                              pick: &probe::Pick<'tcx>,
+                              all_substs: subst::Substs<'tcx>)
+                              -> InstantiatedMethodSig<'tcx>
     {
         // If this method comes from an impl (as opposed to a trait),
         // it may have late-bound regions from the impl that appear in
@@ -457,9 +457,9 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
     }
 
     fn add_obligations(&mut self,
-                       pick: &probe::Pick,
-                       method_bounds_substs: &subst::Substs,
-                       method_bounds: &ty::GenericBounds) {
+                       pick: &probe::Pick<'tcx>,
+                       method_bounds_substs: &subst::Substs<'tcx>,
+                       method_bounds: &ty::GenericBounds<'tcx>) {
         debug!("add_obligations: pick={} method_bounds_substs={} method_bounds={}",
                pick.repr(self.tcx()),
                method_bounds_substs.repr(self.tcx()),
@@ -647,9 +647,9 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
     }
 
     fn upcast(&mut self,
-              source_trait_ref: Rc<ty::TraitRef>,
+              source_trait_ref: Rc<ty::TraitRef<'tcx>>,
               target_trait_def_id: ast::DefId)
-              -> Rc<ty::TraitRef>
+              -> Rc<ty::TraitRef<'tcx>>
     {
         for super_trait_ref in traits::supertraits(self.tcx(), source_trait_ref.clone()) {
             if super_trait_ref.def_id == target_trait_def_id {
@@ -665,16 +665,16 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
     }
 
     fn replace_late_bound_regions_with_fresh_var<T>(&self, value: &T) -> T
-        where T : HigherRankedFoldable
+        where T : HigherRankedFoldable<'tcx>
     {
         self.infcx().replace_late_bound_regions_with_fresh_var(
             self.span, infer::FnCall, value).0
     }
 }
 
-fn wrap_autoref(mut deref: ty::AutoDerefRef,
-                base_fn: |Option<Box<ty::AutoRef>>| -> ty::AutoRef)
-                -> ty::AutoDerefRef {
+fn wrap_autoref<'tcx>(mut deref: ty::AutoDerefRef<'tcx>,
+                      base_fn: |Option<Box<ty::AutoRef<'tcx>>>| -> ty::AutoRef<'tcx>)
+                      -> ty::AutoDerefRef<'tcx> {
     let autoref = mem::replace(&mut deref.autoref, None);
     let autoref = autoref.map(|r| box r);
     deref.autoref = Some(base_fn(autoref));

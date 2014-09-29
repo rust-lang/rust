@@ -23,14 +23,14 @@ use syntax::codemap::Span;
 
 type R = Result<(),()>;
 
-pub fn guarantee_lifetime(bccx: &BorrowckCtxt,
-                          item_scope_id: ast::NodeId,
-                          span: Span,
-                          cause: euv::LoanCause,
-                          cmt: mc::cmt,
-                          loan_region: ty::Region,
-                          _: ty::BorrowKind)
-                          -> Result<(),()> {
+pub fn guarantee_lifetime<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
+                                    item_scope_id: ast::NodeId,
+                                    span: Span,
+                                    cause: euv::LoanCause,
+                                    cmt: mc::cmt<'tcx>,
+                                    loan_region: ty::Region,
+                                    _: ty::BorrowKind)
+                                    -> Result<(),()> {
     debug!("guarantee_lifetime(cmt={}, loan_region={})",
            cmt.repr(bccx.tcx), loan_region.repr(bccx.tcx));
     let ctxt = GuaranteeLifetimeContext {bccx: bccx,
@@ -54,12 +54,12 @@ struct GuaranteeLifetimeContext<'a, 'tcx: 'a> {
     span: Span,
     cause: euv::LoanCause,
     loan_region: ty::Region,
-    cmt_original: mc::cmt
+    cmt_original: mc::cmt<'tcx>
 }
 
 impl<'a, 'tcx> GuaranteeLifetimeContext<'a, 'tcx> {
 
-    fn check(&self, cmt: &mc::cmt, discr_scope: Option<ast::NodeId>) -> R {
+    fn check(&self, cmt: &mc::cmt<'tcx>, discr_scope: Option<ast::NodeId>) -> R {
         //! Main routine. Walks down `cmt` until we find the "guarantor".
         debug!("guarantee_lifetime.check(cmt={}, loan_region={})",
                cmt.repr(self.bccx.tcx),

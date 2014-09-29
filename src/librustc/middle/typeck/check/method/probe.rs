@@ -37,49 +37,50 @@ struct ProbeContext<'a, 'tcx:'a> {
     fcx: &'a FnCtxt<'a, 'tcx>,
     span: Span,
     method_name: ast::Name,
-    steps: Rc<Vec<CandidateStep>>,
+    steps: Rc<Vec<CandidateStep<'tcx>>>,
     opt_simplified_steps: Option<Vec<fast_reject::SimplifiedType>>,
-    inherent_candidates: Vec<Candidate>,
-    extension_candidates: Vec<Candidate>,
+    inherent_candidates: Vec<Candidate<'tcx>>,
+    extension_candidates: Vec<Candidate<'tcx>>,
     impl_dups: HashSet<ast::DefId>,
     static_candidates: Vec<CandidateSource>,
 }
 
-struct CandidateStep {
-    self_ty: Ty,
+struct CandidateStep<'tcx> {
+    self_ty: Ty<'tcx>,
     adjustment: PickAdjustment,
 }
 
-struct Candidate {
-    xform_self_ty: Ty,
-    method_ty: Rc<ty::Method>,
-    kind: CandidateKind,
+struct Candidate<'tcx> {
+    xform_self_ty: Ty<'tcx>,
+    method_ty: Rc<ty::Method<'tcx>>,
+    kind: CandidateKind<'tcx>,
 }
 
-enum CandidateKind {
-    InherentImplCandidate(/* Impl */ ast::DefId, subst::Substs),
-    ObjectCandidate(MethodObject),
-    ExtensionImplCandidate(/* Impl */ ast::DefId, Rc<ty::TraitRef>, subst::Substs, MethodIndex),
+enum CandidateKind<'tcx> {
+    InherentImplCandidate(/* Impl */ ast::DefId, subst::Substs<'tcx>),
+    ObjectCandidate(MethodObject<'tcx>),
+    ExtensionImplCandidate(/* Impl */ ast::DefId, Rc<ty::TraitRef<'tcx>>,
+                           subst::Substs<'tcx>, MethodIndex),
     UnboxedClosureCandidate(/* Trait */ ast::DefId, MethodIndex),
-    WhereClauseCandidate(Rc<ty::TraitRef>, MethodIndex),
+    WhereClauseCandidate(Rc<ty::TraitRef<'tcx>>, MethodIndex),
 }
 
-pub struct Pick {
-    pub method_ty: Rc<ty::Method>,
+pub struct Pick<'tcx> {
+    pub method_ty: Rc<ty::Method<'tcx>>,
     pub adjustment: PickAdjustment,
-    pub kind: PickKind,
+    pub kind: PickKind<'tcx>,
 }
 
 #[deriving(Clone,Show)]
-pub enum PickKind {
+pub enum PickKind<'tcx> {
     InherentImplPick(/* Impl */ ast::DefId),
     ObjectPick(/* Trait */ ast::DefId, /* method_num */ uint, /* real_index */ uint),
     ExtensionImplPick(/* Impl */ ast::DefId, MethodIndex),
     TraitPick(/* Trait */ ast::DefId, MethodIndex),
-    WhereClausePick(/* Trait */ Rc<ty::TraitRef>, MethodIndex),
+    WhereClausePick(/* Trait */ Rc<ty::TraitRef<'tcx>>, MethodIndex),
 }
 
-pub type PickResult = Result<Pick, MethodError>;
+pub type PickResult<'tcx> = Result<Pick<'tcx>, MethodError>;
 
 // This is a kind of "abstracted" version of ty::AutoAdjustment.  The
 // difference is that it doesn't embed any regions or other
@@ -105,12 +106,12 @@ pub enum PickAdjustment {
     AutoRef(ast::Mutability, Box<PickAdjustment>),
 }
 
-pub fn probe(fcx: &FnCtxt,
-             span: Span,
-             method_name: ast::Name,
-             self_ty: Ty,
-             call_expr_id: ast::NodeId)
-             -> PickResult
+pub fn probe<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
+                       span: Span,
+                       method_name: ast::Name,
+                       self_ty: Ty<'tcx>,
+                       call_expr_id: ast::NodeId)
+                       -> PickResult<'tcx>
 {
     debug!("probe(self_ty={}, method_name={}, call_expr_id={})",
            self_ty.repr(fcx.tcx()),
@@ -157,7 +158,10 @@ pub fn probe(fcx: &FnCtxt,
     })
 }
 
-fn create_steps(fcx: &FnCtxt, span: Span, self_ty: Ty) -> Vec<CandidateStep> {
+fn create_steps<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
+                          span: Span,
+                          self_ty: Ty<'tcx>)
+                          -> Vec<CandidateStep<'tcx>> {
     let mut steps = Vec::new();
 
     let (fully_dereferenced_ty, dereferences, _) =
@@ -195,7 +199,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
     fn new(fcx: &'a FnCtxt<'a,'tcx>,
            span: Span,
            method_name: ast::Name,
-           steps: Vec<CandidateStep>,
+           steps: Vec<CandidateStep<'tcx>>,
            opt_simplified_steps: Option<Vec<fast_reject::SimplifiedType>>)
            -> ProbeContext<'a,'tcx>
     {
@@ -230,7 +234,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
         }
     }
 
-    fn assemble_probe(&mut self, self_ty: Ty) {
+    fn assemble_probe(&mut self, self_ty: Ty<'tcx>) {
         debug!("assemble_probe: self_ty={}",
                self_ty.repr(self.tcx()));
 
@@ -293,8 +297,8 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
     }
 
     fn assemble_inherent_candidates_from_object(&mut self,
-                                                self_ty: Ty,
-                                                principal: &ty::TraitRef,
+                                                self_ty: Ty<'tcx>,
+                                                principal: &ty::TraitRef<'tcx>,
                                                 _bounds: ty::ExistentialBounds) {
         debug!("assemble_inherent_candidates_from_object(self_ty={})",
                self_ty.repr(self.tcx()));
@@ -353,8 +357,8 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
     }
 
     fn assemble_inherent_candidates_from_param(&mut self,
-                                           _rcvr_ty: Ty,
-                                           param_ty: ty::ParamTy) {
+                                               _rcvr_ty: Ty<'tcx>,
+                                               param_ty: ty::ParamTy) {
         // FIXME -- Do we want to commit to this behavior for param bounds?
 
         let ty::ParamTy { space, idx: index, .. } = param_ty;
@@ -397,11 +401,11 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
     // create the candidates.
     fn elaborate_bounds(
         &mut self,
-        bounds: &[Rc<ty::TraitRef>],
-        mk_cand: |this: &mut ProbeContext,
-                  tr: Rc<ty::TraitRef>,
-                  m: Rc<ty::Method>,
-                  method_num: uint|)
+        bounds: &[Rc<ty::TraitRef<'tcx>>],
+        mk_cand: for<'a> |this: &mut ProbeContext<'a, 'tcx>,
+                          tr: Rc<ty::TraitRef<'tcx>>,
+                          m: Rc<ty::Method<'tcx>>,
+                          method_num: uint|)
     {
         let tcx = self.tcx();
         let mut cache = HashSet::new();
@@ -475,7 +479,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
 
     fn assemble_extension_candidates_for_trait_impls(&mut self,
                                                      trait_def_id: ast::DefId,
-                                                     method: Rc<ty::Method>,
+                                                     method: Rc<ty::Method<'tcx>>,
                                                      method_index: uint)
     {
         ty::populate_implementations_for_trait_if_necessary(self.tcx(),
@@ -539,7 +543,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
 
     fn assemble_unboxed_closure_candidates(&mut self,
                                            trait_def_id: ast::DefId,
-                                           method_ty: Rc<ty::Method>,
+                                           method_ty: Rc<ty::Method<'tcx>>,
                                            method_index: uint)
     {
         // Check if this is one of the Fn,FnMut,FnOnce traits.
@@ -600,7 +604,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
     ///////////////////////////////////////////////////////////////////////////
     // THE ACTUAL SEARCH
 
-    fn pick(mut self) -> PickResult {
+    fn pick(mut self) -> PickResult<'tcx> {
         let steps = self.steps.clone();
 
         for step in steps.iter() {
@@ -615,7 +619,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
         Err(NoMatch(self.static_candidates))
     }
 
-    fn pick_step(&mut self, step: &CandidateStep) -> Option<PickResult> {
+    fn pick_step(&mut self, step: &CandidateStep<'tcx>) -> Option<PickResult<'tcx>> {
         debug!("pick_step: step={}", step.repr(self.tcx()));
 
         if ty::type_is_error(step.self_ty) {
@@ -641,15 +645,15 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
     }
 
     fn pick_adjusted_method(&mut self,
-                            step: &CandidateStep)
-                            -> Option<PickResult>
+                            step: &CandidateStep<'tcx>)
+                            -> Option<PickResult<'tcx>>
     {
         self.pick_method(step.self_ty).map(|r| self.adjust(r, step.adjustment.clone()))
     }
 
     fn pick_autorefd_method(&mut self,
-                            step: &CandidateStep)
-                            -> Option<PickResult>
+                            step: &CandidateStep<'tcx>)
+                            -> Option<PickResult<'tcx>>
     {
         let tcx = self.tcx();
         self.search_mutabilities(
@@ -658,8 +662,8 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
     }
 
     fn pick_autorefrefd_method(&mut self,
-                               step: &CandidateStep)
-                               -> Option<PickResult>
+                               step: &CandidateStep<'tcx>)
+                               -> Option<PickResult<'tcx>>
     {
         let tcx = self.tcx();
         self.search_mutabilities(
@@ -671,8 +675,8 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
 
     fn search_mutabilities(&mut self,
                            mk_adjustment: |ast::Mutability| -> PickAdjustment,
-                           mk_autoref_ty: |ast::Mutability, ty::Region| -> Ty)
-                           -> Option<PickResult>
+                           mk_autoref_ty: |ast::Mutability, ty::Region| -> Ty<'tcx>)
+                           -> Option<PickResult<'tcx>>
     {
         // In general, during probing we erase regions. See
         // `impl_self_ty()` for an explanation.
@@ -690,7 +694,10 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
             .nth(0)
     }
 
-    fn adjust(&mut self, result: PickResult, adjustment: PickAdjustment) -> PickResult {
+    fn adjust(&mut self,
+              result: PickResult<'tcx>,
+              adjustment: PickAdjustment)
+              -> PickResult<'tcx> {
         match result {
             Err(e) => Err(e),
             Ok(mut pick) => {
@@ -700,7 +707,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
         }
     }
 
-    fn pick_method(&mut self, self_ty: Ty) -> Option<PickResult> {
+    fn pick_method(&mut self, self_ty: Ty<'tcx>) -> Option<PickResult<'tcx>> {
         debug!("pick_method(self_ty={})", self.infcx().ty_to_string(self_ty));
 
         debug!("searching inherent candidates");
@@ -715,7 +722,10 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
         self.consider_candidates(self_ty, self.extension_candidates[])
     }
 
-    fn consider_candidates(&self, self_ty: Ty, probes: &[Candidate]) -> Option<PickResult> {
+    fn consider_candidates(&self,
+                           self_ty: Ty<'tcx>,
+                           probes: &[Candidate<'tcx>])
+                           -> Option<PickResult<'tcx>> {
         let mut applicable_candidates: Vec<_> =
             probes.iter()
                   .filter(|&probe| self.consider_probe(self_ty, probe))
@@ -741,7 +751,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
         })
     }
 
-    fn consider_probe(&self, self_ty: Ty, probe: &Candidate) -> bool {
+    fn consider_probe(&self, self_ty: Ty<'tcx>, probe: &Candidate<'tcx>) -> bool {
         debug!("consider_probe: self_ty={} probe={}",
                self_ty.repr(self.tcx()),
                probe.repr(self.tcx()));
@@ -797,7 +807,9 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
         })
     }
 
-    fn collapse_candidates_to_trait_pick(&self, probes: &[&Candidate]) -> Option<Pick> {
+    fn collapse_candidates_to_trait_pick(&self,
+                                         probes: &[&Candidate<'tcx>])
+                                         -> Option<Pick<'tcx>> {
         /*!
          * Sometimes we get in a situation where we have multiple
          * probes that are all impls of the same trait, but we don't
@@ -844,7 +856,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
     ///////////////////////////////////////////////////////////////////////////
     // MISCELLANY
 
-    fn make_sub_ty(&self, sub: Ty, sup: Ty) -> infer::ures {
+    fn make_sub_ty(&self, sub: Ty<'tcx>, sup: Ty<'tcx>) -> infer::ures<'tcx> {
         self.infcx().sub_types(false, infer::Misc(DUMMY_SP), sub, sup)
     }
 
@@ -874,7 +886,10 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
         self.static_candidates.push(source);
     }
 
-    fn xform_self_ty(&self, method: &Rc<ty::Method>, substs: &subst::Substs) -> Ty {
+    fn xform_self_ty(&self,
+                     method: &Rc<ty::Method<'tcx>>,
+                     substs: &subst::Substs<'tcx>)
+                     -> Ty<'tcx> {
         debug!("xform_self_ty(self_ty={}, substs={})",
                method.fty.sig.inputs[0].repr(self.tcx()),
                substs.repr(self.tcx()));
@@ -922,7 +937,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
 
     fn impl_substs(&self,
                    impl_def_id: ast::DefId)
-                   -> subst::Substs
+                   -> subst::Substs<'tcx>
     {
         let impl_pty = ty::lookup_item_type(self.tcx(), impl_def_id);
 
@@ -938,7 +953,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
     }
 
     fn erase_late_bound_regions<T>(&self, value: &T) -> T
-        where T : HigherRankedFoldable
+        where T : HigherRankedFoldable<'tcx>
     {
         /*!
          * Replace late-bound-regions bound by `value` with `'static`
@@ -971,10 +986,10 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
     }
 }
 
-fn impl_method(tcx: &ty::ctxt,
-               impl_def_id: ast::DefId,
-               method_name: ast::Name)
-               -> Option<Rc<ty::Method>>
+fn impl_method<'tcx>(tcx: &ty::ctxt<'tcx>,
+                     impl_def_id: ast::DefId,
+                     method_name: ast::Name)
+                     -> Option<Rc<ty::Method<'tcx>>>
 {
     let impl_items = tcx.impl_items.borrow();
     let impl_items = impl_items.get(&impl_def_id).unwrap();
@@ -985,10 +1000,10 @@ fn impl_method(tcx: &ty::ctxt,
         .and_then(|item| item.as_opt_method())
 }
 
-fn trait_method(tcx: &ty::ctxt,
-                trait_def_id: ast::DefId,
-                method_name: ast::Name)
-                -> Option<(uint, Rc<ty::Method>)>
+fn trait_method<'tcx>(tcx: &ty::ctxt<'tcx>,
+                      trait_def_id: ast::DefId,
+                      method_name: ast::Name)
+                      -> Option<(uint, Rc<ty::Method<'tcx>>)>
 {
     /*!
      * Find method with name `method_name` defined in `trait_def_id` and return it,
@@ -1005,10 +1020,10 @@ fn trait_method(tcx: &ty::ctxt,
 
 // Determine the index of a method in the list of all methods belonging
 // to a trait and its supertraits.
-fn get_method_index(tcx: &ty::ctxt,
-                    trait_ref: &ty::TraitRef,
-                    subtrait: Rc<ty::TraitRef>,
-                    n_method: uint) -> uint {
+fn get_method_index<'tcx>(tcx: &ty::ctxt<'tcx>,
+                          trait_ref: &ty::TraitRef<'tcx>,
+                          subtrait: Rc<ty::TraitRef<'tcx>>,
+                          n_method: uint) -> uint {
     // We need to figure the "real index" of the method in a
     // listing of all the methods of an object. We do this by
     // iterating down the supertraits of the object's trait until
@@ -1032,8 +1047,8 @@ fn get_method_index(tcx: &ty::ctxt,
     method_count + n_method
 }
 
-impl Candidate {
-    fn to_unadjusted_pick(&self) -> Pick {
+impl<'tcx> Candidate<'tcx> {
+    fn to_unadjusted_pick(&self) -> Pick<'tcx> {
         Pick {
             method_ty: self.method_ty.clone(),
             adjustment: AutoDeref(0),
@@ -1091,16 +1106,16 @@ impl Candidate {
     }
 }
 
-impl Repr for Candidate {
-    fn repr(&self, tcx: &ty::ctxt) -> String {
+impl<'tcx> Repr<'tcx> for Candidate<'tcx> {
+    fn repr(&self, tcx: &ty::ctxt<'tcx>) -> String {
         format!("Candidate(xform_self_ty={}, kind={})",
                 self.xform_self_ty.repr(tcx),
                 self.kind.repr(tcx))
     }
 }
 
-impl Repr for CandidateKind {
-    fn repr(&self, tcx: &ty::ctxt) -> String {
+impl<'tcx> Repr<'tcx> for CandidateKind<'tcx> {
+    fn repr(&self, tcx: &ty::ctxt<'tcx>) -> String {
         match *self {
             InherentImplCandidate(ref a, ref b) =>
                 format!("InherentImplCandidate({},{})", a.repr(tcx), b.repr(tcx)),
@@ -1117,28 +1132,28 @@ impl Repr for CandidateKind {
     }
 }
 
-impl Repr for CandidateStep {
-    fn repr(&self, tcx: &ty::ctxt) -> String {
+impl<'tcx> Repr<'tcx> for CandidateStep<'tcx> {
+    fn repr(&self, tcx: &ty::ctxt<'tcx>) -> String {
         format!("CandidateStep({},{})",
                 self.self_ty.repr(tcx),
                 self.adjustment)
     }
 }
 
-impl Repr for PickAdjustment {
+impl<'tcx> Repr<'tcx> for PickAdjustment {
     fn repr(&self, _tcx: &ty::ctxt) -> String {
         format!("{}", self)
     }
 }
 
-impl Repr for PickKind {
+impl<'tcx> Repr<'tcx> for PickKind<'tcx> {
     fn repr(&self, _tcx: &ty::ctxt) -> String {
         format!("{}", self)
     }
 }
 
-impl Repr for Pick {
-    fn repr(&self, tcx: &ty::ctxt) -> String {
+impl<'tcx> Repr<'tcx> for Pick<'tcx> {
+    fn repr(&self, tcx: &ty::ctxt<'tcx>) -> String {
         format!("Pick(method_ty={}, adjustment={}, kind={})",
                 self.method_ty.repr(tcx),
                 self.adjustment,

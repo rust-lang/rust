@@ -29,7 +29,7 @@ use syntax::visit::Visitor;
 
 pub struct CheckTypeWellFormedVisitor<'ccx, 'tcx:'ccx> {
     ccx: &'ccx CrateCtxt<'ccx, 'tcx>,
-    cache: HashSet<Ty>
+    cache: HashSet<Ty<'tcx>>
 }
 
 impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
@@ -37,7 +37,7 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
         CheckTypeWellFormedVisitor { ccx: ccx, cache: HashSet::new() }
     }
 
-    fn check_item_well_formed(&mut self, ccx: &CrateCtxt, item: &ast::Item) {
+    fn check_item_well_formed(&mut self, item: &ast::Item) {
         /*!
          * Checks that the field types (in a struct def'n) or
          * argument types (in an enum def'n) are well-formed,
@@ -55,6 +55,7 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
          * the types first.
          */
 
+        let ccx = self.ccx;
         debug!("check_item_well_formed(it.id={}, it.ident={})",
                item.id,
                ty::item_path_str(ccx.tcx, local_def(item.id)));
@@ -87,9 +88,10 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
     }
 
     fn with_fcx(&mut self,
-                ccx: &CrateCtxt,
                 item: &ast::Item,
-                f: |&mut CheckTypeWellFormedVisitor, &FnCtxt|) {
+                f: for<'fcx> |&mut CheckTypeWellFormedVisitor<'ccx, 'tcx>,
+                              &FnCtxt<'fcx, 'tcx>|) {
+        let ccx = self.ccx;
         let item_def_id = local_def(item.id);
         let polytype = ty::lookup_item_type(ccx.tcx, item_def_id);
         let param_env =
@@ -106,14 +108,15 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
 
     fn check_type_defn(&mut self,
                        item: &ast::Item,
-                       lookup_fields: |&FnCtxt| -> Vec<AdtVariant>)
+                       lookup_fields: for<'fcx> |&FnCtxt<'fcx, 'tcx>|
+                                                 -> Vec<AdtVariant<'tcx>>)
     {
         /*!
          * In a type definition, we check that to ensure that the types of the fields are
          * well-formed.
          */
 
-        self.with_fcx(self.ccx, item, |this, fcx| {
+        self.with_fcx(item, |this, fcx| {
             let variants = lookup_fields(fcx);
             let mut bounds_checker = BoundsChecker::new(fcx, item.span,
                                                         item.id, Some(&mut this.cache));
@@ -150,7 +153,7 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
     fn check_item_type(&mut self,
                        item: &ast::Item)
     {
-        self.with_fcx(self.ccx, item, |this, fcx| {
+        self.with_fcx(item, |this, fcx| {
             let mut bounds_checker = BoundsChecker::new(fcx, item.span,
                                                         item.id, Some(&mut this.cache));
             let polytype = ty::lookup_item_type(fcx.tcx(), local_def(item.id));
@@ -162,7 +165,7 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
     fn check_impl(&mut self,
                   item: &ast::Item)
     {
-        self.with_fcx(self.ccx, item, |this, fcx| {
+        self.with_fcx(item, |this, fcx| {
             let mut bounds_checker = BoundsChecker::new(fcx, item.span,
                                                         item.id, Some(&mut this.cache));
 
@@ -245,8 +248,8 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
 }
 
 impl<'ccx, 'tcx, 'v> Visitor<'v> for CheckTypeWellFormedVisitor<'ccx, 'tcx> {
-    fn visit_item(&mut self, i: &'v ast::Item) {
-        self.check_item_well_formed(self.ccx, i);
+    fn visit_item(&mut self, i: &ast::Item) {
+        self.check_item_well_formed(i);
         visit::walk_item(self, i);
     }
 }
@@ -256,20 +259,20 @@ pub struct BoundsChecker<'cx,'tcx:'cx> {
     span: Span,
     scope_id: ast::NodeId,
     binding_count: uint,
-    cache: Option<&'cx mut HashSet<Ty>>,
+    cache: Option<&'cx mut HashSet<Ty<'tcx>>>,
 }
 
 impl<'cx,'tcx> BoundsChecker<'cx,'tcx> {
     pub fn new(fcx: &'cx FnCtxt<'cx,'tcx>,
                span: Span,
                scope_id: ast::NodeId,
-               cache: Option<&'cx mut HashSet<Ty>>)
+               cache: Option<&'cx mut HashSet<Ty<'tcx>>>)
                -> BoundsChecker<'cx,'tcx> {
         BoundsChecker { fcx: fcx, span: span, scope_id: scope_id,
                         cache: cache, binding_count: 0 }
     }
 
-    pub fn check_trait_ref(&mut self, trait_ref: &ty::TraitRef) {
+    pub fn check_trait_ref(&mut self, trait_ref: &ty::TraitRef<'tcx>) {
         /*!
          * Given a trait ref like `A : Trait<B>`, where `Trait` is
          * defined as (say):
@@ -300,11 +303,11 @@ impl<'cx,'tcx> BoundsChecker<'cx,'tcx> {
         }
     }
 
-    pub fn check_ty(&mut self, ty: Ty) {
+    pub fn check_ty(&mut self, ty: Ty<'tcx>) {
         ty.fold_with(self);
     }
 
-    fn check_traits_in_ty(&mut self, ty: Ty) {
+    fn check_traits_in_ty(&mut self, ty: Ty<'tcx>) {
         // When checking types outside of a type def'n, we ignore
         // region obligations. See discussion below in fold_ty().
         self.binding_count += 1;
@@ -318,7 +321,7 @@ impl<'cx,'tcx> TypeFolder<'tcx> for BoundsChecker<'cx,'tcx> {
         self.fcx.tcx()
     }
 
-    fn fold_ty(&mut self, t: Ty) -> Ty {
+    fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
         debug!("BoundsChecker t={}",
                t.repr(self.tcx()));
 
@@ -401,16 +404,18 @@ impl<'cx,'tcx> TypeFolder<'tcx> for BoundsChecker<'cx,'tcx> {
 ///////////////////////////////////////////////////////////////////////////
 // ADT
 
-struct AdtVariant {
-    fields: Vec<AdtField>,
+struct AdtVariant<'tcx> {
+    fields: Vec<AdtField<'tcx>>,
 }
 
-struct AdtField {
-    ty: Ty,
+struct AdtField<'tcx> {
+    ty: Ty<'tcx>,
     span: Span,
 }
 
-fn struct_variant(fcx: &FnCtxt, struct_def: &ast::StructDef) -> AdtVariant {
+fn struct_variant<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
+                            struct_def: &ast::StructDef)
+                            -> AdtVariant<'tcx> {
     let fields =
         struct_def.fields
         .iter()
@@ -423,7 +428,9 @@ fn struct_variant(fcx: &FnCtxt, struct_def: &ast::StructDef) -> AdtVariant {
     AdtVariant { fields: fields }
 }
 
-fn enum_variants(fcx: &FnCtxt, enum_def: &ast::EnumDef) -> Vec<AdtVariant> {
+fn enum_variants<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
+                           enum_def: &ast::EnumDef)
+                           -> Vec<AdtVariant<'tcx>> {
     enum_def.variants.iter()
         .map(|variant| {
             match variant.node.kind {
@@ -457,10 +464,10 @@ fn enum_variants(fcx: &FnCtxt, enum_def: &ast::EnumDef) -> Vec<AdtVariant> {
 ///////////////////////////////////////////////////////////////////////////
 // Special drop trait checking
 
-fn check_struct_safe_for_destructor(fcx: &FnCtxt,
-                                    span: Span,
-                                    self_ty: Ty,
-                                    struct_did: ast::DefId) {
+fn check_struct_safe_for_destructor<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
+                                              span: Span,
+                                              self_ty: Ty<'tcx>,
+                                              struct_did: ast::DefId) {
     let struct_tpt = ty::lookup_item_type(fcx.tcx(), struct_did);
     if !struct_tpt.generics.has_type_params(subst::TypeSpace)
         && !struct_tpt.generics.has_region_params(subst::TypeSpace)

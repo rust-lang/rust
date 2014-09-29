@@ -1518,7 +1518,7 @@ fn check_fn(_v: &Liveness,
 }
 
 impl<'a, 'tcx> Liveness<'a, 'tcx> {
-    fn fn_ret(&self, id: NodeId) -> ty::FnOutput {
+    fn fn_ret(&self, id: NodeId) -> ty::FnOutput<'tcx> {
         let fn_ty = ty::node_id_to_type(self.ir.tcx, id);
         match ty::get(fn_ty).sty {
             ty::ty_unboxed_closure(closure_def_id, _, _) =>

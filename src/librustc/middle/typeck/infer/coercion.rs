@@ -88,7 +88,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         let Coerce(ref v) = *self; v
     }
 
-    pub fn tys(&self, a: Ty, b: Ty) -> CoerceResult {
+    pub fn tys(&self, a: Ty<'tcx>, b: Ty<'tcx>) -> CoerceResult<'tcx> {
         debug!("Coerce.tys({} => {})",
                a.repr(self.get_ref().infcx.tcx),
                b.repr(self.get_ref().infcx.tcx));
@@ -190,14 +190,14 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         })
     }
 
-    pub fn subtype(&self, a: Ty, b: Ty) -> CoerceResult {
+    pub fn subtype(&self, a: Ty<'tcx>, b: Ty<'tcx>) -> CoerceResult<'tcx> {
         match Sub(self.get_ref().clone()).tys(a, b) {
             Ok(_) => Ok(None),         // No coercion required.
             Err(ref e) => Err(*e)
         }
     }
 
-    pub fn unpack_actual_value<T>(&self, a: Ty, f: |&ty::sty| -> T)
+    pub fn unpack_actual_value<T>(&self, a: Ty<'tcx>, f: |&ty::sty<'tcx>| -> T)
                                   -> T {
         match resolve_type(self.get_ref().infcx, None,
                            a, try_resolve_tvar_shallow) {
@@ -215,11 +215,11 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
 
     // ~T -> &T or &mut T -> &T (including where T = [U] or str)
     pub fn coerce_borrowed_pointer(&self,
-                                   a: Ty,
-                                   sty_a: &ty::sty,
-                                   b: Ty,
+                                   a: Ty<'tcx>,
+                                   sty_a: &ty::sty<'tcx>,
+                                   b: Ty<'tcx>,
                                    mutbl_b: ast::Mutability)
-                                   -> CoerceResult {
+                                   -> CoerceResult<'tcx> {
         debug!("coerce_borrowed_pointer(a={}, sty_a={}, b={})",
                a.repr(self.get_ref().infcx.tcx), sty_a,
                b.repr(self.get_ref().infcx.tcx));
@@ -258,10 +258,10 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
     // or &mut [T, ..n] -> &mut [T]
     // or &Concrete -> &Trait, etc.
     fn coerce_unsized(&self,
-                      a: Ty,
-                      sty_a: &ty::sty,
-                      b: Ty)
-                      -> CoerceResult {
+                      a: Ty<'tcx>,
+                      sty_a: &ty::sty<'tcx>,
+                      b: Ty<'tcx>)
+                      -> CoerceResult<'tcx> {
         debug!("coerce_unsized(a={}, sty_a={}, b={})",
                a.repr(self.get_ref().infcx.tcx), sty_a,
                b.repr(self.get_ref().infcx.tcx));
@@ -349,10 +349,10 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
     // performed to unsize it.
     // E.g., `[T, ..n]` -> `([T], UnsizeLength(n))`
     fn unsize_ty(&self,
-                 ty_a: Ty,
-                 sty_a: &ty::sty,
-                 ty_b: Ty)
-                 -> Option<(Ty, ty::UnsizeKind)> {
+                 ty_a: Ty<'tcx>,
+                 sty_a: &ty::sty<'tcx>,
+                 ty_b: Ty<'tcx>)
+                 -> Option<(Ty<'tcx>, ty::UnsizeKind<'tcx>)> {
         debug!("unsize_ty(sty_a={}, ty_b={})", sty_a, ty_b.repr(self.get_ref().infcx.tcx));
 
         let tcx = self.get_ref().infcx.tcx;
@@ -425,10 +425,10 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
     }
 
     fn coerce_borrowed_object(&self,
-                              a: Ty,
-                              sty_a: &ty::sty,
-                              b: Ty,
-                              b_mutbl: ast::Mutability) -> CoerceResult
+                              a: Ty<'tcx>,
+                              sty_a: &ty::sty<'tcx>,
+                              b: Ty<'tcx>,
+                              b_mutbl: ast::Mutability) -> CoerceResult<'tcx>
     {
         let tcx = self.get_ref().infcx.tcx;
 
@@ -445,10 +445,10 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
     }
 
     fn coerce_unsafe_object(&self,
-                            a: Ty,
-                            sty_a: &ty::sty,
-                            b: Ty,
-                            b_mutbl: ast::Mutability) -> CoerceResult
+                            a: Ty<'tcx>,
+                            sty_a: &ty::sty<'tcx>,
+                            b: Ty<'tcx>,
+                            b_mutbl: ast::Mutability) -> CoerceResult<'tcx>
     {
         let tcx = self.get_ref().infcx.tcx;
 
@@ -462,12 +462,12 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
     }
 
     fn coerce_object(&self,
-                     a: Ty,
-                     sty_a: &ty::sty,
-                     b: Ty,
+                     a: Ty<'tcx>,
+                     sty_a: &ty::sty<'tcx>,
+                     b: Ty<'tcx>,
                      b_mutbl: ast::Mutability,
-                     mk_ty: |Ty| -> Ty,
-                     mk_adjust: || -> ty::AutoRef) -> CoerceResult
+                     mk_ty: |Ty<'tcx>| -> Ty<'tcx>,
+                     mk_adjust: || -> ty::AutoRef<'tcx>) -> CoerceResult<'tcx>
     {
         let tcx = self.get_ref().infcx.tcx;
 
@@ -494,10 +494,10 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
     }
 
     pub fn coerce_borrowed_fn(&self,
-                              a: Ty,
-                              sty_a: &ty::sty,
-                              b: Ty)
-                              -> CoerceResult {
+                              a: Ty<'tcx>,
+                              sty_a: &ty::sty<'tcx>,
+                              b: Ty<'tcx>)
+                              -> CoerceResult<'tcx> {
         debug!("coerce_borrowed_fn(a={}, sty_a={}, b={})",
                a.repr(self.get_ref().infcx.tcx), sty_a,
                b.repr(self.get_ref().infcx.tcx));
@@ -512,8 +512,8 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         }
     }
 
-    fn coerce_from_bare_fn(&self, a: Ty, fn_ty_a: &ty::BareFnTy, b: Ty)
-                           -> CoerceResult {
+    fn coerce_from_bare_fn(&self, a: Ty<'tcx>, fn_ty_a: &ty::BareFnTy<'tcx>, b: Ty<'tcx>)
+                           -> CoerceResult<'tcx> {
         /*!
          *
          * Attempts to coerce from a bare Rust function (`extern
@@ -546,11 +546,11 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
     }
 
     pub fn coerce_unsafe_ptr(&self,
-                             a: Ty,
-                             sty_a: &ty::sty,
-                             b: Ty,
+                             a: Ty<'tcx>,
+                             sty_a: &ty::sty<'tcx>,
+                             b: Ty<'tcx>,
                              mutbl_b: ast::Mutability)
-                             -> CoerceResult {
+                             -> CoerceResult<'tcx> {
         debug!("coerce_unsafe_ptr(a={}, sty_a={}, b={})",
                a.repr(self.get_ref().infcx.tcx), sty_a,
                b.repr(self.get_ref().infcx.tcx));
