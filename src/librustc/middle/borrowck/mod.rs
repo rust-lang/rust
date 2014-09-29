@@ -409,14 +409,14 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                                      use_span: Span,
                                      use_kind: MovedValueUseKind,
                                      lp: &LoanPath,
-                                     move: &move_data::Move,
+                                     the_move: &move_data::Move,
                                      moved_lp: &LoanPath) {
         let verb = match use_kind {
             MovedInUse => "use",
             MovedInCapture => "capture",
         };
 
-        match move.kind {
+        match the_move.kind {
             move_data::Declared => {
                 self.tcx.sess.span_err(
                     use_span,
@@ -435,18 +435,20 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
             }
         }
 
-        match move.kind {
+        match the_move.kind {
             move_data::Declared => {}
 
             move_data::MoveExpr => {
-                let (expr_ty, expr_span) = match self.tcx.map.find(move.id) {
+                let (expr_ty, expr_span) = match self.tcx
+                                                     .map
+                                                     .find(the_move.id) {
                     Some(ast_map::NodeExpr(expr)) => {
                         (ty::expr_ty_adjusted(self.tcx, &*expr), expr.span)
                     }
                     r => {
                         self.tcx.sess.bug(format!("MoveExpr({:?}) maps to \
                                                    {:?}, not Expr",
-                                                  move.id,
+                                                  the_move.id,
                                                   r).as_slice())
                     }
                 };
@@ -461,8 +463,8 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
             }
 
             move_data::MovePat => {
-                let pat_ty = ty::node_id_to_type(self.tcx, move.id);
-                self.tcx.sess.span_note(self.tcx.map.span(move.id),
+                let pat_ty = ty::node_id_to_type(self.tcx, the_move.id);
+                self.tcx.sess.span_note(self.tcx.map.span(the_move.id),
                     format!("`{}` moved here because it has type `{}`, \
                              which is moved by default (use `ref` to \
                              override)",
@@ -471,14 +473,16 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
             }
 
             move_data::Captured => {
-                let (expr_ty, expr_span) = match self.tcx.map.find(move.id) {
+                let (expr_ty, expr_span) = match self.tcx
+                                                     .map
+                                                     .find(the_move.id) {
                     Some(ast_map::NodeExpr(expr)) => {
                         (ty::expr_ty_adjusted(self.tcx, &*expr), expr.span)
                     }
                     r => {
                         self.tcx.sess.bug(format!("Captured({:?}) maps to \
                                                    {:?}, not Expr",
-                                                  move.id,
+                                                  the_move.id,
                                                   r).as_slice())
                     }
                 };

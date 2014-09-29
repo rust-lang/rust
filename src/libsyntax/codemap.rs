@@ -26,6 +26,7 @@ source code snippets, etc.
 use serialize::{Encodable, Decodable, Encoder, Decoder};
 use std::cell::RefCell;
 use std::rc::Rc;
+use libc::c_uint;
 
 pub trait Pos {
     fn from_uint(n: uint) -> Self;
@@ -223,10 +224,21 @@ pub struct ExpnInfo {
     pub callee: NameAndSpan
 }
 
-#[deriving(PartialEq, Eq, Clone, Show, Hash)]
+#[deriving(PartialEq, Eq, Clone, Show, Hash, Encodable, Decodable)]
 pub struct ExpnId(u32);
 
 pub static NO_EXPANSION: ExpnId = ExpnId(-1);
+
+impl ExpnId {
+    pub fn from_llvm_cookie(cookie: c_uint) -> ExpnId {
+        ExpnId(cookie as u32)
+    }
+
+    pub fn to_llvm_cookie(self) -> i32 {
+        let ExpnId(cookie) = self;
+        cookie as i32
+    }
+}
 
 pub type FileName = String;
 

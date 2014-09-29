@@ -413,8 +413,8 @@ impl MoveData {
          * killed by scoping. See `doc.rs` for more details.
          */
 
-        for (i, move) in self.moves.borrow().iter().enumerate() {
-            dfcx_moves.add_gen(move.id, i);
+        for (i, the_move) in self.moves.borrow().iter().enumerate() {
+            dfcx_moves.add_gen(the_move.id, i);
         }
 
         for (i, assignment) in self.var_assignments.borrow().iter().enumerate() {
@@ -577,10 +577,10 @@ impl<'a, 'tcx> FlowedMoveData<'a, 'tcx> {
         let mut ret = None;
         for loan_path_index in self.move_data.path_map.borrow().find(&*loan_path).iter() {
             self.dfcx_moves.each_gen_bit(id, |move_index| {
-                let move = self.move_data.moves.borrow();
-                let move = move.get(move_index);
-                if move.path == **loan_path_index {
-                    ret = Some(move.kind);
+                let the_move = self.move_data.moves.borrow();
+                let the_move = the_move.get(move_index);
+                if the_move.path == **loan_path_index {
+                    ret = Some(the_move.kind);
                     false
                 } else {
                     true
@@ -622,13 +622,13 @@ impl<'a, 'tcx> FlowedMoveData<'a, 'tcx> {
         let mut ret = true;
 
         self.dfcx_moves.each_bit_on_entry(id, |index| {
-            let move = self.move_data.moves.borrow();
-            let move = move.get(index);
-            let moved_path = move.path;
+            let the_move = self.move_data.moves.borrow();
+            let the_move = the_move.get(index);
+            let moved_path = the_move.path;
             if base_indices.iter().any(|x| x == &moved_path) {
                 // Scenario 1 or 2: `loan_path` or some base path of
                 // `loan_path` was moved.
-                if !f(move, &*self.move_data.path_loan_path(moved_path)) {
+                if !f(the_move, &*self.move_data.path_loan_path(moved_path)) {
                     ret = false;
                 }
             } else {
@@ -637,7 +637,8 @@ impl<'a, 'tcx> FlowedMoveData<'a, 'tcx> {
                         if p == loan_path_index {
                             // Scenario 3: some extension of `loan_path`
                             // was moved
-                            f(move, &*self.move_data.path_loan_path(moved_path))
+                            f(the_move,
+                              &*self.move_data.path_loan_path(moved_path))
                         } else {
                             true
                         }

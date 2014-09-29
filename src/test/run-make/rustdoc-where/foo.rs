@@ -8,24 +8,19 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(lang_items, overloaded_calls, unboxed_closures)]
+pub trait MyTrait {}
 
-fn a<F:Fn(int, int) -> int>(f: F) -> int {
-    f(1, 2)
+pub struct Alpha<A> where A: MyTrait;
+pub trait Bravo<B> where B: MyTrait {}
+pub fn charlie<C>() where C: MyTrait {}
+
+pub struct Delta<D>;
+impl<D> Delta<D> where D: MyTrait {
+    pub fn delta() {}
 }
 
-fn b<F:FnMut(int, int) -> int>(mut f: F) -> int {
-    f(3, 4)
-}
+pub struct Echo<E>;
+impl<E> MyTrait for Echo<E> where E: MyTrait {}
 
-fn c<F:FnOnce(int, int) -> int>(f: F) -> int {
-    f(5, 6)
-}
-
-fn main() {
-    let z: int = 7;
-    assert_eq!(a(move |&: x: int, y| x + y + z), 10);
-    assert_eq!(b(move |&mut: x: int, y| x + y + z), 14);
-    assert_eq!(c(move |: x: int, y| x + y + z), 18);
-}
-
+pub enum Foxtrot<F> {}
+impl<F> MyTrait for Foxtrot<F> where F: MyTrait {}

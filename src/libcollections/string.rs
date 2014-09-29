@@ -18,6 +18,7 @@ use core::default::Default;
 use core::fmt;
 use core::mem;
 use core::ptr;
+use core::ops;
 // FIXME: ICE's abound if you import the `Slice` type while importing `Slice` trait
 use core::raw::Slice as RawSlice;
 
@@ -530,7 +531,7 @@ impl String {
     /// assert_eq!(s.as_slice(), "abc123");
     /// ```
     #[inline]
-    #[stable = "function just renamed from push"]
+    #[stable = "function just renamed from push_char"]
     pub fn push(&mut self, ch: char) {
         let cur_len = self.len();
         // This may use up to 4 bytes.
@@ -926,6 +927,28 @@ impl<S: Str> Add<S, String> for String {
     }
 }
 
+impl ops::Slice<uint, str> for String {
+    #[inline]
+    fn as_slice_<'a>(&'a self) -> &'a str {
+        self.as_slice()
+    }
+
+    #[inline]
+    fn slice_from_<'a>(&'a self, from: &uint) -> &'a str {
+        self[][*from..]
+    }
+
+    #[inline]
+    fn slice_to_<'a>(&'a self, to: &uint) -> &'a str {
+        self[][..*to]
+    }
+
+    #[inline]
+    fn slice_<'a>(&'a self, from: &uint, to: &uint) -> &'a str {
+        self[][*from..*to]
+    }
+}
+
 /// Unsafe operations
 #[unstable = "waiting on raw module conventions"]
 pub mod raw {
@@ -1289,6 +1312,15 @@ mod tests {
 
     #[test] #[should_fail] fn insert_bad1() { "".to_string().insert(1, 't'); }
     #[test] #[should_fail] fn insert_bad2() { "ệ".to_string().insert(1, 't'); }
+
+    #[test]
+    fn test_slicing() {
+        let s = "foobar".to_string();
+        assert_eq!("foobar", s[]);
+        assert_eq!("foo", s[..3]);
+        assert_eq!("bar", s[3..]);
+        assert_eq!("oob", s[1..4]);
+    }
 
     #[bench]
     fn bench_with_capacity(b: &mut Bencher) {
