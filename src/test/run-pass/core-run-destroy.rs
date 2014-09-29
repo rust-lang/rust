@@ -119,8 +119,8 @@ pub fn test_destroy_actually_kills(force: bool) {
     let rx2 = t.oneshot(Duration::milliseconds(1000));
     spawn(proc() {
         select! {
-            () = rx2.recv() => unsafe { libc::exit(1) },
-            () = rx1.recv() => {}
+            _ from rx2 => unsafe { libc::exit(1) },
+            _ from rx1 => {}
         }
     });
     match p.wait().unwrap() {

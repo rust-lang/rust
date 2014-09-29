@@ -350,8 +350,8 @@ macro_rules! vec(
 /// spawn(proc() { tx2.send(calculate_the_answer()) });
 ///
 /// select! (
-///     () = rx1.recv() => println!("the long running task finished first"),
-///     answer = rx2.recv() => {
+///     _ from rx1 => println!("the long running task finished first"),
+///     answer from rx2 => {
 ///         println!("the answer was: {}", answer);
 ///     }
 /// )
@@ -360,21 +360,71 @@ macro_rules! vec(
 /// For more information about select, see the `std::comm::Select` structure.
 #[macro_export]
 #[experimental]
-macro_rules! select {
-    (
-        $($name:pat = $rx:ident.$meth:ident() => $code:expr),+
-    ) => ({
-        use std::comm::Select;
-        let sel = Select::new();
-        $( let mut $rx = sel.handle(&$rx); )+
-        unsafe {
-            $( $rx.add(); )+
+macro_rules! select(
+    ($($name:pat from $rx:expr => $code:expr),+) => {
+        select!{ $($name from $rx using recv => $code),+ }
+    };
+    ($($name:pat from $rx:expr using $meth:ident => $code:expr),+) => ({
+        use std::rt::local::Local;
+        use std::rt::task::Task;
+        use std::comm::Packet;
+
+        // Is anything already ready to receive? Grab it without waiting.
+        $(
+            if (&$rx as &Packet).can_recv() {
+                let $name = $rx.$meth();
+                $code
+            }
+        )else+
+        else {
+            // Start selecting on as many as we need to before getting a bite.
+            // Keep count of how many, since we need to abort every selection
+            // that we started.
+            let mut started_count = 0;
+            // Restrict lifetime of borrows in `packets`
+            {
+                let packets = [ $( &$rx as &Packet, )+ ];
+
+                let task: Box<Task> = Local::take();
+                task.deschedule(packets.len(), |task| {
+                    match packets[started_count].start_selection(task) {
+                        Ok(()) => {
+                            started_count += 1;
+                            Ok(())
+                        }
+                        Err(task) => Err(task)
+                    }
+                });
+            }
+
+            let mut i = 0;
+            let ret = $(
+            // Abort the receivers, stopping at the first ready one to get its data.
+            if { i += 1; i <= started_count } &&
+               // If start_selection() failed, abort_selection() will fail too,
+               // but it still counts as "data available".
+               ($rx.abort_selection() || i == started_count) {
+                // React to the first
+                let $name = $rx.$meth();
+                $code
+            })else+
+            else {
+                unreachable!()
+            };
+
+            // At this point, the first i receivers have been aborted.
+            // We need to abort the rest:
+            $(if i > 0 {
+                i -= 1;
+            } else {
+                $rx.abort_selection();
+            })+
+            let _ = i; // Shut up `i -= 1 but i is never read` warning
+            // Return
+            ret
         }
-        let ret = sel.wait();
-        $( if ret == $rx.id() { let $name = $rx.$meth(); $code } else )+
-        { unreachable!() }
     })
-}
+)
 
 // When testing the standard library, we link to the liblog crate to get the
 // logging macros. In doing so, the liblog crate was linked against the real
