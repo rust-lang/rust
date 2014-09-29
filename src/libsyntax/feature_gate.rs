@@ -102,6 +102,7 @@ pub struct Features {
     pub rustc_diagnostic_macros: bool,
     pub import_shadowing: bool,
     pub visible_private_types: bool,
+    pub quote: bool,
 }
 
 impl Features {
@@ -112,6 +113,7 @@ impl Features {
             rustc_diagnostic_macros: false,
             import_shadowing: false,
             visible_private_types: false,
+            quote: false,
         }
     }
 }
@@ -282,10 +284,6 @@ impl<'a, 'v> Visitor<'v> for Context<'a> {
     fn visit_mac(&mut self, macro: &ast::Mac) {
         let ast::MacInvocTT(ref path, _, _) = macro.node;
         let id = path.segments.last().unwrap().identifier;
-        let quotes = ["quote_tokens", "quote_expr", "quote_ty",
-                      "quote_item", "quote_pat", "quote_stmt"];
-        let msg = " is not stable enough for use and are subject to change";
-
 
         if id == token::str_to_ident("macro_rules") {
             self.gate_feature("macro_rules", path.span, "macro definitions are \
@@ -310,16 +308,6 @@ impl<'a, 'v> Visitor<'v> for Context<'a> {
         else if id == token::str_to_ident("concat_idents") {
             self.gate_feature("concat_idents", path.span, "`concat_idents` is not \
                 stable enough for use and is subject to change");
-        }
-
-        else {
-            for &quote in quotes.iter() {
-                if id == token::str_to_ident(quote) {
-                  self.gate_feature("quote",
-                                    path.span,
-                                    format!("{}{}", quote, msg).as_slice());
-                }
-            }
         }
     }
 
@@ -483,6 +471,7 @@ pub fn check_crate(span_handler: &SpanHandler, krate: &ast::Crate) -> (Features,
         rustc_diagnostic_macros: cx.has_feature("rustc_diagnostic_macros"),
         import_shadowing: cx.has_feature("import_shadowing"),
         visible_private_types: cx.has_feature("visible_private_types"),
+        quote: cx.has_feature("quote"),
     },
     unknown_features)
 }
