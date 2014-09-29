@@ -16,7 +16,7 @@ use core::raw;
 #[inline]
 #[deprecated]
 pub fn get_box_size(body_size: uint, body_align: uint) -> uint {
-    let header_size = mem::size_of::<raw::Box<()>>();
+    let header_size = mem::size_of::<raw::GcBox<()>>();
     let total_size = align_to(header_size, body_align) + body_size;
     total_size
 }
