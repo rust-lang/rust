@@ -20,12 +20,12 @@
 
 use mem;
 
-/// The representation of a Rust managed box
-pub struct Box<T> {
+/// The representation of `std::gc::Gc`.
+pub struct GcBox<T> {
     pub ref_count: uint,
     pub drop_glue: fn(ptr: *mut u8),
-    pub prev: *mut Box<T>,
-    pub next: *mut Box<T>,
+    pub prev: *mut GcBox<T>,
+    pub next: *mut GcBox<T>,
     pub data: T,
 }
 

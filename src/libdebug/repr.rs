@@ -277,7 +277,7 @@ impl<'a> TyVisitor for ReprVisitor<'a> {
     fn visit_box(&mut self, mtbl: uint, inner: *const TyDesc) -> bool {
         try!(self, self.writer.write("box(GC) ".as_bytes()));
         self.write_mut_qualifier(mtbl);
-        self.get::<&raw::Box<()>>(|this, b| {
+        self.get::<&raw::GcBox<()>>(|this, b| {
             let p = &b.data as *const () as *const u8;
             this.visit_ptr_inner(p, inner)
         })
