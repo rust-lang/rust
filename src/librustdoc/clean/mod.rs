@@ -641,11 +641,27 @@ impl Clean<Option<Lifetime>> for ty::Region {
     }
 }
 
+#[deriving(Clone, Encodable, Decodable, PartialEq)]
+pub struct WherePredicate {
+    pub name: String,
+    pub bounds: Vec<TyParamBound>
+}
+
+impl Clean<WherePredicate> for ast::WherePredicate {
+    fn clean(&self, cx: &DocContext) -> WherePredicate {
+        WherePredicate {
+            name: self.ident.clean(cx),
+            bounds: self.bounds.clean(cx)
+        }
+    }
+}
+
 // maybe use a Generic enum and use ~[Generic]?
 #[deriving(Clone, Encodable, Decodable, PartialEq)]
 pub struct Generics {
     pub lifetimes: Vec<Lifetime>,
     pub type_params: Vec<TyParam>,
+    pub where_predicates: Vec<WherePredicate>
 }
 
 impl Clean<Generics> for ast::Generics {
@@ -653,6 +669,7 @@ impl Clean<Generics> for ast::Generics {
         Generics {
             lifetimes: self.lifetimes.clean(cx),
             type_params: self.ty_params.clean(cx),
+            where_predicates: self.where_clause.predicates.clean(cx)
         }
     }
 }
@@ -663,6 +680,7 @@ impl<'a> Clean<Generics> for (&'a ty::Generics, subst::ParamSpace) {
         Generics {
             type_params: me.types.get_slice(space).to_vec().clean(cx),
             lifetimes: me.regions.get_slice(space).to_vec().clean(cx),
+            where_predicates: vec![]
         }
     }
 }
@@ -1260,7 +1278,9 @@ impl Clean<Type> for ty::t {
             ty::ty_bare_fn(ref fty) => BareFunction(box BareFunctionDecl {
                 fn_style: fty.fn_style,
                 generics: Generics {
-                    lifetimes: Vec::new(), type_params: Vec::new()
+                    lifetimes: Vec::new(),
+                    type_params: Vec::new(),
+                    where_predicates: Vec::new()
                 },
                 decl: (ast_util::local_def(0), &fty.sig).clean(cx),
                 abi: fty.abi.to_string(),
@@ -1670,6 +1690,7 @@ impl Clean<BareFunctionDecl> for ast::BareFnTy {
             generics: Generics {
                 lifetimes: self.lifetimes.clean(cx),
                 type_params: Vec::new(),
+                where_predicates: Vec::new()
             },
             decl: self.decl.clean(cx),
             abi: self.abi.to_string(),
@@ -2172,6 +2193,7 @@ impl Clean<Item> for ast::Typedef {
                 generics: Generics {
                     lifetimes: Vec::new(),
                     type_params: Vec::new(),
+                    where_predicates: Vec::new()
                 },
             }),
             visibility: None,
