@@ -723,12 +723,11 @@ extern {
 
 // libuv doesn't use pthread on windows
 // android libc (bionic) provides pthread, so no additional link is required
-#[cfg(not(windows), not(target_os = "android"))]
+#[cfg(not(any(windows, target_os = "android")))]
 #[link(name = "pthread")]
 extern {}
 
-#[cfg(target_os = "linux")]
-#[cfg(target_os = "dragonfly")]
+#[cfg(any(target_os = "linux", target_os = "dragonfly"))]
 #[link(name = "rt")]
 extern {}
 
@@ -738,7 +737,6 @@ extern {}
 #[link(name = "iphlpapi")]
 extern {}
 
-#[cfg(target_os = "freebsd")]
-#[cfg(target_os = "dragonfly")]
+#[cfg(any(target_os = "freebsd", target_os = "dragonfly"))]
 #[link(name = "kvm")]
 extern {}
