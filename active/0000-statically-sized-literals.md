@@ -4,7 +4,7 @@
 
 # Summary
 
-Change the types of array, byte string and string literals to be statically sized types (references to ones).
+Change the types of array, byte string and string literals to be references to statically sized types.
 Introduce strings of fixed size.
 
 # Motivation
