@@ -73,12 +73,8 @@ fn try_inline_def(cx: &DocContext, tcx: &ty::ctxt,
             record_extern_fqn(cx, did, clean::TypeTrait);
             clean::TraitItem(build_external_trait(cx, tcx, did))
         }
-        def::DefFn(did, style) => {
+        def::DefFn(did, style, false) => {
             // If this function is a tuple struct constructor, we just skip it
-            if csearch::get_tuple_struct_definition_if_ctor(&tcx.sess.cstore,
-                                                            did).is_some() {
-                return None
-            }
             record_extern_fqn(cx, did, clean::TypeFunction);
             clean::FunctionItem(build_external_function(cx, tcx, did, style))
         }

@@ -440,7 +440,7 @@ fn decode_def(dcx: &DecodeContext, doc: rbml::Doc) -> def::Def {
 impl tr for def::Def {
     fn tr(&self, dcx: &DecodeContext) -> def::Def {
         match *self {
-          def::DefFn(did, p) => def::DefFn(did.tr(dcx), p),
+          def::DefFn(did, p, is_ctor) => def::DefFn(did.tr(dcx), p, is_ctor),
           def::DefStaticMethod(did, wrapped_did2, p) => {
             def::DefStaticMethod(did.tr(dcx),
                                    match wrapped_did2 {

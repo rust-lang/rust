@@ -532,7 +532,7 @@ pub fn get_wrapper_for_bare_fn(ccx: &CrateContext,
                                is_local: bool) -> ValueRef {
 
     let def_id = match def {
-        def::DefFn(did, _) | def::DefStaticMethod(did, _, _) |
+        def::DefFn(did, _, _) | def::DefStaticMethod(did, _, _) |
         def::DefVariant(_, did, _) | def::DefStruct(did) => did,
         _ => {
             ccx.sess().bug(format!("get_wrapper_for_bare_fn: \

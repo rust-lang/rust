@@ -1194,7 +1194,7 @@ fn trans_def_fn_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let _icx = push_ctxt("trans_def_datum_unadjusted");
 
     let llfn = match def {
-        def::DefFn(did, _) |
+        def::DefFn(did, _, _) |
         def::DefStruct(did) | def::DefVariant(_, did, _) |
         def::DefStaticMethod(did, def::FromImpl(_), _) => {
             callee::trans_fn_ref(bcx, did, ExprId(ref_expr.id))

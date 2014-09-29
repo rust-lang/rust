@@ -234,7 +234,7 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
             def::DefVariant(_, _, _) |
             def::DefUpvar(..) => Some(recorder::VarRef),
 
-            def::DefFn(_, _) => Some(recorder::FnRef),
+            def::DefFn(..) => Some(recorder::FnRef),
 
             def::DefSelfTy(_) |
             def::DefRegion(_) |
@@ -792,10 +792,10 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
                                        Some(declid),
                                        self.cur_scope);
             },
-            def::DefFn(def_id, _) => self.fmt.fn_call_str(ex.span,
-                                                          sub_span,
-                                                          def_id,
-                                                          self.cur_scope),
+            def::DefFn(def_id, _, _) => self.fmt.fn_call_str(ex.span,
+                                                             sub_span,
+                                                             def_id,
+                                                             self.cur_scope),
             _ => self.sess.span_bug(ex.span,
                                     format!("Unexpected def kind while looking up path in '{}'",
                                             self.span.snippet(ex.span)).as_slice()),
@@ -808,7 +808,7 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
             def::DefLocal(_) |
             def::DefStatic(_,_) |
             def::DefStruct(_) |
-            def::DefFn(_, _) => self.write_sub_paths_truncated(path),
+            def::DefFn(..) => self.write_sub_paths_truncated(path),
             _ => {},
         }
 
