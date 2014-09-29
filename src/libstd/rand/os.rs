@@ -13,7 +13,7 @@
 
 pub use self::imp::OsRng;
 
-#[cfg(unix, not(target_os = "ios"))]
+#[cfg(all(unix, not(target_os = "ios")))]
 mod imp {
     use io::{IoResult, File};
     use path::Path;

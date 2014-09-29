@@ -160,7 +160,7 @@ impl Listener {
     }
 }
 
-#[cfg(test, unix)]
+#[cfg(all(test, unix))]
 mod test_unix {
     use prelude::*;
     use libc;
@@ -218,7 +218,7 @@ mod test_unix {
     }
 }
 
-#[cfg(test, windows)]
+#[cfg(all(test, windows))]
 mod test_windows {
     use super::{User1, Listener};
     use result::{Ok, Err};

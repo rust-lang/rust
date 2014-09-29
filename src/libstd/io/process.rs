@@ -693,7 +693,7 @@ mod tests {
         drop(p.wait().clone());
     })
 
-    #[cfg(unix, not(target_os="android"))]
+    #[cfg(all(unix, not(target_os="android")))]
     iotest!(fn signal_reported_right() {
         let p = Command::new("/bin/sh").arg("-c").arg("kill -1 $$").spawn();
         assert!(p.is_ok());
@@ -725,7 +725,7 @@ mod tests {
         assert_eq!(run_output(cmd), "foobar\n".to_string());
     })
 
-    #[cfg(unix, not(target_os="android"))]
+    #[cfg(all(unix, not(target_os="android")))]
     iotest!(fn set_cwd_works() {
         let mut cmd = Command::new("/bin/sh");
         cmd.arg("-c").arg("pwd")
@@ -734,7 +734,7 @@ mod tests {
         assert_eq!(run_output(cmd), "/\n".to_string());
     })
 
-    #[cfg(unix, not(target_os="android"))]
+    #[cfg(all(unix, not(target_os="android")))]
     iotest!(fn stdin_works() {
         let mut p = Command::new("/bin/sh")
                             .arg("-c").arg("read line; echo $line")
@@ -759,7 +759,7 @@ mod tests {
         assert!(Command::new("test").uid(10).spawn().is_err());
     })
 
-    #[cfg(unix, not(target_os="android"))]
+    #[cfg(all(unix, not(target_os="android")))]
     iotest!(fn uid_works() {
         use libc;
         let mut p = Command::new("/bin/sh")
@@ -770,7 +770,7 @@ mod tests {
         assert!(p.wait().unwrap().success());
     })
 
-    #[cfg(unix, not(target_os="android"))]
+    #[cfg(all(unix, not(target_os="android")))]
     iotest!(fn uid_to_root_fails() {
         use libc;
 
@@ -847,7 +847,7 @@ mod tests {
         }
     })
 
-    #[cfg(unix,not(target_os="android"))]
+    #[cfg(all(unix, not(target_os="android")))]
     pub fn pwd_cmd() -> Command {
         Command::new("pwd")
     }
@@ -897,7 +897,7 @@ mod tests {
         assert_eq!(parent_stat.unstable.inode, child_stat.unstable.inode);
     })
 
-    #[cfg(unix,not(target_os="android"))]
+    #[cfg(all(unix, not(target_os="android")))]
     pub fn env_cmd() -> Command {
         Command::new("env")
     }
