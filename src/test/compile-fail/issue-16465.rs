@@ -17,7 +17,7 @@ struct Foo<T>{
 type FooInt = Foo<int>;
 
 impl Drop for FooInt {
-//~^ ERROR cannot implement a destructor on a structure with type parameters 
+//~^ ERROR cannot implement a destructor on a structure with type parameters
     fn drop(&mut self){}
 }
 
