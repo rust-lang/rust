@@ -1319,6 +1319,18 @@ fn add_upstream_rust_crates(cmd: &mut Command, sess: &Session,
                         sess.abort_if_errors();
                     }
                 }
+                // Fix up permissions of the copy, as fs::copy() preserves
+                // permissions, but the original file may have been installed
+                // by a package manager and may be read-only.
+                match fs::chmod(&dst, io::UserRead | io::UserWrite) {
+                    Ok(..) => {}
+                    Err(e) => {
+                        sess.err(format!("failed to chmod {} when preparing \
+                                          for LTO: {}", dst.display(),
+                                         e).as_slice());
+                        sess.abort_if_errors();
+                    }
+                }
                 let handler = &sess.diagnostic().handler;
                 let config = ArchiveConfig {
                     handler: handler,
