@@ -4325,8 +4325,6 @@ and so we tell it that we want a vector of integers.
 is one:
 
 ```{rust}
-let one_to_one_hundred = range(0i, 100i);
-
 let greater_than_forty_two = range(0i, 100i)
                              .find(|x| *x >= 42);
 
