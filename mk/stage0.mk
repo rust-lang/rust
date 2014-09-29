@@ -3,8 +3,11 @@
 $(HBIN0_H_$(CFG_BUILD))/:
 	mkdir -p $@
 
+# On windows these two are the same, so cause a redifinition warning
+ifneq ($(HBIN0_H_$(CFG_BUILD)),$(HLIB0_H_$(CFG_BUILD)))
 $(HLIB0_H_$(CFG_BUILD))/:
 	mkdir -p $@
+endif
 
 $(SNAPSHOT_RUSTC_POST_CLEANUP): \
 		$(S)src/snapshots.txt \
