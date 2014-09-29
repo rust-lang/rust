@@ -235,7 +235,9 @@ fn rust_exception_class() -> uw::_Unwind_Exception_Class {
 //
 // See also: rt/rust_try.ll
 
-#[cfg(not(target_arch = "arm"), not(windows, target_arch = "x86_64"), not(test))]
+#[cfg(all(not(target_arch = "arm"),
+          not(all(windows, target_arch = "x86_64")),
+          not(test)))]
 #[doc(hidden)]
 pub mod eabi {
     use libunwind as uw;
@@ -288,7 +290,7 @@ pub mod eabi {
 // iOS on armv7 is using SjLj exceptions and therefore requires to use
 // a specialized personality routine: __gcc_personality_sj0
 
-#[cfg(target_os = "ios", target_arch = "arm", not(test))]
+#[cfg(all(target_os = "ios", target_arch = "arm", not(test)))]
 #[doc(hidden)]
 pub mod eabi {
     use libunwind as uw;
@@ -343,7 +345,7 @@ pub mod eabi {
 
 // ARM EHABI uses a slightly different personality routine signature,
 // but otherwise works the same.
-#[cfg(target_arch = "arm", not(target_os = "ios"), not(test))]
+#[cfg(all(target_arch = "arm", not(target_os = "ios"), not(test)))]
 #[doc(hidden)]
 pub mod eabi {
     use libunwind as uw;
@@ -392,7 +394,7 @@ pub mod eabi {
 // GCC reuses the same personality routine as for the other architectures by wrapping it
 // with an "API translator" layer (_GCC_specific_handler).
 
-#[cfg(windows, target_arch = "x86_64", not(test))]
+#[cfg(all(windows, target_arch = "x86_64", not(test)))]
 #[doc(hidden)]
 #[allow(non_camel_case_types, non_snake_case)]
 pub mod eabi {
