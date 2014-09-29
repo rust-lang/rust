@@ -3231,7 +3231,7 @@ for i in range(0u, 256) {
 if_expr : "if" no_struct_literal_expr '{' block '}'
           else_tail ? ;
 
-else_tail : "else" [ if_expr
+else_tail : "else" [ if_expr | if_let_expr
                    | '{' block '}' ] ;
 ```
 
@@ -3435,6 +3435,19 @@ let message = match maybe_digit {
   None => fail!()
 };
 ```
+
+### If let expressions
+
+```{.ebnf .gram}
+if_let_expr : "if" "let" pat '=' expr '{' block '}'
+               else_tail ? ;
+else_tail : "else" [ if_expr | if_let_expr | '{' block '}' ] ;
+```
+
+An `if let` expression is semantically identical to an `if` expression but in place
+of a condition expression it expects a refutable let statement. If the value of the
+expression on the right hand side of the let statement matches the pattern, the corresponding
+block will execute, otherwise flow proceeds to the first `else` block that follows.
 
 ### Return expressions
 
