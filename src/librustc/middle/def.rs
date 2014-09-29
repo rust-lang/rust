@@ -14,7 +14,7 @@ use syntax::ast_util::local_def;
 
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
 pub enum Def {
-    DefFn(ast::DefId, ast::FnStyle),
+    DefFn(ast::DefId, ast::FnStyle, bool /* is_ctor */),
     DefStaticMethod(/* method */ ast::DefId, MethodProvenance, ast::FnStyle),
     DefSelfTy(/* trait id */ ast::NodeId),
     DefMod(ast::DefId),
@@ -57,7 +57,7 @@ pub enum MethodProvenance {
 impl Def {
     pub fn def_id(&self) -> ast::DefId {
         match *self {
-            DefFn(id, _) | DefStaticMethod(id, _, _) | DefMod(id) |
+            DefFn(id, _, _) | DefStaticMethod(id, _, _) | DefMod(id) |
             DefForeignMod(id) | DefStatic(id, _) |
             DefVariant(_, id, _) | DefTy(id, _) | DefAssociatedTy(id) |
             DefTyParam(_, id, _) | DefUse(id) | DefStruct(id) | DefTrait(id) |

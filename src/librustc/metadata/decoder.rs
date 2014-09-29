@@ -112,6 +112,7 @@ enum Family {
     MutStatic,             // b
     Fn,                    // f
     UnsafeFn,              // u
+    CtorFn,                // o
     StaticMethod,          // F
     UnsafeStaticMethod,    // U
     Type,                  // y
@@ -135,6 +136,7 @@ fn item_family(item: rbml::Doc) -> Family {
       'b' => MutStatic,
       'f' => Fn,
       'u' => UnsafeFn,
+      'o' => CtorFn,
       'F' => StaticMethod,
       'U' => UnsafeStaticMethod,
       'y' => Type,
@@ -304,8 +306,9 @@ fn item_to_def_like(item: rbml::Doc, did: ast::DefId, cnum: ast::CrateNum)
         ImmStatic => DlDef(def::DefStatic(did, false)),
         MutStatic => DlDef(def::DefStatic(did, true)),
         Struct    => DlDef(def::DefStruct(did)),
-        UnsafeFn  => DlDef(def::DefFn(did, ast::UnsafeFn)),
-        Fn        => DlDef(def::DefFn(did, ast::NormalFn)),
+        UnsafeFn  => DlDef(def::DefFn(did, ast::UnsafeFn, false)),
+        Fn        => DlDef(def::DefFn(did, ast::NormalFn, false)),
+        CtorFn    => DlDef(def::DefFn(did, ast::NormalFn, true)),
         StaticMethod | UnsafeStaticMethod => {
             let fn_style = if fam == UnsafeStaticMethod {
                 ast::UnsafeFn
