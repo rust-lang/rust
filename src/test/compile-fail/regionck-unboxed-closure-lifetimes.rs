@@ -17,7 +17,7 @@ fn main() {
     {
         let c = 1;
         let c_ref = &c; //~ ERROR `c` does not live long enough
-        f = |&mut: a: int, b: int| { a + b + *c_ref };
+        f = move |&mut: a: int, b: int| { a + b + *c_ref };
     }
 }
 
