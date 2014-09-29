@@ -1,4 +1,4 @@
-// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -10,8 +10,14 @@
 
 // ignore-tidy-linelength
 
-impl<T> Option<T> { //~ERROR inherent implementations are not allowed for types not defined in the current module.
-    pub fn foo(&self) { }
-}
+pub struct Foo;
 
-fn main() { }
+mod bar {
+    use Foo;
+
+    impl Foo { //~ERROR inherent implementations are only allowed on types defined in the current module
+        fn baz(&self) {}
+    }
+}
+fn main() {}
+
