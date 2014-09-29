@@ -668,16 +668,23 @@ impl<'a> ::Encoder<io::IoError> for PrettyEncoder<'a> {
         if cnt == 0 {
             escape_str(self.writer, name)
         } else {
+            try!(write!(self.writer, "{{\n"));
             self.curr_indent += self.indent;
-            try!(write!(self.writer, "[\n"));
             try!(spaces(self.writer, self.curr_indent));
+            try!(write!(self.writer, "\"variant\": "));
             try!(escape_str(self.writer, name));
             try!(write!(self.writer, ",\n"));
+            try!(spaces(self.writer, self.curr_indent));
+            try!(write!(self.writer, "\"fields\": [\n"));
+            self.curr_indent += self.indent;
             try!(f(self));
             self.curr_indent -= self.indent;
             try!(write!(self.writer, "\n"));
             try!(spaces(self.writer, self.curr_indent));
-            write!(self.writer, "]")
+            self.curr_indent -= self.indent;
+            try!(write!(self.writer, "]\n"));
+            try!(spaces(self.writer, self.curr_indent));
+            write!(self.writer, "}}")
         }
     }
 
@@ -2651,12 +2658,13 @@ mod tests {
                 let mut encoder = PrettyEncoder::new(writer);
                 animal.encode(&mut encoder).unwrap();
             }),
-            "\
-            [\n  \
-                \"Frog\",\n  \
-                \"Henry\",\n  \
-                349\n\
-            ]".to_string()
+            "{\n  \
+               \"variant\": \"Frog\",\n  \
+               \"fields\": [\n    \
+                 \"Henry\",\n    \
+                 349\n  \
+               ]\n\
+             }".to_string()
         );
     }
 
