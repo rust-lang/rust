@@ -366,7 +366,7 @@ pub trait Iterator<A> {
     ///     let mut sum = 0;
     ///     for x in it {
     ///         if x > 5 {
-    ///             continue;
+    ///             break;
     ///         }
     ///         sum += x;
     ///     }
@@ -377,6 +377,8 @@ pub trait Iterator<A> {
     ///     sum
     /// }
     /// let x = vec![1i,2,3,7,8,9];
+    /// assert_eq!(process(x.into_iter()), 6);
+    /// let x = vec![1i,2,3];
     /// assert_eq!(process(x.into_iter()), 1006);
     /// ```
     #[inline]
