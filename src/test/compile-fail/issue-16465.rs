@@ -8,24 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(lang_items, overloaded_calls, unboxed_closures)]
+// Used to cause an ICE
 
-fn a<F:Fn(int, int) -> int>(f: F) -> int {
-    f(1, 2)
+struct Foo<T>{
+    x : T
 }
 
-fn b<F:FnMut(int, int) -> int>(mut f: F) -> int {
-    f(3, 4)
+type FooInt = Foo<int>;
+
+impl Drop for FooInt {
+//~^ ERROR cannot implement a destructor on a structure with type parameters
+    fn drop(&mut self){}
 }
 
-fn c<F:FnOnce(int, int) -> int>(f: F) -> int {
-    f(5, 6)
-}
-
-fn main() {
-    let z: int = 7;
-    assert_eq!(a(move |&: x: int, y| x + y + z), 10);
-    assert_eq!(b(move |&mut: x: int, y| x + y + z), 14);
-    assert_eq!(c(move |: x: int, y| x + y + z), 18);
-}
-
+fn main() {}

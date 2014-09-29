@@ -1279,7 +1279,8 @@ pub fn noop_fold_expr<T: Folder>(Expr {id, node, span}: Expr, folder: &mut T) ->
                 clobbers,
                 volatile,
                 alignstack,
-                dialect
+                dialect,
+                expn_id,
             }) => ExprInlineAsm(InlineAsm {
                 inputs: inputs.move_map(|(c, input)| {
                     (c, folder.fold_expr(input))
@@ -1292,7 +1293,8 @@ pub fn noop_fold_expr<T: Folder>(Expr {id, node, span}: Expr, folder: &mut T) ->
                 clobbers: clobbers,
                 volatile: volatile,
                 alignstack: alignstack,
-                dialect: dialect
+                dialect: dialect,
+                expn_id: expn_id,
             }),
             ExprMac(mac) => ExprMac(folder.fold_mac(mac)),
             ExprStruct(path, fields, maybe_expr) => {

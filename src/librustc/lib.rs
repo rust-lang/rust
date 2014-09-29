@@ -32,7 +32,6 @@ This API is completely unstable and subject to change.
 #![feature(macro_rules, globs, struct_variant, quote)]
 #![feature(default_type_params, phase, unsafe_destructor)]
 
-#![allow(unknown_features)] // NOTE: Remove after next snapshot
 #![feature(rustc_diagnostic_macros)]
 #![feature(import_shadowing)]
 

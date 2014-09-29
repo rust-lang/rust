@@ -652,12 +652,12 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
         debug!("check_if_path_is_moved(id={:?}, use_kind={:?}, lp={})",
                id, use_kind, lp.repr(self.bccx.tcx));
         let base_lp = owned_ptr_base_path_rc(lp);
-        self.move_data.each_move_of(id, &base_lp, |move, moved_lp| {
+        self.move_data.each_move_of(id, &base_lp, |the_move, moved_lp| {
             self.bccx.report_use_of_moved_value(
                 span,
                 use_kind,
                 &**lp,
-                move,
+                the_move,
                 moved_lp);
             false
         });

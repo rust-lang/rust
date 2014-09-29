@@ -93,6 +93,7 @@
 ///
 /// - `BitOr`: union
 /// - `BitAnd`: intersection
+/// - `BitXor`: toggle
 /// - `Sub`: set difference
 /// - `Not`: set complement
 ///
@@ -109,6 +110,8 @@
 /// - `contains`: `true` all of the flags in `other` are contained within `self`
 /// - `insert`: inserts the specified flags in-place
 /// - `remove`: removes the specified flags in-place
+/// - `toggle`: the specified flags will be inserted if not present, and removed
+///             if they are.
 #[macro_export]
 macro_rules! bitflags {
     ($(#[$attr:meta])* flags $BitFlags:ident: $T:ty {
@@ -184,6 +187,11 @@ macro_rules! bitflags {
             pub fn remove(&mut self, other: $BitFlags) {
                 self.bits &= !other.bits;
             }
+
+            /// Toggles the specified flags in-place.
+            pub fn toggle(&mut self, other: $BitFlags) {
+                self.bits ^= other.bits;
+            }
         }
 
         impl BitOr<$BitFlags, $BitFlags> for $BitFlags {
@@ -191,6 +199,14 @@ macro_rules! bitflags {
             #[inline]
             fn bitor(&self, other: &$BitFlags) -> $BitFlags {
                 $BitFlags { bits: self.bits | other.bits }
+            }
+        }
+
+        impl BitXor<$BitFlags, $BitFlags> for $BitFlags {
+            /// Returns the left flags, but with all the right flags toggled.
+            #[inline]
+            fn bitxor(&self, other: &$BitFlags) -> $BitFlags {
+                $BitFlags { bits: self.bits ^ other.bits }
             }
         }
 
@@ -234,7 +250,7 @@ macro_rules! bitflags {
 mod tests {
     use hash;
     use option::{Some, None};
-    use ops::{BitOr, BitAnd, Sub, Not};
+    use ops::{BitOr, BitAnd, BitXor, Sub, Not};
 
     bitflags! {
         #[doc = "> The first principle is that you must not fool yourself — and"]
@@ -358,10 +374,14 @@ mod tests {
     fn test_operators() {
         let e1 = FlagA | FlagC;
         let e2 = FlagB | FlagC;
-        assert!((e1 | e2) == FlagABC);   // union
-        assert!((e1 & e2) == FlagC);     // intersection
-        assert!((e1 - e2) == FlagA);     // set difference
-        assert!(!e2 == FlagA);           // set complement
+        assert!((e1 | e2) == FlagABC);     // union
+        assert!((e1 & e2) == FlagC);       // intersection
+        assert!((e1 - e2) == FlagA);       // set difference
+        assert!(!e2 == FlagA);             // set complement
+        assert!(e1 ^ e2 == FlagA | FlagB); // toggle
+        let mut e3 = e1;
+        e3.toggle(e2);
+        assert!(e3 == FlagA | FlagB);
     }
 
     #[test]

@@ -33,24 +33,9 @@
 use fmt;
 use intrinsics;
 
-// NOTE: remove after next snapshot
-#[cfg(stage0)]
-#[cold] #[inline(never)] // this is the slow path, always
-#[lang="fail_"]
-fn fail_(expr_file_line: &(&'static str, &'static str, uint)) -> ! {
-    let (expr, file, line) = *expr_file_line;
-    let ref file_line = (file, line);
-    format_args!(|args| -> () {
-        fail_fmt(args, file_line);
-    }, "{}", expr);
-
-    unsafe { intrinsics::abort() }
-}
-
-#[cfg(not(stage0))]
 #[cold] #[inline(never)] // this is the slow path, always
 #[lang="fail"]
-fn fail(expr_file_line: &(&'static str, &'static str, uint)) -> ! {
+pub fn fail(expr_file_line: &(&'static str, &'static str, uint)) -> ! {
     let (expr, file, line) = *expr_file_line;
     let ref file_line = (file, line);
     format_args!(|args| -> () {
@@ -71,22 +56,9 @@ fn fail_bounds_check(file_line: &(&'static str, uint),
 }
 
 #[cold] #[inline(never)]
-pub fn fail_str(msg: &str, file: &(&'static str, uint)) -> ! {
-    format_args!(|fmt| fail_fmt(fmt, file), "{}", msg)
-}
-
-#[cold] #[inline(never)]
 pub fn fail_fmt(fmt: &fmt::Arguments, file_line: &(&'static str, uint)) -> ! {
     #[allow(ctypes)]
     extern {
-
-        // NOTE: remove after next snapshot
-        #[cfg(stage0)]
-        #[lang = "begin_unwind"]
-        fn fail_impl(fmt: &fmt::Arguments, file: &'static str,
-                        line: uint) -> !;
-
-        #[cfg(not(stage0))]
         #[lang = "fail_fmt"]
         fn fail_impl(fmt: &fmt::Arguments, file: &'static str,
                         line: uint) -> !;

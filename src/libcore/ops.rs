@@ -764,13 +764,13 @@ pub trait Slice<Idx, Sized? Result> for Sized? {
 // FIXME(#17273) remove the postscript _s
 #[lang="slice_mut"]
 pub trait SliceMut<Idx, Sized? Result> for Sized? {
-    /// The method for the slicing operation foo[]
+    /// The method for the slicing operation foo[mut]
     fn as_mut_slice_<'a>(&'a mut self) -> &'a mut Result;
-    /// The method for the slicing operation foo[from..]
+    /// The method for the slicing operation foo[mut from..]
     fn slice_from_mut_<'a>(&'a mut self, from: &Idx) -> &'a mut Result;
-    /// The method for the slicing operation foo[..to]
+    /// The method for the slicing operation foo[mut ..to]
     fn slice_to_mut_<'a>(&'a mut self, to: &Idx) -> &'a mut Result;
-    /// The method for the slicing operation foo[from..to]
+    /// The method for the slicing operation foo[mut from..to]
     fn slice_mut_<'a>(&'a mut self, from: &Idx, to: &Idx) -> &'a mut Result;
 }
 /**

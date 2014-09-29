@@ -17,7 +17,7 @@ fn each<T>(x: &[T], f: |&T|) {
 fn main() {
     let mut sum = 0u;
     let elems = [ 1u, 2, 3, 4, 5 ];
-    each(elems, ref |val| sum += *val);
+    each(elems, |val| sum += *val);
     assert_eq!(sum, 15);
 }
 

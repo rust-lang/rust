@@ -17,8 +17,8 @@ macro_rules! fail(
         fail!("{}", "explicit failure")
     );
     ($msg:expr) => ({
-        static _FILE_LINE: (&'static str, uint) = (file!(), line!());
-        ::core::failure::fail_str($msg, &_FILE_LINE)
+        static _MSG_FILE_LINE: (&'static str, &'static str, uint) = ($msg, file!(), line!());
+        ::core::failure::fail(&_MSG_FILE_LINE)
     });
     ($fmt:expr, $($arg:tt)*) => ({
         // a closure can't have return type !, so we need a full
