@@ -51,7 +51,7 @@ pub fn realpath(original: &Path) -> io::IoResult<Path> {
     return Ok(result);
 }
 
-#[cfg(not(windows), test)]
+#[cfg(all(not(windows), test))]
 mod test {
     use std::io;
     use std::io::fs::{File, symlink, mkdir, mkdir_recursive};
