@@ -56,7 +56,7 @@ use clean;
 use doctree;
 use fold::DocFolder;
 use html::format::{VisSpace, Method, FnStyleSpace, MutableSpace, Stability};
-use html::format::{ConciseStability};
+use html::format::{ConciseStability, WhereClause};
 use html::highlight;
 use html::item_type::{ItemType, shortty};
 use html::item_type;
@@ -1610,11 +1610,12 @@ fn item_module(w: &mut fmt::Formatter, cx: &Context,
 fn item_function(w: &mut fmt::Formatter, it: &clean::Item,
                  f: &clean::Function) -> fmt::Result {
     try!(write!(w, "<pre class='rust fn'>{vis}{fn_style}fn \
-                    {name}{generics}{decl}</pre>",
+                    {name}{generics}{decl}{where_clause}</pre>",
            vis = VisSpace(it.visibility),
            fn_style = FnStyleSpace(f.fn_style),
            name = it.name.get_ref().as_slice(),
            generics = f.generics,
+           where_clause = WhereClause(&f.generics),
            decl = f.decl));
     document(w, it)
 }
@@ -1631,11 +1632,12 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
     }
 
     // Output the trait definition
-    try!(write!(w, "<pre class='rust trait'>{}trait {}{}{} ",
+    try!(write!(w, "<pre class='rust trait'>{}trait {}{}{}{} ",
                   VisSpace(it.visibility),
                   it.name.get_ref().as_slice(),
                   t.generics,
-                  bounds));
+                  bounds,
+                  WhereClause(&t.generics)));
     let required = t.items.iter()
                           .filter(|m| {
                               match **m {
@@ -1719,9 +1721,9 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
     match cache.implementors.find(&it.def_id) {
         Some(implementors) => {
             for i in implementors.iter() {
-                try!(writeln!(w, "<li>{}<code>impl{} {} for {}</code></li>",
+                try!(writeln!(w, "<li>{}<code>impl{} {} for {}{}</code></li>",
                               ConciseStability(&i.stability),
-                              i.generics, i.trait_, i.for_));
+                              i.generics, i.trait_, i.for_, WhereClause(&i.generics)));
             }
         }
         None => {}
@@ -1747,7 +1749,7 @@ fn render_method(w: &mut fmt::Formatter, meth: &clean::Item) -> fmt::Result {
            g: &clean::Generics, selfty: &clean::SelfTy,
            d: &clean::FnDecl) -> fmt::Result {
         write!(w, "{}fn <a href='#{ty}.{name}' class='fnname'>{name}</a>\
-                   {generics}{decl}",
+                   {generics}{decl}{where_clause}",
                match fn_style {
                    ast::UnsafeFn => "unsafe ",
                    _ => "",
@@ -1755,7 +1757,8 @@ fn render_method(w: &mut fmt::Formatter, meth: &clean::Item) -> fmt::Result {
                ty = shortty(it),
                name = it.name.get_ref().as_slice(),
                generics = *g,
-               decl = Method(selfty, d))
+               decl = Method(selfty, d),
+               where_clause = WhereClause(g))
     }
     match meth.inner {
         clean::TyMethodItem(ref m) => {
@@ -1810,10 +1813,11 @@ fn item_struct(w: &mut fmt::Formatter, it: &clean::Item,
 
 fn item_enum(w: &mut fmt::Formatter, it: &clean::Item,
              e: &clean::Enum) -> fmt::Result {
-    try!(write!(w, "<pre class='rust enum'>{}enum {}{}",
+    try!(write!(w, "<pre class='rust enum'>{}enum {}{}{}",
                   VisSpace(it.visibility),
                   it.name.get_ref().as_slice(),
-                  e.generics));
+                  e.generics,
+                  WhereClause(&e.generics)));
     if e.variants.len() == 0 && !e.variants_stripped {
         try!(write!(w, " {{}}"));
     } else {
@@ -1917,7 +1921,7 @@ fn render_struct(w: &mut fmt::Formatter, it: &clean::Item,
                   if structhead {"struct "} else {""},
                   it.name.get_ref().as_slice()));
     match g {
-        Some(g) => try!(write!(w, "{}", *g)),
+        Some(g) => try!(write!(w, "{}{}", *g, WhereClause(g))),
         None => {}
     }
     match ty {
@@ -2009,7 +2013,7 @@ fn render_impl(w: &mut fmt::Formatter, i: &Impl) -> fmt::Result {
         Some(ref ty) => try!(write!(w, "{} for ", *ty)),
         None => {}
     }
-    try!(write!(w, "{}</code></h3>", i.impl_.for_));
+    try!(write!(w, "{}{}</code></h3>", i.impl_.for_, WhereClause(&i.impl_.generics)));
     match i.dox {
         Some(ref dox) => {
             try!(write!(w, "<div class='docblock'>{}</div>",

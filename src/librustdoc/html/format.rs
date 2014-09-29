@@ -44,6 +44,11 @@ pub struct RawMutableSpace(pub clean::Mutability);
 pub struct Stability<'a>(pub &'a Option<clean::Stability>);
 /// Wrapper struct for emitting the stability level concisely.
 pub struct ConciseStability<'a>(pub &'a Option<clean::Stability>);
+/// Wrapper struct for emitting a where clause from Generics.
+pub struct WhereClause<'a>(pub &'a clean::Generics);
+
+/// Wrapper struct for emitting type parameter bounds.
+struct TyParamBounds<'a>(pub &'a [clean::TyParamBound]);
 
 impl VisSpace {
     pub fn get(&self) -> Option<ast::Visibility> {
@@ -54,6 +59,19 @@ impl VisSpace {
 impl FnStyleSpace {
     pub fn get(&self) -> ast::FnStyle {
         let FnStyleSpace(v) = *self; v
+    }
+}
+
+impl<'a> fmt::Show for TyParamBounds<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let &TyParamBounds(bounds) = self;
+        for (i, bound) in bounds.iter().enumerate() {
+            if i > 0 {
+                try!(f.write(" + ".as_bytes()));
+            }
+            try!(write!(f, "{}", *bound));
+        }
+        Ok(())
     }
 }
 
@@ -73,7 +91,6 @@ impl fmt::Show for clean::Generics {
             if self.lifetimes.len() > 0 {
                 try!(f.write(", ".as_bytes()));
             }
-
             for (i, tp) in self.type_params.iter().enumerate() {
                 if i > 0 {
                     try!(f.write(", ".as_bytes()))
@@ -81,13 +98,7 @@ impl fmt::Show for clean::Generics {
                 try!(f.write(tp.name.as_bytes()));
 
                 if tp.bounds.len() > 0 {
-                    try!(f.write(": ".as_bytes()));
-                    for (i, bound) in tp.bounds.iter().enumerate() {
-                        if i > 0 {
-                            try!(f.write(" + ".as_bytes()));
-                        }
-                        try!(write!(f, "{}", *bound));
-                    }
+                    try!(write!(f, ": {}", TyParamBounds(tp.bounds.as_slice())));
                 }
 
                 match tp.default {
@@ -97,6 +108,24 @@ impl fmt::Show for clean::Generics {
             }
         }
         try!(f.write("&gt;".as_bytes()));
+        Ok(())
+    }
+}
+
+impl<'a> fmt::Show for WhereClause<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let &WhereClause(gens) = self;
+        if gens.where_predicates.len() == 0 {
+            return Ok(());
+        }
+        try!(f.write(" where ".as_bytes()));
+        for (i, pred) in gens.where_predicates.iter().enumerate() {
+            if i > 0 {
+                try!(f.write(", ".as_bytes()));
+            }
+            let bounds = pred.bounds.as_slice();
+            try!(write!(f, "{}: {}", pred.name, TyParamBounds(bounds)));
+        }
         Ok(())
     }
 }
