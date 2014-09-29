@@ -1507,6 +1507,7 @@ You can create an array with just square brackets:
 
 ```{rust}
 let nums = [1i, 2i, 3i];
+let nums = [1i, ..20]; // Shorthand for an array of 20 elements all initialized to 1
 ```
 
 So what's the difference? An array has a fixed size, so you can't add or
