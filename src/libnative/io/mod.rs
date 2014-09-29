@@ -48,12 +48,12 @@ pub mod file;
 #[path = "file_windows.rs"]
 pub mod file;
 
-#[cfg(target_os = "macos")]
-#[cfg(target_os = "ios")]
-#[cfg(target_os = "freebsd")]
-#[cfg(target_os = "dragonfly")]
-#[cfg(target_os = "android")]
-#[cfg(target_os = "linux")]
+#[cfg(any(target_os = "macos",
+          target_os = "ios",
+          target_os = "freebsd",
+          target_os = "dragonfly",
+          target_os = "android",
+          target_os = "linux"))]
 #[path = "timer_unix.rs"]
 pub mod timer;
 
