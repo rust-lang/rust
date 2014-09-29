@@ -20,7 +20,8 @@ use syntax::ast;
 use syntax::codemap::Span;
 use util::ppaux::Repr;
 
-use super::{Obligation, ObligationCause, VtableImpl, VtableParam, VtableParamData, VtableImplData};
+use super::{ErrorReported, Obligation, ObligationCause, VtableImpl,
+            VtableParam, VtableParamData, VtableImplData};
 
 ///////////////////////////////////////////////////////////////////////////
 // Supertrait iterator
@@ -82,7 +83,7 @@ impl<'cx, 'tcx> Supertraits<'cx, 'tcx> {
             let bound_trait_ref = trait_ref_for_builtin_bound(self.tcx,
                                                               builtin_bound,
                                                               trait_ref.self_ty());
-            trait_bounds.push(bound_trait_ref);
+            bound_trait_ref.map(|trait_ref| trait_bounds.push(trait_ref));
         }
 
         // Only keep those bounds that we haven't already seen.  This
@@ -213,13 +214,15 @@ fn push_obligations_for_param_bounds(
     let param_ty = *param_substs.types.get(space, index);
 
     for builtin_bound in param_bounds.builtin_bounds.iter() {
-        obligations.push(
-            space,
-            obligation_for_builtin_bound(tcx,
-                                         cause,
-                                         builtin_bound,
-                                         recursion_depth,
-                                         param_ty));
+        let obligation = obligation_for_builtin_bound(tcx,
+                                                      cause,
+                                                      builtin_bound,
+                                                      recursion_depth,
+                                                      param_ty);
+        match obligation {
+            Ok(ob) => obligations.push(space, ob),
+            _ => {}
+        }
     }
 
     for bound_trait_ref in param_bounds.trait_bounds.iter() {
@@ -236,17 +239,18 @@ pub fn trait_ref_for_builtin_bound(
     tcx: &ty::ctxt,
     builtin_bound: ty::BuiltinBound,
     param_ty: ty::t)
-    -> Rc<ty::TraitRef>
+    -> Option<Rc<ty::TraitRef>>
 {
     match tcx.lang_items.from_builtin_kind(builtin_bound) {
         Ok(def_id) => {
-            Rc::new(ty::TraitRef {
+            Some(Rc::new(ty::TraitRef {
                 def_id: def_id,
                 substs: Substs::empty().with_self_ty(param_ty)
-            })
+            }))
         }
         Err(e) => {
-            tcx.sess.bug(e.as_slice());
+            tcx.sess.err(e.as_slice());
+            None
         }
     }
 }
@@ -257,13 +261,16 @@ pub fn obligation_for_builtin_bound(
     builtin_bound: ty::BuiltinBound,
     recursion_depth: uint,
     param_ty: ty::t)
-    -> Obligation
+    -> Result<Obligation, ErrorReported>
 {
     let trait_ref = trait_ref_for_builtin_bound(tcx, builtin_bound, param_ty);
-    Obligation {
-        cause: cause,
-        recursion_depth: recursion_depth,
-        trait_ref: trait_ref
+    match trait_ref {
+        Some(trait_ref) => Ok(Obligation {
+                cause: cause,
+                recursion_depth: recursion_depth,
+                trait_ref: trait_ref
+            }),
+        None => Err(ErrorReported)
     }
 }
 

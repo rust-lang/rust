@@ -945,7 +945,13 @@ fn check_expr_fn_block(rcx: &mut Rcx,
                 let cause = traits::ObligationCause::new(freevar.span, code);
                 let obligation = traits::obligation_for_builtin_bound(rcx.tcx(), cause,
                                                                       var_ty, builtin_bound);
-                rcx.fcx.inh.fulfillment_cx.borrow_mut().register_obligation(rcx.tcx(), obligation);
+                match obligation {
+                    Ok(obligation) => {
+                        rcx.fcx.inh.fulfillment_cx.borrow_mut().register_obligation(rcx.tcx(),
+                                                                                    obligation)
+                    }
+                    _ => {}
+                }
             }
             type_must_outlive(
                 rcx, infer::RelateProcBound(expr.span, var_node_id, var_ty),

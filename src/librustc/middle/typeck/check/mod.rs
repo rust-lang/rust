@@ -1795,12 +1795,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                               code: traits::ObligationCauseCode,
                               bound: ty::BuiltinBound)
     {
-        self.register_obligation(
-            traits::obligation_for_builtin_bound(
-                self.tcx(),
-                traits::ObligationCause::new(span, code),
-                ty,
-                bound));
+        let obligation = traits::obligation_for_builtin_bound(
+            self.tcx(),
+            traits::ObligationCause::new(span, code),
+            ty,
+            bound);
+        match obligation {
+            Ok(ob) => self.register_obligation(ob),
+            _ => {}
+        }
     }
 
     pub fn require_type_is_sized(&self,
