@@ -170,13 +170,16 @@ pub fn register_object_cast_obligations(fcx: &FnCtxt,
     // object type is Foo+Send, this would create an obligation
     // for the Send check.)
     for builtin_bound in object_trait.bounds.builtin_bounds.iter() {
-        fcx.register_obligation(
-            obligation_for_builtin_bound(
+            let obligation = obligation_for_builtin_bound(
                 fcx.tcx(),
                 ObligationCause::new(span,
                                      traits::ObjectCastObligation(object_trait_ty)),
                 referent_ty,
-                builtin_bound));
+                builtin_bound);
+            match obligation {
+                Ok(obligation) => fcx.register_obligation(obligation),
+                _ => {}
+            }
     }
 
     object_trait_ref
