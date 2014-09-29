@@ -76,7 +76,7 @@ pub fn impl_is_local(tcx: &ty::ctxt,
     trait_ref.input_types().iter().any(|&t| ty_is_local(tcx, t))
 }
 
-pub fn ty_is_local(tcx: &ty::ctxt, ty: Ty) -> bool {
+pub fn ty_is_local<'tcx>(tcx: &ty::ctxt<'tcx>, ty: Ty<'tcx>) -> bool {
     debug!("ty_is_local({})", ty.repr(tcx));
 
     match ty::get(ty).sty {

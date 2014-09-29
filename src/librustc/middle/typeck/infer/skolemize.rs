@@ -52,7 +52,7 @@ use super::unify::InferCtxtMethodsForSimplyUnifiableTypes;
 pub struct TypeSkolemizer<'a, 'tcx:'a> {
     infcx: &'a InferCtxt<'a, 'tcx>,
     skolemization_count: uint,
-    skolemization_map: hash_map::HashMap<ty::InferTy, Ty>,
+    skolemization_map: hash_map::HashMap<ty::InferTy, Ty<'tcx>>,
 }
 
 impl<'a, 'tcx> TypeSkolemizer<'a, 'tcx> {
@@ -65,10 +65,10 @@ impl<'a, 'tcx> TypeSkolemizer<'a, 'tcx> {
     }
 
     fn skolemize(&mut self,
-                 opt_ty: Option<Ty>,
+                 opt_ty: Option<Ty<'tcx>>,
                  key: ty::InferTy,
                  skolemizer: |uint| -> ty::InferTy)
-                 -> Ty
+                 -> Ty<'tcx>
     {
         match opt_ty {
             Some(ty) => { return ty.fold_with(self); }
@@ -112,7 +112,7 @@ impl<'a, 'tcx> TypeFolder<'tcx> for TypeSkolemizer<'a, 'tcx> {
         }
     }
 
-    fn fold_ty(&mut self, t: Ty) -> Ty {
+    fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
         match ty::get(t).sty {
             ty::ty_infer(ty::TyVar(v)) => {
                 self.skolemize(self.infcx.type_variables.borrow().probe(v),

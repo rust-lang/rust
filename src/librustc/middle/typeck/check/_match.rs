@@ -27,7 +27,8 @@ use syntax::parse::token;
 use syntax::print::pprust;
 use syntax::ptr::P;
 
-pub fn check_pat(pcx: &pat_ctxt, pat: &ast::Pat, expected: Ty) {
+pub fn check_pat<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
+                           pat: &ast::Pat, expected: Ty<'tcx>) {
     let fcx = pcx.fcx;
     let tcx = pcx.fcx.ccx.tcx;
 
@@ -207,8 +208,9 @@ pub fn check_pat(pcx: &pat_ctxt, pat: &ast::Pat, expected: Ty) {
     }
 }
 
-pub fn check_dereferencable(pcx: &pat_ctxt, span: Span, expected: Ty,
-                            inner: &ast::Pat) -> bool {
+pub fn check_dereferencable<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
+                                      span: Span, expected: Ty<'tcx>,
+                                      inner: &ast::Pat) -> bool {
     let fcx = pcx.fcx;
     let tcx = pcx.fcx.ccx.tcx;
     match infer::resolve_type(
@@ -290,9 +292,9 @@ pub struct pat_ctxt<'a, 'tcx: 'a> {
     pub map: PatIdMap,
 }
 
-pub fn check_pat_struct(pcx: &pat_ctxt, pat: &ast::Pat,
-                        path: &ast::Path, fields: &[Spanned<ast::FieldPat>],
-                        etc: bool, expected: Ty) {
+pub fn check_pat_struct<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>, pat: &ast::Pat,
+                                  path: &ast::Path, fields: &[Spanned<ast::FieldPat>],
+                                  etc: bool, expected: Ty<'tcx>) {
     let fcx = pcx.fcx;
     let tcx = pcx.fcx.ccx.tcx;
 
@@ -349,9 +351,9 @@ pub fn check_pat_struct(pcx: &pat_ctxt, pat: &ast::Pat,
                             variant_def_id, etc);
 }
 
-pub fn check_pat_enum(pcx: &pat_ctxt, pat: &ast::Pat,
-                      path: &ast::Path, subpats: &Option<Vec<P<ast::Pat>>>,
-                      expected: Ty) {
+pub fn check_pat_enum<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>, pat: &ast::Pat,
+                                path: &ast::Path, subpats: &Option<Vec<P<ast::Pat>>>,
+                                expected: Ty<'tcx>) {
 
     // Typecheck the path.
     let fcx = pcx.fcx;
@@ -434,12 +436,12 @@ pub fn check_pat_enum(pcx: &pat_ctxt, pat: &ast::Pat,
 /// `struct_fields` describes the type of each field of the struct.
 /// `struct_id` is the ID of the struct.
 /// `etc` is true if the pattern said '...' and false otherwise.
-pub fn check_struct_pat_fields(pcx: &pat_ctxt,
-                               span: Span,
-                               fields: &[Spanned<ast::FieldPat>],
-                               struct_fields: &[ty::field],
-                               struct_id: ast::DefId,
-                               etc: bool) {
+pub fn check_struct_pat_fields<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
+                                         span: Span,
+                                         fields: &[Spanned<ast::FieldPat>],
+                                         struct_fields: &[ty::field<'tcx>],
+                                         struct_id: ast::DefId,
+                                         etc: bool) {
     let tcx = pcx.fcx.ccx.tcx;
 
     // Index the struct fields' types.

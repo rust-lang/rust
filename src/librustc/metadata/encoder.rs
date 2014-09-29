@@ -82,7 +82,7 @@ pub struct EncodeContext<'a, 'tcx: 'a> {
     pub link_meta: &'a LinkMeta,
     pub cstore: &'a cstore::CStore,
     pub encode_inlined_item: RefCell<EncodeInlinedItem<'a>>,
-    pub type_abbrevs: tyencode::abbrev_map,
+    pub type_abbrevs: tyencode::abbrev_map<'tcx>,
     pub reachable: &'a NodeSet,
 }
 
@@ -104,10 +104,10 @@ struct entry<T> {
     pos: u64
 }
 
-fn encode_trait_ref(rbml_w: &mut Encoder,
-                    ecx: &EncodeContext,
-                    trait_ref: &ty::TraitRef,
-                    tag: uint) {
+fn encode_trait_ref<'a, 'tcx>(rbml_w: &mut Encoder,
+                              ecx: &EncodeContext<'a, 'tcx>,
+                              trait_ref: &ty::TraitRef<'tcx>,
+                              tag: uint) {
     let ty_str_ctxt = &tyencode::ctxt {
         diag: ecx.diag,
         ds: def_to_string,
@@ -140,9 +140,9 @@ fn encode_item_variances(rbml_w: &mut Encoder,
     rbml_w.end_tag();
 }
 
-fn encode_bounds_and_type(rbml_w: &mut Encoder,
-                          ecx: &EncodeContext,
-                          pty: &ty::Polytype) {
+fn encode_bounds_and_type<'a, 'tcx>(rbml_w: &mut Encoder,
+                                    ecx: &EncodeContext<'a, 'tcx>,
+                                    pty: &ty::Polytype<'tcx>) {
     encode_generics(rbml_w, ecx, &pty.generics, tag_item_generics);
     encode_type(ecx, rbml_w, pty.ty);
 }
@@ -158,9 +158,9 @@ fn encode_variant_id(rbml_w: &mut Encoder, vid: DefId) {
     rbml_w.end_tag();
 }
 
-pub fn write_closure_type(ecx: &EncodeContext,
-                          rbml_w: &mut Encoder,
-                          closure_type: &ty::ClosureTy) {
+pub fn write_closure_type<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
+                                    rbml_w: &mut Encoder,
+                                    closure_type: &ty::ClosureTy<'tcx>) {
     let ty_str_ctxt = &tyencode::ctxt {
         diag: ecx.diag,
         ds: def_to_string,
@@ -170,9 +170,9 @@ pub fn write_closure_type(ecx: &EncodeContext,
     tyencode::enc_closure_ty(rbml_w.writer, ty_str_ctxt, closure_type);
 }
 
-pub fn write_type(ecx: &EncodeContext,
-                  rbml_w: &mut Encoder,
-                  typ: Ty) {
+pub fn write_type<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
+                            rbml_w: &mut Encoder,
+                            typ: Ty<'tcx>) {
     let ty_str_ctxt = &tyencode::ctxt {
         diag: ecx.diag,
         ds: def_to_string,
@@ -182,9 +182,9 @@ pub fn write_type(ecx: &EncodeContext,
     tyencode::enc_ty(rbml_w.writer, ty_str_ctxt, typ);
 }
 
-pub fn write_trait_ref(ecx: &EncodeContext,
-                       rbml_w: &mut Encoder,
-                       trait_ref: &ty::TraitRef) {
+pub fn write_trait_ref<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
+                                 rbml_w: &mut Encoder,
+                                trait_ref: &ty::TraitRef<'tcx>) {
     let ty_str_ctxt = &tyencode::ctxt {
         diag: ecx.diag,
         ds: def_to_string,
@@ -206,10 +206,10 @@ pub fn write_region(ecx: &EncodeContext,
     tyencode::enc_region(rbml_w.writer, ty_str_ctxt, r);
 }
 
-fn encode_bounds(rbml_w: &mut Encoder,
-                 ecx: &EncodeContext,
-                 bounds: &ty::ParamBounds,
-                 tag: uint) {
+fn encode_bounds<'a, 'tcx>(rbml_w: &mut Encoder,
+                           ecx: &EncodeContext<'a, 'tcx>,
+                           bounds: &ty::ParamBounds<'tcx>,
+                           tag: uint) {
     rbml_w.start_tag(tag);
 
     let ty_str_ctxt = &tyencode::ctxt { diag: ecx.diag,
@@ -221,9 +221,9 @@ fn encode_bounds(rbml_w: &mut Encoder,
     rbml_w.end_tag();
 }
 
-fn encode_type(ecx: &EncodeContext,
-               rbml_w: &mut Encoder,
-               typ: Ty) {
+fn encode_type<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
+                         rbml_w: &mut Encoder,
+                         typ: Ty<'tcx>) {
     rbml_w.start_tag(tag_items_data_item_type);
     write_type(ecx, rbml_w, typ);
     rbml_w.end_tag();
@@ -237,9 +237,9 @@ fn encode_region(ecx: &EncodeContext,
     rbml_w.end_tag();
 }
 
-fn encode_method_fty(ecx: &EncodeContext,
-                     rbml_w: &mut Encoder,
-                     typ: &ty::BareFnTy) {
+fn encode_method_fty<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
+                               rbml_w: &mut Encoder,
+                               typ: &ty::BareFnTy<'tcx>) {
     rbml_w.start_tag(tag_item_method_fty);
 
     let ty_str_ctxt = &tyencode::ctxt {
@@ -781,10 +781,10 @@ fn encode_info_for_struct_ctor(ecx: &EncodeContext,
     rbml_w.end_tag();
 }
 
-fn encode_generics(rbml_w: &mut Encoder,
-                   ecx: &EncodeContext,
-                   generics: &ty::Generics,
-                   tag: uint)
+fn encode_generics<'a, 'tcx>(rbml_w: &mut Encoder,
+                             ecx: &EncodeContext<'a, 'tcx>,
+                             generics: &ty::Generics<'tcx>,
+                             tag: uint)
 {
     rbml_w.start_tag(tag);
 
@@ -828,9 +828,9 @@ fn encode_generics(rbml_w: &mut Encoder,
     rbml_w.end_tag();
 }
 
-fn encode_method_ty_fields(ecx: &EncodeContext,
-                           rbml_w: &mut Encoder,
-                           method_ty: &ty::Method) {
+fn encode_method_ty_fields<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
+                                     rbml_w: &mut Encoder,
+                                     method_ty: &ty::Method<'tcx>) {
     encode_def_id(rbml_w, method_ty.def_id);
     encode_name(rbml_w, method_ty.name);
     encode_generics(rbml_w, ecx, &method_ty.generics,
@@ -847,13 +847,13 @@ fn encode_method_ty_fields(ecx: &EncodeContext,
     encode_provided_source(rbml_w, method_ty.provided_source);
 }
 
-fn encode_info_for_method(ecx: &EncodeContext,
-                          rbml_w: &mut Encoder,
-                          m: &ty::Method,
-                          impl_path: PathElems,
-                          is_default_impl: bool,
-                          parent_id: NodeId,
-                          ast_item_opt: Option<&ast::ImplItem>) {
+fn encode_info_for_method<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
+                                    rbml_w: &mut Encoder,
+                                    m: &ty::Method<'tcx>,
+                                    impl_path: PathElems,
+                                    is_default_impl: bool,
+                                    parent_id: NodeId,
+                                    ast_item_opt: Option<&ast::ImplItem>) {
 
     debug!("encode_info_for_method: {} {}", m.def_id,
            token::get_name(m.name));
@@ -2167,7 +2167,7 @@ fn encode_metadata_inner(wr: &mut SeekableMemWriter,
 }
 
 // Get the encoded string for a type
-pub fn encoded_ty(tcx: &ty::ctxt, t: Ty) -> String {
+pub fn encoded_ty<'tcx>(tcx: &ty::ctxt<'tcx>, t: Ty<'tcx>) -> String {
     let mut wr = SeekableMemWriter::new();
     tyencode::enc_ty(&mut wr, &tyencode::ctxt {
         diag: tcx.sess.diagnostic(),

@@ -55,10 +55,10 @@ use util::ppaux::Repr;
 mod orphan;
 mod overlap;
 
-fn get_base_type(inference_context: &InferCtxt,
-                 span: Span,
-                 original_type: Ty)
-                 -> Option<Ty> {
+fn get_base_type<'a, 'tcx>(inference_context: &InferCtxt<'a, 'tcx>,
+                           span: Span,
+                           original_type: Ty<'tcx>)
+                           -> Option<Ty<'tcx>> {
     let resolved_type = match resolve_type(inference_context,
                                            Some(span),
                                            original_type,
@@ -95,10 +95,10 @@ fn get_base_type(inference_context: &InferCtxt,
 }
 
 // Returns the def ID of the base type, if there is one.
-fn get_base_type_def_id(inference_context: &InferCtxt,
-                        span: Span,
-                        original_type: Ty)
-                        -> Option<DefId> {
+fn get_base_type_def_id<'a, 'tcx>(inference_context: &InferCtxt<'a, 'tcx>,
+                                  span: Span,
+                                  original_type: Ty<'tcx>)
+                                  -> Option<DefId> {
     match get_base_type(inference_context, span, original_type) {
         None => None,
         Some(base_type) => {
@@ -242,7 +242,7 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
     fn instantiate_default_methods(
             &self,
             impl_id: DefId,
-            trait_ref: &ty::TraitRef,
+            trait_ref: &ty::TraitRef<'tcx>,
             all_impl_items: &mut Vec<ImplOrTraitItemId>) {
         let tcx = self.crate_context.tcx;
         debug!("instantiate_default_methods(impl_id={}, trait_ref={})",
@@ -316,7 +316,7 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
     }
 
     fn get_self_type_for_implementation(&self, impl_did: DefId)
-                                        -> Polytype {
+                                        -> Polytype<'tcx> {
         self.crate_context.tcx.tcache.borrow()[impl_did].clone()
     }
 
@@ -478,10 +478,10 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
     }
 }
 
-pub fn make_substs_for_receiver_types(tcx: &ty::ctxt,
-                                      trait_ref: &ty::TraitRef,
-                                      method: &ty::Method)
-                                      -> subst::Substs
+pub fn make_substs_for_receiver_types<'tcx>(tcx: &ty::ctxt<'tcx>,
+                                            trait_ref: &ty::TraitRef<'tcx>,
+                                            method: &ty::Method<'tcx>)
+                                            -> subst::Substs<'tcx>
 {
     /*!
      * Substitutes the values for the receiver's type parameters
@@ -503,14 +503,14 @@ pub fn make_substs_for_receiver_types(tcx: &ty::ctxt,
     trait_ref.substs.clone().with_method(meth_tps, meth_regions)
 }
 
-fn subst_receiver_types_in_method_ty(tcx: &ty::ctxt,
-                                     impl_id: ast::DefId,
-                                     impl_poly_type: &ty::Polytype,
-                                     trait_ref: &ty::TraitRef,
-                                     new_def_id: ast::DefId,
-                                     method: &ty::Method,
-                                     provided_source: Option<ast::DefId>)
-                                     -> ty::Method
+fn subst_receiver_types_in_method_ty<'tcx>(tcx: &ty::ctxt<'tcx>,
+                                           impl_id: ast::DefId,
+                                           impl_poly_type: &ty::Polytype<'tcx>,
+                                           trait_ref: &ty::TraitRef<'tcx>,
+                                           new_def_id: ast::DefId,
+                                           method: &ty::Method<'tcx>,
+                                           provided_source: Option<ast::DefId>)
+                                           -> ty::Method<'tcx>
 {
     let combined_substs = make_substs_for_receiver_types(tcx, trait_ref, method);
 

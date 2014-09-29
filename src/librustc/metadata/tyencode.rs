@@ -36,19 +36,19 @@ pub struct ctxt<'a, 'tcx: 'a> {
     pub ds: fn(ast::DefId) -> String,
     // The type context.
     pub tcx: &'a ty::ctxt<'tcx>,
-    pub abbrevs: &'a abbrev_map
+    pub abbrevs: &'a abbrev_map<'tcx>
 }
 
-// Compact string representation for ty.t values. API ty_str & parse_from_str.
+// Compact string representation for Ty values. API ty_str & parse_from_str.
 // Extra parameters are for converting to/from def_ids in the string rep.
 // Whatever format you choose should not contain pipe characters.
 pub struct ty_abbrev {
     s: String
 }
 
-pub type abbrev_map = RefCell<FnvHashMap<Ty, ty_abbrev>>;
+pub type abbrev_map<'tcx> = RefCell<FnvHashMap<Ty<'tcx>, ty_abbrev>>;
 
-pub fn enc_ty(w: &mut SeekableMemWriter, cx: &ctxt, t: Ty) {
+pub fn enc_ty<'a, 'tcx>(w: &mut SeekableMemWriter, cx: &ctxt<'a, 'tcx>, t: Ty<'tcx>) {
     match cx.abbrevs.borrow_mut().get(&t) {
         Some(a) => { w.write(a.s.as_bytes()); return; }
         None => {}
@@ -79,7 +79,8 @@ fn enc_mutability(w: &mut SeekableMemWriter, mt: ast::Mutability) {
     }
 }
 
-fn enc_mt(w: &mut SeekableMemWriter, cx: &ctxt, mt: ty::mt) {
+fn enc_mt<'a, 'tcx>(w: &mut SeekableMemWriter, cx: &ctxt<'a, 'tcx>,
+                    mt: ty::mt<'tcx>) {
     enc_mutability(w, mt.mutbl);
     enc_ty(w, cx, mt.ty);
 }
@@ -94,10 +95,10 @@ fn enc_opt<T>(w: &mut SeekableMemWriter, t: Option<T>, enc_f: |&mut SeekableMemW
     }
 }
 
-fn enc_vec_per_param_space<T>(w: &mut SeekableMemWriter,
-                              cx: &ctxt,
-                              v: &VecPerParamSpace<T>,
-                              op: |&mut SeekableMemWriter, &ctxt, &T|) {
+fn enc_vec_per_param_space<'a, 'tcx, T>(w: &mut SeekableMemWriter,
+                                        cx: &ctxt<'a, 'tcx>,
+                                        v: &VecPerParamSpace<T>,
+                                        op: |&mut SeekableMemWriter, &ctxt<'a, 'tcx>, &T|) {
     for &space in subst::ParamSpace::all().iter() {
         mywrite!(w, "[");
         for t in v.get_slice(space).iter() {
@@ -107,7 +108,8 @@ fn enc_vec_per_param_space<T>(w: &mut SeekableMemWriter,
     }
 }
 
-pub fn enc_substs(w: &mut SeekableMemWriter, cx: &ctxt, substs: &subst::Substs) {
+pub fn enc_substs<'a, 'tcx>(w: &mut SeekableMemWriter, cx: &ctxt<'a, 'tcx>,
+                            substs: &subst::Substs<'tcx>) {
     enc_region_substs(w, cx, &substs.regions);
     enc_vec_per_param_space(w, cx, &substs.types,
                             |w, cx, &ty| enc_ty(w, cx, ty));
@@ -180,7 +182,8 @@ fn enc_bound_region(w: &mut SeekableMemWriter, cx: &ctxt, br: ty::BoundRegion) {
     }
 }
 
-pub fn enc_trait_ref(w: &mut SeekableMemWriter, cx: &ctxt, s: &ty::TraitRef) {
+pub fn enc_trait_ref<'a, 'tcx>(w: &mut SeekableMemWriter, cx: &ctxt<'a, 'tcx>,
+                               s: &ty::TraitRef<'tcx>) {
     mywrite!(w, "{}|", (cx.ds)(s.def_id));
     enc_substs(w, cx, &s.substs);
 }
@@ -196,7 +199,8 @@ pub fn enc_trait_store(w: &mut SeekableMemWriter, cx: &ctxt, s: ty::TraitStore) 
     }
 }
 
-fn enc_sty(w: &mut SeekableMemWriter, cx: &ctxt, st: &ty::sty) {
+fn enc_sty<'a, 'tcx>(w: &mut SeekableMemWriter, cx: &ctxt<'a, 'tcx>,
+                     st: &ty::sty<'tcx>) {
     match *st {
         ty::ty_bool => mywrite!(w, "b"),
         ty::ty_char => mywrite!(w, "c"),
@@ -314,13 +318,15 @@ fn enc_onceness(w: &mut SeekableMemWriter, o: ast::Onceness) {
     }
 }
 
-pub fn enc_bare_fn_ty(w: &mut SeekableMemWriter, cx: &ctxt, ft: &ty::BareFnTy) {
+pub fn enc_bare_fn_ty<'a, 'tcx>(w: &mut SeekableMemWriter, cx: &ctxt<'a, 'tcx>,
+                                ft: &ty::BareFnTy<'tcx>) {
     enc_fn_style(w, ft.fn_style);
     enc_abi(w, ft.abi);
     enc_fn_sig(w, cx, &ft.sig);
 }
 
-pub fn enc_closure_ty(w: &mut SeekableMemWriter, cx: &ctxt, ft: &ty::ClosureTy) {
+pub fn enc_closure_ty<'a, 'tcx>(w: &mut SeekableMemWriter, cx: &ctxt<'a, 'tcx>,
+                                ft: &ty::ClosureTy<'tcx>) {
     enc_fn_style(w, ft.fn_style);
     enc_onceness(w, ft.onceness);
     enc_trait_store(w, cx, ft.store);
@@ -329,7 +335,8 @@ pub fn enc_closure_ty(w: &mut SeekableMemWriter, cx: &ctxt, ft: &ty::ClosureTy) 
     enc_abi(w, ft.abi);
 }
 
-fn enc_fn_sig(w: &mut SeekableMemWriter, cx: &ctxt, fsig: &ty::FnSig) {
+fn enc_fn_sig<'a, 'tcx>(w: &mut SeekableMemWriter, cx: &ctxt<'a, 'tcx>,
+                        fsig: &ty::FnSig<'tcx>) {
     mywrite!(w, "[");
     for ty in fsig.inputs.iter() {
         enc_ty(w, cx, *ty);
@@ -368,7 +375,8 @@ pub fn enc_existential_bounds(w: &mut SeekableMemWriter, cx: &ctxt, bs: &ty::Exi
     enc_builtin_bounds(w, cx, &bs.builtin_bounds);
 }
 
-pub fn enc_bounds(w: &mut SeekableMemWriter, cx: &ctxt, bs: &ty::ParamBounds) {
+pub fn enc_bounds<'a, 'tcx>(w: &mut SeekableMemWriter, cx: &ctxt<'a, 'tcx>,
+                            bs: &ty::ParamBounds<'tcx>) {
     enc_builtin_bounds(w, cx, &bs.builtin_bounds);
 
     for &r in bs.region_bounds.iter() {
@@ -384,7 +392,8 @@ pub fn enc_bounds(w: &mut SeekableMemWriter, cx: &ctxt, bs: &ty::ParamBounds) {
     mywrite!(w, ".");
 }
 
-pub fn enc_type_param_def(w: &mut SeekableMemWriter, cx: &ctxt, v: &ty::TypeParameterDef) {
+pub fn enc_type_param_def<'a, 'tcx>(w: &mut SeekableMemWriter, cx: &ctxt<'a, 'tcx>,
+                                    v: &ty::TypeParameterDef<'tcx>) {
     mywrite!(w, "{}:{}|{}|{}|",
              token::get_name(v.name), (cx.ds)(v.def_id),
              v.space.to_uint(), v.index);

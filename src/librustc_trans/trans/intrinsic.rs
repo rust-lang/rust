@@ -135,11 +135,15 @@ pub fn check_intrinsics(ccx: &CrateContext) {
     ccx.sess().abort_if_errors();
 }
 
-pub fn trans_intrinsic_call<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>, node: ast::NodeId,
-                                        callee_ty: Ty, cleanup_scope: cleanup::CustomScopeIndex,
-                                        args: callee::CallArgs, dest: expr::Dest,
-                                        substs: subst::Substs, call_info: NodeInfo)
-                                        -> Result<'blk, 'tcx> {
+pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
+                                            node: ast::NodeId,
+                                            callee_ty: Ty<'tcx>,
+                                            cleanup_scope: cleanup::CustomScopeIndex,
+                                            args: callee::CallArgs<'a, 'tcx>,
+                                            dest: expr::Dest,
+                                            substs: subst::Substs<'tcx>,
+                                            call_info: NodeInfo)
+                                            -> Result<'blk, 'tcx> {
 
     let fcx = bcx.fcx;
     let ccx = fcx.ccx;
@@ -553,8 +557,9 @@ pub fn trans_intrinsic_call<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>, node: ast::N
     Result::new(bcx, llresult)
 }
 
-fn copy_intrinsic(bcx: Block, allow_overlap: bool, volatile: bool,
-                  tp_ty: Ty, dst: ValueRef, src: ValueRef, count: ValueRef) -> ValueRef {
+fn copy_intrinsic<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+                              allow_overlap: bool, volatile: bool, tp_ty: Ty<'tcx>,
+                              dst: ValueRef, src: ValueRef, count: ValueRef) -> ValueRef {
     let ccx = bcx.ccx();
     let lltp_ty = type_of::type_of(ccx, tp_ty);
     let align = C_i32(ccx, type_of::align_of(ccx, tp_ty) as i32);
@@ -582,8 +587,8 @@ fn copy_intrinsic(bcx: Block, allow_overlap: bool, volatile: bool,
                       C_bool(ccx, volatile)], None)
 }
 
-fn memset_intrinsic(bcx: Block, volatile: bool, tp_ty: Ty,
-                    dst: ValueRef, val: ValueRef, count: ValueRef) -> ValueRef {
+fn memset_intrinsic<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, volatile: bool, tp_ty: Ty<'tcx>,
+                                dst: ValueRef, val: ValueRef, count: ValueRef) -> ValueRef {
     let ccx = bcx.ccx();
     let lltp_ty = type_of::type_of(ccx, tp_ty);
     let align = C_i32(ccx, type_of::align_of(ccx, tp_ty) as i32);
@@ -607,8 +612,8 @@ fn count_zeros_intrinsic(bcx: Block, name: &'static str, val: ValueRef) -> Value
     Call(bcx, llfn, &[val, y], None)
 }
 
-fn with_overflow_intrinsic(bcx: Block, name: &'static str, t: Ty,
-                           a: ValueRef, b: ValueRef) -> ValueRef {
+fn with_overflow_intrinsic<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, name: &'static str,
+                                       t: Ty<'tcx>, a: ValueRef, b: ValueRef) -> ValueRef {
     let llfn = bcx.ccx().get_intrinsic(&name);
 
     // Convert `i1` to a `bool`, and write it to the out parameter

@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+pub use self::ClosureKind::*;
 
 use back::abi;
 use back::link::mangle_internal_name_by_path_and_seq;
@@ -101,21 +102,21 @@ use syntax::ast_util;
 //
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-pub struct EnvValue {
+pub struct EnvValue<'tcx> {
     action: ast::CaptureClause,
-    datum: Datum<Lvalue>
+    datum: Datum<'tcx, Lvalue>
 }
 
-impl EnvValue {
-    pub fn to_string(&self, ccx: &CrateContext) -> String {
+impl<'tcx> EnvValue<'tcx> {
+    pub fn to_string<'a>(&self, ccx: &CrateContext<'a, 'tcx>) -> String {
         format!("{}({})", self.action, self.datum.to_string(ccx))
     }
 }
 
 // Given a closure ty, emits a corresponding tuple ty
-pub fn mk_closure_tys(tcx: &ty::ctxt,
-                      bound_values: &[EnvValue])
-                   -> Ty {
+pub fn mk_closure_tys<'tcx>(tcx: &ty::ctxt<'tcx>,
+                            bound_values: &[EnvValue<'tcx>])
+                            -> Ty<'tcx> {
     // determine the types of the values in the env.  Note that this
     // is the actual types that will be stored in the map, not the
     // logical types as the user sees them, so by-ref upvars must be
@@ -131,14 +132,14 @@ pub fn mk_closure_tys(tcx: &ty::ctxt,
     return cdata_ty;
 }
 
-fn tuplify_box_ty(tcx: &ty::ctxt, t: Ty) -> Ty {
+fn tuplify_box_ty<'tcx>(tcx: &ty::ctxt<'tcx>, t: Ty<'tcx>) -> Ty<'tcx> {
     let ptr = ty::mk_imm_ptr(tcx, ty::mk_i8());
     ty::mk_tup(tcx, vec!(ty::mk_uint(), ty::mk_nil_ptr(tcx), ptr, ptr, t))
 }
 
 fn allocate_cbox<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                              store: ty::TraitStore,
-                             cdata_ty: Ty)
+                             cdata_ty: Ty<'tcx>)
                              -> Result<'blk, 'tcx> {
     let _icx = push_ctxt("closure::allocate_cbox");
     let tcx = bcx.tcx();
@@ -157,8 +158,8 @@ fn allocate_cbox<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 }
 
 pub struct ClosureResult<'blk, 'tcx: 'blk> {
-    llbox: ValueRef,    // llvalue of ptr to closure
-    cdata_ty: Ty,    // type of the closure data
+    llbox: ValueRef,        // llvalue of ptr to closure
+    cdata_ty: Ty<'tcx>,     // type of the closure data
     bcx: Block<'blk, 'tcx>  // final bcx
 }
 
@@ -167,7 +168,7 @@ pub struct ClosureResult<'blk, 'tcx: 'blk> {
 // heap allocated closure that copies the upvars into environment.
 // Otherwise, it is stack allocated and copies pointers to the upvars.
 pub fn store_environment<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
-                                     bound_values: Vec<EnvValue> ,
+                                     bound_values: Vec<EnvValue<'tcx>> ,
                                      store: ty::TraitStore)
                                      -> ClosureResult<'blk, 'tcx> {
     let _icx = push_ctxt("closure::store_environment");
@@ -248,16 +249,11 @@ fn build_closure<'blk, 'tcx>(bcx0: Block<'blk, 'tcx>,
 // and a list of upvars, generate code to load and populate the environment
 // with the upvars and type descriptors.
 fn load_environment<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
-                                cdata_ty: Ty,
-                                freevars: &Vec<ty::Freevar>,
+                                cdata_ty: Ty<'tcx>,
+                                freevars: &[ty::Freevar],
                                 store: ty::TraitStore)
                                 -> Block<'blk, 'tcx> {
     let _icx = push_ctxt("closure::load_environment");
-
-    // Don't bother to create the block if there's nothing to load
-    if freevars.len() == 0 {
-        return bcx;
-    }
 
     // Load a pointer to the closure data, skipping over the box header:
     let llcdata = at_box_body(bcx, cdata_ty, bcx.fcx.llenv.unwrap());
@@ -304,16 +300,12 @@ fn load_unboxed_closure_environment<'blk, 'tcx>(
                                     bcx: Block<'blk, 'tcx>,
                                     arg_scope_id: ScopeId,
                                     freevar_mode: ast::CaptureClause,
-                                    freevars: &Vec<ty::Freevar>,
-                                    closure_id: ast::DefId)
+                                    freevars: &[ty::Freevar])
                                     -> Block<'blk, 'tcx> {
     let _icx = push_ctxt("closure::load_environment");
 
-    if freevars.len() == 0 {
-        return bcx
-    }
-
     // Special case for small by-value selfs.
+    let closure_id = ast_util::local_def(bcx.fcx.id);
     let self_type = self_type_for_unboxed_closure(bcx.ccx(), closure_id,
                                                   node_id_type(bcx, closure_id.node));
     let kind = kind_for_unboxed_closure(bcx.ccx(), closure_id);
@@ -350,6 +342,48 @@ fn fill_fn_pair(bcx: Block, pair: ValueRef, llfn: ValueRef, llenvptr: ValueRef) 
     Store(bcx, llfn, GEPi(bcx, pair, &[0u, abi::fn_field_code]));
     let llenvptr = PointerCast(bcx, llenvptr, Type::i8p(bcx.ccx()));
     Store(bcx, llenvptr, GEPi(bcx, pair, &[0u, abi::fn_field_box]));
+}
+
+#[deriving(PartialEq)]
+pub enum ClosureKind<'tcx> {
+    NotClosure,
+    // See load_environment.
+    BoxedClosure(Ty<'tcx>, ty::TraitStore),
+    // See load_unboxed_closure_environment.
+    UnboxedClosure(ast::CaptureClause)
+}
+
+pub struct ClosureEnv<'a, 'tcx> {
+    freevars: &'a [ty::Freevar],
+    pub kind: ClosureKind<'tcx>
+}
+
+impl<'a, 'tcx> ClosureEnv<'a, 'tcx> {
+    pub fn new(freevars: &'a [ty::Freevar], kind: ClosureKind<'tcx>)
+               -> ClosureEnv<'a, 'tcx> {
+        ClosureEnv {
+            freevars: freevars,
+            kind: kind
+        }
+    }
+
+    pub fn load<'blk>(self, bcx: Block<'blk, 'tcx>, arg_scope: ScopeId)
+                      -> Block<'blk, 'tcx> {
+        // Don't bother to create the block if there's nothing to load
+        if self.freevars.is_empty() {
+            return bcx;
+        }
+
+        match self.kind {
+            NotClosure => bcx,
+            BoxedClosure(cdata_ty, store) => {
+                load_environment(bcx, cdata_ty, self.freevars, store)
+            }
+            UnboxedClosure(freevar_mode) => {
+                load_unboxed_closure_environment(bcx, arg_scope, freevar_mode, self.freevars)
+            }
+        }
+    }
 }
 
 pub fn trans_expr_fn<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
@@ -401,6 +435,7 @@ pub fn trans_expr_fn<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         cdata_ty,
         bcx
     } = build_closure(bcx, freevar_mode, &freevars, store);
+
     trans_closure(ccx,
                   decl,
                   body,
@@ -410,9 +445,8 @@ pub fn trans_expr_fn<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                   &[],
                   ty::ty_fn_ret(fty),
                   ty::ty_fn_abi(fty),
-                  true,
-                  NotUnboxedClosure,
-                  |bcx, _| load_environment(bcx, cdata_ty, &freevars, store));
+                  ClosureEnv::new(freevars.as_slice(),
+                                  BoxedClosure(cdata_ty, store)));
     fill_fn_pair(bcx, dest_addr, llfn, llbox);
     bcx
 }
@@ -421,7 +455,7 @@ pub fn trans_expr_fn<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 /// if necessary. If the ID does not correspond to a closure ID, returns None.
 pub fn get_or_create_declaration_if_unboxed_closure<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                                                 closure_id: ast::DefId,
-                                                                substs: &Substs)
+                                                                substs: &Substs<'tcx>)
                                                                 -> Option<ValueRef> {
     let ccx = bcx.ccx();
     if !ccx.tcx().unboxed_closures.borrow().contains_key(&closure_id) {
@@ -495,7 +529,6 @@ pub fn trans_unboxed_closure<'blk, 'tcx>(
 
     let freevars: Vec<ty::Freevar> =
         ty::with_freevars(bcx.tcx(), id, |fv| fv.iter().map(|&fv| fv).collect());
-    let freevars_ptr = &freevars;
     let freevar_mode = bcx.tcx().capture_mode(id);
 
     trans_closure(bcx.ccx(),
@@ -507,15 +540,8 @@ pub fn trans_unboxed_closure<'blk, 'tcx>(
                   &[],
                   ty::ty_fn_ret(function_type),
                   ty::ty_fn_abi(function_type),
-                  true,
-                  IsUnboxedClosure,
-                  |bcx, arg_scope| {
-                      load_unboxed_closure_environment(bcx,
-                                                       arg_scope,
-                                                       freevar_mode,
-                                                       freevars_ptr,
-                                                       closure_id)
-                  });
+                  ClosureEnv::new(freevars.as_slice(),
+                                  UnboxedClosure(freevar_mode)));
 
     // Don't hoist this to the top of the function. It's perfectly legitimate
     // to have a zero-size unboxed closure (in which case dest will be
@@ -531,7 +557,7 @@ pub fn trans_unboxed_closure<'blk, 'tcx>(
     let repr = adt::represent_type(bcx.ccx(), node_id_type(bcx, id));
 
     // Create the closure.
-    for (i, freevar) in freevars_ptr.iter().enumerate() {
+    for (i, freevar) in freevars.iter().enumerate() {
         let datum = expr::trans_local_var(bcx, freevar.def);
         let upvar_slot_dest = adt::trans_field_ptr(bcx,
                                                    &*repr,
@@ -552,11 +578,11 @@ pub fn trans_unboxed_closure<'blk, 'tcx>(
     bcx
 }
 
-pub fn get_wrapper_for_bare_fn(ccx: &CrateContext,
-                               closure_ty: Ty,
-                               def: def::Def,
-                               fn_ptr: ValueRef,
-                               is_local: bool) -> ValueRef {
+pub fn get_wrapper_for_bare_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
+                                         closure_ty: Ty<'tcx>,
+                                         def: def::Def,
+                                         fn_ptr: ValueRef,
+                                         is_local: bool) -> ValueRef {
 
     let def_id = match def {
         def::DefFn(did, _) | def::DefStaticMethod(did, _) |
@@ -647,7 +673,7 @@ pub fn get_wrapper_for_bare_fn(ccx: &CrateContext,
 }
 
 pub fn make_closure_from_bare_fn<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
-                                             closure_ty: Ty,
+                                             closure_ty: Ty<'tcx>,
                                              def: def::Def,
                                              fn_ptr: ValueRef)
                                              -> DatumBlock<'blk, 'tcx, Expr>  {

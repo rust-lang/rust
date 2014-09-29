@@ -32,7 +32,7 @@ use syntax::parse::token;
 use syntax::visit;
 use syntax::visit::Visitor;
 
-type Context<'a> = (&'a MethodMap, &'a resolve::ExportMap2);
+type Context<'a, 'tcx> = (&'a MethodMap<'tcx>, &'a resolve::ExportMap2);
 
 /// A set of AST nodes exported by the crate.
 pub type ExportedItems = NodeSet;

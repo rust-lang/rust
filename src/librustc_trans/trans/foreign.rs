@@ -39,9 +39,9 @@ use util::ppaux::Repr;
 ///////////////////////////////////////////////////////////////////////////
 // Type definitions
 
-struct ForeignTypes {
+struct ForeignTypes<'tcx> {
     /// Rust signature of the function
-    fn_sig: ty::FnSig,
+    fn_sig: ty::FnSig<'tcx>,
 
     /// Adapter object for handling native ABI rules (trust me, you
     /// don't want to know)
@@ -161,8 +161,9 @@ pub fn register_static(ccx: &CrateContext,
     }
 }
 
-pub fn register_foreign_item_fn(ccx: &CrateContext, abi: Abi, fty: Ty,
-                                name: &str) -> ValueRef {
+pub fn register_foreign_item_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
+                                          abi: Abi, fty: Ty<'tcx>,
+                                          name: &str) -> ValueRef {
     /*!
      * Registers a foreign function found in a library.
      * Just adds a LLVM global.
@@ -201,11 +202,11 @@ pub fn register_foreign_item_fn(ccx: &CrateContext, abi: Abi, fty: Ty,
 }
 
 pub fn trans_native_call<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
-                                     callee_ty: Ty,
+                                     callee_ty: Ty<'tcx>,
                                      llfn: ValueRef,
                                      llretptr: ValueRef,
                                      llargs_rust: &[ValueRef],
-                                     passed_arg_tys: Vec<Ty> )
+                                     passed_arg_tys: Vec<Ty<'tcx>>)
                                      -> Block<'blk, 'tcx> {
     /*!
      * Prepares a call to a native function. This requires adapting
@@ -483,10 +484,10 @@ pub fn trans_foreign_mod(ccx: &CrateContext, foreign_mod: &ast::ForeignMod) {
 // inline the one into the other. Of course we could just generate the
 // correct code in the first place, but this is much simpler.
 
-pub fn decl_rust_fn_with_foreign_abi(ccx: &CrateContext,
-                                     t: Ty,
-                                     name: &str)
-                                     -> ValueRef {
+pub fn decl_rust_fn_with_foreign_abi<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
+                                               t: Ty<'tcx>,
+                                               name: &str)
+                                               -> ValueRef {
     let tys = foreign_types_for_fn_ty(ccx, t);
     let llfn_ty = lltype_for_fn_from_foreign_types(ccx, &tys);
     let cconv = match ty::get(t).sty {
@@ -525,14 +526,14 @@ pub fn register_rust_fn_with_foreign_abi(ccx: &CrateContext,
     llfn
 }
 
-pub fn trans_rust_fn_with_foreign_abi(ccx: &CrateContext,
-                                      decl: &ast::FnDecl,
-                                      body: &ast::Block,
-                                      attrs: &[ast::Attribute],
-                                      llwrapfn: ValueRef,
-                                      param_substs: &param_substs,
-                                      id: ast::NodeId,
-                                      hash: Option<&str>) {
+pub fn trans_rust_fn_with_foreign_abi<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
+                                                decl: &ast::FnDecl,
+                                                body: &ast::Block,
+                                                attrs: &[ast::Attribute],
+                                                llwrapfn: ValueRef,
+                                                param_substs: &param_substs<'tcx>,
+                                                id: ast::NodeId,
+                                                hash: Option<&str>) {
     let _icx = push_ctxt("foreign::build_foreign_fn");
 
     let fnty = ty::node_id_to_type(ccx.tcx(), id);
@@ -547,14 +548,14 @@ pub fn trans_rust_fn_with_foreign_abi(ccx: &CrateContext,
         return build_wrap_fn(ccx, llrustfn, llwrapfn, &tys, mty);
     }
 
-    fn build_rust_fn(ccx: &CrateContext,
-                     decl: &ast::FnDecl,
-                     body: &ast::Block,
-                     param_substs: &param_substs,
-                     attrs: &[ast::Attribute],
-                     id: ast::NodeId,
-                     hash: Option<&str>)
-                     -> ValueRef {
+    fn build_rust_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
+                               decl: &ast::FnDecl,
+                               body: &ast::Block,
+                               param_substs: &param_substs<'tcx>,
+                               attrs: &[ast::Attribute],
+                               id: ast::NodeId,
+                               hash: Option<&str>)
+                               -> ValueRef {
         let _icx = push_ctxt("foreign::foreign::build_rust_fn");
         let tcx = ccx.tcx();
         let t = ty::node_id_to_type(tcx, id).subst(
@@ -589,11 +590,11 @@ pub fn trans_rust_fn_with_foreign_abi(ccx: &CrateContext,
         llfn
     }
 
-    unsafe fn build_wrap_fn(ccx: &CrateContext,
-                            llrustfn: ValueRef,
-                            llwrapfn: ValueRef,
-                            tys: &ForeignTypes,
-                            t: Ty) {
+    unsafe fn build_wrap_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
+                                      llrustfn: ValueRef,
+                                      llwrapfn: ValueRef,
+                                      tys: &ForeignTypes<'tcx>,
+                                      t: Ty<'tcx>) {
         let _icx = push_ctxt(
             "foreign::trans_rust_fn_with_foreign_abi::build_wrap_fn");
         let tcx = ccx.tcx();
@@ -832,8 +833,9 @@ pub fn link_name(i: &ast::ForeignItem) -> InternedString {
     }
 }
 
-fn foreign_signature(ccx: &CrateContext, fn_sig: &ty::FnSig, arg_tys: &[Ty])
-                     -> LlvmSignature {
+fn foreign_signature<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
+                               fn_sig: &ty::FnSig<'tcx>, arg_tys: &[Ty<'tcx>])
+                               -> LlvmSignature {
     /*!
      * The ForeignSignature is the LLVM types of the arguments/return type
      * of a function.  Note that these LLVM types are not quite the same
@@ -856,13 +858,13 @@ fn foreign_signature(ccx: &CrateContext, fn_sig: &ty::FnSig, arg_tys: &[Ty])
     }
 }
 
-fn foreign_types_for_id(ccx: &CrateContext,
-                        id: ast::NodeId) -> ForeignTypes {
+fn foreign_types_for_id<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
+                                  id: ast::NodeId) -> ForeignTypes<'tcx> {
     foreign_types_for_fn_ty(ccx, ty::node_id_to_type(ccx.tcx(), id))
 }
 
-fn foreign_types_for_fn_ty(ccx: &CrateContext,
-                           ty: Ty) -> ForeignTypes {
+fn foreign_types_for_fn_ty<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
+                                     ty: Ty<'tcx>) -> ForeignTypes<'tcx> {
     let fn_sig = match ty::get(ty).sty {
         ty::ty_bare_fn(ref fn_ty) => fn_ty.sig.clone(),
         _ => ccx.sess().bug("foreign_types_for_fn_ty called on non-function type")
@@ -934,7 +936,8 @@ fn lltype_for_fn_from_foreign_types(ccx: &CrateContext, tys: &ForeignTypes) -> T
     }
 }
 
-pub fn lltype_for_foreign_fn(ccx: &CrateContext, ty: Ty) -> Type {
+pub fn lltype_for_foreign_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
+                                       ty: Ty<'tcx>) -> Type {
     lltype_for_fn_from_foreign_types(ccx, &foreign_types_for_fn_ty(ccx, ty))
 }
 
