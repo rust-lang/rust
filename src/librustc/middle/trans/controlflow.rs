@@ -22,6 +22,7 @@ use middle::trans::cleanup;
 use middle::trans::common::*;
 use middle::trans::consts;
 use middle::trans::datum;
+use middle::trans::debuginfo;
 use middle::trans::expr;
 use middle::trans::meth;
 use middle::trans::type_::Type;
@@ -53,7 +54,9 @@ pub fn trans_stmt<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
     let mut bcx = cx;
 
     let id = ast_util::stmt_id(s);
-    fcx.push_ast_cleanup_scope(id);
+    let cleanup_debug_loc =
+        debuginfo::get_cleanup_debug_loc_for_ast_node(id, s.span, false);
+    fcx.push_ast_cleanup_scope(cleanup_debug_loc);
 
     match s.node {
         ast::StmtExpr(ref e, _) | ast::StmtSemi(ref e, _) => {
@@ -75,8 +78,7 @@ pub fn trans_stmt<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
         ast::StmtMac(..) => cx.tcx().sess.bug("unexpanded macro")
     }
 
-    bcx = fcx.pop_and_trans_ast_cleanup_scope(
-        bcx, ast_util::stmt_id(s));
+    bcx = fcx.pop_and_trans_ast_cleanup_scope(bcx, ast_util::stmt_id(s));
 
     return bcx;
 }
@@ -100,7 +102,9 @@ pub fn trans_block<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let fcx = bcx.fcx;
     let mut bcx = bcx;
 
-    fcx.push_ast_cleanup_scope(b.id);
+    let cleanup_debug_loc =
+        debuginfo::get_cleanup_debug_loc_for_ast_node(b.id, b.span, true);
+    fcx.push_ast_cleanup_scope(cleanup_debug_loc);
 
     for s in b.stmts.iter() {
         bcx = trans_stmt(bcx, &**s);

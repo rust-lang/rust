@@ -130,8 +130,8 @@ fn main() {
     let i32_val: i32 = -32;
     let i32_ref: &i32 = &i32_val;
 
-    let uint_val: i64 = -64;
-    let i64_ref: &i64 = &uint_val;
+    let i64_val: i64 = -64;
+    let i64_ref: &i64 = &i64_val;
 
     let uint_val: uint = 1;
     let uint_ref: &uint = &uint_val;
