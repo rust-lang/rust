@@ -2945,16 +2945,53 @@ impl<'a> Resolver<'a> {
                 match *name_bindings.type_def.borrow() {
                     None => {}
                     Some(ref ty) => {
-                        let msg = format!("import `{}` conflicts with type in \
-                                           this module",
-                                          token::get_name(name).get());
-                        self.session.span_err(import_span, msg.as_slice());
-                        match ty.type_span {
-                            None => {}
-                            Some(span) => {
-                                self.session
-                                    .span_note(span,
-                                               "conflicting type here")
+                        match ty.module_def {
+                            None => {
+                                let msg = format!("import `{}` conflicts with type in \
+                                                   this module",
+                                                  token::get_name(name).get());
+                                self.session.span_err(import_span, msg.as_slice());
+                                match ty.type_span {
+                                    None => {}
+                                    Some(span) => {
+                                        self.session
+                                            .span_note(span,
+                                                       "note conflicting type here")
+                                    }
+                                }
+                            }
+                            Some(ref module_def) => {
+                                match module_def.kind.get() {
+                                    ImplModuleKind => {
+                                        match ty.type_span {
+                                            None => { /* this can't ever happen */ }
+                                            Some(span) => {
+                                                let msg = format!("inherent implementations \
+                                                                   are only allowed on types \
+                                                                   defined in the current module");
+                                                self.session
+                                                    .span_err(span, msg.as_slice());
+                                                self.session
+                                                    .span_note(import_span,
+                                                               "import from other module here")
+                                            }
+                                        }
+                                    }
+                                    _ => {
+                                        let msg = format!("import `{}` conflicts with existing \
+                                                           submodule",
+                                                          token::get_name(name).get());
+                                        self.session.span_err(import_span, msg.as_slice());
+                                        match ty.type_span {
+                                            None => {}
+                                            Some(span) => {
+                                                self.session
+                                                    .span_note(span,
+                                                               "note conflicting module here")
+                                            }
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
@@ -4610,6 +4647,30 @@ impl<'a> Resolver<'a> {
                 });
             });
         });
+
+        // Check that the current type is indeed a type, if we have an anonymous impl
+        if opt_trait_reference.is_none() {
+            match self_type.node {
+                // TyPath is the only thing that we handled in `build_reduced_graph_for_item`,
+                // where we created a module with the name of the type in order to implement
+                // an anonymous trait. In the case that the path does not resolve to an actual
+                // type, the result will be that the type name resolves to a module but not
+                // a type (shadowing any imported modules or types with this name), leading
+                // to weird user-visible bugs. So we ward this off here. See #15060.
+                TyPath(ref path, _, path_id) => {
+                    match self.def_map.borrow().find(&path_id) {
+                        // FIXME: should we catch other options and give more precise errors?
+                        Some(&DefMod(_)) => {
+                            self.resolve_error(path.span, "inherent implementations are not \
+                                                           allowed for types not defined in \
+                                                           the current module.");
+                        }
+                        _ => {}
+                    }
+                }
+                _ => { }
+            }
+        }
     }
 
     fn check_trait_item(&self, ident: Ident, span: Span) {
