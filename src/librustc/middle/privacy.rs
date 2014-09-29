@@ -1,4 +1,4 @@
-// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -347,9 +347,8 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EmbargoVisitor<'a, 'tcx> {
         // This code is here instead of in visit_item so that the
         // crate module gets processed as well.
         if self.prev_exported {
-            let exp_map2 = self.exp_map2.borrow();
-            assert!(exp_map2.contains_key(&id), "wut {:?}", id);
-            for export in exp_map2.get(&id).iter() {
+            assert!(self.exp_map2.contains_key(&id), "wut {:?}", id);
+            for export in self.exp_map2.get(&id).iter() {
                 if is_local(export.def_id) {
                     self.reexports.insert(export.def_id.node);
                 }
