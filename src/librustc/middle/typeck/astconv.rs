@@ -856,10 +856,6 @@ pub fn ast_ty_to_ty<'tcx, AC: AstConv<'tcx>, RS: RegionScope>(
         match ast_ty.node {
             ast::TyNil => ty::mk_nil(),
             ast::TyBot => ty::mk_bot(),
-            ast::TyBox(ref ty) => {
-                mk_pointer(this, rscope, ast::MutImmutable, &**ty, Box,
-                           |ty| ty::mk_box(tcx, ty))
-            }
             ast::TyUniq(ref ty) => {
                 mk_pointer(this, rscope, ast::MutImmutable, &**ty, Uniq,
                            |ty| ty::mk_uniq(tcx, ty))

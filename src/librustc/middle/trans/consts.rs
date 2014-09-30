@@ -421,7 +421,7 @@ fn const_expr_unadjusted(cx: &CrateContext, e: &ast::Expr,
             let ty = ty::expr_ty(cx.tcx(), &**e);
             let is_float = ty::type_is_fp(ty);
             return (match u {
-              ast::UnBox | ast::UnUniq | ast::UnDeref => {
+              ast::UnUniq | ast::UnDeref => {
                 let (dv, _dt) = const_deref(cx, te, ty, true);
                 dv
               }

@@ -1533,9 +1533,6 @@ fn trans_unary<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             };
             immediate_rvalue_bcx(bcx, llneg, un_ty).to_expr_datumblock()
         }
-        ast::UnBox => {
-            trans_managed_expr(bcx, un_ty, sub_expr, expr_ty(bcx, sub_expr))
-        }
         ast::UnUniq => {
             trans_uniq_expr(bcx, un_ty, sub_expr, expr_ty(bcx, sub_expr))
         }

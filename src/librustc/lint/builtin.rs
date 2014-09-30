@@ -1289,7 +1289,7 @@ impl LintPass for UnnecessaryAllocation {
 
     fn check_expr(&mut self, cx: &Context, e: &ast::Expr) {
         match e.node {
-            ast::ExprUnary(ast::UnUniq, _) | ast::ExprUnary(ast::UnBox, _) => (),
+            ast::ExprUnary(ast::UnUniq, _) => (),
             _ => return
         }
 
