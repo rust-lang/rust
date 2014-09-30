@@ -74,7 +74,7 @@ to an `LV` of `(*a).f`.
 Here is the formal grammar for the types we'll consider:
 
 ```text
-TY = () | S<'LT...> | Box<TY> | & 'LT MQ TY | @ MQ TY
+TY = () | S<'LT...> | Box<TY> | & 'LT MQ TY
 MQ = mut | imm | const
 ```
 
@@ -263,9 +263,7 @@ compatible with the aliasability of `LV`. The goal is to prevent
 `&mut` borrows of aliasability data.
 
 3. `LIFETIME(LV, LT, MQ)`: The lifetime of the borrow does not exceed
-the lifetime of the value being borrowed. This pass is also
-responsible for inserting root annotations to keep managed values
-alive.
+the lifetime of the value being borrowed.
 
 4. `RESTRICTIONS(LV, LT, ACTIONS) = RS`: This pass checks and computes the
 restrictions to maintain memory safety. These are the restrictions
@@ -316,16 +314,12 @@ MUTABILITY(*LV, MQ)                 // M-Deref-Unique
 
 ### Checking mutability of immutable pointer types
 
-Immutable pointer types like `&T` and `@T` can only
+Immutable pointer types like `&T` can only
 be borrowed if MQ is immutable or const:
 
 ```text
 MUTABILITY(*LV, MQ)                // M-Deref-Borrowed-Imm
   TYPE(LV) = &Ty
-  MQ == imm | const
-
-MUTABILITY(*LV, MQ)                // M-Deref-Managed-Imm
-  TYPE(LV) = @Ty
   MQ == imm | const
 ```
 
@@ -390,11 +384,10 @@ ALIASABLE(*LV, MQ)                 // M-Deref-Borrowed-Mut
 ## Checking lifetime
 
 These rules aim to ensure that no data is borrowed for a scope that exceeds
-its lifetime. In addition, these rules manage the rooting of `@` values.
-These two computations wind up being intimately related. Formally, we define
-a predicate `LIFETIME(LV, LT, MQ)`, which states that "the lvalue `LV` can be
-safely borrowed for the lifetime `LT` with mutability `MQ`". The Rust
-code corresponding to this predicate is the module
+its lifetime. These two computations wind up being intimately related.
+Formally, we define a predicate `LIFETIME(LV, LT, MQ)`, which states that
+"the lvalue `LV` can be safely borrowed for the lifetime `LT` with mutability
+`MQ`". The Rust code corresponding to this predicate is the module
 `middle::borrowck::gather_loans::lifetime`.
 
 ### The Scope function
@@ -421,14 +414,6 @@ the pointer itself `LV` goes out of scope:
 
 ```text
   SCOPE(*LV) = SCOPE(LV) if LV has type Box<T>
-```
-
-The scope of a managed referent is also the scope of the pointer.  This
-is a conservative approximation, since there may be other aliases for
-that same managed box that would cause it to live longer:
-
-```text
-  SCOPE(*LV) = SCOPE(LV) if LV has type @T
 ```
 
 The scope of a borrowed referent is the scope associated with the
@@ -476,59 +461,6 @@ LIFETIME(*LV, LT, MQ)               // L-Deref-Borrowed
   TYPE(LV) = &LT' Ty OR &LT' mut Ty
   LT <= LT'
 ```
-
-### Checking lifetime for derefs of managed, immutable pointers
-
-Managed pointers are valid so long as the data within them is
-*rooted*. There are two ways that this can be achieved. The first is
-when the user guarantees such a root will exist. For this to be true,
-three conditions must be met:
-
-```text
-LIFETIME(*LV, LT, MQ)               // L-Deref-Managed-Imm-User-Root
-  TYPE(LV) = @Ty
-  LT <= SCOPE(LV)                   // (1)
-  LV is immutable                   // (2)
-  LV is not moved or not movable    // (3)
-```
-
-Condition (1) guarantees that the managed box will be rooted for at
-least the lifetime `LT` of the borrow, presuming that no mutation or
-moves occur. Conditions (2) and (3) then serve to guarantee that the
-value is not mutated or moved. Note that lvalues are either
-(ultimately) owned by a local variable, in which case we can check
-whether that local variable is ever moved in its scope, or they are
-owned by the referent of an (immutable, due to condition 2) managed or
-references, in which case moves are not permitted because the
-location is aliasable.
-
-If the conditions of `L-Deref-Managed-Imm-User-Root` are not met, then
-there is a second alternative. The compiler can attempt to root the
-managed pointer itself. This permits great flexibility, because the
-location `LV` where the managed pointer is found does not matter, but
-there are some limitations. The lifetime of the borrow can only extend
-to the innermost enclosing loop or function body. This guarantees that
-the compiler never requires an unbounded amount of stack space to
-perform the rooting; if this condition were violated, the compiler
-might have to accumulate a list of rooted objects, for example if the
-borrow occurred inside the body of a loop but the scope of the borrow
-extended outside the loop. More formally, the requirement is that
-there is no path starting from the borrow that leads back to the
-borrow without crossing the exit from the scope `LT`.
-
-The rule for compiler rooting is as follows:
-
-```text
-LIFETIME(*LV, LT, MQ)               // L-Deref-Managed-Imm-Compiler-Root
-  TYPE(LV) = @Ty
-  LT <= innermost enclosing loop/func
-  ROOT LV at *LV for LT
-```
-
-Here I have written `ROOT LV at *LV FOR LT` to indicate that the code
-makes a note in a side-table that the box `LV` must be rooted into the
-stack when `*LV` is evaluated, and that this root can be released when
-the scope `LT` exits.
 
 ## Computing the restrictions
 
@@ -599,22 +531,18 @@ RESTRICTIONS(*LV, LT, ACTIONS) = RS, (*LV, ACTIONS)    // R-Deref-Send-Pointer
   RESTRICTIONS(LV, LT, ACTIONS|MUTATE|CLAIM) = RS
 ```
 
-### Restrictions for loans of immutable managed/borrowed referents
+### Restrictions for loans of immutable borrowed referents
 
-Immutable managed/borrowed referents are freely aliasable, meaning that
+Immutable borrowed referents are freely aliasable, meaning that
 the compiler does not prevent you from copying the pointer.  This
 implies that issuing restrictions is useless. We might prevent the
 user from acting on `*LV` itself, but there could be another path
 `*LV1` that refers to the exact same memory, and we would not be
-restricting that path. Therefore, the rule for `&Ty` and `@Ty`
-pointers always returns an empty set of restrictions, and it only
-permits restricting `MUTATE` and `CLAIM` actions:
+restricting that path. Therefore, the rule for `&Ty` pointers
+always returns an empty set of restrictions, and it only permits
+restricting `MUTATE` and `CLAIM` actions:
 
 ```text
-RESTRICTIONS(*LV, LT, ACTIONS) = []                    // R-Deref-Imm-Managed
-  TYPE(LV) = @Ty
-  ACTIONS subset of [MUTATE, CLAIM]
-
 RESTRICTIONS(*LV, LT, ACTIONS) = []                    // R-Deref-Imm-Borrowed
   TYPE(LV) = &LT' Ty
   LT <= LT'                                            // (1)
@@ -623,8 +551,8 @@ RESTRICTIONS(*LV, LT, ACTIONS) = []                    // R-Deref-Imm-Borrowed
 
 The reason that we can restrict `MUTATE` and `CLAIM` actions even
 without a restrictions list is that it is never legal to mutate nor to
-borrow mutably the contents of a `&Ty` or `@Ty` pointer. In other
-words, those restrictions are already inherent in the type.
+borrow mutably the contents of a `&Ty` pointer. In other words,
+those restrictions are already inherent in the type.
 
 Clause (1) in the rule for `&Ty` deserves mention. Here I
 specify that the lifetime of the loan must be less than the lifetime
@@ -729,13 +657,12 @@ are affine.)
 Freeze pointers are read-only. There may be `&mut` or `&` aliases, and
 we can not prevent *anything* but moves in that case. So the
 `RESTRICTIONS` function is only defined if `ACTIONS` is the empty set.
-Because moves from a `&const` or `@const` lvalue are never legal, it
-is not necessary to add any restrictions at all to the final
-result.
+Because moves from a `&const` lvalue are never legal, it is not
+necessary to add any restrictions at all to the final result.
 
 ```text
     RESTRICTIONS(*LV, LT, []) = []                         // R-Deref-Freeze-Borrowed
-      TYPE(LV) = &const Ty or @const Ty
+      TYPE(LV) = &const Ty
 ```
 
 ### Restrictions for loans of mutable borrowed referents
@@ -957,8 +884,7 @@ moves and the declaration of uninitialized variables. For each of
 these points, we create a bit in the dataflow set. Assignments to a
 variable `x` or path `a.b.c` kill the move/uninitialization bits for
 those paths and any subpaths (e.g., `x`, `x.y`, `a.b.c`, `*a.b.c`).
-The bits are also killed when the root variables (`x`, `a`) go out of
-scope. Bits are unioned when two control-flow paths join. Thus, the
+Bits are unioned when two control-flow paths join. Thus, the
 presence of a bit indicates that the move may have occurred without an
 intervening assignment to the same memory. At each use of a variable,
 we examine the bits in scope, and check that none of them are

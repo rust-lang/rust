@@ -632,19 +632,6 @@ This part is coming soon.
 
 This part is coming soon.
 
-# Gc
-
-The `Gc<T>` type exists for historical reasons, and is [still used
-internally](https://github.com/rust-lang/rust/issues/7929) by the compiler.
-It is not even a 'real' garbage collected type at the moment.
-
-In the future, Rust may have a real garbage collected type, and so it
-has not yet been removed for that reason.
-
-## Best practices
-
-There is currently no legitimate use case for the `Gc<T>` type.
-
 # Raw Pointers
 
 This part is coming soon.

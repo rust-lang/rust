@@ -208,9 +208,7 @@ pub struct Unique<T> {
 // Implement methods for creating and using the values in the box.
 
 // NB: For simplicity and correctness, we require that T has kind Send
-// (owned boxes relax this restriction, and can contain managed (GC) boxes).
-// This is because, as implemented, the garbage collector would not know
-// about any shared boxes stored in the malloc'd region of memory.
+// (owned boxes relax this restriction).
 impl<T: Send> Unique<T> {
     pub fn new(value: T) -> Unique<T> {
         unsafe {
