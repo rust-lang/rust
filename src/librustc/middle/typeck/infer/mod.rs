@@ -216,9 +216,6 @@ pub enum SubregionOrigin {
 
     // An auto-borrow that does not enclose the expr where it occurs
     AutoBorrow(Span),
-
-    // Managed data cannot contain borrowed pointers.
-    Managed(Span),
 }
 
 /// Reasons to create a region inference variable
@@ -1029,7 +1026,6 @@ impl SubregionOrigin {
             CallReturn(a) => a,
             AddrOf(a) => a,
             AutoBorrow(a) => a,
-            Managed(a) => a,
         }
     }
 }
@@ -1102,7 +1098,6 @@ impl Repr for SubregionOrigin {
             CallReturn(a) => format!("CallReturn({})", a.repr(tcx)),
             AddrOf(a) => format!("AddrOf({})", a.repr(tcx)),
             AutoBorrow(a) => format!("AutoBorrow({})", a.repr(tcx)),
-            Managed(a) => format!("Managed({})", a.repr(tcx)),
         }
     }
 }

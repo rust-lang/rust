@@ -20,7 +20,6 @@ use middle::trans::common::*;
 use middle::trans::cleanup;
 use middle::trans::cleanup::CleanupMethods;
 use middle::trans::expr;
-use middle::trans::glue;
 use middle::trans::tvec;
 use middle::trans::type_of;
 use middle::ty;
@@ -240,14 +239,9 @@ impl KindOps for Lvalue {
          */
 
         if ty::type_needs_drop(bcx.tcx(), ty) {
-            if ty::type_moves_by_default(bcx.tcx(), ty) {
-                // cancel cleanup of affine values by zeroing out
-                let () = zero_mem(bcx, val, ty);
-                bcx
-            } else {
-                // incr. refcount for @T or newtype'd @T
-                glue::take_ty(bcx, val, ty)
-            }
+            // cancel cleanup of affine values by zeroing out
+            let () = zero_mem(bcx, val, ty);
+            bcx
         } else {
             bcx
         }
@@ -567,15 +561,15 @@ impl<K:KindOps> Datum<K> {
          * is moved).
          */
 
-        self.shallow_copy(bcx, dst);
+        self.shallow_copy_raw(bcx, dst);
 
         self.kind.post_store(bcx, self.val, self.ty)
     }
 
-    fn shallow_copy<'blk, 'tcx>(&self,
-                                bcx: Block<'blk, 'tcx>,
-                                dst: ValueRef)
-                                -> Block<'blk, 'tcx> {
+    fn shallow_copy_raw<'blk, 'tcx>(&self,
+                                    bcx: Block<'blk, 'tcx>,
+                                    dst: ValueRef)
+                                    -> Block<'blk, 'tcx> {
         /*!
          * Helper function that performs a shallow copy of this value
          * into `dst`, which should be a pointer to a memory location
@@ -584,10 +578,9 @@ impl<K:KindOps> Datum<K> {
          *
          * This function is private to datums because it leaves memory
          * in an unstable state, where the source value has been
-         * copied but not zeroed. Public methods are `store_to` (if
-         * you no longer need the source value) or
-         * `shallow_copy_and_take` (if you wish the source value to
-         * remain valid).
+         * copied but not zeroed. Public methods are `store_to`
+         * (if you no longer need the source value) or `shallow_copy`
+         * (if you wish the source value to remain valid).
          */
 
         let _icx = push_ctxt("copy_to_no_check");
@@ -605,22 +598,19 @@ impl<K:KindOps> Datum<K> {
         return bcx;
     }
 
-    pub fn shallow_copy_and_take<'blk, 'tcx>(&self,
-                                             bcx: Block<'blk, 'tcx>,
-                                             dst: ValueRef)
-                                             -> Block<'blk, 'tcx> {
+    pub fn shallow_copy<'blk, 'tcx>(&self,
+                                    bcx: Block<'blk, 'tcx>,
+                                    dst: ValueRef)
+                                    -> Block<'blk, 'tcx> {
         /*!
-         * Copies the value into a new location and runs any necessary
-         * take glue on the new location. This function always
+         * Copies the value into a new location. This function always
          * preserves the existing datum as a valid value. Therefore,
          * it does not consume `self` and, also, cannot be applied to
          * affine values (since they must never be duplicated).
          */
 
         assert!(!ty::type_moves_by_default(bcx.tcx(), self.ty));
-        let mut bcx = bcx;
-        bcx = self.shallow_copy(bcx, dst);
-        glue::take_ty(bcx, dst, self.ty)
+        self.shallow_copy_raw(bcx, dst)
     }
 
     #[allow(dead_code)] // useful for debugging

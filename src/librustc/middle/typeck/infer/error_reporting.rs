@@ -776,11 +776,6 @@ impl<'a, 'tcx> ErrorReporting for InferCtxt<'a, 'tcx> {
                     sup,
                     "");
             }
-            infer::Managed(span) => {
-                self.tcx.sess.span_err(
-                    span,
-                    format!("cannot put borrowed references into managed memory").as_slice());
-            }
         }
     }
 
@@ -1611,11 +1606,6 @@ impl<'a, 'tcx> ErrorReportingHelpers for InferCtxt<'a, 'tcx> {
                     format!("...so that the reference type `{}` \
                              does not outlive the data it points at",
                             self.ty_to_string(ty)).as_slice());
-            }
-            infer::Managed(span) => {
-                self.tcx.sess.span_note(
-                    span,
-                    "...so that the value can be stored in managed memory.");
             }
             infer::RelateParamBound(span, param_ty, t) => {
                 self.tcx.sess.span_note(

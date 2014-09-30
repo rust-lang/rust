@@ -815,11 +815,6 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
                         return;
                     }
 
-                    mc::cat_deref(_, _, mc::GcPtr) => {
-                        assert_eq!(cmt.mutbl, mc::McImmutable);
-                        return;
-                    }
-
                     mc::cat_rvalue(..) |
                     mc::cat_static_item |
                     mc::cat_deref(_, _, mc::UnsafePtr(..)) |

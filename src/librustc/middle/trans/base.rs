@@ -397,36 +397,6 @@ pub fn malloc_raw_dyn_proc<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, t: ty::t) -> Resu
     Result::new(bcx, llbox)
 }
 
-
-pub fn malloc_raw_dyn_managed<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
-                                          t: ty::t,
-                                          alloc_fn: LangItem,
-                                          size: ValueRef)
-                                          -> Result<'blk, 'tcx> {
-    let _icx = push_ctxt("malloc_raw_dyn_managed");
-    let ccx = bcx.ccx();
-
-    let langcall = require_alloc_fn(bcx, t, alloc_fn);
-
-    // Grab the TypeRef type of box_ptr_ty.
-    let box_ptr_ty = ty::mk_box(bcx.tcx(), t);
-    let llty = type_of(ccx, box_ptr_ty);
-    let llalign = C_uint(ccx, type_of::align_of(ccx, box_ptr_ty) as uint);
-
-    // Allocate space:
-    let drop_glue = glue::get_drop_glue(ccx, t);
-    let r = callee::trans_lang_call(
-        bcx,
-        langcall,
-        [
-            PointerCast(bcx, drop_glue, Type::glue_fn(ccx, Type::i8p(ccx)).ptr_to()),
-            size,
-            llalign
-        ],
-        None);
-    Result::new(r.bcx, PointerCast(r.bcx, r.val, llty))
-}
-
 // Type descriptor and type glue stuff
 
 pub fn get_tydesc(ccx: &CrateContext, t: ty::t) -> Rc<tydesc_info> {
