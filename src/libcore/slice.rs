@@ -152,7 +152,7 @@ pub trait ImmutableSlice<'a, T> {
     fn tail(&self) -> &'a [T];
 
     /// Returns all but the first `n' elements of a slice.
-    #[deprecated = "use slicing syntax"]
+    #[deprecated = "use slice_from"]
     fn tailn(&self, n: uint) -> &'a [T];
 
     /// Returns all but the last element of a slice.
@@ -161,7 +161,6 @@ pub trait ImmutableSlice<'a, T> {
 
     /// Returns all but the last `n' elements of a slice.
     #[deprecated = "use slice_to but note the arguments are different"]
-    #[deprecated = "use slicing syntax, but note the arguments are different"]
     fn initn(&self, n: uint) -> &'a [T];
 
     /// Returns the last element of a slice, or `None` if it is empty.
@@ -321,7 +320,7 @@ impl<'a,T> ImmutableSlice<'a, T> for &'a [T] {
     fn tail(&self) -> &'a [T] { (*self)[1..] }
 
     #[inline]
-    #[deprecated = "use slicing syntax"]
+    #[deprecated = "use slice_from"]
     fn tailn(&self, n: uint) -> &'a [T] { (*self)[n..] }
 
     #[inline]
@@ -330,7 +329,7 @@ impl<'a,T> ImmutableSlice<'a, T> for &'a [T] {
     }
 
     #[inline]
-    #[deprecated = "use slicing syntax but note the arguments are different"]
+    #[deprecated = "use slice_to but note the arguments are different"]
     fn initn(&self, n: uint) -> &'a [T] {
         (*self)[..self.len() - n]
     }
@@ -543,7 +542,6 @@ pub trait MutableSlice<'a, T> {
     fn get_mut(self, index: uint) -> Option<&'a mut T>;
     /// Work with `self` as a mut slice.
     /// Primarily intended for getting a &mut [T] from a [T, ..N].
-    #[deprecated = "use slicing syntax"]
     fn as_mut_slice(self) -> &'a mut [T];
 
     /// Deprecated: use `iter_mut`.

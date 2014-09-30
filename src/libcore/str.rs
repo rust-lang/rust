@@ -1164,6 +1164,7 @@ pub mod traits {
         fn equiv(&self, other: &S) -> bool { eq_slice(*self, other.as_slice()) }
     }
 
+    #[cfg(stage0)]
     impl ops::Slice<uint, str> for str {
         #[inline]
         fn as_slice_<'a>(&'a self) -> &'a str {
@@ -1172,17 +1173,39 @@ pub mod traits {
 
         #[inline]
         fn slice_from_<'a>(&'a self, from: &uint) -> &'a str {
-            self.slice_from(*from)
+            super::slice_from_impl(&self, *from)
         }
 
         #[inline]
         fn slice_to_<'a>(&'a self, to: &uint) -> &'a str {
-            self.slice_to(*to)
+            super::slice_to_impl(&self, *to)
         }
 
         #[inline]
         fn slice_<'a>(&'a self, from: &uint, to: &uint) -> &'a str {
-            self.slice(*from, *to)
+            super::slice_impl(&self, *from, *to)
+        }
+    }
+    #[cfg(not(stage0))]
+    impl ops::Slice<uint, str> for str {
+        #[inline]
+        fn as_slice<'a>(&'a self) -> &'a str {
+            self
+        }
+
+        #[inline]
+        fn slice_from<'a>(&'a self, from: &uint) -> &'a str {
+            super::slice_from_impl(&self, *from)
+        }
+
+        #[inline]
+        fn slice_to<'a>(&'a self, to: &uint) -> &'a str {
+            super::slice_to_impl(&self, *to)
+        }
+
+        #[inline]
+        fn slice<'a>(&'a self, from: &uint, to: &uint) -> &'a str {
+            super::slice_impl(&self, *from, *to)
         }
     }
 }
@@ -1835,6 +1858,38 @@ fn slice_error_fail(s: &str, begin: uint, end: uint) -> ! {
           begin, end, s);
 }
 
+#[inline]
+fn slice_impl<'a>(this: &&'a str, begin: uint, end: uint) -> &'a str {
+    // is_char_boundary checks that the index is in [0, .len()]
+    if begin <= end &&
+       this.is_char_boundary(begin) &&
+       this.is_char_boundary(end) {
+        unsafe { raw::slice_unchecked(*this, begin, end) }
+    } else {
+        slice_error_fail(*this, begin, end)
+    }
+}
+
+#[inline]
+fn slice_from_impl<'a>(this: &&'a str, begin: uint) -> &'a str {
+    // is_char_boundary checks that the index is in [0, .len()]
+    if this.is_char_boundary(begin) {
+        unsafe { raw::slice_unchecked(*this, begin, this.len()) }
+    } else {
+        slice_error_fail(*this, begin, this.len())
+    }
+}
+
+#[inline]
+fn slice_to_impl<'a>(this: &&'a str, end: uint) -> &'a str {
+    // is_char_boundary checks that the index is in [0, .len()]
+    if this.is_char_boundary(end) {
+        unsafe { raw::slice_unchecked(*this, 0, end) }
+    } else {
+        slice_error_fail(*this, 0, end)
+    }
+}
+
 impl<'a> StrSlice<'a> for &'a str {
     #[inline]
     fn contains<'a>(&self, needle: &'a str) -> bool {
@@ -1938,34 +1993,17 @@ impl<'a> StrSlice<'a> for &'a str {
 
     #[inline]
     fn slice(&self, begin: uint, end: uint) -> &'a str {
-        // is_char_boundary checks that the index is in [0, .len()]
-        if begin <= end &&
-           self.is_char_boundary(begin) &&
-           self.is_char_boundary(end) {
-            unsafe { raw::slice_unchecked(*self, begin, end) }
-        } else {
-            slice_error_fail(*self, begin, end)
-        }
+        slice_impl(self, begin, end)
     }
 
     #[inline]
     fn slice_from(&self, begin: uint) -> &'a str {
-        // is_char_boundary checks that the index is in [0, .len()]
-        if self.is_char_boundary(begin) {
-            unsafe { raw::slice_unchecked(*self, begin, self.len()) }
-        } else {
-            slice_error_fail(*self, begin, self.len())
-        }
+        slice_from_impl(self, begin)
     }
 
     #[inline]
     fn slice_to(&self, end: uint) -> &'a str {
-        // is_char_boundary checks that the index is in [0, .len()]
-        if self.is_char_boundary(end) {
-            unsafe { raw::slice_unchecked(*self, 0, end) }
-        } else {
-            slice_error_fail(*self, 0, end)
-        }
+        slice_to_impl(self, end)
     }
 
     fn slice_chars(&self, begin: uint, end: uint) -> &'a str {

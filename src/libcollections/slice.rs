@@ -44,7 +44,8 @@
 //!
 //! A number of traits add methods that allow you to accomplish tasks with slices.
 //! These traits include `ImmutableSlice`, which is defined for `&[T]` types,
-//! and `MutableSlice`, defined for `&mut [T]` types.
+//! `MutableSlice`, defined for `&mut [T]` types, and `Slice` and `SliceMut`
+//! which are defined for `[T]`.
 //!
 //! An example is the `slice` method which enables slicing syntax `[a..b]` that
 //! returns an immutable "view" into a `Vec` or another slice from the index
