@@ -251,6 +251,33 @@ impl TypeFoldable for ty::AutoRef {
     }
 }
 
+impl TypeFoldable for typeck::MethodOrigin {
+    fn fold_with<'tcx, F: TypeFolder<'tcx>>(&self, folder: &mut F) -> typeck::MethodOrigin {
+        match *self {
+            typeck::MethodStatic(def_id) => {
+                typeck::MethodStatic(def_id)
+            }
+            typeck::MethodStaticUnboxedClosure(def_id) => {
+                typeck::MethodStaticUnboxedClosure(def_id)
+            }
+            typeck::MethodTypeParam(ref param) => {
+                typeck::MethodTypeParam(typeck::MethodParam {
+                    trait_ref: param.trait_ref.fold_with(folder),
+                    method_num: param.method_num
+                })
+            }
+            typeck::MethodTraitObject(ref object) => {
+                typeck::MethodTraitObject(typeck::MethodObject {
+                    trait_ref: object.trait_ref.fold_with(folder),
+                    object_trait_id: object.object_trait_id,
+                    method_num: object.method_num,
+                    real_index: object.real_index
+                })
+            }
+        }
+    }
+}
+
 impl TypeFoldable for typeck::vtable_origin {
     fn fold_with<'tcx, F: TypeFolder<'tcx>>(&self, folder: &mut F) -> typeck::vtable_origin {
         match *self {
