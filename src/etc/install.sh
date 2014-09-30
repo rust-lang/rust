@@ -325,7 +325,7 @@ then
     if [ -z "${CFG_UNINSTALL}" ]
     then
         msg "verifying platform can run binaries"
-        export $CFG_LD_PATH_VAR="${CFG_SRC_DIR}/lib":$CFG_OLD_LD_PATH_VAR
+        export $CFG_LD_PATH_VAR="${CFG_SRC_DIR}/lib:$CFG_OLD_LD_PATH_VAR"
         "${CFG_SRC_DIR}/bin/rustc" --version > /dev/null
         if [ $? -ne 0 ]
         then
@@ -489,7 +489,7 @@ then
     "${CFG_PREFIX}/bin/rustc" --version 2> /dev/null 1> /dev/null
     if [ $? -ne 0 ]
     then
-        export $CFG_LD_PATH_VAR="${CFG_PREFIX}/lib":$CFG_OLD_LD_PATH_VAR
+        export $CFG_LD_PATH_VAR="${CFG_PREFIX}/lib:$CFG_OLD_LD_PATH_VAR"
         "${CFG_PREFIX}/bin/rustc" --version > /dev/null
         if [ $? -ne 0 ]
         then

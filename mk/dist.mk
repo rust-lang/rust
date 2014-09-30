@@ -283,7 +283,7 @@ distcheck-docs: dist-docs
 
 ifdef CFG_WINDOWSY_$(CFG_BUILD)
 
-dist: dist-win
+dist: dist-win dist-tar-bins
 
 distcheck: distcheck-win
 	$(Q)rm -Rf tmp/distcheck
