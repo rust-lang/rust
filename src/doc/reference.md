@@ -3381,7 +3381,7 @@ fn main() {
 
 ```
 
-Patterns can also dereference pointers by using the `&`, `box` or `@` symbols,
+Patterns can also dereference pointers by using the `&`, `box` symbols,
 as appropriate. For example, these two matches on `x: &int` are equivalent:
 
 ```
