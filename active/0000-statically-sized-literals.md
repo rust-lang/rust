@@ -206,30 +206,13 @@ Note, that in the "Future" scenario the return *type* of `to_fixed` depends on t
 
 # Unresolved questions
 
-If `str` is moved from core language to the library and implemented as a wrapper around u8 array, then strings of fixed size will require additional attention. Moreover, the changes to string literals should, probably, be applied after this move.
+If `str` is moved from core language to the library and implemented as a wrapper around u8 array, then strings of fixed size will require some additional attention. Moreover, the changes to string literals should, probably, be applied after this move.
 
 Assume we implemented `str` like this:
 ```
-struct StrImpl<T> { underlying_array: T }
-
-type str = StrImpl<[u8]>;
-type<N: uint> str_of_fixed_size_bikeshed<N> = StrImpl<[u8, ..N]>; // Non-type generic parameters are required
+struct str<Sized? T = [u8]> { underlying_array: T }
 ```
-Then `&str_of_fixed_size_bikeshed<N>` (the type of string literals) should somehow autocoerce to `&str` and this coercion is not covered by the current rules.
-
-One possible solution is to make `str` a "not-so-smart" pointer to unsized type and not the unsized type itself.
-```
-struct StrImplVal<T> { underlying_array: T }
-struct StrImplRef<'a, T> { ref_: &'a StrImplVal<T> }
-
-type<'a> str<'a> = StrImplRef<'a, [u8]>;
-type<'a, N: uint> ref_to_str_of_fixed_size_bikeshed<'a, N> = StrImplRef<'a, [u8, ..N]>; // Non-type generic parameters are required
-type<N: uint> str_of_fixed_size_bikeshed<N> = StrImplVal<[u8, ..N]>; // Non-type generic parameters are required
-```
-In this case string literals have types `ref_to_str_of_fixed_size_bikeshed<'static, N>` and strings of fixed size have types `str_of_fixed_size_bikeshed<N>`.  
-And the coercion from `ref_to_str_of_fixed_size_bikeshed<'a, N>` to `str<'a>` (`StrImplRef<'a, [u8, ..N]> -> StrImplRef<'a, [u8]>`) is an usual DST coercion.  
-And dereference on `ref_to_str_of_fixed_size_bikeshed<'a, N>` should return `&'a str_of_fixed_size_bikeshed<N>`.  
-And every `&'a str` has to be rewritten as `str<'a>` (and `&str` as `str`), which is a terribly backward incompatible change (but automatically fixable).  
-I suppose this change to `str` may be useful by itself and can be proposed as a separate RFC.
+Then strings of fixed size will have library types `str<[u8, ..N]>` instead of built-in `str[..N]` and that's a clear improvement.  
+In that case string literals have types `&str<[u8, ..N]>` which can be autocoerced to `&str` by DST coercion.
 
  [1]: http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2014/n4121.pdf
