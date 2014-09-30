@@ -18,7 +18,6 @@ Runtime type reflection
 
 use std::intrinsics::{Disr, Opaque, TyDesc, TyVisitor};
 use std::mem;
-use std::gc::Gc;
 
 /**
  * Trait for visitor that wishes to reflect on data.
@@ -194,9 +193,9 @@ impl<V:TyVisitor + MovePtr> TyVisitor for MovePtrAdaptor<V> {
     }
 
     fn visit_box(&mut self, mtbl: uint, inner: *const TyDesc) -> bool {
-        self.align_to::<Gc<u8>>();
+        self.align_to::<Box<u8>>();
         if ! self.inner.visit_box(mtbl, inner) { return false; }
-        self.bump_past::<Gc<u8>>();
+        self.bump_past::<Box<u8>>();
         true
     }
 
