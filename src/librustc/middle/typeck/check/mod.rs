@@ -4106,6 +4106,9 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
         check_then_else(fcx, &**cond, &**then_blk, opt_else_expr.as_ref().map(|e| &**e),
                         id, expr.span, expected);
       }
+      ast::ExprIfLet(..) => {
+        tcx.sess.span_bug(expr.span, "non-desugared ExprIfLet");
+      }
       ast::ExprWhile(ref cond, ref body, _) => {
         check_expr_has_type(fcx, &**cond, ty::mk_bool());
         check_block_no_value(fcx, &**body);
@@ -4143,7 +4146,7 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
             fcx.write_nil(id);
         }
       }
-      ast::ExprMatch(ref discrim, ref arms) => {
+      ast::ExprMatch(ref discrim, ref arms, _) => {
         _match::check_match(fcx, expr, &**discrim, arms.as_slice());
       }
       ast::ExprFnBlock(_, ref decl, ref body) => {

@@ -9,6 +9,7 @@
 // except according to those terms.
 
 #![deny(unnecessary_parens)]
+#![feature(if_let)]
 
 #[deriving(Eq, PartialEq)]
 struct X { y: bool }
@@ -32,6 +33,7 @@ fn main() {
     match (true) { //~ ERROR unnecessary parentheses around `match` head expression
         _ => {}
     }
+    if let 1i = (1i) {} //~ ERROR unnecessary parentheses around `if let` head expression
     let v = X { y: false };
     // struct lits needs parens, so these shouldn't warn.
     if (v == X { y: true }) {}

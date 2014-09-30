@@ -1092,7 +1092,10 @@ impl LintPass for UnnecessaryParens {
         let (value, msg, struct_lit_needs_parens) = match e.node {
             ast::ExprIf(ref cond, _, _) => (cond, "`if` condition", true),
             ast::ExprWhile(ref cond, _, _) => (cond, "`while` condition", true),
-            ast::ExprMatch(ref head, _) => (head, "`match` head expression", true),
+            ast::ExprMatch(ref head, _, source) => match source {
+                ast::MatchNormal => (head, "`match` head expression", true),
+                ast::MatchIfLetDesugar => (head, "`if let` head expression", true)
+            },
             ast::ExprRet(Some(ref value)) => (value, "`return` value", false),
             ast::ExprAssign(_, ref value) => (value, "assigned value", false),
             ast::ExprAssignOp(_, _, ref value) => (value, "assigned value", false),
@@ -1242,7 +1245,7 @@ impl LintPass for UnusedMut {
 
     fn check_expr(&mut self, cx: &Context, e: &ast::Expr) {
         match e.node {
-            ast::ExprMatch(_, ref arms) => {
+            ast::ExprMatch(_, ref arms, _) => {
                 for a in arms.iter() {
                     self.check_unused_mut_pat(cx, a.pats.as_slice())
                 }

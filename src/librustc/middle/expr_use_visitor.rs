@@ -374,7 +374,11 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,TYPER> {
                 }
             }
 
-            ast::ExprMatch(ref discr, ref arms) => {
+            ast::ExprIfLet(..) => {
+                self.tcx().sess.span_bug(expr.span, "non-desugared ExprIfLet");
+            }
+
+            ast::ExprMatch(ref discr, ref arms, _) => {
                 let discr_cmt = return_if_err!(self.mc.cat_expr(&**discr));
                 self.borrow_expr(&**discr, ty::ReEmpty, ty::ImmBorrow, MatchDiscriminant);
 
