@@ -508,7 +508,7 @@ fn int_type_of_word(s: &str) -> Option<IntType> {
     }
 }
 
-#[deriving(PartialEq, Show)]
+#[deriving(PartialEq, Show, Encodable, Decodable)]
 pub enum ReprAttr {
     ReprAny,
     ReprInt(Span, IntType),
@@ -527,7 +527,7 @@ impl ReprAttr {
     }
 }
 
-#[deriving(Eq, Hash, PartialEq, Show)]
+#[deriving(Eq, Hash, PartialEq, Show, Encodable, Decodable)]
 pub enum IntType {
     SignedInt(ast::IntTy),
     UnsignedInt(ast::UintTy)

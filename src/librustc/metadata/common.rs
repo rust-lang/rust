@@ -214,6 +214,8 @@ pub static tag_reachable_extern_fn_id: uint = 0x91;
 
 pub static tag_items_data_item_stability: uint = 0x92;
 
+pub static tag_items_data_item_repr: uint = 0x93;
+
 #[deriving(Clone, Show)]
 pub struct LinkMeta {
     pub crate_name: String,
