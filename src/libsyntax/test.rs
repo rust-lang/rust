@@ -13,7 +13,6 @@
 #![allow(dead_code)]
 #![allow(unused_imports)]
 
-use std::gc::{Gc, GC};
 use std::slice;
 use std::mem;
 use std::vec;
