@@ -76,6 +76,7 @@ use vec::Vec;
 pub use self::sip::hash as hash;
 
 pub mod sip;
+pub mod xxh;
 
 /// A hashable type. The `S` type parameter is an abstract hash state that is
 /// used by the `Hash` to compute the hash. It defaults to
