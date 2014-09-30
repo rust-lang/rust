@@ -350,6 +350,12 @@ pub fn get_stability(cstore: &cstore::CStore,
     decoder::get_stability(&*cdata, def.node)
 }
 
+pub fn get_repr_attrs(cstore: &cstore::CStore, def: ast::DefId)
+                      -> Vec<attr::ReprAttr> {
+    let cdata = cstore.get_crate_data(def.krate);
+    decoder::get_repr_attrs(&*cdata, def.node)
+}
+
 pub fn is_associated_type(cstore: &cstore::CStore, def: ast::DefId) -> bool {
     let cdata = cstore.get_crate_data(def.krate);
     decoder::is_associated_type(&*cdata, def.node)

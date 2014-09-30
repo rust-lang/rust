@@ -384,6 +384,17 @@ pub fn get_stability(cdata: Cmd, id: ast::NodeId) -> Option<attr::Stability> {
     })
 }
 
+pub fn get_repr_attrs(cdata: Cmd, id: ast::NodeId) -> Vec<attr::ReprAttr> {
+    let item = lookup_item(id, cdata.data());
+    match reader::maybe_get_doc(item, tag_items_data_item_repr).map(|doc| {
+        let mut decoder = reader::Decoder::new(doc);
+        Decodable::decode(&mut decoder).unwrap()
+    }) {
+        Some(attrs) => attrs,
+        None => Vec::new(),
+    }
+}
+
 pub fn get_impl_trait(cdata: Cmd,
                       id: ast::NodeId,
                       tcx: &ty::ctxt) -> Option<Rc<ty::TraitRef>>
