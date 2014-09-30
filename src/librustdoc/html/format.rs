@@ -476,7 +476,7 @@ impl fmt::Show for clean::Type {
                 };
                 write!(f, "&amp;{}{}{}", lt, MutableSpace(mutability), **ty)
             }
-            clean::Unique(..) | clean::Managed(..) => {
+            clean::Unique(..) => {
                 fail!("should have been cleaned")
             }
         }
