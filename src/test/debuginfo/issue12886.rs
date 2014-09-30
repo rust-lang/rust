@@ -9,12 +9,13 @@
 // except according to those terms.
 
 // ignore-android: FIXME(#10381)
+// ignore-windows failing on 64-bit bots FIXME #17638
 
 // compile-flags:-g
-// gdb-command:break issue12886.rs:29
+// gdb-command:break issue12886.rs:30
 // gdb-command:run
 // gdb-command:next
-// gdb-check:[...]30[...]s
+// gdb-check:[...]31[...]s
 // gdb-command:continue
 
 // IF YOU MODIFY THIS FILE, BE CAREFUL TO ADAPT THE LINE NUMBERS IN THE DEBUGGER COMMANDS
