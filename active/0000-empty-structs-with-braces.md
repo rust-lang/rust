@@ -109,7 +109,8 @@ author (pnkfelix) would be happy to take this tack.)
 
 The main reason not to take this tack is that some people may like
 writing empty structs without braces, but do not want to switch to the
-unary enum version.  See "I wouldn't want to force noisier syntax ..."
+unary enum version described in the previous paragraph.
+See "I wouldn't want to force noisier syntax ..."
 in the [Recent History] appendix.
 
 ## Status quo
