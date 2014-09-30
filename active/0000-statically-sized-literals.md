@@ -213,6 +213,6 @@ Assume we implemented `str` like this:
 struct str<Sized? T = [u8]> { underlying_array: T }
 ```
 Then strings of fixed size will have library types `str<[u8, ..N]>` instead of built-in `str[..N]` and that's a clear improvement.  
-In that case string literals have types `&str<[u8, ..N]>` which can be autocoerced to `&str` by DST coercion.
+In that case string literals have types `&'static str<[u8, ..N]>` which can be autocoerced to `&'static str` by DST coercion.
 
  [1]: http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2014/n4121.pdf
