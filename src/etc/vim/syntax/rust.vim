@@ -216,7 +216,7 @@ syn keyword rustTodo contained TODO FIXME XXX NB NOTE
 
 " Folding rules {{{2
 " Trivial folding rules to begin with.
-" TODO: use the AST to make really good folding
+" FIXME: use the AST to make really good folding
 syn region rustFoldBraces start="{" end="}" transparent fold
 
 " Default highlighting {{{1
