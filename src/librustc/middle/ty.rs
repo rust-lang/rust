@@ -583,6 +583,9 @@ pub struct ctxt<'tcx> {
     /// Caches the results of trait selection. This cache is used
     /// for things that do not have to do with the parameters in scope.
     pub selection_cache: traits::SelectionCache,
+
+    /// Caches the representation hints for struct definitions.
+    pub repr_hint_cache: RefCell<DefIdMap<Rc<Vec<attr::ReprAttr>>>>,
 }
 
 pub enum tbox_flag {
@@ -1533,6 +1536,7 @@ pub fn mk_ctxt<'tcx>(s: Session,
         associated_types: RefCell::new(DefIdMap::new()),
         trait_associated_types: RefCell::new(DefIdMap::new()),
         selection_cache: traits::SelectionCache::new(),
+        repr_hint_cache: RefCell::new(DefIdMap::new()),
    }
 }
 
@@ -4326,7 +4330,7 @@ pub fn ty_dtor(cx: &ctxt, struct_id: DefId) -> DtorKind {
 }
 
 pub fn has_dtor(cx: &ctxt, struct_id: DefId) -> bool {
-    ty_dtor(cx, struct_id).is_present()
+    cx.destructor_for_type.borrow().contains_key(&struct_id)
 }
 
 pub fn with_path<T>(cx: &ctxt, id: ast::DefId, f: |ast_map::PathElems| -> T) -> T {
@@ -4513,14 +4517,26 @@ pub fn lookup_simd(tcx: &ctxt, did: DefId) -> bool {
 }
 
 /// Obtain the representation annotation for a struct definition.
-pub fn lookup_repr_hints(tcx: &ctxt, did: DefId) -> Vec<attr::ReprAttr> {
-    let mut acc = Vec::new();
+pub fn lookup_repr_hints(tcx: &ctxt, did: DefId) -> Rc<Vec<attr::ReprAttr>> {
+    match tcx.repr_hint_cache.borrow().find(&did) {
+        None => {}
+        Some(ref hints) => return (*hints).clone(),
+    }
 
-    ty::each_attr(tcx, did, |meta| {
-        acc.extend(attr::find_repr_attrs(tcx.sess.diagnostic(), meta).into_iter());
-        true
-    });
+    let acc = if did.krate == LOCAL_CRATE {
+        let mut acc = Vec::new();
+        ty::each_attr(tcx, did, |meta| {
+            acc.extend(attr::find_repr_attrs(tcx.sess.diagnostic(),
+                                             meta).into_iter());
+            true
+        });
+        acc
+    } else {
+        csearch::get_repr_attrs(&tcx.sess.cstore, did)
+    };
 
+    let acc = Rc::new(acc);
+    tcx.repr_hint_cache.borrow_mut().insert(did, acc.clone());
     acc
 }
 
