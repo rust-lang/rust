@@ -321,9 +321,6 @@ impl Case {
                     _ => return Some(ThinPointer(i))
                 },
 
-                // Gc<T> is just a pointer
-                ty::ty_box(..) => return Some(ThinPointer(i)),
-
                 // Functions are just pointers
                 ty::ty_bare_fn(..) => return Some(ThinPointer(i)),
 

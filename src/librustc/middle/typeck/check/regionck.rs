@@ -1466,7 +1466,6 @@ fn link_region(rcx: &Rcx,
 
             mc::cat_discr(cmt_base, _) |
             mc::cat_downcast(cmt_base) |
-            mc::cat_deref(cmt_base, _, mc::GcPtr(..)) |
             mc::cat_deref(cmt_base, _, mc::OwnedPtr) |
             mc::cat_interior(cmt_base, _) => {
                 // Borrowing interior or owned data requires the base
@@ -1699,7 +1698,6 @@ fn adjust_upvar_borrow_kind_for_mut(rcx: &Rcx,
             }
 
             mc::cat_deref(_, _, mc::UnsafePtr(..)) |
-            mc::cat_deref(_, _, mc::GcPtr) |
             mc::cat_static_item |
             mc::cat_rvalue(_) |
             mc::cat_copied_upvar(_) |
@@ -1750,7 +1748,6 @@ fn adjust_upvar_borrow_kind_for_unique(rcx: &Rcx, cmt: mc::cmt) {
             }
 
             mc::cat_deref(_, _, mc::UnsafePtr(..)) |
-            mc::cat_deref(_, _, mc::GcPtr) |
             mc::cat_static_item |
             mc::cat_rvalue(_) |
             mc::cat_copied_upvar(_) |

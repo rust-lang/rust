@@ -3820,12 +3820,6 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
                   if tcx.lang_items.exchange_heap() == Some(def_id) {
                       fcx.write_ty(id, ty::mk_uniq(tcx, referent_ty));
                       checked = true
-                  } else if tcx.lang_items.managed_heap() == Some(def_id) {
-                      fcx.register_region_obligation(infer::Managed(expr.span),
-                                                     referent_ty,
-                                                     ty::ReStatic);
-                      fcx.write_ty(id, ty::mk_box(tcx, referent_ty));
-                      checked = true
                   }
               }
               _ => {}
