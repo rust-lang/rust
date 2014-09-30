@@ -112,7 +112,6 @@ pub trait AstBuilder {
     fn expr_deref(&self, sp: Span, e: P<ast::Expr>) -> P<ast::Expr>;
     fn expr_unary(&self, sp: Span, op: ast::UnOp, e: P<ast::Expr>) -> P<ast::Expr>;
 
-    fn expr_managed(&self, sp: Span, e: P<ast::Expr>) -> P<ast::Expr>;
     fn expr_addr_of(&self, sp: Span, e: P<ast::Expr>) -> P<ast::Expr>;
     fn expr_mut_addr_of(&self, sp: Span, e: P<ast::Expr>) -> P<ast::Expr>;
     fn expr_field_access(&self, span: Span, expr: P<ast::Expr>, ident: ast::Ident) -> P<ast::Expr>;
@@ -563,10 +562,6 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
     }
     fn expr_unary(&self, sp: Span, op: ast::UnOp, e: P<ast::Expr>) -> P<ast::Expr> {
         self.expr(sp, ast::ExprUnary(op, e))
-    }
-
-    fn expr_managed(&self, sp: Span, e: P<ast::Expr>) -> P<ast::Expr> {
-        self.expr_unary(sp, ast::UnBox, e)
     }
 
     fn expr_field_access(&self, sp: Span, expr: P<ast::Expr>, ident: ast::Ident) -> P<ast::Expr> {

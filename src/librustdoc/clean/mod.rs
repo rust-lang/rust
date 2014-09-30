@@ -1215,7 +1215,6 @@ impl Clean<Type> for ast::Ty {
             TyRptr(ref l, ref m) =>
                 BorrowedRef {lifetime: l.clean(cx), mutability: m.mutbl.clean(cx),
                              type_: box m.ty.clean(cx)},
-            TyBox(ref ty) => Managed(box ty.clean(cx)),
             TyUniq(ref ty) => Unique(box ty.clean(cx)),
             TyVec(ref ty) => Vector(box ty.clean(cx)),
             TyFixedLengthVec(ref ty, ref e) => FixedVector(box ty.clean(cx),

@@ -3881,8 +3881,8 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
       ast::ExprUnary(unop, ref oprnd) => {
         let expected_inner = expected.map(fcx, |sty| {
             match unop {
-                ast::UnBox | ast::UnUniq => match *sty {
-                    ty::ty_box(ty) | ty::ty_uniq(ty) => {
+                ast::UnUniq => match *sty {
+                    ty::ty_uniq(ty) => {
                         ExpectHasType(ty)
                     }
                     _ => {
@@ -3907,11 +3907,6 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
 
         if !ty::type_is_error(oprnd_t) {
             match unop {
-                ast::UnBox => {
-                    if !ty::type_is_bot(oprnd_t) {
-                        oprnd_t = ty::mk_box(tcx, oprnd_t)
-                    }
-                }
                 ast::UnUniq => {
                     if !ty::type_is_bot(oprnd_t) {
                         oprnd_t = ty::mk_uniq(tcx, oprnd_t);

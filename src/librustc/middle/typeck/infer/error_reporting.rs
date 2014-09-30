@@ -1285,7 +1285,6 @@ impl<'a, 'tcx> Rebuilder<'a, 'tcx> {
                 ast::TyPtr(ref mut_ty) => {
                     ty_queue.push(&*mut_ty.ty);
                 }
-                ast::TyBox(ref ty) |
                 ast::TyVec(ref ty) |
                 ast::TyUniq(ref ty) |
                 ast::TyFixedLengthVec(ref ty, _) => {
@@ -1323,7 +1322,6 @@ impl<'a, 'tcx> Rebuilder<'a, 'tcx> {
                             ty: build_to(mut_ty.ty, to),
                         })
                     }
-                    ast::TyBox(ty) => ast::TyBox(build_to(ty, to)),
                     ast::TyVec(ty) => ast::TyVec(build_to(ty, to)),
                     ast::TyUniq(ty) => ast::TyUniq(build_to(ty, to)),
                     ast::TyFixedLengthVec(ty, e) => {

@@ -136,14 +136,6 @@ impl<'a> Context<'a> {
         }
     }
 
-    fn gate_box(&self, span: Span) {
-        self.gate_feature("managed_boxes", span,
-                          "The managed box syntax is being replaced by the \
-                           `std::gc::Gc` and `std::rc::Rc` types. Equivalent \
-                           functionality to managed trait objects will be \
-                           implemented but is currently missing.");
-    }
-
     fn has_feature(&self, feature: &str) -> bool {
         self.features.iter().any(|n| n.as_slice() == feature)
     }
@@ -331,7 +323,6 @@ impl<'a, 'v> Visitor<'v> for Context<'a> {
                                    experimental and likely to be removed");
 
             },
-            ast::TyBox(_) => { self.gate_box(t.span); }
             ast::TyUnboxedFn(..) => {
                 self.gate_feature("unboxed_closure_sugar",
                                   t.span,
@@ -345,9 +336,6 @@ impl<'a, 'v> Visitor<'v> for Context<'a> {
 
     fn visit_expr(&mut self, e: &ast::Expr) {
         match e.node {
-            ast::ExprUnary(ast::UnBox, _) => {
-                self.gate_box(e.span);
-            }
             ast::ExprUnboxedFn(..) => {
                 self.gate_feature("unboxed_closures",
                                   e.span,

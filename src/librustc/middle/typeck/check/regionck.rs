@@ -663,14 +663,6 @@ fn visit_expr(rcx: &mut Rcx, expr: &ast::Expr) {
             visit::walk_expr(rcx, expr);
         }
 
-        ast::ExprUnary(ast::UnBox, ref base) => {
-            // Managed data must not have borrowed pointers within it:
-            let base_ty = rcx.resolve_node_type(base.id);
-            type_must_outlive(rcx, infer::Managed(expr.span),
-                              base_ty, ty::ReStatic);
-            visit::walk_expr(rcx, expr);
-        }
-
         ast::ExprUnary(ast::UnDeref, ref base) => {
             // For *a, the lifetime of a must enclose the deref
             let method_call = MethodCall::expr(expr.id);

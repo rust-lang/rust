@@ -546,10 +546,6 @@ impl<'a> State<'a> {
         match ty.node {
             ast::TyNil => try!(word(&mut self.s, "()")),
             ast::TyBot => try!(word(&mut self.s, "!")),
-            ast::TyBox(ref ty) => {
-                try!(word(&mut self.s, "@"));
-                try!(self.print_type(&**ty));
-            }
             ast::TyUniq(ref ty) => {
                 try!(word(&mut self.s, "~"));
                 try!(self.print_type(&**ty));

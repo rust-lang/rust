@@ -416,7 +416,6 @@ pub enum BinOp {
 
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
 pub enum UnOp {
-    UnBox,
     UnUniq,
     UnDeref,
     UnNot,
@@ -953,7 +952,6 @@ pub struct UnboxedFnTy {
 pub enum Ty_ {
     TyNil,
     TyBot, /* bottom type */
-    TyBox(P<Ty>),
     TyUniq(P<Ty>),
     TyVec(P<Ty>),
     TyFixedLengthVec(P<Ty>, P<Expr>),
