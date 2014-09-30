@@ -730,13 +730,19 @@ pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr) {
             visitor.visit_expr(&**subexpression);
             visitor.visit_block(&**block)
         }
+        ExprIfLet(ref pattern, ref subexpression, ref if_block, ref optional_else) => {
+            visitor.visit_pat(&**pattern);
+            visitor.visit_expr(&**subexpression);
+            visitor.visit_block(&**if_block);
+            walk_expr_opt(visitor, optional_else);
+        }
         ExprForLoop(ref pattern, ref subexpression, ref block, _) => {
             visitor.visit_pat(&**pattern);
             visitor.visit_expr(&**subexpression);
             visitor.visit_block(&**block)
         }
         ExprLoop(ref block, _) => visitor.visit_block(&**block),
-        ExprMatch(ref subexpression, ref arms) => {
+        ExprMatch(ref subexpression, ref arms, _) => {
             visitor.visit_expr(&**subexpression);
             for arm in arms.iter() {
                 visitor.visit_arm(arm)

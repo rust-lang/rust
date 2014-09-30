@@ -1307,6 +1307,19 @@ impl<'a> State<'a> {
                         try!(self.print_block(&**then));
                         self.print_else(e.as_ref().map(|e| &**e))
                     }
+                    // "another else-if-let"
+                    ast::ExprIfLet(ref pat, ref expr, ref then, ref e) => {
+                        try!(self.cbox(indent_unit - 1u));
+                        try!(self.ibox(0u));
+                        try!(word(&mut self.s, " else if let "));
+                        try!(self.print_pat(&**pat));
+                        try!(space(&mut self.s));
+                        try!(self.word_space("="));
+                        try!(self.print_expr(&**expr));
+                        try!(space(&mut self.s));
+                        try!(self.print_block(&**then));
+                        self.print_else(e.as_ref().map(|e| &**e))
+                    }
                     // "final else"
                     ast::ExprBlock(ref b) => {
                         try!(self.cbox(indent_unit - 1u));
@@ -1325,10 +1338,21 @@ impl<'a> State<'a> {
     }
 
     pub fn print_if(&mut self, test: &ast::Expr, blk: &ast::Block,
-                    elseopt: Option<&ast::Expr>, chk: bool) -> IoResult<()> {
+                    elseopt: Option<&ast::Expr>) -> IoResult<()> {
         try!(self.head("if"));
-        if chk { try!(self.word_nbsp("check")); }
         try!(self.print_expr(test));
+        try!(space(&mut self.s));
+        try!(self.print_block(blk));
+        self.print_else(elseopt)
+    }
+
+    pub fn print_if_let(&mut self, pat: &ast::Pat, expr: &ast::Expr, blk: &ast::Block,
+                        elseopt: Option<&ast::Expr>) -> IoResult<()> {
+        try!(self.head("if let"));
+        try!(self.print_pat(pat));
+        try!(space(&mut self.s));
+        try!(self.word_space("="));
+        try!(self.print_expr(expr));
         try!(space(&mut self.s));
         try!(self.print_block(blk));
         self.print_else(elseopt)
@@ -1474,7 +1498,10 @@ impl<'a> State<'a> {
                 try!(self.print_type(&**ty));
             }
             ast::ExprIf(ref test, ref blk, ref elseopt) => {
-                try!(self.print_if(&**test, &**blk, elseopt.as_ref().map(|e| &**e), false));
+                try!(self.print_if(&**test, &**blk, elseopt.as_ref().map(|e| &**e)));
+            }
+            ast::ExprIfLet(ref pat, ref expr, ref blk, ref elseopt) => {
+                try!(self.print_if_let(&**pat, &**expr, &** blk, elseopt.as_ref().map(|e| &**e)));
             }
             ast::ExprWhile(ref test, ref blk, opt_ident) => {
                 for ident in opt_ident.iter() {
@@ -1508,7 +1535,7 @@ impl<'a> State<'a> {
                 try!(space(&mut self.s));
                 try!(self.print_block(&**blk));
             }
-            ast::ExprMatch(ref expr, ref arms) => {
+            ast::ExprMatch(ref expr, ref arms, _) => {
                 try!(self.cbox(indent_unit));
                 try!(self.ibox(4));
                 try!(self.word_nbsp("match"));

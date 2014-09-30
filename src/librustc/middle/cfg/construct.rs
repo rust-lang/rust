@@ -222,6 +222,10 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
                 self.add_node(expr.id, [then_exit, else_exit])           // 4, 5
             }
 
+            ast::ExprIfLet(..) => {
+                self.tcx.sess.span_bug(expr.span, "non-desugared ExprIfLet");
+            }
+
             ast::ExprWhile(ref cond, ref body, _) => {
                 //
                 //         [pred]
@@ -322,7 +326,7 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
                 expr_exit
             }
 
-            ast::ExprMatch(ref discr, ref arms) => {
+            ast::ExprMatch(ref discr, ref arms, _) => {
                 //
                 //     [pred]
                 //       |

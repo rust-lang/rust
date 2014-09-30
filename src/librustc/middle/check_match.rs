@@ -147,7 +147,7 @@ pub fn check_crate(tcx: &ty::ctxt) {
 fn check_expr(cx: &mut MatchCheckCtxt, ex: &Expr) {
     visit::walk_expr(cx, ex);
     match ex.node {
-        ExprMatch(ref scrut, ref arms) => {
+        ExprMatch(ref scrut, ref arms, source) => {
             // First, check legality of move bindings.
             for arm in arms.iter() {
                 check_legality_of_move_bindings(cx,
@@ -184,7 +184,7 @@ fn check_expr(cx: &mut MatchCheckCtxt, ex: &Expr) {
             }
 
             // Fourth, check for unreachable arms.
-            check_arms(cx, inlined_arms.as_slice());
+            check_arms(cx, inlined_arms.as_slice(), source);
 
             // Finally, check if the whole match expression is exhaustive.
             // Check for empty enum, because is_useful only works on inhabited types.
@@ -252,13 +252,31 @@ fn check_for_static_nan(cx: &MatchCheckCtxt, pats: &[P<Pat>]) {
 }
 
 // Check for unreachable patterns
-fn check_arms(cx: &MatchCheckCtxt, arms: &[(Vec<P<Pat>>, Option<&Expr>)]) {
+fn check_arms(cx: &MatchCheckCtxt, arms: &[(Vec<P<Pat>>, Option<&Expr>)], source: MatchSource) {
     let mut seen = Matrix(vec![]);
+    let mut printed_if_let_err = false;
     for &(ref pats, guard) in arms.iter() {
         for pat in pats.iter() {
             let v = vec![&**pat];
+
             match is_useful(cx, &seen, v.as_slice(), LeaveOutWitness) {
-                NotUseful => span_err!(cx.tcx.sess, pat.span, E0001, "unreachable pattern"),
+                NotUseful => {
+                    if source == MatchIfLetDesugar {
+                        if printed_if_let_err {
+                            // we already printed an irrefutable if-let pattern error.
+                            // We don't want two, that's just confusing.
+                        } else {
+                            // find the first arm pattern so we can use its span
+                            let &(ref first_arm_pats, _) = &arms[0];
+                            let first_pat = first_arm_pats.get(0);
+                            let span = first_pat.span;
+                            span_err!(cx.tcx.sess, span, E0162, "irrefutable if-let pattern");
+                            printed_if_let_err = true;
+                        }
+                    } else {
+                        span_err!(cx.tcx.sess, pat.span, E0001, "unreachable pattern");
+                    }
+                }
                 Useful => (),
                 UsefulWithWitness(_) => unreachable!()
             }
