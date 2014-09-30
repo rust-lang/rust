@@ -521,6 +521,7 @@ pub enum Expr_ {
     ExprLit(P<Lit>),
     ExprCast(P<Expr>, P<Ty>),
     ExprIf(P<Expr>, P<Block>, Option<P<Expr>>),
+    ExprIfLet(P<Pat>, P<Expr>, P<Block>, Option<P<Expr>>),
     // FIXME #6993: change to Option<Name> ... or not, if these are hygienic.
     ExprWhile(P<Expr>, P<Block>, Option<Ident>),
     // FIXME #6993: change to Option<Name> ... or not, if these are hygienic.
@@ -528,7 +529,7 @@ pub enum Expr_ {
     // Conditionless loop (can be exited with break, cont, or ret)
     // FIXME #6993: change to Option<Name> ... or not, if these are hygienic.
     ExprLoop(P<Block>, Option<Ident>),
-    ExprMatch(P<Expr>, Vec<Arm>),
+    ExprMatch(P<Expr>, Vec<Arm>, MatchSource),
     ExprFnBlock(CaptureClause, P<FnDecl>, P<Block>),
     ExprProc(P<FnDecl>, P<Block>),
     ExprUnboxedFn(CaptureClause, UnboxedClosureKind, P<FnDecl>, P<Block>),
@@ -574,6 +575,12 @@ pub struct QPath {
     pub for_type: P<Ty>,
     pub trait_name: Path,
     pub item_name: Ident,
+}
+
+#[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
+pub enum MatchSource {
+    MatchNormal,
+    MatchIfLetDesugar
 }
 
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]

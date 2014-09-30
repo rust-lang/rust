@@ -71,6 +71,8 @@ static KNOWN_FEATURES: &'static [(&'static str, Status)] = &[
     ("associated_types", Active),
     ("visible_private_types", Active),
 
+    ("if_let", Active),
+
     // if you change this list without updating src/doc/rust.md, cmr will be sad
 
     // A temporary feature gate used to enable parser extensions needed
@@ -355,6 +357,10 @@ impl<'a, 'v> Visitor<'v> for Context<'a> {
                 self.gate_feature("tuple_indexing",
                                   e.span,
                                   "tuple indexing is experimental");
+            }
+            ast::ExprIfLet(..) => {
+                self.gate_feature("if_let", e.span,
+                                  "`if let` syntax is experimental");
             }
             _ => {}
         }

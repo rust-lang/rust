@@ -23,7 +23,7 @@ use ast::{DeclLocal, DefaultBlock, UnDeref, BiDiv, EMPTY_CTXT, EnumDef, Explicit
 use ast::{Expr, Expr_, ExprAddrOf, ExprMatch, ExprAgain};
 use ast::{ExprAssign, ExprAssignOp, ExprBinary, ExprBlock, ExprBox};
 use ast::{ExprBreak, ExprCall, ExprCast};
-use ast::{ExprField, ExprTupField, ExprFnBlock, ExprIf, ExprIndex, ExprSlice};
+use ast::{ExprField, ExprTupField, ExprFnBlock, ExprIf, ExprIfLet, ExprIndex, ExprSlice};
 use ast::{ExprLit, ExprLoop, ExprMac};
 use ast::{ExprMethodCall, ExprParen, ExprPath, ExprProc};
 use ast::{ExprRepeat, ExprRet, ExprStruct, ExprTup, ExprUnary, ExprUnboxedFn};
@@ -38,7 +38,7 @@ use ast::{ItemMac, ItemMod, ItemStruct, ItemTrait, ItemTy};
 use ast::{LifetimeDef, Lit, Lit_};
 use ast::{LitBool, LitChar, LitByte, LitBinary};
 use ast::{LitNil, LitStr, LitInt, Local, LocalLet};
-use ast::{MutImmutable, MutMutable, Mac_, MacInvocTT, Matcher, MatchNonterminal};
+use ast::{MutImmutable, MutMutable, Mac_, MacInvocTT, Matcher, MatchNonterminal, MatchNormal};
 use ast::{MatchSeq, MatchTok, Method, MutTy, BiMul, Mutability};
 use ast::{MethodImplItem, NamedField, UnNeg, NoReturn, UnNot};
 use ast::{Pat, PatEnum, PatIdent, PatLit, PatRange, PatRegion, PatStruct};
@@ -576,12 +576,11 @@ impl<'a> Parser<'a> {
     /// If the next token is the given keyword, eat it and return
     /// true. Otherwise, return false.
     pub fn eat_keyword(&mut self, kw: keywords::Keyword) -> bool {
-        match self.token {
-            token::IDENT(sid, false) if kw.to_name() == sid.name => {
-                self.bump();
-                true
-            }
-            _ => false
+        if self.is_keyword(kw) {
+            self.bump();
+            true
+        } else {
+            false
         }
     }
 
@@ -2860,8 +2859,11 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// Parse an 'if' expression ('if' token already eaten)
+    /// Parse an 'if' or 'if let' expression ('if' token already eaten)
     pub fn parse_if_expr(&mut self) -> P<Expr> {
+        if self.is_keyword(keywords::Let) {
+            return self.parse_if_let_expr();
+        }
         let lo = self.last_span.lo;
         let cond = self.parse_expr_res(RestrictionNoStructLiteral);
         let thn = self.parse_block();
@@ -2873,6 +2875,23 @@ impl<'a> Parser<'a> {
             els = Some(elexpr);
         }
         self.mk_expr(lo, hi, ExprIf(cond, thn, els))
+    }
+
+    /// Parse an 'if let' expression ('if' token already eaten)
+    pub fn parse_if_let_expr(&mut self) -> P<Expr> {
+        let lo = self.last_span.lo;
+        self.expect_keyword(keywords::Let);
+        let pat = self.parse_pat();
+        self.expect(&token::EQ);
+        let expr = self.parse_expr_res(RestrictionNoStructLiteral);
+        let thn = self.parse_block();
+        let (hi, els) = if self.eat_keyword(keywords::Else) {
+            let expr = self.parse_else_expr();
+            (expr.span.hi, Some(expr))
+        } else {
+            (thn.span.hi, None)
+        };
+        self.mk_expr(lo, hi, ExprIfLet(pat, expr, thn, els))
     }
 
     // `|args| expr`
@@ -2956,7 +2975,7 @@ impl<'a> Parser<'a> {
         }
         let hi = self.span.hi;
         self.bump();
-        return self.mk_expr(lo, hi, ExprMatch(discriminant, arms));
+        return self.mk_expr(lo, hi, ExprMatch(discriminant, arms, MatchNormal));
     }
 
     pub fn parse_arm(&mut self) -> Arm {
