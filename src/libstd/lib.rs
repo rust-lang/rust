@@ -137,7 +137,6 @@ extern crate rustrt;
 #[cfg(test)] pub use realstd::cmp;
 #[cfg(test)] pub use realstd::ty;
 #[cfg(test)] pub use realstd::boxed;
-#[cfg(test)] pub use realstd::gc;
 
 
 // NB: These reexports are in the order they should be listed in rustdoc
@@ -219,9 +218,6 @@ pub mod prelude;
 pub mod rand;
 
 pub mod ascii;
-
-#[cfg(not(test))]
-pub mod gc;
 
 pub mod time;
 
