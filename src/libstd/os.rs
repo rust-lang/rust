@@ -144,7 +144,7 @@ pub mod windows {
     use option::{None, Option};
     use option;
     use os::TMPBUF_SZ;
-    use slice::{MutableSlice, ImmutableSlice};
+    use slice::MutableSlice;
     use string::String;
     use str::StrSlice;
     use vec::Vec;
