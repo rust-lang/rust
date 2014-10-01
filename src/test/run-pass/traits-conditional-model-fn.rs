@@ -12,48 +12,14 @@
 // most one of `Go`, `GoMut`, or `GoOnce`, and then the others follow
 // automatically.
 
+// aux-build:go_trait.rs
+
+extern crate go_trait;
+
+use go_trait::{Go, GoMut, GoOnce, go, go_mut, go_once};
+
 use std::rc::Rc;
 use std::cell::Cell;
-
-trait Go {
-    fn go(&self, arg: int);
-}
-
-fn go<G:Go>(this: &G, arg: int) {
-    this.go(arg)
-}
-
-trait GoMut {
-    fn go_mut(&mut self, arg: int);
-}
-
-fn go_mut<G:GoMut>(this: &mut G, arg: int) {
-    this.go_mut(arg)
-}
-
-trait GoOnce {
-    fn go_once(self, arg: int);
-}
-
-fn go_once<G:GoOnce>(this: G, arg: int) {
-    this.go_once(arg)
-}
-
-impl<G> GoMut for G
-    where G : Go
-{
-    fn go_mut(&mut self, arg: int) {
-        go(&*self, arg)
-    }
-}
-
-impl<G> GoOnce for G
-    where G : GoMut
-{
-    fn go_once(mut self, arg: int) {
-        go_mut(&mut self, arg)
-    }
-}
 
 ///////////////////////////////////////////////////////////////////////////
 
