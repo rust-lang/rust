@@ -1931,10 +1931,10 @@ impl StructMemberDescriptionFactory {
         };
 
         self.fields.iter().enumerate().map(|(i, field)| {
-            let name = if field.ident.name == special_idents::unnamed_field.name {
+            let name = if field.name == special_idents::unnamed_field.name {
                 "".to_string()
             } else {
-                token::get_ident(field.ident).get().to_string()
+                token::get_name(field.name).get().to_string()
             };
 
             let offset = if self.is_simd {
@@ -2142,8 +2142,7 @@ impl EnumMemberDescriptionFactory {
 
                 // First create a description of the artificial wrapper struct:
                 let non_null_variant = &(*self.variants)[non_null_variant_index as uint];
-                let non_null_variant_ident = non_null_variant.name;
-                let non_null_variant_name = token::get_ident(non_null_variant_ident);
+                let non_null_variant_name = token::get_name(non_null_variant.name);
 
                 // The llvm type and metadata of the pointer
                 let non_null_llvm_type = type_of::type_of(cx, nnty);
@@ -2188,8 +2187,7 @@ impl EnumMemberDescriptionFactory {
                 // Encode the information about the null variant in the union
                 // member's name.
                 let null_variant_index = (1 - non_null_variant_index) as uint;
-                let null_variant_ident = (*self.variants)[null_variant_index].name;
-                let null_variant_name = token::get_ident(null_variant_ident);
+                let null_variant_name = token::get_name((*self.variants)[null_variant_index].name);
                 let union_member_name = format!("RUST$ENCODED$ENUM${}${}",
                                                 0u,
                                                 null_variant_name);
@@ -2230,8 +2228,7 @@ impl EnumMemberDescriptionFactory {
                 // Encode the information about the null variant in the union
                 // member's name.
                 let null_variant_index = (1 - nndiscr) as uint;
-                let null_variant_ident = (*self.variants)[null_variant_index].name;
-                let null_variant_name = token::get_ident(null_variant_ident);
+                let null_variant_name = token::get_name((*self.variants)[null_variant_index].name);
                 let discrfield = match ptrfield {
                     adt::ThinPointer(field) => format!("{}", field),
                     adt::FatPointer(field, pair) => format!("{}${}", field, pair)
@@ -2307,7 +2304,7 @@ fn describe_enum_variant(cx: &CrateContext,
                       struct_def.packed);
     // Could do some consistency checks here: size, align, field count, discr type
 
-    let variant_name = token::get_ident(variant_info.name);
+    let variant_name = token::get_name(variant_info.name);
     let variant_name = variant_name.get();
     let unique_type_id = debug_context(cx).type_map
                                           .borrow_mut()
@@ -2377,7 +2374,7 @@ fn prepare_enum_metadata(cx: &CrateContext,
     let enumerators_metadata: Vec<DIDescriptor> = variants
         .iter()
         .map(|v| {
-            token::get_ident(v.name).get().with_c_str(|name| {
+            token::get_name(v.name).get().with_c_str(|name| {
                 unsafe {
                     llvm::LLVMDIBuilderCreateEnumerator(
                         DIB(cx),

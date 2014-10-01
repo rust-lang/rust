@@ -378,9 +378,9 @@ fn encode_path<PI: Iterator<PathElem> + Clone>(rbml_w: &mut Encoder,
 fn encode_reexported_static_method(rbml_w: &mut Encoder,
                                    exp: &middle::resolve::Export2,
                                    method_def_id: DefId,
-                                   method_ident: Ident) {
+                                   method_name: Name) {
     debug!("(encode reexported static method) {}::{}",
-            exp.name, token::get_ident(method_ident));
+            exp.name, token::get_name(method_name));
     rbml_w.start_tag(tag_items_data_item_reexport);
     rbml_w.start_tag(tag_items_data_item_reexport_def_id);
     rbml_w.wr_str(def_to_string(method_def_id).as_slice());
@@ -388,7 +388,7 @@ fn encode_reexported_static_method(rbml_w: &mut Encoder,
     rbml_w.start_tag(tag_items_data_item_reexport_name);
     rbml_w.wr_str(format!("{}::{}",
                           exp.name,
-                          token::get_ident(method_ident)).as_slice());
+                          token::get_name(method_name)).as_slice());
     rbml_w.end_tag();
     rbml_w.end_tag();
 }
@@ -410,7 +410,7 @@ fn encode_reexported_static_base_methods(ecx: &EncodeContext,
                             encode_reexported_static_method(rbml_w,
                                                             exp,
                                                             m.def_id,
-                                                            m.ident);
+                                                            m.name);
                         }
                         ty::TypeTraitItem(_) => {}
                     }
@@ -435,7 +435,7 @@ fn encode_reexported_static_trait_methods(ecx: &EncodeContext,
                         encode_reexported_static_method(rbml_w,
                                                         exp,
                                                         m.def_id,
-                                                        m.ident);
+                                                        m.name);
                     }
                     _ => {}
                 }
@@ -829,7 +829,7 @@ fn encode_method_ty_fields(ecx: &EncodeContext,
                            rbml_w: &mut Encoder,
                            method_ty: &ty::Method) {
     encode_def_id(rbml_w, method_ty.def_id);
-    encode_name(rbml_w, method_ty.ident.name);
+    encode_name(rbml_w, method_ty.name);
     encode_generics(rbml_w, ecx, &method_ty.generics,
                     tag_method_ty_generics);
     encode_method_fty(ecx, rbml_w, &method_ty.fty);
@@ -854,7 +854,7 @@ fn encode_info_for_method(ecx: &EncodeContext,
                           ast_item_opt: Option<&ImplItem>) {
 
     debug!("encode_info_for_method: {} {}", m.def_id,
-           token::get_ident(m.ident));
+           token::get_name(m.name));
     rbml_w.start_tag(tag_items_data_item);
 
     encode_method_ty_fields(ecx, rbml_w, m);
@@ -868,7 +868,7 @@ fn encode_info_for_method(ecx: &EncodeContext,
     let pty = lookup_item_type(ecx.tcx, m.def_id);
     encode_bounds_and_type(rbml_w, ecx, &pty);
 
-    let elem = ast_map::PathName(m.ident.name);
+    let elem = ast_map::PathName(m.name);
     encode_path(rbml_w, impl_path.chain(Some(elem).into_iter()));
     match ast_item_opt {
         Some(&ast::MethodImplItem(ref ast_method)) => {
@@ -897,12 +897,12 @@ fn encode_info_for_associated_type(ecx: &EncodeContext,
                                    typedef_opt: Option<P<ast::Typedef>>) {
     debug!("encode_info_for_associated_type({},{})",
            associated_type.def_id,
-           token::get_ident(associated_type.ident));
+           token::get_name(associated_type.name));
 
     rbml_w.start_tag(tag_items_data_item);
 
     encode_def_id(rbml_w, associated_type.def_id);
-    encode_name(rbml_w, associated_type.ident.name);
+    encode_name(rbml_w, associated_type.name);
     encode_visibility(rbml_w, associated_type.vis);
     encode_family(rbml_w, 'y');
     encode_parent_item(rbml_w, local_def(parent_id));
@@ -911,7 +911,7 @@ fn encode_info_for_associated_type(ecx: &EncodeContext,
     let stab = stability::lookup(ecx.tcx, associated_type.def_id);
     encode_stability(rbml_w, stab);
 
-    let elem = ast_map::PathName(associated_type.ident.name);
+    let elem = ast_map::PathName(associated_type.name);
     encode_path(rbml_w, impl_path.chain(Some(elem).into_iter()));
 
     match typedef_opt {
@@ -1395,7 +1395,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
 
                     encode_method_ty_fields(ecx, rbml_w, &*method_ty);
 
-                    let elem = ast_map::PathName(method_ty.ident.name);
+                    let elem = ast_map::PathName(method_ty.name);
                     encode_path(rbml_w,
                                 path.clone().chain(Some(elem).into_iter()));
 
@@ -1419,7 +1419,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
                         ty::StaticExplicitSelfCategory;
                 }
                 ty::TypeTraitItem(associated_type) => {
-                    let elem = ast_map::PathName(associated_type.ident.name);
+                    let elem = ast_map::PathName(associated_type.name);
                     encode_path(rbml_w,
                                 path.clone().chain(Some(elem).into_iter()));
 
