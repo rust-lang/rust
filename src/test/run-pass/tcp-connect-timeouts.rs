@@ -30,17 +30,13 @@ use std::time::Duration;
 
 #[cfg_attr(target_os = "freebsd", ignore)]
 fn eventual_timeout() {
-    use native;
     let addr = next_test_ip4();
     let host = addr.ip.to_string();
     let port = addr.port;
 
-    // Use a native task to receive connections because it turns out libuv is
-    // really good at accepting connections and will likely run out of file
-    // descriptors before timing out.
     let (tx1, rx1) = channel();
     let (_tx2, rx2) = channel::<()>();
-    native::task::spawn(proc() {
+    std::task::spawn(proc() {
         let _l = TcpListener::bind(host.as_slice(), port).unwrap().listen();
         tx1.send(());
         let _ = rx2.recv_opt();

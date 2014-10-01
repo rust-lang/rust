@@ -11,7 +11,7 @@
 use std::time::Duration;
 
 fn main() {
-    native::task::spawn(proc() customtask());
+    std::task::spawn(proc() customtask());
 }
 
 fn customtask() {

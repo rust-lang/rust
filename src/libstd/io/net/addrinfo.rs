@@ -125,7 +125,13 @@ fn lookup(hostname: Option<&str>, servname: Option<&str>, hint: Option<Hint>)
 // permission without help of apk
 #[cfg(all(test, not(target_os = "android")))]
 mod test {
-    iotest!(fn dns_smoke_test() {
+    use super::*;
+    use io::net::tcp::*;
+    use io::net::ip::*;
+    use io::net::udp::*;
+
+    #[test]
+    fn dns_smoke_test() {
         let ipaddrs = get_host_addresses("localhost").unwrap();
         let mut found_local = false;
         let local_addr = &Ipv4Addr(127, 0, 0, 1);
@@ -133,11 +139,13 @@ mod test {
             found_local = found_local || addr == local_addr;
         }
         assert!(found_local);
-    })
+    }
 
-    iotest!(fn issue_10663() {
+    #[ignore]
+    #[test]
+    fn issue_10663() {
         // Something should happen here, but this certainly shouldn't cause
         // everything to die. The actual outcome we don't care too much about.
         get_host_addresses("example.com").unwrap();
-    } #[ignore])
+    }
 }

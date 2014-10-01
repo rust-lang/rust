@@ -8,8 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-windows
-// ignore-android
+// ignore-test
+
+// FIXME: this test is being ignored until signals are implemented
 
 // This test ensures that the 'detach' field on processes does the right thing.
 // By detaching the child process, they should be put into a separate process

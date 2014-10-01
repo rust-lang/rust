@@ -257,6 +257,8 @@ mod tests {
     use super::*;
     use io::*;
     use io::test::*;
+    use io::fs::PathExtensions;
+    use time::Duration;
 
     pub fn smalltest(server: proc(UnixStream):Send, client: proc(UnixStream):Send) {
         let path1 = next_test_unix();
@@ -277,7 +279,8 @@ mod tests {
         }
     }
 
-    iotest!(fn bind_error() {
+    #[test]
+    fn bind_error() {
         let path = "path/to/nowhere";
         match UnixListener::bind(&path) {
             Ok(..) => fail!(),
@@ -286,9 +289,10 @@ mod tests {
                         e.kind == InvalidInput);
             }
         }
-    })
+    }
 
-    iotest!(fn connect_error() {
+    #[test]
+    fn connect_error() {
         let path = if cfg!(windows) {
             r"\\.\pipe\this_should_not_exist_ever"
         } else {
@@ -300,9 +304,10 @@ mod tests {
                 assert!(e.kind == FileNotFound || e.kind == OtherIoError);
             }
         }
-    })
+    }
 
-    iotest!(fn smoke() {
+    #[test]
+    fn smoke() {
         smalltest(proc(mut server) {
             let mut buf = [0];
             server.read(buf).unwrap();
@@ -310,9 +315,11 @@ mod tests {
         }, proc(mut client) {
             client.write([99]).unwrap();
         })
-    })
+    }
 
-    iotest!(fn read_eof() {
+    #[cfg_attr(windows, ignore)] // FIXME(#12516)
+    #[test]
+    fn read_eof() {
         smalltest(proc(mut server) {
             let mut buf = [0];
             assert!(server.read(buf).is_err());
@@ -320,9 +327,10 @@ mod tests {
         }, proc(_client) {
             // drop the client
         })
-    } #[cfg_attr(windows, ignore)]) // FIXME(#12516)
+    }
 
-    iotest!(fn write_begone() {
+    #[test]
+    fn write_begone() {
         smalltest(proc(mut server) {
             let buf = [0];
             loop {
@@ -340,9 +348,10 @@ mod tests {
         }, proc(_client) {
             // drop the client
         })
-    })
+    }
 
-    iotest!(fn accept_lots() {
+    #[test]
+    fn accept_lots() {
         let times = 10;
         let path1 = next_test_unix();
         let path2 = path1.clone();
@@ -371,16 +380,18 @@ mod tests {
             }
             assert_eq!(buf[0], 100);
         }
-    })
+    }
 
     #[cfg(unix)]
-    iotest!(fn path_exists() {
+    #[test]
+    fn path_exists() {
         let path = next_test_unix();
         let _acceptor = UnixListener::bind(&path).listen();
         assert!(path.exists());
-    })
+    }
 
-    iotest!(fn unix_clone_smoke() {
+    #[test]
+    fn unix_clone_smoke() {
         let addr = next_test_unix();
         let mut acceptor = UnixListener::bind(&addr).listen();
 
@@ -414,9 +425,10 @@ mod tests {
         assert_eq!(s1.read(buf), Ok(1));
         debug!("reader done");
         rx2.recv();
-    })
+    }
 
-    iotest!(fn unix_clone_two_read() {
+    #[test]
+    fn unix_clone_two_read() {
         let addr = next_test_unix();
         let mut acceptor = UnixListener::bind(&addr).listen();
         let (tx1, rx) = channel();
@@ -446,9 +458,10 @@ mod tests {
         tx1.send(());
 
         rx.recv();
-    })
+    }
 
-    iotest!(fn unix_clone_two_write() {
+    #[test]
+    fn unix_clone_two_write() {
         let addr = next_test_unix();
         let mut acceptor = UnixListener::bind(&addr).listen();
 
@@ -471,25 +484,30 @@ mod tests {
         s1.write([2]).unwrap();
 
         rx.recv();
-    })
+    }
 
-    iotest!(fn drop_removes_listener_path() {
+    #[cfg(not(windows))]
+    #[test]
+    fn drop_removes_listener_path() {
         let path = next_test_unix();
         let l = UnixListener::bind(&path).unwrap();
         assert!(path.exists());
         drop(l);
         assert!(!path.exists());
-    } #[cfg(not(windows))])
+    }
 
-    iotest!(fn drop_removes_acceptor_path() {
+    #[cfg(not(windows))]
+    #[test]
+    fn drop_removes_acceptor_path() {
         let path = next_test_unix();
         let l = UnixListener::bind(&path).unwrap();
         assert!(path.exists());
         drop(l.listen().unwrap());
         assert!(!path.exists());
-    } #[cfg(not(windows))])
+    }
 
-    iotest!(fn accept_timeout() {
+    #[test]
+    fn accept_timeout() {
         let addr = next_test_unix();
         let mut a = UnixListener::bind(&addr).unwrap().listen().unwrap();
 
@@ -527,32 +545,37 @@ mod tests {
             drop(UnixStream::connect(&addr2).unwrap());
         });
         a.accept().unwrap();
-    })
+    }
 
-    iotest!(fn connect_timeout_error() {
+    #[test]
+    fn connect_timeout_error() {
         let addr = next_test_unix();
         assert!(UnixStream::connect_timeout(&addr, Duration::milliseconds(100)).is_err());
-    })
+    }
 
-    iotest!(fn connect_timeout_success() {
+    #[test]
+    fn connect_timeout_success() {
         let addr = next_test_unix();
         let _a = UnixListener::bind(&addr).unwrap().listen().unwrap();
         assert!(UnixStream::connect_timeout(&addr, Duration::milliseconds(100)).is_ok());
-    })
+    }
 
-    iotest!(fn connect_timeout_zero() {
+    #[test]
+    fn connect_timeout_zero() {
         let addr = next_test_unix();
         let _a = UnixListener::bind(&addr).unwrap().listen().unwrap();
         assert!(UnixStream::connect_timeout(&addr, Duration::milliseconds(0)).is_err());
-    })
+    }
 
-    iotest!(fn connect_timeout_negative() {
+    #[test]
+    fn connect_timeout_negative() {
         let addr = next_test_unix();
         let _a = UnixListener::bind(&addr).unwrap().listen().unwrap();
         assert!(UnixStream::connect_timeout(&addr, Duration::milliseconds(-1)).is_err());
-    })
+    }
 
-    iotest!(fn close_readwrite_smoke() {
+    #[test]
+    fn close_readwrite_smoke() {
         let addr = next_test_unix();
         let a = UnixListener::bind(&addr).listen().unwrap();
         let (_tx, rx) = channel::<()>();
@@ -586,9 +609,10 @@ mod tests {
         let _ = s2.close_write();
         let _ = s3.close_read();
         let _ = s3.close_write();
-    })
+    }
 
-    iotest!(fn close_read_wakes_up() {
+    #[test]
+    fn close_read_wakes_up() {
         let addr = next_test_unix();
         let a = UnixListener::bind(&addr).listen().unwrap();
         let (_tx, rx) = channel::<()>();
@@ -611,9 +635,10 @@ mod tests {
 
         // this test will never finish if the child doesn't wake up
         rx.recv();
-    })
+    }
 
-    iotest!(fn readwrite_timeouts() {
+    #[test]
+    fn readwrite_timeouts() {
         let addr = next_test_unix();
         let mut a = UnixListener::bind(&addr).listen().unwrap();
         let (tx, rx) = channel::<()>();
@@ -648,9 +673,10 @@ mod tests {
         tx.send(());
         s.set_timeout(None);
         assert_eq!(s.read([0, 0]), Ok(1));
-    })
+    }
 
-    iotest!(fn read_timeouts() {
+    #[test]
+    fn read_timeouts() {
         let addr = next_test_unix();
         let mut a = UnixListener::bind(&addr).listen().unwrap();
         let (tx, rx) = channel::<()>();
@@ -676,9 +702,10 @@ mod tests {
         for _ in range(0u, 100) {
             assert!(s.write([0, ..128 * 1024]).is_ok());
         }
-    })
+    }
 
-    iotest!(fn write_timeouts() {
+    #[test]
+    fn write_timeouts() {
         let addr = next_test_unix();
         let mut a = UnixListener::bind(&addr).listen().unwrap();
         let (tx, rx) = channel::<()>();
@@ -702,9 +729,10 @@ mod tests {
 
         tx.send(());
         assert!(s.read([0]).is_ok());
-    })
+    }
 
-    iotest!(fn timeout_concurrent_read() {
+    #[test]
+    fn timeout_concurrent_read() {
         let addr = next_test_unix();
         let mut a = UnixListener::bind(&addr).listen().unwrap();
         let (tx, rx) = channel::<()>();
@@ -729,10 +757,11 @@ mod tests {
         tx.send(());
 
         rx2.recv();
-    })
+    }
 
     #[cfg(not(windows))]
-    iotest!(fn clone_accept_smoke() {
+    #[test]
+    fn clone_accept_smoke() {
         let addr = next_test_unix();
         let l = UnixListener::bind(&addr);
         let mut a = l.listen().unwrap();
@@ -749,10 +778,11 @@ mod tests {
         assert!(a.accept().is_ok());
         drop(a);
         assert!(a2.accept().is_ok());
-    })
+    }
 
     #[cfg(not(windows))] // FIXME #17553
-    iotest!(fn clone_accept_concurrent() {
+    #[test]
+    fn clone_accept_concurrent() {
         let addr = next_test_unix();
         let l = UnixListener::bind(&addr);
         let a = l.listen().unwrap();
@@ -774,18 +804,20 @@ mod tests {
 
         assert!(rx.recv().is_ok());
         assert!(rx.recv().is_ok());
-    })
+    }
 
-    iotest!(fn close_accept_smoke() {
+    #[test]
+    fn close_accept_smoke() {
         let addr = next_test_unix();
         let l = UnixListener::bind(&addr);
         let mut a = l.listen().unwrap();
 
         a.close_accept().unwrap();
         assert_eq!(a.accept().err().unwrap().kind, EndOfFile);
-    })
+    }
 
-    iotest!(fn close_accept_concurrent() {
+    #[test]
+    fn close_accept_concurrent() {
         let addr = next_test_unix();
         let l = UnixListener::bind(&addr);
         let a = l.listen().unwrap();
@@ -799,5 +831,5 @@ mod tests {
         a2.close_accept().unwrap();
 
         assert_eq!(rx.recv().err().unwrap().kind, EndOfFile);
-    })
+    }
 }

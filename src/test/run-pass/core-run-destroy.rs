@@ -20,12 +20,8 @@
 
 extern crate libc;
 
-extern crate native;
-
 use std::io::{Process, Command, timer};
 use std::time::Duration;
-
-use libc;
 use std::str;
 
 macro_rules! succeed( ($e:expr) => (
