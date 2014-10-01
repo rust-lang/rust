@@ -256,7 +256,7 @@ pub fn expand(cap: &[u8], params: &[Param], vars: &mut Variables)
                         if res.is_err() { return res }
                         output.push_all(res.unwrap().as_slice())
                     } else { return Err("stack is empty".to_string()) },
-                    ':'|'#'|' '|'.'|'0'..'9' => {
+                    ':'|'#'|' '|'.'|'0'...'9' => {
                         let mut flags = Flags::new();
                         let mut fstate = FormatStateFlags;
                         match cur {
@@ -264,7 +264,7 @@ pub fn expand(cap: &[u8], params: &[Param], vars: &mut Variables)
                             '#' => flags.alternate = true,
                             ' ' => flags.space = true,
                             '.' => fstate = FormatStatePrecision,
-                            '0'..'9' => {
+                            '0'...'9' => {
                                 flags.width = cur as uint - '0' as uint;
                                 fstate = FormatStateWidth;
                             }
@@ -339,7 +339,7 @@ pub fn expand(cap: &[u8], params: &[Param], vars: &mut Variables)
                         stack.push(Number(i));
                         state = Nothing;
                     }
-                    '0'..'9' => {
+                    '0'...'9' => {
                         state = IntConstant(i*10 + (cur as int - '0' as int));
                         old_state = Nothing;
                     }
@@ -368,14 +368,14 @@ pub fn expand(cap: &[u8], params: &[Param], vars: &mut Variables)
                     (FormatStateFlags,' ') => {
                         flags.space = true;
                     }
-                    (FormatStateFlags,'0'..'9') => {
+                    (FormatStateFlags,'0'...'9') => {
                         flags.width = cur as uint - '0' as uint;
                         *fstate = FormatStateWidth;
                     }
                     (FormatStateFlags,'.') => {
                         *fstate = FormatStatePrecision;
                     }
-                    (FormatStateWidth,'0'..'9') => {
+                    (FormatStateWidth,'0'...'9') => {
                         let old = flags.width;
                         flags.width = flags.width * 10 + (cur as uint - '0' as uint);
                         if flags.width < old { return Err("format width overflow".to_string()) }
@@ -383,7 +383,7 @@ pub fn expand(cap: &[u8], params: &[Param], vars: &mut Variables)
                     (FormatStateWidth,'.') => {
                         *fstate = FormatStatePrecision;
                     }
-                    (FormatStatePrecision,'0'..'9') => {
+                    (FormatStatePrecision,'0'...'9') => {
                         let old = flags.precision;
                         flags.precision = flags.precision * 10 + (cur as uint - '0' as uint);
                         if flags.precision < old {

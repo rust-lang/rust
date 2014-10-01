@@ -843,18 +843,18 @@ fn run_utf8_validation_iterator(iter: &mut slice::Items<u8>) -> bool {
                 2 => if second & !CONT_MASK != TAG_CONT_U8 {err!()},
                 3 => {
                     match (first, second, next!() & !CONT_MASK) {
-                        (0xE0        , 0xA0 .. 0xBF, TAG_CONT_U8) |
-                        (0xE1 .. 0xEC, 0x80 .. 0xBF, TAG_CONT_U8) |
-                        (0xED        , 0x80 .. 0x9F, TAG_CONT_U8) |
-                        (0xEE .. 0xEF, 0x80 .. 0xBF, TAG_CONT_U8) => {}
+                        (0xE0         , 0xA0 ... 0xBF, TAG_CONT_U8) |
+                        (0xE1 ... 0xEC, 0x80 ... 0xBF, TAG_CONT_U8) |
+                        (0xED         , 0x80 ... 0x9F, TAG_CONT_U8) |
+                        (0xEE ... 0xEF, 0x80 ... 0xBF, TAG_CONT_U8) => {}
                         _ => err!()
                     }
                 }
                 4 => {
                     match (first, second, next!() & !CONT_MASK, next!() & !CONT_MASK) {
-                        (0xF0        , 0x90 .. 0xBF, TAG_CONT_U8, TAG_CONT_U8) |
-                        (0xF1 .. 0xF3, 0x80 .. 0xBF, TAG_CONT_U8, TAG_CONT_U8) |
-                        (0xF4        , 0x80 .. 0x8F, TAG_CONT_U8, TAG_CONT_U8) => {}
+                        (0xF0         , 0x90 ... 0xBF, TAG_CONT_U8, TAG_CONT_U8) |
+                        (0xF1 ... 0xF3, 0x80 ... 0xBF, TAG_CONT_U8, TAG_CONT_U8) |
+                        (0xF4         , 0x80 ... 0x8F, TAG_CONT_U8, TAG_CONT_U8) => {}
                         _ => err!()
                     }
                 }

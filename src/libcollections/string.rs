@@ -199,10 +199,10 @@ impl String {
                     }
                     3 => {
                         match (byte, safe_get(v, i, total)) {
-                            (0xE0        , 0xA0 .. 0xBF) => (),
-                            (0xE1 .. 0xEC, 0x80 .. 0xBF) => (),
-                            (0xED        , 0x80 .. 0x9F) => (),
-                            (0xEE .. 0xEF, 0x80 .. 0xBF) => (),
+                            (0xE0         , 0xA0 ... 0xBF) => (),
+                            (0xE1 ... 0xEC, 0x80 ... 0xBF) => (),
+                            (0xED         , 0x80 ... 0x9F) => (),
+                            (0xEE ... 0xEF, 0x80 ... 0xBF) => (),
                             _ => {
                                 error!();
                                 continue;
@@ -217,9 +217,9 @@ impl String {
                     }
                     4 => {
                         match (byte, safe_get(v, i, total)) {
-                            (0xF0        , 0x90 .. 0xBF) => (),
-                            (0xF1 .. 0xF3, 0x80 .. 0xBF) => (),
-                            (0xF4        , 0x80 .. 0x8F) => (),
+                            (0xF0         , 0x90 ... 0xBF) => (),
+                            (0xF1 ... 0xF3, 0x80 ... 0xBF) => (),
+                            (0xF4         , 0x80 ... 0x8F) => (),
                             _ => {
                                 error!();
                                 continue;

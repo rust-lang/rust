@@ -447,7 +447,7 @@ pub fn strptime(s: &str, format: &str) -> Result<Tm, String> {
             pos = range.next;
 
             match range.ch {
-              '0' .. '9' => {
+              '0' ... '9' => {
                 value = value * 10_i32 + (range.ch as i32 - '0' as i32);
               }
               ' ' if ws => (),
@@ -472,7 +472,7 @@ pub fn strptime(s: &str, format: &str) -> Result<Tm, String> {
             let range = ss.char_range_at(pos);
 
             match range.ch {
-                '0' .. '9' => {
+                '0' ... '9' => {
                     pos = range.next;
                     // This will drop digits after the nanoseconds place
                     let digit = range.ch as i32 - '0' as i32;

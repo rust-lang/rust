@@ -98,9 +98,9 @@ impl Gamma {
         assert!(scale > 0.0, "Gamma::new called with scale <= 0");
 
         let repr = match shape {
-            1.0        => One(Exp::new(1.0 / scale)),
-            0.0 .. 1.0 => Small(GammaSmallShape::new_raw(shape, scale)),
-            _          => Large(GammaLargeShape::new_raw(shape, scale))
+            1.0         => One(Exp::new(1.0 / scale)),
+            0.0 ... 1.0 => Small(GammaSmallShape::new_raw(shape, scale)),
+            _           => Large(GammaLargeShape::new_raw(shape, scale))
         };
         Gamma { repr: repr }
     }

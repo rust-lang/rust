@@ -67,7 +67,7 @@ impl WindowsTTY {
         // If the file descriptor is one of stdin, stderr, or stdout
         // then it should not be closed by us
         let closeme = match fd {
-            0..2 => false,
+            0...2 => false,
             _ => true,
         };
         let handle = unsafe { get_osfhandle(fd) as HANDLE };
