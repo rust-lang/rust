@@ -49,7 +49,7 @@
 # automatically generated for all stage/host/target combinations.
 ################################################################################
 
-TARGET_CRATES := libc std green rustuv native flate arena glob term semver \
+TARGET_CRATES := libc std green native flate arena glob term semver \
                  uuid serialize sync getopts collections num test time rand \
                  url log regex graphviz core rbml rlibc alloc debug rustrt \
                  unicode
@@ -69,7 +69,6 @@ DEPS_std := core libc rand alloc collections rustrt sync unicode \
 	native:rust_builtin native:backtrace
 DEPS_graphviz := std
 DEPS_green := std native:context_switch
-DEPS_rustuv := std native:uv native:uv_support
 DEPS_native := std
 DEPS_syntax := std term serialize log fmt_macros debug arena libc
 DEPS_rustc := syntax flate arena serialize getopts rbml \
@@ -102,7 +101,7 @@ DEPS_regex := std
 DEPS_regex_macros = rustc syntax std regex
 DEPS_fmt_macros = std
 
-TOOL_DEPS_compiletest := test green rustuv getopts
+TOOL_DEPS_compiletest := test getopts
 TOOL_DEPS_rustdoc := rustdoc native
 TOOL_DEPS_rustc := rustc native
 TOOL_SOURCE_compiletest := $(S)src/compiletest/compiletest.rs
