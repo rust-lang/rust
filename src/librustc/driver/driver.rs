@@ -291,6 +291,7 @@ pub fn phase_2_configure_and_expand(sess: &Session,
                 crate_name: crate_name.to_string(),
                 deriving_hash_type_parameter: sess.features.borrow().default_type_params,
                 enable_quotes: sess.features.borrow().quote,
+                recursion_limit: sess.recursion_limit.get(),
             };
             let ret = syntax::ext::expand::expand_crate(&sess.parse_sess,
                                               cfg,
