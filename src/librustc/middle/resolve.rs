@@ -1824,6 +1824,11 @@ impl<'a> Resolver<'a> {
                 child_name_bindings.define_value(def, DUMMY_SP, is_exported);
             }
           }
+          DefFn(ctor_id, _, true) => {
+            child_name_bindings.define_value(
+                csearch::get_tuple_struct_definition_if_ctor(&self.session.cstore, ctor_id)
+                    .map_or(def, |_| DefStruct(ctor_id)), DUMMY_SP, is_public);
+          }
           DefFn(..) | DefStaticMethod(..) | DefStatic(..) => {
             debug!("(building reduced graph for external \
                     crate) building value (fn/static) {}", final_ident);
