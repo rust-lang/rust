@@ -8,20 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-extern crate native;
-extern crate green;
-extern crate rustuv;
-
 use std::time::Duration;
 
-#[start]
-fn start(argc: int, argv: *const *const u8) -> int {
-    green::start(argc, argv, rustuv::event_loop, main)
-}
-
 fn main() {
-    native::task::spawn(proc() customtask());
+    std::task::spawn(proc() customtask());
 }
 
 fn customtask() {

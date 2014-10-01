@@ -83,7 +83,7 @@ $$(RT_OUTPUT_DIR_$(1))/%.o: $(S)src/rt/%.c $$(MKFILE_DEPS)
 	@$$(call E, compile: $$@)
 	$$(Q)$$(call CFG_COMPILE_C_$(1), $$@, \
 		-I $$(S)src/rt/hoedown/src \
-		-I $$(S)src/libuv/include -I $$(S)src/rt \
+		-I $$(S)src/rt \
                  $$(RUNTIME_CFLAGS_$(1))) $$<
 
 $$(RT_OUTPUT_DIR_$(1))/%.o: $(S)src/rt/%.S $$(MKFILE_DEPS) \
@@ -129,155 +129,20 @@ $(foreach lib,$(NATIVE_LIBS), \
 # in the correct location.
 ################################################################################
 
-################################################################################
-# libuv
-################################################################################
-
-define DEF_LIBUV_ARCH_VAR
-  LIBUV_ARCH_$(1) = $$(subst i386,ia32,$$(subst x86_64,x64,$$(HOST_$(1))))
-endef
-$(foreach t,$(CFG_TARGET),$(eval $(call DEF_LIBUV_ARCH_VAR,$(t))))
-
-ifdef CFG_ENABLE_FAST_MAKE
-LIBUV_DEPS := $(S)/.gitmodules
-else
-LIBUV_DEPS := $(wildcard \
-              $(S)src/libuv/* \
-              $(S)src/libuv/*/* \
-              $(S)src/libuv/*/*/* \
-              $(S)src/libuv/*/*/*/*)
-endif
-
-LIBUV_NO_LOAD = run-benchmarks.target.mk run-tests.target.mk \
-		uv_dtrace_header.target.mk uv_dtrace_provider.target.mk
-
-export PYTHONPATH := $(PYTHONPATH):$(S)src/gyp/pylib
-
 define DEF_THIRD_PARTY_TARGETS
 
 # $(1) is the target triple
 
 ifeq ($$(CFG_WINDOWSY_$(1)), 1)
-  LIBUV_OSTYPE_$(1) := win
   # This isn't necessarily a desired option, but it's harmless and works around
   # what appears to be a mingw-w64 bug.
   #
   # https://sourceforge.net/p/mingw-w64/bugs/395/
   JEMALLOC_ARGS_$(1) := --enable-lazy-lock
-else ifeq ($(OSTYPE_$(1)), apple-darwin)
-  LIBUV_OSTYPE_$(1) := mac
 else ifeq ($(OSTYPE_$(1)), apple-ios)
-  LIBUV_OSTYPE_$(1) := ios
   JEMALLOC_ARGS_$(1) := --disable-tls
-else ifeq ($(OSTYPE_$(1)), unknown-freebsd)
-  LIBUV_OSTYPE_$(1) := freebsd
-else ifeq ($(OSTYPE_$(1)), unknown-dragonfly)
-  LIBUV_OSTYPE_$(1) := freebsd
-  # required on DragonFly, otherwise gyp fails with a Python exception
-  LIBUV_GYP_ARGS_$(1) := --no-parallel
 else ifeq ($(OSTYPE_$(1)), linux-androideabi)
-  LIBUV_OSTYPE_$(1) := android
-  LIBUV_ARGS_$(1) := PLATFORM=android host=android OS=linux
   JEMALLOC_ARGS_$(1) := --disable-tls
-else
-  LIBUV_OSTYPE_$(1) := linux
-endif
-
-LIBUV_NAME_$(1) := $$(call CFG_STATIC_LIB_NAME_$(1),uv)
-LIBUV_DIR_$(1) := $$(RT_OUTPUT_DIR_$(1))/libuv
-LIBUV_LIB_$(1) := $$(RT_OUTPUT_DIR_$(1))/$$(LIBUV_NAME_$(1))
-
-LIBUV_MAKEFILE_$(1) := $$(CFG_BUILD_DIR)$$(RT_OUTPUT_DIR_$(1))/libuv/Makefile
-LIBUV_BUILD_DIR_$(1) := $$(CFG_BUILD_DIR)$$(RT_OUTPUT_DIR_$(1))/libuv
-LIBUV_XCODEPROJ_$(1) := $$(LIBUV_BUILD_DIR_$(1))/uv.xcodeproj
-
-LIBUV_STAMP_$(1) = $$(LIBUV_DIR_$(1))/libuv-auto-clean-stamp
-
-$$(LIBUV_STAMP_$(1)): $(S)src/rt/libuv-auto-clean-trigger
-	$$(Q)rm -rf $$(LIBUV_DIR_$(1))
-	$$(Q)mkdir -p $$(@D)
-	touch $$@
-
-# libuv triggers a few warnings on some platforms
-LIBUV_CFLAGS_$(1) := $(subst -Werror,,$(CFG_GCCISH_CFLAGS_$(1)))
-
-$$(LIBUV_MAKEFILE_$(1)): $$(LIBUV_DEPS) $$(MKFILE_DEPS) $$(LIBUV_STAMP_$(1))
-	(cd $(S)src/libuv/ && \
-	CC="$$(CC_$(1))" \
-	CXX="$$(CXX_$(1))" \
-	AR="$$(AR_$(1))" \
-	 $$(CFG_PYTHON) ./gyp_uv.py -f make -Dtarget_arch=$$(LIBUV_ARCH_$(1)) \
-	   -D ninja \
-	   -DOS=$$(LIBUV_OSTYPE_$(1)) \
-	   -Goutput_dir=$$(@D) $$(LIBUV_GYP_ARGS_$(1)) --generator-output $$(@D))
-	touch $$@
-
-# Windows has a completely different build system for libuv because of mingw. In
-# theory when we support msvc then we should be using gyp's msvc output instead
-# of mingw's makefile for windows
-ifdef CFG_WINDOWSY_$(1)
-LIBUV_LOCAL_$(1) := $$(S)src/libuv/libuv.a
-$$(LIBUV_LOCAL_$(1)): $$(LIBUV_DEPS) $$(MKFILE_DEPS)
-	$$(Q)$$(MAKE) -C $$(S)src/libuv -f Makefile.mingw \
-		LDFLAGS="$$(CFG_GCCISH_LINK_FLAGS_$(1))" \
-		CC="$$(CC_$(1)) $$(LIBUV_CFLAGS_$(1)) $$(SNAP_DEFINES)" \
-		CXX="$$(CXX_$(1))" \
-		AR="$$(AR_$(1))" \
-		V=$$(VERBOSE)
-else ifeq ($(OSTYPE_$(1)), apple-ios) # iOS
-$$(LIBUV_XCODEPROJ_$(1)): $$(LIBUV_DEPS) $$(MKFILE_DEPS) $$(LIBUV_STAMP_$(1))
-	cp -rf $(S)src/libuv/ $$(LIBUV_BUILD_DIR_$(1))
-	(cd $$(LIBUV_BUILD_DIR_$(1)) && \
-	CC="$$(CC_$(1))" \
-	CXX="$$(CXX_$(1))" \
-	AR="$$(AR_$(1))" \
-	 $$(CFG_PYTHON) ./gyp_uv.py -f xcode \
-	   -D ninja \
-	   -R libuv)
-	touch $$@
-
-LIBUV_XCODE_OUT_LIB_$(1) := $$(LIBUV_BUILD_DIR_$(1))/build/Release-$$(CFG_SDK_NAME_$(1))/libuv.a
-
-$$(LIBUV_LIB_$(1)): $$(LIBUV_XCODE_OUT_LIB_$(1)) $$(MKFILE_DEPS)
-	$$(Q)cp $$< $$@
-$$(LIBUV_XCODE_OUT_LIB_$(1)): $$(LIBUV_DEPS) $$(LIBUV_XCODEPROJ_$(1)) \
-				    $$(MKFILE_DEPS)
-	$$(Q)xcodebuild -project $$(LIBUV_BUILD_DIR_$(1))/uv.xcodeproj \
-		CFLAGS="$$(LIBUV_CFLAGS_$(1)) $$(SNAP_DEFINES)" \
-		LDFLAGS="$$(CFG_GCCISH_LINK_FLAGS_$(1))" \
-		$$(LIBUV_ARGS_$(1)) \
-		V=$$(VERBOSE) \
-		-configuration Release \
-		-sdk "$$(CFG_SDK_NAME_$(1))" \
-		ARCHS="$$(CFG_SDK_ARCHS_$(1))"
-	$$(Q)touch $$@
-else
-LIBUV_LOCAL_$(1) := $$(LIBUV_DIR_$(1))/Release/libuv.a
-$$(LIBUV_LOCAL_$(1)): $$(LIBUV_DEPS) $$(LIBUV_MAKEFILE_$(1)) $$(MKFILE_DEPS)
-	$$(Q)$$(MAKE) -C $$(LIBUV_DIR_$(1)) \
-		CFLAGS="$$(LIBUV_CFLAGS_$(1)) $$(SNAP_DEFINES)" \
-		LDFLAGS="$$(CFG_GCCISH_LINK_FLAGS_$(1))" \
-		CC="$$(CC_$(1))" \
-		CXX="$$(CXX_$(1))" \
-		AR="$$(AR_$(1))" \
-		$$(LIBUV_ARGS_$(1)) \
-		BUILDTYPE=Release \
-		NO_LOAD="$$(LIBUV_NO_LOAD)" \
-		V=$$(VERBOSE)
-	$$(Q)touch $$@
-endif
-
-ifeq ($(1),$$(CFG_BUILD))
-ifneq ($$(CFG_LIBUV_ROOT),)
-$$(LIBUV_LIB_$(1)): $$(CFG_LIBUV_ROOT)/libuv.a
-	$$(Q)cp $$< $$@
-else
-$$(LIBUV_LIB_$(1)): $$(LIBUV_LOCAL_$(1))
-	$$(Q)cp $$< $$@
-endif
-else
-$$(LIBUV_LIB_$(1)): $$(LIBUV_LOCAL_$(1))
-	$$(Q)cp $$< $$@
 endif
 
 ################################################################################

@@ -20,51 +20,23 @@
 #![allow(experimental)]
 #![reexport_test_harness_main = "test_main"]
 
-extern crate native;
-extern crate green;
-extern crate rustuv;
+#![allow(unused_imports)]
 
-#[cfg(test)] #[start]
-fn start(argc: int, argv: *const *const u8) -> int {
-    green::start(argc, argv, rustuv::event_loop, test_main)
-}
+use std::io::*;
+use std::io::net::tcp::*;
+use std::io::test::*;
+use std::io;
+use std::time::Duration;
 
-macro_rules! iotest (
-    { fn $name:ident() $b:block $(#[$a:meta])* } => (
-        mod $name {
-            #![allow(unused_imports)]
-
-            use std::io::*;
-            use std::io::net::tcp::*;
-            use std::io::test::*;
-            use std::io;
-            use std::time::Duration;
-
-            fn f() $b
-
-            $(#[$a])* #[test] fn green() { f() }
-            $(#[$a])* #[test] fn native() {
-                use native;
-                let (tx, rx) = channel();
-                native::task::spawn(proc() { tx.send(f()) });
-                rx.recv();
-            }
-        }
-    )
-)
-
-iotest!(fn eventual_timeout() {
-    use native;
+#[cfg_attr(target_os = "freebsd", ignore)]
+fn eventual_timeout() {
     let addr = next_test_ip4();
     let host = addr.ip.to_string();
     let port = addr.port;
 
-    // Use a native task to receive connections because it turns out libuv is
-    // really good at accepting connections and will likely run out of file
-    // descriptors before timing out.
     let (tx1, rx1) = channel();
     let (_tx2, rx2) = channel::<()>();
-    native::task::spawn(proc() {
+    std::task::spawn(proc() {
         let _l = TcpListener::bind(host.as_slice(), port).unwrap().listen();
         tx1.send(());
         let _ = rx2.recv_opt();
@@ -80,30 +52,29 @@ iotest!(fn eventual_timeout() {
         }
     }
     fail!("never timed out!");
-} #[cfg_attr(target_os = "freebsd", ignore)])
+}
 
-iotest!(fn timeout_success() {
+fn timeout_success() {
     let addr = next_test_ip4();
     let host = addr.ip.to_string();
     let port = addr.port;
     let _l = TcpListener::bind(host.as_slice(), port).unwrap().listen();
 
     assert!(TcpStream::connect_timeout(addr, Duration::milliseconds(1000)).is_ok());
-})
+}
 
-iotest!(fn timeout_error() {
+fn timeout_error() {
     let addr = next_test_ip4();
 
     assert!(TcpStream::connect_timeout(addr, Duration::milliseconds(1000)).is_err());
-})
+}
 
-    iotest!(fn connect_timeout_zero() {
-        let addr = next_test_ip4();
-        assert!(TcpStream::connect_timeout(addr, Duration::milliseconds(0)).is_err());
-    })
+fn connect_timeout_zero() {
+    let addr = next_test_ip4();
+    assert!(TcpStream::connect_timeout(addr, Duration::milliseconds(0)).is_err());
+}
 
-    iotest!(fn connect_timeout_negative() {
-        let addr = next_test_ip4();
-        assert!(TcpStream::connect_timeout(addr, Duration::milliseconds(-1)).is_err());
-    })
-
+fn connect_timeout_negative() {
+    let addr = next_test_ip4();
+    assert!(TcpStream::connect_timeout(addr, Duration::milliseconds(-1)).is_err());
+}

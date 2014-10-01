@@ -20,54 +20,21 @@
 
 extern crate libc;
 
-extern crate native;
-extern crate green;
-extern crate rustuv;
-
-use std::io::{Process, Command};
+use std::io::{Process, Command, timer};
 use std::time::Duration;
+use std::str;
 
 macro_rules! succeed( ($e:expr) => (
     match $e { Ok(..) => {}, Err(e) => fail!("failure: {}", e) }
 ) )
 
-macro_rules! iotest (
-    { fn $name:ident() $b:block $($a:attr)* } => (
-        mod $name {
-            #![allow(unused_imports)]
-
-            use std::io::timer;
-            use libc;
-            use std::str;
-            use std::io::process::Command;
-            use native;
-            use super::{sleeper, test_destroy_actually_kills};
-
-            fn f() $b
-
-            $($a)* #[test] fn green() { f() }
-            $($a)* #[test] fn native() {
-                use native;
-                let (tx, rx) = channel();
-                native::task::spawn(proc() { tx.send(f()) });
-                rx.recv();
-            }
-        }
-    )
-)
-
-#[cfg(test)] #[start]
-fn start(argc: int, argv: *const *const u8) -> int {
-    green::start(argc, argv, rustuv::event_loop, test_main)
-}
-
-iotest!(fn test_destroy_once() {
+fn test_destroy_once() {
     let mut p = sleeper();
     match p.signal_exit() {
         Ok(()) => {}
         Err(e) => fail!("error: {}", e),
     }
-})
+}
 
 #[cfg(unix)]
 pub fn sleeper() -> Process {
@@ -81,11 +48,11 @@ pub fn sleeper() -> Process {
     Command::new("ping").arg("127.0.0.1").arg("-n").arg("1000").spawn().unwrap()
 }
 
-iotest!(fn test_destroy_twice() {
+fn test_destroy_twice() {
     let mut p = sleeper();
     succeed!(p.signal_exit()); // this shouldnt crash...
     let _ = p.signal_exit(); // ...and nor should this (and nor should the destructor)
-})
+}
 
 pub fn test_destroy_actually_kills(force: bool) {
     use std::io::process::{Command, ProcessOutput, ExitStatus, ExitSignal};
@@ -129,10 +96,10 @@ pub fn test_destroy_actually_kills(force: bool) {
     }
 }
 
-iotest!(fn test_unforced_destroy_actually_kills() {
+fn test_unforced_destroy_actually_kills() {
     test_destroy_actually_kills(false);
-})
+}
 
-iotest!(fn test_forced_destroy_actually_kills() {
+fn test_forced_destroy_actually_kills() {
     test_destroy_actually_kills(true);
-})
+}
