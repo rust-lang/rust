@@ -242,6 +242,13 @@ pub mod io;
 pub mod path;
 pub mod fmt;
 
+#[cfg(unix)]
+#[path = "sys/unix/mod.rs"] mod sys;
+#[cfg(windows)]
+#[path = "sys/windows/mod.rs"] mod sys;
+
+#[path = "sys/common/mod.rs"] mod sys_common;
+
 // FIXME #7809: This shouldn't be pub, and it should be reexported under 'unstable'
 // but name resolution doesn't work without it being pub.
 pub mod rt;

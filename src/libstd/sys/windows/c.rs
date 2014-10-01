@@ -11,8 +11,11 @@
 //! C definitions used by libnative that don't belong in liblibc
 
 #![allow(overflowing_literals)]
+#![allow(dead_code)]
+#![allow(non_camel_case_types)]
 
 use libc;
+use prelude::*;
 
 pub const WSADESCRIPTION_LEN: uint = 256;
 pub const WSASYS_STATUS_LEN: uint = 128;
@@ -127,9 +130,10 @@ extern "system" {
 }
 
 pub mod compat {
-    use std::intrinsics::{atomic_store_relaxed, transmute};
-    use std::iter::Iterator;
+    use intrinsics::{atomic_store_relaxed, transmute};
+    use iter::Iterator;
     use libc::types::os::arch::extra::{LPCWSTR, HMODULE, LPCSTR, LPVOID};
+    use prelude::*;
 
     extern "system" {
         fn GetModuleHandleW(lpModuleName: LPCWSTR) -> HMODULE;
@@ -174,17 +178,17 @@ pub mod compat {
 
                 extern "system" fn thunk($($argname: $argtype),*) -> $rettype {
                     unsafe {
-                        ::io::c::compat::store_func(&mut ptr as *mut _ as *mut uint,
+                        ::sys::c::compat::store_func(&mut ptr as *mut _ as *mut uint,
                                                     stringify!($module),
                                                     stringify!($symbol),
                                                     fallback as uint);
-                        ::std::intrinsics::atomic_load_relaxed(&ptr)($($argname),*)
+                        ::intrinsics::atomic_load_relaxed(&ptr)($($argname),*)
                     }
                 }
 
                 extern "system" fn fallback($($argname: $argtype),*) -> $rettype $fallback
 
-                ::std::intrinsics::atomic_load_relaxed(&ptr)($($argname),*)
+                ::intrinsics::atomic_load_relaxed(&ptr)($($argname),*)
             }
         );
 

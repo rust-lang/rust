@@ -73,9 +73,6 @@ pub mod pipe;
 #[path = "tty_windows.rs"]
 mod tty;
 
-#[cfg(unix)]    #[path = "c_unix.rs"]  mod c;
-#[cfg(windows)] #[path = "c_windows.rs"] mod c;
-
 fn unimpl() -> IoError {
     #[cfg(unix)] use libc::ENOSYS as ERROR;
     #[cfg(windows)] use libc::ERROR_CALL_NOT_IMPLEMENTED as ERROR;
