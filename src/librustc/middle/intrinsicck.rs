@@ -121,7 +121,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for IntrinsicCheckingVisitor<'a, 'tcx> {
         match expr.node {
             ast::ExprPath(..) => {
                 match ty::resolve_expr(self.tcx, expr) {
-                    DefFn(did, _) if self.def_id_is_transmute(did) => {
+                    DefFn(did, _, _) if self.def_id_is_transmute(did) => {
                         let typ = ty::node_id_to_type(self.tcx, expr.id);
                         match ty::get(typ).sty {
                             ty_bare_fn(ref bare_fn_ty)

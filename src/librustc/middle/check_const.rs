@@ -133,7 +133,7 @@ fn check_expr(v: &mut CheckCrateVisitor, e: &Expr) {
             }
             match v.tcx.def_map.borrow().find(&e.id) {
               Some(&DefStatic(..)) |
-              Some(&DefFn(_, _)) |
+              Some(&DefFn(..)) |
               Some(&DefVariant(_, _, _)) |
               Some(&DefStruct(_)) => { }
 

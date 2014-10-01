@@ -5086,7 +5086,7 @@ pub fn polytype_for_def(fcx: &FnCtxt,
           let typ = fcx.local_ty(sp, nid);
           return no_params(typ);
       }
-      def::DefFn(id, _) | def::DefStaticMethod(id, _, _) |
+      def::DefFn(id, _, _) | def::DefStaticMethod(id, _, _) |
       def::DefStatic(id, _) | def::DefVariant(_, id, _) |
       def::DefStruct(id) => {
         return ty::lookup_item_type(fcx.ccx.tcx, id);
