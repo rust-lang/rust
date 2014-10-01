@@ -1449,12 +1449,6 @@ impl<'a> Parser<'a> {
                     t
                 }
             }
-        } else if self.token == token::AT {
-            // MANAGED POINTER
-            self.bump();
-            let span = self.last_span;
-            self.obsolete(span, ObsoleteManagedType);
-            TyUniq(self.parse_ty(plus_allowed))
         } else if self.token == token::TILDE {
             // OWNED POINTER
             self.bump();
@@ -2721,14 +2715,6 @@ impl<'a> Parser<'a> {
             let e = self.parse_prefix_expr();
             hi = e.span.hi;
             ex = ExprAddrOf(m, e);
-          }
-          token::AT => {
-            self.bump();
-            let span = self.last_span;
-            self.obsolete(span, ObsoleteManagedExpr);
-            let e = self.parse_prefix_expr();
-            hi = e.span.hi;
-            ex = self.mk_unary(UnUniq, e);
           }
           token::TILDE => {
             self.bump();
