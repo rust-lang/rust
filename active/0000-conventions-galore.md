@@ -82,6 +82,10 @@ The current convention for iterator *type* names is the following:
 >     yielding a mutable reference has a prefix `Mut`.
 >   * Reverse iterators have a prefix of `Rev`.
 
+(These conventions were established as part of
+[this PR](https://github.com/rust-lang/rust/pull/8090) and later
+[this one](https://github.com/rust-lang/rust/pull/11001).)
+
 These conventions have not yet been updated to reflect the
 [recent change](https://github.com/rust-lang/rfcs/pull/199) to the iterator
 method names, in part to allow for a more significant revamp. There are some
