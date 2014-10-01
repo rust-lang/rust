@@ -38,10 +38,6 @@
 // ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
 // OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#![feature(phase)]
-#[phase(plugin)] extern crate green;
-green_start!(main)
-
 fn start(n_tasks: int, token: int) {
     let (tx, mut rx) = channel();
     tx.send(token);

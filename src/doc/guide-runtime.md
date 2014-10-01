@@ -240,7 +240,7 @@ To create a pool of green tasks which have no I/O support, you may shed the
 `rustuv::event_loop`. All tasks will have no I/O support, but they will still be
 able to deschedule/reschedule (use channels, locks, etc).
 
-~~~{.rust}
+~~~{.ignore}
 extern crate green;
 extern crate rustuv;
 
