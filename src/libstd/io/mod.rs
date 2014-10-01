@@ -316,6 +316,7 @@ impl IoError {
             err.detail = Some(os::error_string(errno).as_slice().chars()
                                  .map(|c| c.to_lowercase()).collect())
         }
+        err
     }
 
     /// Retrieve the last error to occur as a (detailed) IoError.

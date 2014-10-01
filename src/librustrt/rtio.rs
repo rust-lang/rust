@@ -50,20 +50,6 @@ pub trait RemoteCallback {
     fn fire(&mut self);
 }
 
-/// Description of what to do when a file handle is closed
-pub enum CloseBehavior {
-    /// Do not close this handle when the object is destroyed
-    DontClose,
-    /// Synchronously close the handle, meaning that the task will block when
-    /// the handle is destroyed until it has been fully closed.
-    CloseSynchronously,
-    /// Asynchronously closes a handle, meaning that the task will *not* block
-    /// when the handle is destroyed, but the handle will still get deallocated
-    /// and cleaned up (but this will happen asynchronously on the local event
-    /// loop).
-    CloseAsynchronously,
-}
-
 /// Data needed to spawn a process. Serializes the `std::io::process::Command`
 /// builder.
 pub struct ProcessConfig<'a> {
@@ -202,28 +188,6 @@ pub trait IoFactory {
                           hint: Option<AddrinfoHint>)
                           -> IoResult<Vec<AddrinfoInfo>>;
 
-    // filesystem operations
-    fn fs_from_raw_fd(&mut self, fd: c_int, close: CloseBehavior)
-                      -> Box<RtioFileStream + Send>;
-    fn fs_open(&mut self, path: &CString, fm: FileMode, fa: FileAccess)
-               -> IoResult<Box<RtioFileStream + Send>>;
-    fn fs_unlink(&mut self, path: &CString) -> IoResult<()>;
-    fn fs_stat(&mut self, path: &CString) -> IoResult<FileStat>;
-    fn fs_mkdir(&mut self, path: &CString, mode: uint) -> IoResult<()>;
-    fn fs_chmod(&mut self, path: &CString, mode: uint) -> IoResult<()>;
-    fn fs_rmdir(&mut self, path: &CString) -> IoResult<()>;
-    fn fs_rename(&mut self, path: &CString, to: &CString) -> IoResult<()>;
-    fn fs_readdir(&mut self, path: &CString, flags: c_int) ->
-        IoResult<Vec<CString>>;
-    fn fs_lstat(&mut self, path: &CString) -> IoResult<FileStat>;
-    fn fs_chown(&mut self, path: &CString, uid: int, gid: int) ->
-        IoResult<()>;
-    fn fs_readlink(&mut self, path: &CString) -> IoResult<CString>;
-    fn fs_symlink(&mut self, src: &CString, dst: &CString) -> IoResult<()>;
-    fn fs_link(&mut self, src: &CString, dst: &CString) -> IoResult<()>;
-    fn fs_utime(&mut self, src: &CString, atime: u64, mtime: u64) ->
-        IoResult<()>;
-
     // misc
     fn timer_init(&mut self) -> IoResult<Box<RtioTimer + Send>>;
     fn spawn(&mut self, cfg: ProcessConfig)
@@ -294,19 +258,6 @@ pub trait RtioTimer {
     fn sleep(&mut self, msecs: u64);
     fn oneshot(&mut self, msecs: u64, cb: Box<Callback + Send>);
     fn period(&mut self, msecs: u64, cb: Box<Callback + Send>);
-}
-
-pub trait RtioFileStream {
-    fn read(&mut self, buf: &mut [u8]) -> IoResult<int>;
-    fn write(&mut self, buf: &[u8]) -> IoResult<()>;
-    fn pread(&mut self, buf: &mut [u8], offset: u64) -> IoResult<int>;
-    fn pwrite(&mut self, buf: &[u8], offset: u64) -> IoResult<()>;
-    fn seek(&mut self, pos: i64, whence: SeekStyle) -> IoResult<u64>;
-    fn tell(&self) -> IoResult<u64>;
-    fn fsync(&mut self) -> IoResult<()>;
-    fn datasync(&mut self) -> IoResult<()>;
-    fn truncate(&mut self, offset: i64) -> IoResult<()>;
-    fn fstat(&mut self) -> IoResult<FileStat>;
 }
 
 pub trait RtioProcess {
@@ -397,43 +348,6 @@ pub enum StdioContainer {
 pub enum ProcessExit {
     ExitStatus(int),
     ExitSignal(int),
-}
-
-pub enum FileMode {
-    Open,
-    Append,
-    Truncate,
-}
-
-pub enum FileAccess {
-    Read,
-    Write,
-    ReadWrite,
-}
-
-pub struct FileStat {
-    pub size: u64,
-    pub kind: u64,
-    pub perm: u64,
-    pub created: u64,
-    pub modified: u64,
-    pub accessed: u64,
-    pub device: u64,
-    pub inode: u64,
-    pub rdev: u64,
-    pub nlink: u64,
-    pub uid: u64,
-    pub gid: u64,
-    pub blksize: u64,
-    pub blocks: u64,
-    pub flags: u64,
-    pub gen: u64,
-}
-
-pub enum SeekStyle {
-    SeekSet,
-    SeekEnd,
-    SeekCur,
 }
 
 pub struct AddrinfoHint {

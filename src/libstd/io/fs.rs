@@ -52,27 +52,24 @@ fs::unlink(&path);
 
 */
 
-use c_str::ToCStr;
 use clone::Clone;
 use io::standard_error;
-use io::{FilePermission, Write, UnstableFileStat, Open, FileAccess, FileMode};
+use io::{FilePermission, Write, Open, FileAccess, FileMode};
 use io::{IoResult, IoError, FileStat, SeekStyle, Seek, Writer, Reader};
-use io::{Read, Truncate, SeekCur, SeekSet, ReadWrite, SeekEnd, Append};
+use io::{Read, Truncate, ReadWrite, Append};
 use io::UpdateIoError;
 use io;
 use iter::{Iterator, Extend};
-use kinds::Send;
-use libc;
 use option::{Some, None, Option};
-use boxed::Box;
 use path::{Path, GenericPath};
 use path;
 use result::{Err, Ok};
-use rt::rtio::LocalIo;
-use rt::rtio;
 use slice::SlicePrelude;
 use string::String;
 use vec::Vec;
+
+use sys::fs as fs_imp;
+use sys_common;
 
 /// Unconstrained file access type that exposes read and write operations
 ///
@@ -86,9 +83,15 @@ use vec::Vec;
 /// configured at creation time, via the `FileAccess` parameter to
 /// `File::open_mode()`.
 pub struct File {
-    fd: Box<rtio::RtioFileStream + Send>,
+    fd: fs_imp::FileDesc,
     path: Path,
     last_nread: int,
+}
+
+impl sys_common::AsFileDesc for File {
+    fn as_fd(&self) -> &fs_imp::FileDesc {
+        &self.fd
+    }
 }
 
 impl File {
@@ -133,26 +136,13 @@ impl File {
     pub fn open_mode(path: &Path,
                      mode: FileMode,
                      access: FileAccess) -> IoResult<File> {
-        let rtio_mode = match mode {
-            Open => rtio::Open,
-            Append => rtio::Append,
-            Truncate => rtio::Truncate,
-        };
-        let rtio_access = match access {
-            Read => rtio::Read,
-            Write => rtio::Write,
-            ReadWrite => rtio::ReadWrite,
-        };
-        let err = LocalIo::maybe_raise(|io| {
-            io.fs_open(&path.to_c_str(), rtio_mode, rtio_access).map(|fd| {
-                File {
-                    path: path.clone(),
-                    fd: fd,
-                    last_nread: -1
-                }
-            })
-        }).map_err(IoError::from_rtio_error);
-        err.update_err("couldn't open file", |e| {
+        fs_imp::open(path, mode, access).map(|fd| {
+            File {
+                path: path.clone(),
+                fd: fd,
+                last_nread: -1
+            }
+        }).update_err("couldn't open file", |e| {
             format!("{}; path={}; mode={}; access={}", e, path.display(),
                 mode_string(mode), access_string(access))
         })
@@ -194,7 +184,7 @@ impl File {
     /// ```
     pub fn create(path: &Path) -> IoResult<File> {
         File::open_mode(path, Truncate, Write)
-            .update_desc("couldn't create file")
+             .update_desc("couldn't create file")
     }
 
     /// Returns the original path which was used to open this file.
@@ -206,9 +196,9 @@ impl File {
     /// device. This will flush any internal buffers necessary to perform this
     /// operation.
     pub fn fsync(&mut self) -> IoResult<()> {
-        let err = self.fd.fsync().map_err(IoError::from_rtio_error);
-        err.update_err("couldn't fsync file",
-                       |e| format!("{}; path={}", e, self.path.display()))
+        self.fd.fsync()
+            .update_err("couldn't fsync file",
+                        |e| format!("{}; path={}", e, self.path.display()))
     }
 
     /// This function is similar to `fsync`, except that it may not synchronize
@@ -216,9 +206,9 @@ impl File {
     /// must synchronize content, but don't need the metadata on disk. The goal
     /// of this method is to reduce disk operations.
     pub fn datasync(&mut self) -> IoResult<()> {
-        let err = self.fd.datasync().map_err(IoError::from_rtio_error);
-        err.update_err("couldn't datasync file",
-                       |e| format!("{}; path={}", e, self.path.display()))
+        self.fd.datasync()
+            .update_err("couldn't datasync file",
+                        |e| format!("{}; path={}", e, self.path.display()))
     }
 
     /// Either truncates or extends the underlying file, updating the size of
@@ -230,10 +220,9 @@ impl File {
     /// will be extended to `size` and have all of the intermediate data filled
     /// in with 0s.
     pub fn truncate(&mut self, size: i64) -> IoResult<()> {
-        let err = self.fd.truncate(size).map_err(IoError::from_rtio_error);
-        err.update_err("couldn't truncate file", |e| {
-            format!("{}; path={}; size={}", e, self.path.display(), size)
-        })
+        self.fd.truncate(size)
+            .update_err("couldn't truncate file", |e|
+                format!("{}; path={}; size={}", e, self.path.display(), size))
     }
 
     /// Returns true if the stream has reached the end of the file.
@@ -251,12 +240,9 @@ impl File {
 
     /// Queries information about the underlying file.
     pub fn stat(&mut self) -> IoResult<FileStat> {
-        let err = match self.fd.fstat() {
-            Ok(s) => Ok(from_rtio(s)),
-            Err(e) => Err(IoError::from_rtio_error(e)),
-        };
-        err.update_err("couldn't fstat file",
-                       |e| format!("{}; path={}", e, self.path.display()))
+        self.fd.fstat()
+            .update_err("couldn't fstat file", |e|
+                format!("{}; path={}", e, self.path.display()))
     }
 }
 
@@ -282,41 +268,9 @@ impl File {
 /// user lacks permissions to remove the file, or if some other filesystem-level
 /// error occurs.
 pub fn unlink(path: &Path) -> IoResult<()> {
-    return match do_unlink(path) {
-        Ok(()) => Ok(()),
-        Err(e) => {
-            // On unix, a readonly file can be successfully removed. On windows,
-            // however, it cannot. To keep the two platforms in line with
-            // respect to their behavior, catch this case on windows, attempt to
-            // change it to read-write, and then remove the file.
-            if cfg!(windows) && e.kind == io::PermissionDenied {
-                let stat = match stat(path) {
-                    Ok(stat) => stat,
-                    Err(..) => return Err(e),
-                };
-                if stat.perm.intersects(io::USER_WRITE) { return Err(e) }
-
-                match chmod(path, stat.perm | io::USER_WRITE) {
-                    Ok(()) => do_unlink(path),
-                    Err(..) => {
-                        // Try to put it back as we found it
-                        let _ = chmod(path, stat.perm);
-                        Err(e)
-                    }
-                }
-            } else {
-                Err(e)
-            }
-        }
-    };
-
-    fn do_unlink(path: &Path) -> IoResult<()> {
-        let err = LocalIo::maybe_raise(|io| {
-            io.fs_unlink(&path.to_c_str())
-        }).map_err(IoError::from_rtio_error);
-        err.update_err("couldn't unlink path",
-                       |e| format!("{}; path={}", e, path.display()))
-    }
+    fs_imp::unlink(path)
+           .update_err("couldn't unlink path", |e|
+               format!("{}; path={}", e, path.display()))
 }
 
 /// Given a path, query the file system to get information about a file,
@@ -341,12 +295,9 @@ pub fn unlink(path: &Path) -> IoResult<()> {
 /// to perform a `stat` call on the given `path` or if there is no entry in the
 /// filesystem at the provided path.
 pub fn stat(path: &Path) -> IoResult<FileStat> {
-    let err = match LocalIo::maybe_raise(|io| io.fs_stat(&path.to_c_str())) {
-        Ok(s) => Ok(from_rtio(s)),
-        Err(e) => Err(IoError::from_rtio_error(e)),
-    };
-    err.update_err("couldn't stat path",
-                   |e| format!("{}; path={}", e, path.display()))
+    fs_imp::stat(path)
+           .update_err("couldn't stat path", |e|
+               format!("{}; path={}", e, path.display()))
 }
 
 /// Perform the same operation as the `stat` function, except that this
@@ -358,53 +309,9 @@ pub fn stat(path: &Path) -> IoResult<FileStat> {
 ///
 /// See `stat`
 pub fn lstat(path: &Path) -> IoResult<FileStat> {
-    let err = match LocalIo::maybe_raise(|io| io.fs_lstat(&path.to_c_str())) {
-        Ok(s) => Ok(from_rtio(s)),
-        Err(e) => Err(IoError::from_rtio_error(e)),
-    };
-    err.update_err("couldn't lstat path",
-                   |e| format!("{}; path={}", e, path.display()))
-}
-
-fn from_rtio(s: rtio::FileStat) -> FileStat {
-    #[cfg(windows)]
-    type Mode = libc::c_int;
-    #[cfg(unix)]
-    type Mode = libc::mode_t;
-
-    let rtio::FileStat {
-        size, kind, perm, created, modified,
-        accessed, device, inode, rdev,
-        nlink, uid, gid, blksize, blocks, flags, gen
-    } = s;
-
-    FileStat {
-        size: size,
-        kind: match (kind as Mode) & libc::S_IFMT {
-            libc::S_IFREG => io::TypeFile,
-            libc::S_IFDIR => io::TypeDirectory,
-            libc::S_IFIFO => io::TypeNamedPipe,
-            libc::S_IFBLK => io::TypeBlockSpecial,
-            libc::S_IFLNK => io::TypeSymlink,
-            _ => io::TypeUnknown,
-        },
-        perm: FilePermission::from_bits_truncate(perm as u32),
-        created: created,
-        modified: modified,
-        accessed: accessed,
-        unstable: UnstableFileStat {
-            device: device,
-            inode: inode,
-            rdev: rdev,
-            nlink: nlink,
-            uid: uid,
-            gid: gid,
-            blksize: blksize,
-            blocks: blocks,
-            flags: flags,
-            gen: gen,
-        },
-    }
+    fs_imp::lstat(path)
+           .update_err("couldn't lstat path", |e|
+               format!("{}; path={}", e, path.display()))
 }
 
 /// Rename a file or directory to a new name.
@@ -424,12 +331,9 @@ fn from_rtio(s: rtio::FileStat) -> FileStat {
 /// the process lacks permissions to view the contents, or if some other
 /// intermittent I/O error occurs.
 pub fn rename(from: &Path, to: &Path) -> IoResult<()> {
-    let err = LocalIo::maybe_raise(|io| {
-        io.fs_rename(&from.to_c_str(), &to.to_c_str())
-    }).map_err(IoError::from_rtio_error);
-    err.update_err("couldn't rename path", |e| {
-        format!("{}; from={}; to={}", e, from.display(), to.display())
-    })
+    fs_imp::rename(from, to)
+           .update_err("couldn't rename path", |e|
+               format!("{}; from={}; to={}", e, from.display(), to.display()))
 }
 
 /// Copies the contents of one file to another. This function will also
@@ -462,8 +366,9 @@ pub fn rename(from: &Path, to: &Path) -> IoResult<()> {
 /// being created and then destroyed by this operation.
 pub fn copy(from: &Path, to: &Path) -> IoResult<()> {
     fn update_err<T>(result: IoResult<T>, from: &Path, to: &Path) -> IoResult<T> {
-        result.update_err("couldn't copy path",
-            |e| format!("{}; from={}; to={}", e, from.display(), to.display()))
+        result.update_err("couldn't copy path", |e| {
+            format!("{}; from={}; to={}", e, from.display(), to.display())
+        })
     }
 
     if !from.is_file() {
@@ -512,45 +417,33 @@ pub fn copy(from: &Path, to: &Path) -> IoResult<()> {
 /// the process lacks permissions to change the attributes of the file, or if
 /// some other I/O error is encountered.
 pub fn chmod(path: &Path, mode: io::FilePermission) -> IoResult<()> {
-    let err = LocalIo::maybe_raise(|io| {
-        io.fs_chmod(&path.to_c_str(), mode.bits() as uint)
-    }).map_err(IoError::from_rtio_error);
-    err.update_err("couldn't chmod path", |e| {
-        format!("{}; path={}; mode={}", e, path.display(), mode)
-    })
+    fs_imp::chmod(path, mode.bits() as uint)
+           .update_err("couldn't chmod path", |e|
+               format!("{}; path={}; mode={}", e, path.display(), mode))
 }
 
 /// Change the user and group owners of a file at the specified path.
 pub fn chown(path: &Path, uid: int, gid: int) -> IoResult<()> {
-    let err = LocalIo::maybe_raise(|io| {
-        io.fs_chown(&path.to_c_str(), uid, gid)
-    }).map_err(IoError::from_rtio_error);
-    err.update_err("couldn't chown path", |e| {
-        format!("{}; path={}; uid={}; gid={}", e, path.display(), uid, gid)
-    })
+    fs_imp::chown(path, uid, gid)
+           .update_err("couldn't chown path", |e|
+               format!("{}; path={}; uid={}; gid={}", e, path.display(), uid, gid))
 }
 
 /// Creates a new hard link on the filesystem. The `dst` path will be a
 /// link pointing to the `src` path. Note that systems often require these
 /// two paths to both be located on the same filesystem.
 pub fn link(src: &Path, dst: &Path) -> IoResult<()> {
-    let err = LocalIo::maybe_raise(|io| {
-        io.fs_link(&src.to_c_str(), &dst.to_c_str())
-    }).map_err(IoError::from_rtio_error);
-    err.update_err("couldn't link path", |e| {
-        format!("{}; src={}; dest={}", e, src.display(), dst.display())
-    })
+    fs_imp::link(src, dst)
+           .update_err("couldn't link path", |e|
+               format!("{}; src={}; dest={}", e, src.display(), dst.display()))
 }
 
 /// Creates a new symbolic link on the filesystem. The `dst` path will be a
 /// symlink pointing to the `src` path.
 pub fn symlink(src: &Path, dst: &Path) -> IoResult<()> {
-    let err = LocalIo::maybe_raise(|io| {
-        io.fs_symlink(&src.to_c_str(), &dst.to_c_str())
-    }).map_err(IoError::from_rtio_error);
-    err.update_err("couldn't symlink path", |e| {
-        format!("{}; src={}; dest={}", e, src.display(), dst.display())
-    })
+    fs_imp::symlink(src, dst)
+           .update_err("couldn't symlink path", |e|
+               format!("{}; src={}; dest={}", e, src.display(), dst.display()))
 }
 
 /// Reads a symlink, returning the file that the symlink points to.
@@ -560,11 +453,9 @@ pub fn symlink(src: &Path, dst: &Path) -> IoResult<()> {
 /// This function will return an error on failure. Failure conditions include
 /// reading a file that does not exist or reading a file which is not a symlink.
 pub fn readlink(path: &Path) -> IoResult<Path> {
-    let err = LocalIo::maybe_raise(|io| {
-        Ok(Path::new(try!(io.fs_readlink(&path.to_c_str()))))
-    }).map_err(IoError::from_rtio_error);
-    err.update_err("couldn't resolve symlink for path",
-                   |e| format!("{}; path={}", e, path.display()))
+    fs_imp::readlink(path)
+           .update_err("couldn't resolve symlink for path", |e|
+               format!("{}; path={}", e, path.display()))
 }
 
 /// Create a new, empty directory at the provided path
@@ -585,12 +476,9 @@ pub fn readlink(path: &Path) -> IoResult<Path> {
 /// This function will return an error if the user lacks permissions to make a
 /// new directory at the provided `path`, or if the directory already exists.
 pub fn mkdir(path: &Path, mode: FilePermission) -> IoResult<()> {
-    let err = LocalIo::maybe_raise(|io| {
-        io.fs_mkdir(&path.to_c_str(), mode.bits() as uint)
-    }).map_err(IoError::from_rtio_error);
-    err.update_err("couldn't create directory", |e| {
-        format!("{}; path={}; mode={}", e, path.display(), mode)
-    })
+    fs_imp::mkdir(path, mode.bits() as uint)
+           .update_err("couldn't create directory", |e|
+               format!("{}; path={}; mode={}", e, path.display(), mode))
 }
 
 /// Remove an existing, empty directory
@@ -610,11 +498,9 @@ pub fn mkdir(path: &Path, mode: FilePermission) -> IoResult<()> {
 /// This function will return an error if the user lacks permissions to remove
 /// the directory at the provided `path`, or if the directory isn't empty.
 pub fn rmdir(path: &Path) -> IoResult<()> {
-    let err = LocalIo::maybe_raise(|io| {
-        io.fs_rmdir(&path.to_c_str())
-    }).map_err(IoError::from_rtio_error);
-    err.update_err("couldn't remove directory",
-                   |e| format!("{}; path={}", e, path.display()))
+    fs_imp::rmdir(path)
+           .update_err("couldn't remove directory", |e|
+               format!("{}; path={}", e, path.display()))
 }
 
 /// Retrieve a vector containing all entries within a provided directory
@@ -650,13 +536,9 @@ pub fn rmdir(path: &Path) -> IoResult<()> {
 /// the process lacks permissions to view the contents or if the `path` points
 /// at a non-directory file
 pub fn readdir(path: &Path) -> IoResult<Vec<Path>> {
-    let err = LocalIo::maybe_raise(|io| {
-        Ok(try!(io.fs_readdir(&path.to_c_str(), 0)).into_iter().map(|a| {
-            Path::new(a)
-        }).collect())
-    }).map_err(IoError::from_rtio_error);
-    err.update_err("couldn't read directory",
-                   |e| format!("{}; path={}", e, path.display()))
+    fs_imp::readdir(path)
+           .update_err("couldn't read directory",
+                       |e| format!("{}; path={}", e, path.display()))
 }
 
 /// Returns an iterator which will recursively walk the directory structure
@@ -666,8 +548,7 @@ pub fn readdir(path: &Path) -> IoResult<Vec<Path>> {
 pub fn walk_dir(path: &Path) -> IoResult<Directories> {
     Ok(Directories {
         stack: try!(readdir(path).update_err("couldn't walk directory",
-                                             |e| format!("{}; path={}",
-                                                         e, path.display())))
+                                             |e| format!("{}; path={}", e, path.display())))
     })
 }
 
@@ -681,12 +562,7 @@ impl Iterator<Path> for Directories {
         match self.stack.pop() {
             Some(path) => {
                 if path.is_dir() {
-                    let result = readdir(&path)
-                        .update_err("couldn't advance Directories iterator",
-                                    |e| format!("{}; path={}",
-                                                e, path.display()));
-
-                    match result {
+                    match readdir(&path) {
                         Ok(dirs) => { self.stack.extend(dirs.into_iter()); }
                         Err(..) => {}
                     }
@@ -804,11 +680,9 @@ pub fn rmdir_recursive(path: &Path) -> IoResult<()> {
 /// be in milliseconds.
 // FIXME(#10301) these arguments should not be u64
 pub fn change_file_times(path: &Path, atime: u64, mtime: u64) -> IoResult<()> {
-    let err = LocalIo::maybe_raise(|io| {
-        io.fs_utime(&path.to_c_str(), atime, mtime)
-    }).map_err(IoError::from_rtio_error);
-    err.update_err("couldn't change_file_times",
-                   |e| format!("{}; path={}", e, path.display()))
+    fs_imp::utime(path, atime, mtime)
+           .update_err("couldn't change_file_times", |e|
+               format!("{}; path={}", e, path.display()))
 }
 
 impl Reader for File {
@@ -819,12 +693,11 @@ impl Reader for File {
                                           e, file.path.display()))
         }
 
-        let result = update_err(self.fd.read(buf)
-                                    .map_err(IoError::from_rtio_error), self);
+        let result = update_err(self.fd.read(buf), self);
 
         match result {
             Ok(read) => {
-                self.last_nread = read;
+                self.last_nread = read as int;
                 match read {
                     0 => update_err(Err(standard_error(io::EndOfFile)), self),
                     _ => Ok(read as uint)
@@ -837,32 +710,27 @@ impl Reader for File {
 
 impl Writer for File {
     fn write(&mut self, buf: &[u8]) -> IoResult<()> {
-        let err = self.fd.write(buf).map_err(IoError::from_rtio_error);
-        err.update_err("couldn't write to file",
-                       |e| format!("{}; path={}", e, self.path.display()))
+        self.fd.write(buf)
+            .update_err("couldn't write to file",
+                        |e| format!("{}; path={}", e, self.path.display()))
     }
 }
 
 impl Seek for File {
     fn tell(&self) -> IoResult<u64> {
-        let err = self.fd.tell().map_err(IoError::from_rtio_error);
-        err.update_err("couldn't retrieve file cursor (`tell`)",
-                       |e| format!("{}; path={}", e, self.path.display()))
+        self.fd.tell()
+            .update_err("couldn't retrieve file cursor (`tell`)",
+                        |e| format!("{}; path={}", e, self.path.display()))
     }
 
     fn seek(&mut self, pos: i64, style: SeekStyle) -> IoResult<()> {
-        let style = match style {
-            SeekSet => rtio::SeekSet,
-            SeekCur => rtio::SeekCur,
-            SeekEnd => rtio::SeekEnd,
-        };
         let err = match self.fd.seek(pos, style) {
             Ok(_) => {
                 // successful seek resets EOF indicator
                 self.last_nread = -1;
                 Ok(())
             }
-            Err(e) => Err(IoError::from_rtio_error(e)),
+            Err(e) => Err(e),
         };
         err.update_err("couldn't seek in file",
                        |e| format!("{}; path={}", e, self.path.display()))
@@ -942,6 +810,8 @@ fn access_string(access: FileAccess) -> &'static str {
 
 #[cfg(test)]
 #[allow(unused_imports)]
+#[allow(unused_variables)]
+#[allow(unused_mut)]
 mod test {
     use prelude::*;
     use io::{SeekSet, SeekCur, SeekEnd, Read, Open, ReadWrite};
