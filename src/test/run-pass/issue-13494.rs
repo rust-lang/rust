@@ -11,22 +11,13 @@
 // This test may not always fail, but it can be flaky if the race it used to
 // expose is still present.
 
-extern crate green;
-extern crate rustuv;
-extern crate native;
-
-#[start]
-fn start(argc: int, argv: *const *const u8) -> int {
-    green::start(argc, argv, rustuv::event_loop, main)
-}
-
 fn helper(rx: Receiver<Sender<()>>) {
     for tx in rx.iter() {
         let _ = tx.send_opt(());
     }
 }
 
-fn test() {
+fn main() {
     let (tx, rx) = channel();
     spawn(proc() { helper(rx) });
     let (snd, rcv) = channel::<int>();
@@ -39,18 +30,4 @@ fn test() {
             _ = rcv.recv() => ()
         }
     }
-}
-
-fn main() {
-    let (tx, rx) = channel();
-    spawn(proc() {
-        tx.send(test());
-    });
-    rx.recv();
-
-    let (tx, rx) = channel();
-    native::task::spawn(proc() {
-        tx.send(test());
-    });
-    rx.recv();
 }

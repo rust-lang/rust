@@ -2,13 +2,6 @@
 	path = src/llvm
 	url = https://github.com/rust-lang/llvm.git
 	branch = master
-[submodule "src/libuv"]
-	path = src/libuv
-	url = https://github.com/rust-lang/libuv.git
-	branch = master
-[submodule "src/gyp"]
-	path = src/gyp
-	url = https://github.com/rust-lang/gyp.git
 [submodule "src/compiler-rt"]
 	path = src/compiler-rt
 	url = https://github.com/rust-lang/compiler-rt.git

@@ -8,17 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(phase)]
-extern crate native;
-#[phase(plugin)]
-extern crate green;
-
-use native::NativeTaskBuilder;
 use std::io::{TempDir, Command, fs};
 use std::os;
 use std::task::TaskBuilder;
-
-green_start!(main)
 
 fn main() {
     // If we're the child, make sure we were invoked correctly
@@ -28,11 +20,6 @@ fn main() {
     }
 
     test();
-    let (tx, rx) = channel();
-    TaskBuilder::new().native().spawn(proc() {
-        tx.send(test());
-    });
-    rx.recv();
 }
 
 fn test() {

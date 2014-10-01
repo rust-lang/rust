@@ -8,18 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(phase)]
-
-#[phase(plugin, link)]
-extern crate green;
-extern crate native;
 
 use std::io::process;
 use std::io::Command;
 use std::io;
 use std::os;
-
-green_start!(main)
 
 fn main() {
     let args = os::args();
@@ -28,12 +21,6 @@ fn main() {
     }
 
     test();
-
-    let (tx, rx) = channel();
-    native::task::spawn(proc() {
-        tx.send(test());
-    });
-    rx.recv();
 
 }
 
@@ -52,4 +39,3 @@ fn test() {
                                      .spawn().unwrap();
     assert!(p.wait().unwrap().success());
 }
-

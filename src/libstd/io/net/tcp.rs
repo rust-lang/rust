@@ -523,26 +523,33 @@ impl Clone for TcpAcceptor {
 #[allow(experimental)]
 mod test {
     use super::*;
-    use io::net::ip::SocketAddr;
+    use io::net::tcp::*;
+    use io::net::ip::*;
+    use io::net::udp::*;
     use io::*;
+    use io::test::*;
     use prelude::*;
 
     // FIXME #11530 this fails on android because tests are run as root
-    iotest!(fn bind_error() {
+    #[cfg_attr(any(windows, target_os = "android"), ignore)]
+    #[test]
+    fn bind_error() {
         match TcpListener::bind("0.0.0.0", 1) {
             Ok(..) => fail!(),
             Err(e) => assert_eq!(e.kind, PermissionDenied),
         }
-    } #[cfg_attr(any(windows, target_os = "android"), ignore)])
+    }
 
-    iotest!(fn connect_error() {
+    #[test]
+    fn connect_error() {
         match TcpStream::connect("0.0.0.0", 1) {
             Ok(..) => fail!(),
             Err(e) => assert_eq!(e.kind, ConnectionRefused),
         }
-    })
+    }
 
-    iotest!(fn listen_ip4_localhost() {
+    #[test]
+    fn listen_ip4_localhost() {
         let socket_addr = next_test_ip4();
         let ip_str = socket_addr.ip.to_string();
         let port = socket_addr.port;
@@ -558,9 +565,10 @@ mod test {
         let mut buf = [0];
         stream.read(buf).unwrap();
         assert!(buf[0] == 144);
-    })
+    }
 
-    iotest!(fn connect_localhost() {
+    #[test]
+    fn connect_localhost() {
         let addr = next_test_ip4();
         let ip_str = addr.ip.to_string();
         let port = addr.port;
@@ -575,9 +583,10 @@ mod test {
         let mut buf = [0];
         stream.read(buf).unwrap();
         assert!(buf[0] == 64);
-    })
+    }
 
-    iotest!(fn connect_ip4_loopback() {
+    #[test]
+    fn connect_ip4_loopback() {
         let addr = next_test_ip4();
         let ip_str = addr.ip.to_string();
         let port = addr.port;
@@ -592,9 +601,10 @@ mod test {
         let mut buf = [0];
         stream.read(buf).unwrap();
         assert!(buf[0] == 44);
-    })
+    }
 
-    iotest!(fn connect_ip6_loopback() {
+    #[test]
+    fn connect_ip6_loopback() {
         let addr = next_test_ip6();
         let ip_str = addr.ip.to_string();
         let port = addr.port;
@@ -609,9 +619,10 @@ mod test {
         let mut buf = [0];
         stream.read(buf).unwrap();
         assert!(buf[0] == 66);
-    })
+    }
 
-    iotest!(fn smoke_test_ip4() {
+    #[test]
+    fn smoke_test_ip4() {
         let addr = next_test_ip4();
         let ip_str = addr.ip.to_string();
         let port = addr.port;
@@ -626,9 +637,10 @@ mod test {
         let mut buf = [0];
         stream.read(buf).unwrap();
         assert!(buf[0] == 99);
-    })
+    }
 
-    iotest!(fn smoke_test_ip6() {
+    #[test]
+    fn smoke_test_ip6() {
         let addr = next_test_ip6();
         let ip_str = addr.ip.to_string();
         let port = addr.port;
@@ -643,9 +655,10 @@ mod test {
         let mut buf = [0];
         stream.read(buf).unwrap();
         assert!(buf[0] == 99);
-    })
+    }
 
-    iotest!(fn read_eof_ip4() {
+    #[test]
+    fn read_eof_ip4() {
         let addr = next_test_ip4();
         let ip_str = addr.ip.to_string();
         let port = addr.port;
@@ -660,9 +673,10 @@ mod test {
         let mut buf = [0];
         let nread = stream.read(buf);
         assert!(nread.is_err());
-    })
+    }
 
-    iotest!(fn read_eof_ip6() {
+    #[test]
+    fn read_eof_ip6() {
         let addr = next_test_ip6();
         let ip_str = addr.ip.to_string();
         let port = addr.port;
@@ -677,9 +691,10 @@ mod test {
         let mut buf = [0];
         let nread = stream.read(buf);
         assert!(nread.is_err());
-    })
+    }
 
-    iotest!(fn read_eof_twice_ip4() {
+    #[test]
+    fn read_eof_twice_ip4() {
         let addr = next_test_ip4();
         let ip_str = addr.ip.to_string();
         let port = addr.port;
@@ -702,9 +717,10 @@ mod test {
                         "unknown kind: {}", e.kind);
             }
         }
-    })
+    }
 
-    iotest!(fn read_eof_twice_ip6() {
+    #[test]
+    fn read_eof_twice_ip6() {
         let addr = next_test_ip6();
         let ip_str = addr.ip.to_string();
         let port = addr.port;
@@ -727,9 +743,10 @@ mod test {
                         "unknown kind: {}", e.kind);
             }
         }
-    })
+    }
 
-    iotest!(fn write_close_ip4() {
+    #[test]
+    fn write_close_ip4() {
         let addr = next_test_ip4();
         let ip_str = addr.ip.to_string();
         let port = addr.port;
@@ -754,9 +771,10 @@ mod test {
                 }
             }
         }
-    })
+    }
 
-    iotest!(fn write_close_ip6() {
+    #[test]
+    fn write_close_ip6() {
         let addr = next_test_ip6();
         let ip_str = addr.ip.to_string();
         let port = addr.port;
@@ -781,9 +799,10 @@ mod test {
                 }
             }
         }
-    })
+    }
 
-    iotest!(fn multiple_connect_serial_ip4() {
+    #[test]
+    fn multiple_connect_serial_ip4() {
         let addr = next_test_ip4();
         let ip_str = addr.ip.to_string();
         let port = addr.port;
@@ -802,9 +821,10 @@ mod test {
             stream.read(buf).unwrap();
             assert_eq!(buf[0], 99);
         }
-    })
+    }
 
-    iotest!(fn multiple_connect_serial_ip6() {
+    #[test]
+    fn multiple_connect_serial_ip6() {
         let addr = next_test_ip6();
         let ip_str = addr.ip.to_string();
         let port = addr.port;
@@ -823,9 +843,10 @@ mod test {
             stream.read(buf).unwrap();
             assert_eq!(buf[0], 99);
         }
-    })
+    }
 
-    iotest!(fn multiple_connect_interleaved_greedy_schedule_ip4() {
+    #[test]
+    fn multiple_connect_interleaved_greedy_schedule_ip4() {
         let addr = next_test_ip4();
         let ip_str = addr.ip.to_string();
         let port = addr.port;
@@ -862,9 +883,10 @@ mod test {
                 stream.write([i as u8]).unwrap();
             });
         }
-    })
+    }
 
-    iotest!(fn multiple_connect_interleaved_greedy_schedule_ip6() {
+    #[test]
+    fn multiple_connect_interleaved_greedy_schedule_ip6() {
         let addr = next_test_ip6();
         let ip_str = addr.ip.to_string();
         let port = addr.port;
@@ -901,9 +923,10 @@ mod test {
                 stream.write([i as u8]).unwrap();
             });
         }
-    })
+    }
 
-    iotest!(fn multiple_connect_interleaved_lazy_schedule_ip4() {
+    #[test]
+    fn multiple_connect_interleaved_lazy_schedule_ip4() {
         static MAX: int = 10;
         let addr = next_test_ip4();
         let ip_str = addr.ip.to_string();
@@ -940,9 +963,10 @@ mod test {
                 stream.write([99]).unwrap();
             });
         }
-    })
+    }
 
-    iotest!(fn multiple_connect_interleaved_lazy_schedule_ip6() {
+    #[test]
+    fn multiple_connect_interleaved_lazy_schedule_ip6() {
         static MAX: int = 10;
         let addr = next_test_ip6();
         let ip_str = addr.ip.to_string();
@@ -979,7 +1003,7 @@ mod test {
                 stream.write([99]).unwrap();
             });
         }
-    })
+    }
 
     pub fn socket_name(addr: SocketAddr) {
         let ip_str = addr.ip.to_string();
@@ -1015,18 +1039,21 @@ mod test {
         assert_eq!(addr, peer_name.unwrap());
     }
 
-    iotest!(fn socket_and_peer_name_ip4() {
+    #[test]
+    fn socket_and_peer_name_ip4() {
         peer_name(next_test_ip4());
         socket_name(next_test_ip4());
-    })
+    }
 
-    iotest!(fn socket_and_peer_name_ip6() {
+    #[test]
+    fn socket_and_peer_name_ip6() {
         // FIXME: peer name is not consistent
         //peer_name(next_test_ip6());
         socket_name(next_test_ip6());
-    })
+    }
 
-    iotest!(fn partial_read() {
+    #[test]
+    fn partial_read() {
         let addr = next_test_ip4();
         let port = addr.port;
         let (tx, rx) = channel();
@@ -1048,9 +1075,10 @@ mod test {
         assert_eq!(c.read(b), Ok(1));
         c.write([1]).unwrap();
         rx.recv();
-    })
+    }
 
-    iotest!(fn double_bind() {
+    #[test]
+    fn double_bind() {
         let addr = next_test_ip4();
         let ip_str = addr.ip.to_string();
         let port = addr.port;
@@ -1063,9 +1091,10 @@ mod test {
                         "unknown error: {} {}", e, e.kind);
             }
         }
-    })
+    }
 
-    iotest!(fn fast_rebind() {
+    #[test]
+    fn fast_rebind() {
         let addr = next_test_ip4();
         let port = addr.port;
         let (tx, rx) = channel();
@@ -1090,9 +1119,10 @@ mod test {
             // Close listener
         }
         let _listener = TcpListener::bind(addr.ip.to_string().as_slice(), port);
-    })
+    }
 
-    iotest!(fn tcp_clone_smoke() {
+    #[test]
+    fn tcp_clone_smoke() {
         let addr = next_test_ip4();
         let ip_str = addr.ip.to_string();
         let port = addr.port;
@@ -1121,9 +1151,10 @@ mod test {
         let mut buf = [0, 0];
         assert_eq!(s1.read(buf), Ok(1));
         rx2.recv();
-    })
+    }
 
-    iotest!(fn tcp_clone_two_read() {
+    #[test]
+    fn tcp_clone_two_read() {
         let addr = next_test_ip6();
         let ip_str = addr.ip.to_string();
         let port = addr.port;
@@ -1155,9 +1186,10 @@ mod test {
         tx1.send(());
 
         rx.recv();
-    })
+    }
 
-    iotest!(fn tcp_clone_two_write() {
+    #[test]
+    fn tcp_clone_two_write() {
         let addr = next_test_ip4();
         let ip_str = addr.ip.to_string();
         let port = addr.port;
@@ -1182,9 +1214,10 @@ mod test {
         s1.write([2]).unwrap();
 
         rx.recv();
-    })
+    }
 
-    iotest!(fn shutdown_smoke() {
+    #[test]
+    fn shutdown_smoke() {
         use rt::rtio::RtioTcpStream;
 
         let addr = next_test_ip4();
@@ -1202,9 +1235,10 @@ mod test {
         assert!(s.obj.close_write().is_ok());
         assert!(s.write([1]).is_err());
         assert_eq!(s.read_to_end(), Ok(vec!(1)));
-    })
+    }
 
-    iotest!(fn accept_timeout() {
+    #[test]
+    fn accept_timeout() {
         let addr = next_test_ip4();
         let ip_str = addr.ip.to_string();
         let port = addr.port;
@@ -1249,9 +1283,10 @@ mod test {
                                     port).unwrap());
         });
         a.accept().unwrap();
-    })
+    }
 
-    iotest!(fn close_readwrite_smoke() {
+    #[test]
+    fn close_readwrite_smoke() {
         let addr = next_test_ip4();
         let ip_str = addr.ip.to_string();
         let port = addr.port;
@@ -1287,9 +1322,10 @@ mod test {
         let _ = s2.close_write();
         let _ = s3.close_read();
         let _ = s3.close_write();
-    })
+    }
 
-    iotest!(fn close_read_wakes_up() {
+    #[test]
+    fn close_read_wakes_up() {
         let addr = next_test_ip4();
         let ip_str = addr.ip.to_string();
         let port = addr.port;
@@ -1314,9 +1350,10 @@ mod test {
 
         // this test will never finish if the child doesn't wake up
         rx.recv();
-    })
+    }
 
-    iotest!(fn readwrite_timeouts() {
+    #[test]
+    fn readwrite_timeouts() {
         let addr = next_test_ip6();
         let ip_str = addr.ip.to_string();
         let port = addr.port;
@@ -1348,9 +1385,10 @@ mod test {
         tx.send(());
         s.set_timeout(None);
         assert_eq!(s.read([0, 0]), Ok(1));
-    })
+    }
 
-    iotest!(fn read_timeouts() {
+    #[test]
+    fn read_timeouts() {
         let addr = next_test_ip6();
         let ip_str = addr.ip.to_string();
         let port = addr.port;
@@ -1378,9 +1416,10 @@ mod test {
         for _ in range(0i, 100) {
             assert!(s.write([0, ..128 * 1024]).is_ok());
         }
-    })
+    }
 
-    iotest!(fn write_timeouts() {
+    #[test]
+    fn write_timeouts() {
         let addr = next_test_ip6();
         let ip_str = addr.ip.to_string();
         let port = addr.port;
@@ -1407,9 +1446,10 @@ mod test {
 
         tx.send(());
         assert!(s.read([0]).is_ok());
-    })
+    }
 
-    iotest!(fn timeout_concurrent_read() {
+    #[test]
+    fn timeout_concurrent_read() {
         let addr = next_test_ip6();
         let ip_str = addr.ip.to_string();
         let port = addr.port;
@@ -1436,9 +1476,10 @@ mod test {
         tx.send(());
 
         rx2.recv();
-    })
+    }
 
-    iotest!(fn clone_while_reading() {
+    #[test]
+    fn clone_while_reading() {
         let addr = next_test_ip6();
         let listen = TcpListener::bind(addr.ip.to_string().as_slice(), addr.port);
         let mut accept = listen.listen().unwrap();
@@ -1476,9 +1517,10 @@ mod test {
         tx.send(());
         rxdone.recv();
         rxdone.recv();
-    })
+    }
 
-    iotest!(fn clone_accept_smoke() {
+    #[test]
+    fn clone_accept_smoke() {
         let addr = next_test_ip4();
         let l = TcpListener::bind(addr.ip.to_string().as_slice(), addr.port);
         let mut a = l.listen().unwrap();
@@ -1493,9 +1535,10 @@ mod test {
 
         assert!(a.accept().is_ok());
         assert!(a2.accept().is_ok());
-    })
+    }
 
-    iotest!(fn clone_accept_concurrent() {
+    #[test]
+    fn clone_accept_concurrent() {
         let addr = next_test_ip4();
         let l = TcpListener::bind(addr.ip.to_string().as_slice(), addr.port);
         let a = l.listen().unwrap();
@@ -1516,18 +1559,20 @@ mod test {
 
         assert!(rx.recv().is_ok());
         assert!(rx.recv().is_ok());
-    })
+    }
 
-    iotest!(fn close_accept_smoke() {
+    #[test]
+    fn close_accept_smoke() {
         let addr = next_test_ip4();
         let l = TcpListener::bind(addr.ip.to_string().as_slice(), addr.port);
         let mut a = l.listen().unwrap();
 
         a.close_accept().unwrap();
         assert_eq!(a.accept().err().unwrap().kind, EndOfFile);
-    })
+    }
 
-    iotest!(fn close_accept_concurrent() {
+    #[test]
+    fn close_accept_concurrent() {
         let addr = next_test_ip4();
         let l = TcpListener::bind(addr.ip.to_string().as_slice(), addr.port);
         let a = l.listen().unwrap();
@@ -1541,5 +1586,5 @@ mod test {
         a2.close_accept().unwrap();
 
         assert_eq!(rx.recv().err().unwrap().kind, EndOfFile);
-    })
+    }
 }

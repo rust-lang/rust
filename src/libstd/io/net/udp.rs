@@ -264,18 +264,24 @@ impl Writer for UdpStream {
 #[allow(experimental)]
 mod test {
     use super::*;
-    use io::net::ip::{SocketAddr};
+    use prelude::*;
+    use io::*;
+    use io::net::ip::*;
+    use io::test::*;
 
     // FIXME #11530 this fails on android because tests are run as root
-    iotest!(fn bind_error() {
+    #[cfg_attr(any(windows, target_os = "android"), ignore)]
+    #[test]
+    fn bind_error() {
         let addr = SocketAddr { ip: Ipv4Addr(0, 0, 0, 0), port: 1 };
         match UdpSocket::bind(addr) {
             Ok(..) => fail!(),
             Err(e) => assert_eq!(e.kind, PermissionDenied),
         }
-    } #[cfg_attr(any(windows, target_os = "android"), ignore)])
+    }
 
-    iotest!(fn socket_smoke_test_ip4() {
+    #[test]
+    fn socket_smoke_test_ip4() {
         let server_ip = next_test_ip4();
         let client_ip = next_test_ip4();
         let (tx1, rx1) = channel();
@@ -308,9 +314,10 @@ mod test {
             Err(..) => fail!()
         }
         rx2.recv();
-    })
+    }
 
-    iotest!(fn socket_smoke_test_ip6() {
+    #[test]
+    fn socket_smoke_test_ip6() {
         let server_ip = next_test_ip6();
         let client_ip = next_test_ip6();
         let (tx, rx) = channel::<()>();
@@ -340,9 +347,10 @@ mod test {
             }
             Err(..) => fail!()
         }
-    })
+    }
 
-    iotest!(fn stream_smoke_test_ip4() {
+    #[test]
+    fn stream_smoke_test_ip4() {
         let server_ip = next_test_ip4();
         let client_ip = next_test_ip4();
         let (tx1, rx1) = channel();
@@ -378,9 +386,10 @@ mod test {
             Err(..) => fail!()
         }
         rx2.recv();
-    })
+    }
 
-    iotest!(fn stream_smoke_test_ip6() {
+    #[test]
+    fn stream_smoke_test_ip6() {
         let server_ip = next_test_ip6();
         let client_ip = next_test_ip6();
         let (tx1, rx1) = channel();
@@ -416,7 +425,7 @@ mod test {
             Err(..) => fail!()
         }
         rx2.recv();
-    })
+    }
 
     pub fn socket_name(addr: SocketAddr) {
         let server = UdpSocket::bind(addr);
@@ -431,15 +440,18 @@ mod test {
         assert_eq!(addr, so_name.unwrap());
     }
 
-    iotest!(fn socket_name_ip4() {
+    #[test]
+    fn socket_name_ip4() {
         socket_name(next_test_ip4());
-    })
+    }
 
-    iotest!(fn socket_name_ip6() {
+    #[test]
+    fn socket_name_ip6() {
         socket_name(next_test_ip6());
-    })
+    }
 
-    iotest!(fn udp_clone_smoke() {
+    #[test]
+    fn udp_clone_smoke() {
         let addr1 = next_test_ip4();
         let addr2 = next_test_ip4();
         let mut sock1 = UdpSocket::bind(addr1).unwrap();
@@ -467,9 +479,10 @@ mod test {
         let mut buf = [0, 0];
         assert_eq!(sock1.recv_from(buf), Ok((1, addr2)));
         rx2.recv();
-    })
+    }
 
-    iotest!(fn udp_clone_two_read() {
+    #[test]
+    fn udp_clone_two_read() {
         let addr1 = next_test_ip4();
         let addr2 = next_test_ip4();
         let mut sock1 = UdpSocket::bind(addr1).unwrap();
@@ -500,9 +513,10 @@ mod test {
         tx1.send(());
 
         rx.recv();
-    })
+    }
 
-    iotest!(fn udp_clone_two_write() {
+    #[test]
+    fn udp_clone_two_write() {
         let addr1 = next_test_ip4();
         let addr2 = next_test_ip4();
         let mut sock1 = UdpSocket::bind(addr1).unwrap();
@@ -543,10 +557,11 @@ mod test {
 
         rx.recv();
         serv_rx.recv();
-    })
+    }
 
     #[cfg(not(windows))] // FIXME #17553
-    iotest!(fn recv_from_timeout() {
+    #[test]
+    fn recv_from_timeout() {
         let addr1 = next_test_ip4();
         let addr2 = next_test_ip4();
         let mut a = UdpSocket::bind(addr1).unwrap();
@@ -580,9 +595,10 @@ mod test {
 
         // Make sure the child didn't die
         rx2.recv();
-    })
+    }
 
-    iotest!(fn send_to_timeout() {
+    #[test]
+    fn send_to_timeout() {
         let addr1 = next_test_ip4();
         let addr2 = next_test_ip4();
         let mut a = UdpSocket::bind(addr1).unwrap();
@@ -596,5 +612,5 @@ mod test {
                 Err(e) => fail!("other error: {}", e),
             }
         }
-    })
+    }
 }

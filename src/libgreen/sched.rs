@@ -1024,8 +1024,6 @@ fn new_sched_rng() -> XorShiftRng {
 
 #[cfg(test)]
 mod test {
-    use rustuv;
-
     use std::rt::task::TaskOpts;
     use std::rt::task::Task;
     use std::rt::local::Local;
@@ -1276,28 +1274,6 @@ mod test {
     //        test_schedule_home_states();
     //    }
     //}
-
-    #[test]
-    fn test_io_callback() {
-        use std::io::timer;
-
-        let mut pool = SchedPool::new(PoolConfig {
-            threads: 2,
-            event_loop_factory: rustuv::event_loop,
-        });
-
-        // This is a regression test that when there are no schedulable tasks in
-        // the work queue, but we are performing I/O, that once we do put
-        // something in the work queue again the scheduler picks it up and
-        // doesn't exit before emptying the work queue
-        pool.spawn(TaskOpts::new(), proc() {
-            spawn(proc() {
-                timer::sleep(Duration::milliseconds(10));
-            });
-        });
-
-        pool.shutdown();
-    }
 
     #[test]
     fn wakeup_across_scheds() {

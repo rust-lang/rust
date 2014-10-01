@@ -662,39 +662,52 @@ impl Drop for Process {
 
 #[cfg(test)]
 mod tests {
+    #![allow(unused_imports)]
+
     extern crate native;
-    use io::process::{Command, Process};
+
+    use super::*;
     use prelude::*;
+    use io::timer::*;
+    use io::*;
+    use io::fs::PathExtensions;
+    use time::Duration;
+    use str;
+    use rt::running_on_valgrind;
 
     // FIXME(#10380) these tests should not all be ignored on android.
 
     #[cfg(not(target_os="android"))]
-    iotest!(fn smoke() {
+    #[test]
+    fn smoke() {
         let p = Command::new("true").spawn();
         assert!(p.is_ok());
         let mut p = p.unwrap();
         assert!(p.wait().unwrap().success());
-    })
+    }
 
     #[cfg(not(target_os="android"))]
-    iotest!(fn smoke_failure() {
+    #[test]
+    fn smoke_failure() {
         match Command::new("if-this-is-a-binary-then-the-world-has-ended").spawn() {
             Ok(..) => fail!(),
             Err(..) => {}
         }
-    })
+    }
 
     #[cfg(not(target_os="android"))]
-    iotest!(fn exit_reported_right() {
+    #[test]
+    fn exit_reported_right() {
         let p = Command::new("false").spawn();
         assert!(p.is_ok());
         let mut p = p.unwrap();
         assert!(p.wait().unwrap().matches_exit_status(1));
         drop(p.wait().clone());
-    })
+    }
 
     #[cfg(all(unix, not(target_os="android")))]
-    iotest!(fn signal_reported_right() {
+    #[test]
+    fn signal_reported_right() {
         let p = Command::new("/bin/sh").arg("-c").arg("kill -1 $$").spawn();
         assert!(p.is_ok());
         let mut p = p.unwrap();
@@ -702,7 +715,7 @@ mod tests {
             process::ExitSignal(1) => {},
             result => fail!("not terminated by signal 1 (instead, {})", result),
         }
-    })
+    }
 
     pub fn read_all(input: &mut Reader) -> String {
         input.read_to_string().unwrap()
@@ -719,23 +732,26 @@ mod tests {
     }
 
     #[cfg(not(target_os="android"))]
-    iotest!(fn stdout_works() {
+    #[test]
+    fn stdout_works() {
         let mut cmd = Command::new("echo");
         cmd.arg("foobar").stdout(CreatePipe(false, true));
         assert_eq!(run_output(cmd), "foobar\n".to_string());
-    })
+    }
 
     #[cfg(all(unix, not(target_os="android")))]
-    iotest!(fn set_cwd_works() {
+    #[test]
+    fn set_cwd_works() {
         let mut cmd = Command::new("/bin/sh");
         cmd.arg("-c").arg("pwd")
            .cwd(&Path::new("/"))
            .stdout(CreatePipe(false, true));
         assert_eq!(run_output(cmd), "/\n".to_string());
-    })
+    }
 
     #[cfg(all(unix, not(target_os="android")))]
-    iotest!(fn stdin_works() {
+    #[test]
+    fn stdin_works() {
         let mut p = Command::new("/bin/sh")
                             .arg("-c").arg("read line; echo $line")
                             .stdin(CreatePipe(true, false))
@@ -746,21 +762,24 @@ mod tests {
         let out = read_all(p.stdout.get_mut_ref() as &mut Reader);
         assert!(p.wait().unwrap().success());
         assert_eq!(out, "foobar\n".to_string());
-    })
+    }
 
     #[cfg(not(target_os="android"))]
-    iotest!(fn detach_works() {
+    #[test]
+    fn detach_works() {
         let mut p = Command::new("true").detached().spawn().unwrap();
         assert!(p.wait().unwrap().success());
-    })
+    }
 
     #[cfg(windows)]
-    iotest!(fn uid_fails_on_windows() {
+    #[test]
+    fn uid_fails_on_windows() {
         assert!(Command::new("test").uid(10).spawn().is_err());
-    })
+    }
 
     #[cfg(all(unix, not(target_os="android")))]
-    iotest!(fn uid_works() {
+    #[test]
+    fn uid_works() {
         use libc;
         let mut p = Command::new("/bin/sh")
                             .arg("-c").arg("true")
@@ -768,36 +787,40 @@ mod tests {
                             .gid(unsafe { libc::getgid() as uint })
                             .spawn().unwrap();
         assert!(p.wait().unwrap().success());
-    })
+    }
 
     #[cfg(all(unix, not(target_os="android")))]
-    iotest!(fn uid_to_root_fails() {
+    #[test]
+    fn uid_to_root_fails() {
         use libc;
 
         // if we're already root, this isn't a valid test. Most of the bots run
         // as non-root though (android is an exception).
         if unsafe { libc::getuid() == 0 } { return }
         assert!(Command::new("/bin/ls").uid(0).gid(0).spawn().is_err());
-    })
+    }
 
     #[cfg(not(target_os="android"))]
-    iotest!(fn test_process_status() {
+    #[test]
+    fn test_process_status() {
         let mut status = Command::new("false").status().unwrap();
         assert!(status.matches_exit_status(1));
 
         status = Command::new("true").status().unwrap();
         assert!(status.success());
-    })
+    }
 
-    iotest!(fn test_process_output_fail_to_start() {
+    #[test]
+    fn test_process_output_fail_to_start() {
         match Command::new("/no-binary-by-this-name-should-exist").output() {
             Err(e) => assert_eq!(e.kind, FileNotFound),
             Ok(..) => fail!()
         }
-    })
+    }
 
     #[cfg(not(target_os="android"))]
-    iotest!(fn test_process_output_output() {
+    #[test]
+    fn test_process_output_output() {
         let ProcessOutput {status, output, error}
              = Command::new("echo").arg("hello").output().unwrap();
         let output_str = str::from_utf8(output.as_slice()).unwrap();
@@ -808,33 +831,37 @@ mod tests {
         if !running_on_valgrind() {
             assert_eq!(error, Vec::new());
         }
-    })
+    }
 
     #[cfg(not(target_os="android"))]
-    iotest!(fn test_process_output_error() {
+    #[test]
+    fn test_process_output_error() {
         let ProcessOutput {status, output, error}
              = Command::new("mkdir").arg(".").output().unwrap();
 
         assert!(status.matches_exit_status(1));
         assert_eq!(output, Vec::new());
         assert!(!error.is_empty());
-    })
+    }
 
     #[cfg(not(target_os="android"))]
-    iotest!(fn test_finish_once() {
+    #[test]
+    fn test_finish_once() {
         let mut prog = Command::new("false").spawn().unwrap();
         assert!(prog.wait().unwrap().matches_exit_status(1));
-    })
+    }
 
     #[cfg(not(target_os="android"))]
-    iotest!(fn test_finish_twice() {
+    #[test]
+    fn test_finish_twice() {
         let mut prog = Command::new("false").spawn().unwrap();
         assert!(prog.wait().unwrap().matches_exit_status(1));
         assert!(prog.wait().unwrap().matches_exit_status(1));
-    })
+    }
 
     #[cfg(not(target_os="android"))]
-    iotest!(fn test_wait_with_output_once() {
+    #[test]
+    fn test_wait_with_output_once() {
         let prog = Command::new("echo").arg("hello").spawn().unwrap();
         let ProcessOutput {status, output, error} = prog.wait_with_output().unwrap();
         let output_str = str::from_utf8(output.as_slice()).unwrap();
@@ -845,7 +872,7 @@ mod tests {
         if !running_on_valgrind() {
             assert_eq!(error, Vec::new());
         }
-    })
+    }
 
     #[cfg(all(unix, not(target_os="android")))]
     pub fn pwd_cmd() -> Command {
@@ -865,7 +892,8 @@ mod tests {
         cmd
     }
 
-    iotest!(fn test_keep_current_working_dir() {
+    #[test]
+    fn test_keep_current_working_dir() {
         use os;
         let prog = pwd_cmd().spawn().unwrap();
 
@@ -878,9 +906,10 @@ mod tests {
 
         assert_eq!(parent_stat.unstable.device, child_stat.unstable.device);
         assert_eq!(parent_stat.unstable.inode, child_stat.unstable.inode);
-    })
+    }
 
-    iotest!(fn test_change_working_directory() {
+    #[test]
+    fn test_change_working_directory() {
         use os;
         // test changing to the parent of os::getcwd() because we know
         // the path exists (and os::getcwd() is not expected to be root)
@@ -895,7 +924,7 @@ mod tests {
 
         assert_eq!(parent_stat.unstable.device, child_stat.unstable.device);
         assert_eq!(parent_stat.unstable.inode, child_stat.unstable.inode);
-    })
+    }
 
     #[cfg(all(unix, not(target_os="android")))]
     pub fn env_cmd() -> Command {
@@ -916,7 +945,8 @@ mod tests {
     }
 
     #[cfg(not(target_os="android"))]
-    iotest!(fn test_inherit_env() {
+    #[test]
+    fn test_inherit_env() {
         use os;
         if running_on_valgrind() { return; }
 
@@ -930,9 +960,10 @@ mod tests {
                     output.as_slice()
                           .contains(format!("{}={}", *k, *v).as_slice()));
         }
-    })
+    }
     #[cfg(target_os="android")]
-    iotest!(fn test_inherit_env() {
+    #[test]
+    fn test_inherit_env() {
         use os;
         if running_on_valgrind() { return; }
 
@@ -953,9 +984,10 @@ mod tests {
                                                 *v).as_slice()));
             }
         }
-    })
+    }
 
-    iotest!(fn test_override_env() {
+    #[test]
+    fn test_override_env() {
         use os;
         let mut new_env = vec![("RUN_TEST_NEW_ENV", "123")];
 
@@ -978,18 +1010,20 @@ mod tests {
 
         assert!(output.as_slice().contains("RUN_TEST_NEW_ENV=123"),
                 "didn't find RUN_TEST_NEW_ENV inside of:\n\n{}", output);
-    })
+    }
 
-    iotest!(fn test_add_to_env() {
+    #[test]
+    fn test_add_to_env() {
         let prog = env_cmd().env("RUN_TEST_NEW_ENV", "123").spawn().unwrap();
         let result = prog.wait_with_output().unwrap();
         let output = str::from_utf8_lossy(result.output.as_slice()).into_string();
 
         assert!(output.as_slice().contains("RUN_TEST_NEW_ENV=123"),
                 "didn't find RUN_TEST_NEW_ENV inside of:\n\n{}", output);
-    })
+    }
 
-    iotest!(fn test_remove_from_env() {
+    #[test]
+    fn test_remove_from_env() {
         use os;
 
         // save original environment
@@ -1012,7 +1046,7 @@ mod tests {
 
         assert!(!output.as_slice().contains("RUN_TEST_NEW_ENV"),
                 "found RUN_TEST_NEW_ENV inside of:\n\n{}", output);
-    })
+    }
 
     #[cfg(unix)]
     pub fn sleeper() -> Process {
@@ -1026,20 +1060,23 @@ mod tests {
         Command::new("ping").arg("127.0.0.1").arg("-n").arg("1000").spawn().unwrap()
     }
 
-    iotest!(fn test_kill() {
+    #[test]
+    fn test_kill() {
         let mut p = sleeper();
         Process::kill(p.id(), PleaseExitSignal).unwrap();
         assert!(!p.wait().unwrap().success());
-    })
+    }
 
-    iotest!(fn test_exists() {
+    #[test]
+    fn test_exists() {
         let mut p = sleeper();
         assert!(Process::kill(p.id(), 0).is_ok());
         p.signal_kill().unwrap();
         assert!(!p.wait().unwrap().success());
-    })
+    }
 
-    iotest!(fn test_zero() {
+    #[test]
+    fn test_zero() {
         let mut p = sleeper();
         p.signal_kill().unwrap();
         for _ in range(0i, 20) {
@@ -1050,9 +1087,10 @@ mod tests {
             timer::sleep(Duration::milliseconds(100));
         }
         fail!("never saw the child go away");
-    })
+    }
 
-    iotest!(fn wait_timeout() {
+    #[test]
+    fn wait_timeout() {
         let mut p = sleeper();
         p.set_timeout(Some(10));
         assert_eq!(p.wait().err().unwrap().kind, TimedOut);
@@ -1060,9 +1098,10 @@ mod tests {
         p.signal_kill().unwrap();
         p.set_timeout(None);
         assert!(p.wait().is_ok());
-    })
+    }
 
-    iotest!(fn wait_timeout2() {
+    #[test]
+    fn wait_timeout2() {
         let (tx, rx) = channel();
         let tx2 = tx.clone();
         spawn(proc() {
@@ -1081,19 +1120,21 @@ mod tests {
         });
         rx.recv();
         rx.recv();
-    })
+    }
 
-    iotest!(fn forget() {
+    #[test]
+    fn forget() {
         let p = sleeper();
         let id = p.id();
         p.forget();
         assert!(Process::kill(id, 0).is_ok());
         assert!(Process::kill(id, PleaseExitSignal).is_ok());
-    })
+    }
 
-    iotest!(fn dont_close_fd_on_command_spawn() {
+    #[test]
+    fn dont_close_fd_on_command_spawn() {
         use std::rt::rtio::{Truncate, Write};
-        use native::io::file;
+        use self::native::io::file;
 
         let path = if cfg!(windows) {
             Path::new("NUL")
@@ -1110,7 +1151,7 @@ mod tests {
         let _ = cmd.stdout(InheritFd(fdes.fd()));
         assert!(cmd.status().unwrap().success());
         assert!(fdes.inner_write("extra write\n".as_bytes()).is_ok());
-    })
+    }
 
     #[test]
     #[cfg(windows)]

@@ -18,42 +18,6 @@ use prelude::*;
 use std::io::net::ip::*;
 use sync::atomic::{AtomicUint, INIT_ATOMIC_UINT, Relaxed};
 
-macro_rules! iotest (
-    { fn $name:ident() $b:block $(#[$a:meta])* } => (
-        mod $name {
-            #![allow(unused_imports)]
-
-            use super::super::*;
-            use super::*;
-            use io;
-            use prelude::*;
-            use io::*;
-            use io::fs::*;
-            use io::test::*;
-            use io::net::tcp::*;
-            use io::net::ip::*;
-            use io::net::udp::*;
-            #[cfg(unix)]
-            use io::net::pipe::*;
-            use io::timer::*;
-            use io::process::*;
-            use rt::running_on_valgrind;
-            use str;
-            use time::Duration;
-
-            fn f() $b
-
-            $(#[$a])* #[test] fn green() { f() }
-            $(#[$a])* #[test] fn native() {
-                use native;
-                let (tx, rx) = channel();
-                native::task::spawn(proc() { tx.send(f()) });
-                rx.recv();
-            }
-        }
-    )
-)
-
 /// Get a port number, starting at 9600, for use in tests
 pub fn next_test_port() -> u16 {
     static mut next_offset: AtomicUint = INIT_ATOMIC_UINT;

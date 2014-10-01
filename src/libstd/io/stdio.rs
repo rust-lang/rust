@@ -382,14 +382,17 @@ impl Writer for StdWriter {
 
 #[cfg(test)]
 mod tests {
-    iotest!(fn smoke() {
+    use super::*;
+    use prelude::*;
+
+    fn smoke() {
         // Just make sure we can acquire handles
         stdin();
         stdout();
         stderr();
-    })
+    }
 
-    iotest!(fn capture_stdout() {
+    fn capture_stdout() {
         use io::{ChanReader, ChanWriter};
 
         let (tx, rx) = channel();
@@ -399,9 +402,9 @@ mod tests {
             println!("hello!");
         });
         assert_eq!(r.read_to_string().unwrap(), "hello!\n".to_string());
-    })
+    }
 
-    iotest!(fn capture_stderr() {
+    fn capture_stderr() {
         use realstd::comm::channel;
         use realstd::io::{Writer, ChanReader, ChanWriter, Reader};
 
@@ -413,5 +416,5 @@ mod tests {
         });
         let s = r.read_to_string().unwrap();
         assert!(s.as_slice().contains("my special message"));
-    })
+    }
 }

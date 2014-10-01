@@ -57,8 +57,6 @@ Source layout:
 | `test/auxiliary`    | - Dependencies of tests                                   |
 | ------------------- | --------------------------------------------------------- |
 | `librustdoc/`       | The Rust API documentation tool                           |
-| `libuv/`            | The libuv submodule                                       |
-| `librustuv/`        | Rust libuv support code                                   |
 | ------------------- | --------------------------------------------------------- |
 | `llvm/`             | The LLVM submodule                                        |
 | `rustllvm/`         | LLVM support code                                         |
