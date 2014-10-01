@@ -30,7 +30,6 @@ use std::rt::rtio::{mod, IoResult, IoError};
 use std::num;
 
 // Local re-exports
-pub use self::file::FileDesc;
 pub use self::process::Process;
 
 mod helper_thread;
@@ -40,13 +39,6 @@ pub mod addrinfo;
 pub mod net;
 pub mod process;
 mod util;
-
-#[cfg(unix)]
-#[path = "file_unix.rs"]
-pub mod file;
-#[cfg(windows)]
-#[path = "file_windows.rs"]
-pub mod file;
 
 #[cfg(any(target_os = "macos",
           target_os = "ios",
@@ -89,25 +81,6 @@ fn last_error() -> IoError {
         code: os::errno() as uint,
         extra: 0,
         detail: Some(os::error_string(errno)),
-    }
-}
-
-// unix has nonzero values as errors
-fn mkerr_libc <Int: num::Zero>(ret: Int) -> IoResult<()> {
-    if !ret.is_zero() {
-        Err(last_error())
-    } else {
-        Ok(())
-    }
-}
-
-// windows has zero values as errors
-#[cfg(windows)]
-fn mkerr_winbool(ret: libc::c_int) -> IoResult<()> {
-    if ret == 0 {
-        Err(last_error())
-    } else {
-        Ok(())
     }
 }
 
@@ -197,62 +170,6 @@ impl rtio::IoFactory for IoFactory {
         -> IoResult<Vec<rtio::AddrinfoInfo>>
     {
         addrinfo::GetAddrInfoRequest::run(host, servname, hint)
-    }
-
-    // filesystem operations
-    fn fs_from_raw_fd(&mut self, fd: c_int, close: rtio::CloseBehavior)
-                      -> Box<rtio::RtioFileStream + Send> {
-        let close = match close {
-            rtio::CloseSynchronously | rtio::CloseAsynchronously => true,
-            rtio::DontClose => false
-        };
-        box file::FileDesc::new(fd, close) as Box<rtio::RtioFileStream + Send>
-    }
-    fn fs_open(&mut self, path: &CString, fm: rtio::FileMode,
-               fa: rtio::FileAccess)
-        -> IoResult<Box<rtio::RtioFileStream + Send>>
-    {
-        file::open(path, fm, fa).map(|fd| box fd as Box<rtio::RtioFileStream + Send>)
-    }
-    fn fs_unlink(&mut self, path: &CString) -> IoResult<()> {
-        file::unlink(path)
-    }
-    fn fs_stat(&mut self, path: &CString) -> IoResult<rtio::FileStat> {
-        file::stat(path)
-    }
-    fn fs_mkdir(&mut self, path: &CString, mode: uint) -> IoResult<()> {
-        file::mkdir(path, mode)
-    }
-    fn fs_chmod(&mut self, path: &CString, mode: uint) -> IoResult<()> {
-        file::chmod(path, mode)
-    }
-    fn fs_rmdir(&mut self, path: &CString) -> IoResult<()> {
-        file::rmdir(path)
-    }
-    fn fs_rename(&mut self, path: &CString, to: &CString) -> IoResult<()> {
-        file::rename(path, to)
-    }
-    fn fs_readdir(&mut self, path: &CString, _flags: c_int) -> IoResult<Vec<CString>> {
-        file::readdir(path)
-    }
-    fn fs_lstat(&mut self, path: &CString) -> IoResult<rtio::FileStat> {
-        file::lstat(path)
-    }
-    fn fs_chown(&mut self, path: &CString, uid: int, gid: int) -> IoResult<()> {
-        file::chown(path, uid, gid)
-    }
-    fn fs_readlink(&mut self, path: &CString) -> IoResult<CString> {
-        file::readlink(path)
-    }
-    fn fs_symlink(&mut self, src: &CString, dst: &CString) -> IoResult<()> {
-        file::symlink(src, dst)
-    }
-    fn fs_link(&mut self, src: &CString, dst: &CString) -> IoResult<()> {
-        file::link(src, dst)
-    }
-    fn fs_utime(&mut self, src: &CString, atime: u64,
-                mtime: u64) -> IoResult<()> {
-        file::utime(src, atime, mtime)
     }
 
     // misc

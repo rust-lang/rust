@@ -56,7 +56,7 @@ use std::sync::atomic;
 use std::comm;
 
 use io::c;
-use io::file::FileDesc;
+use platform_imp::fs::FileDesc;
 use io::helper_thread::Helper;
 
 helper_init!(static HELPER: Helper<Req>)
