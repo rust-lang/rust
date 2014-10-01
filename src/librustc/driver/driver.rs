@@ -615,6 +615,12 @@ pub fn stop_after_phase_5(sess: &Session) -> bool {
     return false;
 }
 
+fn escape_dep_filename(filename: &str) -> String {
+    // Apparently clang and gcc *only* escape spaces:
+    // http://llvm.org/klaus/clang/commit/9d50634cfc268ecc9a7250226dd5ca0e945240d4
+    filename.replace(" ", "\\ ")
+}
+
 fn write_out_deps(sess: &Session,
                   input: &Input,
                   outputs: &OutputFilenames,
@@ -658,7 +664,7 @@ fn write_out_deps(sess: &Session,
         // write Makefile-compatible dependency rules
         let files: Vec<String> = sess.codemap().files.borrow()
                                    .iter().filter(|fmap| fmap.is_real_file())
-                                   .map(|fmap| fmap.name.to_string())
+                                   .map(|fmap| escape_dep_filename(fmap.name.as_slice()))
                                    .collect();
         let mut file = try!(io::File::create(&deps_filename));
         for path in out_filenames.iter() {
