@@ -659,14 +659,12 @@ error: mismatched types: expected `int` but found `()` (expected int but found (
 ```
 
 We expected an integer, but we got `()`. `()` is pronounced 'unit', and is a
-special type in Rust's type system. `()` is different than `null` in other
-languages, because `()` is distinct from other types. For example, in C, `null`
-is a valid value for a variable of type `int`. In Rust, `()` is _not_ a valid
-value for a variable of type `int`. It's only a valid value for variables of
-the type `()`, which aren't very useful. Remember how we said statements don't
-return a value? Well, that's the purpose of unit in this case. The semicolon
-turns any expression into a statement by throwing away its value and returning
-unit instead.
+special type in Rust's type system. In Rust, `()` is _not_ a valid value for a
+variable of type `int`. It's only a valid value for variables of the type `()`,
+which aren't very useful. Remember how we said statements don't return a value?
+Well, that's the purpose of unit in this case. The semicolon turns any
+expression into a statement by throwing away its value and returning unit
+instead.
 
 There's one more time in which you won't see a semicolon at the end of a line
 of Rust code. For that, we'll need our next concept: functions.
