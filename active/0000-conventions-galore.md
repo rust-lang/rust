@@ -159,8 +159,8 @@ convention avoids grammatical verbosity and gives Rust code a distinctive flavor
 
 This RFC proposes to amend the convention to further say: if there is a single
 method that is the dominant functionality of the trait, consider using the same
-name for the trait itself. This is already the case for `Clone` and `Show`, for
-example.
+name for the trait itself. This is already the case for `Clone` and `ToCStr`,
+for example.
 
 According to these rules, `Encodable` should be `Encode`.
 
@@ -186,7 +186,7 @@ This RFC proposes that:
   the plural form: use `unused_variables` rather than `unused_variable`.
   This makes `#[allow(unused_variables)]` read correctly.
 
-* Use underscores to separate words in the same way you would for function names.
+* Use snake case in the same way you would for function names.
 
 ## Suffix ordering
 
