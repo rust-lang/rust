@@ -1025,10 +1025,10 @@ fn link_args(cmd: &mut Command,
         cmd.arg("-Wl,--nxcompat");
 
         // Mark all dynamic libraries and executables as compatible with ASLR
-        // FIXME #17098: ASLR breaks gdb
-        if sess.opts.debuginfo == NoDebugInfo {
-            cmd.arg("-Wl,--dynamicbase");
-        }
+        // FIXME #16514: ASLR is disabled on Windows due to MinGW-w64 bugs:
+        // FIXME #17098: ASLR breaks gdb on Windows
+        // FIXME #17684: ASLR breaks thread-local storage on Windows
+        //cmd.arg("-Wl,--dynamicbase");
 
         // Mark all dynamic libraries and executables as compatible with the larger 4GiB address
         // space available to x86 Windows binaries on x86_64.
