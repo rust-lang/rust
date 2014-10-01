@@ -1678,11 +1678,11 @@ just `int`s.
 
 Rust provides a method on these `IoResult<T>`s called `ok()`, which does the
 same thing as our `match` statement, but assuming that we have a valid value.
-If we don't, it will terminate our program. In this case, if we can't get
-input, our program doesn't work, so we're okay with that. In most cases, we
-would want to handle the error case explicitly. The result of `ok()` has a
-method, `expect()`, which allows us to give an error message if this crash
-happens.
+We then call `expect()` on the result, which will terminate our program if we
+don't have a valid value. In this case, if we can't get input, our program
+doesn't work, so we're okay with that. In most cases, we would want to handle
+the error case explicitly. `expect()` allows us to give an error message if
+this crash happens.
 
 We will cover the exact details of how all of this works later in the Guide.
 For now, this gives you enough of a basic understanding to work with.
