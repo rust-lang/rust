@@ -196,8 +196,8 @@ pub fn check_object_safety(tcx: &ty::ctxt, object_trait: &ty::TyTrait, span: Spa
         let check_for_self_ty = |ty| {
             if ty::type_has_self(ty) {
                 Some(format!(
-                    "cannot call a method (`{}`) whose type (`{}`) contains \
-                     a self-type through a trait object",
+                    "cannot call a method (`{}`) whose type contains \
+                     a self-type (`{}`) through a trait object",
                     method_name, ty_to_string(tcx, ty)))
             } else {
                 None

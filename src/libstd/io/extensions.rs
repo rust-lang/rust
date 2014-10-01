@@ -172,7 +172,7 @@ pub fn u64_from_be_bytes(data: &[u8], start: uint, size: uint) -> u64 {
 mod test {
     use prelude::*;
     use io;
-    use io::{MemReader, MemWriter};
+    use io::{MemReader, MemWriter, BytesReader};
 
     struct InitialZeroByteReader {
         count: int,
@@ -189,6 +189,7 @@ mod test {
             }
         }
     }
+    impl BytesReader for InitialZeroByteReader {}
 
     struct EofReader;
 
@@ -197,6 +198,7 @@ mod test {
             Err(io::standard_error(io::EndOfFile))
         }
     }
+    impl BytesReader for EofReader {}
 
     struct ErroringReader;
 
@@ -205,6 +207,7 @@ mod test {
             Err(io::standard_error(io::InvalidInput))
         }
     }
+    impl BytesReader for ErroringReader {}
 
     struct PartialReader {
         count: int,
