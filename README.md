@@ -51,12 +51,27 @@ into Rust.
 * Fill in the RFC
 * Submit a pull request. The pull request is the time to get review of 
 the design from the larger community.
-* Build consensus and integrate feedback. RFCs that have broad support 
-are much more likely to make progress than those that don't receive any 
-comments.
+* During Rust triage, the pull request will either be closed or
+assigned a shepherd. The shepherd will help to move the RFC forward,
+* Build consensus and integrate feedback. RFCs that have broad support
+are much more likely to make progress than those that don't receive
+any comments. The shepherd assigned to your RFC should help you get
+feedback from Rust developers as well.
 * Eventually, somebody on the [core team] will either accept the RFC by 
 merging the pull request and assigning the RFC a number, at which point 
 the RFC is 'active', or reject it by closing the pull request.
+
+## The role of the shepherd
+
+During triage, every RFC will either be closed or assigned a shepherd.
+The role of the shepherd is to move the RFC through the process. This
+starts with simply reading the RFC in detail and providing initial
+feedback. The shepherd should also solicit feedback from people who
+are likely to have strong opinions about the RFC. Finally, when this
+feedback has been incorporated and the RFC seems to be in a steady
+state, the shepherd will bring it to the meeting. In general, the idea
+here is to "front-load" as much of the feedback as possible before the
+point where we actually reach a decision.
 
 ## The RFC life-cycle
 
@@ -124,7 +139,7 @@ state and that the team agrees we will not be adopting.
 At both meetings, we try to only consider RFC’s for which at least a
 few participants have read the corresponding discussion thread and are
 prepared to represent the viewpoints presented there. One participant
-should act as a "champion" for the feature.  The "champion" need not
+should act as a "shepherd" for the feature.  The shepherd need not
 *personally* desire the feature; they just need to act to represent
 its virtues and the community’s desire for it.
 
