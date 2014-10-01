@@ -14,12 +14,18 @@
 
 pub struct Struct;
 
+impl Copy for Struct {}
+
 pub enum Unit {
     UnitVariant,
     Argument(Struct)
 }
 
+impl Copy for Unit {}
+
 pub struct TupleStruct(pub uint, pub &'static str);
+
+impl Copy for TupleStruct {}
 
 // used by the cfail test
 
@@ -27,7 +33,12 @@ pub struct StructWithFields {
     foo: int,
 }
 
+impl Copy for StructWithFields {}
+
 pub enum EnumWithVariants {
     EnumVariant,
     EnumVariantArg(int)
 }
+
+impl Copy for EnumWithVariants {}
+

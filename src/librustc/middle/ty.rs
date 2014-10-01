@@ -35,6 +35,7 @@ pub use self::ImplOrTraitItem::*;
 pub use self::BoundRegion::*;
 pub use self::sty::*;
 pub use self::IntVarValue::*;
+pub use self::CopyImplementationError::*;
 
 use back::svh::Svh;
 use session::Session;
@@ -51,6 +52,7 @@ use middle::resolve;
 use middle::resolve_lifetime;
 use middle::stability;
 use middle::subst::{mod, Subst, Substs, VecPerParamSpace};
+use middle::traits::ObligationCause;
 use middle::traits;
 use middle::ty;
 use middle::typeck;
@@ -70,7 +72,7 @@ use std::hash::{Hash, sip, Writer};
 use std::mem;
 use std::ops;
 use std::rc::Rc;
-use std::collections::hash_map::{Occupied, Vacant};
+use std::collections::hash_map::{HashMap, Occupied, Vacant};
 use arena::TypedArena;
 use syntax::abi;
 use syntax::ast::{CrateNum, DefId, FnStyle, Ident, ItemTrait, LOCAL_CRATE};
@@ -79,7 +81,7 @@ use syntax::ast::{Onceness, StmtExpr, StmtSemi, StructField, UnnamedField};
 use syntax::ast::{Visibility};
 use syntax::ast_util::{mod, is_local, lit_is_str, local_def, PostExpansionMethod};
 use syntax::attr::{mod, AttrMetaMethods};
-use syntax::codemap::Span;
+use syntax::codemap::{DUMMY_SP, Span};
 use syntax::parse::token::{mod, InternedString};
 use syntax::{ast, ast_map};
 use std::collections::enum_set::{EnumSet, CLike};
@@ -96,11 +98,15 @@ pub struct field<'tcx> {
     pub mt: mt<'tcx>
 }
 
+impl<'tcx> Copy for field<'tcx> {}
+
 #[deriving(Clone, Show)]
 pub enum ImplOrTraitItemContainer {
     TraitContainer(ast::DefId),
     ImplContainer(ast::DefId),
 }
+
+impl Copy for ImplOrTraitItemContainer {}
 
 impl ImplOrTraitItemContainer {
     pub fn id(&self) -> ast::DefId {
@@ -161,6 +167,8 @@ pub enum ImplOrTraitItemId {
     MethodTraitItemId(ast::DefId),
     TypeTraitItemId(ast::DefId),
 }
+
+impl Copy for ImplOrTraitItemId {}
 
 impl ImplOrTraitItemId {
     pub fn def_id(&self) -> ast::DefId {
@@ -223,11 +231,15 @@ pub struct AssociatedType {
     pub container: ImplOrTraitItemContainer,
 }
 
+impl Copy for AssociatedType {}
+
 #[deriving(Clone, PartialEq, Eq, Hash, Show)]
 pub struct mt<'tcx> {
     pub ty: Ty<'tcx>,
     pub mutbl: ast::Mutability,
 }
+
+impl<'tcx> Copy for mt<'tcx> {}
 
 #[deriving(Clone, PartialEq, Eq, Hash, Encodable, Decodable, Show)]
 pub enum TraitStore {
@@ -237,6 +249,8 @@ pub enum TraitStore {
     RegionTraitStore(Region, ast::Mutability),
 }
 
+impl Copy for TraitStore {}
+
 #[deriving(Clone, Show)]
 pub struct field_ty {
     pub name: Name,
@@ -244,6 +258,8 @@ pub struct field_ty {
     pub vis: ast::Visibility,
     pub origin: ast::DefId,  // The DefId of the struct in which the field is declared.
 }
+
+impl Copy for field_ty {}
 
 // Contains information needed to resolve types and (in the future) look up
 // the types of AST nodes.
@@ -254,10 +270,14 @@ pub struct creader_cache_key {
     pub len: uint
 }
 
+impl Copy for creader_cache_key {}
+
 pub enum ast_ty_to_ty_cache_entry<'tcx> {
     atttce_unresolved,  /* not resolved yet */
     atttce_resolved(Ty<'tcx>)  /* resolved to a type, irrespective of region */
 }
+
+impl<'tcx> Copy for ast_ty_to_ty_cache_entry<'tcx> {}
 
 #[deriving(Clone, PartialEq, Decodable, Encodable)]
 pub struct ItemVariances {
@@ -272,6 +292,8 @@ pub enum Variance {
     Contravariant,  // T<A> <: T<B> iff B <: A -- e.g., function param type
     Bivariant,      // T<A> <: T<B>            -- e.g., unused type parameter
 }
+
+impl Copy for Variance {}
 
 #[deriving(Clone, Show)]
 pub enum AutoAdjustment<'tcx> {
@@ -427,6 +449,8 @@ pub struct TransmuteRestriction<'tcx> {
     pub id: ast::NodeId,
 }
 
+impl<'tcx> Copy for TransmuteRestriction<'tcx> {}
+
 /// The data structure to keep track of all the information that typechecker
 /// generates so that so that it can be reused and doesn't have to be redone
 /// later on.
@@ -579,6 +603,9 @@ pub struct ctxt<'tcx> {
 
     /// Caches the representation hints for struct definitions.
     pub repr_hint_cache: RefCell<DefIdMap<Rc<Vec<attr::ReprAttr>>>>,
+
+    /// Caches whether types move by default.
+    pub type_moves_by_default_cache: RefCell<HashMap<Ty<'tcx>,bool>>,
 }
 
 // Flags that we track on types. These flags are propagated upwards
@@ -598,6 +625,8 @@ bitflags! {
         const NEEDS_SUBST   = HAS_PARAMS.bits | HAS_SELF.bits | HAS_REGIONS.bits,
     }
 }
+
+impl Copy for TypeFlags {}
 
 #[deriving(Show)]
 pub struct TyS<'tcx> {
@@ -640,6 +669,7 @@ impl<'tcx> PartialEq for InternedTy<'tcx> {
         self.ty.sty == other.ty.sty
     }
 }
+
 impl<'tcx> Eq for InternedTy<'tcx> {}
 
 impl<'tcx, S: Writer> Hash<S> for InternedTy<'tcx> {
@@ -733,6 +763,8 @@ impl<'tcx> FnOutput<'tcx> {
     }
 }
 
+impl<'tcx> Copy for FnOutput<'tcx> {}
+
 /// Signature of a function type, which I have arbitrarily
 /// decided to use to refer to the input/output types.
 ///
@@ -756,6 +788,8 @@ pub struct ParamTy {
     pub idx: uint,
     pub def_id: DefId
 }
+
+impl Copy for ParamTy {}
 
 /// A [De Bruijn index][dbi] is a standard means of representing
 /// regions (and perhaps later types) in a higher-ranked setting. In
@@ -851,6 +885,8 @@ pub struct UpvarId {
     pub closure_expr_id: ast::NodeId,
 }
 
+impl Copy for UpvarId {}
+
 #[deriving(Clone, PartialEq, Eq, Hash, Show, Encodable, Decodable)]
 pub enum BorrowKind {
     /// Data must be immutable and is aliasable.
@@ -896,6 +932,8 @@ pub enum BorrowKind {
     /// Data is mutable and not aliasable.
     MutBorrow
 }
+
+impl Copy for BorrowKind {}
 
 /// Information describing the borrowing of an upvar. This is computed
 /// during `typeck`, specifically by `regionck`. The general idea is
@@ -952,6 +990,8 @@ pub struct UpvarBorrow {
 
 pub type UpvarBorrowMap = FnvHashMap<UpvarId, UpvarBorrow>;
 
+impl Copy for UpvarBorrow {}
+
 impl Region {
     pub fn is_bound(&self) -> bool {
         match *self {
@@ -969,6 +1009,8 @@ impl Region {
     }
 }
 
+impl Copy for Region {}
+
 #[deriving(Clone, PartialEq, PartialOrd, Eq, Ord, Hash, Encodable, Decodable, Show)]
 /// A "free" region `fr` can be interpreted as "some region
 /// at least as big as the scope `fr.scope`".
@@ -976,6 +1018,8 @@ pub struct FreeRegion {
     pub scope: region::CodeExtent,
     pub bound_region: BoundRegion
 }
+
+impl Copy for FreeRegion {}
 
 #[deriving(Clone, PartialEq, PartialOrd, Eq, Ord, Hash, Encodable, Decodable, Show)]
 pub enum BoundRegion {
@@ -995,6 +1039,8 @@ pub enum BoundRegion {
     // to a closure
     BrEnv
 }
+
+impl Copy for BoundRegion {}
 
 #[inline]
 pub fn mk_prim_t<'tcx>(primitive: &'tcx TyS<'static>) -> Ty<'tcx> {
@@ -1135,6 +1181,8 @@ pub enum IntVarValue {
     UintType(ast::UintTy),
 }
 
+impl Copy for IntVarValue {}
+
 #[deriving(Clone, Show)]
 pub enum terr_vstore_kind {
     terr_vec,
@@ -1143,11 +1191,15 @@ pub enum terr_vstore_kind {
     terr_trait
 }
 
+impl Copy for terr_vstore_kind {}
+
 #[deriving(Clone, Show)]
 pub struct expected_found<T> {
     pub expected: T,
     pub found: T
 }
+
+impl<T:Copy> Copy for expected_found<T> {}
 
 // Data structures used in type unification
 #[deriving(Clone, Show)]
@@ -1183,6 +1235,8 @@ pub enum type_err<'tcx> {
     terr_convergence_mismatch(expected_found<bool>)
 }
 
+impl<'tcx> Copy for type_err<'tcx> {}
+
 /// Bounds suitable for a named type parameter like `A` in `fn foo<A>`
 /// as well as the existential type parameter in an object type.
 #[deriving(PartialEq, Eq, Hash, Clone, Show)]
@@ -1203,6 +1257,8 @@ pub struct ExistentialBounds {
     pub builtin_bounds: BuiltinBounds
 }
 
+impl Copy for ExistentialBounds {}
+
 pub type BuiltinBounds = EnumSet<BuiltinBound>;
 
 #[deriving(Clone, Encodable, PartialEq, Eq, Decodable, Hash, Show)]
@@ -1213,6 +1269,8 @@ pub enum BuiltinBound {
     BoundCopy,
     BoundSync,
 }
+
+impl Copy for BuiltinBound {}
 
 pub fn empty_builtin_bounds() -> BuiltinBounds {
     EnumSet::new()
@@ -1246,20 +1304,28 @@ pub struct TyVid {
     pub index: uint
 }
 
+impl Copy for TyVid {}
+
 #[deriving(Clone, PartialEq, Eq, Hash)]
 pub struct IntVid {
     pub index: uint
 }
+
+impl Copy for IntVid {}
 
 #[deriving(Clone, PartialEq, Eq, Hash)]
 pub struct FloatVid {
     pub index: uint
 }
 
+impl Copy for FloatVid {}
+
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash)]
 pub struct RegionVid {
     pub index: uint
 }
+
+impl Copy for RegionVid {}
 
 #[deriving(Clone, PartialEq, Eq, Hash)]
 pub enum InferTy {
@@ -1274,11 +1340,15 @@ pub enum InferTy {
     SkolemizedIntTy(uint),
 }
 
+impl Copy for InferTy {}
+
 #[deriving(Clone, Encodable, Decodable, Eq, Hash, Show)]
 pub enum InferRegion {
     ReVar(RegionVid),
     ReSkolemized(uint, BoundRegion)
 }
+
+impl Copy for InferRegion {}
 
 impl cmp::PartialEq for InferRegion {
     fn eq(&self, other: &InferRegion) -> bool {
@@ -1475,6 +1545,7 @@ impl<'tcx> TraitRef<'tcx> {
 /// bound lifetime parameters are replaced with free ones, but in the
 /// future I hope to refine the representation of types so as to make
 /// more distinctions clearer.
+#[deriving(Clone)]
 pub struct ParameterEnvironment<'tcx> {
     /// A substitution that can be applied to move from
     /// the "outer" view of a type or method to the "inner" view.
@@ -1523,14 +1594,14 @@ impl<'tcx> ParameterEnvironment<'tcx> {
                             }
                             TypeTraitItem(_) => {
                                 cx.sess
-                                  .bug("ParameterEnvironment::from_item(): \
+                                  .bug("ParameterEnvironment::for_item(): \
                                         can't create a parameter environment \
                                         for type trait items")
                             }
                         }
                     }
                     ast::TypeImplItem(_) => {
-                        cx.sess.bug("ParameterEnvironment::from_item(): \
+                        cx.sess.bug("ParameterEnvironment::for_item(): \
                                      can't create a parameter environment \
                                      for type impl items")
                     }
@@ -1540,7 +1611,7 @@ impl<'tcx> ParameterEnvironment<'tcx> {
                 match *trait_method {
                     ast::RequiredMethod(ref required) => {
                         cx.sess.span_bug(required.span,
-                                         "ParameterEnvironment::from_item():
+                                         "ParameterEnvironment::for_item():
                                           can't create a parameter \
                                           environment for required trait \
                                           methods")
@@ -1558,7 +1629,7 @@ impl<'tcx> ParameterEnvironment<'tcx> {
                             }
                             TypeTraitItem(_) => {
                                 cx.sess
-                                  .bug("ParameterEnvironment::from_item(): \
+                                  .bug("ParameterEnvironment::for_item(): \
                                         can't create a parameter environment \
                                         for type trait items")
                             }
@@ -1600,6 +1671,10 @@ impl<'tcx> ParameterEnvironment<'tcx> {
                                           environment for this kind of item")
                     }
                 }
+            }
+            Some(ast_map::NodeExpr(..)) => {
+                // This is a convenience to allow closures to work.
+                ParameterEnvironment::for_item(cx, cx.map.get_parent(id))
             }
             _ => {
                 cx.sess.bug(format!("ParameterEnvironment::from_item(): \
@@ -1657,6 +1732,8 @@ pub enum UnboxedClosureKind {
     FnMutUnboxedClosureKind,
     FnOnceUnboxedClosureKind,
 }
+
+impl Copy for UnboxedClosureKind {}
 
 impl UnboxedClosureKind {
     pub fn trait_did(&self, cx: &ctxt) -> ast::DefId {
@@ -1742,6 +1819,7 @@ pub fn mk_ctxt<'tcx>(s: Session,
         associated_types: RefCell::new(DefIdMap::new()),
         selection_cache: traits::SelectionCache::new(),
         repr_hint_cache: RefCell::new(DefIdMap::new()),
+        type_moves_by_default_cache: RefCell::new(HashMap::new()),
    }
 }
 
@@ -2437,6 +2515,8 @@ pub struct TypeContents {
     pub bits: u64
 }
 
+impl Copy for TypeContents {}
+
 macro_rules! def_type_content_sets(
     (mod $mname:ident { $($name:ident = $bits:expr),+ }) => {
         #[allow(non_snake_case)]
@@ -2463,7 +2543,6 @@ def_type_content_sets!(
         OwnsOwned                           = 0b0000_0000__0000_0001__0000,
         OwnsDtor                            = 0b0000_0000__0000_0010__0000,
         OwnsManaged /* see [1] below */     = 0b0000_0000__0000_0100__0000,
-        OwnsAffine                          = 0b0000_0000__0000_1000__0000,
         OwnsAll                             = 0b0000_0000__1111_1111__0000,
 
         // Things that are reachable by the value in any way (fourth nibble):
@@ -2473,23 +2552,11 @@ def_type_content_sets!(
         ReachesFfiUnsafe                    = 0b0010_0000__0000_0000__0000,
         ReachesAll                          = 0b0011_1111__0000_0000__0000,
 
-        // Things that cause values to *move* rather than *copy*. This
-        // is almost the same as the `Copy` trait, but for managed
-        // data -- atm, we consider managed data to copy, not move,
-        // but it does not impl Copy as a pure memcpy is not good
-        // enough. Yuck.
-        Moves                               = 0b0000_0000__0000_1011__0000,
-
         // Things that mean drop glue is necessary
         NeedsDrop                           = 0b0000_0000__0000_0111__0000,
 
         // Things that prevent values from being considered sized
         Nonsized                            = 0b0000_0000__0000_0000__0001,
-
-        // Things that make values considered not POD (would be same
-        // as `Moves`, but for the fact that managed data `@` is
-        // not considered POD)
-        Noncopy                              = 0b0000_0000__0000_1111__0000,
 
         // Bits to set when a managed value is encountered
         //
@@ -2530,10 +2597,6 @@ impl TypeContents {
 
     pub fn interior_unsized(&self) -> bool {
         self.intersects(TC::InteriorUnsized)
-    }
-
-    pub fn moves_by_default(&self, _: &ctxt) -> bool {
-        self.intersects(TC::Moves)
     }
 
     pub fn needs_drop(&self, _: &ctxt) -> bool {
@@ -2820,15 +2883,10 @@ pub fn type_contents<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> TypeContents {
         mc | tc_ty(cx, mt.ty, cache)
     }
 
-    fn apply_lang_items(cx: &ctxt,
-                        did: ast::DefId,
-                        tc: TypeContents)
-                        -> TypeContents
-    {
+    fn apply_lang_items(cx: &ctxt, did: ast::DefId, tc: TypeContents)
+                        -> TypeContents {
         if Some(did) == cx.lang_items.managed_bound() {
             tc | TC::Managed
-        } else if Some(did) == cx.lang_items.no_copy_bound() {
-            tc | TC::OwnsAffine
         } else if Some(did) == cx.lang_items.unsafe_type() {
             tc | TC::InteriorUnsafe
         } else {
@@ -2841,7 +2899,7 @@ pub fn type_contents<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> TypeContents {
                          mutbl: ast::Mutability)
                          -> TypeContents {
         let b = match mutbl {
-            ast::MutMutable => TC::ReachesMutable | TC::OwnsAffine,
+            ast::MutMutable => TC::ReachesMutable,
             ast::MutImmutable => TC::None,
         };
         b | (TC::ReachesBorrowed).when(region != ty::ReStatic)
@@ -2861,14 +2919,7 @@ pub fn type_contents<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> TypeContents {
             }
         };
 
-        // This also prohibits "@once fn" from being copied, which allows it to
-        // be called. Neither way really makes much sense.
-        let ot = match cty.onceness {
-            ast::Once => TC::OwnsAffine,
-            ast::Many => TC::None,
-        };
-
-        st | ot
+        st
     }
 
     fn object_contents(cx: &ctxt,
@@ -2886,9 +2937,8 @@ pub fn type_contents<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> TypeContents {
         let mut tc = TC::All;
         each_inherited_builtin_bound(cx, bounds, traits, |bound| {
             tc = tc - match bound {
-                BoundSync | BoundSend => TC::None,
+                BoundSync | BoundSend | BoundCopy => TC::None,
                 BoundSized => TC::Nonsized,
-                BoundCopy => TC::Noncopy,
             };
         });
         return tc;
@@ -2914,8 +2964,38 @@ pub fn type_contents<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> TypeContents {
     }
 }
 
-pub fn type_moves_by_default<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> bool {
-    type_contents(cx, ty).moves_by_default(cx)
+pub fn type_moves_by_default<'tcx>(cx: &ctxt<'tcx>,
+                                   ty: Ty<'tcx>,
+                                   param_env: &ParameterEnvironment<'tcx>)
+                                    -> bool {
+    if !type_has_params(ty) && !type_has_self(ty) {
+        match cx.type_moves_by_default_cache.borrow().get(&ty) {
+            None => {}
+            Some(&result) => {
+                debug!("determined whether {} moves by default (cached): {}",
+                       ty_to_string(cx, ty),
+                       result);
+                return result
+            }
+        }
+    }
+
+    let infcx = typeck::infer::new_infer_ctxt(cx);
+    let mut fulfill_cx = traits::FulfillmentContext::new();
+    let obligation = traits::obligation_for_builtin_bound(
+        cx,
+        ObligationCause::misc(DUMMY_SP),
+        ty,
+        ty::BoundCopy).unwrap();
+    fulfill_cx.register_obligation(cx, obligation);
+    let result = !fulfill_cx.select_all_or_error(&infcx,
+                                                 param_env,
+                                                 cx).is_ok();
+    cx.type_moves_by_default_cache.borrow_mut().insert(ty, result);
+    debug!("determined whether {} moves by default: {}",
+           ty_to_string(cx, ty),
+           result);
+    result
 }
 
 pub fn is_ffi_safe<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> bool {
@@ -3046,6 +3126,8 @@ pub enum Representability {
     ContainsRecursive,
     SelfRecursive,
 }
+
+impl Copy for Representability {}
 
 /// Check whether a type is representable. This means it cannot contain unboxed
 /// structural recursion. This check is needed for structs and enums.
@@ -3829,6 +3911,8 @@ pub enum ExprKind {
     RvalueStmtExpr
 }
 
+impl Copy for ExprKind {}
+
 pub fn expr_kind(tcx: &ctxt, expr: &ast::Expr) -> ExprKind {
     if tcx.method_map.borrow().contains_key(&typeck::MethodCall::expr(expr.id)) {
         // Overloaded operations are generally calls, and hence they are
@@ -4388,6 +4472,8 @@ pub struct AssociatedTypeInfo {
     pub name: ast::Name,
 }
 
+impl Copy for AssociatedTypeInfo {}
+
 impl PartialOrd for AssociatedTypeInfo {
     fn partial_cmp(&self, other: &AssociatedTypeInfo) -> Option<Ordering> {
         Some(self.index.cmp(&other.index))
@@ -4570,6 +4656,8 @@ pub enum DtorKind {
     NoDtor,
     TraitDtor(DefId, bool)
 }
+
+impl Copy for DtorKind {}
 
 impl DtorKind {
     pub fn is_present(&self) -> bool {
@@ -4957,6 +5045,8 @@ pub struct UnboxedClosureUpvar<'tcx> {
     pub span: Span,
     pub ty: Ty<'tcx>,
 }
+
+impl<'tcx> Copy for UnboxedClosureUpvar<'tcx> {}
 
 // Returns a list of `UnboxedClosureUpvar`s for each upvar.
 pub fn unboxed_closure_upvars<'tcx>(tcx: &ctxt<'tcx>, closure_id: ast::DefId, substs: &Substs<'tcx>)
@@ -5787,6 +5877,8 @@ pub enum ExplicitSelfCategory {
     ByBoxExplicitSelfCategory,
 }
 
+impl Copy for ExplicitSelfCategory {}
+
 /// Pushes all the lifetimes in the given type onto the given list. A
 /// "lifetime in a type" is a lifetime specified by a reference or a lifetime
 /// in a list of type substitutions. This does *not* traverse into nominal
@@ -5855,6 +5947,8 @@ pub struct Freevar {
     // First span where it is accessed (there can be multiple).
     pub span: Span
 }
+
+impl Copy for Freevar {}
 
 pub type FreevarMap = NodeMap<Vec<Freevar>>;
 
@@ -5955,6 +6049,8 @@ impl DebruijnIndex {
     }
 }
 
+impl Copy for DebruijnIndex {}
+
 impl<'tcx> Repr<'tcx> for AutoAdjustment<'tcx> {
     fn repr(&self, tcx: &ctxt<'tcx>) -> String {
         match *self {
@@ -6010,3 +6106,45 @@ impl<'tcx> Repr<'tcx> for TyTrait<'tcx> {
                 self.bounds.repr(tcx))
     }
 }
+
+pub enum CopyImplementationError {
+    FieldDoesNotImplementCopy(ast::Name),
+    VariantDoesNotImplementCopy(ast::Name),
+    TypeIsStructural,
+}
+
+impl Copy for CopyImplementationError {}
+
+pub fn can_type_implement_copy<'tcx>(tcx: &ctxt<'tcx>,
+                                     self_type: Ty<'tcx>,
+                                     param_env: &ParameterEnvironment<'tcx>)
+                                     -> Result<(),CopyImplementationError> {
+    match self_type.sty {
+        ty::ty_struct(struct_did, ref substs) => {
+            let fields = ty::struct_fields(tcx, struct_did, substs);
+            for field in fields.iter() {
+                if type_moves_by_default(tcx, field.mt.ty, param_env) {
+                    return Err(FieldDoesNotImplementCopy(field.name))
+                }
+            }
+        }
+        ty::ty_enum(enum_did, ref substs) => {
+            let enum_variants = ty::enum_variants(tcx, enum_did);
+            for variant in enum_variants.iter() {
+                for variant_arg_type in variant.args.iter() {
+                    let substd_arg_type =
+                        variant_arg_type.subst(tcx, substs);
+                    if type_moves_by_default(tcx,
+                                             substd_arg_type,
+                                             param_env) {
+                        return Err(VariantDoesNotImplementCopy(variant.name))
+                    }
+                }
+            }
+        }
+        _ => return Err(TypeIsStructural),
+    }
+
+    Ok(())
+}
+

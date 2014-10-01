@@ -7136,6 +7136,7 @@ pub mod charwidth {
 pub mod grapheme {
     pub use self::GraphemeCat::*;
     use core::slice::SlicePrelude;
+    use core::kinds::Copy;
     use core::slice;
 
     #[allow(non_camel_case_types)]
@@ -7152,6 +7153,8 @@ pub mod grapheme {
         GC_RegionalIndicator,
         GC_Any,
     }
+
+    impl Copy for GraphemeCat {}
 
     fn bsearch_range_value_table(c: char, r: &'static [(char, char, GraphemeCat)]) -> GraphemeCat {
         use core::cmp::{Equal, Less, Greater};

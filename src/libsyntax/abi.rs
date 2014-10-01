@@ -16,8 +16,17 @@ pub use self::AbiArchitecture::*;
 use std::fmt;
 
 #[deriving(PartialEq)]
-pub enum Os { OsWindows, OsMacos, OsLinux, OsAndroid, OsFreebsd, OsiOS,
-              OsDragonfly }
+pub enum Os {
+    OsWindows,
+    OsMacos,
+    OsLinux,
+    OsAndroid,
+    OsFreebsd,
+    OsiOS,
+    OsDragonfly,
+}
+
+impl Copy for Os {}
 
 #[deriving(PartialEq, Eq, Hash, Encodable, Decodable, Clone)]
 pub enum Abi {
@@ -39,6 +48,8 @@ pub enum Abi {
     RustCall,
 }
 
+impl Copy for Abi {}
+
 #[allow(non_camel_case_types)]
 #[deriving(PartialEq)]
 pub enum Architecture {
@@ -49,12 +60,16 @@ pub enum Architecture {
     Mipsel
 }
 
+impl Copy for Architecture {}
+
 pub struct AbiData {
     abi: Abi,
 
     // Name of this ABI as we like it called.
     name: &'static str,
 }
+
+impl Copy for AbiData {}
 
 pub enum AbiArchitecture {
     /// Not a real ABI (e.g., intrinsic)
@@ -66,6 +81,9 @@ pub enum AbiArchitecture {
 }
 
 #[allow(non_upper_case_globals)]
+impl Copy for AbiArchitecture {}
+
+#[allow(non_uppercase_statics)]
 static AbiDatas: &'static [AbiData] = &[
     // Platform-specific ABIs
     AbiData {abi: Cdecl, name: "cdecl" },

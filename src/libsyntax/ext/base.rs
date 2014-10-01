@@ -57,7 +57,7 @@ impl ItemDecorator for fn(&mut ExtCtxt, Span, &ast::MetaItem, &ast::Item, |P<ast
               meta_item: &ast::MetaItem,
               item: &ast::Item,
               push: |P<ast::Item>|) {
-        (*self)(ecx, sp, meta_item, item, push)
+        self.clone()(ecx, sp, meta_item, item, push)
     }
 }
 
@@ -77,7 +77,7 @@ impl ItemModifier for fn(&mut ExtCtxt, Span, &ast::MetaItem, P<ast::Item>) -> P<
               meta_item: &ast::MetaItem,
               item: P<ast::Item>)
               -> P<ast::Item> {
-        (*self)(ecx, span, meta_item, item)
+        self.clone()(ecx, span, meta_item, item)
     }
 }
 
@@ -99,7 +99,7 @@ impl TTMacroExpander for MacroExpanderFn {
                    span: Span,
                    token_tree: &[ast::TokenTree])
                    -> Box<MacResult+'cx> {
-        (*self)(ecx, span, token_tree)
+        self.clone()(ecx, span, token_tree)
     }
 }
 
@@ -122,7 +122,7 @@ impl IdentMacroExpander for IdentMacroExpanderFn {
                    ident: ast::Ident,
                    token_tree: Vec<ast::TokenTree> )
                    -> Box<MacResult+'cx> {
-        (*self)(cx, sp, ident, token_tree)
+        self.clone()(cx, sp, ident, token_tree)
     }
 }
 
@@ -227,6 +227,8 @@ pub struct DummyResult {
     expr_only: bool,
     span: Span
 }
+
+impl Copy for DummyResult {}
 
 impl DummyResult {
     /// Create a default MacResult that can be anything.

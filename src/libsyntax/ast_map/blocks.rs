@@ -43,6 +43,8 @@ use visit;
 /// To construct one, use the `Code::from_node` function.
 pub struct FnLikeNode<'a> { node: ast_map::Node<'a> }
 
+impl<'a> Copy for FnLikeNode<'a> {}
+
 /// MaybeFnLike wraps a method that indicates if an object
 /// corresponds to some FnLikeNode.
 pub trait MaybeFnLike { fn is_fn_like(&self) -> bool; }
@@ -84,6 +86,8 @@ pub enum Code<'a> {
     FnLikeCode(FnLikeNode<'a>),
     BlockCode(&'a Block),
 }
+
+impl<'a> Copy for Code<'a> {}
 
 impl<'a> Code<'a> {
     pub fn id(&self) -> ast::NodeId {

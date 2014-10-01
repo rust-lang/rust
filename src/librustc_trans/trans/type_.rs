@@ -31,6 +31,8 @@ pub struct Type {
     rf: TypeRef
 }
 
+impl Copy for Type {}
+
 macro_rules! ty (
     ($e:expr) => ( Type::from_ref(unsafe { $e }))
 )

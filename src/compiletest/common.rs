@@ -25,6 +25,8 @@ pub enum Mode {
     Codegen
 }
 
+impl Copy for Mode {}
+
 impl FromStr for Mode {
     fn from_str(s: &str) -> Option<Mode> {
         match s {

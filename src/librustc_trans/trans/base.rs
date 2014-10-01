@@ -88,6 +88,7 @@ use libc::{c_uint, uint64_t};
 use std::c_str::ToCStr;
 use std::cell::{Cell, RefCell};
 use std::collections::HashSet;
+use std::mem;
 use std::rc::Rc;
 use std::{i8, i16, i32, i64};
 use syntax::abi::{Rust, RustCall, RustIntrinsic, Abi};
@@ -560,6 +561,8 @@ pub fn maybe_name_value(cx: &CrateContext, v: ValueRef, s: &str) {
 // Used only for creating scalar comparison glue.
 pub enum scalar_type { nil_type, signed_int, unsigned_int, floating_point, }
 
+impl Copy for scalar_type {}
+
 pub fn compare_scalar_types<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
                                         lhs: ValueRef,
                                         rhs: ValueRef,
@@ -811,7 +814,10 @@ pub fn iter_structural_ty<'a, 'blk, 'tcx>(cx: Block<'blk, 'tcx>,
                                       in iter_structural_ty")
           }
       }
-      _ => cx.sess().unimpl("type in iter_structural_ty")
+      _ => {
+          cx.sess().unimpl(format!("type in iter_structural_ty: {}",
+                                   ty_to_string(cx.tcx(), t)).as_slice())
+      }
     }
     return cx;
 }
@@ -1782,6 +1788,14 @@ pub fn build_return_block<'blk, 'tcx>(fcx: &FunctionContext<'blk, 'tcx>,
     }
 }
 
+#[deriving(Clone, Eq, PartialEq)]
+pub enum IsUnboxedClosureFlag {
+    NotUnboxedClosure,
+    IsUnboxedClosure,
+}
+
+impl Copy for IsUnboxedClosureFlag {}
+
 // trans_closure: Builds an LLVM function out of a source function.
 // If the function closes over its environment a closure will be
 // returned.
@@ -2185,6 +2199,8 @@ pub enum ValueOrigin {
     /// item is marked `#[inline]`.
     InlinedCopy,
 }
+
+impl Copy for ValueOrigin {}
 
 /// Set the appropriate linkage for an LLVM `ValueRef` (function or global).
 /// If the `llval` is the direct translation of a specific Rust item, `id`
@@ -3046,7 +3062,11 @@ fn internalize_symbols(cx: &SharedCrateContext, reachable: &HashSet<String>) {
         fn next(&mut self) -> Option<ValueRef> {
             let old = self.cur;
             if !old.is_null() {
-                self.cur = unsafe { (self.step)(old) };
+                self.cur = unsafe {
+                    let step: unsafe extern "C" fn(ValueRef) -> ValueRef =
+                        mem::transmute_copy(&self.step);
+                    step(old)
+                };
                 Some(old)
             } else {
                 None

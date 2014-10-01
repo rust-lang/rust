@@ -19,11 +19,24 @@
  */
 
 struct S<T> { i:u8, t:T }
-impl<T> S<T> { fn unwrap(self) -> T { self.t } }
+
+impl<T:Copy> Copy for S<T> {}
+
+impl<T> S<T> {
+    fn unwrap(self) -> T {
+        self.t
+    }
+}
+
 #[deriving(PartialEq, Show)]
 struct A((u32, u32));
+
+impl Copy for A {}
+
 #[deriving(PartialEq, Show)]
 struct B(u64);
+
+impl Copy for B {}
 
 pub fn main() {
     static Ca: S<A> = S { i: 0, t: A((13, 104)) };

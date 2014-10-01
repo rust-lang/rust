@@ -109,7 +109,13 @@ impl Show for TestName {
 }
 
 #[deriving(Clone)]
-enum NamePadding { PadNone, PadOnLeft, PadOnRight }
+enum NamePadding {
+    PadNone,
+    PadOnLeft,
+    PadOnRight,
+}
+
+impl Copy for NamePadding {}
 
 impl TestDesc {
     fn padded_name(&self, column_count: uint, align: NamePadding) -> String {
@@ -185,6 +191,8 @@ pub struct Bencher {
     pub bytes: u64,
 }
 
+impl Copy for Bencher {}
+
 // The definition of a single test. A test runner will run a list of
 // these.
 #[deriving(Clone, Show, PartialEq, Eq, Hash)]
@@ -205,6 +213,8 @@ pub struct Metric {
     value: f64,
     noise: f64
 }
+
+impl Copy for Metric {}
 
 impl Metric {
     pub fn new(value: f64, noise: f64) -> Metric {
@@ -231,6 +241,8 @@ pub enum MetricChange {
     Improvement(f64),
     Regression(f64)
 }
+
+impl Copy for MetricChange {}
 
 pub type MetricDiff = TreeMap<String,MetricChange>;
 
@@ -273,6 +285,8 @@ pub enum ColorConfig {
     AlwaysColor,
     NeverColor,
 }
+
+impl Copy for ColorConfig {}
 
 pub struct TestOpts {
     pub filter: Option<Regex>,
@@ -1068,7 +1082,7 @@ pub fn run_test(opts: &TestOpts,
             return;
         }
         StaticBenchFn(benchfn) => {
-            let bs = ::bench::benchmark(|harness| benchfn(harness));
+            let bs = ::bench::benchmark(|harness| (benchfn.clone())(harness));
             monitor_ch.send((desc, TrBench(bs), Vec::new()));
             return;
         }

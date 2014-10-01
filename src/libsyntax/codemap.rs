@@ -34,11 +34,15 @@ pub trait Pos {
 #[deriving(Clone, PartialEq, Eq, Hash, PartialOrd, Show)]
 pub struct BytePos(pub u32);
 
+impl Copy for BytePos {}
+
 /// A character offset. Because of multibyte utf8 characters, a byte offset
 /// is not equivalent to a character offset. The CodeMap will convert BytePos
 /// values to CharPos values as necessary.
 #[deriving(PartialEq, Hash, PartialOrd, Show)]
 pub struct CharPos(pub uint);
+
+impl Copy for CharPos {}
 
 // FIXME: Lots of boilerplate in these impls, but so far my attempts to fix
 // have been unsuccessful
@@ -90,6 +94,8 @@ pub struct Span {
     pub expn_id: ExpnId
 }
 
+impl Copy for Span {}
+
 pub const DUMMY_SP: Span = Span { lo: BytePos(0), hi: BytePos(0), expn_id: NO_EXPANSION };
 
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
@@ -97,6 +103,8 @@ pub struct Spanned<T> {
     pub node: T,
     pub span: Span,
 }
+
+impl<T:Copy> Copy for Spanned<T> {}
 
 impl PartialEq for Span {
     fn eq(&self, other: &Span) -> bool {
@@ -183,6 +191,8 @@ pub enum MacroFormat {
     MacroBang
 }
 
+impl Copy for MacroFormat {}
+
 #[deriving(Clone, Hash, Show)]
 pub struct NameAndSpan {
     /// The name of the macro that was invoked to create the thing
@@ -221,6 +231,8 @@ pub struct ExpnInfo {
 #[deriving(PartialEq, Eq, Clone, Show, Hash, Encodable, Decodable)]
 pub struct ExpnId(u32);
 
+impl Copy for ExpnId {}
+
 pub const NO_EXPANSION: ExpnId = ExpnId(-1);
 
 impl ExpnId {
@@ -248,6 +260,8 @@ pub struct MultiByteChar {
     /// The number of bytes, >=2
     pub bytes: uint,
 }
+
+impl Copy for MultiByteChar {}
 
 /// A single source in the CodeMap
 pub struct FileMap {

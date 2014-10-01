@@ -15,6 +15,8 @@ mod foo {
     // not exported
     enum t { t1, t2, }
 
+    impl Copy for t {}
+
     impl PartialEq for t {
         fn eq(&self, other: &t) -> bool {
             ((*self) as uint) == ((*other) as uint)

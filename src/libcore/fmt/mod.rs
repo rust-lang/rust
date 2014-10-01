@@ -44,6 +44,8 @@ pub type Result = result::Result<(), Error>;
 #[experimental = "core and I/O reconciliation may alter this definition"]
 pub struct Error;
 
+impl Copy for Error {}
+
 /// A collection of methods that are required to format a message into a stream.
 ///
 /// This trait is the type which this modules requires when formatting
@@ -101,6 +103,8 @@ pub struct Argument<'a> {
     formatter: extern "Rust" fn(&Void, &mut Formatter) -> Result,
     value: &'a Void,
 }
+
+impl<'a> Copy for Argument<'a> {}
 
 impl<'a> Arguments<'a> {
     /// When using the format_args!() macro, this function is used to generate the

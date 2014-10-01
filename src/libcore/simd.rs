@@ -37,6 +37,8 @@
 #![allow(non_camel_case_types)]
 #![allow(missing_docs)]
 
+use kinds::Copy;
+
 #[experimental]
 #[simd]
 #[deriving(Show)]
@@ -46,6 +48,8 @@ pub struct i8x16(pub i8, pub i8, pub i8, pub i8,
                  pub i8, pub i8, pub i8, pub i8,
                  pub i8, pub i8, pub i8, pub i8);
 
+impl Copy for i8x16 {}
+
 #[experimental]
 #[simd]
 #[deriving(Show)]
@@ -53,17 +57,23 @@ pub struct i8x16(pub i8, pub i8, pub i8, pub i8,
 pub struct i16x8(pub i16, pub i16, pub i16, pub i16,
                  pub i16, pub i16, pub i16, pub i16);
 
+impl Copy for i16x8 {}
+
 #[experimental]
 #[simd]
 #[deriving(Show)]
 #[repr(C)]
 pub struct i32x4(pub i32, pub i32, pub i32, pub i32);
 
+impl Copy for i32x4 {}
+
 #[experimental]
 #[simd]
 #[deriving(Show)]
 #[repr(C)]
 pub struct i64x2(pub i64, pub i64);
+
+impl Copy for i64x2 {}
 
 #[experimental]
 #[simd]
@@ -74,6 +84,8 @@ pub struct u8x16(pub u8, pub u8, pub u8, pub u8,
                  pub u8, pub u8, pub u8, pub u8,
                  pub u8, pub u8, pub u8, pub u8);
 
+impl Copy for u8x16 {}
+
 #[experimental]
 #[simd]
 #[deriving(Show)]
@@ -81,11 +93,15 @@ pub struct u8x16(pub u8, pub u8, pub u8, pub u8,
 pub struct u16x8(pub u16, pub u16, pub u16, pub u16,
                  pub u16, pub u16, pub u16, pub u16);
 
+impl Copy for u16x8 {}
+
 #[experimental]
 #[simd]
 #[deriving(Show)]
 #[repr(C)]
 pub struct u32x4(pub u32, pub u32, pub u32, pub u32);
+
+impl Copy for u32x4 {}
 
 #[experimental]
 #[simd]
@@ -93,14 +109,21 @@ pub struct u32x4(pub u32, pub u32, pub u32, pub u32);
 #[repr(C)]
 pub struct u64x2(pub u64, pub u64);
 
+impl Copy for u64x2 {}
+
 #[experimental]
 #[simd]
 #[deriving(Show)]
 #[repr(C)]
 pub struct f32x4(pub f32, pub f32, pub f32, pub f32);
 
+impl Copy for f32x4 {}
+
 #[experimental]
 #[simd]
 #[deriving(Show)]
 #[repr(C)]
 pub struct f64x2(pub f64, pub f64);
+
+impl Copy for f64x2 {}
+

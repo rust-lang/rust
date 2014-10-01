@@ -109,6 +109,8 @@ struct AminoAcid {
     p: f32,
 }
 
+impl Copy for AminoAcid {}
+
 struct RepeatFasta<'a, W:'a> {
     alu: &'static str,
     out: &'a mut W

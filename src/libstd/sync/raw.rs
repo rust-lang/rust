@@ -876,6 +876,8 @@ mod tests {
     #[cfg(test)]
     pub enum RWLockMode { Read, Write, Downgrade, DowngradeRead }
 
+    impl Copy for RWLockMode {}
+
     #[cfg(test)]
     fn lock_rwlock_in_mode(x: &Arc<RWLock>, mode: RWLockMode, blk: ||) {
         match mode {

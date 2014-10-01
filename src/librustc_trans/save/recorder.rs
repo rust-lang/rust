@@ -87,6 +87,8 @@ pub enum Row {
     FnRef,
 }
 
+impl Copy for Row {}
+
 impl<'a> FmtStrs<'a> {
     pub fn new(rec: Box<Recorder>, span: SpanUtils<'a>, krate: String) -> FmtStrs<'a> {
         FmtStrs {
@@ -223,7 +225,10 @@ impl<'a> FmtStrs<'a> {
 
         if self.recorder.dump_spans {
             if dump_spans {
-                self.recorder.dump_span(self.span, label, span, Some(sub_span));
+                self.recorder.dump_span(self.span.clone(),
+                                        label,
+                                        span,
+                                        Some(sub_span));
             }
             return;
         }

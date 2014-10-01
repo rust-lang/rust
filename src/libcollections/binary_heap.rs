@@ -35,6 +35,8 @@
 //!     position: uint
 //! }
 //!
+//! impl Copy for State {}
+//!
 //! // The priority queue depends on `Ord`.
 //! // Explicitly implement the trait so the queue becomes a min-heap
 //! // instead of a max-heap.

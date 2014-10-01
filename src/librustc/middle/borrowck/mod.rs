@@ -25,7 +25,7 @@ use middle::dataflow::DataFlowOperator;
 use middle::expr_use_visitor as euv;
 use middle::mem_categorization as mc;
 use middle::region;
-use middle::ty::{mod, Ty};
+use middle::ty::{mod, ParameterEnvironment, Ty};
 use util::ppaux::{note_and_explain_region, Repr, UserString};
 
 use std::rc::Rc;
@@ -61,6 +61,8 @@ pub mod move_data;
 
 #[deriving(Clone)]
 pub struct LoanDataFlowOperator;
+
+impl Copy for LoanDataFlowOperator {}
 
 pub type LoanDataFlow<'a, 'tcx> = DataFlowContext<'a, 'tcx, LoanDataFlowOperator>;
 
@@ -146,8 +148,13 @@ fn borrowck_fn(this: &mut BorrowckCtxt,
     move_data::fragments::instrument_move_fragments(&flowed_moves.move_data,
                                                     this.tcx, sp, id);
 
-    check_loans::check_loans(this, &loan_dfcx, flowed_moves,
-                             all_loans.as_slice(), decl, body);
+    check_loans::check_loans(this,
+                             &loan_dfcx,
+                             flowed_moves,
+                             all_loans.as_slice(),
+                             id,
+                             decl,
+                             body);
 
     visit::walk_fn(this, fk, decl, body, sp);
 }
@@ -162,7 +169,7 @@ fn build_borrowck_dataflow_data<'a, 'tcx>(this: &mut BorrowckCtxt<'a, 'tcx>,
     // Check the body of fn items.
     let id_range = ast_util::compute_id_range_for_fn_body(fk, decl, body, sp, id);
     let (all_loans, move_data) =
-        gather_loans::gather_loans_in_fn(this, decl, body);
+        gather_loans::gather_loans_in_fn(this, id, decl, body);
 
     let mut loan_dfcx =
         DataFlowContext::new(this.tcx,
@@ -339,6 +346,8 @@ pub enum LoanPathElem {
     LpInterior(mc::InteriorKind) // `LV.f` in doc.rs
 }
 
+impl Copy for LoanPathElem {}
+
 pub fn closure_to_block(closure_id: ast::NodeId,
                         tcx: &ty::ctxt) -> ast::NodeId {
     match tcx.map.get(closure_id) {
@@ -484,6 +493,7 @@ pub fn opt_loan_path<'tcx>(cmt: &mc::cmt<'tcx>) -> Option<Rc<LoanPath<'tcx>>> {
 
 // Errors that can occur
 #[deriving(PartialEq)]
+#[allow(missing_copy_implementations)]
 pub enum bckerr_code {
     err_mutbl,
     err_out_of_scope(ty::Region, ty::Region), // superscope, subscope
@@ -505,11 +515,15 @@ pub enum AliasableViolationKind {
     BorrowViolation(euv::LoanCause)
 }
 
+impl Copy for AliasableViolationKind {}
+
 #[deriving(Show)]
 pub enum MovedValueUseKind {
     MovedInUse,
     MovedInCapture,
 }
+
+impl Copy for MovedValueUseKind {}
 
 ///////////////////////////////////////////////////////////////////////////
 // Misc
@@ -545,7 +559,8 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                                      use_kind: MovedValueUseKind,
                                      lp: &LoanPath<'tcx>,
                                      the_move: &move_data::Move,
-                                     moved_lp: &LoanPath<'tcx>) {
+                                     moved_lp: &LoanPath<'tcx>,
+                                     param_env: &ParameterEnvironment<'tcx>) {
         let verb = match use_kind {
             MovedInUse => "use",
             MovedInCapture => "capture",
@@ -621,7 +636,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                                                   r).as_slice())
                     }
                 };
-                let (suggestion, _) = move_suggestion(self.tcx, expr_ty,
+                let (suggestion, _) = move_suggestion(self.tcx, param_env, expr_ty,
                         ("moved by default", ""));
                 self.tcx.sess.span_note(
                     expr_span,
@@ -659,7 +674,9 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                                                   r).as_slice())
                     }
                 };
-                let (suggestion, help) = move_suggestion(self.tcx, expr_ty,
+                let (suggestion, help) = move_suggestion(self.tcx,
+                                                         param_env,
+                                                         expr_ty,
                         ("moved by default", "make a copy and \
                          capture that instead to override"));
                 self.tcx.sess.span_note(
@@ -674,7 +691,9 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
             }
         }
 
-        fn move_suggestion<'tcx>(tcx: &ty::ctxt<'tcx>, ty: Ty<'tcx>,
+        fn move_suggestion<'tcx>(tcx: &ty::ctxt<'tcx>,
+                                 param_env: &ty::ParameterEnvironment<'tcx>,
+                                 ty: Ty<'tcx>,
                                  default_msgs: (&'static str, &'static str))
                                  -> (&'static str, &'static str) {
             match ty.sty {
@@ -684,7 +703,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                     }) =>
                     ("a non-copyable stack closure",
                      "capture it in a new closure, e.g. `|x| f(x)`, to override"),
-                _ if ty::type_moves_by_default(tcx, ty) =>
+                _ if ty::type_moves_by_default(tcx, ty, param_env) =>
                     ("non-copyable",
                      "perhaps you meant to use `clone()`?"),
                 _ => default_msgs,

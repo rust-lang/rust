@@ -147,7 +147,9 @@ pub use self::Option::*;
 
 use cmp::{Eq, Ord};
 use default::Default;
-use iter::{Iterator, IteratorExt, DoubleEndedIterator, FromIterator, ExactSizeIterator};
+use iter::{Iterator, IteratorExt, DoubleEndedIterator, FromIterator};
+use iter::{ExactSizeIterator};
+use kinds::Copy;
 use mem;
 use result::{Result, Ok, Err};
 use slice;
@@ -856,3 +858,6 @@ impl<A, V: FromIterator<A>> FromIterator<Option<A>> for Option<V> {
         }
     }
 }
+
+impl<T:Copy> Copy for Option<T> {}
+

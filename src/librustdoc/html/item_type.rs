@@ -43,6 +43,8 @@ pub enum ItemType {
     Constant        = 18,
 }
 
+impl Copy for ItemType {}
+
 impl ItemType {
     pub fn to_static_str(&self) -> &'static str {
         match *self {

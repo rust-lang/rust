@@ -34,6 +34,8 @@ pub enum Variant {
     Assigns,
 }
 
+impl Copy for Variant {}
+
 impl Variant {
     pub fn short_name(&self) -> &'static str {
         match *self {

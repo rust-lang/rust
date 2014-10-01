@@ -64,6 +64,8 @@ pub struct Lint {
     pub desc: &'static str,
 }
 
+impl Copy for Lint {}
+
 impl Lint {
     /// Get the lint's name, with ASCII letters converted to lowercase.
     pub fn name_lower(&self) -> String {
@@ -179,6 +181,8 @@ pub struct LintId {
     lint: &'static Lint,
 }
 
+impl Copy for LintId {}
+
 impl PartialEq for LintId {
     fn eq(&self, other: &LintId) -> bool {
         (self.lint as *const Lint) == (other.lint as *const Lint)
@@ -213,6 +217,8 @@ impl LintId {
 pub enum Level {
     Allow, Warn, Deny, Forbid
 }
+
+impl Copy for Level {}
 
 impl Level {
     /// Convert a level to a lower-case string.
@@ -250,6 +256,8 @@ pub enum LintSource {
     /// Lint level was set by a command-line flag.
     CommandLine,
 }
+
+impl Copy for LintSource {}
 
 pub type LevelSource = (Level, LintSource);
 

@@ -25,6 +25,8 @@ use syntax::visit::Visitor;
 #[deriving(Clone,Show)]
 pub struct ErrorReported;
 
+impl Copy for ErrorReported {}
+
 pub fn time<T, U>(do_it: bool, what: &str, u: U, f: |U| -> T) -> T {
     thread_local!(static DEPTH: Cell<uint> = Cell::new(0));
     if !do_it { return f(u); }

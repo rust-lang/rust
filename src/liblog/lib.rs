@@ -234,6 +234,8 @@ struct DefaultLogger {
 #[deriving(PartialEq, PartialOrd)]
 pub struct LogLevel(pub u32);
 
+impl Copy for LogLevel {}
+
 impl fmt::Show for LogLevel {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         let LogLevel(level) = *self;
@@ -343,6 +345,8 @@ pub struct LogLocation {
     pub file: &'static str,
     pub line: uint,
 }
+
+impl Copy for LogLocation {}
 
 /// Tests whether a given module's name is enabled for a particular level of
 /// logging. This is the second layer of defense about determining whether a

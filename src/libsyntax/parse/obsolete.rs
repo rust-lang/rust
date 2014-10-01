@@ -34,6 +34,8 @@ pub enum ObsoleteSyntax {
     ObsoleteExternCrateRenaming,
 }
 
+impl Copy for ObsoleteSyntax {}
+
 pub trait ParserObsoleteMethods {
     /// Reports an obsolete syntax non-fatal error.
     fn obsolete(&mut self, sp: Span, kind: ObsoleteSyntax);

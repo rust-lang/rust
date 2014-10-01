@@ -190,6 +190,8 @@ pub enum ParamSpace {
     FnSpace,    // Type parameters attached to a method or fn
 }
 
+impl Copy for ParamSpace {}
+
 impl ParamSpace {
     pub fn all() -> [ParamSpace, ..4] {
         [TypeSpace, SelfSpace, AssocSpace, FnSpace]
