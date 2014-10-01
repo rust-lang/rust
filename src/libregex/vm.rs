@@ -512,7 +512,7 @@ pub fn is_word(c: Option<char>) -> bool {
     };
     // Try the common ASCII case before invoking binary search.
     match c {
-        '_' | '0' .. '9' | 'a' .. 'z' | 'A' .. 'Z' => true,
+        '_' | '0' ... '9' | 'a' ... 'z' | 'A' ... 'Z' => true,
         _ => PERLW.binary_search(|&(start, end)| {
             if c >= start && c <= end {
                 Equal

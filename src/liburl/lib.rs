@@ -190,9 +190,9 @@ fn encode_inner<T: BytesContainer>(c: T, full_url: bool) -> String {
     c.container_as_bytes().iter().fold(String::new(), |mut out, &b| {
         match b as char {
             // unreserved:
-            'A' .. 'Z'
-            | 'a' .. 'z'
-            | '0' .. '9'
+            'A' ... 'Z'
+            | 'a' ... 'z'
+            | '0' ... '9'
             | '-' | '.' | '_' | '~' => out.push_char(b as char),
 
             // gen-delims:
@@ -303,9 +303,9 @@ pub fn encode_form_urlencoded(m: &HashMap<String, Vec<String>>) -> String {
     fn encode_plus<T: Str>(s: &T) -> String {
         s.as_slice().bytes().fold(String::new(), |mut out, b| {
             match b as char {
-              'A' .. 'Z'
-              | 'a' .. 'z'
-              | '0' .. '9'
+              'A' ... 'Z'
+              | 'a' ... 'z'
+              | '0' ... '9'
               | '_' | '.' | '-' => out.push_char(b as char),
               ' ' => out.push_char('+'),
               ch => out.push_str(format!("%{:X}", ch as uint).as_slice())
@@ -473,9 +473,9 @@ pub fn query_to_str(query: &Query) -> String {
 pub fn get_scheme(rawurl: &str) -> DecodeResult<(&str, &str)> {
     for (i,c) in rawurl.chars().enumerate() {
         let result = match c {
-            'A' .. 'Z'
-            | 'a' .. 'z' => continue,
-            '0' .. '9' | '+' | '-' | '.' => {
+            'A' ... 'Z'
+            | 'a' ... 'z' => continue,
+            '0' ... '9' | '+' | '-' | '.' => {
                 if i != 0 { continue }
 
                 Err("url: Scheme must begin with a letter.".to_string())
@@ -538,15 +538,15 @@ fn get_authority(rawurl: &str) ->
                                .skip(2) {
         // deal with input class first
         match c {
-            '0' .. '9' => (),
-            'A' .. 'F'
-            | 'a' .. 'f' => {
+            '0' ... '9' => (),
+            'A' ... 'F'
+            | 'a' ... 'f' => {
                 if input == Digit {
                     input = Hex;
                 }
             }
-            'G' .. 'Z'
-            | 'g' .. 'z'
+            'G' ... 'Z'
+            | 'g' ... 'z'
             | '-' | '.' | '_' | '~' | '%'
             | '&' |'\'' | '(' | ')' | '+'
             | '!' | '*' | ',' | ';' | '=' => input = Unreserved,
@@ -671,9 +671,9 @@ fn get_path(rawurl: &str, is_authority: bool) -> DecodeResult<(String, &str)> {
     let mut end = len;
     for (i,c) in rawurl.chars().enumerate() {
         match c {
-          'A' .. 'Z'
-          | 'a' .. 'z'
-          | '0' .. '9'
+          'A' ... 'Z'
+          | 'a' ... 'z'
+          | '0' ... '9'
           | '&' |'\'' | '(' | ')' | '.'
           | '@' | ':' | '%' | '/' | '+'
           | '!' | '*' | ',' | ';' | '='
