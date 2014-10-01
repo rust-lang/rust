@@ -3256,8 +3256,7 @@ impl<'a> Parser<'a> {
             // These expressions are limited to literals (possibly
             // preceded by unary-minus) or identifiers.
             let val = self.parse_literal_maybe_minus();
-            // FIXME(#17295) remove the DOTDOT option.
-            if (self.token == token::DOTDOTDOT || self.token == token::DOTDOT) &&
+            if (self.token == token::DOTDOTDOT) &&
                     self.look_ahead(1, |t| {
                         *t != token::COMMA && *t != token::RBRACKET
                     }) {
@@ -3302,16 +3301,12 @@ impl<'a> Parser<'a> {
                 }
             });
 
-            // FIXME(#17295) remove the DOTDOT option.
-            if self.look_ahead(1, |t| *t == token::DOTDOTDOT || *t == token::DOTDOT) &&
+            if self.look_ahead(1, |t| *t == token::DOTDOTDOT) &&
                     self.look_ahead(2, |t| {
                         *t != token::COMMA && *t != token::RBRACKET
                     }) {
                 let start = self.parse_expr_res(RestrictionNoBarOp);
-                // FIXME(#17295) remove the DOTDOT option (self.eat(&token::DOTDOTDOT)).
-                if self.token == token::DOTDOTDOT || self.token == token::DOTDOT {
-                    self.bump();
-                }
+                self.eat(&token::DOTDOTDOT);
                 let end = self.parse_expr_res(RestrictionNoBarOp);
                 pat = PatRange(start, end);
             } else if is_plain_ident(&self.token) && !can_be_enum_or_struct {

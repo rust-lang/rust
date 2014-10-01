@@ -387,7 +387,7 @@ impl Uuid {
         // Make sure all chars are either hex digits or hyphen
         for (i, c) in us.chars().enumerate() {
             match c {
-                '0'..'9' | 'A'..'F' | 'a'..'f' | '-' => {},
+                '0'...'9' | 'A'...'F' | 'a'...'f' | '-' => {},
                 _ => return Err(ErrorInvalidCharacter(c, i)),
             }
         }
