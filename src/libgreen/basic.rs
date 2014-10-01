@@ -116,7 +116,7 @@ impl EventLoop for BasicLoop {
             }
 
             unsafe {
-                let mut messages = self.messages.lock();
+                let messages = self.messages.lock();
                 // We block here if we have no messages to process and we may
                 // receive a message at a later date
                 if self.remotes.len() > 0 && messages.len() == 0 &&
