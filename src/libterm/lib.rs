@@ -89,11 +89,9 @@ impl Writer for WriterWrapper {
 /// Return a Terminal wrapping stdout, or None if a terminal couldn't be
 /// opened.
 pub fn stdout() -> Option<Box<Terminal<WriterWrapper> + Send>> {
-    let ti: Option<TerminfoTerminal<WriterWrapper>>
-        = Terminal::new(WriterWrapper {
-            wrapped: box std::io::stdout() as Box<Writer + Send>,
-        });
-    ti.map(|t| box t as Box<Terminal<WriterWrapper> + Send>)
+    TerminfoTerminal::new(WriterWrapper {
+        wrapped: box std::io::stdout() as Box<Writer + Send>,
+    })
 }
 
 #[cfg(windows)]
@@ -121,11 +119,9 @@ pub fn stdout() -> Option<Box<Terminal<WriterWrapper> + Send>> {
 /// Return a Terminal wrapping stderr, or None if a terminal couldn't be
 /// opened.
 pub fn stderr() -> Option<Box<Terminal<WriterWrapper> + Send> + Send> {
-    let ti: Option<TerminfoTerminal<WriterWrapper>>
-        = Terminal::new(WriterWrapper {
-            wrapped: box std::io::stderr() as Box<Writer + Send>,
-        });
-    ti.map(|t| box t as Box<Terminal<WriterWrapper> + Send>)
+    TerminfoTerminal::new(WriterWrapper {
+        wrapped: box std::io::stderr() as Box<Writer + Send>,
+    })
 }
 
 #[cfg(windows)]
@@ -208,10 +204,6 @@ pub mod attr {
 /// A terminal with similar capabilities to an ANSI Terminal
 /// (foreground/background colors etc).
 pub trait Terminal<T: Writer>: Writer {
-    /// Returns `None` whenever the terminal cannot be created for some
-    /// reason.
-    fn new(out: T) -> Option<Self>;
-
     /// Sets the foreground color to the given color.
     ///
     /// If the color is a bright color, but the terminal only supports 8 colors,
@@ -242,12 +234,15 @@ pub trait Terminal<T: Writer>: Writer {
     /// Returns `Ok()`.
     fn reset(&mut self) -> IoResult<()>;
 
-    /// Returns the contained stream, destroying the `Terminal`
-    fn unwrap(self) -> T;
-
     /// Gets an immutable reference to the stream inside
     fn get_ref<'a>(&'a self) -> &'a T;
 
     /// Gets a mutable reference to the stream inside
     fn get_mut<'a>(&'a mut self) -> &'a mut T;
+}
+
+/// A terminal which can be unwrapped.
+pub trait UnwrappableTerminal<T: Writer>: Terminal<T> {
+    /// Returns the contained stream, destroying the `Terminal`
+    fn unwrap(self) -> T;
 }

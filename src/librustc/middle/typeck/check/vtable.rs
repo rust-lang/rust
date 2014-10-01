@@ -21,8 +21,7 @@ use middle::typeck::infer;
 use std::rc::Rc;
 use syntax::ast;
 use syntax::codemap::Span;
-use util::ppaux::UserString;
-use util::ppaux::Repr;
+use util::ppaux::{UserString, Repr, ty_to_string};
 
 pub fn check_object_cast(fcx: &FnCtxt,
                          cast_expr: &ast::Expr,
@@ -131,18 +130,46 @@ pub fn check_object_cast(fcx: &FnCtxt,
     }
 }
 
-// TODO comment
+// Check that a trait is 'object-safe'. This should be checked whenever a trait object
+// is created (by casting or coercion, etc.). A trait is object-safe if all its
+// methods are object-safe. A trait method is object-safe if it does not take
+// self by value, has no type parameters and does not use the `Self` type, except
+// in self position.
 pub fn check_object_safety(tcx: &ty::ctxt, object_trait: &ty::TyTrait, span: Span) {
+    // Skip the fn_once lang item trait since only the compiler should call
+    // `call_once` which is the method which takes self by value. What could go
+    // wrong?
+    match tcx.lang_items.fn_once_trait() {
+        Some(def_id) if def_id == object_trait.def_id => return,
+        _ => {}
+    }
+
     let trait_items = ty::trait_items(tcx, object_trait.def_id);
+
+    let mut errors = Vec::new();
     for item in trait_items.iter() {
         match *item {
-            ty::MethodTraitItem(ref m) => check_object_safety_of_method(tcx, &**m, span),
+            ty::MethodTraitItem(ref m) => {
+                errors.push(check_object_safety_of_method(tcx, &**m))
+            }
             ty::TypeTraitItem(_) => {}
         }
     }
 
-    // TODO error messages
-    fn check_object_safety_of_method(tcx: &ty::ctxt, method: &ty::Method, span: Span) {
+    let mut errors = errors.iter().flat_map(|x| x.iter()).peekable();
+    if errors.peek().is_some() {
+        let trait_name = ty::item_path_str(tcx, object_trait.def_id);
+        span_err!(tcx.sess, span, E0038,
+            "cannot convert to a trait object because trait `{}` is not object-safe",
+            trait_name);
+
+        for msg in errors {
+            tcx.sess.note(msg.as_slice());
+        }
+    }
+
+    // Returns a vec of error messages. If hte vec is empty - no errors!
+    fn check_object_safety_of_method(tcx: &ty::ctxt, method: &ty::Method) -> Vec<String> {
         /*!
          * There are some limitations to calling functions through an
          * object, because (a) the self type is not known
@@ -150,13 +177,14 @@ pub fn check_object_safety(tcx: &ty::ctxt, object_trait: &ty::TyTrait, span: Spa
          * obscure the self type) and (b) the call must go through a
          * vtable and hence cannot be monomorphized.
          */
+        let mut msgs = Vec::new();
+
+        let method_name = method.ident.repr(tcx);
 
         match method.explicit_self {
             ty::ByValueExplicitSelfCategory => { // reason (a) above
-                tcx.sess.span_err(
-                    span,
-                    "cannot call a method with a by-value receiver \
-                     through a trait object");
+                msgs.push(format!("cannot call a method (`{}`) with a by-value \
+                                   receiver through a trait object", method_name))
             }
 
             ty::StaticExplicitSelfCategory |
@@ -167,31 +195,29 @@ pub fn check_object_safety(tcx: &ty::ctxt, object_trait: &ty::TyTrait, span: Spa
         // reason (a) above
         let check_for_self_ty = |ty| {
             if ty::type_has_self(ty) {
-                span_err!(tcx.sess, span, E0038,
-                    "cannot call a method whose type contains a \
-                     self-type through an object: {}", ::util::ppaux::ty_to_string(tcx, ty));
-                true
+                Some(format!(
+                    "cannot call a method (`{}`) whose type (`{}`) contains \
+                     a self-type through a trait object",
+                    method_name, ty_to_string(tcx, ty)))
             } else {
-                false
+                None
             }
         };
         let ref sig = method.fty.sig;
-        let mut found_self_ty = false;
-        for &input_ty in sig.inputs.tail().iter() {
-            if check_for_self_ty(input_ty) {
-                found_self_ty = true;
-                break;
+        for &input_ty in sig.inputs.tail().iter().chain([sig.output].iter()) {
+            match check_for_self_ty(input_ty) {
+                Some(msg) => msgs.push(msg),
+                _ => {}
             }
-        }
-        if !found_self_ty {
-            check_for_self_ty(sig.output);
         }
 
         if method.generics.has_type_params(FnSpace) {
             // reason (b) above
-            span_err!(tcx.sess, span, E0039,
-                "cannot call a generic method through an object");
+            msgs.push(format!("cannot call a generic method (`{}`) through a trait object",
+                              method_name));
         }
+
+        msgs
     }
 }
 
