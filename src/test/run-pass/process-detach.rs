@@ -8,8 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-windows
-// ignore-android
+// ignore-test
+
+// FIXME: this test is being ignored until signals are implemented
 
 // This test ensures that the 'detach' field on processes does the right thing.
 // By detaching the child process, they should be put into a separate process
@@ -19,18 +20,11 @@
 // Note that the first thing we do is put ourselves in our own process group so
 // we don't interfere with other running tests.
 
-extern crate green;
-extern crate rustuv;
 extern crate libc;
 
 use std::io::process;
 use std::io::process::Command;
 use std::io::signal::{Listener, Interrupt};
-
-#[start]
-fn start(argc: int, argv: *const *const u8) -> int {
-    green::start(argc, argv, rustuv::event_loop, main)
-}
 
 fn main() {
     unsafe { libc::setsid(); }

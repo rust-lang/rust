@@ -10,48 +10,25 @@
 
 // ignore-fast
 
-extern crate green;
-extern crate rustuv;
-extern crate native;
-
 use std::os;
 use std::io;
 use std::str;
-
-#[start]
-fn start(argc: int, argv: *const *const u8) -> int {
-    green::start(argc, argv, rustuv::event_loop, main)
-}
 
 fn main() {
     let args = os::args();
     let args = args.as_slice();
     if args.len() > 1 && args[1].as_slice() == "child" {
-        if args[2].as_slice() == "green" {
-            child();
-        } else {
-            let (tx, rx) = channel();
-            native::task::spawn(proc() { tx.send(child()); });
-            rx.recv();
-        }
+        child();
     } else {
-        parent("green".to_string());
-        parent("native".to_string());
-        let (tx, rx) = channel();
-        native::task::spawn(proc() {
-            parent("green".to_string());
-            parent("native".to_string());
-            tx.send(());
-        });
-        rx.recv();
+        parent();
     }
 }
 
-fn parent(flavor: String) {
+fn parent() {
     let args = os::args();
     let args = args.as_slice();
     let mut p = io::process::Command::new(args[0].as_slice())
-                                     .arg("child").arg(flavor).spawn().unwrap();
+                                     .arg("child").spawn().unwrap();
     p.stdin.get_mut_ref().write_str("test1\ntest2\ntest3").unwrap();
     let out = p.wait_with_output().unwrap();
     assert!(out.status.success());

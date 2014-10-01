@@ -9,16 +9,13 @@
 // except according to those terms.
 
 // This is (hopefully) a quick test to get a good idea about spawning
-// performance in libgreen. Note that this uses the rustuv event loop rather
-// than the basic event loop in order to get a better real world idea about the
-// performance of a task spawn.
+// performance in libgreen.
 
 extern crate green;
-extern crate rustuv;
 
 #[start]
 fn start(argc: int, argv: *const *const u8) -> int {
-    green::start(argc, argv, rustuv::event_loop, main)
+    green::start(argc, argv, green::basic::event_loop, main)
 }
 
 fn main() {

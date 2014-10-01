@@ -40,17 +40,13 @@
 
 // no-pretty-expanded FIXME #15189
 
-#![feature(phase)]
 #![allow(non_snake_case)]
-#[phase(plugin)] extern crate green;
 
 use std::from_str::FromStr;
 use std::iter::count;
 use std::cmp::min;
 use std::os;
 use std::sync::{Arc, RWLock};
-
-green_start!(main)
 
 fn A(i: uint, j: uint) -> f64 {
     ((i + j) * (i + j + 1) / 2 + i + 1) as f64
