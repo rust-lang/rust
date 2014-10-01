@@ -279,7 +279,7 @@ fn collect_trait_methods(ccx: &CrateCtxt,
                                             &trait_def.generics,
                                             trait_items.as_slice(),
                                             &m.id,
-                                            &m.ident,
+                                            &m.ident.name,
                                             &m.explicit_self,
                                             m.abi,
                                             &m.generics,
@@ -293,7 +293,7 @@ fn collect_trait_methods(ccx: &CrateCtxt,
                                             &trait_def.generics,
                                             trait_items.as_slice(),
                                             &m.id,
-                                            &m.pe_ident(),
+                                            &m.pe_ident().name,
                                             m.pe_explicit_self(),
                                             m.pe_abi(),
                                             m.pe_generics(),
@@ -318,7 +318,7 @@ fn collect_trait_methods(ccx: &CrateCtxt,
                             ast::TypeTraitItem(ref ast_associated_type) => {
                                 let trait_did = local_def(trait_id);
                                 let associated_type = ty::AssociatedType {
-                                    ident: ast_associated_type.ident,
+                                    name: ast_associated_type.ident.name,
                                     vis: ast::Public,
                                     def_id: local_def(ast_associated_type.id),
                                     container: TraitContainer(trait_did),
@@ -376,7 +376,7 @@ fn collect_trait_methods(ccx: &CrateCtxt,
                                  trait_generics: &ty::Generics,
                                  trait_items: &[ast::TraitItem],
                                  m_id: &ast::NodeId,
-                                 m_ident: &ast::Ident,
+                                 m_name: &ast::Name,
                                  m_explicit_self: &ast::ExplicitSelf,
                                  m_abi: abi::Abi,
                                  m_generics: &ast::Generics,
@@ -409,7 +409,7 @@ fn collect_trait_methods(ccx: &CrateCtxt,
         };
 
         ty::Method::new(
-            *m_ident,
+            *m_name,
             ty_generics,
             fty,
             explicit_self_category,
@@ -489,7 +489,7 @@ fn convert_associated_type(ccx: &CrateCtxt,
     write_ty_to_tcx(ccx.tcx, associated_type.id, param_type);
 
     let associated_type = Rc::new(ty::AssociatedType {
-        ident: associated_type.ident,
+        name: associated_type.ident.name,
         vis: ast::Public,
         def_id: local_def(associated_type.id),
         container: TraitContainer(trait_def.trait_ref.def_id),
@@ -629,7 +629,7 @@ fn convert_methods<'a,I>(ccx: &CrateCtxt,
         // foo(); }`).
         let method_vis = m.pe_vis().inherit_from(rcvr_visibility);
 
-        ty::Method::new(m.pe_ident(),
+        ty::Method::new(m.pe_ident().name,
                         m_ty_generics,
                         fty,
                         explicit_self_category,
@@ -806,10 +806,8 @@ impl<'a,'tcx> AstConv<'tcx> for ImplCtxt<'a,'tcx> {
                     match *impl_item {
                         ast::MethodImplItem(_) => {}
                         ast::TypeImplItem(ref typedef) => {
-                            if associated_type.ident().name == typedef.ident
-                                                                      .name {
-                                return self.ccx.to_ty(&ExplicitRscope,
-                                                      &*typedef.typ)
+                            if associated_type.name() == typedef.ident.name {
+                                return self.ccx.to_ty(&ExplicitRscope, &*typedef.typ)
                             }
                         }
                     }
@@ -1145,7 +1143,7 @@ pub fn convert(ccx: &CrateCtxt, it: &ast::Item) {
                         write_ty_to_tcx(ccx.tcx, typedef.id, typ);
 
                         let associated_type = Rc::new(ty::AssociatedType {
-                            ident: typedef.ident,
+                            name: typedef.ident.name,
                             vis: typedef.vis,
                             def_id: local_def(typedef.id),
                             container: ty::ImplContainer(local_def(it.id)),
@@ -1685,7 +1683,7 @@ fn ty_generics_for_trait(ccx: &CrateCtxt,
                 let def = ty::TypeParameterDef {
                     space: subst::TypeSpace,
                     index: generics.types.len(subst::TypeSpace),
-                    ident: associated_type.ident,
+                    name: associated_type.ident.name,
                     def_id: local_def(associated_type.id),
                     bounds: ty::ParamBounds {
                         builtin_bounds: ty::empty_builtin_bounds(),
@@ -1716,7 +1714,7 @@ fn ty_generics_for_trait(ccx: &CrateCtxt,
     let def = ty::TypeParameterDef {
         space: subst::SelfSpace,
         index: 0,
-        ident: special_idents::type_self,
+        name: special_idents::type_self.name,
         def_id: local_def(param_id),
         bounds: ty::ParamBounds {
             region_bounds: vec!(),
@@ -1817,7 +1815,7 @@ fn ensure_associated_types<'tcx,AC>(this: &AC, trait_id: ast::DefId)
                                     let info = ty::AssociatedTypeInfo {
                                         def_id: local_def(associated_type.id),
                                         index: index,
-                                        ident: associated_type.ident,
+                                        name: associated_type.ident.name,
                                     };
                                     result.push(info);
                                     index += 1;
@@ -1855,7 +1853,7 @@ fn ensure_associated_types<'tcx,AC>(this: &AC, trait_id: ast::DefId)
                 let info = ty::AssociatedTypeInfo {
                     def_id: associated_type.def_id,
                     index: index,
-                    ident: associated_type.ident
+                    name: associated_type.name
                 };
                 result.push(info);
                 index += 1;
@@ -1920,10 +1918,8 @@ fn ty_generics<'tcx,AC>(this: &AC,
                                                 this.tcx(),
                                                 associated_type_info.def_id);
                                         let def = ty::TypeParameterDef {
-                                            ident: associated_type_trait_item
-                                                       .ident(),
-                                            def_id:
-                                                associated_type_info.def_id,
+                                            name: associated_type_trait_item.name(),
+                                            def_id: associated_type_info.def_id,
                                             space: space,
                                             index: types.len() + index,
                                             bounds: ty::ParamBounds {
@@ -2033,7 +2029,7 @@ fn ty_generics<'tcx,AC>(this: &AC,
         let def = ty::TypeParameterDef {
             space: space,
             index: index,
-            ident: param.ident,
+            name: param.ident.name,
             def_id: local_def(param.id),
             associated_with: None,
             bounds: bounds,

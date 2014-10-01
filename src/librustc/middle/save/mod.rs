@@ -794,7 +794,7 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
                                                  def_id)
                                     .iter()
                                     .find(|mr| {
-                                        mr.ident().name == ti.ident().name
+                                        mr.name() == ti.name()
                                     })
                                     .unwrap()
                                     .def_id())
@@ -807,10 +807,10 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
                             Some((*impl_items)[def_id]
                                            .iter()
                                            .find(|mr| {
-                                            ty::impl_or_trait_item(
-                                                &self.analysis.ty_cx,
-                                                mr.def_id()).ident().name ==
-                                                ti.ident().name
+                                                ty::impl_or_trait_item(
+                                                    &self.analysis.ty_cx,
+                                                    mr.def_id()
+                                                ).name() == ti.name()
                                             })
                                            .unwrap()
                                            .def_id())
