@@ -2078,7 +2078,7 @@ fn resolve_type(cx: &DocContext, path: Path,
 
 fn register_def(cx: &DocContext, def: def::Def) -> ast::DefId {
     let (did, kind) = match def {
-        def::DefFn(i, _) => (i, TypeFunction),
+        def::DefFn(i, _, _) => (i, TypeFunction),
         def::DefTy(i, false) => (i, TypeTypedef),
         def::DefTy(i, true) => (i, TypeEnum),
         def::DefTrait(i) => (i, TypeTrait),
