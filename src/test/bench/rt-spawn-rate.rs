@@ -11,7 +11,6 @@
 #![no_start]
 
 extern crate green;
-extern crate rustuv;
 
 use std::task::spawn;
 use std::os;
@@ -22,7 +21,7 @@ use std::uint;
 
 #[start]
 fn start(argc: int, argv: *const *const u8) -> int {
-    green::start(argc, argv, rustuv::event_loop, main)
+    green::start(argc, argv, green::basic::event_loop, main)
 }
 
 fn main() {

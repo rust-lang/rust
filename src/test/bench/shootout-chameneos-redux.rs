@@ -40,13 +40,8 @@
 
 // no-pretty-expanded
 
-#![feature(phase)]
-#[phase(plugin)] extern crate green;
-
 use std::string::String;
 use std::fmt;
-
-green_start!(main)
 
 fn print_complements() {
     let all = [Blue, Red, Yellow];

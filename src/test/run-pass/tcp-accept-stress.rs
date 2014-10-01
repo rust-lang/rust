@@ -13,30 +13,14 @@
 //              quite quickly and it takes a few seconds for the sockets to get
 //              recycled.
 
-#![feature(phase)]
-
-#[phase(plugin)]
-extern crate green;
-extern crate native;
-
 use std::io::{TcpListener, Listener, Acceptor, EndOfFile, TcpStream};
 use std::sync::{atomic, Arc};
-use std::task::TaskBuilder;
-use native::NativeTaskBuilder;
 
 static N: uint = 8;
 static M: uint = 20;
 
-green_start!(main)
-
 fn main() {
     test();
-
-    let (tx, rx) = channel();
-    TaskBuilder::new().native().spawn(proc() {
-        tx.send(test());
-    });
-    rx.recv();
 }
 
 fn test() {
@@ -98,4 +82,3 @@ fn test() {
     // Everything should have been accepted.
     assert_eq!(cnt.load(atomic::SeqCst), N * M);
 }
-
