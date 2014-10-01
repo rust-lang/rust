@@ -1083,7 +1083,6 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
                         if_ok!(self.cat_pattern(subcmt, &**subpat, |x,y,z| op(x,y,z)));
                     }
                 }
-                Some(&def::DefFn(..)) |
                 Some(&def::DefStruct(..)) => {
                     for (i, subpat) in subpats.iter().enumerate() {
                         let subpat_ty = if_ok!(self.pat_ty(&**subpat)); // see (*2)
