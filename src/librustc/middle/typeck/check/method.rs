@@ -1336,16 +1336,6 @@ impl<'a, 'tcx> LookupContext<'a, 'tcx> {
                self.ty_to_string(rcvr_ty),
                candidate.repr(self.tcx()));
 
-        let mut rcvr_substs = candidate.rcvr_substs.clone();
-
-        if !self.enforce_object_limitations(candidate) {
-            // Here we change `Self` from `Trait` to `err` in the case that
-            // this is an illegal object method. This is necessary to prevent
-            // the user from getting strange, derivative errors when the method
-            // takes an argument/return-type of type `Self` etc.
-            rcvr_substs.types.get_mut_slice(SelfSpace)[0] = ty::mk_err();
-        }
-
         self.enforce_drop_trait_limitations(candidate);
 
         // Determine the values for the generic parameters of the method.
@@ -1552,71 +1542,6 @@ impl<'a, 'tcx> LookupContext<'a, 'tcx> {
                 }
             }
         }
-    }
-
-    fn enforce_object_limitations(&self, candidate: &Candidate) -> bool {
-        /*!
-         * There are some limitations to calling functions through an
-         * object, because (a) the self type is not known
-         * (that's the whole point of a trait instance, after all, to
-         * obscure the self type) and (b) the call must go through a
-         * vtable and hence cannot be monomorphized.
-         */
-
-        match candidate.origin {
-            MethodStatic(..) |
-            MethodTypeParam(..) |
-            MethodStaticUnboxedClosure(..) => {
-                return true; // not a call to a trait instance
-            }
-            MethodTraitObject(..) => {}
-        }
-
-        match candidate.method_ty.explicit_self {
-            ty::StaticExplicitSelfCategory => { // reason (a) above
-                self.tcx().sess.span_err(
-                    self.span,
-                    "cannot call a method without a receiver \
-                     through an object");
-                return false;
-            }
-
-            ty::ByValueExplicitSelfCategory |
-            ty::ByReferenceExplicitSelfCategory(..) |
-            ty::ByBoxExplicitSelfCategory => {}
-        }
-
-        // reason (a) above
-        let check_for_self_ty = |ty| -> bool {
-            if ty::type_has_self(ty) {
-                span_err!(self.tcx().sess, self.span, E0038,
-                    "cannot call a method whose type contains a \
-                     self-type through an object");
-                false
-            } else {
-                true
-            }
-        };
-        let ref sig = candidate.method_ty.fty.sig;
-        for &input_ty in sig.inputs[1..].iter() {
-            if !check_for_self_ty(input_ty) {
-                return false;
-            }
-        }
-        if let ty::FnConverging(result_type) = sig.output {
-            if !check_for_self_ty(result_type) {
-                return false;
-            }
-        }
-
-        if candidate.method_ty.generics.has_type_params(subst::FnSpace) {
-            // reason (b) above
-            span_err!(self.tcx().sess, self.span, E0039,
-                "cannot call a generic method through an object");
-            return false;
-        }
-
-        true
     }
 
     fn enforce_drop_trait_limitations(&self, candidate: &Candidate) {
