@@ -908,13 +908,13 @@ pub fn change_dir(p: &Path) -> bool {
 
 #[cfg(unix)]
 /// Returns the platform-specific value of errno
-pub fn errno() -> int {
+fn errno_location() -> *mut c_int {
     #[cfg(target_os = "macos")]
     #[cfg(target_os = "ios")]
     #[cfg(target_os = "freebsd")]
-    fn errno_location() -> *const c_int {
+    fn _errno_location() -> *mut c_int {
         extern {
-            fn __error() -> *const c_int;
+            fn __error() -> *mut c_int;
         }
         unsafe {
             __error()
@@ -922,9 +922,9 @@ pub fn errno() -> int {
     }
 
     #[cfg(target_os = "dragonfly")]
-    fn errno_location() -> *const c_int {
+    fn _errno_location() -> *mut c_int {
         extern {
-            fn __dfly_error() -> *const c_int;
+            fn __dfly_error() -> *mut c_int;
         }
         unsafe {
             __dfly_error()
@@ -933,15 +933,21 @@ pub fn errno() -> int {
 
     #[cfg(target_os = "linux")]
     #[cfg(target_os = "android")]
-    fn errno_location() -> *const c_int {
+    fn _errno_location() -> *mut c_int {
         extern {
-            fn __errno_location() -> *const c_int;
+            fn __errno_location() -> *mut c_int;
         }
         unsafe {
             __errno_location()
         }
     }
 
+    _errno_location()
+}
+
+#[cfg(unix)]
+/// Returns the platform-specific value of errno
+pub fn errno() -> int {
     unsafe {
         (*errno_location()) as int
     }
@@ -959,6 +965,29 @@ pub fn errno() -> uint {
 
     unsafe {
         GetLastError() as uint
+    }
+}
+
+#[cfg(unix)]
+/// Set the platform-specific value of errno
+pub fn set_errno(e: int) {
+    unsafe {
+        *errno_location() = e as c_int
+    }
+}
+
+#[cfg(windows)]
+/// Set the platform-specific value of errno
+pub fn set_errno(e: uint) {
+    use libc::types::os::arch::extra::DWORD;
+
+    #[link_name = "kernel32"]
+    extern "system" {
+        fn SetLastError(dwErrCode: DWORD);
+    }
+
+    unsafe {
+        SetLastError(e as DWORD)
     }
 }
 
@@ -2032,6 +2061,24 @@ mod tests {
 
         e = env();
         assert!(e.contains(&(n, "VALUE".to_string())));
+    }
+
+    #[test]
+    #[cfg(unix)]
+    fn test_errno() {
+        os::set_errno(100);
+        assert!(os::errno() == 100);
+        os::set_errno(0);
+        assert!(os::errno() == 0);
+    }
+
+    #[test]
+    #[cfg(windows)]
+    fn test_errno() {
+        os::set_errno(100);
+        assert!(os::errno() == 100);
+        os::set_errno(0);
+        assert!(os::errno() == 0);
     }
 
     #[test]
