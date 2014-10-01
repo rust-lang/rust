@@ -17,6 +17,7 @@ use std::os;
 use attr;
 use color;
 use Terminal;
+use UnwrappableTerminal;
 use self::searcher::open;
 use self::parser::compiled::{parse, msys_terminfo};
 use self::parm::{expand, Number, Variables};
@@ -71,44 +72,7 @@ pub struct TerminfoTerminal<T> {
     ti: Box<TermInfo>
 }
 
-impl<T: Writer> Terminal<T> for TerminfoTerminal<T> {
-    fn new(out: T) -> Option<TerminfoTerminal<T>> {
-        let term = match os::getenv("TERM") {
-            Some(t) => t,
-            None => {
-                debug!("TERM environment variable not defined");
-                return None;
-            }
-        };
-
-        let entry = open(term.as_slice());
-        if entry.is_err() {
-            if os::getenv("MSYSCON").map_or(false, |s| {
-                    "mintty.exe" == s.as_slice()
-                }) {
-                // msys terminal
-                return Some(TerminfoTerminal {out: out, ti: msys_terminfo(), num_colors: 8});
-            }
-            debug!("error finding terminfo entry: {}", entry.err().unwrap());
-            return None;
-        }
-
-        let mut file = entry.unwrap();
-        let ti = parse(&mut file, false);
-        if ti.is_err() {
-            debug!("error parsing terminfo entry: {}", ti.unwrap_err());
-            return None;
-        }
-
-        let inf = ti.unwrap();
-        let nc = if inf.strings.find_equiv(&("setaf")).is_some()
-                 && inf.strings.find_equiv(&("setab")).is_some() {
-                     inf.numbers.find_equiv(&("colors")).map_or(0, |&n| n)
-                 } else { 0 };
-
-        return Some(TerminfoTerminal {out: out, ti: inf, num_colors: nc});
-    }
-
+impl<T: Writer+Send> Terminal<T> for TerminfoTerminal<T> {
     fn fg(&mut self, color: color::Color) -> IoResult<bool> {
         let color = self.dim_if_necessary(color);
         if self.num_colors > color {
@@ -195,14 +159,59 @@ impl<T: Writer> Terminal<T> for TerminfoTerminal<T> {
         Ok(())
     }
 
-    fn unwrap(self) -> T { self.out }
-
     fn get_ref<'a>(&'a self) -> &'a T { &self.out }
 
     fn get_mut<'a>(&'a mut self) -> &'a mut T { &mut self.out }
 }
 
-impl<T: Writer> TerminfoTerminal<T> {
+impl<T: Writer+Send> UnwrappableTerminal<T> for TerminfoTerminal<T> {
+    fn unwrap(self) -> T { self.out }
+}
+
+impl<T: Writer+Send> TerminfoTerminal<T> {
+    /// Returns `None` whenever the terminal cannot be created for some
+    /// reason.
+    pub fn new(out: T) -> Option<Box<Terminal<T>+Send+'static>> {
+        let term = match os::getenv("TERM") {
+            Some(t) => t,
+            None => {
+                debug!("TERM environment variable not defined");
+                return None;
+            }
+        };
+
+        let entry = open(term.as_slice());
+        if entry.is_err() {
+            if os::getenv("MSYSCON").map_or(false, |s| {
+                    "mintty.exe" == s.as_slice()
+                }) {
+                // msys terminal
+                return Some(box TerminfoTerminal {out: out,
+                                                  ti: msys_terminfo(),
+                                                  num_colors: 8} as Box<Terminal<T>+Send>);
+            }
+            debug!("error finding terminfo entry: {}", entry.err().unwrap());
+            return None;
+        }
+
+        let mut file = entry.unwrap();
+        let ti = parse(&mut file, false);
+        if ti.is_err() {
+            debug!("error parsing terminfo entry: {}", ti.unwrap_err());
+            return None;
+        }
+
+        let inf = ti.unwrap();
+        let nc = if inf.strings.find_equiv(&("setaf")).is_some()
+                 && inf.strings.find_equiv(&("setab")).is_some() {
+                     inf.numbers.find_equiv(&("colors")).map_or(0, |&n| n)
+                 } else { 0 };
+
+        return Some(box TerminfoTerminal {out: out,
+                                          ti: inf,
+                                          num_colors: nc} as Box<Terminal<T>+Send>);
+    }
+
     fn dim_if_necessary(&self, color: color::Color) -> color::Color {
         if color >= self.num_colors && color >= 8 && color < 16 {
             color-8
