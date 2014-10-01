@@ -265,9 +265,6 @@ pub use self::buffered::{BufferedReader, BufferedWriter, BufferedStream,
                          LineBufferedWriter};
 pub use self::comm_adapters::{ChanReader, ChanWriter};
 
-// this comes first to get the iotest! macro
-pub mod test;
-
 mod buffered;
 mod comm_adapters;
 mod mem;
@@ -280,6 +277,7 @@ pub mod pipe;
 pub mod process;
 pub mod signal;
 pub mod stdio;
+pub mod test;
 pub mod timer;
 pub mod util;
 
