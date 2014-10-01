@@ -81,7 +81,7 @@ pub type TraitMap = NodeMap<Vec<DefId> >;
 
 // This is the replacement export map. It maps a module to all of the exports
 // within.
-pub type ExportMap2 = RefCell<NodeMap<Vec<Export2> >>;
+pub type ExportMap2 = NodeMap<Vec<Export2>>;
 
 pub struct Export2 {
     pub name: String,        // The name of the target.
@@ -360,14 +360,14 @@ enum DuplicateCheckingMode {
 
 /// One local scope.
 struct Rib {
-    bindings: RefCell<HashMap<Name, DefLike>>,
+    bindings: HashMap<Name, DefLike>,
     kind: RibKind,
 }
 
 impl Rib {
     fn new(kind: RibKind) -> Rib {
         Rib {
-            bindings: RefCell::new(HashMap::new()),
+            bindings: HashMap::new(),
             kind: kind
         }
     }
@@ -856,7 +856,7 @@ struct Resolver<'a> {
 
     graph_root: NameBindings,
 
-    trait_item_map: RefCell<FnvHashMap<(Name, DefId), TraitItemKind>>,
+    trait_item_map: FnvHashMap<(Name, DefId), TraitItemKind>,
 
     structs: FnvHashMap<DefId, Vec<Name>>,
 
@@ -868,13 +868,13 @@ struct Resolver<'a> {
 
     // The current set of local scopes, for values.
     // FIXME #4948: Reuse ribs to avoid allocation.
-    value_ribs: RefCell<Vec<Rib>>,
+    value_ribs: Vec<Rib>,
 
     // The current set of local scopes, for types.
-    type_ribs: RefCell<Vec<Rib>>,
+    type_ribs: Vec<Rib>,
 
     // The current set of local scopes, for labels.
-    label_ribs: RefCell<Vec<Rib>>,
+    label_ribs: Vec<Rib>,
 
     // The trait that the current context can refer to.
     current_trait_ref: Option<(DefId, TraitRef)>,
@@ -893,7 +893,7 @@ struct Resolver<'a> {
     def_map: DefMap,
     freevars: RefCell<FreevarMap>,
     freevars_seen: RefCell<NodeMap<NodeSet>>,
-    capture_mode_map: RefCell<CaptureModeMap>,
+    capture_mode_map: CaptureModeMap,
     export_map2: ExportMap2,
     trait_map: TraitMap,
     external_exports: ExternalExports,
@@ -980,15 +980,15 @@ impl<'a> Resolver<'a> {
 
             graph_root: graph_root,
 
-            trait_item_map: RefCell::new(FnvHashMap::new()),
+            trait_item_map: FnvHashMap::new(),
             structs: FnvHashMap::new(),
 
             unresolved_imports: 0,
 
             current_module: current_module,
-            value_ribs: RefCell::new(Vec::new()),
-            type_ribs: RefCell::new(Vec::new()),
-            label_ribs: RefCell::new(Vec::new()),
+            value_ribs: Vec::new(),
+            type_ribs: Vec::new(),
+            label_ribs: Vec::new(),
 
             current_trait_ref: None,
             current_self_type: None,
@@ -1001,8 +1001,8 @@ impl<'a> Resolver<'a> {
             def_map: RefCell::new(NodeMap::new()),
             freevars: RefCell::new(NodeMap::new()),
             freevars_seen: RefCell::new(NodeMap::new()),
-            capture_mode_map: RefCell::new(NodeMap::new()),
-            export_map2: RefCell::new(NodeMap::new()),
+            capture_mode_map: NodeMap::new(),
+            export_map2: NodeMap::new(),
             trait_map: NodeMap::new(),
             used_imports: HashSet::new(),
             used_crates: HashSet::new(),
@@ -1516,9 +1516,7 @@ impl<'a> Resolver<'a> {
                         }
                     };
 
-                    self.trait_item_map
-                        .borrow_mut()
-                        .insert((ident.name, def_id), kind);
+                    self.trait_item_map.insert((ident.name, def_id), kind);
                 }
 
                 name_bindings.define_type(DefTrait(def_id), sp, is_public);
@@ -1850,10 +1848,7 @@ impl<'a> Resolver<'a> {
                           adding trait item '{}'",
                          token::get_ident(trait_item_name));
 
-                  self.trait_item_map
-                      .borrow_mut()
-                      .insert((trait_item_name.name, def_id),
-                              trait_item_kind);
+                  self.trait_item_map.insert((trait_item_name.name, def_id), trait_item_kind);
 
                   if is_exported {
                       self.external_exports
@@ -3760,7 +3755,7 @@ impl<'a> Resolver<'a> {
         self.add_exports_for_module(&mut exports2, module_);
         match module_.def_id.get() {
             Some(def_id) => {
-                self.export_map2.borrow_mut().insert(def_id.node, exports2);
+                self.export_map2.insert(def_id.node, exports2);
                 debug!("(computing exports) writing exports for {} (some)",
                        def_id.node);
             }
@@ -4017,7 +4012,7 @@ impl<'a> Resolver<'a> {
         // FIXME #4950: Try caching?
 
         for (i, rib) in ribs.iter().enumerate().rev() {
-            match rib.bindings.borrow().find_copy(&name) {
+            match rib.bindings.find_copy(&name) {
                 Some(def_like) => {
                     return self.upvarify(ribs.slice_from(i + 1), def_like, span);
                 }
@@ -4093,13 +4088,12 @@ impl<'a> Resolver<'a> {
 
             ItemTrait(ref generics, ref unbound, ref bounds, ref methods) => {
                 // Create a new rib for the self type.
-                let self_type_rib = Rib::new(ItemRibKind);
+                let mut self_type_rib = Rib::new(ItemRibKind);
 
                 // plain insert (no renaming, types are not currently hygienic....)
                 let name = self.type_self_name;
-                self_type_rib.bindings.borrow_mut()
-                             .insert(name, DlDef(DefSelfTy(item.id)));
-                self.type_ribs.borrow_mut().push(self_type_rib);
+                self_type_rib.bindings.insert(name, DlDef(DefSelfTy(item.id)));
+                self.type_ribs.push(self_type_rib);
 
                 // Create a new rib for the trait-wide type parameters.
                 self.with_type_parameter_rib(HasTypeParameters(generics,
@@ -4168,7 +4162,7 @@ impl<'a> Resolver<'a> {
                     }
                 });
 
-                self.type_ribs.borrow_mut().pop();
+                self.type_ribs.pop();
             }
 
             ItemStruct(ref struct_def, ref generics) => {
@@ -4236,7 +4230,7 @@ impl<'a> Resolver<'a> {
             HasTypeParameters(generics, space, node_id,
                               rib_kind) => {
 
-                let function_type_rib = Rib::new(rib_kind);
+                let mut function_type_rib = Rib::new(rib_kind);
 
                 for (index, type_parameter) in generics.ty_params.iter().enumerate() {
                     let ident = type_parameter.ident;
@@ -4250,10 +4244,9 @@ impl<'a> Resolver<'a> {
                     self.record_def(type_parameter.id,
                                     (DefTyParamBinder(node_id), LastMod(AllPublic)));
                     // plain insert (no renaming)
-                    function_type_rib.bindings.borrow_mut()
-                                     .insert(ident.name, def_like);
+                    function_type_rib.bindings.insert(ident.name, def_like);
                 }
-                self.type_ribs.borrow_mut().push(function_type_rib);
+                self.type_ribs.push(function_type_rib);
             }
 
             NoTypeParameters => {
@@ -4264,23 +4257,23 @@ impl<'a> Resolver<'a> {
         f(self);
 
         match type_parameters {
-            HasTypeParameters(..) => { self.type_ribs.borrow_mut().pop(); }
+            HasTypeParameters(..) => { self.type_ribs.pop(); }
             NoTypeParameters => { }
         }
     }
 
     fn with_label_rib(&mut self, f: |&mut Resolver|) {
-        self.label_ribs.borrow_mut().push(Rib::new(NormalRibKind));
+        self.label_ribs.push(Rib::new(NormalRibKind));
         f(self);
-        self.label_ribs.borrow_mut().pop();
+        self.label_ribs.pop();
     }
 
     fn with_constant_rib(&mut self, f: |&mut Resolver|) {
-        self.value_ribs.borrow_mut().push(Rib::new(ConstantItemRibKind));
-        self.type_ribs.borrow_mut().push(Rib::new(ConstantItemRibKind));
+        self.value_ribs.push(Rib::new(ConstantItemRibKind));
+        self.type_ribs.push(Rib::new(ConstantItemRibKind));
         f(self);
-        self.type_ribs.borrow_mut().pop();
-        self.value_ribs.borrow_mut().pop();
+        self.type_ribs.pop();
+        self.value_ribs.pop();
     }
 
     fn resolve_function(&mut self,
@@ -4290,11 +4283,11 @@ impl<'a> Resolver<'a> {
                         block: &Block) {
         // Create a value rib for the function.
         let function_value_rib = Rib::new(rib_kind);
-        self.value_ribs.borrow_mut().push(function_value_rib);
+        self.value_ribs.push(function_value_rib);
 
         // Create a label rib for the function.
         let function_label_rib = Rib::new(rib_kind);
-        self.label_ribs.borrow_mut().push(function_label_rib);
+        self.label_ribs.push(function_label_rib);
 
         // If this function has type parameters, add them now.
         self.with_type_parameter_rib(type_parameters, |this| {
@@ -4336,8 +4329,8 @@ impl<'a> Resolver<'a> {
             debug!("(resolving function) leaving function");
         });
 
-        self.label_ribs.borrow_mut().pop();
-        self.value_ribs.borrow_mut().pop();
+        self.label_ribs.pop();
+        self.value_ribs.pop();
     }
 
     fn resolve_type_parameters(&mut self,
@@ -4680,7 +4673,7 @@ impl<'a> Resolver<'a> {
         for &(did, ref trait_ref) in self.current_trait_ref.iter() {
             let method_name = ident.name;
 
-            if self.trait_item_map.borrow().find(&(method_name, did)).is_none() {
+            if self.trait_item_map.find(&(method_name, did)).is_none() {
                 let path_str = self.path_idents_to_string(&trait_ref.path);
                 self.resolve_error(span,
                                     format!("method `{}` is not a member of trait `{}`",
@@ -4780,7 +4773,7 @@ impl<'a> Resolver<'a> {
     }
 
     fn resolve_arm(&mut self, arm: &Arm) {
-        self.value_ribs.borrow_mut().push(Rib::new(NormalRibKind));
+        self.value_ribs.push(Rib::new(NormalRibKind));
 
         let mut bindings_list = HashMap::new();
         for pattern in arm.pats.iter() {
@@ -4794,12 +4787,12 @@ impl<'a> Resolver<'a> {
         visit::walk_expr_opt(self, &arm.guard);
         self.resolve_expr(&*arm.body);
 
-        self.value_ribs.borrow_mut().pop();
+        self.value_ribs.pop();
     }
 
     fn resolve_block(&mut self, block: &Block) {
         debug!("(resolving block) entering block");
-        self.value_ribs.borrow_mut().push(Rib::new(NormalRibKind));
+        self.value_ribs.push(Rib::new(NormalRibKind));
 
         // Move down in the graph, if there's an anonymous module rooted here.
         let orig_module = self.current_module.clone();
@@ -4818,7 +4811,7 @@ impl<'a> Resolver<'a> {
         // Move back up.
         self.current_module = orig_module;
 
-        self.value_ribs.borrow_mut().pop();
+        self.value_ribs.pop();
         debug!("(resolving block) leaving block");
     }
 
@@ -5061,12 +5054,8 @@ impl<'a> Resolver<'a> {
 
                             if !bindings_list.contains_key(&renamed) {
                                 let this = &mut *self;
-                                let value_ribs = this.value_ribs.borrow();
-                                let length = value_ribs.len();
-                                let last_rib = value_ribs.get(
-                                    length - 1);
-                                last_rib.bindings.borrow_mut()
-                                        .insert(renamed, DlDef(def));
+                                let last_rib = this.value_ribs.last_mut().unwrap();
+                                last_rib.bindings.insert(renamed, DlDef(def));
                                 bindings_list.insert(renamed, pat_id);
                             } else if bindings_list.find(&renamed) ==
                                     Some(&pat_id) {
@@ -5416,7 +5405,7 @@ impl<'a> Resolver<'a> {
             TraitModuleKind | ImplModuleKind => {
                 match containing_module.def_id.get() {
                     Some(def_id) => {
-                        match self.trait_item_map.borrow().find(&(ident.name, def_id)) {
+                        match self.trait_item_map.find(&(ident.name, def_id)) {
                             Some(&StaticMethodTraitItemKind) => (),
                             Some(&TypeTraitItemKind) => (),
                             None => (),
@@ -5508,12 +5497,12 @@ impl<'a> Resolver<'a> {
         let search_result = match namespace {
             ValueNS => {
                 let renamed = mtwt::resolve(ident);
-                self.search_ribs(self.value_ribs.borrow().as_slice(),
+                self.search_ribs(self.value_ribs.as_slice(),
                                  renamed, span)
             }
             TypeNS => {
                 let name = ident.name;
-                self.search_ribs(self.type_ribs.borrow().as_slice(), name, span)
+                self.search_ribs(self.type_ribs.as_slice(), name, span)
             }
         };
 
@@ -5688,12 +5677,11 @@ impl<'a> Resolver<'a> {
         }
 
         // Look for a method in the current trait.
-        let trait_item_map = self.trait_item_map.borrow();
         match self.current_trait_ref {
             Some((did, ref trait_ref)) => {
                 let path_str = self.path_idents_to_string(&trait_ref.path);
 
-                match trait_item_map.find(&(name, did)) {
+                match self.trait_item_map.find(&(name, did)) {
                     Some(&StaticMethodTraitItemKind) => return StaticTraitMethod(path_str),
                     Some(_) => return TraitItem,
                     None => {}
@@ -5712,12 +5700,8 @@ impl<'a> Resolver<'a> {
         let mut maybes: Vec<token::InternedString> = Vec::new();
         let mut values: Vec<uint> = Vec::new();
 
-        let mut j = this.value_ribs.borrow().len();
-        while j != 0 {
-            j -= 1;
-            let value_ribs = this.value_ribs.borrow();
-            let bindings = value_ribs.get(j).bindings.borrow();
-            for (&k, _) in bindings.iter() {
+        for rib in this.value_ribs.iter().rev() {
+            for (&k, _) in rib.bindings.iter() {
                 maybes.push(token::get_name(k));
                 values.push(uint::MAX);
             }
@@ -5807,7 +5791,7 @@ impl<'a> Resolver<'a> {
                             }
                             _ => {
                                 let mut method_scope = false;
-                                self.value_ribs.borrow().iter().rev().all(|rib| {
+                                self.value_ribs.iter().rev().all(|rib| {
                                     let res = match *rib {
                                         Rib { bindings: _, kind: MethodRibKind(_, _) } => true,
                                         Rib { bindings: _, kind: ItemRibKind } => false,
@@ -5866,20 +5850,20 @@ impl<'a> Resolver<'a> {
             ExprFnBlock(_, ref fn_decl, ref block) => {
                 // NOTE(stage0): After snapshot, change to:
                 //
-                //self.capture_mode_map.borrow_mut().insert(expr.id, capture_clause);
-                self.capture_mode_map.borrow_mut().insert(expr.id, ast::CaptureByRef);
+                //self.capture_mode_map.insert(expr.id, capture_clause);
+                self.capture_mode_map.insert(expr.id, ast::CaptureByRef);
                 self.resolve_function(ClosureRibKind(expr.id, ast::DUMMY_NODE_ID),
                                       Some(&**fn_decl), NoTypeParameters,
                                       &**block);
             }
             ExprProc(ref fn_decl, ref block) => {
-                self.capture_mode_map.borrow_mut().insert(expr.id, ast::CaptureByValue);
+                self.capture_mode_map.insert(expr.id, ast::CaptureByValue);
                 self.resolve_function(ClosureRibKind(expr.id, block.id),
                                       Some(&**fn_decl), NoTypeParameters,
                                       &**block);
             }
             ExprUnboxedFn(capture_clause, _, ref fn_decl, ref block) => {
-                self.capture_mode_map.borrow_mut().insert(expr.id, capture_clause);
+                self.capture_mode_map.insert(expr.id, capture_clause);
                 self.resolve_function(ClosureRibKind(expr.id, block.id),
                                       Some(&**fn_decl), NoTypeParameters,
                                       &**block);
@@ -5908,11 +5892,9 @@ impl<'a> Resolver<'a> {
                     let def_like = DlDef(DefLabel(expr.id));
 
                     {
-                        let label_ribs = this.label_ribs.borrow();
-                        let length = label_ribs.len();
-                        let rib = label_ribs.get(length - 1);
+                        let rib = this.label_ribs.last_mut().unwrap();
                         let renamed = mtwt::resolve(label);
-                        rib.bindings.borrow_mut().insert(renamed, def_like);
+                        rib.bindings.insert(renamed, def_like);
                     }
 
                     visit::walk_expr(this, expr);
@@ -5922,7 +5904,7 @@ impl<'a> Resolver<'a> {
             ExprForLoop(ref pattern, ref head, ref body, optional_label) => {
                 self.resolve_expr(&**head);
 
-                self.value_ribs.borrow_mut().push(Rib::new(NormalRibKind));
+                self.value_ribs.push(Rib::new(NormalRibKind));
 
                 self.resolve_pattern(&**pattern,
                                      LocalIrrefutableMode,
@@ -5932,17 +5914,13 @@ impl<'a> Resolver<'a> {
                     None => {}
                     Some(label) => {
                         self.label_ribs
-                            .borrow_mut()
                             .push(Rib::new(NormalRibKind));
                         let def_like = DlDef(DefLabel(expr.id));
 
                         {
-                            let label_ribs = self.label_ribs.borrow();
-                            let length = label_ribs.len();
-                            let rib = label_ribs.get(length - 1);
+                            let rib = self.label_ribs.last_mut().unwrap();
                             let renamed = mtwt::resolve(label);
-                            rib.bindings.borrow_mut().insert(renamed,
-                                                             def_like);
+                            rib.bindings.insert(renamed, def_like);
                         }
                     }
                 }
@@ -5950,15 +5928,15 @@ impl<'a> Resolver<'a> {
                 self.resolve_block(&**body);
 
                 if optional_label.is_some() {
-                    drop(self.label_ribs.borrow_mut().pop())
+                    drop(self.label_ribs.pop())
                 }
 
-                self.value_ribs.borrow_mut().pop();
+                self.value_ribs.pop();
             }
 
             ExprBreak(Some(label)) | ExprAgain(Some(label)) => {
                 let renamed = mtwt::resolve(label);
-                match self.search_ribs(self.label_ribs.borrow().as_slice(),
+                match self.search_ribs(self.label_ribs.as_slice(),
                                        renamed, expr.span) {
                     None => {
                         self.resolve_error(
@@ -6027,9 +6005,7 @@ impl<'a> Resolver<'a> {
             // Look for the current trait.
             match self.current_trait_ref {
                 Some((trait_def_id, _)) => {
-                    let trait_item_map = self.trait_item_map.borrow();
-
-                    if trait_item_map.contains_key(&(name, trait_def_id)) {
+                    if self.trait_item_map.contains_key(&(name, trait_def_id)) {
                         add_trait_info(&mut found_traits, trait_def_id, name);
                     }
                 }
@@ -6040,7 +6016,6 @@ impl<'a> Resolver<'a> {
             self.populate_module_if_necessary(&search_module);
 
             {
-                let trait_item_map = self.trait_item_map.borrow();
                 for (_, child_names) in search_module.children.borrow().iter() {
                     let def = match child_names.def_for_namespace(TypeNS) {
                         Some(def) => def,
@@ -6050,7 +6025,7 @@ impl<'a> Resolver<'a> {
                         DefTrait(trait_def_id) => trait_def_id,
                         _ => continue,
                     };
-                    if trait_item_map.contains_key(&(name, trait_def_id)) {
+                    if self.trait_item_map.contains_key(&(name, trait_def_id)) {
                         add_trait_info(&mut found_traits, trait_def_id, name);
                     }
                 }
@@ -6066,7 +6041,7 @@ impl<'a> Resolver<'a> {
                     Some(DefTrait(trait_def_id)) => trait_def_id,
                     Some(..) | None => continue,
                 };
-                if self.trait_item_map.borrow().contains_key(&(name, did)) {
+                if self.trait_item_map.contains_key(&(name, did)) {
                     add_trait_info(&mut found_traits, did, name);
                     self.used_imports.insert((import.type_id, TypeNS));
                     match target.target_module.def_id.get() {
@@ -6331,7 +6306,7 @@ pub fn resolve_crate(session: &Session,
     CrateMap {
         def_map: resolver.def_map,
         freevars: resolver.freevars,
-        capture_mode_map: resolver.capture_mode_map,
+        capture_mode_map: RefCell::new(resolver.capture_mode_map),
         exp_map2: resolver.export_map2,
         trait_map: resolver.trait_map,
         external_exports: resolver.external_exports,

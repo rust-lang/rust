@@ -538,7 +538,7 @@ fn encode_reexports(ecx: &EncodeContext,
                     id: NodeId,
                     path: PathElems) {
     debug!("(encoding info for module) encoding reexports for {}", id);
-    match ecx.reexports2.borrow().find(&id) {
+    match ecx.reexports2.find(&id) {
         Some(ref exports) => {
             debug!("(encoding info for module) found reexports for {}", id);
             for exp in exports.iter() {
