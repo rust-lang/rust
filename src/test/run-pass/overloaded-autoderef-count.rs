@@ -74,7 +74,7 @@ pub fn main() {
     assert_eq!(p.counts(), (2, 2));
 
     p.get();
-    assert_eq!(p.counts(), (2, 3));
+    assert_eq!(p.counts(), (3, 2));
 
     // Check the final state.
     assert_eq!(*p, Point {x: 3, y: 0});
