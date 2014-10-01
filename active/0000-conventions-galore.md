@@ -172,6 +172,10 @@ The proposed convention for a field `foo: T` is:
 * A method `set_foo(&self, val: T)` for setting the field. (The `val` argument
   here may take `&T` or some other type, depending on the context.)
 
+Note that this convention is about getters/setters on ordinary data types, *not*
+on [builder objects](http://aturon.github.io/ownership/builders.html). The
+naming conventions for builder methods are still open.
+
 ## Associated types
 
 Unlike type parameters, the *names* of
