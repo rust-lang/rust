@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use middle::subst::{SelfSpace};
+use middle::subst::{SelfSpace, FnSpace};
 use middle::traits;
 use middle::traits::{SelectionError, OutputTypeParameterMismatch, Overflow, Unimplemented};
 use middle::traits::{Obligation, obligation_for_builtin_bound};
@@ -46,6 +46,7 @@ pub fn check_object_cast(fcx: &FnCtxt,
 
             // Ensure that if ~T is cast to ~Trait, then T : Trait
             push_cast_obligation(fcx, cast_expr, object_trait, referent_ty);
+            check_object_safety(fcx.tcx(), object_trait, source_expr.span);
         }
 
         (&ty::ty_rptr(referent_region, ty::mt { ty: referent_ty,
@@ -68,6 +69,8 @@ pub fn check_object_cast(fcx: &FnCtxt,
                                infer::RelateObjectBound(source_expr.span),
                                target_region,
                                referent_region);
+
+                check_object_safety(fcx.tcx(), object_trait, source_expr.span);
             }
         }
 
@@ -125,6 +128,70 @@ pub fn check_object_cast(fcx: &FnCtxt,
         // (it would prob be better not to do this, but it's just kind
         // of a pain to have to reconstruct it).
         fcx.write_object_cast(cast_expr.id, object_trait_ref);
+    }
+}
+
+// TODO comment
+pub fn check_object_safety(tcx: &ty::ctxt, object_trait: &ty::TyTrait, span: Span) {
+    let trait_items = ty::trait_items(tcx, object_trait.def_id);
+    for item in trait_items.iter() {
+        match *item {
+            ty::MethodTraitItem(ref m) => check_object_safety_of_method(tcx, &**m, span),
+            ty::TypeTraitItem(_) => {}
+        }
+    }
+
+    // TODO error messages
+    fn check_object_safety_of_method(tcx: &ty::ctxt, method: &ty::Method, span: Span) {
+        /*!
+         * There are some limitations to calling functions through an
+         * object, because (a) the self type is not known
+         * (that's the whole point of a trait instance, after all, to
+         * obscure the self type) and (b) the call must go through a
+         * vtable and hence cannot be monomorphized.
+         */
+
+        match method.explicit_self {
+            ty::ByValueExplicitSelfCategory => { // reason (a) above
+                tcx.sess.span_err(
+                    span,
+                    "cannot call a method with a by-value receiver \
+                     through a trait object");
+            }
+
+            ty::StaticExplicitSelfCategory |
+            ty::ByReferenceExplicitSelfCategory(..) |
+            ty::ByBoxExplicitSelfCategory => {}
+        }
+
+        // reason (a) above
+        let check_for_self_ty = |ty| {
+            if ty::type_has_self(ty) {
+                span_err!(tcx.sess, span, E0038,
+                    "cannot call a method whose type contains a \
+                     self-type through an object: {}", ::util::ppaux::ty_to_string(tcx, ty));
+                true
+            } else {
+                false
+            }
+        };
+        let ref sig = method.fty.sig;
+        let mut found_self_ty = false;
+        for &input_ty in sig.inputs.tail().iter() {
+            if check_for_self_ty(input_ty) {
+                found_self_ty = true;
+                break;
+            }
+        }
+        if !found_self_ty {
+            check_for_self_ty(sig.output);
+        }
+
+        if method.generics.has_type_params(FnSpace) {
+            // reason (b) above
+            span_err!(tcx.sess, span, E0039,
+                "cannot call a generic method through an object");
+        }
     }
 }
 
