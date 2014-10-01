@@ -571,15 +571,15 @@ pub fn get_vtable(bcx: Block,
                     nested: _ }) => {
                 emit_vtable_methods(bcx, id, substs).into_iter()
             }
-            traits::VtableUnboxedClosure(closure_def_id) => {
+            traits::VtableUnboxedClosure(auxiliary_def_id) => {
                 let callee_substs =
                     get_callee_substitutions_for_unboxed_closure(
                         bcx,
-                        closure_def_id);
+                        auxiliary_def_id);
 
                 let mut llfn = trans_fn_ref_with_substs(
                     bcx,
-                    closure_def_id,
+                    auxiliary_def_id,
                     ExprId(0),
                     callee_substs.clone());
 
@@ -588,14 +588,14 @@ pub fn get_vtable(bcx: Block,
                                               .unboxed_closures
                                               .borrow();
                     let closure_info =
-                        unboxed_closures.find(&closure_def_id)
+                        unboxed_closures.find(&auxiliary_def_id)
                                         .expect("get_vtable(): didn't find \
                                                  unboxed closure");
                     if closure_info.kind == ty::FnOnceUnboxedClosureKind {
                         // Untuple the arguments and create an unboxing shim.
                         let mut new_inputs = vec![
                             ty::mk_unboxed_closure(bcx.tcx(),
-                                                   closure_def_id,
+                                                   closure_info.expr_id,
                                                    ty::ReStatic)
                         ];
                         match ty::get(closure_info.closure_type
@@ -630,7 +630,7 @@ pub fn get_vtable(bcx: Block,
                         llfn = trans_unboxing_shim(bcx,
                                                    llfn,
                                                    &closure_type,
-                                                   closure_def_id,
+                                                   auxiliary_def_id,
                                                    callee_substs);
                     }
                 }

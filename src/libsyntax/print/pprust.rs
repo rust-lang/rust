@@ -1579,7 +1579,11 @@ impl<'a> State<'a> {
                 // empty box to satisfy the close.
                 try!(self.ibox(0));
             }
-            ast::ExprUnboxedFn(capture_clause, kind, ref decl, ref body) => {
+            ast::ExprUnboxedFn(capture_clause,
+                               kind,
+                               _,
+                               ref decl,
+                               ref body) => {
                 try!(self.print_capture_clause(capture_clause));
 
                 // in do/for blocks we don't want to show an empty

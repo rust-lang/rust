@@ -5878,7 +5878,7 @@ impl<'a> Resolver<'a> {
                                       Some(&**fn_decl), NoTypeParameters,
                                       &**block);
             }
-            ExprUnboxedFn(capture_clause, _, ref fn_decl, ref block) => {
+            ExprUnboxedFn(capture_clause, _, _, ref fn_decl, ref block) => {
                 self.capture_mode_map.borrow_mut().insert(expr.id, capture_clause);
                 self.resolve_function(ClosureRibKind(expr.id, block.id),
                                       Some(&**fn_decl), NoTypeParameters,

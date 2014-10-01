@@ -1441,9 +1441,11 @@ pub struct UnboxedClosure {
     pub closure_type: ClosureTy,
     /// The kind of unboxed closure this is.
     pub kind: UnboxedClosureKind,
+    /// The ID of the expression.
+    pub expr_id: ast::DefId,
 }
 
-#[deriving(Clone, PartialEq, Eq)]
+#[deriving(Clone, PartialEq, Eq, Show)]
 pub enum UnboxedClosureKind {
     FnUnboxedClosureKind,
     FnMutUnboxedClosureKind,
@@ -1451,6 +1453,29 @@ pub enum UnboxedClosureKind {
 }
 
 impl UnboxedClosureKind {
+    pub fn from_ast_kind(ast_kind: ast::UnboxedClosureKind)
+                         -> UnboxedClosureKind {
+        match ast_kind {
+            ast::FnUnboxedClosureKind => FnUnboxedClosureKind,
+            ast::FnMutUnboxedClosureKind => FnMutUnboxedClosureKind,
+            ast::FnOnceUnboxedClosureKind => FnOnceUnboxedClosureKind,
+        }
+    }
+
+    pub fn from_trait_did(cx: &ctxt, trait_did: ast::DefId)
+                          -> UnboxedClosureKind {
+        if Some(trait_did) == cx.lang_items.fn_trait() {
+            FnUnboxedClosureKind
+        } else if Some(trait_did) == cx.lang_items.fn_mut_trait() {
+            FnMutUnboxedClosureKind
+        } else if Some(trait_did) == cx.lang_items.fn_once_trait() {
+            FnOnceUnboxedClosureKind
+        } else {
+            cx.sess.bug("UnboxedClosureKind::from_trait_did(): not an \
+                         unboxed closure trait")
+        }
+    }
+
     pub fn trait_did(&self, cx: &ctxt) -> ast::DefId {
         let result = match *self {
             FnUnboxedClosureKind => cx.lang_items.require(FnTraitLangItem),
@@ -1464,6 +1489,44 @@ impl UnboxedClosureKind {
         match result {
             Ok(trait_did) => trait_did,
             Err(err) => cx.sess.fatal(err.as_slice()),
+        }
+    }
+
+    pub fn is_compatible_with(self, bound: UnboxedClosureKind) -> bool {
+        match (self, bound) {
+            (FnOnceUnboxedClosureKind, _) |
+            (FnMutUnboxedClosureKind, FnUnboxedClosureKind) |
+            (FnMutUnboxedClosureKind, FnMutUnboxedClosureKind) |
+            (FnUnboxedClosureKind, FnUnboxedClosureKind) => true,
+            _ => false,
+        }
+    }
+
+    pub fn select_auxiliary_unboxed_closure_id(
+            self,
+            ids: &ast::AuxiliaryUnboxedClosureIds)
+            -> ast::NodeId {
+        match self {
+            FnUnboxedClosureKind => ids.fn_id,
+            FnMutUnboxedClosureKind => ids.fn_mut_id,
+            FnOnceUnboxedClosureKind => ids.fn_once_id,
+        }
+    }
+}
+
+pub fn auxiliary_def_id_for_unboxed_closure(tcx: &ctxt, expr_id: ast::NodeId)
+                                            -> ast::DefId {
+    let expr = tcx.map.expect_expr(expr_id);
+    match expr.node {
+        ast::ExprUnboxedFn(_, kind, ref ids, _, _) => {
+            let kind = UnboxedClosureKind::from_ast_kind(kind);
+            ast_util::local_def(kind.select_auxiliary_unboxed_closure_id(
+                    &**ids))
+        }
+        _ => {
+            tcx.sess.span_bug(expr.span,
+                              "auxiliary_def_id_for_unboxed_closure(): ID \
+                               passed in wasn't that of an unboxed fn")
         }
     }
 }

@@ -502,6 +502,13 @@ pub enum UnsafeSource {
 }
 
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
+pub struct AuxiliaryUnboxedClosureIds {
+    pub fn_id: NodeId,
+    pub fn_mut_id: NodeId,
+    pub fn_once_id: NodeId,
+}
+
+#[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
 pub struct Expr {
     pub id: NodeId,
     pub node: Expr_,
@@ -532,7 +539,11 @@ pub enum Expr_ {
     ExprMatch(P<Expr>, Vec<Arm>, MatchSource),
     ExprFnBlock(CaptureClause, P<FnDecl>, P<Block>),
     ExprProc(P<FnDecl>, P<Block>),
-    ExprUnboxedFn(CaptureClause, UnboxedClosureKind, P<FnDecl>, P<Block>),
+    ExprUnboxedFn(CaptureClause,
+                  UnboxedClosureKind,
+                  P<AuxiliaryUnboxedClosureIds>,
+                  P<FnDecl>,
+                  P<Block>),
     ExprBlock(P<Block>),
 
     ExprAssign(P<Expr>, P<Expr>),

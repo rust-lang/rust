@@ -14,9 +14,9 @@ use llvm::ValueRef;
 use llvm;
 use middle::subst;
 use middle::subst::Subst;
-use middle::trans::base::{set_llvm_fn_attrs, set_inline_hint};
-use middle::trans::base::{trans_enum_variant, push_ctxt, get_item_val};
-use middle::trans::base::{trans_fn, decl_internal_rust_fn};
+use middle::trans::base::{NormalFunctionType, decl_internal_rust_fn};
+use middle::trans::base::{get_item_val, push_ctxt, set_inline_hint};
+use middle::trans::base::{set_llvm_fn_attrs, trans_enum_variant, trans_fn};
 use middle::trans::base;
 use middle::trans::common::*;
 use middle::trans::foreign;
@@ -141,7 +141,9 @@ pub fn monomorphic_fn(ccx: &CrateContext,
         let lldecl = if abi != abi::Rust {
             foreign::decl_rust_fn_with_foreign_abi(ccx, mono_ty, s.as_slice())
         } else {
-            decl_internal_rust_fn(ccx, mono_ty, s.as_slice())
+            decl_internal_rust_fn(ccx,
+                                  NormalFunctionType(mono_ty),
+                                  s.as_slice())
         };
 
         ccx.monomorphized().borrow_mut().insert(hash_id.take().unwrap(), lldecl);

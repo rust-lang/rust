@@ -282,7 +282,7 @@ pub fn closure_to_block(closure_id: ast::NodeId,
         ast_map::NodeExpr(expr) => match expr.node {
             ast::ExprProc(_, ref block) |
             ast::ExprFnBlock(_, _, ref block) |
-            ast::ExprUnboxedFn(_, _, _, ref block) => { block.id }
+            ast::ExprUnboxedFn(_, _, _, _, ref block) => { block.id }
             _ => fail!("encountered non-closure id: {}", closure_id)
         },
         _ => fail!("encountered non-expr id: {}", closure_id)

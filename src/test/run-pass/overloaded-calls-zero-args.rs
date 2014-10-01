@@ -17,6 +17,12 @@ struct S {
     y: int,
 }
 
+impl FnOnce<(),int> for S {
+    extern "rust-call" fn call_once(mut self, (): ()) -> int {
+        self.call_mut(())
+    }
+}
+
 impl FnMut<(),int> for S {
     extern "rust-call" fn call_mut(&mut self, (): ()) -> int {
         self.x * self.y

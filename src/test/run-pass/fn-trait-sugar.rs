@@ -15,6 +15,12 @@ use std::ops::FnMut;
 
 struct S;
 
+impl FnOnce<(int,),int> for S {
+    extern "rust-call" fn call_once(mut self, (x,): (int,)) -> int {
+        self.call_mut((x,))
+    }
+}
+
 impl FnMut<(int,),int> for S {
     extern "rust-call" fn call_mut(&mut self, (x,): (int,)) -> int {
         x * x

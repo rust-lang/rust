@@ -2152,11 +2152,11 @@ fn try_overloaded_call<'a>(fcx: &FnCtxt,
         _ => {}
     }
 
-    // Try `FnOnce`, then `FnMut`, then `Fn`.
+    // Try `Fn`, then `FnMut`, then `FnOnce`.
     for &(maybe_function_trait, method_name) in [
-        (fcx.tcx().lang_items.fn_once_trait(), token::intern("call_once")),
+        (fcx.tcx().lang_items.fn_trait(), token::intern("call")),
         (fcx.tcx().lang_items.fn_mut_trait(), token::intern("call_mut")),
-        (fcx.tcx().lang_items.fn_trait(), token::intern("call"))
+        (fcx.tcx().lang_items.fn_once_trait(), token::intern("call_once"))
     ].iter() {
         let function_trait = match maybe_function_trait {
             None => continue,
@@ -3325,6 +3325,7 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
     fn check_unboxed_closure(fcx: &FnCtxt,
                              expr: &ast::Expr,
                              kind: ast::UnboxedClosureKind,
+                             ids: &ast::AuxiliaryUnboxedClosureIds,
                              decl: &ast::FnDecl,
                              body: &ast::Block) {
         let mut fn_ty = astconv::ty_of_closure(
@@ -3355,6 +3356,9 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
                                                   local_def(expr.id),
                                                   region);
         fcx.write_ty(expr.id, closure_type);
+        fcx.write_ty(ids.fn_id, closure_type);
+        fcx.write_ty(ids.fn_mut_id, closure_type);
+        fcx.write_ty(ids.fn_once_id, closure_type);
 
         check_fn(fcx.ccx,
                  ast::NormalFn,
@@ -3379,15 +3383,38 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
             ast::FnOnceUnboxedClosureKind => ty::FnOnceUnboxedClosureKind,
         };
 
-        let unboxed_closure = ty::UnboxedClosure {
-            closure_type: fn_ty,
-            kind: kind,
-        };
-
         fcx.inh
            .unboxed_closures
            .borrow_mut()
-           .insert(local_def(expr.id), unboxed_closure);
+           .insert(local_def(ids.fn_once_id),
+                   ty::UnboxedClosure {
+                closure_type: fn_ty.clone(),
+                expr_id: ast_util::local_def(expr.id),
+                kind: ty::FnOnceUnboxedClosureKind,
+           });
+        if kind == ty::FnUnboxedClosureKind ||
+                kind == ty::FnMutUnboxedClosureKind {
+            fcx.inh
+               .unboxed_closures
+               .borrow_mut()
+               .insert(local_def(ids.fn_mut_id),
+                       ty::UnboxedClosure {
+                    closure_type: fn_ty.clone(),
+                    expr_id: ast_util::local_def(expr.id),
+                    kind: ty::FnMutUnboxedClosureKind,
+               });
+        }
+        if kind == ty::FnUnboxedClosureKind {
+            fcx.inh
+               .unboxed_closures
+               .borrow_mut()
+               .insert(local_def(ids.fn_id),
+                       ty::UnboxedClosure {
+                    closure_type: fn_ty,
+                    expr_id: ast_util::local_def(expr.id),
+                    kind: ty::FnUnboxedClosureKind,
+               });
+        }
     }
 
     fn check_expr_fn(fcx: &FnCtxt,
@@ -4162,10 +4189,11 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
                       &**body,
                       expected);
       }
-      ast::ExprUnboxedFn(_, kind, ref decl, ref body) => {
+      ast::ExprUnboxedFn(_, kind, ref ids, ref decl, ref body) => {
         check_unboxed_closure(fcx,
                               expr,
                               kind,
+                              &**ids,
                               &**decl,
                               &**body);
       }

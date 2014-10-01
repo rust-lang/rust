@@ -595,10 +595,21 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
                       }
                   }
                   ty::ty_unboxed_closure(closure_id, _) => {
-                      let unboxed_closures = self.typer
-                                                 .unboxed_closures()
-                                                 .borrow();
-                      let kind = unboxed_closures.get(&closure_id).kind;
+                      assert!(closure_id.krate == ast::LOCAL_CRATE);
+                      let kind = match self.typer
+                                           .tcx()
+                                           .map
+                                           .expect_expr(closure_id.node)
+                                           .node {
+                        ast::ExprUnboxedFn(_, kind, _, _, _) => {
+                            ty::UnboxedClosureKind::from_ast_kind(kind)
+                        }
+                        _ => {
+                            self.typer.tcx().sess.bug("didn't find unboxed \
+                                                       fn with appropriate \
+                                                       type in AST map")
+                        }
+                      };
                       let onceness = match kind {
                           ty::FnUnboxedClosureKind |
                           ty::FnMutUnboxedClosureKind => ast::Many,

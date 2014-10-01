@@ -17,6 +17,12 @@ struct S1 {
     y: int,
 }
 
+impl FnOnce<(int,),int> for S1 {
+    extern "rust-call" fn call_once(mut self, (z,): (int,)) -> int {
+        self.call_mut((z,))
+    }
+}
+
 impl FnMut<(int,),int> for S1 {
     extern "rust-call" fn call_mut(&mut self, (z,): (int,)) -> int {
         self.x * self.y * z
@@ -26,6 +32,18 @@ impl FnMut<(int,),int> for S1 {
 struct S2 {
     x: int,
     y: int,
+}
+
+impl FnOnce<(int,),int> for S2 {
+    extern "rust-call" fn call_once(self, (z,): (int,)) -> int {
+        self.call((z,))
+    }
+}
+
+impl FnMut<(int,),int> for S2 {
+    extern "rust-call" fn call_mut(&mut self, (z,): (int,)) -> int {
+        self.call((z,))
+    }
 }
 
 impl Fn<(int,),int> for S2 {

@@ -32,6 +32,7 @@ use std::cell::RefCell;
 use std::collections::hashmap::HashMap;
 use std::rc::Rc;
 use syntax::ast;
+use syntax::ast_util;
 use util::ppaux::Repr;
 
 pub struct SelectionContext<'cx, 'tcx:'cx> {
@@ -548,6 +549,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
          * unboxed closure type.
          */
 
+        debug!("assemble_unboxed_candidates()");
+
         let closure_def_id = match ty::get(skol_obligation_self_ty).sty {
             ty::ty_unboxed_closure(id, _) => id,
             _ => { return Ok(()); }
@@ -569,22 +572,34 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 _ => continue,
             };
 
-            // Check to see whether the argument and return types match.
-            let closure_kind = match self.typer.unboxed_closures().borrow().find(&closure_def_id) {
-                Some(closure) => closure.kind,
-                None => {
-                    self.tcx().sess.span_bug(
-                        obligation.cause.span,
-                        format!("No entry for unboxed closure: {}",
-                                closure_def_id.repr(self.tcx())).as_slice());
-                }
-            };
+            // Check to see whether the closure could implement this trait.
+            assert!(closure_def_id.krate == ast::LOCAL_CRATE);
+            let auxiliary_closure_id =
+                match self.tcx().map.expect_expr(closure_def_id.node).node {
+                    ast::ExprUnboxedFn(_, _, ref ids, _, _) => {
+                        ast_util::local_def(
+                            kind.select_auxiliary_unboxed_closure_id(&**ids))
+                    }
+                    _ => {
+                        self.tcx().sess.span_bug(
+                            obligation.cause.span,
+                            "unboxed fn didn't map to an expr")
+                    }
+                };
 
-            if closure_kind != kind {
-                continue;
+            debug!("assemble_unboxed_candidates(kind={})", kind);
+
+            // Check to see whether the argument and return types match.
+            if !self.typer
+                    .unboxed_closures()
+                    .borrow()
+                    .contains_key(&auxiliary_closure_id) {
+                // Not compatible with this trait.
+                continue
             }
 
-            candidates.push(MatchedUnboxedClosureCandidate(closure_def_id));
+            candidates.push(MatchedUnboxedClosureCandidate(
+                    auxiliary_closure_id));
         }
 
         Ok(())
@@ -1072,7 +1087,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             }
 
             MatchedUnboxedClosureCandidate(closure_def_id) => {
-                try!(self.confirm_unboxed_closure_candidate(obligation, closure_def_id));
+                try!(self.confirm_unboxed_closure_candidate(
+                        obligation,
+                        closure_def_id));
                 Ok(Some(VtableUnboxedClosure(closure_def_id)))
             }
         }
@@ -1153,11 +1170,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         Ok(vtable_impl)
     }
 
-    fn confirm_unboxed_closure_candidate(&mut self,
-                                         obligation: &Obligation,
-                                         closure_def_id: ast::DefId)
-                                         -> Result<(),SelectionError>
-    {
+    fn confirm_unboxed_closure_candidate(
+            &mut self,
+            obligation: &Obligation,
+            closure_def_id: ast::DefId)
+            -> Result<(),SelectionError> {
         debug!("confirm_unboxed_closure_candidate({},{})",
                obligation.repr(self.tcx()),
                closure_def_id.repr(self.tcx()));

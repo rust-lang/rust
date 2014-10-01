@@ -286,7 +286,7 @@ pub fn trans_unboxing_shim(bcx: Block,
         link::mangle_internal_name_by_path_and_seq(path, "unboxing_shim")
     });
     let llfn = decl_internal_rust_fn(ccx,
-                                     boxed_function_type,
+                                     NormalFunctionType(boxed_function_type),
                                      function_name.as_slice());
 
     let block_arena = TypedArena::new();

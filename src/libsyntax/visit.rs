@@ -755,7 +755,7 @@ pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr) {
                              expression.span,
                              expression.id)
         }
-        ExprUnboxedFn(_, _, ref function_declaration, ref body) => {
+        ExprUnboxedFn(_, _, _, ref function_declaration, ref body) => {
             visitor.visit_fn(FkFnBlock,
                              &**function_declaration,
                              &**body,
