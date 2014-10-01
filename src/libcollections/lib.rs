@@ -20,7 +20,7 @@
        html_playground_url = "http://play.rust-lang.org/")]
 
 #![allow(unknown_features)]
-#![feature(macro_rules, managed_boxes, default_type_params, phase, globs)]
+#![feature(macro_rules, default_type_params, phase, globs)]
 #![feature(unsafe_destructor, import_shadowing, slicing_syntax)]
 #![no_std]
 

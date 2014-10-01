@@ -50,7 +50,7 @@ fn main() {
        html_favicon_url = "http://www.rust-lang.org/favicon.ico",
        html_root_url = "http://doc.rust-lang.org/master/")]
 
-#![feature(plugin_registrar, managed_boxes)]
+#![feature(plugin_registrar)]
 
 extern crate syntax;
 extern crate rustc;
