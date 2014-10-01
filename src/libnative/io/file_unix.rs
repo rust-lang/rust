@@ -454,11 +454,29 @@ fn mkstat(stat: &libc::stat) -> rtio::FileStat {
     #[cfg(any(target_os = "linux", target_os = "android"))]
     fn gen(_stat: &libc::stat) -> u64 { 0 }
 
+    #[cfg(target_os = "linux")]
+    fn created(_stat: &libc::stat) -> u64 { 0 }
+    #[cfg(target_os = "windows")]
+    fn created(stat: &libc::stat) -> u64 { mktime(stat.st_ctime as u64, stat.st_ctime_nsec as u64) }
+    #[cfg(target_os = "macos", target_arch = "x86_64")]
+    fn created(stat: &libc::stat) -> u64 {
+        mktime(stat.st_birthtime as u64, stat.st_birthtime_nsec as u64)
+    }
+    #[cfg(target_os = "freebsd")]
+    fn created(stat: &libc::stat) -> u64 {
+        mktime(stat.st_birthtime as u64, stat.st_birthtime_nsec as u64)
+    }
+    #[cfg(target_family = "unix")]
+    fn changed(stat: &libc::stat) -> u64 { mktime(stat.st_ctime as u64, stat.st_ctime_nsec as u64) }
+    #[cfg(target_os = "windows")]
+    fn changed(_stat: &libc::stat) -> u64 { 0 }
+
     rtio::FileStat {
         size: stat.st_size as u64,
         kind: stat.st_mode as u64,
         perm: stat.st_mode as u64,
-        created: mktime(stat.st_ctime as u64, stat.st_ctime_nsec as u64),
+        created: created(stat),
+        changed: changed(stat),
         modified: mktime(stat.st_mtime as u64, stat.st_mtime_nsec as u64),
         accessed: mktime(stat.st_atime as u64, stat.st_atime_nsec as u64),
         device: stat.st_dev as u64,

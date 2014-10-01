@@ -283,6 +283,7 @@ impl FsRequest {
             kind: stat.st_mode as u64,
             perm: stat.st_mode as u64,
             created: to_msec(stat.st_birthtim),
+            changed: to_msec(stat.st_ctim),
             modified: to_msec(stat.st_mtim),
             accessed: to_msec(stat.st_atim),
             device: stat.st_dev as u64,
