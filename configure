@@ -438,7 +438,6 @@ valopt prefix "/usr/local" "set installation prefix"
 valopt local-rust-root "/usr/local" "set prefix for local rust binary"
 valopt llvm-root "" "set LLVM root"
 valopt jemalloc-root "" "set directory where libjemalloc_pic.a is located"
-valopt libuv-root "" "set directory where libuv.a is located"
 valopt android-cross-path "/opt/ndk_standalone" "Android NDK standalone path"
 valopt mingw32-cross-path "" "MinGW32 cross compiler path"
 
@@ -869,10 +868,6 @@ do
   do
     make_dir $t/rt/stage$s
     make_dir $t/rt/jemalloc
-    make_dir $t/rt/libuv
-    make_dir $t/rt/libuv/src/ares
-    make_dir $t/rt/libuv/src/eio
-    make_dir $t/rt/libuv/src/ev
     for i in                                          \
       isaac sync test \
       arch/i386 arch/x86_64 arch/arm arch/mips  \
@@ -951,10 +946,6 @@ then
     if [ ! -z "${CFG_JEMALLOC_ROOT}" ]; then
         msg "git: submodule deinit src/jemalloc"
         "${CFG_GIT}" submodule deinit src/jemalloc
-    fi
-    if [ ! -z "${CFG_LIBUV_ROOT}" ]; then
-        msg "git: submodule deinit src/libuv"
-        "${CFG_GIT}" submodule deinit src/libuv
     fi
 
     msg "git: submodule update"
@@ -1216,7 +1207,6 @@ putvar CFG_MINGW32_CROSS_PATH
 putvar CFG_MANDIR
 putvar CFG_DISABLE_INJECT_STD_VERSION
 putvar CFG_JEMALLOC_ROOT
-putvar CFG_LIBUV_ROOT
 putvar CFG_DISABLE_JEMALLOC
 
 # Avoid spurious warnings from clang by feeding it original source on
