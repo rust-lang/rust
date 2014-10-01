@@ -21,7 +21,7 @@
 `std::io` provides Rust's basic I/O types,
 for reading and writing to files, TCP, UDP,
 and other types of sockets and pipes,
-manipulating the file system, spawning processes and signal handling.
+manipulating the file system, spawning processes.
 
 # Examples
 
@@ -275,7 +275,6 @@ pub mod fs;
 pub mod net;
 pub mod pipe;
 pub mod process;
-pub mod signal;
 pub mod stdio;
 pub mod test;
 pub mod timer;
