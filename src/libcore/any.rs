@@ -91,7 +91,7 @@ pub enum Void { }
 /// Every type with no non-`'static` references implements `Any`, so `Any` can
 /// be used as a trait object to emulate the effects dynamic typing.
 #[stable]
-pub trait Any: AnyPrivate {}
+pub trait Any: AnyPrivate + 'static {}
 
 /// An inner trait to ensure that only this module can call `get_type_id()`.
 pub trait AnyPrivate {
@@ -132,7 +132,7 @@ pub trait AnyRefExt<'a> {
 }
 
 #[stable]
-impl<'a> AnyRefExt<'a> for &'a Any+'a {
+impl<'a> AnyRefExt<'a> for &'a Any {
     #[inline]
     #[stable]
     fn is<T: 'static>(self) -> bool {
@@ -181,7 +181,7 @@ pub trait AnyMutRefExt<'a> {
 }
 
 #[stable]
-impl<'a> AnyMutRefExt<'a> for &'a mut Any+'a {
+impl<'a> AnyMutRefExt<'a> for &'a mut Any {
     #[inline]
     #[unstable = "naming conventions around acquiring references may change"]
     fn downcast_mut<T: 'static>(self) -> Option<&'a mut T> {
