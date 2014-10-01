@@ -77,10 +77,9 @@ pub use task::NativeTaskBuilder;
 pub mod io;
 pub mod task;
 
-#[cfg(windows)]
-#[cfg(android)]
+#[cfg(any(windows, android))]
 static OS_DEFAULT_STACK_ESTIMATE: uint = 1 << 20;
-#[cfg(unix, not(android))]
+#[cfg(all(unix, not(android)))]
 static OS_DEFAULT_STACK_ESTIMATE: uint = 2 * (1 << 20);
 
 #[lang = "start"]

@@ -188,27 +188,27 @@ fn initialize_call_frame(regs: &mut Registers, fptr: InitFn, arg: uint,
 
 // windows requires saving more registers (both general and XMM), so the windows
 // register context must be larger.
-#[cfg(windows, target_arch = "x86_64")]
+#[cfg(all(windows, target_arch = "x86_64"))]
 #[repr(C)]
 struct Registers {
     gpr:[libc::uintptr_t, ..14],
     _xmm:[simd::u32x4, ..10]
 }
-#[cfg(not(windows), target_arch = "x86_64")]
+#[cfg(all(not(windows), target_arch = "x86_64"))]
 #[repr(C)]
 struct Registers {
     gpr:[libc::uintptr_t, ..10],
     _xmm:[simd::u32x4, ..6]
 }
 
-#[cfg(windows, target_arch = "x86_64")]
+#[cfg(all(windows, target_arch = "x86_64"))]
 fn new_regs() -> Box<Registers> {
     box() Registers {
         gpr:[0,..14],
         _xmm:[simd::u32x4(0,0,0,0),..10]
     }
 }
-#[cfg(not(windows), target_arch = "x86_64")]
+#[cfg(all(not(windows), target_arch = "x86_64"))]
 fn new_regs() -> Box<Registers> {
     box() Registers {
         gpr:[0,..10],
@@ -288,16 +288,13 @@ fn initialize_call_frame(regs: &mut Registers, fptr: InitFn, arg: uint,
     regs[14] = rust_bootstrap_green_task as libc::uintptr_t;   // #56 pc, r14 --> lr
 }
 
-#[cfg(target_arch = "mips")]
-#[cfg(target_arch = "mipsel")]
+#[cfg(any(target_arch = "mips", target_arch = "mipsel"))]
 type Registers = [libc::uintptr_t, ..32];
 
-#[cfg(target_arch = "mips")]
-#[cfg(target_arch = "mipsel")]
+#[cfg(any(target_arch = "mips", target_arch = "mipsel"))]
 fn new_regs() -> Box<Registers> { box {[0, .. 32]} }
 
-#[cfg(target_arch = "mips")]
-#[cfg(target_arch = "mipsel")]
+#[cfg(any(target_arch = "mips", target_arch = "mipsel"))]
 fn initialize_call_frame(regs: &mut Registers, fptr: InitFn, arg: uint,
                          procedure: raw::Procedure, sp: *mut uint) {
     let sp = align_down(sp);

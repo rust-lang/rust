@@ -123,7 +123,7 @@ fn lookup(hostname: Option<&str>, servname: Option<&str>, hint: Option<Hint>)
 
 // Ignored on android since we cannot give tcp/ip
 // permission without help of apk
-#[cfg(test, not(target_os = "android"))]
+#[cfg(all(test, not(target_os = "android")))]
 mod test {
     iotest!(fn dns_smoke_test() {
         let ipaddrs = get_host_addresses("localhost").unwrap();

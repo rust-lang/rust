@@ -85,7 +85,7 @@ fn libname(mut n: String) -> String {
     n
 }
 
-#[cfg(not(target_os="windows"), not(target_os="macos"))]
+#[cfg(all(not(target_os="windows"), not(target_os="macos")))]
 fn libname(n: String) -> String {
     let mut i = String::from_str("lib");
     i.push_str(n.as_slice());

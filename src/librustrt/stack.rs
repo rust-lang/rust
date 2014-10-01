@@ -156,13 +156,13 @@ pub unsafe fn record_rust_managed_stack_bounds(stack_lo: uint, stack_hi: uint) {
     #[cfg(not(windows))] #[inline(always)]
     unsafe fn target_record_stack_bounds(_stack_lo: uint, _stack_hi: uint) {}
 
-    #[cfg(windows, target_arch = "x86")] #[inline(always)]
+    #[cfg(all(windows, target_arch = "x86"))] #[inline(always)]
     unsafe fn target_record_stack_bounds(stack_lo: uint, stack_hi: uint) {
         // stack range is at TIB: %fs:0x04 (top) and %fs:0x08 (bottom)
         asm!("mov $0, %fs:0x04" :: "r"(stack_hi) :: "volatile");
         asm!("mov $0, %fs:0x08" :: "r"(stack_lo) :: "volatile");
     }
-    #[cfg(windows, target_arch = "x86_64")] #[inline(always)]
+    #[cfg(all(windows, target_arch = "x86_64"))] #[inline(always)]
     unsafe fn target_record_stack_bounds(stack_lo: uint, stack_hi: uint) {
         // stack range is at TIB: %gs:0x08 (top) and %gs:0x10 (bottom)
         asm!("mov $0, %gs:0x08" :: "r"(stack_hi) :: "volatile");
@@ -189,49 +189,53 @@ pub unsafe fn record_sp_limit(limit: uint) {
     return target_record_sp_limit(limit);
 
     // x86-64
-    #[cfg(target_arch = "x86_64", target_os = "macos")]
-    #[cfg(target_arch = "x86_64", target_os = "ios")] #[inline(always)]
+    #[cfg(all(target_arch = "x86_64",
+              any(target_os = "macos", target_os = "ios")))]
+    #[inline(always)]
     unsafe fn target_record_sp_limit(limit: uint) {
         asm!("movq $$0x60+90*8, %rsi
               movq $0, %gs:(%rsi)" :: "r"(limit) : "rsi" : "volatile")
     }
-    #[cfg(target_arch = "x86_64", target_os = "linux")] #[inline(always)]
+    #[cfg(all(target_arch = "x86_64", target_os = "linux"))] #[inline(always)]
     unsafe fn target_record_sp_limit(limit: uint) {
         asm!("movq $0, %fs:112" :: "r"(limit) :: "volatile")
     }
-    #[cfg(target_arch = "x86_64", target_os = "windows")] #[inline(always)]
+    #[cfg(all(target_arch = "x86_64", target_os = "windows"))] #[inline(always)]
     unsafe fn target_record_sp_limit(_: uint) {
     }
-    #[cfg(target_arch = "x86_64", target_os = "freebsd")] #[inline(always)]
+    #[cfg(all(target_arch = "x86_64", target_os = "freebsd"))] #[inline(always)]
     unsafe fn target_record_sp_limit(limit: uint) {
         asm!("movq $0, %fs:24" :: "r"(limit) :: "volatile")
     }
-    #[cfg(target_arch = "x86_64", target_os = "dragonfly")] #[inline(always)]
+    #[cfg(all(target_arch = "x86_64", target_os = "dragonfly"))] #[inline(always)]
     unsafe fn target_record_sp_limit(limit: uint) {
         asm!("movq $0, %fs:32" :: "r"(limit) :: "volatile")
     }
 
     // x86
-    #[cfg(target_arch = "x86", target_os = "macos")]
-    #[cfg(target_arch = "x86", target_os = "ios")] #[inline(always)]
+    #[cfg(all(target_arch = "x86",
+              any(target_os = "macos", target_os = "ios")))]
+    #[inline(always)]
     unsafe fn target_record_sp_limit(limit: uint) {
         asm!("movl $$0x48+90*4, %eax
               movl $0, %gs:(%eax)" :: "r"(limit) : "eax" : "volatile")
     }
-    #[cfg(target_arch = "x86", target_os = "linux")]
-    #[cfg(target_arch = "x86", target_os = "freebsd")] #[inline(always)]
+    #[cfg(all(target_arch = "x86",
+              any(target_os = "linux", target_os = "freebsd")))]
+    #[inline(always)]
     unsafe fn target_record_sp_limit(limit: uint) {
         asm!("movl $0, %gs:48" :: "r"(limit) :: "volatile")
     }
-    #[cfg(target_arch = "x86", target_os = "windows")] #[inline(always)]
+    #[cfg(all(target_arch = "x86", target_os = "windows"))] #[inline(always)]
     unsafe fn target_record_sp_limit(_: uint) {
     }
 
     // mips, arm - Some brave soul can port these to inline asm, but it's over
     //             my head personally
-    #[cfg(target_arch = "mips")]
-    #[cfg(target_arch = "mipsel")]
-    #[cfg(target_arch = "arm", not(target_os = "ios"))] #[inline(always)]
+    #[cfg(any(target_arch = "mips",
+              target_arch = "mipsel",
+              all(target_arch = "arm", not(target_os = "ios"))))]
+    #[inline(always)]
     unsafe fn target_record_sp_limit(limit: uint) {
         use libc::c_void;
         return record_sp_limit(limit as *const c_void);
@@ -241,7 +245,7 @@ pub unsafe fn record_sp_limit(limit: uint) {
     }
 
     // iOS segmented stack is disabled for now, see related notes
-    #[cfg(target_arch = "arm", target_os = "ios")] #[inline(always)]
+    #[cfg(all(target_arch = "arm", target_os = "ios"))] #[inline(always)]
     unsafe fn target_record_sp_limit(_: uint) {
     }
 }
@@ -259,31 +263,32 @@ pub unsafe fn get_sp_limit() -> uint {
     return target_get_sp_limit();
 
     // x86-64
-    #[cfg(target_arch = "x86_64", target_os = "macos")]
-    #[cfg(target_arch = "x86_64", target_os = "ios")] #[inline(always)]
+    #[cfg(all(target_arch = "x86_64",
+              any(target_os = "macos", target_os = "ios")))]
+    #[inline(always)]
     unsafe fn target_get_sp_limit() -> uint {
         let limit;
         asm!("movq $$0x60+90*8, %rsi
               movq %gs:(%rsi), $0" : "=r"(limit) :: "rsi" : "volatile");
         return limit;
     }
-    #[cfg(target_arch = "x86_64", target_os = "linux")] #[inline(always)]
+    #[cfg(all(target_arch = "x86_64", target_os = "linux"))] #[inline(always)]
     unsafe fn target_get_sp_limit() -> uint {
         let limit;
         asm!("movq %fs:112, $0" : "=r"(limit) ::: "volatile");
         return limit;
     }
-    #[cfg(target_arch = "x86_64", target_os = "windows")] #[inline(always)]
+    #[cfg(all(target_arch = "x86_64", target_os = "windows"))] #[inline(always)]
     unsafe fn target_get_sp_limit() -> uint {
         return 1024;
     }
-    #[cfg(target_arch = "x86_64", target_os = "freebsd")] #[inline(always)]
+    #[cfg(all(target_arch = "x86_64", target_os = "freebsd"))] #[inline(always)]
     unsafe fn target_get_sp_limit() -> uint {
         let limit;
         asm!("movq %fs:24, $0" : "=r"(limit) ::: "volatile");
         return limit;
     }
-    #[cfg(target_arch = "x86_64", target_os = "dragonfly")] #[inline(always)]
+    #[cfg(all(target_arch = "x86_64", target_os = "dragonfly"))] #[inline(always)]
     unsafe fn target_get_sp_limit() -> uint {
         let limit;
         asm!("movq %fs:32, $0" : "=r"(limit) ::: "volatile");
@@ -292,31 +297,34 @@ pub unsafe fn get_sp_limit() -> uint {
 
 
     // x86
-    #[cfg(target_arch = "x86", target_os = "macos")]
-    #[cfg(target_arch = "x86", target_os = "ios")] #[inline(always)]
+    #[cfg(all(target_arch = "x86",
+              any(target_os = "macos", target_os = "ios")))]
+    #[inline(always)]
     unsafe fn target_get_sp_limit() -> uint {
         let limit;
         asm!("movl $$0x48+90*4, %eax
               movl %gs:(%eax), $0" : "=r"(limit) :: "eax" : "volatile");
         return limit;
     }
-    #[cfg(target_arch = "x86", target_os = "linux")]
-    #[cfg(target_arch = "x86", target_os = "freebsd")] #[inline(always)]
+    #[cfg(all(target_arch = "x86",
+              any(target_os = "linux", target_os = "freebsd")))]
+    #[inline(always)]
     unsafe fn target_get_sp_limit() -> uint {
         let limit;
         asm!("movl %gs:48, $0" : "=r"(limit) ::: "volatile");
         return limit;
     }
-    #[cfg(target_arch = "x86", target_os = "windows")] #[inline(always)]
+    #[cfg(all(target_arch = "x86", target_os = "windows"))] #[inline(always)]
     unsafe fn target_get_sp_limit() -> uint {
         return 1024;
     }
 
     // mips, arm - Some brave soul can port these to inline asm, but it's over
     //             my head personally
-    #[cfg(target_arch = "mips")]
-    #[cfg(target_arch = "mipsel")]
-    #[cfg(target_arch = "arm", not(target_os = "ios"))] #[inline(always)]
+    #[cfg(any(target_arch = "mips",
+              target_arch = "mipsel",
+              all(target_arch = "arm", not(target_os = "ios"))))]
+    #[inline(always)]
     unsafe fn target_get_sp_limit() -> uint {
         use libc::c_void;
         return get_sp_limit() as uint;
@@ -328,7 +336,7 @@ pub unsafe fn get_sp_limit() -> uint {
     // iOS doesn't support segmented stacks yet. This function might
     // be called by runtime though so it is unsafe to mark it as
     // unreachable, let's return a fixed constant.
-    #[cfg(target_arch = "arm", target_os = "ios")] #[inline(always)]
+    #[cfg(all(target_arch = "arm", target_os = "ios"))] #[inline(always)]
     unsafe fn target_get_sp_limit() -> uint {
         1024
     }
