@@ -260,8 +260,6 @@ fn in_cfg(diagnostic: &SpanHandler, cfg: &[P<ast::MetaItem>], attrs: &[ast::Attr
             _ => continue
         };
 
-        // NOTE: turn on after snapshot
-        /*
         if mis.len() != 1 {
             diagnostic.span_warn(attr.span, "The use of multiple cfgs in the top level of \
                                              `#[cfg(..)]` is deprecated. Change `#[cfg(a, b)]` to \
@@ -274,7 +272,6 @@ fn in_cfg(diagnostic: &SpanHandler, cfg: &[P<ast::MetaItem>], attrs: &[ast::Attr
                                              the intersection of the cfgs. Change `#[cfg(a)] \
                                              #[cfg(b)]` to `#[cfg(any(a, b))]`.");
         }
-        */
 
         seen_cfg = true;
         in_cfg |= mis.iter().all(|mi| attr::cfg_matches(diagnostic, cfg, &**mi));

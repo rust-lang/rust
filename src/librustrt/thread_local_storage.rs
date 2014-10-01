@@ -41,11 +41,11 @@ pub unsafe fn destroy(key: Key) {
 #[allow(non_camel_case_types)] // foreign type
 type pthread_key_t = ::libc::c_ulong;
 
-#[cfg(target_os="linux")]
-#[cfg(target_os="freebsd")]
-#[cfg(target_os="dragonfly")]
-#[cfg(target_os="android")]
-#[cfg(target_os = "ios")]
+#[cfg(any(target_os="linux",
+          target_os="freebsd",
+          target_os="dragonfly",
+          target_os="android",
+          target_os = "ios"))]
 #[allow(non_camel_case_types)] // foreign type
 type pthread_key_t = ::libc::c_uint;
 

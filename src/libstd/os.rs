@@ -653,8 +653,7 @@ pub fn dll_filename(base: &str) -> String {
 /// ```
 pub fn self_exe_name() -> Option<Path> {
 
-    #[cfg(target_os = "freebsd")]
-    #[cfg(target_os = "dragonfly")]
+    #[cfg(any(target_os = "freebsd", target_os = "dragonfly"))]
     fn load_self() -> Option<Vec<u8>> {
         unsafe {
             use libc::funcs::bsd44::*;
@@ -680,8 +679,7 @@ pub fn self_exe_name() -> Option<Path> {
         }
     }
 
-    #[cfg(target_os = "linux")]
-    #[cfg(target_os = "android")]
+    #[cfg(any(target_os = "linux", target_os = "android"))]
     fn load_self() -> Option<Vec<u8>> {
         use std::io;
 
@@ -691,8 +689,7 @@ pub fn self_exe_name() -> Option<Path> {
         }
     }
 
-    #[cfg(target_os = "macos")]
-    #[cfg(target_os = "ios")]
+    #[cfg(any(target_os = "macos", target_os = "ios"))]
     fn load_self() -> Option<Vec<u8>> {
         unsafe {
             use libc::funcs::extra::_NSGetExecutablePath;
@@ -909,9 +906,9 @@ pub fn change_dir(p: &Path) -> bool {
 #[cfg(unix)]
 /// Returns the platform-specific value of errno
 pub fn errno() -> int {
-    #[cfg(target_os = "macos")]
-    #[cfg(target_os = "ios")]
-    #[cfg(target_os = "freebsd")]
+    #[cfg(any(target_os = "macos",
+              target_os = "ios",
+              target_os = "freebsd"))]
     fn errno_location() -> *const c_int {
         extern {
             fn __error() -> *const c_int;
@@ -931,8 +928,7 @@ pub fn errno() -> int {
         }
     }
 
-    #[cfg(target_os = "linux")]
-    #[cfg(target_os = "android")]
+    #[cfg(any(target_os = "linux", target_os = "android"))]
     fn errno_location() -> *const c_int {
         extern {
             fn __errno_location() -> *const c_int;
@@ -975,11 +971,11 @@ pub fn error_string(errnum: uint) -> String {
 
     #[cfg(unix)]
     fn strerror(errnum: uint) -> String {
-        #[cfg(target_os = "macos")]
-        #[cfg(target_os = "ios")]
-        #[cfg(target_os = "android")]
-        #[cfg(target_os = "freebsd")]
-        #[cfg(target_os = "dragonfly")]
+        #[cfg(any(target_os = "macos",
+                  target_os = "ios",
+                  target_os = "android",
+                  target_os = "freebsd",
+                  target_os = "dragonfly"))]
         fn strerror_r(errnum: c_int, buf: *mut c_char, buflen: libc::size_t)
                       -> c_int {
             extern {
@@ -1180,10 +1176,10 @@ fn real_args_as_bytes() -> Vec<Vec<u8>> {
     res
 }
 
-#[cfg(target_os = "linux")]
-#[cfg(target_os = "android")]
-#[cfg(target_os = "freebsd")]
-#[cfg(target_os = "dragonfly")]
+#[cfg(any(target_os = "linux",
+          target_os = "android",
+          target_os = "freebsd",
+          target_os = "dragonfly"))]
 fn real_args_as_bytes() -> Vec<Vec<u8>> {
     use rt;
 
