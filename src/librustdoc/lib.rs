@@ -16,7 +16,7 @@
 #![crate_type = "rlib"]
 
 #![allow(unknown_features)]
-#![feature(globs, struct_variant, managed_boxes, macro_rules, phase, slicing_syntax)]
+#![feature(globs, struct_variant, macro_rules, phase, slicing_syntax)]
 
 extern crate arena;
 extern crate debug;

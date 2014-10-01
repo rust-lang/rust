@@ -106,7 +106,7 @@
        html_playground_url = "http://play.rust-lang.org/")]
 
 #![allow(unknown_features)]
-#![feature(macro_rules, globs, managed_boxes, linkage)]
+#![feature(macro_rules, globs, linkage)]
 #![feature(default_type_params, phase, lang_items, unsafe_destructor)]
 #![feature(import_shadowing, slicing_syntax)]
 

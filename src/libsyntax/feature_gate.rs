@@ -40,7 +40,7 @@ static KNOWN_FEATURES: &'static [(&'static str, Status)] = &[
     ("struct_variant", Active),
     ("once_fns", Active),
     ("asm", Active),
-    ("managed_boxes", Active),
+    ("managed_boxes", Removed),
     ("non_ascii_idents", Active),
     ("thread_local", Active),
     ("link_args", Active),

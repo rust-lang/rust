@@ -17,7 +17,7 @@
        html_root_url = "http://doc.rust-lang.org/master/")]
 
 #![allow(unknown_features)]
-#![feature(macro_rules, phase, globs, thread_local, managed_boxes, asm)]
+#![feature(macro_rules, phase, globs, thread_local, asm)]
 #![feature(linkage, lang_items, unsafe_destructor, default_type_params)]
 #![feature(import_shadowing, slicing_syntax)]
 #![no_std]

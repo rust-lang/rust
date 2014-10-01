@@ -58,7 +58,7 @@
 
 #![no_std]
 #![allow(unknown_features)]
-#![feature(globs, intrinsics, lang_items, macro_rules, managed_boxes, phase)]
+#![feature(globs, intrinsics, lang_items, macro_rules, phase)]
 #![feature(simd, unsafe_destructor, slicing_syntax)]
 #![deny(missing_doc)]
 
