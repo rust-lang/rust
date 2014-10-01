@@ -422,9 +422,34 @@ fn from_rtio(s: rtio::FileStat) -> FileStat {
 /// # Error
 ///
 /// This function will return an error if the provided `from` doesn't exist, if
-/// the process lacks permissions to view the contents, or if some other
-/// intermittent I/O error occurs.
+/// the process lacks permissions to view the contents, if `to` both exists *and*
+//// is non-empty, or if some other intermittent I/O error occurs.
 pub fn rename(from: &Path, to: &Path) -> IoResult<()> {
+
+    if cfg!(windows) {
+        // POSIX `rename` will overwrite a directory only if it's empty
+        // and those are Rust's semantics as well. Here emulating
+        // that on Windows. This workaround is here so that both libnative and
+        // libgreen benefit, though it's not clear to me this is the right abstraction
+        // layer for it.
+        match stat(to) {
+            Ok(stat) if stat.kind == io::TypeDirectory => {
+                // FIXME: Surely there is a faster solution here than reading the entire directory
+                let files = try!(readdir(to));
+                if files.is_empty() {
+                    // Delete the directory and proceed
+                    try!(rmdir(to));
+                } else {
+                    // Emulate the Unix directory not empty error
+                    return Err(standard_error(io::DirectoryNotEmpty))
+                }
+            }
+            Ok(_) => (/* not a directory. fine */),
+            Err(ref e) if e.kind == io::FileNotFound => (/* destination doesn't exist. fine */),
+            Err(e) => return Err(e.clone())
+        }
+    }
+
     let err = LocalIo::maybe_raise(|io| {
         io.fs_rename(&from.to_c_str(), &to.to_c_str())
     }).map_err(IoError::from_rtio_error);
@@ -1643,5 +1668,32 @@ mod test {
         check!(File::create(&path));
         check!(chmod(&path, io::UserRead));
         check!(unlink(&path));
+    })
+
+    iotest!(fn rename_directory_overwrite_empty() {
+        let tmpdir = tmpdir();
+        let dir1 = tmpdir.join("dir1");
+        let dir2 = tmpdir.join("dir2");
+        check!(mkdir(&dir1, UserRWX));
+        check!(mkdir(&dir2, UserRWX));
+        check!(rename(&dir1, &dir2));
+        assert!(!dir1.exists());
+        assert!(dir2.exists());
+    })
+
+    iotest!(fn rename_directory_no_overwrite_non_empty() {
+        let tmpdir = tmpdir();
+        let dir1 = tmpdir.join("dir1");
+        let dir2 = tmpdir.join("dir2");
+        check!(mkdir(&dir1, UserRWX));
+        check!(mkdir(&dir2, UserRWX));
+        let file = dir2.join("file.txt");
+        check!(File::create(&file));
+        match rename(&dir1, &dir2) {
+            Ok(_) => fail!("rename succeeded"),
+            Err(e) => assert!(e.kind == io::DirectoryNotEmpty)
+        }
+        assert!(dir1.exists());
+        assert!(dir2.exists());
     })
 }
