@@ -8,11 +8,13 @@ This is a conventions RFC for settling a number of remaining naming conventions:
 
 * Referring to types in method names
 * Iterator type names
+* Additional iterator method names
 * Getter/setter APIs
 * Associated types
 * Trait naming
 * Lint naming
 * Suffix ordering
+* Prelude traits
 
 It also proposes to standardize on lower case error messages within the compiler
 and standard library.
@@ -125,6 +127,35 @@ Disadvantages:
   conventions.  In most cases, this situation should be taken as an indication
   that a more refined module hierarchy is called for.
 
+## Additional iterator method names
+
+An [earlier RFC](https://github.com/rust-lang/rfcs/pull/199) settled the
+conventions for the "standard" iterator methods: `iter`, `iter_mut`,
+`into_iter`.
+
+However, there are many cases where you also want "nonstandard" iterator
+methods: `bytes` and `chars` for strings, `keys` and `values` for maps,
+the various adapters for iterators.
+
+This RFC proposes the following convention:
+
+* Use `iter` (and variants) for data types that can be viewed as containers,
+  and where the iterator provides the "obvious" sequence of contained items.
+
+* If there is no single "obvious" sequence of contained items, or if there are
+  multiple desired views on the container, provide separate methods for these
+  that do *not* use `iter` in their name. The name should instead directly
+  reflect the view/item type being iterated (like `bytes`).
+
+* Likewise, for iterator adapters (`filter`, `map` and so on) or other
+  iterator-producing operations (`intersection`), use the clearest name to
+  describe the adapter/operation directly, and do not mention `iter`.
+
+* If not otherwise qualified, an iterator-producing method should provide an
+  iterator over immutable references. Use the `_mut` suffix for variants
+  producing mutable references, and the `into_` prefix for variants consuming
+  the data in order to produce owned values.
+
 ## Getter/setter APIs
 
 Some data structures do not wish to provide direct access to their fields, but
@@ -201,6 +232,29 @@ remember it.
 However, the *mut* suffix is so common, and is now entrenched as showing up in
 final position, that this RFC does propose one simple rule: if there are
 multiple suffixes including `mut`, place `mut` last.
+
+## Prelude traits
+
+It is not currently possible to define inherent methods directly on basic data
+types like `char` or slices. Consequently, `libcore` and other basic crates
+provide one-off traits (like `ImmutableSlice` or `Char`) that are intended to be
+implemented solely by these primitive types, and which are included in the
+prelude.
+
+These traits are generally *not* designed to be used for generic programming,
+but the fact that they appear in core libraries with such basic names makes it
+easy to draw the wrong conclusion.
+
+This RFC proposes to use a `Prelude` suffix for these basic traits. Since the
+traits are, in fact, included in the prelude their names do not generally appear
+in Rust programs. Therefore, choosing a longer and clearer name will help avoid
+confusion about the intent of these traits, and will avoid namespace polution.
+
+(There is one important drawback in today's Rust: associated functions in these
+traits cannot yet be called directly on the types implementing the traits. These
+functions are the one case where you would need to mention the trait by name,
+today. Hopefully, this situation will change before 1.0; otherwise we may need a
+separate plan for dealing with associated functions.)
 
 ## Error messages
 
