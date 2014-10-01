@@ -761,7 +761,7 @@ fn encode_info_for_struct_ctor(ecx: &EncodeContext,
 
     rbml_w.start_tag(tag_items_data_item);
     encode_def_id(rbml_w, local_def(ctor_id));
-    encode_family(rbml_w, 'f');
+    encode_family(rbml_w, 'o');
     encode_bounds_and_type(rbml_w, ecx,
                            &lookup_item_type(ecx.tcx, local_def(ctor_id)));
     encode_name(rbml_w, name.name);

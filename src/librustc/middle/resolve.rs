@@ -1247,7 +1247,7 @@ impl<'a> Resolver<'a> {
                 let name_bindings =
                     self.add_child(ident, parent.clone(), ForbidDuplicateValues, sp);
 
-                let def = DefFn(local_def(item.id), fn_style);
+                let def = DefFn(local_def(item.id), fn_style, false);
                 name_bindings.define_value(def, sp, is_public);
                 parent
             }
@@ -1705,7 +1705,7 @@ impl<'a> Resolver<'a> {
 
         match foreign_item.node {
             ForeignItemFn(_, ref generics) => {
-                let def = DefFn(local_def(foreign_item.id), UnsafeFn);
+                let def = DefFn(local_def(foreign_item.id), UnsafeFn, false);
                 name_bindings.define_value(def, foreign_item.span, is_public);
 
                 self.with_type_parameter_rib(
@@ -2022,7 +2022,8 @@ impl<'a> Resolver<'a> {
                                                        DUMMY_SP);
                                     let def = DefFn(
                                         static_method_info.def_id,
-                                        static_method_info.fn_style);
+                                        static_method_info.fn_style,
+                                        false);
 
                                     method_name_bindings.define_value(
                                         def, DUMMY_SP,
@@ -2591,7 +2592,8 @@ impl<'a> Resolver<'a> {
 
         match value_result {
             BoundResult(ref target_module, ref name_bindings) => {
-                debug!("(resolving single import) found value target");
+                debug!("(resolving single import) found value target: {:?}",
+                       { name_bindings.value_def.borrow().clone().unwrap().def });
                 self.check_for_conflicting_import(
                     &import_resolution.value_target,
                     directive.span,

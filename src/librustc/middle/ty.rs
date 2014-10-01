@@ -3592,6 +3592,12 @@ pub fn expr_kind(tcx: &ctxt, expr: &ast::Expr) -> ExprKind {
                     }
                 }
 
+                // Special case: A unit like struct's constructor must be called without () at the
+                // end (like `UnitStruct`) which means this is an ExprPath to a DefFn. But in case
+                // of unit structs this is should not be interpretet as function pointer but as
+                // call to the constructor.
+                def::DefFn(_, _, true) => RvalueDpsExpr,
+
                 // Fn pointers are just scalar values.
                 def::DefFn(..) | def::DefStaticMethod(..) => RvalueDatumExpr,
 
