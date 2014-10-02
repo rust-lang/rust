@@ -730,7 +730,7 @@ pub fn from_str_bytes_common<T:NumCast+Zero+One+PartialEq+PartialOrd+Div<T,T>+
         // parse remaining bytes as decimal integer,
         // skipping the exponent char
         let exp: Option<int> = from_str_bytes_common(
-            buf[i+1..len], 10, true, false, false, ExpNone, false,
+            buf.slice(i+1, len), 10, true, false, false, ExpNone, false,
             ignore_underscores);
 
         match exp {
