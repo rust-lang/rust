@@ -8,8 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(slicing_syntax)]
+
 fn vec_peek<'r, T>(v: &'r [T]) -> &'r [T] {
-    v.slice(1, 5)
+    v[1..5]
 }
 
 pub fn main() {}

@@ -511,7 +511,7 @@ impl<'a> Parser<'a> {
         self.chari = closer;
         let greed = try!(self.get_next_greedy());
         let inner = String::from_chars(
-            self.chars.as_slice().slice(start + 1, closer));
+            self.chars[start+1..closer]);
 
         // Parse the min and max values from the regex.
         let (mut min, mut max): (uint, Option<uint>);
@@ -944,7 +944,7 @@ impl<'a> Parser<'a> {
     }
 
     fn slice(&self, start: uint, end: uint) -> String {
-        String::from_chars(self.chars.as_slice().slice(start, end))
+        String::from_chars(self.chars[start..end])
     }
 }
 

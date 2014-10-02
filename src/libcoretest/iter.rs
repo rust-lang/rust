@@ -13,6 +13,7 @@ use core::iter::order::*;
 use core::uint;
 use core::cmp;
 use core::num;
+use core::ops::Slice;
 
 use test::Bencher;
 
@@ -228,7 +229,7 @@ fn test_inspect() {
                .collect::<Vec<uint>>();
 
     assert_eq!(n, xs.len());
-    assert_eq!(xs.as_slice(), ys.as_slice());
+    assert_eq!(xs[], ys[]);
 }
 
 #[test]
@@ -268,7 +269,7 @@ fn test_cycle() {
 
 #[test]
 fn test_iterator_nth() {
-    let v = &[0i, 1, 2, 3, 4];
+    let v: &[_] = &[0i, 1, 2, 3, 4];
     for i in range(0u, v.len()) {
         assert_eq!(v.iter().nth(i).unwrap(), &v[i]);
     }
@@ -277,55 +278,55 @@ fn test_iterator_nth() {
 
 #[test]
 fn test_iterator_last() {
-    let v = &[0i, 1, 2, 3, 4];
+    let v: &[_] = &[0i, 1, 2, 3, 4];
     assert_eq!(v.iter().last().unwrap(), &4);
-    assert_eq!(v.slice(0, 1).iter().last().unwrap(), &0);
+    assert_eq!(v[0..1].iter().last().unwrap(), &0);
 }
 
 #[test]
 fn test_iterator_len() {
-    let v = &[0i, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
-    assert_eq!(v.slice(0, 4).iter().count(), 4);
-    assert_eq!(v.slice(0, 10).iter().count(), 10);
-    assert_eq!(v.slice(0, 0).iter().count(), 0);
+    let v: &[_] = &[0i, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+    assert_eq!(v[0..4].iter().count(), 4);
+    assert_eq!(v[0..10].iter().count(), 10);
+    assert_eq!(v[0..0].iter().count(), 0);
 }
 
 #[test]
 fn test_iterator_sum() {
-    let v = &[0i, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
-    assert_eq!(v.slice(0, 4).iter().map(|&x| x).sum(), 6);
+    let v: &[_] = &[0i, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+    assert_eq!(v[0..4].iter().map(|&x| x).sum(), 6);
     assert_eq!(v.iter().map(|&x| x).sum(), 55);
-    assert_eq!(v.slice(0, 0).iter().map(|&x| x).sum(), 0);
+    assert_eq!(v[0..0].iter().map(|&x| x).sum(), 0);
 }
 
 #[test]
 fn test_iterator_product() {
-    let v = &[0i, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
-    assert_eq!(v.slice(0, 4).iter().map(|&x| x).product(), 0);
-    assert_eq!(v.slice(1, 5).iter().map(|&x| x).product(), 24);
-    assert_eq!(v.slice(0, 0).iter().map(|&x| x).product(), 1);
+    let v: &[_] = &[0i, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+    assert_eq!(v[0..4].iter().map(|&x| x).product(), 0);
+    assert_eq!(v[1..5].iter().map(|&x| x).product(), 24);
+    assert_eq!(v[0..0].iter().map(|&x| x).product(), 1);
 }
 
 #[test]
 fn test_iterator_max() {
-    let v = &[0i, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
-    assert_eq!(v.slice(0, 4).iter().map(|&x| x).max(), Some(3));
+    let v: &[_] = &[0i, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+    assert_eq!(v[0..4].iter().map(|&x| x).max(), Some(3));
     assert_eq!(v.iter().map(|&x| x).max(), Some(10));
-    assert_eq!(v.slice(0, 0).iter().map(|&x| x).max(), None);
+    assert_eq!(v[0..0].iter().map(|&x| x).max(), None);
 }
 
 #[test]
 fn test_iterator_min() {
-    let v = &[0i, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
-    assert_eq!(v.slice(0, 4).iter().map(|&x| x).min(), Some(0));
+    let v: &[_] = &[0i, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+    assert_eq!(v[0..4].iter().map(|&x| x).min(), Some(0));
     assert_eq!(v.iter().map(|&x| x).min(), Some(0));
-    assert_eq!(v.slice(0, 0).iter().map(|&x| x).min(), None);
+    assert_eq!(v[0..0].iter().map(|&x| x).min(), None);
 }
 
 #[test]
 fn test_iterator_size_hint() {
     let c = count(0i, 1);
-    let v = &[0i, 1, 2, 3, 4, 5, 6, 7, 8, 9];
+    let v: &[_] = &[0i, 1, 2, 3, 4, 5, 6, 7, 8, 9];
     let v2 = &[10i, 11, 12];
     let vi = v.iter();
 
@@ -372,7 +373,7 @@ fn test_all() {
     assert!(v.iter().all(|&x| x < 10));
     assert!(!v.iter().all(|&x| x % 2 == 0));
     assert!(!v.iter().all(|&x| x > 100));
-    assert!(v.slice(0, 0).iter().all(|_| fail!()));
+    assert!(v.slice(&0, &0).iter().all(|_| fail!()));
 }
 
 #[test]
@@ -381,7 +382,7 @@ fn test_any() {
     assert!(v.iter().any(|&x| x < 10));
     assert!(v.iter().any(|&x| x % 2 == 0));
     assert!(!v.iter().any(|&x| x > 100));
-    assert!(!v.slice(0, 0).iter().any(|_| fail!()));
+    assert!(!v.slice(&0, &0).iter().any(|_| fail!()));
 }
 
 #[test]
@@ -566,7 +567,7 @@ fn check_randacc_iter<A: PartialEq, T: Clone + RandomAccessIterator<A>>(a: T, le
 fn test_double_ended_flat_map() {
     let u = [0u,1];
     let v = [5u,6,7,8];
-    let mut it = u.iter().flat_map(|x| v.slice(*x, v.len()).iter());
+    let mut it = u.iter().flat_map(|x| v[*x..v.len()].iter());
     assert_eq!(it.next_back().unwrap(), &8);
     assert_eq!(it.next().unwrap(),      &5);
     assert_eq!(it.next_back().unwrap(), &7);

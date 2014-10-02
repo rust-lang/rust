@@ -271,7 +271,7 @@ impl<T> RingBuf<T> {
     ///     *num = *num - 2;
     /// }
     /// let b: &[_] = &[&mut 3, &mut 1, &mut 2];
-    /// assert_eq!(buf.iter_mut().collect::<Vec<&mut int>>().as_slice(), b);
+    /// assert_eq!(buf.iter_mut().collect::<Vec<&mut int>>()[], b);
     /// ```
     pub fn iter_mut<'a>(&'a mut self) -> MutItems<'a, T> {
         let start_index = raw_index(self.lo, self.elts.len(), 0);
@@ -291,7 +291,7 @@ impl<T> RingBuf<T> {
         } else {
             // Items to iterate goes from start_index to end_index:
             let (empty, elts) = self.elts.split_at_mut(0);
-            let remaining1 = elts.slice_mut(start_index, end_index);
+            let remaining1 = elts[mut start_index..end_index];
             MutItems { remaining1: remaining1,
                                  remaining2: empty,
                                  nelts: self.nelts }

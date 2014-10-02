@@ -17,7 +17,6 @@ use from_str::FromStr;
 use num::{ToStrRadix, FromStrRadix};
 use num::strconv;
 use option::Option;
-use slice::ImmutableSlice;
 use string::String;
 
 pub use core::u64::{BITS, BYTES, MIN, MAX};
