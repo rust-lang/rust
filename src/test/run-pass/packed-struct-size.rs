@@ -10,7 +10,6 @@
 
 
 use std::mem;
-use std::gc::Gc;
 
 #[repr(packed)]
 struct S4 {
@@ -48,7 +47,7 @@ struct S7_Option {
     a: f32,
     b: u8,
     c: u16,
-    d: Option<Gc<f64>>
+    d: Option<Box<f64>>
 }
 
 // Placing packed structs in statics should work
@@ -62,5 +61,5 @@ pub fn main() {
     assert_eq!(mem::size_of::<S5>(), 5);
     assert_eq!(mem::size_of::<S13>(), 13);
     assert_eq!(mem::size_of::<S3_Foo>(), 3 + mem::size_of::<Foo>());
-    assert_eq!(mem::size_of::<S7_Option>(), 7 + mem::size_of::<Option<Gc<f64>>>());
+    assert_eq!(mem::size_of::<S7_Option>(), 7 + mem::size_of::<Option<Box<f64>>>());
 }

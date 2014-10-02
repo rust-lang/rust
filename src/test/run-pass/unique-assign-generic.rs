@@ -9,8 +9,6 @@
 // except according to those terms.
 
 
-use std::gc::GC;
-
 fn f<T>(t: T) -> T {
     let t1 = t;
     t1
@@ -19,6 +17,4 @@ fn f<T>(t: T) -> T {
 pub fn main() {
     let t = f(box 100i);
     assert_eq!(t, box 100i);
-    let t = f(box box(GC) vec!(100i));
-    assert_eq!(t, box box(GC) vec!(100i));
 }

@@ -9,14 +9,12 @@
 // except according to those terms.
 
 
-use std::gc::GC;
-
 fn foo(x: &uint) -> uint {
     *x
 }
 
 pub fn main() {
-    let p = box(GC) 22u;
+    let p = box 22u;
     let r = foo(&*p);
     println!("r={}", r);
     assert_eq!(r, 22u);

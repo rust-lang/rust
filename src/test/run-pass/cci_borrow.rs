@@ -13,10 +13,9 @@
 
 extern crate cci_borrow_lib;
 use cci_borrow_lib::foo;
-use std::gc::GC;
 
 pub fn main() {
-    let p = box(GC) 22u;
+    let p = box 22u;
     let r = foo(&*p);
     println!("r={}", r);
     assert_eq!(r, 22u);

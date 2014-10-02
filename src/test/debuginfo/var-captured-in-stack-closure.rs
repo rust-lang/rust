@@ -28,8 +28,6 @@
 // gdb-check:$4 = {a = -3, b = 4.5, c = 5}
 // gdb-command:print *owned
 // gdb-check:$5 = 6
-// gdb-command:print managed->val
-// gdb-check:$6 = 7
 
 
 // === LLDB TESTS ==================================================================================
@@ -46,12 +44,8 @@
 // lldb-check:[...]$3 = Struct { a: -3, b: 4.5, c: 5 }
 // lldb-command:print *owned
 // lldb-check:[...]$4 = 6
-// lldb-command:print managed->val
-// lldb-check:[...]$5 = 7
 
 #![allow(unused_variable)]
-
-use std::gc::GC;
 
 struct Struct {
     a: int,
@@ -71,11 +65,10 @@ fn main() {
 
     let struct_ref = &a_struct;
     let owned = box 6;
-    let managed = box(GC) 7;
 
     let closure = || {
         zzz(); // #break
-        variable = constant + a_struct.a + struct_ref.a + *owned + *managed;
+        variable = constant + a_struct.a + struct_ref.a + *owned;
     };
 
     closure();

@@ -495,10 +495,6 @@ pub fn super_tys<'tcx, C: Combine<'tcx>>(this: &C, a: ty::t, b: ty::t) -> cres<t
           Ok(ty::mk_unboxed_closure(tcx, a_id, region))
       }
 
-      (&ty::ty_box(a_inner), &ty::ty_box(b_inner)) => {
-        this.tys(a_inner, b_inner).and_then(|typ| Ok(ty::mk_box(tcx, typ)))
-      }
-
       (&ty::ty_uniq(a_inner), &ty::ty_uniq(b_inner)) => {
             let typ = try!(this.tys(a_inner, b_inner));
             check_ptr_to_unsized(this, a, b, a_inner, b_inner, ty::mk_uniq(tcx, typ))

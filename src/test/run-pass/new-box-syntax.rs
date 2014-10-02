@@ -11,9 +11,8 @@
 /* Any copyright is dedicated to the Public Domain.
  * http://creativecommons.org/publicdomain/zero/1.0/ */
 
-// Tests that the new `box` syntax works with unique pointers and GC pointers.
+// Tests that the new `box` syntax works with unique pointers.
 
-use std::gc::{Gc, GC};
 use std::boxed::{Box, HEAP};
 
 struct Structure {
@@ -24,12 +23,6 @@ struct Structure {
 pub fn main() {
     let x: Box<int> = box(HEAP) 2i;
     let y: Box<int> = box 2i;
-    let z: Gc<int> = box(GC) 2i;
-    let a: Gc<Structure> = box(GC) Structure {
-        x: 10,
-        y: 20,
-    };
     let b: Box<int> = box()(1i + 2);
     let c = box()(3i + 4);
-    let d = box(GC)(5i + 6);
 }

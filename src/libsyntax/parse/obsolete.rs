@@ -31,8 +31,6 @@ pub enum ObsoleteSyntax {
     ObsoleteOwnedPattern,
     ObsoleteOwnedVector,
     ObsoleteOwnedSelf,
-    ObsoleteManagedType,
-    ObsoleteManagedExpr,
     ObsoleteImportRenaming,
     ObsoleteSubsliceMatch,
     ObsoleteExternCrateRenaming,
@@ -76,14 +74,6 @@ impl<'a> ParserObsoleteMethods for parser::Parser<'a> {
             ObsoleteOwnedSelf => (
                 "`~self` is no longer supported",
                 "write `self: Box<Self>` instead"
-            ),
-            ObsoleteManagedType => (
-                "`@` notation for managed pointers",
-                "use `Gc<T>` in `std::gc` instead"
-            ),
-            ObsoleteManagedExpr => (
-                "`@` notation for a managed pointer allocation",
-                "use the `box(GC)` operator instead of `@`"
             ),
             ObsoleteImportRenaming => (
                 "`use foo = bar` syntax",

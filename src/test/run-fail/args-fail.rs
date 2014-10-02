@@ -11,8 +11,6 @@
 
 // error-pattern:meep
 
-use std::gc::{Gc, GC};
+fn f(_a: int, _b: int, _c: Box<int>) { fail!("moop"); }
 
-fn f(_a: int, _b: int, _c: Gc<int>) { fail!("moop"); }
-
-fn main() { f(1, fail!("meep"), box(GC) 42); }
+fn main() { f(1, fail!("meep"), box 42); }

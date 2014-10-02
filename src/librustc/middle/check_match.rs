@@ -440,11 +440,6 @@ fn construct_witness(cx: &MatchCheckCtxt, ctor: &Constructor,
             }
         }
 
-        ty::ty_box(_) => {
-            assert_eq!(pats_len, 1);
-            PatBox(pats.nth(0).unwrap())
-        }
-
         ty::ty_vec(_, Some(len)) => {
             assert_eq!(pats_len, len);
             PatVec(pats.collect(), None, vec![])
@@ -681,7 +676,7 @@ fn pat_constructors(cx: &MatchCheckCtxt, p: &Pat,
 pub fn constructor_arity(cx: &MatchCheckCtxt, ctor: &Constructor, ty: ty::t) -> uint {
     match ty::get(ty).sty {
         ty::ty_tup(ref fs) => fs.len(),
-        ty::ty_box(_) | ty::ty_uniq(_) => 1u,
+        ty::ty_uniq(_) => 1u,
         ty::ty_rptr(_, ty::mt { ty: ty, .. }) => match ty::get(ty).sty {
             ty::ty_vec(_, None) => match *ctor {
                 Slice(length) => length,

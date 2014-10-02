@@ -9,9 +9,7 @@
 // except according to those terms.
 
 
-use std::gc::GC;
-
 fn main() {
     let f;
-    f = box(GC) f; //~ ERROR cyclic type of infinite size
+    f = box f; //~ ERROR cyclic type of infinite size
 }

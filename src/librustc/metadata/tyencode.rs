@@ -244,7 +244,6 @@ fn enc_sty(w: &mut SeekableMemWriter, cx: &ctxt, st: &ty::sty) {
             for t in ts.iter() { enc_ty(w, cx, *t); }
             mywrite!(w, "]");
         }
-        ty::ty_box(typ) => { mywrite!(w, "@"); enc_ty(w, cx, typ); }
         ty::ty_uniq(typ) => { mywrite!(w, "~"); enc_ty(w, cx, typ); }
         ty::ty_ptr(mt) => { mywrite!(w, "*"); enc_mt(w, cx, mt); }
         ty::ty_rptr(r, mt) => {

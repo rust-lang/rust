@@ -11,14 +11,12 @@
 // ignore-pretty FIXME(#14193)
 
 
-use std::gc::{Gc, GC};
-
-enum list<T> { cons(Gc<T>, Gc<list<T>>), nil, }
+enum list<T> { cons(Box<T>, Box<list<T>>), nil, }
 
 pub fn main() {
     let _a: list<int> =
-        cons::<int>(box(GC) 10,
-        box(GC) cons::<int>(box(GC) 12,
-        box(GC) cons::<int>(box(GC) 13,
-        box(GC) nil::<int>)));
+        cons::<int>(box 10,
+        box cons::<int>(box 12,
+        box cons::<int>(box 13,
+        box nil::<int>)));
 }

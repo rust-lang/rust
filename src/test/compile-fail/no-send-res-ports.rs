@@ -10,14 +10,14 @@
 
 #![feature(unsafe_destructor)]
 
-extern crate debug;
-
 use std::task;
-use std::gc::{Gc, GC};
+use std::rc::Rc;
 
-struct Port<T>(Gc<T>);
+#[deriving(Show)]
+struct Port<T>(Rc<T>);
 
 fn main() {
+    #[deriving(Show)]
     struct foo {
       _x: Port<()>,
     }
@@ -33,11 +33,11 @@ fn main() {
         }
     }
 
-    let x = foo(Port(box(GC) ()));
+    let x = foo(Port(Rc::new(())));
 
     task::spawn(proc() {
         let y = x;
         //~^ ERROR `core::kinds::Send` is not implemented
-        println!("{:?}", y);
+        println!("{}", y);
     });
 }

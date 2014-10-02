@@ -12,27 +12,25 @@
 // Check that we correctly infer that b and c must be region
 // parameterized because they reference a which requires a region.
 
-use std::gc::Gc;
-
 type a<'a> = &'a int;
-type b<'a> = Gc<a<'a>>;
+type b<'a> = Box<a<'a>>;
 
 struct c<'a> {
-    f: Gc<b<'a>>
+    f: Box<b<'a>>
 }
 
 trait set_f<'a> {
-    fn set_f_ok(&mut self, b: Gc<b<'a>>);
-    fn set_f_bad(&mut self, b: Gc<b>);
+    fn set_f_ok(&mut self, b: Box<b<'a>>);
+    fn set_f_bad(&mut self, b: Box<b>);
 }
 
 impl<'a> set_f<'a> for c<'a> {
-    fn set_f_ok(&mut self, b: Gc<b<'a>>) {
+    fn set_f_ok(&mut self, b: Box<b<'a>>) {
         self.f = b;
     }
 
-    fn set_f_bad(&mut self, b: Gc<b>) {
-        self.f = b; //~ ERROR mismatched types: expected `Gc<Gc<&'a int>>`, found `Gc<Gc<&int>>`
+    fn set_f_bad(&mut self, b: Box<b>) {
+        self.f = b; //~ ERROR mismatched types: expected `Box<Box<&'a int>>`, found `Box<Box<&int>>`
     }
 }
 

@@ -10,7 +10,6 @@
 
 
 use std::collections::HashMap;
-use std::gc::Gc;
 
-pub type map = Gc<HashMap<uint, uint>>;
+pub type map = Box<HashMap<uint, uint>>;
 

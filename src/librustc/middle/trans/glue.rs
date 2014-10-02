@@ -17,7 +17,7 @@ use back::abi;
 use back::link::*;
 use llvm::{ValueRef, True, get_param};
 use llvm;
-use middle::lang_items::{FreeFnLangItem, ExchangeFreeFnLangItem};
+use middle::lang_items::ExchangeFreeFnLangItem;
 use middle::subst;
 use middle::subst::Subst;
 use middle::trans::adt;
@@ -45,15 +45,6 @@ use std::cell::Cell;
 use libc::c_uint;
 use syntax::ast;
 use syntax::parse::token;
-
-pub fn trans_free<'blk, 'tcx>(cx: Block<'blk, 'tcx>, v: ValueRef)
-                              -> Block<'blk, 'tcx> {
-    let _icx = push_ctxt("trans_free");
-    callee::trans_lang_call(cx,
-        langcall(cx, None, "", FreeFnLangItem),
-        [PointerCast(cx, v, Type::i8p(cx.ccx()))],
-        Some(expr::Ignore)).bcx
-}
 
 pub fn trans_exchange_free_dyn<'blk, 'tcx>(cx: Block<'blk, 'tcx>, v: ValueRef,
                                            size: ValueRef, align: ValueRef)
@@ -84,20 +75,6 @@ pub fn trans_exchange_free_ty<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, ptr: ValueRef,
         trans_exchange_free(bcx, ptr, content_size, content_align)
     } else {
         bcx
-    }
-}
-
-pub fn take_ty<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, v: ValueRef, t: ty::t)
-                           -> Block<'blk, 'tcx> {
-    // NB: v is an *alias* of type t here, not a direct value.
-    let _icx = push_ctxt("take_ty");
-    match ty::get(t).sty {
-        ty::ty_box(_) => incr_refcnt_of_boxed(bcx, v),
-        _ if ty::type_is_structural(t)
-          && ty::type_needs_drop(bcx.tcx(), t) => {
-            iter_structural_ty(bcx, v, t, take_ty)
-        }
-        _ => bcx
     }
 }
 
@@ -446,9 +423,6 @@ fn make_drop_glue<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, v0: ValueRef, t: ty::t)
     // NB: v0 is an *alias* of type t here, not a direct value.
     let _icx = push_ctxt("make_drop_glue");
     match ty::get(t).sty {
-        ty::ty_box(body_ty) => {
-            decr_refcnt_maybe_free(bcx, v0, body_ty)
-        }
         ty::ty_uniq(content_ty) => {
             match ty::get(content_ty).sty {
                 ty::ty_vec(ty, None) => {
@@ -567,48 +541,6 @@ fn make_drop_glue<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, v0: ValueRef, t: ty::t)
         }
     }
 }
-
-fn decr_refcnt_maybe_free<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
-                                      box_ptr_ptr: ValueRef,
-                                      t: ty::t) -> Block<'blk, 'tcx> {
-    let _icx = push_ctxt("decr_refcnt_maybe_free");
-    let fcx = bcx.fcx;
-    let ccx = bcx.ccx();
-
-    let decr_bcx = fcx.new_temp_block("decr");
-    let free_bcx = fcx.new_temp_block("free");
-    let next_bcx = fcx.new_temp_block("next");
-
-    let box_ptr = Load(bcx, box_ptr_ptr);
-    let llnotnull = IsNotNull(bcx, box_ptr);
-    CondBr(bcx, llnotnull, decr_bcx.llbb, next_bcx.llbb);
-
-    let rc_ptr = GEPi(decr_bcx, box_ptr, [0u, abi::box_field_refcnt]);
-    let rc = Sub(decr_bcx, Load(decr_bcx, rc_ptr), C_int(ccx, 1));
-    Store(decr_bcx, rc, rc_ptr);
-    CondBr(decr_bcx, IsNull(decr_bcx, rc), free_bcx.llbb, next_bcx.llbb);
-
-    let v = Load(free_bcx, box_ptr_ptr);
-    let body = GEPi(free_bcx, v, [0u, abi::box_field_body]);
-    let free_bcx = drop_ty(free_bcx, body, t, None);
-    let free_bcx = trans_free(free_bcx, v);
-    Br(free_bcx, next_bcx.llbb);
-
-    next_bcx
-}
-
-fn incr_refcnt_of_boxed<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
-                                    box_ptr_ptr: ValueRef) -> Block<'blk, 'tcx> {
-    let _icx = push_ctxt("incr_refcnt_of_boxed");
-    let ccx = bcx.ccx();
-    let box_ptr = Load(bcx, box_ptr_ptr);
-    let rc_ptr = GEPi(bcx, box_ptr, [0u, abi::box_field_refcnt]);
-    let rc = Load(bcx, rc_ptr);
-    let rc = Add(bcx, rc, C_int(ccx, 1));
-    Store(bcx, rc, rc_ptr);
-    bcx
-}
-
 
 // Generates the declaration for (but doesn't emit) a type descriptor.
 pub fn declare_tydesc(ccx: &CrateContext, t: ty::t) -> tydesc_info {
