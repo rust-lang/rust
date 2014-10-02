@@ -2565,6 +2565,39 @@ mod tests {
         assert_eq!(v.map_in_place(|_| ZeroSized).as_slice(), [ZeroSized, ZeroSized].as_slice());
     }
 
+    #[test]
+    fn test_move_items() {
+        let mut vec = vec!(1i, 2, 3);
+        let mut vec2 : Vec<int> = vec!();
+        for i in vec.move_iter() {
+            vec2.push(i);
+        }
+        assert!(vec2 == vec!(1i, 2, 3));
+        assert!(vec.empty());
+    }
+
+    #[test]
+    fn test_move_items_reverse() {
+        let mut vec = vec!(1i, 2, 3);
+        let mut vec2 : Vec<int> = vec!();
+        for i in vec.move_iter().rev() {
+            vec2.push(i);
+        }
+        assert!(vec2 == vec!(3i, 2, 1));
+        assert!(vec.empty());
+    }
+
+    #[test]
+    fn test_move_items_zero_sized() {
+        let mut vec = vec!((), (), ());
+        let mut vec2 : Vec<()> = vec!();
+        for i in vec.move_iter() {
+            vec2.push(i);
+        }
+        assert!(vec2 == vec!((), (), ()));
+        assert!(vec.empty());
+    }
+
     #[bench]
     fn bench_new(b: &mut Bencher) {
         b.iter(|| {
