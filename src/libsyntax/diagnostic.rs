@@ -414,7 +414,7 @@ fn highlight_lines(err: &mut EmitterWriter,
     let mut elided = false;
     let mut display_lines = lines.lines.as_slice();
     if display_lines.len() > MAX_LINES {
-        display_lines = display_lines[0u..MAX_LINES];
+        display_lines = display_lines.slice(0u, MAX_LINES);
         elided = true;
     }
     // Print the offending lines

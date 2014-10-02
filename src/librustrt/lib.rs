@@ -16,10 +16,9 @@
        html_favicon_url = "http://www.rust-lang.org/favicon.ico",
        html_root_url = "http://doc.rust-lang.org/master/")]
 
-#![allow(unknown_features)]
 #![feature(macro_rules, phase, globs, thread_local, managed_boxes, asm)]
 #![feature(linkage, lang_items, unsafe_destructor, default_type_params)]
-#![feature(import_shadowing, slicing_syntax)]
+#![feature(import_shadowing)]
 #![no_std]
 #![experimental]
 

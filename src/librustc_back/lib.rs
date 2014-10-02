@@ -31,8 +31,7 @@
       html_favicon_url = "http://www.rust-lang.org/favicon.ico",
       html_root_url = "http://doc.rust-lang.org/")]
 
-#![allow(unknown_features)]
-#![feature(globs, phase, macro_rules, slicing_syntax)]
+#![feature(globs, phase, macro_rules)]
 
 #[phase(plugin, link)]
 extern crate log;

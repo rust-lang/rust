@@ -23,8 +23,7 @@ Core encoding and decoding interfaces.
        html_favicon_url = "http://www.rust-lang.org/favicon.ico",
        html_root_url = "http://doc.rust-lang.org/master/",
        html_playground_url = "http://play.rust-lang.org/")]
-#![allow(unknown_features)]
-#![feature(macro_rules, managed_boxes, default_type_params, phase, slicing_syntax)]
+#![feature(macro_rules, managed_boxes, default_type_params, phase)]
 
 // test harness access
 #[cfg(test)]

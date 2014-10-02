@@ -10,8 +10,6 @@
 
 // Test slicing sugar.
 
-#![feature(slicing_syntax)]
-
 extern crate core;
 use core::ops::{Slice,SliceMut};
 
@@ -20,38 +18,38 @@ static mut COUNT: uint = 0;
 struct Foo;
 
 impl Slice<Foo, Foo> for Foo {
-    fn as_slice<'a>(&'a self) -> &'a Foo {
+    fn as_slice_<'a>(&'a self) -> &'a Foo {
         unsafe { COUNT += 1; }
         self
     }
-    fn slice_from<'a>(&'a self, _from: &Foo) -> &'a Foo {
+    fn slice_from_<'a>(&'a self, _from: &Foo) -> &'a Foo {
         unsafe { COUNT += 1; }
         self
     }
-    fn slice_to<'a>(&'a self, _to: &Foo) -> &'a Foo {
+    fn slice_to_<'a>(&'a self, _to: &Foo) -> &'a Foo {
         unsafe { COUNT += 1; }
         self
     }
-    fn slice<'a>(&'a self, _from: &Foo, _to: &Foo) -> &'a Foo {
+    fn slice_<'a>(&'a self, _from: &Foo, _to: &Foo) -> &'a Foo {
         unsafe { COUNT += 1; }
         self
     }
 }
 
 impl SliceMut<Foo, Foo> for Foo {
-    fn as_mut_slice<'a>(&'a mut self) -> &'a mut Foo {
+    fn as_mut_slice_<'a>(&'a mut self) -> &'a mut Foo {
         unsafe { COUNT += 1; }
         self
     }
-    fn slice_from_mut<'a>(&'a mut self, _from: &Foo) -> &'a mut Foo {
+    fn slice_from_mut_<'a>(&'a mut self, _from: &Foo) -> &'a mut Foo {
         unsafe { COUNT += 1; }
         self
     }
-    fn slice_to_mut<'a>(&'a mut self, _to: &Foo) -> &'a mut Foo {
+    fn slice_to_mut_<'a>(&'a mut self, _to: &Foo) -> &'a mut Foo {
         unsafe { COUNT += 1; }
         self
     }
-    fn slice_mut<'a>(&'a mut self, _from: &Foo, _to: &Foo) -> &'a mut Foo {
+    fn slice_mut_<'a>(&'a mut self, _from: &Foo, _to: &Foo) -> &'a mut Foo {
         unsafe { COUNT += 1; }
         self
     }

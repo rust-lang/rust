@@ -78,7 +78,7 @@ pub fn to_str_bytes<U>(n: $T, radix: uint, f: |v: &[u8]| -> U) -> U {
         (write!(&mut wr, "{}", ::fmt::radix(n, radix as u8))).unwrap();
         wr.tell().unwrap() as uint
     };
-    f(buf[..amt])
+    f(buf.slice(0, amt))
 }
 
 #[deprecated = "use fmt::radix"]
