@@ -323,7 +323,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                        method_call,
                        method.repr(self.tcx()));
                 let new_method = MethodCallee {
-                    origin: method.origin,
+                    origin: self.resolve(&method.origin, reason),
                     ty: self.resolve(&method.ty, reason),
                     substs: self.resolve(&method.substs, reason),
                 };
