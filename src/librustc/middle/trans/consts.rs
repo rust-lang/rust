@@ -547,6 +547,9 @@ fn const_expr_unadjusted(cx: &CrateContext, e: &ast::Expr,
               (expr::cast_integral, expr::cast_pointer) => {
                 llvm::LLVMConstIntToPtr(v, llty.to_ref())
               }
+              (expr::cast_pointer, expr::cast_integral) => {
+                llvm::LLVMConstPtrToInt(v, llty.to_ref())
+              }
               _ => {
                 cx.sess().impossible_case(e.span,
                                           "bad combination of types for cast")
