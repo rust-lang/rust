@@ -715,7 +715,7 @@ pub trait IndexMut<Index, Result> {
 #[lang="slice"]
 pub trait Slice<Idx, Sized? Result> for Sized? {
     /// The method for the slicing operation foo[]
-    fn as_slice<'a>(&'a self) -> &'a Result;
+    fn as_slice_<'a>(&'a self) -> &'a Result;
     /// The method for the slicing operation foo[from..]
     fn slice_from<'a>(&'a self, from: &Idx) -> &'a Result;
     /// The method for the slicing operation foo[..to]
@@ -933,4 +933,3 @@ def_fn_mut!(A0 A1 A2 A3 A4 A5 A6 A7 A8 A9 A10 A11 A12)
 def_fn_mut!(A0 A1 A2 A3 A4 A5 A6 A7 A8 A9 A10 A11 A12 A13)
 def_fn_mut!(A0 A1 A2 A3 A4 A5 A6 A7 A8 A9 A10 A11 A12 A13 A14)
 def_fn_mut!(A0 A1 A2 A3 A4 A5 A6 A7 A8 A9 A10 A11 A12 A13 A14 A15)
-

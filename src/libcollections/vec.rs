@@ -24,7 +24,7 @@ use core::num;
 use core::ops;
 use core::ptr;
 use core::raw::Slice as RawSlice;
-use core::slice::Slice as SliceSlice;
+use core::slice::AsSlice;
 use core::uint;
 
 use {Mutable, MutableSeq};
@@ -461,34 +461,25 @@ impl<T> Index<uint,T> for Vec<T> {
     }
 }*/
 
-// Annoying helper function because there are two Slice::as_slice functions in
-// scope.
-#[cfg(not(stage0))]
-#[inline]
-fn slice_to_slice<'a, T, U: Slice<T>>(this: &'a U) -> &'a [T] {
-    this.as_slice()
-}
-
-
 #[cfg(not(stage0))]
 impl<T> ops::Slice<uint, [T]> for Vec<T> {
     #[inline]
-    fn as_slice<'a>(&'a self) -> &'a [T] {
-        slice_to_slice(self)
+    fn as_slice_<'a>(&'a self) -> &'a [T] {
+        self.as_slice()
     }
 
     #[inline]
     fn slice_from<'a>(&'a self, start: &uint) -> &'a [T] {
-        slice_to_slice(self).slice_from(start)
+        self.as_slice().slice_from(start)
     }
 
     #[inline]
     fn slice_to<'a>(&'a self, end: &uint) -> &'a [T] {
-        slice_to_slice(self).slice_to(end)
+        self.as_slice().slice_to(end)
     }
     #[inline]
     fn slice<'a>(&'a self, start: &uint, end: &uint) -> &'a [T] {
-        slice_to_slice(self).slice(start, end)
+        self.as_slice().slice(start, end)
     }
 }
 #[cfg(stage0)]
@@ -601,7 +592,7 @@ impl<T: PartialOrd> PartialOrd for Vec<T> {
 impl<T: Eq> Eq for Vec<T> {}
 
 #[experimental]
-impl<T: PartialEq, V: Slice<T>> Equiv<V> for Vec<T> {
+impl<T: PartialEq, V: AsSlice<T>> Equiv<V> for Vec<T> {
     #[inline]
     fn equiv(&self, other: &V) -> bool { self.as_slice() == other.as_slice() }
 }
@@ -1654,7 +1645,7 @@ impl<T: PartialEq> Vec<T> {
     }
 }
 
-impl<T> Slice<T> for Vec<T> {
+impl<T> AsSlice<T> for Vec<T> {
     /// Returns a slice into `self`.
     ///
     /// # Example
@@ -1672,7 +1663,7 @@ impl<T> Slice<T> for Vec<T> {
     }
 }
 
-impl<T: Clone, V: Slice<T>> Add<V, Vec<T>> for Vec<T> {
+impl<T: Clone, V: AsSlice<T>> Add<V, Vec<T>> for Vec<T> {
     #[inline]
     fn add(&self, rhs: &V) -> Vec<T> {
         let mut res = Vec::with_capacity(self.len() + rhs.as_slice().len());
