@@ -61,6 +61,32 @@ use raw::Slice as RawSlice;
 /// Extension methods for immutable slices.
 #[unstable = "may merge with other traits; region parameter may disappear"]
 pub trait ImmutableSlice<'a, T> {
+    /// Returns a subslice spanning the interval [`start`, `end`).
+    ///
+    /// Fails when the end of the new slice lies beyond the end of the
+    /// original slice (i.e. when `end > self.len()`) or when `start > end`.
+    ///
+    /// Slicing with `start` equal to `end` yields an empty slice.
+    #[unstable = "waiting on final error conventions"]
+    //fn slice(&self, start: uint, end: uint) -> &'a [T];
+
+    /// Returns a subslice from `start` to the end of the slice.
+    ///
+    /// Fails when `start` is strictly greater than the length of the original slice.
+    ///
+    /// Slicing from `self.len()` yields an empty slice.
+    #[unstable = "waiting on final error conventions"]
+    // TODO
+    //fn slice_from(&self, start: uint) -> &'a [T];
+
+    /// Returns a subslice from the start of the slice to `end`.
+    ///
+    /// Fails when `end` is strictly greater than the length of the original slice.
+    ///
+    /// Slicing to `0` yields an empty slice.
+    #[unstable = "waiting on final error conventions"]
+    //fn slice_to(&self, end: uint) -> &'a [T];
+
     /// Divides one slice into two at an index.
     ///
     /// The first will contain all indices from `[0, mid)` (excluding
@@ -418,35 +444,6 @@ impl<'a,T> ImmutableSlice<'a, T> for &'a [T] {
     }
 }
 
-#[cfg(not(stage0))]
-impl<T> ops::Slice<uint, [T]> for [T] {
-    #[inline]
-    fn as_slice<'a>(&'a self) -> &'a [T] {
-        self
-    }
-
-    #[inline]
-    fn slice_from<'a>(&'a self, start: &uint) -> &'a [T] {
-        self.slice(start, &self.len())
-    }
-
-    #[inline]
-    fn slice_to<'a>(&'a self, end: &uint) -> &'a [T] {
-        self.slice(&0, end)
-    }
-    #[inline]
-    fn slice<'a>(&'a self, start: &uint, end: &uint) -> &'a [T] {
-        assert!(*start <= *end);
-        assert!(*end <= self.len());
-        unsafe {
-            transmute(RawSlice {
-                    data: self.as_ptr().offset(*start as int),
-                    len: (*end - *start)
-                })
-        }
-    }
-}
-#[cfg(stage0)]
 impl<T> ops::Slice<uint, [T]> for [T] {
     #[inline]
     fn as_slice_<'a>(&'a self) -> &'a [T] {
@@ -474,36 +471,7 @@ impl<T> ops::Slice<uint, [T]> for [T] {
         }
     }
 }
-#[cfg(not(stage0))]
-impl<T> ops::SliceMut<uint, [T]> for [T] {
-    #[inline]
-    fn as_mut_slice<'a>(&'a mut self) -> &'a mut [T] {
-        self
-    }
 
-    #[inline]
-    fn slice_from_mut<'a>(&'a mut self, start: &uint) -> &'a mut [T] {
-        let len = &self.len();
-        self.slice_mut(start, len)
-    }
-
-    #[inline]
-    fn slice_to_mut<'a>(&'a mut self, end: &uint) -> &'a mut [T] {
-        self.slice_mut(&0, end)
-    }
-    #[inline]
-    fn slice_mut<'a>(&'a mut self, start: &uint, end: &uint) -> &'a mut [T] {
-        assert!(*start <= *end);
-        assert!(*end <= self.len());
-        unsafe {
-            transmute(RawSlice {
-                    data: self.as_ptr().offset(*start as int),
-                    len: (*end - *start)
-                })
-        }
-    }
-}
-#[cfg(stage0)]
 impl<T> ops::SliceMut<uint, [T]> for [T] {
     #[inline]
     fn as_mut_slice_<'a>(&'a mut self) -> &'a mut [T] {
@@ -545,6 +513,49 @@ pub trait MutableSlice<'a, T> {
     /// Primarily intended for getting a &mut [T] from a [T, ..N].
     #[deprecated = "use slicing syntax"]
     fn as_mut_slice(self) -> &'a mut [T];
+
+    /// Deprecated: use `slice_mut`.
+    #[deprecated = "use slicing syntax"]
+    //fn mut_slice(self, start: uint, end: uint) -> &'a mut [T] {
+    //    self[mut start..end]
+    //}
+
+    /// Returns a mutable subslice spanning the interval [`start`, `end`).
+    ///
+    /// Fails when the end of the new slice lies beyond the end of the
+    /// original slice (i.e. when `end > self.len()`) or when `start > end`.
+    ///
+    /// Slicing with `start` equal to `end` yields an empty slice.
+    #[unstable = "waiting on final error conventions"]
+    //fn slice_mut(self, start: uint, end: uint) -> &'a mut [T];
+
+    /// Deprecated: use `slicing syntax`.
+    #[deprecated = "use slicing syntax"]
+    //fn mut_slice_from(self, start: uint) -> &'a mut [T] {
+    //    self[mut start..]
+    //}
+
+    /// Returns a mutable subslice from `start` to the end of the slice.
+    ///
+    /// Fails when `start` is strictly greater than the length of the original slice.
+    ///
+    /// Slicing from `self.len()` yields an empty slice.
+    #[unstable = "waiting on final error conventions"]
+    //fn slice_from_mut(self, start: uint) -> &'a mut [T];
+
+    /// Deprecated: use `slicing syntax`.
+    #[deprecated = "use slicing syntax"]
+    //fn mut_slice_to(self, end: uint) -> &'a mut [T] {
+    //    self[mut ..end]
+    //}
+
+    /// Returns a mutable subslice from the start of the slice to `end`.
+    ///
+    /// Fails when `end` is strictly greater than the length of the original slice.
+    ///
+    /// Slicing to `0` yields an empty slice.
+    #[unstable = "waiting on final error conventions"]
+    //fn slice_to_mut(self, end: uint) -> &'a mut [T];
 
     /// Deprecated: use `iter_mut`.
     #[deprecated = "use iter_mut"]
