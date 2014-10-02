@@ -46,12 +46,12 @@ struct AbsEntries<T> {
 }
 
 /// An iterator over a BTreeMap's entries.
-pub struct Entries<'a, K, V> {
+pub struct Entries<'a, K: 'a, V: 'a> {
     inner: AbsEntries<Traversal<'a, K, V>>
 }
 
 /// A mutable iterator over a BTreeMap's entries.
-pub struct MutEntries<'a, K, V> {
+pub struct MutEntries<'a, K: 'a, V: 'a> {
     inner: AbsEntries<MutTraversal<'a, K, V>>
 }
 
