@@ -2271,10 +2271,10 @@ fn try_overloaded_slice(fcx: &FnCtxt,
         match fcx.tcx().lang_items.slice_mut_trait() {
             Some(trait_did) => {
                 let method_name = match (start_expr, end_expr) {
-                    (&Some(_), &Some(_)) => "slice_mut",
-                    (&Some(_), &None) => "slice_from_mut",
-                    (&None, &Some(_)) => "slice_to_mut",
-                    (&None, &None) => "as_mut_slice",
+                    (&Some(_), &Some(_)) => "slice_mut_",
+                    (&Some(_), &None) => "slice_from_mut_",
+                    (&None, &Some(_)) => "slice_to_mut_",
+                    (&None, &None) => "as_mut_slice_",
                 };
 
                 method::lookup_in_trait(fcx,
@@ -2296,10 +2296,10 @@ fn try_overloaded_slice(fcx: &FnCtxt,
         match fcx.tcx().lang_items.slice_trait() {
             Some(trait_did) => {
                 let method_name = match (start_expr, end_expr) {
-                    (&Some(_), &Some(_)) => "slice",
-                    (&Some(_), &None) => "slice_from",
-                    (&None, &Some(_)) => "slice_to",
-                    (&None, &None) => "as_slice",
+                    (&Some(_), &Some(_)) => "slice_",
+                    (&Some(_), &None) => "slice_from_",
+                    (&None, &Some(_)) => "slice_to_",
+                    (&None, &None) => "as_slice_",
                 };
 
                 method::lookup_in_trait(fcx,
