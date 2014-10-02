@@ -10,13 +10,12 @@
 
 
 use std::cell::RefCell;
-use std::gc::{Gc, GC};
 
 static S: &'static str = "str";
 
 struct list<T> {
     element: T,
-    next: Option<Gc<RefCell<list<T>>>>
+    next: Option<Box<RefCell<list<T>>>>
 }
 
 impl<T:'static> list<T> {
@@ -26,7 +25,7 @@ impl<T:'static> list<T> {
             next: None
         };
 
-        self.next = Some(box(GC) RefCell::new(newList));
+        self.next = Some(box RefCell::new(newList));
     }
 }
 

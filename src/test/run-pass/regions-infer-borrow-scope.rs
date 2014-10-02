@@ -9,8 +9,6 @@
 // except according to those terms.
 
 
-use std::gc::GC;
-
 struct Point {x: int, y: int}
 
 fn x_coord(p: &Point) -> &int {
@@ -18,7 +16,7 @@ fn x_coord(p: &Point) -> &int {
 }
 
 pub fn main() {
-    let p = box(GC) Point {x: 3, y: 4};
+    let p = box Point {x: 3, y: 4};
     let xc = x_coord(&*p);
     assert_eq!(*xc, 3);
 }

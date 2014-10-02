@@ -9,8 +9,6 @@
 // except according to those terms.
 
 
-use std::gc::GC;
-
 fn p_foo<T>(_pinned: T) { }
 fn s_foo<T>(_shared: T) { }
 fn u_foo<T:Send>(_unique: T) { }
@@ -31,15 +29,11 @@ fn r(i:int) -> r {
 
 pub fn main() {
     p_foo(r(10));
-    p_foo(box(GC) r(10));
 
     p_foo(box r(10));
-    p_foo(box(GC) 10i);
     p_foo(box 10i);
     p_foo(10i);
 
-    s_foo(box(GC) r(10));
-    s_foo(box(GC) 10i);
     s_foo(box 10i);
     s_foo(10i);
 

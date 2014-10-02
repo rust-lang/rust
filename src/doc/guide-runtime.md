@@ -31,7 +31,6 @@ list):
 * Task synchronization
 * Task-local storage
 * Logging
-* Local heaps (GC heaps)
 * Task unwinding
 
 ## What is the runtime accomplishing?

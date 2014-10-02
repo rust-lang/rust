@@ -11,30 +11,28 @@
 #![allow(dead_assignment)]
 #![allow(unused_variable)]
 
-use std::gc::{Gc, GC};
-
 struct A { a: int, b: int }
-struct Abox { a: Gc<int>, b: Gc<int> }
+struct Abox { a: Box<int>, b: Box<int> }
 
-fn ret_int_i() -> int { return 10; }
+fn ret_int_i() -> int { 10 }
 
-fn ret_ext_i() -> Gc<int> { return box(GC) 10; }
+fn ret_ext_i() -> Box<int> { box 10 }
 
-fn ret_int_rec() -> A { return A {a: 10, b: 10}; }
+fn ret_int_rec() -> A { A {a: 10, b: 10} }
 
-fn ret_ext_rec() -> Gc<A> { return box(GC) A {a: 10, b: 10}; }
+fn ret_ext_rec() -> Box<A> { box A {a: 10, b: 10} }
 
-fn ret_ext_mem() -> Abox { return Abox {a: box(GC) 10, b: box(GC) 10}; }
+fn ret_ext_mem() -> Abox { Abox {a: box 10, b: box 10} }
 
-fn ret_ext_ext_mem() -> Gc<Abox> { box(GC) Abox{a: box(GC) 10, b: box(GC) 10} }
+fn ret_ext_ext_mem() -> Box<Abox> { box Abox{a: box 10, b: box 10} }
 
 pub fn main() {
     let mut int_i: int;
-    let mut ext_i: Gc<int>;
+    let mut ext_i: Box<int>;
     let mut int_rec: A;
-    let mut ext_rec: Gc<A>;
+    let mut ext_rec: Box<A>;
     let mut ext_mem: Abox;
-    let mut ext_ext_mem: Gc<Abox>;
+    let mut ext_ext_mem: Box<Abox>;
     int_i = ret_int_i(); // initializing
 
     int_i = ret_int_i(); // non-initializing

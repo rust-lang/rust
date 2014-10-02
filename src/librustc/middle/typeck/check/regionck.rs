@@ -663,14 +663,6 @@ fn visit_expr(rcx: &mut Rcx, expr: &ast::Expr) {
             visit::walk_expr(rcx, expr);
         }
 
-        ast::ExprUnary(ast::UnBox, ref base) => {
-            // Managed data must not have borrowed pointers within it:
-            let base_ty = rcx.resolve_node_type(base.id);
-            type_must_outlive(rcx, infer::Managed(expr.span),
-                              base_ty, ty::ReStatic);
-            visit::walk_expr(rcx, expr);
-        }
-
         ast::ExprUnary(ast::UnDeref, ref base) => {
             // For *a, the lifetime of a must enclose the deref
             let method_call = MethodCall::expr(expr.id);
@@ -1474,7 +1466,6 @@ fn link_region(rcx: &Rcx,
 
             mc::cat_discr(cmt_base, _) |
             mc::cat_downcast(cmt_base) |
-            mc::cat_deref(cmt_base, _, mc::GcPtr(..)) |
             mc::cat_deref(cmt_base, _, mc::OwnedPtr) |
             mc::cat_interior(cmt_base, _) => {
                 // Borrowing interior or owned data requires the base
@@ -1707,7 +1698,6 @@ fn adjust_upvar_borrow_kind_for_mut(rcx: &Rcx,
             }
 
             mc::cat_deref(_, _, mc::UnsafePtr(..)) |
-            mc::cat_deref(_, _, mc::GcPtr) |
             mc::cat_static_item |
             mc::cat_rvalue(_) |
             mc::cat_copied_upvar(_) |
@@ -1758,7 +1748,6 @@ fn adjust_upvar_borrow_kind_for_unique(rcx: &Rcx, cmt: mc::cmt) {
             }
 
             mc::cat_deref(_, _, mc::UnsafePtr(..)) |
-            mc::cat_deref(_, _, mc::GcPtr) |
             mc::cat_static_item |
             mc::cat_rvalue(_) |
             mc::cat_copied_upvar(_) |

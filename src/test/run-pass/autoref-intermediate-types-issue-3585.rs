@@ -9,15 +9,13 @@
 // except according to those terms.
 
 
-use std::gc::{Gc, GC};
-
 trait Foo {
     fn foo(&self) -> String;
 }
 
-impl<T:Foo> Foo for Gc<T> {
+impl<T:Foo> Foo for Box<T> {
     fn foo(&self) -> String {
-        format!("box(GC) {}", (**self).foo())
+        format!("box {}", (**self).foo())
     }
 }
 
@@ -28,6 +26,6 @@ impl Foo for uint {
 }
 
 pub fn main() {
-    let x = box(GC) 3u;
-    assert_eq!(x.foo(), "box(GC) 3".to_string());
+    let x = box 3u;
+    assert_eq!(x.foo(), "box 3".to_string());
 }

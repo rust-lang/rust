@@ -960,7 +960,6 @@ impl Cleanup for DropValue {
 }
 
 pub enum Heap {
-    HeapManaged,
     HeapExchange
 }
 
@@ -986,9 +985,6 @@ impl Cleanup for FreeValue {
         apply_debug_loc(bcx.fcx, debug_loc);
 
         match self.heap {
-            HeapManaged => {
-                glue::trans_free(bcx, self.ptr)
-            }
             HeapExchange => {
                 glue::trans_exchange_free_ty(bcx, self.ptr, self.content_ty)
             }
@@ -1019,9 +1015,6 @@ impl Cleanup for FreeSlice {
         apply_debug_loc(bcx.fcx, debug_loc);
 
         match self.heap {
-            HeapManaged => {
-                glue::trans_free(bcx, self.ptr)
-            }
             HeapExchange => {
                 glue::trans_exchange_free_dyn(bcx, self.ptr, self.size, self.align)
             }

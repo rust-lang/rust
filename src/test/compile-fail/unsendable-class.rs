@@ -12,14 +12,14 @@
 // Test that a class with an unsendable field can't be
 // sent
 
-use std::gc::{Gc, GC};
+use std::rc::Rc;
 
 struct foo {
   i: int,
-  j: Gc<String>,
+  j: Rc<String>,
 }
 
-fn foo(i:int, j: Gc<String>) -> foo {
+fn foo(i:int, j: Rc<String>) -> foo {
     foo {
         i: i,
         j: j
@@ -29,5 +29,5 @@ fn foo(i:int, j: Gc<String>) -> foo {
 fn main() {
   let cat = "kitty".to_string();
   let (tx, _) = channel(); //~ ERROR `core::kinds::Send` is not implemented
-  tx.send(foo(42, box(GC) (cat))); //~ ERROR `core::kinds::Send` is not implemented
+  tx.send(foo(42, Rc::new(cat))); //~ ERROR `core::kinds::Send` is not implemented
 }

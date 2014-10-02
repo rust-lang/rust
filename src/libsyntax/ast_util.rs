@@ -90,7 +90,6 @@ pub fn is_shift_binop(b: BinOp) -> bool {
 
 pub fn unop_to_string(op: UnOp) -> &'static str {
     match op {
-      UnBox => "box(GC) ",
       UnUniq => "box() ",
       UnDeref => "*",
       UnNot => "!",

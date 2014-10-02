@@ -397,7 +397,6 @@ fn parse_ty(st: &mut PState, conv: conv_did) -> ty::t {
         assert_eq!(next(st), '|');
         return ty::mk_param(st.tcx, space, index, did);
       }
-      '@' => return ty::mk_box(st.tcx, parse_ty(st, |x,y| conv(x,y))),
       '~' => return ty::mk_uniq(st.tcx, parse_ty(st, |x,y| conv(x,y))),
       '*' => return ty::mk_ptr(st.tcx, parse_mt(st, |x,y| conv(x,y))),
       '&' => {

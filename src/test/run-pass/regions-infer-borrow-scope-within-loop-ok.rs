@@ -8,12 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::gc::GC;
-
 fn borrow<T>(x: &T) -> &T {x}
 
 pub fn main() {
-    let x = box(GC) 3i;
+    let x = box 3i;
     loop {
         let y = borrow(&*x);
         assert_eq!(*x, *y);

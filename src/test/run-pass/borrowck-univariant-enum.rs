@@ -10,7 +10,6 @@
 
 
 use std::cell::Cell;
-use std::gc::GC;
 
 enum newtype {
     newvar(int)
@@ -21,8 +20,8 @@ pub fn main() {
     // Test that borrowck treats enums with a single variant
     // specially.
 
-    let x = box(GC) Cell::new(5);
-    let y = box(GC) Cell::new(newvar(3));
+    let x = &Cell::new(5);
+    let y = &Cell::new(newvar(3));
     let z = match y.get() {
       newvar(b) => {
         x.set(x.get() + 1);

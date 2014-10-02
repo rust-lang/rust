@@ -38,7 +38,6 @@ use llvm;
 use llvm::{ValueRef};
 use metadata::csearch;
 use middle::def;
-use middle::lang_items::MallocFnLangItem;
 use middle::mem_categorization::Typer;
 use middle::subst;
 use middle::subst::Subst;
@@ -624,18 +623,15 @@ fn trans_datum_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             DatumBlock::new(bcx, scratch.to_expr_datum())
         }
         ast::ExprBox(_, ref contents) => {
-            // Special case for `Box<T>` and `Gc<T>`
+            // Special case for `Box<T>`
             let box_ty = expr_ty(bcx, expr);
             let contents_ty = expr_ty(bcx, &**contents);
             match ty::get(box_ty).sty {
                 ty::ty_uniq(..) => {
                     trans_uniq_expr(bcx, box_ty, &**contents, contents_ty)
                 }
-                ty::ty_box(..) => {
-                    trans_managed_expr(bcx, box_ty, &**contents, contents_ty)
-                }
                 _ => bcx.sess().span_bug(expr.span,
-                                         "expected unique or managed box")
+                                         "expected unique box")
             }
 
         }
@@ -1533,9 +1529,6 @@ fn trans_unary<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             };
             immediate_rvalue_bcx(bcx, llneg, un_ty).to_expr_datumblock()
         }
-        ast::UnBox => {
-            trans_managed_expr(bcx, un_ty, sub_expr, expr_ty(bcx, sub_expr))
-        }
         ast::UnUniq => {
             trans_uniq_expr(bcx, un_ty, sub_expr, expr_ty(bcx, sub_expr))
         }
@@ -1573,26 +1566,6 @@ fn trans_uniq_expr<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         bcx
     };
     immediate_rvalue_bcx(bcx, val, box_ty).to_expr_datumblock()
-}
-
-fn trans_managed_expr<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
-                                  box_ty: ty::t,
-                                  contents: &ast::Expr,
-                                  contents_ty: ty::t)
-                                  -> DatumBlock<'blk, 'tcx, Expr> {
-    let _icx = push_ctxt("trans_managed_expr");
-    let fcx = bcx.fcx;
-    let ty = type_of::type_of(bcx.ccx(), contents_ty);
-    let Result {bcx, val: bx} = malloc_raw_dyn_managed(bcx, contents_ty, MallocFnLangItem,
-                                                        llsize_of(bcx.ccx(), ty));
-    let body = GEPi(bcx, bx, [0u, abi::box_field_body]);
-
-    let custom_cleanup_scope = fcx.push_custom_cleanup_scope();
-    fcx.schedule_free_value(cleanup::CustomScope(custom_cleanup_scope),
-                            bx, cleanup::HeapManaged, contents_ty);
-    let bcx = trans_into(bcx, contents, SaveIn(body));
-    fcx.pop_custom_cleanup_scope(custom_cleanup_scope);
-    immediate_rvalue_bcx(bcx, bx, box_ty).to_expr_datumblock()
 }
 
 fn trans_addr_of<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
@@ -1927,10 +1900,6 @@ pub fn cast_type_kind(tcx: &ty::ctxt, t: ty::t) -> cast_kind {
 }
 
 fn cast_is_noop(t_in: ty::t, t_out: ty::t) -> bool {
-    if ty::type_is_boxed(t_in) || ty::type_is_boxed(t_out) {
-        return false;
-    }
-
     match (ty::deref(t_in, true), ty::deref(t_out, true)) {
         (Some(ty::mt{ ty: t_in, .. }), Some(ty::mt{ ty: t_out, .. })) => {
             t_in == t_out
@@ -2161,15 +2130,6 @@ fn deref_once<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 let datum = Datum::new(datum.val, ty::mk_open(bcx.tcx(), content_ty), LvalueExpr);
                 DatumBlock::new(bcx, datum)
             }
-        }
-
-        ty::ty_box(content_ty) => {
-            let datum = unpack_datum!(
-                bcx, datum.to_lvalue_datum(bcx, "deref", expr.id));
-            let llptrref = datum.to_llref();
-            let llptr = Load(bcx, llptrref);
-            let llbody = GEPi(bcx, llptr, [0u, abi::box_field_body]);
-            DatumBlock::new(bcx, Datum::new(llbody, content_ty, LvalueExpr))
         }
 
         ty::ty_ptr(ty::mt { ty: content_ty, .. }) |

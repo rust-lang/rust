@@ -373,12 +373,6 @@ impl TypeMap {
                     unique_type_id.push_str(component_type_id.as_slice());
                 }
             },
-            ty::ty_box(inner_type) => {
-                unique_type_id.push_char('@');
-                let inner_type_id = self.get_unique_type_id_of_type(cx, inner_type);
-                let inner_type_id = self.get_unique_type_id_as_string(inner_type_id);
-                unique_type_id.push_str(inner_type_id.as_slice());
-            },
             ty::ty_uniq(inner_type) => {
                 unique_type_id.push_char('~');
                 let inner_type_id = self.get_unique_type_id_of_type(cx, inner_type);
@@ -594,18 +588,6 @@ impl TypeMap {
                                                .as_slice(),
                                            variant_name);
         let interner_key = self.unique_id_interner.intern(Rc::new(enum_variant_type_id));
-        UniqueTypeId(interner_key)
-    }
-
-    fn get_unique_type_id_of_gc_box(&mut self,
-                                    cx: &CrateContext,
-                                    element_type: ty::t)
-                                 -> UniqueTypeId {
-        let element_type_id = self.get_unique_type_id_of_type(cx, element_type);
-        let gc_box_type_id = format!("{{GC_BOX<{}>}}",
-                                     self.get_unique_type_id_as_string(element_type_id)
-                                         .as_slice());
-        let interner_key = self.unique_id_interner.intern(Rc::new(gc_box_type_id));
         UniqueTypeId(interner_key)
     }
 }
@@ -2646,105 +2628,6 @@ fn create_struct_stub(cx: &CrateContext,
     return metadata_stub;
 }
 
-fn at_box_metadata(cx: &CrateContext,
-                   at_pointer_type: ty::t,
-                   content_type: ty::t,
-                   unique_type_id: UniqueTypeId)
-                -> MetadataCreationResult {
-    let content_type_metadata = type_metadata(cx, content_type, codemap::DUMMY_SP);
-
-    return_if_metadata_created_in_meantime!(cx, unique_type_id);
-
-    let content_type_name = compute_debuginfo_type_name(cx, content_type, true);
-    let content_type_name = content_type_name.as_slice();
-    let content_llvm_type = type_of::type_of(cx, content_type);
-
-    let box_type_name = format!("GcBox<{}>", content_type_name);
-    let box_llvm_type = Type::at_box(cx, content_llvm_type);
-    let member_llvm_types = box_llvm_type.field_types();
-    assert!(box_layout_is_correct(cx,
-                                  member_llvm_types.as_slice(),
-                                  content_llvm_type));
-
-    let int_type = ty::mk_int();
-    let nil_pointer_type = ty::mk_nil_ptr(cx.tcx());
-    let nil_pointer_type_metadata = type_metadata(cx,
-                                                  nil_pointer_type,
-                                                  codemap::DUMMY_SP);
-    let member_descriptions = [
-        MemberDescription {
-            name: "refcnt".to_string(),
-            llvm_type: *member_llvm_types.get(0),
-            type_metadata: type_metadata(cx, int_type, codemap::DUMMY_SP),
-            offset: ComputedMemberOffset,
-            flags: FLAGS_ARTIFICAL,
-        },
-        MemberDescription {
-            name: "drop_glue".to_string(),
-            llvm_type: *member_llvm_types.get(1),
-            type_metadata: nil_pointer_type_metadata,
-            offset: ComputedMemberOffset,
-            flags: FLAGS_ARTIFICAL,
-        },
-        MemberDescription {
-            name: "prev".to_string(),
-            llvm_type: *member_llvm_types.get(2),
-            type_metadata: nil_pointer_type_metadata,
-            offset: ComputedMemberOffset,
-            flags: FLAGS_ARTIFICAL,
-        },
-        MemberDescription {
-            name: "next".to_string(),
-            llvm_type: *member_llvm_types.get(3),
-            type_metadata: nil_pointer_type_metadata,
-            offset: ComputedMemberOffset,
-            flags: FLAGS_ARTIFICAL,
-        },
-        MemberDescription {
-            name: "val".to_string(),
-            llvm_type: *member_llvm_types.get(4),
-            type_metadata: content_type_metadata,
-            offset: ComputedMemberOffset,
-            flags: FLAGS_ARTIFICAL,
-        }
-    ];
-
-    let gc_box_unique_id = debug_context(cx).type_map
-                                            .borrow_mut()
-                                            .get_unique_type_id_of_gc_box(cx, content_type);
-
-    let gc_box_metadata = composite_type_metadata(
-        cx,
-        box_llvm_type,
-        box_type_name.as_slice(),
-        gc_box_unique_id,
-        member_descriptions,
-        UNKNOWN_SCOPE_METADATA,
-        UNKNOWN_FILE_METADATA,
-        codemap::DUMMY_SP);
-
-    let gc_pointer_metadata = pointer_type_metadata(cx,
-                                                    at_pointer_type,
-                                                    gc_box_metadata);
-
-    return MetadataCreationResult::new(gc_pointer_metadata, false);
-
-    // Unfortunately, we cannot assert anything but the correct types here---and
-    // not whether the 'next' and 'prev' pointers are in the correct order.
-    fn box_layout_is_correct(cx: &CrateContext,
-                             member_llvm_types: &[Type],
-                             content_llvm_type: Type)
-                          -> bool {
-        member_llvm_types.len() == 5 &&
-        member_llvm_types[0] == cx.int_type() &&
-        member_llvm_types[1] == Type::generic_glue_fn(cx).ptr_to() &&
-        member_llvm_types[2] == Type::i8(cx).ptr_to() &&
-        member_llvm_types[3] == Type::i8(cx).ptr_to() &&
-        member_llvm_types[4] == content_llvm_type
-    }
-}
-
-
 fn fixed_vec_metadata(cx: &CrateContext,
                       unique_type_id: UniqueTypeId,
                       element_type: ty::t,
@@ -2967,9 +2850,6 @@ fn type_metadata(cx: &CrateContext,
         }
         ty::ty_enum(def_id, _) => {
             prepare_enum_metadata(cx, t, def_id, unique_type_id, usage_site_span).finalize(cx)
-        }
-        ty::ty_box(pointee_type) => {
-            at_box_metadata(cx, t, pointee_type, unique_type_id)
         }
         ty::ty_vec(typ, Some(len)) => {
             fixed_vec_metadata(cx, unique_type_id, typ, len, usage_site_span)
@@ -3702,7 +3582,7 @@ fn populate_scope_map(cx: &CrateContext,
             ast::ExprInlineAsm(ast::InlineAsm { inputs: ref inputs,
                                                 outputs: ref outputs,
                                                 .. }) => {
-                // inputs, outputs: ~[(String, Gc<expr>)]
+                // inputs, outputs: Vec<(String, P<Expr>)>
                 for &(_, ref exp) in inputs.iter() {
                     walk_expr(cx, &**exp, scope_stack, scope_map);
                 }
@@ -3776,10 +3656,6 @@ fn push_debuginfo_type_name(cx: &CrateContext,
             output.push_str("Box<");
             push_debuginfo_type_name(cx, inner_type, true, output);
             output.push_char('>');
-        },
-        ty::ty_box(inner_type) => {
-            output.push_char('@');
-            push_debuginfo_type_name(cx, inner_type, true, output);
         },
         ty::ty_ptr(ty::mt { ty: inner_type, mutbl } ) => {
             output.push_char('*');

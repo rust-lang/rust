@@ -17,12 +17,10 @@
 
 extern crate crate_method_reexport_grrrrrrr2;
 
-use std::gc::GC;
-
 pub fn main() {
     use crate_method_reexport_grrrrrrr2::rust::add;
     use crate_method_reexport_grrrrrrr2::rust::cx;
-    let x = box(GC) ();
+    let x = box() ();
     x.cx();
     let y = ();
     y.add("hi".to_string());

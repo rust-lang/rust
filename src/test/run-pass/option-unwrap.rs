@@ -11,16 +11,14 @@
 #![feature(unsafe_destructor)]
 
 use std::cell::Cell;
-use std::gc::{GC, Gc};
 
-struct dtor {
-    x: Gc<Cell<int>>,
+struct dtor<'a> {
+    x: &'a Cell<int>,
 }
 
 #[unsafe_destructor]
-impl Drop for dtor {
+impl<'a> Drop for dtor<'a> {
     fn drop(&mut self) {
-        // abuse access to shared mutable state to write this code
         self.x.set(self.x.get() - 1);
     }
 }
@@ -33,7 +31,7 @@ fn unwrap<T>(o: Option<T>) -> T {
 }
 
 pub fn main() {
-    let x = box(GC) Cell::new(1);
+    let x = &Cell::new(1);
 
     {
         let b = Some(dtor { x:x });

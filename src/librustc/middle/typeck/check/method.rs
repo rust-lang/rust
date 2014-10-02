@@ -1094,7 +1094,7 @@ impl<'a, 'tcx> LookupContext<'a, 'tcx> {
 
         let tcx = self.tcx();
         match ty::get(self_ty).sty {
-            ty_bare_fn(..) | ty_box(..) | ty_uniq(..) | ty_rptr(..) |
+            ty_bare_fn(..) | ty_uniq(..) | ty_rptr(..) |
             ty_infer(IntVar(_)) |
             ty_infer(FloatVar(_)) |
             ty_param(..) | ty_nil | ty_bot | ty_bool |

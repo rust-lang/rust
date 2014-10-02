@@ -9,9 +9,7 @@
 // except according to those terms.
 
 
-use std::gc::{Gc, GC};
-
 pub fn main() {
-    let x: Gc<int> = box(GC) 10;
+    let x: Box<int> = box 10;
     let _y: int = *x;
 }
