@@ -659,14 +659,12 @@ error: mismatched types: expected `int` but found `()` (expected int but found (
 ```
 
 We expected an integer, but we got `()`. `()` is pronounced 'unit', and is a
-special type in Rust's type system. `()` is different than `null` in other
-languages, because `()` is distinct from other types. For example, in C, `null`
-is a valid value for a variable of type `int`. In Rust, `()` is _not_ a valid
-value for a variable of type `int`. It's only a valid value for variables of
-the type `()`, which aren't very useful. Remember how we said statements don't
-return a value? Well, that's the purpose of unit in this case. The semicolon
-turns any expression into a statement by throwing away its value and returning
-unit instead.
+special type in Rust's type system. In Rust, `()` is _not_ a valid value for a
+variable of type `int`. It's only a valid value for variables of the type `()`,
+which aren't very useful. Remember how we said statements don't return a value?
+Well, that's the purpose of unit in this case. The semicolon turns any
+expression into a statement by throwing away its value and returning unit
+instead.
 
 There's one more time in which you won't see a semicolon at the end of a line
 of Rust code. For that, we'll need our next concept: functions.
@@ -1680,11 +1678,11 @@ just `int`s.
 
 Rust provides a method on these `IoResult<T>`s called `ok()`, which does the
 same thing as our `match` statement, but assuming that we have a valid value.
-If we don't, it will terminate our program. In this case, if we can't get
-input, our program doesn't work, so we're okay with that. In most cases, we
-would want to handle the error case explicitly. The result of `ok()` has a
-method, `expect()`, which allows us to give an error message if this crash
-happens.
+We then call `expect()` on the result, which will terminate our program if we
+don't have a valid value. In this case, if we can't get input, our program
+doesn't work, so we're okay with that. In most cases, we would want to handle
+the error case explicitly. `expect()` allows us to give an error message if
+this crash happens.
 
 We will cover the exact details of how all of this works later in the Guide.
 For now, this gives you enough of a basic understanding to work with.
@@ -2030,7 +2028,7 @@ fn main() {
     match cmp(input, secret_number) {
         Less    => println!("Too small!"),
         Greater => println!("Too big!"),
-        Equal   => { println!("You win!"); },
+        Equal   => println!("You win!"),
     }
 }
 
