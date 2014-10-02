@@ -44,20 +44,15 @@
 //!
 //! A number of traits add methods that allow you to accomplish tasks with slices.
 //! These traits include `ImmutableSlice`, which is defined for `&[T]` types,
-//! `MutableSlice`, defined for `&mut [T]` types, and `Slice` and `SliceMut`
-//! which are defined for `[T]`.
+//! and `MutableSlice`, defined for `&mut [T]` types.
 //!
-//! An example is the `slice` method which enables slicing syntax `[a..b]` that
-//! returns an immutable "view" into a `Vec` or another slice from the index
-//! interval `[a, b)`:
+//! An example is the method `.slice(a, b)` that returns an immutable "view" into
+//! a `Vec` or another slice from the index interval `[a, b)`:
 //!
 //! ```rust
-//! #![feature(slicing_syntax)]
-//! fn main() {
-//!     let numbers = [0i, 1i, 2i];
-//!     let last_numbers = numbers[1..3];
-//!     // last_numbers is now &[1i, 2i]
-//! }
+//! let numbers = [0i, 1i, 2i];
+//! let last_numbers = numbers.slice(1, 3);
+//! // last_numbers is now &[1i, 2i]
 //! ```
 //!
 //! ## Implementations of other traits
@@ -615,7 +610,7 @@ impl<'a,T> MutableSliceAllocating<'a, T> for &'a mut [T] {
 
     #[inline]
     fn move_from(self, mut src: Vec<T>, start: uint, end: uint) -> uint {
-        for (a, b) in self.iter_mut().zip(src[mut start..end].iter_mut()) {
+        for (a, b) in self.iter_mut().zip(src.slice_mut(start, end).iter_mut()) {
             mem::swap(a, b);
         }
         cmp::min(self.len(), end-start)
@@ -707,7 +702,7 @@ impl<'a, T: Ord> MutableOrdSlice<T> for &'a mut [T] {
         self.swap(j, i-1);
 
         // Step 4: Reverse the (previously) weakly decreasing part
-        self[mut i..].reverse();
+        self.slice_from_mut(i).reverse();
 
         true
     }
@@ -728,7 +723,7 @@ impl<'a, T: Ord> MutableOrdSlice<T> for &'a mut [T] {
         }
 
         // Step 2: Reverse the weakly increasing part
-        self[mut i..].reverse();
+        self.slice_from_mut(i).reverse();
 
         // Step 3: Find the rightmost element equal to or bigger than the pivot (i-1)
         let mut j = self.len() - 1;
@@ -995,7 +990,7 @@ mod tests {
     fn test_slice() {
         // Test fixed length vector.
         let vec_fixed = [1i, 2, 3, 4];
-        let v_a = vec_fixed[1u..vec_fixed.len()].to_vec();
+        let v_a = vec_fixed.slice(1u, vec_fixed.len()).to_vec();
         assert_eq!(v_a.len(), 3u);
         let v_a = v_a.as_slice();
         assert_eq!(v_a[0], 2);
@@ -1003,8 +998,8 @@ mod tests {
         assert_eq!(v_a[2], 4);
 
         // Test on stack.
-        let vec_stack: &[_] = &[1i, 2, 3];
-        let v_b = vec_stack[1u..3u].to_vec();
+        let vec_stack = &[1i, 2, 3];
+        let v_b = vec_stack.slice(1u, 3u).to_vec();
         assert_eq!(v_b.len(), 2u);
         let v_b = v_b.as_slice();
         assert_eq!(v_b[0], 2);
@@ -1012,7 +1007,7 @@ mod tests {
 
         // Test `Box<[T]>`
         let vec_unique = vec![1i, 2, 3, 4, 5, 6];
-        let v_d = vec_unique[1u..6u].to_vec();
+        let v_d = vec_unique.slice(1u, 6u).to_vec();
         assert_eq!(v_d.len(), 5u);
         let v_d = v_d.as_slice();
         assert_eq!(v_d[0], 2);
@@ -1025,21 +1020,21 @@ mod tests {
     #[test]
     fn test_slice_from() {
         let vec: &[int] = &[1, 2, 3, 4];
-        assert_eq!(vec[0..], vec);
+        assert_eq!(vec.slice_from(0), vec);
         let b: &[int] = &[3, 4];
-        assert_eq!(vec[2..], b);
+        assert_eq!(vec.slice_from(2), b);
         let b: &[int] = &[];
-        assert_eq!(vec[4..], b);
+        assert_eq!(vec.slice_from(4), b);
     }
 
     #[test]
     fn test_slice_to() {
         let vec: &[int] = &[1, 2, 3, 4];
-        assert_eq!(vec[..4], vec);
+        assert_eq!(vec.slice_to(4), vec);
         let b: &[int] = &[1, 2];
-        assert_eq!(vec[..2], b);
+        assert_eq!(vec.slice_to(2), b);
         let b: &[int] = &[];
-        assert_eq!(vec[..0], b);
+        assert_eq!(vec.slice_to(0), b);
     }
 
 
@@ -1980,7 +1975,7 @@ mod tests {
         assert!(a == [7i,2,3,4]);
         let mut a = [1i,2,3,4,5];
         let b = vec![5i,6,7,8,9,0];
-        assert_eq!(a[mut 2..4].move_from(b,1,6), 2);
+        assert_eq!(a.slice_mut(2,4).move_from(b,1,6), 2);
         assert!(a == [1i,2,6,7,5]);
     }
 
@@ -2000,7 +1995,7 @@ mod tests {
     #[test]
     fn test_reverse_part() {
         let mut values = [1i,2,3,4,5];
-        values[mut 1..4].reverse();
+        values.slice_mut(1, 4).reverse();
         assert!(values == [1,4,3,2,5]);
     }
 
@@ -2047,9 +2042,9 @@ mod tests {
     fn test_bytes_set_memory() {
         use slice::bytes::MutableByteVector;
         let mut values = [1u8,2,3,4,5];
-        values[mut 0..5].set_memory(0xAB);
+        values.slice_mut(0,5).set_memory(0xAB);
         assert!(values == [0xAB, 0xAB, 0xAB, 0xAB, 0xAB]);
-        values[mut 2..4].set_memory(0xFF);
+        values.slice_mut(2,4).set_memory(0xFF);
         assert!(values == [0xAB, 0xAB, 0xFF, 0xFF, 0xAB]);
     }
 
@@ -2075,18 +2070,12 @@ mod tests {
         let mut values = [1u8,2,3,4,5];
         {
             let (left, right) = values.split_at_mut(2);
-            {
-                let left: &[_] = left;
-                assert!(left[0..left.len()] == [1, 2]);
-            }
+            assert!(left.slice(0, left.len()) == [1, 2]);
             for p in left.iter_mut() {
                 *p += 1;
             }
 
-            {
-                let right: &[_] = right;
-                assert!(right[0..right.len()] == [3, 4, 5]);
-            }
+            assert!(right.slice(0, right.len()) == [3, 4, 5]);
             for p in right.iter_mut() {
                 *p += 2;
             }
@@ -2110,7 +2099,7 @@ mod tests {
         }
         assert_eq!(cnt, 3);
 
-        for f in v[1..3].iter() {
+        for f in v.slice(1, 3).iter() {
             assert!(*f == Foo);
             cnt += 1;
         }

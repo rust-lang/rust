@@ -249,7 +249,7 @@ fn path(w: &mut fmt::Formatter, path: &clean::Path, print_all: bool,
         match rel_root {
             Some(root) => {
                 let mut root = String::from_str(root.as_slice());
-                for seg in path.segments[..amt].iter() {
+                for seg in path.segments.slice_to(amt).iter() {
                     if "super" == seg.name.as_slice() ||
                             "self" == seg.name.as_slice() {
                         try!(write!(w, "{}::", seg.name));
@@ -264,7 +264,7 @@ fn path(w: &mut fmt::Formatter, path: &clean::Path, print_all: bool,
                 }
             }
             None => {
-                for seg in path.segments[..amt].iter() {
+                for seg in path.segments.slice_to(amt).iter() {
                     try!(write!(w, "{}::", seg.name));
                 }
             }
@@ -275,7 +275,7 @@ fn path(w: &mut fmt::Formatter, path: &clean::Path, print_all: bool,
         // This is a documented path, link to it!
         Some((ref fqp, shortty)) if abs_root.is_some() => {
             let mut url = String::from_str(abs_root.unwrap().as_slice());
-            let to_link = fqp[..fqp.len() - 1];
+            let to_link = fqp.slice_to(fqp.len() - 1);
             for component in to_link.iter() {
                 url.push_str(component.as_slice());
                 url.push_str("/");

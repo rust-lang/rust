@@ -165,7 +165,7 @@ impl GenericPathUnsafe for Path {
             None => {
                 self.repr = Path::normalize(filename);
             }
-            Some(idx) if self.repr[idx+1..] == b".." => {
+            Some(idx) if self.repr.slice_from(idx+1) == b".." => {
                 let mut v = Vec::with_capacity(self.repr.len() + 1 + filename.len());
                 v.push_all(self.repr.as_slice());
                 v.push(SEP_BYTE);
@@ -175,7 +175,7 @@ impl GenericPathUnsafe for Path {
             }
             Some(idx) => {
                 let mut v = Vec::with_capacity(idx + 1 + filename.len());
-                v.push_all(self.repr[..idx+1]);
+                v.push_all(self.repr.slice_to(idx+1));
                 v.push_all(filename);
                 // FIXME: this is slow
                 self.repr = Path::normalize(v.as_slice());
@@ -216,9 +216,9 @@ impl GenericPath for Path {
         match self.sepidx {
             None if b".." == self.repr.as_slice() => self.repr.as_slice(),
             None => dot_static,
-            Some(0) => self.repr[..1],
-            Some(idx) if self.repr[idx+1..] == b".." => self.repr.as_slice(),
-            Some(idx) => self.repr[..idx]
+            Some(0) => self.repr.slice_to(1),
+            Some(idx) if self.repr.slice_from(idx+1) == b".." => self.repr.as_slice(),
+            Some(idx) => self.repr.slice_to(idx)
         }
     }
 
@@ -227,9 +227,9 @@ impl GenericPath for Path {
             None if b"." == self.repr.as_slice() ||
                 b".." == self.repr.as_slice() => None,
             None => Some(self.repr.as_slice()),
-            Some(idx) if self.repr[idx+1..] == b".." => None,
-            Some(0) if self.repr[1..].is_empty() => None,
-            Some(idx) => Some(self.repr[idx+1..])
+            Some(idx) if self.repr.slice_from(idx+1) == b".." => None,
+            Some(0) if self.repr.slice_from(1).is_empty() => None,
+            Some(idx) => Some(self.repr.slice_from(idx+1))
         }
     }
 
@@ -371,7 +371,7 @@ impl Path {
         // borrowck is being very picky
         let val = {
             let is_abs = !v.as_slice().is_empty() && v.as_slice()[0] == SEP_BYTE;
-            let v_ = if is_abs { v.as_slice()[1..] } else { v.as_slice() };
+            let v_ = if is_abs { v.as_slice().slice_from(1) } else { v.as_slice() };
             let comps = normalize_helper(v_, is_abs);
             match comps {
                 None => None,
@@ -410,7 +410,7 @@ impl Path {
     /// A path of "/" yields no components. A path of "." yields one component.
     pub fn components<'a>(&'a self) -> Components<'a> {
         let v = if self.repr[0] == SEP_BYTE {
-            self.repr[1..]
+            self.repr.slice_from(1)
         } else { self.repr.as_slice() };
         let mut ret = v.split(is_sep_byte);
         if v.is_empty() {

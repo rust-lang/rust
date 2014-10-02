@@ -10,8 +10,6 @@
 
 // Test that is a slicing expr[..] fails, the correct cleanups happen.
 
-#![feature(slicing_syntax)]
-
 use std::task;
 
 struct Foo;

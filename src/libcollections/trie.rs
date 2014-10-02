@@ -24,7 +24,6 @@ use core::fmt;
 use core::fmt::Show;
 use core::mem::zeroed;
 use core::mem;
-use core::ops::{Slice,SliceMut};
 use core::uint;
 use core::iter;
 use std::hash::{Writer, Hash};
@@ -379,7 +378,7 @@ macro_rules! bound {
                         }
                     };
                     // push to the stack.
-                    it.stack[it.length] = children.$slice_from(&slice_idx).$iter();
+                    it.stack[it.length] = children.$slice_from(slice_idx).$iter();
                     it.length += 1;
                     if ret { return it }
                 })
@@ -389,15 +388,6 @@ macro_rules! bound {
 
 impl<T> TrieMap<T> {
     // If `upper` is true then returns upper_bound else returns lower_bound.
-    #[cfg(stage0)]
-    #[inline]
-    fn bound<'a>(&'a self, key: uint, upper: bool) -> Entries<'a, T> {
-        bound!(Entries, self = self,
-               key = key, is_upper = upper,
-               slice_from = slice_from_, iter = iter,
-               mutability = )
-    }
-    #[cfg(not(stage0))]
     #[inline]
     fn bound<'a>(&'a self, key: uint, upper: bool) -> Entries<'a, T> {
         bound!(Entries, self = self,
@@ -440,15 +430,6 @@ impl<T> TrieMap<T> {
         self.bound(key, true)
     }
     // If `upper` is true then returns upper_bound else returns lower_bound.
-    #[cfg(stage0)]
-    #[inline]
-    fn bound_mut<'a>(&'a mut self, key: uint, upper: bool) -> MutEntries<'a, T> {
-        bound!(MutEntries, self = self,
-               key = key, is_upper = upper,
-               slice_from = slice_from_mut_, iter = iter_mut,
-               mutability = mut)
-    }
-    #[cfg(not(stage0))]
     #[inline]
     fn bound_mut<'a>(&'a mut self, key: uint, upper: bool) -> MutEntries<'a, T> {
         bound!(MutEntries, self = self,

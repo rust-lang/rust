@@ -23,8 +23,7 @@
        html_favicon_url = "http://www.rust-lang.org/favicon.ico",
        html_root_url = "http://doc.rust-lang.org/master/")]
 
-#![allow(unknown_features)]
-#![feature(macro_rules, globs, default_type_params, phase, slicing_syntax)]
+#![feature(macro_rules, globs, default_type_params, phase)]
 #![feature(quote, struct_variant, unsafe_destructor, import_shadowing)]
 #![allow(deprecated)]
 

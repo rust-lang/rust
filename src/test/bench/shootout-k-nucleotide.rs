@@ -40,8 +40,6 @@
 
 // ignore-android see #10393 #13206
 
-#![feature(slicing_syntax)]
-
 use std::string::String;
 use std::slice;
 use std::sync::{Arc, Future};
@@ -242,14 +240,14 @@ fn generate_frequencies(mut input: &[u8], frame: uint) -> Table {
     // Pull first frame.
     for _ in range(0, frame) {
         code = code.push_char(input[0]);
-        input = input[1..];
+        input = input.slice_from(1);
     }
     frequencies.lookup(code, BumpCallback);
 
     while input.len() != 0 && input[0] != ('>' as u8) {
         code = code.rotate(input[0], frame);
         frequencies.lookup(code, BumpCallback);
-        input = input[1..];
+        input = input.slice_from(1);
     }
     frequencies
 }
