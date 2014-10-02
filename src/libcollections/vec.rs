@@ -463,7 +463,6 @@ impl<T> Index<uint,T> for Vec<T> {
 
 // Annoying helper function because there are two Slice::as_slice functions in
 // scope.
-#[cfg(not(stage0))]
 #[inline]
 fn slice_to_slice<'a, T, U: Slice<T>>(this: &'a U) -> &'a [T] {
     this.as_slice()
@@ -985,6 +984,7 @@ impl<T> Vec<T> {
     /// assert!(vec[0..2] == [1, 2]);
     /// ```
     #[inline]
+    #[deprecated = "use slicing syntax"]
     pub fn slice<'a>(&'a self, start: uint, end: uint) -> &'a [T] {
         self[start..end]
     }
@@ -1020,7 +1020,7 @@ impl<T> Vec<T> {
     /// assert!(vec.tailn(2) == [3, 4]);
     /// ```
     #[inline]
-    #[deprecated = "use slice_from"]
+    #[deprecated = "use slicing syntax"]
     pub fn tailn<'a>(&'a self, n: uint) -> &'a [T] {
         self[n..]
     }
@@ -1230,7 +1230,7 @@ impl<T> Vec<T> {
     }
 
     /// Deprecated: use `slice_mut`.
-    #[deprecated = "use slice_from"]
+    #[deprecated = "use slicing syntax"]
     pub fn mut_slice<'a>(&'a mut self, start: uint, end: uint)
                          -> &'a mut [T] {
         self[mut start..end]
@@ -1250,13 +1250,14 @@ impl<T> Vec<T> {
     /// assert!(vec[mut 0..2] == [1, 2]);
     /// ```
     #[inline]
+    #[deprecated = "use slicing syntax"]
     pub fn slice_mut<'a>(&'a mut self, start: uint, end: uint)
                          -> &'a mut [T] {
         self[mut start..end]
     }
 
     /// Deprecated: use "slice_from_mut".
-    #[deprecated = "use slice_from_mut"]
+    #[deprecated = "use slicing syntax"]
     pub fn mut_slice_from<'a>(&'a mut self, start: uint) -> &'a mut [T] {
         self[mut start..]
     }
@@ -1274,12 +1275,13 @@ impl<T> Vec<T> {
     /// assert!(vec[mut 2..] == [3, 4]);
     /// ```
     #[inline]
+    #[deprecated = "use slicing syntax"]
     pub fn slice_from_mut<'a>(&'a mut self, start: uint) -> &'a mut [T] {
         self[mut start..]
     }
 
     /// Deprecated: use `slice_to_mut`.
-    #[deprecated = "use slice_to_mut"]
+    #[deprecated = "use slicing syntax"]
     pub fn mut_slice_to<'a>(&'a mut self, end: uint) -> &'a mut [T] {
         self[mut ..end]
     }
@@ -1297,6 +1299,7 @@ impl<T> Vec<T> {
     /// assert!(vec[mut ..2] == [1, 2]);
     /// ```
     #[inline]
+    #[deprecated = "use slicing syntax"]
     pub fn slice_to_mut<'a>(&'a mut self, end: uint) -> &'a mut [T] {
         self[mut ..end]
     }
@@ -1373,6 +1376,7 @@ impl<T> Vec<T> {
     /// assert!(vec[1..] == [2, 3]);
     /// ```
     #[inline]
+    #[deprecated = "use slicing syntax"]
     pub fn slice_from<'a>(&'a self, start: uint) -> &'a [T] {
         self[start..]
     }
@@ -1390,6 +1394,7 @@ impl<T> Vec<T> {
     /// assert!(vec[..2] == [1, 2]);
     /// ```
     #[inline]
+    #[deprecated = "use slicing syntax"]
     pub fn slice_to<'a>(&'a self, end: uint) -> &'a [T] {
         self[..end]
     }
