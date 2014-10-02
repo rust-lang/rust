@@ -11,7 +11,6 @@
 // Verifies all possible restrictions for static items values.
 
 use std::kinds::marker;
-use std::gc::{Gc, GC};
 
 struct WithDtor;
 
@@ -123,9 +122,6 @@ static STATIC16: (&'static Box<MyOwned>, &'static Box<MyOwned>) =
 
 static mut STATIC17: SafeEnum = Variant1;
 //~^ ERROR mutable static items are not allowed to have destructors
-
-static STATIC18: Gc<SafeStruct> = box(GC) SafeStruct{field1: Variant1, field2: Variant2(0)};
-//~^ ERROR static items are not allowed to have custom pointers
 
 static STATIC19: Box<int> = box 3;
 //~^ ERROR static items are not allowed to have custom pointers

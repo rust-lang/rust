@@ -8,14 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-use std::gc::Gc;
-
 struct BarStruct;
 
 impl<'a> BarStruct {
-    fn foo(&'a mut self) -> Gc<BarStruct> { self }
-    //~^ ERROR: error: mismatched types: expected `Gc<BarStruct>`, found `&'a mut BarStruct
+    fn foo(&'a mut self) -> Box<BarStruct> { self }
+    //~^ ERROR: error: mismatched types: expected `Box<BarStruct>`, found `&'a mut BarStruct
 }
 
 fn main() {}

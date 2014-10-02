@@ -11,52 +11,43 @@
 #![feature(unsafe_destructor)]
 
 use std::cell::Cell;
-use std::gc::{Gc, GC};
 
 // Resources can't be copied, but storing into data structures counts
 // as a move unless the stored thing is used afterwards.
 
-struct r {
-    i: Gc<Cell<int>>,
+struct r<'a> {
+    i: &'a Cell<int>,
 }
 
-struct Box { x: r }
+struct BoxR<'a> { x: r<'a> }
 
 #[unsafe_destructor]
-impl Drop for r {
+impl<'a> Drop for r<'a> {
     fn drop(&mut self) {
         self.i.set(self.i.get() + 1)
     }
 }
 
-fn r(i: Gc<Cell<int>>) -> r {
+fn r(i: &Cell<int>) -> r {
     r {
         i: i
     }
 }
 
-fn test_box() {
-    let i = box(GC) Cell::new(0i);
-    {
-        let _a = box(GC) r(i);
-    }
-    assert_eq!(i.get(), 1);
-}
-
 fn test_rec() {
-    let i = box(GC) Cell::new(0i);
+    let i = &Cell::new(0i);
     {
-        let _a = Box {x: r(i)};
+        let _a = BoxR {x: r(i)};
     }
     assert_eq!(i.get(), 1);
 }
 
 fn test_tag() {
-    enum t {
-        t0(r),
+    enum t<'a> {
+        t0(r<'a>),
     }
 
-    let i = box(GC) Cell::new(0i);
+    let i = &Cell::new(0i);
     {
         let _a = t0(r(i));
     }
@@ -64,7 +55,7 @@ fn test_tag() {
 }
 
 fn test_tup() {
-    let i = box(GC) Cell::new(0i);
+    let i = &Cell::new(0i);
     {
         let _a = (r(i), 0i);
     }
@@ -72,17 +63,17 @@ fn test_tup() {
 }
 
 fn test_unique() {
-    let i = box(GC) Cell::new(0i);
+    let i = &Cell::new(0i);
     {
         let _a = box r(i);
     }
     assert_eq!(i.get(), 1);
 }
 
-fn test_box_rec() {
-    let i = box(GC) Cell::new(0i);
+fn test_unique_rec() {
+    let i = &Cell::new(0i);
     {
-        let _a = box(GC) Box {
+        let _a = box BoxR {
             x: r(i)
         };
     }
@@ -90,10 +81,9 @@ fn test_box_rec() {
 }
 
 pub fn main() {
-    test_box();
     test_rec();
     test_tag();
     test_tup();
     test_unique();
-    test_box_rec();
+    test_unique_rec();
 }

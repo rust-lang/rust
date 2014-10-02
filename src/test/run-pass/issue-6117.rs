@@ -9,12 +9,10 @@
 // except according to those terms.
 
 
-use std::gc::GC;
-
 enum Either<T, U> { Left(T), Right(U) }
 
 pub fn main() {
-    match Left(box(GC) 17i) {
+    match Left(box 17i) {
         Right(()) => {}
         _ => {}
     }

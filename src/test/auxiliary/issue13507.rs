@@ -56,8 +56,6 @@ pub mod testtypes {
         VarB(uint, uint)
     }
 
-    // Skipping ty_box
-
     // Tests ty_uniq (of u8)
     pub type FooUniq = Box<u8>;
 

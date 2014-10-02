@@ -9,15 +9,13 @@
 // except according to those terms.
 
 
-use std::gc::Gc;
-
 trait Mumbo {
-    fn jumbo(&self, x: Gc<uint>) -> uint;
+    fn jumbo(&self, x: &uint) -> uint;
 }
 
 impl Mumbo for uint {
     // Cannot have a larger effect than the trait:
-    unsafe fn jumbo(&self, x: Gc<uint>) { *self + *x; }
+    unsafe fn jumbo(&self, x: &uint) { *self + *x; }
     //~^ ERROR expected normal fn, found unsafe fn
 }
 

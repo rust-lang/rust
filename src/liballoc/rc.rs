@@ -542,14 +542,6 @@ mod tests {
     }
 
     #[test]
-    fn gc_inside() {
-        // see issue #11532
-        use std::gc::GC;
-        let a = Rc::new(RefCell::new(box(GC) 1i));
-        assert!(a.try_borrow_mut().is_some());
-    }
-
-    #[test]
     fn weak_self_cyclic() {
         struct Cycle {
             x: RefCell<Option<Weak<Cycle>>>

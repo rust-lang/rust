@@ -9,30 +9,26 @@
 // except according to those terms.
 
 
-extern crate debug;
-
 // Exercises a bug in the shape code that was exposed
 // on x86_64: when there is an enum embedded in an
 // interior record which is then itself interior to
 // something else, shape calculations were off.
 
-use std::gc::{Gc, GC};
-
-#[deriving(Clone)]
+#[deriving(Clone, Show)]
 enum opt_span {
     //hack (as opposed to option), to make `span` compile
     os_none,
-    os_some(Gc<Span>),
+    os_some(Box<Span>),
 }
 
-#[deriving(Clone)]
+#[deriving(Clone, Show)]
 struct Span {
     lo: uint,
     hi: uint,
     expanded_from: opt_span,
 }
 
-#[deriving(Clone)]
+#[deriving(Clone, Show)]
 struct Spanned<T> {
     data: T,
     span: Span,
@@ -40,17 +36,17 @@ struct Spanned<T> {
 
 type ty_ = uint;
 
-#[deriving(Clone)]
+#[deriving(Clone, Show)]
 struct Path_ {
     global: bool,
     idents: Vec<String> ,
-    types: Vec<Gc<ty>>,
+    types: Vec<Box<ty>>,
 }
 
 type path = Spanned<Path_>;
 type ty = Spanned<ty_>;
 
-#[deriving(Clone)]
+#[deriving(Clone, Show)]
 struct X {
     sp: Span,
     path: path,
@@ -58,14 +54,14 @@ struct X {
 
 pub fn main() {
     let sp: Span = Span {lo: 57451u, hi: 57542u, expanded_from: os_none};
-    let t: Gc<ty> = box(GC) Spanned { data: 3u, span: sp };
+    let t: Box<ty> = box Spanned { data: 3u, span: sp.clone() };
     let p_: Path_ = Path_ {
         global: true,
         idents: vec!("hi".to_string()),
         types: vec!(t),
     };
-    let p: path = Spanned { data: p_, span: sp };
+    let p: path = Spanned { data: p_, span: sp.clone() };
     let x = X { sp: sp, path: p };
-    println!("{:?}", x.path.clone());
-    println!("{:?}", x.clone());
+    println!("{}", x.path.clone());
+    println!("{}", x.clone());
 }

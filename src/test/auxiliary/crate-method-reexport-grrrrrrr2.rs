@@ -27,9 +27,8 @@ pub mod name_pool {
 
 pub mod rust {
     pub use name_pool::add;
-    use std::gc::Gc;
 
-    pub type rt = Gc<()>;
+    pub type rt = Box<()>;
 
     pub trait cx {
         fn cx(&self);

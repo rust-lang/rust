@@ -9,11 +9,9 @@
 // except according to those terms.
 
 
-use std::gc::Gc;
-
 fn borrow<T>(x: &T) -> &T {x}
 
-fn foo(cond: || -> bool, make_box: || -> Gc<int>) {
+fn foo(cond: || -> bool, make_box: || -> Box<int>) {
     let mut y: &int;
     loop {
         let x = make_box();
