@@ -201,12 +201,13 @@ mod test {
     #[test]
     fn test_sendable_future() {
         let expected = "schlorf";
+        let (tx, rx) = channel();
         let f = Future::spawn(proc() { expected });
         task::spawn(proc() {
             let mut f = f;
-            let actual = f.get();
-            assert_eq!(actual, expected);
+            tx.send(f.get());
         });
+        assert_eq!(rx.recv(), expected);
     }
 
     #[test]
