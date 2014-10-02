@@ -10,6 +10,7 @@
 
 // aux-build:roman_numerals.rs
 // ignore-stage1
+// ignore-android
 
 #![feature(phase)]
 
