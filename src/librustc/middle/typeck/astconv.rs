@@ -330,7 +330,7 @@ fn ast_path_substs<'tcx,AC,RS>(
         }
     }
 
-    for param in ty_param_defs[supplied_ty_param_count..].iter() {
+    for param in ty_param_defs.slice_from(supplied_ty_param_count).iter() {
         match param.default {
             Some(default) => {
                 // This is a default type parameter.

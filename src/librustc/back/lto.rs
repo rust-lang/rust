@@ -89,9 +89,9 @@ pub fn run(sess: &session::Session, llmod: ModuleRef,
                     if version == 1 {
                         // The only version existing so far
                         let data_size = extract_compressed_bytecode_size_v1(bc_encoded);
-                        let compressed_data = bc_encoded[
-                            link::RLIB_BYTECODE_OBJECT_V1_DATA_OFFSET..
-                            link::RLIB_BYTECODE_OBJECT_V1_DATA_OFFSET + data_size as uint];
+                        let compressed_data = bc_encoded.slice(
+                            link::RLIB_BYTECODE_OBJECT_V1_DATA_OFFSET,
+                            link::RLIB_BYTECODE_OBJECT_V1_DATA_OFFSET + data_size as uint);
 
                         match flate::inflate_bytes(compressed_data) {
                             Some(inflated) => inflated,
@@ -188,7 +188,7 @@ pub fn run(sess: &session::Session, llmod: ModuleRef,
 fn is_versioned_bytecode_format(bc: &[u8]) -> bool {
     let magic_id_byte_count = link::RLIB_BYTECODE_OBJECT_MAGIC.len();
     return bc.len() > magic_id_byte_count &&
-           bc[..magic_id_byte_count] == link::RLIB_BYTECODE_OBJECT_MAGIC;
+           bc.slice(0, magic_id_byte_count) == link::RLIB_BYTECODE_OBJECT_MAGIC;
 }
 
 fn extract_bytecode_format_version(bc: &[u8]) -> u32 {
@@ -200,8 +200,8 @@ fn extract_compressed_bytecode_size_v1(bc: &[u8]) -> u64 {
 }
 
 fn read_from_le_bytes<T: Int>(bytes: &[u8], position_in_bytes: uint) -> T {
-    let byte_data = bytes[position_in_bytes..
-                          position_in_bytes + mem::size_of::<T>()];
+    let byte_data = bytes.slice(position_in_bytes,
+                                position_in_bytes + mem::size_of::<T>());
     let data = unsafe {
         *(byte_data.as_ptr() as *const T)
     };

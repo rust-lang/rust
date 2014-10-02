@@ -94,7 +94,7 @@ impl Writer for SeekableMemWriter {
             // there (left), and what will be appended on the end (right)
             let cap = self.buf.len() - self.pos;
             let (left, right) = if cap <= buf.len() {
-                (buf[..cap], buf[cap..])
+                (buf.slice_to(cap), buf.slice_from(cap))
             } else {
                 let result: (_, &[_]) = (buf, &[]);
                 result
@@ -102,7 +102,7 @@ impl Writer for SeekableMemWriter {
 
             // Do the necessary writes
             if left.len() > 0 {
-                slice::bytes::copy_memory(self.buf[mut self.pos..], left);
+                slice::bytes::copy_memory(self.buf.slice_from_mut(self.pos), left);
             }
             if right.len() > 0 {
                 self.buf.push_all(right);
