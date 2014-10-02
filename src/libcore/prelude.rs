@@ -36,6 +36,7 @@ pub use ops::{Drop, Deref, DerefMut};
 pub use ops::{Shl, Shr};
 pub use ops::{Index, IndexMut};
 pub use ops::{Fn, FnMut, FnOnce};
+pub use ops::{Slice, SliceMut};
 pub use option::{Option, Some, None};
 pub use result::{Result, Ok, Err};
 
@@ -63,4 +64,4 @@ pub use tuple::{Tuple5, Tuple6, Tuple7, Tuple8};
 pub use tuple::{Tuple9, Tuple10, Tuple11, Tuple12};
 pub use slice::{ImmutablePartialEqSlice, ImmutableOrdSlice};
 pub use slice::{MutableSlice};
-pub use slice::{Slice, ImmutableSlice};
+pub use slice::{AsSlice, ImmutableSlice};

@@ -98,7 +98,7 @@ use core::iter::{range_step, MultiplicativeIterator};
 use MutableSeq;
 use vec::Vec;
 
-pub use core::slice::{Chunks, Slice, ImmutableSlice, ImmutablePartialEqSlice};
+pub use core::slice::{Chunks, AsSlice, ImmutableSlice, ImmutablePartialEqSlice};
 pub use core::slice::{ImmutableOrdSlice, MutableSlice, Items, MutItems};
 pub use core::slice::{MutSplits, MutChunks, Splits};
 pub use core::slice::{bytes, mut_ref_slice, ref_slice, MutableCloneableSlice};
@@ -117,7 +117,7 @@ pub trait VectorVector<T> {
     fn connect_vec(&self, sep: &T) -> Vec<T>;
 }
 
-impl<'a, T: Clone, V: Slice<T>> VectorVector<T> for &'a [V] {
+impl<'a, T: Clone, V: AsSlice<T>> VectorVector<T> for &'a [V] {
     fn concat_vec(&self) -> Vec<T> {
         let size = self.iter().fold(0u, |acc, v| acc + v.as_slice().len());
         let mut result = Vec::with_capacity(size);

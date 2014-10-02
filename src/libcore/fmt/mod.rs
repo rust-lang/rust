@@ -22,7 +22,7 @@ use option::{Option, Some, None};
 use ops::Deref;
 use result::{Ok, Err};
 use result;
-use slice::{Slice, ImmutableSlice};
+use slice::{AsSlice, ImmutableSlice};
 use slice;
 use str::StrSlice;
 use str;
