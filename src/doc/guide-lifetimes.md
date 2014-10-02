@@ -307,7 +307,7 @@ copying.
 # }
 fn compute_area(shape: &Shape) -> f64 {
     match *shape {
-        Circle(_, radius) => 2.0 * std::f64::consts::PI * radius * radius,
+        Circle(_, radius) => std::f64::consts::PI * radius * radius,
         Rectangle(_, ref size) => size.w * size.h
     }
 }
