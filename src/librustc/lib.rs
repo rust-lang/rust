@@ -150,5 +150,6 @@ mod rustc {
 
 pub fn main() {
     let args = std::os::args();
-    std::os::set_exit_status(driver::main_args(args.as_slice()));
+    let result = driver::run(args);
+    std::os::set_exit_status(result);
 }
