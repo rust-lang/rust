@@ -17,7 +17,7 @@ use iter::{range, DoubleEndedIterator};
 use num::{Float, FPNaN, FPInfinite, ToPrimitive, Primitive};
 use num::{Zero, One, cast};
 use result::Ok;
-use slice::MutableSlice;
+use slice::{ImmutableSlice, MutableSlice};
 use slice;
 use str::StrSlice;
 
@@ -173,7 +173,7 @@ pub fn float_to_str_bytes_common<T: Primitive + Float, U>(
         _ => ()
     }
 
-    buf[mut ..end].reverse();
+    buf.slice_to_mut(end).reverse();
 
     // Remember start of the fractional digits.
     // Points one beyond end of buf if none get generated,
@@ -310,7 +310,7 @@ pub fn float_to_str_bytes_common<T: Primitive + Float, U>(
 
             impl<'a> fmt::FormatWriter for Filler<'a> {
                 fn write(&mut self, bytes: &[u8]) -> fmt::Result {
-                    slice::bytes::copy_memory(self.buf[mut *self.end..],
+                    slice::bytes::copy_memory(self.buf.slice_from_mut(*self.end),
                                               bytes);
                     *self.end += bytes.len();
                     Ok(())
@@ -328,5 +328,5 @@ pub fn float_to_str_bytes_common<T: Primitive + Float, U>(
         }
     }
 
-    f(buf[..end])
+    f(buf.slice_to(end))
 }

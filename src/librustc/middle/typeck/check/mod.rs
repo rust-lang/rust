@@ -3032,7 +3032,7 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
         };
 
         // Call the generic checker.
-        let args: Vec<_> = args[1..].iter().map(|x| x).collect();
+        let args: Vec<_> = args.slice_from(1).iter().map(|x| x).collect();
         let ret_ty = check_method_argument_types(fcx,
                                                  method_name.span,
                                                  fn_ty,

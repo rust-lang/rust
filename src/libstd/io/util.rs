@@ -47,7 +47,7 @@ impl<R: Reader> Reader for LimitReader<R> {
         }
 
         let len = cmp::min(self.limit, buf.len());
-        let res = self.inner.read(buf[mut ..len]);
+        let res = self.inner.read(buf.slice_to_mut(len));
         match res {
             Ok(len) => self.limit -= len,
             _ => {}
@@ -59,7 +59,7 @@ impl<R: Reader> Reader for LimitReader<R> {
 impl<R: Buffer> Buffer for LimitReader<R> {
     fn fill_buf<'a>(&'a mut self) -> io::IoResult<&'a [u8]> {
         let amt = try!(self.inner.fill_buf());
-        let buf = amt[..cmp::min(amt.len(), self.limit)];
+        let buf = amt.slice_to(cmp::min(amt.len(), self.limit));
         if buf.len() == 0 {
             Err(io::standard_error(io::EndOfFile))
         } else {
@@ -216,7 +216,7 @@ impl<R: Reader, W: Writer> TeeReader<R, W> {
 impl<R: Reader, W: Writer> Reader for TeeReader<R, W> {
     fn read(&mut self, buf: &mut [u8]) -> io::IoResult<uint> {
         self.reader.read(buf).and_then(|len| {
-            self.writer.write(buf[mut ..len]).map(|()| len)
+            self.writer.write(buf.slice_to(len)).map(|()| len)
         })
     }
 }
@@ -230,7 +230,7 @@ pub fn copy<R: Reader, W: Writer>(r: &mut R, w: &mut W) -> io::IoResult<()> {
             Err(ref e) if e.kind == io::EndOfFile => return Ok(()),
             Err(e) => return Err(e),
         };
-        try!(w.write(buf[..len]));
+        try!(w.write(buf.slice_to(len)));
     }
 }
 

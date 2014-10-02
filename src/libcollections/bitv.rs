@@ -194,7 +194,7 @@ impl Bitv {
         if start > self.storage.len() {
             start = self.storage.len();
         }
-        let mut iter = self.storage[start..].iter();
+        let mut iter = self.storage.slice_from(start).iter();
         MaskWords {
           next_word: iter.next(),
           iter: iter,

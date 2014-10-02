@@ -485,7 +485,7 @@ pub fn copy(from: &Path, to: &Path) -> IoResult<()> {
             Err(ref e) if e.kind == io::EndOfFile => { break }
             Err(e) => return update_err(Err(e), from, to)
         };
-        try!(writer.write(buf[..amt]));
+        try!(writer.write(buf.slice_to(amt)));
     }
 
     chmod(to, try!(update_err(from.stat(), from, to)).perm)
@@ -1014,7 +1014,7 @@ mod test {
             let mut read_buf = [0, .. 1028];
             let read_str = match check!(read_stream.read(read_buf)) {
                 -1|0 => fail!("shouldn't happen"),
-                n => str::from_utf8(read_buf[..n]).unwrap().to_string()
+                n => str::from_utf8(read_buf.slice_to(n)).unwrap().to_string()
             };
             assert_eq!(read_str.as_slice(), message);
         }
@@ -1061,11 +1061,11 @@ mod test {
         {
             let mut read_stream = File::open_mode(filename, Open, Read);
             {
-                let read_buf = read_mem[mut 0..4];
+                let read_buf = read_mem.slice_mut(0, 4);
                 check!(read_stream.read(read_buf));
             }
             {
-                let read_buf = read_mem[mut 4..8];
+                let read_buf = read_mem.slice_mut(4, 8);
                 check!(read_stream.read(read_buf));
             }
         }
