@@ -849,9 +849,9 @@ impl<T> Vec<T> {
             let cap = self.cap;
             let begin = self.ptr as *const T;
             let end = if mem::size_of::<T>() == 0 {
-                (ptr as uint + self.len()) as *const T;
+                (ptr as uint + self.len()) as *const T
             } else {
-                ptr.offset(self.len() as int)
+                ptr.offset(self.len() as int) as *const T
             };
             mem::forget(self);
             MoveItems { allocation: ptr, cap: cap, ptr: begin, end: end }
@@ -1788,7 +1788,7 @@ impl<T> MoveItems<T> {
     pub fn unwrap(mut self) -> Vec<T> {
         unsafe {
             for _x in self { }
-            let MoveItems { allocation, cap, iter: _iter } = self;
+            let MoveItems { allocation, cap, ptr: _ptr, end: _end } = self;
             mem::forget(self);
             Vec { ptr: allocation, cap: cap, len: 0 }
         }
@@ -2569,33 +2569,30 @@ mod tests {
     fn test_move_items() {
         let mut vec = vec!(1i, 2, 3);
         let mut vec2 : Vec<int> = vec!();
-        for i in vec.move_iter() {
+        for i in vec.into_iter() {
             vec2.push(i);
         }
         assert!(vec2 == vec!(1i, 2, 3));
-        assert!(vec.empty());
     }
 
     #[test]
     fn test_move_items_reverse() {
         let mut vec = vec!(1i, 2, 3);
         let mut vec2 : Vec<int> = vec!();
-        for i in vec.move_iter().rev() {
+        for i in vec.into_iter().rev() {
             vec2.push(i);
         }
         assert!(vec2 == vec!(3i, 2, 1));
-        assert!(vec.empty());
     }
 
     #[test]
     fn test_move_items_zero_sized() {
         let mut vec = vec!((), (), ());
         let mut vec2 : Vec<()> = vec!();
-        for i in vec.move_iter() {
+        for i in vec.into_iter() {
             vec2.push(i);
         }
         assert!(vec2 == vec!((), (), ()));
-        assert!(vec.empty());
     }
 
     #[bench]
