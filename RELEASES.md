@@ -1,3 +1,99 @@
+Version 0.12.0 (October 2014)
+-----------------------------
+
+  * ~1700 changes, numerous bugfixes
+
+  * Highlights
+
+    * The introductory documentation (now called The Rust Guide) has
+      been completely rewritten, as have a number of supplementary
+      guides.
+    * Rust's package manager, Cargo, is awesome.
+    * Many API's in `std` have been reviewed and updated for
+      consistency with the in-development Rust coding
+      guidelines. The standard library documentation tracks
+      stabilization progress.
+    * Minor libraries have been moved out-of-tree to the rust-lang org
+      on GitHub: uuid, semver, glob, num, hexfloat, fourcc. They can
+      be installed with Cargo.
+    * Lifetime elision allows lifetime annotations to be left off of
+      function declarations in many common scenarios.
+    * Rust now works on 64-bit Windows.
+
+  * Language
+    * A new slicing syntax (e.g. `[0..4]`) has been introduced behind
+      the 'slicing_syntax' feature gate, and can be overloaded with
+      the `Slice` or `SliceMut` traits.
+    * Indexing can be overloaded with the `Index` and `IndexMut`
+      traits.
+    * The `if let` construct takes a branch only if the `let` pattern
+      matches, currently behind the 'if_let' feature gate.
+    * `let` and `match` bindings and argument names in macros are now
+      hygienic.
+    * The `#[crate_id]` attribute is no longer supported; versioning
+      is handled by the package manager.
+    * Mutation and assignment is no longer allowed in pattern guards.
+    * Generic structs and enums can now have trait bounds.
+    * `use foo = bar` is now written `use bar as foo`.
+    * The new, more efficient, closure types ('unboxed closures') have
+      been added under a feature gate, 'unboxed_closures'. These will
+      soon replace the existing closure types, once higher-ranked
+      trait lifetimes are added to the language.
+    * The `Share` trait is now called `Sync` to free up the term
+      'shared' to refer to 'shared reference' (the default reference
+      type.
+    * Dynamically-sized types have been mostly implemented,
+      unifying the behavior of fat-pointer types with the rest of the
+      type system.
+    * As part of dynamically-sized types, the `Sized` trait has been
+      introduced, which qualifying types implement by default, and
+      which type parameters expect by default. To specify that a type
+      parametr does not need to be sized, write `<Sized? T>`. Most
+      types are `Sized`, notable exceptions being unsized arrays
+      (`[T]`) and trait types.
+    * Closures can return `!`, as in `|| -> !` or `proc() ->`.
+    * The syntax for matching of sub-slices has been changed to use a
+      postfix `..` instead of prefix (.e.g. `[a, b, c..]`), for
+      consistency with other uses of `..` and to future-proof
+      potential additional uses of the syntax.
+    * Matching of sub-slices in non-tail positions (e.g.  `[a.., b,
+      c]`) has been put behind the 'advanced_slice_patterns' feature
+      gate and may be removed in the future.
+
+  * Libraries
+    * Library documentation has been improved for a number of modules.
+    * Bit-vectors, collections::bitv has been modernized.
+    * The url crate is deprecated in favor of
+      http://github.com/servo/rust-url, which can be installed with
+      Cargo.
+    * Most I/O stream types can be cloned and subsequently closed
+      from a different thread.
+    * A `std::time::Duration` type has been added for use in I/O
+      methods that rely on timers, as well as in the 'time' crate's
+      `Timespec` arithmetic.
+    * The green-thread scheduler, libgreen, has been removed, as
+      has the associated runtime I/O abstraction layer.
+
+  * Tooling
+    * rustdoc output now indicates the stability levels of API's.
+    * The `--crate-name` flag can specify the name of the crate
+      being compiled, like `#[crate_name]`.
+    * The `-C metadata` specifies additional metada to hash into
+      symbol names, and `-C extra-filename` specifies additional
+      information to put into the output filename, for use by
+      the package manager for versioning.
+    * debug info generation has continued to improve and should be
+      more reliable under both gdb and lldb.
+    * rustc has experimental support for compiling in parallel
+      using the `-C codegen-units` flag.
+    * rustc no longer encodes rpath information into binaries by
+      default.
+
+  * Misc
+    * Stack usage has been optimized with LLVM lifetime annotations.
+    * Official Rust binaries on Linux are more compatible with older
+      kernels and distributions, built on CentOS 5.10.
+
 Version 0.11.0 (July 2014)
 -------------------------
 
