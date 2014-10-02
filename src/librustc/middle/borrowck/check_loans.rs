@@ -400,50 +400,82 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
         for restr_path in loan1.restricted_paths.iter() {
             if *restr_path != loan2_base_path { continue; }
 
-            let old_pronoun = if new_loan.loan_path == old_loan.loan_path {
+            // If new_loan is something like `x.a`, and old_loan is something like `x.b`, we would
+            // normally generate a rather confusing message (in this case, for multiple mutable
+            // borrows):
+            //
+            //     error: cannot borrow `x.b` as mutable more than once at a time
+            //     note: previous borrow of `x.a` occurs here; the mutable borrow prevents
+            //     subsequent moves, borrows, or modification of `x.a` until the borrow ends
+            //
+            // What we want to do instead is get the 'common ancestor' of the two borrow paths and
+            // use that for most of the message instead, giving is something like this:
+            //
+            //     error: cannot borrow `x` as mutable more than once at a time
+            //     note: previous borrow of `x` occurs here (through borrowing `x.a`); the mutable
+            //     borrow prevents subsequent moves, borrows, or modification of `x` until the
+            //     borrow ends
+
+            let common = new_loan.loan_path.common(&*old_loan.loan_path);
+            let (nl, ol, new_loan_msg, old_loan_msg) =
+                if new_loan.loan_path.has_fork(&*old_loan.loan_path) && common.is_some() {
+                    let nl = self.bccx.loan_path_to_string(&common.unwrap());
+                    let ol = nl.clone();
+                    let new_loan_msg = format!(" (here through borrowing `{}`)",
+                                               self.bccx.loan_path_to_string(
+                                                   &*new_loan.loan_path));
+                    let old_loan_msg = format!(" (through borrowing `{}`)",
+                                               self.bccx.loan_path_to_string(
+                                                   &*old_loan.loan_path));
+                    (nl, ol, new_loan_msg, old_loan_msg)
+                } else {
+                    (self.bccx.loan_path_to_string(&*new_loan.loan_path),
+                     self.bccx.loan_path_to_string(&*old_loan.loan_path),
+                     String::new(), String::new())
+                };
+
+            let ol_pronoun = if new_loan.loan_path == old_loan.loan_path {
                 "it".to_string()
             } else {
-                format!("`{}`",
-                        self.bccx.loan_path_to_string(&*old_loan.loan_path))
+                format!("`{}`", ol)
             };
 
             match (new_loan.kind, old_loan.kind) {
                 (ty::MutBorrow, ty::MutBorrow) => {
                     self.bccx.span_err(
                         new_loan.span,
-                        format!("cannot borrow `{}` as mutable \
+                        format!("cannot borrow `{}`{} as mutable \
                                 more than once at a time",
-                                self.bccx.loan_path_to_string(
-                                    &*new_loan.loan_path)).as_slice());
+                                nl, new_loan_msg).as_slice())
                 }
 
                 (ty::UniqueImmBorrow, _) => {
                     self.bccx.span_err(
                         new_loan.span,
                         format!("closure requires unique access to `{}` \
-                                but {} is already borrowed",
-                                self.bccx.loan_path_to_string(&*new_loan.loan_path),
-                                old_pronoun).as_slice());
+                                but {} is already borrowed{}",
+                                nl, ol_pronoun, old_loan_msg).as_slice());
                 }
 
                 (_, ty::UniqueImmBorrow) => {
                     self.bccx.span_err(
                         new_loan.span,
-                        format!("cannot borrow `{}` as {} because \
+                        format!("cannot borrow `{}`{} as {} because \
                                 previous closure requires unique access",
-                                self.bccx.loan_path_to_string(&*new_loan.loan_path),
-                                new_loan.kind.to_user_str()).as_slice());
+                                nl, new_loan_msg, new_loan.kind.to_user_str()).as_slice());
                 }
 
                 (_, _) => {
                     self.bccx.span_err(
                         new_loan.span,
-                        format!("cannot borrow `{}` as {} because \
-                                {} is also borrowed as {}",
-                                self.bccx.loan_path_to_string(&*new_loan.loan_path),
+                        format!("cannot borrow `{}`{} as {} because \
+                                {} is also borrowed as {}{}",
+                                nl,
+                                new_loan_msg,
                                 new_loan.kind.to_user_str(),
-                                old_pronoun,
-                                old_loan.kind.to_user_str()).as_slice());
+                                ol_pronoun,
+                                old_loan.kind.to_user_str(),
+                                old_loan_msg).as_slice());
                 }
             }
 
@@ -452,8 +484,7 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
                     self.bccx.span_note(
                         span,
                         format!("borrow occurs due to use of `{}` in closure",
-                                self.bccx.loan_path_to_string(
-                                    &*new_loan.loan_path)).as_slice());
+                                nl).as_slice());
                 }
                 _ => { }
             }
@@ -463,30 +494,29 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
                     format!("the mutable borrow prevents subsequent \
                             moves, borrows, or modification of `{0}` \
                             until the borrow ends",
-                            self.bccx.loan_path_to_string(
-                                &*old_loan.loan_path))
+                            ol)
                 }
 
                 ty::ImmBorrow => {
                     format!("the immutable borrow prevents subsequent \
                             moves or mutable borrows of `{0}` \
                             until the borrow ends",
-                            self.bccx.loan_path_to_string(&*old_loan.loan_path))
+                            ol)
                 }
 
                 ty::UniqueImmBorrow => {
                     format!("the unique capture prevents subsequent \
                             moves or borrows of `{0}` \
                             until the borrow ends",
-                            self.bccx.loan_path_to_string(&*old_loan.loan_path))
+                            ol)
                 }
             };
 
             let borrow_summary = match old_loan.cause {
                 euv::ClosureCapture(_) => {
-                    format!("previous borrow of `{}` occurs here due to \
+                    format!("previous borrow of `{}` occurs here{} due to \
                             use in closure",
-                            self.bccx.loan_path_to_string(&*old_loan.loan_path))
+                            ol, old_loan_msg)
                 }
 
                 euv::OverloadedOperator(..) |
@@ -496,8 +526,8 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
                 euv::ForLoop(..) |
                 euv::RefBinding(..) |
                 euv::MatchDiscriminant(..) => {
-                    format!("previous borrow of `{}` occurs here",
-                            self.bccx.loan_path_to_string(&*old_loan.loan_path))
+                    format!("previous borrow of `{}` occurs here{}",
+                            ol, old_loan_msg)
                 }
             };
 
