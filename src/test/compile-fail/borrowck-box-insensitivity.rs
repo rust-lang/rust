@@ -31,19 +31,22 @@ struct D {
 fn copy_after_move() {
     let a = box A { x: box 0, y: 1 };
     let _x = a.x;
-    let _y = a.y; //~ ERROR use of partially moved
+    let _y = a.y; //~ ERROR use of moved
+    //~^^ NOTE `a` moved here (through moving `a.x`)
 }
 
 fn move_after_move() {
     let a = box B { x: box 0, y: box 1 };
     let _x = a.x;
-    let _y = a.y; //~ ERROR use of partially moved
+    let _y = a.y; //~ ERROR use of moved
+    //~^^ NOTE `a` moved here (through moving `a.x`)
 }
 
 fn borrow_after_move() {
     let a = box A { x: box 0, y: 1 };
     let _x = a.x;
-    let _y = &a.y; //~ ERROR use of partially moved
+    let _y = &a.y; //~ ERROR use of moved
+    //~^^ NOTE `a` moved here (through moving `a.x`)
 }
 
 fn move_after_borrow() {
@@ -79,19 +82,19 @@ fn mut_borrow_after_borrow() {
 fn copy_after_move_nested() {
     let a = box C { x: box A { x: box 0, y: 1 }, y: 2 };
     let _x = a.x.x;
-    let _y = a.y; //~ ERROR use of partially moved
+    let _y = a.y; //~ ERROR use of collaterally moved
 }
 
 fn move_after_move_nested() {
     let a = box D { x: box A { x: box 0, y: 1 }, y: box 2 };
     let _x = a.x.x;
-    let _y = a.y; //~ ERROR use of partially moved
+    let _y = a.y; //~ ERROR use of collaterally moved
 }
 
 fn borrow_after_move_nested() {
     let a = box C { x: box A { x: box 0, y: 1 }, y: 2 };
     let _x = a.x.x;
-    let _y = &a.y; //~ ERROR use of partially moved
+    let _y = &a.y; //~ ERROR use of collaterally moved
 }
 
 fn move_after_borrow_nested() {
