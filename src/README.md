@@ -1,4 +1,4 @@
-This is a preliminary version of the Rust compiler, libraries and tools.
+s is a preliminary version of the Rust compiler, libraries and tools.
 
 Source layout:
 
