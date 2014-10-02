@@ -9,8 +9,6 @@
 // except according to those terms.
 
 
-use std::gc::Gc;
-
-enum list_cell<T> { cons(Gc<list_cell<T>>), nil }
+enum list_cell<T> { cons(Box<list_cell<T>>), nil }
 
 pub fn main() { }

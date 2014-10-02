@@ -15,11 +15,9 @@
  * represented with nullable pointers could be misoptimized in some cases.
  */
 
-use std::gc::{Gc, GC};
-
-enum List<X> { Nil, Cons(X, Gc<List<X>>) }
+enum List<X> { Nil, Cons(X, Box<List<X>>) }
 pub fn main() {
-    match Cons(10i, box(GC) Nil) {
+    match Cons(10i, box Nil) {
         Cons(10i, _) => {}
         Nil => {}
         _ => fail!()

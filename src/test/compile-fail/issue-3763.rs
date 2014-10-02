@@ -9,8 +9,6 @@
 // except according to those terms.
 
 
-use std::gc::GC;
-
 mod my_mod {
     pub struct MyStruct {
         priv_field: int
@@ -29,11 +27,8 @@ fn main() {
     //~^ ERROR field `priv_field` of struct `my_mod::MyStruct` is private
     let _woohoo = (box my_struct).priv_field;
     //~^ ERROR field `priv_field` of struct `my_mod::MyStruct` is private
-    let _woohoo = (box(GC) my_struct).priv_field;
-    //~^ ERROR field `priv_field` of struct `my_mod::MyStruct` is private
     (&my_struct).happyfun();               //~ ERROR method `happyfun` is private
     (box my_struct).happyfun();            //~ ERROR method `happyfun` is private
-    (box(GC) my_struct).happyfun();               //~ ERROR method `happyfun` is private
     let nope = my_struct.priv_field;
     //~^ ERROR field `priv_field` of struct `my_mod::MyStruct` is private
 }

@@ -33,11 +33,6 @@
 // gdb-check:$3 = {4444.5, 5555, 6666, 7777.5}
 // gdb-command:continue
 
-// gdb-command:finish
-// gdb-command:print self->val
-// gdb-check:$4 = 8888
-// gdb-command:continue
-
 
 // === LLDB TESTS ==================================================================================
 
@@ -54,12 +49,6 @@
 // lldb-command:print self
 // lldb-check:[...]$2 = (4444.5, 5555, 6666, 7777.5)
 // lldb-command:continue
-
-// lldb-command:print self->val
-// lldb-check:[...]$3 = 8888
-// lldb-command:continue
-
-use std::gc::{Gc, GC};
 
 trait Trait {
     fn method(self) -> Self;
@@ -91,18 +80,10 @@ impl Trait for (f64, int, int, f64) {
     }
 }
 
-impl Trait for Gc<int> {
-    fn method(self) -> Gc<int> {
-        zzz(); // #break
-        self
-    }
-}
-
 fn main() {
     let _ = (1111 as int).method();
     let _ = Struct { x: 2222, y: 3333 }.method();
     let _ = (4444.5, 5555, 6666, 7777.5).method();
-    let _ = (box(GC) 8888).method();
 }
 
 fn zzz() { () }

@@ -9,13 +9,11 @@
 // except according to those terms.
 
 
-use std::gc::{Gc, GC};
-
 fn borrow(x: &int, f: |x: &int|) {
     f(x)
 }
 
-fn test1(x: Gc<Box<int>>) {
+fn test1(x: &Box<int>) {
     borrow(&*(*x).clone(), |p| {
         let x_a = &**x as *const int;
         assert!((x_a as uint) != (p as *const int as uint));
@@ -24,5 +22,5 @@ fn test1(x: Gc<Box<int>>) {
 }
 
 pub fn main() {
-    test1(box(GC) box 22);
+    test1(&box 22);
 }

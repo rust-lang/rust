@@ -9,11 +9,9 @@
 // except according to those terms.
 
 
-use std::gc::{GC, Gc};
-
 struct Triple { a: int, b: int, c: int }
 
-fn test(foo: Gc<Triple>) -> Gc<Triple> {
+fn test(foo: Box<Triple>) -> Box<Triple> {
     let foo = foo;
     let bar = foo;
     let baz = bar;
@@ -22,7 +20,7 @@ fn test(foo: Gc<Triple>) -> Gc<Triple> {
 }
 
 pub fn main() {
-    let x = box(GC) Triple{a: 1, b: 2, c: 3};
+    let x = box Triple{a: 1, b: 2, c: 3};
     let y = test(x);
     assert_eq!(y.c, 3);
 }
