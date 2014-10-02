@@ -261,12 +261,13 @@ ALL_HS := $(filter-out $(S)src/rt/valgrind/valgrind.h \
 tidy:
 		@$(call E, check: formatting)
 		$(Q)find $(S)src -name '*.r[sc]' \
-		| grep '^$(S)src/jemalloc' -v \
-		| grep '^$(S)src/libuv' -v \
-		| grep '^$(S)src/llvm' -v \
-		| grep '^$(S)src/gyp' -v \
-		| grep '^$(S)src/libbacktrace' -v \
-		| xargs -n 10 $(CFG_PYTHON) $(S)src/etc/tidy.py
+		    -and -not -regex '^$(S)src/jemalloc.*' \
+		    -and -not -regex '^$(S)src/libuv.*' \
+		    -and -not -regex '^$(S)src/llvm.*' \
+		    -and -not -regex '^$(S)src/gyp.*' \
+		    -and -not -regex '^$(S)src/libbacktrace.*' \
+		    -print0 \
+		| xargs -0 -n 10 $(CFG_PYTHON) $(S)src/etc/tidy.py
 		$(Q)find $(S)src/etc -name '*.py' \
 		| xargs -n 10 $(CFG_PYTHON) $(S)src/etc/tidy.py
 		$(Q)find $(S)src/doc -name '*.js' \
