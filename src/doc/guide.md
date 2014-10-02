@@ -195,9 +195,11 @@ The second point is the `println!()` part. This is calling a Rust **macro**,
 which is how metaprogramming is done in Rust. If it were a function instead, it
 would look like this: `println()`. For our purposes, we don't need to worry
 about this difference. Just know that sometimes, you'll see a `!`, and that
-means that you're calling a macro instead of a normal function. One last thing
-to mention: Rust's macros are significantly different than C macros, if you've
-used those. Don't be scared of using macros. We'll get to the details
+means that you're calling a macro instead of a normal function. Rust implements
+`println!` as a macro rather than a function for good reasons, but that's a
+very advanced topic. You'll learn more when we talk about macros later. One
+last thing to mention: Rust's macros are significantly different than C macros,
+if you've used those. Don't be scared of using macros. We'll get to the details
 eventually, you'll just have to trust us for now.
 
 Next, `"Hello, world!"` is a **string**. Strings are a surprisingly complicated
