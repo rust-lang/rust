@@ -133,6 +133,9 @@ pub struct Config {
     // Version of GDB
     pub gdb_version: Option<String>,
 
+    // Version of LLDB
+    pub lldb_version: Option<String>,
+
     // Path to the android tools
     pub android_cross_path: Path,
 
