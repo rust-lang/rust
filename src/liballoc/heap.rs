@@ -344,6 +344,7 @@ mod imp {
 mod test {
     extern crate test;
     use self::test::Bencher;
+    use heap;
 
     #[test]
     fn basic_reallocate_inplace_noop() {

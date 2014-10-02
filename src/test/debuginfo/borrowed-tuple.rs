@@ -26,7 +26,7 @@
 // gdb-check:$2 = {-15, -20}
 
 // gdb-command:print *unique_val_ref
-// gdb-check:$4 = {-17, -22}
+// gdb-check:$3 = {-17, -22}
 
 
 // === LLDB TESTS ==================================================================================
@@ -40,7 +40,7 @@
 // lldb-check:[...]$1 = (-15, -20)
 
 // lldb-command:print *unique_val_ref
-// lldb-check:[...]$3 = (-17, -22)
+// lldb-check:[...]$2 = (-17, -22)
 
 
 #![allow(unused_variable)]

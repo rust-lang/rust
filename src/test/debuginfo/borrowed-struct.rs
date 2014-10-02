@@ -30,13 +30,13 @@
 // gdb-check:$4 = {x = 11, y = 24.5}
 
 // gdb-command:print *unique_val_ref
-// gdb-check:$8 = {x = 13, y = 26.5}
+// gdb-check:$5 = {x = 13, y = 26.5}
 
 // gdb-command:print *unique_val_interior_ref_1
-// gdb-check:$9 = 13
+// gdb-check:$6 = 13
 
 // gdb-command:print *unique_val_interior_ref_2
-// gdb-check:$10 = 26.5
+// gdb-check:$7 = 26.5
 
 
 // === LLDB TESTS ==================================================================================
@@ -56,13 +56,13 @@
 // lldb-check:[...]$3 = SomeStruct { x: 11, y: 24.5 }
 
 // lldb-command:print *unique_val_ref
-// lldb-check:[...]$7 = SomeStruct { x: 13, y: 26.5 }
+// lldb-check:[...]$4 = SomeStruct { x: 13, y: 26.5 }
 
 // lldb-command:print *unique_val_interior_ref_1
-// lldb-check:[...]$8 = 13
+// lldb-check:[...]$5 = 13
 
 // lldb-command:print *unique_val_interior_ref_2
-// lldb-check:[...]$9 = 26.5
+// lldb-check:[...]$6 = 26.5
 
 #![allow(unused_variable)]
 

@@ -60,7 +60,7 @@ fn test9() {
 fn test10() -> int {
     let regs = vec!(0i);
     match true { true => { } _ => { } }
-    *(*regs).get(0)
+    regs[0]
 }
 
 fn test11() -> Vec<int> { if true { } vec!(1, 2) }
