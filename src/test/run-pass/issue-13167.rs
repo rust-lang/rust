@@ -10,7 +10,7 @@
 
 use std::slice;
 
-pub struct PhfMapEntries<'a, T> {
+pub struct PhfMapEntries<'a, T: 'a> {
     iter: slice::Items<'a, (&'static str, T)>,
 }
 

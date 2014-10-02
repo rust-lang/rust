@@ -22,7 +22,7 @@
 // gdb-check:$1 = {x = 99, y = 999, z = 9999, w = 99999}
 
 // gdb-command:print *unique_dtor
-// gdb-check:$3 = {x = 77, y = 777, z = 7777, w = 77777}
+// gdb-check:$2 = {x = 77, y = 777, z = 7777, w = 77777}
 
 
 // === LLDB TESTS ==================================================================================
@@ -33,7 +33,7 @@
 // lldb-check:[...]$0 = StructWithSomePadding { x: 99, y: 999, z: 9999, w: 99999 }
 
 // lldb-command:print *unique_dtor
-// lldb-check:[...]$2 = StructWithDestructor { x: 77, y: 777, z: 7777, w: 77777 }
+// lldb-check:[...]$1 = StructWithDestructor { x: 77, y: 777, z: 7777, w: 77777 }
 
 #![allow(unused_variable)]
 

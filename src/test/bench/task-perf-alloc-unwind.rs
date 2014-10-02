@@ -89,8 +89,8 @@ fn recurse_or_fail(depth: int, st: Option<State>) {
             State {
                 unique: box Cons((), box *st.unique),
                 vec: st.vec.clone().append(
-                        &[box Cons((), *st.vec.last().unwrap())]),
-                res: r(box Cons((), st.res._l))
+                        &[box Cons((), st.vec.last().unwrap().clone())]),
+                res: r(box Cons((), st.res._l.clone()))
             }
           }
         };

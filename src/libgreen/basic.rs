@@ -73,13 +73,13 @@ impl BasicLoop {
             RunRemote(i) => {
                 match self.remotes.iter_mut().find(|& &(id, _)| id == i) {
                     Some(&(_, ref mut f)) => f.call(),
-                    None => unreachable!()
+                    None => fail!("bad remote: {}", i),
                 }
             }
             RemoveRemote(i) => {
                 match self.remotes.iter().position(|&(id, _)| id == i) {
                     Some(i) => { self.remotes.remove(i).unwrap(); }
-                    None => unreachable!()
+                    None => fail!("bad remote: {}", i),
                 }
             }
         }

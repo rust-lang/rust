@@ -29,22 +29,22 @@
 // gdb-command:print *owned
 // gdb-check:$5 = 6
 // gdb-command:print closure_local
-// gdb-check:$7 = 8
+// gdb-check:$6 = 8
 // gdb-command:continue
 
 // gdb-command:finish
 // gdb-command:print variable
-// gdb-check:$8 = 1
+// gdb-check:$7 = 1
 // gdb-command:print constant
-// gdb-check:$9 = 2
+// gdb-check:$8 = 2
 // gdb-command:print a_struct
-// gdb-check:$10 = {a = -3, b = 4.5, c = 5}
+// gdb-check:$9 = {a = -3, b = 4.5, c = 5}
 // gdb-command:print *struct_ref
-// gdb-check:$11 = {a = -3, b = 4.5, c = 5}
+// gdb-check:$10 = {a = -3, b = 4.5, c = 5}
 // gdb-command:print *owned
-// gdb-check:$12 = 6
+// gdb-check:$11 = 6
 // gdb-command:print closure_local
-// gdb-check:$14 = 8
+// gdb-check:$12 = 8
 // gdb-command:continue
 
 
