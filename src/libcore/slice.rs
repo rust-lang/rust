@@ -814,13 +814,13 @@ impl<'a,T> MutableSlice<'a, T> for &'a mut [T] {
     #[inline]
     fn tail_mut(self) -> &'a mut [T] {
         let len = self.len();
-        self[mut 1..len]
+        self.slice_mut(1, len)
     }
 
     #[inline]
     fn init_mut(self) -> &'a mut [T] {
         let len = self.len();
-        self[mut 0..len - 1]
+        self.slice_mut(0, len - 1)
     }
 
     #[inline]

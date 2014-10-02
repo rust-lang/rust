@@ -51,12 +51,9 @@
 //! interval `[a, b)`:
 //!
 //! ```rust
-//! #![feature(slicing_syntax)]
-//! fn main() {
-//!     let numbers = [0i, 1i, 2i];
-//!     let last_numbers = numbers[1..3];
-//!     // last_numbers is now &[1i, 2i]
-//! }
+//! let numbers = [0i, 1i, 2i];
+//! let last_numbers = numbers[1..3];
+//! // last_numbers is now &[1i, 2i]
 //! ```
 //!
 //! ## Implementations of other traits
