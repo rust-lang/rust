@@ -71,7 +71,8 @@ pub fn parse_config(args: Vec<String> ) -> Config {
           optflag("", "jit", "run tests under the JIT"),
           optopt("", "target", "the target to build for", "TARGET"),
           optopt("", "host", "the host to build for", "HOST"),
-          optopt("", "gdb-version", "the version of GDB used", "MAJOR.MINOR"),
+          optopt("", "gdb-version", "the version of GDB used", "VERSION STRING"),
+          optopt("", "lldb-version", "the version of LLDB used", "VERSION STRING"),
           optopt("", "android-cross-path", "Android NDK standalone path", "PATH"),
           optopt("", "adb-path", "path to the android debugger", "PATH"),
           optopt("", "adb-test-dir", "path to tests for the android debugger", "PATH"),
@@ -149,6 +150,7 @@ pub fn parse_config(args: Vec<String> ) -> Config {
         target: opt_str2(matches.opt_str("target")),
         host: opt_str2(matches.opt_str("host")),
         gdb_version: extract_gdb_version(matches.opt_str("gdb-version")),
+        lldb_version: extract_lldb_version(matches.opt_str("lldb-version")),
         android_cross_path: opt_path(matches, "android-cross-path"),
         adb_path: opt_str2(matches.opt_str("adb-path")),
         adb_test_dir: opt_str2(matches.opt_str("adb-test-dir")),
@@ -383,6 +385,40 @@ fn extract_gdb_version(full_version_line: Option<String>) -> Option<String> {
                 }
                 None => {
                     println!("Could not extract GDB version from line '{}'",
+                             full_version_line);
+                    None
+                }
+            }
+        },
+        _ => None
+    }
+}
+
+fn extract_lldb_version(full_version_line: Option<String>) -> Option<String> {
+    // Extract the major LLDB version from the given version string.
+    // LLDB version strings are different for Apple and non-Apple platforms.
+    // At the moment, this function only supports the Apple variant, which looks
+    // like this:
+    //
+    // LLDB-179.5 (older versions)
+    // lldb-300.2.51 (new versions)
+    //
+    // We are only interested in the major version number, so this function
+    // will return `Some("179")` and `Some("300")` respectively.
+
+    match full_version_line {
+        Some(ref full_version_line)
+          if full_version_line.as_slice().trim().len() > 0 => {
+            let full_version_line = full_version_line.as_slice().trim();
+
+            let re = Regex::new(r"[Ll][Ll][Dd][Bb]-([0-9]+)").unwrap();
+
+            match re.captures(full_version_line) {
+                Some(captures) => {
+                    Some(captures.at(1).to_string())
+                }
+                None => {
+                    println!("Could not extract LLDB version from line '{}'",
                              full_version_line);
                     None
                 }
