@@ -40,8 +40,6 @@
 
 // ignore-android see #10393 #13206
 
-#![feature(slicing_syntax)]
-
 use std::string::String;
 use std::slice;
 use std::sync::{Arc, Future};

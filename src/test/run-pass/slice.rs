@@ -10,8 +10,6 @@
 
 // Test slicing sugar.
 
-#![feature(slicing_syntax)]
-
 extern crate core;
 use core::ops::{Slice,SliceMut};
 

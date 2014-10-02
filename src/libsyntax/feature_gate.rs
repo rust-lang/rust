@@ -70,7 +70,6 @@ static KNOWN_FEATURES: &'static [(&'static str, Status)] = &[
     ("tuple_indexing", Active),
     ("associated_types", Active),
     ("visible_private_types", Active),
-    ("slicing_syntax", Active),
 
     ("if_let", Active),
 
@@ -362,11 +361,6 @@ impl<'a, 'v> Visitor<'v> for Context<'a> {
             ast::ExprIfLet(..) => {
                 self.gate_feature("if_let", e.span,
                                   "`if let` syntax is experimental");
-            }
-            ast::ExprSlice(..) => {
-                self.gate_feature("slicing_syntax",
-                                  e.span,
-                                  "slicing syntax is experimental");
             }
             _ => {}
         }

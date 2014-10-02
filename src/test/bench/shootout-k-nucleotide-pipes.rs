@@ -13,8 +13,6 @@
 
 // multi tasking k-nucleotide
 
-#![feature(slicing_syntax)]
-
 extern crate collections;
 
 use std::collections::HashMap;
