@@ -684,23 +684,23 @@ pub trait IndexMut<Index, Result> {
  * A trivial implementation of `Slice`. When `Foo[..Foo]` happens, it ends up
  * calling `slice_to`, and therefore, `main` prints `Slicing!`.
  *
- * ```
+ * ```ignore
  * struct Foo;
  *
  * impl ::core::ops::Slice<Foo, Foo> for Foo {
- *     fn as_slice_<'a>(&'a self) -> &'a Foo {
+ *     fn as_slice<'a>(&'a self) -> &'a Foo {
  *         println!("Slicing!");
  *         self
  *     }
- *     fn slice_from_<'a>(&'a self, from: &Foo) -> &'a Foo {
+ *     fn slice_from<'a>(&'a self, from: &Foo) -> &'a Foo {
  *         println!("Slicing!");
  *         self
  *     }
- *     fn slice_to_<'a>(&'a self, to: &Foo) -> &'a Foo {
+ *     fn slice_to<'a>(&'a self, to: &Foo) -> &'a Foo {
  *         println!("Slicing!");
  *         self
  *     }
- *     fn slice_<'a>(&'a self, from: &Foo, to: &Foo) -> &'a Foo {
+ *     fn slice<'a>(&'a self, from: &Foo, to: &Foo) -> &'a Foo {
  *         println!("Slicing!");
  *         self
  *     }
@@ -711,7 +711,22 @@ pub trait IndexMut<Index, Result> {
  * }
  * ```
  */
-// FIXME(#17273) remove the postscript _s
+#[cfg(not(stage0))]
+#[lang="slice"]
+pub trait Slice<Idx, Sized? Result> for Sized? {
+    /// The method for the slicing operation foo[]
+    fn as_slice<'a>(&'a self) -> &'a Result;
+    /// The method for the slicing operation foo[from..]
+    fn slice_from<'a>(&'a self, from: &Idx) -> &'a Result;
+    /// The method for the slicing operation foo[..to]
+    fn slice_to<'a>(&'a self, to: &Idx) -> &'a Result;
+    /// The method for the slicing operation foo[from..to]
+    fn slice<'a>(&'a self, from: &Idx, to: &Idx) -> &'a Result;
+}
+/**
+ *
+ */
+#[cfg(stage0)]
 #[lang="slice"]
 pub trait Slice<Idx, Sized? Result> for Sized? {
     /// The method for the slicing operation foo[]
@@ -734,34 +749,49 @@ pub trait Slice<Idx, Sized? Result> for Sized? {
  * A trivial implementation of `SliceMut`. When `Foo[Foo..]` happens, it ends up
  * calling `slice_from_mut`, and therefore, `main` prints `Slicing!`.
  *
- * ```
+ * ```ignore
  * struct Foo;
  *
  * impl ::core::ops::SliceMut<Foo, Foo> for Foo {
- *     fn as_mut_slice_<'a>(&'a mut self) -> &'a mut Foo {
+ *     fn as_mut_slice<'a>(&'a mut self) -> &'a mut Foo {
  *         println!("Slicing!");
  *         self
  *     }
- *     fn slice_from_mut_<'a>(&'a mut self, from: &Foo) -> &'a mut Foo {
+ *     fn slice_from_mut<'a>(&'a mut self, from: &Foo) -> &'a mut Foo {
  *         println!("Slicing!");
  *         self
  *     }
- *     fn slice_to_mut_<'a>(&'a mut self, to: &Foo) -> &'a mut Foo {
+ *     fn slice_to_mut<'a>(&'a mut self, to: &Foo) -> &'a mut Foo {
  *         println!("Slicing!");
  *         self
  *     }
- *     fn slice_mut_<'a>(&'a mut self, from: &Foo, to: &Foo) -> &'a mut Foo {
+ *     fn slice_mut<'a>(&'a mut self, from: &Foo, to: &Foo) -> &'a mut Foo {
  *         println!("Slicing!");
  *         self
  *     }
  * }
  *
- * fn main() {
+ * pub fn main() {
  *     Foo[mut Foo..];
  * }
  * ```
  */
-// FIXME(#17273) remove the postscript _s
+#[cfg(not(stage0))]
+#[lang="slice_mut"]
+pub trait SliceMut<Idx, Sized? Result> for Sized? {
+    /// The method for the slicing operation foo[]
+    fn as_mut_slice<'a>(&'a mut self) -> &'a mut Result;
+    /// The method for the slicing operation foo[from..]
+    fn slice_from_mut<'a>(&'a mut self, from: &Idx) -> &'a mut Result;
+    /// The method for the slicing operation foo[..to]
+    fn slice_to_mut<'a>(&'a mut self, to: &Idx) -> &'a mut Result;
+    /// The method for the slicing operation foo[from..to]
+    fn slice_mut<'a>(&'a mut self, from: &Idx, to: &Idx) -> &'a mut Result;
+}
+/**
+ *
+ */
+#[cfg(stage0)]
 #[lang="slice_mut"]
 pub trait SliceMut<Idx, Sized? Result> for Sized? {
     /// The method for the slicing operation foo[mut]
@@ -773,6 +803,7 @@ pub trait SliceMut<Idx, Sized? Result> for Sized? {
     /// The method for the slicing operation foo[mut from..to]
     fn slice_mut_<'a>(&'a mut self, from: &Idx, to: &Idx) -> &'a mut Result;
 }
+
 /**
  *
  * The `Deref` trait is used to specify the functionality of dereferencing

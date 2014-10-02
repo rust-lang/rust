@@ -193,7 +193,7 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
         if len <= 2 {
             return;
         }
-        let sub_paths = sub_paths.slice(0, len-2);
+        let sub_paths = sub_paths[..len-2];
         for &(ref span, ref qualname) in sub_paths.iter() {
             self.fmt.sub_mod_ref_str(path.span,
                                      *span,

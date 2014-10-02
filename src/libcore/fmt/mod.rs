@@ -423,7 +423,7 @@ impl<'a> Formatter<'a> {
             for c in sign.into_iter() {
                 let mut b = [0, ..4];
                 let n = c.encode_utf8(b).unwrap_or(0);
-                try!(f.buf.write(b.slice_to(n)));
+                try!(f.buf.write(b[..n]));
             }
             if prefixed { f.buf.write(prefix.as_bytes()) }
             else { Ok(()) }
@@ -530,13 +530,13 @@ impl<'a> Formatter<'a> {
         let len = self.fill.encode_utf8(fill).unwrap_or(0);
 
         for _ in range(0, pre_pad) {
-            try!(self.buf.write(fill.slice_to(len)));
+            try!(self.buf.write(fill[..len]));
         }
 
         try!(f(self));
 
         for _ in range(0, post_pad) {
-            try!(self.buf.write(fill.slice_to(len)));
+            try!(self.buf.write(fill[..len]));
         }
 
         Ok(())
@@ -611,7 +611,7 @@ impl Char for char {
 
         let mut utf8 = [0u8, ..4];
         let amt = self.encode_utf8(utf8).unwrap_or(0);
-        let s: &str = unsafe { mem::transmute(utf8.slice_to(amt)) };
+        let s: &str = unsafe { mem::transmute(utf8[..amt]) };
         secret_string(&s, f)
     }
 }

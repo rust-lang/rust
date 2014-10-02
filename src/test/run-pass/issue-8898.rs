@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(slicing_syntax)]
 
 extern crate debug;
 
@@ -21,7 +22,7 @@ pub fn main() {
     let abc = [1i, 2, 3];
     let tf = [true, false];
     let x  = [(), ()];
-    let slice = x.slice(0,1);
+    let slice = x[0..1];
     let z = box(GC) x;
 
     assert_repr_eq(abc, "[1, 2, 3]".to_string());
