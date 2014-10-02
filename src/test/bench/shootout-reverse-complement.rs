@@ -41,8 +41,6 @@
 // ignore-pretty very bad with line comments
 // ignore-android doesn't terminate?
 
-#![feature(slicing_syntax)]
-
 use std::iter::range_step;
 use std::io::{stdin, stdout, File};
 
@@ -83,7 +81,7 @@ fn main() {
             Some(c) => c
         };
         let len = seq.len();
-        let seq = seq[mut begin+1..len-1];
+        let seq = seq.slice_mut(begin + 1, len - 1);
 
         // arrange line breaks
         let len = seq.len();

@@ -394,7 +394,7 @@ fn build_index(krate: &clean::Crate, cache: &mut Cache) -> io::IoResult<String> 
                     search_index.push(IndexItem {
                         ty: shortty(item),
                         name: item.name.clone().unwrap(),
-                        path: fqp[..fqp.len() - 1].connect("::"),
+                        path: fqp.slice_to(fqp.len() - 1).connect("::"),
                         desc: shorter(item.doc_value()).to_string(),
                         parent: Some(did),
                     });
@@ -549,7 +549,7 @@ fn write_shared(cx: &Context,
         };
 
         let mut mydst = dst.clone();
-        for part in remote_path[..remote_path.len() - 1].iter() {
+        for part in remote_path.slice_to(remote_path.len() - 1).iter() {
             mydst.push(part.as_slice());
             try!(mkdir(&mydst));
         }
@@ -829,7 +829,7 @@ impl DocFolder for Cache {
                     clean::StructFieldItem(..) |
                     clean::VariantItem(..) => {
                         ((Some(*self.parent_stack.last().unwrap()),
-                          Some(self.stack[..self.stack.len() - 1])),
+                          Some(self.stack.slice_to(self.stack.len() - 1))),
                           false)
                     }
                     clean::MethodItem(..) => {
@@ -840,13 +840,13 @@ impl DocFolder for Cache {
                             let did = *last;
                             let path = match self.paths.find(&did) {
                                 Some(&(_, item_type::Trait)) =>
-                                    Some(self.stack[..self.stack.len() - 1]),
+                                    Some(self.stack.slice_to(self.stack.len() - 1)),
                                 // The current stack not necessarily has correlation for
                                 // where the type was defined. On the other hand,
                                 // `paths` always has the right information if present.
                                 Some(&(ref fqp, item_type::Struct)) |
                                 Some(&(ref fqp, item_type::Enum)) =>
-                                    Some(fqp[..fqp.len() - 1]),
+                                    Some(fqp.slice_to(fqp.len() - 1)),
                                 Some(..) => Some(self.stack.as_slice()),
                                 None => None
                             };
@@ -1172,7 +1172,7 @@ impl Context {
                 let mut url = "../".repeat(cx.current.len());
                 match cache_key.get().unwrap().paths.find(&it.def_id) {
                     Some(&(ref names, _)) => {
-                        for name in names[..names.len() - 1].iter() {
+                        for name in names.slice_to(names.len() - 1).iter() {
                             url.push_str(name.as_slice());
                             url.push_str("/");
                         }
