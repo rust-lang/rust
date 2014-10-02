@@ -562,7 +562,7 @@ fn begin_unwind_inner(msg: Box<Any + Send>, file_line: &(&'static str, uint)) ->
     // MAX_CALLBACKS, so we're sure to clamp it as necessary.
     let callbacks = unsafe {
         let amt = CALLBACK_CNT.load(atomic::SeqCst);
-        CALLBACKS.slice_to(cmp::min(amt, MAX_CALLBACKS))
+        CALLBACKS[..cmp::min(amt, MAX_CALLBACKS)]
     };
     for cb in callbacks.iter() {
         match cb.load(atomic::SeqCst) {

@@ -130,7 +130,7 @@ macro_rules! mat(
             // actual capture groups to match test set.
             let (sexpect, mut sgot) = (expected.as_slice(), got.as_slice());
             if sgot.len() > sexpect.len() {
-                sgot = sgot.slice(0, sexpect.len())
+                sgot = sgot[0..sexpect.len()]
             }
             if sexpect != sgot {
                 fail!("For RE '{}' against '{}', expected '{}' but got '{}'",

@@ -38,6 +38,8 @@
 // ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
 // OF THE POSSIBILITY OF SUCH DAMAGE.
 
+#![feature(slicing_syntax)]
+
 use std::{cmp, iter, mem};
 use std::sync::Future;
 
@@ -50,7 +52,7 @@ fn rotate(x: &mut [i32]) {
 
 fn next_permutation(perm: &mut [i32], count: &mut [i32]) {
     for i in range(1, perm.len()) {
-        rotate(perm.slice_to_mut(i + 1));
+        rotate(perm[mut ..i + 1]);
         let count_i = &mut count[i];
         if *count_i >= i as i32 {
             *count_i = 0;
@@ -99,7 +101,7 @@ impl Perm {
             let d = idx / self.fact[i] as i32;
             self.cnt[i] = d;
             idx %= self.fact[i] as i32;
-            for (place, val) in pp.iter_mut().zip(self.perm.p.slice_to(i + 1).iter()) {
+            for (place, val) in pp.iter_mut().zip(self.perm.p[..i+1].iter()) {
                 *place = (*val) as u8
             }
 
@@ -125,7 +127,7 @@ impl Perm {
 
 
 fn reverse(tperm: &mut [i32], mut k: uint) {
-    tperm.slice_to_mut(k).reverse()
+    tperm[mut ..k].reverse()
 }
 
 fn work(mut perm: Perm, n: uint, max: uint) -> (i32, i32) {

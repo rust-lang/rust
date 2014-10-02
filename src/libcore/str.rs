@@ -30,7 +30,7 @@ use iter::range;
 use num::{CheckedMul, Saturating};
 use option::{Option, None, Some};
 use raw::Repr;
-use slice::{ImmutableSlice, MutableSlice};
+use slice::ImmutableSlice;
 use slice;
 use uint;
 
@@ -393,7 +393,7 @@ impl NaiveSearcher {
 
     fn next(&mut self, haystack: &[u8], needle: &[u8]) -> Option<(uint, uint)> {
         while self.position + needle.len() <= haystack.len() {
-            if haystack.slice(self.position, self.position + needle.len()) == needle {
+            if haystack[self.position .. self.position + needle.len()] == needle {
                 let match_pos = self.position;
                 self.position += needle.len(); // add 1 for all matches
                 return Some((match_pos, match_pos + needle.len()));
@@ -514,10 +514,10 @@ impl TwoWaySearcher {
         //
         // What's going on is we have some critical factorization (u, v) of the
         // needle, and we want to determine whether u is a suffix of
-        // v.slice_to(period). If it is, we use "Algorithm CP1". Otherwise we use
+        // v[..period]. If it is, we use "Algorithm CP1". Otherwise we use
         // "Algorithm CP2", which is optimized for when the period of the needle
         // is large.
-        if needle.slice_to(crit_pos) == needle.slice(period, period + crit_pos) {
+        if needle[..crit_pos] == needle[period.. period + crit_pos] {
             TwoWaySearcher {
                 crit_pos: crit_pos,
                 period: period,
@@ -741,7 +741,7 @@ impl<'a> Iterator<u16> for Utf16CodeUnits<'a> {
 
         let mut buf = [0u16, ..2];
         self.chars.next().map(|ch| {
-            let n = ch.encode_utf16(buf.as_mut_slice()).unwrap_or(0);
+            let n = ch.encode_utf16(buf[mut]).unwrap_or(0);
             if n == 2 { self.extra = buf[1]; }
             buf[0]
         })
@@ -1007,7 +1007,7 @@ pub fn utf16_items<'a>(v: &'a [u16]) -> Utf16Items<'a> {
 pub fn truncate_utf16_at_nul<'a>(v: &'a [u16]) -> &'a [u16] {
     match v.iter().position(|c| *c == 0) {
         // don't include the 0
-        Some(i) => v.slice_to(i),
+        Some(i) => v[..i],
         None => v
     }
 }
@@ -1164,6 +1164,7 @@ pub mod traits {
         fn equiv(&self, other: &S) -> bool { eq_slice(*self, other.as_slice()) }
     }
 
+    #[cfg(stage0)]
     impl ops::Slice<uint, str> for str {
         #[inline]
         fn as_slice_<'a>(&'a self) -> &'a str {
@@ -1172,17 +1173,39 @@ pub mod traits {
 
         #[inline]
         fn slice_from_<'a>(&'a self, from: &uint) -> &'a str {
-            self.slice_from(*from)
+            super::slice_from_impl(&self, *from)
         }
 
         #[inline]
         fn slice_to_<'a>(&'a self, to: &uint) -> &'a str {
-            self.slice_to(*to)
+            super::slice_to_impl(&self, *to)
         }
 
         #[inline]
         fn slice_<'a>(&'a self, from: &uint, to: &uint) -> &'a str {
-            self.slice(*from, *to)
+            super::slice_impl(&self, *from, *to)
+        }
+    }
+    #[cfg(not(stage0))]
+    impl ops::Slice<uint, str> for str {
+        #[inline]
+        fn as_slice<'a>(&'a self) -> &'a str {
+            self
+        }
+
+        #[inline]
+        fn slice_from<'a>(&'a self, from: &uint) -> &'a str {
+            super::slice_from_impl(&self, *from)
+        }
+
+        #[inline]
+        fn slice_to<'a>(&'a self, to: &uint) -> &'a str {
+            super::slice_to_impl(&self, *to)
+        }
+
+        #[inline]
+        fn slice<'a>(&'a self, from: &uint, to: &uint) -> &'a str {
+            super::slice_impl(&self, *from, *to)
         }
     }
 }
@@ -1835,6 +1858,38 @@ fn slice_error_fail(s: &str, begin: uint, end: uint) -> ! {
           begin, end, s);
 }
 
+#[inline]
+fn slice_impl<'a>(this: &&'a str, begin: uint, end: uint) -> &'a str {
+    // is_char_boundary checks that the index is in [0, .len()]
+    if begin <= end &&
+       this.is_char_boundary(begin) &&
+       this.is_char_boundary(end) {
+        unsafe { raw::slice_unchecked(*this, begin, end) }
+    } else {
+        slice_error_fail(*this, begin, end)
+    }
+}
+
+#[inline]
+fn slice_from_impl<'a>(this: &&'a str, begin: uint) -> &'a str {
+    // is_char_boundary checks that the index is in [0, .len()]
+    if this.is_char_boundary(begin) {
+        unsafe { raw::slice_unchecked(*this, begin, this.len()) }
+    } else {
+        slice_error_fail(*this, begin, this.len())
+    }
+}
+
+#[inline]
+fn slice_to_impl<'a>(this: &&'a str, end: uint) -> &'a str {
+    // is_char_boundary checks that the index is in [0, .len()]
+    if this.is_char_boundary(end) {
+        unsafe { raw::slice_unchecked(*this, 0, end) }
+    } else {
+        slice_error_fail(*this, 0, end)
+    }
+}
+
 impl<'a> StrSlice<'a> for &'a str {
     #[inline]
     fn contains<'a>(&self, needle: &'a str) -> bool {
@@ -1938,34 +1993,17 @@ impl<'a> StrSlice<'a> for &'a str {
 
     #[inline]
     fn slice(&self, begin: uint, end: uint) -> &'a str {
-        // is_char_boundary checks that the index is in [0, .len()]
-        if begin <= end &&
-           self.is_char_boundary(begin) &&
-           self.is_char_boundary(end) {
-            unsafe { raw::slice_unchecked(*self, begin, end) }
-        } else {
-            slice_error_fail(*self, begin, end)
-        }
+        slice_impl(self, begin, end)
     }
 
     #[inline]
     fn slice_from(&self, begin: uint) -> &'a str {
-        // is_char_boundary checks that the index is in [0, .len()]
-        if self.is_char_boundary(begin) {
-            unsafe { raw::slice_unchecked(*self, begin, self.len()) }
-        } else {
-            slice_error_fail(*self, begin, self.len())
-        }
+        slice_from_impl(self, begin)
     }
 
     #[inline]
     fn slice_to(&self, end: uint) -> &'a str {
-        // is_char_boundary checks that the index is in [0, .len()]
-        if self.is_char_boundary(end) {
-            unsafe { raw::slice_unchecked(*self, 0, end) }
-        } else {
-            slice_error_fail(*self, 0, end)
-        }
+        slice_to_impl(self, end)
     }
 
     fn slice_chars(&self, begin: uint, end: uint) -> &'a str {
@@ -1994,13 +2032,13 @@ impl<'a> StrSlice<'a> for &'a str {
     #[inline]
     fn starts_with<'a>(&self, needle: &'a str) -> bool {
         let n = needle.len();
-        self.len() >= n && needle.as_bytes() == self.as_bytes().slice_to(n)
+        self.len() >= n && needle.as_bytes() == self.as_bytes()[..n]
     }
 
     #[inline]
     fn ends_with(&self, needle: &str) -> bool {
         let (m, n) = (self.len(), needle.len());
-        m >= n && needle.as_bytes() == self.as_bytes().slice_from(m - n)
+        m >= n && needle.as_bytes() == self.as_bytes()[m-n..]
     }
 
     #[inline]
