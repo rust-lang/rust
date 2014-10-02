@@ -2725,7 +2725,8 @@ mod hello {
 }
 ```
 
-This will work:
+Usage of the `pub` keyword is sometimes called 'exporting', because
+we're making the function available for other modules. This will work:
 
 ```{notrust,ignore}
 $ cargo run
@@ -3289,8 +3290,7 @@ use super::times_four;
 
 Because we've made a nested module, we can import functions from the parent
 module by using `super`. Sub-modules are allowed to 'see' private functions in
-the parent. We sometimes call this usage of `use` a 're-export,' because we're
-exporting the name again, somewhere else.
+the parent.
 
 We've now covered the basics of testing. Rust's tools are primitive, but they
 work well in the simple cases. There are some Rustaceans working on building
