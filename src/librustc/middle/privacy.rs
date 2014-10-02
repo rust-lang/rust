@@ -931,15 +931,6 @@ impl<'a, 'tcx, 'v> Visitor<'v> for PrivacyVisitor<'a, 'tcx> {
                             maybe_did.unwrap_or(did)
                         })
                     }
-                    // Tuple struct constructors across crates are identified as
-                    // DefFn types, so we explicitly handle that case here.
-                    Some(&def::DefFn(did, _, _)) if !is_local(did) => {
-                        match csearch::get_tuple_struct_definition_if_ctor(
-                                    &self.tcx.sess.cstore, did) {
-                            Some(did) => guard(did),
-                            None => {}
-                        }
-                    }
                     _ => {}
                 }
             }

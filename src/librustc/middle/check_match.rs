@@ -757,7 +757,7 @@ pub fn specialize<'a>(cx: &MatchCheckCtxt, r: &[&'a Pat],
                 DefStatic(..) =>
                     cx.tcx.sess.span_bug(pat_span, "static pattern should've been rewritten"),
                 DefVariant(_, id, _) if *constructor != Variant(id) => None,
-                DefVariant(..) | DefFn(..) | DefStruct(..) => {
+                DefVariant(..) | DefStruct(..) => {
                     Some(match args {
                         &Some(ref args) => args.iter().map(|p| &**p).collect(),
                         &None => Vec::from_elem(arity, &DUMMY_WILD_PAT)

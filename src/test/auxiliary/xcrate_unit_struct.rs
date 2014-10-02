@@ -19,6 +19,8 @@ pub enum Unit {
     Argument(Struct)
 }
 
+pub struct TupleStruct(pub uint, pub &'static str);
+
 // used by the cfail test
 
 pub struct StructWithFields {
