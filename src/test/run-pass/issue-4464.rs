@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(slicing_syntax)]
-
-fn broken(v: &[u8], i: uint, j: uint) -> &[u8] { v[i..j] }
+fn broken(v: &[u8], i: uint, j: uint) -> &[u8] { v.slice(i, j) }
 
 pub fn main() {}

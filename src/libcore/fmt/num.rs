@@ -18,7 +18,7 @@ use collections::Collection;
 use fmt;
 use iter::DoubleEndedIterator;
 use num::{Int, cast, zero};
-use slice::{MutableSlice};
+use slice::{ImmutableSlice, MutableSlice};
 
 /// A type that represents a specific radix
 #[doc(hidden)]
@@ -60,7 +60,7 @@ trait GenericRadix {
                 if x == zero() { break; }                 // No more digits left to accumulate.
             }
         }
-        f.pad_integral(is_positive, self.prefix(), buf[curr..])
+        f.pad_integral(is_positive, self.prefix(), buf.slice_from(curr))
     }
 }
 

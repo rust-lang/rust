@@ -550,7 +550,7 @@ fn exec<'t>(which: ::regex::native::MatchKind, input: &'t str,
         } else {
             quote_expr!(self.cx,
                 if clist.size == 0 {
-                    let haystack = self.input.as_bytes()[self.ic..];
+                    let haystack = self.input.as_bytes().slice_from(self.ic);
                     match find_prefix(prefix_bytes, haystack) {
                         None => break,
                         Some(i) => {

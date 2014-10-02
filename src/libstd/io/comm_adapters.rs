@@ -15,7 +15,8 @@ use comm::{Sender, Receiver};
 use io;
 use option::{None, Option, Some};
 use result::{Ok, Err};
-use slice::{bytes, CloneableVector};
+use slice::{bytes, MutableSlice, ImmutableSlice, CloneableVector};
+use str::StrSlice;
 use super::{Reader, Writer, IoResult};
 use vec::Vec;
 
@@ -61,10 +62,10 @@ impl Reader for ChanReader {
         loop {
             match self.buf {
                 Some(ref prev) => {
-                    let dst = buf[mut num_read..];
-                    let src = prev[self.pos..];
+                    let dst = buf.slice_from_mut(num_read);
+                    let src = prev.slice_from(self.pos);
                     let count = cmp::min(dst.len(), src.len());
-                    bytes::copy_memory(dst, src[..count]);
+                    bytes::copy_memory(dst, src.slice_to(count));
                     num_read += count;
                     self.pos += count;
                 },
