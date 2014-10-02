@@ -374,14 +374,6 @@
 }
 
 {
-   libuv-0-byte-realloc
-   Memcheck:Leak
-   fun:malloc
-   ...
-   fun:*uv_loop_delete*
-}
-
-{
    race-or-something-ask-pcwalton-0
    Memcheck:Value4
    fun:*task_start_wrapper*
@@ -500,17 +492,5 @@
    goddammit-llvm-why-u-no-valgrind
    Memcheck:Cond
    fun:*
-   ...
-}
-
-{
-   libuv-mac-no-thread-join
-   Memcheck:Leak
-   fun:malloc_zone_malloc
-   fun:_CFRuntimeCreateInstance
-   fun:CFRunLoopSourceCreate
-   fun:uv__platform_loop_init
-   fun:uv__loop_init
-   fun:uv_loop_new
    ...
 }
