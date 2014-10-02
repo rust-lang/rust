@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // ignore-windows
+// ignore-macos
 
 #![feature(macro_rules)]
 
