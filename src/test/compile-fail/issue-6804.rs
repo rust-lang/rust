@@ -30,4 +30,4 @@ fn main() {
 
 // At least one error is needed so that compilation fails
 #[static_assert]
-static b: bool = false; //~ ERROR static assertion failed
+static B: bool = false; //~ ERROR static assertion failed

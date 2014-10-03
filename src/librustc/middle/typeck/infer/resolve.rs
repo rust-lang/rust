@@ -46,6 +46,8 @@
 // future).  If you want to resolve everything but one type, you are
 // probably better off writing `resolve_all - resolve_ivar`.
 
+#![allow(non_uppercase_statics)]
+
 use middle::ty::{FloatVar, FloatVid, IntVar, IntVid, RegionVid, TyVar, TyVid};
 use middle::ty::{IntType, UintType};
 use middle::ty;

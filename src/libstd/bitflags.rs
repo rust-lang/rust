@@ -123,7 +123,10 @@ macro_rules! bitflags {
             bits: $T,
         }
 
-        $($(#[$Flag_attr])* pub static $Flag: $BitFlags = $BitFlags { bits: $value };)+
+        $(
+            #[allow(non_uppercase_statics)]
+            $(#[$Flag_attr])* pub static $Flag: $BitFlags = $BitFlags { bits: $value };
+         )+
 
         impl $BitFlags {
             /// Returns an empty set of flags.
@@ -240,7 +243,10 @@ macro_rules! bitflags {
         bitflags! {
             $(#[$attr])*
             flags $BitFlags: $T {
-                $($(#[$Flag_attr])* static $Flag = $value),+
+                $(
+                    #[allow(non_uppercase_statics)]
+                    $(#[$Flag_attr])* static $Flag = $value
+                 ),+
             }
         }
     };

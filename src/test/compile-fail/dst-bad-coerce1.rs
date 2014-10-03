@@ -22,7 +22,7 @@ pub fn main() {
     let f1 = Fat { ptr: [1, 2, 3] };
     let f2: &Fat<[int, ..3]> = &f1;
     let f3: &Fat<[uint]> = f2;
-    //~^ ERROR mismatched types: expected `&Fat<[uint]>`, found `&Fat<[int, .. 3]>`
+    //~^ ERROR mismatched types: expected `&Fat<[uint]>`, found `&Fat<[int, ..3]>`
 
     // With a trait.
     let f1 = Fat { ptr: Foo };

@@ -2197,7 +2197,10 @@ macro_rules! def_type_content_sets(
         #[allow(non_snake_case)]
         mod $mname {
             use middle::ty::TypeContents;
-            $(pub static $name: TypeContents = TypeContents { bits: $bits };)+
+            $(
+                #[allow(non_uppercase_statics)]
+                pub static $name: TypeContents = TypeContents { bits: $bits };
+             )+
         }
     }
 )
@@ -4650,6 +4653,7 @@ pub fn unboxed_closure_upvars(tcx: &ctxt, closure_id: ast::DefId)
 }
 
 pub fn is_binopable(cx: &ctxt, ty: t, op: ast::BinOp) -> bool {
+    #![allow(non_uppercase_statics)]
     static tycat_other: int = 0;
     static tycat_bool: int = 1;
     static tycat_char: int = 2;

@@ -209,15 +209,15 @@ mod test {
         assert_eq!(string1, string2);
     }
 
-    static fill_bytes_v_len: uint = 13579;
+    static FILL_BYTES_V_LEN: uint = 13579;
     #[test]
     fn test_rng_fill_bytes() {
-        let mut v = Vec::from_elem(fill_bytes_v_len, 0u8);
+        let mut v = Vec::from_elem(FILL_BYTES_V_LEN, 0u8);
         ::test::rng().fill_bytes(v.as_mut_slice());
 
         // Sanity test: if we've gotten here, `fill_bytes` has not infinitely
         // recursed.
-        assert_eq!(v.len(), fill_bytes_v_len);
+        assert_eq!(v.len(), FILL_BYTES_V_LEN);
 
         // To test that `fill_bytes` actually did something, check that the
         // average of `v` is not 0.
