@@ -733,9 +733,9 @@ mod bench {
         }
     }
 
-    static s_short: &'static str = "Mary";
-    static s_medium: &'static str = "Mary had a little lamb";
-    static s_long: &'static str = "\
+    static S_SHORT: &'static str = "Mary";
+    static S_MEDIUM: &'static str = "Mary had a little lamb";
+    static S_LONG: &'static str = "\
         Mary had a little lamb, Little lamb
         Mary had a little lamb, Little lamb
         Mary had a little lamb, Little lamb
@@ -752,17 +752,17 @@ mod bench {
 
     #[bench]
     fn bench_to_c_str_short(b: &mut Bencher) {
-        bench_to_string(b, s_short)
+        bench_to_string(b, S_SHORT)
     }
 
     #[bench]
     fn bench_to_c_str_medium(b: &mut Bencher) {
-        bench_to_string(b, s_medium)
+        bench_to_string(b, S_MEDIUM)
     }
 
     #[bench]
     fn bench_to_c_str_long(b: &mut Bencher) {
-        bench_to_string(b, s_long)
+        bench_to_string(b, S_LONG)
     }
 
     fn bench_to_c_str_unchecked(b: &mut Bencher, s: &str) {
@@ -774,17 +774,17 @@ mod bench {
 
     #[bench]
     fn bench_to_c_str_unchecked_short(b: &mut Bencher) {
-        bench_to_c_str_unchecked(b, s_short)
+        bench_to_c_str_unchecked(b, S_SHORT)
     }
 
     #[bench]
     fn bench_to_c_str_unchecked_medium(b: &mut Bencher) {
-        bench_to_c_str_unchecked(b, s_medium)
+        bench_to_c_str_unchecked(b, S_MEDIUM)
     }
 
     #[bench]
     fn bench_to_c_str_unchecked_long(b: &mut Bencher) {
-        bench_to_c_str_unchecked(b, s_long)
+        bench_to_c_str_unchecked(b, S_LONG)
     }
 
     fn bench_with_c_str(b: &mut Bencher, s: &str) {
@@ -795,17 +795,17 @@ mod bench {
 
     #[bench]
     fn bench_with_c_str_short(b: &mut Bencher) {
-        bench_with_c_str(b, s_short)
+        bench_with_c_str(b, S_SHORT)
     }
 
     #[bench]
     fn bench_with_c_str_medium(b: &mut Bencher) {
-        bench_with_c_str(b, s_medium)
+        bench_with_c_str(b, S_MEDIUM)
     }
 
     #[bench]
     fn bench_with_c_str_long(b: &mut Bencher) {
-        bench_with_c_str(b, s_long)
+        bench_with_c_str(b, S_LONG)
     }
 
     fn bench_with_c_str_unchecked(b: &mut Bencher, s: &str) {
@@ -818,16 +818,16 @@ mod bench {
 
     #[bench]
     fn bench_with_c_str_unchecked_short(b: &mut Bencher) {
-        bench_with_c_str_unchecked(b, s_short)
+        bench_with_c_str_unchecked(b, S_SHORT)
     }
 
     #[bench]
     fn bench_with_c_str_unchecked_medium(b: &mut Bencher) {
-        bench_with_c_str_unchecked(b, s_medium)
+        bench_with_c_str_unchecked(b, S_MEDIUM)
     }
 
     #[bench]
     fn bench_with_c_str_unchecked_long(b: &mut Bencher) {
-        bench_with_c_str_unchecked(b, s_long)
+        bench_with_c_str_unchecked(b, S_LONG)
     }
 }

@@ -26,33 +26,33 @@ pub fn foo(_: [int, ..(3 as uint)]) { }
 
 pub fn bar() {
     static FOO: uint = ((5u as uint) - (4u as uint) as uint);
-    let _: [(), ..(FOO as uint)] = ([(() as ())] as [(), .. 1]);
+    let _: [(), ..(FOO as uint)] = ([(() as ())] as [(), ..1]);
 
-    let _: [(), ..(1u as uint)] = ([(() as ())] as [(), .. 1]);
+    let _: [(), ..(1u as uint)] = ([(() as ())] as [(), ..1]);
 
     let _ =
-        (((&((([(1i as int), (2 as int), (3 as int)] as [int, .. 3])) as
-                [int, .. 3]) as &[int, .. 3]) as *const _ as
-             *const [int, .. 3]) as *const [int, ..(3u as uint)] as
-            *const [int, .. 3]);
+        (((&((([(1i as int), (2 as int), (3 as int)] as [int, ..3])) as
+                [int, ..3]) as &[int, ..3]) as *const _ as *const [int, ..3])
+            as *const [int, ..(3u as uint)] as *const [int, ..3]);
+
     (match (() as ()) {
          () => {
              #[inline]
              #[allow(dead_code)]
              static __STATIC_FMTSTR: [&'static str, ..(1u as uint)] =
-                 ([("test" as &'static str)] as [&'static str, .. 1]);
+                 ([("test" as &'static str)] as [&'static str, ..1]);
              let __args_vec =
-                 (&([] as [core::fmt::Argument<'_>, .. 0]) as
-                     &[core::fmt::Argument<'_>, .. 0]);
+                 (&([] as [core::fmt::Argument<'_>, ..0]) as
+                     &[core::fmt::Argument<'_>, ..0]);
              let __args =
                  (unsafe {
                       ((::std::fmt::Arguments::new as
                            unsafe fn(&'static [&'static str], &'a [core::fmt::Argument<'a>]) -> core::fmt::Arguments<'a>)((__STATIC_FMTSTR
                                                                                                                               as
-                                                                                                                              [&'static str, .. 1]),
+                                                                                                                              [&'static str, ..1]),
                                                                                                                           (__args_vec
                                                                                                                               as
-                                                                                                                              &[core::fmt::Argument<'_>, .. 0]))
+                                                                                                                              &[core::fmt::Argument<'_>, ..0]))
                           as core::fmt::Arguments<'_>)
                   } as core::fmt::Arguments<'_>);
 
@@ -83,8 +83,8 @@ pub fn id<T>(x: T) -> T { (x as T) }
 pub fn use_id() {
     let _ =
         ((id::<[int, ..(3u as uint)]> as
-             fn([int, .. 3]) -> [int, .. 3])(([(1 as int), (2 as int),
-                                               (3 as int)] as [int, .. 3])) as
-            [int, .. 3]);
+             fn([int, ..3]) -> [int, ..3])(([(1 as int), (2 as int),
+                                             (3 as int)] as [int, ..3])) as
+            [int, ..3]);
 }
 fn main() { }
