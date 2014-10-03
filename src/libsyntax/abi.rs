@@ -47,7 +47,9 @@ pub enum Architecture {
     Mipsel
 }
 
+#[allow(non_uppercase_statics)]
 static IntelBits: u32 = (1 << (X86 as uint)) | (1 << (X86_64 as uint));
+#[allow(non_uppercase_statics)]
 static ArmBits: u32 = (1 << (Arm as uint));
 
 pub struct AbiData {
@@ -70,6 +72,7 @@ pub enum AbiArchitecture {
     Archs(u32)
 }
 
+#[allow(non_uppercase_statics)]
 static AbiDatas: &'static [AbiData] = &[
     // Platform-specific ABIs
     AbiData {abi: Cdecl, name: "cdecl", abi_arch: Archs(IntelBits)},

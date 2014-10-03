@@ -3402,9 +3402,10 @@ impl<'a> Parser<'a> {
                        binding_mode: ast::BindingMode)
                        -> ast::Pat_ {
         if !is_plain_ident(&self.token) {
-            let last_span = self.last_span;
-            self.span_fatal(last_span,
-                            "expected identifier, found path");
+            let span = self.span;
+            let tok_str = self.this_token_to_string();
+            self.span_fatal(span,
+                            format!("expected identifier, found `{}`", tok_str).as_slice());
         }
         let ident = self.parse_ident();
         let last_span = self.last_span;

@@ -173,6 +173,7 @@ impl fmt::Show for ParseError {
 }
 
 // Length of each hyphenated group in hex digits
+#[allow(non_uppercase_statics)]
 static UuidGroupLens: [uint, ..5] = [8u, 4u, 4u, 4u, 12u];
 
 /// UUID support

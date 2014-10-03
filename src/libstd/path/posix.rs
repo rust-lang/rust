@@ -457,7 +457,9 @@ fn normalize_helper<'a>(v: &'a [u8], is_abs: bool) -> Option<Vec<&'a [u8]>> {
     }
 }
 
+#[allow(non_uppercase_statics)]
 static dot_static: &'static [u8] = b".";
+#[allow(non_uppercase_statics)]
 static dot_dot_static: &'static [u8] = b"..";
 
 #[cfg(test)]
