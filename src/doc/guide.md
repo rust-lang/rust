@@ -3993,7 +3993,7 @@ Let's make a closure:
 ```{rust}
 let add_one = |x| { 1i + x };
 
-println!("The 5 plus 1 is {}.", add_one(5i));
+println!("The sum of 5 plus 1 is {}.", add_one(5i));
 ```
 
 We create a closure using the `|...| { ... }` syntax, and then we create a
@@ -4088,7 +4088,7 @@ fn main() {
 }
 ```
 
-Let's break example down, starting with `main`:
+Let's break the example down, starting with `main`:
 
 ```{rust}
 let square = |x: int| { x * x };
