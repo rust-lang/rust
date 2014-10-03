@@ -2084,7 +2084,7 @@ fn main() {
     match cmp(input, secret_number) {
         Less    => println!("Too small!"),
         Greater => println!("Too big!"),
-        Equal   => { println!("You win!"); },
+        Equal   => println!("You win!"),
     }
 }
 
@@ -2176,14 +2176,12 @@ fn main() {
                            .expect("Failed to read line");
     let input_num: Option<uint> = from_str(input.as_slice());
 
-
-
     println!("You guessed: {}", input_num);
 
     match cmp(input_num, secret_number) {
         Less    => println!("Too small!"),
         Greater => println!("Too big!"),
-        Equal   => { println!("You win!"); },
+        Equal   => println!("You win!"),
     }
 }
 
@@ -2241,7 +2239,7 @@ fn main() {
     match cmp(num, secret_number) {
         Less    => println!("Too small!"),
         Greater => println!("Too big!"),
-        Equal   => { println!("You win!"); },
+        Equal   => println!("You win!"),
     }
 }
 
@@ -2307,7 +2305,7 @@ fn main() {
     match cmp(num, secret_number) {
         Less    => println!("Too small!"),
         Greater => println!("Too big!"),
-        Equal   => { println!("You win!"); },
+        Equal   => println!("You win!"),
     }
 }
 
@@ -2382,7 +2380,7 @@ fn main() {
         match cmp(num, secret_number) {
             Less    => println!("Too small!"),
             Greater => println!("Too big!"),
-            Equal   => { println!("You win!"); },
+            Equal   => println!("You win!"),
         }
     }
 }
