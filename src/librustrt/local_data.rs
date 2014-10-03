@@ -416,37 +416,37 @@ mod tests {
 
     #[test]
     fn test_tls_multitask() {
-        static my_key: Key<String> = &KeyValueKey;
-        my_key.replace(Some("parent data".to_string()));
+        static MY_KEY: Key<String> = &KeyValueKey;
+        MY_KEY.replace(Some("parent data".to_string()));
         task::spawn(proc() {
             // TLD shouldn't carry over.
-            assert!(my_key.get().is_none());
-            my_key.replace(Some("child data".to_string()));
-            assert!(my_key.get().as_ref().unwrap().as_slice() == "child data");
+            assert!(MY_KEY.get().is_none());
+            MY_KEY.replace(Some("child data".to_string()));
+            assert!(MY_KEY.get().as_ref().unwrap().as_slice() == "child data");
             // should be cleaned up for us
         });
 
         // Must work multiple times
-        assert!(my_key.get().unwrap().as_slice() == "parent data");
-        assert!(my_key.get().unwrap().as_slice() == "parent data");
-        assert!(my_key.get().unwrap().as_slice() == "parent data");
+        assert!(MY_KEY.get().unwrap().as_slice() == "parent data");
+        assert!(MY_KEY.get().unwrap().as_slice() == "parent data");
+        assert!(MY_KEY.get().unwrap().as_slice() == "parent data");
     }
 
     #[test]
     fn test_tls_overwrite() {
-        static my_key: Key<String> = &KeyValueKey;
-        my_key.replace(Some("first data".to_string()));
-        my_key.replace(Some("next data".to_string())); // Shouldn't leak.
-        assert!(my_key.get().unwrap().as_slice() == "next data");
+        static MY_KEY: Key<String> = &KeyValueKey;
+        MY_KEY.replace(Some("first data".to_string()));
+        MY_KEY.replace(Some("next data".to_string())); // Shouldn't leak.
+        assert!(MY_KEY.get().unwrap().as_slice() == "next data");
     }
 
     #[test]
     fn test_tls_pop() {
-        static my_key: Key<String> = &KeyValueKey;
-        my_key.replace(Some("weasel".to_string()));
-        assert!(my_key.replace(None).unwrap() == "weasel".to_string());
+        static MY_KEY: Key<String> = &KeyValueKey;
+        MY_KEY.replace(Some("weasel".to_string()));
+        assert!(MY_KEY.replace(None).unwrap() == "weasel".to_string());
         // Pop must remove the data from the map.
-        assert!(my_key.replace(None).is_none());
+        assert!(MY_KEY.replace(None).is_none());
     }
 
     #[test]
@@ -457,58 +457,58 @@ mod tests {
         // to get recorded as something within a rust stack segment. Then a
         // subsequent upcall (esp. for logging, think vsnprintf) would run on
         // a stack smaller than 1 MB.
-        static my_key: Key<String> = &KeyValueKey;
+        static MY_KEY: Key<String> = &KeyValueKey;
         task::spawn(proc() {
-            my_key.replace(Some("hax".to_string()));
+            MY_KEY.replace(Some("hax".to_string()));
         });
     }
 
     #[test]
     fn test_tls_multiple_types() {
-        static str_key: Key<String> = &KeyValueKey;
-        static box_key: Key<Box<int>> = &KeyValueKey;
-        static int_key: Key<int> = &KeyValueKey;
+        static STR_KEY: Key<String> = &KeyValueKey;
+        static BOX_KEY: Key<Box<int>> = &KeyValueKey;
+        static INT_KEY: Key<int> = &KeyValueKey;
         task::spawn(proc() {
-            str_key.replace(Some("string data".to_string()));
-            box_key.replace(Some(box 0));
-            int_key.replace(Some(42));
+            STR_KEY.replace(Some("string data".to_string()));
+            BOX_KEY.replace(Some(box 0));
+            INT_KEY.replace(Some(42));
         });
     }
 
     #[test]
     fn test_tls_overwrite_multiple_types() {
-        static str_key: Key<String> = &KeyValueKey;
-        static box_key: Key<Box<int>> = &KeyValueKey;
-        static int_key: Key<int> = &KeyValueKey;
+        static STR_KEY: Key<String> = &KeyValueKey;
+        static BOX_KEY: Key<Box<int>> = &KeyValueKey;
+        static INT_KEY: Key<int> = &KeyValueKey;
         task::spawn(proc() {
-            str_key.replace(Some("string data".to_string()));
-            str_key.replace(Some("string data 2".to_string()));
-            box_key.replace(Some(box 0));
-            box_key.replace(Some(box 1));
-            int_key.replace(Some(42));
+            STR_KEY.replace(Some("string data".to_string()));
+            STR_KEY.replace(Some("string data 2".to_string()));
+            BOX_KEY.replace(Some(box 0));
+            BOX_KEY.replace(Some(box 1));
+            INT_KEY.replace(Some(42));
             // This could cause a segfault if overwriting-destruction is done
             // with the crazy polymorphic transmute rather than the provided
             // finaliser.
-            int_key.replace(Some(31337));
+            INT_KEY.replace(Some(31337));
         });
     }
 
     #[test]
     #[should_fail]
     fn test_tls_cleanup_on_failure() {
-        static str_key: Key<String> = &KeyValueKey;
-        static box_key: Key<Box<int>> = &KeyValueKey;
-        static int_key: Key<int> = &KeyValueKey;
-        str_key.replace(Some("parent data".to_string()));
-        box_key.replace(Some(box 0));
+        static STR_KEY: Key<String> = &KeyValueKey;
+        static BOX_KEY: Key<Box<int>> = &KeyValueKey;
+        static INT_KEY: Key<int> = &KeyValueKey;
+        STR_KEY.replace(Some("parent data".to_string()));
+        BOX_KEY.replace(Some(box 0));
         task::spawn(proc() {
-            str_key.replace(Some("string data".to_string()));
-            box_key.replace(Some(box 2));
-            int_key.replace(Some(42));
+            STR_KEY.replace(Some("string data".to_string()));
+            BOX_KEY.replace(Some(box 2));
+            INT_KEY.replace(Some(42));
             fail!();
         });
         // Not quite nondeterministic.
-        int_key.replace(Some(31337));
+        INT_KEY.replace(Some(31337));
         fail!();
     }
 
@@ -523,9 +523,9 @@ mod tests {
                 self.tx.send(());
             }
         }
-        static key: Key<Dropper> = &KeyValueKey;
+        static KEY: Key<Dropper> = &KeyValueKey;
         let _ = task::try(proc() {
-            key.replace(Some(Dropper{ tx: tx }));
+            KEY.replace(Some(Dropper{ tx: tx }));
         });
         // At this point the task has been cleaned up and the TLD dropped.
         // If the channel doesn't have a value now, then the Sender was leaked.
@@ -534,56 +534,56 @@ mod tests {
 
     #[test]
     fn test_static_pointer() {
-        static key: Key<&'static int> = &KeyValueKey;
+        static KEY: Key<&'static int> = &KeyValueKey;
         static VALUE: int = 0;
-        key.replace(Some(&VALUE));
+        KEY.replace(Some(&VALUE));
     }
 
     #[test]
     fn test_owned() {
-        static key: Key<Box<int>> = &KeyValueKey;
-        key.replace(Some(box 1));
+        static KEY: Key<Box<int>> = &KeyValueKey;
+        KEY.replace(Some(box 1));
 
         {
-            let k1 = key.get().unwrap();
-            let k2 = key.get().unwrap();
-            let k3 = key.get().unwrap();
+            let k1 = KEY.get().unwrap();
+            let k2 = KEY.get().unwrap();
+            let k3 = KEY.get().unwrap();
             assert_eq!(**k1, 1);
             assert_eq!(**k2, 1);
             assert_eq!(**k3, 1);
         }
-        key.replace(Some(box 2));
-        assert_eq!(**key.get().unwrap(), 2);
+        KEY.replace(Some(box 2));
+        assert_eq!(**KEY.get().unwrap(), 2);
     }
 
     #[test]
     fn test_same_key_type() {
-        static key1: Key<int> = &KeyValueKey;
-        static key2: Key<int> = &KeyValueKey;
-        static key3: Key<int> = &KeyValueKey;
-        static key4: Key<int> = &KeyValueKey;
-        static key5: Key<int> = &KeyValueKey;
-        key1.replace(Some(1));
-        key2.replace(Some(2));
-        key3.replace(Some(3));
-        key4.replace(Some(4));
-        key5.replace(Some(5));
+        static KEY1: Key<int> = &KeyValueKey;
+        static KEY2: Key<int> = &KeyValueKey;
+        static KEY3: Key<int> = &KeyValueKey;
+        static KEY4: Key<int> = &KeyValueKey;
+        static KEY5: Key<int> = &KeyValueKey;
+        KEY1.replace(Some(1));
+        KEY2.replace(Some(2));
+        KEY3.replace(Some(3));
+        KEY4.replace(Some(4));
+        KEY5.replace(Some(5));
 
-        assert_eq!(*key1.get().unwrap(), 1);
-        assert_eq!(*key2.get().unwrap(), 2);
-        assert_eq!(*key3.get().unwrap(), 3);
-        assert_eq!(*key4.get().unwrap(), 4);
-        assert_eq!(*key5.get().unwrap(), 5);
+        assert_eq!(*KEY1.get().unwrap(), 1);
+        assert_eq!(*KEY2.get().unwrap(), 2);
+        assert_eq!(*KEY3.get().unwrap(), 3);
+        assert_eq!(*KEY4.get().unwrap(), 4);
+        assert_eq!(*KEY5.get().unwrap(), 5);
     }
 
     #[test]
     #[should_fail]
     fn test_nested_get_set1() {
-        static key: Key<int> = &KeyValueKey;
-        assert_eq!(key.replace(Some(4)), None);
+        static KEY: Key<int> = &KeyValueKey;
+        assert_eq!(KEY.replace(Some(4)), None);
 
-        let _k = key.get();
-        key.replace(Some(4));
+        let _k = KEY.get();
+        KEY.replace(Some(4));
     }
 
     // ClearKey is a RAII class that ensures the keys are cleared from the map.
@@ -601,95 +601,95 @@ mod tests {
 
     #[bench]
     fn bench_replace_none(b: &mut test::Bencher) {
-        static key: Key<uint> = &KeyValueKey;
-        let _clear = ClearKey(key);
-        key.replace(None);
+        static KEY: Key<uint> = &KeyValueKey;
+        let _clear = ClearKey(KEY);
+        KEY.replace(None);
         b.iter(|| {
-            key.replace(None)
+            KEY.replace(None)
         });
     }
 
     #[bench]
     fn bench_replace_some(b: &mut test::Bencher) {
-        static key: Key<uint> = &KeyValueKey;
-        let _clear = ClearKey(key);
-        key.replace(Some(1u));
+        static KEY: Key<uint> = &KeyValueKey;
+        let _clear = ClearKey(KEY);
+        KEY.replace(Some(1u));
         b.iter(|| {
-            key.replace(Some(2))
+            KEY.replace(Some(2))
         });
     }
 
     #[bench]
     fn bench_replace_none_some(b: &mut test::Bencher) {
-        static key: Key<uint> = &KeyValueKey;
-        let _clear = ClearKey(key);
-        key.replace(Some(0u));
+        static KEY: Key<uint> = &KeyValueKey;
+        let _clear = ClearKey(KEY);
+        KEY.replace(Some(0u));
         b.iter(|| {
-            let old = key.replace(None).unwrap();
+            let old = KEY.replace(None).unwrap();
             let new = old + 1;
-            key.replace(Some(new))
+            KEY.replace(Some(new))
         });
     }
 
     #[bench]
     fn bench_100_keys_replace_last(b: &mut test::Bencher) {
-        static keys: [KeyValue<uint>, ..100] = [KeyValueKey, ..100];
-        let _clear = keys.iter().map(ClearKey).collect::<Vec<ClearKey<uint>>>();
-        for (i, key) in keys.iter().enumerate() {
+        static KEYS: [KeyValue<uint>, ..100] = [KeyValueKey, ..100];
+        let _clear = KEYS.iter().map(ClearKey).collect::<Vec<ClearKey<uint>>>();
+        for (i, key) in KEYS.iter().enumerate() {
             key.replace(Some(i));
         }
         b.iter(|| {
-            let key: Key<uint> = &keys[99];
+            let key: Key<uint> = &KEYS[99];
             key.replace(Some(42))
         });
     }
 
     #[bench]
     fn bench_1000_keys_replace_last(b: &mut test::Bencher) {
-        static keys: [KeyValue<uint>, ..1000] = [KeyValueKey, ..1000];
-        let _clear = keys.iter().map(ClearKey).collect::<Vec<ClearKey<uint>>>();
-        for (i, key) in keys.iter().enumerate() {
+        static KEYS: [KeyValue<uint>, ..1000] = [KeyValueKey, ..1000];
+        let _clear = KEYS.iter().map(ClearKey).collect::<Vec<ClearKey<uint>>>();
+        for (i, key) in KEYS.iter().enumerate() {
             key.replace(Some(i));
         }
         b.iter(|| {
-            let key: Key<uint> = &keys[999];
+            let key: Key<uint> = &KEYS[999];
             key.replace(Some(42))
         });
-        for key in keys.iter() { key.clear(); }
+        for key in KEYS.iter() { key.clear(); }
     }
 
     #[bench]
     fn bench_get(b: &mut test::Bencher) {
-        static key: Key<uint> = &KeyValueKey;
-        let _clear = ClearKey(key);
-        key.replace(Some(42));
+        static KEY: Key<uint> = &KeyValueKey;
+        let _clear = ClearKey(KEY);
+        KEY.replace(Some(42));
         b.iter(|| {
-            key.get()
+            KEY.get()
         });
     }
 
     #[bench]
     fn bench_100_keys_get_last(b: &mut test::Bencher) {
-        static keys: [KeyValue<uint>, ..100] = [KeyValueKey, ..100];
-        let _clear = keys.iter().map(ClearKey).collect::<Vec<ClearKey<uint>>>();
-        for (i, key) in keys.iter().enumerate() {
+        static KEYS: [KeyValue<uint>, ..100] = [KeyValueKey, ..100];
+        let _clear = KEYS.iter().map(ClearKey).collect::<Vec<ClearKey<uint>>>();
+        for (i, key) in KEYS.iter().enumerate() {
             key.replace(Some(i));
         }
         b.iter(|| {
-            let key: Key<uint> = &keys[99];
+            let key: Key<uint> = &KEYS[99];
             key.get()
         });
     }
 
     #[bench]
     fn bench_1000_keys_get_last(b: &mut test::Bencher) {
-        static keys: [KeyValue<uint>, ..1000] = [KeyValueKey, ..1000];
-        let _clear = keys.iter().map(ClearKey).collect::<Vec<ClearKey<uint>>>();
-        for (i, key) in keys.iter().enumerate() {
+        static KEYS: [KeyValue<uint>, ..1000] = [KeyValueKey, ..1000];
+        let _clear = KEYS.iter().map(ClearKey).collect::<Vec<ClearKey<uint>>>();
+        for (i, key) in KEYS.iter().enumerate() {
             key.replace(Some(i));
         }
         b.iter(|| {
-            let key: Key<uint> = &keys[999];
+            let key: Key<uint> = &KEYS[999];
             key.get()
         });
     }

@@ -8,15 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Attempt to coerce from unsized to sized.
+#![deny(deprecated)]
 
-struct Fat<Sized? T> {
-    ptr: T
+struct Foo;
+
+impl Foo {
+    #[deprecated]
+    fn foo(self) {}
 }
 
-pub fn main() {
-    // With a vec of ints.
-    let f1: &Fat<[int]> = &Fat { ptr: [1, 2, 3] };
-    let f2: &Fat<[int, ..3]> = f1;
-    //~^ ERROR mismatched types: expected `&Fat<[int, ..3]>`, found `&Fat<[int]>`
+fn main() {
+    Foo
+    .foo(); //~ ERROR use of deprecated item
 }

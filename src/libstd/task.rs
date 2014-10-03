@@ -569,10 +569,10 @@ mod test {
         // climbing the task tree to dereference each ancestor. (See #1789)
         // (well, it would if the constant were 8000+ - I lowered it to be more
         // valgrind-friendly. try this at home, instead..!)
-        static generations: uint = 16;
+        static GENERATIONS: uint = 16;
         fn child_no(x: uint) -> proc(): Send {
             return proc() {
-                if x < generations {
+                if x < GENERATIONS {
                     TaskBuilder::new().spawn(child_no(x+1));
                 }
             }
