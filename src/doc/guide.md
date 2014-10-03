@@ -3621,7 +3621,7 @@ let x = box 5i;
 ```
 
 This allocates an integer `5` on the heap, and creates a binding `x` that
-refers to it.. The great thing about boxed pointers is that we don't have to
+refers to it. The great thing about boxed pointers is that we don't have to
 manually free this allocation! If we write
 
 ```{rust}
