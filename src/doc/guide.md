@@ -5074,7 +5074,7 @@ The `channel()` function returns two endpoints: a `Receiver<T>` and a
 `Sender<T>`. You can use the `.send()` method on the `Sender<T>` end, and
 receive the message on the `Receiver<T>` side with the `recv()` method.  This
 method blocks until it gets a message. There's a similar method, `.try_recv()`,
-which returns an `Option<T>` and does not block.
+which returns an `Result<T, TryRecvError>` and does not block.
 
 If you want to send messages to the task as well, create two channels!
 
