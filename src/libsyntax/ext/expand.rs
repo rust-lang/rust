@@ -67,6 +67,42 @@ pub fn expand_expr(e: P<ast::Expr>, fld: &mut MacroExpander) -> P<ast::Expr> {
             fld.cx.expr(span, ast::ExprWhile(cond, body, opt_ident))
         }
 
+        // Desugar ExprWhileLet
+        // From: `[opt_ident]: while let <pat> = <expr> <body>`
+        ast::ExprWhileLet(pat, expr, body, opt_ident) => {
+            // to:
+            //
+            //   [opt_ident]: loop {
+            //     match <expr> {
+            //       <pat> => <body>,
+            //       _ => break
+            //     }
+            //   }
+
+            // `<pat> => <body>`
+            let pat_arm = {
+                let body_expr = fld.cx.expr_block(body);
+                fld.cx.arm(pat.span, vec![pat], body_expr)
+            };
+
+            // `_ => break`
+            let break_arm = {
+                let pat_under = fld.cx.pat_wild(span);
+                let break_expr = fld.cx.expr_break(span);
+                fld.cx.arm(span, vec![pat_under], break_expr)
+            };
+
+            // `match <expr> { ... }`
+            let arms = vec![pat_arm, break_arm];
+            let match_expr = fld.cx.expr(span,
+                                         ast::ExprMatch(expr, arms, ast::MatchWhileLetDesugar));
+
+            // `[opt_ident]: loop { ... }`
+            let loop_block = fld.cx.block_expr(match_expr);
+            let (loop_block, opt_ident) = expand_loop_block(loop_block, opt_ident, fld);
+            fld.cx.expr(span, ast::ExprLoop(loop_block, opt_ident))
+        }
+
         // Desugar ExprIfLet
         // From: `if let <pat> = <expr> <body> [<elseopt>]`
         ast::ExprIfLet(pat, expr, body, mut elseopt) => {
