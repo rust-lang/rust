@@ -33,7 +33,7 @@ something like:
 pandoc --from=markdown --to=html5 --number-sections -o reference.html reference.md
 ~~~~
 
-(rust.md being the Rust Reference Manual.)
+(reference.md being the Rust Reference Manual.)
 
 The syntax for pandoc flavored markdown can be found at:
 http://johnmacfarlane.net/pandoc/README.html#pandocs-markdown

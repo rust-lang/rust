@@ -921,6 +921,7 @@ do
     make_dir $h/test/doc-guide-pointers
     make_dir $h/test/doc-guide-container
     make_dir $h/test/doc-guide-tasks
+    make_dir $h/test/doc-guide-plugin
     make_dir $h/test/doc-rust
 done
 
