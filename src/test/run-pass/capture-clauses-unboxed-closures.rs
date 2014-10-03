@@ -8,13 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-test
-//
-// This is ignored because it depends on #16122.
-
 #![feature(overloaded_calls, unboxed_closures)]
 
-fn each<'a,T,F:|&mut: &'a T|>(x: &'a [T], mut f: F) {
+fn each<'a,T,F:FnMut(&'a T)>(x: &'a [T], mut f: F) {
     for val in x.iter() {
         f(val)
     }
@@ -23,7 +19,6 @@ fn each<'a,T,F:|&mut: &'a T|>(x: &'a [T], mut f: F) {
 fn main() {
     let mut sum = 0u;
     let elems = [ 1u, 2, 3, 4, 5 ];
-    each(elems, ref |&mut: val: &uint| sum += *val);
+    each(elems, |&mut: val: &uint| sum += *val);
     assert_eq!(sum, 15);
 }
-
