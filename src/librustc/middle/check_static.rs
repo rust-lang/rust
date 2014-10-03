@@ -115,10 +115,6 @@ impl<'a, 'tcx, 'v> Visitor<'v> for CheckStaticVisitor<'a, 'tcx> {
                 span_err!(self.tcx.sess, e.span, E0020,
                     "static items are not allowed to have mutable slices");
             },
-            ast::ExprUnary(ast::UnBox, _) => {
-                span_err!(self.tcx.sess, e.span, E0021,
-                    "static items are not allowed to have managed pointers");
-            }
             ast::ExprBox(..) |
             ast::ExprUnary(ast::UnUniq, _) => {
                 span_err!(self.tcx.sess, e.span, E0022,

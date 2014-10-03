@@ -182,9 +182,15 @@ mod imp {
 
     #[inline]
     pub unsafe fn reallocate_inplace(ptr: *mut u8, size: uint, align: uint,
-                                     _old_size: uint) -> bool {
+                                     old_size: uint) -> bool {
         let flags = align_to_flags(align);
-        je_xallocx(ptr as *mut c_void, size as size_t, 0, flags) == size as size_t
+        let new_size = je_xallocx(ptr as *mut c_void, size as size_t, 0, flags) as uint;
+        // checking for failure to shrink is tricky
+        if size < old_size {
+            usable_size(size, align) == new_size as uint
+        } else {
+            new_size >= size
+        }
     }
 
     #[inline]
@@ -250,9 +256,9 @@ mod imp {
     }
 
     #[inline]
-    pub unsafe fn reallocate_inplace(_ptr: *mut u8, _size: uint, _align: uint,
-                                     _old_size: uint) -> bool {
-        false
+    pub unsafe fn reallocate_inplace(_ptr: *mut u8, size: uint, _align: uint,
+                                     old_size: uint) -> bool {
+        size == old_size
     }
 
     #[inline]
@@ -312,9 +318,9 @@ mod imp {
     }
 
     #[inline]
-    pub unsafe fn reallocate_inplace(_ptr: *mut u8, _size: uint, _align: uint,
-                                     _old_size: uint) -> bool {
-        false
+    pub unsafe fn reallocate_inplace(_ptr: *mut u8, size: uint, _align: uint,
+                                     old_size: uint) -> bool {
+        size == old_size
     }
 
     #[inline]
@@ -335,9 +341,21 @@ mod imp {
 }
 
 #[cfg(test)]
-mod bench {
+mod test {
     extern crate test;
     use self::test::Bencher;
+    use heap;
+
+    #[test]
+    fn basic_reallocate_inplace_noop() {
+        unsafe {
+            let size = 4000;
+            let ptr = heap::allocate(size, 8);
+            let ret = heap::reallocate_inplace(ptr, size, 8, size);
+            heap::deallocate(ptr, size, 8);
+            assert!(ret);
+        }
+    }
 
     #[bench]
     fn alloc_owned_small(b: &mut Bencher) {

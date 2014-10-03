@@ -8,17 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-use std::gc::Gc;
-
-struct P { child: Option<Gc<P>> }
+struct P { child: Option<Box<P>> }
 trait PTrait {
-   fn getChildOption(&self) -> Option<Gc<P>>;
+   fn getChildOption(&self) -> Option<Box<P>>;
 }
 
 impl PTrait for P {
-   fn getChildOption(&self) -> Option<Gc<P>> {
-       static childVal: Gc<P> = self.child.get();
+   fn getChildOption(&self) -> Option<Box<P>> {
+       static childVal: Box<P> = self.child.get();
        //~^ ERROR attempt to use a non-constant value in a constant
        fail!();
    }

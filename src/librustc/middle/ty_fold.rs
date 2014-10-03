@@ -485,9 +485,6 @@ pub fn super_fold_mt<'tcx, T: TypeFolder<'tcx>>(this: &mut T,
 pub fn super_fold_sty<'tcx, T: TypeFolder<'tcx>>(this: &mut T,
                                                  sty: &ty::sty) -> ty::sty {
     match *sty {
-        ty::ty_box(typ) => {
-            ty::ty_box(typ.fold_with(this))
-        }
         ty::ty_uniq(typ) => {
             ty::ty_uniq(typ.fold_with(this))
         }

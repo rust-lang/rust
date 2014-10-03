@@ -12,7 +12,6 @@
 
 
 use std::rc::Rc;
-use std::gc::Gc;
 
 fn assert_copy<T:Copy>() { }
 trait Dummy { }
@@ -76,8 +75,7 @@ fn test<'a,T,U:Copy>(_: &'a int) {
     // structs containing non-POD are not ok
     assert_copy::<MyNoncopyStruct>(); //~ ERROR `core::kinds::Copy` is not implemented
 
-    // managed or ref counted types are not ok
-    assert_copy::<Gc<int>>();   //~ ERROR `core::kinds::Copy` is not implemented
+    // ref counted types are not ok
     assert_copy::<Rc<int>>();   //~ ERROR `core::kinds::Copy` is not implemented
 }
 

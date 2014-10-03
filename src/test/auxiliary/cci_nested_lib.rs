@@ -10,7 +10,6 @@
 
 
 use std::cell::RefCell;
-use std::gc::{Gc, GC};
 
 pub struct Entry<A,B> {
     key: A,
@@ -19,7 +18,7 @@ pub struct Entry<A,B> {
 
 pub struct alist<A,B> {
     eq_fn: extern "Rust" fn(A,A) -> bool,
-    data: Gc<RefCell<Vec<Entry<A,B>>>>,
+    data: Box<RefCell<Vec<Entry<A,B>>>>,
 }
 
 pub fn alist_add<A:'static,B:'static>(lst: &alist<A,B>, k: A, v: B) {
@@ -47,7 +46,7 @@ pub fn new_int_alist<B:'static>() -> alist<int, B> {
     fn eq_int(a: int, b: int) -> bool { a == b }
     return alist {
         eq_fn: eq_int,
-        data: box(GC) RefCell::new(Vec::new()),
+        data: box RefCell::new(Vec::new()),
     };
 }
 
@@ -57,6 +56,6 @@ pub fn new_int_alist_2<B:'static>() -> alist<int, B> {
     fn eq_int(a: int, b: int) -> bool { a == b }
     return alist {
         eq_fn: eq_int,
-        data: box(GC) RefCell::new(Vec::new()),
+        data: box RefCell::new(Vec::new()),
     };
 }

@@ -9,13 +9,11 @@
 // except according to those terms.
 
 
-use std::gc::{Gc, GC};
-
 enum side { mayo, catsup, vinegar }
 enum order { hamburger, fries(side), shake }
 enum meal { to_go(order), for_here(order) }
 
-fn foo(m: Gc<meal>, cond: bool) {
+fn foo(m: Box<meal>, cond: bool) {
     match *m {
       to_go(_) => { }
       for_here(_) if cond => {}
@@ -26,5 +24,5 @@ fn foo(m: Gc<meal>, cond: bool) {
 }
 
 pub fn main() {
-    foo(box(GC) for_here(hamburger), true)
+    foo(box for_here(hamburger), true)
 }

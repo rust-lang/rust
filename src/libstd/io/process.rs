@@ -958,7 +958,9 @@ mod tests {
             // don't check windows magical empty-named variables
             assert!(k.is_empty() ||
                     output.as_slice()
-                          .contains(format!("{}={}", *k, *v).as_slice()));
+                          .contains(format!("{}={}", *k, *v).as_slice()),
+                    "output doesn't contain `{}={}`\n{}",
+                    k, v, output);
         }
     }
     #[cfg(target_os="android")]

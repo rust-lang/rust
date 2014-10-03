@@ -9,8 +9,6 @@
 // except according to those terms.
 
 
-use std::gc::GC;
-
 struct Font {
     fontbuf: uint,
     cairo_font: uint,
@@ -31,5 +29,5 @@ fn Font() -> Font {
 }
 
 pub fn main() {
-    let _f = box(GC) Font();
+    let _f = box Font();
 }

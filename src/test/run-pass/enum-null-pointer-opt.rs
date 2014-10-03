@@ -9,7 +9,6 @@
 // except according to those terms.
 
 
-use std::gc::Gc;
 use std::mem::size_of;
 
 trait Trait {}
@@ -33,9 +32,8 @@ fn main() {
     assert_eq!(size_of::<&Trait>(), size_of::<Option<&Trait>>());
     assert_eq!(size_of::<&mut Trait>(), size_of::<Option<&mut Trait>>());
 
-    // Pointers - Box<T> / Gc<T>
+    // Pointers - Box<T>
     assert_eq!(size_of::<Box<int>>(), size_of::<Option<Box<int>>>());
-    assert_eq!(size_of::<Gc<int>>(), size_of::<Option<Gc<int>>>());
 
 
     // The optimization can't apply to raw pointers

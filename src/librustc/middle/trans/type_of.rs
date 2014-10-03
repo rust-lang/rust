@@ -174,7 +174,6 @@ pub fn sizing_type_of(cx: &CrateContext, t: ty::t) -> Type {
         ty::ty_uint(t) => Type::uint_from_ty(cx, t),
         ty::ty_float(t) => Type::float_from_ty(cx, t),
 
-        ty::ty_box(..) => Type::i8p(cx),
         ty::ty_uniq(ty) | ty::ty_rptr(_, ty::mt{ty, ..}) | ty::ty_ptr(ty::mt{ty, ..}) => {
             if ty::type_is_sized(cx.tcx(), ty) {
                 Type::i8p(cx)
@@ -298,9 +297,6 @@ pub fn type_of(cx: &CrateContext, t: ty::t) -> Type {
         let repr = adt::represent_type(cx, t);
         let name = llvm_type_name(cx, an_unboxed_closure, did, []);
         adt::incomplete_type_of(cx, &*repr, name.as_slice())
-      }
-      ty::ty_box(typ) => {
-          Type::at_box(cx, type_of(cx, typ)).ptr_to()
       }
 
       ty::ty_uniq(ty) | ty::ty_rptr(_, ty::mt{ty, ..}) | ty::ty_ptr(ty::mt{ty, ..}) => {

@@ -9,10 +9,10 @@
 // except according to those terms.
 
 
-use std::gc::Gc;
+use std::rc::Rc;
 
 struct Foo {
-    f: Gc<int>,
+    f: Rc<int>,
 }
 
 impl Drop for Foo {

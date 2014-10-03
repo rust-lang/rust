@@ -13,9 +13,9 @@
 
 use std::cell::RefCell;
 use std::collections::HashMap;
-use std::gc::Gc;
+use std::rc::Rc;
 
-pub type header_map = HashMap<String, Gc<RefCell<Vec<Gc<String>>>>>;
+pub type header_map = HashMap<String, Rc<RefCell<Vec<Rc<String>>>>>;
 
 // the unused ty param is necessary so this gets monomorphized
 pub fn request<T>(req: &header_map) {

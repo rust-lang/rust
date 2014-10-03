@@ -9,8 +9,6 @@
 // except according to those terms.
 
 
-use std::gc::GC;
-
 struct X { x: int, y: int, z: int }
 
-pub fn main() { let x = box(GC) X {x: 1, y: 2, z: 3}; let y = x; assert!((y.y == 2)); }
+pub fn main() { let x = box X {x: 1, y: 2, z: 3}; let y = x; assert!((y.y == 2)); }

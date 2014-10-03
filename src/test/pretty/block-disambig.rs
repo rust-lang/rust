@@ -14,34 +14,33 @@
 
 
 use std::cell::Cell;
-use std::gc::GC;
 
-fn test1() { let val = box(GC) 0i; { } *val; }
+fn test1() { let val = &0i; { } *val; }
 
-fn test2() -> int { let val = box(GC) 0i; { } *val }
+fn test2() -> int { let val = &0i; { } *val }
 
 struct S { eax: int }
 
 fn test3() {
-    let regs = box(GC) Cell::new(S {eax: 0});
+    let regs = &Cell::new(S {eax: 0});
     match true { true => { } _ => { } }
     regs.set(S {eax: 1});
 }
 
-fn test4() -> bool { let regs = box(GC) true; if true { } *regs || false }
+fn test4() -> bool { let regs = &true; if true { } *regs || false }
 
 fn test5() -> (int, int) { { } (0, 1) }
 
 fn test6() -> bool { { } (true || false) && true }
 
 fn test7() -> uint {
-    let regs = box(GC) 0i;
+    let regs = &0i;
     match true { true => { } _ => { } }
     (*regs < 2) as uint
 }
 
 fn test8() -> int {
-    let val = box(GC) 0i;
+    let val = &0i;
     match true {
         true => { }
         _    => { }
@@ -54,14 +53,14 @@ fn test8() -> int {
 }
 
 fn test9() {
-    let regs = box(GC) Cell::new(0i);
+    let regs = &Cell::new(0i);
     match true { true => { } _ => { } } regs.set(regs.get() + 1);
 }
 
 fn test10() -> int {
-    let regs = box(GC) vec!(0i);
+    let regs = vec!(0i);
     match true { true => { } _ => { } }
-    *(*regs).get(0)
+    regs[0]
 }
 
 fn test11() -> Vec<int> { if true { } vec!(1, 2) }

@@ -9,8 +9,6 @@
 // except according to those terms.
 
 
-use std::gc::Gc;
-
 struct point {
     x: int,
     y: int,
@@ -20,7 +18,7 @@ fn x_coord<'r>(p: &'r point) -> &'r int {
     return &p.x;
 }
 
-fn foo<'a>(p: Gc<point>) -> &'a int {
+fn foo<'a>(p: Box<point>) -> &'a int {
     let xc = x_coord(&*p); //~ ERROR `*p` does not live long enough
     assert_eq!(*xc, 3);
     return xc;

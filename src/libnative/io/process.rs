@@ -583,10 +583,11 @@ fn spawn_process_os(cfg: ProcessConfig,
                 let mut bytes = [0, ..4];
                 return match input.inner_read(bytes) {
                     Ok(4) => {
-                        let errno = (bytes[0] << 24) as i32 |
-                                    (bytes[1] << 16) as i32 |
-                                    (bytes[2] <<  8) as i32 |
-                                    (bytes[3] <<  0) as i32;
+                        let errno = (bytes[0] as i32 << 24) |
+                                    (bytes[1] as i32 << 16) |
+                                    (bytes[2] as i32 <<  8) |
+                                    (bytes[3] as i32 <<  0);
+
                         Err(IoError {
                             code: errno as uint,
                             detail: None,
@@ -637,10 +638,10 @@ fn spawn_process_os(cfg: ProcessConfig,
             fn fail(output: &mut file::FileDesc) -> ! {
                 let errno = os::errno();
                 let bytes = [
-                    (errno << 24) as u8,
-                    (errno << 16) as u8,
-                    (errno <<  8) as u8,
-                    (errno <<  0) as u8,
+                    (errno >> 24) as u8,
+                    (errno >> 16) as u8,
+                    (errno >>  8) as u8,
+                    (errno >>  0) as u8,
                 ];
                 assert!(output.inner_write(bytes).is_ok());
                 unsafe { libc::_exit(1) }

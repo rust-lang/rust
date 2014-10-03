@@ -9,8 +9,6 @@
 // except according to those terms.
 
 
-use std::gc::Gc;
-
 pub struct Foo {
     a: int,
 }
@@ -20,7 +18,7 @@ struct Bar<'a> {
     b: &'a Foo,
 }
 
-fn check(a: Gc<Foo>) {
+fn check(a: Box<Foo>) {
     let _ic = Bar{ b: &*a, a: box None };
 }
 
