@@ -1561,7 +1561,7 @@ println!("The second name is: {}", names[1]);
 
 These subscripts start at zero, like in most programming languages, so the
 first name is `names[0]` and the second name is `names[1]`. The above example
-prints `The second name is Brian`.
+prints `The second name is: Brian`.
 
 There's a whole lot more to vectors, but that's enough to get started. We have
 now learned all of the most basic Rust concepts. We're ready to start building
