@@ -4209,7 +4209,7 @@ loop {
     match range.next() {
         Some(x) => {
             println!("{}", x);
-        }
+        },
         None => { break }
     }
 }
