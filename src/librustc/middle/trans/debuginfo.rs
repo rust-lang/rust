@@ -3496,6 +3496,11 @@ fn populate_scope_map(cx: &CrateContext,
                 })
             }
 
+            ast::ExprWhileLet(..) => {
+                cx.sess().span_bug(exp.span, "debuginfo::populate_scope_map() - \
+                                              Found unexpanded while-let.");
+            }
+
             ast::ExprForLoop(ref pattern, ref head, ref body, _) => {
                 walk_expr(cx, &**head, scope_stack, scope_map);
 

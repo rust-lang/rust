@@ -294,6 +294,7 @@ mod svh_visitor {
 
             // just syntactic artifacts, expanded away by time of SVH.
             ExprIfLet(..)            => unreachable!(),
+            ExprWhileLet(..)         => unreachable!(),
             ExprMac(..)              => unreachable!(),
         }
     }
