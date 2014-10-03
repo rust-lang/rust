@@ -2503,6 +2503,8 @@ The currently implemented features of the reference compiler are:
 
 * `if_let` - Allows use of the `if let` syntax.
 
+* `while_let` - Allows use of the `while let` syntax.
+
 * `intrinsics` - Allows use of the "rust-intrinsics" ABI. Compiler intrinsics
                  are inherently unstable and no promise about them is made.
 
