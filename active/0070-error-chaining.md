@@ -171,6 +171,13 @@ implementing `Error`, which makes it possible to read off a kind of
 abstract backtrace (often more immediately helpful than a full
 backtrace).
 
+The `Any` bound is needed to allow *downcasting* of errors. This RFC
+stipulates that it must be possible to downcast errors in the style of
+the `Any` trait, but leaves unspecified the exact implementation
+strategy.  (If trait object upcasting was available, one could simply
+upcast to `Any`; otherwise, we will likely need to duplicate the
+`downcast` APIs as blanket `impl`s on `Error` objects.)
+
 It's worth comparing the `Error` trait to the most widespread error
 type in `libstd`, `IoError`:
 
