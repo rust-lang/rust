@@ -39,7 +39,7 @@ representation as a primitive. This allows using Rust `enum`s in FFI where C
 `enum`s are also used, for most use cases. The attribute can also be applied
 to `struct`s to get the same layout as a C struct would.
 
-[repr]: http://doc.rust-lang.org/rust.html#miscellaneous-attributes
+[repr]: reference.html#miscellaneous-attributes
 
 ## There is no GC
 
@@ -56,7 +56,7 @@ Types which are [`Sync`][sync] are thread-safe when multiple shared
 references to them are used concurrently. Types which are not `Sync` are not
 thread-safe, and thus when used in a global require unsafe code to use.
 
-[sync]: http://doc.rust-lang.org/core/kinds/trait.Sync.html
+[sync]: core/kinds/trait.Sync.html
 
 ### If mutable static items that implement `Sync` are safe, why is taking &mut SHARABLE unsafe?
 
@@ -139,8 +139,8 @@ and explicitly calling the `clone` method. Making user-defined copy operators
 explicit surfaces the underlying complexity, forcing the developer to opt-in
 to potentially expensive operations.
 
-[copy]: http://doc.rust-lang.org/core/kinds/trait.Copy.html
-[clone]: http://doc.rust-lang.org/core/clone/trait.Clone.html
+[copy]: core/kinds/trait.Copy.html
+[clone]: core/clone/trait.Clone.html
 
 ## No move constructors
 
