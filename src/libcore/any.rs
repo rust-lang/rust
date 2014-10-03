@@ -91,19 +91,14 @@ pub enum Void { }
 /// Every type with no non-`'static` references implements `Any`, so `Any` can
 /// be used as a trait object to emulate the effects dynamic typing.
 #[stable]
-pub trait Any: AnyPrivate + 'static {}
-
-/// An inner trait to ensure that only this module can call `get_type_id()`.
-pub trait AnyPrivate {
+pub trait Any: 'static {
     /// Get the `TypeId` of `self`
     fn get_type_id(&self) -> TypeId;
 }
 
-impl<T: 'static> AnyPrivate for T {
+impl<T: 'static> Any for T {
     fn get_type_id(&self) -> TypeId { TypeId::of::<T>() }
 }
-
-impl<T: 'static + AnyPrivate> Any for T {}
 
 ///////////////////////////////////////////////////////////////////////////////
 // Extension methods for Any trait objects.
