@@ -4732,8 +4732,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_item_const(&mut self) -> ItemInfo {
-        let m = if self.eat_keyword(keywords::Mut) {MutMutable} else {MutImmutable};
+    fn parse_item_const(&mut self, m: Mutability) -> ItemInfo {
         let id = self.parse_ident();
         self.expect(&token::COLON);
         let ty = self.parse_ty(true);
@@ -5289,7 +5288,26 @@ impl<'a> Parser<'a> {
         if self.is_keyword(keywords::Static) {
             // STATIC ITEM
             self.bump();
-            let (ident, item_, extra_attrs) = self.parse_item_const();
+            let m = if self.eat_keyword(keywords::Mut) {MutMutable} else {MutImmutable};
+            let (ident, item_, extra_attrs) = self.parse_item_const(m);
+            let last_span = self.last_span;
+            let item = self.mk_item(lo,
+                                    last_span.hi,
+                                    ident,
+                                    item_,
+                                    visibility,
+                                    maybe_append(attrs, extra_attrs));
+            return IoviItem(item);
+        }
+        if self.is_keyword(keywords::Const) {
+            // CONST ITEM
+            self.bump();
+            if self.eat_keyword(keywords::Mut) {
+                let last_span = self.last_span;
+                self.span_err(last_span, "const globals cannot be mutable, \
+                                          did you mean to declare a static?");
+            }
+            let (ident, item_, extra_attrs) = self.parse_item_const(MutImmutable);
             let last_span = self.last_span;
             let item = self.mk_item(lo,
                                     last_span.hi,
