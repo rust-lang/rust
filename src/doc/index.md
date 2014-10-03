@@ -63,6 +63,7 @@ a guide that can help you out:
 * [Macros](guide-macros.html)
 * [Testing](guide-testing.html)
 * [Rust's Runtime](guide-runtime.html)
+* [Compiler Plugins](guide-plugin.html)
 
 # Tools
 

@@ -1,5 +1,14 @@
 % The Rust Macros Guide
 
+<div class="unstable-feature">
+<b>Warning:</b> There are currently various problems with invoking macros, how
+they interact with their environment, and how they are used outside of the
+location in which they are defined. Macro definitions are likely to change
+slightly in the future. For this reason, they are hidden behind the
+<code>macro_rules</code> <a href="reference.html#compiler-features">feature
+attribute</a>.
+</div>
+
 # Introduction
 
 Functions are the primary tool that programmers can use to build abstractions.
@@ -448,6 +457,66 @@ fn main() {
 The two `'x` names did not clash, which would have caused the loop
 to print "I am never printed" and to run forever.
 
+# Scoping and macro import/export
+
+Macros occupy a single global namespace. The interaction with Rust's system of
+modules and crates is somewhat complex.
+
+Definition and expansion of macros both happen in a single depth-first,
+lexical-order traversal of a crate's source. So a macro defined at module scope
+is visible to any subsequent code in the same module, which includes the body
+of any subsequent child `mod` items.
+
+If a module has the `macro_escape` attribute, its macros are also visible in
+its parent module after the child's `mod` item. If the parent also has
+`macro_escape` then the macros will be visible in the grandparent after the
+parent's `mod` item, and so forth.
+
+Independent of `macro_escape`, the `macro_export` attribute controls visibility
+between crates.  Any `macro_rules!` definition with the `macro_export`
+attribute will be visible to other crates that have loaded this crate with
+`phase(plugin)`. There is currently no way for the importing crate to control
+which macros are imported.
+
+An example:
+
+```rust
+# #![feature(macro_rules)]
+macro_rules! m1 (() => (()))
+
+// visible here: m1
+
+mod foo {
+    // visible here: m1
+
+    #[macro_export]
+    macro_rules! m2 (() => (()))
+
+    // visible here: m1, m2
+}
+
+// visible here: m1
+
+macro_rules! m3 (() => (()))
+
+// visible here: m1, m3
+
+#[macro_escape]
+mod bar {
+    // visible here: m1, m3
+
+    macro_rules! m4 (() => (()))
+
+    // visible here: m1, m3, m4
+}
+
+// visible here: m1, m3, m4
+# fn main() { }
+```
+
+When this library is loaded with `#[phase(plugin)] extern crate`, only `m2`
+will be imported.
+
 # A final note
 
 Macros, as currently implemented, are not for the faint of heart. Even
@@ -457,3 +526,10 @@ tricky. Invoking the `log_syntax!` macro can help elucidate intermediate
 states, invoking `trace_macros!(true)` will automatically print those
 intermediate states out, and passing the flag `--pretty expanded` as a
 command-line argument to the compiler will show the result of expansion.
+
+If Rust's macro system can't do what you need, you may want to write a
+[compiler plugin](guide-plugin.html) instead. Compared to `macro_rules!`
+macros, this is significantly more work, the interfaces are much less stable,
+and the warnings about debugging apply ten-fold. In exchange you get the
+flexibility of running arbitrary Rust code within the compiler. Syntax
+extension plugins are sometimes called "procedural macros" for this reason.
