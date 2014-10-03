@@ -961,7 +961,7 @@ struct Point {
 }
 
 fn main() {
-    let origin = Point { x: 0i, y:  0i };
+    let origin = Point { x: 0i, y: 0i };
 
     println!("The origin is at ({}, {})", origin.x, origin.y);
 }
@@ -988,7 +988,7 @@ struct Point {
 }
 
 fn main() {
-    let mut point = Point { x: 0i, y:  0i };
+    let mut point = Point { x: 0i, y: 0i };
 
     point.x = 5;
 
