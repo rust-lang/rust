@@ -2617,7 +2617,7 @@ Rust's more unique features.
 
 Rust features a strong module system, but it works a bit differently than in
 other programming languages. Rust's module system has two main components:
-**crate**s, and **module**s.
+**crate**s and **module**s.
 
 A crate is Rust's unit of independent compilation. Rust always compiles one
 crate at a time, producing either a library or an executable. However, executables
@@ -2638,6 +2638,7 @@ Enough talk, let's build something! Let's make a new project called `modules`.
 ```{bash,ignore}
 $ cd ~/projects
 $ cargo new modules --bin
+$ cd modules
 ```
 
 Let's double check our work by compiling:
