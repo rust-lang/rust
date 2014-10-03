@@ -1140,13 +1140,13 @@ You can have any number of values in an enum:
 ```{rust}
 enum OptionalColor {
     Color(int, int, int),
-    Missing
+    Missing,
 }
 ```
 
 Enums with values are quite useful, but as I mentioned, they're even more
 useful when they're generic across types. But before we get to generics, let's
-talk about how to fix this big `if`/`else` statements we've been writing. We'll
+talk about how to fix these big `if`/`else` statements we've been writing. We'll
 do that with `match`.
 
 # Match
