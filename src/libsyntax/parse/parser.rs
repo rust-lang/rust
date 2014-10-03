@@ -26,7 +26,7 @@ use ast::{ExprField, ExprTupField, ExprFnBlock, ExprIf, ExprIfLet, ExprIndex, Ex
 use ast::{ExprLit, ExprLoop, ExprMac};
 use ast::{ExprMethodCall, ExprParen, ExprPath, ExprProc};
 use ast::{ExprRepeat, ExprRet, ExprStruct, ExprTup, ExprUnary, ExprUnboxedFn};
-use ast::{ExprVec, ExprWhile, ExprForLoop, Field, FnDecl};
+use ast::{ExprVec, ExprWhile, ExprWhileLet, ExprForLoop, Field, FnDecl};
 use ast::{Once, Many};
 use ast::{FnUnboxedClosureKind, FnMutUnboxedClosureKind};
 use ast::{FnOnceUnboxedClosureKind};
@@ -2935,12 +2935,28 @@ impl<'a> Parser<'a> {
         self.mk_expr(lo, hi, ExprForLoop(pat, expr, loop_block, opt_ident))
     }
 
+    /// Parse a 'while' or 'while let' expression ('while' token already eaten)
     pub fn parse_while_expr(&mut self, opt_ident: Option<ast::Ident>) -> P<Expr> {
+        if self.is_keyword(keywords::Let) {
+            return self.parse_while_let_expr(opt_ident);
+        }
         let lo = self.last_span.lo;
         let cond = self.parse_expr_res(RESTRICTION_NO_STRUCT_LITERAL);
         let body = self.parse_block();
         let hi = body.span.hi;
         return self.mk_expr(lo, hi, ExprWhile(cond, body, opt_ident));
+    }
+
+    /// Parse a 'while let' expression ('while' token already eaten)
+    pub fn parse_while_let_expr(&mut self, opt_ident: Option<ast::Ident>) -> P<Expr> {
+        let lo = self.last_span.lo;
+        self.expect_keyword(keywords::Let);
+        let pat = self.parse_pat();
+        self.expect(&token::EQ);
+        let expr = self.parse_expr_res(RESTRICTION_NO_STRUCT_LITERAL);
+        let body = self.parse_block();
+        let hi = body.span.hi;
+        return self.mk_expr(lo, hi, ExprWhileLet(pat, expr, body, opt_ident));
     }
 
     pub fn parse_loop_expr(&mut self, opt_ident: Option<ast::Ident>) -> P<Expr> {
