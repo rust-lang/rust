@@ -83,6 +83,7 @@ impl Clone for MovePathIndex {
     }
 }
 
+#[allow(non_uppercase_statics)]
 static InvalidMovePathIndex: MovePathIndex =
     MovePathIndex(uint::MAX);
 
@@ -96,6 +97,7 @@ impl MoveIndex {
     }
 }
 
+#[allow(non_uppercase_statics)]
 static InvalidMoveIndex: MoveIndex =
     MoveIndex(uint::MAX);
 

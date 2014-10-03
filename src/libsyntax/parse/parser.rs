@@ -3402,9 +3402,10 @@ impl<'a> Parser<'a> {
                        binding_mode: ast::BindingMode)
                        -> ast::Pat_ {
         if !is_plain_ident(&self.token) {
-            let last_span = self.last_span;
-            self.span_fatal(last_span,
-                            "expected identifier, found path");
+            let span = self.span;
+            let tok_str = self.this_token_to_string();
+            self.span_fatal(span,
+                            format!("expected identifier, found `{}`", tok_str).as_slice());
         }
         let ident = self.parse_ident();
         let last_span = self.last_span;
@@ -4731,8 +4732,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_item_const(&mut self) -> ItemInfo {
-        let m = if self.eat_keyword(keywords::Mut) {MutMutable} else {MutImmutable};
+    fn parse_item_const(&mut self, m: Mutability) -> ItemInfo {
         let id = self.parse_ident();
         self.expect(&token::COLON);
         let ty = self.parse_ty(true);
@@ -5288,7 +5288,26 @@ impl<'a> Parser<'a> {
         if self.is_keyword(keywords::Static) {
             // STATIC ITEM
             self.bump();
-            let (ident, item_, extra_attrs) = self.parse_item_const();
+            let m = if self.eat_keyword(keywords::Mut) {MutMutable} else {MutImmutable};
+            let (ident, item_, extra_attrs) = self.parse_item_const(m);
+            let last_span = self.last_span;
+            let item = self.mk_item(lo,
+                                    last_span.hi,
+                                    ident,
+                                    item_,
+                                    visibility,
+                                    maybe_append(attrs, extra_attrs));
+            return IoviItem(item);
+        }
+        if self.is_keyword(keywords::Const) {
+            // CONST ITEM
+            self.bump();
+            if self.eat_keyword(keywords::Mut) {
+                let last_span = self.last_span;
+                self.span_err(last_span, "const globals cannot be mutable, \
+                                          did you mean to declare a static?");
+            }
+            let (ident, item_, extra_attrs) = self.parse_item_const(MutImmutable);
             let last_span = self.last_span;
             let item = self.mk_item(lo,
                                     last_span.hi,

@@ -1412,7 +1412,7 @@ struct BitsNStrings<'a> {
     mystring: &'a str
 }
 
-static bits_n_strings: BitsNStrings<'static> = BitsNStrings {
+static BITS_N_STRINGS: BitsNStrings<'static> = BitsNStrings {
     mybits: BITS,
     mystring: STRING
 };

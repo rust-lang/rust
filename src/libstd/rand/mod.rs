@@ -233,7 +233,7 @@ use core_rand::IsaacRng as IsaacWordRng;
 use core_rand::Isaac64Rng as IsaacWordRng;
 
 pub use core_rand::{Rand, Rng, SeedableRng, Open01, Closed01};
-pub use core_rand::{XorShiftRng, IsaacRng, Isaac64Rng};
+pub use core_rand::{XorShiftRng, IsaacRng, Isaac64Rng, ChaChaRng};
 pub use core_rand::{distributions, reseeding};
 pub use rand::os::OsRng;
 

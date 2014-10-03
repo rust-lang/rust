@@ -11,6 +11,7 @@
 //! Bindings for executing child processes
 
 #![allow(experimental)]
+#![allow(non_uppercase_statics)]
 
 use prelude::*;
 
@@ -1022,32 +1023,6 @@ mod tests {
 
         assert!(output.as_slice().contains("RUN_TEST_NEW_ENV=123"),
                 "didn't find RUN_TEST_NEW_ENV inside of:\n\n{}", output);
-    }
-
-    #[test]
-    fn test_remove_from_env() {
-        use os;
-
-        // save original environment
-        let old_env = os::getenv("RUN_TEST_NEW_ENV");
-
-        os::setenv("RUN_TEST_NEW_ENV", "123");
-        let prog = env_cmd().env_remove("RUN_TEST_NEW_ENV").spawn().unwrap();
-        let result = prog.wait_with_output().unwrap();
-        let output = str::from_utf8_lossy(result.output.as_slice()).into_string();
-
-        // restore original environment
-        match old_env {
-            None => {
-                os::unsetenv("RUN_TEST_NEW_ENV");
-            }
-            Some(val) => {
-                os::setenv("RUN_TEST_NEW_ENV", val.as_slice());
-            }
-        }
-
-        assert!(!output.as_slice().contains("RUN_TEST_NEW_ENV"),
-                "found RUN_TEST_NEW_ENV inside of:\n\n{}", output);
     }
 
     #[cfg(unix)]

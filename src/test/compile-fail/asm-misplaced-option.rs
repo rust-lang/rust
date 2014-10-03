@@ -12,7 +12,7 @@
 
 #![feature(asm)]
 
-#![allow(dead_code)]
+#![allow(dead_code, non_uppercase_statics)]
 
 #[cfg(any(target_arch = "x86",
           target_arch = "x86_64"))]

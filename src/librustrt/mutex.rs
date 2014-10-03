@@ -376,8 +376,8 @@ mod imp {
         #[cfg(target_arch = "arm")]
         static __PTHREAD_COND_SIZE__: uint = 24;
 
-        static _PTHREAD_MUTEX_SIG_init: libc::c_long = 0x32AAABA7;
-        static _PTHREAD_COND_SIG_init: libc::c_long = 0x3CB0B1BB;
+        static _PTHREAD_MUTEX_SIG_INIT: libc::c_long = 0x32AAABA7;
+        static _PTHREAD_COND_SIG_INIT: libc::c_long = 0x3CB0B1BB;
 
         #[repr(C)]
         pub struct pthread_mutex_t {
@@ -391,11 +391,11 @@ mod imp {
         }
 
         pub static PTHREAD_MUTEX_INITIALIZER: pthread_mutex_t = pthread_mutex_t {
-            __sig: _PTHREAD_MUTEX_SIG_init,
+            __sig: _PTHREAD_MUTEX_SIG_INIT,
             __opaque: [0, ..__PTHREAD_MUTEX_SIZE__],
         };
         pub static PTHREAD_COND_INITIALIZER: pthread_cond_t = pthread_cond_t {
-            __sig: _PTHREAD_COND_SIG_init,
+            __sig: _PTHREAD_COND_SIG_INIT,
             __opaque: [0, ..__PTHREAD_COND_SIZE__],
         };
     }
