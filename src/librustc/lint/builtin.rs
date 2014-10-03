@@ -412,26 +412,16 @@ impl LintPass for CTypes {
     }
 }
 
-declare_lint!(MANAGED_HEAP_MEMORY, Allow,
-              "use of managed (@ type) heap memory")
-
 declare_lint!(OWNED_HEAP_MEMORY, Allow,
               "use of owned (Box type) heap memory")
-
-declare_lint!(HEAP_MEMORY, Allow,
-              "use of any (Box type or @ type) heap memory")
 
 pub struct HeapMemory;
 
 impl HeapMemory {
     fn check_heap_type(&self, cx: &Context, span: Span, ty: ty::t) {
-        let mut n_box = 0i;
         let mut n_uniq = 0i;
         ty::fold_ty(cx.tcx, ty, |t| {
             match ty::get(t).sty {
-                ty::ty_box(_) => {
-                    n_box += 1;
-                }
                 ty::ty_uniq(_) |
                 ty::ty_closure(box ty::ClosureTy {
                     store: ty::UniqTraitStore,
@@ -449,21 +439,13 @@ impl HeapMemory {
             let s = ty_to_string(cx.tcx, ty);
             let m = format!("type uses owned (Box type) pointers: {}", s);
             cx.span_lint(OWNED_HEAP_MEMORY, span, m.as_slice());
-            cx.span_lint(HEAP_MEMORY, span, m.as_slice());
-        }
-
-        if n_box > 0 {
-            let s = ty_to_string(cx.tcx, ty);
-            let m = format!("type uses managed (@ type) pointers: {}", s);
-            cx.span_lint(MANAGED_HEAP_MEMORY, span, m.as_slice());
-            cx.span_lint(HEAP_MEMORY, span, m.as_slice());
         }
     }
 }
 
 impl LintPass for HeapMemory {
     fn get_lints(&self) -> LintArray {
-        lint_array!(MANAGED_HEAP_MEMORY, OWNED_HEAP_MEMORY, HEAP_MEMORY)
+        lint_array!(OWNED_HEAP_MEMORY)
     }
 
     fn check_item(&mut self, cx: &Context, it: &ast::Item) {
@@ -1289,7 +1271,7 @@ impl LintPass for UnnecessaryAllocation {
 
     fn check_expr(&mut self, cx: &Context, e: &ast::Expr) {
         match e.node {
-            ast::ExprUnary(ast::UnUniq, _) | ast::ExprUnary(ast::UnBox, _) => (),
+            ast::ExprUnary(ast::UnUniq, _) => (),
             _ => return
         }
 

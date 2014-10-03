@@ -559,44 +559,6 @@ pub fn ast_ty_to_builtin_ty<'tcx, AC: AstConv<'tcx>, RS: RegionScope>(
                               "not enough type parameters supplied to `Box<T>`");
                     Some(ty::mk_err())
                 }
-                def::DefTy(did, _) | def::DefStruct(did)
-                        if Some(did) == this.tcx().lang_items.gc() => {
-                    if path.segments
-                           .iter()
-                           .flat_map(|s| s.types.iter())
-                           .count() > 1 {
-                        span_err!(this.tcx().sess, path.span, E0048,
-                                  "`Gc` has only one type parameter");
-                    }
-
-                    for inner_ast_type in path.segments
-                                              .iter()
-                                              .flat_map(|s| s.types.iter()) {
-                        return Some(mk_pointer(this,
-                                               rscope,
-                                               ast::MutImmutable,
-                                               &**inner_ast_type,
-                                               Box,
-                                               |typ| {
-                            match ty::get(typ).sty {
-                                ty::ty_str => {
-                                    span_err!(this.tcx().sess, path.span, E0114,
-                                              "`Gc<str>` is not a type");
-                                    ty::mk_err()
-                                }
-                                ty::ty_vec(_, None) => {
-                                    span_err!(this.tcx().sess, path.span, E0115,
-                                              "`Gc<[T]>` is not a type");
-                                    ty::mk_err()
-                                }
-                                _ => ty::mk_box(this.tcx(), typ),
-                            }
-                        }))
-                    }
-                    this.tcx().sess.span_bug(path.span,
-                                             "not enough type parameters \
-                                              supplied to `Gc<T>`")
-                }
                 _ => None
             }
         }
@@ -606,7 +568,6 @@ pub fn ast_ty_to_builtin_ty<'tcx, AC: AstConv<'tcx>, RS: RegionScope>(
 
 #[deriving(Show)]
 enum PointerTy {
-    Box,
     RPtr(ty::Region),
     Uniq
 }
@@ -614,7 +575,6 @@ enum PointerTy {
 impl PointerTy {
     fn default_region(&self) -> ty::Region {
         match *self {
-            Box => ty::ReStatic,
             Uniq => ty::ReStatic,
             RPtr(r) => r,
         }
@@ -702,14 +662,6 @@ fn mk_pointer<'tcx, AC: AstConv<'tcx>, RS: RegionScope>(
                                        r,
                                        ty::mt {mutbl: a_seq_mutbl, ty: tr});
                 }
-                _ => {
-                    tcx.sess.span_err(
-                        a_seq_ty.span,
-                        "~trait or &trait are the only supported \
-                         forms of casting-to-trait");
-                    return ty::mk_err();
-                }
-
             }
         }
         ast::TyPath(ref path, ref opt_bounds, id) => {
@@ -725,11 +677,6 @@ fn mk_pointer<'tcx, AC: AstConv<'tcx>, RS: RegionScope>(
                         }
                         RPtr(r) => {
                             return ty::mk_str_slice(tcx, r, ast::MutImmutable);
-                        }
-                        _ => {
-                            tcx.sess
-                               .span_err(path.span,
-                                         "managed strings are not supported")
                         }
                     }
                 }
@@ -766,13 +713,6 @@ fn mk_pointer<'tcx, AC: AstConv<'tcx>, RS: RegionScope>(
                         }
                         RPtr(r) => {
                             return ty::mk_rptr(tcx, r, ty::mt{mutbl: a_seq_mutbl, ty: tr});
-                        }
-                        _ => {
-                            tcx.sess.span_err(
-                                path.span,
-                                "~trait or &trait are the only supported \
-                                 forms of casting-to-trait");
-                            return ty::mk_err();
                         }
                     };
                 }
@@ -856,10 +796,6 @@ pub fn ast_ty_to_ty<'tcx, AC: AstConv<'tcx>, RS: RegionScope>(
         match ast_ty.node {
             ast::TyNil => ty::mk_nil(),
             ast::TyBot => ty::mk_bot(),
-            ast::TyBox(ref ty) => {
-                mk_pointer(this, rscope, ast::MutImmutable, &**ty, Box,
-                           |ty| ty::mk_box(tcx, ty))
-            }
             ast::TyUniq(ref ty) => {
                 mk_pointer(this, rscope, ast::MutImmutable, &**ty, Uniq,
                            |ty| ty::mk_uniq(tcx, ty))

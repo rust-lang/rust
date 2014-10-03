@@ -9,17 +9,14 @@
 // except according to those terms.
 
 
-use std::gc::Gc;
-
 // test that autoderef of a type like this does not
 // cause compiler to loop.  Note that no instances
 // of such a type could ever be constructed.
-struct t { //~ ERROR this type cannot be instantiated
-  x: x,
+struct S { //~ ERROR this type cannot be instantiated
+  x: X,
   to_str: (),
 }
 
-struct x(Gc<t>); //~ ERROR this type cannot be instantiated
+struct X(Box<S>); //~ ERROR this type cannot be instantiated
 
-fn main() {
-}
+fn main() {}

@@ -20,15 +20,6 @@
 
 use mem;
 
-/// The representation of `std::gc::Gc`.
-pub struct GcBox<T> {
-    pub ref_count: uint,
-    pub drop_glue: fn(ptr: *mut u8),
-    pub prev: *mut GcBox<T>,
-    pub next: *mut GcBox<T>,
-    pub data: T,
-}
-
 /// The representation of a Rust slice
 pub struct Slice<T> {
     pub data: *const T,

@@ -9,11 +9,9 @@
 // except according to those terms.
 
 
-use std::gc::{Gc, GC};
-
-enum t { foo(Gc<int>), }
+enum t { foo(Box<int>), }
 
 pub fn main() {
-    let tt = foo(box(GC) 10);
+    let tt = foo(box 10);
     match tt { foo(_z) => { } }
 }

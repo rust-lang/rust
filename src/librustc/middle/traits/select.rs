@@ -713,23 +713,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 ok(self, Always)
             }
 
-            ty::ty_box(_) => {
-                match bound {
-                    ty::BoundSync |
-                    ty::BoundSend |
-                    ty::BoundCopy => {
-                        // Managed data is not copyable, sendable, nor
-                        // synchronized, regardless of referent.
-                        ok(self, Never)
-                    }
-
-                    ty::BoundSized => {
-                        // But it is sized, regardless of referent.
-                        ok(self, Always)
-                    }
-                }
-            }
-
             ty::ty_uniq(referent_ty) => {  // Box<T>
                 match bound {
                     ty::BoundCopy => {

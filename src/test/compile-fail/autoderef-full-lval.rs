@@ -8,30 +8,25 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-extern crate debug;
-
-use std::gc::{Gc, GC};
-
 struct clam {
-    x: Gc<int>,
-    y: Gc<int>,
+    x: Box<int>,
+    y: Box<int>,
 }
 
 struct fish {
-    a: Gc<int>,
+    a: Box<int>,
 }
 
 fn main() {
-    let a: clam = clam{x: box(GC) 1, y: box(GC) 2};
-    let b: clam = clam{x: box(GC) 10, y: box(GC) 20};
-    let z: int = a.x + b.y; //~ ERROR binary operation `+` cannot be applied to type `Gc<int>`
-    println!("{:?}", z);
+    let a: clam = clam{x: box 1, y: box 2};
+    let b: clam = clam{x: box 10, y: box 20};
+    let z: int = a.x + b.y; //~ ERROR binary operation `+` cannot be applied to type `Box<int>`
+    println!("{}", z);
     assert_eq!(z, 21);
-    let forty: fish = fish{a: box(GC) 40};
-    let two: fish = fish{a: box(GC) 2};
+    let forty: fish = fish{a: box 40};
+    let two: fish = fish{a: box 2};
     let answer: int = forty.a + two.a;
-    //~^ ERROR binary operation `+` cannot be applied to type `Gc<int>`
-    println!("{:?}", answer);
+    //~^ ERROR binary operation `+` cannot be applied to type `Box<int>`
+    println!("{}", answer);
     assert_eq!(answer, 42);
 }

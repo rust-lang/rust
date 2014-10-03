@@ -326,7 +326,7 @@ pub fn skip_ty<'v, V: Visitor<'v>>(_: &mut V, _: &'v Ty) {
 
 pub fn walk_ty<'v, V: Visitor<'v>>(visitor: &mut V, typ: &'v Ty) {
     match typ.node {
-        TyUniq(ref ty) | TyVec(ref ty) | TyBox(ref ty) | TyParen(ref ty) => {
+        TyUniq(ref ty) | TyVec(ref ty) | TyParen(ref ty) => {
             visitor.visit_ty(&**ty)
         }
         TyPtr(ref mutable_type) => {

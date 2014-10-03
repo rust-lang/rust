@@ -9,8 +9,6 @@
 // except according to those terms.
 
 
-use std::gc::Gc;
-
 struct kitten {
     cat: Option<cat>,
 }
@@ -21,6 +19,6 @@ fn kitten(cat: Option<cat>) -> kitten {
     }
 }
 
-type cat = Gc<kitten>;
+type cat = Box<kitten>;
 
 pub fn main() {}

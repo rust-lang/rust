@@ -9,9 +9,8 @@
 // except according to those terms.
 
 //! Language-level runtime services that should reasonably expected
-//! to be available 'everywhere'. Local heaps, GC, unwinding,
-//! local storage, and logging. Even a 'freestanding' Rust would likely want
-//! to implement this.
+//! to be available 'everywhere'. Unwinding, local storage, and logging.
+//! Even a 'freestanding' Rust would likely want to implement this.
 
 use alloc::arc::Arc;
 use alloc::boxed::{BoxAny, Box};
@@ -27,7 +26,6 @@ use core::raw;
 use local_data;
 use Runtime;
 use local::Local;
-use local_heap::LocalHeap;
 use rtio::LocalIo;
 use unwind;
 use unwind::Unwinder;
@@ -95,8 +93,6 @@ use collections::str::SendStr;
 /// # }
 /// ```
 pub struct Task {
-    pub heap: LocalHeap,
-    pub gc: GarbageCollector,
     pub storage: LocalStorage,
     pub unwinder: Unwinder,
     pub death: Death,
@@ -132,7 +128,6 @@ pub struct TaskOpts {
 /// children tasks complete, recommend using a result future.
 pub type Result = ::core::result::Result<(), Box<Any + Send>>;
 
-pub struct GarbageCollector;
 pub struct LocalStorage(pub Option<local_data::Map>);
 
 /// A handle to a blocked task. Usually this means having the Box<Task>
@@ -163,8 +158,6 @@ impl Task {
     /// task creation functions through libnative or libgreen.
     pub fn new() -> Task {
         Task {
-            heap: LocalHeap::new(),
-            gc: GarbageCollector,
             storage: LocalStorage(None),
             unwinder: Unwinder::new(),
             death: Death::new(),
@@ -264,32 +257,22 @@ impl Task {
     /// already been destroyed and/or annihilated.
     fn cleanup(self: Box<Task>, result: Result) -> Box<Task> {
         // The first thing to do when cleaning up is to deallocate our local
-        // resources, such as TLD and GC data.
+        // resources, such as TLD.
         //
         // FIXME: there are a number of problems with this code
         //
         // 1. If any TLD object fails destruction, then all of TLD will leak.
         //    This appears to be a consequence of #14875.
         //
-        // 2. Failing during GC annihilation aborts the runtime #14876.
+        // 2. Setting a TLD key while destroying TLD will abort the runtime #14807.
         //
-        // 3. Setting a TLD key while destroying TLD or while destroying GC will
-        //    abort the runtime #14807.
-        //
-        // 4. Invoking GC in GC destructors will abort the runtime #6996.
-        //
-        // 5. The order of destruction of TLD and GC matters, but either way is
-        //    susceptible to leaks (see 3/4) #8302.
+        // 3. The order of destruction of TLD matters, but either way is
+        //    susceptible to leaks (see 2) #8302.
         //
         // That being said, there are a few upshots to this code
         //
         // 1. If TLD destruction fails, heap destruction will be attempted.
-        //    There is a test for this at fail-during-tld-destroy.rs. Sadly the
-        //    other way can't be tested due to point 2 above. Note that we must
-        //    immortalize the heap first because if any deallocations are
-        //    attempted while TLD is being dropped it will attempt to free the
-        //    allocation from the wrong heap (because the current one has been
-        //    replaced).
+        //    There is a test for this at fail-during-tld-destroy.rs.
         //
         // 2. One failure in destruction is tolerable, so long as the task
         //    didn't originally fail while it was running.
@@ -301,15 +284,10 @@ impl Task {
                 let &LocalStorage(ref mut optmap) = &mut task.storage;
                 optmap.take()
             };
-            let mut heap = mem::replace(&mut task.heap, LocalHeap::new());
-            unsafe { heap.immortalize() }
             drop(task);
 
             // First, destroy task-local storage. This may run user dtors.
             drop(tld);
-
-            // Destroy remaining boxes. Also may run user dtors.
-            drop(heap);
         });
 
         // If the above `run` block failed, then it must be the case that the
@@ -327,9 +305,8 @@ impl Task {
         Local::put(task);
 
         // FIXME: this is running in a seriously constrained context. If this
-        //        allocates GC or allocates TLD then it will likely abort the
-        //        runtime. Similarly, if this fails, this will also likely abort
-        //        the runtime.
+        //        allocates TLD then it will likely abort the runtime. Similarly,
+        //        if this fails, this will also likely abort the runtime.
         //
         //        This closure is currently limited to a channel send via the
         //        standard library's task interface, but this needs
@@ -577,23 +554,14 @@ mod test {
     use super::*;
     use std::prelude::*;
     use std::task;
-    use std::gc::{Gc, GC};
-
-    #[test]
-    fn local_heap() {
-        let a = box(GC) 5i;
-        let b = a;
-        assert!(*a == 5);
-        assert!(*b == 5);
-    }
 
     #[test]
     fn tls() {
-        local_data_key!(key: Gc<String>)
-        key.replace(Some(box(GC) "data".to_string()));
+        local_data_key!(key: String)
+        key.replace(Some("data".to_string()));
         assert_eq!(key.get().unwrap().as_slice(), "data");
-        local_data_key!(key2: Gc<String>)
-        key2.replace(Some(box(GC) "data".to_string()));
+        local_data_key!(key2: String)
+        key2.replace(Some("data".to_string()));
         assert_eq!(key2.get().unwrap().as_slice(), "data");
     }
 
@@ -626,23 +594,6 @@ mod test {
         let (tx, rx) = channel();
         tx.send(10i);
         assert!(rx.recv() == 10);
-    }
-
-    #[test]
-    fn heap_cycles() {
-        use std::cell::RefCell;
-
-        struct List {
-            next: Option<Gc<RefCell<List>>>,
-        }
-
-        let a = box(GC) RefCell::new(List { next: None });
-        let b = box(GC) RefCell::new(List { next: Some(a) });
-
-        {
-            let mut a = a.borrow_mut();
-            a.next = Some(b);
-        }
     }
 
     #[test]

@@ -279,8 +279,6 @@ lets_do_this! {
 
     ExchangeMallocFnLangItem,        "exchange_malloc",         exchange_malloc_fn;
     ExchangeFreeFnLangItem,          "exchange_free",           exchange_free_fn;
-    MallocFnLangItem,                "malloc",                  malloc_fn;
-    FreeFnLangItem,                  "free",                    free_fn;
     StrDupUniqFnLangItem,            "strdup_uniq",             strdup_uniq_fn;
 
     StartFnLangItem,                 "start",                   start_fn;
@@ -293,9 +291,7 @@ lets_do_this! {
 
     EhPersonalityLangItem,           "eh_personality",          eh_personality;
 
-    ManagedHeapLangItem,             "managed_heap",            managed_heap;
     ExchangeHeapLangItem,            "exchange_heap",           exchange_heap;
-    GcLangItem,                      "gc",                      gc;
     OwnedBoxLangItem,                "owned_box",               owned_box;
 
     CovariantTypeItem,               "covariant_type",          covariant_type;

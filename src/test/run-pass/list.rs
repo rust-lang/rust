@@ -9,8 +9,6 @@
 // except according to those terms.
 
 
-use std::gc::{Gc, GC};
+enum list { cons(int, Box<list>), nil, }
 
-enum list { cons(int, Gc<list>), nil, }
-
-pub fn main() { cons(10, box(GC) cons(11, box(GC) cons(12, box(GC) nil))); }
+pub fn main() { cons(10, box cons(11, box cons(12, box nil))); }

@@ -1468,7 +1468,7 @@ fn check_cast(fcx: &FnCtxt,
     // casts to scalars other than `char` and `bare fn` are trivial
     let t_1_is_trivial = t_1_is_scalar && !t_1_is_char && !t_1_is_bare_fn;
     if ty::type_is_c_like_enum(fcx.tcx(), t_e) && t_1_is_trivial {
-        if t_1_is_float {
+        if t_1_is_float || ty::type_is_unsafe_ptr(t_1) {
             fcx.type_error_message(span, |actual| {
                 format!("illegal cast; cast through an \
                          integer first: `{}` as `{}`",
@@ -3820,12 +3820,6 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
                   if tcx.lang_items.exchange_heap() == Some(def_id) {
                       fcx.write_ty(id, ty::mk_uniq(tcx, referent_ty));
                       checked = true
-                  } else if tcx.lang_items.managed_heap() == Some(def_id) {
-                      fcx.register_region_obligation(infer::Managed(expr.span),
-                                                     referent_ty,
-                                                     ty::ReStatic);
-                      fcx.write_ty(id, ty::mk_box(tcx, referent_ty));
-                      checked = true
                   }
               }
               _ => {}
@@ -3881,8 +3875,8 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
       ast::ExprUnary(unop, ref oprnd) => {
         let expected_inner = expected.map(fcx, |sty| {
             match unop {
-                ast::UnBox | ast::UnUniq => match *sty {
-                    ty::ty_box(ty) | ty::ty_uniq(ty) => {
+                ast::UnUniq => match *sty {
+                    ty::ty_uniq(ty) => {
                         ExpectHasType(ty)
                     }
                     _ => {
@@ -3907,11 +3901,6 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
 
         if !ty::type_is_error(oprnd_t) {
             match unop {
-                ast::UnBox => {
-                    if !ty::type_is_bot(oprnd_t) {
-                        oprnd_t = ty::mk_box(tcx, oprnd_t)
-                    }
-                }
                 ast::UnUniq => {
                     if !ty::type_is_bot(oprnd_t) {
                         oprnd_t = ty::mk_uniq(tcx, oprnd_t);

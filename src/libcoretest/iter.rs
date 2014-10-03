@@ -528,9 +528,8 @@ fn test_rposition() {
 #[test]
 #[should_fail]
 fn test_rposition_fail() {
-    use std::gc::GC;
-    let v = [(box 0i, box(GC) 0i), (box 0i, box(GC) 0i),
-             (box 0i, box(GC) 0i), (box 0i, box(GC) 0i)];
+    let v = [(box 0i, box 0i), (box 0i, box 0i),
+             (box 0i, box 0i), (box 0i, box 0i)];
     let mut i = 0i;
     v.iter().rposition(|_elt| {
         if i == 2 {

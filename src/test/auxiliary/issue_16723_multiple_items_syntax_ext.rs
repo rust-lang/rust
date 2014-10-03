@@ -11,7 +11,7 @@
 // ignore-stage1
 // force-host
 
-#![feature(plugin_registrar, managed_boxes, quote)]
+#![feature(plugin_registrar, quote)]
 #![crate_type = "dylib"]
 
 extern crate syntax;

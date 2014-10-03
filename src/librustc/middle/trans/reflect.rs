@@ -169,14 +169,6 @@ impl<'a, 'blk, 'tcx> Reflector<'a, 'blk, 'tcx> {
               extra.push(self.c_tydesc(ty));
               self.visit("evec_fixed", extra.as_slice())
           }
-          // Should remove mt from box and uniq.
-          ty::ty_box(typ) => {
-              let extra = self.c_mt(&ty::mt {
-                  ty: typ,
-                  mutbl: ast::MutImmutable,
-              });
-              self.visit("box", extra.as_slice())
-          }
           ty::ty_ptr(ref mt) => {
               match ty::get(mt.ty).sty {
                   ty::ty_vec(ty, None) => {

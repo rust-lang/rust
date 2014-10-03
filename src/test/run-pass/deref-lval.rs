@@ -9,13 +9,10 @@
 // except according to those terms.
 
 
-extern crate debug;
-
 use std::cell::Cell;
-use std::gc::GC;
 
 pub fn main() {
-    let x = box(GC) Cell::new(5i);
+    let x = box Cell::new(5i);
     x.set(1000i);
-    println!("{:?}", x.get());
+    println!("{}", x.get());
 }

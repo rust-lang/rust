@@ -940,7 +940,6 @@ pub enum sty {
     /// the `ast_ty_to_ty_cache`. This is probably true for `ty_struct` as
     /// well.`
     ty_enum(DefId, Substs),
-    ty_box(t),
     ty_uniq(t),
     ty_str,
     ty_vec(t, Option<uint>), // Second field is length.
@@ -1621,7 +1620,7 @@ pub fn mk_t(cx: &ctxt, st: sty) -> t {
           flags |= sflags(substs);
           flags |= flags_for_bounds(bounds);
       }
-      &ty_box(tt) | &ty_uniq(tt) | &ty_vec(tt, _) | &ty_open(tt) => {
+      &ty_uniq(tt) | &ty_vec(tt, _) | &ty_open(tt) => {
         flags |= get(tt).flags
       }
       &ty_ptr(ref m) => {
@@ -1776,8 +1775,6 @@ pub fn mk_enum(cx: &ctxt, did: ast::DefId, substs: Substs) -> t {
     mk_t(cx, ty_enum(did, substs))
 }
 
-pub fn mk_box(cx: &ctxt, ty: t) -> t { mk_t(cx, ty_box(ty)) }
-
 pub fn mk_uniq(cx: &ctxt, ty: t) -> t { mk_t(cx, ty_uniq(ty)) }
 
 pub fn mk_ptr(cx: &ctxt, tm: mt) -> t { mk_t(cx, ty_ptr(tm)) }
@@ -1901,7 +1898,7 @@ pub fn maybe_walk_ty(ty: t, f: |t| -> bool) {
     match get(ty).sty {
         ty_nil | ty_bot | ty_bool | ty_char | ty_int(_) | ty_uint(_) | ty_float(_) |
         ty_str | ty_infer(_) | ty_param(_) | ty_unboxed_closure(_, _) | ty_err => {}
-        ty_box(ty) | ty_uniq(ty) | ty_vec(ty, _) | ty_open(ty) => maybe_walk_ty(ty, f),
+        ty_uniq(ty) | ty_vec(ty, _) | ty_open(ty) => maybe_walk_ty(ty, f),
         ty_ptr(ref tm) | ty_rptr(_, ref tm) => {
             maybe_walk_ty(tm.ty, f);
         }
@@ -2014,7 +2011,7 @@ pub fn type_is_vec(ty: t) -> bool {
     match get(ty).sty {
         ty_vec(..) => true,
         ty_ptr(mt{ty: t, ..}) | ty_rptr(_, mt{ty: t, ..}) |
-        ty_box(t) | ty_uniq(t) => match get(t).sty {
+        ty_uniq(t) => match get(t).sty {
             ty_vec(_, None) => true,
             _ => false
         },
@@ -2064,13 +2061,6 @@ pub fn simd_size(cx: &ctxt, ty: t) -> uint {
             fields.len()
         }
         _ => fail!("simd_size called on invalid type")
-    }
-}
-
-pub fn type_is_boxed(ty: t) -> bool {
-    match get(ty).sty {
-      ty_box(_) => true,
-      _ => false
     }
 }
 
@@ -2144,29 +2134,22 @@ pub fn type_needs_unwind_cleanup(cx: &ctxt, ty: t) -> bool {
 
     let mut tycache = HashSet::new();
     let needs_unwind_cleanup =
-        type_needs_unwind_cleanup_(cx, ty, &mut tycache, false);
+        type_needs_unwind_cleanup_(cx, ty, &mut tycache);
     cx.needs_unwind_cleanup_cache.borrow_mut().insert(ty, needs_unwind_cleanup);
-    return needs_unwind_cleanup;
+    needs_unwind_cleanup
 }
 
 fn type_needs_unwind_cleanup_(cx: &ctxt, ty: t,
-                              tycache: &mut HashSet<t>,
-                              encountered_box: bool) -> bool {
+                              tycache: &mut HashSet<t>) -> bool {
 
     // Prevent infinite recursion
     if !tycache.insert(ty) {
         return false;
     }
 
-    let mut encountered_box = encountered_box;
     let mut needs_unwind_cleanup = false;
     maybe_walk_ty(ty, |ty| {
-        let old_encountered_box = encountered_box;
         let result = match get(ty).sty {
-          ty_box(_) => {
-            encountered_box = true;
-            true
-          }
           ty_nil | ty_bot | ty_bool | ty_int(_) | ty_uint(_) | ty_float(_) |
           ty_tup(_) | ty_ptr(_) => {
             true
@@ -2176,21 +2159,10 @@ fn type_needs_unwind_cleanup_(cx: &ctxt, ty: t,
                 for aty in v.args.iter() {
                     let t = aty.subst(cx, substs);
                     needs_unwind_cleanup |=
-                        type_needs_unwind_cleanup_(cx, t, tycache,
-                                                   encountered_box);
+                        type_needs_unwind_cleanup_(cx, t, tycache);
                 }
             }
             !needs_unwind_cleanup
-          }
-          ty_uniq(_) => {
-            // Once we're inside a box, the annihilator will find
-            // it and destroy it.
-            if !encountered_box {
-                needs_unwind_cleanup = true;
-                false
-            } else {
-                true
-            }
           }
           _ => {
             needs_unwind_cleanup = true;
@@ -2198,11 +2170,10 @@ fn type_needs_unwind_cleanup_(cx: &ctxt, ty: t,
           }
         };
 
-        encountered_box = old_encountered_box;
         result
     });
 
-    return needs_unwind_cleanup;
+    needs_unwind_cleanup
 }
 
 /**
@@ -2458,10 +2429,6 @@ pub fn type_contents(cx: &ctxt, ty: t) -> TypeContents {
 
             ty_closure(ref c) => {
                 closure_contents(cx, &**c) | TC::ReachesFfiUnsafe
-            }
-
-            ty_box(typ) => {
-                tc_ty(cx, typ, cache).managed_pointer() | TC::ReachesFfiUnsafe
             }
 
             ty_uniq(typ) => {
@@ -2782,7 +2749,7 @@ pub fn is_instantiable(cx: &ctxt, r_ty: t) -> bool {
             ty_vec(_, None) => {
                 false
             }
-            ty_box(typ) | ty_uniq(typ) | ty_open(typ) => {
+            ty_uniq(typ) | ty_open(typ) => {
                 type_requires(cx, seen, r_ty, typ)
             }
             ty_rptr(_, ref mt) => {
@@ -3092,7 +3059,7 @@ pub fn type_is_c_like_enum(cx: &ctxt, ty: t) -> bool {
 // Some types---notably unsafe ptrs---can only be dereferenced explicitly.
 pub fn deref(t: t, explicit: bool) -> Option<mt> {
     match get(t).sty {
-        ty_box(ty) | ty_uniq(ty) => {
+        ty_uniq(ty) => {
             Some(mt {
                 ty: ty,
                 mutbl: ast::MutImmutable,
@@ -3106,9 +3073,7 @@ pub fn deref(t: t, explicit: bool) -> Option<mt> {
 
 pub fn deref_or_dont(t: t) -> t {
     match get(t).sty {
-        ty_box(ty) | ty_uniq(ty) => {
-            ty
-        },
+        ty_uniq(ty) => ty,
         ty_rptr(_, mt) | ty_ptr(mt) => mt.ty,
         _ => t
     }
@@ -3124,7 +3089,7 @@ pub fn close_type(cx: &ctxt, t: t) -> t {
 
 pub fn type_content(t: t) -> t {
     match get(t).sty {
-        ty_box(ty) | ty_uniq(ty) => ty,
+        ty_uniq(ty) => ty,
         ty_rptr(_, mt) |ty_ptr(mt) => mt.ty,
         _ => t
     }
@@ -3695,14 +3660,13 @@ pub fn expr_kind(tcx: &ctxt, expr: &ast::Expr) -> ExprKind {
         }
 
         ast::ExprBox(ref place, _) => {
-            // Special case `Box<T>`/`Gc<T>` for now:
+            // Special case `Box<T>` for now:
             let definition = match tcx.def_map.borrow().find(&place.id) {
                 Some(&def) => def,
                 None => fail!("no def for place"),
             };
             let def_id = definition.def_id();
-            if tcx.lang_items.exchange_heap() == Some(def_id) ||
-               tcx.lang_items.managed_heap() == Some(def_id) {
+            if tcx.lang_items.exchange_heap() == Some(def_id) {
                 RvalueDatumExpr
             } else {
                 RvalueDpsExpr
@@ -3753,7 +3717,6 @@ pub fn ty_sort_string(cx: &ctxt, t: t) -> String {
         }
 
         ty_enum(id, _) => format!("enum {}", item_path_str(cx, id)),
-        ty_box(_) => "Gc-ptr".to_string(),
         ty_uniq(_) => "box".to_string(),
         ty_vec(_, Some(_)) => "array".to_string(),
         ty_vec(_, None) => "unsized array".to_string(),
@@ -5223,19 +5186,15 @@ pub fn hash_crate_independent(tcx: &ctxt, t: t, svh: &Svh) -> u64 {
                 byte!(8);
                 did(&mut state, d);
             }
-            ty_box(_) => {
+            ty_uniq(_) => {
                 byte!(9);
             }
-            ty_uniq(_) => {
-                byte!(10);
-            }
             ty_vec(_, Some(n)) => {
-                byte!(11);
+                byte!(10);
                 n.hash(&mut state);
             }
             ty_vec(_, None) => {
                 byte!(11);
-                0u8.hash(&mut state);
             }
             ty_ptr(m) => {
                 byte!(12);
@@ -5586,7 +5545,6 @@ pub fn accumulate_lifetimes_in_type(accumulator: &mut Vec<ty::Region>,
             ty_int(_) |
             ty_uint(_) |
             ty_float(_) |
-            ty_box(_) |
             ty_uniq(_) |
             ty_str |
             ty_vec(_, _) |

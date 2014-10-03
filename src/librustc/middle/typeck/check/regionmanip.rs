@@ -129,7 +129,6 @@ impl<'a, 'tcx> Wf<'a, 'tcx> {
 
             ty::ty_vec(t, _) |
             ty::ty_ptr(ty::mt { ty: t, .. }) |
-            ty::ty_box(t) |
             ty::ty_uniq(t) => {
                 self.accumulate_from_ty(t)
             }

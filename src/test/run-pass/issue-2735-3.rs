@@ -11,28 +11,27 @@
 #![feature(unsafe_destructor)]
 
 use std::cell::Cell;
-use std::gc::{Gc, GC};
 
 // This test should behave exactly like issue-2735-2
-struct defer {
-    b: Gc<Cell<bool>>,
+struct defer<'a> {
+    b: &'a Cell<bool>,
 }
 
 #[unsafe_destructor]
-impl Drop for defer {
+impl<'a> Drop for defer<'a> {
     fn drop(&mut self) {
         self.b.set(true);
     }
 }
 
-fn defer(b: Gc<Cell<bool>>) -> defer {
+fn defer(b: &Cell<bool>) -> defer {
     defer {
         b: b
     }
 }
 
 pub fn main() {
-    let dtor_ran = box(GC) Cell::new(false);
+    let dtor_ran = &Cell::new(false);
     defer(dtor_ran);
     assert!(dtor_ran.get());
 }

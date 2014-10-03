@@ -104,11 +104,6 @@ pub fn ty_is_local(tcx: &ty::ctxt,
             krate == Some(ast::LOCAL_CRATE) || ty_is_local(tcx, t)
         }
 
-        ty::ty_box(t) => {
-            let krate = tcx.lang_items.gc().map(|d| d.krate);
-            krate == Some(ast::LOCAL_CRATE) || ty_is_local(tcx, t)
-        }
-
         ty::ty_vec(t, _) |
         ty::ty_ptr(ty::mt { ty: t, .. }) |
         ty::ty_rptr(_, ty::mt { ty: t, .. }) => {

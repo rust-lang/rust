@@ -10,9 +10,6 @@
 
 // Binop corner cases
 
-
-use std::gc::GC;
-
 fn test_nil() {
     assert_eq!((), ());
     assert!((!(() != ())));
@@ -43,10 +40,6 @@ fn test_bool() {
     assert_eq!(false ^ false, false);
     assert_eq!(true ^ false, true);
     assert_eq!(true ^ true, false);
-}
-
-fn test_box() {
-    assert_eq!(box(GC) 10i, box(GC) 10i);
 }
 
 fn test_ptr() {
@@ -98,7 +91,6 @@ fn test_class() {
 pub fn main() {
     test_nil();
     test_bool();
-    test_box();
     test_ptr();
     test_class();
 }

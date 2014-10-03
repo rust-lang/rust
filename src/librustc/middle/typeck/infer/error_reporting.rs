@@ -776,11 +776,6 @@ impl<'a, 'tcx> ErrorReporting for InferCtxt<'a, 'tcx> {
                     sup,
                     "");
             }
-            infer::Managed(span) => {
-                self.tcx.sess.span_err(
-                    span,
-                    format!("cannot put borrowed references into managed memory").as_slice());
-            }
         }
     }
 
@@ -1285,7 +1280,6 @@ impl<'a, 'tcx> Rebuilder<'a, 'tcx> {
                 ast::TyPtr(ref mut_ty) => {
                     ty_queue.push(&*mut_ty.ty);
                 }
-                ast::TyBox(ref ty) |
                 ast::TyVec(ref ty) |
                 ast::TyUniq(ref ty) |
                 ast::TyFixedLengthVec(ref ty, _) => {
@@ -1323,7 +1317,6 @@ impl<'a, 'tcx> Rebuilder<'a, 'tcx> {
                             ty: build_to(mut_ty.ty, to),
                         })
                     }
-                    ast::TyBox(ty) => ast::TyBox(build_to(ty, to)),
                     ast::TyVec(ty) => ast::TyVec(build_to(ty, to)),
                     ast::TyUniq(ty) => ast::TyUniq(build_to(ty, to)),
                     ast::TyFixedLengthVec(ty, e) => {
@@ -1613,11 +1606,6 @@ impl<'a, 'tcx> ErrorReportingHelpers for InferCtxt<'a, 'tcx> {
                     format!("...so that the reference type `{}` \
                              does not outlive the data it points at",
                             self.ty_to_string(ty)).as_slice());
-            }
-            infer::Managed(span) => {
-                self.tcx.sess.span_note(
-                    span,
-                    "...so that the value can be stored in managed memory.");
             }
             infer::RelateParamBound(span, param_ty, t) => {
                 self.tcx.sess.span_note(

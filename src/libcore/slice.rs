@@ -1218,7 +1218,7 @@ macro_rules! iterator {
 
 /// Immutable slice iterator
 #[experimental = "needs review"]
-pub struct Items<'a, T> {
+pub struct Items<'a, T: 'a> {
     ptr: *const T,
     end: *const T,
     marker: marker::ContravariantLifetime<'a>
@@ -1261,7 +1261,7 @@ impl<'a, T> RandomAccessIterator<&'a T> for Items<'a, T> {
 
 /// Mutable slice iterator.
 #[experimental = "needs review"]
-pub struct MutItems<'a, T> {
+pub struct MutItems<'a, T: 'a> {
     ptr: *mut T,
     end: *mut T,
     marker: marker::ContravariantLifetime<'a>,

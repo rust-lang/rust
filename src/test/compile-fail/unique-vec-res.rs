@@ -10,16 +10,15 @@
 
 #![feature(unsafe_destructor)]
 
-extern crate debug;
 use std::cell::Cell;
-use std::gc::{Gc, GC};
 
-struct r {
-  i: Gc<Cell<int>>,
+#[deriving(Show)]
+struct r<'a> {
+  i: &'a Cell<int>,
 }
 
 #[unsafe_destructor]
-impl Drop for r {
+impl<'a> Drop for r<'a> {
     fn drop(&mut self) {
         unsafe {
             self.i.set(self.i.get() + 1);
@@ -31,13 +30,13 @@ fn f<T>(_i: Vec<T> , _j: Vec<T> ) {
 }
 
 fn main() {
-    let i1 = box(GC) Cell::new(0);
-    let i2 = box(GC) Cell::new(1);
+    let i1 = &Cell::new(0);
+    let i2 = &Cell::new(1);
     let r1 = vec!(box r { i: i1 });
     let r2 = vec!(box r { i: i2 });
     f(r1.clone(), r2.clone());
     //~^ ERROR the trait `core::clone::Clone` is not implemented
     //~^^ ERROR the trait `core::clone::Clone` is not implemented
-    println!("{:?}", (r2, i1.get()));
-    println!("{:?}", (r1, i2.get()));
+    println!("{}", (r2, i1.get()));
+    println!("{}", (r1, i2.get()));
 }

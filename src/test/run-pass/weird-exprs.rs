@@ -11,7 +11,6 @@
 
 use std::cell::Cell;
 use std::mem::swap;
-use std::gc::{Gc, GC};
 
 // Just a grab bag of stuff that you wouldn't want to actually write.
 
@@ -23,10 +22,10 @@ fn funny() {
 }
 
 fn what() {
-    fn the(x: Gc<Cell<bool>>) {
+    fn the(x: &Cell<bool>) {
         return while !x.get() { x.set(true); };
     }
-    let i = box(GC) Cell::new(false);
+    let i = &Cell::new(false);
     let dont = {||the(i)};
     dont();
     assert!((i.get()));
