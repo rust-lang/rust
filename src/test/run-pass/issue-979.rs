@@ -11,27 +11,26 @@
 #![feature(unsafe_destructor)]
 
 use std::cell::Cell;
-use std::gc::{GC, Gc};
 
-struct r {
-    b: Gc<Cell<int>>,
+struct r<'a> {
+    b: &'a Cell<int>,
 }
 
 #[unsafe_destructor]
-impl Drop for r {
+impl<'a> Drop for r<'a> {
     fn drop(&mut self) {
         self.b.set(self.b.get() + 1);
     }
 }
 
-fn r(b: Gc<Cell<int>>) -> r {
+fn r(b: &Cell<int>) -> r {
     r {
         b: b
     }
 }
 
 pub fn main() {
-    let b = box(GC) Cell::new(0);
+    let b = &Cell::new(0);
     {
         let _p = Some(r(b));
     }

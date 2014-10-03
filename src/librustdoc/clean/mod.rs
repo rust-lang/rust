@@ -1087,7 +1087,6 @@ pub enum Type {
     /// aka TyBot
     Bottom,
     Unique(Box<Type>),
-    Managed(Box<Type>),
     RawPointer(Mutability, Box<Type>),
     BorrowedRef {
         pub lifetime: Option<Lifetime>,
@@ -1215,7 +1214,6 @@ impl Clean<Type> for ast::Ty {
             TyRptr(ref l, ref m) =>
                 BorrowedRef {lifetime: l.clean(cx), mutability: m.mutbl.clean(cx),
                              type_: box m.ty.clean(cx)},
-            TyBox(ref ty) => Managed(box ty.clean(cx)),
             TyUniq(ref ty) => Unique(box ty.clean(cx)),
             TyVec(ref ty) => Vector(box ty.clean(cx)),
             TyFixedLengthVec(ref ty, ref e) => FixedVector(box ty.clean(cx),
@@ -1254,12 +1252,6 @@ impl Clean<Type> for ty::t {
             ty::ty_float(ast::TyF32) => Primitive(F32),
             ty::ty_float(ast::TyF64) => Primitive(F64),
             ty::ty_str => Primitive(Str),
-            ty::ty_box(t) => {
-                let gc_did = cx.tcx_opt().and_then(|tcx| {
-                    tcx.lang_items.gc()
-                });
-                lang_struct(cx, gc_did, t, "Gc", Managed)
-            }
             ty::ty_uniq(t) => {
                 let box_did = cx.tcx_opt().and_then(|tcx| {
                     tcx.lang_items.owned_box()

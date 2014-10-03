@@ -11,28 +11,27 @@
 #![feature(unsafe_destructor)]
 
 use std::cell::Cell;
-use std::gc::{Gc, GC};
 
 // Make sure that destructors get run on slice literals
-struct foo {
-    x: Gc<Cell<int>>,
+struct foo<'a> {
+    x: &'a Cell<int>,
 }
 
 #[unsafe_destructor]
-impl Drop for foo {
+impl<'a> Drop for foo<'a> {
     fn drop(&mut self) {
         self.x.set(self.x.get() + 1);
     }
 }
 
-fn foo(x: Gc<Cell<int>>) -> foo {
+fn foo(x: &Cell<int>) -> foo {
     foo {
         x: x
     }
 }
 
 pub fn main() {
-    let x = box(GC) Cell::new(0);
+    let x = &Cell::new(0);
     {
         let l = &[foo(x)];
         assert_eq!(l[0].x.get(), 0);

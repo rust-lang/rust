@@ -9,12 +9,12 @@
 // except according to those terms.
 
 
-use std::gc::GC;
+use std::rc::Rc;
 
 fn f<T:Send>(_i: T) {
 }
 
 fn main() {
-    let i = box box(GC) 100i;
+    let i = box Rc::new(100i);
     f(i); //~ ERROR `core::kinds::Send` is not implemented
 }

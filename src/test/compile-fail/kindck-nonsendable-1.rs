@@ -9,12 +9,12 @@
 // except according to those terms.
 
 
-use std::gc::{Gc, GC};
+use std::rc::Rc;
 
-fn foo(_x: Gc<uint>) {}
+fn foo(_x: Rc<uint>) {}
 
 fn main() {
-    let x = box(GC) 3u;
+    let x = Rc::new(3u);
     let _: proc():Send = proc() foo(x); //~ ERROR `core::kinds::Send` is not implemented
     let _: proc():Send = proc() foo(x); //~ ERROR `core::kinds::Send` is not implemented
     let _: proc():Send = proc() foo(x); //~ ERROR `core::kinds::Send` is not implemented

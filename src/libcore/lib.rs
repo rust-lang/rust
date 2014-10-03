@@ -57,7 +57,7 @@
        html_playground_url = "http://play.rust-lang.org/")]
 
 #![no_std]
-#![feature(globs, intrinsics, lang_items, macro_rules, managed_boxes, phase)]
+#![feature(globs, intrinsics, lang_items, macro_rules, phase)]
 #![feature(simd, unsafe_destructor)]
 #![deny(missing_doc)]
 

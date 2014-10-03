@@ -16,7 +16,7 @@
        html_favicon_url = "http://www.rust-lang.org/favicon.ico",
        html_root_url = "http://doc.rust-lang.org/master/")]
 
-#![feature(macro_rules, phase, globs, thread_local, managed_boxes, asm)]
+#![feature(macro_rules, phase, globs, thread_local, asm)]
 #![feature(linkage, lang_items, unsafe_destructor, default_type_params)]
 #![feature(import_shadowing)]
 #![no_std]
@@ -57,7 +57,6 @@ pub mod c_str;
 pub mod exclusive;
 pub mod local;
 pub mod local_data;
-pub mod local_heap;
 pub mod mutex;
 pub mod rtio;
 pub mod stack;
@@ -104,9 +103,8 @@ pub static DEFAULT_ERROR_CODE: int = 101;
 
 /// One-time runtime initialization.
 ///
-/// Initializes global state, including frobbing
-/// the crate's logging flags, registering GC
-/// metadata, and storing the process arguments.
+/// Initializes global state, including frobbing the crate's logging flags,
+/// and storing the process arguments.
 pub fn init(argc: int, argv: *const *const u8) {
     // FIXME: Derefing these pointers is not safe.
     // Need to propagate the unsafety to `start`.

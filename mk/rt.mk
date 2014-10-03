@@ -35,7 +35,7 @@
 # that's per-target so you're allowed to conditionally add files based on the
 # target.
 ################################################################################
-NATIVE_LIBS := rust_builtin hoedown uv_support morestack miniz context_switch \
+NATIVE_LIBS := rust_builtin hoedown morestack miniz context_switch \
 		rustrt_native rust_test_helpers
 
 # $(1) is the target triple
@@ -50,7 +50,6 @@ NATIVE_DEPS_hoedown_$(1) := hoedown/src/autolink.c \
 			hoedown/src/html_smartypants.c \
 			hoedown/src/stack.c \
 			hoedown/src/version.c
-NATIVE_DEPS_uv_support_$(1) := rust_uv.c
 NATIVE_DEPS_miniz_$(1) = miniz.c
 NATIVE_DEPS_rust_builtin_$(1) := rust_builtin.c \
 			rust_android_dummy.c

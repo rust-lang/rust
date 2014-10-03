@@ -71,7 +71,7 @@ pub fn type_is_immediate(ccx: &CrateContext, ty: ty::t) -> bool {
     use middle::trans::type_of::sizing_type_of;
 
     let tcx = ccx.tcx();
-    let simple = ty::type_is_scalar(ty) || ty::type_is_boxed(ty) ||
+    let simple = ty::type_is_scalar(ty) ||
         ty::type_is_unique(ty) || ty::type_is_region_ptr(ty) ||
         type_is_newtype_immediate(ccx, ty) || ty::type_is_bot(ty) ||
         ty::type_is_simd(tcx, ty);

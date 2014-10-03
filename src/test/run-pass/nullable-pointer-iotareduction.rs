@@ -11,7 +11,6 @@
 #![feature(macro_rules)]
 
 use std::{option, mem};
-use std::gc::{Gc, GC};
 
 // Iota-reduction is a rule in the Calculus of (Co-)Inductive Constructions,
 // which "says that a destructor applied to an object built from a constructor
@@ -76,7 +75,6 @@ macro_rules! check_type {
 pub fn main() {
     check_type!(&17: &int);
     check_type!(box 18: Box<int>);
-    check_type!(box(GC) 19: Gc<int>);
     check_type!("foo".to_string(): String);
     check_type!(vec!(20, 22): Vec<int> );
     let mint: uint = unsafe { mem::transmute(main) };

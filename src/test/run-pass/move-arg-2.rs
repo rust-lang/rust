@@ -9,15 +9,13 @@
 // except according to those terms.
 
 
-use std::gc::{Gc, GC};
-
-fn test(foo: Gc<Vec<int>>) { assert!((*foo.get(0) == 10)); }
+fn test(foo: Box<Vec<int>>) { assert!((*foo.get(0) == 10)); }
 
 pub fn main() {
-    let x = box(GC) vec!(10);
+    let x = box vec!(10);
     // Test forgetting a local by move-in
     test(x);
 
     // Test forgetting a temporary by move-in.
-    test(box(GC) vec!(10));
+    test(box vec!(10));
 }

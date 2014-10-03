@@ -325,7 +325,7 @@ pub fn write_content<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
                     let bcx = iter_vec_loop(bcx, lldest, vt,
                                   C_uint(bcx.ccx(), count), |set_bcx, lleltptr, _| {
-                        elem.shallow_copy_and_take(set_bcx, lleltptr)
+                        elem.shallow_copy(set_bcx, lleltptr)
                     });
 
                     elem.add_clean_if_rvalue(bcx, element.id);

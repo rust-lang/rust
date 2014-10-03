@@ -8,11 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Testing that we can't store a reference it task-local storage
+// Testing that we can't store a reference in task-local storage
 
-use std::gc::{GC, Gc};
-
-local_data_key!(key: Gc<&int>)
+local_data_key!(key: Box<&int>)
 //~^ ERROR missing lifetime specifier
 
 fn main() {}

@@ -10,36 +10,34 @@
 
 #![feature(unsafe_destructor)]
 
-extern crate debug;
-
 use std::cell::Cell;
-use std::gc::{Gc, GC};
 
-struct r {
-    i: Gc<Cell<int>>,
+#[deriving(Show)]
+struct r<'a> {
+    i: &'a Cell<int>,
 }
 
 #[unsafe_destructor]
-impl Drop for r {
+impl<'a> Drop for r<'a> {
     fn drop(&mut self) {
         self.i.set(self.i.get() + 1);
     }
 }
 
-fn r(i: Gc<Cell<int>>) -> r {
+fn r(i: &Cell<int>) -> r {
     r {
         i: i
     }
 }
 
 pub fn main() {
-    let i = box(GC) Cell::new(0i);
+    let i = &Cell::new(0i);
     // Even though these look like copies, they are guaranteed not to be
     {
         let a = r(i);
         let b = (a, 10i);
         let (c, _d) = b;
-        println!("{:?}", c);
+        println!("{}", c);
     }
     assert_eq!(i.get(), 1);
 }

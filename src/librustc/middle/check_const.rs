@@ -100,7 +100,7 @@ fn check_expr(v: &mut CheckCrateVisitor, e: &Expr) {
     if v.in_const {
         match e.node {
           ExprUnary(UnDeref, _) => { }
-          ExprUnary(UnBox, _) | ExprUnary(UnUniq, _) => {
+          ExprUnary(UnUniq, _) => {
             span_err!(v.tcx.sess, e.span, E0010, "cannot do allocations in constant expressions");
             return;
           }
@@ -149,7 +149,7 @@ fn check_expr(v: &mut CheckCrateVisitor, e: &Expr) {
           }
           ExprCall(ref callee, _) => {
             match v.tcx.def_map.borrow().find(&callee.id) {
-                Some(&DefStruct(..)) => {}    // OK.
+                Some(&DefStruct(..)) |
                 Some(&DefVariant(..)) => {}    // OK.
                 _ => {
                     span_err!(v.tcx.sess, e.span, E0015,

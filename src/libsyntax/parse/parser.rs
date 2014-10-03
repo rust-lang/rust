@@ -16,8 +16,7 @@ use ast::{RegionTyParamBound, TraitTyParamBound};
 use ast::{ProvidedMethod, Public, FnStyle};
 use ast::{Mod, BiAdd, Arg, Arm, Attribute, BindByRef, BindByValue};
 use ast::{BiBitAnd, BiBitOr, BiBitXor, BiRem, Block};
-use ast::{BlockCheckMode, UnBox};
-use ast::{CaptureByRef, CaptureByValue, CaptureClause};
+use ast::{BlockCheckMode, CaptureByRef, CaptureByValue, CaptureClause};
 use ast::{Crate, CrateConfig, Decl, DeclItem};
 use ast::{DeclLocal, DefaultBlock, UnDeref, BiDiv, EMPTY_CTXT, EnumDef, ExplicitSelf};
 use ast::{Expr, Expr_, ExprAddrOf, ExprMatch, ExprAgain};
@@ -50,7 +49,7 @@ use ast::{StructVariantKind, BiSub};
 use ast::StrStyle;
 use ast::{SelfExplicit, SelfRegion, SelfStatic, SelfValue};
 use ast::{TokenTree, TraitItem, TraitRef, TTDelim, TTSeq, TTTok};
-use ast::{TTNonterminal, TupleVariantKind, Ty, Ty_, TyBot, TyBox};
+use ast::{TTNonterminal, TupleVariantKind, Ty, Ty_, TyBot};
 use ast::{TypeField, TyFixedLengthVec, TyClosure, TyProc, TyBareFn};
 use ast::{TyTypeof, TyInfer, TypeMethod};
 use ast::{TyNil, TyParam, TyParamBound, TyParen, TyPath, TyPtr, TyQPath};
@@ -1450,12 +1449,6 @@ impl<'a> Parser<'a> {
                     t
                 }
             }
-        } else if self.token == token::AT {
-            // MANAGED POINTER
-            self.bump();
-            let span = self.last_span;
-            self.obsolete(span, ObsoleteManagedType);
-            TyBox(self.parse_ty(plus_allowed))
         } else if self.token == token::TILDE {
             // OWNED POINTER
             self.bump();
@@ -2722,14 +2715,6 @@ impl<'a> Parser<'a> {
             let e = self.parse_prefix_expr();
             hi = e.span.hi;
             ex = ExprAddrOf(m, e);
-          }
-          token::AT => {
-            self.bump();
-            let span = self.last_span;
-            self.obsolete(span, ObsoleteManagedExpr);
-            let e = self.parse_prefix_expr();
-            hi = e.span.hi;
-            ex = self.mk_unary(UnBox, e);
           }
           token::TILDE => {
             self.bump();

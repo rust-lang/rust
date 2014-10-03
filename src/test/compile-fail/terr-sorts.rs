@@ -9,18 +9,16 @@
 // except according to those terms.
 
 
-use std::gc::Gc;
-
 struct foo {
     a: int,
     b: int,
 }
 
-type bar = Gc<foo>;
+type bar = Box<foo>;
 
 fn want_foo(f: foo) {}
 fn have_bar(b: bar) {
-    want_foo(b); //~ ERROR (expected struct foo, found Gc-ptr)
+    want_foo(b); //~ ERROR (expected struct foo, found box)
 }
 
 fn main() {}

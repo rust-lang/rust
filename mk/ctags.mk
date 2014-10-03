@@ -28,7 +28,7 @@ CTAGS_LOCATIONS=$(patsubst ${CFG_SRC_DIR}src/llvm,, \
 				$(patsubst ${CFG_SRC_DIR}src/rt/sundown,, \
 				$(patsubst ${CFG_SRC_DIR}src/rt/vg,, \
 				$(wildcard ${CFG_SRC_DIR}src/*) $(wildcard ${CFG_SRC_DIR}src/rt/*) \
-				)))))))))))
+				)))))))))
 CTAGS_OPTS=--options="${CFG_SRC_DIR}src/etc/ctags.rust" --languages=-javascript --recurse ${CTAGS_LOCATIONS}
 # We could use `--languages=Rust`, but there is value in producing tags for the
 # C++ parts of the code base too (at the time of writing, those are .h and .cpp

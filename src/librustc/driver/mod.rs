@@ -125,6 +125,21 @@ fn run_compiler(args: &[String]) {
     driver::compile_input(sess, cfg, &input, &odir, &ofile, None);
 }
 
+/// Returns a version string such as "0.12.0-dev".
+pub fn release_str() -> Option<&'static str> {
+    option_env!("CFG_RELEASE")
+}
+
+/// Returns the full SHA1 hash of HEAD of the Git repo from which rustc was built.
+pub fn commit_hash_str() -> Option<&'static str> {
+    option_env!("CFG_VER_HASH")
+}
+
+/// Returns the "commit date" of HEAD of the Git repo from which rustc was built as a static string.
+pub fn commit_date_str() -> Option<&'static str> {
+    option_env!("CFG_VER_DATE")
+}
+
 /// Prints version information and returns None on success or an error
 /// message on failure.
 pub fn version(binary: &str, matches: &getopts::Matches) -> Option<String> {
@@ -134,13 +149,14 @@ pub fn version(binary: &str, matches: &getopts::Matches) -> Option<String> {
         Some(s) => return Some(format!("Unrecognized argument: {}", s))
     };
 
-    println!("{} {}", binary, env!("CFG_VERSION"));
+    println!("{} {}", binary, option_env!("CFG_VERSION").unwrap_or("unknown version"));
     if verbose {
+        fn unw(x: Option<&str>) -> &str { x.unwrap_or("unknown") }
         println!("binary: {}", binary);
-        println!("commit-hash: {}", option_env!("CFG_VER_HASH").unwrap_or("unknown"));
-        println!("commit-date: {}", option_env!("CFG_VER_DATE").unwrap_or("unknown"));
+        println!("commit-hash: {}", unw(commit_hash_str()));
+        println!("commit-date: {}", unw(commit_date_str()));
         println!("host: {}", driver::host_triple());
-        println!("release: {}", env!("CFG_RELEASE"));
+        println!("release: {}", unw(release_str()));
     }
     None
 }

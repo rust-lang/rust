@@ -305,10 +305,9 @@ copying.
 #     Circle(Point, f64),   // origin, radius
 #     Rectangle(Point, Size)  // upper-left, dimensions
 # }
-# static tau: f64 = 6.28;
 fn compute_area(shape: &Shape) -> f64 {
     match *shape {
-        Circle(_, radius) => 0.5 * tau * radius * radius,
+        Circle(_, radius) => std::f64::consts::PI * radius * radius,
         Rectangle(_, ref size) => size.w * size.h
     }
 }
@@ -316,10 +315,7 @@ fn compute_area(shape: &Shape) -> f64 {
 
 The first case matches against circles. Here, the pattern extracts the
 radius from the shape variant and the action uses it to compute the
-area of the circle. (Like any up-to-date engineer, we use the [tau
-circle constant][tau] and not that dreadfully outdated notion of pi).
-
-[tau]: http://www.math.utah.edu/~palais/pi.html
+area of the circle.
 
 The second match is more interesting. Here we match against a
 rectangle and extract its size: but rather than copy the `size`

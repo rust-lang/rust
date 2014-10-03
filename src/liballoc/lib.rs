@@ -92,7 +92,6 @@ pub use boxed as owned;
 
 pub mod heap;
 pub mod libc_heap;
-pub mod util;
 
 // Primitive types using the heaps above
 

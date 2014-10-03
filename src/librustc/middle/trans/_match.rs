@@ -698,7 +698,6 @@ fn any_irrefutable_adt_pat(tcx: &ty::ctxt, m: &[Match], col: uint) -> bool {
             }
             ast::PatEnum(..) | ast::PatIdent(_, _, None) => {
                 match tcx.def_map.borrow().find(&pat.id) {
-                    Some(&def::DefFn(..)) |
                     Some(&def::DefStruct(..)) => true,
                     _ => false
                 }
@@ -1646,7 +1645,6 @@ fn bind_irrefutable_pat<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                         }
                     }
                 }
-                Some(def::DefFn(..)) |
                 Some(def::DefStruct(..)) => {
                     match *sub_pats {
                         None => {

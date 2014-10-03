@@ -104,7 +104,6 @@ pub struct CopiedUpvar {
 #[deriving(Clone, PartialEq, Eq, Hash)]
 pub enum PointerKind {
     OwnedPtr,
-    GcPtr,
     BorrowedPtr(ty::BorrowKind, ty::Region),
     Implicit(ty::BorrowKind, ty::Region),     // Implicit deref of a borrowed ptr.
     UnsafePtr(ast::Mutability)
@@ -189,10 +188,6 @@ pub fn opt_deref_kind(t: ty::t) -> Option<deref_kind> {
                 ..
             }) => {
             Some(deref_ptr(BorrowedPtr(ty::ImmBorrow, r)))
-        }
-
-        ty::ty_box(..) => {
-            Some(deref_ptr(GcPtr))
         }
 
         ty::ty_ptr(ref mt) => {
@@ -301,9 +296,6 @@ impl MutabilityCategory {
             }
             BorrowedPtr(borrow_kind, _) | Implicit(borrow_kind, _) => {
                 MutabilityCategory::from_borrow_kind(borrow_kind)
-            }
-            GcPtr => {
-                McImmutable
             }
             UnsafePtr(m) => {
                 MutabilityCategory::from_mutbl(m)
@@ -1083,7 +1075,6 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
                         if_ok!(self.cat_pattern(subcmt, &**subpat, |x,y,z| op(x,y,z)));
                     }
                 }
-                Some(&def::DefFn(..)) |
                 Some(&def::DefStruct(..)) => {
                     for (i, subpat) in subpats.iter().enumerate() {
                         let subpat_ty = if_ok!(self.pat_ty(&**subpat)); // see (*2)
@@ -1200,7 +1191,7 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
                           Implicit(..) => {
                             "dereference (dereference is implicit, due to indexing)".to_string()
                           }
-                          OwnedPtr | GcPtr => format!("dereference of `{}`", ptr_sigil(pk)),
+                          OwnedPtr => format!("dereference of `{}`", ptr_sigil(pk)),
                           _ => format!("dereference of `{}`-pointer", ptr_sigil(pk))
                       }
                   }
@@ -1237,7 +1228,6 @@ pub enum InteriorSafety {
 }
 
 pub enum AliasableReason {
-    AliasableManaged,
     AliasableBorrowed,
     AliasableOther,
     AliasableStatic(InteriorSafety),
@@ -1256,7 +1246,6 @@ impl cmt_ {
             cat_copied_upvar(..) |
             cat_local(..) |
             cat_deref(_, _, UnsafePtr(..)) |
-            cat_deref(_, _, GcPtr(..)) |
             cat_deref(_, _, BorrowedPtr(..)) |
             cat_deref(_, _, Implicit(..)) |
             cat_upvar(..) => {
@@ -1320,10 +1309,6 @@ impl cmt_ {
                 }
             }
 
-            cat_deref(_, _, GcPtr) => {
-                Some(AliasableManaged)
-            }
-
             cat_deref(_, _, BorrowedPtr(ty::ImmBorrow, _)) |
             cat_deref(_, _, Implicit(ty::ImmBorrow, _)) => {
                 Some(AliasableBorrowed)
@@ -1371,7 +1356,6 @@ impl Repr for categorization {
 pub fn ptr_sigil(ptr: PointerKind) -> &'static str {
     match ptr {
         OwnedPtr => "Box",
-        GcPtr => "Gc",
         BorrowedPtr(ty::ImmBorrow, _) |
         Implicit(ty::ImmBorrow, _) => "&",
         BorrowedPtr(ty::MutBorrow, _) |

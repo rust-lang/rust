@@ -95,7 +95,7 @@ pub fn check_object_cast(fcx: &FnCtxt,
         }
     }
 
-    // Because we currently give unsound lifetimes to the "ty_box", I
+    // Because we currently give unsound lifetimes to the "t_box", I
     // could have written &'static ty::TyTrait here, but it seems
     // gratuitously unsafe.
     fn object_trait<'a>(t: &'a ty::t) -> &'a ty::TyTrait {

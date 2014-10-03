@@ -65,7 +65,7 @@ Some of the datum methods, however, are designed to work only on
 copyable values such as ints or pointers. Those methods may borrow the
 datum (`&self`) rather than consume it, but they always include
 assertions on the type of the value represented to check that this
-makes sense. An example is `shallow_copy_and_take()`, which duplicates
+makes sense. An example is `shallow_copy()`, which duplicates
 a datum value.
 
 Translating an expression always yields a `Datum<Expr>` result, but

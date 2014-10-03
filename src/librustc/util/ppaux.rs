@@ -17,7 +17,7 @@ use middle::ty::{ReEarlyBound, BrFresh, ctxt};
 use middle::ty::{ReFree, ReScope, ReInfer, ReStatic, Region, ReEmpty};
 use middle::ty::{ReSkolemized, ReVar};
 use middle::ty::{mt, t, ParamTy};
-use middle::ty::{ty_bool, ty_char, ty_bot, ty_box, ty_struct, ty_enum};
+use middle::ty::{ty_bool, ty_char, ty_bot, ty_struct, ty_enum};
 use middle::ty::{ty_err, ty_str, ty_vec, ty_float, ty_bare_fn, ty_closure};
 use middle::ty::{ty_nil, ty_param, ty_ptr, ty_rptr, ty_tup, ty_open};
 use middle::ty::{ty_unboxed_closure};
@@ -375,7 +375,6 @@ pub fn ty_to_string(cx: &ctxt, typ: t) -> String {
       ty_int(t) => ast_util::int_ty_to_string(t, None).to_string(),
       ty_uint(t) => ast_util::uint_ty_to_string(t, None).to_string(),
       ty_float(t) => ast_util::float_ty_to_string(t).to_string(),
-      ty_box(typ) => format!("Gc<{}>", ty_to_string(cx, typ)),
       ty_uniq(typ) => format!("Box<{}>", ty_to_string(cx, typ)),
       ty_ptr(ref tm) => {
           format!("*{} {}", match tm.mutbl {

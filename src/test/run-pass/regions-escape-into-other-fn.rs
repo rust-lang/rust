@@ -9,12 +9,10 @@
 // except according to those terms.
 
 
-use std::gc::GC;
-
 fn foo(x: &uint) -> &uint { x }
 fn bar(x: &uint) -> uint { *x }
 
 pub fn main() {
-    let p = box(GC) 3u;
+    let p = box 3u;
     assert_eq!(bar(foo(&*p)), 3);
 }

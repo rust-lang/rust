@@ -411,7 +411,6 @@ mod tests {
     extern crate test;
 
     use std::prelude::*;
-    use std::gc::{Gc, GC};
     use super::*;
     use std::task;
 
@@ -467,11 +466,11 @@ mod tests {
     #[test]
     fn test_tls_multiple_types() {
         static str_key: Key<String> = &KeyValueKey;
-        static box_key: Key<Gc<()>> = &KeyValueKey;
+        static box_key: Key<Box<int>> = &KeyValueKey;
         static int_key: Key<int> = &KeyValueKey;
         task::spawn(proc() {
             str_key.replace(Some("string data".to_string()));
-            box_key.replace(Some(box(GC) ()));
+            box_key.replace(Some(box 0));
             int_key.replace(Some(42));
         });
     }
@@ -479,13 +478,13 @@ mod tests {
     #[test]
     fn test_tls_overwrite_multiple_types() {
         static str_key: Key<String> = &KeyValueKey;
-        static box_key: Key<Gc<()>> = &KeyValueKey;
+        static box_key: Key<Box<int>> = &KeyValueKey;
         static int_key: Key<int> = &KeyValueKey;
         task::spawn(proc() {
             str_key.replace(Some("string data".to_string()));
             str_key.replace(Some("string data 2".to_string()));
-            box_key.replace(Some(box(GC) ()));
-            box_key.replace(Some(box(GC) ()));
+            box_key.replace(Some(box 0));
+            box_key.replace(Some(box 1));
             int_key.replace(Some(42));
             // This could cause a segfault if overwriting-destruction is done
             // with the crazy polymorphic transmute rather than the provided
@@ -498,13 +497,13 @@ mod tests {
     #[should_fail]
     fn test_tls_cleanup_on_failure() {
         static str_key: Key<String> = &KeyValueKey;
-        static box_key: Key<Gc<()>> = &KeyValueKey;
+        static box_key: Key<Box<int>> = &KeyValueKey;
         static int_key: Key<int> = &KeyValueKey;
         str_key.replace(Some("parent data".to_string()));
-        box_key.replace(Some(box(GC) ()));
+        box_key.replace(Some(box 0));
         task::spawn(proc() {
             str_key.replace(Some("string data".to_string()));
-            box_key.replace(Some(box(GC) ()));
+            box_key.replace(Some(box 2));
             int_key.replace(Some(42));
             fail!();
         });
