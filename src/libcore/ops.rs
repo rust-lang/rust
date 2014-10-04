@@ -692,15 +692,15 @@ pub trait IndexMut<Index, Result> {
  *         println!("Slicing!");
  *         self
  *     }
- *     fn slice_from_<'a>(&'a self, from: &Foo) -> &'a Foo {
+ *     fn slice_from_or_fail<'a>(&'a self, from: &Foo) -> &'a Foo {
  *         println!("Slicing!");
  *         self
  *     }
- *     fn slice_to_<'a>(&'a self, to: &Foo) -> &'a Foo {
+ *     fn slice_to_or_fail<'a>(&'a self, to: &Foo) -> &'a Foo {
  *         println!("Slicing!");
  *         self
  *     }
- *     fn slice_<'a>(&'a self, from: &Foo, to: &Foo) -> &'a Foo {
+ *     fn slice_or_fail<'a>(&'a self, from: &Foo, to: &Foo) -> &'a Foo {
  *         println!("Slicing!");
  *         self
  *     }
@@ -711,7 +711,22 @@ pub trait IndexMut<Index, Result> {
  * }
  * ```
  */
-// FIXME(#17273) remove the postscript _s
+#[cfg(not(stage0))]
+#[lang="slice"]
+pub trait Slice<Idx, Sized? Result> for Sized? {
+    /// The method for the slicing operation foo[]
+    fn as_slice_<'a>(&'a self) -> &'a Result;
+    /// The method for the slicing operation foo[from..]
+    fn slice_from_or_fail<'a>(&'a self, from: &Idx) -> &'a Result;
+    /// The method for the slicing operation foo[..to]
+    fn slice_to_or_fail<'a>(&'a self, to: &Idx) -> &'a Result;
+    /// The method for the slicing operation foo[from..to]
+    fn slice_or_fail<'a>(&'a self, from: &Idx, to: &Idx) -> &'a Result;
+}
+#[cfg(stage0)]
+/**
+ *
+ */
 #[lang="slice"]
 pub trait Slice<Idx, Sized? Result> for Sized? {
     /// The method for the slicing operation foo[]
@@ -742,15 +757,15 @@ pub trait Slice<Idx, Sized? Result> for Sized? {
  *         println!("Slicing!");
  *         self
  *     }
- *     fn slice_from_mut_<'a>(&'a mut self, from: &Foo) -> &'a mut Foo {
+ *     fn slice_from_or_fail_mut<'a>(&'a mut self, from: &Foo) -> &'a mut Foo {
  *         println!("Slicing!");
  *         self
  *     }
- *     fn slice_to_mut_<'a>(&'a mut self, to: &Foo) -> &'a mut Foo {
+ *     fn slice_to_or_fail_mut<'a>(&'a mut self, to: &Foo) -> &'a mut Foo {
  *         println!("Slicing!");
  *         self
  *     }
- *     fn slice_mut_<'a>(&'a mut self, from: &Foo, to: &Foo) -> &'a mut Foo {
+ *     fn slice_or_fail_mut<'a>(&'a mut self, from: &Foo, to: &Foo) -> &'a mut Foo {
  *         println!("Slicing!");
  *         self
  *     }
@@ -761,7 +776,22 @@ pub trait Slice<Idx, Sized? Result> for Sized? {
  * }
  * ```
  */
-// FIXME(#17273) remove the postscript _s
+#[cfg(not(stage0))]
+#[lang="slice_mut"]
+pub trait SliceMut<Idx, Sized? Result> for Sized? {
+    /// The method for the slicing operation foo[]
+    fn as_mut_slice_<'a>(&'a mut self) -> &'a mut Result;
+    /// The method for the slicing operation foo[from..]
+    fn slice_from_or_fail_mut<'a>(&'a mut self, from: &Idx) -> &'a mut Result;
+    /// The method for the slicing operation foo[..to]
+    fn slice_to_or_fail_mut<'a>(&'a mut self, to: &Idx) -> &'a mut Result;
+    /// The method for the slicing operation foo[from..to]
+    fn slice_or_fail_mut<'a>(&'a mut self, from: &Idx, to: &Idx) -> &'a mut Result;
+}
+#[cfg(stage0)]
+/**
+ *
+ */
 #[lang="slice_mut"]
 pub trait SliceMut<Idx, Sized? Result> for Sized? {
     /// The method for the slicing operation foo[mut]

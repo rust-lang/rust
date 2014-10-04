@@ -1164,6 +1164,7 @@ pub mod traits {
         fn equiv(&self, other: &S) -> bool { eq_slice(*self, other.as_slice()) }
     }
 
+    #[cfg(stage0)]
     impl ops::Slice<uint, str> for str {
         #[inline]
         fn as_slice_<'a>(&'a self) -> &'a str {
@@ -1182,6 +1183,28 @@ pub mod traits {
 
         #[inline]
         fn slice_<'a>(&'a self, from: &uint, to: &uint) -> &'a str {
+            self.slice(*from, *to)
+        }
+    }
+    #[cfg(not(stage0))]
+    impl ops::Slice<uint, str> for str {
+        #[inline]
+        fn as_slice_<'a>(&'a self) -> &'a str {
+            self
+        }
+
+        #[inline]
+        fn slice_from_or_fail<'a>(&'a self, from: &uint) -> &'a str {
+            self.slice_from(*from)
+        }
+
+        #[inline]
+        fn slice_to_or_fail<'a>(&'a self, to: &uint) -> &'a str {
+            self.slice_to(*to)
+        }
+
+        #[inline]
+        fn slice_or_fail<'a>(&'a self, from: &uint, to: &uint) -> &'a str {
             self.slice(*from, *to)
         }
     }

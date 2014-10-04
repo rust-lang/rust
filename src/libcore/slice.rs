@@ -486,6 +486,37 @@ impl<'a,T> ImmutableSlice<'a, T> for &'a [T] {
     }
 }
 
+
+
+#[cfg(not(stage0))]
+impl<T> ops::Slice<uint, [T]> for [T] {
+    #[inline]
+    fn as_slice_<'a>(&'a self) -> &'a [T] {
+        self
+    }
+
+    #[inline]
+    fn slice_from_or_fail<'a>(&'a self, start: &uint) -> &'a [T] {
+        self.slice_or_fail(start, &self.len())
+    }
+
+    #[inline]
+    fn slice_to_or_fail<'a>(&'a self, end: &uint) -> &'a [T] {
+        self.slice_or_fail(&0, end)
+    }
+    #[inline]
+    fn slice_or_fail<'a>(&'a self, start: &uint, end: &uint) -> &'a [T] {
+        assert!(*start <= *end);
+        assert!(*end <= self.len());
+        unsafe {
+            transmute(RawSlice {
+                    data: self.as_ptr().offset(*start as int),
+                    len: (*end - *start)
+                })
+        }
+    }
+}
+#[cfg(stage0)]
 impl<T> ops::Slice<uint, [T]> for [T] {
     #[inline]
     fn as_slice_<'a>(&'a self) -> &'a [T] {
@@ -514,6 +545,36 @@ impl<T> ops::Slice<uint, [T]> for [T] {
     }
 }
 
+#[cfg(not(stage0))]
+impl<T> ops::SliceMut<uint, [T]> for [T] {
+    #[inline]
+    fn as_mut_slice_<'a>(&'a mut self) -> &'a mut [T] {
+        self
+    }
+
+    #[inline]
+    fn slice_from_or_fail_mut<'a>(&'a mut self, start: &uint) -> &'a mut [T] {
+        let len = &self.len();
+        self.slice_or_fail_mut(start, len)
+    }
+
+    #[inline]
+    fn slice_to_or_fail_mut<'a>(&'a mut self, end: &uint) -> &'a mut [T] {
+        self.slice_or_fail_mut(&0, end)
+    }
+    #[inline]
+    fn slice_or_fail_mut<'a>(&'a mut self, start: &uint, end: &uint) -> &'a mut [T] {
+        assert!(*start <= *end);
+        assert!(*end <= self.len());
+        unsafe {
+            transmute(RawSlice {
+                    data: self.as_ptr().offset(*start as int),
+                    len: (*end - *start)
+                })
+        }
+    }
+}
+#[cfg(stage0)]
 impl<T> ops::SliceMut<uint, [T]> for [T] {
     #[inline]
     fn as_mut_slice_<'a>(&'a mut self) -> &'a mut [T] {
@@ -556,7 +617,7 @@ pub trait MutableSlice<'a, T> {
     fn as_mut_slice(self) -> &'a mut [T];
 
     /// Deprecated: use `slice_mut`.
-    #[deprecated = "slice_mut"]
+    #[deprecated = "use slice_mut"]
     fn mut_slice(self, start: uint, end: uint) -> &'a mut [T] {
         self.slice_mut(start, end)
     }
