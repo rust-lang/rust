@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,16 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//error-pattern:discriminant value
+static N: int = 1;
 
-// black and white have the same discriminator value ...
-
-enum color {
-    red = 0xff0000,
-    green = 0x00ff00,
-    blue = 0x0000ff,
-    black = 0x000000,
-    white = 0x000000,
+enum Foo {
+    A = 1,
+    B = 1, //~ ERROR discriminant value `1` already exists
+    //~^^ NOTE conflicting
+    C = 0,
+    D, //~ ERROR discriminant value `1` already exists
+    //~^^^^^ NOTE conflicting
+    E = N, //~ ERROR discriminant value `1` already exists
+    //~^^^^^^^ NOTE conflicting
 }
 
-fn main() { }
+fn main() {}
