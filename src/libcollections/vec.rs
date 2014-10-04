@@ -547,7 +547,7 @@ impl<T: PartialOrd> PartialOrd for Vec<T> {
 impl<T: Eq> Eq for Vec<T> {}
 
 #[experimental]
-impl<T: PartialEq, V: Slice<T>> Equiv<V> for Vec<T> {
+impl<T: PartialEq, V: AsSlice<T>> Equiv<V> for Vec<T> {
     #[inline]
     fn equiv(&self, other: &V) -> bool { self.as_slice() == other.as_slice() }
 }
@@ -1605,7 +1605,7 @@ impl<T: PartialEq> Vec<T> {
     }
 }
 
-impl<T> Slice<T> for Vec<T> {
+impl<T> AsSlice<T> for Vec<T> {
     /// Returns a slice into `self`.
     ///
     /// # Example
@@ -1623,7 +1623,7 @@ impl<T> Slice<T> for Vec<T> {
     }
 }
 
-impl<T: Clone, V: Slice<T>> Add<V, Vec<T>> for Vec<T> {
+impl<T: Clone, V: AsSlice<T>> Add<V, Vec<T>> for Vec<T> {
     #[inline]
     fn add(&self, rhs: &V) -> Vec<T> {
         let mut res = Vec::with_capacity(self.len() + rhs.as_slice().len());

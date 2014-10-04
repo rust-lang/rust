@@ -76,7 +76,7 @@ use option::{Option, None, Some};
 use str;
 use str::{MaybeOwned, Str, StrSlice};
 use string::String;
-use slice::{Slice, CloneableVector};
+use slice::{AsSlice, CloneableVector};
 use slice::{ImmutablePartialEqSlice, ImmutableSlice};
 use vec::Vec;
 

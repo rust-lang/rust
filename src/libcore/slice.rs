@@ -1143,13 +1143,13 @@ impl<'a, T:Clone> MutableCloneableSlice<T> for &'a mut [T] {
 
 /// Data that is viewable as a slice.
 #[unstable = "may merge with other traits"]
-pub trait Slice<T> {
+pub trait AsSlice<T> {
     /// Work with `self` as a slice.
     fn as_slice<'a>(&'a self) -> &'a [T];
 }
 
 #[unstable = "trait is unstable"]
-impl<'a,T> Slice<T> for &'a [T] {
+impl<'a,T> AsSlice<T> for &'a [T] {
     #[inline(always)]
     fn as_slice<'a>(&'a self) -> &'a [T] { *self }
 }
@@ -1828,7 +1828,7 @@ impl<'a,T:PartialEq> PartialEq for &'a [T] {
 impl<'a,T:Eq> Eq for &'a [T] {}
 
 #[unstable = "waiting for DST"]
-impl<'a,T:PartialEq, V: Slice<T>> Equiv<V> for &'a [T] {
+impl<'a,T:PartialEq, V: AsSlice<T>> Equiv<V> for &'a [T] {
     #[inline]
     fn equiv(&self, other: &V) -> bool { self.as_slice() == other.as_slice() }
 }
@@ -1849,7 +1849,7 @@ impl<'a,T:PartialEq> PartialEq for &'a mut [T] {
 impl<'a,T:Eq> Eq for &'a mut [T] {}
 
 #[unstable = "waiting for DST"]
-impl<'a,T:PartialEq, V: Slice<T>> Equiv<V> for &'a mut [T] {
+impl<'a,T:PartialEq, V: AsSlice<T>> Equiv<V> for &'a mut [T] {
     #[inline]
     fn equiv(&self, other: &V) -> bool { self.as_slice() == other.as_slice() }
 }

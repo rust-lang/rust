@@ -280,7 +280,6 @@ use clone::Clone;
 use cmp::PartialEq;
 use std::fmt::Show;
 use slice;
-use slice::Slice;
 use iter::{Iterator, DoubleEndedIterator, FromIterator, ExactSize};
 use option::{None, Option, Some};
 
@@ -836,26 +835,6 @@ impl<T: Show, E> Result<T, E> {
             Ok(t) =>
                 fail!("called `Result::unwrap_err()` on an `Ok` value: {}", t),
             Err(e) => e
-        }
-    }
-}
-
-/////////////////////////////////////////////////////////////////////////////
-// Trait implementations
-/////////////////////////////////////////////////////////////////////////////
-
-impl<T, E> Slice<T> for Result<T, E> {
-    /// Convert from `Result<T, E>` to `&[T]` (without copying)
-    #[inline]
-    #[stable]
-    fn as_slice<'a>(&'a self) -> &'a [T] {
-        match *self {
-            Ok(ref x) => slice::ref_slice(x),
-            Err(_) => {
-                // work around lack of implicit coercion from fixed-size array to slice
-                let emp: &[_] = &[];
-                emp
-            }
         }
     }
 }

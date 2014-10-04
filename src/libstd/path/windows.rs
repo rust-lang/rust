@@ -23,7 +23,7 @@ use io::Writer;
 use iter::{AdditiveIterator, DoubleEndedIterator, Extendable, Iterator, Map};
 use mem;
 use option::{Option, Some, None};
-use slice::{Slice, ImmutableSlice};
+use slice::{AsSlice, ImmutableSlice};
 use str::{CharSplits, Str, StrAllocating, StrVector, StrSlice};
 use string::String;
 use unicode::char::UnicodeChar;

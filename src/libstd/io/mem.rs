@@ -19,7 +19,7 @@ use result::{Err, Ok};
 use io;
 use io::{Reader, Writer, Seek, Buffer, IoError, SeekStyle, IoResult};
 use slice;
-use slice::Slice;
+use slice::AsSlice;
 use vec::Vec;
 
 static BUF_CAPACITY: uint = 128;

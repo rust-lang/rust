@@ -149,7 +149,6 @@ use iter::{Iterator, DoubleEndedIterator, FromIterator, ExactSize};
 use mem;
 use result::{Result, Ok, Err};
 use slice;
-use slice::Slice;
 
 // Note that this is not a lang item per se, but it has a hidden dependency on
 // `Iterator`, which is one. The compiler assumes that the `next` method of
@@ -845,21 +844,6 @@ impl<T: Default> Option<T> {
 /////////////////////////////////////////////////////////////////////////////
 // Trait implementations
 /////////////////////////////////////////////////////////////////////////////
-
-impl<T> Slice<T> for Option<T> {
-    /// Convert from `Option<T>` to `&[T]` (without copying)
-    #[inline]
-    #[stable]
-    fn as_slice<'a>(&'a self) -> &'a [T] {
-        match *self {
-            Some(ref x) => slice::ref_slice(x),
-            None => {
-                let result: &[_] = &[];
-                result
-            }
-        }
-    }
-}
 
 impl<T> Default for Option<T> {
     #[inline]

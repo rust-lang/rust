@@ -87,7 +87,7 @@
 #[doc(no_inline)] pub use slice::{MutableCloneableSlice, MutableOrdSlice};
 #[doc(no_inline)] pub use slice::{ImmutableSlice, MutableSlice};
 #[doc(no_inline)] pub use slice::{ImmutablePartialEqSlice, ImmutableOrdSlice};
-#[doc(no_inline)] pub use slice::{Slice, VectorVector};
+#[doc(no_inline)] pub use slice::{AsSlice, VectorVector};
 #[doc(no_inline)] pub use slice::MutableSliceAllocating;
 #[doc(no_inline)] pub use string::String;
 #[doc(no_inline)] pub use vec::Vec;

@@ -235,7 +235,7 @@ use os;
 use boxed::Box;
 use result::{Ok, Err, Result};
 use rt::rtio;
-use slice::{Slice, ImmutableSlice};
+use slice::{AsSlice, ImmutableSlice};
 use str::{Str, StrSlice};
 use str;
 use string::String;
