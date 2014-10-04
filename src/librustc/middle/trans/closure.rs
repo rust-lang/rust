@@ -301,6 +301,7 @@ fn load_environment<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 fn load_unboxed_closure_environment<'blk, 'tcx>(
                                     bcx: Block<'blk, 'tcx>,
                                     arg_scope_id: ScopeId,
+                                    freevar_mode: ast::CaptureClause,
                                     freevars: &Vec<ty::Freevar>,
                                     closure_id: ast::DefId)
                                     -> Block<'blk, 'tcx> {
@@ -326,11 +327,14 @@ fn load_unboxed_closure_environment<'blk, 'tcx>(
     };
 
     for (i, freevar) in freevars.iter().enumerate() {
-        let upvar_ptr = GEPi(bcx, llenv, [0, i]);
+        let mut upvar_ptr = GEPi(bcx, llenv, [0, i]);
+        if freevar_mode == ast::CaptureByRef {
+            upvar_ptr = Load(bcx, upvar_ptr);
+        }
         let def_id = freevar.def.def_id();
         bcx.fcx.llupvars.borrow_mut().insert(def_id.node, upvar_ptr);
 
-        if kind == ty::FnOnceUnboxedClosureKind {
+        if kind == ty::FnOnceUnboxedClosureKind && freevar_mode == ast::CaptureByValue {
             bcx.fcx.schedule_drop_mem(arg_scope_id,
                                       upvar_ptr,
                                       node_id_type(bcx, def_id.node))
@@ -477,6 +481,7 @@ pub fn trans_unboxed_closure<'blk, 'tcx>(
     let freevars: Vec<ty::Freevar> =
         ty::with_freevars(bcx.tcx(), id, |fv| fv.iter().map(|&fv| fv).collect());
     let freevars_ptr = &freevars;
+    let freevar_mode = bcx.tcx().capture_mode(id);
 
     trans_closure(bcx.ccx(),
                   decl,
@@ -493,6 +498,7 @@ pub fn trans_unboxed_closure<'blk, 'tcx>(
                   |bcx, arg_scope| {
                       load_unboxed_closure_environment(bcx,
                                                        arg_scope,
+                                                       freevar_mode,
                                                        freevars_ptr,
                                                        closure_id)
                   });
@@ -518,7 +524,14 @@ pub fn trans_unboxed_closure<'blk, 'tcx>(
                                                    dest_addr,
                                                    0,
                                                    i);
-        bcx = datum.store_to(bcx, upvar_slot_dest);
+        match freevar_mode {
+            ast::CaptureByValue => {
+                bcx = datum.store_to(bcx, upvar_slot_dest);
+            }
+            ast::CaptureByRef => {
+                Store(bcx, datum.to_llref(), upvar_slot_dest);
+            }
+        }
     }
     adt::trans_set_discr(bcx, &*repr, dest_addr, 0);
 

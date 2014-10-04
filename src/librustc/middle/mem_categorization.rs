@@ -596,17 +596,21 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
                           ty::FnMutUnboxedClosureKind => ast::Many,
                           ty::FnOnceUnboxedClosureKind => ast::Once,
                       };
-                      Ok(Rc::new(cmt_ {
-                          id: id,
-                          span: span,
-                          cat: cat_copied_upvar(CopiedUpvar {
-                              upvar_id: var_id,
-                              onceness: onceness,
-                              capturing_proc: fn_node_id,
-                          }),
-                          mutbl: MutabilityCategory::from_local(self.tcx(), var_id),
-                          ty: expr_ty
-                      }))
+                      if self.typer.capture_mode(fn_node_id) == ast::CaptureByRef {
+                          self.cat_upvar(id, span, var_id, fn_node_id)
+                      } else {
+                          Ok(Rc::new(cmt_ {
+                              id: id,
+                              span: span,
+                              cat: cat_copied_upvar(CopiedUpvar {
+                                  upvar_id: var_id,
+                                  onceness: onceness,
+                                  capturing_proc: fn_node_id,
+                              }),
+                              mutbl: MutabilityCategory::from_local(self.tcx(), var_id),
+                              ty: expr_ty
+                          }))
+                      }
                   }
                   _ => {
                       self.tcx().sess.span_bug(

@@ -8,17 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(overloaded_calls, unboxed_closures)]
+#![feature(unboxed_closures)]
 
-fn each<'a,T,F:FnMut(&'a T)>(x: &'a [T], mut f: F) {
-    for val in x.iter() {
-        f(val)
-    }
-}
+// Test that an unboxed closure that mutates a free variable will
+// cause borrow conflicts.
 
 fn main() {
-    let mut sum = 0u;
-    let elems = [ 1u, 2, 3, 4, 5 ];
-    each(elems, |&mut: val: &uint| sum += *val);
-    assert_eq!(sum, 15);
+    let mut x = 0u;
+    let f = |:| x += 1;
+    let _y = x; //~ ERROR cannot use `x` because it was mutably borrowed
 }

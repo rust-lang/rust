@@ -10,15 +10,26 @@
 
 #![feature(overloaded_calls, unboxed_closures)]
 
-fn each<'a,T,F:FnMut(&'a T)>(x: &'a [T], mut f: F) {
-    for val in x.iter() {
-        f(val)
-    }
+// Test by-ref capture of environment in unboxed closure types
+
+fn call_fn<F: Fn()>(f: F) {
+    f()
+}
+
+fn call_fn_mut<F: FnMut()>(mut f: F) {
+    f()
+}
+
+fn call_fn_once<F: FnOnce()>(f: F) {
+    f()
 }
 
 fn main() {
-    let mut sum = 0u;
-    let elems = [ 1u, 2, 3, 4, 5 ];
-    each(elems, |&mut: val: &uint| sum += *val);
-    assert_eq!(sum, 15);
+    let mut x = 0u;
+    let y = 2u;
+
+    call_fn(|&:| x += y);
+    call_fn_mut(|&mut:| x += y);
+    call_fn_once(|:| x += y);
+    assert_eq!(x, y * 3);
 }
