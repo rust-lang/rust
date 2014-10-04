@@ -21,7 +21,7 @@ use iter::{DoubleEndedIterator, AdditiveIterator, Extendable, Iterator, Map};
 use option::{Option, None, Some};
 use str::Str;
 use str;
-use slice::{CloneableVector, Splits, Slice, VectorVector,
+use slice::{CloneableVector, Splits, AsSlice, VectorVector,
             ImmutablePartialEqSlice, ImmutableSlice};
 use vec::Vec;
 
@@ -367,7 +367,7 @@ impl Path {
 
     /// Returns a normalized byte vector representation of a path, by removing all empty
     /// components, and unnecessary . and .. components.
-    fn normalize<V: Slice<u8>+CloneableVector<u8>>(v: V) -> Vec<u8> {
+    fn normalize<V: AsSlice<u8>+CloneableVector<u8>>(v: V) -> Vec<u8> {
         // borrowck is being very picky
         let val = {
             let is_abs = !v.as_slice().is_empty() && v.as_slice()[0] == SEP_BYTE;
