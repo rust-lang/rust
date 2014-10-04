@@ -382,9 +382,9 @@ impl AtomicInt {
     /// # Examples
     ///
     /// ```
-    /// use std::sync::atomic::{AtomicUint, SeqCst};
+    /// use std::sync::atomic::{AtomicInt, SeqCst};
     ///
-    /// let foo = AtomicUint::new(0b101101);
+    /// let foo = AtomicInt::new(0b101101);
     /// assert_eq!(0b101101, foo.fetch_and(0b110011, SeqCst));
     /// assert_eq!(0b100001, foo.load(SeqCst));
     #[inline]
@@ -397,9 +397,9 @@ impl AtomicInt {
     /// # Examples
     ///
     /// ```
-    /// use std::sync::atomic::{AtomicUint, SeqCst};
+    /// use std::sync::atomic::{AtomicInt, SeqCst};
     ///
-    /// let foo = AtomicUint::new(0b101101);
+    /// let foo = AtomicInt::new(0b101101);
     /// assert_eq!(0b101101, foo.fetch_or(0b110011, SeqCst));
     /// assert_eq!(0b111111, foo.load(SeqCst));
     #[inline]
@@ -412,9 +412,9 @@ impl AtomicInt {
     /// # Examples
     ///
     /// ```
-    /// use std::sync::atomic::{AtomicUint, SeqCst};
+    /// use std::sync::atomic::{AtomicInt, SeqCst};
     ///
-    /// let foo = AtomicUint::new(0b101101);
+    /// let foo = AtomicInt::new(0b101101);
     /// assert_eq!(0b101101, foo.fetch_xor(0b110011, SeqCst));
     /// assert_eq!(0b011110, foo.load(SeqCst));
     #[inline]
