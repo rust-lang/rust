@@ -460,6 +460,7 @@ impl<T> Index<uint,T> for Vec<T> {
     }
 }*/
 
+#[cfg(stage0)]
 impl<T> ops::Slice<uint, [T]> for Vec<T> {
     #[inline]
     fn as_slice_<'a>(&'a self) -> &'a [T] {
@@ -480,7 +481,29 @@ impl<T> ops::Slice<uint, [T]> for Vec<T> {
         self.as_slice().slice_(start, end)
     }
 }
+#[cfg(not(stage0))]
+impl<T> ops::Slice<uint, [T]> for Vec<T> {
+    #[inline]
+    fn as_slice_<'a>(&'a self) -> &'a [T] {
+        self.as_slice()
+    }
 
+    #[inline]
+    fn slice_from_or_fail<'a>(&'a self, start: &uint) -> &'a [T] {
+        self.as_slice().slice_from_or_fail(start)
+    }
+
+    #[inline]
+    fn slice_to_or_fail<'a>(&'a self, end: &uint) -> &'a [T] {
+        self.as_slice().slice_to_or_fail(end)
+    }
+    #[inline]
+    fn slice_or_fail<'a>(&'a self, start: &uint, end: &uint) -> &'a [T] {
+        self.as_slice().slice_or_fail(start, end)
+    }
+}
+
+#[cfg(stage0)]
 impl<T> ops::SliceMut<uint, [T]> for Vec<T> {
     #[inline]
     fn as_mut_slice_<'a>(&'a mut self) -> &'a mut [T] {
@@ -499,6 +522,27 @@ impl<T> ops::SliceMut<uint, [T]> for Vec<T> {
     #[inline]
     fn slice_mut_<'a>(&'a mut self, start: &uint, end: &uint) -> &'a mut [T] {
         self.as_mut_slice().slice_mut_(start, end)
+    }
+}
+#[cfg(not(stage0))]
+impl<T> ops::SliceMut<uint, [T]> for Vec<T> {
+    #[inline]
+    fn as_mut_slice_<'a>(&'a mut self) -> &'a mut [T] {
+        self.as_mut_slice()
+    }
+
+    #[inline]
+    fn slice_from_or_fail_mut<'a>(&'a mut self, start: &uint) -> &'a mut [T] {
+        self.as_mut_slice().slice_from_or_fail_mut(start)
+    }
+
+    #[inline]
+    fn slice_to_or_fail_mut<'a>(&'a mut self, end: &uint) -> &'a mut [T] {
+        self.as_mut_slice().slice_to_or_fail_mut(end)
+    }
+    #[inline]
+    fn slice_or_fail_mut<'a>(&'a mut self, start: &uint, end: &uint) -> &'a mut [T] {
+        self.as_mut_slice().slice_or_fail_mut(start, end)
     }
 }
 
@@ -1181,7 +1225,7 @@ impl<T> Vec<T> {
     }
 
     /// Deprecated: use `slice_mut`.
-    #[deprecated = "use slice_from"]
+    #[deprecated = "use slice_mut"]
     pub fn mut_slice<'a>(&'a mut self, start: uint, end: uint)
                          -> &'a mut [T] {
         self[mut start..end]

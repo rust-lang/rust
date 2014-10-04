@@ -928,6 +928,7 @@ impl<S: Str> Add<S, String> for String {
     }
 }
 
+#[cfg(stage0)]
 impl ops::Slice<uint, str> for String {
     #[inline]
     fn as_slice_<'a>(&'a self) -> &'a str {
@@ -946,6 +947,28 @@ impl ops::Slice<uint, str> for String {
 
     #[inline]
     fn slice_<'a>(&'a self, from: &uint, to: &uint) -> &'a str {
+        self[][*from..*to]
+    }
+}
+#[cfg(not(stage0))]
+impl ops::Slice<uint, str> for String {
+    #[inline]
+    fn as_slice_<'a>(&'a self) -> &'a str {
+        self.as_slice()
+    }
+
+    #[inline]
+    fn slice_from_or_fail<'a>(&'a self, from: &uint) -> &'a str {
+        self[][*from..]
+    }
+
+    #[inline]
+    fn slice_to_or_fail<'a>(&'a self, to: &uint) -> &'a str {
+        self[][..*to]
+    }
+
+    #[inline]
+    fn slice_or_fail<'a>(&'a self, from: &uint, to: &uint) -> &'a str {
         self[][*from..*to]
     }
 }
