@@ -269,7 +269,7 @@ impl String {
     /// ```
     #[unstable = "error value in return may change"]
     pub fn from_utf16(v: &[u16]) -> Option<String> {
-        let mut s = String::with_capacity(v.len() / 2);
+        let mut s = String::with_capacity(v.len());
         for c in str::utf16_items(v) {
             match c {
                 str::ScalarValue(c) => s.push(c),
