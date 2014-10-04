@@ -961,7 +961,7 @@ struct Point {
 }
 
 fn main() {
-    let origin = Point { x: 0i, y:  0i };
+    let origin = Point { x: 0i, y: 0i };
 
     println!("The origin is at ({}, {})", origin.x, origin.y);
 }
@@ -988,7 +988,7 @@ struct Point {
 }
 
 fn main() {
-    let mut point = Point { x: 0i, y:  0i };
+    let mut point = Point { x: 0i, y: 0i };
 
     point.x = 5;
 
@@ -1140,13 +1140,13 @@ You can have any number of values in an enum:
 ```{rust}
 enum OptionalColor {
     Color(int, int, int),
-    Missing
+    Missing,
 }
 ```
 
 Enums with values are quite useful, but as I mentioned, they're even more
 useful when they're generic across types. But before we get to generics, let's
-talk about how to fix this big `if`/`else` statements we've been writing. We'll
+talk about how to fix these big `if`/`else` statements we've been writing. We'll
 do that with `match`.
 
 # Match
@@ -1561,7 +1561,7 @@ println!("The second name is: {}", names[1]);
 
 These subscripts start at zero, like in most programming languages, so the
 first name is `names[0]` and the second name is `names[1]`. The above example
-prints `The second name is Brian`.
+prints `The second name is: Brian`.
 
 There's a whole lot more to vectors, but that's enough to get started. We have
 now learned all of the most basic Rust concepts. We're ready to start building
@@ -2084,7 +2084,7 @@ fn main() {
     match cmp(input, secret_number) {
         Less    => println!("Too small!"),
         Greater => println!("Too big!"),
-        Equal   => { println!("You win!"); },
+        Equal   => println!("You win!"),
     }
 }
 
@@ -2176,14 +2176,12 @@ fn main() {
                            .expect("Failed to read line");
     let input_num: Option<uint> = from_str(input.as_slice());
 
-
-
     println!("You guessed: {}", input_num);
 
     match cmp(input_num, secret_number) {
         Less    => println!("Too small!"),
         Greater => println!("Too big!"),
-        Equal   => { println!("You win!"); },
+        Equal   => println!("You win!"),
     }
 }
 
@@ -2241,7 +2239,7 @@ fn main() {
     match cmp(num, secret_number) {
         Less    => println!("Too small!"),
         Greater => println!("Too big!"),
-        Equal   => { println!("You win!"); },
+        Equal   => println!("You win!"),
     }
 }
 
@@ -2307,7 +2305,7 @@ fn main() {
     match cmp(num, secret_number) {
         Less    => println!("Too small!"),
         Greater => println!("Too big!"),
-        Equal   => { println!("You win!"); },
+        Equal   => println!("You win!"),
     }
 }
 
@@ -2382,7 +2380,7 @@ fn main() {
         match cmp(num, secret_number) {
             Less    => println!("Too small!"),
             Greater => println!("Too big!"),
-            Equal   => { println!("You win!"); },
+            Equal   => println!("You win!"),
         }
     }
 }
@@ -2619,7 +2617,7 @@ Rust's more unique features.
 
 Rust features a strong module system, but it works a bit differently than in
 other programming languages. Rust's module system has two main components:
-**crate**s, and **module**s.
+**crate**s and **module**s.
 
 A crate is Rust's unit of independent compilation. Rust always compiles one
 crate at a time, producing either a library or an executable. However, executables
@@ -2640,6 +2638,7 @@ Enough talk, let's build something! Let's make a new project called `modules`.
 ```{bash,ignore}
 $ cd ~/projects
 $ cargo new modules --bin
+$ cd modules
 ```
 
 Let's double check our work by compiling:
@@ -3622,7 +3621,7 @@ let x = box 5i;
 ```
 
 This allocates an integer `5` on the heap, and creates a binding `x` that
-refers to it.. The great thing about boxed pointers is that we don't have to
+refers to it. The great thing about boxed pointers is that we don't have to
 manually free this allocation! If we write
 
 ```{rust}
@@ -3994,7 +3993,7 @@ Let's make a closure:
 ```{rust}
 let add_one = |x| { 1i + x };
 
-println!("The 5 plus 1 is {}.", add_one(5i));
+println!("The sum of 5 plus 1 is {}.", add_one(5i));
 ```
 
 We create a closure using the `|...| { ... }` syntax, and then we create a
@@ -4089,7 +4088,7 @@ fn main() {
 }
 ```
 
-Let's break example down, starting with `main`:
+Let's break the example down, starting with `main`:
 
 ```{rust}
 let square = |x: int| { x * x };
@@ -4210,7 +4209,7 @@ loop {
     match range.next() {
         Some(x) => {
             println!("{}", x);
-        }
+        },
         None => { break }
     }
 }
