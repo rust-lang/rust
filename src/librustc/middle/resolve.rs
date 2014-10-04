@@ -5852,11 +5852,8 @@ impl<'a> Resolver<'a> {
                 visit::walk_expr(self, expr);
             }
 
-            ExprFnBlock(_, ref fn_decl, ref block) => {
-                // NOTE(stage0): After snapshot, change to:
-                //
-                //self.capture_mode_map.insert(expr.id, capture_clause);
-                self.capture_mode_map.insert(expr.id, ast::CaptureByRef);
+            ExprFnBlock(capture_clause, ref fn_decl, ref block) => {
+                self.capture_mode_map.insert(expr.id, capture_clause);
                 self.resolve_function(ClosureRibKind(expr.id, ast::DUMMY_NODE_ID),
                                       Some(&**fn_decl), NoTypeParameters,
                                       &**block);
