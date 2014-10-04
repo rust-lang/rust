@@ -83,7 +83,8 @@ pub enum categorization {
     cat_rvalue(ty::Region),            // temporary val, argument is its scope
     cat_static_item,
     cat_copied_upvar(CopiedUpvar),     // upvar copied into proc env
-    cat_upvar(ty::UpvarId, ty::UpvarBorrow, Option<ty::UnboxedClosureKind>), // by ref upvar from stack or unboxed closure
+    cat_upvar(ty::UpvarId, ty::UpvarBorrow,
+              Option<ty::UnboxedClosureKind>), // by ref upvar from stack or unboxed closure
     cat_local(ast::NodeId),            // local variable
     cat_deref(cmt, uint, PointerKind), // deref of a ptr
     cat_interior(cmt, InteriorKind),   // something interior: field, tuple, etc
@@ -1246,6 +1247,7 @@ pub enum InteriorSafety {
 
 pub enum AliasableReason {
     AliasableBorrowed,
+    AliasableClosure(ast::NodeId), // Aliasable due to capture by unboxed closure expr
     AliasableOther,
     AliasableStatic(InteriorSafety),
     AliasableStaticMut(InteriorSafety),
@@ -1302,7 +1304,6 @@ impl cmt_ {
 
             cat_rvalue(..) |
             cat_local(..) |
-            cat_upvar(..) |
             cat_deref(_, _, UnsafePtr(..)) => { // yes, it's aliasable, but...
                 None
             }
@@ -1316,6 +1317,13 @@ impl cmt_ {
                     Unboxed(_) => Some(AliasableClosure(id))
                 }
             }
+
+            cat_upvar(ty::UpvarId { closure_expr_id: id, .. }, _,
+                      Some(ty::FnUnboxedClosureKind)) => {
+                Some(AliasableClosure(id))
+            }
+
+            cat_upvar(..) => None,
 
             cat_static_item(..) => {
                 let int_safe = if ty::type_interior_is_unsafe(ctxt, self.ty) {

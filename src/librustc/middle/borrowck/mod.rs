@@ -728,6 +728,13 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                     format!("{} in an aliasable location",
                              prefix).as_slice());
             }
+            mc::AliasableClosure(id) => {
+                self.tcx.sess.span_err(span,
+                                       format!("{} in a free variable from an \
+                                               immutable unboxed closure", prefix).as_slice());
+                span_note!(self.tcx.sess, self.tcx.map.span(id),
+                           "consider changing this closure to take self by mutable reference");
+            }
             mc::AliasableStatic(..) |
             mc::AliasableStaticMut(..) => {
                 self.tcx.sess.span_err(

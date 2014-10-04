@@ -854,6 +854,12 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
                     check_for_aliasability_violation(this, span, b.clone());
                 }
 
+                mc::cat_copied_upvar(mc::CopiedUpvar {
+                    kind: mc::Unboxed(ty::FnUnboxedClosureKind), ..}) => {
+                    // Prohibit writes to capture-by-move upvars in non-once closures
+                    check_for_aliasability_violation(this, span, guarantor.clone());
+                }
+
                 _ => {}
             }
 
