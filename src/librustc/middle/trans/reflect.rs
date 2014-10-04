@@ -127,6 +127,22 @@ impl<'a, 'blk, 'tcx> Reflector<'a, 'blk, 'tcx> {
         self.visit(name, []);
     }
 
+    fn visit_closure_ty(&mut self, fty: &ty::ClosureTy, is_unboxed: bool) {
+        let pureval = ast_fn_style_constant(fty.fn_style);
+        let sigilval = match fty.store {
+            ty::UniqTraitStore => 2u,
+            ty::RegionTraitStore(..) => 4u,
+        };
+        let retval = if ty::type_is_bot(fty.sig.output) {0u} else {1u};
+        let extra = vec!(self.c_uint(pureval),
+                         self.c_uint(sigilval),
+                         self.c_uint(fty.sig.inputs.len()),
+                         self.c_uint(retval));
+        self.visit("enter_fn", extra.as_slice());
+        self.visit_sig(retval, &fty.sig, is_unboxed);
+        self.visit("leave_fn", extra.as_slice());
+    }
+
     // Entrypoint
     pub fn visit_ty(&mut self, t: ty::t) {
         let bcx = self.bcx;
@@ -247,20 +263,8 @@ impl<'a, 'blk, 'tcx> Reflector<'a, 'blk, 'tcx> {
 
           // FIXME (#2594): fetch constants out of intrinsic
           // FIXME (#4809): visitor should break out bare fns from other fns
-          ty::ty_closure(ref fty) => {
-            let pureval = ast_fn_style_constant(fty.fn_style);
-            let sigilval = match fty.store {
-                ty::UniqTraitStore => 2u,
-                ty::RegionTraitStore(..) => 4u,
-            };
-            let retval = if ty::type_is_bot(fty.sig.output) {0u} else {1u};
-            let extra = vec!(self.c_uint(pureval),
-                          self.c_uint(sigilval),
-                          self.c_uint(fty.sig.inputs.len()),
-                          self.c_uint(retval));
-            self.visit("enter_fn", extra.as_slice());
-            self.visit_sig(retval, &fty.sig);
-            self.visit("leave_fn", extra.as_slice());
+          ty::ty_closure(box ref fty) => {
+              self.visit_closure_ty(fty, false);
           }
 
           // FIXME (#2594): fetch constants out of intrinsic:: for the
@@ -274,7 +278,7 @@ impl<'a, 'blk, 'tcx> Reflector<'a, 'blk, 'tcx> {
                           self.c_uint(fty.sig.inputs.len()),
                           self.c_uint(retval));
             self.visit("enter_fn", extra.as_slice());
-            self.visit_sig(retval, &fty.sig);
+            self.visit_sig(retval, &fty.sig, false);
             self.visit("leave_fn", extra.as_slice());
           }
 
@@ -388,7 +392,11 @@ impl<'a, 'blk, 'tcx> Reflector<'a, 'blk, 'tcx> {
           // Miscellaneous extra types
           ty::ty_infer(_) => self.leaf("infer"),
           ty::ty_err => self.leaf("err"),
-          ty::ty_unboxed_closure(..) => self.leaf("err"),
+          ty::ty_unboxed_closure(ref def_id, _) => {
+              let closure_map = tcx.unboxed_closures.borrow();
+              let fty = &closure_map.find(def_id).unwrap().closure_type;
+              self.visit_closure_ty(fty, true);
+          }
           ty::ty_param(ref p) => {
               let extra = vec!(self.c_uint(p.idx));
               self.visit("param", extra.as_slice())
@@ -396,8 +404,18 @@ impl<'a, 'blk, 'tcx> Reflector<'a, 'blk, 'tcx> {
         }
     }
 
-    pub fn visit_sig(&mut self, retval: uint, sig: &ty::FnSig) {
-        for (i, arg) in sig.inputs.iter().enumerate() {
+    pub fn visit_sig(&mut self, retval: uint, sig: &ty::FnSig, is_unboxed: bool) {
+        let args = if is_unboxed {
+            match ty::get(sig.inputs[0]).sty {
+                ty::ty_tup(ref contents) => contents.iter(),
+                ty::ty_nil => [].iter(),
+                _ => unreachable!()
+            }
+        } else {
+            sig.inputs.iter()
+        };
+
+        for (i, arg) in args.enumerate() {
             let modeval = 5u;   // "by copy"
             let extra = vec!(self.c_uint(i),
                          self.c_uint(modeval),
