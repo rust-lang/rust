@@ -334,8 +334,7 @@ pub fn trans_unboxing_shim<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     // Create the substituted versions of the self type.
     let arg_scope = fcx.push_custom_cleanup_scope();
     let arg_scope_id = cleanup::CustomScope(arg_scope);
-    let boxed_arg_types = ty::ty_fn_args(boxed_function_type);
-    let boxed_self_type = boxed_arg_types[0];
+    let boxed_self_type = ty::ty_fn_args(boxed_function_type)[0];
     let arg_types = ty::ty_fn_args(function_type);
     let self_type = arg_types[0];
     let boxed_self_kind = arg_kind(&fcx, boxed_self_type);
@@ -919,12 +918,11 @@ fn trans_args_under_call_abi<'blk, 'tcx>(
                              ignore_self: bool)
                              -> Block<'blk, 'tcx> {
     // Translate the `self` argument first.
-    let arg_tys = ty::ty_fn_args(fn_ty);
     if !ignore_self {
         let arg_datum = unpack_datum!(bcx, expr::trans(bcx, &*arg_exprs[0]));
         llargs.push(unpack_result!(bcx, {
             trans_arg_datum(bcx,
-                            arg_tys[0],
+                            ty::ty_fn_args(fn_ty)[0],
                             arg_datum,
                             arg_cleanup_scope,
                             DontAutorefArg)
