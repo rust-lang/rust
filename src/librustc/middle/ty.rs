@@ -4634,15 +4634,27 @@ pub struct UnboxedClosureUpvar {
 pub fn unboxed_closure_upvars(tcx: &ctxt, closure_id: ast::DefId)
                               -> Vec<UnboxedClosureUpvar> {
     if closure_id.krate == ast::LOCAL_CRATE {
+        let capture_mode = tcx.capture_modes.borrow().get_copy(&closure_id.node);
         match tcx.freevars.borrow().find(&closure_id.node) {
             None => vec![],
             Some(ref freevars) => {
                 freevars.iter().map(|freevar| {
                     let freevar_def_id = freevar.def.def_id();
+                    let mut freevar_ty = node_id_to_type(tcx, freevar_def_id.node);
+                    if capture_mode == ast::CaptureByRef {
+                        let borrow = tcx.upvar_borrow_map.borrow().get_copy(&ty::UpvarId {
+                            var_id: freevar_def_id.node,
+                            closure_expr_id: closure_id.node
+                        });
+                        freevar_ty = mk_rptr(tcx, borrow.region, ty::mt {
+                            ty: freevar_ty,
+                            mutbl: borrow.kind.to_mutbl_lossy()
+                        });
+                    }
                     UnboxedClosureUpvar {
                         def: freevar.def,
                         span: freevar.span,
-                        ty: node_id_to_type(tcx, freevar_def_id.node),
+                        ty: freevar_ty
                     }
                 }).collect()
             }
