@@ -1145,9 +1145,12 @@ mod test {
 
 #[cfg(test)]
 mod bench {
-    use test::Bencher;
+    use std::prelude::*;
+    use std::rand::{weak_rng, Rng};
+    use test::{Bencher, black_box};
 
     use super::BTreeMap;
+    use MutableMap;
     use deque::bench::{insert_rand_n, insert_seq_n, find_rand_n, find_seq_n};
 
     #[bench]
@@ -1199,5 +1202,35 @@ mod bench {
     pub fn find_seq_10_000(b: &mut Bencher) {
         let mut m : BTreeMap<uint,uint> = BTreeMap::new();
         find_seq_n(10_000, &mut m, b);
+    }
+
+    fn bench_iter(b: &mut Bencher, size: uint) {
+        let mut map = BTreeMap::<uint, uint>::new();
+        let mut rng = weak_rng();
+
+        for _ in range(0, size) {
+            map.swap(rng.gen(), rng.gen());
+        }
+
+        b.iter(|| {
+            for entry in map.iter() {
+                black_box(entry);
+            }
+        });
+    }
+
+    #[bench]
+    pub fn iter_20(b: &mut Bencher) {
+        bench_iter(b, 20);
+    }
+
+    #[bench]
+    pub fn iter_1000(b: &mut Bencher) {
+        bench_iter(b, 1000);
+    }
+
+    #[bench]
+    pub fn iter_100000(b: &mut Bencher) {
+        bench_iter(b, 100000);
     }
 }
