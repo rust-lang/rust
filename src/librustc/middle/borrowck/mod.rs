@@ -354,8 +354,12 @@ pub fn opt_loan_path(cmt: &mc::cmt) -> Option<Rc<LoanPath>> {
 
     match cmt.cat {
         mc::cat_rvalue(..) |
-        mc::cat_static_item |
-        mc::cat_copied_upvar(mc::CopiedUpvar { onceness: ast::Many, .. }) => {
+        mc::cat_static_item => {
+            None
+        }
+
+        mc::cat_copied_upvar(mc::CopiedUpvar { kind: kind, .. })
+            if kind.onceness() == ast::Many => {
             None
         }
 
@@ -363,9 +367,9 @@ pub fn opt_loan_path(cmt: &mc::cmt) -> Option<Rc<LoanPath>> {
             Some(Rc::new(LpVar(id)))
         }
 
-        mc::cat_upvar(ty::UpvarId {var_id: id, closure_expr_id: proc_id}, _) |
+        mc::cat_upvar(ty::UpvarId {var_id: id, closure_expr_id: proc_id}, _, _) |
         mc::cat_copied_upvar(mc::CopiedUpvar { upvar_id: id,
-                                               onceness: _,
+                                               kind: _,
                                                capturing_proc: proc_id }) => {
             let upvar_id = ty::UpvarId{ var_id: id, closure_expr_id: proc_id };
             Some(Rc::new(LpUpvar(upvar_id)))
