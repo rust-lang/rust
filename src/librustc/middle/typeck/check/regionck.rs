@@ -836,7 +836,7 @@ fn check_expr_fn_block(rcx: &mut Rcx,
                     // has static lifetime.
                 } else {
                     // Variables being referenced must outlive closure.
-                    constrain_free_variables_in_stack_closure(
+                    constrain_free_variables_in_by_ref_closure(
                         rcx, bounds.region_bound, expr, freevars);
 
                     // Closure is stack allocated and hence cannot
@@ -848,20 +848,17 @@ fn check_expr_fn_block(rcx: &mut Rcx,
             });
         }
         ty::ty_unboxed_closure(_, region) => {
-            ty::with_freevars(tcx, expr.id, |freevars| {
-                // No free variables means that there is no environment and
-                // hence the closure has static lifetime. Otherwise, the
-                // closure must not outlive the variables it closes over
-                // by-reference.
-                //
-                // NDM -- this seems wrong, discuss with pcwalton, should
-                // be straightforward enough.
-                if !freevars.is_empty() {
-                    let bounds = ty::region_existential_bound(region);
-                    ensure_free_variable_types_outlive_closure_bound(
-                        rcx, bounds, expr, freevars);
-                }
-            })
+            let bounds = ty::region_existential_bound(region);
+            if tcx.capture_modes.borrow().get_copy(&expr.id) == ast::CaptureByRef {
+                ty::with_freevars(tcx, expr.id, |freevars| {
+                    if !freevars.is_empty() {
+                        // Variables being referenced must be constrained and registered
+                        // in the upvar borrow map
+                        constrain_free_variables_in_by_ref_closure(
+                            rcx, bounds.region_bound, expr, freevars);
+                    }
+                })
+            }
         }
         _ => { }
     }
@@ -876,12 +873,25 @@ fn check_expr_fn_block(rcx: &mut Rcx,
                 propagate_upupvar_borrow_kind(rcx, expr, freevars);
             })
         }
+        ty::ty_unboxed_closure(..) => {
+            if tcx.capture_modes.borrow().get_copy(&expr.id) == ast::CaptureByRef {
+                ty::with_freevars(tcx, expr.id, |freevars| {
+                    propagate_upupvar_borrow_kind(rcx, expr, freevars);
+                });
+            }
+        }
         _ => {}
     }
 
     match ty::get(function_type).sty {
         ty::ty_closure(box ty::ClosureTy {bounds, ..}) => {
             ty::with_freevars(tcx, expr.id, |freevars| {
+                ensure_free_variable_types_outlive_closure_bound(rcx, bounds, expr, freevars);
+            })
+        }
+        ty::ty_unboxed_closure(_, region) => {
+            ty::with_freevars(tcx, expr.id, |freevars| {
+                let bounds = ty::region_existential_bound(region);
                 ensure_free_variable_types_outlive_closure_bound(rcx, bounds, expr, freevars);
             })
         }
@@ -951,7 +961,7 @@ fn check_expr_fn_block(rcx: &mut Rcx,
         }
     }
 
-    fn constrain_free_variables_in_stack_closure(
+    fn constrain_free_variables_in_by_ref_closure(
         rcx: &mut Rcx,
         region_bound: ty::Region,
         expr: &ast::Expr,
