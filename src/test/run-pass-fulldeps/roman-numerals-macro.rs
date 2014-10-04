@@ -10,11 +10,10 @@
 
 // aux-build:roman_numerals.rs
 // ignore-stage1
-// ignore-android
 
 #![feature(phase)]
 
-#[phase(plugin, link)]
+#[phase(plugin)]
 extern crate roman_numerals;
 
 pub fn main() {
