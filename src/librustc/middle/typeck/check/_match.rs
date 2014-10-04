@@ -670,19 +670,19 @@ pub fn check_pat(pcx: &pat_ctxt, pat: &ast::Pat, expected: ty::t) {
                   (ty, default_region_var, ast::MutImmutable, None)
               }
               _ => {
-                  check_err("a vector pattern".to_string());
+                  check_err("an array  pattern".to_string());
                   return;
               }
           },
           ty::ty_rptr(r, mt) => match ty::get(mt.ty).sty {
               ty::ty_vec(ty, None) => (ty, r, mt.mutbl, None),
               _ => {
-                  check_err("a vector pattern".to_string());
+                  check_err("an array pattern".to_string());
                   return;
               }
           },
           _ => {
-              check_err("a vector pattern".to_string());
+              check_err("an array pattern".to_string());
               return;
           }
         };
@@ -690,10 +690,10 @@ pub fn check_pat(pcx: &pat_ctxt, pat: &ast::Pat, expected: ty::t) {
         let min_len = before.len() + after.len();
         fixed.and_then(|count| match *slice {
             Some(_) if count < min_len =>
-                Some(format!("a fixed vector pattern of size at least {}", min_len)),
+                Some(format!("a fixed array pattern of size at least {}", min_len)),
 
             None if count != min_len =>
-                Some(format!("a fixed vector pattern of size {}", min_len)),
+                Some(format!("a fixed array pattern of size {}", min_len)),
 
             _ => None
         }).map(check_err);
