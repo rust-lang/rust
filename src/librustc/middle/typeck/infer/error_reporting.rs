@@ -869,6 +869,19 @@ impl<'a, 'tcx> ErrorReporting for InferCtxt<'a, 'tcx> {
                         ast::TypeImplItem(_) => None,
                     }
                 },
+                ast_map::NodeTraitItem(ref item) => {
+                    match **item {
+                        ast::ProvidedMethod(ref m) => {
+                            Some((m.pe_fn_decl(),
+                                  m.pe_generics(),
+                                  m.pe_fn_style(),
+                                  m.pe_ident(),
+                                  Some(&m.pe_explicit_self().node),
+                                  m.span))
+                        }
+                        _ => None
+                    }
+                }
                 _ => None
             },
             None => None
