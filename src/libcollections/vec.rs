@@ -1734,7 +1734,7 @@ impl<T> MutableSeq<T> for Vec<T> {
             let size = max(old_size, 2 * mem::size_of::<T>()) * 2;
             if old_size > size { fail!("capacity overflow") }
             unsafe {
-                self.ptr = alloc_or_realloc(self.ptr, self.cap * mem::size_of::<T>(), size);
+                self.ptr = alloc_or_realloc(self.ptr, old_size, size);
             }
             self.cap = max(self.cap, 2) * 2;
         }
@@ -1758,7 +1758,6 @@ impl<T> MutableSeq<T> for Vec<T> {
             }
         }
     }
-
 }
 
 /// An iterator that moves out of a vector.
