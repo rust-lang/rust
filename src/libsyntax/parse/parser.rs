@@ -2810,8 +2810,12 @@ impl<'a> Parser<'a> {
     /// actually, this seems to be the main entry point for
     /// parsing an arbitrary expression.
     pub fn parse_assign_expr(&mut self) -> P<Expr> {
-        let lo = self.span.lo;
         let lhs = self.parse_binops();
+        self.parse_more_assign_expr(lhs)
+    }
+
+    pub fn parse_more_assign_expr(&mut self, lhs: P<Expr>) -> P<Expr> {
+        let lo = self.span.lo;
         let restrictions = self.restrictions & RestrictionNoStructLiteral;
         match self.token {
           token::EQ => {
@@ -3557,8 +3561,17 @@ impl<'a> Parser<'a> {
             let hi = self.span.hi;
 
             if id.name == token::special_idents::invalid.name {
-                P(spanned(lo, hi, StmtMac(
-                    spanned(lo, hi, MacInvocTT(pth, tts, EMPTY_CTXT)), false)))
+                if self.token == token::DOT {
+                    let b = self.mk_mac_expr(lo,
+                                             hi,
+                                             MacInvocTT(pth, tts, EMPTY_CTXT));
+                    let d = self.parse_dot_or_call_expr_with(b);
+                    let e = self.parse_more_assign_expr(d);
+                    P(spanned(lo, e.span.hi, StmtExpr(e, ast::DUMMY_NODE_ID)))
+                } else {
+                    P(spanned(lo, hi, StmtMac(
+                        spanned(lo, hi, MacInvocTT(pth, tts, EMPTY_CTXT)), false)))
+                }
             } else {
                 // if it has a special ident, it's definitely an item
                 P(spanned(lo, hi, StmtDecl(
