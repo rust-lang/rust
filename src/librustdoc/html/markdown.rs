@@ -268,6 +268,10 @@ pub fn render(w: &mut fmt::Formatter, s: &str, print_toc: bool) -> fmt::Result {
         text.with_c_str(|p| unsafe { hoedown_buffer_puts(ob, p) });
     }
 
+    if used_header_map.get().is_none() {
+        reset_headers();
+    }
+
     unsafe {
         let ob = hoedown_buffer_new(DEF_OUNIT);
         let renderer = hoedown_html_renderer_new(0, 0);
@@ -446,7 +450,7 @@ impl<'a> fmt::Show for MarkdownWithToc<'a> {
 
 #[cfg(test)]
 mod tests {
-    use super::LangString;
+    use super::{LangString, Markdown};
 
     #[test]
     fn test_lang_string_parse() {
@@ -473,5 +477,11 @@ mod tests {
         t("{.sh .should_fail}", true,false,false,false,false);
         t("{.example .rust}", false,false,false,false,false);
         t("{.test_harness .rust}", false,false,false,false,true);
+    }
+
+    #[test]
+    fn issue_17736() {
+        let markdown = "# title";
+        format!("{}", Markdown(markdown.as_slice()));
     }
 }
