@@ -1293,10 +1293,10 @@ impl<'a> Writer for Box<Writer+'a> {
 
 impl<'a> Writer for &'a mut Writer+'a {
     #[inline]
-    fn write(&mut self, buf: &[u8]) -> IoResult<()> { self.write(buf) }
+    fn write(&mut self, buf: &[u8]) -> IoResult<()> { (**self).write(buf) }
 
     #[inline]
-    fn flush(&mut self) -> IoResult<()> { self.flush() }
+    fn flush(&mut self) -> IoResult<()> { (**self).flush() }
 }
 
 /// A `RefWriter` is a struct implementing `Writer` which contains a reference
