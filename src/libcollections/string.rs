@@ -1036,6 +1036,7 @@ mod tests {
     use str::{Str, StrSlice, Owned};
     use super::{as_string, String};
     use vec::Vec;
+    use slice::CloneableVector;
 
     #[test]
     fn test_as_string() {
@@ -1051,15 +1052,15 @@ mod tests {
 
     #[test]
     fn test_from_utf8() {
-        let xs = Vec::from_slice(b"hello");
+        let xs = b"hello".to_vec();
         assert_eq!(String::from_utf8(xs), Ok(String::from_str("hello")));
 
-        let xs = Vec::from_slice("ศไทย中华Việt Nam".as_bytes());
+        let xs = "ศไทย中华Việt Nam".as_bytes().to_vec();
         assert_eq!(String::from_utf8(xs), Ok(String::from_str("ศไทย中华Việt Nam")));
 
-        let xs = Vec::from_slice(b"hello\xFF");
+        let xs = b"hello\xFF".to_vec();
         assert_eq!(String::from_utf8(xs),
-                   Err(Vec::from_slice(b"hello\xFF")));
+                   Err(b"hello\xFF".to_vec()));
     }
 
     #[test]
@@ -1211,7 +1212,8 @@ mod tests {
     fn test_push_bytes() {
         let mut s = String::from_str("ABC");
         unsafe {
-            s.push_bytes([b'D']);
+            let mv = s.as_mut_vec();
+            mv.push_all([b'D']);
         }
         assert_eq!(s.as_slice(), "ABCD");
     }
@@ -1239,17 +1241,18 @@ mod tests {
     }
 
     #[test]
-    fn test_pop_char() {
+    fn test_pop() {
         let mut data = String::from_str("ประเทศไทย中华b¢€𤭢");
-        assert_eq!(data.pop_char().unwrap(), '𤭢'); // 4 bytes
-        assert_eq!(data.pop_char().unwrap(), '€'); // 3 bytes
-        assert_eq!(data.pop_char().unwrap(), '¢'); // 2 bytes
-        assert_eq!(data.pop_char().unwrap(), 'b'); // 1 bytes
-        assert_eq!(data.pop_char().unwrap(), '华');
+        assert_eq!(data.pop().unwrap(), '𤭢'); // 4 bytes
+        assert_eq!(data.pop().unwrap(), '€'); // 3 bytes
+        assert_eq!(data.pop().unwrap(), '¢'); // 2 bytes
+        assert_eq!(data.pop().unwrap(), 'b'); // 1 bytes
+        assert_eq!(data.pop().unwrap(), '华');
         assert_eq!(data.as_slice(), "ประเทศไทย中");
     }
 
     #[test]
+    #[allow(deprecated)] // use remove(0) instead
     fn test_shift_char() {
         let mut data = String::from_str("𤭢€¢b华ประเทศไทย中");
         assert_eq!(data.shift_char().unwrap(), '𤭢'); // 4 bytes

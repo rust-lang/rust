@@ -273,8 +273,8 @@ mod tests {
     }
 
     bitflags! {
-        flags AnotherSetOfFlags: uint {
-            const AnotherFlag = 1u,
+        flags AnotherSetOfFlags: i8 {
+            const AnotherFlag = -1_i8,
         }
     }
 
@@ -283,6 +283,9 @@ mod tests {
         assert_eq!(Flags::empty().bits(), 0x00000000);
         assert_eq!(FlagA.bits(), 0x00000001);
         assert_eq!(FlagABC.bits(), 0x00000111);
+
+        assert_eq!(AnotherSetOfFlags::empty().bits(), 0x00);
+        assert_eq!(AnotherFlag.bits(), !0_i8);
     }
 
     #[test]
@@ -292,6 +295,8 @@ mod tests {
         assert!(Flags::from_bits(0x10) == Some(FlagB));
         assert!(Flags::from_bits(0x11) == Some(FlagA | FlagB));
         assert!(Flags::from_bits(0x1000) == None);
+
+        assert!(AnotherSetOfFlags::from_bits(!0_i8) == Some(AnotherFlag));
     }
 
     #[test]
@@ -302,6 +307,8 @@ mod tests {
         assert!(Flags::from_bits_truncate(0x11) == (FlagA | FlagB));
         assert!(Flags::from_bits_truncate(0x1000) == Flags::empty());
         assert!(Flags::from_bits_truncate(0x1001) == FlagA);
+
+        assert!(AnotherSetOfFlags::from_bits_truncate(0_i8) == AnotherSetOfFlags::empty());
     }
 
     #[test]
@@ -309,6 +316,8 @@ mod tests {
         assert!(Flags::empty().is_empty());
         assert!(!FlagA.is_empty());
         assert!(!FlagABC.is_empty());
+
+        assert!(!AnotherFlag.is_empty());
     }
 
     #[test]
@@ -316,6 +325,8 @@ mod tests {
         assert!(Flags::all().is_all());
         assert!(!FlagA.is_all());
         assert!(FlagABC.is_all());
+
+        assert!(AnotherFlag.is_all());
     }
 
     #[test]
@@ -323,6 +334,8 @@ mod tests {
         let e1 = Flags::empty();
         let e2 = Flags::empty();
         assert!(!e1.intersects(e2));
+
+        assert!(AnotherFlag.intersects(AnotherFlag));
     }
 
     #[test]
@@ -353,6 +366,8 @@ mod tests {
         assert!(!e1.contains(e2));
         assert!(e2.contains(e1));
         assert!(FlagABC.contains(e2));
+
+        assert!(AnotherFlag.contains(AnotherFlag));
     }
 
     #[test]
@@ -361,6 +376,10 @@ mod tests {
         let e2 = FlagA | FlagB;
         e1.insert(e2);
         assert!(e1 == e2);
+
+        let mut e3 = AnotherSetOfFlags::empty();
+        e3.insert(AnotherFlag);
+        assert!(e3 == AnotherFlag);
     }
 
     #[test]
@@ -369,6 +388,10 @@ mod tests {
         let e2 = FlagA | FlagC;
         e1.remove(e2);
         assert!(e1 == FlagB);
+
+        let mut e3 = AnotherFlag;
+        e3.remove(AnotherFlag);
+        assert!(e3 == AnotherSetOfFlags::empty());
     }
 
     #[test]
@@ -383,6 +406,10 @@ mod tests {
         let mut e3 = e1;
         e3.toggle(e2);
         assert!(e3 == FlagA | FlagB);
+
+        let mut m4 = AnotherSetOfFlags::empty();
+        m4.toggle(AnotherSetOfFlags::empty());
+        assert!(m4 == AnotherSetOfFlags::empty());
     }
 
     #[test]

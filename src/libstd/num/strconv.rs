@@ -819,72 +819,82 @@ mod bench {
     mod uint {
         use super::test::Bencher;
         use rand::{weak_rng, Rng};
-        use num::ToStrRadix;
+        use std::fmt;
+
+        #[inline]
+        fn to_string(x: uint, base: u8) {
+            format!("{}", fmt::radix(x, base));
+        }
 
         #[bench]
         fn to_str_bin(b: &mut Bencher) {
             let mut rng = weak_rng();
-            b.iter(|| { rng.gen::<uint>().to_str_radix(2); })
+            b.iter(|| { to_string(rng.gen::<uint>(), 2); })
         }
 
         #[bench]
         fn to_str_oct(b: &mut Bencher) {
             let mut rng = weak_rng();
-            b.iter(|| { rng.gen::<uint>().to_str_radix(8); })
+            b.iter(|| { to_string(rng.gen::<uint>(), 8); })
         }
 
         #[bench]
         fn to_str_dec(b: &mut Bencher) {
             let mut rng = weak_rng();
-            b.iter(|| { rng.gen::<uint>().to_str_radix(10); })
+            b.iter(|| { to_string(rng.gen::<uint>(), 10); })
         }
 
         #[bench]
         fn to_str_hex(b: &mut Bencher) {
             let mut rng = weak_rng();
-            b.iter(|| { rng.gen::<uint>().to_str_radix(16); })
+            b.iter(|| { to_string(rng.gen::<uint>(), 16); })
         }
 
         #[bench]
         fn to_str_base_36(b: &mut Bencher) {
             let mut rng = weak_rng();
-            b.iter(|| { rng.gen::<uint>().to_str_radix(36); })
+            b.iter(|| { to_string(rng.gen::<uint>(), 36); })
         }
     }
 
     mod int {
         use super::test::Bencher;
         use rand::{weak_rng, Rng};
-        use num::ToStrRadix;
+        use std::fmt;
+
+        #[inline]
+        fn to_string(x: int, base: u8) {
+            format!("{}", fmt::radix(x, base));
+        }
 
         #[bench]
         fn to_str_bin(b: &mut Bencher) {
             let mut rng = weak_rng();
-            b.iter(|| { rng.gen::<int>().to_str_radix(2); })
+            b.iter(|| { to_string(rng.gen::<int>(), 2); })
         }
 
         #[bench]
         fn to_str_oct(b: &mut Bencher) {
             let mut rng = weak_rng();
-            b.iter(|| { rng.gen::<int>().to_str_radix(8); })
+            b.iter(|| { to_string(rng.gen::<int>(), 8); })
         }
 
         #[bench]
         fn to_str_dec(b: &mut Bencher) {
             let mut rng = weak_rng();
-            b.iter(|| { rng.gen::<int>().to_str_radix(10); })
+            b.iter(|| { to_string(rng.gen::<int>(), 10); })
         }
 
         #[bench]
         fn to_str_hex(b: &mut Bencher) {
             let mut rng = weak_rng();
-            b.iter(|| { rng.gen::<int>().to_str_radix(16); })
+            b.iter(|| { to_string(rng.gen::<int>(), 16); })
         }
 
         #[bench]
         fn to_str_base_36(b: &mut Bencher) {
             let mut rng = weak_rng();
-            b.iter(|| { rng.gen::<int>().to_str_radix(36); })
+            b.iter(|| { to_string(rng.gen::<int>(), 36); })
         }
     }
 
