@@ -23,6 +23,9 @@ use core::fmt::Show;
 use {Mutable, Set, MutableSet, MutableMap, Map};
 
 /// A set based on a B-Tree.
+///
+/// See BTreeMap's documentation for a detailed discussion of this collection's performance
+/// benefits and drawbacks.
 #[deriving(Clone, Hash, PartialEq, Eq, Ord, PartialOrd)]
 pub struct BTreeSet<T>{
     map: BTreeMap<T, ()>,
@@ -65,6 +68,8 @@ impl<T: Ord> BTreeSet<T> {
     }
 
     /// Makes a new BTreeSet with the given B.
+    ///
+    /// B cannot be less than 2.
     pub fn with_b(b: uint) -> BTreeSet<T> {
         BTreeSet { map: BTreeMap::with_b(b) }
     }
