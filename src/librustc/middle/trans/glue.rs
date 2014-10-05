@@ -429,7 +429,7 @@ fn make_drop_glue<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, v0: ValueRef, t: ty::t)
                     tvec::make_drop_glue_unboxed(bcx, v0, ty, true)
                 }
                 ty::ty_str => {
-                    let unit_ty = ty::sequence_element_type(bcx.tcx(), t);
+                    let unit_ty = ty::sequence_element_type(bcx.tcx(), content_ty);
                     tvec::make_drop_glue_unboxed(bcx, v0, unit_ty, true)
                 }
                 ty::ty_trait(..) => {
