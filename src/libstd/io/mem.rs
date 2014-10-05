@@ -617,7 +617,7 @@ mod test {
     #[bench]
     fn bench_mem_reader(b: &mut Bencher) {
         b.iter(|| {
-            let buf = Vec::from_slice([5 as u8, ..100]);
+            let buf = [5 as u8, ..100].to_vec();
             {
                 let mut rdr = MemReader::new(buf);
                 for _i in range(0u, 10) {

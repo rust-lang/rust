@@ -1027,7 +1027,6 @@ mod test {
     use std::rt::task::TaskOpts;
     use std::rt::task::Task;
     use std::rt::local::Local;
-    use std::time::Duration;
 
     use {TaskState, PoolConfig, SchedPool};
     use basic;

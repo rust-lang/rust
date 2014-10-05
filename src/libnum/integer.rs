@@ -462,6 +462,7 @@ macro_rules! impl_integer_for_uint {
             }
 
             #[test]
+            #[allow(type_overflow)]
             fn test_lcm() {
                 assert_eq!((1 as $T).lcm(&0), 0 as $T);
                 assert_eq!((0 as $T).lcm(&1), 0 as $T);

@@ -582,15 +582,15 @@ mod tests {
         assert_eq!('A'.to_ascii().to_char(), 'A');
         assert_eq!('A'.to_ascii().to_byte(), 65u8);
 
-        assert_eq!('A'.to_ascii().to_lower().to_char(), 'a');
-        assert_eq!('Z'.to_ascii().to_lower().to_char(), 'z');
-        assert_eq!('a'.to_ascii().to_upper().to_char(), 'A');
-        assert_eq!('z'.to_ascii().to_upper().to_char(), 'Z');
+        assert_eq!('A'.to_ascii().to_lowercase().to_char(), 'a');
+        assert_eq!('Z'.to_ascii().to_lowercase().to_char(), 'z');
+        assert_eq!('a'.to_ascii().to_uppercase().to_char(), 'A');
+        assert_eq!('z'.to_ascii().to_uppercase().to_char(), 'Z');
 
-        assert_eq!('@'.to_ascii().to_lower().to_char(), '@');
-        assert_eq!('['.to_ascii().to_lower().to_char(), '[');
-        assert_eq!('`'.to_ascii().to_upper().to_char(), '`');
-        assert_eq!('{'.to_ascii().to_upper().to_char(), '{');
+        assert_eq!('@'.to_ascii().to_lowercase().to_char(), '@');
+        assert_eq!('['.to_ascii().to_lowercase().to_char(), '[');
+        assert_eq!('`'.to_ascii().to_uppercase().to_char(), '`');
+        assert_eq!('{'.to_ascii().to_uppercase().to_char(), '{');
 
         assert!('0'.to_ascii().is_digit());
         assert!('9'.to_ascii().is_digit());
