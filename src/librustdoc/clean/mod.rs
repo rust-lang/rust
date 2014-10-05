@@ -474,7 +474,7 @@ impl Clean<TyParam> for ty::TypeParameterDef {
 #[deriving(Clone, Encodable, Decodable, PartialEq)]
 pub enum TyParamBound {
     RegionBound(Lifetime),
-    UnboxedFnBound, // FIXME
+    UnboxedFnBound(UnboxedFnType),
     UnknownBound,
     TraitBound(Type)
 }
@@ -483,10 +483,7 @@ impl Clean<TyParamBound> for ast::TyParamBound {
     fn clean(&self, cx: &DocContext) -> TyParamBound {
         match *self {
             ast::RegionTyParamBound(lt) => RegionBound(lt.clean(cx)),
-            ast::UnboxedFnTyParamBound(_) => {
-                // FIXME(pcwalton): Wrong.
-                UnboxedFnBound
-            },
+            ast::UnboxedFnTyParamBound(ref ty) => { UnboxedFnBound(ty.clean(cx)) },
             ast::TraitTyParamBound(ref t) => TraitBound(t.clean(cx)),
         }
     }
@@ -595,6 +592,21 @@ impl Clean<Option<Vec<TyParamBound>>> for subst::Substs {
         v.extend(self.regions().iter().filter_map(|r| r.clean(cx)).map(RegionBound));
         v.extend(self.types.iter().map(|t| TraitBound(t.clean(cx))));
         if v.len() > 0 {Some(v)} else {None}
+    }
+}
+
+#[deriving(Clone, Encodable, Decodable, PartialEq)]
+pub struct UnboxedFnType {
+    pub path: Path,
+    pub decl: FnDecl
+}
+
+impl Clean<UnboxedFnType> for ast::UnboxedFnBound {
+    fn clean(&self, cx: &DocContext) -> UnboxedFnType {
+        UnboxedFnType {
+            path: self.path.clean(cx),
+            decl: self.decl.clean(cx)
+        }
     }
 }
 
