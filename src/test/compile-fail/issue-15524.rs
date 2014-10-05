@@ -8,11 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn main() {
-  let x = [1,2];
-  let y = match x {
-    [] => None,
-//~^ ERROR expected `[<generic integer #0>, ..2]`, found a fixed array pattern of size 0
-    [a,_] => Some(a)
-  };
+static N: int = 1;
+
+enum Foo {
+    A = 1,
+    B = 1, //~ ERROR discriminant value `1` already exists
+    //~^^ NOTE conflicting
+    C = 0,
+    D, //~ ERROR discriminant value `1` already exists
+    //~^^^^^ NOTE conflicting
+    E = N, //~ ERROR discriminant value `1` already exists
+    //~^^^^^^^ NOTE conflicting
 }
+
+fn main() {}

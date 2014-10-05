@@ -274,30 +274,43 @@ fn strip_test_functions(krate: ast::Crate) -> ast::Crate {
 fn is_test_fn(cx: &TestCtxt, i: &ast::Item) -> bool {
     let has_test_attr = attr::contains_name(i.attrs.as_slice(), "test");
 
-    fn has_test_signature(i: &ast::Item) -> bool {
+    #[deriving(PartialEq)]
+    enum HasTestSignature {
+        Yes,
+        No,
+        NotEvenAFunction,
+    }
+
+    fn has_test_signature(i: &ast::Item) -> HasTestSignature {
         match &i.node {
           &ast::ItemFn(ref decl, _, _, ref generics, _) => {
             let no_output = match decl.output.node {
                 ast::TyNil => true,
-                _ => false
+                _ => false,
             };
-            decl.inputs.is_empty()
-                && no_output
-                && !generics.is_parameterized()
+            if decl.inputs.is_empty()
+                   && no_output
+                   && !generics.is_parameterized() {
+                Yes
+            } else {
+                No
+            }
           }
-          _ => false
+          _ => NotEvenAFunction,
         }
     }
 
-    if has_test_attr && !has_test_signature(i) {
+    if has_test_attr {
         let diag = cx.span_diagnostic;
-        diag.span_err(
-            i.span,
-            "functions used as tests must have signature fn() -> ()."
-        );
+        match has_test_signature(i) {
+            Yes => {},
+            No => diag.span_err(i.span, "functions used as tests must have signature fn() -> ()"),
+            NotEvenAFunction => diag.span_err(i.span,
+                                              "only functions may be used as tests"),
+        }
     }
 
-    return has_test_attr && has_test_signature(i);
+    return has_test_attr && has_test_signature(i) == Yes;
 }
 
 fn is_bench_fn(cx: &TestCtxt, i: &ast::Item) -> bool {
