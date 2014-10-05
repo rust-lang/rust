@@ -67,7 +67,7 @@ pub use std::option::Option;
 ```
 
 Doc comments are markdown, and are currently parsed with the
-[sundown][sundown] library. rustdoc does not yet do any fanciness such as
+[hoedown][hoedown] library. rustdoc does not yet do any fanciness such as
 referencing other items inline, like javadoc's `@see`. One exception to this
 is that the first paragraph will be used as the "summary" of an item in the
 generated documentation:
@@ -123,7 +123,7 @@ documentation. There is a search bar at the top, which is powered by some
 JavaScript and a statically-generated search index. No special web server is
 required for the search.
 
-[sundown]: https://github.com/vmg/sundown/
+[hoedown]: https://github.com/hoedown/hoedown
 
 # Testing the Documentation
 
