@@ -250,6 +250,13 @@ extern "rust-intrinsic" {
     /// Abort the execution of the process.
     pub fn abort() -> !;
 
+    /// Tell LLVM that this point in the code is not reachable,
+    /// enabling further optimizations.
+    ///
+    /// NB: This is very different from the `unreachable!()` macro!
+    #[cfg(not(stage0))]
+    pub fn unreachable() -> !;
+
     /// Execute a breakpoint trap, for inspection by a debugger.
     pub fn breakpoint();
 
