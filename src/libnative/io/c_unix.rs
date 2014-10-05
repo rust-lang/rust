@@ -232,11 +232,9 @@ mod signal {
     pub static SA_SIGINFO: libc::c_int = 0x0040;
     pub static SIGCHLD: libc::c_int = 20;
 
-    #[cfg(target_os = "macos")]
-    #[cfg(target_os = "ios")]
+    #[cfg(any(target_os = "macos", target_os = "ios"))]
     pub type sigset_t = u32;
-    #[cfg(target_os = "freebsd")]
-    #[cfg(target_os = "dragonfly")]
+    #[cfg(any(target_os = "freebsd", target_os = "dragonfly"))]
     #[repr(C)]
     pub struct sigset_t {
         bits: [u32, ..4],
@@ -254,8 +252,7 @@ mod signal {
         pub status: libc::c_int,
     }
 
-    #[cfg(target_os = "macos")]
-    #[cfg(target_os = "ios")]
+    #[cfg(any(target_os = "macos", target_os = "ios"))]
     #[repr(C)]
     pub struct sigaction {
         pub sa_handler: extern fn(libc::c_int),
@@ -264,8 +261,7 @@ mod signal {
         pub sa_flags: libc::c_int,
     }
 
-    #[cfg(target_os = "freebsd")]
-    #[cfg(target_os = "dragonfly")]
+    #[cfg(any(target_os = "freebsd", target_os = "dragonfly"))]
     #[repr(C)]
     pub struct sigaction {
         pub sa_handler: extern fn(libc::c_int),
