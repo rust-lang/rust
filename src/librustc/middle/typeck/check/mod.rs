@@ -5586,6 +5586,7 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &ast::ForeignItem) {
     } else {
         match name.get() {
             "abort" => (0, Vec::new(), ty::mk_bot()),
+            "unreachable" => (0, Vec::new(), ty::mk_bot()),
             "breakpoint" => (0, Vec::new(), ty::mk_nil()),
             "size_of" |
             "pref_align_of" | "min_align_of" => (1u, Vec::new(), ty::mk_uint()),

@@ -228,6 +228,10 @@ pub fn trans_intrinsic_call<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>, node: ast::N
             Unreachable(bcx);
             v
         }
+        (_, "unreachable") => {
+            Unreachable(bcx);
+            C_nil(ccx)
+        }
         (_, "breakpoint") => {
             let llfn = ccx.get_intrinsic(&("llvm.debugtrap"));
             Call(bcx, llfn, [], None)
