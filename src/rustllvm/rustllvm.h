@@ -32,8 +32,6 @@
 #include "llvm/Support/DynamicLibrary.h"
 #include "llvm/Support/Memory.h"
 #include "llvm/ExecutionEngine/ExecutionEngine.h"
-#include "llvm/ExecutionEngine/JIT.h"
-#include "llvm/ExecutionEngine/JITMemoryManager.h"
 #include "llvm/ExecutionEngine/MCJIT.h"
 #include "llvm/ExecutionEngine/Interpreter.h"
 #include "llvm/Target/TargetMachine.h"
