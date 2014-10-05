@@ -1747,8 +1747,7 @@ extern {
                                            Scope: DIDescriptor,
                                            File: DIFile,
                                            Line: c_uint,
-                                           Col: c_uint,
-                                           Discriminator: c_uint)
+                                           Col: c_uint)
                                            -> DILexicalBlock;
 
     pub fn LLVMDIBuilderCreateStaticVariable(Builder: DIBuilderRef,
@@ -2179,12 +2178,10 @@ pub unsafe fn static_link_hack_this_sucks() {
 
     LLVMRustLinkInExternalBitcode(0 as *mut _, 0 as *const _, 0 as size_t);
 
-    LLVMLinkInJIT();
     LLVMLinkInMCJIT();
     LLVMLinkInInterpreter();
 
     extern {
-        fn LLVMLinkInJIT();
         fn LLVMLinkInMCJIT();
         fn LLVMLinkInInterpreter();
     }
