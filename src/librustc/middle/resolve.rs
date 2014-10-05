@@ -59,7 +59,7 @@ use syntax::visit::Visitor;
 
 use std::collections::{HashMap, HashSet};
 use std::collections::hashmap::{Occupied, Vacant};
-use std::cell::{Cell, RefCell};
+use std::cell::{Cell, RefCell, RefMut};
 use std::mem::replace;
 use std::rc::{Rc, Weak};
 use std::uint;
@@ -165,7 +165,7 @@ enum NamespaceResult {
     UnboundResult,
     /// Means that resolve has determined that the name is bound in the Module
     /// argument, and specified by the NameBindings argument.
-    BoundResult(Rc<Module>, Rc<NameBindings>)
+    BoundResult(Rc<Module>, NameBindings)
 }
 
 impl NamespaceResult {
@@ -224,10 +224,12 @@ enum ReducedGraphParent {
 
 impl ReducedGraphParent {
     fn module(&self) -> Rc<Module> {
+        self.module_ref().clone()
+    }
+
+    fn module_ref(&self) -> &Rc<Module> {
         match *self {
-            ModuleReducedGraphParent(ref m) => {
-                m.clone()
-            }
+            ModuleReducedGraphParent(ref m) => m
         }
     }
 }
@@ -407,13 +409,13 @@ impl ImportDirective {
 #[deriving(Clone)]
 struct Target {
     target_module: Rc<Module>,
-    bindings: Rc<NameBindings>,
+    bindings: NameBindings,
     shadowable: bool,
 }
 
 impl Target {
     fn new(target_module: Rc<Module>,
-           bindings: Rc<NameBindings>,
+           bindings: NameBindings,
            shadowable: bool)
            -> Target {
         Target {
@@ -502,7 +504,7 @@ struct Module {
     kind: Cell<ModuleKind>,
     is_public: bool,
 
-    children: RefCell<HashMap<Name, Rc<NameBindings>>>,
+    children: RefCell<HashMap<Name, NameBindings>>,
     imports: RefCell<Vec<ImportDirective>>,
 
     // The external module children of this node that were declared with
@@ -587,9 +589,10 @@ struct ValueNsDef {
 
 // Records the definitions (at most one for each namespace) that a name is
 // bound to.
+#[deriving(Clone)]
 struct NameBindings {
-    type_def: RefCell<Option<TypeNsDef>>,   //< Meaning in type namespace.
-    value_def: RefCell<Option<ValueNsDef>>, //< Meaning in value namespace.
+    type_def: Option<TypeNsDef>,   //< Meaning in type namespace.
+    value_def: Option<ValueNsDef>, //< Meaning in value namespace.
 }
 
 /// Ways in which a trait can be referenced
@@ -602,13 +605,13 @@ enum TraitReferenceType {
 impl NameBindings {
     fn new() -> NameBindings {
         NameBindings {
-            type_def: RefCell::new(None),
-            value_def: RefCell::new(None),
+            type_def: None,
+            value_def: None,
         }
     }
 
     /// Creates a new module in this set of name bindings.
-    fn define_module(&self,
+    fn define_module(&mut self,
                      parent_link: ParentLink,
                      def_id: Option<DefId>,
                      kind: ModuleKind,
@@ -618,10 +621,10 @@ impl NameBindings {
         // Merges the module with the existing type def or creates a new one.
         let module_ = Rc::new(Module::new(parent_link, def_id, kind, external,
                                           is_public));
-        let type_def = self.type_def.borrow().clone();
+        let type_def = self.type_def.clone();
         match type_def {
             None => {
-                *self.type_def.borrow_mut() = Some(TypeNsDef {
+                self.type_def = Some(TypeNsDef {
                     is_public: is_public,
                     module_def: Some(module_),
                     type_def: None,
@@ -629,7 +632,7 @@ impl NameBindings {
                 });
             }
             Some(type_def) => {
-                *self.type_def.borrow_mut() = Some(TypeNsDef {
+                self.type_def = Some(TypeNsDef {
                     is_public: is_public,
                     module_def: Some(module_),
                     type_span: Some(sp),
@@ -640,19 +643,19 @@ impl NameBindings {
     }
 
     /// Sets the kind of the module, creating a new one if necessary.
-    fn set_module_kind(&self,
+    fn set_module_kind(&mut self,
                        parent_link: ParentLink,
                        def_id: Option<DefId>,
                        kind: ModuleKind,
                        external: bool,
                        is_public: bool,
                        _sp: Span) {
-        let type_def = self.type_def.borrow().clone();
+        let type_def = self.type_def.clone();
         match type_def {
             None => {
                 let module = Module::new(parent_link, def_id, kind,
                                          external, is_public);
-                *self.type_def.borrow_mut() = Some(TypeNsDef {
+                self.type_def = Some(TypeNsDef {
                     is_public: is_public,
                     module_def: Some(Rc::new(module)),
                     type_def: None,
@@ -667,7 +670,7 @@ impl NameBindings {
                                                  kind,
                                                  external,
                                                  is_public);
-                        *self.type_def.borrow_mut() = Some(TypeNsDef {
+                        self.type_def = Some(TypeNsDef {
                             is_public: is_public,
                             module_def: Some(Rc::new(module)),
                             type_def: type_def.type_def,
@@ -681,12 +684,12 @@ impl NameBindings {
     }
 
     /// Records a type definition.
-    fn define_type(&self, def: Def, sp: Span, is_public: bool) {
+    fn define_type(&mut self, def: Def, sp: Span, is_public: bool) {
         // Merges the type with the existing type def or creates a new one.
-        let type_def = self.type_def.borrow().clone();
+        let type_def = self.type_def.clone();
         match type_def {
             None => {
-                *self.type_def.borrow_mut() = Some(TypeNsDef {
+                self.type_def = Some(TypeNsDef {
                     module_def: None,
                     type_def: Some(def),
                     type_span: Some(sp),
@@ -694,7 +697,7 @@ impl NameBindings {
                 });
             }
             Some(type_def) => {
-                *self.type_def.borrow_mut() = Some(TypeNsDef {
+                self.type_def = Some(TypeNsDef {
                     type_def: Some(def),
                     type_span: Some(sp),
                     module_def: type_def.module_def,
@@ -705,8 +708,8 @@ impl NameBindings {
     }
 
     /// Records a value definition.
-    fn define_value(&self, def: Def, sp: Span, is_public: bool) {
-        *self.value_def.borrow_mut() = Some(ValueNsDef {
+    fn define_value(&mut self, def: Def, sp: Span, is_public: bool) {
+        self.value_def = Some(ValueNsDef {
             def: def,
             value_span: Some(sp),
             is_public: is_public,
@@ -715,7 +718,7 @@ impl NameBindings {
 
     /// Returns the module node if applicable.
     fn get_module_if_available(&self) -> Option<Rc<Module>> {
-        match *self.type_def.borrow() {
+        match self.type_def {
             Some(ref type_def) => type_def.module_def.clone(),
             None => None
         }
@@ -737,17 +740,17 @@ impl NameBindings {
 
     fn defined_in_namespace(&self, namespace: Namespace) -> bool {
         match namespace {
-            TypeNS   => return self.type_def.borrow().is_some(),
-            ValueNS  => return self.value_def.borrow().is_some()
+            TypeNS   => return self.type_def.is_some(),
+            ValueNS  => return self.value_def.is_some()
         }
     }
 
     fn defined_in_public_namespace(&self, namespace: Namespace) -> bool {
         match namespace {
-            TypeNS => match *self.type_def.borrow() {
+            TypeNS => match self.type_def {
                 Some(ref def) => def.is_public, None => false
             },
-            ValueNS => match *self.value_def.borrow() {
+            ValueNS => match self.value_def {
                 Some(ref def) => def.is_public, None => false
             }
         }
@@ -756,7 +759,7 @@ impl NameBindings {
     fn def_for_namespace(&self, namespace: Namespace) -> Option<Def> {
         match namespace {
             TypeNS => {
-                match *self.type_def.borrow() {
+                match self.type_def {
                     None => None,
                     Some(ref type_def) => {
                         match type_def.type_def {
@@ -777,7 +780,7 @@ impl NameBindings {
                 }
             }
             ValueNS => {
-                match *self.value_def.borrow() {
+                match self.value_def {
                     None => None,
                     Some(value_def) => Some(value_def.def)
                 }
@@ -789,13 +792,13 @@ impl NameBindings {
         if self.defined_in_namespace(namespace) {
             match namespace {
                 TypeNS  => {
-                    match *self.type_def.borrow() {
+                    match self.type_def {
                         None => None,
                         Some(ref type_def) => type_def.type_span
                     }
                 }
                 ValueNS => {
-                    match *self.value_def.borrow() {
+                    match self.value_def {
                         None => None,
                         Some(ref value_def) => value_def.value_span
                     }
@@ -909,6 +912,105 @@ struct Resolver<'a> {
     used_crates: HashSet<CrateNum>,
 }
 
+struct AddChild<'a, 'b> {
+    name: Name,
+    duplicate_checking_mode: DuplicateCheckingMode,
+    sp: Span,
+    session: &'a Session,
+    children: RefMut<'b, HashMap<Name, NameBindings>>
+}
+
+impl <'a, 'b> AddChild<'a, 'b> {
+    fn bindings(&mut self) -> &mut NameBindings {
+        // Add or reuse the child.
+        match self.children.entry(self.name) {
+            Vacant(vacant) => vacant.set(NameBindings::new()),
+            Occupied(occupied) => {
+                let child = occupied.into_mut();
+
+                // Enforce the duplicate checking mode:
+                //
+                // * If we're requesting duplicate module checking, check that
+                //   there isn't a module in the module with the same name.
+                //
+                // * If we're requesting duplicate type checking, check that
+                //   there isn't a type in the module with the same name.
+                //
+                // * If we're requesting duplicate value checking, check that
+                //   there isn't a value in the module with the same name.
+                //
+                // * If we're requesting duplicate type checking and duplicate
+                //   value checking, check that there isn't a duplicate type
+                //   and a duplicate value with the same name.
+                //
+                // * If no duplicate checking was requested at all, do
+                //   nothing.
+
+                let mut duplicate_type = NoError;
+                let ns = match self.duplicate_checking_mode {
+                    ForbidDuplicateModules => {
+                        if child.get_module_if_available().is_some() {
+                            duplicate_type = ModuleError;
+                        }
+                        Some(TypeNS)
+                    }
+                    ForbidDuplicateTypesAndModules => {
+                        match child.def_for_namespace(TypeNS) {
+                            None => {}
+                            Some(_) if child.get_module_if_available()
+                                            .map(|m| m.kind.get()) ==
+                                       Some(ImplModuleKind) => {}
+                            Some(_) => duplicate_type = TypeError
+                        }
+                        Some(TypeNS)
+                    }
+                    ForbidDuplicateValues => {
+                        if child.defined_in_namespace(ValueNS) {
+                            duplicate_type = ValueError;
+                        }
+                        Some(ValueNS)
+                    }
+                    ForbidDuplicateTypesAndValues => {
+                        let mut n = None;
+                        match child.def_for_namespace(TypeNS) {
+                            Some(DefMod(_)) | None => {}
+                            Some(_) => {
+                                n = Some(TypeNS);
+                                duplicate_type = TypeError;
+                            }
+                        };
+                        if child.defined_in_namespace(ValueNS) {
+                            duplicate_type = ValueError;
+                            n = Some(ValueNS);
+                        }
+                        n
+                    }
+                    OverwriteDuplicates => None
+                };
+                if duplicate_type != NoError {
+                    // Return an error here by looking up the namespace that
+                    // had the duplicate.
+                    let ns = ns.unwrap();
+                    self.session.span_err(self.sp,
+                        format!("duplicate definition of {} `{}`",
+                             namespace_error_to_string(duplicate_type),
+                             token::get_name(self.name)).as_slice());
+                    {
+                        let r = child.span_for_namespace(ns);
+                        for sp in r.iter() {
+                            self.session.span_note(*sp,
+                                 format!("first definition of {} `{}` here",
+                                      namespace_error_to_string(duplicate_type),
+                                      token::get_name(self.name)).as_slice());
+                        }
+                    }
+                }
+                child
+            }
+        }
+    }
+}
+
 struct BuildReducedGraphVisitor<'a, 'b:'a> {
     resolver: &'a mut Resolver<'b>,
     parent: ReducedGraphParent
@@ -962,7 +1064,7 @@ impl<'a, 'b, 'v> Visitor<'v> for UnusedImportCheckVisitor<'a, 'b> {
 
 impl<'a> Resolver<'a> {
     fn new(session: &'a Session, crate_span: Span) -> Resolver<'a> {
-        let graph_root = NameBindings::new();
+        let mut graph_root = NameBindings::new();
 
         graph_root.define_module(NoParentLink,
                                  Some(DefId { krate: 0, node: 0 }),
@@ -1057,111 +1159,29 @@ impl<'a> Resolver<'a> {
      * If this node does not have a module definition and we are not inside
      * a block, fails.
      */
-    fn add_child(&self,
-                 name: Ident,
-                 reduced_graph_parent: ReducedGraphParent,
-                 duplicate_checking_mode: DuplicateCheckingMode,
-                 // For printing errors
-                 sp: Span)
-                 -> Rc<NameBindings> {
+    fn add_child<'b>(&self,
+                     name: Ident,
+                     reduced_graph_parent: &'b ReducedGraphParent,
+                     duplicate_checking_mode: DuplicateCheckingMode,
+                     // For printing errors
+                     sp: Span)
+                     -> AddChild<'a, 'b> {
         // If this is the immediate descendant of a module, then we add the
         // child name directly. Otherwise, we create or reuse an anonymous
         // module and add the child to that.
 
-        let module_ = reduced_graph_parent.module();
+        let module_ = reduced_graph_parent.module_ref();
 
-        self.check_for_conflicts_between_external_crates_and_items(&*module_,
+        self.check_for_conflicts_between_external_crates_and_items(&**module_,
                                                                    name.name,
                                                                    sp);
 
-        // Add or reuse the child.
-        let child = module_.children.borrow().find_copy(&name.name);
-        match child {
-            None => {
-                let child = Rc::new(NameBindings::new());
-                module_.children.borrow_mut().insert(name.name, child.clone());
-                child
-            }
-            Some(child) => {
-                // Enforce the duplicate checking mode:
-                //
-                // * If we're requesting duplicate module checking, check that
-                //   there isn't a module in the module with the same name.
-                //
-                // * If we're requesting duplicate type checking, check that
-                //   there isn't a type in the module with the same name.
-                //
-                // * If we're requesting duplicate value checking, check that
-                //   there isn't a value in the module with the same name.
-                //
-                // * If we're requesting duplicate type checking and duplicate
-                //   value checking, check that there isn't a duplicate type
-                //   and a duplicate value with the same name.
-                //
-                // * If no duplicate checking was requested at all, do
-                //   nothing.
-
-                let mut duplicate_type = NoError;
-                let ns = match duplicate_checking_mode {
-                    ForbidDuplicateModules => {
-                        if child.get_module_if_available().is_some() {
-                            duplicate_type = ModuleError;
-                        }
-                        Some(TypeNS)
-                    }
-                    ForbidDuplicateTypesAndModules => {
-                        match child.def_for_namespace(TypeNS) {
-                            None => {}
-                            Some(_) if child.get_module_if_available()
-                                            .map(|m| m.kind.get()) ==
-                                       Some(ImplModuleKind) => {}
-                            Some(_) => duplicate_type = TypeError
-                        }
-                        Some(TypeNS)
-                    }
-                    ForbidDuplicateValues => {
-                        if child.defined_in_namespace(ValueNS) {
-                            duplicate_type = ValueError;
-                        }
-                        Some(ValueNS)
-                    }
-                    ForbidDuplicateTypesAndValues => {
-                        let mut n = None;
-                        match child.def_for_namespace(TypeNS) {
-                            Some(DefMod(_)) | None => {}
-                            Some(_) => {
-                                n = Some(TypeNS);
-                                duplicate_type = TypeError;
-                            }
-                        };
-                        if child.defined_in_namespace(ValueNS) {
-                            duplicate_type = ValueError;
-                            n = Some(ValueNS);
-                        }
-                        n
-                    }
-                    OverwriteDuplicates => None
-                };
-                if duplicate_type != NoError {
-                    // Return an error here by looking up the namespace that
-                    // had the duplicate.
-                    let ns = ns.unwrap();
-                    self.resolve_error(sp,
-                        format!("duplicate definition of {} `{}`",
-                             namespace_error_to_string(duplicate_type),
-                             token::get_ident(name)).as_slice());
-                    {
-                        let r = child.span_for_namespace(ns);
-                        for sp in r.iter() {
-                            self.session.span_note(*sp,
-                                 format!("first definition of {} `{}` here",
-                                      namespace_error_to_string(duplicate_type),
-                                      token::get_ident(name)).as_slice());
-                        }
-                    }
-                }
-                child
-            }
+        AddChild {
+            name: name.name,
+            duplicate_checking_mode: duplicate_checking_mode,
+            sp: sp,
+            session: self.session,
+            children: module_.children.borrow_mut()
         }
     }
 
@@ -1196,10 +1216,10 @@ impl<'a> Resolver<'a> {
         return false;
     }
 
-    fn get_parent_link(&mut self, parent: ReducedGraphParent, name: Ident)
+    fn get_parent_link(&mut self, parent: &ReducedGraphParent, name: Ident)
                            -> ParentLink {
-        match parent {
-            ModuleReducedGraphParent(module_) => {
+        match *parent {
+            ModuleReducedGraphParent(ref module_) => {
                 return ModuleParentLink(module_.downgrade(), name);
             }
         }
@@ -1217,10 +1237,10 @@ impl<'a> Resolver<'a> {
 
         match item.node {
             ItemMod(..) => {
-                let name_bindings =
-                    self.add_child(ident, parent.clone(), ForbidDuplicateModules, sp);
+                let mut add_child = self.add_child(ident, &parent, ForbidDuplicateModules, sp);
+                let name_bindings = add_child.bindings();
 
-                let parent_link = self.get_parent_link(parent, ident);
+                let parent_link = self.get_parent_link(&parent, ident);
                 let def_id = DefId { krate: 0, node: item.id };
                 name_bindings.define_module(parent_link,
                                             Some(def_id),
@@ -1236,51 +1256,63 @@ impl<'a> Resolver<'a> {
 
             // These items live in the value namespace.
             ItemStatic(_, m, _) => {
-                let name_bindings =
-                    self.add_child(ident, parent.clone(), ForbidDuplicateValues, sp);
-                let mutbl = m == ast::MutMutable;
+                {
+                    let mut add_child = self.add_child(ident, &parent, ForbidDuplicateValues, sp);
+                    let name_bindings = add_child.bindings();
+                    let mutbl = m == ast::MutMutable;
 
-                name_bindings.define_value
-                    (DefStatic(local_def(item.id), mutbl), sp, is_public);
+                    name_bindings.define_value
+                        (DefStatic(local_def(item.id), mutbl), sp, is_public);
+                }
                 parent
             }
             ItemConst(_, _) => {
-                self.add_child(ident, parent.clone(), ForbidDuplicateValues, sp)
-                    .define_value(DefConst(local_def(item.id)),
-                                  sp, is_public);
+                {
+                    let mut add_child = self.add_child(ident, &parent, ForbidDuplicateValues, sp);
+                    let name_bindings = add_child.bindings();
+                    name_bindings.define_value(DefConst(local_def(item.id)), sp, is_public);
+                }
                 parent
             }
             ItemFn(_, fn_style, _, _, _) => {
-                let name_bindings =
-                    self.add_child(ident, parent.clone(), ForbidDuplicateValues, sp);
+                {
+                    let mut add_child = self.add_child(ident, &parent, ForbidDuplicateValues, sp);
+                    let name_bindings = add_child.bindings();
 
-                let def = DefFn(local_def(item.id), fn_style, false);
-                name_bindings.define_value(def, sp, is_public);
+                    let def = DefFn(local_def(item.id), fn_style, false);
+                    name_bindings.define_value(def, sp, is_public);
+                }
                 parent
             }
 
             // These items live in the type namespace.
             ItemTy(..) => {
-                let name_bindings =
-                    self.add_child(ident,
-                                   parent.clone(),
-                                   ForbidDuplicateTypesAndModules,
-                                   sp);
+                {
+                    let mut add_child =
+                        self.add_child(ident,
+                                       &parent,
+                                       ForbidDuplicateTypesAndModules,
+                                       sp);
+                    let name_bindings = add_child.bindings();
 
-                name_bindings.define_type
-                    (DefTy(local_def(item.id), false), sp, is_public);
+                    name_bindings.define_type
+                        (DefTy(local_def(item.id), false), sp, is_public);
+                }
                 parent
             }
 
             ItemEnum(ref enum_definition, _) => {
-                let name_bindings =
-                    self.add_child(ident,
-                                   parent.clone(),
-                                   ForbidDuplicateTypesAndModules,
-                                   sp);
+                {
+                    let mut add_child =
+                        self.add_child(ident,
+                                       &parent,
+                                       ForbidDuplicateTypesAndModules,
+                                       sp);
+                    let name_bindings = add_child.bindings();
 
-                name_bindings.define_type
-                    (DefTy(local_def(item.id), true), sp, is_public);
+                    name_bindings.define_type
+                        (DefTy(local_def(item.id), true), sp, is_public);
+                }
 
                 for variant in (*enum_definition).variants.iter() {
                     self.build_reduced_graph_for_variant(
@@ -1300,18 +1332,21 @@ impl<'a> Resolver<'a> {
                     None            => (ForbidDuplicateTypesAndModules, None)
                 };
 
-                let name_bindings = self.add_child(ident, parent.clone(), forbid, sp);
+                {
+                    let mut add_child = self.add_child(ident, &parent, forbid, sp);
+                    let name_bindings = add_child.bindings();
 
-                // Define a name in the type namespace.
-                name_bindings.define_type(DefTy(local_def(item.id), false), sp, is_public);
+                    // Define a name in the type namespace.
+                    name_bindings.define_type(DefTy(local_def(item.id), false), sp, is_public);
 
-                // If this is a newtype or unit-like struct, define a name
-                // in the value namespace as well
-                ctor_id.while_some(|cid| {
-                    name_bindings.define_value(DefStruct(local_def(cid)), sp,
-                                               is_public);
-                    None
-                });
+                    // If this is a newtype or unit-like struct, define a name
+                    // in the value namespace as well
+                    ctor_id.while_some(|cid| {
+                        name_bindings.define_value(DefStruct(local_def(cid)), sp,
+                                                   is_public);
+                        None
+                    });
+                }
 
                 // Record the def ID and fields of this struct.
                 let named_fields = struct_def.fields.iter().filter_map(|f| {
@@ -1335,43 +1370,47 @@ impl<'a> Resolver<'a> {
                     TyPath(ref path, _, _) if path.segments.len() == 1 => {
                         let name = path.segments.last().unwrap().identifier;
 
-                        let parent_opt = parent.module().children.borrow()
-                                               .find_copy(&name.name);
-                        let new_parent = match parent_opt {
+                        // Splitting this logic into two steps is necessary to make sure that the
+                        // borrow on children will expire before .add_child is called.
+                        let new_parent_option = match parent.module_ref()
+                                                     .children
+                                                     .borrow()
+                                                     .find(&name.name) {
                             // It already exists
-                            Some(ref child) if child.get_module_if_available()
+                            Some(child) if child.get_module_if_available()
                                                 .is_some() &&
                                            child.get_module().kind.get() ==
                                                 ImplModuleKind => {
-                                ModuleReducedGraphParent(child.get_module())
-                            }
-                            // Create the module
-                            _ => {
-                                let name_bindings =
-                                    self.add_child(name,
-                                                   parent.clone(),
-                                                   ForbidDuplicateModules,
-                                                   sp);
-
-                                let parent_link =
-                                    self.get_parent_link(parent.clone(), ident);
-                                let def_id = local_def(item.id);
-                                let ns = TypeNS;
-                                let is_public =
-                                    !name_bindings.defined_in_namespace(ns) ||
-                                     name_bindings.defined_in_public_namespace(ns);
-
-                                name_bindings.define_module(parent_link,
-                                                            Some(def_id),
-                                                            ImplModuleKind,
-                                                            false,
-                                                            is_public,
-                                                            sp);
-
-                                ModuleReducedGraphParent(
-                                    name_bindings.get_module())
-                            }
+                                Some(ModuleReducedGraphParent(child.get_module()))
+                            },
+                            _ => None
                         };
+                        let new_parent = new_parent_option.unwrap_or_else(|| {
+                            // Create the module
+                            let mut add_child =
+                                self.add_child(name,
+                                               &parent,
+                                               ForbidDuplicateModules,
+                                               sp);
+                            let name_bindings = add_child.bindings();
+
+                            let parent_link =
+                                self.get_parent_link(&parent, ident);
+                            let def_id = local_def(item.id);
+                            let ns = TypeNS;
+                            let is_public =
+                                !name_bindings.defined_in_namespace(ns) ||
+                                 name_bindings.defined_in_public_namespace(ns);
+                            name_bindings.define_module(parent_link,
+                                                        Some(def_id),
+                                                        ImplModuleKind,
+                                                        false,
+                                                        is_public,
+                                                        sp);
+
+                            ModuleReducedGraphParent(
+                                name_bindings.get_module())
+                        });
 
                         // For each implementation item...
                         for impl_item in impl_items.iter() {
@@ -1379,11 +1418,12 @@ impl<'a> Resolver<'a> {
                                 MethodImplItem(ref method) => {
                                     // Add the method to the module.
                                     let ident = method.pe_ident();
-                                    let method_name_bindings =
+                                    let mut add_child =
                                         self.add_child(ident,
-                                                       new_parent.clone(),
+                                                       &new_parent,
                                                        ForbidDuplicateValues,
                                                        method.span);
+                                    let method_name_bindings = add_child.bindings();
                                     let def = match method.pe_explicit_self()
                                                           .node {
                                         SelfStatic => {
@@ -1412,12 +1452,13 @@ impl<'a> Resolver<'a> {
                                 TypeImplItem(ref typedef) => {
                                     // Add the typedef to the module.
                                     let ident = typedef.ident;
-                                    let typedef_name_bindings =
+                                    let mut add_child =
                                         self.add_child(
                                             ident,
-                                            new_parent.clone(),
+                                            &new_parent,
                                             ForbidDuplicateTypesAndModules,
                                             typedef.span);
+                                    let typedef_name_bindings = add_child.bindings();
                                     let def = DefAssociatedTy(local_def(
                                             typedef.id));
                                     let is_public = typedef.vis ==
@@ -1445,24 +1486,29 @@ impl<'a> Resolver<'a> {
             ItemImpl(_, Some(_), _, _) => parent,
 
             ItemTrait(_, _, _, ref methods) => {
-                let name_bindings =
-                    self.add_child(ident,
-                                   parent.clone(),
-                                   ForbidDuplicateTypesAndModules,
-                                   sp);
-
-                // Add all the methods within to a new module.
-                let parent_link = self.get_parent_link(parent.clone(), ident);
-                name_bindings.define_module(parent_link,
-                                            Some(local_def(item.id)),
-                                            TraitModuleKind,
-                                            false,
-                                            item.vis == ast::Public,
-                                            sp);
-                let module_parent = ModuleReducedGraphParent(name_bindings.
-                                                             get_module());
-
                 let def_id = local_def(item.id);
+
+                let module_parent = {
+                    let mut add_child =
+                        self.add_child(ident,
+                                       &parent,
+                                       ForbidDuplicateTypesAndModules,
+                                       sp);
+                    let name_bindings = add_child.bindings();
+
+                    // Add all the methods within to a new module.
+                    let parent_link = self.get_parent_link(&parent, ident);
+                    name_bindings.define_module(parent_link,
+                                                Some(def_id),
+                                                TraitModuleKind,
+                                                false,
+                                                item.vis == ast::Public,
+                                                sp);
+
+                    name_bindings.define_type(DefTrait(def_id), sp, is_public);
+
+                    ModuleReducedGraphParent(name_bindings.get_module())
+                };
 
                 // Add the names of all the methods to the trait info.
                 for method in methods.iter() {
@@ -1494,11 +1540,12 @@ impl<'a> Resolver<'a> {
                                 }
                             };
 
-                            let method_name_bindings =
+                            let mut add_child =
                                 self.add_child(ident,
-                                               module_parent.clone(),
+                                               &module_parent,
                                                ForbidDuplicateTypesAndValues,
                                                ty_m.span);
+                            let method_name_bindings = add_child.bindings();
                             method_name_bindings.define_value(def,
                                                               ty_m.span,
                                                               true);
@@ -1509,11 +1556,12 @@ impl<'a> Resolver<'a> {
                             let def = DefAssociatedTy(local_def(
                                     associated_type.id));
 
-                            let name_bindings =
+                            let mut add_child =
                                 self.add_child(associated_type.ident,
-                                               module_parent.clone(),
+                                               &module_parent,
                                                ForbidDuplicateTypesAndValues,
                                                associated_type.span);
+                            let name_bindings = add_child.bindings();
                             name_bindings.define_type(def,
                                                       associated_type.span,
                                                       true);
@@ -1524,8 +1572,6 @@ impl<'a> Resolver<'a> {
 
                     self.trait_item_map.insert((ident.name, def_id), kind);
                 }
-
-                name_bindings.define_type(DefTrait(def_id), sp, is_public);
                 parent
             }
             ItemMac(..) => parent
@@ -1549,15 +1595,16 @@ impl<'a> Resolver<'a> {
             }
         };
 
-        let child = self.add_child(ident, parent,
-                                   ForbidDuplicateTypesAndValues,
-                                   variant.span);
-        child.define_value(DefVariant(item_id,
-                                      local_def(variant.node.id), is_exported),
-                           variant.span, is_public);
-        child.define_type(DefVariant(item_id,
-                                     local_def(variant.node.id), is_exported),
-                          variant.span, is_public);
+        let mut add_child = self.add_child(ident, &parent,
+                                       ForbidDuplicateTypesAndValues,
+                                       variant.span);
+        let child_name_bindings = add_child.bindings();
+        child_name_bindings.define_value(DefVariant(item_id,
+                                                    local_def(variant.node.id), is_exported),
+                                         variant.span, is_public);
+        child_name_bindings.define_type(DefVariant(item_id,
+                                                   local_def(variant.node.id), is_exported),
+                                        variant.span, is_public);
     }
 
     /// Constructs the reduced graph for one 'view item'. View items consist
@@ -1703,9 +1750,10 @@ impl<'a> Resolver<'a> {
                                             f: |&mut Resolver|) {
         let name = foreign_item.ident;
         let is_public = foreign_item.vis == ast::Public;
-        let name_bindings =
-            self.add_child(name, parent, ForbidDuplicateValues,
+        let mut add_child =
+            self.add_child(name, &parent, ForbidDuplicateValues,
                            foreign_item.span);
+        let name_bindings = add_child.bindings();
 
         match foreign_item.node {
             ForeignItemFn(_, ref generics) => {
@@ -1758,7 +1806,7 @@ impl<'a> Resolver<'a> {
     fn handle_external_def(&mut self,
                            def: Def,
                            vis: Visibility,
-                           child_name_bindings: &NameBindings,
+                           child_name_bindings: &mut NameBindings,
                            final_ident: &str,
                            ident: Ident,
                            new_parent: ReducedGraphParent) {
@@ -1786,7 +1834,7 @@ impl<'a> Resolver<'a> {
         match def {
           DefMod(def_id) | DefForeignMod(def_id) | DefStruct(def_id) |
           DefTy(def_id, _) => {
-            let type_def = child_name_bindings.type_def.borrow().clone();
+            let type_def = child_name_bindings.type_def.clone();
             match type_def {
               Some(TypeNsDef { module_def: Some(module_def), .. }) => {
                 debug!("(building reduced graph for external crate) \
@@ -1797,7 +1845,7 @@ impl<'a> Resolver<'a> {
                 debug!("(building reduced graph for \
                         external crate) building module \
                         {}", final_ident);
-                let parent_link = self.get_parent_link(new_parent.clone(), ident);
+                let parent_link = self.get_parent_link(&new_parent, ident);
 
                 child_name_bindings.define_module(parent_link,
                                                   Some(def_id),
@@ -1870,7 +1918,7 @@ impl<'a> Resolver<'a> {
               child_name_bindings.define_type(def, DUMMY_SP, is_public);
 
               // Define a module if necessary.
-              let parent_link = self.get_parent_link(new_parent, ident);
+              let parent_link = self.get_parent_link(&new_parent, ident);
               child_name_bindings.set_module_kind(parent_link,
                                                   Some(def_id),
                                                   TraitModuleKind,
@@ -1939,15 +1987,17 @@ impl<'a> Resolver<'a> {
                         });
                     }
                     _ => {
-                        let child_name_bindings =
+                        let parent = ModuleReducedGraphParent(root.clone());
+                        let mut add_child =
                             self.add_child(ident,
-                                           ModuleReducedGraphParent(root.clone()),
+                                           &parent,
                                            OverwriteDuplicates,
                                            DUMMY_SP);
+                        let child_name_bindings = add_child.bindings();
 
                         self.handle_external_def(def,
                                                  visibility,
-                                                 &*child_name_bindings,
+                                                 child_name_bindings,
                                                  token::get_ident(ident).get(),
                                                  ident,
                                                  ModuleReducedGraphParent(root));
@@ -1969,17 +2019,19 @@ impl<'a> Resolver<'a> {
                                         static methods for type name {}",
                                         token::get_ident(final_ident));
 
-                                let child_name_bindings =
+                                let parent = ModuleReducedGraphParent(root.clone());
+                                let mut add_child =
                                     self.add_child(
                                         final_ident,
-                                        ModuleReducedGraphParent(root.clone()),
+                                        &parent,
                                         OverwriteDuplicates,
                                         DUMMY_SP);
+                                let child_name_bindings = add_child.bindings();
 
                                 // Process the static methods. First,
                                 // create the module.
                                 let type_module;
-                                let type_def = child_name_bindings.type_def.borrow().clone();
+                                let type_def = child_name_bindings.type_def.clone();
                                 match type_def {
                                     Some(TypeNsDef {
                                         module_def: Some(module_def),
@@ -1994,8 +2046,9 @@ impl<'a> Resolver<'a> {
                                         type_module.kind.set(ImplModuleKind);
                                     }
                                     Some(_) | None => {
+                                        let parent = ModuleReducedGraphParent(root);
                                         let parent_link =
-                                            self.get_parent_link(ModuleReducedGraphParent(root),
+                                            self.get_parent_link(&parent,
                                                                  final_ident);
                                         child_name_bindings.define_module(
                                             parent_link,
@@ -2021,11 +2074,12 @@ impl<'a> Resolver<'a> {
                                              static method '{}'",
                                            token::get_ident(ident));
 
-                                    let method_name_bindings =
+                                    let mut add_child =
                                         self.add_child(ident,
-                                                       new_parent.clone(),
+                                                       &new_parent,
                                                        OverwriteDuplicates,
                                                        DUMMY_SP);
+                                    let method_name_bindings = add_child.bindings();
                                     let def = DefFn(
                                         static_method_info.def_id,
                                         static_method_info.fn_style,
@@ -2403,13 +2457,13 @@ impl<'a> Resolver<'a> {
 
     fn create_name_bindings_from_module(module: Rc<Module>) -> NameBindings {
         NameBindings {
-            type_def: RefCell::new(Some(TypeNsDef {
+            type_def: Some(TypeNsDef {
                 is_public: false,
                 module_def: Some(module),
                 type_def: None,
                 type_span: None
-            })),
-            value_def: RefCell::new(None),
+            }),
+            value_def: None,
         }
     }
 
@@ -2452,16 +2506,16 @@ impl<'a> Resolver<'a> {
             None => {
                 // Continue.
             }
-            Some(ref child_name_bindings) => {
+            Some(child_name_bindings) => {
                 if child_name_bindings.defined_in_namespace(ValueNS) {
                     debug!("(resolving single import) found value binding");
                     value_result = BoundResult(containing_module.clone(),
-                                               (*child_name_bindings).clone());
+                                               child_name_bindings.clone());
                 }
                 if child_name_bindings.defined_in_namespace(TypeNS) {
                     debug!("(resolving single import) found type binding");
                     type_result = BoundResult(containing_module.clone(),
-                                              (*child_name_bindings).clone());
+                                              child_name_bindings.clone());
                 }
             }
         }
@@ -2581,9 +2635,7 @@ impl<'a> Resolver<'a> {
                             Some(DefId{krate: kid, ..}) => { self.used_crates.insert(kid); },
                             _ => {}
                         }
-                        let name_bindings =
-                            Rc::new(Resolver::create_name_bindings_from_module(
-                                module));
+                        let name_bindings = Resolver::create_name_bindings_from_module(module);
                         type_result = BoundResult(containing_module.clone(),
                                                   name_bindings);
                         type_used_public = true;
@@ -2599,7 +2651,7 @@ impl<'a> Resolver<'a> {
         match value_result {
             BoundResult(ref target_module, ref name_bindings) => {
                 debug!("(resolving single import) found value target: {}",
-                       { name_bindings.value_def.borrow().clone().unwrap().def });
+                       { name_bindings.value_def.clone().unwrap().def });
                 self.check_for_conflicting_import(
                     &import_resolution.value_target,
                     directive.span,
@@ -2622,7 +2674,7 @@ impl<'a> Resolver<'a> {
         match type_result {
             BoundResult(ref target_module, ref name_bindings) => {
                 debug!("(resolving single import) found type target: {}",
-                       { name_bindings.type_def.borrow().clone().unwrap().type_def });
+                       { name_bindings.type_def.clone().unwrap().type_def });
                 self.check_for_conflicting_import(
                     &import_resolution.type_target,
                     directive.span,
@@ -2785,20 +2837,19 @@ impl<'a> Resolver<'a> {
                                          containing_module.clone(),
                                          import_directive,
                                          name,
-                                         name_bindings.clone());
+                                         name_bindings);
 
         }
 
         // Add external module children from the containing module.
         for (&name, module) in containing_module.external_module_children
                                                 .borrow().iter() {
-            let name_bindings =
-                Rc::new(Resolver::create_name_bindings_from_module(module.clone()));
+            let name_bindings = Resolver::create_name_bindings_from_module(module.clone());
             self.merge_import_resolution(module_,
                                          containing_module.clone(),
                                          import_directive,
                                          name,
-                                         name_bindings);
+                                         &name_bindings);
         }
 
         // Record the destination of this import
@@ -2819,7 +2870,7 @@ impl<'a> Resolver<'a> {
                                containing_module: Rc<Module>,
                                import_directive: &ImportDirective,
                                name: Name,
-                               name_bindings: Rc<NameBindings>) {
+                               name_bindings: &NameBindings) {
         let id = import_directive.id;
         let is_public = import_directive.is_public;
 
@@ -2927,7 +2978,7 @@ impl<'a> Resolver<'a> {
 
         match import_resolution.value_target {
             Some(ref target) if !target.shadowable => {
-                match *name_bindings.value_def.borrow() {
+                match name_bindings.value_def {
                     None => {}
                     Some(ref value) => {
                         let msg = format!("import `{}` conflicts with value \
@@ -2950,7 +3001,7 @@ impl<'a> Resolver<'a> {
 
         match import_resolution.type_target {
             Some(ref target) if !target.shadowable => {
-                match *name_bindings.type_def.borrow() {
+                match name_bindings.type_def {
                     None => {}
                     Some(ref ty) => {
                         match ty.module_def {
@@ -3131,7 +3182,7 @@ impl<'a> Resolver<'a> {
                 Success((target, used_proxy)) => {
                     // Check to see whether there are type bindings, and, if
                     // so, whether there is a module within.
-                    match *target.bindings.type_def.borrow() {
+                    match target.bindings.type_def {
                         Some(ref type_def) => {
                             match type_def.module_def {
                                 None => {
@@ -3364,8 +3415,7 @@ impl<'a> Resolver<'a> {
             match module_.external_module_children.borrow().find_copy(&name.name) {
                 None => {}
                 Some(module) => {
-                    let name_bindings =
-                        Rc::new(Resolver::create_name_bindings_from_module(module));
+                    let name_bindings = Resolver::create_name_bindings_from_module(module);
                     debug!("lower name bindings succeeded");
                     return Success((Target::new(module_,
                                                 name_bindings,
@@ -3447,8 +3497,7 @@ impl<'a> Resolver<'a> {
             module_, name, TypeNS);
         match resolve_result {
             Success((target, _)) => {
-                let bindings = &*target.bindings;
-                match *bindings.type_def.borrow() {
+                match target.bindings.type_def {
                     Some(ref type_def) => {
                         match type_def.module_def {
                             None => {
@@ -3646,8 +3695,7 @@ impl<'a> Resolver<'a> {
             match module_.external_module_children.borrow().find_copy(&name) {
                 None => {}
                 Some(module) => {
-                    let name_bindings =
-                        Rc::new(Resolver::create_name_bindings_from_module(module));
+                    let name_bindings = Resolver::create_name_bindings_from_module(module);
                     return Success((Target::new(module_,
                                                 name_bindings,
                                                 false),
@@ -3810,7 +3858,7 @@ impl<'a> Resolver<'a> {
                                token::get_name(*name));
                         self.add_exports_of_namebindings(exports2,
                                                          *name,
-                                                         &*target.bindings,
+                                                         &target.bindings,
                                                          ns)
                     }
                     _ => ()
@@ -5152,8 +5200,8 @@ impl<'a> Resolver<'a> {
                 debug!("(resolve bare identifier pattern) succeeded in \
                          finding {} at {}",
                         token::get_ident(name),
-                        target.bindings.value_def.borrow());
-                match *target.bindings.value_def.borrow() {
+                        target.bindings.value_def);
+                match target.bindings.value_def {
                     None => {
                         fail!("resolved name in the value namespace to a \
                               set of name bindings with no def?!");
@@ -5512,7 +5560,7 @@ impl<'a> Resolver<'a> {
                                                  ident,
                                                  namespace) {
             Success((target, _)) => {
-                match (*target.bindings).def_for_namespace(namespace) {
+                match target.bindings.def_for_namespace(namespace) {
                     None => {
                         // This can happen if we were looking for a type and
                         // found a module instead. Modules don't have defs.
