@@ -16,6 +16,8 @@
 //    ReScope(63u32))
 //
 // This is a regression test for issue #17021.
+//
+// compile-flags: -g
 
 #![feature(unboxed_closures, overloaded_calls)]
 
