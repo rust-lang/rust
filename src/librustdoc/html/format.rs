@@ -146,9 +146,6 @@ impl fmt::Show for clean::TyParamBound {
             clean::UnboxedFnBound(ref ty) => {
                 write!(f, "{}{}", ty.path, ty.decl)
             }
-            clean::UnknownBound => {
-                write!(f, "'static")
-            }
             clean::TraitBound(ref ty) => {
                 write!(f, "{}", *ty)
             }
@@ -408,8 +405,7 @@ impl fmt::Show for clean::Type {
                            for bound in decl.bounds.iter() {
                                 match *bound {
                                     clean::RegionBound(..) |
-                                    clean::UnboxedFnBound(..) |
-                                    clean::UnknownBound => {}
+                                    clean::UnboxedFnBound(..) => {}
                                     clean::TraitBound(ref t) => {
                                         if ret.len() == 0 {
                                             ret.push_str(": ");
