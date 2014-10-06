@@ -142,7 +142,7 @@ fn summarize_item(item: &Item) -> (Counts, Option<ModuleSummary>) {
                                        .sum();
             (item_counts + subcounts, None)
         }
-        ModuleItem(Module { items: ref items, .. }) => {
+        ModuleItem(Module { ref items, .. }) => {
             let mut counts = item_counts;
             let mut submodules = Vec::new();
 

@@ -132,8 +132,8 @@ pub fn trans_method_callee<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         }
 
         typeck::MethodTypeParam(typeck::MethodParam {
-            trait_ref: ref trait_ref,
-            method_num: method_num
+            ref trait_ref,
+            method_num
         }) => {
             let trait_ref =
                 Rc::new(trait_ref.subst(bcx.tcx(),
@@ -564,7 +564,7 @@ pub fn get_vtable(bcx: Block,
             traits::VtableImpl(
                 traits::VtableImplData {
                     impl_def_id: id,
-                    substs: substs,
+                    substs,
                     nested: _ }) => {
                 emit_vtable_methods(bcx, id, substs).into_iter()
             }

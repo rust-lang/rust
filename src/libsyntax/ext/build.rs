@@ -169,7 +169,7 @@ pub trait AstBuilder {
                               bm: ast::BindingMode) -> P<ast::Pat>;
     fn pat_enum(&self, span: Span, path: ast::Path, subpats: Vec<P<ast::Pat>> ) -> P<ast::Pat>;
     fn pat_struct(&self, span: Span,
-                  path: ast::Path, field_pats: Vec<ast::FieldPat> ) -> P<ast::Pat>;
+                  path: ast::Path, field_pats: Vec<Spanned<ast::FieldPat>> ) -> P<ast::Pat>;
     fn pat_tuple(&self, span: Span, pats: Vec<P<ast::Pat>>) -> P<ast::Pat>;
 
     fn pat_some(&self, span: Span, pat: P<ast::Pat>) -> P<ast::Pat>;
@@ -796,7 +796,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
         self.pat(span, pat)
     }
     fn pat_struct(&self, span: Span,
-                  path: ast::Path, field_pats: Vec<ast::FieldPat>) -> P<ast::Pat> {
+                  path: ast::Path, field_pats: Vec<Spanned<ast::FieldPat>>) -> P<ast::Pat> {
         let pat = ast::PatStruct(path, field_pats, false);
         self.pat(span, pat)
     }

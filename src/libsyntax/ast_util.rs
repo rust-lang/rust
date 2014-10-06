@@ -602,7 +602,7 @@ pub fn walk_pat(pat: &Pat, it: |&Pat| -> bool) -> bool {
     match pat.node {
         PatIdent(_, _, Some(ref p)) => walk_pat(&**p, it),
         PatStruct(_, ref fields, _) => {
-            fields.iter().all(|field| walk_pat(&*field.pat, |p| it(p)))
+            fields.iter().all(|field| walk_pat(&*field.node.pat, |p| it(p)))
         }
         PatEnum(_, Some(ref s)) | PatTup(ref s) => {
             s.iter().all(|p| walk_pat(&**p, |p| it(p)))

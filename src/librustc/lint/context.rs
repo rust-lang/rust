@@ -202,6 +202,7 @@ impl LintStore {
                      NonUpperCaseGlobals,
                      UnusedParens,
                      UnusedImportBraces,
+                     NonShorthandFieldPatterns,
                      UnusedUnsafe,
                      UnsafeBlocks,
                      UnusedMut,

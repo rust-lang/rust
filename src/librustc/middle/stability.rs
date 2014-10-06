@@ -82,7 +82,7 @@ impl<'v> Visitor<'v> for Annotator {
             // work around lack of pattern matching for @ types
             ProvidedMethod(ref method) => {
                 match **method {
-                    Method {attrs: ref attrs, id: id, ..} => (id, attrs),
+                    Method {ref attrs, id, ..} => (id, attrs),
                 }
             }
 

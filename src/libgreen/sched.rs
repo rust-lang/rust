@@ -636,7 +636,7 @@ impl Scheduler {
                 mem::transmute(&**next_task.sched.as_mut().unwrap());
 
             let current_task: &mut GreenTask = match sched.cleanup_job {
-                Some(CleanupJob { task: ref mut task, .. }) => &mut **task,
+                Some(CleanupJob { ref mut task, .. }) => &mut **task,
                 None => rtabort!("no cleanup job")
             };
 
@@ -953,7 +953,7 @@ impl CleanupJob {
     }
 
     pub fn run(self, sched: &mut Scheduler) {
-        let CleanupJob { task: task, f: f } = self;
+        let CleanupJob { task, f } = self;
         f.to_fn()(sched, task)
     }
 }
