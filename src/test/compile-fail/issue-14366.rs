@@ -12,6 +12,4 @@ fn main() {
     let _x = "test" as &::std::any::Any;
 //~^ ERROR the trait `core::kinds::Sized` is not implemented for the type `str`
 //~^^ NOTE the trait `core::kinds::Sized` must be implemented for the cast to the object type
-//~^^^ ERROR the trait `core::kinds::Sized` is not implemented for the type `str`
-//~^^^^ NOTE the trait `core::kinds::Sized` must be implemented for the cast to the object type
 }
