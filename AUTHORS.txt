@@ -8,7 +8,6 @@ Adam Bozanich <adam.boz@gmail.com>
 Adolfo Ochagavía <aochagavia92@gmail.com>
 Adrien Brault <adrien.brault@gmail.com>
 Adrien Tétar <adri-from-59@hotmail.fr>
-Ahmed Charles <acharles@outlook.com>
 Ahmed Charles <ahmedcharles@gmail.com>
 Alan Andrade <alan.andradec@gmail.com>
 Alan Williams <mralert@gmail.com>
@@ -116,7 +115,6 @@ Christopher Bergqvist <spambox0@digitalpoetry.se>
 Christopher Kendell <ckendell@outlook.com>
 Chuck Ries <chuck.ries@gmail.com>
 Clark Gaebel <cg.wowus.cg@gmail.com>
-Clark Gaebel <cgaebel@mozilla.com>
 Clinton Ryan <clint.ryan3@gmail.com>
 Cody Schroeder <codys@cs.washington.edu>
 Cole Mickens <cole.mickens@gmail.com>
@@ -265,8 +263,6 @@ Jag Talon <talon.jag@gmail.com>
 Jake Kaufman <theevocater@gmail.com>
 Jake Kerr <kodafox@gmail.com>
 Jake Scott <jake.net@gmail.com>
-Jakub <jakub@jakub.cc>
-Jakub Wieczorek <jakub@jakub.cc>
 Jakub Wieczorek <jakubw@jakubw.net>
 James Deng <cnjamesdeng@gmail.com>
 James Hurst <jamesrhurst@users.noreply.github.com>
@@ -338,7 +334,6 @@ Junyoung Cho <june0.cho@samsung.com>
 JustAPerson <jpriest8@ymail.com>
 Justin Noah <justinnoah@gmail.com>
 Jyun-Yan You <jyyou.tw@gmail.com>
-Jyun-Yan You <jyyou@cs.nctu.edu.tw>
 Kang Seonghoon <kang.seonghoon@mearie.org>
 Kasey Carrothers <kaseyc.808@gmail.com>
 Keegan McAllister <kmcallister@mozilla.com>
@@ -365,7 +360,6 @@ Liigo Zhuang <com.liigo@gmail.com>
 Lindsey Kuper <lindsey@composition.al>
 Luca Bruno <lucab@debian.org>
 Luis de Bethencourt <luis@debethencourt.com>
-Luqman Aden <laden@csclub.uwaterloo.ca>
 Luqman Aden <me@luqman.ca>
 Magnus Auvinen <magnus.auvinen@gmail.com>
 Mahmut Bulut <mahmutbulut0@gmail.com>
@@ -415,7 +409,6 @@ Michael Sproul <micsproul@gmail.com>
 Michael Sullivan <sully@msully.net>
 Michael Williams <m.t.williams@live.com>
 Michael Woerister <michaelwoerister@gmail>
-Michael Woerister <michaelwoerister@posteo>
 Michael Zhou <moz@google.com>
 Mick Koch <kchmck@gmail.com>
 Mickaël Delahaye <mickael.delahaye@gmail.com>
@@ -443,7 +436,6 @@ Noam Yorav-Raphael <noamraph@gmail.com>
 Noufal Ibrahim <noufal@nibrahim.net.in>
 O S K Chaitanya <osk@medhas.org>
 OGINO Masanori <masanori.ogino@gmail.com>
-Ogino Masanori <masanori.ogino@gmail.com>
 Olivier Saut <osaut@airpost.net>
 Olle Jonsson <olle.jonsson@gmail.com>
 Or Brostovski <tohava@gmail.com>
@@ -455,7 +447,6 @@ Palmer Cox <p@lmercox.com>
 Paolo Falabella <paolo.falabella@gmail.com>
 Patrick Reisert <kpreisert@gmail.com>
 Patrick Walton <pcwalton@mimiga.net>
-Patrick Walton <pwalton@mozilla.com>
 Patrick Yevsukov <patrickyevsukov@users.noreply.github.com>
 Patrik Kårlin <patrik.karlin@gmail.com>
 Paul Collins <paul@ondioline.org>
@@ -502,7 +493,6 @@ Rob Hoelz <rob@hoelz.ro>
 Robert Buonpastore <robert.buonpastore@gmail.com>
 Robert Clipsham <robert@octarineparrot.com>
 Robert Gawdzik <rgawdzik@hotmail.com>
-Robert Gawdzik ☢ <rgawdzik@hotmail.com>
 Robert Irelan <rirelan@gmail.com>
 Robert Knight <robertknight@gmail.com>
 Robert Millar <robert.millar@cantab.net>
@@ -543,7 +533,6 @@ Shamir Khodzha <khodzha.sh@gmail.com>
 SiegeLord <slabode@aim.com>
 Simon Barber-Dueck <sbarberdueck@gmail.com>
 Simon Persson <simon@flaskpost.org>
-Simon Sapin <simon.sapin@exyr.org>
 Simon Sapin <simon@exyr.org>
 Squeaky <squeaky_pl@gmx.com>
 Stefan Plantikow <stefan.plantikow@googlemail.com>
@@ -552,7 +541,6 @@ Sterling Greene <sterling.greene@gmail.com>
 Steve Klabnik <steve@steveklabnik.com>
 Steven De Coeyer <steven@banteng.be>
 Steven Fackler <sfackler@gmail.com>
-Steven Fackler <sfackler@palantir.com>
 Steven Sheldon <steven@sasheldon.com>
 Steven Stewart-Gallus <sstewartgallus00@langara.bc.ca>
 Strahinja Val Markovic <val@markovic.io>
