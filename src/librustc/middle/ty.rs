@@ -1374,6 +1374,7 @@ impl ParameterEnvironment {
                     ast::ItemEnum(..) |
                     ast::ItemStruct(..) |
                     ast::ItemImpl(..) |
+                    ast::ItemConst(..) |
                     ast::ItemStatic(..) => {
                         let def_id = ast_util::local_def(id);
                         let pty = ty::lookup_item_type(cx, def_id);
@@ -3575,6 +3576,8 @@ pub fn expr_kind(tcx: &ctxt, expr: &ast::Expr) -> ExprKind {
                 def::DefStatic(..) |
                 def::DefUpvar(..) |
                 def::DefLocal(..) => LvalueExpr,
+
+                def::DefConst(..) => RvalueDatumExpr,
 
                 def => {
                     tcx.sess.span_bug(

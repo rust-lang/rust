@@ -776,6 +776,7 @@ pub fn create_global_var_metadata(cx: &CrateContext,
         ast_map::NodeItem(item) => {
             match item.node {
                 ast::ItemStatic(..) => (item.ident, item.span),
+                ast::ItemConst(..) => (item.ident, item.span),
                 _ => {
                     cx.sess()
                       .span_bug(item.span,

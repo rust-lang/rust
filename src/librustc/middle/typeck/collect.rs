@@ -1550,7 +1550,7 @@ pub fn ty_of_item(ccx: &CrateCtxt, it: &ast::Item)
         _ => {}
     }
     match it.node {
-        ast::ItemStatic(ref t, _, _) => {
+        ast::ItemStatic(ref t, _, _) | ast::ItemConst(ref t, _) => {
             let typ = ccx.to_ty(&ExplicitRscope, &**t);
             let pty = no_params(typ);
 

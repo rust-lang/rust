@@ -92,7 +92,7 @@ impl<'a, 'v> Visitor<'v> for LifetimeContext<'a> {
             ast::ItemMod(..) |
             ast::ItemMac(..) |
             ast::ItemForeignMod(..) |
-            ast::ItemStatic(..) => {
+            ast::ItemStatic(..) | ast::ItemConst(..) => {
                 self.with(|_, f| f(RootScope), |v| visit::walk_item(v, item));
                 return;
             }

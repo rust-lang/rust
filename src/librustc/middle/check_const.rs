@@ -48,7 +48,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for CheckCrateVisitor<'a, 'tcx> {
     }
     fn visit_expr(&mut self, ex: &Expr) {
         if check_expr(self, ex) {
-            visit::walk_expr(v, e);
+            visit::walk_expr(self, ex);
         }
     }
 }
@@ -61,7 +61,8 @@ pub fn check_crate(tcx: &ty::ctxt) {
 
 fn check_item(v: &mut CheckCrateVisitor, it: &Item) {
     match it.node {
-        ItemStatic(_, _, ref ex) => {
+        ItemStatic(_, _, ref ex) |
+        ItemConst(_, ref ex) => {
             v.inside_const(|v| v.visit_expr(&**ex));
         }
         ItemEnum(ref enum_definition, _) => {
@@ -138,6 +139,7 @@ fn check_expr(v: &mut CheckCrateVisitor, e: &Expr) -> bool {
             }
             match v.tcx.def_map.borrow().find(&e.id) {
                 Some(&DefStatic(..)) |
+                Some(&DefConst(..)) |
                 Some(&DefFn(..)) |
                 Some(&DefVariant(_, _, _)) |
                 Some(&DefStruct(_)) => { }
@@ -190,7 +192,7 @@ fn check_expr(v: &mut CheckCrateVisitor, e: &Expr) -> bool {
                 }
             }
             match block.expr {
-                Some(ref expr) => check_expr(v, &**expr),
+                Some(ref expr) => { check_expr(v, &**expr); }
                 None => {}
             }
         }

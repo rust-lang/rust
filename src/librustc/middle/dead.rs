@@ -215,7 +215,8 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
                     ast::ItemFn(..)
                     | ast::ItemEnum(..)
                     | ast::ItemTy(..)
-                    | ast::ItemStatic(..) => {
+                    | ast::ItemStatic(..)
+                    | ast::ItemConst(..) => {
                         visit::walk_item(self, &*item);
                     }
                     _ => ()
