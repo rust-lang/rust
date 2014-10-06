@@ -128,17 +128,17 @@ fn recursive_mkdir_rel() {
     let cwd = os::getcwd();
     println!("recursive_mkdir_rel: Making: {} in cwd {} [{:?}]", path.display(),
            cwd.display(), path.exists());
-    fs::mkdir_recursive(&path, io::UserRWX);
+    fs::mkdir_recursive(&path, io::USER_RWX);
     assert!(path.is_dir());
-    fs::mkdir_recursive(&path, io::UserRWX);
+    fs::mkdir_recursive(&path, io::USER_RWX);
     assert!(path.is_dir());
 }
 
 fn recursive_mkdir_dot() {
     let dot = Path::new(".");
-    fs::mkdir_recursive(&dot, io::UserRWX);
+    fs::mkdir_recursive(&dot, io::USER_RWX);
     let dotdot = Path::new("..");
-    fs::mkdir_recursive(&dotdot, io::UserRWX);
+    fs::mkdir_recursive(&dotdot, io::USER_RWX);
 }
 
 fn recursive_mkdir_rel_2() {
@@ -146,20 +146,20 @@ fn recursive_mkdir_rel_2() {
     let cwd = os::getcwd();
     println!("recursive_mkdir_rel_2: Making: {} in cwd {} [{:?}]", path.display(),
            cwd.display(), path.exists());
-    fs::mkdir_recursive(&path, io::UserRWX);
+    fs::mkdir_recursive(&path, io::USER_RWX);
     assert!(path.is_dir());
     assert!(path.dir_path().is_dir());
     let path2 = Path::new("quux/blat");
     println!("recursive_mkdir_rel_2: Making: {} in cwd {}", path2.display(),
            cwd.display());
-    fs::mkdir_recursive(&path2, io::UserRWX);
+    fs::mkdir_recursive(&path2, io::USER_RWX);
     assert!(path2.is_dir());
     assert!(path2.dir_path().is_dir());
 }
 
 // Ideally this would be in core, but needs TempFile
 pub fn test_rmdir_recursive_ok() {
-    let rwx = io::UserRWX;
+    let rwx = io::USER_RWX;
 
     let tmpdir = TempDir::new("test").ok().expect("test_rmdir_recursive_ok: \
                                                    couldn't create temp dir");

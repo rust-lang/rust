@@ -51,7 +51,7 @@ fn main() {
         let child_path     = cwd.join(child_filename.clone());
 
         // make a separate directory for the child
-        drop(fs::mkdir(&cwd, io::UserRWX).is_ok());
+        drop(fs::mkdir(&cwd, io::USER_RWX).is_ok());
         assert!(fs::copy(&my_path, &child_path).is_ok());
 
         // run child

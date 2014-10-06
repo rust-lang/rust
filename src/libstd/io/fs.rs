@@ -295,9 +295,9 @@ pub fn unlink(path: &Path) -> IoResult<()> {
                     Ok(stat) => stat,
                     Err(..) => return Err(e),
                 };
-                if stat.perm.intersects(io::UserWrite) { return Err(e) }
+                if stat.perm.intersects(io::USER_WRITE) { return Err(e) }
 
-                match chmod(path, stat.perm | io::UserWrite) {
+                match chmod(path, stat.perm | io::USER_WRITE) {
                     Ok(()) => do_unlink(path),
                     Err(..) => {
                         // Try to put it back as we found it
@@ -501,10 +501,10 @@ pub fn copy(from: &Path, to: &Path) -> IoResult<()> {
 /// use std::io;
 /// use std::io::fs;
 ///
-/// fs::chmod(&Path::new("file.txt"), io::UserFile);
-/// fs::chmod(&Path::new("file.txt"), io::UserRead | io::UserWrite);
-/// fs::chmod(&Path::new("dir"),      io::UserDir);
-/// fs::chmod(&Path::new("file.exe"), io::UserExec);
+/// fs::chmod(&Path::new("file.txt"), io::USER_FILE);
+/// fs::chmod(&Path::new("file.txt"), io::USER_READ | io::USER_WRITE);
+/// fs::chmod(&Path::new("dir"),      io::USER_DIR);
+/// fs::chmod(&Path::new("file.exe"), io::USER_EXEC);
 /// ```
 ///
 /// # Error
@@ -578,7 +578,7 @@ pub fn readlink(path: &Path) -> IoResult<Path> {
 /// use std::io::fs;
 ///
 /// let p = Path::new("/some/dir");
-/// fs::mkdir(&p, io::UserRWX);
+/// fs::mkdir(&p, io::USER_RWX);
 /// ```
 ///
 /// # Error
@@ -996,7 +996,7 @@ mod test {
         use os;
         use rand;
         let ret = os::tmpdir().join(format!("rust-{}", rand::random::<u32>()));
-        check!(io::fs::mkdir(&ret, io::UserRWX));
+        check!(io::fs::mkdir(&ret, io::USER_RWX));
         TempDir(ret)
     }
 
@@ -1180,7 +1180,7 @@ mod test {
     fn file_test_stat_is_correct_on_is_dir() {
         let tmpdir = tmpdir();
         let filename = &tmpdir.join("file_stat_correct_on_is_dir");
-        check!(mkdir(filename, io::UserRWX));
+        check!(mkdir(filename, io::USER_RWX));
         let stat_res_fn = check!(stat(filename));
         assert!(stat_res_fn.kind == io::TypeDirectory);
         let stat_res_meth = check!(filename.stat());
@@ -1192,7 +1192,7 @@ mod test {
     fn file_test_fileinfo_false_when_checking_is_file_on_a_directory() {
         let tmpdir = tmpdir();
         let dir = &tmpdir.join("fileinfo_false_on_dir");
-        check!(mkdir(dir, io::UserRWX));
+        check!(mkdir(dir, io::USER_RWX));
         assert!(dir.is_file() == false);
         check!(rmdir(dir));
     }
@@ -1212,7 +1212,7 @@ mod test {
         let tmpdir = tmpdir();
         let dir = &tmpdir.join("before_and_after_dir");
         assert!(!dir.exists());
-        check!(mkdir(dir, io::UserRWX));
+        check!(mkdir(dir, io::USER_RWX));
         assert!(dir.exists());
         assert!(dir.is_dir());
         check!(rmdir(dir));
@@ -1224,7 +1224,7 @@ mod test {
         use str;
         let tmpdir = tmpdir();
         let dir = &tmpdir.join("di_readdir");
-        check!(mkdir(dir, io::UserRWX));
+        check!(mkdir(dir, io::USER_RWX));
         let prefix = "foo";
         for n in range(0i,3) {
             let f = dir.join(format!("{}.txt", n));
@@ -1255,14 +1255,14 @@ mod test {
     fn file_test_walk_dir() {
         let tmpdir = tmpdir();
         let dir = &tmpdir.join("walk_dir");
-        check!(mkdir(dir, io::UserRWX));
+        check!(mkdir(dir, io::USER_RWX));
 
         let dir1 = &dir.join("01/02/03");
-        check!(mkdir_recursive(dir1, io::UserRWX));
+        check!(mkdir_recursive(dir1, io::USER_RWX));
         check!(File::create(&dir1.join("04")));
 
         let dir2 = &dir.join("11/12/13");
-        check!(mkdir_recursive(dir2, io::UserRWX));
+        check!(mkdir_recursive(dir2, io::USER_RWX));
         check!(File::create(&dir2.join("14")));
 
         let mut files = check!(walk_dir(dir));
@@ -1282,7 +1282,7 @@ mod test {
     fn recursive_mkdir() {
         let tmpdir = tmpdir();
         let dir = tmpdir.join("d1/d2");
-        check!(mkdir_recursive(&dir, io::UserRWX));
+        check!(mkdir_recursive(&dir, io::USER_RWX));
         assert!(dir.is_dir())
     }
 
@@ -1292,10 +1292,10 @@ mod test {
         let dir = tmpdir.join("d1");
         let file = dir.join("f1");
 
-        check!(mkdir_recursive(&dir, io::UserRWX));
+        check!(mkdir_recursive(&dir, io::USER_RWX));
         check!(File::create(&file));
 
-        let result = mkdir_recursive(&file, io::UserRWX);
+        let result = mkdir_recursive(&file, io::USER_RWX);
 
         error!(result, "couldn't recursively mkdir");
         error!(result, "couldn't create directory");
@@ -1305,7 +1305,7 @@ mod test {
 
     #[test]
     fn recursive_mkdir_slash() {
-        check!(mkdir_recursive(&Path::new("/"), io::UserRWX));
+        check!(mkdir_recursive(&Path::new("/"), io::USER_RWX));
     }
 
     // FIXME(#12795) depends on lstat to work on windows
@@ -1318,8 +1318,8 @@ mod test {
         let dtt = dt.join("t");
         let d2 = tmpdir.join("d2");
         let canary = d2.join("do_not_delete");
-        check!(mkdir_recursive(&dtt, io::UserRWX));
-        check!(mkdir_recursive(&d2, io::UserRWX));
+        check!(mkdir_recursive(&dtt, io::USER_RWX));
+        check!(mkdir_recursive(&d2, io::USER_RWX));
         check!(File::create(&canary).write(b"foo"));
         check!(symlink(&d2, &dt.join("d2")));
         check!(rmdir_recursive(&d1));
@@ -1337,7 +1337,7 @@ mod test {
 
         let mut dirpath = tmpdir.path().clone();
         dirpath.push(format!("test-가一ー你好"));
-        check!(mkdir(&dirpath, io::UserRWX));
+        check!(mkdir(&dirpath, io::USER_RWX));
         assert!(dirpath.is_dir());
 
         let mut filepath = dirpath;
@@ -1355,7 +1355,7 @@ mod test {
         let tmpdir = tmpdir();
         let unicode = tmpdir.path();
         let unicode = unicode.join(format!("test-각丁ー再见"));
-        check!(mkdir(&unicode, io::UserRWX));
+        check!(mkdir(&unicode, io::USER_RWX));
         assert!(unicode.exists());
         assert!(!Path::new("test/unicode-bogus-path-각丁ー再见").exists());
     }
@@ -1436,12 +1436,12 @@ mod test {
         let out = tmpdir.join("out.txt");
 
         check!(File::create(&input));
-        check!(chmod(&input, io::UserRead));
+        check!(chmod(&input, io::USER_READ));
         check!(copy(&input, &out));
-        assert!(!check!(out.stat()).perm.intersects(io::UserWrite));
+        assert!(!check!(out.stat()).perm.intersects(io::USER_WRITE));
 
-        check!(chmod(&input, io::UserFile));
-        check!(chmod(&out, io::UserFile));
+        check!(chmod(&input, io::USER_FILE));
+        check!(chmod(&out, io::USER_FILE));
     }
 
     #[cfg(not(windows))] // FIXME(#10264) operation not permitted?
@@ -1517,16 +1517,16 @@ mod test {
         let file = tmpdir.join("in.txt");
 
         check!(File::create(&file));
-        assert!(check!(stat(&file)).perm.contains(io::UserWrite));
-        check!(chmod(&file, io::UserRead));
-        assert!(!check!(stat(&file)).perm.contains(io::UserWrite));
+        assert!(check!(stat(&file)).perm.contains(io::USER_WRITE));
+        check!(chmod(&file, io::USER_READ));
+        assert!(!check!(stat(&file)).perm.contains(io::USER_WRITE));
 
-        match chmod(&tmpdir.join("foo"), io::UserRWX) {
+        match chmod(&tmpdir.join("foo"), io::USER_RWX) {
             Ok(..) => fail!("wanted a failure"),
             Err(..) => {}
         }
 
-        check!(chmod(&file, io::UserFile));
+        check!(chmod(&file, io::USER_FILE));
     }
 
     #[test]
@@ -1677,7 +1677,7 @@ mod test {
         let tmpdir = tmpdir();
         let path = tmpdir.join("file");
         check!(File::create(&path));
-        check!(chmod(&path, io::UserRead));
+        check!(chmod(&path, io::USER_READ));
         check!(unlink(&path));
     }
 }
