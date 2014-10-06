@@ -100,7 +100,7 @@ pub trait Runtime {
 
 /// The default error code of the rust runtime if the main task fails instead
 /// of exiting cleanly.
-pub static DEFAULT_ERROR_CODE: int = 101;
+pub const DEFAULT_ERROR_CODE: int = 101;
 
 /// One-time runtime initialization.
 ///

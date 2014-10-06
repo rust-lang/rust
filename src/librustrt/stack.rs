@@ -46,7 +46,7 @@
 // corresponding prolog, decision was taken to disable segmented
 // stack support on iOS.
 
-pub static RED_ZONE: uint = 20 * 1024;
+pub const RED_ZONE: uint = 20 * 1024;
 
 /// This function is invoked from rust's current __morestack function. Segmented
 /// stacks are currently not enabled as segmented stacks, but rather one giant
