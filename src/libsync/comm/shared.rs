@@ -31,12 +31,12 @@ use rustrt::thread::Thread;
 use atomic;
 use mpsc_queue as mpsc;
 
-static DISCONNECTED: int = int::MIN;
-static FUDGE: int = 1024;
+const DISCONNECTED: int = int::MIN;
+const FUDGE: int = 1024;
 #[cfg(test)]
-static MAX_STEALS: int = 5;
+const MAX_STEALS: int = 5;
 #[cfg(not(test))]
-static MAX_STEALS: int = 1 << 20;
+const MAX_STEALS: int = 1 << 20;
 
 pub struct Packet<T> {
     queue: mpsc::Queue<T>,
