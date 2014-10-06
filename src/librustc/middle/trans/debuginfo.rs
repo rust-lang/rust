@@ -456,60 +456,17 @@ impl TypeMap {
                 let return_type_id = self.get_unique_type_id_as_string(return_type_id);
                 unique_type_id.push_str(return_type_id.as_slice());
             },
-            ty::ty_closure(box ty::ClosureTy { fn_style,
-                                               onceness,
-                                               store,
-                                               ref bounds,
-                                               ref sig,
-                                               abi: _ }) => {
-                if fn_style == ast::UnsafeFn {
-                    unique_type_id.push_str("unsafe ");
-                }
-
-                if onceness == ast::Once {
-                    unique_type_id.push_str("once ");
-                }
-
-                match store {
-                    ty::UniqTraitStore => unique_type_id.push_str("~|"),
-                    ty::RegionTraitStore(_, ast::MutMutable) => {
-                        unique_type_id.push_str("&mut|")
-                    }
-                    ty::RegionTraitStore(_, ast::MutImmutable) => {
-                        unique_type_id.push_str("&|")
-                    }
-                };
-
-                for &parameter_type in sig.inputs.iter() {
-                    let parameter_type_id =
-                        self.get_unique_type_id_of_type(cx, parameter_type);
-                    let parameter_type_id =
-                        self.get_unique_type_id_as_string(parameter_type_id);
-                    unique_type_id.push_str(parameter_type_id.as_slice());
-                    unique_type_id.push_char(',');
-                }
-
-                if sig.variadic {
-                    unique_type_id.push_str("...");
-                }
-
-                unique_type_id.push_str("|->");
-
-                let return_type_id = self.get_unique_type_id_of_type(cx, sig.output);
-                let return_type_id = self.get_unique_type_id_as_string(return_type_id);
-                unique_type_id.push_str(return_type_id.as_slice());
-
-                unique_type_id.push_char(':');
-
-                for bound in bounds.builtin_bounds.iter() {
-                    match bound {
-                        ty::BoundSend => unique_type_id.push_str("Send"),
-                        ty::BoundSized => unique_type_id.push_str("Sized"),
-                        ty::BoundCopy => unique_type_id.push_str("Copy"),
-                        ty::BoundSync => unique_type_id.push_str("Sync"),
-                    };
-                    unique_type_id.push_char('+');
-                }
+            ty::ty_closure(box ref closure_ty) => {
+                self.get_unique_type_id_of_closure_type(cx,
+                                                        closure_ty.clone(),
+                                                        &mut unique_type_id);
+            },
+            ty::ty_unboxed_closure(ref def_id, _) => {
+                let closure_ty = cx.tcx().unboxed_closures.borrow()
+                                   .find(def_id).unwrap().closure_type.clone();
+                self.get_unique_type_id_of_closure_type(cx,
+                                                        closure_ty,
+                                                        &mut unique_type_id);
             },
             _ => {
                 cx.sess().bug(format!("get_unique_type_id_of_type() - unexpected type: {}, {:?}",
@@ -578,6 +535,66 @@ impl TypeMap {
 
                 output.push_char('>');
             }
+        }
+    }
+
+    fn get_unique_type_id_of_closure_type(&mut self,
+                                          cx: &CrateContext,
+                                          closure_ty: ty::ClosureTy,
+                                          unique_type_id: &mut String) {
+        let ty::ClosureTy { fn_style,
+                            onceness,
+                            store,
+                            ref bounds,
+                            ref sig,
+                            abi: _ } = closure_ty;
+        if fn_style == ast::UnsafeFn {
+            unique_type_id.push_str("unsafe ");
+        }
+
+        if onceness == ast::Once {
+            unique_type_id.push_str("once ");
+        }
+
+        match store {
+            ty::UniqTraitStore => unique_type_id.push_str("~|"),
+            ty::RegionTraitStore(_, ast::MutMutable) => {
+                unique_type_id.push_str("&mut|")
+            }
+            ty::RegionTraitStore(_, ast::MutImmutable) => {
+                unique_type_id.push_str("&|")
+            }
+        };
+
+        for &parameter_type in sig.inputs.iter() {
+            let parameter_type_id =
+                self.get_unique_type_id_of_type(cx, parameter_type);
+            let parameter_type_id =
+                self.get_unique_type_id_as_string(parameter_type_id);
+            unique_type_id.push_str(parameter_type_id.as_slice());
+            unique_type_id.push_char(',');
+        }
+
+        if sig.variadic {
+            unique_type_id.push_str("...");
+        }
+
+        unique_type_id.push_str("|->");
+
+        let return_type_id = self.get_unique_type_id_of_type(cx, sig.output);
+        let return_type_id = self.get_unique_type_id_as_string(return_type_id);
+        unique_type_id.push_str(return_type_id.as_slice());
+
+        unique_type_id.push_char(':');
+
+        for bound in bounds.builtin_bounds.iter() {
+            match bound {
+                ty::BoundSend => unique_type_id.push_str("Send"),
+                ty::BoundSized => unique_type_id.push_str("Sized"),
+                ty::BoundCopy => unique_type_id.push_str("Copy"),
+                ty::BoundSync => unique_type_id.push_str("Sync"),
+            };
+            unique_type_id.push_char('+');
         }
     }
 
@@ -2902,6 +2919,11 @@ fn type_metadata(cx: &CrateContext,
         }
         ty::ty_closure(ref closurety) => {
             subroutine_type_metadata(cx, unique_type_id, &closurety.sig, usage_site_span)
+        }
+        ty::ty_unboxed_closure(ref def_id, _) => {
+            let sig = cx.tcx().unboxed_closures.borrow()
+                        .find(def_id).unwrap().closure_type.sig.clone();
+            subroutine_type_metadata(cx, unique_type_id, &sig, usage_site_span)
         }
         ty::ty_struct(def_id, ref substs) => {
             prepare_struct_metadata(cx,
