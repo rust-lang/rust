@@ -8,8 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use ast::{Ident, Matcher_, Matcher, MatchTok, MatchNonterminal, MatchSeq, TtDelimited};
-use ast::{TtSequence, TtToken};
+use ast::{Ident, TtDelimited, TtSequence, TtToken};
 use ast;
 use codemap::{Span, DUMMY_SP};
 use ext::base::{ExtCtxt, MacResult, MacroDef};
@@ -21,7 +20,7 @@ use parse::lexer::new_tt_reader;
 use parse::parser::Parser;
 use parse::attr::ParserAttr;
 use parse::token::{special_idents, gensym_ident};
-use parse::token::{MatchNt, NtMatchers, NtTT};
+use parse::token::{MatchNt, NtTT};
 use parse::token;
 use print;
 use ptr::P;
@@ -206,6 +205,11 @@ fn generic_extension<'cx>(cx: &'cx ExtCtxt,
     }
     cx.span_fatal(best_fail_spot, best_fail_msg.as_slice());
 }
+
+// Note that macro-by-example's input is also matched against a token tree:
+//                   $( $lhs:tt => $rhs:tt );+
+//
+// Holy self-referential!
 
 /// This procedure performs the expansion of the
 /// macro_rules! macro. It parses the RHS and adds

@@ -337,7 +337,6 @@ pub enum Nonterminal {
     NtMeta(P<ast::MetaItem>),
     NtPath(Box<ast::Path>),
     NtTT(P<ast::TokenTree>), // needs P'ed to break a circularity
-    NtMatchers(Vec<ast::Matcher>)
 }
 
 impl fmt::Show for Nonterminal {
@@ -353,7 +352,6 @@ impl fmt::Show for Nonterminal {
             NtMeta(..) => f.pad("NtMeta(..)"),
             NtPath(..) => f.pad("NtPath(..)"),
             NtTT(..) => f.pad("NtTT(..)"),
-            NtMatchers(..) => f.pad("NtMatchers(..)"),
         }
     }
 }

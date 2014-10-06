@@ -272,7 +272,6 @@ pub fn token_to_string(tok: &Token) -> String {
             token::NtPat(..)      => "an interpolated pattern".into_string(),
             token::NtIdent(..)    => "an interpolated identifier".into_string(),
             token::NtTT(..)       => "an interpolated tt".into_string(),
-            token::NtMatchers(..) => "an interpolated matcher sequence".into_string(),
         }
     }
 }

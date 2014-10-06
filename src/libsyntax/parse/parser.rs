@@ -37,8 +37,8 @@ use ast::{ItemMac, ItemMod, ItemStruct, ItemTrait, ItemTy};
 use ast::{LifetimeDef, Lit, Lit_};
 use ast::{LitBool, LitChar, LitByte, LitBinary};
 use ast::{LitNil, LitStr, LitInt, Local, LocalLet};
-use ast::{MutImmutable, MutMutable, Mac_, MacInvocTT, Matcher, MatchNonterminal, MatchNormal};
-use ast::{MatchSeq, MatchTok, Method, MutTy, BiMul, Mutability};
+use ast::{MutImmutable, MutMutable, Mac_, MacInvocTT, MatchNormal};
+use ast::{Method, MutTy, BiMul, Mutability};
 use ast::{MethodImplItem, NamedField, UnNeg, NoReturn, UnNot};
 use ast::{Pat, PatEnum, PatIdent, PatLit, PatRange, PatRegion, PatStruct};
 use ast::{PatTup, PatBox, PatWild, PatWildMulti, PatWildSingle};
@@ -2626,66 +2626,6 @@ impl<'a> Parser<'a> {
             tts.push(self.parse_token_tree());
         }
         tts
-    }
-
-    pub fn parse_matchers(&mut self) -> Vec<Matcher> {
-        // unification of Matcher's and TokenTree's would vastly improve
-        // the interpolation of Matcher's
-        maybe_whole!(self, NtMatchers);
-        let mut name_idx = 0u;
-        let delim = self.expect_open_delim();
-        self.parse_matcher_subseq_upto(&mut name_idx, &token::CloseDelim(delim))
-    }
-
-    /// This goofy function is necessary to correctly match parens in Matcher's.
-    /// Otherwise, `$( ( )` would be a valid Matcher, and `$( () )` would be
-    /// invalid. It's similar to common::parse_seq.
-    pub fn parse_matcher_subseq_upto(&mut self,
-                                     name_idx: &mut uint,
-                                     ket: &token::Token)
-                                     -> Vec<Matcher> {
-        let mut ret_val = Vec::new();
-        let mut lparens = 0u;
-
-        while self.token != *ket || lparens > 0u {
-            if self.token == token::OpenDelim(token::Paren) { lparens += 1u; }
-            if self.token == token::CloseDelim(token::Paren) { lparens -= 1u; }
-            ret_val.push(self.parse_matcher(name_idx));
-        }
-
-        self.bump();
-
-        return ret_val;
-    }
-
-    pub fn parse_matcher(&mut self, name_idx: &mut uint) -> Matcher {
-        let lo = self.span.lo;
-
-        let m = if self.token == token::Dollar {
-            self.bump();
-            if self.token == token::OpenDelim(token::Paren) {
-                let name_idx_lo = *name_idx;
-                self.bump();
-                let ms = self.parse_matcher_subseq_upto(name_idx,
-                                                        &token::CloseDelim(token::Paren));
-                if ms.len() == 0u {
-                    self.fatal("repetition body must be nonempty");
-                }
-                let (sep, kleene_op) = self.parse_sep_and_kleene_op();
-                MatchSeq(ms, sep, kleene_op, name_idx_lo, *name_idx)
-            } else {
-                let bound_to = self.parse_ident();
-                self.expect(&token::Colon);
-                let nt_name = self.parse_ident();
-                let m = MatchNonterminal(bound_to, nt_name, *name_idx);
-                *name_idx += 1;
-                m
-            }
-        } else {
-            MatchTok(self.bump_and_get())
-        };
-
-        return spanned(lo, self.span.hi, m);
     }
 
     /// Parse a prefix-operator expr

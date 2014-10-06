@@ -656,8 +656,6 @@ pub fn noop_fold_interpolated<T: Folder>(nt: token::Nonterminal, fld: &mut T)
         token::NtMeta(meta_item) => token::NtMeta(fld.fold_meta_item(meta_item)),
         token::NtPath(box path) => token::NtPath(box fld.fold_path(path)),
         token::NtTT(tt) => token::NtTT(P(fld.fold_tt(&*tt))),
-        // it looks to me like we can leave out the matchers: token::NtMatchers(matchers)
-        _ => nt
     }
 }
 
