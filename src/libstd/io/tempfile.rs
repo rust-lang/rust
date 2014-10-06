@@ -48,7 +48,7 @@ impl TempDir {
                         unsafe { CNT.fetch_add(1, atomic::SeqCst) },
                         suffix);
             let p = tmpdir.join(filename);
-            match fs::mkdir(&p, io::UserRWX) {
+            match fs::mkdir(&p, io::USER_RWX) {
                 Err(error) => {
                     if attempts >= 1000 {
                         return Err(error)

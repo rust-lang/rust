@@ -618,7 +618,7 @@ fn write(dst: Path, contents: &[u8]) -> io::IoResult<()> {
 /// skipping if the directory already exists.
 fn mkdir(path: &Path) -> io::IoResult<()> {
     if !path.exists() {
-        fs::mkdir(path, io::UserRWX)
+        fs::mkdir(path, io::USER_RWX)
     } else {
         Ok(())
     }
