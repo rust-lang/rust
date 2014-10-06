@@ -140,8 +140,11 @@ impl fmt::Show for clean::Lifetime {
 impl fmt::Show for clean::TyParamBound {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            clean::RegionBound => {
-                f.write("'static".as_bytes())
+            clean::RegionBound(ref lt) => {
+                write!(f, "{}", *lt)
+            }
+            clean::UnboxedFnBound(ref ty) => {
+                write!(f, "{}{}", ty.path, ty.decl)
             }
             clean::TraitBound(ref ty) => {
                 write!(f, "{}", *ty)
@@ -401,7 +404,8 @@ impl fmt::Show for clean::Type {
                            let mut ret = String::new();
                            for bound in decl.bounds.iter() {
                                 match *bound {
-                                    clean::RegionBound => {}
+                                    clean::RegionBound(..) |
+                                    clean::UnboxedFnBound(..) => {}
                                     clean::TraitBound(ref t) => {
                                         if ret.len() == 0 {
                                             ret.push_str(": ");

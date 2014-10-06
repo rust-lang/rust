@@ -462,6 +462,7 @@ impl Clean<TyParam> for ty::TypeParameterDef {
     fn clean(&self, cx: &DocContext) -> TyParam {
         cx.external_typarams.borrow_mut().as_mut().unwrap()
           .insert(self.def_id, self.ident.clean(cx));
+
         TyParam {
             name: self.ident.clean(cx),
             did: self.def_id,
@@ -473,18 +474,16 @@ impl Clean<TyParam> for ty::TypeParameterDef {
 
 #[deriving(Clone, Encodable, Decodable, PartialEq)]
 pub enum TyParamBound {
-    RegionBound, // FIXME(#16518) -- need to include name of actual region
+    RegionBound(Lifetime),
+    UnboxedFnBound(UnboxedFnType),
     TraitBound(Type)
 }
 
 impl Clean<TyParamBound> for ast::TyParamBound {
     fn clean(&self, cx: &DocContext) -> TyParamBound {
         match *self {
-            ast::RegionTyParamBound(_) => RegionBound,
-            ast::UnboxedFnTyParamBound(_) => {
-                // FIXME(pcwalton): Wrong.
-                RegionBound
-            }
+            ast::RegionTyParamBound(lt) => RegionBound(lt.clean(cx)),
+            ast::UnboxedFnTyParamBound(ref ty) => { UnboxedFnBound(ty.clean(cx)) },
             ast::TraitTyParamBound(ref t) => TraitBound(t.clean(cx)),
         }
     }
@@ -492,7 +491,8 @@ impl Clean<TyParamBound> for ast::TyParamBound {
 
 impl Clean<Vec<TyParamBound>> for ty::ExistentialBounds {
     fn clean(&self, cx: &DocContext) -> Vec<TyParamBound> {
-        let mut vec = vec!(RegionBound);
+        let mut vec = vec![];
+        self.region_bound.clean(cx).map(|b| vec.push(RegionBound(b)));
         for bb in self.builtin_bounds.iter() {
             vec.push(bb.clean(cx));
         }
@@ -521,7 +521,7 @@ impl Clean<TyParamBound> for ty::BuiltinBound {
     fn clean(&self, cx: &DocContext) -> TyParamBound {
         let tcx = match cx.tcx_opt() {
             Some(tcx) => tcx,
-            None => return RegionBound,
+            None => return RegionBound(Lifetime::statik())
         };
         let empty = subst::Substs::empty();
         let (did, path) = match *self {
@@ -554,7 +554,7 @@ impl Clean<TyParamBound> for ty::TraitRef {
     fn clean(&self, cx: &DocContext) -> TyParamBound {
         let tcx = match cx.tcx_opt() {
             Some(tcx) => tcx,
-            None => return RegionBound,
+            None => return RegionBound(Lifetime::statik())
         };
         let fqn = csearch::get_item_path(tcx, self.def_id);
         let fqn = fqn.into_iter().map(|i| i.to_string())
@@ -582,6 +582,9 @@ impl Clean<Vec<TyParamBound>> for ty::ParamBounds {
         for t in self.trait_bounds.iter() {
             v.push(t.clean(cx));
         }
+        for r in self.region_bounds.iter().filter_map(|r| r.clean(cx)) {
+            v.push(RegionBound(r));
+        }
         return v;
     }
 }
@@ -589,9 +592,24 @@ impl Clean<Vec<TyParamBound>> for ty::ParamBounds {
 impl Clean<Option<Vec<TyParamBound>>> for subst::Substs {
     fn clean(&self, cx: &DocContext) -> Option<Vec<TyParamBound>> {
         let mut v = Vec::new();
-        v.extend(self.regions().iter().map(|_| RegionBound));
+        v.extend(self.regions().iter().filter_map(|r| r.clean(cx)).map(RegionBound));
         v.extend(self.types.iter().map(|t| TraitBound(t.clean(cx))));
         if v.len() > 0 {Some(v)} else {None}
+    }
+}
+
+#[deriving(Clone, Encodable, Decodable, PartialEq)]
+pub struct UnboxedFnType {
+    pub path: Path,
+    pub decl: FnDecl
+}
+
+impl Clean<UnboxedFnType> for ast::UnboxedFnBound {
+    fn clean(&self, cx: &DocContext) -> UnboxedFnType {
+        UnboxedFnType {
+            path: self.path.clean(cx),
+            decl: self.decl.clean(cx)
+        }
     }
 }
 
@@ -603,6 +621,10 @@ impl Lifetime {
         let Lifetime(ref s) = *self;
         let s: &'a str = s.as_slice();
         return s;
+    }
+
+    pub fn statik() -> Lifetime {
+        Lifetime("'static".to_string())
     }
 }
 
@@ -627,7 +649,7 @@ impl Clean<Lifetime> for ty::RegionParameterDef {
 impl Clean<Option<Lifetime>> for ty::Region {
     fn clean(&self, cx: &DocContext) -> Option<Lifetime> {
         match *self {
-            ty::ReStatic => Some(Lifetime("'static".to_string())),
+            ty::ReStatic => Some(Lifetime::statik()),
             ty::ReLateBound(_, ty::BrNamed(_, name)) =>
                 Some(Lifetime(token::get_name(name).get().to_string())),
             ty::ReEarlyBound(_, _, _, name) => Some(Lifetime(name.clean(cx))),
