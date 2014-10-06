@@ -466,7 +466,7 @@ pub fn invalid_output_for_target(sess: &Session,
 fn is_writeable(p: &Path) -> bool {
     match p.stat() {
         Err(..) => true,
-        Ok(m) => m.perm & io::UserWrite == io::UserWrite
+        Ok(m) => m.perm & io::USER_WRITE == io::USER_WRITE
     }
 }
 
@@ -1322,7 +1322,7 @@ fn add_upstream_rust_crates(cmd: &mut Command, sess: &Session,
                 // Fix up permissions of the copy, as fs::copy() preserves
                 // permissions, but the original file may have been installed
                 // by a package manager and may be read-only.
-                match fs::chmod(&dst, io::UserRead | io::UserWrite) {
+                match fs::chmod(&dst, io::USER_READ | io::USER_WRITE) {
                     Ok(..) => {}
                     Err(e) => {
                         sess.err(format!("failed to chmod {} when preparing \

@@ -91,10 +91,10 @@ use std::iter;
 
 bitflags! {
     flags Restrictions: u8 {
-        static Unrestricted               = 0b0000,
-        static RestrictionStmtExpr        = 0b0001,
-        static RestrictionNoBarOp         = 0b0010,
-        static RestrictionNoStructLiteral = 0b0100
+        static UNRESTRICTED                  = 0b0000,
+        static RESTRICTION_STMT_EXPR         = 0b0001,
+        static RESTRICTION_NO_BAR_OP         = 0b0010,
+        static RESTRICTION_NO_STRUCT_LITERAL = 0b0100
     }
 }
 
@@ -383,7 +383,7 @@ impl<'a> Parser<'a> {
             buffer_start: 0,
             buffer_end: 0,
             tokens_consumed: 0,
-            restrictions: Unrestricted,
+            restrictions: UNRESTRICTED,
             quote_depth: 0,
             obsolete_set: HashSet::new(),
             mod_path_stack: Vec::new(),
@@ -2242,7 +2242,7 @@ impl<'a> Parser<'a> {
                     if self.token == token::LBRACE {
                         // This is a struct literal, unless we're prohibited
                         // from parsing struct literals here.
-                        if !self.restrictions.contains(RestrictionNoStructLiteral) {
+                        if !self.restrictions.contains(RESTRICTION_NO_STRUCT_LITERAL) {
                             // It's a struct literal.
                             self.bump();
                             let mut fields = Vec::new();
@@ -2771,7 +2771,7 @@ impl<'a> Parser<'a> {
         // Prevent dynamic borrow errors later on by limiting the
         // scope of the borrows.
         if self.token == token::BINOP(token::OR) &&
-            self.restrictions.contains(RestrictionNoBarOp) {
+            self.restrictions.contains(RESTRICTION_NO_BAR_OP) {
             return lhs;
         }
 
@@ -2812,7 +2812,7 @@ impl<'a> Parser<'a> {
     pub fn parse_assign_expr(&mut self) -> P<Expr> {
         let lo = self.span.lo;
         let lhs = self.parse_binops();
-        let restrictions = self.restrictions & RestrictionNoStructLiteral;
+        let restrictions = self.restrictions & RESTRICTION_NO_STRUCT_LITERAL;
         match self.token {
           token::EQ => {
               self.bump();
@@ -2850,7 +2850,7 @@ impl<'a> Parser<'a> {
             return self.parse_if_let_expr();
         }
         let lo = self.last_span.lo;
-        let cond = self.parse_expr_res(RestrictionNoStructLiteral);
+        let cond = self.parse_expr_res(RESTRICTION_NO_STRUCT_LITERAL);
         let thn = self.parse_block();
         let mut els: Option<P<Expr>> = None;
         let mut hi = thn.span.hi;
@@ -2868,7 +2868,7 @@ impl<'a> Parser<'a> {
         self.expect_keyword(keywords::Let);
         let pat = self.parse_pat();
         self.expect(&token::EQ);
-        let expr = self.parse_expr_res(RestrictionNoStructLiteral);
+        let expr = self.parse_expr_res(RESTRICTION_NO_STRUCT_LITERAL);
         let thn = self.parse_block();
         let (hi, els) = if self.eat_keyword(keywords::Else) {
             let expr = self.parse_else_expr();
@@ -2928,7 +2928,7 @@ impl<'a> Parser<'a> {
         let lo = self.last_span.lo;
         let pat = self.parse_pat();
         self.expect_keyword(keywords::In);
-        let expr = self.parse_expr_res(RestrictionNoStructLiteral);
+        let expr = self.parse_expr_res(RESTRICTION_NO_STRUCT_LITERAL);
         let loop_block = self.parse_block();
         let hi = self.span.hi;
 
@@ -2937,7 +2937,7 @@ impl<'a> Parser<'a> {
 
     pub fn parse_while_expr(&mut self, opt_ident: Option<ast::Ident>) -> P<Expr> {
         let lo = self.last_span.lo;
-        let cond = self.parse_expr_res(RestrictionNoStructLiteral);
+        let cond = self.parse_expr_res(RESTRICTION_NO_STRUCT_LITERAL);
         let body = self.parse_block();
         let hi = body.span.hi;
         return self.mk_expr(lo, hi, ExprWhile(cond, body, opt_ident));
@@ -2952,7 +2952,7 @@ impl<'a> Parser<'a> {
 
     fn parse_match_expr(&mut self) -> P<Expr> {
         let lo = self.last_span.lo;
-        let discriminant = self.parse_expr_res(RestrictionNoStructLiteral);
+        let discriminant = self.parse_expr_res(RESTRICTION_NO_STRUCT_LITERAL);
         self.commit_expr_expecting(&*discriminant, token::LBRACE);
         let mut arms: Vec<Arm> = Vec::new();
         while self.token != token::RBRACE {
@@ -2971,7 +2971,7 @@ impl<'a> Parser<'a> {
             guard = Some(self.parse_expr());
         }
         self.expect(&token::FAT_ARROW);
-        let expr = self.parse_expr_res(RestrictionStmtExpr);
+        let expr = self.parse_expr_res(RESTRICTION_STMT_EXPR);
 
         let require_comma =
             !classify::expr_is_simple_block(&*expr)
@@ -2993,7 +2993,7 @@ impl<'a> Parser<'a> {
 
     /// Parse an expression
     pub fn parse_expr(&mut self) -> P<Expr> {
-        return self.parse_expr_res(Unrestricted);
+        return self.parse_expr_res(UNRESTRICTED);
     }
 
     /// Parse an expression, subject to the given restrictions
@@ -3290,9 +3290,9 @@ impl<'a> Parser<'a> {
                     self.look_ahead(2, |t| {
                         *t != token::COMMA && *t != token::RBRACKET
                     }) {
-                let start = self.parse_expr_res(RestrictionNoBarOp);
+                let start = self.parse_expr_res(RESTRICTION_NO_BAR_OP);
                 self.eat(&token::DOTDOTDOT);
-                let end = self.parse_expr_res(RestrictionNoBarOp);
+                let end = self.parse_expr_res(RESTRICTION_NO_BAR_OP);
                 pat = PatRange(start, end);
             } else if is_plain_ident(&self.token) && !can_be_enum_or_struct {
                 let id = self.parse_ident();
@@ -3593,7 +3593,7 @@ impl<'a> Parser<'a> {
                     }
 
                     // Remainder are line-expr stmts.
-                    let e = self.parse_expr_res(RestrictionStmtExpr);
+                    let e = self.parse_expr_res(RESTRICTION_STMT_EXPR);
                     P(spanned(lo, e.span.hi, StmtExpr(e, ast::DUMMY_NODE_ID)))
                 }
             }
@@ -3602,7 +3602,7 @@ impl<'a> Parser<'a> {
 
     /// Is this expression a successfully-parsed statement?
     fn expr_is_complete(&mut self, e: &Expr) -> bool {
-        self.restrictions.contains(RestrictionStmtExpr) &&
+        self.restrictions.contains(RESTRICTION_STMT_EXPR) &&
             !classify::expr_requires_semi_to_be_stmt(e)
     }
 
