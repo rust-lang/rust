@@ -91,10 +91,10 @@ use std::iter;
 
 bitflags! {
     flags Restrictions: u8 {
-        static UNRESTRICTED                  = 0b0000,
-        static RESTRICTION_STMT_EXPR         = 0b0001,
-        static RESTRICTION_NO_BAR_OP         = 0b0010,
-        static RESTRICTION_NO_STRUCT_LITERAL = 0b0100
+        const UNRESTRICTED                  = 0b0000,
+        const RESTRICTION_STMT_EXPR         = 0b0001,
+        const RESTRICTION_NO_BAR_OP         = 0b0010,
+        const RESTRICTION_NO_STRUCT_LITERAL = 0b0100
     }
 }
 
