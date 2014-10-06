@@ -1467,7 +1467,7 @@ pub fn process_crate(sess: &Session,
         },
     };
 
-    match fs::mkdir_recursive(&root_path, io::UserRWX) {
+    match fs::mkdir_recursive(&root_path, io::USER_RWX) {
         Err(e) => sess.err(format!("Could not create directory {}: {}",
                            root_path.display(), e).as_slice()),
         _ => (),

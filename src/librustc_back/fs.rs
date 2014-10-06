@@ -68,7 +68,7 @@ mod test {
         let linkdir = tmpdir.join("test3");
 
         File::create(&file).unwrap();
-        mkdir(&dir, io::UserRWX).unwrap();
+        mkdir(&dir, io::USER_RWX).unwrap();
         symlink(&file, &link).unwrap();
         symlink(&dir, &linkdir).unwrap();
 
@@ -91,8 +91,8 @@ mod test {
         let e = d.join("e");
         let f = a.join("f");
 
-        mkdir_recursive(&b, io::UserRWX).unwrap();
-        mkdir_recursive(&d, io::UserRWX).unwrap();
+        mkdir_recursive(&b, io::USER_RWX).unwrap();
+        mkdir_recursive(&d, io::USER_RWX).unwrap();
         File::create(&f).unwrap();
         symlink(&Path::new("../d/e"), &c).unwrap();
         symlink(&Path::new("../f"), &e).unwrap();
