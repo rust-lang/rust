@@ -385,13 +385,13 @@ macro_rules! declare_special_idents_and_keywords {(
         use ast::{Ident, Name};
         $(
             #[allow(non_uppercase_statics)]
-            pub static $si_static: Ident = Ident { name: Name($si_name), ctxt: 0 };
+            pub const $si_static: Ident = Ident { name: Name($si_name), ctxt: 0 };
          )*
     }
 
     pub mod special_names {
         use ast::Name;
-        $( #[allow(non_uppercase_statics)] pub static $si_static: Name =  Name($si_name); )*
+        $( #[allow(non_uppercase_statics)] pub const $si_static: Name =  Name($si_name); )*
     }
 
     /**
@@ -432,13 +432,13 @@ macro_rules! declare_special_idents_and_keywords {(
 }}
 
 // If the special idents get renumbered, remember to modify these two as appropriate
-pub static SELF_KEYWORD_NAME: Name = Name(SELF_KEYWORD_NAME_NUM);
-static STATIC_KEYWORD_NAME: Name = Name(STATIC_KEYWORD_NAME_NUM);
-static SUPER_KEYWORD_NAME: Name = Name(SUPER_KEYWORD_NAME_NUM);
+pub const SELF_KEYWORD_NAME: Name = Name(SELF_KEYWORD_NAME_NUM);
+const STATIC_KEYWORD_NAME: Name = Name(STATIC_KEYWORD_NAME_NUM);
+const SUPER_KEYWORD_NAME: Name = Name(SUPER_KEYWORD_NAME_NUM);
 
-pub static SELF_KEYWORD_NAME_NUM: u32 = 1;
-static STATIC_KEYWORD_NAME_NUM: u32 = 2;
-static SUPER_KEYWORD_NAME_NUM: u32 = 3;
+pub const SELF_KEYWORD_NAME_NUM: u32 = 1;
+const STATIC_KEYWORD_NAME_NUM: u32 = 2;
+const SUPER_KEYWORD_NAME_NUM: u32 = 3;
 
 // NB: leaving holes in the ident table is bad! a different ident will get
 // interned with the id from the hole, but it will be between the min and max

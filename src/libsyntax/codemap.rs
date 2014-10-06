@@ -96,7 +96,7 @@ pub struct Span {
     pub expn_id: ExpnId
 }
 
-pub static DUMMY_SP: Span = Span { lo: BytePos(0), hi: BytePos(0), expn_id: NO_EXPANSION };
+pub const DUMMY_SP: Span = Span { lo: BytePos(0), hi: BytePos(0), expn_id: NO_EXPANSION };
 
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
 pub struct Spanned<T> {
@@ -227,7 +227,7 @@ pub struct ExpnInfo {
 #[deriving(PartialEq, Eq, Clone, Show, Hash, Encodable, Decodable)]
 pub struct ExpnId(u32);
 
-pub static NO_EXPANSION: ExpnId = ExpnId(-1);
+pub const NO_EXPANSION: ExpnId = ExpnId(-1);
 
 impl ExpnId {
     pub fn from_llvm_cookie(cookie: c_uint) -> ExpnId {
