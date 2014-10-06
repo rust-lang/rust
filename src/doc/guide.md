@@ -85,7 +85,7 @@ $ rustc --version
 You should see some output that looks something like this:
 
 ```{ignore}
-rustc 0.12.0-pre (443a1cd 2014-06-08 14:56:52 -0700)
+rustc 0.12.0-nightly (b7aa03a3c 2014-09-28 11:38:01 +0000)
 ```
 
 If you did, Rust has been installed successfully! Congrats!
