@@ -10,7 +10,7 @@
 
 // The Rust abstract syntax tree.
 
-use codemap::{Span, Spanned, DUMMY_SP, ExpnId};
+use codemap::{Span, Spanned, DUMMY_SP, ExpnId, respan};
 use abi::Abi;
 use ast_util;
 use owned_slice::OwnedSlice;
@@ -657,23 +657,55 @@ pub enum TokenTree {
     /// A delimited sequence of token trees
     TtDelimited(Span, Rc<Delimited>),
 
-    // These only make sense for right-hand-sides of MBE macros:
+    // This only makes sense for right-hand-sides of MBE macros:
 
     /// A Kleene-style repetition sequence with an optional separator.
     // FIXME(eddyb) #6308 Use Rc<[TokenTree]> after DST.
-    TtSequence(Span, Rc<Vec<TokenTree>>, Option<token::Token>, KleeneOp),
-    /// A syntactic variable that will be filled in by macro expansion.
-    TtNonterminal(Span, Ident)
+    TtSequence(Span, Rc<Vec<TokenTree>>, Option<::parse::token::Token>, KleeneOp, uint),
 }
 
 impl TokenTree {
+    pub fn expand_into_tts(self) -> Rc<Vec<TokenTree>> {
+        match self {
+            TtToken(sp, token::DocComment(name)) => {
+                let doc = MetaNameValue(token::intern_and_get_ident("doc"),
+                                        respan(sp, LitStr(token::get_name(name), CookedStr)));
+                let doc = token::NtMeta(P(respan(sp, doc)));
+                let delimed = Delimited {
+                    delim: token::Bracket,
+                    open_span: sp,
+                    tts: vec![TtToken(sp, token::Interpolated(doc))],
+                    close_span: sp,
+                };
+                Rc::new(vec![TtToken(sp, token::Pound),
+                             TtDelimited(sp, Rc::new(delimed))])
+            }
+            TtDelimited(_, ref delimed) => {
+                let mut tts = Vec::with_capacity(1 + delimed.tts.len() + 1);
+                tts.push(delimed.open_tt());
+                tts.extend(delimed.tts.iter().map(|tt| tt.clone()));
+                tts.push(delimed.close_tt());
+                Rc::new(tts)
+            }
+            TtToken(sp, token::SubstNt(name, namep)) => {
+                Rc::new(vec![TtToken(sp, token::Dollar),
+                             TtToken(sp, token::Ident(name, namep))])
+            }
+            TtToken(sp, token::MatchNt(name, kind, namep, kindp)) => {
+                Rc::new(vec![TtToken(sp, token::SubstNt(name, namep)),
+                             TtToken(sp, token::Colon),
+                             TtToken(sp, token::Ident(kind, kindp))])
+            }
+            _ => panic!("Cannot expand a token")
+        }
+    }
+
     /// Returns the `Span` corresponding to this token tree.
     pub fn get_span(&self) -> Span {
         match *self {
-            TtToken(span, _)           => span,
-            TtDelimited(span, _)       => span,
-            TtSequence(span, _, _, _)  => span,
-            TtNonterminal(span, _)     => span,
+            TtToken(span, _)              => span,
+            TtDelimited(span, _)          => span,
+            TtSequence(span, _, _, _, _)  => span,
         }
     }
 }

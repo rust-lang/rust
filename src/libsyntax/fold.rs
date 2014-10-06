@@ -581,13 +581,12 @@ pub fn noop_fold_tt<T: Folder>(tt: &TokenTree, fld: &mut T) -> TokenTree {
                             }
                         ))
         },
-        TtSequence(span, ref pattern, ref sep, is_optional) =>
+        TtSequence(span, ref pattern, ref sep, is_optional, advance_by) =>
             TtSequence(span,
                        Rc::new(fld.fold_tts(pattern.as_slice())),
                        sep.clone().map(|tok| fld.fold_token(tok)),
-                       is_optional),
-        TtNonterminal(sp,ref ident) =>
-            TtNonterminal(sp,fld.fold_ident(*ident))
+                       is_optional,
+                       advance_by),
     }
 }
 
@@ -603,6 +602,12 @@ pub fn noop_fold_token<T: Folder>(t: token::Token, fld: &mut T) -> token::Token 
         }
         token::Lifetime(id) => token::Lifetime(fld.fold_ident(id)),
         token::Interpolated(nt) => token::Interpolated(fld.fold_interpolated(nt)),
+        token::SubstNt(ident, namep) => {
+            token::SubstNt(fld.fold_ident(ident), namep)
+        }
+        token::MatchNt(name, kind, namep, kindp) => {
+            token::MatchNt(fld.fold_ident(name), fld.fold_ident(kind), namep, kindp)
+        }
         _ => t
     }
 }

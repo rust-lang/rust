@@ -108,7 +108,15 @@ pub enum Token {
 
     /* For interpolation */
     Interpolated(Nonterminal),
+    // Can be expanded into several tokens.
+    /// Doc comment
     DocComment(ast::Name),
+    // In left-hand-sides of MBE macros:
+    /// Parse a nonterminal (name to bind, name of NT, styles of their idents)
+    MatchNt(ast::Ident, ast::Ident, IdentStyle, IdentStyle),
+    // In right-hand-sides of MBE macros:
+    /// A syntactic variable that will be filled in by macro expansion.
+    SubstNt(ast::Ident, IdentStyle),
 
     // Junk. These carry no data because we don't really care about the data
     // they *would* carry, and don't really want to allocate a new ident for

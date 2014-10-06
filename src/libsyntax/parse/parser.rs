@@ -49,7 +49,7 @@ use ast::{StructVariantKind, BiSub};
 use ast::StrStyle;
 use ast::{SelfExplicit, SelfRegion, SelfStatic, SelfValue};
 use ast::{Delimited, TokenTree, TraitItem, TraitRef, TtDelimited, TtSequence, TtToken};
-use ast::{TtNonterminal, TupleVariantKind, Ty, Ty_, TyBot};
+use ast::{TupleVariantKind, Ty, Ty_, TyBot};
 use ast::{TypeField, TyFixedLengthVec, TyClosure, TyProc, TyBareFn};
 use ast::{TyTypeof, TyInfer, TypeMethod};
 use ast::{TyNil, TyParam, TyParamBound, TyParen, TyPath, TyPtr, TyQPath};
@@ -65,6 +65,7 @@ use ast_util::{as_prec, ident_to_path, operator_prec};
 use ast_util;
 use codemap::{Span, BytePos, Spanned, spanned, mk_sp};
 use codemap;
+use ext::tt::macro_parser;
 use parse;
 use parse::attr::ParserAttr;
 use parse::classify;
@@ -73,7 +74,7 @@ use parse::common::{seq_sep_trailing_allowed};
 use parse::lexer::Reader;
 use parse::lexer::TokenAndSpan;
 use parse::obsolete::*;
-use parse::token::InternedString;
+use parse::token::{MatchNt, SubstNt, InternedString};
 use parse::token::{keywords, special_idents};
 use parse::token;
 use parse::{new_sub_parser_from_file, ParseSess};
@@ -2508,7 +2509,7 @@ impl<'a> Parser<'a> {
     pub fn parse_token_tree(&mut self) -> TokenTree {
         // FIXME #6994: currently, this is too eager. It
         // parses token trees but also identifies TtSequence's
-        // and TtNonterminal's; it's too early to know yet
+        // and token::SubstNt's; it's too early to know yet
         // whether something will be a nonterminal or a seq
         // yet.
         maybe_whole!(deref self, NtTT);
@@ -2549,9 +2550,21 @@ impl<'a> Parser<'a> {
                     let seq = match seq {
                         Spanned { node, .. } => node,
                     };
-                    TtSequence(mk_sp(sp.lo, p.span.hi), Rc::new(seq), sep, repeat)
+                    let name_num = macro_parser::count_names(seq.as_slice());
+                    TtSequence(mk_sp(sp.lo, p.span.hi), Rc::new(seq), sep, repeat, name_num)
                 } else {
-                    TtNonterminal(sp, p.parse_ident())
+                    // A nonterminal that matches or not
+                    let namep = match p.token { token::Ident(_, p) => p, _ => token::Plain };
+                    let name = p.parse_ident();
+                    if p.token == token::Colon && p.look_ahead(1, |t| t.is_ident()) {
+                        p.bump();
+                        let kindp = match p.token { token::Ident(_, p) => p, _ => token::Plain };
+                        let nt_kind = p.parse_ident();
+                        let m = TtToken(sp, MatchNt(name, nt_kind, namep, kindp));
+                        m
+                    } else {
+                        TtToken(sp, SubstNt(name, namep))
+                    }
                 }
               }
               _ => {
