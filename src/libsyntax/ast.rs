@@ -641,14 +641,12 @@ pub enum KleeneOp {
 /// be passed to syntax extensions using a uniform type.
 ///
 /// If the syntax extension is an MBE macro, it will attempt to match its
-/// LHS "matchers" against the provided token tree, and if it finds a
+/// LHS token tree against the provided token tree, and if it finds a
 /// match, will transcribe the RHS token tree, splicing in any captured
-/// `macro_parser::matched_nonterminals` into the `TtNonterminal`s it finds.
+/// macro_parser::matched_nonterminals into the `SubstNt`s it finds.
 ///
-/// The RHS of an MBE macro is the only place a `TtNonterminal` or `TtSequence`
-/// makes any real sense. You could write them elsewhere but nothing
-/// else knows what to do with them, so you'll probably get a syntax
-/// error.
+/// The RHS of an MBE macro is the only place `SubstNt`s are substituted.
+/// Nothing special happens to misnamed or misplaced `SubstNt`s.
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
 #[doc="For macro invocations; parsing is delegated to the macro"]
 pub enum TokenTree {
@@ -657,14 +655,19 @@ pub enum TokenTree {
     /// A delimited sequence of token trees
     TtDelimited(Span, Rc<Delimited>),
 
-    // This only makes sense for right-hand-sides of MBE macros:
+    // This only makes sense in MBE macros.
 
-    /// A Kleene-style repetition sequence with an optional separator.
-    // FIXME(eddyb) #6308 Use Rc<[TokenTree]> after DST.
+    /// A kleene-style repetition sequence with a span, a TT forest,
+    /// an optional separator, and a boolean where true indicates
+    /// zero or more (..), and false indicates one or more (+).
+    /// The last member denotes the number of `MATCH_NONTERMINAL`s
+    /// in the forest.
+    // FIXME(eddyb) #12938 Use Rc<[TokenTree]> after DST.
     TtSequence(Span, Rc<Vec<TokenTree>>, Option<::parse::token::Token>, KleeneOp, uint),
 }
 
 impl TokenTree {
+    /// For unrolling some tokens or token trees into equivalent sequences.
     pub fn expand_into_tts(self) -> Rc<Vec<TokenTree>> {
         match self {
             TtToken(sp, token::DocComment(name)) => {
@@ -708,69 +711,6 @@ impl TokenTree {
             TtSequence(span, _, _, _, _)  => span,
         }
     }
-}
-
-// Matchers are nodes defined-by and recognized-by the main rust parser and
-// language, but they're only ever found inside syntax-extension invocations;
-// indeed, the only thing that ever _activates_ the rules in the rust parser
-// for parsing a matcher is a matcher looking for the 'matchers' nonterminal
-// itself. Matchers represent a small sub-language for pattern-matching
-// token-trees, and are thus primarily used by the macro-defining extension
-// itself.
-//
-// MatchTok
-// --------
-//
-//     A matcher that matches a single token, denoted by the token itself. So
-//     long as there's no $ involved.
-//
-//
-// MatchSeq
-// --------
-//
-//     A matcher that matches a sequence of sub-matchers, denoted various
-//     possible ways:
-//
-//             $(M)*       zero or more Ms
-//             $(M)+       one or more Ms
-//             $(M),+      one or more comma-separated Ms
-//             $(A B C);*  zero or more semi-separated 'A B C' seqs
-//
-//
-// MatchNonterminal
-// -----------------
-//
-//     A matcher that matches one of a few interesting named rust
-//     nonterminals, such as types, expressions, items, or raw token-trees. A
-//     black-box matcher on expr, for example, binds an expr to a given ident,
-//     and that ident can re-occur as an interpolation in the RHS of a
-//     macro-by-example rule. For example:
-//
-//        $foo:expr   =>     1 + $foo    // interpolate an expr
-//        $foo:tt     =>     $foo        // interpolate a token-tree
-//        $foo:tt     =>     bar! $foo   // only other valid interpolation
-//                                       // is in arg position for another
-//                                       // macro
-//
-// As a final, horrifying aside, note that macro-by-example's input is
-// also matched by one of these matchers. Holy self-referential! It is matched
-// by a MatchSeq, specifically this one:
-//
-//                   $( $lhs:matchers => $rhs:tt );+
-//
-// If you understand that, you have closed the loop and understand the whole
-// macro system. Congratulations.
-pub type Matcher = Spanned<Matcher_>;
-
-#[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
-pub enum Matcher_ {
-    /// Match one token
-    MatchTok(token::Token),
-    /// Match repetitions of a sequence: body, separator, Kleene operator,
-    /// lo, hi position-in-match-array used:
-    MatchSeq(Vec<Matcher>, Option<token::Token>, KleeneOp, uint, uint),
-    /// Parse a Rust NT: name to bind, name of NT, position in match array:
-    MatchNonterminal(Ident, Ident, uint)
 }
 
 pub type Mac = Spanned<Mac_>;

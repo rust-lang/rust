@@ -78,7 +78,7 @@
 
 
 use ast;
-use ast::{Matcher, TokenTree, Ident};
+use ast::{TokenTree, Ident};
 use ast::{TtDelimited, TtSequence, TtToken};
 use codemap::{BytePos, mk_sp};
 use codemap;
@@ -97,9 +97,8 @@ use std::rc::Rc;
 use std::collections::HashMap;
 use std::collections::hash_map::{Vacant, Occupied};
 
-/* to avoid costly uniqueness checks, we require that `MatchSeq` always has a
-nonempty body. */
-
+// To avoid costly uniqueness checks, we require that `MatchSeq` always has
+// a nonempty body.
 
 /// an unzipping of `TokenTree`s
 #[deriving(Clone)]
@@ -157,22 +156,22 @@ pub fn initial_matcher_pos(ms: Rc<Vec<TokenTree>>, sep: Option<Token>, lo: ByteP
     }
 }
 
-/// NamedMatch is a pattern-match result for a single ast::MatchNonterminal:
+/// NamedMatch is a pattern-match result for a single token::MATCH_NONTERMINAL:
 /// so it is associated with a single ident in a parse, and all
-/// MatchedNonterminal's in the NamedMatch have the same nonterminal type
-/// (expr, item, etc). All the leaves in a single NamedMatch correspond to a
-/// single matcher_nonterminal in the ast::Matcher that produced it.
+/// `MatchedNonterminal`s in the NamedMatch have the same nonterminal type
+/// (expr, item, etc). Each leaf in a single NamedMatch corresponds to a
+/// single token::MATCH_NONTERMINAL in the TokenTree that produced it.
 ///
 /// The in-memory structure of a particular NamedMatch represents the match
 /// that occurred when a particular subset of a matcher was applied to a
 /// particular token tree.
 ///
 /// The width of each MatchedSeq in the NamedMatch, and the identity of the
-/// MatchedNonterminal's, will depend on the token tree it was applied to: each
-/// MatchedSeq corresponds to a single MatchSeq in the originating
-/// ast::Matcher. The depth of the NamedMatch structure will therefore depend
-/// only on the nesting depth of ast::MatchSeq's in the originating
-/// ast::Matcher it was derived from.
+/// `MatchedNonterminal`s, will depend on the token tree it was applied to:
+/// each MatchedSeq corresponds to a single TTSeq in the originating
+/// token tree. The depth of the NamedMatch structure will therefore depend
+/// only on the nesting depth of `ast::TTSeq`s in the originating
+/// token tree it was derived from.
 
 pub enum NamedMatch {
     MatchedSeq(Vec<Rc<NamedMatch>>, codemap::Span),
@@ -512,7 +511,6 @@ pub fn parse_nt(p: &mut Parser, name: &str) -> Nonterminal {
         p.quote_depth -= 1u;
         res
       }
-      "matchers" => token::NtMatchers(p.parse_matchers()),
       _ => {
           p.fatal(format!("unsupported builtin nonterminal parser: {}",
                           name).as_slice())
