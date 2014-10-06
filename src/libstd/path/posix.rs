@@ -42,10 +42,10 @@ pub struct Path {
 }
 
 /// The standard path separator character
-pub static SEP: char = '/';
+pub const SEP: char = '/';
 
 /// The standard path separator byte
-pub static SEP_BYTE: u8 = SEP as u8;
+pub const SEP_BYTE: u8 = SEP as u8;
 
 /// Returns whether the given byte is a path separator
 #[inline]

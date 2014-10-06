@@ -24,12 +24,12 @@
 /// ```{.rust}
 /// bitflags! {
 ///     flags Flags: u32 {
-///         static FLAG_A       = 0x00000001,
-///         static FLAG_B       = 0x00000010,
-///         static FLAG_C       = 0x00000100,
-///         static FLAG_ABC     = FLAG_A.bits
-///                             | FLAG_B.bits
-///                             | FLAG_C.bits,
+///         const FLAG_A       = 0x00000001,
+///         const FLAG_B       = 0x00000010,
+///         const FLAG_C       = 0x00000100,
+///         const FLAG_ABC     = FLAG_A.bits
+///                            | FLAG_B.bits
+///                            | FLAG_C.bits,
 ///     }
 /// }
 ///
@@ -50,8 +50,8 @@
 ///
 /// bitflags! {
 ///     flags Flags: u32 {
-///         static FLAG_A   = 0x00000001,
-///         static FLAG_B   = 0x00000010,
+///         const FLAG_A   = 0x00000001,
+///         const FLAG_B   = 0x00000010,
 ///     }
 /// }
 ///
@@ -115,7 +115,7 @@
 #[macro_export]
 macro_rules! bitflags {
     ($(#[$attr:meta])* flags $BitFlags:ident: $T:ty {
-        $($(#[$Flag_attr:meta])* static $Flag:ident = $value:expr),+
+        $($(#[$Flag_attr:meta])* const $Flag:ident = $value:expr),+
     }) => {
         #[deriving(PartialEq, Eq, Clone, PartialOrd, Ord, Hash)]
         $(#[$attr])*
@@ -123,7 +123,7 @@ macro_rules! bitflags {
             bits: $T,
         }
 
-        $($(#[$Flag_attr])* pub static $Flag: $BitFlags = $BitFlags { bits: $value };)+
+        $($(#[$Flag_attr])* pub const $Flag: $BitFlags = $BitFlags { bits: $value };)+
 
         impl $BitFlags {
             /// Returns an empty set of flags.
@@ -235,12 +235,12 @@ macro_rules! bitflags {
         }
     };
     ($(#[$attr:meta])* flags $BitFlags:ident: $T:ty {
-        $($(#[$Flag_attr:meta])* static $Flag:ident = $value:expr),+,
+        $($(#[$Flag_attr:meta])* const $Flag:ident = $value:expr),+,
     }) => {
         bitflags! {
             $(#[$attr])*
             flags $BitFlags: $T {
-                $($(#[$Flag_attr])* static $Flag = $value),+
+                $($(#[$Flag_attr])* const $Flag = $value),+
             }
         }
     };
@@ -259,14 +259,14 @@ mod tests {
         #[doc = "> "]
         #[doc = "> - Richard Feynman"]
         flags Flags: u32 {
-            static FlagA       = 0x00000001,
+            const FlagA       = 0x00000001,
             #[doc = "<pcwalton> macros are way better at generating code than trans is"]
-            static FlagB       = 0x00000010,
-            static FlagC       = 0x00000100,
+            const FlagB       = 0x00000010,
+            const FlagC       = 0x00000100,
             #[doc = "* cmr bed"]
             #[doc = "* strcat table"]
             #[doc = "<strcat> wait what?"]
-            static FlagABC     = FlagA.bits
+            const FlagABC     = FlagA.bits
                                | FlagB.bits
                                | FlagC.bits,
         }
@@ -274,7 +274,7 @@ mod tests {
 
     bitflags! {
         flags AnotherSetOfFlags: uint {
-            static AnotherFlag = 1u,
+            const AnotherFlag = 1u,
         }
     }
 
