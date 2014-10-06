@@ -748,7 +748,7 @@ impl String {
     ///
     /// # Warning
     ///
-    /// This is a O(n) operation as it requires copying every element in the
+    /// This is a $$O(n)$$ operation as it requires copying every element in the
     /// buffer.
     ///
     /// # Failure

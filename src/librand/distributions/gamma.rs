@@ -22,12 +22,11 @@ use super::{IndependentSample, Sample, Exp};
 ///
 /// The density function of this distribution is
 ///
-/// ```text
-/// f(x) =  x^(k - 1) * exp(-x / θ) / (Γ(k) * θ^k)
-/// ```
+/// $$f(x) =  x^{k - 1} \frac{\exp(-x / \theta)}{\Gamma(k) \theta^k}$$
 ///
-/// where `Γ` is the Gamma function, `k` is the shape and `θ` is the
-/// scale and both `k` and `θ` are strictly positive.
+/// where $$\Gamma$$ is the Gamma function, $$k$$ is the shape and
+/// $$\theta$$ is the scale and both $$k$$ and $$\theta$$ are strictly
+/// positive.
 ///
 /// The algorithm used is that described by Marsaglia & Tsang 2000[1],
 /// falling back to directly sampling from an Exponential for `shape

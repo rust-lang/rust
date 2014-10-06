@@ -562,7 +562,7 @@ pub trait MutableSliceAllocating<'a, T> {
     /// Sorts the slice, in place, using `compare` to compare
     /// elements.
     ///
-    /// This sort is `O(n log n)` worst-case and stable, but allocates
+    /// This sort is $$O(n \log n)$$ worst-case and stable, but allocates
     /// approximately `2 * n`, where `n` is the length of `self`.
     ///
     /// # Example

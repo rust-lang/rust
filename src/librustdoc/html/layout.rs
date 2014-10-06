@@ -12,6 +12,7 @@ use std::fmt;
 use std::io;
 
 use externalfiles::ExternalHtml;
+use html::markdown;
 
 #[deriving(Clone)]
 pub struct Layout {
@@ -20,6 +21,7 @@ pub struct Layout {
     pub external_html: ExternalHtml,
     pub krate: String,
     pub playground_url: String,
+    pub enable_math: bool,
 }
 
 pub struct Page<'a> {
@@ -34,7 +36,11 @@ pub fn render<T: fmt::Show, S: fmt::Show>(
     dst: &mut io::Writer, layout: &Layout, page: &Page, sidebar: &S, t: &T)
     -> io::IoResult<()>
 {
-    write!(dst,
+    // Reset state on whether we've seen math, so as to avoid loading mathjax
+    // on pages that don't actually *have* math.
+    markdown::math_seen.replace(Some(false));
+
+    try!(write!(dst,
 r##"<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -47,6 +53,7 @@ r##"<!DOCTYPE html>
     <title>{title}</title>
 
     <link rel="stylesheet" type="text/css" href="{root_path}main.css">
+    {katex_css}
 
     {favicon}
     {in_header}
@@ -119,13 +126,13 @@ r##"<!DOCTYPE html>
         window.rootPath = "{root_path}";
         window.currentCrate = "{krate}";
         window.playgroundUrl = "{play_url}";
+        window.useKaTeX = true;
     </script>
     <script src="{root_path}jquery.js"></script>
     <script src="{root_path}main.js"></script>
     {play_js}
     <script async src="{root_path}search-index.js"></script>
-</body>
-</html>"##,
+"##,
     content   = *t,
     root_path = page.root_path,
     ty        = page.ty,
@@ -156,7 +163,27 @@ r##"<!DOCTYPE html>
     } else {
         format!(r#"<script src="{}playpen.js"></script>"#, page.root_path)
     },
-    )
+    katex_css = if layout.enable_math {
+        // this is inserted even for pages for which there is no
+        // actual mathematics (unlike the JS), but this CSS is quite
+        // small, and it's harder to insert this conditionally, since
+        // that would require rendering the whole thing into memory
+        // and then printing this, and only then print the
+        // markdown.
+        format!(r#"<link rel="stylesheet" type="text/css" href="{}katex/katex.min.css">"#,
+                page.root_path)
+    } else {
+        "".to_string()
+    },
+    ));
+
+    // This must be done after everything is rendered, so that
+    // `math_seen` captures all possible $$'s on this page.
+    if layout.enable_math && markdown::math_seen.get().map_or(false, |x| *x) {
+        try!(write!(dst, "<script src=\"{}katex/katex.min.js\"></script>", page.root_path));
+    }
+
+    dst.write_str("</body>\n</html>")
 }
 
 pub fn redirect(dst: &mut io::Writer, url: &str) -> io::IoResult<()> {
