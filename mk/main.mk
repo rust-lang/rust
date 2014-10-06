@@ -157,6 +157,12 @@ RUSTFLAGS_STAGE1 += -C prefer-dynamic
 # by not emitting them.
 RUSTFLAGS_STAGE0 += -Z no-landing-pads
 
+RUSTFLAGS_STAGE0 += -C codegen-units=4
+ifeq ($(CFG_RELEASE_CHANNEL),source)
+	RUSTFLAGS_STAGE1 += -C codegen-units=4
+	RUSTFLAGS_STAGE2 += -C codegen-units=4
+endif
+
 # platform-specific auto-configuration
 include $(CFG_SRC_DIR)mk/platform.mk
 
