@@ -1309,6 +1309,7 @@ pub struct Item {
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
 pub enum Item_ {
     ItemStatic(P<Ty>, Mutability, P<Expr>),
+    ItemConst(P<Ty>, P<Expr>),
     ItemFn(P<FnDecl>, FnStyle, Abi, Generics, P<Block>),
     ItemMod(Mod),
     ItemForeignMod(ForeignMod),

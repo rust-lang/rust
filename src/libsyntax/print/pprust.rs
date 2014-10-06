@@ -757,6 +757,20 @@ impl<'a> State<'a> {
                 try!(word(&mut self.s, ";"));
                 try!(self.end()); // end the outer cbox
             }
+            ast::ItemConst(ref ty, ref expr) => {
+                try!(self.head(visibility_qualified(item.vis,
+                                                    "const").as_slice()));
+                try!(self.print_ident(item.ident));
+                try!(self.word_space(":"));
+                try!(self.print_type(&**ty));
+                try!(space(&mut self.s));
+                try!(self.end()); // end the head-ibox
+
+                try!(self.word_space("="));
+                try!(self.print_expr(&**expr));
+                try!(word(&mut self.s, ";"));
+                try!(self.end()); // end the outer cbox
+            }
             ast::ItemFn(ref decl, fn_style, abi, ref typarams, ref body) => {
                 try!(self.print_fn(
                     &**decl,

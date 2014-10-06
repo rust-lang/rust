@@ -20,6 +20,7 @@ pub enum Def {
     DefMod(ast::DefId),
     DefForeignMod(ast::DefId),
     DefStatic(ast::DefId, bool /* is_mutbl */),
+    DefConst(ast::DefId),
     DefLocal(ast::NodeId),
     DefVariant(ast::DefId /* enum */, ast::DefId /* variant */, bool /* is_structure */),
     DefTy(ast::DefId, bool /* is_enum */),
@@ -61,7 +62,7 @@ impl Def {
             DefForeignMod(id) | DefStatic(id, _) |
             DefVariant(_, id, _) | DefTy(id, _) | DefAssociatedTy(id) |
             DefTyParam(_, id, _) | DefUse(id) | DefStruct(id) | DefTrait(id) |
-            DefMethod(id, _) => {
+            DefMethod(id, _) | DefConst(id) => {
                 id
             }
             DefLocal(id) |

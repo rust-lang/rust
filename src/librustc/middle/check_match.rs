@@ -32,7 +32,7 @@ use syntax::ptr::P;
 use syntax::visit::{mod, Visitor, FnKind};
 use util::ppaux::ty_to_string;
 
-static DUMMY_WILD_PAT: Pat = Pat {
+pub const DUMMY_WILD_PAT: Pat = Pat {
     id: DUMMY_NODE_ID,
     node: PatWild(PatWildSingle),
     span: DUMMY_SP
@@ -299,9 +299,10 @@ fn raw_pat<'a>(p: &'a Pat) -> &'a Pat {
 fn check_exhaustive(cx: &MatchCheckCtxt, sp: Span, matrix: &Matrix) {
     match is_useful(cx, matrix, &[&DUMMY_WILD_PAT], ConstructWitness) {
         UsefulWithWitness(pats) => {
+            let dummy = DUMMY_WILD_PAT.clone();
             let witness = match pats.as_slice() {
                 [ref witness] => &**witness,
-                [] => &DUMMY_WILD_PAT,
+                [] => &dummy,
                 _ => unreachable!()
             };
             span_err!(cx.tcx.sess, sp, E0004,
@@ -349,7 +350,7 @@ impl<'a, 'tcx> Folder for StaticInliner<'a, 'tcx> {
             PatIdent(..) | PatEnum(..) => {
                 let def = self.tcx.def_map.borrow().find_copy(&pat.id);
                 match def {
-                    Some(DefStatic(did, _)) => match lookup_const_by_id(self.tcx, did) {
+                    Some(DefConst(did)) => match lookup_const_by_id(self.tcx, did) {
                         Some(const_expr) => {
                             const_expr_to_pat(self.tcx, const_expr).map(|mut new_pat| {
                                 new_pat.span = pat.span;
@@ -359,7 +360,7 @@ impl<'a, 'tcx> Folder for StaticInliner<'a, 'tcx> {
                         None => {
                             self.failed = true;
                             span_err!(self.tcx.sess, pat.span, E0158,
-                                "extern statics cannot be referenced in patterns");
+                                "statics cannot be referenced in patterns");
                             pat
                         }
                     },
@@ -555,8 +556,9 @@ fn is_useful(cx: &MatchCheckCtxt,
                             let arity = constructor_arity(cx, &c, left_ty);
                             let mut result = {
                                 let pat_slice = pats.as_slice();
+                                let dummy = DUMMY_WILD_PAT.clone();
                                 let subpats = Vec::from_fn(arity, |i| {
-                                    pat_slice.get(i).map_or(&DUMMY_WILD_PAT, |p| &**p)
+                                    pat_slice.get(i).map_or(&dummy, |p| &**p)
                                 });
                                 vec![construct_witness(cx, &c, subpats, left_ty)]
                             };
@@ -578,8 +580,9 @@ fn is_useful(cx: &MatchCheckCtxt,
                 }).collect();
                 match is_useful(cx, &matrix, v.tail(), witness) {
                     UsefulWithWitness(pats) => {
+                        let dummy = DUMMY_WILD_PAT.clone();
                         let arity = constructor_arity(cx, &constructor, left_ty);
-                        let wild_pats = Vec::from_elem(arity, &DUMMY_WILD_PAT);
+                        let wild_pats = Vec::from_elem(arity, &dummy);
                         let enum_pat = construct_witness(cx, &constructor, wild_pats, left_ty);
                         let mut new_pats = vec![enum_pat];
                         new_pats.extend(pats.into_iter());
@@ -600,10 +603,11 @@ fn is_useful_specialized(cx: &MatchCheckCtxt, &Matrix(ref m): &Matrix,
                          v: &[&Pat], ctor: Constructor, lty: ty::t,
                          witness: WitnessPreference) -> Usefulness {
     let arity = constructor_arity(cx, &ctor, lty);
+    let dummy = DUMMY_WILD_PAT.clone();
     let matrix = Matrix(m.iter().filter_map(|r| {
-        specialize(cx, r.as_slice(), &ctor, 0u, arity)
+        specialize(cx, r.as_slice(), &dummy, &ctor, 0u, arity)
     }).collect());
-    match specialize(cx, v, &ctor, 0u, arity) {
+    match specialize(cx, v, &dummy, &ctor, 0u, arity) {
         Some(v) => is_useful(cx, &matrix, v.as_slice(), witness),
         None => NotUseful
     }
@@ -624,23 +628,26 @@ fn pat_constructors(cx: &MatchCheckCtxt, p: &Pat,
     match pat.node {
         PatIdent(..) =>
             match cx.tcx.def_map.borrow().find(&pat.id) {
-                Some(&DefStatic(..)) =>
-                    cx.tcx.sess.span_bug(pat.span, "static pattern should've been rewritten"),
+                Some(&DefConst(..)) =>
+                    cx.tcx.sess.span_bug(pat.span, "const pattern should've \
+                                                    been rewritten"),
                 Some(&DefStruct(_)) => vec!(Single),
                 Some(&DefVariant(_, id, _)) => vec!(Variant(id)),
                 _ => vec!()
             },
         PatEnum(..) =>
             match cx.tcx.def_map.borrow().find(&pat.id) {
-                Some(&DefStatic(..)) =>
-                    cx.tcx.sess.span_bug(pat.span, "static pattern should've been rewritten"),
+                Some(&DefConst(..)) =>
+                    cx.tcx.sess.span_bug(pat.span, "static pattern should've \
+                                                    been rewritten"),
                 Some(&DefVariant(_, id, _)) => vec!(Variant(id)),
                 _ => vec!(Single)
             },
         PatStruct(..) =>
             match cx.tcx.def_map.borrow().find(&pat.id) {
-                Some(&DefStatic(..)) =>
-                    cx.tcx.sess.span_bug(pat.span, "static pattern should've been rewritten"),
+                Some(&DefConst(..)) =>
+                    cx.tcx.sess.span_bug(pat.span, "static pattern should've \
+                                                    been rewritten"),
                 Some(&DefVariant(_, id, _)) => vec!(Variant(id)),
                 _ => vec!(Single)
             },
@@ -722,7 +729,7 @@ fn range_covered_by_constructor(ctor: &Constructor,
 /// different patterns.
 /// Structure patterns with a partial wild pattern (Foo { a: 42, .. }) have their missing
 /// fields filled with wild patterns.
-pub fn specialize<'a>(cx: &MatchCheckCtxt, r: &[&'a Pat],
+pub fn specialize<'a>(cx: &MatchCheckCtxt, r: &[&'a Pat], dummy: &'a Pat,
                       constructor: &Constructor, col: uint, arity: uint) -> Option<Vec<&'a Pat>> {
     let &Pat {
         id: pat_id, node: ref node, span: pat_span
@@ -730,32 +737,34 @@ pub fn specialize<'a>(cx: &MatchCheckCtxt, r: &[&'a Pat],
     let head: Option<Vec<&Pat>> = match node {
 
         &PatWild(_) =>
-            Some(Vec::from_elem(arity, &DUMMY_WILD_PAT)),
+            Some(Vec::from_elem(arity, dummy)),
 
         &PatIdent(_, _, _) => {
             let opt_def = cx.tcx.def_map.borrow().find_copy(&pat_id);
             match opt_def {
-                Some(DefStatic(..)) =>
-                    cx.tcx.sess.span_bug(pat_span, "static pattern should've been rewritten"),
+                Some(DefConst(..)) =>
+                    cx.tcx.sess.span_bug(pat_span, "const pattern should've \
+                                                    been rewritten"),
                 Some(DefVariant(_, id, _)) => if *constructor == Variant(id) {
                     Some(vec!())
                 } else {
                     None
                 },
-                _ => Some(Vec::from_elem(arity, &DUMMY_WILD_PAT))
+                _ => Some(Vec::from_elem(arity, dummy))
             }
         }
 
         &PatEnum(_, ref args) => {
             let def = cx.tcx.def_map.borrow().get_copy(&pat_id);
             match def {
-                DefStatic(..) =>
-                    cx.tcx.sess.span_bug(pat_span, "static pattern should've been rewritten"),
+                DefConst(..) =>
+                    cx.tcx.sess.span_bug(pat_span, "const pattern should've \
+                                                    been rewritten"),
                 DefVariant(_, id, _) if *constructor != Variant(id) => None,
                 DefVariant(..) | DefStruct(..) => {
                     Some(match args {
                         &Some(ref args) => args.iter().map(|p| &**p).collect(),
-                        &None => Vec::from_elem(arity, &DUMMY_WILD_PAT)
+                        &None => Vec::from_elem(arity, dummy)
                     })
                 }
                 _ => None
@@ -766,8 +775,9 @@ pub fn specialize<'a>(cx: &MatchCheckCtxt, r: &[&'a Pat],
             // Is this a struct or an enum variant?
             let def = cx.tcx.def_map.borrow().get_copy(&pat_id);
             let class_id = match def {
-                DefStatic(..) =>
-                    cx.tcx.sess.span_bug(pat_span, "static pattern should've been rewritten"),
+                DefConst(..) =>
+                    cx.tcx.sess.span_bug(pat_span, "const pattern should've \
+                                                    been rewritten"),
                 DefVariant(_, variant_id, _) => if *constructor == Variant(variant_id) {
                     Some(variant_id)
                 } else {
@@ -790,7 +800,7 @@ pub fn specialize<'a>(cx: &MatchCheckCtxt, r: &[&'a Pat],
                 let args = struct_fields.iter().map(|sf| {
                     match pattern_fields.iter().find(|f| f.ident.name == sf.name) {
                         Some(ref f) => &*f.pat,
-                        _ => &DUMMY_WILD_PAT
+                        _ => dummy
                     }
                 }).collect();
                 args
@@ -833,13 +843,13 @@ pub fn specialize<'a>(cx: &MatchCheckCtxt, r: &[&'a Pat],
                 // Fixed-length vectors.
                 Single => {
                     let mut pats: Vec<&Pat> = before.iter().map(|p| &**p).collect();
-                    pats.grow_fn(arity - before.len() - after.len(), |_| &DUMMY_WILD_PAT);
+                    pats.grow_fn(arity - before.len() - after.len(), |_| dummy);
                     pats.extend(after.iter().map(|p| &**p));
                     Some(pats)
                 },
                 Slice(length) if before.len() + after.len() <= length && slice.is_some() => {
                     let mut pats: Vec<&Pat> = before.iter().map(|p| &**p).collect();
-                    pats.grow_fn(arity - before.len() - after.len(), |_| &DUMMY_WILD_PAT);
+                    pats.grow_fn(arity - before.len() - after.len(), |_| dummy);
                     pats.extend(after.iter().map(|p| &**p));
                     Some(pats)
                 },
