@@ -85,7 +85,7 @@ pub fn stats_print() {
 ///
 /// This preserves the non-null invariant for types like `Box<T>`. The address may overlap with
 /// non-zero-size memory allocations.
-pub static EMPTY: *mut () = 0x1 as *mut ();
+pub const EMPTY: *mut () = 0x1 as *mut ();
 
 /// The allocator for unique pointers.
 #[cfg(not(test))]
