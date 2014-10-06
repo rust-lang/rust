@@ -223,10 +223,32 @@ pub trait ImmutableSlice<'a, T> {
     /// order code that indicates whether its argument is `Less`,
     /// `Equal` or `Greater` the desired target.
     ///
-    /// If the value is found then `Found` is returned, containing the
-    /// index of the matching element; if the value is not found then
+    /// If a matching value is found then returns `Found`, containing
+    /// the index for the matched element; if no match is found then
     /// `NotFound` is returned, containing the index where a matching
     /// element could be inserted while maintaining sorted order.
+    ///
+    /// # Example
+    ///
+    /// Looks up a series of four elements. The first is found, with a
+    /// uniquely determined position; the second and third are not
+    /// found; the fourth could match any position in `[1,4]`.
+    ///
+    /// ```rust
+    /// use std::slice::{Found, NotFound};
+    /// let s = [0i, 1, 1, 1, 1, 2, 3, 5, 8, 13, 21, 34, 55];
+    /// let s = s.as_slice();
+    ///
+    /// let seek = 13;
+    /// assert_eq!(s.binary_search(|probe| probe.cmp(&seek)), Found(9));
+    /// let seek = 4;
+    /// assert_eq!(s.binary_search(|probe| probe.cmp(&seek)), NotFound(7));
+    /// let seek = 100;
+    /// assert_eq!(s.binary_search(|probe| probe.cmp(&seek)), NotFound(13));
+    /// let seek = 1;
+    /// let r = s.binary_search(|probe| probe.cmp(&seek));
+    /// assert!(match r { Found(1...4) => true, _ => false, });
+    /// ```
     #[unstable = "waiting on unboxed closures"]
     fn binary_search(&self, f: |&T| -> Ordering) -> BinarySearchResult;
 
@@ -1043,6 +1065,24 @@ pub trait ImmutableOrdSlice<T: Ord> {
     /// index of the matching element; if the value is not found then
     /// `NotFound` is returned, containing the index where a matching
     /// element could be inserted while maintaining sorted order.
+    ///
+    /// # Example
+    ///
+    /// Looks up a series of four elements. The first is found, with a
+    /// uniquely determined position; the second and third are not
+    /// found; the fourth could match any position in `[1,4]`.
+    ///
+    /// ```rust
+    /// use std::slice::{Found, NotFound};
+    /// let s = [0i, 1, 1, 1, 1, 2, 3, 5, 8, 13, 21, 34, 55];
+    /// let s = s.as_slice();
+    ///
+    /// assert_eq!(s.binary_search_elem(&13),  Found(9));
+    /// assert_eq!(s.binary_search_elem(&4),   NotFound(7));
+    /// assert_eq!(s.binary_search_elem(&100), NotFound(13));
+    /// let r = s.binary_search_elem(&1);
+    /// assert!(match r { Found(1...4) => true, _ => false, });
+    /// ```
     #[unstable = "name likely to change"]
     fn binary_search_elem(&self, x: &T) -> BinarySearchResult;
 }
