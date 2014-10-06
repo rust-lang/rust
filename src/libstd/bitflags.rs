@@ -24,22 +24,22 @@
 /// ```{.rust}
 /// bitflags! {
 ///     flags Flags: u32 {
-///         static FlagA       = 0x00000001,
-///         static FlagB       = 0x00000010,
-///         static FlagC       = 0x00000100,
-///         static FlagABC     = FlagA.bits
-///                            | FlagB.bits
-///                            | FlagC.bits,
+///         static FLAG_A       = 0x00000001,
+///         static FLAG_B       = 0x00000010,
+///         static FLAG_C       = 0x00000100,
+///         static FLAG_ABC     = FLAG_A.bits
+///                             | FLAG_B.bits
+///                             | FLAG_C.bits,
 ///     }
 /// }
 ///
 /// fn main() {
-///     let e1 = FlagA | FlagC;
-///     let e2 = FlagB | FlagC;
-///     assert!((e1 | e2) == FlagABC);   // union
-///     assert!((e1 & e2) == FlagC);     // intersection
-///     assert!((e1 - e2) == FlagA);     // set difference
-///     assert!(!e2 == FlagA);           // set complement
+///     let e1 = FLAG_A | FLAG_C;
+///     let e2 = FLAG_B | FLAG_C;
+///     assert!((e1 | e2) == FLAG_ABC);   // union
+///     assert!((e1 & e2) == FLAG_C);     // intersection
+///     assert!((e1 - e2) == FLAG_A);     // set difference
+///     assert!(!e2 == FLAG_A);           // set complement
 /// }
 /// ```
 ///
@@ -50,8 +50,8 @@
 ///
 /// bitflags! {
 ///     flags Flags: u32 {
-///         static FlagA   = 0x00000001,
-///         static FlagB   = 0x00000010,
+///         static FLAG_A   = 0x00000001,
+///         static FLAG_B   = 0x00000010,
 ///     }
 /// }
 ///
@@ -69,7 +69,7 @@
 /// }
 ///
 /// fn main() {
-///     let mut flags = FlagA | FlagB;
+///     let mut flags = FLAG_A | FLAG_B;
 ///     flags.clear();
 ///     assert!(flags.is_empty());
 ///     assert_eq!(format!("{}", flags).as_slice(), "hi!");
@@ -123,10 +123,7 @@ macro_rules! bitflags {
             bits: $T,
         }
 
-        $(
-            #[allow(non_uppercase_statics)]
-            $(#[$Flag_attr])* pub static $Flag: $BitFlags = $BitFlags { bits: $value };
-         )+
+        $($(#[$Flag_attr])* pub static $Flag: $BitFlags = $BitFlags { bits: $value };)+
 
         impl $BitFlags {
             /// Returns an empty set of flags.
@@ -243,16 +240,14 @@ macro_rules! bitflags {
         bitflags! {
             $(#[$attr])*
             flags $BitFlags: $T {
-                $(
-                    #[allow(non_uppercase_statics)]
-                    $(#[$Flag_attr])* static $Flag = $value
-                 ),+
+                $($(#[$Flag_attr])* static $Flag = $value),+
             }
         }
     };
 }
 
 #[cfg(test)]
+#[allow(non_uppercase_statics)]
 mod tests {
     use hash;
     use option::{Some, None};

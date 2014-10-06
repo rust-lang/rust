@@ -1196,7 +1196,7 @@ fn compose_and_run_compiler(
 
 fn ensure_dir(path: &Path) {
     if path.is_dir() { return; }
-    fs::mkdir(path, io::UserRWX).unwrap();
+    fs::mkdir(path, io::USER_RWX).unwrap();
 }
 
 fn compose_and_run(config: &Config, testfile: &Path,
