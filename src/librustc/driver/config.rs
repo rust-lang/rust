@@ -780,7 +780,20 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
         early_warn("the --crate-file-name argument has been renamed to \
                     --print-file-name");
     }
-    let cg = build_codegen_options(matches);
+
+    let mut cg = build_codegen_options(matches);
+
+    if cg.codegen_units == 0 {
+        match opt_level {
+            // `-C lto` doesn't work with multiple codegen units.
+            _ if cg.lto => cg.codegen_units = 1,
+
+            No | Less => cg.codegen_units = 2,
+            Default | Aggressive => cg.codegen_units = 1,
+        }
+    }
+    let cg = cg;
+
 
     if !cg.remark.is_empty() && debuginfo == NoDebugInfo {
         early_warn("-C remark will not show source locations without --debuginfo");
