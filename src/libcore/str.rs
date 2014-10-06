@@ -1049,9 +1049,9 @@ pub struct CharRange {
 }
 
 /// Mask of the value bits of a continuation byte
-static CONT_MASK: u8 = 0b0011_1111u8;
+const CONT_MASK: u8 = 0b0011_1111u8;
 /// Value of the tag bits (tag mask is !CONT_MASK) of a continuation byte
-static TAG_CONT_U8: u8 = 0b1000_0000u8;
+const TAG_CONT_U8: u8 = 0b1000_0000u8;
 
 /// Unsafe operations
 pub mod raw {
