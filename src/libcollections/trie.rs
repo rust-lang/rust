@@ -34,10 +34,10 @@ use slice::{Items, MutItems};
 use slice;
 
 // FIXME: #5244: need to manually update the TrieNode constructor
-static SHIFT: uint = 4;
-static SIZE: uint = 1 << SHIFT;
-static MASK: uint = SIZE - 1;
-static NUM_CHUNKS: uint = uint::BITS / SHIFT;
+const SHIFT: uint = 4;
+const SIZE: uint = 1 << SHIFT;
+const MASK: uint = SIZE - 1;
+const NUM_CHUNKS: uint = uint::BITS / SHIFT;
 
 #[deriving(Clone)]
 enum Child<T> {
