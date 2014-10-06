@@ -361,7 +361,7 @@ impl TypeFoldable for ty::UnsizeKind {
         match *self {
             ty::UnsizeLength(len) => ty::UnsizeLength(len),
             ty::UnsizeStruct(box ref k, n) => ty::UnsizeStruct(box k.fold_with(folder), n),
-            ty::UnsizeVtable(ty::TyTrait{bounds, def_id, substs: ref substs}, self_ty) => {
+            ty::UnsizeVtable(ty::TyTrait{bounds, def_id, ref substs}, self_ty) => {
                 ty::UnsizeVtable(
                     ty::TyTrait {
                         bounds: bounds.fold_with(folder),

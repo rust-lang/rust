@@ -1983,12 +1983,12 @@ impl<'a> State<'a> {
                     Consistent, fields.as_slice(),
                     |s, f| {
                         try!(s.cbox(indent_unit));
-                        try!(s.print_ident(f.ident));
+                        try!(s.print_ident(f.node.ident));
                         try!(s.word_nbsp(":"));
-                        try!(s.print_pat(&*f.pat));
+                        try!(s.print_pat(&*f.node.pat));
                         s.end()
                     },
-                    |f| f.pat.span));
+                    |f| f.node.pat.span));
                 if etc {
                     if fields.len() != 0u { try!(self.word_space(",")); }
                     try!(word(&mut self.s, ".."));

@@ -312,7 +312,7 @@ pub fn trans_for<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                                                   (),
                                                   |(), bcx, lloption| {
         let Result {
-            bcx: bcx,
+            bcx,
             val: _
         } = callee::trans_call_inner(bcx,
                                      Some(loop_info),

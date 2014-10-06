@@ -429,7 +429,7 @@ pub fn walk_pat<'v, V: Visitor<'v>>(visitor: &mut V, pattern: &'v Pat) {
         PatStruct(ref path, ref fields, _) => {
             visitor.visit_path(path, pattern.id);
             for field in fields.iter() {
-                visitor.visit_pat(&*field.pat)
+                visitor.visit_pat(&*field.node.pat)
             }
         }
         PatTup(ref tuple_elements) => {
