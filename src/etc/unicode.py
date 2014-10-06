@@ -333,14 +333,14 @@ def emit_property_module(f, mod, tbl, emit_fn):
 def emit_regex_module(f, cats, w_data):
     f.write("pub mod regex {\n")
     regex_class = "&'static [(char, char)]"
-    class_table = "&'static [(&'static str, %s)]" % regex_class
+    class_table = "&'static [(&'static str, &'static %s)]" % regex_class
 
     emit_table(f, "UNICODE_CLASSES", cats, class_table,
-        pfun=lambda x: "(\"%s\",super::%s::%s_table)" % (x[0], x[1], x[0]))
+        pfun=lambda x: "(\"%s\",&super::%s::%s_table)" % (x[0], x[1], x[0]))
 
-    f.write("    pub static PERLD: %s = super::general_category::Nd_table;\n\n"
+    f.write("    pub static PERLD: &'static %s = &super::general_category::Nd_table;\n\n"
             % regex_class)
-    f.write("    pub static PERLS: %s = super::property::White_Space_table;\n\n"
+    f.write("    pub static PERLS: &'static %s = &super::property::White_Space_table;\n\n"
             % regex_class)
 
     emit_table(f, "PERLW", w_data, regex_class)
