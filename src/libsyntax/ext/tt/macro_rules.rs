@@ -9,8 +9,9 @@
 // except according to those terms.
 
 use ast::{Ident, Matcher_, Matcher, MatchTok, MatchNonterminal, MatchSeq, TtDelimited};
+use ast::{TtSequence, TtToken};
 use ast;
-use codemap::{Span, Spanned, DUMMY_SP};
+use codemap::{Span, DUMMY_SP};
 use ext::base::{ExtCtxt, MacResult, MacroDef};
 use ext::base::{NormalTT, TTMacroExpander};
 use ext::tt::macro_parser::{Success, Error, Failure};
@@ -20,7 +21,7 @@ use parse::lexer::new_tt_reader;
 use parse::parser::Parser;
 use parse::attr::ParserAttr;
 use parse::token::{special_idents, gensym_ident};
-use parse::token::{NtMatchers, NtTT};
+use parse::token::{MatchNt, NtMatchers, NtTT};
 use parse::token;
 use print;
 use ptr::P;
@@ -158,14 +159,18 @@ fn generic_extension<'cx>(cx: &'cx ExtCtxt,
 
     for (i, lhs) in lhses.iter().enumerate() { // try each arm's matchers
         match **lhs {
-          MatchedNonterminal(NtMatchers(ref mtcs)) => {
+          MatchedNonterminal(NtTT(ref lhs_tt)) => {
+            let lhs_tt = match **lhs_tt {
+                TtDelimited(_, ref delim) => delim.tts.as_slice(),
+                _ => cx.span_fatal(sp, "malformed macro lhs")
+            };
             // `None` is because we're not interpolating
             let arg_rdr = new_tt_reader(&cx.parse_sess().span_diagnostic,
                                         None,
                                         arg.iter()
                                            .map(|x| (*x).clone())
                                            .collect());
-            match parse(cx.parse_sess(), cx.cfg(), arg_rdr, mtcs.as_slice()) {
+            match parse(cx.parse_sess(), cx.cfg(), arg_rdr, lhs_tt) {
               Success(named_matches) => {
                 let rhs = match *rhses[i] {
                     // okay, what's your transcriber?
@@ -210,31 +215,33 @@ pub fn add_new_extension<'cx>(cx: &'cx mut ExtCtxt,
                               name: Ident,
                               arg: Vec<ast::TokenTree> )
                               -> Box<MacResult+'cx> {
-    // these spans won't matter, anyways
-    fn ms(m: Matcher_) -> Matcher {
-        Spanned {
-            node: m.clone(),
-            span: DUMMY_SP
-        }
-    }
 
     let lhs_nm =  gensym_ident("lhs");
     let rhs_nm =  gensym_ident("rhs");
 
     // The pattern that macro_rules matches.
     // The grammar for macro_rules! is:
-    // $( $lhs:mtcs => $rhs:tt );+
+    // $( $lhs:tt => $rhs:tt );+
     // ...quasiquoting this would be nice.
+    // These spans won't matter, anyways
+    let match_lhs_tok = MatchNt(lhs_nm, special_idents::tt, token::Plain, token::Plain);
+    let match_rhs_tok = MatchNt(rhs_nm, special_idents::tt, token::Plain, token::Plain);
     let argument_gram = vec!(
-        ms(MatchSeq(vec!(
-            ms(MatchNonterminal(lhs_nm, special_idents::matchers, 0u)),
-            ms(MatchTok(token::FatArrow)),
-            ms(MatchNonterminal(rhs_nm, special_idents::tt, 1u))),
-                                Some(token::Semi), ast::OneOrMore, 0u, 2u)),
+        TtSequence(DUMMY_SP,
+                   Rc::new(vec![
+                       TtToken(DUMMY_SP, match_lhs),
+                       TtToken(DUMMY_SP, token::FatArrow),
+                       TtToken(DUMMY_SP, match_rhs)]),
+                   Some(token::Semi),
+                   ast::OneOrMore,
+                   2),
         //to phase into semicolon-termination instead of
         //semicolon-separation
-        ms(MatchSeq(vec!(ms(MatchTok(token::Semi))), None,
-                            ast::ZeroOrMore, 2u, 2u)));
+        TtSequence(DUMMY_SP,
+                   Rc::new(vec![TtToken(DUMMY_SP, token::Semi)]),
+                   None,
+                   ast::ZeroOrMore,
+                   0));
 
 
     // Parse the macro_rules! invocation (`none` is for no interpolations):

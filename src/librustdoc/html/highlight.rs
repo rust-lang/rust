@@ -163,7 +163,8 @@ fn doit(sess: &parse::ParseSess, mut lexer: lexer::StringReader,
 
             token::Lifetime(..) => "lifetime",
             token::DocComment(..) => "doccomment",
-            token::Underscore | token::Eof | token::Interpolated(..) => "",
+            token::Underscore | token::Eof | token::Interpolated(..) |
+                token::MatchNt(..) | token::SubstNt(..) => "",
         };
 
         // as mentioned above, use the original source code instead of
