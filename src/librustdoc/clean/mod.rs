@@ -475,7 +475,6 @@ impl Clean<TyParam> for ty::TypeParameterDef {
 pub enum TyParamBound {
     RegionBound(Lifetime),
     UnboxedFnBound(UnboxedFnType),
-    UnknownBound,
     TraitBound(Type)
 }
 
@@ -521,7 +520,7 @@ impl Clean<TyParamBound> for ty::BuiltinBound {
     fn clean(&self, cx: &DocContext) -> TyParamBound {
         let tcx = match cx.tcx_opt() {
             Some(tcx) => tcx,
-            None => return UnknownBound
+            None => return RegionBound(Lifetime::statik())
         };
         let empty = subst::Substs::empty();
         let (did, path) = match *self {
@@ -554,7 +553,7 @@ impl Clean<TyParamBound> for ty::TraitRef {
     fn clean(&self, cx: &DocContext) -> TyParamBound {
         let tcx = match cx.tcx_opt() {
             Some(tcx) => tcx,
-            None => return UnknownBound
+            None => return RegionBound(Lifetime::statik())
         };
         let fqn = csearch::get_item_path(tcx, self.def_id);
         let fqn = fqn.into_iter().map(|i| i.to_string())
