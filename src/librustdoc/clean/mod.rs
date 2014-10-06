@@ -462,6 +462,7 @@ impl Clean<TyParam> for ty::TypeParameterDef {
     fn clean(&self, cx: &DocContext) -> TyParam {
         cx.external_typarams.borrow_mut().as_mut().unwrap()
           .insert(self.def_id, self.ident.clean(cx));
+
         TyParam {
             name: self.ident.clean(cx),
             did: self.def_id,
@@ -580,6 +581,9 @@ impl Clean<Vec<TyParamBound>> for ty::ParamBounds {
         }
         for t in self.trait_bounds.iter() {
             v.push(t.clean(cx));
+        }
+        for r in self.region_bounds.iter().filter_map(|r| r.clean(cx)) {
+            v.push(RegionBound(r));
         }
         return v;
     }
