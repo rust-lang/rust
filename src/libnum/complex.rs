@@ -194,13 +194,13 @@ mod test {
     use std::num::{Zero, One, Float};
     use std::hash::hash;
 
-    pub static _0_0i : Complex64 = Complex { re: 0.0, im: 0.0 };
-    pub static _1_0i : Complex64 = Complex { re: 1.0, im: 0.0 };
-    pub static _1_1i : Complex64 = Complex { re: 1.0, im: 1.0 };
-    pub static _0_1i : Complex64 = Complex { re: 0.0, im: 1.0 };
-    pub static _neg1_1i : Complex64 = Complex { re: -1.0, im: 1.0 };
-    pub static _05_05i : Complex64 = Complex { re: 0.5, im: 0.5 };
-    pub static all_consts : [Complex64, .. 5] = [_0_0i, _1_0i, _1_1i, _neg1_1i, _05_05i];
+    pub const _0_0i : Complex64 = Complex { re: 0.0, im: 0.0 };
+    pub const _1_0i : Complex64 = Complex { re: 1.0, im: 0.0 };
+    pub const _1_1i : Complex64 = Complex { re: 1.0, im: 1.0 };
+    pub const _0_1i : Complex64 = Complex { re: 0.0, im: 1.0 };
+    pub const _neg1_1i : Complex64 = Complex { re: -1.0, im: 1.0 };
+    pub const _05_05i : Complex64 = Complex { re: 0.5, im: 0.5 };
+    pub const all_consts : [Complex64, .. 5] = [_0_0i, _1_0i, _1_1i, _neg1_1i, _05_05i];
 
     #[test]
     fn test_consts() {
