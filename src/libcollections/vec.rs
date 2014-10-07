@@ -438,7 +438,7 @@ impl<T:Clone> Clone for Vec<T> {
 
         // self.len <= other.len due to the truncate above, so the
         // slice here is always in-bounds.
-        let slice = other.slice_from(self.len());
+        let slice = other[self.len()..];
         self.push_all(slice);
     }
 }
@@ -460,6 +460,7 @@ impl<T> Index<uint,T> for Vec<T> {
     }
 }*/
 
+#[cfg(stage0)]
 impl<T> ops::Slice<uint, [T]> for Vec<T> {
     #[inline]
     fn as_slice_<'a>(&'a self) -> &'a [T] {
@@ -480,7 +481,29 @@ impl<T> ops::Slice<uint, [T]> for Vec<T> {
         self.as_slice().slice_(start, end)
     }
 }
+#[cfg(not(stage0))]
+impl<T> ops::Slice<uint, [T]> for Vec<T> {
+    #[inline]
+    fn as_slice_<'a>(&'a self) -> &'a [T] {
+        self.as_slice()
+    }
 
+    #[inline]
+    fn slice_from_or_fail<'a>(&'a self, start: &uint) -> &'a [T] {
+        self.as_slice().slice_from_or_fail(start)
+    }
+
+    #[inline]
+    fn slice_to_or_fail<'a>(&'a self, end: &uint) -> &'a [T] {
+        self.as_slice().slice_to_or_fail(end)
+    }
+    #[inline]
+    fn slice_or_fail<'a>(&'a self, start: &uint, end: &uint) -> &'a [T] {
+        self.as_slice().slice_or_fail(start, end)
+    }
+}
+
+#[cfg(stage0)]
 impl<T> ops::SliceMut<uint, [T]> for Vec<T> {
     #[inline]
     fn as_mut_slice_<'a>(&'a mut self) -> &'a mut [T] {
@@ -499,6 +522,27 @@ impl<T> ops::SliceMut<uint, [T]> for Vec<T> {
     #[inline]
     fn slice_mut_<'a>(&'a mut self, start: &uint, end: &uint) -> &'a mut [T] {
         self.as_mut_slice().slice_mut_(start, end)
+    }
+}
+#[cfg(not(stage0))]
+impl<T> ops::SliceMut<uint, [T]> for Vec<T> {
+    #[inline]
+    fn as_mut_slice_<'a>(&'a mut self) -> &'a mut [T] {
+        self.as_mut_slice()
+    }
+
+    #[inline]
+    fn slice_from_or_fail_mut<'a>(&'a mut self, start: &uint) -> &'a mut [T] {
+        self.as_mut_slice().slice_from_or_fail_mut(start)
+    }
+
+    #[inline]
+    fn slice_to_or_fail_mut<'a>(&'a mut self, end: &uint) -> &'a mut [T] {
+        self.as_mut_slice().slice_to_or_fail_mut(end)
+    }
+    #[inline]
+    fn slice_or_fail_mut<'a>(&'a mut self, start: &uint, end: &uint) -> &'a mut [T] {
+        self.as_mut_slice().slice_or_fail_mut(start, end)
     }
 }
 
@@ -547,7 +591,7 @@ impl<T: PartialOrd> PartialOrd for Vec<T> {
 impl<T: Eq> Eq for Vec<T> {}
 
 #[experimental]
-impl<T: PartialEq, V: Slice<T>> Equiv<V> for Vec<T> {
+impl<T: PartialEq, V: AsSlice<T>> Equiv<V> for Vec<T> {
     #[inline]
     fn equiv(&self, other: &V) -> bool { self.as_slice() == other.as_slice() }
 }
@@ -933,11 +977,11 @@ impl<T> Vec<T> {
     ///
     /// ```
     /// let vec = vec![1i, 2, 3, 4];
-    /// assert!(vec.slice(0, 2) == [1, 2]);
+    /// assert!(vec[0..2] == [1, 2]);
     /// ```
     #[inline]
     pub fn slice<'a>(&'a self, start: uint, end: uint) -> &'a [T] {
-        self.as_slice().slice(start, end)
+        self[start..end]
     }
 
     /// Returns a slice containing all but the first element of the vector.
@@ -954,7 +998,7 @@ impl<T> Vec<T> {
     /// ```
     #[inline]
     pub fn tail<'a>(&'a self) -> &'a [T] {
-        self.as_slice().tail()
+        self[].tail()
     }
 
     /// Returns all but the first `n' elements of a vector.
@@ -973,7 +1017,7 @@ impl<T> Vec<T> {
     #[inline]
     #[deprecated = "use slice_from"]
     pub fn tailn<'a>(&'a self, n: uint) -> &'a [T] {
-        self.as_slice().slice_from(n)
+        self[n..]
     }
 
     /// Returns a reference to the last element of a vector, or `None` if it is
@@ -987,7 +1031,7 @@ impl<T> Vec<T> {
     /// ```
     #[inline]
     pub fn last<'a>(&'a self) -> Option<&'a T> {
-        self.as_slice().last()
+        self[].last()
     }
 
     /// Deprecated: use `last_mut`.
@@ -1184,7 +1228,7 @@ impl<T> Vec<T> {
     #[deprecated = "use slice_mut"]
     pub fn mut_slice<'a>(&'a mut self, start: uint, end: uint)
                          -> &'a mut [T] {
-        self.slice_mut(start, end)
+        self[mut start..end]
     }
 
     /// Returns a mutable slice of `self` between `start` and `end`.
@@ -1198,18 +1242,18 @@ impl<T> Vec<T> {
     ///
     /// ```
     /// let mut vec = vec![1i, 2, 3, 4];
-    /// assert!(vec.slice_mut(0, 2) == [1, 2]);
+    /// assert!(vec[mut 0..2] == [1, 2]);
     /// ```
     #[inline]
     pub fn slice_mut<'a>(&'a mut self, start: uint, end: uint)
                          -> &'a mut [T] {
-        self.as_mut_slice().slice_mut(start, end)
+        self[mut start..end]
     }
 
     /// Deprecated: use "slice_from_mut".
     #[deprecated = "use slice_from_mut"]
     pub fn mut_slice_from<'a>(&'a mut self, start: uint) -> &'a mut [T] {
-        self.slice_from_mut(start)
+        self[mut start..]
     }
 
     /// Returns a mutable slice of `self` from `start` to the end of the `Vec`.
@@ -1222,17 +1266,17 @@ impl<T> Vec<T> {
     ///
     /// ```
     /// let mut vec = vec![1i, 2, 3, 4];
-    /// assert!(vec.slice_from_mut(2) == [3, 4]);
+    /// assert!(vec[mut 2..] == [3, 4]);
     /// ```
     #[inline]
     pub fn slice_from_mut<'a>(&'a mut self, start: uint) -> &'a mut [T] {
-        self.as_mut_slice().slice_from_mut(start)
+        self[mut start..]
     }
 
     /// Deprecated: use `slice_to_mut`.
     #[deprecated = "use slice_to_mut"]
     pub fn mut_slice_to<'a>(&'a mut self, end: uint) -> &'a mut [T] {
-        self.slice_to_mut(end)
+        self[mut ..end]
     }
 
     /// Returns a mutable slice of `self` from the start of the `Vec` to `end`.
@@ -1245,11 +1289,11 @@ impl<T> Vec<T> {
     ///
     /// ```
     /// let mut vec = vec![1i, 2, 3, 4];
-    /// assert!(vec.slice_to_mut(2) == [1, 2]);
+    /// assert!(vec[mut ..2] == [1, 2]);
     /// ```
     #[inline]
     pub fn slice_to_mut<'a>(&'a mut self, end: uint) -> &'a mut [T] {
-        self.as_mut_slice().slice_to_mut(end)
+        self[mut ..end]
     }
 
     /// Deprecated: use `split_at_mut`.
@@ -1294,7 +1338,7 @@ impl<T> Vec<T> {
     /// ```
     #[inline]
     pub fn split_at_mut<'a>(&'a mut self, mid: uint) -> (&'a mut [T], &'a mut [T]) {
-        self.as_mut_slice().split_at_mut(mid)
+        self[mut].split_at_mut(mid)
     }
 
     /// Reverses the order of elements in a vector, in place.
@@ -1308,7 +1352,7 @@ impl<T> Vec<T> {
     /// ```
     #[inline]
     pub fn reverse(&mut self) {
-        self.as_mut_slice().reverse()
+        self[mut].reverse()
     }
 
     /// Returns a slice of `self` from `start` to the end of the vec.
@@ -1321,11 +1365,11 @@ impl<T> Vec<T> {
     ///
     /// ```
     /// let vec = vec![1i, 2, 3];
-    /// assert!(vec.slice_from(1) == [2, 3]);
+    /// assert!(vec[1..] == [2, 3]);
     /// ```
     #[inline]
     pub fn slice_from<'a>(&'a self, start: uint) -> &'a [T] {
-        self.as_slice().slice_from(start)
+        self[start..]
     }
 
     /// Returns a slice of self from the start of the vec to `end`.
@@ -1338,11 +1382,11 @@ impl<T> Vec<T> {
     ///
     /// ```
     /// let vec = vec![1i, 2, 3, 4];
-    /// assert!(vec.slice_to(2) == [1, 2]);
+    /// assert!(vec[..2] == [1, 2]);
     /// ```
     #[inline]
     pub fn slice_to<'a>(&'a self, end: uint) -> &'a [T] {
-        self.as_slice().slice_to(end)
+        self[..end]
     }
 
     /// Returns a slice containing all but the last element of the vector.
@@ -1359,7 +1403,7 @@ impl<T> Vec<T> {
     /// ```
     #[inline]
     pub fn init<'a>(&'a self) -> &'a [T] {
-        self.slice(0, self.len() - 1)
+        self[0..self.len() - 1]
     }
 
 
@@ -1605,7 +1649,7 @@ impl<T: PartialEq> Vec<T> {
     }
 }
 
-impl<T> Slice<T> for Vec<T> {
+impl<T> AsSlice<T> for Vec<T> {
     /// Returns a slice into `self`.
     ///
     /// # Example
@@ -1623,7 +1667,7 @@ impl<T> Slice<T> for Vec<T> {
     }
 }
 
-impl<T: Clone, V: Slice<T>> Add<V, Vec<T>> for Vec<T> {
+impl<T: Clone, V: AsSlice<T>> Add<V, Vec<T>> for Vec<T> {
     #[inline]
     fn add(&self, rhs: &V) -> Vec<T> {
         let mut res = Vec::with_capacity(self.len() + rhs.as_slice().len());
@@ -2244,12 +2288,18 @@ mod tests {
         let mut values = Vec::from_slice([1u8,2,3,4,5]);
         {
             let (left, right) = values.split_at_mut(2);
-            assert!(left.slice(0, left.len()) == [1, 2]);
+            {
+                let left: &[_] = left;
+                assert!(left[0..left.len()] == [1, 2]);
+            }
             for p in left.iter_mut() {
                 *p += 1;
             }
 
-            assert!(right.slice(0, right.len()) == [3, 4, 5]);
+            {
+                let right: &[_] = right;
+                assert!(right[0..right.len()] == [3, 4, 5]);
+            }
             for p in right.iter_mut() {
                 *p += 2;
             }

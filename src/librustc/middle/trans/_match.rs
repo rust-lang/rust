@@ -473,7 +473,7 @@ fn enter_default<'a, 'p, 'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     // Collect all of the matches that can match against anything.
     enter_match(bcx, dm, m, col, val, |pats| {
         if pat_is_binding_or_wild(dm, &*pats[col]) {
-            Some(Vec::from_slice(pats.slice_to(col)).append(pats.slice_from(col + 1)))
+            Some(Vec::from_slice(pats[..col]).append(pats[col + 1..]))
         } else {
             None
         }
@@ -948,7 +948,7 @@ fn compile_submatch<'a, 'p, 'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 bcx = compile_guard(bcx,
                                     &**guard_expr,
                                     m[0].data,
-                                    m.slice(1, m.len()),
+                                    m[1..m.len()],
                                     vals,
                                     chk,
                                     has_genuine_default);
@@ -987,7 +987,7 @@ fn compile_submatch_continue<'a, 'p, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
     let tcx = bcx.tcx();
     let dm = &tcx.def_map;
 
-    let vals_left = Vec::from_slice(vals.slice(0u, col)).append(vals.slice(col + 1u, vals.len()));
+    let vals_left = Vec::from_slice(vals[0u..col]).append(vals[col + 1u..vals.len()]);
     let ccx = bcx.fcx.ccx;
 
     // Find a real id (we're adding placeholder wildcard patterns, but

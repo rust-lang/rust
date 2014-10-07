@@ -145,7 +145,7 @@ impl<'r, 't> Nfa<'r, 't> {
                 // out early.
                 if self.prog.prefix.len() > 0 && clist.size == 0 {
                     let needle = self.prog.prefix.as_slice().as_bytes();
-                    let haystack = self.input.as_bytes().slice_from(self.ic);
+                    let haystack = self.input.as_bytes()[self.ic..];
                     match find_prefix(needle, haystack) {
                         None => break,
                         Some(i) => {

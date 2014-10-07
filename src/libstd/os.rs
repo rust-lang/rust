@@ -45,7 +45,7 @@ use path::{Path, GenericPath, BytesContainer};
 use ptr::RawPtr;
 use ptr;
 use result::{Err, Ok, Result};
-use slice::{Slice, ImmutableSlice, MutableSlice, ImmutablePartialEqSlice};
+use slice::{AsSlice, ImmutableSlice, MutableSlice, ImmutablePartialEqSlice};
 use slice::CloneableVector;
 use str::{Str, StrSlice, StrAllocating};
 use string::String;
@@ -144,7 +144,7 @@ pub mod windows {
     use option::{None, Option};
     use option;
     use os::TMPBUF_SZ;
-    use slice::{MutableSlice, ImmutableSlice};
+    use slice::MutableSlice;
     use string::String;
     use str::StrSlice;
     use vec::Vec;

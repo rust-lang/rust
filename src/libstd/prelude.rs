@@ -46,6 +46,7 @@
 #[doc(no_inline)] pub use ops::{Drop, Deref, DerefMut};
 #[doc(no_inline)] pub use ops::{Shl, Shr};
 #[doc(no_inline)] pub use ops::{Index, IndexMut};
+#[doc(no_inline)] pub use ops::{Slice, SliceMut};
 #[doc(no_inline)] pub use ops::{Fn, FnMut, FnOnce};
 #[doc(no_inline)] pub use option::{Option, Some, None};
 #[doc(no_inline)] pub use result::{Result, Ok, Err};
@@ -87,7 +88,7 @@
 #[doc(no_inline)] pub use slice::{MutableCloneableSlice, MutableOrdSlice};
 #[doc(no_inline)] pub use slice::{ImmutableSlice, MutableSlice};
 #[doc(no_inline)] pub use slice::{ImmutablePartialEqSlice, ImmutableOrdSlice};
-#[doc(no_inline)] pub use slice::{Slice, VectorVector};
+#[doc(no_inline)] pub use slice::{AsSlice, VectorVector};
 #[doc(no_inline)] pub use slice::MutableSliceAllocating;
 #[doc(no_inline)] pub use string::String;
 #[doc(no_inline)] pub use vec::Vec;
