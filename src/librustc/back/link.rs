@@ -55,22 +55,22 @@ use syntax::parse::token;
 
 // This is the "magic number" expected at the beginning of a LLVM bytecode
 // object in an rlib.
-pub static RLIB_BYTECODE_OBJECT_MAGIC: &'static [u8] = b"RUST_OBJECT";
+pub const RLIB_BYTECODE_OBJECT_MAGIC: &'static [u8] = b"RUST_OBJECT";
 
 // The version number this compiler will write to bytecode objects in rlibs
-pub static RLIB_BYTECODE_OBJECT_VERSION: u32 = 1;
+pub const RLIB_BYTECODE_OBJECT_VERSION: u32 = 1;
 
 // The offset in bytes the bytecode object format version number can be found at
-pub static RLIB_BYTECODE_OBJECT_VERSION_OFFSET: uint = 11;
+pub const RLIB_BYTECODE_OBJECT_VERSION_OFFSET: uint = 11;
 
 // The offset in bytes the size of the compressed bytecode can be found at in
 // format version 1
-pub static RLIB_BYTECODE_OBJECT_V1_DATASIZE_OFFSET: uint =
+pub const RLIB_BYTECODE_OBJECT_V1_DATASIZE_OFFSET: uint =
     RLIB_BYTECODE_OBJECT_VERSION_OFFSET + 4;
 
 // The offset in bytes the compressed LLVM bytecode can be found at in format
 // version 1
-pub static RLIB_BYTECODE_OBJECT_V1_DATA_OFFSET: uint =
+pub const RLIB_BYTECODE_OBJECT_V1_DATA_OFFSET: uint =
     RLIB_BYTECODE_OBJECT_V1_DATASIZE_OFFSET + 8;
 
 

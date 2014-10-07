@@ -43,8 +43,8 @@ pub mod diagnostic;
 pub type Opcode = u32;
 pub type Bool = c_uint;
 
-pub static True: Bool = 1 as Bool;
-pub static False: Bool = 0 as Bool;
+pub const True: Bool = 1 as Bool;
+pub const False: Bool = 0 as Bool;
 
 // Consts for the LLVM CallConv type, pre-cast to uint.
 
@@ -93,32 +93,32 @@ pub enum DiagnosticSeverity {
 
 bitflags! {
     flags Attribute : u32 {
-        static ZExtAttribute = 1 << 0,
-        static SExtAttribute = 1 << 1,
-        static NoReturnAttribute = 1 << 2,
-        static InRegAttribute = 1 << 3,
-        static StructRetAttribute = 1 << 4,
-        static NoUnwindAttribute = 1 << 5,
-        static NoAliasAttribute = 1 << 6,
-        static ByValAttribute = 1 << 7,
-        static NestAttribute = 1 << 8,
-        static ReadNoneAttribute = 1 << 9,
-        static ReadOnlyAttribute = 1 << 10,
-        static NoInlineAttribute = 1 << 11,
-        static AlwaysInlineAttribute = 1 << 12,
-        static OptimizeForSizeAttribute = 1 << 13,
-        static StackProtectAttribute = 1 << 14,
-        static StackProtectReqAttribute = 1 << 15,
-        static AlignmentAttribute = 31 << 16,
-        static NoCaptureAttribute = 1 << 21,
-        static NoRedZoneAttribute = 1 << 22,
-        static NoImplicitFloatAttribute = 1 << 23,
-        static NakedAttribute = 1 << 24,
-        static InlineHintAttribute = 1 << 25,
-        static StackAttribute = 7 << 26,
-        static ReturnsTwiceAttribute = 1 << 29,
-        static UWTableAttribute = 1 << 30,
-        static NonLazyBindAttribute = 1 << 31,
+        const ZExtAttribute = 1 << 0,
+        const SExtAttribute = 1 << 1,
+        const NoReturnAttribute = 1 << 2,
+        const InRegAttribute = 1 << 3,
+        const StructRetAttribute = 1 << 4,
+        const NoUnwindAttribute = 1 << 5,
+        const NoAliasAttribute = 1 << 6,
+        const ByValAttribute = 1 << 7,
+        const NestAttribute = 1 << 8,
+        const ReadNoneAttribute = 1 << 9,
+        const ReadOnlyAttribute = 1 << 10,
+        const NoInlineAttribute = 1 << 11,
+        const AlwaysInlineAttribute = 1 << 12,
+        const OptimizeForSizeAttribute = 1 << 13,
+        const StackProtectAttribute = 1 << 14,
+        const StackProtectReqAttribute = 1 << 15,
+        const AlignmentAttribute = 31 << 16,
+        const NoCaptureAttribute = 1 << 21,
+        const NoRedZoneAttribute = 1 << 22,
+        const NoImplicitFloatAttribute = 1 << 23,
+        const NakedAttribute = 1 << 24,
+        const InlineHintAttribute = 1 << 25,
+        const StackAttribute = 7 << 26,
+        const ReturnsTwiceAttribute = 1 << 29,
+        const UWTableAttribute = 1 << 30,
+        const NonLazyBindAttribute = 1 << 31,
     }
 }
 

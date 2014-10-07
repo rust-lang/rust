@@ -10,20 +10,20 @@
 
 #![allow(non_uppercase_statics)]
 
-pub static box_field_refcnt: uint = 0u;
-pub static box_field_drop_glue: uint = 1u;
-pub static box_field_body: uint = 4u;
+pub const box_field_refcnt: uint = 0u;
+pub const box_field_drop_glue: uint = 1u;
+pub const box_field_body: uint = 4u;
 
-pub static tydesc_field_visit_glue: uint = 3u;
+pub const tydesc_field_visit_glue: uint = 3u;
 
 // The two halves of a closure: code and environment.
-pub static fn_field_code: uint = 0u;
-pub static fn_field_box: uint = 1u;
+pub const fn_field_code: uint = 0u;
+pub const fn_field_box: uint = 1u;
 
 // The two fields of a trait object/trait instance: vtable and box.
 // The vtable contains the type descriptor as first element.
-pub static trt_field_box: uint = 0u;
-pub static trt_field_vtable: uint = 1u;
+pub const trt_field_box: uint = 0u;
+pub const trt_field_vtable: uint = 1u;
 
-pub static slice_elt_base: uint = 0u;
-pub static slice_elt_len: uint = 1u;
+pub const slice_elt_base: uint = 0u;
+pub const slice_elt_len: uint = 1u;

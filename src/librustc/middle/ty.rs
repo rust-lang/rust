@@ -68,7 +68,7 @@ use std::collections::enum_set::{EnumSet, CLike};
 
 pub type Disr = u64;
 
-pub static INITIAL_DISCRIMINANT_VALUE: Disr = 0;
+pub const INITIAL_DISCRIMINANT_VALUE: Disr = 0;
 
 // Data types
 
@@ -918,7 +918,7 @@ mod primitives {
         flags: super::has_ty_err as uint,
     };
 
-    pub static LAST_PRIMITIVE_ID: uint = 18;
+    pub const LAST_PRIMITIVE_ID: uint = 18;
 }
 
 // NB: If you change this, you'll probably want to change the corresponding
@@ -2200,7 +2200,7 @@ macro_rules! def_type_content_sets(
             use middle::ty::TypeContents;
             $(
                 #[allow(non_uppercase_statics)]
-                pub static $name: TypeContents = TypeContents { bits: $bits };
+                pub const $name: TypeContents = TypeContents { bits: $bits };
              )+
         }
     }
