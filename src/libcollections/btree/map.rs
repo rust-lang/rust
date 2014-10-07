@@ -45,14 +45,14 @@ use ringbuf::RingBuf;
 /// searches. However, this does mean that searches will have to do *more* comparisons on average.
 /// The precise number of comparisons depends on the node search strategy used. For optimal cache
 /// effeciency, one could search the nodes linearly. For optimal comparisons, one could search
-/// search the node using binary search. As a compromise, one could also perform a linear search
+/// the node using binary search. As a compromise, one could also perform a linear search
 /// that initially only checks every i<sup>th</sup> element for some choice of i.
 ///
 /// Currently, our implementation simply performs naive linear search. This provides excellent
 /// performance on *small* nodes of elements which are cheap to compare. However in the future we
 /// would like to further explore choosing the optimal search strategy based on the choice of B,
 /// and possibly other factors. Using linear search, searching for a random element is expected
-/// to take O(Blog<sub>B</sub>n) comparisons, which is generally worse than a BST. In practice,
+/// to take O(B log<sub>B</sub>n) comparisons, which is generally worse than a BST. In practice,
 /// however, performance is excellent. `BTreeMap` is able to readily outperform `TreeMap` under
 /// many workloads, and is competetive where it doesn't. BTreeMap also generally *scales* better
 /// than TreeMap, making it more appropriate for large datasets.
@@ -68,7 +68,7 @@ use ringbuf::RingBuf;
 /// it's possible to force one to occur at every single level of the tree in a single insertion or
 /// deletion. In fact, a malicious or otherwise unlucky sequence of insertions and deletions can
 /// force this degenerate behaviour to occur on every operation. While the total amount of work
-/// done on each operation isn't *catastrophic*, and *is* still bounded by O(Blog<sub>B</sub>n),
+/// done on each operation isn't *catastrophic*, and *is* still bounded by O(B log<sub>B</sub>n),
 /// it is certainly much slower when it does.
 #[deriving(Clone)]
 pub struct BTreeMap<K, V> {
