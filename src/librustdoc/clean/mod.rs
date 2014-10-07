@@ -300,6 +300,7 @@ pub enum ItemEnum {
     ModuleItem(Module),
     TypedefItem(Typedef),
     StaticItem(Static),
+    ConstantItem(Constant),
     TraitItem(Trait),
     ImplItem(Impl),
     /// `use` and `extern crate`
@@ -347,6 +348,7 @@ impl Clean<Item> for doctree::Module {
             self.mods.clean(cx),
             self.typedefs.clean(cx),
             self.statics.clean(cx),
+            self.constants.clean(cx),
             self.traits.clean(cx),
             self.impls.clean(cx),
             self.view_items.clean(cx).into_iter()
@@ -1735,6 +1737,29 @@ impl Clean<Item> for doctree::Static {
             inner: StaticItem(Static {
                 type_: self.type_.clean(cx),
                 mutability: self.mutability.clean(cx),
+                expr: self.expr.span.to_src(cx),
+            }),
+        }
+    }
+}
+
+#[deriving(Clone, Encodable, Decodable)]
+pub struct Constant {
+    pub type_: Type,
+    pub expr: String,
+}
+
+impl Clean<Item> for doctree::Constant {
+    fn clean(&self, cx: &DocContext) -> Item {
+        Item {
+            name: Some(self.name.clean(cx)),
+            attrs: self.attrs.clean(cx),
+            source: self.whence.clean(cx),
+            def_id: ast_util::local_def(self.id),
+            visibility: self.vis.clean(cx),
+            stability: self.stab.clean(cx),
+            inner: ConstantItem(Constant {
+                type_: self.type_.clean(cx),
                 expr: self.expr.span.to_src(cx),
             }),
         }

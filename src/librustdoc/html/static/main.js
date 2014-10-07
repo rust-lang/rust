@@ -569,7 +569,9 @@
                          "ffi",
                          "ffs",
                          "macro",
-                         "primitive"];
+                         "primitive",
+                         "associatedtype",
+                         "constant"];
 
         function itemTypeFromName(typename) {
             for (var i = 0; i < itemTypes.length; ++i) {

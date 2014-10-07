@@ -134,7 +134,8 @@ impl<'a> fold::DocFolder for Stripper<'a> {
             clean::StructItem(..) | clean::EnumItem(..) |
             clean::TraitItem(..) | clean::FunctionItem(..) |
             clean::VariantItem(..) | clean::MethodItem(..) |
-            clean::ForeignFunctionItem(..) | clean::ForeignStaticItem(..) => {
+            clean::ForeignFunctionItem(..) | clean::ForeignStaticItem(..) |
+            clean::ConstantItem(..) => {
                 if ast_util::is_local(i.def_id) &&
                    !self.exported_items.contains(&i.def_id.node) {
                     return None;

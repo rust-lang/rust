@@ -308,6 +308,19 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                 };
                 om.statics.push(s);
             },
+            ast::ItemConst(ref ty, ref exp) => {
+                let s = Constant {
+                    type_: ty.clone(),
+                    expr: exp.clone(),
+                    id: item.id,
+                    name: name,
+                    attrs: item.attrs.clone(),
+                    whence: item.span,
+                    vis: item.vis,
+                    stab: self.stability(item.id),
+                };
+                om.constants.push(s);
+            },
             ast::ItemTrait(ref gen, _, ref b, ref items) => {
                 let t = Trait {
                     name: name,

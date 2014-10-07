@@ -39,6 +39,7 @@ pub enum ItemType {
     Macro           = 15,
     Primitive       = 16,
     AssociatedType  = 17,
+    Constant        = 18,
 }
 
 impl ItemType {
@@ -62,6 +63,7 @@ impl ItemType {
             Macro           => "macro",
             Primitive       => "primitive",
             AssociatedType  => "associatedtype",
+            Constant        => "constant",
         }
     }
 }
@@ -86,6 +88,7 @@ pub fn shortty(item: &clean::Item) -> ItemType {
         clean::FunctionItem(..)        => Function,
         clean::TypedefItem(..)         => Typedef,
         clean::StaticItem(..)          => Static,
+        clean::ConstantItem(..)        => Constant,
         clean::TraitItem(..)           => Trait,
         clean::ImplItem(..)            => Impl,
         clean::ViewItemItem(..)        => ViewItem,
