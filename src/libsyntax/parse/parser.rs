@@ -4371,6 +4371,13 @@ impl<'a> Parser<'a> {
         (ident, ItemFn(decl, fn_style, abi, generics, body), Some(inner_attrs))
     }
 
+    /// Parse a method in a trait impl
+    pub fn parse_method_with_outer_attributes(&mut self) -> P<Method> {
+        let attrs = self.parse_outer_attributes();
+        let visa = self.parse_visibility();
+        self.parse_method(attrs, visa)
+    }
+
     /// Parse a method in a trait impl, starting with `attrs` attributes.
     pub fn parse_method(&mut self,
                         attrs: Vec<Attribute>,
