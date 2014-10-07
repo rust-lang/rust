@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use common::Config;
-use common::{CompileFail, Pretty, RunFail, RunPass, DebugInfoGdb};
+use common::{CompileFail, Pretty, RunFail, RunPass, RunPassValgrind, DebugInfoGdb};
 use common::{Codegen, DebugInfoLldb};
 use errors;
 use header::TestProps;
@@ -35,7 +35,6 @@ use std::time::Duration;
 use test::MetricMap;
 
 pub fn run(config: Config, testfile: String) {
-
     match config.target.as_slice() {
 
         "arm-linux-androideabi" => {
@@ -64,6 +63,7 @@ pub fn run_metrics(config: Config, testfile: String, mm: &mut MetricMap) {
       CompileFail => run_cfail_test(&config, &props, &testfile),
       RunFail => run_rfail_test(&config, &props, &testfile),
       RunPass => run_rpass_test(&config, &props, &testfile),
+      RunPassValgrind => run_valgrind_test(&config, &props, &testfile),
       Pretty => run_pretty_test(&config, &props, &testfile),
       DebugInfoGdb => run_debuginfo_gdb_test(&config, &props, &testfile),
       DebugInfoLldb => run_debuginfo_lldb_test(&config, &props, &testfile),
@@ -161,6 +161,27 @@ fn run_rpass_test(config: &Config, props: &TestProps, testfile: &Path) {
         if !proc_res.status.success() {
             fatal_proc_rec("jit failed!", &proc_res);
         }
+    }
+}
+
+fn run_valgrind_test(config: &Config, props: &TestProps, testfile: &Path) {
+    if config.valgrind_path.is_none() {
+        return run_rpass_test(config, props, testfile);
+    }
+
+    let mut proc_res = compile_test(config, props, testfile);
+
+    if !proc_res.status.success() {
+        fatal_proc_rec("compilation failed!", &proc_res);
+    }
+
+    println!("running valgrind");
+    let mut new_config = config.clone();
+    new_config.runtool = new_config.valgrind_path.clone();
+    proc_res = exec_compiled_test(&new_config, props, testfile);
+
+    if !proc_res.status.success() {
+        fatal_proc_rec("test run failed!", &proc_res);
     }
 }
 

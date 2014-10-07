@@ -1,4 +1,4 @@
-# Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+# Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 # file at the top-level directory of this distribution and at
 # http://rust-lang.org/COPYRIGHT.
 #
@@ -184,12 +184,12 @@ check-notidy: cleantmptestlogs cleantestlibs all check-stage2
 # A slightly smaller set of tests for smoke testing.
 check-lite: cleantestlibs cleantmptestlogs \
 	$(foreach crate,$(TEST_TARGET_CRATES),check-stage2-$(crate)) \
-	check-stage2-rpass \
+	check-stage2-rpass check-stage2-rpass-valgrind \
 	check-stage2-rfail check-stage2-cfail check-stage2-rmake
 	$(Q)$(CFG_PYTHON) $(S)src/etc/check-summary.py tmp/*.log
 
 # Only check the 'reference' tests: rpass/cfail/rfail/rmake.
-check-ref: cleantestlibs cleantmptestlogs check-stage2-rpass \
+check-ref: cleantestlibs cleantmptestlogs check-stage2-rpass check-stage2-rpass-valgrind \
 	check-stage2-rfail check-stage2-cfail check-stage2-rmake
 	$(Q)$(CFG_PYTHON) $(S)src/etc/check-summary.py tmp/*.log
 
@@ -491,6 +491,8 @@ $(foreach host,$(CFG_HOST), \
 
 RPASS_RC := $(wildcard $(S)src/test/run-pass/*.rc)
 RPASS_RS := $(wildcard $(S)src/test/run-pass/*.rs)
+RPASS_VALGRIND_RC := $(wildcard $(S)src/test/run-pass-valgrind/*.rc)
+RPASS_VALGRIND_RS := $(wildcard $(S)src/test/run-pass-valgrind/*.rs)
 RPASS_FULL_RC := $(wildcard $(S)src/test/run-pass-fulldeps/*.rc)
 RPASS_FULL_RS := $(wildcard $(S)src/test/run-pass-fulldeps/*.rs)
 CFAIL_FULL_RC := $(wildcard $(S)src/test/compile-fail-fulldeps/*.rc)
@@ -511,6 +513,7 @@ CODEGEN_CC := $(wildcard $(S)src/test/codegen/*.cc)
 PERF_RS := $(wildcard $(S)src/test/bench/*.rs)
 
 RPASS_TESTS := $(RPASS_RC) $(RPASS_RS)
+RPASS_VALGRIND_TESTS := $(RPASS_VALGRIND_RC) $(RPASS_VALGRIND_RS)
 RPASS_FULL_TESTS := $(RPASS_FULL_RC) $(RPASS_FULL_RS)
 CFAIL_FULL_TESTS := $(CFAIL_FULL_RC) $(CFAIL_FULL_RS)
 RFAIL_TESTS := $(RFAIL_RC) $(RFAIL_RS)
@@ -526,6 +529,14 @@ CTEST_SRC_BASE_rpass = run-pass
 CTEST_BUILD_BASE_rpass = run-pass
 CTEST_MODE_rpass = run-pass
 CTEST_RUNTOOL_rpass = $(CTEST_RUNTOOL)
+
+CTEST_SRC_BASE_rpass-valgrind = run-pass-valgrind
+CTEST_BUILD_BASE_rpass-valgrind = run-pass-valgrind
+CTEST_MODE_rpass-valgrind = run-pass-valgrind
+CTEST_RUNTOOL_rpass-valgrind = $(CTEST_RUNTOOL)
+ifdef VALGRIND_PATH
+CTEST_TESTARGS += --valgrind-path "$(VALGRIND_PATH)"
+endif
 
 CTEST_SRC_BASE_rpass-full = run-pass-fulldeps
 CTEST_BUILD_BASE_rpass-full = run-pass-fulldeps
@@ -622,7 +633,7 @@ TEST_SREQ$(1)_T_$(2)_H_$(3) = \
 # remove directive, if present, from CFG_RUSTC_FLAGS (issue #7898).
 CTEST_RUSTC_FLAGS := $$(subst --cfg ndebug,,$$(CFG_RUSTC_FLAGS))
 
-# The tests can not be optimized while the rest of the compiler is optimized, so
+# The tests cannot be optimized while the rest of the compiler is optimized, so
 # filter out the optimization (if any) from rustc and then figure out if we need
 # to be optimized
 CTEST_RUSTC_FLAGS := $$(subst -O,,$$(CTEST_RUSTC_FLAGS))
@@ -633,6 +644,7 @@ endif
 # parallelization internally, so rustc's default codegen-units=2 will actually
 # slow things down.
 CTEST_RUSTC_FLAGS += -C codegen-units=1
+
 
 CTEST_COMMON_ARGS$(1)-T-$(2)-H-$(3) := \
 		--compile-lib-path $$(HLIB$(1)_H_$(3)) \
@@ -655,6 +667,7 @@ CTEST_COMMON_ARGS$(1)-T-$(2)-H-$(3) := \
         $$(CTEST_TESTARGS)
 
 CTEST_DEPS_rpass_$(1)-T-$(2)-H-$(3) = $$(RPASS_TESTS)
+CTEST_DEPS_rpass-valgrind_$(1)-T-$(2)-H-$(3) = $$(RPASS_VALGRIND_TESTS)
 CTEST_DEPS_rpass-full_$(1)-T-$(2)-H-$(3) = $$(RPASS_FULL_TESTS) $$(CSREQ$(1)_T_$(3)_H_$(3)) $$(SREQ$(1)_T_$(2)_H_$(3))
 CTEST_DEPS_cfail-full_$(1)-T-$(2)-H-$(3) = $$(CFAIL_FULL_TESTS) $$(CSREQ$(1)_T_$(3)_H_$(3)) $$(SREQ$(1)_T_$(2)_H_$(3))
 CTEST_DEPS_rfail_$(1)-T-$(2)-H-$(3) = $$(RFAIL_TESTS)
@@ -726,7 +739,7 @@ endif
 
 endef
 
-CTEST_NAMES = rpass rpass-full cfail-full rfail cfail bench perf debuginfo-gdb debuginfo-lldb codegen
+CTEST_NAMES = rpass rpass-valgrind rpass-full cfail-full rfail cfail bench perf debuginfo-gdb debuginfo-lldb codegen
 
 $(foreach host,$(CFG_HOST), \
  $(eval $(foreach target,$(CFG_TARGET), \
@@ -895,6 +908,7 @@ TEST_GROUPS = \
 	$(foreach crate,$(TEST_CRATES),$(crate)) \
 	$(foreach crate,$(TEST_DOC_CRATES),doc-crate-$(crate)) \
 	rpass \
+    rpass-valgrind \
 	rpass-full \
 	cfail-full \
 	rfail \

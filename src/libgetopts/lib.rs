@@ -804,7 +804,7 @@ pub fn short_usage(program_name: &str, opts: &[OptGroup]) -> String {
 /// whitespace removed, and are only cut at whitespace boundaries.
 ///
 /// Note: Function was moved here from `std::str` because this module is the only place that
-/// uses it, and because it was to specific for a general string function.
+/// uses it, and because it was too specific for a general string function.
 ///
 /// #Failure:
 ///
