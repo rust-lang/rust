@@ -1026,7 +1026,7 @@ impl<'a> State<'a> {
                     _ => Ok(())
                 }
             }
-            ast::TTSeq(_, ref tts, ref sep, zerok) => {
+            ast::TTSeq(_, ref tts, ref sep, reps) => {
                 try!(word(&mut self.s, "$("));
                 for tt_elt in (*tts).iter() {
                     try!(self.print_tt(tt_elt));
@@ -1039,7 +1039,12 @@ impl<'a> State<'a> {
                     }
                     None => ()
                 }
-                word(&mut self.s, if zerok { "*" } else { "+" })
+                let rchar = match reps {
+                    ast::ZeroOrOne => "?",
+                    ast::OneOrMore => "+",
+                    ast::ZeroOrMore => "*"
+                };
+                word(&mut self.s, rchar)
             }
             ast::TTNonterminal(_, name) => {
                 try!(word(&mut self.s, "$"));
