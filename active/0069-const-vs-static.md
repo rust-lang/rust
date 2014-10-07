@@ -139,6 +139,8 @@ They may not be placed in read-only memory.
 
 ## Globals referencing Globals
 
+### const => const
+
 It is possible to create a `const` or a `static` which references another
 `const` or another `static` by its address. For example:
 
@@ -163,9 +165,36 @@ will disallow `SomeStruct` from containing an `UnsafeCell` (interior
 mutability). In general a constant A cannot reference the address of another
 constant B if B contains an `UnsafeCell` in its interior.
 
+### const => static
+
+It is illegal for a constant to refer to another static. A constant represents a
+*constant* value while a static represents a memory location, and this sort of
+reference is difficult to reconcile in light of their definitions.
+
+### static => const
+
 If a `static` references the address of a `const`, then a similar rewriting
 happens, but there is no interior mutability restriction (only a `Sync`
 restriction).
+
+### static => static
+
+It is illegal for a `static` to reference another `static` by value. It is
+required that all references be borrowed. If this were not required, then this
+sort of reference would require that the static being referenced fall into one
+of two categories:
+
+1. It's an initializer pattern. This is the purpose of `const`, however.
+2. The values are kept in sync. This is currently technically infeasible.
+
+Instead of falling into one of these two categories, the compiler will instead
+disallow any references to statics by value (from other statics).
+
+## Patterns
+
+Today, a `static` is allowed to be used in pattern matching. With the
+introduction of `const`, however, a `static` will be forbidden from appearning
+in a pattern match, and instead only a `const` can appear.
 
 # Drawbacks
 
@@ -194,6 +223,11 @@ being, and create `const` declarations after Rust 1.0 is released.
 
 - Should we permit `static` variables whose type is not `Sync`, but
   simply make access to them unsafe?
+
+- Should we permit `static` variables whose type is not `Sync`, but whose
+  initializer value does not actually contain interior mutability? For example,
+  a `static` of `Option<UnsafeCell<uint>>` with the initializer of `None` is in
+  theory safe.
 
 - How hard are the envisioned extensions to implement? If easy, they
   would be nice to have. If hard, they can wait.
