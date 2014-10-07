@@ -62,6 +62,13 @@ pub enum DebugInfoLevel {
     FullDebugInfo,
 }
 
+#[deriving(Clone, PartialEq)]
+pub enum AsmSyntax {
+    AsmDefault,
+    AsmAtt,
+    AsmIntel,
+}
+
 #[deriving(Clone)]
 pub struct Options {
     // The crate config requested for the session, which may be combined
@@ -101,7 +108,10 @@ pub struct Options {
     /// An optional name to use as the crate for std during std injection,
     /// written `extern crate std = "name"`. Default to "std". Used by
     /// out-of-tree drivers.
-    pub alt_std_name: Option<String>
+    pub alt_std_name: Option<String>,
+    // Syntax to use when emitting asm
+    pub syntax: AsmSyntax,
+
 }
 
 /// Some reasonable defaults
@@ -130,6 +140,7 @@ pub fn basic_options() -> Options {
         externs: HashMap::new(),
         crate_name: None,
         alt_std_name: None,
+        syntax: AsmDefault,
     }
 }
 
@@ -623,6 +634,10 @@ pub fn optgroups() -> Vec<getopts::OptGroup> {
             auto   = colorize, if output goes to a tty (default);
             always = always colorize output;
             never  = never colorize output", "auto|always|never"),
+        optopt("", "asm-syntax", "Configure syntax to use for asm:
+            default = use the default syntax for the platform;
+            att = use at&t syntax if available;
+            intel  = use intel syntax if available", "default|att|intel"),
         optmulti("", "extern", "Specify where an external rust library is located",
                  "NAME=PATH"),
     )
@@ -796,6 +811,20 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
         }
     };
 
+    let syntax = match matches.opt_str("asm-syntax").as_ref().map(|s| s.as_slice()) {
+        Some("default") => AsmDefault,
+        Some("att") => AsmAtt,
+        Some("intel") => AsmIntel,
+
+        None => AsmDefault,
+
+        Some(arg) => {
+            early_error(format!("argument for --asm-syntax must be default, att \
+                                 or intel (instead was `{}`)",
+                                arg).as_slice())
+        }
+    };
+
     let mut externs = HashMap::new();
     for arg in matches.opt_strs("extern").iter() {
         let mut parts = arg.as_slice().splitn(1, '=');
@@ -839,7 +868,8 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
         color: color,
         externs: externs,
         crate_name: crate_name,
-        alt_std_name: None
+        alt_std_name: None,
+        syntax: syntax,
     }
 }
 
