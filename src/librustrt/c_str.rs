@@ -315,6 +315,11 @@ impl fmt::Show for CString {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         String::from_utf8_lossy(self.as_bytes_no_nul()).fmt(f)
     }
+
+    #[inline]
+    fn formatter_len_hint(&self) -> Option<uint> {
+        Some(self.len())
+    }
 }
 
 /// A generic trait for converting a value to a CString.

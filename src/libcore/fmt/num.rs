@@ -14,10 +14,13 @@
 
 #![allow(unsigned_negate)]
 
+use clone::Clone;
 use collections::Collection;
 use fmt;
 use iter::DoubleEndedIterator;
-use num::{Int, cast, zero};
+use mem::size_of;
+use num::{Int, Signed, cast, zero};
+use option::{Option, Some};
 use slice::{ImmutableSlice, MutableSlice};
 
 /// A type that represents a specific radix
@@ -146,13 +149,54 @@ pub fn radix<T>(x: T, base: u8) -> RadixFmt<T, Radix> {
     RadixFmt(x, Radix::new(base))
 }
 
-macro_rules! radix_fmt {
-    ($T:ty as $U:ty, $fmt:ident) => {
-        impl fmt::Show for RadixFmt<$T, Radix> {
+macro_rules! int_base_hint {
+    ($Trait:ident for $T:ident as $U:ident -> $Radix:ident; $log2log2base:expr, $abs:ident) => {
+        impl fmt::$Trait for $T {
             fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-                match *self { RadixFmt(ref x, radix) => radix.$fmt(*x as $U, f) }
+                $Radix.fmt_int(*self as $U, f)
+            }
+
+            fn formatter_len_hint(&self) -> Option<uint> {
+                let num = self.$abs();
+                let width = size_of::<$T>() * 8;
+                // Approximate log_2 of the target base.
+                let log2base = 1 << $log2log2base;
+
+                // Get the number of digits in the target base.
+                let binary_digits = width - (num | log2base as $T).leading_zeros();
+                Some(binary_digits / log2base)
             }
         }
+    };
+    // Use `clone` on uints as a noop method in place of abs.
+    ($Trait:ident for $T:ident as $U:ident -> $Radix:ident; $log2log2base:expr) => {
+        int_base_hint!($Trait for $T as $U -> $Radix; $log2log2base, clone)
+    }
+}
+macro_rules! radix_fmt {
+    ($T:ty as $U:ty, $fmt:ident, $abs:ident) => {
+        impl fmt::Show for RadixFmt<$T, Radix> {
+            fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+                let &RadixFmt(x, radix) = self;
+                radix.$fmt(x as $U, f)
+            }
+
+            fn formatter_len_hint(&self) -> Option<uint> {
+                let &RadixFmt(num, radix) = self;
+                let num = num.$abs();
+                let width = size_of::<$T>() * 8;
+                // Approximate log_2 of the target base.
+                let log2base = 7 - radix.base().leading_zeros();
+
+                // Get the number of digits in the target base.
+                let binary_digits = width - (num | log2base as $T).leading_zeros();
+                Some(binary_digits / log2base + 1)
+            }
+        }
+    };
+    // Use `clone` on uints as a noop method in place of abs.
+    ($T:ty as $U:ty, $fmt:ident) => {
+        radix_fmt!($T as $U, $fmt, clone)
     }
 }
 macro_rules! int_base {
@@ -166,20 +210,20 @@ macro_rules! int_base {
 }
 macro_rules! integer {
     ($Int:ident, $Uint:ident) => {
-        int_base!(Show     for $Int as $Int   -> Decimal)
         int_base!(Signed   for $Int as $Int   -> Decimal)
         int_base!(Binary   for $Int as $Uint  -> Binary)
         int_base!(Octal    for $Int as $Uint  -> Octal)
         int_base!(LowerHex for $Int as $Uint  -> LowerHex)
         int_base!(UpperHex for $Int as $Uint  -> UpperHex)
-        radix_fmt!($Int as $Int, fmt_int)
+        int_base_hint!(Show for $Int as $Int -> Decimal; 1, abs)
+        radix_fmt!($Int as $Int, fmt_int, abs)
 
-        int_base!(Show     for $Uint as $Uint -> Decimal)
         int_base!(Unsigned for $Uint as $Uint -> Decimal)
         int_base!(Binary   for $Uint as $Uint -> Binary)
         int_base!(Octal    for $Uint as $Uint -> Octal)
         int_base!(LowerHex for $Uint as $Uint -> LowerHex)
         int_base!(UpperHex for $Uint as $Uint -> UpperHex)
+        int_base_hint!(Show for $Uint as $Uint -> Decimal; 1)
         radix_fmt!($Uint as $Uint, fmt_int)
     }
 }

@@ -182,6 +182,10 @@ impl<'a> fmt::Show for Ascii {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         (self.chr as char).fmt(f)
     }
+
+    fn formatter_len_hint(&self) -> Option<uint> {
+        Some(1)
+    }
 }
 
 /// Trait for converting into an ascii type.

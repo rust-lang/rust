@@ -16,6 +16,8 @@ The `ToString` trait for converting to strings
 
 #![experimental]
 
+use io::Writer;
+use io;
 use fmt;
 use string::String;
 
@@ -33,7 +35,9 @@ pub trait IntoStr {
 
 impl<T: fmt::Show> ToString for T {
     fn to_string(&self) -> String {
-        format!("{}", *self)
+        let mut output = io::MemWriter::with_capacity(self.formatter_len_hint().unwrap_or(128));
+        let _ = write!(&mut output, "{}", *self);
+        String::from_utf8(output.unwrap()).unwrap()
     }
 }
 
