@@ -14,8 +14,6 @@ use rustc::lint;
 use rustc::back::link;
 
 use syntax::{ast, ast_map, codemap, diagnostic};
-use syntax::parse::token;
-use syntax::ptr::P;
 
 use std::cell::RefCell;
 use std::os;
@@ -95,6 +93,7 @@ pub fn run_core(libs: Vec<Path>, cfgs: Vec<String>, externs: Externs,
         lint_opts: vec!((warning_lint, lint::Allow)),
         externs: externs,
         target_triple: triple.unwrap_or(driver::host_triple().to_string()),
+        cfg: config::parse_cfgspecs(cfgs),
         ..config::basic_options().clone()
     };
 
@@ -108,11 +107,7 @@ pub fn run_core(libs: Vec<Path>, cfgs: Vec<String>, externs: Externs,
                                        Some(cpath.clone()),
                                        span_diagnostic_handler);
 
-    let mut cfg = config::build_configuration(&sess);
-    for cfg_ in cfgs.into_iter() {
-        let cfg_ = token::intern_and_get_ident(cfg_.as_slice());
-        cfg.push(P(codemap::dummy_spanned(ast::MetaWord(cfg_))));
-    }
+    let cfg = config::build_configuration(&sess);
 
     let krate = driver::phase_1_parse_input(&sess, cfg, &input);
 
