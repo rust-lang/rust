@@ -8,8 +8,8 @@ Version 0.12.0 (October 2014)
     * The introductory documentation (now called The Rust Guide) has
       been completely rewritten, as have a number of supplementary
       guides.
-    * Rust's package manager, Cargo, continues to improve and is,
-      reportedly, 'awesome'.
+    * Rust's package manager, Cargo, continues to improve and is
+      sometimes considered to be quite awesome.
     * Many API's in `std` have been reviewed and updated for
       consistency with the in-development Rust coding
       guidelines. The standard library documentation tracks
