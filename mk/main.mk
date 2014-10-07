@@ -174,6 +174,8 @@ else
   CFG_VALGRIND_COMPILE :=
 endif
 
+VALGRIND_PATH :=$(CFG_VALGRIND)
+
 ifdef CFG_ENABLE_VALGRIND
   $(info cfg: enabling valgrind (CFG_ENABLE_VALGRIND))
 else
@@ -182,6 +184,7 @@ endif
 ifdef CFG_BAD_VALGRIND
   $(info cfg: disabling valgrind due to its unreliability on this platform)
   CFG_VALGRIND :=
+  VALGRIND_PATH :=
 endif
 
 
