@@ -5,9 +5,11 @@
 # Summary
 
 When a struct type `S` has no fields (a so-called "empty struct"),
-allow it to be defined via either `struct S;` or `struct S {}`, and
-allow instances of it to be constructed and pattern-matched via either
-`S` or `S {}`.
+allow it to be defined via either `struct S;` or `struct S {}`.
+When defined via `struct S;`, allow instances of it to be constructed
+and pattern-matched via either `S` or `S {}`.
+When defined via `struct S {}`, require instances to be constructed
+and pattern-matched solely via `S {}`.
 
 # Motivation
 
@@ -46,7 +48,7 @@ and non-empty, and the associated revisions of changing removing and
 adding curly braces is aggravating (both in effort revising the code,
 and also in extra noise introduced into commit histories).
 
-This RFC proposes going back to the state we were in circa February
+This RFC proposes an approach similar to the one we used circa February
 2013, when both `S0` and `S0 { }` were accepted syntaxes for an empty
 struct.  The parsing ambiguity that motivated removing support for
 `S0 { }` is no longer present (see the [Ancient History] appendix).
@@ -55,34 +57,43 @@ in the language now.
 
 # Detailed design
 
- * Allow `S` to be defined via either `struct S;` (as today)
-   or `struct S {}` ("new")
+There are two kinds of empty structs: Braced empty structs and
+flexible empty structs.  Flexible empty structs are a slight
+generalization of the structs that we have today.
 
- * Allow instances of `S` to be constructed via either the
-   expression `S` (as today) or the expression `S {}` ("new")
+Flexible empty structs are defined via the syntax `struct S;` (as today).
 
- * Allow instances of `S` to be pattern matched via either the
-   pattern `S` (as today) or the pattern `S {}` ("new").
+Braced empty structs are defined via the syntax `struct S { }` ("new").
 
-Revise the grammar of struct item definitions so that one can write
-either `struct S;` or `struct S { }`.  The two forms are synonymous.
-The first is preferred with respect to coding style; for example, the
-first is emitted by the pretty printer.
+Both braced and flexible empty structs can be constructed via the
+expression syntax `S { }` ("new").  Flexible empty structs, as today,
+can also be constructed via the expression syntax `S`.
 
-Revise the grammar of expressions and patterns so that, when `S` is an
-empty struct, one can write either `S` or `S { }`.  The two forms are
-synonymous.  Again, the first is preferred with respect to coding
-style, and is emitted by the pretty printer.
+Both braced and flexible empty structs can be pattern-matched via the
+pattern syntax `S { }` ("new").  Flexible empty structs, as today,
+can also be pattern-matched via the pattern syntax `S`.
 
-The format of the definiton has no bearing on the format of the
-expressions or pattern forms; either syntax can be used for any
-empty-struct, regardless of how it is defined.
+Braced empty struct definitions solely affect the type namespace,
+just like normal non-empty structs.
+Flexible empty structs affect both the type and value namespaces.
+
+As a matter of style, using braceless syntax is preferred for
+constructing and pattern-matching flexible empty structs.  For
+example, pretty-printer tools are encouraged to emit braceless forms
+if they know that the corresponding struct is a flexible empty struct.
+(Note that pretty printers that handle incomplete fragments may not
+have such information available.)
 
 There is no ambiguity introduced by this change, because we have
 already introduced a restriction to the Rust grammar to force the use
 of parentheses to disambiguate struct literals in such contexts.  (See
 [Rust RFC 25]).
 
+The expectation is that when migrating code from a flexible empty
+struct to a non-empty struct, it can start by first migrating to a
+braced empty struct (and then have a tool indicate all of the
+locations where braces need to be added); after that step has been
+completed, one can then take the next step of adding the actual field.
 
 # Drawbacks
 
@@ -119,6 +130,32 @@ Alternative 2: Status quo.  Macros and code-generators in general will
 need to handle empty structs as a special case.  We may continue
 hitting bugs like [CFG parse bug].  Some users will be annoyed but
 most will probably cope.
+
+## Synonymous in all contexts
+
+Alternative 3: An earlier version of this RFC proposed having `struct
+S;` be entirely synonymous with `struct S { }`, and the expression
+`S { }` be synonymous with `S`.
+
+This was deemed problematic, since it would mean that `S { }` would
+put an entry into both the type and value namespaces, while
+`S { x: int }` would only put an entry into the type namespace.
+Thus the current draft of the RFC proposes the "flexible" versus
+"braced" distinction for empty structs.
+
+## Never synonymous
+
+Alternative 4: Treat `struct S;` as requiring `S` at the expression
+and pattern sites, and `struct S { }` as requiring `S { }` at the
+expression and pattern sites.
+
+This in some ways follows a principle of least surprise, but it also
+is really hard to justify having both syntaxes available for empty
+structs with no flexibility about how they are used.  (Note again that
+one would have the option of choosing between
+`enum S { S }`, `struct S;`, or `struct S { }`, each with their own
+idiosyncrasies about whether you have to write `S` or `S { }`.)
+I would rather adopt "Always Require Braces" than "Never Synonymous"
 
 ## Empty Tuple Structs
 
