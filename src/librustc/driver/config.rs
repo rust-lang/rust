@@ -630,7 +630,7 @@ pub fn optgroups() -> Vec<getopts::OptGroup> {
 
 
 // Convert strings provided as --cfg [cfgspec] into a crate_cfg
-fn parse_cfgspecs(cfgspecs: Vec<String> ) -> ast::CrateConfig {
+pub fn parse_cfgspecs(cfgspecs: Vec<String> ) -> ast::CrateConfig {
     cfgspecs.into_iter().map(|s| {
         parse::parse_meta_from_source_str("cfgspec".to_string(),
                                           s.to_string(),
