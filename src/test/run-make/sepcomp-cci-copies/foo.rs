@@ -9,10 +9,10 @@
 // except according to those terms.
 
 extern crate cci_lib;
-use cci_lib::{cci_fn, CCI_STATIC};
+use cci_lib::{cci_fn};
 
 fn call1() -> uint {
-    cci_fn() + CCI_STATIC
+    cci_fn()
 }
 
 mod a {
@@ -23,9 +23,8 @@ mod a {
 }
 
 mod b {
-    use cci_lib::CCI_STATIC;
     pub fn call3() -> uint {
-        CCI_STATIC
+        0
     }
 }
 

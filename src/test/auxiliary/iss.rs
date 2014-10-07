@@ -17,7 +17,7 @@ pub struct C<'a> {
 }
 
 fn no_op() { }
-pub static D : C<'static> = C {
+pub const D : C<'static> = C {
     k: no_op
 };
 

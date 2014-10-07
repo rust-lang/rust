@@ -11,7 +11,7 @@
 static FOO: &'static [u8] = bytes!("hello, world");
 
 pub fn main() {
-    let b = match true {
+    let b: &'static [u8] = match true {
         true => bytes!("test"),
         false => unreachable!()
     };

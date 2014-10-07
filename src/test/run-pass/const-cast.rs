@@ -12,9 +12,9 @@ extern crate libc;
 
 extern fn foo() {}
 
-static x: extern "C" fn() = foo;
+const x: extern "C" fn() = foo;
 static y: *const libc::c_void = x as *const libc::c_void;
-static a: &'static int = &10;
+const a: &'static int = &10;
 static b: *const int = a as *const int;
 
 pub fn main() {

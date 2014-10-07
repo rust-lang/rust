@@ -21,7 +21,7 @@ mod private {
     pub struct P {
         p: i32,
     }
-    pub static THREE: P = P { p: 3 };
+    pub const THREE: P = P { p: 3 };
 }
 
 pub static A: S = S { p: private::THREE };

@@ -10,7 +10,7 @@
 
 use std::u8;
 
-static NUM: uint = u8::BITS as uint;
+const NUM: uint = u8::BITS as uint;
 
 struct MyStruct { nums: [uint, ..8] }
 

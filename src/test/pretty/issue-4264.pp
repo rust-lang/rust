@@ -25,7 +25,7 @@ use std::prelude::*;
 pub fn foo(_: [int, ..(3 as uint)]) { }
 
 pub fn bar() {
-    static FOO: uint = ((5u as uint) - (4u as uint) as uint);
+    const FOO: uint = ((5u as uint) - (4u as uint) as uint);
     let _: [(), ..(FOO as uint)] = ([(() as ())] as [(), ..1]);
 
     let _: [(), ..(1u as uint)] = ([(() as ())] as [(), ..1]);

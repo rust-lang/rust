@@ -8,12 +8,19 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-const s: int = 1;
-const e: int = 42;
+// aux-build:issue-17718-const-privacy.rs
 
-pub fn main() {
-    match 7 {
-        s...e => (),
-        _ => (),
-    }
+extern crate "issue-17718-const-privacy" as other;
+
+use a::B; //~ ERROR: const `B` is private
+use other::{
+    FOO,
+    BAR, //~ ERROR: const `BAR` is private
+    FOO2,
+};
+
+mod a {
+    const B: uint = 3;
 }
+
+fn main() {}

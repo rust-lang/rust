@@ -22,10 +22,10 @@ impl cmp::PartialEq for foo {
     fn ne(&self, other: &foo) -> bool { !(*self).eq(other) }
 }
 
-static x : foo = foo { a:1, b:2, c: 3 };
-static y : foo = foo { b:2, c:3, a: 1 };
-static z : &'static foo = &foo { a: 10, b: 22, c: 12 };
-static w : foo = foo { a:5, ..x };
+const x : foo = foo { a:1, b:2, c: 3 };
+const y : foo = foo { b:2, c:3, a: 1 };
+const z : &'static foo = &foo { a: 10, b: 22, c: 12 };
+const w : foo = foo { a:5, ..x };
 
 pub fn main() {
     assert_eq!(x.b, 2);

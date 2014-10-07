@@ -8,12 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-const s: int = 1;
-const e: int = 42;
+struct S { a: uint }
+static A: S  = S { a: 3 };
+static B: &'static uint = &A.a;
+//~^ ERROR: cannot refer to the interior of another static
+static C: &'static uint = &(A.a);
+//~^ ERROR: cannot refer to the interior of another static
 
-pub fn main() {
-    match 7 {
-        s...e => (),
-        _ => (),
-    }
-}
+static D: [uint, ..1] = [1];
+static E: uint = D[0];
+//~^ ERROR: cannot refer to other statics by value
+static F: &'static uint = &D[0];
+//~^ ERROR: cannot refer to the interior of another static
+
+fn main() {}

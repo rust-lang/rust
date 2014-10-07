@@ -10,9 +10,9 @@
 
 struct Pair<'a> { a: int, b: &'a int }
 
-static x: &'static int = &10;
+const x: &'static int = &10;
 
-static y: &'static Pair<'static> = &Pair {a: 15, b: x};
+const y: &'static Pair<'static> = &Pair {a: 15, b: x};
 
 pub fn main() {
     println!("x = {}", *x);
