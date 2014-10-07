@@ -321,12 +321,39 @@ macro_rules! try(
     ($e:expr) => (match $e { Ok(e) => e, Err(e) => return Err(e) })
 )
 
+/// A macro to count the number of expressions passed to it
+#[macro_export]
+macro_rules! count(
+    ($x:expr, $($xs:expr),+) => {
+        1 + count!($($xs),+)
+    };
+    ($x:expr) => {
+        1u
+    };
+    ($($x:expr),*) => {
+        0u
+    };
+)
+
 /// Create a `std::vec::Vec` containing the arguments.
+#[cfg(stage0)]
 #[macro_export]
 macro_rules! vec(
     ($($e:expr),*) => ({
         // leading _ to allow empty construction without a warning.
         let mut _temp = ::std::vec::Vec::new();
+        $(_temp.push($e);)*
+        _temp
+    });
+    ($($e:expr),+,) => (vec!($($e),+))
+)
+
+#[not(cfg(stage0))]
+#[macro_export]
+macro_rules! vec(
+    ($($e:expr),*) => ({
+        // leading _ to allow empty construction without a warning.
+        let mut _temp = ::std::vec::Vec::with_capacity(count!($($e),*));
         $(_temp.push($e);)*
         _temp
     });
