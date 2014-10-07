@@ -3,17 +3,28 @@
 " Maintainer:       Damien Radtke <damienradtke@gmail.com>
 " Latest Revision:  2014 Sep 24
 
-if exists("current_compiler")
+if exists('current_compiler')
   finish
 endif
 let current_compiler = "cargo"
 
-if exists(":CompilerSet") != 2
+if exists(':CompilerSet') != 2
     command -nargs=* CompilerSet setlocal <args>
 endif
 
-CompilerSet errorformat=%A%f:%l:%c:\ %m,%-Z%p^,%-C%.%#
-CompilerSet makeprg=cargo\ $*
+if exists('g:cargo_makeprg_params')
+    execute 'CompilerSet makeprg=cargo\ '.g:cargo_makeprg_params.'\ $*'
+else
+    CompilerSet makeprg=cargo\ $*
+endif
+
+CompilerSet errorformat=
+			\%f:%l:%c:\ %t%*[^:]:\ %m,
+			\%f:%l:%c:\ %*\\d:%*\\d\ %t%*[^:]:\ %m,
+			\%-G%f:%l\ %s,
+			\%-G%*[\ ]^,
+			\%-G%*[\ ]^%*[~],
+			\%-G%*[\ ]...
 
 " Allow a configurable global Cargo.toml name. This makes it easy to
 " support variations like 'cargo.toml'.
