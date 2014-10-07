@@ -38,6 +38,8 @@
 // ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
 // OF THE POSSIBILITY OF SUCH DAMAGE.
 
+#![feature(slicing_syntax)]
+
 use std::io;
 use std::io::{BufferedWriter, File};
 use std::cmp::min;
@@ -93,7 +95,7 @@ fn make_fasta<W: Writer, I: Iterator<u8>>(
         }
         n -= nb;
         line[nb] = '\n' as u8;
-        wr.write(line.slice_to(nb + 1));
+        wr.write(line[..nb+1]);
     }
 }
 

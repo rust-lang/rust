@@ -105,9 +105,10 @@
        html_root_url = "http://doc.rust-lang.org/master/",
        html_playground_url = "http://play.rust-lang.org/")]
 
+#![allow(unknown_features)]
 #![feature(macro_rules, globs, linkage)]
 #![feature(default_type_params, phase, lang_items, unsafe_destructor)]
-#![feature(import_shadowing)]
+#![feature(import_shadowing, slicing_syntax)]
 
 // Don't link to std. We are std.
 #![no_std]

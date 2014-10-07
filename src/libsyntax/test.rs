@@ -414,7 +414,7 @@ fn mk_test_module(cx: &mut TestCtxt) -> (P<ast::Item>, Option<ast::ViewItem>) {
     let mainfn = (quote_item!(&mut cx.ext_cx,
         pub fn main() {
             #![main]
-            use std::slice::Slice;
+            use std::slice::AsSlice;
             test::test_main_static(::std::os::args().as_slice(), TESTS);
         }
     )).unwrap();

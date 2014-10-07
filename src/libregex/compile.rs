@@ -102,7 +102,7 @@ impl Program {
         // This is a bit hacky since we have to skip over the initial
         // 'Save' instruction.
         let mut pre = String::with_capacity(5);
-        for inst in c.insts.slice_from(1).iter() {
+        for inst in c.insts[1..].iter() {
             match *inst {
                 OneChar(c, FLAG_EMPTY) => pre.push(c),
                 _ => break

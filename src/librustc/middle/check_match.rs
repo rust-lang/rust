@@ -865,7 +865,7 @@ pub fn specialize<'a>(cx: &MatchCheckCtxt, r: &[&'a Pat],
             None
         }
     };
-    head.map(|head| head.append(r.slice_to(col)).append(r.slice_from(col + 1)))
+    head.map(|head| head.append(r[..col]).append(r[col + 1..]))
 }
 
 fn check_local(cx: &mut MatchCheckCtxt, loc: &Local) {

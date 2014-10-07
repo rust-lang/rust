@@ -61,7 +61,7 @@ use core::iter::AdditiveIterator;
 use core::mem;
 use core::prelude::{Char, Clone, Collection, Eq, Equiv, ImmutableSlice};
 use core::prelude::{Iterator, MutableSlice, None, Option, Ord, Ordering};
-use core::prelude::{PartialEq, PartialOrd, Result, Slice, Some, Tuple2};
+use core::prelude::{PartialEq, PartialOrd, Result, AsSlice, Some, Tuple2};
 use core::prelude::{range};
 
 use {Deque, MutableSeq};
@@ -880,7 +880,7 @@ mod tests {
     use {Collection, MutableSeq};
 
     use super::*;
-    use std::slice::{Slice, ImmutableSlice};
+    use std::slice::{AsSlice, ImmutableSlice};
     use string::String;
     use vec::Vec;
 
@@ -1678,7 +1678,7 @@ mod tests {
         let mut bytes = [0u8, ..4];
         for c in range(0u32, 0x110000).filter_map(|c| ::core::char::from_u32(c)) {
             let len = c.encode_utf8(bytes).unwrap_or(0);
-            let s = ::core::str::from_utf8(bytes.slice_to(len)).unwrap();
+            let s = ::core::str::from_utf8(bytes[..len]).unwrap();
             if Some(c) != s.chars().next() {
                 fail!("character {:x}={} does not decode correctly", c as u32, c);
             }
@@ -1690,7 +1690,7 @@ mod tests {
         let mut bytes = [0u8, ..4];
         for c in range(0u32, 0x110000).filter_map(|c| ::core::char::from_u32(c)) {
             let len = c.encode_utf8(bytes).unwrap_or(0);
-            let s = ::core::str::from_utf8(bytes.slice_to(len)).unwrap();
+            let s = ::core::str::from_utf8(bytes[..len]).unwrap();
             if Some(c) != s.chars().rev().next() {
                 fail!("character {:x}={} does not decode correctly", c as u32, c);
             }

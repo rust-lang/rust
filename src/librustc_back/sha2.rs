@@ -136,14 +136,14 @@ impl FixedBuffer for FixedBuffer64 {
             let buffer_remaining = size - self.buffer_idx;
             if input.len() >= buffer_remaining {
                     copy_memory(
-                        self.buffer.slice_mut(self.buffer_idx, size),
-                        input.slice_to(buffer_remaining));
+                        self.buffer[mut self.buffer_idx..size],
+                        input[..buffer_remaining]);
                 self.buffer_idx = 0;
                 func(self.buffer);
                 i += buffer_remaining;
             } else {
                 copy_memory(
-                    self.buffer.slice_mut(self.buffer_idx, self.buffer_idx + input.len()),
+                    self.buffer[mut self.buffer_idx..self.buffer_idx + input.len()],
                     input);
                 self.buffer_idx += input.len();
                 return;
@@ -153,7 +153,7 @@ impl FixedBuffer for FixedBuffer64 {
         // While we have at least a full buffer size chunk's worth of data, process that data
         // without copying it into the buffer
         while input.len() - i >= size {
-            func(input.slice(i, i + size));
+            func(input[i..i + size]);
             i += size;
         }
 
@@ -162,8 +162,8 @@ impl FixedBuffer for FixedBuffer64 {
         // be empty.
         let input_remaining = input.len() - i;
         copy_memory(
-            self.buffer.slice_mut(0, input_remaining),
-            input.slice_from(i));
+            self.buffer[mut ..input_remaining],
+            input[i..]);
         self.buffer_idx += input_remaining;
     }
 
@@ -173,19 +173,19 @@ impl FixedBuffer for FixedBuffer64 {
 
     fn zero_until(&mut self, idx: uint) {
         assert!(idx >= self.buffer_idx);
-        self.buffer.slice_mut(self.buffer_idx, idx).set_memory(0);
+        self.buffer[mut self.buffer_idx..idx].set_memory(0);
         self.buffer_idx = idx;
     }
 
     fn next<'s>(&'s mut self, len: uint) -> &'s mut [u8] {
         self.buffer_idx += len;
-        return self.buffer.slice_mut(self.buffer_idx - len, self.buffer_idx);
+        return self.buffer[mut self.buffer_idx - len..self.buffer_idx];
     }
 
     fn full_buffer<'s>(&'s mut self) -> &'s [u8] {
         assert!(self.buffer_idx == 64);
         self.buffer_idx = 0;
-        return self.buffer.slice_to(64);
+        return self.buffer[..64];
     }
 
     fn position(&self) -> uint { self.buffer_idx }
@@ -359,7 +359,7 @@ impl Engine256State {
              )
         )
 
-        read_u32v_be(w.slice_mut(0, 16), data);
+        read_u32v_be(w[mut 0..16], data);
 
         // Putting the message schedule inside the same loop as the round calculations allows for
         // the compiler to generate better code.
@@ -495,14 +495,14 @@ impl Digest for Sha256 {
     fn result(&mut self, out: &mut [u8]) {
         self.engine.finish();
 
-        write_u32_be(out.slice_mut(0, 4), self.engine.state.h0);
-        write_u32_be(out.slice_mut(4, 8), self.engine.state.h1);
-        write_u32_be(out.slice_mut(8, 12), self.engine.state.h2);
-        write_u32_be(out.slice_mut(12, 16), self.engine.state.h3);
-        write_u32_be(out.slice_mut(16, 20), self.engine.state.h4);
-        write_u32_be(out.slice_mut(20, 24), self.engine.state.h5);
-        write_u32_be(out.slice_mut(24, 28), self.engine.state.h6);
-        write_u32_be(out.slice_mut(28, 32), self.engine.state.h7);
+        write_u32_be(out[mut 0..4], self.engine.state.h0);
+        write_u32_be(out[mut 4..8], self.engine.state.h1);
+        write_u32_be(out[mut 8..12], self.engine.state.h2);
+        write_u32_be(out[mut 12..16], self.engine.state.h3);
+        write_u32_be(out[mut 16..20], self.engine.state.h4);
+        write_u32_be(out[mut 20..24], self.engine.state.h5);
+        write_u32_be(out[mut 24..28], self.engine.state.h6);
+        write_u32_be(out[mut 28..32], self.engine.state.h7);
     }
 
     fn reset(&mut self) {

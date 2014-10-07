@@ -4019,7 +4019,7 @@ impl<'a> Resolver<'a> {
         for (i, rib) in ribs.iter().enumerate().rev() {
             match rib.bindings.find_copy(&name) {
                 Some(def_like) => {
-                    return self.upvarify(ribs.slice_from(i + 1), def_like, span);
+                    return self.upvarify(ribs[i + 1..], def_like, span);
                 }
                 None => {
                     // Continue.

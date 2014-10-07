@@ -999,7 +999,7 @@ mod imp {
                 let bytes = cstr.as_bytes();
                 match cstr.as_str() {
                     Some(s) => try!(super::demangle(w, s)),
-                    None => try!(w.write(bytes.slice_to(bytes.len() - 1))),
+                    None => try!(w.write(bytes[..bytes.len()-1])),
                 }
             }
             try!(w.write(['\n' as u8]));
