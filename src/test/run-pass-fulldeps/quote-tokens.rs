@@ -37,6 +37,7 @@ fn syntax_extension(cx: &ExtCtxt) {
     assert!(i.is_some());
 
     let _j: P<syntax::ast::Method> = quote_method!(cx, fn foo(&self) {});
+    let _k: P<syntax::ast::Method> = quote_method!(cx, #[doc = "hello"] fn foo(&self) {});
 }
 
 fn main() {
