@@ -8,9 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Verify that it is not possible to take the address of
-// static items with unsafe interior.
-
 use std::kinds::marker;
 use std::cell::UnsafeCell;
 
@@ -30,10 +27,10 @@ enum UnsafeEnum<T> {
 static STATIC1: UnsafeEnum<int> = VariantSafe;
 
 static STATIC2: UnsafeCell<int> = UnsafeCell { value: 1 };
-static STATIC3: MyUnsafe<int> = MyUnsafe{value: STATIC2};
+const CONST: UnsafeCell<int> = UnsafeCell { value: 1 };
+static STATIC3: MyUnsafe<int> = MyUnsafe{value: CONST};
 
 static STATIC4: &'static UnsafeCell<int> = &STATIC2;
-//~^ ERROR borrow of immutable static items with unsafe interior is not allowed
 
 struct Wrap<T> {
     value: T
@@ -41,14 +38,11 @@ struct Wrap<T> {
 
 static UNSAFE: UnsafeCell<int> = UnsafeCell{value: 1};
 static WRAPPED_UNSAFE: Wrap<&'static UnsafeCell<int>> = Wrap { value: &UNSAFE };
-//~^ ERROR borrow of immutable static items with unsafe interior is not allowed
 
 fn main() {
     let a = &STATIC1;
-    //~^ ERROR borrow of immutable static items with unsafe interior is not allowed
 
     STATIC3.forbidden()
-    //~^ ERROR borrow of immutable static items with unsafe interior is not allowed
 }
 
 

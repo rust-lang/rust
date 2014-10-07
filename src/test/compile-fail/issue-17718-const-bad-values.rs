@@ -8,12 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-const s: int = 1;
-const e: int = 42;
+const C1: &'static mut [uint] = &mut [];
+//~^ ERROR: constants are not allowed to have mutable references
 
-pub fn main() {
-    match 7 {
-        s...e => (),
-        _ => (),
-    }
-}
+static mut S: uint = 3;
+const C2: &'static mut uint = &mut S;
+//~^ ERROR: constants cannot refer to other statics
+//~^^ ERROR: are not allowed to have mutable references
+
+fn main() {}
+

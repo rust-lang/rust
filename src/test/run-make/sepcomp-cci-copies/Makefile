@@ -7,4 +7,3 @@ all:
 	$(RUSTC) cci_lib.rs
 	$(RUSTC) foo.rs --emit=ir -C codegen-units=3
 	[ "$$(cat "$(TMPDIR)"/foo.?.ll | grep -c define\ .*cci_fn)" -eq "2" ]
-	[ "$$(cat "$(TMPDIR)"/foo.?.ll | grep -c CCI_STATIC.*=.*constant)" -eq "2" ]

@@ -8,12 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-const s: int = 1;
-const e: int = 42;
+pub use foo::FOO2;
 
-pub fn main() {
-    match 7 {
-        s...e => (),
-        _ => (),
-    }
+pub const FOO: uint = 3;
+const BAR: uint = 3;
+
+mod foo {
+    pub const FOO2: uint = 3;
 }

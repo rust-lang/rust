@@ -8,12 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-const s: int = 1;
-const e: int = 42;
+static A1: uint = 1;
+static mut A2: uint = 1;
+const A3: uint = 1;
 
-pub fn main() {
-    match 7 {
-        s...e => (),
-        _ => (),
+fn main() {
+    match 1u {
+        A1 => {} //~ ERROR: static variables cannot be referenced in a pattern
+        A2 => {} //~ ERROR: static variables cannot be referenced in a pattern
+        A3 => {}
+        _ => {}
     }
 }

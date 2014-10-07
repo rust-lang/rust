@@ -8,12 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-const s: int = 1;
-const e: int = 42;
+#[deny(warnings)]
 
-pub fn main() {
-    match 7 {
-        s...e => (),
-        _ => (),
-    }
-}
+const foo: int = 3;
+//~^ ERROR: should have an uppercase name such as
+
+fn main() {}

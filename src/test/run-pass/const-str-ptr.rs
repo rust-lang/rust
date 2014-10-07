@@ -10,9 +10,9 @@
 
 use std::{str, string};
 
-static A: [u8, ..2] = ['h' as u8, 'i' as u8];
-static B: &'static [u8, ..2] = &A;
-static C: *const u8 = B as *const u8;
+const A: [u8, ..2] = ['h' as u8, 'i' as u8];
+const B: &'static [u8, ..2] = &A;
+const C: *const u8 = B as *const u8;
 
 pub fn main() {
     unsafe {

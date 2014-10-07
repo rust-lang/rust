@@ -8,12 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-const s: int = 1;
-const e: int = 42;
-
-pub fn main() {
-    match 7 {
-        s...e => (),
-        _ => (),
-    }
+extern {
+    const FOO: uint; //~ ERROR: unexpected token: `const`
 }
+
+fn main() {}

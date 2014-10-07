@@ -14,6 +14,3 @@
 pub fn cci_fn() -> uint {
     1234
 }
-
-#[inline]
-pub static CCI_STATIC: uint = 2345;

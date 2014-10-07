@@ -10,7 +10,7 @@
 
 
 // issues #10618 and #16382
-static SIZE: int = 25;
+const SIZE: int = 25;
 
 fn main() {
     let _a: [bool, ..1 as uint];

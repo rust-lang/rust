@@ -29,19 +29,19 @@ enum EnumWithStructVariants {
     }
 }
 
-static TRUE_TRUE: (bool, bool) = (true, true);
-static NONE: Option<Direction> = None;
-static EAST: Direction = East;
-static NEW_FALSE: NewBool = NewBool(false);
-static STATIC_FOO: Foo = Foo { bar: Some(South), baz: NEW_FALSE };
-static VARIANT2_NORTH: EnumWithStructVariants = Variant2 { dir: North };
+const TRUE_TRUE: (bool, bool) = (true, true);
+const NONE: Option<Direction> = None;
+const EAST: Direction = East;
+const NEW_FALSE: NewBool = NewBool(false);
+const STATIC_FOO: Foo = Foo { bar: Some(South), baz: NEW_FALSE };
+const VARIANT2_NORTH: EnumWithStructVariants = Variant2 { dir: North };
 
 pub mod glfw {
     pub struct InputState(uint);
 
-    pub static RELEASE  : InputState = InputState(0);
-    pub static PRESS    : InputState = InputState(1);
-    pub static REPEAT   : InputState = InputState(2);
+    pub const RELEASE  : InputState = InputState(0);
+    pub const PRESS    : InputState = InputState(1);
+    pub const REPEAT   : InputState = InputState(2);
 }
 
 fn issue_6533() {
@@ -63,7 +63,7 @@ fn issue_6533() {
 }
 
 fn issue_13626() {
-    static VAL: [u8, ..1] = [0];
+    const VAL: [u8, ..1] = [0];
     match [1] {
         VAL => unreachable!(),
         _ => ()
@@ -72,8 +72,8 @@ fn issue_13626() {
 
 fn issue_14576() {
     type Foo = (i32, i32);
-    static ON: Foo = (1, 1);
-    static OFF: Foo = (0, 0);
+    const ON: Foo = (1, 1);
+    const OFF: Foo = (0, 0);
 
     match (1, 1) {
         OFF => unreachable!(),
@@ -82,14 +82,14 @@ fn issue_14576() {
     }
 
     enum C { D = 3, E = 4 }
-    static F : C = D;
+    const F : C = D;
 
     assert_eq!(match D { F => 1i, _ => 2, }, 1);
 }
 
 fn issue_13731() {
     enum A { AA(()) }
-    static B: A = AA(());
+    const B: A = AA(());
 
     match AA(()) {
         B => ()
@@ -102,8 +102,8 @@ fn issue_15393() {
         bits: uint
     }
 
-    static FOO: Flags = Flags { bits: 0x01 };
-    static BAR: Flags = Flags { bits: 0x02 };
+    const FOO: Flags = Flags { bits: 0x01 };
+    const BAR: Flags = Flags { bits: 0x02 };
     match (Flags { bits: 0x02 }) {
         FOO => unreachable!(),
         BAR => (),

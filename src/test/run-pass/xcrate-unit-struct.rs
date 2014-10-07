@@ -11,7 +11,7 @@
 // aux-build:xcrate_unit_struct.rs
 extern crate xcrate_unit_struct;
 
-static s1: xcrate_unit_struct::Struct = xcrate_unit_struct::Struct;
+const s1: xcrate_unit_struct::Struct = xcrate_unit_struct::Struct;
 static s2: xcrate_unit_struct::Unit = xcrate_unit_struct::UnitVariant;
 static s3: xcrate_unit_struct::Unit =
                 xcrate_unit_struct::Argument(xcrate_unit_struct::Struct);

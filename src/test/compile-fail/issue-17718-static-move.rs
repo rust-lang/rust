@@ -8,12 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-const s: int = 1;
-const e: int = 42;
+use std::kinds::marker;
 
-pub fn main() {
-    match 7 {
-        s...e => (),
-        _ => (),
-    }
+struct Foo { nc: marker::NoCopy }
+const INIT: Foo = Foo { nc: marker::NoCopy };
+static FOO: Foo = INIT;
+
+fn main() {
+    let _a = FOO; //~ ERROR: cannot move out of static item
 }

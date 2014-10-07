@@ -8,12 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-const s: int = 1;
-const e: int = 42;
+const A: uint = B; //~ ERROR: recursive constant
+const B: uint = A; //~ ERROR: recursive constant
 
-pub fn main() {
-    match 7 {
-        s...e => (),
-        _ => (),
-    }
-}
+fn main() {}

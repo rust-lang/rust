@@ -8,12 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-const s: int = 1;
-const e: int = 42;
+use std::sync::atomic;
 
-pub fn main() {
-    match 7 {
-        s...e => (),
-        _ => (),
-    }
-}
+pub const C1: uint = 1;
+pub const C2: atomic::AtomicUint = atomic::INIT_ATOMIC_UINT;
+pub const C3: fn() = foo;
+pub const C4: uint = C1 * C1 + C1 / C1;
+pub const C5: &'static uint = &C4;
+
+pub static S1: uint = 3;
+pub static S2: atomic::AtomicUint = atomic::INIT_ATOMIC_UINT;
+
+fn foo() {}

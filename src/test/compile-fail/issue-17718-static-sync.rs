@@ -8,12 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-const s: int = 1;
-const e: int = 42;
+use std::kinds::marker;
 
-pub fn main() {
-    match 7 {
-        s...e => (),
-        _ => (),
-    }
-}
+struct Foo { marker: marker::NoSync }
+
+static FOO: uint = 3;
+static BAR: Foo = Foo { marker: marker::NoSync };
+//~^ ERROR: shared static items must have a type which implements Sync
+
+fn main() {}
