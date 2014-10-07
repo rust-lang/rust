@@ -8,8 +8,8 @@ Version 0.12.0 (October 2014)
     * The introductory documentation (now called The Rust Guide) has
       been completely rewritten, as have a number of supplementary
       guides.
-    * Rust's package manager, Cargo, continues to improve and is,
-      reportedly, 'awesome'.
+    * Rust's package manager, Cargo, continues to improve and is
+      sometimes considered to be quite awesome.
     * Many API's in `std` have been reviewed and updated for
       consistency with the in-development Rust coding
       guidelines. The standard library documentation tracks
@@ -33,7 +33,7 @@ Version 0.12.0 (October 2014)
       impossible with the existing syntax.
     * A new slicing syntax (e.g. `[0..4]`) has been introduced behind
       the 'slicing_syntax' feature gate, and can be overloaded with
-      the `AsSlice` or `AsSliceMut` traits.
+      the `Slice` or `SliceMut` traits.
     * The syntax for matching of sub-slices has been changed to use a
       postfix `..` instead of prefix (.e.g. `[a, b, c..]`), for
       consistency with other uses of `..` and to future-proof
