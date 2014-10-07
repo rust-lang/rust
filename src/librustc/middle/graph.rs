@@ -58,20 +58,20 @@ pub struct Edge<E> {
 #[deriving(Clone, PartialEq, Show)]
 pub struct NodeIndex(pub uint);
 #[allow(non_uppercase_statics)]
-pub static InvalidNodeIndex: NodeIndex = NodeIndex(uint::MAX);
+pub const InvalidNodeIndex: NodeIndex = NodeIndex(uint::MAX);
 
 #[deriving(PartialEq)]
 pub struct EdgeIndex(pub uint);
 #[allow(non_uppercase_statics)]
-pub static InvalidEdgeIndex: EdgeIndex = EdgeIndex(uint::MAX);
+pub const InvalidEdgeIndex: EdgeIndex = EdgeIndex(uint::MAX);
 
 // Use a private field here to guarantee no more instances are created:
 #[deriving(Show)]
 pub struct Direction { repr: uint }
 #[allow(non_uppercase_statics)]
-pub static Outgoing: Direction = Direction { repr: 0 };
+pub const Outgoing: Direction = Direction { repr: 0 };
 #[allow(non_uppercase_statics)]
-pub static Incoming: Direction = Direction { repr: 1 };
+pub const Incoming: Direction = Direction { repr: 1 };
 
 impl NodeIndex {
     fn get(&self) -> uint { let NodeIndex(v) = *self; v }
