@@ -914,12 +914,23 @@ or 'breaks up,' the tuple, and assigns the bits to three bindings.
 
 This pattern is very powerful, and we'll see it repeated more later.
 
-The last thing to say about tuples is that they are only equivalent if
-the arity, types, and values are all identical.
+There also a few things you can do with a tuple as a whole, without
+destructuring. You can assign one tuple into another, if they have the same
+arity and contained types.
+
+```rust
+let mut x = (1i, 2i);
+let y = (2i, 3i);
+
+x = y;
+```
+
+You can also check for equality with `==`. Again, this will only compile if the
+tuples have the same type.
 
 ```rust
 let x = (1i, 2i, 3i);
-let y = (2i, 3i, 4i);
+let y = (2i, 2i, 4i);
 
 if x == y {
     println!("yes");
@@ -928,7 +939,7 @@ if x == y {
 }
 ```
 
-This will print `no`, as the values aren't equal.
+This will print `no`, because some of the values aren't equal.
 
 One other use of tuples is to return multiple values from a function:
 
