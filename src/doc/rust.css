@@ -392,3 +392,5 @@ pre.rust { position: relative; }
         background-color: #fff !important;
     }
 }
+
+#keywords table td { border: none; }
