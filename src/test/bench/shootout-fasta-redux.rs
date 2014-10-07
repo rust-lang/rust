@@ -38,6 +38,8 @@
 // ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
 // OF THE POSSIBILITY OF SUCH DAMAGE.
 
+#![feature(slicing_syntax)]
+
 use std::cmp::min;
 use std::io::{stdout, IoResult};
 use std::os;
@@ -124,8 +126,8 @@ impl<'a, W: Writer> RepeatFasta<'a, W> {
 
         copy_memory(buf.as_mut_slice(), alu);
         let buf_len = buf.len();
-        copy_memory(buf.slice_mut(alu_len, buf_len),
-                    alu.slice_to(LINE_LEN));
+        copy_memory(buf[mut alu_len..buf_len],
+                    alu[..LINE_LEN]);
 
         let mut pos = 0;
         let mut bytes;
@@ -201,7 +203,7 @@ impl<'a, W: Writer> RandomFasta<'a, W> {
         for i in range(0u, chars_left) {
             buf[i] = self.nextc();
         }
-        self.out.write(buf.slice_to(chars_left))
+        self.out.write(buf[..chars_left])
     }
 }
 

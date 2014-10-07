@@ -23,7 +23,7 @@ use num::Int;
 use option::{Option, Some, None};
 use ptr::RawPtr;
 use result::{Ok, Err};
-use slice::{ImmutableSlice, Slice};
+use slice::{ImmutableSlice, AsSlice};
 
 /// An iterator that reads a single byte on each iteration,
 /// until `.read_byte()` returns `EndOfFile`.

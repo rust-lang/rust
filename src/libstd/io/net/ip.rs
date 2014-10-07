@@ -21,7 +21,7 @@ use from_str::FromStr;
 use iter::Iterator;
 use option::{Option, None, Some};
 use str::StrSlice;
-use slice::{MutableCloneableSlice, ImmutableSlice, MutableSlice};
+use slice::{MutableCloneableSlice, MutableSlice};
 
 pub type Port = u16;
 
@@ -241,7 +241,7 @@ impl<'a> Parser<'a> {
             assert!(head.len() + tail.len() <= 8);
             let mut gs = [0u16, ..8];
             gs.clone_from_slice(head);
-            gs.slice_mut(8 - tail.len(), 8).clone_from_slice(tail);
+            gs[mut 8 - tail.len() .. 8].clone_from_slice(tail);
             Ipv6Addr(gs[0], gs[1], gs[2], gs[3], gs[4], gs[5], gs[6], gs[7])
         }
 
@@ -303,7 +303,7 @@ impl<'a> Parser<'a> {
 
         let mut tail = [0u16, ..8];
         let (tail_size, _) = read_groups(self, &mut tail, 8 - head_size);
-        Some(ipv6_addr_from_head_tail(head.slice(0, head_size), tail.slice(0, tail_size)))
+        Some(ipv6_addr_from_head_tail(head[..head_size], tail[..tail_size]))
     }
 
     fn read_ipv6_addr(&mut self) -> Option<IpAddr> {

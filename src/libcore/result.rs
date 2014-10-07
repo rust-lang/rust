@@ -280,7 +280,7 @@ use clone::Clone;
 use cmp::PartialEq;
 use std::fmt::Show;
 use slice;
-use slice::Slice;
+use slice::AsSlice;
 use iter::{Iterator, DoubleEndedIterator, FromIterator, ExactSize};
 use option::{None, Option, Some};
 
@@ -844,7 +844,7 @@ impl<T: Show, E> Result<T, E> {
 // Trait implementations
 /////////////////////////////////////////////////////////////////////////////
 
-impl<T, E> Slice<T> for Result<T, E> {
+impl<T, E> AsSlice<T> for Result<T, E> {
     /// Convert from `Result<T, E>` to `&[T]` (without copying)
     #[inline]
     #[stable]

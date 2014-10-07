@@ -2272,9 +2272,9 @@ fn try_overloaded_slice(fcx: &FnCtxt,
         match fcx.tcx().lang_items.slice_mut_trait() {
             Some(trait_did) => {
                 let method_name = match (start_expr, end_expr) {
-                    (&Some(_), &Some(_)) => "slice_mut_",
-                    (&Some(_), &None) => "slice_from_mut_",
-                    (&None, &Some(_)) => "slice_to_mut_",
+                    (&Some(_), &Some(_)) => "slice_or_fail_mut",
+                    (&Some(_), &None) => "slice_from_or_fail_mut",
+                    (&None, &Some(_)) => "slice_to_or_fail_mut",
                     (&None, &None) => "as_mut_slice_",
                 };
 
@@ -2297,9 +2297,9 @@ fn try_overloaded_slice(fcx: &FnCtxt,
         match fcx.tcx().lang_items.slice_trait() {
             Some(trait_did) => {
                 let method_name = match (start_expr, end_expr) {
-                    (&Some(_), &Some(_)) => "slice_",
-                    (&Some(_), &None) => "slice_from_",
-                    (&None, &Some(_)) => "slice_to_",
+                    (&Some(_), &Some(_)) => "slice_or_fail",
+                    (&Some(_), &None) => "slice_from_or_fail",
+                    (&None, &Some(_)) => "slice_to_or_fail",
                     (&None, &None) => "as_slice_",
                 };
 
@@ -3033,7 +3033,7 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
         };
 
         // Call the generic checker.
-        let args: Vec<_> = args.slice_from(1).iter().map(|x| x).collect();
+        let args: Vec<_> = args[1..].iter().map(|x| x).collect();
         let ret_ty = check_method_argument_types(fcx,
                                                  method_name.span,
                                                  fn_ty,
