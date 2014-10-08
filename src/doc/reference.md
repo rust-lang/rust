@@ -187,6 +187,8 @@ grammar as double-quoted strings. Other tokens have exact rules given.
 
 The keywords are the following strings, organized by first letter:
 
+<div id="keywords">
+|          |        |        |       |
 |----------|--------|--------|-------|
 | as       |        |        |       |
 |----------|--------|--------|-------|
@@ -216,6 +218,7 @@ The keywords are the following strings, organized by first letter:
 |----------|--------|--------|-------|
 | while    |        |        |       |
 |----------|--------|--------|-------|
+</div>
 
 Each of these keywords has special meaning in its grammar, and all of them are
 excluded from the `ident` rule.
