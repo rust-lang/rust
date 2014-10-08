@@ -386,10 +386,11 @@ impl<'tcx> LoanPath<'tcx> {
             (&LpExtend(ref base, a, LpInterior(id)),
              &LpExtend(ref base2, _, LpInterior(id2))) => {
                 if id == id2 {
-                    assert!(self.ty == other.ty);
                     base.common(&**base2).map(|x| {
                         let xd = x.depth();
                         if base.depth() == xd && base2.depth() == xd {
+                            assert_eq!(base.ty, base2.ty);
+                            assert_eq!(self.ty, other.ty);
                             LoanPath {
                                 kind: LpExtend(Rc::new(x), a, LpInterior(id)),
                                 ty: self.ty,
@@ -406,7 +407,7 @@ impl<'tcx> LoanPath<'tcx> {
             (_, &LpExtend(ref other, _, LpDeref(_))) => self.common(&**other),
             (&LpVar(id), &LpVar(id2)) => {
                 if id == id2 {
-                    assert!(self.ty == other.ty);
+                    assert_eq!(self.ty, other.ty);
                     Some(LoanPath { kind: LpVar(id), ty: self.ty })
                 } else {
                     None
@@ -414,7 +415,7 @@ impl<'tcx> LoanPath<'tcx> {
             }
             (&LpUpvar(id), &LpUpvar(id2)) => {
                 if id == id2 {
-                    assert!(self.ty == other.ty);
+                    assert_eq!(self.ty, other.ty);
                     Some(LoanPath { kind: LpUpvar(id), ty: self.ty })
                 } else {
                     None
