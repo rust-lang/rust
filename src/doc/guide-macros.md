@@ -87,7 +87,7 @@ forbidden.
 
 Otherwise, the invocation syntax is free-form.
 
-To take as an argument a fragment of Rust code, write `$` followed by a name
+To take a fragment of Rust code as an argument, write `$` followed by a name
  (for use on the right-hand side), followed by a `:`, followed by a *fragment
  specifier*. The fragment specifier denotes the sort of fragment to match. The
  most common fragment specifiers are:
