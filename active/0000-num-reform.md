@@ -204,6 +204,14 @@ These traits inherit from all applicable overloaded operator traits
 (from `core::ops`).  They suffice for generic programming over several
 basic categories of primitive numeric types.
 
+The reason to retain *some* degree of hierarchy here is to avoid
+blatant duplication of methods/constraints (`Num`) or to capture
+operations that only make sense on subclasses of numbers
+(`UnsignedInt`, `Signed`). As discussed in Alternatives, we could be
+more aggressive in flattening things out, especially since we do not
+expect code to be generic over `Num` and may not wish to suggest the
+possibility by including the trait.
+
 ## Detailed definitions
 
 Below is the full definition of these traits. The functionality
