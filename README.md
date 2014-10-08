@@ -10,11 +10,10 @@ documentation.
 3. Enjoy!
 
 > ***Note:*** Windows users can read the detailed
-> [getting started][wiki-start] notes on the wiki.
+> [using Rust on Windows][win-wiki] notes on the wiki.
 
 [installer]: http://www.rust-lang.org/install.html
 [guide]: http://doc.rust-lang.org/guide.html
-[wiki-start]: https://github.com/rust-lang/rust/wiki/Note-getting-started-developing-Rust
 [win-wiki]: https://github.com/rust-lang/rust/wiki/Using-Rust-on-Windows
 
 ## Building from Source
