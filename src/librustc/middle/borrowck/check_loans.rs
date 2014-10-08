@@ -775,21 +775,32 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
         }
 
         // Otherwise, just a plain error.
-        match opt_loan_path(&assignee_cmt) {
-            Some(lp) => {
+        match assignee_cmt.note {
+            mc::NoteClosureEnv(upvar_id) => {
                 self.bccx.span_err(
                     assignment_span,
-                    format!("cannot assign to {} {} `{}`",
-                            assignee_cmt.mutbl.to_user_str(),
-                            self.bccx.cmt_to_string(&*assignee_cmt),
-                            self.bccx.loan_path_to_string(&*lp)).as_slice());
-            }
-            None => {
-                self.bccx.span_err(
-                    assignment_span,
-                    format!("cannot assign to {} {}",
-                            assignee_cmt.mutbl.to_user_str(),
+                    format!("cannot assign to {}",
                             self.bccx.cmt_to_string(&*assignee_cmt)).as_slice());
+                self.bccx.span_note(
+                    self.tcx().map.span(upvar_id.closure_expr_id),
+                    "consider changing this closure to take self by mutable reference");
+            }
+            _ => match opt_loan_path(&assignee_cmt) {
+                Some(lp) => {
+                    self.bccx.span_err(
+                        assignment_span,
+                        format!("cannot assign to {} {} `{}`",
+                                assignee_cmt.mutbl.to_user_str(),
+                                self.bccx.cmt_to_string(&*assignee_cmt),
+                                self.bccx.loan_path_to_string(&*lp)).as_slice());
+                }
+                None => {
+                    self.bccx.span_err(
+                        assignment_span,
+                        format!("cannot assign to {} {}",
+                                assignee_cmt.mutbl.to_user_str(),
+                                self.bccx.cmt_to_string(&*assignee_cmt)).as_slice());
+                }
             }
         }
         return;
@@ -805,13 +816,9 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
             loop {
                 debug!("mark_variable_as_used_mut(cmt={})", cmt.repr(this.tcx()));
                 match cmt.cat.clone() {
-                    mc::cat_copied_upvar(mc::CopiedUpvar { upvar_id: id, .. }) |
+                    mc::cat_upvar(mc::Upvar { id: ty::UpvarId { var_id: id, .. }, .. }) |
                     mc::cat_local(id) => {
                         this.tcx().used_mut_nodes.borrow_mut().insert(id);
-                        return;
-                    }
-
-                    mc::cat_upvar(..) => {
                         return;
                     }
 
@@ -852,12 +859,6 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
                     // Statically prohibit writes to `&mut` when aliasable
 
                     check_for_aliasability_violation(this, span, b.clone());
-                }
-
-                mc::cat_copied_upvar(mc::CopiedUpvar {
-                    kind: mc::Unboxed(ty::FnUnboxedClosureKind), ..}) => {
-                    // Prohibit writes to capture-by-move upvars in non-once closures
-                    check_for_aliasability_violation(this, span, guarantor.clone());
                 }
 
                 _ => {}

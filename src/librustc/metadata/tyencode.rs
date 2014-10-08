@@ -175,6 +175,9 @@ fn enc_bound_region(w: &mut SeekableMemWriter, cx: &ctxt, br: ty::BoundRegion) {
         ty::BrFresh(id) => {
             mywrite!(w, "f{}|", id);
         }
+        ty::BrEnv => {
+            mywrite!(w, "e|");
+        }
     }
 }
 

@@ -863,6 +863,10 @@ pub enum BoundRegion {
 
     /// Fresh bound identifiers created during GLB computations.
     BrFresh(uint),
+
+    // Anonymous region for the implicit env pointer parameter
+    // to a closure
+    BrEnv
 }
 
 mod primitives {
