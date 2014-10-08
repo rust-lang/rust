@@ -1894,7 +1894,7 @@ type int8_t = i8;
 
 ### Crate-only attributes
 
-- `crate_id` - specify the this crate's crate ID.
+- `crate_name` - specify the this crate's crate name.
 - `crate_type` - see [linkage](#linkage).
 - `feature` - see [compiler features](#compiler-features).
 - `no_builtins` - disable optimizing certain code patterns to invocations of
