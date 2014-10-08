@@ -653,7 +653,15 @@ fn run_debuginfo_lldb_test(config: &Config, props: &TestProps, testfile: &Path) 
     script_str.push_str("version\n");
 
     // Switch LLDB into "Rust mode"
-    script_str.push_str("command script import ./src/etc/lldb_rust_formatters.py\n");
+    let rust_src_root = find_rust_src_root(config)
+        .expect("Could not find Rust source root");
+    let rust_pp_module_rel_path = Path::new("./src/etc/lldb_rust_formatters.py");
+    let rust_pp_module_abs_path = rust_src_root.join(rust_pp_module_rel_path)
+                                               .as_str()
+                                               .unwrap()
+                                               .to_string();
+
+    script_str.push_str(format!("command script import {}\n", rust_pp_module_abs_path[])[]);
     script_str.push_str("type summary add --no-value ");
     script_str.push_str("--python-function lldb_rust_formatters.print_val ");
     script_str.push_str("-x \".*\" --category Rust\n");
@@ -683,7 +691,10 @@ fn run_debuginfo_lldb_test(config: &Config, props: &TestProps, testfile: &Path) 
     let debugger_script = make_out_name(config, testfile, "debugger.script");
 
     // Let LLDB execute the script via lldb_batchmode.py
-    let debugger_run_result = run_lldb(config, &exe_file, &debugger_script);
+    let debugger_run_result = run_lldb(config,
+                                       &exe_file,
+                                       &debugger_script,
+                                       &rust_src_root);
 
     if !debugger_run_result.status.success() {
         fatal_proc_rec("Error while running LLDB", &debugger_run_result);
@@ -691,10 +702,16 @@ fn run_debuginfo_lldb_test(config: &Config, props: &TestProps, testfile: &Path) 
 
     check_debugger_output(&debugger_run_result, check_lines.as_slice());
 
-    fn run_lldb(config: &Config, test_executable: &Path, debugger_script: &Path) -> ProcRes {
+    fn run_lldb(config: &Config,
+                test_executable: &Path,
+                debugger_script: &Path,
+                rust_src_root: &Path)
+                -> ProcRes {
         // Prepare the lldb_batchmode which executes the debugger script
+        let lldb_script_path = rust_src_root.join(Path::new("./src/etc/lldb_batchmode.py"));
+
         let mut cmd = Command::new("python");
-        cmd.arg("./src/etc/lldb_batchmode.py")
+        cmd.arg(lldb_script_path)
            .arg(test_executable)
            .arg(debugger_script)
            .env_set_all([("PYTHONPATH", config.lldb_python_dir.clone().unwrap().as_slice())]);
