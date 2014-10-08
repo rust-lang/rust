@@ -378,6 +378,12 @@ working with C-like enums. However, such a replacement is outside of
 the scope of this RFC, so these traits are left (as `#[experimental]`)
 for now. A follow-up RFC proposing a better solution should appear soon.
 
+In the meantime, see
+[this proposal](https://github.com/rust-lang/rust/issues/10418) and
+the discussion on
+[this issue](https://github.com/rust-lang/rust/issues/10272) about
+`Ordinal` for the rough direction forward.
+
 # Drawbacks
 
 This RFC somewhat reduces the potential for writing generic numeric
@@ -419,4 +425,8 @@ allowing removal of more traits but a less clear-cut semantics.
 
 This RFC does not propose a replacement for
 `#[deriving(FromPrimitive)]`, leaving the relevant traits in limbo
-status.
+status. (See
+[this proposal](https://github.com/rust-lang/rust/issues/10418) and
+the discussion on
+[this issue](https://github.com/rust-lang/rust/issues/10272) about
+`Ordinal` for the rough direction forward.)
