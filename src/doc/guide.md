@@ -5212,8 +5212,8 @@ We can check this out using a special flag to `rustc`. This code, in a file
 
 ```{rust}
 fn main() {
-    let x = "Hello";
-    println!("x is: {:s}", x);
+    let x = 5i;
+    println!("x is: {}", x);
 }
 ```
 
@@ -5225,32 +5225,19 @@ give us this huge result:
 #![no_std]
 #![feature(globs)]
 #[phase(plugin, link)]
-extern crate std = "std";
-extern crate rt = "native";
+extern crate "std" as std;
+extern crate "native" as rt;
+#[prelude_import]
 use std::prelude::*;
 fn main() {
-    let x = "Hello";
+    let x = 5i;
     match (&x,) {
         (__arg0,) => {
             #[inline]
             #[allow(dead_code)]
-            static __STATIC_FMTSTR: [::std::fmt::rt::Piece<'static>, ..2u] =
-                [::std::fmt::rt::String("x is: "),
-                 ::std::fmt::rt::Argument(::std::fmt::rt::Argument{position:
-                                                                       ::std::fmt::rt::ArgumentNext,
-                                                                   format:
-                                                                       ::std::fmt::rt::FormatSpec{fill:
-                                                                                                      ' ',
-                                                                                                  align:
-                                                                                                      ::std::fmt::rt::AlignUnknown,
-                                                                                                  flags:
-                                                                                                      0u,
-                                                                                                  precision:
-                                                                                                      ::std::fmt::rt::CountImplied,
-                                                                                                  width:
-                                                                                                      ::std::fmt::rt::CountImplied,},})];
+            static __STATIC_FMTSTR: [&'static str, ..1u] = ["x is: "];
             let __args_vec =
-                &[::std::fmt::argument(::std::fmt::secret_string, __arg0)];
+                &[::std::fmt::argument(::std::fmt::secret_show, __arg0)];
             let __args =
                 unsafe {
                     ::std::fmt::Arguments::new(__STATIC_FMTSTR, __args_vec)
@@ -5261,45 +5248,16 @@ fn main() {
 }
 ```
 
-Intense. Here's a trimmed down version that's a bit easier to read:
-
-```{rust,ignore}
-fn main() {
-    let x = 5i;
-    match (&x,) {
-        (__arg0,) => {
-            static __STATIC_FMTSTR:  =
-                [String("x is: "),
-                 Argument(Argument {
-                    position: ArgumentNext,
-                    format: FormatSpec {
-                        fill: ' ',
-                        align: AlignUnknown,
-                        flags: 0u,
-                        precision: CountImplied,
-                        width: CountImplied,
-                    },
-                },
-               ];
-            let __args_vec = &[argument(secret_string, __arg0)];
-            let __args = unsafe { Arguments::new(__STATIC_FMTSTR, __args_vec) };
-
-            println_args(&__args)
-        }
-    };
-}
-```
-
 Whew! This isn't too terrible. You can see that we still `let x = 5i`,
 but then things get a little bit hairy. Three more bindings get set: a
 static format string, an argument vector, and the arguments. We then
 invoke the `println_args` function with the generated arguments.
 
-This is the code (well, the full version) that Rust actually compiles. You can
-see all of the extra information that's here. We get all of the type safety and
-options that it provides, but at compile time, and without needing to type all
-of this out. This is how macros are powerful. Without them, you would need to
-type all of this by hand to get a type checked `println`.
+This is the code that Rust actually compiles. You can see all of the extra
+information that's here. We get all of the type safety and options that it
+provides, but at compile time, and without needing to type all of this out.
+This is how macros are powerful. Without them, you would need to type all of
+this by hand to get a type checked `println`.
 
 For more on macros, please consult [the Macros Guide](guide-macros.html).
 Macros are a very advanced and still slightly experimental feature, but don't
