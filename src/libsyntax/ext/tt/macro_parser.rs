@@ -350,7 +350,16 @@ pub fn parse(sess: &ParseSess,
                         sp_lo: sp.lo
                     });
                   }
-                  MatchNonterminal(_,_,_) => { bb_eis.push(ei) }
+                  MatchNonterminal(_,_,_) => {
+                    // Built-in nonterminals never start with these tokens,
+                    // so we can eliminate them from consideration.
+                    match tok {
+                        token::RPAREN |
+                        token::RBRACE |
+                        token::RBRACKET => {},
+                        _ => bb_eis.push(ei)
+                    }
+                  }
                   MatchTok(ref t) => {
                     let mut ei_t = ei.clone();
                     if token_name_eq(t,&tok) {
