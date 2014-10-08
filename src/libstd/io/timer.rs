@@ -308,7 +308,7 @@ mod test {
     }
 
     #[test]
-    fn override() {
+    fn test_override() {
         let mut timer = Timer::new().unwrap();
         let orx = timer.oneshot(Duration::milliseconds(100));
         let prx = timer.periodic(Duration::milliseconds(100));

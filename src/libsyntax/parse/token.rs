@@ -520,6 +520,9 @@ declare_special_idents_and_keywords! {
         (54,                         Unsized,    "unsized");
         (55,                         Yield,      "yield");
         (56,                         Do,         "do");
+        (57,                         Abstract,   "abstract");
+        (58,                         Final,      "final");
+        (59,                         Override,   "override");
     }
 }
 
