@@ -166,6 +166,7 @@ fn run_rpass_test(config: &Config, props: &TestProps, testfile: &Path) {
 
 fn run_valgrind_test(config: &Config, props: &TestProps, testfile: &Path) {
     if config.valgrind_path.is_none() {
+        assert!(!config.force_valgrind);
         return run_rpass_test(config, props, testfile);
     }
 
@@ -175,7 +176,6 @@ fn run_valgrind_test(config: &Config, props: &TestProps, testfile: &Path) {
         fatal_proc_rec("compilation failed!", &proc_res);
     }
 
-    println!("running valgrind");
     let mut new_config = config.clone();
     new_config.runtool = new_config.valgrind_path.clone();
     proc_res = exec_compiled_test(&new_config, props, testfile);

@@ -76,6 +76,10 @@ pub struct Config {
     // The valgrind path
     pub valgrind_path: Option<String>,
 
+    // Whether to fail if we can't run run-pass-valgrind tests under valgrind
+    // (or, alternatively, to silently run them like regular run-pass tests).
+    pub force_valgrind: bool,
+
     // The directory containing the tests to run
     pub src_base: Path,
 

@@ -58,6 +58,20 @@ ifdef CFG_VALGRIND
   endif
 endif
 
+# If we actually want to run Valgrind on a given platform, set this variable
+define DEF_GOOD_VALGRIND
+  ifeq ($(OSTYPE_$(1)),unknown-linux-gnu)
+    GOOD_VALGRIND_$(1) = 1
+  endif
+  ifneq (,$(filter $(OSTYPE_$(1)),darwin freebsd))
+    ifeq (HOST_$(1),x86_64)
+      GOOD_VALGRIND_$(1) = 1
+    endif
+  endif
+endef
+$(foreach t,$(CFG_TARGET),$(eval $(call DEF_GOOD_VALGRIND,$(t))))
+$(foreach t,$(CFG_TARGET),$(info cfg: good valgrind for $(t) is $(GOOD_VALGRIND_$(t))))
+
 ifneq ($(findstring linux,$(CFG_OSTYPE)),)
   ifdef CFG_PERF
     ifneq ($(CFG_PERF_WITH_LOGFD),)
