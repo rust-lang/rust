@@ -18,7 +18,7 @@ use alloc::heap::{EMPTY, allocate, reallocate, deallocate};
 use core::cmp::max;
 use core::default::Default;
 use core::fmt;
-use core::kinds::marker::InvariantType;
+use core::kinds::marker::{ContravariantLifetime, InvariantType};
 use core::mem;
 use core::num;
 use core::ops;
@@ -1875,6 +1875,39 @@ pub fn unzip<T, U, V: Iterator<(T, U)>>(mut iter: V) -> (Vec<T>, Vec<U>) {
     (ts, us)
 }
 
+/// Wrapper type providing a `&Vec<T>` reference via `Deref`.
+#[experimental]
+pub struct DerefVec<'a, T> {
+    x: Vec<T>,
+    l: ContravariantLifetime<'a>
+}
+
+impl<'a, T> Deref<Vec<T>> for DerefVec<'a, T> {
+    fn deref<'b>(&'b self) -> &'b Vec<T> {
+        &self.x
+    }
+}
+
+// Prevent the inner `Vec<T>` from attempting to deallocate memory.
+#[unsafe_destructor]
+impl<'a, T> Drop for DerefVec<'a, T> {
+    fn drop(&mut self) {
+        self.x.len = 0;
+        self.x.cap = 0;
+    }
+}
+
+/// Convert a slice to a wrapper type providing a `&Vec<T>` reference.
+#[experimental]
+pub fn as_vec<'a, T>(x: &'a [T]) -> DerefVec<'a, T> {
+    unsafe {
+        DerefVec {
+            x: Vec::from_raw_parts(x.len(), x.len(), x.as_ptr() as *mut T),
+            l: ContravariantLifetime::<'a>
+        }
+    }
+}
+
 /// Unsafe vector operations.
 #[unstable]
 pub mod raw {
@@ -2169,9 +2202,37 @@ mod tests {
     use std::prelude::*;
     use std::mem::size_of;
     use test::Bencher;
-    use super::{unzip, raw, Vec};
+    use super::{as_vec, unzip, raw, Vec};
 
     use MutableSeq;
+
+    struct DropCounter<'a> {
+        count: &'a mut int
+    }
+
+    #[unsafe_destructor]
+    impl<'a> Drop for DropCounter<'a> {
+        fn drop(&mut self) {
+            *self.count += 1;
+        }
+    }
+
+    #[test]
+    fn test_as_vec() {
+        let xs = [1u8, 2u8, 3u8];
+        assert_eq!(as_vec(xs).as_slice(), xs.as_slice());
+    }
+
+    #[test]
+    fn test_as_vec_dtor() {
+        let (mut count_x, mut count_y) = (0, 0);
+        {
+            let xs = &[DropCounter { count: &mut count_x }, DropCounter { count: &mut count_y }];
+            assert_eq!(as_vec(xs).len(), 2);
+        }
+        assert_eq!(count_x, 1);
+        assert_eq!(count_y, 1);
+    }
 
     #[test]
     fn test_small_vec_struct() {
@@ -2183,17 +2244,6 @@ mod tests {
         struct TwoVec<T> {
             x: Vec<T>,
             y: Vec<T>
-        }
-
-        struct DropCounter<'a> {
-            count: &'a mut int
-        }
-
-        #[unsafe_destructor]
-        impl<'a> Drop for DropCounter<'a> {
-            fn drop(&mut self) {
-                *self.count += 1;
-            }
         }
 
         let (mut count_x, mut count_y) = (0, 0);
