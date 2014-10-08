@@ -63,19 +63,18 @@ unsafe fn test_triangle() -> bool {
 
         heap::deallocate(ptr, size, align);
     }
-    unsafe fn reallocate(ptr: *mut u8, size: uint, align: uint,
-                             old_size: uint) -> *mut u8 {
+    unsafe fn reallocate(ptr: *mut u8, old_size: uint, size: uint, align: uint) -> *mut u8 {
         if PRINT {
-            println!("reallocate(ptr=0x{:010x} size={:u} align={:u} old_size={:u})",
-                     ptr as uint, size, align, old_size);
+            println!("reallocate(ptr=0x{:010x} old_size={:u} size={:u} align={:u})",
+                     ptr as uint, old_size, size, align);
         }
 
-        let ret = heap::reallocate(ptr, size, align, old_size);
+        let ret = heap::reallocate(ptr, old_size, size, align);
 
         if PRINT {
-            println!("reallocate(ptr=0x{:010x} size={:u} align={:u} old_size={:u}) \
+            println!("reallocate(ptr=0x{:010x} old_size={:u} size={:u} align={:u}) \
                       ret: 0x{:010x}",
-                     ptr as uint, size, align, old_size, ret as uint);
+                     ptr as uint, old_size, size, align, ret as uint);
         }
         ret
     }
@@ -125,10 +124,10 @@ unsafe fn test_triangle() -> bool {
             let (p0, p1, old_size) = (ascend[2*i], ascend[2*i+1], idx_to_size(i));
             assert!(old_size < new_size);
 
-            ascend[2*i] = reallocate(p0, new_size, ALIGN, old_size);
+            ascend[2*i] = reallocate(p0, old_size, new_size, ALIGN);
             sanity_check(ascend.as_slice());
 
-            ascend[2*i+1] = reallocate(p1, new_size, ALIGN, old_size);
+            ascend[2*i+1] = reallocate(p1, old_size, new_size, ALIGN);
             sanity_check(ascend.as_slice());
         }
     }
@@ -140,10 +139,10 @@ unsafe fn test_triangle() -> bool {
             let (p0, p1, new_size) = (ascend[2*i], ascend[2*i+1], idx_to_size(i));
             assert!(new_size < old_size);
 
-            ascend[2*i] = reallocate(p0, new_size, ALIGN, old_size);
+            ascend[2*i] = reallocate(p0, old_size, new_size, ALIGN);
             sanity_check(ascend.as_slice());
 
-            ascend[2*i+1] = reallocate(p1, new_size, ALIGN, old_size);
+            ascend[2*i+1] = reallocate(p1, old_size, new_size, ALIGN);
             sanity_check(ascend.as_slice());
         }
     }
@@ -155,10 +154,10 @@ unsafe fn test_triangle() -> bool {
             let (p0, p1, old_size) = (ascend[2*i], ascend[2*i+1], idx_to_size(i));
             assert!(old_size < new_size);
 
-            ascend[2*i+1] = reallocate(p1, new_size, ALIGN, old_size);
+            ascend[2*i+1] = reallocate(p1, old_size, new_size, ALIGN);
             sanity_check(ascend.as_slice());
 
-            ascend[2*i] = reallocate(p0, new_size, ALIGN, old_size);
+            ascend[2*i] = reallocate(p0, old_size, new_size, ALIGN);
             sanity_check(ascend.as_slice());
         }
     }
@@ -170,10 +169,10 @@ unsafe fn test_triangle() -> bool {
             let (p0, p1, new_size) = (ascend[2*i], ascend[2*i+1], idx_to_size(i));
             assert!(new_size < old_size);
 
-            ascend[2*i+1] = reallocate(p1, new_size, ALIGN, old_size);
+            ascend[2*i+1] = reallocate(p1, old_size, new_size, ALIGN);
             sanity_check(ascend.as_slice());
 
-            ascend[2*i] = reallocate(p0, new_size, ALIGN, old_size);
+            ascend[2*i] = reallocate(p0, old_size, new_size, ALIGN);
             sanity_check(ascend.as_slice());
         }
     }
