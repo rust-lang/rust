@@ -1924,6 +1924,8 @@ type int8_t = i8;
 - `start` - indicates that this function should be used as the entry point,
   overriding the "start" language item. See the "start" [language
   item](#language-items) for more details.
+- `test` - indicates that this function is a test function, to only be compiled
+  in case of `--test`.
 
 ### Static-only attributes
 
