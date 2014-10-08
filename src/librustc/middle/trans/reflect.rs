@@ -436,20 +436,20 @@ pub fn emit_calls_to_trait_visit_ty<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                                 visitor_trait_id: DefId)
                                                 -> Block<'blk, 'tcx> {
     let fcx = bcx.fcx;
-    let final = fcx.new_temp_block("final");
+    let final_bcx = fcx.new_temp_block("final");
     let tydesc_ty = ty::get_tydesc_ty(bcx.tcx()).unwrap();
     let tydesc_ty = type_of(bcx.ccx(), tydesc_ty);
     let visitor_items = ty::trait_items(bcx.tcx(), visitor_trait_id);
     let mut r = Reflector {
         visitor_val: visitor_val,
         visitor_items: visitor_items.as_slice(),
-        final_bcx: final,
+        final_bcx: final_bcx,
         tydesc_ty: tydesc_ty,
         bcx: bcx
     };
     r.visit_ty(t);
-    Br(r.bcx, final.llbb);
-    return final;
+    Br(r.bcx, final_bcx.llbb);
+    return final_bcx;
 }
 
 pub fn ast_fn_style_constant(fn_style: ast::FnStyle) -> uint {
