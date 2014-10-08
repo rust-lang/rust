@@ -1,5 +1,5 @@
 - Start Date: 2014-06-15
-- RFC PR #: [rust-lang/rfcs#123](https://github.com/rust-lang/rfcs/pull/123j)
+- RFC PR #: [rust-lang/rfcs#123](https://github.com/rust-lang/rfcs/pull/123)
 - Rust Issue #: [rust-lang/rust#16281](https://github.com/rust-lang/rust/issues/16281)
 
 # Summary
