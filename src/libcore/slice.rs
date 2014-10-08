@@ -1945,3 +1945,61 @@ impl<'a, T: PartialOrd> PartialOrd for &'a [T] {
         order::gt(self.iter(), other.iter())
     }
 }
+
+/// Extension methods for immutable slices containing integers.
+#[experimental]
+pub trait ImmutableIntSlice<'a, U, S> {
+    /// Converts the slice to an immutable slice of unsigned integers with the same width.
+    fn as_unsigned(self) -> &'a [U];
+    /// Converts the slice to an immutable slice of signed integers with the same width.
+    fn as_signed(self) -> &'a [S];
+}
+
+/// Extension methods for mutable slices containing integers.
+#[experimental]
+pub trait MutableIntSlice<'a, U, S>: ImmutableIntSlice<'a, U, S> {
+    /// Converts the slice to a mutable slice of unsigned integers with the same width.
+    fn as_unsigned_mut(self) -> &'a mut [U];
+    /// Converts the slice to a mutable slice of signed integers with the same width.
+    fn as_signed_mut(self) -> &'a mut [S];
+}
+
+macro_rules! impl_immut_int_slice {
+    ($u:ty, $s:ty, $t:ty) => {
+        #[experimental]
+        impl<'a> ImmutableIntSlice<'a, $u, $s> for $t {
+            #[inline]
+            fn as_unsigned(self) -> &'a [$u] { unsafe { transmute(self) } }
+            #[inline]
+            fn as_signed(self) -> &'a [$s] { unsafe { transmute(self) } }
+        }
+    }
+}
+macro_rules! impl_mut_int_slice {
+    ($u:ty, $s:ty, $t:ty) => {
+        #[experimental]
+        impl<'a> MutableIntSlice<'a, $u, $s> for $t {
+            #[inline]
+            fn as_unsigned_mut(self) -> &'a mut [$u] { unsafe { transmute(self) } }
+            #[inline]
+            fn as_signed_mut(self) -> &'a mut [$s] { unsafe { transmute(self) } }
+        }
+    }
+}
+
+macro_rules! impl_int_slice {
+    ($u:ty, $s:ty) => {
+        impl_immut_int_slice!($u, $s, &'a [$u])
+        impl_immut_int_slice!($u, $s, &'a [$s])
+        impl_immut_int_slice!($u, $s, &'a mut [$u])
+        impl_immut_int_slice!($u, $s, &'a mut [$s])
+        impl_mut_int_slice!($u, $s, &'a mut [$u])
+        impl_mut_int_slice!($u, $s, &'a mut [$s])
+    }
+}
+
+impl_int_slice!(u8,   i8)
+impl_int_slice!(u16,  i16)
+impl_int_slice!(u32,  i32)
+impl_int_slice!(u64,  i64)
+impl_int_slice!(uint, int)
