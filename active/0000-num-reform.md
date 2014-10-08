@@ -193,24 +193,24 @@ following goals in mind:
 This RFC proposes to collapse the trait hierarchy in `std::num` to
 just the following traits:
 
-* `Num`, implemented by all primitive numeric types (`u8` - `u64`, `i8`-`i64`, `f32`-`f64`)
-    * `Int`, implemented by all primitive integer types (`u8` - `u64`, `i8`-`i64`)
-        * `UnsignedInt`, implemented by `u8` - `u64`
-    * `Signed`, implemented by all signed primitive numeric types (`i8`-`i64`, `f32`-`f64`)
-    * `Float`, implemented by `f32` and `f64`
-        * `FloatMath`, implemented by `f32` and `f64`, which provides functionality from `cmath`
+* `Int`, implemented by all primitive integer types (`u8` - `u64`, `i8`-`i64`)
+    * `UnsignedInt`, implemented by `u8` - `u64`
+* `Signed`, implemented by all signed primitive numeric types (`i8`-`i64`, `f32`-`f64`)
+* `Float`, implemented by `f32` and `f64`
+    * `FloatMath`, implemented by `f32` and `f64`, which provides functionality from `cmath`
 
 These traits inherit from all applicable overloaded operator traits
 (from `core::ops`).  They suffice for generic programming over several
 basic categories of primitive numeric types.
 
-The reason to retain *some* degree of hierarchy here is to avoid
-blatant duplication of methods/constraints (`Num`) or to capture
-operations that only make sense on subclasses of numbers
-(`UnsignedInt`, `Signed`). As discussed in Alternatives, we could be
-more aggressive in flattening things out, especially since we do not
-expect code to be generic over `Num` and may not wish to suggest the
-possibility by including the trait.
+As designed, these traits include a certain amount of redundancy
+between `Int` and `Float`. The Alternatives section shows how this
+could be factored out into a separate `Num` trait. But doing so
+suggests a level of generic programming that these traits aren't
+intended to support.
+
+The main reason to pull out `Signed` into its own trait is so that it
+can be added to the prelude. (Further discussion below.)
 
 ## Detailed definitions
 
@@ -218,10 +218,13 @@ Below is the full definition of these traits. The functionality
 remains largely as it is today, just organized into fewer traits:
 
 ```rust
-pub trait Num: Copy + Clone + PartialOrd + PartialEq
+pub trait Int: Copy + Clone + PartialOrd + PartialEq
              + Add<Self,Self> + Sub<Self,Self>
              + Mul<Self,Self> + Div<Self,Self> + Rem<Self,Self>
+             + Not<Self> + BitAnd<Self,Self> + BitOr<Self,Self>
+             + BitXor<Self,Self> + Shl<uint,Self> + Shr<uint,Self>
 {
+    // Constants
     fn zero() -> Self;  // These should be associated constants when those are available
     fn one() -> Self;
     fn min_value() -> Self;
@@ -229,11 +232,8 @@ pub trait Num: Copy + Clone + PartialOrd + PartialEq
 
     // Deprecated:
     // fn is_zero(&self) -> bool;
-}
 
-pub trait Int: Num + Not<Self> + BitAnd<Self,Self> + BitOr<Self,Self>
-             + BitXor<Self,Self> + Shl<uint,Self> + Shr<uint,Self>
-{
+    // Bit twidling
     fn count_ones(self) -> uint;
     fn count_zeros(self) -> uint { ... }
     fn leading_zeros(self) -> uint;
@@ -246,11 +246,11 @@ pub trait Int: Num + Not<Self> + BitAnd<Self,Self> + BitOr<Self,Self>
     fn to_be(self) -> Self { ... }
     fn to_le(self) -> Self { ... }
 
+    // Checked arithmetic
     fn checked_add(self, v: Self) -> Option<Self>;
     fn checked_sub(self, v: Self) -> Option<Self>;
     fn checked_mul(self, v: Self) -> Option<Self>;
     fn checked_div(self, v: Self) -> Option<Self>;
-
     fn saturating_add(self, v: Self) -> Self;
     fn saturating_sub(self, v: Self) -> Self;
 }
@@ -261,7 +261,7 @@ pub trait UnsignedInt: Int {
     fn next_power_of_two(self) -> Self;
 }
 
-pub trait Signed: Num + Neg<Self> {
+pub trait Signed: Neg<Self> {
     fn abs(&self) -> Self;
     fn signum(&self) -> Self;
     fn is_positive(&self) -> bool;
@@ -271,7 +271,16 @@ pub trait Signed: Num + Neg<Self> {
     // fn abs_sub(&self, other: &Self) -> Self;
 }
 
-pub trait Float: Signed {
+pub trait Float: Copy + Clone + PartialOrd + PartialEq + Signed
+               + Add<Self,Self> + Sub<Self,Self>
+               + Mul<Self,Self> + Div<Self,Self> + Rem<Self,Self>
+{
+    // Constants
+    fn zero() -> Self;  // These should be associated constants when those are available
+    fn one() -> Self;
+    fn min_value() -> Self;
+    fn max_value() -> Self;
+
     // Classification and decomposition
     fn is_nan(self) -> bool;
     fn is_infinite(self) -> bool;
@@ -382,10 +391,29 @@ The status quo is clearly not ideal, and as explained above there was
 a long attempt at providing a more complete numeric hierarchy in `std`.
 So *some* collapse of the hierarchy seems desirable.
 
-That said, there are other possible factorings. `Num` could be dropped
-(inlined into `Int` and `Float`). The signed and unsigned operations
-could be offered on more types, allowing removal of more traits but a
-less clear-cut semantics.
+That said, there are other possible factorings. We could introduce the
+following `Num` trait to factor out commonalities between `Int` and `Float`:
+
+```rust
+pub trait Num: Copy + Clone + PartialOrd + PartialEq
+             + Add<Self,Self> + Sub<Self,Self>
+             + Mul<Self,Self> + Div<Self,Self> + Rem<Self,Self>
+{
+    fn zero() -> Self;  // These should be associated constants when those are available
+    fn one() -> Self;
+    fn min_value() -> Self;
+    fn max_value() -> Self;
+}
+```
+
+However, it's not clear whether this factoring is worth having a more
+complex hierarchy, especially because the traits are not intended for
+generic programming at that level (and generic programming across
+integer and floating-point types is likely to be extremely rare)
+
+The signed and unsigned operations could be offered on more types,
+allowing removal of more traits but a less clear-cut semantics.
+
 
 # Unresolved questions
 
