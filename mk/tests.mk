@@ -530,9 +530,6 @@ CTEST_SRC_BASE_rpass-valgrind = run-pass-valgrind
 CTEST_BUILD_BASE_rpass-valgrind = run-pass-valgrind
 CTEST_MODE_rpass-valgrind = run-pass-valgrind
 CTEST_RUNTOOL_rpass-valgrind = $(CTEST_RUNTOOL)
-ifdef VALGRIND_PATH
-CTEST_TESTARGS += --valgrind-path "$(VALGRIND_PATH)"
-endif
 
 CTEST_SRC_BASE_rpass-full = run-pass-fulldeps
 CTEST_BUILD_BASE_rpass-full = run-pass-fulldeps
@@ -661,6 +658,19 @@ CTEST_COMMON_ARGS$(1)-T-$(2)-H-$(3) := \
         --lldb-python-dir=$(CFG_LLDB_PYTHON_DIR) \
         --target-rustcflags "$(RUSTC_FLAGS_$(2)) $$(CTEST_RUSTC_FLAGS) -L $$(RT_OUTPUT_DIR_$(2))" \
         $$(CTEST_TESTARGS)
+
+ifdef CFG_VALGRIND_RPASS
+ifdef GOOD_VALGRIND_$(2)
+$(info cfg: valgrind-path set to $(CFG_VALGRIND_RPASS))
+CTEST_COMMON_ARGS$(1)-T-$(2)-H-$(3) += --valgrind-path "$(CFG_VALGRIND_RPASS)"
+endif
+endif
+
+ifndef CFG_DISABLE_VALGRIND_RPASS
+ifdef GOOD_VALGRIND_$(2)
+CTEST_COMMON_ARGS$(1)-T-$(2)-H-$(3) += --force-valgrind
+endif
+endif
 
 CTEST_DEPS_rpass_$(1)-T-$(2)-H-$(3) = $$(RPASS_TESTS)
 CTEST_DEPS_rpass-valgrind_$(1)-T-$(2)-H-$(3) = $$(RPASS_VALGRIND_TESTS)

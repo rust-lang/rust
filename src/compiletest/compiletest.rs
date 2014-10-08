@@ -39,6 +39,11 @@ pub mod errors;
 pub fn main() {
     let args = os::args();
     let config = parse_config(args);
+
+    if config.valgrind_path.is_none() && config.force_valgrind {
+        fail!("Can't find Valgrind to run Valgrind tests");
+    }
+
     log_config(&config);
     run_tests(&config);
 }
@@ -50,7 +55,8 @@ pub fn parse_config(args: Vec<String> ) -> Config {
           reqopt("", "run-lib-path", "path to target shared libraries", "PATH"),
           reqopt("", "rustc-path", "path to rustc to use for compiling", "PATH"),
           optopt("", "clang-path", "path to  executable for codegen tests", "PATH"),
-          optopt("", "valgrind-path", "path to valgrind executable for valgrind tests", "PROGRAM"),
+          optopt("", "valgrind-path", "path to Valgrind executable for Valgrind tests", "PROGRAM"),
+          optflag("", "force-valgrind", "fail if Valgrind tests cannot be run under Valgrind"),
           optopt("", "llvm-bin-path", "path to directory holding llvm binaries", "DIR"),
           reqopt("", "src-base", "directory to scan for test files", "PATH"),
           reqopt("", "build-base", "directory to deposit test outputs", "PATH"),
@@ -127,6 +133,7 @@ pub fn parse_config(args: Vec<String> ) -> Config {
         rustc_path: opt_path(matches, "rustc-path"),
         clang_path: matches.opt_str("clang-path").map(|s| Path::new(s)),
         valgrind_path: matches.opt_str("valgrind-path"),
+        force_valgrind: matches.opt_present("force-valgrind"),
         llvm_bin_path: matches.opt_str("llvm-bin-path").map(|s| Path::new(s)),
         src_base: opt_path(matches, "src-base"),
         build_base: opt_path(matches, "build-base"),
@@ -164,7 +171,7 @@ pub fn parse_config(args: Vec<String> ) -> Config {
             !opt_str2(matches.opt_str("adb-test-dir")).is_empty(),
         lldb_python_dir: matches.opt_str("lldb-python-dir"),
         test_shard: test::opt_shard(matches.opt_str("test-shard")),
-        verbose: matches.opt_present("verbose")
+        verbose: matches.opt_present("verbose"),
     }
 }
 
