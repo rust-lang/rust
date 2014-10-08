@@ -193,7 +193,7 @@ disallow any references to statics by value (from other statics).
 ## Patterns
 
 Today, a `static` is allowed to be used in pattern matching. With the
-introduction of `const`, however, a `static` will be forbidden from appearning
+introduction of `const`, however, a `static` will be forbidden from appearing
 in a pattern match, and instead only a `const` can appear.
 
 # Drawbacks
