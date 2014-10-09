@@ -115,8 +115,15 @@ fn report_cannot_move_out_of(bccx: &BorrowckCtxt, move_from: mc::cmt) {
         mc::cat_deref(_, _, mc::BorrowedPtr(..)) |
         mc::cat_deref(_, _, mc::Implicit(..)) |
         mc::cat_deref(_, _, mc::UnsafePtr(..)) |
-        mc::cat_upvar(..) | mc::cat_static_item |
-        mc::cat_copied_upvar(mc::CopiedUpvar { onceness: ast::Many, .. }) => {
+        mc::cat_upvar(..) | mc::cat_static_item => {
+            bccx.span_err(
+                move_from.span,
+                format!("cannot move out of {}",
+                        bccx.cmt_to_string(&*move_from)).as_slice());
+        }
+
+        mc::cat_copied_upvar(mc::CopiedUpvar { kind: kind, .. })
+            if kind.onceness() == ast::Many => {
             bccx.span_err(
                 move_from.span,
                 format!("cannot move out of {}",
