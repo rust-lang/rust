@@ -117,11 +117,19 @@ def print_enum_val(val, internal_dict):
 
   assert val.GetType().GetTypeClass() == lldb.eTypeClassUnion
 
+
   if val.num_children == 1:
+    # This is either an enum with just one variant, or it is an Option-like enum
+    # where the discriminant is encoded in a non-nullable pointer field. We find
+    # out which one it is by looking at the member name of the sole union
+    # variant. If it starts with "RUST$ENCODED$ENUM$" then we have an
+    # Option-like enum.
     first_variant_name = val.GetChildAtIndex(0).GetName()
     if first_variant_name and first_variant_name.startswith("RUST$ENCODED$ENUM$"):
-      # Try to extract the
 
+      # This is an Option-like enum. The position of the discriminator field is
+      # encoded in the name which has the format:
+      #  RUST$ENCODED$ENUM$<index of discriminator field>$<name of null variant>
       last_separator_index = first_variant_name.rfind("$")
       if last_separator_index == -1:
         return "<invalid enum encoding: %s>" % first_variant_name
@@ -130,6 +138,7 @@ def print_enum_val(val, internal_dict):
       if second_last_separator_index == -1:
         return "<invalid enum encoding: %s>" % first_variant_name
 
+      # Extract index of the discriminator field
       try:
         disr_field_index = first_variant_name[second_last_separator_index + 1 :
                                               last_separator_index]
@@ -137,18 +146,22 @@ def print_enum_val(val, internal_dict):
       except:
         return "<invalid enum encoding: %s>" % first_variant_name
 
+      # Read the discriminant
       disr_val = val.GetChildAtIndex(0).GetChildAtIndex(disr_field_index).GetValueAsUnsigned()
 
       if disr_val == 0:
+        # Null case: Print the name of the null-variant
         null_variant_name = first_variant_name[last_separator_index + 1:]
         return null_variant_name
       else:
+        # Non-null case: Interpret the data as a value of the non-null variant type
         return print_struct_val_starting_from(0, val.GetChildAtIndex(0), internal_dict)
     else:
+      # This is just a regular uni-variant enum without discriminator field
       return print_struct_val_starting_from(0, val.GetChildAtIndex(0), internal_dict)
 
-  # extract the discriminator value by
-  disr_val = val.GetChildAtIndex(0).GetChildAtIndex(0)
+  # If we are here, this is a regular enum with more than one variant
+  disr_val = val.GetChildAtIndex(0).GetChildMemberWithName("RUST$ENUM$DISR")
   disr_type = disr_val.GetType()
 
   if disr_type.GetTypeClass() != lldb.eTypeClassEnumeration:

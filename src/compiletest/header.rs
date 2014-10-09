@@ -181,6 +181,34 @@ pub fn is_test_ignored(config: &Config, testfile: &Path) -> bool {
         }
     }
 
+    fn ignore_lldb(config: &Config, line: &str) -> bool {
+        if config.mode != common::DebugInfoLldb {
+            return false;
+        }
+
+        if parse_name_directive(line, "ignore-lldb") {
+            return true;
+        }
+
+        match config.lldb_version {
+            Some(ref actual_version) => {
+                if line.contains("min-lldb-version") {
+                    let min_version = line.trim()
+                                          .split(' ')
+                                          .last()
+                                          .expect("Malformed lldb version directive");
+                    // Ignore if actual version is smaller the minimum required
+                    // version
+                    lldb_version_to_int(actual_version.as_slice()) <
+                        lldb_version_to_int(min_version.as_slice())
+                } else {
+                    false
+                }
+            }
+            None => false
+        }
+    }
+
     let val = iter_header(testfile, |ln| {
         !parse_name_directive(ln, "ignore-test") &&
         !parse_name_directive(ln, ignore_target(config).as_slice()) &&
@@ -188,7 +216,7 @@ pub fn is_test_ignored(config: &Config, testfile: &Path) -> bool {
         !(config.mode == common::Pretty && parse_name_directive(ln, "ignore-pretty")) &&
         !(config.target != config.host && parse_name_directive(ln, "ignore-cross-compile")) &&
         !ignore_gdb(config, ln) &&
-        !(config.mode == common::DebugInfoLldb && parse_name_directive(ln, "ignore-lldb"))
+        !ignore_lldb(config, ln)
     });
 
     !val
@@ -329,4 +357,13 @@ pub fn gdb_version_to_int(version_string: &str) -> int {
     let minor: int = FromStr::from_str(components[1]).expect(error_string);
 
     return major * 1000 + minor;
+}
+
+pub fn lldb_version_to_int(version_string: &str) -> int {
+    let error_string = format!(
+        "Encountered LLDB version string with unexpected format: {}",
+        version_string);
+    let error_string = error_string.as_slice();
+    let major: int = FromStr::from_str(version_string).expect(error_string);
+    return major;
 }
