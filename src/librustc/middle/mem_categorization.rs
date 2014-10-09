@@ -544,7 +544,7 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
 
         match def {
           def::DefStruct(..) | def::DefVariant(..) | def::DefFn(..) |
-          def::DefStaticMethod(..) => {
+          def::DefStaticMethod(..) | def::DefConst(..) => {
                 Ok(self.cat_rvalue_node(id, span, expr_ty))
           }
           def::DefMod(_) | def::DefForeignMod(_) | def::DefUse(_) |
@@ -1104,7 +1104,7 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
                                                 |x,y,z| op(x,y,z)));
                     }
                 }
-                Some(&def::DefStatic(..)) => {
+                Some(&def::DefConst(..)) => {
                     for subpat in subpats.iter() {
                         if_ok!(self.cat_pattern(cmt.clone(), &**subpat, |x,y,z| op(x,y,z)));
                     }

@@ -69,7 +69,6 @@ pub struct EncodeParams<'a, 'tcx: 'a> {
     pub tcx: &'a ty::ctxt<'tcx>,
     pub reexports2: &'a middle::resolve::ExportMap2,
     pub item_symbols: &'a RefCell<NodeMap<String>>,
-    pub non_inlineable_statics: &'a RefCell<NodeSet>,
     pub link_meta: &'a LinkMeta,
     pub cstore: &'a cstore::CStore,
     pub encode_inlined_item: EncodeInlinedItem<'a>,
@@ -81,7 +80,6 @@ pub struct EncodeContext<'a, 'tcx: 'a> {
     pub tcx: &'a ty::ctxt<'tcx>,
     pub reexports2: &'a middle::resolve::ExportMap2,
     pub item_symbols: &'a RefCell<NodeMap<String>>,
-    pub non_inlineable_statics: &'a RefCell<NodeSet>,
     pub link_meta: &'a LinkMeta,
     pub cstore: &'a cstore::CStore,
     pub encode_inlined_item: RefCell<EncodeInlinedItem<'a>>,
@@ -1069,12 +1067,20 @@ fn encode_info_for_item(ecx: &EncodeContext,
         encode_symbol(ecx, rbml_w, item.id);
         encode_name(rbml_w, item.ident.name);
         encode_path(rbml_w, path);
-
-        let inlineable = !ecx.non_inlineable_statics.borrow().contains(&item.id);
-
-        if inlineable {
-            encode_inlined_item(ecx, rbml_w, IIItemRef(item));
-        }
+        encode_visibility(rbml_w, vis);
+        encode_stability(rbml_w, stab);
+        encode_attributes(rbml_w, item.attrs.as_slice());
+        rbml_w.end_tag();
+      }
+      ItemConst(_, _) => {
+        add_to_index(item, rbml_w, index);
+        rbml_w.start_tag(tag_items_data_item);
+        encode_def_id(rbml_w, def_id);
+        encode_family(rbml_w, 'C');
+        encode_bounds_and_type(rbml_w, ecx, &lookup_item_type(tcx, def_id));
+        encode_name(rbml_w, item.ident.name);
+        encode_path(rbml_w, path);
+        encode_inlined_item(ecx, rbml_w, IIItemRef(item));
         encode_visibility(rbml_w, vis);
         encode_stability(rbml_w, stab);
         rbml_w.end_tag();
@@ -2029,7 +2035,7 @@ fn encode_dylib_dependency_formats(rbml_w: &mut Encoder, ecx: &EncodeContext) {
 
 // NB: Increment this as you change the metadata encoding version.
 #[allow(non_uppercase_statics)]
-pub static metadata_encoding_version : &'static [u8] = &[b'r', b'u', b's', b't', 0, 0, 0, 1 ];
+pub const metadata_encoding_version : &'static [u8] = &[b'r', b'u', b's', b't', 0, 0, 0, 1 ];
 
 pub fn encode_metadata(parms: EncodeParams, krate: &Crate) -> Vec<u8> {
     let mut wr = SeekableMemWriter::new();
@@ -2076,7 +2082,6 @@ fn encode_metadata_inner(wr: &mut SeekableMemWriter, parms: EncodeParams, krate:
         cstore,
         encode_inlined_item,
         link_meta,
-        non_inlineable_statics,
         reachable,
         ..
     } = parms;
@@ -2085,7 +2090,6 @@ fn encode_metadata_inner(wr: &mut SeekableMemWriter, parms: EncodeParams, krate:
         tcx: tcx,
         reexports2: reexports2,
         item_symbols: item_symbols,
-        non_inlineable_statics: non_inlineable_statics,
         link_meta: link_meta,
         cstore: cstore,
         encode_inlined_item: RefCell::new(encode_inlined_item),

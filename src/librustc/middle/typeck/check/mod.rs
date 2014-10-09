@@ -677,7 +677,8 @@ pub fn check_item(ccx: &CrateCtxt, it: &ast::Item) {
     let _indenter = indenter();
 
     match it.node {
-      ast::ItemStatic(_, _, ref e) => check_const(ccx, it.span, &**e, it.id),
+      ast::ItemStatic(_, _, ref e) |
+      ast::ItemConst(_, ref e) => check_const(ccx, it.span, &**e, it.id),
       ast::ItemEnum(ref enum_definition, _) => {
         check_enum_variants(ccx,
                             it.span,
@@ -5083,7 +5084,7 @@ pub fn polytype_for_def(fcx: &FnCtxt,
       }
       def::DefFn(id, _, _) | def::DefStaticMethod(id, _, _) |
       def::DefStatic(id, _) | def::DefVariant(_, id, _) |
-      def::DefStruct(id) => {
+      def::DefStruct(id) | def::DefConst(id) => {
         return ty::lookup_item_type(fcx.ccx.tcx, id);
       }
       def::DefTrait(_) |
@@ -5211,6 +5212,7 @@ pub fn instantiate_path(fcx: &FnCtxt,
 
         // Case 2. Reference to a top-level value.
         def::DefFn(..) |
+        def::DefConst(..) |
         def::DefStatic(..) => {
             segment_spaces = Vec::from_elem(path.segments.len() - 1, None);
             segment_spaces.push(Some(subst::FnSpace));

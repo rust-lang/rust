@@ -1471,6 +1471,8 @@ fn item_module(w: &mut fmt::Formatter, cx: &Context,
             (_, &clean::StructItem(..)) => Greater,
             (&clean::EnumItem(..), _) => Less,
             (_, &clean::EnumItem(..)) => Greater,
+            (&clean::ConstantItem(..), _) => Less,
+            (_, &clean::ConstantItem(..)) => Greater,
             (&clean::StaticItem(..), _) => Less,
             (_, &clean::StaticItem(..)) => Greater,
             (&clean::ForeignFunctionItem(..), _) => Less,
@@ -1507,6 +1509,7 @@ fn item_module(w: &mut fmt::Formatter, cx: &Context,
                 clean::FunctionItem(..)        => ("functions", "Functions"),
                 clean::TypedefItem(..)         => ("types", "Type Definitions"),
                 clean::StaticItem(..)          => ("statics", "Statics"),
+                clean::ConstantItem(..)        => ("constants", "Constants"),
                 clean::TraitItem(..)           => ("traits", "Traits"),
                 clean::ImplItem(..)            => ("impls", "Implementations"),
                 clean::ViewItemItem(..)        => ("reexports", "Reexports"),
@@ -1526,28 +1529,28 @@ fn item_module(w: &mut fmt::Formatter, cx: &Context,
                         id = short, name = name));
         }
 
+        struct Initializer<'a>(&'a str, Item<'a>);
+        impl<'a> fmt::Show for Initializer<'a> {
+            fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+                let Initializer(s, item) = *self;
+                if s.len() == 0 { return Ok(()); }
+                try!(write!(f, "<code> = </code>"));
+                if s.contains("\n") {
+                    match item.href() {
+                        Some(url) => {
+                            write!(f, "<a href='{}'>[definition]</a>",
+                                   url)
+                        }
+                        None => Ok(()),
+                    }
+                } else {
+                    write!(f, "<code>{}</code>", s.as_slice())
+                }
+            }
+        }
+
         match myitem.inner {
             clean::StaticItem(ref s) | clean::ForeignStaticItem(ref s) => {
-                struct Initializer<'a>(&'a str, Item<'a>);
-                impl<'a> fmt::Show for Initializer<'a> {
-                    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-                        let Initializer(s, item) = *self;
-                        if s.len() == 0 { return Ok(()); }
-                        try!(write!(f, "<code> = </code>"));
-                        if s.contains("\n") {
-                            match item.href() {
-                                Some(url) => {
-                                    write!(f, "<a href='{}'>[definition]</a>",
-                                           url)
-                                }
-                                None => Ok(()),
-                            }
-                        } else {
-                            write!(f, "<code>{}</code>", s.as_slice())
-                        }
-                    }
-                }
-
                 try!(write!(w, "
                     <tr>
                         <td>{}<code>{}static {}{}: {}</code>{}</td>
@@ -1557,6 +1560,20 @@ fn item_module(w: &mut fmt::Formatter, cx: &Context,
                 ConciseStability(&myitem.stability),
                 VisSpace(myitem.visibility),
                 MutableSpace(s.mutability),
+                *myitem.name.get_ref(),
+                s.type_,
+                Initializer(s.expr.as_slice(), Item { cx: cx, item: myitem }),
+                Markdown(blank(myitem.doc_value()))));
+            }
+            clean::ConstantItem(ref s) => {
+                try!(write!(w, "
+                    <tr>
+                        <td>{}<code>{}const {}: {}</code>{}</td>
+                        <td class='docblock'>{}&nbsp;</td>
+                    </tr>
+                ",
+                ConciseStability(&myitem.stability),
+                VisSpace(myitem.visibility),
                 *myitem.name.get_ref(),
                 s.type_,
                 Initializer(s.expr.as_slice(), Item { cx: cx, item: myitem }),

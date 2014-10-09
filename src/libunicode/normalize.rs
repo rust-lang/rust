@@ -100,15 +100,15 @@ pub fn compose(a: char, b: char) -> Option<char> {
 }
 
 // Constants from Unicode 6.3.0 Section 3.12 Conjoining Jamo Behavior
-static S_BASE: u32 = 0xAC00;
-static L_BASE: u32 = 0x1100;
-static V_BASE: u32 = 0x1161;
-static T_BASE: u32 = 0x11A7;
-static L_COUNT: u32 = 19;
-static V_COUNT: u32 = 21;
-static T_COUNT: u32 = 28;
-static N_COUNT: u32 = (V_COUNT * T_COUNT);
-static S_COUNT: u32 = (L_COUNT * N_COUNT);
+const S_BASE: u32 = 0xAC00;
+const L_BASE: u32 = 0x1100;
+const V_BASE: u32 = 0x1161;
+const T_BASE: u32 = 0x11A7;
+const L_COUNT: u32 = 19;
+const V_COUNT: u32 = 21;
+const T_COUNT: u32 = 28;
+const N_COUNT: u32 = (V_COUNT * T_COUNT);
+const S_COUNT: u32 = (L_COUNT * N_COUNT);
 
 // Decompose a precomposed Hangul syllable
 #[inline(always)]

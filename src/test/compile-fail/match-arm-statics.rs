@@ -17,7 +17,7 @@ enum Direction {
     West
 }
 
-static TRUE_TRUE: (bool, bool) = (true, true);
+const TRUE_TRUE: (bool, bool) = (true, true);
 
 fn nonexhaustive_1() {
     match (true, false) {
@@ -39,8 +39,8 @@ fn unreachable_1() {
     }
 }
 
-static NONE: Option<Direction> = None;
-static EAST: Direction = East;
+const NONE: Option<Direction> = None;
+const EAST: Direction = East;
 
 fn nonexhaustive_2() {
     match Some(Some(North)) {
@@ -66,13 +66,13 @@ fn unreachable_2() {
     }
 }
 
-static NEW_FALSE: NewBool = NewBool(false);
+const NEW_FALSE: NewBool = NewBool(false);
 struct Foo {
     bar: Option<Direction>,
     baz: NewBool
 }
 
-static STATIC_FOO: Foo = Foo { bar: None, baz: NEW_FALSE };
+const STATIC_FOO: Foo = Foo { bar: None, baz: NEW_FALSE };
 
 fn nonexhaustive_3() {
     match (Foo { bar: Some(North), baz: NewBool(true) }) {

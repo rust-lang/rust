@@ -17,7 +17,6 @@ use middle::ty;
 
 use syntax::ast;
 use syntax::ast_util::{local_def, PostExpansionMethod};
-use syntax::ast_util;
 
 fn instantiate_inline(ccx: &CrateContext, fn_id: ast::DefId)
     -> Option<ast::DefId> {
@@ -76,21 +75,7 @@ fn instantiate_inline(ccx: &CrateContext, fn_id: ast::DefId)
                         }
                     }
                 }
-                ast::ItemStatic(_, mutbl, _) => {
-                    if !ast_util::static_has_significant_address(mutbl, item.attrs.as_slice()) {
-                        // Inlined static items use internal linkage when
-                        // possible, so that LLVM will coalesce globals with
-                        // identical initializers.  (It only does this for
-                        // globals with unnamed_addr and either internal or
-                        // private linkage.)
-                        Some(InternalLinkage)
-                    } else {
-                        // The address is significant, so we can't create an
-                        // internal copy of the static.  (The copy would have a
-                        // different address from the original.)
-                        Some(AvailableExternallyLinkage)
-                    }
-                }
+                ast::ItemConst(..) => None,
                 _ => unreachable!(),
             };
 

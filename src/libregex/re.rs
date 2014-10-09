@@ -128,7 +128,7 @@ pub struct ExNative {
     #[doc(hidden)]
     pub original: &'static str,
     #[doc(hidden)]
-    pub names: &'static [Option<&'static str>],
+    pub names: &'static &'static [Option<&'static str>],
     #[doc(hidden)]
     pub prog: fn(MatchKind, &str, uint, uint) -> Vec<Option<uint>>
 }

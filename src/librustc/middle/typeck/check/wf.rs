@@ -69,6 +69,9 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
             ast::ItemStatic(..) => {
                 self.check_item_type(item);
             }
+            ast::ItemConst(..) => {
+                self.check_item_type(item);
+            }
             ast::ItemStruct(ref struct_def, _) => {
                 self.check_type_defn(item, |fcx| {
                     vec![struct_variant(fcx, &**struct_def)]

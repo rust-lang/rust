@@ -805,6 +805,7 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
             def::DefStaticMethod(..) => ck("static method"),
             def::DefFn(..) => ck("function"),
             def::DefStatic(..) => ck("static"),
+            def::DefConst(..) => ck("const"),
             def::DefVariant(..) => ck("variant"),
             def::DefTy(_, false) => ck("type"),
             def::DefTy(_, true) => ck("enum"),
@@ -1181,7 +1182,7 @@ impl<'a, 'tcx> SanePrivacyVisitor<'a, 'tcx> {
                 }
             }
 
-            ast::ItemStatic(..) | ast::ItemStruct(..) |
+            ast::ItemConst(..) | ast::ItemStatic(..) | ast::ItemStruct(..) |
             ast::ItemFn(..) | ast::ItemMod(..) | ast::ItemTy(..) |
             ast::ItemMac(..) => {}
         }
@@ -1245,7 +1246,7 @@ impl<'a, 'tcx> SanePrivacyVisitor<'a, 'tcx> {
                 }
             }
 
-            ast::ItemStatic(..) |
+            ast::ItemStatic(..) | ast::ItemConst(..) |
             ast::ItemFn(..) | ast::ItemMod(..) | ast::ItemTy(..) |
             ast::ItemMac(..) => {}
         }

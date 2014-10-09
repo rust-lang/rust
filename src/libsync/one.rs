@@ -45,7 +45,7 @@ pub struct Once {
 }
 
 /// Initialization value for static `Once` values.
-pub static ONCE_INIT: Once = Once {
+pub const ONCE_INIT: Once = Once {
     mutex: MUTEX_INIT,
     cnt: atomic::INIT_ATOMIC_INT,
     lock_cnt: atomic::INIT_ATOMIC_INT,

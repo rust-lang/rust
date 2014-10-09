@@ -188,10 +188,10 @@ mod directive;
 
 /// Maximum logging level of a module that can be specified. Common logging
 /// levels are found in the DEBUG/INFO/WARN/ERROR constants.
-pub static MAX_LOG_LEVEL: u32 = 255;
+pub const MAX_LOG_LEVEL: u32 = 255;
 
 /// The default logging level of a crate if no other is specified.
-static DEFAULT_LOG_LEVEL: u32 = 1;
+const DEFAULT_LOG_LEVEL: u32 = 1;
 
 /// An unsafe constant that is the maximum logging level of any module
 /// specified. This is the first line of defense to determining whether a
@@ -205,13 +205,13 @@ static mut DIRECTIVES: *const Vec<directive::LogDirective> =
 static mut FILTER: *const Regex = 0 as *const _;
 
 /// Debug log level
-pub static DEBUG: u32 = 4;
+pub const DEBUG: u32 = 4;
 /// Info log level
-pub static INFO: u32 = 3;
+pub const INFO: u32 = 3;
 /// Warn log level
-pub static WARN: u32 = 2;
+pub const WARN: u32 = 2;
 /// Error log level
-pub static ERROR: u32 = 1;
+pub const ERROR: u32 = 1;
 
 local_data_key!(local_logger: Box<Logger + Send>)
 

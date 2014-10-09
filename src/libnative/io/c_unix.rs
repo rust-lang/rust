@@ -23,41 +23,41 @@ use libc;
           target_os = "ios",
           target_os = "freebsd",
           target_os = "dragonfly"))]
-pub static FIONBIO: libc::c_ulong = 0x8004667e;
+pub const FIONBIO: libc::c_ulong = 0x8004667e;
 #[cfg(any(all(target_os = "linux",
               any(target_arch = "x86",
                   target_arch = "x86_64",
                   target_arch = "arm")),
           target_os = "android"))]
-pub static FIONBIO: libc::c_ulong = 0x5421;
+pub const FIONBIO: libc::c_ulong = 0x5421;
 #[cfg(all(target_os = "linux",
           any(target_arch = "mips", target_arch = "mipsel")))]
-pub static FIONBIO: libc::c_ulong = 0x667e;
+pub const FIONBIO: libc::c_ulong = 0x667e;
 
 #[cfg(any(target_os = "macos",
           target_os = "ios",
           target_os = "freebsd",
           target_os = "dragonfly"))]
-pub static FIOCLEX: libc::c_ulong = 0x20006601;
+pub const FIOCLEX: libc::c_ulong = 0x20006601;
 #[cfg(any(all(target_os = "linux",
               any(target_arch = "x86",
                   target_arch = "x86_64",
                   target_arch = "arm")),
           target_os = "android"))]
-pub static FIOCLEX: libc::c_ulong = 0x5451;
+pub const FIOCLEX: libc::c_ulong = 0x5451;
 #[cfg(all(target_os = "linux",
           any(target_arch = "mips", target_arch = "mipsel")))]
-pub static FIOCLEX: libc::c_ulong = 0x6601;
+pub const FIOCLEX: libc::c_ulong = 0x6601;
 
 #[cfg(any(target_os = "macos",
           target_os = "ios",
           target_os = "freebsd",
           target_os = "dragonfly"))]
-pub static MSG_DONTWAIT: libc::c_int = 0x80;
+pub const MSG_DONTWAIT: libc::c_int = 0x80;
 #[cfg(any(target_os = "linux", target_os = "android"))]
-pub static MSG_DONTWAIT: libc::c_int = 0x40;
+pub const MSG_DONTWAIT: libc::c_int = 0x40;
 
-pub static WNOHANG: libc::c_int = 1;
+pub const WNOHANG: libc::c_int = 1;
 
 extern {
     pub fn gettimeofday(timeval: *mut libc::timeval,
@@ -89,7 +89,7 @@ extern {
 
 #[cfg(any(target_os = "macos", target_os = "ios"))]
 mod select {
-    pub static FD_SETSIZE: uint = 1024;
+    pub const FD_SETSIZE: uint = 1024;
 
     #[repr(C)]
     pub struct fd_set {
@@ -109,7 +109,7 @@ mod select {
     use std::uint;
     use libc;
 
-    pub static FD_SETSIZE: uint = 1024;
+    pub const FD_SETSIZE: uint = 1024;
 
     #[repr(C)]
     pub struct fd_set {
@@ -131,14 +131,14 @@ mod select {
 mod signal {
     use libc;
 
-    pub static SA_NOCLDSTOP: libc::c_ulong = 0x00000001;
-    pub static SA_NOCLDWAIT: libc::c_ulong = 0x00000002;
-    pub static SA_NODEFER: libc::c_ulong = 0x40000000;
-    pub static SA_ONSTACK: libc::c_ulong = 0x08000000;
-    pub static SA_RESETHAND: libc::c_ulong = 0x80000000;
-    pub static SA_RESTART: libc::c_ulong = 0x10000000;
-    pub static SA_SIGINFO: libc::c_ulong = 0x00000004;
-    pub static SIGCHLD: libc::c_int = 17;
+    pub const SA_NOCLDSTOP: libc::c_ulong = 0x00000001;
+    pub const SA_NOCLDWAIT: libc::c_ulong = 0x00000002;
+    pub const SA_NODEFER: libc::c_ulong = 0x40000000;
+    pub const SA_ONSTACK: libc::c_ulong = 0x08000000;
+    pub const SA_RESETHAND: libc::c_ulong = 0x80000000;
+    pub const SA_RESTART: libc::c_ulong = 0x10000000;
+    pub const SA_SIGINFO: libc::c_ulong = 0x00000004;
+    pub const SIGCHLD: libc::c_int = 17;
 
     // This definition is not as accurate as it could be, {pid, uid, status} is
     // actually a giant union. Currently we're only interested in these fields,
@@ -179,14 +179,14 @@ mod signal {
 mod signal {
     use libc;
 
-    pub static SA_NOCLDSTOP: libc::c_ulong = 0x00000001;
-    pub static SA_NOCLDWAIT: libc::c_ulong = 0x00010000;
-    pub static SA_NODEFER: libc::c_ulong = 0x40000000;
-    pub static SA_ONSTACK: libc::c_ulong = 0x08000000;
-    pub static SA_RESETHAND: libc::c_ulong = 0x80000000;
-    pub static SA_RESTART: libc::c_ulong = 0x10000000;
-    pub static SA_SIGINFO: libc::c_ulong = 0x00000008;
-    pub static SIGCHLD: libc::c_int = 18;
+    pub const SA_NOCLDSTOP: libc::c_ulong = 0x00000001;
+    pub const SA_NOCLDWAIT: libc::c_ulong = 0x00010000;
+    pub const SA_NODEFER: libc::c_ulong = 0x40000000;
+    pub const SA_ONSTACK: libc::c_ulong = 0x08000000;
+    pub const SA_RESETHAND: libc::c_ulong = 0x80000000;
+    pub const SA_RESTART: libc::c_ulong = 0x10000000;
+    pub const SA_SIGINFO: libc::c_ulong = 0x00000008;
+    pub const SIGCHLD: libc::c_int = 18;
 
     // This definition is not as accurate as it could be, {pid, uid, status} is
     // actually a giant union. Currently we're only interested in these fields,
@@ -223,14 +223,14 @@ mod signal {
 mod signal {
     use libc;
 
-    pub static SA_ONSTACK: libc::c_int = 0x0001;
-    pub static SA_RESTART: libc::c_int = 0x0002;
-    pub static SA_RESETHAND: libc::c_int = 0x0004;
-    pub static SA_NOCLDSTOP: libc::c_int = 0x0008;
-    pub static SA_NODEFER: libc::c_int = 0x0010;
-    pub static SA_NOCLDWAIT: libc::c_int = 0x0020;
-    pub static SA_SIGINFO: libc::c_int = 0x0040;
-    pub static SIGCHLD: libc::c_int = 20;
+    pub const SA_ONSTACK: libc::c_int = 0x0001;
+    pub const SA_RESTART: libc::c_int = 0x0002;
+    pub const SA_RESETHAND: libc::c_int = 0x0004;
+    pub const SA_NOCLDSTOP: libc::c_int = 0x0008;
+    pub const SA_NODEFER: libc::c_int = 0x0010;
+    pub const SA_NOCLDWAIT: libc::c_int = 0x0020;
+    pub const SA_SIGINFO: libc::c_int = 0x0040;
+    pub const SIGCHLD: libc::c_int = 20;
 
     #[cfg(any(target_os = "macos", target_os = "ios"))]
     pub type sigset_t = u32;

@@ -46,7 +46,7 @@ pub fn pat_is_const(dm: &resolve::DefMap, pat: &Pat) -> bool {
     match pat.node {
         PatIdent(_, _, None) | PatEnum(..) => {
             match dm.borrow().find(&pat.id) {
-                Some(&DefStatic(_, false)) => true,
+                Some(&DefConst(..)) => true,
                 _ => false
             }
         }

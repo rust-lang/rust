@@ -903,6 +903,9 @@ pub fn noop_fold_item_underscore<T: Folder>(i: Item_, folder: &mut T) -> Item_ {
         ItemStatic(t, m, e) => {
             ItemStatic(folder.fold_ty(t), m, folder.fold_expr(e))
         }
+        ItemConst(t, e) => {
+            ItemConst(folder.fold_ty(t), folder.fold_expr(e))
+        }
         ItemFn(decl, fn_style, abi, generics, body) => {
             ItemFn(
                 folder.fold_fn_decl(decl),

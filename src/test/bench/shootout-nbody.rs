@@ -38,10 +38,10 @@
 // ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
 // OF THE POSSIBILITY OF SUCH DAMAGE.
 
-static PI: f64 = 3.141592653589793;
-static SOLAR_MASS: f64 = 4.0 * PI * PI;
-static YEAR: f64 = 365.24;
-static N_BODIES: uint = 5;
+const PI: f64 = 3.141592653589793;
+const SOLAR_MASS: f64 = 4.0 * PI * PI;
+const YEAR: f64 = 365.24;
+const N_BODIES: uint = 5;
 
 static BODIES: [Planet, ..N_BODIES] = [
     // Sun

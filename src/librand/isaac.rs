@@ -16,9 +16,9 @@ use core::slice::raw;
 
 use {Rng, SeedableRng, Rand};
 
-static RAND_SIZE_LEN: u32 = 8;
-static RAND_SIZE: u32 = 1 << (RAND_SIZE_LEN as uint);
-static RAND_SIZE_UINT: uint = 1 << (RAND_SIZE_LEN as uint);
+const RAND_SIZE_LEN: u32 = 8;
+const RAND_SIZE: u32 = 1 << (RAND_SIZE_LEN as uint);
+const RAND_SIZE_UINT: uint = 1 << (RAND_SIZE_LEN as uint);
 
 /// A random number generator that uses the ISAAC algorithm[1].
 ///
@@ -251,8 +251,8 @@ impl Rand for IsaacRng {
     }
 }
 
-static RAND_SIZE_64_LEN: uint = 8;
-static RAND_SIZE_64: uint = 1 << RAND_SIZE_64_LEN;
+const RAND_SIZE_64_LEN: uint = 8;
+const RAND_SIZE_64: uint = 1 << RAND_SIZE_64_LEN;
 
 /// A random number generator that uses ISAAC-64[1], the 64-bit
 /// variant of the ISAAC algorithm.
@@ -356,8 +356,8 @@ impl Isaac64Rng {
         // abbreviations
         let mut a = self.a;
         let mut b = self.b + self.c;
-        static MIDPOINT: uint =  RAND_SIZE_64 / 2;
-        static MP_VEC: [(uint, uint), .. 2] = [(0,MIDPOINT), (MIDPOINT, 0)];
+        const MIDPOINT: uint =  RAND_SIZE_64 / 2;
+        const MP_VEC: [(uint, uint), .. 2] = [(0,MIDPOINT), (MIDPOINT, 0)];
         macro_rules! ind (
             ($x:expr) => {
                 *self.mem.unsafe_get(($x as uint >> 3) & (RAND_SIZE_64 - 1))

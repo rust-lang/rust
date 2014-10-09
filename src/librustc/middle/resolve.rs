@@ -29,7 +29,7 @@ use syntax::ast::{ExprPath, ExprProc, ExprStruct, ExprUnboxedFn, FnDecl};
 use syntax::ast::{ForeignItem, ForeignItemFn, ForeignItemStatic, Generics};
 use syntax::ast::{Ident, ImplItem, Item, ItemEnum, ItemFn, ItemForeignMod};
 use syntax::ast::{ItemImpl, ItemMac, ItemMod, ItemStatic, ItemStruct};
-use syntax::ast::{ItemTrait, ItemTy, LOCAL_CRATE, Local};
+use syntax::ast::{ItemTrait, ItemTy, LOCAL_CRATE, Local, ItemConst};
 use syntax::ast::{MethodImplItem, Mod, Name, NamedField, NodeId};
 use syntax::ast::{Pat, PatEnum, PatIdent, PatLit};
 use syntax::ast::{PatRange, PatStruct, Path, PathListIdent, PathListMod};
@@ -1243,6 +1243,12 @@ impl<'a> Resolver<'a> {
                     (DefStatic(local_def(item.id), mutbl), sp, is_public);
                 parent
             }
+            ItemConst(_, _) => {
+                self.add_child(ident, parent.clone(), ForbidDuplicateValues, sp)
+                    .define_value(DefConst(local_def(item.id)),
+                                  sp, is_public);
+                parent
+            }
             ItemFn(_, fn_style, _, _, _) => {
                 let name_bindings =
                     self.add_child(ident, parent.clone(), ForbidDuplicateValues, sp);
@@ -1829,7 +1835,7 @@ impl<'a> Resolver<'a> {
                 csearch::get_tuple_struct_definition_if_ctor(&self.session.cstore, ctor_id)
                     .map_or(def, |_| DefStruct(ctor_id)), DUMMY_SP, is_public);
           }
-          DefFn(..) | DefStaticMethod(..) | DefStatic(..) => {
+          DefFn(..) | DefStaticMethod(..) | DefStatic(..) | DefConst(..) => {
             debug!("(building reduced graph for external \
                     crate) building value (fn/static) {}", final_ident);
             child_name_bindings.define_value(def, DUMMY_SP, is_public);
@@ -4216,7 +4222,7 @@ impl<'a> Resolver<'a> {
                                       &**block);
             }
 
-            ItemStatic(..) => {
+            ItemConst(..) | ItemStatic(..) => {
                 self.with_constant_rib(|this| {
                     visit::walk_item(this, item);
                 });
@@ -5106,6 +5112,7 @@ impl<'a> Resolver<'a> {
                         Some(def @ (DefFn(..), _))      |
                         Some(def @ (DefVariant(..), _)) |
                         Some(def @ (DefStruct(..), _))  |
+                        Some(def @ (DefConst(..), _))  |
                         Some(def @ (DefStatic(..), _)) => {
                             self.record_def(pattern.id, def);
                         }
@@ -5193,12 +5200,14 @@ impl<'a> Resolver<'a> {
                             def @ DefVariant(..) | def @ DefStruct(..) => {
                                 return FoundStructOrEnumVariant(def, LastMod(AllPublic));
                             }
-                            def @ DefStatic(_, false) => {
+                            def @ DefConst(..) => {
                                 return FoundConst(def, LastMod(AllPublic));
                             }
-                            DefStatic(_, true) => {
+                            DefStatic(..) => {
                                 self.resolve_error(span,
-                                    "mutable static variables cannot be referenced in a pattern");
+                                                   "static variables cannot be \
+                                                    referenced in a pattern, \
+                                                    use a `const` instead");
                                 return BareIdentifierPatternUnresolved;
                             }
                             _ => {

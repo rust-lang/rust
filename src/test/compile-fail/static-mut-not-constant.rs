@@ -10,6 +10,7 @@
 
 
 static mut a: Box<int> = box 3;
-//~^ ERROR mutable static items are not allowed to have owned pointers
+//~^ ERROR statics are not allowed to have custom pointers
+//~^^ ERROR mutable statics are not allowed to have owned pointers
 
 fn main() {}

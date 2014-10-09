@@ -14,7 +14,7 @@
 
 fn pad() -> uint { 0 }
 
-static ONE: uint = 1;
+const ONE: uint = 1;
 
 mod b {
     // Separate compilation always switches to the LLVM module with the fewest
@@ -28,7 +28,7 @@ mod b {
 mod a {
     fn pad() -> uint { 0 }
 
-    pub static TWO: uint = ::ONE + ::ONE;
+    pub const TWO: uint = ::ONE + ::ONE;
 }
 
 fn main() {

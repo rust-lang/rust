@@ -283,7 +283,7 @@ pub mod util;
 /// The default buffer size for various I/O operations
 // libuv recommends 64k buffers to maximize throughput
 // https://groups.google.com/forum/#!topic/libuv/oQO1HJAIDdA
-static DEFAULT_BUF_SIZE: uint = 1024 * 64;
+const DEFAULT_BUF_SIZE: uint = 1024 * 64;
 
 /// A convenient typedef of the return value of any I/O action.
 pub type IoResult<T> = Result<T, IoError>;
@@ -1803,93 +1803,93 @@ bitflags! {
     #[doc = "A set of permissions for a file or directory is represented"]
     #[doc = "by a set of flags which are or'd together."]
     flags FilePermission: u32 {
-        static USER_READ     = 0o400,
-        static USER_WRITE    = 0o200,
-        static USER_EXECUTE  = 0o100,
-        static GROUP_READ    = 0o040,
-        static GROUP_WRITE   = 0o020,
-        static GROUP_EXECUTE = 0o010,
-        static OTHER_READ    = 0o004,
-        static OTHER_WRITE   = 0o002,
-        static OTHER_EXECUTE = 0o001,
+        const USER_READ     = 0o400,
+        const USER_WRITE    = 0o200,
+        const USER_EXECUTE  = 0o100,
+        const GROUP_READ    = 0o040,
+        const GROUP_WRITE   = 0o020,
+        const GROUP_EXECUTE = 0o010,
+        const OTHER_READ    = 0o004,
+        const OTHER_WRITE   = 0o002,
+        const OTHER_EXECUTE = 0o001,
 
-        static USER_RWX  = USER_READ.bits | USER_WRITE.bits | USER_EXECUTE.bits,
-        static GROUP_RWX = GROUP_READ.bits | GROUP_WRITE.bits | GROUP_EXECUTE.bits,
-        static OTHER_RWX = OTHER_READ.bits | OTHER_WRITE.bits | OTHER_EXECUTE.bits,
+        const USER_RWX  = USER_READ.bits | USER_WRITE.bits | USER_EXECUTE.bits,
+        const GROUP_RWX = GROUP_READ.bits | GROUP_WRITE.bits | GROUP_EXECUTE.bits,
+        const OTHER_RWX = OTHER_READ.bits | OTHER_WRITE.bits | OTHER_EXECUTE.bits,
 
         #[doc = "Permissions for user owned files, equivalent to 0644 on"]
         #[doc = "unix-like systems."]
-        static USER_FILE = USER_READ.bits | USER_WRITE.bits | GROUP_READ.bits | OTHER_READ.bits,
+        const USER_FILE = USER_READ.bits | USER_WRITE.bits | GROUP_READ.bits | OTHER_READ.bits,
 
         #[doc = "Permissions for user owned directories, equivalent to 0755 on"]
         #[doc = "unix-like systems."]
-        static USER_DIR  = USER_RWX.bits | GROUP_READ.bits | GROUP_EXECUTE.bits |
+        const USER_DIR  = USER_RWX.bits | GROUP_READ.bits | GROUP_EXECUTE.bits |
                    OTHER_READ.bits | OTHER_EXECUTE.bits,
 
         #[doc = "Permissions for user owned executables, equivalent to 0755"]
         #[doc = "on unix-like systems."]
-        static USER_EXEC = USER_DIR.bits,
+        const USER_EXEC = USER_DIR.bits,
 
         #[doc = "All possible permissions enabled."]
-        static ALL_PERMISSIONS = USER_RWX.bits | GROUP_RWX.bits | OTHER_RWX.bits,
+        const ALL_PERMISSIONS = USER_RWX.bits | GROUP_RWX.bits | OTHER_RWX.bits,
 
         // Deprecated names
         #[allow(non_uppercase_statics)]
         #[deprecated = "use USER_READ instead"]
-        static UserRead     = USER_READ.bits,
+        const UserRead     = USER_READ.bits,
         #[allow(non_uppercase_statics)]
         #[deprecated = "use USER_WRITE instead"]
-        static UserWrite    = USER_WRITE.bits,
+        const UserWrite    = USER_WRITE.bits,
         #[allow(non_uppercase_statics)]
         #[deprecated = "use USER_EXECUTE instead"]
-        static UserExecute  = USER_EXECUTE.bits,
+        const UserExecute  = USER_EXECUTE.bits,
         #[allow(non_uppercase_statics)]
         #[deprecated = "use GROUP_READ instead"]
-        static GroupRead    = GROUP_READ.bits,
+        const GroupRead    = GROUP_READ.bits,
         #[allow(non_uppercase_statics)]
         #[deprecated = "use GROUP_WRITE instead"]
-        static GroupWrite   = GROUP_WRITE.bits,
+        const GroupWrite   = GROUP_WRITE.bits,
         #[allow(non_uppercase_statics)]
         #[deprecated = "use GROUP_EXECUTE instead"]
-        static GroupExecute = GROUP_EXECUTE.bits,
+        const GroupExecute = GROUP_EXECUTE.bits,
         #[allow(non_uppercase_statics)]
         #[deprecated = "use OTHER_READ instead"]
-        static OtherRead    = OTHER_READ.bits,
+        const OtherRead    = OTHER_READ.bits,
         #[allow(non_uppercase_statics)]
         #[deprecated = "use OTHER_WRITE instead"]
-        static OtherWrite   = OTHER_WRITE.bits,
+        const OtherWrite   = OTHER_WRITE.bits,
         #[allow(non_uppercase_statics)]
         #[deprecated = "use OTHER_EXECUTE instead"]
-        static OtherExecute = OTHER_EXECUTE.bits,
+        const OtherExecute = OTHER_EXECUTE.bits,
 
         #[allow(non_uppercase_statics)]
         #[deprecated = "use USER_RWX instead"]
-        static UserRWX  = USER_RWX.bits,
+        const UserRWX  = USER_RWX.bits,
         #[allow(non_uppercase_statics)]
         #[deprecated = "use GROUP_RWX instead"]
-        static GroupRWX = GROUP_RWX.bits,
+        const GroupRWX = GROUP_RWX.bits,
         #[allow(non_uppercase_statics)]
         #[deprecated = "use OTHER_RWX instead"]
-        static OtherRWX = OTHER_RWX.bits,
+        const OtherRWX = OTHER_RWX.bits,
 
         #[doc = "Deprecated: use `USER_FILE` instead."]
         #[allow(non_uppercase_statics)]
         #[deprecated = "use USER_FILE instead"]
-        static UserFile = USER_FILE.bits,
+        const UserFile = USER_FILE.bits,
 
         #[doc = "Deprecated: use `USER_DIR` instead."]
         #[allow(non_uppercase_statics)]
         #[deprecated = "use USER_DIR instead"]
-        static UserDir  = USER_DIR.bits,
+        const UserDir  = USER_DIR.bits,
         #[doc = "Deprecated: use `USER_EXEC` instead."]
         #[allow(non_uppercase_statics)]
         #[deprecated = "use USER_EXEC instead"]
-        static UserExec = USER_EXEC.bits,
+        const UserExec = USER_EXEC.bits,
 
         #[doc = "Deprecated: use `ALL_PERMISSIONS` instead"]
         #[allow(non_uppercase_statics)]
         #[deprecated = "use ALL_PERMISSIONS instead"]
-        static AllPermissions = ALL_PERMISSIONS.bits,
+        const AllPermissions = ALL_PERMISSIONS.bits,
     }
 }
 

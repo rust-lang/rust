@@ -104,19 +104,14 @@ pub fn expand_syntax_ext<'cx>(cx: &'cx mut ExtCtxt,
         return DummyResult::expr(sp);
     }
 
-    let e = cx.expr_vec_slice(sp, bytes);
-    let ty = cx.ty(sp, ast::TyVec(cx.ty_ident(sp, cx.ident_of("u8"))));
-    let lifetime = cx.lifetime(sp, cx.ident_of("'static").name);
-    let item = cx.item_static(sp,
-                              cx.ident_of("BYTES"),
-                              cx.ty_rptr(sp,
-                                         ty,
-                                         Some(lifetime),
-                                         ast::MutImmutable),
-                              ast::MutImmutable,
-                              e);
-    let e = cx.expr_block(cx.block(sp,
-                                   vec!(cx.stmt_item(sp, item)),
-                                   Some(cx.expr_ident(sp, cx.ident_of("BYTES")))));
+    let len = bytes.len();
+    let e = cx.expr_vec(sp, bytes);
+    let ty = cx.ty(sp, ast::TyFixedLengthVec(cx.ty_ident(sp, cx.ident_of("u8")),
+                                             cx.expr_uint(sp, len)));
+    let item = cx.item_static(sp, cx.ident_of("BYTES"), ty, ast::MutImmutable, e);
+    let ret = cx.expr_ident(sp, cx.ident_of("BYTES"));
+    let ret = cx.expr_addr_of(sp, ret);
+    let e = cx.expr_block(cx.block(sp, vec![cx.stmt_item(sp, item)],
+                                   Some(ret)));
     MacExpr::new(e)
 }

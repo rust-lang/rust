@@ -104,8 +104,8 @@ impl PartialEq for Ident {
 // this uint is a reference to a table stored in thread-local
 // storage.
 pub type SyntaxContext = u32;
-pub static EMPTY_CTXT : SyntaxContext = 0;
-pub static ILLEGAL_CTXT : SyntaxContext = 1;
+pub const EMPTY_CTXT : SyntaxContext = 0;
+pub const ILLEGAL_CTXT : SyntaxContext = 1;
 
 /// A name is a part of an identifier, representing a string or gensym. It's
 /// the result of interning.
@@ -198,13 +198,13 @@ pub struct DefId {
 
 /// Item definitions in the currently-compiled crate would have the CrateNum
 /// LOCAL_CRATE in their DefId.
-pub static LOCAL_CRATE: CrateNum = 0;
-pub static CRATE_NODE_ID: NodeId = 0;
+pub const LOCAL_CRATE: CrateNum = 0;
+pub const CRATE_NODE_ID: NodeId = 0;
 
 /// When parsing and doing expansions, we initially give all AST nodes this AST
 /// node value. Then later, in the renumber pass, we renumber them to have
 /// small, positive ids.
-pub static DUMMY_NODE_ID: NodeId = -1;
+pub const DUMMY_NODE_ID: NodeId = -1;
 
 /// The AST represents all type param bounds as types.
 /// typeck::collect::compute_bounds matches these against
@@ -1309,6 +1309,7 @@ pub struct Item {
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
 pub enum Item_ {
     ItemStatic(P<Ty>, Mutability, P<Expr>),
+    ItemConst(P<Ty>, P<Expr>),
     ItemFn(P<FnDecl>, FnStyle, Abi, Generics, P<Block>),
     ItemMod(Mod),
     ItemForeignMod(ForeignMod),

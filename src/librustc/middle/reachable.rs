@@ -27,7 +27,6 @@ use syntax::abi;
 use syntax::ast;
 use syntax::ast_map;
 use syntax::ast_util::{is_local, PostExpansionMethod};
-use syntax::ast_util;
 use syntax::attr::{InlineAlways, InlineHint, InlineNever, InlineNone};
 use syntax::attr;
 use syntax::visit::Visitor;
@@ -121,15 +120,14 @@ impl<'a, 'tcx, 'v> Visitor<'v> for ReachableContext<'a, 'tcx> {
                         self.worklist.push(def_id.node)
                     } else {
                         match def {
-                            // If this path leads to a static, then we may have
-                            // to do some work to figure out whether the static
-                            // is indeed reachable. (Inlineable statics are
-                            // never reachable.)
-                            def::DefStatic(..) => {
+                            // If this path leads to a constant, then we need to
+                            // recurse into the constant to continue finding
+                            // items that are reachable.
+                            def::DefConst(..) => {
                                 self.worklist.push(def_id.node);
                             }
 
-                            // If this wasn't a static, then this destination is
+                            // If this wasn't a static, then the destination is
                             // surely reachable.
                             _ => {
                                 self.reachable_symbols.insert(def_id.node);
@@ -238,15 +236,14 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
     fn propagate(&mut self) {
         let mut scanned = HashSet::new();
         loop {
-            if self.worklist.len() == 0 {
-                break
-            }
-            let search_item = self.worklist.pop().unwrap();
-            if scanned.contains(&search_item) {
+            let search_item = match self.worklist.pop() {
+                Some(item) => item,
+                None => break,
+            };
+            if !scanned.insert(search_item) {
                 continue
             }
 
-            scanned.insert(search_item);
             match self.tcx.map.find(search_item) {
                 Some(ref item) => self.propagate_node(item, search_item),
                 None if search_item == ast::CRATE_NODE_ID => {}
@@ -297,21 +294,17 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
                         }
                     }
 
-                    // Statics with insignificant addresses are not reachable
-                    // because they're inlined specially into all other crates.
-                    ast::ItemStatic(_, mutbl, ref init) => {
-                        if !ast_util::static_has_significant_address(
-                                mutbl,
-                                item.attrs.as_slice()) {
-                            self.reachable_symbols.remove(&search_item);
-                        }
-                        visit::walk_expr(self, &**init);
+                    // Reachable constants will be inlined into other crates
+                    // unconditionally, so we need to make sure that their
+                    // contents are also reachable.
+                    ast::ItemConst(_, ref init) => {
+                        self.visit_expr(&**init);
                     }
 
                     // These are normal, nothing reachable about these
                     // inherently and their children are already in the
                     // worklist, as determined by the privacy pass
-                    ast::ItemTy(..) |
+                    ast::ItemTy(..) | ast::ItemStatic(_, _, _) |
                     ast::ItemMod(..) | ast::ItemForeignMod(..) |
                     ast::ItemImpl(..) | ast::ItemTrait(..) |
                     ast::ItemStruct(..) | ast::ItemEnum(..) => {}

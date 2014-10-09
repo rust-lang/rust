@@ -440,8 +440,8 @@ pub fn ast_path_to_ty_relaxed<'tcx, AC: AstConv<'tcx>,
     }
 }
 
-pub static NO_REGIONS: uint = 1;
-pub static NO_TPS: uint = 2;
+pub const NO_REGIONS: uint = 1;
+pub const NO_TPS: uint = 2;
 
 fn check_path_args(tcx: &ty::ctxt,
                    path: &ast::Path,
