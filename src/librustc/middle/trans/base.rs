@@ -2680,12 +2680,18 @@ pub fn get_item_val(ccx: &CrateContext, id: ast::NodeId) -> ValueRef {
 
                     // We need the translated value here, because for enums the
                     // LLVM type is not fully determined by the Rust type.
-                    let (v, inlineable, _) = consts::const_expr(ccx, &**expr, is_local);
+                    let (v, inlineable, ty) = consts::const_expr(ccx, &**expr, is_local);
                     ccx.const_values().borrow_mut().insert(id, v);
                     let mut inlineable = inlineable;
 
                     unsafe {
-                        let llty = llvm::LLVMTypeOf(v);
+                        // boolean SSA values are i1, but they have to be stored in i8 slots,
+                        // otherwise some LLVM optimization passes don't work as expected
+                        let llty = if ty::type_is_bool(ty) {
+                            llvm::LLVMInt8TypeInContext(ccx.llcx())
+                        } else {
+                            llvm::LLVMTypeOf(v)
+                        };
                         if contains_null(sym.as_slice()) {
                             ccx.sess().fatal(
                                 format!("Illegal null byte in export_name value: `{}`",
