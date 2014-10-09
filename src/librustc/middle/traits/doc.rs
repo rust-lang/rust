@@ -57,7 +57,8 @@ Trait resolution consists of three major parts:
   resolved by employing an impl which matches the self type, or by
   using a parameter bound. In the case of an impl, Selecting one
   obligation can create *nested obligations* because of where clauses
-  on the impl itself.
+  on the impl itself. It may also require evaluating those nested
+  obligations to resolve ambiguities.
 
 - FULFILLMENT: The fulfillment code is what tracks that obligations
   are completely fulfilled. Basically it is a worklist of obligations
@@ -100,80 +101,88 @@ candidate that is definitively applicable. In some cases, we may not
 know whether an impl/where-clause applies or not -- this occurs when
 the obligation contains unbound inference variables.
 
-One important point is that candidate assembly considers *only the
-input types* of the obligation when deciding whether an impl applies
-or not. Consider the following example:
+The basic idea for candidate assembly is to do a first pass in which
+we identify all possible candidates. During this pass, all that we do
+is try and unify the type parameters. (In particular, we ignore any
+nested where clauses.) Presuming that this unification succeeds, the
+impl is added as a candidate.
 
-    trait Convert<T> { // T is output, Self is input
-        fn convert(&self) -> T;
-    }
+Once this first pass is done, we can examine the set of candidates. If
+it is a singleton set, then we are done: this is the only impl in
+scope that could possibly apply. Otherwise, we can winnow down the set
+of candidates by using where clauses and other conditions. If this
+reduced set yields a single, unambiguous entry, we're good to go,
+otherwise the result is considered ambiguous.
 
-    impl Convert<uint> for int { ... }
+#### The basic process: Inferring based on the impls we see
 
-Now assume we have an obligation `int : Convert<char>`. During
-candidate assembly, the impl above would be considered a definitively
-applicable candidate, because it has the same self type (`int`). The
-fact that the output type parameter `T` is `uint` on the impl and
-`char` in the obligation is not considered.
+This process is easier if we work through some examples. Consider
+the following trait:
 
-#### Skolemization
+```
+trait Convert<Target> {
+    fn convert(&self) -> Target;
+}
+```
 
-We (at least currently) wish to guarantee "crate concatenability" --
-which basically means that you could take two crates, concatenate
-them textually, and the combined crate would continue to compile. The
-only real way that this relates to trait matching is with
-inference. We have to be careful not to influence unbound type
-variables during the selection process, basically.
+This trait just has one method. It's about as simple as it gets. It
+converts from the (implicit) `Self` type to the `Target` type. If we
+wanted to permit conversion between `int` and `uint`, we might
+implement `Convert` like so:
 
-Here is an example:
+```rust
+impl Convert<uint> for int { ... } // int -> uint
+impl Convert<int> for uint { ... } // uint -> uint
+```
 
-    trait Foo { fn method() { ... }}
-    impl Foo for int { ... }
+Now imagine there is some code like the following:
 
-    fn something() {
-        let mut x = None; // `x` has type `Option<?>`
-        loop {
-            match x {
-                Some(ref y) => { // `y` has type ?
-                    y.method();  // (*)
-                    ...
-        }}}
-    }
+```rust
+let x: int = ...;
+let y = x.convert();
+```
 
-The question is, can we resolve the call to `y.method()`? We don't yet
-know what type `y` has. However, there is only one impl in scope, and
-it is for `int`, so perhaps we could deduce that `y` *must* have type
-`int` (and hence the type of `x` is `Option<int>`)? This is actually
-sound reasoning: `int` is the only type in scope that could possibly
-make this program type check. However, this deduction is a bit
-"unstable", though, because if we concatenated with another crate that
-defined a newtype and implemented `Foo` for this newtype, then the
-inference would fail, because there would be two potential impls, not
-one.
+The call to convert will generate a trait reference `Convert<$Y> for
+int`, where `$Y` is the type variable representing the type of
+`y`. When we match this against the two impls we can see, we will find
+that only one remains: `Convert<uint> for int`. Therefore, we can
+select this impl, which will cause the type of `$Y` to be unified to
+`uint`. (Note that while assembling candidates, we do the initial
+unifications in a transaction, so that they don't affect one another.)
 
-It is unclear how important this property is. It might be nice to drop it.
-But for the time being we maintain it.
+There are tests to this effect in src/test/run-pass:
 
-The way we do this is by *skolemizing* the obligation self type during
-the selection process -- skolemizing means, basically, replacing all
-unbound type variables with a new "skolemized" type. Each skolemized
-type is basically considered "as if" it were some fresh type that is
-distinct from all other types. The skolemization process also replaces
-lifetimes with `'static`, see the section on lifetimes below for an
-explanation.
+   traits-multidispatch-infer-convert-source-and-target.rs
+   traits-multidispatch-infer-convert-target.rs
 
-In the example above, this means that when matching `y.method()` we
-would convert the type of `y` from a type variable `?` to a skolemized
-type `X`. Then, since `X` cannot unify with `int`, the match would
-fail.  Special code exists to check that the match failed because a
-skolemized type could not be unified with another kind of type -- this is
-not considered a definitive failure, but rather an ambiguous result,
-since if the type variable were later to be unified with int, then this
-obligation could be resolved then.
+#### Winnowing: Resolving ambiguities
 
-*Note:* Currently, method matching does not use the trait resolution
-code, so if you in fact type in the example above, it may
-compile. Hopefully this will be fixed in later patches.
+But what happens if there are multiple impls where all the types
+unify? Consider this example:
+
+```rust
+trait Get {
+    fn get(&self) -> Self;
+}
+
+impl<T:Copy> Get for T {
+    fn get(&self) -> T { *self }
+}
+
+impl<T:Get> Get for Box<T> {
+    fn get(&self) -> Box<T> { box get_it(&**self) }
+}
+```
+
+What happens when we invoke `get_it(&box 1_u16)`, for example? In this
+case, the `Self` type is `Box<u16>` -- that unifies with both impls,
+because the first applies to all types, and the second to all
+boxes. In the olden days we'd have called this ambiguous. But what we
+do now is do a second *winnowing* pass that considers where clauses
+and attempts to remove candidates -- in this case, the first impl only
+applies if `Box<u16> : Copy`, which doesn't hold. After winnowing,
+then, we are left with just one candidate, so we can proceed. There is
+a test of this in `src/test/run-pass/traits-conditional-dispatch.rs`.
 
 #### Matching
 
@@ -187,11 +196,9 @@ consider some of the nested obligations, in the case of an impl.
 Because of how that lifetime inference works, it is not possible to
 give back immediate feedback as to whether a unification or subtype
 relationship between lifetimes holds or not. Therefore, lifetime
-matching is *not* considered during selection. This is achieved by
-having the skolemization process just replace *ALL* lifetimes with
-`'static`. Later, during confirmation, the non-skolemized self-type
-will be unified with the type from the impl (or whatever). This may
-yield lifetime constraints that will later be found to be in error (in
+matching is *not* considered during selection. This is reflected in
+the fact that subregion assignment is infallible. This may yield
+lifetime constraints that will later be found to be in error (in
 contrast, the non-lifetime-constraints have already been checked
 during selection and can never cause an error, though naturally they
 may lead to other errors downstream).

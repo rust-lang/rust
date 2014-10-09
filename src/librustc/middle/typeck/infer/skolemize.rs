@@ -12,17 +12,18 @@
  * Skolemization is the process of replacing unknown variables with
  * fresh types. The idea is that the type, after skolemization,
  * contains no inference variables but instead contains either a value
- * for each variable (if the variable had already fresh "arbitrary"
- * types wherever a variable would have been.
+ * for each variable or fresh "arbitrary" types wherever a variable
+ * would have been.
  *
- * Skolemization is used wherever we want to test what the type
- * inferencer knows "so far". The primary place it is used right now
- * is in the trait matching algorithm, which needs to be able to test
- * whether an `impl` self type matches some other type X -- *without*
- * affecting `X`. That means if that if the type `X` is in fact an
- * unbound type variable, we want the match to be regarded as
- * ambiguous, because depending on what type that type variable is
- * ultimately assigned, the match may or may not succeed.
+ * Skolemization is used primarily to get a good type for inserting
+ * into a cache. The result summarizes what the type inferencer knows
+ * "so far". The primary place it is used right now is in the trait
+ * matching algorithm, which needs to be able to cache whether an
+ * `impl` self type matches some other type X -- *without* affecting
+ * `X`. That means if that if the type `X` is in fact an unbound type
+ * variable, we want the match to be regarded as ambiguous, because
+ * depending on what type that type variable is ultimately assigned,
+ * the match may or may not succeed.
  *
  * Note that you should be careful not to allow the output of
  * skolemization to leak to the user in error messages or in any other
@@ -43,39 +44,45 @@ use middle::ty;
 use middle::ty_fold;
 use middle::ty_fold::TypeFoldable;
 use middle::ty_fold::TypeFolder;
+use std::collections::hashmap;
 
 use super::InferCtxt;
 use super::unify::InferCtxtMethodsForSimplyUnifiableTypes;
-use super::unify::SimplyUnifiable;
-use super::unify::UnifyKey;
 
 pub struct TypeSkolemizer<'a, 'tcx:'a> {
     infcx: &'a InferCtxt<'a, 'tcx>,
-    skolemization_count: uint
+    skolemization_count: uint,
+    skolemization_map: hashmap::HashMap<ty::InferTy, ty::t>,
 }
 
 impl<'a, 'tcx> TypeSkolemizer<'a, 'tcx> {
     pub fn new<'tcx>(infcx: &'a InferCtxt<'a, 'tcx>) -> TypeSkolemizer<'a, 'tcx> {
-        TypeSkolemizer { infcx: infcx, skolemization_count: 0 }
+        TypeSkolemizer {
+            infcx: infcx,
+            skolemization_count: 0,
+            skolemization_map: hashmap::HashMap::new(),
+        }
     }
 
-    fn probe_ty(&mut self, v: ty::TyVid) -> ty::t {
-        self.skolemize_if_none(self.infcx.type_variables.borrow().probe(v), ty::SkolemizedTy)
-    }
+    fn skolemize(&mut self,
+                 opt_ty: Option<ty::t>,
+                 key: ty::InferTy,
+                 skolemizer: |uint| -> ty::InferTy)
+                 -> ty::t
+    {
+        match opt_ty {
+            Some(ty) => { return ty.fold_with(self); }
+            None => { }
+        }
 
-    fn probe_unifiable<V:SimplyUnifiable,K:UnifyKey<Option<V>>>(&mut self, k: K) -> ty::t {
-        self.skolemize_if_none(self.infcx.probe_var(k), ty::SkolemizedIntTy)
-    }
-
-    fn skolemize_if_none(&mut self, o: Option<ty::t>,
-                         skolemizer: |uint| -> ty::InferTy)
-                         -> ty::t {
-        match o {
-            Some(t) => t.fold_with(self),
-            None => {
+        match self.skolemization_map.entry(key) {
+            hashmap::Occupied(entry) => *entry.get(),
+            hashmap::Vacant(entry) => {
                 let index = self.skolemization_count;
                 self.skolemization_count += 1;
-                ty::mk_infer(self.tcx(), skolemizer(index))
+                let t = ty::mk_infer(self.infcx.tcx, skolemizer(index));
+                entry.set(t);
+                t
             }
         }
     }
@@ -108,15 +115,21 @@ impl<'a, 'tcx> TypeFolder<'tcx> for TypeSkolemizer<'a, 'tcx> {
     fn fold_ty(&mut self, t: ty::t) -> ty::t {
         match ty::get(t).sty {
             ty::ty_infer(ty::TyVar(v)) => {
-                self.probe_ty(v)
+                self.skolemize(self.infcx.type_variables.borrow().probe(v),
+                               ty::TyVar(v),
+                               ty::SkolemizedTy)
             }
 
             ty::ty_infer(ty::IntVar(v)) => {
-                self.probe_unifiable(v)
+                self.skolemize(self.infcx.probe_var(v),
+                               ty::IntVar(v),
+                               ty::SkolemizedIntTy)
             }
 
             ty::ty_infer(ty::FloatVar(v)) => {
-                self.probe_unifiable(v)
+                self.skolemize(self.infcx.probe_var(v),
+                               ty::FloatVar(v),
+                               ty::SkolemizedIntTy)
             }
 
             ty::ty_infer(ty::SkolemizedTy(c)) |
