@@ -21,13 +21,13 @@
 // gdb-command:finish
 
 // gdb-command:print case1
-// gdb-check:$1 = {{Case1, a = 0, b = 31868, c = 31868, d = 31868, e = 31868}, {Case1, a = 0, b = 2088533116, c = 2088533116}, {Case1, a = 0, b = 8970181431921507452}}
+// gdb-check:$1 = {{RUST$ENUM$DISR = Case1, a = 0, b = 31868, c = 31868, d = 31868, e = 31868}, {RUST$ENUM$DISR = Case1, a = 0, b = 2088533116, c = 2088533116}, {RUST$ENUM$DISR = Case1, a = 0, b = 8970181431921507452}}
 
 // gdb-command:print case2
-// gdb-check:$2 = {{Case2, a = 0, b = 4369, c = 4369, d = 4369, e = 4369}, {Case2, a = 0, b = 286331153, c = 286331153}, {Case2, a = 0, b = 1229782938247303441}}
+// gdb-check:$2 = {{RUST$ENUM$DISR = Case2, a = 0, b = 4369, c = 4369, d = 4369, e = 4369}, {RUST$ENUM$DISR = Case2, a = 0, b = 286331153, c = 286331153}, {RUST$ENUM$DISR = Case2, a = 0, b = 1229782938247303441}}
 
 // gdb-command:print case3
-// gdb-check:$3 = {{Case3, a = 0, b = 22873, c = 22873, d = 22873, e = 22873}, {Case3, a = 0, b = 1499027801, c = 1499027801}, {Case3, a = 0, b = 6438275382588823897}}
+// gdb-check:$3 = {{RUST$ENUM$DISR = Case3, a = 0, b = 22873, c = 22873, d = 22873, e = 22873}, {RUST$ENUM$DISR = Case3, a = 0, b = 1499027801, c = 1499027801}, {RUST$ENUM$DISR = Case3, a = 0, b = 6438275382588823897}}
 
 // gdb-command:print univariant
 // gdb-check:$4 = {{a = -1}}

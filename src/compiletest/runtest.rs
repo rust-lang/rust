@@ -626,6 +626,17 @@ fn run_debuginfo_lldb_test(config: &Config, props: &TestProps, testfile: &Path) 
 
     let exe_file = make_exe_name(config, testfile);
 
+    match config.lldb_version {
+        Some(ref version) => {
+            println!("NOTE: compiletest thinks it is using LLDB version {}",
+                     version.as_slice());
+        }
+        _ => {
+            println!("NOTE: compiletest does not know which version of \
+                      LLDB it is using");
+        }
+    }
+
     // Parse debugger commands etc from test files
     let DebuggerCommands {
         commands,

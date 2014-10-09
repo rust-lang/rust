@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-tidy-linelength
 // ignore-android: FIXME(#10381)
 
 // compile-flags:-g
@@ -19,10 +20,10 @@
 // gdb-command:finish
 
 // gdb-command:print *the_a
-// gdb-check:$1 = {{TheA, x = 0, y = 8970181431921507452}, {TheA, 0, 2088533116, 2088533116}}
+// gdb-check:$1 = {{RUST$ENUM$DISR = TheA, x = 0, y = 8970181431921507452}, {RUST$ENUM$DISR = TheA, 0, 2088533116, 2088533116}}
 
 // gdb-command:print *the_b
-// gdb-check:$2 = {{TheB, x = 0, y = 1229782938247303441}, {TheB, 0, 286331153, 286331153}}
+// gdb-check:$2 = {{RUST$ENUM$DISR = TheB, x = 0, y = 1229782938247303441}, {RUST$ENUM$DISR = TheB, 0, 286331153, 286331153}}
 
 // gdb-command:print *univariant
 // gdb-check:$3 = {{123234}}
