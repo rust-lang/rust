@@ -269,7 +269,6 @@ impl euv::Delegate for GlobalChecker {
                     break
                 }
                 mc::cat_deref(ref cmt, _, _) |
-                mc::cat_discr(ref cmt, _) |
                 mc::cat_downcast(ref cmt) |
                 mc::cat_interior(ref cmt, _) => cur = cmt,
 
@@ -307,7 +306,6 @@ impl euv::Delegate for GlobalChecker {
                 }
 
                 mc::cat_downcast(..) |
-                mc::cat_discr(..) |
                 mc::cat_upvar(..) => unreachable!(),
 
                 mc::cat_local(..) => {
@@ -331,4 +329,3 @@ impl euv::Delegate for GlobalChecker {
                    _cmt: mc::cmt,
                    _mode: euv::ConsumeMode) {}
 }
-

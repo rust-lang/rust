@@ -84,62 +84,6 @@ impl<'a, 'tcx> GuaranteeLifetimeContext<'a, 'tcx> {
             mc::cat_interior(ref base, _) => {             // L-Field
                 self.check(base, discr_scope)
             }
-
-            mc::cat_discr(ref base, new_discr_scope) => {
-                // Subtle: in a match, we must ensure that each binding
-                // variable remains valid for the duration of the arm in
-                // which it appears, presuming that this arm is taken.
-                // But it is inconvenient in trans to root something just
-                // for one arm.  Therefore, we insert a cat_discr(),
-                // basically a special kind of category that says "if this
-                // value must be dynamically rooted, root it for the scope
-                // `match_id`".
-                //
-                // As an example, consider this scenario:
-                //
-                //    let mut x = @Some(3);
-                //    match *x { Some(y) {...} None {...} }
-                //
-                // Technically, the value `x` need only be rooted
-                // in the `some` arm.  However, we evaluate `x` in trans
-                // before we know what arm will be taken, so we just
-                // always root it for the duration of the match.
-                //
-                // As a second example, consider *this* scenario:
-                //
-                //    let x = @@Some(3);
-                //    match x { @@Some(y) {...} @@None {...} }
-                //
-                // Here again, `x` need only be rooted in the `some` arm.
-                // In this case, the value which needs to be rooted is
-                // found only when checking which pattern matches: but
-                // this check is done before entering the arm.  Therefore,
-                // even in this case we just choose to keep the value
-                // rooted for the entire match.  This means the value will be
-                // rooted even if the none arm is taken.  Oh well.
-                //
-                // At first, I tried to optimize the second case to only
-                // root in one arm, but the result was suboptimal: first,
-                // it interfered with the construction of phi nodes in the
-                // arm, as we were adding code to root values before the
-                // phi nodes were added.  This could have been addressed
-                // with a second basic block.  However, the naive approach
-                // also yielded suboptimal results for patterns like:
-                //
-                //    let x = @@...;
-                //    match x { @@some_variant(y) | @@some_other_variant(y) =>
-                //
-                // The reason is that we would root the value once for
-                // each pattern and not once per arm.  This is also easily
-                // fixed, but it's yet more code for what is really quite
-                // the corner case.
-                //
-                // Nonetheless, if you decide to optimize this case in the
-                // future, you need only adjust where the cat_discr()
-                // node appears to draw the line between what will be rooted
-                // in the *arm* vs the *match*.
-                self.check(base, Some(new_discr_scope))
-            }
         }
     }
 
@@ -182,8 +126,7 @@ impl<'a, 'tcx> GuaranteeLifetimeContext<'a, 'tcx> {
             }
             mc::cat_downcast(ref cmt) |
             mc::cat_deref(ref cmt, _, mc::OwnedPtr) |
-            mc::cat_interior(ref cmt, _) |
-            mc::cat_discr(ref cmt, _) => {
+            mc::cat_interior(ref cmt, _) => {
                 self.scope(cmt)
             }
         }

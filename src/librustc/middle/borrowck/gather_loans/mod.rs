@@ -213,9 +213,7 @@ impl<'a, 'tcx> GatherLoanCtxt<'a, 'tcx> {
         /*!
          * Guarantees that `addr_of(cmt)` will be valid for the duration of
          * `static_scope_r`, or reports an error.  This may entail taking
-         * out loans, which will be added to the `req_loan_map`.  This can
-         * also entail "rooting" GC'd pointers, which means ensuring
-         * dynamically that they are not freed.
+         * out loans, which will be added to the `req_loan_map`.
          */
 
         debug!("guarantee_valid(borrow_id={}, cmt={}, \

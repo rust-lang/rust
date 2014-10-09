@@ -96,46 +96,27 @@ impl<'a, 'tcx> RestrictionsContext<'a, 'tcx> {
                 self.extend(result, cmt.mutbl, LpInterior(i))
             }
 
-            mc::cat_deref(cmt_base, _, pk @ mc::OwnedPtr) => {
-                // R-Deref-Send-Pointer
-                //
-                // When we borrow the interior of an owned pointer, we
-                // cannot permit the base to be mutated, because that
-                // would cause the unique pointer to be freed.
-                //
-                // Eventually we should make these non-special and
-                // just rely on Deref<T> implementation.
-                let result = self.restrict(cmt_base);
-                self.extend(result, cmt.mutbl, LpDeref(pk))
-            }
 
             mc::cat_static_item(..) => {
                 Safe
             }
 
-            mc::cat_deref(cmt_base, _, mc::BorrowedPtr(ty::ImmBorrow, lt)) |
-            mc::cat_deref(cmt_base, _, mc::Implicit(ty::ImmBorrow, lt)) => {
-                // R-Deref-Imm-Borrowed
-                if !self.bccx.is_subregion_of(self.loan_region, lt) {
-                    self.bccx.report(
-                        BckError {
-                            span: self.span,
-                            cause: self.cause,
-                            cmt: cmt_base,
-                            code: err_borrowed_pointer_too_short(
-                                self.loan_region, lt)});
-                    return Safe;
-                }
-                Safe
-            }
-
             mc::cat_deref(cmt_base, _, pk) => {
                 match pk {
-                    mc::BorrowedPtr(ty::MutBorrow, lt) |
-                    mc::BorrowedPtr(ty::UniqueImmBorrow, lt) |
-                    mc::Implicit(ty::MutBorrow, lt) |
-                    mc::Implicit(ty::UniqueImmBorrow, lt) => {
-                        // R-Deref-Mut-Borrowed
+                    mc::OwnedPtr => {
+                        // R-Deref-Send-Pointer
+                        //
+                        // When we borrow the interior of an owned pointer, we
+                        // cannot permit the base to be mutated, because that
+                        // would cause the unique pointer to be freed.
+                        //
+                        // Eventually we should make these non-special and
+                        // just rely on Deref<T> implementation.
+                        let result = self.restrict(cmt_base);
+                        self.extend(result, cmt.mutbl, LpDeref(pk))
+                    }
+                    mc::Implicit(bk, lt) | mc::BorrowedPtr(bk, lt) => {
+                        // R-Deref-[Mut-]Borrowed
                         if !self.bccx.is_subregion_of(self.loan_region, lt) {
                             self.bccx.report(
                                 BckError {
@@ -147,24 +128,22 @@ impl<'a, 'tcx> RestrictionsContext<'a, 'tcx> {
                             return Safe;
                         }
 
-                        let result = self.restrict(cmt_base);
-                        self.extend(result, cmt.mutbl, LpDeref(pk))
+                        match bk {
+                            ty::ImmBorrow => Safe,
+                            ty::MutBorrow | ty::UniqueImmBorrow => {
+                                // R-Deref-Mut-Borrowed
+                                //
+                                // The referent can be aliased after the
+                                // references lifetime ends (by a newly-unfrozen
+                                // borrow).
+                                let result = self.restrict(cmt_base);
+                                self.extend(result, cmt.mutbl, LpDeref(pk))
+                            }
+                        }
                     }
-                    mc::UnsafePtr(..) => {
-                        // We are very trusting when working with unsafe
-                        // pointers.
-                        Safe
-                    }
-                    _ => {
-                        self.bccx.tcx.sess.span_bug(self.span,
-                                                    "unhandled memcat in \
-                                                     cat_deref")
-                    }
+                    // Borrowck is not relevant for unsafe pointers
+                    mc::UnsafePtr(..) => Safe
                 }
-            }
-
-            mc::cat_discr(cmt_base, _) => {
-                self.restrict(cmt_base)
             }
         }
     }

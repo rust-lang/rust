@@ -831,7 +831,6 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
                         return;
                     }
 
-                    mc::cat_discr(b, _) |
                     mc::cat_deref(b, _, mc::OwnedPtr) => {
                         assert_eq!(cmt.mutbl, mc::McInherited);
                         cmt = b;

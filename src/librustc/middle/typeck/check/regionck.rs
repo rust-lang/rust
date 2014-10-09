@@ -1494,7 +1494,6 @@ fn link_region(rcx: &Rcx,
                 }
             }
 
-            mc::cat_discr(cmt_base, _) |
             mc::cat_downcast(cmt_base) |
             mc::cat_deref(cmt_base, _, mc::OwnedPtr) |
             mc::cat_interior(cmt_base, _) => {
@@ -1736,8 +1735,7 @@ fn adjust_upvar_borrow_kind_for_mut(rcx: &Rcx,
         match cmt.cat.clone() {
             mc::cat_deref(base, _, mc::OwnedPtr) |
             mc::cat_interior(base, _) |
-            mc::cat_downcast(base) |
-            mc::cat_discr(base, _) => {
+            mc::cat_downcast(base) => {
                 // Interior or owned data is mutable if base is
                 // mutable, so iterate to the base.
                 cmt = base;
@@ -1788,8 +1786,7 @@ fn adjust_upvar_borrow_kind_for_unique(rcx: &Rcx, cmt: mc::cmt) {
         match cmt.cat.clone() {
             mc::cat_deref(base, _, mc::OwnedPtr) |
             mc::cat_interior(base, _) |
-            mc::cat_downcast(base) |
-            mc::cat_discr(base, _) => {
+            mc::cat_downcast(base) => {
                 // Interior or owned data is unique if base is
                 // unique.
                 cmt = base;
