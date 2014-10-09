@@ -44,7 +44,7 @@ PKG_FILES := \
     $(S)AUTHORS.txt                            \
     $(S)CONTRIBUTING.md                        \
     $(S)README.md                              \
-    $(S)RELEASES.txt                           \
+    $(S)RELEASES.md                            \
     $(S)configure $(S)Makefile.in              \
     $(S)man                                    \
     $(addprefix $(S)src/,                      \

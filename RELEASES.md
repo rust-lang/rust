@@ -1,3 +1,125 @@
+Version 0.12.0 (October 2014)
+-----------------------------
+
+  * ~1900 changes, numerous bugfixes
+
+  * Highlights
+
+    * The introductory documentation (now called The Rust Guide) has
+      been completely rewritten, as have a number of supplementary
+      guides.
+    * Rust's package manager, Cargo, continues to improve and is
+      sometimes considered to be quite awesome.
+    * Many API's in `std` have been reviewed and updated for
+      consistency with the in-development Rust coding
+      guidelines. The standard library documentation tracks
+      stabilization progress.
+    * Minor libraries have been moved out-of-tree to the rust-lang org
+      on GitHub: uuid, semver, glob, num, hexfloat, fourcc. They can
+      be installed with Cargo.
+    * Lifetime elision allows lifetime annotations to be left off of
+      function declarations in many common scenarios.
+    * Rust now works on 64-bit Windows.
+
+  * Language
+    * Indexing can be overloaded with the `Index` and `IndexMut`
+      traits.
+    * The `if let` construct takes a branch only if the `let` pattern
+      matches, currently behind the 'if_let' feature gate.
+    * 'where clauses', a more flexible syntax for specifying trait
+      bounds that is more aesthetic, have been added for traits and
+      free functions. Where clauses will in the future make it
+      possible to constrain associated types, which would be
+      impossible with the existing syntax.
+    * A new slicing syntax (e.g. `[0..4]`) has been introduced behind
+      the 'slicing_syntax' feature gate, and can be overloaded with
+      the `Slice` or `SliceMut` traits.
+    * The syntax for matching of sub-slices has been changed to use a
+      postfix `..` instead of prefix (.e.g. `[a, b, c..]`), for
+      consistency with other uses of `..` and to future-proof
+      potential additional uses of the syntax.
+    * The syntax for matching inclusive ranges in patterns has changed
+      from `0..3` to `0...4` to be consistent with the exclusive range
+      syntax for slicing.
+    * Matching of sub-slices in non-tail positions (e.g.  `[a.., b,
+      c]`) has been put behind the 'advanced_slice_patterns' feature
+      gate and may be removed in the future.
+    * Components of tuples and tuple structs can be extracted using
+      the `value.0` syntax, currently behind the `tuple_indexing`
+      feature gate.
+    * The `#[crate_id]` attribute is no longer supported; versioning
+      is handled by the package manager.
+    * Renaming crate imports are now written `extern crate foo as bar`
+      instead of `extern crate bar = foo`.
+    * Renaming use statements are now written `use foo as bar` instead
+      of `use bar = foo`.
+    * `let` and `match` bindings and argument names in macros are now
+      hygienic.
+    * The new, more efficient, closure types ('unboxed closures') have
+      been added under a feature gate, 'unboxed_closures'. These will
+      soon replace the existing closure types, once higher-ranked
+      trait lifetimes are added to the language.
+    * `move` has been added as a keyword, for indicating closures
+      that capture by value.
+    * Mutation and assignment is no longer allowed in pattern guards.
+    * Generic structs and enums can now have trait bounds.
+    * The `Share` trait is now called `Sync` to free up the term
+      'shared' to refer to 'shared reference' (the default reference
+      type.
+    * Dynamically-sized types have been mostly implemented,
+      unifying the behavior of fat-pointer types with the rest of the
+      type system.
+    * As part of dynamically-sized types, the `Sized` trait has been
+      introduced, which qualifying types implement by default, and
+      which type parameters expect by default. To specify that a type
+      parameter does not need to be sized, write `<Sized? T>`. Most
+      types are `Sized`, notable exceptions being unsized arrays
+      (`[T]`) and trait types.
+    * Closures can return `!`, as in `|| -> !` or `proc() -> !`.
+    * Lifetime bounds can now be applied to type parameters and object
+      types.
+    * The old, reference counted GC type, `Gc<T>` which was once
+      denoted by the `@` sigil, has finally been removed. GC will be
+      revisited in the future.
+
+  * Libraries
+    * Library documentation has been improved for a number of modules.
+    * Bit-vectors, collections::bitv has been modernized.
+    * The url crate is deprecated in favor of
+      http://github.com/servo/rust-url, which can be installed with
+      Cargo.
+    * Most I/O stream types can be cloned and subsequently closed from
+      a different thread.
+    * A `std::time::Duration` type has been added for use in I/O
+      methods that rely on timers, as well as in the 'time' crate's
+      `Timespec` arithmetic.
+    * The runtime I/O abstraction layer that enabled the green thread
+      scheduler to do non-thread-blocking I/O has been removed, along
+      with the libuv-based implementation employed by the green thread
+      scheduler. This will greatly simplify the future I/O work.
+    * `collections::btree` has been rewritten to have a more
+      idiomatic and efficient design.
+
+  * Tooling
+    * rustdoc output now indicates the stability levels of API's.
+    * The `--crate-name` flag can specify the name of the crate
+      being compiled, like `#[crate_name]`.
+    * The `-C metadata` specifies additional metadata to hash into
+      symbol names, and `-C extra-filename` specifies additional
+      information to put into the output filename, for use by the
+      package manager for versioning.
+    * debug info generation has continued to improve and should be
+      more reliable under both gdb and lldb.
+    * rustc has experimental support for compiling in parallel
+      using the `-C codegen-units` flag.
+    * rustc no longer encodes rpath information into binaries by
+      default.
+
+  * Misc
+    * Stack usage has been optimized with LLVM lifetime annotations.
+    * Official Rust binaries on Linux are more compatible with older
+      kernels and distributions, built on CentOS 5.10.
+
 Version 0.11.0 (July 2014)
 -------------------------
 
