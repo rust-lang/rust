@@ -45,8 +45,8 @@ pub fn log_enabled() -> bool {
     val == 2
 }
 
-#[cfg(target_word_size = "64")] static HEX_WIDTH: uint = 18;
-#[cfg(target_word_size = "32")] static HEX_WIDTH: uint = 10;
+#[cfg(target_word_size = "64")] const HEX_WIDTH: uint = 18;
+#[cfg(target_word_size = "32")] const HEX_WIDTH: uint = 10;
 
 // All rust symbols are in theory lists of "::"-separated identifiers. Some
 // assemblers, however, can't handle these characters in symbol names. To get
@@ -273,7 +273,7 @@ mod imp {
 
         try!(writeln!(w, "stack backtrace:"));
         // 100 lines should be enough
-        static SIZE: uint = 100;
+        const SIZE: uint = 100;
         let mut buf: [*mut libc::c_void, ..SIZE] = unsafe {mem::zeroed()};
         let cnt = unsafe { backtrace(buf.as_mut_ptr(), SIZE as libc::c_int) as uint};
 
@@ -697,10 +697,10 @@ mod imp {
                            *mut libc::c_void, *mut libc::c_void,
                            *mut libc::c_void, *mut libc::c_void) -> libc::BOOL;
 
-    static MAX_SYM_NAME: uint = 2000;
-    static IMAGE_FILE_MACHINE_I386: libc::DWORD = 0x014c;
-    static IMAGE_FILE_MACHINE_IA64: libc::DWORD = 0x0200;
-    static IMAGE_FILE_MACHINE_AMD64: libc::DWORD = 0x8664;
+    const MAX_SYM_NAME: uint = 2000;
+    const IMAGE_FILE_MACHINE_I386: libc::DWORD = 0x014c;
+    const IMAGE_FILE_MACHINE_IA64: libc::DWORD = 0x0200;
+    const IMAGE_FILE_MACHINE_AMD64: libc::DWORD = 0x8664;
 
     #[repr(C)]
     struct SYMBOL_INFO {
@@ -772,7 +772,7 @@ mod imp {
     mod arch {
         use libc;
 
-        static MAXIMUM_SUPPORTED_EXTENSION: uint = 512;
+        const MAXIMUM_SUPPORTED_EXTENSION: uint = 512;
 
         #[repr(C)]
         pub struct CONTEXT {
