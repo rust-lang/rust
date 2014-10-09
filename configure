@@ -151,11 +151,22 @@ validate_opt () {
     done
 }
 
-valopt() {
-    VAL_OPTIONS="$VAL_OPTIONS $1"
+# `valopt OPTION_NAME DEFAULT DOC` extracts a string-valued option
+# from command line, using provided default value for the option if
+# not present, and saves it to the generated config.mk.
+#
+# `valopt_nosave` is much the same, except that it does not save the
+# result to config.mk (instead the script should use `putvar` itself
+# later on to save it).  `valopt_core` is the core upon which the
+# other two are built.
 
-    local OP=$1
-    local DEFAULT=$2
+valopt_core() {
+    VAL_OPTIONS="$VAL_OPTIONS $2"
+
+    local SAVE=$1
+    local OP=$2
+    local DEFAULT=$3
+    shift
     shift
     shift
     local DOC="$*"
@@ -172,7 +183,10 @@ valopt() {
                 eval $V=$val
             fi
         done
-        putvar $V
+        if [ "$SAVE" = "save" ]
+        then
+            putvar $V
+        fi
     else
         if [ -z "$DEFAULT" ]
         then
@@ -183,11 +197,30 @@ valopt() {
     fi
 }
 
-opt() {
-    BOOL_OPTIONS="$BOOL_OPTIONS $1"
+valopt_nosave() {
+    valopt_core nosave "$@"
+}
 
-    local OP=$1
-    local DEFAULT=$2
+valopt() {
+    valopt_core save "$@"
+}
+
+# `opt OPTION_NAME DEFAULT DOC` extracts a boolean-valued option from
+# command line, using the provided default value (0/1) for the option
+# if not present, and saves it to the generated config.mk.
+#
+# `opt_nosave` is much the same, except that it does not save the
+# result to config.mk (instead the script should use `putvar` itself
+# later on to save it).  `opt_core` is the core upon which the other
+# two are built.
+
+opt_core() {
+    BOOL_OPTIONS="$BOOL_OPTIONS $2"
+
+    local SAVE=$1
+    local OP=$2
+    local DEFAULT=$3
+    shift
     shift
     shift
     local DOC="$*"
@@ -211,7 +244,10 @@ opt() {
                 FLAG=$(echo $FLAG | tr 'a-z' 'A-Z')
                 local V="CFG_${FLAG}_${OP}"
                 eval $V=1
-                putvar $V
+                if [ "$SAVE" = "save" ]
+                then
+                   putvar $V
+                fi
             fi
         done
     else
@@ -221,6 +257,14 @@ opt() {
         fi
         printf "    --%-30s %s\n" "$FLAG-$OP" "$DOC"
      fi
+}
+
+opt_nosave() {
+    opt_core nosave "$@"
+}
+
+opt() {
+    opt_core save "$@"
 }
 
 envopt() {
@@ -422,38 +466,40 @@ opt llvm-assertions 1 "build LLVM with assertions"
 opt debug 1 "build with extra debug fun"
 opt ratchet-bench 0 "ratchet benchmarks"
 opt fast-make 0 "use .gitmodules as timestamp for submodule deps"
-opt manage-submodules 1 "let the build manage the git submodules"
 opt mingw-cross 0 "cross-compile for win32 using mingw"
-opt clang 0 "prefer clang to gcc for building the runtime"
 opt ccache 0 "invoke gcc/clang via ccache to reuse object files between builds"
 opt local-rust 0 "use an installed rustc rather than downloading a snapshot"
-opt inject-std-version 1 "inject the current compiler version of libstd into programs"
 opt llvm-static-stdcpp 0 "statically link to libstdc++ for LLVM"
 opt rpath 0 "build rpaths into rustc itself"
 opt nightly 0 "build nightly packages"
 opt verify-install 1 "verify installed binaries work"
-opt jemalloc 1 "build liballoc with jemalloc"
 # This is used by the automation to produce single-target nightlies
 opt dist-host-only 0 "only install bins for the host architecture"
-valopt prefix "/usr/local" "set installation prefix"
-valopt local-rust-root "/usr/local" "set prefix for local rust binary"
-valopt llvm-root "" "set LLVM root"
-valopt jemalloc-root "" "set directory where libjemalloc_pic.a is located"
-valopt android-cross-path "/opt/ndk_standalone" "Android NDK standalone path"
-valopt mingw32-cross-path "" "MinGW32 cross compiler path"
-
-valopt build "${DEFAULT_BUILD}" "GNUs ./configure syntax LLVM build triple"
-valopt host "${CFG_BUILD}" "GNUs ./configure syntax LLVM host triples"
-valopt target "${CFG_HOST}" "GNUs ./configure syntax LLVM target triples"
+opt inject-std-version 1 "inject the current compiler version of libstd into programs"
+opt jemalloc 1 "build liballoc with jemalloc"
 
 valopt localstatedir "/var/lib" "local state directory"
 valopt sysconfdir "/etc" "install system configuration files"
 
 valopt datadir "${CFG_PREFIX}/share" "install data"
 valopt infodir "${CFG_PREFIX}/share/info" "install additional info"
-valopt mandir "${CFG_PREFIX}/share/man" "install man pages in PATH"
+valopt llvm-root "" "set LLVM root"
+valopt jemalloc-root "" "set directory where libjemalloc_pic.a is located"
+valopt build "${DEFAULT_BUILD}" "GNUs ./configure syntax LLVM build triple"
+valopt android-cross-path "/opt/ndk_standalone" "Android NDK standalone path"
+valopt mingw32-cross-path "" "MinGW32 cross compiler path"
 
-valopt release-channel "dev" "the name of the release channel to build"
+# Many of these are saved below during the "writing configuration" step
+# (others are conditionally saved).
+opt_nosave manage-submodules 1 "let the build manage the git submodules"
+opt_nosave clang 0 "prefer clang to gcc for building the runtime"
+
+valopt_nosave prefix "/usr/local" "set installation prefix"
+valopt_nosave local-rust-root "/usr/local" "set prefix for local rust binary"
+valopt_nosave host "${CFG_BUILD}" "GNUs ./configure syntax LLVM host triples"
+valopt_nosave target "${CFG_HOST}" "GNUs ./configure syntax LLVM target triples"
+valopt_nosave mandir "${CFG_PREFIX}/share/man" "install man pages in PATH"
+valopt_nosave release-channel "dev" "the name of the release channel to build"
 
 # On windows we just store the libraries in the bin directory because
 # there's no rpath. This is where the build system itself puts libraries;
@@ -491,8 +537,8 @@ esac
 if [ ! -z "$CFG_ENABLE_NIGHTLY" ]
 then
     CFG_RELEASE_CHANNEL=nightly
-    putvar CFG_RELEASE_CHANNEL
 fi
+putvar CFG_RELEASE_CHANNEL
 
 step_msg "looking for build programs"
 
@@ -605,9 +651,20 @@ then
         err "no local rust to use"
     fi
 
-    LRV=`${CFG_LOCAL_RUST_ROOT}/bin/rustc${BIN_SUF} --version`
+    CMD="${CFG_LOCAL_RUST_ROOT}/bin/rustc${BIN_SUF}"
+    LRV=`$CMD --version`
+    if [ $? -ne 0 ]
+    then
+        step_msg "failure while running $CMD --version"
+        exit 1
+    fi
     step_msg "using rustc at: ${CFG_LOCAL_RUST_ROOT} with version: $LRV"
     putvar CFG_LOCAL_RUST_ROOT
+else
+    if [ ! -z "$CFG_LOCAL_RUST_ROOT" ]
+    then
+       warn "Use of --local-rust-root without --enable-local-rust"
+    fi
 fi
 
 # Force freebsd to build with clang; gcc doesn't like us there
@@ -615,7 +672,6 @@ if [ $CFG_OSTYPE = unknown-freebsd ]
 then
     step_msg "on FreeBSD, forcing use of clang"
     CFG_ENABLE_CLANG=1
-    putvar CFG_ENABLE_CLANG
 fi
 
 if [ -z "$CFG_ENABLE_CLANG" -a -z "$CFG_GCC" ]
@@ -632,12 +688,10 @@ then
     then
         step_msg "on OS X 10.9, forcing use of clang"
         CFG_ENABLE_CLANG=1
-        putvar CFG_ENABLE_CLANG
     else
         if [ $("$CFG_GCC" --version 2>&1 | grep -c ' 4\.[0-6]') -ne 0 ]; then
             step_msg "older GCC found, using clang instead"
             CFG_ENABLE_CLANG=1
-            putvar CFG_ENABLE_CLANG
         else
             # on OS X, with xcode 5 and newer, certain developers may have
             # cc, gcc and g++ point to a  mixture of clang and gcc
@@ -661,6 +715,13 @@ then
 
         fi
     fi
+fi
+
+# Okay, at this point, we have made up our minds about whether we are
+# going to force CFG_ENABLE_CLANG or not; save the setting if so.
+if [ ! -z "$CFG_ENABLE_CLANG" ]
+then
+    putvar CFG_ENABLE_CLANG
 fi
 
 if [ ! -z "$CFG_LLVM_ROOT" -a -e "$CFG_LLVM_ROOT/bin/llvm-config" ]
@@ -1203,18 +1264,11 @@ putvar CFG_OSTYPE
 putvar CFG_CPUTYPE
 putvar CFG_CONFIGURE_ARGS
 putvar CFG_PREFIX
-putvar CFG_BUILD
 putvar CFG_HOST
 putvar CFG_TARGET
-putvar CFG_LIBDIR
 putvar CFG_LIBDIR_RELATIVE
 putvar CFG_DISABLE_MANAGE_SUBMODULES
-putvar CFG_ANDROID_CROSS_PATH
-putvar CFG_MINGW32_CROSS_PATH
 putvar CFG_MANDIR
-putvar CFG_DISABLE_INJECT_STD_VERSION
-putvar CFG_JEMALLOC_ROOT
-putvar CFG_DISABLE_JEMALLOC
 
 # Avoid spurious warnings from clang by feeding it original source on
 # ccache-miss rather than preprocessed input.
@@ -1237,7 +1291,6 @@ then
     putvar CFG_PANDOC
 fi
 
-putvar CFG_LLVM_ROOT
 putvar CFG_LLVM_SRC_DIR
 
 for t in $CFG_HOST
