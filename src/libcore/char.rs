@@ -270,6 +270,9 @@ pub trait Char {
     /// Fails if given a radix > 36.
     fn from_digit(num: uint, radix: uint) -> Option<Self>;
 
+    /// Converts from `u32` to a `char`
+    fn from_u32(i: u32) -> Option<char>;
+
     /// Returns the hexadecimal Unicode escape of a character.
     ///
     /// The rules are as follows:
@@ -318,6 +321,9 @@ impl Char for char {
     fn to_digit(&self, radix: uint) -> Option<uint> { to_digit(*self, radix) }
 
     fn from_digit(num: uint, radix: uint) -> Option<char> { from_digit(num, radix) }
+
+    #[inline]
+    fn from_u32(i: u32) -> Option<char> { from_u32(i) }
 
     fn escape_unicode(&self, f: |char|) { escape_unicode(*self, f) }
 
