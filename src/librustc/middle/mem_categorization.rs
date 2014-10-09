@@ -83,7 +83,8 @@ pub enum categorization {
     cat_rvalue(ty::Region),            // temporary val, argument is its scope
     cat_static_item,
     cat_copied_upvar(CopiedUpvar),     // upvar copied into proc env
-    cat_upvar(ty::UpvarId, ty::UpvarBorrow), // by ref upvar from stack closure
+    cat_upvar(ty::UpvarId, ty::UpvarBorrow,
+              Option<ty::UnboxedClosureKind>), // by ref upvar from stack or unboxed closure
     cat_local(ast::NodeId),            // local variable
     cat_deref(cmt, uint, PointerKind), // deref of a ptr
     cat_interior(cmt, InteriorKind),   // something interior: field, tuple, etc
@@ -94,9 +95,26 @@ pub enum categorization {
 }
 
 #[deriving(Clone, PartialEq)]
+pub enum CopiedUpvarKind {
+    Boxed(ast::Onceness),
+    Unboxed(ty::UnboxedClosureKind)
+}
+
+impl CopiedUpvarKind {
+    pub fn onceness(&self) -> ast::Onceness {
+        match *self {
+            Boxed(onceness) => onceness,
+            Unboxed(ty::FnUnboxedClosureKind) |
+            Unboxed(ty::FnMutUnboxedClosureKind) => ast::Many,
+            Unboxed(ty::FnOnceUnboxedClosureKind) => ast::Once
+        }
+    }
+}
+
+#[deriving(Clone, PartialEq)]
 pub struct CopiedUpvar {
     pub upvar_id: ast::NodeId,
-    pub onceness: ast::Onceness,
+    pub kind: CopiedUpvarKind,
     pub capturing_proc: ast::NodeId,
 }
 
@@ -571,14 +589,14 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
 
                       };
                       if var_is_refd {
-                          self.cat_upvar(id, span, var_id, fn_node_id)
+                          self.cat_upvar(id, span, var_id, fn_node_id, None)
                       } else {
                           Ok(Rc::new(cmt_ {
                               id:id,
                               span:span,
                               cat:cat_copied_upvar(CopiedUpvar {
                                   upvar_id: var_id,
-                                  onceness: closure_ty.onceness,
+                                  kind: Boxed(closure_ty.onceness),
                                   capturing_proc: fn_node_id,
                               }),
                               mutbl: MutabilityCategory::from_local(self.tcx(), var_id),
@@ -591,20 +609,15 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
                                                  .unboxed_closures()
                                                  .borrow();
                       let kind = unboxed_closures.get(&closure_id).kind;
-                      let onceness = match kind {
-                          ty::FnUnboxedClosureKind |
-                          ty::FnMutUnboxedClosureKind => ast::Many,
-                          ty::FnOnceUnboxedClosureKind => ast::Once,
-                      };
                       if self.typer.capture_mode(fn_node_id) == ast::CaptureByRef {
-                          self.cat_upvar(id, span, var_id, fn_node_id)
+                          self.cat_upvar(id, span, var_id, fn_node_id, Some(kind))
                       } else {
                           Ok(Rc::new(cmt_ {
                               id: id,
                               span: span,
                               cat: cat_copied_upvar(CopiedUpvar {
                                   upvar_id: var_id,
-                                  onceness: onceness,
+                                  kind: Unboxed(kind),
                                   capturing_proc: fn_node_id,
                               }),
                               mutbl: MutabilityCategory::from_local(self.tcx(), var_id),
@@ -638,7 +651,8 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
                  id: ast::NodeId,
                  span: Span,
                  var_id: ast::NodeId,
-                 fn_node_id: ast::NodeId)
+                 fn_node_id: ast::NodeId,
+                 kind: Option<ty::UnboxedClosureKind>)
                  -> McResult<cmt> {
         /*!
          * Upvars through a closure are in fact indirect
@@ -666,7 +680,7 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
         let base_cmt = Rc::new(cmt_ {
             id:id,
             span:span,
-            cat:cat_upvar(upvar_id, upvar_borrow),
+            cat:cat_upvar(upvar_id, upvar_borrow, kind),
             mutbl:McImmutable,
             ty:upvar_ty,
         });
@@ -1233,6 +1247,7 @@ pub enum InteriorSafety {
 
 pub enum AliasableReason {
     AliasableBorrowed,
+    AliasableClosure(ast::NodeId), // Aliasable due to capture by unboxed closure expr
     AliasableOther,
     AliasableStatic(InteriorSafety),
     AliasableStaticMut(InteriorSafety),
@@ -1287,17 +1302,28 @@ impl cmt_ {
                 b.freely_aliasable(ctxt)
             }
 
-            cat_copied_upvar(CopiedUpvar {onceness: ast::Once, ..}) |
             cat_rvalue(..) |
             cat_local(..) |
-            cat_upvar(..) |
             cat_deref(_, _, UnsafePtr(..)) => { // yes, it's aliasable, but...
                 None
             }
 
-            cat_copied_upvar(CopiedUpvar {onceness: ast::Many, ..}) => {
-                Some(AliasableOther)
+            cat_copied_upvar(CopiedUpvar {kind: kind, capturing_proc: id, ..}) => {
+                match kind {
+                    Boxed(ast::Once) |
+                    Unboxed(ty::FnOnceUnboxedClosureKind) |
+                    Unboxed(ty::FnMutUnboxedClosureKind) => None,
+                    Boxed(_) => Some(AliasableOther),
+                    Unboxed(_) => Some(AliasableClosure(id))
+                }
             }
+
+            cat_upvar(ty::UpvarId { closure_expr_id: id, .. }, _,
+                      Some(ty::FnUnboxedClosureKind)) => {
+                Some(AliasableClosure(id))
+            }
+
+            cat_upvar(..) => None,
 
             cat_static_item(..) => {
                 let int_safe = if ty::type_interior_is_unsafe(ctxt, self.ty) {
