@@ -7,7 +7,7 @@
 	<!ENTITY rustIdent "[a-zA-Z_][a-zA-Z_0-9]*">
 	<!ENTITY rustIntSuf "([iu](8|16|32|64)?)?">
 ]>
-<language name="Rust" version="0.12.0" kateversion="2.4" section="Sources" extensions="*.rs" mimetype="text/x-rust" priority="15">
+<language name="Rust" version="0.13.0" kateversion="2.4" section="Sources" extensions="*.rs" mimetype="text/x-rust" priority="15">
 <highlighting>
 	<list name="fn">
 		<item> fn </item>
