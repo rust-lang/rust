@@ -323,6 +323,10 @@ pub trait Char {
     /// UTF-8.
     fn len_utf8(&self) -> uint;
 
+    /// Returns the amount of bytes this character would need if encoded in
+    /// UTF-16.
+    fn len_utf16(&self) -> uint;
+
     /// Encodes this character as UTF-8 into the provided byte buffer,
     /// and then returns the number of bytes written.
     ///
@@ -362,6 +366,12 @@ impl Char for char {
 
     #[inline]
     fn len_utf8(&self) -> uint { len_utf8_bytes(*self) }
+
+    #[inline]
+    fn len_utf16(&self) -> uint {
+        let ch = *self as u32;
+        if (ch & 0xFFFF_u32) == ch { 1 } else { 2 }
+    }
 
     #[inline]
     fn encode_utf8<'a>(&self, dst: &'a mut [u8]) -> Option<uint> {
