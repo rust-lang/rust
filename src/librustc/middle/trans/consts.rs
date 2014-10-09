@@ -701,6 +701,13 @@ pub fn trans_const(ccx: &CrateContext, m: ast::Mutability, id: ast::NodeId) {
         // At this point, get_item_val has already translated the
         // constant's initializer to determine its LLVM type.
         let v = ccx.const_values().borrow().get_copy(&id);
+        // boolean SSA values are i1, but they have to be stored in i8 slots,
+        // otherwise some LLVM optimization passes don't work as expected
+        let v = if llvm::LLVMTypeOf(v) == Type::i1(ccx).to_ref() {
+            llvm::LLVMConstZExt(v, Type::i8(ccx).to_ref())
+        } else {
+            v
+        };
         llvm::LLVMSetInitializer(g, v);
 
         // `get_item_val` left `g` with external linkage, but we just set an
