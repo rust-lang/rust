@@ -229,6 +229,7 @@ pub fn len_utf8_bytes(c: char) -> uint {
 }
 
 /// Basic `char` manipulations.
+#[experimental = "trait organization may change"]
 pub trait Char {
     /// Checks if a `char` parses as a numeric digit in the given radix.
     ///
@@ -315,6 +316,7 @@ pub trait Char {
     fn encode_utf16(&self, dst: &mut [u16]) -> Option<uint>;
 }
 
+#[experimental = "trait is experimental"]
 impl Char for char {
     fn is_digit_radix(&self, radix: uint) -> bool { is_digit_radix(*self, radix) }
 
