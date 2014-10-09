@@ -920,7 +920,7 @@ impl NonSnakeCase {
             let mut allow_underscore = true;
             ident.chars().all(|c| {
                 allow_underscore = match c {
-                    c if c.is_lowercase() || c.is_digit() => true,
+                    c if c.is_lowercase() || c.is_numeric() => true,
                     '_' if allow_underscore => false,
                     _ => return false,
                 };

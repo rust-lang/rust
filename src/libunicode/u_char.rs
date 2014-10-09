@@ -217,7 +217,7 @@ pub trait UnicodeChar {
     fn is_control(&self) -> bool;
 
     /// Indicates whether the character is numeric (Nd, Nl, or No).
-    fn is_digit(&self) -> bool;
+    fn is_numeric(&self) -> bool;
 
     /// Converts a character to its lowercase equivalent.
     ///
@@ -281,7 +281,7 @@ impl UnicodeChar for char {
 
     fn is_control(&self) -> bool { is_control(*self) }
 
-    fn is_digit(&self) -> bool { is_digit(*self) }
+    fn is_numeric(&self) -> bool { is_digit(*self) }
 
     fn to_lowercase(&self) -> char { to_lowercase(*self) }
 

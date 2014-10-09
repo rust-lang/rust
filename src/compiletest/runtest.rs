@@ -1566,7 +1566,7 @@ fn _arm_exec_compiled_test(config: &Config,
 
     let mut exitcode: int = 0;
     for c in exitcode_out.as_slice().chars() {
-        if !c.is_digit() { break; }
+        if !c.is_numeric() { break; }
         exitcode = exitcode * 10 + match c {
             '0' ... '9' => c as int - ('0' as int),
             _ => 101,
