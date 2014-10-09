@@ -105,12 +105,12 @@ fn test_is_control() {
 
 #[test]
 fn test_is_digit() {
-   assert!('2'.is_digit());
-   assert!('7'.is_digit());
-   assert!(!'c'.is_digit());
-   assert!(!'i'.is_digit());
-   assert!(!'z'.is_digit());
-   assert!(!'Q'.is_digit());
+   assert!('2'.is_numeric());
+   assert!('7'.is_numeric());
+   assert!(!'c'.is_numeric());
+   assert!(!'i'.is_numeric());
+   assert!(!'z'.is_numeric());
+   assert!(!'Q'.is_numeric());
 }
 
 #[test]
