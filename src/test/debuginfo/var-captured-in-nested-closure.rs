@@ -63,21 +63,21 @@
 // lldb-command:print *owned
 // lldb-check:[...]$4 = 6
 // lldb-command:print closure_local
-// lldb-check:[...]$6 = 8
+// lldb-check:[...]$5 = 8
 // lldb-command:continue
 
 // lldb-command:print variable
-// lldb-check:[...]$7 = 1
+// lldb-check:[...]$6 = 1
 // lldb-command:print constant
-// lldb-check:[...]$8 = 2
+// lldb-check:[...]$7 = 2
 // lldb-command:print a_struct
-// lldb-check:[...]$9 = Struct { a: -3, b: 4.5, c: 5 }
+// lldb-check:[...]$8 = Struct { a: -3, b: 4.5, c: 5 }
 // lldb-command:print *struct_ref
-// lldb-check:[...]$10 = Struct { a: -3, b: 4.5, c: 5 }
+// lldb-check:[...]$9 = Struct { a: -3, b: 4.5, c: 5 }
 // lldb-command:print *owned
-// lldb-check:[...]$11 = 6
+// lldb-check:[...]$10 = 6
 // lldb-command:print closure_local
-// lldb-check:[...]$13 = 8
+// lldb-check:[...]$11 = 8
 // lldb-command:continue
 
 #![allow(unused_variable)]

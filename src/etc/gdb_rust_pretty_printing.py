@@ -196,7 +196,7 @@ def classify_struct(type):
   if field_count == 0:
     return STRUCT_KIND_REGULAR_STRUCT
 
-  if fields[0].artificial:
+  if fields[0].name == "RUST$ENUM$DISR":
     if field_count == 1:
       return STRUCT_KIND_CSTYLE_VARIANT
     elif fields[1].name == None:

@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-tidy-linelength
 // ignore-android: FIXME(#10381)
 
 // compile-flags:-g
@@ -43,7 +44,7 @@
 
 // gdb-command:finish
 // gdb-command:print x
-// gdb-check:$7 = {{Case1, x = 0, y = 8970181431921507452}, {Case1, 0, 2088533116, 2088533116}}
+// gdb-check:$7 = {{RUST$ENUM$DISR = Case1, x = 0, y = 8970181431921507452}, {RUST$ENUM$DISR = Case1, 0, 2088533116, 2088533116}}
 // gdb-command:continue
 
 
