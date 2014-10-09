@@ -1897,7 +1897,7 @@ type int8_t = i8;
 
 ### Crate-only attributes
 
-- `crate_id` - specify the this crate's crate ID.
+- `crate_name` - specify the this crate's crate name.
 - `crate_type` - see [linkage](#linkage).
 - `feature` - see [compiler features](#compiler-features).
 - `no_builtins` - disable optimizing certain code patterns to invocations of
@@ -1927,6 +1927,8 @@ type int8_t = i8;
 - `start` - indicates that this function should be used as the entry point,
   overriding the "start" language item. See the "start" [language
   item](#language-items) for more details.
+- `test` - indicates that this function is a test function, to only be compiled
+  in case of `--test`.
 
 ### Static-only attributes
 
