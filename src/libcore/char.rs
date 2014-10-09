@@ -245,7 +245,23 @@ pub trait Char {
     /// # Failure
     ///
     /// Fails if given a radix > 36.
+    #[deprecated = "use is_digit"]
     fn is_digit_radix(&self, radix: uint) -> bool;
+
+    /// Checks if a `char` parses as a numeric digit in the given radix.
+    ///
+    /// Compared to `is_digit()`, this function only recognizes the characters
+    /// `0-9`, `a-z` and `A-Z`.
+    ///
+    /// # Return value
+    ///
+    /// Returns `true` if `c` is a valid digit under `radix`, and `false`
+    /// otherwise.
+    ///
+    /// # Failure
+    ///
+    /// Fails if given a radix > 36.
+    fn is_digit(&self, radix: uint) -> bool;
 
     /// Converts a character to the corresponding digit.
     ///
@@ -319,7 +335,10 @@ pub trait Char {
 
 #[experimental = "trait is experimental"]
 impl Char for char {
+    #[deprecated = "use is_digit"]
     fn is_digit_radix(&self, radix: uint) -> bool { is_digit_radix(*self, radix) }
+
+    fn is_digit(&self, radix: uint) -> bool { is_digit_radix(*self, radix) }
 
     fn to_digit(&self, radix: uint) -> Option<uint> { to_digit(*self, radix) }
 
