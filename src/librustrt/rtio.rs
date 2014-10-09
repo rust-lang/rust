@@ -233,8 +233,6 @@ pub trait IoFactory {
     fn pipe_open(&mut self, fd: c_int) -> IoResult<Box<RtioPipe + Send>>;
     fn tty_open(&mut self, fd: c_int, readable: bool)
             -> IoResult<Box<RtioTTY + Send>>;
-    fn signal(&mut self, signal: int, cb: Box<Callback + Send>)
-        -> IoResult<Box<RtioSignal + Send>>;
 }
 
 pub trait RtioTcpListener : RtioSocket {
