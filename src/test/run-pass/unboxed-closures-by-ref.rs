@@ -28,8 +28,8 @@ fn main() {
     let mut x = 0u;
     let y = 2u;
 
-    call_fn(|&:| x += y);
+    call_fn(|&:| assert_eq!(x, 0));
     call_fn_mut(|&mut:| x += y);
     call_fn_once(|:| x += y);
-    assert_eq!(x, y * 3);
+    assert_eq!(x, y * 2);
 }

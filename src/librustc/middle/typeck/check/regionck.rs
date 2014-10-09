@@ -1552,7 +1552,7 @@ fn link_reborrowed_region(rcx: &Rcx,
 
     // Detect references to an upvar `x`:
     let cause = match ref_cmt.cat {
-        mc::cat_upvar(ref upvar_id, _) => {
+        mc::cat_upvar(ref upvar_id, _, _) => {
             let mut upvar_borrow_map =
                 rcx.fcx.inh.upvar_borrow_map.borrow_mut();
             match upvar_borrow_map.find_mut(upvar_id) {
@@ -1686,7 +1686,7 @@ fn adjust_upvar_borrow_kind_for_mut(rcx: &Rcx,
             mc::cat_deref(base, _, mc::BorrowedPtr(..)) |
             mc::cat_deref(base, _, mc::Implicit(..)) => {
                 match base.cat {
-                    mc::cat_upvar(ref upvar_id, _) => {
+                    mc::cat_upvar(ref upvar_id, _, _) => {
                         // if this is an implicit deref of an
                         // upvar, then we need to modify the
                         // borrow_kind of the upvar to make sure it
@@ -1739,7 +1739,7 @@ fn adjust_upvar_borrow_kind_for_unique(rcx: &Rcx, cmt: mc::cmt) {
             mc::cat_deref(base, _, mc::BorrowedPtr(..)) |
             mc::cat_deref(base, _, mc::Implicit(..)) => {
                 match base.cat {
-                    mc::cat_upvar(ref upvar_id, _) => {
+                    mc::cat_upvar(ref upvar_id, _, _) => {
                         // if this is an implicit deref of an
                         // upvar, then we need to modify the
                         // borrow_kind of the upvar to make sure it
