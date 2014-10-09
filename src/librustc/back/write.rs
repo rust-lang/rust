@@ -12,6 +12,7 @@ use back::lto;
 use back::link::{get_cc_prog, remove};
 use driver::driver::{CrateTranslation, ModuleTranslation, OutputFilenames};
 use driver::config::{NoDebugInfo, Passes, SomePasses, AllPasses};
+use driver::config::{AsmDefault, AsmIntel, AsmAtt};
 use driver::session::Session;
 use driver::config;
 use llvm;
@@ -33,7 +34,6 @@ use std::mem;
 use std::sync::{Arc, Mutex};
 use std::task::TaskBuilder;
 use libc::{c_uint, c_int, c_void};
-
 
 #[deriving(Clone, PartialEq, PartialOrd, Ord, Eq)]
 pub enum OutputType {
@@ -957,6 +957,13 @@ unsafe fn configure_llvm(sess: &Session) {
         add("rustc"); // fake program name
         if vectorize_loop { add("-vectorize-loops"); }
         if vectorize_slp  { add("-vectorize-slp");   }
+
+        match sess.opts.syntax {
+            AsmIntel => add("-x86-asm-syntax=intel"),
+            AsmAtt => add("-x86-asm-syntax=att"),
+            AsmDefault => {}
+        }
+
         if sess.time_llvm_passes() { add("-time-passes"); }
         if sess.print_llvm_passes() { add("-debug-pass=Structure"); }
 
