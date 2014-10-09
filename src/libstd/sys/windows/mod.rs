@@ -40,6 +40,7 @@ pub mod tcp;
 pub mod udp;
 pub mod pipe;
 pub mod helper_signal;
+pub mod process;
 
 pub mod addrinfo {
     pub use sys_common::net::get_host_addresses;
