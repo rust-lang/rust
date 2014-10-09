@@ -109,6 +109,7 @@ enum BuiltinBoundConditions {
     AmbiguousBuiltin
 }
 
+#[deriving(Show)]
 enum EvaluationResult {
     EvaluatedToOk,
     EvaluatedToErr,
@@ -246,7 +247,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                obligation.repr(self.tcx()));
 
         let stack = self.push_stack(previous_stack.map(|x| x), obligation);
-        self.evaluate_stack(&stack)
+        let result = self.evaluate_stack(&stack);
+        debug!("result: {}", result);
+        result
     }
 
     fn evaluate_stack(&mut self,
@@ -259,6 +262,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // that does provide an impl.
         let input_types = &stack.skol_trait_ref.substs.types;
         if input_types.iter().any(|&t| ty::type_is_skolemized(t)) {
+            debug!("evaluate_stack({}) --> unbound argument, must be ambiguous",
+                   stack.skol_trait_ref.repr(self.tcx()));
             return EvaluatedToAmbig;
         }
 
@@ -286,6 +291,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             .skip(1) // skip top-most frame
             .any(|prev| stack.skol_trait_ref == prev.skol_trait_ref)
         {
+            debug!("evaluate_stack({}) --> recursive",
+                   stack.skol_trait_ref.repr(self.tcx()));
             return EvaluatedToOk;
         }
 
