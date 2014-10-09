@@ -180,9 +180,13 @@ restriction).
 ### static => static
 
 It is illegal for a `static` to reference another `static` by value. It is
-required that all references be borrowed. If this were not required, then this
-sort of reference would require that the static being referenced fall into one
-of two categories:
+required that all references be borrowed. Additionally, not all kinds of borrows
+are allowed, only explicitly taking the address of another static is allowed.
+For example, interior borrows of fields and elements or accessing elements of an
+array are both disallowed.
+
+If a by-value reference were allowed, then this sort of reference would require
+that the static being referenced fall into one of two categories:
 
 1. It's an initializer pattern. This is the purpose of `const`, however.
 2. The values are kept in sync. This is currently technically infeasible.
