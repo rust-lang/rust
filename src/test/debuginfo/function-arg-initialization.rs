@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // ignore-android: FIXME(#10381)
+// min-lldb-version: 310
 
 // This test case checks if function arguments already have the correct value when breaking at the
 // first line of the function, that is if the function prologue has already been executed at the
@@ -18,17 +19,17 @@
 
 // compile-flags:-g
 // gdb-command:set print pretty off
-// gdb-command:break function-arg-initialization.rs:243
-// gdb-command:break function-arg-initialization.rs:258
-// gdb-command:break function-arg-initialization.rs:262
-// gdb-command:break function-arg-initialization.rs:266
-// gdb-command:break function-arg-initialization.rs:270
-// gdb-command:break function-arg-initialization.rs:274
-// gdb-command:break function-arg-initialization.rs:278
-// gdb-command:break function-arg-initialization.rs:282
-// gdb-command:break function-arg-initialization.rs:286
-// gdb-command:break function-arg-initialization.rs:294
-// gdb-command:break function-arg-initialization.rs:301
+// gdb-command:break function-arg-initialization.rs:244
+// gdb-command:break function-arg-initialization.rs:259
+// gdb-command:break function-arg-initialization.rs:263
+// gdb-command:break function-arg-initialization.rs:267
+// gdb-command:break function-arg-initialization.rs:271
+// gdb-command:break function-arg-initialization.rs:275
+// gdb-command:break function-arg-initialization.rs:279
+// gdb-command:break function-arg-initialization.rs:283
+// gdb-command:break function-arg-initialization.rs:287
+// gdb-command:break function-arg-initialization.rs:295
+// gdb-command:break function-arg-initialization.rs:302
 
 // === GDB TESTS ===================================================================================
 
