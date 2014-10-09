@@ -198,6 +198,14 @@ fn test_encode_utf16() {
 }
 
 #[test]
+fn test_len_utf16() {
+    assert!('x'.len_utf16() == 1);
+    assert!('\u00e9'.len_utf16() == 1);
+    assert!('\ua66e'.len_utf16() == 1);
+    assert!('\U0001f4a9'.len_utf16() == 2);
+}
+
+#[test]
 fn test_width() {
     assert_eq!('\x00'.width(false),Some(0));
     assert_eq!('\x00'.width(true),Some(0));
