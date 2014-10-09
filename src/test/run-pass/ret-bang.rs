@@ -11,7 +11,7 @@
 
 
 
-fn my_err(s: String) -> ! { println!("{}", s); fail!(); }
+fn my_err(s: String) -> ! { println!("{}", s); panic!(); }
 
 fn okay(i: uint) -> int {
     if i == 3u {

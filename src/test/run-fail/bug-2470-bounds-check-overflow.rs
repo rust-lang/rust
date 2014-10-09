@@ -14,7 +14,7 @@ use std::mem;
 
 fn main() {
 
-    // This should cause a bounds-check failure, but may not if we do our
+    // This should cause a bounds-check panic, but may not if we do our
     // bounds checking by comparing the scaled index to the vector's
     // address-bounds, since we've scaled the index to wrap around to the
     // address of the 0th cell in the array (even though the index is
@@ -30,6 +30,6 @@ fn main() {
     println!("ov1 idx * sizeof::<uint>() = 0x{:x}",
            idx * mem::size_of::<uint>());
 
-    // This should fail.
+    // This should panic.
     println!("ov1 0x{:x}", x[idx]);
 }

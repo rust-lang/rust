@@ -43,7 +43,7 @@ pub fn stmt_id(s: &Stmt) -> NodeId {
       StmtDecl(_, id) => id,
       StmtExpr(_, id) => id,
       StmtSemi(_, id) => id,
-      StmtMac(..) => fail!("attempted to analyze unexpanded stmt")
+      StmtMac(..) => panic!("attempted to analyze unexpanded stmt")
     }
 }
 
@@ -233,7 +233,7 @@ pub fn trait_method_to_ty_method(method: &Method) -> TypeMethod {
                 abi: abi,
             }
         },
-        MethMac(_) => fail!("expected non-macro method declaration")
+        MethMac(_) => panic!("expected non-macro method declaration")
     }
 }
 
@@ -246,7 +246,7 @@ pub fn trait_item_to_ty_method(method: &TraitItem) -> TypeMethod {
         RequiredMethod(ref m) => (*m).clone(),
         ProvidedMethod(ref m) => trait_method_to_ty_method(&**m),
         TypeTraitItem(_) => {
-            fail!("trait_method_to_ty_method(): expected method but found \
+            panic!("trait_method_to_ty_method(): expected method but found \
                    typedef")
         }
     }
@@ -615,7 +615,7 @@ pub fn walk_pat(pat: &Pat, it: |&Pat| -> bool) -> bool {
             slice.iter().all(|p| walk_pat(&**p, |p| it(p))) &&
             after.iter().all(|p| walk_pat(&**p, |p| it(p)))
         }
-        PatMac(_) => fail!("attempted to analyze unexpanded pattern"),
+        PatMac(_) => panic!("attempted to analyze unexpanded pattern"),
         PatWild(_) | PatLit(_) | PatRange(_, _) | PatIdent(_, _, _) |
         PatEnum(_, _) => {
             true
@@ -725,7 +725,7 @@ macro_rules! mf_method{
             match self.node {
                 $field_pat => $result,
                 MethMac(_) => {
-                    fail!("expected an AST without macro invocations");
+                    panic!("expected an AST without macro invocations");
                 }
             }
         }

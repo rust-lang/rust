@@ -366,7 +366,7 @@ pub mod rt {
                 Some(ast) => ast,
                 None => {
                     error!("parse error");
-                    fail!()
+                    panic!()
                 }
             }
         }
@@ -598,7 +598,7 @@ fn mk_token(cx: &ExtCtxt, sp: Span, tok: &token::Token) -> P<ast::Expr> {
                                 vec!(mk_name(cx, sp, ident.ident())));
         }
 
-        token::Interpolated(_) => fail!("quote! with interpolated token"),
+        token::Interpolated(_) => panic!("quote! with interpolated token"),
 
         _ => ()
     }
@@ -635,7 +635,7 @@ fn mk_token(cx: &ExtCtxt, sp: Span, tok: &token::Token) -> P<ast::Expr> {
         token::Dollar       => "Dollar",
         token::Underscore   => "Underscore",
         token::Eof          => "Eof",
-        _                   => fail!(),
+        _                   => panic!(),
     };
     mk_token_path(cx, sp, name)
 }
@@ -662,7 +662,7 @@ fn mk_tt(cx: &ExtCtxt, _: Span, tt: &ast::TokenTree) -> Vec<P<ast::Stmt>> {
                 .chain(mk_tt(cx, sp, &close.to_tt()).into_iter())
                 .collect()
         },
-        ast::TtSequence(..) => fail!("TtSequence in quote!"),
+        ast::TtSequence(..) => panic!("TtSequence in quote!"),
         ast::TtNonterminal(sp, ident) => {
             // tt.extend($ident.to_tokens(ext_cx).into_iter())
 

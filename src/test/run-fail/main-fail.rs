@@ -11,5 +11,5 @@
 // error-pattern:task '<main>' failed at
 
 fn main() {
-    fail!()
+    panic!()
 }

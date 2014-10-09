@@ -75,7 +75,7 @@ impl<T> MutableMap<int, T> for cat<T> {
         true
     }
 
-    fn find_mut(&mut self, _k: &int) -> Option<&mut T> { fail!() }
+    fn find_mut(&mut self, _k: &int) -> Option<&mut T> { panic!() }
 
     fn remove(&mut self, k: &int) -> bool {
         if self.find(k).is_some() {
@@ -85,16 +85,16 @@ impl<T> MutableMap<int, T> for cat<T> {
         }
     }
 
-    fn pop(&mut self, _k: &int) -> Option<T> { fail!() }
+    fn pop(&mut self, _k: &int) -> Option<T> { panic!() }
 
-    fn swap(&mut self, _k: int, _v: T) -> Option<T> { fail!() }
+    fn swap(&mut self, _k: int, _v: T) -> Option<T> { panic!() }
 }
 
 impl<T> cat<T> {
     pub fn get(&self, k: &int) -> &T {
         match self.find(k) {
           Some(v) => { v }
-          None    => { fail!("epic fail"); }
+          None    => { panic!("epic fail"); }
         }
     }
 

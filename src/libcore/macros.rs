@@ -10,15 +10,15 @@
 
 #![macro_escape]
 
-/// Entry point of failure, for details, see std::macros
+/// Entry point of task panic, for details, see std::macros
 #[macro_export]
-macro_rules! fail(
+macro_rules! panic(
     () => (
-        fail!("{}", "explicit failure")
+        panic!("{}", "explicit panic")
     );
     ($msg:expr) => ({
         static _MSG_FILE_LINE: (&'static str, &'static str, uint) = ($msg, file!(), line!());
-        ::core::failure::fail(&_MSG_FILE_LINE)
+        ::core::panicking::panic(&_MSG_FILE_LINE)
     });
     ($fmt:expr, $($arg:tt)*) => ({
         // a closure can't have return type !, so we need a full
@@ -31,7 +31,7 @@ macro_rules! fail(
         // as returning !. We really do want this to be inlined, however,
         // because it's just a tiny wrapper. Small wins (156K to 149K in size)
         // were seen when forcing this to be inlined, and that number just goes
-        // up with the number of calls to fail!()
+        // up with the number of calls to panic!()
         //
         // The leading _'s are to avoid dead code warnings if this is
         // used inside a dead function. Just `#[allow(dead_code)]` is
@@ -40,7 +40,7 @@ macro_rules! fail(
         #[inline(always)]
         fn _run_fmt(fmt: &::std::fmt::Arguments) -> ! {
             static _FILE_LINE: (&'static str, uint) = (file!(), line!());
-            ::core::failure::fail_fmt(fmt, &_FILE_LINE)
+            ::core::panicking::panic_fmt(fmt, &_FILE_LINE)
         }
         format_args!(_run_fmt, $fmt, $($arg)*)
     });
@@ -51,12 +51,12 @@ macro_rules! fail(
 macro_rules! assert(
     ($cond:expr) => (
         if !$cond {
-            fail!(concat!("assertion failed: ", stringify!($cond)))
+            panic!(concat!("assertion failed: ", stringify!($cond)))
         }
     );
     ($cond:expr, $($arg:tt)*) => (
         if !$cond {
-            fail!($($arg)*)
+            panic!($($arg)*)
         }
     );
 )
@@ -78,7 +78,7 @@ macro_rules! assert_eq(
         let c1 = $cond1;
         let c2 = $cond2;
         if c1 != c2 || c2 != c1 {
-            fail!("expressions not equal, left: {}, right: {}", c1, c2);
+            panic!("expressions not equal, left: {}, right: {}", c1, c2);
         }
     })
 )
@@ -130,4 +130,4 @@ macro_rules! write(
 )
 
 #[macro_export]
-macro_rules! unreachable( () => (fail!("unreachable code")) )
+macro_rules! unreachable( () => (panic!("unreachable code")) )

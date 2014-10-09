@@ -44,7 +44,7 @@ impl Drop for Foo {
                 sender.send(DestructorRan);
             }
             &FailingVariant { .. } => {
-                fail!("Failed");
+                panic!("Failed");
             }
         }
     }

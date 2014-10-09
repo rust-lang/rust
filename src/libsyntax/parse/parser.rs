@@ -5746,7 +5746,7 @@ impl<'a> Parser<'a> {
                     break;
                 }
                 IoviForeignItem(_) => {
-                    fail!();
+                    panic!();
                 }
             }
             attrs = self.parse_outer_attributes();
@@ -5769,7 +5769,7 @@ impl<'a> Parser<'a> {
                     items.push(item)
                 }
                 IoviForeignItem(_) => {
-                    fail!();
+                    panic!();
                 }
             }
         }

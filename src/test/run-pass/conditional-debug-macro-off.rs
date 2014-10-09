@@ -16,6 +16,6 @@
 extern crate log;
 
 pub fn main() {
-    // only fails if println! evaluates its argument.
-    debug!("{}", { if true { fail!() } });
+    // only panics if println! evaluates its argument.
+    debug!("{}", { if true { panic!() } });
 }

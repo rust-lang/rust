@@ -43,7 +43,7 @@ use rt::rtio;
 ///     let addr = SocketAddr { ip: Ipv4Addr(127, 0, 0, 1), port: 34254 };
 ///     let mut socket = match UdpSocket::bind(addr) {
 ///         Ok(s) => s,
-///         Err(e) => fail!("couldn't bind socket: {}", e),
+///         Err(e) => panic!("couldn't bind socket: {}", e),
 ///     };
 ///
 ///     let mut buf = [0, ..10];
@@ -271,7 +271,7 @@ mod test {
     fn bind_error() {
         let addr = SocketAddr { ip: Ipv4Addr(0, 0, 0, 0), port: 1 };
         match UdpSocket::bind(addr) {
-            Ok(..) => fail!(),
+            Ok(..) => panic!(),
             Err(e) => assert_eq!(e.kind, PermissionDenied),
         }
     }
@@ -289,7 +289,7 @@ mod test {
                     rx1.recv();
                     client.send_to([99], server_ip).unwrap()
                 }
-                Err(..) => fail!()
+                Err(..) => panic!()
             }
             tx2.send(());
         });
@@ -304,10 +304,10 @@ mod test {
                         assert_eq!(buf[0], 99);
                         assert_eq!(src, client_ip);
                     }
-                    Err(..) => fail!()
+                    Err(..) => panic!()
                 }
             }
-            Err(..) => fail!()
+            Err(..) => panic!()
         }
         rx2.recv();
     }
@@ -324,7 +324,7 @@ mod test {
                     rx.recv();
                     client.send_to([99], server_ip).unwrap()
                 }
-                Err(..) => fail!()
+                Err(..) => panic!()
             }
         });
 
@@ -338,10 +338,10 @@ mod test {
                         assert_eq!(buf[0], 99);
                         assert_eq!(src, client_ip);
                     }
-                    Err(..) => fail!()
+                    Err(..) => panic!()
                 }
             }
-            Err(..) => fail!()
+            Err(..) => panic!()
         }
     }
 
@@ -362,7 +362,7 @@ mod test {
                         let mut stream = client.connect(server_ip);
                         stream.write(val).unwrap();
                     }
-                    Err(..) => fail!()
+                    Err(..) => panic!()
                 }
             };
             rx1.recv();
@@ -382,10 +382,10 @@ mod test {
                         assert_eq!(nread, 1);
                         assert_eq!(buf[0], 99);
                     }
-                    Err(..) => fail!(),
+                    Err(..) => panic!(),
                 }
             }
-            Err(..) => fail!()
+            Err(..) => panic!()
         }
         rx2.recv();
     }
@@ -406,7 +406,7 @@ mod test {
                     rx1.recv();
                     stream.write([99]).unwrap();
                 }
-                Err(..) => fail!()
+                Err(..) => panic!()
             }
             tx2.send(());
         });
@@ -422,10 +422,10 @@ mod test {
                         assert_eq!(nread, 1);
                         assert_eq!(buf[0], 99);
                     }
-                    Err(..) => fail!()
+                    Err(..) => panic!()
                 }
             }
-            Err(..) => fail!()
+            Err(..) => panic!()
         }
         rx2.recv();
     }
@@ -535,7 +535,7 @@ mod test {
             rx.recv();
             match sock2.recv_from(buf) {
                 Ok(..) => {}
-                Err(e) => fail!("failed receive: {}", e),
+                Err(e) => panic!("failed receive: {}", e),
             }
             serv_tx.send(());
         });
@@ -612,7 +612,7 @@ mod test {
             match a.send_to([0, ..4*1024], addr2) {
                 Ok(()) | Err(IoError { kind: ShortWrite(..), .. }) => {},
                 Err(IoError { kind: TimedOut, .. }) => break,
-                Err(e) => fail!("other error: {}", e),
+                Err(e) => panic!("other error: {}", e),
             }
         }
     }

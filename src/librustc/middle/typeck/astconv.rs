@@ -937,7 +937,7 @@ pub fn ast_ty_to_ty<'tcx, AC: AstConv<'tcx>, RS: RegionScope>(
                                     tcx.map.node_to_string(id.node)).as_slice());
                     }
                     def::DefPrimTy(_) => {
-                        fail!("DefPrimTy arm missed in previous ast_ty_to_prim_ty call");
+                        panic!("DefPrimTy arm missed in previous ast_ty_to_prim_ty call");
                     }
                     def::DefAssociatedTy(trait_type_id) => {
                         let path_str = tcx.map.path_to_string(

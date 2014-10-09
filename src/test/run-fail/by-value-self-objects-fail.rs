@@ -23,7 +23,7 @@ struct S {
 
 impl Foo for S {
     fn foo(self, x: int) {
-        fail!()
+        panic!()
     }
 }
 

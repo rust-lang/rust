@@ -11,5 +11,5 @@
 // error-pattern:explicit failure
 
 pub fn main() {
-    fail!(); println!("{}", 1i);
+    panic!(); println!("{}", 1i);
 }

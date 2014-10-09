@@ -16,5 +16,5 @@ fn main() {
     let a = 5;
     let _iter = TrieMapIterator{node: &a};
     _iter.node = & //~ ERROR cannot assign to immutable field
-    fail!()
+    panic!()
 }

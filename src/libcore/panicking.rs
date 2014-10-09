@@ -8,23 +8,23 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Failure support for libcore
+//! Panic support for libcore
 //!
-//! The core library cannot define failure, but it does *declare* failure. This
-//! means that the functions inside of libcore are allowed to fail, but to be
-//! useful an upstream crate must define failure for libcore to use. The current
-//! interface for failure is:
+//! The core library cannot define panicking, but it does *declare* panicking. This
+//! means that the functions inside of libcore are allowed to panic, but to be
+//! useful an upstream crate must define panicking for libcore to use. The current
+//! interface for panicking is:
 //!
 //! ```ignore
-//! fn fail_impl(fmt: &fmt::Arguments, &(&'static str, uint)) -> !;
+//! fn panic_impl(fmt: &fmt::Arguments, &(&'static str, uint)) -> !;
 //! ```
 //!
-//! This definition allows for failing with any general message, but it does not
-//! allow for failing with a `~Any` value. The reason for this is that libcore
+//! This definition allows for panicking with any general message, but it does not
+//! allow for failing with a `Box<Any>` value. The reason for this is that libcore
 //! is not allowed to allocate.
 //!
-//! This module contains a few other failure functions, but these are just the
-//! necessary lang items for the compiler. All failure is funneled through this
+//! This module contains a few other panicking functions, but these are just the
+//! necessary lang items for the compiler. All panics are funneled through this
 //! one function. Currently, the actual symbol is declared in the standard
 //! library, but the location of this may change over time.
 
@@ -34,36 +34,36 @@ use fmt;
 use intrinsics;
 
 #[cold] #[inline(never)] // this is the slow path, always
-#[lang="fail"]
-pub fn fail(expr_file_line: &(&'static str, &'static str, uint)) -> ! {
+#[lang="panic"]
+pub fn panic(expr_file_line: &(&'static str, &'static str, uint)) -> ! {
     let (expr, file, line) = *expr_file_line;
     let ref file_line = (file, line);
     format_args!(|args| -> () {
-        fail_fmt(args, file_line);
+        panic_fmt(args, file_line);
     }, "{}", expr);
 
     unsafe { intrinsics::abort() }
 }
 
 #[cold] #[inline(never)]
-#[lang="fail_bounds_check"]
-fn fail_bounds_check(file_line: &(&'static str, uint),
+#[lang="panic_bounds_check"]
+fn panic_bounds_check(file_line: &(&'static str, uint),
                      index: uint, len: uint) -> ! {
     format_args!(|args| -> () {
-        fail_fmt(args, file_line);
+        panic_fmt(args, file_line);
     }, "index out of bounds: the len is {} but the index is {}", len, index);
     unsafe { intrinsics::abort() }
 }
 
 #[cold] #[inline(never)]
-pub fn fail_fmt(fmt: &fmt::Arguments, file_line: &(&'static str, uint)) -> ! {
+pub fn panic_fmt(fmt: &fmt::Arguments, file_line: &(&'static str, uint)) -> ! {
     #[allow(ctypes)]
     extern {
-        #[lang = "fail_fmt"]
-        fn fail_impl(fmt: &fmt::Arguments, file: &'static str,
+        #[lang = "panic_fmt"]
+        fn panic_impl(fmt: &fmt::Arguments, file: &'static str,
                         line: uint) -> !;
 
     }
     let (file, line) = *file_line;
-    unsafe { fail_impl(fmt, file, line) }
+    unsafe { panic_impl(fmt, file, line) }
 }

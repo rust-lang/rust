@@ -15,6 +15,6 @@
 
 #[test]
 fn test_foo() {
-    fail!()
+    panic!()
 }
 

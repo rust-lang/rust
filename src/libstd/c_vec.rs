@@ -169,7 +169,7 @@ mod tests {
     fn malloc(n: uint) -> CVec<u8> {
         unsafe {
             let mem = libc::malloc(n as libc::size_t);
-            if mem.is_null() { fail!("out of memory") }
+            if mem.is_null() { panic!("out of memory") }
 
             CVec::new_with_dtor(mem as *mut u8, n,
                 proc() { libc::free(mem as *mut libc::c_void); })
@@ -189,7 +189,7 @@ mod tests {
 
     #[test]
     #[should_fail]
-    fn test_fail_at_null() {
+    fn test_panic_at_null() {
         unsafe {
             CVec::new(ptr::null_mut::<u8>(), 9);
         }
@@ -213,7 +213,7 @@ mod tests {
     fn test_unwrap() {
         unsafe {
             let cv = CVec::new_with_dtor(1 as *mut int, 0,
-                proc() { fail!("Don't run this destructor!") });
+                proc() { panic!("Don't run this destructor!") });
             let p = cv.unwrap();
             assert_eq!(p, 1 as *mut int);
         }

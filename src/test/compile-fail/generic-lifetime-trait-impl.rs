@@ -23,7 +23,7 @@ trait Foo<'a> {
 }
 
 impl<'a> Foo<'a> for &'a str {
-    fn bar<T: Bar<'a>>(self) -> &'a str { fail!() } //~ ERROR lifetime
+    fn bar<T: Bar<'a>>(self) -> &'a str { panic!() } //~ ERROR lifetime
 }
 
 fn main() {

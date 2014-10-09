@@ -834,7 +834,7 @@ fn insert<T>(count: &mut uint, child: &mut Child<T>, key: uint, value: T,
             *child = Internal(new);
             return ret;
         }
-        _ => fail!("unreachable code"),
+        _ => panic!("unreachable code"),
     }
 }
 
@@ -844,7 +844,7 @@ fn remove<T>(count: &mut uint, child: &mut Child<T>, key: uint,
       External(stored, _) if stored == key => {
         match mem::replace(child, Nothing) {
             External(_, value) => (Some(value), true),
-            _ => fail!()
+            _ => panic!()
         }
       }
       External(..) => (None, false),
@@ -1057,7 +1057,7 @@ mod test_map {
         assert!(m.insert(5u, 14i));
         let new = 100;
         match m.find_mut(&5) {
-            None => fail!(), Some(x) => *x = new
+            None => panic!(), Some(x) => *x = new
         }
         assert_eq!(m.find(&5), Some(&new));
     }

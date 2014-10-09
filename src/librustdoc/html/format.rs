@@ -499,7 +499,7 @@ impl fmt::Show for clean::Type {
                 }
             }
             clean::Unique(..) => {
-                fail!("should have been cleaned")
+                panic!("should have been cleaned")
             }
         }
     }

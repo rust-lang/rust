@@ -291,9 +291,9 @@ impl<T> Option<T> {
 
     /// Unwraps an option, yielding the content of a `Some`
     ///
-    /// # Failure
+    /// # Panics
     ///
-    /// Fails if the value is a `None` with a custom failure message provided by
+    /// Fails if the value is a `None` with a custom panic message provided by
     /// `msg`.
     ///
     /// # Example
@@ -312,19 +312,19 @@ impl<T> Option<T> {
     pub fn expect(self, msg: &str) -> T {
         match self {
             Some(val) => val,
-            None => fail!("{}", msg),
+            None => panic!("{}", msg),
         }
     }
 
     /// Returns the inner `T` of a `Some(T)`.
     ///
-    /// # Failure
+    /// # Panics
     ///
-    /// Fails if the self value equals `None`.
+    /// Panics if the self value equals `None`.
     ///
     /// # Safety note
     ///
-    /// In general, because this function may fail, its use is discouraged.
+    /// In general, because this function may panic, its use is discouraged.
     /// Instead, prefer to use pattern matching and handle the `None`
     /// case explicitly.
     ///
@@ -344,7 +344,7 @@ impl<T> Option<T> {
     pub fn unwrap(self) -> T {
         match self {
             Some(val) => val,
-            None => fail!("called `Option::unwrap()` on a `None` value"),
+            None => panic!("called `Option::unwrap()` on a `None` value"),
         }
     }
 

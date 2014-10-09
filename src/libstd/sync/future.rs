@@ -58,7 +58,7 @@ impl<A> Future<A> {
         let state = replace(&mut self.state, Evaluating);
         match state {
             Forced(v) => v,
-            _ => fail!( "Logic error." ),
+            _ => panic!( "Logic error." ),
         }
     }
 
@@ -70,10 +70,10 @@ impl<A> Future<A> {
         */
         match self.state {
             Forced(ref v) => return v,
-            Evaluating => fail!("Recursive forcing of future!"),
+            Evaluating => panic!("Recursive forcing of future!"),
             Pending(_) => {
                 match replace(&mut self.state, Evaluating) {
-                    Forced(_) | Evaluating => fail!("Logic error."),
+                    Forced(_) | Evaluating => panic!("Logic error."),
                     Pending(f) => {
                         self.state = Forced(f());
                         self.get_ref()
@@ -132,7 +132,7 @@ impl<A:Send> Future<A> {
         let (tx, rx) = channel();
 
         spawn(proc() {
-            // Don't fail if the other end has hung up
+            // Don't panic if the other end has hung up
             let _ = tx.send_opt(blk());
         });
 
@@ -193,8 +193,8 @@ mod test {
 
     #[test]
     #[should_fail]
-    fn test_futurefail() {
-        let mut f = Future::spawn(proc() fail!());
+    fn test_future_panic() {
+        let mut f = Future::spawn(proc() panic!());
         let _x: String = f.get();
     }
 
@@ -211,7 +211,7 @@ mod test {
     }
 
     #[test]
-    fn test_dropped_future_doesnt_fail() {
+    fn test_dropped_future_doesnt_panic() {
         struct Bomb(Sender<bool>);
 
         local_data_key!(LOCAL: Bomb)
@@ -224,13 +224,13 @@ mod test {
         }
 
         // Spawn a future, but drop it immediately. When we receive the result
-        // later on, we should never view the task as having failed.
+        // later on, we should never view the task as having panicked.
         let (tx, rx) = channel();
         drop(Future::spawn(proc() {
             LOCAL.replace(Some(Bomb(tx)));
         }));
 
-        // Make sure the future didn't fail the task.
+        // Make sure the future didn't panic the task.
         assert!(!rx.recv());
     }
 }

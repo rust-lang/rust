@@ -216,10 +216,10 @@ pub struct Condvar<'a> {
 impl<'a> Condvar<'a> {
     /// Atomically drop the associated lock, and block until a signal is sent.
     ///
-    /// # Failure
+    /// # Panics
     ///
     /// A task which is killed while waiting on a condition variable will wake
-    /// up, fail, and unlock the associated lock as it unwinds.
+    /// up, panic, and unlock the associated lock as it unwinds.
     pub fn wait(&self) { self.wait_on(0) }
 
     /// As wait(), but can specify which of multiple condition variables to
@@ -228,7 +228,7 @@ impl<'a> Condvar<'a> {
     ///
     /// The associated lock must have been initialised with an appropriate
     /// number of condvars. The condvar_id must be between 0 and num_condvars-1
-    /// or else this call will fail.
+    /// or else this call will panic.
     ///
     /// wait() is equivalent to wait_on(0).
     pub fn wait_on(&self, condvar_id: uint) {
@@ -324,7 +324,7 @@ impl<'a> Condvar<'a> {
     }
 }
 
-// Checks whether a condvar ID was out of bounds, and fails if so, or does
+// Checks whether a condvar ID was out of bounds, and panics if so, or does
 // something else next on success.
 #[inline]
 fn check_cvar_bounds<U>(
@@ -335,9 +335,9 @@ fn check_cvar_bounds<U>(
                      -> U {
     match out_of_bounds {
         Some(0) =>
-            fail!("{} with illegal ID {} - this lock has no condvars!", act, id),
+            panic!("{} with illegal ID {} - this lock has no condvars!", act, id),
         Some(length) =>
-            fail!("{} with illegal ID {} - ID must be less than {}", act, id, length),
+            panic!("{} with illegal ID {} - ID must be less than {}", act, id, length),
         None => blk()
     }
 }
@@ -367,9 +367,9 @@ pub struct SemaphoreGuard<'a> {
 impl Semaphore {
     /// Create a new semaphore with the specified count.
     ///
-    /// # Failure
+    /// # Panics
     ///
-    /// This function will fail if `count` is negative.
+    /// This function will panic if `count` is negative.
     pub fn new(count: int) -> Semaphore {
         Semaphore { sem: Sem::new(count, ()) }
     }
@@ -396,8 +396,9 @@ impl Semaphore {
 /// A blocking, bounded-waiting, mutual exclusion lock with an associated
 /// FIFO condition variable.
 ///
-/// # Failure
-/// A task which fails while holding a mutex will unlock the mutex as it
+/// # Panics
+///
+/// A task which panicks while holding a mutex will unlock the mutex as it
 /// unwinds.
 pub struct Mutex {
     sem: Sem<Vec<WaitQueue>>,
@@ -421,7 +422,7 @@ impl Mutex {
     /// Create a new mutex, with a specified number of associated condvars. This
     /// will allow calling wait_on/signal_on/broadcast_on with condvar IDs
     /// between 0 and num_condvars-1. (If num_condvars is 0, lock_cond will be
-    /// allowed but any operations on the condvar will fail.)
+    /// allowed but any operations on the condvar will panic.)
     pub fn new_with_condvars(num_condvars: uint) -> Mutex {
         Mutex { sem: Sem::new_and_signal(1, num_condvars) }
     }
@@ -443,9 +444,9 @@ impl Mutex {
 
 /// A blocking, no-starvation, reader-writer lock with an associated condvar.
 ///
-/// # Failure
+/// # Panics
 ///
-/// A task which fails while holding an rwlock will unlock the rwlock as it
+/// A task which panics while holding an rwlock will unlock the rwlock as it
 /// unwinds.
 pub struct RWLock {
     order_lock:  Semaphore,
@@ -835,13 +836,13 @@ mod tests {
     fn test_mutex_killed_simple() {
         use std::any::Any;
 
-        // Mutex must get automatically unlocked if failed/killed within.
+        // Mutex must get automatically unlocked if panicked/killed within.
         let m = Arc::new(Mutex::new());
         let m2 = m.clone();
 
         let result: result::Result<(), Box<Any + Send>> = task::try(proc() {
             let _lock = m2.lock();
-            fail!();
+            panic!();
         });
         assert!(result.is_err());
         // child task must have finished by the time try returns
@@ -1075,13 +1076,13 @@ mod tests {
     fn rwlock_kill_helper(mode1: RWLockMode, mode2: RWLockMode) {
         use std::any::Any;
 
-        // Mutex must get automatically unlocked if failed/killed within.
+        // Mutex must get automatically unlocked if panicked/killed within.
         let x = Arc::new(RWLock::new());
         let x2 = x.clone();
 
         let result: result::Result<(), Box<Any + Send>> = task::try(proc() {
             lock_rwlock_in_mode(&x2, mode1, || {
-                fail!();
+                panic!();
             })
         });
         assert!(result.is_err());

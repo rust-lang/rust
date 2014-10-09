@@ -10,7 +10,7 @@
 
 #![deny(unreachable_code)]
 
-fn g() -> ! { fail!(); }
+fn g() -> ! { panic!(); }
 fn f() -> ! {
     return g(); //~ ERROR `return` in a function declared as diverging
     g();

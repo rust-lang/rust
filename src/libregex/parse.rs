@@ -117,7 +117,7 @@ impl BuildAst {
     fn flags(&self) -> Flags {
         match *self {
             Paren(flags, _, _) => flags,
-            _ => fail!("Cannot get flags from {}", self),
+            _ => panic!("Cannot get flags from {}", self),
         }
     }
 
@@ -125,7 +125,7 @@ impl BuildAst {
         match *self {
             Paren(_, 0, _) => None,
             Paren(_, c, _) => Some(c),
-            _ => fail!("Cannot get capture group from {}", self),
+            _ => panic!("Cannot get capture group from {}", self),
         }
     }
 
@@ -139,7 +139,7 @@ impl BuildAst {
                     Some(name.clone())
                 }
             }
-            _ => fail!("Cannot get capture name from {}", self),
+            _ => panic!("Cannot get capture name from {}", self),
         }
     }
 
@@ -153,7 +153,7 @@ impl BuildAst {
     fn unwrap(self) -> Result<Ast, Error> {
         match self {
             Expr(x) => Ok(x),
-            _ => fail!("Tried to unwrap non-AST item: {}", self),
+            _ => panic!("Tried to unwrap non-AST item: {}", self),
         }
     }
 }
@@ -321,7 +321,7 @@ impl<'a> Parser<'a> {
         }
         let rep: Repeater = match c {
             '?' => ZeroOne, '*' => ZeroMore, '+' => OneMore,
-            _ => fail!("Not a valid repeater operator."),
+            _ => panic!("Not a valid repeater operator."),
         };
 
         match self.peek(1) {
@@ -393,7 +393,7 @@ impl<'a> Parser<'a> {
                             continue
                         }
                         Some(ast) =>
-                            fail!("Expected Class AST but got '{}'", ast),
+                            panic!("Expected Class AST but got '{}'", ast),
                         // Just drop down and try to add as a regular character.
                         None => {},
                     },
@@ -408,7 +408,7 @@ impl<'a> Parser<'a> {
                             return self.err(
                                 "\\A, \\z, \\b and \\B are not valid escape \
                                  sequences inside a character class."),
-                        ast => fail!("Unexpected AST item '{}'", ast),
+                        ast => panic!("Unexpected AST item '{}'", ast),
                     }
                 }
                 _ => {},

@@ -105,7 +105,7 @@ impl File {
     ///
     /// let file = match File::open_mode(&p, Open, ReadWrite) {
     ///     Ok(f) => f,
-    ///     Err(e) => fail!("file error: {}", e),
+    ///     Err(e) => panic!("file error: {}", e),
     /// };
     /// // do some stuff with that file
     ///
@@ -957,13 +957,13 @@ mod test {
     macro_rules! check( ($e:expr) => (
         match $e {
             Ok(t) => t,
-            Err(e) => fail!("{} failed with: {}", stringify!($e), e),
+            Err(e) => panic!("{} failed with: {}", stringify!($e), e),
         }
     ) )
 
     macro_rules! error( ($e:expr, $s:expr) => (
         match $e {
-            Ok(val) => fail!("Unexpected success. Should've been: {}", $s),
+            Ok(val) => panic!("Unexpected success. Should've been: {}", $s),
             Err(ref err) => assert!(err.to_string().as_slice().contains($s.as_slice()),
                                     format!("`{}` did not contain `{}`", err, $s))
         }
@@ -1013,7 +1013,7 @@ mod test {
             let mut read_stream = File::open_mode(filename, Open, Read);
             let mut read_buf = [0, .. 1028];
             let read_str = match check!(read_stream.read(read_buf)) {
-                -1|0 => fail!("shouldn't happen"),
+                -1|0 => panic!("shouldn't happen"),
                 n => str::from_utf8(read_buf[..n]).unwrap().to_string()
             };
             assert_eq!(read_str.as_slice(), message);
@@ -1241,7 +1241,7 @@ mod test {
                 check!(File::open(f).read(mem));
                 let read_str = str::from_utf8(mem).unwrap();
                 let expected = match n {
-                    None|Some("") => fail!("really shouldn't happen.."),
+                    None|Some("") => panic!("really shouldn't happen.."),
                     Some(n) => format!("{}{}", prefix, n),
                 };
                 assert_eq!(expected.as_slice(), read_str);
@@ -1371,7 +1371,7 @@ mod test {
                     from.display(), to.display()));
 
         match copy(&from, &to) {
-            Ok(..) => fail!(),
+            Ok(..) => panic!(),
             Err(..) => {
                 assert!(!from.exists());
                 assert!(!to.exists());
@@ -1400,7 +1400,7 @@ mod test {
 
         check!(File::create(&out));
         match copy(&out, tmpdir.path()) {
-            Ok(..) => fail!(), Err(..) => {}
+            Ok(..) => panic!(), Err(..) => {}
         }
     }
 
@@ -1424,7 +1424,7 @@ mod test {
         let out = tmpdir.join("out");
 
         match copy(tmpdir.path(), &out) {
-            Ok(..) => fail!(), Err(..) => {}
+            Ok(..) => panic!(), Err(..) => {}
         }
         assert!(!out.exists());
     }
@@ -1475,7 +1475,7 @@ mod test {
     fn readlink_not_symlink() {
         let tmpdir = tmpdir();
         match readlink(tmpdir.path()) {
-            Ok(..) => fail!("wanted a failure"),
+            Ok(..) => panic!("wanted a failure"),
             Err(..) => {}
         }
     }
@@ -1501,12 +1501,12 @@ mod test {
 
         // can't link to yourself
         match link(&input, &input) {
-            Ok(..) => fail!("wanted a failure"),
+            Ok(..) => panic!("wanted a failure"),
             Err(..) => {}
         }
         // can't link to something that doesn't exist
         match link(&tmpdir.join("foo"), &tmpdir.join("bar")) {
-            Ok(..) => fail!("wanted a failure"),
+            Ok(..) => panic!("wanted a failure"),
             Err(..) => {}
         }
     }
@@ -1522,7 +1522,7 @@ mod test {
         assert!(!check!(stat(&file)).perm.contains(io::USER_WRITE));
 
         match chmod(&tmpdir.join("foo"), io::USER_RWX) {
-            Ok(..) => fail!("wanted a failure"),
+            Ok(..) => panic!("wanted a panic"),
             Err(..) => {}
         }
 
@@ -1580,7 +1580,7 @@ mod test {
         let tmpdir = tmpdir();
 
         match File::open_mode(&tmpdir.join("a"), io::Open, io::Read) {
-            Ok(..) => fail!(), Err(..) => {}
+            Ok(..) => panic!(), Err(..) => {}
         }
 
         // Perform each one twice to make sure that it succeeds the second time
@@ -1615,7 +1615,7 @@ mod test {
             let mut f = check!(File::open_mode(&tmpdir.join("h"), io::Open,
                                                io::Read));
             match f.write("wut".as_bytes()) {
-                Ok(..) => fail!(), Err(..) => {}
+                Ok(..) => panic!(), Err(..) => {}
             }
         }
         assert!(check!(stat(&tmpdir.join("h"))).size == 3,
@@ -1653,7 +1653,7 @@ mod test {
         let tmpdir = tmpdir();
 
         match change_file_times(&tmpdir.join("a"), 100, 200) {
-            Ok(..) => fail!(),
+            Ok(..) => panic!(),
             Err(..) => {}
         }
     }

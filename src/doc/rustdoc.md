@@ -169,7 +169,7 @@ directive.
 
 ~~~md
 ```should_fail
-// This code block is expected to generate a failure when run
+// This code block is expected to generate a panic when run
 ```
 ~~~
 
@@ -189,7 +189,7 @@ were passed to the compiler using the `test_harness` directive.
 ```test_harness
 #[test]
 fn foo() {
-    fail!("oops! (will run & register as failure)")
+    panic!("oops! (will run & register as a failed test)")
 }
 ```
 ~~~

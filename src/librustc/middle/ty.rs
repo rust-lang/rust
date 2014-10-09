@@ -2083,7 +2083,7 @@ pub fn simd_type(cx: &ctxt, ty: t) -> t {
             let fields = lookup_struct_fields(cx, did);
             lookup_field_type(cx, did, fields[0].id, substs)
         }
-        _ => fail!("simd_type called on invalid type")
+        _ => panic!("simd_type called on invalid type")
     }
 }
 
@@ -2093,7 +2093,7 @@ pub fn simd_size(cx: &ctxt, ty: t) -> uint {
             let fields = lookup_struct_fields(cx, did);
             fields.len()
         }
-        _ => fail!("simd_size called on invalid type")
+        _ => panic!("simd_size called on invalid type")
     }
 }
 
@@ -2564,7 +2564,7 @@ pub fn type_contents(cx: &ctxt, ty: t) -> TypeContents {
                 // the current crate; therefore, the only type parameters that
                 // could be in scope are those defined in the current crate.
                 // If this assertion fails, it is likely because of a
-                // failure in the cross-crate inlining code to translate a
+                // failure of the cross-crate inlining code to translate a
                 // def-id.
                 assert_eq!(p.def_id.krate, ast::LOCAL_CRATE);
 
@@ -3097,7 +3097,7 @@ pub fn unsized_part_of_type(cx: &ctxt, ty: t) -> t {
         _ => {
             assert!(type_is_sized(cx, ty),
                     "unsized_part_of_type failed even though ty is unsized");
-            fail!("called unsized_part_of_type with sized ty");
+            panic!("called unsized_part_of_type with sized ty");
         }
     }
 }
@@ -3229,7 +3229,7 @@ pub fn fn_is_variadic(fty: t) -> bool {
         ty_bare_fn(ref f) => f.sig.variadic,
         ty_closure(ref f) => f.sig.variadic,
         ref s => {
-            fail!("fn_is_variadic() called on non-fn type: {}", s)
+            panic!("fn_is_variadic() called on non-fn type: {}", s)
         }
     }
 }
@@ -3239,7 +3239,7 @@ pub fn ty_fn_sig(fty: t) -> FnSig {
         ty_bare_fn(ref f) => f.sig.clone(),
         ty_closure(ref f) => f.sig.clone(),
         ref s => {
-            fail!("ty_fn_sig() called on non-fn type: {}", s)
+            panic!("ty_fn_sig() called on non-fn type: {}", s)
         }
     }
 }
@@ -3249,7 +3249,7 @@ pub fn ty_fn_abi(fty: t) -> abi::Abi {
     match get(fty).sty {
         ty_bare_fn(ref f) => f.abi,
         ty_closure(ref f) => f.abi,
-        _ => fail!("ty_fn_abi() called on non-fn type"),
+        _ => panic!("ty_fn_abi() called on non-fn type"),
     }
 }
 
@@ -3259,7 +3259,7 @@ pub fn ty_fn_args(fty: t) -> Vec<t> {
         ty_bare_fn(ref f) => f.sig.inputs.clone(),
         ty_closure(ref f) => f.sig.inputs.clone(),
         ref s => {
-            fail!("ty_fn_args() called on non-fn type: {}", s)
+            panic!("ty_fn_args() called on non-fn type: {}", s)
         }
     }
 }
@@ -3273,7 +3273,7 @@ pub fn ty_closure_store(fty: t) -> TraitStore {
             UniqTraitStore
         }
         ref s => {
-            fail!("ty_closure_store() called on non-closure type: {}", s)
+            panic!("ty_closure_store() called on non-closure type: {}", s)
         }
     }
 }
@@ -3283,7 +3283,7 @@ pub fn ty_fn_ret(fty: t) -> FnOutput {
         ty_bare_fn(ref f) => f.sig.output,
         ty_closure(ref f) => f.sig.output,
         ref s => {
-            fail!("ty_fn_ret() called on non-fn type: {}", s)
+            panic!("ty_fn_ret() called on non-fn type: {}", s)
         }
     }
 }
@@ -3735,7 +3735,7 @@ pub fn expr_kind(tcx: &ctxt, expr: &ast::Expr) -> ExprKind {
             // Special case `Box<T>` for now:
             let definition = match tcx.def_map.borrow().find(&place.id) {
                 Some(&def) => def,
-                None => fail!("no def for place"),
+                None => panic!("no def for place"),
             };
             let def_id = definition.def_id();
             if tcx.lang_items.exchange_heap() == Some(def_id) {
@@ -3760,7 +3760,7 @@ pub fn stmt_node_id(s: &ast::Stmt) -> ast::NodeId {
       ast::StmtDecl(_, id) | StmtExpr(_, id) | StmtSemi(_, id) => {
         return id;
       }
-      ast::StmtMac(..) => fail!("unexpanded macro in trans")
+      ast::StmtMac(..) => panic!("unexpanded macro in trans")
     }
 }
 
@@ -4068,7 +4068,7 @@ fn lookup_locally_or_in_crate_store<V:Clone>(
     }
 
     if def_id.krate == ast::LOCAL_CRATE {
-        fail!("No def'n found for {} in tcx.{}", def_id, descr);
+        panic!("No def'n found for {} in tcx.{}", def_id, descr);
     }
     let v = load_external();
     map.insert(def_id, v.clone());

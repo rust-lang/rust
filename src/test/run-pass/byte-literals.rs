@@ -29,12 +29,12 @@ pub fn main() {
 
     match 42 {
         b'*' => {},
-        _ => fail!()
+        _ => panic!()
     }
 
     match 100 {
         b'a' ... b'z' => {},
-        _ => fail!()
+        _ => panic!()
     }
 
     let expected: &[_] = &[97u8, 10u8, 13u8, 9u8, 92u8, 39u8, 34u8, 0u8, 240u8];
@@ -48,7 +48,7 @@ pub fn main() {
     let val: &[_] = &[97u8, 10u8];
     match val {
         b"a\n" => {},
-        _ => fail!(),
+        _ => panic!(),
     }
 
     let buf = vec!(97u8, 98, 99, 100);

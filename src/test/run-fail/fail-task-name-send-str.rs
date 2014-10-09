@@ -14,7 +14,7 @@ fn main() {
     let r: Result<int,_> =
         ::std::task::TaskBuilder::new().named("send name".into_maybe_owned())
                                        .try(proc() {
-            fail!("test");
+            panic!("test");
             3i
         });
     assert!(r.is_ok());

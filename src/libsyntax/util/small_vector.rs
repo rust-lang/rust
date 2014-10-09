@@ -99,7 +99,7 @@ impl<T> SmallVector<T> {
         match self.repr {
             One(ref v) if idx == 0 => v,
             Many(ref vs) => &vs[idx],
-            _ => fail!("out of bounds access")
+            _ => panic!("out of bounds access")
         }
     }
 
@@ -110,10 +110,10 @@ impl<T> SmallVector<T> {
                 if v.len() == 1 {
                     v.into_iter().next().unwrap()
                 } else {
-                    fail!(err)
+                    panic!(err)
                 }
             }
-            _ => fail!(err)
+            _ => panic!(err)
         }
     }
 

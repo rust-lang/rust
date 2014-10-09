@@ -17,27 +17,27 @@ struct Private<T>;
 pub struct Public<T>;
 
 impl Private<Public<int>> {
-    pub fn a(&self) -> Private<int> { fail!() }
-    fn b(&self) -> Private<int> { fail!() }
+    pub fn a(&self) -> Private<int> { panic!() }
+    fn b(&self) -> Private<int> { panic!() }
 
-    pub fn c() -> Private<int> { fail!() }
-    fn d() -> Private<int> { fail!() }
+    pub fn c() -> Private<int> { panic!() }
+    fn d() -> Private<int> { panic!() }
 }
 impl Private<int> {
-    pub fn e(&self) -> Private<int> { fail!() }
-    fn f(&self) -> Private<int> { fail!() }
+    pub fn e(&self) -> Private<int> { panic!() }
+    fn f(&self) -> Private<int> { panic!() }
 }
 
 impl Public<Private<int>> {
-    pub fn a(&self) -> Private<int> { fail!() }
-    fn b(&self) -> Private<int> { fail!() }
+    pub fn a(&self) -> Private<int> { panic!() }
+    fn b(&self) -> Private<int> { panic!() }
 
-    pub fn c() -> Private<int> { fail!() } //~ ERROR private type in exported type signature
-    fn d() -> Private<int> { fail!() }
+    pub fn c() -> Private<int> { panic!() } //~ ERROR private type in exported type signature
+    fn d() -> Private<int> { panic!() }
 }
 impl Public<int> {
-    pub fn e(&self) -> Private<int> { fail!() } //~ ERROR private type in exported type signature
-    fn f(&self) -> Private<int> { fail!() }
+    pub fn e(&self) -> Private<int> { panic!() } //~ ERROR private type in exported type signature
+    fn f(&self) -> Private<int> { panic!() }
 }
 
 pub fn x(_: Private<int>) {} //~ ERROR private type in exported type signature
@@ -70,39 +70,39 @@ enum Qux {
 }
 
 pub trait PubTrait {
-    fn foo(&self) -> Private<int> { fail!( )} //~ ERROR private type in exported type signature
+    fn foo(&self) -> Private<int> { panic!( )} //~ ERROR private type in exported type signature
     fn bar(&self) -> Private<int>; //~ ERROR private type in exported type signature
     fn baz() -> Private<int>; //~ ERROR private type in exported type signature
 }
 
 impl PubTrait for Public<int> {
-    fn bar(&self) -> Private<int> { fail!() }
-    fn baz() -> Private<int> { fail!() }
+    fn bar(&self) -> Private<int> { panic!() }
+    fn baz() -> Private<int> { panic!() }
 }
 impl PubTrait for Public<Private<int>> {
-    fn bar(&self) -> Private<int> { fail!() }
-    fn baz() -> Private<int> { fail!() }
+    fn bar(&self) -> Private<int> { panic!() }
+    fn baz() -> Private<int> { panic!() }
 }
 
 impl PubTrait for Private<int> {
-    fn bar(&self) -> Private<int> { fail!() }
-    fn baz() -> Private<int> { fail!() }
+    fn bar(&self) -> Private<int> { panic!() }
+    fn baz() -> Private<int> { panic!() }
 }
 impl PubTrait for (Private<int>,) {
-    fn bar(&self) -> Private<int> { fail!() }
-    fn baz() -> Private<int> { fail!() }
+    fn bar(&self) -> Private<int> { panic!() }
+    fn baz() -> Private<int> { panic!() }
 }
 
 
 trait PrivTrait {
-    fn foo(&self) -> Private<int> { fail!( )}
+    fn foo(&self) -> Private<int> { panic!( )}
     fn bar(&self) -> Private<int>;
 }
 impl PrivTrait for Private<int> {
-    fn bar(&self) -> Private<int> { fail!() }
+    fn bar(&self) -> Private<int> { panic!() }
 }
 impl PrivTrait for (Private<int>,) {
-    fn bar(&self) -> Private<int> { fail!() }
+    fn bar(&self) -> Private<int> { panic!() }
 }
 
 pub trait ParamTrait<T> {
@@ -111,14 +111,14 @@ pub trait ParamTrait<T> {
 
 impl ParamTrait<Private<int>> //~ ERROR private type in exported type signature
    for Public<int> {
-    fn foo() -> Private<int> { fail!() }
+    fn foo() -> Private<int> { panic!() }
 }
 
 impl ParamTrait<Private<int>> for Private<int> {
-    fn foo() -> Private<int> { fail!( )}
+    fn foo() -> Private<int> { panic!( )}
 }
 
 impl<T: ParamTrait<Private<int>>>  //~ ERROR private type in exported type signature
      ParamTrait<T> for Public<i8> {
-    fn foo() -> T { fail!() }
+    fn foo() -> T { panic!() }
 }

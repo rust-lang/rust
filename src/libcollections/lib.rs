@@ -527,8 +527,8 @@ pub fn fixme_14344_be_sure_to_link_to_collections() {}
 
 #[cfg(not(test))]
 mod std {
-    pub use core::fmt;      // necessary for fail!()
-    pub use core::option;   // necessary for fail!()
+    pub use core::fmt;      // necessary for panic!()
+    pub use core::option;   // necessary for panic!()
     pub use core::clone;    // deriving(Clone)
     pub use core::cmp;      // deriving(Eq, Ord, etc.)
     pub use hash;           // deriving(Hash)

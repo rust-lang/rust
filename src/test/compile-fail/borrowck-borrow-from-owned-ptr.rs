@@ -19,7 +19,7 @@ struct Bar {
   int2: int,
 }
 
-fn make_foo() -> Box<Foo> { fail!() }
+fn make_foo() -> Box<Foo> { panic!() }
 
 fn borrow_same_field_twice_mut_mut() {
     let mut foo = make_foo();

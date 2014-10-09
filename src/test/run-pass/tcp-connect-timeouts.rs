@@ -48,10 +48,10 @@ fn eventual_timeout() {
         match TcpStream::connect_timeout(addr, Duration::milliseconds(100)) {
             Ok(e) => v.push(e),
             Err(ref e) if e.kind == io::TimedOut => return,
-            Err(e) => fail!("other error: {}", e),
+            Err(e) => panic!("other error: {}", e),
         }
     }
-    fail!("never timed out!");
+    panic!("never timed out!");
 }
 
 fn timeout_success() {

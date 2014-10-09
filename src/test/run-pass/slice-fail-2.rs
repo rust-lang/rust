@@ -23,7 +23,7 @@ impl Drop for Foo {
 }
 
 fn bar() -> uint {
-    fail!();
+    panic!();
 }
 
 fn foo() {

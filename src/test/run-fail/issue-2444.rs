@@ -14,7 +14,7 @@ use std::sync::Arc;
 
 enum e<T> { ee(Arc<T>) }
 
-fn foo() -> e<int> {fail!();}
+fn foo() -> e<int> {panic!();}
 
 fn main() {
    let _f = foo();

@@ -453,7 +453,7 @@ impl LocalCrateContext {
     /// Create a dummy `CrateContext` from `self` and  the provided
     /// `SharedCrateContext`.  This is somewhat dangerous because `self` may
     /// not actually be an element of `shared.local_ccxs`, which can cause some
-    /// operations to `fail` unexpectedly.
+    /// operations to panic unexpectedly.
     ///
     /// This is used in the `LocalCrateContext` constructor to allow calling
     /// functions that expect a complete `CrateContext`, even before the local
@@ -527,7 +527,7 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
         }
         match declare_intrinsic(self, key) {
             Some(v) => return v,
-            None => fail!()
+            None => panic!()
         }
     }
 

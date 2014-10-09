@@ -25,14 +25,14 @@ use std::time::Duration;
 use std::str;
 
 macro_rules! succeed( ($e:expr) => (
-    match $e { Ok(..) => {}, Err(e) => fail!("failure: {}", e) }
+    match $e { Ok(..) => {}, Err(e) => panic!("panic: {}", e) }
 ) )
 
 fn test_destroy_once() {
     let mut p = sleeper();
     match p.signal_exit() {
         Ok(()) => {}
-        Err(e) => fail!("error: {}", e),
+        Err(e) => panic!("error: {}", e),
     }
 }
 
@@ -91,7 +91,7 @@ pub fn test_destroy_actually_kills(force: bool) {
         }
     });
     match p.wait().unwrap() {
-        ExitStatus(..) => fail!("expected a signal"),
+        ExitStatus(..) => panic!("expected a signal"),
         ExitSignal(..) => tx.send(()),
     }
 }

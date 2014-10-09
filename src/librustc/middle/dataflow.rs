@@ -88,7 +88,7 @@ struct PropagationContext<'a, 'b: 'a, 'tcx: 'b, O: 'a> {
 fn to_cfgidx_or_die(id: ast::NodeId, index: &NodeMap<CFGIndex>) -> CFGIndex {
     let opt_cfgindex = index.find(&id).map(|&i|i);
     opt_cfgindex.unwrap_or_else(|| {
-        fail!("nodeid_to_index does not have entry for NodeId {}", id);
+        panic!("nodeid_to_index does not have entry for NodeId {}", id);
     })
 }
 

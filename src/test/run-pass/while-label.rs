@@ -15,7 +15,7 @@ pub fn main() {
         i -= 1;
         if i == 95 {
             break 'w;
-            fail!("Should have broken out of loop");
+            panic!("Should have broken out of loop");
         }
     }
     assert_eq!(i, 95);

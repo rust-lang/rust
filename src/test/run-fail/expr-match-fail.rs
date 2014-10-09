@@ -12,4 +12,4 @@
 
 
 // error-pattern:explicit failure
-fn main() { let _x = match true { false => { 0i } true => { fail!() } }; }
+fn main() { let _x = match true { false => { 0i } true => { panic!() } }; }

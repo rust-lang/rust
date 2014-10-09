@@ -18,6 +18,6 @@
 struct T { t: String }
 
 fn main() {
-    let pth = fail!("bye");
+    let pth = panic!("bye");
     let _rs: T = T {t: pth};
 }

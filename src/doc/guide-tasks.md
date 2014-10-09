@@ -8,10 +8,10 @@ relates to the Rust type system, and introduce the fundamental library
 abstractions for constructing concurrent programs.
 
 Tasks provide failure isolation and recovery. When a fatal error occurs in Rust
-code as a result of an explicit call to `fail!()`, an assertion failure, or
+code as a result of an explicit call to `panic!()`, an assertion failure, or
 another invalid operation, the runtime system destroys the entire task. Unlike
 in languages such as Java and C++, there is no way to `catch` an exception.
-Instead, tasks may monitor each other for failure.
+Instead, tasks may monitor each other to see if they panic.
 
 Tasks use Rust's type system to provide strong memory safety guarantees.  In
 particular, the type system guarantees that tasks cannot induce a data race
@@ -317,19 +317,19 @@ spawn(proc() {
 # }
 ```
 
-# Handling task failure
+# Handling task panics
 
-Rust has a built-in mechanism for raising exceptions. The `fail!()` macro
-(which can also be written with an error string as an argument: `fail!(
-~reason)`) and the `assert!` construct (which effectively calls `fail!()` if a
+Rust has a built-in mechanism for raising exceptions. The `panic!()` macro
+(which can also be written with an error string as an argument: `panic!(
+~reason)`) and the `assert!` construct (which effectively calls `panic!()` if a
 boolean expression is false) are both ways to raise exceptions. When a task
 raises an exception, the task unwinds its stack—running destructors and
 freeing memory along the way—and then exits. Unlike exceptions in C++,
-exceptions in Rust are unrecoverable within a single task: once a task fails,
+exceptions in Rust are unrecoverable within a single task: once a task panics,
 there is no way to "catch" the exception.
 
-While it isn't possible for a task to recover from failure, tasks may notify
-each other of failure. The simplest way of handling task failure is with the
+While it isn't possible for a task to recover from panicking, tasks may notify
+each other if they panic. The simplest way of handling a panic is with the
 `try` function, which is similar to `spawn`, but immediately blocks and waits
 for the child task to finish. `try` returns a value of type
 `Result<T, Box<Any + Send>>`. `Result` is an `enum` type with two variants:
@@ -346,7 +346,7 @@ let result: Result<int, Box<std::any::Any + Send>> = task::try(proc() {
     if some_condition() {
         calculate_result()
     } else {
-        fail!("oops!");
+        panic!("oops!");
     }
 });
 assert!(result.is_err());
@@ -355,18 +355,18 @@ assert!(result.is_err());
 Unlike `spawn`, the function spawned using `try` may return a value, which
 `try` will dutifully propagate back to the caller in a [`Result`] enum. If the
 child task terminates successfully, `try` will return an `Ok` result; if the
-child task fails, `try` will return an `Error` result.
+child task panics, `try` will return an `Error` result.
 
 [`Result`]: std/result/index.html
 
-> *Note:* A failed task does not currently produce a useful error
+> *Note:* A panicked task does not currently produce a useful error
 > value (`try` always returns `Err(())`). In the
 > future, it may be possible for tasks to intercept the value passed to
-> `fail!()`.
+> `panic!()`.
 
-But not all failures are created equal. In some cases you might need to abort
+But not all panics are created equal. In some cases you might need to abort
 the entire program (perhaps you're writing an assert which, if it trips,
 indicates an unrecoverable logic error); in other cases you might want to
-contain the failure at a certain boundary (perhaps a small piece of input from
+contain the panic at a certain boundary (perhaps a small piece of input from
 the outside world, which you happen to be processing in parallel, is malformed
 such that the processing task cannot proceed).

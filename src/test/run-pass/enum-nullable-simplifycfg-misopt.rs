@@ -20,6 +20,6 @@ pub fn main() {
     match Cons(10i, box Nil) {
         Cons(10i, _) => {}
         Nil => {}
-        _ => fail!()
+        _ => panic!()
     }
 }

@@ -12,4 +12,4 @@
 
 
 // error-pattern:explicit failure
-fn main() { let _x = if false { 0i } else if true { fail!() } else { 10i }; }
+fn main() { let _x = if false { 0i } else if true { panic!() } else { 10i }; }

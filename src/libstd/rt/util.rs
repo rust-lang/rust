@@ -62,7 +62,7 @@ pub fn default_sched_threads() -> uint {
             let opt_n: Option<uint> = FromStr::from_str(nstr.as_slice());
             match opt_n {
                 Some(n) if n > 0 => n,
-                _ => fail!("`RUST_THREADS` is `{}`, should be a positive integer", nstr)
+                _ => panic!("`RUST_THREADS` is `{}`, should be a positive integer", nstr)
             }
         }
         None => {

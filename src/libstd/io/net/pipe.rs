@@ -269,13 +269,13 @@ mod tests {
         spawn(proc() {
             match UnixStream::connect(&path2) {
                 Ok(c) => client(c),
-                Err(e) => fail!("failed connect: {}", e),
+                Err(e) => panic!("failed connect: {}", e),
             }
         });
 
         match acceptor.accept() {
             Ok(c) => server(c),
-            Err(e) => fail!("failed accept: {}", e),
+            Err(e) => panic!("failed accept: {}", e),
         }
     }
 
@@ -283,7 +283,7 @@ mod tests {
     fn bind_error() {
         let path = "path/to/nowhere";
         match UnixListener::bind(&path) {
-            Ok(..) => fail!(),
+            Ok(..) => panic!(),
             Err(e) => {
                 assert!(e.kind == PermissionDenied || e.kind == FileNotFound ||
                         e.kind == InvalidInput);
@@ -299,7 +299,7 @@ mod tests {
             "path/to/nowhere"
         };
         match UnixStream::connect(&path) {
-            Ok(..) => fail!(),
+            Ok(..) => panic!(),
             Err(e) => {
                 assert!(e.kind == FileNotFound || e.kind == OtherIoError);
             }
@@ -358,7 +358,7 @@ mod tests {
 
         let mut acceptor = match UnixListener::bind(&path1).listen() {
             Ok(a) => a,
-            Err(e) => fail!("failed listen: {}", e),
+            Err(e) => panic!("failed listen: {}", e),
         };
 
         spawn(proc() {
@@ -366,7 +366,7 @@ mod tests {
                 let mut stream = UnixStream::connect(&path2);
                 match stream.write([100]) {
                     Ok(..) => {}
-                    Err(e) => fail!("failed write: {}", e)
+                    Err(e) => panic!("failed write: {}", e)
                 }
             }
         });
@@ -376,7 +376,7 @@ mod tests {
             let mut buf = [0];
             match client.read(buf) {
                 Ok(..) => {}
-                Err(e) => fail!("failed read/accept: {}", e),
+                Err(e) => panic!("failed read/accept: {}", e),
             }
             assert_eq!(buf[0], 100);
         }
@@ -531,10 +531,10 @@ mod tests {
             match a.accept() {
                 Ok(..) => break,
                 Err(ref e) if e.kind == TimedOut => {}
-                Err(e) => fail!("error: {}", e),
+                Err(e) => panic!("error: {}", e),
             }
             ::task::deschedule();
-            if i == 1000 { fail!("should have a pending connection") }
+            if i == 1000 { panic!("should have a pending connection") }
         }
         drop(l);
 
@@ -659,9 +659,9 @@ mod tests {
             match s.write([0, .. 128 * 1024]) {
                 Ok(()) | Err(IoError { kind: ShortWrite(..), .. }) => {},
                 Err(IoError { kind: TimedOut, .. }) => break,
-                Err(e) => fail!("{}", e),
+                Err(e) => panic!("{}", e),
            }
-           if i == 1000 { fail!("should have filled up?!"); }
+           if i == 1000 { panic!("should have filled up?!"); }
         }
 
         // I'm not sure as to why, but apparently the write on windows always
@@ -687,7 +687,7 @@ mod tests {
             while amt < 100 * 128 * 1024 {
                 match s.read([0, ..128 * 1024]) {
                     Ok(n) => { amt += n; }
-                    Err(e) => fail!("{}", e),
+                    Err(e) => panic!("{}", e),
                 }
             }
             let _ = rx.recv_opt();
@@ -722,9 +722,9 @@ mod tests {
             match s.write([0, .. 128 * 1024]) {
                 Ok(()) | Err(IoError { kind: ShortWrite(..), .. }) => {},
                 Err(IoError { kind: TimedOut, .. }) => break,
-                Err(e) => fail!("{}", e),
+                Err(e) => panic!("{}", e),
            }
-           if i == 1000 { fail!("should have filled up?!"); }
+           if i == 1000 { panic!("should have filled up?!"); }
         }
 
         tx.send(());

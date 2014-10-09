@@ -603,7 +603,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         self.commit_unconditionally(|| self.try(|| f()))
     }
 
-    /// Execute `f`, unroll bindings on failure
+    /// Execute `f`, unroll bindings on panic
     pub fn try<T,E>(&self, f: || -> Result<T,E>) -> Result<T,E> {
         debug!("try()");
         let snapshot = self.start_snapshot();

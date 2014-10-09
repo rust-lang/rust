@@ -443,7 +443,7 @@ impl Runtime for GreenTask {
         self.put_task(cur_task);
 
         // First, set up a bomb which when it goes off will restore the local
-        // task unless its disarmed. This will allow us to gracefully fail from
+        // task unless its disarmed. This will allow us to gracefully panic from
         // inside of `configure` which allocates a new task.
         struct Bomb { inner: Option<Box<GreenTask>> }
         impl Drop for Bomb {
@@ -529,11 +529,11 @@ mod tests {
     }
 
     #[test]
-    fn smoke_fail() {
+    fn smoke_panic() {
         let (tx, rx) = channel::<int>();
         spawn_opts(TaskOpts::new(), proc() {
             let _tx = tx;
-            fail!()
+            panic!()
         });
         assert_eq!(rx.recv_opt(), Err(()));
     }
@@ -550,11 +550,11 @@ mod tests {
     }
 
     #[test]
-    fn smoke_opts_fail() {
+    fn smoke_opts_panic() {
         let mut opts = TaskOpts::new();
         let (tx, rx) = channel();
         opts.on_exit = Some(proc(r) tx.send(r));
-        spawn_opts(opts, proc() { fail!() });
+        spawn_opts(opts, proc() { panic!() });
         assert!(rx.recv().is_err());
     }
 
@@ -597,7 +597,7 @@ mod tests {
                     Some(ops) => {
                         task.put_runtime(ops);
                     }
-                    None => fail!(),
+                    None => panic!(),
                 }
                 Local::put(task);
                 tx.send(());

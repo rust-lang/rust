@@ -15,7 +15,7 @@ fn lp<T>(s: String, f: |String| -> T) -> T {
         let r = f(s);
         return (r);
     }
-    fail!();
+    panic!();
 }
 
 fn apply<T>(s: String, f: |String| -> T) -> T {

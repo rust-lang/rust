@@ -11,5 +11,5 @@
 // error-pattern:failed at 'Box<Any>'
 
 fn main() {
-    fail!(box 612_i64);
+    panic!(box 612_i64);
 }

@@ -174,7 +174,7 @@ fn build_external_function(cx: &DocContext, tcx: &ty::ctxt,
     clean::Function {
         decl: match ty::get(t.ty).sty {
             ty::ty_bare_fn(ref f) => (did, &f.sig).clean(cx),
-            _ => fail!("bad function"),
+            _ => panic!("bad function"),
         },
         generics: (&t.generics, subst::FnSpace).clean(cx),
         fn_style: style,
@@ -308,7 +308,7 @@ fn build_impl(cx: &DocContext, tcx: &ty::ctxt,
                             generics: generics,
                         })
                     }
-                    _ => fail!("not a tymethod"),
+                    _ => panic!("not a tymethod"),
                 };
                 Some(item)
             }
@@ -382,7 +382,7 @@ fn build_module(cx: &DocContext, tcx: &ty::ctxt,
                 decoder::DlDef(..) => {}
                 // All impls were inlined above
                 decoder::DlImpl(..) => {}
-                decoder::DlField => fail!("unimplemented field"),
+                decoder::DlField => panic!("unimplemented field"),
             }
         });
     }

@@ -586,7 +586,7 @@ fn generic_type_of(cx: &CrateContext,
                                  Type::array(&Type::i64(cx), align_units),
                 a if a.count_ones() == 1 => Type::array(&Type::vector(&Type::i32(cx), a / 4),
                                                               align_units),
-                _ => fail!("unsupported enum alignment: {}", align)
+                _ => panic!("unsupported enum alignment: {}", align)
             };
             assert_eq!(machine::llalign_of_min(cx, pad_ty), align);
             assert_eq!(align_s % discr_size, 0);

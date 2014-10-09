@@ -600,7 +600,7 @@ fn spawn_process_os(cfg: ProcessConfig,
                             handle: ptr::null_mut()
                         })
                     }
-                    Ok(..) => fail!("short read on the cloexec pipe"),
+                    Ok(..) => panic!("short read on the cloexec pipe"),
                 };
             }
             // And at this point we've reached a special time in the life of the
@@ -944,7 +944,7 @@ fn waitpid(pid: pid_t, deadline: u64) -> IoResult<rtio::ProcessExit> {
     let mut status = 0 as c_int;
     if deadline == 0 {
         return match retry(|| unsafe { c::waitpid(pid, &mut status, 0) }) {
-            -1 => fail!("unknown waitpid error: {}", super::last_error().code),
+            -1 => panic!("unknown waitpid error: {}", super::last_error().code),
             _ => Ok(translate_status(status)),
         }
     }
@@ -1069,7 +1069,7 @@ fn waitpid(pid: pid_t, deadline: u64) -> IoResult<rtio::ProcessExit> {
                     continue
                 }
 
-                n => fail!("error in select {} ({})", os::errno(), n),
+                n => panic!("error in select {} ({})", os::errno(), n),
             }
 
             // Process any pending messages
@@ -1149,7 +1149,7 @@ fn waitpid(pid: pid_t, deadline: u64) -> IoResult<rtio::ProcessExit> {
                 n if n > 0 => { ret = true; }
                 0 => return true,
                 -1 if util::wouldblock() => return ret,
-                n => fail!("bad read {} ({})", os::last_os_error(), n),
+                n => panic!("bad read {} ({})", os::last_os_error(), n),
             }
         }
     }
@@ -1172,7 +1172,7 @@ fn waitpid(pid: pid_t, deadline: u64) -> IoResult<rtio::ProcessExit> {
         } {
             1 => {}
             -1 if util::wouldblock() => {} // see above comments
-            n => fail!("bad error on write fd: {} {}", n, os::errno()),
+            n => panic!("bad error on write fd: {} {}", n, os::errno()),
         }
     }
 }
@@ -1192,7 +1192,7 @@ fn waitpid_nowait(pid: pid_t) -> Option<rtio::ProcessExit> {
         }) {
             n if n == pid => Some(translate_status(status)),
             0 => None,
-            n => fail!("unknown waitpid error `{}`: {}", n,
+            n => panic!("unknown waitpid error `{}`: {}", n,
                        super::last_error().code),
         }
     }

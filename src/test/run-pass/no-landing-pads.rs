@@ -25,7 +25,7 @@ impl Drop for A {
 fn main() {
     task::try::<()>(proc() {
         let _a = A;
-        fail!();
+        panic!();
     });
     assert!(unsafe { !HIT });
 }

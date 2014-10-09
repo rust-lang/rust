@@ -81,7 +81,7 @@ fn test_collect() {
     assert!(v == Err(2));
 
     // test that it does not take more elements than it needs
-    let mut functions = [|| Ok(()), || Err(1i), || fail!()];
+    let mut functions = [|| Ok(()), || Err(1i), || panic!()];
 
     let v: Result<Vec<()>, int> = functions.iter_mut().map(|f| (*f)()).collect();
     assert!(v == Err(1));
@@ -113,7 +113,7 @@ pub fn test_unwrap_or_else() {
         if msg == "I got this." {
             50i
         } else {
-            fail!("BadBad")
+            panic!("BadBad")
         }
     }
 
@@ -126,12 +126,12 @@ pub fn test_unwrap_or_else() {
 
 #[test]
 #[should_fail]
-pub fn test_unwrap_or_else_failure() {
+pub fn test_unwrap_or_else_panic() {
     fn handler(msg: &'static str) -> int {
         if msg == "I got this." {
             50i
         } else {
-            fail!("BadBad")
+            panic!("BadBad")
         }
     }
 

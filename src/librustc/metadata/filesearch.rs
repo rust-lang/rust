@@ -187,13 +187,13 @@ pub fn get_or_default_sysroot() -> Path {
         path.and_then(|path|
             match myfs::realpath(&path) {
                 Ok(canon) => Some(canon),
-                Err(e) => fail!("failed to get realpath: {}", e),
+                Err(e) => panic!("failed to get realpath: {}", e),
             })
     }
 
     match canonicalize(os::self_exe_name()) {
         Some(mut p) => { p.pop(); p.pop(); p }
-        None => fail!("can't determine value for sysroot")
+        None => panic!("can't determine value for sysroot")
     }
 }
 

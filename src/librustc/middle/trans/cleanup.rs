@@ -477,7 +477,7 @@ impl<'blk, 'tcx> CleanupMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx> {
     fn needs_invoke(&self) -> bool {
         /*!
          * Returns true if there are pending cleanups that should
-         * execute on failure.
+         * execute on panic.
          */
 
         self.scopes.borrow().iter().rev().any(|s| s.needs_invoke())
@@ -485,8 +485,8 @@ impl<'blk, 'tcx> CleanupMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx> {
 
     fn get_landing_pad(&'blk self) -> BasicBlockRef {
         /*!
-         * Returns a basic block to branch to in the event of a failure.
-         * This block will run the failure cleanups and eventually
+         * Returns a basic block to branch to in the event of a panic.
+         * This block will run the panic cleanups and eventually
          * invoke the LLVM `Resume` instruction.
          */
 
@@ -497,7 +497,7 @@ impl<'blk, 'tcx> CleanupMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx> {
         let orig_scopes_len = self.scopes_len();
         assert!(orig_scopes_len > 0);
 
-        // Remove any scopes that do not have cleanups on failure:
+        // Remove any scopes that do not have cleanups on panic:
         let mut popped_scopes = vec!();
         while !self.top_scope(|s| s.needs_invoke()) {
             debug!("top scope does not need invoke");

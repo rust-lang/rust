@@ -249,7 +249,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                                 self.visit_item(&**i, None, om);
                             }
                         }
-                        _ => { fail!("glob not mapped to a module"); }
+                        _ => { panic!("glob not mapped to a module"); }
                     }
                 } else {
                     self.visit_item(it, renamed, om);
@@ -353,7 +353,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                 om.foreigns.push(fm.clone());
             }
             ast::ItemMac(_) => {
-                fail!("rustdoc: macros should be gone, after expansion");
+                panic!("rustdoc: macros should be gone, after expansion");
             }
         }
     }

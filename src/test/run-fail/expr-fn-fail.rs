@@ -12,6 +12,6 @@
 
 
 // error-pattern:explicit failure
-fn f() -> ! { fail!() }
+fn f() -> ! { panic!() }
 
 fn main() { f(); }

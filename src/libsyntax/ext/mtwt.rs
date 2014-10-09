@@ -211,7 +211,7 @@ fn resolve_internal(id: Ident,
                     resolvedthis
                 }
             }
-            IllegalCtxt => fail!("expected resolvable context, got IllegalCtxt")
+            IllegalCtxt => panic!("expected resolvable context, got IllegalCtxt")
         }
     };
     resolve_table.insert(key, resolved);
@@ -250,7 +250,7 @@ fn marksof_internal(ctxt: SyntaxContext,
                     loopvar = tl;
                 }
             }
-            IllegalCtxt => fail!("expected resolvable context, got IllegalCtxt")
+            IllegalCtxt => panic!("expected resolvable context, got IllegalCtxt")
         }
     }
 }
@@ -261,7 +261,7 @@ pub fn outer_mark(ctxt: SyntaxContext) -> Mrk {
     with_sctable(|sctable| {
         match (*sctable.table.borrow())[ctxt as uint] {
             Mark(mrk, _) => mrk,
-            _ => fail!("can't retrieve outer mark when outside is not a mark")
+            _ => panic!("can't retrieve outer mark when outside is not a mark")
         }
     })
 }
@@ -342,7 +342,7 @@ mod tests {
                     sc = tail;
                     continue;
                 }
-                IllegalCtxt => fail!("expected resolvable context, got IllegalCtxt")
+                IllegalCtxt => panic!("expected resolvable context, got IllegalCtxt")
             }
         }
     }

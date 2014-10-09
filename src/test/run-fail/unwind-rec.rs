@@ -12,7 +12,7 @@
 
 
 fn build() -> Vec<int> {
-    fail!();
+    panic!();
 }
 
 struct Blk { node: Vec<int> }

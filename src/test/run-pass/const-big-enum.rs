@@ -19,18 +19,18 @@ static X: Foo = Baz;
 pub fn main() {
     match X {
         Baz => {}
-        _ => fail!()
+        _ => panic!()
     }
     match Y {
         Bar(s) => assert!(s == 2654435769),
-        _ => fail!()
+        _ => panic!()
     }
     match Z {
         Quux(d,h) => {
             assert_eq!(d, 0x123456789abcdef0);
             assert_eq!(h, 0x1234);
         }
-        _ => fail!()
+        _ => panic!()
     }
 }
 

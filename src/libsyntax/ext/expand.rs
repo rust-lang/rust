@@ -741,7 +741,7 @@ fn expand_arm(arm: ast::Arm, fld: &mut MacroExpander) -> ast::Arm {
     // expand pats... they might contain macro uses:
     let expanded_pats = arm.pats.move_map(|pat| fld.fold_pat(pat));
     if expanded_pats.len() == 0 {
-        fail!("encountered match arm with 0 patterns");
+        panic!("encountered match arm with 0 patterns");
     }
     // all of the pats must have the same set of bindings, so use the
     // first one to extract them and generate new names:
@@ -1621,7 +1621,7 @@ mod test {
                     // good lord, you can't make a path with 0 segments, can you?
                     let final_varref_ident = match varref.segments.last() {
                         Some(pathsegment) => pathsegment.identifier,
-                        None => fail!("varref with 0 path segments?")
+                        None => panic!("varref with 0 path segments?")
                     };
                     let varref_name = mtwt::resolve(final_varref_ident);
                     let varref_idents : Vec<ast::Ident>
@@ -1688,7 +1688,7 @@ foo_module!()
         let cxbinds: &[&ast::Ident] = cxbinds.as_slice();
         let cxbind = match cxbinds {
             [b] => b,
-            _ => fail!("expected just one binding for ext_cx")
+            _ => panic!("expected just one binding for ext_cx")
         };
         let resolved_binding = mtwt::resolve(*cxbind);
         let varrefs = crate_varrefs(&cr);

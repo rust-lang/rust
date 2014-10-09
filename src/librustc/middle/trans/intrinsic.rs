@@ -147,7 +147,7 @@ pub fn trans_intrinsic_call<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>, node: ast::N
 
     let ret_ty = match ty::get(callee_ty).sty {
         ty::ty_bare_fn(ref f) => f.sig.output,
-        _ => fail!("expected bare_fn in trans_intrinsic_call")
+        _ => panic!("expected bare_fn in trans_intrinsic_call")
     };
     let foreign_item = tcx.map.expect_foreign_item(node);
     let name = token::get_ident(foreign_item.ident);

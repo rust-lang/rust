@@ -1593,7 +1593,7 @@ pub fn ty_of_item(ccx: &CrateCtxt, it: &ast::Item)
             return pty;
         }
         ast::ItemImpl(..) | ast::ItemMod(_) |
-        ast::ItemForeignMod(_) | ast::ItemMac(_) => fail!(),
+        ast::ItemForeignMod(_) | ast::ItemMac(_) => panic!(),
     }
 }
 

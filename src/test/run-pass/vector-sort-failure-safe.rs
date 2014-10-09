@@ -68,8 +68,8 @@ pub fn main() {
             let mut count = 0;
             main.clone().as_mut_slice().sort_by(|a, b| { count += 1; a.cmp(b) });
 
-            // ... and then fail on each and every single one.
-            for fail_countdown in range(0i, count) {
+            // ... and then panic on each and every single one.
+            for panic_countdown in range(0i, count) {
                 // refresh the counters.
                 for c in drop_counts.iter() {
                     c.store(0, Relaxed);
@@ -79,12 +79,12 @@ pub fn main() {
 
                 let _ = task::try(proc() {
                         let mut v = v;
-                        let mut fail_countdown = fail_countdown;
+                        let mut panic_countdown = panic_countdown;
                         v.as_mut_slice().sort_by(|a, b| {
-                                if fail_countdown == 0 {
-                                    fail!()
+                                if panic_countdown == 0 {
+                                    panic!()
                                 }
-                                fail_countdown -= 1;
+                                panic_countdown -= 1;
                                 a.cmp(b)
                             })
                     });

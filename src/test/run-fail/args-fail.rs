@@ -11,6 +11,6 @@
 
 // error-pattern:meep
 
-fn f(_a: int, _b: int, _c: Box<int>) { fail!("moop"); }
+fn f(_a: int, _b: int, _c: Box<int>) { panic!("moop"); }
 
-fn main() { f(1, fail!("meep"), box 42); }
+fn main() { f(1, panic!("meep"), box 42); }

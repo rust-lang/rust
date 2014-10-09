@@ -583,7 +583,7 @@ impl<T> Vec<T> {
     pub fn reserve_additional(&mut self, extra: uint) {
         if self.cap - self.len < extra {
             match self.len.checked_add(&extra) {
-                None => fail!("Vec::reserve_additional: `uint` overflow"),
+                None => panic!("Vec::reserve_additional: `uint` overflow"),
                 Some(new_cap) => self.reserve(new_cap)
             }
         }
@@ -699,12 +699,12 @@ impl<T> Vec<T> {
     /// vec.truncate(2);
     /// assert_eq!(vec, vec![1, 2]);
     /// ```
-    #[unstable = "waiting on failure semantics"]
+    #[unstable = "waiting on panic semantics"]
     pub fn truncate(&mut self, len: uint) {
         unsafe {
             // drop any extra elements
             while len < self.len {
-                // decrement len before the read(), so a failure on Drop doesn't
+                // decrement len before the read(), so a panic on Drop doesn't
                 // re-drop the just-failed value.
                 self.len -= 1;
                 ptr::read(self.as_slice().unsafe_get(self.len));
@@ -960,9 +960,9 @@ impl<T> Vec<T> {
     /// Inserts an element at position `index` within the vector, shifting all
     /// elements after position `i` one position to the right.
     ///
-    /// # Failure
+    /// # Panics
     ///
-    /// Fails if `index` is not between `0` and the vector's length (both
+    /// Panics if `index` is not between `0` and the vector's length (both
     /// bounds inclusive).
     ///
     /// # Example
@@ -974,7 +974,7 @@ impl<T> Vec<T> {
     /// vec.insert(4, 5);
     /// assert_eq!(vec, vec![1, 4, 2, 3, 5]);
     /// ```
-    #[unstable = "failure semantics need settling"]
+    #[unstable = "panic semantics need settling"]
     pub fn insert(&mut self, index: uint, element: T) {
         let len = self.len();
         assert!(index <= len);
@@ -1011,7 +1011,7 @@ impl<T> Vec<T> {
     /// // v is unchanged:
     /// assert_eq!(v, vec![1, 3]);
     /// ```
-    #[unstable = "failure semantics need settling"]
+    #[unstable = "panic semantics need settling"]
     pub fn remove(&mut self, index: uint) -> Option<T> {
         let len = self.len();
         if index < len {
@@ -1353,7 +1353,7 @@ impl<T: PartialEq> Vec<T> {
     pub fn dedup(&mut self) {
         unsafe {
             // Although we have a mutable reference to `self`, we cannot make
-            // *arbitrary* changes. The `PartialEq` comparisons could fail, so we
+            // *arbitrary* changes. The `PartialEq` comparisons could panic, so we
             // must ensure that the vector is in a valid state at all time.
             //
             // The way that we handle this is by using swaps; we iterate
@@ -1520,7 +1520,7 @@ impl<T> MutableSeq<T> for Vec<T> {
         if self.len == self.cap {
             let old_size = self.cap * mem::size_of::<T>();
             let size = max(old_size, 2 * mem::size_of::<T>()) * 2;
-            if old_size > size { fail!("capacity overflow") }
+            if old_size > size { panic!("capacity overflow") }
             unsafe {
                 self.ptr = alloc_or_realloc(self.ptr, old_size, size);
             }
@@ -1877,7 +1877,7 @@ impl<T> Vec<T> {
                     // +-+-+-+-+-+-+-+-+-+
                     //          |         |
                     //          end_u     end_t
-                    // We must not fail here, one cell is marked as `T`
+                    // We must not panic here, one cell is marked as `T`
                     // although it is not `T`.
 
                     pv.start_t = pv.start_t.offset(1);
@@ -1888,9 +1888,9 @@ impl<T> Vec<T> {
                     // +-+-+-+-+-+-+-+-+-+
                     //          |         |
                     //          end_u     end_t
-                    // We may fail again.
+                    // We may panic again.
 
-                    // The function given by the user might fail.
+                    // The function given by the user might panic.
                     let u = f(t);
 
                     ptr::write(pv.end_u, u);
@@ -1901,7 +1901,7 @@ impl<T> Vec<T> {
                     // +-+-+-+-+-+-+-+-+-+
                     //          |         |
                     //          end_u     end_t
-                    // We should not fail here, because that would leak the `U`
+                    // We should not panic here, because that would leak the `U`
                     // pointed to by `end_u`.
 
                     pv.end_u = pv.end_u.offset(1);
@@ -1912,7 +1912,7 @@ impl<T> Vec<T> {
                     // +-+-+-+-+-+-+-+-+-+
                     //            |       |
                     //            end_u   end_t
-                    // We may fail again.
+                    // We may panic again.
                 }
             }
 
@@ -1926,10 +1926,10 @@ impl<T> Vec<T> {
             //              end_u
             // Extract `vec` and prevent the destructor of
             // `PartialVecNonZeroSized` from running. Note that none of the
-            // function calls can fail, thus no resources can be leaked (as the
+            // function calls can panic, thus no resources can be leaked (as the
             // `vec` member of `PartialVec` is the only one which holds
             // allocations -- and it is returned from this function. None of
-            // this can fail.
+            // this can panic.
             unsafe {
                 let vec_len = pv.vec.len();
                 let vec_cap = pv.vec.capacity();
@@ -1953,24 +1953,24 @@ impl<T> Vec<T> {
             while pv.num_t != 0 {
                 unsafe {
                     // Create a `T` out of thin air and decrement `num_t`. This
-                    // must not fail between these steps, as otherwise a
+                    // must not panic between these steps, as otherwise a
                     // destructor of `T` which doesn't exist runs.
                     let t = mem::uninitialized();
                     pv.num_t -= 1;
 
-                    // The function given by the user might fail.
+                    // The function given by the user might panic.
                     let u = f(t);
 
                     // Forget the `U` and increment `num_u`. This increment
                     // cannot overflow the `uint` as we only do this for a
                     // number of times that fits into a `uint` (and start with
-                    // `0`). Again, we should not fail between these steps.
+                    // `0`). Again, we should not panic between these steps.
                     mem::forget(u);
                     pv.num_u += 1;
                 }
             }
             // Create a `Vec` from our `PartialVecZeroSized` and make sure the
-            // destructor of the latter will not run. None of this can fail.
+            // destructor of the latter will not run. None of this can panic.
             let mut result = Vec::new();
             unsafe { result.set_len(pv.num_u); }
             result
@@ -2292,7 +2292,7 @@ mod tests {
             fn drop(&mut self) {
                 let BadElem(ref mut x) = *self;
                 if *x == 0xbadbeef {
-                    fail!("BadElem failure: 0xbadbeef")
+                    panic!("BadElem panic: 0xbadbeef")
                 }
             }
         }

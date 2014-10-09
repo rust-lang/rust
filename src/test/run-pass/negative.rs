@@ -11,6 +11,6 @@
 pub fn main() {
     match -5i {
       -5 => {}
-      _ => { fail!() }
+      _ => { panic!() }
     }
 }

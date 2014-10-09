@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn baz() -> ! { fail!(); }
+fn baz() -> ! { panic!(); }
 
 fn foo() {
     match Some::<int>(5) {

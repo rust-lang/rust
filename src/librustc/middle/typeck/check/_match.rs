@@ -259,7 +259,7 @@ pub fn check_match(fcx: &FnCtxt,
     // bottom the type lattice, and we'll be moving up the lattice as
     // we process each arm. (Note that any match with 0 arms is matching
     // on any empty type and is therefore unreachable; should the flow
-    // of execution reach it, we will fail, so bottom is an appropriate
+    // of execution reach it, we will panic, so bottom is an appropriate
     // type in that case)
     let result_ty = arms.iter().fold(fcx.infcx().next_diverging_ty_var(), |result_ty, arm| {
         check_expr(fcx, &*arm.body);
