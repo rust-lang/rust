@@ -1266,7 +1266,7 @@ pub trait StrSlice<'a> {
     /// let v: Vec<&str> = "Mary had a little lamb".split(' ').collect();
     /// assert_eq!(v, vec!["Mary", "had", "a", "little", "lamb"]);
     ///
-    /// let v: Vec<&str> = "abc1def2ghi".split(|c: char| c.is_digit()).collect();
+    /// let v: Vec<&str> = "abc1def2ghi".split(|c: char| c.is_numeric()).collect();
     /// assert_eq!(v, vec!["abc", "def", "ghi"]);
     ///
     /// let v: Vec<&str> = "lionXXtigerXleopard".split('X').collect();
@@ -1287,7 +1287,7 @@ pub trait StrSlice<'a> {
     /// let v: Vec<&str> = "Mary had a little lambda".splitn(2, ' ').collect();
     /// assert_eq!(v, vec!["Mary", "had", "a little lambda"]);
     ///
-    /// let v: Vec<&str> = "abc1def2ghi".splitn(1, |c: char| c.is_digit()).collect();
+    /// let v: Vec<&str> = "abc1def2ghi".splitn(1, |c: char| c.is_numeric()).collect();
     /// assert_eq!(v, vec!["abc", "def2ghi"]);
     ///
     /// let v: Vec<&str> = "lionXXtigerXleopard".splitn(2, 'X').collect();
@@ -1319,7 +1319,7 @@ pub trait StrSlice<'a> {
     /// let v: Vec<&str> = "Mary had a little lamb".split(' ').rev().collect();
     /// assert_eq!(v, vec!["lamb", "little", "a", "had", "Mary"]);
     ///
-    /// let v: Vec<&str> = "abc1def2ghi".split(|c: char| c.is_digit()).rev().collect();
+    /// let v: Vec<&str> = "abc1def2ghi".split(|c: char| c.is_numeric()).rev().collect();
     /// assert_eq!(v, vec!["ghi", "def", "abc"]);
     ///
     /// let v: Vec<&str> = "lionXXtigerXleopard".split('X').rev().collect();
@@ -1337,7 +1337,7 @@ pub trait StrSlice<'a> {
     /// let v: Vec<&str> = "Mary had a little lamb".rsplitn(2, ' ').collect();
     /// assert_eq!(v, vec!["lamb", "little", "Mary had a"]);
     ///
-    /// let v: Vec<&str> = "abc1def2ghi".rsplitn(1, |c: char| c.is_digit()).collect();
+    /// let v: Vec<&str> = "abc1def2ghi".rsplitn(1, |c: char| c.is_numeric()).collect();
     /// assert_eq!(v, vec!["ghi", "abc1def"]);
     ///
     /// let v: Vec<&str> = "lionXXtigerXleopard".rsplitn(2, 'X').collect();
@@ -1547,7 +1547,7 @@ pub trait StrSlice<'a> {
     /// assert_eq!("11foo1bar11".trim_chars('1'), "foo1bar")
     /// let x: &[_] = &['1', '2'];
     /// assert_eq!("12foo1bar12".trim_chars(x), "foo1bar")
-    /// assert_eq!("123foo1bar123".trim_chars(|c: char| c.is_digit()), "foo1bar")
+    /// assert_eq!("123foo1bar123".trim_chars(|c: char| c.is_numeric()), "foo1bar")
     /// ```
     fn trim_chars<C: CharEq>(&self, to_trim: C) -> &'a str;
 
@@ -1563,7 +1563,7 @@ pub trait StrSlice<'a> {
     /// assert_eq!("11foo1bar11".trim_left_chars('1'), "foo1bar11")
     /// let x: &[_] = &['1', '2'];
     /// assert_eq!("12foo1bar12".trim_left_chars(x), "foo1bar12")
-    /// assert_eq!("123foo1bar123".trim_left_chars(|c: char| c.is_digit()), "foo1bar123")
+    /// assert_eq!("123foo1bar123".trim_left_chars(|c: char| c.is_numeric()), "foo1bar123")
     /// ```
     fn trim_left_chars<C: CharEq>(&self, to_trim: C) -> &'a str;
 
@@ -1579,7 +1579,7 @@ pub trait StrSlice<'a> {
     /// assert_eq!("11foo1bar11".trim_right_chars('1'), "11foo1bar")
     /// let x: &[_] = &['1', '2'];
     /// assert_eq!("12foo1bar12".trim_right_chars(x), "12foo1bar")
-    /// assert_eq!("123foo1bar123".trim_right_chars(|c: char| c.is_digit()), "123foo1bar")
+    /// assert_eq!("123foo1bar123".trim_right_chars(|c: char| c.is_numeric()), "123foo1bar")
     /// ```
     fn trim_right_chars<C: CharEq>(&self, to_trim: C) -> &'a str;
 

@@ -592,10 +592,10 @@ mod tests {
         assert_eq!('`'.to_ascii().to_uppercase().to_char(), '`');
         assert_eq!('{'.to_ascii().to_uppercase().to_char(), '{');
 
-        assert!('0'.to_ascii().is_digit());
-        assert!('9'.to_ascii().is_digit());
-        assert!(!'/'.to_ascii().is_digit());
-        assert!(!':'.to_ascii().is_digit());
+        assert!('0'.to_ascii().is_numeric());
+        assert!('9'.to_ascii().is_numeric());
+        assert!(!'/'.to_ascii().is_numeric());
+        assert!(!':'.to_ascii().is_numeric());
 
         assert!((0x1fu8).to_ascii().is_control());
         assert!(!' '.to_ascii().is_control());

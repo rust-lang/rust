@@ -93,7 +93,7 @@ fn hex_float_lit_err(s: &str) -> Option<(uint, String)> {
     } i+=1;
     if chars.peek() == Some(&'-') { chars.next(); i+= 1 }
     let mut e_len = 0i;
-    for _ in chars.take_while(|c| c.is_digit()) { chars.next(); i+=1; e_len += 1}
+    for _ in chars.take_while(|c| c.is_numeric()) { chars.next(); i+=1; e_len += 1}
     if e_len == 0 {
         return Some((i, "Expected exponent digits".to_string()));
     }
