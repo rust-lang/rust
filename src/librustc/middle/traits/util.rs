@@ -319,8 +319,8 @@ impl<N:Repr> Repr for super::Vtable<N> {
             super::VtableParam(ref v) =>
                 format!("VtableParam({})", v.repr(tcx)),
 
-            super::VtableBuiltin =>
-                format!("Builtin"),
+            super::VtableBuiltin(ref d) =>
+                d.repr(tcx)
         }
     }
 }
@@ -330,6 +330,13 @@ impl<N:Repr> Repr for super::VtableImplData<N> {
         format!("VtableImpl(impl_def_id={}, substs={}, nested={})",
                 self.impl_def_id.repr(tcx),
                 self.substs.repr(tcx),
+                self.nested.repr(tcx))
+    }
+}
+
+impl<N:Repr> Repr for super::VtableBuiltinData<N> {
+    fn repr(&self, tcx: &ty::ctxt) -> String {
+        format!("VtableBuiltin(nested={})",
                 self.nested.repr(tcx))
     }
 }
@@ -344,11 +351,11 @@ impl Repr for super::VtableParamData {
 impl Repr for super::SelectionError {
     fn repr(&self, tcx: &ty::ctxt) -> String {
         match *self {
-            super::Unimplemented =>
-                format!("Unimplemented"),
-
             super::Overflow =>
                 format!("Overflow"),
+
+            super::Unimplemented =>
+                format!("Unimplemented"),
 
             super::OutputTypeParameterMismatch(ref t, ref e) =>
                 format!("OutputTypeParameterMismatch({}, {})",

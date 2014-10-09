@@ -20,9 +20,8 @@ impl<T:Dot> Dot for Cons<T> {
   }
 }
 fn test<T:Dot> (n:int, i:int, first:T, second:T) ->int {
-    //~^ ERROR: reached the recursion limit during monomorphization
-  match n {
-    0 => {first.dot(second)}
+  match n {    0 => {first.dot(second)}
+      //~^ ERROR: reached the recursion limit during monomorphization
       // Error message should be here. It should be a type error
       // to instantiate `test` at a type other than T. (See #4287)
     _ => {test (n-1, i+1, Cons {head:2*i+1, tail:first}, Cons{head:i*i, tail:second})}

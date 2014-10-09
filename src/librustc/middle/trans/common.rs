@@ -800,10 +800,18 @@ pub fn fulfill_obligation(ccx: &CrateContext,
     let selection = match selcx.select(&obligation) {
         Ok(Some(selection)) => selection,
         Ok(None) => {
-            tcx.sess.span_bug(
+            // Ambiguity can happen when monomorphizing during trans
+            // expands to some humongo type that never occurred
+            // statically -- this humongo type can then overflow,
+            // leading to an ambiguous result. So report this as an
+            // overflow bug, since I believe this is the only case
+            // where ambiguity can result.
+            debug!("Encountered ambiguity selecting `{}` during trans, \
+                    presuming due to overflow",
+                   trait_ref.repr(tcx));
+            ccx.sess().span_fatal(
                 span,
-                format!("Encountered ambiguity selecting `{}` during trans",
-                        trait_ref.repr(tcx)).as_slice())
+                "reached the recursion limit during monomorphization");
         }
         Err(e) => {
             tcx.sess.span_bug(
@@ -826,12 +834,19 @@ pub fn fulfill_obligation(ccx: &CrateContext,
     });
     match fulfill_cx.select_all_or_error(&infcx, &param_env, tcx) {
         Ok(()) => { }
-        Err(e) => {
-            tcx.sess.span_bug(
-                span,
-                format!("Encountered errors `{}` fulfilling `{}` during trans",
-                        e.repr(tcx),
-                        trait_ref.repr(tcx)).as_slice());
+        Err(errors) => {
+            if errors.iter().all(|e| e.is_overflow()) {
+                // See Ok(None) case above.
+                ccx.sess().span_fatal(
+                    span,
+                    "reached the recursion limit during monomorphization");
+            } else {
+                tcx.sess.span_bug(
+                    span,
+                    format!("Encountered errors `{}` fulfilling `{}` during trans",
+                            errors.repr(tcx),
+                            trait_ref.repr(tcx)).as_slice());
+            }
         }
     }
 

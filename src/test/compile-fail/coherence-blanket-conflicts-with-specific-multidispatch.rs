@@ -8,28 +8,29 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-trait Tr<T> {
-    fn op(T) -> Self;
+use std::fmt::Show;
+use std::default::Default;
+
+// Test that a blank impl for all T conflicts with an impl for some
+// specific T, even when there are multiple type parameters involved.
+
+trait MyTrait<T> {
+    fn get(&self) -> T;
 }
 
-// these compile as if Self: Tr<U>, even tho only Self: Tr<Self or T>
-trait A:    Tr<Self> {
-    fn test<U>(u: U) -> Self {
-        Tr::op(u)   //~ ERROR not implemented
+impl<T> MyTrait<T> for T { //~ ERROR E0119
+    fn get(&self) -> T {
+        fail!()
     }
 }
-trait B<T>: Tr<T> {
-    fn test<U>(u: U) -> Self {
-        Tr::op(u)   //~ ERROR not implemented
-    }
+
+#[deriving(Clone)]
+struct MyType {
+    dummy: uint
 }
 
-impl<T> Tr<T> for T {
-    fn op(t: T) -> T { t }
-}
-impl<T> A for T {}
-
-fn main() {
-    std::io::println(A::test((&7306634593706211700, 8)));
+impl MyTrait<MyType> for MyType {
+    fn get(&self) -> uint { (*self).clone() }
 }
 
+fn main() { }

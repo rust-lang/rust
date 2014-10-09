@@ -10,8 +10,7 @@
 
 use middle::subst::{SelfSpace};
 use middle::traits;
-use middle::traits::{SelectionError, Overflow,
-                     OutputTypeParameterMismatch, Unimplemented};
+use middle::traits::{SelectionError, OutputTypeParameterMismatch, Overflow, Unimplemented};
 use middle::traits::{Obligation, obligation_for_builtin_bound};
 use middle::traits::{FulfillmentError, CodeSelectionError, CodeAmbiguity};
 use middle::traits::{ObligationCause};
@@ -233,6 +232,16 @@ pub fn report_selection_error(fcx: &FnCtxt,
                               error: &SelectionError)
 {
     match *error {
+        Overflow => {
+            let (trait_ref, self_ty) = resolve_trait_ref(fcx, obligation);
+            fcx.tcx().sess.span_err(
+                obligation.cause.span,
+                format!(
+                    "overflow evaluating the trait `{}` for the type `{}`",
+                    trait_ref.user_string(fcx.tcx()),
+                    self_ty.user_string(fcx.tcx())).as_slice());
+            note_obligation_cause(fcx, obligation);
+        }
         Unimplemented => {
             let (trait_ref, self_ty) = resolve_trait_ref(fcx, obligation);
             if !ty::type_is_error(self_ty) {
@@ -244,9 +253,6 @@ pub fn report_selection_error(fcx: &FnCtxt,
                         self_ty.user_string(fcx.tcx())).as_slice());
                 note_obligation_cause(fcx, obligation);
             }
-        }
-        Overflow => {
-            report_overflow(fcx, obligation);
         }
         OutputTypeParameterMismatch(ref expected_trait_ref, ref e) => {
             let expected_trait_ref =
@@ -269,21 +275,6 @@ pub fn report_selection_error(fcx: &FnCtxt,
     }
 }
 
-pub fn report_overflow(fcx: &FnCtxt, obligation: &Obligation) {
-    let (trait_ref, self_ty) = resolve_trait_ref(fcx, obligation);
-    if ty::type_is_error(self_ty) {
-        fcx.tcx().sess.span_err(
-            obligation.cause.span,
-            format!(
-                "could not locate an impl of the trait `{}` for \
-                 the type `{}` due to overflow; possible cyclic \
-                 dependency between impls",
-                trait_ref.user_string(fcx.tcx()),
-                self_ty.user_string(fcx.tcx())).as_slice());
-        note_obligation_cause(fcx, obligation);
-    }
-}
-
 pub fn maybe_report_ambiguity(fcx: &FnCtxt, obligation: &Obligation) {
     // Unable to successfully determine, probably means
     // insufficient type information, but could mean
@@ -294,8 +285,9 @@ pub fn maybe_report_ambiguity(fcx: &FnCtxt, obligation: &Obligation) {
            trait_ref.repr(fcx.tcx()),
            self_ty.repr(fcx.tcx()),
            obligation.repr(fcx.tcx()));
-    if ty::type_is_error(self_ty) {
-    } else if ty::type_needs_infer(self_ty) {
+    let all_types = &trait_ref.substs.types;
+    if all_types.iter().any(|&t| ty::type_is_error(t)) {
+    } else if all_types.iter().any(|&t| ty::type_needs_infer(t)) {
         // This is kind of a hack: it frequently happens that some earlier
         // error prevents types from being fully inferred, and then we get
         // a bunch of uninteresting errors saying something like "<generic
@@ -321,7 +313,7 @@ pub fn maybe_report_ambiguity(fcx: &FnCtxt, obligation: &Obligation) {
                     self_ty.user_string(fcx.tcx())).as_slice());
             note_obligation_cause(fcx, obligation);
         }
-    } else if fcx.tcx().sess.err_count() == 0 {
+    } else if !fcx.tcx().sess.has_errors() {
          // Ambiguity. Coherence should have reported an error.
         fcx.tcx().sess.span_bug(
             obligation.cause.span,

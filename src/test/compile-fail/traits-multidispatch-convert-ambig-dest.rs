@@ -8,28 +8,32 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-trait Tr<T> {
-    fn op(T) -> Self;
+// Check that we get an error in a multidisptach scenario where the
+// set of impls is ambiguous.
+
+trait Convert<Target> {
+    fn convert(&self) -> Target;
 }
 
-// these compile as if Self: Tr<U>, even tho only Self: Tr<Self or T>
-trait A:    Tr<Self> {
-    fn test<U>(u: U) -> Self {
-        Tr::op(u)   //~ ERROR not implemented
-    }
-}
-trait B<T>: Tr<T> {
-    fn test<U>(u: U) -> Self {
-        Tr::op(u)   //~ ERROR not implemented
+impl Convert<i8> for i32 {
+    fn convert(&self) -> i8 {
+        *self as i8
     }
 }
 
-impl<T> Tr<T> for T {
-    fn op(t: T) -> T { t }
-}
-impl<T> A for T {}
-
-fn main() {
-    std::io::println(A::test((&7306634593706211700, 8)));
+impl Convert<i16> for i32 {
+    fn convert(&self) -> i16 {
+        *self as i16
+    }
 }
 
+fn test<T,U>(_: T, _: U)
+where T : Convert<U>
+{
+}
+
+fn a() {
+    test(22_i32, 44); //~ ERROR unable to infer
+}
+
+fn main() {}
