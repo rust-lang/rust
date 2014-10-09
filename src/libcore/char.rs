@@ -316,7 +316,12 @@ pub trait Char {
 
     /// Returns the amount of bytes this character would need if encoded in
     /// UTF-8.
+    #[deprecated = "use len_utf8"]
     fn len_utf8_bytes(&self) -> uint;
+
+    /// Returns the amount of bytes this character would need if encoded in
+    /// UTF-8.
+    fn len_utf8(&self) -> uint;
 
     /// Encodes this character as UTF-8 into the provided byte buffer,
     /// and then returns the number of bytes written.
@@ -352,7 +357,11 @@ impl Char for char {
     fn escape_default(&self, f: |char|) { escape_default(*self, f) }
 
     #[inline]
+    #[deprecated = "use len_utf8"]
     fn len_utf8_bytes(&self) -> uint { len_utf8_bytes(*self) }
+
+    #[inline]
+    fn len_utf8(&self) -> uint { len_utf8_bytes(*self) }
 
     #[inline]
     fn encode_utf8<'a>(&self, dst: &'a mut [u8]) -> Option<uint> {
