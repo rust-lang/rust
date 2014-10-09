@@ -20,8 +20,6 @@
 //! can be created in the future and there must be no active timers at that
 //! time.
 
-#![macro_escape]
-
 use mem;
 use rt::bookkeeping;
 use rt::mutex::StaticNativeMutex;
@@ -56,15 +54,6 @@ pub struct Helper<M> {
     /// Flag if this helper thread has booted and been initialized yet.
     pub initialized: UnsafeCell<bool>,
 }
-
-macro_rules! helper_init( (static $name:ident: Helper<$m:ty>) => (
-    static $name: Helper<$m> = Helper {
-        lock: ::std::rt::mutex::NATIVE_MUTEX_INIT,
-        chan: ::std::cell::UnsafeCell { value: 0 as *mut Sender<$m> },
-        signal: ::std::cell::UnsafeCell { value: 0 },
-        initialized: ::std::cell::UnsafeCell { value: false },
-    };
-) )
 
 impl<M: Send> Helper<M> {
     /// Lazily boots a helper thread, becoming a no-op if the helper has already

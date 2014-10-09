@@ -29,13 +29,6 @@ use std::os;
 use std::rt::rtio::{mod, IoResult, IoError};
 use std::num;
 
-// Local re-exports
-pub use self::process::Process;
-
-// Native I/O implementations
-pub mod process;
-mod util;
-
 #[cfg(any(target_os = "macos",
           target_os = "ios",
           target_os = "freebsd",
@@ -122,19 +115,6 @@ impl rtio::IoFactory for IoFactory {
     // misc
     fn timer_init(&mut self) -> IoResult<Box<rtio::RtioTimer + Send>> {
         timer::Timer::new().map(|t| box t as Box<rtio::RtioTimer + Send>)
-    }
-    fn spawn(&mut self, cfg: rtio::ProcessConfig)
-            -> IoResult<(Box<rtio::RtioProcess + Send>,
-                         Vec<Option<Box<rtio::RtioPipe + Send>>>)> {
-        process::Process::spawn(cfg).map(|(p, io)| {
-            (box p as Box<rtio::RtioProcess + Send>,
-             io.into_iter().map(|p| p.map(|p| {
-                 box p as Box<rtio::RtioPipe + Send>
-             })).collect())
-        })
-    }
-    fn kill(&mut self, pid: libc::pid_t, signum: int) -> IoResult<()> {
-        process::Process::kill(pid, signum)
     }
     #[cfg(unix)]
     fn tty_open(&mut self, fd: c_int, _readable: bool)
