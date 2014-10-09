@@ -14,5 +14,5 @@ pub fn main() {
 }
 
 fn f(_i: Box<int>) -> Box<int> {
-    fail!();
+    panic!();
 }

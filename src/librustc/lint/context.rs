@@ -166,7 +166,7 @@ impl LintStore {
     fn register_renamed(&mut self, old_name: &str, new_name: &str) {
         let target = match self.by_name.find_equiv(&new_name) {
             Some(&Id(lint_id)) => lint_id.clone(),
-            _ => fail!("invalid lint renaming of {} to {}", old_name, new_name)
+            _ => panic!("invalid lint renaming of {} to {}", old_name, new_name)
         };
         self.by_name.insert(old_name.to_string(), Renamed(new_name.to_string(), target));
     }
@@ -388,7 +388,7 @@ pub fn raw_emit_lint(sess: &Session, lint: &'static Lint,
             format!("{} [-{} {}]", msg,
                     match level {
                         Warn => 'W', Deny => 'D', Forbid => 'F',
-                        Allow => fail!()
+                        Allow => panic!()
                     }, name.replace("_", "-"))
         },
         Node(src) => {

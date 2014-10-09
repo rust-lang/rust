@@ -120,8 +120,7 @@ impl DefaultResizePolicy {
 // is also memory and cache pressure that this would entail that would be very
 // difficult to properly see in a microbenchmark.
 //
-// Future Improvements (FIXME!)
-// ============================
+// ## Future Improvements (FIXME!)
 //
 // Allow the load factor to be changed dynamically and/or at initialization.
 //
@@ -129,8 +128,7 @@ impl DefaultResizePolicy {
 // underlying table? This is exactly the use case for 'realloc', and may
 // be worth exploring.
 //
-// Future Optimizations (FIXME!)
-// =============================
+// ## Future Optimizations (FIXME!)
 //
 // Another possible design choice that I made without any real reason is
 // parameterizing the raw table over keys and values. Technically, all we need
@@ -473,7 +471,7 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
             };
             buckets.next();
         }
-        fail!("Internal HashMap error: Out of space.");
+        panic!("Internal HashMap error: Out of space.");
     }
 }
 
@@ -829,7 +827,8 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     }
 
     /// Retrieves a mutable value for the given key.
-    /// See [`find_mut`](../trait.MutableMap.html#tymethod.find_mut) for a non-failing alternative.
+    /// See [`find_mut`](../trait.MutableMap.html#tymethod.find_mut) for a non-panicking
+    /// alternative.
     ///
     /// # Failure
     ///
@@ -856,7 +855,7 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     pub fn get_mut<'a>(&'a mut self, k: &K) -> &'a mut V {
         match self.find_mut(k) {
             Some(v) => v,
-            None => fail!("no entry found for key")
+            None => panic!("no entry found for key")
         }
     }
 
@@ -1625,7 +1624,7 @@ mod test_map {
         assert!(m.insert(5i, 14i));
         let new = 100;
         match m.find_mut(&5) {
-            None => fail!(), Some(x) => *x = new
+            None => panic!(), Some(x) => *x = new
         }
         assert_eq!(m.find(&5), Some(&new));
     }
@@ -1746,7 +1745,7 @@ mod test_map {
         assert!(m.find(&1i).is_none());
         m.insert(1i, 2i);
         match m.find(&1) {
-            None => fail!(),
+            None => panic!(),
             Some(v) => assert_eq!(*v, 2)
         }
     }
@@ -1759,12 +1758,12 @@ mod test_map {
         for i in range(1i, 10000) {
             m.insert(i, i + 7);
             match m.find_copy(&i) {
-                None => fail!(),
+                None => panic!(),
                 Some(v) => assert_eq!(v, i + 7)
             }
             for j in range(1i, i/100) {
                 match m.find_copy(&j) {
-                    None => fail!(),
+                    None => panic!(),
                     Some(v) => assert_eq!(v, j + 7)
                 }
             }

@@ -191,7 +191,7 @@ the stack of the task which is spawned.
 
 Foreign libraries often hand off ownership of resources to the calling code.
 When this occurs, we must use Rust's destructors to provide safety and guarantee
-the release of these resources (especially in the case of failure).
+the release of these resources (especially in the case of panic).
 
 # Callbacks from C code to Rust functions
 

@@ -90,7 +90,7 @@ fn show_digit(nn: uint) -> &'static str {
         7 => {" seven"}
         8 => {" eight"}
         9 => {" nine"}
-        _ => {fail!("expected digits from 0 to 9...")}
+        _ => {panic!("expected digits from 0 to 9...")}
     }
 }
 

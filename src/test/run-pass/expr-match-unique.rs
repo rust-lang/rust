@@ -11,7 +11,7 @@
 
 // Tests for match as expressions resulting in boxed types
 fn test_box() {
-    let res = match true { true => { box 100i }, _ => fail!() };
+    let res = match true { true => { box 100i }, _ => panic!() };
     assert_eq!(*res, 100i);
 }
 

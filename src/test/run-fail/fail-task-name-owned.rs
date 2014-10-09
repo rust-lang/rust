@@ -15,7 +15,7 @@ use std::task::TaskBuilder;
 fn main() {
     let r: Result<int,_> = TaskBuilder::new().named("owned name".to_string())
                                              .try(proc() {
-        fail!("test");
+        panic!("test");
         1i
     });
     assert!(r.is_ok());

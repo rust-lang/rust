@@ -11,5 +11,5 @@
 // error-pattern:bad input
 
 fn main() {
-    Some("foo").unwrap_or(fail!("bad input")).to_string();
+    Some("foo").unwrap_or(panic!("bad input")).to_string();
 }

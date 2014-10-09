@@ -11,11 +11,11 @@
 pub fn main() {
     let x = [1i, 2, 3];
     match x {
-        [2, _, _] => fail!(),
+        [2, _, _] => panic!(),
         [1, a, b] => {
             assert!([a, b] == [2, 3]);
         }
-        [_, _, _] => fail!(),
+        [_, _, _] => panic!(),
     }
 
     let y = ([(1i, true), (2i, false)], 0.5f64);
@@ -24,7 +24,7 @@ pub fn main() {
             assert_eq!(a, true);
             assert_eq!(b, 2);
         }
-        ([_, _], 0.5) => fail!(),
-        ([_, _], _) => fail!(),
+        ([_, _], 0.5) => panic!(),
+        ([_, _], _) => panic!(),
     }
 }

@@ -25,12 +25,12 @@ fn start(argc: int, argv: *const *const u8) -> int {
                 1 => {}
                 2 => println!("foo"),
                 3 => assert!(try(|| {}).is_ok()),
-                4 => assert!(try(|| fail!()).is_err()),
+                4 => assert!(try(|| panic!()).is_err()),
                 5 => assert!(try(|| spawn(proc() {})).is_err()),
                 6 => assert!(Command::new("test").spawn().is_err()),
                 7 => assert!(foo.get().is_none()),
                 8 => assert!(try(|| { foo.replace(Some(3)); }).is_err()),
-                _ => fail!()
+                _ => panic!()
             }
         }
         return 0

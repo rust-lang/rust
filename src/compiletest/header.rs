@@ -305,7 +305,7 @@ fn parse_exec_env(line: &str) -> Option<(String, String)> {
               let end = strs.pop().unwrap();
               (strs.pop().unwrap(), end)
           }
-          n => fail!("Expected 1 or 2 strings, not {}", n)
+          n => panic!("Expected 1 or 2 strings, not {}", n)
         }
     })
 }
@@ -350,7 +350,7 @@ pub fn gdb_version_to_int(version_string: &str) -> int {
     let components: Vec<&str> = version_string.trim().split('.').collect();
 
     if components.len() != 2 {
-        fail!("{}", error_string);
+        panic!("{}", error_string);
     }
 
     let major: int = FromStr::from_str(components[0]).expect(error_string);

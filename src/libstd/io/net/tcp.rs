@@ -471,7 +471,7 @@ impl TcpAcceptor {
     ///         match socket {
     ///             Ok(s) => { /* handle s */ }
     ///             Err(ref e) if e.kind == EndOfFile => break, // closed
-    ///             Err(e) => fail!("unexpected error: {}", e),
+    ///             Err(e) => panic!("unexpected error: {}", e),
     ///         }
     ///     }
     /// });
@@ -532,7 +532,7 @@ mod test {
     #[test]
     fn bind_error() {
         match TcpListener::bind("0.0.0.0", 1) {
-            Ok(..) => fail!(),
+            Ok(..) => panic!(),
             Err(e) => assert_eq!(e.kind, PermissionDenied),
         }
     }
@@ -540,7 +540,7 @@ mod test {
     #[test]
     fn connect_error() {
         match TcpStream::connect("0.0.0.0", 1) {
-            Ok(..) => fail!(),
+            Ok(..) => panic!(),
             Err(e) => assert_eq!(e.kind, ConnectionRefused),
         }
     }
@@ -708,7 +708,7 @@ mod test {
         assert!(nread.is_err());
 
         match stream.read(buf) {
-            Ok(..) => fail!(),
+            Ok(..) => panic!(),
             Err(ref e) => {
                 assert!(e.kind == NotConnected || e.kind == EndOfFile,
                         "unknown kind: {}", e.kind);
@@ -734,7 +734,7 @@ mod test {
         assert!(nread.is_err());
 
         match stream.read(buf) {
-            Ok(..) => fail!(),
+            Ok(..) => panic!(),
             Err(ref e) => {
                 assert!(e.kind == NotConnected || e.kind == EndOfFile,
                         "unknown kind: {}", e.kind);
@@ -1082,7 +1082,7 @@ mod test {
         let listener = TcpListener::bind(ip_str.as_slice(), port).unwrap().listen();
         assert!(listener.is_ok());
         match TcpListener::bind(ip_str.as_slice(), port).listen() {
-            Ok(..) => fail!(),
+            Ok(..) => panic!(),
             Err(e) => {
                 assert!(e.kind == ConnectionRefused || e.kind == OtherIoError,
                         "unknown error: {} {}", e, e.kind);
@@ -1266,10 +1266,10 @@ mod test {
                 match a.accept() {
                     Ok(..) => break,
                     Err(ref e) if e.kind == TimedOut => {}
-                    Err(e) => fail!("error: {}", e),
+                    Err(e) => panic!("error: {}", e),
                 }
                 ::task::deschedule();
-                if i == 1000 { fail!("should have a pending connection") }
+                if i == 1000 { panic!("should have a pending connection") }
             }
         }
 
@@ -1373,9 +1373,9 @@ mod test {
             match s.write([0, .. 128 * 1024]) {
                 Ok(()) | Err(IoError { kind: ShortWrite(..), .. }) => {},
                 Err(IoError { kind: TimedOut, .. }) => break,
-                Err(e) => fail!("{}", e),
+                Err(e) => panic!("{}", e),
            }
-           if i == 1000 { fail!("should have filled up?!"); }
+           if i == 1000 { panic!("should have filled up?!"); }
         }
         assert_eq!(s.write([0]).err().unwrap().kind, TimedOut);
 
@@ -1398,7 +1398,7 @@ mod test {
             while amt < 100 * 128 * 1024 {
                 match s.read([0, ..128 * 1024]) {
                     Ok(n) => { amt += n; }
-                    Err(e) => fail!("{}", e),
+                    Err(e) => panic!("{}", e),
                 }
             }
             let _ = rx.recv_opt();
@@ -1435,9 +1435,9 @@ mod test {
             match s.write([0, .. 128 * 1024]) {
                 Ok(()) | Err(IoError { kind: ShortWrite(..), .. }) => {},
                 Err(IoError { kind: TimedOut, .. }) => break,
-                Err(e) => fail!("{}", e),
+                Err(e) => panic!("{}", e),
            }
-           if i == 1000 { fail!("should have filled up?!"); }
+           if i == 1000 { panic!("should have filled up?!"); }
         }
         assert_eq!(s.write([0]).err().unwrap().kind, TimedOut);
 

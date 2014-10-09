@@ -244,7 +244,7 @@ fn trans_struct_drop<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     adt::fold_variants(bcx, &*repr, struct_data, |variant_cx, st, value| {
         // Be sure to put all of the fields into a scope so we can use an invoke
         // instruction to call the user destructor but still call the field
-        // destructors if the user destructor fails.
+        // destructors if the user destructor panics.
         let field_scope = variant_cx.fcx.push_custom_cleanup_scope();
 
         // Class dtors have no explicit args, so the params should

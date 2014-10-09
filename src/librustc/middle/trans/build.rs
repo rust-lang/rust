@@ -30,7 +30,7 @@ pub fn terminate(cx: Block, _: &str) {
 
 pub fn check_not_terminated(cx: Block) {
     if cx.terminated.get() {
-        fail!("already terminated!");
+        panic!("already terminated!");
     }
 }
 
@@ -45,7 +45,7 @@ pub fn B<'blk, 'tcx>(cx: Block<'blk, 'tcx>) -> Builder<'blk, 'tcx> {
 // terminated, we're saying that trying to add any further statements in the
 // block is an error. On the other hand, if something is unreachable, that
 // means that the block was terminated in some way that we don't want to check
-// for (fail/break/return statements, call to diverging functions, etc), and
+// for (panic/break/return statements, call to diverging functions, etc), and
 // further instructions to the block should simply be ignored.
 
 pub fn RetVoid(cx: Block) {

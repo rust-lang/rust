@@ -35,23 +35,23 @@ pub fn main() {
     'x: for _ in range(0i, 1) {
         // this 'x should refer to the outer loop, lexically
         loop_x!(break 'x);
-        fail!("break doesn't act hygienically inside for loop");
+        panic!("break doesn't act hygienically inside for loop");
     }
 
     'x: loop {
         // ditto
         loop_x!(break 'x);
-        fail!("break doesn't act hygienically inside infinite loop");
+        panic!("break doesn't act hygienically inside infinite loop");
     }
 
     'x: while 1i + 1 == 2 {
         while_x!(break 'x);
-        fail!("break doesn't act hygienically inside infinite while loop");
+        panic!("break doesn't act hygienically inside infinite while loop");
     }
 
     'x: for _ in range(0i, 1) {
         // ditto
         run_once!(continue 'x);
-        fail!("continue doesn't act hygienically inside for loop");
+        panic!("continue doesn't act hygienically inside for loop");
     }
 }

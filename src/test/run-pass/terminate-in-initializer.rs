@@ -20,13 +20,13 @@ fn test_cont() { let mut i = 0i; while i < 1 { i += 1; let _x: Box<int> = contin
 
 fn test_ret() { let _x: Box<int> = return; }
 
-fn test_fail() {
-    fn f() { let _x: Box<int> = fail!(); }
+fn test_panic() {
+    fn f() { let _x: Box<int> = panic!(); }
     task::try(proc() f() );
 }
 
-fn test_fail_indirect() {
-    fn f() -> ! { fail!(); }
+fn test_panic_indirect() {
+    fn f() -> ! { panic!(); }
     fn g() { let _x: Box<int> = f(); }
     task::try(proc() g() );
 }
@@ -35,6 +35,6 @@ pub fn main() {
     test_break();
     test_cont();
     test_ret();
-    test_fail();
-    test_fail_indirect();
+    test_panic();
+    test_panic_indirect();
 }

@@ -15,7 +15,7 @@ pub fn main() {
     if let Some(y) = x {
         assert_eq!(y, 3i);
     } else {
-        fail!("if-let failed");
+        panic!("if-let panicked");
     }
     let mut worked = false;
     if let Some(_) = x {
@@ -35,9 +35,9 @@ pub fn main() {
     assert_eq!(clause, 4u);
 
     if 3i > 4 {
-        fail!("bad math");
+        panic!("bad math");
     } else if let 1 = 2i {
-        fail!("bad pattern match");
+        panic!("bad pattern match");
     }
 
     enum Foo {
@@ -48,22 +48,22 @@ pub fn main() {
 
     let foo = Three("three".to_string(), 42i);
     if let One = foo {
-        fail!("bad pattern match");
+        panic!("bad pattern match");
     } else if let Two(_x) = foo {
-        fail!("bad pattern match");
+        panic!("bad pattern match");
     } else if let Three(s, _) = foo {
         assert_eq!(s.as_slice(), "three");
     } else {
-        fail!("bad else");
+        panic!("bad else");
     }
 
     if false {
-        fail!("wat");
+        panic!("wat");
     } else if let a@Two(_) = Two(42u) {
         if let Two(b) = a {
             assert_eq!(b, 42u);
         } else {
-            fail!("fail in nested if-let");
+            panic!("panic in nested if-let");
         }
     }
 }

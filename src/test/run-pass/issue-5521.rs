@@ -15,7 +15,7 @@ extern crate "issue-5521" as foo;
 
 fn bar(a: foo::map) {
     if false {
-        fail!();
+        panic!();
     } else {
         let _b = &(*a)[2];
     }

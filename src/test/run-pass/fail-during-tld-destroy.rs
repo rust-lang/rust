@@ -16,7 +16,7 @@ struct Foo;
 impl Drop for Foo {
     fn drop(&mut self) {
         unsafe { DROPS += 1; }
-        fail!()
+        panic!()
     }
 }
 

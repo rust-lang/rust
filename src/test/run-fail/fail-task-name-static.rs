@@ -13,7 +13,7 @@
 fn main() {
     let r: Result<int,_> =
         ::std::task::TaskBuilder::new().named("static name").try(proc() {
-            fail!("test");
+            panic!("test");
         });
     assert!(r.is_ok());
 }

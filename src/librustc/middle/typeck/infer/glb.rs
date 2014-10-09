@@ -210,7 +210,7 @@ impl<'f, 'tcx> Combine<'tcx> for Glb<'f, 'tcx> {
 
             // NB---I do not believe this algorithm computes
             // (necessarily) the GLB.  As written it can
-            // spuriously fail.  In particular, if there is a case
+            // spuriously fail. In particular, if there is a case
             // like: |fn(&a)| and fn(fn(&b)), where a and b are
             // free, it will return fn(&c) where c = GLB(a,b).  If
             // however this GLB is not defined, then the result is

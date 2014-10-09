@@ -36,7 +36,7 @@ pub trait IntoMaybeOwned<'a> {
 }
 
 impl<'a> IntoMaybeOwned<'a> for Inv<'a> {
-    fn into_maybe_owned(self) -> MaybeOwned<'a> { fail!() }
-    fn into_inv(self) -> Inv<'a> { fail!() }
-    fn bigger_region<'b:'a>(self, b: Inv<'b>) { fail!() }
+    fn into_maybe_owned(self) -> MaybeOwned<'a> { panic!() }
+    fn into_inv(self) -> Inv<'a> { panic!() }
+    fn bigger_region<'b:'a>(self, b: Inv<'b>) { panic!() }
 }

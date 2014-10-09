@@ -728,7 +728,7 @@ impl NameBindings {
     fn get_module(&self) -> Rc<Module> {
         match self.get_module_if_available() {
             None => {
-                fail!("get_module called on a node with no module \
+                panic!("get_module called on a node with no module \
                        definition!")
             }
             Some(module_def) => module_def
@@ -1910,7 +1910,7 @@ impl<'a> Resolver<'a> {
           DefLocal(..) | DefPrimTy(..) | DefTyParam(..) |
           DefUse(..) | DefUpvar(..) | DefRegion(..) |
           DefTyParamBinder(..) | DefLabel(..) | DefSelfTy(..) => {
-            fail!("didn't expect `{}`", def);
+            panic!("didn't expect `{}`", def);
           }
         }
     }
@@ -2618,7 +2618,7 @@ impl<'a> Resolver<'a> {
             }
             UnboundResult => { /* Continue. */ }
             UnknownResult => {
-                fail!("value result should be known at this point");
+                panic!("value result should be known at this point");
             }
         }
         match type_result {
@@ -2641,7 +2641,7 @@ impl<'a> Resolver<'a> {
             }
             UnboundResult => { /* Continue. */ }
             UnknownResult => {
-                fail!("type result should be known at this point");
+                panic!("type result should be known at this point");
             }
         }
 
@@ -5161,7 +5161,7 @@ impl<'a> Resolver<'a> {
                         target.bindings.value_def.borrow());
                 match *target.bindings.value_def.borrow() {
                     None => {
-                        fail!("resolved name in the value namespace to a \
+                        panic!("resolved name in the value namespace to a \
                               set of name bindings with no def?!");
                     }
                     Some(def) => {
@@ -5191,7 +5191,7 @@ impl<'a> Resolver<'a> {
             }
 
             Indeterminate => {
-                fail!("unexpected indeterminate result");
+                panic!("unexpected indeterminate result");
             }
             Failed(err) => {
                 match err {
@@ -5389,7 +5389,7 @@ impl<'a> Resolver<'a> {
                                                  msg.as_slice()));
                 return None;
             }
-            Indeterminate => fail!("indeterminate unexpected"),
+            Indeterminate => panic!("indeterminate unexpected"),
             Success((resulting_module, resulting_last_private)) => {
                 containing_module = resulting_module;
                 last_private = resulting_last_private;
@@ -5451,7 +5451,7 @@ impl<'a> Resolver<'a> {
             }
 
             Indeterminate => {
-                fail!("indeterminate unexpected");
+                panic!("indeterminate unexpected");
             }
 
             Success((resulting_module, resulting_last_private)) => {
@@ -5537,7 +5537,7 @@ impl<'a> Resolver<'a> {
                 }
             }
             Indeterminate => {
-                fail!("unexpected indeterminate result");
+                panic!("unexpected indeterminate result");
             }
             Failed(err) => {
                 match err {
@@ -6155,7 +6155,7 @@ impl<'a> Resolver<'a> {
                 type_used: _
             }) => (v, t),
             Some(_) => {
-                fail!("we should only have LastImport for `use` directives")
+                panic!("we should only have LastImport for `use` directives")
             }
             _ => return,
         };

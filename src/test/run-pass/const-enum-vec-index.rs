@@ -19,19 +19,19 @@ static D1: E = C[1];
 pub fn main() {
     match C0 {
         V0 => (),
-        _ => fail!()
+        _ => panic!()
     }
     match C1 {
         V1(n) => assert!(n == 0xDEADBEE),
-        _ => fail!()
+        _ => panic!()
     }
 
     match D0 {
         V0 => (),
-        _ => fail!()
+        _ => panic!()
     }
     match D1 {
         V1(n) => assert!(n == 0xDEADBEE),
-        _ => fail!()
+        _ => panic!()
     }
 }

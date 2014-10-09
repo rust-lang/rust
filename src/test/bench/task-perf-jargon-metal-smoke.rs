@@ -51,6 +51,6 @@ fn main() {
     let (tx, rx) = channel();
     child_generation(from_str::<uint>(args[1].as_slice()).unwrap(), tx);
     if rx.recv_opt().is_err() {
-        fail!("it happened when we slumbered");
+        panic!("it happened when we slumbered");
     }
 }

@@ -39,7 +39,7 @@ fn run(repeat: int, depth: int) {
     for _ in range(0, repeat) {
         println!("starting {:.4f}", precise_time_s());
         task::try(proc() {
-            recurse_or_fail(depth, None)
+            recurse_or_panic(depth, None)
         });
         println!("stopping {:.4f}", precise_time_s());
     }
@@ -70,10 +70,10 @@ fn r(l: Box<nillist>) -> r {
     }
 }
 
-fn recurse_or_fail(depth: int, st: Option<State>) {
+fn recurse_or_panic(depth: int, st: Option<State>) {
     if depth == 0 {
         println!("unwinding {:.4f}", precise_time_s());
-        fail!();
+        panic!();
     } else {
         let depth = depth - 1;
 
@@ -96,6 +96,6 @@ fn recurse_or_fail(depth: int, st: Option<State>) {
             }
         };
 
-        recurse_or_fail(depth, Some(st));
+        recurse_or_panic(depth, Some(st));
     }
 }

@@ -240,13 +240,13 @@ impl<'r> Compiler<'r> {
     /// Sets the left and right locations of a `Split` instruction at index
     /// `i` to `pc1` and `pc2`, respectively.
     /// If the instruction at index `i` isn't a `Split` instruction, then
-    /// `fail!` is called.
+    /// `panic!` is called.
     #[inline]
     fn set_split(&mut self, i: InstIdx, pc1: InstIdx, pc2: InstIdx) {
         let split = self.insts.get_mut(i);
         match *split {
             Split(_, _) => *split = Split(pc1, pc2),
-            _ => fail!("BUG: Invalid split index."),
+            _ => panic!("BUG: Invalid split index."),
         }
     }
 
@@ -260,13 +260,13 @@ impl<'r> Compiler<'r> {
 
     /// Sets the location of a `Jump` instruction at index `i` to `pc`.
     /// If the instruction at index `i` isn't a `Jump` instruction, then
-    /// `fail!` is called.
+    /// `panic!` is called.
     #[inline]
     fn set_jump(&mut self, i: InstIdx, pc: InstIdx) {
         let jmp = self.insts.get_mut(i);
         match *jmp {
             Jump(_) => *jmp = Jump(pc),
-            _ => fail!("BUG: Invalid jump index."),
+            _ => panic!("BUG: Invalid jump index."),
         }
     }
 }

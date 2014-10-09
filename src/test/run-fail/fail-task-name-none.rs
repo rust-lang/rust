@@ -14,7 +14,7 @@ use std::task;
 
 fn main() {
     let r: Result<int,_> = task::try(proc() {
-        fail!("test");
+        panic!("test");
         1i
     });
     assert!(r.is_ok());

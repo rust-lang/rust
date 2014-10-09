@@ -64,7 +64,7 @@ impl Registry {
             Decorator(ext) => Decorator(ext),
             Modifier(ext) => Modifier(ext),
             // there's probably a nicer way to signal this:
-            LetSyntaxTT(_, _) => fail!("can't register a new LetSyntax!"),
+            LetSyntaxTT(_, _) => panic!("can't register a new LetSyntax!"),
         }));
     }
 

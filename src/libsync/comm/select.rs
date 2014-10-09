@@ -102,7 +102,7 @@ pub trait Packet {
 
 impl Select {
     /// Creates a new selection structure. This set is initially empty and
-    /// `wait` will fail!() if called.
+    /// `wait` will panic!() if called.
     ///
     /// Usage of this struct directly can sometimes be burdensome, and usage is
     /// rather much easier through the `select!` macro.
@@ -353,17 +353,17 @@ mod test {
         tx1.send(1);
         select! (
             foo = rx1.recv() => { assert_eq!(foo, 1); },
-            _bar = rx2.recv() => { fail!() }
+            _bar = rx2.recv() => { panic!() }
         )
         tx2.send(2);
         select! (
-            _foo = rx1.recv() => { fail!() },
+            _foo = rx1.recv() => { panic!() },
             bar = rx2.recv() => { assert_eq!(bar, 2) }
         )
         drop(tx1);
         select! (
             foo = rx1.recv_opt() => { assert_eq!(foo, Err(())); },
-            _bar = rx2.recv() => { fail!() }
+            _bar = rx2.recv() => { panic!() }
         )
         drop(tx2);
         select! (
@@ -379,10 +379,10 @@ mod test {
         let (tx5, rx5) = channel::<int>();
         tx5.send(4);
         select! (
-            _foo = rx1.recv() => { fail!("1") },
-            _foo = rx2.recv() => { fail!("2") },
-            _foo = rx3.recv() => { fail!("3") },
-            _foo = rx4.recv() => { fail!("4") },
+            _foo = rx1.recv() => { panic!("1") },
+            _foo = rx2.recv() => { panic!("2") },
+            _foo = rx3.recv() => { panic!("3") },
+            _foo = rx4.recv() => { panic!("4") },
             foo = rx5.recv() => { assert_eq!(foo, 4); }
         )
     })
@@ -393,7 +393,7 @@ mod test {
         drop(tx2);
 
         select! (
-            _a1 = rx1.recv_opt() => { fail!() },
+            _a1 = rx1.recv_opt() => { panic!() },
             a2 = rx2.recv_opt() => { assert_eq!(a2, Err(())); }
         )
     })
@@ -412,12 +412,12 @@ mod test {
 
         select! (
             a = rx1.recv() => { assert_eq!(a, 1); },
-            _b = rx2.recv() => { fail!() }
+            _b = rx2.recv() => { panic!() }
         )
         tx3.send(1);
         select! (
             a = rx1.recv_opt() => { assert_eq!(a, Err(())); },
-            _b = rx2.recv() => { fail!() }
+            _b = rx2.recv() => { panic!() }
         )
     })
 
@@ -488,7 +488,7 @@ mod test {
         tx3.send(());
         select!(
             _i1 = rx1.recv() => {},
-            _i2 = rx2.recv() => fail!()
+            _i2 = rx2.recv() => panic!()
         )
         tx3.send(());
     })
@@ -509,7 +509,7 @@ mod test {
         tx3.send(());
         select!(
             _i1 = rx1.recv() => {},
-            _i2 = rx2.recv() => fail!()
+            _i2 = rx2.recv() => panic!()
         )
         tx3.send(());
     })

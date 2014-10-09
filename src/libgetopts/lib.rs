@@ -61,7 +61,7 @@
 //!     ];
 //!     let matches = match getopts(args.tail(), opts) {
 //!         Ok(m) => { m }
-//!         Err(f) => { fail!(f.to_string()) }
+//!         Err(f) => { panic!(f.to_string()) }
 //!     };
 //!     if matches.opt_present("h") {
 //!         print_usage(program.as_slice(), opts);
@@ -243,7 +243,7 @@ impl OptGroup {
         } = (*self).clone();
 
         match (short_name.len(), long_name.len()) {
-            (0,0) => fail!("this long-format option was given no name"),
+            (0,0) => panic!("this long-format option was given no name"),
             (0,_) => Opt {
                 name: Long((long_name)),
                 hasarg: hasarg,
@@ -269,7 +269,7 @@ impl OptGroup {
                     }
                 )
             },
-            (_,_) => fail!("something is wrong with the long-form opt")
+            (_,_) => panic!("something is wrong with the long-form opt")
         }
     }
 }
@@ -278,7 +278,7 @@ impl Matches {
     fn opt_vals(&self, nm: &str) -> Vec<Optval> {
         match find_opt(self.opts.as_slice(), Name::from_str(nm)) {
             Some(id) => self.vals[id].clone(),
-            None => fail!("No option '{}' defined", nm)
+            None => panic!("No option '{}' defined", nm)
         }
     }
 
@@ -530,8 +530,10 @@ impl fmt::Show for Fail_ {
 /// Parse command line arguments according to the provided options.
 ///
 /// On success returns `Ok(Matches)`. Use methods such as `opt_present`
-/// `opt_str`, etc. to interrogate results.  Returns `Err(Fail_)` on
-/// failure: use the `Show` implementation of `Fail_` to display
+/// `opt_str`, etc. to interrogate results.
+/// # Failure
+///
+/// Returns `Err(Fail_)` on failure: use the `Show` implementation of `Fail_` to display
 /// information about it.
 pub fn getopts(args: &[String], optgrps: &[OptGroup]) -> Result {
     let opts: Vec<Opt> = optgrps.iter().map(|x| x.long_to_short()).collect();
@@ -688,7 +690,7 @@ pub fn usage(brief: &str, opts: &[OptGroup]) -> String {
                 row.push_str(short_name.as_slice());
                 row.push(' ');
             }
-            _ => fail!("the short name should only be 1 ascii char long"),
+            _ => panic!("the short name should only be 1 ascii char long"),
         }
 
         // long option
@@ -852,7 +854,7 @@ fn each_split_within<'a>(ss: &'a str, lim: uint, it: |&'a str| -> bool)
 
             (B, Cr, UnderLim) => { B }
             (B, Cr, OverLim)  if (i - last_start + 1) > lim
-                            => fail!("word starting with {} longer than limit!",
+                            => panic!("word starting with {} longer than limit!",
                                     ss.slice(last_start, i + 1)),
             (B, Cr, OverLim)  => {
                 *cont = it(ss.slice(slice_start, last_end));
@@ -951,7 +953,7 @@ mod tests {
             assert!(m.opt_present("t"));
             assert_eq!(m.opt_str("t").unwrap(), "20".to_string());
           }
-          _ => { fail!("test_reqopt failed (long arg)"); }
+          _ => { panic!("test_reqopt failed (long arg)"); }
         }
         let short_args = vec!("-t".to_string(), "20".to_string());
         match getopts(short_args.as_slice(), opts.as_slice()) {
@@ -961,7 +963,7 @@ mod tests {
             assert!((m.opt_present("t")));
             assert_eq!(m.opt_str("t").unwrap(), "20".to_string());
           }
-          _ => { fail!("test_reqopt failed (short arg)"); }
+          _ => { panic!("test_reqopt failed (short arg)"); }
         }
     }
 
@@ -972,7 +974,7 @@ mod tests {
         let rs = getopts(args.as_slice(), opts.as_slice());
         match rs {
           Err(f) => check_fail_type(f, OptionMissing_),
-          _ => fail!()
+          _ => panic!()
         }
     }
 
@@ -983,12 +985,12 @@ mod tests {
         let rs = getopts(long_args.as_slice(), opts.as_slice());
         match rs {
           Err(f) => check_fail_type(f, ArgumentMissing_),
-          _ => fail!()
+          _ => panic!()
         }
         let short_args = vec!("-t".to_string());
         match getopts(short_args.as_slice(), opts.as_slice()) {
           Err(f) => check_fail_type(f, ArgumentMissing_),
-          _ => fail!()
+          _ => panic!()
         }
     }
 
@@ -999,7 +1001,7 @@ mod tests {
         let rs = getopts(args.as_slice(), opts.as_slice());
         match rs {
           Err(f) => check_fail_type(f, OptionDuplicated_),
-          _ => fail!()
+          _ => panic!()
         }
     }
 
@@ -1016,7 +1018,7 @@ mod tests {
             assert!((m.opt_present("t")));
             assert_eq!(m.opt_str("t").unwrap(), "20".to_string());
           }
-          _ => fail!()
+          _ => panic!()
         }
         let short_args = vec!("-t".to_string(), "20".to_string());
         match getopts(short_args.as_slice(), opts.as_slice()) {
@@ -1026,7 +1028,7 @@ mod tests {
             assert!((m.opt_present("t")));
             assert_eq!(m.opt_str("t").unwrap(), "20".to_string());
           }
-          _ => fail!()
+          _ => panic!()
         }
     }
 
@@ -1040,7 +1042,7 @@ mod tests {
             assert!(!m.opt_present("test"));
             assert!(!m.opt_present("t"));
           }
-          _ => fail!()
+          _ => panic!()
         }
     }
 
@@ -1051,12 +1053,12 @@ mod tests {
         let rs = getopts(long_args.as_slice(), opts.as_slice());
         match rs {
           Err(f) => check_fail_type(f, ArgumentMissing_),
-          _ => fail!()
+          _ => panic!()
         }
         let short_args = vec!("-t".to_string());
         match getopts(short_args.as_slice(), opts.as_slice()) {
           Err(f) => check_fail_type(f, ArgumentMissing_),
-          _ => fail!()
+          _ => panic!()
         }
     }
 
@@ -1067,7 +1069,7 @@ mod tests {
         let rs = getopts(args.as_slice(), opts.as_slice());
         match rs {
           Err(f) => check_fail_type(f, OptionDuplicated_),
-          _ => fail!()
+          _ => panic!()
         }
     }
 
@@ -1082,7 +1084,7 @@ mod tests {
             assert!(m.opt_present("test"));
             assert!(m.opt_present("t"));
           }
-          _ => fail!()
+          _ => panic!()
         }
         let short_args = vec!("-t".to_string());
         match getopts(short_args.as_slice(), opts.as_slice()) {
@@ -1090,7 +1092,7 @@ mod tests {
             assert!(m.opt_present("test"));
             assert!(m.opt_present("t"));
           }
-          _ => fail!()
+          _ => panic!()
         }
     }
 
@@ -1104,7 +1106,7 @@ mod tests {
             assert!(!m.opt_present("test"));
             assert!(!m.opt_present("t"));
           }
-          _ => fail!()
+          _ => panic!()
         }
     }
 
@@ -1117,7 +1119,7 @@ mod tests {
           Err(f) => {
             check_fail_type(f, UnexpectedArgument_);
           }
-          _ => fail!()
+          _ => panic!()
         }
     }
 
@@ -1128,7 +1130,7 @@ mod tests {
         let rs = getopts(args.as_slice(), opts.as_slice());
         match rs {
           Err(f) => check_fail_type(f, OptionDuplicated_),
-          _ => fail!()
+          _ => panic!()
         }
     }
 
@@ -1143,7 +1145,7 @@ mod tests {
 
             assert!(m.free[0] == "20".to_string());
           }
-          _ => fail!()
+          _ => panic!()
         }
     }
 
@@ -1157,7 +1159,7 @@ mod tests {
           Ok(ref m) => {
             assert_eq!(m.opt_count("v"), 1);
           }
-          _ => fail!()
+          _ => panic!()
         }
     }
 
@@ -1170,7 +1172,7 @@ mod tests {
           Ok(ref m) => {
             assert_eq!(m.opt_count("v"), 2);
           }
-          _ => fail!()
+          _ => panic!()
         }
     }
 
@@ -1183,7 +1185,7 @@ mod tests {
           Ok(ref m) => {
             assert_eq!(m.opt_count("v"), 2);
           }
-          _ => fail!()
+          _ => panic!()
         }
     }
 
@@ -1196,7 +1198,7 @@ mod tests {
           Ok(ref m) => {
             assert_eq!(m.opt_count("verbose"), 1);
           }
-          _ => fail!()
+          _ => panic!()
         }
     }
 
@@ -1209,7 +1211,7 @@ mod tests {
           Ok(ref m) => {
             assert_eq!(m.opt_count("verbose"), 2);
           }
-          _ => fail!()
+          _ => panic!()
         }
     }
 
@@ -1224,7 +1226,7 @@ mod tests {
             assert_eq!(m.opt_count("verbose"), 4);
             assert_eq!(m.opt_count("v"), 4);
           }
-          _ => fail!()
+          _ => panic!()
         }
     }
 
@@ -1241,7 +1243,7 @@ mod tests {
             assert!((m.opt_present("t")));
             assert_eq!(m.opt_str("t").unwrap(), "20".to_string());
           }
-          _ => fail!()
+          _ => panic!()
         }
         let short_args = vec!("-t".to_string(), "20".to_string());
         match getopts(short_args.as_slice(), opts.as_slice()) {
@@ -1251,7 +1253,7 @@ mod tests {
             assert!((m.opt_present("t")));
             assert_eq!(m.opt_str("t").unwrap(), "20".to_string());
           }
-          _ => fail!()
+          _ => panic!()
         }
     }
 
@@ -1265,7 +1267,7 @@ mod tests {
             assert!(!m.opt_present("test"));
             assert!(!m.opt_present("t"));
           }
-          _ => fail!()
+          _ => panic!()
         }
     }
 
@@ -1276,12 +1278,12 @@ mod tests {
         let rs = getopts(long_args.as_slice(), opts.as_slice());
         match rs {
           Err(f) => check_fail_type(f, ArgumentMissing_),
-          _ => fail!()
+          _ => panic!()
         }
         let short_args = vec!("-t".to_string());
         match getopts(short_args.as_slice(), opts.as_slice()) {
           Err(f) => check_fail_type(f, ArgumentMissing_),
-          _ => fail!()
+          _ => panic!()
         }
     }
 
@@ -1300,7 +1302,7 @@ mod tests {
               assert!(pair[0] == "20".to_string());
               assert!(pair[1] == "30".to_string());
           }
-          _ => fail!()
+          _ => panic!()
         }
     }
 
@@ -1311,12 +1313,12 @@ mod tests {
         let rs = getopts(long_args.as_slice(), opts.as_slice());
         match rs {
           Err(f) => check_fail_type(f, UnrecognizedOption_),
-          _ => fail!()
+          _ => panic!()
         }
         let short_args = vec!("-u".to_string());
         match getopts(short_args.as_slice(), opts.as_slice()) {
           Err(f) => check_fail_type(f, UnrecognizedOption_),
-          _ => fail!()
+          _ => panic!()
         }
     }
 
@@ -1365,7 +1367,7 @@ mod tests {
             assert!(pair[1] == "-60 70".to_string());
             assert!((!m.opt_present("notpresent")));
           }
-          _ => fail!()
+          _ => panic!()
         }
     }
 
@@ -1379,7 +1381,7 @@ mod tests {
         let matches_single = &match getopts(args_single.as_slice(),
                                             opts.as_slice()) {
           result::Ok(m) => m,
-          result::Err(_) => fail!()
+          result::Err(_) => panic!()
         };
         assert!(matches_single.opts_present(["e".to_string()]));
         assert!(matches_single.opts_present(["encrypt".to_string(), "e".to_string()]));
@@ -1399,7 +1401,7 @@ mod tests {
         let matches_both = &match getopts(args_both.as_slice(),
                                           opts.as_slice()) {
           result::Ok(m) => m,
-          result::Err(_) => fail!()
+          result::Err(_) => panic!()
         };
         assert!(matches_both.opts_present(["e".to_string()]));
         assert!(matches_both.opts_present(["encrypt".to_string()]));
@@ -1424,7 +1426,7 @@ mod tests {
                      optmulti("M", "", "something", "MMMM"));
         let matches = &match getopts(args.as_slice(), opts.as_slice()) {
           result::Ok(m) => m,
-          result::Err(_) => fail!()
+          result::Err(_) => panic!()
         };
         assert!(matches.opts_present(["L".to_string()]));
         assert_eq!(matches.opts_str(["L".to_string()]).unwrap(), "foo".to_string());
@@ -1440,7 +1442,7 @@ mod tests {
                      optflagmulti("v", "verbose", "Verbose"));
         let matches = &match getopts(args.as_slice(), opts.as_slice()) {
           result::Ok(m) => m,
-          result::Err(e) => fail!( "{}", e )
+          result::Err(e) => panic!( "{}", e )
         };
         assert!(matches.opts_present(["L".to_string()]));
         assert_eq!(matches.opts_str(["L".to_string()]).unwrap(), "verbose".to_string());

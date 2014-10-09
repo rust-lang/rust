@@ -11,7 +11,7 @@
 /* This test checks that nested comments are supported
 
    /*
-     This should not fail
+     This should not panic
    */
 */
 

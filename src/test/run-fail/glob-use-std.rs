@@ -20,5 +20,5 @@
 use std::*;
 
 fn main() {
-    fail!("fail works")
+    panic!("panic works")
 }

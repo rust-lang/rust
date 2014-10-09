@@ -68,7 +68,7 @@ pub struct Node<K, V> {
 
 impl<K: Ord, V> Node<K, V> {
     /// Searches for the given key in the node. If it finds an exact match,
-    /// `Found` will be yielded with the matching index. If it fails to find an exact match,
+    /// `Found` will be yielded with the matching index. If it doesn't find an exact match,
     /// `GoDown` will be yielded with the index of the subtree the key must lie in.
     pub fn search(&self, key: &K) -> SearchResult {
         // FIXME(Gankro): Tune when to search linear or binary based on B (and maybe K/V).

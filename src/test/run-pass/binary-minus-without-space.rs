@@ -11,6 +11,6 @@
 // Check that issue #954 stays fixed
 
 pub fn main() {
-    match -1i { -1 => {}, _ => fail!("wat") }
+    match -1i { -1 => {}, _ => panic!("wat") }
     assert_eq!(1i-1, 0i);
 }

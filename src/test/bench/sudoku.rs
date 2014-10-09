@@ -83,7 +83,7 @@ impl Sudoku {
                     from_str::<uint>(comps[2]).unwrap() as u8;
             }
             else {
-                fail!("Invalid sudoku file");
+                panic!("Invalid sudoku file");
             }
         }
         return Sudoku::new(g)
@@ -123,7 +123,7 @@ impl Sudoku {
                 ptr = ptr + 1u;
             } else {
                 // no: redo this field aft recoloring pred; unless there is none
-                if ptr == 0u { fail!("No solution found for this sudoku"); }
+                if ptr == 0u { panic!("No solution found for this sudoku"); }
                 ptr = ptr - 1u;
             }
         }

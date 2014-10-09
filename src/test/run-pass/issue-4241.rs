@@ -48,7 +48,7 @@ priv fn parse_list(len: uint, io: @io::Reader) -> Result {
         let v = match io.read_char() {
             '$' => parse_bulk(io),
             ':' => parse_int(io),
-             _ => fail!()
+             _ => panic!()
         };
         list.push(v);
     }
@@ -61,26 +61,26 @@ priv fn chop(s: String) -> String {
 
 priv fn parse_bulk(io: @io::Reader) -> Result {
     match from_str::<int>(chop(io.read_line())) {
-    None => fail!(),
+    None => panic!(),
     Some(-1) => Nil,
     Some(len) if len >= 0 => parse_data(len as uint, io),
-    Some(_) => fail!()
+    Some(_) => panic!()
     }
 }
 
 priv fn parse_multi(io: @io::Reader) -> Result {
     match from_str::<int>(chop(io.read_line())) {
-    None => fail!(),
+    None => panic!(),
     Some(-1) => Nil,
     Some(0) => List(~[]),
     Some(len) if len >= 0 => parse_list(len as uint, io),
-    Some(_) => fail!()
+    Some(_) => panic!()
     }
 }
 
 priv fn parse_int(io: @io::Reader) -> Result {
     match from_str::<int>(chop(io.read_line())) {
-    None => fail!(),
+    None => panic!(),
     Some(i) => Int(i)
     }
 }
@@ -92,7 +92,7 @@ priv fn parse_response(io: @io::Reader) -> Result {
     '+' => Status(chop(io.read_line())),
     '-' => Error(chop(io.read_line())),
     ':' => parse_int(io),
-    _ => fail!()
+    _ => panic!()
     }
 }
 

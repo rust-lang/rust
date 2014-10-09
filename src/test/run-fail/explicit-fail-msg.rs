@@ -15,5 +15,5 @@
 fn main() {
     let mut a = 1i;
     if 1i == 1 { a = 2; }
-    fail!(format!("woooo{}", "o"));
+    panic!(format!("woooo{}", "o"));
 }

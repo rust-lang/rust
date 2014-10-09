@@ -347,7 +347,7 @@ mod svh_visitor {
             } else {
                 // It is not possible to observe any kind of macro
                 // invocation at this stage except `macro_rules!`.
-                fail!("reached macro somehow: {}",
+                panic!("reached macro somehow: {}",
                       pprust::to_string(|pp_state| pp_state.print_mac(macro)));
             }
 

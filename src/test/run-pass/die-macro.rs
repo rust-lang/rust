@@ -8,14 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Just testing that fail!() type checks in statement or expr
+// Just testing that panic!() type checks in statement or expr
 
 #![allow(unreachable_code)]
 
 fn f() {
-    fail!();
+    panic!();
 
-    let _x: int = fail!();
+    let _x: int = panic!();
 }
 
 pub fn main() {

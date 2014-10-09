@@ -16,9 +16,9 @@ extern crate log;
 
 pub fn main() {
     if log_enabled!(log::DEBUG) {
-        fail!("what?! debugging?");
+        panic!("what?! debugging?");
     }
     if !log_enabled!(log::INFO) {
-        fail!("what?! no info?");
+        panic!("what?! no info?");
     }
 }

@@ -12,6 +12,6 @@
 #[phase(plugin, link)] extern crate log;
 
 pub fn foo<T>() {
-    fn death() -> int { fail!() }
+    fn death() -> int { panic!() }
     debug!("{}", (||{ death() })());
 }

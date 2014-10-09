@@ -58,21 +58,21 @@ fn get_v5(a: &A, _i: uint) -> &int {
 fn get_v6_a(a: &A, _i: uint) -> &int {
     match a.value.v6 {
         Some(ref v) => &v.f,
-        None => fail!()
+        None => panic!()
     }
 }
 
 fn get_v6_b(a: &A, _i: uint) -> &int {
     match *a {
         A { value: B { v6: Some(ref v), .. } } => &v.f,
-        _ => fail!()
+        _ => panic!()
     }
 }
 
 fn get_v6_c(a: &A, _i: uint) -> &int {
     match a {
         &A { value: B { v6: Some(ref v), .. } } => &v.f,
-        _ => fail!()
+        _ => panic!()
     }
 }
 

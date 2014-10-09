@@ -43,7 +43,7 @@ fn d(x: &mut int) {
 }
 
 fn e(x: &mut int) {
-    let c1: || = || x = fail!(); //~ ERROR closure cannot assign to immutable local variable
+    let c1: || = || x = panic!(); //~ ERROR closure cannot assign to immutable local variable
 }
 
 fn main() {

@@ -916,7 +916,7 @@ impl<'a, 'tcx> LookupContext<'a, 'tcx> {
             // FIXME(#6129). Default methods can't deal with autoref.
             //
             // I am a horrible monster and I pray for death. Currently
-            // the default method code fails when you try to reborrow
+            // the default method code panics when you try to reborrow
             // because it is not handling types correctly. In lieu of
             // fixing that, I am introducing this horrible hack. - ndm
             self_mt.mutbl == MutImmutable && ty::type_is_self(self_mt.ty)
@@ -1034,7 +1034,7 @@ impl<'a, 'tcx> LookupContext<'a, 'tcx> {
                         ty::mk_rptr(tcx, r, ty::mt{ ty: tr, mutbl: m })
                     })
             }
-            _ => fail!("Expected ty_trait in auto_slice_trait")
+            _ => panic!("Expected ty_trait in auto_slice_trait")
         }
     }
 
@@ -1767,7 +1767,7 @@ impl Candidate {
                 ImplSource(def_id)
             }
             MethodStaticUnboxedClosure(..) => {
-                fail!("MethodStaticUnboxedClosure only used in trans")
+                panic!("MethodStaticUnboxedClosure only used in trans")
             }
             MethodTypeParam(ref param) => {
                 TraitSource(param.trait_ref.def_id)

@@ -45,7 +45,7 @@ fn main() {
         task::spawn(proc() {
             let result = count(5u);
             println!("result = %?", result);
-            fail!();
+            panic!();
         });
     }
 }

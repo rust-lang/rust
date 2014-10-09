@@ -273,7 +273,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
         while undo_log.len() > snapshot.length + 1 {
             match undo_log.pop().unwrap() {
                 OpenSnapshot => {
-                    fail!("Failure to observe stack discipline");
+                    panic!("Failure to observe stack discipline");
                 }
                 Mark | CommitedSnapshot => { }
                 AddVar(vid) => {
@@ -916,7 +916,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
         // We want to generate the intersection of two
         // scopes or two free regions.  So, if one of
         // these scopes is a subscope of the other, return
-        // it.  Otherwise fail.
+        // it. Otherwise fail.
         debug!("intersect_scopes(scope_a={}, scope_b={}, region_a={}, region_b={})",
                scope_a, scope_b, region_a, region_b);
         match self.tcx.region_maps.nearest_common_ancestor(scope_a, scope_b) {

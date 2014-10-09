@@ -61,7 +61,7 @@ fn parse_opts(argv: Vec<String> ) -> Config {
       Ok(ref m) => {
           return Config {stress: m.opt_present("stress")}
       }
-      Err(_) => { fail!(); }
+      Err(_) => { panic!(); }
     }
 }
 

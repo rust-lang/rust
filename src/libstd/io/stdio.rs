@@ -176,8 +176,8 @@ pub fn set_stdout(stdout: Box<Writer + Send>) -> Option<Box<Writer + Send>> {
 /// Resets the task-local stderr handle to the specified writer
 ///
 /// This will replace the current task's stderr handle, returning the old
-/// handle. Currently, the stderr handle is used for printing failure messages
-/// during task failure.
+/// handle. Currently, the stderr handle is used for printing panic messages
+/// during task panic.
 ///
 /// Note that this does not need to be called for all new tasks; the default
 /// output handle is to the process's stderr stream.
@@ -212,7 +212,7 @@ fn with_task_stdout(f: |&mut Writer| -> IoResult<()>) {
     };
     match result {
         Ok(()) => {}
-        Err(e) => fail!("failed printing to stdout: {}", e),
+        Err(e) => panic!("failed printing to stdout: {}", e),
     }
 }
 
@@ -415,7 +415,7 @@ mod tests {
         let (mut r, w) = (ChanReader::new(rx), ChanWriter::new(tx));
         spawn(proc() {
             ::realstd::io::stdio::set_stderr(box w);
-            fail!("my special message");
+            panic!("my special message");
         });
         let s = r.read_to_string().unwrap();
         assert!(s.as_slice().contains("my special message"));

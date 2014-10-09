@@ -467,7 +467,7 @@ mod tests {
             while left > 0 {
                 match s.steal() {
                     Data((1, 10)) => { left -= 1; }
-                    Data(..) => fail!(),
+                    Data(..) => panic!(),
                     Abort | Empty => {}
                 }
             }
@@ -497,7 +497,7 @@ mod tests {
                             Data(box 20) => {
                                 (*unsafe_remaining).fetch_sub(1, SeqCst);
                             }
-                            Data(..) => fail!(),
+                            Data(..) => panic!(),
                             Abort | Empty => {}
                         }
                     }
@@ -508,7 +508,7 @@ mod tests {
         while remaining.load(SeqCst) > 0 {
             match w.pop() {
                 Some(box 20) => { remaining.fetch_sub(1, SeqCst); }
-                Some(..) => fail!(),
+                Some(..) => panic!(),
                 None => {}
             }
         }
@@ -556,7 +556,7 @@ mod tests {
                 loop {
                     match s.steal() {
                         Data(2) => { HITS.fetch_add(1, SeqCst); }
-                        Data(..) => fail!(),
+                        Data(..) => panic!(),
                         _ if DONE.load(SeqCst) => break,
                         _ => {}
                     }
@@ -571,7 +571,7 @@ mod tests {
                 match w.pop() {
                     None => {}
                     Some(2) => { HITS.fetch_add(1, SeqCst); },
-                    Some(_) => fail!(),
+                    Some(_) => panic!(),
                 }
             } else {
                 expected += 1;
@@ -583,7 +583,7 @@ mod tests {
             match w.pop() {
                 None => {}
                 Some(2) => { HITS.fetch_add(1, SeqCst); },
-                Some(_) => fail!(),
+                Some(_) => panic!(),
             }
         }
         DONE.store(true, SeqCst);
@@ -618,7 +618,7 @@ mod tests {
                             Data((1, 2)) => {
                                 (*thread_box).fetch_add(1, SeqCst);
                             }
-                            Data(..) => fail!(),
+                            Data(..) => panic!(),
                             _ if DONE.load(SeqCst) => break,
                             _ => {}
                         }
@@ -635,7 +635,7 @@ mod tests {
                     match w.pop() {
                         None => {}
                         Some((1, 2)) => myhit = true,
-                        Some(_) => fail!(),
+                        Some(_) => panic!(),
                     }
                 } else {
                     w.push((1, 2));

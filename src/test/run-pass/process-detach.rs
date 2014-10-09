@@ -44,6 +44,6 @@ fn main() {
     drop(p.stdin.take());
     match p.wait().unwrap() {
         process::ExitStatus(..) => {}
-        process::ExitSignal(..) => fail!()
+        process::ExitSignal(..) => panic!()
     }
 }

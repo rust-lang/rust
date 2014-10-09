@@ -13,7 +13,7 @@ fn main() {
     match a {
         Ok(a) => //~ ERROR: mismatched types
             println!("{}",a),
-        None => fail!()
+        None => panic!()
     }
 }
 

@@ -72,4 +72,4 @@ fn main() {
 }
 
 fn _zzz() {()}
-fn _yyy() -> ! {fail!()}
+fn _yyy() -> ! {panic!()}

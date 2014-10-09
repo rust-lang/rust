@@ -22,5 +22,5 @@ impl std::fmt::Show for Foo {
     }
 }
 fn main() {
-    fail!("{}", Foo)
+    panic!("{}", Foo)
 }

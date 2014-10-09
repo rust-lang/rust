@@ -94,7 +94,7 @@ pub fn maybe_find_item<'a>(item_id: ast::NodeId,
 
 fn find_item<'a>(item_id: ast::NodeId, items: rbml::Doc<'a>) -> rbml::Doc<'a> {
     match maybe_find_item(item_id, items) {
-       None => fail!("lookup_item: id not found: {}", item_id),
+       None => panic!("lookup_item: id not found: {}", item_id),
        Some(d) => d
     }
 }
@@ -153,7 +153,7 @@ fn item_family(item: rbml::Doc) -> Family {
       'S' => Struct,
       'g' => PublicField,
       'N' => InheritedField,
-       c => fail!("unexpected family char: {}", c)
+       c => panic!("unexpected family char: {}", c)
     }
 }
 
@@ -164,7 +164,7 @@ fn item_visibility(item: rbml::Doc) -> ast::Visibility {
             match reader::doc_as_u8(visibility_doc) as char {
                 'y' => ast::Public,
                 'i' => ast::Inherited,
-                _ => fail!("unknown visibility character")
+                _ => panic!("unknown visibility character")
             }
         }
     }
@@ -707,7 +707,7 @@ fn get_explicit_self(item: rbml::Doc) -> ty::ExplicitSelfCategory {
         match ch as char {
             'i' => ast::MutImmutable,
             'm' => ast::MutMutable,
-            _ => fail!("unknown mutability character: `{}`", ch as char),
+            _ => panic!("unknown mutability character: `{}`", ch as char),
         }
     }
 
@@ -725,7 +725,7 @@ fn get_explicit_self(item: rbml::Doc) -> ty::ExplicitSelfCategory {
                 ty::ReEmpty,
                 get_mutability(string.as_bytes()[1]))
         }
-        _ => fail!("unknown self type code: `{}`", explicit_self_kind as char)
+        _ => panic!("unknown self type code: `{}`", explicit_self_kind as char)
     }
 }
 
@@ -739,7 +739,7 @@ pub fn get_impl_items(cdata: Cmd, impl_id: ast::NodeId)
         match item_sort(doc) {
             'r' | 'p' => impl_items.push(ty::MethodTraitItemId(def_id)),
             't' => impl_items.push(ty::TypeTraitItemId(def_id)),
-            _ => fail!("unknown impl item sort"),
+            _ => panic!("unknown impl item sort"),
         }
         true
     });
@@ -760,7 +760,7 @@ pub fn get_trait_item_name_and_kind(intr: Rc<IdentInterner>,
         }
         't' => (name, TypeTraitItemKind),
         c => {
-            fail!("get_trait_item_name_and_kind(): unknown trait item kind \
+            panic!("get_trait_item_name_and_kind(): unknown trait item kind \
                    in metadata: `{}`", c)
         }
     }
@@ -811,7 +811,7 @@ pub fn get_impl_or_trait_item(intr: Rc<IdentInterner>,
                 container: container,
             }))
         }
-        _ => fail!("unknown impl/trait item sort"),
+        _ => panic!("unknown impl/trait item sort"),
     }
 }
 
@@ -825,7 +825,7 @@ pub fn get_trait_item_def_ids(cdata: Cmd, id: ast::NodeId)
         match item_sort(mth) {
             'r' | 'p' => result.push(ty::MethodTraitItemId(def_id)),
             't' => result.push(ty::TypeTraitItemId(def_id)),
-            _ => fail!("unknown trait item sort"),
+            _ => panic!("unknown trait item sort"),
         }
         true
     });
@@ -937,7 +937,7 @@ pub fn get_static_methods_if_impl(intr: Rc<IdentInterner>,
                 match item_family(impl_method_doc) {
                     StaticMethod => fn_style = ast::NormalFn,
                     UnsafeStaticMethod => fn_style = ast::UnsafeFn,
-                    _ => fail!()
+                    _ => panic!()
                 }
 
                 static_impl_methods.push(StaticMethodInfo {
@@ -998,7 +998,7 @@ fn struct_field_family_to_visibility(family: Family) -> ast::Visibility {
     match family {
       PublicField => ast::Public,
       InheritedField => ast::Inherited,
-      _ => fail!()
+      _ => panic!()
     }
 }
 
@@ -1207,7 +1207,7 @@ pub fn translate_def_id(cdata: Cmd, did: ast::DefId) -> ast::DefId {
                 node: did.node,
             }
         }
-        None => fail!("didn't find a crate in the cnum_map")
+        None => panic!("didn't find a crate in the cnum_map")
     }
 }
 
@@ -1314,7 +1314,7 @@ pub fn get_dylib_dependency_formats(cdata: Cmd)
         let cnum = from_str(cnum).unwrap();
         let cnum = match cdata.cnum_map.find(&cnum) {
             Some(&n) => n,
-            None => fail!("didn't find a crate in the cnum_map")
+            None => panic!("didn't find a crate in the cnum_map")
         };
         result.push((cnum, if link == "d" {
             cstore::RequireDynamic

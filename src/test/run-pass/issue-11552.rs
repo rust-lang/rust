@@ -20,7 +20,7 @@ fn fas(n: &Noun) -> Noun
 {
     match n {
         &Cell(box Atom(2), box Cell(ref a, _)) => (**a).clone(),
-        _ => fail!("Invalid fas pattern")
+        _ => panic!("Invalid fas pattern")
     }
 }
 

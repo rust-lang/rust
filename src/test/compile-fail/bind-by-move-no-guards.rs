@@ -13,8 +13,8 @@ fn main() {
     let x = Some(rx);
     tx.send(false);
     match x {
-        Some(z) if z.recv() => { fail!() }, //~ ERROR cannot bind by-move into a pattern guard
+        Some(z) if z.recv() => { panic!() }, //~ ERROR cannot bind by-move into a pattern guard
         Some(z) => { assert!(!z.recv()); },
-        None => fail!()
+        None => panic!()
     }
 }

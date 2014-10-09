@@ -23,7 +23,7 @@ fn pad() -> uint { 0 }
 
 mod a {
     pub fn f() {
-        fail!();
+        panic!();
     }
 }
 

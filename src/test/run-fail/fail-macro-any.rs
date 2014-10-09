@@ -12,5 +12,5 @@
 
 
 fn main() {
-    fail!(box 413i as Box<::std::any::Any+Send>);
+    panic!(box 413i as Box<::std::any::Any+Send>);
 }

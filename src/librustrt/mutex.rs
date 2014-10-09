@@ -81,7 +81,7 @@ pub struct NativeMutex {
 /// destruction.
 ///
 /// Using this makes lock-based code resilient to unwinding/task
-/// failure, because the lock will be automatically unlocked even
+/// panic, because the lock will be automatically unlocked even
 /// then.
 #[must_use]
 pub struct LockGuard<'a> {

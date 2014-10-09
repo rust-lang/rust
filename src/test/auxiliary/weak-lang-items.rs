@@ -28,7 +28,7 @@ impl core::ops::Drop for A {
 
 pub fn foo() {
     let _a = A;
-    fail!("wut");
+    panic!("wut");
 }
 
 mod std {

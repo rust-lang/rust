@@ -227,9 +227,9 @@ impl<T: Sync + Send> Drop for Arc<T> {
 impl<T: Sync + Send> Weak<T> {
     /// Attempts to upgrade this weak reference to a strong reference.
     ///
-    /// This method will fail to upgrade this reference if the strong reference
-    /// count has already reached 0, but if there are still other active strong
-    /// references this function will return a new strong reference to the data.
+    /// This method will not upgrade this reference if the strong reference count has already
+    /// reached 0, but if there are still other active strong references this function will return
+    /// a new strong reference to the data.
     pub fn upgrade(&self) -> Option<Arc<T>> {
         // We use a CAS loop to increment the strong count instead of a
         // fetch_add because once the count hits 0 is must never be above 0.

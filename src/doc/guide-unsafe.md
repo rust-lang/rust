@@ -182,7 +182,7 @@ code:
 - implement the `Drop` for resource clean-up via a destructor, and use
   RAII (Resource Acquisition Is Initialization). This reduces the need
   for any manual memory management by users, and automatically ensures
-  that clean-up is always run, even when the task fails.
+  that clean-up is always run, even when the task panics.
 - ensure that any data stored behind a raw pointer is destroyed at the
   appropriate time.
 
@@ -504,7 +504,7 @@ The second of these three functions, `eh_personality`, is used by the
 failure mechanisms of the compiler. This is often mapped to GCC's
 personality function (see the
 [libstd implementation](std/rt/unwind/index.html) for more
-information), but crates which do not trigger failure can be assured
+information), but crates which do not trigger a panic can be assured
 that this function is never called. The final function, `fail_fmt`, is
 also used by the failure mechanisms of the compiler.
 

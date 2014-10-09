@@ -12,12 +12,12 @@
 // certain positions
 // error-pattern:oops
 
-fn bigfail() {
-    while (fail!("oops")) { if (fail!()) {
-        match (fail!()) { () => {
+fn bigpanic() {
+    while (panic!("oops")) { if (panic!()) {
+        match (panic!()) { () => {
         }
                      }
     }};
 }
 
-fn main() { bigfail(); }
+fn main() { bigpanic(); }

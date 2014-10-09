@@ -15,7 +15,7 @@ fn main() {
     let v: Vec<int> = vec!(10);
     let x: uint = 0;
     assert_eq!(v[x], 10);
-    // Bounds-check failure.
+    // Bounds-check panic.
 
     assert_eq!(v[x + 2], 20);
 }

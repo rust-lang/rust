@@ -18,7 +18,9 @@ use result::{Ok, Err};
 /// An RNG that reads random bytes straight from a `Reader`. This will
 /// work best with an infinite reader, but this is not required.
 ///
-/// It will fail if it there is insufficient data to fulfill a request.
+/// # Panics
+///
+/// It will panic if it there is insufficient data to fulfill a request.
 ///
 /// # Example
 ///
@@ -65,7 +67,7 @@ impl<R: Reader> Rng for ReaderRng<R> {
         if v.len() == 0 { return }
         match self.reader.read_at_least(v.len(), v) {
             Ok(_) => {}
-            Err(e) => fail!("ReaderRng.fill_bytes error: {}", e)
+            Err(e) => panic!("ReaderRng.fill_bytes error: {}", e)
         }
     }
 }

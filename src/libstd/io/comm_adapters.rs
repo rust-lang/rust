@@ -188,14 +188,14 @@ mod test {
         assert_eq!(a, buf.as_slice());
 
         match reader.read(buf.as_mut_slice()) {
-            Ok(..) => fail!(),
+            Ok(..) => panic!(),
             Err(e) => assert_eq!(e.kind, io::EndOfFile),
         }
         assert_eq!(a, buf.as_slice());
 
-        // Ensure it continues to fail in the same way.
+        // Ensure it continues to panic in the same way.
         match reader.read(buf.as_mut_slice()) {
-            Ok(..) => fail!(),
+            Ok(..) => panic!(),
             Err(e) => assert_eq!(e.kind, io::EndOfFile),
         }
         assert_eq!(a, buf.as_slice());
@@ -218,7 +218,7 @@ mod test {
         assert_eq!(Ok("hello world\n".to_string()), reader.read_line());
         assert_eq!(Ok("how are you?".to_string()), reader.read_line());
         match reader.read_line() {
-            Ok(..) => fail!(),
+            Ok(..) => panic!(),
             Err(e) => assert_eq!(e.kind, io::EndOfFile),
         }
     }
@@ -232,12 +232,12 @@ mod test {
         let wanted = vec![0u8, 0u8, 0u8, 42u8];
         let got = match task::try(proc() { rx.recv() }) {
             Ok(got) => got,
-            Err(_) => fail!(),
+            Err(_) => panic!(),
         };
         assert_eq!(wanted, got);
 
         match writer.write_u8(1) {
-            Ok(..) => fail!(),
+            Ok(..) => panic!(),
             Err(e) => assert_eq!(e.kind, io::BrokenPipe),
         }
     }

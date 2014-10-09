@@ -168,7 +168,7 @@
 //! drop(handle);
 //!
 //! // Required to shut down this scheduler pool.
-//! // The task will fail if `shutdown` is not called.
+//! // The task will panic if `shutdown` is not called.
 //! pool.shutdown();
 //! # }
 //! ```
@@ -511,7 +511,7 @@ impl TaskState {
 impl Drop for SchedPool {
     fn drop(&mut self) {
         if self.threads.len() > 0 {
-            fail!("dropping a M:N scheduler pool that wasn't shut down");
+            panic!("dropping a M:N scheduler pool that wasn't shut down");
         }
     }
 }

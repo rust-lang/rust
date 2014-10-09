@@ -490,7 +490,7 @@ impl<K, V> TreeMap<K, V> {
     /// let new_ua = "Safari/156.0";
     /// match t.find_with_mut(|k| "User-Agent".cmp(k)) {
     ///    Some(x) => *x = new_ua,
-    ///    None => fail!(),
+    ///    None => panic!(),
     /// }
     ///
     /// assert_eq!(t.find(&"User-Agent"), Some(&new_ua));
@@ -1616,7 +1616,7 @@ fn remove<K: Ord, V>(node: &mut Option<Box<TreeNode<K, V>>>,
       }
     }
     return match node.take() {
-        Some(box TreeNode{value, ..}) => Some(value), None => fail!()
+        Some(box TreeNode{value, ..}) => Some(value), None => panic!()
     };
 }
 
@@ -1726,7 +1726,7 @@ mod test_treemap {
         assert!(m.insert(5, 14));
         let new = 100;
         match m.find_mut(&5) {
-          None => fail!(), Some(x) => *x = new
+          None => panic!(), Some(x) => *x = new
         }
         assert_eq!(m.find(&5), Some(&new));
     }
@@ -1739,7 +1739,7 @@ mod test_treemap {
         assert!(m.insert("t5", 14));
         let new = 100;
         match m.find_with_mut(|k| "t5".cmp(k)) {
-          None => fail!(), Some(x) => *x = new
+          None => panic!(), Some(x) => *x = new
         }
         assert_eq!(m.find_with(|k| "t5".cmp(k)), Some(&new));
     }

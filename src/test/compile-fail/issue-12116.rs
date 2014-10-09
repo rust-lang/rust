@@ -18,7 +18,7 @@ fn tail(source_list: &IntList) -> IntList {
         &Cons(val, box ref next_list) => tail(next_list),
         &Cons(val, box Nil)           => Cons(val, box Nil),
         //~^ ERROR: unreachable pattern
-        _                          => fail!()
+        _                          => panic!()
     }
 }
 

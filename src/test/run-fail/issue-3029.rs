@@ -17,6 +17,6 @@
 fn main() {
     let mut x = Vec::new();
     let y = vec!(3i);
-    fail!("so long");
+    panic!("so long");
     x.extend(y.into_iter());
 }
