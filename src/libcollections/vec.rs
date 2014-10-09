@@ -622,12 +622,11 @@ impl<T: Clone> CloneableVector<T> for Vec<T> {
 
 // FIXME: #13996: need a way to mark the return value as `noalias`
 #[inline(never)]
-unsafe fn alloc_or_realloc<T>(ptr: *mut T, size: uint, old_size: uint) -> *mut T {
+unsafe fn alloc_or_realloc<T>(ptr: *mut T, old_size: uint, size: uint) -> *mut T {
     if old_size == 0 {
         allocate(size, mem::min_align_of::<T>()) as *mut T
     } else {
-        reallocate(ptr as *mut u8, size,
-                   mem::min_align_of::<T>(), old_size) as *mut T
+        reallocate(ptr as *mut u8, old_size, size, mem::min_align_of::<T>()) as *mut T
     }
 }
 
@@ -720,8 +719,7 @@ impl<T> Vec<T> {
             let size = capacity.checked_mul(&mem::size_of::<T>())
                                .expect("capacity overflow");
             unsafe {
-                self.ptr = alloc_or_realloc(self.ptr, size,
-                                            self.cap * mem::size_of::<T>());
+                self.ptr = alloc_or_realloc(self.ptr, self.cap * mem::size_of::<T>(), size);
             }
             self.cap = capacity;
         }
@@ -751,9 +749,9 @@ impl<T> Vec<T> {
                 // Overflow check is unnecessary as the vector is already at
                 // least this large.
                 self.ptr = reallocate(self.ptr as *mut u8,
+                                      self.cap * mem::size_of::<T>(),
                                       self.len * mem::size_of::<T>(),
-                                      mem::min_align_of::<T>(),
-                                      self.cap * mem::size_of::<T>()) as *mut T;
+                                      mem::min_align_of::<T>()) as *mut T;
             }
             self.cap = self.len;
         }
@@ -1736,8 +1734,7 @@ impl<T> MutableSeq<T> for Vec<T> {
             let size = max(old_size, 2 * mem::size_of::<T>()) * 2;
             if old_size > size { fail!("capacity overflow") }
             unsafe {
-                self.ptr = alloc_or_realloc(self.ptr, size,
-                                            self.cap * mem::size_of::<T>());
+                self.ptr = alloc_or_realloc(self.ptr, self.cap * mem::size_of::<T>(), size);
             }
             self.cap = max(self.cap, 2) * 2;
         }
