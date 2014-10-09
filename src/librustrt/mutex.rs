@@ -364,20 +364,20 @@ mod imp {
         use libc;
 
         #[cfg(target_arch = "x86_64")]
-        static __PTHREAD_MUTEX_SIZE__: uint = 56;
+        const __PTHREAD_MUTEX_SIZE__: uint = 56;
         #[cfg(target_arch = "x86_64")]
-        static __PTHREAD_COND_SIZE__: uint = 40;
+        const __PTHREAD_COND_SIZE__: uint = 40;
         #[cfg(target_arch = "x86")]
-        static __PTHREAD_MUTEX_SIZE__: uint = 40;
+        const __PTHREAD_MUTEX_SIZE__: uint = 40;
         #[cfg(target_arch = "x86")]
-        static __PTHREAD_COND_SIZE__: uint = 24;
+        const __PTHREAD_COND_SIZE__: uint = 24;
         #[cfg(target_arch = "arm")]
-        static __PTHREAD_MUTEX_SIZE__: uint = 40;
+        const __PTHREAD_MUTEX_SIZE__: uint = 40;
         #[cfg(target_arch = "arm")]
-        static __PTHREAD_COND_SIZE__: uint = 24;
+        const __PTHREAD_COND_SIZE__: uint = 24;
 
-        static _PTHREAD_MUTEX_SIG_INIT: libc::c_long = 0x32AAABA7;
-        static _PTHREAD_COND_SIG_INIT: libc::c_long = 0x3CB0B1BB;
+        const _PTHREAD_MUTEX_SIG_INIT: libc::c_long = 0x32AAABA7;
+        const _PTHREAD_COND_SIG_INIT: libc::c_long = 0x3CB0B1BB;
 
         #[repr(C)]
         pub struct pthread_mutex_t {

@@ -17,7 +17,7 @@ use libc;
 pub const WSADESCRIPTION_LEN: uint = 256;
 pub const WSASYS_STATUS_LEN: uint = 128;
 pub const FIONBIO: libc::c_long = 0x8004667e;
-static FD_SETSIZE: uint = 64;
+pub const FD_SETSIZE: uint = 64;
 pub const MSG_DONTWAIT: libc::c_int = 0;
 pub const ERROR_ILLEGAL_CHARACTER: libc::c_int = 582;
 pub const ENABLE_ECHO_INPUT: libc::DWORD = 0x4;
