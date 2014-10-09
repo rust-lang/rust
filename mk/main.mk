@@ -13,7 +13,7 @@
 ######################################################################
 
 # The version number
-CFG_RELEASE_NUM=0.12.0
+CFG_RELEASE_NUM=0.13.0
 
 CFG_FILENAME_EXTRA=4e7c5e5c
 
