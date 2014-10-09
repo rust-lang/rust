@@ -301,8 +301,4 @@ impl rtio::IoFactory for IoFactory {
             })
         }
     }
-    fn signal(&mut self, _signal: int, _cb: Box<rtio::Callback>)
-              -> IoResult<Box<rtio::RtioSignal + Send>> {
-        Err(unimpl())
-    }
 }
