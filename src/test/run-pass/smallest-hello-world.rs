@@ -25,7 +25,7 @@ extern "rust-intrinsic" { fn transmute<T, U>(t: T) -> U; }
 #[lang = "fail_fmt"] fn fail_fmt() -> ! { loop {} }
 
 #[start]
-#[no_split_stack]
+#[no_stack_check]
 fn main(_: int, _: *const *const u8) -> int {
     unsafe {
         let (ptr, _): (*const u8, uint) = transmute("Hello!\0");
