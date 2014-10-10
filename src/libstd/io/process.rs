@@ -32,16 +32,16 @@ use std::hash::sip::SipState;
 
 /// Signal a process to exit, without forcibly killing it. Corresponds to
 /// SIGTERM on unix platforms.
-#[cfg(windows)] pub static PleaseExitSignal: int = 15;
+#[cfg(windows)] pub const PleaseExitSignal: int = 15;
 /// Signal a process to exit immediately, forcibly killing it. Corresponds to
 /// SIGKILL on unix platforms.
-#[cfg(windows)] pub static MustDieSignal: int = 9;
+#[cfg(windows)] pub const MustDieSignal: int = 9;
 /// Signal a process to exit, without forcibly killing it. Corresponds to
 /// SIGTERM on unix platforms.
-#[cfg(not(windows))] pub static PleaseExitSignal: int = libc::SIGTERM as int;
+#[cfg(not(windows))] pub const PleaseExitSignal: int = libc::SIGTERM as int;
 /// Signal a process to exit immediately, forcibly killing it. Corresponds to
 /// SIGKILL on unix platforms.
-#[cfg(not(windows))] pub static MustDieSignal: int = libc::SIGKILL as int;
+#[cfg(not(windows))] pub const MustDieSignal: int = libc::SIGKILL as int;
 
 /// Representation of a running or exited child process.
 ///

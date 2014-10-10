@@ -49,9 +49,9 @@ pub struct CustomScopeIndex {
     index: uint
 }
 
-pub static EXIT_BREAK: uint = 0;
-pub static EXIT_LOOP: uint = 1;
-pub static EXIT_MAX: uint = 2;
+pub const EXIT_BREAK: uint = 0;
+pub const EXIT_LOOP: uint = 1;
+pub const EXIT_MAX: uint = 2;
 
 pub enum CleanupScopeKind<'blk, 'tcx: 'blk> {
     CustomScopeKind,

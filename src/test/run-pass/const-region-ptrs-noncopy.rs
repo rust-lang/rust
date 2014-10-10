@@ -10,8 +10,8 @@
 
 type Big = [u64, ..8];
 struct Pair<'a> { a: int, b: &'a Big }
-static x: &'static Big = &([13, 14, 10, 13, 11, 14, 14, 15]);
-static y: &'static Pair<'static> = &Pair {a: 15, b: x};
+const x: &'static Big = &([13, 14, 10, 13, 11, 14, 14, 15]);
+const y: &'static Pair<'static> = &Pair {a: 15, b: x};
 
 pub fn main() {
     assert_eq!(x as *const Big, y.b as *const Big);

@@ -384,6 +384,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for TermsContext<'a, 'tcx> {
 
             ast::ItemImpl(..) |
             ast::ItemStatic(..) |
+            ast::ItemConst(..) |
             ast::ItemFn(..) |
             ast::ItemMod(..) |
             ast::ItemForeignMod(..) |
@@ -528,6 +529,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for ConstraintContext<'a, 'tcx> {
             }
 
             ast::ItemStatic(..) |
+            ast::ItemConst(..) |
             ast::ItemFn(..) |
             ast::ItemMod(..) |
             ast::ItemForeignMod(..) |

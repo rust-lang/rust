@@ -211,7 +211,8 @@ pub fn walk_trait_ref_helper<'v,V>(visitor: &mut V, trait_ref: &'v TraitRef)
 pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item) {
     visitor.visit_ident(item.span, item.ident);
     match item.node {
-        ItemStatic(ref typ, _, ref expr) => {
+        ItemStatic(ref typ, _, ref expr) |
+        ItemConst(ref typ, ref expr) => {
             visitor.visit_ty(&**typ);
             visitor.visit_expr(&**expr);
         }

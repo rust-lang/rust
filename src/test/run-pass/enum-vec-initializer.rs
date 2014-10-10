@@ -12,13 +12,13 @@ enum Flopsy {
     Bunny = 2
 }
 
-static BAR:uint = Bunny as uint;
-static BAR2:uint = BAR;
+const BAR:uint = Bunny as uint;
+const BAR2:uint = BAR;
 
 pub fn main() {
     let _v = [0i, .. Bunny as uint];
     let _v = [0i, .. BAR];
     let _v = [0i, .. BAR2];
-    static BAR3:uint = BAR2;
+    const BAR3:uint = BAR2;
     let _v = [0i, .. BAR3];
 }

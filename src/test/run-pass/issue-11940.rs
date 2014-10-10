@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-static TEST_STR: &'static str = "abcd";
+const TEST_STR: &'static str = "abcd";
 
 fn main() {
     let s = "abcd";

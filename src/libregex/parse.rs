@@ -162,12 +162,12 @@ impl BuildAst {
 /// expression.
 pub type Flags = u8;
 
-pub static FLAG_EMPTY:      u8 = 0;
-pub static FLAG_NOCASE:     u8 = 1 << 0; // i
-pub static FLAG_MULTI:      u8 = 1 << 1; // m
-pub static FLAG_DOTNL:      u8 = 1 << 2; // s
-pub static FLAG_SWAP_GREED: u8 = 1 << 3; // U
-pub static FLAG_NEGATED:    u8 = 1 << 4; // char class or not word boundary
+pub const FLAG_EMPTY:      u8 = 0;
+pub const FLAG_NOCASE:     u8 = 1 << 0; // i
+pub const FLAG_MULTI:      u8 = 1 << 1; // m
+pub const FLAG_DOTNL:      u8 = 1 << 2; // s
+pub const FLAG_SWAP_GREED: u8 = 1 << 3; // U
+pub const FLAG_NEGATED:    u8 = 1 << 4; // char class or not word boundary
 
 struct Parser<'a> {
     // The input, parsed only as a sequence of UTF8 code points.
@@ -1025,7 +1025,7 @@ fn find_class(classes: NamedClasses, name: &str) -> Option<Vec<(char, char)>> {
 }
 
 type Class = &'static [(char, char)];
-type NamedClasses = &'static [(&'static str, Class)];
+type NamedClasses = &'static [(&'static str, &'static Class)];
 
 static ASCII_CLASSES: NamedClasses = &[
     // Classes must be in alphabetical order so that bsearch works.
@@ -1044,19 +1044,34 @@ static ASCII_CLASSES: NamedClasses = &[
     // [:word:]       word characters (== [0-9A-Za-z_])
     // [:xdigit:]     hex digit (== [0-9A-Fa-f])
     // Taken from: http://golang.org/pkg/regex/syntax/
-    ("alnum", &[('0', '9'), ('A', 'Z'), ('a', 'z')]),
-    ("alpha", &[('A', 'Z'), ('a', 'z')]),
-    ("ascii", &[('\x00', '\x7F')]),
-    ("blank", &[(' ', ' '), ('\t', '\t')]),
-    ("cntrl", &[('\x00', '\x1F'), ('\x7F', '\x7F')]),
-    ("digit", &[('0', '9')]),
-    ("graph", &[('!', '~')]),
-    ("lower", &[('a', 'z')]),
-    ("print", &[(' ', '~')]),
-    ("punct", &[('!', '/'), (':', '@'), ('[', '`'), ('{', '~')]),
-    ("space", &[('\t', '\t'), ('\n', '\n'), ('\x0B', '\x0B'), ('\x0C', '\x0C'),
-                ('\r', '\r'), (' ', ' ')]),
-    ("upper", &[('A', 'Z')]),
-    ("word", &[('0', '9'), ('A', 'Z'), ('a', 'z'), ('_', '_')]),
-    ("xdigit", &[('0', '9'), ('A', 'F'), ('a', 'f')]),
+    ("alnum", &ALNUM),
+    ("alpha", &ALPHA),
+    ("ascii", &ASCII),
+    ("blank", &BLANK),
+    ("cntrl", &CNTRL),
+    ("digit", &DIGIT),
+    ("graph", &GRAPH),
+    ("lower", &LOWER),
+    ("print", &PRINT),
+    ("punct", &PUNCT),
+    ("space", &SPACE),
+    ("upper", &UPPER),
+    ("word", &WORD),
+    ("xdigit", &XDIGIT),
 ];
+
+static ALNUM: Class = &[('0', '9'), ('A', 'Z'), ('a', 'z')];
+static ALPHA: Class = &[('A', 'Z'), ('a', 'z')];
+static ASCII: Class = &[('\x00', '\x7F')];
+static BLANK: Class = &[(' ', ' '), ('\t', '\t')];
+static CNTRL: Class = &[('\x00', '\x1F'), ('\x7F', '\x7F')];
+static DIGIT: Class = &[('0', '9')];
+static GRAPH: Class = &[('!', '~')];
+static LOWER: Class = &[('a', 'z')];
+static PRINT: Class = &[(' ', '~')];
+static PUNCT: Class = &[('!', '/'), (':', '@'), ('[', '`'), ('{', '~')];
+static SPACE: Class = &[('\t', '\t'), ('\n', '\n'), ('\x0B', '\x0B'),
+                        ('\x0C', '\x0C'), ('\r', '\r'), (' ', ' ')];
+static UPPER: Class = &[('A', 'Z')];
+static WORD: Class = &[('0', '9'), ('A', 'Z'), ('a', 'z'), ('_', '_')];
+static XDIGIT: Class = &[('0', '9'), ('A', 'F'), ('a', 'f')];

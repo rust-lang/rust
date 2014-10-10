@@ -196,6 +196,7 @@ fn trans<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, expr: &ast::Expr)
                 }
             }
             def::DefStatic(..) |
+            def::DefConst(..) |
             def::DefLocal(..) |
             def::DefUpvar(..) => {
                 datum_callee(bcx, ref_expr)

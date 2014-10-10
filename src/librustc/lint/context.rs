@@ -112,9 +112,9 @@ impl LintStore {
     pub fn register_pass(&mut self, sess: Option<&Session>,
                          from_plugin: bool, pass: LintPassObject) {
         for &lint in pass.get_lints().iter() {
-            self.lints.push((lint, from_plugin));
+            self.lints.push((*lint, from_plugin));
 
-            let id = LintId::of(lint);
+            let id = LintId::of(*lint);
             if !self.by_name.insert(lint.name_lower(), id) {
                 let msg = format!("duplicate specification of lint {}", lint.name_lower());
                 match (sess, from_plugin) {

@@ -219,8 +219,8 @@ pub struct RefCell<T> {
 // Values [1, MAX-1] represent the number of `Ref` active
 // (will not outgrow its range since `uint` is the size of the address space)
 type BorrowFlag = uint;
-static UNUSED: BorrowFlag = 0;
-static WRITING: BorrowFlag = -1;
+const UNUSED: BorrowFlag = 0;
+const WRITING: BorrowFlag = -1;
 
 impl<T> RefCell<T> {
     /// Create a new `RefCell` containing `value`

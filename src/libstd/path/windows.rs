@@ -958,14 +958,14 @@ pub fn make_non_verbatim(path: &Path) -> Option<Path> {
 }
 
 /// The standard path separator character
-pub static SEP: char = '\\';
+pub const SEP: char = '\\';
 /// The standard path separator byte
-pub static SEP_BYTE: u8 = SEP as u8;
+pub const SEP_BYTE: u8 = SEP as u8;
 
 /// The alternative path separator character
-pub static SEP2: char = '/';
+pub const SEP2: char = '/';
 /// The alternative path separator character
-pub static SEP2_BYTE: u8 = SEP2 as u8;
+pub const SEP2_BYTE: u8 = SEP2 as u8;
 
 /// Returns whether the given char is a path separator.
 /// Allows both the primary separator '\' and the alternative separator '/'.

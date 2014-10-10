@@ -241,23 +241,23 @@ use std::collections::hashmap::{Occupied, Vacant};
 use flate;
 use time;
 
-pub static MACOS_DLL_PREFIX: &'static str = "lib";
-pub static MACOS_DLL_SUFFIX: &'static str = ".dylib";
+pub const MACOS_DLL_PREFIX: &'static str = "lib";
+pub const MACOS_DLL_SUFFIX: &'static str = ".dylib";
 
-pub static WIN32_DLL_PREFIX: &'static str = "";
-pub static WIN32_DLL_SUFFIX: &'static str = ".dll";
+pub const WIN32_DLL_PREFIX: &'static str = "";
+pub const WIN32_DLL_SUFFIX: &'static str = ".dll";
 
-pub static LINUX_DLL_PREFIX: &'static str = "lib";
-pub static LINUX_DLL_SUFFIX: &'static str = ".so";
+pub const LINUX_DLL_PREFIX: &'static str = "lib";
+pub const LINUX_DLL_SUFFIX: &'static str = ".so";
 
-pub static FREEBSD_DLL_PREFIX: &'static str = "lib";
-pub static FREEBSD_DLL_SUFFIX: &'static str = ".so";
+pub const FREEBSD_DLL_PREFIX: &'static str = "lib";
+pub const FREEBSD_DLL_SUFFIX: &'static str = ".so";
 
-pub static DRAGONFLY_DLL_PREFIX: &'static str = "lib";
-pub static DRAGONFLY_DLL_SUFFIX: &'static str = ".so";
+pub const DRAGONFLY_DLL_PREFIX: &'static str = "lib";
+pub const DRAGONFLY_DLL_SUFFIX: &'static str = ".so";
 
-pub static ANDROID_DLL_PREFIX: &'static str = "lib";
-pub static ANDROID_DLL_SUFFIX: &'static str = ".so";
+pub const ANDROID_DLL_PREFIX: &'static str = "lib";
+pub const ANDROID_DLL_SUFFIX: &'static str = ".so";
 
 pub struct CrateMismatch {
     path: Path,

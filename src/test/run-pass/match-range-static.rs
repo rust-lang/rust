@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-static s: int = 1;
-static e: int = 42;
+const s: int = 1;
+const e: int = 42;
 
 pub fn main() {
     match 7 {

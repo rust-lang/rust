@@ -169,15 +169,11 @@ fn check_aliasability(bccx: &BorrowckCtxt,
             // Borrow of an immutable static item:
             match safety {
                 mc::InteriorUnsafe => {
-                    // If the static item contains an Unsafe<T>, it has interior mutability.
-                    // In such cases, we cannot permit it to be borrowed, because the
-                    // static item resides in immutable memory and mutating it would
-                    // cause segfaults.
-                    bccx.tcx.sess.span_err(borrow_span,
-                                           "borrow of immutable static items \
-                                            with unsafe interior is not \
-                                            allowed");
-                    Err(())
+                    // If the static item contains an Unsafe<T>, it has interior
+                    // mutability.  In such cases, another phase of the compiler
+                    // will ensure that the type is `Sync` and then trans will
+                    // not put it in rodata, so this is ok to allow.
+                    Ok(())
                 }
                 mc::InteriorSafe => {
                     // Immutable static can be borrowed, no problem.

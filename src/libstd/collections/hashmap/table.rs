@@ -24,7 +24,7 @@ use ptr::{RawPtr, copy_nonoverlapping_memory, zero_memory};
 use ptr;
 use rt::heap::{allocate, deallocate};
 
-static EMPTY_BUCKET: u64 = 0u64;
+const EMPTY_BUCKET: u64 = 0u64;
 
 /// The raw hashtable, providing safe-ish access to the unzipped and highly
 /// optimized arrays of hashes, keys, and values.

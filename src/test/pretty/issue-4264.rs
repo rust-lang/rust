@@ -17,7 +17,7 @@
 pub fn foo(_: [int, ..3]) {}
 
 pub fn bar() {
-    static FOO: uint = 5u - 4u;
+    const FOO: uint = 5u - 4u;
     let _: [(), ..FOO] = [()];
 
     let _ : [(), ..1u] = [()];

@@ -20,29 +20,29 @@ use num::{FPNormal, FPCategory, FPZero, FPSubnormal, FPInfinite, FPNaN};
 use num::Float;
 use option::Option;
 
-pub static RADIX: uint = 2u;
+pub const RADIX: uint = 2u;
 
-pub static MANTISSA_DIGITS: uint = 24u;
-pub static DIGITS: uint = 6u;
+pub const MANTISSA_DIGITS: uint = 24u;
+pub const DIGITS: uint = 6u;
 
-pub static EPSILON: f32 = 1.19209290e-07_f32;
+pub const EPSILON: f32 = 1.19209290e-07_f32;
 
 /// Smallest finite f32 value
-pub static MIN_VALUE: f32 = -3.40282347e+38_f32;
+pub const MIN_VALUE: f32 = -3.40282347e+38_f32;
 /// Smallest positive, normalized f32 value
-pub static MIN_POS_VALUE: f32 = 1.17549435e-38_f32;
+pub const MIN_POS_VALUE: f32 = 1.17549435e-38_f32;
 /// Largest finite f32 value
-pub static MAX_VALUE: f32 = 3.40282347e+38_f32;
+pub const MAX_VALUE: f32 = 3.40282347e+38_f32;
 
-pub static MIN_EXP: int = -125;
-pub static MAX_EXP: int = 128;
+pub const MIN_EXP: int = -125;
+pub const MAX_EXP: int = 128;
 
-pub static MIN_10_EXP: int = -37;
-pub static MAX_10_EXP: int = 38;
+pub const MIN_10_EXP: int = -37;
+pub const MAX_10_EXP: int = 38;
 
-pub static NAN: f32 = 0.0_f32/0.0_f32;
-pub static INFINITY: f32 = 1.0_f32/0.0_f32;
-pub static NEG_INFINITY: f32 = -1.0_f32/0.0_f32;
+pub const NAN: f32 = 0.0_f32/0.0_f32;
+pub const INFINITY: f32 = 1.0_f32/0.0_f32;
+pub const NEG_INFINITY: f32 = -1.0_f32/0.0_f32;
 
 /// Various useful constants.
 pub mod consts {
@@ -53,55 +53,55 @@ pub mod consts {
     // of `Float`.
 
     /// Archimedes' constant
-    pub static PI: f32 = 3.14159265358979323846264338327950288_f32;
+    pub const PI: f32 = 3.14159265358979323846264338327950288_f32;
 
     /// pi * 2.0
-    pub static PI_2: f32 = 6.28318530717958647692528676655900576_f32;
+    pub const PI_2: f32 = 6.28318530717958647692528676655900576_f32;
 
     /// pi/2.0
-    pub static FRAC_PI_2: f32 = 1.57079632679489661923132169163975144_f32;
+    pub const FRAC_PI_2: f32 = 1.57079632679489661923132169163975144_f32;
 
     /// pi/3.0
-    pub static FRAC_PI_3: f32 = 1.04719755119659774615421446109316763_f32;
+    pub const FRAC_PI_3: f32 = 1.04719755119659774615421446109316763_f32;
 
     /// pi/4.0
-    pub static FRAC_PI_4: f32 = 0.785398163397448309615660845819875721_f32;
+    pub const FRAC_PI_4: f32 = 0.785398163397448309615660845819875721_f32;
 
     /// pi/6.0
-    pub static FRAC_PI_6: f32 = 0.52359877559829887307710723054658381_f32;
+    pub const FRAC_PI_6: f32 = 0.52359877559829887307710723054658381_f32;
 
     /// pi/8.0
-    pub static FRAC_PI_8: f32 = 0.39269908169872415480783042290993786_f32;
+    pub const FRAC_PI_8: f32 = 0.39269908169872415480783042290993786_f32;
 
     /// 1.0/pi
-    pub static FRAC_1_PI: f32 = 0.318309886183790671537767526745028724_f32;
+    pub const FRAC_1_PI: f32 = 0.318309886183790671537767526745028724_f32;
 
     /// 2.0/pi
-    pub static FRAC_2_PI: f32 = 0.636619772367581343075535053490057448_f32;
+    pub const FRAC_2_PI: f32 = 0.636619772367581343075535053490057448_f32;
 
     /// 2.0/sqrt(pi)
-    pub static FRAC_2_SQRTPI: f32 = 1.12837916709551257389615890312154517_f32;
+    pub const FRAC_2_SQRTPI: f32 = 1.12837916709551257389615890312154517_f32;
 
     /// sqrt(2.0)
-    pub static SQRT2: f32 = 1.41421356237309504880168872420969808_f32;
+    pub const SQRT2: f32 = 1.41421356237309504880168872420969808_f32;
 
     /// 1.0/sqrt(2.0)
-    pub static FRAC_1_SQRT2: f32 = 0.707106781186547524400844362104849039_f32;
+    pub const FRAC_1_SQRT2: f32 = 0.707106781186547524400844362104849039_f32;
 
     /// Euler's number
-    pub static E: f32 = 2.71828182845904523536028747135266250_f32;
+    pub const E: f32 = 2.71828182845904523536028747135266250_f32;
 
     /// log2(e)
-    pub static LOG2_E: f32 = 1.44269504088896340735992468100189214_f32;
+    pub const LOG2_E: f32 = 1.44269504088896340735992468100189214_f32;
 
     /// log10(e)
-    pub static LOG10_E: f32 = 0.434294481903251827651128918916605082_f32;
+    pub const LOG10_E: f32 = 0.434294481903251827651128918916605082_f32;
 
     /// ln(2.0)
-    pub static LN_2: f32 = 0.693147180559945309417232121458176568_f32;
+    pub const LN_2: f32 = 0.693147180559945309417232121458176568_f32;
 
     /// ln(10.0)
-    pub static LN_10: f32 = 2.30258509299404568401799145468436421_f32;
+    pub const LN_10: f32 = 2.30258509299404568401799145468436421_f32;
 }
 
 impl Float for f32 {
@@ -143,8 +143,8 @@ impl Float for f32 {
     /// is going to be tested, it is generally faster to use the specific
     /// predicate instead.
     fn classify(self) -> FPCategory {
-        static EXP_MASK: u32 = 0x7f800000;
-        static MAN_MASK: u32 = 0x007fffff;
+        const EXP_MASK: u32 = 0x7f800000;
+        const MAN_MASK: u32 = 0x007fffff;
 
         let bits: u32 = unsafe { mem::transmute(self) };
         match (bits & MAN_MASK, bits & EXP_MASK) {

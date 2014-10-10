@@ -10,20 +10,20 @@
 
 extern crate debug;
 
-static x : [int, ..4] = [1,2,3,4];
+const x : [int, ..4] = [1,2,3,4];
 static p : int = x[2];
-static y : &'static [int] = &[1,2,3,4];
+const y : &'static [int] = &[1,2,3,4];
 static q : int = y[2];
 
 struct S {a: int, b: int}
 
-static s : S = S {a: 10, b: 20};
+const s : S = S {a: 10, b: 20};
 static t : int = s.b;
 
 struct K {a: int, b: int, c: D}
 struct D { d: int, e: int }
 
-static k : K = K {a: 10, b: 20, c: D {d: 30, e: 40}};
+const k : K = K {a: 10, b: 20, c: D {d: 30, e: 40}};
 static m : int = k.c.e;
 
 pub fn main() {

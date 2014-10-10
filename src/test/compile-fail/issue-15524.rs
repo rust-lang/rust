@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-static N: int = 1;
+const N: int = 1;
 
 enum Foo {
     A = 1,

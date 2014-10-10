@@ -48,9 +48,9 @@ pub enum Architecture {
 }
 
 #[allow(non_uppercase_statics)]
-static IntelBits: u32 = (1 << (X86 as uint)) | (1 << (X86_64 as uint));
+const IntelBits: u32 = (1 << (X86 as uint)) | (1 << (X86_64 as uint));
 #[allow(non_uppercase_statics)]
-static ArmBits: u32 = (1 << (Arm as uint));
+const ArmBits: u32 = (1 << (Arm as uint));
 
 pub struct AbiData {
     abi: Abi,

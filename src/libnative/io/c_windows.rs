@@ -14,26 +14,26 @@
 
 use libc;
 
-pub static WSADESCRIPTION_LEN: uint = 256;
-pub static WSASYS_STATUS_LEN: uint = 128;
-pub static FIONBIO: libc::c_long = 0x8004667e;
-static FD_SETSIZE: uint = 64;
-pub static MSG_DONTWAIT: libc::c_int = 0;
-pub static ERROR_ILLEGAL_CHARACTER: libc::c_int = 582;
-pub static ENABLE_ECHO_INPUT: libc::DWORD = 0x4;
-pub static ENABLE_EXTENDED_FLAGS: libc::DWORD = 0x80;
-pub static ENABLE_INSERT_MODE: libc::DWORD = 0x20;
-pub static ENABLE_LINE_INPUT: libc::DWORD = 0x2;
-pub static ENABLE_PROCESSED_INPUT: libc::DWORD = 0x1;
-pub static ENABLE_QUICK_EDIT_MODE: libc::DWORD = 0x40;
-pub static WSA_INVALID_EVENT: WSAEVENT = 0 as WSAEVENT;
+pub const WSADESCRIPTION_LEN: uint = 256;
+pub const WSASYS_STATUS_LEN: uint = 128;
+pub const FIONBIO: libc::c_long = 0x8004667e;
+pub const FD_SETSIZE: uint = 64;
+pub const MSG_DONTWAIT: libc::c_int = 0;
+pub const ERROR_ILLEGAL_CHARACTER: libc::c_int = 582;
+pub const ENABLE_ECHO_INPUT: libc::DWORD = 0x4;
+pub const ENABLE_EXTENDED_FLAGS: libc::DWORD = 0x80;
+pub const ENABLE_INSERT_MODE: libc::DWORD = 0x20;
+pub const ENABLE_LINE_INPUT: libc::DWORD = 0x2;
+pub const ENABLE_PROCESSED_INPUT: libc::DWORD = 0x1;
+pub const ENABLE_QUICK_EDIT_MODE: libc::DWORD = 0x40;
+pub const WSA_INVALID_EVENT: WSAEVENT = 0 as WSAEVENT;
 
-pub static FD_ACCEPT: libc::c_long = 0x08;
-pub static FD_MAX_EVENTS: uint = 10;
-pub static WSA_INFINITE: libc::DWORD = libc::INFINITE;
-pub static WSA_WAIT_TIMEOUT: libc::DWORD = libc::consts::os::extra::WAIT_TIMEOUT;
-pub static WSA_WAIT_EVENT_0: libc::DWORD = libc::consts::os::extra::WAIT_OBJECT_0;
-pub static WSA_WAIT_FAILED: libc::DWORD = libc::consts::os::extra::WAIT_FAILED;
+pub const FD_ACCEPT: libc::c_long = 0x08;
+pub const FD_MAX_EVENTS: uint = 10;
+pub const WSA_INFINITE: libc::DWORD = libc::INFINITE;
+pub const WSA_WAIT_TIMEOUT: libc::DWORD = libc::consts::os::extra::WAIT_TIMEOUT;
+pub const WSA_WAIT_EVENT_0: libc::DWORD = libc::consts::os::extra::WAIT_OBJECT_0;
+pub const WSA_WAIT_FAILED: libc::DWORD = libc::consts::os::extra::WAIT_FAILED;
 
 #[repr(C)]
 #[cfg(target_arch = "x86")]

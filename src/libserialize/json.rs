@@ -360,18 +360,16 @@ fn escape_char(writer: &mut io::Writer, v: char) -> Result<(), io::IoError> {
 }
 
 fn spaces(wr: &mut io::Writer, mut n: uint) -> Result<(), io::IoError> {
-    #[allow(non_uppercase_statics)]
-    static len: uint = 16;
-    #[allow(non_uppercase_statics)]
-    static buf: [u8, ..len] = [b' ', ..len];
+    const LEN: uint = 16;
+    static BUF: [u8, ..LEN] = [b' ', ..LEN];
 
-    while n >= len {
-        try!(wr.write(buf));
-        n -= len;
+    while n >= LEN {
+        try!(wr.write(BUF));
+        n -= LEN;
     }
 
     if n > 0 {
-        wr.write(buf[..n])
+        wr.write(BUF[..n])
     } else {
         Ok(())
     }

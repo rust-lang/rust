@@ -14,6 +14,6 @@ pub struct Foo {
 
 extern fn the_foo() {}
 
-pub static FOO: Foo = Foo {
+pub const FOO: Foo = Foo {
     foo: the_foo
 };

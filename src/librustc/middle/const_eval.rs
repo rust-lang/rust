@@ -87,7 +87,7 @@ pub fn join_all<It: Iterator<constness>>(mut cs: It) -> constness {
 fn lookup_const<'a>(tcx: &'a ty::ctxt, e: &Expr) -> Option<&'a Expr> {
     let opt_def = tcx.def_map.borrow().find_copy(&e.id);
     match opt_def {
-        Some(def::DefStatic(def_id, false)) => {
+        Some(def::DefConst(def_id)) => {
             lookup_const_by_id(tcx, def_id)
         }
         Some(def::DefVariant(enum_def, variant_def, _)) => {
@@ -155,7 +155,7 @@ pub fn lookup_const_by_id<'a>(tcx: &'a ty::ctxt, def_id: ast::DefId)
         match tcx.map.find(def_id.node) {
             None => None,
             Some(ast_map::NodeItem(it)) => match it.node {
-                ItemStatic(_, ast::MutImmutable, ref const_expr) => {
+                ItemConst(_, ref const_expr) => {
                     Some(&**const_expr)
                 }
                 _ => None
@@ -173,7 +173,7 @@ pub fn lookup_const_by_id<'a>(tcx: &'a ty::ctxt, def_id: ast::DefId)
         let expr_id = match csearch::maybe_get_item_ast(tcx, def_id,
             |a, b, c, d| astencode::decode_inlined_item(a, b, c, d)) {
             csearch::found(&ast::IIItem(ref item)) => match item.node {
-                ItemStatic(_, ast::MutImmutable, ref const_expr) => Some(const_expr.id),
+                ItemConst(_, ref const_expr) => Some(const_expr.id),
                 _ => None
             },
             _ => None

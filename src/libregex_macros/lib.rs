@@ -324,7 +324,7 @@ fn exec<'t>(which: ::regex::native::MatchKind, input: &'t str,
 
 ::regex::native::Native(::regex::native::ExNative {
     original: $regex,
-    names: CAP_NAMES,
+    names: &CAP_NAMES,
     prog: exec,
 })
         })

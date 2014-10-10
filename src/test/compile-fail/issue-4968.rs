@@ -10,7 +10,7 @@
 
 // Regression test for issue #4968
 
-static A: (int,int) = (4,2);
+const A: (int,int) = (4,2);
 fn main() {
     match 42 { A => () }
     //~^ ERROR mismatched types: expected `<generic integer #0>`, found `(int,int)`

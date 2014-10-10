@@ -91,7 +91,7 @@ pub type Callback = fn(msg: &Any + Send, file: &'static str, line: uint);
 // Variables used for invoking callbacks when a task starts to unwind.
 //
 // For more information, see below.
-static MAX_CALLBACKS: uint = 16;
+const MAX_CALLBACKS: uint = 16;
 static mut CALLBACKS: [atomic::AtomicUint, ..MAX_CALLBACKS] =
         [atomic::INIT_ATOMIC_UINT, atomic::INIT_ATOMIC_UINT,
          atomic::INIT_ATOMIC_UINT, atomic::INIT_ATOMIC_UINT,
