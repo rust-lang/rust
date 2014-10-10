@@ -2331,7 +2331,7 @@ mod tests {
     fn test_into_vec() {
         let xs = box [1u, 2, 3];
         let ys = xs.into_vec();
-        assert_eq!(ys.as_slice(), [1u, 2, 3]);
+        assert_eq!(ys.as_slice(), [1u, 2, 3].as_slice());
     }
 }
 

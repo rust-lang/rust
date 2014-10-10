@@ -2650,7 +2650,7 @@ mod tests {
     fn test_into_boxed_slice() {
         let xs = vec![1u, 2, 3];
         let ys = xs.into_boxed_slice();
-        assert_eq!(ys.as_slice(), [1u, 2, 3]);
+        assert_eq!(ys.as_slice(), [1u, 2, 3].as_slice());
     }
 
     #[bench]
