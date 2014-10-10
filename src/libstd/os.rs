@@ -43,6 +43,7 @@ use ops::Drop;
 use option::{Some, None, Option};
 use os;
 use path::{Path, GenericPath, BytesContainer};
+use sys;
 use sys::os as os_imp;
 use ptr::RawPtr;
 use ptr;
@@ -603,35 +604,11 @@ pub struct Pipe {
 /// descriptors to be closed, the file descriptors will leak. For safe handling
 /// of this scenario, use `std::io::PipeStream` instead.
 pub unsafe fn pipe() -> IoResult<Pipe> {
-    return _pipe();
-
-    #[cfg(unix)]
-    unsafe fn _pipe() -> IoResult<Pipe> {
-        let mut fds = [0, ..2];
-        match libc::pipe(fds.as_mut_ptr()) {
-            0 => Ok(Pipe { reader: fds[0], writer: fds[1] }),
-            _ => Err(IoError::last_error()),
-        }
-    }
-
-    #[cfg(windows)]
-    unsafe fn _pipe() -> IoResult<Pipe> {
-        // Windows pipes work subtly differently than unix pipes, and their
-        // inheritance has to be handled in a different way that I do not
-        // fully understand. Here we explicitly make the pipe non-inheritable,
-        // which means to pass it to a subprocess they need to be duplicated
-        // first, as in std::run.
-        let mut fds = [0, ..2];
-        match libc::pipe(fds.as_mut_ptr(), 1024 as ::libc::c_uint,
-                         (libc::O_BINARY | libc::O_NOINHERIT) as c_int) {
-            0 => {
-                assert!(fds[0] != -1 && fds[0] != 0);
-                assert!(fds[1] != -1 && fds[1] != 0);
-                Ok(Pipe { reader: fds[0], writer: fds[1] })
-            }
-            _ => Err(IoError::last_error()),
-        }
-    }
+    let (reader, writer) = try!(sys::os::pipe());
+    Ok(Pipe {
+        reader: reader.unwrap(),
+        writer: writer.unwrap(),
+    })
 }
 
 /// Returns the proper dll filename for the given basename of a file

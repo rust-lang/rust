@@ -13,13 +13,9 @@
 use core::prelude::*;
 use alloc::boxed::Box;
 use collections::string::String;
-use collections::vec::Vec;
-use core::fmt;
 use core::mem;
 use libc::c_int;
-use libc;
 
-use c_str::CString;
 use local::Local;
 use task::Task;
 
@@ -173,85 +169,13 @@ impl<'a> LocalIo<'a> {
 }
 
 pub trait IoFactory {
-    // networking
-    fn tcp_connect(&mut self, addr: SocketAddr,
-                   timeout: Option<u64>) -> IoResult<Box<RtioTcpStream + Send>>;
-    fn tcp_bind(&mut self, addr: SocketAddr)
-                -> IoResult<Box<RtioTcpListener + Send>>;
-    fn udp_bind(&mut self, addr: SocketAddr)
-                -> IoResult<Box<RtioUdpSocket + Send>>;
-    fn unix_bind(&mut self, path: &CString)
-                 -> IoResult<Box<RtioUnixListener + Send>>;
-    fn unix_connect(&mut self, path: &CString,
-                    timeout: Option<u64>) -> IoResult<Box<RtioPipe + Send>>;
-    fn get_host_addresses(&mut self, host: Option<&str>, servname: Option<&str>,
-                          hint: Option<AddrinfoHint>)
-                          -> IoResult<Vec<AddrinfoInfo>>;
-
-    // misc
     fn timer_init(&mut self) -> IoResult<Box<RtioTimer + Send>>;
     fn spawn(&mut self, cfg: ProcessConfig)
             -> IoResult<(Box<RtioProcess + Send>,
                          Vec<Option<Box<RtioPipe + Send>>>)>;
     fn kill(&mut self, pid: libc::pid_t, signal: int) -> IoResult<()>;
-    fn pipe_open(&mut self, fd: c_int) -> IoResult<Box<RtioPipe + Send>>;
     fn tty_open(&mut self, fd: c_int, readable: bool)
             -> IoResult<Box<RtioTTY + Send>>;
-}
-
-pub trait RtioTcpListener : RtioSocket {
-    fn listen(self: Box<Self>) -> IoResult<Box<RtioTcpAcceptor + Send>>;
-}
-
-pub trait RtioTcpAcceptor : RtioSocket {
-    fn accept(&mut self) -> IoResult<Box<RtioTcpStream + Send>>;
-    fn accept_simultaneously(&mut self) -> IoResult<()>;
-    fn dont_accept_simultaneously(&mut self) -> IoResult<()>;
-    fn set_timeout(&mut self, timeout: Option<u64>);
-    fn clone(&self) -> Box<RtioTcpAcceptor + Send>;
-    fn close_accept(&mut self) -> IoResult<()>;
-}
-
-pub trait RtioTcpStream : RtioSocket {
-    fn read(&mut self, buf: &mut [u8]) -> IoResult<uint>;
-    fn write(&mut self, buf: &[u8]) -> IoResult<()>;
-    fn peer_name(&mut self) -> IoResult<SocketAddr>;
-    fn control_congestion(&mut self) -> IoResult<()>;
-    fn nodelay(&mut self) -> IoResult<()>;
-    fn keepalive(&mut self, delay_in_seconds: uint) -> IoResult<()>;
-    fn letdie(&mut self) -> IoResult<()>;
-    fn clone(&self) -> Box<RtioTcpStream + Send>;
-    fn close_write(&mut self) -> IoResult<()>;
-    fn close_read(&mut self) -> IoResult<()>;
-    fn set_timeout(&mut self, timeout_ms: Option<u64>);
-    fn set_read_timeout(&mut self, timeout_ms: Option<u64>);
-    fn set_write_timeout(&mut self, timeout_ms: Option<u64>);
-}
-
-pub trait RtioSocket {
-    fn socket_name(&mut self) -> IoResult<SocketAddr>;
-}
-
-pub trait RtioUdpSocket : RtioSocket {
-    fn recv_from(&mut self, buf: &mut [u8]) -> IoResult<(uint, SocketAddr)>;
-    fn send_to(&mut self, buf: &[u8], dst: SocketAddr) -> IoResult<()>;
-
-    fn join_multicast(&mut self, multi: IpAddr) -> IoResult<()>;
-    fn leave_multicast(&mut self, multi: IpAddr) -> IoResult<()>;
-
-    fn loop_multicast_locally(&mut self) -> IoResult<()>;
-    fn dont_loop_multicast_locally(&mut self) -> IoResult<()>;
-
-    fn multicast_time_to_live(&mut self, ttl: int) -> IoResult<()>;
-    fn time_to_live(&mut self, ttl: int) -> IoResult<()>;
-
-    fn hear_broadcasts(&mut self) -> IoResult<()>;
-    fn ignore_broadcasts(&mut self) -> IoResult<()>;
-
-    fn clone(&self) -> Box<RtioUdpSocket + Send>;
-    fn set_timeout(&mut self, timeout_ms: Option<u64>);
-    fn set_read_timeout(&mut self, timeout_ms: Option<u64>);
-    fn set_write_timeout(&mut self, timeout_ms: Option<u64>);
 }
 
 pub trait RtioTimer {
@@ -313,54 +237,3 @@ pub struct IoError {
 }
 
 pub type IoResult<T> = Result<T, IoError>;
-
-#[deriving(PartialEq, Eq)]
-pub enum IpAddr {
-    Ipv4Addr(u8, u8, u8, u8),
-    Ipv6Addr(u16, u16, u16, u16, u16, u16, u16, u16),
-}
-
-impl fmt::Show for IpAddr {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        match *self {
-            Ipv4Addr(a, b, c, d) => write!(fmt, "{}.{}.{}.{}", a, b, c, d),
-            Ipv6Addr(a, b, c, d, e, f, g, h) => {
-                write!(fmt,
-                       "{:04x}:{:04x}:{:04x}:{:04x}:{:04x}:{:04x}:{:04x}:{:04x}",
-                       a, b, c, d, e, f, g, h)
-            }
-        }
-    }
-}
-
-#[deriving(PartialEq, Eq)]
-pub struct SocketAddr {
-    pub ip: IpAddr,
-    pub port: u16,
-}
-
-pub enum StdioContainer {
-    Ignored,
-    InheritFd(i32),
-    CreatePipe(bool, bool),
-}
-
-pub enum ProcessExit {
-    ExitStatus(int),
-    ExitSignal(int),
-}
-
-pub struct AddrinfoHint {
-    pub family: uint,
-    pub socktype: uint,
-    pub protocol: uint,
-    pub flags: uint,
-}
-
-pub struct AddrinfoInfo {
-    pub address: SocketAddr,
-    pub family: uint,
-    pub socktype: uint,
-    pub protocol: uint,
-    pub flags: uint,
-}

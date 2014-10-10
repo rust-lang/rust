@@ -26,17 +26,20 @@ instances as clients.
 
 use prelude::*;
 
-use io::{Listener, Acceptor, IoResult, IoError, TimedOut, standard_error};
-use rt::rtio::{IoFactory, LocalIo, RtioUnixListener};
-use rt::rtio::{RtioUnixAcceptor, RtioPipe};
+use io::{Listener, Acceptor, IoResult, TimedOut, standard_error};
 use time::Duration;
+
+use sys::pipe::UnixStream as UnixStreamImp;
+use sys::pipe::UnixListener as UnixListenerImp;
+use sys::pipe::UnixAcceptor as UnixAcceptorImp;
 
 /// A stream which communicates over a named pipe.
 pub struct UnixStream {
-    obj: Box<RtioPipe + Send>,
+    inner: UnixStreamImp,
 }
 
 impl UnixStream {
+
     /// Connect to a pipe named by `path`. This will attempt to open a
     /// connection to the underlying socket.
     ///
@@ -53,9 +56,8 @@ impl UnixStream {
     /// stream.write([1, 2, 3]);
     /// ```
     pub fn connect<P: ToCStr>(path: &P) -> IoResult<UnixStream> {
-        LocalIo::maybe_raise(|io| {
-            io.unix_connect(&path.to_c_str(), None).map(|p| UnixStream { obj: p })
-        }).map_err(IoError::from_rtio_error)
+        UnixStreamImp::connect(&path.to_c_str(), None)
+            .map(|inner| UnixStream { inner: inner })
     }
 
     /// Connect to a pipe named by `path`, timing out if the specified number of
@@ -73,10 +75,8 @@ impl UnixStream {
             return Err(standard_error(TimedOut));
         }
 
-        LocalIo::maybe_raise(|io| {
-            let s = io.unix_connect(&path.to_c_str(), Some(timeout.num_milliseconds() as u64));
-            s.map(|p| UnixStream { obj: p })
-        }).map_err(IoError::from_rtio_error)
+        UnixStreamImp::connect(&path.to_c_str(), Some(timeout.num_milliseconds() as u64))
+            .map(|inner| UnixStream { inner: inner })
     }
 
 
@@ -88,7 +88,7 @@ impl UnixStream {
     /// Note that this method affects all cloned handles associated with this
     /// stream, not just this one handle.
     pub fn close_read(&mut self) -> IoResult<()> {
-        self.obj.close_read().map_err(IoError::from_rtio_error)
+        self.inner.close_read()
     }
 
     /// Closes the writing half of this connection.
@@ -99,7 +99,7 @@ impl UnixStream {
     /// Note that this method affects all cloned handles associated with this
     /// stream, not just this one handle.
     pub fn close_write(&mut self) -> IoResult<()> {
-        self.obj.close_write().map_err(IoError::from_rtio_error)
+        self.inner.close_write()
     }
 
     /// Sets the read/write timeout for this socket.
@@ -107,7 +107,7 @@ impl UnixStream {
     /// For more information, see `TcpStream::set_timeout`
     #[experimental = "the timeout argument may change in type and value"]
     pub fn set_timeout(&mut self, timeout_ms: Option<u64>) {
-        self.obj.set_timeout(timeout_ms)
+        self.inner.set_timeout(timeout_ms)
     }
 
     /// Sets the read timeout for this socket.
@@ -115,7 +115,7 @@ impl UnixStream {
     /// For more information, see `TcpStream::set_timeout`
     #[experimental = "the timeout argument may change in type and value"]
     pub fn set_read_timeout(&mut self, timeout_ms: Option<u64>) {
-        self.obj.set_read_timeout(timeout_ms)
+        self.inner.set_read_timeout(timeout_ms)
     }
 
     /// Sets the write timeout for this socket.
@@ -123,36 +123,35 @@ impl UnixStream {
     /// For more information, see `TcpStream::set_timeout`
     #[experimental = "the timeout argument may change in type and value"]
     pub fn set_write_timeout(&mut self, timeout_ms: Option<u64>) {
-        self.obj.set_write_timeout(timeout_ms)
+        self.inner.set_write_timeout(timeout_ms)
     }
 }
 
 impl Clone for UnixStream {
     fn clone(&self) -> UnixStream {
-        UnixStream { obj: self.obj.clone() }
+        UnixStream { inner: self.inner.clone() }
     }
 }
 
 impl Reader for UnixStream {
     fn read(&mut self, buf: &mut [u8]) -> IoResult<uint> {
-        self.obj.read(buf).map_err(IoError::from_rtio_error)
+        self.inner.read(buf)
     }
 }
 
 impl Writer for UnixStream {
     fn write(&mut self, buf: &[u8]) -> IoResult<()> {
-        self.obj.write(buf).map_err(IoError::from_rtio_error)
+        self.inner.write(buf)
     }
 }
 
 /// A value that can listen for incoming named pipe connection requests.
 pub struct UnixListener {
     /// The internal, opaque runtime Unix listener.
-    obj: Box<RtioUnixListener + Send>,
+    inner: UnixListenerImp,
 }
 
 impl UnixListener {
-
     /// Creates a new listener, ready to receive incoming connections on the
     /// specified socket. The server will be named by `path`.
     ///
@@ -175,24 +174,22 @@ impl UnixListener {
     /// # }
     /// ```
     pub fn bind<P: ToCStr>(path: &P) -> IoResult<UnixListener> {
-        LocalIo::maybe_raise(|io| {
-            io.unix_bind(&path.to_c_str()).map(|s| UnixListener { obj: s })
-        }).map_err(IoError::from_rtio_error)
+        UnixListenerImp::bind(&path.to_c_str())
+            .map(|inner| UnixListener { inner: inner })
     }
 }
 
 impl Listener<UnixStream, UnixAcceptor> for UnixListener {
     fn listen(self) -> IoResult<UnixAcceptor> {
-        self.obj.listen().map(|obj| {
-            UnixAcceptor { obj: obj }
-        }).map_err(IoError::from_rtio_error)
+        self.inner.listen()
+            .map(|inner| UnixAcceptor { inner: inner })
     }
 }
 
 /// A value that can accept named pipe connections, returned from `listen()`.
 pub struct UnixAcceptor {
     /// The internal, opaque runtime Unix acceptor.
-    obj: Box<RtioUnixAcceptor + Send>,
+    inner: UnixAcceptorImp
 }
 
 impl UnixAcceptor {
@@ -210,7 +207,7 @@ impl UnixAcceptor {
     #[experimental = "the name and arguments to this function are likely \
                       to change"]
     pub fn set_timeout(&mut self, timeout_ms: Option<u64>) {
-        self.obj.set_timeout(timeout_ms)
+        self.inner.set_timeout(timeout_ms)
     }
 
     /// Closes the accepting capabilities of this acceptor.
@@ -219,15 +216,15 @@ impl UnixAcceptor {
     /// more information can be found in that documentation.
     #[experimental]
     pub fn close_accept(&mut self) -> IoResult<()> {
-        self.obj.close_accept().map_err(IoError::from_rtio_error)
+        self.inner.close_accept()
     }
 }
 
 impl Acceptor<UnixStream> for UnixAcceptor {
     fn accept(&mut self) -> IoResult<UnixStream> {
-        self.obj.accept().map(|s| {
-            UnixStream { obj: s }
-        }).map_err(IoError::from_rtio_error)
+        self.inner.accept().map(|s| {
+            UnixStream { inner: s }
+        })
     }
 }
 
@@ -246,7 +243,7 @@ impl Clone for UnixAcceptor {
     /// This function is useful for creating a handle to invoke `close_accept`
     /// on to wake up any other task blocked in `accept`.
     fn clone(&self) -> UnixAcceptor {
-        UnixAcceptor { obj: self.obj.clone() }
+        UnixAcceptor { inner: self.inner.clone() }
     }
 }
 

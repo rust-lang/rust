@@ -86,18 +86,17 @@
 
 use alloc::arc::Arc;
 use libc;
-use std::c_str::CString;
-use std::mem;
-use std::os;
-use std::ptr;
-use std::rt::rtio;
-use std::rt::rtio::{IoResult, IoError};
-use std::sync::atomic;
-use std::rt::mutex;
+use c_str::CString;
+use mem;
+use ptr;
+use sync::atomic;
+use rt::mutex;
+use io::{mod, IoError, IoResult};
+use prelude::*;
 
-use super::c;
-use super::util;
-use super::file::to_utf16;
+use sys_common::{mod, eof};
+
+use super::{c, os, timer, to_utf16, decode_error_detailed};
 
 struct Event(libc::HANDLE);
 
@@ -177,7 +176,7 @@ pub fn await(handle: libc::HANDLE, deadline: u64,
     let ms = if deadline == 0 {
         libc::INFINITE as u64
     } else {
-        let now = ::io::timer::now();
+        let now = timer::now();
         if deadline < now {0} else {deadline - now}
     };
     let ret = unsafe {
@@ -190,7 +189,7 @@ pub fn await(handle: libc::HANDLE, deadline: u64,
         WAIT_FAILED => Err(super::last_error()),
         WAIT_TIMEOUT => unsafe {
             let _ = c::CancelIo(handle);
-            Err(util::timeout("operation timed out"))
+            Err(sys_common::timeout("operation timed out"))
         },
         n => Ok((n - WAIT_OBJECT_0) as uint)
     }
@@ -198,8 +197,8 @@ pub fn await(handle: libc::HANDLE, deadline: u64,
 
 fn epipe() -> IoError {
     IoError {
-        code: libc::ERROR_BROKEN_PIPE as uint,
-        extra: 0,
+        kind: io::EndOfFile,
+        desc: "the pipe has ended",
         detail: None,
     }
 }
@@ -268,8 +267,8 @@ impl UnixStream {
     }
 
     pub fn connect(addr: &CString, timeout: Option<u64>) -> IoResult<UnixStream> {
-        let addr = try!(to_utf16(addr));
-        let start = ::io::timer::now();
+        let addr = try!(to_utf16(addr.as_str()));
+        let start = timer::now();
         loop {
             match UnixStream::try_connect(addr.as_ptr()) {
                 Some(handle) => {
@@ -308,13 +307,13 @@ impl UnixStream {
 
             match timeout {
                 Some(timeout) => {
-                    let now = ::io::timer::now();
+                    let now = timer::now();
                     let timed_out = (now - start) >= timeout || unsafe {
                         let ms = (timeout - (now - start)) as libc::DWORD;
                         libc::WaitNamedPipeW(addr.as_ptr(), ms) == 0
                     };
                     if timed_out {
-                        return Err(util::timeout("connect timed out"))
+                        return Err(sys_common::timeout("connect timed out"))
                     }
                 }
 
@@ -349,10 +348,8 @@ impl UnixStream {
             _ => Ok(())
         }
     }
-}
 
-impl rtio::RtioPipe for UnixStream {
-    fn read(&mut self, buf: &mut [u8]) -> IoResult<uint> {
+    pub fn read(&mut self, buf: &mut [u8]) -> IoResult<uint> {
         if self.read.is_none() {
             self.read = Some(try!(Event::new(true, false)));
         }
@@ -368,7 +365,7 @@ impl rtio::RtioPipe for UnixStream {
         // See comments in close_read() about why this lock is necessary.
         let guard = unsafe { self.inner.lock.lock() };
         if self.read_closed() {
-            return Err(util::eof())
+            return Err(eof())
         }
 
         // Issue a nonblocking requests, succeeding quickly if it happened to
@@ -416,15 +413,15 @@ impl rtio::RtioPipe for UnixStream {
             // If the reading half is now closed, then we're done. If we woke up
             // because the writing half was closed, keep trying.
             if wait_succeeded.is_err() {
-                return Err(util::timeout("read timed out"))
+                return Err(sys_common::timeout("read timed out"))
             }
             if self.read_closed() {
-                return Err(util::eof())
+                return Err(eof())
             }
         }
     }
 
-    fn write(&mut self, buf: &[u8]) -> IoResult<()> {
+    pub fn write(&mut self, buf: &[u8]) -> IoResult<()> {
         if self.write.is_none() {
             self.write = Some(try!(Event::new(true, false)));
         }
@@ -458,11 +455,7 @@ impl rtio::RtioPipe for UnixStream {
 
             if ret == 0 {
                 if err != libc::ERROR_IO_PENDING as uint {
-                    return Err(IoError {
-                        code: err as uint,
-                        extra: 0,
-                        detail: Some(os::error_string(err as uint)),
-                    })
+                    return Err(decode_error_detailed(err as i32))
                 }
                 // Process a timeout if one is pending
                 let wait_succeeded = await(self.handle(), self.write_deadline,
@@ -484,12 +477,12 @@ impl rtio::RtioPipe for UnixStream {
                         let amt = offset + bytes_written as uint;
                         return if amt > 0 {
                             Err(IoError {
-                                code: libc::ERROR_OPERATION_ABORTED as uint,
-                                extra: amt,
-                                detail: Some("short write during write".to_string()),
+                                kind: io::ShortWrite(amt),
+                                desc: "short write during write",
+                                detail: None,
                             })
                         } else {
-                            Err(util::timeout("write timed out"))
+                            Err(sys_common::timeout("write timed out"))
                         }
                     }
                     if self.write_closed() {
@@ -503,17 +496,7 @@ impl rtio::RtioPipe for UnixStream {
         Ok(())
     }
 
-    fn clone(&self) -> Box<rtio::RtioPipe + Send> {
-        box UnixStream {
-            inner: self.inner.clone(),
-            read: None,
-            write: None,
-            read_deadline: 0,
-            write_deadline: 0,
-        } as Box<rtio::RtioPipe + Send>
-    }
-
-    fn close_read(&mut self) -> IoResult<()> {
+    pub fn close_read(&mut self) -> IoResult<()> {
         // On windows, there's no actual shutdown() method for pipes, so we're
         // forced to emulate the behavior manually at the application level. To
         // do this, we need to both cancel any pending requests, as well as
@@ -536,23 +519,35 @@ impl rtio::RtioPipe for UnixStream {
         self.cancel_io()
     }
 
-    fn close_write(&mut self) -> IoResult<()> {
+    pub fn close_write(&mut self) -> IoResult<()> {
         // see comments in close_read() for why this lock is necessary
         let _guard = unsafe { self.inner.lock.lock() };
         self.inner.write_closed.store(true, atomic::SeqCst);
         self.cancel_io()
     }
 
-    fn set_timeout(&mut self, timeout: Option<u64>) {
-        let deadline = timeout.map(|a| ::io::timer::now() + a).unwrap_or(0);
+    pub fn set_timeout(&mut self, timeout: Option<u64>) {
+        let deadline = timeout.map(|a| timer::now() + a).unwrap_or(0);
         self.read_deadline = deadline;
         self.write_deadline = deadline;
     }
-    fn set_read_timeout(&mut self, timeout: Option<u64>) {
-        self.read_deadline = timeout.map(|a| ::io::timer::now() + a).unwrap_or(0);
+    pub fn set_read_timeout(&mut self, timeout: Option<u64>) {
+        self.read_deadline = timeout.map(|a| timer::now() + a).unwrap_or(0);
     }
-    fn set_write_timeout(&mut self, timeout: Option<u64>) {
-        self.write_deadline = timeout.map(|a| ::io::timer::now() + a).unwrap_or(0);
+    pub fn set_write_timeout(&mut self, timeout: Option<u64>) {
+        self.write_deadline = timeout.map(|a| timer::now() + a).unwrap_or(0);
+    }
+}
+
+impl Clone for UnixStream {
+    fn clone(&self) -> UnixStream {
+        UnixStream {
+            inner: self.inner.clone(),
+            read: None,
+            write: None,
+            read_deadline: 0,
+            write_deadline: 0,
+        }
     }
 }
 
@@ -570,7 +565,7 @@ impl UnixListener {
         // Although we technically don't need the pipe until much later, we
         // create the initial handle up front to test the validity of the name
         // and such.
-        let addr_v = try!(to_utf16(addr));
+        let addr_v = try!(to_utf16(addr.as_str()));
         let ret = unsafe { pipe(addr_v.as_ptr(), true) };
         if ret == libc::INVALID_HANDLE_VALUE {
             Err(super::last_error())
@@ -579,7 +574,7 @@ impl UnixListener {
         }
     }
 
-    pub fn native_listen(self) -> IoResult<UnixAcceptor> {
+    pub fn listen(self) -> IoResult<UnixAcceptor> {
         Ok(UnixAcceptor {
             listener: self,
             event: try!(Event::new(true, false)),
@@ -598,15 +593,6 @@ impl Drop for UnixListener {
     }
 }
 
-impl rtio::RtioUnixListener for UnixListener {
-    fn listen(self: Box<UnixListener>)
-              -> IoResult<Box<rtio::RtioUnixAcceptor + Send>> {
-        self.native_listen().map(|a| {
-            box a as Box<rtio::RtioUnixAcceptor + Send>
-        })
-    }
-}
-
 pub struct UnixAcceptor {
     inner: Arc<AcceptorState>,
     listener: UnixListener,
@@ -620,7 +606,7 @@ struct AcceptorState {
 }
 
 impl UnixAcceptor {
-    pub fn native_accept(&mut self) -> IoResult<UnixStream> {
+    pub fn accept(&mut self) -> IoResult<UnixStream> {
         // This function has some funky implementation details when working with
         // unix pipes. On windows, each server named pipe handle can be
         // connected to a one or zero clients. To the best of my knowledge, a
@@ -657,9 +643,9 @@ impl UnixAcceptor {
 
         // If we've had an artificial call to close_accept, be sure to never
         // proceed in accepting new clients in the future
-        if self.inner.closed.load(atomic::SeqCst) { return Err(util::eof()) }
+        if self.inner.closed.load(atomic::SeqCst) { return Err(eof()) }
 
-        let name = try!(to_utf16(&self.listener.name));
+        let name = try!(to_utf16(self.listener.name.as_str()));
 
         // Once we've got a "server handle", we need to wait for a client to
         // connect. The ConnectNamedPipe function will block this thread until
@@ -691,7 +677,7 @@ impl UnixAcceptor {
                     if wait_succeeded.is_ok() {
                         err = unsafe { libc::GetLastError() };
                     } else {
-                        return Err(util::timeout("accept timed out"))
+                        return Err(sys_common::timeout("accept timed out"))
                     }
                 } else {
                     // we succeeded, bypass the check below
@@ -727,34 +713,12 @@ impl UnixAcceptor {
             write_deadline: 0,
         })
     }
-}
 
-impl rtio::RtioUnixAcceptor for UnixAcceptor {
-    fn accept(&mut self) -> IoResult<Box<rtio::RtioPipe + Send>> {
-        self.native_accept().map(|s| box s as Box<rtio::RtioPipe + Send>)
-    }
-    fn set_timeout(&mut self, timeout: Option<u64>) {
-        self.deadline = timeout.map(|i| i + ::io::timer::now()).unwrap_or(0);
+    pub fn set_timeout(&mut self, timeout: Option<u64>) {
+        self.deadline = timeout.map(|i| i + timer::now()).unwrap_or(0);
     }
 
-    fn clone(&self) -> Box<rtio::RtioUnixAcceptor + Send> {
-        let name = to_utf16(&self.listener.name).ok().unwrap();
-        box UnixAcceptor {
-            inner: self.inner.clone(),
-            event: Event::new(true, false).ok().unwrap(),
-            deadline: 0,
-            listener: UnixListener {
-                name: self.listener.name.clone(),
-                handle: unsafe {
-                    let p = pipe(name.as_ptr(), false) ;
-                    assert!(p != libc::INVALID_HANDLE_VALUE as libc::HANDLE);
-                    p
-                },
-            },
-        } as Box<rtio::RtioUnixAcceptor + Send>
-    }
-
-    fn close_accept(&mut self) -> IoResult<()> {
+    pub fn close_accept(&mut self) -> IoResult<()> {
         self.inner.closed.store(true, atomic::SeqCst);
         let ret = unsafe {
             c::SetEvent(self.inner.abort.handle())
@@ -767,3 +731,21 @@ impl rtio::RtioUnixAcceptor for UnixAcceptor {
     }
 }
 
+impl Clone for UnixAcceptor {
+    fn clone(&self) -> UnixAcceptor {
+        let name = to_utf16(self.listener.name.as_str()).ok().unwrap();
+        UnixAcceptor {
+            inner: self.inner.clone(),
+            event: Event::new(true, false).ok().unwrap(),
+            deadline: 0,
+            listener: UnixListener {
+                name: self.listener.name.clone(),
+                handle: unsafe {
+                    let p = pipe(name.as_ptr(), false) ;
+                    assert!(p != libc::INVALID_HANDLE_VALUE as libc::HANDLE);
+                    p
+                },
+            },
+        }
+    }
+}

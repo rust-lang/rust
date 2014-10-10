@@ -8,24 +8,51 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![allow(missing_doc)]
+
 extern crate libc;
 
 use num;
 use prelude::*;
 use io::{mod, IoResult, IoError};
+use sys_common::mkerr_libc;
 
+pub mod c;
 pub mod fs;
 pub mod os;
-pub mod c;
+pub mod tcp;
+pub mod udp;
+pub mod pipe;
 
-pub type sock_t = io::file::fd_t;
+pub mod addrinfo {
+    pub use sys_common::net::get_host_addresses;
+}
+
+// FIXME: move these to c module
+pub type sock_t = self::fs::fd_t;
 pub type wrlen = libc::size_t;
+pub type msglen_t = libc::size_t;
 pub unsafe fn close_sock(sock: sock_t) { let _ = libc::close(sock); }
 
 pub fn last_error() -> IoError {
-    let errno = os::errno() as i32;
-    let mut err = decode_error(errno);
-    err.detail = Some(os::error_string(errno));
+    decode_error_detailed(os::errno() as i32)
+}
+
+pub fn last_net_error() -> IoError {
+    last_error()
+}
+
+extern "system" {
+    fn gai_strerror(errcode: libc::c_int) -> *const libc::c_char;
+}
+
+pub fn last_gai_error(s: libc::c_int) -> IoError {
+    use c_str::CString;
+
+    let mut err = decode_error(s);
+    err.detail = Some(unsafe {
+        CString::new(gai_strerror(s), false).as_str().unwrap().to_string()
+    });
     err
 }
 
@@ -64,6 +91,12 @@ pub fn decode_error(errno: i32) -> IoError {
     IoError { kind: kind, desc: desc, detail: None }
 }
 
+pub fn decode_error_detailed(errno: i32) -> IoError {
+    let mut err = decode_error(errno);
+    err.detail = Some(os::error_string(errno));
+    err
+}
+
 #[inline]
 pub fn retry<I: PartialEq + num::One + Neg<I>> (f: || -> I) -> I {
     let minus_one = -num::one::<I>();
@@ -86,7 +119,10 @@ pub fn wouldblock() -> bool {
     err == libc::EWOULDBLOCK as int || err == libc::EAGAIN as int
 }
 
-pub fn set_nonblocking(fd: net::sock_t, nb: bool) -> IoResult<()> {
+pub fn set_nonblocking(fd: sock_t, nb: bool) -> IoResult<()> {
     let set = nb as libc::c_int;
-    super::mkerr_libc(retry(|| unsafe { c::ioctl(fd, c::FIONBIO, &set) }))
+    mkerr_libc(retry(|| unsafe { c::ioctl(fd, c::FIONBIO, &set) }))
 }
+
+// nothing needed on unix platforms
+pub fn init_net() {}

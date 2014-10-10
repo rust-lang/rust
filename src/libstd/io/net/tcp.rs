@@ -20,18 +20,16 @@
 use clone::Clone;
 use io::IoResult;
 use iter::Iterator;
-use result::{Ok,Err};
+use result::Err;
 use io::net::ip::{SocketAddr, ToSocketAddr};
-use io::IoError;
 use io::{Reader, Writer, Listener, Acceptor};
 use io::{standard_error, TimedOut};
-use kinds::Send;
 use option::{None, Some, Option};
-use boxed::Box;
-use rt::rtio::{IoFactory, RtioSocket, RtioTcpListener};
-use rt::rtio::{RtioTcpAcceptor, RtioTcpStream};
-use rt::rtio;
 use time::Duration;
+
+use sys::tcp::TcpStream as TcpStreamImp;
+use sys::tcp::TcpListener as TcpListenerImp;
+use sys::tcp::TcpAcceptor as TcpAcceptorImp;
 
 /// A structure which represents a TCP stream between a local socket and a
 /// remote socket.
@@ -50,12 +48,12 @@ use time::Duration;
 /// drop(stream); // close the connection
 /// ```
 pub struct TcpStream {
-    obj: Box<RtioTcpStream + Send>,
+    inner: TcpStreamImp,
 }
 
 impl TcpStream {
-    fn new(s: Box<RtioTcpStream + Send>) -> TcpStream {
-        TcpStream { obj: s }
+    fn new(s: TcpStreamImp) -> TcpStream {
+        TcpStream { inner: s }
     }
 
     /// Open a TCP connection to a remote host.
@@ -64,7 +62,9 @@ impl TcpStream {
     /// trait can be supplied for the address; see this trait documentation for
     /// concrete examples.
     pub fn connect<A: ToSocketAddr>(addr: A) -> IoResult<TcpStream> {
-        super::with_addresses_io(addr, |io, addr| io.tcp_connect(addr, None).map(TcpStream::new))
+        super::with_addresses(addr, |addr| {
+            TcpStreamImp::connect(addr, None).map(TcpStream::new)
+        })
     }
 
     /// Creates a TCP connection to a remote socket address, timing out after
@@ -86,39 +86,26 @@ impl TcpStream {
             return Err(standard_error(TimedOut));
         }
 
-        super::with_addresses_io(addr, |io, addr|
-            io.tcp_connect(addr, Some(timeout.num_milliseconds() as u64)).map(TcpStream::new)
-        )
+        super::with_addresses(addr, |addr| {
+            TcpStreamImp::connect(addr, Some(timeout.num_milliseconds() as u64))
+                .map(TcpStream::new)
+        })
     }
 
     /// Returns the socket address of the remote peer of this TCP connection.
     pub fn peer_name(&mut self) -> IoResult<SocketAddr> {
-        match self.obj.peer_name() {
-            Ok(rtio::SocketAddr { ip, port }) => {
-                Ok(SocketAddr { ip: super::from_rtio(ip), port: port })
-            }
-            Err(e) => Err(IoError::from_rtio_error(e)),
-        }
+        self.inner.peer_name()
     }
 
     /// Returns the socket address of the local half of this TCP connection.
     pub fn socket_name(&mut self) -> IoResult<SocketAddr> {
-        match self.obj.socket_name() {
-            Ok(rtio::SocketAddr { ip, port }) => {
-                Ok(SocketAddr { ip: super::from_rtio(ip), port: port })
-            }
-            Err(e) => Err(IoError::from_rtio_error(e)),
-        }
+        self.inner.socket_name()
     }
 
     /// Sets the nodelay flag on this connection to the boolean specified
     #[experimental]
     pub fn set_nodelay(&mut self, nodelay: bool) -> IoResult<()> {
-        if nodelay {
-            self.obj.nodelay()
-        } else {
-            self.obj.control_congestion()
-        }.map_err(IoError::from_rtio_error)
+        self.inner.set_nodelay(nodelay)
     }
 
     /// Sets the keepalive timeout to the timeout specified.
@@ -128,10 +115,7 @@ impl TcpStream {
     /// specified time, in seconds.
     #[experimental]
     pub fn set_keepalive(&mut self, delay_in_seconds: Option<uint>) -> IoResult<()> {
-        match delay_in_seconds {
-            Some(i) => self.obj.keepalive(i),
-            None => self.obj.letdie(),
-        }.map_err(IoError::from_rtio_error)
+        self.inner.set_keepalive(delay_in_seconds)
     }
 
     /// Closes the reading half of this connection.
@@ -165,7 +149,7 @@ impl TcpStream {
     /// Note that this method affects all cloned handles associated with this
     /// stream, not just this one handle.
     pub fn close_read(&mut self) -> IoResult<()> {
-        self.obj.close_read().map_err(IoError::from_rtio_error)
+        self.inner.close_read()
     }
 
     /// Closes the writing half of this connection.
@@ -176,7 +160,7 @@ impl TcpStream {
     /// Note that this method affects all cloned handles associated with this
     /// stream, not just this one handle.
     pub fn close_write(&mut self) -> IoResult<()> {
-        self.obj.close_write().map_err(IoError::from_rtio_error)
+        self.inner.close_write()
     }
 
     /// Sets a timeout, in milliseconds, for blocking operations on this stream.
@@ -198,7 +182,7 @@ impl TcpStream {
     /// take a look at `set_read_timeout` and `set_write_timeout`.
     #[experimental = "the timeout argument may change in type and value"]
     pub fn set_timeout(&mut self, timeout_ms: Option<u64>) {
-        self.obj.set_timeout(timeout_ms)
+        self.inner.set_timeout(timeout_ms)
     }
 
     /// Sets the timeout for read operations on this stream.
@@ -215,7 +199,7 @@ impl TcpStream {
     /// during the timeout period.
     #[experimental = "the timeout argument may change in type and value"]
     pub fn set_read_timeout(&mut self, timeout_ms: Option<u64>) {
-        self.obj.set_read_timeout(timeout_ms)
+        self.inner.set_read_timeout(timeout_ms)
     }
 
     /// Sets the timeout for write operations on this stream.
@@ -242,7 +226,7 @@ impl TcpStream {
     /// asynchronous fashion after the call to write returns.
     #[experimental = "the timeout argument may change in type and value"]
     pub fn set_write_timeout(&mut self, timeout_ms: Option<u64>) {
-        self.obj.set_write_timeout(timeout_ms)
+        self.inner.set_write_timeout(timeout_ms)
     }
 }
 
@@ -256,19 +240,19 @@ impl Clone for TcpStream {
     /// Instead, the first read will receive the first packet received, and the
     /// second read will receive the second packet.
     fn clone(&self) -> TcpStream {
-        TcpStream { obj: self.obj.clone() }
+        TcpStream { inner: self.inner.clone() }
     }
 }
 
 impl Reader for TcpStream {
     fn read(&mut self, buf: &mut [u8]) -> IoResult<uint> {
-        self.obj.read(buf).map_err(IoError::from_rtio_error)
+        self.inner.read(buf)
     }
 }
 
 impl Writer for TcpStream {
     fn write(&mut self, buf: &[u8]) -> IoResult<()> {
-        self.obj.write(buf).map_err(IoError::from_rtio_error)
+        self.inner.write(buf)
     }
 }
 
@@ -309,7 +293,7 @@ impl Writer for TcpStream {
 /// # }
 /// ```
 pub struct TcpListener {
-    obj: Box<RtioTcpListener + Send>,
+    inner: TcpListenerImp,
 }
 
 impl TcpListener {
@@ -324,26 +308,20 @@ impl TcpListener {
     /// The address type can be any implementor of `ToSocketAddr` trait. See its
     /// documentation for concrete examples.
     pub fn bind<A: ToSocketAddr>(addr: A) -> IoResult<TcpListener> {
-        super::with_addresses_io(addr, |io, addr| io.tcp_bind(addr).map(|l| TcpListener { obj: l }))
+        super::with_addresses(addr, |addr| {
+            TcpListenerImp::bind(addr).map(|inner| TcpListener { inner: inner })
+        })
     }
 
     /// Returns the local socket address of this listener.
     pub fn socket_name(&mut self) -> IoResult<SocketAddr> {
-        match self.obj.socket_name() {
-            Ok(rtio::SocketAddr { ip, port }) => {
-                Ok(SocketAddr { ip: super::from_rtio(ip), port: port })
-            }
-            Err(e) => Err(IoError::from_rtio_error(e)),
-        }
+        self.inner.socket_name()
     }
 }
 
 impl Listener<TcpStream, TcpAcceptor> for TcpListener {
     fn listen(self) -> IoResult<TcpAcceptor> {
-        match self.obj.listen() {
-            Ok(acceptor) => Ok(TcpAcceptor { obj: acceptor }),
-            Err(e) => Err(IoError::from_rtio_error(e)),
-        }
+        self.inner.listen(128).map(|a| TcpAcceptor { inner: a })
     }
 }
 
@@ -351,7 +329,7 @@ impl Listener<TcpStream, TcpAcceptor> for TcpListener {
 /// a `TcpListener`'s `listen` method, and this object can be used to accept new
 /// `TcpStream` instances.
 pub struct TcpAcceptor {
-    obj: Box<RtioTcpAcceptor + Send>,
+    inner: TcpAcceptorImp,
 }
 
 impl TcpAcceptor {
@@ -399,7 +377,7 @@ impl TcpAcceptor {
     /// ```
     #[experimental = "the type of the argument and name of this function are \
                       subject to change"]
-    pub fn set_timeout(&mut self, ms: Option<u64>) { self.obj.set_timeout(ms); }
+    pub fn set_timeout(&mut self, ms: Option<u64>) { self.inner.set_timeout(ms); }
 
     /// Closes the accepting capabilities of this acceptor.
     ///
@@ -445,16 +423,13 @@ impl TcpAcceptor {
     /// ```
     #[experimental]
     pub fn close_accept(&mut self) -> IoResult<()> {
-        self.obj.close_accept().map_err(IoError::from_rtio_error)
+        self.inner.close_accept()
     }
 }
 
 impl Acceptor<TcpStream> for TcpAcceptor {
     fn accept(&mut self) -> IoResult<TcpStream> {
-        match self.obj.accept(){
-            Ok(s) => Ok(TcpStream::new(s)),
-            Err(e) => Err(IoError::from_rtio_error(e)),
-        }
+        self.inner.accept().map(TcpStream::new)
     }
 }
 
@@ -473,7 +448,7 @@ impl Clone for TcpAcceptor {
     /// This function is useful for creating a handle to invoke `close_accept`
     /// on to wake up any other task blocked in `accept`.
     fn clone(&self) -> TcpAcceptor {
-        TcpAcceptor { obj: self.obj.clone() }
+        TcpAcceptor { inner: self.inner.clone() }
     }
 }
 
@@ -1112,8 +1087,6 @@ mod test {
 
     #[test]
     fn shutdown_smoke() {
-        use rt::rtio::RtioTcpStream;
-
         let addr = next_test_ip4();
         let a = TcpListener::bind(addr).unwrap().listen();
         spawn(proc() {
@@ -1124,7 +1097,7 @@ mod test {
         });
 
         let mut s = TcpStream::connect(addr).unwrap();
-        assert!(s.obj.close_write().is_ok());
+        assert!(s.inner.close_write().is_ok());
         assert!(s.write([1]).is_err());
         assert_eq!(s.read_to_end(), Ok(vec!(1)));
     }
