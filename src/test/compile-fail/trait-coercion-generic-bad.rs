@@ -25,6 +25,6 @@ impl Trait<&'static str> for Struct {
 
 fn main() {
     let s: Box<Trait<int>> = box Struct { person: "Fred" };
-    //~^ ERROR type mismatch
+    //~^ ERROR the trait `Trait<int>` is not implemented for the type `Struct`
     s.f(1);
 }

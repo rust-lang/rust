@@ -8,28 +8,31 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-trait Tr<T> {
-    fn op(T) -> Self;
+// Test that a blank impl for all T:PartialEq conflicts with an impl for some
+// specific T when T:PartialEq.
+
+trait OtherTrait {
+    fn noop(&self);
 }
 
-// these compile as if Self: Tr<U>, even tho only Self: Tr<Self or T>
-trait A:    Tr<Self> {
-    fn test<U>(u: U) -> Self {
-        Tr::op(u)   //~ ERROR not implemented
-    }
-}
-trait B<T>: Tr<T> {
-    fn test<U>(u: U) -> Self {
-        Tr::op(u)   //~ ERROR not implemented
-    }
+trait MyTrait {
+    fn get(&self) -> uint;
 }
 
-impl<T> Tr<T> for T {
-    fn op(t: T) -> T { t }
-}
-impl<T> A for T {}
-
-fn main() {
-    std::io::println(A::test((&7306634593706211700, 8)));
+impl<T:OtherTrait> MyTrait for T { //~ ERROR E0119
+    fn get(&self) -> uint { 0 }
 }
 
+struct MyType {
+    dummy: uint
+}
+
+impl MyTrait for MyType {
+    fn get(&self) -> uint { self.dummy }
+}
+
+impl OtherTrait for MyType {
+    fn noop(&self) { }
+}
+
+fn main() { }

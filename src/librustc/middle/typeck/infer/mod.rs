@@ -27,18 +27,8 @@ use middle::subst::Substs;
 use middle::ty::{TyVid, IntVid, FloatVid, RegionVid};
 use middle::ty;
 use middle::ty_fold;
-use middle::ty_fold::TypeFolder;
+use middle::ty_fold::{TypeFolder, TypeFoldable};
 use middle::typeck::check::regionmanip::replace_late_bound_regions_in_fn_sig;
-use middle::typeck::infer::coercion::Coerce;
-use middle::typeck::infer::combine::{Combine, CombineFields};
-use middle::typeck::infer::region_inference::{RegionVarBindings,
-                                              RegionSnapshot};
-use middle::typeck::infer::resolve::{resolver};
-use middle::typeck::infer::equate::Equate;
-use middle::typeck::infer::sub::Sub;
-use middle::typeck::infer::lub::Lub;
-use middle::typeck::infer::unify::{UnificationTable};
-use middle::typeck::infer::error_reporting::ErrorReporting;
 use std::cell::{RefCell};
 use std::collections::HashMap;
 use std::rc::Rc;
@@ -47,6 +37,16 @@ use syntax::codemap;
 use syntax::codemap::Span;
 use util::common::indent;
 use util::ppaux::{bound_region_to_string, ty_to_string, trait_ref_to_string, Repr};
+
+use self::coercion::Coerce;
+use self::combine::{Combine, CombineFields};
+use self::region_inference::{RegionVarBindings, RegionSnapshot};
+use self::resolve::{resolver};
+use self::equate::Equate;
+use self::sub::Sub;
+use self::lub::Lub;
+use self::unify::{UnificationTable, InferCtxtMethodsForSimplyUnifiableTypes};
+use self::error_reporting::ErrorReporting;
 
 pub mod coercion;
 pub mod combine;
@@ -503,6 +503,10 @@ pub struct CombinedSnapshot {
 }
 
 impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
+    pub fn skolemize<T:TypeFoldable>(&self, t: T) -> T {
+        t.fold_with(&mut self.skolemizer())
+    }
+
     pub fn skolemizer<'a>(&'a self) -> TypeSkolemizer<'a, 'tcx> {
         skolemize::TypeSkolemizer::new(self)
     }
@@ -630,11 +634,13 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                      -> ures
     {
         debug!("sub_types({} <: {})", a.repr(self.tcx), b.repr(self.tcx));
-        let trace = TypeTrace {
-            origin: origin,
-            values: Types(expected_found(a_is_expected, a, b))
-        };
-        self.sub(a_is_expected, trace).tys(a, b).to_ures()
+        self.commit_if_ok(|| {
+            let trace = TypeTrace {
+                origin: origin,
+                values: Types(expected_found(a_is_expected, a, b))
+            };
+            self.sub(a_is_expected, trace).tys(a, b).to_ures()
+        })
     }
 
     pub fn eq_types(&self,
@@ -644,11 +650,13 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     b: ty::t)
                     -> ures
     {
-        let trace = TypeTrace {
-            origin: origin,
-            values: Types(expected_found(a_is_expected, a, b))
-        };
-        self.equate(a_is_expected, trace).tys(a, b).to_ures()
+        self.commit_if_ok(|| {
+            let trace = TypeTrace {
+                origin: origin,
+                values: Types(expected_found(a_is_expected, a, b))
+            };
+            self.equate(a_is_expected, trace).tys(a, b).to_ures()
+        })
     }
 
     pub fn sub_trait_refs(&self,
@@ -661,13 +669,14 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         debug!("sub_trait_refs({} <: {})",
                a.repr(self.tcx),
                b.repr(self.tcx));
-        let trace = TypeTrace {
-            origin: origin,
-            values: TraitRefs(expected_found(a_is_expected,
-                                             a.clone(), b.clone()))
-        };
-        let suber = self.sub(a_is_expected, trace);
-        suber.trait_refs(&*a, &*b).to_ures()
+        self.commit_if_ok(|| {
+            let trace = TypeTrace {
+                origin: origin,
+                values: TraitRefs(expected_found(a_is_expected,
+                                                 a.clone(), b.clone()))
+            };
+            self.sub(a_is_expected, trace).trait_refs(&*a, &*b).to_ures()
+        })
     }
 }
 
@@ -786,6 +795,30 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                            typ, resolve_nested_tvar | resolve_ivar) {
           Ok(new_type) => new_type,
           Err(_) => typ
+        }
+    }
+
+    pub fn shallow_resolve(&self, typ: ty::t) -> ty::t {
+        match ty::get(typ).sty {
+            ty::ty_infer(ty::TyVar(v)) => {
+                self.type_variables.borrow()
+                    .probe(v)
+                    .unwrap_or(typ)
+            }
+
+            ty::ty_infer(ty::IntVar(v)) => {
+                self.probe_var(v)
+                    .unwrap_or(typ)
+            }
+
+            ty::ty_infer(ty::FloatVar(v)) => {
+                self.probe_var(v)
+                    .unwrap_or(typ)
+            }
+
+            _ => {
+                typ
+            }
         }
     }
 

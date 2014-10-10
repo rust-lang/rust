@@ -35,8 +35,16 @@ struct OverlapChecker<'cx, 'tcx:'cx> {
 impl<'cx, 'tcx> OverlapChecker<'cx, 'tcx> {
     fn check_for_overlapping_impls(&self) {
         debug!("check_for_overlapping_impls");
-        let trait_impls = self.tcx.trait_impls.borrow();
-        for trait_def_id in trait_impls.keys() {
+
+        // Collect this into a vector to avoid holding the
+        // refcell-lock during the
+        // check_for_overlapping_impls_of_trait() check, since that
+        // check can populate this table further with impls from other
+        // crates.
+        let trait_def_ids: Vec<ast::DefId> =
+            self.tcx.trait_impls.borrow().keys().map(|&d| d).collect();
+
+        for trait_def_id in trait_def_ids.iter() {
             self.check_for_overlapping_impls_of_trait(*trait_def_id);
         }
     }
