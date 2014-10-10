@@ -164,11 +164,12 @@ fn generic_extension<'cx>(cx: &'cx ExtCtxt,
                 _ => cx.span_fatal(sp, "malformed macro lhs")
             };
             // `None` is because we're not interpolating
-            let arg_rdr = new_tt_reader(&cx.parse_sess().span_diagnostic,
-                                        None,
-                                        arg.iter()
-                                           .map(|x| (*x).clone())
-                                           .collect());
+            let mut arg_rdr = new_tt_reader(&cx.parse_sess().span_diagnostic,
+                                            None,
+                                            arg.iter()
+                                               .map(|x| (*x).clone())
+                                               .collect());
+            arg_rdr.desugar_doc_comments = true;
             match parse(cx.parse_sess(), cx.cfg(), arg_rdr, lhs_tt) {
               Success(named_matches) => {
                 let rhs = match *rhses[i] {
