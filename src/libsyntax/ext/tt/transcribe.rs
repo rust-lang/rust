@@ -43,6 +43,8 @@ pub struct TtReader<'a> {
     /* cached: */
     pub cur_tok: Token,
     pub cur_span: Span,
+    /// Transform doc comments. Only useful in macro invocations
+    pub desugar_doc_comments: bool,
 }
 
 /// This can do Macro-By-Example transcription. On the other hand, if
@@ -66,6 +68,7 @@ pub fn new_tt_reader<'a>(sp_diag: &'a SpanHandler,
         },
         repeat_idx: Vec::new(),
         repeat_len: Vec::new(),
+        desugar_doc_comments: false,
         /* dummy values, never read: */
         cur_tok: token::Eof,
         cur_span: DUMMY_SP,
@@ -279,8 +282,7 @@ pub fn tt_next_token(r: &mut TtReader) -> TokenAndSpan {
                 }
             }
             // TtDelimited or any token that can be unzipped
-            seq @ TtDelimited(..) | seq @ TtToken(_, DocComment(..))
-            | seq @ TtToken(_, MatchNt(..)) => {
+            seq @ TtDelimited(..) | seq @ TtToken(_, MatchNt(..)) => {
                 // do not advance the idx yet
                 r.stack.push(TtFrame {
                    forest: seq.expand_into_tts(),
@@ -289,6 +291,14 @@ pub fn tt_next_token(r: &mut TtReader) -> TokenAndSpan {
                    sep: None
                 });
                 // if this could be 0-length, we'd need to potentially recur here
+            }
+            TtToken(sp, DocComment(name)) if r.desugar_doc_comments => {
+                r.stack.push(TtFrame {
+                   forest: TtToken(sp, DocComment(name)).expand_into_tts(),
+                   idx: 0,
+                   dotdotdoted: false,
+                   sep: None
+                });
             }
             TtToken(sp, tok) => {
                 r.cur_span = sp;
