@@ -39,9 +39,9 @@ static DEFAULT_STACK_SIZE: uint = 1024 * 1024;
 
 // This is the starting point of rust os threads. The first thing we do
 // is make sure that we don't trigger __morestack (also why this has a
-// no_split_stack annotation), and then we extract the main function
+// no_stack_check annotation), and then we extract the main function
 // and invoke it.
-#[no_split_stack]
+#[no_stack_check]
 extern fn thread_start(main: *mut libc::c_void) -> imp::rust_thread_return {
     unsafe {
         stack::record_os_managed_stack_bounds(0, uint::MAX);
