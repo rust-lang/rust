@@ -10,9 +10,8 @@
 
 /*! See `doc.rs` for high-level documentation */
 
-use super::{EvaluatedToMatch, EvaluatedToAmbiguity, EvaluatedToUnmatch};
-use super::{evaluate_impl};
-use super::ObligationCause;
+use super::SelectionContext;
+use super::Obligation;
 use super::util;
 
 use middle::subst;
@@ -28,22 +27,26 @@ pub fn impl_can_satisfy(infcx: &InferCtxt,
                         impl2_def_id: ast::DefId)
                         -> bool
 {
+    debug!("impl_can_satisfy(\
+           impl1_def_id={}, \
+           impl2_def_id={})",
+           impl1_def_id.repr(infcx.tcx),
+           impl2_def_id.repr(infcx.tcx));
+
     // `impl1` provides an implementation of `Foo<X,Y> for Z`.
     let impl1_substs =
         util::fresh_substs_for_impl(infcx, DUMMY_SP, impl1_def_id);
-    let impl1_self_ty =
+    let impl1_trait_ref =
         ty::impl_trait_ref(infcx.tcx, impl1_def_id).unwrap()
-            .self_ty()
             .subst(infcx.tcx, &impl1_substs);
 
     // Determine whether `impl2` can provide an implementation for those
     // same types.
     let param_env = ty::empty_parameter_environment();
-    match evaluate_impl(infcx, &param_env, infcx.tcx, ObligationCause::dummy(),
-                        impl2_def_id, impl1_self_ty) {
-        EvaluatedToMatch | EvaluatedToAmbiguity => true,
-        EvaluatedToUnmatch => false,
-    }
+    let mut selcx = SelectionContext::new(infcx, &param_env, infcx.tcx);
+    let obligation = Obligation::misc(DUMMY_SP, impl1_trait_ref);
+    debug!("impl_can_satisfy obligation={}", obligation.repr(infcx.tcx));
+    selcx.evaluate_impl(impl2_def_id, &obligation)
 }
 
 pub fn impl_is_local(tcx: &ty::ctxt,

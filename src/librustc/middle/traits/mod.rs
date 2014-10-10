@@ -17,6 +17,7 @@ use middle::subst;
 use middle::ty;
 use middle::typeck::infer::InferCtxt;
 use std::rc::Rc;
+use std::slice::Items;
 use syntax::ast;
 use syntax::codemap::{Span, DUMMY_SP};
 
@@ -123,13 +124,6 @@ pub enum FulfillmentErrorCode {
  */
 pub type SelectionResult<T> = Result<Option<T>, SelectionError>;
 
-#[deriving(PartialEq,Eq,Show)]
-pub enum EvaluationResult {
-    EvaluatedToMatch,
-    EvaluatedToAmbiguity,
-    EvaluatedToUnmatch
-}
-
 /**
  * Given the successful resolution of an obligation, the `Vtable`
  * indicates where the vtable comes from. Note that while we call this
@@ -186,7 +180,7 @@ pub enum Vtable<N> {
     VtableParam(VtableParamData),
 
     /// Successful resolution for a builtin trait.
-    VtableBuiltin,
+    VtableBuiltin(VtableBuiltinData<N>),
 }
 
 /**
@@ -208,12 +202,17 @@ pub struct VtableImplData<N> {
     pub nested: subst::VecPerParamSpace<N>
 }
 
+#[deriving(Show,Clone)]
+pub struct VtableBuiltinData<N> {
+    pub nested: subst::VecPerParamSpace<N>
+}
+
 /**
  * A vtable provided as a parameter by the caller. For example, in a
  * function like `fn foo<T:Eq>(...)`, if the `eq()` method is invoked
  * on an instance of `T`, the vtable would be of type `VtableParam`.
  */
-#[deriving(Clone)]
+#[deriving(PartialEq,Eq,Clone)]
 pub struct VtableParamData {
     // In the above example, this would `Eq`
     pub bound: Rc<ty::TraitRef>,
@@ -223,7 +222,7 @@ pub fn evaluate_obligation<'a,'tcx>(infcx: &InferCtxt<'a,'tcx>,
                                     param_env: &ty::ParameterEnvironment,
                                     obligation: &Obligation,
                                     typer: &Typer<'tcx>)
-                                    -> EvaluationResult
+                                    -> bool
 {
     /*!
      * Attempts to resolve the obligation given. Returns `None` if
@@ -233,29 +232,6 @@ pub fn evaluate_obligation<'a,'tcx>(infcx: &InferCtxt<'a,'tcx>,
 
     let mut selcx = select::SelectionContext::new(infcx, param_env, typer);
     selcx.evaluate_obligation(obligation)
-}
-
-pub fn evaluate_impl<'a,'tcx>(infcx: &InferCtxt<'a,'tcx>,
-                              param_env: &ty::ParameterEnvironment,
-                              typer: &Typer<'tcx>,
-                              cause: ObligationCause,
-                              impl_def_id: ast::DefId,
-                              self_ty: ty::t)
-                              -> EvaluationResult
-{
-    /*!
-     * Tests whether the impl `impl_def_id` can be applied to the self
-     * type `self_ty`. This is similar to "selection", but simpler:
-     *
-     * - It does not take a full trait-ref as input, so it skips over
-     *   the "confirmation" step which would reconcile output type
-     *   parameters.
-     * - It returns an `EvaluationResult`, which is a tri-value return
-     *   (yes/no/unknown).
-     */
-
-    let mut selcx = select::SelectionContext::new(infcx, param_env, typer);
-    selcx.evaluate_impl(impl_def_id, cause, self_ty)
 }
 
 pub fn select_inherent_impl<'a,'tcx>(infcx: &InferCtxt<'a,'tcx>,
@@ -372,12 +348,21 @@ impl ObligationCause {
 }
 
 impl<N> Vtable<N> {
+    pub fn iter_nested(&self) -> Items<N> {
+        match *self {
+            VtableImpl(ref i) => i.iter_nested(),
+            VtableUnboxedClosure(_) => (&[]).iter(),
+            VtableParam(_) => (&[]).iter(),
+            VtableBuiltin(ref i) => i.iter_nested(),
+        }
+    }
+
     pub fn map_nested<M>(&self, op: |&N| -> M) -> Vtable<M> {
         match *self {
             VtableImpl(ref i) => VtableImpl(i.map_nested(op)),
             VtableUnboxedClosure(d) => VtableUnboxedClosure(d),
             VtableParam(ref p) => VtableParam((*p).clone()),
-            VtableBuiltin => VtableBuiltin,
+            VtableBuiltin(ref i) => VtableBuiltin(i.map_nested(op)),
         }
     }
 
@@ -386,12 +371,16 @@ impl<N> Vtable<N> {
             VtableImpl(i) => VtableImpl(i.map_move_nested(op)),
             VtableUnboxedClosure(d) => VtableUnboxedClosure(d),
             VtableParam(p) => VtableParam(p),
-            VtableBuiltin => VtableBuiltin,
+            VtableBuiltin(i) => VtableBuiltin(i.map_move_nested(op)),
         }
     }
 }
 
 impl<N> VtableImplData<N> {
+    pub fn iter_nested(&self) -> Items<N> {
+        self.nested.iter()
+    }
+
     pub fn map_nested<M>(&self,
                          op: |&N| -> M)
                          -> VtableImplData<M>
@@ -413,11 +402,23 @@ impl<N> VtableImplData<N> {
     }
 }
 
-impl EvaluationResult {
-    pub fn potentially_applicable(&self) -> bool {
-        match *self {
-            EvaluatedToMatch | EvaluatedToAmbiguity => true,
-            EvaluatedToUnmatch => false
+impl<N> VtableBuiltinData<N> {
+    pub fn iter_nested(&self) -> Items<N> {
+        self.nested.iter()
+    }
+
+    pub fn map_nested<M>(&self,
+                         op: |&N| -> M)
+                         -> VtableBuiltinData<M>
+    {
+        VtableBuiltinData {
+            nested: self.nested.map(op)
+        }
+    }
+
+    pub fn map_move_nested<M>(self, op: |N| -> M) -> VtableBuiltinData<M> {
+        VtableBuiltinData {
+            nested: self.nested.map_move(op)
         }
     }
 }
@@ -427,5 +428,13 @@ impl FulfillmentError {
            -> FulfillmentError
     {
         FulfillmentError { obligation: obligation, code: code }
+    }
+
+    pub fn is_overflow(&self) -> bool {
+        match self.code {
+            CodeAmbiguity => false,
+            CodeSelectionError(Overflow) => true,
+            CodeSelectionError(_) => false,
+        }
     }
 }
