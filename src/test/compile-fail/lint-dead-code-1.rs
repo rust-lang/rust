@@ -35,6 +35,13 @@ pub static used_static2: int = used_static;
 const USED_STATIC: int = 0;
 const STATIC_USED_IN_ENUM_DISCRIMINANT: int = 10;
 
+pub const pub_const: int = 0;
+const priv_const: int = 0; //~ ERROR: constant item is never used
+const used_const: int = 0;
+pub const used_const2: int = used_const;
+const USED_CONST: int = 0;
+const CONST_USED_IN_ENUM_DISCRIMINANT: int = 10;
+
 pub type typ = *const UsedStruct4;
 pub struct PubStruct;
 struct PrivStruct; //~ ERROR: struct is never used
