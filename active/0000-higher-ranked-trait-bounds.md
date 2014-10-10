@@ -15,27 +15,31 @@ canonical example of where you want this is if you would like a
 closure that accepts a reference with any lifetime. For example,
 today you might write:
 
-    fn with(callback: |&Data|) {
-        let data = Data { ... };
-        callback(&data)
-    }
+```rust
+fn with(callback: |&Data|) {
+    let data = Data { ... };
+    callback(&data)
+}
+```
 
 If we try to write this using unboxed closures today, we have a problem:
 
-    fn with<'a, T>(callback: T)
-        where T : FnMut(&'a Data)
-    {
-        let data = Data { ... };
-        callback(&data)
-    }
+```
+fn with<'a, T>(callback: T)
+    where T : FnMut(&'a Data)
+{
+    let data = Data { ... };
+    callback(&data)
+}
 
-    // Note that the `()` syntax is shorthand for the following:
-    fn with<'a, T>(callback: T)
-        where T : FnMut<(&'a Data,),()>
-    {
-        let data = Data { ... };
-        callback(&data)
-    }
+// Note that the `()` syntax is shorthand for the following:
+fn with<'a, T>(callback: T)
+    where T : FnMut<(&'a Data,),()>
+{
+    let data = Data { ... };
+    callback(&data)
+}
+```
     
 The problem is that the argument type `&'a Data` must include a
 lifetime, and there is no lifetime one could write in the fn sig that
@@ -43,71 +47,77 @@ represents "the stack frame of the `with` function". Naturally
 we have the same problem if we try to use an `FnMut` object (which is
 the closer analog to the original closure example):
 
-    fn with<'a>(callback: &mut FnMut(&'a Data))
-    {
-        let data = Data { ... };
-        callback(&data)
-    }
+```rust
+fn with<'a>(callback: &mut FnMut(&'a Data))
+{
+    let data = Data { ... };
+    callback(&data)
+}
 
-    fn with<'a>(callback: &mut FnMut<(&'a Data,),()>)
-    {
-        let data = Data { ... };
-        callback(&data)
-    }
+fn with<'a>(callback: &mut FnMut<(&'a Data,),()>)
+{
+    let data = Data { ... };
+    callback(&data)
+}
+```
 
 Under this proposal, you would be able to write this code as follows:
 
-    // Using the FnMut(&Data) notation, the &Data is
-    // in fact referencing an implicit bound lifetime, just
-    // as with closures today.
-    fn with<T>(callback: T)
-        where T : FnMut(&Data)
-    {
-        let data = Data { ... };
-        callback(&data)
-    }
+```
+// Using the FnMut(&Data) notation, the &Data is
+// in fact referencing an implicit bound lifetime, just
+// as with closures today.
+fn with<T>(callback: T)
+    where T : FnMut(&Data)
+{
+    let data = Data { ... };
+    callback(&data)
+}
 
-    // If you prefer, you can use an explicit name,
-    // introduced by the `for<'a>` syntax.
-    fn with<T>(callback: T)
-        where T : for<'a> FnMut(&'a Data)
-    {
-        let data = Data { ... };
-        callback(&data)
-    }
+// If you prefer, you can use an explicit name,
+// introduced by the `for<'a>` syntax.
+fn with<T>(callback: T)
+    where T : for<'a> FnMut(&'a Data)
+{
+    let data = Data { ... };
+    callback(&data)
+}
 
-    // No sugar at all.
-    fn with<T>(callback: T)
-        where T : for<'a> FnMut<(&'a Data,),()>
-    {
-        let data = Data { ... };
-        callback(&data)
-    }
+// No sugar at all.
+fn with<T>(callback: T)
+    where T : for<'a> FnMut<(&'a Data,),()>
+{
+    let data = Data { ... };
+    callback(&data)
+}
+```
     
 And naturally the object form(s) work as well:    
 
-    // The preferred notation, using `()`, again introduces
-    // implicit binders for omitted lifetimes:
-    fn with(callback: &mut FnMut(&Data))
-    {
-        let data = Data { ... };
-        callback(&data)
-    }
+```rust
+// The preferred notation, using `()`, again introduces
+// implicit binders for omitted lifetimes:
+fn with(callback: &mut FnMut(&Data))
+{
+    let data = Data { ... };
+    callback(&data)
+}
 
-    // Explicit names work too.
-    fn with(callback: &mut for<'a> FnMut(&'a Data))
-    {
-        let data = Data { ... };
-        callback(&data)
-    }
+// Explicit names work too.
+fn with(callback: &mut for<'a> FnMut(&'a Data))
+{
+    let data = Data { ... };
+    callback(&data)
+}
 
-    // The fully explicit notation requires an explicit `for`,
-    // as before, to declare the bound lifetimes.
-    fn with(callback: &mut for<'a> FnMut<(&'a Data,),()>)
-    {
-        let data = Data { ... };
-        callback(&data)
-    }
+// The fully explicit notation requires an explicit `for`,
+// as before, to declare the bound lifetimes.
+fn with(callback: &mut for<'a> FnMut<(&'a Data,),()>)
+{
+    let data = Data { ... };
+    callback(&data)
+}
+```
 
 The syntax for `fn` types must be updated as well to use `for`.
 
