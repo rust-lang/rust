@@ -87,6 +87,7 @@
 
 #![doc(primitive = "slice")]
 
+use alloc::boxed::Box;
 use core::cmp;
 use core::mem::size_of;
 use core::mem;
@@ -296,6 +297,23 @@ impl<'a, T: Clone> CloneableVector<T> for &'a [T] {
 
     #[inline(always)]
     fn into_vec(self) -> Vec<T> { self.to_vec() }
+}
+
+#[experimental]
+pub trait BoxedSlice<T> {
+    /// Convert `self` into a vector without clones or allocation.
+    fn into_vec(self) -> Vec<T>;
+}
+
+impl<T> BoxedSlice<T> for Box<[T]> {
+    #[experimental]
+    fn into_vec(mut self) -> Vec<T> {
+        unsafe {
+            let xs = Vec::from_raw_parts(self.len(), self.len(), self.as_mut_ptr());
+            mem::forget(self);
+            xs
+        }
+    }
 }
 
 /// Extension methods for vectors containing `Clone` elements.
@@ -2307,6 +2325,13 @@ mod tests {
 
         let y: &mut [int] = [];
         assert!(y.last_mut().is_none());
+    }
+
+    #[test]
+    fn test_into_vec() {
+        let xs = box [1u, 2, 3];
+        let ys = xs.into_vec();
+        assert_eq!(ys.as_slice(), [1u, 2, 3].as_slice());
     }
 }
 
