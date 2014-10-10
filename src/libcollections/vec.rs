@@ -14,6 +14,7 @@
 
 use core::prelude::*;
 
+use alloc::boxed::Box;
 use alloc::heap::{EMPTY, allocate, reallocate, deallocate};
 use core::cmp::max;
 use core::default::Default;
@@ -754,6 +755,20 @@ impl<T> Vec<T> {
                                       mem::min_align_of::<T>()) as *mut T;
             }
             self.cap = self.len;
+        }
+    }
+
+    /// Convert the vector into Box<[T]>.
+    ///
+    /// Note that this will drop any excess capacity. Calling this and converting back to a vector
+    /// with `into_vec()` is equivalent to calling `shrink_to_fit()`.
+    #[experimental]
+    pub fn into_boxed_slice(mut self) -> Box<[T]> {
+        self.shrink_to_fit();
+        unsafe {
+            let xs: Box<[T]> = mem::transmute(self.as_mut_slice());
+            mem::forget(self);
+            xs
         }
     }
 
@@ -2629,6 +2644,13 @@ mod tests {
             vec2.push(i);
         }
         assert!(vec2 == vec!((), (), ()));
+    }
+
+    #[test]
+    fn test_into_boxed_slice() {
+        let xs = vec![1u, 2, 3];
+        let ys = xs.into_boxed_slice();
+        assert_eq!(ys.as_slice(), [1u, 2, 3]);
     }
 
     #[bench]
