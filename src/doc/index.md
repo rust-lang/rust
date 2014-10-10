@@ -62,7 +62,6 @@ a guide that can help you out:
 * [Writing Unsafe and Low-Level Code](guide-unsafe.html)
 * [Macros](guide-macros.html)
 * [Testing](guide-testing.html)
-* [Rust's Runtime](guide-runtime.html)
 * [Compiler Plugins](guide-plugin.html)
 
 # Tools
