@@ -424,6 +424,21 @@ the `std::fmt` module for stabilization.
   Like the `radix` function, this RFC recommends `#[unstable]` for both of these
   pieces of functionality.
 
+# Drawbacks
+
+For backwards compatibility, this RFC proposes removing `a = b` and `a op= b` as
+expressions, which makes this code (valid today) fail to compile:
+
+```rust
+match foo {
+    _ => a = b,
+}
+foo(|value| a = value);
+```
+
+Both of these cases may be somewhat common, and this RFC would require that they
+be surrounded with braces and a semicolon.
+
 # Alternatives
 
 A number of alternatives were laid out in the detailed description for various
