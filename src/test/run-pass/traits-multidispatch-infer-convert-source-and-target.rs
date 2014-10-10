@@ -8,28 +8,28 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-trait Tr<T> {
-    fn op(T) -> Self;
+// Test that if there is one impl we can infer everything.
+
+use std::mem;
+
+trait Convert<Target> {
+    fn convert(&self) -> Target;
 }
 
-// these compile as if Self: Tr<U>, even tho only Self: Tr<Self or T>
-trait A:    Tr<Self> {
-    fn test<U>(u: U) -> Self {
-        Tr::op(u)   //~ ERROR not implemented
-    }
-}
-trait B<T>: Tr<T> {
-    fn test<U>(u: U) -> Self {
-        Tr::op(u)   //~ ERROR not implemented
+impl Convert<u32> for i16 {
+    fn convert(&self) -> u32 {
+        *self as u32
     }
 }
 
-impl<T> Tr<T> for T {
-    fn op(t: T) -> T { t }
+fn test<T,U>(_: T, _: U, t_size: uint, u_size: uint)
+where T : Convert<U>
+{
+    assert_eq!(mem::size_of::<T>(), t_size);
+    assert_eq!(mem::size_of::<U>(), u_size);
 }
-impl<T> A for T {}
 
 fn main() {
-    std::io::println(A::test((&7306634593706211700, 8)));
+    // T = i16, U = u32
+    test(22, 44,  2, 4);
 }
-

@@ -561,7 +561,7 @@ pub fn get_vtable(bcx: Block,
                                         DUMMY_SP,
                                         trait_ref.clone());
         match vtable {
-            traits::VtableBuiltin => {
+            traits::VtableBuiltin(_) => {
                 Vec::new().into_iter()
             }
             traits::VtableImpl(
