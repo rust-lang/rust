@@ -14,9 +14,9 @@ use core::prelude::*;
 
 use {Rng, SeedableRng, Rand};
 
-static KEY_WORDS    : uint =  8; // 8 words for the 256-bit key
-static STATE_WORDS  : uint = 16;
-static CHACHA_ROUNDS: uint = 20; // Cryptographically secure from 8 upwards as of this writing
+const KEY_WORDS    : uint =  8; // 8 words for the 256-bit key
+const STATE_WORDS  : uint = 16;
+const CHACHA_ROUNDS: uint = 20; // Cryptographically secure from 8 upwards as of this writing
 
 /// A random number generator that uses the ChaCha20 algorithm [1].
 ///

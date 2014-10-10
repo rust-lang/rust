@@ -267,7 +267,7 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,TYPER> {
         }
     }
 
-    fn consume_expr(&mut self, expr: &ast::Expr) {
+    pub fn consume_expr(&mut self, expr: &ast::Expr) {
         debug!("consume_expr(expr={})", expr.repr(self.tcx()));
 
         let cmt = return_if_err!(self.mc.cat_expr(expr));

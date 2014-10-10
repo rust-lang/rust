@@ -23,15 +23,15 @@ use libc;
 //
 // FIXME: Once the runtime matures remove the `true` below to turn off rtassert,
 //        etc.
-pub static ENFORCE_SANITY: bool = true || !cfg!(rtopt) || cfg!(rtdebug) ||
+pub const ENFORCE_SANITY: bool = true || !cfg!(rtopt) || cfg!(rtdebug) ||
                                   cfg!(rtassert);
 
 pub struct Stdio(libc::c_int);
 
 #[allow(non_uppercase_statics)]
-pub static Stdout: Stdio = Stdio(libc::STDOUT_FILENO);
+pub const Stdout: Stdio = Stdio(libc::STDOUT_FILENO);
 #[allow(non_uppercase_statics)]
-pub static Stderr: Stdio = Stdio(libc::STDERR_FILENO);
+pub const Stderr: Stdio = Stdio(libc::STDERR_FILENO);
 
 impl fmt::FormatWriter for Stdio {
     fn write(&mut self, data: &[u8]) -> fmt::Result {

@@ -1383,42 +1383,85 @@ a = Cat { name: "Spotty".to_string(), weight: 2.7 };
 In this example, `Cat` is a _struct-like enum variant_,
 whereas `Dog` is simply called an enum variant.
 
-### Static items
+### Constant items
 
 ```{.ebnf .gram}
-static_item : "static" ident ':' type '=' expr ';' ;
+const_item : "const" ident ':' type '=' expr ';' ;
 ```
 
-A *static item* is a named _constant value_ stored in the global data section
-of a crate. Immutable static items are stored in the read-only data section.
-The constant value bound to a static item is, like all constant values,
-evaluated at compile time. Static items have the `static` lifetime, which
-outlives all other lifetimes in a Rust program. Only values stored in the
-global data section (such as string constants and static items) can have the
-`static` lifetime; dynamically constructed values cannot safely be assigned the
-`static` lifetime. Static items are declared with the `static` keyword. A
-static item must have a _constant expression_ giving its definition.
+A *constant item* is a named _constant value_ which is not associated with a
+specific memory location in the program. Constants are essentially inlined
+wherever they are used, meaning that they are copied directly into the relevant
+context when used. References to the same constant are not necessarily
+guaranteed to refer to the same memory address.
 
-Static items must be explicitly typed. The type may be `bool`, `char`,
-a number, or a type derived from those primitive types. The derived types are
-references with the `static` lifetime, fixed-size arrays, tuples, and structs.
+Constant values must not have destructors, and otherwise permit most forms of
+data. Constants may refer to the address of other constants, in which case the
+address will have the `static` lifetime. The compiler is, however, still at
+liberty to translate the constant many times, so the address referred to may not
+be stable.
+
+Constants must be explicitly typed. The type may be `bool`, `char`, a number, or
+a type derived from those primitive types. The derived types are references with
+the `static` lifetime, fixed-size arrays, tuples, enum variants, and structs.
 
 ```
-static BIT1: uint = 1 << 0;
-static BIT2: uint = 1 << 1;
+const BIT1: uint = 1 << 0;
+const BIT2: uint = 1 << 1;
 
-static BITS: [uint, ..2] = [BIT1, BIT2];
-static STRING: &'static str = "bitstring";
+const BITS: [uint, ..2] = [BIT1, BIT2];
+const STRING: &'static str = "bitstring";
 
 struct BitsNStrings<'a> {
     mybits: [uint, ..2],
     mystring: &'a str
 }
 
-static BITS_N_STRINGS: BitsNStrings<'static> = BitsNStrings {
+const BITS_N_STRINGS: BitsNStrings<'static> = BitsNStrings {
     mybits: BITS,
     mystring: STRING
 };
+```
+
+### Static items
+
+```{.ebnf .gram}
+static_item : "static" ident ':' type '=' expr ';' ;
+```
+
+A *static item* is similar to a *constant*, except that it represents a precise
+memory location in the program. A static is never "inlined" at the usage site,
+and all references to it refer to the same memory location. Static items have
+the `static` lifetime, which outlives all other lifetimes in a Rust program.
+Static items may be placed in read-only memory if they do not contain any
+interior mutability.
+
+Statics may contain interior mutability through the `UnsafeCell` language item.
+All access to a static is safe, but there are a number of restrictions on
+statics:
+
+* Statics may not contain any destructors.
+* The types of static values must ascribe to `Sync` to allow threadsafe access.
+* Statics may not refer to other statics by value, only by reference.
+* Constants cannot refer to statics.
+
+Constants should in general be preferred over statics, unless large amounts of
+data are being stored, or single-address and mutability properties are required.
+
+```
+use std::sync::atomic;
+
+// Note that INIT_ATOMIC_UINT is a *const*, but it may be used to initialize a
+// static. This static can be modified, so it is not placed in read-only memory.
+static COUNTER: atomic::AtomicUint = atomic::INIT_ATOMIC_UINT;
+
+// This table is a candidate to be placed in read-only memory.
+static TABLE: &'static [uint] = &[1, 2, 3, /* ... */];
+
+for slot in TABLE.iter() {
+    println!("{}", slot);
+}
+COUNTER.fetch_add(1, atomic::SeqCst);
 ```
 
 #### Mutable statics
@@ -1454,6 +1497,9 @@ unsafe fn bump_levels_unsafe2() -> uint {
     return atomic_add(&mut LEVELS, 1);
 }
 ```
+
+Mutable statics have the same restrictions as normal statics, except that the
+type of the value is not required to ascribe to `Sync`.
 
 ### Traits
 

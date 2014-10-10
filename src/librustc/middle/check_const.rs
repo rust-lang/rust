@@ -47,7 +47,9 @@ impl<'a, 'tcx, 'v> Visitor<'v> for CheckCrateVisitor<'a, 'tcx> {
         check_pat(self, p);
     }
     fn visit_expr(&mut self, ex: &Expr) {
-        check_expr(self, ex);
+        if check_expr(self, ex) {
+            visit::walk_expr(self, ex);
+        }
     }
 }
 
@@ -59,7 +61,8 @@ pub fn check_crate(tcx: &ty::ctxt) {
 
 fn check_item(v: &mut CheckCrateVisitor, it: &Item) {
     match it.node {
-        ItemStatic(_, _, ref ex) => {
+        ItemStatic(_, _, ref ex) |
+        ItemConst(_, ref ex) => {
             v.inside_const(|v| v.visit_expr(&**ex));
         }
         ItemEnum(ref enum_definition, _) => {
@@ -96,73 +99,81 @@ fn check_pat(v: &mut CheckCrateVisitor, p: &Pat) {
     }
 }
 
-fn check_expr(v: &mut CheckCrateVisitor, e: &Expr) {
-    if v.in_const {
-        match e.node {
-          ExprUnary(UnDeref, _) => { }
-          ExprUnary(UnUniq, _) => {
-            span_err!(v.tcx.sess, e.span, E0010, "cannot do allocations in constant expressions");
-            return;
-          }
-          ExprLit(ref lit) if ast_util::lit_is_str(&**lit) => {}
-          ExprBinary(..) | ExprUnary(..) => {
+fn check_expr(v: &mut CheckCrateVisitor, e: &Expr) -> bool {
+    if !v.in_const { return true }
+
+    match e.node {
+        ExprUnary(UnDeref, _) => {}
+        ExprUnary(UnUniq, _) => {
+            span_err!(v.tcx.sess, e.span, E0010,
+                      "cannot do allocations in constant expressions");
+            return false;
+        }
+        ExprLit(ref lit) if ast_util::lit_is_str(&**lit) => {}
+        ExprBinary(..) | ExprUnary(..) => {
             let method_call = typeck::MethodCall::expr(e.id);
             if v.tcx.method_map.borrow().contains_key(&method_call) {
                 span_err!(v.tcx.sess, e.span, E0011,
-                    "user-defined operators are not allowed in constant expressions");
+                          "user-defined operators are not allowed in constant \
+                           expressions");
             }
-          }
-          ExprLit(_) => (),
-          ExprCast(_, _) => {
+        }
+        ExprLit(_) => (),
+        ExprCast(_, _) => {
             let ety = ty::expr_ty(v.tcx, e);
             if !ty::type_is_numeric(ety) && !ty::type_is_unsafe_ptr(ety) {
                 span_err!(v.tcx.sess, e.span, E0012,
-                    "can not cast to `{}` in a constant expression",
-                    ppaux::ty_to_string(v.tcx, ety)
-                );
+                          "can not cast to `{}` in a constant expression",
+                          ppaux::ty_to_string(v.tcx, ety));
             }
-          }
-          ExprPath(ref pth) => {
+        }
+        ExprPath(ref pth) => {
             // NB: In the future you might wish to relax this slightly
             // to handle on-demand instantiation of functions via
             // foo::<bar> in a const. Currently that is only done on
             // a path in trans::callee that only works in block contexts.
             if !pth.segments.iter().all(|segment| segment.types.is_empty()) {
                 span_err!(v.tcx.sess, e.span, E0013,
-                    "paths in constants may only refer to items without type parameters");
+                          "paths in constants may only refer to items without \
+                           type parameters");
             }
             match v.tcx.def_map.borrow().find(&e.id) {
-              Some(&DefStatic(..)) |
-              Some(&DefFn(..)) |
-              Some(&DefVariant(_, _, _)) |
-              Some(&DefStruct(_)) => { }
+                Some(&DefStatic(..)) |
+                Some(&DefConst(..)) |
+                Some(&DefFn(..)) |
+                Some(&DefVariant(_, _, _)) |
+                Some(&DefStruct(_)) => { }
 
-              Some(&def) => {
-                debug!("(checking const) found bad def: {:?}", def);
-                span_err!(v.tcx.sess, e.span, E0014,
-                    "paths in constants may only refer to constants or functions");
-              }
-              None => {
-                v.tcx.sess.span_bug(e.span, "unbound path in const?!");
-              }
+                Some(&def) => {
+                    debug!("(checking const) found bad def: {:?}", def);
+                    span_err!(v.tcx.sess, e.span, E0014,
+                              "paths in constants may only refer to constants \
+                               or functions");
+                }
+                None => {
+                    v.tcx.sess.span_bug(e.span, "unbound path in const?!");
+                }
             }
-          }
-          ExprCall(ref callee, _) => {
+        }
+        ExprCall(ref callee, _) => {
             match v.tcx.def_map.borrow().find(&callee.id) {
                 Some(&DefStruct(..)) |
                 Some(&DefVariant(..)) => {}    // OK.
+
                 _ => {
                     span_err!(v.tcx.sess, e.span, E0015,
-                      "function calls in constants are limited to struct and enum constructors");
+                              "function calls in constants are limited to \
+                               struct and enum constructors");
                 }
             }
-          }
-          ExprBlock(ref block) => {
+        }
+        ExprBlock(ref block) => {
             // Check all statements in the block
             for stmt in block.stmts.iter() {
                 let block_span_err = |span|
                     span_err!(v.tcx.sess, span, E0016,
-                        "blocks in constants are limited to items and tail expressions");
+                              "blocks in constants are limited to items and \
+                               tail expressions");
                 match stmt.node {
                     StmtDecl(ref span, _) => {
                         match span.node {
@@ -174,40 +185,43 @@ fn check_expr(v: &mut CheckCrateVisitor, e: &Expr) {
                     }
                     StmtExpr(ref expr, _) => block_span_err(expr.span),
                     StmtSemi(ref semi, _) => block_span_err(semi.span),
-                    StmtMac(..) => v.tcx.sess.span_bug(e.span,
-                        "unexpanded statement macro in const?!")
+                    StmtMac(..) => {
+                        v.tcx.sess.span_bug(e.span, "unexpanded statement \
+                                                     macro in const?!")
+                    }
                 }
             }
             match block.expr {
-                Some(ref expr) => check_expr(v, &**expr),
+                Some(ref expr) => { check_expr(v, &**expr); }
                 None => {}
             }
-          }
-          ExprVec(_) |
-          ExprAddrOf(MutImmutable, _) |
-          ExprParen(..) |
-          ExprField(..) |
-          ExprTupField(..) |
-          ExprIndex(..) |
-          ExprTup(..) |
-          ExprRepeat(..) |
-          ExprStruct(..) => { }
-          ExprAddrOf(_, ref inner) => {
-                match inner.node {
-                    // Mutable slices are allowed.
-                    ExprVec(_) => {}
-                    _ => span_err!(v.tcx.sess, e.span, E0017,
-                                   "references in constants may only refer to immutable values")
+        }
+        ExprVec(_) |
+        ExprAddrOf(MutImmutable, _) |
+        ExprParen(..) |
+        ExprField(..) |
+        ExprTupField(..) |
+        ExprIndex(..) |
+        ExprTup(..) |
+        ExprRepeat(..) |
+        ExprStruct(..) => {}
 
-                }
-          },
+        ExprAddrOf(_, ref inner) => {
+            match inner.node {
+                // Mutable slices are allowed.
+                ExprVec(_) => {}
+                _ => span_err!(v.tcx.sess, e.span, E0017,
+                               "references in constants may only refer \
+                                to immutable values")
 
-          _ => {
-              span_err!(v.tcx.sess, e.span, E0019,
-                  "constant contains unimplemented expression type");
-              return;
-          }
+            }
+        }
+
+        _ => {
+            span_err!(v.tcx.sess, e.span, E0019,
+                      "constant contains unimplemented expression type");
+            return false;
         }
     }
-    visit::walk_expr(v, e);
+    true
 }

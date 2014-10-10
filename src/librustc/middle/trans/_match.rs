@@ -271,14 +271,14 @@ impl<'a> Opt<'a> {
         match *self {
             ConstantValue(ConstantExpr(lit_expr)) => {
                 let lit_ty = ty::node_id_to_type(bcx.tcx(), lit_expr.id);
-                let (llval, _, _) = consts::const_expr(ccx, &*lit_expr, true);
+                let (llval, _) = consts::const_expr(ccx, &*lit_expr);
                 let lit_datum = immediate_rvalue(llval, lit_ty);
                 let lit_datum = unpack_datum!(bcx, lit_datum.to_appropriate_datum(bcx));
                 SingleResult(Result::new(bcx, lit_datum.val))
             }
             ConstantRange(ConstantExpr(ref l1), ConstantExpr(ref l2)) => {
-                let (l1, _, _) = consts::const_expr(ccx, &**l1, true);
-                let (l2, _, _) = consts::const_expr(ccx, &**l2, true);
+                let (l1, _) = consts::const_expr(ccx, &**l1);
+                let (l2, _) = consts::const_expr(ccx, &**l2);
                 RangeResult(Result::new(bcx, l1), Result::new(bcx, l2))
             }
             Variant(disr_val, ref repr, _) => {
@@ -350,7 +350,20 @@ struct ArmData<'p, 'blk, 'tcx: 'blk> {
 struct Match<'a, 'p: 'a, 'blk: 'a, 'tcx: 'blk> {
     pats: Vec<&'p ast::Pat>,
     data: &'a ArmData<'p, 'blk, 'tcx>,
-    bound_ptrs: Vec<(Ident, ValueRef)>
+    bound_ptrs: Vec<(Ident, ValueRef)>,
+
+    // This is a pointer to an instance of check_match::DUMMY_WILD_PAT. The
+    // check_match code requires that we pass this in (with the same lifetime as
+    // the patterns passed in). Unfortunately this is required to be propagated
+    // into this structure in order to get the lifetimes to work.
+    //
+    // Lots of the `check_match` code will deal with &DUMMY_WILD_PAT when
+    // returning references, which used to have the `'static` lifetime before
+    // const was added to the language. The DUMMY_WILD_PAT does not implement
+    // Sync, however, so it must be a const, which longer has a static lifetime,
+    // hence we're passing it in here. This certainly isn't crucial, and if it
+    // can be removed, please do!
+    dummy: &'p ast::Pat,
 }
 
 impl<'a, 'p, 'blk, 'tcx> Repr for Match<'a, 'p, 'blk, 'tcx> {
@@ -403,21 +416,22 @@ fn expand_nested_bindings<'a, 'p, 'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         *pats.get_mut(col) = pat;
         Match {
             pats: pats,
+            dummy: br.dummy,
             data: &*br.data,
             bound_ptrs: bound_ptrs
         }
     }).collect()
 }
 
-type EnterPatterns<'a> = <'p> |&[&'p ast::Pat]|: 'a -> Option<Vec<&'p ast::Pat>>;
+type EnterPatterns<'a, 'p> = |&[&'p ast::Pat]|: 'a -> Option<Vec<&'p ast::Pat>>;
 
-fn enter_match<'a, 'p, 'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
-                                   dm: &DefMap,
-                                   m: &[Match<'a, 'p, 'blk, 'tcx>],
-                                   col: uint,
-                                   val: ValueRef,
-                                   e: EnterPatterns)
-                                   -> Vec<Match<'a, 'p, 'blk, 'tcx>> {
+fn enter_match<'a, 'b, 'p, 'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+                                       dm: &DefMap,
+                                       m: &[Match<'a, 'p, 'blk, 'tcx>],
+                                       col: uint,
+                                       val: ValueRef,
+                                       e: EnterPatterns<'b, 'p>)
+                                       -> Vec<Match<'a, 'p, 'blk, 'tcx>> {
     debug!("enter_match(bcx={}, m={}, col={}, val={})",
            bcx.to_str(),
            m.repr(bcx.tcx()),
@@ -450,6 +464,7 @@ fn enter_match<'a, 'p, 'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             }
             Match {
                 pats: pats,
+                dummy: br.dummy,
                 data: br.data,
                 bound_ptrs: bound_ptrs
             }
@@ -544,7 +559,8 @@ fn enter_opt<'a, 'p, 'blk, 'tcx>(
 
     let mcx = check_match::MatchCheckCtxt { tcx: bcx.tcx() };
     enter_match(bcx, dm, m, col, val, |pats|
-        check_match::specialize(&mcx, pats.as_slice(), &ctor, col, variant_size)
+        check_match::specialize(&mcx, pats.as_slice(), m[0].dummy, &ctor, col,
+                                variant_size)
     )
 }
 
@@ -1025,7 +1041,9 @@ fn compile_submatch_continue<'a, 'p, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
     match adt_vals {
         Some(field_vals) => {
             let pats = enter_match(bcx, dm, m, col, val, |pats|
-                check_match::specialize(&mcx, pats, &check_match::Single, col, field_vals.len())
+                check_match::specialize(&mcx, pats, m[0].dummy,
+                                        &check_match::Single, col,
+                                        field_vals.len())
             );
             let vals = field_vals.append(vals_left.as_slice());
             compile_submatch(bcx, pats.as_slice(), vals.as_slice(), chk, has_genuine_default);
@@ -1347,6 +1365,7 @@ fn trans_match_inner<'blk, 'tcx>(scope_cx: Block<'blk, 'tcx>,
         bindings_map: create_bindings_map(bcx, &**arm.pats.get(0), discr_expr, &*arm.body)
     }).collect();
 
+    let dummy = check_match::DUMMY_WILD_PAT.clone();
     let mut static_inliner = StaticInliner::new(scope_cx.tcx());
     let arm_pats: Vec<Vec<P<ast::Pat>>> = arm_datas.iter().map(|arm_data| {
         arm_data.arm.pats.iter().map(|p| static_inliner.fold_pat((*p).clone())).collect()
@@ -1355,6 +1374,7 @@ fn trans_match_inner<'blk, 'tcx>(scope_cx: Block<'blk, 'tcx>,
     for (arm_data, pats) in arm_datas.iter().zip(arm_pats.iter()) {
         matches.extend(pats.iter().map(|p| Match {
             pats: vec![&**p],
+            dummy: &dummy,
             data: arm_data,
             bound_ptrs: Vec::new(),
         }));

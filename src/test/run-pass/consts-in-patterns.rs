@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-static FOO: int = 10;
-static BAR: int = 3;
+const FOO: int = 10;
+const BAR: int = 3;
 
 pub fn main() {
     let x: int = 3i;

@@ -70,9 +70,9 @@ use rustrt::thread::Thread;
 
 use mpsc_intrusive as q;
 
-pub static LOCKED: uint = 1 << 0;
-pub static GREEN_BLOCKED: uint = 1 << 1;
-pub static NATIVE_BLOCKED: uint = 1 << 2;
+pub const LOCKED: uint = 1 << 0;
+pub const GREEN_BLOCKED: uint = 1 << 1;
+pub const NATIVE_BLOCKED: uint = 1 << 2;
 
 /// A mutual exclusion primitive useful for protecting shared data
 ///
@@ -163,7 +163,7 @@ pub struct Guard<'a> {
 
 /// Static initialization of a mutex. This constant can be used to initialize
 /// other mutex constants.
-pub static MUTEX_INIT: StaticMutex = StaticMutex {
+pub const MUTEX_INIT: StaticMutex = StaticMutex {
     lock: mutex::NATIVE_MUTEX_INIT,
     state: atomic::INIT_ATOMIC_UINT,
     flavor: UnsafeCell { value: Unlocked },

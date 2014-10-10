@@ -493,11 +493,10 @@ fn mk_tests(cx: &TestCtxt) -> P<ast::Item> {
                                   Some(static_lt),
                                   ast::MutImmutable);
     // static TESTS: $static_type = &[...];
-    ecx.item_static(sp,
-                    ecx.ident_of("TESTS"),
-                    static_type,
-                    ast::MutImmutable,
-                    test_descs)
+    ecx.item_const(sp,
+                   ecx.ident_of("TESTS"),
+                   static_type,
+                   test_descs)
 }
 
 fn is_test_crate(krate: &ast::Crate) -> bool {

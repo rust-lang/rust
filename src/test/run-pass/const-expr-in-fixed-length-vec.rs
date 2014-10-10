@@ -13,7 +13,7 @@
 
 pub fn main() {
 
-    static FOO: uint = 2;
+    const FOO: uint = 2;
     let _v: [int, ..FOO*3];
 
 }

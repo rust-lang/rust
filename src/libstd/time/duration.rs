@@ -20,23 +20,23 @@ use num::{CheckedAdd, CheckedMul};
 use result::{Result, Ok, Err};
 
 /// The number of nanoseconds in a microsecond.
-static NANOS_PER_MICRO: i32 = 1000;
+const NANOS_PER_MICRO: i32 = 1000;
 /// The number of nanoseconds in a millisecond.
-static NANOS_PER_MILLI: i32 = 1000_000;
+const NANOS_PER_MILLI: i32 = 1000_000;
 /// The number of nanoseconds in seconds.
-static NANOS_PER_SEC: i32 = 1_000_000_000;
+const NANOS_PER_SEC: i32 = 1_000_000_000;
 /// The number of microseconds per second.
-static MICROS_PER_SEC: i64 = 1000_000;
+const MICROS_PER_SEC: i64 = 1000_000;
 /// The number of milliseconds per second.
-static MILLIS_PER_SEC: i64 = 1000;
+const MILLIS_PER_SEC: i64 = 1000;
 /// The number of seconds in a minute.
-static SECS_PER_MINUTE: i64 = 60;
+const SECS_PER_MINUTE: i64 = 60;
 /// The number of seconds in an hour.
-static SECS_PER_HOUR: i64 = 3600;
+const SECS_PER_HOUR: i64 = 3600;
 /// The number of (non-leap) seconds in days.
-static SECS_PER_DAY: i64 = 86400;
+const SECS_PER_DAY: i64 = 86400;
 /// The number of (non-leap) seconds in a week.
-static SECS_PER_WEEK: i64 = 604800;
+const SECS_PER_WEEK: i64 = 604800;
 
 macro_rules! try_opt(
     ($e:expr) => (match $e { Some(v) => v, None => return None })
@@ -52,13 +52,13 @@ pub struct Duration {
 }
 
 /// The minimum possible `Duration`: `i64::MIN` milliseconds.
-pub static MIN: Duration = Duration {
+pub const MIN: Duration = Duration {
     secs: i64::MIN / MILLIS_PER_SEC - 1,
     nanos: NANOS_PER_SEC + (i64::MIN % MILLIS_PER_SEC) as i32 * NANOS_PER_MILLI
 };
 
 /// The maximum possible `Duration`: `i64::MAX` milliseconds.
-pub static MAX: Duration = Duration {
+pub const MAX: Duration = Duration {
     secs: i64::MAX / MILLIS_PER_SEC,
     nanos: (i64::MAX % MILLIS_PER_SEC) as i32 * NANOS_PER_MILLI
 };
@@ -456,7 +456,7 @@ mod tests {
         assert_eq!(MIN.num_microseconds(), None);
 
         // overflow checks
-        static MICROS_PER_DAY: i64 = 86400_000_000;
+        const MICROS_PER_DAY: i64 = 86400_000_000;
         assert_eq!(Duration::days(i64::MAX / MICROS_PER_DAY).num_microseconds(),
                    Some(i64::MAX / MICROS_PER_DAY * MICROS_PER_DAY));
         assert_eq!(Duration::days(i64::MIN / MICROS_PER_DAY).num_microseconds(),
@@ -477,7 +477,7 @@ mod tests {
         assert_eq!(MIN.num_nanoseconds(), None);
 
         // overflow checks
-        static NANOS_PER_DAY: i64 = 86400_000_000_000;
+        const NANOS_PER_DAY: i64 = 86400_000_000_000;
         assert_eq!(Duration::days(i64::MAX / NANOS_PER_DAY).num_nanoseconds(),
                    Some(i64::MAX / NANOS_PER_DAY * NANOS_PER_DAY));
         assert_eq!(Duration::days(i64::MIN / NANOS_PER_DAY).num_nanoseconds(),

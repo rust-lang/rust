@@ -126,12 +126,14 @@ enum Family {
     Trait,                 // I
     Struct,                // S
     PublicField,           // g
-    InheritedField         // N
+    InheritedField,        // N
+    Constant,              // C
 }
 
 fn item_family(item: rbml::Doc) -> Family {
     let fam = reader::get_doc(item, tag_items_data_item_family);
     match reader::doc_as_u8(fam) as char {
+      'C' => Constant,
       'c' => ImmStatic,
       'b' => MutStatic,
       'f' => Fn,
@@ -303,6 +305,7 @@ fn item_to_def_like(item: rbml::Doc, did: ast::DefId, cnum: ast::CrateNum)
     -> DefLike {
     let fam = item_family(item);
     match fam {
+        Constant  => DlDef(def::DefConst(did)),
         ImmStatic => DlDef(def::DefStatic(did, false)),
         MutStatic => DlDef(def::DefStatic(did, true)),
         Struct    => DlDef(def::DefStruct(did)),

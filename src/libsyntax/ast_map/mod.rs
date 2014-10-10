@@ -1018,6 +1018,7 @@ fn node_id_to_string(map: &Map, id: NodeId) -> String {
             let path_str = map.path_to_str_with_ident(id, item.ident);
             let item_str = match item.node {
                 ItemStatic(..) => "static",
+                ItemConst(..) => "const",
                 ItemFn(..) => "fn",
                 ItemMod(..) => "mod",
                 ItemForeignMod(..) => "foreign mod",

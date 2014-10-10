@@ -38,10 +38,10 @@ mod imp {
             pub l_sysid: libc::c_int,
         }
 
-        pub static F_WRLCK: libc::c_short = 1;
-        pub static F_UNLCK: libc::c_short = 2;
-        pub static F_SETLK: libc::c_int = 6;
-        pub static F_SETLKW: libc::c_int = 7;
+        pub const F_WRLCK: libc::c_short = 1;
+        pub const F_UNLCK: libc::c_short = 2;
+        pub const F_SETLK: libc::c_int = 6;
+        pub const F_SETLKW: libc::c_int = 7;
     }
 
     #[cfg(target_os = "freebsd")]
@@ -57,10 +57,10 @@ mod imp {
             pub l_sysid: libc::c_int,
         }
 
-        pub static F_UNLCK: libc::c_short = 2;
-        pub static F_WRLCK: libc::c_short = 3;
-        pub static F_SETLK: libc::c_int = 12;
-        pub static F_SETLKW: libc::c_int = 13;
+        pub const F_UNLCK: libc::c_short = 2;
+        pub const F_WRLCK: libc::c_short = 3;
+        pub const F_SETLK: libc::c_int = 12;
+        pub const F_SETLKW: libc::c_int = 13;
     }
 
     #[cfg(target_os = "dragonfly")]
@@ -78,10 +78,10 @@ mod imp {
             pub l_sysid: libc::c_int,
         }
 
-        pub static F_UNLCK: libc::c_short = 2;
-        pub static F_WRLCK: libc::c_short = 3;
-        pub static F_SETLK: libc::c_int = 8;
-        pub static F_SETLKW: libc::c_int = 9;
+        pub const F_UNLCK: libc::c_short = 2;
+        pub const F_WRLCK: libc::c_short = 3;
+        pub const F_SETLK: libc::c_int = 8;
+        pub const F_SETLKW: libc::c_int = 9;
     }
 
     #[cfg(any(target_os = "macos", target_os = "ios"))]
@@ -99,10 +99,10 @@ mod imp {
             pub l_sysid: libc::c_int,
         }
 
-        pub static F_UNLCK: libc::c_short = 2;
-        pub static F_WRLCK: libc::c_short = 3;
-        pub static F_SETLK: libc::c_int = 8;
-        pub static F_SETLKW: libc::c_int = 9;
+        pub const F_UNLCK: libc::c_short = 2;
+        pub const F_WRLCK: libc::c_short = 3;
+        pub const F_SETLK: libc::c_int = 8;
+        pub const F_SETLKW: libc::c_int = 9;
     }
 
     pub struct Lock {

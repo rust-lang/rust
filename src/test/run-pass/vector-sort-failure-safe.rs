@@ -11,7 +11,7 @@
 use std::task;
 use std::rand::{task_rng, Rng};
 
-static MAX_LEN: uint = 20;
+const MAX_LEN: uint = 20;
 static mut drop_counts: [uint, .. MAX_LEN] = [0, .. MAX_LEN];
 static mut clone_count: uint = 0;
 

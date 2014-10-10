@@ -32,7 +32,7 @@ use ast::{FnUnboxedClosureKind, FnMutUnboxedClosureKind};
 use ast::{FnOnceUnboxedClosureKind};
 use ast::{ForeignItem, ForeignItemStatic, ForeignItemFn, ForeignMod};
 use ast::{Ident, NormalFn, Inherited, ImplItem, Item, Item_, ItemStatic};
-use ast::{ItemEnum, ItemFn, ItemForeignMod, ItemImpl};
+use ast::{ItemEnum, ItemFn, ItemForeignMod, ItemImpl, ItemConst};
 use ast::{ItemMac, ItemMod, ItemStruct, ItemTrait, ItemTy};
 use ast::{LifetimeDef, Lit, Lit_};
 use ast::{LitBool, LitChar, LitByte, LitBinary};
@@ -91,10 +91,10 @@ use std::iter;
 
 bitflags! {
     flags Restrictions: u8 {
-        static UNRESTRICTED                  = 0b0000,
-        static RESTRICTION_STMT_EXPR         = 0b0001,
-        static RESTRICTION_NO_BAR_OP         = 0b0010,
-        static RESTRICTION_NO_STRUCT_LITERAL = 0b0100
+        const UNRESTRICTED                  = 0b0000,
+        const RESTRICTION_STMT_EXPR         = 0b0001,
+        const RESTRICTION_NO_BAR_OP         = 0b0010,
+        const RESTRICTION_NO_STRUCT_LITERAL = 0b0100
     }
 }
 
@@ -4739,14 +4739,18 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_item_const(&mut self, m: Mutability) -> ItemInfo {
+    fn parse_item_const(&mut self, m: Option<Mutability>) -> ItemInfo {
         let id = self.parse_ident();
         self.expect(&token::COLON);
         let ty = self.parse_ty(true);
         self.expect(&token::EQ);
         let e = self.parse_expr();
         self.commit_expr_expecting(&*e, token::SEMI);
-        (id, ItemStatic(ty, m, e), None)
+        let item = match m {
+            Some(m) => ItemStatic(ty, m, e),
+            None => ItemConst(ty, e),
+        };
+        (id, item, None)
     }
 
     /// Parse a `mod <foo> { ... }` or `mod <foo>;` item
@@ -5296,7 +5300,7 @@ impl<'a> Parser<'a> {
             // STATIC ITEM
             self.bump();
             let m = if self.eat_keyword(keywords::Mut) {MutMutable} else {MutImmutable};
-            let (ident, item_, extra_attrs) = self.parse_item_const(m);
+            let (ident, item_, extra_attrs) = self.parse_item_const(Some(m));
             let last_span = self.last_span;
             let item = self.mk_item(lo,
                                     last_span.hi,
@@ -5314,7 +5318,7 @@ impl<'a> Parser<'a> {
                 self.span_err(last_span, "const globals cannot be mutable, \
                                           did you mean to declare a static?");
             }
-            let (ident, item_, extra_attrs) = self.parse_item_const(MutImmutable);
+            let (ident, item_, extra_attrs) = self.parse_item_const(None);
             let last_span = self.last_span;
             let item = self.mk_item(lo,
                                     last_span.hi,

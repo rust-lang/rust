@@ -250,6 +250,13 @@ pub trait AstBuilder {
                    expr: P<ast::Expr>)
                    -> P<ast::Item>;
 
+    fn item_const(&self,
+                   span: Span,
+                   name: Ident,
+                   ty: P<ast::Ty>,
+                   expr: P<ast::Expr>)
+                   -> P<ast::Item>;
+
     fn item_ty_poly(&self,
                     span: Span,
                     name: Ident,
@@ -1031,6 +1038,15 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
                    expr: P<ast::Expr>)
                    -> P<ast::Item> {
         self.item(span, name, Vec::new(), ast::ItemStatic(ty, mutbl, expr))
+    }
+
+    fn item_const(&self,
+                  span: Span,
+                  name: Ident,
+                  ty: P<ast::Ty>,
+                  expr: P<ast::Expr>)
+                  -> P<ast::Item> {
+        self.item(span, name, Vec::new(), ast::ItemConst(ty, expr))
     }
 
     fn item_ty_poly(&self, span: Span, name: Ident, ty: P<ast::Ty>,

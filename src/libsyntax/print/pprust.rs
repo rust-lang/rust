@@ -90,10 +90,10 @@ pub fn rust_printer_annotated<'a>(writer: Box<io::Writer+'static>,
 }
 
 #[allow(non_uppercase_statics)]
-pub static indent_unit: uint = 4u;
+pub const indent_unit: uint = 4u;
 
 #[allow(non_uppercase_statics)]
-pub static default_columns: uint = 78u;
+pub const default_columns: uint = 78u;
 
 /// Requires you to pass an input filename and reader so that
 /// it can scan the input text for comments and literals to
@@ -746,6 +746,20 @@ impl<'a> State<'a> {
                 if m == ast::MutMutable {
                     try!(self.word_space("mut"));
                 }
+                try!(self.print_ident(item.ident));
+                try!(self.word_space(":"));
+                try!(self.print_type(&**ty));
+                try!(space(&mut self.s));
+                try!(self.end()); // end the head-ibox
+
+                try!(self.word_space("="));
+                try!(self.print_expr(&**expr));
+                try!(word(&mut self.s, ";"));
+                try!(self.end()); // end the outer cbox
+            }
+            ast::ItemConst(ref ty, ref expr) => {
+                try!(self.head(visibility_qualified(item.vis,
+                                                    "const").as_slice()));
                 try!(self.print_ident(item.ident));
                 try!(self.word_space(":"));
                 try!(self.print_type(&**ty));

@@ -63,7 +63,7 @@ static MAX_THREE_B: u32 =  0x10000u32;
 */
 
 /// The highest valid code point
-pub static MAX: char = '\U0010ffff';
+pub const MAX: char = '\U0010ffff';
 
 /// Converts from `u32` to a `char`
 #[inline]

@@ -11,15 +11,15 @@
 static static_vec: &'static [u8] = bytes!("abc", 0xFF, '!');
 
 pub fn main() {
-    let vec = bytes!("abc");
+    let vec: &'static [u8] = bytes!("abc");
     let expected: &[u8] = &[97_u8, 98_u8, 99_u8];
     assert_eq!(vec, expected);
 
-    let vec = bytes!("null", 0);
+    let vec: &'static [u8] = bytes!("null", 0);
     let expected: &[u8] = &[110_u8, 117_u8, 108_u8, 108_u8, 0_u8];
     assert_eq!(vec, expected);
 
-    let vec = bytes!(' ', " ", 32, 32u8);
+    let vec: &'static [u8] = bytes!(' ', " ", 32, 32u8);
     let expected: &[u8] = &[32_u8, 32_u8, 32_u8, 32_u8];
     assert_eq!(vec, expected);
 

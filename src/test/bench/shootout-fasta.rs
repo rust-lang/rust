@@ -45,8 +45,8 @@ use std::io::{BufferedWriter, File};
 use std::cmp::min;
 use std::os;
 
-static LINE_LENGTH: uint = 60;
-static IM: u32 = 139968;
+const LINE_LENGTH: uint = 60;
+const IM: u32 = 139968;
 
 struct MyRandom {
     last: u32

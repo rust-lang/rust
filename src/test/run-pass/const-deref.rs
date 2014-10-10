@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-static C: &'static int = &1000;
+const C: &'static int = &1000;
 static D: int = *C;
 
 pub fn main() {

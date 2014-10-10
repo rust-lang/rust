@@ -66,10 +66,6 @@ pub struct SharedCrateContext<'tcx> {
     reachable: NodeSet,
     item_symbols: RefCell<NodeMap<String>>,
     link_meta: LinkMeta,
-    /// A set of static items which cannot be inlined into other crates. This
-    /// will prevent in IIItem() structures from being encoded into the metadata
-    /// that is generated
-    non_inlineable_statics: RefCell<NodeSet>,
     symbol_hasher: RefCell<Sha256>,
     tcx: ty::ctxt<'tcx>,
     stats: Stats,
@@ -120,6 +116,9 @@ pub struct LocalCrateContext {
 
     /// Cache of emitted const values
     const_values: RefCell<NodeMap<ValueRef>>,
+
+    /// Cache of emitted static values
+    static_values: RefCell<NodeMap<ValueRef>>,
 
     /// Cache of external const values
     extern_const_values: RefCell<DefIdMap<ValueRef>>,
@@ -259,7 +258,6 @@ impl<'tcx> SharedCrateContext<'tcx> {
             reachable: reachable,
             item_symbols: RefCell::new(NodeMap::new()),
             link_meta: link_meta,
-            non_inlineable_statics: RefCell::new(NodeSet::new()),
             symbol_hasher: RefCell::new(symbol_hasher),
             tcx: tcx,
             stats: Stats {
@@ -351,10 +349,6 @@ impl<'tcx> SharedCrateContext<'tcx> {
         &self.link_meta
     }
 
-    pub fn non_inlineable_statics<'a>(&'a self) -> &'a RefCell<NodeSet> {
-        &self.non_inlineable_statics
-    }
-
     pub fn symbol_hasher<'a>(&'a self) -> &'a RefCell<Sha256> {
         &self.symbol_hasher
     }
@@ -414,6 +408,7 @@ impl LocalCrateContext {
                 const_cstr_cache: RefCell::new(HashMap::new()),
                 const_globals: RefCell::new(HashMap::new()),
                 const_values: RefCell::new(NodeMap::new()),
+                static_values: RefCell::new(NodeMap::new()),
                 extern_const_values: RefCell::new(DefIdMap::new()),
                 impl_method_cache: RefCell::new(HashMap::new()),
                 closure_bare_wrapper_cache: RefCell::new(HashMap::new()),
@@ -610,10 +605,6 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
         &self.local.external_srcs
     }
 
-    pub fn non_inlineable_statics<'a>(&'a self) -> &'a RefCell<NodeSet> {
-        &self.shared.non_inlineable_statics
-    }
-
     pub fn monomorphized<'a>(&'a self) -> &'a RefCell<HashMap<MonoId, ValueRef>> {
         &self.local.monomorphized
     }
@@ -636,6 +627,10 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
 
     pub fn const_values<'a>(&'a self) -> &'a RefCell<NodeMap<ValueRef>> {
         &self.local.const_values
+    }
+
+    pub fn static_values<'a>(&'a self) -> &'a RefCell<NodeMap<ValueRef>> {
+        &self.local.static_values
     }
 
     pub fn extern_const_values<'a>(&'a self) -> &'a RefCell<DefIdMap<ValueRef>> {

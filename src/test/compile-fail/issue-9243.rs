@@ -14,7 +14,7 @@ struct Test {
     mem: int,
 }
 
-pub static g_test: Test = Test {mem: 0}; //~ ERROR static items are not allowed to have destructors
+pub static g_test: Test = Test {mem: 0}; //~ ERROR statics are not allowed to have destructors
 
 impl Drop for Test {
     fn drop(&mut self) {}

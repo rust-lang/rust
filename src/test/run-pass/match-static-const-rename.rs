@@ -18,7 +18,7 @@
 
 #![deny(non_uppercase_statics)]
 
-pub static A : int = 97;
+pub const A : int = 97;
 
 fn f() {
     let r = match (0,0) {
@@ -35,7 +35,7 @@ fn f() {
 
 mod m {
     #[allow(non_uppercase_statics)]
-    pub static aha : int = 7;
+    pub const aha : int = 7;
 }
 
 fn g() {

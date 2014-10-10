@@ -43,9 +43,9 @@ use atomic;
 use comm::Receiver;
 
 // Various states you can find a port in.
-static EMPTY: uint = 0;
-static DATA: uint = 1;
-static DISCONNECTED: uint = 2;
+const EMPTY: uint = 0;
+const DATA: uint = 1;
+const DISCONNECTED: uint = 2;
 
 pub struct Packet<T> {
     // Internal state of the chan/port pair (stores the blocked task as well)

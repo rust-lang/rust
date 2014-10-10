@@ -41,8 +41,8 @@ use super::table::{
     SafeHash
 };
 
-static INITIAL_LOG2_CAP: uint = 5;
-pub static INITIAL_CAPACITY: uint = 1 << INITIAL_LOG2_CAP; // 2^5
+const INITIAL_LOG2_CAP: uint = 5;
+pub const INITIAL_CAPACITY: uint = 1 << INITIAL_LOG2_CAP; // 2^5
 
 /// The default behavior of HashMap implements a load factor of 90.9%.
 /// This behavior is characterized by the following conditions:

@@ -30,11 +30,11 @@ use atomic;
 use comm::Receiver;
 use spsc_queue as spsc;
 
-static DISCONNECTED: int = int::MIN;
+const DISCONNECTED: int = int::MIN;
 #[cfg(test)]
-static MAX_STEALS: int = 5;
+const MAX_STEALS: int = 5;
 #[cfg(not(test))]
-static MAX_STEALS: int = 1 << 20;
+const MAX_STEALS: int = 1 << 20;
 
 pub struct Packet<T> {
     queue: spsc::Queue<Message<T>>, // internal queue for all message
