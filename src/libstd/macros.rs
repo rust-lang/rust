@@ -323,16 +323,14 @@ macro_rules! try(
 
 /// Create a `std::vec::Vec` containing the arguments.
 #[macro_export]
-macro_rules! vec(
-    ($($e:expr),*) => ({
-        // leading _ to allow empty construction without a warning.
-        let mut _temp = ::std::vec::Vec::new();
-        $(_temp.push($e);)*
-        _temp
+macro_rules! vec[
+    ($($x:expr),*) => ({
+        use std::slice::BoxedSlice;
+        let xs: ::std::boxed::Box<[_]> = box [$($x),*];
+        xs.into_vec()
     });
-    ($($e:expr),+,) => (vec!($($e),+))
-)
-
+    ($($x:expr,)*) => (vec![$($x),*])
+]
 
 /// A macro to select an event from a number of receivers.
 ///
