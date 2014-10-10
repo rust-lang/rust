@@ -85,8 +85,9 @@ impl<'a> Iterator<u8> for AAGen<'a> {
 
 fn make_fasta<W: Writer, I: Iterator<u8>>(
     wr: &mut W, header: &str, mut it: I, mut n: uint)
+    -> std::io::IoResult<()>
 {
-    wr.write(header.as_bytes());
+    try!(wr.write(header.as_bytes()));
     let mut line = [0u8, .. LINE_LENGTH + 1];
     while n > 0 {
         let nb = min(LINE_LENGTH, n);
@@ -95,11 +96,12 @@ fn make_fasta<W: Writer, I: Iterator<u8>>(
         }
         n -= nb;
         line[nb] = '\n' as u8;
-        wr.write(line[..nb+1]);
+        try!(wr.write(line[..nb+1]));
     }
+    Ok(())
 }
 
-fn run<W: Writer>(writer: &mut W) {
+fn run<W: Writer>(writer: &mut W) -> std::io::IoResult<()> {
     let args = os::args();
     let args = args.as_slice();
     let n = if os::getenv("RUST_BENCH").is_some() {
@@ -129,21 +131,22 @@ fn run<W: Writer>(writer: &mut W) {
                         ('g', 0.1975473066391),
                         ('t', 0.3015094502008)];
 
-    make_fasta(writer, ">ONE Homo sapiens alu\n",
-               alu.as_bytes().iter().cycle().map(|c| *c), n * 2);
-    make_fasta(writer, ">TWO IUB ambiguity codes\n",
-               AAGen::new(rng, iub), n * 3);
-    make_fasta(writer, ">THREE Homo sapiens frequency\n",
-               AAGen::new(rng, homosapiens), n * 5);
+    try!(make_fasta(writer, ">ONE Homo sapiens alu\n",
+                    alu.as_bytes().iter().cycle().map(|c| *c), n * 2));
+    try!(make_fasta(writer, ">TWO IUB ambiguity codes\n",
+                    AAGen::new(rng, iub), n * 3));
+    try!(make_fasta(writer, ">THREE Homo sapiens frequency\n",
+                    AAGen::new(rng, homosapiens), n * 5));
 
-    writer.flush();
+    writer.flush()
 }
 
 fn main() {
-    if os::getenv("RUST_BENCH").is_some() {
+    let res = if os::getenv("RUST_BENCH").is_some() {
         let mut file = BufferedWriter::new(File::create(&Path::new("./shootout-fasta.data")));
-        run(&mut file);
+        run(&mut file)
     } else {
-        run(&mut io::stdout());
-    }
+        run(&mut io::stdout())
+    };
+    res.unwrap()
 }
