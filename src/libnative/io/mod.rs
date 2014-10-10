@@ -35,8 +35,6 @@ pub use self::process::Process;
 mod helper_thread;
 
 // Native I/O implementations
-pub mod addrinfo;
-pub mod net;
 pub mod process;
 mod util;
 
@@ -52,14 +50,6 @@ pub mod timer;
 #[cfg(target_os = "windows")]
 #[path = "timer_windows.rs"]
 pub mod timer;
-
-#[cfg(unix)]
-#[path = "pipe_unix.rs"]
-pub mod pipe;
-
-#[cfg(windows)]
-#[path = "pipe_windows.rs"]
-pub mod pipe;
 
 #[cfg(windows)]
 #[path = "tty_windows.rs"]
@@ -126,52 +116,11 @@ pub struct IoFactory {
 
 impl IoFactory {
     pub fn new() -> IoFactory {
-        net::init();
         IoFactory { _cannot_construct_outside_of_this_module: () }
     }
 }
 
 impl rtio::IoFactory for IoFactory {
-    // networking
-    fn tcp_connect(&mut self, addr: rtio::SocketAddr,
-                   timeout: Option<u64>)
-        -> IoResult<Box<rtio::RtioTcpStream + Send>>
-    {
-        net::TcpStream::connect(addr, timeout).map(|s| {
-            box s as Box<rtio::RtioTcpStream + Send>
-        })
-    }
-    fn tcp_bind(&mut self, addr: rtio::SocketAddr)
-                -> IoResult<Box<rtio::RtioTcpListener + Send>> {
-        net::TcpListener::bind(addr).map(|s| {
-            box s as Box<rtio::RtioTcpListener + Send>
-        })
-    }
-    fn udp_bind(&mut self, addr: rtio::SocketAddr)
-                -> IoResult<Box<rtio::RtioUdpSocket + Send>> {
-        net::UdpSocket::bind(addr).map(|u| {
-            box u as Box<rtio::RtioUdpSocket + Send>
-        })
-    }
-    fn unix_bind(&mut self, path: &CString)
-                 -> IoResult<Box<rtio::RtioUnixListener + Send>> {
-        pipe::UnixListener::bind(path).map(|s| {
-            box s as Box<rtio::RtioUnixListener + Send>
-        })
-    }
-    fn unix_connect(&mut self, path: &CString,
-                    timeout: Option<u64>) -> IoResult<Box<rtio::RtioPipe + Send>> {
-        pipe::UnixStream::connect(path, timeout).map(|s| {
-            box s as Box<rtio::RtioPipe + Send>
-        })
-    }
-    fn get_host_addresses(&mut self, host: Option<&str>, servname: Option<&str>,
-                          hint: Option<rtio::AddrinfoHint>)
-        -> IoResult<Vec<rtio::AddrinfoInfo>>
-    {
-        addrinfo::GetAddrInfoRequest::run(host, servname, hint)
-    }
-
     // misc
     fn timer_init(&mut self) -> IoResult<Box<rtio::RtioTimer + Send>> {
         timer::Timer::new().map(|t| box t as Box<rtio::RtioTimer + Send>)
@@ -188,9 +137,6 @@ impl rtio::IoFactory for IoFactory {
     }
     fn kill(&mut self, pid: libc::pid_t, signum: int) -> IoResult<()> {
         process::Process::kill(pid, signum)
-    }
-    fn pipe_open(&mut self, fd: c_int) -> IoResult<Box<rtio::RtioPipe + Send>> {
-        Ok(box file::FileDesc::new(fd, true) as Box<rtio::RtioPipe + Send>)
     }
     #[cfg(unix)]
     fn tty_open(&mut self, fd: c_int, _readable: bool)

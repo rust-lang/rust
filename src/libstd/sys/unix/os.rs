@@ -11,6 +11,8 @@
 use libc;
 use libc::{c_int, c_char};
 use prelude::*;
+use io::IoResult;
+use sys::fs::FileDesc;
 
 use os::TMPBUF_SZ;
 
@@ -97,5 +99,14 @@ pub fn error_string(errno: i32) -> String {
         }
 
         ::string::raw::from_buf(p as *const u8)
+    }
+}
+
+pub unsafe fn pipe() -> IoResult<(FileDesc, FileDesc)> {
+    let mut fds = [0, ..2];
+    if libc::pipe(fds.as_mut_ptr()) == 0 {
+        Ok((FileDesc::new(fds[0], true), FileDesc::new(fds[1], true)))
+    } else {
+        Err(super::last_error())
     }
 }

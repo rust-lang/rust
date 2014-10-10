@@ -33,12 +33,21 @@ macro_rules! helper_init( (static $name:ident: Helper<$m:ty>) => (
     };
 ) )
 
+pub mod c;
 pub mod fs;
 pub mod os;
-pub mod c;
+pub mod tcp;
+pub mod udp;
+pub mod pipe;
 
+pub mod addrinfo {
+    pub use sys_common::net::get_host_addresses;
+}
+
+// FIXME: move these to c module
 pub type sock_t = libc::SOCKET;
 pub type wrlen = libc::c_int;
+pub type msglen_t = libc::c_int;
 pub unsafe fn close_sock(sock: sock_t) { let _ = libc::closesocket(sock); }
 
 // windows has zero values as errors
@@ -140,7 +149,6 @@ pub fn set_nonblocking(fd: sock_t, nb: bool) -> IoResult<()> {
     }
 }
 
-// FIXME: call this
 pub fn init_net() {
     unsafe {
         static START: Once = ONCE_INIT;
