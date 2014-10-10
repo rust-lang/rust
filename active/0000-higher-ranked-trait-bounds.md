@@ -245,6 +245,12 @@ referred to
 [Simon Peyton-Jones rather thorough but quite readable paper on the topic][spj]
 or the documentation in
 `src/librustc/middle/typeck/infer/region_inference/doc.rs`.
+
+The most important point is that the rules provide for subtyping that
+goes from "more general" to "less general". For example, if I have a
+trait reference like `for<'a> FnMut(&'a int)`, that would be usable
+wherever a trait reference with a concrete lifetime, like
+`FnMut(&'static int)`, is expected.
    
 [spj]: http://research.microsoft.com/en-us/um/people/simonpj/papers/higher-rank/
 
