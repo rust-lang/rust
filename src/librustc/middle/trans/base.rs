@@ -204,7 +204,7 @@ pub fn decl_fn(ccx: &CrateContext, name: &str, cc: llvm::CallConv,
     // Function addresses in Rust are never significant, allowing functions to be merged.
     llvm::SetUnnamedAddr(llfn, true);
 
-    if ccx.is_split_stack_supported() {
+    if ccx.is_split_stack_supported() && !ccx.sess().opts.cg.no_stack_check {
         set_split_stack(llfn);
     }
 
@@ -245,7 +245,7 @@ fn get_extern_rust_fn(ccx: &CrateContext, fn_ty: ty::t, name: &str, did: ast::De
     let f = decl_rust_fn(ccx, fn_ty, name);
 
     csearch::get_item_attrs(&ccx.sess().cstore, did, |attrs| {
-        set_llvm_fn_attrs(attrs.as_slice(), f)
+        set_llvm_fn_attrs(ccx, attrs.as_slice(), f)
     });
 
     ccx.externs().borrow_mut().insert(name.to_string(), f);
@@ -450,7 +450,7 @@ pub fn set_inline_hint(f: ValueRef) {
     llvm::SetFunctionAttribute(f, llvm::InlineHintAttribute)
 }
 
-pub fn set_llvm_fn_attrs(attrs: &[ast::Attribute], llfn: ValueRef) {
+pub fn set_llvm_fn_attrs(ccx: &CrateContext, attrs: &[ast::Attribute], llfn: ValueRef) {
     use syntax::attr::*;
     // Set the inline hint if there is one
     match find_inline_attr(attrs) {
@@ -460,16 +460,24 @@ pub fn set_llvm_fn_attrs(attrs: &[ast::Attribute], llfn: ValueRef) {
         InlineNone   => { /* fallthrough */ }
     }
 
-    // Add the no-split-stack attribute if requested
-    if contains_name(attrs, "no_split_stack") {
-        unset_split_stack(llfn);
-    }
-
-    if contains_name(attrs, "cold") {
-        unsafe {
-            llvm::LLVMAddFunctionAttribute(llfn,
-                                           llvm::FunctionIndex as c_uint,
-                                           llvm::ColdAttribute as uint64_t)
+    for attr in attrs.iter() {
+        let mut used = true;
+        match attr.name().get() {
+            "no_stack_check" => unset_split_stack(llfn),
+            "no_split_stack" => {
+                unset_split_stack(llfn);
+                ccx.sess().span_warn(attr.span,
+                                     "no_split_stack is a deprecated synonym for no_stack_check");
+            }
+            "cold" => unsafe {
+                llvm::LLVMAddFunctionAttribute(llfn,
+                                               llvm::FunctionIndex as c_uint,
+                                               llvm::ColdAttribute as uint64_t)
+            },
+            _ => used = false,
+        }
+        if used {
+            attr::mark_used(attr);
         }
     }
 }
@@ -2732,7 +2740,7 @@ pub fn get_item_val(ccx: &CrateContext, id: ast::NodeId) -> ValueRef {
                                                                    sym,
                                                                    i.id)
                     };
-                    set_llvm_fn_attrs(i.attrs.as_slice(), llfn);
+                    set_llvm_fn_attrs(ccx, i.attrs.as_slice(), llfn);
                     llfn
                 }
 
@@ -2874,7 +2882,7 @@ fn register_method(ccx: &CrateContext, id: ast::NodeId,
     let sym = exported_name(ccx, id, mty, m.attrs.as_slice());
 
     let llfn = register_fn(ccx, m.span, sym, id, mty);
-    set_llvm_fn_attrs(m.attrs.as_slice(), llfn);
+    set_llvm_fn_attrs(ccx, m.attrs.as_slice(), llfn);
     llfn
 }
 

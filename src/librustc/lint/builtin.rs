@@ -571,6 +571,7 @@ impl LintPass for UnusedAttribute {
             "no_builtins",
             "no_mangle",
             "no_split_stack",
+            "no_stack_check",
             "packed",
             "static_assert",
             "thread_local",
