@@ -68,6 +68,7 @@ pub const MAX: char = '\U0010ffff';
 
 /// Converts from `u32` to a `char`
 #[inline]
+#[unstable = "pending decisions about costructors for primitives"]
 pub fn from_u32(i: u32) -> Option<char> {
     // catch out-of-bounds and surrogates
     if (i > MAX as u32) || (i >= 0xD800 && i <= 0xDFFF) {
@@ -146,6 +147,7 @@ pub fn to_digit(c: char, radix: uint) -> Option<uint> {
 /// Panics if given an `radix` > 36.
 ///
 #[inline]
+#[unstable = "pending decisions about costructors for primitives"]
 pub fn from_digit(num: uint, radix: uint) -> Option<char> {
     if radix > 36 {
         panic!("from_digit: radix is to high (maximum 36)");
@@ -286,9 +288,11 @@ pub trait Char {
     /// # Panics
     ///
     /// Panics if given a radix > 36.
+    #[deprecated = "use the char::from_digit free function"]
     fn from_digit(num: uint, radix: uint) -> Option<Self>;
 
     /// Converts from `u32` to a `char`
+    #[deprecated = "use the char::from_u32 free function"]
     fn from_u32(i: u32) -> Option<char>;
 
     /// Returns the hexadecimal Unicode escape of a character.
@@ -351,9 +355,11 @@ impl Char for char {
 
     fn to_digit(&self, radix: uint) -> Option<uint> { to_digit(*self, radix) }
 
+    #[deprecated = "use the char::from_digit free function"]
     fn from_digit(num: uint, radix: uint) -> Option<char> { from_digit(num, radix) }
 
     #[inline]
+    #[deprecated = "use the char::from_u32 free function"]
     fn from_u32(i: u32) -> Option<char> { from_u32(i) }
 
     fn escape_unicode(&self, f: |char|) { escape_unicode(*self, f) }
