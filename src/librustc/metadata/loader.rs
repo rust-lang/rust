@@ -426,6 +426,14 @@ impl<'a> Context<'a> {
                 (file.slice(dylib_prefix.len(), file.len() - suffix.len()),
                  false)
             } else {
+                let static_lib = format!("lib{}.a", self.crate_name);
+                if file == static_lib.as_slice() {
+                    let msg = format!("found staticlib `{}` instead of \
+                                       rlib `{}`, please compile using \
+                                       --crate-type rlib instead.",
+                                       self.crate_name, self.crate_name);
+                    self.sess.span_warn(self.span, msg.as_slice());
+                }
                 return FileDoesntMatch
             };
             info!("lib candidate: {}", path.display());
