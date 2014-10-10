@@ -109,8 +109,8 @@ fn mandelbrot<W: io::Writer>(w: uint, mut out: W) -> io::IoResult<()> {
 
     for res in precalc_futures.into_iter() {
         let (rs, is) = res.unwrap();
-        precalc_r.push_all_move(rs);
-        precalc_i.push_all_move(is);
+        precalc_r.extend(rs.into_iter());
+        precalc_i.extend(is.into_iter());
     }
 
     assert_eq!(precalc_r.len(), w);

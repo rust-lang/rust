@@ -123,8 +123,8 @@ struct Entry {
 }
 
 struct Table {
-    count: uint,
-    items: Vec<Option<Box<Entry>>> }
+    items: Vec<Option<Box<Entry>>>
+}
 
 struct Items<'a> {
     cur: Option<&'a Entry>,
@@ -134,7 +134,6 @@ struct Items<'a> {
 impl Table {
     fn new() -> Table {
         Table {
-            count: 0,
             items: Vec::from_fn(TABLE_SIZE, |_| None),
         }
     }
@@ -165,7 +164,7 @@ impl Table {
         let index = key.hash() % (TABLE_SIZE as u64);
 
         {
-            if self.items.get(index as uint).is_none() {
+            if self.items[index as uint].is_none() {
                 let mut entry = box Entry {
                     code: key,
                     count: 0,
@@ -178,7 +177,7 @@ impl Table {
         }
 
         {
-            let entry = &mut *self.items.get_mut(index as uint).get_mut_ref();
+            let entry = self.items.get_mut(index as uint).as_mut().unwrap();
             if entry.code == key {
                 c.f(&mut **entry);
                 return;
@@ -286,7 +285,7 @@ fn get_sequence<R: Buffer>(r: &mut R, key: &str) -> Vec<u8> {
         res.push_all(l.as_slice().trim().as_bytes());
     }
     for b in res.iter_mut() {
-        *b = b.to_ascii().to_upper().to_byte();
+        *b = b.to_ascii().to_uppercase().to_byte();
     }
     res
 }
