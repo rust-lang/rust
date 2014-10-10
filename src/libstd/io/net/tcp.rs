@@ -18,7 +18,6 @@
 //! listener (socket server) implements the `Listener` and `Acceptor` traits.
 
 use clone::Clone;
-use collections::MutableSeq;
 use io::IoResult;
 use iter::Iterator;
 use slice::ImmutableSlice;
