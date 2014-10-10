@@ -822,28 +822,34 @@ that we haven't learned about yet, so let's just leave it at that for now.
 # Comments
 
 Now that we have some functions, it's a good idea to learn about comments.
-Comments are notes that you leave to other programmers to help explain things
-about your code. The compiler mostly ignores them.
+Comments are notes that you leave to other programmers to help explain your code.
+The compiler ignores them.
 
-Rust has two kinds of comments that you should care about: **line comment**s
-and **doc comment**s.
+Line comments start with `//` and extend to the end of the line.
 
 ```{rust}
-// Line comments are anything after '//' and extend to the end of the line.
-
-let x = 5i; // this is also a line comment.
-
-// If you have a long explanation for something, you can put line comments next
-// to each other. Put a space between the // and your comment so that it's
-// more readable.
+// Line comments are anything from '//' to the end of the line.
+let x = 5i; // This is also a line comment.
 ```
 
-The other kind of comment is a doc comment. Doc comments use `///` instead of
-`//`, and support Markdown notation inside:
+Range comments start with `/*` and can span multiple lines; they end with `*/`.
 
 ```{rust}
-/// `hello` is a function that prints a greeting that is personalized based on
-/// the name given.
+/* This is a range comment.
+Anything inside is ignored by the compiler.
+This lets you freely wrap comment text.
+*/
+let x = 42i;    /* Range comments can also be a single line. */
+```
+
+By convention, a line comment starting with `///` or a range comment starting
+with `/**` is a **doc comment**. By formatting such comments with
+[Markdown](http://daringfireball.net/projects/markdown/), the `rustdoc` tool
+can automatically create HTML documentation for your code.  Single-line
+comments are the preferred style.
+
+````{rust}
+/// `hello` is a function that prints a personalized greeting.
 ///
 /// # Arguments
 ///
@@ -855,17 +861,14 @@ The other kind of comment is a doc comment. Doc comments use `///` instead of
 /// let name = "Steve";
 /// hello(name); // prints "Hello, Steve!"
 /// ```
+///
 fn hello(name: &str) {
     println!("Hello, {}!", name);
 }
-```
+````
 
-When writing doc comments, adding sections for any arguments, return values,
-and providing some examples of usage is very, very helpful.
-
-You can use the `rustdoc` tool to generate HTML documentation from these doc
-comments. We will talk more about `rustdoc` when we get to modules, as
-generally, you want to export documentation for a full module.
+When writing doc comments, adding sections for any arguments and return values
+is very helpful, as is providing some examples of usage.
 
 # Compound Data Types
 
