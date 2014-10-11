@@ -29,6 +29,47 @@ use ringbuf::RingBuf;
 
 
 /// A map based on a B-Tree.
+///
+/// B-Trees represent a fundamental compromise between cache-efficiency and actually minimizing
+/// the amount of work performed in a search. In theory, a binary search tree (BST) is the optimal
+/// choice for a sorted map, as a perfectly balanced BST performs the theoretical minimum amount of
+/// comparisons necessary to find an element (log<sub>2</sub>n). However, in practice the way this
+/// is done is *very* inefficient for modern computer architectures. In particular, every element
+/// is stored in its own individually heap-allocated node. This means that every single insertion
+/// triggers a heap-allocation, and every single comparison should be a cache-miss. Since these
+/// are both notably expensive things to do in practice, we are forced to at very least reconsider
+/// the BST strategy.
+///
+/// A B-Tree instead makes each node contain B-1 to 2B-1 elements in a contiguous array. By doing
+/// this, we reduce the number of allocations by a factor of B, and improve cache effeciency in
+/// searches. However, this does mean that searches will have to do *more* comparisons on average.
+/// The precise number of comparisons depends on the node search strategy used. For optimal cache
+/// effeciency, one could search the nodes linearly. For optimal comparisons, one could search
+/// the node using binary search. As a compromise, one could also perform a linear search
+/// that initially only checks every i<sup>th</sup> element for some choice of i.
+///
+/// Currently, our implementation simply performs naive linear search. This provides excellent
+/// performance on *small* nodes of elements which are cheap to compare. However in the future we
+/// would like to further explore choosing the optimal search strategy based on the choice of B,
+/// and possibly other factors. Using linear search, searching for a random element is expected
+/// to take O(B log<sub>B</sub>n) comparisons, which is generally worse than a BST. In practice,
+/// however, performance is excellent. `BTreeMap` is able to readily outperform `TreeMap` under
+/// many workloads, and is competetive where it doesn't. BTreeMap also generally *scales* better
+/// than TreeMap, making it more appropriate for large datasets.
+///
+/// However, `TreeMap` may still be more appropriate to use in many contexts. If elements are very
+/// large or expensive to compare, `TreeMap` may be more appropriate. It won't allocate any
+/// more space than is needed, and will perform the minimal number of comparisons necessary.
+/// `TreeMap` also provides much better performance stability guarantees. Generally, very few
+/// changes need to be made to update a BST, and two updates are expected to take about the same
+/// amount of time on roughly equal sized BSTs. However a B-Tree's performance is much more
+/// amortized. If a node is overfull, it must be split into two nodes. If a node is underfull, it
+/// may be merged with another. Both of these operations are relatively expensive to perform, and
+/// it's possible to force one to occur at every single level of the tree in a single insertion or
+/// deletion. In fact, a malicious or otherwise unlucky sequence of insertions and deletions can
+/// force this degenerate behaviour to occur on every operation. While the total amount of work
+/// done on each operation isn't *catastrophic*, and *is* still bounded by O(B log<sub>B</sub>n),
+/// it is certainly much slower when it does.
 #[deriving(Clone)]
 pub struct BTreeMap<K, V> {
     root: Node<K, V>,
@@ -93,6 +134,8 @@ impl<K: Ord, V> BTreeMap<K, V> {
     }
 
     /// Makes a new empty BTreeMap with the given B.
+    ///
+    /// B cannot be less than 2.
     pub fn with_b(b: uint) -> BTreeMap<K, V> {
         assert!(b > 1, "B must be greater than 1");
         BTreeMap {
@@ -1145,9 +1188,12 @@ mod test {
 
 #[cfg(test)]
 mod bench {
-    use test::Bencher;
+    use std::prelude::*;
+    use std::rand::{weak_rng, Rng};
+    use test::{Bencher, black_box};
 
     use super::BTreeMap;
+    use MutableMap;
     use deque::bench::{insert_rand_n, insert_seq_n, find_rand_n, find_seq_n};
 
     #[bench]
@@ -1199,5 +1245,35 @@ mod bench {
     pub fn find_seq_10_000(b: &mut Bencher) {
         let mut m : BTreeMap<uint,uint> = BTreeMap::new();
         find_seq_n(10_000, &mut m, b);
+    }
+
+    fn bench_iter(b: &mut Bencher, size: uint) {
+        let mut map = BTreeMap::<uint, uint>::new();
+        let mut rng = weak_rng();
+
+        for _ in range(0, size) {
+            map.swap(rng.gen(), rng.gen());
+        }
+
+        b.iter(|| {
+            for entry in map.iter() {
+                black_box(entry);
+            }
+        });
+    }
+
+    #[bench]
+    pub fn iter_20(b: &mut Bencher) {
+        bench_iter(b, 20);
+    }
+
+    #[bench]
+    pub fn iter_1000(b: &mut Bencher) {
+        bench_iter(b, 1000);
+    }
+
+    #[bench]
+    pub fn iter_100000(b: &mut Bencher) {
+        bench_iter(b, 100000);
     }
 }
