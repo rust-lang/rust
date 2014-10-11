@@ -133,14 +133,14 @@ fn advance(bodies: &mut [Planet, ..N_BODIES], dt: f64, steps: int) {
 
 fn energy(bodies: &[Planet, ..N_BODIES]) -> f64 {
     let mut e = 0.0;
-    let mut bodies = bodies.as_slice();
+    let mut bodies = bodies.iter();
     loop {
-        let bi = match bodies.shift_ref() {
+        let bi = match bodies.next() {
             Some(bi) => bi,
             None => break
         };
         e += (bi.vx * bi.vx + bi.vy * bi.vy + bi.vz * bi.vz) * bi.mass / 2.0;
-        for bj in bodies.iter() {
+        for bj in bodies.clone() {
             let dx = bi.x - bj.x;
             let dy = bi.y - bj.y;
             let dz = bi.z - bj.z;
