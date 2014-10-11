@@ -65,7 +65,7 @@ fn sort_and_fmt(mm: &HashMap<Vec<u8> , uint>, total: uint) -> String {
        buffer.push_str(format!("{} {:0.3f}\n",
                                k.as_slice()
                                .to_ascii()
-                               .to_upper()
+                               .to_uppercase()
                                .into_string(), v).as_slice());
    }
 
@@ -74,7 +74,7 @@ fn sort_and_fmt(mm: &HashMap<Vec<u8> , uint>, total: uint) -> String {
 
 // given a map, search for the frequency of a pattern
 fn find(mm: &HashMap<Vec<u8> , uint>, key: String) -> uint {
-   let key = key.into_ascii().as_slice().to_lower().into_string();
+   let key = key.into_ascii().as_slice().to_lowercase().into_string();
    match mm.find_equiv(&key.as_bytes()) {
       option::None      => { return 0u; }
       option::Some(&num) => { return num; }
