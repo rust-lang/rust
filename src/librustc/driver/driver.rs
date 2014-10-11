@@ -831,6 +831,12 @@ pub fn build_output_filenames(input: &Input,
                      .map(|id| id.name)
             }).unwrap_or(input.filestem());
 
+            //Prevents damage to extensionless source files.
+            if stem == source_name(input) {
+                sess.err(format!("File `{}` has a missing file extension. Consider: {}.rs.",
+                                 stem, stem).as_slice());
+             }
+
             OutputFilenames {
                 out_directory: dirpath,
                 out_filestem: stem,
