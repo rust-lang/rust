@@ -19,7 +19,7 @@ use result::{Err, Ok};
 use io;
 use io::{Reader, Writer, Seek, Buffer, IoError, SeekStyle, IoResult};
 use slice;
-use slice::AsSlice;
+use slice::{AsSlice, ImmutableSlice};
 use vec::Vec;
 
 static BUF_CAPACITY: uint = 128;
@@ -59,6 +59,7 @@ fn combine(seek: SeekStyle, cur: uint, end: uint, offset: i64) -> IoResult<u64> 
 #[deriving(Clone)]
 pub struct MemWriter {
     buf: Vec<u8>,
+    pos : uint,
 }
 
 impl MemWriter {
@@ -71,7 +72,7 @@ impl MemWriter {
     /// the internal buffer.
     #[inline]
     pub fn with_capacity(n: uint) -> MemWriter {
-        MemWriter { buf: Vec::with_capacity(n) }
+        MemWriter { buf: Vec::with_capacity(n), pos : 0 }
     }
 
     /// Acquires an immutable reference to the underlying buffer of this
@@ -87,10 +88,41 @@ impl MemWriter {
 impl Writer for MemWriter {
     #[inline]
     fn write(&mut self, buf: &[u8]) -> IoResult<()> {
-        self.buf.push_all(buf);
+        let mut len = self.buf.len();
+        // 0 fill the buffer if the position is past end of file
+        if  self.pos > len  {
+            self.buf.grow(self.pos - len, 0);
+            len = self.buf.len();
+        }
+
+        let append =
+            if self.pos < len {
+                let copy_len = min(len - self.pos, buf.len());
+                let (input, append) = buf.split_at(copy_len);
+                let output = self.buf[mut self.pos .. self.pos + copy_len];
+                slice::bytes::copy_memory(output, input);
+                append
+            } else {
+                buf
+            };
+        self.buf.push_all(append);
+        self.pos += buf.len();
         Ok(())
     }
 }
+
+impl Seek for MemWriter {
+    #[inline]
+    fn tell(&self) -> IoResult<u64> { Ok(self.pos as u64) }
+
+    #[inline]
+    fn seek(&mut self, pos : i64, style : SeekStyle) -> IoResult<()> {
+        let new = try!(combine(style, self.pos, self.buf.len(), pos));
+        self.pos = new as uint;
+        Ok(())
+    }
+}
+
 
 /// Reads from an owned byte vector
 ///
@@ -343,10 +375,51 @@ mod test {
     #[test]
     fn test_mem_writer() {
         let mut writer = MemWriter::new();
+        assert_eq!(writer.tell(), Ok(0));
         writer.write([0]).unwrap();
+        assert_eq!(writer.tell(), Ok(1));
         writer.write([1, 2, 3]).unwrap();
         writer.write([4, 5, 6, 7]).unwrap();
+        assert_eq!(writer.tell(), Ok(8));
+        writer.write([]).unwrap();
+        assert_eq!(writer.tell(), Ok(8));
         let b: &[_] = &[0, 1, 2, 3, 4, 5, 6, 7];
+        assert_eq!(writer.get_ref(), b);
+    }
+
+    #[test]
+    fn test_mem_writer_seek() {
+        let mut writer = MemWriter::new();
+        assert_eq!(writer.tell(), Ok(0));
+        writer.write([1]).unwrap();
+        assert_eq!(writer.tell(), Ok(1));
+
+        writer.seek(2, SeekSet).unwrap();
+        assert_eq!(writer.tell(), Ok(2));
+        writer.write([2]).unwrap();
+        assert_eq!(writer.tell(), Ok(3));
+
+        writer.seek(-2, SeekCur).unwrap();
+        assert_eq!(writer.tell(), Ok(1));
+        writer.write([3]).unwrap();
+        assert_eq!(writer.tell(), Ok(2));
+
+        writer.seek(5, SeekSet).unwrap();
+        assert_eq!(writer.tell(), Ok(5));
+        writer.write([9]).unwrap();
+        assert_eq!(writer.tell(), Ok(6));
+
+        writer.seek(-2, SeekCur).unwrap();
+        assert_eq!(writer.tell(), Ok(4));
+        writer.write([1, 2, 3, 4]).unwrap();
+        assert_eq!(writer.tell(), Ok(8));
+
+        writer.seek(-2, SeekEnd).unwrap();
+        assert_eq!(writer.tell(), Ok(6));
+        writer.write([8]).unwrap();
+        assert_eq!(writer.tell(), Ok(7));
+
+        let b: &[_] = &[1, 3, 2, 0, 1, 2, 8, 4];
         assert_eq!(writer.get_ref(), b);
     }
 
