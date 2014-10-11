@@ -59,7 +59,7 @@ use io::c;
 use io::file::FileDesc;
 use io::helper_thread::Helper;
 
-helper_init!(static mut HELPER: Helper<Req>)
+helper_init!(static HELPER: Helper<Req>)
 
 pub struct Timer {
     id: uint,
@@ -204,10 +204,10 @@ impl Timer {
     pub fn new() -> IoResult<Timer> {
         // See notes above regarding using int return value
         // instead of ()
-        unsafe { HELPER.boot(|| {}, helper); }
+        HELPER.boot(|| {}, helper);
 
-        static mut ID: atomic::AtomicUint = atomic::INIT_ATOMIC_UINT;
-        let id = unsafe { ID.fetch_add(1, atomic::Relaxed) };
+        static ID: atomic::AtomicUint = atomic::INIT_ATOMIC_UINT;
+        let id = ID.fetch_add(1, atomic::Relaxed);
         Ok(Timer {
             id: id,
             inner: Some(box Inner {
@@ -237,7 +237,7 @@ impl Timer {
             Some(i) => i,
             None => {
                 let (tx, rx) = channel();
-                unsafe { HELPER.send(RemoveTimer(self.id, tx)); }
+                HELPER.send(RemoveTimer(self.id, tx));
                 rx.recv()
             }
         }
@@ -262,7 +262,7 @@ impl rtio::RtioTimer for Timer {
         inner.interval = msecs;
         inner.target = now + msecs;
 
-        unsafe { HELPER.send(NewTimer(inner)); }
+        HELPER.send(NewTimer(inner));
     }
 
     fn period(&mut self, msecs: u64, cb: Box<rtio::Callback + Send>) {
@@ -274,7 +274,7 @@ impl rtio::RtioTimer for Timer {
         inner.interval = msecs;
         inner.target = now + msecs;
 
-        unsafe { HELPER.send(NewTimer(inner)); }
+        HELPER.send(NewTimer(inner));
     }
 }
 
