@@ -826,9 +826,6 @@ impl<'a> State<'a> {
                 ));
             }
             ast::ItemStruct(ref struct_def, ref generics) => {
-                if struct_def.is_virtual {
-                    try!(self.word_space("virtual"));
-                }
                 try!(self.head(visibility_qualified(item.vis,"struct").as_slice()));
                 try!(self.print_struct(&**struct_def, generics, item.ident, item.span));
             }
@@ -968,13 +965,6 @@ impl<'a> State<'a> {
                         span: codemap::Span) -> IoResult<()> {
         try!(self.print_ident(ident));
         try!(self.print_generics(generics));
-        match struct_def.super_struct {
-            Some(ref t) => {
-                try!(self.word_space(":"));
-                try!(self.print_type(&**t));
-            },
-            None => {},
-        }
         if ast_util::struct_def_is_tuple_like(struct_def) {
             if !struct_def.fields.is_empty() {
                 try!(self.popen());

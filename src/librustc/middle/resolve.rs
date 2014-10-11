@@ -54,7 +54,6 @@ use syntax::parse::token::special_idents;
 use syntax::parse::token;
 use syntax::codemap::{Span, DUMMY_SP, Pos};
 use syntax::owned_slice::OwnedSlice;
-use syntax::ptr::P;
 use syntax::visit;
 use syntax::visit::Visitor;
 
@@ -4179,7 +4178,6 @@ impl<'a> Resolver<'a> {
             ItemStruct(ref struct_def, ref generics) => {
                 self.resolve_struct(item.id,
                                     generics,
-                                    &struct_def.super_struct,
                                     struct_def.fields.as_slice());
             }
 
@@ -4505,7 +4503,6 @@ impl<'a> Resolver<'a> {
     fn resolve_struct(&mut self,
                       id: NodeId,
                       generics: &Generics,
-                      super_struct: &Option<P<Ty>>,
                       fields: &[StructField]) {
         // If applicable, create a rib for the type parameters.
         self.with_type_parameter_rib(HasTypeParameters(generics,
@@ -4516,42 +4513,6 @@ impl<'a> Resolver<'a> {
             // Resolve the type parameters.
             this.resolve_type_parameters(&generics.ty_params);
             this.resolve_where_clause(&generics.where_clause);
-
-            // Resolve the super struct.
-            match *super_struct {
-                Some(ref t) => match t.node {
-                    TyPath(ref path, None, path_id) => {
-                        match this.resolve_path(id, path, TypeNS, true) {
-                            Some((DefTy(def_id, _), lp)) if this.structs.contains_key(&def_id) => {
-                                let def = DefStruct(def_id);
-                                debug!("(resolving struct) resolved `{}` to type {:?}",
-                                       token::get_ident(path.segments
-                                                            .last().unwrap()
-                                                            .identifier),
-                                       def);
-                                debug!("(resolving struct) writing resolution for `{}` (id {})",
-                                       this.path_idents_to_string(path),
-                                       path_id);
-                                this.record_def(path_id, (def, lp));
-                            }
-                            Some((DefStruct(_), _)) => {
-                                span_err!(this.session, t.span, E0154,
-                                    "super-struct is defined in a different crate");
-                            },
-                            Some(_) => {
-                                span_err!(this.session, t.span, E0155,
-                                    "super-struct is not a struct type");
-                            }
-                            None => {
-                                span_err!(this.session, t.span, E0156,
-                                    "super-struct could not be resolved");
-                            }
-                        }
-                    },
-                    _ => this.session.span_bug(t.span, "path not mapped to a TyPath")
-                },
-                None => {}
-            }
 
             // Resolve fields.
             for field in fields.iter() {
