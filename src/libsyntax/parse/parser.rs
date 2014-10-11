@@ -4540,24 +4540,14 @@ impl<'a> Parser<'a> {
     }
 
     /// Parse struct Foo { ... }
-    fn parse_item_struct(&mut self, is_virtual: bool) -> ItemInfo {
+    fn parse_item_struct(&mut self) -> ItemInfo {
         let class_name = self.parse_ident();
         let mut generics = self.parse_generics();
 
-        let super_struct = if self.eat(&token::COLON) {
+        if self.eat(&token::COLON) {
             let ty = self.parse_ty(true);
-            match ty.node {
-                TyPath(_, None, _) => {
-                    Some(ty)
-                }
-                _ => {
-                    self.span_err(ty.span, "not a struct");
-                    None
-                }
-            }
-        } else {
-            None
-        };
+            self.span_err(ty.span, "`virtual` structs have been removed from the language");
+        }
 
         self.parse_where_clause(&mut generics);
 
@@ -4618,8 +4608,6 @@ impl<'a> Parser<'a> {
          ItemStruct(P(ast::StructDef {
              fields: fields,
              ctor_id: if is_tuple_like { Some(new_id) } else { None },
-             super_struct: super_struct,
-             is_virtual: is_virtual,
          }), generics),
          None)
     }
@@ -5090,8 +5078,6 @@ impl<'a> Parser<'a> {
         P(StructDef {
             fields: fields,
             ctor_id: None,
-            super_struct: None,
-            is_virtual: false,
         })
     }
 
@@ -5288,11 +5274,9 @@ impl<'a> Parser<'a> {
                                     token_str).as_slice());
         }
 
-        let is_virtual = self.eat_keyword(keywords::Virtual);
-        if is_virtual && !self.is_keyword(keywords::Struct) {
+        if self.eat_keyword(keywords::Virtual) {
             let span = self.span;
-            self.span_err(span,
-                          "`virtual` keyword may only be used with `struct`");
+            self.span_err(span, "`virtual` structs have been removed from the language");
         }
 
         // the rest are all guaranteed to be items:
@@ -5427,7 +5411,7 @@ impl<'a> Parser<'a> {
         }
         if self.eat_keyword(keywords::Struct) {
             // STRUCT ITEM
-            let (ident, item_, extra_attrs) = self.parse_item_struct(is_virtual);
+            let (ident, item_, extra_attrs) = self.parse_item_struct();
             let last_span = self.last_span;
             let item = self.mk_item(lo,
                                     last_span.hi,

@@ -158,14 +158,12 @@ fn fold_item_underscore(cx: &mut Context, item: ast::Item_) -> ast::Item_ {
 }
 
 fn fold_struct(cx: &mut Context, def: P<ast::StructDef>) -> P<ast::StructDef> {
-    def.map(|ast::StructDef {fields, ctor_id, super_struct, is_virtual}| {
+    def.map(|ast::StructDef { fields, ctor_id }| {
         ast::StructDef {
             fields: fields.into_iter().filter(|m| {
                 (cx.in_cfg)(m.node.attrs.as_slice())
             }).collect(),
             ctor_id: ctor_id,
-            super_struct: super_struct,
-            is_virtual: is_virtual,
         }
     })
 }
