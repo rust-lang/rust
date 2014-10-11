@@ -14,6 +14,7 @@
 
 use core::prelude::*;
 
+use alloc::boxed::Box;
 use alloc::heap::{EMPTY, allocate, reallocate, deallocate};
 use core::cmp::max;
 use core::default::Default;
@@ -460,28 +461,6 @@ impl<T> Index<uint,T> for Vec<T> {
     }
 }*/
 
-#[cfg(stage0)]
-impl<T> ops::Slice<uint, [T]> for Vec<T> {
-    #[inline]
-    fn as_slice_<'a>(&'a self) -> &'a [T] {
-        self.as_slice()
-    }
-
-    #[inline]
-    fn slice_from_<'a>(&'a self, start: &uint) -> &'a [T] {
-        self.as_slice().slice_from_(start)
-    }
-
-    #[inline]
-    fn slice_to_<'a>(&'a self, end: &uint) -> &'a [T] {
-        self.as_slice().slice_to_(end)
-    }
-    #[inline]
-    fn slice_<'a>(&'a self, start: &uint, end: &uint) -> &'a [T] {
-        self.as_slice().slice_(start, end)
-    }
-}
-#[cfg(not(stage0))]
 impl<T> ops::Slice<uint, [T]> for Vec<T> {
     #[inline]
     fn as_slice_<'a>(&'a self) -> &'a [T] {
@@ -503,28 +482,6 @@ impl<T> ops::Slice<uint, [T]> for Vec<T> {
     }
 }
 
-#[cfg(stage0)]
-impl<T> ops::SliceMut<uint, [T]> for Vec<T> {
-    #[inline]
-    fn as_mut_slice_<'a>(&'a mut self) -> &'a mut [T] {
-        self.as_mut_slice()
-    }
-
-    #[inline]
-    fn slice_from_mut_<'a>(&'a mut self, start: &uint) -> &'a mut [T] {
-        self.as_mut_slice().slice_from_mut_(start)
-    }
-
-    #[inline]
-    fn slice_to_mut_<'a>(&'a mut self, end: &uint) -> &'a mut [T] {
-        self.as_mut_slice().slice_to_mut_(end)
-    }
-    #[inline]
-    fn slice_mut_<'a>(&'a mut self, start: &uint, end: &uint) -> &'a mut [T] {
-        self.as_mut_slice().slice_mut_(start, end)
-    }
-}
-#[cfg(not(stage0))]
 impl<T> ops::SliceMut<uint, [T]> for Vec<T> {
     #[inline]
     fn as_mut_slice_<'a>(&'a mut self) -> &'a mut [T] {
@@ -754,6 +711,20 @@ impl<T> Vec<T> {
                                       mem::min_align_of::<T>()) as *mut T;
             }
             self.cap = self.len;
+        }
+    }
+
+    /// Convert the vector into Box<[T]>.
+    ///
+    /// Note that this will drop any excess capacity. Calling this and converting back to a vector
+    /// with `into_vec()` is equivalent to calling `shrink_to_fit()`.
+    #[experimental]
+    pub fn into_boxed_slice(mut self) -> Box<[T]> {
+        self.shrink_to_fit();
+        unsafe {
+            let xs: Box<[T]> = mem::transmute(self.as_mut_slice());
+            mem::forget(self);
+            xs
         }
     }
 
@@ -1734,7 +1705,7 @@ impl<T> MutableSeq<T> for Vec<T> {
             let size = max(old_size, 2 * mem::size_of::<T>()) * 2;
             if old_size > size { fail!("capacity overflow") }
             unsafe {
-                self.ptr = alloc_or_realloc(self.ptr, self.cap * mem::size_of::<T>(), size);
+                self.ptr = alloc_or_realloc(self.ptr, old_size, size);
             }
             self.cap = max(self.cap, 2) * 2;
         }
@@ -1758,7 +1729,6 @@ impl<T> MutableSeq<T> for Vec<T> {
             }
         }
     }
-
 }
 
 /// An iterator that moves out of a vector.
@@ -2630,6 +2600,13 @@ mod tests {
             vec2.push(i);
         }
         assert!(vec2 == vec!((), (), ()));
+    }
+
+    #[test]
+    fn test_into_boxed_slice() {
+        let xs = vec![1u, 2, 3];
+        let ys = xs.into_boxed_slice();
+        assert_eq!(ys.as_slice(), [1u, 2, 3].as_slice());
     }
 
     #[bench]

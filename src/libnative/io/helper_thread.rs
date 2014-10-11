@@ -55,8 +55,8 @@ pub struct Helper<M> {
     pub initialized: UnsafeCell<bool>,
 }
 
-macro_rules! helper_init( (static mut $name:ident: Helper<$m:ty>) => (
-    static mut $name: Helper<$m> = Helper {
+macro_rules! helper_init( (static $name:ident: Helper<$m:ty>) => (
+    static $name: Helper<$m> = Helper {
         lock: ::std::rt::mutex::NATIVE_MUTEX_INIT,
         chan: ::std::cell::UnsafeCell { value: 0 as *mut Sender<$m> },
         signal: ::std::cell::UnsafeCell { value: 0 },

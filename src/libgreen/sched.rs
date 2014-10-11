@@ -1458,7 +1458,7 @@ mod test {
     #[test]
     fn test_spawn_sched_blocking() {
         use std::rt::mutex::{StaticNativeMutex, NATIVE_MUTEX_INIT};
-        static mut LOCK: StaticNativeMutex = NATIVE_MUTEX_INIT;
+        static LOCK: StaticNativeMutex = NATIVE_MUTEX_INIT;
 
         // Testing that a task in one scheduler can block in foreign code
         // without affecting other schedulers

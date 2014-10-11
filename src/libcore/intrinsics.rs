@@ -254,7 +254,6 @@ extern "rust-intrinsic" {
     /// enabling further optimizations.
     ///
     /// NB: This is very different from the `unreachable!()` macro!
-    #[cfg(not(stage0))]
     pub fn unreachable() -> !;
 
     /// Execute a breakpoint trap, for inspection by a debugger.

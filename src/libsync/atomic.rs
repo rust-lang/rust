@@ -93,12 +93,10 @@
 //! ```
 //! use std::sync::atomic::{AtomicUint, SeqCst, INIT_ATOMIC_UINT};
 //!
-//! static mut GLOBAL_TASK_COUNT: AtomicUint = INIT_ATOMIC_UINT;
+//! static GLOBAL_TASK_COUNT: AtomicUint = INIT_ATOMIC_UINT;
 //!
-//! unsafe {
-//!     let old_task_count = GLOBAL_TASK_COUNT.fetch_add(1, SeqCst);
-//!     println!("live tasks: {}", old_task_count + 1);
-//! }
+//! let old_task_count = GLOBAL_TASK_COUNT.fetch_add(1, SeqCst);
+//! println!("live tasks: {}", old_task_count + 1);
 //! ```
 
 #![allow(deprecated)]
