@@ -255,7 +255,8 @@ Available lint options:
         for (name, to) in lints.into_iter() {
             let name = name.chars().map(|x| x.to_lowercase())
                            .collect::<String>().replace("_", "-");
-            let desc = to.into_iter().map(|x| x.as_str()).collect::<Vec<String>>().connect(", ");
+            let desc = to.into_iter().map(|x| x.as_str().replace("_", "-"))
+                         .collect::<Vec<String>>().connect(", ");
             println!("    {}  {}",
                      padded(name.as_slice()), desc);
         }
