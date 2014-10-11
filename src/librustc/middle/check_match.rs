@@ -284,7 +284,9 @@ fn check_arms(cx: &MatchCheckCtxt, arms: &[(Vec<P<Pat>>, Option<&Expr>)], source
                             span_err!(cx.tcx.sess, span, E0165, "irrefutable while-let pattern");
                         },
 
-                        _ => span_err!(cx.tcx.sess, pat.span, E0001, "unreachable pattern")
+                        MatchNormal => {
+                            span_err!(cx.tcx.sess, pat.span, E0001, "unreachable pattern")
+                        },
                     }
                 }
                 Useful => (),
