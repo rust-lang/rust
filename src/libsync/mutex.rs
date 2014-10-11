@@ -127,9 +127,9 @@ enum Flavor {
 /// ```rust
 /// use sync::mutex::{StaticMutex, MUTEX_INIT};
 ///
-/// static mut LOCK: StaticMutex = MUTEX_INIT;
+/// static LOCK: StaticMutex = MUTEX_INIT;
 ///
-/// unsafe {
+/// {
 ///     let _g = LOCK.lock();
 ///     // do some productive work
 /// }
@@ -536,7 +536,7 @@ mod test {
 
     #[test]
     fn smoke_static() {
-        static mut m: StaticMutex = MUTEX_INIT;
+        static m: StaticMutex = MUTEX_INIT;
         unsafe {
             drop(m.lock());
             drop(m.lock());
@@ -546,7 +546,7 @@ mod test {
 
     #[test]
     fn lots_and_lots() {
-        static mut m: StaticMutex = MUTEX_INIT;
+        static m: StaticMutex = MUTEX_INIT;
         static mut CNT: uint = 0;
         static M: uint = 1000;
         static N: uint = 3;

@@ -28,7 +28,7 @@ use super::util;
 #[cfg(unix)] use io::helper_thread::Helper;
 
 #[cfg(unix)]
-helper_init!(static mut HELPER: Helper<Req>)
+helper_init!(static HELPER: Helper<Req>)
 
 /**
  * A value representing a child process.
@@ -988,7 +988,7 @@ fn waitpid(pid: pid_t, deadline: u64) -> IoResult<rtio::ProcessExit> {
     // The actual communication between the helper thread and this thread is
     // quite simple, just a channel moving data around.
 
-    unsafe { HELPER.boot(register_sigchld, waitpid_helper) }
+    HELPER.boot(register_sigchld, waitpid_helper);
 
     match waitpid_nowait(pid) {
         Some(ret) => return Ok(ret),
@@ -996,7 +996,7 @@ fn waitpid(pid: pid_t, deadline: u64) -> IoResult<rtio::ProcessExit> {
     }
 
     let (tx, rx) = channel();
-    unsafe { HELPER.send(NewChild(pid, tx, deadline)); }
+    HELPER.send(NewChild(pid, tx, deadline));
     return match rx.recv_opt() {
         Ok(e) => Ok(e),
         Err(()) => Err(util::timeout("wait timed out")),

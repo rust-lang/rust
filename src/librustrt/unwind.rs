@@ -92,7 +92,7 @@ pub type Callback = fn(msg: &Any + Send, file: &'static str, line: uint);
 //
 // For more information, see below.
 const MAX_CALLBACKS: uint = 16;
-static mut CALLBACKS: [atomic::AtomicUint, ..MAX_CALLBACKS] =
+static CALLBACKS: [atomic::AtomicUint, ..MAX_CALLBACKS] =
         [atomic::INIT_ATOMIC_UINT, atomic::INIT_ATOMIC_UINT,
          atomic::INIT_ATOMIC_UINT, atomic::INIT_ATOMIC_UINT,
          atomic::INIT_ATOMIC_UINT, atomic::INIT_ATOMIC_UINT,
@@ -101,7 +101,7 @@ static mut CALLBACKS: [atomic::AtomicUint, ..MAX_CALLBACKS] =
          atomic::INIT_ATOMIC_UINT, atomic::INIT_ATOMIC_UINT,
          atomic::INIT_ATOMIC_UINT, atomic::INIT_ATOMIC_UINT,
          atomic::INIT_ATOMIC_UINT, atomic::INIT_ATOMIC_UINT];
-static mut CALLBACK_CNT: atomic::AtomicUint = atomic::INIT_ATOMIC_UINT;
+static CALLBACK_CNT: atomic::AtomicUint = atomic::INIT_ATOMIC_UINT;
 
 impl Unwinder {
     pub fn new() -> Unwinder {
@@ -560,7 +560,7 @@ fn begin_unwind_inner(msg: Box<Any + Send>, file_line: &(&'static str, uint)) ->
     // so we just chalk it up to a race condition and move on to the next
     // callback. Additionally, CALLBACK_CNT may briefly be higher than
     // MAX_CALLBACKS, so we're sure to clamp it as necessary.
-    let callbacks = unsafe {
+    let callbacks = {
         let amt = CALLBACK_CNT.load(atomic::SeqCst);
         CALLBACKS[..cmp::min(amt, MAX_CALLBACKS)]
     };

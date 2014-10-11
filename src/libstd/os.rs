@@ -192,10 +192,10 @@ Serialize access through a global lock.
 fn with_env_lock<T>(f: || -> T) -> T {
     use rt::mutex::{StaticNativeMutex, NATIVE_MUTEX_INIT};
 
-    static mut lock: StaticNativeMutex = NATIVE_MUTEX_INIT;
+    static LOCK: StaticNativeMutex = NATIVE_MUTEX_INIT;
 
     unsafe {
-        let _guard = lock.lock();
+        let _guard = LOCK.lock();
         f()
     }
 }
@@ -1073,7 +1073,7 @@ pub fn last_os_error() -> String {
     error_string(errno() as uint)
 }
 
-static mut EXIT_STATUS: AtomicInt = INIT_ATOMIC_INT;
+static EXIT_STATUS: AtomicInt = INIT_ATOMIC_INT;
 
 /**
  * Sets the process exit code
@@ -1086,13 +1086,13 @@ static mut EXIT_STATUS: AtomicInt = INIT_ATOMIC_INT;
  * Note that this is not synchronized against modifications of other threads.
  */
 pub fn set_exit_status(code: int) {
-    unsafe { EXIT_STATUS.store(code, SeqCst) }
+    EXIT_STATUS.store(code, SeqCst)
 }
 
 /// Fetches the process's current exit code. This defaults to 0 and can change
 /// by calling `set_exit_status`.
 pub fn get_exit_status() -> int {
-    unsafe { EXIT_STATUS.load(SeqCst) }
+    EXIT_STATUS.load(SeqCst)
 }
 
 #[cfg(target_os = "macos")]

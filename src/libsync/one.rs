@@ -30,13 +30,11 @@ use mutex::{StaticMutex, MUTEX_INIT};
 /// ```rust
 /// use sync::one::{Once, ONCE_INIT};
 ///
-/// static mut START: Once = ONCE_INIT;
+/// static START: Once = ONCE_INIT;
 ///
-/// unsafe {
-///     START.doit(|| {
-///         // run initialization here
-///     });
-/// }
+/// START.doit(|| {
+///     // run initialization here
+/// });
 /// ```
 pub struct Once {
     mutex: StaticMutex,
@@ -128,17 +126,17 @@ mod test {
 
     #[test]
     fn smoke_once() {
-        static mut o: Once = ONCE_INIT;
+        static o: Once = ONCE_INIT;
         let mut a = 0i;
-        unsafe { o.doit(|| a += 1); }
+        o.doit(|| a += 1);
         assert_eq!(a, 1);
-        unsafe { o.doit(|| a += 1); }
+        o.doit(|| a += 1);
         assert_eq!(a, 1);
     }
 
     #[test]
     fn stampede_once() {
-        static mut o: Once = ONCE_INIT;
+        static o: Once = ONCE_INIT;
         static mut run: bool = false;
 
         let (tx, rx) = channel();

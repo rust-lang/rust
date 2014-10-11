@@ -711,7 +711,6 @@ pub trait IndexMut<Index, Result> {
  * }
  * ```
  */
-#[cfg(not(stage0))]
 #[lang="slice"]
 pub trait Slice<Idx, Sized? Result> for Sized? {
     /// The method for the slicing operation foo[]
@@ -722,21 +721,6 @@ pub trait Slice<Idx, Sized? Result> for Sized? {
     fn slice_to_or_fail<'a>(&'a self, to: &Idx) -> &'a Result;
     /// The method for the slicing operation foo[from..to]
     fn slice_or_fail<'a>(&'a self, from: &Idx, to: &Idx) -> &'a Result;
-}
-#[cfg(stage0)]
-/**
- *
- */
-#[lang="slice"]
-pub trait Slice<Idx, Sized? Result> for Sized? {
-    /// The method for the slicing operation foo[]
-    fn as_slice_<'a>(&'a self) -> &'a Result;
-    /// The method for the slicing operation foo[from..]
-    fn slice_from_<'a>(&'a self, from: &Idx) -> &'a Result;
-    /// The method for the slicing operation foo[..to]
-    fn slice_to_<'a>(&'a self, to: &Idx) -> &'a Result;
-    /// The method for the slicing operation foo[from..to]
-    fn slice_<'a>(&'a self, from: &Idx, to: &Idx) -> &'a Result;
 }
 
 /**
@@ -776,7 +760,6 @@ pub trait Slice<Idx, Sized? Result> for Sized? {
  * }
  * ```
  */
-#[cfg(not(stage0))]
 #[lang="slice_mut"]
 pub trait SliceMut<Idx, Sized? Result> for Sized? {
     /// The method for the slicing operation foo[]
@@ -788,21 +771,7 @@ pub trait SliceMut<Idx, Sized? Result> for Sized? {
     /// The method for the slicing operation foo[from..to]
     fn slice_or_fail_mut<'a>(&'a mut self, from: &Idx, to: &Idx) -> &'a mut Result;
 }
-#[cfg(stage0)]
-/**
- *
- */
-#[lang="slice_mut"]
-pub trait SliceMut<Idx, Sized? Result> for Sized? {
-    /// The method for the slicing operation foo[mut]
-    fn as_mut_slice_<'a>(&'a mut self) -> &'a mut Result;
-    /// The method for the slicing operation foo[mut from..]
-    fn slice_from_mut_<'a>(&'a mut self, from: &Idx) -> &'a mut Result;
-    /// The method for the slicing operation foo[mut ..to]
-    fn slice_to_mut_<'a>(&'a mut self, to: &Idx) -> &'a mut Result;
-    /// The method for the slicing operation foo[mut from..to]
-    fn slice_mut_<'a>(&'a mut self, from: &Idx, to: &Idx) -> &'a mut Result;
-}
+
 /**
  *
  * The `Deref` trait is used to specify the functionality of dereferencing
