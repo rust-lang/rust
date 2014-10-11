@@ -38,14 +38,14 @@ impl TempDir {
             return TempDir::new_in(&os::make_absolute(tmpdir), suffix);
         }
 
-        static mut CNT: atomic::AtomicUint = atomic::INIT_ATOMIC_UINT;
+        static CNT: atomic::AtomicUint = atomic::INIT_ATOMIC_UINT;
 
         let mut attempts = 0u;
         loop {
             let filename =
                 format!("rs-{}-{}-{}",
                         unsafe { libc::getpid() },
-                        unsafe { CNT.fetch_add(1, atomic::SeqCst) },
+                        CNT.fetch_add(1, atomic::SeqCst),
                         suffix);
             let p = tmpdir.join(filename);
             match fs::mkdir(&p, io::USER_RWX) {

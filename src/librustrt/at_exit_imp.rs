@@ -24,8 +24,8 @@ use exclusive::Exclusive;
 
 type Queue = Exclusive<Vec<proc():Send>>;
 
-static mut QUEUE: atomic::AtomicUint = atomic::INIT_ATOMIC_UINT;
-static mut RUNNING: atomic::AtomicBool = atomic::INIT_ATOMIC_BOOL;
+static QUEUE: atomic::AtomicUint = atomic::INIT_ATOMIC_UINT;
+static RUNNING: atomic::AtomicBool = atomic::INIT_ATOMIC_BOOL;
 
 pub fn init() {
     let state: Box<Queue> = box Exclusive::new(Vec::new());

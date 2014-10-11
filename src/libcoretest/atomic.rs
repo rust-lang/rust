@@ -69,15 +69,13 @@ fn int_xor() {
     assert_eq!(x.load(SeqCst), 0xf731 ^ 0x137f);
 }
 
-static mut S_BOOL : AtomicBool = INIT_ATOMIC_BOOL;
-static mut S_INT  : AtomicInt  = INIT_ATOMIC_INT;
-static mut S_UINT : AtomicUint = INIT_ATOMIC_UINT;
+static S_BOOL : AtomicBool = INIT_ATOMIC_BOOL;
+static S_INT  : AtomicInt  = INIT_ATOMIC_INT;
+static S_UINT : AtomicUint = INIT_ATOMIC_UINT;
 
 #[test]
 fn static_init() {
-    unsafe {
-        assert!(!S_BOOL.load(SeqCst));
-        assert!(S_INT.load(SeqCst) == 0);
-        assert!(S_UINT.load(SeqCst) == 0);
-    }
+    assert!(!S_BOOL.load(SeqCst));
+    assert!(S_INT.load(SeqCst) == 0);
+    assert!(S_UINT.load(SeqCst) == 0);
 }
