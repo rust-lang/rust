@@ -389,15 +389,6 @@ macro_rules! bound {
 
 impl<T> TrieMap<T> {
     // If `upper` is true then returns upper_bound else returns lower_bound.
-    #[cfg(stage0)]
-    #[inline]
-    fn bound<'a>(&'a self, key: uint, upper: bool) -> Entries<'a, T> {
-        bound!(Entries, self = self,
-               key = key, is_upper = upper,
-               slice_from = slice_from_, iter = iter,
-               mutability = )
-    }
-    #[cfg(not(stage0))]
     #[inline]
     fn bound<'a>(&'a self, key: uint, upper: bool) -> Entries<'a, T> {
         bound!(Entries, self = self,
@@ -440,15 +431,6 @@ impl<T> TrieMap<T> {
         self.bound(key, true)
     }
     // If `upper` is true then returns upper_bound else returns lower_bound.
-    #[cfg(stage0)]
-    #[inline]
-    fn bound_mut<'a>(&'a mut self, key: uint, upper: bool) -> MutEntries<'a, T> {
-        bound!(MutEntries, self = self,
-               key = key, is_upper = upper,
-               slice_from = slice_from_mut_, iter = iter_mut,
-               mutability = mut)
-    }
-    #[cfg(not(stage0))]
     #[inline]
     fn bound_mut<'a>(&'a mut self, key: uint, upper: bool) -> MutEntries<'a, T> {
         bound!(MutEntries, self = self,

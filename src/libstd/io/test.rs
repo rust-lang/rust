@@ -20,22 +20,20 @@ use sync::atomic::{AtomicUint, INIT_ATOMIC_UINT, Relaxed};
 
 /// Get a port number, starting at 9600, for use in tests
 pub fn next_test_port() -> u16 {
-    static mut next_offset: AtomicUint = INIT_ATOMIC_UINT;
-    unsafe {
-        base_port() + next_offset.fetch_add(1, Relaxed) as u16
-    }
+    static NEXT_OFFSET: AtomicUint = INIT_ATOMIC_UINT;
+    base_port() + NEXT_OFFSET.fetch_add(1, Relaxed) as u16
 }
 
 /// Get a temporary path which could be the location of a unix socket
 pub fn next_test_unix() -> Path {
-    static mut COUNT: AtomicUint = INIT_ATOMIC_UINT;
+    static COUNT: AtomicUint = INIT_ATOMIC_UINT;
     // base port and pid are an attempt to be unique between multiple
     // test-runners of different configurations running on one
     // buildbot, the count is to be unique within this executable.
     let string = format!("rust-test-unix-path-{}-{}-{}",
                          base_port(),
                          unsafe {libc::getpid()},
-                         unsafe {COUNT.fetch_add(1, Relaxed)});
+                         COUNT.fetch_add(1, Relaxed));
     if cfg!(unix) {
         os::tmpdir().join(string)
     } else {

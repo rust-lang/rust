@@ -23,8 +23,8 @@ use core::ops::Drop;
 
 use mutex::{StaticNativeMutex, NATIVE_MUTEX_INIT};
 
-static mut TASK_COUNT: atomic::AtomicUint = atomic::INIT_ATOMIC_UINT;
-static mut TASK_LOCK: StaticNativeMutex = NATIVE_MUTEX_INIT;
+static TASK_COUNT: atomic::AtomicUint = atomic::INIT_ATOMIC_UINT;
+static TASK_LOCK: StaticNativeMutex = NATIVE_MUTEX_INIT;
 
 pub struct Token { _private: () }
 
@@ -35,7 +35,7 @@ impl Drop for Token {
 /// Increment the number of live tasks, returning a token which will decrement
 /// the count when dropped.
 pub fn increment() -> Token {
-    let _ = unsafe { TASK_COUNT.fetch_add(1, atomic::SeqCst) };
+    let _ = TASK_COUNT.fetch_add(1, atomic::SeqCst);
     Token { _private: () }
 }
 

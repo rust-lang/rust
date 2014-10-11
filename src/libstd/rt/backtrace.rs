@@ -28,20 +28,18 @@ pub use self::imp::write;
 // For now logging is turned off by default, and this function checks to see
 // whether the magical environment variable is present to see if it's turned on.
 pub fn log_enabled() -> bool {
-    static mut ENABLED: atomic::AtomicInt = atomic::INIT_ATOMIC_INT;
-    unsafe {
-        match ENABLED.load(atomic::SeqCst) {
-            1 => return false,
-            2 => return true,
-            _ => {}
-        }
+    static ENABLED: atomic::AtomicInt = atomic::INIT_ATOMIC_INT;
+    match ENABLED.load(atomic::SeqCst) {
+        1 => return false,
+        2 => return true,
+        _ => {}
     }
 
     let val = match os::getenv("RUST_BACKTRACE") {
         Some(..) => 2,
         None => 1,
     };
-    unsafe { ENABLED.store(val, atomic::SeqCst); }
+    ENABLED.store(val, atomic::SeqCst);
     val == 2
 }
 
@@ -268,7 +266,7 @@ mod imp {
         // while it doesn't requires lock for work as everything is
         // local, it still displays much nicer backtraces when a
         // couple of tasks fail simultaneously
-        static mut LOCK: StaticNativeMutex = NATIVE_MUTEX_INIT;
+        static LOCK: StaticNativeMutex = NATIVE_MUTEX_INIT;
         let _g = unsafe { LOCK.lock() };
 
         try!(writeln!(w, "stack backtrace:"));
@@ -301,7 +299,7 @@ mod imp {
         // is semi-reasonable in terms of printing anyway, and we know that all
         // I/O done here is blocking I/O, not green I/O, so we don't have to
         // worry about this being a native vs green mutex.
-        static mut LOCK: StaticNativeMutex = NATIVE_MUTEX_INIT;
+        static LOCK: StaticNativeMutex = NATIVE_MUTEX_INIT;
         let _g = unsafe { LOCK.lock() };
 
         try!(writeln!(w, "stack backtrace:"));
@@ -931,7 +929,7 @@ mod imp {
     pub fn write(w: &mut Writer) -> IoResult<()> {
         // According to windows documentation, all dbghelp functions are
         // single-threaded.
-        static mut LOCK: StaticNativeMutex = NATIVE_MUTEX_INIT;
+        static LOCK: StaticNativeMutex = NATIVE_MUTEX_INIT;
         let _g = unsafe { LOCK.lock() };
 
         // Open up dbghelp.dll, we don't link to it explicitly because it can't

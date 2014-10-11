@@ -3035,7 +3035,7 @@ pub fn trans_crate<'tcx>(analysis: CrateAnalysis<'tcx>)
     // Before we touch LLVM, make sure that multithreading is enabled.
     unsafe {
         use std::sync::{Once, ONCE_INIT};
-        static mut INIT: Once = ONCE_INIT;
+        static INIT: Once = ONCE_INIT;
         static mut POISONED: bool = false;
         INIT.doit(|| {
             if llvm::LLVMStartMultithreaded() != 1 {

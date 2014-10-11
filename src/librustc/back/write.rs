@@ -936,7 +936,7 @@ pub fn run_assembler(sess: &Session, outputs: &OutputFilenames) {
 
 unsafe fn configure_llvm(sess: &Session) {
     use std::sync::{Once, ONCE_INIT};
-    static mut INIT: Once = ONCE_INIT;
+    static INIT: Once = ONCE_INIT;
 
     // Copy what clang does by turning on loop vectorization at O2 and
     // slp vectorization at O3
