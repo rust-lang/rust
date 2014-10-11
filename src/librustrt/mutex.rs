@@ -36,7 +36,7 @@
 //! use std::rt::mutex::{NativeMutex, StaticNativeMutex, NATIVE_MUTEX_INIT};
 //!
 //! // Use a statically initialized mutex
-//! static mut LOCK: StaticNativeMutex = NATIVE_MUTEX_INIT;
+//! static LOCK: StaticNativeMutex = NATIVE_MUTEX_INIT;
 //!
 //! unsafe {
 //!     let _guard = LOCK.lock();
@@ -109,7 +109,7 @@ impl StaticNativeMutex {
     ///
     /// ```rust
     /// use std::rt::mutex::{StaticNativeMutex, NATIVE_MUTEX_INIT};
-    /// static mut LOCK: StaticNativeMutex = NATIVE_MUTEX_INIT;
+    /// static LOCK: StaticNativeMutex = NATIVE_MUTEX_INIT;
     /// unsafe {
     ///     let _guard = LOCK.lock();
     ///     // critical section...
@@ -655,7 +655,7 @@ mod test {
 
     #[test]
     fn smoke_lock() {
-        static mut lock: StaticNativeMutex = NATIVE_MUTEX_INIT;
+        static lock: StaticNativeMutex = NATIVE_MUTEX_INIT;
         unsafe {
             let _guard = lock.lock();
         }
@@ -663,7 +663,7 @@ mod test {
 
     #[test]
     fn smoke_cond() {
-        static mut lock: StaticNativeMutex = NATIVE_MUTEX_INIT;
+        static lock: StaticNativeMutex = NATIVE_MUTEX_INIT;
         unsafe {
             let guard = lock.lock();
             let t = Thread::start(proc() {
@@ -679,7 +679,7 @@ mod test {
 
     #[test]
     fn smoke_lock_noguard() {
-        static mut lock: StaticNativeMutex = NATIVE_MUTEX_INIT;
+        static lock: StaticNativeMutex = NATIVE_MUTEX_INIT;
         unsafe {
             lock.lock_noguard();
             lock.unlock_noguard();
@@ -688,7 +688,7 @@ mod test {
 
     #[test]
     fn smoke_cond_noguard() {
-        static mut lock: StaticNativeMutex = NATIVE_MUTEX_INIT;
+        static lock: StaticNativeMutex = NATIVE_MUTEX_INIT;
         unsafe {
             lock.lock_noguard();
             let t = Thread::start(proc() {

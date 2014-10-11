@@ -54,8 +54,8 @@ mod imp {
 
     use mutex::{StaticNativeMutex, NATIVE_MUTEX_INIT};
 
-    static mut global_args_ptr: uint = 0;
-    static mut lock: StaticNativeMutex = NATIVE_MUTEX_INIT;
+    static mut GLOBAL_ARGS_PTR: uint = 0;
+    static LOCK: StaticNativeMutex = NATIVE_MUTEX_INIT;
 
     pub unsafe fn init(argc: int, argv: *const *const u8) {
         let args = load_argc_and_argv(argc, argv);
@@ -64,7 +64,7 @@ mod imp {
 
     pub unsafe fn cleanup() {
         rtassert!(take().is_some());
-        lock.destroy();
+        LOCK.destroy();
     }
 
     pub fn take() -> Option<Vec<Vec<u8>>> {
@@ -92,13 +92,13 @@ mod imp {
 
     fn with_lock<T>(f: || -> T) -> T {
         unsafe {
-            let _guard = lock.lock();
+            let _guard = LOCK.lock();
             f()
         }
     }
 
     fn get_global_ptr() -> *mut Option<Box<Vec<Vec<u8>>>> {
-        unsafe { mem::transmute(&global_args_ptr) }
+        unsafe { mem::transmute(&GLOBAL_ARGS_PTR) }
     }
 
     unsafe fn load_argc_and_argv(argc: int, argv: *const *const u8) -> Vec<Vec<u8>> {

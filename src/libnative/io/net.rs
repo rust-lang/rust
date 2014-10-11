@@ -1063,7 +1063,7 @@ mod os {
         unsafe {
             use std::rt::mutex::{StaticNativeMutex, NATIVE_MUTEX_INIT};
             static mut INITIALIZED: bool = false;
-            static mut LOCK: StaticNativeMutex = NATIVE_MUTEX_INIT;
+            static LOCK: StaticNativeMutex = NATIVE_MUTEX_INIT;
 
             let _guard = LOCK.lock();
             if !INITIALIZED {

@@ -28,7 +28,7 @@ use std::comm;
 
 use io::helper_thread::Helper;
 
-helper_init!(static mut HELPER: Helper<Req>)
+helper_init!(static HELPER: Helper<Req>)
 
 pub struct Timer {
     obj: libc::HANDLE,
@@ -104,7 +104,7 @@ pub fn now() -> u64 {
 
 impl Timer {
     pub fn new() -> IoResult<Timer> {
-        unsafe { HELPER.boot(|| {}, helper) }
+        HELPER.boot(|| {}, helper);
 
         let obj = unsafe {
             imp::CreateWaitableTimerA(ptr::null_mut(), 0, ptr::null())
@@ -126,7 +126,7 @@ impl Timer {
         if !self.on_worker { return }
 
         let (tx, rx) = channel();
-        unsafe { HELPER.send(RemoveTimer(self.obj, tx)) }
+        HELPER.send(RemoveTimer(self.obj, tx));
         rx.recv();
 
         self.on_worker = false;
@@ -158,7 +158,7 @@ impl rtio::RtioTimer for Timer {
                                   ptr::null_mut(), 0)
         }, 1);
 
-        unsafe { HELPER.send(NewTimer(self.obj, cb, true)) }
+        HELPER.send(NewTimer(self.obj, cb, true));
         self.on_worker = true;
     }
 
@@ -172,7 +172,7 @@ impl rtio::RtioTimer for Timer {
                                   ptr::null_mut(), ptr::null_mut(), 0)
         }, 1);
 
-        unsafe { HELPER.send(NewTimer(self.obj, cb, false)) }
+        HELPER.send(NewTimer(self.obj, cb, false));
         self.on_worker = true;
     }
 }

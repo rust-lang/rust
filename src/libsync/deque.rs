@@ -545,8 +545,8 @@ mod tests {
     fn stress() {
         static AMT: int = 100000;
         static NTHREADS: int = 8;
-        static mut DONE: AtomicBool = INIT_ATOMIC_BOOL;
-        static mut HITS: AtomicUint = INIT_ATOMIC_UINT;
+        static DONE: AtomicBool = INIT_ATOMIC_BOOL;
+        static HITS: AtomicUint = INIT_ATOMIC_UINT;
         let pool = BufferPool::<int>::new();
         let (w, s) = pool.deque();
 
@@ -604,7 +604,7 @@ mod tests {
     fn no_starvation() {
         static AMT: int = 10000;
         static NTHREADS: int = 4;
-        static mut DONE: AtomicBool = INIT_ATOMIC_BOOL;
+        static DONE: AtomicBool = INIT_ATOMIC_BOOL;
         let pool = BufferPool::<(int, uint)>::new();
         let (w, s) = pool.deque();
 

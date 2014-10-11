@@ -192,7 +192,7 @@ pub fn precise_time_ns() -> u64 {
     fn os_precise_time_ns() -> u64 {
         static mut TIMEBASE: libc::mach_timebase_info = libc::mach_timebase_info { numer: 0,
                                                                                    denom: 0 };
-        static mut ONCE: std::sync::Once = std::sync::ONCE_INIT;
+        static ONCE: std::sync::Once = std::sync::ONCE_INIT;
         unsafe {
             ONCE.doit(|| {
                 imp::mach_timebase_info(&mut TIMEBASE);

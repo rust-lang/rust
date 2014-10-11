@@ -461,28 +461,6 @@ impl<T> Index<uint,T> for Vec<T> {
     }
 }*/
 
-#[cfg(stage0)]
-impl<T> ops::Slice<uint, [T]> for Vec<T> {
-    #[inline]
-    fn as_slice_<'a>(&'a self) -> &'a [T] {
-        self.as_slice()
-    }
-
-    #[inline]
-    fn slice_from_<'a>(&'a self, start: &uint) -> &'a [T] {
-        self.as_slice().slice_from_(start)
-    }
-
-    #[inline]
-    fn slice_to_<'a>(&'a self, end: &uint) -> &'a [T] {
-        self.as_slice().slice_to_(end)
-    }
-    #[inline]
-    fn slice_<'a>(&'a self, start: &uint, end: &uint) -> &'a [T] {
-        self.as_slice().slice_(start, end)
-    }
-}
-#[cfg(not(stage0))]
 impl<T> ops::Slice<uint, [T]> for Vec<T> {
     #[inline]
     fn as_slice_<'a>(&'a self) -> &'a [T] {
@@ -504,28 +482,6 @@ impl<T> ops::Slice<uint, [T]> for Vec<T> {
     }
 }
 
-#[cfg(stage0)]
-impl<T> ops::SliceMut<uint, [T]> for Vec<T> {
-    #[inline]
-    fn as_mut_slice_<'a>(&'a mut self) -> &'a mut [T] {
-        self.as_mut_slice()
-    }
-
-    #[inline]
-    fn slice_from_mut_<'a>(&'a mut self, start: &uint) -> &'a mut [T] {
-        self.as_mut_slice().slice_from_mut_(start)
-    }
-
-    #[inline]
-    fn slice_to_mut_<'a>(&'a mut self, end: &uint) -> &'a mut [T] {
-        self.as_mut_slice().slice_to_mut_(end)
-    }
-    #[inline]
-    fn slice_mut_<'a>(&'a mut self, start: &uint, end: &uint) -> &'a mut [T] {
-        self.as_mut_slice().slice_mut_(start, end)
-    }
-}
-#[cfg(not(stage0))]
 impl<T> ops::SliceMut<uint, [T]> for Vec<T> {
     #[inline]
     fn as_mut_slice_<'a>(&'a mut self) -> &'a mut [T] {
