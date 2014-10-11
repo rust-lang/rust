@@ -126,7 +126,15 @@ fn mandelbrot<W: io::Writer>(w: uint, mut out: W) -> io::IoResult<()> {
         Future::spawn(proc () {
             let mut res: Vec<u8> = Vec::with_capacity((chunk_size * w) / 8);
             let init_r_slice = vec_init_r.as_slice();
-            for &init_i in vec_init_i.slice(i * chunk_size, (i + 1) * chunk_size).iter() {
+
+            let start = i * chunk_size;
+            let end = if i == (WORKERS - 1) {
+                start + last_chunk_size
+            } else {
+                (i + 1) * chunk_size
+            };
+
+            for &init_i in vec_init_i.slice(start, end).iter() {
                 write_line(init_i, init_r_slice, &mut res);
             }
 
