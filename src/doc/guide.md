@@ -1746,8 +1746,7 @@ For our first project, we'll implement a classic beginner programming problem:
 the guessing game. Here's how it works: Our program will generate a random
 integer between one and a hundred. It will then prompt us to enter a guess.
 Upon entering our guess, it will tell us if we're too low or too high. Once we
-guess correctly, it will congratulate us, and print the number of guesses we've
-taken to the screen. Sound good?
+guess correctly, it will congratulate us. Sound good?
 
 ## Set up
 
