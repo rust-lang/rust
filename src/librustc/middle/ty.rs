@@ -2117,22 +2117,8 @@ pub fn type_needs_drop(cx: &ctxt, ty: t) -> bool {
 // task can free them all at once later. Currently only things
 // that only contain scalars and shared boxes can avoid unwind
 // cleanups.
-pub fn type_needs_unwind_cleanup(cx: &ctxt, ty: t) -> bool {
-    match cx.needs_unwind_cleanup_cache.borrow().find(&ty) {
-        Some(&result) => return result,
-        None => ()
-    }
-
-    let mut tycache = HashSet::new();
-    let needs_unwind_cleanup =
-        type_needs_unwind_cleanup_(cx, ty, &mut tycache);
-    cx.needs_unwind_cleanup_cache.borrow_mut().insert(ty, needs_unwind_cleanup);
-    needs_unwind_cleanup
-}
-
-fn type_needs_unwind_cleanup_(cx: &ctxt, ty: t,
-                              tycache: &mut HashSet<t>) -> bool {
-
+memoize!(cx.needs_unwind_cleanup_cache, ty,
+fn type_needs_unwind_cleanup_(cx: &ctxt, ty: t, tycache: &mut HashSet<t>) -> bool {
     // Prevent infinite recursion
     if !tycache.insert(ty) {
         return false;
@@ -2140,31 +2126,28 @@ fn type_needs_unwind_cleanup_(cx: &ctxt, ty: t,
 
     let mut needs_unwind_cleanup = false;
     maybe_walk_ty(ty, |ty| {
-        let result = match get(ty).sty {
-          ty_nil | ty_bot | ty_bool | ty_int(_) | ty_uint(_) | ty_float(_) |
-          ty_tup(_) | ty_ptr(_) => {
-            true
-          }
-          ty_enum(did, ref substs) => {
-            for v in (*enum_variants(cx, did)).iter() {
-                for aty in v.args.iter() {
-                    let t = aty.subst(cx, substs);
-                    needs_unwind_cleanup |=
-                        type_needs_unwind_cleanup_(cx, t, tycache);
-                }
-            }
-            !needs_unwind_cleanup
-          }
-          _ => {
-            needs_unwind_cleanup = true;
-            false
-          }
+        needs_unwind_cleanup |= match get(ty).sty {
+            ty_nil | ty_bot | ty_bool | ty_int(_) | ty_uint(_) |
+            ty_float(_) | ty_tup(_) | ty_ptr(_) => false,
+
+            ty_enum(did, ref substs) =>
+                enum_variants(cx, did).iter().any(|v|
+                    v.args.iter().any(|aty| {
+                        let t = aty.subst(cx, substs);
+                        type_needs_unwind_cleanup_(cx, t, tycache)
+                    })
+                ),
+
+            _ => true
         };
-
-        result
+        !needs_unwind_cleanup
     });
-
     needs_unwind_cleanup
+}
+)
+
+pub fn type_needs_unwind_cleanup(cx: &ctxt, ty: t) -> bool {
+    type_needs_unwind_cleanup_(cx, ty, &mut HashSet::new())
 }
 
 /**
@@ -2179,6 +2162,7 @@ fn type_needs_unwind_cleanup_(cx: &ctxt, ty: t,
  * easier for me (nmatsakis) to think about what is contained within
  * a type than to think about what is *not* contained within a type.
  */
+#[deriving(Clone)]
 pub struct TypeContents {
     pub bits: u64
 }
@@ -2358,19 +2342,9 @@ pub fn type_interior_is_unsafe(cx: &ctxt, t: ty::t) -> bool {
     type_contents(cx, t).interior_unsafe()
 }
 
+memoize!(cx.tc_cache, type_id(ty),
 pub fn type_contents(cx: &ctxt, ty: t) -> TypeContents {
-    let ty_id = type_id(ty);
-
-    match cx.tc_cache.borrow().find(&ty_id) {
-        Some(tc) => { return *tc; }
-        None => {}
-    }
-
-    let mut cache = HashMap::new();
-    let result = tc_ty(cx, ty, &mut cache);
-
-    cx.tc_cache.borrow_mut().insert(ty_id, result);
-    return result;
+    return tc_ty(cx, ty, &mut HashMap::new());
 
     fn tc_ty(cx: &ctxt,
              ty: t,
@@ -2685,6 +2659,7 @@ pub fn type_contents(cx: &ctxt, ty: t) -> TypeContents {
         }
     }
 }
+)
 
 pub fn type_moves_by_default(cx: &ctxt, ty: t) -> bool {
     type_contents(cx, ty).moves_by_default(cx)
@@ -4033,28 +4008,23 @@ pub fn impl_or_trait_item(cx: &ctxt, id: ast::DefId) -> ImplOrTraitItem {
 
 /// Returns true if the given ID refers to an associated type and false if it
 /// refers to anything else.
+memoize!(cx.associated_types, id,
 pub fn is_associated_type(cx: &ctxt, id: ast::DefId) -> bool {
-    let result = match cx.associated_types.borrow_mut().find(&id) {
-        Some(result) => return *result,
-        None if id.krate == ast::LOCAL_CRATE => {
-            match cx.impl_or_trait_items.borrow().find(&id) {
-                Some(ref item) => {
-                    match **item {
-                        TypeTraitItem(_) => true,
-                        MethodTraitItem(_) => false,
-                    }
+    if id.krate == ast::LOCAL_CRATE {
+        match cx.impl_or_trait_items.borrow().find(&id) {
+            Some(ref item) => {
+                match **item {
+                    TypeTraitItem(_) => true,
+                    MethodTraitItem(_) => false,
                 }
-                None => false,
             }
+            None => false,
         }
-        None => {
-            csearch::is_associated_type(&cx.sess.cstore, id)
-        }
-    };
-
-    cx.associated_types.borrow_mut().insert(id, result);
-    result
+    } else {
+        csearch::is_associated_type(&cx.sess.cstore, id)
+    }
 }
+)
 
 /// Returns the parameter index that the given associated type corresponds to.
 pub fn associated_type_parameter_index(cx: &ctxt,
@@ -4110,13 +4080,9 @@ pub fn trait_item_def_ids(cx: &ctxt, id: ast::DefId)
     })
 }
 
+memoize!(cx.impl_trait_cache, id,
 pub fn impl_trait_ref(cx: &ctxt, id: ast::DefId) -> Option<Rc<TraitRef>> {
-    match cx.impl_trait_cache.borrow().find(&id) {
-        Some(ret) => { return ret.clone(); }
-        None => {}
-    }
-
-    let ret = if id.krate == ast::LOCAL_CRATE {
+    if id.krate == ast::LOCAL_CRATE {
         debug!("(impl_trait_ref) searching for trait impl {:?}", id);
         match cx.map.find(id.node) {
             Some(ast_map::NodeItem(item)) => {
@@ -4136,11 +4102,9 @@ pub fn impl_trait_ref(cx: &ctxt, id: ast::DefId) -> Option<Rc<TraitRef>> {
         }
     } else {
         csearch::get_impl_trait(cx, id)
-    };
-
-    cx.impl_trait_cache.borrow_mut().insert(id, ret.clone());
-    ret
+    }
 }
+)
 
 pub fn trait_ref_to_def_id(tcx: &ctxt, tr: &ast::TraitRef) -> ast::DefId {
     let def = *tcx.def_map.borrow()
@@ -4324,13 +4288,9 @@ pub fn type_is_empty(cx: &ctxt, t: t) -> bool {
      }
 }
 
+memoize!(cx.enum_var_cache, id,
 pub fn enum_variants(cx: &ctxt, id: ast::DefId) -> Rc<Vec<Rc<VariantInfo>>> {
-    match cx.enum_var_cache.borrow().find(&id) {
-        Some(variants) => return variants.clone(),
-        _ => { /* fallthrough */ }
-    }
-
-    let result = if ast::LOCAL_CRATE != id.krate {
+    if ast::LOCAL_CRATE != id.krate {
         Rc::new(csearch::get_enum_variants(cx, id))
     } else {
         /*
@@ -4385,12 +4345,9 @@ pub fn enum_variants(cx: &ctxt, id: ast::DefId) -> Rc<Vec<Rc<VariantInfo>>> {
             }
             _ => cx.sess.bug("enum_variants: id not bound to an enum")
         }
-    };
-
-    cx.enum_var_cache.borrow_mut().insert(id, result.clone());
-    result
+    }
 }
-
+)
 
 // Returns information about the enum variant with the given ID:
 pub fn enum_variant_with_id(cx: &ctxt,
@@ -4415,22 +4372,12 @@ pub fn lookup_item_type(cx: &ctxt,
 }
 
 /// Given the did of a trait, returns its canonical trait ref.
+memoize!(cx.trait_defs, did,
 pub fn lookup_trait_def(cx: &ctxt, did: ast::DefId) -> Rc<ty::TraitDef> {
-    let mut trait_defs = cx.trait_defs.borrow_mut();
-    match trait_defs.find_copy(&did) {
-        Some(trait_def) => {
-            // The item is in this crate. The caller should have added it to the
-            // type cache already
-            trait_def
-        }
-        None => {
-            assert!(did.krate != ast::LOCAL_CRATE);
-            let trait_def = Rc::new(csearch::get_trait_def(cx, did));
-            trait_defs.insert(did, trait_def.clone());
-            trait_def
-        }
-    }
+    assert!(did.krate != ast::LOCAL_CRATE);
+    Rc::new(csearch::get_trait_def(cx, did))
 }
+)
 
 /// Given a reference to a trait, returns the bounds declared on the
 /// trait, with appropriate substitutions applied.
@@ -4489,13 +4436,9 @@ pub fn lookup_simd(tcx: &ctxt, did: DefId) -> bool {
 }
 
 /// Obtain the representation annotation for a struct definition.
+memoize!(tcx.repr_hint_cache, did,
 pub fn lookup_repr_hints(tcx: &ctxt, did: DefId) -> Rc<Vec<attr::ReprAttr>> {
-    match tcx.repr_hint_cache.borrow().find(&did) {
-        None => {}
-        Some(ref hints) => return (*hints).clone(),
-    }
-
-    let acc = if did.krate == LOCAL_CRATE {
+    Rc::new(if did.krate == LOCAL_CRATE {
         let mut acc = Vec::new();
         ty::each_attr(tcx, did, |meta| {
             acc.extend(attr::find_repr_attrs(tcx.sess.diagnostic(),
@@ -4505,12 +4448,9 @@ pub fn lookup_repr_hints(tcx: &ctxt, did: DefId) -> Rc<Vec<attr::ReprAttr>> {
         acc
     } else {
         csearch::get_repr_attrs(&tcx.sess.cstore, did)
-    };
-
-    let acc = Rc::new(acc);
-    tcx.repr_hint_cache.borrow_mut().insert(did, acc.clone());
-    acc
+    })
 }
+)
 
 // Look up a field ID, whether or not it's local
 // Takes a list of type substs in case the struct is generic
