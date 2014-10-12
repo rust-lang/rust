@@ -25,9 +25,23 @@ pub type PatIdMap = HashMap<Ident, NodeId>;
 pub fn pat_id_map(dm: &resolve::DefMap, pat: &Pat) -> PatIdMap {
     let mut map = HashMap::new();
     pat_bindings(dm, pat, |_bm, p_id, _s, path1| {
-      map.insert(path1.node, p_id);
+        map.insert(path1.node, p_id);
     });
     map
+}
+
+pub fn pat_is_refutable(dm: &resolve::DefMap, pat: &Pat) -> bool {
+    match pat.node {
+        PatLit(_) | PatRange(_, _) => true,
+        PatEnum(_, _) | PatIdent(_, _, None) | PatStruct(..) => {
+            match dm.borrow().find(&pat.id) {
+                Some(&DefVariant(..)) => true,
+                _ => false
+            }
+        }
+        PatVec(_, _, _) => true,
+        _ => false
+    }
 }
 
 pub fn pat_is_variant_or_struct(dm: &resolve::DefMap, pat: &Pat) -> bool {

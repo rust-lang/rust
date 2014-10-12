@@ -638,7 +638,7 @@ fn pat_constructors(cx: &MatchCheckCtxt, p: &Pat,
         PatEnum(..) =>
             match cx.tcx.def_map.borrow().find(&pat.id) {
                 Some(&DefConst(..)) =>
-                    cx.tcx.sess.span_bug(pat.span, "static pattern should've \
+                    cx.tcx.sess.span_bug(pat.span, "const pattern should've \
                                                     been rewritten"),
                 Some(&DefVariant(_, id, _)) => vec!(Variant(id)),
                 _ => vec!(Single)
@@ -646,7 +646,7 @@ fn pat_constructors(cx: &MatchCheckCtxt, p: &Pat,
         PatStruct(..) =>
             match cx.tcx.def_map.borrow().find(&pat.id) {
                 Some(&DefConst(..)) =>
-                    cx.tcx.sess.span_bug(pat.span, "static pattern should've \
+                    cx.tcx.sess.span_bug(pat.span, "const pattern should've \
                                                     been rewritten"),
                 Some(&DefVariant(_, id, _)) => vec!(Variant(id)),
                 _ => vec!(Single)
