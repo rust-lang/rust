@@ -2140,6 +2140,41 @@ pub fn autoderef<T>(fcx: &FnCtxt, sp: Span, base_ty: ty::t,
     (ty::mk_err(), 0, None)
 }
 
+/// Returns true if the cache hit (and therefore we should bail out).
+fn check_overloaded_operator_cache(fcx: &FnCtxt,
+                                   callee_type: ty::t,
+                                   flag: ty::OverloadedOperatorFilter)
+                                   -> bool {
+    let allow_derefable = if flag == ty::DEREF_OVERLOADED_OPERATOR_FILTER {
+        ty::DisallowDerefable(&fcx.inh.param_env)
+    } else {
+        ty::AllowDerefable
+    };
+    let result = match ty::SimplifiedType::from_type(fcx.tcx(),
+                                                     callee_type,
+                                                     true,
+                                                     allow_derefable) {
+        None => false,
+        Some(simplified_callee_type) => {
+            match fcx.tcx()
+                     .overloaded_operator_filter
+                     .borrow()
+                     .find(&simplified_callee_type) {
+                None => true,
+                Some(flags) if !flags.contains(flag) => true,
+                _ => false
+            }
+        }
+    };
+    debug!("check_overloaded_operator_cache: cache {}",
+           if result {
+               "hit"
+           } else {
+               "miss"
+           });
+    result
+}
+
 /// Attempts to resolve a call expression as an overloaded call.
 fn try_overloaded_call<'a>(fcx: &FnCtxt,
                            call_expression: &ast::Expr,
@@ -2152,6 +2187,13 @@ fn try_overloaded_call<'a>(fcx: &FnCtxt,
     match *structure_of(fcx, callee.span, callee_type) {
         ty::ty_bare_fn(_) | ty::ty_closure(_) => return false,
         _ => {}
+    }
+
+    // Bail out if the cache tells us to.
+    if check_overloaded_operator_cache(fcx,
+                                       callee_type,
+                                       ty::CALL_OVERLOADED_OPERATOR_FILTER) {
+        return false
     }
 
     // Try `FnOnce`, then `FnMut`, then `Fn`.
@@ -2209,6 +2251,13 @@ fn try_overloaded_deref(fcx: &FnCtxt,
                         base_ty: ty::t,
                         lvalue_pref: LvaluePreference)
                         -> Option<ty::mt> {
+    // Bail out if the cache tells us to.
+    if check_overloaded_operator_cache(fcx,
+                                       base_ty,
+                                       ty::DEREF_OVERLOADED_OPERATOR_FILTER) {
+        return None
+    }
+
     // Try DerefMut first, if preferred.
     let method = match (lvalue_pref, fcx.tcx().lang_items.deref_mut_trait()) {
         (PreferMutLvalue, Some(trait_did)) => {
@@ -2359,6 +2408,13 @@ fn try_overloaded_index(fcx: &FnCtxt,
                         index_expr: &P<ast::Expr>,
                         lvalue_pref: LvaluePreference)
                         -> Option<ty::mt> {
+    // Bail out if the cache tells us to.
+    if check_overloaded_operator_cache(fcx,
+                                       base_ty,
+                                       ty::INDEX_OVERLOADED_OPERATOR_FILTER) {
+        return None
+    }
+
     // Try `IndexMut` first, if preferred.
     let method = match (lvalue_pref, fcx.tcx().lang_items.index_mut_trait()) {
         (PreferMutLvalue, Some(trait_did)) => {

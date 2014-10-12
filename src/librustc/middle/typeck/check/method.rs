@@ -161,7 +161,15 @@ pub fn lookup<'a, 'tcx>(
     lcx.push_inherent_candidates(self_ty);
     debug!("searching extension candidates");
     lcx.push_bound_candidates(self_ty, None);
-    lcx.push_extension_candidates(expr.id);
+
+    let method_lookup_key = MethodLookupKey::from_type(fcx.tcx(),
+                                                       self_ty,
+                                                       &fcx.inh.param_env);
+    if method_lookup_key.is_none() {
+        debug!("couldn't simplify {}", lcx.ty_to_string(self_ty));
+    }
+    lcx.push_extension_candidates(expr.id, &method_lookup_key);
+
     lcx.search(self_ty)
 }
 
@@ -197,7 +205,14 @@ pub fn lookup_in_trait<'a, 'tcx>(
            self_ty.repr(fcx.tcx()), self_expr.map(|e| e.repr(fcx.tcx())));
 
     lcx.push_bound_candidates(self_ty, Some(trait_did));
-    lcx.push_extension_candidate(trait_did);
+
+    let method_lookup_key = MethodLookupKey::from_type(fcx.tcx(),
+                                                       self_ty,
+                                                       &fcx.inh.param_env);
+    if method_lookup_key.is_none() {
+        debug!("couldn't simplify {}", lcx.ty_to_string(self_ty));
+    }
+    lcx.push_extension_candidate(trait_did, &method_lookup_key);
     lcx.search(self_ty)
 }
 
@@ -484,7 +499,9 @@ impl<'a, 'tcx> LookupContext<'a, 'tcx> {
         });
     }
 
-    fn push_extension_candidate(&mut self, trait_did: DefId) {
+    fn push_extension_candidate(&mut self,
+                                trait_did: DefId,
+                                method_lookup_key: &Option<MethodLookupKey>) {
         ty::populate_implementations_for_trait_if_necessary(self.tcx(), trait_did);
 
         // Look for explicit implementations.
@@ -494,12 +511,16 @@ impl<'a, 'tcx> LookupContext<'a, 'tcx> {
                 let items = impl_items.get(impl_did);
                 self.push_candidates_from_impl(*impl_did,
                                                items.as_slice(),
+                                               method_lookup_key,
                                                true);
             }
         }
     }
 
-    fn push_extension_candidates(&mut self, expr_id: ast::NodeId) {
+    fn push_extension_candidates(
+            &mut self,
+            expr_id: ast::NodeId,
+            method_lookup_key: &Option<MethodLookupKey>) {
         // If the method being called is associated with a trait, then
         // find all the impls of that trait.  Each of those are
         // candidates.
@@ -512,7 +533,7 @@ impl<'a, 'tcx> LookupContext<'a, 'tcx> {
                        } else {
                            "(external)".to_string()
                        });
-                self.push_extension_candidate(*trait_did);
+                self.push_extension_candidate(*trait_did, method_lookup_key);
             }
         }
     }
@@ -775,6 +796,7 @@ impl<'a, 'tcx> LookupContext<'a, 'tcx> {
                 let items = impl_items.get(impl_did);
                 self.push_candidates_from_impl(*impl_did,
                                                items.as_slice(),
+                                               &None,
                                                false);
             }
         }
@@ -783,6 +805,7 @@ impl<'a, 'tcx> LookupContext<'a, 'tcx> {
     fn push_candidates_from_impl(&mut self,
                                  impl_did: DefId,
                                  impl_items: &[ImplOrTraitItemId],
+                                 method_lookup_key: &Option<MethodLookupKey>,
                                  is_extension: bool) {
         let did = if self.report_statics == ReportStaticMethods {
             // we only want to report each base trait once
@@ -796,6 +819,38 @@ impl<'a, 'tcx> LookupContext<'a, 'tcx> {
 
         if !self.impl_dups.insert(did) {
             return; // already visited
+        }
+
+        // See if we can quickly reject...
+        match *method_lookup_key {
+            Some(ref method_lookup_key) => {
+                let impl_type = ty::lookup_item_type(self.tcx(), impl_did);
+                let simplified_impl_type =
+                    SimplifiedType::from_type(self.tcx(),
+                                              impl_type.ty,
+                                              false,
+                                              ty::AllowDerefable);
+                match simplified_impl_type {
+                    Some(ref simplified_impl_type) => {
+                        if !method_lookup_key.might_match(
+                                simplified_impl_type) {
+                            debug!("quick reject succeeded");
+                            return
+                        }
+                        debug!("quick reject failed: could possibly unify");
+                    }
+                    None => {
+                        debug!("quick reject failed: impl type {} was \
+                                unsimplifiable",
+                               self.ty_to_string(impl_type.ty));
+                    }
+                }
+            }
+            None => {
+                if is_extension {
+                    debug!("quick reject failed: callee is unsimplifiable");
+                }
+            }
         }
 
         debug!("push_candidates_from_impl: {} {}",
