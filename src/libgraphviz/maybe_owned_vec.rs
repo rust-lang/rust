@@ -140,7 +140,7 @@ impl<'a,T:Clone> CloneableVector<T> for MaybeOwnedVector<'a,T> {
 impl<'a, T: Clone> Clone for MaybeOwnedVector<'a, T> {
     fn clone(&self) -> MaybeOwnedVector<'a, T> {
         match *self {
-            Growable(ref v) => Growable(v.to_vec()),
+            Growable(ref v) => Growable(v.clone()),
             Borrowed(v) => Borrowed(v)
         }
     }
