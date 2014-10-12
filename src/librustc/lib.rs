@@ -97,6 +97,7 @@ pub mod middle {
     pub mod intrinsicck;
     pub mod lang_items;
     pub mod liveness;
+    pub mod macros;
     pub mod mem_categorization;
     pub mod pat_util;
     pub mod privacy;
