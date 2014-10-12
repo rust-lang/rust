@@ -393,4 +393,9 @@ pre.rust { position: relative; }
     }
 }
 
-#keywords table td { border: none; }
+#keyword-table-marker + table thead { display: none; }
+#keyword-table-marker + table td { border: none; }
+#keyword-table-marker + table {
+    margin-left: 2em;
+    margin-bottom: 1em;
+}
