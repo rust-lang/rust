@@ -200,8 +200,7 @@ mod test {
     }
 
     #[test]
-    #[cfg(target_os = "linux")]
-    #[cfg(target_os = "android")]
+    #[cfg(any(target_os = "linux", target_os = "android"))]
     fn test_rpath_relative() {
         let config = &mut RPathConfig {
             os: abi::OsLinux,
