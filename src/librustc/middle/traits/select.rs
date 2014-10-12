@@ -1014,7 +1014,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
             ty::ty_tup(ref tys) => {
                 // (T1, ..., Tn) -- meets any bound that all of T1...Tn meet
-                Ok(If(tys.to_owned()))
+                Ok(If(tys.clone()))
             }
 
             ty::ty_unboxed_closure(def_id, _) => {
