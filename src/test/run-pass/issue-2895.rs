@@ -28,8 +28,7 @@ pub fn main() {
     assert_eq!(mem::size_of::<Kitty>(), 16 as uint);
 }
 
-#[cfg(target_arch = "x86")]
-#[cfg(target_arch = "arm")]
+#[cfg(any(target_arch = "x86", target_arch = "arm"))]
 pub fn main() {
     assert_eq!(mem::size_of::<Cat>(), 4 as uint);
     assert_eq!(mem::size_of::<Kitty>(), 8 as uint);

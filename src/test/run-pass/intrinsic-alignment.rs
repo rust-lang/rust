@@ -17,10 +17,10 @@ mod rusti {
     }
 }
 
-#[cfg(target_os = "linux")]
-#[cfg(target_os = "macos")]
-#[cfg(target_os = "freebsd")]
-#[cfg(target_os = "dragonfly")]
+#[cfg(any(target_os = "linux",
+          target_os = "macos",
+          target_os = "freebsd",
+          target_os = "dragonfly"))]
 mod m {
     #[main]
     #[cfg(target_arch = "x86")]
@@ -32,8 +32,7 @@ mod m {
     }
 
     #[main]
-    #[cfg(target_arch = "x86_64")]
-    #[cfg(target_arch = "arm")]
+    #[cfg(any(target_arch = "x86_64", target_arch = "arm"))]
     pub fn main() {
         unsafe {
             assert_eq!(::rusti::pref_align_of::<u64>(), 8u);

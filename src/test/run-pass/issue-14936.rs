@@ -36,8 +36,7 @@ macro_rules! demo {
     }
 }
 
-#[cfg(target_arch = "x86")]
-#[cfg(target_arch = "x86_64")]
+#[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 fn main() {
     fn out_write_only_expr_then_in_expr() {
         demo!("=r")
@@ -51,5 +50,5 @@ fn main() {
     out_read_write_expr_then_in_expr();
 }
 
-#[cfg(not(target_arch = "x86"), not(target_arch = "x86_64"))]
+#[cfg(all(not(target_arch = "x86"), not(target_arch = "x86_64")))]
 pub fn main() {}

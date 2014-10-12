@@ -10,8 +10,7 @@
 
 #![feature(asm)]
 
-#[cfg(target_arch = "x86")]
-#[cfg(target_arch = "x86_64")]
+#[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 unsafe fn next_power_of_2(n: u32) -> u32 {
     let mut tmp = n;
     asm!("dec $0" : "+rm"(tmp) :: "cc");
@@ -28,8 +27,7 @@ unsafe fn next_power_of_2(n: u32) -> u32 {
     return tmp;
 }
 
-#[cfg(target_arch = "x86")]
-#[cfg(target_arch = "x86_64")]
+#[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 pub fn main() {
     unsafe {
         assert_eq!(64, next_power_of_2(37));
@@ -62,5 +60,5 @@ pub fn main() {
     assert_eq!(x, 60);
 }
 
-#[cfg(not(target_arch = "x86"), not(target_arch = "x86_64"))]
+#[cfg(not(any(target_arch = "x86", target_arch = "x86_64")))]
 pub fn main() {}
