@@ -1328,23 +1328,6 @@ let c = [Cookie, Cookie, Cookie, Cookie];
 The precise memory layout of a structure is not specified. One can specify a
 particular layout using the [`repr` attribute](#ffi-attributes).
 
-By using the `struct_inherit` feature gate, structures may use single
-inheritance. A Structure may only inherit from a single other structure, called
-the _super-struct_. The inheriting structure (sub-struct) acts as if all fields
-in the super-struct were present in the sub-struct. Fields declared in a
-sub-struct must not have the same name as any field in any (transitive)
-super-struct. All fields (both declared and inherited) must be specified in any
-initializers. Inheritance between structures does not give subtyping or
-coercion. The super-struct and sub-struct must be defined in the same crate.
-The super-struct must be declared using the `virtual` keyword. For example:
-
-```{.ignore}
-virtual struct Sup { x: int }
-struct Sub : Sup { y: int }
-let s = Sub {x: 10, y: 11};
-let sx = s.x;
-```
-
 ### Enumerations
 
 An _enumeration_ is a simultaneous definition of a nominal [enumerated

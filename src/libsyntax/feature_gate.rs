@@ -218,21 +218,10 @@ impl<'a, 'v> Visitor<'v> for Context<'a> {
                 }
             }
 
-            ast::ItemStruct(ref struct_definition, _) => {
+            ast::ItemStruct(..) => {
                 if attr::contains_name(i.attrs.as_slice(), "simd") {
                     self.gate_feature("simd", i.span,
                                       "SIMD types are experimental and possibly buggy");
-                }
-                match struct_definition.super_struct {
-                    Some(ref path) => self.gate_feature("struct_inherit", path.span,
-                                                        "struct inheritance is experimental \
-                                                         and possibly buggy"),
-                    None => {}
-                }
-                if struct_definition.is_virtual {
-                    self.gate_feature("struct_inherit", i.span,
-                                      "struct inheritance (`virtual` keyword) is \
-                                       experimental and possibly buggy");
                 }
             }
 

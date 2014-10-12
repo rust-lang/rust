@@ -801,11 +801,9 @@ pub fn noop_fold_associated_type<T>(at: AssociatedType, folder: &mut T)
 }
 
 pub fn noop_fold_struct_def<T: Folder>(struct_def: P<StructDef>, fld: &mut T) -> P<StructDef> {
-    struct_def.map(|StructDef {fields, ctor_id, super_struct, is_virtual}| StructDef {
+    struct_def.map(|StructDef { fields, ctor_id }| StructDef {
         fields: fields.move_map(|f| fld.fold_struct_field(f)),
         ctor_id: ctor_id.map(|cid| fld.new_id(cid)),
-        super_struct: super_struct.map(|t| fld.fold_ty(t)),
-        is_virtual: is_virtual
     })
 }
 
