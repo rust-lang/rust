@@ -127,7 +127,6 @@ use std::rc::Rc;
 use syntax::abi;
 use syntax::ast::{ProvidedMethod, RequiredMethod, TypeTraitItem};
 use syntax::ast;
-use syntax::ast_map;
 use syntax::ast_util::{local_def, PostExpansionMethod};
 use syntax::ast_util;
 use syntax::attr;
@@ -602,68 +601,11 @@ fn check_fn<'a, 'tcx>(ccx: &'a CrateCtxt<'a, 'tcx>,
     fcx
 }
 
-fn span_for_field(tcx: &ty::ctxt, field: &ty::field_ty, struct_id: ast::DefId) -> Span {
-    assert!(field.id.krate == ast::LOCAL_CRATE);
-    let item = match tcx.map.find(struct_id.node) {
-        Some(ast_map::NodeItem(item)) => item,
-        None => fail!("node not in ast map: {}", struct_id.node),
-        _ => fail!("expected item, found {}", tcx.map.node_to_string(struct_id.node))
-    };
-
-    match item.node {
-        ast::ItemStruct(ref struct_def, _) => {
-            match struct_def.fields.iter().find(|f| match f.node.kind {
-                ast::NamedField(ident, _) => ident.name == field.name,
-                _ => false,
-            }) {
-                Some(f) => f.span,
-                None => {
-                    tcx.sess
-                       .bug(format!("Could not find field {}",
-                                    token::get_name(field.name)).as_slice())
-                }
-            }
-        },
-        _ => tcx.sess.bug("Field found outside of a struct?"),
-    }
-}
-
-// Check struct fields are uniquely named wrt parents.
-fn check_for_field_shadowing(tcx: &ty::ctxt,
-                             id: ast::DefId) {
-    let struct_fields = tcx.struct_fields.borrow();
-    let fields = struct_fields.get(&id);
-
-    let superstructs = tcx.superstructs.borrow();
-    let super_struct = superstructs.get(&id);
-    match *super_struct {
-        Some(parent_id) => {
-            let super_fields = ty::lookup_struct_fields(tcx, parent_id);
-            for f in fields.iter() {
-                match super_fields.iter().find(|sf| f.name == sf.name) {
-                    Some(prev_field) => {
-                        span_err!(tcx.sess, span_for_field(tcx, f, id), E0041,
-                            "field `{}` hides field declared in super-struct",
-                            token::get_name(f.name));
-                        span_note!(tcx.sess, span_for_field(tcx, prev_field, parent_id),
-                            "previously declared here");
-                    },
-                    None => {}
-                }
-            }
-        },
-        None => {}
-    }
-}
-
 pub fn check_struct(ccx: &CrateCtxt, id: ast::NodeId, span: Span) {
     let tcx = ccx.tcx;
 
     check_representable(tcx, span, id, "struct");
     check_instantiable(tcx, span, id);
-
-    // Check there are no overlapping fields in super-structs
-    check_for_field_shadowing(tcx, local_def(id));
 
     if ty::lookup_simd(tcx, local_def(id)) {
         check_simd(tcx, span, id);

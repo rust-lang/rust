@@ -1286,10 +1286,6 @@ pub struct StructDef {
     /// ID of the constructor. This is only used for tuple- or enum-like
     /// structs.
     pub ctor_id: Option<NodeId>,
-    /// Super struct, if specified.
-    pub super_struct: Option<P<Ty>>,
-    /// True iff the struct may be inherited from.
-    pub is_virtual: bool,
 }
 
 /*
