@@ -570,13 +570,6 @@ impl<T> Collection for Vec<T> {
     }
 }
 
-impl<T: Clone> CloneableVector<T> for Vec<T> {
-    #[deprecated = "call .clone() instead"]
-    fn to_vec(&self) -> Vec<T> { self.clone() }
-    #[deprecated = "move the vector instead"]
-    fn into_vec(self) -> Vec<T> { self }
-}
-
 // FIXME: #13996: need a way to mark the return value as `noalias`
 #[inline(never)]
 unsafe fn alloc_or_realloc<T>(ptr: *mut T, old_size: uint, size: uint) -> *mut T {
