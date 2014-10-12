@@ -62,26 +62,26 @@ In the future, after gaining the ability to parameterize on integers, strings of
 ```
 struct __StrImpl<Sized? T>(T); // private
 
-pub type str = StrImpl<[u8]>; // unsized referent of string slice `&str`, public
+pub type str = __StrImpl<[u8]>; // unsized referent of string slice `&str`, public
 pub type FixedString<const N: uint> = __StrImpl<[u8, ..N]>; // string of fixed size, public
 
 // &FixedString<N> -> &str : OK, including &'static FixedString<N> -> &'static str for string literals
 ```
-So, we don't propose to make these changes today and sugget to wait until parameterizing on integers is added to the language.
+So, we don't propose to make these changes today and suggest to wait until generic parameterization on integers is added to the language.
 
 ### Precedents
 
-C and C++ string literals are lvalue `char` arrays of fixed size with static duration.
+C and C++ string literals are lvalue `char` arrays of fixed size with static duration.  
 C++ library proposal for strings of fixed size ([link][1]), the paper also contains some discussion and motivation.
 
 # Rejected alternatives and discussion
 
 ## Array literals
 
-The types of array literals potentially can be changed from `[T, ..N]` to `&'a [T, ..N]` for consistency with the other literals and ergonomics.
+The types of array literals potentially can be changed from `[T, ..N]` to `&'a [T, ..N]` for consistency with the other literals and ergonomics.  
 The major blocker for this change is the inability to move out from a dereferenced array literal if `T` is not `Copy`.
 ```
-let mut a = *[box 1i, box 2, box 3]; // Wouldn't work without special-casing of string literal with regard to moving out from dereferenced borrowed pointer
+let mut a = *[box 1i, box 2, box 3]; // Wouldn't work without special-casing of array literals with regard to moving out from dereferenced borrowed pointer
 ```
 Despite that array literals as references have better usability, possible `static`ness and consistency with other literals.
 
