@@ -8,11 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Test struct inheritance.
+// Test diagnostics for the removed struct inheritance feature.
 #![feature(struct_inherit)]
 
-
-struct S6 : int; //~ ERROR super-struct could not be resolved
-
-pub fn main() {
+virtual struct SuperStruct { //~ ERROR `virtual` structs have been removed from the language
+    f1: int,
 }
+
+struct Struct : SuperStruct; //~ ERROR `virtual` structs have been removed from the language
+
+pub fn main() {}

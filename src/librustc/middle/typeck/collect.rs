@@ -1235,15 +1235,6 @@ pub fn convert(ccx: &CrateCtxt, it: &ast::Item) {
 
             tcx.tcache.borrow_mut().insert(local_def(it.id), pty.clone());
 
-            // Write the super-struct type, if it exists.
-            match struct_def.super_struct {
-                Some(ref ty) => {
-                    let supserty = ccx.to_ty(&ExplicitRscope, &**ty);
-                    write_ty_to_tcx(tcx, it.id, supserty);
-                },
-                _ => {},
-            }
-
             convert_struct(ccx, &**struct_def, pty, it.id);
         },
         ast::ItemTy(_, ref generics) => {
@@ -1294,39 +1285,6 @@ pub fn convert_struct(ccx: &CrateCtxt,
     }).collect();
 
     tcx.struct_fields.borrow_mut().insert(local_def(id), Rc::new(field_tys));
-
-    let super_struct = match struct_def.super_struct {
-        Some(ref t) => match t.node {
-            ast::TyPath(_, _, path_id) => {
-                let def_map = tcx.def_map.borrow();
-                match def_map.find(&path_id) {
-                    Some(&def::DefStruct(def_id)) => {
-                        // FIXME(#12511) Check for cycles in the inheritance hierarchy.
-                        // Check super-struct is virtual.
-                        match tcx.map.find(def_id.node) {
-                            Some(ast_map::NodeItem(i)) => match i.node {
-                                ast::ItemStruct(ref struct_def, _) => {
-                                    if !struct_def.is_virtual {
-                                        span_err!(tcx.sess, t.span, E0126,
-                                                  "struct inheritance is only \
-                                                   allowed from virtual structs");
-                                    }
-                                },
-                                _ => {},
-                            },
-                            _ => {},
-                        }
-
-                        Some(def_id)
-                    },
-                    _ => None,
-                }
-            }
-            _ => None,
-        },
-        None => None,
-    };
-    tcx.superstructs.borrow_mut().insert(local_def(id), super_struct);
 
     let substs = mk_item_substs(ccx, &pty.generics);
     let selfty = ty::mk_struct(tcx, local_def(id), substs);

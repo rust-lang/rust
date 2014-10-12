@@ -603,10 +603,6 @@ pub fn walk_trait_item<'v, V: Visitor<'v>>(visitor: &mut V, trait_method: &'v Tr
 
 pub fn walk_struct_def<'v, V: Visitor<'v>>(visitor: &mut V,
                                            struct_definition: &'v StructDef) {
-    match struct_definition.super_struct {
-        Some(ref t) => visitor.visit_ty(&**t),
-        None => {},
-    }
     for field in struct_definition.fields.iter() {
         visitor.visit_struct_field(field)
     }
