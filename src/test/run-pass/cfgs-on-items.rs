@@ -11,24 +11,23 @@
 // compile-flags: --cfg fooA --cfg fooB
 
 // fooA AND !bar
-#[cfg(fooA, not(bar))]
+#[cfg(all(fooA, not(bar)))]
 fn foo1() -> int { 1 }
 
 // !fooA AND !bar
-#[cfg(not(fooA), not(bar))]
+#[cfg(all(not(fooA), not(bar)))]
 fn foo2() -> int { 2 }
 
 // fooC OR (fooB AND !bar)
-#[cfg(fooC)]
-#[cfg(fooB, not(bar))]
+#[cfg(any(fooC, all(fooB, not(bar))))]
 fn foo2() -> int { 3 }
 
 // fooA AND bar
-#[cfg(fooA, bar)]
+#[cfg(all(fooA, bar))]
 fn foo3() -> int { 2 }
 
 // !(fooA AND bar)
-#[cfg(not(fooA, bar))]
+#[cfg(not(all(fooA, bar)))]
 fn foo3() -> int { 3 }
 
 pub fn main() {

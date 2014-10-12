@@ -952,10 +952,10 @@ fn check_expected_errors(expected_errors: Vec<errors::ExpectedError> ,
         to_lower(line).as_slice().starts_with(to_lower(prefix).as_slice())
     }
 
-    #[cfg(target_os = "linux")]
-    #[cfg(target_os = "macos")]
-    #[cfg(target_os = "freebsd")]
-    #[cfg(target_os = "dragonfly")]
+    #[cfg(any(target_os = "linux",
+              target_os = "macos",
+              target_os = "freebsd",
+              target_os = "dragonfly"))]
     fn prefix_matches( line : &str, prefix : &str ) -> bool {
         line.starts_with( prefix )
     }
@@ -1356,10 +1356,10 @@ fn program_output(config: &Config, testfile: &Path, lib_path: &str, prog: String
 }
 
 // Linux and mac don't require adjusting the library search path
-#[cfg(target_os = "linux")]
-#[cfg(target_os = "macos")]
-#[cfg(target_os = "freebsd")]
-#[cfg(target_os = "dragonfly")]
+#[cfg(any(target_os = "linux",
+          target_os = "macos",
+          target_os = "freebsd",
+          target_os = "dragonfly"))]
 fn make_cmdline(_libpath: &str, prog: &str, args: &[String]) -> String {
     format!("{} {}", prog, args.connect(" "))
 }
