@@ -1464,6 +1464,8 @@ fn check_expr(this: &mut Liveness, expr: &Expr) {
         this.pat_bindings(&**pat, |this, ln, var, sp, id| {
             this.warn_about_unused(sp, id, ln, var);
         });
+
+        visit::walk_expr(this, expr);
       }
 
       // no correctness conditions related to liveness
