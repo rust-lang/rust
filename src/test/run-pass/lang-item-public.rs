@@ -28,6 +28,10 @@ extern {}
 #[link(name = "execinfo")]
 extern {}
 
+#[cfg(target_os = "freebsd")]
+#[link(name = "c")]
+extern {}
+
 #[cfg(target_os = "dragonfly")]
 #[link(name = "c")]
 extern {}
