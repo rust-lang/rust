@@ -206,5 +206,5 @@ Many more bytes than graphemes!
 
 # Other Documentation
 
-* [the `&str` API documentation](/std/str/index.html)
+* [the `&str` API documentation](std/str/index.html)
 * [the `String` API documentation](std/string/index.html)
