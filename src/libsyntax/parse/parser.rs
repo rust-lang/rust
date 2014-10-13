@@ -4980,18 +4980,27 @@ impl<'a> Parser<'a> {
                                 attrs: Vec<Attribute> )
                                 -> ItemOrViewItem {
 
+        let span = self.span;
         let (maybe_path, ident) = match self.token {
             token::IDENT(..) => {
                 let the_ident = self.parse_ident();
-                self.expect_one_of(&[], &[token::EQ, token::SEMI]);
-                let path = if self.token == token::EQ {
-                    self.bump();
+                let path = if self.eat(&token::EQ) {
                     let path = self.parse_str();
                     let span = self.span;
                     self.obsolete(span, ObsoleteExternCrateRenaming);
                     Some(path)
-                } else {None};
+                } else if self.eat_keyword(keywords::As) {
+                    // skip the ident if there is one
+                    if is_ident(&self.token) { self.bump(); }
 
+                    self.span_err(span,
+                                  format!("expected `;`, found `as`; perhaps you meant \
+                                          to enclose the crate name `{}` in a string?",
+                                          the_ident.as_str()).as_slice());
+                    None
+                } else {
+                    None
+                };
                 self.expect(&token::SEMI);
                 (path, the_ident)
             },
