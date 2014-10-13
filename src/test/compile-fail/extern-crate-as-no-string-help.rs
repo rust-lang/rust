@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Verifies that the expected token errors for `extern crate` are
-// raised
+// Tests that the proper help is displayed in the error message
 
-extern crate foo {} //~ERROR expected `;`, found `{`
+extern crate foo as bar;
+//~^ ERROR expected `;`, found `as`; perhaps you meant to enclose the crate name `foo` in a string?
