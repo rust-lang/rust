@@ -32,7 +32,7 @@ use syntax::ptr::P;
 use syntax::visit::{mod, Visitor, FnKind};
 use util::ppaux::ty_to_string;
 
-pub const DUMMY_WILD_PAT: Pat = Pat {
+pub const DUMMY_WILD_PAT: &'static Pat = &Pat {
     id: DUMMY_NODE_ID,
     node: PatWild(PatWildSingle),
     span: DUMMY_SP
@@ -309,12 +309,11 @@ fn raw_pat<'a>(p: &'a Pat) -> &'a Pat {
 }
 
 fn check_exhaustive(cx: &MatchCheckCtxt, sp: Span, matrix: &Matrix) {
-    match is_useful(cx, matrix, &[&DUMMY_WILD_PAT], ConstructWitness) {
+    match is_useful(cx, matrix, &[DUMMY_WILD_PAT], ConstructWitness) {
         UsefulWithWitness(pats) => {
-            let dummy = DUMMY_WILD_PAT.clone();
             let witness = match pats.as_slice() {
                 [ref witness] => &**witness,
-                [] => &dummy,
+                [] => DUMMY_WILD_PAT,
                 _ => unreachable!()
             };
             span_err!(cx.tcx.sess, sp, E0004,
@@ -568,9 +567,8 @@ fn is_useful(cx: &MatchCheckCtxt,
                             let arity = constructor_arity(cx, &c, left_ty);
                             let mut result = {
                                 let pat_slice = pats.as_slice();
-                                let dummy = DUMMY_WILD_PAT.clone();
                                 let subpats = Vec::from_fn(arity, |i| {
-                                    pat_slice.get(i).map_or(&dummy, |p| &**p)
+                                    pat_slice.get(i).map_or(DUMMY_WILD_PAT, |p| &**p)
                                 });
                                 vec![construct_witness(cx, &c, subpats, left_ty)]
                             };
@@ -592,9 +590,8 @@ fn is_useful(cx: &MatchCheckCtxt,
                 }).collect();
                 match is_useful(cx, &matrix, v.tail(), witness) {
                     UsefulWithWitness(pats) => {
-                        let dummy = DUMMY_WILD_PAT.clone();
                         let arity = constructor_arity(cx, &constructor, left_ty);
-                        let wild_pats = Vec::from_elem(arity, &dummy);
+                        let wild_pats = Vec::from_elem(arity, DUMMY_WILD_PAT);
                         let enum_pat = construct_witness(cx, &constructor, wild_pats, left_ty);
                         let mut new_pats = vec![enum_pat];
                         new_pats.extend(pats.into_iter());
@@ -615,11 +612,10 @@ fn is_useful_specialized(cx: &MatchCheckCtxt, &Matrix(ref m): &Matrix,
                          v: &[&Pat], ctor: Constructor, lty: ty::t,
                          witness: WitnessPreference) -> Usefulness {
     let arity = constructor_arity(cx, &ctor, lty);
-    let dummy = DUMMY_WILD_PAT.clone();
     let matrix = Matrix(m.iter().filter_map(|r| {
-        specialize(cx, r.as_slice(), &dummy, &ctor, 0u, arity)
+        specialize(cx, r.as_slice(), &ctor, 0u, arity)
     }).collect());
-    match specialize(cx, v, &dummy, &ctor, 0u, arity) {
+    match specialize(cx, v, &ctor, 0u, arity) {
         Some(v) => is_useful(cx, &matrix, v.as_slice(), witness),
         None => NotUseful
     }
@@ -741,7 +737,7 @@ fn range_covered_by_constructor(ctor: &Constructor,
 /// different patterns.
 /// Structure patterns with a partial wild pattern (Foo { a: 42, .. }) have their missing
 /// fields filled with wild patterns.
-pub fn specialize<'a>(cx: &MatchCheckCtxt, r: &[&'a Pat], dummy: &'a Pat,
+pub fn specialize<'a>(cx: &MatchCheckCtxt, r: &[&'a Pat],
                       constructor: &Constructor, col: uint, arity: uint) -> Option<Vec<&'a Pat>> {
     let &Pat {
         id: pat_id, node: ref node, span: pat_span
@@ -749,7 +745,7 @@ pub fn specialize<'a>(cx: &MatchCheckCtxt, r: &[&'a Pat], dummy: &'a Pat,
     let head: Option<Vec<&Pat>> = match node {
 
         &PatWild(_) =>
-            Some(Vec::from_elem(arity, dummy)),
+            Some(Vec::from_elem(arity, DUMMY_WILD_PAT)),
 
         &PatIdent(_, _, _) => {
             let opt_def = cx.tcx.def_map.borrow().find_copy(&pat_id);
@@ -762,7 +758,7 @@ pub fn specialize<'a>(cx: &MatchCheckCtxt, r: &[&'a Pat], dummy: &'a Pat,
                 } else {
                     None
                 },
-                _ => Some(Vec::from_elem(arity, dummy))
+                _ => Some(Vec::from_elem(arity, DUMMY_WILD_PAT))
             }
         }
 
@@ -776,7 +772,7 @@ pub fn specialize<'a>(cx: &MatchCheckCtxt, r: &[&'a Pat], dummy: &'a Pat,
                 DefVariant(..) | DefStruct(..) => {
                     Some(match args {
                         &Some(ref args) => args.iter().map(|p| &**p).collect(),
-                        &None => Vec::from_elem(arity, dummy)
+                        &None => Vec::from_elem(arity, DUMMY_WILD_PAT)
                     })
                 }
                 _ => None
@@ -812,7 +808,7 @@ pub fn specialize<'a>(cx: &MatchCheckCtxt, r: &[&'a Pat], dummy: &'a Pat,
                 let args = struct_fields.iter().map(|sf| {
                     match pattern_fields.iter().find(|f| f.ident.name == sf.name) {
                         Some(ref f) => &*f.pat,
-                        _ => dummy
+                        _ => DUMMY_WILD_PAT
                     }
                 }).collect();
                 args
@@ -855,13 +851,13 @@ pub fn specialize<'a>(cx: &MatchCheckCtxt, r: &[&'a Pat], dummy: &'a Pat,
                 // Fixed-length vectors.
                 Single => {
                     let mut pats: Vec<&Pat> = before.iter().map(|p| &**p).collect();
-                    pats.grow_fn(arity - before.len() - after.len(), |_| dummy);
+                    pats.grow_fn(arity - before.len() - after.len(), |_| DUMMY_WILD_PAT);
                     pats.extend(after.iter().map(|p| &**p));
                     Some(pats)
                 },
                 Slice(length) if before.len() + after.len() <= length && slice.is_some() => {
                     let mut pats: Vec<&Pat> = before.iter().map(|p| &**p).collect();
-                    pats.grow_fn(arity - before.len() - after.len(), |_| dummy);
+                    pats.grow_fn(arity - before.len() - after.len(), |_| DUMMY_WILD_PAT);
                     pats.extend(after.iter().map(|p| &**p));
                     Some(pats)
                 },
@@ -931,7 +927,7 @@ fn check_fn(cx: &mut MatchCheckCtxt,
 
 fn is_refutable<A>(cx: &MatchCheckCtxt, pat: &Pat, refutable: |&Pat| -> A) -> Option<A> {
     let pats = Matrix(vec!(vec!(pat)));
-    match is_useful(cx, &pats, [&DUMMY_WILD_PAT], ConstructWitness) {
+    match is_useful(cx, &pats, [DUMMY_WILD_PAT], ConstructWitness) {
         UsefulWithWitness(pats) => {
             assert_eq!(pats.len(), 1);
             Some(refutable(&*pats[0]))
