@@ -3537,9 +3537,8 @@ restriction:
 
 1. If the borrow is immutable, you may read the data the pointer points to.
 2. If the borrow is mutable, you may read and write the data the pointer points to.
-3. You may lend the pointer to someone else in an immutable fashion, **BUT**
-4. When you do so, they must return it to you before you must give your own
-   borrow back.
+3. You may lend the pointer to someone else, **BUT**
+4. When you do so, they must return it before you can give your own borrow back.
 
 This last requirement can seem odd, but it also makes sense. If you have to
 return something, and you've lent it to someone, they need to give it back to
