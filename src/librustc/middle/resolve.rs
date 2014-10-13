@@ -5073,9 +5073,14 @@ impl<'a> Resolver<'a> {
                         Some(def @ (DefFn(..), _))      |
                         Some(def @ (DefVariant(..), _)) |
                         Some(def @ (DefStruct(..), _))  |
-                        Some(def @ (DefConst(..), _))  |
-                        Some(def @ (DefStatic(..), _)) => {
+                        Some(def @ (DefConst(..), _)) => {
                             self.record_def(pattern.id, def);
+                        }
+                        Some((DefStatic(..), _)) => {
+                            self.resolve_error(path.span,
+                                               "static variables cannot be \
+                                                referenced in a pattern, \
+                                                use a `const` instead");
                         }
                         Some(_) => {
                             self.resolve_error(path.span,
