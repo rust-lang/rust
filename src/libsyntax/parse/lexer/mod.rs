@@ -645,7 +645,7 @@ impl<'a> StringReader<'a> {
         loop {
             let c = self.curr;
             if c == Some('_') { debug!("skipping a _"); self.bump(); continue; }
-            match c.and_then(|cc| char::to_digit(cc, radix)) {
+            match c.and_then(|cc| cc.to_digit(radix)) {
                 Some(_) => {
                     debug!("{} in scan_digits", c);
                     len += 1;
@@ -677,7 +677,7 @@ impl<'a> StringReader<'a> {
                     return token::Integer(self.name_from(start_bpos));
                 }
             }
-        } else if c.is_digit_radix(10) {
+        } else if c.is_digit(10) {
             num_digits = self.scan_digits(10) + 1;
         } else {
             num_digits = 0;
@@ -696,7 +696,7 @@ impl<'a> StringReader<'a> {
             // might have stuff after the ., and if it does, it needs to start
             // with a number
             self.bump();
-            if self.curr.unwrap_or('\0').is_digit_radix(10) {
+            if self.curr.unwrap_or('\0').is_digit(10) {
                 self.scan_digits(10);
                 self.scan_float_exponent();
             }
