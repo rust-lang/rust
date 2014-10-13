@@ -268,6 +268,7 @@ pub trait Char {
     /// # Failure
     ///
     /// Fails if given a radix > 36.
+    #[unstable = "pending error conventions"]
     fn is_digit(&self, radix: uint) -> bool;
 
     /// Converts a character to the corresponding digit.
@@ -281,6 +282,7 @@ pub trait Char {
     /// # Failure
     ///
     /// Fails if given a radix outside the range [0..36].
+    #[unstable = "pending error conventions, trait organization"]
     fn to_digit(&self, radix: uint) -> Option<uint>;
 
     /// Converts a number to the character representing it.
@@ -307,6 +309,7 @@ pub trait Char {
     /// * Characters in [0,0xff] get 2-digit escapes: `\\xNN`
     /// * Characters in [0x100,0xffff] get 4-digit escapes: `\\uNNNN`.
     /// * Characters above 0x10000 get 8-digit escapes: `\\UNNNNNNNN`.
+    #[unstable = "pending error conventions, trait organization"]
     fn escape_unicode(&self, f: |char|);
 
     /// Returns a 'default' ASCII and C++11-like literal escape of a
@@ -321,6 +324,7 @@ pub trait Char {
     ///   escaped.
     /// * Any other chars in the range [0x20,0x7e] are not escaped.
     /// * Any other chars are given hex Unicode escapes; see `escape_unicode`.
+    #[unstable = "pending error conventions, trait organization"]
     fn escape_default(&self, f: |char|);
 
     /// Returns the amount of bytes this character would need if encoded in
@@ -330,10 +334,12 @@ pub trait Char {
 
     /// Returns the amount of bytes this character would need if encoded in
     /// UTF-8.
+    #[unstable = "pending trait organization"]
     fn len_utf8(&self) -> uint;
 
     /// Returns the amount of bytes this character would need if encoded in
     /// UTF-16.
+    #[unstable = "pending trait organization"]
     fn len_utf16(&self) -> uint;
 
     /// Encodes this character as UTF-8 into the provided byte buffer,
@@ -341,6 +347,7 @@ pub trait Char {
     ///
     /// If the buffer is not large enough, nothing will be written into it
     /// and a `None` will be returned.
+    #[unstable = "pending trait organization"]
     fn encode_utf8(&self, dst: &mut [u8]) -> Option<uint>;
 
     /// Encodes this character as UTF-16 into the provided `u16` buffer,
@@ -348,6 +355,7 @@ pub trait Char {
     ///
     /// If the buffer is not large enough, nothing will be written into it
     /// and a `None` will be returned.
+    #[unstable = "pending trait organization"]
     fn encode_utf16(&self, dst: &mut [u16]) -> Option<uint>;
 }
 
@@ -356,8 +364,10 @@ impl Char for char {
     #[deprecated = "use is_digit"]
     fn is_digit_radix(&self, radix: uint) -> bool { is_digit_radix(*self, radix) }
 
+    #[unstable = "pending trait organization"]
     fn is_digit(&self, radix: uint) -> bool { is_digit_radix(*self, radix) }
 
+    #[unstable = "pending trait organization"]
     fn to_digit(&self, radix: uint) -> Option<uint> { to_digit(*self, radix) }
 
     #[deprecated = "use the char::from_digit free function"]
@@ -367,8 +377,10 @@ impl Char for char {
     #[deprecated = "use the char::from_u32 free function"]
     fn from_u32(i: u32) -> Option<char> { from_u32(i) }
 
+    #[unstable = "pending error conventions, trait organization"]
     fn escape_unicode(&self, f: |char|) { escape_unicode(*self, f) }
 
+    #[unstable = "pending error conventions, trait organization"]
     fn escape_default(&self, f: |char|) { escape_default(*self, f) }
 
     #[inline]
@@ -376,15 +388,18 @@ impl Char for char {
     fn len_utf8_bytes(&self) -> uint { len_utf8_bytes(*self) }
 
     #[inline]
+    #[unstable = "pending trait organization"]
     fn len_utf8(&self) -> uint { len_utf8_bytes(*self) }
 
     #[inline]
+    #[unstable = "pending trait organization"]
     fn len_utf16(&self) -> uint {
         let ch = *self as u32;
         if (ch & 0xFFFF_u32) == ch { 1 } else { 2 }
     }
 
     #[inline]
+    #[unstable = "pending error conventions, trait organization"]
     fn encode_utf8<'a>(&self, dst: &'a mut [u8]) -> Option<uint> {
         // Marked #[inline] to allow llvm optimizing it away
         let code = *self as u32;
@@ -412,6 +427,7 @@ impl Char for char {
     }
 
     #[inline]
+    #[unstable = "pending error conventions, trait organization"]
     fn encode_utf16(&self, dst: &mut [u16]) -> Option<uint> {
         // Marked #[inline] to allow llvm optimizing it away
         let mut ch = *self as u32;
