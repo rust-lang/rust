@@ -235,7 +235,6 @@ mod test {
     use super::*;
     use time::Duration;
     use task::spawn;
-    use io::*;
     use prelude::*;
 
     #[test]

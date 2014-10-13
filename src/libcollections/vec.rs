@@ -2266,8 +2266,8 @@ mod tests {
     }
 
     #[test]
-    fn test_mut_slice_from() {
-        let mut values = Vec::from_slice([1u8,2,3,4,5]);
+    fn test_slice_from_mut() {
+        let mut values = vec![1u8,2,3,4,5];
         {
             let slice = values.slice_from_mut(2);
             assert!(slice == [3, 4, 5]);
@@ -2280,8 +2280,8 @@ mod tests {
     }
 
     #[test]
-    fn test_mut_slice_to() {
-        let mut values = Vec::from_slice([1u8,2,3,4,5]);
+    fn test_slice_to_mut() {
+        let mut values = vec![1u8,2,3,4,5];
         {
             let slice = values.slice_to_mut(2);
             assert!(slice == [1, 2]);
@@ -2294,8 +2294,8 @@ mod tests {
     }
 
     #[test]
-    fn test_mut_split_at() {
-        let mut values = Vec::from_slice([1u8,2,3,4,5]);
+    fn test_split_at_mut() {
+        let mut values = vec![1u8,2,3,4,5];
         {
             let (left, right) = values.split_at_mut(2);
             {
@@ -2315,7 +2315,7 @@ mod tests {
             }
         }
 
-        assert!(values == Vec::from_slice([2u8, 3, 5, 6, 7]));
+        assert!(values == vec![2u8, 3, 5, 6, 7]);
     }
 
     #[test]
@@ -2355,16 +2355,16 @@ mod tests {
 
     #[test]
     fn test_grow_fn() {
-        let mut v = Vec::from_slice([0u, 1]);
+        let mut v = vec![0u, 1];
         v.grow_fn(3, |i| i);
-        assert!(v == Vec::from_slice([0u, 1, 0, 1, 2]));
+        assert!(v == vec![0u, 1, 0, 1, 2]);
     }
 
     #[test]
     fn test_retain() {
-        let mut vec = Vec::from_slice([1u, 2, 3, 4]);
+        let mut vec = vec![1u, 2, 3, 4];
         vec.retain(|x| x%2 == 0);
-        assert!(vec == Vec::from_slice([2u, 4]));
+        assert!(vec == vec![2u, 4]);
     }
 
     #[test]
@@ -2567,32 +2567,32 @@ mod tests {
 
     #[test]
     fn test_move_items() {
-        let mut vec = vec!(1i, 2, 3);
-        let mut vec2 : Vec<int> = vec!();
+        let vec = vec![1, 2, 3];
+        let mut vec2 : Vec<i32> = vec![];
         for i in vec.into_iter() {
             vec2.push(i);
         }
-        assert!(vec2 == vec!(1i, 2, 3));
+        assert!(vec2 == vec![1, 2, 3]);
     }
 
     #[test]
     fn test_move_items_reverse() {
-        let mut vec = vec!(1i, 2, 3);
-        let mut vec2 : Vec<int> = vec!();
+        let vec = vec![1, 2, 3];
+        let mut vec2 : Vec<i32> = vec![];
         for i in vec.into_iter().rev() {
             vec2.push(i);
         }
-        assert!(vec2 == vec!(3i, 2, 1));
+        assert!(vec2 == vec![3, 2, 1]);
     }
 
     #[test]
     fn test_move_items_zero_sized() {
-        let mut vec = vec!((), (), ());
-        let mut vec2 : Vec<()> = vec!();
+        let vec = vec![(), (), ()];
+        let mut vec2 : Vec<()> = vec![];
         for i in vec.into_iter() {
             vec2.push(i);
         }
-        assert!(vec2 == vec!((), (), ()));
+        assert!(vec2 == vec![(), (), ()]);
     }
 
     #[test]
@@ -2707,7 +2707,7 @@ mod tests {
         b.bytes = src_len as u64;
 
         b.iter(|| {
-            let dst = Vec::from_slice(src.clone().as_slice());
+            let dst = src.clone().as_slice().to_vec();
             assert_eq!(dst.len(), src_len);
             assert!(dst.iter().enumerate().all(|(i, x)| i == *x));
         });
@@ -2871,7 +2871,7 @@ mod tests {
 
         b.iter(|| {
             let mut dst = dst.clone();
-            dst.push_all_move(src.clone());
+            dst.extend(src.clone().into_iter());
             assert_eq!(dst.len(), dst_len + src_len);
             assert!(dst.iter().enumerate().all(|(i, x)| i == *x));
         });

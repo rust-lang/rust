@@ -883,6 +883,7 @@ mod tests {
     use std::slice::{AsSlice, ImmutableSlice};
     use string::String;
     use vec::Vec;
+    use slice::CloneableVector;
 
     use unicode::char::UnicodeChar;
 
@@ -1504,7 +1505,7 @@ mod tests {
     fn vec_str_conversions() {
         let s1: String = String::from_str("All mimsy were the borogoves");
 
-        let v: Vec<u8> = Vec::from_slice(s1.as_bytes());
+        let v: Vec<u8> = s1.as_bytes().to_vec();
         let s2: String = String::from_str(from_utf8(v.as_slice()).unwrap());
         let mut i: uint = 0u;
         let n1: uint = s1.len();

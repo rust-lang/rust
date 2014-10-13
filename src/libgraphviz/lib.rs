@@ -736,6 +736,20 @@ r#"digraph single_edge {
     }
 
     #[test]
+    fn test_some_labelled() {
+        let labels : Trivial = SomeNodesLabelled(vec![Some("A"), None]);
+        let result = test_input(LabelledGraph::new("test_some_labelled", labels,
+                                                   vec![edge(0, 1, "A-1")]));
+        assert_eq!(result.unwrap().as_slice(),
+r#"digraph test_some_labelled {
+    N0[label="A"];
+    N1[label="N1"];
+    N0 -> N1[label="A-1"];
+}
+"#);
+    }
+
+    #[test]
     fn single_cyclic_node() {
         let labels : Trivial = UnlabelledNodes(1);
         let r = test_input(LabelledGraph::new("single_cyclic_node", labels,

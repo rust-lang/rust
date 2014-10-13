@@ -655,19 +655,19 @@ mod test {
 
     #[test]
     fn smoke_lock() {
-        static lock: StaticNativeMutex = NATIVE_MUTEX_INIT;
+        static LK: StaticNativeMutex = NATIVE_MUTEX_INIT;
         unsafe {
-            let _guard = lock.lock();
+            let _guard = LK.lock();
         }
     }
 
     #[test]
     fn smoke_cond() {
-        static lock: StaticNativeMutex = NATIVE_MUTEX_INIT;
+        static LK: StaticNativeMutex = NATIVE_MUTEX_INIT;
         unsafe {
-            let guard = lock.lock();
+            let guard = LK.lock();
             let t = Thread::start(proc() {
-                let guard = lock.lock();
+                let guard = LK.lock();
                 guard.signal();
             });
             guard.wait();
@@ -679,25 +679,25 @@ mod test {
 
     #[test]
     fn smoke_lock_noguard() {
-        static lock: StaticNativeMutex = NATIVE_MUTEX_INIT;
+        static LK: StaticNativeMutex = NATIVE_MUTEX_INIT;
         unsafe {
-            lock.lock_noguard();
-            lock.unlock_noguard();
+            LK.lock_noguard();
+            LK.unlock_noguard();
         }
     }
 
     #[test]
     fn smoke_cond_noguard() {
-        static lock: StaticNativeMutex = NATIVE_MUTEX_INIT;
+        static LK: StaticNativeMutex = NATIVE_MUTEX_INIT;
         unsafe {
-            lock.lock_noguard();
+            LK.lock_noguard();
             let t = Thread::start(proc() {
-                lock.lock_noguard();
-                lock.signal_noguard();
-                lock.unlock_noguard();
+                LK.lock_noguard();
+                LK.signal_noguard();
+                LK.unlock_noguard();
             });
-            lock.wait_noguard();
-            lock.unlock_noguard();
+            LK.wait_noguard();
+            LK.unlock_noguard();
 
             t.join();
         }
