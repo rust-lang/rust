@@ -5061,8 +5061,8 @@ println!("The value of x[0] is: {}", x[0]); // error: use of moved value: `x`
 ```
 
 `x` is now owned by the proc, and so we can't use it anymore. Many other
-languages would let us do this, but it's not safe to do so. Rust's type system
-catches the error.
+languages would let us do this, but it's not safe to do so. Rust's borrow
+checker catches the error.
 
 If tasks were only able to capture these values, they wouldn't be very useful.
 Luckily, tasks can communicate with each other through **channel**s. Channels
