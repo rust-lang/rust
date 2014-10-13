@@ -165,7 +165,7 @@ fn trans<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, expr: &ast::Expr)
                 let def_id = inline::maybe_instantiate_inline(bcx.ccx(), did);
                 Callee { bcx: bcx, data: Intrinsic(def_id.node, substs) }
             }
-            def::DefFn(did, _, _) |
+            def::DefFn(did, _, _) | def::DefMethod(did, _) |
             def::DefStaticMethod(did, def::FromImpl(_), _) => {
                 fn_callee(bcx, trans_fn_ref(bcx, did, ExprId(ref_expr.id)))
             }
@@ -205,7 +205,7 @@ fn trans<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, expr: &ast::Expr)
             def::DefTy(..) | def::DefPrimTy(..) | def::DefAssociatedTy(..) |
             def::DefUse(..) | def::DefTyParamBinder(..) |
             def::DefRegion(..) | def::DefLabel(..) | def::DefTyParam(..) |
-            def::DefSelfTy(..) | def::DefMethod(..) => {
+            def::DefSelfTy(..) => {
                 bcx.tcx().sess.span_bug(
                     ref_expr.span,
                     format!("cannot translate def {:?} \
