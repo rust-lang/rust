@@ -1515,6 +1515,19 @@ impl<'a> State<'a> {
                 try!(space(&mut self.s));
                 try!(self.print_block(&**blk));
             }
+            ast::ExprWhileLet(ref pat, ref expr, ref blk, opt_ident) => {
+                for ident in opt_ident.iter() {
+                    try!(self.print_ident(*ident));
+                    try!(self.word_space(":"));
+                }
+                try!(self.head("while let"));
+                try!(self.print_pat(&**pat));
+                try!(space(&mut self.s));
+                try!(self.word_space("="));
+                try!(self.print_expr(&**expr));
+                try!(space(&mut self.s));
+                try!(self.print_block(&**blk));
+            }
             ast::ExprForLoop(ref pat, ref iter, ref blk, opt_ident) => {
                 for ident in opt_ident.iter() {
                     try!(self.print_ident(*ident));

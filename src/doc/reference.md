@@ -2488,6 +2488,8 @@ The currently implemented features of the reference compiler are:
 
 * `if_let` - Allows use of the `if let` syntax.
 
+* `while_let` - Allows use of the `while let` syntax.
+
 * `intrinsics` - Allows use of the "rust-intrinsics" ABI. Compiler intrinsics
                  are inherently unstable and no promise about them is made.
 
@@ -3493,6 +3495,18 @@ An `if let` expression is semantically identical to an `if` expression but in pl
 of a condition expression it expects a refutable let statement. If the value of the
 expression on the right hand side of the let statement matches the pattern, the corresponding
 block will execute, otherwise flow proceeds to the first `else` block that follows.
+
+### While let loops
+
+```{.ebnf .gram}
+while_let_expr : "while" "let" pat '=' expr '{' block '}' ;
+```
+
+A `while let` loop is semantically identical to a `while` loop but in place of a
+condition expression it expects a refutable let statement. If the value of the
+expression on the right hand side of the let statement matches the pattern, the
+loop body block executes and control returns to the pattern matching statement.
+Otherwise, the while expression completes.
 
 ### Return expressions
 

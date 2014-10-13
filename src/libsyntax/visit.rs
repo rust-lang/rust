@@ -733,6 +733,11 @@ pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr) {
             visitor.visit_block(&**if_block);
             walk_expr_opt(visitor, optional_else);
         }
+        ExprWhileLet(ref pattern, ref subexpression, ref block, _) => {
+            visitor.visit_pat(&**pattern);
+            visitor.visit_expr(&**subexpression);
+            visitor.visit_block(&**block);
+        }
         ExprForLoop(ref pattern, ref subexpression, ref block, _) => {
             visitor.visit_pat(&**pattern);
             visitor.visit_expr(&**subexpression);
