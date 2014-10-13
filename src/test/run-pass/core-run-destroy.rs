@@ -60,10 +60,10 @@ pub fn test_destroy_actually_kills(force: bool) {
     use libc;
     use std::str;
 
-    #[cfg(unix,not(target_os="android"))]
+    #[cfg(all(unix,not(target_os="android")))]
     static BLOCK_COMMAND: &'static str = "cat";
 
-    #[cfg(unix,target_os="android")]
+    #[cfg(all(unix,target_os="android"))]
     static BLOCK_COMMAND: &'static str = "/system/bin/cat";
 
     #[cfg(windows)]

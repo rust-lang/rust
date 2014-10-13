@@ -259,20 +259,20 @@ fn in_cfg(diagnostic: &SpanHandler, cfg: &[P<ast::MetaItem>], attrs: &[ast::Attr
         };
 
         if mis.len() != 1 {
-            diagnostic.span_warn(attr.span, "The use of multiple cfgs in the top level of \
-                                             `#[cfg(..)]` is deprecated. Change `#[cfg(a, b)]` to \
-                                             `#[cfg(all(a, b))]`.");
+            diagnostic.span_err(attr.span, "expected 1 cfg-pattern");
+            return false;
         }
 
         if seen_cfg {
-            diagnostic.span_warn(attr.span, "The semantics of multiple `#[cfg(..)]` attributes on \
-                                             same item are changing from the union of the cfgs to \
-                                             the intersection of the cfgs. Change `#[cfg(a)] \
-                                             #[cfg(b)]` to `#[cfg(any(a, b))]`.");
+            diagnostic.span_err(attr.span, "The semantics of multiple `#[cfg(..)]` attributes on \
+                                            same item are changing from the union of the cfgs to \
+                                            the intersection of the cfgs. Change `#[cfg(a)] \
+                                            #[cfg(b)]` to `#[cfg(any(a, b))]`.");
+            return false;
         }
 
         seen_cfg = true;
-        in_cfg |= mis.iter().all(|mi| attr::cfg_matches(diagnostic, cfg, &**mi));
+        in_cfg |= attr::cfg_matches(diagnostic, cfg, &*mis[0]);
     }
     in_cfg | !seen_cfg
 }

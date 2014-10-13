@@ -8,11 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/**
-The compiler code necessary to support the cfg! extension, which
-expands to a literal `true` or `false` based on whether the given cfgs
-match the current compilation environment.
-*/
+/// The compiler code necessary to support the cfg! extension, which expands to
+/// a literal `true` or `false` based on whether the given cfg matches the
+/// current compilation environment.
 
 use ast;
 use codemap::Span;
@@ -24,28 +22,18 @@ use attr::*;
 use parse::attr::ParserAttr;
 use parse::token;
 
-
 pub fn expand_cfg<'cx>(cx: &mut ExtCtxt,
                        sp: Span,
                        tts: &[ast::TokenTree])
                        -> Box<base::MacResult+'static> {
     let mut p = cx.new_parser_from_tts(tts);
-    let mut cfgs = Vec::new();
-    // parse `cfg!(meta_item, meta_item(x,y), meta_item="foo", ...)`
-    while p.token != token::EOF {
-        cfgs.push(p.parse_meta_item());
-        if p.eat(&token::EOF) { break } // trailing comma is optional,.
-        p.expect(&token::COMMA);
+    let cfg = p.parse_meta_item();
+
+    if !p.eat(&token::EOF) {
+        cx.span_err(sp, "expected 1 cfg-pattern");
+        return DummyResult::expr(sp);
     }
 
-    if cfgs.len() != 1 {
-        cx.span_warn(sp, "The use of multiple cfgs at the top level of `cfg!` \
-                          is deprecated. Change `cfg!(a, b)` to \
-                          `cfg!(all(a, b))`.");
-    }
-
-    let matches_cfg = cfgs.iter().all(|cfg| attr::cfg_matches(&cx.parse_sess.span_diagnostic,
-                                                              cx.cfg.as_slice(), &**cfg));
-
+    let matches_cfg = attr::cfg_matches(&cx.parse_sess.span_diagnostic, cx.cfg.as_slice(), &*cfg);
     MacExpr::new(cx.expr_bool(sp, matches_cfg))
 }

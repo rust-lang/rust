@@ -9,11 +9,11 @@
 // except according to those terms.
 
 #[test]
-#[ignore(cfg(ignorecfg))]
+#[cfg_attr(ignorecfg, ignore)]
 fn shouldignore() {
 }
 
 #[test]
-#[ignore(cfg(noignorecfg))]
+#[cfg_attr(noignorecfg, ignore)]
 fn shouldnotignore() {
 }
