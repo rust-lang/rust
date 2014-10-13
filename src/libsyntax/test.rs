@@ -126,7 +126,7 @@ impl<'a> fold::Folder for TestHarnessGenerator<'a> {
                         span: i.span,
                         path: self.cx.path.clone(),
                         bench: is_bench_fn(&self.cx, &*i),
-                        ignore: is_ignored(&self.cx, &*i),
+                        ignore: is_ignored(&*i),
                         should_fail: should_fail(&*i)
                     };
                     self.cx.testfns.push(test);
@@ -343,22 +343,8 @@ fn is_bench_fn(cx: &TestCtxt, i: &ast::Item) -> bool {
     return has_bench_attr && has_test_signature(i);
 }
 
-fn is_ignored(cx: &TestCtxt, i: &ast::Item) -> bool {
-    i.attrs.iter().any(|attr| {
-        // check ignore(cfg(foo, bar))
-        attr.check_name("ignore") && match attr.meta_item_list() {
-            Some(ref cfgs) => {
-                if cfgs.iter().any(|cfg| cfg.check_name("cfg")) {
-                    cx.span_diagnostic.span_warn(attr.span,
-                            "The use of cfg filters in #[ignore] is \
-                             deprecated. Use #[cfg_attr(<cfg pattern>, \
-                             ignore)] instead.");
-                }
-                attr::test_cfg(cx.config.as_slice(), cfgs.iter())
-            }
-            None => true
-        }
-    })
+fn is_ignored(i: &ast::Item) -> bool {
+    i.attrs.iter().any(|attr| attr.check_name("ignore"))
 }
 
 fn should_fail(i: &ast::Item) -> bool {

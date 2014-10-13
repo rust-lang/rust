@@ -10,8 +10,7 @@
 
 #![feature(asm)]
 
-#[cfg(target_arch = "x86")]
-#[cfg(target_arch = "x86_64")]
+#[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 pub fn main() {
     let x: int;
     unsafe {
@@ -30,5 +29,5 @@ pub fn main() {
     assert_eq!(x, 13);
 }
 
-#[cfg(not(target_arch = "x86"), not(target_arch = "x86_64"))]
+#[cfg(not(any(target_arch = "x86", target_arch = "x86_64")))]
 pub fn main() {}

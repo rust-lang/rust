@@ -26,8 +26,7 @@ pub extern "win64" fn foo(a: int, b: int, c: int, d: int) {
 }
 
 #[inline(never)]
-#[cfg(target_arch = "x86")]
-#[cfg(target_arch = "arm")]
+#[cfg(any(target_arch = "x86", target_arch = "arm"))]
 pub extern fn foo(a: int, b: int, c: int, d: int) {
     assert!(a == 1);
     assert!(b == 2);

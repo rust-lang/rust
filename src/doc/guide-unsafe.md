@@ -313,8 +313,7 @@ literal string (i.e `""`)
 ```
 #![feature(asm)]
 
-#[cfg(target_arch = "x86")]
-#[cfg(target_arch = "x86_64")]
+#[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 fn foo() {
     unsafe {
         asm!("NOP");
@@ -322,8 +321,7 @@ fn foo() {
 }
 
 // other platforms
-#[cfg(not(target_arch = "x86"),
-      not(target_arch = "x86_64"))]
+#[cfg(not(any(target_arch = "x86", target_arch = "x86_64")))]
 fn foo() { /* ... */ }
 
 fn main() {
@@ -340,7 +338,7 @@ but you must add the right number of `:` if you skip them:
 
 ```
 # #![feature(asm)]
-# #[cfg(target_arch = "x86")] #[cfg(target_arch = "x86_64")]
+# #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 # fn main() { unsafe {
 asm!("xor %eax, %eax"
     :
@@ -354,7 +352,7 @@ Whitespace also doesn't matter:
 
 ```
 # #![feature(asm)]
-# #[cfg(target_arch = "x86")] #[cfg(target_arch = "x86_64")]
+# #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 # fn main() { unsafe {
 asm!("xor %eax, %eax" ::: "eax");
 # } }
@@ -368,7 +366,7 @@ expressions must be mutable lvalues:
 
 ```
 # #![feature(asm)]
-# #[cfg(target_arch = "x86")] #[cfg(target_arch = "x86_64")]
+# #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 fn add(a: int, b: int) -> int {
     let mut c = 0;
     unsafe {
@@ -379,7 +377,7 @@ fn add(a: int, b: int) -> int {
     }
     c
 }
-# #[cfg(not(target_arch = "x86"), not(target_arch = "x86_64"))]
+# #[cfg(not(any(target_arch = "x86", target_arch = "x86_64")))]
 # fn add(a: int, b: int) -> int { a + b }
 
 fn main() {
@@ -396,7 +394,7 @@ stay valid.
 
 ```
 # #![feature(asm)]
-# #[cfg(target_arch = "x86")] #[cfg(target_arch = "x86_64")]
+# #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 # fn main() { unsafe {
 // Put the value 0x200 in eax
 asm!("mov $$0x200, %eax" : /* no outputs */ : /* no inputs */ : "eax");

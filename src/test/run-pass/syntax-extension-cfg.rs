@@ -18,17 +18,15 @@ pub fn main() {
     if ! cfg!(qux="foo") { fail!() }
     if   cfg!(not(qux="foo")) { fail!() }
 
-    if ! cfg!(foo, qux="foo") { fail!() }
-    if   cfg!(not(foo, qux="foo")) { fail!() }
-    if   cfg!(all(not(foo, qux="foo"))) { fail!() }
+    if ! cfg!(all(foo, qux="foo")) { fail!() }
+    if   cfg!(not(all(foo, qux="foo"))) { fail!() }
+    if   cfg!(all(not(all(foo, qux="foo")))) { fail!() }
 
     if cfg!(not_a_cfg) { fail!() }
-    if cfg!(not_a_cfg, foo, qux="foo") { fail!() }
+    if cfg!(all(not_a_cfg, foo, qux="foo")) { fail!() }
     if cfg!(all(not_a_cfg, foo, qux="foo")) { fail!() }
     if ! cfg!(any(not_a_cfg, foo)) { fail!() }
 
     if ! cfg!(not(not_a_cfg)) { fail!() }
-    if ! cfg!(not(not_a_cfg), foo, qux="foo") { fail!() }
-
-    if cfg!(trailing_comma, ) { fail!() }
+    if ! cfg!(all(not(not_a_cfg), foo, qux="foo")) { fail!() }
 }
