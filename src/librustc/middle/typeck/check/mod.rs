@@ -4058,6 +4058,9 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
             fcx.write_nil(id);
         }
       }
+      ast::ExprWhileLet(..) => {
+        tcx.sess.span_bug(expr.span, "non-desugared ExprWhileLet");
+      }
       ast::ExprForLoop(ref pat, ref head, ref block, _) => {
         check_expr(fcx, &**head);
         let typ = lookup_method_for_for_loop(fcx, &**head, expr.id);

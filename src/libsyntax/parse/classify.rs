@@ -28,6 +28,7 @@ pub fn expr_requires_semi_to_be_stmt(e: &ast::Expr) -> bool {
         | ast::ExprMatch(..)
         | ast::ExprBlock(_)
         | ast::ExprWhile(..)
+        | ast::ExprWhileLet(..)
         | ast::ExprLoop(..)
         | ast::ExprForLoop(..) => false,
         _ => true

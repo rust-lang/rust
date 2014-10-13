@@ -147,6 +147,8 @@ pub trait AstBuilder {
     fn expr_some(&self, sp: Span, expr: P<ast::Expr>) -> P<ast::Expr>;
     fn expr_none(&self, sp: Span) -> P<ast::Expr>;
 
+    fn expr_break(&self, sp: Span) -> P<ast::Expr>;
+
     fn expr_tuple(&self, sp: Span, exprs: Vec<P<ast::Expr>>) -> P<ast::Expr>;
 
     fn expr_fail(&self, span: Span, msg: InternedString) -> P<ast::Expr>;
@@ -687,6 +689,12 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
             self.ident_of("None")));
         self.expr_path(none)
     }
+
+
+    fn expr_break(&self, sp: Span) -> P<ast::Expr> {
+        self.expr(sp, ast::ExprBreak(None))
+    }
+
 
     fn expr_tuple(&self, sp: Span, exprs: Vec<P<ast::Expr>>) -> P<ast::Expr> {
         self.expr(sp, ast::ExprTup(exprs))

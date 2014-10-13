@@ -259,6 +259,10 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
                 expr_exit
             }
 
+            ast::ExprWhileLet(..) => {
+                self.tcx.sess.span_bug(expr.span, "non-desugared ExprWhileLet");
+            }
+
             ast::ExprForLoop(ref pat, ref head, ref body, _) => {
                 //
                 //          [pred]
