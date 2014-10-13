@@ -575,7 +575,7 @@ fn format(val: Param, op: FormatOp, flags: Flags) -> Result<Vec<u8> ,String> {
 
 #[cfg(test)]
 mod test {
-    use super::{expand,Words,Variables,Number};
+    use super::{expand,Param,Words,Variables,Number};
     use std::result::Ok;
 
     #[test]
@@ -605,40 +605,39 @@ mod test {
     fn test_param_stack_failure_conditions() {
         let mut varstruct = Variables::new();
         let vars = &mut varstruct;
+        fn get_res(fmt: &str, cap: &str, params: &[Param], vars: &mut Variables) ->
+            Result<Vec<u8>, String>
+        {
+            let mut u8v: Vec<_> = fmt.bytes().collect();
+            u8v.extend(cap.as_bytes().iter().map(|&b| b));
+            expand(u8v.as_slice(), params, vars)
+        }
+
         let caps = ["%d", "%c", "%s", "%Pa", "%l", "%!", "%~"];
-        for cap in caps.iter() {
-            let res = expand(cap.as_bytes(), [], vars);
+        for &cap in caps.iter() {
+            let res = get_res("", cap, [], vars);
             assert!(res.is_err(),
-                    "Op {} succeeded incorrectly with 0 stack entries", *cap);
-            let p = if *cap == "%s" || *cap == "%l" {
+                    "Op {} succeeded incorrectly with 0 stack entries", cap);
+            let p = if cap == "%s" || cap == "%l" {
                 Words("foo".to_string())
             } else {
                 Number(97)
             };
-            let res = expand("%p1".bytes().collect::<Vec<_>>()
-                             .append(cap.as_bytes()).as_slice(),
-                             [p],
-                             vars);
+            let res = get_res("%p1", cap, [p], vars);
             assert!(res.is_ok(),
-                    "Op {} failed with 1 stack entry: {}", *cap, res.unwrap_err());
+                    "Op {} failed with 1 stack entry: {}", cap, res.unwrap_err());
         }
         let caps = ["%+", "%-", "%*", "%/", "%m", "%&", "%|", "%A", "%O"];
-        for cap in caps.iter() {
+        for &cap in caps.iter() {
             let res = expand(cap.as_bytes(), [], vars);
             assert!(res.is_err(),
-                    "Binop {} succeeded incorrectly with 0 stack entries", *cap);
-            let res = expand("%{1}".bytes().collect::<Vec<_>>()
-                             .append(cap.as_bytes()).as_slice(),
-                              [],
-                              vars);
+                    "Binop {} succeeded incorrectly with 0 stack entries", cap);
+            let res = get_res("%{1}", cap, [], vars);
             assert!(res.is_err(),
-                    "Binop {} succeeded incorrectly with 1 stack entry", *cap);
-            let res = expand("%{1}%{2}".bytes().collect::<Vec<_>>()
-                             .append(cap.as_bytes()).as_slice(),
-                             [],
-                             vars);
+                    "Binop {} succeeded incorrectly with 1 stack entry", cap);
+            let res = get_res("%{1}%{2}", cap, [], vars);
             assert!(res.is_ok(),
-                    "Binop {} failed with 2 stack entries: {}", *cap, res.unwrap_err());
+                    "Binop {} failed with 2 stack entries: {}", cap, res.unwrap_err());
         }
     }
 

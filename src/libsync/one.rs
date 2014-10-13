@@ -126,17 +126,17 @@ mod test {
 
     #[test]
     fn smoke_once() {
-        static o: Once = ONCE_INIT;
+        static O: Once = ONCE_INIT;
         let mut a = 0i;
-        o.doit(|| a += 1);
+        O.doit(|| a += 1);
         assert_eq!(a, 1);
-        o.doit(|| a += 1);
+        O.doit(|| a += 1);
         assert_eq!(a, 1);
     }
 
     #[test]
     fn stampede_once() {
-        static o: Once = ONCE_INIT;
+        static O: Once = ONCE_INIT;
         static mut run: bool = false;
 
         let (tx, rx) = channel();
@@ -145,7 +145,7 @@ mod test {
             spawn(proc() {
                 for _ in range(0u, 4) { task::deschedule() }
                 unsafe {
-                    o.doit(|| {
+                    O.doit(|| {
                         assert!(!run);
                         run = true;
                     });
@@ -156,7 +156,7 @@ mod test {
         }
 
         unsafe {
-            o.doit(|| {
+            O.doit(|| {
                 assert!(!run);
                 run = true;
             });
