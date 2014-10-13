@@ -316,11 +316,10 @@ pub fn cfg_matches(diagnostic: &SpanHandler, cfgs: &[P<MetaItem>], cfg: &ast::Me
             mis.iter().all(|mi| cfg_matches(diagnostic, cfgs, &**mi)),
         ast::MetaList(ref pred, ref mis) if pred.get() == "not" => {
             if mis.len() != 1 {
-                diagnostic.span_warn(cfg.span, "the use of multiple cfgs in the same `not` \
-                                                statement is deprecated. Change `not(a, b)` to \
-                                                `not(all(a, b))`.");
+                diagnostic.span_err(cfg.span, "expected 1 cfg-pattern");
+                return false;
             }
-            !mis.iter().all(|mi| cfg_matches(diagnostic, cfgs, &**mi))
+            !cfg_matches(diagnostic, cfgs, &*mis[0])
         }
         ast::MetaList(ref pred, _) => {
             diagnostic.span_err(cfg.span, format!("invalid predicate `{}`", pred).as_slice());
@@ -328,56 +327,6 @@ pub fn cfg_matches(diagnostic: &SpanHandler, cfgs: &[P<MetaItem>], cfg: &ast::Me
         },
         ast::MetaWord(_) | ast::MetaNameValue(..) => contains(cfgs, cfg),
     }
-}
-
-/// Tests if any `cfg(...)` meta items in `metas` match `cfg`. e.g.
-///
-/// test_cfg(`[foo="a", bar]`, `[cfg(foo), cfg(bar)]`) == true
-/// test_cfg(`[foo="a", bar]`, `[cfg(not(bar))]`) == false
-/// test_cfg(`[foo="a", bar]`, `[cfg(bar, foo="a")]`) == true
-/// test_cfg(`[foo="a", bar]`, `[cfg(bar, foo="b")]`) == false
-pub fn test_cfg<'a, AM: AttrMetaMethods, It: Iterator<&'a AM>>
-    (cfg: &[P<MetaItem>], mut metas: It) -> bool {
-    // having no #[cfg(...)] attributes counts as matching.
-    let mut no_cfgs = true;
-
-    // this would be much nicer as a chain of iterator adaptors, but
-    // this doesn't work.
-    let some_cfg_matches = metas.fold(false, |matches, mi| {
-        debug!("testing name: {}", mi.name());
-        let this_matches = if mi.check_name("cfg") { // it is a #[cfg()] attribute
-            debug!("is cfg");
-            no_cfgs = false;
-             // only #[cfg(...)] ones are understood.
-            match mi.meta_item_list() {
-                Some(cfg_meta) => {
-                    debug!("is cfg(...)");
-                    cfg_meta.iter().all(|cfg_mi| {
-                        debug!("cfg({}[...])", cfg_mi.name());
-                        match cfg_mi.node {
-                            ast::MetaList(ref s, ref not_cfgs)
-                            if s.equiv(&("not")) => {
-                                debug!("not!");
-                                // inside #[cfg(not(...))], so these need to all
-                                // not match.
-                                !not_cfgs.iter().all(|mi| {
-                                    debug!("cfg(not({}[...]))", mi.name());
-                                    contains(cfg, &**mi)
-                                })
-                            }
-                            _ => contains(cfg, &**cfg_mi)
-                        }
-                    })
-                }
-                None => false
-            }
-        } else {
-            false
-        };
-        matches || this_matches
-    });
-    debug!("test_cfg (no_cfgs={}, some_cfg_matches={})", no_cfgs, some_cfg_matches);
-    no_cfgs || some_cfg_matches
 }
 
 /// Represents the #[deprecated="foo"] and friends attributes.

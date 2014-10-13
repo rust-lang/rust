@@ -57,8 +57,7 @@ fn test2() {
     }
 }
 
-#[cfg(target_arch = "x86")]
-#[cfg(target_arch = "arm")]
+#[cfg(any(target_arch = "x86", target_arch = "arm"))]
 fn test2() {
 }
 

@@ -475,7 +475,7 @@ conventions. Rust provides a way to tell the compiler which convention to use:
 ~~~~
 extern crate libc;
 
-#[cfg(target_os = "win32", target_arch = "x86")]
+#[cfg(all(target_os = "win32", target_arch = "x86"))]
 #[link(name = "kernel32")]
 #[allow(non_snake_case)]
 extern "stdcall" {

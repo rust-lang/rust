@@ -9,8 +9,7 @@
 // except according to those terms.
 
 
-#[cfg(target_arch = "x86")]
-#[cfg(target_arch = "arm")]
+#[cfg(any(target_arch = "x86", target_arch = "arm"))]
 fn target() {
     assert_eq!(-1000 as uint >> 3u, 536870787u);
 }
