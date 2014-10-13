@@ -100,10 +100,7 @@ pub fn from_u32(i: u32) -> Option<char> {
 #[inline]
 #[deprecated = "use the Char::is_digit method"]
 pub fn is_digit_radix(c: char, radix: uint) -> bool {
-    match to_digit(c, radix) {
-        Some(_) => true,
-        None    => false,
-    }
+    c.is_digit(radix)
 }
 
 ///
@@ -123,17 +120,7 @@ pub fn is_digit_radix(c: char, radix: uint) -> bool {
 #[inline]
 #[deprecated = "use the Char::to_digit method"]
 pub fn to_digit(c: char, radix: uint) -> Option<uint> {
-    if radix > 36 {
-        panic!("to_digit: radix is too high (maximum 36)");
-    }
-    let val = match c {
-      '0' ... '9' => c as uint - ('0' as uint),
-      'a' ... 'z' => c as uint + 10u - ('a' as uint),
-      'A' ... 'Z' => c as uint + 10u - ('A' as uint),
-      _ => return None,
-    };
-    if val < radix { Some(val) }
-    else { None }
+    c.to_digit(radix)
 }
 
 ///
@@ -178,23 +165,7 @@ pub fn from_digit(num: uint, radix: uint) -> Option<char> {
 ///
 #[deprecated = "use the Char::escape_unicode method"]
 pub fn escape_unicode(c: char, f: |char|) {
-    // avoid calling str::to_str_radix because we don't really need to allocate
-    // here.
-    f('\\');
-    let pad = match () {
-        _ if c <= '\x7f'    => { f('x'); 2 }
-        _ if c <= '\uffff'  => { f('u'); 4 }
-        _                   => { f('U'); 8 }
-    };
-    for offset in range_step::<i32>(4 * (pad - 1), -1, -4) {
-        let offset = offset as uint;
-        unsafe {
-            match ((c as i32) >> offset) & 0xf {
-                i @ 0 ... 9 => { f(transmute('0' as i32 + i)); }
-                i => { f(transmute('a' as i32 + (i - 10))); }
-            }
-        }
-    }
+    c.escape_unicode(f)
 }
 
 ///
@@ -211,29 +182,14 @@ pub fn escape_unicode(c: char, f: |char|) {
 ///
 #[deprecated = "use the Char::escape_default method"]
 pub fn escape_default(c: char, f: |char|) {
-    match c {
-        '\t' => { f('\\'); f('t'); }
-        '\r' => { f('\\'); f('r'); }
-        '\n' => { f('\\'); f('n'); }
-        '\\' => { f('\\'); f('\\'); }
-        '\'' => { f('\\'); f('\''); }
-        '"'  => { f('\\'); f('"'); }
-        '\x20' ... '\x7e' => { f(c); }
-        _ => c.escape_unicode(f),
-    }
+    c.escape_default(f)
 }
 
 /// Returns the amount of bytes this `char` would need if encoded in UTF-8
 #[inline]
 #[deprecated = "use the Char::len_utf8 method"]
 pub fn len_utf8_bytes(c: char) -> uint {
-    let code = c as u32;
-    match () {
-        _ if code < MAX_ONE_B   => 1u,
-        _ if code < MAX_TWO_B   => 2u,
-        _ if code < MAX_THREE_B => 3u,
-        _  => 4u,
-    }
+    c.len_utf8()
 }
 
 /// Basic `char` manipulations.
@@ -362,13 +318,30 @@ pub trait Char {
 #[experimental = "trait is experimental"]
 impl Char for char {
     #[deprecated = "use is_digit"]
-    fn is_digit_radix(&self, radix: uint) -> bool { is_digit_radix(*self, radix) }
+    fn is_digit_radix(&self, radix: uint) -> bool { self.is_digit(radix) }
 
     #[unstable = "pending trait organization"]
-    fn is_digit(&self, radix: uint) -> bool { is_digit_radix(*self, radix) }
+    fn is_digit(&self, radix: uint) -> bool {
+        match self.to_digit(radix) {
+            Some(_) => true,
+            None    => false,
+        }
+    }
 
     #[unstable = "pending trait organization"]
-    fn to_digit(&self, radix: uint) -> Option<uint> { to_digit(*self, radix) }
+    fn to_digit(&self, radix: uint) -> Option<uint> {
+        if radix > 36 {
+            panic!("to_digit: radix is too high (maximum 36)");
+        }
+        let val = match *self {
+          '0' ... '9' => *self as uint - ('0' as uint),
+          'a' ... 'z' => *self as uint + 10u - ('a' as uint),
+          'A' ... 'Z' => *self as uint + 10u - ('A' as uint),
+          _ => return None,
+        };
+        if val < radix { Some(val) }
+        else { None }
+    }
 
     #[deprecated = "use the char::from_digit free function"]
     fn from_digit(num: uint, radix: uint) -> Option<char> { from_digit(num, radix) }
@@ -378,18 +351,55 @@ impl Char for char {
     fn from_u32(i: u32) -> Option<char> { from_u32(i) }
 
     #[unstable = "pending error conventions, trait organization"]
-    fn escape_unicode(&self, f: |char|) { escape_unicode(*self, f) }
+    fn escape_unicode(&self, f: |char|) {
+        // avoid calling str::to_str_radix because we don't really need to allocate
+        // here.
+        f('\\');
+        let pad = match () {
+            _ if *self <= '\xff'    => { f('x'); 2 }
+            _ if *self <= '\uffff'  => { f('u'); 4 }
+            _                   => { f('U'); 8 }
+        };
+        for offset in range_step::<i32>(4 * (pad - 1), -1, -4) {
+            let offset = offset as uint;
+            unsafe {
+                match ((*self as i32) >> offset) & 0xf {
+                    i @ 0 ... 9 => { f(transmute('0' as i32 + i)); }
+                    i => { f(transmute('a' as i32 + (i - 10))); }
+                }
+            }
+        }
+    }
 
     #[unstable = "pending error conventions, trait organization"]
-    fn escape_default(&self, f: |char|) { escape_default(*self, f) }
+    fn escape_default(&self, f: |char|) {
+        match *self {
+            '\t' => { f('\\'); f('t'); }
+            '\r' => { f('\\'); f('r'); }
+            '\n' => { f('\\'); f('n'); }
+            '\\' => { f('\\'); f('\\'); }
+            '\'' => { f('\\'); f('\''); }
+            '"'  => { f('\\'); f('"'); }
+            '\x20' ... '\x7e' => { f(*self); }
+            _ => self.escape_unicode(f),
+        }
+    }
 
     #[inline]
     #[deprecated = "use len_utf8"]
-    fn len_utf8_bytes(&self) -> uint { len_utf8_bytes(*self) }
+    fn len_utf8_bytes(&self) -> uint { self.len_utf8() }
 
     #[inline]
     #[unstable = "pending trait organization"]
-    fn len_utf8(&self) -> uint { len_utf8_bytes(*self) }
+    fn len_utf8(&self) -> uint {
+        let code = *self as u32;
+        match () {
+            _ if code < MAX_ONE_B   => 1u,
+            _ if code < MAX_TWO_B   => 2u,
+            _ if code < MAX_THREE_B => 3u,
+            _  => 4u,
+        }
+    }
 
     #[inline]
     #[unstable = "pending trait organization"]
