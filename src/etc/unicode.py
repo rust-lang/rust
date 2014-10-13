@@ -604,6 +604,15 @@ if __name__ == "__main__":
         rf.write(preamble)
 
         # download and parse all the data
+        fetch("ReadMe.txt")
+        with open("ReadMe.txt") as readme:
+            pattern = "for Version (\d+)\.(\d+)\.(\d+) of the Unicode"
+            unicode_version = re.search(pattern, readme.read()).groups()
+        rf.write("""
+/// The version of [Unicode](http://www.unicode.org/)
+/// that the `UnicodeChar` and `UnicodeStrSlice` traits are based on.
+pub const UNICODE_VERSION: (uint, uint, uint) = (%s, %s, %s);
+""" % unicode_version)
         (canon_decomp, compat_decomp, gencats, combines,
                 lowerupper, upperlower) = load_unicode_data("UnicodeData.txt")
         want_derived = ["XID_Start", "XID_Continue", "Alphabetic", "Lowercase", "Uppercase"]

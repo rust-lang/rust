@@ -12,6 +12,10 @@
 
 #![allow(missing_doc, non_uppercase_statics, non_snake_case)]
 
+/// The version of [Unicode](http://www.unicode.org/)
+/// that the `UnicodeChar` and `UnicodeStrSlice` traits are based on.
+pub const UNICODE_VERSION: (uint, uint, uint) = (7, 0, 0);
+
 fn bsearch_range_table(c: char, r: &'static [(char,char)]) -> bool {
     use core::cmp::{Equal, Less, Greater};
     use core::slice::ImmutableSlice;
