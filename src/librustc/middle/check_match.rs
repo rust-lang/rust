@@ -261,20 +261,32 @@ fn check_arms(cx: &MatchCheckCtxt, arms: &[(Vec<P<Pat>>, Option<&Expr>)], source
 
             match is_useful(cx, &seen, v.as_slice(), LeaveOutWitness) {
                 NotUseful => {
-                    if source == MatchIfLetDesugar {
-                        if printed_if_let_err {
-                            // we already printed an irrefutable if-let pattern error.
-                            // We don't want two, that's just confusing.
-                        } else {
+                    match source {
+                        MatchIfLetDesugar => {
+                            if printed_if_let_err {
+                                // we already printed an irrefutable if-let pattern error.
+                                // We don't want two, that's just confusing.
+                            } else {
+                                // find the first arm pattern so we can use its span
+                                let &(ref first_arm_pats, _) = &arms[0];
+                                let first_pat = first_arm_pats.get(0);
+                                let span = first_pat.span;
+                                span_err!(cx.tcx.sess, span, E0162, "irrefutable if-let pattern");
+                                printed_if_let_err = true;
+                            }
+                        },
+
+                        MatchWhileLetDesugar => {
                             // find the first arm pattern so we can use its span
                             let &(ref first_arm_pats, _) = &arms[0];
                             let first_pat = first_arm_pats.get(0);
                             let span = first_pat.span;
-                            span_err!(cx.tcx.sess, span, E0162, "irrefutable if-let pattern");
-                            printed_if_let_err = true;
-                        }
-                    } else {
-                        span_err!(cx.tcx.sess, pat.span, E0001, "unreachable pattern");
+                            span_err!(cx.tcx.sess, span, E0165, "irrefutable while-let pattern");
+                        },
+
+                        MatchNormal => {
+                            span_err!(cx.tcx.sess, pat.span, E0001, "unreachable pattern")
+                        },
                     }
                 }
                 Useful => (),

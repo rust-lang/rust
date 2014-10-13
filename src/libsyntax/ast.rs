@@ -524,6 +524,8 @@ pub enum Expr_ {
     // FIXME #6993: change to Option<Name> ... or not, if these are hygienic.
     ExprWhile(P<Expr>, P<Block>, Option<Ident>),
     // FIXME #6993: change to Option<Name> ... or not, if these are hygienic.
+    ExprWhileLet(P<Pat>, P<Expr>, P<Block>, Option<Ident>),
+    // FIXME #6993: change to Option<Name> ... or not, if these are hygienic.
     ExprForLoop(P<Pat>, P<Expr>, P<Block>, Option<Ident>),
     // Conditionless loop (can be exited with break, cont, or ret)
     // FIXME #6993: change to Option<Name> ... or not, if these are hygienic.
@@ -579,7 +581,8 @@ pub struct QPath {
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
 pub enum MatchSource {
     MatchNormal,
-    MatchIfLetDesugar
+    MatchIfLetDesugar,
+    MatchWhileLetDesugar,
 }
 
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]

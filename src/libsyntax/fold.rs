@@ -1216,6 +1216,12 @@ pub fn noop_fold_expr<T: Folder>(Expr {id, node, span}: Expr, folder: &mut T) ->
                           folder.fold_block(body),
                           opt_ident.map(|i| folder.fold_ident(i)))
             }
+            ExprWhileLet(pat, expr, body, opt_ident) => {
+                ExprWhileLet(folder.fold_pat(pat),
+                             folder.fold_expr(expr),
+                             folder.fold_block(body),
+                             opt_ident.map(|i| folder.fold_ident(i)))
+            }
             ExprForLoop(pat, iter, body, opt_ident) => {
                 ExprForLoop(folder.fold_pat(pat),
                             folder.fold_expr(iter),

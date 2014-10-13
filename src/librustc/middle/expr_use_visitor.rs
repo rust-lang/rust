@@ -429,6 +429,10 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,TYPER> {
                 self.walk_block(&**blk);
             }
 
+            ast::ExprWhileLet(..) => {
+                self.tcx().sess.span_bug(expr.span, "non-desugared ExprWhileLet");
+            }
+
             ast::ExprForLoop(ref pat, ref head, ref blk, _) => {
                 // The pattern lives as long as the block.
                 debug!("walk_expr for loop case: blk id={}", blk.id);
