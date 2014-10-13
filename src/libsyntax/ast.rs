@@ -1333,6 +1333,7 @@ impl Item_ {
     pub fn descriptive_variant(&self) -> &str {
         match *self {
             ItemStatic(..) => "static item",
+            ItemConst(..) => "constant item",
             ItemFn(..) => "function",
             ItemMod(..) => "module",
             ItemForeignMod(..) => "foreign module",
@@ -1340,7 +1341,8 @@ impl Item_ {
             ItemEnum(..) => "enum",
             ItemStruct(..) => "struct",
             ItemTrait(..) => "trait",
-            _ => "item"
+            ItemMac(..) |
+            ItemImpl(..) => "item"
         }
     }
 }

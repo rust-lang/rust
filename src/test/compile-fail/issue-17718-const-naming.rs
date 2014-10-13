@@ -12,5 +12,6 @@
 
 const foo: int = 3;
 //~^ ERROR: should have an uppercase name such as
+//~^^ ERROR: constant item is never used
 
 fn main() {}

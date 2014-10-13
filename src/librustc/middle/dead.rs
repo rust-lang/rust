@@ -441,6 +441,7 @@ impl<'a, 'tcx> DeadVisitor<'a, 'tcx> {
     fn should_warn_about_item(&mut self, item: &ast::Item) -> bool {
         let should_warn = match item.node {
             ast::ItemStatic(..)
+            | ast::ItemConst(..)
             | ast::ItemFn(..)
             | ast::ItemEnum(..)
             | ast::ItemStruct(..) => true,
