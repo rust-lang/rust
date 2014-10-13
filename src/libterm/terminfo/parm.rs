@@ -10,7 +10,6 @@
 
 //! Parameterized string expansion
 
-use std::char;
 use std::mem::replace;
 
 #[deriving(PartialEq)]
@@ -293,7 +292,7 @@ pub fn expand(cap: &[u8], params: &[Param], vars: &mut Variables)
             },
             PushParam => {
                 // params are 1-indexed
-                stack.push(mparams[match char::to_digit(cur, 10) {
+                stack.push(mparams[match cur.to_digit(10) {
                     Some(d) => d - 1,
                     None => return Err("bad param number".to_string())
                 }].clone());

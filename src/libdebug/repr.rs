@@ -14,7 +14,6 @@ More runtime type reflection
 
 */
 
-use std::char;
 use std::intrinsics::{Disr, Opaque, TyDesc, TyVisitor, get_tydesc, visit_tydesc};
 use std::io;
 use std::mem;
@@ -229,7 +228,7 @@ impl<'a> ReprVisitor<'a> {
             }
             '\x20'...'\x7e' => self.writer.write([ch as u8]),
             _ => {
-                char::escape_unicode(ch, |c| {
+                ch.escape_unicode(|c| {
                     let _ = self.writer.write([c as u8]);
                 });
                 Ok(())

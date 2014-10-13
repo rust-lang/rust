@@ -13,6 +13,7 @@
 #![allow(missing_doc)]
 
 use char;
+use char::Char;
 use clone::Clone;
 use collections::{Collection, MutableSeq};
 use num::{NumCast, Zero, One, cast, Int};
@@ -618,7 +619,7 @@ pub fn from_str_bytes_common<T:NumCast+Zero+One+PartialEq+PartialOrd+Div<T,T>+
     while i < len {
         let c = buf[i] as char;
 
-        match char::to_digit(c, radix) {
+        match c.to_digit(radix) {
             Some(digit) => {
                 // shift accum one digit left
                 accum = accum * radix_gen.clone();
@@ -673,7 +674,7 @@ pub fn from_str_bytes_common<T:NumCast+Zero+One+PartialEq+PartialOrd+Div<T,T>+
         while i < len {
             let c = buf[i] as char;
 
-            match char::to_digit(c, radix) {
+            match c.to_digit(radix) {
                 Some(digit) => {
                     // Decrease power one order of magnitude
                     power = power / radix_gen;

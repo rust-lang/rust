@@ -406,7 +406,7 @@ impl<'a> Parser<'a> {
         loop {
             match self.cur.clone().next() {
                 Some((_, c)) => {
-                    match char::to_digit(c, 10) {
+                    match c.to_digit(10) {
                         Some(i) => {
                             cur = cur * 10 + i;
                             found = true;

@@ -11,6 +11,7 @@
 #![allow(missing_doc)]
 
 use char;
+use char::Char;
 use collections::Collection;
 use fmt;
 use iter::{range, DoubleEndedIterator};
@@ -220,7 +221,7 @@ pub fn float_to_str_bytes_common<T: Primitive + Float, U>(
         // round the remaining ones.
         if limit_digits && dig == digit_count {
             let ascii2value = |chr: u8| {
-                char::to_digit(chr as char, radix).unwrap()
+                (chr as char).to_digit(radix).unwrap()
             };
             let value2ascii = |val: uint| {
                 char::from_digit(val, radix).unwrap() as u8
