@@ -1110,9 +1110,11 @@ pub trait Writer {
     /// Write a single char, encoded as UTF-8.
     #[inline]
     fn write_char(&mut self, c: char) -> IoResult<()> {
-        let mut buf = [0u8, ..4];
-        let n = c.encode_utf8(buf[mut]).unwrap_or(0);
-        self.write(buf[..n])
+        for byte in c.encode_utf8() {
+            try!(self.write_u8(byte));
+        }
+
+        Ok(())
     }
 
     /// Write the result of passing n through `int::to_str_bytes`.

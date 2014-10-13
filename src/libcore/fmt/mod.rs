@@ -421,9 +421,9 @@ impl<'a> Formatter<'a> {
         // Writes the sign if it exists, and then the prefix if it was requested
         let write_prefix = |f: &mut Formatter| {
             for c in sign.into_iter() {
-                let mut b = [0, ..4];
-                let n = c.encode_utf8(b).unwrap_or(0);
-                try!(f.buf.write(b[..n]));
+                for byte in c.encode_utf8() {
+                    try!(f.buf.write([byte]));
+                }
             }
             if prefixed { f.buf.write(prefix.as_bytes()) }
             else { Ok(()) }
@@ -527,7 +527,11 @@ impl<'a> Formatter<'a> {
         };
 
         let mut fill = [0u8, ..4];
-        let len = self.fill.encode_utf8(fill).unwrap_or(0);
+        let mut len = 0;
+        for byte in self.fill.encode_utf8() {
+            fill[len] = byte;
+            len += 1;
+        }
 
         for _ in range(0, pre_pad) {
             try!(self.buf.write(fill[..len]));
@@ -610,8 +614,12 @@ impl Char for char {
         use char::Char;
 
         let mut utf8 = [0u8, ..4];
-        let amt = self.encode_utf8(utf8).unwrap_or(0);
-        let s: &str = unsafe { mem::transmute(utf8[..amt]) };
+        let mut len = 0;
+        for byte in self.encode_utf8() {
+            utf8[len] = byte;
+            len += 1;
+        }
+        let s: &str = unsafe { mem::transmute(utf8[..len]) };
         secret_string(&s, f)
     }
 }

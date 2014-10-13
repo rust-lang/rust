@@ -354,9 +354,11 @@ fn escape_str(writer: &mut io::Writer, v: &str) -> Result<(), io::IoError> {
 }
 
 fn escape_char(writer: &mut io::Writer, v: char) -> Result<(), io::IoError> {
-    let mut buf = [0, .. 4];
-    v.encode_utf8(buf);
-    escape_bytes(writer, buf)
+    for byte in v.encode_utf8() {
+        try!(escape_bytes(writer, [byte]));
+    }
+
+    Ok(())
 }
 
 fn spaces(wr: &mut io::Writer, mut n: uint) -> Result<(), io::IoError> {

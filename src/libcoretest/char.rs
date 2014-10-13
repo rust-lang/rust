@@ -172,9 +172,8 @@ fn test_escape_unicode() {
 #[test]
 fn test_encode_utf8() {
     fn check(input: char, expect: &[u8]) {
-        let mut buf = [0u8, ..4];
-        let n = input.encode_utf8(buf.as_mut_slice()).unwrap_or(0);
-        assert_eq!(buf[..n], expect);
+        let buf: Vec<u8> = input.encode_utf8().collect();
+        assert_eq!(buf[], expect);
     }
 
     check('x', [0x78]);
@@ -186,9 +185,8 @@ fn test_encode_utf8() {
 #[test]
 fn test_encode_utf16() {
     fn check(input: char, expect: &[u16]) {
-        let mut buf = [0u16, ..2];
-        let n = input.encode_utf16(buf.as_mut_slice()).unwrap_or(0);
-        assert_eq!(buf[..n], expect);
+        let buf: Vec<u8> = input.encode_utf16().collect();
+        assert_eq!(buf[], expect);
     }
 
     check('x', [0x0078]);

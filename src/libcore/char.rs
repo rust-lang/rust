@@ -15,9 +15,10 @@
 #![allow(non_snake_case)]
 #![doc(primitive = "char")]
 
+use clone::Clone;
 use mem::transmute;
 use option::{None, Option, Some};
-use iter::range_step;
+use iter::{range_step, Iterator};
 use collections::Collection;
 
 // UTF-8 ranges and tags for encoding characters
@@ -304,7 +305,7 @@ pub trait Char {
     /// If the buffer is not large enough, nothing will be written into it
     /// and a `None` will be returned.
     #[unstable = "pending trait organization"]
-    fn encode_utf8(&self, dst: &mut [u8]) -> Option<uint>;
+    fn encode_utf8(&self) -> Utf8CodeUnits;
 
     /// Encodes this character as UTF-16 into the provided `u16` buffer,
     /// and then returns the number of `u16`s written.
@@ -312,7 +313,7 @@ pub trait Char {
     /// If the buffer is not large enough, nothing will be written into it
     /// and a `None` will be returned.
     #[unstable = "pending trait organization"]
-    fn encode_utf16(&self, dst: &mut [u16]) -> Option<uint>;
+    fn encode_utf16(&self) -> Utf16CodeUnits;
 }
 
 #[experimental = "trait is experimental"]
@@ -410,49 +411,102 @@ impl Char for char {
 
     #[inline]
     #[unstable = "pending error conventions, trait organization"]
-    fn encode_utf8<'a>(&self, dst: &'a mut [u8]) -> Option<uint> {
-        // Marked #[inline] to allow llvm optimizing it away
+    fn encode_utf8(&self) -> Utf8CodeUnits {
         let code = *self as u32;
-        if code < MAX_ONE_B && dst.len() >= 1 {
-            dst[0] = code as u8;
-            Some(1)
-        } else if code < MAX_TWO_B && dst.len() >= 2 {
-            dst[0] = (code >> 6u & 0x1F_u32) as u8 | TAG_TWO_B;
-            dst[1] = (code & 0x3F_u32) as u8 | TAG_CONT;
-            Some(2)
-        } else if code < MAX_THREE_B && dst.len() >= 3  {
-            dst[0] = (code >> 12u & 0x0F_u32) as u8 | TAG_THREE_B;
-            dst[1] = (code >>  6u & 0x3F_u32) as u8 | TAG_CONT;
-            dst[2] = (code & 0x3F_u32) as u8 | TAG_CONT;
-            Some(3)
-        } else if dst.len() >= 4 {
-            dst[0] = (code >> 18u & 0x07_u32) as u8 | TAG_FOUR_B;
-            dst[1] = (code >> 12u & 0x3F_u32) as u8 | TAG_CONT;
-            dst[2] = (code >>  6u & 0x3F_u32) as u8 | TAG_CONT;
-            dst[3] = (code & 0x3F_u32) as u8 | TAG_CONT;
-            Some(4)
+        let (len, buf) = if code < MAX_ONE_B {
+            (1, [code as u8, 0, 0, 0])
+        } else if code < MAX_TWO_B {
+            (2, [(code >> 6u & 0x1F_u32) as u8 | TAG_TWO_B,
+                 (code & 0x3F_u32) as u8 | TAG_CONT,
+                 0, 0])
+        } else if code < MAX_THREE_B {
+            (3, [(code >> 12u & 0x0F_u32) as u8 | TAG_THREE_B,
+                 (code >>  6u & 0x3F_u32) as u8 | TAG_CONT,
+                 (code & 0x3F_u32) as u8 | TAG_CONT,
+                 0])
         } else {
-            None
-        }
+            (4, [(code >> 18u & 0x07_u32) as u8 | TAG_FOUR_B,
+                 (code >> 12u & 0x3F_u32) as u8 | TAG_CONT,
+                 (code >>  6u & 0x3F_u32) as u8 | TAG_CONT,
+                 (code & 0x3F_u32) as u8 | TAG_CONT])
+        };
+
+        Utf8CodeUnits { pos: 0, len: len, buf: buf }
     }
 
     #[inline]
     #[unstable = "pending error conventions, trait organization"]
-    fn encode_utf16(&self, dst: &mut [u16]) -> Option<uint> {
+    fn encode_utf16(&self) -> Utf16CodeUnits {
         // Marked #[inline] to allow llvm optimizing it away
         let mut ch = *self as u32;
-        if (ch & 0xFFFF_u32) == ch  && dst.len() >= 1 {
+        let (len, buf) = if (ch & 0xFFFF_u32) == ch {
             // The BMP falls through (assuming non-surrogate, as it should)
-            dst[0] = ch as u16;
-            Some(1)
-        } else if dst.len() >= 2 {
+            (1, [ch as u16, 0])
+        } else {
             // Supplementary planes break into surrogates.
             ch -= 0x1_0000_u32;
-            dst[0] = 0xD800_u16 | ((ch >> 10) as u16);
-            dst[1] = 0xDC00_u16 | ((ch as u16) & 0x3FF_u16);
-            Some(2)
+            (2, [0xD800_u16 | ((ch >> 10) as u16),
+                 0xDC00_u16 | ((ch as u16) & 0x3FF_u16)])
+        };
+
+        Utf16CodeUnits { pos: 0, len: len, buf: buf }
+    }
+}
+
+/// An iterator over the bytes of a char encoded as UTF-8
+#[unstable = "pending error conventions, trait organization"]
+pub struct Utf8CodeUnits {
+    pos: uint,
+    len: uint,
+    buf: [u8, ..4]
+}
+
+#[unstable = "struct is unstable"]
+impl Iterator<u8> for Utf8CodeUnits {
+    #[inline]
+    fn next(&mut self) -> Option<u8> {
+        if self.pos != self.len {
+            let next = self.buf[self.pos];
+            self.pos += 1;
+            Some(next)
         } else {
             None
         }
+    }
+}
+
+#[unstable = "struct is unstable"]
+impl Clone for Utf8CodeUnits {
+    fn clone(&self) -> Utf8CodeUnits {
+        Utf8CodeUnits { pos: self.pos, len: self.len, buf: self.buf }
+    }
+}
+
+/// An iterator over the bytes of a char encoded as UTF-8
+#[unstable = "pending error conventions, trait organization"]
+pub struct Utf16CodeUnits {
+    pos: uint,
+    len: uint,
+    buf: [u16, ..2]
+}
+
+#[unstable = "struct is unstable"]
+impl Iterator<u16> for Utf16CodeUnits {
+    #[inline]
+    fn next(&mut self) -> Option<u16> {
+        if self.pos != self.len {
+            let next = self.buf[self.pos];
+            self.pos += 1;
+            Some(next)
+        } else {
+            None
+        }
+    }
+}
+
+#[unstable = "struct is unstable"]
+impl Clone for Utf16CodeUnits {
+    fn clone(&self) -> Utf16CodeUnits {
+        Utf16CodeUnits { pos: self.pos, len: self.len, buf: self.buf }
     }
 }

@@ -19,8 +19,6 @@ use core::fmt;
 use core::mem;
 use core::ptr;
 use core::ops;
-// FIXME: ICE's abound if you import the `Slice` type while importing `Slice` trait
-use core::raw::Slice as RawSlice;
 
 use {Mutable, MutableSeq};
 use hash;
@@ -540,12 +538,13 @@ impl String {
         unsafe {
             // Attempt to not use an intermediate buffer by just pushing bytes
             // directly onto this string.
-            let slice = RawSlice {
-                data: self.vec.as_ptr().offset(cur_len as int),
-                len: 4,
-            };
-            let used = ch.encode_utf8(mem::transmute(slice)).unwrap_or(0);
-            self.vec.set_len(cur_len + used);
+            let buf = self.vec.as_mut_ptr().offset(cur_len as int);
+            let mut used = 0;
+            for byte in ch.encode_utf8() {
+                *buf.offset(used) = byte;
+                used += 1;
+            }
+            self.vec.set_len(cur_len + (used as uint));
         }
     }
 
@@ -798,16 +797,15 @@ impl String {
         assert!(idx <= len);
         assert!(self.as_slice().is_char_boundary(idx));
         self.vec.reserve_additional(4);
-        let mut bits = [0, ..4];
-        let amt = ch.encode_utf8(bits).unwrap();
+        let amt = ch.len_utf8();
 
         unsafe {
             ptr::copy_memory(self.vec.as_mut_ptr().offset((idx + amt) as int),
                              self.vec.as_ptr().offset(idx as int),
                              len - idx);
-            ptr::copy_memory(self.vec.as_mut_ptr().offset(idx as int),
-                             bits.as_ptr(),
-                             amt);
+            for (i, byte) in ch.encode_utf8().enumerate() {
+                *self.vec.as_mut_ptr().offset((idx + i) as int) = byte
+            }
             self.vec.set_len(len + amt);
         }
     }

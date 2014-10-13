@@ -724,27 +724,36 @@ impl<'a> Iterator<&'a str> for StrSplits<'a> {
 
 /// External iterator for a string's UTF16 codeunits.
 /// Use with the `std::iter` module.
+// NB: This could be implemented as a flatmap from Chars
+// to char::Utf16CodeUnits, except that FlatMap is not
+// Clone.
 #[deriving(Clone)]
 pub struct Utf16CodeUnits<'a> {
     chars: Chars<'a>,
-    extra: u16
+    char_units: Option<char::Utf16CodeUnits>
 }
 
 impl<'a> Iterator<u16> for Utf16CodeUnits<'a> {
     #[inline]
     fn next(&mut self) -> Option<u16> {
-        if self.extra != 0 {
-            let tmp = self.extra;
-            self.extra = 0;
-            return Some(tmp);
+        match self.char_units {
+            Some(ref mut char_units) => {
+                match char_units.next() {
+                    Some(unit) => Some(unit),
+                    None => {
+                        let next_char = self.chars.next();
+                        match next_char {
+                            Some(next_char) => {
+                                *char_units = next_char.encode_utf16();
+                                char_units.next()
+                            }
+                            None => None
+                        }
+                    }
+                }
+            }
+            None => None
         }
-
-        let mut buf = [0u16, ..2];
-        self.chars.next().map(|ch| {
-            let n = ch.encode_utf16(buf[mut]).unwrap_or(0);
-            if n == 2 { self.extra = buf[1]; }
-            buf[0]
-        })
     }
 
     #[inline]
@@ -2176,7 +2185,9 @@ impl<'a> StrSlice<'a> for &'a str {
 
     #[inline]
     fn utf16_units(&self) -> Utf16CodeUnits<'a> {
-        Utf16CodeUnits{ chars: self.chars(), extra: 0}
+        let mut chars = self.chars();
+        let first_char_units = chars.next().map(|c| c.encode_utf16());
+        Utf16CodeUnits{ chars: chars, char_units: first_char_units }
     }
 }
 
