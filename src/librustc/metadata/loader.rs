@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -641,41 +641,50 @@ impl<'a> Context<'a> {
         // rlibs/dylibs.
         let sess = self.sess;
         let dylibname = self.dylibname();
-        let mut locs = locs.iter().map(|l| Path::new(l.as_slice())).filter(|loc| {
-            if !loc.exists() {
-                sess.err(format!("extern location does not exist: {}",
-                                 loc.display()).as_slice());
-                return false;
-            }
-            let file = loc.filename_str().unwrap();
-            if file.starts_with("lib") && file.ends_with(".rlib") {
-                return true
-            } else {
-                match dylibname {
-                    Some((prefix, suffix)) => {
-                        if file.starts_with(prefix) && file.ends_with(suffix) {
-                            return true
-                        }
-                    }
-                    None => {}
-                }
-            }
-            sess.err(format!("extern location is of an unknown type: {}",
-                             loc.display()).as_slice());
-            false
-        });
-
-        // Now that we have an iterator of good candidates, make sure there's at
-        // most one rlib and at most one dylib.
         let mut rlibs = HashSet::new();
         let mut dylibs = HashSet::new();
-        for loc in locs {
-            if loc.filename_str().unwrap().ends_with(".rlib") {
-                rlibs.insert(fs::realpath(&loc).unwrap());
-            } else {
-                dylibs.insert(fs::realpath(&loc).unwrap());
+        {
+            let mut locs = locs.iter().map(|l| Path::new(l.as_slice())).filter(|loc| {
+                if !loc.exists() {
+                    sess.err(format!("extern location for {} does not exist: {}",
+                                     self.crate_name, loc.display()).as_slice());
+                    return false;
+                }
+                let file = match loc.filename_str() {
+                    Some(file) => file,
+                    None => {
+                        sess.err(format!("extern location for {} is not a file: {}",
+                                         self.crate_name, loc.display()).as_slice());
+                        return false;
+                    }
+                };
+                if file.starts_with("lib") && file.ends_with(".rlib") {
+                    return true
+                } else {
+                    match dylibname {
+                        Some((prefix, suffix)) => {
+                            if file.starts_with(prefix) && file.ends_with(suffix) {
+                                return true
+                            }
+                        }
+                        None => {}
+                    }
+                }
+                sess.err(format!("extern location for {} is of an unknown type: {}",
+                                 self.crate_name, loc.display()).as_slice());
+                false
+            });
+
+            // Now that we have an iterator of good candidates, make sure there's at
+            // most one rlib and at most one dylib.
+            for loc in locs {
+                if loc.filename_str().unwrap().ends_with(".rlib") {
+                    rlibs.insert(fs::realpath(&loc).unwrap());
+                } else {
+                    dylibs.insert(fs::realpath(&loc).unwrap());
+                }
             }
-        }
+        };
 
         // Extract the rlib/dylib pair.
         let mut metadata = None;
