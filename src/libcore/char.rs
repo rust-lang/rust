@@ -98,6 +98,7 @@ pub fn from_u32(i: u32) -> Option<char> {
 /// This just wraps `to_digit()`.
 ///
 #[inline]
+#[deprecated = "use the Char::is_digit method"]
 pub fn is_digit_radix(c: char, radix: uint) -> bool {
     match to_digit(c, radix) {
         Some(_) => true,
@@ -120,6 +121,7 @@ pub fn is_digit_radix(c: char, radix: uint) -> bool {
 /// Panics if given a `radix` outside the range `[0..36]`.
 ///
 #[inline]
+#[deprecated = "use the Char::to_digit method"]
 pub fn to_digit(c: char, radix: uint) -> Option<uint> {
     if radix > 36 {
         panic!("to_digit: radix is too high (maximum 36)");
@@ -174,6 +176,7 @@ pub fn from_digit(num: uint, radix: uint) -> Option<char> {
 /// - chars in [0x100,0xffff] get 4-digit escapes: `\\uNNNN`
 /// - chars above 0x10000 get 8-digit escapes: `\\UNNNNNNNN`
 ///
+#[deprecated = "use the Char::escape_unicode method"]
 pub fn escape_unicode(c: char, f: |char|) {
     // avoid calling str::to_str_radix because we don't really need to allocate
     // here.
@@ -206,6 +209,7 @@ pub fn escape_unicode(c: char, f: |char|) {
 /// - Any other chars in the range [0x20,0x7e] are not escaped.
 /// - Any other chars are given hex Unicode escapes; see `escape_unicode`.
 ///
+#[deprecated = "use the Char::escape_default method"]
 pub fn escape_default(c: char, f: |char|) {
     match c {
         '\t' => { f('\\'); f('t'); }
@@ -221,6 +225,7 @@ pub fn escape_default(c: char, f: |char|) {
 
 /// Returns the amount of bytes this `char` would need if encoded in UTF-8
 #[inline]
+#[deprecated = "use the Char::len_utf8 method"]
 pub fn len_utf8_bytes(c: char) -> uint {
     let code = c as u32;
     match () {
