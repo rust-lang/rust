@@ -5751,22 +5751,6 @@ impl<'a> Resolver<'a> {
                         // Write the result into the def map.
                         debug!("(resolving expr) resolved `{}`",
                                self.path_idents_to_string(path));
-
-                        // First-class methods are not supported yet; error
-                        // out here.
-                        match def {
-                            (DefMethod(..), _) => {
-                                self.resolve_error(expr.span,
-                                                      "first-class methods \
-                                                       are not supported");
-                                self.session.span_note(expr.span,
-                                                       "call the method \
-                                                        using the `.` \
-                                                        syntax");
-                            }
-                            _ => {}
-                        }
-
                         self.record_def(expr.id, def);
                     }
                     None => {

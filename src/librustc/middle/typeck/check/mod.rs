@@ -5029,7 +5029,8 @@ pub fn polytype_for_def(fcx: &FnCtxt,
       }
       def::DefFn(id, _, _) | def::DefStaticMethod(id, _, _) |
       def::DefStatic(id, _) | def::DefVariant(_, id, _) |
-      def::DefStruct(id) | def::DefConst(id) => {
+      def::DefStruct(id) | def::DefConst(id) |
+      def::DefMethod(id, _) => {
         return ty::lookup_item_type(fcx.ccx.tcx, id);
       }
       def::DefTrait(_) |
@@ -5056,9 +5057,6 @@ pub fn polytype_for_def(fcx: &FnCtxt,
       }
       def::DefSelfTy(..) => {
         fcx.ccx.tcx.sess.span_bug(sp, "expected value, found self ty");
-      }
-      def::DefMethod(..) => {
-        fcx.ccx.tcx.sess.span_bug(sp, "expected value, found method");
       }
     }
 }
