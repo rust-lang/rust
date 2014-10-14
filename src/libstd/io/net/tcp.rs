@@ -521,10 +521,8 @@ impl Clone for TcpAcceptor {
 #[cfg(test)]
 #[allow(experimental)]
 mod test {
-    use super::*;
     use io::net::tcp::*;
     use io::net::ip::*;
-    use io::net::udp::*;
     use io::*;
     use io::test::*;
     use prelude::*;

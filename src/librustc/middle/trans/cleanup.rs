@@ -74,6 +74,7 @@ pub struct CachedEarlyExit {
 pub trait Cleanup {
     fn must_unwind(&self) -> bool;
     fn clean_on_unwind(&self) -> bool;
+    fn is_lifetime_end(&self) -> bool;
     fn trans<'blk, 'tcx>(&self,
                          bcx: Block<'blk, 'tcx>,
                          debug_loc: Option<NodeInfo>)
@@ -875,6 +876,10 @@ impl<'blk, 'tcx> CleanupScope<'blk, 'tcx> {
             LoopScopeKind(id, _) => format!("{}_loop_{}_", prefix, id),
         }
     }
+
+    pub fn drop_non_lifetime_clean(&mut self) {
+        self.cleanups.retain(|c| c.is_lifetime_end());
+    }
 }
 
 impl<'blk, 'tcx> CleanupScopeKind<'blk, 'tcx> {
@@ -943,6 +948,10 @@ impl Cleanup for DropValue {
         self.must_unwind
     }
 
+    fn is_lifetime_end(&self) -> bool {
+        false
+    }
+
     fn trans<'blk, 'tcx>(&self,
                          bcx: Block<'blk, 'tcx>,
                          debug_loc: Option<NodeInfo>)
@@ -978,6 +987,10 @@ impl Cleanup for FreeValue {
         true
     }
 
+    fn is_lifetime_end(&self) -> bool {
+        false
+    }
+
     fn trans<'blk, 'tcx>(&self,
                          bcx: Block<'blk, 'tcx>,
                          debug_loc: Option<NodeInfo>)
@@ -1008,6 +1021,10 @@ impl Cleanup for FreeSlice {
         true
     }
 
+    fn is_lifetime_end(&self) -> bool {
+        false
+    }
+
     fn trans<'blk, 'tcx>(&self,
                          bcx: Block<'blk, 'tcx>,
                          debug_loc: Option<NodeInfo>)
@@ -1032,6 +1049,10 @@ impl Cleanup for LifetimeEnd {
     }
 
     fn clean_on_unwind(&self) -> bool {
+        true
+    }
+
+    fn is_lifetime_end(&self) -> bool {
         true
     }
 

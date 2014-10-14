@@ -89,6 +89,7 @@ fn test_collect() {
 }
 
 #[test]
+#[allow(deprecated)] // we know fold_ is deprecated
 fn test_fold() {
     assert_eq!(fold_(range(0i, 0)
                     .map(|_| Ok::<(), ()>(()))),

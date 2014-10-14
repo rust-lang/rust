@@ -890,13 +890,13 @@ mod tests {
         }
 
         let v = vec![1i,2,3,4,5];
-        let u = vec![9i,8,1,2,3,4,5];
+        let mut u = vec![9i,8,1,2,3,4,5];
         let mut m = list_from(v.as_slice());
         m.prepend(list_from(u.as_slice()));
         check_links(&m);
-        let sum = u.append(v.as_slice());
-        assert_eq!(sum.len(), m.len());
-        for elt in sum.into_iter() {
+        u.extend(v.as_slice().iter().map(|&b| b));
+        assert_eq!(u.len(), m.len());
+        for elt in u.into_iter() {
             assert_eq!(m.pop_front(), Some(elt))
         }
     }

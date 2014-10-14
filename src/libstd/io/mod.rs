@@ -1949,62 +1949,62 @@ mod tests {
                         return Ok(0);
                     }
                 };
-                behavior.shift();
+                behavior.remove(0);
             }
         }
     }
 
     #[test]
     fn test_read_at_least() {
-        let mut r = BadReader::new(MemReader::new(Vec::from_slice(b"hello, world!")),
-                                   Vec::from_slice([GoodBehavior(uint::MAX)]));
+        let mut r = BadReader::new(MemReader::new(b"hello, world!".to_vec()),
+                                   vec![GoodBehavior(uint::MAX)]);
         let mut buf = [0u8, ..5];
         assert!(r.read_at_least(1, buf).unwrap() >= 1);
         assert!(r.read_exact(5).unwrap().len() == 5); // read_exact uses read_at_least
         assert!(r.read_at_least(0, buf).is_ok());
 
-        let mut r = BadReader::new(MemReader::new(Vec::from_slice(b"hello, world!")),
-                                   Vec::from_slice([BadBehavior(50), GoodBehavior(uint::MAX)]));
+        let mut r = BadReader::new(MemReader::new(b"hello, world!".to_vec()),
+                                   vec![BadBehavior(50), GoodBehavior(uint::MAX)]);
         assert!(r.read_at_least(1, buf).unwrap() >= 1);
 
-        let mut r = BadReader::new(MemReader::new(Vec::from_slice(b"hello, world!")),
-                                   Vec::from_slice([BadBehavior(1), GoodBehavior(1),
-                                                    BadBehavior(50), GoodBehavior(uint::MAX)]));
+        let mut r = BadReader::new(MemReader::new(b"hello, world!".to_vec()),
+                                   vec![BadBehavior(1), GoodBehavior(1),
+                                        BadBehavior(50), GoodBehavior(uint::MAX)]);
         assert!(r.read_at_least(1, buf).unwrap() >= 1);
         assert!(r.read_at_least(1, buf).unwrap() >= 1);
 
-        let mut r = BadReader::new(MemReader::new(Vec::from_slice(b"hello, world!")),
-                                   Vec::from_slice([BadBehavior(uint::MAX)]));
+        let mut r = BadReader::new(MemReader::new(b"hello, world!".to_vec()),
+                                   vec![BadBehavior(uint::MAX)]);
         assert_eq!(r.read_at_least(1, buf).unwrap_err().kind, NoProgress);
 
-        let mut r = MemReader::new(Vec::from_slice(b"hello, world!"));
+        let mut r = MemReader::new(b"hello, world!".to_vec());
         assert_eq!(r.read_at_least(5, buf).unwrap(), 5);
         assert_eq!(r.read_at_least(6, buf).unwrap_err().kind, InvalidInput);
     }
 
     #[test]
     fn test_push_at_least() {
-        let mut r = BadReader::new(MemReader::new(Vec::from_slice(b"hello, world!")),
-                                   Vec::from_slice([GoodBehavior(uint::MAX)]));
+        let mut r = BadReader::new(MemReader::new(b"hello, world!".to_vec()),
+                                   vec![GoodBehavior(uint::MAX)]);
         let mut buf = Vec::new();
         assert!(r.push_at_least(1, 5, &mut buf).unwrap() >= 1);
         assert!(r.push_at_least(0, 5, &mut buf).is_ok());
 
-        let mut r = BadReader::new(MemReader::new(Vec::from_slice(b"hello, world!")),
-                                   Vec::from_slice([BadBehavior(50), GoodBehavior(uint::MAX)]));
+        let mut r = BadReader::new(MemReader::new(b"hello, world!".to_vec()),
+                                   vec![BadBehavior(50), GoodBehavior(uint::MAX)]);
         assert!(r.push_at_least(1, 5, &mut buf).unwrap() >= 1);
 
-        let mut r = BadReader::new(MemReader::new(Vec::from_slice(b"hello, world!")),
-                                   Vec::from_slice([BadBehavior(1), GoodBehavior(1),
-                                                    BadBehavior(50), GoodBehavior(uint::MAX)]));
+        let mut r = BadReader::new(MemReader::new(b"hello, world!".to_vec()),
+                                   vec![BadBehavior(1), GoodBehavior(1),
+                                        BadBehavior(50), GoodBehavior(uint::MAX)]);
         assert!(r.push_at_least(1, 5, &mut buf).unwrap() >= 1);
         assert!(r.push_at_least(1, 5, &mut buf).unwrap() >= 1);
 
-        let mut r = BadReader::new(MemReader::new(Vec::from_slice(b"hello, world!")),
-                                   Vec::from_slice([BadBehavior(uint::MAX)]));
+        let mut r = BadReader::new(MemReader::new(b"hello, world!".to_vec()),
+                                   vec![BadBehavior(uint::MAX)]);
         assert_eq!(r.push_at_least(1, 5, &mut buf).unwrap_err().kind, NoProgress);
 
-        let mut r = MemReader::new(Vec::from_slice(b"hello, world!"));
+        let mut r = MemReader::new(b"hello, world!".to_vec());
         assert_eq!(r.push_at_least(5, 1, &mut buf).unwrap_err().kind, InvalidInput);
     }
 

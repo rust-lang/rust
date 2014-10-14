@@ -185,40 +185,24 @@ grammar as double-quoted strings. Other tokens have exact rules given.
 
 ### Keywords
 
-The keywords are the following strings, organized by first letter:
+<p id="keyword-table-marker">The keywords are the following strings, organized by first letter:</p>
 
-<div id="keywords">
 |          |        |        |       |
 |----------|--------|--------|-------|
 | as       |        |        |       |
-|----------|--------|--------|-------|
 | box      | break  |        |       |
-|----------|--------|--------|-------|
 | continue | crate  |        |       |
-|----------|--------|--------|-------|
 | else     | enum   | extern |       |
-|----------|--------|--------|-------|
 | false    | fn     | for    |       |
-|----------|--------|--------|-------|
 | if       | impl   | in     |       |
-|----------|--------|--------|-------|
 | let      | loop   |        |       |
-|----------|--------|--------|-------|
 | match    | mod    | mut    |       |
-|----------|--------|--------|-------|
 | priv     | proc   | pub    |       |
-|----------|--------|--------|-------|
 | ref      | return |        |       |
-|----------|--------|--------|-------|
 | self     | static | struct | super |
-|----------|--------|--------|-------|
 | trait    | true   | type   |       |
-|----------|--------|--------|-------|
 | unsafe   | use    |        |       |
-|----------|--------|--------|-------|
 | while    |        |        |       |
-|----------|--------|--------|-------|
-</div>
 
 Each of these keywords has special meaning in its grammar, and all of them are
 excluded from the `ident` rule.
