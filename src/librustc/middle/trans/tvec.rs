@@ -74,10 +74,10 @@ pub fn make_drop_glue_unboxed<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             let unit_size = llsize_of_alloc(ccx, llty);
             if unit_size != 0 {
                 let len = get_len(bcx, vptr);
-                let not_empty = ICmp(bcx, llvm::IntNE, len, C_uint(ccx, 0));
+                let not_empty = ICmp(bcx, llvm::IntNE, len, C_uint(ccx, 0u));
                 with_cond(bcx, not_empty, |bcx| {
-                    let llalign = C_uint(ccx, machine::llalign_of_min(ccx, llty) as uint);
-                    let size = Mul(bcx, C_uint(ccx, unit_size as uint), len);
+                    let llalign = C_uint(ccx, machine::llalign_of_min(ccx, llty));
+                    let size = Mul(bcx, C_uint(ccx, unit_size), len);
                     glue::trans_exchange_free_dyn(bcx, dataptr, size, llalign)
                 })
             } else {
@@ -461,7 +461,7 @@ pub fn iter_vec_loop<'a, 'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let loop_counter = {
         // i = 0
         let i = alloca(loop_bcx, bcx.ccx().int_type(), "__i");
-        Store(loop_bcx, C_uint(bcx.ccx(), 0), i);
+        Store(loop_bcx, C_uint(bcx.ccx(), 0u), i);
 
         Br(loop_bcx, cond_bcx.llbb);
         i
@@ -489,7 +489,7 @@ pub fn iter_vec_loop<'a, 'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
     { // i += 1
         let i = Load(inc_bcx, loop_counter);
-        let plusone = Add(inc_bcx, i, C_uint(bcx.ccx(), 1));
+        let plusone = Add(inc_bcx, i, C_uint(bcx.ccx(), 1u));
         Store(inc_bcx, plusone, loop_counter);
 
         Br(inc_bcx, cond_bcx.llbb);
@@ -532,7 +532,7 @@ pub fn iter_vec_raw<'a, 'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         CondBr(header_bcx, not_yet_at_end, body_bcx.llbb, next_bcx.llbb);
         let body_bcx = f(body_bcx, data_ptr, vt.unit_ty);
         AddIncomingToPhi(data_ptr, InBoundsGEP(body_bcx, data_ptr,
-                                               [C_int(bcx.ccx(), 1)]),
+                                               [C_int(bcx.ccx(), 1i)]),
                          body_bcx.llbb);
         Br(body_bcx, header_bcx.llbb);
         next_bcx

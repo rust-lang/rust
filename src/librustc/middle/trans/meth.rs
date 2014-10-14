@@ -648,9 +648,9 @@ pub fn get_vtable(bcx: Block,
 
     let size_ty = sizing_type_of(ccx, trait_ref.self_ty());
     let size = machine::llsize_of_alloc(ccx, size_ty);
-    let ll_size = C_uint(ccx, size as uint);
+    let ll_size = C_uint(ccx, size);
     let align = align_of(ccx, trait_ref.self_ty());
-    let ll_align = C_uint(ccx, align as uint);
+    let ll_align = C_uint(ccx, align);
 
     // Generate a destructor for the vtable.
     let drop_glue = glue::get_drop_glue(ccx, box_ty);

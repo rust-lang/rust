@@ -45,7 +45,6 @@
 
 #![allow(unsigned_negate)]
 
-use libc::c_ulonglong;
 use std::collections::Map;
 use std::num::Int;
 use std::rc::Rc;
@@ -132,7 +131,7 @@ pub struct Struct {
     // If the struct is DST, then the size and alignment do not take into
     // account the unsized fields of the struct.
     pub size: u64,
-    pub align: u64,
+    pub align: u32,
     pub sized: bool,
     pub packed: bool,
     pub fields: Vec<ty::t>
@@ -652,9 +651,7 @@ fn load_discr(bcx: Block, ity: IntType, ptr: ValueRef, min: Disr, max: Disr)
     } else {
         // llvm::ConstantRange can deal with ranges that wrap around,
         // so an overflow on (max + 1) is fine.
-        LoadRangeAssert(bcx, ptr, min as c_ulonglong,
-                        (max + 1) as c_ulonglong,
-                        /* signed: */ True)
+        LoadRangeAssert(bcx, ptr, min, (max+1), /* signed: */ True)
     }
 }
 
@@ -973,11 +970,11 @@ fn compute_struct_field_offsets(ccx: &CrateContext, st: &Struct) -> Vec<u64> {
     for &ty in st.fields.iter() {
         let llty = type_of::sizing_type_of(ccx, ty);
         if !st.packed {
-            let type_align = type_of::align_of(ccx, ty) as u64;
+            let type_align = type_of::align_of(ccx, ty);
             offset = roundup(offset, type_align);
         }
         offsets.push(offset);
-        offset += machine::llsize_of_alloc(ccx, llty) as u64;
+        offset += machine::llsize_of_alloc(ccx, llty);
     }
     assert_eq!(st.fields.len(), offsets.len());
     offsets
@@ -1004,8 +1001,7 @@ fn build_const_struct(ccx: &CrateContext, st: &Struct, vals: &[ValueRef])
     let mut cfields = Vec::new();
     for (&val, &target_offset) in vals.iter().zip(target_offsets.iter()) {
         if !st.packed {
-            let val_align = machine::llalign_of_min(ccx, val_ty(val))
-                /*bad*/as u64;
+            let val_align = machine::llalign_of_min(ccx, val_ty(val));
             offset = roundup(offset, val_align);
         }
         if offset != target_offset {
@@ -1014,7 +1010,7 @@ fn build_const_struct(ccx: &CrateContext, st: &Struct, vals: &[ValueRef])
         }
         assert!(!is_undef(val));
         cfields.push(val);
-        offset += machine::llsize_of_alloc(ccx, val_ty(val)) as u64;
+        offset += machine::llsize_of_alloc(ccx, val_ty(val));
     }
 
     assert!(st.sized && offset <= st.size);
@@ -1031,7 +1027,7 @@ fn padding(ccx: &CrateContext, size: u64) -> ValueRef {
 
 // FIXME this utility routine should be somewhere more general
 #[inline]
-fn roundup(x: u64, a: u64) -> u64 { ((x + (a - 1)) / a) * a }
+fn roundup(x: u64, a: u32) -> u64 { let a = a as u64; ((x + (a - 1)) / a) * a }
 
 /// Get the discriminant of a constant value.  (Not currently used.)
 pub fn const_get_discrim(ccx: &CrateContext, r: &Repr, val: ValueRef)

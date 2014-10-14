@@ -1548,7 +1548,7 @@ fn trans_uniq_expr<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     assert!(ty::type_is_sized(bcx.tcx(), contents_ty));
     let llty = type_of::type_of(bcx.ccx(), contents_ty);
     let size = llsize_of(bcx.ccx(), llty);
-    let align = C_uint(bcx.ccx(), type_of::align_of(bcx.ccx(), contents_ty) as uint);
+    let align = C_uint(bcx.ccx(), type_of::align_of(bcx.ccx(), contents_ty));
     let llty_ptr = llty.ptr_to();
     let Result { bcx, val } = malloc_raw_dyn(bcx, llty_ptr, box_ty, size, align);
     // Unique boxes do not allocate for zero-size types. The standard library

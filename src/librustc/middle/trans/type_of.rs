@@ -398,7 +398,7 @@ pub fn type_of(cx: &CrateContext, t: ty::t) -> Type {
     return llty;
 }
 
-pub fn align_of(cx: &CrateContext, t: ty::t) -> u64 {
+pub fn align_of(cx: &CrateContext, t: ty::t) -> machine::llalign {
     let llty = sizing_type_of(cx, t);
     machine::llalign_of_min(cx, llty)
 }

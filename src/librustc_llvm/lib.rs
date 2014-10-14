@@ -1458,7 +1458,7 @@ extern {
 
     /** Distance between successive elements in an array of T.
     Includes ABI padding. */
-    pub fn LLVMABISizeOfType(TD: TargetDataRef, Ty: TypeRef) -> c_uint;
+    pub fn LLVMABISizeOfType(TD: TargetDataRef, Ty: TypeRef) -> c_ulonglong;
 
     /** Returns the preferred alignment of a type. */
     pub fn LLVMPreferredAlignmentOfType(TD: TargetDataRef, Ty: TypeRef)
