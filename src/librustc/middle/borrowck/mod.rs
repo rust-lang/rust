@@ -282,10 +282,31 @@ impl<'tcx> Loan<'tcx> {
     }
 }
 
-#[deriving(PartialEq, Eq, Hash, Show)]
+#[deriving(Eq, Hash, Show)]
 pub struct LoanPath<'tcx> {
     kind: LoanPathKind<'tcx>,
     ty: ty::Ty<'tcx>,
+}
+
+impl<'tcx> LoanPath<'tcx> {
+    pub fn eq_debug(&self, that: &LoanPath<'tcx>, tcx: &ty::ctxt<'tcx>) -> bool {
+        let r = self.kind == that.kind;
+        if r && self.ty != that.ty {
+            panic!("eq variants ineq types: {} == {}, {} != {}",
+                   self.repr(tcx), that.repr(tcx),
+                   self.ty.repr(tcx), that.ty.repr(tcx));
+        }
+        r
+    }
+}
+
+impl<'tcx> PartialEq for LoanPath<'tcx> {
+    fn eq(&self, that: &LoanPath<'tcx>) -> bool {
+        let r = self.kind == that.kind;
+        debug_assert!(self.ty == that.ty || !r,
+                      "Somehow loan paths are equal though their tys are not.");
+        r
+    }
 }
 
 #[deriving(PartialEq, Eq, Hash, Show)]
