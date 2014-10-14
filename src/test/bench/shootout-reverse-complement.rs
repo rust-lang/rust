@@ -98,19 +98,44 @@ fn main() {
         // reverse complement, as
         //    seq.reverse(); for c in seq.iter_mut() {*c = complements[*c]}
         // but faster:
-        let mut it = seq.iter_mut();
-        loop {
-            match (it.next(), it.next_back()) {
-                (Some(front), Some(back)) => {
-                    let tmp = complements[*front as uint];
-                    *front = complements[*back as uint];
-                    *back = tmp;
-                }
-                (Some(last), None) => *last = complements[*last as uint], // last element
-                _ => break // vector exhausted.
-            }
+        for (front, back) in TwoSideIterator::new(seq) {
+            let tmp = complements[*front as uint];
+            *front = complements[*back as uint];
+            *back = tmp;
+        }
+        if seq.len() % 2 == 1 {
+            let middle = &mut seq[seq.len() / 2];
+            *middle = complements[*middle as uint];
         }
     }
 
     stdout().write(data.as_slice()).unwrap();
+}
+
+pub struct TwoSideIterator<'a, T: 'a> {
+    last: uint,
+    nb: uint,
+    cur: uint,
+    slice: &'a mut [T]
+}
+impl<'a, T> TwoSideIterator<'a, T> {
+    pub fn new(s: &'a mut [T]) -> TwoSideIterator<'a, T> {
+        TwoSideIterator {
+            last: s.len() - 1,
+            nb: s.len() / 2,
+            cur: 0,
+            slice: s
+        }
+    }
+}
+impl<'a, T> Iterator<(&'a mut T, &'a mut T)> for TwoSideIterator<'a, T> {
+    fn next(&mut self) -> Option<(&'a mut T, &'a mut T)> {
+        if self.cur >= self.nb { return None; }
+        let res = unsafe {
+            (std::mem::transmute(self.slice.unsafe_mut(self.cur)),
+             std::mem::transmute(self.slice.unsafe_mut(self.last - self.cur)))
+        };
+        self.cur += 1;
+        Some(res)
+    }
 }
