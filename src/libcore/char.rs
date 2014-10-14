@@ -18,7 +18,7 @@
 use clone::Clone;
 use mem::transmute;
 use option::{None, Option, Some};
-use iter::{range_step, Iterator};
+use iter::{range_step, Iterator, RangeStep};
 use collections::Collection;
 
 // UTF-8 ranges and tags for encoding characters
@@ -166,7 +166,9 @@ pub fn from_digit(num: uint, radix: uint) -> Option<char> {
 ///
 #[deprecated = "use the Char::escape_unicode method"]
 pub fn escape_unicode(c: char, f: |char|) {
-    c.escape_unicode(f)
+    for char in c.escape_unicode() {
+        f(char);
+    }
 }
 
 ///
@@ -183,7 +185,9 @@ pub fn escape_unicode(c: char, f: |char|) {
 ///
 #[deprecated = "use the Char::escape_default method"]
 pub fn escape_default(c: char, f: |char|) {
-    c.escape_default(f)
+    for c in c.escape_default() {
+        f(c);
+    }
 }
 
 /// Returns the amount of bytes this `char` would need if encoded in UTF-8
@@ -267,7 +271,7 @@ pub trait Char {
     /// * Characters in [0x100,0xffff] get 4-digit escapes: `\\uNNNN`.
     /// * Characters above 0x10000 get 8-digit escapes: `\\UNNNNNNNN`.
     #[unstable = "pending error conventions, trait organization"]
-    fn escape_unicode(self, f: |char|);
+    fn escape_unicode(self) -> UnicodeEscapedChars;
 
     /// Returns a 'default' ASCII and C++11-like literal escape of a
     /// character.
@@ -282,7 +286,7 @@ pub trait Char {
     /// * Any other chars in the range [0x20,0x7e] are not escaped.
     /// * Any other chars are given hex Unicode escapes; see `escape_unicode`.
     #[unstable = "pending error conventions, trait organization"]
-    fn escape_default(self, f: |char|);
+    fn escape_default(self) -> DefaultEscapedChars;
 
     /// Returns the amount of bytes this character would need if encoded in
     /// UTF-8.
@@ -352,38 +356,23 @@ impl Char for char {
     fn from_u32(i: u32) -> Option<char> { from_u32(i) }
 
     #[unstable = "pending error conventions, trait organization"]
-    fn escape_unicode(self, f: |char|) {
-        // avoid calling str::to_str_radix because we don't really need to allocate
-        // here.
-        f('\\');
-        let pad = match () {
-            _ if self <= '\xff'    => { f('x'); 2 }
-            _ if self <= '\uffff'  => { f('u'); 4 }
-            _                   => { f('U'); 8 }
-        };
-        for offset in range_step::<i32>(4 * (pad - 1), -1, -4) {
-            let offset = offset as uint;
-            unsafe {
-                match ((self as i32) >> offset) & 0xf {
-                    i @ 0 ... 9 => { f(transmute('0' as i32 + i)); }
-                    i => { f(transmute('a' as i32 + (i - 10))); }
-                }
-            }
-        }
+    fn escape_unicode(self) -> UnicodeEscapedChars {
+        UnicodeEscapedChars { c: self, state: EscapeBackslash }
     }
 
     #[unstable = "pending error conventions, trait organization"]
-    fn escape_default(self, f: |char|) {
-        match self {
-            '\t' => { f('\\'); f('t'); }
-            '\r' => { f('\\'); f('r'); }
-            '\n' => { f('\\'); f('n'); }
-            '\\' => { f('\\'); f('\\'); }
-            '\'' => { f('\\'); f('\''); }
-            '"'  => { f('\\'); f('"'); }
-            '\x20' ... '\x7e' => { f(self); }
-            _ => self.escape_unicode(f),
-        }
+    fn escape_default(self) -> DefaultEscapedChars {
+        let init_state = match self {
+            '\t' => DefaultEscapeBackslash('t'),
+            '\r' => DefaultEscapeBackslash('r'),
+            '\n' => DefaultEscapeBackslash('n'),
+            '\\' => DefaultEscapeBackslash('\\'),
+            '\'' => DefaultEscapeBackslash('\''),
+            '"'  => DefaultEscapeBackslash('"'),
+            '\x20' ... '\x7e' => DefaultEscapeChar(self),
+            _ => DefaultEscapeUnicode(self.escape_unicode())
+        };
+        DefaultEscapedChars { state: init_state }
     }
 
     #[inline]
@@ -510,3 +499,76 @@ impl Clone for Utf16CodeUnits {
         Utf16CodeUnits { pos: self.pos, len: self.len, buf: self.buf }
     }
 }
+
+/// An iterator over the characters that represent a `char`, as escaped by
+/// Rust's unicode escaping rules.
+pub struct UnicodeEscapedChars {
+    c: char,
+    state: UnicodeEscapedCharsState
+}
+
+enum UnicodeEscapedCharsState {
+    EscapeBackslash,
+    EscapeType,
+    EscapeValue(RangeStep<i32>),
+}
+
+impl Iterator<char> for UnicodeEscapedChars {
+    fn next(&mut self) -> Option<char> {
+        match self.state {
+            EscapeBackslash => {
+                self.state = EscapeType;
+                Some('\\')
+            }
+            EscapeType => {
+                let (typechar, pad) = if self.c <= '\xff' { ('x', 2) }
+                                      else if self.c <= '\uffff' { ('u', 4) }
+                                      else { ('U', 8) };
+                self.state = EscapeValue(range_step(4 * (pad - 1), -1, -4i32));
+                Some(typechar)
+            }
+            EscapeValue(ref mut range_step) => match range_step.next() {
+                Some(offset) => {
+                    let offset = offset as uint;
+                    let v = match ((self.c as i32) >> offset) & 0xf {
+                        i @ 0 ... 9 => '0' as i32 + i,
+                        i => 'a' as i32 + (i - 10)
+                    };
+                    Some(unsafe { transmute(v) })
+                }
+                None => None
+            }
+        }
+    }    
+}
+
+/// An iterator over the characters that represent a `char`, escaped
+/// for maximum portability.
+pub struct DefaultEscapedChars {
+    state: DefaultEscapedCharsState
+}
+
+enum DefaultEscapedCharsState {
+    DefaultEscapeBackslash(char),
+    DefaultEscapeChar(char),
+    DefaultEscapeDone,
+    DefaultEscapeUnicode(UnicodeEscapedChars),
+}
+
+impl Iterator<char> for DefaultEscapedChars {
+    fn next(&mut self) -> Option<char> {
+        match self.state {
+            DefaultEscapeBackslash(c) => {
+                self.state = DefaultEscapeChar(c);
+                Some('\\')
+            }
+            DefaultEscapeChar(c) => {
+                self.state = DefaultEscapeDone;
+                Some(c)
+            }
+            DefaultEscapeDone => None,
+            DefaultEscapeUnicode(ref mut iter) => iter.next()
+        }
+    }
+}
+

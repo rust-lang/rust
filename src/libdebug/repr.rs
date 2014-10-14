@@ -228,9 +228,9 @@ impl<'a> ReprVisitor<'a> {
             }
             '\x20'...'\x7e' => self.writer.write([ch as u8]),
             _ => {
-                ch.escape_unicode(|c| {
+                for c in ch.escape_unicode() {
                     let _ = self.writer.write([c as u8]);
-                });
+                }
                 Ok(())
             }
         });

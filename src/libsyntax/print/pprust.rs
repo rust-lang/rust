@@ -2663,13 +2663,17 @@ impl<'a> State<'a> {
             ast::LitStr(ref st, style) => self.print_string(st.get(), style),
             ast::LitByte(byte) => {
                 let mut res = String::from_str("b'");
-                (byte as char).escape_default(|c| res.push_char(c));
+                for c in (byte as char).escape_default() {
+                    res.push_char(c);
+                }
                 res.push_char('\'');
                 word(&mut self.s, res.as_slice())
             }
             ast::LitChar(ch) => {
                 let mut res = String::from_str("'");
-                ch.escape_default(|c| res.push_char(c));
+                for c in ch.escape_default() { 
+                    res.push_char(c);
+                }
                 res.push_char('\'');
                 word(&mut self.s, res.as_slice())
             }
