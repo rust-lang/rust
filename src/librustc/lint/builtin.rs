@@ -1623,7 +1623,8 @@ impl LintPass for HardwiredLints {
             WARNINGS,
             UNKNOWN_FEATURES,
             UNKNOWN_CRATE_TYPES,
-            VARIANT_SIZE_DIFFERENCES
+            VARIANT_SIZE_DIFFERENCES,
+            FAT_PTR_TRANSMUTES
         )
     }
 }
