@@ -235,7 +235,7 @@ pub trait UnicodeChar {
     /// The case-folding performed is the common or simple mapping: it maps
     /// one Unicode codepoint (one character in Rust) to its uppercase
     /// equivalent according to the Unicode database [1]. The additional
-    /// `SpecialCasing.txt` is not considered here, as it expands to multiple
+    /// [`SpecialCasing.txt`] is not considered here, as it expands to multiple
     /// codepoints in some cases.
     ///
     /// A full reference can be found here [2].
@@ -246,6 +246,8 @@ pub trait UnicodeChar {
     /// itself if no conversion was made.
     ///
     /// [1]: ftp://ftp.unicode.org/Public/UNIDATA/UnicodeData.txt
+    ///
+    /// [`SpecialCasing`.txt`]: ftp://ftp.unicode.org/Public/UNIDATA/SpecialCasing.txt
     ///
     /// [2]: http://www.unicode.org/versions/Unicode4.0.0/ch03.pdf#G33992
     fn to_uppercase(&self) -> char;
