@@ -687,7 +687,7 @@ pub trait IndexMut<Index, Result> {
  * ```ignore
  * struct Foo;
  *
- * impl ::core::ops::Slice<Foo, Foo> for Foo {
+ * impl Slice<Foo, Foo> for Foo {
  *     fn as_slice_<'a>(&'a self) -> &'a Foo {
  *         println!("Slicing!");
  *         self
@@ -736,7 +736,7 @@ pub trait Slice<Idx, Sized? Result> for Sized? {
  * ```ignore
  * struct Foo;
  *
- * impl ::core::ops::SliceMut<Foo, Foo> for Foo {
+ * impl SliceMut<Foo, Foo> for Foo {
  *     fn as_mut_slice_<'a>(&'a mut self) -> &'a mut Foo {
  *         println!("Slicing!");
  *         self
