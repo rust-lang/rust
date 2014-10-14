@@ -947,15 +947,12 @@ fn check_expected_errors(expected_errors: Vec<errors::ExpectedError> ,
         String::from_chars(c.as_slice())
     }
 
-    #[cfg(target_os = "windows")]
+    #[cfg(windows)]
     fn prefix_matches( line : &str, prefix : &str ) -> bool {
         to_lower(line).as_slice().starts_with(to_lower(prefix).as_slice())
     }
 
-    #[cfg(any(target_os = "linux",
-              target_os = "macos",
-              target_os = "freebsd",
-              target_os = "dragonfly"))]
+    #[cfg(unix)]
     fn prefix_matches( line : &str, prefix : &str ) -> bool {
         line.starts_with( prefix )
     }
@@ -1356,24 +1353,21 @@ fn program_output(config: &Config, testfile: &Path, lib_path: &str, prog: String
 }
 
 // Linux and mac don't require adjusting the library search path
-#[cfg(any(target_os = "linux",
-          target_os = "macos",
-          target_os = "freebsd",
-          target_os = "dragonfly"))]
+#[cfg(unix)]
 fn make_cmdline(_libpath: &str, prog: &str, args: &[String]) -> String {
     format!("{} {}", prog, args.connect(" "))
 }
 
-#[cfg(target_os = "windows")]
+#[cfg(windows)]
 fn make_cmdline(libpath: &str, prog: &str, args: &[String]) -> String {
-    format!("{} {} {}", lib_path_cmd_prefix(libpath), prog, args.connect(" "))
-}
 
-// Build the LD_LIBRARY_PATH variable as it would be seen on the command line
-// for diagnostic purposes
-#[cfg(target_os = "windows")]
-fn lib_path_cmd_prefix(path: &str) -> String {
-    format!("{}=\"{}\"", util::lib_path_env_var(), util::make_new_path(path))
+    // Build the LD_LIBRARY_PATH variable as it would be seen on the command line
+    // for diagnostic purposes
+    fn lib_path_cmd_prefix(path: &str) -> String {
+        format!("{}=\"{}\"", util::lib_path_env_var(), util::make_new_path(path))
+    }
+
+    format!("{} {} {}", lib_path_cmd_prefix(libpath), prog, args.connect(" "))
 }
 
 fn dump_output(config: &Config, testfile: &Path, out: &str, err: &str) {

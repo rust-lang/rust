@@ -59,10 +59,11 @@ impl<S:Send,R:Send> DuplexStream<S, R> {
     }
 }
 
+#[allow(deprecated)]
 #[cfg(test)]
 mod test {
     use std::prelude::*;
-    use comm::{duplex};
+    use comm::duplex;
 
     #[test]
     pub fn duplex_stream_1() {

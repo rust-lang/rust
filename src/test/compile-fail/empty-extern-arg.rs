@@ -8,10 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[deny(warnings)]
-
-const foo: int = 3;
-//~^ ERROR: should have an uppercase name such as
-//~^^ ERROR: constant item is never used
+// compile-flags: --extern std=
+// error-pattern: is not a file
 
 fn main() {}

@@ -788,7 +788,7 @@ pub fn trans_call_inner<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                          llself.is_some(),
                          abi);
 
-        fcx.pop_custom_cleanup_scope(arg_cleanup_scope);
+        fcx.scopes.borrow_mut().last_mut().unwrap().drop_non_lifetime_clean();
 
         // Invoke the actual rust fn and update bcx/llresult.
         let (llret, b) = base::invoke(bcx,
@@ -829,11 +829,14 @@ pub fn trans_call_inner<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                          cleanup::CustomScope(arg_cleanup_scope),
                          false,
                          abi);
-        fcx.pop_custom_cleanup_scope(arg_cleanup_scope);
+        fcx.scopes.borrow_mut().last_mut().unwrap().drop_non_lifetime_clean();
+
         bcx = foreign::trans_native_call(bcx, callee_ty,
                                          llfn, opt_llretslot.unwrap(),
                                          llargs.as_slice(), arg_tys);
     }
+
+    fcx.pop_and_trans_custom_cleanup_scope(bcx, arg_cleanup_scope);
 
     // If the caller doesn't care about the result of this fn call,
     // drop the temporary slot we made.

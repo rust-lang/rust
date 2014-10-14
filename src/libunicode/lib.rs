@@ -64,6 +64,7 @@ pub mod char {
     pub use normalize::{decompose_canonical, decompose_compatible, compose};
 
     pub use tables::normalization::canonical_combining_class;
+    pub use tables::UNICODE_VERSION;
 
     pub use u_char::{is_alphabetic, is_XID_start, is_XID_continue};
     pub use u_char::{is_lowercase, is_uppercase, is_whitespace};

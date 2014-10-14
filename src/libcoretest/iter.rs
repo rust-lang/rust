@@ -868,7 +868,7 @@ fn bench_multiple_take(b: &mut Bencher) {
     let mut it = range(0u, 42).cycle();
     b.iter(|| {
         let n = it.next().unwrap();
-        for m in range(0u, n) {
+        for _ in range(0u, n) {
             it.take(it.next().unwrap()).all(|_| true);
         }
     });

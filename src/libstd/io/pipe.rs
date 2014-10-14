@@ -118,7 +118,6 @@ impl Writer for PipeStream {
 
 #[cfg(test)]
 mod test {
-    use super::*;
     use prelude::*;
 
     #[test]

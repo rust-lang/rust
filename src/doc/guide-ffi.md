@@ -298,7 +298,7 @@ fn main() {
 C code:
 
 ~~~~c
-typedef void (*rust_callback)(int32_t);
+typedef void (*rust_callback)(void*, int32_t);
 void* cb_target;
 rust_callback cb;
 

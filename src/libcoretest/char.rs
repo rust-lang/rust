@@ -117,7 +117,7 @@ fn test_is_digit() {
 fn test_escape_default() {
     fn string(c: char) -> String {
         let mut result = String::new();
-        escape_default(c, |c| { result.push_char(c); });
+        escape_default(c, |c| { result.push(c); });
         return result;
     }
     let s = string('\n');
@@ -152,7 +152,7 @@ fn test_escape_default() {
 fn test_escape_unicode() {
     fn string(c: char) -> String {
         let mut result = String::new();
-        escape_unicode(c, |c| { result.push_char(c); });
+        escape_unicode(c, |c| { result.push(c); });
         return result;
     }
     let s = string('\x00');

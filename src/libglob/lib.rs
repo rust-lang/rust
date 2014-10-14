@@ -682,7 +682,7 @@ mod test {
     }
 
     #[test]
-    #[ignore(cfg(windows))] // FIXME (#9406)
+    #[cfg_attr(windows, ignore)] // FIXME (#9406)
     fn test_lots_of_files() {
         // this is a good test because it touches lots of differently named files
         glob("/*/*/*/*").skip(10000).next();

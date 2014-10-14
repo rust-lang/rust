@@ -400,7 +400,7 @@ mod test {
 
     impl Reader for ShortReader {
         fn read(&mut self, _: &mut [u8]) -> io::IoResult<uint> {
-            match self.lengths.shift() {
+            match self.lengths.remove(0) {
                 Some(i) => Ok(i),
                 None => Err(io::standard_error(io::EndOfFile))
             }
@@ -551,7 +551,7 @@ mod test {
 
     #[test]
     fn test_read_line() {
-        let in_buf = MemReader::new(Vec::from_slice(b"a\nb\nc"));
+        let in_buf = MemReader::new(b"a\nb\nc".to_vec());
         let mut reader = BufferedReader::with_capacity(2, in_buf);
         assert_eq!(reader.read_line(), Ok("a\n".to_string()));
         assert_eq!(reader.read_line(), Ok("b\n".to_string()));
@@ -561,7 +561,7 @@ mod test {
 
     #[test]
     fn test_lines() {
-        let in_buf = MemReader::new(Vec::from_slice(b"a\nb\nc"));
+        let in_buf = MemReader::new(b"a\nb\nc".to_vec());
         let mut reader = BufferedReader::with_capacity(2, in_buf);
         let mut it = reader.lines();
         assert_eq!(it.next(), Some(Ok("a\n".to_string())));

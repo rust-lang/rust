@@ -1746,8 +1746,7 @@ For our first project, we'll implement a classic beginner programming problem:
 the guessing game. Here's how it works: Our program will generate a random
 integer between one and a hundred. It will then prompt us to enter a guess.
 Upon entering our guess, it will tell us if we're too low or too high. Once we
-guess correctly, it will congratulate us, and print the number of guesses we've
-taken to the screen. Sound good?
+guess correctly, it will congratulate us. Sound good?
 
 ## Set up
 
@@ -3538,9 +3537,8 @@ restriction:
 
 1. If the borrow is immutable, you may read the data the pointer points to.
 2. If the borrow is mutable, you may read and write the data the pointer points to.
-3. You may lend the pointer to someone else in an immutable fashion, **BUT**
-4. When you do so, they must return it to you before you must give your own
-   borrow back.
+3. You may lend the pointer to someone else, **BUT**
+4. When you do so, they must return it before you can give your own borrow back.
 
 This last requirement can seem odd, but it also makes sense. If you have to
 return something, and you've lent it to someone, they need to give it back to
@@ -5062,8 +5060,8 @@ println!("The value of x[0] is: {}", x[0]); // error: use of moved value: `x`
 ```
 
 `x` is now owned by the proc, and so we can't use it anymore. Many other
-languages would let us do this, but it's not safe to do so. Rust's type system
-catches the error.
+languages would let us do this, but it's not safe to do so. Rust's borrow
+checker catches the error.
 
 If tasks were only able to capture these values, they wouldn't be very useful.
 Luckily, tasks can communicate with each other through **channel**s. Channels

@@ -447,6 +447,7 @@ mod test {
     }
 
     #[test]
+    #[allow(deprecated)]
     fn test_with_wrapper() {
         let (tx, rx) = channel();
         TaskBuilder::new().with_wrapper(proc(body) {
