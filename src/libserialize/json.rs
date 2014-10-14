@@ -2964,8 +2964,8 @@ mod tests {
         let s = "{\"f\":null,\"a\":[null,123]}";
         let obj: FloatStruct = super::decode(s).unwrap();
         assert!(obj.f.is_nan());
-        assert!(obj.a.get(0).is_nan());
-        assert_eq!(obj.a.get(1), &123f64);
+        assert!(obj.a[0].is_nan());
+        assert_eq!(obj.a[1], 123f64);
     }
 
     #[test]

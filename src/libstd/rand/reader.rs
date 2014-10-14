@@ -76,7 +76,6 @@ mod test {
 
     use super::ReaderRng;
     use io::MemReader;
-    use mem;
     use rand::Rng;
 
     #[test]
@@ -87,25 +86,25 @@ mod test {
                      0,   0, 0, 0, 0, 0, 0, 3];
         let mut rng = ReaderRng::new(MemReader::new(v));
 
-        assert_eq!(rng.next_u64(), mem::to_be64(1));
-        assert_eq!(rng.next_u64(), mem::to_be64(2));
-        assert_eq!(rng.next_u64(), mem::to_be64(3));
+        assert_eq!(rng.next_u64(), 1_u64.to_be());
+        assert_eq!(rng.next_u64(), 2_u64.to_be());
+        assert_eq!(rng.next_u64(), 3_u64.to_be());
     }
     #[test]
     fn test_reader_rng_u32() {
         let v = vec![0u8, 0, 0, 1, 0, 0, 0, 2, 0, 0, 0, 3];
         let mut rng = ReaderRng::new(MemReader::new(v));
 
-        assert_eq!(rng.next_u32(), mem::to_be32(1));
-        assert_eq!(rng.next_u32(), mem::to_be32(2));
-        assert_eq!(rng.next_u32(), mem::to_be32(3));
+        assert_eq!(rng.next_u32(), 1_u32.to_be());
+        assert_eq!(rng.next_u32(), 2_u32.to_be());
+        assert_eq!(rng.next_u32(), 3_u32.to_be());
     }
     #[test]
     fn test_reader_rng_fill_bytes() {
         let v = [1u8, 2, 3, 4, 5, 6, 7, 8];
         let mut w = [0u8, .. 8];
 
-        let mut rng = ReaderRng::new(MemReader::new(Vec::from_slice(v)));
+        let mut rng = ReaderRng::new(MemReader::new(v.as_slice().to_vec()));
         rng.fill_bytes(w);
 
         assert!(v == w);

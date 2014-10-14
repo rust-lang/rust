@@ -385,6 +385,7 @@ mod tests {
     use super::*;
     use prelude::*;
 
+    #[test]
     fn smoke() {
         // Just make sure we can acquire handles
         stdin();
@@ -392,6 +393,7 @@ mod tests {
         stderr();
     }
 
+    #[test]
     fn capture_stdout() {
         use io::{ChanReader, ChanWriter};
 
@@ -404,9 +406,10 @@ mod tests {
         assert_eq!(r.read_to_string().unwrap(), "hello!\n".to_string());
     }
 
+    #[test]
     fn capture_stderr() {
         use realstd::comm::channel;
-        use realstd::io::{Writer, ChanReader, ChanWriter, Reader};
+        use realstd::io::{ChanReader, ChanWriter, Reader};
 
         let (tx, rx) = channel();
         let (mut r, w) = (ChanReader::new(rx), ChanWriter::new(tx));

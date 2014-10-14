@@ -536,32 +536,32 @@ mod test {
 
     #[test]
     fn smoke_static() {
-        static m: StaticMutex = MUTEX_INIT;
+        static M: StaticMutex = MUTEX_INIT;
         unsafe {
-            drop(m.lock());
-            drop(m.lock());
-            m.destroy();
+            drop(M.lock());
+            drop(M.lock());
+            M.destroy();
         }
     }
 
     #[test]
     fn lots_and_lots() {
-        static m: StaticMutex = MUTEX_INIT;
+        static M: StaticMutex = MUTEX_INIT;
         static mut CNT: uint = 0;
-        static M: uint = 1000;
-        static N: uint = 3;
+        static J: uint = 1000;
+        static K: uint = 3;
 
         fn inc() {
-            for _ in range(0, M) {
+            for _ in range(0, J) {
                 unsafe {
-                    let _g = m.lock();
+                    let _g = M.lock();
                     CNT += 1;
                 }
             }
         }
 
         let (tx, rx) = channel();
-        for _ in range(0, N) {
+        for _ in range(0, K) {
             let tx2 = tx.clone();
             native::task::spawn(proc() { inc(); tx2.send(()); });
             let tx2 = tx.clone();
@@ -569,12 +569,12 @@ mod test {
         }
 
         drop(tx);
-        for _ in range(0, 2 * N) {
+        for _ in range(0, 2 * K) {
             rx.recv();
         }
-        assert_eq!(unsafe {CNT}, M * N * 2);
+        assert_eq!(unsafe {CNT}, J * K * 2);
         unsafe {
-            m.destroy();
+            M.destroy();
         }
     }
 

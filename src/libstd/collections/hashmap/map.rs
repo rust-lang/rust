@@ -1930,6 +1930,7 @@ mod test_map {
     }
 
     #[test]
+    #[allow(deprecated)] // insert_or_update_with
     fn test_update_with() {
         let mut m = HashMap::with_capacity(4);
         assert!(m.insert(1i, 2i));

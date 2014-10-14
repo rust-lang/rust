@@ -199,13 +199,28 @@ check-docs: cleantestlibs cleantmptestlogs check-stage2-docs
 
 # Some less critical tests that are not prone to breakage.
 # Not run as part of the normal test suite, but tested by bors on checkin.
-check-secondary: check-lexer check-pretty
+check-secondary: check-build-compiletest check-lexer check-pretty
 
 # check + check-secondary.
-check-all: check check-secondary
+#
+# Issue #17883: build check-secondary first so hidden dependencies in
+# e.g. building compiletest are exercised (resolve those by adding
+# deps to rules that need them; not by putting `check` first here).
+check-all: check-secondary check
 
 # Pretty-printing tests.
 check-pretty: check-stage2-T-$(CFG_BUILD)-H-$(CFG_BUILD)-pretty-exec
+
+define DEF_CHECK_BUILD_COMPILETEST_FOR_STAGE
+check-stage$(1)-build-compiletest: 	$$(HBIN$(1)_H_$(CFG_BUILD))/compiletest$$(X_$(CFG_BUILD))
+endef
+
+$(foreach stage,$(STAGES), \
+ $(eval $(call DEF_CHECK_BUILD_COMPILETEST_FOR_STAGE,$(stage))))
+
+check-build-compiletest: \
+	check-stage1-build-compiletest \
+	check-stage2-build-compiletest
 
 .PHONY: cleantmptestlogs cleantestlibs
 
@@ -284,7 +299,7 @@ tidy:
 		| xargs -n 10 $(CFG_PYTHON) $(S)src/etc/tidy.py
 		$(Q)echo $(ALL_HS) \
 		| xargs -n 10 $(CFG_PYTHON) $(S)src/etc/tidy.py
-		$(Q)find $(S)src -type f -perm a+x \
+		$(Q)find $(S)src -type f -perm +a+x \
 		    -not -name '*.rs' -and -not -name '*.py' \
 		    -and -not -name '*.sh' \
 		| grep '^$(S)src/jemalloc' -v \
@@ -720,6 +735,13 @@ PRETTY_DEPS_pretty-rpass-full = $(RPASS_FULL_TESTS)
 PRETTY_DEPS_pretty-rfail = $(RFAIL_TESTS)
 PRETTY_DEPS_pretty-bench = $(BENCH_TESTS)
 PRETTY_DEPS_pretty-pretty = $(PRETTY_TESTS)
+# The stage- and host-specific dependencies are for e.g. macro_crate_test which pulls in
+# external crates.
+PRETTY_DEPS$(1)_H_$(3)_pretty-rpass =
+PRETTY_DEPS$(1)_H_$(3)_pretty-rpass-full = $$(HLIB$(1)_H_$(3))/stamp.syntax $$(HLIB$(1)_H_$(3))/stamp.rustc
+PRETTY_DEPS$(1)_H_$(3)_pretty-rfail =
+PRETTY_DEPS$(1)_H_$(3)_pretty-bench =
+PRETTY_DEPS$(1)_H_$(3)_pretty-pretty =
 PRETTY_DIRNAME_pretty-rpass = run-pass
 PRETTY_DIRNAME_pretty-rpass-full = run-pass-fulldeps
 PRETTY_DIRNAME_pretty-rfail = run-fail
@@ -738,7 +760,8 @@ check-stage$(1)-T-$(2)-H-$(3)-$(4)-exec: $$(call TEST_OK_FILE,$(1),$(2),$(3),$(4
 
 $$(call TEST_OK_FILE,$(1),$(2),$(3),$(4)): \
 	        $$(TEST_SREQ$(1)_T_$(2)_H_$(3)) \
-	        $$(PRETTY_DEPS_$(4))
+	        $$(PRETTY_DEPS_$(4)) \
+	        $$(PRETTY_DEPS$(1)_H_$(3)_$(4))
 	@$$(call E, run pretty-rpass [$(2)]: $$<)
 	$$(Q)$$(call CFG_RUN_CTEST_$(2),$(1),$$<,$(3)) \
 		$$(PRETTY_ARGS$(1)-T-$(2)-H-$(3)-$(4)) \

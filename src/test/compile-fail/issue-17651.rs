@@ -8,10 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[deny(warnings)]
+// Test that moves of unsized values within closures are caught
+// and rejected.
 
-const foo: int = 3;
-//~^ ERROR: should have an uppercase name such as
-//~^^ ERROR: constant item is never used
-
-fn main() {}
+fn main() {
+    (|| box *[0u].as_slice())();
+    //~^ ERROR cannot move a value of type [uint]
+}

@@ -611,10 +611,10 @@ mod tests {
         assert_eq!(deq.len(), 3);
         deq.push_front(a.clone());
         assert_eq!(deq.len(), 4);
-        assert_eq!((*deq.get(0)).clone(), a.clone());
-        assert_eq!((*deq.get(1)).clone(), b.clone());
-        assert_eq!((*deq.get(2)).clone(), c.clone());
-        assert_eq!((*deq.get(3)).clone(), d.clone());
+        assert_eq!(deq[0].clone(), a.clone());
+        assert_eq!(deq[1].clone(), b.clone());
+        assert_eq!(deq[2].clone(), c.clone());
+        assert_eq!(deq[3].clone(), d.clone());
     }
 
     #[test]
@@ -626,7 +626,7 @@ mod tests {
         assert_eq!(deq.len(), 66);
 
         for i in range(0u, 66) {
-            assert_eq!(*deq.get(i), 65 - i);
+            assert_eq!(deq[i], 65 - i);
         }
 
         let mut deq = RingBuf::new();
@@ -635,7 +635,7 @@ mod tests {
         }
 
         for i in range(0u, 66) {
-            assert_eq!(*deq.get(i), i);
+            assert_eq!(deq[i], i);
         }
     }
 

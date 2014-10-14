@@ -126,9 +126,7 @@ fn lookup(hostname: Option<&str>, servname: Option<&str>, hint: Option<Hint>)
 #[cfg(all(test, not(target_os = "android")))]
 mod test {
     use super::*;
-    use io::net::tcp::*;
     use io::net::ip::*;
-    use io::net::udp::*;
 
     #[test]
     fn dns_smoke_test() {

@@ -2659,7 +2659,7 @@ mod tests {
         let mut r = rng();
         let mut bitv = Bitv::with_capacity(BENCH_BITS, false);
         b.iter(|| {
-            for i in range(0u, 100) {
+            for _ in range(0u, 100) {
                 bitv.set((r.next_u32() as uint) % BENCH_BITS, r.gen());
             }
             &bitv
