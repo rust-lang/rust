@@ -410,7 +410,28 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
     }
 
     fn pat_ty(&self, pat: &ast::Pat) -> McResult<Ty<'tcx>> {
-        self.typer.node_ty(pat.id)
+        let tcx = self.typer.tcx();
+        let base_ty = self.typer.node_ty(pat.id);
+        // FIXME (Issue #18207): This code detects whether we are
+        // looking at a `ref x`, and if so, figures out what the type
+        // *being borrowed* is.  But ideally we would put in a more
+        // fundamental fix to this conflated use of the node id.
+        let ret_ty = match pat.node {
+            ast::PatIdent(ast::BindByRef(_), _, _) => {
+                // a bind-by-ref means that the base_ty will be the type of the ident itself,
+                // but what we want here is the type of the underlying value being borrowed.
+                // So peel off one-level, turning the &T into T.
+                base_ty.map(|t| {
+                    ty::deref(t, false).unwrap_or_else(|| {
+                        panic!("encountered BindByRef with non &-type");
+                    }).ty
+                })
+            }
+            _ => base_ty,
+        };
+        debug!("pat_ty(pat={}) base_ty={} ret_ty={}",
+               pat.repr(tcx), base_ty.repr(tcx), ret_ty.repr(tcx));
+        ret_ty
     }
 
     pub fn cat_expr(&self, expr: &ast::Expr) -> McResult<cmt<'tcx>> {
