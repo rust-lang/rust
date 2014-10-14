@@ -209,7 +209,7 @@ pub trait Char {
     ///
     /// Panics if given a radix > 36.
     #[deprecated = "use is_digit"]
-    fn is_digit_radix(&self, radix: uint) -> bool;
+    fn is_digit_radix(self, radix: uint) -> bool;
 
     /// Checks if a `char` parses as a numeric digit in the given radix.
     ///
@@ -225,7 +225,7 @@ pub trait Char {
     ///
     /// Fails if given a radix > 36.
     #[unstable = "pending error conventions"]
-    fn is_digit(&self, radix: uint) -> bool;
+    fn is_digit(self, radix: uint) -> bool;
 
     /// Converts a character to the corresponding digit.
     ///
@@ -239,7 +239,7 @@ pub trait Char {
     ///
     /// Panics if given a radix outside the range [0..36].
     #[unstable = "pending error conventions, trait organization"]
-    fn to_digit(&self, radix: uint) -> Option<uint>;
+    fn to_digit(self, radix: uint) -> Option<uint>;
 
     /// Converts a number to the character representing it.
     ///
@@ -266,7 +266,7 @@ pub trait Char {
     /// * Characters in [0x100,0xffff] get 4-digit escapes: `\\uNNNN`.
     /// * Characters above 0x10000 get 8-digit escapes: `\\UNNNNNNNN`.
     #[unstable = "pending error conventions, trait organization"]
-    fn escape_unicode(&self, f: |char|);
+    fn escape_unicode(self, f: |char|);
 
     /// Returns a 'default' ASCII and C++11-like literal escape of a
     /// character.
@@ -281,22 +281,22 @@ pub trait Char {
     /// * Any other chars in the range [0x20,0x7e] are not escaped.
     /// * Any other chars are given hex Unicode escapes; see `escape_unicode`.
     #[unstable = "pending error conventions, trait organization"]
-    fn escape_default(&self, f: |char|);
+    fn escape_default(self, f: |char|);
 
     /// Returns the amount of bytes this character would need if encoded in
     /// UTF-8.
     #[deprecated = "use len_utf8"]
-    fn len_utf8_bytes(&self) -> uint;
+    fn len_utf8_bytes(self) -> uint;
 
     /// Returns the amount of bytes this character would need if encoded in
     /// UTF-8.
     #[unstable = "pending trait organization"]
-    fn len_utf8(&self) -> uint;
+    fn len_utf8(self) -> uint;
 
     /// Returns the amount of bytes this character would need if encoded in
     /// UTF-16.
     #[unstable = "pending trait organization"]
-    fn len_utf16(&self) -> uint;
+    fn len_utf16(self) -> uint;
 
     /// Encodes this character as UTF-8 into the provided byte buffer,
     /// and then returns the number of bytes written.
@@ -318,10 +318,10 @@ pub trait Char {
 #[experimental = "trait is experimental"]
 impl Char for char {
     #[deprecated = "use is_digit"]
-    fn is_digit_radix(&self, radix: uint) -> bool { self.is_digit(radix) }
+    fn is_digit_radix(self, radix: uint) -> bool { self.is_digit(radix) }
 
     #[unstable = "pending trait organization"]
-    fn is_digit(&self, radix: uint) -> bool {
+    fn is_digit(self, radix: uint) -> bool {
         match self.to_digit(radix) {
             Some(_) => true,
             None    => false,
@@ -329,14 +329,14 @@ impl Char for char {
     }
 
     #[unstable = "pending trait organization"]
-    fn to_digit(&self, radix: uint) -> Option<uint> {
+    fn to_digit(self, radix: uint) -> Option<uint> {
         if radix > 36 {
             panic!("to_digit: radix is too high (maximum 36)");
         }
-        let val = match *self {
-          '0' ... '9' => *self as uint - ('0' as uint),
-          'a' ... 'z' => *self as uint + 10u - ('a' as uint),
-          'A' ... 'Z' => *self as uint + 10u - ('A' as uint),
+        let val = match self {
+          '0' ... '9' => self as uint - ('0' as uint),
+          'a' ... 'z' => self as uint + 10u - ('a' as uint),
+          'A' ... 'Z' => self as uint + 10u - ('A' as uint),
           _ => return None,
         };
         if val < radix { Some(val) }
@@ -351,19 +351,19 @@ impl Char for char {
     fn from_u32(i: u32) -> Option<char> { from_u32(i) }
 
     #[unstable = "pending error conventions, trait organization"]
-    fn escape_unicode(&self, f: |char|) {
+    fn escape_unicode(self, f: |char|) {
         // avoid calling str::to_str_radix because we don't really need to allocate
         // here.
         f('\\');
         let pad = match () {
-            _ if *self <= '\xff'    => { f('x'); 2 }
-            _ if *self <= '\uffff'  => { f('u'); 4 }
+            _ if self <= '\xff'    => { f('x'); 2 }
+            _ if self <= '\uffff'  => { f('u'); 4 }
             _                   => { f('U'); 8 }
         };
         for offset in range_step::<i32>(4 * (pad - 1), -1, -4) {
             let offset = offset as uint;
             unsafe {
-                match ((*self as i32) >> offset) & 0xf {
+                match ((self as i32) >> offset) & 0xf {
                     i @ 0 ... 9 => { f(transmute('0' as i32 + i)); }
                     i => { f(transmute('a' as i32 + (i - 10))); }
                 }
@@ -372,27 +372,27 @@ impl Char for char {
     }
 
     #[unstable = "pending error conventions, trait organization"]
-    fn escape_default(&self, f: |char|) {
-        match *self {
+    fn escape_default(self, f: |char|) {
+        match self {
             '\t' => { f('\\'); f('t'); }
             '\r' => { f('\\'); f('r'); }
             '\n' => { f('\\'); f('n'); }
             '\\' => { f('\\'); f('\\'); }
             '\'' => { f('\\'); f('\''); }
             '"'  => { f('\\'); f('"'); }
-            '\x20' ... '\x7e' => { f(*self); }
+            '\x20' ... '\x7e' => { f(self); }
             _ => self.escape_unicode(f),
         }
     }
 
     #[inline]
     #[deprecated = "use len_utf8"]
-    fn len_utf8_bytes(&self) -> uint { self.len_utf8() }
+    fn len_utf8_bytes(self) -> uint { self.len_utf8() }
 
     #[inline]
     #[unstable = "pending trait organization"]
-    fn len_utf8(&self) -> uint {
-        let code = *self as u32;
+    fn len_utf8(self) -> uint {
+        let code = self as u32;
         match () {
             _ if code < MAX_ONE_B   => 1u,
             _ if code < MAX_TWO_B   => 2u,
@@ -403,8 +403,8 @@ impl Char for char {
 
     #[inline]
     #[unstable = "pending trait organization"]
-    fn len_utf16(&self) -> uint {
-        let ch = *self as u32;
+    fn len_utf16(self) -> uint {
+        let ch = self as u32;
         if (ch & 0xFFFF_u32) == ch { 1 } else { 2 }
     }
 
