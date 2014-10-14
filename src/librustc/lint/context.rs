@@ -63,7 +63,7 @@ pub struct LintStore {
     passes: Option<Vec<LintPassObject>>,
 
     /// Lints indexed by name.
-    by_name: HashMap<String, LintId>,
+    by_name: HashMap<String, TargetLint>,
 
     /// Current levels of each lint, and where they were set.
     levels: HashMap<LintId, LevelSource>,
@@ -71,6 +71,15 @@ pub struct LintStore {
     /// Map of registered lint groups to what lints they expand to. The bool
     /// is true if the lint group was added by a plugin.
     lint_groups: HashMap<&'static str, (Vec<LintId>, bool)>,
+}
+
+/// The targed of the `by_name` map, which accounts for renaming/deprecation.
+enum TargetLint {
+    /// A direct lint target
+    Id(LintId),
+
+    /// Temporary renaming, used for easing migration pain; see #16545
+    Renamed(String, LintId),
 }
 
 impl LintStore {
@@ -115,7 +124,7 @@ impl LintStore {
             self.lints.push((*lint, from_plugin));
 
             let id = LintId::of(*lint);
-            if !self.by_name.insert(lint.name_lower(), id) {
+            if !self.by_name.insert(lint.name_lower(), Id(id)) {
                 let msg = format!("duplicate specification of lint {}", lint.name_lower());
                 match (sess, from_plugin) {
                     // We load builtin lints first, so a duplicate is a compiler bug.
@@ -152,6 +161,14 @@ impl LintStore {
                 (Some(sess), true)  => sess.err(msg.as_slice()),
             }
         }
+    }
+
+    fn register_renamed(&mut self, old_name: &str, new_name: &str) {
+        let target = match self.by_name.find_equiv(&new_name) {
+            Some(&Id(lint_id)) => lint_id.clone(),
+            _ => fail!("invalid lint renaming of {} to {}", old_name, new_name)
+        };
+        self.by_name.insert(old_name.to_string(), Renamed(new_name.to_string(), target));
     }
 
     pub fn register_builtin(&mut self, sess: Option<&Session>) {
@@ -208,12 +225,59 @@ impl LintStore {
 
         // We have one lint pass defined in this module.
         self.register_pass(sess, false, box GatherNodeLevels as LintPassObject);
+
+        // Insert temporary renamings for a one-time deprecation (#16545)
+        self.register_renamed("unnecessary_typecast", "unused_typecasts");
+        self.register_renamed("unsigned_negate", "unsigned_negation");
+        self.register_renamed("type_limits", "unused_comparisons");
+        self.register_renamed("type_overflow", "overflowing_literals");
+        self.register_renamed("ctypes", "improper_ctypes");
+        self.register_renamed("owned_heap_memory", "box_pointers");
+        self.register_renamed("unused_attribute", "unused_attributes");
+        self.register_renamed("path_statement", "path_statements");
+        self.register_renamed("unused_result", "unused_results");
+        self.register_renamed("non_uppercase_statics", "non_upper_case_globals");
+        self.register_renamed("unnecessary_parens", "unused_parens");
+        self.register_renamed("unnecessary_import_braces", "unused_import_braces");
+        self.register_renamed("unsafe_block", "unsafe_blocks");
+        self.register_renamed("unnecessary_allocation", "unused_allocation");
+        self.register_renamed("missing_doc", "missing_docs");
+        self.register_renamed("unused_extern_crate", "unused_extern_crates");
+        self.register_renamed("unnecessary_qualification", "unused_qualifications");
+        self.register_renamed("unrecognized_lint", "unknown_lints");
+        self.register_renamed("unused_variable", "unused_variables");
+        self.register_renamed("dead_assignment", "unused_assignments");
+        self.register_renamed("unknown_crate_type", "unknown_crate_types");
+        self.register_renamed("variant_size_difference", "variant_size_differences");
+        self.register_renamed("transmute_fat_ptr", "fat_ptr_transmutes");
+
+    }
+
+    #[allow(unused_variable)]
+    fn find_lint(&self, lint_name: &str, sess: &Session, span: Option<Span>)
+                 -> Option<LintId>
+    {
+        match self.by_name.find_equiv(&lint_name) {
+            Some(&Id(lint_id)) => Some(lint_id),
+            Some(&Renamed(ref new_name, lint_id)) => {
+                // NOTE(stage0): add the following code after the next snapshot
+
+                // let warning = format!("lint {} has been renamed to {}",
+                //                       lint_name, new_name);
+                // match span {
+                //     Some(span) => sess.span_warn(span, warning.as_slice()),
+                //     None => sess.warn(warning.as_slice()),
+                // };
+                Some(lint_id)
+            }
+            None => None
+        }
     }
 
     pub fn process_command_line(&mut self, sess: &Session) {
         for &(ref lint_name, level) in sess.opts.lint_opts.iter() {
-            match self.by_name.find_equiv(&lint_name.as_slice()) {
-                Some(&lint_id) => self.set_level(lint_id, (level, CommandLine)),
+            match self.find_lint(lint_name.as_slice(), sess, None) {
+                Some(lint_id) => self.set_level(lint_id, (level, CommandLine)),
                 None => {
                     match self.lint_groups.iter().map(|(&x, pair)| (x, pair.ref0().clone()))
                                                  .collect::<HashMap<&'static str, Vec<LintId>>>()
@@ -421,8 +485,8 @@ impl<'a, 'tcx> Context<'a, 'tcx> {
                     continue;
                 }
                 Ok((lint_name, level, span)) => {
-                    match self.lints.by_name.find_equiv(&lint_name.get()) {
-                        Some(&lint_id) => vec![(lint_id, level, span)],
+                    match self.lints.find_lint(lint_name.get(), &self.tcx.sess, Some(span)) {
+                        Some(lint_id) => vec![(lint_id, level, span)],
                         None => {
                             match self.lints.lint_groups.find_equiv(&lint_name.get()) {
                                 Some(&(ref v, _)) => v.iter()
