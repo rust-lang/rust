@@ -175,20 +175,20 @@ impl LintStore {
                      HardwiredLints,
                      WhileTrue,
                      UnusedCasts,
-                     CTypes,
-                     HeapMemory,
-                     UnusedAttribute,
-                     PathStatement,
-                     UnusedResult,
+                     ImproperCTypes,
+                     BoxPointers,
+                     UnusedAttributes,
+                     PathStatements,
+                     UnusedResults,
                      NonCamelCaseTypes,
                      NonSnakeCase,
-                     NonUppercaseStatics,
-                     UnnecessaryParens,
-                     UnnecessaryImportBraces,
+                     NonUpperCaseGlobals,
+                     UnusedParens,
+                     UnusedImportBraces,
                      UnusedUnsafe,
-                     UnsafeBlock,
+                     UnsafeBlocks,
                      UnusedMut,
-                     UnnecessaryAllocation,
+                     UnusedAllocation,
                      Stability,
         )
 
@@ -199,12 +199,12 @@ impl LintStore {
         )
 
         add_lint_group!(sess, "bad_style",
-                        NON_CAMEL_CASE_TYPES, NON_SNAKE_CASE, NON_UPPERCASE_STATICS)
+                        NON_CAMEL_CASE_TYPES, NON_SNAKE_CASE, NON_UPPER_CASE_GLOBALS)
 
         add_lint_group!(sess, "unused",
-                        UNUSED_IMPORTS, UNUSED_VARIABLE, DEAD_ASSIGNMENT, DEAD_CODE,
-                        UNUSED_MUT, UNREACHABLE_CODE, UNUSED_EXTERN_CRATE, UNUSED_MUST_USE,
-                        UNUSED_UNSAFE, UNUSED_RESULT, PATH_STATEMENT)
+                        UNUSED_IMPORTS, UNUSED_VARIABLES, UNUSED_ASSIGNMENTS, DEAD_CODE,
+                        UNUSED_MUT, UNREACHABLE_CODE, UNUSED_EXTERN_CRATES, UNUSED_MUST_USE,
+                        UNUSED_UNSAFE, UNUSED_RESULTS, PATH_STATEMENTS)
 
         // We have one lint pass defined in this module.
         self.register_pass(sess, false, box GatherNodeLevels as LintPassObject);
@@ -430,7 +430,7 @@ impl<'a, 'tcx> Context<'a, 'tcx> {
                                                            (*lint_id, level, span))
                                                       .collect(),
                                 None => {
-                                    self.span_lint(builtin::UNRECOGNIZED_LINT, span,
+                                    self.span_lint(builtin::UNKNOWN_LINTS, span,
                                                format!("unknown `{}` attribute: `{}`",
                                                        level.as_str(), lint_name).as_slice());
                                     continue;
@@ -713,7 +713,7 @@ impl LintPass for GatherNodeLevels {
     fn check_item(&mut self, cx: &Context, it: &ast::Item) {
         match it.node {
             ast::ItemEnum(..) => {
-                let lint_id = LintId::of(builtin::VARIANT_SIZE_DIFFERENCE);
+                let lint_id = LintId::of(builtin::VARIANT_SIZE_DIFFERENCES);
                 let lvlsrc = cx.lints.get_level_source(lint_id);
                 match lvlsrc {
                     (lvl, _) if lvl != Allow => {
