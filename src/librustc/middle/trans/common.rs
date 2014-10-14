@@ -39,7 +39,7 @@ use util::nodemap::{DefIdMap, NodeMap};
 
 use arena::TypedArena;
 use std::collections::HashMap;
-use libc::{c_uint, c_longlong, c_ulonglong, c_char};
+use libc::{c_uint, c_char};
 use std::c_str::ToCStr;
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
@@ -595,13 +595,25 @@ pub fn C_u64(ccx: &CrateContext, i: u64) -> ValueRef {
     C_integral(Type::i64(ccx), i, false)
 }
 
-pub fn C_int(ccx: &CrateContext, i: int) -> ValueRef {
-    C_integral(ccx.int_type(), i as u64, true)
+pub fn C_int<I: AsI64>(ccx: &CrateContext, i: I) -> ValueRef {
+    C_integral(ccx.int_type(), i.as_i64() as u64, true)
 }
 
-pub fn C_uint(ccx: &CrateContext, i: uint) -> ValueRef {
-    C_integral(ccx.int_type(), i as u64, false)
+pub fn C_uint<I: AsU64>(ccx: &CrateContext, i: I) -> ValueRef {
+    C_integral(ccx.int_type(), i.as_u64(), false)
 }
+
+pub trait AsI64 { fn as_i64(self) -> i64; }
+pub trait AsU64 { fn as_u64(self) -> u64; }
+
+// FIXME: remove the intptr conversions
+impl AsI64 for i64 { fn as_i64(self) -> i64 { self as i64 }}
+impl AsI64 for i32 { fn as_i64(self) -> i64 { self as i64 }}
+impl AsI64 for int { fn as_i64(self) -> i64 { self as i64 }}
+
+impl AsU64 for u64  { fn as_u64(self) -> u64 { self as u64 }}
+impl AsU64 for u32  { fn as_u64(self) -> u64 { self as u64 }}
+impl AsU64 for uint { fn as_u64(self) -> u64 { self as u64 }}
 
 pub fn C_u8(ccx: &CrateContext, i: uint) -> ValueRef {
     C_integral(Type::i8(ccx), i as u64, false)
@@ -717,13 +729,13 @@ pub fn is_const(v: ValueRef) -> bool {
     }
 }
 
-pub fn const_to_int(v: ValueRef) -> c_longlong {
+pub fn const_to_int(v: ValueRef) -> i64 {
     unsafe {
         llvm::LLVMConstIntGetSExtValue(v)
     }
 }
 
-pub fn const_to_uint(v: ValueRef) -> c_ulonglong {
+pub fn const_to_uint(v: ValueRef) -> u64 {
     unsafe {
         llvm::LLVMConstIntGetZExtValue(v)
     }
