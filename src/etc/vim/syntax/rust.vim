@@ -34,7 +34,9 @@ syn keyword   rustStorage     mut ref static const
 
 syn keyword   rustInvalidBareKeyword crate
 
-syn keyword   rustExternCrate crate contained nextgroup=rustIdentifier skipwhite skipempty
+syn keyword   rustExternCrate crate contained nextgroup=rustIdentifier,rustExternCrateString skipwhite skipempty
+" This is to get the `bar` part of `extern crate "foo" as bar;` highlighting.
+syn match   rustExternCrateString /".*"\_s*as/ contained nextgroup=rustIdentifier skipwhite transparent skipempty contains=rustString,rustOperator
 syn keyword   rustObsoleteExternMod mod contained nextgroup=rustIdentifier skipwhite skipempty
 
 syn match     rustIdentifier  contains=rustIdentifierPrime "\%([^[:cntrl:][:space:][:punct:][:digit:]]\|_\)\%([^[:cntrl:][:punct:][:space:]]\|_\)*" display contained
