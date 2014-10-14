@@ -29,6 +29,8 @@ use core::fmt::Show;
 
 use ring_buf::RingBuf;
 
+use self::Continuation::{Continue, Finished};
+
 // FIXME(conventions): implement bounded iterators
 
 /// A map based on a B-Tree.
@@ -121,12 +123,12 @@ pub enum Entry<'a, K:'a, V:'a> {
 /// A vacant Entry.
 pub struct VacantEntry<'a, K:'a, V:'a> {
     key: K,
-    stack: stack::SearchStack<'a, K, V>,
+    stack: stack::VacantSearchStack<'a, K, V>,
 }
 
 /// An occupied Entry.
 pub struct OccupiedEntry<'a, K:'a, V:'a> {
-    stack: stack::SearchStack<'a, K, V>,
+    stack: stack::OccupiedSearchStack<'a, K, V>,
 }
 
 impl<K: Ord, V> BTreeMap<K, V> {
@@ -202,9 +204,9 @@ impl<K: Ord, V> BTreeMap<K, V> {
     pub fn get<Sized? Q>(&self, key: &Q) -> Option<&V> where Q: BorrowFrom<K> + Ord {
         let mut cur_node = &self.root;
         loop {
-            match cur_node.search(key) {
-                Found(i) => return cur_node.val(i),
-                GoDown(i) => match cur_node.edge(i) {
+            match Node::search(cur_node, key) {
+                Found(handle) => return Some(handle.into_kv().1),
+                GoDown(handle) => match handle.into_edge() {
                     None => return None,
                     Some(next_node) => {
                         cur_node = next_node;
@@ -266,9 +268,9 @@ impl<K: Ord, V> BTreeMap<K, V> {
         let mut temp_node = &mut self.root;
         loop {
             let cur_node = temp_node;
-            match cur_node.search(key) {
-                Found(i) => return cur_node.val_mut(i),
-                GoDown(i) => match cur_node.edge_mut(i) {
+            match Node::search(cur_node, key) {
+                Found(handle) => return Some(handle.into_kv_mut().1),
+                GoDown(handle) => match handle.into_edge_mut() {
                     None => return None,
                     Some(next_node) => {
                         temp_node = next_node;
@@ -328,7 +330,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
     /// assert_eq!(map[37], "c");
     /// ```
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
-    pub fn insert(&mut self, key: K, mut value: V) -> Option<V> {
+    pub fn insert(&mut self, mut key: K, mut value: V) -> Option<V> {
         // This is a stack of rawptrs to nodes paired with indices, respectively
         // representing the nodes and edges of our search path. We have to store rawptrs
         // because as far as Rust is concerned, we can mutate aliased data with such a
@@ -347,30 +349,39 @@ impl<K: Ord, V> BTreeMap<K, V> {
         let mut stack = stack::PartialSearchStack::new(self);
 
         loop {
-            // Same basic logic as found in `find`, but with PartialSearchStack mediating the
-            // actual nodes for us
-            match stack.next().search(&key) {
-                Found(i) => unsafe {
-                    // Perfect match, swap the values and return the old one
-                    let next = stack.into_next();
-                    mem::swap(next.unsafe_val_mut(i), &mut value);
-                    return Some(value);
-                },
-                GoDown(i) => {
-                    // We need to keep searching, try to get the search stack
-                    // to go down further
-                    stack = match stack.push(i) {
-                        stack::Done(new_stack) => {
-                            // We've reached a leaf, perform the insertion here
-                            new_stack.insert(key, value);
-                            return None;
-                        }
-                        stack::Grew(new_stack) => {
-                            // We've found the subtree to insert this key/value pair in,
-                            // keep searching
-                            new_stack
-                        }
-                    };
+            let result = stack.with(move |pusher, node| {
+                // Same basic logic as found in `find`, but with PartialSearchStack mediating the
+                // actual nodes for us
+                match Node::search(node, &key) {
+                    Found(mut handle) => {
+                        // Perfect match, swap the values and return the old one
+                        mem::swap(handle.val_mut(), &mut value);
+                        return Finished(Some(value));
+                    },
+                    GoDown(handle) => {
+                        // We need to keep searching, try to get the search stack
+                        // to go down further
+                        match pusher.push(handle) {
+                            stack::Done(new_stack) => {
+                                // We've reached a leaf, perform the insertion here
+                                new_stack.insert(key, value);
+                                return Finished(None);
+                            }
+                            stack::Grew(new_stack) => {
+                                // We've found the subtree to insert this key/value pair in,
+                                // keep searching
+                                return Continue((new_stack, key, value));
+                            }
+                        };
+                    }
+                }
+            });
+            match result {
+                Finished(ret) => { return ret; },
+                Continue((new_stack, renewed_key, renewed_val)) => {
+                    stack = new_stack;
+                    key = renewed_key;
+                    value = renewed_val;
                 }
             }
         }
@@ -438,23 +449,35 @@ impl<K: Ord, V> BTreeMap<K, V> {
         // See `swap` for a more thorough description of the stuff going on in here
         let mut stack = stack::PartialSearchStack::new(self);
         loop {
-            match stack.next().search(key) {
-                Found(i) => {
-                    // Perfect match. Terminate the stack here, and remove the entry
-                    return Some(stack.seal(i).remove());
-                },
-                GoDown(i) => {
-                    // We need to keep searching, try to go down the next edge
-                    stack = match stack.push(i) {
-                        stack::Done(_) => return None, // We're at a leaf; the key isn't in here
-                        stack::Grew(new_stack) => {
-                            new_stack
-                        }
-                    };
+            let result = stack.with(move |pusher, node| {
+                match Node::search(node, key) {
+                    Found(handle) => {
+                        // Perfect match. Terminate the stack here, and remove the entry
+                        return Finished(Some(pusher.seal(handle).remove()));
+                    },
+                    GoDown(handle) => {
+                        // We need to keep searching, try to go down the next edge
+                        match pusher.push(handle) {
+                            // We're at a leaf; the key isn't in here
+                            stack::Done(_) => return Finished(None),
+                            stack::Grew(new_stack) => return Continue(new_stack)
+                        };
+                    }
                 }
+            });
+            match result {
+                Finished(ret) => return ret,
+                Continue(new_stack) => stack = new_stack
             }
         }
     }
+}
+
+/// A helper enum useful for deciding whether to continue a loop since we can't
+/// return from a closure
+enum Continuation<A, B> {
+    Continue(A),
+    Finished(B)
 }
 
 /// The stack module provides a safe interface for constructing and manipulating a stack of ptrs
@@ -463,11 +486,34 @@ impl<K: Ord, V> BTreeMap<K, V> {
 mod stack {
     pub use self::PushResult::*;
     use core::prelude::*;
+    use core::kinds::marker;
+    use core::mem;
     use super::BTreeMap;
     use super::super::node::*;
     use vec::Vec;
 
-    type StackItem<K, V> = (*mut Node<K, V>, uint);
+    /// A generic mutable reference, identical to `&mut` except for the fact that its lifetime
+    /// parameter is invariant. This means that wherever an `IdRef` is expected, only an `IdRef`
+    /// with the exact requested lifetime can be used. This is in contrast to normal references,
+    /// where `&'static` can be used in any function expecting any lifetime reference.
+    pub struct IdRef<'id, T: 'id> {
+        inner: &'id mut T,
+        marker: marker::InvariantLifetime<'id>
+    }
+
+    impl<'id, T> Deref<T> for IdRef<'id, T> {
+        fn deref(&self) -> &T {
+            &*self.inner
+        }
+    }
+
+    impl<'id, T> DerefMut<T> for IdRef<'id, T> {
+        fn deref_mut(&mut self) -> &mut T {
+            &mut *self.inner
+        }
+    }
+
+    type StackItem<K, V> = EdgeNodeHandle<*mut Node<K, V>>;
     type Stack<K, V> = Vec<StackItem<K, V>>;
 
     /// A PartialSearchStack handles the construction of a search stack.
@@ -477,12 +523,29 @@ mod stack {
         next: *mut Node<K, V>,
     }
 
-    /// A SearchStack represents a full path to an element of interest. It provides methods
+    /// An OccupiedSearchStack represents a full path to an element of interest. It provides methods
     /// for manipulating the element at the top of its stack.
-    pub struct SearchStack<'a, K:'a, V:'a> {
+    pub struct OccupiedSearchStack<'a, K:'a, V:'a> {
         map: &'a mut BTreeMap<K, V>,
         stack: Stack<K, V>,
-        top: StackItem<K, V>,
+        top: KVNodeHandle<*mut Node<K, V>>,
+    }
+
+    /// A VacantSearchStack represents a full path to a spot for a new element of interest. It
+    /// provides a method inserting an element at the top of its stack.
+    pub struct VacantSearchStack<'a, K:'a, V:'a> {
+        map: &'a mut BTreeMap<K, V>,
+        stack: Stack<K, V>,
+        top: EdgeNodeHandle<*mut Node<K, V>>,
+    }
+
+    /// A `PartialSearchStack` that doesn't hold a a reference to the next node, and is just
+    /// just waiting for a `Handle` to that next node to be pushed. See `PartialSearchStack::with`
+    /// for more details.
+    pub struct Pusher<'id, 'a, K:'a, V:'a> {
+        map: &'a mut BTreeMap<K, V>,
+        stack: Stack<K, V>,
+        marker: marker::InvariantLifetime<'id>
     }
 
     /// The result of asking a PartialSearchStack to push another node onto itself. Either it
@@ -490,7 +553,7 @@ mod stack {
     /// which case it seals itself and yields a complete SearchStack.
     pub enum PushResult<'a, K:'a, V:'a> {
         Grew(PartialSearchStack<'a, K, V>),
-        Done(SearchStack<'a, K, V>),
+        Done(VacantSearchStack<'a, K, V>),
     }
 
     impl<'a, K, V> PartialSearchStack<'a, K, V> {
@@ -506,130 +569,92 @@ mod stack {
             }
         }
 
-        /// Pushes the requested child of the stack's current top on top of the stack. If the child
-        /// exists, then a new PartialSearchStack is yielded. Otherwise, a full SearchStack is
-        /// yielded.
-        pub fn push(self, edge: uint) -> PushResult<'a, K, V> {
-            let map = self.map;
-            let mut stack = self.stack;
-            let next_ptr = self.next;
-            let next_node = unsafe {
-                &mut *next_ptr
+        /// Breaks up the stack into a `Pusher` and the next `Node`, allowing the given closure
+        /// to interact with, search, and finally push the `Node` onto the stack. The passed in
+        /// closure must be polymorphic on the `'id` lifetime parameter, as this statically
+        /// ensures that only `Handle`s from the correct `Node` can be pushed.
+        ///
+        /// The reason this works is that the `Pusher` has an `'id` parameter, and will only accept
+        /// handles with the same `'id`. The closure could only get references with that lifetime
+        /// through its arguments or through some other `IdRef` that it has lying around. However,
+        /// no other `IdRef` could possibly work - because the `'id` is held in an invariant
+        /// parameter, it would need to have precisely the correct lifetime, which would mean that
+        /// at least one of the calls to `with` wouldn't be properly polymorphic, wanting a
+        /// specific lifetime instead of the one that `with` chooses to give it.
+        ///
+        /// See also Haskell's `ST` monad, which uses a similar trick.
+        pub fn with<T, F: for<'id> FnOnce(Pusher<'id, 'a, K, V>,
+                                          IdRef<'id, Node<K, V>>) -> T>(self, closure: F) -> T {
+            let pusher = Pusher {
+                map: self.map,
+                stack: self.stack,
+                marker: marker::InvariantLifetime
             };
-            let to_insert = (next_ptr, edge);
-            match next_node.edge_mut(edge) {
-                None => Done(SearchStack {
-                    map: map,
-                    stack: stack,
-                    top: to_insert,
-                }),
+            let node = IdRef {
+                inner: unsafe { &mut *self.next },
+                marker: marker::InvariantLifetime
+            };
+
+            closure(pusher, node)
+        }
+    }
+
+    impl<'id, 'a, K, V> Pusher<'id, 'a, K, V> {
+        /// Pushes the requested child of the stack's current top on top of the stack. If the child
+        /// exists, then a new PartialSearchStack is yielded. Otherwise, a VacantSearchStack is
+        /// yielded.
+        pub fn push(mut self, mut edge: EdgeNodeHandle<IdRef<'id, Node<K, V>>>)
+                    -> PushResult<'a, K, V> {
+            let to_insert = edge.as_raw();
+            match edge.edge_mut() {
+                None => {
+                    Done(VacantSearchStack {
+                        map: self.map,
+                        stack: self.stack,
+                        top: to_insert,
+                    })
+                },
                 Some(node) => {
-                    stack.push(to_insert);
+                    self.stack.push(to_insert);
                     Grew(PartialSearchStack {
-                        map: map,
-                        stack: stack,
+                        map: self.map,
+                        stack: self.stack,
                         next: node as *mut _,
                     })
                 },
             }
         }
 
-        /// Converts the stack into a mutable reference to its top.
-        pub fn into_next(self) -> &'a mut Node<K, V> {
-            unsafe {
-                &mut *self.next
-            }
-        }
-
-        /// Gets the top of the stack.
-        pub fn next(&self) -> &Node<K, V> {
-            unsafe {
-                &*self.next
-            }
-        }
-
-        /// Converts the PartialSearchStack into a SearchStack.
-        pub fn seal(self, index: uint) -> SearchStack<'a, K, V> {
-            SearchStack {
+        /// Converts the PartialSearchStack into an OccupiedSearchStack.
+        pub fn seal(self, mut node: KVNodeHandle<IdRef<'id, Node<K, V>>>)
+                    -> OccupiedSearchStack<'a, K, V> {
+            OccupiedSearchStack {
                 map: self.map,
                 stack: self.stack,
-                top: (self.next as *mut _, index),
+                top: node.as_raw(),
             }
         }
     }
 
-    impl<'a, K, V> SearchStack<'a, K, V> {
+    impl<'a, K, V> OccupiedSearchStack<'a, K, V> {
         /// Gets a reference to the value the stack points to.
         pub fn peek(&self) -> &V {
-            let (node_ptr, index) = self.top;
-            unsafe {
-                (*node_ptr).val(index).unwrap()
-            }
+            unsafe { self.top.from_raw().into_kv().1 }
         }
 
         /// Gets a mutable reference to the value the stack points to.
         pub fn peek_mut(&mut self) -> &mut V {
-            let (node_ptr, index) = self.top;
-            unsafe {
-                (*node_ptr).val_mut(index).unwrap()
-            }
+            unsafe { self.top.from_raw_mut().into_kv_mut().1 }
         }
 
         /// Converts the stack into a mutable reference to the value it points to, with a lifetime
         /// tied to the original tree.
-        pub fn into_top(self) -> &'a mut V {
-            let (node_ptr, index) = self.top;
+        pub fn into_top(mut self) -> &'a mut V {
             unsafe {
-                (*node_ptr).val_mut(index).unwrap()
-            }
-        }
-
-        /// Inserts the key and value into the top element in the stack, and if that node has to
-        /// split recursively inserts the split contents into the next element stack until
-        /// splits stop.
-        ///
-        /// Assumes that the stack represents a search path from the root to a leaf.
-        ///
-        /// An &mut V is returned to the inserted value, for callers that want a reference to this.
-        pub fn insert(self, key: K, val: V) -> &'a mut V {
-            unsafe {
-                let map = self.map;
-                map.length += 1;
-
-                let mut stack = self.stack;
-                // Insert the key and value into the leaf at the top of the stack
-                let (node, index) = self.top;
-                let (mut insertion, inserted_ptr) = {
-                    (*node).insert_as_leaf(index, key, val)
-                };
-
-                loop {
-                    match insertion {
-                        Fit => {
-                            // The last insertion went off without a hitch, no splits! We can stop
-                            // inserting now.
-                            return &mut *inserted_ptr;
-                        }
-                        Split(key, val, right) => match stack.pop() {
-                            // The last insertion triggered a split, so get the next element on the
-                            // stack to recursively insert the split node into.
-                            None => {
-                                // The stack was empty; we've split the root, and need to make a
-                                // a new one. This is done in-place because we can't move the
-                                // root out of a reference to the tree.
-                                Node::make_internal_root(&mut map.root, map.b, key, val, right);
-
-                                map.depth += 1;
-                                return &mut *inserted_ptr;
-                            }
-                            Some((node, index)) => {
-                                // The stack wasn't empty, do the insertion and recurse
-                                insertion = (*node).insert_as_internal(index, key, val, right);
-                                continue;
-                            }
-                        }
-                    }
-                }
+                mem::copy_mut_lifetime(
+                    self.map,
+                    self.top.from_raw_mut().val_mut()
+                )
             }
         }
 
@@ -651,10 +676,8 @@ mod stack {
             // Then, note if the leaf is underfull, and promptly forget the leaf and its ptr
             // to avoid ownership issues.
             let (value, mut underflow) = unsafe {
-                let (leaf_ptr, index) = self.top;
-                let leaf = &mut *leaf_ptr;
-                let (_key, value) = leaf.remove_as_leaf(index);
-                let underflow = leaf.is_underfull();
+                let (_, value) = self.top.from_raw_mut().remove_as_leaf();
+                let underflow = self.top.from_raw().node().is_underfull();
                 (value, underflow)
             };
 
@@ -668,17 +691,16 @@ mod stack {
                             // We've emptied out the root, so make its only child the new root.
                             // If it's a leaf, we just let it become empty.
                             map.depth -= 1;
-                            map.root = map.root.pop_edge().unwrap();
+                            map.root.into_edge();
                         }
                         return value;
                     }
-                    Some((parent_ptr, index)) => {
+                    Some(mut handle) => {
                         if underflow {
                             // Underflow! Handle it!
                             unsafe {
-                                let parent = &mut *parent_ptr;
-                                parent.handle_underflow(index);
-                                underflow = parent.is_underfull();
+                                handle.from_raw_mut().handle_underflow();
+                                underflow = handle.from_raw().node().is_underfull();
                             }
                         } else {
                             // All done!
@@ -697,36 +719,87 @@ mod stack {
         /// become swapped.
         fn leafify(&mut self) {
             unsafe {
-                let (node_ptr, index) = self.top;
-                // First, get ptrs to the found key-value pair
-                let node = &mut *node_ptr;
-                let (key_ptr, val_ptr) = {
-                    (node.unsafe_key_mut(index) as *mut _,
-                     node.unsafe_val_mut(index) as *mut _)
-                };
+                let mut top_raw = self.top;
+                let mut top = top_raw.from_raw_mut();
+
+                let key_ptr = top.key_mut() as *mut _;
+                let val_ptr = top.val_mut() as *mut _;
 
                 // Try to go into the right subtree of the found key to find its successor
-                match node.edge_mut(index + 1) {
+                let mut right_edge = top.right_edge();
+                let right_edge_raw = right_edge.as_raw();
+                match right_edge.edge_mut() {
                     None => {
                         // We're a proper leaf stack, nothing to do
                     }
                     Some(mut temp_node) => {
                         //We're not a proper leaf stack, let's get to work.
-                        self.stack.push((node_ptr, index + 1));
+                        self.stack.push(right_edge_raw);
                         loop {
                             // Walk into the smallest subtree of this node
                             let node = temp_node;
-                            let node_ptr = node as *mut _;
 
                             if node.is_leaf() {
                                 // This node is a leaf, do the swap and return
-                                self.top = (node_ptr, 0);
-                                node.unsafe_swap(0, &mut *key_ptr, &mut *val_ptr);
+                                let mut handle = node.kv_handle(0);
+                                self.top = handle.as_raw();
+                                mem::swap(handle.key_mut(), &mut *key_ptr);
+                                mem::swap(handle.val_mut(), &mut *val_ptr);
                                 break;
                             } else {
                                 // This node is internal, go deeper
-                                self.stack.push((node_ptr, 0));
-                                temp_node = node.unsafe_edge_mut(0);
+                                let mut handle = node.edge_handle(0);
+                                self.stack.push(handle.as_raw());
+                                temp_node = handle.into_edge_mut().unwrap();
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    impl<'a, K, V> VacantSearchStack<'a, K, V> {
+        /// Inserts the key and value into the top element in the stack, and if that node has to
+        /// split recursively inserts the split contents into the next element stack until
+        /// splits stop.
+        ///
+        /// Assumes that the stack represents a search path from the root to a leaf.
+        ///
+        /// An &mut V is returned to the inserted value, for callers that want a reference to this.
+        pub fn insert(mut self, key: K, val: V) -> &'a mut V {
+            unsafe {
+                self.map.length += 1;
+
+                // Insert the key and value into the leaf at the top of the stack
+                let (mut insertion, inserted_ptr) = self.top.from_raw_mut()
+                                                        .insert_as_leaf(key, val);
+
+                loop {
+                    match insertion {
+                        Fit => {
+                            // The last insertion went off without a hitch, no splits! We can stop
+                            // inserting now.
+                            return &mut *inserted_ptr;
+                        }
+                        Split(key, val, right) => match self.stack.pop() {
+                            // The last insertion triggered a split, so get the next element on the
+                            // stack to recursively insert the split node into.
+                            None => {
+                                // The stack was empty; we've split the root, and need to make a
+                                // a new one. This is done in-place because we can't move the
+                                // root out of a reference to the tree.
+                                Node::make_internal_root(&mut self.map.root, self.map.b,
+                                                         key, val, right);
+
+                                self.map.depth += 1;
+                                return &mut *inserted_ptr;
+                            }
+                            Some(mut handle) => {
+                                // The stack wasn't empty, do the insertion and recurse
+                                insertion = handle.from_raw_mut()
+                                                  .insert_as_internal(key, val, right);
+                                continue;
                             }
                         }
                     }
@@ -1156,31 +1229,40 @@ impl<K, V> BTreeMap<K, V> {
 
 impl<K: Ord, V> BTreeMap<K, V> {
     /// Gets the given key's corresponding entry in the map for in-place manipulation.
-    pub fn entry<'a>(&'a mut self, key: K) -> Entry<'a, K, V> {
+    pub fn entry<'a>(&'a mut self, mut key: K) -> Entry<'a, K, V> {
         // same basic logic of `swap` and `pop`, blended together
         let mut stack = stack::PartialSearchStack::new(self);
         loop {
-            match stack.next().search(&key) {
-                Found(i) => {
-                    // Perfect match
-                    return Occupied(OccupiedEntry {
-                        stack: stack.seal(i)
-                    });
-                },
-                GoDown(i) => {
-                    stack = match stack.push(i) {
-                        stack::Done(new_stack) => {
-                            // Not in the tree, but we've found where it goes
-                            return Vacant(VacantEntry {
-                                stack: new_stack,
-                                key: key,
-                            });
-                        }
-                        stack::Grew(new_stack) => {
-                            // We've found the subtree this key must go in
-                            new_stack
-                        }
-                    };
+            let result = stack.with(move |pusher, node| {
+                match Node::search(node, &key) {
+                    Found(handle) => {
+                        // Perfect match
+                        return Finished(Occupied(OccupiedEntry {
+                            stack: pusher.seal(handle)
+                        }));
+                    },
+                    GoDown(handle) => {
+                        match pusher.push(handle) {
+                            stack::Done(new_stack) => {
+                                // Not in the tree, but we've found where it goes
+                                return Finished(Vacant(VacantEntry {
+                                    stack: new_stack,
+                                    key: key,
+                                }));
+                            }
+                            stack::Grew(new_stack) => {
+                                // We've found the subtree this key must go in
+                                return Continue((new_stack, key));
+                            }
+                        };
+                    }
+                }
+            });
+            match result {
+                Finished(finished) => return finished,
+                Continue((new_stack, renewed_key)) => {
+                    stack = new_stack;
+                    key = renewed_key;
                 }
             }
         }
