@@ -1585,10 +1585,10 @@ declare_lint!(pub UNUSED_ASSIGNMENTS, Warn,
               "detect assignments that will never be read")
 
 declare_lint!(pub DEAD_CODE, Warn,
-              "detect piece of code that will never be used")
+              "detect unused, unexported items")
 
 declare_lint!(pub UNREACHABLE_CODE, Warn,
-              "detects unreachable code")
+              "detects unreachable code paths")
 
 declare_lint!(pub WARNINGS, Warn,
               "mass-change the level for lints which produce warnings")
