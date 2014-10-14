@@ -692,15 +692,15 @@ pub trait IndexMut<Index, Result> {
  *         println!("Slicing!");
  *         self
  *     }
- *     fn slice_from_or_fail<'a>(&'a self, from: &Foo) -> &'a Foo {
+ *     fn slice_from_or_fail<'a>(&'a self, _from: &Foo) -> &'a Foo {
  *         println!("Slicing!");
  *         self
  *     }
- *     fn slice_to_or_fail<'a>(&'a self, to: &Foo) -> &'a Foo {
+ *     fn slice_to_or_fail<'a>(&'a self, _to: &Foo) -> &'a Foo {
  *         println!("Slicing!");
  *         self
  *     }
- *     fn slice_or_fail<'a>(&'a self, from: &Foo, to: &Foo) -> &'a Foo {
+ *     fn slice_or_fail<'a>(&'a self, _from: &Foo, _to: &Foo) -> &'a Foo {
  *         println!("Slicing!");
  *         self
  *     }
@@ -741,15 +741,15 @@ pub trait Slice<Idx, Sized? Result> for Sized? {
  *         println!("Slicing!");
  *         self
  *     }
- *     fn slice_from_or_fail_mut<'a>(&'a mut self, from: &Foo) -> &'a mut Foo {
+ *     fn slice_from_or_fail_mut<'a>(&'a mut self, _from: &Foo) -> &'a mut Foo {
  *         println!("Slicing!");
  *         self
  *     }
- *     fn slice_to_or_fail_mut<'a>(&'a mut self, to: &Foo) -> &'a mut Foo {
+ *     fn slice_to_or_fail_mut<'a>(&'a mut self, _to: &Foo) -> &'a mut Foo {
  *         println!("Slicing!");
  *         self
  *     }
- *     fn slice_or_fail_mut<'a>(&'a mut self, from: &Foo, to: &Foo) -> &'a mut Foo {
+ *     fn slice_or_fail_mut<'a>(&'a mut self, _from: &Foo, _to: &Foo) -> &'a mut Foo {
  *         println!("Slicing!");
  *         self
  *     }
