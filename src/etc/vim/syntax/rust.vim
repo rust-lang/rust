@@ -27,7 +27,7 @@ syn keyword   rustKeyword     for in if impl let
 syn keyword   rustKeyword     loop once proc pub
 syn keyword   rustKeyword     return super
 syn keyword   rustKeyword     unsafe virtual where while
-syn keyword   rustKeyword     use nextgroup=rustModPath,rustModPathInUse skipwhite skipempty
+syn keyword   rustKeyword     use nextgroup=rustModPath skipwhite skipempty
 " FIXME: Scoped impl's name is also fallen in this category
 syn keyword   rustKeyword     mod trait struct enum type nextgroup=rustIdentifier skipwhite skipempty
 syn keyword   rustStorage     mut ref static const
@@ -131,9 +131,7 @@ syn keyword   rustBoolean     true false
 " If foo::bar changes to foo.bar, change this ("::" to "\.").
 " If foo::bar changes to Foo::bar, change this (first "\w" to "\u").
 syn match     rustModPath     "\w\(\w\)*::[^<]"he=e-3,me=e-3
-syn match     rustModPathInUse "\w\(\w\)*" contained " only for 'use path;'
 syn match     rustModPathSep  "::"
-" rustModPathInUse is split out from rustModPath so that :syn-include can get the group list right.
 
 syn match     rustFuncCall    "\w\(\w\)*("he=e-1,me=e-1
 syn match     rustFuncCall    "\w\(\w\)*::<"he=e-3,me=e-3 " foo::<T>();
@@ -252,7 +250,6 @@ hi def link rustReservedKeyword Error
 hi def link rustConditional   Conditional
 hi def link rustIdentifier    Identifier
 hi def link rustCapsIdent     rustIdentifier
-hi def link rustModPathInUse  rustModPath
 hi def link rustModPath       Include
 hi def link rustModPathSep    Delimiter
 hi def link rustFunction      Function
