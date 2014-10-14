@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -10,8 +10,9 @@
 
 #![allow(non_camel_case_types)]
 
-use std::hash::{Hash, Hasher};
+use std::cell::RefCell;
 use std::collections::HashMap;
+use std::hash::{Hash, Hasher};
 use syntax::ast;
 use syntax::visit;
 use syntax::visit::Visitor;
@@ -154,4 +155,57 @@ pub fn can_reach<S,H:Hasher<S>,T:Eq+Clone+Hash<S>>(
         i += 1;
     }
     return false;
+}
+
+/// Memoizes a one-argument closure using the given RefCell containing
+/// a type implementing MutableMap to serve as a cache.
+///
+/// In the future the signature of this function is expected to be:
+/// ```
+/// pub fn memoized<T: Clone, U: Clone, M: MutableMap<T, U>>(
+///    cache: &RefCell<M>,
+///    f: &|&: T| -> U
+/// ) -> impl |&: T| -> U {
+/// ```
+/// but currently it is not possible.
+///
+/// # Example
+/// ```
+/// struct Context {
+///    cache: RefCell<HashMap<uint, uint>>
+/// }
+///
+/// fn factorial(ctxt: &Context, n: uint) -> uint {
+///     memoized(&ctxt.cache, n, |n| match n {
+///         0 | 1 => n,
+///         _ => factorial(ctxt, n - 2) + factorial(ctxt, n - 1)
+///     })
+/// }
+/// ```
+#[inline(always)]
+pub fn memoized<T: Clone, U: Clone, M: MutableMap<T, U>>(
+    cache: &RefCell<M>,
+    arg: T,
+    f: |T| -> U
+) -> U {
+    memoized_with_key(cache, arg, f, |arg| arg.clone())
+}
+
+#[inline(always)]
+pub fn memoized_with_key<T, K, U: Clone, M: MutableMap<K, U>>(
+    cache: &RefCell<M>,
+    arg: T,
+    f: |T| -> U,
+    k: |&T| -> K
+) -> U {
+    let key = k(&arg);
+    let result = cache.borrow().find(&key).map(|result| result.clone());
+    match result {
+        Some(result) => result,
+        None => {
+            let result = f(arg);
+            cache.borrow_mut().insert(key, result.clone());
+            result
+        }
+    }
 }

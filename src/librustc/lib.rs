@@ -29,12 +29,9 @@ This API is completely unstable and subject to change.
       html_root_url = "http://doc.rust-lang.org/nightly/")]
 
 #![allow(deprecated)]
-#![allow(unknown_features)]
-#![feature(macro_rules, globs, struct_variant, quote)]
-#![feature(default_type_params, phase, unsafe_destructor, slicing_syntax)]
-
+#![feature(default_type_params, globs, if_let, import_shadowing, macro_rules, phase, quote)]
+#![feature(slicing_syntax, struct_variant, unsafe_destructor)]
 #![feature(rustc_diagnostic_macros)]
-#![feature(import_shadowing)]
 
 extern crate arena;
 extern crate debug;
@@ -97,7 +94,6 @@ pub mod middle {
     pub mod intrinsicck;
     pub mod lang_items;
     pub mod liveness;
-    pub mod macros;
     pub mod mem_categorization;
     pub mod pat_util;
     pub mod privacy;
