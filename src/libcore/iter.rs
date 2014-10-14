@@ -873,7 +873,7 @@ pub trait OrdIterator<A> {
     ///    element in the iterator and all elements are equal.
     ///
     /// On an iterator of length `n`, `min_max` does `1.5 * n` comparisons,
-    /// and so faster than calling `min` and `max separately which does `2 * n` comparisons.
+    /// and so is faster than calling `min` and `max` separately which does `2 * n` comparisons.
     ///
     /// # Example
     ///
