@@ -1220,6 +1220,27 @@ macro_rules! iterator {
                 let exact = diff / (if size == 0 {1} else {size});
                 (exact, Some(exact))
             }
+
+            #[inline]
+            fn nth(&mut self, n: uint) -> Option<$elem> {
+                unsafe {
+                    if mem::size_of::<T>() == 0 {
+                        self.ptr = transmute(self.ptr as uint + n + 1);
+                        if self.ptr > self.end {
+                            None
+                        } else {
+                            Some(transmute(1u))
+                        }
+                    } else {
+                        self.ptr = self.ptr.offset(n as int + 1);
+                        if self.ptr > self.end {
+                            None
+                        } else {
+                            Some(transmute(self.ptr.offset(-1)))
+                        }
+                    }
+                }
+            }
         }
 
         #[experimental = "needs review"]
