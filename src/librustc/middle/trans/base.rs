@@ -2078,7 +2078,7 @@ fn enum_variant_size_lint(ccx: &CrateContext, enum_def: &ast::EnumDef, sp: Span,
     let mut sizes = Vec::new(); // does no allocation if no pushes, thankfully
 
     let levels = ccx.tcx().node_lint_levels.borrow();
-    let lint_id = lint::LintId::of(lint::builtin::VARIANT_SIZE_DIFFERENCE);
+    let lint_id = lint::LintId::of(lint::builtin::VARIANT_SIZE_DIFFERENCES);
     let lvlsrc = match levels.find(&(id, lint_id)) {
         None | Some(&(lint::Allow, _)) => return,
         Some(&lvlsrc) => lvlsrc,
@@ -2115,7 +2115,7 @@ fn enum_variant_size_lint(ccx: &CrateContext, enum_def: &ast::EnumDef, sp: Span,
     if largest > slargest * 3 && slargest > 0 {
         // Use lint::raw_emit_lint rather than sess.add_lint because the lint-printing
         // pass for the latter already ran.
-        lint::raw_emit_lint(&ccx.tcx().sess, lint::builtin::VARIANT_SIZE_DIFFERENCE,
+        lint::raw_emit_lint(&ccx.tcx().sess, lint::builtin::VARIANT_SIZE_DIFFERENCES,
                             lvlsrc, Some(sp),
                             format!("enum variant is more than three times larger \
                                      ({} bytes) than the next largest (ignoring padding)",
