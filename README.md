@@ -1,4 +1,7 @@
 # Rust RFCs
+[Rust RFCs]: #rust-rfcs
+
+(jump forward to: [Table of Contents], [Active RFC List])
 
 Many changes, including bug fixes and documentation improvements can be 
 implemented and reviewed via the normal GitHub pull request workflow.
@@ -12,7 +15,54 @@ consistent and controlled path for new features to enter the language
 and standard libraries, so that all stakeholders can be confident about 
 the direction the language is evolving in.
 
+## Active RFC List
+[Active RFC List]: #active-rfc-list
+
+* [0002-rfc-process.md](text/0002-rfc-process.md)
+* [0008-new-intrinsics.md](text/0008-new-intrinsics.md)
+* [0016-more-attributes.md](text/0016-more-attributes.md)
+* [0019-opt-in-builtin-traits.md](text/0019-opt-in-builtin-traits.md)
+* [0048-traits.md](text/0048-traits.md)
+* [0066-better-temporary-lifetimes.md](text/0066-better-temporary-lifetimes.md)
+* [0090-lexical-syntax-simplification.md](text/0090-lexical-syntax-simplification.md)
+* [0107-pattern-guards-with-bind-by-move.md](text/0107-pattern-guards-with-bind-by-move.md)
+* [0114-closures.md](text/0114-closures.md)
+* [0131-target-specification.md](text/0131-target-specification.md)
+* [0132-ufcs.md](text/0132-ufcs.md)
+* [0135-where.md](text/0135-where.md)
+* [0141-lifetime-elision.md](text/0141-lifetime-elision.md)
+* [0151-capture-by-value.md](text/0151-capture-by-value.md)
+* [0195-associated-items.md](text/0195-associated-items.md)
+* [0198-slice-notation.md](text/0198-slice-notation.md)
+* [0199-ownership-variants.md](text/0199-ownership-variants.md)
+* [0201-error-chaining.md](text/0201-error-chaining.md)
+* [0212-restore-int-fallback.md](text/0212-restore-int-fallback.md)
+* [0214-while-let.md](text/0214-while-let.md)
+* [0216-collection-views.md](text/0216-collection-views.md)
+* [0221-panic.md](text/0221-panic.md)
+* [0230-remove-runtime.md](text/0230-remove-runtime.md)
+* [0231-upvar-capture-inference.md](text/0231-upvar-capture-inference.md)
+* [0240-unsafe-api-location.md](text/0240-unsafe-api-location.md)
+* [0246-const-vs-static.md](text/0246-const-vs-static.md)
+* [0341-remove-virtual-structs.md](text/0341-remove-virtual-structs.md)
+* [0342-keywords.md](text/0342-keywords.md)
+
+## Table of Contents
+[Table of Contents]: #table-of-contents
+* [Opening](#rust-rfcs)
+* [Active RFC List]
+* [Table of Contents]
+* [When you need to follow this process]
+* [What the process is]
+* [The role of the shepherd]
+* [The RFC life-cycle]
+* [Implementing an RFC]
+* [Reviewing RFC's]
+* [RFC Postponement]
+* [Help this is all too informal!]
+
 ## When you need to follow this process
+[When you need to follow this process]: #when-you-need-to-follow-this-process
 
 You need to follow this process if you intend to make "substantial" 
 changes to the Rust distribution. What constitutes a "substantial" 
@@ -39,7 +89,7 @@ through the RFC process, it may be closed with a polite request to
 submit an RFC first.
 
 ## What the process is
-
+[What the process is]: #what-the-process-is
 In short, to get a major feature added to Rust, one must first get the 
 RFC merged into the RFC repo as a markdown file. At that point the RFC 
 is 'active' and may be implemented with the goal of eventual inclusion 
@@ -62,6 +112,7 @@ merging the pull request and assigning the RFC a number, at which point
 the RFC is 'active', or reject it by closing the pull request.
 
 ## The role of the shepherd
+[The role of the shepherd]: the-role-of-the-shepherd
 
 During triage, every RFC will either be closed or assigned a shepherd.
 The role of the shepherd is to move the RFC through the process. This
@@ -74,6 +125,7 @@ here is to "front-load" as much of the feedback as possible before the
 point where we actually reach a decision.
 
 ## The RFC life-cycle
+[The RFC life-cycle]: #the-rfc-life-cycle
 
 Once an RFC becomes active then authors may implement it and submit the 
 feature as a pull request to the Rust repo. An 'active' is not a rubber 
@@ -100,6 +152,7 @@ that fails after becoming active is 'inactive' and moves to the
 'inactive' folder.
 
 ## Implementing an RFC
+[Implementing an RFC]: #implementing-an-rfc
 
 Some accepted RFC's represent vital features that need to be
 implemented right away. Other accepted RFC's can represent features
@@ -118,6 +171,7 @@ RFC, but cannot determine if someone else is already working on it,
 feel free to ask (e.g. by leaving a comment on the associated issue).
 
 ## Reviewing RFC's
+[Reviewing RFC's]: #reviewing-rfcs
 
 Each week the [core team] will attempt to review some set of open RFC
 pull requests.  The choice of pull requests to review is largely
@@ -144,6 +198,7 @@ should act as a "shepherd" for the feature.  The shepherd need not
 its virtues and the community’s desire for it.
 
 ## RFC Postponement
+[RFC Postponement]: #rfc-postponement
 
 Some RFC pull requests are tagged with the 'postponed' label when they
 are closed (as part of the rejection process).  An RFC closed with
@@ -161,6 +216,7 @@ response is to close the RFC, not postpone it.)
 
 
 ### Help this is all too informal!
+[Help this is all too informal!]: #help-this-is-all-too-informal
 
 The process is intended to be as lightweight as reasonable for the 
 present circumstances. As usual, we are trying to let the process be 
