@@ -34,7 +34,7 @@ pub fn main() {
     let mut iter2 = ItemsWrapper{ base: vec2.iter() };
 
     //Now, test that Items's implementation of nth() is equal to the
-    //default Iterator implementation.
+    //default Iterator implementation for a bunch of random offsets
     assert_eq!(iter1.nth(0), iter2.nth(0));
     assert_eq!(iter1.nth(1), iter2.nth(1));
     assert_eq!(iter1.next(), iter2.next());
@@ -45,4 +45,29 @@ pub fn main() {
     assert_eq!(iter1.nth(5), iter2.nth(5));
     assert_eq!(iter1.nth(5), iter2.nth(5));
     assert_eq!(iter1.next(), iter2.next());
+
+    // Test that nth() hitting the last element leaves the iterator in a state
+    // that next() will return None
+    let vec1: Vec<uint> = count(0u, 1).take(2).collect();
+    let vec2 = vec1.clone();
+
+    let mut iter1 = vec1.iter();
+    let mut iter2 = ItemsWrapper{ base: vec2.iter() };
+    assert_eq!(iter1.nth(1), iter2.nth(1));
+    assert!(iter1.next().is_none());
+    assert!(iter2.next().is_none());
+
+    // Test that n() returns None when the first element past the end is requested
+    let mut iter1 = vec1.iter();
+    let mut iter2 = ItemsWrapper{ base: vec2.iter() };
+    assert_eq!(iter1.nth(1), iter2.nth(1));
+    assert!(iter1.nth(0).is_none());
+    assert!(iter2.nth(0).is_none());
+
+    // Test that nth() returns None when elements past the end pointer are requested
+    let mut iter1 = vec1.iter();
+    let mut iter2 = ItemsWrapper{ base: vec2.iter() };
+    assert_eq!(iter1.nth(1), iter2.nth(1));
+    assert!(iter1.nth(1).is_none());
+    assert!(iter2.nth(1).is_none());
 }
