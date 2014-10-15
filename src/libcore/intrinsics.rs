@@ -256,6 +256,13 @@ extern "rust-intrinsic" {
     /// NB: This is very different from the `unreachable!()` macro!
     pub fn unreachable() -> !;
 
+    /// Inform the optimizer that a condition is always true.
+    /// If the condition is false, the behavior is undefined.
+    ///
+    /// No code is generated for this intrisic.
+    #[cfg(not(stage0))]
+    pub fn assume(b: bool);
+
     /// Execute a breakpoint trap, for inspection by a debugger.
     pub fn breakpoint();
 
