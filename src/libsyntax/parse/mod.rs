@@ -823,19 +823,19 @@ mod test {
                                 }
                             },
                             _ => {
-                                error!("failing value 3: {:?}",first_set);
+                                error!("failing value 3: {}",first_set);
                                 assert_eq!("wrong 3","correct")
                             }
                         }
                     },
                     _ => {
-                        error!("failing value 2: {:?}",delim_elts);
+                        error!("failing value 2: {}",delim_elts);
                         assert_eq!("wrong","correct");
                     }
                 }
             },
             _ => {
-                error!("failing value: {:?}",tts);
+                error!("failing value: {}",tts);
                 assert_eq!("wrong 1","correct");
             }
         }

@@ -492,7 +492,7 @@ impl<'a> Parser<'a> {
     /// followed by some token from the set edible + inedible.  Recover
     /// from anticipated input errors, discarding erroneous characters.
     pub fn commit_expr(&mut self, e: &Expr, edible: &[token::Token], inedible: &[token::Token]) {
-        debug!("commit_expr {:?}", e);
+        debug!("commit_expr {}", e);
         match e.node {
             ExprPath(..) => {
                 // might be unit-struct construction; check for recoverableinput error.
@@ -1535,7 +1535,7 @@ impl<'a> Parser<'a> {
             // TYPE TO BE INFERRED
             TyInfer
         } else {
-            let msg = format!("expected type, found token {:?}", self.token);
+            let msg = format!("expected type, found token {}", self.token);
             self.fatal(msg.as_slice());
         };
 
@@ -1591,7 +1591,7 @@ impl<'a> Parser<'a> {
     /// identifier names.
     pub fn parse_arg_general(&mut self, require_name: bool) -> Arg {
         let pat = if require_name || self.is_named_argument() {
-            debug!("parse_arg_general parse_pat (require_name:{:?})",
+            debug!("parse_arg_general parse_pat (require_name:{})",
                    require_name);
             let pat = self.parse_pat();
 
@@ -1882,7 +1882,7 @@ impl<'a> Parser<'a> {
                 token::BINOP(token::SHR) => { return res; }
                 _ => {
                     let msg = format!("expected `,` or `>` after lifetime \
-                                      name, got: {:?}",
+                                      name, got: {}",
                                       self.token);
                     self.fatal(msg.as_slice());
                 }
@@ -4711,7 +4711,7 @@ impl<'a> Parser<'a> {
                 attrs = attrs_remaining.clone().append(attrs.as_slice());
                 first = false;
             }
-            debug!("parse_mod_items: parse_item_or_view_item(attrs={:?})",
+            debug!("parse_mod_items: parse_item_or_view_item(attrs={})",
                    attrs);
             match self.parse_item_or_view_item(attrs,
                                                true /* macros allowed */) {
