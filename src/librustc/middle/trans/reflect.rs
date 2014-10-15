@@ -17,7 +17,6 @@ use middle::trans::callee::ArgVals;
 use middle::trans::callee;
 use middle::trans::common::*;
 use middle::trans::datum::*;
-use middle::trans::glue;
 use middle::trans::machine;
 use middle::trans::meth;
 use middle::trans::type_::Type;
@@ -74,7 +73,6 @@ impl<'a, 'blk, 'tcx> Reflector<'a, 'blk, 'tcx> {
     pub fn c_tydesc(&mut self, t: ty::t) -> ValueRef {
         let bcx = self.bcx;
         let static_ti = get_tydesc(bcx.ccx(), t);
-        glue::lazily_emit_visit_glue(bcx.ccx(), &*static_ti);
         PointerCast(bcx, static_ti.tydesc, self.tydesc_ty.ptr_to())
     }
 
