@@ -72,7 +72,6 @@ pub struct SharedCrateContext<'tcx> {
 
     available_monomorphizations: RefCell<HashSet<String>>,
     available_drop_glues: RefCell<HashMap<ty::t, String>>,
-    available_visit_glues: RefCell<HashMap<ty::t, String>>,
 }
 
 /// The local portion of a `CrateContext`.  There is one `LocalCrateContext`
@@ -275,7 +274,6 @@ impl<'tcx> SharedCrateContext<'tcx> {
             },
             available_monomorphizations: RefCell::new(HashSet::new()),
             available_drop_glues: RefCell::new(HashMap::new()),
-            available_visit_glues: RefCell::new(HashMap::new()),
         };
 
         for i in range(0, local_count) {
@@ -680,10 +678,6 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
 
     pub fn available_drop_glues<'a>(&'a self) -> &'a RefCell<HashMap<ty::t, String>> {
         &self.shared.available_drop_glues
-    }
-
-    pub fn available_visit_glues<'a>(&'a self) -> &'a RefCell<HashMap<ty::t, String>> {
-        &self.shared.available_visit_glues
     }
 
     pub fn int_type(&self) -> Type {

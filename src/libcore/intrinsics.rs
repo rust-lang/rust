@@ -58,6 +58,7 @@ pub struct TyDesc {
     pub drop_glue: GlueFn,
 
     // Called by reflection visitor to visit a value of type `T`
+    #[cfg(stage0)]
     pub visit_glue: GlueFn,
 
     // Name corresponding to the type
