@@ -307,13 +307,6 @@ pub fn trans_intrinsic_call<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>, node: ast::N
             let tp_ty = *substs.types.get(FnSpace, 0);
             C_bool(ccx, ty::type_contents(ccx.tcx(), tp_ty).owns_managed())
         }
-        (_, "visit_tydesc") => {
-            let td = *llargs.get(0);
-            let visitor = *llargs.get(1);
-            let td = PointerCast(bcx, td, ccx.tydesc_type().ptr_to());
-            glue::call_visit_glue(bcx, visitor, td);
-            C_nil(ccx)
-        }
         (_, "offset") => {
             let ptr = *llargs.get(0);
             let offset = *llargs.get(1);

@@ -5578,25 +5578,6 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &ast::ForeignItem) {
                     }
                 }
             },
-            "visit_tydesc" => {
-              let tydesc_ty = match ty::get_tydesc_ty(ccx.tcx) {
-                  Ok(t) => t,
-                  Err(s) => { tcx.sess.span_fatal(it.span, s.as_slice()); }
-              };
-              let region0 = ty::ReLateBound(it.id, ty::BrAnon(0));
-              let region1 = ty::ReLateBound(it.id, ty::BrAnon(1));
-              let visitor_object_ty =
-                    match ty::visitor_object_ty(tcx, region0, region1) {
-                        Ok((_, vot)) => vot,
-                        Err(s) => { tcx.sess.span_fatal(it.span, s.as_slice()); }
-                    };
-
-              let td_ptr = ty::mk_ptr(ccx.tcx, ty::mt {
-                  ty: tydesc_ty,
-                  mutbl: ast::MutImmutable
-              });
-              (0, vec!( td_ptr, visitor_object_ty ), ty::mk_nil())
-            }
             "offset" => {
               (1,
                vec!(

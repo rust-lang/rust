@@ -327,8 +327,6 @@ extern "rust-intrinsic" {
     /// Returns `true` if a type is managed (will be allocated on the local heap)
     pub fn owns_managed<T>() -> bool;
 
-    pub fn visit_tydesc(td: *const TyDesc, tv: &mut TyVisitor);
-
     /// Calculates the offset from a pointer. The offset *must* be in-bounds of
     /// the object, or one-byte-past-the-end. An arithmetic overflow is also
     /// undefined behaviour.
