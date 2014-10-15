@@ -961,7 +961,7 @@ pub fn ast_ty_to_ty<'tcx, AC: AstConv<'tcx>, RS: RegionScope>(
                     _ => {
                         tcx.sess.span_fatal(ast_ty.span,
                                             format!("found value name used \
-                                                     as a type: {:?}",
+                                                     as a type: {}",
                                                     a_def).as_slice());
                     }
                 }

@@ -86,7 +86,7 @@ fn get_base_type(inference_context: &InferCtxt,
         ty_str(..) | ty_vec(..) | ty_bare_fn(..) | ty_closure(..) | ty_tup(..) |
         ty_infer(..) | ty_param(..) | ty_err | ty_open(..) | ty_uniq(_) |
         ty_ptr(_) | ty_rptr(_, _) => {
-            debug!("(getting base type) no base type; found {:?}",
+            debug!("(getting base type) no base type; found {}",
                    get(original_type).sty);
             None
         }
@@ -245,7 +245,7 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
             trait_ref: &ty::TraitRef,
             all_impl_items: &mut Vec<ImplOrTraitItemId>) {
         let tcx = self.crate_context.tcx;
-        debug!("instantiate_default_methods(impl_id={:?}, trait_ref={})",
+        debug!("instantiate_default_methods(impl_id={}, trait_ref={})",
                impl_id, trait_ref.repr(tcx));
 
         let impl_poly_type = ty::lookup_item_type(tcx, impl_id);
@@ -256,7 +256,7 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
             let new_id = tcx.sess.next_node_id();
             let new_did = local_def(new_id);
 
-            debug!("new_did={:?} trait_method={}", new_did, trait_method.repr(tcx));
+            debug!("new_did={} trait_method={}", new_did, trait_method.repr(tcx));
 
             // Create substitutions for the various trait parameters.
             let new_method_ty =

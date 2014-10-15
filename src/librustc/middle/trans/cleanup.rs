@@ -23,6 +23,7 @@ use middle::trans::debuginfo;
 use middle::trans::glue;
 use middle::trans::type_::Type;
 use middle::ty;
+use std::fmt;
 use syntax::ast;
 use util::ppaux::Repr;
 
@@ -45,6 +46,7 @@ pub struct CleanupScope<'blk, 'tcx: 'blk> {
     cached_landing_pad: Option<BasicBlockRef>,
 }
 
+#[deriving(Show)]
 pub struct CustomScopeIndex {
     index: uint
 }
@@ -59,7 +61,23 @@ pub enum CleanupScopeKind<'blk, 'tcx: 'blk> {
     LoopScopeKind(ast::NodeId, [Block<'blk, 'tcx>, ..EXIT_MAX])
 }
 
-#[deriving(PartialEq)]
+impl<'blk, 'tcx: 'blk> fmt::Show for CleanupScopeKind<'blk, 'tcx> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::FormatError> {
+        match *self {
+            CustomScopeKind => write!(f, "CustomScopeKind"),
+            AstScopeKind(nid) => write!(f, "AstScopeKind({})", nid),
+            LoopScopeKind(nid, ref blks) => {
+                try!(write!(f, "LoopScopeKind({}, [", nid));
+                for blk in blks.iter() {
+                    try!(write!(f, "{:p}, ", blk));
+                }
+                write!(f, "])")
+            }
+        }
+    }
+}
+
+#[deriving(PartialEq, Show)]
 pub enum EarlyExitLabel {
     UnwindExit,
     ReturnExit,
@@ -83,6 +101,7 @@ pub trait Cleanup {
 
 pub type CleanupObj = Box<Cleanup+'static>;
 
+#[deriving(Show)]
 pub enum ScopeId {
     AstScope(ast::NodeId),
     CustomScope(CustomScopeIndex)
@@ -222,7 +241,7 @@ impl<'blk, 'tcx> CleanupMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx> {
          * cleanups for normal exit.
          */
 
-        debug!("pop_and_trans_custom_cleanup_scope({:?})", custom_scope);
+        debug!("pop_and_trans_custom_cleanup_scope({})", custom_scope);
         assert!(self.is_valid_to_pop_custom_scope(custom_scope));
 
         let scope = self.pop_scope();
@@ -273,7 +292,7 @@ impl<'blk, 'tcx> CleanupMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx> {
             ptr: val,
         };
 
-        debug!("schedule_lifetime_end({:?}, val={})",
+        debug!("schedule_lifetime_end({}, val={})",
                cleanup_scope,
                self.ccx.tn().val_to_string(val));
 
@@ -298,7 +317,7 @@ impl<'blk, 'tcx> CleanupMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx> {
             zero: false
         };
 
-        debug!("schedule_drop_mem({:?}, val={}, ty={})",
+        debug!("schedule_drop_mem({}, val={}, ty={})",
                cleanup_scope,
                self.ccx.tn().val_to_string(val),
                ty.repr(self.ccx.tcx()));
@@ -324,7 +343,7 @@ impl<'blk, 'tcx> CleanupMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx> {
             zero: true
         };
 
-        debug!("schedule_drop_and_zero_mem({:?}, val={}, ty={}, zero={})",
+        debug!("schedule_drop_and_zero_mem({}, val={}, ty={}, zero={})",
                cleanup_scope,
                self.ccx.tn().val_to_string(val),
                ty.repr(self.ccx.tcx()),
@@ -350,7 +369,7 @@ impl<'blk, 'tcx> CleanupMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx> {
             zero: false
         };
 
-        debug!("schedule_drop_immediate({:?}, val={}, ty={})",
+        debug!("schedule_drop_immediate({}, val={}, ty={})",
                cleanup_scope,
                self.ccx.tn().val_to_string(val),
                ty.repr(self.ccx.tcx()));
@@ -370,7 +389,7 @@ impl<'blk, 'tcx> CleanupMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx> {
 
         let drop = box FreeValue { ptr: val, heap: heap, content_ty: content_ty };
 
-        debug!("schedule_free_value({:?}, val={}, heap={:?})",
+        debug!("schedule_free_value({}, val={}, heap={})",
                cleanup_scope,
                self.ccx.tn().val_to_string(val),
                heap);
@@ -391,7 +410,7 @@ impl<'blk, 'tcx> CleanupMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx> {
 
         let drop = box FreeSlice { ptr: val, size: size, align: align, heap: heap };
 
-        debug!("schedule_free_slice({:?}, val={}, heap={:?})",
+        debug!("schedule_free_slice({}, val={}, heap={})",
                cleanup_scope,
                self.ccx.tn().val_to_string(val),
                heap);
@@ -417,7 +436,7 @@ impl<'blk, 'tcx> CleanupMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx> {
          * in the topmost scope, which must be a temporary scope.
          */
 
-        debug!("schedule_clean_in_ast_scope(cleanup_scope={:?})",
+        debug!("schedule_clean_in_ast_scope(cleanup_scope={})",
                cleanup_scope);
 
         for scope in self.scopes.borrow_mut().iter_mut().rev() {
@@ -598,7 +617,7 @@ impl<'blk, 'tcx> CleanupHelperMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx
          * perform all cleanups and finally branch to the `break_blk`.
          */
 
-        debug!("trans_cleanups_to_exit_scope label={:?} scopes={}",
+        debug!("trans_cleanups_to_exit_scope label={} scopes={}",
                label, self.scopes_len());
 
         let orig_scopes_len = self.scopes_len();
@@ -634,7 +653,7 @@ impl<'blk, 'tcx> CleanupHelperMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx
 
                     LoopExit(id, _) => {
                         self.ccx.sess().bug(format!(
-                                "cannot exit from scope {:?}, \
+                                "cannot exit from scope {}, \
                                 not in scope", id).as_slice());
                     }
                 }
@@ -968,6 +987,7 @@ impl Cleanup for DropValue {
     }
 }
 
+#[deriving(Show)]
 pub enum Heap {
     HeapExchange
 }
@@ -1072,7 +1092,7 @@ pub fn temporary_scope(tcx: &ty::ctxt,
     match tcx.region_maps.temporary_scope(id) {
         Some(scope) => {
             let r = AstScope(scope);
-            debug!("temporary_scope({}) = {:?}", id, r);
+            debug!("temporary_scope({}) = {}", id, r);
             r
         }
         None => {
@@ -1086,7 +1106,7 @@ pub fn var_scope(tcx: &ty::ctxt,
                  id: ast::NodeId)
                  -> ScopeId {
     let r = AstScope(tcx.region_maps.var_scope(id));
-    debug!("var_scope({}) = {:?}", id, r);
+    debug!("var_scope({}) = {}", id, r);
     r
 }
 

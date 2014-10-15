@@ -1088,7 +1088,7 @@ pub fn ignore_lhs(_bcx: Block, local: &ast::Local) -> bool {
 
 pub fn init_local<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, local: &ast::Local)
                               -> Block<'blk, 'tcx> {
-    debug!("init_local(bcx={}, local.id={:?})", bcx.to_str(), local.id);
+    debug!("init_local(bcx={}, local.id={})", bcx.to_str(), local.id);
     let _indenter = indenter();
     let _icx = push_ctxt("init_local");
     _match::store_local(bcx, local)
@@ -2672,7 +2672,7 @@ fn contains_null(s: &str) -> bool {
 }
 
 pub fn get_item_val(ccx: &CrateContext, id: ast::NodeId) -> ValueRef {
-    debug!("get_item_val(id=`{:?}`)", id);
+    debug!("get_item_val(id=`{}`)", id);
 
     match ccx.item_vals().borrow().find_copy(&id) {
         Some(v) => return v,
@@ -2857,7 +2857,7 @@ pub fn get_item_val(ccx: &CrateContext, id: ast::NodeId) -> ValueRef {
         }
 
         ref variant => {
-            ccx.sess().bug(format!("get_item_val(): unexpected variant: {:?}",
+            ccx.sess().bug(format!("get_item_val(): unexpected variant: {}",
                                    variant).as_slice())
         }
     };

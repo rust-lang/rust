@@ -157,7 +157,7 @@ impl<'f, 'tcx> Combine<'tcx> for Lub<'f, 'tcx> {
             // Regions that pre-dated the LUB computation stay as they are.
             if !is_var_in_set(new_vars, r0) {
                 assert!(!r0.is_bound());
-                debug!("generalize_region(r0={:?}): not new variable", r0);
+                debug!("generalize_region(r0={}): not new variable", r0);
                 return r0;
             }
 
@@ -167,8 +167,8 @@ impl<'f, 'tcx> Combine<'tcx> for Lub<'f, 'tcx> {
             // *related* to regions that pre-date the LUB computation
             // stay as they are.
             if !tainted.iter().all(|r| is_var_in_set(new_vars, *r)) {
-                debug!("generalize_region(r0={:?}): \
-                        non-new-variables found in {:?}",
+                debug!("generalize_region(r0={}): \
+                        non-new-variables found in {}",
                        r0, tainted);
                 assert!(!r0.is_bound());
                 return r0;
@@ -181,8 +181,8 @@ impl<'f, 'tcx> Combine<'tcx> for Lub<'f, 'tcx> {
             // with.
             for (a_br, a_r) in a_map.iter() {
                 if tainted.iter().any(|x| x == a_r) {
-                    debug!("generalize_region(r0={:?}): \
-                            replacing with {:?}, tainted={:?}",
+                    debug!("generalize_region(r0={}): \
+                            replacing with {}, tainted={}",
                            r0, *a_br, tainted);
                     return ty::ReLateBound(new_scope, *a_br);
                 }
@@ -190,7 +190,7 @@ impl<'f, 'tcx> Combine<'tcx> for Lub<'f, 'tcx> {
 
             this.fields.infcx.tcx.sess.span_bug(
                 this.fields.trace.origin.span(),
-                format!("region {:?} is not associated with \
+                format!("region {} is not associated with \
                          any bound region from A!",
                         r0).as_slice())
         }

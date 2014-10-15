@@ -1563,7 +1563,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             None => {
                 self.tcx().sess.span_bug(
                     span,
-                    format!("no type for local variable {:?}",
+                    format!("no type for local variable {}",
                             nid).as_slice());
             }
         }
@@ -1622,7 +1622,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             node_id: ast::NodeId,
                             span: Span,
                             adj: ty::AutoAdjustment) {
-        debug!("write_adjustment(node_id={:?}, adj={:?})", node_id, adj);
+        debug!("write_adjustment(node_id={}, adj={})", node_id, adj);
 
         // Careful: adjustments can imply trait obligations if we are
         // casting from a concrete type to an object type. I think
@@ -1673,7 +1673,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn register_unsize_obligations(&self,
                                    span: Span,
                                    unsize: &ty::UnsizeKind) {
-        debug!("register_unsize_obligations: unsize={:?}", unsize);
+        debug!("register_unsize_obligations: unsize={}", unsize);
 
         match *unsize {
             ty::UnsizeLength(..) => {}
@@ -2551,7 +2551,7 @@ fn check_argument_types<'a>(fcx: &FnCtxt,
         err_args(supplied_arg_count)
     };
 
-    debug!("check_argument_types: formal_tys={:?}",
+    debug!("check_argument_types: formal_tys={}",
            formal_tys.iter().map(|t| fcx.infcx().ty_to_string(*t)).collect::<Vec<String>>());
 
     // Check the arguments.

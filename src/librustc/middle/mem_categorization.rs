@@ -78,7 +78,7 @@ use syntax::parse::token;
 use std::cell::RefCell;
 use std::rc::Rc;
 
-#[deriving(Clone, PartialEq)]
+#[deriving(Clone, PartialEq, Show)]
 pub enum categorization {
     cat_rvalue(ty::Region),            // temporary val, argument is its scope
     cat_static_item,
@@ -94,7 +94,7 @@ pub enum categorization {
     // (*1) downcast is only required if the enum has more than one variant
 }
 
-#[deriving(Clone, PartialEq)]
+#[deriving(Clone, PartialEq, Show)]
 pub enum CopiedUpvarKind {
     Boxed(ast::Onceness),
     Unboxed(ty::UnboxedClosureKind)
@@ -111,7 +111,7 @@ impl CopiedUpvarKind {
     }
 }
 
-#[deriving(Clone, PartialEq)]
+#[deriving(Clone, PartialEq, Show)]
 pub struct CopiedUpvar {
     pub upvar_id: ast::NodeId,
     pub kind: CopiedUpvarKind,
@@ -119,7 +119,7 @@ pub struct CopiedUpvar {
 }
 
 // different kinds of pointers:
-#[deriving(Clone, PartialEq, Eq, Hash)]
+#[deriving(Clone, PartialEq, Eq, Hash, Show)]
 pub enum PointerKind {
     OwnedPtr,
     BorrowedPtr(ty::BorrowKind, ty::Region),
@@ -129,19 +129,19 @@ pub enum PointerKind {
 
 // We use the term "interior" to mean "something reachable from the
 // base without a pointer dereference", e.g. a field
-#[deriving(Clone, PartialEq, Eq, Hash)]
+#[deriving(Clone, PartialEq, Eq, Hash, Show)]
 pub enum InteriorKind {
     InteriorField(FieldName),
     InteriorElement(ElementKind),
 }
 
-#[deriving(Clone, PartialEq, Eq, Hash)]
+#[deriving(Clone, PartialEq, Eq, Hash, Show)]
 pub enum FieldName {
     NamedField(ast::Name),
     PositionalField(uint)
 }
 
-#[deriving(Clone, PartialEq, Eq, Hash)]
+#[deriving(Clone, PartialEq, Eq, Hash, Show)]
 pub enum ElementKind {
     VecElement,
     OtherElement,
@@ -168,7 +168,7 @@ pub enum MutabilityCategory {
 // dereference, but its type is the type *before* the dereference
 // (`@T`). So use `cmt.ty` to find the type of the value in a consistent
 // fashion. For more details, see the method `cat_pattern`
-#[deriving(Clone, PartialEq)]
+#[deriving(Clone, PartialEq, Show)]
 pub struct cmt_ {
     pub id: ast::NodeId,          // id of expr/pat producing this value
     pub span: Span,                // span of same expr/pat
@@ -542,7 +542,7 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
                    expr_ty: ty::t,
                    def: def::Def)
                    -> McResult<cmt> {
-        debug!("cat_def: id={} expr={} def={:?}",
+        debug!("cat_def: id={} expr={} def={}",
                id, expr_ty.repr(self.tcx()), def);
 
         match def {
@@ -781,7 +781,7 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
         };
         let method_ty = self.typer.node_method_ty(method_call);
 
-        debug!("cat_deref: method_call={:?} method_ty={}",
+        debug!("cat_deref: method_call={} method_ty={}",
             method_call, method_ty.map(|ty| ty.repr(self.tcx())));
 
         let base_cmt = match method_ty {
@@ -1352,7 +1352,7 @@ impl cmt_ {
 
 impl Repr for cmt_ {
     fn repr(&self, tcx: &ty::ctxt) -> String {
-        format!("{{{} id:{} m:{:?} ty:{}}}",
+        format!("{{{} id:{} m:{} ty:{}}}",
                 self.cat.repr(tcx),
                 self.id,
                 self.mutbl,
@@ -1368,7 +1368,7 @@ impl Repr for categorization {
             cat_copied_upvar(..) |
             cat_local(..) |
             cat_upvar(..) => {
-                format!("{:?}", *self)
+                format!("{}", *self)
             }
             cat_deref(ref cmt, derefs, ptr) => {
                 format!("{}-{}{}->", cmt.cat.repr(tcx), ptr_sigil(ptr), derefs)
@@ -1405,7 +1405,7 @@ impl Repr for InteriorKind {
             InteriorField(NamedField(fld)) => {
                 token::get_name(fld).get().to_string()
             }
-            InteriorField(PositionalField(i)) => format!("#{:?}", i),
+            InteriorField(PositionalField(i)) => format!("#{}", i),
             InteriorElement(_) => "[]".to_string(),
         }
     }
