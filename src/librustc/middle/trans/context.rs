@@ -720,12 +720,12 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
     }
 
     pub fn max_obj_size(&self) -> u64 {
-        1<<31 /* FIXME: select based on architecture */
+        1<<31 /* FIXME #18069: select based on architecture */
     }
 
     pub fn report_overbig_object(&self, obj: ty::t) -> ! {
         self.sess().fatal(
-            format!("Objects of type `{}` are too big for the current ABI",
+            format!("the type `{}` is too big for the current architecture",
                     obj.repr(self.tcx())).as_slice())
     }
 }
