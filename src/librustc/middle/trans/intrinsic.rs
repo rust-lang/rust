@@ -81,6 +81,7 @@ pub fn get_simple_intrinsic(ccx: &CrateContext, item: &ast::ForeignItem) -> Opti
         "bswap16" => "llvm.bswap.i16",
         "bswap32" => "llvm.bswap.i32",
         "bswap64" => "llvm.bswap.i64",
+        "assume" => "llvm.assume",
         _ => return None
     };
     Some(ccx.get_intrinsic(&name))
