@@ -101,6 +101,7 @@ use vec::Vec;
 
 pub use core::slice::{Chunks, AsSlice, ImmutableSlice, ImmutablePartialEqSlice};
 pub use core::slice::{ImmutableOrdSlice, MutableSlice, Items, MutItems};
+pub use core::slice::{ImmutableIntSlice, MutableIntSlice};
 pub use core::slice::{MutSplits, MutChunks, Splits};
 pub use core::slice::{bytes, mut_ref_slice, ref_slice, MutableCloneableSlice};
 pub use core::slice::{Found, NotFound};
