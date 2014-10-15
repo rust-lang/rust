@@ -38,7 +38,7 @@ pub struct SCTable {
     rename_memo: RefCell<HashMap<(SyntaxContext,Ident,Name),SyntaxContext>>,
 }
 
-#[deriving(PartialEq, Encodable, Decodable, Hash)]
+#[deriving(PartialEq, Encodable, Decodable, Hash, Show)]
 pub enum SyntaxContext_ {
     EmptyCtxt,
     Mark (Mrk,SyntaxContext),
@@ -129,7 +129,7 @@ fn new_sctable_internal() -> SCTable {
 pub fn display_sctable(table: &SCTable) {
     error!("SC table:");
     for (idx,val) in table.table.borrow().iter().enumerate() {
-        error!("{:4u} : {:?}",idx,val);
+        error!("{:4u} : {}",idx,val);
     }
 }
 
