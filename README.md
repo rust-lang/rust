@@ -47,6 +47,7 @@ the direction the language is evolving in.
 * [0326-restrict-xXX-to-ascii](text/0326-restrict-xXX-to-ascii.md)
 * [0341-remove-virtual-structs.md](text/0341-remove-virtual-structs.md)
 * [0342-keywords.md](text/0342-keywords.md)
+* [0344-conventions-galore.md](text/0344-conventions-galore.md)
 * [0356-no-module-prefixes.md](text/0356-no-module-prefixes.md)
 
 ## Table of Contents
