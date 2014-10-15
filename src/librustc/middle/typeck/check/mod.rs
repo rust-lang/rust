@@ -2918,12 +2918,10 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
                          expr: &ast::Expr,
                          method_name: ast::SpannedIdent,
                          args: &[P<ast::Expr>],
-                         tps: &[P<ast::Ty>]) {
+                         tps: &[P<ast::Ty>],
+                         lvalue_pref: LvaluePreference) {
         let rcvr = &*args[0];
-        // We can't know if we need &mut self before we look up the method,
-        // so treat the receiver as mutable just in case - only explicit
-        // overloaded dereferences care about the distinction.
-        check_expr_with_lvalue_pref(fcx, &*rcvr, PreferMutLvalue);
+        check_expr_with_lvalue_pref(fcx, &*rcvr, lvalue_pref);
 
         // no need to check for bot/err -- callee does that
         let expr_t = structurally_resolved_type(fcx,
@@ -4141,7 +4139,7 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
           }
       }
       ast::ExprMethodCall(ident, ref tps, ref args) => {
-        check_method_call(fcx, expr, ident, args.as_slice(), tps.as_slice());
+        check_method_call(fcx, expr, ident, args.as_slice(), tps.as_slice(), lvalue_pref);
         let mut arg_tys = args.iter().map(|a| fcx.expr_ty(&**a));
         let (args_bot, args_err) = arg_tys.fold((false, false),
              |(rest_bot, rest_err), a| {
