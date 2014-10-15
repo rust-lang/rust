@@ -17,12 +17,23 @@ use prelude::*;
 use io::{mod, IoResult, IoError};
 use sys_common::mkerr_libc;
 
+
+macro_rules! helper_init( (static $name:ident: Helper<$m:ty>) => (
+    static $name: Helper<$m> = Helper {
+        lock: ::rt::mutex::NATIVE_MUTEX_INIT,
+        chan: ::cell::UnsafeCell { value: 0 as *mut Sender<$m> },
+        signal: ::cell::UnsafeCell { value: 0 },
+        initialized: ::cell::UnsafeCell { value: false },
+    };
+) )
+
 pub mod c;
 pub mod fs;
 pub mod os;
 pub mod tcp;
 pub mod udp;
 pub mod pipe;
+pub mod helper_signal;
 
 pub mod addrinfo {
     pub use sys_common::net::get_host_addresses;
