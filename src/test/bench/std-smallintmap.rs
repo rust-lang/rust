@@ -12,7 +12,6 @@
 
 extern crate collections;
 extern crate time;
-extern crate debug;
 
 use std::collections::SmallIntMap;
 use std::os;
@@ -59,8 +58,8 @@ fn main() {
 
     let maxf = max as f64;
 
-    println!("insert(): {:?} seconds\n", checkf);
+    println!("insert(): {} seconds\n", checkf);
     println!("        : {} op/sec\n", maxf/checkf);
-    println!("get()   : {:?} seconds\n", appendf);
+    println!("get()   : {} seconds\n", appendf);
     println!("        : {} op/sec\n", maxf/appendf);
 }

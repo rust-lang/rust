@@ -19,7 +19,6 @@
 // version.
 
 extern crate time;
-extern crate debug;
 
 use std::comm;
 use std::os;
@@ -41,7 +40,7 @@ fn server(requests: &Receiver<request>, responses: &Sender<uint>) {
         match requests.recv_opt() {
           Ok(get_count) => { responses.send(count.clone()); }
           Ok(bytes(b)) => {
-            //println!("server: received {:?} bytes", b);
+            //println!("server: received {} bytes", b);
             count += b;
           }
           Err(..) => { done = true; }
@@ -65,10 +64,10 @@ fn run(args: &[String]) {
         let to_child = to_child.clone();
         worker_results.push(task::try_future(proc() {
             for _ in range(0u, size / workers) {
-                //println!("worker {:?}: sending {:?} bytes", i, num_bytes);
+                //println!("worker {}: sending {} bytes", i, num_bytes);
                 to_child.send(bytes(num_bytes));
             }
-            //println!("worker {:?} exiting", i);
+            //println!("worker {} exiting", i);
         }));
     }
     task::spawn(proc() {
@@ -85,8 +84,8 @@ fn run(args: &[String]) {
     let result = from_child.recv();
     let end = time::precise_time_s();
     let elapsed = end - start;
-    print!("Count is {:?}\n", result);
-    print!("Test took {:?} seconds\n", elapsed);
+    print!("Count is {}\n", result);
+    print!("Test took {} seconds\n", elapsed);
     let thruput = ((size / workers * workers) as f64) / (elapsed as f64);
     print!("Throughput={} per sec\n", thruput);
     assert_eq!(result, num_bytes * size);

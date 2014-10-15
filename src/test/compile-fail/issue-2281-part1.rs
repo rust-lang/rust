@@ -10,4 +10,4 @@
 
 // error-pattern: unresolved name `foobar`.
 
-fn main() { println!("{:?}", foobar); }
+fn main() { println!("{}", foobar); }

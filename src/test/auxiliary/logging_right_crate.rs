@@ -10,9 +10,8 @@
 
 #![feature(phase)]
 #[phase(plugin, link)] extern crate log;
-extern crate debug;
 
 pub fn foo<T>() {
     fn death() -> int { fail!() }
-    debug!("{:?}", (||{ death() })());
+    debug!("{}", (||{ death() })());
 }

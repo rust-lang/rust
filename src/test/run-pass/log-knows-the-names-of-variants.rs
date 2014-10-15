@@ -8,20 +8,20 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern crate debug;
-
+#[deriving(Show)]
 enum foo {
   a(uint),
   b(String),
   c,
 }
 
+#[deriving(Show)]
 enum bar {
   d, e, f
 }
 
 pub fn main() {
-    assert_eq!("a(22u)".to_string(), format!("{:?}", a(22u)));
-    assert_eq!("c".to_string(), format!("{:?}", c));
-    assert_eq!("d".to_string(), format!("{:?}", d));
+    assert_eq!("a(22)".to_string(), format!("{}", a(22u)));
+    assert_eq!("c".to_string(), format!("{}", c));
+    assert_eq!("d".to_string(), format!("{}", d));
 }

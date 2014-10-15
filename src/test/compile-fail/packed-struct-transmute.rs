@@ -15,8 +15,6 @@
 
 // error-pattern: transmute called on types with different size
 
-extern crate debug;
-
 use std::mem;
 
 #[repr(packed)]
@@ -25,6 +23,7 @@ struct Foo {
     baz: uint
 }
 
+#[deriving(Show)]
 struct Oof {
     rab: u8,
     zab: uint
@@ -34,6 +33,6 @@ fn main() {
     let foo = Foo { bar: 1, baz: 10 };
     unsafe {
         let oof: Oof = mem::transmute(foo);
-        println!("{:?}", oof);
+        println!("{}", oof);
     }
 }

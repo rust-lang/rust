@@ -19,7 +19,6 @@
 #![feature(globs, struct_variant, macro_rules, phase, slicing_syntax)]
 
 extern crate arena;
-extern crate debug;
 extern crate getopts;
 extern crate libc;
 extern crate rustc;

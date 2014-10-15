@@ -16,7 +16,6 @@
 #[phase(plugin, link)]
 extern crate log;
 extern crate libc;
-extern crate debug;
 
 use std::io::net::tcp::{TcpListener, TcpStream};
 use std::io::{Acceptor, Listener};
@@ -41,7 +40,7 @@ fn main() {
             let mut stream = match acceptor.accept() {
                 Ok(stream) => stream,
                 Err(error) => {
-                    debug!("accept failed: {:?}", error);
+                    debug!("accept failed: {}", error);
                     continue;
                 }
             };
@@ -64,7 +63,7 @@ fn main() {
                     let mut buf = [0];
                     stream.read(buf);
                 },
-                Err(e) => debug!("{:?}", e)
+                Err(e) => debug!("{}", e)
             }
             tx.send(());
         });

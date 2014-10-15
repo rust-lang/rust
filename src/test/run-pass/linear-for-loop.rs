@@ -10,13 +10,11 @@
 
 // no-pretty-expanded FIXME #15189
 
-extern crate debug;
-
 pub fn main() {
     let x = vec!(1i, 2i, 3i);
     let mut y = 0i;
-    for i in x.iter() { println!("{:?}", *i); y += *i; }
-    println!("{:?}", y);
+    for i in x.iter() { println!("{}", *i); y += *i; }
+    println!("{}", y);
     assert_eq!(y, 6);
     let s = "hello there".to_string();
     let mut i: int = 0;
@@ -29,8 +27,8 @@ pub fn main() {
         // ...
 
         i += 1;
-        println!("{:?}", i);
-        println!("{:?}", c);
+        println!("{}", i);
+        println!("{}", c);
     }
     assert_eq!(i, 11);
 }

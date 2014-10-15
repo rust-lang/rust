@@ -36,12 +36,11 @@ format arguments directly while performing minimal allocations.
 Some examples of the `format!` extension are:
 
 ```rust
-# extern crate debug;
 # fn main() {
 format!("Hello");                  // => "Hello"
 format!("Hello, {:s}!", "world");  // => "Hello, world!"
 format!("The number is {:d}", 1i); // => "The number is 1"
-format!("{:?}", (3i, 4i));         // => "(3, 4)"
+format!("{}", (3i, 4i));           // => "(3, 4)"
 format!("{value}", value=4i);      // => "4"
 format!("{} {}", 1i, 2i);          // => "1 2"
 # }
@@ -94,11 +93,10 @@ identifier '=' expression
 For example, the following `format!` expressions all use named argument:
 
 ```rust
-# extern crate debug;
 # fn main() {
 format!("{argument}", argument = "test");        // => "test"
 format!("{name} {}", 1i, name = 2i);             // => "2 1"
-format!("{a:s} {c:d} {b:?}", a="a", b=(), c=3i); // => "a 3 ()"
+format!("{a:s} {c:d} {b}", a="a", b=(), c=3i); // => "a 3 ()"
 # }
 ```
 
@@ -154,11 +152,6 @@ The current mapping of types to traits is:
 * `f` ⇒ `Float`
 * `e` ⇒ `LowerExp`
 * `E` ⇒ `UpperExp`
-* `?` ⇒ `Poly`
-
-> **Note**: The `Poly` formatting trait is provided by [libdebug](../../debug/)
-> and is an experimental implementation that should not be relied upon. In order
-> to use the `?` modifier, the libdebug crate must be linked against.
 
 What this means is that any type of argument which implements the
 `std::fmt::Binary` trait can then be formatted with `{:t}`. Implementations are

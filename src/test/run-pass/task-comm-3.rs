@@ -10,8 +10,6 @@
 
 // no-pretty-expanded FIXME #15189
 
-extern crate debug;
-
 use std::task;
 
 pub fn main() { println!("===== WITHOUT THREADS ====="); test00(); }
@@ -65,7 +63,7 @@ fn test00() {
     for r in results.iter_mut() { r.get_ref(); }
 
     println!("Completed: Final number is: ");
-    println!("{:?}", sum);
+    println!("{}", sum);
     // assert (sum == (((number_of_tasks * (number_of_tasks - 1)) / 2) *
     //       number_of_messages));
     assert_eq!(sum, 480);

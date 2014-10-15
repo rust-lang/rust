@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern crate debug;
-
 fn baz() -> ! { fail!(); }
 
 fn foo() {
@@ -17,7 +15,7 @@ fn foo() {
       Some::<int>(_x) => {
         let mut bar;
         match None::<int> { None::<int> => { bar = 5i; } _ => { baz(); } }
-        println!("{:?}", bar);
+        println!("{}", bar);
       }
       None::<int> => { println!("hello"); }
     }

@@ -91,7 +91,6 @@
 #![feature(import_shadowing)]
 #![deny(missing_doc)]
 
-#[cfg(test)] extern crate debug;
 #[cfg(test)] #[phase(plugin, link)] extern crate log;
 
 use std::cmp::PartialEq;

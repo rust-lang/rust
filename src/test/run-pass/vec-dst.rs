@@ -8,73 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern crate debug;
-
-fn reflect() {
-    // Tests for reflective printing.
-    // Also tests drop glue.
-    let x = [1, 2, 3, 4];
-    let x2 = [(), (), ()];
-    let e1: [uint, ..0] = [];
-    let e2: [&'static str, ..0] = [];
-    let e3: [(), ..0] = [];
-    assert!(format!("{:?}", x) == "[1u, 2u, 3u, 4u]".to_string());
-    assert!(format!("{:?}", x2) == "[(), (), ()]".to_string());
-    assert!(format!("{:?}", e1) == "[]".to_string());
-    assert!(format!("{:?}", e2) == "[]".to_string());
-    assert!(format!("{:?}", e3) == "[]".to_string());
-
-    let rx: &[uint, ..4] = &x;
-    let rx2: &[(), ..3] = &x2;
-    let re1: &[uint, ..0] = &e1;
-    let re2: &[&'static str, ..0] = &e2;
-    let re3: &[(), ..0] = &e3;
-    assert!(format!("{:?}", rx) == "&[1u, 2u, 3u, 4u]".to_string());
-    assert!(format!("{:?}", rx2) == "&[(), (), ()]".to_string());
-    assert!(format!("{:?}", re1) == "&[]".to_string());
-    assert!(format!("{:?}", re2) == "&[]".to_string());
-    assert!(format!("{:?}", re3) == "&[]".to_string());
-
-    let rx: &[uint] = &x;
-    let rx2: &[()] = &x2;
-    let re1: &[uint] = &e1;
-    let re2: &[&'static str] = &e2;
-    let re3: &[()] = &e3;
-    assert!(format!("{:?}", rx) == "&[1u, 2u, 3u, 4u]".to_string());
-    assert!(format!("{:?}", rx2) == "&[(), (), ()]".to_string());
-    assert!(format!("{:?}", re1) == "&[]".to_string());
-    assert!(format!("{:?}", re2) == "&[]".to_string());
-    assert!(format!("{:?}", re3) == "&[]".to_string());
-
-    // FIXME(15049) These should all work some day.
-    /*let rx: Box<[uint, ..4]> = box x;
-    let rx2: Box<[(), ..3]> = box x2;
-    let re1: Box<[uint, ..0]> = box e1;
-    let re2: Box<[&'static str, ..0]> = box e2;
-    let re3: Box<[(), ..0]> = box e3;
-    assert!(format!("{:?}", rx) == "box [1u, 2u, 3u, 4u]".to_string());
-    assert!(format!("{:?}", rx2) == "box [(), (), ()]".to_string());
-    assert!(format!("{:?}", re1) == "box []".to_string());
-    assert!(format!("{:?}", re2) == "box []".to_string());
-    assert!(format!("{:?}", re3) == "box []".to_string());
-
-    let x = [1, 2, 3, 4];
-    let x2 = [(), (), ()];
-    let e1: [uint, ..0] = [];
-    let e2: [&'static str, ..0] = [];
-    let e3: [(), ..0] = [];
-    let rx: Box<[uint]> = box x;
-    let rx2: Box<[()]> = box x2;
-    let re1: Box<[uint]> = box e1;
-    let re2: Box<[&'static str]> = box e2;
-    let re3: Box<[()]> = box e3;
-    assert!(format!("{:?}", rx) == "box [1u, 2u, 3u, 4u]".to_string());
-    assert!(format!("{:?}", rx2) == "box [(), (), ()]".to_string());
-    assert!(format!("{:?}", re1) == "box []".to_string());
-    assert!(format!("{:?}", re2) == "box []".to_string());
-    assert!(format!("{:?}", re3) == "box []".to_string());*/
-}
-
 fn sub_expr() {
     // Test for a &[T] => &&[T] coercion in sub-expression position
     // (surpisingly, this can cause errors which are not caused by either of:
@@ -109,7 +42,6 @@ fn index() {
 }
 
 pub fn main() {
-    reflect();
     sub_expr();
     index();
 }

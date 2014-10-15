@@ -34,7 +34,6 @@ extern crate core;
 #[cfg(test)] #[phase(plugin, link)] extern crate std;
 #[cfg(test)] #[phase(plugin, link)] extern crate log;
 #[cfg(test)] extern crate native;
-#[cfg(test)] extern crate debug;
 
 use core::prelude::*;
 

@@ -14,5 +14,5 @@
 extern crate libc;
 
 fn main() {
-  println!("{:?}", 1.0 as *libc::FILE); // Can't cast float to foreign.
+  println!("{}", 1.0 as *libc::FILE); // Can't cast float to foreign.
 }

@@ -10,8 +10,6 @@
 
 // ignore-windows
 
-extern crate debug;
-
 use std::os;
 use std::io::process::{Command, ExitSignal, ExitStatus};
 
@@ -27,7 +25,7 @@ pub fn main() {
         match status {
             ExitSignal(_) if cfg!(unix) => {},
             ExitStatus(0xC0000028) if cfg!(windows) => {},
-            _ => fail!("invalid termination (was not signalled): {:?}", status)
+            _ => fail!("invalid termination (was not signalled): {}", status)
         }
     }
 }

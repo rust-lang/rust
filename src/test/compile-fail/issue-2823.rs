@@ -8,15 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern crate debug;
-
 struct C {
     x: int,
 }
 
 impl Drop for C {
     fn drop(&mut self) {
-        println!("dropping: {:?}", self.x);
+        println!("dropping: {}", self.x);
     }
 }
 
