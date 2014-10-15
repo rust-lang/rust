@@ -453,8 +453,8 @@ impl tr for def::Def {
                                    },
                                    p)
           }
-          def::DefMethod(did0, did1) => {
-            def::DefMethod(did0.tr(dcx), did1.map(|did1| did1.tr(dcx)))
+          def::DefMethod(did0, did1, p) => {
+            def::DefMethod(did0.tr(dcx), did1.map(|did1| did1.tr(dcx)), p)
           }
           def::DefSelfTy(nid) => { def::DefSelfTy(dcx.tr_id(nid)) }
           def::DefMod(did) => { def::DefMod(did.tr(dcx)) }

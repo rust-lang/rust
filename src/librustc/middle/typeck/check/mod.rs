@@ -5027,10 +5027,9 @@ pub fn polytype_for_def(fcx: &FnCtxt,
           let typ = fcx.local_ty(sp, nid);
           return no_params(typ);
       }
-      def::DefFn(id, _, _) | def::DefStaticMethod(id, _, _) |
+      def::DefFn(id, _, _) | def::DefStaticMethod(id, _, _) | def::DefMethod(id, _, _) |
       def::DefStatic(id, _) | def::DefVariant(_, id, _) |
-      def::DefStruct(id) | def::DefConst(id) |
-      def::DefMethod(id, _) => {
+      def::DefStruct(id) | def::DefConst(id) => {
         return ty::lookup_item_type(fcx.ccx.tcx, id);
       }
       def::DefTrait(_) |
@@ -5229,8 +5228,7 @@ pub fn instantiate_path(fcx: &FnCtxt,
     }
 
     fcx.add_obligations_for_parameters(
-        traits::ObligationCause::new(span,
-                                     traits::ItemObligation(def.def_id())),
+        traits::ObligationCause::new(span, traits::ItemObligation(def.def_id())),
         &substs,
         &polytype.generics);
 

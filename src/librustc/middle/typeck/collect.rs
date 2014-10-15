@@ -77,10 +77,12 @@ pub fn collect_item_types(ccx: &CrateCtxt) {
     }
 
     match ccx.tcx.lang_items.ty_desc() {
-        Some(id) => { collect_intrinsic_type(ccx, id); } None => {}
+        Some(id) => { collect_intrinsic_type(ccx, id); }
+        None => {}
     }
     match ccx.tcx.lang_items.opaque() {
-        Some(id) => { collect_intrinsic_type(ccx, id); } None => {}
+        Some(id) => { collect_intrinsic_type(ccx, id); }
+        None => {}
     }
 
     let mut visitor = CollectTraitDefVisitor{ ccx: ccx };
@@ -306,10 +308,7 @@ fn collect_trait_methods(ccx: &CrateCtxt,
                                     }
                                 });
 
-                                if ty_method.explicit_self ==
-                                        ty::StaticExplicitSelfCategory {
-                                    make_static_method_ty(ccx, &*ty_method);
-                                }
+                                make_method_ty(ccx, &*ty_method);
 
                                 tcx.impl_or_trait_items
                                    .borrow_mut()
@@ -364,7 +363,7 @@ fn collect_trait_methods(ccx: &CrateCtxt,
         _ => { /* Ignore things that aren't traits */ }
     }
 
-    fn make_static_method_ty(ccx: &CrateCtxt, m: &ty::Method) {
+    fn make_method_ty(ccx: &CrateCtxt, m: &ty::Method) {
         ccx.tcx.tcache.borrow_mut().insert(
             m.def_id,
             Polytype {
