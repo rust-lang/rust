@@ -18,8 +18,7 @@ use middle::const_eval;
 use middle::def;
 use middle::dependency_format;
 use middle::lang_items::{FnTraitLangItem, FnMutTraitLangItem};
-use middle::lang_items::{FnOnceTraitLangItem, OpaqueStructLangItem};
-use middle::lang_items::{TyDescStructLangItem, TyVisitorTraitLangItem};
+use middle::lang_items::{FnOnceTraitLangItem, TyDescStructLangItem};
 use middle::mem_categorization as mc;
 use middle::resolve;
 use middle::resolve_lifetime;
@@ -4819,33 +4818,6 @@ pub fn get_tydesc_ty(tcx: &ctxt) -> Result<t, String> {
         tcx.intrinsic_defs.borrow().find_copy(&tydesc_lang_item)
             .expect("Failed to resolve TyDesc")
     })
-}
-
-pub fn get_opaque_ty(tcx: &ctxt) -> Result<t, String> {
-    tcx.lang_items.require(OpaqueStructLangItem).map(|opaque_lang_item| {
-        tcx.intrinsic_defs.borrow().find_copy(&opaque_lang_item)
-            .expect("Failed to resolve Opaque")
-    })
-}
-
-pub fn visitor_object_ty(tcx: &ctxt,
-                         ptr_region: ty::Region,
-                         trait_region: ty::Region)
-                         -> Result<(Rc<TraitRef>, t), String>
-{
-    let trait_lang_item = match tcx.lang_items.require(TyVisitorTraitLangItem) {
-        Ok(id) => id,
-        Err(s) => { return Err(s); }
-    };
-    let substs = Substs::empty();
-    let trait_ref = Rc::new(TraitRef { def_id: trait_lang_item, substs: substs });
-    Ok((trait_ref.clone(),
-        mk_rptr(tcx, ptr_region,
-                mt {mutbl: ast::MutMutable,
-                    ty: mk_trait(tcx,
-                                 trait_ref.def_id,
-                                 trait_ref.substs.clone(),
-                                 ty::region_existential_bound(trait_region))})))
 }
 
 pub fn item_variances(tcx: &ctxt, item_id: ast::DefId) -> Rc<ItemVariances> {
