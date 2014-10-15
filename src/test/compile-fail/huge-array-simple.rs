@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern: too big for the current ABI
+// error-pattern: too big for the current
 
 fn main() {
    let fat : [u8, ..1<<61] = [0, ..1<<61];

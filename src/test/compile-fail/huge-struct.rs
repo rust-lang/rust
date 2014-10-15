@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern: are too big for the current ABI
+// error-pattern: too big for the current
 
 struct S32<T> {
     v0: T,
