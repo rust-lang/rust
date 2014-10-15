@@ -33,7 +33,7 @@ use middle;
 use util::ppaux::{note_and_explain_region, bound_region_ptr_to_string};
 use util::ppaux::{trait_store_to_string, ty_to_string};
 use util::ppaux::{Repr, UserString};
-use util::common::{indenter};
+use util::common::{indenter, memoized, memoized_with_key};
 use util::nodemap::{NodeMap, NodeSet, DefIdMap, DefIdSet, FnvHashMap};
 
 use std::cell::{Cell, RefCell};
@@ -2118,53 +2118,36 @@ pub fn type_needs_drop(cx: &ctxt, ty: t) -> bool {
 // that only contain scalars and shared boxes can avoid unwind
 // cleanups.
 pub fn type_needs_unwind_cleanup(cx: &ctxt, ty: t) -> bool {
-    match cx.needs_unwind_cleanup_cache.borrow().find(&ty) {
-        Some(&result) => return result,
-        None => ()
-    }
-
-    let mut tycache = HashSet::new();
-    let needs_unwind_cleanup =
-        type_needs_unwind_cleanup_(cx, ty, &mut tycache);
-    cx.needs_unwind_cleanup_cache.borrow_mut().insert(ty, needs_unwind_cleanup);
-    needs_unwind_cleanup
-}
-
-fn type_needs_unwind_cleanup_(cx: &ctxt, ty: t,
-                              tycache: &mut HashSet<t>) -> bool {
-
-    // Prevent infinite recursion
-    if !tycache.insert(ty) {
-        return false;
-    }
-
-    let mut needs_unwind_cleanup = false;
-    maybe_walk_ty(ty, |ty| {
-        let result = match get(ty).sty {
-          ty_nil | ty_bot | ty_bool | ty_int(_) | ty_uint(_) | ty_float(_) |
-          ty_tup(_) | ty_ptr(_) => {
-            true
-          }
-          ty_enum(did, ref substs) => {
-            for v in (*enum_variants(cx, did)).iter() {
-                for aty in v.args.iter() {
-                    let t = aty.subst(cx, substs);
-                    needs_unwind_cleanup |=
-                        type_needs_unwind_cleanup_(cx, t, tycache);
-                }
-            }
-            !needs_unwind_cleanup
-          }
-          _ => {
-            needs_unwind_cleanup = true;
-            false
-          }
-        };
-
-        result
+    return memoized(&cx.needs_unwind_cleanup_cache, ty, |ty| {
+        type_needs_unwind_cleanup_(cx, ty, &mut HashSet::new())
     });
 
-    needs_unwind_cleanup
+    fn type_needs_unwind_cleanup_(cx: &ctxt, ty: t, tycache: &mut HashSet<t>) -> bool {
+        // Prevent infinite recursion
+        if !tycache.insert(ty) {
+            return false;
+        }
+
+        let mut needs_unwind_cleanup = false;
+        maybe_walk_ty(ty, |ty| {
+            needs_unwind_cleanup |= match get(ty).sty {
+                ty_nil | ty_bot | ty_bool | ty_int(_) | ty_uint(_) |
+                ty_float(_) | ty_tup(_) | ty_ptr(_) => false,
+
+                ty_enum(did, ref substs) =>
+                    enum_variants(cx, did).iter().any(|v|
+                        v.args.iter().any(|aty| {
+                            let t = aty.subst(cx, substs);
+                            type_needs_unwind_cleanup_(cx, t, tycache)
+                        })
+                    ),
+
+                _ => true
+            };
+            !needs_unwind_cleanup
+        });
+        needs_unwind_cleanup
+    }
 }
 
 /**
@@ -2179,6 +2162,7 @@ fn type_needs_unwind_cleanup_(cx: &ctxt, ty: t,
  * easier for me (nmatsakis) to think about what is contained within
  * a type than to think about what is *not* contained within a type.
  */
+#[deriving(Clone)]
 pub struct TypeContents {
     pub bits: u64
 }
@@ -2359,18 +2343,9 @@ pub fn type_interior_is_unsafe(cx: &ctxt, t: ty::t) -> bool {
 }
 
 pub fn type_contents(cx: &ctxt, ty: t) -> TypeContents {
-    let ty_id = type_id(ty);
-
-    match cx.tc_cache.borrow().find(&ty_id) {
-        Some(tc) => { return *tc; }
-        None => {}
-    }
-
-    let mut cache = HashMap::new();
-    let result = tc_ty(cx, ty, &mut cache);
-
-    cx.tc_cache.borrow_mut().insert(ty_id, result);
-    return result;
+    return memoized_with_key(&cx.tc_cache, ty, |ty| {
+        tc_ty(cx, ty, &mut HashMap::new())
+    }, |&ty| type_id(ty));
 
     fn tc_ty(cx: &ctxt,
              ty: t,
@@ -4034,9 +4009,8 @@ pub fn impl_or_trait_item(cx: &ctxt, id: ast::DefId) -> ImplOrTraitItem {
 /// Returns true if the given ID refers to an associated type and false if it
 /// refers to anything else.
 pub fn is_associated_type(cx: &ctxt, id: ast::DefId) -> bool {
-    let result = match cx.associated_types.borrow_mut().find(&id) {
-        Some(result) => return *result,
-        None if id.krate == ast::LOCAL_CRATE => {
+    memoized(&cx.associated_types, id, |id: ast::DefId| {
+        if id.krate == ast::LOCAL_CRATE {
             match cx.impl_or_trait_items.borrow().find(&id) {
                 Some(ref item) => {
                     match **item {
@@ -4046,14 +4020,10 @@ pub fn is_associated_type(cx: &ctxt, id: ast::DefId) -> bool {
                 }
                 None => false,
             }
-        }
-        None => {
+        } else {
             csearch::is_associated_type(&cx.sess.cstore, id)
         }
-    };
-
-    cx.associated_types.borrow_mut().insert(id, result);
-    result
+    })
 }
 
 /// Returns the parameter index that the given associated type corresponds to.
@@ -4111,35 +4081,29 @@ pub fn trait_item_def_ids(cx: &ctxt, id: ast::DefId)
 }
 
 pub fn impl_trait_ref(cx: &ctxt, id: ast::DefId) -> Option<Rc<TraitRef>> {
-    match cx.impl_trait_cache.borrow().find(&id) {
-        Some(ret) => { return ret.clone(); }
-        None => {}
-    }
-
-    let ret = if id.krate == ast::LOCAL_CRATE {
-        debug!("(impl_trait_ref) searching for trait impl {:?}", id);
-        match cx.map.find(id.node) {
-            Some(ast_map::NodeItem(item)) => {
-                match item.node {
-                    ast::ItemImpl(_, ref opt_trait, _, _) => {
-                        match opt_trait {
-                            &Some(ref t) => {
-                                Some(ty::node_id_to_trait_ref(cx, t.ref_id))
+    memoized(&cx.impl_trait_cache, id, |id: ast::DefId| {
+        if id.krate == ast::LOCAL_CRATE {
+            debug!("(impl_trait_ref) searching for trait impl {:?}", id);
+            match cx.map.find(id.node) {
+                Some(ast_map::NodeItem(item)) => {
+                    match item.node {
+                        ast::ItemImpl(_, ref opt_trait, _, _) => {
+                            match opt_trait {
+                                &Some(ref t) => {
+                                    Some(ty::node_id_to_trait_ref(cx, t.ref_id))
+                                }
+                                &None => None
                             }
-                            &None => None
                         }
+                        _ => None
                     }
-                    _ => None
                 }
+                _ => None
             }
-            _ => None
+        } else {
+            csearch::get_impl_trait(cx, id)
         }
-    } else {
-        csearch::get_impl_trait(cx, id)
-    };
-
-    cx.impl_trait_cache.borrow_mut().insert(id, ret.clone());
-    ret
+    })
 }
 
 pub fn trait_ref_to_def_id(tcx: &ctxt, tr: &ast::TraitRef) -> ast::DefId {
@@ -4325,72 +4289,66 @@ pub fn type_is_empty(cx: &ctxt, t: t) -> bool {
 }
 
 pub fn enum_variants(cx: &ctxt, id: ast::DefId) -> Rc<Vec<Rc<VariantInfo>>> {
-    match cx.enum_var_cache.borrow().find(&id) {
-        Some(variants) => return variants.clone(),
-        _ => { /* fallthrough */ }
-    }
+    memoized(&cx.enum_var_cache, id, |id: ast::DefId| {
+        if ast::LOCAL_CRATE != id.krate {
+            Rc::new(csearch::get_enum_variants(cx, id))
+        } else {
+            /*
+              Although both this code and check_enum_variants in typeck/check
+              call eval_const_expr, it should never get called twice for the same
+              expr, since check_enum_variants also updates the enum_var_cache
+             */
+            match cx.map.get(id.node) {
+                ast_map::NodeItem(ref item) => {
+                    match item.node {
+                        ast::ItemEnum(ref enum_definition, _) => {
+                            let mut last_discriminant: Option<Disr> = None;
+                            Rc::new(enum_definition.variants.iter().map(|variant| {
 
-    let result = if ast::LOCAL_CRATE != id.krate {
-        Rc::new(csearch::get_enum_variants(cx, id))
-    } else {
-        /*
-          Although both this code and check_enum_variants in typeck/check
-          call eval_const_expr, it should never get called twice for the same
-          expr, since check_enum_variants also updates the enum_var_cache
-         */
-        match cx.map.get(id.node) {
-            ast_map::NodeItem(ref item) => {
-                match item.node {
-                    ast::ItemEnum(ref enum_definition, _) => {
-                        let mut last_discriminant: Option<Disr> = None;
-                        Rc::new(enum_definition.variants.iter().map(|variant| {
+                                let mut discriminant = match last_discriminant {
+                                    Some(val) => val + 1,
+                                    None => INITIAL_DISCRIMINANT_VALUE
+                                };
 
-                            let mut discriminant = match last_discriminant {
-                                Some(val) => val + 1,
-                                None => INITIAL_DISCRIMINANT_VALUE
-                            };
+                                match variant.node.disr_expr {
+                                    Some(ref e) =>
+                                        match const_eval::eval_const_expr_partial(cx, &**e) {
+                                            Ok(const_eval::const_int(val)) => {
+                                                discriminant = val as Disr
+                                            }
+                                            Ok(const_eval::const_uint(val)) => {
+                                                discriminant = val as Disr
+                                            }
+                                            Ok(_) => {
+                                                cx.sess
+                                                  .span_err(e.span,
+                                                            "expected signed integer constant");
+                                            }
+                                            Err(ref err) => {
+                                                cx.sess
+                                                  .span_err(e.span,
+                                                            format!("expected constant: {}",
+                                                                    *err).as_slice());
+                                            }
+                                        },
+                                    None => {}
+                                };
 
-                            match variant.node.disr_expr {
-                                Some(ref e) => match const_eval::eval_const_expr_partial(cx, &**e) {
-                                    Ok(const_eval::const_int(val)) => {
-                                        discriminant = val as Disr
-                                    }
-                                    Ok(const_eval::const_uint(val)) => {
-                                        discriminant = val as Disr
-                                    }
-                                    Ok(_) => {
-                                        cx.sess
-                                          .span_err(e.span,
-                                                    "expected signed integer constant");
-                                    }
-                                    Err(ref err) => {
-                                        cx.sess
-                                          .span_err(e.span,
-                                                    format!("expected constant: {}",
-                                                            *err).as_slice());
-                                    }
-                                },
-                                None => {}
-                            };
-
-                            last_discriminant = Some(discriminant);
-                            Rc::new(VariantInfo::from_ast_variant(cx, &**variant,
-                                                                  discriminant))
-                        }).collect())
-                    }
-                    _ => {
-                        cx.sess.bug("enum_variants: id not bound to an enum")
+                                last_discriminant = Some(discriminant);
+                                Rc::new(VariantInfo::from_ast_variant(cx, &**variant,
+                                                                      discriminant))
+                            }).collect())
+                        }
+                        _ => {
+                            cx.sess.bug("enum_variants: id not bound to an enum")
+                        }
                     }
                 }
+                _ => cx.sess.bug("enum_variants: id not bound to an enum")
             }
-            _ => cx.sess.bug("enum_variants: id not bound to an enum")
         }
-    };
-
-    cx.enum_var_cache.borrow_mut().insert(id, result.clone());
-    result
+    })
 }
-
 
 // Returns information about the enum variant with the given ID:
 pub fn enum_variant_with_id(cx: &ctxt,
@@ -4415,21 +4373,11 @@ pub fn lookup_item_type(cx: &ctxt,
 }
 
 /// Given the did of a trait, returns its canonical trait ref.
-pub fn lookup_trait_def(cx: &ctxt, did: ast::DefId) -> Rc<ty::TraitDef> {
-    let mut trait_defs = cx.trait_defs.borrow_mut();
-    match trait_defs.find_copy(&did) {
-        Some(trait_def) => {
-            // The item is in this crate. The caller should have added it to the
-            // type cache already
-            trait_def
-        }
-        None => {
-            assert!(did.krate != ast::LOCAL_CRATE);
-            let trait_def = Rc::new(csearch::get_trait_def(cx, did));
-            trait_defs.insert(did, trait_def.clone());
-            trait_def
-        }
-    }
+pub fn lookup_trait_def(cx: &ctxt, did: DefId) -> Rc<ty::TraitDef> {
+    memoized(&cx.trait_defs, did, |did: DefId| {
+        assert!(did.krate != ast::LOCAL_CRATE);
+        Rc::new(csearch::get_trait_def(cx, did))
+    })
 }
 
 /// Given a reference to a trait, returns the bounds declared on the
@@ -4490,26 +4438,19 @@ pub fn lookup_simd(tcx: &ctxt, did: DefId) -> bool {
 
 /// Obtain the representation annotation for a struct definition.
 pub fn lookup_repr_hints(tcx: &ctxt, did: DefId) -> Rc<Vec<attr::ReprAttr>> {
-    match tcx.repr_hint_cache.borrow().find(&did) {
-        None => {}
-        Some(ref hints) => return (*hints).clone(),
-    }
-
-    let acc = if did.krate == LOCAL_CRATE {
-        let mut acc = Vec::new();
-        ty::each_attr(tcx, did, |meta| {
-            acc.extend(attr::find_repr_attrs(tcx.sess.diagnostic(),
-                                             meta).into_iter());
-            true
-        });
-        acc
-    } else {
-        csearch::get_repr_attrs(&tcx.sess.cstore, did)
-    };
-
-    let acc = Rc::new(acc);
-    tcx.repr_hint_cache.borrow_mut().insert(did, acc.clone());
-    acc
+    memoized(&tcx.repr_hint_cache, did, |did: DefId| {
+        Rc::new(if did.krate == LOCAL_CRATE {
+            let mut acc = Vec::new();
+            ty::each_attr(tcx, did, |meta| {
+                acc.extend(attr::find_repr_attrs(tcx.sess.diagnostic(),
+                                                 meta).into_iter());
+                true
+            });
+            acc
+        } else {
+            csearch::get_repr_attrs(&tcx.sess.cstore, did)
+        })
+    })
 }
 
 // Look up a field ID, whether or not it's local
