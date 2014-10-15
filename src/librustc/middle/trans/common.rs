@@ -26,6 +26,7 @@ use middle::trans::build;
 use middle::trans::cleanup;
 use middle::trans::datum;
 use middle::trans::debuginfo;
+use middle::trans::machine;
 use middle::trans::type_::Type;
 use middle::trans::type_of;
 use middle::traits;
@@ -598,7 +599,7 @@ pub fn C_u64(ccx: &CrateContext, i: u64) -> ValueRef {
 pub fn C_int<I: AsI64>(ccx: &CrateContext, i: I) -> ValueRef {
     let v = i.as_i64();
 
-    match machine::llbitsize_of_real(ccx.int_type()) {
+    match machine::llbitsize_of_real(ccx, ccx.int_type()) {
         32 => assert!(v < (1<<31) && v >= -(1<<31)),
         64 => {},
         n => fail!("unsupported target size: {}", n)
@@ -610,7 +611,7 @@ pub fn C_int<I: AsI64>(ccx: &CrateContext, i: I) -> ValueRef {
 pub fn C_uint<I: AsU64>(ccx: &CrateContext, i: I) -> ValueRef {
     let v = i.as_u64();
 
-    match machine::llbitsize_of_real(ccx.int_type()) {
+    match machine::llbitsize_of_real(ccx, ccx.int_type()) {
         32 => assert!(v < (1<<32)),
         64 => {},
         n => fail!("unsupported target size: {}", n)
