@@ -471,14 +471,16 @@ fn ensure_struct_fits_in_address_space(ccx: &CrateContext,
                                        scapegoat: ty::t) {
     let mut offset = 0;
     for &llty in fields.iter() {
+        // Invariant: offset < ccx.max_obj_size() <= 1<<61
         if !packed {
             let type_align = machine::llalign_of_min(ccx, llty);
             offset = roundup(offset, type_align);
         }
+        // type_align is a power-of-2, so still offset < ccx.max_obj_size()
+        // llsize_of_alloc(ccx, llty) is also less than ccx.max_obj_size()
+        // so the sum is less than 1<<62 (and therefore can't overflow).
         offset += machine::llsize_of_alloc(ccx, llty);
 
-        // We can get away with checking for overflow once per iteration,
-        // because field sizes are less than 1<<61.
         if offset >= ccx.max_obj_size() {
             ccx.report_overbig_object(scapegoat);
         }
@@ -498,7 +500,8 @@ fn ensure_enum_fits_in_address_space(ccx: &CrateContext,
     let discr_size = machine::llsize_of_alloc(ccx, ll_inttype(ccx, discr));
     let (field_size, field_align) = union_size_and_align(fields);
 
-    // This can't overflow because field_size, discr_size, field_align < 1<<61
+    // field_align < 1<<32, discr_size <= 8, field_size < MAX_OBJ_SIZE <= 1<<61
+    // so the sum is less than 1<<62 (and can't overflow).
     let total_size = roundup(discr_size, field_align) + field_size;
 
     if total_size >= ccx.max_obj_size() {
