@@ -1079,7 +1079,7 @@ fn trans_rvalue_dps_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         ast::ExprMethodCall(_, _, ref args) => {
             callee::trans_method_call(bcx,
                                       expr,
-                                      &**args.get(0),
+                                      &*args[0],
                                       callee::ArgExprs(args.as_slice()),
                                       dest)
         }
@@ -1787,7 +1787,7 @@ fn trans_overloaded_op<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                    rhs: Vec<(Datum<Expr>, ast::NodeId)>,
                                    dest: Option<Dest>)
                                    -> Result<'blk, 'tcx> {
-    let method_ty = bcx.tcx().method_map.borrow().get(&method_call).ty;
+    let method_ty = (*bcx.tcx().method_map.borrow())[method_call].ty;
     callee::trans_call_inner(bcx,
                              Some(expr_info(expr)),
                              monomorphize_type(bcx, method_ty),
@@ -1808,11 +1808,10 @@ fn trans_overloaded_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                                          dest: Option<Dest>)
                                          -> Block<'blk, 'tcx> {
     let method_call = MethodCall::expr(expr.id);
-    let method_type = bcx.tcx()
-                         .method_map
-                         .borrow()
-                         .get(&method_call)
-                         .ty;
+    let method_type = (*bcx.tcx()
+                           .method_map
+                           .borrow())[method_call]
+                           .ty;
     let mut all_args = vec!(callee);
     all_args.extend(args.iter().map(|e| &**e));
     unpack_result!(bcx,

@@ -262,9 +262,9 @@ fn trans_struct_drop<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                   // use the fake info.
                   info.unwrap_or(C_null(Type::i8p(bcx.ccx()))),
                   GEPi(bcx, scratch.val, [0, abi::slice_elt_len]));
-            PointerCast(variant_cx, scratch.val, *params.get(0))
+            PointerCast(variant_cx, scratch.val, params[0])
         } else {
-            PointerCast(variant_cx, value, *params.get(0))
+            PointerCast(variant_cx, value, params[0])
         };
         let args = vec!(self_arg);
 

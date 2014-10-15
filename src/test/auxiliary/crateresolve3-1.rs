@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![crate_id="crateresolve3#0.1"]
+#![crate_name="crateresolve3#0.1"]
 
 #![crate_type = "lib"]
 

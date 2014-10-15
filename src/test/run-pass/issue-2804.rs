@@ -57,9 +57,9 @@ fn add_interface(_store: int, managed_ip: String, data: json::Json) -> (String, 
 
 fn add_interfaces(store: int, managed_ip: String, device: HashMap<String, json::Json>)
 -> Vec<(String, object)> {
-    match device.get(&"interfaces".to_string())
+    match device["interfaces".to_string()]
     {
-        &json::List(ref interfaces) =>
+        json::List(ref interfaces) =>
         {
           interfaces.iter().map(|interface| {
                 add_interface(store, managed_ip.clone(), (*interface).clone())
@@ -68,7 +68,7 @@ fn add_interfaces(store: int, managed_ip: String, device: HashMap<String, json::
         _ =>
         {
             println!("Expected list for {} interfaces, found {}", managed_ip,
-                   device.get(&"interfaces".to_string()));
+                   device["interfaces".to_string()]);
             Vec::new()
         }
     }

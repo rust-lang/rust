@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![crate_id="lint_output_format#0.1"]
+#![crate_name="lint_output_format"]
 #![crate_type = "lib"]
 
 #[deprecated]

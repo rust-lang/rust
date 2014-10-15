@@ -15,7 +15,7 @@
 //!
 //! This is the downstream crate.
 
-#![crate_id = "utb"]
+#![crate_name = "utb"]
 
 extern crate uta;
 

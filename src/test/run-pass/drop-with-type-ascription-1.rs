@@ -11,7 +11,7 @@
 fn main() {
     let foo = "hello".to_string();
     let foo: Vec<&str> = foo.as_slice().words().collect();
-    let invalid_string = foo.get(0);
+    let invalid_string = &foo[0];
     assert_eq!(*invalid_string, "hello");
 }
 

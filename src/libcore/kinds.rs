@@ -20,9 +20,6 @@ by the compiler automatically for the types to which they apply.
 
 */
 
-#[deprecated = "This has been renamed to Sync"]
-pub use self::Sync as Share;
-
 /// Types able to be transferred across task boundaries.
 #[lang="send"]
 pub trait Send for Sized? {

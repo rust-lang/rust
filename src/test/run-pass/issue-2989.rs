@@ -24,7 +24,7 @@ fn to_bools(bitv: Storage) -> Vec<bool> {
     Vec::from_fn(8, |i| {
         let w = i / 64;
         let b = i % 64;
-        let x = 1u64 & (*bitv.storage.get(w) >> b);
+        let x = 1u64 & (bitv.storage[w] >> b);
         x == 1u64
     })
 }
@@ -36,7 +36,7 @@ pub fn main() {
     let bools2 = to_bools(Storage{storage: vec!(0b01100100)});
 
     for i in range(0u, 8) {
-        println!("{} => {} vs {}", i, *bools.get(i), *bools2.get(i));
+        println!("{} => {} vs {}", i, bools[i], bools2[i]);
     }
 
     assert_eq!(bools, bools2);

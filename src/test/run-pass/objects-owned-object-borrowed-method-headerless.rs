@@ -35,6 +35,6 @@ pub fn main() {
     );
 
     for i in range(0u, foos.len()) {
-        assert_eq!(i, foos.get(i).foo());
+        assert_eq!(i, foos[i].foo());
     }
 }

@@ -17,7 +17,7 @@ fn main() {
         let mut out = stdio::stdout();
         out.write(['a' as u8, ..128 * 1024]).unwrap();
     } else {
-        let out = Command::new(args.get(0).as_slice()).arg("child").output();
+        let out = Command::new(args[0].as_slice()).arg("child").output();
         let out = out.unwrap();
         assert!(out.status.success());
     }

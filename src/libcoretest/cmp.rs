@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::cmp::lexical_ordering;
 use core::cmp::{ partial_min, partial_max };
 
 #[test]
@@ -40,21 +39,6 @@ fn test_ordering_reverse() {
 fn test_ordering_order() {
     assert!(Less < Equal);
     assert_eq!(Greater.cmp(&Less), Greater);
-}
-
-#[test]
-#[allow(deprecated)]
-fn test_lexical_ordering() {
-    fn t(o1: Ordering, o2: Ordering, e: Ordering) {
-        assert_eq!(lexical_ordering(o1, o2), e);
-    }
-
-    let xs = [Less, Equal, Greater];
-    for &o in xs.iter() {
-        t(Less, o, Less);
-        t(Equal, o, o);
-        t(Greater, o, Greater);
-     }
 }
 
 #[test]

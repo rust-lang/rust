@@ -549,7 +549,7 @@ impl<'blk, 'tcx> CleanupHelperMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx
     fn is_valid_custom_scope(&self, custom_scope: CustomScopeIndex) -> bool {
         let scopes = self.scopes.borrow();
         custom_scope.index < scopes.len() &&
-            scopes.get(custom_scope.index).kind.is_temp()
+            (*scopes)[custom_scope.index].kind.is_temp()
     }
 
     fn trans_scope_cleanups(&self, // cannot borrow self, will recurse

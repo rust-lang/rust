@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![crate_id="static-function-pointer-aux"]
+#![crate_name="static-function-pointer-aux"]
 
 pub fn f(x: int) -> int { -x }
 

@@ -25,13 +25,6 @@ use string::{mod, String};
 use to_string::IntoStr;
 use vec::Vec;
 
-#[deprecated="this trait has been renamed to `AsciiExt`"]
-pub use self::AsciiExt as StrAsciiExt;
-
-#[deprecated="this trait has been renamed to `OwnedAsciiExt`"]
-pub use self::OwnedAsciiExt as OwnedStrAsciiExt;
-
-
 /// Datatype to hold one ascii character. It wraps a `u8`, with the highest bit always zero.
 #[deriving(Clone, PartialEq, PartialOrd, Ord, Eq, Hash)]
 pub struct Ascii { chr: u8 }
@@ -49,24 +42,10 @@ impl Ascii {
         self.chr as char
     }
 
-    #[inline]
-    #[allow(missing_doc)]
-    #[deprecated="renamed to `to_lowercase`"]
-    pub fn to_lower(self) -> Ascii {
-        self.to_lowercase()
-    }
-
     /// Convert to lowercase.
     #[inline]
     pub fn to_lowercase(self) -> Ascii {
         Ascii{chr: ASCII_LOWER_MAP[self.chr as uint]}
-    }
-
-    /// Deprecated: use `to_uppercase`
-    #[inline]
-    #[deprecated="renamed to `to_uppercase`"]
-    pub fn to_upper(self) -> Ascii {
-        self.to_uppercase()
     }
 
     /// Convert to uppercase.
@@ -83,13 +62,6 @@ impl Ascii {
 
     // the following methods are like ctype, and the implementation is inspired by musl
 
-    #[inline]
-    #[allow(missing_doc)]
-    #[deprecated="renamed to `is_alphabetic`"]
-    pub fn is_alpha(&self) -> bool {
-        self.is_alphabetic()
-    }
-
     /// Check if the character is a letter (a-z, A-Z)
     #[inline]
     pub fn is_alphabetic(&self) -> bool {
@@ -100,13 +72,6 @@ impl Ascii {
     #[inline]
     pub fn is_digit(&self) -> bool {
         self.chr >= 0x30 && self.chr <= 0x39
-    }
-
-    #[inline]
-    #[allow(missing_doc)]
-    #[deprecated="renamed to `is_alphanumeric`"]
-    pub fn is_alnum(&self) -> bool {
-        self.is_alphanumeric()
     }
 
     /// Check if the character is a letter or number
@@ -139,24 +104,10 @@ impl Ascii {
         (self.chr - 0x20) < 0x5F
     }
 
-    /// Deprecated: use `to_lowercase`
-    #[inline]
-    #[deprecated="renamed to `is_lowercase`"]
-    pub fn is_lower(&self) -> bool {
-        self.is_lowercase()
-    }
-
     /// Checks if the character is lowercase
     #[inline]
     pub fn is_lowercase(&self) -> bool {
         (self.chr - b'a') < 26
-    }
-
-    #[inline]
-    #[allow(missing_doc)]
-    #[deprecated="renamed to `is_uppercase`"]
-    pub fn is_upper(&self) -> bool {
-        self.is_uppercase()
     }
 
     /// Checks if the character is uppercase
@@ -581,7 +532,6 @@ mod tests {
     use prelude::*;
     use super::*;
     use char::from_u32;
-    use vec::Vec;
     use str::StrSlice;
 
     macro_rules! v2ascii (
@@ -590,7 +540,7 @@ mod tests {
     )
 
     macro_rules! vec2ascii (
-        ($($e:expr),*) => (Vec::from_slice([$(Ascii{chr:$e}),*]));
+        ($($e:expr),*) => ([$(Ascii{chr:$e}),*].to_vec());
     )
 
     #[test]

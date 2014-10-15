@@ -51,7 +51,7 @@ fn expand_identity(cx: &mut ExtCtxt, _span: Span, tts: &[TokenTree])
                    -> Box<MacResult+'static> {
     // Parse an expression and emit it unchanged.
     let mut parser = parse::new_parser_from_tts(cx.parse_sess(),
-        cx.cfg(), Vec::from_slice(tts));
+        cx.cfg(), tts.to_vec());
     let expr = parser.parse_expr();
     MacExpr::new(quote_expr!(&mut *cx, $expr))
 }

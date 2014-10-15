@@ -28,7 +28,6 @@ This API is completely unstable and subject to change.
       html_favicon_url = "http://www.rust-lang.org/favicon.ico",
       html_root_url = "http://doc.rust-lang.org/nightly/")]
 
-#![allow(deprecated)]
 #![feature(default_type_params, globs, if_let, import_shadowing, macro_rules, phase, quote)]
 #![feature(slicing_syntax, struct_variant, unsafe_destructor)]
 #![feature(rustc_diagnostic_macros)]

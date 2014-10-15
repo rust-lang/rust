@@ -102,7 +102,7 @@ fn advance(bodies: &mut [Planet, ..N_BODIES], dt: f64, steps: int) {
     for _ in range(0, steps) {
         let mut b_slice = bodies.as_mut_slice();
         loop {
-            let bi = match b_slice.mut_shift_ref() {
+            let bi = match shift_mut_ref(&mut b_slice) {
                 Some(bi) => bi,
                 None => break
             };
@@ -182,4 +182,22 @@ fn main() {
     advance(&mut bodies, 0.01, n);
 
     println!("{:.9f}", energy(&bodies));
+}
+
+/// Pop a mutable reference off the head of a slice, mutating the slice to no
+/// longer contain the mutable reference. This is a safe operation because the
+/// two mutable borrows are entirely disjoint.
+fn shift_mut_ref<'a, T>(r: &mut &'a mut [T]) -> Option<&'a mut T> {
+    use std::mem;
+    use std::raw::Repr;
+
+    if r.len() == 0 { return None }
+    unsafe {
+        let mut raw = r.repr();
+        let ret = raw.data as *mut T;
+        raw.data = raw.data.offset(1);
+        raw.len -= 1;
+        *r = mem::transmute(raw);
+        Some(unsafe { &mut *ret })
+    }
 }

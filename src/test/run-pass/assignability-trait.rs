@@ -41,7 +41,7 @@ fn length<A, T: iterable<A>>(x: T) -> uint {
 pub fn main() {
     let x: Vec<int> = vec!(0,1,2,3);
     // Call a method
-    x.iterate(|y| { assert!(*x.get(*y as uint) == *y); true });
+    x.iterate(|y| { assert!(x[*y as uint] == *y); true });
     // Call a parameterized function
     assert_eq!(length(x.clone()), x.len());
     // Call a parameterized function, with type arguments that require

@@ -9,7 +9,7 @@
 // except according to those terms.
 
 
-fn test(foo: Box<Vec<int>>) { assert!((*foo.get(0) == 10)); }
+fn test(foo: Box<Vec<int>>) { assert!(((*foo)[0] == 10)); }
 
 pub fn main() {
     let x = box vec!(10);

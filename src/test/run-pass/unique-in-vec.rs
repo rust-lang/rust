@@ -10,5 +10,5 @@
 
 pub fn main() {
     let vect = vec!(box 100i);
-    assert!(*vect.get(0) == box 100);
+    assert!(vect[0] == box 100);
 }

@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![crate_id="inline_dtor#0.1"]
+#![crate_name="inline_dtor"]
 
 pub struct Foo;
 

@@ -14,7 +14,6 @@
 //! types, initializing and manipulating memory.
 
 use intrinsics;
-use num::Int;
 use ptr;
 
 pub use intrinsics::transmute;
@@ -41,26 +40,6 @@ pub fn size_of<T>() -> uint {
 #[stable]
 pub fn size_of_val<T>(_val: &T) -> uint {
     size_of::<T>()
-}
-
-/// Deprecated, this function will be removed soon
-#[inline]
-#[deprecated = "this function will be removed soon"]
-pub fn nonzero_size_of<T>() -> uint {
-    match size_of::<T>() {
-        0 => 1,
-        n => n,
-    }
-}
-
-/// Deprecated, this function will be removed soon
-#[inline]
-#[deprecated = "this function will be removed soon"]
-pub fn nonzero_size_of_val<T>(val: &T) -> uint {
-    match size_of_val::<T>(val) {
-        0 => 1,
-        n => n,
-    }
 }
 
 /// Returns the ABI-required minimum alignment of a type
@@ -107,16 +86,6 @@ pub fn align_of_val<T>(_val: &T) -> uint {
     align_of::<T>()
 }
 
-/// Deprecated, this function has been renamed to align_of
-#[inline]
-#[deprecated = "use mem::align_of instead"]
-pub fn pref_align_of<T>() -> uint { align_of::<T>() }
-
-/// Deprecated, this function has been renamed to align_of_val
-#[inline]
-#[deprecated = "use mem::align_of_val instead"]
-pub fn pref_align_of_val<T>(val: &T) -> uint { align_of_val(val) }
-
 /// Create a value initialized to zero.
 ///
 /// This function is similar to allocating space for a a local variable and
@@ -134,11 +103,6 @@ pub unsafe fn zeroed<T>() -> T {
     intrinsics::init()
 }
 
-/// Deprecated, use zeroed() instead
-#[inline]
-#[deprecated = "this function has been renamed to zeroed()"]
-pub unsafe fn init<T>() -> T { zeroed() }
-
 /// Create an uninitialized value.
 ///
 /// Care must be taken when using this function, if the type `T` has a
@@ -152,116 +116,6 @@ pub unsafe fn init<T>() -> T { zeroed() }
 pub unsafe fn uninitialized<T>() -> T {
     intrinsics::uninit()
 }
-
-/// Deprecated, use `uninitialized` instead.
-#[inline]
-#[deprecated = "this function has been renamed to `uninitialized`"]
-pub unsafe fn uninit<T>() -> T {
-    intrinsics::uninit()
-}
-
-/// Unsafely overwrite a memory location with the given value without destroying
-/// the old value.
-///
-/// This operation is unsafe because it does not destroy the previous value
-/// contained at the location `dst`. This could leak allocations or resources,
-/// so care must be taken to previously deallocate the value at `dst`.
-#[inline]
-#[deprecated = "use ptr::write"]
-pub unsafe fn overwrite<T>(dst: *mut T, src: T) {
-    intrinsics::move_val_init(&mut *dst, src)
-}
-
-/// Deprecated, use `overwrite` instead
-#[inline]
-#[deprecated = "this function has been renamed to overwrite()"]
-pub unsafe fn move_val_init<T>(dst: &mut T, src: T) {
-    ptr::write(dst, src)
-}
-
-/// Convert an u16 to little endian from the target's endianness.
-///
-/// On little endian, this is a no-op.  On big endian, the bytes are swapped.
-#[inline]
-#[deprecated = "use `Int::to_le` instead"]
-pub fn to_le16(x: u16) -> u16 { x.to_le() }
-
-/// Convert an u32 to little endian from the target's endianness.
-///
-/// On little endian, this is a no-op.  On big endian, the bytes are swapped.
-#[inline]
-#[deprecated = "use `Int::to_le` instead"]
-pub fn to_le32(x: u32) -> u32 { x.to_le() }
-
-/// Convert an u64 to little endian from the target's endianness.
-///
-/// On little endian, this is a no-op.  On big endian, the bytes are swapped.
-#[inline]
-#[deprecated = "use `Int::to_le` instead"]
-pub fn to_le64(x: u64) -> u64 { x.to_le() }
-
-/// Convert an u16 to big endian from the target's endianness.
-///
-/// On big endian, this is a no-op.  On little endian, the bytes are swapped.
-#[inline]
-#[deprecated = "use `Int::to_be` instead"]
-pub fn to_be16(x: u16) -> u16 { x.to_be() }
-
-/// Convert an u32 to big endian from the target's endianness.
-///
-/// On big endian, this is a no-op.  On little endian, the bytes are swapped.
-#[inline]
-#[deprecated = "use `Int::to_be` instead"]
-pub fn to_be32(x: u32) -> u32 { x.to_be() }
-
-/// Convert an u64 to big endian from the target's endianness.
-///
-/// On big endian, this is a no-op.  On little endian, the bytes are swapped.
-#[inline]
-#[deprecated = "use `Int::to_be` instead"]
-pub fn to_be64(x: u64) -> u64 { x.to_be() }
-
-/// Convert an u16 from little endian to the target's endianness.
-///
-/// On little endian, this is a no-op.  On big endian, the bytes are swapped.
-#[inline]
-#[deprecated = "use `Int::from_le` instead"]
-pub fn from_le16(x: u16) -> u16 { Int::from_le(x) }
-
-/// Convert an u32 from little endian to the target's endianness.
-///
-/// On little endian, this is a no-op.  On big endian, the bytes are swapped.
-#[inline]
-#[deprecated = "use `Int::from_le` instead"]
-pub fn from_le32(x: u32) -> u32 { Int::from_le(x) }
-
-/// Convert an u64 from little endian to the target's endianness.
-///
-/// On little endian, this is a no-op.  On big endian, the bytes are swapped.
-#[inline]
-#[deprecated = "use `Int::from_le` instead"]
-pub fn from_le64(x: u64) -> u64 { Int::from_le(x) }
-
-/// Convert an u16 from big endian to the target's endianness.
-///
-/// On big endian, this is a no-op.  On little endian, the bytes are swapped.
-#[inline]
-#[deprecated = "use `Int::from_be` instead"]
-pub fn from_be16(x: u16) -> u16 { Int::from_be(x) }
-
-/// Convert an u32 from big endian to the target's endianness.
-///
-/// On big endian, this is a no-op.  On little endian, the bytes are swapped.
-#[inline]
-#[deprecated = "use `Int::from_be` instead"]
-pub fn from_be32(x: u32) -> u32 { Int::from_be(x) }
-
-/// Convert an u64 from big endian to the target's endianness.
-///
-/// On big endian, this is a no-op.  On little endian, the bytes are swapped.
-#[inline]
-#[deprecated = "use `Int::from_be` instead"]
-pub fn from_be64(x: u64) -> u64 { Int::from_be(x) }
 
 /// Swap the values at two mutable locations of the same type, without
 /// deinitialising or copying either one.

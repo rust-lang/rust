@@ -23,7 +23,7 @@ fn foo(name: String, samples_chan: Sender<Msg>) {
         let mut samples_chan = samples_chan;
         let callback: SamplesFn = proc(buffer) {
             for i in range(0u, buffer.len()) {
-                println!("{}: {}", i, *buffer.get(i))
+                println!("{}: {}", i, buffer[i])
             }
         };
         samples_chan.send(GetSamples(name.clone(), callback));

@@ -79,7 +79,7 @@ fn lookup_cur_matched_by_matched(r: &TtReader, start: Rc<NamedMatch>) -> Rc<Name
                 // end of the line; duplicate henceforth
                 ad.clone()
             }
-            MatchedSeq(ref ads, _) => ads.get(*idx).clone()
+            MatchedSeq(ref ads, _) => ads[*idx].clone()
         }
     })
 }
@@ -194,7 +194,7 @@ pub fn tt_next_token(r: &mut TtReader) -> TokenAndSpan {
         let t = {
             let frame = r.stack.last().unwrap();
             // FIXME(pcwalton): Bad copy.
-            (*frame.forest.get(frame.idx)).clone()
+            (*frame.forest)[frame.idx].clone()
         };
         match t {
             TTDelim(tts) => {

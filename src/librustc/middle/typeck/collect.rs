@@ -1298,11 +1298,11 @@ pub fn convert_struct(ccx: &CrateCtxt,
                 write_ty_to_tcx(tcx, ctor_id, selfty);
 
                 tcx.tcache.borrow_mut().insert(local_def(ctor_id), pty);
-            } else if struct_def.fields.get(0).node.kind.is_unnamed() {
+            } else if struct_def.fields[0].node.kind.is_unnamed() {
                 // Tuple-like.
                 let inputs: Vec<_> = struct_def.fields.iter().map(
-                        |field| tcx.tcache.borrow().get(
-                            &local_def(field.node.id)).ty).collect();
+                        |field| (*tcx.tcache.borrow())[
+                            local_def(field.node.id)].ty).collect();
                 let ctor_fn_ty = ty::mk_ctor_fn(tcx,
                                                 ctor_id,
                                                 inputs.as_slice(),
@@ -2124,8 +2124,8 @@ fn conv_param_bounds<'tcx,AC>(this: &AC,
                                      unboxed_fn_ty_bounds } =
         astconv::partition_bounds(this.tcx(), span, all_bounds.as_slice());
 
-    let unboxed_fn_ty_bounds = unboxed_fn_ty_bounds.move_iter().map(|b| {
-        let trait_id = this.tcx().def_map.borrow().get(&b.ref_id).def_id();
+    let unboxed_fn_ty_bounds = unboxed_fn_ty_bounds.into_iter().map(|b| {
+        let trait_id = (*this.tcx().def_map.borrow())[b.ref_id].def_id();
         let mut kind = None;
         for &(lang_item, this_kind) in [
             (this.tcx().lang_items.fn_trait(), ast::FnUnboxedClosureKind),
@@ -2170,7 +2170,7 @@ fn conv_param_bounds<'tcx,AC>(this: &AC,
         .chain(unboxed_fn_ty_bounds)
         .collect();
     let region_bounds: Vec<ty::Region> =
-        region_bounds.move_iter()
+        region_bounds.into_iter()
         .map(|r| ast_region_to_region(this.tcx(), r))
         .collect();
     ty::ParamBounds {

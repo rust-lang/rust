@@ -165,7 +165,7 @@ pub fn expand_expr(e: P<ast::Expr>, fld: &mut MacroExpander) -> P<ast::Expr> {
 
             let mut arms = Vec::with_capacity(else_if_arms.len() + 2);
             arms.push(pat_arm);
-            arms.push_all_move(else_if_arms);
+            arms.extend(else_if_arms.into_iter());
             arms.push(else_arm);
 
             let match_expr = fld.cx.expr(span, ast::ExprMatch(expr, arms, ast::MatchIfLetDesugar));
@@ -257,7 +257,7 @@ fn expand_mac_invoc<T>(mac: ast::Mac, span: codemap::Span,
                 // let compilation continue
                 return None;
             }
-            let extname = pth.segments.get(0).identifier;
+            let extname = pth.segments[0].identifier;
             let extnamestr = token::get_ident(extname);
             match fld.cx.syntax_env.find(&extname.name) {
                 None => {
@@ -505,7 +505,7 @@ pub fn expand_item_mac(it: P<ast::Item>, fld: &mut MacroExpander)
             node: MacInvocTT(ref pth, ref tts, _),
             ..
         }) => {
-            (pth.segments.get(0).identifier, pth.span, (*tts).clone())
+            (pth.segments[0].identifier, pth.span, (*tts).clone())
         }
         _ => fld.cx.span_bug(it.span, "invalid item macro invocation")
     };
@@ -695,7 +695,8 @@ fn expand_non_macro_stmt(Spanned {node, span: stmt_span}: Stmt, fld: &mut MacroE
                         rename_fld.fold_pat(expanded_pat)
                     };
                     // add them to the existing pending renames:
-                    fld.cx.syntax_env.info().pending_renames.push_all_move(new_pending_renames);
+                    fld.cx.syntax_env.info().pending_renames
+                          .extend(new_pending_renames.into_iter());
                     Local {
                         id: id,
                         ty: expanded_ty,
@@ -744,7 +745,7 @@ fn expand_arm(arm: ast::Arm, fld: &mut MacroExpander) -> ast::Arm {
     }
     // all of the pats must have the same set of bindings, so use the
     // first one to extract them and generate new names:
-    let idents = pattern_bindings(&**expanded_pats.get(0));
+    let idents = pattern_bindings(&*expanded_pats[0]);
     let new_renames = idents.into_iter().map(|id| (id, fresh_name(&id))).collect();
     // apply the renaming, but only to the PatIdents:
     let mut rename_pats_fld = PatIdentRenamer{renames:&new_renames};
@@ -860,7 +861,7 @@ fn expand_pat(p: P<ast::Pat>, fld: &mut MacroExpander) -> P<ast::Pat> {
             fld.cx.span_err(pth.span, "expected macro name without module separators");
             return DummyResult::raw_pat(span);
         }
-        let extname = pth.segments.get(0).identifier;
+        let extname = pth.segments[0].identifier;
         let extnamestr = token::get_ident(extname);
         let marked_after = match fld.cx.syntax_env.find(&extname.name) {
             None => {
@@ -1022,7 +1023,7 @@ fn expand_method(m: P<ast::Method>, fld: &mut MacroExpander) -> SmallVector<P<as
             };
 
             // expand again if necessary
-            let new_methods = new_methods.move_iter()
+            let new_methods = new_methods.into_iter()
                                   .flat_map(|m| fld.fold_method(m).into_iter()).collect();
             fld.cx.bt_pop();
             new_methods
@@ -1610,8 +1611,8 @@ mod test {
         // must be one check clause for each binding:
         assert_eq!(bindings.len(),bound_connections.len());
         for (binding_idx,shouldmatch) in bound_connections.iter().enumerate() {
-            let binding_name = mtwt::resolve(*bindings.get(binding_idx));
-            let binding_marks = mtwt::marksof(bindings.get(binding_idx).ctxt, invalid_name);
+            let binding_name = mtwt::resolve(bindings[binding_idx]);
+            let binding_marks = mtwt::marksof(bindings[binding_idx].ctxt, invalid_name);
             // shouldmatch can't name varrefs that don't exist:
             assert!((shouldmatch.len() == 0) ||
                     (varrefs.len() > *shouldmatch.iter().max().unwrap()));
@@ -1630,16 +1631,15 @@ mod test {
                     let string = token::get_ident(final_varref_ident);
                     println!("varref's first segment's string: \"{}\"", string.get());
                     println!("binding #{}: {}, resolves to {}",
-                             binding_idx, *bindings.get(binding_idx), binding_name);
+                             binding_idx, bindings[binding_idx], binding_name);
                     mtwt::with_sctable(|x| mtwt::display_sctable(x));
                 };
                 if shouldmatch.contains(&idx) {
                     // it should be a path of length 1, and it should
                     // be free-identifier=? or bound-identifier=? to the given binding
                     assert_eq!(varref.segments.len(),1);
-                    let varref_name = mtwt::resolve(varref.segments.get(0).identifier);
-                    let varref_marks = mtwt::marksof(varref.segments
-                                                           .get(0)
+                    let varref_name = mtwt::resolve(varref.segments[0].identifier);
+                    let varref_marks = mtwt::marksof(varref.segments[0]
                                                            .identifier
                                                            .ctxt,
                                                      invalid_name);
@@ -1654,7 +1654,7 @@ mod test {
                         assert_eq!(varref_marks,binding_marks.clone());
                     }
                 } else {
-                    let varref_name = mtwt::resolve(varref.segments.get(0).identifier);
+                    let varref_name = mtwt::resolve(varref.segments[0].identifier);
                     let fail = (varref.segments.len() == 1)
                         && (varref_name == binding_name);
                     // temp debugging:
@@ -1696,19 +1696,19 @@ foo_module!()
         // the xx binding should bind all of the xx varrefs:
         for (idx,v) in varrefs.iter().filter(|p| {
             p.segments.len() == 1
-            && "xx" == token::get_ident(p.segments.get(0).identifier).get()
+            && "xx" == token::get_ident(p.segments[0].identifier).get()
         }).enumerate() {
-            if mtwt::resolve(v.segments.get(0).identifier) != resolved_binding {
+            if mtwt::resolve(v.segments[0].identifier) != resolved_binding {
                 println!("uh oh, xx binding didn't match xx varref:");
                 println!("this is xx varref \\# {}", idx);
                 println!("binding: {}", cxbind);
                 println!("resolves to: {}", resolved_binding);
-                println!("varref: {}", v.segments.get(0).identifier);
+                println!("varref: {}", v.segments[0].identifier);
                 println!("resolves to: {}",
-                         mtwt::resolve(v.segments.get(0).identifier));
+                         mtwt::resolve(v.segments[0].identifier));
                 mtwt::with_sctable(|x| mtwt::display_sctable(x));
             }
-            assert_eq!(mtwt::resolve(v.segments.get(0).identifier),
+            assert_eq!(mtwt::resolve(v.segments[0].identifier),
                        resolved_binding);
         };
     }

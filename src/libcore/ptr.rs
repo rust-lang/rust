@@ -90,7 +90,6 @@
 use mem;
 use clone::Clone;
 use intrinsics;
-use iter::range;
 use option::{Some, None, Option};
 
 use cmp::{PartialEq, Eq, PartialOrd, Equiv, Ordering, Less, Equal, Greater};
@@ -112,10 +111,6 @@ pub use intrinsics::set_memory;
 #[inline]
 #[unstable = "may need a different name after pending changes to pointer types"]
 pub fn null<T>() -> *const T { 0 as *const T }
-
-/// Deprecated: use `null_mut`.
-#[deprecated = "use null_mut"]
-pub fn mut_null<T>() -> *mut T { null_mut() }
 
 /// Create an unsafe mutable null pointer.
 ///
@@ -203,59 +198,6 @@ pub unsafe fn write<T>(dst: *mut T, src: T) {
     intrinsics::move_val_init(&mut *dst, src)
 }
 
-/// Given a *const *const T (pointer to an array of pointers),
-/// iterate through each *const T, up to the provided `len`,
-/// passing to the provided callback function
-#[deprecated = "old-style iteration. use a loop and RawPtr::offset"]
-pub unsafe fn array_each_with_len<T>(arr: *const *const T, len: uint,
-                                     cb: |*const T|) {
-    if arr.is_null() {
-        fail!("ptr::array_each_with_len failure: arr input is null pointer");
-    }
-    //let start_ptr = *arr;
-    for e in range(0, len) {
-        let n = arr.offset(e as int);
-        cb(*n);
-    }
-}
-
-/// Given a null-pointer-terminated *const *const T (pointer to
-/// an array of pointers), iterate through each *const T,
-/// passing to the provided callback function
-///
-/// # Safety Note
-///
-/// This will only work with a null-terminated
-/// pointer array.
-#[deprecated = "old-style iteration. use a loop and RawPtr::offset"]
-#[allow(deprecated)]
-pub unsafe fn array_each<T>(arr: *const  *const T, cb: |*const T|) {
-    if arr.is_null()  {
-        fail!("ptr::array_each_with_len failure: arr input is null pointer");
-    }
-    let len = buf_len(arr);
-    array_each_with_len(arr, len, cb);
-}
-
-/// Return the offset of the first null pointer in `buf`.
-#[inline]
-#[deprecated = "use a loop and RawPtr::offset"]
-#[allow(deprecated)]
-pub unsafe fn buf_len<T>(buf: *const *const T) -> uint {
-    position(buf, |i| *i == null())
-}
-
-/// Return the first offset `i` such that `f(buf[i]) == true`.
-#[inline]
-#[deprecated = "old-style iteration. use a loop and RawPtr::offset"]
-pub unsafe fn position<T>(buf: *const T, f: |&T| -> bool) -> uint {
-    let mut i = 0;
-    loop {
-        if f(&(*buf.offset(i as int))) { return i; }
-        else { i += 1; }
-    }
-}
-
 /// Methods on raw pointers
 pub trait RawPtr<T> {
     /// Returns the null pointer.
@@ -279,12 +221,6 @@ pub trait RawPtr<T> {
     /// it is important to note that this is still an unsafe operation because
     /// the returned value could be pointing to invalid memory.
     unsafe fn as_ref<'a>(&self) -> Option<&'a T>;
-
-    /// A synonym for `as_ref`, except with incorrect lifetime semantics
-    #[deprecated="Use `as_ref` instead"]
-    unsafe fn to_option<'a>(&'a self) -> Option<&'a T> {
-        mem::transmute(self.as_ref())
-    }
 
     /// Calculates the offset from a pointer. The offset *must* be in-bounds of
     /// the object, or one-byte-past-the-end.  `count` is in units of T; e.g. a

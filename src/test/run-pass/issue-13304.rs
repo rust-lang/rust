@@ -29,7 +29,7 @@ fn parent() {
     let args = args.as_slice();
     let mut p = io::process::Command::new(args[0].as_slice())
                                      .arg("child").spawn().unwrap();
-    p.stdin.get_mut_ref().write_str("test1\ntest2\ntest3").unwrap();
+    p.stdin.as_mut().unwrap().write_str("test1\ntest2\ntest3").unwrap();
     let out = p.wait_with_output().unwrap();
     assert!(out.status.success());
     let s = str::from_utf8(out.output.as_slice()).unwrap();

@@ -9,7 +9,7 @@
 // except according to those terms.
 
 
-#![crate_id="b#0.1"]
+#![crate_name="b"]
 #![crate_type = "lib"]
 
 extern crate a;

@@ -406,14 +406,6 @@ impl<'a> Encoder<'a> {
         }
         m.unwrap()
     }
-
-    /// Encode the specified struct into a json str
-    ///
-    /// Note: this function is deprecated. Consider using `json::encode` instead.
-    #[deprecated = "Replaced by `json::encode`"]
-    pub fn str_encode<T: Encodable<Encoder<'a>, io::IoError>>(object: &T) -> string::String {
-        encode(object)
-    }
 }
 
 impl<'a> ::Encoder<io::IoError> for Encoder<'a> {

@@ -180,7 +180,7 @@ impl<'a> StringReader<'a> {
     fn fatal_span_char(&self, from_pos: BytePos, to_pos: BytePos, m: &str, c: char) -> ! {
         let mut m = m.to_string();
         m.push_str(": ");
-        char::escape_default(c, |c| m.push_char(c));
+        char::escape_default(c, |c| m.push(c));
         self.fatal_span_(from_pos, to_pos, m.as_slice());
     }
 
@@ -189,7 +189,7 @@ impl<'a> StringReader<'a> {
     fn err_span_char(&self, from_pos: BytePos, to_pos: BytePos, m: &str, c: char) {
         let mut m = m.to_string();
         m.push_str(": ");
-        char::escape_default(c, |c| m.push_char(c));
+        char::escape_default(c, |c| m.push(c));
         self.err_span_(from_pos, to_pos, m.as_slice());
     }
 
@@ -1227,7 +1227,7 @@ impl<'a> StringReader<'a> {
     fn read_to_eol(&mut self) -> String {
         let mut val = String::new();
         while !self.curr_is('\n') && !self.is_eof() {
-            val.push_char(self.curr.unwrap());
+            val.push(self.curr.unwrap());
             self.bump();
         }
         if self.curr_is('\n') { self.bump(); }

@@ -19,7 +19,7 @@ struct UnitLikeStruct;
 
 pub fn main() {
     let obj = UnitLikeStruct;
-    let json_str: String = json::Encoder::str_encode(&obj);
+    let json_str: String = json::encode(&obj);
 
     let json_object = json::from_str(json_str.as_slice());
     let mut decoder = json::Decoder::new(json_object.unwrap());

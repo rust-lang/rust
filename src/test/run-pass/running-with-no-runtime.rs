@@ -41,7 +41,7 @@ fn start(argc: int, argv: *const *const u8) -> int {
 
 fn main() {
     let args = os::args();
-    let me = args.get(0).as_slice();
+    let me = args[0].as_slice();
 
     let x: &[u8] = &[1u8];
     pass(Command::new(me).arg(x).output().unwrap());

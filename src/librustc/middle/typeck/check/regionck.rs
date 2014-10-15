@@ -641,7 +641,7 @@ fn visit_expr(rcx: &mut Rcx, expr: &ast::Expr) {
         }
 
         ast::ExprMethodCall(_, _, ref args) => {
-            constrain_call(rcx, expr, Some(&**args.get(0)),
+            constrain_call(rcx, expr, Some(&*args[0]),
                            args.slice_from(1).iter().map(|e| &**e), false);
 
             visit::walk_expr(rcx, expr);
@@ -1200,7 +1200,7 @@ fn constrain_autoderefs(rcx: &mut Rcx,
                 // Treat overloaded autoderefs as if an AutoRef adjustment
                 // was applied on the base type, as that is always the case.
                 let fn_sig = ty::ty_fn_sig(method.ty);
-                let self_ty = *fn_sig.inputs.get(0);
+                let self_ty = fn_sig.inputs[0];
                 let (m, r) = match ty::get(self_ty).sty {
                     ty::ty_rptr(r, ref m) => (m.mutbl, r),
                     _ => rcx.tcx().sess.span_bug(deref_expr.span,

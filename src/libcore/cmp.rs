@@ -178,20 +178,6 @@ impl PartialOrd for Ordering {
     }
 }
 
-/// Combine orderings, lexically.
-///
-/// For example for a type `(int, int)`, two comparisons could be done.
-/// If the first ordering is different, the first ordering is all that must be returned.
-/// If the first ordering is equal, then second ordering is returned.
-#[inline]
-#[deprecated = "Just call .cmp() on a tuple"]
-pub fn lexical_ordering(o1: Ordering, o2: Ordering) -> Ordering {
-    match o1 {
-        Equal => o2,
-        _ => o1
-    }
-}
-
 /// Trait for values that can be compared for a sort-order.
 ///
 /// PartialOrd only requires implementation of the `partial_cmp` method,

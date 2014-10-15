@@ -482,33 +482,6 @@ impl<T> Option<T> {
         }
     }
 
-    /// Deprecated.
-    ///
-    /// Applies a function to the contained value or does nothing.
-    /// Returns true if the contained value was mutated.
-    #[deprecated = "removed due to lack of use"]
-    pub fn mutate(&mut self, f: |T| -> T) -> bool {
-        if self.is_some() {
-            *self = Some(f(self.take().unwrap()));
-            true
-        } else { false }
-    }
-
-    /// Deprecated.
-    ///
-    /// Applies a function to the contained value or sets it to a default.
-    /// Returns true if the contained value was mutated, or false if set to the default.
-    #[deprecated = "removed due to lack of use"]
-    pub fn mutate_or_set(&mut self, def: T, f: |T| -> T) -> bool {
-        if self.is_some() {
-            *self = Some(f(self.take().unwrap()));
-            true
-        } else {
-            *self = Some(def);
-            false
-        }
-    }
-
     /////////////////////////////////////////////////////////////////////////
     // Iterator constructors
     /////////////////////////////////////////////////////////////////////////
@@ -530,12 +503,6 @@ impl<T> Option<T> {
         Item{opt: self.as_ref()}
     }
 
-    /// Deprecated: use `iter_mut`
-    #[deprecated = "use iter_mut"]
-    pub fn mut_iter<'r>(&'r mut self) -> Item<&'r mut T> {
-        self.iter_mut()
-    }
-
     /// Returns a mutable iterator over the possibly contained value.
     ///
     /// # Example
@@ -555,12 +522,6 @@ impl<T> Option<T> {
     #[unstable = "waiting for iterator conventions"]
     pub fn iter_mut<'r>(&'r mut self) -> Item<&'r mut T> {
         Item{opt: self.as_mut()}
-    }
-
-    /// Deprecated: use `into_iter`.
-    #[deprecated = "use into_iter"]
-    pub fn move_iter(self) -> Item<T> {
-        self.into_iter()
     }
 
     /// Returns a consuming iterator over the possibly contained value.
@@ -713,100 +674,6 @@ impl<T> Option<T> {
     pub fn take(&mut self) -> Option<T> {
         mem::replace(self, None)
     }
-
-    /// Deprecated.
-    ///
-    /// Filters an optional value using a given function.
-    #[inline(always)]
-    #[deprecated = "removed due to lack of use"]
-    pub fn filtered(self, f: |t: &T| -> bool) -> Option<T> {
-        match self {
-            Some(x) => if f(&x) { Some(x) } else { None },
-            None => None
-        }
-    }
-
-    /// Deprecated.
-    ///
-    /// Applies a function zero or more times until the result is `None`.
-    #[inline]
-    #[deprecated = "removed due to lack of use"]
-    pub fn while_some(self, f: |v: T| -> Option<T>) {
-        let mut opt = self;
-        loop {
-            match opt {
-                Some(x) => opt = f(x),
-                None => break
-            }
-        }
-    }
-
-    /////////////////////////////////////////////////////////////////////////
-    // Common special cases
-    /////////////////////////////////////////////////////////////////////////
-
-    /// Deprecated: use `take().unwrap()` instead.
-    ///
-    /// The option dance. Moves a value out of an option type and returns it,
-    /// replacing the original with `None`.
-    ///
-    /// # Failure
-    ///
-    /// Fails if the value equals `None`.
-    #[inline]
-    #[deprecated = "use take().unwrap() instead"]
-    pub fn take_unwrap(&mut self) -> T {
-        match self.take() {
-            Some(x) => x,
-            None => fail!("called `Option::take_unwrap()` on a `None` value")
-        }
-    }
-
-    /// Deprecated: use `as_ref().unwrap()` instead.
-    ///
-    /// Gets an immutable reference to the value inside an option.
-    ///
-    /// # Failure
-    ///
-    /// Fails if the value equals `None`
-    ///
-    /// # Safety note
-    ///
-    /// In general, because this function may fail, its use is discouraged
-    /// (calling `get` on `None` is akin to dereferencing a null pointer).
-    /// Instead, prefer to use pattern matching and handle the `None`
-    /// case explicitly.
-    #[inline]
-    #[deprecated = "use .as_ref().unwrap() instead"]
-    pub fn get_ref<'a>(&'a self) -> &'a T {
-        match *self {
-            Some(ref x) => x,
-            None => fail!("called `Option::get_ref()` on a `None` value"),
-        }
-    }
-
-    /// Deprecated: use `as_mut().unwrap()` instead.
-    ///
-    /// Gets a mutable reference to the value inside an option.
-    ///
-    /// # Failure
-    ///
-    /// Fails if the value equals `None`
-    ///
-    /// # Safety note
-    ///
-    /// In general, because this function may fail, its use is discouraged
-    /// (calling `get` on `None` is akin to dereferencing a null pointer).
-    /// Instead, prefer to use pattern matching and handle the `None`
-    /// case explicitly.
-    #[inline]
-    #[deprecated = "use .as_mut().unwrap() instead"]
-    pub fn get_mut_ref<'a>(&'a mut self) -> &'a mut T {
-        match *self {
-            Some(ref mut x) => x,
-            None => fail!("called `Option::get_mut_ref()` on a `None` value"),
-        }
-    }
 }
 
 impl<T: Default> Option<T> {
@@ -907,13 +774,6 @@ impl<A> ExactSize<A> for Item<A> {}
 /////////////////////////////////////////////////////////////////////////////
 // Free functions
 /////////////////////////////////////////////////////////////////////////////
-
-/// Deprecated: use `Iterator::collect` instead.
-#[inline]
-#[deprecated = "use Iterator::collect instead"]
-pub fn collect<T, Iter: Iterator<Option<T>>, V: FromIterator<T>>(mut iter: Iter) -> Option<V> {
-    iter.collect()
-}
 
 impl<A, V: FromIterator<A>> FromIterator<Option<A>> for Option<V> {
     /// Takes each element in the `Iterator`: if it is `None`, no further

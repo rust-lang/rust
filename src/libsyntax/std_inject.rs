@@ -100,7 +100,7 @@ impl<'a> fold::Folder for StandardLibraryInjector<'a> {
 
         // `extern crate` must be precede `use` items
         mem::swap(&mut vis, &mut krate.module.view_items);
-        krate.module.view_items.push_all_move(vis);
+        krate.module.view_items.extend(vis.into_iter());
 
         // don't add #![no_std] here, that will block the prelude injection later.
         // Add it during the prelude injection instead.
@@ -219,7 +219,7 @@ impl<'a> fold::Folder for PreludeInjector<'a> {
             vis: ast::Inherited,
             span: DUMMY_SP,
         });
-        view_items.push_all_move(uses);
+        view_items.extend(uses.into_iter());
 
         fold::noop_fold_mod(ast::Mod {
             inner: inner,

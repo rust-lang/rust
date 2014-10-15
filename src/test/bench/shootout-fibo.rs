@@ -27,6 +27,6 @@ fn main() {
     } else {
         args.into_iter().collect()
     };
-    let n = from_str::<int>(args.get(1).as_slice()).unwrap();
+    let n = from_str::<int>(args[1].as_slice()).unwrap();
     println!("{}\n", fib(n));
 }

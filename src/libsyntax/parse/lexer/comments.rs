@@ -64,21 +64,21 @@ pub fn strip_doc_comment_decoration(comment: &str) -> String {
         let mut j = lines.len();
         // first line of all-stars should be omitted
         if lines.len() > 0 &&
-                lines.get(0).as_slice().chars().all(|c| c == '*') {
+                lines[0].as_slice().chars().all(|c| c == '*') {
             i += 1;
         }
-        while i < j && lines.get(i).as_slice().trim().is_empty() {
+        while i < j && lines[i].as_slice().trim().is_empty() {
             i += 1;
         }
         // like the first, a last line of all stars should be omitted
-        if j > i && lines.get(j - 1)
+        if j > i && lines[j - 1]
                          .as_slice()
                          .chars()
                          .skip(1)
                          .all(|c| c == '*') {
             j -= 1;
         }
-        while j > i && lines.get(j - 1).as_slice().trim().is_empty() {
+        while j > i && lines[j - 1].as_slice().trim().is_empty() {
             j -= 1;
         }
         return lines.slice(i, j).iter().map(|x| (*x).clone()).collect();
@@ -252,7 +252,7 @@ fn read_block_comment(rdr: &mut StringReader,
     // doc-comments are not really comments, they are attributes
     if (rdr.curr_is('*') && !rdr.nextch_is('*')) || rdr.curr_is('!') {
         while !(rdr.curr_is('*') && rdr.nextch_is('/')) && !rdr.is_eof() {
-            curr_line.push_char(rdr.curr.unwrap());
+            curr_line.push(rdr.curr.unwrap());
             rdr.bump();
         }
         if !rdr.is_eof() {
@@ -279,17 +279,17 @@ fn read_block_comment(rdr: &mut StringReader,
                 curr_line = String::new();
                 rdr.bump();
             } else {
-                curr_line.push_char(rdr.curr.unwrap());
+                curr_line.push(rdr.curr.unwrap());
                 if rdr.curr_is('/') && rdr.nextch_is('*') {
                     rdr.bump();
                     rdr.bump();
-                    curr_line.push_char('*');
+                    curr_line.push('*');
                     level += 1;
                 } else {
                     if rdr.curr_is('*') && rdr.nextch_is('/') {
                         rdr.bump();
                         rdr.bump();
-                        curr_line.push_char('/');
+                        curr_line.push('/');
                         level -= 1;
                     } else { rdr.bump(); }
                 }

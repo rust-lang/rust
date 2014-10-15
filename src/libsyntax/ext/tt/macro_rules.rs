@@ -255,12 +255,12 @@ pub fn add_new_extension<'cx>(cx: &'cx mut ExtCtxt,
                                      argument_gram);
 
     // Extract the arguments:
-    let lhses = match **argument_map.get(&lhs_nm) {
+    let lhses = match *argument_map[lhs_nm] {
         MatchedSeq(ref s, _) => /* FIXME (#2543) */ (*s).clone(),
         _ => cx.span_bug(sp, "wrong-structured lhs")
     };
 
-    let rhses = match **argument_map.get(&rhs_nm) {
+    let rhses = match *argument_map[rhs_nm] {
         MatchedSeq(ref s, _) => /* FIXME (#2543) */ (*s).clone(),
         _ => cx.span_bug(sp, "wrong-structured rhs")
     };

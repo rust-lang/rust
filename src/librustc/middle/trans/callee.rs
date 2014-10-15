@@ -260,7 +260,7 @@ pub fn trans_unboxing_shim(bcx: Block,
     let tcx = bcx.tcx();
 
     // Transform the self type to `Box<self_type>`.
-    let self_type = *fty.sig.inputs.get(0);
+    let self_type = fty.sig.inputs[0];
     let boxed_self_type = ty::mk_uniq(tcx, self_type);
     let boxed_function_type = ty::FnSig {
         binder_id: fty.sig.binder_id,
@@ -332,9 +332,9 @@ pub fn trans_unboxing_shim(bcx: Block,
     let arg_scope = fcx.push_custom_cleanup_scope();
     let arg_scope_id = cleanup::CustomScope(arg_scope);
     let boxed_arg_types = ty::ty_fn_args(boxed_function_type);
-    let boxed_self_type = *boxed_arg_types.get(0);
+    let boxed_self_type = boxed_arg_types[0];
     let arg_types = ty::ty_fn_args(function_type);
-    let self_type = *arg_types.get(0);
+    let self_type = arg_types[0];
     let boxed_self_kind = arg_kind(&fcx, boxed_self_type);
 
     // Create a datum for self.
@@ -541,7 +541,7 @@ pub fn trans_fn_ref_with_substs(
             let ref_ty = match node {
                 ExprId(id) => node_id_type(bcx, id),
                 MethodCall(method_call) => {
-                    let t = bcx.tcx().method_map.borrow().get(&method_call).ty;
+                    let t = (*bcx.tcx().method_map.borrow())[method_call].ty;
                     monomorphize_type(bcx, t)
                 }
             };
@@ -628,7 +628,7 @@ pub fn trans_method_call<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let _icx = push_ctxt("trans_method_call");
     debug!("trans_method_call(call_ex={})", call_ex.repr(bcx.tcx()));
     let method_call = MethodCall::expr(call_ex.id);
-    let method_ty = bcx.tcx().method_map.borrow().get(&method_call).ty;
+    let method_ty = (*bcx.tcx().method_map.borrow())[method_call].ty;
     trans_call_inner(
         bcx,
         Some(common::expr_info(call_ex)),
@@ -915,7 +915,7 @@ fn trans_args_under_call_abi<'blk, 'tcx>(
         let arg_datum = unpack_datum!(bcx, expr::trans(bcx, &*arg_exprs[0]));
         llargs.push(unpack_result!(bcx, {
             trans_arg_datum(bcx,
-                            *arg_tys.get(0),
+                            arg_tys[0],
                             arg_datum,
                             arg_cleanup_scope,
                             DontAutorefArg)
@@ -940,7 +940,7 @@ fn trans_args_under_call_abi<'blk, 'tcx>(
             for i in range(0, field_types.len()) {
                 let arg_datum = tuple_lvalue_datum.get_element(
                     bcx,
-                    *field_types.get(i),
+                    field_types[i],
                     |srcval| {
                         adt::trans_field_ptr(bcx, repr_ptr, srcval, 0, i)
                     });
@@ -976,7 +976,7 @@ fn trans_overloaded_call_args<'blk, 'tcx>(
         let arg_datum = unpack_datum!(bcx, expr::trans(bcx, arg_exprs[0]));
         llargs.push(unpack_result!(bcx, {
             trans_arg_datum(bcx,
-                            *arg_tys.get(0),
+                            arg_tys[0],
                             arg_datum,
                             arg_cleanup_scope,
                             DontAutorefArg)
@@ -984,7 +984,7 @@ fn trans_overloaded_call_args<'blk, 'tcx>(
     }
 
     // Now untuple the rest of the arguments.
-    let tuple_type = *arg_tys.get(1);
+    let tuple_type = arg_tys[1];
     match ty::get(tuple_type).sty {
         ty::ty_tup(ref field_types) => {
             for (i, &field_type) in field_types.iter().enumerate() {
@@ -1050,7 +1050,7 @@ pub fn trans_args<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
                     assert!(variadic);
                     expr_ty_adjusted(cx, &**arg_expr)
                 } else {
-                    *arg_tys.get(i)
+                    arg_tys[i]
                 };
 
                 let arg_datum = unpack_datum!(bcx, expr::trans(bcx, &**arg_expr));
@@ -1073,15 +1073,15 @@ pub fn trans_args<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
             assert!(!variadic);
 
             llargs.push(unpack_result!(bcx, {
-                trans_arg_datum(bcx, *arg_tys.get(0), lhs,
+                trans_arg_datum(bcx, arg_tys[0], lhs,
                                 arg_cleanup_scope,
                                 DontAutorefArg)
             }));
 
             assert_eq!(arg_tys.len(), 1 + rhs.len());
-            for (rhs, rhs_id) in rhs.move_iter() {
+            for (rhs, rhs_id) in rhs.into_iter() {
                 llargs.push(unpack_result!(bcx, {
-                    trans_arg_datum(bcx, *arg_tys.get(1), rhs,
+                    trans_arg_datum(bcx, arg_tys[1], rhs,
                                     arg_cleanup_scope,
                                     DoAutorefArg(rhs_id))
                 }));

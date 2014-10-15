@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![crate_id="issue_2526#0.2"]
+#![crate_name="issue_2526"]
 #![crate_type = "lib"]
 
 #![feature(unsafe_destructor)]

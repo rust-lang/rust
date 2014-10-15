@@ -21,7 +21,7 @@ fn main() {
         args.into_iter().collect()
     };
 
-    let n = from_str::<uint>(args.get(1).as_slice()).unwrap();
+    let n = from_str::<uint>(args[1].as_slice()).unwrap();
 
     for i in range(0u, n) {
         let x = i.to_string();

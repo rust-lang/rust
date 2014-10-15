@@ -77,8 +77,8 @@ pub fn load_plugins(sess: &Session, krate: &ast::Crate,
         Some(addl_plugins) => {
             // Add in the additional plugins requested by the frontend
             let Plugins { macros: addl_macros, registrars: addl_registrars } = addl_plugins;
-            plugins.macros.push_all_move(addl_macros);
-            plugins.registrars.push_all_move(addl_registrars);
+            plugins.macros.extend(addl_macros.into_iter());
+            plugins.registrars.extend(addl_registrars.into_iter());
         }
         None => ()
     }

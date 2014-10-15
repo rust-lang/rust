@@ -341,29 +341,6 @@ pub fn to_str_exp_digits(num: f64, dig: uint, upper: bool) -> String {
     r
 }
 
-impl num::ToStrRadix for f64 {
-    /// Converts a float to a string in a given radix
-    ///
-    /// # Arguments
-    ///
-    /// * num - The float value
-    /// * radix - The base to use
-    ///
-    /// # Failure
-    ///
-    /// Fails if called on a special value like `inf`, `-inf` or `NAN` due to
-    /// possible misinterpretation of the result at higher bases. If those values
-    /// are expected, use `to_str_radix_special()` instead.
-    #[inline]
-    fn to_str_radix(&self, rdx: uint) -> String {
-        let (r, special) = strconv::float_to_str_common(
-            *self, rdx, true, strconv::SignNeg, strconv::DigAll, strconv::ExpNone, false);
-        if special { fail!("number has a special value, \
-                             try to_str_radix_special() if those are expected") }
-        r
-    }
-}
-
 /// Convert a string in base 16 to a float.
 /// Accepts an optional binary exponent.
 ///
