@@ -1,6 +1,6 @@
 - Start Date: 2014-09-26
-- RFC PR: (leave this empty)
-- Rust Issue: (leave this empty)
+- RFC PR: 326
+- Rust Issue: https://github.com/rust-lang/rust/issues/18062
 
 # Summary
 
@@ -319,7 +319,7 @@ while it denotes a code point in string context (`".."`).
 
 ```
 % python
-Python 2.7.5 (default, Mar  9 2014, 22:15:05) 
+Python 2.7.5 (default, Mar  9 2014, 22:15:05)
 [GCC 4.2.1 Compatible Apple LLVM 5.0 (clang-500.0.68)] on darwin
 Type "help", "copyright", "credits" or "license" for more information.
 >>> a_string = u"\xbb\n";
