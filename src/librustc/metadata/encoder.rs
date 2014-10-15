@@ -256,7 +256,7 @@ fn encode_symbol(ecx: &EncodeContext,
     rbml_w.start_tag(tag_items_data_item_symbol);
     match ecx.item_symbols.borrow().find(&id) {
         Some(x) => {
-            debug!("encode_symbol(id={:?}, str={})", id, *x);
+            debug!("encode_symbol(id={}, str={})", id, *x);
             rbml_w.writer.write(x.as_bytes());
         }
         None => {
@@ -308,7 +308,7 @@ fn encode_enum_variant_info(ecx: &EncodeContext,
                             id: NodeId,
                             variants: &[P<Variant>],
                             index: &mut Vec<entry<i64>>) {
-    debug!("encode_enum_variant_info(id={:?})", id);
+    debug!("encode_enum_variant_info(id={})", id);
 
     let mut disr_val = 0;
     let mut i = 0;
@@ -592,7 +592,7 @@ fn encode_info_for_mod(ecx: &EncodeContext,
             ItemImpl(..) => {
                 let (ident, did) = (item.ident, item.id);
                 debug!("(encoding info for module) ... encoding impl {} \
-                        ({:?}/{:?})",
+                        ({}/{})",
                         token::get_ident(ident),
                         did, ecx.tcx.map.node_to_string(did));
 
@@ -853,7 +853,7 @@ fn encode_info_for_method(ecx: &EncodeContext,
                           parent_id: NodeId,
                           ast_item_opt: Option<&ImplItem>) {
 
-    debug!("encode_info_for_method: {:?} {}", m.def_id,
+    debug!("encode_info_for_method: {} {}", m.def_id,
            token::get_ident(m.ident));
     rbml_w.start_tag(tag_items_data_item);
 

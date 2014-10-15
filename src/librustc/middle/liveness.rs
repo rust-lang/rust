@@ -154,7 +154,7 @@ impl Clone for LiveNode {
     }
 }
 
-#[deriving(PartialEq)]
+#[deriving(PartialEq, Show)]
 enum LiveNodeKind {
     FreeVarNode(Span),
     ExprNode(Span),
@@ -240,11 +240,13 @@ struct CaptureInfo {
     var_nid: NodeId
 }
 
+#[deriving(Show)]
 struct LocalInfo {
     id: NodeId,
     ident: Ident
 }
 
+#[deriving(Show)]
 enum VarKind {
     Arg(NodeId, Ident),
     Local(LocalInfo),
@@ -307,7 +309,7 @@ impl<'a, 'tcx> IrMaps<'a, 'tcx> {
             ImplicitRet => {}
         }
 
-        debug!("{} is {:?}", v.to_string(), vk);
+        debug!("{} is {}", v.to_string(), vk);
 
         v
     }
@@ -424,7 +426,7 @@ fn visit_local(ir: &mut IrMaps, local: &ast::Local) {
 fn visit_arm(ir: &mut IrMaps, arm: &Arm) {
     for pat in arm.pats.iter() {
         pat_util::pat_bindings(&ir.tcx.def_map, &**pat, |bm, p_id, sp, path1| {
-            debug!("adding local variable {} from match with bm {:?}",
+            debug!("adding local variable {} from match with bm {}",
                    p_id, bm);
             let name = path1.node;
             ir.add_live_node_for_node(p_id, VarDefNode(sp));
@@ -442,7 +444,7 @@ fn visit_expr(ir: &mut IrMaps, expr: &Expr) {
       // live nodes required for uses or definitions of variables:
       ExprPath(_) => {
         let def = ir.tcx.def_map.borrow().get_copy(&expr.id);
-        debug!("expr {}: path that leads to {:?}", expr.id, def);
+        debug!("expr {}: path that leads to {}", expr.id, def);
         match def {
             DefLocal(..) => ir.add_live_node_for_node(expr.id, ExprNode(expr.span)),
             _ => {}
@@ -489,7 +491,7 @@ fn visit_expr(ir: &mut IrMaps, expr: &Expr) {
       }
       ExprForLoop(ref pat, _, _, _) => {
         pat_util::pat_bindings(&ir.tcx.def_map, &**pat, |bm, p_id, sp, path1| {
-            debug!("adding local variable {} from for loop with bm {:?}",
+            debug!("adding local variable {} from for loop with bm {}",
                    p_id, bm);
             let name = path1.node;
             ir.add_live_node_for_node(p_id, VarDefNode(sp));
@@ -733,7 +735,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         let mut wr = io::MemWriter::new();
         {
             let wr = &mut wr as &mut io::Writer;
-            write!(wr, "[ln({}) of kind {:?} reads", ln.get(), self.ir.lnk(ln));
+            write!(wr, "[ln({}) of kind {} reads", ln.get(), self.ir.lnk(ln));
             self.write_vars(wr, ln, |idx| self.users.get(idx).reader);
             write!(wr, "  writes");
             self.write_vars(wr, ln, |idx| self.users.get(idx).writer);

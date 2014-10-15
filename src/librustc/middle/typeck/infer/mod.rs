@@ -95,7 +95,7 @@ pub struct InferCtxt<'a, 'tcx: 'a> {
 /// Why did we require that the two types be related?
 ///
 /// See `error_reporting.rs` for more details
-#[deriving(Clone)]
+#[deriving(Clone, Show)]
 pub enum TypeOrigin {
     // Not yet categorized in a better way
     Misc(Span),
@@ -127,7 +127,7 @@ pub enum TypeOrigin {
 }
 
 /// See `error_reporting.rs` for more details
-#[deriving(Clone)]
+#[deriving(Clone, Show)]
 pub enum ValuePairs {
     Types(ty::expected_found<ty::t>),
     TraitRefs(ty::expected_found<Rc<ty::TraitRef>>),
@@ -137,7 +137,7 @@ pub enum ValuePairs {
 /// encounter an error or subtyping constraint.
 ///
 /// See `error_reporting.rs` for more details.
-#[deriving(Clone)]
+#[deriving(Clone, Show)]
 pub struct TypeTrace {
     origin: TypeOrigin,
     values: ValuePairs,
@@ -146,7 +146,7 @@ pub struct TypeTrace {
 /// The origin of a `r1 <= r2` constraint.
 ///
 /// See `error_reporting.rs` for more details
-#[deriving(Clone)]
+#[deriving(Clone, Show)]
 pub enum SubregionOrigin {
     // Arose from a subtyping relation
     Subtype(TypeTrace),
@@ -224,7 +224,7 @@ pub enum SubregionOrigin {
 /// Reasons to create a region inference variable
 ///
 /// See `error_reporting.rs` for more details
-#[deriving(Clone)]
+#[deriving(Clone, Show)]
 pub enum RegionVariableOrigin {
     // Region variables created for ill-categorized reasons,
     // mostly indicates places in need of refactoring
@@ -887,7 +887,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                                                 expected_ty: Option<ty::t>,
                                                 actual_ty: String,
                                                 err: Option<&ty::type_err>) {
-        debug!("hi! expected_ty = {:?}, actual_ty = {}", expected_ty, actual_ty);
+        debug!("hi! expected_ty = {}, actual_ty = {}", expected_ty, actual_ty);
 
         let error_str = err.map_or("".to_string(), |t_err| {
             format!(" ({})", ty::type_err_to_str(self.tcx, t_err))
@@ -965,7 +965,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             replace_late_bound_regions_in_fn_sig(self.tcx, fsig, |br| {
                 let rvar = self.next_region_var(
                     BoundRegionInFnType(trace.origin.span(), br));
-                debug!("Bound region {} maps to {:?}",
+                debug!("Bound region {} maps to {}",
                        bound_region_to_string(self.tcx, "", false, br),
                        rvar);
                 rvar
@@ -1120,7 +1120,7 @@ impl Repr for SubregionOrigin {
             }
             Reborrow(a) => format!("Reborrow({})", a.repr(tcx)),
             ReborrowUpvar(a, b) => {
-                format!("ReborrowUpvar({},{:?})", a.repr(tcx), b)
+                format!("ReborrowUpvar({},{})", a.repr(tcx), b)
             }
             ReferenceOutlivesReferent(_, a) => {
                 format!("ReferenceOutlivesReferent({})", a.repr(tcx))

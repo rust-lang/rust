@@ -70,7 +70,7 @@ pub struct field {
     pub mt: mt
 }
 
-#[deriving(Clone)]
+#[deriving(Clone, Show)]
 pub enum ImplOrTraitItemContainer {
     TraitContainer(ast::DefId),
     ImplContainer(ast::DefId),
@@ -138,7 +138,7 @@ impl ImplOrTraitItemId {
     }
 }
 
-#[deriving(Clone)]
+#[deriving(Clone, Show)]
 pub struct Method {
     pub ident: ast::Ident,
     pub generics: ty::Generics,
@@ -268,13 +268,13 @@ pub enum Variance {
     Bivariant,      // T<A> <: T<B>            -- e.g., unused type parameter
 }
 
-#[deriving(Clone)]
+#[deriving(Clone, Show)]
 pub enum AutoAdjustment {
     AdjustAddEnv(ty::TraitStore),
     AdjustDerefRef(AutoDerefRef)
 }
 
-#[deriving(Clone, PartialEq)]
+#[deriving(Clone, PartialEq, Show)]
 pub enum UnsizeKind {
     // [T, ..n] -> [T], the uint field is n.
     UnsizeLength(uint),
@@ -284,13 +284,13 @@ pub enum UnsizeKind {
     UnsizeVtable(TyTrait, /* the self type of the trait */ ty::t)
 }
 
-#[deriving(Clone)]
+#[deriving(Clone, Show)]
 pub struct AutoDerefRef {
     pub autoderefs: uint,
     pub autoref: Option<AutoRef>
 }
 
-#[deriving(Clone, PartialEq)]
+#[deriving(Clone, PartialEq, Show)]
 pub enum AutoRef {
     /// Convert from T to &T
     /// The third field allows us to wrap other AutoRef adjustments.
@@ -726,7 +726,7 @@ pub enum Region {
  * the original var id (that is, the root variable that is referenced
  * by the upvar) and the id of the closure expression.
  */
-#[deriving(Clone, PartialEq, Eq, Hash)]
+#[deriving(Clone, PartialEq, Eq, Hash, Show)]
 pub struct UpvarId {
     pub var_id: ast::NodeId,
     pub closure_expr_id: ast::NodeId,
@@ -827,7 +827,7 @@ pub enum BorrowKind {
  *   the closure, so sometimes it is necessary for them to be larger
  *   than the closure lifetime itself.
  */
-#[deriving(PartialEq, Clone, Encodable, Decodable)]
+#[deriving(PartialEq, Clone, Encodable, Decodable, Show)]
 pub struct UpvarBorrow {
     pub kind: BorrowKind,
     pub region: ty::Region,
@@ -1434,7 +1434,7 @@ pub struct UnboxedClosure {
     pub kind: UnboxedClosureKind,
 }
 
-#[deriving(Clone, PartialEq, Eq)]
+#[deriving(Clone, PartialEq, Eq, Show)]
 pub enum UnboxedClosureKind {
     FnUnboxedClosureKind,
     FnMutUnboxedClosureKind,
@@ -3133,7 +3133,7 @@ pub fn fn_is_variadic(fty: t) -> bool {
         ty_bare_fn(ref f) => f.sig.variadic,
         ty_closure(ref f) => f.sig.variadic,
         ref s => {
-            fail!("fn_is_variadic() called on non-fn type: {:?}", s)
+            fail!("fn_is_variadic() called on non-fn type: {}", s)
         }
     }
 }
@@ -3143,7 +3143,7 @@ pub fn ty_fn_sig(fty: t) -> FnSig {
         ty_bare_fn(ref f) => f.sig.clone(),
         ty_closure(ref f) => f.sig.clone(),
         ref s => {
-            fail!("ty_fn_sig() called on non-fn type: {:?}", s)
+            fail!("ty_fn_sig() called on non-fn type: {}", s)
         }
     }
 }
@@ -3163,7 +3163,7 @@ pub fn ty_fn_args(fty: t) -> Vec<t> {
         ty_bare_fn(ref f) => f.sig.inputs.clone(),
         ty_closure(ref f) => f.sig.inputs.clone(),
         ref s => {
-            fail!("ty_fn_args() called on non-fn type: {:?}", s)
+            fail!("ty_fn_args() called on non-fn type: {}", s)
         }
     }
 }
@@ -3177,7 +3177,7 @@ pub fn ty_closure_store(fty: t) -> TraitStore {
             UniqTraitStore
         }
         ref s => {
-            fail!("ty_closure_store() called on non-closure type: {:?}", s)
+            fail!("ty_closure_store() called on non-closure type: {}", s)
         }
     }
 }
@@ -3187,7 +3187,7 @@ pub fn ty_fn_ret(fty: t) -> t {
         ty_bare_fn(ref f) => f.sig.output,
         ty_closure(ref f) => f.sig.output,
         ref s => {
-            fail!("ty_fn_ret() called on non-fn type: {:?}", s)
+            fail!("ty_fn_ret() called on non-fn type: {}", s)
         }
     }
 }
@@ -3208,7 +3208,7 @@ pub fn ty_region(tcx: &ctxt,
         ref s => {
             tcx.sess.span_bug(
                 span,
-                format!("ty_region() invoked on an inappropriate ty: {:?}",
+                format!("ty_region() invoked on an inappropriate ty: {}",
                         s).as_slice());
         }
     }
@@ -3272,7 +3272,7 @@ pub fn expr_span(cx: &ctxt, id: NodeId) -> Span {
             e.span
         }
         Some(f) => {
-            cx.sess.bug(format!("Node id {} is not an expr: {:?}",
+            cx.sess.bug(format!("Node id {} is not an expr: {}",
                                 id,
                                 f).as_slice());
         }
@@ -3292,14 +3292,14 @@ pub fn local_var_name_str(cx: &ctxt, id: NodeId) -> InternedString {
                 }
                 _ => {
                     cx.sess.bug(
-                        format!("Variable id {} maps to {:?}, not local",
+                        format!("Variable id {} maps to {}, not local",
                                 id,
                                 pat).as_slice());
                 }
             }
         }
         r => {
-            cx.sess.bug(format!("Variable id {} maps to {:?}, not local",
+            cx.sess.bug(format!("Variable id {} maps to {}, not local",
                                 id,
                                 r).as_slice());
         }
@@ -3343,7 +3343,7 @@ pub fn adjust_ty(cx: &ctxt,
                         ref b => {
                             cx.sess.bug(
                                 format!("add_env adjustment on non-bare-fn: \
-                                         {:?}",
+                                         {}",
                                         b).as_slice());
                         }
                     }
@@ -3456,7 +3456,7 @@ pub fn resolve_expr(tcx: &ctxt, expr: &ast::Expr) -> def::Def {
         Some(&def) => def,
         None => {
             tcx.sess.span_bug(expr.span, format!(
-                "no def-map entry for expr {:?}", expr.id).as_slice());
+                "no def-map entry for expr {}", expr.id).as_slice());
         }
     }
 }
@@ -3547,7 +3547,7 @@ pub fn expr_kind(tcx: &ctxt, expr: &ast::Expr) -> ExprKind {
                 def => {
                     tcx.sess.span_bug(
                         expr.span,
-                        format!("uncategorized def for expr {:?}: {:?}",
+                        format!("uncategorized def for expr {}: {}",
                                 expr.id,
                                 def).as_slice());
                 }
@@ -3671,7 +3671,7 @@ pub fn field_idx_strict(tcx: &ctxt, name: ast::Name, fields: &[field])
     let mut i = 0u;
     for f in fields.iter() { if f.ident.name == name { return i; } i += 1u; }
     tcx.sess.bug(format!(
-        "no field named `{}` found in the list of fields `{:?}`",
+        "no field named `{}` found in the list of fields `{}`",
         token::get_name(name),
         fields.iter()
               .map(|f| token::get_ident(f.ident).get().to_string())
@@ -3965,7 +3965,7 @@ fn lookup_locally_or_in_crate_store<V:Clone>(
     }
 
     if def_id.krate == ast::LOCAL_CRATE {
-        fail!("No def'n found for {:?} in tcx.{}", def_id, descr);
+        fail!("No def'n found for {} in tcx.{}", def_id, descr);
     }
     let v = load_external();
     map.insert(def_id, v.clone());
@@ -4083,7 +4083,7 @@ pub fn trait_item_def_ids(cx: &ctxt, id: ast::DefId)
 pub fn impl_trait_ref(cx: &ctxt, id: ast::DefId) -> Option<Rc<TraitRef>> {
     memoized(&cx.impl_trait_cache, id, |id: ast::DefId| {
         if id.krate == ast::LOCAL_CRATE {
-            debug!("(impl_trait_ref) searching for trait impl {:?}", id);
+            debug!("(impl_trait_ref) searching for trait impl {}", id);
             match cx.map.find(id.node) {
                 Some(ast_map::NodeItem(item)) => {
                     match item.node {
@@ -5418,7 +5418,7 @@ impl<'tcx> mc::Typer<'tcx> for ty::ctxt<'tcx> {
 }
 
 /// The category of explicit self.
-#[deriving(Clone, Eq, PartialEq)]
+#[deriving(Clone, Eq, PartialEq, Show)]
 pub enum ExplicitSelfCategory {
     StaticExplicitSelfCategory,
     ByValueExplicitSelfCategory,

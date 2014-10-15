@@ -113,7 +113,7 @@ impl RegionMaps {
             None => {}
         }
 
-        debug!("relate_free_regions(sub={:?}, sup={:?})", sub, sup);
+        debug!("relate_free_regions(sub={}, sup={})", sub, sup);
         self.free_region_map.borrow_mut().insert(sub, vec!(sup));
     }
 
@@ -211,7 +211,7 @@ impl RegionMaps {
         //! Returns the lifetime of the variable `id`.
 
         let scope = ty::ReScope(self.var_scope(id));
-        debug!("var_region({}) = {:?}", id, scope);
+        debug!("var_region({}) = {}", id, scope);
         scope
     }
 
@@ -270,7 +270,7 @@ impl RegionMaps {
          * duplicated with the code in infer.rs.
          */
 
-        debug!("is_subregion_of(sub_region={:?}, super_region={:?})",
+        debug!("is_subregion_of(sub_region={}, super_region={})",
                sub_region, super_region);
 
         sub_region == super_region || {
@@ -802,7 +802,7 @@ fn resolve_fn(visitor: &mut RegionResolutionVisitor,
               sp: Span,
               id: ast::NodeId) {
     debug!("region::resolve_fn(id={}, \
-                               span={:?}, \
+                               span={}, \
                                body.id={}, \
                                cx.parent={})",
            id,

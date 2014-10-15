@@ -73,7 +73,7 @@ pub trait Delegate {
               mode: MutateMode);
 }
 
-#[deriving(PartialEq)]
+#[deriving(PartialEq, Show)]
 pub enum LoanCause {
     ClosureCapture(Span),
     AddrOf,
@@ -85,7 +85,7 @@ pub enum LoanCause {
     MatchDiscriminant
 }
 
-#[deriving(PartialEq,Show)]
+#[deriving(PartialEq, Show)]
 pub enum ConsumeMode {
     Copy,                // reference to x where x has a type that copies
     Move(MoveReason),    // reference to x where x has a type that moves
@@ -625,7 +625,7 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,TYPER> {
          * meaning either copied or moved depending on its type.
          */
 
-        debug!("walk_block(blk.id={:?})", blk.id);
+        debug!("walk_block(blk.id={})", blk.id);
 
         for stmt in blk.stmts.iter() {
             self.walk_stmt(&**stmt);

@@ -347,7 +347,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EmbargoVisitor<'a, 'tcx> {
         // This code is here instead of in visit_item so that the
         // crate module gets processed as well.
         if self.prev_exported {
-            assert!(self.exp_map2.contains_key(&id), "wut {:?}", id);
+            assert!(self.exp_map2.contains_key(&id), "wut {}", id);
             for export in self.exp_map2.get(&id).iter() {
                 if is_local(export.def_id) {
                     self.reexports.insert(export.def_id.node);
@@ -394,28 +394,28 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
     fn def_privacy(&self, did: ast::DefId) -> PrivacyResult {
         if !is_local(did) {
             if self.external_exports.contains(&did) {
-                debug!("privacy - {:?} was externally exported", did);
+                debug!("privacy - {} was externally exported", did);
                 return Allowable;
             }
-            debug!("privacy - is {:?} a public method", did);
+            debug!("privacy - is {} a public method", did);
 
             return match self.tcx.impl_or_trait_items.borrow().find(&did) {
                 Some(&ty::MethodTraitItem(ref meth)) => {
-                    debug!("privacy - well at least it's a method: {:?}",
+                    debug!("privacy - well at least it's a method: {}",
                            *meth);
                     match meth.container {
                         ty::TraitContainer(id) => {
-                            debug!("privacy - recursing on trait {:?}", id);
+                            debug!("privacy - recursing on trait {}", id);
                             self.def_privacy(id)
                         }
                         ty::ImplContainer(id) => {
                             match ty::impl_trait_ref(self.tcx, id) {
                                 Some(t) => {
-                                    debug!("privacy - impl of trait {:?}", id);
+                                    debug!("privacy - impl of trait {}", id);
                                     self.def_privacy(t.def_id)
                                 }
                                 None => {
-                                    debug!("privacy - found a method {:?}",
+                                    debug!("privacy - found a method {}",
                                             meth.vis);
                                     if meth.vis == ast::Public {
                                         Allowable
@@ -430,17 +430,17 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
                 Some(&ty::TypeTraitItem(ref typedef)) => {
                     match typedef.container {
                         ty::TraitContainer(id) => {
-                            debug!("privacy - recursing on trait {:?}", id);
+                            debug!("privacy - recursing on trait {}", id);
                             self.def_privacy(id)
                         }
                         ty::ImplContainer(id) => {
                             match ty::impl_trait_ref(self.tcx, id) {
                                 Some(t) => {
-                                    debug!("privacy - impl of trait {:?}", id);
+                                    debug!("privacy - impl of trait {}", id);
                                     self.def_privacy(t.def_id)
                                 }
                                 None => {
-                                    debug!("privacy - found a typedef {:?}",
+                                    debug!("privacy - found a typedef {}",
                                             typedef.vis);
                                     if typedef.vis == ast::Public {
                                         Allowable
@@ -551,7 +551,7 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
         // members, so that's why we test the parent, and not the did itself.
         let mut cur = self.curitem;
         loop {
-            debug!("privacy - questioning {}, {:?}", self.nodestr(cur), cur);
+            debug!("privacy - questioning {}, {}", self.nodestr(cur), cur);
             match cur {
                 // If the relevant parent is in our history, then we're allowed
                 // to look inside any of our ancestor's immediate private items,

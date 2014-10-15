@@ -666,7 +666,7 @@ fn trans_datum_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             bcx.tcx().sess.span_bug(
                 expr.span,
                 format!("trans_rvalue_datum_unadjusted reached \
-                         fall-through case: {:?}",
+                         fall-through case: {}",
                         expr.node).as_slice());
         }
     }
@@ -982,7 +982,7 @@ fn trans_rvalue_stmt_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             bcx.tcx().sess.span_bug(
                 expr.span,
                 format!("trans_rvalue_stmt_unadjusted reached \
-                         fall-through case: {:?}",
+                         fall-through case: {}",
                         expr.node).as_slice());
         }
     }
@@ -1128,7 +1128,7 @@ fn trans_rvalue_dps_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             bcx.tcx().sess.span_bug(
                 expr.span,
                 format!("trans_rvalue_dps_unadjusted reached fall-through \
-                         case: {:?}",
+                         case: {}",
                         expr.node).as_slice());
         }
     }
@@ -1176,7 +1176,7 @@ fn trans_def_dps_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         }
         _ => {
             bcx.tcx().sess.span_bug(ref_expr.span, format!(
-                "Non-DPS def {:?} referened by {}",
+                "Non-DPS def {} referened by {}",
                 def, bcx.node_id_to_string(ref_expr.id)).as_slice());
         }
     }
@@ -1200,7 +1200,7 @@ fn trans_def_fn_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         }
         _ => {
             bcx.tcx().sess.span_bug(ref_expr.span, format!(
-                    "trans_def_fn_unadjusted invoked on: {:?} for {}",
+                    "trans_def_fn_unadjusted invoked on: {} for {}",
                     def,
                     ref_expr.repr(bcx.tcx())).as_slice());
         }
@@ -1228,7 +1228,7 @@ pub fn trans_local_var<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 Some(&val) => Datum::new(val, local_ty, Lvalue),
                 None => {
                     bcx.sess().bug(format!(
-                        "trans_local_var: no llval for upvar {:?} found",
+                        "trans_local_var: no llval for upvar {} found",
                         nid).as_slice());
                 }
             }
@@ -1238,17 +1238,17 @@ pub fn trans_local_var<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 Some(&v) => v,
                 None => {
                     bcx.sess().bug(format!(
-                        "trans_local_var: no datum for local/arg {:?} found",
+                        "trans_local_var: no datum for local/arg {} found",
                         nid).as_slice());
                 }
             };
-            debug!("take_local(nid={:?}, v={}, ty={})",
+            debug!("take_local(nid={}, v={}, ty={})",
                    nid, bcx.val_to_string(datum.val), bcx.ty_to_string(datum.ty));
             datum
         }
         _ => {
             bcx.sess().unimpl(format!(
-                "unsupported def type in trans_local_var: {:?}",
+                "unsupported def type in trans_local_var: {}",
                 def).as_slice());
         }
     }
@@ -1869,7 +1869,7 @@ fn float_cast(bcx: Block,
     } else { llsrc };
 }
 
-#[deriving(PartialEq)]
+#[deriving(PartialEq, Show)]
 pub enum cast_kind {
     cast_pointer,
     cast_integral,
@@ -1981,7 +1981,7 @@ fn trans_imm_cast<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 cast_float => SIToFP(bcx, lldiscrim_a, ll_t_out),
                 _ => {
                     ccx.sess().bug(format!("translating unsupported cast: \
-                                            {} ({:?}) -> {} ({:?})",
+                                            {} ({}) -> {} ({})",
                                             t_in.repr(bcx.tcx()),
                                             k_in,
                                             t_out.repr(bcx.tcx()),
@@ -1990,7 +1990,7 @@ fn trans_imm_cast<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             }
         }
         _ => ccx.sess().bug(format!("translating unsupported cast: \
-                                    {} ({:?}) -> {} ({:?})",
+                                    {} ({}) -> {} ({})",
                                     t_in.repr(bcx.tcx()),
                                     k_in,
                                     t_out.repr(bcx.tcx()),

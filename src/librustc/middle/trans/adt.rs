@@ -74,7 +74,7 @@ type Hint = attr::ReprAttr;
 
 
 /// Representations.
-#[deriving(Eq, PartialEq)]
+#[deriving(Eq, PartialEq, Show)]
 pub enum Repr {
     /// C-like enums; basically an int.
     CEnum(IntType, Disr, Disr), // discriminant range (signedness based on the IntType)
@@ -127,7 +127,7 @@ pub enum Repr {
 }
 
 /// For structs, and struct-like parts of anything fancier.
-#[deriving(Eq, PartialEq)]
+#[deriving(Eq, PartialEq, Show)]
 pub struct Struct {
     // If the struct is DST, then the size and alignment do not take into
     // account the unsized fields of the struct.
@@ -156,7 +156,7 @@ pub fn represent_type(cx: &CrateContext, t: ty::t) -> Rc<Repr> {
     }
 
     let repr = Rc::new(represent_type_uncached(cx, t));
-    debug!("Represented as: {:?}", repr)
+    debug!("Represented as: {}", repr)
     cx.adt_reprs().borrow_mut().insert(t, repr.clone());
     repr
 }
@@ -371,6 +371,7 @@ fn mk_struct(cx: &CrateContext, tys: &[ty::t], packed: bool) -> Struct {
     }
 }
 
+#[deriving(Show)]
 struct IntBounds {
     slo: i64,
     shi: i64,
@@ -387,7 +388,7 @@ fn mk_cenum(cx: &CrateContext, hint: Hint, bounds: &IntBounds) -> Repr {
 }
 
 fn range_to_inttype(cx: &CrateContext, hint: Hint, bounds: &IntBounds) -> IntType {
-    debug!("range_to_inttype: {:?} {:?}", hint, bounds);
+    debug!("range_to_inttype: {} {}", hint, bounds);
     // Lists of sizes to try.  u64 is always allowed as a fallback.
     #[allow(non_uppercase_statics)]
     static choose_shortest: &'static[IntType] = &[
@@ -440,7 +441,7 @@ pub fn ll_inttype(cx: &CrateContext, ity: IntType) -> Type {
 }
 
 fn bounds_usable(cx: &CrateContext, ity: IntType, bounds: &IntBounds) -> bool {
-    debug!("bounds_usable: {:?} {:?}", ity, bounds);
+    debug!("bounds_usable: {} {}", ity, bounds);
     match ity {
         attr::SignedInt(_) => {
             let lllo = C_integral(ll_inttype(cx, ity), bounds.slo as u64, true);
@@ -538,7 +539,7 @@ fn generic_type_of(cx: &CrateContext,
                                  Type::array(&Type::i64(cx), align_units),
                 a if a.count_ones() == 1 => Type::array(&Type::vector(&Type::i32(cx), a / 4),
                                                               align_units),
-                _ => fail!("unsupported enum alignment: {:?}", align)
+                _ => fail!("unsupported enum alignment: {}", align)
             };
             assert_eq!(machine::llalign_of_min(cx, pad_ty) as u64, align);
             assert_eq!(align % discr_size, 0);

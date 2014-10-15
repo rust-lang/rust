@@ -119,7 +119,7 @@ impl<'a, 'tcx> euv::Delegate for CheckLoanCtxt<'a, 'tcx> {
               loan_cause: euv::LoanCause)
     {
         debug!("borrow(borrow_id={}, cmt={}, loan_region={}, \
-               bk={}, loan_cause={:?})",
+               bk={}, loan_cause={})",
                borrow_id, cmt.repr(self.tcx()), loan_region,
                bk, loan_cause);
 
@@ -185,7 +185,7 @@ pub fn check_loans<'a, 'b, 'c, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
                                      all_loans: &[Loan],
                                      decl: &ast::FnDecl,
                                      body: &ast::Block) {
-    debug!("check_loans(body id={:?})", body.id);
+    debug!("check_loans(body id={})", body.id);
 
     let mut clcx = CheckLoanCtxt {
         bccx: bccx,
@@ -336,10 +336,10 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
         //! issued when we enter `scope_id` (for example, we do not
         //! permit two `&mut` borrows of the same variable).
 
-        debug!("check_for_conflicting_loans(scope_id={:?})", scope_id);
+        debug!("check_for_conflicting_loans(scope_id={})", scope_id);
 
         let new_loan_indices = self.loans_generated_by(scope_id);
-        debug!("new_loan_indices = {:?}", new_loan_indices);
+        debug!("new_loan_indices = {}", new_loan_indices);
 
         self.each_issued_loan(scope_id, |issued_loan| {
             for &new_loan_index in new_loan_indices.iter() {
@@ -651,7 +651,7 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
                                        use_path: &LoanPath,
                                        borrow_kind: ty::BorrowKind)
                                        -> UseError {
-        debug!("analyze_restrictions_on_use(expr_id={:?}, use_path={})",
+        debug!("analyze_restrictions_on_use(expr_id={}, use_path={})",
                self.tcx().map.node_to_string(expr_id),
                use_path.repr(self.tcx()));
 
@@ -679,7 +679,7 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
          * is using a moved/uninitialized value
          */
 
-        debug!("check_if_path_is_moved(id={:?}, use_kind={:?}, lp={})",
+        debug!("check_if_path_is_moved(id={}, use_kind={}, lp={})",
                id, use_kind, lp.repr(self.bccx.tcx));
         let base_lp = owned_ptr_base_path_rc(lp);
         self.move_data.each_move_of(id, &base_lp, |the_move, moved_lp| {

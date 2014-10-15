@@ -68,7 +68,7 @@ pub struct FlowedMoveData<'a, 'tcx: 'a> {
 }
 
 /// Index into `MoveData.paths`, used like a pointer
-#[deriving(PartialEq)]
+#[deriving(PartialEq, Show)]
 pub struct MovePathIndex(uint);
 
 impl MovePathIndex {
@@ -120,7 +120,7 @@ pub struct MovePath {
     pub next_sibling: MovePathIndex,
 }
 
-#[deriving(PartialEq)]
+#[deriving(PartialEq, Show)]
 pub enum MoveKind {
     Declared,   // When declared, variables start out "moved".
     MoveExpr,   // Expression or binding that moves a variable
@@ -284,7 +284,7 @@ impl MoveData {
             }
         };
 
-        debug!("move_path(lp={}, index={:?})",
+        debug!("move_path(lp={}, index={})",
                lp.repr(tcx),
                index);
 
@@ -341,7 +341,7 @@ impl MoveData {
          * location `id` with kind `kind`.
          */
 
-        debug!("add_move(lp={}, id={:?}, kind={:?})",
+        debug!("add_move(lp={}, id={}, kind={})",
                lp.repr(tcx),
                id,
                kind);
@@ -372,7 +372,7 @@ impl MoveData {
          * location `id` with the given `span`.
          */
 
-        debug!("add_assignment(lp={}, assign_id={:?}, assignee_id={:?}",
+        debug!("add_assignment(lp={}, assign_id={}, assignee_id={}",
                lp.repr(tcx), assign_id, assignee_id);
 
         let path_index = self.move_path(tcx, lp.clone());
@@ -391,12 +391,12 @@ impl MoveData {
         };
 
         if self.is_var_path(path_index) {
-            debug!("add_assignment[var](lp={}, assignment={}, path_index={:?})",
+            debug!("add_assignment[var](lp={}, assignment={}, path_index={})",
                    lp.repr(tcx), self.var_assignments.borrow().len(), path_index);
 
             self.var_assignments.borrow_mut().push(assignment);
         } else {
-            debug!("add_assignment[path](lp={}, path_index={:?})",
+            debug!("add_assignment[path](lp={}, path_index={})",
                    lp.repr(tcx), path_index);
 
             self.path_assignments.borrow_mut().push(assignment);

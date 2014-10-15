@@ -987,7 +987,7 @@ fn check_legality_of_move_bindings(cx: &MatchCheckCtxt,
                         cx.tcx.sess.span_bug(
                             p.span,
                             format!("binding pattern {} is not an \
-                                     identifier: {:?}",
+                                     identifier: {}",
                                     p.id,
                                     p.node).as_slice());
                     }

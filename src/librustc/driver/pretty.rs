@@ -518,7 +518,7 @@ pub fn pretty_print_input(sess: Session,
                 }
                 None => {
                     let message = format!("--pretty=flowgraph needs \
-                                           block, fn, or method; got {:?}",
+                                           block, fn, or method; got {}",
                                           node);
 
                     // point to what was found, if there's an
@@ -542,7 +542,6 @@ fn print_flowgraph<W:io::Writer>(variants: Vec<borrowck_dot::Variant>,
         blocks::BlockCode(block) => cfg::CFG::new(ty_cx, &*block),
         blocks::FnLikeCode(fn_like) => cfg::CFG::new(ty_cx, &*fn_like.body()),
     };
-    debug!("cfg: {:?}", cfg);
 
     match code {
         _ if variants.len() == 0 => {

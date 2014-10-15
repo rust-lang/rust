@@ -239,7 +239,7 @@ fn region_of_def(fcx: &FnCtxt, def: def::Def) -> ty::Region {
             }
         }
         _ => {
-            tcx.sess.bug(format!("unexpected def in region_of_def: {:?}",
+            tcx.sess.bug(format!("unexpected def in region_of_def: {}",
                                  def).as_slice())
         }
     }
@@ -560,7 +560,7 @@ fn constrain_bindings_in_pat(pat: &ast::Pat, rcx: &mut Rcx) {
 }
 
 fn visit_expr(rcx: &mut Rcx, expr: &ast::Expr) {
-    debug!("regionck::visit_expr(e={}, repeating_scope={:?})",
+    debug!("regionck::visit_expr(e={}, repeating_scope={})",
            expr.repr(rcx.fcx.tcx()), rcx.repeating_scope);
 
     // No matter what, the type of each expression must outlive the
@@ -575,7 +575,7 @@ fn visit_expr(rcx: &mut Rcx, expr: &ast::Expr) {
 
     // Check any autoderefs or autorefs that appear.
     for &adjustment in rcx.fcx.inh.adjustments.borrow().find(&expr.id).iter() {
-        debug!("adjustment={:?}", adjustment);
+        debug!("adjustment={}", adjustment);
         match *adjustment {
             ty::AdjustDerefRef(ty::AutoDerefRef {autoderefs, autoref: ref opt_autoref}) => {
                 let expr_ty = rcx.resolve_node_type(expr.id);
@@ -978,7 +978,7 @@ fn check_expr_fn_block(rcx: &mut Rcx,
         debug!("constrain_free_variables({}, {})",
                region_bound.repr(tcx), expr.repr(tcx));
         for freevar in freevars.iter() {
-            debug!("freevar def is {:?}", freevar.def);
+            debug!("freevar def is {}", freevar.def);
 
             // Identify the variable being closed over and its node-id.
             let def = freevar.def;
@@ -1116,7 +1116,7 @@ fn constrain_call<'a, I: Iterator<&'a ast::Expr>>(rcx: &mut Rcx,
     let tcx = rcx.fcx.tcx();
     debug!("constrain_call(call_expr={}, \
             receiver={}, \
-            implicitly_ref_args={:?})",
+            implicitly_ref_args={})",
             call_expr.repr(tcx),
             receiver.repr(tcx),
             implicitly_ref_args);
@@ -1171,7 +1171,7 @@ fn constrain_autoderefs(rcx: &mut Rcx,
      */
     let r_deref_expr = ty::ReScope(deref_expr.id);
     for i in range(0u, derefs) {
-        debug!("constrain_autoderefs(deref_expr=?, derefd_ty={}, derefs={:?}/{:?}",
+        debug!("constrain_autoderefs(deref_expr=?, derefd_ty={}, derefs={}/{}",
                rcx.fcx.infcx().ty_to_string(derefd_ty),
                i, derefs);
 
@@ -1280,7 +1280,7 @@ fn type_of_node_must_outlive(
                            rcx.fcx.inh.adjustments.borrow().find(&id),
                            |method_call| rcx.resolve_method_type(method_call));
     debug!("constrain_regions_in_type_of_node(\
-            ty={}, ty0={}, id={}, minimum_lifetime={:?})",
+            ty={}, ty0={}, id={}, minimum_lifetime={})",
            ty_to_string(tcx, ty), ty_to_string(tcx, ty0),
            id, minimum_lifetime);
     type_must_outlive(rcx, origin, ty, minimum_lifetime);
@@ -1381,7 +1381,7 @@ fn link_autoref(rcx: &Rcx,
      * to lifetimes in the value being autoref'd.
      */
 
-    debug!("link_autoref(autoref={:?})", autoref);
+    debug!("link_autoref(autoref={})", autoref);
     let mc = mc::MemCategorizationContext::new(rcx);
     let expr_cmt = ignore_err!(mc.cat_expr_autoderefd(expr, autoderefs));
     debug!("expr_cmt={}", expr_cmt.repr(rcx.tcx()));
@@ -1779,7 +1779,7 @@ fn link_upvar_borrow_kind_for_nested_closures(rcx: &mut Rcx,
      * this function.
      */
 
-    debug!("link_upvar_borrow_kind: inner_upvar_id={:?} outer_upvar_id={:?}",
+    debug!("link_upvar_borrow_kind: inner_upvar_id={} outer_upvar_id={}",
            inner_upvar_id, outer_upvar_id);
 
     let mut upvar_borrow_map = rcx.fcx.inh.upvar_borrow_map.borrow_mut();
@@ -1795,7 +1795,7 @@ fn link_upvar_borrow_kind_for_nested_closures(rcx: &mut Rcx,
 fn adjust_upvar_borrow_kind_for_loan(upvar_id: ty::UpvarId,
                                      upvar_borrow: &mut ty::UpvarBorrow,
                                      kind: ty::BorrowKind) {
-    debug!("adjust_upvar_borrow_kind_for_loan: upvar_id={:?} kind={:?} -> {:?}",
+    debug!("adjust_upvar_borrow_kind_for_loan: upvar_id={} kind={} -> {}",
            upvar_id, upvar_borrow.kind, kind);
 
     adjust_upvar_borrow_kind(upvar_id, upvar_borrow, kind)
@@ -1812,7 +1812,7 @@ fn adjust_upvar_borrow_kind(upvar_id: ty::UpvarId,
      * is required by some particular use.
      */
 
-    debug!("adjust_upvar_borrow_kind: id={:?} kind=({:?} -> {:?})",
+    debug!("adjust_upvar_borrow_kind: id={} kind=({} -> {})",
            upvar_id, upvar_borrow.kind, kind);
 
     match (upvar_borrow.kind, kind) {
