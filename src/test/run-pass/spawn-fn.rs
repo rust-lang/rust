@@ -8,13 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern crate debug;
-
 use std::task;
 
 fn x(s: String, n: int) {
-    println!("{:?}", s);
-    println!("{:?}", n);
+    println!("{}", s);
+    println!("{}", n);
 }
 
 pub fn main() {

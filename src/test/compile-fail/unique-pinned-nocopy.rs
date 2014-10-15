@@ -8,8 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern crate debug;
-
+#[deriving(Show)]
 struct r {
   b: bool,
 }
@@ -21,5 +20,5 @@ impl Drop for r {
 fn main() {
     let i = box r { b: true };
     let _j = i.clone(); //~ ERROR not implemented
-    println!("{:?}", i);
+    println!("{}", i);
 }

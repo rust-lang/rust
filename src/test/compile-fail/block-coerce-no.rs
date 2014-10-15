@@ -11,8 +11,6 @@
 // Make sure that fn-to-block coercion isn't incorrectly lifted over
 // other tycons.
 
-extern crate debug;
-
 fn coerce(b: ||) -> extern fn() {
     fn lol(f: extern fn(v: ||) -> extern fn(),
            g: ||) -> extern fn() { return f(g); }
@@ -23,6 +21,6 @@ fn coerce(b: ||) -> extern fn() {
 
 fn main() {
     let i = 8i;
-    let f = coerce(|| println!("{:?}", i) );
+    let f = coerce(|| println!("{}", i) );
     f();
 }

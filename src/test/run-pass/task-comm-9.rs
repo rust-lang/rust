@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern crate debug;
-
 use std::task;
 
 pub fn main() { test00(); }
@@ -32,7 +30,7 @@ fn test00() {
     let mut i: int = 0;
     while i < number_of_messages {
         sum += rx.recv();
-        println!("{:?}", r);
+        println!("{}", r);
         i += 1;
     }
 

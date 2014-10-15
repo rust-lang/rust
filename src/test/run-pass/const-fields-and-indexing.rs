@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern crate debug;
-
 const x : [int, ..4] = [1,2,3,4];
 static p : int = x[2];
 const y : &'static [int] = &[1,2,3,4];
@@ -27,9 +25,9 @@ const k : K = K {a: 10, b: 20, c: D {d: 30, e: 40}};
 static m : int = k.c.e;
 
 pub fn main() {
-    println!("{:?}", p);
-    println!("{:?}", q);
-    println!("{:?}", t);
+    println!("{}", p);
+    println!("{}", q);
+    println!("{}", t);
     assert_eq!(p, 3);
     assert_eq!(q, 3);
     assert_eq!(t, 20);

@@ -10,9 +10,7 @@
 
 // Test that we do not permit moves from &[] matched by a vec pattern.
 
-extern crate debug;
-
-#[deriving(Clone)]
+#[deriving(Clone, Show)]
 struct Foo {
     string: String
 }
@@ -37,7 +35,7 @@ pub fn main() {
                 }
             }
             let z = tail[0].clone();
-            println!("{:?}", z);
+            println!("{}", z);
         }
         _ => {
             unreachable!();

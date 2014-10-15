@@ -11,7 +11,6 @@
 
 
 extern crate collections;
-extern crate debug;
 
 /**
    A somewhat reduced test case to expose some Valgrind issues.
@@ -56,7 +55,7 @@ mod map_reduce {
             ctrl.send(find_reducer(Vec::from_slice(key.as_bytes()), tx));
             println!("receiving");
             let c = rx.recv();
-            println!("{:?}", c);
+            println!("{}", c);
             im.insert(key, c);
         }
 

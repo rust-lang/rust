@@ -1177,7 +1177,7 @@ This is a list of behaviour not considered *unsafe* in Rust terms, but that may
 be undesired.
 
 * Deadlocks
-* Reading data from private fields (`std::repr`, `format!("{:?}", x)`)
+* Reading data from private fields (`std::repr`)
 * Leaks due to reference count cycles, even in the global heap
 * Exiting without calling destructors
 * Sending signals

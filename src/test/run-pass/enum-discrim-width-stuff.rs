@@ -10,12 +10,11 @@
 
 #![feature(macro_rules)]
 
-extern crate debug;
-
 macro_rules! check {
     ($m:ident, $t:ty, $v:expr) => {{
         mod $m {
             use std::mem::size_of;
+            #[deriving(Show)]
             enum E {
                 V = $v,
                 A = 0
@@ -25,8 +24,8 @@ macro_rules! check {
                 assert_eq!(size_of::<E>(), size_of::<$t>());
                 assert_eq!(V as $t, $v as $t);
                 assert_eq!(C as $t, $v as $t);
-                assert_eq!(format!("{:?}", V), "V".to_string());
-                assert_eq!(format!("{:?}", C), "V".to_string());
+                assert_eq!(format!("{}", V), "V".to_string());
+                assert_eq!(format!("{}", C), "V".to_string());
             }
         }
         $m::check();

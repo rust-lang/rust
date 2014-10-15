@@ -11,8 +11,6 @@
 // Make sure Rust generates the correct calling convention for extern
 // functions.
 
-extern crate debug;
-
 #[inline(never)]
 #[cfg(target_arch = "x86_64")]
 pub extern "win64" fn foo(a: int, b: int, c: int, d: int) {
@@ -21,7 +19,7 @@ pub extern "win64" fn foo(a: int, b: int, c: int, d: int) {
     assert!(c == 3);
     assert!(d == 4);
 
-    println!("a: {:?}, b: {:?}, c: {:?}, d: {:?}",
+    println!("a: {}, b: {}, c: {}, d: {}",
              a, b, c, d)
 }
 
@@ -33,6 +31,6 @@ pub extern fn foo(a: int, b: int, c: int, d: int) {
     assert!(c == 3);
     assert!(d == 4);
 
-    println!("a: {:?}, b: {:?}, c: {:?}, d: {:?}",
+    println!("a: {}, b: {}, c: {}, d: {}",
              a, b, c, d)
 }

@@ -10,8 +10,6 @@
 
 #![feature(macro_rules)]
 
-extern crate debug;
-
 use std::mem::size_of;
 
 #[deriving(PartialEq, Show)]
@@ -24,8 +22,8 @@ macro_rules! check {
             static S: $t = $e;
             let v: $t = $e;
             assert_eq!(S, v);
-            assert_eq!(format!("{:?}", v).as_slice(), $s);
-            assert_eq!(format!("{:?}", S).as_slice(), $s);
+            assert_eq!(format!("{}", v).as_slice(), $s);
+            assert_eq!(format!("{}", S).as_slice(), $s);
         });*
     }}
 }
@@ -33,14 +31,14 @@ macro_rules! check {
 pub fn main() {
     check!(Option<u8>, 2,
            None, "None",
-           Some(129u8), "Some(129u8)");
+           Some(129u8), "Some(129)");
     check!(Option<i16>, 4,
            None, "None",
-           Some(-20000i16), "Some(-20000i16)");
+           Some(-20000i16), "Some(-20000)");
     check!(Either<u8, i8>, 2,
-           Left(132u8), "Left(132u8)",
-           Right(-32i8), "Right(-32i8)");
+           Left(132u8), "Left(132)",
+           Right(-32i8), "Right(-32)");
     check!(Either<u8, i16>, 4,
-           Left(132u8), "Left(132u8)",
-           Right(-20000i16), "Right(-20000i16)");
+           Left(132u8), "Left(132)",
+           Right(-20000i16), "Right(-20000)");
 }

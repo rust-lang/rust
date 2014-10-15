@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern crate debug;
-
 enum int_wrapper<'a> {
     int_wrapper_ctor(&'a int)
 }
@@ -21,5 +19,5 @@ pub fn main() {
     match y {
         int_wrapper_ctor(zz) => { z = zz; }
     }
-    println!("{:?}", *z);
+    println!("{}", *z);
 }

@@ -14,9 +14,8 @@
 #![feature(phase)]
 #[phase(plugin, link)]
 extern crate log;
-extern crate debug;
 
 pub fn main() {
     // only fails if println! evaluates its argument.
-    debug!("{:?}", { if true { fail!() } });
+    debug!("{}", { if true { fail!() } });
 }
