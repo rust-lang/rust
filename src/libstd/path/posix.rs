@@ -986,19 +986,19 @@ mod tests {
                         let path = $path;
                         let filename = $filename;
                         assert!(path.filename_str() == filename,
-                                "{}.filename_str(): Expected `{:?}`, found {:?}",
+                                "{}.filename_str(): Expected `{}`, found {}",
                                 path.as_str().unwrap(), filename, path.filename_str());
                         let dirname = $dirname;
                         assert!(path.dirname_str() == dirname,
-                                "`{}`.dirname_str(): Expected `{:?}`, found `{:?}`",
+                                "`{}`.dirname_str(): Expected `{}`, found `{}`",
                                 path.as_str().unwrap(), dirname, path.dirname_str());
                         let filestem = $filestem;
                         assert!(path.filestem_str() == filestem,
-                                "`{}`.filestem_str(): Expected `{:?}`, found `{:?}`",
+                                "`{}`.filestem_str(): Expected `{}`, found `{}`",
                                 path.as_str().unwrap(), filestem, path.filestem_str());
                         let ext = $ext;
                         assert!(path.extension_str() == mem::transmute(ext),
-                                "`{}`.extension_str(): Expected `{:?}`, found `{:?}`",
+                                "`{}`.extension_str(): Expected `{}`, found `{}`",
                                 path.as_str().unwrap(), ext, path.extension_str());
                     }
                 }
@@ -1200,11 +1200,11 @@ mod tests {
                     let comps = path.components().collect::<Vec<&[u8]>>();
                     let exp: &[&str] = $exp;
                     let exps = exp.iter().map(|x| x.as_bytes()).collect::<Vec<&[u8]>>();
-                    assert!(comps == exps, "components: Expected {:?}, found {:?}",
+                    assert!(comps == exps, "components: Expected {}, found {}",
                             comps, exps);
                     let comps = path.components().rev().collect::<Vec<&[u8]>>();
                     let exps = exps.into_iter().rev().collect::<Vec<&[u8]>>();
-                    assert!(comps == exps, "rev_components: Expected {:?}, found {:?}",
+                    assert!(comps == exps, "rev_components: Expected {}, found {}",
                             comps, exps);
                 }
             );

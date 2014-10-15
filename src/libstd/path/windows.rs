@@ -996,7 +996,7 @@ pub fn is_sep_byte_verbatim(u: &u8) -> bool {
 }
 
 /// Prefix types for Path
-#[deriving(PartialEq, Clone)]
+#[deriving(PartialEq, Clone, Show)]
 pub enum PathPrefix {
     /// Prefix `\\?\`, uint is the length of the following component
     VerbatimPrefix(uint),
@@ -1172,7 +1172,7 @@ mod tests {
                     let exp = $exp;
                     let res = parse_prefix(path);
                     assert!(res == exp,
-                            "parse_prefix(\"{}\"): expected {:?}, found {:?}", path, exp, res);
+                            "parse_prefix(\"{}\"): expected {}, found {}", path, exp, res);
                 }
             )
         )
@@ -1904,19 +1904,19 @@ mod tests {
                         let path = $path;
                         let filename = $filename;
                         assert!(path.filename_str() == filename,
-                                "`{}`.filename_str(): Expected `{:?}`, found `{:?}`",
+                                "`{}`.filename_str(): Expected `{}`, found `{}`",
                                 path.as_str().unwrap(), filename, path.filename_str());
                         let dirname = $dirname;
                         assert!(path.dirname_str() == dirname,
-                                "`{}`.dirname_str(): Expected `{:?}`, found `{:?}`",
+                                "`{}`.dirname_str(): Expected `{}`, found `{}`",
                                 path.as_str().unwrap(), dirname, path.dirname_str());
                         let filestem = $filestem;
                         assert!(path.filestem_str() == filestem,
-                                "`{}`.filestem_str(): Expected `{:?}`, found `{:?}`",
+                                "`{}`.filestem_str(): Expected `{}`, found `{}`",
                                 path.as_str().unwrap(), filestem, path.filestem_str());
                         let ext = $ext;
                         assert!(path.extension_str() == mem::transmute(ext),
-                                "`{}`.extension_str(): Expected `{:?}`, found `{:?}`",
+                                "`{}`.extension_str(): Expected `{}`, found `{}`",
                                 path.as_str().unwrap(), ext, path.extension_str());
                     }
                 }
@@ -1974,16 +1974,16 @@ mod tests {
                     let path = Path::new($path);
                     let (abs, vol, cwd, rel) = ($abs, $vol, $cwd, $rel);
                     let b = path.is_absolute();
-                    assert!(b == abs, "Path '{}'.is_absolute(): expected {:?}, found {:?}",
+                    assert!(b == abs, "Path '{}'.is_absolute(): expected {}, found {}",
                             path.as_str().unwrap(), abs, b);
                     let b = is_vol_relative(&path);
-                    assert!(b == vol, "is_vol_relative('{}'): expected {:?}, found {:?}",
+                    assert!(b == vol, "is_vol_relative('{}'): expected {}, found {}",
                             path.as_str().unwrap(), vol, b);
                     let b = is_cwd_relative(&path);
-                    assert!(b == cwd, "is_cwd_relative('{}'): expected {:?}, found {:?}",
+                    assert!(b == cwd, "is_cwd_relative('{}'): expected {}, found {}",
                             path.as_str().unwrap(), cwd, b);
                     let b = path.is_relative();
-                    assert!(b == rel, "Path '{}'.is_relativf(): expected {:?}, found {:?}",
+                    assert!(b == rel, "Path '{}'.is_relativf(): expected {}, found {}",
                             path.as_str().unwrap(), rel, b);
                 }
             )
@@ -2016,7 +2016,7 @@ mod tests {
                     let exp = $exp;
                     let res = path.is_ancestor_of(&dest);
                     assert!(res == exp,
-                            "`{}`.is_ancestor_of(`{}`): Expected {:?}, found {:?}",
+                            "`{}`.is_ancestor_of(`{}`): Expected {}, found {}",
                             path.as_str().unwrap(), dest.as_str().unwrap(), exp, res);
                 }
             )
@@ -2151,7 +2151,7 @@ mod tests {
                     let res = path.path_relative_from(&other);
                     let exp = $exp;
                     assert!(res.as_ref().and_then(|x| x.as_str()) == exp,
-                            "`{}`.path_relative_from(`{}`): Expected {:?}, got {:?}",
+                            "`{}`.path_relative_from(`{}`): Expected {}, got {}",
                             path.as_str().unwrap(), other.as_str().unwrap(), exp,
                             res.as_ref().and_then(|x| x.as_str()));
                 }
