@@ -141,6 +141,7 @@ pub struct Typedef {
     pub stab: Option<attr::Stability>,
 }
 
+#[deriving(Show)]
 pub struct Static {
     pub type_: P<ast::Ty>,
     pub mutability: ast::Mutability,
