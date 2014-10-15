@@ -81,14 +81,14 @@ impl LintPass for WhileTrue {
     }
 }
 
-declare_lint!(UNNECESSARY_TYPECAST, Allow,
+declare_lint!(UNUSED_TYPECASTS, Allow,
               "detects unnecessary type casts, that can be removed")
 
 pub struct UnusedCasts;
 
 impl LintPass for UnusedCasts {
     fn get_lints(&self) -> LintArray {
-        lint_array!(UNNECESSARY_TYPECAST)
+        lint_array!(UNUSED_TYPECASTS)
     }
 
     fn check_expr(&mut self, cx: &Context, e: &ast::Expr) {
@@ -96,7 +96,7 @@ impl LintPass for UnusedCasts {
             ast::ExprCast(ref expr, ref ty) => {
                 let t_t = ast_ty_to_ty(cx, &infer::new_infer_ctxt(cx.tcx), &**ty);
                 if ty::get(ty::expr_ty(cx.tcx, &**expr)).sty == ty::get(t_t).sty {
-                    cx.span_lint(UNNECESSARY_TYPECAST, ty.span, "unnecessary type cast");
+                    cx.span_lint(UNUSED_TYPECASTS, ty.span, "unnecessary type cast");
                 }
             }
             _ => ()
@@ -104,13 +104,13 @@ impl LintPass for UnusedCasts {
     }
 }
 
-declare_lint!(UNSIGNED_NEGATE, Warn,
+declare_lint!(UNSIGNED_NEGATION, Warn,
               "using an unary minus operator on unsigned type")
 
-declare_lint!(TYPE_LIMITS, Warn,
+declare_lint!(UNUSED_COMPARISONS, Warn,
               "comparisons made useless by limits of the types involved")
 
-declare_lint!(TYPE_OVERFLOW, Warn,
+declare_lint!(OVERFLOWING_LITERALS, Warn,
               "literal out of range for its type")
 
 pub struct TypeLimits {
@@ -128,7 +128,7 @@ impl TypeLimits {
 
 impl LintPass for TypeLimits {
     fn get_lints(&self) -> LintArray {
-        lint_array!(UNSIGNED_NEGATE, TYPE_LIMITS, TYPE_OVERFLOW)
+        lint_array!(UNSIGNED_NEGATION, UNUSED_COMPARISONS, OVERFLOWING_LITERALS)
     }
 
     fn check_expr(&mut self, cx: &Context, e: &ast::Expr) {
@@ -138,7 +138,7 @@ impl LintPass for TypeLimits {
                     ast::ExprLit(ref lit) => {
                         match lit.node {
                             ast::LitInt(_, ast::UnsignedIntLit(_)) => {
-                                cx.span_lint(UNSIGNED_NEGATE, e.span,
+                                cx.span_lint(UNSIGNED_NEGATION, e.span,
                                              "negation of unsigned int literal may \
                                              be unintentional");
                             },
@@ -149,7 +149,7 @@ impl LintPass for TypeLimits {
                         let t = ty::expr_ty(cx.tcx, &**expr);
                         match ty::get(t).sty {
                             ty::ty_uint(_) => {
-                                cx.span_lint(UNSIGNED_NEGATE, e.span,
+                                cx.span_lint(UNSIGNED_NEGATION, e.span,
                                              "negation of unsigned int variable may \
                                              be unintentional");
                             },
@@ -167,7 +167,7 @@ impl LintPass for TypeLimits {
             },
             ast::ExprBinary(binop, ref l, ref r) => {
                 if is_comparison(binop) && !check_limits(cx.tcx, binop, &**l, &**r) {
-                    cx.span_lint(TYPE_LIMITS, e.span,
+                    cx.span_lint(UNUSED_COMPARISONS, e.span,
                                  "comparison is useless due to type limits");
                 }
             },
@@ -185,7 +185,7 @@ impl LintPass for TypeLimits {
 
                                 if (negative && v > (min.abs() as u64)) ||
                                    (!negative && v > (max.abs() as u64)) {
-                                    cx.span_lint(TYPE_OVERFLOW, e.span,
+                                    cx.span_lint(OVERFLOWING_LITERALS, e.span,
                                                  "literal out of range for its type");
                                     return;
                                 }
@@ -204,7 +204,7 @@ impl LintPass for TypeLimits {
                             _ => fail!()
                         };
                         if  lit_val < min || lit_val > max {
-                            cx.span_lint(TYPE_OVERFLOW, e.span,
+                            cx.span_lint(OVERFLOWING_LITERALS, e.span,
                                          "literal out of range for its type");
                         }
                     },
@@ -219,7 +219,7 @@ impl LintPass for TypeLimits {
                             _ => fail!()
                         };
                         if lit_val < min || lit_val > max {
-                            cx.span_lint(TYPE_OVERFLOW, e.span,
+                            cx.span_lint(OVERFLOWING_LITERALS, e.span,
                                          "literal out of range for its type");
                         }
                     },
@@ -330,23 +330,23 @@ impl LintPass for TypeLimits {
     }
 }
 
-declare_lint!(CTYPES, Warn,
+declare_lint!(IMPROPER_CTYPES, Warn,
               "proper use of libc types in foreign modules")
 
-struct CTypesVisitor<'a, 'tcx: 'a> {
+struct ImproperCTypesVisitor<'a, 'tcx: 'a> {
     cx: &'a Context<'a, 'tcx>
 }
 
-impl<'a, 'tcx> CTypesVisitor<'a, 'tcx> {
+impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
     fn check_def(&mut self, sp: Span, ty_id: ast::NodeId, path_id: ast::NodeId) {
         match self.cx.tcx.def_map.borrow().get_copy(&path_id) {
             def::DefPrimTy(ast::TyInt(ast::TyI)) => {
-                self.cx.span_lint(CTYPES, sp,
+                self.cx.span_lint(IMPROPER_CTYPES, sp,
                                   "found rust type `int` in foreign module, while \
                                    libc::c_int or libc::c_long should be used");
             }
             def::DefPrimTy(ast::TyUint(ast::TyU)) => {
-                self.cx.span_lint(CTYPES, sp,
+                self.cx.span_lint(IMPROPER_CTYPES, sp,
                                   "found rust type `uint` in foreign module, while \
                                    libc::c_uint or libc::c_ulong should be used");
             }
@@ -357,7 +357,7 @@ impl<'a, 'tcx> CTypesVisitor<'a, 'tcx> {
                 };
 
                 if !ty::is_ffi_safe(self.cx.tcx, tty) {
-                    self.cx.span_lint(CTYPES, sp,
+                    self.cx.span_lint(IMPROPER_CTYPES, sp,
                                       "found type without foreign-function-safe
                                       representation annotation in foreign module, consider \
                                       adding a #[repr(...)] attribute to the type");
@@ -368,7 +368,7 @@ impl<'a, 'tcx> CTypesVisitor<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx, 'v> Visitor<'v> for CTypesVisitor<'a, 'tcx> {
+impl<'a, 'tcx, 'v> Visitor<'v> for ImproperCTypesVisitor<'a, 'tcx> {
     fn visit_ty(&mut self, ty: &ast::Ty) {
         match ty.node {
             ast::TyPath(_, _, id) => self.check_def(ty.span, ty.id, id),
@@ -378,16 +378,16 @@ impl<'a, 'tcx, 'v> Visitor<'v> for CTypesVisitor<'a, 'tcx> {
     }
 }
 
-pub struct CTypes;
+pub struct ImproperCTypes;
 
-impl LintPass for CTypes {
+impl LintPass for ImproperCTypes {
     fn get_lints(&self) -> LintArray {
-        lint_array!(CTYPES)
+        lint_array!(IMPROPER_CTYPES)
     }
 
     fn check_item(&mut self, cx: &Context, it: &ast::Item) {
         fn check_ty(cx: &Context, ty: &ast::Ty) {
-            let mut vis = CTypesVisitor { cx: cx };
+            let mut vis = ImproperCTypesVisitor { cx: cx };
             vis.visit_ty(ty);
         }
 
@@ -412,12 +412,12 @@ impl LintPass for CTypes {
     }
 }
 
-declare_lint!(OWNED_HEAP_MEMORY, Allow,
+declare_lint!(BOX_POINTERS, Allow,
               "use of owned (Box type) heap memory")
 
-pub struct HeapMemory;
+pub struct BoxPointers;
 
-impl HeapMemory {
+impl BoxPointers {
     fn check_heap_type(&self, cx: &Context, span: Span, ty: ty::t) {
         let mut n_uniq = 0i;
         ty::fold_ty(cx.tcx, ty, |t| {
@@ -438,14 +438,14 @@ impl HeapMemory {
         if n_uniq > 0 {
             let s = ty_to_string(cx.tcx, ty);
             let m = format!("type uses owned (Box type) pointers: {}", s);
-            cx.span_lint(OWNED_HEAP_MEMORY, span, m.as_slice());
+            cx.span_lint(BOX_POINTERS, span, m.as_slice());
         }
     }
 }
 
-impl LintPass for HeapMemory {
+impl LintPass for BoxPointers {
     fn get_lints(&self) -> LintArray {
-        lint_array!(OWNED_HEAP_MEMORY)
+        lint_array!(BOX_POINTERS)
     }
 
     fn check_item(&mut self, cx: &Context, it: &ast::Item) {
@@ -545,14 +545,14 @@ impl LintPass for RawPointerDeriving {
     }
 }
 
-declare_lint!(UNUSED_ATTRIBUTE, Warn,
+declare_lint!(UNUSED_ATTRIBUTES, Warn,
               "detects attributes that were not used by the compiler")
 
-pub struct UnusedAttribute;
+pub struct UnusedAttributes;
 
-impl LintPass for UnusedAttribute {
+impl LintPass for UnusedAttributes {
     fn get_lints(&self) -> LintArray {
-        lint_array!(UNUSED_ATTRIBUTE)
+        lint_array!(UNUSED_ATTRIBUTES)
     }
 
     fn check_attribute(&mut self, cx: &Context, attr: &ast::Attribute) {
@@ -618,7 +618,7 @@ impl LintPass for UnusedAttribute {
         }
 
         if !attr::is_used(attr) {
-            cx.span_lint(UNUSED_ATTRIBUTE, attr.span, "unused attribute");
+            cx.span_lint(UNUSED_ATTRIBUTES, attr.span, "unused attribute");
             if CRATE_ATTRS.contains(&attr.name().get()) {
                 let msg = match attr.node.style {
                     ast::AttrOuter => "crate-level attribute should be an inner \
@@ -626,27 +626,27 @@ impl LintPass for UnusedAttribute {
                     ast::AttrInner => "crate-level attribute should be in the \
                                        root module",
                 };
-                cx.span_lint(UNUSED_ATTRIBUTE, attr.span, msg);
+                cx.span_lint(UNUSED_ATTRIBUTES, attr.span, msg);
             }
         }
     }
 }
 
-declare_lint!(pub PATH_STATEMENT, Warn,
+declare_lint!(pub PATH_STATEMENTS, Warn,
               "path statements with no effect")
 
-pub struct PathStatement;
+pub struct PathStatements;
 
-impl LintPass for PathStatement {
+impl LintPass for PathStatements {
     fn get_lints(&self) -> LintArray {
-        lint_array!(PATH_STATEMENT)
+        lint_array!(PATH_STATEMENTS)
     }
 
     fn check_stmt(&mut self, cx: &Context, s: &ast::Stmt) {
         match s.node {
             ast::StmtSemi(ref expr, _) => {
                 match expr.node {
-                    ast::ExprPath(_) => cx.span_lint(PATH_STATEMENT, s.span,
+                    ast::ExprPath(_) => cx.span_lint(PATH_STATEMENTS, s.span,
                                                      "path statement with no effect"),
                     _ => ()
                 }
@@ -659,14 +659,14 @@ impl LintPass for PathStatement {
 declare_lint!(pub UNUSED_MUST_USE, Warn,
               "unused result of a type flagged as #[must_use]")
 
-declare_lint!(pub UNUSED_RESULT, Allow,
+declare_lint!(pub UNUSED_RESULTS, Allow,
               "unused result of an expression in a statement")
 
-pub struct UnusedResult;
+pub struct UnusedResults;
 
-impl LintPass for UnusedResult {
+impl LintPass for UnusedResults {
     fn get_lints(&self) -> LintArray {
-        lint_array!(UNUSED_MUST_USE, UNUSED_RESULT)
+        lint_array!(UNUSED_MUST_USE, UNUSED_RESULTS)
     }
 
     fn check_stmt(&mut self, cx: &Context, s: &ast::Stmt) {
@@ -702,7 +702,7 @@ impl LintPass for UnusedResult {
             _ => {}
         }
         if !warned {
-            cx.span_lint(UNUSED_RESULT, s.span, "unused result");
+            cx.span_lint(UNUSED_RESULTS, s.span, "unused result");
         }
 
         fn check_must_use(cx: &Context, attrs: &[ast::Attribute], sp: Span) -> bool {
@@ -966,14 +966,14 @@ impl LintPass for NonSnakeCase {
     }
 }
 
-declare_lint!(pub NON_UPPERCASE_STATICS, Warn,
+declare_lint!(pub NON_UPPER_CASE_GLOBALS, Warn,
               "static constants should have uppercase identifiers")
 
-pub struct NonUppercaseStatics;
+pub struct NonUpperCaseGlobals;
 
-impl LintPass for NonUppercaseStatics {
+impl LintPass for NonUpperCaseGlobals {
     fn get_lints(&self) -> LintArray {
-        lint_array!(NON_UPPERCASE_STATICS)
+        lint_array!(NON_UPPER_CASE_GLOBALS)
     }
 
     fn check_item(&mut self, cx: &Context, it: &ast::Item) {
@@ -986,7 +986,7 @@ impl LintPass for NonUppercaseStatics {
                 // ones (some scripts don't have a concept of
                 // upper/lowercase)
                 if s.get().chars().any(|c| c.is_lowercase()) {
-                    cx.span_lint(NON_UPPERCASE_STATICS, it.span,
+                    cx.span_lint(NON_UPPER_CASE_GLOBALS, it.span,
                         format!("static constant `{}` should have an uppercase name \
                                  such as `{}`",
                                 s.get(), s.get().chars().map(|c| c.to_uppercase())
@@ -1003,7 +1003,7 @@ impl LintPass for NonUppercaseStatics {
             (&ast::PatIdent(_, ref path1, _), Some(&def::DefConst(..))) => {
                 let s = token::get_ident(path1.node);
                 if s.get().chars().any(|c| c.is_lowercase()) {
-                    cx.span_lint(NON_UPPERCASE_STATICS, path1.span,
+                    cx.span_lint(NON_UPPER_CASE_GLOBALS, path1.span,
                         format!("static constant in pattern `{}` should have an uppercase \
                                  name such as `{}`",
                                 s.get(), s.get().chars().map(|c| c.to_uppercase())
@@ -1015,19 +1015,19 @@ impl LintPass for NonUppercaseStatics {
     }
 }
 
-declare_lint!(UNNECESSARY_PARENS, Warn,
+declare_lint!(UNUSED_PARENS, Warn,
               "`if`, `match`, `while` and `return` do not need parentheses")
 
-pub struct UnnecessaryParens;
+pub struct UnusedParens;
 
-impl UnnecessaryParens {
+impl UnusedParens {
     fn check_unnecessary_parens_core(&self, cx: &Context, value: &ast::Expr, msg: &str,
                                      struct_lit_needs_parens: bool) {
         match value.node {
             ast::ExprParen(ref inner) => {
                 let necessary = struct_lit_needs_parens && contains_exterior_struct_lit(&**inner);
                 if !necessary {
-                    cx.span_lint(UNNECESSARY_PARENS, value.span,
+                    cx.span_lint(UNUSED_PARENS, value.span,
                                  format!("unnecessary parentheses around {}",
                                          msg).as_slice())
                 }
@@ -1071,9 +1071,9 @@ impl UnnecessaryParens {
     }
 }
 
-impl LintPass for UnnecessaryParens {
+impl LintPass for UnusedParens {
     fn get_lints(&self) -> LintArray {
-        lint_array!(UNNECESSARY_PARENS)
+        lint_array!(UNUSED_PARENS)
     }
 
     fn check_expr(&mut self, cx: &Context, e: &ast::Expr) {
@@ -1108,14 +1108,14 @@ impl LintPass for UnnecessaryParens {
     }
 }
 
-declare_lint!(UNNECESSARY_IMPORT_BRACES, Allow,
+declare_lint!(UNUSED_IMPORT_BRACES, Allow,
               "unnecessary braces around an imported item")
 
-pub struct UnnecessaryImportBraces;
+pub struct UnusedImportBraces;
 
-impl LintPass for UnnecessaryImportBraces {
+impl LintPass for UnusedImportBraces {
     fn get_lints(&self) -> LintArray {
-        lint_array!(UNNECESSARY_IMPORT_BRACES)
+        lint_array!(UNUSED_IMPORT_BRACES)
     }
 
     fn check_view_item(&mut self, cx: &Context, view_item: &ast::ViewItem) {
@@ -1128,7 +1128,7 @@ impl LintPass for UnnecessaryImportBraces {
                                 ast::PathListIdent {ref name, ..} => {
                                     let m = format!("braces around {} is unnecessary",
                                                     token::get_ident(*name).get());
-                                    cx.span_lint(UNNECESSARY_IMPORT_BRACES, view_item.span,
+                                    cx.span_lint(UNUSED_IMPORT_BRACES, view_item.span,
                                                  m.as_slice());
                                 },
                                 _ => ()
@@ -1167,21 +1167,21 @@ impl LintPass for UnusedUnsafe {
     }
 }
 
-declare_lint!(UNSAFE_BLOCK, Allow,
+declare_lint!(UNSAFE_BLOCKS, Allow,
               "usage of an `unsafe` block")
 
-pub struct UnsafeBlock;
+pub struct UnsafeBlocks;
 
-impl LintPass for UnsafeBlock {
+impl LintPass for UnsafeBlocks {
     fn get_lints(&self) -> LintArray {
-        lint_array!(UNSAFE_BLOCK)
+        lint_array!(UNSAFE_BLOCKS)
     }
 
     fn check_expr(&mut self, cx: &Context, e: &ast::Expr) {
         match e.node {
             // Don't warn about generated blocks, that'll just pollute the output.
             ast::ExprBlock(ref blk) if blk.rules == ast::UnsafeBlock(ast::UserProvided) => {
-                cx.span_lint(UNSAFE_BLOCK, blk.span, "usage of an `unsafe` block");
+                cx.span_lint(UNSAFE_BLOCKS, blk.span, "usage of an `unsafe` block");
             }
             _ => ()
         }
@@ -1266,14 +1266,14 @@ impl LintPass for UnusedMut {
     }
 }
 
-declare_lint!(UNNECESSARY_ALLOCATION, Warn,
+declare_lint!(UNUSED_ALLOCATION, Warn,
               "detects unnecessary allocations that can be eliminated")
 
-pub struct UnnecessaryAllocation;
+pub struct UnusedAllocation;
 
-impl LintPass for UnnecessaryAllocation {
+impl LintPass for UnusedAllocation {
     fn get_lints(&self) -> LintArray {
-        lint_array!(UNNECESSARY_ALLOCATION)
+        lint_array!(UNUSED_ALLOCATION)
     }
 
     fn check_expr(&mut self, cx: &Context, e: &ast::Expr) {
@@ -1288,11 +1288,11 @@ impl LintPass for UnnecessaryAllocation {
                     ty::AdjustDerefRef(ty::AutoDerefRef { ref autoref, .. }) => {
                         match autoref {
                             &Some(ty::AutoPtr(_, ast::MutImmutable, None)) => {
-                                cx.span_lint(UNNECESSARY_ALLOCATION, e.span,
+                                cx.span_lint(UNUSED_ALLOCATION, e.span,
                                              "unnecessary allocation, use & instead");
                             }
                             &Some(ty::AutoPtr(_, ast::MutMutable, None)) => {
-                                cx.span_lint(UNNECESSARY_ALLOCATION, e.span,
+                                cx.span_lint(UNUSED_ALLOCATION, e.span,
                                              "unnecessary allocation, use &mut instead");
                             }
                             _ => ()
@@ -1306,7 +1306,7 @@ impl LintPass for UnnecessaryAllocation {
     }
 }
 
-declare_lint!(MISSING_DOC, Allow,
+declare_lint!(MISSING_DOCS, Allow,
               "detects missing documentation for public members")
 
 pub struct MissingDoc {
@@ -1358,7 +1358,7 @@ impl MissingDoc {
             }
         });
         if !has_doc {
-            cx.span_lint(MISSING_DOC, sp,
+            cx.span_lint(MISSING_DOCS, sp,
                 format!("missing documentation for {}", desc).as_slice());
         }
     }
@@ -1366,7 +1366,7 @@ impl MissingDoc {
 
 impl LintPass for MissingDoc {
     fn get_lints(&self) -> LintArray {
-        lint_array!(MISSING_DOC)
+        lint_array!(MISSING_DOCS)
     }
 
     fn enter_lint_attrs(&mut self, _: &Context, attrs: &[ast::Attribute]) {
@@ -1569,26 +1569,26 @@ impl LintPass for Stability {
 declare_lint!(pub UNUSED_IMPORTS, Warn,
               "imports that are never used")
 
-declare_lint!(pub UNUSED_EXTERN_CRATE, Allow,
+declare_lint!(pub UNUSED_EXTERN_CRATES, Allow,
               "extern crates that are never used")
 
-declare_lint!(pub UNNECESSARY_QUALIFICATION, Allow,
+declare_lint!(pub UNUSED_QUALIFICATIONS, Allow,
               "detects unnecessarily qualified names")
 
-declare_lint!(pub UNRECOGNIZED_LINT, Warn,
+declare_lint!(pub UNKNOWN_LINTS, Warn,
               "unrecognized lint attribute")
 
-declare_lint!(pub UNUSED_VARIABLE, Warn,
+declare_lint!(pub UNUSED_VARIABLES, Warn,
               "detect variables which are not used in any way")
 
-declare_lint!(pub DEAD_ASSIGNMENT, Warn,
+declare_lint!(pub UNUSED_ASSIGNMENTS, Warn,
               "detect assignments that will never be read")
 
 declare_lint!(pub DEAD_CODE, Warn,
-              "detect piece of code that will never be used")
+              "detect unused, unexported items")
 
 declare_lint!(pub UNREACHABLE_CODE, Warn,
-              "detects unreachable code")
+              "detects unreachable code paths")
 
 declare_lint!(pub WARNINGS, Warn,
               "mass-change the level for lints which produce warnings")
@@ -1596,13 +1596,13 @@ declare_lint!(pub WARNINGS, Warn,
 declare_lint!(pub UNKNOWN_FEATURES, Deny,
               "unknown features found in crate-level #[feature] directives")
 
-declare_lint!(pub UNKNOWN_CRATE_TYPE, Deny,
+declare_lint!(pub UNKNOWN_CRATE_TYPES, Deny,
               "unknown crate type found in #[crate_type] directive")
 
-declare_lint!(pub VARIANT_SIZE_DIFFERENCE, Allow,
+declare_lint!(pub VARIANT_SIZE_DIFFERENCES, Allow,
               "detects enums with widely varying variant sizes")
 
-declare_lint!(pub TRANSMUTE_FAT_PTR, Allow,
+declare_lint!(pub FAT_PTR_TRANSMUTES, Allow,
               "detects transmutes of fat pointers")
 
 /// Does nothing as a lint pass, but registers some `Lint`s
@@ -1613,17 +1613,18 @@ impl LintPass for HardwiredLints {
     fn get_lints(&self) -> LintArray {
         lint_array!(
             UNUSED_IMPORTS,
-            UNUSED_EXTERN_CRATE,
-            UNNECESSARY_QUALIFICATION,
-            UNRECOGNIZED_LINT,
-            UNUSED_VARIABLE,
-            DEAD_ASSIGNMENT,
+            UNUSED_EXTERN_CRATES,
+            UNUSED_QUALIFICATIONS,
+            UNKNOWN_LINTS,
+            UNUSED_VARIABLES,
+            UNUSED_ASSIGNMENTS,
             DEAD_CODE,
             UNREACHABLE_CODE,
             WARNINGS,
             UNKNOWN_FEATURES,
-            UNKNOWN_CRATE_TYPE,
-            VARIANT_SIZE_DIFFERENCE
+            UNKNOWN_CRATE_TYPES,
+            VARIANT_SIZE_DIFFERENCES,
+            FAT_PTR_TRANSMUTES
         )
     }
 }

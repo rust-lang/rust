@@ -5232,7 +5232,7 @@ impl<'a> Resolver<'a> {
             match (def, unqualified_def) {
                 (Some((ref d, _)), Some((ref ud, _))) if *d == *ud => {
                     self.session
-                        .add_lint(lint::builtin::UNNECESSARY_QUALIFICATION,
+                        .add_lint(lint::builtin::UNUSED_QUALIFICATIONS,
                                   id,
                                   path.span,
                                   "unnecessary qualification".to_string());
@@ -6125,7 +6125,7 @@ impl<'a> Resolver<'a> {
                 match self.session.cstore.find_extern_mod_stmt_cnum(id)
                 {
                     Some(crate_num) => if !self.used_crates.contains(&crate_num) {
-                    self.session.add_lint(lint::builtin::UNUSED_EXTERN_CRATE,
+                    self.session.add_lint(lint::builtin::UNUSED_EXTERN_CRATES,
                                           id,
                                           vi.span,
                                           "unused extern crate".to_string());
