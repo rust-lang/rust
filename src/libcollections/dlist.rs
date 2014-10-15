@@ -475,12 +475,6 @@ impl<T> DList<T> {
         Items{nelem: self.len(), head: &self.list_head, tail: self.list_tail}
     }
 
-    /// Deprecated: use `iter_mut`.
-    #[deprecated = "use iter_mut"]
-    pub fn mut_iter<'a>(&'a mut self) -> MutItems<'a, T> {
-        self.iter_mut()
-    }
-
     /// Provides a forward iterator with mutable references.
     #[inline]
     pub fn iter_mut<'a>(&'a mut self) -> MutItems<'a, T> {
@@ -494,12 +488,6 @@ impl<T> DList<T> {
             tail: self.list_tail,
             list: self
         }
-    }
-
-    /// Deprecated: use `into_iter`.
-    #[deprecated = "use into_iter"]
-    pub fn move_iter(self) -> MoveItems<T> {
-        self.into_iter()
     }
 
     /// Consumes the list into an iterator yielding elements by value.
@@ -870,7 +858,8 @@ mod tests {
         let mut m = list_from(v.as_slice());
         m.append(list_from(u.as_slice()));
         check_links(&m);
-        let sum = v.append(u.as_slice());
+        let mut sum = v;
+        sum.push_all(u.as_slice());
         assert_eq!(sum.len(), m.len());
         for elt in sum.into_iter() {
             assert_eq!(m.pop_front(), Some(elt))

@@ -17,7 +17,7 @@ fn bar(a: foo::map) {
     if false {
         fail!();
     } else {
-        let _b = a.get(&2);
+        let _b = &(*a)[2];
     }
 }
 

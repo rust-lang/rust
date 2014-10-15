@@ -16,7 +16,7 @@ fn test_simple() {
 
 fn test_box() {
     let r = match true { true => { vec!(10i) } false => { fail!() } };
-    assert_eq!(*r.get(0), 10i);
+    assert_eq!(r[0], 10i);
 }
 
 pub fn main() { test_simple(); test_box(); }

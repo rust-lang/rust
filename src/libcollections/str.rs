@@ -58,7 +58,6 @@ use core::default::Default;
 use core::fmt;
 use core::cmp;
 use core::iter::AdditiveIterator;
-use core::mem;
 use core::prelude::{Char, Clone, Collection, Eq, Equiv, ImmutableSlice};
 use core::prelude::{Iterator, MutableSlice, None, Option, Ord, Ordering};
 use core::prelude::{PartialEq, PartialOrd, Result, AsSlice, Some, Tuple2};
@@ -67,7 +66,6 @@ use core::prelude::{range};
 use {Deque, MutableSeq};
 use hash;
 use ringbuf::RingBuf;
-use slice::CloneableVector;
 use string::String;
 use unicode;
 use vec::Vec;
@@ -84,31 +82,6 @@ pub use unicode::str::{UnicodeStrSlice, Words, Graphemes, GraphemeIndices};
 /*
 Section: Creating a string
 */
-
-/// Deprecated. Replaced by `String::from_utf8`.
-#[deprecated = "Replaced by `String::from_utf8`"]
-pub fn from_utf8_owned(vv: Vec<u8>) -> Result<String, Vec<u8>> {
-    String::from_utf8(vv)
-}
-
-/// Deprecated. Replaced by `String::from_byte`.
-#[deprecated = "Replaced by String::from_byte"]
-pub fn from_byte(b: u8) -> String {
-    assert!(b < 128u8);
-    String::from_char(1, b as char)
-}
-
-/// Deprecated. Use `String::from_char` or `char::to_string()` instead.
-#[deprecated = "use String::from_char or char.to_string()"]
-pub fn from_char(ch: char) -> String {
-    String::from_char(1, ch)
-}
-
-/// Deprecated. Replaced by `String::from_chars`.
-#[deprecated = "use String::from_chars instead"]
-pub fn from_chars(chs: &[char]) -> String {
-    chs.iter().map(|c| *c).collect()
-}
 
 /// Methods for vectors of strings.
 pub trait StrVector {
@@ -427,18 +400,6 @@ pub fn replace(s: &str, from: &str, to: &str) -> String {
 Section: Misc
 */
 
-/// Deprecated. Use `String::from_utf16`.
-#[deprecated = "Replaced by String::from_utf16"]
-pub fn from_utf16(v: &[u16]) -> Option<String> {
-    String::from_utf16(v)
-}
-
-/// Deprecated. Use `String::from_utf16_lossy`.
-#[deprecated = "Replaced by String::from_utf16_lossy"]
-pub fn from_utf16_lossy(v: &[u16]) -> String {
-    String::from_utf16_lossy(v)
-}
-
 // Return the initial codepoint accumulator for the first byte.
 // The first byte is special, only want bottom 5 bits for width 2, 4 bits
 // for width 3, and 3 bits for width 4
@@ -450,12 +411,6 @@ macro_rules! utf8_first_byte(
 macro_rules! utf8_acc_cont_byte(
     ($ch:expr, $byte:expr) => (($ch << 6) | ($byte & 63u8) as u32)
 )
-
-/// Deprecated. Use `String::from_utf8_lossy`.
-#[deprecated = "Replaced by String::from_utf8_lossy"]
-pub fn from_utf8_lossy<'a>(v: &'a [u8]) -> MaybeOwned<'a> {
-    String::from_utf8_lossy(v)
-}
 
 /*
 Section: MaybeOwned
@@ -644,38 +599,8 @@ impl<'a> fmt::Show for MaybeOwned<'a> {
 
 /// Unsafe string operations.
 pub mod raw {
-    use string;
-    use string::String;
-    use vec::Vec;
-
-    use MutableSeq;
-
     pub use core::str::raw::{from_utf8, c_str_to_static_slice, slice_bytes};
     pub use core::str::raw::{slice_unchecked};
-
-    /// Deprecated. Replaced by `string::raw::from_buf_len`
-    #[deprecated = "Use string::raw::from_buf_len"]
-    pub unsafe fn from_buf_len(buf: *const u8, len: uint) -> String {
-        string::raw::from_buf_len(buf, len)
-    }
-
-    /// Deprecated. Use `string::raw::from_buf`
-    #[deprecated = "Use string::raw::from_buf"]
-    pub unsafe fn from_c_str(c_string: *const i8) -> String {
-        string::raw::from_buf(c_string as *const u8)
-    }
-
-    /// Deprecated. Replaced by `string::raw::from_utf8`
-    #[deprecated = "Use string::raw::from_utf8"]
-    pub unsafe fn from_utf8_owned(v: Vec<u8>) -> String {
-        string::raw::from_utf8(v)
-    }
-
-    /// Deprecated. Use `string::raw::from_utf8`
-    #[deprecated = "Use string::raw::from_utf8"]
-    pub unsafe fn from_byte(u: u8) -> String {
-        string::raw::from_utf8(vec![u])
-    }
 }
 
 /*
@@ -686,12 +611,6 @@ Section: Trait implementations
 pub trait StrAllocating: Str {
     /// Converts `self` into a `String`, not making a copy if possible.
     fn into_string(self) -> String;
-
-    #[allow(missing_doc)]
-    #[deprecated = "replaced by .into_string()"]
-    fn into_owned(self) -> String {
-        self.into_string()
-    }
 
     /// Escapes each char in `s` with `char::escape_default`.
     fn escape_default(&self) -> String {
@@ -748,21 +667,6 @@ pub trait StrAllocating: Str {
         }
         result.push_str(unsafe{raw::slice_bytes(me, last_end, me.len())});
         result
-    }
-
-    #[allow(missing_doc)]
-    #[deprecated = "obsolete, use `to_string`"]
-    #[inline]
-    fn to_owned(&self) -> String {
-        unsafe {
-            mem::transmute(self.as_slice().as_bytes().to_vec())
-        }
-    }
-
-    /// Converts to a vector of `u16` encoded as UTF-16.
-    #[deprecated = "use `utf16_units` instead"]
-    fn to_utf16(&self) -> Vec<u16> {
-        self.as_slice().utf16_units().collect::<Vec<u16>>()
     }
 
     /// Given a string, makes a new string with repeated copies of it.

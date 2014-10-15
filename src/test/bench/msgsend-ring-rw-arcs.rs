@@ -72,8 +72,8 @@ fn main() {
         args.clone().into_iter().collect()
     };
 
-    let num_tasks = from_str::<uint>(args.get(1).as_slice()).unwrap();
-    let msg_per_task = from_str::<uint>(args.get(2).as_slice()).unwrap();
+    let num_tasks = from_str::<uint>(args[1].as_slice()).unwrap();
+    let msg_per_task = from_str::<uint>(args[2].as_slice()).unwrap();
 
     let (mut num_chan, num_port) = init();
 

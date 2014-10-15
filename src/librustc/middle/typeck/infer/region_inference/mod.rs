@@ -255,7 +255,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
     pub fn commit(&self, snapshot: RegionSnapshot) {
         debug!("RegionVarBindings: commit({})", snapshot.length);
         assert!(self.undo_log.borrow().len() > snapshot.length);
-        assert!(*self.undo_log.borrow().get(snapshot.length) == OpenSnapshot);
+        assert!((*self.undo_log.borrow())[snapshot.length] == OpenSnapshot);
 
         let mut undo_log = self.undo_log.borrow_mut();
         if snapshot.length == 0 {
@@ -269,7 +269,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
         debug!("RegionVarBindings: rollback_to({})", snapshot);
         let mut undo_log = self.undo_log.borrow_mut();
         assert!(undo_log.len() > snapshot.length);
-        assert!(*undo_log.get(snapshot.length) == OpenSnapshot);
+        assert!((*undo_log)[snapshot.length] == OpenSnapshot);
         while undo_log.len() > snapshot.length + 1 {
             match undo_log.pop().unwrap() {
                 OpenSnapshot => {
@@ -529,7 +529,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
         match *self.values.borrow() {
             None => {
                 self.tcx.sess.span_bug(
-                    self.var_origins.borrow().get(rid.index).span(),
+                    (*self.var_origins.borrow())[rid.index].span(),
                     "attempt to resolve region variable before values have \
                      been computed!")
             }
@@ -608,7 +608,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
         let mut result_index = 0;
         while result_index < result_set.len() {
             // nb: can't use uint::range() here because result_set grows
-            let r = *result_set.get(result_index);
+            let r = result_set[result_index];
             debug!("result_index={}, r={}", result_index, r);
 
             for undo_entry in
@@ -636,13 +636,13 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
                             ReFree(a), ReInfer(ReVar(b)));
                     }
                     &AddVerify(i) => {
-                        match self.verifys.borrow().get(i) {
-                            &VerifyRegSubReg(_, a, b) => {
+                        match (*self.verifys.borrow())[i] {
+                            VerifyRegSubReg(_, a, b) => {
                                 consider_adding_bidirectional_edges(
                                     &mut result_set, r,
                                     a, b);
                             }
-                            &VerifyParamBound(_, _, a, ref bs) => {
+                            VerifyParamBound(_, _, a, ref bs) => {
                                 for &b in bs.iter() {
                                     consider_adding_bidirectional_edges(
                                         &mut result_set, r,
@@ -727,7 +727,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
 
           (ReInfer(ReVar(v_id)), _) | (_, ReInfer(ReVar(v_id))) => {
             self.tcx.sess.span_bug(
-                self.var_origins.borrow().get(v_id.index).span(),
+                (*self.var_origins.borrow())[v_id.index].span(),
                 format!("lub_concrete_regions invoked with \
                          non-concrete regions: {}, {}",
                         a,
@@ -834,7 +834,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
             (ReInfer(ReVar(v_id)), _) |
             (_, ReInfer(ReVar(v_id))) => {
                 self.tcx.sess.span_bug(
-                    self.var_origins.borrow().get(v_id.index).span(),
+                    (*self.var_origins.borrow())[v_id.index].span(),
                     format!("glb_concrete_regions invoked with \
                              non-concrete regions: {}, {}",
                             a,
@@ -1269,7 +1269,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
                     if opt_graph.is_none() {
                         opt_graph = Some(self.construct_graph());
                     }
-                    let graph = opt_graph.get_ref();
+                    let graph = opt_graph.as_ref().unwrap();
 
                     let node_vid = RegionVid { index: idx };
                     match var_data[idx].classification {
@@ -1370,7 +1370,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
                 if !self.is_subregion_of(lower_bound.region,
                                          upper_bound.region) {
                     errors.push(SubSupConflict(
-                        self.var_origins.borrow().get(node_idx.index).clone(),
+                        (*self.var_origins.borrow())[node_idx.index].clone(),
                         lower_bound.origin.clone(),
                         lower_bound.region,
                         upper_bound.origin.clone(),
@@ -1381,7 +1381,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
         }
 
         self.tcx.sess.span_bug(
-            self.var_origins.borrow().get(node_idx.index).span(),
+            (*self.var_origins.borrow())[node_idx.index].span(),
             format!("collect_error_for_expanding_node() could not find error \
                     for var {}, lower_bounds={}, upper_bounds={}",
                     node_idx,
@@ -1414,7 +1414,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
                   Ok(_) => {}
                   Err(_) => {
                     errors.push(SupSupConflict(
-                        self.var_origins.borrow().get(node_idx.index).clone(),
+                        (*self.var_origins.borrow())[node_idx.index].clone(),
                         upper_bound_1.origin.clone(),
                         upper_bound_1.region,
                         upper_bound_2.origin.clone(),
@@ -1426,7 +1426,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
         }
 
         self.tcx.sess.span_bug(
-            self.var_origins.borrow().get(node_idx.index).span(),
+            (*self.var_origins.borrow())[node_idx.index].span(),
             format!("collect_error_for_contracting_node() could not find error \
                      for var {}, upper_bounds={}",
                     node_idx,
@@ -1578,7 +1578,7 @@ fn normalize(values: &Vec<VarValue>, r: ty::Region) -> ty::Region {
 }
 
 fn lookup(values: &Vec<VarValue>, rid: ty::RegionVid) -> ty::Region {
-    match *values.get(rid.index) {
+    match values[rid.index] {
         Value(r) => r,
         NoValue => ReEmpty, // No constraints, return ty::ReEmpty
         ErrorValue => ReStatic, // Previously reported error.

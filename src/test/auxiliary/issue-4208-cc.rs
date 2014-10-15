@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![crate_id="numeric#0.1"]
+#![crate_name="numeric"]
 #![crate_type = "lib"]
 
 pub trait Trig<T> {

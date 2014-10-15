@@ -125,8 +125,8 @@ mod imp {
             let saved_value = take();
 
             let expected = vec![
-                Vec::from_slice(b"happy"),
-                Vec::from_slice(b"today?"),
+                b"happy".to_vec(),
+                b"today?".to_vec(),
             ];
 
             put(expected.clone());

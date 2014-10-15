@@ -428,27 +428,6 @@ pub trait Iterator<A> {
         ByRef{iter: self}
     }
 
-    /// Apply a function to each element, or stop iterating if the
-    /// function returns `false`.
-    ///
-    /// # Example
-    ///
-    /// ```rust,ignore
-    /// range(0u, 5).advance(|x| {print!("{} ", x); true});
-    /// ```
-    #[deprecated = "use the `all` method instead"]
-    #[inline]
-    fn advance(&mut self, f: |A| -> bool) -> bool {
-        loop {
-            match self.next() {
-                Some(x) => {
-                    if !f(x) { return false; }
-                }
-                None => { return true; }
-            }
-        }
-    }
-
     /// Loops through the entire iterator, collecting all of the elements into
     /// a container implementing `FromIterator`.
     ///

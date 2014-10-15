@@ -167,7 +167,6 @@ impl<T: Send> Clone for Queue<T> {
 mod tests {
     use std::prelude::*;
     use super::Queue;
-    use native;
 
     #[test]
     fn test() {
@@ -180,7 +179,7 @@ mod tests {
         for _ in range(0, nthreads) {
             let q = q.clone();
             let tx = tx.clone();
-            native::task::spawn(proc() {
+            spawn(proc() {
                 let q = q;
                 for i in range(0, nmsgs) {
                     assert!(q.push(i));
@@ -194,7 +193,7 @@ mod tests {
             let (tx, rx) = channel();
             completion_rxs.push(rx);
             let q = q.clone();
-            native::task::spawn(proc() {
+            spawn(proc() {
                 let q = q;
                 let mut i = 0u;
                 loop {

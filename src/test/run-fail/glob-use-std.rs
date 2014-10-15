@@ -20,7 +20,5 @@
 use std::*;
 
 fn main() {
-    String::from_byte(b'a'); // avoid an unused import message
-
     fail!("fail works")
 }

@@ -26,7 +26,6 @@
 #![allow(unknown_features)]
 #![feature(macro_rules, globs, default_type_params, phase, slicing_syntax)]
 #![feature(quote, struct_variant, unsafe_destructor, import_shadowing)]
-#![allow(deprecated)]
 
 extern crate arena;
 extern crate fmt_macros;
@@ -61,7 +60,6 @@ pub mod ast_util;
 pub mod attr;
 pub mod codemap;
 pub mod config;
-pub mod crateid;
 pub mod diagnostic;
 pub mod feature_gate;
 pub mod fold;

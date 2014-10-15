@@ -14,5 +14,5 @@ fn foo() -> int { 22 }
 pub fn main() {
     let mut x: Vec<extern "Rust" fn() -> int> = Vec::new();
     x.push(foo);
-    assert_eq!((*x.get(0))(), 22);
+    assert_eq!((x[0])(), 22);
 }

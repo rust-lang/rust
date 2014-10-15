@@ -122,7 +122,7 @@ impl<T> Default for OwnedSlice<T> {
 
 impl<T: Clone> Clone for OwnedSlice<T> {
     fn clone(&self) -> OwnedSlice<T> {
-        OwnedSlice::from_vec(Vec::from_slice(self.as_slice()))
+        OwnedSlice::from_vec(self.as_slice().to_vec())
     }
 }
 

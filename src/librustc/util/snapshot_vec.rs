@@ -94,7 +94,7 @@ impl<T,U,D:SnapshotVecDelegate<T,U>> SnapshotVec<T,U,D> {
     }
 
     pub fn get<'a>(&'a self, index: uint) -> &'a T {
-        self.values.get(index)
+        &self.values[index]
     }
 
     pub fn get_mut<'a>(&'a mut self, index: uint) -> &'a mut T {
@@ -133,7 +133,7 @@ impl<T,U,D:SnapshotVecDelegate<T,U>> SnapshotVec<T,U,D> {
 
         // Invariant established by start_snapshot():
         assert!(
-            match *self.undo_log.get(snapshot.length) {
+            match self.undo_log[snapshot.length] {
                 OpenSnapshot => true,
                 _ => false
             });

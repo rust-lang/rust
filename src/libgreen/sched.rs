@@ -193,7 +193,7 @@ impl Scheduler {
         // Before starting our first task, make sure the idle callback
         // is active. As we do not start in the sleep state this is
         // important.
-        self.idle_callback.get_mut_ref().resume();
+        self.idle_callback.as_mut().unwrap().resume();
 
         // Now, as far as all the scheduler state is concerned, we are inside
         // the "scheduler" context. The scheduler immediately hands over control
@@ -213,10 +213,10 @@ impl Scheduler {
         // cleaning up the memory it uses. As we didn't actually call
         // task.run() on the scheduler task we never get through all
         // the cleanup code it runs.
-        rtdebug!("stopping scheduler {}", stask.sched.get_ref().sched_id());
+        rtdebug!("stopping scheduler {}", stask.sched.as_ref().unwrap().sched_id());
 
         // Should not have any messages
-        let message = stask.sched.get_mut_ref().message_queue.pop();
+        let message = stask.sched.as_mut().unwrap().message_queue.pop();
         rtassert!(match message { msgq::Empty => true, _ => false });
 
         stask.task.take().unwrap().drop();
@@ -279,7 +279,7 @@ impl Scheduler {
 
         // Assume that we need to continue idling unless we reach the
         // end of this function without performing an action.
-        self.idle_callback.get_mut_ref().resume();
+        self.idle_callback.as_mut().unwrap().resume();
 
         // First we check for scheduler messages, these are higher
         // priority than regular tasks.
@@ -333,12 +333,12 @@ impl Scheduler {
             let handle = sched.make_handle();
             sched.sleeper_list.push(handle);
             // Since we are sleeping, deactivate the idle callback.
-            sched.idle_callback.get_mut_ref().pause();
+            sched.idle_callback.as_mut().unwrap().pause();
         } else {
             rtdebug!("not sleeping, already doing so or no_sleep set");
             // We may not be sleeping, but we still need to deactivate
             // the idle callback.
-            sched.idle_callback.get_mut_ref().pause();
+            sched.idle_callback.as_mut().unwrap().pause();
         }
 
         // Finished a cycle without using the Scheduler. Place it back
@@ -633,7 +633,7 @@ impl Scheduler {
         unsafe {
 
             let sched: &mut Scheduler =
-                mem::transmute(&**next_task.sched.get_mut_ref());
+                mem::transmute(&**next_task.sched.as_mut().unwrap());
 
             let current_task: &mut GreenTask = match sched.cleanup_job {
                 Some(CleanupJob { task: ref mut task, .. }) => &mut **task,
@@ -661,7 +661,7 @@ impl Scheduler {
         let mut current_task: Box<GreenTask> = unsafe {
             mem::transmute(current_task_dupe)
         };
-        current_task.sched.get_mut_ref().run_cleanup_job();
+        current_task.sched.as_mut().unwrap().run_cleanup_job();
 
         // See the comments in switch_running_tasks_and_then for why a lock
         // is acquired here. This is the resumption points and the "bounce"
@@ -682,9 +682,9 @@ impl Scheduler {
         -> (&'a mut Context, &'a mut Context)
     {
         let current_task_context =
-            &mut current_task.coroutine.get_mut_ref().saved_context;
+            &mut current_task.coroutine.as_mut().unwrap().saved_context;
         let next_task_context =
-                &mut next_task.coroutine.get_mut_ref().saved_context;
+                &mut next_task.coroutine.as_mut().unwrap().saved_context;
         unsafe {
             (mem::transmute(current_task_context),
              mem::transmute(next_task_context))
@@ -1050,7 +1050,7 @@ mod test {
         let mut task = Local::borrow(None::<Task>);
         match task.maybe_take_runtime::<GreenTask>() {
             Some(green) => {
-                let ret = green.sched.get_ref().sched_id();
+                let ret = green.sched.as_ref().unwrap().sched_id();
                 task.put_runtime(green);
                 return ret;
             }
@@ -1190,8 +1190,8 @@ mod test {
             fn on_appropriate_sched() -> bool {
                 use task::{TypeGreen, TypeSched, HomeSched};
                 let task = GreenTask::convert(Local::take());
-                let sched_id = task.sched.get_ref().sched_id();
-                let run_any = task.sched.get_ref().run_anything;
+                let sched_id = task.sched.as_ref().unwrap().sched_id();
+                let run_any = task.sched.as_ref().unwrap().run_anything;
                 let ret = match task.task_type {
                     TypeGreen(Some(AnySched)) => {
                         run_any

@@ -399,7 +399,7 @@ impl<'a> LifetimeContext<'a> {
 
     fn check_lifetime_defs(&mut self, lifetimes: &Vec<ast::LifetimeDef>) {
         for i in range(0, lifetimes.len()) {
-            let lifetime_i = lifetimes.get(i);
+            let lifetime_i = &lifetimes[i];
 
             let special_idents = [special_idents::static_lifetime];
             for lifetime in lifetimes.iter() {
@@ -413,7 +413,7 @@ impl<'a> LifetimeContext<'a> {
             }
 
             for j in range(i + 1, lifetimes.len()) {
-                let lifetime_j = lifetimes.get(j);
+                let lifetime_j = &lifetimes[j];
 
                 if lifetime_i.lifetime.name == lifetime_j.lifetime.name {
                     self.sess.span_err(

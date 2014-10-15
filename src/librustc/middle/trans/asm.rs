@@ -62,7 +62,7 @@ pub fn trans_inline_asm<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, ia: &ast::InlineAsm)
     }).collect::<Vec<_>>();
 
     // Now the input operands
-    let inputs = ia.inputs.iter().map(|&(ref c, ref input)| {
+    let mut inputs = ia.inputs.iter().map(|&(ref c, ref input)| {
         constraints.push((*c).clone());
 
         let in_datum = unpack_datum!(bcx, expr::trans(bcx, &**input));
@@ -73,7 +73,8 @@ pub fn trans_inline_asm<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, ia: &ast::InlineAsm)
                                     cleanup::CustomScope(temp_scope),
                                     callee::DontAutorefArg)
         })
-    }).collect::<Vec<_>>().append(ext_inputs.as_slice());
+    }).collect::<Vec<_>>();
+    inputs.push_all(ext_inputs.as_slice());
 
     // no failure occurred preparing operands, no need to cleanup
     fcx.pop_custom_cleanup_scope(temp_scope);
@@ -95,7 +96,7 @@ pub fn trans_inline_asm<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, ia: &ast::InlineAsm)
 
     // Add the clobbers to our constraints list
     if clobbers.len() != 0 && constraints.len() != 0 {
-        constraints.push_char(',');
+        constraints.push(',');
         constraints.push_str(clobbers.as_slice());
     } else {
         constraints.push_str(clobbers.as_slice());
@@ -109,7 +110,7 @@ pub fn trans_inline_asm<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, ia: &ast::InlineAsm)
     let output_type = if num_outputs == 0 {
         Type::void(bcx.ccx())
     } else if num_outputs == 1 {
-        *output_types.get(0)
+        output_types[0]
     } else {
         Type::struct_(bcx.ccx(), output_types.as_slice(), false)
     };
@@ -134,7 +135,7 @@ pub fn trans_inline_asm<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, ia: &ast::InlineAsm)
 
     // Again, based on how many outputs we have
     if num_outputs == 1 {
-        Store(bcx, r, *outputs.get(0));
+        Store(bcx, r, outputs[0]);
     } else {
         for (i, o) in outputs.iter().enumerate() {
             let v = ExtractValue(bcx, r, i);

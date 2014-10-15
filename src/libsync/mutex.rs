@@ -525,7 +525,6 @@ impl Drop for Mutex {
 mod test {
     use std::prelude::*;
     use super::{Mutex, StaticMutex, MUTEX_INIT};
-    use native;
 
     #[test]
     fn smoke() {
@@ -563,7 +562,7 @@ mod test {
         let (tx, rx) = channel();
         for _ in range(0, K) {
             let tx2 = tx.clone();
-            native::task::spawn(proc() { inc(); tx2.send(()); });
+            spawn(proc() { inc(); tx2.send(()); });
             let tx2 = tx.clone();
             spawn(proc() { inc(); tx2.send(()); });
         }

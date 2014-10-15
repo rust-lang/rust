@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![crate_id="crateA"]
+#![crate_name="crateA"]
 
 // Base crate
 pub fn func<T>() { println!("hello"); }

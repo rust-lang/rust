@@ -19,5 +19,5 @@ pub fn main() {
         a: &["test".to_string()],
         b: Some(b),
     };
-    assert_eq!(a.b.get_ref()[0].as_slice(), "foo");
+    assert_eq!(a.b.as_ref().unwrap()[0].as_slice(), "foo");
 }

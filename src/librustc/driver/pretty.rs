@@ -434,10 +434,8 @@ pub fn pretty_print_input(sess: Session,
     };
 
     let src_name = driver::source_name(input);
-    let src = Vec::from_slice(sess.codemap()
-                                  .get_filemap(src_name.as_slice())
-                                  .src
-                                  .as_bytes());
+    let src = sess.codemap().get_filemap(src_name.as_slice())
+                            .src.as_bytes().to_vec();
     let mut rdr = MemReader::new(src);
 
     let out = match ofile {

@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![crate_id="crateresolve4a#0.2"]
+#![crate_name="crateresolve4a#0.2"]
 #![crate_type = "lib"]
 
 pub fn g() -> int { 20 }

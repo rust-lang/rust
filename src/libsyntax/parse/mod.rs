@@ -455,7 +455,7 @@ pub fn str_lit(lit: &str) -> String {
                             for _ in range(0, n - 1) { // we don't need to move past the first \
                                 chars.next();
                             }
-                            res.push_char(c);
+                            res.push(c);
                         }
                     },
                     '\r' => {
@@ -467,9 +467,9 @@ pub fn str_lit(lit: &str) -> String {
                             fail!("lexer accepted bare CR");
                         }
                         chars.next();
-                        res.push_char('\n');
+                        res.push('\n');
                     }
-                    c => res.push_char(c),
+                    c => res.push(c),
                 }
             },
             None => break
@@ -497,9 +497,9 @@ pub fn raw_str_lit(lit: &str) -> String {
                         fail!("lexer accepted bare CR");
                     }
                     chars.next();
-                    res.push_char('\n');
+                    res.push('\n');
                 } else {
-                    res.push_char(c);
+                    res.push(c);
                 }
             },
             None => break

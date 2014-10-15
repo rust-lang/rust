@@ -31,7 +31,6 @@ use middle::ty_fold::TypeFoldable;
 use std::cell::RefCell;
 use std::collections::hashmap::HashMap;
 use std::rc::Rc;
-use std::result;
 use syntax::ast;
 use util::ppaux::Repr;
 
@@ -1221,18 +1220,14 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                            nested: Vec<ty::t>)
                            -> VtableBuiltinData<Obligation>
     {
-        let obligations =
-            result::collect(
-                nested
-                    .iter()
-                    .map(|&t| {
-                        util::obligation_for_builtin_bound(
-                            self.tcx(),
-                            obligation.cause,
-                            bound,
-                            obligation.recursion_depth + 1,
-                            t)
-                    }));
+        let obligations = nested.iter().map(|&t| {
+            util::obligation_for_builtin_bound(
+                self.tcx(),
+                obligation.cause,
+                bound,
+                obligation.recursion_depth + 1,
+                t)
+        }).collect::<Result<_, _>>();
         let obligations = match obligations {
             Ok(o) => o,
             Err(ErrorReported) => Vec::new()
@@ -1302,7 +1297,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 |br| self.infcx.next_region_var(
                          infer::LateBoundRegion(obligation.cause.span, br)));
 
-        let arguments_tuple = *new_signature.inputs.get(0);
+        let arguments_tuple = new_signature.inputs[0];
         let trait_ref = Rc::new(ty::TraitRef {
             def_id: obligation.trait_ref.def_id,
             substs: Substs::new_trait(

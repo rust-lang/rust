@@ -7,7 +7,7 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
-#![crate_id="inherited_stability#0.1"]
+#![crate_name="inherited_stability"]
 #![crate_type = "lib"]
 #![experimental]
 

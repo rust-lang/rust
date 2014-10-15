@@ -66,7 +66,7 @@ impl<'a> fmt::Show for Matrix<'a> {
         let column_count = m.iter().map(|row| row.len()).max().unwrap_or(0u);
         assert!(m.iter().all(|row| row.len() == column_count));
         let column_widths: Vec<uint> = range(0, column_count).map(|col| {
-            pretty_printed_matrix.iter().map(|row| row.get(col).len()).max().unwrap_or(0u)
+            pretty_printed_matrix.iter().map(|row| row[col].len()).max().unwrap_or(0u)
         }).collect();
 
         let total_width = column_widths.iter().map(|n| *n).sum() + column_count * 3 + 1;
@@ -76,7 +76,7 @@ impl<'a> fmt::Show for Matrix<'a> {
             try!(write!(f, "+"));
             for (column, pat_str) in row.into_iter().enumerate() {
                 try!(write!(f, " "));
-                f.width = Some(*column_widths.get(column));
+                f.width = Some(column_widths[column]);
                 try!(f.pad(pat_str.as_slice()));
                 try!(write!(f, " +"));
             }
@@ -269,7 +269,7 @@ fn check_arms(cx: &MatchCheckCtxt, arms: &[(Vec<P<Pat>>, Option<&Expr>)], source
                             } else {
                                 // find the first arm pattern so we can use its span
                                 let &(ref first_arm_pats, _) = &arms[0];
-                                let first_pat = first_arm_pats.get(0);
+                                let first_pat = &first_arm_pats[0];
                                 let span = first_pat.span;
                                 span_err!(cx.tcx.sess, span, E0162, "irrefutable if-let pattern");
                                 printed_if_let_err = true;
@@ -279,7 +279,7 @@ fn check_arms(cx: &MatchCheckCtxt, arms: &[(Vec<P<Pat>>, Option<&Expr>)], source
                         MatchWhileLetDesugar => {
                             // find the first arm pattern so we can use its span
                             let &(ref first_arm_pats, _) = &arms[0];
-                            let first_pat = first_arm_pats.get(0);
+                            let first_pat = &first_arm_pats[0];
                             let span = first_pat.span;
                             span_err!(cx.tcx.sess, span, E0165, "irrefutable while-let pattern");
                         },
@@ -475,7 +475,7 @@ fn construct_witness(cx: &MatchCheckCtxt, ctor: &Constructor,
 fn missing_constructor(cx: &MatchCheckCtxt, &Matrix(ref rows): &Matrix,
                        left_ty: ty::t, max_slice_length: uint) -> Option<Constructor> {
     let used_constructors: Vec<Constructor> = rows.iter()
-        .flat_map(|row| pat_constructors(cx, *row.get(0), left_ty, max_slice_length).into_iter())
+        .flat_map(|row| pat_constructors(cx, row[0], left_ty, max_slice_length).into_iter())
         .collect();
     all_constructors(cx, left_ty, max_slice_length)
         .into_iter()
@@ -538,11 +538,11 @@ fn is_useful(cx: &MatchCheckCtxt,
             LeaveOutWitness => Useful
         };
     }
-    if rows.get(0).len() == 0u {
+    if rows[0].len() == 0u {
         return NotUseful;
     }
-    let real_pat = match rows.iter().find(|r| r.get(0).id != DUMMY_NODE_ID) {
-        Some(r) => raw_pat(*r.get(0)),
+    let real_pat = match rows.iter().find(|r| (*r)[0].id != DUMMY_NODE_ID) {
+        Some(r) => raw_pat(r[0]),
         None if v.len() == 0 => return NotUseful,
         None => v[0]
     };
@@ -552,7 +552,7 @@ fn is_useful(cx: &MatchCheckCtxt,
         ty::pat_ty(cx.tcx, &*real_pat)
     };
 
-    let max_slice_length = rows.iter().filter_map(|row| match row.get(0).node {
+    let max_slice_length = rows.iter().filter_map(|row| match row[0].node {
         PatVec(ref before, _, ref after) => Some(before.len() + after.len()),
         _ => None
     }).max().map_or(0, |v| v + 1);
@@ -583,7 +583,7 @@ fn is_useful(cx: &MatchCheckCtxt,
             Some(constructor) => {
                 let matrix = rows.iter().filter_map(|r| {
                     if pat_is_binding_or_wild(&cx.tcx.def_map, raw_pat(r[0])) {
-                        Some(Vec::from_slice(r.tail()))
+                        Some(r.tail().to_vec())
                     } else {
                         None
                     }
@@ -883,7 +883,11 @@ pub fn specialize<'a>(cx: &MatchCheckCtxt, r: &[&'a Pat],
             None
         }
     };
-    head.map(|head| head.append(r[..col]).append(r[col + 1..]))
+    head.map(|mut head| {
+        head.push_all(r[..col]);
+        head.push_all(r[col + 1..]);
+        head
+    })
 }
 
 fn check_local(cx: &mut MatchCheckCtxt, loc: &Local) {

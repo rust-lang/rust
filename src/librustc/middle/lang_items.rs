@@ -76,9 +76,9 @@ impl LanguageItems {
     }
 
     pub fn require(&self, it: LangItem) -> Result<ast::DefId, String> {
-        match self.items.get(it as uint) {
-            &Some(id) => Ok(id),
-            &None => {
+        match self.items[it as uint] {
+            Some(id) => Ok(id),
+            None => {
                 Err(format!("requires `{}` lang_item",
                             LanguageItems::item_name(it as uint)))
             }
@@ -113,7 +113,7 @@ impl LanguageItems {
     $(
         #[allow(dead_code)]
         pub fn $method(&self) -> Option<ast::DefId> {
-            *self.items.get($variant as uint)
+            self.items[$variant as uint]
         }
     )*
 }
@@ -162,12 +162,12 @@ impl<'a> LanguageItemCollector<'a> {
     pub fn collect_item(&mut self, item_index: uint,
                         item_def_id: ast::DefId, span: Span) {
         // Check for duplicates.
-        match self.items.items.get(item_index) {
-            &Some(original_def_id) if original_def_id != item_def_id => {
+        match self.items.items[item_index] {
+            Some(original_def_id) if original_def_id != item_def_id => {
                 span_err!(self.session, span, E0152,
                     "duplicate entry for `{}`", LanguageItems::item_name(item_index));
             }
-            &Some(_) | &None => {
+            Some(_) | None => {
                 // OK.
             }
         }

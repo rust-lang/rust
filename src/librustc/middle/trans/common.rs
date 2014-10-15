@@ -59,9 +59,9 @@ fn type_is_newtype_immediate(ccx: &CrateContext, ty: ty::t) -> bool {
         ty::ty_struct(def_id, ref substs) => {
             let fields = ty::struct_fields(ccx.tcx(), def_id, substs);
             fields.len() == 1 &&
-                fields.get(0).ident.name ==
+                fields[0].ident.name ==
                     token::special_idents::unnamed_field.name &&
-                type_is_immediate(ccx, fields.get(0).mt.ty)
+                type_is_immediate(ccx, fields[0].mt.ty)
         }
         _ => false
     }
@@ -914,7 +914,7 @@ pub fn node_id_substs(bcx: Block,
             ty::node_id_item_substs(tcx, id).substs
         }
         MethodCall(method_call) => {
-            tcx.method_map.borrow().get(&method_call).substs.clone()
+            (*tcx.method_map.borrow())[method_call].substs.clone()
         }
     };
 

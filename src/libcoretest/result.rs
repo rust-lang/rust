@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::result::{collect, fold, fold_};
 use core::iter::range;
 
 pub fn op1() -> Result<int, &'static str> { Ok(666) }
@@ -69,45 +68,23 @@ pub fn test_impl_map_err() {
 }
 
 #[test]
-#[allow(deprecated)]
 fn test_collect() {
-    let v: Result<Vec<int>, ()> = collect(range(0i, 0).map(|_| Ok::<int, ()>(0)));
+    let v: Result<Vec<int>, ()> = range(0i, 0).map(|_| Ok::<int, ()>(0)).collect();
     assert!(v == Ok(vec![]));
 
-    let v: Result<Vec<int>, ()> = collect(range(0i, 3).map(|x| Ok::<int, ()>(x)));
+    let v: Result<Vec<int>, ()> = range(0i, 3).map(|x| Ok::<int, ()>(x)).collect();
     assert!(v == Ok(vec![0, 1, 2]));
 
-    let v: Result<Vec<int>, int> = collect(range(0i, 3)
-                                           .map(|x| if x > 1 { Err(x) } else { Ok(x) }));
+    let v: Result<Vec<int>, int> = range(0i, 3).map(|x| {
+        if x > 1 { Err(x) } else { Ok(x) }
+    }).collect();
     assert!(v == Err(2));
 
     // test that it does not take more elements than it needs
     let mut functions = [|| Ok(()), || Err(1i), || fail!()];
 
-    let v: Result<Vec<()>, int> = collect(functions.iter_mut().map(|f| (*f)()));
+    let v: Result<Vec<()>, int> = functions.iter_mut().map(|f| (*f)()).collect();
     assert!(v == Err(1));
-}
-
-#[test]
-#[allow(deprecated)] // we know fold_ is deprecated
-fn test_fold() {
-    assert_eq!(fold_(range(0i, 0)
-                    .map(|_| Ok::<(), ()>(()))),
-               Ok(()));
-    assert_eq!(fold(range(0i, 3)
-                    .map(|x| Ok::<int, ()>(x)),
-                    0, |a, b| a + b),
-               Ok(3));
-    assert_eq!(fold_(range(0i, 3)
-                    .map(|x| if x > 1 { Err(x) } else { Ok(()) })),
-               Err(2));
-
-    // test that it does not take more elements than it needs
-    let mut functions = [|| Ok(()), || Err(1i), || fail!()];
-
-    assert_eq!(fold_(functions.iter_mut()
-                    .map(|f| (*f)())),
-               Err(1));
 }
 
 #[test]

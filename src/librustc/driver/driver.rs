@@ -284,7 +284,7 @@ pub fn phase_2_configure_and_expand(sess: &Session,
             if cfg!(windows) {
                 _old_path = os::getenv("PATH").unwrap_or(_old_path);
                 let mut new_path = sess.host_filesearch().get_dylib_search_paths();
-                new_path.push_all_move(os::split_paths(_old_path.as_slice()));
+                new_path.extend(os::split_paths(_old_path.as_slice()).into_iter());
                 os::setenv("PATH", os::join_paths(new_path.as_slice()).unwrap());
             }
             let cfg = syntax::ext::expand::ExpansionConfig {
@@ -569,7 +569,7 @@ pub fn phase_6_link_output(sess: &Session,
                            outputs: &OutputFilenames) {
     let old_path = os::getenv("PATH").unwrap_or_else(||String::new());
     let mut new_path = os::split_paths(old_path.as_slice());
-    new_path.push_all_move(sess.host_filesearch().get_tools_search_paths());
+    new_path.extend(sess.host_filesearch().get_tools_search_paths().into_iter());
     os::setenv("PATH", os::join_paths(new_path.as_slice()).unwrap());
 
     time(sess.time_passes(), "linking", (), |_|
@@ -818,17 +818,6 @@ pub fn build_output_filenames(input: &Input,
             // If a crate name is present, we use it as the link name
             let stem = sess.opts.crate_name.clone().or_else(|| {
                 attr::find_crate_name(attrs).map(|n| n.get().to_string())
-            }).or_else(|| {
-                // NB: this clause can be removed once #[crate_id] is no longer
-                // deprecated.
-                //
-                // Also note that this will be warned about later so we don't
-                // warn about it here.
-                use syntax::crateid::CrateId;
-                attrs.iter().find(|at| at.check_name("crate_id"))
-                     .and_then(|at| at.value_str())
-                     .and_then(|s| from_str::<CrateId>(s.get()))
-                     .map(|id| id.name)
             }).unwrap_or(input.filestem());
 
             OutputFilenames {

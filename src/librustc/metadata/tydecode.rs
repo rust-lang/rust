@@ -123,9 +123,9 @@ fn data_log_string(data: &[u8], pos: uint) -> String {
     for i in range(pos, data.len()) {
         let c = data[i];
         if c > 0x20 && c <= 0x7F {
-            buf.push_char(c as char);
+            buf.push(c as char);
         } else {
-            buf.push_char('.');
+            buf.push('.');
         }
     }
     buf.push_str(">>");
@@ -339,7 +339,7 @@ fn parse_str(st: &mut PState, term: char) -> String {
     let mut result = String::new();
     while peek(st) != term {
         unsafe {
-            result.push_bytes([next_byte(st)])
+            result.as_mut_vec().push_all([next_byte(st)])
         }
     }
     next(st);

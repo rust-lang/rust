@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![crate_id="cci_impl_lib"]
+#![crate_name="cci_impl_lib"]
 
 pub trait uint_helpers {
     fn to(&self, v: uint, f: |uint|);

@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![crate_id="foreign_lib"]
+#![crate_name="foreign_lib"]
 
 pub mod rustrt {
     extern crate libc;

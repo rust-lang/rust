@@ -14,10 +14,9 @@
 #![doc(primitive = "u32")]
 
 use from_str::FromStr;
-use num::{ToStrRadix, FromStrRadix};
+use num::FromStrRadix;
 use num::strconv;
 use option::Option;
-use string::String;
 
 pub use core::u32::{BITS, BYTES, MIN, MAX};
 

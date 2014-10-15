@@ -146,11 +146,11 @@ impl<N,E> Graph<N,E> {
     }
 
     pub fn node_data<'a>(&'a self, idx: NodeIndex) -> &'a N {
-        &self.nodes.get(idx.get()).data
+        &self.nodes[idx.get()].data
     }
 
     pub fn node<'a>(&'a self, idx: NodeIndex) -> &'a Node<N> {
-        self.nodes.get(idx.get())
+        &self.nodes[idx.get()]
     }
 
     ///////////////////////////////////////////////////////////////////////////
@@ -167,9 +167,9 @@ impl<N,E> Graph<N,E> {
         let idx = self.next_edge_index();
 
         // read current first of the list of edges from each node
-        let source_first = self.nodes.get(source.get())
+        let source_first = self.nodes[source.get()]
                                      .first_edge[Outgoing.repr];
-        let target_first = self.nodes.get(target.get())
+        let target_first = self.nodes[target.get()]
                                      .first_edge[Incoming.repr];
 
         // create the new edge, with the previous firsts from each node
@@ -193,11 +193,11 @@ impl<N,E> Graph<N,E> {
     }
 
     pub fn edge_data<'a>(&'a self, idx: EdgeIndex) -> &'a E {
-        &self.edges.get(idx.get()).data
+        &self.edges[idx.get()].data
     }
 
     pub fn edge<'a>(&'a self, idx: EdgeIndex) -> &'a Edge<E> {
-        self.edges.get(idx.get())
+        &self.edges[idx.get()]
     }
 
     pub fn first_adjacent(&self, node: NodeIndex, dir: Direction) -> EdgeIndex {
@@ -205,7 +205,7 @@ impl<N,E> Graph<N,E> {
         //! This is useful if you wish to modify the graph while walking
         //! the linked list of edges.
 
-        self.nodes.get(node.get()).first_edge[dir.repr]
+        self.nodes[node.get()].first_edge[dir.repr]
     }
 
     pub fn next_adjacent(&self, edge: EdgeIndex, dir: Direction) -> EdgeIndex {
@@ -213,7 +213,7 @@ impl<N,E> Graph<N,E> {
         //! This is useful if you wish to modify the graph while walking
         //! the linked list of edges.
 
-        self.edges.get(edge.get()).next_edge[dir.repr]
+        self.edges[edge.get()].next_edge[dir.repr]
     }
 
     ///////////////////////////////////////////////////////////////////////////
@@ -257,7 +257,7 @@ impl<N,E> Graph<N,E> {
 
         let mut edge_idx = self.first_adjacent(node, dir);
         while edge_idx != InvalidEdgeIndex {
-            let edge = self.edges.get(edge_idx.get());
+            let edge = &self.edges[edge_idx.get()];
             if !f(edge_idx, edge) {
                 return false;
             }

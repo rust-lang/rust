@@ -17,7 +17,6 @@
 #![allow(missing_doc)]
 
 use option::Option;
-use string::String;
 
 #[cfg(test)] use fmt::Show;
 
@@ -109,12 +108,6 @@ pub trait FloatMath: Float {
     fn acosh(self) -> Self;
     /// Inverse hyperbolic tangent function.
     fn atanh(self) -> Self;
-}
-
-/// A generic trait for converting a value to a string with a radix (base)
-#[deprecated = "use fmt::radix"]
-pub trait ToStrRadix {
-    fn to_str_radix(&self, radix: uint) -> String;
 }
 
 /// A generic trait for converting a string with a radix (base) to a value

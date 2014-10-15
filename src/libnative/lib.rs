@@ -56,7 +56,7 @@
        html_root_url = "http://doc.rust-lang.org/nightly/")]
 
 #![deny(unused_result, unused_must_use)]
-#![allow(non_camel_case_types, deprecated)]
+#![allow(non_camel_case_types)]
 #![allow(unknown_features)]
 #![feature(default_type_params, lang_items, slicing_syntax)]
 

@@ -348,7 +348,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EmbargoVisitor<'a, 'tcx> {
         // crate module gets processed as well.
         if self.prev_exported {
             assert!(self.exp_map2.contains_key(&id), "wut {}", id);
-            for export in self.exp_map2.get(&id).iter() {
+            for export in self.exp_map2[id].iter() {
                 if is_local(export.def_id) {
                     self.reexports.insert(export.def_id.node);
                 }
@@ -524,7 +524,7 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
             // if we've reached the root, then everything was allowable and this
             // access is public.
             if closest_private_id == ast::CRATE_NODE_ID { return Allowable }
-            closest_private_id = *self.parents.get(&closest_private_id);
+            closest_private_id = self.parents[closest_private_id];
 
             // If we reached the top, then we were public all the way down and
             // we can allow this access.
@@ -542,7 +542,7 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
     /// whether the node is accessible by the current module that iteration is
     /// inside.
     fn private_accessible(&self, id: ast::NodeId) -> bool {
-        let parent = *self.parents.get(&id);
+        let parent = self.parents[id];
         debug!("privacy - accessible parent {}", self.nodestr(parent));
 
         // After finding `did`'s closest private member, we roll ourselves back
@@ -566,7 +566,7 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
                 _ => {}
             }
 
-            cur = *self.parents.get(&cur);
+            cur = self.parents[cur];
         }
     }
 
@@ -658,7 +658,7 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
                 debug!("privacy - check named field {} in struct {}", ident.name, id);
                 fields.iter().find(|f| f.name == ident.name).unwrap()
             }
-            UnnamedField(idx) => fields.get(idx)
+            UnnamedField(idx) => &fields[idx]
         };
         if field.vis == ast::Public ||
             (is_local(field.id) && self.private_accessible(field.id.node)) {
@@ -734,7 +734,7 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
                                            name).as_slice())
             };
 
-            match *self.last_private_map.get(&path_id) {
+            match self.last_private_map[path_id] {
                 resolve::LastMod(resolve::AllPublic) => {},
                 resolve::LastMod(resolve::DependsOn(def)) => {
                     self.report_error(ck_public(def));

@@ -434,12 +434,12 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
         };
 
         for &impl_did in trait_impls.borrow().iter() {
-            let items = impl_items.get(&impl_did);
+            let items = &(*impl_items)[impl_did];
             if items.len() < 1 {
                 // We'll error out later. For now, just don't ICE.
                 continue;
             }
-            let method_def_id = *items.get(0);
+            let method_def_id = items[0];
 
             let self_type = self.get_self_type_for_implementation(impl_did);
             match ty::get(self_type.ty).sty {
@@ -524,10 +524,10 @@ fn subst_receiver_types_in_method_ty(tcx: &ty::ctxt,
     for &space in [subst::TypeSpace, subst::SelfSpace].iter() {
         method_generics.types.replace(
             space,
-            Vec::from_slice(impl_poly_type.generics.types.get_slice(space)));
+            impl_poly_type.generics.types.get_slice(space).to_vec());
         method_generics.regions.replace(
             space,
-            Vec::from_slice(impl_poly_type.generics.regions.get_slice(space)));
+            impl_poly_type.generics.regions.get_slice(space).to_vec());
     }
 
     debug!("subst_receiver_types_in_method_ty: method_generics={}",

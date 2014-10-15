@@ -315,8 +315,8 @@ impl<T> VecPerParamSpace<T> {
         let type_limit = t.len();
         let self_limit = t.len() + s.len();
         let mut content = t;
-        content.push_all_move(s);
-        content.push_all_move(f);
+        content.extend(s.into_iter());
+        content.extend(f.into_iter());
         VecPerParamSpace {
             type_limit: type_limit,
             self_limit: self_limit,

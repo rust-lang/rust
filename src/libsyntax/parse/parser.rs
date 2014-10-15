@@ -281,12 +281,13 @@ macro_rules! maybe_whole (
 )
 
 
-fn maybe_append(lhs: Vec<Attribute> , rhs: Option<Vec<Attribute> >)
-             -> Vec<Attribute> {
+fn maybe_append(mut lhs: Vec<Attribute>, rhs: Option<Vec<Attribute>>)
+                -> Vec<Attribute> {
     match rhs {
-        None => lhs,
-        Some(ref attrs) => lhs.append(attrs.as_slice())
+        Some(ref attrs) => lhs.extend(attrs.iter().map(|a| a.clone())),
+        None => {}
     }
+    lhs
 }
 
 
@@ -452,7 +453,8 @@ impl<'a> Parser<'a> {
         } else if inedible.contains(&self.token) {
             // leave it in the input
         } else {
-            let expected = edible.iter().map(|x| (*x).clone()).collect::<Vec<_>>().append(inedible);
+            let mut expected = edible.iter().map(|x| x.clone()).collect::<Vec<_>>();
+            expected.push_all(inedible);
             let expect = tokens_to_string(expected.as_slice());
             let actual = self.this_token_to_string();
             self.fatal(
@@ -496,8 +498,8 @@ impl<'a> Parser<'a> {
         match e.node {
             ExprPath(..) => {
                 // might be unit-struct construction; check for recoverableinput error.
-                let expected = edible.iter().map(|x| (*x).clone()).collect::<Vec<_>>()
-                              .append(inedible);
+                let mut expected = edible.iter().map(|x| x.clone()).collect::<Vec<_>>();
+                expected.push_all(inedible);
                 self.check_for_erroneous_unit_struct_expecting(
                     expected.as_slice());
             }
@@ -517,8 +519,8 @@ impl<'a> Parser<'a> {
         if self.last_token
                .as_ref()
                .map_or(false, |t| is_ident_or_path(&**t)) {
-            let expected = edible.iter().map(|x| (*x).clone()).collect::<Vec<_>>()
-                           .append(inedible.as_slice());
+            let mut expected = edible.iter().map(|x| x.clone()).collect::<Vec<_>>();
+            expected.push_all(inedible.as_slice());
             self.check_for_erroneous_unit_struct_expecting(
                 expected.as_slice());
         }
@@ -1335,7 +1337,8 @@ impl<'a> Parser<'a> {
                     debug!("parse_trait_methods(): parsing provided method");
                     let (inner_attrs, body) =
                         p.parse_inner_attrs_and_block();
-                    let attrs = attrs.append(inner_attrs.as_slice());
+                    let mut attrs = attrs;
+                    attrs.push_all(inner_attrs.as_slice());
                     ProvidedMethod(P(ast::Method {
                         attrs: attrs,
                         id: ast::DUMMY_NODE_ID,
@@ -2119,7 +2122,7 @@ impl<'a> Parser<'a> {
                             |p| p.parse_expr()
                                 );
                         let mut exprs = vec!(first_expr);
-                        exprs.push_all_move(remaining_exprs);
+                        exprs.extend(remaining_exprs.into_iter());
                         ex = ExprVec(exprs);
                     } else {
                         // Vector with one element.
@@ -2337,7 +2340,7 @@ impl<'a> Parser<'a> {
                             );
                             hi = self.last_span.hi;
 
-                            es.unshift(e);
+                            es.insert(0, e);
                             let id = spanned(dot, hi, i);
                             let nd = self.mk_method_call(id, tys, es);
                             e = self.mk_expr(lo, hi, nd);
@@ -2600,7 +2603,7 @@ impl<'a> Parser<'a> {
                     self.parse_seq_to_before_end(&close_delim,
                                                  seq_sep_none(),
                                                  |p| p.parse_token_tree());
-                result.push_all_move(trees);
+                result.extend(trees.into_iter());
 
                 // Parse the close delimiter.
                 result.push(parse_any_tt_tok(self));
@@ -3380,12 +3383,10 @@ impl<'a> Parser<'a> {
                           _ => {
                               if !enum_path.global &&
                                     enum_path.segments.len() == 1 &&
-                                    enum_path.segments
-                                             .get(0)
+                                    enum_path.segments[0]
                                              .lifetimes
                                              .len() == 0 &&
-                                    enum_path.segments
-                                             .get(0)
+                                    enum_path.segments[0]
                                              .types
                                              .len() == 0 {
                                   // it could still be either an enum
@@ -3394,7 +3395,7 @@ impl<'a> Parser<'a> {
                                   pat = PatIdent(BindByValue(MutImmutable),
                                                  codemap::Spanned{
                                                     span: enum_path.span,
-                                                    node: enum_path.segments.get(0)
+                                                    node: enum_path.segments[0]
                                                            .identifier},
                                                  None);
                               } else {
@@ -4256,7 +4257,7 @@ impl<'a> Parser<'a> {
                         sep,
                         parse_arg_fn
                     );
-                    fn_inputs.unshift(Arg::new_self(explicit_self_sp, mutbl_self, $self_id));
+                    fn_inputs.insert(0, Arg::new_self(explicit_self_sp, mutbl_self, $self_id));
                     fn_inputs
                 }
                 token::RPAREN => {
@@ -4449,7 +4450,8 @@ impl<'a> Parser<'a> {
                 self.parse_where_clause(&mut generics);
                 let (inner_attrs, body) = self.parse_inner_attrs_and_block();
                 let body_span = body.span;
-                let new_attrs = attrs.append(inner_attrs.as_slice());
+                let mut new_attrs = attrs;
+                new_attrs.push_all(inner_attrs.as_slice());
                 (ast::MethDecl(ident,
                                generics,
                                abi,
@@ -4490,7 +4492,7 @@ impl<'a> Parser<'a> {
         let (inner_attrs, mut method_attrs) =
             self.parse_inner_attrs_and_next();
         while !self.eat(&token::RBRACE) {
-            method_attrs.push_all_move(self.parse_outer_attributes());
+            method_attrs.extend(self.parse_outer_attributes().into_iter());
             let vis = self.parse_visibility();
             if self.eat_keyword(keywords::Type) {
                 impl_items.push(TypeImplItem(P(self.parse_typedef(
@@ -4711,7 +4713,9 @@ impl<'a> Parser<'a> {
         while self.token != term {
             let mut attrs = self.parse_outer_attributes();
             if first {
-                attrs = attrs_remaining.clone().append(attrs.as_slice());
+                let mut tmp = attrs_remaining.clone();
+                tmp.push_all(attrs.as_slice());
+                attrs = tmp;
                 first = false;
             }
             debug!("parse_mod_items: parse_item_or_view_item(attrs={})",
@@ -4826,7 +4830,7 @@ impl<'a> Parser<'a> {
                                   "cannot declare a new module at this location");
                     let this_module = match self.mod_path_stack.last() {
                         Some(name) => name.get().to_string(),
-                        None => self.root_module_name.get_ref().clone(),
+                        None => self.root_module_name.as_ref().unwrap().clone(),
                     };
                     self.span_note(id_sp,
                                    format!("maybe move this module `{0}` \
@@ -5536,7 +5540,7 @@ impl<'a> Parser<'a> {
             } else {
                 s.push_str("priv")
             }
-            s.push_char('`');
+            s.push('`');
             let last_span = self.last_span;
             self.span_fatal(last_span, s.as_slice());
         }
@@ -5677,7 +5681,7 @@ impl<'a> Parser<'a> {
           }
           _ => ()
         }
-        let mut rename_to = *path.get(path.len() - 1u);
+        let mut rename_to = path[path.len() - 1u];
         let path = ast::Path {
             span: mk_sp(lo, self.span.hi),
             global: false,
@@ -5705,7 +5709,8 @@ impl<'a> Parser<'a> {
                                   mut extern_mod_allowed: bool,
                                   macros_allowed: bool)
                                   -> ParsedItemsAndViewItems {
-        let mut attrs = first_item_attrs.append(self.parse_outer_attributes().as_slice());
+        let mut attrs = first_item_attrs;
+        attrs.push_all(self.parse_outer_attributes().as_slice());
         // First, parse view items.
         let mut view_items : Vec<ast::ViewItem> = Vec::new();
         let mut items = Vec::new();
@@ -5786,7 +5791,8 @@ impl<'a> Parser<'a> {
     fn parse_foreign_items(&mut self, first_item_attrs: Vec<Attribute> ,
                            macros_allowed: bool)
         -> ParsedItemsAndViewItems {
-        let mut attrs = first_item_attrs.append(self.parse_outer_attributes().as_slice());
+        let mut attrs = first_item_attrs;
+        attrs.push_all(self.parse_outer_attributes().as_slice());
         let mut foreign_items = Vec::new();
         loop {
             match self.parse_foreign_item(attrs, macros_allowed) {

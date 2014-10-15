@@ -316,7 +316,7 @@ fn llreg_ty(ccx: &CrateContext, cls: &[RegClass]) -> Type {
                 tys.push(Type::i64(ccx));
             }
             SSEFv => {
-                let vec_len = llvec_len(cls.tailn(i + 1u));
+                let vec_len = llvec_len(cls[i + 1u..]);
                 let vec_ty = Type::vector(&Type::f32(ccx), (vec_len * 2u) as u64);
                 tys.push(vec_ty);
                 i += vec_len;
