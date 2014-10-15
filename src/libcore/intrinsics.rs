@@ -65,11 +65,14 @@ pub struct TyDesc {
     pub name: &'static str,
 }
 
+#[cfg(stage0)]
 #[lang="opaque"]
 pub enum Opaque { }
 
+#[cfg(stage0)]
 pub type Disr = u64;
 
+#[cfg(stage0)]
 #[lang="ty_visitor"]
 pub trait TyVisitor {
     fn visit_bot(&mut self) -> bool;
