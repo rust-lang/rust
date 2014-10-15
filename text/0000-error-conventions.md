@@ -47,7 +47,7 @@ but it tries to motivate and clarify them.
 
 Errors fall into one of three categories:
 
-* Catastrophic errors, e.g. out of memory.
+* Catastrophic errors, e.g. out-of-memory.
 * Contract violations, e.g. wrong input encoding, index out of bounds.
 * Obstructions, e.g. file not found, parse error.
 
@@ -67,14 +67,11 @@ Catastrophic errors are _extremely_ rare, especially outside of `libstd`.
 
 **Canonical examples**: out of memory, stack overflow.
 
-### For catastrophic errors, abort the process or fail the task.
+### For catastrophic errors, fail the task.
 
-For errors like out-of-memory, even correctly unwinding is impossible (since it
-may require allocation); the process is aborted.
-
-For errors like stack overflow, Rust currently aborts the process, but could in
-principle fail the task, which would allow reporting and recovery from a
-supervisory task.
+For errors like stack overflow, Rust currently aborts the process, but
+could in principle fail the task, which (in the best case) would allow
+reporting and recovery from a supervisory task.
 
 ## Contract violations
 
@@ -137,7 +134,7 @@ aspects of the input that are not covered by the contract.
 
 **Canonical examples**: file not found, parse error.
 
-### For obstructions, use `Result` (or `Option`).
+### For obstructions, use `Result`
 
 The
 [`Result<T,E>` type](http://static.rust-lang.org/doc/master/std/result/index.html)
@@ -145,14 +142,23 @@ represents either a success (yielding `T`) or failure (yielding `E`). By
 returning a `Result`, a function allows its clients to discover and react to
 obstructions in a fine-grained way.
 
-If there are multiple ways an operation might be obstructed, or there is useful
-information about the obstruction (such as where in the input a parse error
-occurred), prefer to use `Result`. For operations with a single obvious
-obstruction that can provide no additional information (e.g. popping from an
-empty stack), use `Option`.
+#### What about `Option`?
 
-(Currently, `Option` does not interact well with other error-handling
-infrastructure like `try!`, but this will likely be improved in the future.)
+The `Option` type should not be used for "obstructed" operations; it
+should only be used when a `None` return value could be considered a
+"successful" execution of the operation.
+
+This is of course a somewhat subjective question, but a good litmus
+test is: would a reasonable client ever ignore the result? The
+`Result` type provides a lint that ensures the result is actually
+inspected, while `Option` does not, and this difference of behavior
+can help when deciding between the two types.
+
+Another litmus test: can the operation be understood as asking a
+question (possibly with sideeffects)? Operations like `pop` on a
+vector can be viewed as asking for the contents of the first element,
+with the side effect of removing it if it exists -- with an `Option`
+return value.
 
 ## Do not provide both `Result` and `fail!` variants.
 
