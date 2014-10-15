@@ -96,9 +96,9 @@ fn main() {
         }
 
         // reverse complement, as
-        //    seq.reverse(); for c in seq.iter_mut() {*c = complements[*c]}
+        //    seq.reverse(); for c in seq.iter_mut() { *c = complements[*c] }
         // but faster:
-        for (front, back) in TwoSideIterator::new(seq) {
+        for (front, back) in two_side_iter(seq) {
             let tmp = complements[*front as uint];
             *front = complements[*back as uint];
             *back = tmp;
@@ -112,30 +112,39 @@ fn main() {
     stdout().write(data.as_slice()).unwrap();
 }
 
-pub struct TwoSideIterator<'a, T: 'a> {
-    last: uint,
-    nb: uint,
-    cur: uint,
-    slice: &'a mut [T]
+pub struct TwoSideIter<'a, T: 'a> {
+    first: *mut T,
+    last: *mut T,
+    marker: std::kinds::marker::ContravariantLifetime<'a>,
+    marker2: std::kinds::marker::NoCopy
 }
-impl<'a, T> TwoSideIterator<'a, T> {
-    pub fn new(s: &'a mut [T]) -> TwoSideIterator<'a, T> {
-        TwoSideIterator {
-            last: s.len() - 1,
-            nb: s.len() / 2,
-            cur: 0,
-            slice: s
-        }
+
+pub fn two_side_iter<'a, T>(slice: &'a mut [T]) -> TwoSideIter<'a, T> {
+    let len = slice.len();
+    let first = slice.as_mut_ptr();
+    let last = if len == 0 {
+        first
+    } else {
+        unsafe { first.offset(len as int - 1) }
+    };
+
+    TwoSideIter {
+        first: first,
+        last: last,
+        marker: std::kinds::marker::ContravariantLifetime,
+        marker2: std::kinds::marker::NoCopy
     }
 }
-impl<'a, T> Iterator<(&'a mut T, &'a mut T)> for TwoSideIterator<'a, T> {
+
+impl<'a, T> Iterator<(&'a mut T, &'a mut T)> for TwoSideIter<'a, T> {
     fn next(&mut self) -> Option<(&'a mut T, &'a mut T)> {
-        if self.cur >= self.nb { return None; }
-        let res = unsafe {
-            (std::mem::transmute(self.slice.unsafe_mut(self.cur)),
-             std::mem::transmute(self.slice.unsafe_mut(self.last - self.cur)))
-        };
-        self.cur += 1;
-        Some(res)
+        if self.first < self.last {
+            let result = unsafe { (&mut *self.first, &mut *self.last) };
+            self.first = unsafe { self.first.offset(1) };
+            self.last = unsafe { self.last.offset(-1) };
+            Some(result)
+        } else {
+            None
+        }
     }
 }
