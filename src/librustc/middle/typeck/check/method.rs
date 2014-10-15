@@ -359,8 +359,7 @@ impl<'a, 'tcx> LookupContext<'a, 'tcx> {
 
         match result {
             Some(Some(result)) => {
-                self.fixup_derefs_on_method_receiver_if_necessary(&result,
-                                                                  self_ty);
+                self.fixup_derefs_on_method_receiver_if_necessary(&result);
                 Some(result)
             }
             _ => None
@@ -1388,8 +1387,7 @@ impl<'a, 'tcx> LookupContext<'a, 'tcx> {
 
     fn fixup_derefs_on_method_receiver_if_necessary(
             &self,
-            method_callee: &MethodCallee,
-            self_ty: ty::t) {
+            method_callee: &MethodCallee) {
         let sig = match ty::get(method_callee.ty).sty {
             ty::ty_bare_fn(ref f) => f.sig.clone(),
             ty::ty_closure(ref f) => f.sig.clone(),
@@ -1404,55 +1402,82 @@ impl<'a, 'tcx> LookupContext<'a, 'tcx> {
             _ => return,
         }
 
-        // Fix up autoderefs and derefs.
-        let mut self_expr = match self.self_expr {
-            Some(expr) => expr,
-            None => return,
-        };
+        // Gather up expressions we want to munge.
+        let mut exprs = Vec::new();
+        match self.self_expr {
+            Some(expr) => exprs.push(expr),
+            None => {}
+        }
         loop {
+            if exprs.len() == 0 {
+                break
+            }
+            let last = exprs[exprs.len() - 1];
+            match last.node {
+                ast::ExprParen(ref expr) |
+                ast::ExprField(ref expr, _, _) |
+                ast::ExprTupField(ref expr, _, _) |
+                ast::ExprSlice(ref expr, _, _, _) |
+                ast::ExprIndex(ref expr, _) |
+                ast::ExprUnary(ast::UnDeref, ref expr) => exprs.push(&**expr),
+                _ => break,
+            }
+        }
+
+        // Fix up autoderefs and derefs.
+        for (i, expr) in exprs.iter().rev().enumerate() {
             // Count autoderefs.
             let autoderef_count = match self.fcx
                                             .inh
                                             .adjustments
                                             .borrow()
-                                            .find(&self_expr.id) {
+                                            .find(&expr.id) {
                 Some(&ty::AdjustDerefRef(ty::AutoDerefRef {
                     autoderefs: autoderef_count,
                     autoref: _
-                })) if autoderef_count > 0 => autoderef_count,
-                Some(_) | None => return,
+                })) => autoderef_count,
+                Some(_) | None => 0,
             };
 
-            check::autoderef(self.fcx,
-                             self_expr.span,
-                             self.fcx.expr_ty(self_expr),
-                             Some(self_expr.id),
-                             PreferMutLvalue,
-                             |_, autoderefs| {
-                                 if autoderefs == autoderef_count + 1 {
-                                     Some(())
-                                 } else {
-                                     None
-                                 }
-                             });
+            if autoderef_count > 0 {
+                check::autoderef(self.fcx,
+                                 expr.span,
+                                 self.fcx.expr_ty(*expr),
+                                 Some(expr.id),
+                                 PreferMutLvalue,
+                                 |_, autoderefs| {
+                                     if autoderefs == autoderef_count + 1 {
+                                         Some(())
+                                     } else {
+                                         None
+                                     }
+                                 });
+            }
 
-            match self_expr.node {
-                ast::ExprParen(ref expr) |
-                ast::ExprIndex(ref expr, _) |
-                ast::ExprField(ref expr, _, _) |
-                ast::ExprTupField(ref expr, _, _) |
-                ast::ExprSlice(ref expr, _, _, _) => self_expr = &**expr,
-                ast::ExprUnary(ast::UnDeref, ref expr) => {
-                    drop(check::try_overloaded_deref(
-                            self.fcx,
-                            self_expr.span,
-                            Some(MethodCall::expr(self_expr.id)),
-                            Some(self_expr),
-                            self_ty,
-                            PreferMutLvalue));
-                    self_expr = &**expr
+            // Don't retry the first one or we might infinite loop!
+            if i != 0 {
+                match expr.node {
+                    ast::ExprIndex(ref base_expr, ref index_expr) => {
+                        check::try_overloaded_index(
+                                self.fcx,
+                                Some(MethodCall::expr(expr.id)),
+                                *expr,
+                                &**base_expr,
+                                self.fcx.expr_ty(&**base_expr),
+                                index_expr,
+                                PreferMutLvalue);
+                    }
+                    ast::ExprUnary(ast::UnDeref, ref base_expr) => {
+                        check::try_overloaded_deref(
+                                self.fcx,
+                                expr.span,
+                                Some(MethodCall::expr(expr.id)),
+                                Some(&**base_expr),
+                                self.fcx.expr_ty(&**base_expr),
+                                PreferMutLvalue);
+                    }
+                    _ => {}
                 }
-                _ => break,
             }
         }
     }
