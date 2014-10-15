@@ -453,13 +453,13 @@ impl<T> Index<uint,T> for Vec<T> {
     }
 }
 
-// FIXME(#12825) Indexing will always try IndexMut first and that causes issues.
-/*impl<T> IndexMut<uint,T> for Vec<T> {
+#[cfg(not(stage0))]
+impl<T> IndexMut<uint,T> for Vec<T> {
     #[inline]
     fn index_mut<'a>(&'a mut self, index: &uint) -> &'a mut T {
         self.get_mut(*index)
     }
-}*/
+}
 
 impl<T> ops::Slice<uint, [T]> for Vec<T> {
     #[inline]
@@ -2153,7 +2153,6 @@ impl<T> Vec<T> {
         }
     }
 }
-
 
 #[cfg(test)]
 mod tests {
