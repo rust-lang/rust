@@ -86,6 +86,13 @@ pub trait ImmutableSlice<'a, T> {
     #[unstable = "waiting on final error conventions/slicing syntax"]
     fn slice_to(&self, end: uint) -> &'a [T];
 
+    /// Returns a subslice spanning the interval [`start`, `start + len`).
+    ///
+    /// Fails when the end of the new slice lies beyond the end of the
+    /// original slice (i.e. when `start + len > self.len()`).
+    #[experimental]
+    fn slice_at(&self, start: uint, len: uint) -> &'a [T];
+
     /// Divides one slice into two at an index.
     ///
     /// The first will contain all indices from `[0, mid)` (excluding
@@ -313,6 +320,11 @@ impl<'a,T> ImmutableSlice<'a, T> for &'a [T] {
     #[inline]
     fn slice_to(&self, end: uint) -> &'a [T] {
         self.slice(0, end)
+    }
+
+    #[inline]
+    fn slice_at(&self, start: uint, len: uint) -> &'a [T] {
+        self.slice(start, start + len)
     }
 
     #[inline]
@@ -606,6 +618,13 @@ pub trait MutableSlice<'a, T> {
         self.iter_mut()
     }
 
+    /// Returns a mutable subslice spanning the interval [`start`, `start + len`).
+    ///
+    /// Fails when the end of the new slice lies beyond the end of the
+    /// original slice (i.e. when `start + len > self.len()`).
+    #[experimental]
+    fn slice_at_mut(self, start: uint, len: uint) -> &'a mut [T];
+
     /// Returns an iterator that allows modifying each value
     #[unstable = "waiting on iterator type name conventions"]
     fn iter_mut(self) -> MutItems<'a, T>;
@@ -839,6 +858,11 @@ impl<'a,T> MutableSlice<'a, T> for &'a mut [T] {
     #[inline]
     fn slice_to_mut(self, end: uint) -> &'a mut [T] {
         self[mut ..end]
+    }
+
+    #[inline]
+    fn slice_at_mut(self, start: uint, len: uint) -> &'a mut [T] {
+        self[mut start..(start + len)]
     }
 
     #[inline]
