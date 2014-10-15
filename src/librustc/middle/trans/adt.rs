@@ -478,7 +478,7 @@ fn ensure_struct_fits_in_address_space(ccx: &CrateContext,
         offset += machine::llsize_of_alloc(ccx, llty);
 
         // We can get away with checking for overflow once per iteration,
-        // because field sizes are less than 1<<60.
+        // because field sizes are less than 1<<61.
         if offset >= ccx.max_obj_size() {
             ccx.report_overbig_object(scapegoat);
         }
@@ -498,7 +498,7 @@ fn ensure_enum_fits_in_address_space(ccx: &CrateContext,
     let discr_size = machine::llsize_of_alloc(ccx, ll_inttype(ccx, discr));
     let (field_size, field_align) = union_size_and_align(fields);
 
-    // This can't overflow because field_size, discr_size, field_align < 1<<60
+    // This can't overflow because field_size, discr_size, field_align < 1<<61
     let total_size = roundup(discr_size, field_align) + field_size;
 
     if total_size >= ccx.max_obj_size() {

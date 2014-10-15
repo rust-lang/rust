@@ -596,17 +596,34 @@ pub fn C_u64(ccx: &CrateContext, i: u64) -> ValueRef {
 }
 
 pub fn C_int<I: AsI64>(ccx: &CrateContext, i: I) -> ValueRef {
-    C_integral(ccx.int_type(), i.as_i64() as u64, true)
+    let v = i.as_i64();
+
+    match machine::llbitsize_of_real(ccx.int_type()) {
+        32 => assert!(v < (1<<31) && v >= -(1<<31)),
+        64 => {},
+        n => fail!("unsupported target size: {}", n)
+    }
+
+    C_integral(ccx.int_type(), v as u64, true)
 }
 
 pub fn C_uint<I: AsU64>(ccx: &CrateContext, i: I) -> ValueRef {
-    C_integral(ccx.int_type(), i.as_u64(), false)
+    let v = i.as_u64();
+
+    match machine::llbitsize_of_real(ccx.int_type()) {
+        32 => assert!(v < (1<<32)),
+        64 => {},
+        n => fail!("unsupported target size: {}", n)
+    }
+
+    C_integral(ccx.int_type(), v, false)
 }
 
 pub trait AsI64 { fn as_i64(self) -> i64; }
 pub trait AsU64 { fn as_u64(self) -> u64; }
 
-// FIXME: remove the intptr conversions
+// FIXME: remove the intptr conversions, because they
+// are host-architecture-dependent
 impl AsI64 for i64 { fn as_i64(self) -> i64 { self as i64 }}
 impl AsI64 for i32 { fn as_i64(self) -> i64 { self as i64 }}
 impl AsI64 for int { fn as_i64(self) -> i64 { self as i64 }}
