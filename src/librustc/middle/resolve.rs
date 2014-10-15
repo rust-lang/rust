@@ -250,7 +250,7 @@ enum FallbackSuggestion {
     Method,
     TraitItem,
     StaticMethod(String),
-    StaticTraitMethod(String),
+    TraitMethod(String),
 }
 
 enum TypeParameters<'a> {
@@ -1386,17 +1386,17 @@ impl<'a> Resolver<'a> {
                                                           .node {
                                         SelfStatic => {
                                             // Static methods become
-                                            // `def_static_method`s.
-                                            DefStaticMethod(
-                                                local_def(method.id),
-                                                FromImpl(local_def(item.id)),
-                                                         method.pe_fn_style())
+                                            // `DefStaticMethod`s.
+                                            DefStaticMethod(local_def(method.id),
+                                                            FromImpl(local_def(item.id)),
+                                                                     method.pe_fn_style())
                                         }
                                         _ => {
                                             // Non-static methods become
-                                            // `def_method`s.
+                                            // `DefMethod`s.
                                             DefMethod(local_def(method.id),
-                                                      None)
+                                                      None,
+                                                      FromImpl(local_def(item.id)))
                                         }
                                     };
 
@@ -1476,8 +1476,7 @@ impl<'a> Resolver<'a> {
                             let (def, static_flag) = match ty_m.explicit_self
                                                                .node {
                                 SelfStatic => {
-                                    // Static methods become
-                                    // `def_static_method`s.
+                                    // Static methods become `DefStaticMethod`s.
                                     (DefStaticMethod(
                                             local_def(ty_m.id),
                                             FromTrait(local_def(item.id)),
@@ -1485,10 +1484,10 @@ impl<'a> Resolver<'a> {
                                      StaticMethodTraitItemKind)
                                 }
                                 _ => {
-                                    // Non-static methods become
-                                    // `def_method`s.
+                                    // Non-static methods become `DefMethod`s.
                                     (DefMethod(local_def(ty_m.id),
-                                               Some(local_def(item.id))),
+                                               Some(local_def(item.id)),
+                                               FromTrait(local_def(item.id))),
                                      NonstaticMethodTraitItemKind)
                                 }
                             };
@@ -4607,8 +4606,7 @@ impl<'a> Resolver<'a> {
                                 // We also need a new scope for the method-
                                 // specific type parameters.
                                 this.resolve_method(
-                                    MethodRibKind(id,
-                                                  ProvidedMethod(method.id)),
+                                    MethodRibKind(id, ProvidedMethod(method.id)),
                                     &**method);
                             }
                             TypeImplItem(ref typedef) => {
@@ -5393,8 +5391,8 @@ impl<'a> Resolver<'a> {
 
         let ident = path.segments.last().unwrap().identifier;
         let def = match self.resolve_definition_of_name_in_module(containing_module.clone(),
-                                                        ident.name,
-                                                        namespace) {
+                                                                  ident.name,
+                                                                  namespace) {
             NoNameDefinition => {
                 // We failed to resolve the name. Report an error.
                 return None;
@@ -5403,26 +5401,6 @@ impl<'a> Resolver<'a> {
                 (def, last_private.or(lp))
             }
         };
-        match containing_module.kind.get() {
-            TraitModuleKind | ImplModuleKind => {
-                match containing_module.def_id.get() {
-                    Some(def_id) => {
-                        match self.trait_item_map.find(&(ident.name, def_id)) {
-                            Some(&StaticMethodTraitItemKind) => (),
-                            Some(&TypeTraitItemKind) => (),
-                            None => (),
-                            Some(&NonstaticMethodTraitItemKind) => {
-                                debug!("containing module was a trait or impl \
-                                and name was a method -> not resolved");
-                                return None;
-                            }
-                        }
-                    },
-                    _ => (),
-                }
-            },
-            _ => (),
-        }
         match containing_module.def_id.get() {
             Some(DefId{krate: kid, ..}) => { self.used_crates.insert(kid); },
             _ => {}
@@ -5668,8 +5646,8 @@ impl<'a> Resolver<'a> {
                                 FromTrait(_) => unreachable!()
                             }
                         }
-                        Some(DefMethod(_, None)) if allowed == Everything => return Method,
-                        Some(DefMethod(_, Some(_))) => return TraitItem,
+                        Some(DefMethod(_, None, _)) if allowed == Everything => return Method,
+                        Some(DefMethod(_, Some(_), _)) => return TraitItem,
                         _ => ()
                     }
                 }
@@ -5684,7 +5662,9 @@ impl<'a> Resolver<'a> {
                 let path_str = self.path_idents_to_string(&trait_ref.path);
 
                 match self.trait_item_map.find(&(name, did)) {
-                    Some(&StaticMethodTraitItemKind) => return StaticTraitMethod(path_str),
+                    Some(&StaticMethodTraitItemKind) => {
+                        return TraitMethod(path_str)
+                    }
                     Some(_) => return TraitItem,
                     None => {}
                 }
@@ -5751,22 +5731,6 @@ impl<'a> Resolver<'a> {
                         // Write the result into the def map.
                         debug!("(resolving expr) resolved `{}`",
                                self.path_idents_to_string(path));
-
-                        // First-class methods are not supported yet; error
-                        // out here.
-                        match def {
-                            (DefMethod(..), _) => {
-                                self.resolve_error(expr.span,
-                                                      "first-class methods \
-                                                       are not supported");
-                                self.session.span_note(expr.span,
-                                                       "call the method \
-                                                        using the `.` \
-                                                        syntax");
-                            }
-                            _ => {}
-                        }
-
                         self.record_def(expr.id, def);
                     }
                     None => {
@@ -5826,7 +5790,7 @@ impl<'a> Resolver<'a> {
                                         Method
                                         | TraitItem =>
                                             format!("to call `self.{}`", wrong_name),
-                                        StaticTraitMethod(path_str)
+                                        TraitMethod(path_str)
                                         | StaticMethod(path_str) =>
                                             format!("to call `{}::{}`", path_str, wrong_name)
                                     };

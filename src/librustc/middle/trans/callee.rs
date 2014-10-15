@@ -137,7 +137,9 @@ fn trans<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, expr: &ast::Expr)
         };
     }
 
-    fn trans_def<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, def: def::Def, ref_expr: &ast::Expr)
+    fn trans_def<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+                             def: def::Def,
+                             ref_expr: &ast::Expr)
                              -> Callee<'blk, 'tcx> {
         debug!("trans_def(def={}, ref_expr={})", def.repr(bcx.tcx()), ref_expr.repr(bcx.tcx()));
         let expr_ty = node_id_type(bcx, ref_expr.id);
@@ -165,14 +167,13 @@ fn trans<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, expr: &ast::Expr)
                 let def_id = inline::maybe_instantiate_inline(bcx.ccx(), did);
                 Callee { bcx: bcx, data: Intrinsic(def_id.node, substs) }
             }
-            def::DefFn(did, _, _) |
+            def::DefFn(did, _, _) | def::DefMethod(did, _, def::FromImpl(_)) |
             def::DefStaticMethod(did, def::FromImpl(_), _) => {
                 fn_callee(bcx, trans_fn_ref(bcx, did, ExprId(ref_expr.id)))
             }
-            def::DefStaticMethod(impl_did,
-                                 def::FromTrait(trait_did),
-                                 _) => {
-                fn_callee(bcx, meth::trans_static_method_callee(bcx, impl_did,
+            def::DefStaticMethod(meth_did, def::FromTrait(trait_did), _) |
+            def::DefMethod(meth_did, _, def::FromTrait(trait_did)) => {
+                fn_callee(bcx, meth::trans_static_method_callee(bcx, meth_did,
                                                                 trait_did,
                                                                 ref_expr.id))
             }
@@ -205,7 +206,7 @@ fn trans<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, expr: &ast::Expr)
             def::DefTy(..) | def::DefPrimTy(..) | def::DefAssociatedTy(..) |
             def::DefUse(..) | def::DefTyParamBinder(..) |
             def::DefRegion(..) | def::DefLabel(..) | def::DefTyParam(..) |
-            def::DefSelfTy(..) | def::DefMethod(..) => {
+            def::DefSelfTy(..) => {
                 bcx.tcx().sess.span_bug(
                     ref_expr.span,
                     format!("cannot translate def {:?} \
