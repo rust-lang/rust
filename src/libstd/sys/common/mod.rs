@@ -20,6 +20,7 @@ use path::BytesContainer;
 use collections;
 
 pub mod net;
+pub mod helper_thread;
 
 // common error constructors
 

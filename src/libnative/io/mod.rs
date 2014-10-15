@@ -32,8 +32,6 @@ use std::num;
 // Local re-exports
 pub use self::process::Process;
 
-mod helper_thread;
-
 // Native I/O implementations
 pub mod process;
 mod util;

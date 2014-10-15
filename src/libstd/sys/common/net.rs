@@ -24,6 +24,8 @@ use prelude::*;
 use cmp;
 use io;
 
+// FIXME: move uses of Arc and deadline tracking to std::io
+
 #[deriving(Show)]
 pub enum SocketStatus {
     Readable,
