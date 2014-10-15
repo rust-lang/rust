@@ -1629,11 +1629,11 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                 };
 
                 if is_assigned {
-                    self.ir.tcx.sess.add_lint(lint::builtin::UNUSED_VARIABLE, id, sp,
+                    self.ir.tcx.sess.add_lint(lint::builtin::UNUSED_VARIABLES, id, sp,
                         format!("variable `{}` is assigned to, but never used",
                                 *name));
                 } else {
-                    self.ir.tcx.sess.add_lint(lint::builtin::UNUSED_VARIABLE, id, sp,
+                    self.ir.tcx.sess.add_lint(lint::builtin::UNUSED_VARIABLES, id, sp,
                         format!("unused variable: `{}`", *name));
                 }
             }
@@ -1651,7 +1651,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         if self.live_on_exit(ln, var).is_none() {
             let r = self.should_warn(var);
             for name in r.iter() {
-                self.ir.tcx.sess.add_lint(lint::builtin::DEAD_ASSIGNMENT, id, sp,
+                self.ir.tcx.sess.add_lint(lint::builtin::UNUSED_ASSIGNMENTS, id, sp,
                     format!("value assigned to `{}` is never read", *name));
             }
         }

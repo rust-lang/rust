@@ -704,7 +704,7 @@ pub fn collect_crate_types(session: &Session,
                 }
                 Some(ref n) if n.equiv(&("bin")) => Some(config::CrateTypeExecutable),
                 Some(_) => {
-                    session.add_lint(lint::builtin::UNKNOWN_CRATE_TYPE,
+                    session.add_lint(lint::builtin::UNKNOWN_CRATE_TYPES,
                                      ast::CRATE_NODE_ID,
                                      a.span,
                                      "invalid `crate_type` \
@@ -712,7 +712,7 @@ pub fn collect_crate_types(session: &Session,
                     None
                 }
                 _ => {
-                    session.add_lint(lint::builtin::UNKNOWN_CRATE_TYPE,
+                    session.add_lint(lint::builtin::UNKNOWN_CRATE_TYPES,
                                      ast::CRATE_NODE_ID,
                                      a.span,
                                      "`crate_type` requires a \
