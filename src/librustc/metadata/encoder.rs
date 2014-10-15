@@ -407,13 +407,10 @@ fn encode_reexported_static_base_methods(ecx: &EncodeContext,
                         method_did.def_id());
                     match impl_item {
                         ty::MethodTraitItem(ref m) => {
-                            if m.explicit_self ==
-                                    ty::StaticExplicitSelfCategory {
-                                encode_reexported_static_method(rbml_w,
-                                                                exp,
-                                                                m.def_id,
-                                                                m.ident);
-                            }
+                            encode_reexported_static_method(rbml_w,
+                                                            exp,
+                                                            m.def_id,
+                                                            m.ident);
                         }
                         ty::TypeTraitItem(_) => {}
                     }
@@ -434,8 +431,7 @@ fn encode_reexported_static_trait_methods(ecx: &EncodeContext,
         Some(trait_items) => {
             for trait_item in trait_items.iter() {
                 match *trait_item {
-                    ty::MethodTraitItem(ref m) if m.explicit_self ==
-                            ty::StaticExplicitSelfCategory => {
+                    ty::MethodTraitItem(ref m) => {
                         encode_reexported_static_method(rbml_w,
                                                         exp,
                                                         m.def_id,
@@ -1408,18 +1404,16 @@ fn encode_info_for_item(ecx: &EncodeContext,
                             encode_family(rbml_w,
                                           fn_style_static_method_family(
                                               method_ty.fty.fn_style));
-
-                            let pty = ty::lookup_item_type(tcx,
-                                                           method_def_id);
-                            encode_bounds_and_type(rbml_w, ecx, &pty);
                         }
-
                         _ => {
                             encode_family(rbml_w,
                                           style_fn_family(
                                               method_ty.fty.fn_style));
                         }
                     }
+                    let pty = ty::lookup_item_type(tcx,
+                                                   method_def_id);
+                    encode_bounds_and_type(rbml_w, ecx, &pty);
 
                     is_nonstatic_method = method_ty.explicit_self !=
                         ty::StaticExplicitSelfCategory;

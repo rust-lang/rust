@@ -811,7 +811,7 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
             def::DefTy(_, true) => ck("enum"),
             def::DefTrait(..) => ck("trait"),
             def::DefStruct(..) => ck("struct"),
-            def::DefMethod(_, Some(..)) => ck("trait method"),
+            def::DefMethod(_, Some(..), _) => ck("trait method"),
             def::DefMethod(..) => ck("method"),
             def::DefMod(..) => ck("module"),
             _ => {}

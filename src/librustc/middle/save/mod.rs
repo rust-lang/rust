@@ -244,7 +244,7 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
             def::DefStaticMethod(_, _, _) |
             def::DefTyParam(..) |
             def::DefUse(_) |
-            def::DefMethod(_, _) |
+            def::DefMethod(..) |
             def::DefPrimTy(_) => {
                 self.sess.span_bug(span, format!("lookup_def_kind for unexpected item: {:?}",
                                                  def).as_slice());

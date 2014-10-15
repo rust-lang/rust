@@ -46,7 +46,7 @@ pub enum Def {
     DefTyParamBinder(ast::NodeId), /* struct, impl or trait with ty params */
     DefRegion(ast::NodeId),
     DefLabel(ast::NodeId),
-    DefMethod(ast::DefId /* method */, Option<ast::DefId> /* trait */),
+    DefMethod(ast::DefId /* method */, Option<ast::DefId> /* trait */, MethodProvenance),
 }
 
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
@@ -62,7 +62,7 @@ impl Def {
             DefForeignMod(id) | DefStatic(id, _) |
             DefVariant(_, id, _) | DefTy(id, _) | DefAssociatedTy(id) |
             DefTyParam(_, id, _) | DefUse(id) | DefStruct(id) | DefTrait(id) |
-            DefMethod(id, _) | DefConst(id) => {
+            DefMethod(id, _, _) | DefConst(id) => {
                 id
             }
             DefLocal(id) |
