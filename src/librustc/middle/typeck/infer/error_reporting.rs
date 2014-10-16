@@ -366,6 +366,7 @@ impl<'a, 'tcx> ErrorReporting for InferCtxt<'a, 'tcx> {
             infer::RelateOutputImplTypes(_) => "mismatched types",
             infer::MatchExpressionArm(_, _) => "match arms have incompatible types",
             infer::IfExpression(_) => "if and else have incompatible types",
+            infer::IfExpressionWithNoElse(_) => "if may be missing an else clause",
         };
 
         self.tcx.sess.span_err(
@@ -1485,6 +1486,9 @@ impl<'a, 'tcx> ErrorReportingHelpers for InferCtxt<'a, 'tcx> {
                     }
                     infer::IfExpression(_) => {
                         format!("if and else have compatible types")
+                    }
+                    infer::IfExpressionWithNoElse(_) => {
+                        format!("if may be missing an else clause")
                     }
                 };
 
