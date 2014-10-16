@@ -14,7 +14,7 @@
 
 use cmp;
 use collections::Collection;
-use io::{Reader, Writer, Stream, Buffer, DEFAULT_BUF_SIZE, IoResult, AsRefReader};
+use io::{Reader, Writer, Stream, Buffer, DEFAULT_BUF_SIZE, IoResult};
 use iter::ExactSize;
 use ops::Drop;
 use option::{Some, None, Option};
@@ -117,8 +117,6 @@ impl<R: Reader> Reader for BufferedReader<R> {
         Ok(nread)
     }
 }
-
-impl<R: Reader> AsRefReader for BufferedReader<R> {}
 
 /// Wraps a Writer and buffers output to it
 ///
