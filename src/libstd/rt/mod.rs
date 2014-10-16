@@ -32,7 +32,7 @@ truly a global resource and generally operates independently of the
 rest of the runtime.
 
 All other runtime features are task-local, including the local heap,
-the garbage collector, local storage, logging and the stack unwinder.
+local storage, logging and the stack unwinder.
 
 The relationship between `rt` and the rest of the core library is
 not entirely clear yet and some modules will be moving into or
