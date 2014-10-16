@@ -42,7 +42,6 @@ Several modules in `core` are clients of `rt`:
 
 * `std::task` - The user-facing interface to the Rust task model.
 * `std::local_data` - The interface to local data.
-* `std::gc` - The garbage collector.
 * `std::unstable::lang` - Miscellaneous lang items, some of which rely on `std::rt`.
 * `std::cleanup` - Local heap destruction.
 * `std::io` - In the future `std::io` will use an `rt` implementation.
