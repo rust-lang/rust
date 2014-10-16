@@ -62,8 +62,8 @@ impl Ascii {
         Ascii{chr: ASCII_LOWER_MAP[self.chr as uint]}
     }
 
+    /// Deprecated: use `to_uppercase`
     #[inline]
-    #[allow(missing_doc)]
     #[deprecated="renamed to `to_uppercase`"]
     pub fn to_upper(self) -> Ascii {
         self.to_uppercase()
@@ -139,8 +139,8 @@ impl Ascii {
         (self.chr - 0x20) < 0x5F
     }
 
+    /// Deprecated: use `to_lowercase`
     #[inline]
-    #[allow(missing_doc)]
     #[deprecated="renamed to `is_lowercase`"]
     pub fn is_lower(&self) -> bool {
         self.is_lowercase()
@@ -319,11 +319,19 @@ pub trait AsciiStr {
     /// Convert to a string.
     fn as_str_ascii<'a>(&'a self) -> &'a str;
 
-    /// Convert to vector representing a lower cased ascii string.
+    /// Deprecated: use `to_lowercase`
+    #[deprecated="renamed `to_lowercase`"]
     fn to_lower(&self) -> Vec<Ascii>;
 
-    /// Convert to vector representing a upper cased ascii string.
+    /// Convert to vector representing a lower cased ascii string.
+    fn to_lowercase(&self) -> Vec<Ascii>;
+
+    /// Deprecated: use `to_uppercase`
+    #[deprecated="renamed `to_uppercase`"]
     fn to_upper(&self) -> Vec<Ascii>;
+
+    /// Convert to vector representing a upper cased ascii string.
+    fn to_uppercase(&self) -> Vec<Ascii>;
 
     /// Compares two Ascii strings ignoring case.
     fn eq_ignore_case(self, other: &[Ascii]) -> bool;
@@ -337,11 +345,21 @@ impl<'a> AsciiStr for &'a [Ascii] {
 
     #[inline]
     fn to_lower(&self) -> Vec<Ascii> {
+      self.to_lowercase()
+    }
+
+    #[inline]
+    fn to_lowercase(&self) -> Vec<Ascii> {
         self.iter().map(|a| a.to_lowercase()).collect()
     }
 
     #[inline]
     fn to_upper(&self) -> Vec<Ascii> {
+      self.to_uppercase()
+    }
+
+    #[inline]
+    fn to_uppercase(&self) -> Vec<Ascii> {
         self.iter().map(|a| a.to_uppercase()).collect()
     }
 
@@ -615,12 +633,13 @@ mod tests {
         assert_eq!(v.as_slice().to_ascii(), b);
         assert_eq!("( ;".to_string().as_slice().to_ascii(), b);
 
-        assert_eq!("abCDef&?#".to_ascii().to_lower().into_string(), "abcdef&?#".to_string());
-        assert_eq!("abCDef&?#".to_ascii().to_upper().into_string(), "ABCDEF&?#".to_string());
+        assert_eq!("abCDef&?#".to_ascii().to_lowercase().into_string(), "abcdef&?#".to_string());
+        assert_eq!("abCDef&?#".to_ascii().to_uppercase().into_string(), "ABCDEF&?#".to_string());
 
-        assert_eq!("".to_ascii().to_lower().into_string(), "".to_string());
-        assert_eq!("YMCA".to_ascii().to_lower().into_string(), "ymca".to_string());
-        assert_eq!("abcDEFxyz:.;".to_ascii().to_upper().into_string(), "ABCDEFXYZ:.;".to_string());
+        assert_eq!("".to_ascii().to_lowercase().into_string(), "".to_string());
+        assert_eq!("YMCA".to_ascii().to_lowercase().into_string(), "ymca".to_string());
+        let mixed = "abcDEFxyz:.;".to_ascii();
+        assert_eq!(mixed.to_uppercase().into_string(), "ABCDEFXYZ:.;".to_string());
 
         assert!("aBcDeF&?#".to_ascii().eq_ignore_case("AbCdEf&?#".to_ascii()));
 
@@ -632,11 +651,12 @@ mod tests {
 
     #[test]
     fn test_ascii_vec_ng() {
-        assert_eq!("abCDef&?#".to_ascii().to_lower().into_string(), "abcdef&?#".to_string());
-        assert_eq!("abCDef&?#".to_ascii().to_upper().into_string(), "ABCDEF&?#".to_string());
-        assert_eq!("".to_ascii().to_lower().into_string(), "".to_string());
-        assert_eq!("YMCA".to_ascii().to_lower().into_string(), "ymca".to_string());
-        assert_eq!("abcDEFxyz:.;".to_ascii().to_upper().into_string(), "ABCDEFXYZ:.;".to_string());
+        assert_eq!("abCDef&?#".to_ascii().to_lowercase().into_string(), "abcdef&?#".to_string());
+        assert_eq!("abCDef&?#".to_ascii().to_uppercase().into_string(), "ABCDEF&?#".to_string());
+        assert_eq!("".to_ascii().to_lowercase().into_string(), "".to_string());
+        assert_eq!("YMCA".to_ascii().to_lowercase().into_string(), "ymca".to_string());
+        let mixed = "abcDEFxyz:.;".to_ascii();
+        assert_eq!(mixed.to_uppercase().into_string(), "ABCDEFXYZ:.;".to_string());
     }
 
     #[test]
