@@ -506,11 +506,13 @@ perform this configuration (be it environment or in files).
 * In general dealing with linkage is quite complex, and the conventions/systems
   proposed here aren't exactly trivial and may be overkill for these purposes.
 
-* As can be seen in the [example repository][example], platform dependencies are
+* As can be seen in the [example repository][verbose], platform dependencies are
   quite verbose and are difficult to work with when you actually want a negation
   instead of a positive platform to include.
 * Features themselves will also likely need to be platform-specific, but this
   runs into a number of tricky situations and needs to be fleshed out.
+
+[verbose]: https://github.com/alexcrichton/complicated-linkage-example/blob/master/curl-sys/Cargo.toml#L9-L17
 
 # Alternatives
 
