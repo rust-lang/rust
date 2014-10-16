@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,8 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![allow(unreachable_code)]
+trait MyItem<T> {}
+impl<T> MyItem<T> for T {}
 
-fn dont_call_me() { fail!(); println!("{}", 1i); }
+pub fn build_archive<'a, I: MyItem<&'a (|&uint|:'a)>>(files: I) {}
 
-pub fn main() { }
+fn main() {
+    build_archive(&(|_| { }));
+//~^ ERROR unable to infer enough type information to locate the impl of the trait `MyItem<&|&uint|
+}

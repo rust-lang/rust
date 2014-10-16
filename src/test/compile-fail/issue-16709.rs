@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,8 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![allow(unreachable_code)]
+use std::ptr;
+use std::raw;
 
-fn dont_call_me() { fail!(); println!("{}", 1i); }
-
-pub fn main() { }
+fn main() {
+  unsafe {
+    let nil: *const u8 = ptr::null();
+    let slice: raw::Slice<u8> =
+      Slice { //~ ERROR use of trait `Slice` as a struct constructor [E0159]
+        data: nil,
+        len:  0,
+      };
+  }
+}
