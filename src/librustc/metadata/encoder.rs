@@ -835,12 +835,11 @@ fn encode_method_ty_fields(ecx: &EncodeContext,
     encode_method_fty(ecx, rbml_w, &method_ty.fty);
     encode_visibility(rbml_w, method_ty.vis);
     encode_explicit_self(rbml_w, &method_ty.explicit_self);
-    let fn_style = method_ty.fty.fn_style;
     match method_ty.explicit_self {
         ty::StaticExplicitSelfCategory => {
-            encode_family(rbml_w, fn_style_static_method_family(fn_style));
+            encode_family(rbml_w, STATIC_METHOD_FAMILY);
         }
-        _ => encode_family(rbml_w, fn_style_method_family(fn_style))
+        _ => encode_family(rbml_w, METHOD_FAMILY)
     }
     encode_provided_source(rbml_w, method_ty.provided_source);
 }
@@ -964,27 +963,9 @@ fn encode_inlined_item(ecx: &EncodeContext,
     (*eii)(ecx, rbml_w, ii)
 }
 
-fn style_fn_family(s: FnStyle) -> char {
-    match s {
-        UnsafeFn => 'u',
-        NormalFn => 'f',
-    }
-}
-
-fn fn_style_static_method_family(s: FnStyle) -> char {
-    match s {
-        UnsafeFn => 'U',
-        NormalFn => 'F',
-    }
-}
-
-fn fn_style_method_family(s: FnStyle) -> char {
-    match s {
-        UnsafeFn => 'h',
-        NormalFn => 'H',
-    }
-}
-
+const FN_FAMILY: char = 'f';
+const STATIC_METHOD_FAMILY: char = 'F';
+const METHOD_FAMILY: char = 'h';
 
 fn should_inline(attrs: &[Attribute]) -> bool {
     use syntax::attr::*;
@@ -1088,11 +1069,11 @@ fn encode_info_for_item(ecx: &EncodeContext,
         encode_stability(rbml_w, stab);
         rbml_w.end_tag();
       }
-      ItemFn(ref decl, fn_style, _, ref generics, _) => {
+      ItemFn(ref decl, _, _, ref generics, _) => {
         add_to_index(item, rbml_w, index);
         rbml_w.start_tag(tag_items_data_item);
         encode_def_id(rbml_w, def_id);
-        encode_family(rbml_w, style_fn_family(fn_style));
+        encode_family(rbml_w, FN_FAMILY);
         let tps_len = generics.ty_params.len();
         encode_bounds_and_type(rbml_w, ecx, &lookup_item_type(tcx, def_id));
         encode_name(rbml_w, item.ident.name);
@@ -1409,13 +1390,11 @@ fn encode_info_for_item(ecx: &EncodeContext,
                     match method_ty.explicit_self {
                         ty::StaticExplicitSelfCategory => {
                             encode_family(rbml_w,
-                                          fn_style_static_method_family(
-                                              method_ty.fty.fn_style));
+                                          STATIC_METHOD_FAMILY);
                         }
                         _ => {
                             encode_family(rbml_w,
-                                          fn_style_method_family(
-                                              method_ty.fty.fn_style));
+                                          METHOD_FAMILY);
                         }
                     }
                     let pty = ty::lookup_item_type(tcx,
@@ -1500,7 +1479,7 @@ fn encode_info_for_foreign_item(ecx: &EncodeContext,
     encode_visibility(rbml_w, nitem.vis);
     match nitem.node {
       ForeignItemFn(..) => {
-        encode_family(rbml_w, style_fn_family(NormalFn));
+        encode_family(rbml_w, FN_FAMILY);
         encode_bounds_and_type(rbml_w, ecx,
                                &lookup_item_type(ecx.tcx,local_def(nitem.id)));
         encode_name(rbml_w, nitem.ident.name);

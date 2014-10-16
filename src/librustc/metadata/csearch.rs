@@ -35,7 +35,6 @@ use std::collections::hashmap::HashMap;
 pub struct StaticMethodInfo {
     pub name: ast::Name,
     pub def_id: ast::DefId,
-    pub fn_style: ast::FnStyle,
     pub vis: ast::Visibility,
 }
 
