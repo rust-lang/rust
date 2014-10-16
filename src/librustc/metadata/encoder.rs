@@ -840,7 +840,7 @@ fn encode_method_ty_fields(ecx: &EncodeContext,
         ty::StaticExplicitSelfCategory => {
             encode_family(rbml_w, fn_style_static_method_family(fn_style));
         }
-        _ => encode_family(rbml_w, style_fn_family(fn_style))
+        _ => encode_family(rbml_w, fn_style_method_family(fn_style))
     }
     encode_provided_source(rbml_w, method_ty.provided_source);
 }
@@ -975,6 +975,13 @@ fn fn_style_static_method_family(s: FnStyle) -> char {
     match s {
         UnsafeFn => 'U',
         NormalFn => 'F',
+    }
+}
+
+fn fn_style_method_family(s: FnStyle) -> char {
+    match s {
+        UnsafeFn => 'h',
+        NormalFn => 'H',
     }
 }
 
@@ -1407,7 +1414,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
                         }
                         _ => {
                             encode_family(rbml_w,
-                                          style_fn_family(
+                                          fn_style_method_family(
                                               method_ty.fty.fn_style));
                         }
                     }
@@ -1432,30 +1439,30 @@ fn encode_info_for_item(ecx: &EncodeContext,
             encode_parent_sort(rbml_w, 't');
 
             let trait_item = &ms[i];
-            match &ms[i] {
-                &RequiredMethod(ref tm) => {
-                    encode_attributes(rbml_w, tm.attrs.as_slice());
+            let foo = |rbml_w: &mut Encoder| {
+                // If this is a static method, we've already
+                // encoded this.
+                if is_nonstatic_method {
+                    // FIXME: I feel like there is something funny
+                    // going on.
+                    let pty = ty::lookup_item_type(tcx, item_def_id.def_id());
+                    encode_bounds_and_type(rbml_w, ecx, &pty);
+                }
+            };
+            match trait_item {
+                &RequiredMethod(ref m) => {
+                    encode_attributes(rbml_w, m.attrs.as_slice());
+                    foo(rbml_w);
                     encode_item_sort(rbml_w, 'r');
-                    encode_method_argument_names(rbml_w, &*tm.decl);
+                    encode_method_argument_names(rbml_w, &*m.decl);
                 }
 
                 &ProvidedMethod(ref m) => {
                     encode_attributes(rbml_w, m.attrs.as_slice());
-                    // If this is a static method, we've already
-                    // encoded this.
-                    if is_nonstatic_method {
-                        // FIXME: I feel like there is something funny
-                        // going on.
-                        let pty = ty::lookup_item_type(tcx,
-                                                       item_def_id.def_id());
-                        encode_bounds_and_type(rbml_w, ecx, &pty);
-                    }
+                    foo(rbml_w);
                     encode_item_sort(rbml_w, 'p');
-                    encode_inlined_item(ecx,
-                                        rbml_w,
-                                        IITraitItemRef(def_id, trait_item));
-                    encode_method_argument_names(rbml_w,
-                                                 &*m.pe_fn_decl());
+                    encode_inlined_item(ecx, rbml_w, IITraitItemRef(def_id, trait_item));
+                    encode_method_argument_names(rbml_w, &*m.pe_fn_decl());
                 }
 
                 &TypeTraitItem(ref associated_type) => {

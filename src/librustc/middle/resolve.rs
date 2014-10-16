@@ -1837,7 +1837,7 @@ impl<'a> Resolver<'a> {
                 csearch::get_tuple_struct_definition_if_ctor(&self.session.cstore, ctor_id)
                     .map_or(def, |_| DefStruct(ctor_id)), DUMMY_SP, is_public);
           }
-          DefFn(..) | DefStaticMethod(..) | DefStatic(..) | DefConst(..) => {
+          DefFn(..) | DefStaticMethod(..) | DefStatic(..) | DefConst(..) | DefMethod(..) => {
             debug!("(building reduced graph for external \
                     crate) building value (fn/static) {}", final_ident);
             child_name_bindings.define_value(def, DUMMY_SP, is_public);
@@ -1901,11 +1901,6 @@ impl<'a> Resolver<'a> {
 
             // Record the def ID and fields of this struct.
             self.structs.insert(def_id, fields);
-          }
-          DefMethod(..) => {
-              debug!("(building reduced graph for external crate) \
-                      ignoring {}", def);
-              // Ignored; handled elsewhere.
           }
           DefLocal(..) | DefPrimTy(..) | DefTyParam(..) |
           DefUse(..) | DefUpvar(..) | DefRegion(..) |
