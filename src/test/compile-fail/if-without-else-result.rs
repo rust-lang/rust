@@ -8,10 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern crate debug;
-
 fn main() {
     let a = if true { true };
 //~^ ERROR if may be missing an else clause: expected `()`, found `bool` (expected (), found bool)
-    println!("{:?}", a);
+    println!("{}", a);
 }

@@ -1700,11 +1700,11 @@ foo_module!()
         }).enumerate() {
             if mtwt::resolve(v.segments.get(0).identifier) != resolved_binding {
                 println!("uh oh, xx binding didn't match xx varref:");
-                println!("this is xx varref \\# {:?}",idx);
-                println!("binding: {:?}",cxbind);
-                println!("resolves to: {:?}",resolved_binding);
-                println!("varref: {:?}",v.segments.get(0).identifier);
-                println!("resolves to: {:?}",
+                println!("this is xx varref \\# {}", idx);
+                println!("binding: {}", cxbind);
+                println!("resolves to: {}", resolved_binding);
+                println!("varref: {}", v.segments.get(0).identifier);
+                println!("resolves to: {}",
                          mtwt::resolve(v.segments.get(0).identifier));
                 mtwt::with_sctable(|x| mtwt::display_sctable(x));
             }

@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern crate debug;
-
 pub fn main() {
     let s: &str = "hello";
     let c: u8 = s[4]; //~ ERROR cannot index a value of type `&str`

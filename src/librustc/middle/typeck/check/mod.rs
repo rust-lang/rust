@@ -1563,7 +1563,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             None => {
                 self.tcx().sess.span_bug(
                     span,
-                    format!("no type for local variable {:?}",
+                    format!("no type for local variable {}",
                             nid).as_slice());
             }
         }
@@ -1622,7 +1622,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             node_id: ast::NodeId,
                             span: Span,
                             adj: ty::AutoAdjustment) {
-        debug!("write_adjustment(node_id={:?}, adj={:?})", node_id, adj);
+        debug!("write_adjustment(node_id={}, adj={})", node_id, adj);
 
         // Careful: adjustments can imply trait obligations if we are
         // casting from a concrete type to an object type. I think
@@ -1673,7 +1673,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn register_unsize_obligations(&self,
                                    span: Span,
                                    unsize: &ty::UnsizeKind) {
-        debug!("register_unsize_obligations: unsize={:?}", unsize);
+        debug!("register_unsize_obligations: unsize={}", unsize);
 
         match *unsize {
             ty::UnsizeLength(..) => {}
@@ -2551,7 +2551,7 @@ fn check_argument_types<'a>(fcx: &FnCtxt,
         err_args(supplied_arg_count)
     };
 
-    debug!("check_argument_types: formal_tys={:?}",
+    debug!("check_argument_types: formal_tys={}",
            formal_tys.iter().map(|t| fcx.infcx().ty_to_string(*t)).collect::<Vec<String>>());
 
     // Check the arguments.
@@ -5578,25 +5578,6 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &ast::ForeignItem) {
                     }
                 }
             },
-            "visit_tydesc" => {
-              let tydesc_ty = match ty::get_tydesc_ty(ccx.tcx) {
-                  Ok(t) => t,
-                  Err(s) => { tcx.sess.span_fatal(it.span, s.as_slice()); }
-              };
-              let region0 = ty::ReLateBound(it.id, ty::BrAnon(0));
-              let region1 = ty::ReLateBound(it.id, ty::BrAnon(1));
-              let visitor_object_ty =
-                    match ty::visitor_object_ty(tcx, region0, region1) {
-                        Ok((_, vot)) => vot,
-                        Err(s) => { tcx.sess.span_fatal(it.span, s.as_slice()); }
-                    };
-
-              let td_ptr = ty::mk_ptr(ccx.tcx, ty::mt {
-                  ty: tydesc_ty,
-                  mutbl: ast::MutImmutable
-              });
-              (0, vec!( td_ptr, visitor_object_ty ), ty::mk_nil())
-            }
             "offset" => {
               (1,
                vec!(

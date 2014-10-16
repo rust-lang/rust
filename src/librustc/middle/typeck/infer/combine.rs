@@ -390,7 +390,7 @@ pub fn super_tys<'tcx, C: Combine<'tcx>>(this: &C, a: ty::t, b: ty::t) -> cres<t
     let tcx = this.infcx().tcx;
     let a_sty = &ty::get(a).sty;
     let b_sty = &ty::get(b).sty;
-    debug!("super_tys: a_sty={:?} b_sty={:?}", a_sty, b_sty);
+    debug!("super_tys: a_sty={} b_sty={}", a_sty, b_sty);
     return match (a_sty, b_sty) {
       // The "subtype" ought to be handling cases involving bot or var:
       (&ty::ty_bot, _) |
@@ -470,7 +470,7 @@ pub fn super_tys<'tcx, C: Combine<'tcx>>(this: &C, a: ty::t, b: ty::t) -> cres<t
       (&ty::ty_trait(ref a_),
        &ty::ty_trait(ref b_))
       if a_.def_id == b_.def_id => {
-          debug!("Trying to match traits {:?} and {:?}", a, b);
+          debug!("Trying to match traits {} and {}", a, b);
           let substs = try!(this.substs(a_.def_id, &a_.substs, &b_.substs));
           let bounds = try!(this.existential_bounds(a_.bounds, b_.bounds));
           Ok(ty::mk_trait(tcx,

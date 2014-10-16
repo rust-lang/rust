@@ -135,7 +135,7 @@ pub fn run_core(libs: Vec<Path>, cfgs: Vec<String>, externs: Externs,
         inlined: RefCell::new(Some(HashSet::new())),
         populated_crate_impls: RefCell::new(HashSet::new()),
     };
-    debug!("crate: {:?}", ctxt.krate);
+    debug!("crate: {}", ctxt.krate);
 
     let analysis = CrateAnalysis {
         exported_items: exported_items,

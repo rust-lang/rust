@@ -269,7 +269,6 @@ pub fn trans_intrinsic_call<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>, node: ast::N
         (_, "get_tydesc") => {
             let tp_ty = *substs.types.get(FnSpace, 0);
             let static_ti = get_tydesc(ccx, tp_ty);
-            glue::lazily_emit_visit_glue(ccx, &*static_ti);
 
             // FIXME (#3730): ideally this shouldn't need a cast,
             // but there's a circularity between translating rust types to llvm
@@ -306,13 +305,6 @@ pub fn trans_intrinsic_call<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>, node: ast::N
         (_, "owns_managed") => {
             let tp_ty = *substs.types.get(FnSpace, 0);
             C_bool(ccx, ty::type_contents(ccx.tcx(), tp_ty).owns_managed())
-        }
-        (_, "visit_tydesc") => {
-            let td = *llargs.get(0);
-            let visitor = *llargs.get(1);
-            let td = PointerCast(bcx, td, ccx.tydesc_type().ptr_to());
-            glue::call_visit_glue(bcx, visitor, td);
-            C_nil(ccx)
         }
         (_, "offset") => {
             let ptr = *llargs.get(0);

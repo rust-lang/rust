@@ -226,6 +226,7 @@ use syntax::codemap::Span;
 use syntax::fold::Folder;
 use syntax::ptr::P;
 
+#[deriving(Show)]
 struct ConstantExpr<'a>(&'a ast::Expr);
 
 impl<'a> ConstantExpr<'a> {
@@ -240,6 +241,7 @@ impl<'a> ConstantExpr<'a> {
 }
 
 // An option identifying a branch (either a literal, an enum variant or a range)
+#[deriving(Show)]
 enum Opt<'a> {
     ConstantValue(ConstantExpr<'a>),
     ConstantRange(ConstantExpr<'a>, ConstantExpr<'a>),
@@ -519,7 +521,7 @@ fn enter_opt<'a, 'p, 'blk, 'tcx>(
              variant_size: uint,
              val: ValueRef)
              -> Vec<Match<'a, 'p, 'blk, 'tcx>> {
-    debug!("enter_opt(bcx={}, m={}, opt={:?}, col={}, val={})",
+    debug!("enter_opt(bcx={}, m={}, opt={}, col={}, val={})",
            bcx.to_str(),
            m.repr(bcx.tcx()),
            *opt,
@@ -863,7 +865,7 @@ fn insert_lllocals<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
             _ => {}
         }
 
-        debug!("binding {:?} to {}",
+        debug!("binding {} to {}",
                binding_info.id,
                bcx.val_to_string(llval));
         bcx.fcx.lllocals.borrow_mut().insert(binding_info.id, datum);
@@ -1048,7 +1050,7 @@ fn compile_submatch_continue<'a, 'p, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
 
     // Decide what kind of branch we need
     let opts = get_branches(bcx, m, col);
-    debug!("options={:?}", opts);
+    debug!("options={}", opts);
     let mut kind = NoBranch;
     let mut test_val = val;
     debug!("test_val={}", bcx.val_to_string(test_val));

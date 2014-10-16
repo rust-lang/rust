@@ -14,8 +14,6 @@ pub const box_field_refcnt: uint = 0u;
 pub const box_field_drop_glue: uint = 1u;
 pub const box_field_body: uint = 4u;
 
-pub const tydesc_field_visit_glue: uint = 3u;
-
 // The two halves of a closure: code and environment.
 pub const fn_field_code: uint = 0u;
 pub const fn_field_box: uint = 1u;

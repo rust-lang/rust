@@ -118,7 +118,6 @@
 #![reexport_test_harness_main = "test_main"]
 
 #[cfg(test)] extern crate green;
-#[cfg(test)] extern crate debug;
 #[cfg(test)] #[phase(plugin, link)] extern crate log;
 
 extern crate alloc;

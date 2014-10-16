@@ -25,6 +25,7 @@ use middle::trans::type_of;
 use middle::ty;
 use util::ppaux::{ty_to_string};
 
+use std::fmt;
 use syntax::ast;
 
 /**
@@ -51,6 +52,7 @@ pub struct DatumBlock<'blk, 'tcx: 'blk, K> {
     pub datum: Datum<K>,
 }
 
+#[deriving(Show)]
 pub enum Expr {
     /// a fresh value that was produced and which has no cleanup yet
     /// because it has not yet "landed" into its permanent home
@@ -62,9 +64,10 @@ pub enum Expr {
     LvalueExpr,
 }
 
-#[deriving(Clone)]
+#[deriving(Clone, Show)]
 pub struct Lvalue;
 
+#[deriving(Show)]
 pub struct Rvalue {
     pub mode: RvalueMode
 }
@@ -80,7 +83,7 @@ impl Drop for Rvalue {
     fn drop(&mut self) { }
 }
 
-#[deriving(PartialEq, Eq, Hash)]
+#[deriving(PartialEq, Eq, Hash, Show)]
 pub enum RvalueMode {
     /// `val` is a pointer to the actual value (and thus has type *T)
     ByRef,
@@ -539,7 +542,7 @@ impl Datum<Lvalue> {
 /**
  * Generic methods applicable to any sort of datum.
  */
-impl<K:KindOps> Datum<K> {
+impl<K: KindOps + fmt::Show> Datum<K> {
     pub fn new(val: ValueRef, ty: ty::t, kind: K) -> Datum<K> {
         Datum { val: val, ty: ty, kind: kind }
     }
@@ -615,7 +618,7 @@ impl<K:KindOps> Datum<K> {
 
     #[allow(dead_code)] // useful for debugging
     pub fn to_string(&self, ccx: &CrateContext) -> String {
-        format!("Datum({}, {}, {:?})",
+        format!("Datum({}, {}, {})",
                 ccx.tn().val_to_string(self.val),
                 ty_to_string(ccx.tcx(), self.ty),
                 self.kind)
@@ -658,7 +661,7 @@ impl<'blk, 'tcx, K> DatumBlock<'blk, 'tcx, K> {
     }
 }
 
-impl<'blk, 'tcx, K:KindOps> DatumBlock<'blk, 'tcx, K> {
+impl<'blk, 'tcx, K: KindOps + fmt::Show> DatumBlock<'blk, 'tcx, K> {
     pub fn to_expr_datumblock(self) -> DatumBlock<'blk, 'tcx, Expr> {
         DatumBlock::new(self.bcx, self.datum.to_expr_datum())
     }

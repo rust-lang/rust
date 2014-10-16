@@ -8,12 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern crate debug;
-
+#[deriving(Show)]
 enum a_tag {
     a_tag_var(u64)
 }
 
+#[deriving(Show)]
 struct t_rec {
     c8: u8,
     t: a_tag
@@ -21,7 +21,7 @@ struct t_rec {
 
 pub fn main() {
     let x = t_rec {c8: 22u8, t: a_tag_var(44u64)};
-    let y = format!("{:?}", x);
+    let y = format!("{}", x);
     println!("y = {}", y);
-    assert_eq!(y, "t_rec{c8: 22u8, t: a_tag_var(44u64)}".to_string());
+    assert_eq!(y, "t_rec { c8: 22, t: a_tag_var(44) }".to_string());
 }

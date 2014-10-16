@@ -8,8 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern crate debug;
-
+#[deriving(Show)]
 enum Numbers {
     Three
 }
@@ -17,6 +16,6 @@ enum Numbers {
 pub fn main() {
     println!("{}", 1i);
     println!("{}", 2.0f64);
-    println!("{:?}", Three);
-    println!("{:?}", vec!(4i));
+    println!("{}", Three);
+    println!("{}", vec!(4i));
 }

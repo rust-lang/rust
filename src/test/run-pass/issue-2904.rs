@@ -10,8 +10,6 @@
 // except according to those terms.
 
 
-extern crate debug;
-
 /// Map representation
 
 use std::io;
@@ -54,7 +52,7 @@ fn square_from_char(c: char) -> square {
       '.'  => { earth }
       ' '  => { empty }
       _ => {
-        println!("invalid square: {:?}", c);
+        println!("invalid square: {}", c);
         fail!()
       }
     }

@@ -226,13 +226,13 @@ pub fn get_field_type(tcx: &ty::ctxt, class_id: ast::DefId,
     let class_doc = expect(tcx.sess.diagnostic(),
                            decoder::maybe_find_item(class_id.node, all_items),
                            || {
-        (format!("get_field_type: class ID {:?} not found",
+        (format!("get_field_type: class ID {} not found",
                  class_id)).to_string()
     });
     let the_field = expect(tcx.sess.diagnostic(),
         decoder::maybe_find_item(def.node, class_doc),
         || {
-            (format!("get_field_type: in class {:?}, field ID {:?} not found",
+            (format!("get_field_type: in class {}, field ID {} not found",
                     class_id,
                     def)).to_string()
         });

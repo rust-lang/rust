@@ -8,9 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern crate debug;
-
 pub fn main() {
     let i = box 100i;
-    println!("{:?}", i);
+    println!("{}", i);
 }

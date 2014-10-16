@@ -246,7 +246,7 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
             def::DefUse(_) |
             def::DefMethod(..) |
             def::DefPrimTy(_) => {
-                self.sess.span_bug(span, format!("lookup_def_kind for unexpected item: {:?}",
+                self.sess.span_bug(span, format!("lookup_def_kind for unexpected item: {}",
                                                  def).as_slice());
             },
         }
@@ -313,7 +313,7 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
                 },
                 _ => {
                     self.sess.span_bug(method.span,
-                                       format!("Container {} for method {} is not a node item {:?}",
+                                       format!("Container {} for method {} is not a node item {}",
                                                impl_id.node,
                                                method.id,
                                                self.analysis.ty_cx.map.get(impl_id.node)
@@ -1415,7 +1415,7 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DxrVisitor<'l, 'tcx> {
                 // FIXME(nrc) what is this doing here?
                 def::DefStatic(_, _) => {}
                 def::DefConst(..) => {}
-                _ => error!("unexpected definition kind when processing collected paths: {:?}",
+                _ => error!("unexpected definition kind when processing collected paths: {}",
                             *def)
             }
         }

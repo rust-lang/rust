@@ -523,7 +523,7 @@ mod tests {
                 assert_eq!(buf[2], 's' as u8);
                 assert_eq!(buf[3], 't' as u8);
             }
-            r => fail!("invalid read: {:?}", r)
+            r => fail!("invalid read: {}", r)
         }
 
         assert!(writer.inner_read(buf).is_err());
@@ -547,7 +547,7 @@ mod tests {
                     assert_eq!(buf[2], 's' as u8);
                     assert_eq!(buf[3], 't' as u8);
                 }
-                r => fail!("invalid read: {:?}", r)
+                r => fail!("invalid read: {}", r)
             }
         }
     }

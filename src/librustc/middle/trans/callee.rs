@@ -209,7 +209,7 @@ fn trans<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, expr: &ast::Expr)
             def::DefSelfTy(..) => {
                 bcx.tcx().sess.span_bug(
                     ref_expr.span,
-                    format!("cannot translate def {:?} \
+                    format!("cannot translate def {} \
                              to a callable thing!", def).as_slice());
             }
         }
@@ -226,7 +226,7 @@ pub fn trans_fn_ref(bcx: Block, def_id: ast::DefId, node: ExprOrMethodCall) -> V
     let _icx = push_ctxt("trans_fn_ref");
 
     let substs = node_id_substs(bcx, node);
-    debug!("trans_fn_ref(def_id={}, node={:?}, substs={})",
+    debug!("trans_fn_ref(def_id={}, node={}, substs={})",
            def_id.repr(bcx.tcx()),
            node,
            substs.repr(bcx.tcx()));
@@ -398,7 +398,7 @@ pub fn trans_fn_ref_with_substs(
     let ccx = bcx.ccx();
     let tcx = bcx.tcx();
 
-    debug!("trans_fn_ref_with_substs(bcx={}, def_id={}, node={:?}, \
+    debug!("trans_fn_ref_with_substs(bcx={}, def_id={}, node={}, \
             substs={})",
            bcx.to_str(),
            def_id.repr(tcx),

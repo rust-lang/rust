@@ -119,7 +119,7 @@ fn query2(cmd: ~[String]) -> Result {
   let _cmd = cmd_to_string(cmd);
     io::with_str_reader("$3\r\nXXX\r\n".to_string())(|sb| {
     let res = parse_response(@sb as @io::Reader);
-    println!("{:?}", res);
+    println!("{}", res);
     res
     });
 }

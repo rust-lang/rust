@@ -8,10 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern crate debug;
-
 fn main() {
     // Unconstrained type:
-    format!("{:?}", None);
+    format!("{}", None);
     //~^ ERROR type annotations required
 }

@@ -253,7 +253,7 @@ pub fn type_of(cx: &CrateContext, t: ty::t) -> Type {
         None => ()
     }
 
-    debug!("type_of {} {:?}", t.repr(cx.tcx()), ty::get(t).sty);
+    debug!("type_of {} {}", t.repr(cx.tcx()), ty::get(t).sty);
 
     // Replace any typedef'd types with their equivalent non-typedef
     // type. This ensures that all LLVM nominal types that contain
@@ -264,7 +264,7 @@ pub fn type_of(cx: &CrateContext, t: ty::t) -> Type {
 
     if t != t_norm {
         let llty = type_of(cx, t_norm);
-        debug!("--> normalized {} {:?} to {} {:?} llty={}",
+        debug!("--> normalized {} {} to {} {} llty={}",
                 t.repr(cx.tcx()),
                 t,
                 t_norm.repr(cx.tcx()),
@@ -378,7 +378,7 @@ pub fn type_of(cx: &CrateContext, t: ty::t) -> Type {
       ty::ty_err(..) => cx.sess().bug("type_of with ty_err"),
     };
 
-    debug!("--> mapped t={} {:?} to llty={}",
+    debug!("--> mapped t={} {} to llty={}",
             t.repr(cx.tcx()),
             t,
             cx.tn().type_to_string(llty));

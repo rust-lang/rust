@@ -57,6 +57,7 @@ struct LifetimeContext<'a> {
     scope: Scope<'a>
 }
 
+#[deriving(Show)]
 enum ScopeChain<'a> {
     /// EarlyScope(i, ['a, 'b, ...], s) extends s with early-bound
     /// lifetimes, assigning indexes 'a => i, 'b => i+1, ... etc.
@@ -118,10 +119,10 @@ impl<'a, 'v> Visitor<'v> for LifetimeContext<'a> {
         };
 
         self.with(|_, f| f(EarlyScope(subst::TypeSpace, lifetimes, &ROOT_SCOPE)), |v| {
-            debug!("entering scope {:?}", v.scope);
+            debug!("entering scope {}", v.scope);
             v.check_lifetime_defs(lifetimes);
             visit::walk_item(v, item);
-            debug!("exiting scope {:?}", v.scope);
+            debug!("exiting scope {}", v.scope);
         });
     }
 
@@ -268,7 +269,7 @@ impl<'a> LifetimeContext<'a> {
 
         let referenced_idents = early_bound_lifetime_names(generics);
         debug!("pushing fn scope id={} due to fn item/method\
-               referenced_idents={:?}",
+               referenced_idents={}",
                n,
                referenced_idents.iter().map(lifetime_show).collect::<Vec<token::InternedString>>());
         let lifetimes = &generics.lifetimes;
@@ -439,7 +440,7 @@ impl<'a> LifetimeContext<'a> {
                                probably a bug in syntax::fold");
         }
 
-        debug!("lifetime_ref={} id={} resolved to {:?}",
+        debug!("lifetime_ref={} id={} resolved to {}",
                 lifetime_to_string(lifetime_ref),
                 lifetime_ref.id,
                 def);

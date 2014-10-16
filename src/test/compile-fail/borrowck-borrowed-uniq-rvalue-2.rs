@@ -10,8 +10,6 @@
 
 #![feature(unsafe_destructor)]
 
-extern crate debug;
-
 struct defer<'a> {
     x: &'a [&'a str],
 }
@@ -20,7 +18,7 @@ struct defer<'a> {
 impl<'a> Drop for defer<'a> {
     fn drop(&mut self) {
         unsafe {
-            println!("{:?}", self.x);
+            println!("{}", self.x);
         }
     }
 }

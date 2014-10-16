@@ -130,7 +130,6 @@ pub struct tydesc_info {
     pub size: ValueRef,
     pub align: ValueRef,
     pub name: ValueRef,
-    pub visit_glue: Cell<Option<ValueRef>>,
 }
 
 /*
@@ -468,7 +467,7 @@ impl<'blk, 'tcx> BlockS<'blk, 'tcx> {
             Some(v) => v.clone(),
             None => {
                 self.tcx().sess.bug(format!(
-                    "no def associated with node id {:?}", nid).as_slice());
+                    "no def associated with node id {}", nid).as_slice());
             }
         }
     }
@@ -704,7 +703,7 @@ pub fn const_get_elt(cx: &CrateContext, v: ValueRef, us: &[c_uint])
     unsafe {
         let r = llvm::LLVMConstExtractValue(v, us.as_ptr(), us.len() as c_uint);
 
-        debug!("const_get_elt(v={}, us={:?}, r={})",
+        debug!("const_get_elt(v={}, us={}, r={})",
                cx.tn().val_to_string(v), us, cx.tn().val_to_string(r));
 
         return r;
@@ -865,7 +864,7 @@ pub fn fulfill_obligation(ccx: &CrateContext,
 }
 
 // Key used to lookup values supplied for type parameters in an expr.
-#[deriving(PartialEq)]
+#[deriving(PartialEq, Show)]
 pub enum ExprOrMethodCall {
     // Type parameters for a path like `None::<int>`
     ExprId(ast::NodeId),
@@ -891,7 +890,7 @@ pub fn node_id_substs(bcx: Block,
 
     if substs.types.any(|t| ty::type_needs_infer(*t)) {
         bcx.sess().bug(
-            format!("type parameters for node {:?} include inference types: \
+            format!("type parameters for node {} include inference types: \
                      {}",
                     node,
                     substs.repr(bcx.tcx())).as_slice());

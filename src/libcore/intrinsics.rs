@@ -58,17 +58,21 @@ pub struct TyDesc {
     pub drop_glue: GlueFn,
 
     // Called by reflection visitor to visit a value of type `T`
+    #[cfg(stage0)]
     pub visit_glue: GlueFn,
 
     // Name corresponding to the type
     pub name: &'static str,
 }
 
+#[cfg(stage0)]
 #[lang="opaque"]
 pub enum Opaque { }
 
+#[cfg(stage0)]
 pub type Disr = u64;
 
+#[cfg(stage0)]
 #[lang="ty_visitor"]
 pub trait TyVisitor {
     fn visit_bot(&mut self) -> bool;
@@ -326,8 +330,6 @@ extern "rust-intrinsic" {
 
     /// Returns `true` if a type is managed (will be allocated on the local heap)
     pub fn owns_managed<T>() -> bool;
-
-    pub fn visit_tydesc(td: *const TyDesc, tv: &mut TyVisitor);
 
     /// Calculates the offset from a pointer. The offset *must* be in-bounds of
     /// the object, or one-byte-past-the-end. An arithmetic overflow is also

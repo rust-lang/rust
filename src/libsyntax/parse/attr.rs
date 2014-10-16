@@ -63,7 +63,7 @@ impl<'a> ParserAttr for Parser<'a> {
     /// If permit_inner is true, then a leading `!` indicates an inner
     /// attribute
     fn parse_attribute(&mut self, permit_inner: bool) -> ast::Attribute {
-        debug!("parse_attributes: permit_inner={:?} self.token={:?}",
+        debug!("parse_attributes: permit_inner={} self.token={}",
                permit_inner, self.token);
         let (span, value, mut style) = match self.token {
             token::POUND => {

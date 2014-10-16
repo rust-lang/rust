@@ -101,7 +101,7 @@ pub fn trans_inline_asm<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, ia: &ast::InlineAsm)
         constraints.push_str(clobbers.as_slice());
     }
 
-    debug!("Asm Constraints: {:?}", constraints.as_slice());
+    debug!("Asm Constraints: {}", constraints.as_slice());
 
     let num_outputs = outputs.len();
 

@@ -8,15 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern crate debug;
-
 enum clam<T> { a(T, int), b, }
 
 fn uhoh<T>(v: Vec<clam<T>> ) {
     match *v.get(1) {
       a::<T>(ref _t, ref u) => {
           println!("incorrect");
-          println!("{:?}", u);
+          println!("{}", u);
           fail!();
       }
       b::<T> => { println!("correct"); }

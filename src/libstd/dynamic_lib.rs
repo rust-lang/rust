@@ -183,7 +183,7 @@ mod test {
         let expected_result = 1.0;
         let result = cosine(argument);
         if result != expected_result {
-            fail!("cos({:?}) != {:?} but equaled {:?} instead", argument,
+            fail!("cos({}) != {} but equaled {} instead", argument,
                    expected_result, result)
         }
     }

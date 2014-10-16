@@ -306,7 +306,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                         })
                     }
                 };
-                debug!("Adjustments for node {}: {:?}", id, resolved_adjustment);
+                debug!("Adjustments for node {}: {}", id, resolved_adjustment);
                 self.tcx().adjustments.borrow_mut().insert(
                     id, resolved_adjustment);
             }
@@ -319,7 +319,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         // Resolve any method map entry
         match self.fcx.inh.method_map.borrow_mut().pop(&method_call) {
             Some(method) => {
-                debug!("writeback::resolve_method_map_entry(call={:?}, entry={})",
+                debug!("writeback::resolve_method_map_entry(call={}, entry={})",
                        method_call,
                        method.repr(self.tcx()));
                 let new_method = MethodCallee {

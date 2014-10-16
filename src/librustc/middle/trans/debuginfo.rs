@@ -468,7 +468,7 @@ impl TypeMap {
                                                         &mut unique_type_id);
             },
             _ => {
-                cx.sess().bug(format!("get_unique_type_id_of_type() - unexpected type: {}, {:?}",
+                cx.sess().bug(format!("get_unique_type_id_of_type() - unexpected type: {}, {}",
                                       ppaux::ty_to_string(cx.tcx(), type_).as_slice(),
                                       ty::get(type_).sty).as_slice())
             }
@@ -783,14 +783,14 @@ pub fn create_global_var_metadata(cx: &CrateContext,
                                 format!("debuginfo::\
                                          create_global_var_metadata() -
                                          Captured var-id refers to \
-                                         unexpected ast_item variant: {:?}",
+                                         unexpected ast_item variant: {}",
                                         var_item).as_slice())
                 }
             }
         },
         _ => cx.sess().bug(format!("debuginfo::create_global_var_metadata() \
                                     - Captured var-id refers to unexpected \
-                                    ast_map variant: {:?}",
+                                    ast_map variant: {}",
                                    var_item).as_slice())
     };
 
@@ -846,7 +846,7 @@ pub fn create_local_var_metadata(bcx: Block, local: &ast::Local) {
             Some(datum) => datum,
             None => {
                 bcx.sess().span_bug(span,
-                    format!("no entry in lllocals table for {:?}",
+                    format!("no entry in lllocals table for {}",
                             node_id).as_slice());
             }
         };
@@ -896,7 +896,7 @@ pub fn create_captured_var_metadata(bcx: Block,
                                 format!(
                                 "debuginfo::create_captured_var_metadata() - \
                                  Captured var-id refers to unexpected \
-                                 ast_map variant: {:?}",
+                                 ast_map variant: {}",
                                  ast_item).as_slice());
                 }
             }
@@ -906,7 +906,7 @@ pub fn create_captured_var_metadata(bcx: Block,
               .span_bug(span,
                         format!("debuginfo::create_captured_var_metadata() - \
                                  Captured var-id refers to unexpected \
-                                 ast_map variant: {:?}",
+                                 ast_map variant: {}",
                                 ast_item).as_slice());
         }
     };
@@ -1009,7 +1009,7 @@ pub fn create_argument_metadata(bcx: Block, arg: &ast::Arg) {
             Some(v) => v,
             None => {
                 bcx.sess().span_bug(span,
-                    format!("no entry in lllocals table for {:?}",
+                    format!("no entry in lllocals table for {}",
                             node_id).as_slice());
             }
         };
@@ -1250,7 +1250,7 @@ pub fn create_function_debug_context(cx: &CrateContext,
                 _ => {
                     cx.sess()
                       .bug(format!("create_function_debug_context: \
-                                    unexpected sort of node: {:?}",
+                                    unexpected sort of node: {}",
                                     fnitem).as_slice())
                 }
             }
@@ -1261,7 +1261,7 @@ pub fn create_function_debug_context(cx: &CrateContext,
             return FunctionDebugContext { repr: FunctionWithoutDebugInfo };
         }
         _ => cx.sess().bug(format!("create_function_debug_context: \
-                                    unexpected sort of node: {:?}",
+                                    unexpected sort of node: {}",
                                    fnitem).as_slice())
     };
 
@@ -1542,7 +1542,7 @@ fn compile_unit_metadata(cx: &CrateContext) {
         }
     };
 
-    debug!("compile_unit_metadata: {:?}", compile_unit_name);
+    debug!("compile_unit_metadata: {}", compile_unit_name);
     let producer = format!("rustc version {}",
                            (option_env!("CFG_VERSION")).expect("CFG_VERSION"));
 
@@ -1703,7 +1703,7 @@ fn scope_metadata(fcx: &FunctionContext,
             let node = fcx.ccx.tcx().map.get(node_id);
 
             fcx.ccx.sess().span_bug(error_reporting_span,
-                format!("debuginfo: Could not find scope info for node {:?}",
+                format!("debuginfo: Could not find scope info for node {}",
                         node).as_slice());
         }
     }
@@ -1711,7 +1711,7 @@ fn scope_metadata(fcx: &FunctionContext,
 
 fn basic_type_metadata(cx: &CrateContext, t: ty::t) -> DIType {
 
-    debug!("basic_type_metadata: {:?}", ty::get(t));
+    debug!("basic_type_metadata: {}", ty::get(t));
 
     let (name, encoding) = match ty::get(t).sty {
         ty::ty_nil => ("()".to_string(), DW_ATE_unsigned),
@@ -2855,7 +2855,7 @@ fn type_metadata(cx: &CrateContext,
         }
     };
 
-    debug!("type_metadata: {:?}", ty::get(t));
+    debug!("type_metadata: {}", ty::get(t));
 
     let sty = &ty::get(t).sty;
     let MetadataCreationResult { metadata, already_stored_in_typemap } = match *sty {
@@ -2937,7 +2937,7 @@ fn type_metadata(cx: &CrateContext,
                                    usage_site_span).finalize(cx)
         }
         _ => {
-            cx.sess().bug(format!("debuginfo: unexpected type in type_metadata: {:?}",
+            cx.sess().bug(format!("debuginfo: unexpected type in type_metadata: {}",
                                   sty).as_slice())
         }
     };
@@ -3991,7 +3991,7 @@ fn namespace_for_item(cx: &CrateContext, def_id: ast::DefId) -> Rc<NamespaceTree
             Some(node) => node,
             None => {
                 cx.sess().bug(format!("debuginfo::namespace_for_item(): \
-                                       path too short for {:?}",
+                                       path too short for {}",
                                       def_id).as_slice());
             }
         }
