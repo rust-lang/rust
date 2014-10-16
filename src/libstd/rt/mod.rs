@@ -32,7 +32,7 @@ truly a global resource and generally operates independently of the
 rest of the runtime.
 
 All other runtime features are task-local, including the local heap,
-the garbage collector, local storage, logging and the stack unwinder.
+local storage, logging and the stack unwinder.
 
 The relationship between `rt` and the rest of the core library is
 not entirely clear yet and some modules will be moving into or
@@ -42,7 +42,6 @@ Several modules in `core` are clients of `rt`:
 
 * `std::task` - The user-facing interface to the Rust task model.
 * `std::local_data` - The interface to local data.
-* `std::gc` - The garbage collector.
 * `std::unstable::lang` - Miscellaneous lang items, some of which rely on `std::rt`.
 * `std::cleanup` - Local heap destruction.
 * `std::io` - In the future `std::io` will use an `rt` implementation.
