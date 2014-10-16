@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern: too big for the current ABI
+// error-pattern: too big for the current architecture
 
 fn main() {
     let n = 0u;
