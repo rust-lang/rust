@@ -10,7 +10,7 @@
 
 //! Collection types.
 //!
-//! See [../std/collections](std::collections) for a detailed discussion of collections in Rust.
+//! See [std::collections](../std/collections) for a detailed discussion of collections in Rust.
 
 
 #![crate_name = "collections"]
