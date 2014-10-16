@@ -189,7 +189,6 @@ mod test {
             }
         }
     }
-    impl BytesReader for InitialZeroByteReader {}
 
     struct EofReader;
 
@@ -198,7 +197,6 @@ mod test {
             Err(io::standard_error(io::EndOfFile))
         }
     }
-    impl BytesReader for EofReader {}
 
     struct ErroringReader;
 
@@ -207,7 +205,6 @@ mod test {
             Err(io::standard_error(io::InvalidInput))
         }
     }
-    impl BytesReader for ErroringReader {}
 
     struct PartialReader {
         count: int,

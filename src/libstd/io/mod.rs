@@ -929,13 +929,17 @@ pub trait AsRefReader {
     ///
     /// This is useful to allow applying adaptors while still
     /// retaining ownership of the original value.
-    fn by_ref<'a>(&'a mut self) -> RefReader<'a, Self> {
+    fn by_ref<'a>(&'a mut self) -> RefReader<'a, Self>;
+}
+
+impl<T: Reader> AsRefReader for T {
+    fn by_ref<'a>(&'a mut self) -> RefReader<'a, T> {
         RefReader { inner: self }
     }
 }
 
 /// A reader which can be converted to bytes.
-pub trait BytesReader: Reader {
+pub trait BytesReader {
     /// Create an iterator that reads a single byte on
     /// each iteration, until EOF.
     ///
@@ -943,7 +947,11 @@ pub trait BytesReader: Reader {
     ///
     /// Any error other than `EndOfFile` that is produced by the underlying Reader
     /// is returned by the iterator and should be handled by the caller.
-    fn bytes<'r>(&'r mut self) -> extensions::Bytes<'r, Self> {
+    fn bytes<'r>(&'r mut self) -> extensions::Bytes<'r, Self>;
+}
+
+impl<T: Reader> BytesReader for T {
+    fn bytes<'r>(&'r mut self) -> extensions::Bytes<'r, T> {
         extensions::Bytes::new(self)
     }
 }
@@ -1284,7 +1292,11 @@ pub trait AsRefWriter {
     /// This is useful to allow applying wrappers while still
     /// retaining ownership of the original value.
     #[inline]
-    fn by_ref<'a>(&'a mut self) -> RefWriter<'a, Self> {
+    fn by_ref<'a>(&'a mut self) -> RefWriter<'a, Self>;
+}
+
+impl<T: Writer> AsRefWriter for T {
+    fn by_ref<'a>(&'a mut self) -> RefWriter<'a, T> {
         RefWriter { inner: self }
     }
 }
