@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,8 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![allow(unreachable_code)]
+#![allow(dead_code)]
 
-fn dont_call_me() { fail!(); println!("{}", 1i); }
+static mut x: int = 3;
+static mut y: int = unsafe {
+    x
+//~^ ERROR cannot refer to other statics by value, use the address-of operator or a constant instea
+};
 
-pub fn main() { }
+fn main() {}

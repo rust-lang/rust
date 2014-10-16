@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,8 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![allow(unreachable_code)]
+enum A {
+    B(char),
+    C([Box<A>]),
+}
 
-fn dont_call_me() { fail!(); println!("{}", 1i); }
+fn c(c:char) -> A {
+    B(c) //~ ERROR cannot move a value of type A: the size of A cannot be statically determined
+}
 
-pub fn main() { }
+pub fn main() {}

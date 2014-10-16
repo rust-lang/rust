@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,8 +8,20 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![allow(unreachable_code)]
+trait MatrixRow {}
 
-fn dont_call_me() { fail!(); println!("{}", 1i); }
+struct Mat;
 
-pub fn main() { }
+impl<'a> MatrixRow for &'a Mat {}
+
+struct Rows<M: MatrixRow> {
+    mat: M,
+}
+
+impl<'a> Iterator<()> for Rows<&'a Mat> {
+    fn next(&mut self) -> Option<()> {
+        unimplemented!()
+    }
+}
+
+fn main() {}
