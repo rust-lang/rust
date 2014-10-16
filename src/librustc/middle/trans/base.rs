@@ -2468,24 +2468,6 @@ pub fn get_fn_llvm_attributes(ccx: &CrateContext, fn_ty: ty::t)
                      .arg(idx, llvm::DereferenceableAttribute(llsz));
             }
 
-            // The visit glue deals only with opaque pointers so we don't
-            // actually know the concrete type of Self thus we don't know how
-            // many bytes to mark as dereferenceable so instead we just mark
-            // it as nonnull which still holds true
-            ty::ty_rptr(b, ty::mt { ty: it, mutbl }) if match ty::get(it).sty {
-                ty::ty_param(_) => true, _ => false
-            } && mutbl == ast::MutMutable => {
-                attrs.arg(idx, llvm::NoAliasAttribute)
-                     .arg(idx, llvm::NonNullAttribute);
-
-                match b {
-                    ReLateBound(_, BrAnon(_)) => {
-                        attrs.arg(idx, llvm::NoCaptureAttribute);
-                    }
-                    _ => {}
-                }
-            }
-
             // `&mut` pointer parameters never alias other parameters, or mutable global data
             //
             // `&T` where `T` contains no `UnsafeCell<U>` is immutable, and can be marked as both
