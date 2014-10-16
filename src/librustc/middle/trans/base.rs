@@ -1088,7 +1088,7 @@ pub fn ignore_lhs(_bcx: Block, local: &ast::Local) -> bool {
 
 pub fn init_local<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, local: &ast::Local)
                               -> Block<'blk, 'tcx> {
-    debug!("init_local(bcx={}, local.id={:?})", bcx.to_str(), local.id);
+    debug!("init_local(bcx={}, local.id={})", bcx.to_str(), local.id);
     let _indenter = indenter();
     let _icx = push_ctxt("init_local");
     _match::store_local(bcx, local)
@@ -2468,24 +2468,6 @@ pub fn get_fn_llvm_attributes(ccx: &CrateContext, fn_ty: ty::t)
                      .arg(idx, llvm::DereferenceableAttribute(llsz));
             }
 
-            // The visit glue deals only with opaque pointers so we don't
-            // actually know the concrete type of Self thus we don't know how
-            // many bytes to mark as dereferenceable so instead we just mark
-            // it as nonnull which still holds true
-            ty::ty_rptr(b, ty::mt { ty: it, mutbl }) if match ty::get(it).sty {
-                ty::ty_param(_) => true, _ => false
-            } && mutbl == ast::MutMutable => {
-                attrs.arg(idx, llvm::NoAliasAttribute)
-                     .arg(idx, llvm::NonNullAttribute);
-
-                match b {
-                    ReLateBound(_, BrAnon(_)) => {
-                        attrs.arg(idx, llvm::NoCaptureAttribute);
-                    }
-                    _ => {}
-                }
-            }
-
             // `&mut` pointer parameters never alias other parameters, or mutable global data
             //
             // `&T` where `T` contains no `UnsafeCell<U>` is immutable, and can be marked as both
@@ -2672,7 +2654,7 @@ fn contains_null(s: &str) -> bool {
 }
 
 pub fn get_item_val(ccx: &CrateContext, id: ast::NodeId) -> ValueRef {
-    debug!("get_item_val(id=`{:?}`)", id);
+    debug!("get_item_val(id=`{}`)", id);
 
     match ccx.item_vals().borrow().find_copy(&id) {
         Some(v) => return v,
@@ -2857,7 +2839,7 @@ pub fn get_item_val(ccx: &CrateContext, id: ast::NodeId) -> ValueRef {
         }
 
         ref variant => {
-            ccx.sess().bug(format!("get_item_val(): unexpected variant: {:?}",
+            ccx.sess().bug(format!("get_item_val(): unexpected variant: {}",
                                    variant).as_slice())
         }
     };

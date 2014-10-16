@@ -264,14 +264,14 @@ impl Loan {
     }
 }
 
-#[deriving(PartialEq, Eq, Hash)]
+#[deriving(PartialEq, Eq, Hash, Show)]
 pub enum LoanPath {
     LpVar(ast::NodeId),               // `x` in doc.rs
     LpUpvar(ty::UpvarId),             // `x` captured by-value into closure
     LpExtend(Rc<LoanPath>, mc::MutabilityCategory, LoanPathElem)
 }
 
-#[deriving(PartialEq, Eq, Hash)]
+#[deriving(PartialEq, Eq, Hash, Show)]
 pub enum LoanPathElem {
     LpDeref(mc::PointerKind),    // `*LV` in doc.rs
     LpInterior(mc::InteriorKind) // `LV.f` in doc.rs
@@ -421,6 +421,7 @@ pub enum AliasableViolationKind {
     BorrowViolation(euv::LoanCause)
 }
 
+#[deriving(Show)]
 pub enum MovedValueUseKind {
     MovedInUse,
     MovedInCapture,
@@ -530,8 +531,8 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                         (ty::expr_ty_adjusted(self.tcx, &*expr), expr.span)
                     }
                     r => {
-                        self.tcx.sess.bug(format!("MoveExpr({:?}) maps to \
-                                                   {:?}, not Expr",
+                        self.tcx.sess.bug(format!("MoveExpr({}) maps to \
+                                                   {}, not Expr",
                                                   the_move.id,
                                                   r).as_slice())
                     }
@@ -566,8 +567,8 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                         (ty::expr_ty_adjusted(self.tcx, &*expr), expr.span)
                     }
                     r => {
-                        self.tcx.sess.bug(format!("Captured({:?}) maps to \
-                                                   {:?}, not Expr",
+                        self.tcx.sess.bug(format!("Captured({}) maps to \
+                                                   {}, not Expr",
                                                   the_move.id,
                                                   r).as_slice())
                     }
@@ -892,7 +893,7 @@ impl DataFlowOperator for LoanDataFlowOperator {
 
 impl Repr for Loan {
     fn repr(&self, tcx: &ty::ctxt) -> String {
-        format!("Loan_{:?}({}, {:?}, {:?}-{:?}, {})",
+        format!("Loan_{}({}, {}, {}-{}, {})",
                  self.index,
                  self.loan_path.repr(tcx),
                  self.kind,

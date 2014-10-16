@@ -67,7 +67,6 @@
 
 extern crate alloc;
 extern crate libc;
-#[cfg(test)] extern crate debug;
 
 use std::os;
 use std::rt;

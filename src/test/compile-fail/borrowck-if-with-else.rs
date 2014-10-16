@@ -8,9 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern crate debug;
-
-fn foo(x: int) { println!("{:?}", x); }
+fn foo(x: int) { println!("{}", x); }
 
 fn main() {
     let x: int;

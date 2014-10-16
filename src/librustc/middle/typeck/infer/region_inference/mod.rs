@@ -81,7 +81,7 @@ pub enum CombineMapType {
     Lub, Glb
 }
 
-#[deriving(Clone)]
+#[deriving(Clone, Show)]
 pub enum RegionResolutionError {
     /// `ConcreteFailure(o, a, b)`:
     ///
@@ -133,7 +133,7 @@ pub enum RegionResolutionError {
 /// ```
 /// would report an error because we expect 'a and 'b to match, and so we group
 /// 'a and 'b together inside a SameRegions struct
-#[deriving(Clone)]
+#[deriving(Clone, Show)]
 pub struct SameRegions {
     pub scope_id: ast::NodeId,
     pub regions: Vec<BoundRegion>

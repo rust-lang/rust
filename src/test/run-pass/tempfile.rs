@@ -18,8 +18,6 @@
 // they're in a different location than before. Hence, these tests are all run
 // serially here.
 
-extern crate debug;
-
 use std::io::fs::PathExtensions;
 use std::io::{fs, TempDir};
 use std::io;
@@ -126,7 +124,7 @@ fn test_rm_tempdir_close() {
 fn recursive_mkdir_rel() {
     let path = Path::new("frob");
     let cwd = os::getcwd();
-    println!("recursive_mkdir_rel: Making: {} in cwd {} [{:?}]", path.display(),
+    println!("recursive_mkdir_rel: Making: {} in cwd {} [{}]", path.display(),
            cwd.display(), path.exists());
     fs::mkdir_recursive(&path, io::USER_RWX);
     assert!(path.is_dir());
@@ -144,7 +142,7 @@ fn recursive_mkdir_dot() {
 fn recursive_mkdir_rel_2() {
     let path = Path::new("./frob/baz");
     let cwd = os::getcwd();
-    println!("recursive_mkdir_rel_2: Making: {} in cwd {} [{:?}]", path.display(),
+    println!("recursive_mkdir_rel_2: Making: {} in cwd {} [{}]", path.display(),
            cwd.display(), path.exists());
     fs::mkdir_recursive(&path, io::USER_RWX);
     assert!(path.is_dir());

@@ -8,10 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern crate debug;
-
 mod foo {
-    pub fn x(y: int) { println!("{:?}", y); }
+    pub fn x(y: int) { println!("{}", y); }
 }
 
 mod bar {

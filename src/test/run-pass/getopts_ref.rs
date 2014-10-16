@@ -9,7 +9,6 @@
 // except according to those terms.
 
 extern crate getopts;
-extern crate debug;
 
 use getopts::{optopt, getopts};
 

@@ -30,7 +30,6 @@
 
 extern crate arena;
 extern crate fmt_macros;
-extern crate debug;
 #[phase(plugin, link)] extern crate log;
 extern crate serialize;
 extern crate term;

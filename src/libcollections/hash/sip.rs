@@ -402,7 +402,7 @@ mod tests {
             debug!("siphash test {}: {}", t, buf);
             let vec = u8to64_le!(vecs[t], 0);
             let out = hash_with_keys(k0, k1, &Bytes(buf.as_slice()));
-            debug!("got {:?}, expected {:?}", out, vec);
+            debug!("got {}, expected {}", out, vec);
             assert_eq!(vec, out);
 
             state_full.reset();
@@ -411,9 +411,6 @@ mod tests {
             let i = result_str(state_inc.result());
             let v = to_hex_str(&vecs[t]);
             debug!("{}: ({}) => inc={} full={}", t, v, i, f);
-
-            debug!("full state {:?}", state_full);
-            debug!("inc  state {:?}", state_inc);
 
             assert_eq!(f, i);
             assert_eq!(f, v);

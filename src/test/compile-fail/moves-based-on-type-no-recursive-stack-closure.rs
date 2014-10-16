@@ -12,8 +12,6 @@
 // bound must be noncopyable. For details see
 // http://smallcultfollowing.com/babysteps/blog/2013/04/30/the-case-of-the-recurring-closure/
 
-extern crate debug;
-
 struct R<'a> {
     // This struct is needed to create the
     // otherwise infinite type of a fn that
@@ -31,7 +29,7 @@ fn innocent_looking_victim() {
                 Some(ref msg) => {
                     (f.c)(f, true);
                     //~^ ERROR: cannot borrow `*f` as mutable because
-                    println!("{:?}", msg);
+                    println!("{}", msg);
                 },
                 None => fail!("oops"),
             }

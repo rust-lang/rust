@@ -118,7 +118,7 @@ pub fn trans_fixed_vstore<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     // to store the array of the suitable size, so all we have to do is
     // generate the content.
 
-    debug!("trans_fixed_vstore(expr={}, dest={:?})",
+    debug!("trans_fixed_vstore(expr={}, dest={})",
            bcx.expr_to_string(expr), dest.to_string(bcx.ccx()));
 
     let vt = vec_types_from_expr(bcx, expr);
@@ -175,7 +175,7 @@ pub fn trans_slice_vec<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     // Handle the &[...] case:
     let vt = vec_types_from_expr(bcx, content_expr);
     let count = elements_required(bcx, content_expr);
-    debug!("    vt={}, count={:?}", vt.to_string(ccx), count);
+    debug!("    vt={}, count={}", vt.to_string(ccx), count);
     let llcount = C_uint(ccx, count);
 
     let fixed_ty = ty::mk_vec(bcx.tcx(),
@@ -249,7 +249,7 @@ pub fn write_content<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let fcx = bcx.fcx;
     let mut bcx = bcx;
 
-    debug!("write_content(vt={}, dest={}, vstore_expr={:?})",
+    debug!("write_content(vt={}, dest={}, vstore_expr={})",
            vt.to_string(bcx.ccx()),
            dest.to_string(bcx.ccx()),
            bcx.expr_to_string(vstore_expr));
@@ -291,7 +291,7 @@ pub fn write_content<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                     let temp_scope = fcx.push_custom_cleanup_scope();
                     for (i, element) in elements.iter().enumerate() {
                         let lleltptr = GEPi(bcx, lldest, [i]);
-                        debug!("writing index {:?} with lleltptr={:?}",
+                        debug!("writing index {} with lleltptr={}",
                                i, bcx.val_to_string(lleltptr));
                         bcx = expr::trans_into(bcx, &**element,
                                                SaveIn(lleltptr));

@@ -51,7 +51,7 @@
 
 TARGET_CRATES := libc std green native flate arena glob term semver \
                  uuid serialize sync getopts collections num test time rand \
-                 url log regex graphviz core rbml rlibc alloc debug rustrt \
+                 url log regex graphviz core rbml rlibc alloc rustrt \
                  unicode
 HOST_CRATES := syntax rustc rustdoc fourcc hexfloat regex_macros fmt_macros \
 	       rustc_llvm rustc_back
@@ -63,20 +63,19 @@ DEPS_libc := core
 DEPS_rlibc := core
 DEPS_unicode := core
 DEPS_alloc := core libc native:jemalloc
-DEPS_debug := std
 DEPS_rustrt := alloc core libc collections native:rustrt_native
 DEPS_std := core libc rand alloc collections rustrt sync unicode \
 	native:rust_builtin native:backtrace
 DEPS_graphviz := std
 DEPS_green := std native:context_switch
 DEPS_native := std
-DEPS_syntax := std term serialize log fmt_macros debug arena libc
+DEPS_syntax := std term serialize log fmt_macros arena libc
 DEPS_rustc := syntax flate arena serialize getopts rbml \
-              time log graphviz debug rustc_llvm rustc_back
+              time log graphviz rustc_llvm rustc_back
 DEPS_rustc_llvm := native:rustllvm libc std
 DEPS_rustc_back := std syntax rustc_llvm flate log libc
 DEPS_rustdoc := rustc native:hoedown serialize getopts \
-                test time debug
+                test time
 DEPS_flate := std native:miniz
 DEPS_arena := std
 DEPS_graphviz := std

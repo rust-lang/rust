@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern crate debug;
-
 struct A { x: uint }
 
 impl Drop for A {
@@ -21,7 +19,7 @@ pub fn main() {
 
     match a {
         A { x : ref x } => {
-            println!("{:?}", x)
+            println!("{}", x)
         }
     }
 }

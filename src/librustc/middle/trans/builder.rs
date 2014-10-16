@@ -795,11 +795,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                          else          { llvm::False };
 
         let argtys = inputs.iter().map(|v| {
-            debug!("Asm Input Type: {:?}", self.ccx.tn().val_to_string(*v));
+            debug!("Asm Input Type: {}", self.ccx.tn().val_to_string(*v));
             val_ty(*v)
         }).collect::<Vec<_>>();
 
-        debug!("Asm Output Type: {:?}", self.ccx.tn().type_to_string(output));
+        debug!("Asm Output Type: {}", self.ccx.tn().type_to_string(output));
         let fty = Type::func(argtys.as_slice(), &output);
         unsafe {
             let v = llvm::LLVMInlineAsm(

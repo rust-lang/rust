@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern crate debug;
-
 fn main() {
-    println!("{:?}", x); //~ ERROR unresolved name `x`.
+    println!("{}", x); //~ ERROR unresolved name `x`.
 }

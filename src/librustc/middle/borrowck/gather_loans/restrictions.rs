@@ -21,6 +21,7 @@ use util::ppaux::Repr;
 
 use std::rc::Rc;
 
+#[deriving(Show)]
 pub enum RestrictionResult {
     Safe,
     SafeIf(Rc<LoanPath>, Vec<Rc<LoanPath>>)

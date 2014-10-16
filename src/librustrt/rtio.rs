@@ -356,6 +356,7 @@ pub trait PausableIdleCallback {
 
 pub trait RtioSignal {}
 
+#[deriving(Show)]
 pub struct IoError {
     pub code: uint,
     pub extra: uint,

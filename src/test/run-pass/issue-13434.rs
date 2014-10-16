@@ -8,8 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern crate debug;
-
+#[deriving(Show)]
 struct MyStruct;
 
 trait Repro {
@@ -27,5 +26,5 @@ fn do_stuff<R: Repro>(r: R) -> String {
 }
 
 pub fn main() {
-  assert_eq!("MyStruct".to_string(), do_stuff(|s: MyStruct| format!("{:?}", s)));
+  assert_eq!("MyStruct".to_string(), do_stuff(|s: MyStruct| format!("{}", s)));
 }

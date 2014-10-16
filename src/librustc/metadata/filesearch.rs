@@ -39,7 +39,7 @@ impl<'a> FileSearch<'a> {
         let mut visited_dirs = HashSet::new();
         let mut found = false;
 
-        debug!("filesearch: searching additional lib search paths [{:?}]",
+        debug!("filesearch: searching additional lib search paths [{}]",
                self.addl_lib_search_paths.borrow().len());
         for path in self.addl_lib_search_paths.borrow().iter() {
             match f(path) {
@@ -66,7 +66,7 @@ impl<'a> FileSearch<'a> {
             for path in rustpath.iter() {
                 let tlib_path = make_rustpkg_lib_path(
                     self.sysroot, path, self.triple);
-                debug!("is {} in visited_dirs? {:?}", tlib_path.display(),
+                debug!("is {} in visited_dirs? {}", tlib_path.display(),
                         visited_dirs.contains_equiv(&tlib_path.as_vec().to_vec()));
 
                 if !visited_dirs.contains_equiv(&tlib_path.as_vec()) {

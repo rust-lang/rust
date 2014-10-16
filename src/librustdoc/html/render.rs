@@ -1042,7 +1042,7 @@ impl Context {
     /// sure it always points to the top (relatively)
     fn recurse<T>(&mut self, s: String, f: |&mut Context| -> T) -> T {
         if s.len() == 0 {
-            fail!("what {:?}", self);
+            fail!("Unexpected empty destination: {}", self.current);
         }
         let prev = self.dst.clone();
         self.dst.push(s.as_slice());
@@ -1491,7 +1491,7 @@ fn item_module(w: &mut fmt::Formatter, cx: &Context,
 
     indices.sort_by(|&i1, &i2| cmp(&items[i1], &items[i2], i1, i2));
 
-    debug!("{:?}", indices);
+    debug!("{}", indices);
     let mut curty = None;
     for &idx in indices.iter() {
         let myitem = &items[idx];

@@ -643,7 +643,7 @@ impl<'a, 'tcx> LookupContext<'a, 'tcx> {
                                            rcvr_ty: ty::t,
                                            restrict_to: Option<DefId>,
                                            param_ty: ParamTy) {
-        debug!("push_inherent_candidates_from_param(param_ty={:?})",
+        debug!("push_inherent_candidates_from_param(param_ty={})",
                param_ty);
         self.push_inherent_candidates_from_bounds(
             rcvr_ty,
@@ -754,7 +754,7 @@ impl<'a, 'tcx> LookupContext<'a, 'tcx> {
                     }
                 }
                 None => {
-                    debug!("trait doesn't contain method: {:?}",
+                    debug!("trait doesn't contain method: {}",
                         bound_trait_ref.def_id);
                     // check next trait or bound
                 }
@@ -873,7 +873,7 @@ impl<'a, 'tcx> LookupContext<'a, 'tcx> {
             None => None,
             Some(method) => {
                 debug!("(searching for autoderef'd method) writing \
-                       adjustment {:?} for {}", adjustment, self.ty_to_string(self_ty));
+                       adjustment {} for {}", adjustment, self.ty_to_string(self_ty));
                 match adjustment {
                     Some((self_expr_id, adj)) => {
                         self.fcx.write_adjustment(self_expr_id, self.span, adj);
@@ -1759,7 +1759,7 @@ impl<'a, 'tcx> LookupContext<'a, 'tcx> {
 impl Repr for Candidate {
     fn repr(&self, tcx: &ty::ctxt) -> String {
         format!("Candidate(rcvr_ty={}, rcvr_substs={}, method_ty={}, \
-                 origin={:?})",
+                 origin={})",
                 self.rcvr_match_condition.repr(tcx),
                 self.rcvr_substs.repr(tcx),
                 self.method_ty.repr(tcx),

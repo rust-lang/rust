@@ -210,7 +210,7 @@ pub fn const_expr(cx: &CrateContext, e: &ast::Expr) -> (ValueRef, ty::t) {
                 ty::AdjustAddEnv(store) => {
                     cx.sess()
                       .span_bug(e.span,
-                                format!("unexpected static function: {:?}",
+                                format!("unexpected static function: {}",
                                         store).as_slice())
                 }
                 ty::AdjustDerefRef(ref adj) => {
@@ -279,7 +279,7 @@ pub fn const_expr(cx: &CrateContext, e: &ast::Expr) -> (ValueRef, ty::t) {
                                     cx.sess()
                                       .span_bug(e.span,
                                                 format!("unimplemented const \
-                                                         autoref {:?}",
+                                                         autoref {}",
                                                         autoref).as_slice())
                                 }
                             }

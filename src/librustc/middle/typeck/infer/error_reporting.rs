@@ -268,7 +268,7 @@ impl<'a, 'tcx> ErrorReporting for InferCtxt<'a, 'tcx> {
                 }
             }
             let pe = ProcessedErrors(var_origins, trace_origins, same_regions);
-            debug!("errors processed: {:?}", pe);
+            debug!("errors processed: {}", pe);
             processed_errors.push(pe);
         }
         return processed_errors;
@@ -297,7 +297,7 @@ impl<'a, 'tcx> ErrorReporting for InferCtxt<'a, 'tcx> {
                                      sub: Region,
                                      sup: Region)
                                      -> Option<FreeRegionsFromSameFn> {
-            debug!("free_regions_from_same_fn(sub={:?}, sup={:?})", sub, sup);
+            debug!("free_regions_from_same_fn(sub={}, sup={})", sub, sup);
             let (scope_id, fr1, fr2) = match (sub, sup) {
                 (ReFree(fr1), ReFree(fr2)) => {
                     if fr1.scope_id != fr2.scope_id {

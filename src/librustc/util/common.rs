@@ -13,6 +13,7 @@
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
+use std::fmt::Show;
 use syntax::ast;
 use syntax::visit;
 use syntax::visit::Visitor;
@@ -36,12 +37,12 @@ pub fn time<T, U>(do_it: bool, what: &str, u: U, f: |U| -> T) -> T {
     rv
 }
 
-pub fn indent<R>(op: || -> R) -> R {
+pub fn indent<R: Show>(op: || -> R) -> R {
     // Use in conjunction with the log post-processor like `src/etc/indenter`
     // to make debug output more readable.
     debug!(">>");
     let r = op();
-    debug!("<< (Result = {:?})", r);
+    debug!("<< (Result = {})", r);
     r
 }
 

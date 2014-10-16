@@ -193,8 +193,8 @@ impl<'a, 'tcx, O:DataFlowOperator> DataFlowContext<'a, 'tcx, O> {
         let words_per_id = (bits_per_id + uint::BITS - 1) / uint::BITS;
         let num_nodes = cfg.graph.all_nodes().len();
 
-        debug!("DataFlowContext::new(analysis_name: {:s}, id_range={:?}, \
-                                     bits_per_id={:?}, words_per_id={:?}) \
+        debug!("DataFlowContext::new(analysis_name: {:s}, id_range={}, \
+                                     bits_per_id={}, words_per_id={}) \
                                      num_nodes: {}",
                analysis_name, id_range, bits_per_id, words_per_id,
                num_nodes);
@@ -222,7 +222,7 @@ impl<'a, 'tcx, O:DataFlowOperator> DataFlowContext<'a, 'tcx, O> {
 
     pub fn add_gen(&mut self, id: ast::NodeId, bit: uint) {
         //! Indicates that `id` generates `bit`
-        debug!("{:s} add_gen(id={:?}, bit={:?})",
+        debug!("{:s} add_gen(id={}, bit={})",
                self.analysis_name, id, bit);
         assert!(self.nodeid_to_index.contains_key(&id));
         assert!(self.bits_per_id > 0);
@@ -235,7 +235,7 @@ impl<'a, 'tcx, O:DataFlowOperator> DataFlowContext<'a, 'tcx, O> {
 
     pub fn add_kill(&mut self, id: ast::NodeId, bit: uint) {
         //! Indicates that `id` kills `bit`
-        debug!("{:s} add_kill(id={:?}, bit={:?})",
+        debug!("{:s} add_kill(id={}, bit={})",
                self.analysis_name, id, bit);
         assert!(self.nodeid_to_index.contains_key(&id));
         assert!(self.bits_per_id > 0);
@@ -336,7 +336,7 @@ impl<'a, 'tcx, O:DataFlowOperator> DataFlowContext<'a, 'tcx, O> {
         let cfgidx = to_cfgidx_or_die(id, &self.nodeid_to_index);
         let (start, end) = self.compute_id_range(cfgidx);
         let gens = self.gens.slice(start, end);
-        debug!("{:s} each_gen_bit(id={:?}, gens={})",
+        debug!("{:s} each_gen_bit(id={}, gens={})",
                self.analysis_name, id, bits_to_string(gens));
         self.each_bit(gens, f)
     }
@@ -408,7 +408,7 @@ impl<'a, 'tcx, O:DataFlowOperator> DataFlowContext<'a, 'tcx, O> {
                     }
                     None => {
                         debug!("{:s} add_kills_from_flow_exits flow_exit={} \
-                                no cfg_idx for exiting_scope={:?}",
+                                no cfg_idx for exiting_scope={}",
                                self.analysis_name, flow_exit, node_id);
                     }
                 }
@@ -529,7 +529,7 @@ impl<'a, 'b, 'tcx, O:DataFlowOperator> PropagationContext<'a, 'b, 'tcx, O> {
             bitwise(on_entry, pred_bits, &self.dfcx.oper)
         };
         if changed {
-            debug!("{:s} changed entry set for {:?} to {}",
+            debug!("{:s} changed entry set for {} to {}",
                    self.dfcx.analysis_name, cfgidx,
                    bits_to_string(self.dfcx.on_entry.slice(start, end)));
             self.changed = true;

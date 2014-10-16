@@ -308,7 +308,7 @@ pub fn empty_generics() -> Generics {
 // ______________________________________________________________________
 // Enumerating the IDs which appear in an AST
 
-#[deriving(Encodable, Decodable)]
+#[deriving(Encodable, Decodable, Show)]
 pub struct IdRange {
     pub min: NodeId,
     pub max: NodeId,

@@ -171,7 +171,7 @@ impl<'a, 'tcx> AstConv<'tcx> for CrateCtxt<'a, 'tcx> {
             }
             x => {
                 self.tcx.sess.bug(format!("unexpected sort of node \
-                                           in get_item_ty(): {:?}",
+                                           in get_item_ty(): {}",
                                           x).as_slice());
             }
         }
@@ -1421,7 +1421,7 @@ pub fn trait_def_of_item(ccx: &CrateCtxt, it: &ast::Item) -> Rc<ty::TraitDef> {
         ref s => {
             tcx.sess.span_bug(
                 it.span,
-                format!("trait_def_of_item invoked on {:?}", s).as_slice());
+                format!("trait_def_of_item invoked on {}", s).as_slice());
         }
     };
 

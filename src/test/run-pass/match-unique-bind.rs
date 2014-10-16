@@ -8,12 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern crate debug;
-
 pub fn main() {
     match box 100i {
       box x => {
-        println!("{:?}", x);
+        println!("{}", x);
         assert_eq!(x, 100);
       }
     }

@@ -43,6 +43,7 @@ use syntax::parse::token;
 // def-id will depend on where it originated from.  Therefore, the conversion
 // function is given an indicator of the source of the def-id.  See
 // astencode.rs for more information.
+#[deriving(Show)]
 pub enum DefIdSource {
     // Identifies a struct, trait, enum, etc.
     NominalType,
@@ -390,7 +391,7 @@ fn parse_ty(st: &mut PState, conv: conv_did) -> ty::t {
       }
       'p' => {
         let did = parse_def(st, TypeParameter, |x,y| conv(x,y));
-        debug!("parsed ty_param: did={:?}", did);
+        debug!("parsed ty_param: did={}", did);
         let index = parse_uint(st);
         assert_eq!(next(st), '|');
         let space = parse_param_space(st);
@@ -603,12 +604,12 @@ pub fn parse_def_id(buf: &[u8]) -> ast::DefId {
 
     let crate_num = match uint::parse_bytes(crate_part, 10u) {
        Some(cn) => cn as ast::CrateNum,
-       None => fail!("internal error: parse_def_id: crate number expected, found {:?}",
+       None => fail!("internal error: parse_def_id: crate number expected, found {}",
                      crate_part)
     };
     let def_num = match uint::parse_bytes(def_part, 10u) {
        Some(dn) => dn as ast::NodeId,
-       None => fail!("internal error: parse_def_id: id expected, found {:?}",
+       None => fail!("internal error: parse_def_id: id expected, found {}",
                      def_part)
     };
     ast::DefId { krate: crate_num, node: def_num }

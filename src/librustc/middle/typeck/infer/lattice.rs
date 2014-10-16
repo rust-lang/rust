@@ -123,7 +123,7 @@ pub fn var_ids<'tcx, T: Combine<'tcx>>(this: &T,
             r => {
                 this.infcx().tcx.sess.span_bug(
                     this.trace().origin.span(),
-                    format!("found non-region-vid: {:?}", r).as_slice());
+                    format!("found non-region-vid: {}", r).as_slice());
             }
         }).collect()
 }

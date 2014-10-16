@@ -550,7 +550,7 @@ pub fn get_wrapper_for_bare_fn(ccx: &CrateContext,
         _ => {
             ccx.sess().bug(format!("get_wrapper_for_bare_fn: \
                                     expected a statically resolved fn, got \
-                                    {:?}",
+                                    {}",
                                     def).as_slice());
         }
     };

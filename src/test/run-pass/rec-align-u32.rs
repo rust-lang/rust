@@ -12,8 +12,6 @@
 
 #![feature(intrinsics)]
 
-extern crate debug;
-
 use std::mem;
 
 mod rusti {
@@ -24,12 +22,14 @@ mod rusti {
 }
 
 // This is the type with the questionable alignment
+#[deriving(Show)]
 struct Inner {
     c64: u32
 }
 
 // This is the type that contains the type with the
 // questionable alignment, for testing
+#[deriving(Show)]
 struct Outer {
     c8: u8,
     t: Inner
@@ -53,10 +53,10 @@ pub fn main() {
         let x = Outer {c8: 22u8, t: Inner {c64: 44u32}};
 
         // Send it through the shape code
-        let y = format!("{:?}", x);
+        let y = format!("{}", x);
 
-        println!("align inner = {:?}", rusti::min_align_of::<Inner>());
-        println!("size outer = {:?}", mem::size_of::<Outer>());
+        println!("align inner = {}", rusti::min_align_of::<Inner>());
+        println!("size outer = {}", mem::size_of::<Outer>());
         println!("y = {}", y);
 
         // per clang/gcc the alignment of `inner` is 4 on x86.
@@ -66,6 +66,6 @@ pub fn main() {
         // because `inner`s alignment was 4.
         assert_eq!(mem::size_of::<Outer>(), m::size());
 
-        assert_eq!(y, "Outer{c8: 22u8, t: Inner{c64: 44u32}}".to_string());
+        assert_eq!(y, "Outer { c8: 22, t: Inner { c64: 44 } }".to_string());
     }
 }

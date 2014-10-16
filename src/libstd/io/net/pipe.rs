@@ -340,7 +340,7 @@ mod tests {
                         assert!(e.kind == BrokenPipe ||
                                 e.kind == NotConnected ||
                                 e.kind == ConnectionReset,
-                                "unknown error {:?}", e);
+                                "unknown error {}", e);
                         break;
                     }
                 }
