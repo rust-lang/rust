@@ -412,8 +412,9 @@ would look like with respect to its set of C dependencies.
 As the release of Rust 1.0 comes closer, the use of complier plugins has become
 increasingly worrying over time. It is likely that plugins will not be available
 by default in the stable and beta release channels of Rust. Many core cargo
-packages in the ecosystem today, such as rust-http and gl-rs, depend on plugins
-to build.
+packages in the ecosystem today, such as gl-rs and iron, depend on plugins
+to build. Others, like rust-http, are already using compile-time code generation
+with a build script (which this RFC will attempt to standardize on).
 
 When taking a closer look at these crate's dependence on plugins it's discovered
 that the primary use case is generating rust code at compile time. For gl-rs,
