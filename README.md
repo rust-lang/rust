@@ -44,6 +44,7 @@ the direction the language is evolving in.
 * [0231-upvar-capture-inference.md](text/0231-upvar-capture-inference.md)
 * [0240-unsafe-api-location.md](text/0240-unsafe-api-location.md)
 * [0246-const-vs-static.md](text/0246-const-vs-static.md)
+* [0255-object-safety.md](text/0255-object-safety.md)
 * [0326-restrict-xXX-to-ascii](text/0326-restrict-xXX-to-ascii.md)
 * [0341-remove-virtual-structs.md](text/0341-remove-virtual-structs.md)
 * [0342-keywords.md](text/0342-keywords.md)
