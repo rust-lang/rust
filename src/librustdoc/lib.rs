@@ -19,7 +19,6 @@
 #![feature(globs, struct_variant, macro_rules, phase, slicing_syntax)]
 
 extern crate arena;
-extern crate debug;
 extern crate getopts;
 extern crate libc;
 extern crate rustc;
@@ -334,7 +333,7 @@ fn rust_input(cratefile: &str, externs: core::Externs, matches: &getopts::Matche
     let (mut krate, analysis) = std::task::try(proc() {
         let cr = cr;
         core::run_core(libs, cfgs, externs, &cr, triple)
-    }).map_err(|boxed_any|format!("{:?}", boxed_any)).unwrap();
+    }).map_err(|_| "rustc failed").unwrap();
     info!("finished with rustc");
     analysiskey.replace(Some(analysis));
 
@@ -481,7 +480,7 @@ fn json_output(krate: clean::Crate, res: Vec<plugins::PluginJson> ,
     };
     let crate_json = match json::from_str(crate_json_str.as_slice()) {
         Ok(j) => j,
-        Err(e) => fail!("Rust generated JSON is invalid: {:?}", e)
+        Err(e) => fail!("Rust generated JSON is invalid: {}", e)
     };
 
     json.insert("crate".to_string(), crate_json);

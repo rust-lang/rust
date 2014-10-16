@@ -8,10 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern crate debug;
-
 use std::mem::swap;
 
+#[deriving(Show)]
 struct Ints {sum: Box<int>, values: Vec<int> }
 
 fn add_int(x: &mut Ints, v: int) {
@@ -37,5 +36,5 @@ pub fn main() {
         true
     });
 
-    println!("ints={:?}", ints);
+    println!("ints={}", ints);
 }

@@ -38,7 +38,7 @@ pub fn monomorphic_fn(ccx: &CrateContext,
     debug!("monomorphic_fn(\
             fn_id={}, \
             real_substs={}, \
-            ref_id={:?})",
+            ref_id={})",
            fn_id.repr(ccx.tcx()),
            real_substs.repr(ccx.tcx()),
            ref_id);
@@ -70,7 +70,7 @@ pub fn monomorphic_fn(ccx: &CrateContext,
     debug!("monomorphic_fn(\
             fn_id={}, \
             psubsts={}, \
-            hash_id={:?})",
+            hash_id={})",
            fn_id.repr(ccx.tcx()),
            psubsts.repr(ccx.tcx()),
            hash_id);
@@ -82,7 +82,7 @@ pub fn monomorphic_fn(ccx: &CrateContext,
         ccx.sess(),
         ccx.tcx().map.find(fn_id.node),
         || {
-            format!("while monomorphizing {:?}, couldn't find it in \
+            format!("while monomorphizing {}, couldn't find it in \
                      the item map (may have attempted to monomorphize \
                      an item defined in a different crate?)",
                     fn_id)
@@ -247,7 +247,7 @@ pub fn monomorphic_fn(ccx: &CrateContext,
                     d
                 }
                 _ => {
-                    ccx.sess().bug(format!("can't monomorphize a {:?}",
+                    ccx.sess().bug(format!("can't monomorphize a {}",
                                            map_node).as_slice())
                 }
             }
@@ -273,7 +273,7 @@ pub fn monomorphic_fn(ccx: &CrateContext,
         ast_map::NodeBlock(..) |
         ast_map::NodePat(..) |
         ast_map::NodeLocal(..) => {
-            ccx.sess().bug(format!("can't monomorphize a {:?}",
+            ccx.sess().bug(format!("can't monomorphize a {}",
                                    map_node).as_slice())
         }
     };
@@ -284,7 +284,7 @@ pub fn monomorphic_fn(ccx: &CrateContext,
     (lldecl, true)
 }
 
-#[deriving(PartialEq, Eq, Hash)]
+#[deriving(PartialEq, Eq, Hash, Show)]
 pub struct MonoId {
     pub def: ast::DefId,
     pub params: subst::VecPerParamSpace<ty::t>

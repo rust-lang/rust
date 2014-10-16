@@ -13,12 +13,11 @@
 // clobber the previous node ID in a macro expr
 
 extern crate collections;
-extern crate debug;
 
 use std::collections::HashMap;
 
 fn add_interfaces(managed_ip: String, device: HashMap<String, int>)  {
-     println!("{}, {:?}", managed_ip, device.get(&"interfaces".to_string()));
+     println!("{}, {}", managed_ip, device.get(&"interfaces".to_string()));
 }
 
 pub fn main() {}

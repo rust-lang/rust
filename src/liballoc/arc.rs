@@ -317,8 +317,6 @@ mod tests {
 
         assert_eq!((*arc_v)[2], 3);
         assert_eq!((*arc_v)[4], 5);
-
-        info!("{:?}", arc_v);
     }
 
     #[test]

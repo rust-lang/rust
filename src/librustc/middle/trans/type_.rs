@@ -197,7 +197,6 @@ impl Type {
         let elems = [int_ty,     // size
                      int_ty,     // align
                      glue_fn_ty, // drop
-                     glue_fn_ty, // visit
                      str_slice_ty]; // name
         tydesc.set_struct_body(elems, false);
 

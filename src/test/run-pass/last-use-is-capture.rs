@@ -10,13 +10,11 @@
 
 // Make sure #1399 stays fixed
 
-extern crate debug;
-
 struct A { a: Box<int> }
 
 pub fn main() {
     fn invoke(f: ||) { f(); }
     let k = box 22i;
     let _u = A {a: k.clone()};
-    invoke(|| println!("{:?}", k.clone()) )
+    invoke(|| println!("{}", k.clone()) )
 }

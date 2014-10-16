@@ -1975,7 +1975,7 @@ mod tests {
         let path = os::self_exe_name();
         assert!(path.is_some());
         let path = path.unwrap();
-        debug!("{:?}", path.clone());
+        debug!("{}", path.display());
 
         // Hard to test this function
         assert!(path.is_absolute());
@@ -1986,7 +1986,7 @@ mod tests {
         let path = os::self_exe_path();
         assert!(path.is_some());
         let path = path.unwrap();
-        debug!("{:?}", path.clone());
+        debug!("{}", path.display());
 
         // Hard to test this function
         assert!(path.is_absolute());
@@ -1999,7 +1999,7 @@ mod tests {
         assert!(e.len() > 0u);
         for p in e.iter() {
             let (n, v) = (*p).clone();
-            debug!("{:?}", n.clone());
+            debug!("{}", n);
             let v2 = getenv(n.as_slice());
             // MingW seems to set some funky environment variables like
             // "=C:=C:\MinGW\msys\1.0\bin" and "!::=::\" that are returned
@@ -2037,8 +2037,8 @@ mod tests {
         let cwd = getcwd();
         debug!("Current working directory: {}", cwd.display());
 
-        debug!("{:?}", make_absolute(&Path::new("test-path")));
-        debug!("{:?}", make_absolute(&Path::new("/usr/bin")));
+        debug!("{}", make_absolute(&Path::new("test-path")).display());
+        debug!("{}", make_absolute(&Path::new("/usr/bin")).display());
     }
 
     #[test]

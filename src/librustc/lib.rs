@@ -34,7 +34,6 @@ This API is completely unstable and subject to change.
 #![feature(rustc_diagnostic_macros)]
 
 extern crate arena;
-extern crate debug;
 extern crate flate;
 extern crate getopts;
 extern crate graphviz;

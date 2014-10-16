@@ -109,7 +109,7 @@ impl<'f, 'tcx> Combine<'tcx> for Glb<'f, 'tcx> {
     }
 
     fn regions(&self, a: ty::Region, b: ty::Region) -> cres<ty::Region> {
-        debug!("{}.regions({:?}, {:?})",
+        debug!("{}.regions({}, {})",
                self.tag(),
                a.repr(self.fields.infcx.tcx),
                b.repr(self.fields.infcx.tcx));
@@ -130,7 +130,7 @@ impl<'f, 'tcx> Combine<'tcx> for Glb<'f, 'tcx> {
         // Note: this is a subtle algorithm.  For a full explanation,
         // please see the large comment in `region_inference.rs`.
 
-        debug!("{}.fn_sigs({:?}, {:?})",
+        debug!("{}.fn_sigs({}, {})",
                self.tag(), a.repr(self.fields.infcx.tcx), b.repr(self.fields.infcx.tcx));
         let _indenter = indenter();
 
@@ -254,7 +254,7 @@ impl<'f, 'tcx> Combine<'tcx> for Glb<'f, 'tcx> {
             }
             this.fields.infcx.tcx.sess.span_bug(
                 this.fields.trace.origin.span(),
-                format!("could not find original bound region for {:?}",
+                format!("could not find original bound region for {}",
                         r).as_slice())
         }
 

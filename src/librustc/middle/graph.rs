@@ -36,6 +36,7 @@ be indexed by the direction (see the type `Direction`).
 
 #![allow(dead_code)] // still WIP
 
+use std::fmt::{Formatter, FormatError, Show};
 use std::uint;
 
 pub struct Graph<N,E> {
@@ -55,12 +56,20 @@ pub struct Edge<E> {
     pub data: E,
 }
 
+impl<E: Show> Show for Edge<E> {
+    fn fmt(&self, f: &mut Formatter) -> Result<(), FormatError> {
+        write!(f, "Edge {{ next_edge: [{}, {}], source: {}, target: {}, data: {} }}",
+               self.next_edge[0], self.next_edge[1], self.source,
+               self.target, self.data)
+    }
+}
+
 #[deriving(Clone, PartialEq, Show)]
 pub struct NodeIndex(pub uint);
 #[allow(non_uppercase_statics)]
 pub const InvalidNodeIndex: NodeIndex = NodeIndex(uint::MAX);
 
-#[deriving(PartialEq)]
+#[deriving(PartialEq, Show)]
 pub struct EdgeIndex(pub uint);
 #[allow(non_uppercase_statics)]
 pub const InvalidEdgeIndex: EdgeIndex = EdgeIndex(uint::MAX);
@@ -307,6 +316,7 @@ impl<E> Edge<E> {
 #[cfg(test)]
 mod test {
     use middle::graph::*;
+    use std::fmt::Show;
 
     type TestNode = Node<&'static str>;
     type TestEdge = Edge<&'static str>;
@@ -361,7 +371,7 @@ mod test {
         });
     }
 
-    fn test_adjacent_edges<N:PartialEq,E:PartialEq>(graph: &Graph<N,E>,
+    fn test_adjacent_edges<N:PartialEq+Show,E:PartialEq+Show>(graph: &Graph<N,E>,
                                       start_index: NodeIndex,
                                       start_data: N,
                                       expected_incoming: &[(E,N)],
@@ -372,7 +382,7 @@ mod test {
         graph.each_incoming_edge(start_index, |edge_index, edge| {
             assert!(graph.edge_data(edge_index) == &edge.data);
             assert!(counter < expected_incoming.len());
-            debug!("counter={:?} expected={:?} edge_index={:?} edge={:?}",
+            debug!("counter={} expected={} edge_index={} edge={}",
                    counter, expected_incoming[counter], edge_index, edge);
             match expected_incoming[counter] {
                 (ref e, ref n) => {
@@ -390,7 +400,7 @@ mod test {
         graph.each_outgoing_edge(start_index, |edge_index, edge| {
             assert!(graph.edge_data(edge_index) == &edge.data);
             assert!(counter < expected_outgoing.len());
-            debug!("counter={:?} expected={:?} edge_index={:?} edge={:?}",
+            debug!("counter={} expected={} edge_index={} edge={}",
                    counter, expected_outgoing[counter], edge_index, edge);
             match expected_outgoing[counter] {
                 (ref e, ref n) => {

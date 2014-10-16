@@ -60,7 +60,7 @@ pub fn trans_impl(ccx: &CrateContext,
     let _icx = push_ctxt("meth::trans_impl");
     let tcx = ccx.tcx();
 
-    debug!("trans_impl(name={}, id={:?})", name.repr(tcx), id);
+    debug!("trans_impl(name={}, id={})", name.repr(tcx), id);
 
     // Both here and below with generic methods, be sure to recurse and look for
     // items that we need to translate.
@@ -174,8 +174,8 @@ pub fn trans_static_method_callee(bcx: Block,
     let _icx = push_ctxt("meth::trans_static_method_callee");
     let ccx = bcx.ccx();
 
-    debug!("trans_static_method_callee(method_id={:?}, trait_id={}, \
-            expr_id={:?})",
+    debug!("trans_static_method_callee(method_id={}, trait_id={}, \
+            expr_id={})",
            method_id,
            ty::item_path_str(bcx.tcx(), trait_id),
            expr_id);

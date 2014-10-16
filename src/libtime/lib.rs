@@ -22,7 +22,6 @@
        html_playground_url = "http://play.rust-lang.org/")]
 #![feature(phase)]
 
-#[cfg(test)] extern crate debug;
 #[cfg(test)] #[phase(plugin, link)] extern crate log;
 
 extern crate serialize;
@@ -1184,13 +1183,13 @@ mod tests {
         static SOME_FUTURE_DATE: i64 = 1577836800i64; // 2020-01-01T00:00:00Z
 
         let tv1 = get_time();
-        debug!("tv1={:?} sec + {:?} nsec", tv1.sec as uint, tv1.nsec as uint);
+        debug!("tv1={} sec + {} nsec", tv1.sec as uint, tv1.nsec as uint);
 
         assert!(tv1.sec > SOME_RECENT_DATE);
         assert!(tv1.nsec < 1000000000i32);
 
         let tv2 = get_time();
-        debug!("tv2={:?} sec + {:?} nsec", tv2.sec as uint, tv2.nsec as uint);
+        debug!("tv2={} sec + {} nsec", tv2.sec as uint, tv2.nsec as uint);
 
         assert!(tv2.sec >= tv1.sec);
         assert!(tv2.sec < SOME_FUTURE_DATE);
@@ -1207,12 +1206,12 @@ mod tests {
 
         let ns0 = precise_time_ns();
         let ns1 = precise_time_ns();
-        debug!("ns0={:?} ns", ns0);
-        debug!("ns1={:?} ns", ns1);
+        debug!("ns0={} ns", ns0);
+        debug!("ns1={} ns", ns1);
         assert!(ns1 >= ns0);
 
         let ns2 = precise_time_ns();
-        debug!("ns2={:?} ns", ns2);
+        debug!("ns2={} ns", ns2);
         assert!(ns2 >= ns1);
     }
 
@@ -1241,7 +1240,7 @@ mod tests {
         let time = Timespec::new(1234567890, 54321);
         let local = at(time);
 
-        debug!("time_at: {:?}", local);
+        debug!("time_at: {}", local);
 
         assert_eq!(local.tm_sec, 30_i32);
         assert_eq!(local.tm_min, 31_i32);
@@ -1446,7 +1445,7 @@ mod tests {
         let utc   = at_utc(time);
         let local = at(time);
 
-        debug!("test_ctime: {:?} {:?}", utc.asctime(), local.asctime());
+        debug!("test_ctime: {} {}", utc.asctime(), local.asctime());
 
         assert_eq!(utc.asctime(), "Fri Feb 13 23:31:30 2009".to_string());
         assert_eq!(local.asctime(), "Fri Feb 13 15:31:30 2009".to_string());
@@ -1459,7 +1458,7 @@ mod tests {
         let utc   = at_utc(time);
         let local = at(time);
 
-        debug!("test_ctime: {:?} {:?}", utc.ctime(), local.ctime());
+        debug!("test_ctime: {} {}", utc.ctime(), local.ctime());
 
         assert_eq!(utc.ctime(), "Fri Feb 13 15:31:30 2009".to_string());
         assert_eq!(local.ctime(), "Fri Feb 13 15:31:30 2009".to_string());

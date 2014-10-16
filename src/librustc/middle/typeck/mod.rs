@@ -87,13 +87,13 @@ pub mod collect;
 pub mod coherence;
 pub mod variance;
 
-#[deriving(Clone, Encodable, Decodable, PartialEq, PartialOrd)]
+#[deriving(Clone, Encodable, Decodable, PartialEq, PartialOrd, Show)]
 pub struct param_index {
     pub space: subst::ParamSpace,
     pub index: uint
 }
 
-#[deriving(Clone)]
+#[deriving(Clone, Show)]
 pub enum MethodOrigin {
     // fully statically resolved method
     MethodStatic(ast::DefId),
@@ -111,7 +111,7 @@ pub enum MethodOrigin {
 
 // details for a method invoked with a receiver whose type is a type parameter
 // with a bounded trait.
-#[deriving(Clone)]
+#[deriving(Clone, Show)]
 pub struct MethodParam {
     // the precise trait reference that occurs as a bound -- this may
     // be a supertrait of what the user actually typed.
@@ -122,7 +122,7 @@ pub struct MethodParam {
 }
 
 // details for a method invoked with a receiver whose type is an object
-#[deriving(Clone)]
+#[deriving(Clone, Show)]
 pub struct MethodObject {
     // the (super)trait containing the method to be invoked
     pub trait_ref: Rc<ty::TraitRef>,
@@ -249,7 +249,7 @@ impl Repr for vtable_origin {
     fn repr(&self, tcx: &ty::ctxt) -> String {
         match *self {
             vtable_static(def_id, ref tys, ref vtable_res) => {
-                format!("vtable_static({:?}:{}, {}, {})",
+                format!("vtable_static({}:{}, {}, {})",
                         def_id,
                         ty::item_path_str(tcx, def_id),
                         tys.repr(tcx),
@@ -257,7 +257,7 @@ impl Repr for vtable_origin {
             }
 
             vtable_param(x, y) => {
-                format!("vtable_param({:?}, {:?})", x, y)
+                format!("vtable_param({}, {})", x, y)
             }
 
             vtable_unboxed_closure(def_id) => {

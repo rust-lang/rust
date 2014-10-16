@@ -474,7 +474,7 @@ pub fn trans_native_call<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             let llforeign_align = machine::llalign_of_min(ccx, llforeign_ret_ty);
             let llrust_align = machine::llalign_of_min(ccx, llrust_ret_ty);
             let llalign = cmp::min(llforeign_align, llrust_align);
-            debug!("llrust_size={:?}", llrust_size);
+            debug!("llrust_size={}", llrust_size);
             base::call_memcpy(bcx, llretptr_i8, llscratch_i8,
                               C_uint(ccx, llrust_size as uint), llalign as u32);
         }
@@ -576,7 +576,7 @@ pub fn register_rust_fn_with_foreign_abi(ccx: &CrateContext,
     };
     let llfn = base::register_fn_llvmty(ccx, sp, sym, node_id, cconv, llfn_ty);
     add_argument_attributes(&tys, llfn);
-    debug!("register_rust_fn_with_foreign_abi(node_id={:?}, llfn_ty={}, llfn={})",
+    debug!("register_rust_fn_with_foreign_abi(node_id={}, llfn_ty={}, llfn={})",
            node_id, ccx.tn().type_to_string(llfn_ty), ccx.tn().val_to_string(llfn));
     llfn
 }

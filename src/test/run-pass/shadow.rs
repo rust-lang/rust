@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern crate debug;
-
 fn foo(c: Vec<int> ) {
     let a: int = 5;
     let mut b: Vec<int> = Vec::new();
@@ -18,7 +16,7 @@ fn foo(c: Vec<int> ) {
     match none::<int> {
         some::<int>(_) => {
             for _i in c.iter() {
-                println!("{:?}", a);
+                println!("{}", a);
                 let a = 17i;
                 b.push(a);
             }

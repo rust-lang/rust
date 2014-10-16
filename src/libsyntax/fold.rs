@@ -1389,7 +1389,7 @@ mod test {
                 let a_val = $a;
                 let b_val = $b;
                 if !(pred_val(a_val.as_slice(),b_val.as_slice())) {
-                    fail!("expected args satisfying {}, got {:?} and {:?}",
+                    fail!("expected args satisfying {}, got {} and {}",
                           $predname, a_val, b_val);
                 }
             }

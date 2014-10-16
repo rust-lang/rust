@@ -10,29 +10,29 @@
 
 #![feature(unsafe_destructor)]
 
-extern crate debug;
-
 trait X {
-    fn call<T>(&self, x: &T);
-    fn default_method<T>(&self, x: &T) {
-        println!("X::default_method {:?} {:?}", self, x);
+    fn call<T: std::fmt::Show>(&self, x: &T);
+    fn default_method<T: std::fmt::Show>(&self, x: &T) {
+        println!("X::default_method {}", x);
     }
 }
 
+#[deriving(Show)]
 struct Y(int);
 
+#[deriving(Show)]
 struct Z<T> {
     x: T
 }
 
 impl X for Y {
-    fn call<T>(&self, x: &T) {
-        println!("X::call {:?} {:?}", self, x);
+    fn call<T: std::fmt::Show>(&self, x: &T) {
+        println!("X::call {} {}", self, x);
     }
 }
 
 #[unsafe_destructor]
-impl<T: X> Drop for Z<T> {
+impl<T: X + std::fmt::Show> Drop for Z<T> {
     fn drop(&mut self) {
         // These statements used to cause an ICE.
         self.x.call(self);

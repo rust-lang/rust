@@ -8,8 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern crate debug;
-
+#[deriving(Show)]
 struct Foo {
     x: int,
     y: int
@@ -18,5 +17,5 @@ struct Foo {
 pub fn main() {
     let a = Foo { x: 1, y: 2 };
     let c = Foo { x: 4, .. a};
-    println!("{:?}", c);
+    println!("{}", c);
 }

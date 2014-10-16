@@ -51,7 +51,7 @@ impl<'a, 'tcx> euv::Delegate for RvalueContext<'a, 'tcx> {
                span: Span,
                cmt: mc::cmt,
                _: euv::ConsumeMode) {
-        debug!("consume; cmt: {:?}; type: {}", *cmt, ty_to_string(self.tcx, cmt.ty));
+        debug!("consume; cmt: {}; type: {}", *cmt, ty_to_string(self.tcx, cmt.ty));
         if !ty::type_is_sized(self.tcx, cmt.ty) {
             span_err!(self.tcx.sess, span, E0161,
                 "cannot move a value of type {0}: the size of {0} cannot be statically determined",

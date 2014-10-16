@@ -1177,7 +1177,7 @@ This is a list of behaviour not considered *unsafe* in Rust terms, but that may
 be undesired.
 
 * Deadlocks
-* Reading data from private fields (`std::repr`, `format!("{:?}", x)`)
+* Reading data from private fields (`std::repr`)
 * Leaks due to reference count cycles, even in the global heap
 * Exiting without calling destructors
 * Sending signals
@@ -2279,8 +2279,6 @@ These types help drive the compiler's analysis
   : The lifetime parameter should be considered invariant
 * `malloc`
   : Allocate memory on the managed heap.
-* `opaque`
-  : ___Needs filling in___
 * `owned_box`
   : ___Needs filling in___
 * `stack_exhausted`
@@ -2294,8 +2292,6 @@ These types help drive the compiler's analysis
 * `invariant_type`
   : The type parameter should be considered invariant
 * `ty_desc`
-  : ___Needs filling in___
-* `ty_visitor`
   : ___Needs filling in___
 
 > **Note:** This list is likely to become out of date. We should auto-generate

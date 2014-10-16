@@ -284,7 +284,6 @@ lets_do_this! {
     StartFnLangItem,                 "start",                   start_fn;
 
     TyDescStructLangItem,            "ty_desc",                 ty_desc;
-    TyVisitorTraitLangItem,          "ty_visitor",              ty_visitor;
     OpaqueStructLangItem,            "opaque",                  opaque;
 
     TypeIdLangItem,                  "type_id",                 type_id;

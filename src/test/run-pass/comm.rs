@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern crate debug;
-
 use std::task;
 
 pub fn main() {
@@ -17,7 +15,7 @@ pub fn main() {
     let _t = task::spawn(proc() { child(&tx) });
     let y = rx.recv();
     println!("received");
-    println!("{:?}", y);
+    println!("{}", y);
     assert_eq!(y, 10);
 }
 

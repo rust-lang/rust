@@ -8,19 +8,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern crate debug;
-
 trait T {
     fn print(&self);
 }
 
+#[deriving(Show)]
 struct S {
     s: int,
 }
 
 impl T for S {
     fn print(&self) {
-        println!("{:?}", self);
+        println!("{}", self);
     }
 }
 

@@ -200,7 +200,7 @@ impl<'f, 'tcx> Combine<'tcx> for Sub<'f, 'tcx> {
         let (skol_map, b_sig) = {
             replace_late_bound_regions_in_fn_sig(self.fields.infcx.tcx, b, |br| {
                 let skol = self.fields.infcx.region_vars.new_skolemized(br);
-                debug!("Bound region {} skolemized to {:?}",
+                debug!("Bound region {} skolemized to {}",
                        bound_region_to_string(self.fields.infcx.tcx, "", false, br),
                        skol);
                 skol

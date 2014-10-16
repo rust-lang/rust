@@ -315,7 +315,7 @@ impl<'a, 'tcx> Env<'a, 'tcx> {
     pub fn make_lub_ty(&self, t1: ty::t, t2: ty::t) -> ty::t {
         match self.lub().tys(t1, t2) {
             Ok(t) => t,
-            Err(ref e) => fail!("unexpected error computing LUB: {:?}",
+            Err(ref e) => fail!("unexpected error computing LUB: {}",
                                 ty::type_err_to_str(self.infcx.tcx, e))
         }
     }
@@ -341,7 +341,7 @@ impl<'a, 'tcx> Env<'a, 'tcx> {
                self.ty_to_string(t_glb));
         match self.glb().tys(t1, t2) {
             Err(e) => {
-                fail!("unexpected error computing LUB: {:?}", e)
+                fail!("unexpected error computing LUB: {}", e)
             }
             Ok(t) => {
                 self.assert_eq(t, t_glb);

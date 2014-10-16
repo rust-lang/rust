@@ -668,7 +668,6 @@ impl<'a, 'b> Context<'a, 'b> {
             Known(ref tyname) => {
                 match tyname.as_slice() {
                     ""  => ("std", "secret_show"),
-                    "?" => ("debug", "secret_poly"),
                     "b" => ("std", "secret_bool"),
                     "c" => ("std", "secret_char"),
                     "d" | "i" => ("std", "secret_signed"),

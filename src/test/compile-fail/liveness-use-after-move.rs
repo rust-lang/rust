@@ -8,11 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern crate debug;
-
 fn main() {
     let x = box 5i;
     let y = x;
-    println!("{:?}", *x); //~ ERROR use of moved value: `*x`
+    println!("{}", *x); //~ ERROR use of moved value: `*x`
     y.clone();
 }
