@@ -584,11 +584,12 @@ ifeq ($(CFG_LLDB),)
 CTEST_DISABLE_debuginfo-lldb = "no lldb found"
 endif
 
-# Completely disable LLDB tests for now
-CTEST_DISABLE_debuginfo-lldb = "LLDB tests are not enabled yet"
-
 ifeq ($(CFG_CLANG),)
 CTEST_DISABLE_codegen = "no clang found"
+endif
+
+ifneq ($(CFG_OSTYPE),apple-darwin)
+CTEST_DISABLE_debuginfo-lldb = "lldb tests are only run on darwin"
 endif
 
 ifeq ($(CFG_OSTYPE),apple-darwin)
