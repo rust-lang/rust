@@ -530,7 +530,7 @@ fn format(val: Param, op: FormatOp, flags: Flags) -> Result<Vec<u8> ,String> {
                 FormatHEX => {
                     s = s.as_slice()
                          .to_ascii()
-                         .to_upper()
+                         .to_uppercase()
                          .into_bytes()
                          .into_iter()
                          .collect();
