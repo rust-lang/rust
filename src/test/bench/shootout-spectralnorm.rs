@@ -41,105 +41,94 @@
 // no-pretty-expanded FIXME #15189
 
 #![allow(non_snake_case)]
+#![feature(unboxed_closures, overloaded_calls)]
 
-use std::from_str::FromStr;
-use std::iter::count;
-use std::cmp::min;
+use std::iter::AdditiveIterator;
+use std::mem;
 use std::os;
-use std::sync::{Arc, RWLock};
+use std::raw::Repr;
+use std::simd::f64x2;
+
+fn main() {
+    let args = os::args();
+    let answer = spectralnorm(if os::getenv("RUST_BENCH").is_some() {
+        5500
+    } else if args.len() < 2 {
+        2000
+    } else {
+        from_str(args[1].as_slice()).unwrap()
+    });
+    println!("{:.9f}", answer);
+}
+
+fn spectralnorm(n: uint) -> f64 {
+    assert!(n % 2 == 0, "only even lengths are accepted");
+    let mut u = Vec::from_elem(n, 1.0);
+    let mut v = Vec::from_elem(n, 1.0);
+    let mut tmp = Vec::from_elem(n, 1.0);
+    for _ in range(0u, 10) {
+        mult_AtAv(u.as_slice(), v.as_mut_slice(), tmp.as_mut_slice());
+        mult_AtAv(v.as_slice(), u.as_mut_slice(), tmp.as_mut_slice());
+    }
+    (dot(u.as_slice(), v.as_slice()) / dot(v.as_slice(), v.as_slice())).sqrt()
+}
+
+fn mult_AtAv(v: &[f64], out: &mut [f64], tmp: &mut [f64]) {
+    mult_Av(v, tmp);
+    mult_Atv(tmp, out);
+}
+
+fn mult_Av(v: &[f64], out: &mut [f64]) {
+    parallel(out, |&: start, out| mult(v, out, start, |i, j| A(i, j)));
+}
+
+fn mult_Atv(v: &[f64], out: &mut [f64]) {
+    parallel(out, |&: start, out| mult(v, out, start, |i, j| A(j, i)));
+}
+
+fn mult(v: &[f64], out: &mut [f64], start: uint, a: |uint, uint| -> f64) {
+    for (i, slot) in out.iter_mut().enumerate().map(|(i, s)| (i + start, s)) {
+        let mut sum = f64x2(0.0, 0.0);
+        for (j, chunk) in v.chunks(2).enumerate().map(|(j, s)| (2 * j, s)) {
+            let top = f64x2(chunk[0], chunk[1]);
+            let bot = f64x2(a(i, j), a(i, j + 1));
+            sum += top / bot;
+        }
+        let f64x2(a, b) = sum;
+        *slot = a + b;
+    }
+}
 
 fn A(i: uint, j: uint) -> f64 {
     ((i + j) * (i + j + 1) / 2 + i + 1) as f64
 }
 
 fn dot(v: &[f64], u: &[f64]) -> f64 {
-    let mut sum = 0.0;
-    for (&v_i, &u_i) in v.iter().zip(u.iter()) {
-        sum += v_i * u_i;
-    }
-    sum
+    v.iter().zip(u.iter()).map(|(a, b)| *a * *b).sum()
 }
 
-fn mult(v: Arc<RWLock<Vec<f64>>>, out: Arc<RWLock<Vec<f64>>>,
-        f: fn(&Vec<f64>, uint) -> f64) {
-    // We launch in different tasks the work to be done.  To finish
-    // this function, we need to wait for the completion of every
-    // tasks.  To do that, we give to each tasks a wait_chan that we
-    // drop at the end of the work.  At the end of this function, we
-    // wait until the channel hang up.
+// Executes a closure in parallel over the given mutable slice. The closure `f`
+// is run in parallel and yielded the starting index within `v` as well as a
+// sub-slice of `v`.
+fn parallel<'a, T, F>(v: &'a mut [T], f: F)
+                      where T: Send + Sync,
+                            F: Fn(uint, &'a mut [T]) + Sync {
     let (tx, rx) = channel();
+    let size = v.len() / os::num_cpus() + 1;
 
-    let len = out.read().len();
-    let chunk = len / 20 + 1;
-    for chk in count(0, chunk) {
-        if chk >= len {break;}
+    for (i, chunk) in v.chunks_mut(size).enumerate() {
         let tx = tx.clone();
-        let v = v.clone();
-        let out = out.clone();
+
+        // Need to convert `f` and `chunk` to something that can cross the task
+        // boundary.
+        let f = &f as *const _ as *const uint;
+        let raw = chunk.repr();
         spawn(proc() {
-            for i in range(chk, min(len, chk + chunk)) {
-                let val = f(&*v.read(), i);
-                *out.write().get_mut(i) = val;
-            }
+            let f = f as *const F;
+            unsafe { (*f)(i * size, mem::transmute(raw)) }
             drop(tx)
         });
     }
-
-    // wait until the channel hang up (every task finished)
     drop(tx);
     for () in rx.iter() {}
-}
-
-fn mult_Av_impl(v: &Vec<f64> , i: uint) -> f64 {
-    let mut sum = 0.;
-    for (j, &v_j) in v.iter().enumerate() {
-        sum += v_j / A(i, j);
-    }
-    sum
-}
-
-fn mult_Av(v: Arc<RWLock<Vec<f64>>>, out: Arc<RWLock<Vec<f64>>>) {
-    mult(v, out, mult_Av_impl);
-}
-
-fn mult_Atv_impl(v: &Vec<f64> , i: uint) -> f64 {
-    let mut sum = 0.;
-    for (j, &v_j) in v.iter().enumerate() {
-        sum += v_j / A(j, i);
-    }
-    sum
-}
-
-fn mult_Atv(v: Arc<RWLock<Vec<f64>>>, out: Arc<RWLock<Vec<f64>>>) {
-    mult(v, out, mult_Atv_impl);
-}
-
-fn mult_AtAv(v: Arc<RWLock<Vec<f64>>>, out: Arc<RWLock<Vec<f64>>>,
-             tmp: Arc<RWLock<Vec<f64>>>) {
-    mult_Av(v, tmp.clone());
-    mult_Atv(tmp, out);
-}
-
-fn main() {
-    let args = os::args();
-    let args = args.as_slice();
-    let n = if os::getenv("RUST_BENCH").is_some() {
-        5500
-    } else if args.len() < 2 {
-        2000
-    } else {
-        FromStr::from_str(args[1].as_slice()).unwrap()
-    };
-    let u = Arc::new(RWLock::new(Vec::from_elem(n, 1f64)));
-    let v = Arc::new(RWLock::new(Vec::from_elem(n, 1f64)));
-    let tmp = Arc::new(RWLock::new(Vec::from_elem(n, 1f64)));
-    for _ in range(0u8, 10) {
-        mult_AtAv(u.clone(), v.clone(), tmp.clone());
-        mult_AtAv(v.clone(), u.clone(), tmp.clone());
-    }
-
-    let u = u.read();
-    let v = v.read();
-    println!("{:.9f}", (dot(u.as_slice(), v.as_slice()) /
-                        dot(v.as_slice(), v.as_slice())).sqrt());
 }
