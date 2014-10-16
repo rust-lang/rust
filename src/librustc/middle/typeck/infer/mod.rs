@@ -121,6 +121,9 @@ pub enum TypeOrigin {
 
     // Computing common supertype in an if expression
     IfExpression(Span),
+
+    // Computing common supertype of an if expression with no else counter-part
+    IfExpressionWithNoElse(Span)
 }
 
 /// See `error_reporting.rs` for more details
@@ -1001,6 +1004,7 @@ impl TypeOrigin {
             RelateOutputImplTypes(span) => span,
             MatchExpressionArm(match_span, _) => match_span,
             IfExpression(span) => span,
+            IfExpressionWithNoElse(span) => span
         }
     }
 }
@@ -1029,6 +1033,9 @@ impl Repr for TypeOrigin {
             }
             IfExpression(a) => {
                 format!("IfExpression({})", a.repr(tcx))
+            }
+            IfExpressionWithNoElse(a) => {
+                format!("IfExpressionWithNoElse({})", a.repr(tcx))
             }
         }
     }
