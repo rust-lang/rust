@@ -8,8 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+extern crate test;
+
 use std::iter::count;
 use std::slice::Items;
+use test::Bencher;
 
 // This wraps the Items struct, but uses the default version of nth()
 struct ItemsWrapper<'a, T: 'a> {
@@ -70,4 +73,36 @@ pub fn main() {
     assert_eq!(iter1.nth(1), iter2.nth(1));
     assert!(iter1.nth(1).is_none());
     assert!(iter2.nth(1).is_none());
+}
+
+#[bench]
+fn bench_default_slice_nth(b: &mut Bencher) {
+    let v = Vec::from_fn(10_000_000, |n| n);
+    b.iter(|| {
+        let mut iter = ItemsWrapper{ base: v.iter() };
+        let mut sum = 0;
+        loop {
+            match iter.nth(1000) {
+                None => break,
+                Some(&x) => sum = sum + x,
+            }
+        }
+        sum
+    })
+}
+
+#[bench]
+fn bench_slice_nth(b: &mut Bencher) {
+    let v = Vec::from_fn(10_000_000, |n| n);
+    b.iter(|| {
+        let mut iter = v.iter();
+        let mut sum = 0;
+        loop {
+            match iter.nth(1000) {
+                None => break,
+                Some(&x) => sum = sum + x,
+            }
+        }
+        sum
+    })
 }
