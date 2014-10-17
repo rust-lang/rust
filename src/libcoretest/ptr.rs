@@ -211,7 +211,7 @@ fn test_ptr_array_each_with_len() {
         let mut ctr = 0;
         let mut iteration_count = 0;
         array_each_with_len(arr.as_ptr(), arr.len(), |e| {
-                let actual = CString::new(e, false);
+                let actual = CString::new(e);
                 assert_eq!(actual.as_str(), expected_arr[ctr].as_str());
                 ctr += 1;
                 iteration_count += 1;
@@ -241,7 +241,7 @@ fn test_ptr_array_each() {
         let mut ctr = 0u;
         let mut iteration_count = 0u;
         array_each(arr_ptr, |e| {
-                let actual = CString::new(e, false);
+                let actual = CString::new(e);
                 assert_eq!(actual.as_str(), expected_arr[ctr].as_str());
                 ctr += 1;
                 iteration_count += 1;
@@ -255,7 +255,7 @@ fn test_ptr_array_each() {
 fn test_ptr_array_each_with_len_null_ptr() {
     unsafe {
         array_each_with_len(0 as *const *const libc::c_char, 1, |e| {
-            CString::new(e, false).as_str().unwrap();
+            CString::new(e).as_str().unwrap();
         });
     }
 }
@@ -264,7 +264,7 @@ fn test_ptr_array_each_with_len_null_ptr() {
 fn test_ptr_array_each_null_ptr() {
     unsafe {
         array_each(0 as *const *const libc::c_char, |e| {
-            CString::new(e, false).as_str().unwrap();
+            CString::new(e).as_str().unwrap();
         });
     }
 }
