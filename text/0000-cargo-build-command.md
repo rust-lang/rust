@@ -266,7 +266,9 @@ separate set of dependencies solves a number of constraints:
   extra support code.
 
 This RFC does not propose a convention of what to name the build script files.
-Like `links`, it will be illegal to specify `build` without specifying `links`.
+
+Unlike `links`, it will be legal to specify `build` without specifying `links`.
+This is motivated by the code generation case study below.
 
 ### Inputs
 
@@ -301,6 +303,8 @@ native code for the current package:
   available (`foo`) will be those in `links` for immediate dependencies of the
   package being built. Note that each metadata `key` will be uppercased and `-`
   characters transformed to `_` for the name of the environment variable.
+* If `links` is not present, then the command is unconditionally run with 0
+  command line arguments, otherwise:
 * The libraries that are requested via `links` are passed as command line
   arguments. The pre-built libraries in `links` (detailed above) will be
   filtered out and not passed to the build command. If there are no libraries to
