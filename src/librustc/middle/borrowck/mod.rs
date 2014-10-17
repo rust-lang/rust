@@ -618,6 +618,10 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
         self.tcx.sess.span_end_note(s, m);
     }
 
+    pub fn span_help(&self, s: Span, m: &str) {
+        self.tcx.sess.span_help(s, m);
+    }
+
     pub fn bckerr_to_string(&self, err: &BckError) -> String {
         match err.code {
             err_mutbl => {

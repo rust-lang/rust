@@ -22,7 +22,7 @@ impl<'r> Itble<'r, uint, Range<uint>> for (uint, uint) {
 }
 
 fn check<'r, I: Iterator<uint>, T: Itble<'r, uint, I>>(cont: &T) -> bool {
-//~^ NOTE: consider using an explicit lifetime parameter as shown: fn check<'r, I: Iterator<uint>, T: Itble<'r, uint, I>>(cont: &'r T) -> bool
+//~^ HELP: consider using an explicit lifetime parameter as shown: fn check<'r, I: Iterator<uint>, T: Itble<'r, uint, I>>(cont: &'r T) -> bool
     let cont_iter = cont.iter(); //~ ERROR: cannot infer
     let result = cont_iter.fold(Some(0u16), |state, val| {
         state.map_or(None, |mask| {
