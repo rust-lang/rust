@@ -72,7 +72,6 @@ use middle::typeck::infer::{CoerceResult, resolve_type, Coercion};
 use middle::typeck::infer::combine::{CombineFields, Combine};
 use middle::typeck::infer::sub::Sub;
 use middle::typeck::infer::resolve::try_resolve_tvar_shallow;
-use util::common::indenter;
 use util::ppaux;
 use util::ppaux::Repr;
 
@@ -93,7 +92,6 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         debug!("Coerce.tys({} => {})",
                a.repr(self.get_ref().infcx.tcx),
                b.repr(self.get_ref().infcx.tcx));
-        let _indent = indenter();
 
         // Special case: if the subtype is a sized array literal (`[T, ..n]`),
         // then it would get auto-borrowed to `&[T, ..n]` and then DST-ified
@@ -411,7 +409,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
 
         self.unpack_actual_value(ty_b, |sty_b|
             match (sty_a, sty_b) {
-                (&ty::ty_vec(t_a, Some(len)), _) => {
+                (&ty::ty_vec(t_a, Some(len)), &ty::ty_vec(_, None)) => {
                     let ty = ty::mk_vec(tcx, t_a, None);
                     Some((ty, ty::UnsizeLength(len)))
                 }

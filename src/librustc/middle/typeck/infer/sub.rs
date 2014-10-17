@@ -139,28 +139,19 @@ impl<'f, 'tcx> Combine<'tcx> for Sub<'f, 'tcx> {
                     .relate_vars(a_id, SubtypeOf, b_id);
                 Ok(a)
             }
-            // The vec/str check here and below is so that we don't unify
-            // T with [T], this is necessary so we reflect subtyping of references
-            // (&T does not unify with &[T]) where that in turn is to reflect
-            // the historical non-typedness of [T].
-            (&ty::ty_infer(TyVar(_)), &ty::ty_str) |
-            (&ty::ty_infer(TyVar(_)), &ty::ty_vec(_, None)) => {
-                Err(ty::terr_sorts(expected_found(self, a, b)))
-            }
             (&ty::ty_infer(TyVar(a_id)), _) => {
                 try!(self.fields
                        .switch_expected()
                        .instantiate(b, SupertypeOf, a_id));
                 Ok(a)
             }
-
-            (&ty::ty_str, &ty::ty_infer(TyVar(_))) |
-            (&ty::ty_vec(_, None), &ty::ty_infer(TyVar(_))) => {
-                Err(ty::terr_sorts(expected_found(self, a, b)))
-            }
             (_, &ty::ty_infer(TyVar(b_id))) => {
                 try!(self.fields.instantiate(a, SubtypeOf, b_id));
                 Ok(a)
+            }
+
+            (&ty::ty_err, _) | (_, &ty::ty_err) => {
+                Ok(ty::mk_err())
             }
 
             (_, &ty::ty_bot) => {
