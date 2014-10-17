@@ -97,11 +97,8 @@ use middle::typeck::astconv::{ast_region_to_region, ast_ty_to_ty};
 use middle::typeck::astconv;
 use middle::typeck::check::_match::pat_ctxt;
 use middle::typeck::check::method::{AutoderefReceiver};
-use middle::typeck::check::method::{AutoderefReceiverFlag};
 use middle::typeck::check::method::{CheckTraitsAndInherentMethods};
-use middle::typeck::check::method::{DontAutoderefReceiver};
-use middle::typeck::check::method::{IgnoreStaticMethods, ReportStaticMethods};
-use middle::typeck::check::regionmanip::replace_late_bound_regions_in_fn_sig;
+use middle::typeck::check::regionmanip::replace_late_bound_regions;
 use middle::typeck::CrateCtxt;
 use middle::typeck::infer::{resolve_type, force_tvar};
 use middle::typeck::infer;
@@ -529,7 +526,7 @@ fn check_fn<'a, 'tcx>(ccx: &'a CrateCtxt<'a, 'tcx>,
 
     // First, we have to replace any bound regions in the fn type with free ones.
     // The free region references will be bound the node_id of the body block.
-    let (_, fn_sig) = replace_late_bound_regions_in_fn_sig(tcx, fn_sig, |br| {
+    let (_, fn_sig) = replace_late_bound_regions(tcx, fn_sig.binder_id, fn_sig, |br| {
         ty::ReFree(ty::FreeRegion {scope_id: body.id, bound_region: br})
     });
 
@@ -1529,6 +1526,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     pub fn infcx<'b>(&'b self) -> &'b infer::InferCtxt<'a, 'tcx> {
         &self.inh.infcx
+    }
+
+    pub fn sess(&self) -> &Session {
+        &self.tcx().sess
     }
 
     pub fn err_count_since_creation(&self) -> uint {
@@ -2890,7 +2891,7 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
 
         // Replace any bound regions that appear in the function
         // signature with region variables
-        let (_, fn_sig) = replace_late_bound_regions_in_fn_sig(fcx.tcx(), fn_sig, |br| {
+        let (_, fn_sig) = replace_late_bound_regions(fcx.tcx(), fn_sig.binder_id, fn_sig, |br| {
             fcx.infcx().next_region_var(infer::LateBoundRegion(call_expr.span, br))
         });
 
@@ -3346,8 +3347,8 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
             match expected_sty {
                 Some(ty::ty_closure(ref cenv)) => {
                     let (_, sig) =
-                        replace_late_bound_regions_in_fn_sig(
-                            tcx, &cenv.sig,
+                        replace_late_bound_regions(
+                            tcx, cenv.sig.binder_id, &cenv.sig,
                             |_| fcx.inh.infcx.fresh_bound_region(expr.id));
                     let onceness = match (&store, &cenv.store) {
                         // As the closure type and onceness go, only three

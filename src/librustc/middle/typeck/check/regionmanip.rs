@@ -13,7 +13,7 @@
 use middle::subst::{ParamSpace, Subst, Substs};
 use middle::ty;
 use middle::ty_fold;
-use middle::ty_fold::TypeFolder;
+use middle::ty_fold::{TypeFolder, TypeFoldable};
 
 use syntax::ast;
 
@@ -23,31 +23,34 @@ use util::ppaux::Repr;
 
 // Helper functions related to manipulating region types.
 
-pub fn replace_late_bound_regions_in_fn_sig(
-        tcx: &ty::ctxt,
-        fn_sig: &ty::FnSig,
-        mapf: |ty::BoundRegion| -> ty::Region)
-        -> (HashMap<ty::BoundRegion,ty::Region>, ty::FnSig) {
-    debug!("replace_late_bound_regions_in_fn_sig({})", fn_sig.repr(tcx));
+pub fn replace_late_bound_regions<T>(
+    tcx: &ty::ctxt,
+    binder_id: ast::NodeId,
+    value: &T,
+    map_fn: |ty::BoundRegion| -> ty::Region)
+    -> (HashMap<ty::BoundRegion,ty::Region>, T)
+    where T : TypeFoldable + Repr
+{
+    debug!("replace_late_bound_regions(binder_id={}, value={})",
+           binder_id, value.repr(tcx));
 
     let mut map = HashMap::new();
-    let fn_sig = {
-        let mut f = ty_fold::RegionFolder::regions(tcx, |r| {
-            debug!("region r={}", r.to_string());
+    let new_value = {
+        let mut folder = ty_fold::RegionFolder::regions(tcx, |r| {
             match r {
-                ty::ReLateBound(s, br) if s == fn_sig.binder_id => {
-                    * match map.entry(br) {
-                        Vacant(entry) => entry.set(mapf(br)),
-                        Occupied(entry) => entry.into_mut(),
+                ty::ReLateBound(s, br) if s == binder_id => {
+                    match map.entry(br) {
+                        Vacant(entry) => *entry.set(map_fn(br)),
+                        Occupied(entry) => *entry.into_mut(),
                     }
                 }
                 _ => r
             }
         });
-        ty_fold::super_fold_sig(&mut f, fn_sig)
+        value.fold_with(&mut folder)
     };
     debug!("resulting map: {}", map);
-    (map, fn_sig)
+    (map, new_value)
 }
 
 pub enum WfConstraint {
