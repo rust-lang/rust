@@ -12,7 +12,7 @@
 
 struct Bar<'x, 'y, 'z> { bar: &'y int, baz: int }
 fn bar1<'a>(x: &Bar) -> (&'a int, &'a int, &'a int) {
-//~^ NOTE: consider using an explicit lifetime parameter as shown: fn bar1<'b, 'c, 'a>(x: &'a Bar<'b, 'a, 'c>) -> (&'a int, &'a int, &'a int)
+//~^ HELP: consider using an explicit lifetime parameter as shown: fn bar1<'b, 'c, 'a>(x: &'a Bar<'b, 'a, 'c>) -> (&'a int, &'a int, &'a int)
     (x.bar, &x.baz, &x.baz)
     //~^ ERROR: cannot infer
     //~^^ ERROR: cannot infer
@@ -20,7 +20,7 @@ fn bar1<'a>(x: &Bar) -> (&'a int, &'a int, &'a int) {
 }
 
 fn bar2<'a, 'b, 'c>(x: &Bar<'a, 'b, 'c>) -> (&'a int, &'a int, &'a int) {
-//~^ NOTE: consider using an explicit lifetime parameter as shown: fn bar2<'a, 'c>(x: &'a Bar<'a, 'a, 'c>) -> (&'a int, &'a int, &'a int)
+//~^ HELP: consider using an explicit lifetime parameter as shown: fn bar2<'a, 'c>(x: &'a Bar<'a, 'a, 'c>) -> (&'a int, &'a int, &'a int)
     (x.bar, &x.baz, &x.baz)
     //~^ ERROR: cannot infer
     //~^^ ERROR: cannot infer

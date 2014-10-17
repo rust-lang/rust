@@ -12,23 +12,23 @@
 
 struct Foo<'x> { bar: int }
 fn foo1<'a>(x: &Foo) -> &'a int {
-//~^ NOTE: consider using an explicit lifetime parameter as shown: fn foo1<'a>(x: &'a Foo) -> &'a int
+//~^ HELP: consider using an explicit lifetime parameter as shown: fn foo1<'a>(x: &'a Foo) -> &'a int
     &x.bar //~ ERROR: cannot infer
 }
 
 fn foo2<'a, 'b>(x: &'a Foo) -> &'b int {
-//~^ NOTE: consider using an explicit lifetime parameter as shown: fn foo2<'a>(x: &'a Foo) -> &'a int
+//~^ HELP: consider using an explicit lifetime parameter as shown: fn foo2<'a>(x: &'a Foo) -> &'a int
     &x.bar //~ ERROR: cannot infer
 }
 
 fn foo3<'a>(x: &Foo) -> (&'a int, &'a int) {
-//~^ NOTE: consider using an explicit lifetime parameter as shown: fn foo3<'a>(x: &'a Foo) -> (&'a int, &'a int)
+//~^ HELP: consider using an explicit lifetime parameter as shown: fn foo3<'a>(x: &'a Foo) -> (&'a int, &'a int)
     (&x.bar, &x.bar) //~ ERROR: cannot infer
     //~^ ERROR: cannot infer
 }
 
 fn foo4<'a, 'b>(x: &'a Foo) -> (&'b int, &'a int, &'b int) {
-//~^ NOTE: consider using an explicit lifetime parameter as shown: fn foo4<'a>(x: &'a Foo) -> (&'a int, &'a int, &'a int)
+//~^ HELP: consider using an explicit lifetime parameter as shown: fn foo4<'a>(x: &'a Foo) -> (&'a int, &'a int, &'a int)
     (&x.bar, &x.bar, &x.bar) //~ ERROR: cannot infer
     //~^ ERROR: cannot infer
 }
@@ -37,7 +37,7 @@ struct Cat<'x, T> { cat: &'x int, t: T }
 struct Dog<'y> { dog: &'y int }
 
 fn cat2<'x, 'y>(x: Cat<'x, Dog<'y>>) -> &'x int {
-//~^ NOTE: consider using an explicit lifetime parameter as shown: fn cat2<'x>(x: Cat<'x, Dog<'x>>) -> &'x int
+//~^ HELP: consider using an explicit lifetime parameter as shown: fn cat2<'x>(x: Cat<'x, Dog<'x>>) -> &'x int
     x.t.dog //~ ERROR: cannot infer
 }
 
