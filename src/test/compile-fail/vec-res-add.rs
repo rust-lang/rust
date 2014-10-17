@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[deriving(Show)]
 struct r {
   i:int
 }
@@ -23,7 +24,6 @@ fn main() {
     let i = vec!(r(0));
     let j = vec!(r(1));
     let k = i + j;
-    //~^ ERROR not implemented
+    //~^ ERROR binary operation `+` cannot be applied to type
     println!("{}", j);
-    //~^ ERROR not implemented
 }
