@@ -11,5 +11,5 @@
 // error-pattern: too big for the current
 
 fn main() {
-   let fat : [u8, ..1<<61] = [0, ..1<<61];
+   let fat : [u8, ..(1<<61)+(1<<31)] = [0, ..(1<<61)+(1<<31)];
 }
