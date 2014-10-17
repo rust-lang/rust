@@ -59,8 +59,6 @@
 //! println!("There are {} primes below {}", num_primes, max_prime);
 //! ```
 
-#![allow(missing_doc)]
-
 use core::prelude::*;
 
 use core::cmp;
@@ -1640,7 +1638,6 @@ mod tests {
     use std::prelude::*;
     use std::iter::range_step;
     use std::u32;
-    use std::uint;
     use std::rand;
     use std::rand::Rng;
     use test::Bencher;
