@@ -2203,9 +2203,9 @@ impl<'a> fmt::Show for Source<'a> {
 
 fn item_macro(w: &mut fmt::Formatter, it: &clean::Item,
               t: &clean::Macro) -> fmt::Result {
-    try!(w.write(highlight::highlight(t.source.as_slice(), Some("macro"),
-                                      None).as_bytes()));
-    document(w, it)
+    try!(document(w, it))
+    w.write(highlight::highlight(t.source.as_slice(), Some("macro"),
+                                      None).as_bytes())
 }
 
 fn item_primitive(w: &mut fmt::Formatter,
