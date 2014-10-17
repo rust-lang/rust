@@ -228,15 +228,15 @@ use error::{FromError, Error};
 use fmt;
 use int;
 use iter::Iterator;
-use libc;
 use mem::transmute;
 use ops::{BitOr, BitXor, BitAnd, Sub, Not};
 use option::{Option, Some, None};
 use os;
 use boxed::Box;
 use result::{Ok, Err, Result};
-use rt::rtio;
 use sys;
+use slice::{AsSlice, SlicePrelude};
+use str::{Str, StrPrelude};
 use str;
 use string::String;
 use uint;
@@ -327,17 +327,6 @@ impl IoError {
     /// being checked and the call of this function.
     pub fn last_error() -> IoError {
         IoError::from_errno(os::errno() as uint, true)
-    }
-
-    fn from_rtio_error(err: rtio::IoError) -> IoError {
-        let rtio::IoError { code, extra, detail } = err;
-        let mut ioerr = IoError::from_errno(code, false);
-        ioerr.detail = detail;
-        ioerr.kind = match ioerr.kind {
-            TimedOut if extra > 0 => ShortWrite(extra),
-            k => k,
-        };
-        return ioerr;
     }
 }
 
