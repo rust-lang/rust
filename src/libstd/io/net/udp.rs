@@ -100,6 +100,8 @@ impl UdpSocket {
     ///
     /// Note that this call does not perform any actual network communication,
     /// because UDP is a datagram protocol.
+    #[deprecated = "`UdpStream` has been deprecated"]
+    #[allow(deprecated)]
     pub fn connect(self, other: SocketAddr) -> UdpStream {
         UdpStream {
             socket: self,
@@ -205,6 +207,14 @@ impl Clone for UdpSocket {
 
 /// A type that allows convenient usage of a UDP stream connected to one
 /// address via the `Reader` and `Writer` traits.
+///
+/// # Note
+///
+/// This structure has been deprecated because `Reader` is a stream-oriented API but UDP
+/// is a packet-oriented protocol. Every `Reader` method will read a whole packet and
+/// throw all superfluous bytes away so that they are no longer available for further
+/// method calls.
+#[deprecated]
 pub struct UdpStream {
     socket: UdpSocket,
     connected_to: SocketAddr
@@ -336,6 +346,7 @@ mod test {
     }
 
     #[test]
+    #[allow(deprecated)]
     fn stream_smoke_test_ip4() {
         let server_ip = next_test_ip4();
         let client_ip = next_test_ip4();
@@ -380,6 +391,7 @@ mod test {
     }
 
     #[test]
+    #[allow(deprecated)]
     fn stream_smoke_test_ip6() {
         let server_ip = next_test_ip6();
         let client_ip = next_test_ip6();
