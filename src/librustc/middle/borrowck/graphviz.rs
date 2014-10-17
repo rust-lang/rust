@@ -142,8 +142,8 @@ impl<'a, 'tcx> dot::Labeller<'a, Node<'a>, Edge<'a>> for DataflowLabeller<'a, 't
 }
 
 impl<'a, 'tcx> dot::GraphWalk<'a, Node<'a>, Edge<'a>> for DataflowLabeller<'a, 'tcx> {
-    fn nodes(&self) -> dot::Nodes<'a, Node<'a>> { self.inner.nodes() }
-    fn edges(&self) -> dot::Edges<'a, Edge<'a>> { self.inner.edges() }
-    fn source(&self, edge: &Edge<'a>) -> Node<'a> { self.inner.source(edge) }
-    fn target(&self, edge: &Edge<'a>) -> Node<'a> { self.inner.target(edge) }
+    fn nodes(&'a self) -> dot::Nodes<'a, Node<'a>> { self.inner.nodes() }
+    fn edges(&'a self) -> dot::Edges<'a, Edge<'a>> { self.inner.edges() }
+    fn source(&'a self, edge: &Edge<'a>) -> Node<'a> { self.inner.source(edge) }
+    fn target(&'a self, edge: &Edge<'a>) -> Node<'a> { self.inner.target(edge) }
 }
