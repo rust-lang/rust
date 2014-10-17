@@ -341,7 +341,7 @@ following forms:
   escaped in order to denote its ASCII encoding `0x5C`.
 
 Raw byte string literals do not process any escapes. They start with the
-character `U+0072` (`r`), followed by `U+0062` (`b`), followed by zero or more
+character `U+0062` (`b`), followed by `U+0072` (`r`), followed by zero or more
 of the character `U+0023` (`#`), and a `U+0022` (double-quote) character. The
 _raw string body_ is not defined in the EBNF grammar above: it can contain any
 sequence of ASCII characters and is terminated only by another `U+0022`
