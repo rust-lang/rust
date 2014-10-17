@@ -77,6 +77,7 @@ type parameter).
 */
 
 
+use driver::session::Session;
 use middle::const_eval;
 use middle::def;
 use middle::lang_items::IteratorItem;
@@ -2924,46 +2925,24 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
                                                 fcx.expr_ty(&*rcvr));
 
         let tps = tps.iter().map(|ast_ty| fcx.to_ty(&**ast_ty)).collect::<Vec<_>>();
-        let fn_ty = match method::lookup(fcx, expr, &*rcvr,
+        let fn_ty = match method::lookup(fcx,
+                                         expr,
+                                         &*rcvr,
                                          method_name.node.name,
-                                         expr_t, tps.as_slice(),
+                                         expr_t,
+                                         tps.as_slice(),
                                          DontDerefArgs,
                                          CheckTraitsAndInherentMethods,
-                                         AutoderefReceiver, IgnoreStaticMethods) {
-            Some(method) => {
+                                         AutoderefReceiver) {
+            Ok(method) => {
                 let method_ty = method.ty;
                 let method_call = MethodCall::expr(expr.id);
                 fcx.inh.method_map.borrow_mut().insert(method_call, method);
                 method_ty
             }
-            None => {
-                debug!("(checking method call) failing expr is {}", expr.id);
-
-                fcx.type_error_message(method_name.span,
-                  |actual| {
-                      format!("type `{}` does not implement any \
-                               method in scope named `{}`",
-                              actual,
-                              token::get_ident(method_name.node))
-                  },
-                  expr_t,
-                  None);
-
-                // Add error type for the result
+            Err(error) => {
+                method::report_error(fcx, method_name.span, expr_t, method_name.node.name, error);
                 fcx.write_error(expr.id);
-
-                // Check for potential static matches (missing self parameters)
-                method::lookup(fcx,
-                               expr,
-                               &*rcvr,
-                               method_name.node.name,
-                               expr_t,
-                               tps.as_slice(),
-                               DontDerefArgs,
-                               CheckTraitsAndInherentMethods,
-                               DontAutoderefReceiver,
-                               ReportStaticMethods);
-
                 ty::mk_err()
             }
         };
@@ -3466,9 +3445,8 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
                              tps.as_slice(),
                              DontDerefArgs,
                              CheckTraitsAndInherentMethods,
-                             AutoderefReceiver,
-                             IgnoreStaticMethods) {
-            Some(_) => {
+                             AutoderefReceiver) {
+            Ok(_) => {
                 fcx.type_error_message(
                     field.span,
                     |actual| {
@@ -3481,7 +3459,7 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
                     "maybe a missing `()` to call it? If not, try an anonymous function.");
             }
 
-            None => {
+            Err(_) => {
                 fcx.type_error_message(
                     expr.span,
                     |actual| {

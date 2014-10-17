@@ -120,6 +120,13 @@ impl ImplOrTraitItem {
             TypeTraitItem(ref associated_type) => associated_type.container,
         }
     }
+
+    pub fn as_opt_method(&self) -> Option<Rc<Method>> {
+        match *self {
+            MethodTraitItem(ref m) => Some((*m).clone()),
+            TypeTraitItem(_) => None
+        }
+    }
 }
 
 #[deriving(Clone)]
@@ -1240,6 +1247,10 @@ impl Generics {
 }
 
 impl TraitRef {
+    pub fn new(def_id: ast::DefId, substs: Substs) -> TraitRef {
+        TraitRef { def_id: def_id, substs: substs }
+    }
+
     pub fn self_ty(&self) -> ty::t {
         self.substs.self_ty().unwrap()
     }
