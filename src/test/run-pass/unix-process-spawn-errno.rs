@@ -24,7 +24,7 @@ use rustrt::c_str;
 macro_rules! c_string {
     ($s:expr) => { {
         let ptr = concat!($s, "\0").as_ptr() as *const i8;
-        unsafe { &c_str::CString::new(ptr, false) }
+        unsafe { &c_str::CString::new(ptr) }
     } }
 }
 

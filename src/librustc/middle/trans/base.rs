@@ -2988,7 +2988,7 @@ fn internalize_symbols(cx: &SharedCrateContext, reachable: &HashSet<String>) {
                     continue
                 }
 
-                let name = CString::new(llvm::LLVMGetValueName(val), false);
+                let name = CString::new(llvm::LLVMGetValueName(val));
                 declared.insert(name);
             }
         }
@@ -3004,7 +3004,7 @@ fn internalize_symbols(cx: &SharedCrateContext, reachable: &HashSet<String>) {
                     continue
                 }
 
-                let name = CString::new(llvm::LLVMGetValueName(val), false);
+                let name = CString::new(llvm::LLVMGetValueName(val));
                 if !declared.contains(&name) &&
                    !reachable.contains_equiv(name.as_str().unwrap()) {
                     llvm::SetLinkage(val, llvm::InternalLinkage);

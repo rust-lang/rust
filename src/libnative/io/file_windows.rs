@@ -347,7 +347,7 @@ pub fn mkdir(p: &CString, _mode: uint) -> IoResult<()> {
 
 pub fn readdir(p: &CString) -> IoResult<Vec<CString>> {
     fn prune(root: &CString, dirs: Vec<Path>) -> Vec<CString> {
-        let root = unsafe { CString::new(root.as_ptr(), false) };
+        let root = unsafe { CString::new(root.as_ptr()) };
         let root = Path::new(root);
 
         dirs.into_iter().filter(|path| {
@@ -356,7 +356,7 @@ pub fn readdir(p: &CString) -> IoResult<Vec<CString>> {
     }
 
     let star = Path::new(unsafe {
-        CString::new(p.as_ptr(), false)
+        CString::new(p.as_ptr())
     }).join("*");
     let path = try!(to_utf16(&star.to_c_str()));
 

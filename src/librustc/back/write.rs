@@ -46,10 +46,10 @@ pub enum OutputType {
 pub fn llvm_err(handler: &diagnostic::Handler, msg: String) -> ! {
     unsafe {
         let cstr = llvm::LLVMRustGetLastError();
-        if cstr == ptr::null() {
+        if cstr as *const i8 == ptr::null() {
             handler.fatal(msg.as_slice());
         } else {
-            let err = CString::new(cstr, true);
+            let err = CString::new_owned(cstr);
             let err = String::from_utf8_lossy(err.as_bytes());
             handler.fatal(format!("{}: {}",
                                   msg.as_slice(),
@@ -373,7 +373,7 @@ unsafe extern "C" fn diagnostic_handler(info: DiagnosticInfoRef, user: *mut c_vo
 
     match llvm::diagnostic::Diagnostic::unpack(info) {
         llvm::diagnostic::Optimization(opt) => {
-            let pass_name = CString::new(opt.pass_name, false);
+            let pass_name = CString::new(opt.pass_name);
             let pass_name = pass_name.as_str().expect("got a non-UTF8 pass name from LLVM");
             let enabled = match cgcx.remark {
                 AllPasses => true,

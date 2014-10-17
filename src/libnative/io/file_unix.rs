@@ -351,7 +351,7 @@ pub fn readdir(p: &CString) -> IoResult<Vec<CString>> {
     use libc::{opendir, readdir_r, closedir};
 
     fn prune(root: &CString, dirs: Vec<Path>) -> Vec<CString> {
-        let root = unsafe { CString::new(root.as_ptr(), false) };
+        let root = unsafe { CString::new(root.as_ptr()) };
         let root = Path::new(root);
 
         dirs.into_iter().filter(|path| {
@@ -376,7 +376,7 @@ pub fn readdir(p: &CString) -> IoResult<Vec<CString>> {
         while unsafe { readdir_r(dir_ptr, ptr, &mut entry_ptr) == 0 } {
             if entry_ptr.is_null() { break }
             let cstr = unsafe {
-                CString::new(rust_list_dir_val(entry_ptr), false)
+                CString::new(rust_list_dir_val(entry_ptr))
             };
             paths.push(Path::new(cstr));
         }
