@@ -557,7 +557,7 @@ impl<E, D: Decoder<E>, T: Decodable<D, E>> Decodable<D, E> for RefCell<T> {
     }
 }
 
-impl<E, S:Encoder<E>, T:Encodable<S, E>+Send+Sync> Encodable<S, E> for Arc<T> {
+impl<E, S:Encoder<E>, T:Encodable<S, E>> Encodable<S, E> for Arc<T> {
     fn encode(&self, s: &mut S) -> Result<(), E> {
         (**self).encode(s)
     }
