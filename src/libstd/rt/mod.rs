@@ -12,11 +12,10 @@
 
 The `rt` module provides the private runtime infrastructure necessary
 to support core language features like the exchange and local heap,
-the garbage collector, logging, local data and unwinding. It also
-implements the default task scheduler and task model. Initialization
-routines are provided for setting up runtime resources in common
-configurations, including that used by `rustc` when generating
-executables.
+logging, local data and unwinding. It also implements the default task
+scheduler and task model. Initialization routines are provided for setting
+up runtime resources in common configurations, including that used by
+`rustc` when generating executables.
 
 It is intended that the features provided by `rt` can be factored in a
 way such that the core library can be built with different 'profiles'
@@ -32,7 +31,7 @@ truly a global resource and generally operates independently of the
 rest of the runtime.
 
 All other runtime features are task-local, including the local heap,
-the garbage collector, local storage, logging and the stack unwinder.
+local storage, logging and the stack unwinder.
 
 The relationship between `rt` and the rest of the core library is
 not entirely clear yet and some modules will be moving into or
@@ -42,7 +41,6 @@ Several modules in `core` are clients of `rt`:
 
 * `std::task` - The user-facing interface to the Rust task model.
 * `std::local_data` - The interface to local data.
-* `std::gc` - The garbage collector.
 * `std::unstable::lang` - Miscellaneous lang items, some of which rely on `std::rt`.
 * `std::cleanup` - Local heap destruction.
 * `std::io` - In the future `std::io` will use an `rt` implementation.
