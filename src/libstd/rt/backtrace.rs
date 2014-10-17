@@ -383,7 +383,7 @@ mod imp {
             output(w, idx,addr, None)
         } else {
             output(w, idx, addr, Some(unsafe {
-                CString::new(info.dli_sname, false)
+                CString::new(info.dli_sname)
             }))
         }
     }
@@ -518,7 +518,7 @@ mod imp {
         if ret == 0 || data.is_null() {
             output(w, idx, addr, None)
         } else {
-            output(w, idx, addr, Some(unsafe { CString::new(data, false) }))
+            output(w, idx, addr, Some(unsafe { CString::new(data) }))
         }
     }
 
@@ -993,7 +993,7 @@ mod imp {
 
             if ret == libc::TRUE {
                 try!(write!(w, " - "));
-                let cstr = unsafe { CString::new(info.Name.as_ptr(), false) };
+                let cstr = unsafe { CString::new(info.Name.as_ptr()) };
                 let bytes = cstr.as_bytes();
                 match cstr.as_str() {
                     Some(s) => try!(super::demangle(w, s)),
