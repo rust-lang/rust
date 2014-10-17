@@ -16,13 +16,15 @@
 use core::atomic;
 use core::clone::Clone;
 use core::fmt::{mod, Show};
+use core::cmp::{Eq, Ord, PartialEq, PartialOrd, Ordering};
+use core::default::Default;
 use core::kinds::{Sync, Send};
 use core::mem::{min_align_of, size_of, drop};
 use core::mem;
 use core::ops::{Drop, Deref};
 use core::option::{Some, None, Option};
-use core::ptr;
 use core::ptr::RawPtr;
+use core::ptr;
 use heap::deallocate;
 
 /// An atomically reference counted wrapper for shared state.
@@ -92,16 +94,6 @@ impl<T: Sync + Send> Arc<T> {
         Arc { _ptr: unsafe { mem::transmute(x) } }
     }
 
-    #[inline]
-    fn inner(&self) -> &ArcInner<T> {
-        // This unsafety is ok because while this arc is alive we're guaranteed
-        // that the inner pointer is valid. Furthermore, we know that the
-        // `ArcInner` structure itself is `Sync` because the inner data is
-        // `Sync` as well, so we're ok loaning out an immutable pointer to
-        // these contents.
-        unsafe { &*self._ptr }
-    }
-
     /// Downgrades a strong pointer to a weak pointer.
     ///
     /// Weak pointers will not keep the data alive. Once all strong references
@@ -115,8 +107,20 @@ impl<T: Sync + Send> Arc<T> {
     }
 }
 
+impl<T> Arc<T> {
+    #[inline]
+    fn inner(&self) -> &ArcInner<T> {
+        // This unsafety is ok because while this arc is alive we're guaranteed
+        // that the inner pointer is valid. Furthermore, we know that the
+        // `ArcInner` structure itself is `Sync` because the inner data is
+        // `Sync` as well, so we're ok loaning out an immutable pointer to
+        // these contents.
+        unsafe { &*self._ptr }
+    }
+}
+
 #[unstable = "waiting on stability of Clone"]
-impl<T: Sync + Send> Clone for Arc<T> {
+impl<T> Clone for Arc<T> {
     /// Duplicate an atomically reference counted wrapper.
     ///
     /// The resulting two `Arc` objects will point to the same underlying data
@@ -141,16 +145,10 @@ impl<T: Sync + Send> Clone for Arc<T> {
 }
 
 #[experimental = "Deref is experimental."]
-impl<T: Send + Sync> Deref<T> for Arc<T> {
+impl<T> Deref<T> for Arc<T> {
     #[inline]
     fn deref(&self) -> &T {
         &self.inner().data
-    }
-}
-
-impl<T: Send + Sync + Show> Show for Arc<T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        (**self).fmt(f)
     }
 }
 
@@ -277,6 +275,38 @@ impl<T: Sync + Send> Drop for Weak<T> {
                                 min_align_of::<ArcInner<T>>()) }
         }
     }
+}
+
+#[unstable = "waiting on PartialEq"]
+impl<T: PartialEq> PartialEq for Arc<T> {
+    fn eq(&self, other: &Arc<T>) -> bool { *(*self) == *(*other) }
+    fn ne(&self, other: &Arc<T>) -> bool { *(*self) != *(*other) }
+}
+#[unstable = "waiting on PartialOrd"]
+impl<T: PartialOrd> PartialOrd for Arc<T> {
+    fn partial_cmp(&self, other: &Arc<T>) -> Option<Ordering> {
+        (**self).partial_cmp(&**other)
+    }
+    fn lt(&self, other: &Arc<T>) -> bool { *(*self) < *(*other) }
+    fn le(&self, other: &Arc<T>) -> bool { *(*self) <= *(*other) }
+    fn ge(&self, other: &Arc<T>) -> bool { *(*self) >= *(*other) }
+    fn gt(&self, other: &Arc<T>) -> bool { *(*self) > *(*other) }
+}
+#[unstable = "waiting on Ord"]
+impl<T: Ord> Ord for Arc<T> {
+    fn cmp(&self, other: &Arc<T>) -> Ordering { (**self).cmp(&**other) }
+}
+#[unstable = "waiting on Eq"]
+impl<T: Eq> Eq for Arc<T> {}
+
+impl<T: fmt::Show> fmt::Show for Arc<T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        (**self).fmt(f)
+    }
+}
+
+impl<T: Default + Sync + Send> Default for Arc<T> {
+    fn default() -> Arc<T> { Arc::new(Default::default()) }
 }
 
 #[cfg(test)]
@@ -440,4 +470,8 @@ mod tests {
         let a = Arc::new(5u32);
         assert!(format!("{}", a).as_slice() == "5")
     }
+
+    // Make sure deriving works with Arc<T>
+    #[deriving(Eq, Ord, PartialEq, PartialOrd, Clone, Show, Default)]
+    struct Foo { inner: Arc<int> }
 }
