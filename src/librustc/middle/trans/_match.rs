@@ -1270,7 +1270,7 @@ impl euv::Delegate for ReassignmentChecker {
 
     fn mutate(&mut self, _: ast::NodeId, _: Span, cmt: mc::cmt, _: euv::MutateMode) {
         match cmt.cat {
-            mc::cat_copied_upvar(mc::CopiedUpvar { upvar_id: vid, .. }) |
+            mc::cat_upvar(mc::Upvar { id: ty::UpvarId { var_id: vid, .. }, .. }) |
             mc::cat_local(vid) => self.reassigned = self.node == vid,
             _ => {}
         }

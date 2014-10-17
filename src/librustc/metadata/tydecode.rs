@@ -277,6 +277,7 @@ fn parse_bound_region(st: &mut PState, conv: conv_did) -> ty::BoundRegion {
             assert_eq!(next(st), '|');
             ty::BrFresh(id)
         }
+        'e' => ty::BrEnv,
         _ => fail!("parse_bound_region: bad input")
     }
 }

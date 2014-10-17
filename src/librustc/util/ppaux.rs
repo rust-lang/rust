@@ -15,7 +15,7 @@ use middle::subst;
 use middle::ty::{BoundRegion, BrAnon, BrNamed};
 use middle::ty::{ReEarlyBound, BrFresh, ctxt};
 use middle::ty::{ReFree, ReScope, ReInfer, ReStatic, Region, ReEmpty};
-use middle::ty::{ReSkolemized, ReVar};
+use middle::ty::{ReSkolemized, ReVar, BrEnv};
 use middle::ty::{mt, t, ParamTy};
 use middle::ty::{ty_bool, ty_char, ty_bot, ty_struct, ty_enum};
 use middle::ty::{ty_err, ty_str, ty_vec, ty_float, ty_bare_fn, ty_closure};
@@ -183,8 +183,7 @@ pub fn bound_region_to_string(cx: &ctxt,
         BrNamed(_, name) => {
             format!("{}{}{}", prefix, token::get_name(name), space_str)
         }
-        BrAnon(_) => prefix.to_string(),
-        BrFresh(_) => prefix.to_string(),
+        BrAnon(_) | BrFresh(_) | BrEnv => prefix.to_string()
     }
 }
 
@@ -769,6 +768,7 @@ impl Repr for ty::BoundRegion {
                 format!("BrNamed({}, {})", id.repr(tcx), token::get_name(name))
             }
             ty::BrFresh(id) => format!("BrFresh({})", id),
+            ty::BrEnv => "BrEnv".to_string()
         }
     }
 }
