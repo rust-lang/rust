@@ -769,12 +769,10 @@ pub fn iter_structural_ty<'a, 'blk, 'tcx>(cx: Block<'blk, 'tcx>,
           // NB: we must hit the discriminant first so that structural
           // comparison know not to proceed when the discriminants differ.
 
-          match adt::trans_switch(cx, &*repr, av) {
-              (_match::Single, None) => {
-                  cx = iter_variant(cx, &*repr, av, &**variants.get(0),
-                                    substs, f);
-              }
-              (_match::Switch, Some(lldiscrim_a)) => {
+          match adt::trans_get_discr_repr(cx, &*repr, av) {
+              None => cx = iter_variant(cx, &*repr, av, &**variants.get(0),
+                                        substs, f),
+              Some(lldiscrim_a) => {
                   cx = f(cx, lldiscrim_a, ty::mk_int());
                   let unr_cx = fcx.new_temp_block("enum-iter-unr");
                   Unreachable(unr_cx);
@@ -806,8 +804,6 @@ pub fn iter_structural_ty<'a, 'blk, 'tcx>(cx: Block<'blk, 'tcx>,
                   }
                   cx = next_cx;
               }
-              _ => ccx.sess().unimpl("value from adt::trans_switch \
-                                      in iter_structural_ty")
           }
       }
       _ => cx.sess().unimpl("type in iter_structural_ty")

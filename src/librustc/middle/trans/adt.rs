@@ -571,18 +571,16 @@ fn struct_llfields(cx: &CrateContext, st: &Struct, sizing: bool, dst: bool) -> V
  * Obtain a representation of the discriminant sufficient to translate
  * destructuring; this may or may not involve the actual discriminant.
  *
- * This should ideally be less tightly tied to `_match`.
+ * Returns None if no discriminant is used.
  */
-pub fn trans_switch(bcx: Block, r: &Repr, scrutinee: ValueRef)
-    -> (_match::BranchKind, Option<ValueRef>) {
+pub fn trans_get_discr_repr(bcx: Block, r: &Repr, scrutinee: ValueRef)
+    -> Option<ValueRef> {
     match *r {
         CEnum(..) | General(..) |
         RawNullablePointer { .. } | StructWrappedNullablePointer { .. } => {
-            (_match::Switch, Some(trans_get_discr(bcx, r, scrutinee, None)))
+            Some(trans_get_discr(bcx, r, scrutinee, None))
         }
-        Univariant(..) => {
-            (_match::Single, None)
-        }
+        Univariant(..) => None
     }
 }
 

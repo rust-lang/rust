@@ -1065,9 +1065,13 @@ fn compile_submatch_continue<'a, 'p, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                 };
             }
             Variant(_, ref repr, _) => {
-                let (the_kind, val_opt) = adt::trans_switch(bcx, &**repr, val);
-                kind = the_kind;
-                for &tval in val_opt.iter() { test_val = tval; }
+                match adt::trans_get_discr_repr(bcx, &**repr, val) {
+                    None => {},
+                    Some(v) => {
+                        kind = Switch;
+                        test_val = v;
+                    }
+                }
             }
             SliceLengthEqual(_) | SliceLengthGreaterOrEqual(_, _) => {
                 let (_, len) = tvec::get_base_and_len(bcx, val, left_ty);
