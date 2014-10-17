@@ -33,16 +33,16 @@ use super::c::{ENABLE_PROCESSED_INPUT, ENABLE_QUICK_EDIT_MODE};
 use libc::{c_int, HANDLE, LPDWORD, DWORD, LPVOID};
 use libc::{get_osfhandle, CloseHandle};
 use libc::types::os::arch::extra::LPCVOID;
-use std::io::MemReader;
-use std::ptr;
-use std::rt::rtio::{IoResult, IoError, RtioTTY};
-use std::str::from_utf8;
+use io::{mod, IoError, IoResult, MemReader};
+use prelude::*;
+use ptr;
+use str::from_utf8;
 
 fn invalid_encoding() -> IoError {
     IoError {
-        code: ERROR_ILLEGAL_CHARACTER as uint,
-        extra: 0,
-        detail: Some("text was not valid unicode".to_string()),
+        kind: io::InvalidInput,
+        desc: "text was not valid unicode",
+        detail: None,
     }
 }
 
@@ -56,40 +56,37 @@ pub fn is_tty(fd: c_int) -> bool {
     }
 }
 
-pub struct WindowsTTY {
+pub struct TTY {
     closeme: bool,
     handle: HANDLE,
     utf8: MemReader,
 }
 
-impl WindowsTTY {
-    pub fn new(fd: c_int) -> WindowsTTY {
-        // If the file descriptor is one of stdin, stderr, or stdout
-        // then it should not be closed by us
-        let closeme = match fd {
-            0...2 => false,
-            _ => true,
-        };
-        let handle = unsafe { get_osfhandle(fd) as HANDLE };
-        WindowsTTY {
-            handle: handle,
-            utf8: MemReader::new(Vec::new()),
-            closeme: closeme,
+impl TTY {
+    pub fn new(fd: c_int) -> IoResult<TTY> {
+        if is_tty(fd) {
+            // If the file descriptor is one of stdin, stderr, or stdout
+            // then it should not be closed by us
+            let closeme = match fd {
+                0...2 => false,
+                _ => true,
+            };
+            let handle = unsafe { get_osfhandle(fd) as HANDLE };
+            Ok(TTY {
+                handle: handle,
+                utf8: MemReader::new(Vec::new()),
+                closeme: closeme,
+            })
+        } else {
+            Err(IoError {
+                kind: io::MismatchedFileTypeForOperation,
+                desc: "invalid handle provided to function",
+                detail: None,
+            })
         }
     }
-}
 
-impl Drop for WindowsTTY {
-    fn drop(&mut self) {
-        if self.closeme {
-            // Nobody cares about the return value
-            let _ = unsafe { CloseHandle(self.handle) };
-        }
-    }
-}
-
-impl RtioTTY for WindowsTTY {
-    fn read(&mut self, buf: &mut [u8]) -> IoResult<uint> {
+    pub fn read(&mut self, buf: &mut [u8]) -> IoResult<uint> {
         // Read more if the buffer is empty
         if self.utf8.eof() {
             let mut utf16 = Vec::from_elem(0x1000, 0u16);
@@ -113,7 +110,7 @@ impl RtioTTY for WindowsTTY {
         Ok(self.utf8.read(buf).unwrap())
     }
 
-    fn write(&mut self, buf: &[u8]) -> IoResult<()> {
+    pub fn write(&mut self, buf: &[u8]) -> IoResult<()> {
         let utf16 = match from_utf8(buf) {
             Some(utf8) => {
                 utf8.as_slice().utf16_units().collect::<Vec<u16>>()
@@ -131,7 +128,7 @@ impl RtioTTY for WindowsTTY {
         }
     }
 
-    fn set_raw(&mut self, raw: bool) -> IoResult<()> {
+    pub fn set_raw(&mut self, raw: bool) -> IoResult<()> {
         // FIXME
         // Somebody needs to decide on which of these flags we want
         match unsafe { SetConsoleMode(self.handle,
@@ -146,7 +143,7 @@ impl RtioTTY for WindowsTTY {
         }
     }
 
-    fn get_winsize(&mut self) -> IoResult<(int, int)> {
+    pub fn get_winsize(&mut self) -> IoResult<(int, int)> {
         // FIXME
         // Get console buffer via CreateFile with CONOUT$
         // Make a CONSOLE_SCREEN_BUFFER_INFO
@@ -156,5 +153,14 @@ impl RtioTTY for WindowsTTY {
     }
 
     // Let us magically declare this as a TTY
-    fn isatty(&self) -> bool { true }
+    pub fn isatty(&self) -> bool { true }
+}
+
+impl Drop for TTY {
+    fn drop(&mut self) {
+        if self.closeme {
+            // Nobody cares about the return value
+            let _ = unsafe { CloseHandle(self.handle) };
+        }
+    }
 }

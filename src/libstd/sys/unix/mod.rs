@@ -35,6 +35,7 @@ pub mod pipe;
 pub mod helper_signal;
 pub mod process;
 pub mod timer;
+pub mod tty;
 
 pub mod addrinfo {
     pub use sys_common::net::get_host_addresses;

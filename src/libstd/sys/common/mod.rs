@@ -48,6 +48,14 @@ pub fn short_write(n: uint, desc: &'static str) -> IoError {
     }
 }
 
+pub fn unimpl() -> IoError {
+    IoError {
+        kind: io::IoUnavailable,
+        desc: "operations not yet supported",
+        detail: None,
+    }
+}
+
 // unix has nonzero values as errors
 pub fn mkerr_libc<Int: num::Zero>(ret: Int) -> IoResult<()> {
     if !ret.is_zero() {
