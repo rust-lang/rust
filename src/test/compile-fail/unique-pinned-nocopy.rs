@@ -19,6 +19,6 @@ impl Drop for r {
 
 fn main() {
     let i = box r { b: true };
-    let _j = i.clone(); //~ ERROR not implemented
+    let _j = i.clone(); //~ ERROR not implement
     println!("{}", i);
 }

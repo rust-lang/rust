@@ -35,8 +35,8 @@ fn main() {
     let r1 = vec!(box r { i: i1 });
     let r2 = vec!(box r { i: i2 });
     f(r1.clone(), r2.clone());
-    //~^ ERROR the trait `core::clone::Clone` is not implemented
-    //~^^ ERROR the trait `core::clone::Clone` is not implemented
+    //~^ ERROR does not implement any method in scope named `clone`
+    //~^^ ERROR does not implement any method in scope named `clone`
     println!("{}", (r2, i1.get()));
     println!("{}", (r1, i2.get()));
 }
