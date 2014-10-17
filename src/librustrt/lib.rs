@@ -90,7 +90,6 @@ pub trait Runtime {
                      cur_task: Box<Task>,
                      opts: TaskOpts,
                      f: proc():Send);
-    fn local_io<'a>(&'a mut self) -> Option<rtio::LocalIo<'a>>;
     /// The (low, high) edges of the current stack.
     fn stack_bounds(&self) -> (uint, uint); // (lo, hi)
     /// The last writable byte of the stack next to the guard page

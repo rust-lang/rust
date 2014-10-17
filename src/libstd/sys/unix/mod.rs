@@ -9,6 +9,11 @@
 // except according to those terms.
 
 #![allow(missing_doc)]
+#![allow(non_camel_case_types)]
+#![allow(unused_imports)]
+#![allow(dead_code)]
+#![allow(unused_unsafe)]
+#![allow(unused_mut)]
 
 extern crate libc;
 
