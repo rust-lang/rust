@@ -104,6 +104,9 @@ impl<R: Reader> Buffer for BufferedReader<R> {
 
 impl<R: Reader> Reader for BufferedReader<R> {
     fn read(&mut self, buf: &mut [u8]) -> IoResult<uint> {
+        if self.pos == self.cap && buf.len() >= self.buf.capacity() {
+            return self.inner.read(buf);
+        }
         let nread = {
             let available = try!(self.fill_buf());
             let nread = cmp::min(available.len(), buf.len());
@@ -409,13 +412,19 @@ mod test {
 
     #[test]
     fn test_buffered_reader() {
-        let inner = MemReader::new(vec!(0, 1, 2, 3, 4));
+        let inner = MemReader::new(vec!(5, 6, 7, 0, 1, 2, 3, 4));
         let mut reader = BufferedReader::with_capacity(2, inner);
 
         let mut buf = [0, 0, 0];
         let nread = reader.read(buf);
+        assert_eq!(Ok(3), nread);
+        let b: &[_] = &[5, 6, 7];
+        assert_eq!(buf.as_slice(), b);
+
+        let mut buf = [0, 0];
+        let nread = reader.read(buf);
         assert_eq!(Ok(2), nread);
-        let b: &[_] = &[0, 1, 0];
+        let b: &[_] = &[0, 1];
         assert_eq!(buf.as_slice(), b);
 
         let mut buf = [0];
