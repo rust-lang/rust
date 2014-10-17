@@ -96,21 +96,55 @@ fn main() {
         }
 
         // reverse complement, as
-        //    seq.reverse(); for c in seq.iter_mut() {*c = complements[*c]}
+        //    seq.reverse(); for c in seq.iter_mut() { *c = complements[*c] }
         // but faster:
-        let mut it = seq.iter_mut();
-        loop {
-            match (it.next(), it.next_back()) {
-                (Some(front), Some(back)) => {
-                    let tmp = complements[*front as uint];
-                    *front = complements[*back as uint];
-                    *back = tmp;
-                }
-                (Some(last), None) => *last = complements[*last as uint], // last element
-                _ => break // vector exhausted.
-            }
+        for (front, back) in two_side_iter(seq) {
+            let tmp = complements[*front as uint];
+            *front = complements[*back as uint];
+            *back = tmp;
+        }
+        if seq.len() % 2 == 1 {
+            let middle = &mut seq[seq.len() / 2];
+            *middle = complements[*middle as uint];
         }
     }
 
     stdout().write(data.as_slice()).unwrap();
+}
+
+pub struct TwoSideIter<'a, T: 'a> {
+    first: *mut T,
+    last: *mut T,
+    marker: std::kinds::marker::ContravariantLifetime<'a>,
+    marker2: std::kinds::marker::NoCopy
+}
+
+pub fn two_side_iter<'a, T>(slice: &'a mut [T]) -> TwoSideIter<'a, T> {
+    let len = slice.len();
+    let first = slice.as_mut_ptr();
+    let last = if len == 0 {
+        first
+    } else {
+        unsafe { first.offset(len as int - 1) }
+    };
+
+    TwoSideIter {
+        first: first,
+        last: last,
+        marker: std::kinds::marker::ContravariantLifetime,
+        marker2: std::kinds::marker::NoCopy
+    }
+}
+
+impl<'a, T> Iterator<(&'a mut T, &'a mut T)> for TwoSideIter<'a, T> {
+    fn next(&mut self) -> Option<(&'a mut T, &'a mut T)> {
+        if self.first < self.last {
+            let result = unsafe { (&mut *self.first, &mut *self.last) };
+            self.first = unsafe { self.first.offset(1) };
+            self.last = unsafe { self.last.offset(-1) };
+            Some(result)
+        } else {
+            None
+        }
+    }
 }
