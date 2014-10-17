@@ -1255,8 +1255,9 @@ version, if we had forgotten the `Greater` case, for example, our program would
 have happily compiled. If we forget in the `match`, it will not. Rust helps us
 make sure to cover all of our bases.
 
-`match` is also an expression, which means we can use it on the right hand side
-of a `let` binding. We could also implement the previous line like this:
+`match` is also an expression, which means we can use it on the right
+hand side of a `let` binding or directly where an expression is
+used. We could also implement the previous line like this:
 
 ```{rust}
 fn cmp(a: int, b: int) -> Ordering {
@@ -1269,18 +1270,15 @@ fn main() {
     let x = 5i;
     let y = 10i;
 
-    let result = match cmp(x, y) {
+    println!("{}", match cmp(x, y) {
         Less    => "less",
         Greater => "greater",
         Equal   => "equal",
-    };
-
-    println!("{}", result);
+    });
 }
 ```
 
-In this case, it doesn't make a lot of sense, as we are just making a temporary
-string where we don't need to, but sometimes, it's a nice pattern.
+Sometimes, it's a nice pattern.
 
 # Looping
 
