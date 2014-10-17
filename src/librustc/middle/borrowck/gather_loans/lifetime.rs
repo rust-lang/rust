@@ -67,7 +67,6 @@ impl<'a, 'tcx> GuaranteeLifetimeContext<'a, 'tcx> {
 
         match cmt.cat {
             mc::cat_rvalue(..) |
-            mc::cat_copied_upvar(..) |                  // L-Local
             mc::cat_local(..) |                         // L-Local
             mc::cat_upvar(..) |
             mc::cat_deref(_, _, mc::BorrowedPtr(..)) |  // L-Deref-Borrowed
@@ -165,8 +164,7 @@ impl<'a, 'tcx> GuaranteeLifetimeContext<'a, 'tcx> {
             mc::cat_rvalue(temp_scope) => {
                 temp_scope
             }
-            mc::cat_upvar(..) |
-            mc::cat_copied_upvar(_) => {
+            mc::cat_upvar(..) => {
                 ty::ReScope(self.item_scope_id)
             }
             mc::cat_static_item => {

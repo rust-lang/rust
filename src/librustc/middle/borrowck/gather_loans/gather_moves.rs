@@ -133,19 +133,13 @@ fn check_and_get_illegal_move_origin(bccx: &BorrowckCtxt,
         mc::cat_deref(_, _, mc::BorrowedPtr(..)) |
         mc::cat_deref(_, _, mc::Implicit(..)) |
         mc::cat_deref(_, _, mc::UnsafePtr(..)) |
-        mc::cat_upvar(..) | mc::cat_static_item => {
+        mc::cat_static_item => {
             Some(cmt.clone())
         }
 
-        mc::cat_copied_upvar(mc::CopiedUpvar { kind: kind, .. }) => {
-            match kind.onceness() {
-                ast::Once => None,
-                ast::Many => Some(cmt.clone())
-            }
-        }
-
         mc::cat_rvalue(..) |
-        mc::cat_local(..) => {
+        mc::cat_local(..) |
+        mc::cat_upvar(..) => {
             None
         }
 
