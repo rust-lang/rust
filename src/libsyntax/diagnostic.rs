@@ -296,8 +296,8 @@ fn print_diagnostic(dst: &mut EmitterWriter, topic: &str, lvl: Level,
             match dst.registry.as_ref().and_then(|registry| registry.find_description(code)) {
                 Some(_) => {
                     try!(write!(&mut dst.dst,
-                        " (pass `--explain {}` to see a detailed explanation)",
-                        code
+                        " (pass `--explain {code}` to see more detail or visit http://doc.rust-lang.org/errors/{code}.html for extensive help with this error)",
+                        code = code
                     ));
                 }
                 None => ()

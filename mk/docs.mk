@@ -215,6 +215,22 @@ endef
 
 $(foreach docname,$(DOCS),$(eval $(call DEF_DOC,$(docname))))
 
+# Error pages
+doc/errors/:
+	@mkdir -p $@
+
+ERROR_DOCS = $(basename $(notdir $(wildcard src/doc/errors/*.md)))
+
+define DEF_ERROR_DOC
+
+# HTML (rustdoc)
+DOC_TARGETS += doc/errors/$(1).html
+doc/errors/$(1).html: $$(D)/errors/$(1).md $$(HTML_DEPS) $$(RUSTDOC_DEPS_$(1)) | doc/errors
+	@$$(call E, rustdoc: $$@)
+	$$(Q)$$(RUSTDOC) $$(RUSTDOC_HTML_OPTS) $$(RUSTDOC_FLAGS_$(1)) -o doc/errors $$<
+endef
+
+$(foreach docname,$(ERROR_DOCS),$(eval $(call DEF_ERROR_DOC,$(docname))))
 
 # Localized documentation
 
