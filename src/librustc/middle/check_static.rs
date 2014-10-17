@@ -57,6 +57,7 @@ struct GlobalChecker {
     static_consumptions: NodeSet,
     const_borrows: NodeSet,
     static_interior_borrows: NodeSet,
+    static_local_borrows: NodeSet,
 }
 
 pub fn check_crate(tcx: &ty::ctxt) {
@@ -64,6 +65,7 @@ pub fn check_crate(tcx: &ty::ctxt) {
         static_consumptions: NodeSet::new(),
         const_borrows: NodeSet::new(),
         static_interior_borrows: NodeSet::new(),
+        static_local_borrows: NodeSet::new(),
     };
     {
         let visitor = euv::ExprUseVisitor::new(&mut checker, tcx);
@@ -200,6 +202,14 @@ impl<'a, 'tcx, 'v> Visitor<'v> for CheckStaticVisitor<'a, 'tcx> {
             }
         }
 
+        // local variables in a block expression in a static context (i.e. being
+        // assigned to a static variable) cannot be borrowed.
+        if self.checker.static_local_borrows.remove(&e.id) {
+            self.tcx.sess.span_err(e.span, "cannot borrow a local variable inside \
+                                            a static block, define a separate static \
+                                            instead");
+        }
+
         match e.node {
             ast::ExprAddrOf(ast::MutMutable, _) => {
                 if self.mode != InStaticMut {
@@ -298,8 +308,12 @@ impl euv::Delegate for GlobalChecker {
 
                 mc::cat_downcast(..) |
                 mc::cat_discr(..) |
-                mc::cat_upvar(..) |
-                mc::cat_local(..) => unreachable!(),
+                mc::cat_upvar(..) => unreachable!(),
+
+                mc::cat_local(..) => {
+                    self.static_local_borrows.insert(borrow_id);
+                    break
+                }
             }
         }
     }
