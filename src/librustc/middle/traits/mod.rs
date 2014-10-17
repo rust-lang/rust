@@ -24,6 +24,8 @@ use syntax::codemap::{Span, DUMMY_SP};
 pub use self::fulfill::FulfillmentContext;
 pub use self::select::SelectionContext;
 pub use self::select::SelectionCache;
+pub use self::select::{MethodMatchResult, MethodMatched, MethodAmbiguous, MethodDidNotMatch};
+pub use self::select::{MethodMatchedData}; // intentionally don't export variants
 pub use self::util::supertraits;
 pub use self::util::transitive_bounds;
 pub use self::util::Supertraits;
@@ -217,22 +219,6 @@ pub struct VtableBuiltinData<N> {
 pub struct VtableParamData {
     // In the above example, this would `Eq`
     pub bound: Rc<ty::TraitRef>,
-}
-
-pub fn evaluate_obligation<'a,'tcx>(infcx: &InferCtxt<'a,'tcx>,
-                                    param_env: &ty::ParameterEnvironment,
-                                    obligation: &Obligation,
-                                    typer: &Typer<'tcx>)
-                                    -> bool
-{
-    /*!
-     * Attempts to resolve the obligation given. Returns `None` if
-     * we are unable to resolve, either because of ambiguity or
-     * due to insufficient inference.
-     */
-
-    let mut selcx = select::SelectionContext::new(infcx, param_env, typer);
-    selcx.evaluate_obligation(obligation)
 }
 
 pub fn select_inherent_impl<'a,'tcx>(infcx: &InferCtxt<'a,'tcx>,
