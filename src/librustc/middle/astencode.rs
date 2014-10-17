@@ -516,7 +516,8 @@ impl tr for ty::BoundRegion {
     fn tr(&self, dcx: &DecodeContext) -> ty::BoundRegion {
         match *self {
             ty::BrAnon(_) |
-            ty::BrFresh(_) => *self,
+            ty::BrFresh(_) |
+            ty::BrEnv => *self,
             ty::BrNamed(id, ident) => ty::BrNamed(dcx.tr_def_id(id),
                                                     ident),
         }
