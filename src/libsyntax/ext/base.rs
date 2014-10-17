@@ -620,6 +620,10 @@ impl<'a> ExtCtxt<'a> {
         self.print_backtrace();
         self.parse_sess.span_diagnostic.span_note(sp, msg);
     }
+    pub fn span_help(&self, sp: Span, msg: &str) {
+        self.print_backtrace();
+        self.parse_sess.span_diagnostic.span_help(sp, msg);
+    }
     pub fn bug(&self, msg: &str) -> ! {
         self.print_backtrace();
         self.parse_sess.span_diagnostic.handler().bug(msg);

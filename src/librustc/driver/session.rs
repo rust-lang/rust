@@ -96,10 +96,16 @@ impl Session {
     pub fn span_end_note(&self, sp: Span, msg: &str) {
         self.diagnostic().span_end_note(sp, msg)
     }
+    pub fn span_help(&self, sp: Span, msg: &str) {
+        self.diagnostic().span_help(sp, msg)
+    }
     pub fn fileline_note(&self, sp: Span, msg: &str) {
         self.diagnostic().fileline_note(sp, msg)
     }
     pub fn note(&self, msg: &str) {
+        self.diagnostic().handler().note(msg)
+    }
+    pub fn help(&self, msg: &str) {
         self.diagnostic().handler().note(msg)
     }
     pub fn span_bug(&self, sp: Span, msg: &str) -> ! {

@@ -34,7 +34,7 @@ use middle::typeck::infer::lub::Lub;
 use middle::typeck::infer::glb::Glb;
 use syntax::codemap;
 use syntax::codemap::{Span, CodeMap, DUMMY_SP};
-use syntax::diagnostic::{Level, RenderSpan, Bug, Fatal, Error, Warning, Note};
+use syntax::diagnostic::{Level, RenderSpan, Bug, Fatal, Error, Warning, Note, Help};
 use syntax::{ast, ast_map};
 use util::ppaux::{ty_to_string, UserString};
 
@@ -58,7 +58,7 @@ struct ExpectErrorEmitter {
 fn remove_message(e: &mut ExpectErrorEmitter, msg: &str, lvl: Level) {
     match lvl {
         Bug | Fatal | Error => { }
-        Warning | Note => { return; }
+        Warning | Note | Help => { return; }
     }
 
     debug!("Error: {}", msg);

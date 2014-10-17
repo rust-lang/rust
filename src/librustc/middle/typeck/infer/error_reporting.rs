@@ -1417,7 +1417,7 @@ impl<'a, 'tcx> ErrorReportingHelpers for InferCtxt<'a, 'tcx> {
                                               opt_explicit_self, generics);
         let msg = format!("consider using an explicit lifetime \
                            parameter as shown: {}", suggested_fn);
-        self.tcx.sess.span_note(span, msg.as_slice());
+        self.tcx.sess.span_help(span, msg.as_slice());
     }
 
     fn report_inference_failure(&self,
