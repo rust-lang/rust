@@ -29,19 +29,6 @@ use std::os;
 use std::rt::rtio::{mod, IoResult, IoError};
 use std::num;
 
-#[cfg(any(target_os = "macos",
-          target_os = "ios",
-          target_os = "freebsd",
-          target_os = "dragonfly",
-          target_os = "android",
-          target_os = "linux"))]
-#[path = "timer_unix.rs"]
-pub mod timer;
-
-#[cfg(target_os = "windows")]
-#[path = "timer_windows.rs"]
-pub mod timer;
-
 #[cfg(windows)]
 #[path = "tty_windows.rs"]
 mod tty;
@@ -112,10 +99,6 @@ impl IoFactory {
 }
 
 impl rtio::IoFactory for IoFactory {
-    // misc
-    fn timer_init(&mut self) -> IoResult<Box<rtio::RtioTimer + Send>> {
-        timer::Timer::new().map(|t| box t as Box<rtio::RtioTimer + Send>)
-    }
     #[cfg(unix)]
     fn tty_open(&mut self, fd: c_int, _readable: bool)
                 -> IoResult<Box<rtio::RtioTTY + Send>> {
