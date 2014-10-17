@@ -137,25 +137,6 @@ impl FileDesc {
     }
 }
 
-/*
-
-impl RtioTTY for FileDesc {
-    fn read(&mut self, buf: &mut [u8]) -> IoResult<uint> {
-        self.inner_read(buf)
-    }
-    fn write(&mut self, buf: &[u8]) -> IoResult<()> {
-        self.inner_write(buf)
-    }
-    fn set_raw(&mut self, _raw: bool) -> IoResult<()> {
-        Err(super::unimpl())
-    }
-    fn get_winsize(&mut self) -> IoResult<(int, int)> {
-        Err(super::unimpl())
-    }
-    fn isatty(&self) -> bool { false }
-}
-*/
-
 impl Drop for FileDesc {
     fn drop(&mut self) {
         // closing stdio file handles makes no sense, so never do it. Also, note

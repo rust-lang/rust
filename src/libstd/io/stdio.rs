@@ -36,7 +36,7 @@ use kinds::Send;
 use libc;
 use option::{Option, Some, None};
 use boxed::Box;
-use sys::fs::FileDesc;
+use sys::{fs, tty};
 use result::{Ok, Err};
 use rt;
 use rt::local::Local;
@@ -74,17 +74,15 @@ use uint;
 // tl;dr; TTY works on everything but when windows stdout is redirected, in that
 //        case pipe also doesn't work, but magically file does!
 enum StdSource {
-    TTY(Box<RtioTTY + Send>),
-    File(FileDesc),
+    TTY(tty::TTY),
+    File(fs::FileDesc),
 }
 
-fn src<T>(fd: libc::c_int, readable: bool, f: |StdSource| -> T) -> T {
-    LocalIo::maybe_raise(|io| {
-        Ok(match io.tty_open(fd, readable) {
-            Ok(tty) => f(TTY(tty)),
-            Err(_) => f(File(FileDesc::new(fd, false))),
-        })
-    }).map_err(IoError::from_rtio_error).unwrap()
+fn src<T>(fd: libc::c_int, _readable: bool, f: |StdSource| -> T) -> T {
+    match tty::TTY::new(fd) {
+        Ok(tty) => f(TTY(tty)),
+        Err(_) => f(File(fs::FileDesc::new(fd, false))),
+    }
 }
 
 local_data_key!(local_stdout: Box<Writer + Send>)
@@ -278,7 +276,7 @@ impl Reader for StdReader {
                 // print!'d prompt not being shown until after the user hits
                 // enter.
                 flush();
-                tty.read(buf).map_err(IoError::from_rtio_error)
+                tty.read(buf).map(|i| i as uint)
             },
             File(ref mut file) => file.read(buf).map(|i| i as uint),
         };
@@ -313,7 +311,7 @@ impl StdWriter {
     pub fn winsize(&mut self) -> IoResult<(int, int)> {
         match self.inner {
             TTY(ref mut tty) => {
-                tty.get_winsize().map_err(IoError::from_rtio_error)
+                tty.get_winsize()
             }
             File(..) => {
                 Err(IoError {
@@ -335,7 +333,7 @@ impl StdWriter {
     pub fn set_raw(&mut self, raw: bool) -> IoResult<()> {
         match self.inner {
             TTY(ref mut tty) => {
-                tty.set_raw(raw).map_err(IoError::from_rtio_error)
+                tty.set_raw(raw)
             }
             File(..) => {
                 Err(IoError {
@@ -372,7 +370,7 @@ impl Writer for StdWriter {
         let max_size = if cfg!(windows) {8192} else {uint::MAX};
         for chunk in buf.chunks(max_size) {
             try!(match self.inner {
-                TTY(ref mut tty) => tty.write(chunk).map_err(IoError::from_rtio_error),
+                TTY(ref mut tty) => tty.write(chunk),
                 File(ref mut file) => file.write(chunk),
             })
         }
