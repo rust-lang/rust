@@ -365,7 +365,13 @@ the `std::fmt` module for stabilization.
 
 * `fn format(args: &Arguments) -> String`
 
-  This RFC recommends `#[stable]`
+  This RFC recommends `#[experimental]`. This method is largely an
+  implementation detail of this module, and should instead be used via:
+
+  ```rust
+  let args: &fmt::Arguments = ...;
+  format!("{}", args)
+  ```
 
 * `fn write(output: &mut FormatWriter, args: &Arguments) -> Result`
 
@@ -374,10 +380,13 @@ the `std::fmt` module for stabilization.
   core/std separation and how this function is defined in core and `Writer` is
   defined in std.
 
-  This RFC recommends marking this function `#[unstable]` as the `write_fmt`
-  exists on `Writer` to perform the corresponding operation. Consequently we may
-  wish to remove this function in favor of the `write_fmt` method on
-  `FormatWriter`.
+  This RFC recommends marking this function `#[experimental]` as the
+  `write_fmt` exists on `Writer` to perform the corresponding operation.
+  Consequently we may wish to remove this function in favor of the `write_fmt`
+  method on `FormatWriter`.
+
+  Ideally this method would be removed from the public API as it is just an
+  implementation detail of the `write!` macro.
 
 * `fn radix<T>(x: T, base: u8) -> RadixFmt<T, Radix>`
 
@@ -397,12 +406,22 @@ the `std::fmt` module for stabilization.
 
   This trait is currently the actual implementation strategy of formatting, and
   is defined specially in libcore. It is rarely used outside of libcore. It is
-  recommended to be `#[unstable]`.
+  recommended to be `#[experimental]`.
 
-* `struct Argument`
+  There are possibilities in moving `Reader` and `Writer` to libcore with the
+  error type as an associated item, allowing the `FormatWriter` trait to be
+  eliminated entirely. Due to this possibility, the trait will be experimental
+  for now as alternative solutions are explored.
 
-  This is an implementation detail of the `Arguments` structure, and it's
-  recommended to mark this as `#[unstable]` and `#[doc(hidden)]`
+* `struct Argument`, `mod rt`, `fn argument`, `fn argumentstr`,
+   `fn argumentuint`, `Arguments::with_placeholders`, `Arguments::new`
+
+  These are implementation details of the `Arguments` structure as well as the
+  expansion of the `format_args!` macro. It's recommended to mark these as
+  `#[experimental]` and `#[doc(hidden)]`. Ideally there would be some form of
+  macro-based privacy hygiene which would allow these to be truly private, but
+  it will likely be the case that these simply become stable and we must live
+  with them forever.
 
 * `struct Arguments`
 
@@ -412,12 +431,21 @@ the `std::fmt` module for stabilization.
 * `struct Formatter`
 
   This instance is passed to all formatting trait methods and contains helper
-  methods for respecting formatting flags. This RFC recommends `#[stable]`.
+  methods for respecting formatting flags. This RFC recommends `#[unstable]`.
+
+  This RFC also recommends deprecating all public fields in favor of accessor
+  methods. This should help provide future extensibility as well as preventing
+  unnecessary mutation in the future.
 
 * `enum FormatError`
 
   This enumeration only has one instance, `WriteError`. It is recommended to
-  make this a `struct` instead and rename it to just `Error`.
+  make this a `struct` instead and rename it to just `Error`. The purpose of
+  this is to signal that an error has occurred as part of formatting, but it
+  does not provide a generic method to transmit any other information other than
+  "an error happened" to maintain the ergonomics of today's usage. It's strongly
+  recommended that implementations of `Show` and friends are infallible and only
+  generate an error if the underlying `Formatter` returns an error itself.
 
 * `Radix`/`RadixFmt`
 
