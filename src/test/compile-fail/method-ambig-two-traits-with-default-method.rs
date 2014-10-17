@@ -8,12 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-trait Foo { fn method(&self) {} } //~ NOTE `Foo::method`
-trait Bar { fn method(&self) {} } //~ NOTE `Bar::method`
+// Test that we correctly report an ambiguity where two applicable traits
+// are in scope and the method being invoked is a default method not
+// defined directly in the impl.
+
+trait Foo { fn method(&self) {} }
+trait Bar { fn method(&self) {} }
 
 impl Foo for uint {}
 impl Bar for uint {}
 
 fn main() {
-    1u.method(); //~ ERROR multiple applicable methods in scope
+    1u.method(); //~ ERROR E0034
 }
