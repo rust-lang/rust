@@ -21,14 +21,20 @@
 //! the other two implementations of timers with nothing *that* new showing up.
 
 use libc;
-use std::ptr;
-use std::rt::rtio;
-use std::rt::rtio::{IoResult, Callback};
-use std::comm;
+use ptr;
+use comm;
 
-use io::helper_thread::Helper;
+use sys::c;
+use sys::fs::FileDesc;
+use sys_common::helper_thread::Helper;
+use prelude::*;
+use io::IoResult;
 
 helper_init!(static HELPER: Helper<Req>)
+
+pub trait Callback {
+    fn call(&mut self);
+}
 
 pub struct Timer {
     obj: libc::HANDLE,
@@ -116,12 +122,6 @@ impl Timer {
         }
     }
 
-    pub fn sleep(ms: u64) {
-        use std::rt::rtio::RtioTimer;
-        let mut t = Timer::new().ok().expect("must allocate a timer!");
-        t.sleep(ms);
-    }
-
     fn remove(&mut self) {
         if !self.on_worker { return }
 
@@ -131,10 +131,8 @@ impl Timer {
 
         self.on_worker = false;
     }
-}
 
-impl rtio::RtioTimer for Timer {
-    fn sleep(&mut self, msecs: u64) {
+    pub fn sleep(&mut self, msecs: u64) {
         self.remove();
 
         // there are 10^6 nanoseconds in a millisecond, and the parameter is in
@@ -148,7 +146,7 @@ impl rtio::RtioTimer for Timer {
         let _ = unsafe { imp::WaitForSingleObject(self.obj, libc::INFINITE) };
     }
 
-    fn oneshot(&mut self, msecs: u64, cb: Box<Callback + Send>) {
+    pub fn oneshot(&mut self, msecs: u64, cb: Box<Callback + Send>) {
         self.remove();
 
         // see above for the calculation
@@ -162,7 +160,7 @@ impl rtio::RtioTimer for Timer {
         self.on_worker = true;
     }
 
-    fn period(&mut self, msecs: u64, cb: Box<Callback + Send>) {
+    pub fn period(&mut self, msecs: u64, cb: Box<Callback + Send>) {
         self.remove();
 
         // see above for the calculation
