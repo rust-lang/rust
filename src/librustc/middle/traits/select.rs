@@ -110,7 +110,7 @@ enum Candidate {
     BuiltinCandidate(ty::BuiltinBound),
     ParamCandidate(VtableParamData),
     ImplCandidate(ast::DefId),
-    UnboxedClosureCandidate(/* closure */ ast::DefId),
+    UnboxedClosureCandidate(/* closure */ ast::DefId, Substs),
     ErrorCandidate,
 }
 
@@ -995,8 +995,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         };
 
         let self_ty = self.infcx.shallow_resolve(obligation.self_ty());
-        let closure_def_id = match ty::get(self_ty).sty {
-            ty::ty_unboxed_closure(id, _) => id,
+        let (closure_def_id, substs) = match ty::get(self_ty).sty {
+            ty::ty_unboxed_closure(id, _, ref substs) => (id, substs.clone()),
             ty::ty_infer(ty::TyVar(_)) => {
                 candidates.ambiguous = true;
                 return Ok(());
@@ -1019,7 +1019,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         };
 
         if closure_kind == kind {
-            candidates.vec.push(UnboxedClosureCandidate(closure_def_id));
+            candidates.vec.push(UnboxedClosureCandidate(closure_def_id, substs.clone()));
         }
 
         Ok(())
@@ -1383,7 +1383,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 Ok(If(tys.clone()))
             }
 
-            ty::ty_unboxed_closure(def_id, _) => {
+            ty::ty_unboxed_closure(def_id, _, ref substs) => {
                 // FIXME -- This case is tricky. In the case of by-ref
                 // closures particularly, we need the results of
                 // inference to decide how to reflect the type of each
@@ -1407,7 +1407,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                             .map(|freevar| {
                                 let freevar_def_id = freevar.def.def_id();
                                 self.typer.node_ty(freevar_def_id.node)
-                                    .unwrap_or(ty::mk_err())
+                                    .unwrap_or(ty::mk_err()).subst(self.tcx(), substs)
                             })
                             .collect();
                         Ok(If(tys))
@@ -1548,8 +1548,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 Ok(VtableImpl(vtable_impl))
             }
 
-            UnboxedClosureCandidate(closure_def_id) => {
-                try!(self.confirm_unboxed_closure_candidate(obligation, closure_def_id));
+            UnboxedClosureCandidate(closure_def_id, ref substs) => {
+                try!(self.confirm_unboxed_closure_candidate(obligation, closure_def_id, substs));
                 Ok(VtableUnboxedClosure(closure_def_id))
             }
         }
@@ -1646,12 +1646,14 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
     fn confirm_unboxed_closure_candidate(&mut self,
                                          obligation: &Obligation,
-                                         closure_def_id: ast::DefId)
+                                         closure_def_id: ast::DefId,
+                                         substs: &Substs)
                                          -> Result<(),SelectionError>
     {
-        debug!("confirm_unboxed_closure_candidate({},{})",
+        debug!("confirm_unboxed_closure_candidate({},{},{})",
                obligation.repr(self.tcx()),
-               closure_def_id.repr(self.tcx()));
+               closure_def_id.repr(self.tcx()),
+               substs.repr(self.tcx()));
 
         let closure_type = match self.typer.unboxed_closures().borrow().find(&closure_def_id) {
             Some(closure) => closure.closure_type.clone(),
@@ -1678,7 +1680,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let trait_ref = Rc::new(ty::TraitRef {
             def_id: obligation.trait_ref.def_id,
             substs: Substs::new_trait(
-                vec![arguments_tuple, new_signature.output],
+                vec![arguments_tuple.subst(self.tcx(), substs),
+                     new_signature.output.subst(self.tcx(), substs)],
                 vec![],
                 obligation.self_ty())
         });
@@ -1959,7 +1962,9 @@ impl Repr for Candidate {
         match *self {
             ErrorCandidate => format!("ErrorCandidate"),
             BuiltinCandidate(b) => format!("BuiltinCandidate({})", b),
-            UnboxedClosureCandidate(c) => format!("MatchedUnboxedClosureCandidate({})", c),
+            UnboxedClosureCandidate(c, ref s) => {
+                format!("MatchedUnboxedClosureCandidate({},{})", c, s.repr(tcx))
+            }
             ParamCandidate(ref a) => format!("ParamCandidate({})", a.repr(tcx)),
             ImplCandidate(a) => format!("ImplCandidate({})", a.repr(tcx)),
         }

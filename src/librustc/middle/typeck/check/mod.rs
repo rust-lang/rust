@@ -3270,7 +3270,8 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
         };
         let closure_type = ty::mk_unboxed_closure(fcx.ccx.tcx,
                                                   local_def(expr.id),
-                                                  region);
+                                                  region,
+                                                  fcx.inh.param_env.free_substs.clone());
         fcx.write_ty(expr.id, closure_type);
 
         check_fn(fcx.ccx,

@@ -425,7 +425,12 @@ pub fn ty_to_string(cx: &ctxt, typ: t) -> String {
                   bound_str)
       }
       ty_str => "str".to_string(),
-      ty_unboxed_closure(..) => "closure".to_string(),
+      ty_unboxed_closure(ref did, _, ref substs) => {
+          let unboxed_closures = cx.unboxed_closures.borrow();
+          unboxed_closures.find(did).map(|cl| {
+              closure_to_string(cx, &cl.closure_type.subst(cx, substs))
+          }).unwrap_or_else(|| "closure".to_string())
+      }
       ty_vec(t, sz) => {
           match sz {
               Some(n) => {

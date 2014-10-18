@@ -594,7 +594,7 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
                       };
                       self.cat_upvar(id, span, var_id, fn_node_id, kind, mode, false)
                   }
-                  ty::ty_unboxed_closure(closure_id, _) => {
+                  ty::ty_unboxed_closure(closure_id, _, _) => {
                       let unboxed_closures = self.typer.unboxed_closures().borrow();
                       let kind = (*unboxed_closures)[closure_id].kind;
                       let mode = self.typer.capture_mode(fn_node_id);

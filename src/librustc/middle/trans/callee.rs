@@ -491,7 +491,7 @@ pub fn trans_fn_ref_with_substs(
     };
 
     // If this is an unboxed closure, redirect to it.
-    match closure::get_or_create_declaration_if_unboxed_closure(ccx, def_id) {
+    match closure::get_or_create_declaration_if_unboxed_closure(bcx, def_id) {
         None => {}
         Some(llfn) => return llfn,
     }
