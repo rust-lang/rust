@@ -25,6 +25,7 @@ use middle::trans::debuginfo;
 use middle::trans::monomorphize::MonoId;
 use middle::trans::type_::{Type, TypeNames};
 use middle::ty;
+use util::ppaux::Repr;
 use util::sha2::Sha256;
 use util::nodemap::{NodeMap, NodeSet, DefIdMap};
 
@@ -710,6 +711,16 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
 
     pub fn trait_cache(&self) -> &RefCell<HashMap<Rc<ty::TraitRef>, traits::Vtable<()>>> {
         &self.local.trait_cache
+    }
+
+    pub fn max_obj_size(&self) -> u64 {
+        1<<31 /* FIXME #18069: select based on architecture */
+    }
+
+    pub fn report_overbig_object(&self, obj: ty::t) -> ! {
+        self.sess().fatal(
+            format!("the type `{}` is too big for the current architecture",
+                    obj.repr(self.tcx())).as_slice())
     }
 }
 

@@ -239,16 +239,16 @@ pub fn trans_intrinsic_call<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>, node: ast::N
         (_, "size_of") => {
             let tp_ty = *substs.types.get(FnSpace, 0);
             let lltp_ty = type_of::type_of(ccx, tp_ty);
-            C_uint(ccx, machine::llsize_of_real(ccx, lltp_ty) as uint)
+            C_uint(ccx, machine::llsize_of_real(ccx, lltp_ty))
         }
         (_, "min_align_of") => {
             let tp_ty = *substs.types.get(FnSpace, 0);
-            C_uint(ccx, type_of::align_of(ccx, tp_ty) as uint)
+            C_uint(ccx, type_of::align_of(ccx, tp_ty))
         }
         (_, "pref_align_of") => {
             let tp_ty = *substs.types.get(FnSpace, 0);
             let lltp_ty = type_of::type_of(ccx, tp_ty);
-            C_uint(ccx, machine::llalign_of_pref(ccx, lltp_ty) as uint)
+            C_uint(ccx, machine::llalign_of_pref(ccx, lltp_ty))
         }
         (_, "move_val_init") => {
             // Create a datum reflecting the value being moved.
