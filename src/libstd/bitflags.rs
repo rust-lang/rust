@@ -127,22 +127,26 @@ macro_rules! bitflags {
 
         impl $BitFlags {
             /// Returns an empty set of flags.
+            #[inline]
             pub fn empty() -> $BitFlags {
                 $BitFlags { bits: 0 }
             }
 
             /// Returns the set containing all flags.
+            #[inline]
             pub fn all() -> $BitFlags {
                 $BitFlags { bits: $($value)|+ }
             }
 
             /// Returns the raw value of the flags currently stored.
+            #[inline]
             pub fn bits(&self) -> $T {
                 self.bits
             }
 
             /// Convert from underlying bit representation, unless that
             /// representation contains bits that do not correspond to a flag.
+            #[inline]
             pub fn from_bits(bits: $T) -> ::std::option::Option<$BitFlags> {
                 if (bits & !$BitFlags::all().bits()) != 0 {
                     ::std::option::None
@@ -153,21 +157,25 @@ macro_rules! bitflags {
 
             /// Convert from underlying bit representation, dropping any bits
             /// that do not correspond to flags.
+            #[inline]
             pub fn from_bits_truncate(bits: $T) -> $BitFlags {
                 $BitFlags { bits: bits } & $BitFlags::all()
             }
 
             /// Returns `true` if no flags are currently stored.
+            #[inline]
             pub fn is_empty(&self) -> bool {
                 *self == $BitFlags::empty()
             }
 
             /// Returns `true` if all flags are currently set.
+            #[inline]
             pub fn is_all(&self) -> bool {
                 *self == $BitFlags::all()
             }
 
             /// Returns `true` if there are flags common to both `self` and `other`.
+            #[inline]
             pub fn intersects(&self, other: $BitFlags) -> bool {
                 !(self & other).is_empty()
             }
@@ -179,16 +187,19 @@ macro_rules! bitflags {
             }
 
             /// Inserts the specified flags in-place.
+            #[inline]
             pub fn insert(&mut self, other: $BitFlags) {
                 self.bits |= other.bits;
             }
 
             /// Removes the specified flags in-place.
+            #[inline]
             pub fn remove(&mut self, other: $BitFlags) {
                 self.bits &= !other.bits;
             }
 
             /// Toggles the specified flags in-place.
+            #[inline]
             pub fn toggle(&mut self, other: $BitFlags) {
                 self.bits ^= other.bits;
             }
