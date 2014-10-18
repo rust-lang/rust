@@ -482,7 +482,7 @@ but it will still print "Hello, world!":
    Compiling hello_world v0.0.1 (file:///home/you/projects/hello_world)
 src/main.rs:2:9: 2:10 warning: unused variable: `x`, #[warn(unused_variable)] on by default
 src/main.rs:2     let x: int;
-                             ^
+                      ^
 ```
 
 Rust warns us that we never use the variable binding, but since we never use it,
