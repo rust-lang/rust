@@ -2371,10 +2371,19 @@ impl<'a> Parser<'a> {
                   token::LitFloat(n) => {
                     self.bump();
                     let last_span = self.last_span;
+                    let fstr = n.as_str();
                     self.span_err(last_span,
                                   format!("unexpected token: `{}`", n.as_str()).as_slice());
-                    self.span_note(last_span,
-                                   "try parenthesizing the first index; e.g., `(foo.0).1`");
+                    if fstr.chars().all(|x| "0123456789.".contains_char(x)) {
+                        let float = match from_str::<f64>(fstr) {
+                            Some(f) => f,
+                            None => continue,
+                        };
+                        self.span_help(last_span,
+                            format!("try parenthesizing the first index; e.g., `(foo.{}){}`",
+                                    float.trunc() as uint,
+                                    float.fract().to_string()[1..]).as_slice());
+                    }
                     self.abort_if_errors();
 
                   }
@@ -2578,7 +2587,7 @@ impl<'a> Parser<'a> {
             token::Eof => {
                 let open_braces = self.open_braces.clone();
                 for sp in open_braces.iter() {
-                    self.span_note(*sp, "Did you mean to close this delimiter?");
+                    self.span_help(*sp, "did you mean to close this delimiter?");
                 }
                 // There shouldn't really be a span, but it's easier for the test runner
                 // if we give it one
@@ -5352,8 +5361,8 @@ impl<'a> Parser<'a> {
             self.bump();
             if self.eat_keyword(keywords::Mut) {
                 let last_span = self.last_span;
-                self.span_err(last_span, "const globals cannot be mutable, \
-                                          did you mean to declare a static?");
+                self.span_err(last_span, "const globals cannot be mutable");
+                self.span_help(last_span, "did you mean to declare a static?");
             }
             let (ident, item_, extra_attrs) = self.parse_item_const(None);
             let last_span = self.last_span;

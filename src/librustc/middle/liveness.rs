@@ -1568,7 +1568,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                             hi: original_span.hi,
                             expn_id: original_span.expn_id
                         };
-                        self.ir.tcx.sess.span_note(
+                        self.ir.tcx.sess.span_help(
                             span_semicolon, "consider removing this semicolon:");
                     }
                 }

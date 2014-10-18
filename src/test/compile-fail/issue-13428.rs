@@ -15,12 +15,12 @@ fn foo() -> String {  //~ ERROR not all control paths return a value
             "world")
     // Put the trailing semicolon on its own line to test that the
     // note message gets the offending semicolon exactly
-    ;   //~ NOTE consider removing this semicolon
+    ;   //~ HELP consider removing this semicolon
 }
 
 fn bar() -> String {  //~ ERROR not all control paths return a value
     "foobar".to_string()
-    ;   //~ NOTE consider removing this semicolon
+    ;   //~ HELP consider removing this semicolon
 }
 
 pub fn main() {}

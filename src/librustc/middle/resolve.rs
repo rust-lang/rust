@@ -5744,7 +5744,7 @@ impl<'a> Resolver<'a> {
                                                  uses it like a function name",
                                                 wrong_name).as_slice());
 
-                                self.session.span_note(expr.span,
+                                self.session.span_help(expr.span,
                                     format!("Did you mean to write: \
                                             `{} {{ /* fields */ }}`?",
                                             wrong_name).as_slice());
