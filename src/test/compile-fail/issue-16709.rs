@@ -1,4 +1,4 @@
-// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,11 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Check that non-constant exprs do fail as count in fixed length vec type
+use std::ptr;
+use std::raw;
 
 fn main() {
-    fn bar(n: int) {
-        let _x: [int, ..n];
-        //~^ ERROR expected constant expr for vector length: non-constant path in constant expr
-    }
+  unsafe {
+    let nil: *const u8 = ptr::null();
+    let slice: raw::Slice<u8> =
+      Slice { //~ ERROR use of trait `Slice` as a struct constructor [E0159]
+        data: nil,
+        len:  0,
+      };
+  }
 }

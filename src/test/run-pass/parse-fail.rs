@@ -10,8 +10,6 @@
 
 #![allow(unreachable_code)]
 
-// ignore-test #12920
-
-fn dont_call_me() { fail!(); println!("{}", 1); }
+fn dont_call_me() { fail!(); println!("{}", 1i); }
 
 pub fn main() { }
