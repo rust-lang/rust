@@ -8,25 +8,25 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Test static calls to make sure that we align the Self and input
-// type parameters on a trait correctly.
+// Test that we correctly infer that `E` must be `()` here.  This is
+// known because there is just one impl that could apply where
+// `Self=()`.
 
-trait Tr<T> {
-    fn op(T) -> Self;
+pub trait FromError<E> {
+    fn from_error(err: E) -> Self;
 }
 
-trait A:    Tr<Self> {
-    fn test<U>(u: U) -> Self {
-        Tr::op(u)   //~ ERROR not implemented
+impl<E> FromError<E> for E {
+    fn from_error(err: E) -> E {
+        err
     }
 }
 
-trait B<T>: Tr<T> {
-    fn test<U>(u: U) -> Self {
-        Tr::op(u)   //~ ERROR not implemented
-    }
+fn test() -> Result<(), ()> {
+    Err(FromError::from_error(()))
 }
 
 fn main() {
+    let result = (|| Err(FromError::from_error(())))();
+    let foo: () = result.unwrap_or(());
 }
-
