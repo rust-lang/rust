@@ -41,7 +41,7 @@ concurrency: particularly, ownership. The language leaves the implementation
 details to the standard library.
 
 The `spawn` function has a very simple type signature: `fn spawn(f: proc():
-Send)`.  Because it accepts only procs, and procs contain only owned data,
+Send)`. Because it accepts only procs, and procs contain only owned data,
 `spawn` can safely move the entire proc and all its associated state into an
 entirely different task for execution. Like any closure, the function passed to
 `spawn` may capture an environment that it carries across tasks.
@@ -213,7 +213,7 @@ println!("fib(50) = {}", delayed_fib.get())
 # }
 ```
 
-The call to `future::spawn` returns immediately a `future` object regardless of
+The call to `future::spawn` immediately returns a `future` object regardless of
 how long it takes to run `fib(50)`. You can then make yourself a sandwich while
 the computation of `fib` is running. The result of the execution of the method
 is obtained by calling `get` on the future. This call will block until the
@@ -297,7 +297,7 @@ let numbers_arc = Arc::new(numbers);
 ```
 
 and a clone is captured for each task via a procedure. This only copies
-the wrapper and not it's contents. Within the task's procedure, the captured
+the wrapper and not its contents. Within the task's procedure, the captured
 Arc reference can be used as a shared reference to the underlying vector as
 if it were local.
 
@@ -323,20 +323,20 @@ Rust has a built-in mechanism for raising exceptions. The `fail!()` macro
 (which can also be written with an error string as an argument: `fail!(
 ~reason)`) and the `assert!` construct (which effectively calls `fail!()` if a
 boolean expression is false) are both ways to raise exceptions. When a task
-raises an exception the task unwinds its stack---running destructors and
-freeing memory along the way---and then exits. Unlike exceptions in C++,
+raises an exception, the task unwinds its stack—running destructors and
+freeing memory along the way—and then exits. Unlike exceptions in C++,
 exceptions in Rust are unrecoverable within a single task: once a task fails,
 there is no way to "catch" the exception.
 
 While it isn't possible for a task to recover from failure, tasks may notify
 each other of failure. The simplest way of handling task failure is with the
-`try` function, which is similar to `spawn`, but immediately blocks waiting for
-the child task to finish. `try` returns a value of type `Result<T, Box<Any +
-Send>>`.  `Result` is an `enum` type with two variants: `Ok` and `Err`. In this
-case, because the type arguments to `Result` are `int` and `()`, callers can
-pattern-match on a result to check whether it's an `Ok` result with an `int`
-field (representing a successful result) or an `Err` result (representing
-termination with an error).
+`try` function, which is similar to `spawn`, but immediately blocks and waits
+for the child task to finish. `try` returns a value of type
+`Result<T, Box<Any + Send>>`. `Result` is an `enum` type with two variants:
+`Ok` and `Err`. In this case, because the type arguments to `Result` are `int`
+and `()`, callers can pattern-match on a result to check whether it's an `Ok`
+result with an `int` field (representing a successful result) or an `Err` result
+(representing termination with an error).
 
 ```{rust}
 # use std::task;
@@ -369,4 +369,4 @@ the entire program (perhaps you're writing an assert which, if it trips,
 indicates an unrecoverable logic error); in other cases you might want to
 contain the failure at a certain boundary (perhaps a small piece of input from
 the outside world, which you happen to be processing in parallel, is malformed
-and its processing task can't proceed).
+such that the processing task cannot proceed).
