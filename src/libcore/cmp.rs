@@ -209,6 +209,7 @@ pub trait PartialOrd: PartialEq {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering>;
 
     /// This method tests less than (for `self` and `other`) and is used by the `<` operator.
+    #[inline]
     fn lt(&self, other: &Self) -> bool {
         match self.partial_cmp(other) {
             Some(Less) => true,
