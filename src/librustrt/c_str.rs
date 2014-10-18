@@ -22,20 +22,6 @@ strings can validly contain a null-byte in the middle of the string (0 is a
 valid Unicode codepoint). This means that not all Rust strings can actually be
 translated to C strings.
 
-# Creation of a C string
-
-A C string is managed through the `CString` type defined in this module. It
-"owns" the internal buffer of characters and will automatically deallocate the
-buffer when the string is dropped. The `ToCStr` trait is implemented for `&str`
-and `&[u8]`, but the conversions can fail due to some of the limitations
-explained above.
-
-This also means that currently whenever a C string is created, an allocation
-must be performed to place the data elsewhere (the lifetime of the C string is
-not tied to the lifetime of the original string/data buffer). If C strings are
-heavily used in applications, then caching may be advisable to prevent
-unnecessary amounts of allocations.
-
 Be carefull to remember that the memory is managed by C allocator API and not
 by Rust allocator API.
 That means that the CString pointers should be freed with C allocator API
@@ -432,7 +418,7 @@ impl ToCStr for [u8] {
         ptr::copy_memory(buf, self.as_ptr(), self_len);
         *buf.offset(self_len as int) = 0;
 
-        CString::new_owned(buf as *mut i8)
+        CString::new_owned(buf as *mut libc::c_char)
     }
 
     fn with_c_str<T>(&self, f: |*const libc::c_char| -> T) -> T {
