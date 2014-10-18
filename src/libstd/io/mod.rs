@@ -228,14 +228,15 @@ use fmt;
 use int;
 use iter::Iterator;
 use libc;
-use mem::transmute;
+use mem::{transmute, uninitialized}; // std::mem is shadowed by self::mem
+use cmp;
 use ops::{BitOr, BitXor, BitAnd, Sub, Not};
 use option::{Option, Some, None};
 use os;
 use boxed::Box;
 use result::{Ok, Err, Result};
 use rt::rtio;
-use slice::{AsSlice, ImmutableSlice};
+use slice::{AsSlice, ImmutableSlice, MutableSlice};
 use str::{Str, StrSlice};
 use str;
 use string::String;
@@ -521,7 +522,8 @@ impl<T> UpdateIoError<T> for IoResult<T> {
     }
 }
 
-static NO_PROGRESS_LIMIT: uint = 1000;
+const NO_PROGRESS_LIMIT: uint = 1000;
+const SKIP_SIZE: uint = 1 << 10;
 
 /// A trait for objects which are byte-oriented streams. Readers are defined by
 /// one method, `read`. This function will block until data is available,
@@ -939,6 +941,23 @@ pub trait Reader {
     /// retaining ownership of the original value.
     fn by_ref<'a>(&'a mut self) -> RefReader<'a, Self> {
         RefReader { inner: self }
+    }
+
+    /// Issue the read() method inside but discard the result.
+    ///
+    /// Return the number of bytes read until it encounters any Err or 0 bytes return.
+    fn skip(&mut self, num_bytes: uint) -> IoResult<uint> {
+        let mut remaining = num_bytes;
+        let mut buf: [u8, .. SKIP_SIZE] = unsafe { uninitialized() };
+        loop {
+            let n_bytes_to_read = cmp::max(buf.len(), remaining);
+            let n_read_bytes = try!( self.read(buf.slice_to_mut(n_bytes_to_read)) );
+            remaining -= n_read_bytes;
+            if n_read_bytes == 0 || remaining == 0 {
+                break;
+            }
+        }
+        Ok(num_bytes - remaining)
     }
 }
 
@@ -1908,7 +1927,8 @@ impl fmt::Show for FilePermission {
 
 #[cfg(test)]
 mod tests {
-    use super::{IoResult, Reader, MemReader, NoProgress, InvalidInput};
+    use super::{IoResult, Reader, MemReader, NoProgress, InvalidInput, EndOfFile};
+    use super::SKIP_SIZE;
     use prelude::*;
     use uint;
 
@@ -2006,6 +2026,48 @@ mod tests {
 
         let mut r = MemReader::new(b"hello, world!".to_vec());
         assert_eq!(r.push_at_least(5, 1, &mut buf).unwrap_err().kind, InvalidInput);
+    }
+
+    #[test]
+    fn test_reader_skip() {
+        {
+            let mut r = MemReader::new(b"hello, world!".to_vec());
+            assert_eq!(7, r.skip(7).unwrap());
+            let mut buf = [0_u8, .. 10];
+            assert_eq!(6, r.read(buf).unwrap());
+            assert_eq!(b"world!".as_slice(), buf.as_slice());
+            assert_eq!(EndOfFile, r.skip(0).unwrap_err().kind);
+        }
+        {
+            let mut r = MemReader::new(Vec::from_fn(SKIP_SIZE + 20, |i| i as u8));
+            assert_eq!(10, r.skip(10).unwrap());
+            assert_eq!(10, r.read_u8().unwrap());
+            assert_eq!(SKIP_SIZE, r.skip(SKIP_SIZE).unwrap());
+            assert_eq!((SKIP_SIZE + 11) as u8, r.read_u8().unwrap());
+            let mut buf = [0_u8, .. 10];
+            assert_eq!(8, r.read(buf).unwrap());
+            assert_eq!(EndOfFile, r.read(buf).unwrap_err().kind);
+        }
+        {
+            let mut r = MemReader::new(Vec::from_fn(SKIP_SIZE + 20, |i| i as u8));
+            assert_eq!(SKIP_SIZE, r.skip(SKIP_SIZE).unwrap());
+            assert_eq!(SKIP_SIZE as u8, r.read_u8().unwrap());
+            assert_eq!(10, r.skip(10).unwrap());
+            assert_eq!((SKIP_SIZE + 11) as u8, r.read_u8().unwrap());
+            let mut buf = [0_u8, .. 10];
+            assert_eq!(8, r.read(buf).unwrap());
+            assert_eq!(EndOfFile, r.read(buf).unwrap_err().kind);
+        }
+        {
+            let mut r = MemReader::new(Vec::from_fn(2 * SKIP_SIZE + 20, |i| i as u8));
+            assert_eq!(10, r.skip(10).unwrap());
+            assert_eq!(10, r.read_u8().unwrap());
+            assert_eq!(2 * SKIP_SIZE, r.skip(2 * SKIP_SIZE).unwrap());
+            assert_eq!((2 * SKIP_SIZE + 11) as u8, r.read_u8().unwrap());
+            let mut buf = [0_u8, .. 10];
+            assert_eq!(8, r.read(buf).unwrap());
+            assert_eq!(EndOfFile, r.read(buf).unwrap_err().kind);
+        }
     }
 
     #[test]
