@@ -1,4 +1,4 @@
-// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,11 +8,20 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Check that non-constant exprs do fail as count in fixed length vec type
+trait MatrixRow {}
 
-fn main() {
-    fn bar(n: int) {
-        let _x: [int, ..n];
-        //~^ ERROR expected constant expr for vector length: non-constant path in constant expr
+struct Mat;
+
+impl<'a> MatrixRow for &'a Mat {}
+
+struct Rows<M: MatrixRow> {
+    mat: M,
+}
+
+impl<'a> Iterator<()> for Rows<&'a Mat> {
+    fn next(&mut self) -> Option<()> {
+        unimplemented!()
     }
 }
+
+fn main() {}
