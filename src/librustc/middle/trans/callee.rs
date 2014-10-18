@@ -281,8 +281,32 @@ pub fn trans_unboxing_shim(bcx: Block,
     };
     let boxed_function_type =
         ty::mk_bare_fn(tcx, boxed_function_type).subst(tcx, &substs);
-    let function_type =
-        ty::mk_bare_fn(tcx, (*fty).clone()).subst(tcx, &substs);
+    let function_type = match fty.abi {
+        synabi::RustCall => {
+            // We're passing through to a RustCall ABI function, but
+            // because the shim will already perform untupling, we
+            // need to pretend the shimmed function does not use
+            // RustCall so the untupled arguments can be passed
+            // through verbatim.  This is kind of ugly.
+            let fake_ty = ty::FnSig {
+                binder_id: fty.sig.binder_id,
+                inputs: type_of::untuple_arguments_if_necessary(ccx,
+                                                                fty.sig.inputs.as_slice(),
+                                                                fty.abi),
+                output: fty.sig.output,
+                variadic: false,
+            };
+            let fake_ty = ty::BareFnTy {
+                fn_style: fty.fn_style,
+                abi: synabi::Rust,
+                sig: fake_ty,
+            };
+            ty::mk_bare_fn(tcx, fake_ty).subst(tcx, &substs)
+        }
+        _ => {
+            ty::mk_bare_fn(tcx, (*fty).clone()).subst(tcx, &substs)
+        }
+    };
 
     let function_name = ty::with_path(tcx, method_id, |path| {
         link::mangle_internal_name_by_path_and_seq(path, "unboxing_shim")
