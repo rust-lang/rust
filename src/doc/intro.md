@@ -442,10 +442,10 @@ It gives us this error:
 ```
 
 It mentions that "numbers moved into closure environment". Because we referred
-to `numbers` inside of our `proc`, and we create ten `proc`s, we would have ten
-references. Rust detects this and gives us the error: we claim that `numbers`
-has ownership, but our code tries to make ten owners. This may cause a safety
-problem, so Rust disallows it.
+to `numbers` inside of our `proc`, and we create three `proc`s, we would have
+three references. Rust detects this and gives us the error: we claim that
+`numbers` has ownership, but our code tries to make ten owners. This may cause
+a safety problem, so Rust disallows it.
 
 What to do here? Rust has two types that helps us: `Arc<T>` and `Mutex<T>`.
 "Arc" stands for "atomically reference counted." In other words, an Arc will
