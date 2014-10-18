@@ -172,18 +172,18 @@ pub fn opt_ast_region_to_region<'tcx, AC: AstConv<'tcx>, RS: RegionScope>(
                                 }
                             }
                             if len == 1 {
-                                span_note!(this.tcx().sess, default_span,
+                                span_help!(this.tcx().sess, default_span,
                                     "this function's return type contains a borrowed value, but \
                                      the signature does not say which {} it is borrowed from",
                                     m);
                             } else if len == 0 {
-                                span_note!(this.tcx().sess, default_span,
+                                span_help!(this.tcx().sess, default_span,
                                     "this function's return type contains a borrowed value, but \
                                      there is no value for it to be borrowed from");
-                                span_note!(this.tcx().sess, default_span,
+                                span_help!(this.tcx().sess, default_span,
                                     "consider giving it a 'static lifetime");
                             } else {
-                                span_note!(this.tcx().sess, default_span,
+                                span_help!(this.tcx().sess, default_span,
                                     "this function's return type contains a borrowed value, but \
                                      the signature does not say whether it is borrowed from {}",
                                     m);
@@ -302,7 +302,7 @@ fn ast_path_substs<'tcx,AC,RS>(
         && !this.tcx().sess.features.borrow().default_type_params {
         span_err!(this.tcx().sess, path.span, E0108,
             "default type parameters are experimental and possibly buggy");
-        span_note!(this.tcx().sess, path.span,
+        span_help!(this.tcx().sess, path.span,
             "add #![feature(default_type_params)] to the crate attributes to enable");
     }
 
@@ -1168,6 +1168,7 @@ fn ty_of_method_or_bare_fn<'tcx, AC: AstConv<'tcx>>(
 
     let param_lifetimes: Vec<(String, uint)> = lifetimes_for_params.into_iter()
                                                                    .map(|(n, v)| (n, v.len()))
+                                                                   .filter(|&(_, l)| l != 0)
                                                                    .collect();
 
     let output_ty = match decl.output.node {
