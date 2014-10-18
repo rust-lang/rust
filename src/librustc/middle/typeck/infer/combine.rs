@@ -105,6 +105,15 @@ pub trait Combine<'tcx> {
         } else {
             None
         };
+        self.substs_variances(variances.as_ref().map(|v| &**v), a_subst, b_subst)
+    }
+
+    fn substs_variances(&self,
+                        variances: Option<&ty::ItemVariances>,
+                        a_subst: &subst::Substs,
+                        b_subst: &subst::Substs)
+                        -> cres<subst::Substs>
+    {
         let mut substs = subst::Substs::empty();
 
         for &space in subst::ParamSpace::all().iter() {
@@ -126,7 +135,7 @@ pub trait Combine<'tcx> {
 
                     let mut invariance = Vec::new();
                     let r_variances = match variances {
-                        Some(ref variances) => {
+                        Some(variances) => {
                             variances.regions.get_slice(space)
                         }
                         None => {
@@ -138,7 +147,6 @@ pub trait Combine<'tcx> {
                     };
 
                     let regions = try!(relate_region_params(self,
-                                                            item_def_id,
                                                             r_variances,
                                                             a_regions,
                                                             b_regions));
@@ -150,7 +158,6 @@ pub trait Combine<'tcx> {
         return Ok(substs);
 
         fn relate_region_params<'tcx, C: Combine<'tcx>>(this: &C,
-                                                        item_def_id: ast::DefId,
                                                         variances: &[ty::Variance],
                                                         a_rs: &[ty::Region],
                                                         b_rs: &[ty::Region])
@@ -159,11 +166,9 @@ pub trait Combine<'tcx> {
             let num_region_params = variances.len();
 
             debug!("relate_region_params(\
-                   item_def_id={}, \
                    a_rs={}, \
                    b_rs={},
                    variances={})",
-                   item_def_id.repr(tcx),
                    a_rs.repr(tcx),
                    b_rs.repr(tcx),
                    variances.repr(tcx));
@@ -464,14 +469,15 @@ pub fn super_tys<'tcx, C: Combine<'tcx>>(this: &C, a: ty::t, b: ty::t) -> cres<t
             Ok(ty::mk_struct(tcx, a_id, substs))
       }
 
-      (&ty::ty_unboxed_closure(a_id, a_region),
-       &ty::ty_unboxed_closure(b_id, b_region))
+      (&ty::ty_unboxed_closure(a_id, a_region, ref a_substs),
+       &ty::ty_unboxed_closure(b_id, b_region, ref b_substs))
       if a_id == b_id => {
           // All ty_unboxed_closure types with the same id represent
           // the (anonymous) type of the same closure expression. So
           // all of their regions should be equated.
           let region = try!(this.equate().regions(a_region, b_region));
-          Ok(ty::mk_unboxed_closure(tcx, a_id, region))
+          let substs = try!(this.substs_variances(None, a_substs, b_substs));
+          Ok(ty::mk_unboxed_closure(tcx, a_id, region, substs))
       }
 
       (&ty::ty_uniq(a_inner), &ty::ty_uniq(b_inner)) => {

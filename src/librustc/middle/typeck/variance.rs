@@ -734,9 +734,8 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                 /* leaf type -- noop */
             }
 
-            ty::ty_unboxed_closure(_, region) => {
-                let contra = self.contravariant(variance);
-                self.add_constraints_from_region(region, contra);
+            ty::ty_unboxed_closure(..) => {
+                self.tcx().sess.bug("Unexpected unboxed closure type in variance computation");
             }
 
             ty::ty_rptr(region, ref mt) => {
