@@ -1090,7 +1090,7 @@ fn compile_submatch_continue<'a, 'p, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
     let sw = if kind == Switch {
         build::Switch(bcx, test_val, else_cx.llbb, opts.len())
     } else {
-        C_int(ccx, 0) // Placeholder for when not using a switch
+        C_int(ccx, 0i) // Placeholder for when not using a switch
     };
 
     let defaults = enter_default(else_cx, dm, m, col, val);

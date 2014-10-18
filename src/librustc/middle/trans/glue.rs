@@ -56,9 +56,9 @@ pub fn trans_exchange_free_dyn<'blk, 'tcx>(cx: Block<'blk, 'tcx>, v: ValueRef,
 }
 
 pub fn trans_exchange_free<'blk, 'tcx>(cx: Block<'blk, 'tcx>, v: ValueRef,
-                                       size: u64, align: u64) -> Block<'blk, 'tcx> {
-    trans_exchange_free_dyn(cx, v, C_uint(cx.ccx(), size as uint),
-                            C_uint(cx.ccx(), align as uint))
+                                       size: u64, align: u32) -> Block<'blk, 'tcx> {
+    trans_exchange_free_dyn(cx, v, C_uint(cx.ccx(), size),
+                                   C_uint(cx.ccx(), align))
 }
 
 pub fn trans_exchange_free_ty<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, ptr: ValueRef,
@@ -301,8 +301,8 @@ fn size_and_align_of_dst(bcx: Block, t :ty::t, info: ValueRef) -> (ValueRef, Val
            bcx.ty_to_string(t), bcx.val_to_string(info));
     if ty::type_is_sized(bcx.tcx(), t) {
         let sizing_type = sizing_type_of(bcx.ccx(), t);
-        let size = C_uint(bcx.ccx(), llsize_of_alloc(bcx.ccx(), sizing_type) as uint);
-        let align = C_uint(bcx.ccx(), align_of(bcx.ccx(), t) as uint);
+        let size = C_uint(bcx.ccx(), llsize_of_alloc(bcx.ccx(), sizing_type));
+        let align = C_uint(bcx.ccx(), align_of(bcx.ccx(), t));
         return (size, align);
     }
     match ty::get(t).sty {
@@ -313,8 +313,8 @@ fn size_and_align_of_dst(bcx: Block, t :ty::t, info: ValueRef) -> (ValueRef, Val
             assert!(!ty::type_is_simd(bcx.tcx(), t));
             let repr = adt::represent_type(ccx, t);
             let sizing_type = adt::sizing_type_of(ccx, &*repr, true);
-            let sized_size = C_uint(ccx, llsize_of_alloc(ccx, sizing_type) as uint);
-            let sized_align = C_uint(ccx, llalign_of_min(ccx, sizing_type) as uint);
+            let sized_size = C_uint(ccx, llsize_of_alloc(ccx, sizing_type));
+            let sized_align = C_uint(ccx, llalign_of_min(ccx, sizing_type));
 
             // Recurse to get the size of the dynamically sized field (must be
             // the last field).
@@ -344,7 +344,7 @@ fn size_and_align_of_dst(bcx: Block, t :ty::t, info: ValueRef) -> (ValueRef, Val
             // times the unit size.
             let llunit_ty = sizing_type_of(bcx.ccx(), unit_ty);
             let unit_size = llsize_of_alloc(bcx.ccx(), llunit_ty);
-            (Mul(bcx, info, C_uint(bcx.ccx(), unit_size as uint)), C_uint(bcx.ccx(), 8))
+            (Mul(bcx, info, C_uint(bcx.ccx(), unit_size)), C_uint(bcx.ccx(), 8u))
         }
         _ => bcx.sess().bug(format!("Unexpected unsized type, found {}",
                                     bcx.ty_to_string(t)).as_slice())

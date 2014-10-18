@@ -398,7 +398,7 @@ pub fn malloc_raw_dyn_proc<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, t: ty::t) -> Resu
 
     let llty = type_of(bcx.ccx(), t);
     let size = llsize_of(bcx.ccx(), llty);
-    let llalign = C_uint(ccx, llalign_of_min(bcx.ccx(), llty) as uint);
+    let llalign = C_uint(ccx, llalign_of_min(bcx.ccx(), llty));
 
     // Allocate space and store the destructor pointer:
     let Result {bcx: bcx, val: llbox} = malloc_raw_dyn(bcx, ptr_llty, t, size, llalign);
