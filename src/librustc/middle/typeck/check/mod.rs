@@ -1681,10 +1681,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.register_unsize_obligations(span, &**u)
             }
             ty::UnsizeVtable(ref ty_trait, self_ty) => {
+                // If the type is `Foo+'a`, ensures that the type
+                // being cast to `Foo+'a` implements `Foo`:
                 vtable2::register_object_cast_obligations(self,
                                                           span,
                                                           ty_trait,
                                                           self_ty);
+
+                // If the type is `Foo+'a`, ensures that the type
+                // being cast to `Foo+'a` outlives `'a`:
+                let origin = infer::RelateObjectBound(span);
+                self.register_region_obligation(origin, self_ty, ty_trait.bounds.region_bound);
             }
         }
     }
