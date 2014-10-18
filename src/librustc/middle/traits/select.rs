@@ -608,6 +608,17 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
          * unified during the confirmation step.
          */
 
+        let tcx = self.tcx();
+        let kind = if Some(obligation.trait_ref.def_id) == tcx.lang_items.fn_trait() {
+            ty::FnUnboxedClosureKind
+        } else if Some(obligation.trait_ref.def_id) == tcx.lang_items.fn_mut_trait() {
+            ty::FnMutUnboxedClosureKind
+        } else if Some(obligation.trait_ref.def_id) == tcx.lang_items.fn_once_trait() {
+            ty::FnOnceUnboxedClosureKind
+        } else {
+            return Ok(()); // not a fn trait, ignore
+        };
+
         let self_ty = self.infcx.shallow_resolve(obligation.self_ty());
         let closure_def_id = match ty::get(self_ty).sty {
             ty::ty_unboxed_closure(id, _) => id,
@@ -622,37 +633,17 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                self_ty.repr(self.tcx()),
                obligation.repr(self.tcx()));
 
-        let tcx = self.tcx();
-        let fn_traits = [
-            (ty::FnUnboxedClosureKind, tcx.lang_items.fn_trait()),
-            (ty::FnMutUnboxedClosureKind, tcx.lang_items.fn_mut_trait()),
-            (ty::FnOnceUnboxedClosureKind, tcx.lang_items.fn_once_trait()),
-            ];
-        for tuple in fn_traits.iter() {
-            let kind = match tuple {
-                &(kind, Some(ref fn_trait))
-                    if *fn_trait == obligation.trait_ref.def_id =>
-                {
-                    kind
-                }
-                _ => continue,
-            };
-
-            // Check to see whether the argument and return types match.
-            let closure_kind = match self.typer.unboxed_closures().borrow().find(&closure_def_id) {
-                Some(closure) => closure.kind,
-                None => {
-                    self.tcx().sess.span_bug(
-                        obligation.cause.span,
-                        format!("No entry for unboxed closure: {}",
-                                closure_def_id.repr(self.tcx())).as_slice());
-                }
-            };
-
-            if closure_kind != kind {
-                continue;
+        let closure_kind = match self.typer.unboxed_closures().borrow().find(&closure_def_id) {
+            Some(closure) => closure.kind,
+            None => {
+                self.tcx().sess.span_bug(
+                    obligation.cause.span,
+                    format!("No entry for unboxed closure: {}",
+                            closure_def_id.repr(self.tcx())).as_slice());
             }
+        };
 
+        if closure_kind == kind {
             candidates.vec.push(UnboxedClosureCandidate(closure_def_id));
         }
 
