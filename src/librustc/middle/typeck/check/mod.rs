@@ -2523,8 +2523,10 @@ fn check_argument_types<'a>(fcx: &FnCtxt,
                         "this function takes 0 parameters but {} parameter{} supplied",
                         args.len(),
                         if args.len() == 1 {" was"} else {"s were"});
+                    err_args(args.len())
+                } else {
+                    vec![]
                 }
-                Vec::new()
             }
             _ => {
                 span_err!(tcx.sess, sp, E0059,
