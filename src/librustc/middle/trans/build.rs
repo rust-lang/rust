@@ -21,7 +21,7 @@ use syntax::codemap::Span;
 use middle::trans::builder::Builder;
 use middle::trans::type_::Type;
 
-use libc::{c_uint, c_ulonglong, c_char};
+use libc::{c_uint, c_char};
 
 pub fn terminate(cx: Block, _: &str) {
     debug!("terminate({})", cx.to_str());
@@ -380,8 +380,8 @@ pub fn AtomicLoad(cx: Block, pointer_val: ValueRef, order: AtomicOrdering) -> Va
 }
 
 
-pub fn LoadRangeAssert(cx: Block, pointer_val: ValueRef, lo: c_ulonglong,
-                       hi: c_ulonglong, signed: llvm::Bool) -> ValueRef {
+pub fn LoadRangeAssert(cx: Block, pointer_val: ValueRef, lo: u64,
+                       hi: u64, signed: llvm::Bool) -> ValueRef {
     if cx.unreachable.get() {
         let ccx = cx.fcx.ccx;
         let ty = val_ty(pointer_val);

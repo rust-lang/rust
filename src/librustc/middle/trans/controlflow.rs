@@ -499,7 +499,7 @@ pub fn trans_fail<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let loc = bcx.sess().codemap().lookup_char_pos(sp.lo);
     let filename = token::intern_and_get_ident(loc.file.name.as_slice());
     let filename = C_str_slice(ccx, filename);
-    let line = C_int(ccx, loc.line as int);
+    let line = C_uint(ccx, loc.line);
     let expr_file_line_const = C_struct(ccx, &[v_str, filename, line], false);
     let expr_file_line = consts::const_addr_of(ccx, expr_file_line_const, ast::MutImmutable);
     let args = vec!(expr_file_line);
@@ -526,7 +526,7 @@ pub fn trans_fail_bounds_check<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
     // Invoke the lang item
     let filename = C_str_slice(ccx,  filename);
-    let line = C_int(ccx, loc.line as int);
+    let line = C_uint(ccx, loc.line);
     let file_line_const = C_struct(ccx, &[filename, line], false);
     let file_line = consts::const_addr_of(ccx, file_line_const, ast::MutImmutable);
     let args = vec!(file_line, index, len);

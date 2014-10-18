@@ -202,7 +202,7 @@ use middle::ty;
 use middle::pat_util;
 use util::ppaux;
 
-use libc::{c_uint, c_ulonglong, c_longlong};
+use libc::c_uint;
 use std::c_str::{CString, ToCStr};
 use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
@@ -2384,7 +2384,7 @@ fn prepare_enum_metadata(cx: &CrateContext,
                     llvm::LLVMDIBuilderCreateEnumerator(
                         DIB(cx),
                         name,
-                        v.disr_val as c_ulonglong)
+                        v.disr_val as u64)
                 }
             })
         })
@@ -2663,9 +2663,9 @@ fn fixed_vec_metadata(cx: &CrateContext,
 
     let subrange = unsafe {
         llvm::LLVMDIBuilderGetOrCreateSubrange(
-        DIB(cx),
-        0,
-        len as c_longlong)
+            DIB(cx),
+            0,
+            len as i64)
     };
 
     let subscripts = create_DIArray(DIB(cx), [subrange]);
@@ -3072,11 +3072,11 @@ fn span_start(cx: &CrateContext, span: Span) -> codemap::Loc {
 }
 
 fn size_and_align_of(cx: &CrateContext, llvm_type: Type) -> (u64, u64) {
-    (machine::llsize_of_alloc(cx, llvm_type), machine::llalign_of_min(cx, llvm_type))
+    (machine::llsize_of_alloc(cx, llvm_type), machine::llalign_of_min(cx, llvm_type) as u64)
 }
 
-fn bytes_to_bits(bytes: u64) -> c_ulonglong {
-    (bytes * 8) as c_ulonglong
+fn bytes_to_bits(bytes: u64) -> u64 {
+    bytes * 8
 }
 
 #[inline]

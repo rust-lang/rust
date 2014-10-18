@@ -24,6 +24,20 @@ use middle::trans::type_::Type;
 use syntax::abi;
 use syntax::ast;
 
+use std::num::CheckedMul;
+
+// LLVM doesn't like objects that are too big. Issue #17913
+fn ensure_array_fits_in_address_space(ccx: &CrateContext,
+                                      llet: Type,
+                                      size: machine::llsize,
+                                      scapegoat: ty::t) {
+    let esz = machine::llsize_of_alloc(ccx, llet);
+    match esz.checked_mul(&size) {
+        Some(n) if n < ccx.max_obj_size() => {}
+        _ => { ccx.report_overbig_object(scapegoat) }
+    }
+}
+
 pub fn arg_is_indirect(ccx: &CrateContext, arg_ty: ty::t) -> bool {
     !type_is_immediate(ccx, arg_ty)
 }
@@ -186,7 +200,10 @@ pub fn sizing_type_of(cx: &CrateContext, t: ty::t) -> Type {
         ty::ty_closure(..) => Type::struct_(cx, [Type::i8p(cx), Type::i8p(cx)], false),
 
         ty::ty_vec(ty, Some(size)) => {
-            Type::array(&sizing_type_of(cx, ty), size as u64)
+            let llty = sizing_type_of(cx, ty);
+            let size = size as u64;
+            ensure_array_fits_in_address_space(cx, llty, size, t);
+            Type::array(&llty, size)
         }
 
         ty::ty_tup(..) | ty::ty_enum(..) | ty::ty_unboxed_closure(..) => {
@@ -196,9 +213,10 @@ pub fn sizing_type_of(cx: &CrateContext, t: ty::t) -> Type {
 
         ty::ty_struct(..) => {
             if ty::type_is_simd(cx.tcx(), t) {
-                let et = ty::simd_type(cx.tcx(), t);
-                let n = ty::simd_size(cx.tcx(), t);
-                Type::vector(&type_of(cx, et), n as u64)
+                let llet = type_of(cx, ty::simd_type(cx.tcx(), t));
+                let n = ty::simd_size(cx.tcx(), t) as u64;
+                ensure_array_fits_in_address_space(cx, llet, n, t);
+                Type::vector(&llet, n)
             } else {
                 let repr = adt::represent_type(cx, t);
                 adt::sizing_type_of(cx, &*repr, false)
@@ -282,21 +300,21 @@ pub fn type_of(cx: &CrateContext, t: ty::t) -> Type {
       ty::ty_uint(t) => Type::uint_from_ty(cx, t),
       ty::ty_float(t) => Type::float_from_ty(cx, t),
       ty::ty_enum(did, ref substs) => {
-        // Only create the named struct, but don't fill it in. We
-        // fill it in *after* placing it into the type cache. This
-        // avoids creating more than one copy of the enum when one
-        // of the enum's variants refers to the enum itself.
-        let repr = adt::represent_type(cx, t);
-        let tps = substs.types.get_slice(subst::TypeSpace);
-        let name = llvm_type_name(cx, an_enum, did, tps);
-        adt::incomplete_type_of(cx, &*repr, name.as_slice())
+          // Only create the named struct, but don't fill it in. We
+          // fill it in *after* placing it into the type cache. This
+          // avoids creating more than one copy of the enum when one
+          // of the enum's variants refers to the enum itself.
+          let repr = adt::represent_type(cx, t);
+          let tps = substs.types.get_slice(subst::TypeSpace);
+          let name = llvm_type_name(cx, an_enum, did, tps);
+          adt::incomplete_type_of(cx, &*repr, name.as_slice())
       }
       ty::ty_unboxed_closure(did, _) => {
-        // Only create the named struct, but don't fill it in. We
-        // fill it in *after* placing it into the type cache.
-        let repr = adt::represent_type(cx, t);
-        let name = llvm_type_name(cx, an_unboxed_closure, did, []);
-        adt::incomplete_type_of(cx, &*repr, name.as_slice())
+          // Only create the named struct, but don't fill it in. We
+          // fill it in *after* placing it into the type cache.
+          let repr = adt::represent_type(cx, t);
+          let name = llvm_type_name(cx, an_unboxed_closure, did, []);
+          adt::incomplete_type_of(cx, &*repr, name.as_slice())
       }
 
       ty::ty_uniq(ty) | ty::ty_rptr(_, ty::mt{ty, ..}) | ty::ty_ptr(ty::mt{ty, ..}) => {
@@ -315,8 +333,11 @@ pub fn type_of(cx: &CrateContext, t: ty::t) -> Type {
           }
       }
 
-      ty::ty_vec(ty, Some(n)) => {
-          Type::array(&type_of(cx, ty), n as u64)
+      ty::ty_vec(ty, Some(size)) => {
+          let size = size as u64;
+          let llty = type_of(cx, ty);
+          ensure_array_fits_in_address_space(cx, llty, size, t);
+          Type::array(&llty, size)
       }
       ty::ty_vec(ty, None) => {
           type_of(cx, ty)
@@ -341,9 +362,10 @@ pub fn type_of(cx: &CrateContext, t: ty::t) -> Type {
       }
       ty::ty_struct(did, ref substs) => {
           if ty::type_is_simd(cx.tcx(), t) {
-              let et = ty::simd_type(cx.tcx(), t);
-              let n = ty::simd_size(cx.tcx(), t);
-              Type::vector(&type_of(cx, et), n as u64)
+              let llet = type_of(cx, ty::simd_type(cx.tcx(), t));
+              let n = ty::simd_size(cx.tcx(), t) as u64;
+              ensure_array_fits_in_address_space(cx, llet, n, t);
+              Type::vector(&llet, n)
           } else {
               // Only create the named struct, but don't fill it in. We fill it
               // in *after* placing it into the type cache. This prevents
@@ -398,7 +420,7 @@ pub fn type_of(cx: &CrateContext, t: ty::t) -> Type {
     return llty;
 }
 
-pub fn align_of(cx: &CrateContext, t: ty::t) -> u64 {
+pub fn align_of(cx: &CrateContext, t: ty::t) -> machine::llalign {
     let llty = sizing_type_of(cx, t);
     machine::llalign_of_min(cx, llty)
 }
