@@ -11,6 +11,9 @@
 #![no_std]
 #![feature(lang_items)]
 
+#[lang="sized"]
+pub trait Sized for Sized? {}
+
 #[lang="fail"]
 fn fail(_: &(&'static str, &'static str, uint)) -> ! { loop {} }
 

@@ -366,14 +366,19 @@ fn note_obligation_cause(fcx: &FnCtxt,
         traits::RepeatVec => {
             tcx.sess.span_note(
                 obligation.cause.span,
-                format!(
-                    "the `Copy` trait is required because the \
-                     repeated element will be copied").as_slice());
+                "the `Copy` trait is required because the \
+                 repeated element will be copied");
         }
         traits::VariableType(_) => {
             tcx.sess.span_note(
                 obligation.cause.span,
                 "all local variables must have a statically known size");
+        }
+        traits::ReturnType => {
+            tcx.sess.span_note(
+                obligation.cause.span,
+                "the return type of a function must have a \
+                 statically known size");
         }
         traits::AssignmentLhsSized => {
             tcx.sess.span_note(

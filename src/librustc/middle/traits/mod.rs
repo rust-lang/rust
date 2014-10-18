@@ -77,6 +77,7 @@ pub enum ObligationCauseCode {
     AssignmentLhsSized,        // L = X implies that L is Sized
     StructInitializerSized,    // S { ... } must be Sized
     VariableType(ast::NodeId), // Type of each variable must be Sized
+    ReturnType,                // Return type must be Sized
     RepeatVec,                 // [T,..n] --> T must be Copy
 
     // Captures of variable the given id by a closure (span is the
