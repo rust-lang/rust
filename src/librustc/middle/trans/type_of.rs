@@ -58,10 +58,10 @@ pub fn type_of_explicit_arg(ccx: &CrateContext, arg_ty: ty::t) -> Type {
 /// Yields the types of the "real" arguments for this function. For most
 /// functions, these are simply the types of the arguments. For functions with
 /// the `RustCall` ABI, however, this untuples the arguments of the function.
-fn untuple_arguments_if_necessary(ccx: &CrateContext,
-                                  inputs: &[ty::t],
-                                  abi: abi::Abi)
-                                  -> Vec<ty::t> {
+pub fn untuple_arguments_if_necessary(ccx: &CrateContext,
+                                      inputs: &[ty::t],
+                                      abi: abi::Abi)
+                                      -> Vec<ty::t> {
     if abi != abi::RustCall {
         return inputs.iter().map(|x| (*x).clone()).collect()
     }
