@@ -16,7 +16,7 @@ fn main() {
     let a = box [&n,..0xF000000000000000u];
     println!("{}", a[0xFFFFFFu]);
 }
- 
+
 #[cfg(target_word_size = "32")]
 fn main() {
     let n = 0u;
