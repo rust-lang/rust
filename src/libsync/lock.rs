@@ -167,7 +167,7 @@ impl<'a> Condvar<'a> {
 ///     val.cond.signal();
 /// });
 ///
-/// let mut value = mutex.lock();
+/// let value = mutex.lock();
 /// while *value != 2 {
 ///     value.cond.wait();
 /// }
