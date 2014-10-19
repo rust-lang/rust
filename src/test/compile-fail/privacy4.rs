@@ -8,8 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(globs)]
+#![feature(globs, lang_items)]
 #![no_std] // makes debugging this test *a lot* easier (during resolve)
+
+#[lang = "sized"] pub trait Sized for Sized? {}
 
 // Test to make sure that private items imported through globs remain private
 // when  they're used.
