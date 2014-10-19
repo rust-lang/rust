@@ -642,27 +642,33 @@ mod tests {
     }
 
     #[bench]
-    fn bench_push_back(b: &mut test::Bencher) {
-        let mut deq = RingBuf::new();
+    fn bench_push_back_100(b: &mut test::Bencher) {
+        let mut deq = RingBuf::with_capacity(100);
         b.iter(|| {
-            deq.push(0i);
+            for i in range(0i, 100) {
+                deq.push(i);
+            }
+            deq.clear();
         })
     }
 
     #[bench]
-    fn bench_push_front(b: &mut test::Bencher) {
-        let mut deq = RingBuf::new();
+    fn bench_push_front_100(b: &mut test::Bencher) {
+        let mut deq = RingBuf::with_capacity(100);
         b.iter(|| {
-            deq.push_front(0i);
+            for i in range(0i, 100) {
+                deq.push_front(i);
+            }
+            deq.clear();
         })
     }
 
     #[bench]
-    fn bench_grow(b: &mut test::Bencher) {
-        let mut deq = RingBuf::new();
+    fn bench_grow_1025(b: &mut test::Bencher) {
         b.iter(|| {
-            for _ in range(0i, 65) {
-                deq.push_front(1i);
+            let mut deq = RingBuf::new();
+            for i in range(0i, 1025) {
+                deq.push_front(i);
             }
         })
     }
