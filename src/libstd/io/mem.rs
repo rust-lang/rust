@@ -13,14 +13,16 @@
 //! Readers and Writers for in-memory buffers
 
 use cmp::min;
-use collections::Collection;
+use collections::{MutableSeq, Collection};
 use option::None;
 use result::{Err, Ok};
 use io;
 use io::{Reader, Writer, Seek, Buffer, IoError, SeekStyle, IoResult};
 use slice;
-use slice::AsSlice;
+use slice::{ImmutableSlice, AsSlice};
 use vec::Vec;
+use char::Char;
+use iter::Iterator;
 
 static BUF_CAPACITY: uint = 128;
 
@@ -88,6 +90,16 @@ impl Writer for MemWriter {
     #[inline]
     fn write(&mut self, buf: &[u8]) -> IoResult<()> {
         self.buf.push_all(buf);
+        Ok(())
+    }
+
+    #[inline]
+    fn write_char(&mut self, c: char) -> IoResult<()> {
+        let mut buf: [u8,..4] = unsafe { ::core::mem::uninitialized() };
+        let n = c.encode_utf8(buf[mut]).unwrap_or(0);
+        for &b in buf[].iter().take(n) {
+            self.buf.push(b)
+        }
         Ok(())
     }
 }
