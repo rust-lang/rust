@@ -8,14 +8,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-enum A {
-    B(char),
-    C([Box<A>]),
+
+
+pub trait AbstractRenderer {}
+
+fn _create_render(_: &()) ->
+    AbstractRenderer
+//~^ ERROR: the trait `core::kinds::Sized` is not implemented
+{
+    match 0u {
+        _ => unimplemented!()
+    }
 }
 
-fn c(c:char) {
-    B(c);
-    //~^ ERROR cannot move a value of type A: the size of A cannot be statically determined
+fn main() {
 }
-
-pub fn main() {}
