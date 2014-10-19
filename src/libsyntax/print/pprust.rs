@@ -2680,8 +2680,9 @@ impl<'a> State<'a> {
                              ast_util::int_ty_to_string(st, Some(i as i64)).as_slice())
                     }
                     ast::SignedIntLit(st, ast::Minus) => {
+                        let istr = ast_util::int_ty_to_string(st, Some(-(i as i64)));
                         word(&mut self.s,
-                             ast_util::int_ty_to_string(st, Some(-(i as i64))).as_slice())
+                             format!("-{}", istr).as_slice())
                     }
                     ast::UnsignedIntLit(ut) => {
                         word(&mut self.s, ast_util::uint_ty_to_string(ut, Some(i)).as_slice())
@@ -2929,5 +2930,13 @@ mod test {
 
         let varstr = variant_to_string(&var);
         assert_eq!(&varstr,&"pub principal_skinner".to_string());
+    }
+
+    #[test]
+    fn test_signed_int_to_string() {
+        let pos_int = ast::LitInt(42, ast::SignedIntLit(ast::TyI32, ast::Plus));
+        let neg_int = ast::LitInt((-42) as u64, ast::SignedIntLit(ast::TyI32, ast::Minus));
+        assert_eq!(format!("-{}", lit_to_string(&codemap::dummy_spanned(pos_int))),
+                   lit_to_string(&codemap::dummy_spanned(neg_int)));
     }
 }
