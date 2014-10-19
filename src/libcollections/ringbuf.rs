@@ -1012,4 +1012,70 @@ mod tests {
                                                                         .collect();
         assert!(format!("{}", ringbuf).as_slice() == "[just, one, test, more]");
     }
+
+    #[test]
+    fn test_drop() {
+        static mut drops: uint = 0;
+        struct Elem;
+        impl Drop for Elem {
+            fn drop(&mut self) {
+                unsafe { drops += 1; }
+            }
+        }
+
+        let mut ring = RingBuf::new();
+        ring.push(Elem);
+        ring.push_front(Elem);
+        ring.push(Elem);
+        ring.push_front(Elem);
+        drop(ring);
+
+        assert_eq!(unsafe {drops}, 4);
+    }
+
+    #[test]
+    fn test_drop_with_pop() {
+        static mut drops: uint = 0;
+        struct Elem;
+        impl Drop for Elem {
+            fn drop(&mut self) {
+                unsafe { drops += 1; }
+            }
+        }
+
+        let mut ring = RingBuf::new();
+        ring.push(Elem);
+        ring.push_front(Elem);
+        ring.push(Elem);
+        ring.push_front(Elem);
+
+        drop(ring.pop());
+        drop(ring.pop_front());
+        assert_eq!(unsafe {drops}, 2);
+
+        drop(ring);
+        assert_eq!(unsafe {drops}, 4);
+    }
+
+    #[test]
+    fn test_drop_clear() {
+        static mut drops: uint = 0;
+        struct Elem;
+        impl Drop for Elem {
+            fn drop(&mut self) {
+                unsafe { drops += 1; }
+            }
+        }
+
+        let mut ring = RingBuf::new();
+        ring.push(Elem);
+        ring.push_front(Elem);
+        ring.push(Elem);
+        ring.push_front(Elem);
+        ring.clear();
+        assert_eq!(unsafe {drops}, 4);
+
+        drop(ring);
+        assert_eq!(unsafe {drops}, 4);
+    }
 }
