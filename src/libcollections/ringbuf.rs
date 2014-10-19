@@ -664,6 +664,38 @@ mod tests {
     }
 
     #[bench]
+    fn bench_pop_100(b: &mut test::Bencher) {
+        let mut deq = RingBuf::with_capacity(100);
+
+        // this will make sure the bencher wraps
+        for i in range(0i, 25) { deq.push(i); }
+        while None != deq.pop_front() {}
+
+        b.iter(|| {
+            for i in range(0i, 100) {
+                deq.push(i);
+            }
+            while None != deq.pop() {}
+        })
+    }
+
+    #[bench]
+    fn bench_pop_front_100(b: &mut test::Bencher) {
+        let mut deq = RingBuf::with_capacity(100);
+
+        // this will make sure the bencher wraps
+        for i in range(0i, 25) { deq.push(i); }
+        while None != deq.pop_front() {}
+
+        b.iter(|| {
+            for i in range(0i, 100) {
+                deq.push(i);
+            }
+            while None != deq.pop_front() {}
+        })
+    }
+
+    #[bench]
     fn bench_grow_1025(b: &mut test::Bencher) {
         b.iter(|| {
             let mut deq = RingBuf::new();
