@@ -15,6 +15,7 @@
 use metadata::common::*;
 use metadata::cstore;
 use metadata::decoder;
+use middle::def;
 use middle::lang_items;
 use middle::resolve;
 use middle::ty;
@@ -113,6 +114,12 @@ pub fn maybe_get_item_ast<'tcx>(tcx: &ty::ctxt<'tcx>, def: ast::DefId,
     let cstore = &tcx.sess.cstore;
     let cdata = cstore.get_crate_data(def.krate);
     decoder::maybe_get_item_ast(&*cdata, tcx, def.node, decode_inlined_item)
+}
+
+pub fn get_enum_variant_defs(cstore: &cstore::CStore, enum_id: ast::DefId)
+                             -> Vec<(def::Def, ast::Ident, ast::Visibility)> {
+    let cdata = cstore.get_crate_data(enum_id.krate);
+    decoder::get_enum_variant_defs(&*cstore.intr, &*cdata, enum_id.node)
 }
 
 pub fn get_enum_variants(tcx: &ty::ctxt, def: ast::DefId)

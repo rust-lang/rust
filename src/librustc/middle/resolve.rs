@@ -1806,6 +1806,7 @@ impl<'a> Resolver<'a> {
         }
 
         let kind = match def {
+            DefTy(_, true) => EnumModuleKind,
             DefStruct(..) | DefTy(..) => ImplModuleKind,
             _ => NormalModuleKind
         };
@@ -1840,6 +1841,7 @@ impl<'a> Resolver<'a> {
 
         match def {
           DefMod(_) | DefForeignMod(_) => {}
+          // Still here for staging
           DefVariant(enum_did, variant_id, is_struct) => {
             debug!("(building reduced graph for external crate) building \
                     variant {}",
@@ -1904,6 +1906,35 @@ impl<'a> Resolver<'a> {
                                                   true,
                                                   is_public,
                                                   DUMMY_SP)
+          }
+          DefTy(def_id, true) => { // enums
+              debug!("(building reduced graph for external crate) building enum {}", final_ident);
+              child_name_bindings.define_type(def, DUMMY_SP, is_public);
+              let enum_module = ModuleReducedGraphParent(child_name_bindings.get_module());
+
+              let variants = csearch::get_enum_variant_defs(&self.session.cstore, def_id);
+              for &(v_def, name, vis) in variants.iter() {
+                  let (variant_id, is_struct) = match v_def {
+                      DefVariant(_, variant_id, is_struct) => (variant_id, is_struct),
+                      _ => unreachable!()
+                  };
+                  let child = self.add_child(name, enum_module.clone(),
+                                             OverwriteDuplicates,
+                                             DUMMY_SP);
+
+                  // If this variant is public, then it was publicly reexported,
+                  // otherwise we need to inherit the visibility of the enum
+                  // definition.
+                  let variant_exported = vis == ast::Public || is_exported;
+                  if is_struct {
+                      child.define_type(v_def, DUMMY_SP, variant_exported);
+                      // Not adding fields for variants as they are not accessed with a self receiver
+                      self.structs.insert(variant_id, Vec::new());
+                  } else {
+                      child.define_value(v_def, DUMMY_SP, variant_exported);
+                  }
+              }
+
           }
           DefTy(..) | DefAssociatedTy(..) => {
               debug!("(building reduced graph for external \
