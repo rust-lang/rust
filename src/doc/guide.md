@@ -4363,7 +4363,7 @@ element, `find` returns an `Option` rather than the element itself.
 Another important consumer is `fold`. Here's what it looks like:
 
 ```{rust}
-let sum = range(1i, 100i)
+let sum = range(1i, 4i)
               .fold(0i, |sum, x| sum + x);
 ```
 
@@ -4387,7 +4387,7 @@ in this iterator:
 We called `fold()` with these arguments:
 
 ```{rust}
-# range(1i, 5i)
+# range(1i, 4i)
 .fold(0i, |sum, x| sum + x);
 ```
 
