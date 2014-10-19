@@ -659,6 +659,24 @@ pub fn maybe_get_item_ast<'tcx>(cdata: Cmd, tcx: &ty::ctxt<'tcx>, id: ast::NodeI
     }
 }
 
+pub fn get_enum_variant_defs(intr: &IdentInterner,
+                             cdata: Cmd,
+                             id: ast::NodeId)
+                             -> Vec<(def::Def, ast::Name, ast::Visibility)> {
+    let data = cdata.data();
+    let items = reader::get_doc(rbml::Doc::new(data), tag_items);
+    let item = find_item(id, items);
+    enum_variant_ids(item, cdata).iter().map(|did| {
+        let item = find_item(did.node, items);
+        let name = item_name(intr, item);
+        let visibility = item_visibility(item);
+        match item_to_def_like(item, *did, cdata.cnum) {
+            DlDef(def @ def::DefVariant(..)) => (def, name, visibility),
+            _ => unreachable!()
+        }
+    }).collect()
+}
+
 pub fn get_enum_variants(intr: Rc<IdentInterner>, cdata: Cmd, id: ast::NodeId,
                      tcx: &ty::ctxt) -> Vec<Rc<ty::VariantInfo>> {
     let data = cdata.data();

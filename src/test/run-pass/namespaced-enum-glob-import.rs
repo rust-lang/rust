@@ -7,29 +7,36 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
+#![feature(globs, struct_variant)]
 
-pub use self::sub::{Bar, Baz};
-
-pub trait Trait {
-    fn foo();
-}
-
-struct Foo;
-
-impl Foo {
-    pub fn new() {}
-}
-
-mod sub {
-    pub struct Bar;
-
-    impl Bar {
-        pub fn new() {}
+mod m2 {
+    pub enum Foo {
+        A,
+        B(int),
+        C { a: int },
     }
 
-    pub enum Baz {}
-
-    impl Baz {
-        pub fn new() {}
+    impl Foo {
+        pub fn foo() {}
     }
 }
+
+mod m {
+    pub use m2::Foo::*;
+}
+
+fn _f(f: m2::Foo) {
+    use m2::Foo::*;
+
+    match f {
+        A | B(_) | C { .. } => {}
+    }
+}
+
+fn _f2(f: m2::Foo) {
+    match f {
+        m::A | m::B(_) | m::C { .. } => {}
+    }
+}
+
+pub fn main() {}
