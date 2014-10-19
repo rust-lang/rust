@@ -492,6 +492,7 @@ enum ModuleKind {
     NormalModuleKind,
     TraitModuleKind,
     ImplModuleKind,
+    EnumModuleKind,
     AnonymousModuleKind,
 }
 
@@ -1282,7 +1283,25 @@ impl<'a> Resolver<'a> {
                 name_bindings.define_type
                     (DefTy(local_def(item.id), true), sp, is_public);
 
+                let parent_link = self.get_parent_link(parent.clone(), ident);
+                // We want to make sure the module type is EnumModuleKind
+                // even if there's already an ImplModuleKind module defined,
+                // since that's how we prevent duplicate enum definitions
+                name_bindings.set_module_kind(parent_link,
+                                              Some(local_def(item.id)),
+                                              EnumModuleKind,
+                                              false,
+                                              is_public,
+                                              sp);
+
                 for variant in (*enum_definition).variants.iter() {
+                    self.build_reduced_graph_for_variant(
+                        &**variant,
+                        local_def(item.id),
+                        ModuleReducedGraphParent(name_bindings.get_module()),
+                        is_public);
+
+                    // Temporary staging hack
                     self.build_reduced_graph_for_variant(
                         &**variant,
                         local_def(item.id),
@@ -1345,6 +1364,12 @@ impl<'a> Resolver<'a> {
                                                 .is_some() &&
                                            child.get_module().kind.get() ==
                                                 ImplModuleKind => {
+                                ModuleReducedGraphParent(child.get_module())
+                            }
+                            Some(ref child) if child.get_module_if_available()
+                                                .is_some() &&
+                                           child.get_module().kind.get() ==
+                                                EnumModuleKind => {
                                 ModuleReducedGraphParent(child.get_module())
                             }
                             // Create the module
@@ -3400,6 +3425,7 @@ impl<'a> Resolver<'a> {
                         }
                         TraitModuleKind |
                         ImplModuleKind |
+                        EnumModuleKind |
                         AnonymousModuleKind => {
                             search_module = parent_module_node.upgrade().unwrap();
                         }
@@ -3497,6 +3523,7 @@ impl<'a> Resolver<'a> {
                         NormalModuleKind => return Some(new_module),
                         TraitModuleKind |
                         ImplModuleKind |
+                        EnumModuleKind |
                         AnonymousModuleKind => module_ = new_module,
                     }
                 }
@@ -3512,6 +3539,7 @@ impl<'a> Resolver<'a> {
             NormalModuleKind => return module_,
             TraitModuleKind |
             ImplModuleKind |
+            EnumModuleKind |
             AnonymousModuleKind => {
                 match self.get_nearest_normal_module_parent(module_.clone()) {
                     None => module_,
