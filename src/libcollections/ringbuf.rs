@@ -705,6 +705,31 @@ mod tests {
         })
     }
 
+    #[bench]
+    fn bench_iter_1000(b: &mut test::Bencher) {
+        let ring: RingBuf<int> = range(0i, 1000).collect();
+
+        b.iter(|| {
+            let mut sum = 0;
+            for &i in ring.iter() {
+                sum += i;
+            }
+            sum
+        })
+    }
+
+    #[bench]
+    fn bench_mut_iter_1000(b: &mut test::Bencher) {
+        let mut ring: RingBuf<int> = range(0i, 1000).collect();
+
+        b.iter(|| {
+            for i in ring.iter_mut() {
+                *i += 1;
+            }
+        })
+    }
+
+
     #[deriving(Clone, PartialEq, Show)]
     enum Taggy {
         One(int),
