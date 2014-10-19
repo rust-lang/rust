@@ -555,16 +555,12 @@ fn check_fn<'a, 'tcx>(ccx: &'a CrateCtxt<'a, 'tcx>,
 
     // Remember return type so that regionck can access it later.
     let fn_sig_tys: Vec<ty::t> =
-        arg_tys.iter()
-        .chain([ret_ty].iter())
-        .map(|&ty| ty)
-        .collect();
+        arg_tys.iter().chain([ret_ty].iter()).map(|&ty| ty).collect();
     debug!("fn-sig-map: fn_id={} fn_sig_tys={}",
            fn_id,
            fn_sig_tys.repr(tcx));
-    inherited.fn_sig_map
-        .borrow_mut()
-        .insert(fn_id, fn_sig_tys);
+
+    inherited.fn_sig_map.borrow_mut().insert(fn_id, fn_sig_tys);
 
     {
         let mut visit = GatherLocalsVisitor { fcx: &fcx, };
@@ -591,6 +587,7 @@ fn check_fn<'a, 'tcx>(ccx: &'a CrateCtxt<'a, 'tcx>,
 
         visit.visit_block(body);
     }
+    fcx.require_type_is_sized(ret_ty, decl.output.span, traits::ReturnType);
 
     check_block_with_expected(&fcx, body, ExpectHasType(ret_ty));
 
