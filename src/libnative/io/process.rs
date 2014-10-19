@@ -489,15 +489,15 @@ fn make_command_line(prog: &CString, args: &[CString]) -> String {
         }
         let argvec: Vec<char> = arg.chars().collect();
         for i in range(0u, argvec.len()) {
-            append_char_at(cmd, &argvec, i);
+            append_char_at(cmd, argvec.as_slice(), i);
         }
         if quote {
             cmd.push('"');
         }
     }
 
-    fn append_char_at(cmd: &mut String, arg: &Vec<char>, i: uint) {
-        match *arg.get(i) {
+    fn append_char_at(cmd: &mut String, arg: &[char], i: uint) {
+        match arg[i] {
             '"' => {
                 // Escape quotes.
                 cmd.push_str("\\\"");
@@ -517,11 +517,11 @@ fn make_command_line(prog: &CString, args: &[CString]) -> String {
         }
     }
 
-    fn backslash_run_ends_in_quote(s: &Vec<char>, mut i: uint) -> bool {
-        while i < s.len() && *s.get(i) == '\\' {
+    fn backslash_run_ends_in_quote(s: &[char], mut i: uint) -> bool {
+        while i < s.len() && s[i] == '\\' {
             i += 1;
         }
-        return i < s.len() && *s.get(i) == '"';
+        return i < s.len() && s[i] == '"';
     }
 }
 
