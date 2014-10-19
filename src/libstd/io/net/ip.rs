@@ -17,10 +17,14 @@
 
 use fmt;
 use from_str::FromStr;
+use io::{mod, IoResult, IoError};
+use io::net;
 use iter::Iterator;
 use option::{Option, None, Some};
+use result::{Ok, Err};
 use str::StrSlice;
 use slice::{MutableCloneableSlice, MutableSlice, ImmutableSlice};
+use vec::Vec;
 
 pub type Port = u16;
 
@@ -348,6 +352,109 @@ impl FromStr for SocketAddr {
     }
 }
 
+pub trait ToSocketAddr {
+    fn to_socket_addr(&self) -> IoResult<SocketAddr> {
+        self.to_socket_addr_all()
+            .and_then(|v| v.into_iter().next().ok_or_else(|| IoError {
+                kind: io::InvalidInput,
+                desc: "no address available",
+                detail: None
+            }))
+    }
+
+    #[inline]
+    fn to_socket_addr_all(&self) -> IoResult<Vec<SocketAddr>> {
+        self.to_socket_addr().map(|a| vec![a])
+    }
+}
+
+impl ToSocketAddr for SocketAddr {
+    #[inline]
+    fn to_socket_addr(&self) -> IoResult<SocketAddr> { Ok(*self) }
+}
+
+impl ToSocketAddr for (IpAddr, u16) {
+    #[inline]
+    fn to_socket_addr(&self) -> IoResult<SocketAddr> {
+        let (ip, port) = *self;
+        Ok(SocketAddr { ip: ip, port: port })
+    }
+}
+
+fn resolve_socket_addr(s: &str, p: u16) -> IoResult<Vec<SocketAddr>> {
+    net::get_host_addresses(s)
+        .map(|v| v.into_iter().map(|a| SocketAddr { ip: a, port: p }).collect())
+}
+
+fn parse_and_resolve_socket_addr(s: &str) -> IoResult<Vec<SocketAddr>> {
+    macro_rules! try_opt(
+        ($e:expr, $msg:expr) => (
+            match $e {
+                Some(r) => r,
+                None => return Err(IoError {
+                    kind: io::InvalidInput,
+                    desc: $msg,
+                    detail: None
+                })
+            }
+        )
+    )
+
+    // split the string by ':' and convert the second part to u16
+    let mut parts_iter = s.rsplitn(2, ':');
+    let port_str = try_opt!(parts_iter.next(), "invalid socket address");
+    let host = try_opt!(parts_iter.next(), "invalid socket address");
+    let port: u16 = try_opt!(FromStr::from_str(port_str), "invalid port value");
+    resolve_socket_addr(host, port)
+}
+
+impl<'a> ToSocketAddr for (&'a str, u16) {
+    fn to_socket_addr_all(&self) -> IoResult<Vec<SocketAddr>> {
+        let (host, port) = *self;
+
+        // try to parse the host as a regular IpAddr first
+        match FromStr::from_str(host) {
+            Some(addr) => return Ok(vec![SocketAddr {
+                ip: addr,
+                port: port
+            }]),
+            None => {}
+        }
+
+        resolve_socket_addr(host, port)
+    }
+}
+
+// accepts strings like 'localhost:12345'
+impl<'a> ToSocketAddr for &'a str {
+    fn to_socket_addr(&self) -> IoResult<SocketAddr> {
+        // try to parse as a regular SocketAddr first
+        match FromStr::from_str(*self) {
+            Some(addr) => return Ok(addr),
+            None => {}
+        }
+
+        parse_and_resolve_socket_addr(*self)
+            .and_then(|v| v.into_iter().next()
+                .ok_or_else(|| IoError {
+                    kind: io::InvalidInput,
+                    desc: "no address available",
+                    detail: None
+                })
+            )
+    }
+
+    fn to_socket_addr_all(&self) -> IoResult<Vec<SocketAddr>> {
+        // try to parse as a regular SocketAddr first
+        match FromStr::from_str(*self) {
+            Some(addr) => return Ok(vec![addr]),
+            None => {}
+        }
+
+        parse_and_resolve_socket_addr(*self)
+    }
+}
+
 
 #[cfg(test)]
 mod test {
@@ -456,5 +563,49 @@ mod test {
                 a1.to_string() == "::FFFF:192.0.2.128".to_string());
         assert_eq!(Ipv6Addr(8, 9, 10, 11, 12, 13, 14, 15).to_string(),
                    "8:9:a:b:c:d:e:f".to_string());
+    }
+
+    #[test]
+    fn to_socket_addr_socketaddr() {
+        let a = SocketAddr { ip: Ipv4Addr(77, 88, 21, 11), port: 12345 };
+        assert_eq!(Ok(a), a.to_socket_addr());
+        assert_eq!(Ok(vec![a]), a.to_socket_addr_all());
+    }
+
+    #[test]
+    fn to_socket_addr_ipaddr_u16() {
+        let a = Ipv4Addr(77, 88, 21, 11);
+        let p = 12345u16;
+        let e = SocketAddr { ip: a, port: p };
+        assert_eq!(Ok(e), (a, p).to_socket_addr());
+        assert_eq!(Ok(vec![e]), (a, p).to_socket_addr_all());
+    }
+
+    #[test]
+    fn to_socket_addr_str_u16() {
+        let a = SocketAddr { ip: Ipv4Addr(77, 88, 21, 11), port: 24352 };
+        assert_eq!(Ok(a), ("77.88.21.11", 24352u16).to_socket_addr());
+        assert_eq!(Ok(vec![a]), ("77.88.21.11", 24352u16).to_socket_addr_all());
+
+        let a = SocketAddr { ip: Ipv6Addr(0x2a02, 0x6b8, 0, 1, 0, 0, 0, 1), port: 53 };
+        assert_eq!(Ok(a), ("2a02:6b8:0:1::1", 53).to_socket_addr());
+        assert_eq!(Ok(vec![a]), ("2a02:6b8:0:1::1", 53).to_socket_addr_all());
+
+        let a = SocketAddr { ip: Ipv4Addr(127, 0, 0, 1), port: 23924 };
+        assert!(("localhost", 23924u16).to_socket_addr_all().unwrap().contains(&a));
+    }
+
+    #[test]
+    fn to_socket_addr_str() {
+        let a = SocketAddr { ip: Ipv4Addr(77, 88, 21, 11), port: 24352 };
+        assert_eq!(Ok(a), "77.88.21.11:24352".to_socket_addr());
+        assert_eq!(Ok(vec![a]), "77.88.21.11:24352".to_socket_addr_all());
+
+        let a = SocketAddr { ip: Ipv6Addr(0x2a02, 0x6b8, 0, 1, 0, 0, 0, 1), port: 53 };
+        assert_eq!(Ok(a), "[2a02:6b8:0:1::1]:53".to_socket_addr());
+        assert_eq!(Ok(vec![a]), "[2a02:6b8:0:1::1]:53".to_socket_addr_all());
+
+        let a = SocketAddr { ip: Ipv4Addr(127, 0, 0, 1), port: 23924 };
+        assert!("localhost:23924".to_socket_addr_all().unwrap().contains(&a));
     }
 }
