@@ -345,7 +345,7 @@ mod tests {
     #[test]
     fn spawn_inherits() {
         let (tx, rx) = channel();
-        spawn(proc() {
+        TaskBuilder::new().spawner(NativeSpawner).spawn(proc() {
             spawn(proc() {
                 let mut task: Box<Task> = Local::take();
                 match task.maybe_take_runtime::<Ops>() {

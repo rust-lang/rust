@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use std::task;
-use std::sync::atomics::{AtomicUint, INIT_ATOMIC_UINT, Relaxed};
+use std::sync::atomic::{AtomicUint, INIT_ATOMIC_UINT, Relaxed};
 use std::rand::{task_rng, Rng, Rand};
 
 const REPEATS: uint = 5;
