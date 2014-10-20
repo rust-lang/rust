@@ -96,12 +96,11 @@ need, and it can make your lifetimes more complex.
 
 ## Generic functions
 
-To write a function that's generic over types of strings, use [the `Str`
-trait](http://doc.rust-lang.org/std/str/trait.Str.html):
+To write a function that's generic over types of strings, use `&str`.
 
 ```{rust}
-fn some_string_length<T: Str>(x: T) -> uint {
-        x.as_slice().len()
+fn some_string_length(x: &str) -> uint {
+        x.len()
 }
 
 fn main() {
@@ -111,14 +110,11 @@ fn main() {
 
     let s = "Hello, world".to_string();
 
-    println!("{}", some_string_length(s));
+    println!("{}", some_string_length(s.as_slice()));
 }
 ```
 
 Both of these lines will print `12`. 
-
-The only method that the `Str` trait has is `as_slice()`, which gives you
-access to a `&str` value from the underlying string.
 
 ## Comparisons
 
@@ -161,25 +157,93 @@ indexing is basically never what you want to do. The reason is that each
 character can be a variable number of bytes. This means that you have to iterate
 through the characters anyway, which is a O(n) operation. 
 
-To iterate over a string, use the `graphemes()` method on `&str`:
+There's 3 basic levels of unicode (and its encodings):
+
+- code units, the underlying data type used to store everything
+- code points/unicode scalar values (char)
+- graphemes (visible characters)
+
+Rust provides iterators for each of these situations:
+
+- `.bytes()` will iterate over the underlying bytes
+- `.chars()` will iterate over the code points
+- `.graphemes()` will iterate over each grapheme
+
+Usually, the `graphemes()` method on `&str` is what you want:
 
 ```{rust}
-let s = "αἰθήρ";
+let s = "u͔n͈̰̎i̙̮͚̦c͚̉o̼̩̰͗d͔̆̓ͥé";
 
 for l in s.graphemes(true) {
     println!("{}", l);
 }
 ```
 
+This prints:
+
+```{notrust,ignore}
+u͔
+n͈̰̎
+i̙̮͚̦
+c͚̉
+o̼̩̰͗
+d͔̆̓ͥ
+é
+```
+
 Note that `l` has the type `&str` here, since a single grapheme can consist of
 multiple codepoints, so a `char` wouldn't be appropriate.
 
-This will print out each character in turn, as you'd expect: first "α", then
-"ἰ", etc. You can see that this is different than just the individual bytes.
-Here's a version that prints out each byte:
+This will print out each visible character in turn, as you'd expect: first "u͔", then
+"n͈̰̎", etc. If you wanted each individual codepoint of each grapheme, you can use `.chars()`:
 
 ```{rust}
-let s = "αἰθήρ";
+let s = "u͔n͈̰̎i̙̮͚̦c͚̉o̼̩̰͗d͔̆̓ͥé";
+
+for l in s.chars() {
+    println!("{}", l);
+}
+```
+
+This prints:
+
+```{notrust,ignore}
+u
+͔
+n
+̎
+͈
+̰
+i
+̙
+̮
+͚
+̦
+c
+̉
+͚
+o
+͗
+̼
+̩
+̰
+d
+̆
+̓
+ͥ
+͔
+e
+́
+```
+
+You can see how some of them are combining characters, and therefore the output
+looks a bit odd.
+
+If you want the individual byte representation of each codepoint, you can use
+`.bytes()`:
+
+```{rust}
+let s = "u͔n͈̰̎i̙̮͚̦c͚̉o̼̩̰͗d͔̆̓ͥé";
 
 for l in s.bytes() {
     println!("{}", l);
@@ -189,16 +253,50 @@ for l in s.bytes() {
 This will print:
 
 ```{notrust,ignore}
-206
-177
-225
-188
+117
+205
+148
+110
+204
+142
+205
+136
+204
 176
-206
-184
-206
+105
+204
+153
+204
 174
-207
+205
+154
+204
+166
+99
+204
+137
+205
+154
+111
+205
+151
+204
+188
+204
+169
+204
+176
+100
+204
+134
+205
+131
+205
+165
+205
+148
+101
+204
 129
 ```
 
