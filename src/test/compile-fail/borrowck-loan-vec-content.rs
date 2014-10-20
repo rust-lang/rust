@@ -18,13 +18,13 @@ fn takes_imm_elt(_v: &int, f: ||) {
 
 fn has_mut_vec_and_does_not_try_to_change_it() {
     let mut v = vec!(1, 2, 3);
-    takes_imm_elt(v.get(0), || {})
+    takes_imm_elt(&v[0], || {})
 }
 
 fn has_mut_vec_but_tries_to_change_it() {
     let mut v = vec!(1, 2, 3);
     takes_imm_elt(
-        v.get(0),
+        &v[0],
         || { //~ ERROR cannot borrow `v` as mutable
             *v.get_mut(1) = 4;
         })

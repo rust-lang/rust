@@ -53,12 +53,14 @@ fn main() {
         // make a separate directory for the child
         drop(fs::mkdir(&cwd, io::USER_RWX).is_ok());
         assert!(fs::copy(&my_path, &child_path).is_ok());
+        let mut my_env = my_env;
+        my_env.push(env);
 
         // run child
         let p = Command::new(&child_path)
                         .arg(arg)
                         .cwd(&cwd)
-                        .env_set_all(my_env.append_one(env).as_slice())
+                        .env_set_all(my_env.as_slice())
                         .spawn().unwrap().wait_with_output().unwrap();
 
         // display the output
@@ -74,7 +76,7 @@ fn main() {
         assert!(my_cwd.ends_with_path(&Path::new(child_dir)));
 
         // check arguments
-        assert_eq!(my_args.get(1).as_slice(), arg);
+        assert_eq!(my_args[1].as_slice(), arg);
 
         // check environment variable
         assert!(my_env.contains(&env));

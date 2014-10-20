@@ -17,7 +17,7 @@ fn test_int() {
 fn test_vec() {
     fn f() -> Vec<int> { vec!(10, 11) }
     let vect = f();
-    assert_eq!(*vect.get(1), 11);
+    assert_eq!(vect[1], 11);
 }
 
 fn test_generic() {

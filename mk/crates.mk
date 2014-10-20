@@ -49,11 +49,11 @@
 # automatically generated for all stage/host/target combinations.
 ################################################################################
 
-TARGET_CRATES := libc std green native flate arena glob term semver \
-                 uuid serialize sync getopts collections num test time rand \
-                 url log regex graphviz core rbml rlibc alloc rustrt \
+TARGET_CRATES := libc std green native flate arena term \
+                 serialize sync getopts collections test time rand \
+                 log regex graphviz core rbml rlibc alloc rustrt \
                  unicode
-HOST_CRATES := syntax rustc rustdoc fourcc hexfloat regex_macros fmt_macros \
+HOST_CRATES := syntax rustc rustdoc regex_macros fmt_macros \
 	       rustc_llvm rustc_back
 CRATES := $(TARGET_CRATES) $(HOST_CRATES)
 TOOLS := compiletest rustdoc rustc
@@ -83,18 +83,13 @@ DEPS_glob := std
 DEPS_serialize := std log
 DEPS_rbml := std log serialize
 DEPS_term := std log
-DEPS_semver := std
-DEPS_uuid := std serialize
 DEPS_sync := core alloc rustrt collections
 DEPS_getopts := std
 DEPS_collections := core alloc unicode
-DEPS_fourcc := rustc syntax std
-DEPS_hexfloat := rustc syntax std
 DEPS_num := std
 DEPS_test := std getopts serialize rbml term time regex native:rust_test_helpers
 DEPS_time := std serialize
 DEPS_rand := core
-DEPS_url := std
 DEPS_log := std regex
 DEPS_regex := std
 DEPS_regex_macros = rustc syntax std regex

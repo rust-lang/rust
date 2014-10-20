@@ -55,8 +55,8 @@ impl Sudoku {
     pub fn equal(&self, other: &Sudoku) -> bool {
         for row in range(0u8, 9u8) {
             for col in range(0u8, 9u8) {
-                if *self.grid.get(row as uint).get(col as uint) !=
-                        *other.grid.get(row as uint).get(col as uint) {
+                if self.grid[row as uint][col as uint] !=
+                        other.grid[row as uint][col as uint] {
                     return false;
                 }
             }
@@ -77,10 +77,10 @@ impl Sudoku {
                                        .collect();
 
             if comps.len() == 3u {
-                let row     = from_str::<uint>(*comps.get(0)).unwrap() as u8;
-                let col     = from_str::<uint>(*comps.get(1)).unwrap() as u8;
+                let row     = from_str::<uint>(comps[0]).unwrap() as u8;
+                let col     = from_str::<uint>(comps[1]).unwrap() as u8;
                 *g.get_mut(row as uint).get_mut(col as uint) =
-                    from_str::<uint>(*comps.get(2)).unwrap() as u8;
+                    from_str::<uint>(comps[2]).unwrap() as u8;
             }
             else {
                 fail!("Invalid sudoku file");
@@ -91,11 +91,9 @@ impl Sudoku {
 
     pub fn write(&self, writer: &mut io::Writer) {
         for row in range(0u8, 9u8) {
-            write!(writer, "{}", *self.grid.get(row as uint).get(0));
+            write!(writer, "{}", self.grid[row as uint][0]);
             for col in range(1u8, 9u8) {
-                write!(writer, " {}", *self.grid
-                                           .get(row as uint)
-                                           .get(col as uint));
+                write!(writer, " {}", self.grid[row as uint][col as uint]);
             }
             write!(writer, "\n");
          }
@@ -106,7 +104,7 @@ impl Sudoku {
         let mut work: Vec<(u8, u8)> = Vec::new(); /* queue of uncolored fields */
         for row in range(0u8, 9u8) {
             for col in range(0u8, 9u8) {
-                let color = *self.grid.get(row as uint).get(col as uint);
+                let color = self.grid[row as uint][col as uint];
                 if color == 0u8 {
                     work.push((row, col));
                 }
@@ -116,9 +114,9 @@ impl Sudoku {
         let mut ptr = 0u;
         let end = work.len();
         while ptr < end {
-            let (row, col) = *work.get(ptr);
+            let (row, col) = work[ptr];
             // is there another color to try?
-            let the_color = *self.grid.get(row as uint).get(col as uint) +
+            let the_color = self.grid[row as uint][col as uint] +
                                 (1 as u8);
             if self.next_color(row, col, the_color) {
                 //  yes: advance work list
@@ -151,12 +149,10 @@ impl Sudoku {
     // find colors available in neighbourhood of (row, col)
     fn drop_colors(&mut self, avail: &mut Colors, row: u8, col: u8) {
         for idx in range(0u8, 9u8) {
-            avail.remove(*self.grid
-                              .get(idx as uint)
-                              .get(col as uint)); /* check same column fields */
-            avail.remove(*self.grid
-                              .get(row as uint)
-                              .get(idx as uint)); /* check same row fields */
+            /* check same column fields */
+            avail.remove(self.grid[idx as uint][col as uint]);
+            /* check same row fields */
+            avail.remove(self.grid[row as uint][idx as uint]);
         }
 
         // check same block fields
@@ -164,9 +160,7 @@ impl Sudoku {
         let col0 = (col / 3u8) * 3u8;
         for alt_row in range(row0, row0 + 3u8) {
             for alt_col in range(col0, col0 + 3u8) {
-                avail.remove(*self.grid
-                                  .get(alt_row as uint)
-                                  .get(alt_col as uint));
+                avail.remove(self.grid[alt_row as uint][alt_col as uint]);
             }
         }
     }

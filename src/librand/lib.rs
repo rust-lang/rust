@@ -239,12 +239,6 @@ pub trait Rng {
         }
     }
 
-    /// Deprecated name for `choose()`.
-    #[deprecated = "replaced by .choose()"]
-    fn choose_option<'a, T>(&mut self, values: &'a [T]) -> Option<&'a T> {
-        self.choose(values)
-    }
-
     /// Shuffle a mutable slice in place.
     ///
     /// # Example

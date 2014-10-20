@@ -643,7 +643,7 @@ pub fn maybe_get_item_ast<'tcx>(cdata: Cmd, tcx: &ty::ctxt<'tcx>, id: ast::NodeI
                                 -> csearch::found_ast<'tcx> {
     debug!("Looking up item: {}", id);
     let item_doc = lookup_item(id, cdata.data());
-    let path = Vec::from_slice(item_path(item_doc).init());
+    let path = item_path(item_doc).init().to_vec();
     match decode_inlined_item(cdata, tcx, path, item_doc) {
         Ok(ii) => csearch::found(ii),
         Err(path) => {

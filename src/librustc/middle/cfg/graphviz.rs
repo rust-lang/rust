@@ -41,9 +41,9 @@ fn replace_newline_with_backslash_l(s: String) -> String {
             s.as_slice().chars().rev().take(2).collect();
         last_two.reverse();
         if last_two.as_slice() != ['\\', 'l'] {
-            s = s.append("\\l");
+            s.push_str("\\l");
         }
-        s.to_string()
+        s
     } else {
         s
     }
@@ -76,16 +76,15 @@ impl<'a, 'ast> dot::Labeller<'a, Node<'a>, Edge<'a>> for LabelledCFG<'a, 'ast> {
         let mut put_one = false;
         for (i, &node_id) in e.data.exiting_scopes.iter().enumerate() {
             if put_one {
-                label = label.append(",\\l");
+                label.push_str(",\\l");
             } else {
                 put_one = true;
             }
             let s = self.ast_map.node_to_string(node_id);
             // left-aligns the lines
             let s = replace_newline_with_backslash_l(s);
-            label = label.append(format!("exiting scope_{} {}",
-                                         i,
-                                         s.as_slice()).as_slice());
+            label.push_str(format!("exiting scope_{} {}", i,
+                                   s.as_slice()).as_slice());
         }
         dot::EscStr(label.into_maybe_owned())
     }

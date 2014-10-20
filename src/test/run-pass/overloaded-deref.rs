@@ -46,7 +46,7 @@ pub fn main() {
     let v = Rc::new(RefCell::new(vec!(1i, 2, 3)));
     *(*(*v).borrow_mut()).get_mut(0) = 3;
     *(*(*v).borrow_mut()).get_mut(1) += 3;
-    assert_eq!((*(*(*v).borrow()).get(0),
-                *(*(*v).borrow()).get(1),
-                *(*(*v).borrow()).get(2)), (3, 5, 3));
+    assert_eq!(((*(*v).borrow())[0],
+                (*(*v).borrow())[1],
+                (*(*v).borrow())[2]), (3, 5, 3));
 }

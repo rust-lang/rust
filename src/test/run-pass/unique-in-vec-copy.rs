@@ -13,12 +13,12 @@ pub fn main() {
     let mut a = vec!(box 10i);
     let b = a.clone();
 
-    assert_eq!(**a.get(0), 10);
-    assert_eq!(**b.get(0), 10);
+    assert_eq!(*a[0], 10);
+    assert_eq!(*b[0], 10);
 
     // This should only modify the value in a, not b
     **a.get_mut(0) = 20;
 
-    assert_eq!(**a.get(0), 20);
-    assert_eq!(**b.get(0), 10);
+    assert_eq!(*a[0], 20);
+    assert_eq!(*b[0], 10);
 }

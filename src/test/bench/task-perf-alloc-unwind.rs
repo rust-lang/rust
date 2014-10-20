@@ -78,21 +78,22 @@ fn recurse_or_fail(depth: int, st: Option<State>) {
         let depth = depth - 1;
 
         let st = match st {
-          None => {
-            State {
-                unique: box Nil,
-                vec: vec!(box Nil),
-                res: r(box Nil)
+            None => {
+                State {
+                    unique: box Nil,
+                    vec: vec!(box Nil),
+                    res: r(box Nil)
+                }
             }
-          }
-          Some(st) => {
-            State {
-                unique: box Cons((), box *st.unique),
-                vec: st.vec.clone().append(
-                        &[box Cons((), st.vec.last().unwrap().clone())]),
-                res: r(box Cons((), st.res._l.clone()))
+            Some(st) => {
+                let mut v = st.vec.clone();
+                v.push_all(&[box Cons((), st.vec.last().unwrap().clone())]);
+                State {
+                    unique: box Cons((), box *st.unique),
+                    vec: v,
+                    res: r(box Cons((), st.res._l.clone())),
+                }
             }
-          }
         };
 
         recurse_or_fail(depth, Some(st));

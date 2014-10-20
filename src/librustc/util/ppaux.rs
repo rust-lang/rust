@@ -270,7 +270,7 @@ pub fn ty_to_string(cx: &ctxt, typ: t) -> String {
             ast::NormalFn => {}
             _ => {
                 s.push_str(fn_style.to_string().as_slice());
-                s.push_char(' ');
+                s.push(' ');
             }
         };
 
@@ -282,7 +282,7 @@ pub fn ty_to_string(cx: &ctxt, typ: t) -> String {
 
         match ident {
             Some(i) => {
-                s.push_char(' ');
+                s.push(' ');
                 s.push_str(token::get_ident(i).get());
             }
             _ => { }
@@ -307,7 +307,7 @@ pub fn ty_to_string(cx: &ctxt, typ: t) -> String {
             ast::NormalFn => {}
             _ => {
                 s.push_str(cty.fn_style.to_string().as_slice());
-                s.push_char(' ');
+                s.push(' ');
             }
         };
 
@@ -330,7 +330,7 @@ pub fn ty_to_string(cx: &ctxt, typ: t) -> String {
             }
         }
 
-        s.into_owned()
+        s
     }
 
     fn push_sig_to_string(cx: &ctxt,
@@ -339,13 +339,13 @@ pub fn ty_to_string(cx: &ctxt, typ: t) -> String {
                        ket: char,
                        sig: &ty::FnSig,
                        bounds: &str) {
-        s.push_char(bra);
+        s.push(bra);
         let strs: Vec<String> = sig.inputs.iter().map(|a| fn_input_to_string(cx, *a)).collect();
         s.push_str(strs.connect(", ").as_slice());
         if sig.variadic {
             s.push_str(", ...");
         }
-        s.push_char(ket);
+        s.push(ket);
 
         if !bounds.is_empty() {
             s.push_str(":");
@@ -355,7 +355,7 @@ pub fn ty_to_string(cx: &ctxt, typ: t) -> String {
         if ty::get(sig.output).sty != ty_nil {
             s.push_str(" -> ");
             if ty::type_is_bot(sig.output) {
-                s.push_char('!');
+                s.push('!');
             } else {
                 s.push_str(ty_to_string(cx, sig.output).as_slice());
             }
@@ -670,10 +670,10 @@ impl Repr for ty::BuiltinBounds {
         let mut res = Vec::new();
         for b in self.iter() {
             res.push(match b {
-                ty::BoundSend => "Send".to_owned(),
-                ty::BoundSized => "Sized".to_owned(),
-                ty::BoundCopy => "Copy".to_owned(),
-                ty::BoundSync => "Sync".to_owned(),
+                ty::BoundSend => "Send".to_string(),
+                ty::BoundSized => "Sized".to_string(),
+                ty::BoundCopy => "Copy".to_string(),
+                ty::BoundSync => "Sync".to_string(),
             });
         }
         res.connect("+")
@@ -1007,10 +1007,10 @@ impl Repr for ty::BuiltinBound {
 impl UserString for ty::BuiltinBound {
     fn user_string(&self, _tcx: &ctxt) -> String {
         match *self {
-            ty::BoundSend => "Send".to_owned(),
-            ty::BoundSized => "Sized".to_owned(),
-            ty::BoundCopy => "Copy".to_owned(),
-            ty::BoundSync => "Sync".to_owned(),
+            ty::BoundSend => "Send".to_string(),
+            ty::BoundSized => "Sized".to_string(),
+            ty::BoundCopy => "Copy".to_string(),
+            ty::BoundSync => "Sync".to_string(),
         }
     }
 }

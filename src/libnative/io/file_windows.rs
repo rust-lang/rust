@@ -253,7 +253,11 @@ impl Drop for Inner {
 
 pub fn to_utf16(s: &CString) -> IoResult<Vec<u16>> {
     match s.as_str() {
-        Some(s) => Ok(s.utf16_units().collect::<Vec<u16>>().append_one(0)),
+        Some(s) => Ok({
+            let mut s = s.utf16_units().collect::<Vec<u16>>();
+            s.push(0);
+            s
+        }),
         None => Err(IoError {
             code: libc::ERROR_INVALID_NAME as uint,
             extra: 0,

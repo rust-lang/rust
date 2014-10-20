@@ -72,13 +72,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let mut s = String::from_str(".");
                 i = 0u;
                 while i < len {
-                    i = *mm.get(&v[i]);
-                    s.push_char('/');
+                    i = mm[v[i]];
+                    s.push('/');
                     s.push_str(v[i]);
                     i += 1u;
                 }
 
-                s.push_char('/');
+                s.push('/');
                 s.push_str(category);
 
                 let n = match h.find(&s) {

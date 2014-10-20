@@ -156,7 +156,7 @@ pub fn opt_ast_region_to_region<'tcx, AC: AstConv<'tcx>, RS: RegionScope>(
                         Some(v) => {
                             let mut m = String::new();
                             let len = v.len();
-                            for (i, (name, n)) in v.move_iter().enumerate() {
+                            for (i, (name, n)) in v.into_iter().enumerate() {
                                 m.push_str(if n == 1 {
                                     format!("`{}`", name)
                                 } else {
@@ -194,9 +194,7 @@ pub fn opt_ast_region_to_region<'tcx, AC: AstConv<'tcx>, RS: RegionScope>(
                     ty::ReStatic
                 }
 
-                Ok(rs) => {
-                    *rs.get(0)
-                }
+                Ok(rs) => rs[0],
             }
         }
     };
@@ -1251,7 +1249,7 @@ fn determine_explicit_self_category<'tcx, AC: AstConv<'tcx>,
                         self_info.explicit_self.span,
                         self_info.untransformed_self_ty,
                         tm.ty,
-                        || "not a valid type for `self`".to_owned());
+                        || "not a valid type for `self`".to_string());
                     return ty::ByReferenceExplicitSelfCategory(region,
                                                                tm.mutbl)
                 }
@@ -1263,7 +1261,7 @@ fn determine_explicit_self_category<'tcx, AC: AstConv<'tcx>,
                         self_info.explicit_self.span,
                         self_info.untransformed_self_ty,
                         typ,
-                        || "not a valid type for `self`".to_owned());
+                        || "not a valid type for `self`".to_string());
                     return ty::ByBoxExplicitSelfCategory
                 }
                 _ => {
@@ -1301,7 +1299,7 @@ pub fn ty_of_closure<'tcx, AC: AstConv<'tcx>>(
             // no guarantee that the correct number of expected args
             // were supplied
             if i < e.inputs.len() {
-                Some(*e.inputs.get(i))
+                Some(e.inputs[i])
             } else {
                 None
             }
@@ -1357,7 +1355,7 @@ pub fn conv_existential_bounds<'tcx, AC: AstConv<'tcx>, RS:RegionScope>(
         partition_bounds(this.tcx(), span, ast_bound_refs.as_slice());
 
     if !trait_bounds.is_empty() {
-        let b = trait_bounds.get(0);
+        let b = &trait_bounds[0];
         this.tcx().sess.span_err(
             b.path.span,
             format!("only the builtin traits can be used \
@@ -1453,7 +1451,7 @@ pub fn compute_opt_region_bound(tcx: &ty::ctxt,
     // Determine whether there is exactly one unique region in the set
     // of derived region bounds. If so, use that. Otherwise, report an
     // error.
-    let r = *derived_region_bounds.get(0);
+    let r = derived_region_bounds[0];
     if derived_region_bounds.slice_from(1).iter().any(|r1| r != *r1) {
         tcx.sess.span_err(
             span,

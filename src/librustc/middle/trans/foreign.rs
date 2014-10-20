@@ -321,8 +321,7 @@ pub fn trans_native_call<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         }
 
         // Does Rust pass this argument by pointer?
-        let rust_indirect = type_of::arg_is_indirect(ccx,
-                                                     *passed_arg_tys.get(i));
+        let rust_indirect = type_of::arg_is_indirect(ccx, passed_arg_tys[i]);
 
         debug!("argument {}, llarg_rust={}, rust_indirect={}, arg_ty={}",
                i,
@@ -335,9 +334,9 @@ pub fn trans_native_call<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         if !rust_indirect {
             let scratch =
                 base::alloca(bcx,
-                             type_of::type_of(ccx, *passed_arg_tys.get(i)),
+                             type_of::type_of(ccx, passed_arg_tys[i]),
                              "__arg");
-            base::store_ty(bcx, llarg_rust, scratch, *passed_arg_tys.get(i));
+            base::store_ty(bcx, llarg_rust, scratch, passed_arg_tys[i]);
             llarg_rust = scratch;
         }
 
@@ -358,7 +357,7 @@ pub fn trans_native_call<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         let llarg_foreign = if foreign_indirect {
             llarg_rust
         } else {
-            if ty::type_is_bool(*passed_arg_tys.get(i)) {
+            if ty::type_is_bool(passed_arg_tys[i]) {
                 let val = LoadRangeAssert(bcx, llarg_rust, 0, 2, llvm::False);
                 Trunc(bcx, val, Type::i1(bcx.ccx()))
             } else {
@@ -746,10 +745,10 @@ pub fn trans_rust_fn_with_foreign_abi(ccx: &CrateContext,
         // Careful to adapt for cases where the native convention uses
         // a pointer and Rust does not or vice versa.
         for i in range(0, tys.fn_sig.inputs.len()) {
-            let rust_ty = *tys.fn_sig.inputs.get(i);
-            let llrust_ty = *tys.llsig.llarg_tys.get(i);
+            let rust_ty = tys.fn_sig.inputs[i];
+            let llrust_ty = tys.llsig.llarg_tys[i];
             let rust_indirect = type_of::arg_is_indirect(ccx, rust_ty);
-            let llforeign_arg_ty = *tys.fn_ty.arg_tys.get(i);
+            let llforeign_arg_ty = tys.fn_ty.arg_tys[i];
             let foreign_indirect = llforeign_arg_ty.is_indirect();
 
             if llforeign_arg_ty.is_ignore() {

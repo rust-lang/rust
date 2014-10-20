@@ -1056,8 +1056,8 @@ fn compare_impl_method(tcx: &ty::ctxt,
     let trait_to_skol_substs =
         trait_to_impl_substs
         .subst(tcx, &impl_to_skol_substs)
-        .with_method(Vec::from_slice(skol_tps.get_slice(subst::FnSpace)),
-                     Vec::from_slice(skol_regions.get_slice(subst::FnSpace)));
+        .with_method(skol_tps.get_slice(subst::FnSpace).to_vec(),
+                     skol_regions.get_slice(subst::FnSpace).to_vec());
 
     // Check region bounds.
     if !check_region_bounds_on_impl_method(tcx,
@@ -2598,7 +2598,7 @@ fn check_argument_types<'a>(fcx: &FnCtxt,
 
             if is_block == check_blocks {
                 debug!("checking the argument");
-                let mut formal_ty = *formal_tys.get(i);
+                let mut formal_ty = formal_tys[i];
 
                 match deref_args {
                     DoDerefArgs => {
@@ -3301,7 +3301,7 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
                 fcx.ccx.tcx.sess.span_bug(expr.span,
                                           "can't make anon regions here?!")
             }
-            Ok(regions) => *regions.get(0),
+            Ok(regions) => regions[0],
         };
         let closure_type = ty::mk_unboxed_closure(fcx.ccx.tcx,
                                                   local_def(expr.id),
@@ -3643,7 +3643,7 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
                 let mut missing_fields = Vec::new();
                 for class_field in field_types.iter() {
                     let name = class_field.name;
-                    let (_, seen) = *class_field_map.get(&name);
+                    let (_, seen) = class_field_map[name];
                     if !seen {
                         missing_fields.push(
                             format!("`{}`", token::get_name(name).get()))
@@ -3871,7 +3871,7 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
                                     ty::ty_struct(did, ref substs) => {
                                         let fields = ty::struct_fields(fcx.tcx(), did, substs);
                                         fields.len() == 1
-                                        && fields.get(0).ident ==
+                                        && fields[0].ident ==
                                         token::special_idents::unnamed_field
                                     }
                                     _ => false
@@ -4258,7 +4258,7 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
         let elt_ts = elts.iter().enumerate().map(|(i, e)| {
             let t = match flds {
                 Some(ref fs) if i < fs.len() => {
-                    let ety = *fs.get(i);
+                    let ety = fs[i];
                     check_expr_coercable_to_type(fcx, &**e, ety);
                     ety
                 }
@@ -4763,7 +4763,7 @@ pub fn check_const(ccx: &CrateCtxt,
     let inh = static_inherited_fields(ccx);
     let rty = ty::node_id_to_type(ccx.tcx, id);
     let fcx = blank_fn_ctxt(ccx, &inh, rty, e.id);
-    let declty = fcx.ccx.tcx.tcache.borrow().get(&local_def(id)).ty;
+    let declty = (*fcx.ccx.tcx.tcache.borrow())[local_def(id)].ty;
     check_const_with_ty(&fcx, sp, e, declty);
 }
 
@@ -4853,7 +4853,7 @@ pub fn check_simd(tcx: &ty::ctxt, sp: Span, id: ast::NodeId) {
                 span_err!(tcx.sess, sp, E0075, "SIMD vector cannot be empty");
                 return;
             }
-            let e = ty::lookup_field_type(tcx, did, fields.get(0).id, substs);
+            let e = ty::lookup_field_type(tcx, did, fields[0].id, substs);
             if !fields.iter().all(
                          |f| ty::lookup_field_type(tcx, did, f.id, substs) == e) {
                 span_err!(tcx.sess, sp, E0076, "SIMD vector should be homogeneous");
@@ -5514,7 +5514,7 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &ast::ForeignItem) {
         assert!(split.len() >= 2, "Atomic intrinsic not correct format");
 
         //We only care about the operation here
-        match *split.get(1) {
+        match split[1] {
             "cxchg" => (1, vec!(ty::mk_mut_ptr(tcx, param(ccx, 0)),
                                 param(ccx, 0),
                                 param(ccx, 0)),

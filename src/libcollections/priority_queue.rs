@@ -269,9 +269,6 @@ impl<T: Ord> PriorityQueue<T> {
         if self.is_empty() { None } else { Some(&self.data[0]) }
     }
 
-    #[deprecated="renamed to `top`"]
-    pub fn maybe_top<'a>(&'a self) -> Option<&'a T> { self.top() }
-
     /// Returns the number of elements the queue can hold without reallocating.
     ///
     /// # Example
@@ -340,9 +337,6 @@ impl<T: Ord> PriorityQueue<T> {
             }
         }
     }
-
-    #[deprecated="renamed to `pop`"]
-    pub fn maybe_pop(&mut self) -> Option<T> { self.pop() }
 
     /// Pushes an item onto the queue.
     ///
@@ -416,14 +410,6 @@ impl<T: Ord> PriorityQueue<T> {
             None
         }
     }
-
-    #[allow(dead_code)]
-    #[deprecated="renamed to `into_vec`"]
-    fn to_vec(self) -> Vec<T> { self.into_vec() }
-
-    #[allow(dead_code)]
-    #[deprecated="renamed to `into_sorted_vec`"]
-    fn to_sorted_vec(self) -> Vec<T> { self.into_sorted_vec() }
 
     /// Consumes the `PriorityQueue` and returns the underlying vector
     /// in arbitrary order.

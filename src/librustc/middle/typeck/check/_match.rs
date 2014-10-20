@@ -45,7 +45,7 @@ pub fn check_match(fcx: &FnCtxt,
     for arm in arms.iter() {
         let mut pcx = pat_ctxt {
             fcx: fcx,
-            map: pat_id_map(&tcx.def_map, &**arm.pats.get(0)),
+            map: pat_id_map(&tcx.def_map, &*arm.pats[0]),
         };
 
         for p in arm.pats.iter() { check_pat(&mut pcx, &**p, discrim_ty);}
@@ -322,7 +322,7 @@ pub fn check_struct_pat_fields(pcx: &pat_ctxt,
             }
             Some(&(index, ref mut used)) => {
                 *used = true;
-                let class_field = class_fields.get(index).clone();
+                let class_field = class_fields[index].clone();
                 let field_type = ty::lookup_field_type(tcx,
                                                        class_id,
                                                        class_field.id,
@@ -496,7 +496,7 @@ pub fn check_pat(pcx: &pat_ctxt, pat: &ast::Pat, expected: ty::t) {
           }
         }
 
-        let canon_id = *pcx.map.get(&path1.node);
+        let canon_id = pcx.map[path1.node];
         if canon_id != pat.id {
             let ct = fcx.local_ty(pat.span, canon_id);
             demand::eqtype(fcx, pat.span, ct, typ);
@@ -528,7 +528,7 @@ pub fn check_pat(pcx: &pat_ctxt, pat: &ast::Pat, expected: ty::t) {
         match *structure {
             ty::ty_struct(cid, ref substs) => {
                 // Verify that the pattern named the right structure.
-                let item_did = tcx.def_map.borrow().get(&pat.id).def_id();
+                let item_did = (*tcx.def_map.borrow())[pat.id].def_id();
                 match ty::ty_to_def_id(ty::lookup_item_type(tcx, item_did).ty) {
                     Some(struct_did) if struct_did != cid => {
                         span_err!(tcx.sess, path.span, E0032,
@@ -599,7 +599,7 @@ pub fn check_pat(pcx: &pat_ctxt, pat: &ast::Pat, expected: ty::t) {
         match *s {
             ty::ty_tup(ref ex_elts) if e_count == ex_elts.len() => {
                 for (i, elt) in elts.iter().enumerate() {
-                    check_pat(pcx, &**elt, *ex_elts.get(i));
+                    check_pat(pcx, &**elt, ex_elts[i]);
                 }
                 fcx.write_ty(pat.id, expected);
             }

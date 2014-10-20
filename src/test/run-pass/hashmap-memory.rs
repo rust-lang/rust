@@ -52,7 +52,7 @@ mod map_reduce {
             }
             let (tx, rx) = channel();
             println!("sending find_reducer");
-            ctrl.send(find_reducer(Vec::from_slice(key.as_bytes()), tx));
+            ctrl.send(find_reducer(key.as_bytes().to_vec(), tx));
             println!("receiving");
             let c = rx.recv();
             println!("{}", c);

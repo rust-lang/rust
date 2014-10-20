@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![crate_id="socketlib"]
+#![crate_name="socketlib"]
 #![crate_type = "lib"]
 
 pub mod socket {

@@ -418,7 +418,7 @@ impl<'a, 'tcx, O:DataFlowOperator> DataFlowContext<'a, 'tcx, O> {
                 let bits = self.kills.slice_mut(start, end);
                 debug!("{:s} add_kills_from_flow_exits flow_exit={} bits={} [before]",
                        self.analysis_name, flow_exit, mut_bits_to_string(bits));
-                bits.copy_from(orig_kills.as_slice());
+                bits.clone_from_slice(orig_kills.as_slice());
                 debug!("{:s} add_kills_from_flow_exits flow_exit={} bits={} [after]",
                        self.analysis_name, flow_exit, mut_bits_to_string(bits));
             }
@@ -484,7 +484,7 @@ impl<'a, 'b, 'tcx, O:DataFlowOperator> PropagationContext<'a, 'b, 'tcx, O> {
             let (start, end) = self.dfcx.compute_id_range(node_index);
 
             // Initialize local bitvector with state on-entry.
-            in_out.copy_from(self.dfcx.on_entry.slice(start, end));
+            in_out.clone_from_slice(self.dfcx.on_entry.slice(start, end));
 
             // Compute state on-exit by applying transfer function to
             // state on-entry.
@@ -550,13 +550,13 @@ fn bits_to_string(words: &[uint]) -> String {
     for &word in words.iter() {
         let mut v = word;
         for _ in range(0u, uint::BYTES) {
-            result.push_char(sep);
+            result.push(sep);
             result.push_str(format!("{:02x}", v & 0xFF).as_slice());
             v >>= 8;
             sep = '-';
         }
     }
-    result.push_char(']');
+    result.push(']');
     return result
 }
 

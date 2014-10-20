@@ -8,12 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::mem;
+use std::ptr;
 
 pub fn main() {
     unsafe {
         let mut x: bool = false;
         // this line breaks it
-        mem::overwrite(&mut x, false);
+        ptr::write(&mut x, false);
     }
 }

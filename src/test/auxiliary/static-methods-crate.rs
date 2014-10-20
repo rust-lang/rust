@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![crate_id="static_methods_crate#0.1"]
+#![crate_name="static_methods_crate"]
 #![crate_type = "lib"]
 
 use std::int;

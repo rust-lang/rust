@@ -424,7 +424,7 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
             }
 
             ast::ExprMethodCall(_, _, ref args) => {
-                self.call(expr, pred, &**args.get(0), args.slice_from(1).iter().map(|e| &**e))
+                self.call(expr, pred, &*args[0], args.slice_from(1).iter().map(|e| &**e))
             }
 
             ast::ExprIndex(ref l, ref r) |

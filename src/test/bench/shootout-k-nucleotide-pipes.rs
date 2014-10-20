@@ -83,7 +83,7 @@ fn find(mm: &HashMap<Vec<u8> , uint>, key: String) -> uint {
 
 // given a map, increment the counter for a key
 fn update_freq(mm: &mut HashMap<Vec<u8> , uint>, key: &[u8]) {
-    let key = Vec::from_slice(key);
+    let key = key.to_vec();
     let newval = match mm.pop(&key) {
         Some(v) => v + 1,
         None => 1
@@ -103,7 +103,7 @@ fn windows_with_carry(bb: &[u8], nn: uint, it: |window: &[u8]|) -> Vec<u8> {
       ii += 1u;
    }
 
-   return Vec::from_slice(bb[len - (nn - 1u)..len]);
+   return bb[len - (nn - 1u)..len].to_vec();
 }
 
 fn make_sequence_processor(sz: uint,
@@ -117,15 +117,14 @@ fn make_sequence_processor(sz: uint,
 
    loop {
 
-      line = from_parent.recv();
-      if line == Vec::new() { break; }
+       line = from_parent.recv();
+       if line == Vec::new() { break; }
 
-       carry = windows_with_carry(carry.append(line.as_slice()).as_slice(),
-                                  sz,
-                                  |window| {
-         update_freq(&mut freqs, window);
-         total += 1u;
-      });
+       carry.push_all(line.as_slice());
+       carry = windows_with_carry(carry.as_slice(), sz, |window| {
+           update_freq(&mut freqs, window);
+           total += 1u;
+       });
    }
 
    let buffer = match sz {
@@ -149,7 +148,7 @@ fn main() {
 
     let rdr = if os::getenv("RUST_BENCH").is_some() {
         let foo = include_bin!("shootout-k-nucleotide.data");
-        box MemReader::new(Vec::from_slice(foo)) as Box<Reader>
+        box MemReader::new(foo.to_vec()) as Box<Reader>
     } else {
         box stdio::stdin() as Box<Reader>
     };
@@ -203,8 +202,8 @@ fn main() {
                let line_bytes = line.as_bytes();
 
                for (ii, _sz) in sizes.iter().enumerate() {
-                   let lb = Vec::from_slice(line_bytes);
-                   to_child.get(ii).send(lb);
+                   let lb = line_bytes.to_vec();
+                   to_child[ii].send(lb);
                }
            }
 
@@ -215,11 +214,11 @@ fn main() {
 
    // finish...
    for (ii, _sz) in sizes.iter().enumerate() {
-       to_child.get(ii).send(Vec::new());
+       to_child[ii].send(Vec::new());
    }
 
    // now fetch and print result messages
    for (ii, _sz) in sizes.iter().enumerate() {
-       println!("{}", from_child.get(ii).recv());
+       println!("{}", from_child[ii].recv());
    }
 }

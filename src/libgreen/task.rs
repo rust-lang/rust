@@ -100,7 +100,7 @@ extern fn bootstrap_green_task(task: uint, code: *mut (), env: *mut ()) -> ! {
 
     // First code after swap to this new context. Run our cleanup job
     task.pool_id = {
-        let sched = task.sched.get_mut_ref();
+        let sched = task.sched.as_mut().unwrap();
         sched.run_cleanup_job();
         sched.task_state.increment();
         sched.pool_id
@@ -179,7 +179,7 @@ impl GreenTask {
 
         let mut green = GreenTask::new(pool, stack_size, f);
         {
-            let task = green.task.get_mut_ref();
+            let task = green.task.as_mut().unwrap();
             task.name = name;
             task.death.on_exit = on_exit;
         }
@@ -314,7 +314,7 @@ impl GreenTask {
     fn reawaken_remotely(mut self: Box<GreenTask>) {
         unsafe {
             let mtx = &mut self.nasty_deschedule_lock as *mut NativeMutex;
-            let handle = self.handle.get_mut_ref() as *mut SchedHandle;
+            let handle = self.handle.as_mut().unwrap() as *mut SchedHandle;
             let _guard = (*mtx).lock();
             (*handle).send(RunOnce(self));
         }
@@ -460,7 +460,7 @@ impl Runtime for GreenTask {
         //
         // Upon returning, our task is back in TLS and we're good to return.
         let sibling = {
-            let sched = bomb.inner.get_mut_ref().sched.get_mut_ref();
+            let sched = bomb.inner.as_mut().unwrap().sched.as_mut().unwrap();
             GreenTask::configure(&mut sched.stack_pool, opts, f)
         };
         let mut me = bomb.inner.take().unwrap();
@@ -470,7 +470,7 @@ impl Runtime for GreenTask {
 
     // Local I/O is provided by the scheduler's event loop
     fn local_io<'a>(&'a mut self) -> Option<rtio::LocalIo<'a>> {
-        match self.sched.get_mut_ref().event_loop.io() {
+        match self.sched.as_mut().unwrap().event_loop.io() {
             Some(io) => Some(rtio::LocalIo::new(io)),
             None => None,
         }

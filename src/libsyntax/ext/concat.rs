@@ -35,7 +35,7 @@ pub fn expand_syntax_ext(cx: &mut base::ExtCtxt,
                         accumulator.push_str(s.get());
                     }
                     ast::LitChar(c) => {
-                        accumulator.push_char(c);
+                        accumulator.push(c);
                     }
                     ast::LitInt(i, ast::UnsignedIntLit(_)) |
                     ast::LitInt(i, ast::SignedIntLit(_, ast::Plus)) |

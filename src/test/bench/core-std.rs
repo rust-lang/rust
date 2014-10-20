@@ -68,7 +68,7 @@ fn shift_push() {
     let mut v2 = Vec::new();
 
     while v1.len() > 0 {
-        v2.push(v1.shift().unwrap());
+        v2.push(v1.remove(0).unwrap());
     }
 }
 
@@ -93,9 +93,11 @@ fn vec_plus() {
     while i < 1500 {
         let rv = Vec::from_elem(r.gen_range(0u, i + 1), i);
         if r.gen() {
-            v.push_all_move(rv);
+            v.extend(rv.into_iter());
         } else {
-            v = rv.clone().append(v.as_slice());
+            let mut rv = rv.clone();
+            rv.push_all(v.as_slice());
+            v = rv;
         }
         i += 1;
     }
@@ -109,10 +111,14 @@ fn vec_append() {
     while i < 1500 {
         let rv = Vec::from_elem(r.gen_range(0u, i + 1), i);
         if r.gen() {
-            v = v.clone().append(rv.as_slice());
+            let mut t = v.clone();
+            t.push_all(rv.as_slice());
+            v = t;
         }
         else {
-            v = rv.clone().append(v.as_slice());
+            let mut t = rv.clone();
+            t.push_all(v.as_slice());
+            v = t;
         }
         i += 1;
     }

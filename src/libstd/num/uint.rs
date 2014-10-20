@@ -14,10 +14,9 @@
 #![doc(primitive = "uint")]
 
 use from_str::FromStr;
-use num::{ToStrRadix, FromStrRadix};
+use num::FromStrRadix;
 use num::strconv;
 use option::Option;
-use string::String;
 
 pub use core::uint::{BITS, BYTES, MIN, MAX};
 

@@ -225,26 +225,6 @@ impl<S: Spawner> TaskBuilder<S> {
         }
     }
 
-    /// Add a wrapper to the body of the spawned task.
-    ///
-    /// Before the task is spawned it is passed through a 'body generator'
-    /// function that may perform local setup operations as well as wrap
-    /// the task body in remote setup operations. With this the behavior
-    /// of tasks can be extended in simple ways.
-    ///
-    /// This function augments the current body generator with a new body
-    /// generator by applying the task body which results from the
-    /// existing body generator to the new body generator.
-    #[deprecated = "this function will be removed soon"]
-    pub fn with_wrapper(mut self, wrapper: proc(v: proc():Send):Send -> proc():Send)
-                        -> TaskBuilder<S> {
-        self.gen_body = match self.gen_body.take() {
-            Some(prev) => Some(proc(body) { wrapper(prev(body)) }),
-            None => Some(wrapper)
-        };
-        self
-    }
-
     // Where spawning actually happens (whether yielding a future or not)
     fn spawn_internal(self, f: proc():Send,
                       on_exit: Option<proc(Result<(), Box<Any + Send>>):Send>) {
@@ -354,18 +334,6 @@ pub fn try_future<T:Send>(f: proc():Send -> T) -> Future<Result<T, Box<Any + Sen
 /* Lifecycle functions */
 
 /// Read the name of the current task.
-#[deprecated = "Use `task::name()`."]
-pub fn with_task_name<U>(blk: |Option<&str>| -> U) -> U {
-    use rt::task::Task;
-
-    let task = Local::borrow(None::<Task>);
-    match task.name {
-        Some(ref name) => blk(Some(name.as_slice())),
-        None => blk(None)
-    }
-}
-
-/// Read the name of the current task.
 #[stable]
 pub fn name() -> Option<String> {
     use rt::task::Task;
@@ -443,20 +411,6 @@ mod test {
         TaskBuilder::new().spawn(proc() {
             tx.send(());
         });
-        rx.recv();
-    }
-
-    #[test]
-    #[allow(deprecated)]
-    fn test_with_wrapper() {
-        let (tx, rx) = channel();
-        TaskBuilder::new().with_wrapper(proc(body) {
-            let result: proc():Send = proc() {
-                body();
-                tx.send(());
-            };
-            result
-        }).spawn(proc() { });
         rx.recv();
     }
 

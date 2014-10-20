@@ -22,7 +22,7 @@ use iter;
 use mem::replace;
 use mem;
 use num;
-use ops::{Deref, DerefMut};
+use ops::Deref;
 use option::{Some, None, Option};
 use result::{Ok, Err};
 use ops::Index;
@@ -422,25 +422,6 @@ impl<K, V, M> SearchResult<K, V, M> {
             FoundExisting(bucket) => Some(bucket),
             TableRef(_) => None
         }
-    }
-}
-
-/// A newtyped mutable reference to the hashmap that allows e.g. Deref to be
-/// implemented without making changes to the visible interface of HashMap.
-/// Used internally because it's accepted by the search functions above.
-struct MapMutRef<'a, K: 'a, V: 'a, H: 'a> {
-    map_ref: &'a mut HashMap<K, V, H>
-}
-
-impl<'a, K, V, H> Deref<RawTable<K, V>> for MapMutRef<'a, K, V, H> {
-    fn deref(&self) -> &RawTable<K, V> {
-        &self.map_ref.table
-    }
-}
-
-impl<'a, K, V, H> DerefMut<RawTable<K, V>> for MapMutRef<'a, K, V, H> {
-    fn deref_mut(&mut self) -> &mut RawTable<K, V> {
-        &mut self.map_ref.table
     }
 }
 
@@ -847,253 +828,6 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
         }
     }
 
-    /// Inserts an element which has already been hashed, returning a reference
-    /// to that element inside the hashtable. This is more efficient that using
-    /// `insert`, since the key will not be rehashed.
-    fn insert_hashed(&mut self, hash: SafeHash, k: K, v: V) -> &mut V {
-        let potential_new_size = self.table.size() + 1;
-        self.make_some_room(potential_new_size);
-        self.insert_hashed_nocheck(hash, k, v)
-    }
-
-    /// Deprecated: use `entry` as follows instead:
-    ///
-    /// ```
-    /// use std::collections::HashMap;
-    /// use std::collections::hashmap::{Occupied, Vacant};
-    ///
-    /// let mut map = HashMap::new();
-    ///
-    /// let result = match map.entry("a") {
-    ///     Vacant(entry) => entry.set(1i),
-    ///     Occupied(entry) => entry.into_mut(),
-    /// };
-    /// assert_eq!(*result, 1);
-    /// ```
-    ///
-    /// Return the value corresponding to the key in the map, or insert
-    /// and return the value if it doesn't exist.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// #![allow(deprecated)]
-    /// use std::collections::HashMap;
-    /// let mut map = HashMap::new();
-    ///
-    /// // Insert 1i with key "a"
-    /// assert_eq!(*map.find_or_insert("a", 1i), 1);
-    ///
-    /// // Find the existing key
-    /// assert_eq!(*map.find_or_insert("a", -2), 1);
-    /// ```
-    #[deprecated = "use entry instead"]
-    #[allow(deprecated)]
-    pub fn find_or_insert(&mut self, k: K, v: V) -> &mut V {
-        self.find_with_or_insert_with(k, v, |_k, _v, _a| (), |_k, a| a)
-    }
-
-    /// Deprecated: use `entry` as follows instead:
-    ///
-    /// ```
-    /// use std::collections::HashMap;
-    /// use std::collections::hashmap::{Occupied, Vacant};
-    ///
-    /// let mut map = HashMap::new();
-    ///
-    /// let result = match map.entry("a") {
-    ///     Vacant(entry) => entry.set(1i),
-    ///     Occupied(entry) => entry.into_mut(),
-    /// };
-    /// assert_eq!(*result, 1);
-    /// ```
-    ///
-    /// Return the value corresponding to the key in the map, or create,
-    /// insert, and return a new value if it doesn't exist.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// #![allow(deprecated)]
-    /// use std::collections::HashMap;
-    /// let mut map = HashMap::new();
-    ///
-    /// // Insert 10 with key 2
-    /// assert_eq!(*map.find_or_insert_with(2i, |&key| 5 * key as uint), 10u);
-    ///
-    /// // Find the existing key
-    /// assert_eq!(*map.find_or_insert_with(2, |&key| key as uint), 10);
-    /// ```
-    #[deprecated = "use entry instead"]
-    #[allow(deprecated)]
-    pub fn find_or_insert_with<'a>(&'a mut self, k: K, f: |&K| -> V)
-                               -> &'a mut V {
-        self.find_with_or_insert_with(k, (), |_k, _v, _a| (), |k, _a| f(k))
-    }
-
-    /// Deprecated: use `entry` as follows instead:
-    ///
-    /// ```
-    /// use std::collections::HashMap;
-    /// use std::collections::hashmap::{Occupied, Vacant};
-    ///
-    /// let mut map = HashMap::new();
-    ///
-    /// let result = match map.entry("a") {
-    ///     Vacant(entry) => entry.set(1u),
-    ///     Occupied(mut entry) => {
-    ///         *entry.get_mut() += 1;
-    ///         entry.into_mut()
-    ///     }
-    /// };
-    /// assert_eq!(*result, 1);
-    /// ```
-    ///
-    /// Insert a key-value pair into the map if the key is not already present.
-    /// Otherwise, modify the existing value for the key.
-    /// Returns the new or modified value for the key.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// #![allow(deprecated)]
-    /// use std::collections::HashMap;
-    /// let mut map = HashMap::new();
-    ///
-    /// // Insert 2 with key "a"
-    /// assert_eq!(*map.insert_or_update_with("a", 2u, |_key, val| *val = 3), 2);
-    ///
-    /// // Update and return the existing value
-    /// assert_eq!(*map.insert_or_update_with("a", 9, |_key, val| *val = 7), 7);
-    /// assert_eq!(map["a"], 7);
-    /// ```
-    #[deprecated = "use entry instead"]
-    pub fn insert_or_update_with<'a>(
-                                 &'a mut self,
-                                 k: K,
-                                 v: V,
-                                 f: |&K, &mut V|)
-                                 -> &'a mut V {
-        let potential_new_size = self.table.size() + 1;
-        self.make_some_room(potential_new_size);
-
-        let hash = self.make_hash(&k);
-        self.insert_or_replace_with(hash, k, v, |kref, vref, _v| f(kref, vref))
-    }
-
-    /// Deprecated: use `entry` as follows instead:
-    ///
-    /// ```
-    /// use std::collections::HashMap;
-    /// use std::collections::hashmap::{Occupied, Vacant};
-    ///
-    /// let mut map = HashMap::new();
-    ///
-    /// let result = match map.entry("a") {
-    ///     Vacant(entry) => entry.set(1u),
-    ///     Occupied(mut entry) => {
-    ///         *entry.get_mut() += 1;
-    ///         entry.into_mut()
-    ///     }
-    /// };
-    /// assert_eq!(*result, 1);
-    /// ```
-    ///
-    /// Modify and return the value corresponding to the key in the map, or
-    /// insert and return a new value if it doesn't exist.
-    ///
-    /// This method allows for all insertion behaviours of a hashmap;
-    /// see methods like
-    /// [`insert`](../trait.MutableMap.html#tymethod.insert),
-    /// [`find_or_insert`](#method.find_or_insert) and
-    /// [`insert_or_update_with`](#method.insert_or_update_with)
-    /// for less general and more friendly variations of this.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// #![allow(deprecated)]
-    /// use std::collections::HashMap;
-    ///
-    /// // map some strings to vectors of strings
-    /// let mut map = HashMap::new();
-    /// map.insert("a key", vec!["value"]);
-    /// map.insert("z key", vec!["value"]);
-    ///
-    /// let new = vec!["a key", "b key", "z key"];
-    ///
-    /// for k in new.into_iter() {
-    ///     map.find_with_or_insert_with(
-    ///         k, "new value",
-    ///         // if the key does exist either prepend or append this
-    ///         // new value based on the first letter of the key.
-    ///         |key, already, new| {
-    ///             if key.as_slice().starts_with("z") {
-    ///                 already.insert(0, new);
-    ///             } else {
-    ///                 already.push(new);
-    ///             }
-    ///         },
-    ///         // if the key doesn't exist in the map yet, add it in
-    ///         // the obvious way.
-    ///         |_k, v| vec![v]);
-    /// }
-    ///
-    /// assert_eq!(map.len(), 3);
-    /// assert_eq!(map["a key"], vec!["value", "new value"]);
-    /// assert_eq!(map["b key"], vec!["new value"]);
-    /// assert_eq!(map["z key"], vec!["new value", "value"]);
-    /// ```
-    #[deprecated = "use entry instead"]
-    pub fn find_with_or_insert_with<'a, A>(&'a mut self,
-                                           k: K,
-                                           a: A,
-                                           found: |&K, &mut V, A|,
-                                           not_found: |&K, A| -> V)
-                                          -> &'a mut V
-    {
-        let hash = self.make_hash(&k);
-        let this = MapMutRef { map_ref: self };
-
-        match search_hashed(this, &hash, &k) {
-            FoundExisting(bucket) => {
-                let (_, v_ref) = bucket.into_mut_refs();
-                found(&k, v_ref, a);
-                v_ref
-            }
-            TableRef(this) => {
-                let v = not_found(&k, a);
-                this.map_ref.insert_hashed(hash, k, v)
-            }
-        }
-    }
-
-    /// Retrieves a value for the given key.
-    /// See [`find`](../trait.Map.html#tymethod.find) for a non-failing alternative.
-    ///
-    /// # Failure
-    ///
-    /// Fails if the key is not present.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// #![allow(deprecated)]
-    ///
-    /// use std::collections::HashMap;
-    ///
-    /// let mut map = HashMap::new();
-    /// map.insert("a", 1i);
-    /// assert_eq!(map.get(&"a"), &1);
-    /// ```
-    #[deprecated = "prefer indexing instead, e.g., map[key]"]
-    pub fn get<'a>(&'a self, k: &K) -> &'a V {
-        match self.find(k) {
-            Some(v) => v,
-            None => fail!("no entry found for key")
-        }
-    }
-
     /// Retrieves a mutable value for the given key.
     /// See [`find_mut`](../trait.MutableMap.html#tymethod.find_mut) for a non-failing alternative.
     ///
@@ -1274,12 +1008,6 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
         Entries { inner: self.table.iter() }
     }
 
-    /// Deprecated: use `iter_mut`.
-    #[deprecated = "use iter_mut"]
-    pub fn mut_iter(&mut self) -> MutEntries<K, V> {
-        self.iter_mut()
-    }
-
     /// An iterator visiting all key-value pairs in arbitrary order,
     /// with mutable references to the values.
     /// Iterator element type is `(&'a K, &'a mut V)`.
@@ -1305,12 +1033,6 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     /// ```
     pub fn iter_mut(&mut self) -> MutEntries<K, V> {
         MutEntries { inner: self.table.iter_mut() }
-    }
-
-    /// Deprecated: use `into_iter`.
-    #[deprecated = "use into_iter"]
-    pub fn move_iter(self) -> MoveEntries<K, V> {
-        self.into_iter()
     }
 
     /// Creates a consuming iterator, that is, one that moves each key-value
@@ -1468,9 +1190,8 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S> + Default> Default for HashMap<K, V, H>
 
 impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> Index<K, V> for HashMap<K, V, H> {
     #[inline]
-    #[allow(deprecated)]
     fn index<'a>(&'a self, index: &K) -> &'a V {
-        self.get(index)
+        self.find(index).expect("no entry found for key")
     }
 }
 
@@ -1927,29 +1648,6 @@ mod test_map {
         assert_eq!(*m.find(&9).unwrap(), 4);
         assert_eq!(*m.find(&5).unwrap(), 3);
         assert_eq!(*m.find(&1).unwrap(), 2);
-    }
-
-    #[test]
-    #[allow(deprecated)] // insert_or_update_with
-    fn test_update_with() {
-        let mut m = HashMap::with_capacity(4);
-        assert!(m.insert(1i, 2i));
-
-        for i in range(1i, 1000) {
-            assert_eq!(
-                i + 2,
-                *m.insert_or_update_with(i + 1, i + 2, |_k, _v| {
-                    fail!("Key not yet present");
-                })
-            );
-            assert_eq!(
-                i + 1,
-                *m.insert_or_update_with(i, i + 3, |k, v| {
-                    assert_eq!(*k, i);
-                    assert_eq!(*v, i + 1);
-                })
-            );
-        }
     }
 
     #[test]

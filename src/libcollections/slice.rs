@@ -270,23 +270,6 @@ impl<T: Clone> Iterator<Vec<T>> for Permutations<T> {
 pub trait CloneableVector<T> {
     /// Copies `self` into a new `Vec`.
     fn to_vec(&self) -> Vec<T>;
-
-    /// Deprecated. Use `to_vec`.
-    #[deprecated = "Replaced by `to_vec`"]
-    fn to_owned(&self) -> Vec<T> {
-        self.to_vec()
-    }
-
-    /// Converts `self` into an owned vector, not making a copy if possible.
-    /// Deprecated. Use 'to_vec'
-    #[deprecated = "Replaced by `to_vec`"]
-    fn into_vec(self) -> Vec<T>;
-
-    /// Deprecated. Use `to_vec`
-    #[deprecated = "Replaced by `to_vec`"]
-    fn into_owned(self) -> Vec<T> {
-        self.to_vec()
-    }
 }
 
 impl<'a, T: Clone> CloneableVector<T> for &'a [T] {
@@ -297,9 +280,6 @@ impl<'a, T: Clone> CloneableVector<T> for &'a [T] {
         vector.push_all(*self);
         vector
     }
-
-    #[inline(always)]
-    fn into_vec(self) -> Vec<T> { self.to_vec() }
 }
 
 #[experimental]
@@ -921,25 +901,6 @@ mod tests {
     }
 
     #[test]
-    #[allow(deprecated)]
-    fn test_tailn() {
-        let mut a = vec![11i, 12, 13];
-        let b: &mut [int] = &mut [11, 12, 13];
-        assert!(a.tailn(0) == b);
-        a = vec![11i, 12, 13];
-        let b: &mut [int] = &mut [13];
-        assert!(a.tailn(2) == b);
-    }
-
-    #[test]
-    #[should_fail]
-    #[allow(deprecated)]
-    fn test_tailn_empty() {
-        let a: Vec<int> = vec![];
-        a.tailn(2);
-    }
-
-    #[test]
     fn test_init() {
         let mut a = vec![11i];
         let b: &[int] = &[];
@@ -971,25 +932,6 @@ mod tests {
     fn test_init_mut_empty() {
         let mut a: Vec<int> = vec![];
         a.as_mut_slice().init_mut();
-    }
-
-    #[test]
-    #[allow(deprecated)]
-    fn test_initn() {
-        let mut a = vec![11i, 12, 13];
-        let b: &[int] = &[11, 12, 13];
-        assert_eq!(a.as_slice().initn(0), b);
-        a = vec![11i, 12, 13];
-        let b: &[int] = &[11];
-        assert_eq!(a.as_slice().initn(2), b);
-    }
-
-    #[test]
-    #[should_fail]
-    #[allow(deprecated)]
-    fn test_initn_empty() {
-        let a: Vec<int> = vec![];
-        a.as_slice().initn(2);
     }
 
     #[test]
@@ -1154,20 +1096,6 @@ mod tests {
         assert_eq!(v[0], 0u);
         assert_eq!(v[1], 1u);
         assert_eq!(v[2], 4u);
-    }
-
-    #[test]
-    #[allow(deprecated)]
-    fn test_grow_set() {
-        let mut v = vec![1i, 2, 3];
-        v.grow_set(4u, &4, 5);
-        let v = v.as_slice();
-        assert_eq!(v.len(), 5u);
-        assert_eq!(v[0], 1);
-        assert_eq!(v[1], 2);
-        assert_eq!(v[2], 3);
-        assert_eq!(v[3], 4);
-        assert_eq!(v[4], 5);
     }
 
     #[test]
@@ -1385,49 +1313,48 @@ mod tests {
     }
 
     #[test]
-    #[allow(deprecated)]
-    fn test_bsearch_elem() {
-        assert_eq!([1i,2,3,4,5].bsearch_elem(&5), Some(4));
-        assert_eq!([1i,2,3,4,5].bsearch_elem(&4), Some(3));
-        assert_eq!([1i,2,3,4,5].bsearch_elem(&3), Some(2));
-        assert_eq!([1i,2,3,4,5].bsearch_elem(&2), Some(1));
-        assert_eq!([1i,2,3,4,5].bsearch_elem(&1), Some(0));
+    fn test_binary_search_elem() {
+        assert_eq!([1i,2,3,4,5].binary_search_elem(&5).found(), Some(4));
+        assert_eq!([1i,2,3,4,5].binary_search_elem(&4).found(), Some(3));
+        assert_eq!([1i,2,3,4,5].binary_search_elem(&3).found(), Some(2));
+        assert_eq!([1i,2,3,4,5].binary_search_elem(&2).found(), Some(1));
+        assert_eq!([1i,2,3,4,5].binary_search_elem(&1).found(), Some(0));
 
-        assert_eq!([2i,4,6,8,10].bsearch_elem(&1), None);
-        assert_eq!([2i,4,6,8,10].bsearch_elem(&5), None);
-        assert_eq!([2i,4,6,8,10].bsearch_elem(&4), Some(1));
-        assert_eq!([2i,4,6,8,10].bsearch_elem(&10), Some(4));
+        assert_eq!([2i,4,6,8,10].binary_search_elem(&1).found(), None);
+        assert_eq!([2i,4,6,8,10].binary_search_elem(&5).found(), None);
+        assert_eq!([2i,4,6,8,10].binary_search_elem(&4).found(), Some(1));
+        assert_eq!([2i,4,6,8,10].binary_search_elem(&10).found(), Some(4));
 
-        assert_eq!([2i,4,6,8].bsearch_elem(&1), None);
-        assert_eq!([2i,4,6,8].bsearch_elem(&5), None);
-        assert_eq!([2i,4,6,8].bsearch_elem(&4), Some(1));
-        assert_eq!([2i,4,6,8].bsearch_elem(&8), Some(3));
+        assert_eq!([2i,4,6,8].binary_search_elem(&1).found(), None);
+        assert_eq!([2i,4,6,8].binary_search_elem(&5).found(), None);
+        assert_eq!([2i,4,6,8].binary_search_elem(&4).found(), Some(1));
+        assert_eq!([2i,4,6,8].binary_search_elem(&8).found(), Some(3));
 
-        assert_eq!([2i,4,6].bsearch_elem(&1), None);
-        assert_eq!([2i,4,6].bsearch_elem(&5), None);
-        assert_eq!([2i,4,6].bsearch_elem(&4), Some(1));
-        assert_eq!([2i,4,6].bsearch_elem(&6), Some(2));
+        assert_eq!([2i,4,6].binary_search_elem(&1).found(), None);
+        assert_eq!([2i,4,6].binary_search_elem(&5).found(), None);
+        assert_eq!([2i,4,6].binary_search_elem(&4).found(), Some(1));
+        assert_eq!([2i,4,6].binary_search_elem(&6).found(), Some(2));
 
-        assert_eq!([2i,4].bsearch_elem(&1), None);
-        assert_eq!([2i,4].bsearch_elem(&5), None);
-        assert_eq!([2i,4].bsearch_elem(&2), Some(0));
-        assert_eq!([2i,4].bsearch_elem(&4), Some(1));
+        assert_eq!([2i,4].binary_search_elem(&1).found(), None);
+        assert_eq!([2i,4].binary_search_elem(&5).found(), None);
+        assert_eq!([2i,4].binary_search_elem(&2).found(), Some(0));
+        assert_eq!([2i,4].binary_search_elem(&4).found(), Some(1));
 
-        assert_eq!([2i].bsearch_elem(&1), None);
-        assert_eq!([2i].bsearch_elem(&5), None);
-        assert_eq!([2i].bsearch_elem(&2), Some(0));
+        assert_eq!([2i].binary_search_elem(&1).found(), None);
+        assert_eq!([2i].binary_search_elem(&5).found(), None);
+        assert_eq!([2i].binary_search_elem(&2).found(), Some(0));
 
-        assert_eq!([].bsearch_elem(&1i), None);
-        assert_eq!([].bsearch_elem(&5i), None);
+        assert_eq!([].binary_search_elem(&1i).found(), None);
+        assert_eq!([].binary_search_elem(&5i).found(), None);
 
-        assert!([1i,1,1,1,1].bsearch_elem(&1) != None);
-        assert!([1i,1,1,1,2].bsearch_elem(&1) != None);
-        assert!([1i,1,1,2,2].bsearch_elem(&1) != None);
-        assert!([1i,1,2,2,2].bsearch_elem(&1) != None);
-        assert_eq!([1i,2,2,2,2].bsearch_elem(&1), Some(0));
+        assert!([1i,1,1,1,1].binary_search_elem(&1).found() != None);
+        assert!([1i,1,1,1,2].binary_search_elem(&1).found() != None);
+        assert!([1i,1,1,2,2].binary_search_elem(&1).found() != None);
+        assert!([1i,1,2,2,2].binary_search_elem(&1).found() != None);
+        assert_eq!([1i,2,2,2,2].binary_search_elem(&1).found(), Some(0));
 
-        assert_eq!([1i,2,3,4,5].bsearch_elem(&6), None);
-        assert_eq!([1i,2,3,4,5].bsearch_elem(&0), None);
+        assert_eq!([1i,2,3,4,5].binary_search_elem(&6).found(), None);
+        assert_eq!([1i,2,3,4,5].binary_search_elem(&0).found(), None);
     }
 
     #[test]
@@ -1542,26 +1469,6 @@ mod tests {
         assert_eq!(v.connect_vec(&0), vec![1, 0, 2, 3]);
         let v: [&[int], ..3] = [&[1], &[2], &[3]];
         assert_eq!(v.connect_vec(&0), vec![1, 0, 2, 0, 3]);
-    }
-
-    #[test]
-    #[allow(deprecated)]
-    fn test_shift() {
-        let mut x = vec![1i, 2, 3];
-        assert_eq!(x.shift(), Some(1));
-        assert_eq!(&x, &vec![2i, 3]);
-        assert_eq!(x.shift(), Some(2));
-        assert_eq!(x.shift(), Some(3));
-        assert_eq!(x.shift(), None);
-        assert_eq!(x.len(), 0);
-    }
-
-    #[test]
-    #[allow(deprecated)]
-    fn test_unshift() {
-        let mut x = vec![1i, 2, 3];
-        x.unshift(0);
-        assert_eq!(x, vec![0, 1, 2, 3]);
     }
 
     #[test]
@@ -1686,17 +1593,6 @@ mod tests {
                 fail!()
             }
             i += 1;
-        }
-    }
-
-    #[test]
-    #[should_fail]
-    #[allow(deprecated)]
-    fn test_copy_memory_oob() {
-        unsafe {
-            let mut a = [1i, 2, 3, 4];
-            let b = [1i, 2, 3, 4, 5];
-            a.copy_memory(b);
         }
     }
 
@@ -2006,19 +1902,6 @@ mod tests {
     }
 
     #[test]
-    #[allow(deprecated)]
-    fn test_copy_from() {
-        let mut a = [1i,2,3,4,5];
-        let b = [6i,7,8];
-        assert_eq!(a.copy_from(b), 3);
-        assert!(a == [6i,7,8,4,5]);
-        let mut c = [7i,2,8,1];
-        let d = [3i,1,4,1,5,9];
-        assert_eq!(c.copy_from(d), 4);
-        assert!(c == [3i,1,4,1]);
-    }
-
-    #[test]
     fn test_reverse_part() {
         let mut values = [1i,2,3,4,5];
         values[mut 1..4].reverse();
@@ -2199,34 +2082,6 @@ mod tests {
     }
 
     #[test]
-    #[allow(deprecated)]
-    fn test_shift_ref() {
-        let mut x: &[int] = [1, 2, 3, 4, 5];
-        let h = x.shift_ref();
-        assert_eq!(*h.unwrap(), 1);
-        assert_eq!(x.len(), 4);
-        assert_eq!(x[0], 2);
-        assert_eq!(x[3], 5);
-
-        let mut y: &[int] = [];
-        assert_eq!(y.shift_ref(), None);
-    }
-
-    #[test]
-    #[allow(deprecated)]
-    fn test_pop_ref() {
-        let mut x: &[int] = [1, 2, 3, 4, 5];
-        let h = x.pop_ref();
-        assert_eq!(*h.unwrap(), 5);
-        assert_eq!(x.len(), 4);
-        assert_eq!(x[0], 1);
-        assert_eq!(x[3], 4);
-
-        let mut y: &[int] = [];
-        assert!(y.pop_ref().is_none());
-    }
-
-    #[test]
     fn test_mut_splitator() {
         let mut xs = [0i,1,0,2,3,0,0,4,5,0];
         assert_eq!(xs.split_mut(|x| *x == 0).count(), 6);
@@ -2290,34 +2145,6 @@ mod tests {
     fn test_mut_chunks_0() {
         let mut v = [1i, 2, 3, 4];
         let _it = v.chunks_mut(0);
-    }
-
-    #[test]
-    #[allow(deprecated)]
-    fn test_mut_shift_ref() {
-        let mut x: &mut [int] = [1, 2, 3, 4, 5];
-        let h = x.mut_shift_ref();
-        assert_eq!(*h.unwrap(), 1);
-        assert_eq!(x.len(), 4);
-        assert_eq!(x[0], 2);
-        assert_eq!(x[3], 5);
-
-        let mut y: &mut [int] = [];
-        assert!(y.mut_shift_ref().is_none());
-    }
-
-    #[test]
-    #[allow(deprecated)]
-    fn test_mut_pop_ref() {
-        let mut x: &mut [int] = [1, 2, 3, 4, 5];
-        let h = x.mut_pop_ref();
-        assert_eq!(*h.unwrap(), 5);
-        assert_eq!(x.len(), 4);
-        assert_eq!(x[0], 1);
-        assert_eq!(x[3], 4);
-
-        let mut y: &mut [int] = [];
-        assert!(y.mut_pop_ref().is_none());
     }
 
     #[test]

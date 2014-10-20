@@ -192,23 +192,23 @@ impl MoveData {
     }
 
     pub fn path_loan_path(&self, index: MovePathIndex) -> Rc<LoanPath> {
-        self.paths.borrow().get(index.get()).loan_path.clone()
+        (*self.paths.borrow())[index.get()].loan_path.clone()
     }
 
     fn path_parent(&self, index: MovePathIndex) -> MovePathIndex {
-        self.paths.borrow().get(index.get()).parent
+        (*self.paths.borrow())[index.get()].parent
     }
 
     fn path_first_move(&self, index: MovePathIndex) -> MoveIndex {
-        self.paths.borrow().get(index.get()).first_move
+        (*self.paths.borrow())[index.get()].first_move
     }
 
     fn path_first_child(&self, index: MovePathIndex) -> MovePathIndex {
-        self.paths.borrow().get(index.get()).first_child
+        (*self.paths.borrow())[index.get()].first_child
     }
 
     fn path_next_sibling(&self, index: MovePathIndex) -> MovePathIndex {
-        self.paths.borrow().get(index.get()).next_sibling
+        (*self.paths.borrow())[index.get()].next_sibling
     }
 
     fn set_path_first_move(&self,
@@ -225,7 +225,7 @@ impl MoveData {
 
     fn move_next_move(&self, index: MoveIndex) -> MoveIndex {
         //! Type safe indexing operator
-        self.moves.borrow().get(index.get()).next_move
+        (*self.moves.borrow())[index.get()].next_move
     }
 
     fn is_var_path(&self, index: MovePathIndex) -> bool {
@@ -434,12 +434,12 @@ impl MoveData {
             match *path.loan_path {
                 LpVar(id) => {
                     let kill_id = tcx.region_maps.var_scope(id);
-                    let path = *self.path_map.borrow().get(&path.loan_path);
+                    let path = (*self.path_map.borrow())[path.loan_path];
                     self.kill_moves(path, kill_id, dfcx_moves);
                 }
                 LpUpvar(ty::UpvarId { var_id: _, closure_expr_id }) => {
                     let kill_id = closure_to_block(closure_expr_id, tcx);
-                    let path = *self.path_map.borrow().get(&path.loan_path);
+                    let path = (*self.path_map.borrow())[path.loan_path];
                     self.kill_moves(path, kill_id, dfcx_moves);
                 }
                 LpExtend(..) => {}
@@ -580,7 +580,7 @@ impl<'a, 'tcx> FlowedMoveData<'a, 'tcx> {
         for loan_path_index in self.move_data.path_map.borrow().find(&*loan_path).iter() {
             self.dfcx_moves.each_gen_bit(id, |move_index| {
                 let the_move = self.move_data.moves.borrow();
-                let the_move = the_move.get(move_index);
+                let the_move = (*the_move)[move_index];
                 if the_move.path == **loan_path_index {
                     ret = Some(the_move.kind);
                     false
@@ -625,7 +625,7 @@ impl<'a, 'tcx> FlowedMoveData<'a, 'tcx> {
 
         self.dfcx_moves.each_bit_on_entry(id, |index| {
             let the_move = self.move_data.moves.borrow();
-            let the_move = the_move.get(index);
+            let the_move = &(*the_move)[index];
             let moved_path = the_move.path;
             if base_indices.iter().any(|x| x == &moved_path) {
                 // Scenario 1 or 2: `loan_path` or some base path of
@@ -675,7 +675,7 @@ impl<'a, 'tcx> FlowedMoveData<'a, 'tcx> {
 
         self.dfcx_assign.each_bit_on_entry(id, |index| {
             let assignment = self.move_data.var_assignments.borrow();
-            let assignment = assignment.get(index);
+            let assignment = &(*assignment)[index];
             if assignment.path == loan_path_index && !f(assignment) {
                 false
             } else {

@@ -9,4 +9,4 @@
 // except according to those terms.
 
 #![crate_type = "rlib"]
-#![crate_id = "foo"]
+#![crate_name = "foo"]

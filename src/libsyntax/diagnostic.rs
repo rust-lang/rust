@@ -446,7 +446,7 @@ fn highlight_lines(err: &mut EmitterWriter,
     if lines.lines.len() == 1u {
         let lo = cm.lookup_char_pos(sp.lo);
         let mut digits = 0u;
-        let mut num = (*lines.lines.get(0) + 1u) / 10u;
+        let mut num = (lines.lines[0] + 1u) / 10u;
 
         // how many digits must be indent past?
         while num > 0u { num /= 10u; digits += 1u; }
@@ -458,9 +458,9 @@ fn highlight_lines(err: &mut EmitterWriter,
         // part of the 'filename:line ' part of the previous line.
         let skip = fm.name.len() + digits + 3u;
         for _ in range(0, skip) {
-            s.push_char(' ');
+            s.push(' ');
         }
-        let orig = fm.get_line(*lines.lines.get(0) as int);
+        let orig = fm.get_line(lines.lines[0] as int);
         for pos in range(0u, left-skip) {
             let cur_char = orig.as_bytes()[pos] as char;
             // Whenever a tab occurs on the previous line, we insert one on
@@ -468,8 +468,8 @@ fn highlight_lines(err: &mut EmitterWriter,
             // That way the squiggly line will usually appear in the correct
             // position.
             match cur_char {
-                '\t' => s.push_char('\t'),
-                _ => s.push_char(' '),
+                '\t' => s.push('\t'),
+                _ => s.push(' '),
             };
         }
         try!(write!(&mut err.dst, "{}", s));
@@ -479,7 +479,7 @@ fn highlight_lines(err: &mut EmitterWriter,
             // the ^ already takes up one space
             let num_squigglies = hi.col.to_uint()-lo.col.to_uint()-1u;
             for _ in range(0, num_squigglies) {
-                s.push_char('~');
+                s.push('~');
             }
         }
         try!(print_maybe_styled(err,
@@ -523,10 +523,10 @@ fn custom_highlight_lines(w: &mut EmitterWriter,
     let skip = last_line_start.len() + hi.col.to_uint() - 1;
     let mut s = String::new();
     for _ in range(0, skip) {
-        s.push_char(' ');
+        s.push(' ');
     }
-    s.push_char('^');
-    s.push_char('\n');
+    s.push('^');
+    s.push('\n');
     print_maybe_styled(w,
                        s.as_slice(),
                        term::attr::ForegroundColor(lvl.color()))

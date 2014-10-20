@@ -268,12 +268,6 @@ impl<T> TrieMap<T> {
         iter
     }
 
-    /// Deprecated: use `iter_mut`.
-    #[deprecated = "use iter_mut"]
-    pub fn mut_iter<'a>(&'a mut self) -> MutEntries<'a, T> {
-        self.iter_mut()
-    }
-
     /// Gets an iterator over the key-value pairs in the map, with the
     /// ability to mutate the values.
     ///
@@ -439,12 +433,6 @@ impl<T> TrieMap<T> {
                mutability = mut)
     }
 
-    /// Deprecated: use `lower_bound_mut`.
-    #[deprecated = "use lower_bound_mut"]
-    pub fn mut_lower_bound<'a>(&'a mut self, key: uint) -> MutEntries<'a, T> {
-        self.lower_bound_mut(key)
-    }
-
     /// Gets an iterator pointing to the first key-value pair whose key is not less than `key`.
     /// If all keys in the map are less than `key` an empty iterator is returned.
     ///
@@ -468,12 +456,6 @@ impl<T> TrieMap<T> {
     /// ```
     pub fn lower_bound_mut<'a>(&'a mut self, key: uint) -> MutEntries<'a, T> {
         self.bound_mut(key, false)
-    }
-
-    /// Deprecated: use `upper_bound_mut`.
-    #[deprecated = "use upper_bound_mut"]
-    pub fn mut_upper_bound<'a>(&'a mut self, key: uint) -> MutEntries<'a, T> {
-        self.upper_bound_mut(key)
     }
 
     /// Gets an iterator pointing to the first key-value pair whose key is greater than `key`.

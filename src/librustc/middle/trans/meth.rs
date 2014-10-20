@@ -718,7 +718,7 @@ fn emit_vtable_methods(bcx: Block,
                     debug!("(making impl vtable) method has self or type \
                             params: {}",
                            token::get_ident(ident));
-                    Some(C_null(Type::nil(ccx).ptr_to())).move_iter()
+                    Some(C_null(Type::nil(ccx).ptr_to())).into_iter()
                 } else {
                     let mut fn_ref = trans_fn_ref_with_substs(
                         bcx,
@@ -732,11 +732,11 @@ fn emit_vtable_methods(bcx: Block,
                                                      m_id,
                                                      substs.clone());
                     }
-                    Some(fn_ref).move_iter()
+                    Some(fn_ref).into_iter()
                 }
             }
             ty::TypeTraitItem(_) => {
-                None.move_iter()
+                None.into_iter()
             }
         }
     }).collect()

@@ -657,18 +657,20 @@ fn mk_tt(cx: &ExtCtxt, sp: Span, tt: &ast::TokenTree) -> Vec<P<ast::Stmt>> {
 
         ast::TTNonterminal(sp, ident) => {
 
-            // tt.push_all_move($ident.to_tokens(ext_cx))
+            // tt.extend($ident.to_tokens(ext_cx).into_iter())
 
             let e_to_toks =
                 cx.expr_method_call(sp,
                                     cx.expr_ident(sp, ident),
                                     id_ext("to_tokens"),
                                     vec!(cx.expr_ident(sp, id_ext("ext_cx"))));
+            let e_to_toks =
+                cx.expr_method_call(sp, e_to_toks, id_ext("into_iter"), vec![]);
 
             let e_push =
                 cx.expr_method_call(sp,
                                     cx.expr_ident(sp, id_ext("tt")),
-                                    id_ext("push_all_move"),
+                                    id_ext("extend"),
                                     vec!(e_to_toks));
 
             vec!(cx.stmt_expr(e_push))
@@ -680,7 +682,7 @@ fn mk_tts(cx: &ExtCtxt, sp: Span, tts: &[ast::TokenTree])
     -> Vec<P<ast::Stmt>> {
     let mut ss = Vec::new();
     for tt in tts.iter() {
-        ss.push_all_move(mk_tt(cx, sp, tt));
+        ss.extend(mk_tt(cx, sp, tt).into_iter());
     }
     ss
 }
@@ -742,7 +744,7 @@ fn expand_tts(cx: &ExtCtxt, sp: Span, tts: &[ast::TokenTree])
     let stmt_let_tt = cx.stmt_let(sp, true, id_ext("tt"), cx.expr_vec_ng(sp));
 
     let mut vector = vec!(stmt_let_sp, stmt_let_tt);
-    vector.push_all_move(mk_tts(cx, sp, tts.as_slice()));
+    vector.extend(mk_tts(cx, sp, tts.as_slice()).into_iter());
     let block = cx.expr_block(
         cx.block_all(sp,
                      Vec::new(),
