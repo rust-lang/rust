@@ -1950,15 +1950,14 @@ impl<'a> Resolver<'a> {
                 }
             }
             DlImpl(def) => {
-                // We only process static methods of impls here.
                 match csearch::get_type_name_if_impl(&self.session.cstore, def) {
                     None => {}
                     Some(final_name) => {
-                        let static_methods_opt =
-                            csearch::get_static_methods_if_impl(&self.session.cstore, def);
-                        match static_methods_opt {
-                            Some(ref static_methods) if
-                                static_methods.len() >= 1 => {
+                        let methods_opt =
+                            csearch::get_methods_if_impl(&self.session.cstore, def);
+                        match methods_opt {
+                            Some(ref methods) if
+                                methods.len() >= 1 => {
                                 debug!("(building reduced graph for \
                                         external crate) processing \
                                         static methods for type name {}",
@@ -2008,9 +2007,8 @@ impl<'a> Resolver<'a> {
                                 // Add each static method to the module.
                                 let new_parent =
                                     ModuleReducedGraphParent(type_module);
-                                for static_method_info in
-                                        static_methods.iter() {
-                                    let name = static_method_info.name;
+                                for method_info in methods.iter() {
+                                    let name = method_info.name;
                                     debug!("(building reduced graph for \
                                              external crate) creating \
                                              static method '{}'",
@@ -2021,9 +2019,7 @@ impl<'a> Resolver<'a> {
                                                        new_parent.clone(),
                                                        OverwriteDuplicates,
                                                        DUMMY_SP);
-                                    let def = DefFn(
-                                        static_method_info.def_id,
-                                        false);
+                                    let def = DefFn(method_info.def_id, false);
 
                                     method_name_bindings.define_value(
                                         def, DUMMY_SP,

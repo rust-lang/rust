@@ -15,7 +15,7 @@
 use back::svh::Svh;
 use metadata::cstore::crate_metadata;
 use metadata::common::*;
-use metadata::csearch::StaticMethodInfo;
+use metadata::csearch::MethodInfo;
 use metadata::csearch;
 use metadata::cstore;
 use metadata::tydecode::{parse_ty_data, parse_region_data, parse_def_id,
@@ -902,10 +902,10 @@ pub fn get_type_name_if_impl(cdata: Cmd,
     ret
 }
 
-pub fn get_static_methods_if_impl(intr: Rc<IdentInterner>,
+pub fn get_methods_if_impl(intr: Rc<IdentInterner>,
                                   cdata: Cmd,
                                   node_id: ast::NodeId)
-                               -> Option<Vec<StaticMethodInfo> > {
+                               -> Option<Vec<MethodInfo> > {
     let item = lookup_item(node_id, cdata.data());
     if item_family(item) != Impl {
         return None;
@@ -924,14 +924,14 @@ pub fn get_static_methods_if_impl(intr: Rc<IdentInterner>,
         true
     });
 
-    let mut static_impl_methods = Vec::new();
+    let mut impl_methods = Vec::new();
     for impl_method_id in impl_method_ids.iter() {
         let impl_method_doc = lookup_item(impl_method_id.node, cdata.data());
         let family = item_family(impl_method_doc);
         match family {
-            StaticMethod => {
-                static_impl_methods.push(StaticMethodInfo {
-                    name: item_name(&*intr, impl_method_doc),
+            StaticMethod | Method => {
+                impl_methods.push(MethodInfo {
+                    ident: item_name(&*intr, impl_method_doc),
                     def_id: item_def_id(impl_method_doc, cdata),
                     vis: item_visibility(impl_method_doc),
                 });
@@ -940,7 +940,7 @@ pub fn get_static_methods_if_impl(intr: Rc<IdentInterner>,
         }
     }
 
-    return Some(static_impl_methods);
+    return Some(impl_methods);
 }
 
 /// If node_id is the constructor of a tuple struct, retrieve the NodeId of
