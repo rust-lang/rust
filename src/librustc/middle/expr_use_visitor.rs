@@ -738,7 +738,7 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,TYPER> {
                 None => {}
                 Some(method_ty) => {
                     let cmt = return_if_err!(self.mc.cat_expr_autoderefd(expr, i));
-                    let self_ty = *ty::ty_fn_args(method_ty).get(0);
+                    let self_ty = ty::ty_fn_args(method_ty)[0];
                     let (m, r) = match ty::get(self_ty).sty {
                         ty::ty_rptr(r, ref m) => (m.mutbl, r),
                         _ => self.tcx().sess.span_bug(expr.span,

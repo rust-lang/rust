@@ -19,6 +19,7 @@ use core::cmp;
 use core::default::Default;
 use core::fmt;
 use core::iter;
+use core::slice;
 use std::hash::{Writer, Hash};
 
 use {Deque, Mutable, MutableSeq};
@@ -132,32 +133,6 @@ impl<T> RingBuf<T> {
               elts: Vec::from_fn(cmp::max(MINIMUM_CAPACITY, n), |_| None)}
     }
 
-    /// Retrieve an element in the `RingBuf` by index.
-    ///
-    /// Fails if there is no element with the given index.
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// #![allow(deprecated)]
-    ///
-    /// use std::collections::RingBuf;
-    ///
-    /// let mut buf = RingBuf::new();
-    /// buf.push(3i);
-    /// buf.push(4);
-    /// buf.push(5);
-    /// assert_eq!(buf.get(1), &4);
-    /// ```
-    #[deprecated = "prefer using indexing, e.g., ringbuf[0]"]
-    pub fn get<'a>(&'a self, i: uint) -> &'a T {
-        let idx = self.raw_index(i);
-        match self.elts[idx] {
-            None => fail!(),
-            Some(ref v) => v
-        }
-    }
-
     /// Retrieves an element in the `RingBuf` by index.
     ///
     /// Fails if there is no element with the given index.
@@ -250,12 +225,6 @@ impl<T> RingBuf<T> {
         Items{index: 0, rindex: self.nelts, lo: self.lo, elts: self.elts.as_slice()}
     }
 
-    /// Deprecated: use `iter_mut`
-    #[deprecated = "use iter_mut"]
-    pub fn mut_iter<'a>(&'a mut self) -> MutItems<'a, T> {
-        self.iter_mut()
-    }
-
     /// Returns a front-to-back iterator which returns mutable references.
     ///
     /// # Example
@@ -285,16 +254,20 @@ impl<T> RingBuf<T> {
             //    0 to end_index
             let (temp, remaining1) = self.elts.split_at_mut(start_index);
             let (remaining2, _) = temp.split_at_mut(end_index);
-            MutItems { remaining1: remaining1,
-                                 remaining2: remaining2,
-                                 nelts: self.nelts }
+            MutItems {
+                remaining1: remaining1.iter_mut(),
+                remaining2: remaining2.iter_mut(),
+                nelts: self.nelts,
+            }
         } else {
             // Items to iterate goes from start_index to end_index:
             let (empty, elts) = self.elts.split_at_mut(0);
             let remaining1 = elts[mut start_index..end_index];
-            MutItems { remaining1: remaining1,
-                                 remaining2: empty,
-                                 nelts: self.nelts }
+            MutItems {
+                remaining1: remaining1.iter_mut(),
+                remaining2: empty.iter_mut(),
+                nelts: self.nelts,
+            }
         }
     }
 }
@@ -356,26 +329,26 @@ impl<'a, T> RandomAccessIterator<&'a T> for Items<'a, T> {
 
 /// `RingBuf` mutable iterator.
 pub struct MutItems<'a, T:'a> {
-    remaining1: &'a mut [Option<T>],
-    remaining2: &'a mut [Option<T>],
+    remaining1: slice::MutItems<'a, Option<T>>,
+    remaining2: slice::MutItems<'a, Option<T>>,
     nelts: uint,
 }
 
 impl<'a, T> Iterator<&'a mut T> for MutItems<'a, T> {
     #[inline]
-    #[allow(deprecated)] // mut_shift_ref
     fn next(&mut self) -> Option<&'a mut T> {
         if self.nelts == 0 {
             return None;
         }
-        let r = if self.remaining1.len() > 0 {
-            &mut self.remaining1
-        } else {
-            assert!(self.remaining2.len() > 0);
-            &mut self.remaining2
-        };
         self.nelts -= 1;
-        Some(r.mut_shift_ref().unwrap().get_mut_ref())
+        match self.remaining1.next() {
+            Some(ptr) => return Some(ptr.as_mut().unwrap()),
+            None => {}
+        }
+        match self.remaining2.next() {
+            Some(ptr) => return Some(ptr.as_mut().unwrap()),
+            None => unreachable!(),
+        }
     }
 
     #[inline]
@@ -386,19 +359,19 @@ impl<'a, T> Iterator<&'a mut T> for MutItems<'a, T> {
 
 impl<'a, T> DoubleEndedIterator<&'a mut T> for MutItems<'a, T> {
     #[inline]
-    #[allow(deprecated)] // mut_shift_ref
     fn next_back(&mut self) -> Option<&'a mut T> {
         if self.nelts == 0 {
             return None;
         }
-        let r = if self.remaining2.len() > 0 {
-            &mut self.remaining2
-        } else {
-            assert!(self.remaining1.len() > 0);
-            &mut self.remaining1
-        };
         self.nelts -= 1;
-        Some(r.mut_pop_ref().unwrap().get_mut_ref())
+        match self.remaining2.next_back() {
+            Some(ptr) => return Some(ptr.as_mut().unwrap()),
+            None => {}
+        }
+        match self.remaining1.next_back() {
+            Some(ptr) => return Some(ptr.as_mut().unwrap()),
+            None => unreachable!(),
+        }
     }
 }
 
@@ -484,9 +457,12 @@ impl<S: Writer, A: Hash<S>> Hash<S> for RingBuf<A> {
 
 impl<A> Index<uint, A> for RingBuf<A> {
     #[inline]
-    #[allow(deprecated)]
     fn index<'a>(&'a self, i: &uint) -> &'a A {
-        self.get(*i)
+        let idx = self.raw_index(*i);
+        match self.elts[idx] {
+            None => fail!(),
+            Some(ref v) => v,
+        }
     }
 }
 
@@ -576,14 +552,14 @@ mod tests {
         assert_eq!(d.len(), 3u);
         d.push_front(1);
         assert_eq!(d.len(), 4u);
-        debug!("{}", d.get(0));
-        debug!("{}", d.get(1));
-        debug!("{}", d.get(2));
-        debug!("{}", d.get(3));
-        assert_eq!(*d.get(0), 1);
-        assert_eq!(*d.get(1), 2);
-        assert_eq!(*d.get(2), 3);
-        assert_eq!(*d.get(3), 4);
+        debug!("{}", d[0]);
+        debug!("{}", d[1]);
+        debug!("{}", d[2]);
+        debug!("{}", d[3]);
+        assert_eq!(d[0], 1);
+        assert_eq!(d[1], 2);
+        assert_eq!(d[2], 3);
+        assert_eq!(d[3], 4);
     }
 
     #[cfg(test)]

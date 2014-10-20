@@ -14,7 +14,7 @@ struct MyVec<T> {
 
 impl<T> Index<uint, T> for MyVec<T> {
     fn index(&self, &i: &uint) -> &T {
-        self.data.get(i)
+        &self.data[i]
     }
 }
 

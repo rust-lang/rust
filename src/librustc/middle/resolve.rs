@@ -1307,11 +1307,13 @@ impl<'a> Resolver<'a> {
 
                 // If this is a newtype or unit-like struct, define a name
                 // in the value namespace as well
-                ctor_id.while_some(|cid| {
-                    name_bindings.define_value(DefStruct(local_def(cid)), sp,
-                                               is_public);
-                    None
-                });
+                match ctor_id {
+                    Some(cid) => {
+                        name_bindings.define_value(DefStruct(local_def(cid)),
+                                                   sp, is_public);
+                    }
+                    None => {}
+                }
 
                 // Record the def ID and fields of this struct.
                 let named_fields = struct_def.fields.iter().filter_map(|f| {
@@ -1644,7 +1646,7 @@ impl<'a> Resolver<'a> {
                                         }
                                     };
                                     let module_path = module_path.as_slice().init();
-                                    (Vec::from_slice(module_path), name)
+                                    (module_path.to_vec(), name)
                                 }
                             };
                             self.build_import_directive(
@@ -2232,7 +2234,7 @@ impl<'a> Resolver<'a> {
         let import_count = imports.len();
         while module.resolved_import_count.get() < import_count {
             let import_index = module.resolved_import_count.get();
-            let import_directive = imports.get(import_index);
+            let import_directive = &(*imports)[import_index];
             match self.resolve_import_for_module(module.clone(),
                                                  import_directive) {
                 Failed(err) => {
@@ -3669,15 +3671,15 @@ impl<'a> Resolver<'a> {
         if index != import_count {
             let sn = self.session
                          .codemap()
-                         .span_to_snippet(imports.get(index).span)
+                         .span_to_snippet((*imports)[index].span)
                          .unwrap();
             if sn.as_slice().contains("::") {
-                self.resolve_error(imports.get(index).span,
+                self.resolve_error((*imports)[index].span,
                                    "unresolved import");
             } else {
                 let err = format!("unresolved import (maybe you meant `{}::*`?)",
                                   sn.as_slice().slice(0, sn.len()));
-                self.resolve_error(imports.get(index).span, err.as_slice());
+                self.resolve_error((*imports)[index].span, err.as_slice());
             }
         }
 
@@ -3905,12 +3907,17 @@ impl<'a> Resolver<'a> {
                             def = DefUpvar(node_id, function_id, last_proc_body_id);
 
                             let mut seen = self.freevars_seen.borrow_mut();
-                            let seen = seen.find_or_insert(function_id, NodeSet::new());
+                            let seen = match seen.entry(function_id) {
+                                Occupied(v) => v.into_mut(),
+                                Vacant(v) => v.set(NodeSet::new()),
+                            };
                             if seen.contains(&node_id) {
                                 continue;
                             }
-                            self.freevars.borrow_mut().find_or_insert(function_id, vec![])
-                                         .push(Freevar { def: prev_def, span: span });
+                            match self.freevars.borrow_mut().entry(function_id) {
+                                Occupied(v) => v.into_mut(),
+                                Vacant(v) => v.set(vec![]),
+                            }.push(Freevar { def: prev_def, span: span });
                             seen.insert(node_id);
                         }
                         MethodRibKind(item_id, _) => {
@@ -4714,7 +4721,7 @@ impl<'a> Resolver<'a> {
         if arm.pats.len() == 0 {
             return
         }
-        let map_0 = self.binding_mode_map(&**arm.pats.get(0));
+        let map_0 = self.binding_mode_map(&*arm.pats[0]);
         for (i, p) in arm.pats.iter().enumerate() {
             let map_i = self.binding_mode_map(&**p);
 
@@ -5695,18 +5702,18 @@ impl<'a> Resolver<'a> {
         for (i, other) in maybes.iter().enumerate() {
             *values.get_mut(i) = name.lev_distance(other.get());
 
-            if *values.get(i) <= *values.get(smallest) {
+            if values[i] <= values[smallest] {
                 smallest = i;
             }
         }
 
         if values.len() > 0 &&
-            *values.get(smallest) != uint::MAX &&
-            *values.get(smallest) < name.len() + 2 &&
-            *values.get(smallest) <= max_distance &&
-            name != maybes.get(smallest).get() {
+            values[smallest] != uint::MAX &&
+            values[smallest] < name.len() + 2 &&
+            values[smallest] <= max_distance &&
+            name != maybes[smallest].get() {
 
-            Some(maybes.get(smallest).get().to_string())
+            Some(maybes[smallest].get().to_string())
 
         } else {
             None

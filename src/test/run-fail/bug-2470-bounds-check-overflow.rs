@@ -31,5 +31,5 @@ fn main() {
            idx * mem::size_of::<uint>());
 
     // This should fail.
-    println!("ov1 0x{:x}", *x.get(idx));
+    println!("ov1 0x{:x}", x[idx]);
 }

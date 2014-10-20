@@ -115,7 +115,7 @@ fn helper(input: libc::c_int, messages: Receiver<Req>, _: ()) {
     // signals the first requests in the queue, possible re-enqueueing it.
     fn signal(active: &mut Vec<Box<Inner>>,
               dead: &mut Vec<(uint, Box<Inner>)>) {
-        let mut timer = match active.shift() {
+        let mut timer = match active.remove(0) {
             Some(timer) => timer, None => return
         };
         let mut cb = timer.cb.take().unwrap();
@@ -137,7 +137,7 @@ fn helper(input: libc::c_int, messages: Receiver<Req>, _: ()) {
             let now = now();
             // If this request has already expired, then signal it and go
             // through another iteration
-            if active.get(0).target <= now {
+            if active[0].target <= now {
                 signal(&mut active, &mut dead);
                 continue;
             }
@@ -145,7 +145,7 @@ fn helper(input: libc::c_int, messages: Receiver<Req>, _: ()) {
             // The actual timeout listed in the requests array is an
             // absolute date, so here we translate the absolute time to a
             // relative time.
-            let tm = active.get(0).target - now;
+            let tm = active[0].target - now;
             timeout.tv_sec = (tm / 1000) as libc::time_t;
             timeout.tv_usec = ((tm % 1000) * 1000) as libc::suseconds_t;
             &mut timeout as *mut libc::timeval

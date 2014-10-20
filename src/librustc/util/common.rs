@@ -139,7 +139,7 @@ pub fn can_reach<S,H:Hasher<S>,T:Eq+Clone+Hash<S>>(
     let mut queue = vec!(source);
     let mut i = 0;
     while i < queue.len() {
-        match edges_map.find(queue.get(i)) {
+        match edges_map.find(&queue[i]) {
             Some(edges) => {
                 for target in edges.iter() {
                     if *target == destination {

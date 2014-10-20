@@ -377,10 +377,10 @@ impl Isaac64Rng {
                                 let x = *self.mem.unsafe_get(base + mr_offset);
                                 a = mix + *self.mem.unsafe_get(base + m2_offset);
                                 let y = ind!(x) + a + b;
-                                self.mem.unsafe_set(base + mr_offset, y);
+                                *self.mem.unsafe_mut(base + mr_offset) = y;
 
                                 b = ind!(y >> RAND_SIZE_64_LEN) + x;
-                                self.rsl.unsafe_set(base + mr_offset, b);
+                                *self.rsl.unsafe_mut(base + mr_offset) = b;
                             }
                         }}
                     );
@@ -394,10 +394,10 @@ impl Isaac64Rng {
                                 let x = *self.mem.unsafe_get(base + mr_offset);
                                 a = mix + *self.mem.unsafe_get(base + m2_offset);
                                 let y = ind!(x) + a + b;
-                                self.mem.unsafe_set(base + mr_offset, y);
+                                *self.mem.unsafe_mut(base + mr_offset) = y;
 
                                 b = ind!(y >> RAND_SIZE_64_LEN) + x;
-                                self.rsl.unsafe_set(base + mr_offset, b);
+                                *self.rsl.unsafe_mut(base + mr_offset) = b;
                             }
                         }}
                     );

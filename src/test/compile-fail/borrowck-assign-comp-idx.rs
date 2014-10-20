@@ -17,7 +17,7 @@ fn a() {
     let mut p = vec!(1);
 
     // Create an immutable pointer into p's contents:
-    let q: &int = p.get(0);
+    let q: &int = &p[0];
 
     *p.get_mut(0) = 5; //~ ERROR cannot borrow
 

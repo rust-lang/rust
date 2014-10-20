@@ -296,8 +296,6 @@ impl<T: Send> Drop for Queue<T> {
 mod test {
     use std::prelude::*;
 
-    use native;
-
     use super::{queue};
 
     #[test]
@@ -364,7 +362,7 @@ mod test {
             let (consumer, mut producer) = queue(bound);
 
             let (tx, rx) = channel();
-            native::task::spawn(proc() {
+            spawn(proc() {
                 // Move the consumer to a local mutable slot
                 let mut consumer = consumer;
                 for _ in range(0u, 100000) {

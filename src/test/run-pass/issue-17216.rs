@@ -25,7 +25,7 @@ fn main() {
     let mut dropped = false;
     {
         let leak = Leak { dropped: &mut dropped };
-        for ((), leaked) in Some(((),leak)).move_iter() {}
+        for ((), leaked) in Some(((),leak)).into_iter() {}
     }
 
     assert!(dropped);

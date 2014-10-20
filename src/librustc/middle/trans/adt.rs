@@ -224,7 +224,7 @@ fn represent_type_uncached(cx: &CrateContext, t: ty::t) -> Repr {
                 // Equivalent to a struct/tuple/newtype.
                 // (Typechecking will reject discriminant-sizing attrs.)
                 assert_eq!(hint, attr::ReprAny);
-                let mut ftys = cases.get(0).tys.clone();
+                let mut ftys = cases[0].tys.clone();
                 if dtor { ftys.push(ty::mk_bool()); }
                 return Univariant(mk_struct(cx, ftys.as_slice(), false, t),
                                   dtor);
@@ -234,15 +234,15 @@ fn represent_type_uncached(cx: &CrateContext, t: ty::t) -> Repr {
                 // Nullable pointer optimization
                 let mut discr = 0;
                 while discr < 2 {
-                    if cases.get(1 - discr).is_zerolen(cx, t) {
-                        let st = mk_struct(cx, cases.get(discr).tys.as_slice(),
+                    if cases[1 - discr].is_zerolen(cx, t) {
+                        let st = mk_struct(cx, cases[discr].tys.as_slice(),
                                            false, t);
-                        match cases.get(discr).find_ptr() {
+                        match cases[discr].find_ptr() {
                             Some(ThinPointer(_)) if st.fields.len() == 1 => {
                                 return RawNullablePointer {
                                     nndiscr: discr as Disr,
-                                    nnty: *st.fields.get(0),
-                                    nullfields: cases.get(1 - discr).tys.clone()
+                                    nnty: st.fields[0],
+                                    nullfields: cases[1 - discr].tys.clone()
                                 };
                             }
                             Some(ptrfield) => {
@@ -250,7 +250,7 @@ fn represent_type_uncached(cx: &CrateContext, t: ty::t) -> Repr {
                                     nndiscr: discr as Disr,
                                     nonnull: st,
                                     ptrfield: ptrfield,
-                                    nullfields: cases.get(1 - discr).tys.clone()
+                                    nullfields: cases[1 - discr].tys.clone()
                                 };
                             }
                             None => { }
@@ -267,7 +267,8 @@ fn represent_type_uncached(cx: &CrateContext, t: ty::t) -> Repr {
             let ity = range_to_inttype(cx, hint, &bounds);
 
             let fields : Vec<_> = cases.iter().map(|c| {
-                let mut ftys = vec!(ty_of_inttype(ity)).append(c.tys.as_slice());
+                let mut ftys = vec!(ty_of_inttype(ity));
+                ftys.push_all(c.tys.as_slice());
                 if dtor { ftys.push(ty::mk_bool()); }
                 mk_struct(cx, ftys.as_slice(), false, t)
             }).collect();
@@ -369,7 +370,7 @@ fn mk_struct(cx: &CrateContext, tys: &[ty::t], packed: bool, scapegoat: ty::t) -
         align: machine::llalign_of_min(cx, llty_rec),
         sized: sized,
         packed: packed,
-        fields: Vec::from_slice(tys),
+        fields: tys.to_vec(),
     }
 }
 
@@ -745,7 +746,7 @@ pub fn trans_set_discr(bcx: Block, r: &Repr, val: ValueRef, discr: Disr) {
         General(ity, ref cases, dtor) => {
             if dtor {
                 let ptr = trans_field_ptr(bcx, r, val, discr,
-                                          cases.get(discr as uint).fields.len() - 2);
+                                          cases[discr as uint].fields.len() - 2);
                 Store(bcx, C_u8(bcx.ccx(), 1), ptr);
             }
             Store(bcx, C_integral(ll_inttype(bcx.ccx(), ity), discr as u64, true),
@@ -769,7 +770,7 @@ pub fn trans_set_discr(bcx: Block, r: &Repr, val: ValueRef, discr: Disr) {
                 let (llptrptr, llptrty) = match ptrfield {
                     ThinPointer(field) =>
                         (GEPi(bcx, val, [0, field]),
-                         type_of::type_of(bcx.ccx(), *nonnull.fields.get(field))),
+                         type_of::type_of(bcx.ccx(), nonnull.fields[field])),
                     FatPointer(field, pair) => {
                         let v = GEPi(bcx, val, [0, field, pair]);
                         (v, val_ty(v).element_type())
@@ -800,7 +801,7 @@ pub fn num_args(r: &Repr, discr: Disr) -> uint {
             st.fields.len() - (if dtor { 1 } else { 0 })
         }
         General(_, ref cases, dtor) => {
-            cases.get(discr as uint).fields.len() - 1 - (if dtor { 1 } else { 0 })
+            cases[discr as uint].fields.len() - 1 - (if dtor { 1 } else { 0 })
         }
         RawNullablePointer { nndiscr, ref nullfields, .. } => {
             if discr == nndiscr { 1 } else { nullfields.len() }
@@ -827,13 +828,13 @@ pub fn trans_field_ptr(bcx: Block, r: &Repr, val: ValueRef, discr: Disr,
             struct_field_ptr(bcx, st, val, ix, false)
         }
         General(_, ref cases, _) => {
-            struct_field_ptr(bcx, cases.get(discr as uint), val, ix + 1, true)
+            struct_field_ptr(bcx, &cases[discr as uint], val, ix + 1, true)
         }
         RawNullablePointer { nndiscr, ref nullfields, .. } |
         StructWrappedNullablePointer { nndiscr, ref nullfields, .. } if discr != nndiscr => {
             // The unit-like case might have a nonzero number of unit-like fields.
             // (e.d., Result of Either with (), as one side.)
-            let ty = type_of::type_of(bcx.ccx(), *nullfields.get(ix));
+            let ty = type_of::type_of(bcx.ccx(), nullfields[ix]);
             assert_eq!(machine::llsize_of_alloc(bcx.ccx(), ty), 0);
             // The contents of memory at this pointer can't matter, but use
             // the value that's "reasonable" in case of pointer comparison.
@@ -965,14 +966,14 @@ pub fn trans_const(ccx: &CrateContext, r: &Repr, discr: Disr,
             C_integral(ll_inttype(ccx, ity), discr as u64, true)
         }
         General(ity, ref cases, _) => {
-            let case = cases.get(discr as uint);
+            let case = &cases[discr as uint];
             let max_sz = cases.iter().map(|x| x.size).max().unwrap();
             let lldiscr = C_integral(ll_inttype(ccx, ity), discr as u64, true);
-            let contents = build_const_struct(ccx,
-                                              case,
-                                              (vec!(lldiscr)).append(vals).as_slice());
-            C_struct(ccx, contents.append([padding(ccx, max_sz - case.size)]).as_slice(),
-                     false)
+            let mut f = vec![lldiscr];
+            f.push_all(vals);
+            let mut contents = build_const_struct(ccx, case, f.as_slice());
+            contents.push_all([padding(ccx, max_sz - case.size)]);
+            C_struct(ccx, contents.as_slice(), false)
         }
         Univariant(ref st, _dro) => {
             assert!(discr == 0);

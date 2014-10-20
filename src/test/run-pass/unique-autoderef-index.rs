@@ -11,5 +11,5 @@
 
 pub fn main() {
     let i = box vec!(100i);
-    assert_eq!(*i.get(0), 100i);
+    assert_eq!((*i)[0], 100i);
 }

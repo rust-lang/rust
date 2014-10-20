@@ -32,7 +32,7 @@ impl Getter<int> for int {
 }
 
 impl<T: Clone> Getter<T> for Option<T> {
-    fn do_get(&self) -> T { self.get_ref().clone() }
+    fn do_get(&self) -> T { self.as_ref().unwrap().clone() }
 }
 
 

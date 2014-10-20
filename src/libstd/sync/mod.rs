@@ -26,9 +26,6 @@ pub use core_sync::{RWLock, RWLockReadGuard, RWLockWriteGuard};
 pub use core_sync::{Semaphore, SemaphoreGuard};
 pub use core_sync::one::{Once, ONCE_INIT};
 
-#[deprecated = "use atomic instead"]
-pub use core_sync::atomic as atomics;
-
 pub use self::future::Future;
 pub use self::task_pool::TaskPool;
 

@@ -84,20 +84,6 @@ impl String {
         String { vec: string.as_bytes().to_vec() }
     }
 
-    /// Deprecated. Replaced by `string::raw::from_parts`
-    #[inline]
-    #[deprecated = "Replaced by string::raw::from_parts"]
-    pub unsafe fn from_raw_parts(length: uint, capacity: uint, ptr: *mut u8) -> String {
-        raw::from_parts(ptr, length, capacity)
-    }
-
-    /// Deprecated.
-    #[deprecated = "obsoleted by the removal of ~str"]
-    #[inline]
-    pub fn from_owned_str(string: String) -> String {
-        string
-    }
-
     /// Returns the vector as a string buffer, if possible, taking care not to
     /// copy it.
     ///
@@ -327,26 +313,6 @@ impl String {
         self.vec
     }
 
-    /// Pushes the given `String` onto this buffer then returns `self` so that it can be
-    /// used again.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// # #![allow(deprecated)]
-    /// let s = String::from_str("hello");
-    /// let big = s.append(" ").append("world").append("!");
-    /// // s has now been moved and cannot be used
-    ///
-    /// assert_eq!(big.as_slice(), "hello world!");
-    /// ```
-    #[inline]
-    #[deprecated = "use .push_str() instead"]
-    pub fn append(mut self, second: &str) -> String {
-        self.push_str(second);
-        self
-    }
-
     /// Creates a string buffer by repeating a character `length` times.
     ///
     /// # Example
@@ -371,25 +337,6 @@ impl String {
             buf.push(ch)
         }
         buf
-    }
-
-    /// Converts a byte to a UTF-8 string.
-    ///
-    /// # Failure
-    ///
-    /// Fails with invalid UTF-8 (i.e., the byte is greater than 127).
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// # #![allow(deprecated)]
-    /// let s = String::from_byte(104);
-    /// assert_eq!(s.as_slice(), "h");
-    /// ```
-    #[deprecated = "use str::from_utf8 with a slice of one byte instead"]
-    pub fn from_byte(b: u8) -> String {
-        assert!(b < 128u8);
-        String::from_char(1, b as char)
     }
 
     /// Pushes the given string onto this string buffer.
@@ -422,21 +369,6 @@ impl String {
         for _ in range(0, count) {
             self.push(ch)
         }
-    }
-
-    /// Returns the number of bytes that this string buffer can hold without reallocating.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// # #![allow(deprecated)]
-    /// let s = String::with_capacity(10);
-    /// assert!(s.byte_capacity() >= 10);
-    /// ```
-    #[inline]
-    #[deprecated = "renamed to .capacity()"]
-    pub fn byte_capacity(&self) -> uint {
-        self.vec.capacity()
     }
 
     /// Returns the number of bytes that this string buffer can hold without reallocating.
@@ -512,13 +444,6 @@ impl String {
         self.vec.shrink_to_fit()
     }
 
-    /// Deprecated, use .push() instead.
-    #[inline]
-    #[deprecated = "renamed to .push()"]
-    pub fn push_char(&mut self, ch: char) {
-        self.push(ch)
-    }
-
     /// Adds the given character to the end of the string.
     ///
     /// # Example
@@ -549,26 +474,6 @@ impl String {
         }
     }
 
-    /// Pushes the given bytes onto this string buffer.
-    /// This is unsafe because it does not check
-    /// to ensure that the resulting string will be valid UTF-8.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// # #![allow(deprecated)]
-    /// let mut s = String::new();
-    /// unsafe {
-    ///     s.push_bytes([104, 101, 108, 108, 111]);
-    /// }
-    /// assert_eq!(s.as_slice(), "hello");
-    /// ```
-    #[inline]
-    #[deprecated = "call .as_mut_vec() and push onto that"]
-    pub unsafe fn push_bytes(&mut self, bytes: &[u8]) {
-        self.vec.push_all(bytes)
-    }
-
     /// Works with the underlying buffer as a byte slice.
     ///
     /// # Example
@@ -582,31 +487,6 @@ impl String {
     #[stable]
     pub fn as_bytes<'a>(&'a self) -> &'a [u8] {
         self.vec.as_slice()
-    }
-
-    /// Works with the underlying buffer as a mutable byte slice.
-    ///
-    /// This is unsafe because it does not check
-    /// to ensure that the resulting string will be valid UTF-8.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// # #![allow(deprecated)]
-    /// let mut s = String::from_str("hello");
-    /// unsafe {
-    ///     let bytes = s.as_mut_bytes();
-    ///     bytes[1] = 51;
-    ///     bytes[4] = 48;
-    /// }
-    /// let b: &[_] = &[104, 51, 108, 108, 48];
-    /// assert_eq!(s.as_bytes(), b);
-    /// assert_eq!(s.as_slice(), "h3ll0")
-    /// ```
-    #[inline]
-    #[deprecated = "call .as_mut_vec().as_mut_slice() instead"]
-    pub unsafe fn as_mut_bytes<'a>(&'a mut self) -> &'a mut [u8] {
-        self.vec.as_mut_slice()
     }
 
     /// Shortens a string to the specified length.
@@ -629,63 +509,6 @@ impl String {
         assert!(self.as_slice().is_char_boundary(new_len));
         self.vec.truncate(new_len)
     }
-
-    /// Appends a byte to this string buffer.
-    ///
-    /// This is unsafe because it does not check
-    /// to ensure that the resulting string will be valid UTF-8.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// # #![allow(deprecated)]
-    /// let mut s = String::from_str("hell");
-    /// unsafe {
-    ///     s.push_byte(111);
-    /// }
-    /// assert_eq!(s.as_slice(), "hello");
-    /// ```
-    #[inline]
-    #[deprecated = "call .as_mut_vec().push() instead"]
-    pub unsafe fn push_byte(&mut self, byte: u8) {
-        self.vec.push(byte)
-    }
-
-    /// Removes the last byte from the string buffer and returns it.
-    /// Returns `None` if this string buffer is empty.
-    ///
-    /// This is unsafe because it does not check
-    /// to ensure that the resulting string will be valid UTF-8.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// # #![allow(deprecated)]
-    /// let mut s = String::from_str("foo");
-    /// unsafe {
-    ///     assert_eq!(s.pop_byte(), Some(111));
-    ///     assert_eq!(s.pop_byte(), Some(111));
-    ///     assert_eq!(s.pop_byte(), Some(102));
-    ///     assert_eq!(s.pop_byte(), None);
-    /// }
-    /// ```
-    #[inline]
-    #[deprecated = "call .as_mut_vec().pop() instead"]
-    pub unsafe fn pop_byte(&mut self) -> Option<u8> {
-        let len = self.len();
-        if len == 0 {
-            return None
-        }
-
-        let byte = self.as_bytes()[len - 1];
-        self.vec.set_len(len - 1);
-        Some(byte)
-    }
-
-    /// Deprecated. Renamed to `pop`.
-    #[inline]
-    #[deprecated = "renamed to .pop()"]
-    pub fn pop_char(&mut self) -> Option<char> { self.pop() }
 
     /// Removes the last character from the string buffer and returns it.
     /// Returns `None` if this string buffer is empty.
@@ -712,35 +535,6 @@ impl String {
             self.vec.set_len(next);
         }
         Some(ch)
-    }
-
-    /// Removes the first byte from the string buffer and returns it.
-    /// Returns `None` if this string buffer is empty.
-    ///
-    /// This is unsafe because it does not check
-    /// to ensure that the resulting string will be valid UTF-8.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// # #![allow(deprecated)]
-    /// let mut s = String::from_str("foo");
-    /// unsafe {
-    ///     assert_eq!(s.shift_byte(), Some(102));
-    ///     assert_eq!(s.shift_byte(), Some(111));
-    ///     assert_eq!(s.shift_byte(), Some(111));
-    ///     assert_eq!(s.shift_byte(), None);
-    /// }
-    /// ```
-    #[deprecated = "call .as_mut_vec().remove(0)"]
-    pub unsafe fn shift_byte(&mut self) -> Option<u8> {
-        self.vec.remove(0)
-    }
-
-    /// Deprecated, call `remove(0)` instead
-    #[deprecated = "call .remove(0) instead"]
-    pub fn shift_char(&mut self) -> Option<char> {
-        self.remove(0)
     }
 
     /// Removes the character from the string buffer at byte position `idx` and
@@ -1248,18 +1042,6 @@ mod tests {
         assert_eq!(data.pop().unwrap(), '¢'); // 2 bytes
         assert_eq!(data.pop().unwrap(), 'b'); // 1 bytes
         assert_eq!(data.pop().unwrap(), '华');
-        assert_eq!(data.as_slice(), "ประเทศไทย中");
-    }
-
-    #[test]
-    #[allow(deprecated)] // use remove(0) instead
-    fn test_shift_char() {
-        let mut data = String::from_str("𤭢€¢b华ประเทศไทย中");
-        assert_eq!(data.shift_char().unwrap(), '𤭢'); // 4 bytes
-        assert_eq!(data.shift_char().unwrap(), '€'); // 3 bytes
-        assert_eq!(data.shift_char().unwrap(), '¢'); // 2 bytes
-        assert_eq!(data.shift_char().unwrap(), 'b'); // 1 bytes
-        assert_eq!(data.shift_char().unwrap(), '华');
         assert_eq!(data.as_slice(), "ประเทศไทย中");
     }
 

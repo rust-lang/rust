@@ -241,13 +241,13 @@ impl<'a, 'b> Context<'a, 'b> {
                     return;
                 }
                 {
-                    let arg_type = match self.arg_types.get(arg) {
-                        &None => None,
-                        &Some(ref x) => Some(x)
+                    let arg_type = match self.arg_types[arg] {
+                        None => None,
+                        Some(ref x) => Some(x)
                     };
-                    self.verify_same(self.args.get(arg).span, &ty, arg_type);
+                    self.verify_same(self.args[arg].span, &ty, arg_type);
                 }
-                if self.arg_types.get(arg).is_none() {
+                if self.arg_types[arg].is_none() {
                     *self.arg_types.get_mut(arg) = Some(ty);
                 }
             }
@@ -544,7 +544,7 @@ impl<'a, 'b> Context<'a, 'b> {
         // of each variable because we don't want to move out of the arguments
         // passed to this function.
         for (i, e) in self.args.into_iter().enumerate() {
-            let arg_ty = match self.arg_types.get(i).as_ref() {
+            let arg_ty = match self.arg_types[i].as_ref() {
                 Some(ty) => ty,
                 None => continue // error already generated
             };
@@ -568,7 +568,7 @@ impl<'a, 'b> Context<'a, 'b> {
             let lname = self.ecx.ident_of(format!("__arg{}",
                                                   *name).as_slice());
             pats.push(self.ecx.pat_ident(e.span, lname));
-            *names.get_mut(*self.name_positions.get(name)) =
+            *names.get_mut(self.name_positions[*name]) =
                 Some(Context::format_arg(self.ecx, e.span, arg_ty,
                                          self.ecx.expr_ident(e.span, lname)));
             heads.push(self.ecx.expr_addr_of(e.span, e));
@@ -787,7 +787,7 @@ pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt, sp: Span,
             None => break
         }
     }
-    match parser.errors.shift() {
+    match parser.errors.remove(0) {
         Some(error) => {
             cx.ecx.span_err(cx.fmtsp,
                             format!("invalid format string: {}",
@@ -804,7 +804,7 @@ pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt, sp: Span,
     // Make sure that all arguments were used and all arguments have types.
     for (i, ty) in cx.arg_types.iter().enumerate() {
         if ty.is_none() {
-            cx.ecx.span_err(cx.args.get(i).span, "argument never used");
+            cx.ecx.span_err(cx.args[i].span, "argument never used");
         }
     }
     for (name, e) in cx.names.iter() {

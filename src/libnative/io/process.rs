@@ -350,8 +350,8 @@ fn spawn_process_os(cfg: ProcessConfig,
                         lpSecurityDescriptor: ptr::null_mut(),
                         bInheritHandle: 1,
                     };
-                    let filename: Vec<u16> = "NUL".utf16_units().collect();
-                    let filename = filename.append_one(0);
+                    let mut filename: Vec<u16> = "NUL".utf16_units().collect();
+                    filename.push(0);
                     *slot = libc::CreateFileW(filename.as_ptr(),
                                               access,
                                               libc::FILE_SHARE_READ |
@@ -396,7 +396,7 @@ fn spawn_process_os(cfg: ProcessConfig,
         with_envp(cfg.env, |envp| {
             with_dirp(cfg.cwd, |dirp| {
                 let mut cmd_str: Vec<u16> = cmd_str.as_slice().utf16_units().collect();
-                cmd_str = cmd_str.append_one(0);
+                cmd_str.push(0);
                 let created = CreateProcessW(ptr::null(),
                                              cmd_str.as_mut_ptr(),
                                              ptr::null_mut(),
@@ -473,7 +473,7 @@ fn make_command_line(prog: &CString, args: &[CString]) -> String {
     append_arg(&mut cmd, prog.as_str()
                              .expect("expected program name to be utf-8 encoded"));
     for arg in args.iter() {
-        cmd.push_char(' ');
+        cmd.push(' ');
         append_arg(&mut cmd, arg.as_str()
                                 .expect("expected argument to be utf-8 encoded"));
     }
@@ -485,19 +485,19 @@ fn make_command_line(prog: &CString, args: &[CString]) -> String {
         // it will be dropped entirely when parsed on the other end.
         let quote = arg.chars().any(|c| c == ' ' || c == '\t') || arg.len() == 0;
         if quote {
-            cmd.push_char('"');
+            cmd.push('"');
         }
         let argvec: Vec<char> = arg.chars().collect();
         for i in range(0u, argvec.len()) {
-            append_char_at(cmd, &argvec, i);
+            append_char_at(cmd, argvec.as_slice(), i);
         }
         if quote {
-            cmd.push_char('"');
+            cmd.push('"');
         }
     }
 
-    fn append_char_at(cmd: &mut String, arg: &Vec<char>, i: uint) {
-        match *arg.get(i) {
+    fn append_char_at(cmd: &mut String, arg: &[char], i: uint) {
+        match arg[i] {
             '"' => {
                 // Escape quotes.
                 cmd.push_str("\\\"");
@@ -508,20 +508,20 @@ fn make_command_line(prog: &CString, args: &[CString]) -> String {
                     cmd.push_str("\\\\");
                 } else {
                     // Pass other backslashes through unescaped.
-                    cmd.push_char('\\');
+                    cmd.push('\\');
                 }
             }
             c => {
-                cmd.push_char(c);
+                cmd.push(c);
             }
         }
     }
 
-    fn backslash_run_ends_in_quote(s: &Vec<char>, mut i: uint) -> bool {
-        while i < s.len() && *s.get(i) == '\\' {
+    fn backslash_run_ends_in_quote(s: &[char], mut i: uint) -> bool {
+        while i < s.len() && s[i] == '\\' {
             i += 1;
         }
-        return i < s.len() && *s.get(i) == '"';
+        return i < s.len() && s[i] == '"';
     }
 }
 
@@ -817,9 +817,8 @@ fn with_dirp<T>(d: Option<&CString>, cb: |*const u16| -> T) -> T {
       Some(dir) => {
           let dir_str = dir.as_str()
                            .expect("expected workingdirectory to be utf-8 encoded");
-          let dir_str: Vec<u16> = dir_str.utf16_units().collect();
-          let dir_str = dir_str.append_one(0);
-
+          let mut dir_str: Vec<u16> = dir_str.utf16_units().collect();
+          dir_str.push(0);
           cb(dir_str.as_ptr())
       },
       None => cb(ptr::null())

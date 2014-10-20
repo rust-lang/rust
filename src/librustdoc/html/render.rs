@@ -1147,7 +1147,7 @@ impl Context {
                         cx.layout.krate)
             } else {
                 format!("API documentation for the Rust `{}` {} in crate `{}`.",
-                        it.name.get_ref(), tyname, cx.layout.krate)
+                        it.name.as_ref().unwrap(), tyname, cx.layout.krate)
             };
             let keywords = make_item_keywords(it);
             let page = layout::Page {
@@ -1332,7 +1332,7 @@ impl<'a> fmt::Show for Item<'a> {
             }
         }
         try!(write!(fmt, "<a class='{}' href=''>{}</a>",
-                    shortty(self.item), self.item.name.get_ref().as_slice()));
+                    shortty(self.item), self.item.name.as_ref().unwrap().as_slice()));
 
         // Write stability level
         try!(write!(fmt, "<wbr>{}", Stability(&self.item.stability)));
@@ -1395,12 +1395,12 @@ impl<'a> fmt::Show for Item<'a> {
 fn item_path(item: &clean::Item) -> String {
     match item.inner {
         clean::ModuleItem(..) => {
-            format!("{}/index.html", item.name.get_ref())
+            format!("{}/index.html", item.name.as_ref().unwrap())
         }
         _ => {
             format!("{}.{}.html",
                     shortty(item).to_static_str(),
-                    *item.name.get_ref())
+                    *item.name.as_ref().unwrap())
         }
     }
 }
@@ -1560,7 +1560,7 @@ fn item_module(w: &mut fmt::Formatter, cx: &Context,
                 ConciseStability(&myitem.stability),
                 VisSpace(myitem.visibility),
                 MutableSpace(s.mutability),
-                *myitem.name.get_ref(),
+                *myitem.name.as_ref().unwrap(),
                 s.type_,
                 Initializer(s.expr.as_slice(), Item { cx: cx, item: myitem }),
                 Markdown(blank(myitem.doc_value()))));
@@ -1574,7 +1574,7 @@ fn item_module(w: &mut fmt::Formatter, cx: &Context,
                 ",
                 ConciseStability(&myitem.stability),
                 VisSpace(myitem.visibility),
-                *myitem.name.get_ref(),
+                *myitem.name.as_ref().unwrap(),
                 s.type_,
                 Initializer(s.expr.as_slice(), Item { cx: cx, item: myitem }),
                 Markdown(blank(myitem.doc_value()))));
@@ -1611,7 +1611,7 @@ fn item_module(w: &mut fmt::Formatter, cx: &Context,
                         <td class='docblock short'>{}</td>
                     </tr>
                 ",
-                *myitem.name.get_ref(),
+                *myitem.name.as_ref().unwrap(),
                 Markdown(shorter(myitem.doc_value())),
                 class = shortty(myitem),
                 href = item_path(myitem),
@@ -1630,7 +1630,7 @@ fn item_function(w: &mut fmt::Formatter, it: &clean::Item,
                     {name}{generics}{decl}{where_clause}</pre>",
            vis = VisSpace(it.visibility),
            fn_style = FnStyleSpace(f.fn_style),
-           name = it.name.get_ref().as_slice(),
+           name = it.name.as_ref().unwrap().as_slice(),
            generics = f.generics,
            where_clause = WhereClause(&f.generics),
            decl = f.decl));
@@ -1651,7 +1651,7 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
     // Output the trait definition
     try!(write!(w, "<pre class='rust trait'>{}trait {}{}{}{} ",
                   VisSpace(it.visibility),
-                  it.name.get_ref().as_slice(),
+                  it.name.as_ref().unwrap().as_slice(),
                   t.generics,
                   bounds,
                   WhereClause(&t.generics)));
@@ -1700,7 +1700,7 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
                   -> fmt::Result {
         try!(write!(w, "<h3 id='{}.{}' class='method'>{}<code>",
                     shortty(m.item()),
-                    *m.item().name.get_ref(),
+                    *m.item().name.as_ref().unwrap(),
                     ConciseStability(&m.item().stability)));
         try!(render_method(w, m.item()));
         try!(write!(w, "</code></h3>"));
@@ -1753,11 +1753,11 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
                 path = if ast_util::is_local(it.def_id) {
                     cx.current.connect("/")
                 } else {
-                    let path = cache.external_paths.get(&it.def_id);
+                    let path = &cache.external_paths[it.def_id];
                     path.slice_to(path.len() - 1).connect("/")
                 },
                 ty = shortty(it).to_static_str(),
-                name = *it.name.get_ref()));
+                name = *it.name.as_ref().unwrap()));
     Ok(())
 }
 
@@ -1772,7 +1772,7 @@ fn render_method(w: &mut fmt::Formatter, meth: &clean::Item) -> fmt::Result {
                    _ => "",
                },
                ty = shortty(it),
-               name = it.name.get_ref().as_slice(),
+               name = it.name.as_ref().unwrap().as_slice(),
                generics = *g,
                decl = Method(selfty, d),
                where_clause = WhereClause(g))
@@ -1816,7 +1816,7 @@ fn item_struct(w: &mut fmt::Formatter, it: &clean::Item,
                     try!(write!(w, "<tr><td id='structfield.{name}'>\
                                       {stab}<code>{name}</code></td><td>",
                                   stab = ConciseStability(&field.stability),
-                                  name = field.name.get_ref().as_slice()));
+                                  name = field.name.as_ref().unwrap().as_slice()));
                     try!(document(w, field));
                     try!(write!(w, "</td></tr>"));
                 }
@@ -1832,7 +1832,7 @@ fn item_enum(w: &mut fmt::Formatter, it: &clean::Item,
              e: &clean::Enum) -> fmt::Result {
     try!(write!(w, "<pre class='rust enum'>{}enum {}{}{}",
                   VisSpace(it.visibility),
-                  it.name.get_ref().as_slice(),
+                  it.name.as_ref().unwrap().as_slice(),
                   e.generics,
                   WhereClause(&e.generics)));
     if e.variants.len() == 0 && !e.variants_stripped {
@@ -1885,7 +1885,7 @@ fn item_enum(w: &mut fmt::Formatter, it: &clean::Item,
         for variant in e.variants.iter() {
             try!(write!(w, "<tr><td id='variant.{name}'>{stab}<code>{name}</code></td><td>",
                           stab = ConciseStability(&variant.stability),
-                          name = variant.name.get_ref().as_slice()));
+                          name = variant.name.as_ref().unwrap().as_slice()));
             try!(document(w, variant));
             match variant.inner {
                 clean::VariantItem(ref var) => {
@@ -1906,8 +1906,8 @@ fn item_enum(w: &mut fmt::Formatter, it: &clean::Item,
                                 try!(write!(w, "<tr><td \
                                                   id='variant.{v}.field.{f}'>\
                                                   <code>{f}</code></td><td>",
-                                              v = variant.name.get_ref().as_slice(),
-                                              f = field.name.get_ref().as_slice()));
+                                              v = variant.name.as_ref().unwrap().as_slice(),
+                                              f = field.name.as_ref().unwrap().as_slice()));
                                 try!(document(w, field));
                                 try!(write!(w, "</td></tr>"));
                             }
@@ -1936,7 +1936,7 @@ fn render_struct(w: &mut fmt::Formatter, it: &clean::Item,
     try!(write!(w, "{}{}{}",
                   VisSpace(it.visibility),
                   if structhead {"struct "} else {""},
-                  it.name.get_ref().as_slice()));
+                  it.name.as_ref().unwrap().as_slice()));
     match g {
         Some(g) => try!(write!(w, "{}{}", *g, WhereClause(g))),
         None => {}
@@ -1953,7 +1953,7 @@ fn render_struct(w: &mut fmt::Formatter, it: &clean::Item,
                     clean::StructFieldItem(clean::TypedStructField(ref ty)) => {
                         try!(write!(w, "    {}{}: {},\n{}",
                                       VisSpace(field.visibility),
-                                      field.name.get_ref().as_slice(),
+                                      field.name.as_ref().unwrap().as_slice(),
                                       *ty,
                                       tab));
                     }
@@ -2042,7 +2042,7 @@ fn render_impl(w: &mut fmt::Formatter, i: &Impl) -> fmt::Result {
     fn doctraititem(w: &mut fmt::Formatter, item: &clean::Item, dox: bool)
                     -> fmt::Result {
         try!(write!(w, "<h4 id='method.{}' class='method'>{}<code>",
-                    *item.name.get_ref(),
+                    *item.name.as_ref().unwrap(),
                     ConciseStability(&item.stability)));
         try!(render_method(w, item));
         try!(write!(w, "</code></h4>\n"));
@@ -2096,7 +2096,7 @@ fn render_impl(w: &mut fmt::Formatter, i: &Impl) -> fmt::Result {
 fn item_typedef(w: &mut fmt::Formatter, it: &clean::Item,
                 t: &clean::Typedef) -> fmt::Result {
     try!(write!(w, "<pre class='rust typedef'>type {}{} = {};</pre>",
-                  it.name.get_ref().as_slice(),
+                  it.name.as_ref().unwrap().as_slice(),
                   t.generics,
                   t.type_));
 
@@ -2231,5 +2231,5 @@ fn get_basic_keywords() -> &'static str {
 }
 
 fn make_item_keywords(it: &clean::Item) -> String {
-    format!("{}, {}", get_basic_keywords(), it.name.get_ref())
+    format!("{}, {}", get_basic_keywords(), it.name.as_ref().unwrap())
 }

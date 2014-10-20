@@ -311,7 +311,7 @@ pub fn const_expr(cx: &CrateContext, e: &ast::Expr) -> (ValueRef, ty::t) {
 fn const_expr_unadjusted(cx: &CrateContext, e: &ast::Expr) -> ValueRef {
     let map_list = |exprs: &[P<ast::Expr>]| {
         exprs.iter().map(|e| const_expr(cx, &**e).val0())
-             .fold(Vec::new(), |l, val| l.append_one(val))
+             .fold(Vec::new(), |mut l, val| { l.push(val); l })
     };
     unsafe {
         let _icx = push_ctxt("const_expr");

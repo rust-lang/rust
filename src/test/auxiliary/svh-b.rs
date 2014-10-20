@@ -16,7 +16,7 @@
 //! the change could affect the downstream crate content or not
 //! (#14132).
 
-#![crate_id = "b"]
+#![crate_name = "b"]
 
 extern crate a;
 

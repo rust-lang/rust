@@ -18,7 +18,7 @@ impl<A> vec_monad<A> for Vec<A> {
     fn bind<B>(&self, f: |&A| -> Vec<B> ) -> Vec<B> {
         let mut r = Vec::new();
         for elt in self.iter() {
-            r.push_all_move(f(elt));
+            r.extend(f(elt).into_iter());
         }
         r
     }

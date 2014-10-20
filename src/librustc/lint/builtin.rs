@@ -883,7 +883,7 @@ impl NonSnakeCase {
                         buf = String::new();
                     }
                     last_upper = ch.is_uppercase();
-                    buf.push_char(ch.to_lowercase());
+                    buf.push(ch.to_lowercase());
                 }
                 words.push(buf);
             }
@@ -1062,7 +1062,7 @@ impl UnusedParens {
 
                 ast::ExprMethodCall(_, _, ref exprs) => {
                     // X { y: 1 }.bar(...)
-                    contains_exterior_struct_lit(&**exprs.get(0))
+                    contains_exterior_struct_lit(&*exprs[0])
                 }
 
                 _ => false
@@ -1220,7 +1220,7 @@ impl UnusedMut {
         let used_mutables = cx.tcx.used_mut_nodes.borrow();
         for (_, v) in mutables.iter() {
             if !v.iter().any(|e| used_mutables.contains(e)) {
-                cx.span_lint(UNUSED_MUT, cx.tcx.map.span(*v.get(0)),
+                cx.span_lint(UNUSED_MUT, cx.tcx.map.span(v[0]),
                              "variable does not need to be mutable");
             }
         }

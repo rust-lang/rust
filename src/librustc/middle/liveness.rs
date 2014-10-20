@@ -327,11 +327,11 @@ impl<'a, 'tcx> IrMaps<'a, 'tcx> {
     }
 
     fn variable_name(&self, var: Variable) -> String {
-        match self.var_kinds.get(var.get()) {
-            &Local(LocalInfo { ident: nm, .. }) | &Arg(_, nm) => {
+        match self.var_kinds[var.get()] {
+            Local(LocalInfo { ident: nm, .. }) | Arg(_, nm) => {
                 token::get_ident(nm).get().to_string()
             },
-            &ImplicitRet => "<implicit-ret>".to_string()
+            ImplicitRet => "<implicit-ret>".to_string()
         }
     }
 
@@ -340,7 +340,7 @@ impl<'a, 'tcx> IrMaps<'a, 'tcx> {
     }
 
     fn lnk(&self, ln: LiveNode) -> LiveNodeKind {
-        *self.lnks.get(ln.get())
+        self.lnks[ln.get()]
     }
 }
 
@@ -647,7 +647,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
     fn live_on_entry(&self, ln: LiveNode, var: Variable)
                       -> Option<LiveNodeKind> {
         assert!(ln.is_valid());
-        let reader = self.users.get(self.idx(ln, var)).reader;
+        let reader = self.users[self.idx(ln, var)].reader;
         if reader.is_valid() {Some(self.ir.lnk(reader))} else {None}
     }
 
@@ -656,25 +656,25 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
     */
     fn live_on_exit(&self, ln: LiveNode, var: Variable)
                     -> Option<LiveNodeKind> {
-        let successor = *self.successors.get(ln.get());
+        let successor = self.successors[ln.get()];
         self.live_on_entry(successor, var)
     }
 
     fn used_on_entry(&self, ln: LiveNode, var: Variable) -> bool {
         assert!(ln.is_valid());
-        self.users.get(self.idx(ln, var)).used
+        self.users[self.idx(ln, var)].used
     }
 
     fn assigned_on_entry(&self, ln: LiveNode, var: Variable)
                          -> Option<LiveNodeKind> {
         assert!(ln.is_valid());
-        let writer = self.users.get(self.idx(ln, var)).writer;
+        let writer = self.users[self.idx(ln, var)].writer;
         if writer.is_valid() {Some(self.ir.lnk(writer))} else {None}
     }
 
     fn assigned_on_exit(&self, ln: LiveNode, var: Variable)
                         -> Option<LiveNodeKind> {
-        let successor = *self.successors.get(ln.get());
+        let successor = self.successors[ln.get()];
         self.assigned_on_entry(successor, var)
     }
 
@@ -736,10 +736,10 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         {
             let wr = &mut wr as &mut io::Writer;
             write!(wr, "[ln({}) of kind {} reads", ln.get(), self.ir.lnk(ln));
-            self.write_vars(wr, ln, |idx| self.users.get(idx).reader);
+            self.write_vars(wr, ln, |idx| self.users[idx].reader);
             write!(wr, "  writes");
-            self.write_vars(wr, ln, |idx| self.users.get(idx).writer);
-            write!(wr, "  precedes {}]", self.successors.get(ln.get()).to_string());
+            self.write_vars(wr, ln, |idx| self.users[idx].writer);
+            write!(wr, "  precedes {}]", self.successors[ln.get()].to_string());
         }
         str::from_utf8(wr.unwrap().as_slice()).unwrap().to_string()
     }
@@ -762,7 +762,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         *self.successors.get_mut(ln.get()) = succ_ln;
 
         self.indices2(ln, succ_ln, |this, idx, succ_idx| {
-            *this.users.get_mut(idx) = *this.users.get(succ_idx)
+            *this.users.get_mut(idx) = this.users[succ_idx]
         });
         debug!("init_from_succ(ln={}, succ={})",
                self.ln_str(ln), self.ln_str(succ_ln));
@@ -777,11 +777,11 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 
         let mut changed = false;
         self.indices2(ln, succ_ln, |this, idx, succ_idx| {
-            changed |= copy_if_invalid(this.users.get(succ_idx).reader,
+            changed |= copy_if_invalid(this.users[succ_idx].reader,
                                        &mut this.users.get_mut(idx).reader);
-            changed |= copy_if_invalid(this.users.get(succ_idx).writer,
+            changed |= copy_if_invalid(this.users[succ_idx].writer,
                                        &mut this.users.get_mut(idx).writer);
-            if this.users.get(succ_idx).used && !this.users.get(idx).used {
+            if this.users[succ_idx].used && !this.users[idx].used {
                 this.users.get_mut(idx).used = true;
                 changed = true;
             }

@@ -42,7 +42,7 @@ fn get_v2(a: &A, i: uint) -> &int {
 
 fn get_v3(a: &A, i: uint) -> &int {
     let foo = &a.value;
-    foo.v3.get(i)
+    &foo.v3[i]
 }
 
 fn get_v4(a: &A, _i: uint) -> &int {
@@ -97,7 +97,7 @@ pub fn main() {
     assert_eq!(*p, a.value.v2[1]);
 
     let p = get_v3(&a, 1);
-    assert_eq!(*p, *a.value.v3.get(1));
+    assert_eq!(*p, a.value.v3[1]);
 
     let p = get_v4(&a, 1);
     assert_eq!(*p, a.value.v4.f);

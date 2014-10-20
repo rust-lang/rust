@@ -82,34 +82,13 @@ pub fn to_str_bytes<U>(n: $T, radix: uint, f: |v: &[u8]| -> U) -> U {
     f(buf[..amt])
 }
 
-#[deprecated = "use fmt::radix"]
-impl ToStrRadix for $T {
-    /// Convert to a string in a given base.
-    #[inline]
-    fn to_str_radix(&self, radix: uint) -> String {
-        format!("{}", ::fmt::radix(*self, radix as u8))
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use prelude::*;
     use super::*;
 
-    use num::ToStrRadix;
     use str::StrSlice;
     use u16;
-
-    #[test]
-    pub fn test_to_string() {
-        assert_eq!((0 as $T).to_str_radix(10u), "0".to_string());
-        assert_eq!((1 as $T).to_str_radix(10u), "1".to_string());
-        assert_eq!((2 as $T).to_str_radix(10u), "2".to_string());
-        assert_eq!((11 as $T).to_str_radix(10u), "11".to_string());
-        assert_eq!((11 as $T).to_str_radix(16u), "b".to_string());
-        assert_eq!((255 as $T).to_str_radix(16u), "ff".to_string());
-        assert_eq!((0xff as $T).to_str_radix(10u), "255".to_string());
-    }
 
     #[test]
     pub fn test_from_str() {
@@ -198,18 +177,6 @@ mod tests {
         u64_val += 1 as u64;
         assert_eq!(from_str::<u64>("0"), Some(u64_val));
         assert!(from_str::<u64>("-1").is_none());
-    }
-
-    #[test]
-    #[should_fail]
-    pub fn to_str_radix1() {
-        100u.to_str_radix(1u);
-    }
-
-    #[test]
-    #[should_fail]
-    pub fn to_str_radix37() {
-        100u.to_str_radix(37u);
     }
 }
 

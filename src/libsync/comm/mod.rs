@@ -333,7 +333,6 @@ use rustrt::local::Local;
 use rustrt::task::{Task, BlockedTask};
 
 pub use comm::select::{Select, Handle};
-pub use comm::duplex::{DuplexStream, duplex};
 
 macro_rules! test (
     { fn $name:ident() $b:block $(#[$a:meta])*} => (
@@ -354,14 +353,13 @@ macro_rules! test (
             $(#[$a])* #[test] fn native() {
                 use native;
                 let (tx, rx) = channel();
-                native::task::spawn(proc() { tx.send(f()) });
+                spawn(proc() { tx.send(f()) });
                 rx.recv();
             }
         }
     )
 )
 
-mod duplex;
 mod oneshot;
 mod select;
 mod shared;
@@ -1064,7 +1062,6 @@ impl<T: Send> Drop for Receiver<T> {
 mod test {
     use std::prelude::*;
 
-    use native;
     use std::os;
     use super::*;
 
@@ -1224,7 +1221,7 @@ mod test {
             tx3.send(());
         });
         rx1.recv();
-        native::task::spawn(proc() {
+        spawn(proc() {
             for _ in range(0i, 40) {
                 tx2.send(1);
             }
@@ -1238,7 +1235,7 @@ mod test {
     fn recv_from_outside_runtime() {
         let (tx, rx) = channel::<int>();
         let (dtx, drx) = channel();
-        native::task::spawn(proc() {
+        spawn(proc() {
             for _ in range(0i, 40) {
                 assert_eq!(rx.recv(), 1);
             }
@@ -1256,12 +1253,12 @@ mod test {
         let (tx2, rx2) = channel::<int>();
         let (tx3, rx3) = channel::<()>();
         let tx4 = tx3.clone();
-        native::task::spawn(proc() {
+        spawn(proc() {
             assert_eq!(rx1.recv(), 1);
             tx2.send(2);
             tx4.send(());
         });
-        native::task::spawn(proc() {
+        spawn(proc() {
             tx1.send(1);
             assert_eq!(rx2.recv(), 2);
             tx3.send(());

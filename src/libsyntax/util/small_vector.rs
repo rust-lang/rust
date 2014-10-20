@@ -98,7 +98,7 @@ impl<T> SmallVector<T> {
     pub fn get<'a>(&'a self, idx: uint) -> &'a T {
         match self.repr {
             One(ref v) if idx == 0 => v,
-            Many(ref vs) => vs.get(idx),
+            Many(ref vs) => &vs[idx],
             _ => fail!("out of bounds access")
         }
     }

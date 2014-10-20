@@ -110,7 +110,7 @@ impl<'cx, 'tcx> Iterator<Rc<ty::TraitRef>> for Supertraits<'cx, 'tcx> {
     fn next(&mut self) -> Option<Rc<ty::TraitRef>> {
         loop {
             // Extract next item from top-most stack frame, if any.
-            let next_trait = match self.stack.mut_last() {
+            let next_trait = match self.stack.last_mut() {
                 None => {
                     // No more stack frames. Done.
                     return None;
@@ -121,8 +121,7 @@ impl<'cx, 'tcx> Iterator<Rc<ty::TraitRef>> for Supertraits<'cx, 'tcx> {
                         // Still more supertraits left in the top stack frame.
                         entry.position += 1;
 
-                        let next_trait =
-                            (*entry.supertraits.get(p)).clone();
+                        let next_trait = entry.supertraits[p].clone();
                         Some(next_trait)
                     } else {
                         None

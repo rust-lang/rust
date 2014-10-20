@@ -825,11 +825,11 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                 self.append_autoderefd_loan_path_to_string(&**lp_base, out);
                 match fname {
                     mc::NamedField(fname) => {
-                        out.push_char('.');
+                        out.push('.');
                         out.push_str(token::get_name(fname).get());
                     }
                     mc::PositionalField(idx) => {
-                        out.push_char('.');
+                        out.push('.');
                         out.push_str(idx.to_string().as_slice());
                     }
                 }
@@ -841,7 +841,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
             }
 
             LpExtend(ref lp_base, _, LpDeref(_)) => {
-                out.push_char('*');
+                out.push('*');
                 self.append_loan_path_to_string(&**lp_base, out);
             }
         }

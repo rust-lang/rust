@@ -500,7 +500,7 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
           }
 
           ast::ExprPath(_) => {
-            let def = *self.tcx().def_map.borrow().get(&expr.id);
+            let def = (*self.tcx().def_map.borrow())[expr.id];
             self.cat_def(expr.id, expr.span, expr_ty, def)
           }
 
@@ -597,7 +597,7 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
                   }
                   ty::ty_unboxed_closure(closure_id, _) => {
                       let unboxed_closures = self.typer.unboxed_closures().borrow();
-                      let kind = unboxed_closures.get(&closure_id).kind;
+                      let kind = (*unboxed_closures)[closure_id].kind;
                       let mode = self.typer.capture_mode(fn_node_id);
                       self.cat_upvar(id, span, var_id, fn_node_id, kind, mode, true)
                   }
@@ -953,7 +953,7 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
             Some(method_ty) => {
                 let ref_ty = ty::ty_fn_ret(method_ty);
                 base_cmt = self.cat_rvalue_node(elt.id(), elt.span(), ref_ty);
-                *ty::ty_fn_args(method_ty).get(0)
+                ty::ty_fn_args(method_ty)[0]
             }
             None => {
                 match ty::array_element_ty(base_cmt.ty) {

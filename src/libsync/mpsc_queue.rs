@@ -161,7 +161,6 @@ mod tests {
 
     use alloc::arc::Arc;
 
-    use native;
     use super::{Queue, Data, Empty, Inconsistent};
 
     #[test]
@@ -186,7 +185,7 @@ mod tests {
         for _ in range(0, nthreads) {
             let tx = tx.clone();
             let q = q.clone();
-            native::task::spawn(proc() {
+            spawn(proc() {
                 for i in range(0, nmsgs) {
                     q.push(i);
                 }

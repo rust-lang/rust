@@ -33,8 +33,8 @@ fn random_char() -> char {
 
 fn main() {
     let args = os::args();
-    let rustc = args.get(1).as_slice();
-    let tmpdir = Path::new(args.get(2).as_slice());
+    let rustc = args[1].as_slice();
+    let tmpdir = Path::new(args[2].as_slice());
     let main_file = tmpdir.join("span_main.rs");
 
     for _ in range(0u, 100) {

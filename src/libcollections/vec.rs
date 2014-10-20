@@ -275,19 +275,6 @@ impl<T> Vec<T> {
 }
 
 impl<T: Clone> Vec<T> {
-    /// Deprecated, call `extend` instead.
-    #[inline]
-    #[deprecated = "this function has been deprecated in favor of extend()"]
-    pub fn append(mut self, second: &[T]) -> Vec<T> {
-        self.push_all(second);
-        self
-    }
-
-    /// Deprecated, call `to_vec()` instead
-    #[inline]
-    #[deprecated = "this function has been deprecated in favor of to_vec()"]
-    pub fn from_slice(values: &[T]) -> Vec<T> { values.to_vec() }
-
     /// Constructs a `Vec` with copies of a value.
     ///
     /// Creates a `Vec` with `length` copies of `value`.
@@ -366,31 +353,6 @@ impl<T: Clone> Vec<T> {
         }
     }
 
-    /// Sets the value of a vector element at a given index, growing the vector
-    /// as needed.
-    ///
-    /// Sets the element at position `index` to `value`. If `index` is past the
-    /// end of the vector, expands the vector by replicating `initval` to fill
-    /// the intervening space.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// # #![allow(deprecated)]
-    /// let mut vec = vec!["a", "b", "c"];
-    /// vec.grow_set(1, &("fill"), "d");
-    /// vec.grow_set(4, &("fill"), "e");
-    /// assert_eq!(vec, vec!["a", "d", "c", "fill", "e"]);
-    /// ```
-    #[deprecated = "call .grow() and .push() manually instead"]
-    pub fn grow_set(&mut self, index: uint, initval: &T, value: T) {
-        let l = self.len();
-        if index >= l {
-            self.grow(index - l + 1u, initval.clone());
-        }
-        *self.get_mut(index) = value;
-    }
-
     /// Partitions a vector based on a predicate.
     ///
     /// Clones the elements of the vector, partitioning them into two `Vec`s
@@ -447,9 +409,8 @@ impl<T:Clone> Clone for Vec<T> {
 #[experimental = "waiting on Index stability"]
 impl<T> Index<uint,T> for Vec<T> {
     #[inline]
-    #[allow(deprecated)] // allow use of get
     fn index<'a>(&'a self, index: &uint) -> &'a T {
-        self.get(*index)
+        &self.as_slice()[*index]
     }
 }
 
@@ -721,14 +682,6 @@ impl<T> Vec<T> {
         }
     }
 
-    /// Deprecated, call `push` instead
-    #[inline]
-    #[deprecated = "call .push() instead"]
-    pub fn append_one(mut self, x: T) -> Vec<T> {
-        self.push(x);
-        self
-    }
-
     /// Shorten a vector, dropping excess elements.
     ///
     /// If `len` is greater than the vector's current length, this has no
@@ -754,6 +707,14 @@ impl<T> Vec<T> {
         }
     }
 
+    /// Deprecated, use `.extend(other.into_iter())`
+    #[inline]
+    #[deprecated = "use .extend(other.into_iter())"]
+    #[cfg(stage0)]
+    pub fn push_all_move(&mut self, other: Vec<T>) {
+            self.extend(other.into_iter());
+    }
+
     /// Returns a mutable slice of the elements of `self`.
     ///
     /// # Example
@@ -773,12 +734,6 @@ impl<T> Vec<T> {
                 len: self.len,
             })
         }
-    }
-
-    /// Deprecated: use `into_iter`.
-    #[deprecated = "use into_iter"]
-    pub fn move_iter(self) -> MoveItems<T> {
-        self.into_iter()
     }
 
     /// Creates a consuming iterator, that is, one that moves each
@@ -830,26 +785,6 @@ impl<T> Vec<T> {
         self.len = len;
     }
 
-    /// Returns a reference to the value at index `index`.
-    ///
-    /// # Failure
-    ///
-    /// Fails if `index` is out of bounds
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// #![allow(deprecated)]
-    ///
-    /// let vec = vec![1i, 2, 3];
-    /// assert!(vec.get(1) == &2);
-    /// ```
-    #[deprecated="prefer using indexing, e.g., vec[0]"]
-    #[inline]
-    pub fn get<'a>(&'a self, index: uint) -> &'a T {
-        &self.as_slice()[index]
-    }
-
     /// Returns a mutable reference to the value at index `index`.
     ///
     /// # Failure
@@ -883,12 +818,6 @@ impl<T> Vec<T> {
     #[inline]
     pub fn iter<'a>(&'a self) -> Items<'a,T> {
         self.as_slice().iter()
-    }
-
-    /// Deprecated: use `iter_mut`.
-    #[deprecated = "use iter_mut"]
-    pub fn mut_iter<'a>(&'a mut self) -> MutItems<'a,T> {
-        self.iter_mut()
     }
 
     /// Returns an iterator over mutable references to the elements of the
@@ -963,25 +892,6 @@ impl<T> Vec<T> {
         self[].tail()
     }
 
-    /// Returns all but the first `n' elements of a vector.
-    ///
-    /// # Failure
-    ///
-    /// Fails when there are fewer than `n` elements in the vector.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// #![allow(deprecated)]
-    /// let vec = vec![1i, 2, 3, 4];
-    /// assert!(vec.tailn(2) == [3, 4]);
-    /// ```
-    #[inline]
-    #[deprecated = "use slice_from"]
-    pub fn tailn<'a>(&'a self, n: uint) -> &'a [T] {
-        self[n..]
-    }
-
     /// Returns a reference to the last element of a vector, or `None` if it is
     /// empty.
     ///
@@ -994,12 +904,6 @@ impl<T> Vec<T> {
     #[inline]
     pub fn last<'a>(&'a self) -> Option<&'a T> {
         self[].last()
-    }
-
-    /// Deprecated: use `last_mut`.
-    #[deprecated = "use last_mut"]
-    pub fn mut_last<'a>(&'a mut self) -> Option<&'a mut T> {
-        self.last_mut()
     }
 
     /// Returns a mutable reference to the last element of a vector, or `None`
@@ -1045,48 +949,6 @@ impl<T> Vec<T> {
             return None
         }
         self.pop()
-    }
-
-    /// Prepends an element to the vector.
-    ///
-    /// # Warning
-    ///
-    /// This is an O(n) operation as it requires copying every element in the
-    /// vector.
-    ///
-    /// # Example
-    ///
-    /// ```ignore
-    /// let mut vec = vec![1i, 2, 3];
-    /// vec.unshift(4);
-    /// assert_eq!(vec, vec![4, 1, 2, 3]);
-    /// ```
-    #[inline]
-    #[deprecated = "use insert(0, ...)"]
-    pub fn unshift(&mut self, element: T) {
-        self.insert(0, element)
-    }
-
-    /// Removes the first element from a vector and returns it, or `None` if
-    /// the vector is empty.
-    ///
-    /// # Warning
-    ///
-    /// This is an O(n) operation as it requires copying every element in the
-    /// vector.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// #![allow(deprecated)]
-    /// let mut vec = vec![1i, 2, 3];
-    /// assert!(vec.shift() == Some(1));
-    /// assert_eq!(vec, vec![2, 3]);
-    /// ```
-    #[inline]
-    #[deprecated = "use remove(0)"]
-    pub fn shift(&mut self) -> Option<T> {
-        self.remove(0)
     }
 
     /// Inserts an element at position `index` within the vector, shifting all
@@ -1167,32 +1029,6 @@ impl<T> Vec<T> {
         }
     }
 
-    /// Takes ownership of the vector `other`, moving all elements into
-    /// the current vector. This does not copy any elements, and it is
-    /// illegal to use the `other` vector after calling this method
-    /// (because it is moved here).
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// # #![allow(deprecated)]
-    /// let mut vec = vec![box 1i];
-    /// vec.push_all_move(vec![box 2, box 3, box 4]);
-    /// assert_eq!(vec, vec![box 1, box 2, box 3, box 4]);
-    /// ```
-    #[inline]
-    #[deprecated = "use .extend(other.into_iter())"]
-    pub fn push_all_move(&mut self, other: Vec<T>) {
-        self.extend(other.into_iter());
-    }
-
-    /// Deprecated: use `slice_mut`.
-    #[deprecated = "use slice_mut"]
-    pub fn mut_slice<'a>(&'a mut self, start: uint, end: uint)
-                         -> &'a mut [T] {
-        self[mut start..end]
-    }
-
     /// Returns a mutable slice of `self` between `start` and `end`.
     ///
     /// # Failure
@@ -1212,12 +1048,6 @@ impl<T> Vec<T> {
         self[mut start..end]
     }
 
-    /// Deprecated: use "slice_from_mut".
-    #[deprecated = "use slice_from_mut"]
-    pub fn mut_slice_from<'a>(&'a mut self, start: uint) -> &'a mut [T] {
-        self[mut start..]
-    }
-
     /// Returns a mutable slice of `self` from `start` to the end of the `Vec`.
     ///
     /// # Failure
@@ -1235,12 +1065,6 @@ impl<T> Vec<T> {
         self[mut start..]
     }
 
-    /// Deprecated: use `slice_to_mut`.
-    #[deprecated = "use slice_to_mut"]
-    pub fn mut_slice_to<'a>(&'a mut self, end: uint) -> &'a mut [T] {
-        self[mut ..end]
-    }
-
     /// Returns a mutable slice of `self` from the start of the `Vec` to `end`.
     ///
     /// # Failure
@@ -1256,12 +1080,6 @@ impl<T> Vec<T> {
     #[inline]
     pub fn slice_to_mut<'a>(&'a mut self, end: uint) -> &'a mut [T] {
         self[mut ..end]
-    }
-
-    /// Deprecated: use `split_at_mut`.
-    #[deprecated = "use split_at_mut"]
-    pub fn mut_split_at<'a>(&'a mut self, mid: uint) -> (&'a mut [T], &'a mut [T]) {
-        self.split_at_mut(mid)
     }
 
     /// Returns a pair of mutable slices that divides the `Vec` at an index.

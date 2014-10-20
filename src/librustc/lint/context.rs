@@ -141,7 +141,7 @@ impl LintStore {
                 self.levels.insert(id, (lint.default_level, Default));
             }
         }
-        self.passes.get_mut_ref().push(pass);
+        self.passes.as_mut().unwrap().push(pass);
     }
 
     pub fn register_group(&mut self, sess: Option<&Session>,

@@ -699,8 +699,12 @@ struct NodeCollector<'ast> {
 
 impl<'ast> NodeCollector<'ast> {
     fn insert_entry(&mut self, id: NodeId, entry: MapEntry<'ast>) {
-        self.map.grow_set(id as uint, &NotPresent, entry);
         debug!("ast_map: {} => {}", id, entry);
+        let len = self.map.len();
+        if id as uint >= len {
+            self.map.grow(id as uint - len + 1, NotPresent);
+        }
+        *self.map.get_mut(id as uint) = entry;
     }
 
     fn insert(&mut self, id: NodeId, node: Node<'ast>) {

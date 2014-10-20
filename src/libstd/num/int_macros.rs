@@ -51,52 +51,12 @@ impl FromStrRadix for $T {
     }
 }
 
-// String conversion functions and impl num -> str
-
-/// Convert to a string as a byte slice in a given base.
-///
-/// Use in place of x.to_string() when you do not need to store the string permanently
-///
-/// # Examples
-///
-/// ```
-/// #![allow(deprecated)]
-///
-/// std::int::to_str_bytes(123, 10, |v| {
-///     assert!(v == "123".as_bytes());
-/// });
-/// ```
-#[inline]
-#[deprecated = "just use .to_string(), or a BufWriter with write! if you mustn't allocate"]
-pub fn to_str_bytes<U>(n: $T, radix: uint, f: |v: &[u8]| -> U) -> U {
-    use io::{Writer, Seek};
-    // The radix can be as low as 2, so we need at least 64 characters for a
-    // base 2 number, and then we need another for a possible '-' character.
-    let mut buf = [0u8, ..65];
-    let amt = {
-        let mut wr = ::io::BufWriter::new(buf);
-        (write!(&mut wr, "{}", ::fmt::radix(n, radix as u8))).unwrap();
-        wr.tell().unwrap() as uint
-    };
-    f(buf[..amt])
-}
-
-#[deprecated = "use fmt::radix"]
-impl ToStrRadix for $T {
-    /// Convert to a string in a given base.
-    #[inline]
-    fn to_str_radix(&self, radix: uint) -> String {
-        format!("{}", ::fmt::radix(*self, radix as u8))
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use prelude::*;
     use super::*;
 
     use i32;
-    use num::ToStrRadix;
     use str::StrSlice;
 
     #[test]
@@ -140,16 +100,6 @@ mod tests {
 
         assert!(parse_bytes("Z".as_bytes(), 35u).is_none());
         assert!(parse_bytes("-9".as_bytes(), 2u).is_none());
-    }
-
-    #[test]
-    fn test_to_string() {
-        assert_eq!((0 as $T).to_str_radix(10u), "0".to_string());
-        assert_eq!((1 as $T).to_str_radix(10u), "1".to_string());
-        assert_eq!((-1 as $T).to_str_radix(10u), "-1".to_string());
-        assert_eq!((127 as $T).to_str_radix(16u), "7f".to_string());
-        assert_eq!((100 as $T).to_str_radix(10u), "100".to_string());
-
     }
 
     #[test]

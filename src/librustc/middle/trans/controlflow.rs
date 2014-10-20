@@ -291,10 +291,9 @@ pub fn trans_for<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
 
     // Set up the method call (to `.next()`).
     let method_call = MethodCall::expr(loop_info.id);
-    let method_type = loopback_bcx_in.tcx()
+    let method_type = (*loopback_bcx_in.tcx()
                                      .method_map
-                                     .borrow()
-                                     .get(&method_call)
+                                     .borrow())[method_call]
                                      .ty;
     let method_type = monomorphize_type(loopback_bcx_in, method_type);
     let method_result_type = ty::ty_fn_ret(method_type);

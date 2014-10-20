@@ -2042,7 +2042,7 @@ pub fn simd_type(cx: &ctxt, ty: t) -> t {
     match get(ty).sty {
         ty_struct(did, ref substs) => {
             let fields = lookup_struct_fields(cx, did);
-            lookup_field_type(cx, did, fields.get(0).id, substs)
+            lookup_field_type(cx, did, fields[0].id, substs)
         }
         _ => fail!("simd_type called on invalid type")
     }
@@ -2501,12 +2501,12 @@ pub fn type_contents(cx: &ctxt, ty: t) -> TypeContents {
                             if variants.len() == 2 {
                                 let mut data_idx = 0;
 
-                                if variants.get(0).args.len() == 0 {
+                                if variants[0].args.len() == 0 {
                                     data_idx = 1;
                                 }
 
-                                if variants.get(data_idx).args.len() == 1 {
-                                    match get(*variants.get(data_idx).args.get(0)).sty {
+                                if variants[data_idx].args.len() == 1 {
+                                    match get(variants[data_idx].args[0]).sty {
                                         ty_bare_fn(..) => { res = res - TC::ReachesFfiUnsafe; }
                                         _ => { }
                                     }
@@ -2530,7 +2530,7 @@ pub fn type_contents(cx: &ctxt, ty: t) -> TypeContents {
                 assert_eq!(p.def_id.krate, ast::LOCAL_CRATE);
 
                 let ty_param_defs = cx.ty_param_defs.borrow();
-                let tp_def = ty_param_defs.get(&p.def_id.node);
+                let tp_def = &(*ty_param_defs)[p.def_id.node];
                 kind_bounds_to_contents(
                     cx,
                     tp_def.bounds.builtin_bounds,
@@ -4032,8 +4032,7 @@ fn lookup_locally_or_in_crate_store<V:Clone>(
 
 pub fn trait_item(cx: &ctxt, trait_did: ast::DefId, idx: uint)
                   -> ImplOrTraitItem {
-    let method_def_id = ty::trait_item_def_ids(cx, trait_did).get(idx)
-                                                             .def_id();
+    let method_def_id = (*ty::trait_item_def_ids(cx, trait_did))[idx].def_id();
     impl_or_trait_item(cx, method_def_id)
 }
 

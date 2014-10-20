@@ -134,7 +134,6 @@ extern crate rustrt;
 #[cfg(test)] pub use realstd::kinds;
 #[cfg(test)] pub use realstd::ops;
 #[cfg(test)] pub use realstd::cmp;
-#[cfg(test)] pub use realstd::ty;
 #[cfg(test)] pub use realstd::boxed;
 
 
@@ -159,13 +158,10 @@ pub use core::tuple;
 // FIXME #15320: primitive documentation needs top-level modules, this
 // should be `std::tuple::unit`.
 pub use core::unit;
-#[cfg(not(test))] pub use core::ty;
 pub use core::result;
 pub use core::option;
 
 pub use alloc::boxed;
-#[deprecated = "use boxed instead"]
-pub use boxed as owned;
 
 pub use alloc::rc;
 

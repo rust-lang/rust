@@ -30,7 +30,7 @@ fn f20() {
 
 fn f21() {
     let x = vec!(1i, 2, 3);
-    let _y = (*x.get(0), 3i);
+    let _y = (x[0], 3i);
     touch(&x);
 }
 
@@ -96,8 +96,8 @@ fn f110() {
 fn f120() {
     let mut x = vec!("hi".to_string(), "ho".to_string());
     x.as_mut_slice().swap(0, 1);
-    touch(x.get(0));
-    touch(x.get(1));
+    touch(&x[0]);
+    touch(&x[1]);
 }
 
 fn main() {}

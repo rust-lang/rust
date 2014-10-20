@@ -43,7 +43,7 @@ static BUG_REPORT_URL: &'static str =
     "http://doc.rust-lang.org/complement-bugreport.html";
 
 fn run_compiler(args: &[String]) {
-    let matches = match handle_options(Vec::from_slice(args)) {
+    let matches = match handle_options(args.to_vec()) {
         Some(matches) => matches,
         None => return
     };
@@ -76,7 +76,7 @@ fn run_compiler(args: &[String]) {
             early_error("no input filename given");
         }
         1u => {
-            let ifile = matches.free.get(0).as_slice();
+            let ifile = matches.free[0].as_slice();
             if ifile == "-" {
                 let contents = io::stdin().read_to_end().unwrap();
                 let src = String::from_utf8(contents).unwrap();
@@ -216,7 +216,9 @@ Available lint options:
         .map(|&s| s.name.width(true))
         .max().unwrap_or(0);
     let padded = |x: &str| {
-        " ".repeat(max_name_len - x.char_len()).append(x)
+        let mut s = " ".repeat(max_name_len - x.char_len());
+        s.push_str(x);
+        s
     };
 
     println!("Lint checks provided by rustc:\n");
@@ -240,7 +242,9 @@ Available lint options:
         .map(|&(s, _)| s.width(true))
         .max().unwrap_or(0);
     let padded = |x: &str| {
-        " ".repeat(max_name_len - x.char_len()).append(x)
+        let mut s = " ".repeat(max_name_len - x.char_len());
+        s.push_str(x);
+        s
     };
 
     println!("Lint groups provided by rustc:\n");
@@ -313,7 +317,7 @@ fn describe_codegen_flags() {
 /// returns None.
 pub fn handle_options(mut args: Vec<String>) -> Option<getopts::Matches> {
     // Throw away the first argument, the name of the binary
-    let _binary = args.shift().unwrap();
+    let _binary = args.remove(0).unwrap();
 
     if args.is_empty() {
         usage();

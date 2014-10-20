@@ -361,12 +361,6 @@ impl<K: Ord, V> TreeMap<K, V> {
         RevEntries{iter: self.iter()}
     }
 
-    /// Deprecated: use `iter_mut`.
-    #[deprecated = "use iter_mut"]
-    pub fn mut_iter<'a>(&'a mut self) -> MutEntries<'a, K, V> {
-        self.iter_mut()
-    }
-
     /// Gets a lazy forward iterator over the key-value pairs in the
     /// map, with the values being mutable.
     ///
@@ -398,12 +392,6 @@ impl<K: Ord, V> TreeMap<K, V> {
         }
     }
 
-    /// Deprecated: use `rev_iter_mut`.
-    #[deprecated = "use rev_iter_mut"]
-    pub fn mut_rev_iter<'a>(&'a mut self) -> RevMutEntries<'a, K, V> {
-        self.rev_iter_mut()
-    }
-
     /// Gets a lazy reverse iterator over the key-value pairs in the
     /// map, with the values being mutable.
     ///
@@ -428,12 +416,6 @@ impl<K: Ord, V> TreeMap<K, V> {
     /// ```
     pub fn rev_iter_mut<'a>(&'a mut self) -> RevMutEntries<'a, K, V> {
         RevMutEntries{iter: self.iter_mut()}
-    }
-
-    /// Deprecated: use `into_iter`.
-    #[deprecated = "use into_iter"]
-    pub fn move_iter(self) -> MoveEntries<K, V> {
-        self.into_iter()
     }
 
     /// Gets a lazy iterator that consumes the treemap.
@@ -492,12 +474,6 @@ impl<K, V> TreeMap<K, V> {
     #[inline]
     pub fn find_with<'a>(&'a self, f:|&K| -> Ordering) -> Option<&'a V> {
         tree_find_with(&self.root, f)
-    }
-
-    /// Deprecated: use `find_with_mut`.
-    #[deprecated = "use find_with_mut"]
-    pub fn find_mut_with<'a>(&'a mut self, f:|&K| -> Ordering) -> Option<&'a mut V> {
-        self.find_with_mut(f)
     }
 
     /// Returns the value for which `f(key)` returns `Equal`. `f` is invoked
@@ -626,12 +602,6 @@ impl<K: Ord, V> TreeMap<K, V> {
         }
     }
 
-    /// Deprecated: use `lower_bound_mut`.
-    #[deprecated = "use lower_bound_mut"]
-    pub fn mut_lower_bound<'a>(&'a mut self, k: &K) -> MutEntries<'a, K, V> {
-        self.lower_bound_mut(k)
-    }
-
     /// Returns a lazy value iterator to the first key-value pair (with
     /// the value being mutable) whose key is not less than `k`.
     ///
@@ -664,12 +634,6 @@ impl<K: Ord, V> TreeMap<K, V> {
     /// ```
     pub fn lower_bound_mut<'a>(&'a mut self, k: &K) -> MutEntries<'a, K, V> {
         bound_setup!(self.iter_mut_for_traversal(), k, true)
-    }
-
-    /// Deprecated: use `upper_bound_mut`.
-    #[deprecated = "use upper_bound_mut"]
-    pub fn mut_upper_bound<'a>(&'a mut self, k: &K) -> MutEntries<'a, K, V> {
-        self.upper_bound_mut(k)
     }
 
     /// Returns a lazy iterator to the first key-value pair (with the
@@ -1202,12 +1166,6 @@ impl<T: Ord> TreeSet<T> {
     #[inline]
     pub fn rev_iter<'a>(&'a self) -> RevSetItems<'a, T> {
         RevSetItems{iter: self.map.rev_iter()}
-    }
-
-    /// Deprecated: use `into_iter`.
-    #[deprecated = "use into_iter"]
-    pub fn move_iter(self) -> MoveSetItems<T> {
-        self.into_iter()
     }
 
     /// Creates a consuming iterator, that is, one that moves each value out of the
