@@ -284,16 +284,15 @@ endif
 # ./configure script. This is done to force libbacktrace to *not* use the
 # atomic/sync functionality because it pulls in unnecessary dependencies and we
 # never use it anyway.
-$$(BACKTRACE_BUILD_DIR_$(1))/Makefile: \
-		export CFLAGS:=$$(CFG_GCCISH_CFLAGS_$(1):-Werror=) \
-				-fno-stack-protector
-$$(BACKTRACE_BUILD_DIR_$(1))/Makefile: export CC:=$$(CC_$(1))
-$$(BACKTRACE_BUILD_DIR_$(1))/Makefile: export AR:=$$(AR_$(1))
-$$(BACKTRACE_BUILD_DIR_$(1))/Makefile: export RANLIB:=$$(AR_$(1)) s
 $$(BACKTRACE_BUILD_DIR_$(1))/Makefile: $$(BACKTRACE_DEPS) $$(MKFILE_DEPS)
+	@$$(call E, configure: libbacktrace for $(1))
 	$$(Q)rm -rf $$(BACKTRACE_BUILD_DIR_$(1))
 	$$(Q)mkdir -p $$(BACKTRACE_BUILD_DIR_$(1))
 	$$(Q)(cd $$(BACKTRACE_BUILD_DIR_$(1)) && \
+	      CC="$$(CC_$(1))" \
+	      AR="$$(AR_$(1))" \
+	      RANLIB="$$(AR_$(1)) s" \
+	      CFLAGS="$$(CFG_GCCISH_CFLAGS_$(1):-Werror=) -fno-stack-protector" \
 	      $(S)src/libbacktrace/configure --target=$(1) --host=$(CFG_BUILD))
 	$$(Q)echo '#undef HAVE_ATOMIC_FUNCTIONS' >> \
 	      $$(BACKTRACE_BUILD_DIR_$(1))/config.h
