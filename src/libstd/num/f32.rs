@@ -787,4 +787,15 @@ mod tests {
         assert_eq!(NEG_INFINITY.integer_decode(), (8388608u64, 105i16, -1i8));
         assert_eq!(NAN.integer_decode(), (12582912u64, 105i16, 1i8));
     }
+
+    #[test]
+    fn test_sqrt_domain() {
+        assert!(NAN.sqrt().is_nan());
+        assert!(NEG_INFINITY.sqrt().is_nan());
+        assert!((-1.0f32).sqrt().is_nan());
+        assert_eq!((-0.0f32).sqrt(), -0.0);
+        assert_eq!(0.0f32.sqrt(), 0.0);
+        assert_eq!(1.0f32.sqrt(), 1.0);
+        assert_eq!(INFINITY.sqrt(), INFINITY);
+    }
 }

@@ -259,7 +259,11 @@ impl Float for f32 {
 
     #[inline]
     fn sqrt(self) -> f32 {
-        unsafe { intrinsics::sqrtf32(self) }
+        if self < 0.0 {
+            NAN
+        } else {
+            unsafe { intrinsics::sqrtf32(self) }
+        }
     }
 
     #[inline]

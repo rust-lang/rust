@@ -266,7 +266,11 @@ impl Float for f64 {
 
     #[inline]
     fn sqrt(self) -> f64 {
-        unsafe { intrinsics::sqrtf64(self) }
+        if self < 0.0 {
+            NAN
+        } else {
+            unsafe { intrinsics::sqrtf64(self) }
+        }
     }
 
     #[inline]
@@ -377,4 +381,3 @@ impl Float for f64 {
         self * (value / 180.0)
     }
 }
-
