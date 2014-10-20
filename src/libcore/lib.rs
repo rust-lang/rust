@@ -59,7 +59,7 @@
 #![no_std]
 #![allow(unknown_features)]
 #![feature(globs, intrinsics, lang_items, macro_rules, phase)]
-#![feature(simd, unsafe_destructor, slicing_syntax)]
+#![feature(simd, unsafe_destructor, slicing_syntax, if_let)]
 #![deny(missing_doc)]
 
 mod macros;

@@ -1778,9 +1778,14 @@ pub mod raw {
 /// Operations on `[u8]`.
 #[experimental = "needs review"]
 pub mod bytes {
+    #![allow(non_snake_case)]
+
     use collections::Collection;
-    use ptr;
-    use slice::MutableSlice;
+    use slice::{MutableSlice, ImmutableSlice};
+    use option::{Option, Some, None};
+    use iter::{Iterator};
+    use ptr::{mod, RawPtr};
+    use {mem, cmp};
 
     /// A trait for operations on mutable `[u8]`s.
     pub trait MutableByteVector {
@@ -1806,9 +1811,102 @@ pub mod bytes {
         // Bound checks are done at .copy_memory.
         unsafe { dst.copy_memory(src) }
     }
+
+    /// Finds the first occurrence of `needle` in `haystack` if any.
+    ///
+    /// This is faster than using iterators for large inputs.
+    pub fn position(haystack: &[u8], needle: u8) -> Option<uint> {
+        #[cfg(target_word_size = "32")]
+        const ONES: uint = 0x01010101;
+        #[cfg(target_word_size = "64")]
+        const ONES: uint = 0x0101010101010101;
+
+        let UINT_ALIGN = mem::align_of::<uint>();
+        let UINT_SIZE = mem::size_of::<uint>();
+
+        // The index of the first byte in `haystack` that is properly aligned for an
+        // `uint` pointer.
+        let to_aligned =
+            (UINT_ALIGN - (haystack.as_ptr() as uint % UINT_ALIGN)) % UINT_ALIGN;
+
+        // We first test some bytes one by one until be arrive at the end or the first
+        // byte that is aligned for an `uint` pointer.
+        let num = cmp::min(haystack.len(), to_aligned);
+        if let Some(i) = haystack.slice_to(num).iter().position(|&c| c == needle) {
+            return Some(i);
+        }
+
+        // Here we read `UINT_SIZE` bytes at once. Let `v` be such a chunk.
+        //
+        // Step 1: `mask = needle * ONES`. This creates an `uint` where every byte
+        //         contains a copy of `needle`.
+        //
+        // Step 2: `v2 = v ^ mask`. `v` contains `needle` if any of the bytes in `v2` is
+        //         `0`.
+        //
+        // We now have to check if any of the bytes in `v2` is `0` in which case we break
+        // out of the loop.
+        //
+        // Lemma: Let `TN` be any unsigned integer type with `N` bytes capacity, `N` not
+        //        necessarily a power of 2. Let `u: TN` such that all bytes of `u` are
+        //        non-zero. Let `U: TN` such that every byte is `U` is set to `1`. Then
+        //           `((u - U) & !u) & (U << 7) == 0`
+        //        and no carry bit is produced in the calculation.
+        //
+        // Proof: Let `u1 = u - U`, `u2 = u1 & !u`, and `u3 = u2 & (U << 7)`. The only
+        //        operation that can produce a carry bit is `u - U`. Since every byte in
+        //        `u` is non-zero and every byte in `U` contains `1`, no carry bit is
+        //        produced.  This proves the second claim.
+        //
+        //        The other operations operate on single bytes. We can assume `N = 1`.
+        //
+        //        Let `n` the index of the lowest non-zero bit in `u`, e.g., `u =
+        //        0bXXXX1000` where each `X` is either `0` or `1`. Then `u1` has ones to
+        //        the right of `n` and zero at `n`, e.g., `u1 = 0bXXXX0111`.
+        //
+        //        Then `u2 = u1 & !u` has zeros to the left of `n`, a zero at `n`, and
+        //        ones to the right of `n`, e.g., `u2 = 0b00000111`. Note that, since the
+        //        bit at `n` is zero, the highest bit of `u2` is not set. Note that only
+        //        the highest bit of `U << 7` is set. Then `u3 = u2 & (U << 7) = 0` which
+        //        concludes the proof.
+        //
+        // Step 3: `v3 = ((v2 - ONES) & !v2) & (ONES << 7)`.
+        //
+        // If every byte in `v2` is non-zero, then the previous lemma shows that `v3` is
+        // zero.  We have to show that `v3 != 0` if any of the bytes in `v2` is zero. Let
+        // `N` be the lowest byte in `v2` that is zero, e.g., `v2 = XXX0YYYY` where the
+        // value of each `X` is irrelevant and each `Y` is non-zero. Then we can write `v2
+        // = XXX0u` where `u: TN` and every byte in `u` is non-zero. By the previous
+        // lemma, the calculation of `v3` produces `0` in the place of `u` and no carry
+        // bit is produced. We can thus assume `N = 0` and `v2 = XXXXXXX0`. What remains
+        // to be shown is that `((0 - 1) & !0) & 128 != 0`, but this is clear.
+        //
+        // Step 4: Break out of the loop if `v3 != 0`.
+        let mask = needle as uint * ONES;
+
+        let pos = unsafe {
+            let steps = (haystack.len() - num) / UINT_SIZE;
+            let mut ptr = haystack.as_ptr().offset(num as int) as *const uint;
+            let end = ptr.offset(steps as int);
+            while ptr != end {
+                let v = *ptr ^ mask;
+                if ((v - ONES) & !v) & (ONES << 7) != 0 {
+                    break;
+                }
+                ptr = ptr.offset(1);
+            }
+            ptr as uint
+        } - haystack.as_ptr() as uint;
+
+        // If we broke out of the previous loop, then one of the following `UINT_SIZE`
+        // bytes will contain `needle`.
+        if let Some(i) = haystack.slice_from(pos).iter().position(|&c| c == needle) {
+            return Some(i + pos);
+        }
+
+        None
+    }
 }
-
-
 
 //
 // Boilerplate traits
