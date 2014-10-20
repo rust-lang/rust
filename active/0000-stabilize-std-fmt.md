@@ -10,8 +10,6 @@ formatting language syntax. As a high-level summary:
 * Leave the format syntax as-is.
 * Remove a number of superfluous formatting traits (renaming a few in the
   process).
-* Disallow `expr = expr` and `expr op= expr` as expressions, make them
-  statements instead.
 
 # Motivation
 
@@ -95,9 +93,21 @@ RFC](https://github.com/rust-lang/rfcs/pull/257) used `:` for the invocation
 syntax rather than `=` as formatting does today. Additionally, today `foo = bar`
 is a valid expression, having a value of type `()`.
 
-Due to the possible use of `:` for type ascription in the future, this RFC
-proposes disallowing `expr = expr` and `expr op= expr` in the expression syntax,
-and rather adding them to the statement syntax.
+With these worries, there are one of two routes that could be pursued:
+
+1. The `expr = expr` syntax could be disallowed on the language level. This
+   could happen both in a total fashion or just allowing the expression
+   appearing as a function argument. For both cases, this will probably be
+   considered a "wart" of Rust's grammar.
+2. The `foo = bar` syntax could be allowed in the macro with prior knowledge
+   that the default argument syntax for Rust, if one is ever developed, will
+   likely be different. This would mean that the `foo = bar` syntax in
+   formatting macros will likely be considered a wart in the future.
+
+Given these two cases, the clear choice seems to be accepting a wart in the
+formatting macros themselves. It will likely be possible to extend the macro in
+the future to support whatever named argument syntax is developed as well, and
+the old syntax could be accepted for some time.
 
 ## Formatting Traits
 
@@ -454,18 +464,8 @@ the `std::fmt` module for stabilization.
 
 # Drawbacks
 
-For backwards compatibility, this RFC proposes removing `a = b` and `a op= b` as
-expressions, which makes this code (valid today) fail to compile:
-
-```rust
-match foo {
-    _ => a = b,
-}
-foo(|value| a = value);
-```
-
-Both of these cases may be somewhat common, and this RFC would require that they
-be surrounded with braces and a semicolon.
+Today's macro system necessitates exporting many implementation details of the
+formatting system, which is unfortunate.
 
 # Alternatives
 
