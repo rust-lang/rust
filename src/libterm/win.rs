@@ -18,7 +18,7 @@ use std::io::IoResult;
 
 use attr;
 use color;
-use Terminal;
+use {Terminal,UnwrappableTerminal};
 
 /// A Terminal implementation which uses the Win32 Console API.
 pub struct WinConsole<T> {
@@ -125,24 +125,6 @@ impl<T: Writer> Writer for WinConsole<T> {
 }
 
 impl<T: Writer> Terminal<T> for WinConsole<T> {
-    fn new(out: T) -> Option<WinConsole<T>> {
-        let fg;
-        let bg;
-        unsafe {
-            let mut buffer_info = ::std::mem::uninitialized();
-            if GetConsoleScreenBufferInfo(GetStdHandle(-11), &mut buffer_info) != 0 {
-                fg = bits_to_color(buffer_info.wAttributes);
-                bg = bits_to_color(buffer_info.wAttributes >> 4);
-            } else {
-                fg = color::WHITE;
-                bg = color::BLACK;
-            }
-        }
-        Some(WinConsole { buf: out,
-                          def_foreground: fg, def_background: bg,
-                          foreground: fg, background: bg } )
-    }
-
     fn fg(&mut self, color: color::Color) -> IoResult<bool> {
         self.foreground = color;
         self.apply();
@@ -190,9 +172,31 @@ impl<T: Writer> Terminal<T> for WinConsole<T> {
         Ok(())
     }
 
-    fn unwrap(self) -> T { self.buf }
-
     fn get_ref<'a>(&'a self) -> &'a T { &self.buf }
 
     fn get_mut<'a>(&'a mut self) -> &'a mut T { &mut self.buf }
+}
+
+impl<T: Writer> WinConsole<T> {
+     fn new(out: T) -> Option<Box<WinConsole<T>+Send+'static>> {
+        let fg;
+        let bg;
+        unsafe {
+            let mut buffer_info = ::std::mem::uninitialized();
+            if GetConsoleScreenBufferInfo(GetStdHandle(-11), &mut buffer_info) != 0 {
+                fg = bits_to_color(buffer_info.wAttributes);
+                bg = bits_to_color(buffer_info.wAttributes >> 4);
+            } else {
+                fg = color::WHITE;
+                bg = color::BLACK;
+            }
+        }
+        Some(box WinConsole { buf: out,
+                              def_foreground: fg, def_background: bg,
+                              foreground: fg, background: bg } )
+    }
+}
+
+impl<T: Writer> UnwrappableTerminal<T> for WinConsole<T> {
+    fn unwrap(self) -> T { self.buf }
 }
