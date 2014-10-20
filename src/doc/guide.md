@@ -3284,11 +3284,11 @@ Let's give it a shot:
 $ cargo test
    Compiling testing v0.0.1 (file:///home/you/projects/testing)
 
-running 1 test
+running 2 tests
 test test::test_times_four ... ok
 test test::test_add_three ... ok
 
-test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured
 
 
 running 0 tests
