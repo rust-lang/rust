@@ -11,7 +11,7 @@
 enum clam<T> { a(T, int), b, }
 
 fn uhoh<T>(v: Vec<clam<T>> ) {
-    match *v.get(1) {
+    match v[1] {
       a::<T>(ref _t, ref u) => {
           println!("incorrect");
           println!("{}", u);

@@ -334,7 +334,7 @@ impl RegionMaps {
         // where they diverge.  If one vector is a suffix of the other,
         // then the corresponding scope is a superscope of the other.
 
-        if *a_ancestors.get(a_index) != *b_ancestors.get(b_index) {
+        if a_ancestors[a_index] != b_ancestors[b_index] {
             return None;
         }
 
@@ -345,8 +345,8 @@ impl RegionMaps {
             if b_index == 0u { return Some(scope_b); }
             a_index -= 1u;
             b_index -= 1u;
-            if *a_ancestors.get(a_index) != *b_ancestors.get(b_index) {
-                return Some(*a_ancestors.get(a_index + 1u));
+            if a_ancestors[a_index] != b_ancestors[b_index] {
+                return Some(a_ancestors[a_index + 1]);
             }
         }
 

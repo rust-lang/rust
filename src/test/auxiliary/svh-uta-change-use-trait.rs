@@ -15,7 +15,7 @@
 //!
 //! This is the upstream crate.
 
-#![crate_id = "uta"]
+#![crate_name = "uta"]
 
 mod traits {
     pub trait TraitA { fn val(&self) -> int { 2 } }

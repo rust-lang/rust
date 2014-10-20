@@ -85,13 +85,6 @@ impl UdpSocket {
         }
     }
 
-    #[allow(missing_doc)]
-    #[deprecated = "renamed to `recv_from`"]
-    pub fn recvfrom(&mut self, buf: &mut [u8])
-                    -> IoResult<(uint, SocketAddr)> {
-        self.recv_from(buf)
-    }
-
     /// Sends data on the socket to the given address. Returns nothing on
     /// success.
     pub fn send_to(&mut self, buf: &[u8], dst: SocketAddr) -> IoResult<()> {
@@ -99,12 +92,6 @@ impl UdpSocket {
             ip: super::to_rtio(dst.ip),
             port: dst.port,
         }).map_err(IoError::from_rtio_error)
-    }
-
-    #[allow(missing_doc)]
-    #[deprecated = "renamed to `send_to`"]
-    pub fn sendto(&mut self, buf: &[u8], dst: SocketAddr) -> IoResult<()> {
-        self.send_to(buf, dst)
     }
 
     /// Creates a `UdpStream`, which allows use of the `Reader` and `Writer`
@@ -174,12 +161,6 @@ impl UdpSocket {
         } else {
             self.obj.ignore_broadcasts()
         }.map_err(IoError::from_rtio_error)
-    }
-
-    /// Sets the broadcast flag on or off
-    #[deprecated="renamed to `set_broadcast`"]
-    pub fn set_broadast(&mut self, broadcast: bool) -> IoResult<()> {
-        self.set_broadcast(broadcast)
     }
 
     /// Sets the read/write timeout for this socket.

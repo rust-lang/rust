@@ -15,7 +15,7 @@
 
 #![feature(macro_rules)]
 
-#![crate_id = "a"]
+#![crate_name = "a"]
 
 macro_rules! three {
     () => { 3 }

@@ -359,7 +359,7 @@ impl rtio::RtioPipe for UnixStream {
 
         let mut bytes_read = 0;
         let mut overlapped: libc::OVERLAPPED = unsafe { mem::zeroed() };
-        overlapped.hEvent = self.read.get_ref().handle();
+        overlapped.hEvent = self.read.as_ref().unwrap().handle();
 
         // Pre-flight check to see if the reading half has been closed. This
         // must be done before issuing the ReadFile request, but after we
@@ -431,7 +431,7 @@ impl rtio::RtioPipe for UnixStream {
 
         let mut offset = 0;
         let mut overlapped: libc::OVERLAPPED = unsafe { mem::zeroed() };
-        overlapped.hEvent = self.write.get_ref().handle();
+        overlapped.hEvent = self.write.as_ref().unwrap().handle();
 
         while offset < buf.len() {
             let mut bytes_written = 0;

@@ -131,21 +131,6 @@ fn test_or_else() {
 }
 
 #[test]
-#[allow(deprecated)]
-fn test_option_while_some() {
-    let mut i = 0i;
-    Some(10i).while_some(|j| {
-        i += 1;
-        if j > 0 {
-            Some(j-1)
-        } else {
-            None
-        }
-    });
-    assert_eq!(i, 11);
-}
-
-#[test]
 fn test_unwrap() {
     assert_eq!(Some(1i).unwrap(), 1);
     let s = Some("hello".to_string()).unwrap();
@@ -182,15 +167,6 @@ fn test_unwrap_or_else() {
 
     let x: Option<int> = None;
     assert_eq!(x.unwrap_or_else(|| 2), 2);
-}
-
-#[test]
-#[allow(deprecated)]
-fn test_filtered() {
-    let some_stuff = Some(42i);
-    let modified_stuff = some_stuff.filtered(|&x| {x < 10});
-    assert_eq!(some_stuff.unwrap(), 42);
-    assert!(modified_stuff.is_none());
 }
 
 #[test]
@@ -244,39 +220,22 @@ fn test_ord() {
 }
 
 #[test]
-#[allow(deprecated)]
-fn test_mutate() {
-    let mut x = Some(3i);
-    assert!(x.mutate(|i| i+1));
-    assert_eq!(x, Some(4i));
-    assert!(x.mutate_or_set(0, |i| i+1));
-    assert_eq!(x, Some(5i));
-    x = None;
-    assert!(!x.mutate(|i| i+1));
-    assert_eq!(x, None);
-    assert!(!x.mutate_or_set(0i, |i| i+1));
-    assert_eq!(x, Some(0i));
-}
-
-#[test]
-#[allow(deprecated)]
 fn test_collect() {
-    let v: Option<Vec<int>> = collect(range(0i, 0)
-                                      .map(|_| Some(0i)));
+    let v: Option<Vec<int>> = range(0i, 0).map(|_| Some(0i)).collect();
     assert!(v == Some(vec![]));
 
-    let v: Option<Vec<int>> = collect(range(0i, 3)
-                                      .map(|x| Some(x)));
+    let v: Option<Vec<int>> = range(0i, 3).map(|x| Some(x)).collect();
     assert!(v == Some(vec![0, 1, 2]));
 
-    let v: Option<Vec<int>> = collect(range(0i, 3)
-                                      .map(|x| if x > 1 { None } else { Some(x) }));
+    let v: Option<Vec<int>> = range(0i, 3).map(|x| {
+        if x > 1 { None } else { Some(x) }
+    }).collect();
     assert!(v == None);
 
     // test that it does not take more elements than it needs
     let mut functions = [|| Some(()), || None, || fail!()];
 
-    let v: Option<Vec<()>> = collect(functions.iter_mut().map(|f| (*f)()));
+    let v: Option<Vec<()>> = functions.iter_mut().map(|f| (*f)()).collect();
 
     assert!(v == None);
 }

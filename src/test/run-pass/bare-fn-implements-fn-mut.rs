@@ -25,8 +25,9 @@ fn call_g<G:FnMut<(String,String),String>>(mut g: G, x: String, y: String)
     g(x, y)
 }
 
-fn g(x: String, y: String) -> String {
-    x.append(y.as_slice())
+fn g(mut x: String, y: String) -> String {
+    x.push_str(y.as_slice());
+    x
 }
 
 fn main() {

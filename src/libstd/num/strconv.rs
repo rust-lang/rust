@@ -20,7 +20,7 @@ use num::{Float, FPNaN, FPInfinite, ToPrimitive};
 use num;
 use ops::{Add, Sub, Mul, Div, Rem, Neg};
 use option::{None, Option, Some};
-use slice::{ImmutableSlice, MutableSlice};
+use slice::{ImmutableSlice, MutableSlice, CloneableVector};
 use std::cmp::{PartialOrd, PartialEq};
 use str::StrSlice;
 use string::String;
@@ -168,8 +168,7 @@ static NAN_BUF:     [u8, ..3] = [b'N', b'a', b'N'];
  * # Failure
  * - Fails if `radix` < 2 or `radix` > 36.
  */
-#[deprecated = "format!() and friends should be favored instead"]
-pub fn int_to_str_bytes_common<T: Int>(num: T, radix: uint, sign: SignFormat, f: |u8|) {
+fn int_to_str_bytes_common<T: Int>(num: T, radix: uint, sign: SignFormat, f: |u8|) {
     assert!(2 <= radix && radix <= 36);
 
     let _0: T = Zero::zero();
@@ -257,7 +256,6 @@ pub fn int_to_str_bytes_common<T: Int>(num: T, radix: uint, sign: SignFormat, f:
  * - Fails if `radix` > 25 and `exp_format` is `ExpBin` due to conflict
  *   between digit and exponent sign `'p'`.
  */
-#[allow(deprecated)]
 pub fn float_to_str_bytes_common<T:NumCast+Zero+One+PartialEq+PartialOrd+Float+
                                   Div<T,T>+Neg<T>+Rem<T,T>+Mul<T,T>>(
         num: T, radix: uint, negative_zero: bool,
@@ -278,17 +276,17 @@ pub fn float_to_str_bytes_common<T:NumCast+Zero+One+PartialEq+PartialOrd+Float+
     let _1: T = One::one();
 
     match num.classify() {
-        FPNaN => { return (Vec::from_slice("NaN".as_bytes()), true); }
+        FPNaN => { return (b"NaN".to_vec(), true); }
         FPInfinite if num > _0 => {
             return match sign {
-                SignAll => (Vec::from_slice("+inf".as_bytes()), true),
-                _       => (Vec::from_slice("inf".as_bytes()), true)
+                SignAll => (b"+inf".to_vec(), true),
+                _       => (b"inf".to_vec(), true)
             };
         }
         FPInfinite if num < _0 => {
             return match sign {
-                SignNone => (Vec::from_slice("inf".as_bytes()), true),
-                _        => (Vec::from_slice("-inf".as_bytes()), true),
+                SignNone => (b"inf".to_vec(), true),
+                _        => (b"-inf".to_vec(), true),
             };
         }
         _ => {}
@@ -413,18 +411,18 @@ pub fn float_to_str_bytes_common<T:NumCast+Zero+One+PartialEq+PartialOrd+Float+
                     // If reached left end of number, have to
                     // insert additional digit:
                     if i < 0
-                    || *buf.get(i as uint) == b'-'
-                    || *buf.get(i as uint) == b'+' {
+                    || buf[i as uint] == b'-'
+                    || buf[i as uint] == b'+' {
                         buf.insert((i + 1) as uint, value2ascii(1));
                         break;
                     }
 
                     // Skip the '.'
-                    if *buf.get(i as uint) == b'.' { i -= 1; continue; }
+                    if buf[i as uint] == b'.' { i -= 1; continue; }
 
                     // Either increment the digit,
                     // or set to 0 if max and carry the 1.
-                    let current_digit = ascii2value(*buf.get(i as uint));
+                    let current_digit = ascii2value(buf[i as uint]);
                     if current_digit < (radix - 1) {
                         *buf.get_mut(i as uint) = value2ascii(current_digit+1);
                         break;
@@ -446,25 +444,25 @@ pub fn float_to_str_bytes_common<T:NumCast+Zero+One+PartialEq+PartialOrd+Float+
         let mut i = buf_max_i;
 
         // discover trailing zeros of fractional part
-        while i > start_fractional_digits && *buf.get(i) == b'0' {
+        while i > start_fractional_digits && buf[i] == b'0' {
             i -= 1;
         }
 
         // Only attempt to truncate digits if buf has fractional digits
         if i >= start_fractional_digits {
             // If buf ends with '.', cut that too.
-            if *buf.get(i) == b'.' { i -= 1 }
+            if buf[i] == b'.' { i -= 1 }
 
             // only resize buf if we actually remove digits
             if i < buf_max_i {
-                buf = Vec::from_slice(buf.slice(0, i + 1));
+                buf = buf.slice(0, i + 1).to_vec();
             }
         }
     } // If exact and trailing '.', just cut that
     else {
         let max_i = buf.len() - 1;
-        if *buf.get(max_i) == b'.' {
-            buf = Vec::from_slice(buf.slice(0, max_i));
+        if buf[max_i] == b'.' {
+            buf = buf.slice(0, max_i).to_vec();
         }
     }
 

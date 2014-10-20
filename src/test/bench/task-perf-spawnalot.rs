@@ -31,7 +31,7 @@ fn main() {
     } else {
         args.into_iter().collect()
     };
-    let n = from_str::<uint>(args.get(1).as_slice()).unwrap();
+    let n = from_str::<uint>(args[1].as_slice()).unwrap();
     let mut i = 0u;
     while i < n { task::spawn(proc() f(n) ); i += 1u; }
 }

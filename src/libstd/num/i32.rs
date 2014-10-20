@@ -14,10 +14,9 @@
 #![doc(primitive = "i32")]
 
 use from_str::FromStr;
-use num::{ToStrRadix, FromStrRadix};
+use num::FromStrRadix;
 use num::strconv;
 use option::Option;
-use string::String;
 
 pub use core::i32::{BITS, BYTES, MIN, MAX};
 

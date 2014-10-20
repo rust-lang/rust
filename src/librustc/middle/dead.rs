@@ -157,8 +157,8 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
     }
 
     fn handle_field_pattern_match(&mut self, lhs: &ast::Pat, pats: &[ast::FieldPat]) {
-        let id = match self.tcx.def_map.borrow().get(&lhs.id) {
-            &def::DefVariant(_, id, _) => id,
+        let id = match (*self.tcx.def_map.borrow())[lhs.id] {
+            def::DefVariant(_, id, _) => id,
             _ => {
                 match ty::ty_to_def_id(ty::node_id_to_type(self.tcx,
                                                            lhs.id)) {
@@ -494,7 +494,7 @@ impl<'a, 'tcx> DeadVisitor<'a, 'tcx> {
             None => (),
             Some(impl_list) => {
                 for impl_did in impl_list.iter() {
-                    for item_did in impl_items.get(impl_did).iter() {
+                    for item_did in (*impl_items)[*impl_did].iter() {
                         if self.live_symbols.contains(&item_did.def_id()
                                                                .node) {
                             return true;

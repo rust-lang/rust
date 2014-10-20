@@ -487,7 +487,9 @@ pub fn build_configuration(sess: &Session) -> ast::CrateConfig {
     if sess.opts.test {
         append_configuration(&mut user_cfg, InternedString::new("test"))
     }
-    user_cfg.into_iter().collect::<Vec<_>>().append(default_cfg.as_slice())
+    let mut v = user_cfg.into_iter().collect::<Vec<_>>();
+    v.push_all(default_cfg.as_slice());
+    v
 }
 
 pub fn get_os(triple: &str) -> Option<abi::Os> {

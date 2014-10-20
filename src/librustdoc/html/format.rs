@@ -708,9 +708,11 @@ impl fmt::Show for ModuleSummary {
             let path = context.connect("::");
 
             try!(write!(f, "<tr>"));
-            try!(write!(f, "<td><a href='{}'>{}</a></td>",
-                        Vec::from_slice(context.slice_from(1))
-                            .append_one("index.html").connect("/"),
+            try!(write!(f, "<td><a href='{}'>{}</a></td>", {
+                            let mut url = context.slice_from(1).to_vec();
+                            url.push("index.html");
+                            url.connect("/")
+                        },
                         path));
             try!(write!(f, "<td class='summary-column'>"));
             try!(write!(f, "<span class='summary Stable' \

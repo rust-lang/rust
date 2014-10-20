@@ -199,29 +199,6 @@ impl<V> SmallIntMap<V> {
         SmallIntMap { v: Vec::with_capacity(capacity) }
     }
 
-    /// Retrieves a value for the given key.
-    /// See [`find`](../trait.Map.html#tymethod.find) for a non-failing alternative.
-    ///
-    /// # Failure
-    ///
-    /// Fails if the key is not present.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// #![allow(deprecated)]
-    ///
-    /// use std::collections::SmallIntMap;
-    ///
-    /// let mut map = SmallIntMap::new();
-    /// map.insert(1, "a");
-    /// assert_eq!(map.get(&1), &"a");
-    /// ```
-    #[deprecated = "prefer using indexing, e.g., map[0]"]
-    pub fn get<'a>(&'a self, key: &uint) -> &'a V {
-        self.find(key).expect("key not present")
-    }
-
     /// Returns an iterator visiting all keys in ascending order by the keys.
     /// The iterator's element type is `uint`.
     pub fn keys<'r>(&'r self) -> Keys<'r, V> {
@@ -260,12 +237,6 @@ impl<V> SmallIntMap<V> {
         }
     }
 
-    /// Deprecated: use `iter_mut`
-    #[deprecated = "use iter_mut"]
-    pub fn mut_iter<'r>(&'r mut self) -> MutEntries<'r, V> {
-        self.iter_mut()
-    }
-
     /// Returns an iterator visiting all key-value pairs in ascending order by the keys,
     /// with mutable references to the values.
     /// The iterator's element type is `(uint, &'r mut V)`.
@@ -294,14 +265,6 @@ impl<V> SmallIntMap<V> {
             back: self.v.len(),
             iter: self.v.iter_mut()
         }
-    }
-
-    /// Deprecated: use `into_iter` instead.
-    #[deprecated = "use into_iter"]
-    pub fn move_iter(&mut self)
-        -> FilterMap<(uint, Option<V>), (uint, V),
-                Enumerate<vec::MoveItems<Option<V>>>> {
-        self.into_iter()
     }
 
     /// Returns an iterator visiting all key-value pairs in ascending order by
@@ -437,9 +400,8 @@ impl<V> Extendable<(uint, V)> for SmallIntMap<V> {
 
 impl<V> Index<uint, V> for SmallIntMap<V> {
     #[inline]
-    #[allow(deprecated)]
     fn index<'a>(&'a self, i: &uint) -> &'a V {
-        self.get(i)
+        self.find(i).expect("key not present")
     }
 }
 

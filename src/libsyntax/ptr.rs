@@ -37,6 +37,7 @@
 use std::fmt;
 use std::fmt::Show;
 use std::hash::Hash;
+use std::ptr;
 use serialize::{Encodable, Decodable, Encoder, Decoder};
 
 /// An owned smart pointer.
@@ -61,11 +62,10 @@ impl<T: 'static> P<T> {
 
     /// Transform the inner value, consuming `self` and producing a new `P<T>`.
     pub fn map(mut self, f: |T| -> T) -> P<T> {
-        use std::{mem, ptr};
         unsafe {
             let p = &mut *self.ptr;
             // FIXME(#5016) this shouldn't need to zero to be safe.
-            mem::move_val_init(p, f(ptr::read_and_zero(p)));
+            ptr::write(p, f(ptr::read_and_zero(p)));
         }
         self
     }

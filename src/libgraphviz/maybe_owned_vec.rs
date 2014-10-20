@@ -127,14 +127,6 @@ impl<'a,T:Clone> CloneableVector<T> for MaybeOwnedVector<'a,T> {
     fn to_vec(&self) -> Vec<T> {
         self.as_slice().to_vec()
     }
-
-    /// Convert `self` into an owned slice, not making a copy if possible.
-    fn into_vec(self) -> Vec<T> {
-        match self {
-            Growable(v) => v.as_slice().to_vec(),
-            Borrowed(v) => v.to_vec(),
-        }
-    }
 }
 
 impl<'a, T: Clone> Clone for MaybeOwnedVector<'a, T> {

@@ -204,30 +204,6 @@ impl CString {
         self.buf as *mut _
     }
 
-    /// Calls a closure with a reference to the underlying `*libc::c_char`.
-    #[deprecated="use `.as_ptr()`"]
-    pub fn with_ref<T>(&self, f: |*const libc::c_char| -> T) -> T {
-        f(self.buf)
-    }
-
-    /// Calls a closure with a mutable reference to the underlying `*libc::c_char`.
-    #[deprecated="use `.as_mut_ptr()`"]
-    pub fn with_mut_ref<T>(&mut self, f: |*mut libc::c_char| -> T) -> T {
-        f(self.buf as *mut libc::c_char)
-    }
-
-    /// Returns true if the CString is a null.
-    #[deprecated="a CString cannot be null"]
-    pub fn is_null(&self) -> bool {
-        self.buf.is_null()
-    }
-
-    /// Returns true if the CString is not null.
-    #[deprecated="a CString cannot be null"]
-    pub fn is_not_null(&self) -> bool {
-        self.buf.is_not_null()
-    }
-
     /// Returns whether or not the `CString` owns the buffer.
     pub fn owns_buffer(&self) -> bool {
         self.owns_buffer_

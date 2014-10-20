@@ -102,7 +102,7 @@ fn main() {
     if opts.stress {
         stress(2);
     } else {
-        let max = uint::parse_bytes(args.get(1).as_bytes(), 10u).unwrap() as
+        let max = uint::parse_bytes(args[1].as_bytes(), 10u).unwrap() as
             int;
 
         let num_trials = 10;

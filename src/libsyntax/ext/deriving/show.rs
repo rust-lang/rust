@@ -80,7 +80,7 @@ fn show_substructure(cx: &mut ExtCtxt, span: Span,
         EnumMatching(_, _, ref fields) if fields.len() == 0 => {}
 
         Struct(ref fields) | EnumMatching(_, _, ref fields) => {
-            if fields.get(0).name.is_none() {
+            if fields[0].name.is_none() {
                 // tuple struct/"normal" variant
 
                 format_string.push_str("(");

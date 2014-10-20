@@ -25,7 +25,7 @@ fn append_sequential(min: uint, max: uint, map: &mut SmallIntMap<uint>) {
 
 fn check_sequential(min: uint, max: uint, map: &SmallIntMap<uint>) {
     for i in range(min, max) {
-        assert_eq!(*map.get(&i), i + 22u);
+        assert_eq!(map[i], i + 22u);
     }
 }
 
@@ -38,8 +38,8 @@ fn main() {
     } else {
         args.into_iter().collect()
     };
-    let max = from_str::<uint>(args.get(1).as_slice()).unwrap();
-    let rep = from_str::<uint>(args.get(2).as_slice()).unwrap();
+    let max = from_str::<uint>(args[1].as_slice()).unwrap();
+    let rep = from_str::<uint>(args[2].as_slice()).unwrap();
 
     let mut checkf = 0.0;
     let mut appendf = 0.0;

@@ -69,7 +69,7 @@ fn read_board_grid<rdr:'static + io::Reader>(mut input: rdr)
         row.push(square_from_char(*c as char))
     }
     grid.push(row);
-    let width = grid.get(0).len();
+    let width = grid[0].len();
     for row in grid.iter() { assert!(row.len() == width) }
     grid
 }

@@ -1517,7 +1517,7 @@ impl<'a> rbml_decoder_decoder_helpers for reader::Decoder<'a> {
         fn type_string(doc: rbml::Doc) -> String {
             let mut str = String::new();
             for i in range(doc.start, doc.end) {
-                str.push_char(doc.data[i] as char);
+                str.push(doc.data[i] as char);
             }
             str
         }

@@ -165,12 +165,18 @@ impl<'a> FmtStrs<'a> {
         let pairs = fields.iter().zip(values);
         let mut strs = pairs.map(|(f, v)| format!(",{},\"{}\"", f, escape(
             if *f == "qualname" {
-                self.krate.clone().append("::").append(v)
+                let mut n = self.krate.clone();
+                n.push_str("::");
+                n.push_str(v);
+                n
             } else {
                 String::from_str(v)
             }
         )));
-        Some(strs.fold(String::new(), |s, ss| s.append(ss.as_slice())))
+        Some(strs.fold(String::new(), |mut s, ss| {
+            s.push_str(ss.as_slice());
+            s
+        }))
     }
 
     pub fn record_without_span(&mut self,
@@ -195,8 +201,10 @@ impl<'a> FmtStrs<'a> {
             None => return,
         };
 
-        let result = String::from_str(label);
-        self.recorder.record(result.append(values_str.as_slice()).append("\n").as_slice());
+        let mut result = String::from_str(label);
+        result.push_str(values_str.as_slice());
+        result.push_str("\n");
+        self.recorder.record(result.as_slice());
     }
 
     pub fn record_with_span(&mut self,
@@ -252,7 +260,9 @@ impl<'a> FmtStrs<'a> {
         // the local case they can be overridden in one block and there is no nice way
         // to refer to such a scope in english, so we just hack it by appending the
         // variable def's node id
-        let qualname = String::from_str(name).append("$").append(id.to_string().as_slice());
+        let mut qualname = String::from_str(name);
+        qualname.push_str("$");
+        qualname.push_str(id.to_string().as_slice());
         self.check_and_record(Variable,
                               span,
                               sub_span,
@@ -267,7 +277,9 @@ impl<'a> FmtStrs<'a> {
                       fn_name: &str,
                       name: &str,
                       typ: &str) {
-        let qualname = String::from_str(fn_name).append("::").append(name);
+        let mut qualname = String::from_str(fn_name);
+        qualname.push_str("::");
+        qualname.push_str(name);
         self.check_and_record(Variable,
                               span,
                               sub_span,

@@ -36,7 +36,7 @@ use libc::types::os::arch::extra::LPCVOID;
 use std::io::MemReader;
 use std::ptr;
 use std::rt::rtio::{IoResult, IoError, RtioTTY};
-use std::str::{from_utf16, from_utf8};
+use std::str::from_utf8;
 
 fn invalid_encoding() -> IoError {
     IoError {
@@ -103,7 +103,7 @@ impl RtioTTY for WindowsTTY {
                 _ => (),
             };
             utf16.truncate(num as uint);
-            let utf8 = match from_utf16(utf16.as_slice()) {
+            let utf8 = match String::from_utf16(utf16.as_slice()) {
                 Some(utf8) => utf8.into_bytes(),
                 None => return Err(invalid_encoding()),
             };
@@ -115,7 +115,9 @@ impl RtioTTY for WindowsTTY {
 
     fn write(&mut self, buf: &[u8]) -> IoResult<()> {
         let utf16 = match from_utf8(buf) {
-            Some(utf8) => utf8.to_utf16(),
+            Some(utf8) => {
+                utf8.as_slice().utf16_units().collect::<Vec<u16>>()
+            }
             None => return Err(invalid_encoding()),
         };
         let mut num: DWORD = 0;

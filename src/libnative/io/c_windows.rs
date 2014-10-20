@@ -141,8 +141,8 @@ pub mod compat {
     // layer (after it's loaded) shouldn't be any slower than a regular DLL
     // call.
     unsafe fn store_func(ptr: *mut uint, module: &str, symbol: &str, fallback: uint) {
-        let module: Vec<u16> = module.utf16_units().collect();
-        let module = module.append_one(0);
+        let mut module: Vec<u16> = module.utf16_units().collect();
+        module.push(0);
         symbol.with_c_str(|symbol| {
             let handle = GetModuleHandleW(module.as_ptr());
             let func: uint = transmute(GetProcAddress(handle, symbol));

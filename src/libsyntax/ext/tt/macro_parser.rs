@@ -286,7 +286,7 @@ pub fn parse(sess: &ParseSess,
 
                         // Only touch the binders we have actually bound
                         for idx in range(ei.match_lo, ei.match_hi) {
-                            let sub = (*ei.matches.get(idx)).clone();
+                            let sub = (ei.matches[idx]).clone();
                             new_pos.matches
                                    .get_mut(idx)
                                    .push(Rc::new(MatchedSeq(sub, mk_sp(ei.sp_lo,
@@ -321,7 +321,7 @@ pub fn parse(sess: &ParseSess,
                     eof_eis.push(ei);
                 }
             } else {
-                match ei.elts.get(idx).node.clone() {
+                match ei.elts[idx].node.clone() {
                   /* need to descend into sequence */
                   MatchSeq(ref matchers, ref sep, zero_ok,
                            match_idx_lo, match_idx_hi) => {
@@ -388,7 +388,7 @@ pub fn parse(sess: &ParseSess,
             if (bb_eis.len() > 0u && next_eis.len() > 0u)
                 || bb_eis.len() > 1u {
                 let nts = bb_eis.iter().map(|ei| {
-                    match ei.elts.get(ei.idx).node {
+                    match ei.elts[ei.idx].node {
                       MatchNonterminal(bind, name, _) => {
                         (format!("{} ('{}')",
                                 token::get_ident(name),
@@ -413,7 +413,7 @@ pub fn parse(sess: &ParseSess,
                 let mut rust_parser = Parser::new(sess, cfg.clone(), box rdr.clone());
 
                 let mut ei = bb_eis.pop().unwrap();
-                match ei.elts.get(ei.idx).node {
+                match ei.elts[ei.idx].node {
                   MatchNonterminal(_, name, idx) => {
                     let name_string = token::get_ident(name);
                     ei.matches.get_mut(idx).push(Rc::new(MatchedNonterminal(

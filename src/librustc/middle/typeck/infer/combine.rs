@@ -52,7 +52,6 @@ use middle::typeck::infer::type_variable::{RelationDir, EqTo,
 use middle::ty_fold::{TypeFoldable};
 use util::ppaux::Repr;
 
-use std::result;
 
 use syntax::ast::{Onceness, FnStyle};
 use syntax::ast;
@@ -89,11 +88,10 @@ pub trait Combine<'tcx> {
                                                              bs.len())));
         }
 
-        try!(result::fold_(as_
-                          .iter()
-                          .zip(bs.iter())
-                          .map(|(a, b)| self.equate().tys(*a, *b))));
-        Ok(Vec::from_slice(as_))
+        try!(as_.iter().zip(bs.iter())
+                .map(|(a, b)| self.equate().tys(*a, *b))
+                .collect::<cres<Vec<ty::t>>>());
+        Ok(as_.to_vec())
     }
 
     fn substs(&self,
@@ -342,8 +340,8 @@ pub fn super_fn_sigs<'tcx, C: Combine<'tcx>>(this: &C,
                                        b_args: &[ty::t])
                                        -> cres<Vec<ty::t>> {
         if a_args.len() == b_args.len() {
-            result::collect(a_args.iter().zip(b_args.iter())
-                            .map(|(a, b)| this.args(*a, *b)))
+            a_args.iter().zip(b_args.iter())
+                  .map(|(a, b)| this.args(*a, *b)).collect()
         } else {
             Err(ty::terr_arg_count)
         }
@@ -537,9 +535,10 @@ pub fn super_tys<'tcx, C: Combine<'tcx>>(this: &C, a: ty::t, b: ty::t) -> cres<t
 
       (&ty::ty_tup(ref as_), &ty::ty_tup(ref bs)) => {
         if as_.len() == bs.len() {
-            result::collect(as_.iter().zip(bs.iter())
-                            .map(|(a, b)| this.tys(*a, *b)))
-                    .and_then(|ts| Ok(ty::mk_tup(tcx, ts)) )
+            as_.iter().zip(bs.iter())
+               .map(|(a, b)| this.tys(*a, *b))
+               .collect::<Result<_, _>>()
+               .map(|ts| ty::mk_tup(tcx, ts))
         } else {
             Err(ty::terr_tuple_size(
                 expected_found(this, as_.len(), bs.len())))

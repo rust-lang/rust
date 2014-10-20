@@ -98,7 +98,7 @@ fn group_errors_with_same_origin(errors: &Vec<MoveError>)
         for ge in grouped_errors.iter_mut() {
             if move_from_id == ge.move_from.id && error.move_to.is_some() {
                 debug!("appending move_to to list");
-                ge.move_to_places.push_all_move(move_to);
+                ge.move_to_places.extend(move_to.into_iter());
                 return
             }
         }

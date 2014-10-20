@@ -566,12 +566,6 @@ impl<T, E> Result<T, E> {
         Item{opt: self.as_ref().ok()}
     }
 
-    /// Deprecated: use `iter_mut`.
-    #[deprecated = "use iter_mut"]
-    pub fn mut_iter<'r>(&'r mut self) -> Item<&'r mut T> {
-        self.iter_mut()
-    }
-
     /// Returns a mutable iterator over the possibly contained value.
     ///
     /// # Example
@@ -591,12 +585,6 @@ impl<T, E> Result<T, E> {
     #[unstable = "waiting for iterator conventions"]
     pub fn iter_mut<'r>(&'r mut self) -> Item<&'r mut T> {
         Item{opt: self.as_mut().ok()}
-    }
-
-    /// Deprecated: `use into_iter`.
-    #[deprecated = "use into_iter"]
-    pub fn move_iter(self) -> Item<T> {
-        self.into_iter()
     }
 
     /// Returns a consuming iterator over the possibly contained value.
@@ -771,13 +759,6 @@ impl<T, E> Result<T, E> {
             Err(e) => op(e)
         }
     }
-
-    /// Deprecated name for `unwrap_or_else()`.
-    #[deprecated = "replaced by .unwrap_or_else()"]
-    #[inline]
-    pub fn unwrap_or_handle(self, op: |E| -> T) -> T {
-        self.unwrap_or_else(op)
-    }
 }
 
 impl<T, E: Show> Result<T, E> {
@@ -902,14 +883,6 @@ impl<A> ExactSize<A> for Item<A> {}
 // Free functions
 /////////////////////////////////////////////////////////////////////////////
 
-/// Deprecated: use `Iterator::collect`.
-#[inline]
-#[deprecated = "use Iterator::collect instead"]
-pub fn collect<T, E, Iter: Iterator<Result<T, E>>, V: FromIterator<T>>(mut iter: Iter)
-                                                                       -> Result<V, E> {
-    iter.collect()
-}
-
 impl<A, E, V: FromIterator<A>> FromIterator<Result<A, E>> for Result<V, E> {
     /// Takes each element in the `Iterator`: if it is an `Err`, no further
     /// elements are taken, and the `Err` is returned. Should no `Err` occur, a
@@ -983,17 +956,4 @@ pub fn fold<T,
         }
     }
     Ok(init)
-}
-
-/// Deprecated.
-///
-/// Perform a trivial fold operation over the result values
-/// from an iterator.
-///
-/// If an `Err` is encountered, it is immediately returned.
-/// Otherwise, a simple `Ok(())` is returned.
-#[inline]
-#[deprecated = "use fold instead"]
-pub fn fold_<T,E,Iter:Iterator<Result<T,E>>>(iterator: Iter) -> Result<(),E> {
-    fold(iterator, (), |_, _| ())
 }

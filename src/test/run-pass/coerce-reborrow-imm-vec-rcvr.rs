@@ -10,11 +10,11 @@
 
 
 fn bar(v: &mut [uint]) -> Vec<uint> {
-    Vec::from_slice(v)
+    v.to_vec()
 }
 
 fn bip(v: &[uint]) -> Vec<uint> {
-    Vec::from_slice(v)
+    v.to_vec()
 }
 
 pub fn main() {

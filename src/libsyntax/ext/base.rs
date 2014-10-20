@@ -495,7 +495,7 @@ impl<'a> ExtCtxt<'a> {
 
     pub fn new_parser_from_tts(&self, tts: &[ast::TokenTree])
         -> parser::Parser<'a> {
-        parse::tts_to_parser(self.parse_sess, Vec::from_slice(tts), self.cfg())
+        parse::tts_to_parser(self.parse_sess, tts.to_vec(), self.cfg())
     }
 
     pub fn codemap(&self) -> &'a CodeMap { &self.parse_sess.span_diagnostic.cm }

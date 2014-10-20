@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![crate_id="cci_no_inline_lib"]
+#![crate_name="cci_no_inline_lib"]
 
 
 // same as cci_iter_lib, more-or-less, but not marked inline
@@ -16,7 +16,7 @@ pub fn iter(v: Vec<uint> , f: |uint|) {
     let mut i = 0u;
     let n = v.len();
     while i < n {
-        f(*v.get(i));
+        f(v[i]);
         i += 1u;
     }
 }

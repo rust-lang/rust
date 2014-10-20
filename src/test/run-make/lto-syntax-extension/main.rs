@@ -11,8 +11,9 @@
 #![feature(phase)]
 
 extern crate lib;
-#[phase(plugin)] extern crate fourcc;
+extern crate regex;
+#[phase(plugin)] extern crate regex_macros;
 
 fn main() {
-    fourcc!("1234");
+    regex!("1234");
 }

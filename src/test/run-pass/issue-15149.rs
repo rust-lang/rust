@@ -15,8 +15,8 @@ use std::task::TaskBuilder;
 fn main() {
     // If we're the child, make sure we were invoked correctly
     let args = os::args();
-    if args.len() > 1 && args.get(1).as_slice() == "child" {
-        return assert_eq!(args.get(0).as_slice(), "mytest");
+    if args.len() > 1 && args[1].as_slice() == "child" {
+        return assert_eq!(args[0].as_slice(), "mytest");
     }
 
     test();

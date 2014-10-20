@@ -16,7 +16,7 @@ use std::os;
 
 fn main() {
     let args = os::args();
-    if args.len() > 1 && args.get(1).as_slice() == "child" {
+    if args.len() > 1 && args[1].as_slice() == "child" {
         return child()
     }
 
@@ -32,7 +32,7 @@ fn child() {
 
 fn test() {
     let args = os::args();
-    let mut p = Command::new(args.get(0).as_slice()).arg("child")
+    let mut p = Command::new(args[0].as_slice()).arg("child")
                                      .stdin(process::Ignored)
                                      .stdout(process::Ignored)
                                      .stderr(process::Ignored)
