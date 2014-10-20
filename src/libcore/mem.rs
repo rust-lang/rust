@@ -263,8 +263,8 @@ pub fn from_be32(x: u32) -> u32 { Int::from_be(x) }
 #[deprecated = "use `Int::from_be` instead"]
 pub fn from_be64(x: u64) -> u64 { Int::from_be(x) }
 
-/// Swap the values at two mutable locations of the same type, without
-/// deinitialising or copying either one.
+/// Swap the values at two mutable locations of the same type using shallow byte
+/// copies, without deinitialising or recursively copying (via `Clone`) either one.
 #[inline]
 #[stable]
 pub fn swap<T>(x: &mut T, y: &mut T) {
@@ -284,7 +284,8 @@ pub fn swap<T>(x: &mut T, y: &mut T) {
 }
 
 /// Replace the value at a mutable location with a new one, returning the old
-/// value, without deinitialising or copying either one.
+/// value. Only shallow byte copies are used; neither value is deinitialized or
+/// recursively copied (via `Clone`).
 ///
 /// This is primarily used for transferring and swapping ownership of a value
 /// in a mutable location. For example, this function allows consumption of
