@@ -442,21 +442,21 @@ It gives us this error:
 ```
 
 It mentions that "numbers moved into closure environment". Because we referred
-to `numbers` inside of our `proc`, and we create ten `proc`s, we would have ten
-references. Rust detects this and gives us the error: we claim that `numbers`
-has ownership, but our code tries to make ten owners. This may cause a safety
-problem, so Rust disallows it.
+to `numbers` inside of our `proc`, and we create three `proc`s, we would have
+three references. Rust detects this and gives us the error: we claim that
+`numbers` has ownership, but our code tries to make three owners. This may
+cause a safety problem, so Rust disallows it.
 
 What to do here? Rust has two types that helps us: `Arc<T>` and `Mutex<T>`.
 "Arc" stands for "atomically reference counted." In other words, an Arc will
 keep track of the number of references to something, and not free the
 associated resource until the count is zero. The 'atomic' portion refers to an
 Arc's usage of concurrency primitives to atomically update the count, making it
-safe across threads. If we use an Arc, we can have our ten references. But, an
-Arc does not allow mutable borrows of the data it holds, and we want to modify
-what we're sharing. In this case, we can use a `Mutex<T>` inside of our Arc. A
-Mutex will synchronize our accesses, so that we can ensure that our mutation
-doesn't cause a data race.
+safe across threads. If we use an Arc, we can have our three references. But,
+an Arc does not allow mutable borrows of the data it holds, and we want to
+modify what we're sharing. In this case, we can use a `Mutex<T>` inside of our
+Arc. A Mutex will synchronize our accesses, so that we can ensure that our
+mutation doesn't cause a data race.
 
 Here's what using an Arc with a Mutex looks like:
 
