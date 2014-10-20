@@ -3095,10 +3095,10 @@ And try to run the test:
 
 ```{notrust,ignore}
 $ cargo test
-   Compiling testing v0.0.1 (file:///home/youg/projects/testing)
-/home/youg/projects/testing/tests/lib.rs:3:18: 3:38 error: unresolved name `add_three_times_four`.
-/home/youg/projects/testing/tests/lib.rs:3     let result = add_three_times_four(5i);
-                                                            ^~~~~~~~~~~~~~~~~~~~
+   Compiling testing v0.0.1 (file:///home/you/projects/testing)
+/home/you/projects/testing/tests/lib.rs:3:18: 3:38 error: unresolved name `add_three_times_four`.
+/home/you/projects/testing/tests/lib.rs:3     let result = add_three_times_four(5i);
+                                                           ^~~~~~~~~~~~~~~~~~~~
 error: aborting due to previous error
 Build failed, waiting for other jobs to finish...
 Could not compile `testing`.
