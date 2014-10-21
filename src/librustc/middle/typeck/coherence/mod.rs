@@ -18,11 +18,12 @@
 
 use metadata::csearch::{each_impl, get_impl_trait};
 use metadata::csearch;
+use middle::lang_items;
 use middle::subst;
 use middle::subst::{Substs};
 use middle::ty::get;
 use middle::ty::{ImplContainer, ImplOrTraitItemId, MethodTraitItemId};
-use middle::ty::{TypeTraitItemId, lookup_item_type};
+use middle::ty::{SimplifiedType, TypeTraitItemId, lookup_item_type};
 use middle::ty::{t, ty_bool, ty_char, ty_bot, ty_enum, ty_err};
 use middle::ty::{ty_str, ty_vec, ty_float, ty_infer, ty_int, ty_nil, ty_open};
 use middle::ty::{ty_param, Polytype, ty_ptr};
@@ -550,6 +551,119 @@ fn subst_receiver_types_in_method_ty(tcx: &ty::ctxt,
     )
 }
 
+fn populate_overloaded_operator_filter(tcx: &ty::ctxt) {
+    fn filter(tcx: &ty::ctxt,
+              lang_item: lang_items::LangItem,
+              flag: ty::OverloadedOperatorFilter) {
+        let trait_id = match *tcx.lang_items.items.get(lang_item as uint) {
+            Some(trait_id) => trait_id,
+            None => return,
+        };
+
+        ty::populate_implementations_for_trait_if_necessary(tcx, trait_id);
+
+        for impl_infos in tcx.trait_impls.borrow().find(&trait_id).iter() {
+            for impl_did in impl_infos.borrow().iter() {
+                let impl_type = ty::lookup_item_type(tcx, *impl_did);
+                let simplified_impl_type =
+                    SimplifiedType::from_type(tcx,
+                                              impl_type.ty,
+                                              false,
+                                              ty::AllowDerefable);
+                match simplified_impl_type {
+                    None => {
+                        tcx.sess.span_err(tcx.map.span(impl_did.node),
+                                          "type is unsimplifiable");
+                    }
+                    Some(simplified_impl_type) => {
+                        let mut filter =
+                                match tcx.overloaded_operator_filter
+                                         .borrow()
+                                         .find(&simplified_impl_type) {
+                            None => ty::OverloadedOperatorFilter::empty(),
+                            Some(filter) => *filter,
+                        };
+                        filter.insert(flag);
+                        tcx.overloaded_operator_filter
+                           .borrow_mut()
+                           .insert(simplified_impl_type, filter);
+                    }
+                }
+            }
+        }
+    }
+
+    filter(tcx,
+           lang_items::IndexTraitLangItem,
+           ty::INDEX_OVERLOADED_OPERATOR_FILTER);
+    filter(tcx,
+           lang_items::IndexMutTraitLangItem,
+           ty::INDEX_OVERLOADED_OPERATOR_FILTER);
+    filter(tcx,
+           lang_items::DerefTraitLangItem,
+           ty::DEREF_OVERLOADED_OPERATOR_FILTER);
+    filter(tcx,
+           lang_items::DerefMutTraitLangItem,
+           ty::DEREF_OVERLOADED_OPERATOR_FILTER);
+    filter(tcx,
+           lang_items::FnTraitLangItem,
+           ty::CALL_OVERLOADED_OPERATOR_FILTER);
+    filter(tcx,
+           lang_items::FnMutTraitLangItem,
+           ty::CALL_OVERLOADED_OPERATOR_FILTER);
+    filter(tcx,
+           lang_items::FnOnceTraitLangItem,
+           ty::CALL_OVERLOADED_OPERATOR_FILTER);
+}
+
+fn populate_smart_pointer_filter(tcx: &ty::ctxt) {
+    fn filter(tcx: &ty::ctxt, lang_item: lang_items::LangItem) {
+        let trait_id = match *tcx.lang_items.items.get(lang_item as uint) {
+            Some(trait_id) => trait_id,
+            None => return,
+        };
+
+        ty::populate_implementations_for_trait_if_necessary(tcx, trait_id);
+
+        for impl_infos in tcx.trait_impls.borrow().find(&trait_id).iter() {
+            for impl_did in impl_infos.borrow().iter() {
+                let impl_polytype = ty::lookup_item_type(tcx, *impl_did);
+                let struct_did = match ty::get(impl_polytype.ty).sty {
+                    ty::ty_struct(struct_did, _) => {
+                        debug!("not smart pointer: not a struct");
+                        struct_did
+                    }
+                    _ => continue,
+                };
+                if impl_polytype.generics.types.len(subst::TypeSpace) != 1 {
+                    continue
+                }
+                let impl_trait_ref = match ty::impl_trait_ref(tcx,
+                                                              *impl_did) {
+                    None => {
+                        debug!("not smart pointer: no trait ref");
+                        continue
+                    }
+                    Some(impl_trait_ref) => impl_trait_ref,
+                };
+                match ty::get(*impl_trait_ref.substs
+                                             .types
+                                             .get(subst::TypeSpace, 0)).sty {
+                    ty::ty_param(..) => {
+                        debug!("not smart pointer: no type param in subst");
+                    }
+                    _ => continue,
+                }
+                debug!("found smart pointer: {}", impl_polytype.repr(tcx));
+                tcx.smart_pointers.borrow_mut().insert(struct_did);
+            }
+        }
+    }
+
+    filter(tcx, lang_items::DerefTraitLangItem);
+    filter(tcx, lang_items::DerefMutTraitLangItem);
+}
+
 pub fn check_coherence(crate_context: &CrateCtxt) {
     CoherenceChecker {
         crate_context: crate_context,
@@ -558,4 +672,6 @@ pub fn check_coherence(crate_context: &CrateCtxt) {
     }.check(crate_context.tcx.map.krate());
     orphan::check(crate_context.tcx);
     overlap::check(crate_context.tcx);
+    populate_overloaded_operator_filter(crate_context.tcx);
+    populate_smart_pointer_filter(crate_context.tcx);
 }

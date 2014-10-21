@@ -101,7 +101,7 @@ pub struct Options {
     /// An optional name to use as the crate for std during std injection,
     /// written `extern crate std = "name"`. Default to "std". Used by
     /// out-of-tree drivers.
-    pub alt_std_name: Option<String>
+    pub alt_std_name: Option<String>,
 }
 
 /// Some reasonable defaults
@@ -843,7 +843,7 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
         color: color,
         externs: externs,
         crate_name: crate_name,
-        alt_std_name: None
+        alt_std_name: None,
     }
 }
 

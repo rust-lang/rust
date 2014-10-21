@@ -576,6 +576,11 @@ pub struct ctxt<'tcx> {
 
     /// Caches the representation hints for struct definitions.
     pub repr_hint_cache: RefCell<DefIdMap<Rc<Vec<attr::ReprAttr>>>>,
+
+    pub overloaded_operator_filter:
+        RefCell<HashMap<SimplifiedType,OverloadedOperatorFilter>>,
+
+    pub smart_pointers: RefCell<DefIdSet>,
 }
 
 pub enum tbox_flag {
@@ -1530,6 +1535,8 @@ pub fn mk_ctxt<'tcx>(s: Session,
         trait_associated_types: RefCell::new(DefIdMap::new()),
         selection_cache: traits::SelectionCache::new(),
         repr_hint_cache: RefCell::new(DefIdMap::new()),
+        overloaded_operator_filter: RefCell::new(HashMap::new()),
+        smart_pointers: RefCell::new(DefIdSet::new()),
    }
 }
 
@@ -5528,3 +5535,186 @@ pub fn with_freevars<T>(tcx: &ty::ctxt, fid: ast::NodeId, f: |&[Freevar]| -> T) 
         Some(d) => f(d.as_slice())
     }
 }
+
+pub enum AllowDerefableFlag<'a> {
+    AllowDerefable,
+    DisallowDerefable(&'a ParameterEnvironment),
+}
+
+#[deriving(Clone, PartialEq, Eq, Hash)]
+pub enum SimplifiedType {
+    NilSimplifiedType,
+    BoolSimplifiedType,
+    CharSimplifiedType,
+    IntSimplifiedType(ast::IntTy),
+    UintSimplifiedType(ast::UintTy),
+    FloatSimplifiedType(ast::FloatTy),
+    EnumSimplifiedType(DefId),
+    StrSimplifiedType,
+    VecSimplifiedType,
+    PtrSimplifiedType,
+    TupleSimplifiedType(uint),
+    TraitSimplifiedType(DefId),
+    StructSimplifiedType(DefId),
+    UnboxedClosureSimplifiedType(DefId),
+    FunctionSimplifiedType(uint),
+    ParameterSimplifiedType,
+}
+
+impl SimplifiedType {
+    pub fn from_type(tcx: &ctxt,
+                     ty: ty::t,
+                     can_simplify_params: bool,
+                     allow_derefable: AllowDerefableFlag)
+                     -> Option<SimplifiedType> {
+        let simplified_type = match get(ty).sty {
+            ty_nil => Some(NilSimplifiedType),
+            ty_bool => Some(BoolSimplifiedType),
+            ty_char => Some(CharSimplifiedType),
+            ty_int(int_type) => Some(IntSimplifiedType(int_type)),
+            ty_uint(uint_type) => Some(UintSimplifiedType(uint_type)),
+            ty_float(float_type) => Some(FloatSimplifiedType(float_type)),
+            ty_enum(def_id, _) => Some(EnumSimplifiedType(def_id)),
+            ty_str => Some(StrSimplifiedType),
+            ty_trait(ref trait_info) => {
+                Some(TraitSimplifiedType(trait_info.def_id))
+            }
+            ty_struct(def_id, _) => {
+                Some(StructSimplifiedType(def_id))
+            }
+            ty_unboxed_closure(def_id, _) => {
+                Some(UnboxedClosureSimplifiedType(def_id))
+            }
+            ty_vec(..) => Some(VecSimplifiedType),
+            ty_ptr(_) => Some(PtrSimplifiedType),
+            ty_rptr(_, ref mt) => {
+                SimplifiedType::from_type(tcx,
+                                          mt.ty,
+                                          can_simplify_params,
+                                          allow_derefable)
+            }
+            ty_uniq(ref ty) => {
+                SimplifiedType::from_type(tcx,
+                                          *ty,
+                                          can_simplify_params,
+                                          allow_derefable)
+            }
+            ty_tup(ref tys) => Some(TupleSimplifiedType(tys.len())),
+            ty_closure(ref f) => {
+                Some(FunctionSimplifiedType(f.sig.inputs.len()))
+            }
+            ty_bare_fn(ref f) => {
+                Some(FunctionSimplifiedType(f.sig.inputs.len()))
+            }
+            ty_param(_) if can_simplify_params => {
+                Some(ParameterSimplifiedType)
+            }
+            ty_bot | ty_param(_) | ty_open(_) | ty_infer(_) | ty_err => None,
+        };
+
+        let simplified_type = match simplified_type {
+            None => return None,
+            Some(simplified_type) => simplified_type,
+        };
+
+        match allow_derefable {
+            AllowDerefable => {}
+            DisallowDerefable(param_env) => {
+                match tcx.overloaded_operator_filter
+                         .borrow()
+                         .find(&simplified_type) {
+                    Some(ref flags) if flags.contains(
+                            DEREF_OVERLOADED_OPERATOR_FILTER) => {
+                        return None
+                    }
+                    Some(_) | None => {}
+                }
+
+                match get(ty).sty {
+                    ty_param(ref param_ty) => {
+                        let bounds = &param_env.bounds
+                                               .get(param_ty.space,
+                                                    param_ty.idx)
+                                               .trait_bounds;
+                        for bound in bounds.iter() {
+                            let bad = Some(bound.def_id) ==
+                                    tcx.lang_items.deref_trait() ||
+                                    Some(bound.def_id) ==
+                                    tcx.lang_items.deref_mut_trait();
+                            debug!("for param {} bound {} deref {} bad {}",
+                                   param_ty.repr(tcx),
+                                   bound.repr(tcx),
+                                   tcx.lang_items.deref_trait(),
+                                   bad);
+                            if bad {
+                                return None
+                            }
+                        }
+                    }
+                    _ => {}
+                }
+            }
+        }
+
+        Some(simplified_type)
+    }
+}
+
+pub enum MethodLookupKey {
+    SimplifiedTypeLookupKey(SimplifiedType),
+    SmartPointerLookupKey(ast::DefId, SimplifiedType),
+}
+
+impl MethodLookupKey {
+    pub fn from_type(tcx: &ctxt, ty: ty::t, param_env: &ParameterEnvironment)
+                     -> Option<MethodLookupKey> {
+        match get(ty).sty {
+            ty_struct(def_id, ref substs) => {
+                if tcx.smart_pointers.borrow().contains(&def_id) {
+                    let simplified_referent = SimplifiedType::from_type(
+                        tcx,
+                        *substs.types.get(subst::TypeSpace, 0),
+                        true,
+                        DisallowDerefable(param_env));
+                    match simplified_referent {
+                        None => return None,
+                        Some(simplified_referent) => {
+                            return Some(SmartPointerLookupKey(
+                                    def_id,
+                                    simplified_referent))
+                        }
+                    }
+                }
+            }
+            _ => {}
+        }
+
+        match SimplifiedType::from_type(tcx,
+                                        ty,
+                                        true,
+                                        DisallowDerefable(param_env)) {
+            None => None,
+            Some(simplified_type) => {
+                Some(SimplifiedTypeLookupKey(simplified_type))
+            }
+        }
+    }
+
+    pub fn might_match(&self, other: &SimplifiedType) -> bool {
+        match *self {
+            SimplifiedTypeLookupKey(ref this) => *this == *other,
+            SmartPointerLookupKey(def_id, ref this) => {
+                *this == *other || StructSimplifiedType(def_id) == *other
+            }
+        }
+    }
+}
+
+bitflags! {
+    flags OverloadedOperatorFilter: u8 {
+        const INDEX_OVERLOADED_OPERATOR_FILTER = 0x01,
+        const DEREF_OVERLOADED_OPERATOR_FILTER = 0x02,
+        const CALL_OVERLOADED_OPERATOR_FILTER = 0x04
+    }
+}
+
