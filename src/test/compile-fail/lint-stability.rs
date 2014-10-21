@@ -116,6 +116,7 @@ mod cross_crate {
         // on macros themselves are not yet linted.
         macro_test!();
         macro_test_arg!(deprecated_text()); //~ ERROR use of deprecated item: text
+        macro_test_arg!(macro_test_arg!(deprecated_text())); //~ ERROR use of deprecated item: text
         macro_test_arg_nested!(deprecated_text);
     }
 
