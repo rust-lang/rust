@@ -275,15 +275,7 @@ impl Collection for CString {
     /// Return the number of bytes in the CString (not including the NUL terminator).
     #[inline]
     fn len(&self) -> uint {
-        let mut cur = self.buf;
-        let mut len = 0;
-        unsafe {
-            while *cur != 0 {
-                len += 1;
-                cur = cur.offset(1);
-            }
-        }
-        return len;
+        unsafe { libc::strlen(self.buf) as uint }
     }
 }
 
