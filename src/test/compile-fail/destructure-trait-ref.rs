@@ -30,12 +30,12 @@ fn main() {
     let &&x = &&(&1i as &T);
 
     // n == m
-    let &x = &1i as &T;      //~ ERROR cannot be dereferenced
-    let &&x = &(&1i as &T);  //~ ERROR cannot be dereferenced
-    let box x = box 1i as Box<T>; //~ ERROR cannot be dereferenced
+    let &x = &1i as &T;      //~ ERROR type `&T` cannot be dereferenced
+    let &&x = &(&1i as &T);  //~ ERROR type `&T` cannot be dereferenced
+    let box x = box 1i as Box<T>; //~ ERROR type `Box<T>` cannot be dereferenced
 
     // n > m
-    let &&x = &1i as &T;     //~ ERROR found an `&`-pointer pattern
-    let &&&x = &(&1i as &T); //~ ERROR found an `&`-pointer pattern
-    let box box x = box 1i as Box<T>;    //~ ERROR found a box pattern
+    let &&x = &1i as &T;     //~ ERROR found &-ptr
+    let &&&x = &(&1i as &T); //~ ERROR found &-ptr
+    let box box x = box 1i as Box<T>;    //~ ERROR found box
 }

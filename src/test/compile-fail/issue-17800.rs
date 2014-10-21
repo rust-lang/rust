@@ -15,7 +15,7 @@ enum MyOption<T> {
 
 fn main() {
     match MySome(42i) {
-        MySome { x: 42i } => (), //~ ERROR `MySome` does not name a struct variant
+        MySome { x: 42i } => (), //~ ERROR `MySome` does not name a struct or a struct variant
         _ => (),
     }
 }

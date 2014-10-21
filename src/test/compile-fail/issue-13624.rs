@@ -29,7 +29,8 @@ mod b {
       let enum_struct_variant = ::a::get_enum_struct_variant();
       match enum_struct_variant {
         a::EnumStructVariant { x, y, z } => {
-        //~^ ERROR error: mismatched types: expected `()`, found a structure pattern
+        //~^ ERROR mismatched types: expected `()`, found `a::Enum`
+        //         (expected (), found enum a::Enum)
         }
       }
     }
