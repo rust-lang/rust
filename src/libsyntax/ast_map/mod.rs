@@ -536,6 +536,14 @@ impl<'ast> Map<'ast> {
             .unwrap_or_else(|| fail!("AstMap.span: could not find span for id {}", id))
     }
 
+    pub fn def_id_span(&self, def_id: DefId, fallback: Span) -> Span {
+        if def_id.krate == LOCAL_CRATE {
+            self.span(def_id.node)
+        } else {
+            fallback
+        }
+    }
+
     pub fn node_to_string(&self, id: NodeId) -> String {
         node_id_to_string(self, id)
     }

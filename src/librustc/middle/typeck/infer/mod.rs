@@ -28,7 +28,7 @@ use middle::ty::{TyVid, IntVid, FloatVid, RegionVid};
 use middle::ty;
 use middle::ty_fold;
 use middle::ty_fold::{TypeFolder, TypeFoldable};
-use middle::typeck::check::regionmanip::replace_late_bound_regions_in_fn_sig;
+use middle::typeck::check::regionmanip::replace_late_bound_regions;
 use std::cell::{RefCell};
 use std::collections::HashMap;
 use std::rc::Rc;
@@ -962,7 +962,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                                                         HashMap<ty::BoundRegion,
                                                                 ty::Region>) {
         let (map, fn_sig) =
-            replace_late_bound_regions_in_fn_sig(self.tcx, fsig, |br| {
+            replace_late_bound_regions(self.tcx, fsig.binder_id, fsig, |br| {
                 let rvar = self.next_region_var(
                     BoundRegionInFnType(trace.origin.span(), br));
                 debug!("Bound region {} maps to {}",

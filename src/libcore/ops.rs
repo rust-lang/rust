@@ -638,7 +638,7 @@ shr_impl!(uint u8 u16 u32 u64 int i8 i16 i32 i64)
  * ```
  */
 #[lang="index"]
-pub trait Index<Index, Result> {
+pub trait Index<Index, Sized? Result> {
     /// The method for the indexing (`Foo[Bar]`) operation
     fn index<'a>(&'a self, index: &Index) -> &'a Result;
 }

@@ -14,7 +14,7 @@ trait add {
 }
 
 fn do_add(x: Box<add+'static>, y: Box<add+'static>) -> Box<add+'static> {
-    x.plus(y) //~ ERROR cannot call a method whose type contains a self-type through an object
+    x.plus(y) //~ ERROR E0038
 }
 
 fn main() {}
