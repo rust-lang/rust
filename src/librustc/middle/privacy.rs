@@ -667,21 +667,12 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
 
         let struct_type = ty::lookup_item_type(self.tcx, id).ty;
         let struct_desc = match ty::get(struct_type).sty {
-            ty::ty_struct(_, _) => format!("struct `{}`", ty::item_path_str(self.tcx, id)),
-            ty::ty_bare_fn(ty::BareFnTy { sig: ty::FnSig { output, .. }, .. }) => {
-                // Struct `id` is really a struct variant of an enum,
-                // and we're really looking at the variant's constructor
-                // function. So get the return type for a detailed error
-                // message.
-                let enum_id = match ty::get(output).sty {
-                    ty::ty_enum(id, _) => id,
-                    _ => self.tcx.sess.span_bug(span, "enum variant doesn't \
-                                                       belong to an enum")
-                };
+            ty::ty_struct(_, _) =>
+                format!("struct `{}`", ty::item_path_str(self.tcx, id)),
+            ty::ty_enum(enum_id, _) =>
                 format!("variant `{}` of enum `{}`",
                         ty::with_path(self.tcx, id, |mut p| p.last().unwrap()),
-                        ty::item_path_str(self.tcx, enum_id))
-            }
+                        ty::item_path_str(self.tcx, enum_id)),
             _ => self.tcx.sess.span_bug(span, "can't find struct for field")
         };
         let msg = match name {

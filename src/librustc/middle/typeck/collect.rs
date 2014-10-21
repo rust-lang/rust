@@ -236,10 +236,7 @@ pub fn get_enum_variant_types(ccx: &CrateCtxt,
                 };
 
                 convert_struct(ccx, &**struct_def, pty, variant.node.id);
-
-                let input_tys: Vec<_> = struct_def.fields.iter().map(
-                    |f| ty::node_id_to_type(ccx.tcx, f.node.id)).collect();
-                ty::mk_ctor_fn(tcx, scope, input_tys.as_slice(), enum_ty)
+                enum_ty
             }
         };
 

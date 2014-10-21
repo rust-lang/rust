@@ -117,7 +117,7 @@ use util::ppaux;
 use util::ppaux::{UserString, Repr};
 use util::nodemap::{DefIdMap, FnvHashMap, NodeMap};
 
-use std::cell::{Cell, RefCell};
+use std::cell::{Cell, Ref, RefCell};
 use std::collections::HashMap;
 use std::collections::hashmap::{Occupied, Vacant};
 use std::mem::replace;
@@ -1813,6 +1813,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             self.tag()).as_slice());
             }
         }
+    }
+
+    pub fn item_substs<'a>(&'a self) -> Ref<'a, NodeMap<ty::ItemSubsts>> {
+        self.inh.item_substs.borrow()
     }
 
     pub fn opt_node_ty_substs(&self,
