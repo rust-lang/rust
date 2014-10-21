@@ -127,3 +127,22 @@ fn clone_ref_updates_flag() {
     }
     assert!(x.try_borrow_mut().is_some());
 }
+
+#[test]
+fn as_unsafe_cell() {
+    let c1: Cell<uint> = Cell::new(0u);
+    c1.set(1u);
+    assert_eq!(1u, unsafe { *c1.as_unsafe_cell().get() });
+
+    let c2: Cell<uint> = Cell::new(0u);
+    unsafe { *c2.as_unsafe_cell().get() = 1u; }
+    assert_eq!(1u, c2.get());
+
+    let r1: RefCell<uint> = RefCell::new(0u);
+    *r1.borrow_mut() = 1u;
+    assert_eq!(1u, unsafe { *r1.as_unsafe_cell().get() });
+
+    let r2: RefCell<uint> = RefCell::new(0u);
+    unsafe { *r2.as_unsafe_cell().get() = 1u; }
+    assert_eq!(1u, *r2.borrow());
+}
