@@ -245,7 +245,7 @@ impl<T> Option<T> {
     /// ```
     /// let mut x = Some(2u);
     /// match x.as_mut() {
-    ///     Some(&ref mut v) => *v = 42,
+    ///     Some(v) => *v = 42,
     ///     None => {},
     /// }
     /// assert_eq!(x, Some(42u));
