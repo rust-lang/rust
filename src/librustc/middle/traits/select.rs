@@ -514,7 +514,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // and `Rc<Baz>`. (Note that it is not a *coherence violation*
         // to have impls for both `Bar` and `Baz`, despite this
         // ambiguity).  In this case, we report an error, listing all
-        // the applicable impls.  The use can explicitly "up-coerce"
+        // the applicable impls.  The user can explicitly "up-coerce"
         // to the type they want.
         //
         // Note that this coercion step only considers actual impls
@@ -1931,7 +1931,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
     fn all_impls(&self, trait_def_id: ast::DefId) -> Vec<ast::DefId> {
         /*!
-         * Returns se tof all impls for a given trait.
+         * Returns set of all impls for a given trait.
          */
 
         ty::populate_implementations_for_trait_if_necessary(self.tcx(),
