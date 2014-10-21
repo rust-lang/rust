@@ -18,7 +18,6 @@ use core::prelude::*;
 use core::default::Default;
 use core::fmt;
 use core::iter;
-use core::slice;
 use core::raw::Slice as RawSlice;
 use core::ptr;
 use core::kinds::marker;
@@ -28,7 +27,7 @@ use core::num;
 use std::hash::{Writer, Hash};
 use std::cmp;
 
-use alloc::heap::{allocate, reallocate, deallocate};
+use alloc::heap;
 
 use {Deque, Mutable, MutableSeq};
 
@@ -37,9 +36,15 @@ static MINIMUM_CAPACITY: uint = 2u;
 
 /// `RingBuf` is a circular buffer that implements `Deque`.
 pub struct RingBuf<T> {
-    head: uint,
+    // tail and head are pointers into the buffer. Tail always points
+    // to the first element that could be read, Head always points
+    // to where data should be written.
+    // If tail == head the buffer is empty. The length of the ringbuf
+    // is defined as the distance between the two,
+
     tail: uint,
-    len: uint,
+    head: uint,
+    cap: uint,
     ptr: *mut T
 }
 
@@ -56,99 +61,92 @@ impl<T> Drop for RingBuf<T> {
             drop(self.pop_front())
         }
         unsafe {
-            deallocate(self.ptr as *mut u8,
-                       self.len * mem::size_of::<T>(),
-                       mem::min_align_of::<T>())
+            heap::deallocate(self.ptr as *mut u8,
+                             self.cap * mem::size_of::<T>(),
+                             mem::min_align_of::<T>())
         }
     }
 }
 
 impl<T> Collection for RingBuf<T> {
     /// Returns the number of elements in the `RingBuf`.
-    fn len(&self) -> uint {
-        (self.tail - self.head) & (self.len - 1)
-    }
+    fn len(&self) -> uint { count(self.tail, self.head, self.cap) }
 }
 
 impl<T> Mutable for RingBuf<T> {
     /// Clears the `RingBuf`, removing all values.
     fn clear(&mut self) {
-        while self.head != self.tail {
+        while self.tail != self.head {
             let _ = self.pop_front();
         }
-        self.head = 0;
         self.tail = 0;
+        self.head = 0;
     }
 }
 
 impl<T> Deque<T> for RingBuf<T> {
     /// Returns a reference to the first element in the `RingBuf`.
-    fn front<'a>(&'a self) -> Option<&'a T> {
-        if self.len() > 0 { Some(&self[0]) } else { None }
-    }
+    fn front<'a>(&'a self) -> Option<&'a T> { self.get(0) }
 
     /// Returns a mutable reference to the first element in the `RingBuf`.
-    fn front_mut<'a>(&'a mut self) -> Option<&'a mut T> {
-        if self.len() > 0 { Some(self.get_mut(0)) } else { None }
-    }
+    fn front_mut<'a>(&'a mut self) -> Option<&'a mut T> { self.get_mut(0) }
 
     /// Returns a reference to the last element in the `RingBuf`.
     fn back<'a>(&'a self) -> Option<&'a T> {
-        if self.len() > 0 { Some(&self[self.len() - 1]) } else { None }
+        let idx = self.len() - 1;
+        self.get(idx)
     }
 
     /// Returns a mutable reference to the last element in the `RingBuf`.
     fn back_mut<'a>(&'a mut self) -> Option<&'a mut T> {
-        if self.len() > 0 {
-            let last = self.len() - 1;
-            Some(self.get_mut(last))
-        } else { None }
+        let idx = self.len() - 1;
+        self.get_mut(idx)
     }
 
     /// Removes and returns the first element in the `RingBuf`, or `None` if it
     /// is empty.
     fn pop_front(&mut self) -> Option<T> {
-        if self.head == self.tail {
+        if self.is_empty() {
             None
         } else {
-            let head = self.head;
-            self.head = self.wrap_ptr(self.head + 1);
-            unsafe { Some(self.buffer_read(head)) }
+            let tail = self.tail;
+            self.tail = wrap_index(self.tail + 1, self.cap);
+            unsafe { Some(self.buffer_read(tail)) }
         }
     }
 
     /// Prepends an element to the `RingBuf`.
     fn push_front(&mut self, t: T) {
-        if self.wrap_ptr(self.head - 1) == self.tail {
-            let len = self.len * 2;
-            self.grow(len);
+        if self.is_full() {
+            let newcap = self.cap * 2;
+            self.grow(newcap);
         }
 
-        self.head = self.wrap_ptr(self.head - 1);
-        let head = self.head;
-        unsafe { self.buffer_write(head, t); }
+        self.tail = wrap_index(self.tail - 1, self.cap);
+        let tail = self.tail;
+        unsafe { self.buffer_write(tail, t); }
     }
 }
 
 impl<T> MutableSeq<T> for RingBuf<T> {
     fn push(&mut self, t: T) {
-        if self.wrap_ptr(self.tail + 1) == self.head {
-            let len = self.len * 2;
-            self.grow(len);
+        if self.is_full() {
+            let newcap = self.cap * 2;
+            self.grow(newcap);
         }
 
-        let tail = self.tail;
-        self.tail = self.wrap_ptr(self.tail + 1);
-        unsafe { self.buffer_write(tail, t) }
+        let head = self.head;
+        self.head = wrap_index(self.head + 1, self.cap);
+        unsafe { self.buffer_write(head, t) }
     }
 
     fn pop(&mut self) -> Option<T> {
-        if self.len() > 0 {
-            self.tail = self.wrap_ptr(self.tail - 1);
-            let tail = self.tail;
-            unsafe { Some(self.buffer_read(tail)) }
-        } else {
+        if self.is_empty() {
             None
+        } else {
+            self.head = wrap_index(self.head - 1, self.cap);
+            let head = self.head;
+            unsafe { Some(self.buffer_read(head)) }
         }
     }
 }
@@ -166,93 +164,132 @@ impl<T> RingBuf<T> {
 
     /// Creates an empty `RingBuf` with space for at least `n` elements.
     pub fn with_capacity(n: uint) -> RingBuf<T> {
-        let count = num::next_power_of_two(cmp::max(n, MINIMUM_CAPACITY));
-        let size = count.checked_mul(&mem::size_of::<T>())
-                        .expect("capacity overflow");
+        // +1 since the ringbuffer always leaves one space empty
+        let cap = num::next_power_of_two(cmp::max(n + 1, MINIMUM_CAPACITY));
+        let size = cap.checked_mul(&mem::size_of::<T>())
+                      .expect("capacity overflow");
 
         RingBuf {
-            head: 0,
             tail: 0,
-            len: count,
-            ptr: unsafe { allocate(size, mem::min_align_of::<T>()) as *mut T }
+            head: 0,
+            cap: cap,
+            ptr: unsafe { heap::allocate(size, mem::min_align_of::<T>()) as *mut T }
         }
     }
 
     /// Turn ptr into a slice
     #[inline]
     fn buffer_as_slice(&self) -> &[T] {
-        unsafe { mem::transmute(RawSlice { data: self.ptr as *const T, len: self.len }) }
+        unsafe { mem::transmute(RawSlice { data: self.ptr as *const T, len: self.cap }) }
     }
 
     /// Turn ptr into a mutable slice
     #[inline]
     fn buffer_as_slice_mut(&mut self) -> &mut [T] {
-        unsafe { mem::transmute(RawSlice { data: self.ptr as *const T, len: self.len }) }
+        unsafe { mem::transmute(RawSlice { data: self.ptr as *const T, len: self.cap }) }
     }
 
-    /// move an element from the buffer
+    /// Moves an element out of the buffer
     #[inline]
     unsafe fn buffer_read(&mut self, off: uint) -> T {
        ptr::read(self.ptr.offset(off as int) as *const T)
     }
 
-    /// write an element without dropping unused slot
+    /// Writes an element into the buffer, moving it.
     #[inline]
     unsafe fn buffer_write(&mut self, off: uint, t: T) {
-        let pos = (self.ptr as *const T).offset(off as int) as *mut T;
-        ptr::write(&mut *pos, t);
+        ptr::write(self.ptr.offset(off as int), t);
     }
 
-    /// caclulate index from offset
-    fn wrap_ptr(&self, idx: uint) -> uint { idx & (self.len - 1) }
+    /// Returns true iff the buffer is at capacity
+    #[inline]
+    fn is_full(&self) -> bool { self.cap - self.len() == 1 }
 
-    /// Grow the buffer to a new length
+    /// Grows the buffer to a new length, this expected the new size
+    /// to be greated then the current size and a power of two.
     #[inline]
     fn grow(&mut self, newlen: uint) {
-        assert!(newlen > self.len);
-        let old = self.len * mem::size_of::<T>();
+        assert!(newlen > self.cap);
+        assert!(newlen == num::next_power_of_two(newlen));
+        let old = self.cap * mem::size_of::<T>();
         let new = newlen.checked_mul(&mem::size_of::<T>())
                         .expect("capacity overflow");
         unsafe {
-            self.ptr = reallocate(self.ptr as *mut u8,
-                                  old,
-                                  new,
-                                  mem::min_align_of::<T>()) as *mut T;
+            self.ptr = heap::reallocate(self.ptr as *mut u8,
+                                        old,
+                                        new,
+                                        mem::min_align_of::<T>()) as *mut T;
         }
 
         // Move the shortest half into the newly reserved area.
-        //        W R
+        //    T             H
+        //   [o o o o o o o . ]
+        //    T             H
+        // A [o o o o o o o . . . . . . . . . ]
+        //        H T
         //   [o o . o o o o o ]
-        //          R             W
-        // A [. . . o o o o o o o . . . . . . ]
-        //              W R
+        //          T             H
+        // B [. . . o o o o o o o . . . . . . ]
+        //              H T
         //   [o o o o o . o o ]
-        //              W                 R
-        // B [o o o o o . . . . . . . . . o o ]
+        //              H                 T
+        // C [o o o o o . . . . . . . . . o o ]
 
-        let oldlen = self.len;
-        self.len = newlen;
+        let oldlen = self.cap;
+        self.cap = newlen;
 
-        if self.head == 0 {
-            return
+        if self.tail < self.head { // A
+            // Nop
+        } else if self.head < oldlen - self.tail { // B
+            unsafe {
+                ptr::copy_nonoverlapping_memory(
+                    self.ptr.offset(oldlen as int) as *mut T,
+                    self.ptr.offset(0 as int) as *const T,
+                    self.head
+                );
+            }
+            self.head += oldlen;
+        } else { // C
+            unsafe {
+                ptr::copy_nonoverlapping_memory(
+                    self.ptr.offset((newlen - oldlen + self.tail) as int) as *mut T,
+                    self.ptr.offset(self.tail as int) as *const T,
+                    self.head
+                );
+            }
+            self.tail = newlen - oldlen + self.tail;
         }
+    }
 
-        if self.tail < oldlen - self.head { // A
-            for i in range(0u, self.tail) {
-                self.buffer_as_slice_mut().swap(i, oldlen + i);
-            }
-            self.tail += oldlen;
-        } else { // B
-            for i in range(self.head, oldlen) {
-                self.buffer_as_slice_mut().swap(i, newlen - oldlen + i);
-            }
-            self.head = newlen - oldlen + self.head;
+    /// Retrieve an element in the `RingBuf` by index.
+    ///
+    /// Returns None if there is no element with the given index.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// #![allow(deprecated)]
+    ///
+    /// use std::collections::RingBuf;
+    ///
+    /// let mut buf = RingBuf::new();
+    /// buf.push(3i);
+    /// buf.push(4);
+    /// buf.push(5);
+    /// assert_eq!(buf.get(1), Some(&4));
+    /// ```
+    pub fn get<'a>(&'a self, i: uint) -> Option<&'a T> {
+        if self.len() > i {
+            let idx = wrap_index(self.tail + i, self.cap);
+            Some(&self.buffer_as_slice()[idx])
+        } else {
+            None
         }
     }
 
     /// Retrieves an element in the `RingBuf` by index.
     ///
-    /// Fails if there is no element with the given index.
+    /// Returns None if there is no element with the given index.
     ///
     /// # Example
     ///
@@ -263,12 +300,19 @@ impl<T> RingBuf<T> {
     /// buf.push(3i);
     /// buf.push(4);
     /// buf.push(5);
-    /// *buf.get_mut(1) = 7;
+    /// match buf.get_mut(1) {
+    ///     Some(v) => *v = 7,
+    ///     None => ()
+    /// };
     /// assert_eq!(buf[1], 7);
     /// ```
-    pub fn get_mut<'a>(&'a mut self, i: uint) -> &'a mut T {
-        let idx = self.raw_index(i);
-        &mut self.buffer_as_slice_mut()[idx]
+    pub fn get_mut<'a>(&'a mut self, i: uint) -> Option<&'a mut T> {
+        if self.len() > i {
+            let idx = wrap_index(self.tail + i, self.cap);
+            Some(&mut self.buffer_as_slice_mut()[idx])
+        } else {
+            None
+        }
     }
 
     /// Swaps elements at indices `i` and `j`.
@@ -293,16 +337,9 @@ impl<T> RingBuf<T> {
     pub fn swap(&mut self, i: uint, j: uint) {
         assert!(i < self.len());
         assert!(j < self.len());
-        let ri = self.raw_index(i);
-        let rj = self.raw_index(j);
+        let ri = wrap_index(self.tail + i, self.cap);
+        let rj = wrap_index(self.tail + j, self.cap);
         self.buffer_as_slice_mut().swap(ri, rj);
-    }
-
-    /// Returns the index in the underlying `Vec` for a given logical element
-    /// index.
-    fn raw_index(&self, idx: uint) -> uint {
-        assert!(self.len() > idx);
-        wrap_index(self.head + idx, self.len)
     }
 
     /// Reserves capacity for exactly `n` elements in the given `RingBuf`,
@@ -320,8 +357,11 @@ impl<T> RingBuf<T> {
     /// Do nothing if `self`'s capacity is already equal to or greater
     /// than the requested capacity.
     pub fn reserve(&mut self, n: uint) {
-        let count = num::next_power_of_two(n);
-        self.grow(count);
+        // +1 since the buffer needs one more space then the expected size.
+        let count = num::next_power_of_two(n + 1);
+        if count > self.cap {
+            self.grow(count);
+        }
     }
 
     /// Returns a front-to-back iterator.
@@ -340,8 +380,8 @@ impl<T> RingBuf<T> {
     /// ```
     pub fn iter<'a>(&'a self) -> Items<'a, T> {
         Items {
-            head: self.head,
             tail: self.tail,
+            head: self.head,
             ring: self.buffer_as_slice()
         }
     }
@@ -365,9 +405,9 @@ impl<T> RingBuf<T> {
     /// ```
     pub fn iter_mut<'a>(&'a mut self) -> MutItems<'a, T> {
         MutItems {
-            head: self.head,
             tail: self.tail,
-            len: self.len,
+            head: self.head,
+            cap: self.cap,
             ptr: self.ptr,
             marker: marker::ContravariantLifetime::<'a>,
             marker2: marker::NoCopy
@@ -378,38 +418,38 @@ impl<T> RingBuf<T> {
 /// Returns the index in the underlying `Vec` for a given logical element index.
 #[inline]
 fn wrap_index(index: uint, size: uint) -> uint {
-    // size is always a power ot 2
+    // size is always a power of 2
     index & (size - 1)
 }
 
 /// Calculate the number of elements left to be read in the buffer
 #[inline]
-fn count(head: uint, tail: uint, size: uint) -> uint {
-    // size is always a power ot 2
-    (tail - head) & (size - 1)
+fn count(tail: uint, head: uint, size: uint) -> uint {
+    // size is always a power of 2
+    (head - tail) & (size - 1)
 }
 
 /// `RingBuf` iterator.
 pub struct Items<'a, T:'a> {
     ring: &'a [T],
-    head: uint,
-    tail: uint
+    tail: uint,
+    head: uint
 }
 
 impl<'a, T> Iterator<&'a T> for Items<'a, T> {
     #[inline]
     fn next(&mut self) -> Option<&'a T> {
-        if self.head == self.tail {
+        if self.tail == self.head {
             return None;
         }
-        let head = self.head;
-        self.head = wrap_index(self.head + 1, self.ring.len());
-        Some(&self.ring[head])
+        let tail = self.tail;
+        self.tail = wrap_index(self.tail + 1, self.ring.len());
+        unsafe { Some(self.ring.unsafe_get(tail)) }
     }
 
     #[inline]
     fn size_hint(&self) -> (uint, Option<uint>) {
-        let len = count(self.head, self.tail, self.ring.len());
+        let len = count(self.tail, self.head, self.ring.len());
         (len, Some(len))
     }
 }
@@ -417,11 +457,11 @@ impl<'a, T> Iterator<&'a T> for Items<'a, T> {
 impl<'a, T> DoubleEndedIterator<&'a T> for Items<'a, T> {
     #[inline]
     fn next_back(&mut self) -> Option<&'a T> {
-        if self.head == self.tail {
+        if self.tail == self.head {
             return None;
         }
-        self.tail = wrap_index(self.tail - 1, self.ring.len());
-        Some(&self.ring[self.tail])
+        self.head = wrap_index(self.head - 1, self.ring.len());
+        unsafe { Some(self.ring.unsafe_get(self.head)) }
     }
 }
 
@@ -440,8 +480,8 @@ impl<'a, T> RandomAccessIterator<&'a T> for Items<'a, T> {
         if j >= self.indexable() {
             None
         } else {
-            let idx = wrap_index(self.head + j, self.ring.len());
-            Some(&self.ring[idx])
+            let idx = wrap_index(self.tail + j, self.ring.len());
+            unsafe { Some(self.ring.unsafe_get(idx)) }
         }
     }
 }
@@ -450,9 +490,9 @@ impl<'a, T> RandomAccessIterator<&'a T> for Items<'a, T> {
 /// `RingBuf` iterator.
 pub struct MutItems<'a, T:'a> {
     ptr: *mut T,
-    head: uint,
     tail: uint,
-    len: uint,
+    head: uint,
+    cap: uint,
     marker: marker::ContravariantLifetime<'a>,
     marker2: marker::NoCopy
 }
@@ -460,17 +500,17 @@ pub struct MutItems<'a, T:'a> {
 impl<'a, T> Iterator<&'a mut T> for MutItems<'a, T> {
     #[inline]
     fn next(&mut self) -> Option<&'a mut T> {
-        if self.head == self.tail {
+        if self.tail == self.head {
             return None;
         }
-        let head = self.head;
-        self.head = wrap_index(self.head + 1, self.len);
-        unsafe { Some(mem::transmute(self.ptr.offset(head as int))) }
+        let tail = self.tail;
+        self.tail = wrap_index(self.tail + 1, self.cap);
+        unsafe { Some(&mut *self.ptr.offset(tail as int)) }
     }
 
     #[inline]
     fn size_hint(&self) -> (uint, Option<uint>) {
-        let len = count(self.head, self.tail, self.len);
+        let len = count(self.tail, self.head, self.cap);
         (len, Some(len))
     }
 }
@@ -478,11 +518,11 @@ impl<'a, T> Iterator<&'a mut T> for MutItems<'a, T> {
 impl<'a, T> DoubleEndedIterator<&'a mut T> for MutItems<'a, T> {
     #[inline]
     fn next_back(&mut self) -> Option<&'a mut T> {
-        if self.head == self.tail {
+        if self.tail == self.head {
             return None;
         }
-        self.tail = wrap_index(self.tail - 1, self.len);
-        unsafe { Some(mem::transmute(self.ptr.offset(self.tail as int))) }
+        self.head = wrap_index(self.head - 1, self.cap);
+        unsafe { Some(&mut *self.ptr.offset(self.head as int)) }
     }
 }
 
@@ -526,21 +566,16 @@ impl<S: Writer, A: Hash<S>> Hash<S> for RingBuf<A> {
 impl<A> Index<uint, A> for RingBuf<A> {
     #[inline]
     fn index<'a>(&'a self, i: &uint) -> &'a A {
-        let idx = self.raw_index(*i);
-        match self.elts[idx] {
-            None => fail!(),
-            Some(ref v) => v,
-        }
+        self.get(*i).expect("Index out of bounds")
     }
 }
 
-// FIXME(#12825) Indexing will always try IndexMut first and that causes issues.
-/*impl<A> IndexMut<uint, A> for RingBuf<A> {
+impl<A> IndexMut<uint, A> for RingBuf<A> {
     #[inline]
     fn index_mut<'a>(&'a mut self, index: &uint) -> &'a mut A {
-        self.get_mut(*index)
+        self.get_mut(*index).expect("Index out of bounds")
     }
-}*/
+}
 
 impl<A> FromIterator<A> for RingBuf<A> {
     fn from_iter<T: Iterator<A>>(iterator: T) -> RingBuf<A> {
@@ -735,10 +770,6 @@ mod tests {
     fn bench_pop_100(b: &mut test::Bencher) {
         let mut deq = RingBuf::with_capacity(100);
 
-        // this will make sure the bencher wraps
-        for i in range(0i, 25) { deq.push(i); }
-        while None != deq.pop_front() {}
-
         b.iter(|| {
             for i in range(0i, 100) {
                 deq.push(i);
@@ -750,10 +781,6 @@ mod tests {
     #[bench]
     fn bench_pop_front_100(b: &mut test::Bencher) {
         let mut deq = RingBuf::with_capacity(100);
-
-        // this will make sure the bencher wraps
-        for i in range(0i, 25) { deq.push(i); }
-        while None != deq.pop_front() {}
 
         b.iter(|| {
             for i in range(0i, 100) {
@@ -902,11 +929,11 @@ mod tests {
         let mut d = RingBuf::new();
         d.push(0u64);
         d.reserve(50);
-        assert_eq!(d.len, 64);
+        assert_eq!(d.cap, 64);
         let mut d = RingBuf::new();
         d.push(0u32);
         d.reserve(50);
-        assert_eq!(d.len, 64);
+        assert_eq!(d.cap, 64);
     }
 
     #[test]
@@ -1190,5 +1217,49 @@ mod tests {
 
         drop(ring);
         assert_eq!(unsafe {drops}, 4);
+    }
+
+    #[test]
+    fn test_reserve_grow() {
+        // test growth path A
+        // [T o o H] -> [T o o H . . . . ]
+        let mut ring = RingBuf::with_capacity(4);
+        for i in range(0i, 3) {
+            ring.push(i);
+        }
+        ring.reserve(7);
+        for i in range(0i, 3) {
+            assert_eq!(ring.pop_front(), Some(i));
+        }
+
+        // test growth path B
+        // [H T o o] -> [. T o o H . . . ]
+        let mut ring = RingBuf::with_capacity(4);
+        for i in range(0i, 1) {
+            ring.push(i);
+            assert_eq!(ring.pop_front(), Some(i));
+        }
+        for i in range(0i, 3) {
+            ring.push(i);
+        }
+        ring.reserve(7);
+        for i in range(0i, 3) {
+            assert_eq!(ring.pop_front(), Some(i));
+        }
+
+        // test growth path C
+        // [o o H T] -> [o o H . . . . T ]
+        let mut ring = RingBuf::with_capacity(4);
+        for i in range(0i, 3) {
+            ring.push(i);
+            assert_eq!(ring.pop_front(), Some(i));
+        }
+        for i in range(0i, 3) {
+            ring.push(i);
+        }
+        ring.reserve(7);
+        for i in range(0i, 3) {
+            assert_eq!(ring.pop_front(), Some(i));
+        }
     }
 }
