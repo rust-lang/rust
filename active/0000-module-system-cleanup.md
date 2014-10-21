@@ -7,7 +7,6 @@
 # Summary
 
 - Lift the hard ordering restriction between `extern crate`, `use` and other items.
-- Optionally keep the order restriction as convention with a warn-per-default lint
 - Allow `pub extern crate` as opposed to only private ones.
 - Allow `extern crate` in blocks/functions, and not just in modules.
 
@@ -59,7 +58,7 @@ Another use case are item macros/attributes that want to automatically include t
 This is possible by having the macro expand to an item that links to the needed crate, eg like this:
 
 ```rust
-#[MyAttribute]
+#[my_attribute]
 struct UserType;
 ```
 
@@ -74,12 +73,6 @@ impl <gensymb>::MyTrait for UserType { ... }
 With the order restriction still in place, this requires the sub module workaround, which is unnecessary verbose.
 
 As an example, [gfx-rs](https://github.com/gfx-rs/gfx-rs) currently employs this strategy.
-
-## Optionally keeping the order restriction as convention with a warn-per-default lint
-
-It is still useful for developers to know that imports and extern crates are written in certain places,
-so it could get weakly enforced with a warn-per-default lint. Macro authors or other users can then simply
-disable the lint with an attribute if the need arises.
 
 ## Allow `pub extern crate` as opposed to only private ones.
 
@@ -153,9 +146,6 @@ However, as alluded to above it might be a good idea for 1.0 regardless
 - If necessary, change resolve to look in the whole scope block for view items, not just in a prefix of it.
 - Make `pub extern crate` parse and teach privacy about it
 - Allow `extern crate` view items in blocks
-- Optionally implement a warn-per-default lint that checks for each item that it is ordered correctly.
-  Give it a more useful error message like "Convention is to put all imports at the start of the block"
-  rather than the often confusing "View items need to precede items".
 
 # Drawbacks
 
