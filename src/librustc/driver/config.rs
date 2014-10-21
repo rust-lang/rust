@@ -20,6 +20,7 @@ use back::write;
 use back::target_strs;
 use back::{arm, x86, x86_64, mips, mipsel};
 use lint;
+use metadata::cstore;
 
 use syntax::abi;
 use syntax::ast;
@@ -78,6 +79,7 @@ pub struct Options {
     // parsed code. It remains mutable in case its replacements wants to use
     // this.
     pub addl_lib_search_paths: RefCell<Vec<Path>>,
+    pub libs: Vec<(String, cstore::NativeLibaryKind)>,
     pub maybe_sysroot: Option<Path>,
     pub target_triple: String,
     // User-specified cfg meta items. The compiler itself will add additional
@@ -130,6 +132,7 @@ pub fn basic_options() -> Options {
         externs: HashMap::new(),
         crate_name: None,
         alt_std_name: None,
+        libs: Vec::new(),
     }
 }
 
@@ -575,6 +578,10 @@ pub fn optgroups() -> Vec<getopts::OptGroup> {
         optflag("h", "help", "Display this message"),
         optmulti("", "cfg", "Configure the compilation environment", "SPEC"),
         optmulti("L", "",   "Add a directory to the library search path", "PATH"),
+        optmulti("l", "",   "Link the generated crate(s) to the specified native
+                             library NAME. The optional KIND can be one of,
+                             static, dylib, or framework. If omitted, dylib is
+                             assumed.", "NAME[:KIND]"),
         optmulti("", "crate-type", "Comma separated list of types of crates
                                     for the compiler to emit",
                  "[bin|lib|rlib|dylib|staticlib]"),
@@ -767,6 +774,23 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
         Path::new(s.as_slice())
     }).collect();
 
+    let libs = matches.opt_strs("l").into_iter().map(|s| {
+        let mut parts = s.as_slice().rsplitn(1, ':');
+        let kind = parts.next().unwrap();
+        let (name, kind) = match (parts.next(), kind) {
+            (None, name) |
+            (Some(name), "dylib") => (name, cstore::NativeUnknown),
+            (Some(name), "framework") => (name, cstore::NativeFramework),
+            (Some(name), "static") => (name, cstore::NativeStatic),
+            (_, s) => {
+                early_error(format!("unknown library kind `{}`, expected \
+                                     one of dylib, framework, or static",
+                                    s).as_slice());
+            }
+        };
+        (name.to_string(), kind)
+    }).collect();
+
     let cfg = parse_cfgspecs(matches.opt_strs("cfg"));
     let test = matches.opt_present("test");
     let write_dependency_info = (matches.opt_present("dep-info"),
@@ -843,7 +867,8 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
         color: color,
         externs: externs,
         crate_name: crate_name,
-        alt_std_name: None
+        alt_std_name: None,
+        libs: libs,
     }
 }
 
