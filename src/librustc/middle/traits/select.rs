@@ -314,7 +314,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // an impl.  Even if there are no impls in this crate, perhaps
         // the type would be unified with something from another crate
         // that does provide an impl.
-        let input_types = self.input_types(&*stack.skol_trait_ref);
+        let input_types = stack.skol_trait_ref.input_types();
         if input_types.iter().any(|&t| ty::type_is_skolemized(t)) {
             debug!("evaluate_stack_intercrate({}) --> unbound argument, must be ambiguous",
                    stack.skol_trait_ref.repr(self.tcx()));
@@ -521,7 +521,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // found in the source. This is because all the
         // compiler-provided impls (such as those for unboxed
         // closures) do not have relevant coercions. This simplifies
-        // life immensly.
+        // life immensely.
 
         let mut impls =
             self.assemble_method_candidates_from_impls(rcvr_ty, xform_self_ty, obligation);
@@ -586,7 +586,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
          */
 
         self.infcx.commit_if_ok(|| {
-            match self.infcx.sub_types(false, infer::Misc(obligation.cause.span),
+            match self.infcx.sub_types(false, infer::RelateSelfType(obligation.cause.span),
                                        rcvr_ty, xform_self_ty) {
                 Ok(()) => { }
                 Err(_) => { return Err(()); }
@@ -850,7 +850,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // scope. Otherwise, use the generic tcx cache, since the
         // result holds across all environments.
         if
-            self.input_types(&**cache_skol_trait_ref).iter().any(
+            cache_skol_trait_ref.input_types().iter().any(
                 |&t| ty::type_has_self(t) || ty::type_has_params(t))
         {
             &self.param_env.selection_cache
@@ -1954,11 +1954,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         });
 
         found_skol
-    }
-
-    fn input_types<'a>(&self, trait_ref: &'a ty::TraitRef) -> &'a [ty::t] {
-        // Select only the "input types" from a trait-reference.
-        trait_ref.substs.types.as_slice()
     }
 }
 

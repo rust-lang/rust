@@ -1254,6 +1254,14 @@ impl TraitRef {
     pub fn self_ty(&self) -> ty::t {
         self.substs.self_ty().unwrap()
     }
+
+    pub fn input_types(&self) -> &[ty::t] {
+        // Select only the "input types" from a trait-reference. For
+        // now this is all the types that appear in the
+        // trait-reference, but it should eventually exclude
+        // associated types.
+        self.substs.types.as_slice()
+    }
 }
 
 /// When type checking, we use the `ParameterEnvironment` to track
