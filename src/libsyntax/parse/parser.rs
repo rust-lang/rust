@@ -2615,7 +2615,7 @@ impl<'a> Parser<'a> {
                 // Expand to cover the entire delimited token tree
                 let span = Span { hi: self.span.hi, ..pre_span };
 
-                TtDelimited(span, open, Rc::new(tts), close)
+                TtDelimited(span, Rc::new((open, tts, close)))
             }
             _ => parse_non_delim_tt_tok(self)
         }

@@ -172,7 +172,10 @@ fn generic_extension<'cx>(cx: &'cx ExtCtxt,
                     MatchedNonterminal(NtTT(ref tt)) => {
                         match **tt {
                             // ignore delimiters
-                            TtDelimited(_, _, ref tts, _) => (**tts).clone(),
+                            TtDelimited(_, ref delimed) => {
+                                let (_, ref tts, _) = **delimed;
+                                tts.clone()
+                            },
                             _ => cx.span_fatal(sp, "macro rhs must be delimited"),
                         }
                     },

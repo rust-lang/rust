@@ -651,7 +651,8 @@ fn mk_tt(cx: &ExtCtxt, _: Span, tt: &ast::TokenTree) -> Vec<P<ast::Stmt>> {
                                     vec!(e_tok));
             vec!(cx.stmt_expr(e_push))
         },
-        ast::TtDelimited(sp, ref open, ref tts, ref close) => {
+        ast::TtDelimited(sp, ref delimed) => {
+            let (ref open, ref tts, ref close) = **delimed;
             mk_tt(cx, sp, &open.to_tt()).into_iter()
                 .chain(tts.iter().flat_map(|tt| mk_tt(cx, sp, tt).into_iter()))
                 .chain(mk_tt(cx, sp, &close.to_tt()).into_iter())
