@@ -1374,7 +1374,7 @@ macro_rules! checkeddiv_int_impl(
                 if *v == 0 || (*self == $min && *v == -1) {
                     None
                 } else {
-                    Some(self / *v)
+                    Some(*self / *v)
                 }
             }
         }
@@ -1395,7 +1395,7 @@ macro_rules! checkeddiv_uint_impl(
                 if *v == 0 {
                     None
                 } else {
-                    Some(self / *v)
+                    Some(*self / *v)
                 }
             }
         }

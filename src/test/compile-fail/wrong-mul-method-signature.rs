@@ -58,7 +58,13 @@ impl Mul<f64, i32> for Vec3 {
 }
 
 pub fn main() {
-    Vec1 { x: 1.0 } * 2.0;
-    Vec2 { x: 1.0, y: 2.0 } * 2.0;
-    Vec3 { x: 1.0, y: 2.0, z: 3.0 } * 2.0;
+    // Check that the usage goes from the trait declaration:
+
+    let x: Vec1 = Vec1 { x: 1.0 } * 2.0; // this is OK
+
+    let x: Vec2 = Vec2 { x: 1.0, y: 2.0 } * 2.0; // trait had reversed order
+    //~^ ERROR mismatched types
+    //~^^ ERROR mismatched types
+
+    let x: i32 = Vec3 { x: 1.0, y: 2.0, z: 3.0 } * 2.0;
 }
