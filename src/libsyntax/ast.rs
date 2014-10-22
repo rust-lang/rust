@@ -629,8 +629,7 @@ pub enum TokenTree {
     /// A single token
     TtToken(Span, ::parse::token::Token),
     /// A delimited sequence of token trees
-    // FIXME(eddyb) #6308 Use Rc<[TokenTree]> after DST.
-    TtDelimited(Span, Delimiter, Rc<Vec<TokenTree>>, Delimiter),
+    TtDelimited(Span, Rc<(Delimiter, Vec<TokenTree>, Delimiter)>),
 
     // These only make sense for right-hand-sides of MBE macros:
 
@@ -649,7 +648,7 @@ impl TokenTree {
     pub fn get_span(&self) -> Span {
         match *self {
             TtToken(span, _)           => span,
-            TtDelimited(span, _, _, _) => span,
+            TtDelimited(span, _)       => span,
             TtSequence(span, _, _, _)  => span,
             TtNonterminal(span, _)     => span,
         }
