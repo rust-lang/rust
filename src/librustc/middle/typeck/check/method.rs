@@ -619,14 +619,11 @@ impl<'a, 'tcx> LookupContext<'a, 'tcx> {
 
         let tcx = self.tcx();
 
-        // It is illegal to create a trait object with methods which includes
-        // the Self type. An error will be reported when we coerce to a trait
-        // object if the method refers to the `Self` type. Substituting ty_err
-        // here allows compiler to soldier on.
-        //
-        // `confirm_candidate()` also relies upon this substitution
-        // for Self. (fix)
-        let rcvr_substs = substs.with_self_ty(ty::mk_err());
+        // It is illegal to invoke a method on a trait instance that refers to
+        // the `Self` type.  Here, we use a substitution that replaces `Self`
+        // with the object type itself. Hence, a `&self` method will wind up
+        // with an argument type like `&Trait`.
+        let rcvr_substs = substs.with_self_ty(self_ty);
 
         let trait_ref = Rc::new(TraitRef {
             def_id: did,
@@ -1337,6 +1334,7 @@ impl<'a, 'tcx> LookupContext<'a, 'tcx> {
                self.ty_to_string(rcvr_ty),
                candidate.repr(self.tcx()));
 
+        let rcvr_substs = candidate.rcvr_substs.clone();
         self.enforce_drop_trait_limitations(candidate);
 
         // Determine the values for the generic parameters of the method.

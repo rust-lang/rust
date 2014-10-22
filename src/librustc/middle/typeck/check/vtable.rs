@@ -179,7 +179,7 @@ pub fn check_object_safety(tcx: &ty::ctxt, object_trait: &ty::TyTrait, span: Spa
          */
         let mut msgs = Vec::new();
 
-        let method_name = method.ident.repr(tcx);
+        let method_name = method.name.repr(tcx);
 
         match method.explicit_self {
             ty::ByValueExplicitSelfCategory => { // reason (a) above
@@ -204,8 +204,14 @@ pub fn check_object_safety(tcx: &ty::ctxt, object_trait: &ty::TyTrait, span: Spa
             }
         };
         let ref sig = method.fty.sig;
-        for &input_ty in sig.inputs.tail().iter().chain([sig.output].iter()) {
+        for &input_ty in sig.inputs[1..].iter() {
             match check_for_self_ty(input_ty) {
+                Some(msg) => msgs.push(msg),
+                _ => {}
+            }
+        }
+        if let ty::FnConverging(result_type) = sig.output {
+            match check_for_self_ty(result_type) {
                 Some(msg) => msgs.push(msg),
                 _ => {}
             }
