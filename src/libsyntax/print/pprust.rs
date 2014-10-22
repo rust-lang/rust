@@ -1020,14 +1020,14 @@ impl<'a> State<'a> {
     /// expression arguments as expressions). It can be done! I think.
     pub fn print_tt(&mut self, tt: &ast::TokenTree) -> IoResult<()> {
         match *tt {
-            ast::TTDelimited(_, ref open, ref tts, ref close) => {
+            ast::TtDelimited(_, ref open, ref tts, ref close) => {
                 try!(word(&mut self.s, parse::token::to_string(&open.token).as_slice()));
                 try!(space(&mut self.s));
                 try!(self.print_tts(tts.as_slice()));
                 try!(space(&mut self.s));
                 word(&mut self.s, parse::token::to_string(&close.token).as_slice())
             },
-            ast::TTToken(_, ref tk) => {
+            ast::TtToken(_, ref tk) => {
                 try!(word(&mut self.s, parse::token::to_string(tk).as_slice()));
                 match *tk {
                     parse::token::DOC_COMMENT(..) => {
@@ -1036,7 +1036,7 @@ impl<'a> State<'a> {
                     _ => Ok(())
                 }
             }
-            ast::TTSequence(_, ref tts, ref sep, zerok) => {
+            ast::TtSequence(_, ref tts, ref sep, zerok) => {
                 try!(word(&mut self.s, "$("));
                 for tt_elt in (*tts).iter() {
                     try!(self.print_tt(tt_elt));
@@ -1051,7 +1051,7 @@ impl<'a> State<'a> {
                 }
                 word(&mut self.s, if zerok { "*" } else { "+" })
             }
-            ast::TTNonterminal(_, name) => {
+            ast::TtNonterminal(_, name) => {
                 try!(word(&mut self.s, "$"));
                 self.print_ident(name)
             }
