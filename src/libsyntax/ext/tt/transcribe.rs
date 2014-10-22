@@ -202,14 +202,14 @@ pub fn tt_next_token(r: &mut TtReader) -> TokenAndSpan {
             (*frame.forest)[frame.idx].clone()
         };
         match t {
-            TTDelimited(_, open, delimed_tts, close) => {
-                let mut tts = vec![];
-                tts.push(open.to_tt());
-                tts.extend(delimed_tts.iter().map(|x| (*x).clone()));
-                tts.push(close.to_tt());
+            TTDelimited(_, open, tts, close) => {
+                let mut forest = Vec::with_capacity(1 + tts.len() + 1);
+                forest.push(open.to_tt());
+                forest.extend(tts.iter().map(|x| (*x).clone()));
+                forest.push(close.to_tt());
 
                 r.stack.push(TtFrame {
-                    forest: Rc::new(tts),
+                    forest: Rc::new(forest),
                     idx: 0,
                     dotdotdoted: false,
                     sep: None
