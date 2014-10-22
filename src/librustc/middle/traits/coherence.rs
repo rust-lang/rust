@@ -67,9 +67,9 @@ pub fn impl_is_local(tcx: &ty::ctxt,
         return true;
     }
 
-    // Otherwise, self type must be local to the crate.
-    let self_ty = ty::lookup_item_type(tcx, impl_def_id).ty;
-    return ty_is_local(tcx, self_ty);
+    // Otherwise, at least one of the input types must be local to the
+    // crate.
+    trait_ref.input_types().iter().any(|&t| ty_is_local(tcx, t))
 }
 
 pub fn ty_is_local(tcx: &ty::ctxt,
