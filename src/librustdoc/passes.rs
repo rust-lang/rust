@@ -134,7 +134,18 @@ impl<'a> fold::DocFolder for Stripper<'a> {
             clean::StructItem(..) | clean::EnumItem(..) |
             clean::TraitItem(..) | clean::FunctionItem(..) |
             clean::VariantItem(..) | clean::MethodItem(..) |
-            clean::ForeignFunctionItem(..) | clean::ForeignStaticItem(..) |
+            clean::ForeignFunctionItem(..) | clean::ForeignStaticItem(..) => {
+                if ast_util::is_local(i.def_id) {
+                    if !self.exported_items.contains(&i.def_id.node) {
+                        return None;
+                    }
+                    // Traits are in exported_items even when they're totally private.
+                    if i.is_trait() && i.visibility != Some(ast::Public) {
+                        return None;
+                    }
+                }
+            }
+
             clean::ConstantItem(..) => {
                 if ast_util::is_local(i.def_id) &&
                    !self.exported_items.contains(&i.def_id.node) {
