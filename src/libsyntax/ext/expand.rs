@@ -204,8 +204,10 @@ pub fn expand_expr(e: P<ast::Expr>, fld: &mut MacroExpander) -> P<ast::Expr> {
                     // stmt_let(place_span, place2_ident, make_call(force_placer(), vec![place])),
 
                     // let agent = placer::make_place(&place1);
-                    stmt_let(place_span, agent_ident, make_call(placer_make_place(),
-                                                                vec![fld.cx.expr_addr_of(place_span, place)])),
+                    stmt_let(place_span, agent_ident,
+                             make_call(placer_make_place(),
+                                       vec![fld.cx.expr_addr_of(place_span,
+                                                                place)])),
 
                     // let value = <value_expr>;
                     stmt_let(value_span, value_ident, value_expr),
@@ -214,14 +216,20 @@ pub fn expand_expr(e: P<ast::Expr>, fld: &mut MacroExpander) -> P<ast::Expr> {
                 // unsafe { ptr::write(placer::pointer(&agent), value);
                 //          placer::finalizer(agent) }
                 {
-                    let call_agent_ptr = make_call(placer_pointer(),
-                                                   vec![fld.cx.expr_addr_of(place_span, agent.clone())]);
+                    let call_agent_ptr =
+                        make_call(placer_pointer(),
+                                  vec![fld.cx.expr_addr_of(place_span,
+                                                           agent.clone())]);
                     let call_ptr_write =
-                        StmtSemi(make_call(ptr_write(), vec![call_agent_ptr, value]),
+                        StmtSemi(make_call(ptr_write(),
+                                           vec![call_agent_ptr, value]),
                                  ast::DUMMY_NODE_ID);
+                    let call_ptr_write =
+                        codemap::respan(value_span, call_ptr_write);
+
                     Some(fld.cx.expr_block(P(ast::Block {
                         view_items: vec![],
-                        stmts: vec![P(codemap::respan(value_span, call_ptr_write))],
+                        stmts: vec![P(call_ptr_write)],
                         expr: Some(make_call(placer_finalize(), vec![agent])),
                         id: ast::DUMMY_NODE_ID,
                         rules: ast::UnsafeBlock(ast::CompilerGenerated),
