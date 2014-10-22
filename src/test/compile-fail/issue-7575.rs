@@ -8,17 +8,24 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// Test the mechanism for warning about possible missing `self` declarations.
+
 trait CtxtFn {
     fn f8(self, uint) -> uint;
-    fn f9(uint) -> uint; //~ NOTE candidate #
+    fn f9(uint) -> uint; //~ NOTE candidate
 }
 
 trait OtherTrait {
-    fn f9(uint) -> uint; //~ NOTE candidate #
+    fn f9(uint) -> uint; //~ NOTE candidate
 }
 
-trait UnusedTrait { // This should never show up as a candidate
-    fn f9(uint) -> uint;
+// Note: this trait is not implemented, but we can't really tell
+// whether or not an impl would match anyhow without a self
+// declaration to match against, so we wind up printing it as a
+// candidate. This seems not unreasonable -- perhaps the user meant to
+// implement it, after all.
+trait UnusedTrait {
+    fn f9(uint) -> uint; //~ NOTE candidate
 }
 
 impl CtxtFn for uint {
@@ -40,13 +47,13 @@ impl OtherTrait for uint {
 struct MyInt(int);
 
 impl MyInt {
-    fn fff(i: int) -> int { //~ NOTE candidate #1 is `MyInt::fff`
+    fn fff(i: int) -> int { //~ NOTE candidate
         i
     }
 }
 
 trait ManyImplTrait {
-    fn is_str() -> bool { //~ NOTE candidate #1 is
+    fn is_str() -> bool { //~ NOTE candidate
         false
     }
 }

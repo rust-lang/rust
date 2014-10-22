@@ -8,20 +8,36 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// Test that we pick which version of `foo` to run based on the
+// type that is (ultimately) inferred for `x`.
 
 trait foo {
     fn foo(&self) -> int;
 }
 
 impl foo for Vec<uint> {
-    fn foo(&self) -> int {1} //~ NOTE candidate #1 is `Vec<uint>.foo::foo`
+    fn foo(&self) -> int {1}
 }
 
 impl foo for Vec<int> {
-    fn foo(&self) -> int {2} //~ NOTE candidate #2 is `Vec<int>.foo::foo`
+    fn foo(&self) -> int {2}
+}
+
+fn call_foo_uint() -> int {
+    let mut x = Vec::new();
+    let y = x.foo();
+    x.push(0u);
+    y
+}
+
+fn call_foo_int() -> int {
+    let mut x = Vec::new();
+    let y = x.foo();
+    x.push(0i);
+    y
 }
 
 fn main() {
-    let x = Vec::new();
-    x.foo(); //~ ERROR multiple applicable methods in scope
+    assert_eq!(call_foo_uint(), 1);
+    assert_eq!(call_foo_int(), 2);
 }

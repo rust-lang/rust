@@ -18,15 +18,15 @@ use lib::Inv;
 use lib::MaybeOwned;
 use lib::IntoMaybeOwned;
 
-fn call_into_maybe_owned<'a,F:IntoMaybeOwned<'a>>(f: F) {
+fn call_into_maybe_owned<'x,F:IntoMaybeOwned<'x>>(f: F) {
     // Exercise a code path I found to be buggy. We were not encoding
     // the region parameters from the receiver correctly on trait
     // methods.
     f.into_maybe_owned();
 }
 
-fn call_bigger_region<'a, 'b>(a: Inv<'a>, b: Inv<'b>) {
-    // Here the value provided for 'y is 'b, and hence 'b:'a does not hold.
+fn call_bigger_region<'x, 'y>(a: Inv<'x>, b: Inv<'y>) {
+    // Here the value provided for 'y is 'y, and hence 'y:'x does not hold.
     a.bigger_region(b) //~ ERROR cannot infer
 }
 
