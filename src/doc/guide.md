@@ -4326,7 +4326,7 @@ The most common consumer is `collect()`. This code doesn't quite compile,
 but it shows the intention:
 
 ```{rust,ignore}
-let one_to_one_hundred = range(0i, 100i).collect();
+let one_to_one_hundred = range(1i, 101i).collect();
 ```
 
 As you can see, we call `collect()` on our iterator. `collect()` takes
@@ -4336,7 +4336,7 @@ type of things you want to collect, and so you need to let it know.
 Here's the version that does compile:
 
 ```{rust}
-let one_to_one_hundred = range(0i, 100i).collect::<Vec<int>>();
+let one_to_one_hundred = range(1i, 101i).collect::<Vec<int>>();
 ```
 
 If you remember, the `::<>` syntax allows us to give a type hint,
