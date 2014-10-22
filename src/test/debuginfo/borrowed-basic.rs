@@ -14,6 +14,7 @@
 // its numerical value.
 
 // compile-flags:-g
+// min-lldb-version: 310
 
 // === GDB TESTS ===================================================================================
 

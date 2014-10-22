@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // ignore-android: FIXME(#10381)
+// ignore-lldb
 
 // aux-build:issue13213aux.rs
 extern crate issue13213aux;

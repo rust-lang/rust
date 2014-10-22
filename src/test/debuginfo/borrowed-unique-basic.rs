@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // ignore-android: FIXME(#10381)
+// min-lldb-version: 310
 
 // Gdb doesn't know about UTF-32 character encoding and will print a rust char as only
 // its numerical value.

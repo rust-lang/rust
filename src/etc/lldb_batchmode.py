@@ -141,6 +141,11 @@ if len(sys.argv) != 3:
 target_path = sys.argv[1]
 script_path = sys.argv[2]
 
+print("LLDB batch-mode script")
+print("----------------------")
+print("Debugger commands script is '%s'." % script_path)
+print("Target executable is '%s'." % target_path)
+print("Current working directory is '%s'" % os.getcwd())
 
 # Create a new debugger instance
 debugger = lldb.SBDebugger.Create()
@@ -151,10 +156,12 @@ debugger.SetAsync(False)
 
 # Create a target from a file and arch
 print("Creating a target for '%s'" % target_path)
-target = debugger.CreateTargetWithFileAndArch(target_path, lldb.LLDB_ARCH_DEFAULT)
+target_error = lldb.SBError()
+target = debugger.CreateTarget(target_path, None, None, True, target_error)
 
 if not target:
-  print("Could not create debugging target '" + target_path + "'. Aborting.", file=sys.stderr)
+  print("Could not create debugging target '" + target_path + "': " + str(target_error) +
+        ". Aborting.", file=sys.stderr)
   sys.exit(1)
 
 

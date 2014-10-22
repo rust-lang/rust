@@ -18,6 +18,7 @@ fn main() {
 }
 
 // ignore-android: FIXME(#10381)
+// ignore-lldb
 
 // This test case checks whether compile unit names are set correctly, so that the correct default
 // source file can be found.

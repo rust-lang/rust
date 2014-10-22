@@ -9,9 +9,12 @@
 // except according to those terms.
 
 // ignore-android: FIXME(#10381)
+// min-lldb-version: 310
 
 // compile-flags:--debuginfo=1
+
 // gdb-command:run
+// lldb-command:run
 
 // Nothing to do here really, just make sure it compiles. See issue #8513.
 fn main() {
