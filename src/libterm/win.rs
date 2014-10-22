@@ -91,7 +91,7 @@ fn bits_to_color(bits: u16) -> color::Color {
     }
 }
 
-impl<T: Writer> WinConsole<T> {
+impl<T: Writer+Send> WinConsole<T> {
     fn apply(&mut self) {
         let _unused = self.buf.flush();
         let mut accum: libc::WORD = 0;
@@ -112,6 +112,26 @@ impl<T: Writer> WinConsole<T> {
             SetConsoleTextAttribute(out, accum);
         }
     }
+
+    /// Returns `None` whenever the terminal cannot be created for some
+    /// reason.
+    pub fn new(out: T) -> Option<Box<Terminal<T>+Send+'static>> {
+        let fg;
+        let bg;
+        unsafe {
+            let mut buffer_info = ::std::mem::uninitialized();
+            if GetConsoleScreenBufferInfo(GetStdHandle(-11), &mut buffer_info) != 0 {
+                fg = bits_to_color(buffer_info.wAttributes);
+                bg = bits_to_color(buffer_info.wAttributes >> 4);
+            } else {
+                fg = color::WHITE;
+                bg = color::BLACK;
+            }
+        }
+        Some(box WinConsole { buf: out,
+                              def_foreground: fg, def_background: bg,
+                              foreground: fg, background: bg } as Box<Terminal<T>+Send>)
+    }
 }
 
 impl<T: Writer> Writer for WinConsole<T> {
@@ -124,7 +144,7 @@ impl<T: Writer> Writer for WinConsole<T> {
     }
 }
 
-impl<T: Writer> Terminal<T> for WinConsole<T> {
+impl<T: Writer+Send> Terminal<T> for WinConsole<T> {
     fn fg(&mut self, color: color::Color) -> IoResult<bool> {
         self.foreground = color;
         self.apply();
@@ -177,26 +197,6 @@ impl<T: Writer> Terminal<T> for WinConsole<T> {
     fn get_mut<'a>(&'a mut self) -> &'a mut T { &mut self.buf }
 }
 
-impl<T: Writer> WinConsole<T> {
-     fn new(out: T) -> Option<Box<WinConsole<T>+Send+'static>> {
-        let fg;
-        let bg;
-        unsafe {
-            let mut buffer_info = ::std::mem::uninitialized();
-            if GetConsoleScreenBufferInfo(GetStdHandle(-11), &mut buffer_info) != 0 {
-                fg = bits_to_color(buffer_info.wAttributes);
-                bg = bits_to_color(buffer_info.wAttributes >> 4);
-            } else {
-                fg = color::WHITE;
-                bg = color::BLACK;
-            }
-        }
-        Some(box WinConsole { buf: out,
-                              def_foreground: fg, def_background: bg,
-                              foreground: fg, background: bg } )
-    }
-}
-
-impl<T: Writer> UnwrappableTerminal<T> for WinConsole<T> {
+impl<T: Writer+Send> UnwrappableTerminal<T> for WinConsole<T> {
     fn unwrap(self) -> T { self.buf }
 }
