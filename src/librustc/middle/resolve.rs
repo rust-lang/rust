@@ -569,10 +569,17 @@ impl Module {
     }
 }
 
+bitflags! {
+    #[deriving(Show)]
+    flags DefModifiers: u8 {
+        const PUBLIC = 0b0000_0001,
+    }
+}
+
 // Records a possibly-private type definition.
 #[deriving(Clone)]
 struct TypeNsDef {
-    is_public: bool, // see note in ImportResolution about how to use this
+    modifiers: DefModifiers, // see note in ImportResolution about how to use this
     module_def: Option<Rc<Module>>,
     type_def: Option<Def>,
     type_span: Option<Span>
@@ -581,7 +588,7 @@ struct TypeNsDef {
 // Records a possibly-private value definition.
 #[deriving(Clone, Show)]
 struct ValueNsDef {
-    is_public: bool, // see note in ImportResolution about how to use this
+    modifiers: DefModifiers, // see note in ImportResolution about how to use this
     def: Def,
     value_span: Option<Span>,
 }
@@ -617,13 +624,14 @@ impl NameBindings {
                      is_public: bool,
                      sp: Span) {
         // Merges the module with the existing type def or creates a new one.
+        let modifiers = if is_public { PUBLIC } else { DefModifiers::empty() };
         let module_ = Rc::new(Module::new(parent_link, def_id, kind, external,
                                           is_public));
         let type_def = self.type_def.borrow().clone();
         match type_def {
             None => {
                 *self.type_def.borrow_mut() = Some(TypeNsDef {
-                    is_public: is_public,
+                    modifiers: modifiers,
                     module_def: Some(module_),
                     type_def: None,
                     type_span: Some(sp)
@@ -631,7 +639,7 @@ impl NameBindings {
             }
             Some(type_def) => {
                 *self.type_def.borrow_mut() = Some(TypeNsDef {
-                    is_public: is_public,
+                    modifiers: modifiers,
                     module_def: Some(module_),
                     type_span: Some(sp),
                     type_def: type_def.type_def
@@ -648,13 +656,14 @@ impl NameBindings {
                        external: bool,
                        is_public: bool,
                        _sp: Span) {
+        let modifiers = if is_public { PUBLIC } else { DefModifiers::empty() };
         let type_def = self.type_def.borrow().clone();
         match type_def {
             None => {
                 let module = Module::new(parent_link, def_id, kind,
                                          external, is_public);
                 *self.type_def.borrow_mut() = Some(TypeNsDef {
-                    is_public: is_public,
+                    modifiers: modifiers,
                     module_def: Some(Rc::new(module)),
                     type_def: None,
                     type_span: None,
@@ -669,7 +678,7 @@ impl NameBindings {
                                                  external,
                                                  is_public);
                         *self.type_def.borrow_mut() = Some(TypeNsDef {
-                            is_public: is_public,
+                            modifiers: modifiers,
                             module_def: Some(Rc::new(module)),
                             type_def: type_def.type_def,
                             type_span: None,
@@ -682,7 +691,7 @@ impl NameBindings {
     }
 
     /// Records a type definition.
-    fn define_type(&self, def: Def, sp: Span, is_public: bool) {
+    fn define_type(&self, def: Def, sp: Span, modifiers: DefModifiers) {
         // Merges the type with the existing type def or creates a new one.
         let type_def = self.type_def.borrow().clone();
         match type_def {
@@ -691,7 +700,7 @@ impl NameBindings {
                     module_def: None,
                     type_def: Some(def),
                     type_span: Some(sp),
-                    is_public: is_public,
+                    modifiers: modifiers,
                 });
             }
             Some(type_def) => {
@@ -699,18 +708,18 @@ impl NameBindings {
                     type_def: Some(def),
                     type_span: Some(sp),
                     module_def: type_def.module_def,
-                    is_public: is_public,
+                    modifiers: modifiers,
                 });
             }
         }
     }
 
     /// Records a value definition.
-    fn define_value(&self, def: Def, sp: Span, is_public: bool) {
+    fn define_value(&self, def: Def, sp: Span, modifiers: DefModifiers) {
         *self.value_def.borrow_mut() = Some(ValueNsDef {
             def: def,
             value_span: Some(sp),
-            is_public: is_public,
+            modifiers: modifiers,
         });
     }
 
@@ -746,10 +755,10 @@ impl NameBindings {
     fn defined_in_public_namespace(&self, namespace: Namespace) -> bool {
         match namespace {
             TypeNS => match *self.type_def.borrow() {
-                Some(ref def) => def.is_public, None => false
+                Some(ref def) => def.modifiers.contains(PUBLIC), None => false
             },
             ValueNS => match *self.value_def.borrow() {
-                Some(ref def) => def.is_public, None => false
+                Some(ref def) => def.modifiers.contains(PUBLIC), None => false
             }
         }
     }
@@ -1215,6 +1224,7 @@ impl<'a> Resolver<'a> {
         let name = item.ident.name;
         let sp = item.span;
         let is_public = item.vis == ast::Public;
+        let modifiers = if is_public { PUBLIC } else { DefModifiers::empty() };
 
         match item.node {
             ItemMod(..) => {
@@ -1242,13 +1252,13 @@ impl<'a> Resolver<'a> {
                 let mutbl = m == ast::MutMutable;
 
                 name_bindings.define_value
-                    (DefStatic(local_def(item.id), mutbl), sp, is_public);
+                    (DefStatic(local_def(item.id), mutbl), sp, modifiers);
                 parent
             }
             ItemConst(_, _) => {
                 self.add_child(name, parent.clone(), ForbidDuplicateValues, sp)
                     .define_value(DefConst(local_def(item.id)),
-                                  sp, is_public);
+                                  sp, modifiers);
                 parent
             }
             ItemFn(_, fn_style, _, _, _) => {
@@ -1256,7 +1266,7 @@ impl<'a> Resolver<'a> {
                     self.add_child(name, parent.clone(), ForbidDuplicateValues, sp);
 
                 let def = DefFn(local_def(item.id), fn_style, false);
-                name_bindings.define_value(def, sp, is_public);
+                name_bindings.define_value(def, sp, modifiers);
                 parent
             }
 
@@ -1269,7 +1279,7 @@ impl<'a> Resolver<'a> {
                                    sp);
 
                 name_bindings.define_type
-                    (DefTy(local_def(item.id), false), sp, is_public);
+                    (DefTy(local_def(item.id), false), sp, modifiers);
                 parent
             }
 
@@ -1281,7 +1291,7 @@ impl<'a> Resolver<'a> {
                                    sp);
 
                 name_bindings.define_type
-                    (DefTy(local_def(item.id), true), sp, is_public);
+                    (DefTy(local_def(item.id), true), sp, modifiers);
 
                 let parent_link = self.get_parent_link(parent.clone(), ident);
                 // We want to make sure the module type is EnumModuleKind
@@ -1322,14 +1332,14 @@ impl<'a> Resolver<'a> {
                 let name_bindings = self.add_child(name, parent.clone(), forbid, sp);
 
                 // Define a name in the type namespace.
-                name_bindings.define_type(DefTy(local_def(item.id), false), sp, is_public);
+                name_bindings.define_type(DefTy(local_def(item.id), false), sp, modifiers);
 
                 // If this is a newtype or unit-like struct, define a name
                 // in the value namespace as well
                 match ctor_id {
                     Some(cid) => {
                         name_bindings.define_value(DefStruct(local_def(cid)),
-                                                   sp, is_public);
+                                                   sp, modifiers);
                     }
                     None => {}
                 }
@@ -1429,12 +1439,15 @@ impl<'a> Resolver<'a> {
                                         }
                                     };
 
-                                    let is_public =
-                                        method.pe_vis() == ast::Public;
+                                    let modifiers = if method.pe_vis() == ast::Public {
+                                        PUBLIC
+                                    } else {
+                                        DefModifiers::empty()
+                                    };
                                     method_name_bindings.define_value(
                                         def,
                                         method.span,
-                                        is_public);
+                                        modifiers);
                                 }
                                 TypeImplItem(ref typedef) => {
                                     // Add the typedef to the module.
@@ -1447,12 +1460,15 @@ impl<'a> Resolver<'a> {
                                             typedef.span);
                                     let def = DefAssociatedTy(local_def(
                                             typedef.id));
-                                    let is_public = typedef.vis ==
-                                        ast::Public;
+                                    let modifiers = if typedef.vis == ast::Public {
+                                        PUBLIC
+                                    } else {
+                                        DefModifiers::empty()
+                                    };
                                     typedef_name_bindings.define_type(
                                         def,
                                         typedef.span,
-                                        is_public);
+                                        modifiers);
                                 }
                             }
                         }
@@ -1528,7 +1544,7 @@ impl<'a> Resolver<'a> {
                                                ty_m.span);
                             method_name_bindings.define_value(def,
                                                               ty_m.span,
-                                                              true);
+                                                              PUBLIC);
 
                             (name, static_flag)
                         }
@@ -1543,7 +1559,7 @@ impl<'a> Resolver<'a> {
                                                associated_type.span);
                             name_bindings.define_type(def,
                                                       associated_type.span,
-                                                      true);
+                                                      PUBLIC);
 
                             (associated_type.ident.name, TypeTraitItemKind)
                         }
@@ -1552,7 +1568,7 @@ impl<'a> Resolver<'a> {
                     self.trait_item_map.insert((name, def_id), kind);
                 }
 
-                name_bindings.define_type(DefTrait(def_id), sp, is_public);
+                name_bindings.define_type(DefTrait(def_id), sp, modifiers);
                 parent
             }
             ItemMac(..) => parent
@@ -1567,6 +1583,7 @@ impl<'a> Resolver<'a> {
                                        parent: ReducedGraphParent,
                                        is_public: bool) {
         let name = variant.node.name.name;
+        let modifiers = if is_public { PUBLIC } else { DefModifiers::empty() };
         let is_exported = match variant.node.kind {
             TupleVariantKind(_) => false,
             StructVariantKind(_) => {
@@ -1581,10 +1598,10 @@ impl<'a> Resolver<'a> {
                                    variant.span);
         child.define_value(DefVariant(item_id,
                                       local_def(variant.node.id), is_exported),
-                           variant.span, is_public);
+                           variant.span, modifiers);
         child.define_type(DefVariant(item_id,
                                      local_def(variant.node.id), is_exported),
-                          variant.span, is_public);
+                          variant.span, modifiers);
     }
 
     /// Constructs the reduced graph for one 'view item'. View items consist
@@ -1730,6 +1747,7 @@ impl<'a> Resolver<'a> {
                                             f: |&mut Resolver|) {
         let name = foreign_item.ident.name;
         let is_public = foreign_item.vis == ast::Public;
+        let modifiers = if is_public { PUBLIC } else { DefModifiers::empty() };
         let name_bindings =
             self.add_child(name, parent, ForbidDuplicateValues,
                            foreign_item.span);
@@ -1737,7 +1755,7 @@ impl<'a> Resolver<'a> {
         match foreign_item.node {
             ForeignItemFn(_, ref generics) => {
                 let def = DefFn(local_def(foreign_item.id), UnsafeFn, false);
-                name_bindings.define_value(def, foreign_item.span, is_public);
+                name_bindings.define_value(def, foreign_item.span, modifiers);
 
                 self.with_type_parameter_rib(
                     HasTypeParameters(generics,
@@ -1748,7 +1766,7 @@ impl<'a> Resolver<'a> {
             }
             ForeignItemStatic(_, m) => {
                 let def = DefStatic(local_def(foreign_item.id), m);
-                name_bindings.define_value(def, foreign_item.span, is_public);
+                name_bindings.define_value(def, foreign_item.span, modifiers);
 
                 f(self)
             }
@@ -1793,6 +1811,7 @@ impl<'a> Resolver<'a> {
                 external crate) building external def, priv {}",
                vis);
         let is_public = vis == ast::Public;
+        let modifiers = if is_public { PUBLIC } else { DefModifiers::empty() };
         let is_exported = is_public && match new_parent {
             ModuleReducedGraphParent(ref module) => {
                 match module.def_id.get() {
@@ -1851,23 +1870,24 @@ impl<'a> Resolver<'a> {
             // definition.
             let is_exported = is_public ||
                               self.external_exports.contains(&enum_did);
+            let modifiers = if is_exported { PUBLIC } else { DefModifiers::empty() };
             if is_struct {
-                child_name_bindings.define_type(def, DUMMY_SP, is_exported);
+                child_name_bindings.define_type(def, DUMMY_SP, modifiers);
                 // Not adding fields for variants as they are not accessed with a self receiver
                 self.structs.insert(variant_id, Vec::new());
             } else {
-                child_name_bindings.define_value(def, DUMMY_SP, is_exported);
+                child_name_bindings.define_value(def, DUMMY_SP, modifiers);
             }
           }
           DefFn(ctor_id, _, true) => {
             child_name_bindings.define_value(
                 csearch::get_tuple_struct_definition_if_ctor(&self.session.cstore, ctor_id)
-                    .map_or(def, |_| DefStruct(ctor_id)), DUMMY_SP, is_public);
+                    .map_or(def, |_| DefStruct(ctor_id)), DUMMY_SP, modifiers);
           }
           DefFn(..) | DefStaticMethod(..) | DefStatic(..) | DefConst(..) => {
             debug!("(building reduced graph for external \
                     crate) building value (fn/static) {}", final_ident);
-            child_name_bindings.define_value(def, DUMMY_SP, is_public);
+            child_name_bindings.define_value(def, DUMMY_SP, modifiers);
           }
           DefTrait(def_id) => {
               debug!("(building reduced graph for external \
@@ -1896,7 +1916,7 @@ impl<'a> Resolver<'a> {
                   }
               }
 
-              child_name_bindings.define_type(def, DUMMY_SP, is_public);
+              child_name_bindings.define_type(def, DUMMY_SP, modifiers);
 
               // Define a module if necessary.
               let parent_link = self.get_parent_link(new_parent, name);
@@ -1909,7 +1929,7 @@ impl<'a> Resolver<'a> {
           }
           DefTy(def_id, true) => { // enums
               debug!("(building reduced graph for external crate) building enum {}", final_ident);
-              child_name_bindings.define_type(def, DUMMY_SP, is_public);
+              child_name_bindings.define_type(def, DUMMY_SP, modifiers);
               let enum_module = ModuleReducedGraphParent(child_name_bindings.get_module());
 
               let variants = csearch::get_enum_variant_defs(&self.session.cstore, def_id);
@@ -1926,12 +1946,13 @@ impl<'a> Resolver<'a> {
                   // otherwise we need to inherit the visibility of the enum
                   // definition.
                   let variant_exported = vis == ast::Public || is_exported;
+                  let modifiers = if variant_exported { PUBLIC } else { DefModifiers::empty() };
                   if is_struct {
-                      child.define_type(v_def, DUMMY_SP, variant_exported);
+                      child.define_type(v_def, DUMMY_SP, modifiers);
                       // Not adding fields for variants as they are not accessed with a self receiver
                       self.structs.insert(variant_id, Vec::new());
                   } else {
-                      child.define_value(v_def, DUMMY_SP, variant_exported);
+                      child.define_value(v_def, DUMMY_SP, modifiers);
                   }
               }
 
@@ -1940,19 +1961,19 @@ impl<'a> Resolver<'a> {
               debug!("(building reduced graph for external \
                       crate) building type {}", final_ident);
 
-              child_name_bindings.define_type(def, DUMMY_SP, is_public);
+              child_name_bindings.define_type(def, DUMMY_SP, modifiers);
           }
           DefStruct(def_id) => {
             debug!("(building reduced graph for external \
                     crate) building type and value for {}",
                    final_ident);
-            child_name_bindings.define_type(def, DUMMY_SP, is_public);
+            child_name_bindings.define_type(def, DUMMY_SP, modifiers);
             let fields = csearch::get_struct_fields(&self.session.cstore, def_id).iter().map(|f| {
                 f.name
             }).collect::<Vec<_>>();
 
             if fields.len() == 0 {
-                child_name_bindings.define_value(def, DUMMY_SP, is_public);
+                child_name_bindings.define_value(def, DUMMY_SP, modifiers);
             }
 
             // Record the def ID and fields of this struct.
@@ -2089,9 +2110,13 @@ impl<'a> Resolver<'a> {
                                         static_method_info.fn_style,
                                         false);
 
+                                    let modifiers = if visibility == ast::Public {
+                                        PUBLIC
+                                    } else {
+                                        DefModifiers::empty()
+                                    };
                                     method_name_bindings.define_value(
-                                        def, DUMMY_SP,
-                                        visibility == ast::Public);
+                                        def, DUMMY_SP, modifiers);
                                 }
                             }
 
@@ -2462,7 +2487,7 @@ impl<'a> Resolver<'a> {
     fn create_name_bindings_from_module(module: Rc<Module>) -> NameBindings {
         NameBindings {
             type_def: RefCell::new(Some(TypeNsDef {
-                is_public: false,
+                modifiers: DefModifiers::empty(),
                 module_def: Some(module),
                 type_def: None,
                 type_span: None
