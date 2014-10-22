@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // ignore-android: FIXME(#10381)
+// min-lldb-version: 310
 
 // This test case checks if function arguments already have the correct value when breaking at the
 // beginning of a function. Functions with the #[no_stack_check] attribute have the same prologue as

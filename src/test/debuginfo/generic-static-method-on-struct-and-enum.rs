@@ -9,8 +9,10 @@
 // except according to those terms.
 
 // ignore-android: FIXME(#10381)
+// min-lldb-version: 310
 
 // compile-flags:-g
+
 // gdb-command:rbreak zzz
 // gdb-command:run
 

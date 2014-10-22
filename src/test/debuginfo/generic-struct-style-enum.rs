@@ -10,8 +10,10 @@
 
 // ignore-tidy-linelength
 // ignore-android: FIXME(#10381)
+// min-lldb-version: 310
 
 // compile-flags:-g
+
 // gdb-command:set print union on
 // gdb-command:rbreak zzz
 // gdb-command:run
