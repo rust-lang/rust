@@ -1020,7 +1020,13 @@ impl<'a> State<'a> {
     /// expression arguments as expressions). It can be done! I think.
     pub fn print_tt(&mut self, tt: &ast::TokenTree) -> IoResult<()> {
         match *tt {
-            ast::TTDelim(ref tts) => self.print_tts(tts.as_slice()),
+            ast::TTDelim(_, ref open, ref tts, ref close) => {
+                try!(word(&mut self.s, parse::token::to_string(&open.token).as_slice()));
+                try!(space(&mut self.s));
+                try!(self.print_tts(tts.as_slice()));
+                try!(space(&mut self.s));
+                word(&mut self.s, parse::token::to_string(&close.token).as_slice())
+            },
             ast::TTTok(_, ref tk) => {
                 try!(word(&mut self.s, parse::token::to_string(tk).as_slice()));
                 match *tk {
