@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use ast;
-use ast::{TokenTree, TTDelim, TTTok, TTSeq, TTNonterminal, Ident};
+use ast::{TokenTree, TTDelimited, TTToken, TTSequence, TTNonterminal, Ident};
 use codemap::{Span, DUMMY_SP};
 use diagnostic::SpanHandler;
 use ext::tt::macro_parser::{NamedMatch, MatchedSeq, MatchedNonterminal};
@@ -45,7 +45,7 @@ pub struct TtReader<'a> {
 }
 
 /// This can do Macro-By-Example transcription. On the other hand, if
-/// `src` contains no `TTSeq`s and `TTNonterminal`s, `interp` can (and
+/// `src` contains no `TTSequence`s and `TTNonterminal`s, `interp` can (and
 /// should) be none.
 pub fn new_tt_reader<'a>(sp_diag: &'a SpanHandler,
                          interp: Option<HashMap<Ident, Rc<NamedMatch>>>,
@@ -130,12 +130,12 @@ fn lockstep_iter_size(t: &TokenTree, r: &TtReader) -> LockstepIterSize {
     match *t {
         // The opening and closing delimiters are both tokens, so they are
         // treated as `LisUnconstrained`.
-        TTDelim(_, _, ref tts, _) | TTSeq(_, ref tts, _, _) => {
+        TTDelimited(_, _, ref tts, _) | TTSequence(_, ref tts, _, _) => {
             tts.iter().fold(LisUnconstrained, |size, tt| {
                 size + lockstep_iter_size(tt, r)
             })
         },
-        TTTok(..) => LisUnconstrained,
+        TTToken(..) => LisUnconstrained,
         TTNonterminal(_, name) => match *lookup_cur_matched(r, name) {
             MatchedNonterminal(_) => LisUnconstrained,
             MatchedSeq(ref ads, _) => LisConstraint(ads.len(), name)
@@ -194,15 +194,15 @@ pub fn tt_next_token(r: &mut TtReader) -> TokenAndSpan {
             }
         }
     }
-    loop { /* because it's easiest, this handles `TTDelim` not starting
-              with a `TTTok`, even though it won't happen */
+    loop { /* because it's easiest, this handles `TTDelimited` not starting
+              with a `TTToken`, even though it won't happen */
         let t = {
             let frame = r.stack.last().unwrap();
             // FIXME(pcwalton): Bad copy.
             (*frame.forest)[frame.idx].clone()
         };
         match t {
-            TTDelim(_, open, delimed_tts, close) => {
+            TTDelimited(_, open, delimed_tts, close) => {
                 let mut tts = vec![];
                 tts.push(open.to_tt());
                 tts.extend(delimed_tts.iter().map(|x| (*x).clone()));
@@ -216,15 +216,15 @@ pub fn tt_next_token(r: &mut TtReader) -> TokenAndSpan {
                 });
                 // if this could be 0-length, we'd need to potentially recur here
             }
-            TTTok(sp, tok) => {
+            TTToken(sp, tok) => {
                 r.cur_span = sp;
                 r.cur_tok = tok;
                 r.stack.last_mut().unwrap().idx += 1;
                 return ret_val;
             }
-            TTSeq(sp, tts, sep, zerok) => {
+            TTSequence(sp, tts, sep, zerok) => {
                 // FIXME(pcwalton): Bad copy.
-                match lockstep_iter_size(&TTSeq(sp, tts.clone(), sep.clone(), zerok), r) {
+                match lockstep_iter_size(&TTSequence(sp, tts.clone(), sep.clone(), zerok), r) {
                     LisUnconstrained => {
                         r.sp_diag.span_fatal(
                             sp.clone(), /* blame macro writer */

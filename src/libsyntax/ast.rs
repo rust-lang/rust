@@ -24,6 +24,9 @@ use std::fmt::Show;
 use std::rc::Rc;
 use serialize::{Encodable, Decodable, Encoder, Decoder};
 
+#[cfg(stage0)]
+pub use self::TTToken as TTTok;
+
 // FIXME #6993: in librustc, uses of "ident" should be replaced
 // by just "Name".
 
@@ -600,9 +603,9 @@ pub struct Delimiter {
 }
 
 impl Delimiter {
-    /// Convert the delimiter to a `TTTok`
+    /// Convert the delimiter to a `TTToken`
     pub fn to_tt(&self) -> TokenTree {
-        TTTok(self.span, self.token.clone())
+        TTToken(self.span, self.token.clone())
     }
 }
 
@@ -614,9 +617,9 @@ impl Delimiter {
 /// If the syntax extension is an MBE macro, it will attempt to match its
 /// LHS "matchers" against the provided token tree, and if it finds a
 /// match, will transcribe the RHS token tree, splicing in any captured
-/// macro_parser::matched_nonterminals into the TTNonterminals it finds.
+/// `macro_parser::matched_nonterminals` into the `TTNonterminal`s it finds.
 ///
-/// The RHS of an MBE macro is the only place a TTNonterminal or TTSeq
+/// The RHS of an MBE macro is the only place a `TTNonterminal` or `TTSequence`
 /// makes any real sense. You could write them elsewhere but nothing
 /// else knows what to do with them, so you'll probably get a syntax
 /// error.
@@ -624,18 +627,18 @@ impl Delimiter {
 #[doc="For macro invocations; parsing is delegated to the macro"]
 pub enum TokenTree {
     /// A single token
-    TTTok(Span, ::parse::token::Token),
+    TTToken(Span, ::parse::token::Token),
     /// A delimited sequence of token trees
     // FIXME(eddyb) #6308 Use Rc<[TokenTree]> after DST.
-    TTDelim(Span, Delimiter, Rc<Vec<TokenTree>>, Delimiter),
+    TTDelimited(Span, Delimiter, Rc<Vec<TokenTree>>, Delimiter),
 
     // These only make sense for right-hand-sides of MBE macros:
 
-    /// A kleene-style repetition sequence with a span, a TTForest,
+    /// A kleene-style repetition sequence with a span, a `TTForest`,
     /// an optional separator, and a boolean where true indicates
     /// zero or more (..), and false indicates one or more (+).
     // FIXME(eddyb) #6308 Use Rc<[TokenTree]> after DST.
-    TTSeq(Span, Rc<Vec<TokenTree>>, Option<::parse::token::Token>, bool),
+    TTSequence(Span, Rc<Vec<TokenTree>>, Option<::parse::token::Token>, bool),
 
     /// A syntactic variable that will be filled in by macro expansion.
     TTNonterminal(Span, Ident)
@@ -645,10 +648,10 @@ impl TokenTree {
     /// Returns the `Span` corresponding to this token tree.
     pub fn get_span(&self) -> Span {
         match *self {
-            TTTok(span, _)         => span,
-            TTDelim(span, _, _, _) => span,
-            TTSeq(span, _, _, _)   => span,
-            TTNonterminal(span, _) => span,
+            TTToken(span, _)           => span,
+            TTDelimited(span, _, _, _) => span,
+            TTSequence(span, _, _, _)  => span,
+            TTNonterminal(span, _)     => span,
         }
     }
 }

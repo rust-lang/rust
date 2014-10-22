@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use ast::{Ident, Matcher_, Matcher, MatchTok, MatchNonterminal, MatchSeq, TTDelim};
+use ast::{Ident, Matcher_, Matcher, MatchTok, MatchNonterminal, MatchSeq, TTDelimited};
 use ast;
 use codemap::{Span, Spanned, DUMMY_SP};
 use ext::base::{ExtCtxt, MacResult, MacroDef};
@@ -172,7 +172,7 @@ fn generic_extension<'cx>(cx: &'cx ExtCtxt,
                     MatchedNonterminal(NtTT(ref tt)) => {
                         match **tt {
                             // ignore delimiters
-                            TTDelim(_, _, ref tts, _) => (**tts).clone(),
+                            TTDelimited(_, _, ref tts, _) => (**tts).clone(),
                             _ => cx.span_fatal(sp, "macro rhs must be delimited"),
                         }
                     },
