@@ -521,11 +521,13 @@ impl Clone for TcpAcceptor {
 #[cfg(test)]
 #[allow(experimental)]
 mod test {
-    use io::net::tcp::*;
-    use io::net::ip::*;
-    use io::*;
-    use io::test::*;
-    use prelude::*;
+    use prelude::{Ok,Err,Some,None,Clone,ToString,Str,Iterator,spawn,channel,range,drop};
+    use io::test::{next_test_ip4,next_test_ip6};
+    use io::{TcpStream,Listener,Acceptor,Reader,Writer,
+             NotConnected,ConnectionReset,BrokenPipe,ConnectionAborted,PermissionDenied,
+             ConnectionRefused,EndOfFile,TimedOut,ShortWrite,IoError,OtherIoError};
+    use io::net::tcp::{TcpListener};
+    use io::net::ip::{SocketAddr};
 
     // FIXME #11530 this fails on android because tests are run as root
     #[cfg_attr(any(windows, target_os = "android"), ignore)]

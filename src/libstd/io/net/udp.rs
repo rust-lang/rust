@@ -247,11 +247,11 @@ impl Writer for UdpStream {
 #[cfg(test)]
 #[allow(experimental)]
 mod test {
-    use super::*;
-    use prelude::*;
-    use io::*;
-    use io::net::ip::*;
-    use io::test::*;
+    use prelude::{Ok,Err,Some,None,Clone,spawn,channel,range,drop};
+    use io::test::{next_test_ip4,next_test_ip6};
+    use io::{Writer,Reader,PermissionDenied,TimedOut,IoError,ShortWrite};
+    use io::net::ip::{SocketAddr,Ipv4Addr};
+    use io::net::udp::UdpSocket;
 
     // FIXME #11530 this fails on android because tests are run as root
     #[cfg_attr(any(windows, target_os = "android"), ignore)]
