@@ -1,8 +1,8 @@
 # Module system cleanups
 
 - Start Date: 2014-10-10
-- RFC PR: (leave this empty)
-- Rust Issue: (leave this empty)
+- RFC PR: [rust-lang/rfcs#385](https://github.com/rust-lang/rfcs/pull/385)
+- Rust Issue: [rust-lang/rust#18219](https://github.com/rust-lang/rust/issues/18219)
 
 # Summary
 
