@@ -585,18 +585,18 @@ pub struct ctxt<'tcx> {
     pub repr_hint_cache: RefCell<DefIdMap<Rc<Vec<attr::ReprAttr>>>>,
 }
 
-pub enum tbox_flag {
-    has_params = 1,
-    has_self = 2,
-    needs_infer = 4,
-    has_regions = 8,
-    has_ty_err = 16,
-    has_ty_bot = 32,
-
-    // a meta-pub flag: subst may be required if the type has parameters, a self
-    // type, or references bound regions
-    needs_subst = 1 | 2 | 8
-}
+// Flags that we track on types. These flags are propagated upwards
+// through the type during type construction, so that we can quickly
+// check whether the type has various kinds of types in it without
+// recursing over the type itself.
+const HAS_PARAMS: uint = 1;
+const HAS_SELF: uint = 2;
+const HAS_TY_INFER: uint = 4;
+const HAS_RE_INFER: uint = 8;
+const HAS_REGIONS: uint = 16;
+const HAS_TY_ERR: uint = 32;
+const HAS_TY_BOT: uint = 64;
+const NEEDS_SUBST: uint = HAS_PARAMS | HAS_SELF | HAS_REGIONS;
 
 pub type t_box = &'static t_box_;
 
@@ -631,15 +631,16 @@ pub fn get(t: t) -> t_box {
     }
 }
 
-pub fn tbox_has_flag(tb: t_box, flag: tbox_flag) -> bool {
-    (tb.flags & (flag as uint)) != 0u
+fn tbox_has_flag(tb: t_box, flag: uint) -> bool {
+    (tb.flags & flag) != 0u
 }
 pub fn type_has_params(t: t) -> bool {
-    tbox_has_flag(get(t), has_params)
+    tbox_has_flag(get(t), HAS_PARAMS)
 }
-pub fn type_has_self(t: t) -> bool { tbox_has_flag(get(t), has_self) }
+pub fn type_has_self(t: t) -> bool { tbox_has_flag(get(t), HAS_SELF) }
+pub fn type_has_ty_infer(t: t) -> bool { tbox_has_flag(get(t), HAS_TY_INFER) }
 pub fn type_needs_infer(t: t) -> bool {
-    tbox_has_flag(get(t), needs_infer)
+    tbox_has_flag(get(t), HAS_TY_INFER | HAS_RE_INFER)
 }
 pub fn type_id(t: t) -> uint { get(t).id }
 
@@ -910,13 +911,13 @@ mod primitives {
     pub static TY_BOT: t_box_ = t_box_ {
         sty: super::ty_bot,
         id: 16,
-        flags: super::has_ty_bot as uint,
+        flags: super::HAS_TY_BOT,
     };
 
     pub static TY_ERR: t_box_ = t_box_ {
         sty: super::ty_err,
         id: 17,
-        flags: super::has_ty_err as uint,
+        flags: super::HAS_TY_ERR,
     };
 
     pub const LAST_PRIMITIVE_ID: uint = 18;
@@ -1579,9 +1580,9 @@ pub fn mk_t(cx: &ctxt, st: sty) -> t {
 
     let mut flags = 0u;
     fn rflags(r: Region) -> uint {
-        (has_regions as uint) | {
+        HAS_REGIONS | {
             match r {
-              ty::ReInfer(_) => needs_infer as uint,
+              ty::ReInfer(_) => HAS_RE_INFER,
               _ => 0u
             }
         }
@@ -1610,22 +1611,22 @@ pub fn mk_t(cx: &ctxt, st: sty) -> t {
       &ty_str => {}
       // You might think that we could just return ty_err for
       // any type containing ty_err as a component, and get
-      // rid of the has_ty_err flag -- likewise for ty_bot (with
+      // rid of the HAS_TY_ERR flag -- likewise for ty_bot (with
       // the exception of function types that return bot).
       // But doing so caused sporadic memory corruption, and
       // neither I (tjc) nor nmatsakis could figure out why,
       // so we're doing it this way.
-      &ty_bot => flags |= has_ty_bot as uint,
-      &ty_err => flags |= has_ty_err as uint,
+      &ty_bot => flags |= HAS_TY_BOT,
+      &ty_err => flags |= HAS_TY_ERR,
       &ty_param(ref p) => {
           if p.space == subst::SelfSpace {
-              flags |= has_self as uint;
+              flags |= HAS_SELF;
           } else {
-              flags |= has_params as uint;
+              flags |= HAS_PARAMS;
           }
       }
       &ty_unboxed_closure(_, ref region) => flags |= rflags(*region),
-      &ty_infer(_) => flags |= needs_infer as uint,
+      &ty_infer(_) => flags |= HAS_TY_INFER,
       &ty_enum(_, ref substs) | &ty_struct(_, ref substs) => {
           flags |= sflags(substs);
       }
@@ -1648,7 +1649,7 @@ pub fn mk_t(cx: &ctxt, st: sty) -> t {
         for a in f.sig.inputs.iter() { flags |= get(*a).flags; }
         flags |= get(f.sig.output).flags;
         // T -> _|_ is *not* _|_ !
-        flags &= !(has_ty_bot as uint);
+        flags &= !HAS_TY_BOT;
       }
       &ty_closure(ref f) => {
         match f.store {
@@ -1660,7 +1661,7 @@ pub fn mk_t(cx: &ctxt, st: sty) -> t {
         for a in f.sig.inputs.iter() { flags |= get(*a).flags; }
         flags |= get(f.sig.output).flags;
         // T -> _|_ is *not* _|_ !
-        flags &= !(has_ty_bot as uint);
+        flags &= !HAS_TY_BOT;
         flags |= flags_for_bounds(&f.bounds);
       }
     }
@@ -1979,15 +1980,15 @@ impl ItemSubsts {
 pub fn type_is_nil(ty: t) -> bool { get(ty).sty == ty_nil }
 
 pub fn type_is_bot(ty: t) -> bool {
-    (get(ty).flags & (has_ty_bot as uint)) != 0
+    (get(ty).flags & HAS_TY_BOT) != 0
 }
 
 pub fn type_is_error(ty: t) -> bool {
-    (get(ty).flags & (has_ty_err as uint)) != 0
+    (get(ty).flags & HAS_TY_ERR) != 0
 }
 
 pub fn type_needs_subst(ty: t) -> bool {
-    tbox_has_flag(get(ty), needs_subst)
+    tbox_has_flag(get(ty), NEEDS_SUBST)
 }
 
 pub fn trait_ref_contains_error(tref: &ty::TraitRef) -> bool {
