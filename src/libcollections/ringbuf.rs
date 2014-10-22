@@ -40,7 +40,7 @@ pub struct RingBuf<T> {
     // to the first element that could be read, Head always points
     // to where data should be written.
     // If tail == head the buffer is empty. The length of the ringbuf
-    // is defined as the distance between the two,
+    // is defined as the distance between the two.
 
     tail: uint,
     head: uint,
@@ -157,26 +157,6 @@ impl<T> Default for RingBuf<T> {
 }
 
 impl<T> RingBuf<T> {
-    /// Creates an empty `RingBuf`.
-    pub fn new() -> RingBuf<T> {
-        RingBuf::with_capacity(INITIAL_CAPACITY)
-    }
-
-    /// Creates an empty `RingBuf` with space for at least `n` elements.
-    pub fn with_capacity(n: uint) -> RingBuf<T> {
-        // +1 since the ringbuffer always leaves one space empty
-        let cap = num::next_power_of_two(cmp::max(n + 1, MINIMUM_CAPACITY));
-        let size = cap.checked_mul(&mem::size_of::<T>())
-                      .expect("capacity overflow");
-
-        RingBuf {
-            tail: 0,
-            head: 0,
-            cap: cap,
-            ptr: unsafe { heap::allocate(size, mem::min_align_of::<T>()) as *mut T }
-        }
-    }
-
     /// Turn ptr into a slice
     #[inline]
     fn buffer_as_slice(&self) -> &[T] {
@@ -221,7 +201,7 @@ impl<T> RingBuf<T> {
                                         mem::min_align_of::<T>()) as *mut T;
         }
 
-        // Move the shortest half into the newly reserved area.
+        // Move the shortest contiguous section of the ring buffer
         //    T             H
         //   [o o o o o o o . ]
         //    T             H
@@ -238,7 +218,7 @@ impl<T> RingBuf<T> {
         let oldlen = self.cap;
         self.cap = newlen;
 
-        if self.tail < self.head { // A
+        if self.tail <= self.head { // A
             // Nop
         } else if self.head < oldlen - self.tail { // B
             unsafe {
@@ -254,14 +234,36 @@ impl<T> RingBuf<T> {
                 ptr::copy_nonoverlapping_memory(
                     self.ptr.offset((newlen - oldlen + self.tail) as int) as *mut T,
                     self.ptr.offset(self.tail as int) as *const T,
-                    self.head
+                    oldlen - self.tail
                 );
             }
             self.tail = newlen - oldlen + self.tail;
         }
     }
+}
 
-    /// Retrieve an element in the `RingBuf` by index.
+impl<T> RingBuf<T> {
+    /// Creates an empty `RingBuf`.
+    pub fn new() -> RingBuf<T> {
+        RingBuf::with_capacity(INITIAL_CAPACITY)
+    }
+
+    /// Creates an empty `RingBuf` with space for at least `n` elements.
+    pub fn with_capacity(n: uint) -> RingBuf<T> {
+        // +1 since the ringbuffer always leaves one space empty
+        let cap = num::next_power_of_two(cmp::max(n + 1, MINIMUM_CAPACITY));
+        let size = cap.checked_mul(&mem::size_of::<T>())
+                      .expect("capacity overflow");
+
+        RingBuf {
+            tail: 0,
+            head: 0,
+            cap: cap,
+            ptr: unsafe { heap::allocate(size, mem::min_align_of::<T>()) as *mut T }
+        }
+    }
+
+    /// Retrieves an element in the `RingBuf` by index.
     ///
     /// Returns None if there is no element with the given index.
     ///
@@ -281,7 +283,7 @@ impl<T> RingBuf<T> {
     pub fn get<'a>(&'a self, i: uint) -> Option<&'a T> {
         if self.len() > i {
             let idx = wrap_index(self.tail + i, self.cap);
-            Some(&self.buffer_as_slice()[idx])
+            unsafe { Some(self.buffer_as_slice().unsafe_get(idx)) }
         } else {
             None
         }
@@ -309,7 +311,7 @@ impl<T> RingBuf<T> {
     pub fn get_mut<'a>(&'a mut self, i: uint) -> Option<&'a mut T> {
         if self.len() > i {
             let idx = wrap_index(self.tail + i, self.cap);
-            Some(&mut self.buffer_as_slice_mut()[idx])
+            unsafe { Some(self.buffer_as_slice_mut().unsafe_mut(idx)) }
         } else {
             None
         }
@@ -415,7 +417,7 @@ impl<T> RingBuf<T> {
     }
 }
 
-/// Returns the index in the underlying `Vec` for a given logical element index.
+/// Returns the index in the underlying buffer for a given logical element index.
 #[inline]
 fn wrap_index(index: uint, size: uint) -> uint {
     // size is always a power of 2
