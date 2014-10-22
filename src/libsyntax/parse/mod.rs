@@ -793,29 +793,29 @@ mod test {
         let tts = string_to_tts("macro_rules! zip (($a)=>($a))".to_string());
         let tts: &[ast::TokenTree] = tts.as_slice();
         match tts {
-            [ast::TTToken(_, _),
-             ast::TTToken(_, token::NOT),
-             ast::TTToken(_, _),
-             ast::TTDelimited(_, ast::TTToken(_, token::LPAREN),
+            [ast::TtToken(_, _),
+             ast::TtToken(_, token::NOT),
+             ast::TtToken(_, _),
+             ast::TtDelimited(_, ast::TtToken(_, token::LPAREN),
                           ref delim_elts,
-                          ast::TTToken(_, token::RPAREN))] => {
+                          ast::TtToken(_, token::RPAREN))] => {
                 let delim_elts: &[ast::TokenTree] = delim_elts.as_slice();
                 match delim_elts {
-                    [ast::TTDelimited(_, ast::TTToken(_, token::LPAREN),
+                    [ast::TtDelimited(_, ast::TtToken(_, token::LPAREN),
                                   ref first_set,
-                                  ast::TTToken(_, token::RPAREN)),
-                     ast::TTToken(_, token::FAT_ARROW),
-                     ast::TTDelimited(_, ast::TTToken(_, token::LPAREN),
+                                  ast::TtToken(_, token::RPAREN)),
+                     ast::TtToken(_, token::FAT_ARROW),
+                     ast::TtDelimited(_, ast::TtToken(_, token::LPAREN),
                                   ref second_set,
-                                  ast::TTToken(_, token::RPAREN))] => {
+                                  ast::TtToken(_, token::RPAREN))] => {
                         let first_set: &[ast::TokenTree] =
                             first_set.as_slice();
                         match first_set {
-                            [ast::TTToken(_, token::DOLLAR), ast::TTToken(_, _)] => {
+                            [ast::TtToken(_, token::DOLLAR), ast::TtToken(_, _)] => {
                                 let second_set: &[ast::TokenTree] =
                                     second_set.as_slice();
                                 match second_set {
-                                    [ast::TTToken(_, token::DOLLAR), ast::TTToken(_, _)] => {
+                                    [ast::TtToken(_, token::DOLLAR), ast::TtToken(_, _)] => {
                                         assert_eq!("correct","correct")
                                     }
                                     _ => assert_eq!("wrong 4","correct")
@@ -845,7 +845,7 @@ mod test {
         assert_eq!(json::encode(&tts),
         "[\
     {\
-        \"variant\":\"TTToken\",\
+        \"variant\":\"TtToken\",\
         \"fields\":[\
             null,\
             {\
@@ -858,7 +858,7 @@ mod test {
         ]\
     },\
     {\
-        \"variant\":\"TTToken\",\
+        \"variant\":\"TtToken\",\
         \"fields\":[\
             null,\
             {\
@@ -871,18 +871,18 @@ mod test {
         ]\
     },\
     {\
-        \"variant\":\"TTDelimited\",\
+        \"variant\":\"TtDelimited\",\
         \"fields\":[\
             [\
                 {\
-                    \"variant\":\"TTToken\",\
+                    \"variant\":\"TtToken\",\
                     \"fields\":[\
                         null,\
                         \"LPAREN\"\
                     ]\
                 },\
                 {\
-                    \"variant\":\"TTToken\",\
+                    \"variant\":\"TtToken\",\
                     \"fields\":[\
                         null,\
                         {\
@@ -895,14 +895,14 @@ mod test {
                     ]\
                 },\
                 {\
-                    \"variant\":\"TTToken\",\
+                    \"variant\":\"TtToken\",\
                     \"fields\":[\
                         null,\
                         \"COLON\"\
                     ]\
                 },\
                 {\
-                    \"variant\":\"TTToken\",\
+                    \"variant\":\"TtToken\",\
                     \"fields\":[\
                         null,\
                         {\
@@ -915,7 +915,7 @@ mod test {
                     ]\
                 },\
                 {\
-                    \"variant\":\"TTToken\",\
+                    \"variant\":\"TtToken\",\
                     \"fields\":[\
                         null,\
                         \"RPAREN\"\
@@ -925,18 +925,18 @@ mod test {
         ]\
     },\
     {\
-        \"variant\":\"TTDelimited\",\
+        \"variant\":\"TtDelimited\",\
         \"fields\":[\
             [\
                 {\
-                    \"variant\":\"TTToken\",\
+                    \"variant\":\"TtToken\",\
                     \"fields\":[\
                         null,\
                         \"LBRACE\"\
                     ]\
                 },\
                 {\
-                    \"variant\":\"TTToken\",\
+                    \"variant\":\"TtToken\",\
                     \"fields\":[\
                         null,\
                         {\
@@ -949,14 +949,14 @@ mod test {
                     ]\
                 },\
                 {\
-                    \"variant\":\"TTToken\",\
+                    \"variant\":\"TtToken\",\
                     \"fields\":[\
                         null,\
                         \"SEMI\"\
                     ]\
                 },\
                 {\
-                    \"variant\":\"TTToken\",\
+                    \"variant\":\"TtToken\",\
                     \"fields\":[\
                         null,\
                         \"RBRACE\"\

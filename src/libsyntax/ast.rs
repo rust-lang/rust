@@ -25,7 +25,7 @@ use std::rc::Rc;
 use serialize::{Encodable, Decodable, Encoder, Decoder};
 
 #[cfg(stage0)]
-pub use self::TTToken as TTTok;
+pub use self::TtToken as TTTok;
 
 // FIXME #6993: in librustc, uses of "ident" should be replaced
 // by just "Name".
@@ -603,9 +603,9 @@ pub struct Delimiter {
 }
 
 impl Delimiter {
-    /// Convert the delimiter to a `TTToken`
+    /// Convert the delimiter to a `TtToken`
     pub fn to_tt(&self) -> TokenTree {
-        TTToken(self.span, self.token.clone())
+        TtToken(self.span, self.token.clone())
     }
 }
 
@@ -617,9 +617,9 @@ impl Delimiter {
 /// If the syntax extension is an MBE macro, it will attempt to match its
 /// LHS "matchers" against the provided token tree, and if it finds a
 /// match, will transcribe the RHS token tree, splicing in any captured
-/// `macro_parser::matched_nonterminals` into the `TTNonterminal`s it finds.
+/// `macro_parser::matched_nonterminals` into the `TtNonterminal`s it finds.
 ///
-/// The RHS of an MBE macro is the only place a `TTNonterminal` or `TTSequence`
+/// The RHS of an MBE macro is the only place a `TtNonterminal` or `TtSequence`
 /// makes any real sense. You could write them elsewhere but nothing
 /// else knows what to do with them, so you'll probably get a syntax
 /// error.
@@ -627,10 +627,10 @@ impl Delimiter {
 #[doc="For macro invocations; parsing is delegated to the macro"]
 pub enum TokenTree {
     /// A single token
-    TTToken(Span, ::parse::token::Token),
+    TtToken(Span, ::parse::token::Token),
     /// A delimited sequence of token trees
     // FIXME(eddyb) #6308 Use Rc<[TokenTree]> after DST.
-    TTDelimited(Span, Delimiter, Rc<Vec<TokenTree>>, Delimiter),
+    TtDelimited(Span, Delimiter, Rc<Vec<TokenTree>>, Delimiter),
 
     // These only make sense for right-hand-sides of MBE macros:
 
@@ -638,20 +638,20 @@ pub enum TokenTree {
     /// an optional separator, and a boolean where true indicates
     /// zero or more (..), and false indicates one or more (+).
     // FIXME(eddyb) #6308 Use Rc<[TokenTree]> after DST.
-    TTSequence(Span, Rc<Vec<TokenTree>>, Option<::parse::token::Token>, bool),
+    TtSequence(Span, Rc<Vec<TokenTree>>, Option<::parse::token::Token>, bool),
 
     /// A syntactic variable that will be filled in by macro expansion.
-    TTNonterminal(Span, Ident)
+    TtNonterminal(Span, Ident)
 }
 
 impl TokenTree {
     /// Returns the `Span` corresponding to this token tree.
     pub fn get_span(&self) -> Span {
         match *self {
-            TTToken(span, _)           => span,
-            TTDelimited(span, _, _, _) => span,
-            TTSequence(span, _, _, _)  => span,
-            TTNonterminal(span, _)     => span,
+            TtToken(span, _)           => span,
+            TtDelimited(span, _, _, _) => span,
+            TtSequence(span, _, _, _)  => span,
+            TtNonterminal(span, _)     => span,
         }
     }
 }
