@@ -4165,10 +4165,16 @@ impl<'a> Parser<'a> {
         // A bit of complexity and lookahead is needed here in order to be
         // backwards compatible.
         let lo = self.span.lo;
+        let mut self_ident_lo = self.span.lo;
+        let mut self_ident_hi = self.span.hi;
+
         let mut mutbl_self = MutImmutable;
         let explicit_self = match self.token {
             token::BINOP(token::AND) => {
-                maybe_parse_borrowed_explicit_self(self)
+                let eself = maybe_parse_borrowed_explicit_self(self);
+                self_ident_lo = self.last_span.lo;
+                self_ident_hi = self.last_span.hi;
+                eself
             }
             token::TILDE => {
                 // We need to make sure it isn't a type
@@ -4240,7 +4246,7 @@ impl<'a> Parser<'a> {
             _ => SelfStatic,
         };
 
-        let explicit_self_sp = mk_sp(lo, self.span.hi);
+        let explicit_self_sp = mk_sp(self_ident_lo, self_ident_hi);
 
         // shared fall-through for the three cases below. borrowing prevents simply
         // writing this as a closure
