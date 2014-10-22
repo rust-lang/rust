@@ -48,7 +48,7 @@ use ast::{StmtExpr, StmtSemi, StmtMac, StructDef, StructField};
 use ast::{StructVariantKind, BiSub};
 use ast::StrStyle;
 use ast::{SelfExplicit, SelfRegion, SelfStatic, SelfValue};
-use ast::{TokenTree, TraitItem, TraitRef, TTDelim, TTSeq, TTTok};
+use ast::{Delimiter, TokenTree, TraitItem, TraitRef, TTDelim, TTSeq, TTTok};
 use ast::{TTNonterminal, TupleVariantKind, Ty, Ty_, TyBot};
 use ast::{TypeField, TyFixedLengthVec, TyClosure, TyProc, TyBareFn};
 use ast::{TyTypeof, TyInfer, TypeMethod};
@@ -2574,14 +2574,9 @@ impl<'a> Parser<'a> {
                 }
               }
               _ => {
-                  parse_any_tt_tok(p)
+                  TTTok(p.span, p.bump_and_get())
               }
             }
-        }
-
-        // turn the next token into a TTTok:
-        fn parse_any_tt_tok(p: &mut Parser) -> TokenTree {
-            TTTok(p.span, p.bump_and_get())
         }
 
         match (&self.token, token::close_delimiter_for(&self.token)) {
@@ -2595,21 +2590,32 @@ impl<'a> Parser<'a> {
                 self.fatal("this file contains an un-closed delimiter ");
             }
             (_, Some(close_delim)) => {
+                // The span for beginning of the delimited section
+                let pre_span = self.span;
+
                 // Parse the open delimiter.
                 self.open_braces.push(self.span);
-                let mut result = vec!(parse_any_tt_tok(self));
+                let open = Delimiter {
+                    span: self.span,
+                    token: self.bump_and_get(),
+                };
 
-                let trees =
-                    self.parse_seq_to_before_end(&close_delim,
-                                                 seq_sep_none(),
-                                                 |p| p.parse_token_tree());
-                result.extend(trees.into_iter());
+                // Parse the token trees within the delimeters
+                let tts = self.parse_seq_to_before_end(
+                    &close_delim, seq_sep_none(), |p| p.parse_token_tree()
+                );
 
                 // Parse the close delimiter.
-                result.push(parse_any_tt_tok(self));
+                let close = Delimiter {
+                    span: self.span,
+                    token: self.bump_and_get(),
+                };
                 self.open_braces.pop().unwrap();
 
-                TTDelim(Rc::new(result))
+                // Expand to cover the entire delimited token tree
+                let span = Span { hi: self.span.hi, ..pre_span };
+
+                TTDelim(span, open, Rc::new(tts), close)
             }
             _ => parse_non_delim_tt_tok(self)
         }

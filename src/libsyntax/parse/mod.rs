@@ -788,35 +788,34 @@ mod test {
     }
 
     // check the token-tree-ization of macros
-    #[test] fn string_to_tts_macro () {
+    #[test]
+    fn string_to_tts_macro () {
         let tts = string_to_tts("macro_rules! zip (($a)=>($a))".to_string());
         let tts: &[ast::TokenTree] = tts.as_slice();
         match tts {
-            [ast::TTTok(_,_),
-             ast::TTTok(_,token::NOT),
-             ast::TTTok(_,_),
-             ast::TTDelim(ref delim_elts)] => {
+            [ast::TTTok(_, _),
+             ast::TTTok(_, token::NOT),
+             ast::TTTok(_, _),
+             ast::TTDelim(_, ast::TTTok(_, token::LPAREN),
+                          ref delim_elts,
+                          ast::TTTok(_, token::RPAREN))] => {
                 let delim_elts: &[ast::TokenTree] = delim_elts.as_slice();
                 match delim_elts {
-                    [ast::TTTok(_,token::LPAREN),
-                     ast::TTDelim(ref first_set),
-                     ast::TTTok(_,token::FAT_ARROW),
-                     ast::TTDelim(ref second_set),
-                     ast::TTTok(_,token::RPAREN)] => {
+                    [ast::TTDelim(_, ast::TTTok(_, token::LPAREN),
+                                  ref first_set,
+                                  ast::TTTok(_, token::RPAREN)),
+                     ast::TTTok(_, token::FAT_ARROW),
+                     ast::TTDelim(_, ast::TTTok(_, token::LPAREN),
+                                  ref second_set,
+                                  ast::TTTok(_, token::RPAREN))] => {
                         let first_set: &[ast::TokenTree] =
                             first_set.as_slice();
                         match first_set {
-                            [ast::TTTok(_,token::LPAREN),
-                             ast::TTTok(_,token::DOLLAR),
-                             ast::TTTok(_,_),
-                             ast::TTTok(_,token::RPAREN)] => {
+                            [ast::TTTok(_, token::DOLLAR), ast::TTTok(_, _)] => {
                                 let second_set: &[ast::TokenTree] =
                                     second_set.as_slice();
                                 match second_set {
-                                    [ast::TTTok(_,token::LPAREN),
-                                     ast::TTTok(_,token::DOLLAR),
-                                     ast::TTTok(_,_),
-                                     ast::TTTok(_,token::RPAREN)] => {
+                                    [ast::TTTok(_, token::DOLLAR), ast::TTTok(_, _)] => {
                                         assert_eq!("correct","correct")
                                     }
                                     _ => assert_eq!("wrong 4","correct")
@@ -837,7 +836,7 @@ mod test {
             _ => {
                 error!("failing value: {}",tts);
                 assert_eq!("wrong 1","correct");
-            }
+            },
         }
     }
 

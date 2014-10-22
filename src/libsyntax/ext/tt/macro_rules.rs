@@ -147,13 +147,9 @@ fn generic_extension<'cx>(cx: &'cx ExtCtxt,
                           rhses: &[Rc<NamedMatch>])
                           -> Box<MacResult+'cx> {
     if cx.trace_macros() {
-        println!("{}! {} {} {}",
+        println!("{}! {{ {} }}",
                  token::get_ident(name),
-                 "{",
-                 print::pprust::tt_to_string(&TTDelim(Rc::new(arg.iter()
-                                                              .map(|x| (*x).clone())
-                                                              .collect()))),
-                 "}");
+                 print::pprust::tts_to_string(arg));
     }
 
     // Which arm's failure should we report? (the one furthest along)
@@ -175,15 +171,9 @@ fn generic_extension<'cx>(cx: &'cx ExtCtxt,
                     // okay, what's your transcriber?
                     MatchedNonterminal(NtTT(ref tt)) => {
                         match **tt {
-                            // cut off delimiters; don't parse 'em
-                            TTDelim(ref tts) => {
-                                (*tts).slice(1u,(*tts).len()-1u)
-                                      .iter()
-                                      .map(|x| (*x).clone())
-                                      .collect()
-                            }
-                            _ => cx.span_fatal(
-                                sp, "macro rhs must be delimited")
+                            // ignore delimiters
+                            TTDelim(_, _, ref tts, _) => (**tts).clone(),
+                            _ => cx.span_fatal(sp, "macro rhs must be delimited"),
                         }
                     },
                     _ => cx.span_bug(sp, "bad thing in rhs")

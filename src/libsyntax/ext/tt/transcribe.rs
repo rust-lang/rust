@@ -18,6 +18,7 @@ use parse::token;
 use parse::lexer::TokenAndSpan;
 
 use std::rc::Rc;
+use std::ops::Add;
 use std::collections::HashMap;
 
 ///an unzipping of `TokenTree`s
@@ -104,37 +105,41 @@ enum LockstepIterSize {
     LisContradiction(String),
 }
 
-fn lis_merge(lhs: LockstepIterSize, rhs: LockstepIterSize) -> LockstepIterSize {
-    match lhs {
-        LisUnconstrained => rhs.clone(),
-        LisContradiction(_) => lhs.clone(),
-        LisConstraint(l_len, l_id) => match rhs {
-            LisUnconstrained => lhs.clone(),
-            LisContradiction(_) => rhs.clone(),
-            LisConstraint(r_len, _) if l_len == r_len => lhs.clone(),
-            LisConstraint(r_len, r_id) => {
-                let l_n = token::get_ident(l_id);
-                let r_n = token::get_ident(r_id);
-                LisContradiction(format!("inconsistent lockstep iteration: \
-                                          '{}' has {} items, but '{}' has {}",
-                                          l_n, l_len, r_n, r_len).to_string())
-            }
+impl Add<LockstepIterSize, LockstepIterSize> for LockstepIterSize {
+    fn add(&self, other: &LockstepIterSize) -> LockstepIterSize {
+        match *self {
+            LisUnconstrained => other.clone(),
+            LisContradiction(_) => self.clone(),
+            LisConstraint(l_len, l_id) => match *other {
+                LisUnconstrained => self.clone(),
+                LisContradiction(_) => other.clone(),
+                LisConstraint(r_len, _) if l_len == r_len => self.clone(),
+                LisConstraint(r_len, r_id) => {
+                    let l_n = token::get_ident(l_id);
+                    let r_n = token::get_ident(r_id);
+                    LisContradiction(format!("inconsistent lockstep iteration: \
+                                              '{}' has {} items, but '{}' has {}",
+                                              l_n, l_len, r_n, r_len).to_string())
+                }
+            },
         }
     }
 }
 
 fn lockstep_iter_size(t: &TokenTree, r: &TtReader) -> LockstepIterSize {
     match *t {
-        TTDelim(ref tts) | TTSeq(_, ref tts, _, _) => {
-            tts.iter().fold(LisUnconstrained, |lis, tt| {
-                lis_merge(lis, lockstep_iter_size(tt, r))
+        // The opening and closing delimiters are both tokens, so they are
+        // treated as `LisUnconstrained`.
+        TTDelim(_, _, ref tts, _) | TTSeq(_, ref tts, _, _) => {
+            tts.iter().fold(LisUnconstrained, |size, tt| {
+                size + lockstep_iter_size(tt, r)
             })
-        }
+        },
         TTTok(..) => LisUnconstrained,
         TTNonterminal(_, name) => match *lookup_cur_matched(r, name) {
             MatchedNonterminal(_) => LisUnconstrained,
             MatchedSeq(ref ads, _) => LisConstraint(ads.len(), name)
-        }
+        },
     }
 }
 
@@ -197,9 +202,14 @@ pub fn tt_next_token(r: &mut TtReader) -> TokenAndSpan {
             (*frame.forest)[frame.idx].clone()
         };
         match t {
-            TTDelim(tts) => {
+            TTDelim(_, open, delimed_tts, close) => {
+                let mut tts = vec![];
+                tts.push(open.to_tt());
+                tts.extend(delimed_tts.iter().map(|x| (*x).clone()));
+                tts.push(close.to_tt());
+
                 r.stack.push(TtFrame {
-                    forest: tts,
+                    forest: Rc::new(tts),
                     idx: 0,
                     dotdotdoted: false,
                     sep: None

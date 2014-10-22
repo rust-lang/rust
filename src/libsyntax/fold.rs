@@ -571,7 +571,17 @@ pub fn noop_fold_tt<T: Folder>(tt: &TokenTree, fld: &mut T) -> TokenTree {
     match *tt {
         TTTok(span, ref tok) =>
             TTTok(span, fld.fold_token(tok.clone())),
-        TTDelim(ref tts) => TTDelim(Rc::new(fld.fold_tts(tts.as_slice()))),
+        TTDelim(span, ref open, ref tts, ref close) =>
+            TTDelim(span,
+                    Delimiter {
+                        span: open.span,
+                        token: fld.fold_token(open.token.clone())
+                    },
+                    Rc::new(fld.fold_tts(tts.as_slice())),
+                    Delimiter {
+                        span: close.span,
+                        token: fld.fold_token(close.token.clone())
+                    }),
         TTSeq(span, ref pattern, ref sep, is_optional) =>
             TTSeq(span,
                   Rc::new(fld.fold_tts(pattern.as_slice())),

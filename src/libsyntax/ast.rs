@@ -592,6 +592,20 @@ pub enum CaptureClause {
     CaptureByRef,
 }
 
+/// A token that delimits a sequence of token trees
+#[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
+pub struct Delimiter {
+    pub span: Span,
+    pub token: ::parse::token::Token,
+}
+
+impl Delimiter {
+    /// Convert the delimiter to a `TTTok`
+    pub fn to_tt(&self) -> TokenTree {
+        TTTok(self.span, self.token.clone())
+    }
+}
+
 /// When the main rust parser encounters a syntax-extension invocation, it
 /// parses the arguments to the invocation as a token-tree. This is a very
 /// loose structure, such that all sorts of different AST-fragments can
@@ -611,10 +625,9 @@ pub enum CaptureClause {
 pub enum TokenTree {
     /// A single token
     TTTok(Span, ::parse::token::Token),
-    /// A delimited sequence (the delimiters appear as the first
-    /// and last elements of the vector)
+    /// A delimited sequence of token trees
     // FIXME(eddyb) #6308 Use Rc<[TokenTree]> after DST.
-    TTDelim(Rc<Vec<TokenTree>>),
+    TTDelim(Span, Delimiter, Rc<Vec<TokenTree>>, Delimiter),
 
     // These only make sense for right-hand-sides of MBE macros:
 
@@ -626,6 +639,18 @@ pub enum TokenTree {
 
     /// A syntactic variable that will be filled in by macro expansion.
     TTNonterminal(Span, Ident)
+}
+
+impl TokenTree {
+    /// Returns the `Span` corresponding to this token tree.
+    pub fn get_span(&self) -> Span {
+        match *self {
+            TTTok(span, _)         => span,
+            TTDelim(span, _, _, _) => span,
+            TTSeq(span, _, _, _)   => span,
+            TTNonterminal(span, _) => span,
+        }
+    }
 }
 
 // Matchers are nodes defined-by and recognized-by the main rust parser and
