@@ -721,7 +721,7 @@ pub fn integer_lit(s: &str, sd: &SpanHandler, sp: Span) -> ast::Lit_ {
 mod test {
     use super::*;
     use serialize::json;
-    use codemap::{Span, BytePos, Spanned, NO_EXPANSION};
+    use codemap::{Span, BytePos, Pos, Spanned, NO_EXPANSION};
     use owned_slice::OwnedSlice;
     use ast;
     use abi;
@@ -1121,6 +1121,46 @@ mod test {
                             span: sp(0,21)})));
     }
 
+    fn get_spans_of_pat_idents(src: &str) -> Vec<Span> {
+        let item = string_to_item(src.to_string()).unwrap();
+
+        struct PatIdentVisitor {
+            spans: Vec<Span>
+        }
+        impl<'v> ::visit::Visitor<'v> for PatIdentVisitor {
+            fn visit_pat(&mut self, p: &'v ast::Pat) {
+                match p.node {
+                    ast::PatIdent(_ , ref spannedident, _) => {
+                        self.spans.push(spannedident.span.clone());
+                    }
+                    _ => {
+                        ::visit::walk_pat(self, p);
+                    }
+                }
+            }
+        }
+        let mut v = PatIdentVisitor { spans: Vec::new() };
+        ::visit::walk_item(&mut v, &*item);
+        return v.spans;
+    }
+
+    #[test] fn span_of_self_arg_pat_idents_are_correct() {
+
+        let srcs = ["impl z { fn a (&self, &myarg: int) {} }",
+                    "impl z { fn a (&mut self, &myarg: int) {} }",
+                    "impl z { fn a (&'a self, &myarg: int) {} }",
+                    "impl z { fn a (self, &myarg: int) {} }",
+                    "impl z { fn a (self: Foo, &myarg: int) {} }",
+                    ];
+
+        for &src in srcs.iter() {
+            let spans = get_spans_of_pat_idents(src);
+            let Span{lo:lo,hi:hi,..} = spans[0];
+            assert!("self" == src.slice(lo.to_uint(), hi.to_uint()),
+                    "\"{}\" != \"self\". src=\"{}\"",
+                    src.slice(lo.to_uint(), hi.to_uint()), src)
+        }
+    }
 
     #[test] fn parse_exprs () {
         // just make sure that they parse....
