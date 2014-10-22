@@ -48,7 +48,7 @@ use ast::{StmtExpr, StmtSemi, StmtMac, StructDef, StructField};
 use ast::{StructVariantKind, BiSub};
 use ast::StrStyle;
 use ast::{SelfExplicit, SelfRegion, SelfStatic, SelfValue};
-use ast::{Delimiter, TokenTree, TraitItem, TraitRef, TTDelim, TTSeq, TTTok};
+use ast::{Delimiter, TokenTree, TraitItem, TraitRef, TTDelimited, TTSequence, TTToken};
 use ast::{TTNonterminal, TupleVariantKind, Ty, Ty_, TyBot};
 use ast::{TypeField, TyFixedLengthVec, TyClosure, TyProc, TyBareFn};
 use ast::{TyTypeof, TyInfer, TypeMethod};
@@ -2526,7 +2526,7 @@ impl<'a> Parser<'a> {
     /// parse a single token tree from the input.
     pub fn parse_token_tree(&mut self) -> TokenTree {
         // FIXME #6994: currently, this is too eager. It
-        // parses token trees but also identifies TTSeq's
+        // parses token trees but also identifies TTSequence's
         // and TTNonterminal's; it's too early to know yet
         // whether something will be a nonterminal or a seq
         // yet.
@@ -2568,13 +2568,13 @@ impl<'a> Parser<'a> {
                     let seq = match seq {
                         Spanned { node, .. } => node,
                     };
-                    TTSeq(mk_sp(sp.lo, p.span.hi), Rc::new(seq), s, z)
+                    TTSequence(mk_sp(sp.lo, p.span.hi), Rc::new(seq), s, z)
                 } else {
                     TTNonterminal(sp, p.parse_ident())
                 }
               }
               _ => {
-                  TTTok(p.span, p.bump_and_get())
+                  TTToken(p.span, p.bump_and_get())
               }
             }
         }
@@ -2615,7 +2615,7 @@ impl<'a> Parser<'a> {
                 // Expand to cover the entire delimited token tree
                 let span = Span { hi: self.span.hi, ..pre_span };
 
-                TTDelim(span, open, Rc::new(tts), close)
+                TTDelimited(span, open, Rc::new(tts), close)
             }
             _ => parse_non_delim_tt_tok(self)
         }

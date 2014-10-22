@@ -639,10 +639,10 @@ fn mk_token(cx: &ExtCtxt, sp: Span, tok: &token::Token) -> P<ast::Expr> {
 
 fn mk_tt(cx: &ExtCtxt, _: Span, tt: &ast::TokenTree) -> Vec<P<ast::Stmt>> {
     match *tt {
-        ast::TTTok(sp, ref tok) => {
+        ast::TTToken(sp, ref tok) => {
             let e_sp = cx.expr_ident(sp, id_ext("_sp"));
             let e_tok = cx.expr_call(sp,
-                                     mk_ast_path(cx, sp, "TTTok"),
+                                     mk_ast_path(cx, sp, "TTToken"),
                                      vec!(e_sp, mk_token(cx, sp, tok)));
             let e_push =
                 cx.expr_method_call(sp,
@@ -651,14 +651,14 @@ fn mk_tt(cx: &ExtCtxt, _: Span, tt: &ast::TokenTree) -> Vec<P<ast::Stmt>> {
                                     vec!(e_tok));
             vec!(cx.stmt_expr(e_push))
         },
-        ast::TTDelim(sp, ref open, ref tts, ref close) => {
+        ast::TTDelimited(sp, ref open, ref tts, ref close) => {
             let mut stmts = vec![];
             stmts.extend(mk_tt(cx, sp, &open.to_tt()).into_iter());
             stmts.extend(tts.iter().flat_map(|tt| mk_tt(cx, sp, tt).into_iter()));
             stmts.extend(mk_tt(cx, sp, &close.to_tt()).into_iter());
             stmts
         },
-        ast::TTSeq(..) => fail!("TTSeq in quote!"),
+        ast::TTSequence(..) => fail!("TTSequence in quote!"),
         ast::TTNonterminal(sp, ident) => {
             // tt.extend($ident.to_tokens(ext_cx).into_iter())
 
