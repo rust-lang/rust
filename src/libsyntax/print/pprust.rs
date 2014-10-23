@@ -224,6 +224,10 @@ pub fn item_to_string(i: &ast::Item) -> String {
     $to_string(|s| s.print_item(i))
 }
 
+pub fn view_item_to_string(i: &ast::ViewItem) -> String {
+    $to_string(|s| s.print_view_item(i))
+}
+
 pub fn generics_to_string(generics: &ast::Generics) -> String {
     $to_string(|s| s.print_generics(generics))
 }
