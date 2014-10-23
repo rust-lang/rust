@@ -1032,10 +1032,8 @@ pub enum type_err {
     terr_ref_mutability,
     terr_vec_mutability,
     terr_tuple_size(expected_found<uint>),
+    terr_fixed_array_size(expected_found<uint>),
     terr_ty_param_size(expected_found<uint>),
-    terr_record_size(expected_found<uint>),
-    terr_record_mutability,
-    terr_record_fields(expected_found<Ident>),
     terr_arg_count,
     terr_regions_does_not_outlive(Region, Region),
     terr_regions_not_same(Region, Region),
@@ -3790,8 +3788,8 @@ pub fn ty_sort_string(cx: &ctxt, t: t) -> String {
 
         ty_enum(id, _) => format!("enum {}", item_path_str(cx, id)),
         ty_uniq(_) => "box".to_string(),
-        ty_vec(_, Some(_)) => "array".to_string(),
-        ty_vec(_, None) => "unsized array".to_string(),
+        ty_vec(_, Some(n)) => format!("array of {} elements", n),
+        ty_vec(_, None) => "slice".to_string(),
         ty_ptr(_) => "*-ptr".to_string(),
         ty_rptr(_, _) => "&-ptr".to_string(),
         ty_bare_fn(_) => "extern fn".to_string(),
@@ -3874,26 +3872,17 @@ pub fn type_err_to_str(cx: &ctxt, err: &type_err) -> String {
                     values.expected,
                     values.found)
         }
+        terr_fixed_array_size(values) => {
+            format!("expected an array with a fixed size of {} elements, \
+                     found one with {} elements",
+                    values.expected,
+                    values.found)
+        }
         terr_tuple_size(values) => {
             format!("expected a tuple with {} elements, \
                      found one with {} elements",
                     values.expected,
                     values.found)
-        }
-        terr_record_size(values) => {
-            format!("expected a record with {} fields, \
-                     found one with {} fields",
-                    values.expected,
-                    values.found)
-        }
-        terr_record_mutability => {
-            "record elements differ in mutability".to_string()
-        }
-        terr_record_fields(values) => {
-            format!("expected a record with field `{}`, found one \
-                     with field `{}`",
-                    token::get_ident(values.expected),
-                    token::get_ident(values.found))
         }
         terr_arg_count => {
             "incorrect number of function parameters".to_string()

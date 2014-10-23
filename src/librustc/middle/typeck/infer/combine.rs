@@ -515,6 +515,16 @@ pub fn super_tys<'tcx, C: Combine<'tcx>>(this: &C, a: ty::t, b: ty::t) -> cres<t
             Ok(ty::mk_rptr(tcx, r, mt))
       }
 
+      (&ty::ty_vec(a_t, Some(sz_a)), &ty::ty_vec(b_t, Some(sz_b))) => {
+        this.tys(a_t, b_t).and_then(|t| {
+            if sz_a == sz_b {
+                Ok(ty::mk_vec(tcx, t, Some(sz_a)))
+            } else {
+                Err(ty::terr_fixed_array_size(expected_found(this, sz_a, sz_b)))
+            }
+        })
+      }
+
       (&ty::ty_vec(a_t, sz_a), &ty::ty_vec(b_t, sz_b)) => {
         this.tys(a_t, b_t).and_then(|t| {
             if sz_a == sz_b {

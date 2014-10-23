@@ -62,6 +62,7 @@ time of error detection.
 use std::collections::HashSet;
 use middle::def;
 use middle::subst;
+use middle::ty_fold::{mod, TypeFoldable};
 use middle::ty;
 use middle::ty::{Region, ReFree};
 use middle::typeck::infer;
@@ -111,7 +112,7 @@ pub trait ErrorReporting {
 
     fn values_str(&self, values: &ValuePairs) -> Option<String>;
 
-    fn expected_found_str<T:UserString+Resolvable>(
+    fn expected_found_str<T: UserString + Resolvable>(
         &self,
         exp_found: &ty::expected_found<T>)
         -> Option<String>;
@@ -396,16 +397,12 @@ impl<'a, 'tcx> ErrorReporting for InferCtxt<'a, 'tcx> {
          * or None if this is a derived error.
          */
         match *values {
-            infer::Types(ref exp_found) => {
-                self.expected_found_str(exp_found)
-            }
-            infer::TraitRefs(ref exp_found) => {
-                self.expected_found_str(exp_found)
-            }
+            infer::Types(ref exp_found) => self.expected_found_str(exp_found),
+            infer::TraitRefs(ref exp_found) => self.expected_found_str(exp_found)
         }
     }
 
-    fn expected_found_str<T:UserString+Resolvable>(
+    fn expected_found_str<T: UserString + Resolvable>(
         &self,
         exp_found: &ty::expected_found<T>)
         -> Option<String>
@@ -420,9 +417,14 @@ impl<'a, 'tcx> ErrorReporting for InferCtxt<'a, 'tcx> {
             return None;
         }
 
+        // Only include variable IDs in the diagnostics if there are at least two
+        // present across both types/traits.
+        let should_print_var_ids = expected.remaining_type_variables(self.tcx)
+            .union(&found.remaining_type_variables(self.tcx)).count() > 1;
+
         Some(format!("expected `{}`, found `{}`",
-                     expected.user_string(self.tcx),
-                     found.user_string(self.tcx)))
+                     expected.user_string_with_var_ids(self.tcx, should_print_var_ids),
+                     found.user_string_with_var_ids(self.tcx, should_print_var_ids)))
     }
 
     fn report_param_bound_failure(&self,
@@ -1654,6 +1656,7 @@ impl<'a, 'tcx> ErrorReportingHelpers for InferCtxt<'a, 'tcx> {
 pub trait Resolvable {
     fn resolve(&self, infcx: &InferCtxt) -> Self;
     fn contains_error(&self) -> bool;
+    fn remaining_type_variables(&self, tcx: &ty::ctxt) -> HashSet<ty::InferTy>;
 }
 
 impl Resolvable for ty::t {
@@ -1663,6 +1666,22 @@ impl Resolvable for ty::t {
     fn contains_error(&self) -> bool {
         ty::type_is_error(*self)
     }
+    fn remaining_type_variables(&self, tcx: &ty::ctxt) -> HashSet<ty::InferTy> {
+        let mut vars = HashSet::new();
+        {
+            let mut folder = ty_fold::BottomUpFolder {
+                tcx: tcx,
+                fldop: |t| {
+                    if let ty::ty_infer(var) = ty::get(t).sty {
+                        vars.insert(var);
+                    }
+                    t
+                }
+            };
+            self.fold_with(&mut folder);
+        }
+        vars
+    }
 }
 
 impl Resolvable for Rc<ty::TraitRef> {
@@ -1671,6 +1690,9 @@ impl Resolvable for Rc<ty::TraitRef> {
     }
     fn contains_error(&self) -> bool {
         ty::trait_ref_contains_error(&**self)
+    }
+    fn remaining_type_variables(&self, _: &ty::ctxt) -> HashSet<ty::InferTy> {
+        HashSet::new()
     }
 }
 
