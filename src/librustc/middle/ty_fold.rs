@@ -324,7 +324,7 @@ impl TypeFoldable for ty::ParamBounds {
 impl TypeFoldable for ty::TypeParameterDef {
     fn fold_with<'tcx, F: TypeFolder<'tcx>>(&self, folder: &mut F) -> ty::TypeParameterDef {
         ty::TypeParameterDef {
-            ident: self.ident,
+            name: self.name,
             def_id: self.def_id,
             space: self.space,
             index: self.index,

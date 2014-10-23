@@ -585,7 +585,7 @@ fn const_expr_unadjusted(cx: &CrateContext, e: &ast::Expr) -> ValueRef {
               expr::with_field_tys(tcx, ety, Some(e.id), |discr, field_tys| {
                   let cs = field_tys.iter().enumerate()
                                     .map(|(ix, &field_ty)| {
-                      match fs.iter().find(|f| field_ty.ident.name == f.ident.node.name) {
+                      match fs.iter().find(|f| field_ty.name == f.ident.node.name) {
                           Some(ref f) => const_expr(cx, &*f.expr).val0(),
                           None => {
                               match base_val {

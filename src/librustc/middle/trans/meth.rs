@@ -300,10 +300,7 @@ fn method_with_name(ccx: &CrateContext, impl_id: ast::DefId, name: ast::Name)
                   .expect("could not find impl while translating");
     let meth_did = impl_items.iter()
                              .find(|&did| {
-                                ty::impl_or_trait_item(ccx.tcx(),
-                                                       did.def_id()).ident()
-                                                                    .name ==
-                                    name
+                                ty::impl_or_trait_item(ccx.tcx(), did.def_id()).name() == name
                              }).expect("could not find method while \
                                         translating");
 
@@ -324,13 +321,13 @@ fn trans_monomorphized_callee<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             let ccx = bcx.ccx();
             let impl_did = vtable_impl.impl_def_id;
             let mname = match ty::trait_item(ccx.tcx(), trait_id, n_method) {
-                ty::MethodTraitItem(method) => method.ident,
+                ty::MethodTraitItem(method) => method.name,
                 ty::TypeTraitItem(_) => {
                     bcx.tcx().sess.bug("can't monomorphize an associated \
                                         type")
                 }
             };
-            let mth_id = method_with_name(bcx.ccx(), impl_did, mname.name);
+            let mth_id = method_with_name(bcx.ccx(), impl_did, mname);
 
             // create a concatenated set of substitutions which includes
             // those from the impl and those from the method:
@@ -703,10 +700,10 @@ fn emit_vtable_methods(bcx: Block,
     let trait_item_def_ids = ty::trait_item_def_ids(tcx, trt_id);
     trait_item_def_ids.iter().flat_map(|method_def_id| {
         let method_def_id = method_def_id.def_id();
-        let ident = ty::impl_or_trait_item(tcx, method_def_id).ident();
+        let name = ty::impl_or_trait_item(tcx, method_def_id).name();
         // The substitutions we have are on the impl, so we grab
         // the method type from the impl to substitute into.
-        let m_id = method_with_name(ccx, impl_id, ident.name);
+        let m_id = method_with_name(ccx, impl_id, name);
         let ti = ty::impl_or_trait_item(tcx, m_id);
         match ti {
             ty::MethodTraitItem(m) => {
@@ -717,7 +714,7 @@ fn emit_vtable_methods(bcx: Block,
                    ty::type_has_self(ty::mk_bare_fn(tcx, m.fty.clone())) {
                     debug!("(making impl vtable) method has self or type \
                             params: {}",
-                           token::get_ident(ident));
+                           token::get_name(name));
                     Some(C_null(Type::nil(ccx).ptr_to())).into_iter()
                 } else {
                     let mut fn_ref = trans_fn_ref_with_substs(

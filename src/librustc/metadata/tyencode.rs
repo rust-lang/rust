@@ -383,7 +383,7 @@ pub fn enc_bounds(w: &mut SeekableMemWriter, cx: &ctxt, bs: &ty::ParamBounds) {
 
 pub fn enc_type_param_def(w: &mut SeekableMemWriter, cx: &ctxt, v: &ty::TypeParameterDef) {
     mywrite!(w, "{}:{}|{}|{}|",
-             token::get_ident(v.ident), (cx.ds)(v.def_id),
+             token::get_name(v.name), (cx.ds)(v.def_id),
              v.space.to_uint(), v.index);
     enc_opt(w, v.associated_with, |w, did| mywrite!(w, "{}", (cx.ds)(did)));
     mywrite!(w, "|");

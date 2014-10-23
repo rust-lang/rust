@@ -292,12 +292,12 @@ fn item_path(item_doc: rbml::Doc) -> Vec<ast_map::PathElem> {
     result
 }
 
-fn item_name(intr: &IdentInterner, item: rbml::Doc) -> ast::Ident {
+fn item_name(intr: &IdentInterner, item: rbml::Doc) -> ast::Name {
     let name = reader::get_doc(item, tag_paths_data_name);
     let string = name.as_str_slice();
     match intr.find_equiv(&string) {
-        None => token::str_to_ident(string),
-        Some(val) => ast::Ident::new(val),
+        None => token::intern(string),
+        Some(val) => val,
     }
 }
 
@@ -457,7 +457,7 @@ fn each_child_of_item_or_crate(intr: Rc<IdentInterner>,
                                item_doc: rbml::Doc,
                                get_crate_data: GetCrateDataCb,
                                callback: |DefLike,
-                                          ast::Ident,
+                                          ast::Name,
                                           ast::Visibility|) {
     // Iterate over all children.
     let _ = reader::tagged_docs(item_doc, tag_mod_child, |child_info_doc| {
@@ -579,7 +579,7 @@ fn each_child_of_item_or_crate(intr: Rc<IdentInterner>,
                                                 child_def_id.krate);
                 // These items have a public visibility because they're part of
                 // a public re-export.
-                callback(def_like, token::str_to_ident(name), ast::Public);
+                callback(def_like, token::intern(name), ast::Public);
             }
         }
 
@@ -592,7 +592,7 @@ pub fn each_child_of_item(intr: Rc<IdentInterner>,
                           cdata: Cmd,
                           id: ast::NodeId,
                           get_crate_data: GetCrateDataCb,
-                          callback: |DefLike, ast::Ident, ast::Visibility|) {
+                          callback: |DefLike, ast::Name, ast::Visibility|) {
     // Find the item.
     let root_doc = rbml::Doc::new(cdata.data());
     let items = reader::get_doc(root_doc, tag_items);
@@ -613,7 +613,7 @@ pub fn each_top_level_item_of_crate(intr: Rc<IdentInterner>,
                                     cdata: Cmd,
                                     get_crate_data: GetCrateDataCb,
                                     callback: |DefLike,
-                                               ast::Ident,
+                                               ast::Name,
                                                ast::Visibility|) {
     let root_doc = rbml::Doc::new(cdata.data());
     let misc_info_doc = reader::get_doc(root_doc, tag_misc_info);
@@ -745,7 +745,7 @@ pub fn get_impl_items(cdata: Cmd, impl_id: ast::NodeId)
 pub fn get_trait_item_name_and_kind(intr: Rc<IdentInterner>,
                                     cdata: Cmd,
                                     id: ast::NodeId)
-                                    -> (ast::Ident, TraitItemKind) {
+                                    -> (ast::Name, TraitItemKind) {
     let doc = lookup_item(id, cdata.data());
     let name = item_name(&*intr, doc);
     match item_sort(doc) {
@@ -800,7 +800,7 @@ pub fn get_impl_or_trait_item(intr: Rc<IdentInterner>,
         }
         't' => {
             ty::TypeTraitItem(Rc::new(ty::AssociatedType {
-                ident: name,
+                name: name,
                 vis: vis,
                 def_id: def_id,
                 container: container,
@@ -885,7 +885,7 @@ pub fn get_supertraits(cdata: Cmd, id: ast::NodeId, tcx: &ty::ctxt)
 }
 
 pub fn get_type_name_if_impl(cdata: Cmd,
-                             node_id: ast::NodeId) -> Option<ast::Ident> {
+                             node_id: ast::NodeId) -> Option<ast::Name> {
     let item = lookup_item(node_id, cdata.data());
     if item_family(item) != Impl {
         return None;
@@ -893,7 +893,7 @@ pub fn get_type_name_if_impl(cdata: Cmd,
 
     let mut ret = None;
     reader::tagged_docs(item, tag_item_impl_type_basename, |doc| {
-        ret = Some(token::str_to_ident(doc.as_str_slice()));
+        ret = Some(token::intern(doc.as_str_slice()));
         false
     });
 
@@ -936,7 +936,7 @@ pub fn get_static_methods_if_impl(intr: Rc<IdentInterner>,
                 }
 
                 static_impl_methods.push(StaticMethodInfo {
-                    ident: item_name(&*intr, impl_method_doc),
+                    name: item_name(&*intr, impl_method_doc),
                     def_id: item_def_id(impl_method_doc, cdata),
                     fn_style: fn_style,
                     vis: item_visibility(impl_method_doc),
@@ -1005,13 +1005,12 @@ pub fn get_struct_fields(intr: Rc<IdentInterner>, cdata: Cmd, id: ast::NodeId)
     reader::tagged_docs(item, tag_item_field, |an_item| {
         let f = item_family(an_item);
         if f == PublicField || f == InheritedField {
-            // FIXME #6993: name should be of type Name, not Ident
             let name = item_name(&*intr, an_item);
             let did = item_def_id(an_item, cdata);
             let tagdoc = reader::get_doc(an_item, tag_item_field_origin);
             let origin_id =  translate_def_id(cdata, reader::with_doc_data(tagdoc, parse_def_id));
             result.push(ty::field_ty {
-                name: name.name,
+                name: name,
                 id: did,
                 vis: struct_field_family_to_visibility(f),
                 origin: origin_id,
@@ -1393,7 +1392,7 @@ fn doc_generics(base_doc: rbml::Doc,
     reader::tagged_docs(doc, tag_region_param_def, |rp_doc| {
         let ident_str_doc = reader::get_doc(rp_doc,
                                             tag_region_param_def_ident);
-        let ident = item_name(&*token::get_ident_interner(), ident_str_doc);
+        let name = item_name(&*token::get_ident_interner(), ident_str_doc);
         let def_id_doc = reader::get_doc(rp_doc,
                                          tag_region_param_def_def_id);
         let def_id = reader::with_doc_data(def_id_doc, parse_def_id);
@@ -1414,7 +1413,7 @@ fn doc_generics(base_doc: rbml::Doc,
             true
         });
 
-        regions.push(space, ty::RegionParameterDef { name: ident.name,
+        regions.push(space, ty::RegionParameterDef { name: name,
                                                      def_id: def_id,
                                                      space: space,
                                                      index: index,
