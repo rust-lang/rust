@@ -1037,20 +1037,23 @@ impl<'a> State<'a> {
                     _ => Ok(())
                 }
             }
-            ast::TtSequence(_, ref tts, ref sep, zerok) => {
+            ast::TtSequence(_, ref tts, ref separator, kleene_op) => {
                 try!(word(&mut self.s, "$("));
                 for tt_elt in (*tts).iter() {
                     try!(self.print_tt(tt_elt));
                 }
                 try!(word(&mut self.s, ")"));
-                match *sep {
+                match *separator {
                     Some(ref tk) => {
                         try!(word(&mut self.s,
                                   parse::token::to_string(tk).as_slice()));
                     }
                     None => ()
                 }
-                word(&mut self.s, if zerok { "*" } else { "+" })
+                match kleene_op {
+                    ast::ZeroOrMore => word(&mut self.s, "*"),
+                    ast::OneOrMore => word(&mut self.s, "+"),
+                }
             }
             ast::TtNonterminal(_, name) => {
                 try!(word(&mut self.s, "$"));

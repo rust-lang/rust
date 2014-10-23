@@ -609,6 +609,14 @@ impl Delimiter {
     }
 }
 
+/// A Kleene-style [repetition operator](http://en.wikipedia.org/wiki/Kleene_star)
+/// for token sequences.
+#[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
+pub enum KleeneOp {
+    ZeroOrMore,
+    OneOrMore,
+}
+
 /// When the main rust parser encounters a syntax-extension invocation, it
 /// parses the arguments to the invocation as a token-tree. This is a very
 /// loose structure, such that all sorts of different AST-fragments can
@@ -633,12 +641,9 @@ pub enum TokenTree {
 
     // These only make sense for right-hand-sides of MBE macros:
 
-    /// A kleene-style repetition sequence with a span, a `TTForest`,
-    /// an optional separator, and a boolean where true indicates
-    /// zero or more (..), and false indicates one or more (+).
+    /// A Kleene-style repetition sequence with an optional separator.
     // FIXME(eddyb) #6308 Use Rc<[TokenTree]> after DST.
-    TtSequence(Span, Rc<Vec<TokenTree>>, Option<::parse::token::Token>, bool),
-
+    TtSequence(Span, Rc<Vec<TokenTree>>, Option<::parse::token::Token>, KleeneOp),
     /// A syntactic variable that will be filled in by macro expansion.
     TtNonterminal(Span, Ident)
 }
@@ -711,9 +716,9 @@ pub type Matcher = Spanned<Matcher_>;
 pub enum Matcher_ {
     /// Match one token
     MatchTok(::parse::token::Token),
-    /// Match repetitions of a sequence: body, separator, zero ok?,
+    /// Match repetitions of a sequence: body, separator, Kleene operator,
     /// lo, hi position-in-match-array used:
-    MatchSeq(Vec<Matcher> , Option<::parse::token::Token>, bool, uint, uint),
+    MatchSeq(Vec<Matcher> , Option<::parse::token::Token>, KleeneOp, uint, uint),
     /// Parse a Rust NT: name to bind, name of NT, position in match array:
     MatchNonterminal(Ident, Ident, uint)
 }
