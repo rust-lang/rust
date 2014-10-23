@@ -59,7 +59,7 @@ fn type_is_newtype_immediate(ccx: &CrateContext, ty: ty::t) -> bool {
         ty::ty_struct(def_id, ref substs) => {
             let fields = ty::struct_fields(ccx.tcx(), def_id, substs);
             fields.len() == 1 &&
-                fields[0].ident.name ==
+                fields[0].name ==
                     token::special_idents::unnamed_field.name &&
                 type_is_immediate(ccx, fields[0].mt.ty)
         }

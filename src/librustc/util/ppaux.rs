@@ -891,9 +891,9 @@ impl Repr for ty::Variance {
 
 impl Repr for ty::Method {
     fn repr(&self, tcx: &ctxt) -> String {
-        format!("method(ident: {}, generics: {}, fty: {}, \
+        format!("method(name: {}, generics: {}, fty: {}, \
                  explicit_self: {}, vis: {}, def_id: {})",
-                self.ident.repr(tcx),
+                self.name.repr(tcx),
                 self.generics.repr(tcx),
                 self.fty.repr(tcx),
                 self.explicit_self.repr(tcx),
@@ -1214,7 +1214,7 @@ impl UserString for ParamTy {
         let id = self.idx;
         let did = self.def_id;
         let ident = match tcx.ty_param_defs.borrow().find(&did.node) {
-            Some(def) => token::get_ident(def.ident).get().to_string(),
+            Some(def) => token::get_name(def.name).get().to_string(),
 
             // This can only happen when a type mismatch error happens and
             // the actual type has more type parameters than the expected one.

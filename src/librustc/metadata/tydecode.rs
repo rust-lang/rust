@@ -96,13 +96,17 @@ fn scan<R>(st: &mut PState, is_last: |char| -> bool, op: |&[u8]| -> R) -> R {
 }
 
 pub fn parse_ident(st: &mut PState, last: char) -> ast::Ident {
-    fn is_last(b: char, c: char) -> bool { return c == b; }
-    return parse_ident_(st, |a| is_last(last, a) );
+    ast::Ident::new(parse_name(st, last))
 }
 
-fn parse_ident_(st: &mut PState, is_last: |char| -> bool) -> ast::Ident {
+pub fn parse_name(st: &mut PState, last: char) -> ast::Name {
+    fn is_last(b: char, c: char) -> bool { return c == b; }
+    parse_name_(st, |a| is_last(last, a) )
+}
+
+fn parse_name_(st: &mut PState, is_last: |char| -> bool) -> ast::Name {
     scan(st, is_last, |bytes| {
-        token::str_to_ident(str::from_utf8(bytes).unwrap())
+        token::intern(str::from_utf8(bytes).unwrap())
     })
 }
 
@@ -625,7 +629,7 @@ pub fn parse_type_param_def_data(data: &[u8], start: uint,
 }
 
 fn parse_type_param_def(st: &mut PState, conv: conv_did) -> ty::TypeParameterDef {
-    let ident = parse_ident(st, ':');
+    let name = parse_name(st, ':');
     let def_id = parse_def(st, NominalType, |x,y| conv(x,y));
     let space = parse_param_space(st);
     assert_eq!(next(st), '|');
@@ -639,7 +643,7 @@ fn parse_type_param_def(st: &mut PState, conv: conv_did) -> ty::TypeParameterDef
     let default = parse_opt(st, |st| parse_ty(st, |x,y| conv(x,y)));
 
     ty::TypeParameterDef {
-        ident: ident,
+        name: name,
         def_id: def_id,
         space: space,
         index: index,

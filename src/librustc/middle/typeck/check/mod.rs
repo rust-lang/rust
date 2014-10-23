@@ -761,8 +761,7 @@ fn check_impl_items_against_trait(ccx: &CrateCtxt,
                 let opt_trait_method_ty =
                     trait_items.iter()
                                .find(|ti| {
-                                   ti.ident().name == impl_item_ty.ident()
-                                                                  .name
+                                   ti.name() == impl_item_ty.name()
                                });
                 match opt_trait_method_ty {
                     Some(trait_method_ty) => {
@@ -784,8 +783,8 @@ fn check_impl_items_against_trait(ccx: &CrateCtxt,
                                              format!("item `{}` is of a \
                                                       different kind from \
                                                       its trait `{}`",
-                                                     token::get_ident(
-                                                        impl_item_ty.ident()),
+                                                     token::get_name(
+                                                        impl_item_ty.name()),
                                                      pprust::path_to_string(
                                                         &ast_trait_ref.path))
                                              .as_slice());
@@ -799,7 +798,7 @@ fn check_impl_items_against_trait(ccx: &CrateCtxt,
                             impl_method.span,
                             format!(
                                 "method `{}` is not a member of trait `{}`",
-                                token::get_ident(impl_item_ty.ident()),
+                                token::get_name(impl_item_ty.name()),
                                 pprust::path_to_string(
                                     &ast_trait_ref.path)).as_slice());
                     }
@@ -815,7 +814,7 @@ fn check_impl_items_against_trait(ccx: &CrateCtxt,
                 let opt_associated_type =
                     trait_items.iter()
                                .find(|ti| {
-                                   ti.ident().name == typedef_ty.ident().name
+                                   ti.name() == typedef_ty.name()
                                });
                 match opt_associated_type {
                     Some(associated_type) => {
@@ -830,8 +829,8 @@ fn check_impl_items_against_trait(ccx: &CrateCtxt,
                                              format!("item `{}` is of a \
                                                       different kind from \
                                                       its trait `{}`",
-                                                     token::get_ident(
-                                                        typedef_ty.ident()),
+                                                     token::get_name(
+                                                        typedef_ty.name()),
                                                      pprust::path_to_string(
                                                         &ast_trait_ref.path))
                                              .as_slice());
@@ -846,7 +845,7 @@ fn check_impl_items_against_trait(ccx: &CrateCtxt,
                             format!(
                                 "associated type `{}` is not a member of \
                                  trait `{}`",
-                                token::get_ident(typedef_ty.ident()),
+                                token::get_name(typedef_ty.name()),
                                 pprust::path_to_string(
                                     &ast_trait_ref.path)).as_slice());
                     }
@@ -866,33 +865,29 @@ fn check_impl_items_against_trait(ccx: &CrateCtxt,
                     impl_items.iter().any(|ii| {
                         match *ii {
                             ast::MethodImplItem(ref m) => {
-                                m.pe_ident().name == trait_method.ident.name
+                                m.pe_ident().name == trait_method.name
                             }
                             ast::TypeImplItem(_) => false,
                         }
                     });
                 let is_provided =
                     provided_methods.iter().any(
-                        |m| m.ident.name == trait_method.ident.name);
+                        |m| m.name == trait_method.name);
                 if !is_implemented && !is_provided {
-                    missing_methods.push(
-                        format!("`{}`",
-                                token::get_ident(trait_method.ident)));
+                    missing_methods.push(format!("`{}`", token::get_name(trait_method.name)));
                 }
             }
             ty::TypeTraitItem(ref associated_type) => {
                 let is_implemented = impl_items.iter().any(|ii| {
                     match *ii {
                         ast::TypeImplItem(ref typedef) => {
-                            typedef.ident.name == associated_type.ident.name
+                            typedef.ident.name == associated_type.name
                         }
                         ast::MethodImplItem(_) => false,
                     }
                 });
                 if !is_implemented {
-                    missing_methods.push(
-                        format!("`{}`",
-                                token::get_ident(associated_type.ident)));
+                    missing_methods.push(format!("`{}`", token::get_name(associated_type.name)));
                 }
             }
         }
@@ -943,7 +938,7 @@ fn compare_impl_method(tcx: &ty::ctxt,
                 impl_m_span,
                 format!("method `{}` has a `{}` declaration in the impl, \
                         but not in the trait",
-                        token::get_ident(trait_m.ident),
+                        token::get_name(trait_m.name),
                         ppaux::explicit_self_category_to_str(
                             &impl_m.explicit_self)).as_slice());
             return;
@@ -953,7 +948,7 @@ fn compare_impl_method(tcx: &ty::ctxt,
                 impl_m_span,
                 format!("method `{}` has a `{}` declaration in the trait, \
                         but not in the impl",
-                        token::get_ident(trait_m.ident),
+                        token::get_name(trait_m.name),
                         ppaux::explicit_self_category_to_str(
                             &trait_m.explicit_self)).as_slice());
             return;
@@ -969,7 +964,7 @@ fn compare_impl_method(tcx: &ty::ctxt,
         span_err!(tcx.sess, impl_m_span, E0049,
             "method `{}` has {} type parameter{} \
              but its trait declaration has {} type parameter{}",
-            token::get_ident(trait_m.ident),
+            token::get_name(trait_m.name),
             num_impl_m_type_params,
             if num_impl_m_type_params == 1 {""} else {"s"},
             num_trait_m_type_params,
@@ -981,7 +976,7 @@ fn compare_impl_method(tcx: &ty::ctxt,
         span_err!(tcx.sess, impl_m_span, E0050,
             "method `{}` has {} parameter{} \
              but the declaration in trait `{}` has {}",
-            token::get_ident(trait_m.ident),
+            token::get_name(trait_m.name),
             impl_m.fty.sig.inputs.len(),
             if impl_m.fty.sig.inputs.len() == 1 {""} else {"s"},
             ty::item_path_str(tcx, trait_m.def_id),
@@ -1082,7 +1077,7 @@ fn compare_impl_method(tcx: &ty::ctxt,
                 "in method `{}`, type parameter {} requires `{}`, \
                  which is not required by the corresponding type parameter \
                  in the trait declaration",
-                token::get_ident(trait_m.ident),
+                token::get_name(trait_m.name),
                 i,
                 extra_bounds.user_string(tcx));
            return;
@@ -1121,7 +1116,7 @@ fn compare_impl_method(tcx: &ty::ctxt,
                 span_err!(tcx.sess, impl_m_span, E0052,
                     "in method `{}`, type parameter {} requires bound `{}`, which is not \
                      required by the corresponding type parameter in the trait declaration",
-                    token::get_ident(trait_m.ident),
+                    token::get_name(trait_m.name),
                     i,
                     ppaux::trait_ref_to_string(tcx, &*impl_trait_bound));
             }
@@ -1152,7 +1147,7 @@ fn compare_impl_method(tcx: &ty::ctxt,
         Err(ref terr) => {
             span_err!(tcx.sess, impl_m_span, E0053,
                 "method `{}` has an incompatible type for trait: {}",
-                token::get_ident(trait_m.ident),
+                token::get_name(trait_m.name),
                 ty::type_err_to_str(tcx, terr));
             ty::note_and_explain_type_err(tcx, terr);
         }
@@ -1228,7 +1223,7 @@ fn compare_impl_method(tcx: &ty::ctxt,
                 span,
                 format!("lifetime parameters or bounds on method `{}` do \
                          not match the trait declaration",
-                        token::get_ident(impl_m.ident)).as_slice());
+                        token::get_name(impl_m.name)).as_slice());
             return false;
         }
 
@@ -3836,8 +3831,8 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
                                     ty::ty_struct(did, ref substs) => {
                                         let fields = ty::struct_fields(fcx.tcx(), did, substs);
                                         fields.len() == 1
-                                        && fields[0].ident ==
-                                        token::special_idents::unnamed_field
+                                        && fields[0].name ==
+                                        token::special_idents::unnamed_field.name
                                     }
                                     _ => false
                                 };

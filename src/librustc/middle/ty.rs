@@ -65,7 +65,7 @@ pub const INITIAL_DISCRIMINANT_VALUE: Disr = 0;
 
 #[deriving(PartialEq, Eq, Hash)]
 pub struct field {
-    pub ident: ast::Ident,
+    pub name: ast::Name,
     pub mt: mt
 }
 
@@ -107,10 +107,10 @@ impl ImplOrTraitItem {
         }
     }
 
-    pub fn ident(&self) -> ast::Ident {
+    pub fn name(&self) -> ast::Name {
         match *self {
-            MethodTraitItem(ref method) => method.ident,
-            TypeTraitItem(ref associated_type) => associated_type.ident,
+            MethodTraitItem(ref method) => method.name,
+            TypeTraitItem(ref associated_type) => associated_type.name,
         }
     }
 
@@ -146,7 +146,7 @@ impl ImplOrTraitItemId {
 
 #[deriving(Clone, Show)]
 pub struct Method {
-    pub ident: ast::Ident,
+    pub name: ast::Name,
     pub generics: ty::Generics,
     pub fty: BareFnTy,
     pub explicit_self: ExplicitSelfCategory,
@@ -159,7 +159,7 @@ pub struct Method {
 }
 
 impl Method {
-    pub fn new(ident: ast::Ident,
+    pub fn new(name: ast::Name,
                generics: ty::Generics,
                fty: BareFnTy,
                explicit_self: ExplicitSelfCategory,
@@ -169,7 +169,7 @@ impl Method {
                provided_source: Option<ast::DefId>)
                -> Method {
        Method {
-            ident: ident,
+            name: name,
             generics: generics,
             fty: fty,
             explicit_self: explicit_self,
@@ -190,7 +190,7 @@ impl Method {
 
 #[deriving(Clone)]
 pub struct AssociatedType {
-    pub ident: ast::Ident,
+    pub name: ast::Name,
     pub vis: ast::Visibility,
     pub def_id: ast::DefId,
     pub container: ImplOrTraitItemContainer,
@@ -1205,7 +1205,7 @@ impl fmt::Show for IntVarValue {
 
 #[deriving(Clone, Show)]
 pub struct TypeParameterDef {
-    pub ident: ast::Ident,
+    pub name: ast::Name,
     pub def_id: ast::DefId,
     pub space: subst::ParamSpace,
     pub index: uint,
@@ -3746,18 +3746,18 @@ pub fn stmt_node_id(s: &ast::Stmt) -> ast::NodeId {
 pub fn field_idx_strict(tcx: &ctxt, name: ast::Name, fields: &[field])
                      -> uint {
     let mut i = 0u;
-    for f in fields.iter() { if f.ident.name == name { return i; } i += 1u; }
+    for f in fields.iter() { if f.name == name { return i; } i += 1u; }
     tcx.sess.bug(format!(
         "no field named `{}` found in the list of fields `{}`",
         token::get_name(name),
         fields.iter()
-              .map(|f| token::get_ident(f.ident).get().to_string())
+              .map(|f| token::get_name(f.name).get().to_string())
               .collect::<Vec<String>>()).as_slice());
 }
 
-pub fn impl_or_trait_item_idx(id: ast::Ident, trait_items: &[ImplOrTraitItem])
+pub fn impl_or_trait_item_idx(id: ast::Name, trait_items: &[ImplOrTraitItem])
                               -> Option<uint> {
-    trait_items.iter().position(|m| m.ident() == id)
+    trait_items.iter().position(|m| m.name() == id)
 }
 
 pub fn ty_sort_string(cx: &ctxt, t: t) -> String {
@@ -4119,7 +4119,7 @@ pub fn associated_type_parameter_index(cx: &ctxt,
 pub struct AssociatedTypeInfo {
     pub def_id: ast::DefId,
     pub index: uint,
-    pub ident: ast::Ident,
+    pub name: ast::Name,
 }
 
 impl PartialOrd for AssociatedTypeInfo {
@@ -4222,7 +4222,7 @@ pub struct VariantInfo {
     pub args: Vec<t>,
     pub arg_names: Option<Vec<ast::Ident> >,
     pub ctor_ty: t,
-    pub name: ast::Ident,
+    pub name: ast::Name,
     pub id: ast::DefId,
     pub disr_val: Disr,
     pub vis: Visibility
@@ -4250,7 +4250,7 @@ impl VariantInfo {
                     args: arg_tys,
                     arg_names: None,
                     ctor_ty: ctor_ty,
-                    name: ast_variant.node.name,
+                    name: ast_variant.node.name.name,
                     id: ast_util::local_def(ast_variant.node.id),
                     disr_val: discriminant,
                     vis: ast_variant.node.vis
@@ -4275,7 +4275,7 @@ impl VariantInfo {
                     args: arg_tys,
                     arg_names: Some(arg_names),
                     ctor_ty: ctor_ty,
-                    name: ast_variant.node.name,
+                    name: ast_variant.node.name.name,
                     id: ast_util::local_def(ast_variant.node.id),
                     disr_val: discriminant,
                     vis: ast_variant.node.vis
@@ -4578,8 +4578,7 @@ pub fn struct_fields(cx: &ctxt, did: ast::DefId, substs: &Substs)
                      -> Vec<field> {
     lookup_struct_fields(cx, did).iter().map(|f| {
        field {
-            // FIXME #6993: change type of field to Name and get rid of new()
-            ident: ast::Ident::new(f.name),
+            name: f.name,
             mt: mt {
                 ty: lookup_field_type(cx, did, f.id, substs),
                 mutbl: MutImmutable
@@ -4593,8 +4592,7 @@ pub fn struct_fields(cx: &ctxt, did: ast::DefId, substs: &Substs)
 pub fn tup_fields(v: &[t]) -> Vec<field> {
     v.iter().enumerate().map(|(i, &f)| {
        field {
-            // FIXME #6993: change type of field to Name and get rid of new()
-            ident: ast::Ident::new(token::intern(i.to_string().as_slice())),
+            name: token::intern(i.to_string().as_slice()),
             mt: mt {
                 ty: f,
                 mutbl: MutImmutable
@@ -5084,12 +5082,12 @@ pub fn trait_item_of_item(tcx: &ctxt, def_id: ast::DefId)
         Some(m) => m.clone(),
         None => return None,
     };
-    let name = impl_item.ident().name;
+    let name = impl_item.name();
     match trait_of_item(tcx, def_id) {
         Some(trait_did) => {
             let trait_items = ty::trait_items(tcx, trait_did);
             trait_items.iter()
-                .position(|m| m.ident().name == name)
+                .position(|m| m.name() == name)
                 .map(|idx| ty::trait_item(tcx, trait_did, idx).id())
         }
         None => None
