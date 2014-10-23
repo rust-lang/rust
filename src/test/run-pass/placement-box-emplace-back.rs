@@ -16,17 +16,26 @@
 use std::cell::{UnsafeCell};
 use std::ops::{Placer,PlacementAgent};
 
-struct EmplaceBack<'a, T:'a> {
+struct EmplaceBackPlacer<'a, T:'a> {
     vec: &'a mut Vec<T>,
+}
+
+trait EmplaceBack<'a, T> {
+    fn emplace_back(&'a mut self) -> EmplaceBackPlacer<'a, T>;
+}
+
+impl<'a, T:'a> EmplaceBack<'a, T> for Vec<T> {
+    fn emplace_back(&'a mut self) -> EmplaceBackPlacer<'a, T> {
+        EmplaceBackPlacer { vec: self }
+    }
 }
 
 pub fn main() {
     let mut v : Vec<[f32, ..4]> = vec![];
     v.push([10., 20., 30., 40.]);
     v.push([11., 21., 31., 41.]);
-    let mut pv = EmplaceBack { vec: &mut v };
-    let () = box (pv) [12., 22., 32., 42.];
-    let v = pv.vec;
+    let () = // (Explicitly showing `box` returns `()` here.)
+        box (v.emplace_back()) [12., 22., 32., 42.];
     assert!(same_contents(
         v.as_slice(),
         [[10., 20., 30., 40.],
@@ -51,7 +60,7 @@ struct EmplaceBackAgent<T> {
     offset: uint,
 }
 
-impl<'a, T> Placer<T, (), EmplaceBackAgent<T>> for EmplaceBack<'a, T> {
+impl<'a, T> Placer<T, (), EmplaceBackAgent<T>> for EmplaceBackPlacer<'a, T> {
     fn make_place(&self) -> EmplaceBackAgent<T> {
         let len = self.vec.len();
         let v = self.vec as *mut Vec<T>;
