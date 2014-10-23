@@ -486,6 +486,13 @@ impl Runtime for GreenTask {
          c.current_stack_segment.end() as uint)
     }
 
+    fn stack_guard(&self) -> Option<uint> {
+        let c = self.coroutine.as_ref()
+            .expect("GreenTask.stack_guard called without a coroutine");
+
+        Some(c.current_stack_segment.guard() as uint)
+    }
+
     fn can_block(&self) -> bool { false }
 
     fn wrap(self: Box<GreenTask>) -> Box<Any+'static> {
