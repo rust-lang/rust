@@ -139,7 +139,7 @@ use syntax::visit::Visitor;
 use syntax;
 
 pub mod _match;
-pub mod vtable2; // New trait code
+pub mod vtable;
 pub mod writeback;
 pub mod regionmanip;
 pub mod regionck;
@@ -409,7 +409,7 @@ fn check_bare_fn(ccx: &CrateCtxt,
             let fcx = check_fn(ccx, fn_ty.fn_style, id, &fn_ty.sig,
                                decl, id, body, &inh);
 
-            vtable2::select_all_fcx_obligations_or_error(&fcx);
+            vtable::select_all_fcx_obligations_or_error(&fcx);
             regionck::regionck_fn(&fcx, id, body);
             writeback::resolve_type_vars_in_fn(&fcx, decl, body);
         }
@@ -1377,7 +1377,7 @@ fn check_cast(fcx: &FnCtxt,
 
     if ty::type_is_trait(t_1) {
         // This will be looked up later on.
-        vtable2::check_object_cast(fcx, cast_expr, e, t_1);
+        vtable::check_object_cast(fcx, cast_expr, e, t_1);
         fcx.write_ty(id, t_1);
         return
     }
@@ -1682,7 +1682,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ty::UnsizeVtable(ref ty_trait, self_ty) => {
                 // If the type is `Foo+'a`, ensures that the type
                 // being cast to `Foo+'a` implements `Foo`:
-                vtable2::register_object_cast_obligations(self,
+                vtable::register_object_cast_obligations(self,
                                                           span,
                                                           ty_trait,
                                                           self_ty);
@@ -2565,7 +2565,7 @@ fn check_argument_types<'a>(fcx: &FnCtxt,
         // an "opportunistic" vtable resolution of any trait
         // bounds on the call.
         if check_blocks {
-            vtable2::select_fcx_obligations_where_possible(fcx);
+            vtable::select_fcx_obligations_where_possible(fcx);
         }
 
         // For variadic functions, we don't have a declared type for all of
@@ -4037,7 +4037,7 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
       ast::ExprForLoop(ref pat, ref head, ref block, _) => {
         check_expr(fcx, &**head);
         let typ = lookup_method_for_for_loop(fcx, &**head, expr.id);
-        vtable2::select_fcx_obligations_where_possible(fcx);
+        vtable::select_fcx_obligations_where_possible(fcx);
 
         let pcx = pat_ctxt {
             fcx: fcx,
@@ -4744,7 +4744,7 @@ pub fn check_const_with_ty(fcx: &FnCtxt,
 
     check_expr_with_hint(fcx, e, declty);
     demand::coerce(fcx, e.span, declty, e);
-    vtable2::select_all_fcx_obligations_or_error(fcx);
+    vtable::select_all_fcx_obligations_or_error(fcx);
     regionck::regionck_expr(fcx, e);
     writeback::resolve_type_vars_in_expr(fcx, e);
 }

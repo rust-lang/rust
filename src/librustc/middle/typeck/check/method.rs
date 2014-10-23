@@ -88,7 +88,7 @@ use middle::ty;
 use middle::typeck::astconv::AstConv;
 use middle::typeck::check::{FnCtxt, NoPreference, PreferMutLvalue};
 use middle::typeck::check::{impl_self_ty};
-use middle::typeck::check::vtable2::select_fcx_obligations_where_possible;
+use middle::typeck::check::vtable::select_fcx_obligations_where_possible;
 use middle::typeck::check;
 use middle::typeck::infer;
 use middle::typeck::{MethodCall, MethodCallee};
