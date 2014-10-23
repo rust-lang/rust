@@ -572,7 +572,8 @@ impl Module {
 bitflags! {
     #[deriving(Show)]
     flags DefModifiers: u8 {
-        const PUBLIC = 0b0000_0001,
+        const PUBLIC     = 0b0000_0001,
+        const IMPORTABLE = 0b0000_0010,
     }
 }
 
@@ -624,7 +625,7 @@ impl NameBindings {
                      is_public: bool,
                      sp: Span) {
         // Merges the module with the existing type def or creates a new one.
-        let modifiers = if is_public { PUBLIC } else { DefModifiers::empty() };
+        let modifiers = if is_public { PUBLIC } else { DefModifiers::empty() } | IMPORTABLE;
         let module_ = Rc::new(Module::new(parent_link, def_id, kind, external,
                                           is_public));
         let type_def = self.type_def.borrow().clone();
@@ -656,7 +657,7 @@ impl NameBindings {
                        external: bool,
                        is_public: bool,
                        _sp: Span) {
-        let modifiers = if is_public { PUBLIC } else { DefModifiers::empty() };
+        let modifiers = if is_public { PUBLIC } else { DefModifiers::empty() } | IMPORTABLE;
         let type_def = self.type_def.borrow().clone();
         match type_def {
             None => {
@@ -692,6 +693,7 @@ impl NameBindings {
 
     /// Records a type definition.
     fn define_type(&self, def: Def, sp: Span, modifiers: DefModifiers) {
+        debug!("defining type for def {} with modifiers {}", def, modifiers);
         // Merges the type with the existing type def or creates a new one.
         let type_def = self.type_def.borrow().clone();
         match type_def {
@@ -716,6 +718,7 @@ impl NameBindings {
 
     /// Records a value definition.
     fn define_value(&self, def: Def, sp: Span, modifiers: DefModifiers) {
+        debug!("defining value for def {} with modifiers {}", def, modifiers);
         *self.value_def.borrow_mut() = Some(ValueNsDef {
             def: def,
             value_span: Some(sp),
@@ -753,12 +756,16 @@ impl NameBindings {
     }
 
     fn defined_in_public_namespace(&self, namespace: Namespace) -> bool {
+        self.defined_in_namespace_with(namespace, PUBLIC)
+    }
+
+    fn defined_in_namespace_with(&self, namespace: Namespace, modifiers: DefModifiers) -> bool {
         match namespace {
             TypeNS => match *self.type_def.borrow() {
-                Some(ref def) => def.modifiers.contains(PUBLIC), None => false
+                Some(ref def) => def.modifiers.contains(modifiers), None => false
             },
             ValueNS => match *self.value_def.borrow() {
-                Some(ref def) => def.modifiers.contains(PUBLIC), None => false
+                Some(ref def) => def.modifiers.contains(modifiers), None => false
             }
         }
     }
@@ -1224,7 +1231,7 @@ impl<'a> Resolver<'a> {
         let name = item.ident.name;
         let sp = item.span;
         let is_public = item.vis == ast::Public;
-        let modifiers = if is_public { PUBLIC } else { DefModifiers::empty() };
+        let modifiers = if is_public { PUBLIC } else { DefModifiers::empty() } | IMPORTABLE;
 
         match item.node {
             ItemMod(..) => {
@@ -1439,6 +1446,7 @@ impl<'a> Resolver<'a> {
                                         }
                                     };
 
+                                    // NB: not IMPORTABLE
                                     let modifiers = if method.pe_vis() == ast::Public {
                                         PUBLIC
                                     } else {
@@ -1460,6 +1468,7 @@ impl<'a> Resolver<'a> {
                                             typedef.span);
                                     let def = DefAssociatedTy(local_def(
                                             typedef.id));
+                                    // NB: not IMPORTABLE
                                     let modifiers = if typedef.vis == ast::Public {
                                         PUBLIC
                                     } else {
@@ -1542,6 +1551,7 @@ impl<'a> Resolver<'a> {
                                                module_parent.clone(),
                                                ForbidDuplicateTypesAndValues,
                                                ty_m.span);
+                            // NB: not IMPORTABLE
                             method_name_bindings.define_value(def,
                                                               ty_m.span,
                                                               PUBLIC);
@@ -1557,6 +1567,7 @@ impl<'a> Resolver<'a> {
                                                module_parent.clone(),
                                                ForbidDuplicateTypesAndValues,
                                                associated_type.span);
+                            // NB: not IMPORTABLE
                             name_bindings.define_type(def,
                                                       associated_type.span,
                                                       PUBLIC);
@@ -1583,7 +1594,7 @@ impl<'a> Resolver<'a> {
                                        parent: ReducedGraphParent,
                                        is_public: bool) {
         let name = variant.node.name.name;
-        let modifiers = if is_public { PUBLIC } else { DefModifiers::empty() };
+        let modifiers = IMPORTABLE | if is_public { PUBLIC } else { DefModifiers::empty() };
         let is_exported = match variant.node.kind {
             TupleVariantKind(_) => false,
             StructVariantKind(_) => {
@@ -1747,7 +1758,7 @@ impl<'a> Resolver<'a> {
                                             f: |&mut Resolver|) {
         let name = foreign_item.ident.name;
         let is_public = foreign_item.vis == ast::Public;
-        let modifiers = if is_public { PUBLIC } else { DefModifiers::empty() };
+        let modifiers = if is_public { PUBLIC } else { DefModifiers::empty() } | IMPORTABLE;
         let name_bindings =
             self.add_child(name, parent, ForbidDuplicateValues,
                            foreign_item.span);
@@ -1811,7 +1822,7 @@ impl<'a> Resolver<'a> {
                 external crate) building external def, priv {}",
                vis);
         let is_public = vis == ast::Public;
-        let modifiers = if is_public { PUBLIC } else { DefModifiers::empty() };
+        let modifiers = if is_public { PUBLIC } else { DefModifiers::empty() } | IMPORTABLE;
         let is_exported = is_public && match new_parent {
             ModuleReducedGraphParent(ref module) => {
                 match module.def_id.get() {
@@ -1870,7 +1881,7 @@ impl<'a> Resolver<'a> {
             // definition.
             let is_exported = is_public ||
                               self.external_exports.contains(&enum_did);
-            let modifiers = if is_exported { PUBLIC } else { DefModifiers::empty() };
+            let modifiers = if is_exported { PUBLIC } else { DefModifiers::empty() } | IMPORTABLE;
             if is_struct {
                 child_name_bindings.define_type(def, DUMMY_SP, modifiers);
                 // Not adding fields for variants as they are not accessed with a self receiver
@@ -1887,6 +1898,14 @@ impl<'a> Resolver<'a> {
           DefFn(..) | DefStaticMethod(..) | DefStatic(..) | DefConst(..) => {
             debug!("(building reduced graph for external \
                     crate) building value (fn/static) {}", final_ident);
+            // impl methods have already been defined with the correct importability modifier
+            let mut modifiers = match *child_name_bindings.value_def.borrow() {
+                Some(ref def) => (modifiers & !IMPORTABLE) | (def.modifiers & IMPORTABLE),
+                None => modifiers
+            };
+            if new_parent.module().kind.get() != NormalModuleKind {
+                modifiers = modifiers & !IMPORTABLE;
+            }
             child_name_bindings.define_value(def, DUMMY_SP, modifiers);
           }
           DefTrait(def_id) => {
@@ -1946,16 +1965,20 @@ impl<'a> Resolver<'a> {
                   // otherwise we need to inherit the visibility of the enum
                   // definition.
                   let variant_exported = vis == ast::Public || is_exported;
-                  let modifiers = if variant_exported { PUBLIC } else { DefModifiers::empty() };
+                  let modifiers = IMPORTABLE | if variant_exported {
+                      PUBLIC
+                  } else {
+                      DefModifiers::empty()
+                  };
                   if is_struct {
                       child.define_type(v_def, DUMMY_SP, modifiers);
-                      // Not adding fields for variants as they are not accessed with a self receiver
+                      // Not adding fields for variants as they are not accessed with a self
+                      // receiver
                       self.structs.insert(variant_id, Vec::new());
                   } else {
                       child.define_value(v_def, DUMMY_SP, modifiers);
                   }
               }
-
           }
           DefTy(..) | DefAssociatedTy(..) => {
               debug!("(building reduced graph for external \
@@ -2110,6 +2133,7 @@ impl<'a> Resolver<'a> {
                                         static_method_info.fn_style,
                                         false);
 
+                                    // NB: not IMPORTABLE
                                     let modifiers = if visibility == ast::Public {
                                         PUBLIC
                                     } else {
@@ -2487,7 +2511,7 @@ impl<'a> Resolver<'a> {
     fn create_name_bindings_from_module(module: Rc<Module>) -> NameBindings {
         NameBindings {
             type_def: RefCell::new(Some(TypeNsDef {
-                modifiers: DefModifiers::empty(),
+                modifiers: IMPORTABLE,
                 module_def: Some(module),
                 type_def: None,
                 type_span: None
@@ -2689,6 +2713,12 @@ impl<'a> Resolver<'a> {
                     target,
                     ValueNS);
 
+                self.check_that_import_is_importable(
+                    &**name_bindings,
+                    directive.span,
+                    target.name,
+                    ValueNS);
+
                 import_resolution.value_target =
                     Some(Target::new(target_module.clone(),
                                      name_bindings.clone(),
@@ -2710,6 +2740,12 @@ impl<'a> Resolver<'a> {
                     &import_resolution.type_target,
                     directive.span,
                     target,
+                    TypeNS);
+
+                self.check_that_import_is_importable(
+                    &**name_bindings,
+                    directive.span,
+                    target.name,
                     TypeNS);
 
                 import_resolution.type_target =
@@ -2922,7 +2958,7 @@ impl<'a> Resolver<'a> {
                self.module_to_string(module_));
 
         // Merge the child item into the import resolution.
-        if name_bindings.defined_in_public_namespace(ValueNS) {
+        if name_bindings.defined_in_namespace_with(ValueNS, IMPORTABLE | PUBLIC) {
             debug!("(resolving glob import) ... for value target");
             dest_import_resolution.value_target =
                 Some(Target::new(containing_module.clone(),
@@ -2930,7 +2966,7 @@ impl<'a> Resolver<'a> {
                                  import_directive.shadowable));
             dest_import_resolution.value_id = id;
         }
-        if name_bindings.defined_in_public_namespace(TypeNS) {
+        if name_bindings.defined_in_namespace_with(TypeNS, IMPORTABLE | PUBLIC) {
             debug!("(resolving glob import) ... for type target");
             dest_import_resolution.type_target =
                 Some(Target::new(containing_module,
@@ -2969,6 +3005,19 @@ impl<'a> Resolver<'a> {
                 self.session.span_err(import_span, msg.as_slice());
             }
             Some(_) | None => {}
+        }
+    }
+
+    /// Checks that an import is actually importable
+    fn check_that_import_is_importable(&mut self,
+                                       name_bindings: &NameBindings,
+                                       import_span: Span,
+                                       name: Name,
+                                       namespace: Namespace) {
+        if !name_bindings.defined_in_namespace_with(namespace, IMPORTABLE) {
+            let msg = format!("`{}` is not directly importable",
+                              token::get_name(name));
+            self.session.span_err(import_span, msg.as_slice());
         }
     }
 
@@ -3224,43 +3273,28 @@ impl<'a> Resolver<'a> {
                                     return Failed(Some((span, msg)));
                                 }
                                 Some(ref module_def) => {
-                                    // If we're doing the search for an
-                                    // import, do not allow traits and impls
-                                    // to be selected.
-                                    match (name_search_type,
-                                           module_def.kind.get()) {
-                                        (ImportSearch, TraitModuleKind) |
-                                        (ImportSearch, ImplModuleKind) => {
-                                            let msg =
-                                                "Cannot import from a trait or \
-                                                type implementation".to_string();
-                                            return Failed(Some((span, msg)));
+                                    search_module = module_def.clone();
+
+                                    // track extern crates for unused_extern_crate lint
+                                    match module_def.def_id.get() {
+                                        Some(did) => {
+                                            self.used_crates.insert(did.krate);
                                         }
-                                        (_, _) => {
-                                            search_module = module_def.clone();
+                                        _ => {}
+                                    }
 
-                                            // track extern crates for unused_extern_crates lint
-                                            match module_def.def_id.get() {
-                                                Some(did) => {
-                                                    self.used_crates.insert(did.krate);
-                                                }
-                                                _ => {}
+                                    // Keep track of the closest
+                                    // private module used when
+                                    // resolving this import chain.
+                                    if !used_proxy &&
+                                       !search_module.is_public {
+                                        match search_module.def_id
+                                                           .get() {
+                                            Some(did) => {
+                                                closest_private =
+                                                    LastMod(DependsOn(did));
                                             }
-
-                                            // Keep track of the closest
-                                            // private module used when
-                                            // resolving this import chain.
-                                            if !used_proxy &&
-                                               !search_module.is_public {
-                                                match search_module.def_id
-                                                                   .get() {
-                                                    Some(did) => {
-                                                        closest_private =
-                                                            LastMod(DependsOn(did));
-                                                    }
-                                                    None => {}
-                                                }
-                                            }
+                                            None => {}
                                         }
                                     }
                                 }

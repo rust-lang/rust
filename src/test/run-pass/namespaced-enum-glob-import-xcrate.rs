@@ -8,28 +8,27 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub use self::sub::{Bar, Baz};
+// aux-build:namespaced_enums.rs
+#![feature(globs, struct_variant)]
 
-pub trait Trait {
-    fn foo();
-}
+extern crate namespaced_enums;
 
-struct Foo;
+fn _f(f: namespaced_enums::Foo) {
+    use namespaced_enums::Foo::*;
 
-impl Foo {
-    pub fn new() {}
-}
-
-mod sub {
-    pub struct Bar;
-
-    impl Bar {
-        pub fn new() {}
-    }
-
-    pub enum Baz {}
-
-    impl Baz {
-        pub fn new() {}
+    match f {
+        A | B(_) | C { .. } => {}
     }
 }
+
+mod m {
+    pub use namespaced_enums::Foo::*;
+}
+
+fn _f2(f: namespaced_enums::Foo) {
+    match f {
+        m::A | m::B(_) | m::C { .. } => {}
+    }
+}
+
+pub fn main() {}

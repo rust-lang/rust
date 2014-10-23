@@ -15,3 +15,8 @@ pub enum Foo {
     C { a: int },
 }
 
+impl Foo {
+    pub fn foo() {}
+    pub fn bar(&self) {}
+}
+
