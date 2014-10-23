@@ -26,6 +26,7 @@ use core::ops;
 use core::ptr;
 use core::raw::Slice as RawSlice;
 use core::uint;
+use core::intrinsics::needs_drop;
 
 use {Mutable, MutableSeq};
 use slice::{MutableOrdSlice, MutableSliceAllocating, CloneableVector};
@@ -697,12 +698,17 @@ impl<T> Vec<T> {
     #[unstable = "waiting on failure semantics"]
     pub fn truncate(&mut self, len: uint) {
         unsafe {
-            // drop any extra elements
-            while len < self.len {
-                // decrement len before the read(), so a failure on Drop doesn't
-                // re-drop the just-failed value.
-                self.len -= 1;
-                ptr::read(self.as_slice().unsafe_get(self.len));
+            // This improves performance at -O0
+            if needs_drop::<T>() {
+                // drop any extra elements
+                while len < self.len {
+                    // decrement len before the read(), so a failure on Drop doesn't
+                    // re-drop the just-failed value.
+                    self.len -= 1;
+                    ptr::read(self.as_slice().unsafe_get(self.len));
+                }
+            } else if len <= self.len {
+                self.set_len(len);
             }
         }
     }
@@ -1463,10 +1469,8 @@ impl<T> Drop for Vec<T> {
         // This is (and should always remain) a no-op if the fields are
         // zeroed (when moving out, because of #[unsafe_no_drop_flag]).
         if self.cap != 0 {
+            self.clear();
             unsafe {
-                for x in self.as_mut_slice().iter() {
-                    ptr::read(x);
-                }
                 dealloc(self.ptr, self.cap)
             }
         }
