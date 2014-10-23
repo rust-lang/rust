@@ -411,6 +411,7 @@ VAL_OPTIONS=""
 
 opt valgrind 0 "run tests with valgrind (memcheck by default)"
 opt helgrind 0 "run tests with helgrind instead of memcheck"
+opt valgrind-rpass 1 "run rpass-valgrind tests with valgrind"
 opt docs     1 "build documentation"
 opt optimize 1 "build optimized rust code"
 opt optimize-cxx 1 "build optimized C++ code"
@@ -906,6 +907,7 @@ do
     done
 
     make_dir $h/test/run-pass
+    make_dir $h/test/run-pass-valgrind
     make_dir $h/test/run-pass-fulldeps
     make_dir $h/test/run-fail
     make_dir $h/test/compile-fail
@@ -1233,15 +1235,6 @@ if [ ! -z $BAD_PANDOC ]
 then
     CFG_PANDOC=
     putvar CFG_PANDOC
-fi
-
-# Valgrind is only reliable on Linux. On Windows it doesn't work at all, and
-# on the Mac the dynamic linker causes Valgrind to emit a huge stream of
-# errors.
-if [ $CFG_OSTYPE != unknown-linux-gnu ] && [ $CFG_OSTYPE != apple-darwin ]
-then
-    CFG_BAD_VALGRIND=1
-    putvar CFG_BAD_VALGRIND
 fi
 
 putvar CFG_LLVM_ROOT

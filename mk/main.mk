@@ -174,16 +174,20 @@ else
   CFG_VALGRIND_COMPILE :=
 endif
 
+
+ifndef CFG_DISABLE_VALGRIND_RPASS
+  $(info cfg: enabling valgrind run-pass tests (CFG_ENABLE_VALGRIND_RPASS))
+  CFG_VALGRIND_RPASS :=$(CFG_VALGRIND)
+else
+  CFG_VALGRIND_RPASS :=
+endif
+
+
 ifdef CFG_ENABLE_VALGRIND
   $(info cfg: enabling valgrind (CFG_ENABLE_VALGRIND))
 else
   CFG_VALGRIND :=
 endif
-ifdef CFG_BAD_VALGRIND
-  $(info cfg: disabling valgrind due to its unreliability on this platform)
-  CFG_VALGRIND :=
-endif
-
 
 ######################################################################
 # Target-and-rule "utility variables"

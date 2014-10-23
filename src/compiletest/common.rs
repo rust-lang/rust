@@ -17,6 +17,7 @@ pub enum Mode {
     CompileFail,
     RunFail,
     RunPass,
+    RunPassValgrind,
     Pretty,
     DebugInfoGdb,
     DebugInfoLldb,
@@ -29,6 +30,7 @@ impl FromStr for Mode {
           "compile-fail" => Some(CompileFail),
           "run-fail" => Some(RunFail),
           "run-pass" => Some(RunPass),
+          "run-pass-valgrind" => Some(RunPassValgrind),
           "pretty" => Some(Pretty),
           "debuginfo-lldb" => Some(DebugInfoLldb),
           "debuginfo-gdb" => Some(DebugInfoGdb),
@@ -44,6 +46,7 @@ impl fmt::Show for Mode {
             CompileFail => "compile-fail",
             RunFail => "run-fail",
             RunPass => "run-pass",
+            RunPassValgrind => "run-pass-valgrind",
             Pretty => "pretty",
             DebugInfoGdb => "debuginfo-gdb",
             DebugInfoLldb => "debuginfo-lldb",
@@ -69,6 +72,13 @@ pub struct Config {
 
     // The llvm binaries path
     pub llvm_bin_path: Option<Path>,
+
+    // The valgrind path
+    pub valgrind_path: Option<String>,
+
+    // Whether to fail if we can't run run-pass-valgrind tests under valgrind
+    // (or, alternatively, to silently run them like regular run-pass tests).
+    pub force_valgrind: bool,
 
     // The directory containing the tests to run
     pub src_base: Path,
