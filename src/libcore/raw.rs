@@ -19,6 +19,7 @@
 //! Their definition should always match the ABI defined in `rustc::back::abi`.
 
 use mem;
+use kinds::Sized;
 
 /// The representation of a Rust slice
 #[repr(C)]
@@ -53,14 +54,14 @@ pub struct TraitObject {
 
 /// This trait is meant to map equivalences between raw structs and their
 /// corresponding rust values.
-pub trait Repr<T> {
+pub trait Repr<T> for Sized? {
     /// This function "unwraps" a rust value (without consuming it) into its raw
     /// struct representation. This can be used to read/write different values
     /// for the struct. This is a safe method because by default it does not
     /// enable write-access to the fields of the return value in safe code.
     #[inline]
-    fn repr(&self) -> T { unsafe { mem::transmute_copy(self) } }
+    fn repr(&self) -> T { unsafe { mem::transmute_copy(&self) } }
 }
 
-impl<'a, T> Repr<Slice<T>> for &'a [T] {}
-impl<'a> Repr<Slice<u8>> for &'a str {}
+impl<T> Repr<Slice<T>> for [T] {}
+impl Repr<Slice<u8>> for str {}

@@ -27,6 +27,7 @@ use default::Default;
 use iter::{Map, Iterator};
 use iter::{DoubleEndedIterator, ExactSize};
 use iter::range;
+use kinds::Sized;
 use num::{CheckedMul, Saturating};
 use option::{Option, None, Some};
 use raw::Repr;
@@ -1206,7 +1207,7 @@ impl<'a> Collection for &'a str {
 }
 
 /// Methods for string slices
-pub trait StrSlice<'a> {
+pub trait StrSlice for Sized? {
     /// Returns true if one string contains another
     ///
     /// # Arguments
@@ -1218,7 +1219,7 @@ pub trait StrSlice<'a> {
     /// ```rust
     /// assert!("bananas".contains("nana"));
     /// ```
-    fn contains<'a>(&self, needle: &'a str) -> bool;
+    fn contains(&self, needle: &str) -> bool;
 
     /// Returns true if a string contains a char.
     ///
@@ -1242,7 +1243,7 @@ pub trait StrSlice<'a> {
     /// let v: Vec<char> = "abc åäö".chars().collect();
     /// assert_eq!(v, vec!['a', 'b', 'c', ' ', 'å', 'ä', 'ö']);
     /// ```
-    fn chars(&self) -> Chars<'a>;
+    fn chars<'a>(&'a self) -> Chars<'a>;
 
     /// An iterator over the bytes of `self`
     ///
@@ -1252,10 +1253,10 @@ pub trait StrSlice<'a> {
     /// let v: Vec<u8> = "bors".bytes().collect();
     /// assert_eq!(v, b"bors".to_vec());
     /// ```
-    fn bytes(&self) -> Bytes<'a>;
+    fn bytes<'a>(&'a self) -> Bytes<'a>;
 
     /// An iterator over the characters of `self` and their byte offsets.
-    fn char_indices(&self) -> CharOffsets<'a>;
+    fn char_indices<'a>(&'a self) -> CharOffsets<'a>;
 
     /// An iterator over substrings of `self`, separated by characters
     /// matched by `sep`.
@@ -1275,7 +1276,7 @@ pub trait StrSlice<'a> {
     /// let v: Vec<&str> = "".split('X').collect();
     /// assert_eq!(v, vec![""]);
     /// ```
-    fn split<Sep: CharEq>(&self, sep: Sep) -> CharSplits<'a, Sep>;
+    fn split<'a, Sep: CharEq>(&'a self, sep: Sep) -> CharSplits<'a, Sep>;
 
     /// An iterator over substrings of `self`, separated by characters
     /// matched by `sep`, restricted to splitting at most `count`
@@ -1299,7 +1300,7 @@ pub trait StrSlice<'a> {
     /// let v: Vec<&str> = "".splitn(1, 'X').collect();
     /// assert_eq!(v, vec![""]);
     /// ```
-    fn splitn<Sep: CharEq>(&self, count: uint, sep: Sep) -> CharSplitsN<'a, Sep>;
+    fn splitn<'a, Sep: CharEq>(&'a self, count: uint, sep: Sep) -> CharSplitsN<'a, Sep>;
 
     /// An iterator over substrings of `self`, separated by characters
     /// matched by `sep`.
@@ -1325,7 +1326,7 @@ pub trait StrSlice<'a> {
     /// let v: Vec<&str> = "lionXXtigerXleopard".split('X').rev().collect();
     /// assert_eq!(v, vec!["leopard", "tiger", "", "lion"]);
     /// ```
-    fn split_terminator<Sep: CharEq>(&self, sep: Sep) -> CharSplits<'a, Sep>;
+    fn split_terminator<'a, Sep: CharEq>(&'a self, sep: Sep) -> CharSplits<'a, Sep>;
 
     /// An iterator over substrings of `self`, separated by characters
     /// matched by `sep`, starting from the end of the string.
@@ -1343,7 +1344,7 @@ pub trait StrSlice<'a> {
     /// let v: Vec<&str> = "lionXXtigerXleopard".rsplitn(2, 'X').collect();
     /// assert_eq!(v, vec!["leopard", "tiger", "lionX"]);
     /// ```
-    fn rsplitn<Sep: CharEq>(&self, count: uint, sep: Sep) -> CharSplitsN<'a, Sep>;
+    fn rsplitn<'a, Sep: CharEq>(&'a self, count: uint, sep: Sep) -> CharSplitsN<'a, Sep>;
 
     /// An iterator over the start and end indices of the disjoint
     /// matches of `sep` within `self`.
@@ -1365,7 +1366,7 @@ pub trait StrSlice<'a> {
     /// let v: Vec<(uint, uint)> = "ababa".match_indices("aba").collect();
     /// assert_eq!(v, vec![(0, 3)]); // only the first `aba`
     /// ```
-    fn match_indices(&self, sep: &'a str) -> MatchIndices<'a>;
+    fn match_indices<'a>(&'a self, sep: &'a str) -> MatchIndices<'a>;
 
     /// An iterator over the substrings of `self` separated by `sep`.
     ///
@@ -1378,7 +1379,7 @@ pub trait StrSlice<'a> {
     /// let v: Vec<&str> = "1abcabc2".split_str("abc").collect();
     /// assert_eq!(v, vec!["1", "", "2"]);
     /// ```
-    fn split_str(&self, &'a str) -> StrSplits<'a>;
+    fn split_str<'a>(&'a self, &'a str) -> StrSplits<'a>;
 
     /// An iterator over the lines of a string (subsequences separated
     /// by `\n`). This does not include the empty string after a
@@ -1391,7 +1392,7 @@ pub trait StrSlice<'a> {
     /// let v: Vec<&str> = four_lines.lines().collect();
     /// assert_eq!(v, vec!["foo", "bar", "", "baz"]);
     /// ```
-    fn lines(&self) -> CharSplits<'a, char>;
+    fn lines<'a>(&'a self) -> CharSplits<'a, char>;
 
     /// An iterator over the lines of a string, separated by either
     /// `\n` or `\r\n`. As with `.lines()`, this does not include an
@@ -1404,7 +1405,7 @@ pub trait StrSlice<'a> {
     /// let v: Vec<&str> = four_lines.lines_any().collect();
     /// assert_eq!(v, vec!["foo", "bar", "", "baz"]);
     /// ```
-    fn lines_any(&self) -> AnyLines<'a>;
+    fn lines_any<'a>(&'a self) -> AnyLines<'a>;
 
     /// Returns the number of Unicode code points (`char`) that a
     /// string holds.
@@ -1469,7 +1470,7 @@ pub trait StrSlice<'a> {
     /// // byte 100 is outside the string
     /// // s.slice(3, 100);
     /// ```
-    fn slice(&self, begin: uint, end: uint) -> &'a str;
+    fn slice<'a>(&'a self, begin: uint, end: uint) -> &'a str;
 
     /// Returns a slice of the string from `begin` to its end.
     ///
@@ -1479,7 +1480,7 @@ pub trait StrSlice<'a> {
     /// out of bounds.
     ///
     /// See also `slice`, `slice_to` and `slice_chars`.
-    fn slice_from(&self, begin: uint) -> &'a str;
+    fn slice_from<'a>(&'a self, begin: uint) -> &'a str;
 
     /// Returns a slice of the string from the beginning to byte
     /// `end`.
@@ -1490,7 +1491,7 @@ pub trait StrSlice<'a> {
     /// out of bounds.
     ///
     /// See also `slice`, `slice_from` and `slice_chars`.
-    fn slice_to(&self, end: uint) -> &'a str;
+    fn slice_to<'a>(&'a self, end: uint) -> &'a str;
 
     /// Returns a slice of the string from the character range
     /// [`begin`..`end`).
@@ -1515,7 +1516,7 @@ pub trait StrSlice<'a> {
     /// assert_eq!(s.slice_chars(0, 4), "Löwe");
     /// assert_eq!(s.slice_chars(5, 7), "老虎");
     /// ```
-    fn slice_chars(&self, begin: uint, end: uint) -> &'a str;
+    fn slice_chars<'a>(&'a self, begin: uint, end: uint) -> &'a str;
 
     /// Returns true if `needle` is a prefix of the string.
     ///
@@ -1549,7 +1550,7 @@ pub trait StrSlice<'a> {
     /// assert_eq!("12foo1bar12".trim_chars(x), "foo1bar")
     /// assert_eq!("123foo1bar123".trim_chars(|c: char| c.is_digit()), "foo1bar")
     /// ```
-    fn trim_chars<C: CharEq>(&self, to_trim: C) -> &'a str;
+    fn trim_chars<'a, C: CharEq>(&'a self, to_trim: C) -> &'a str;
 
     /// Returns a string with leading `chars_to_trim` removed.
     ///
@@ -1565,7 +1566,7 @@ pub trait StrSlice<'a> {
     /// assert_eq!("12foo1bar12".trim_left_chars(x), "foo1bar12")
     /// assert_eq!("123foo1bar123".trim_left_chars(|c: char| c.is_digit()), "foo1bar123")
     /// ```
-    fn trim_left_chars<C: CharEq>(&self, to_trim: C) -> &'a str;
+    fn trim_left_chars<'a, C: CharEq>(&'a self, to_trim: C) -> &'a str;
 
     /// Returns a string with trailing `chars_to_trim` removed.
     ///
@@ -1581,7 +1582,7 @@ pub trait StrSlice<'a> {
     /// assert_eq!("12foo1bar12".trim_right_chars(x), "12foo1bar")
     /// assert_eq!("123foo1bar123".trim_right_chars(|c: char| c.is_digit()), "123foo1bar")
     /// ```
-    fn trim_right_chars<C: CharEq>(&self, to_trim: C) -> &'a str;
+    fn trim_right_chars<'a, C: CharEq>(&'a self, to_trim: C) -> &'a str;
 
     /// Check that `index`-th byte lies at the start and/or end of a
     /// UTF-8 code point sequence.
@@ -1707,7 +1708,7 @@ pub trait StrSlice<'a> {
     /// ```rust
     /// assert_eq!("bors".as_bytes(), b"bors");
     /// ```
-    fn as_bytes(&self) -> &'a [u8];
+    fn as_bytes<'a>(&'a self) -> &'a [u8];
 
     /// Returns the byte index of the first character of `self` that
     /// matches `search`.
@@ -1798,7 +1799,7 @@ pub trait StrSlice<'a> {
     /// assert_eq!(c, Some('ö'));
     /// assert_eq!(s2, "we 老虎 Léopard");
     /// ```
-    fn slice_shift_char(&self) -> (Option<char>, &'a str);
+    fn slice_shift_char<'a>(&'a self) -> (Option<char>, &'a str);
 
     /// Returns the byte offset of an inner slice relative to an enclosing outer slice.
     ///
@@ -1825,7 +1826,7 @@ pub trait StrSlice<'a> {
     fn as_ptr(&self) -> *const u8;
 
     /// Return an iterator of `u16` over the string encoded as UTF-16.
-    fn utf16_units(&self) -> Utf16CodeUnits<'a>;
+    fn utf16_units<'a>(&'a self) -> Utf16CodeUnits<'a>;
 }
 
 #[inline(never)]
@@ -1835,9 +1836,9 @@ fn slice_error_fail(s: &str, begin: uint, end: uint) -> ! {
           begin, end, s);
 }
 
-impl<'a> StrSlice<'a> for &'a str {
+impl StrSlice for str {
     #[inline]
-    fn contains<'a>(&self, needle: &'a str) -> bool {
+    fn contains(&self, needle: &str) -> bool {
         self.find_str(needle).is_some()
     }
 
@@ -1847,24 +1848,24 @@ impl<'a> StrSlice<'a> for &'a str {
     }
 
     #[inline]
-    fn chars(&self) -> Chars<'a> {
+    fn chars(&self) -> Chars {
         Chars{iter: self.as_bytes().iter()}
     }
 
     #[inline]
-    fn bytes(&self) -> Bytes<'a> {
+    fn bytes(&self) -> Bytes {
         self.as_bytes().iter().map(|&b| b)
     }
 
     #[inline]
-    fn char_indices(&self) -> CharOffsets<'a> {
+    fn char_indices(&self) -> CharOffsets {
         CharOffsets{front_offset: 0, iter: self.chars()}
     }
 
     #[inline]
-    fn split<Sep: CharEq>(&self, sep: Sep) -> CharSplits<'a, Sep> {
+    fn split<Sep: CharEq>(&self, sep: Sep) -> CharSplits<Sep> {
         CharSplits {
-            string: *self,
+            string: self,
             only_ascii: sep.only_ascii(),
             sep: sep,
             allow_trailing_empty: true,
@@ -1874,7 +1875,7 @@ impl<'a> StrSlice<'a> for &'a str {
 
     #[inline]
     fn splitn<Sep: CharEq>(&self, count: uint, sep: Sep)
-        -> CharSplitsN<'a, Sep> {
+        -> CharSplitsN<Sep> {
         CharSplitsN {
             iter: self.split(sep),
             count: count,
@@ -1884,7 +1885,7 @@ impl<'a> StrSlice<'a> for &'a str {
 
     #[inline]
     fn split_terminator<Sep: CharEq>(&self, sep: Sep)
-        -> CharSplits<'a, Sep> {
+        -> CharSplits<Sep> {
         CharSplits {
             allow_trailing_empty: false,
             ..self.split(sep)
@@ -1893,7 +1894,7 @@ impl<'a> StrSlice<'a> for &'a str {
 
     #[inline]
     fn rsplitn<Sep: CharEq>(&self, count: uint, sep: Sep)
-        -> CharSplitsN<'a, Sep> {
+        -> CharSplitsN<Sep> {
         CharSplitsN {
             iter: self.split(sep),
             count: count,
@@ -1902,17 +1903,17 @@ impl<'a> StrSlice<'a> for &'a str {
     }
 
     #[inline]
-    fn match_indices(&self, sep: &'a str) -> MatchIndices<'a> {
+    fn match_indices<'a>(&'a self, sep: &'a str) -> MatchIndices<'a> {
         assert!(!sep.is_empty())
         MatchIndices {
-            haystack: *self,
+            haystack: self,
             needle: sep,
             searcher: Searcher::new(self.as_bytes(), sep.as_bytes())
         }
     }
 
     #[inline]
-    fn split_str(&self, sep: &'a str) -> StrSplits<'a> {
+    fn split_str<'a>(&'a self, sep: &'a str) -> StrSplits<'a> {
         StrSplits {
             it: self.match_indices(sep),
             last_end: 0,
@@ -1921,11 +1922,11 @@ impl<'a> StrSlice<'a> for &'a str {
     }
 
     #[inline]
-    fn lines(&self) -> CharSplits<'a, char> {
+    fn lines(&self) -> CharSplits<char> {
         self.split_terminator('\n')
     }
 
-    fn lines_any(&self) -> AnyLines<'a> {
+    fn lines_any(&self) -> AnyLines {
         self.lines().map(|line| {
             let l = line.len();
             if l > 0 && line.as_bytes()[l - 1] == b'\r' { line.slice(0, l - 1) }
@@ -1937,38 +1938,38 @@ impl<'a> StrSlice<'a> for &'a str {
     fn char_len(&self) -> uint { self.chars().count() }
 
     #[inline]
-    fn slice(&self, begin: uint, end: uint) -> &'a str {
+    fn slice(&self, begin: uint, end: uint) -> &str {
         // is_char_boundary checks that the index is in [0, .len()]
         if begin <= end &&
            self.is_char_boundary(begin) &&
            self.is_char_boundary(end) {
-            unsafe { raw::slice_unchecked(*self, begin, end) }
+            unsafe { raw::slice_unchecked(self, begin, end) }
         } else {
-            slice_error_fail(*self, begin, end)
+            slice_error_fail(self, begin, end)
         }
     }
 
     #[inline]
-    fn slice_from(&self, begin: uint) -> &'a str {
+    fn slice_from(&self, begin: uint) -> &str {
         // is_char_boundary checks that the index is in [0, .len()]
         if self.is_char_boundary(begin) {
-            unsafe { raw::slice_unchecked(*self, begin, self.len()) }
+            unsafe { raw::slice_unchecked(self, begin, self.len()) }
         } else {
-            slice_error_fail(*self, begin, self.len())
+            slice_error_fail(self, begin, self.len())
         }
     }
 
     #[inline]
-    fn slice_to(&self, end: uint) -> &'a str {
+    fn slice_to(&self, end: uint) -> &str {
         // is_char_boundary checks that the index is in [0, .len()]
         if self.is_char_boundary(end) {
-            unsafe { raw::slice_unchecked(*self, 0, end) }
+            unsafe { raw::slice_unchecked(self, 0, end) }
         } else {
-            slice_error_fail(*self, 0, end)
+            slice_error_fail(self, 0, end)
         }
     }
 
-    fn slice_chars(&self, begin: uint, end: uint) -> &'a str {
+    fn slice_chars(&self, begin: uint, end: uint) -> &str {
         assert!(begin <= end);
         let mut count = 0;
         let mut begin_byte = None;
@@ -1987,12 +1988,12 @@ impl<'a> StrSlice<'a> for &'a str {
         match (begin_byte, end_byte) {
             (None, _) => fail!("slice_chars: `begin` is beyond end of string"),
             (_, None) => fail!("slice_chars: `end` is beyond end of string"),
-            (Some(a), Some(b)) => unsafe { raw::slice_bytes(*self, a, b) }
+            (Some(a), Some(b)) => unsafe { raw::slice_bytes(self, a, b) }
         }
     }
 
     #[inline]
-    fn starts_with<'a>(&self, needle: &'a str) -> bool {
+    fn starts_with(&self, needle: &str) -> bool {
         let n = needle.len();
         self.len() >= n && needle.as_bytes() == self.as_bytes()[..n]
     }
@@ -2004,10 +2005,10 @@ impl<'a> StrSlice<'a> for &'a str {
     }
 
     #[inline]
-    fn trim_chars<C: CharEq>(&self, mut to_trim: C) -> &'a str {
+    fn trim_chars<C: CharEq>(&self, mut to_trim: C) -> &str {
         let cur = match self.find(|c: char| !to_trim.matches(c)) {
             None => "",
-            Some(i) => unsafe { raw::slice_bytes(*self, i, self.len()) }
+            Some(i) => unsafe { raw::slice_bytes(self, i, self.len()) }
         };
         match cur.rfind(|c: char| !to_trim.matches(c)) {
             None => "",
@@ -2019,20 +2020,20 @@ impl<'a> StrSlice<'a> for &'a str {
     }
 
     #[inline]
-    fn trim_left_chars<C: CharEq>(&self, mut to_trim: C) -> &'a str {
+    fn trim_left_chars<C: CharEq>(&self, mut to_trim: C) -> &str {
         match self.find(|c: char| !to_trim.matches(c)) {
             None => "",
-            Some(first) => unsafe { raw::slice_bytes(*self, first, self.len()) }
+            Some(first) => unsafe { raw::slice_bytes(self, first, self.len()) }
         }
     }
 
     #[inline]
-    fn trim_right_chars<C: CharEq>(&self, mut to_trim: C) -> &'a str {
+    fn trim_right_chars<C: CharEq>(&self, mut to_trim: C) -> &str {
         match self.rfind(|c: char| !to_trim.matches(c)) {
             None => "",
             Some(last) => {
                 let next = self.char_range_at(last).next;
-                unsafe { raw::slice_bytes(*self, 0u, next) }
+                unsafe { raw::slice_bytes(self, 0u, next) }
             }
         }
     }
@@ -2066,7 +2067,7 @@ impl<'a> StrSlice<'a> for &'a str {
             return CharRange {ch: unsafe { mem::transmute(val) }, next: i + w};
         }
 
-        return multibyte_char_range_at(*self, i);
+        return multibyte_char_range_at(self, i);
     }
 
     #[inline]
@@ -2097,7 +2098,7 @@ impl<'a> StrSlice<'a> for &'a str {
             return CharRange {ch: unsafe { mem::transmute(val) }, next: i};
         }
 
-        return multibyte_char_range_at_reverse(*self, prev);
+        return multibyte_char_range_at_reverse(self, prev);
     }
 
     #[inline]
@@ -2111,8 +2112,8 @@ impl<'a> StrSlice<'a> for &'a str {
     }
 
     #[inline]
-    fn as_bytes(&self) -> &'a [u8] {
-        unsafe { mem::transmute(*self) }
+    fn as_bytes(&self) -> &[u8] {
+        unsafe { mem::transmute(self) }
     }
 
     fn find<C: CharEq>(&self, mut search: C) -> Option<uint> {
@@ -2148,12 +2149,12 @@ impl<'a> StrSlice<'a> for &'a str {
     }
 
     #[inline]
-    fn slice_shift_char(&self) -> (Option<char>, &'a str) {
+    fn slice_shift_char(&self) -> (Option<char>, &str) {
         if self.is_empty() {
-            return (None, *self);
+            return (None, self);
         } else {
             let CharRange {ch, next} = self.char_range_at(0u);
-            let next_s = unsafe { raw::slice_bytes(*self, next, self.len()) };
+            let next_s = unsafe { raw::slice_bytes(self, next, self.len()) };
             return (Some(ch), next_s);
         }
     }
@@ -2175,7 +2176,7 @@ impl<'a> StrSlice<'a> for &'a str {
     }
 
     #[inline]
-    fn utf16_units(&self) -> Utf16CodeUnits<'a> {
+    fn utf16_units(&self) -> Utf16CodeUnits {
         Utf16CodeUnits{ chars: self.chars(), extra: 0}
     }
 }
