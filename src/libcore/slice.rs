@@ -853,13 +853,16 @@ pub trait MutableCloneableSlice<T> {
 }
 
 #[unstable = "trait is unstable"]
-impl<'a, T:Clone> MutableCloneableSlice<T> for &'a mut [T] {
+impl<'a, T: Clone> MutableCloneableSlice<T> for &'a mut [T] {
     #[inline]
     fn clone_from_slice(self, src: &[T]) -> uint {
-        for (a, b) in self.iter_mut().zip(src.iter()) {
-            a.clone_from(b);
+        let min = cmp::min(self.len(), src.len());
+        let dst = self.slice_to_mut(min);
+        let src = src.slice_to(min);
+        for i in range(0, min) {
+            dst[i].clone_from(&src[i]);
         }
-        cmp::min(self.len(), src.len())
+        min
     }
 }
 
