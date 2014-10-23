@@ -33,9 +33,21 @@ miss out on valid bug reports.
 
 It generally helps our diagnosis to include your specific OS (for example: Mac OS X 10.8.3,
 Windows 7, Ubuntu 12.04) and your hardware architecture (for example: i686, x86_64).
-It's also helpful to copy/paste the output of re-running the erroneous rustc
-command with the `-v` flag. Finally, if you can run the offending command under gdb,
-pasting a stack trace can be useful; to do so, you will need to set a breakpoint on `rust_fail`.
+It's also helpful to provide the exact version and host by copying the output of
+re-running the erroneous rustc command with the `--version=verbose` flag, which will
+produce something like this:
+
+```{ignore}
+rustc 0.12.0 (ba4081a5a 2014-10-07 13:44:41 -0700)
+binary: rustc
+commit-hash: ba4081a5a8573875fed17545846f6f6902c8ba8d
+commit-date: 2014-10-07 13:44:41 -0700
+host: i686-apple-darwin
+release: 0.12.0
+```
+
+Finally, if you can run the offending command under gdb, pasting a stack trace can be
+useful; to do so, you will need to set a breakpoint on `rust_fail`.
 
 # I submitted a bug, but nobody has commented on it!
 
