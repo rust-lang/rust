@@ -15,4 +15,7 @@ fn first((value, _): (int, f64)) -> int { value }
 fn main() {
     let y = first ((1,2.0,3));
     //~^ ERROR expected a tuple with 2 elements, found one with 3 elements
+
+    let y = first ((1,));
+    //~^ ERROR expected `(int, f64)`, found `(int,)`
 }

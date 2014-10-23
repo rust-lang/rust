@@ -11,6 +11,6 @@
 fn main() {
     match () {
         [()] => { }
-//~^ ERROR mismatched types: expected `()`, found `&[<generic #1>]` (expected (), found &-ptr)
+//~^ ERROR mismatched types: expected `()`, found `&[_]` (expected (), found &-ptr)
     }
 }
