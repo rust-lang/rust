@@ -8,13 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Maps are collections of unique keys with corresponding values, and sets are
-//! just unique keys without a corresponding value. The `Map` and `Set` traits in
-//! `std::container` define the basic interface.
-//!
-//! This crate defines `TrieMap` and `TrieSet`, which require `uint` keys.
-//!
-//! `TrieMap` is ordered.
+//! Ordered maps and sets, implemented as simple tries.
 
 use core::prelude::*;
 
@@ -24,9 +18,10 @@ use core::fmt;
 use core::fmt::Show;
 use core::mem::zeroed;
 use core::mem;
-use core::ops::{Slice,SliceMut};
+use core::ops::{Slice, SliceMut};
 use core::uint;
 use core::iter;
+use core::ptr;
 use std::hash::{Writer, Hash};
 
 use slice::{Items, MutItems};
@@ -36,20 +31,26 @@ use slice;
 // FIXME(conventions): implement into_iter
 // FIXME(conventions): replace each_reverse by making iter DoubleEnded
 
-// FIXME: #5244: need to manually update the TrieNode constructor
+// FIXME: #5244: need to manually update the InternalNode constructor
 const SHIFT: uint = 4;
 const SIZE: uint = 1 << SHIFT;
 const MASK: uint = SIZE - 1;
-const NUM_CHUNKS: uint = uint::BITS / SHIFT;
-
-#[deriving(Clone)]
-enum Child<T> {
-    Internal(Box<TrieNode<T>>),
-    External(uint, T),
-    Nothing
-}
+// The number of chunks that the key is divided into. Also the maximum depth of the TrieMap.
+const MAX_DEPTH: uint = uint::BITS / SHIFT;
 
 /// A map implemented as a radix trie.
+///
+/// Keys are split into sequences of 4 bits, which are used to place elements in
+/// 16-entry arrays which are nested to form a tree structure. Inserted elements are placed
+/// as close to the top of the tree as possible. The most significant bits of the key are used to
+/// assign the key to a node/bucket in the first layer. If there are no other elements keyed by
+/// the same 4 bits in the first layer, a leaf node will be created in the first layer.
+/// When keys coincide, the next 4 bits are used to assign the node to a bucket in the next layer,
+/// with this process continuing until an empty spot is found or there are no more bits left in the
+/// key. As a result, the maximum depth using 32-bit `uint` keys is 8. The worst collisions occur
+/// for very small numbers. For example, 1 and 2 are identical in all but their least significant
+/// 4 bits. If both numbers are used as keys, a chain of maximum length will be created to
+/// differentiate them.
 ///
 /// # Example
 ///
@@ -89,8 +90,27 @@ enum Child<T> {
 /// ```
 #[deriving(Clone)]
 pub struct TrieMap<T> {
-    root: TrieNode<T>,
+    root: InternalNode<T>,
     length: uint
+}
+
+// An internal node holds SIZE child nodes, which may themselves contain more internal nodes.
+//
+// Throughout this implementation, "idx" is used to refer to a section of key that is used
+// to access a node. The layer of the tree directly below the root corresponds to idx 0.
+struct InternalNode<T> {
+    // The number of direct children which are external (i.e. that store a value).
+    count: uint,
+    children: [TrieNode<T>, ..SIZE]
+}
+
+// Each child of an InternalNode may be internal, in which case nesting continues,
+// external (containing a value), or empty.
+#[deriving(Clone)]
+enum TrieNode<T> {
+    Internal(Box<InternalNode<T>>),
+    External(uint, T),
+    Nothing
 }
 
 impl<T: PartialEq> PartialEq for TrieMap<T> {
@@ -146,7 +166,7 @@ impl<T> TrieMap<T> {
     #[inline]
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn new() -> TrieMap<T> {
-        TrieMap{root: TrieNode::new(), length: 0}
+        TrieMap{root: InternalNode::new(), length: 0}
     }
 
     /// Visits all key-value pairs in reverse order. Aborts traversal when `f` returns `false`.
@@ -284,7 +304,7 @@ impl<T> TrieMap<T> {
     #[inline]
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn clear(&mut self) {
-        self.root = TrieNode::new();
+        self.root = InternalNode::new();
         self.length = 0;
     }
 
@@ -396,11 +416,11 @@ impl<T> TrieMap<T> {
     /// ```
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn insert(&mut self, key: uint, value: T) -> Option<T> {
-        let ret = insert(&mut self.root.count,
-                         &mut self.root.children[chunk(key, 0)],
-                         key, value, 1);
-        if ret.is_none() { self.length += 1 }
-        ret
+        let (_, old_val) = insert(&mut self.root.count,
+                                    &mut self.root.children[chunk(key, 0)],
+                                    key, value, 1);
+        if old_val.is_none() { self.length += 1 }
+        old_val
     }
 
     /// Deprecated: Renamed to `remove`.
@@ -467,14 +487,14 @@ macro_rules! bound {
             // place that mutation is can actually occur is of the actual
             // values of the TrieMap (as the return value of the
             // iterator), i.e. we can never cause a deallocation of any
-            // TrieNodes so the raw pointer is always valid.
+            // InternalNodes so the raw pointer is always valid.
             //
             // # For non-`mut`
             // We like sharing code so much that even a little unsafe won't
             // stop us.
             let this = $this;
             let mut node = unsafe {
-                mem::transmute::<_, uint>(&this.root) as *mut TrieNode<T>
+                mem::transmute::<_, uint>(&this.root) as *mut InternalNode<T>
             };
 
             let key = $key;
@@ -493,7 +513,7 @@ macro_rules! bound {
                         Internal(ref $($mut_)* n) => {
                             node = unsafe {
                                 mem::transmute::<_, uint>(&**n)
-                                    as *mut TrieNode<T>
+                                    as *mut InternalNode<T>
                             };
                             (child_id + 1, false)
                         }
@@ -658,16 +678,11 @@ impl<T> IndexMut<uint, T> for TrieMap<T> {
     }
 }
 
-struct TrieNode<T> {
-    count: uint,
-    children: [Child<T>, ..SIZE]
-}
-
-impl<T:Clone> Clone for TrieNode<T> {
+impl<T:Clone> Clone for InternalNode<T> {
     #[inline]
-    fn clone(&self) -> TrieNode<T> {
+    fn clone(&self) -> InternalNode<T> {
         let ch = &self.children;
-        TrieNode {
+        InternalNode {
             count: self.count,
              children: [ch[0].clone(), ch[1].clone(), ch[2].clone(), ch[3].clone(),
                         ch[4].clone(), ch[5].clone(), ch[6].clone(), ch[7].clone(),
@@ -676,12 +691,12 @@ impl<T:Clone> Clone for TrieNode<T> {
     }
 }
 
-impl<T> TrieNode<T> {
+impl<T> InternalNode<T> {
     #[inline]
-    fn new() -> TrieNode<T> {
+    fn new() -> InternalNode<T> {
         // FIXME: #5244: [Nothing, ..SIZE] should be possible without implicit
         // copyability
-        TrieNode{count: 0,
+        InternalNode{count: 0,
                  children: [Nothing, Nothing, Nothing, Nothing,
                             Nothing, Nothing, Nothing, Nothing,
                             Nothing, Nothing, Nothing, Nothing,
@@ -689,7 +704,7 @@ impl<T> TrieNode<T> {
     }
 }
 
-impl<T> TrieNode<T> {
+impl<T> InternalNode<T> {
     fn each_reverse<'a>(&'a self, f: |&uint, &'a T| -> bool) -> bool {
         for elt in self.children.iter().rev() {
             match *elt {
@@ -709,7 +724,7 @@ fn chunk(n: uint, idx: uint) -> uint {
     (n >> sh) & MASK
 }
 
-fn find_mut<'r, T>(child: &'r mut Child<T>, key: uint, idx: uint) -> Option<&'r mut T> {
+fn find_mut<'r, T>(child: &'r mut TrieNode<T>, key: uint, idx: uint) -> Option<&'r mut T> {
     match *child {
         External(stored, ref mut value) if stored == key => Some(value),
         External(..) => None,
@@ -718,58 +733,72 @@ fn find_mut<'r, T>(child: &'r mut Child<T>, key: uint, idx: uint) -> Option<&'r 
     }
 }
 
-fn insert<T>(count: &mut uint, child: &mut Child<T>, key: uint, value: T,
-             idx: uint) -> Option<T> {
-    // we branch twice to avoid having to do the `replace` when we
+/// Inserts a new node for the given key and value, at or below `start_node`.
+///
+/// The index (`idx`) is the index of the next node, such that the start node
+/// was accessed via parent.children[chunk(key, idx - 1)].
+///
+/// The count is the external node counter for the start node's parent,
+/// which will be incremented only if `start_node` is transformed into a *new* external node.
+///
+/// Returns a mutable reference to the inserted value and an optional previous value.
+fn insert<'a, T>(count: &mut uint, start_node: &'a mut TrieNode<T>, key: uint, value: T, idx: uint)
+    -> (&'a mut T, Option<T>) {
+    // We branch twice to avoid having to do the `replace` when we
     // don't need to; this is much faster, especially for keys that
     // have long shared prefixes.
-    match *child {
+    match *start_node {
         Nothing => {
             *count += 1;
-            *child = External(key, value);
-            return None;
+            *start_node = External(key, value);
+            match *start_node {
+                External(_, ref mut value_ref) => return (value_ref, None),
+                _ => unreachable!()
+            }
         }
         Internal(box ref mut x) => {
             return insert(&mut x.count, &mut x.children[chunk(key, idx)], key, value, idx + 1);
         }
         External(stored_key, ref mut stored_value) if stored_key == key => {
-            // swap in the new value and return the old.
-            return Some(mem::replace(stored_value, value));
+            // Swap in the new value and return the old.
+            let old_value = mem::replace(stored_value, value);
+            return (stored_value, Some(old_value));
         }
         _ => {}
     }
 
-    // conflict, an external node with differing keys: we have to
-    // split the node, so we need the old value by value; hence we
-    // have to move out of `child`.
-    match mem::replace(child, Nothing) {
+    // Conflict, an external node with differing keys.
+    // We replace the old node by an internal one, then re-insert the two values beneath it.
+    match mem::replace(start_node, Internal(box InternalNode::new())) {
         External(stored_key, stored_value) => {
-            let mut new = box TrieNode::new();
+            match *start_node {
+                Internal(box ref mut new_node) => {
+                    // Re-insert the old value.
+                    insert(&mut new_node.count,
+                           &mut new_node.children[chunk(stored_key, idx)],
+                           stored_key, stored_value, idx + 1);
 
-            let ret = {
-                let new_interior = &mut *new;
-                insert(&mut new_interior.count,
-                       &mut new_interior.children[chunk(stored_key, idx)],
-                       stored_key, stored_value, idx + 1);
-                insert(&mut new_interior.count,
-                       &mut new_interior.children[chunk(key, idx)],
-                       key, value, idx + 1)
-            };
-
-            *child = Internal(new);
-            return ret;
+                    // Insert the new value, and return a reference to it directly.
+                    insert(&mut new_node.count,
+                           &mut new_node.children[chunk(key, idx)],
+                           key, value, idx + 1)
+                }
+                // Value that was just copied disappeared.
+                _ => unreachable!()
+            }
         }
-        _ => panic!("unreachable code"),
+        // Logic error in previous match.
+        _ => unreachable!(),
     }
 }
 
-fn remove<T>(count: &mut uint, child: &mut Child<T>, key: uint,
+fn remove<T>(count: &mut uint, child: &mut TrieNode<T>, key: uint,
              idx: uint) -> Option<T> {
     let (ret, this) = match *child {
       External(stored, _) if stored == key => {
         match mem::replace(child, Nothing) {
             External(_, value) => (Some(value), true),
-            _ => panic!()
+            _ => unreachable!()
         }
       }
       External(..) => (None, false),
@@ -788,9 +817,264 @@ fn remove<T>(count: &mut uint, child: &mut Child<T>, key: uint,
     return ret;
 }
 
+/// A view into a single entry in a TrieMap, which may be vacant or occupied.
+pub enum Entry<'a, T: 'a> {
+    /// An occupied entry.
+    Occupied(OccupiedEntry<'a, T>),
+    /// A vacant entry.
+    Vacant(VacantEntry<'a, T>)
+}
+
+/// A view into an occupied entry in a TrieMap.
+pub struct OccupiedEntry<'a, T: 'a> {
+    search_stack: SearchStack<'a, T>
+}
+
+/// A view into a vacant entry in a TrieMap.
+pub struct VacantEntry<'a, T: 'a> {
+    search_stack: SearchStack<'a, T>
+}
+
+/// A list of nodes encoding a path from the root of a TrieMap to a node.
+///
+/// Invariants:
+/// * The last node is either `External` or `Nothing`.
+/// * Pointers at indexes less than `length` can be safely dereferenced.
+struct SearchStack<'a, T: 'a> {
+    map: &'a mut TrieMap<T>,
+    length: uint,
+    key: uint,
+    items: [*mut TrieNode<T>, ..MAX_DEPTH]
+}
+
+impl<'a, T> SearchStack<'a, T> {
+    /// Creates a new search-stack with empty entries.
+    fn new(map: &'a mut TrieMap<T>, key: uint) -> SearchStack<'a, T> {
+        SearchStack {
+            map: map,
+            length: 0,
+            key: key,
+            items: [ptr::null_mut(), ..MAX_DEPTH]
+        }
+    }
+
+    fn push(&mut self, node: *mut TrieNode<T>) {
+        self.length += 1;
+        self.items[self.length - 1] = node;
+    }
+
+    fn peek(&self) -> *mut TrieNode<T> {
+        self.items[self.length - 1]
+    }
+
+    fn peek_ref(&self) -> &'a mut TrieNode<T> {
+        unsafe {
+            &mut *self.items[self.length - 1]
+        }
+    }
+
+    fn pop_ref(&mut self) -> &'a mut TrieNode<T> {
+        self.length -= 1;
+        unsafe {
+            &mut *self.items[self.length]
+        }
+    }
+
+    fn is_empty(&self) -> bool {
+        self.length == 0
+    }
+
+    fn get_ref(&self, idx: uint) -> &'a mut TrieNode<T> {
+        assert!(idx < self.length);
+        unsafe {
+            &mut *self.items[idx]
+        }
+    }
+}
+
+// Implementation of SearchStack creation logic.
+// Once a SearchStack has been created the Entry methods are relatively straight-forward.
+impl<T> TrieMap<T> {
+    /// Gets the given key's corresponding entry in the map for in-place manipulation.
+    #[inline]
+    pub fn entry<'a>(&'a mut self, key: uint) -> Entry<'a, T> {
+        // Create an empty search stack.
+        let mut search_stack = SearchStack::new(self, key);
+
+        // Unconditionally add the corresponding node from the first layer.
+        let first_node = &mut search_stack.map.root.children[chunk(key, 0)] as *mut _;
+        search_stack.push(first_node);
+
+        // While no appropriate slot is found, keep descending down the Trie,
+        // adding nodes to the search stack.
+        let search_successful: bool;
+        loop {
+            match unsafe { next_child(search_stack.peek(), key, search_stack.length) } {
+                (Some(child), _) => search_stack.push(child),
+                (None, success) => {
+                    search_successful = success;
+                    break;
+                }
+            }
+        }
+
+        if search_successful {
+            Occupied(OccupiedEntry { search_stack: search_stack })
+        } else {
+            Vacant(VacantEntry { search_stack: search_stack })
+        }
+    }
+}
+
+/// Get a mutable pointer to the next child of a node, given a key and an idx.
+///
+/// The idx is the index of the next child, such that `node` was accessed via
+/// parent.children[chunk(key, idx - 1)].
+///
+/// Returns a tuple with an optional mutable pointer to the next child, and
+/// a boolean flag to indicate whether the external key node was found.
+///
+/// This function is safe only if `node` points to a valid `TrieNode`.
+#[inline]
+unsafe fn next_child<'a, T>(node: *mut TrieNode<T>, key: uint, idx: uint)
+    -> (Option<*mut TrieNode<T>>, bool) {
+    match *node {
+        // If the node is internal, tell the caller to descend further.
+        Internal(box ref mut node_internal) => {
+            (Some(&mut node_internal.children[chunk(key, idx)] as *mut _), false)
+        },
+        // If the node is external or empty, the search is complete.
+        // If the key doesn't match, node expansion will be done upon
+        // insertion. If it does match, we've found our node.
+        External(stored_key, _) if stored_key == key => (None, true),
+        External(..) | Nothing => (None, false)
+    }
+}
+
+// NB: All these methods assume a correctly constructed occupied entry (matching the given key).
+impl<'a, T> OccupiedEntry<'a, T> {
+    /// Gets a reference to the value in the entry.
+    #[inline]
+    pub fn get(&self) -> &T {
+        match *self.search_stack.peek_ref() {
+            External(_, ref value) => value,
+            // Invalid SearchStack, non-external last node.
+            _ => unreachable!()
+        }
+    }
+
+    /// Gets a mutable reference to the value in the entry.
+    #[inline]
+    pub fn get_mut(&mut self) -> &mut T {
+        match *self.search_stack.peek_ref() {
+            External(_, ref mut value) => value,
+            // Invalid SearchStack, non-external last node.
+            _ => unreachable!()
+        }
+    }
+
+    /// Converts the OccupiedEntry into a mutable reference to the value in the entry,
+    /// with a lifetime bound to the map itself.
+    #[inline]
+    pub fn into_mut(self) -> &'a mut T {
+        match *self.search_stack.peek_ref() {
+            External(_, ref mut value) => value,
+            // Invalid SearchStack, non-external last node.
+            _ => unreachable!()
+        }
+    }
+
+    /// Sets the value of the entry, and returns the entry's old value.
+    #[inline]
+    pub fn set(&mut self, value: T) -> T {
+        match *self.search_stack.peek_ref() {
+            External(_, ref mut stored_value) => {
+                mem::replace(stored_value, value)
+            }
+            // Invalid SearchStack, non-external last node.
+            _ => unreachable!()
+        }
+    }
+
+    /// Takes the value out of the entry, and returns it.
+    #[inline]
+    pub fn take(self) -> T {
+        // This function removes the external leaf-node, then unwinds the search-stack
+        // deleting now-childless ancestors.
+        let mut search_stack = self.search_stack;
+
+        // Extract the value from the leaf-node of interest.
+        let leaf_node = mem::replace(search_stack.pop_ref(), Nothing);
+
+        let value = match leaf_node {
+            External(_, value) => value,
+            // Invalid SearchStack, non-external last node.
+            _ => unreachable!()
+        };
+
+        // Iterate backwards through the search stack, deleting nodes if they are childless.
+        // We compare each ancestor's parent count to 1 because each ancestor reached has just
+        // had one of its children deleted.
+        while !search_stack.is_empty() {
+            let ancestor = search_stack.pop_ref();
+            match *ancestor {
+                Internal(ref mut internal) => {
+                    // If stopping deletion, update the child count and break.
+                    if internal.count != 1 {
+                        internal.count -= 1;
+                        break;
+                    }
+                }
+                // Invalid SearchStack, non-internal ancestor node.
+                _ => unreachable!()
+            }
+            *ancestor = Nothing;
+        }
+
+        // Decrement the length of the entire TrieMap, for the removed node.
+        search_stack.map.length -= 1;
+
+        value
+    }
+}
+
+impl<'a, T> VacantEntry<'a, T> {
+    /// Set the vacant entry to the given value.
+    pub fn set(self, value: T) -> &'a mut T {
+        let search_stack = self.search_stack;
+        let old_length = search_stack.length;
+        let key = search_stack.key;
+
+        // Update the TrieMap's length for the new element.
+        search_stack.map.length += 1;
+
+        // If there's only 1 node in the search stack, insert a new node below it at idx 1.
+        if old_length == 1 {
+            // Note: Small hack to appease the borrow checker. Can't mutably borrow root.count
+            let mut temp = search_stack.map.root.count;
+            let (value_ref, _) = insert(&mut temp, search_stack.get_ref(0), key, value, 1);
+            search_stack.map.root.count = temp;
+            value_ref
+        }
+        // Otherwise, find the predeccessor of the last stack node, and insert as normal.
+        else {
+            match *search_stack.get_ref(old_length - 2) {
+                Internal(box ref mut parent) => {
+                    let (value_ref, _) = insert(&mut parent.count,
+                                                &mut parent.children[chunk(key, old_length - 1)],
+                                                key, value, old_length);
+                    value_ref
+                }
+                // Invalid SearchStack, non-internal ancestor node.
+                _ => unreachable!()
+            }
+        }
+    }
+}
+
 /// A forward iterator over a map.
 pub struct Entries<'a, T:'a> {
-    stack: [slice::Items<'a, Child<T>>, .. NUM_CHUNKS],
+    stack: [slice::Items<'a, TrieNode<T>>, .. MAX_DEPTH],
     length: uint,
     remaining_min: uint,
     remaining_max: uint
@@ -799,7 +1083,7 @@ pub struct Entries<'a, T:'a> {
 /// A forward iterator over the key-value pairs of a map, with the
 /// values being mutable.
 pub struct MutEntries<'a, T:'a> {
-    stack: [slice::MutItems<'a, Child<T>>, .. NUM_CHUNKS],
+    stack: [slice::MutItems<'a, TrieNode<T>>, .. MAX_DEPTH],
     length: uint,
     remaining_min: uint,
     remaining_max: uint
@@ -937,9 +1221,10 @@ mod test {
     use std::uint;
     use std::hash;
 
-    use super::{TrieMap, TrieNode, Internal, External, Nothing};
+    use super::{TrieMap, InternalNode, Internal, External, Nothing};
+    use super::{Occupied, Vacant};
 
-    fn check_integrity<T>(trie: &TrieNode<T>) {
+    fn check_integrity<T>(trie: &InternalNode<T>) {
         assert!(trie.count != 0);
 
         let mut sum = 0;
@@ -1344,6 +1629,135 @@ mod test {
 
         map[4];
     }
+
+    // Number of items to insert into the map during entry tests.
+    // The tests rely on it being even.
+    const SQUARES_UPPER_LIM: uint = 128;
+
+    /// Make a TrieMap storing i^2 for i in [0, 128)
+    fn squares_map() -> TrieMap<uint> {
+        let mut map = TrieMap::new();
+        for i in range(0, SQUARES_UPPER_LIM) {
+            map.insert(i, i * i);
+        }
+        map
+    }
+
+    #[test]
+    fn test_entry_get() {
+        let mut map = squares_map();
+
+        for i in range(0, SQUARES_UPPER_LIM) {
+            match map.entry(i) {
+                Occupied(slot) => assert_eq!(slot.get(), &(i * i)),
+                Vacant(_) => panic!("Key not found.")
+            }
+        }
+        check_integrity(&map.root);
+    }
+
+    #[test]
+    fn test_entry_get_mut() {
+        let mut map = squares_map();
+
+        // Change the entries to cubes.
+        for i in range(0, SQUARES_UPPER_LIM) {
+            match map.entry(i) {
+                Occupied(mut e) => {
+                    *e.get_mut() = i * i * i;
+                }
+                Vacant(_) => panic!("Key not found.")
+            }
+            assert_eq!(map.get(&i).unwrap(), &(i * i * i));
+        }
+
+        check_integrity(&map.root);
+    }
+
+    #[test]
+    fn test_entry_into_mut() {
+        let mut map = TrieMap::new();
+        map.insert(3, 6u);
+
+        let value_ref = match map.entry(3) {
+            Occupied(e) => e.into_mut(),
+            Vacant(_) => panic!("Entry not found.")
+        };
+
+        assert_eq!(*value_ref, 6u);
+    }
+
+    #[test]
+    fn test_entry_take() {
+        let mut map = squares_map();
+        assert_eq!(map.len(), SQUARES_UPPER_LIM);
+
+        // Remove every odd key, checking that the correct value is returned.
+        for i in range_step(1, SQUARES_UPPER_LIM, 2) {
+            match map.entry(i) {
+                Occupied(e) => assert_eq!(e.take(), i * i),
+                Vacant(_) => panic!("Key not found.")
+            }
+        }
+
+        check_integrity(&map.root);
+
+        // Check that the values for even keys remain unmodified.
+        for i in range_step(0, SQUARES_UPPER_LIM, 2) {
+            assert_eq!(map.get(&i).unwrap(), &(i * i));
+        }
+
+        assert_eq!(map.len(), SQUARES_UPPER_LIM / 2);
+    }
+
+    #[test]
+    fn test_occupied_entry_set() {
+        let mut map = squares_map();
+
+        // Change all the entries to cubes.
+        for i in range(0, SQUARES_UPPER_LIM) {
+            match map.entry(i) {
+                Occupied(mut e) => assert_eq!(e.set(i * i * i), i * i),
+                Vacant(_) => panic!("Key not found.")
+            }
+            assert_eq!(map.get(&i).unwrap(), &(i * i * i));
+        }
+        check_integrity(&map.root);
+    }
+
+    #[test]
+    fn test_vacant_entry_set() {
+        let mut map = TrieMap::new();
+
+        for i in range(0, SQUARES_UPPER_LIM) {
+            match map.entry(i) {
+                Vacant(e) => {
+                    // Insert i^2.
+                    let inserted_val = e.set(i * i);
+                    assert_eq!(*inserted_val, i * i);
+
+                    // Update it to i^3 using the returned mutable reference.
+                    *inserted_val = i * i * i;
+                },
+                _ => panic!("Non-existant key found.")
+            }
+            assert_eq!(map.get(&i).unwrap(), &(i * i * i));
+        }
+
+        check_integrity(&map.root);
+        assert_eq!(map.len(), SQUARES_UPPER_LIM);
+    }
+
+    #[test]
+    fn test_single_key() {
+        let mut map = TrieMap::new();
+        map.insert(1, 2u);
+
+        match map.entry(1) {
+            Occupied(e) => { e.take(); },
+            _ => ()
+        }
+    }
 }
 
 #[cfg(test)]
@@ -1352,16 +1766,22 @@ mod bench {
     use std::rand::{weak_rng, Rng};
     use test::{Bencher, black_box};
 
-    use super::TrieMap;
+    use super::{TrieMap, Occupied, Vacant};
 
-    fn bench_iter(b: &mut Bencher, size: uint) {
+    const MAP_SIZE: uint = 1000;
+
+    fn random_map(size: uint) -> TrieMap<uint> {
         let mut map = TrieMap::<uint>::new();
         let mut rng = weak_rng();
 
         for _ in range(0, size) {
             map.insert(rng.gen(), rng.gen());
         }
+        map
+    }
 
+    fn bench_iter(b: &mut Bencher, size: uint) {
+        let map = random_map(size);
         b.iter(|| {
             for entry in map.iter() {
                 black_box(entry);
@@ -1388,30 +1808,30 @@ mod bench {
     fn bench_lower_bound(b: &mut Bencher) {
         let mut m = TrieMap::<uint>::new();
         let mut rng = weak_rng();
-        for _ in range(0u, 1000) {
+        for _ in range(0u, MAP_SIZE) {
             m.insert(rng.gen(), rng.gen());
         }
 
         b.iter(|| {
-                for _ in range(0u, 10) {
-                    m.lower_bound(rng.gen());
-                }
-            });
+            for _ in range(0u, 10) {
+                m.lower_bound(rng.gen());
+            }
+        });
     }
 
     #[bench]
     fn bench_upper_bound(b: &mut Bencher) {
         let mut m = TrieMap::<uint>::new();
         let mut rng = weak_rng();
-        for _ in range(0u, 1000) {
+        for _ in range(0u, MAP_SIZE) {
             m.insert(rng.gen(), rng.gen());
         }
 
         b.iter(|| {
-                for _ in range(0u, 10) {
-                    m.upper_bound(rng.gen());
-                }
-            });
+            for _ in range(0u, 10) {
+                m.upper_bound(rng.gen());
+            }
+        });
     }
 
     #[bench]
@@ -1420,22 +1840,38 @@ mod bench {
         let mut rng = weak_rng();
 
         b.iter(|| {
-                for _ in range(0u, 1000) {
-                    m.insert(rng.gen(), [1, .. 10]);
-                }
-            })
+            for _ in range(0u, MAP_SIZE) {
+                m.insert(rng.gen(), [1, .. 10]);
+            }
+        });
     }
+
+    #[bench]
+    fn bench_insert_large_entry(b: &mut Bencher) {
+        let mut m = TrieMap::<[uint, .. 10]>::new();
+        let mut rng = weak_rng();
+
+        b.iter(|| {
+            for _ in range(0u, MAP_SIZE) {
+                match m.entry(rng.gen()) {
+                    Occupied(mut e) => { e.set([1, ..10]); },
+                    Vacant(e) => { e.set([1, ..10]); }
+                }
+            }
+        });
+    }
+
     #[bench]
     fn bench_insert_large_low_bits(b: &mut Bencher) {
         let mut m = TrieMap::<[uint, .. 10]>::new();
         let mut rng = weak_rng();
 
         b.iter(|| {
-                for _ in range(0u, 1000) {
-                    // only have the last few bits set.
-                    m.insert(rng.gen::<uint>() & 0xff_ff, [1, .. 10]);
-                }
-            })
+            for _ in range(0u, MAP_SIZE) {
+                // only have the last few bits set.
+                m.insert(rng.gen::<uint>() & 0xff_ff, [1, .. 10]);
+            }
+        });
     }
 
     #[bench]
@@ -1444,21 +1880,72 @@ mod bench {
         let mut rng = weak_rng();
 
         b.iter(|| {
-                for _ in range(0u, 1000) {
-                    m.insert(rng.gen(), ());
-                }
-            })
+            for _ in range(0u, MAP_SIZE) {
+                m.insert(rng.gen(), ());
+            }
+        });
     }
+
     #[bench]
     fn bench_insert_small_low_bits(b: &mut Bencher) {
         let mut m = TrieMap::<()>::new();
         let mut rng = weak_rng();
 
         b.iter(|| {
-                for _ in range(0u, 1000) {
-                    // only have the last few bits set.
-                    m.insert(rng.gen::<uint>() & 0xff_ff, ());
+            for _ in range(0u, MAP_SIZE) {
+                // only have the last few bits set.
+                m.insert(rng.gen::<uint>() & 0xff_ff, ());
+            }
+        });
+    }
+
+    #[bench]
+    fn bench_get(b: &mut Bencher) {
+        let map = random_map(MAP_SIZE);
+        let keys: Vec<uint> = map.keys().collect();
+        b.iter(|| {
+            for key in keys.iter() {
+                black_box(map.get(key));
+            }
+        });
+    }
+
+    #[bench]
+    fn bench_get_entry(b: &mut Bencher) {
+        let mut map = random_map(MAP_SIZE);
+        let keys: Vec<uint> = map.keys().collect();
+        b.iter(|| {
+            for key in keys.iter() {
+                match map.entry(*key) {
+                    Occupied(e) => { black_box(e.get()); },
+                    _ => ()
                 }
-            })
+            }
+        });
+    }
+
+    #[bench]
+    fn bench_remove(b: &mut Bencher) {
+        b.iter(|| {
+            let mut map = random_map(MAP_SIZE);
+            let keys: Vec<uint> = map.keys().collect();
+            for key in keys.iter() {
+                black_box(map.remove(key));
+            }
+        });
+    }
+
+    #[bench]
+    fn bench_remove_entry(b: &mut Bencher) {
+        b.iter(|| {
+            let mut map = random_map(MAP_SIZE);
+            let keys: Vec<uint> = map.keys().collect();
+            for key in keys.iter() {
+                match map.entry(*key) {
+                    Occupied(e) => { black_box(e.take()); },
+                    _ => ()
+                }
+            }
+        });
     }
 }
