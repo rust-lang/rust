@@ -539,7 +539,7 @@ fn subst_receiver_types_in_method_ty(tcx: &ty::ctxt,
            method.fty.repr(tcx));
 
     ty::Method::new(
-        method.ident,
+        method.name,
         method_generics,
         method_fty,
         method.explicit_self,
