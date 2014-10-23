@@ -58,6 +58,7 @@ use core::default::Default;
 use core::fmt;
 use core::cmp;
 use core::iter::AdditiveIterator;
+use core::kinds::Sized;
 use core::prelude::{Char, Clone, Collection, Eq, Equiv, ImmutableSlice};
 use core::prelude::{Iterator, MutableSlice, None, Option, Ord, Ordering};
 use core::prelude::{PartialEq, PartialOrd, Result, AsSlice, Some, Tuple2};
@@ -84,7 +85,7 @@ Section: Creating a string
 */
 
 /// Methods for vectors of strings.
-pub trait StrVector {
+pub trait StrVector for Sized? {
     /// Concatenates a vector of strings.
     ///
     /// # Example
@@ -110,7 +111,7 @@ pub trait StrVector {
     fn connect(&self, sep: &str) -> String;
 }
 
-impl<'a, S: Str> StrVector for &'a [S] {
+impl<S: Str> StrVector for [S] {
     fn concat(&self) -> String {
         if self.is_empty() {
             return String::new();
@@ -157,7 +158,7 @@ impl<'a, S: Str> StrVector for &'a [S] {
     }
 }
 
-impl<'a, S: Str> StrVector for Vec<S> {
+impl<S: Str> StrVector for Vec<S> {
     #[inline]
     fn concat(&self) -> String {
         self.as_slice().concat()
