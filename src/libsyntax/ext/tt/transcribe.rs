@@ -227,9 +227,9 @@ pub fn tt_next_token(r: &mut TtReader) -> TokenAndSpan {
                 r.stack.last_mut().unwrap().idx += 1;
                 return ret_val;
             }
-            TtSequence(sp, tts, sep, zerok) => {
+            TtSequence(sp, tts, sep, kleene_op) => {
                 // FIXME(pcwalton): Bad copy.
-                match lockstep_iter_size(&TtSequence(sp, tts.clone(), sep.clone(), zerok), r) {
+                match lockstep_iter_size(&TtSequence(sp, tts.clone(), sep.clone(), kleene_op), r) {
                     LisUnconstrained => {
                         r.sp_diag.span_fatal(
                             sp.clone(), /* blame macro writer */
@@ -243,7 +243,7 @@ pub fn tt_next_token(r: &mut TtReader) -> TokenAndSpan {
                         }
                     LisConstraint(len, _) => {
                         if len == 0 {
-                            if !zerok {
+                            if kleene_op == ast::OneOrMore {
                                 // FIXME #2887 blame invoker
                                 r.sp_diag.span_fatal(sp.clone(),
                                                      "this must repeat at least once");

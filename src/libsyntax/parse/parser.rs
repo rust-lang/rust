@@ -2497,27 +2497,30 @@ impl<'a> Parser<'a> {
         return e;
     }
 
-    /// Parse an optional separator followed by a kleene-style
+    /// Parse an optional separator followed by a Kleene-style
     /// repetition token (+ or *).
-    pub fn parse_sep_and_zerok(&mut self) -> (Option<token::Token>, bool) {
-        fn parse_zerok(parser: &mut Parser) -> Option<bool> {
+    pub fn parse_sep_and_kleene_op(&mut self) -> (Option<token::Token>, ast::KleeneOp) {
+        fn parse_kleene_op(parser: &mut Parser) -> Option<ast::KleeneOp> {
             match parser.token {
-                token::BINOP(token::STAR) | token::BINOP(token::PLUS) => {
-                    let zerok = parser.token == token::BINOP(token::STAR);
+                token::BINOP(token::STAR) => {
                     parser.bump();
-                    Some(zerok)
+                    Some(ast::ZeroOrMore)
+                },
+                token::BINOP(token::PLUS) => {
+                    parser.bump();
+                    Some(ast::OneOrMore)
                 },
                 _ => None
             }
         };
 
-        match parse_zerok(self) {
-            Some(zerok) => return (None, zerok),
+        match parse_kleene_op(self) {
+            Some(kleene_op) => return (None, kleene_op),
             None => {}
         }
 
         let separator = self.bump_and_get();
-        match parse_zerok(self) {
+        match parse_kleene_op(self) {
             Some(zerok) => (Some(separator), zerok),
             None => self.fatal("expected `*` or `+`")
         }
@@ -2564,11 +2567,11 @@ impl<'a> Parser<'a> {
                         seq_sep_none(),
                         |p| p.parse_token_tree()
                     );
-                    let (s, z) = p.parse_sep_and_zerok();
+                    let (sep, repeat) = p.parse_sep_and_kleene_op();
                     let seq = match seq {
                         Spanned { node, .. } => node,
                     };
-                    TtSequence(mk_sp(sp.lo, p.span.hi), Rc::new(seq), s, z)
+                    TtSequence(mk_sp(sp.lo, p.span.hi), Rc::new(seq), sep, repeat)
                 } else {
                     TtNonterminal(sp, p.parse_ident())
                 }
@@ -2679,8 +2682,8 @@ impl<'a> Parser<'a> {
                 if ms.len() == 0u {
                     self.fatal("repetition body must be nonempty");
                 }
-                let (sep, zerok) = self.parse_sep_and_zerok();
-                MatchSeq(ms, sep, zerok, name_idx_lo, *name_idx)
+                let (sep, kleene_op) = self.parse_sep_and_kleene_op();
+                MatchSeq(ms, sep, kleene_op, name_idx_lo, *name_idx)
             } else {
                 let bound_to = self.parse_ident();
                 self.expect(&token::COLON);

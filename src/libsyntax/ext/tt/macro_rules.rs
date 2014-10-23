@@ -232,10 +232,11 @@ pub fn add_new_extension<'cx>(cx: &'cx mut ExtCtxt,
         ms(MatchSeq(vec!(
             ms(MatchNonterminal(lhs_nm, special_idents::matchers, 0u)),
             ms(MatchTok(FAT_ARROW)),
-            ms(MatchNonterminal(rhs_nm, special_idents::tt, 1u))), Some(SEMI), false, 0u, 2u)),
+            ms(MatchNonterminal(rhs_nm, special_idents::tt, 1u))), Some(SEMI),
+                                ast::OneOrMore, 0u, 2u)),
         //to phase into semicolon-termination instead of
         //semicolon-separation
-        ms(MatchSeq(vec!(ms(MatchTok(SEMI))), None, true, 2u, 2u)));
+        ms(MatchSeq(vec!(ms(MatchTok(SEMI))), None, ast::ZeroOrMore, 2u, 2u)));
 
 
     // Parse the macro_rules! invocation (`none` is for no interpolations):
