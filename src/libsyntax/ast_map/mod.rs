@@ -712,7 +712,7 @@ impl<'ast> NodeCollector<'ast> {
         if id as uint >= len {
             self.map.grow(id as uint - len + 1, NotPresent);
         }
-        *self.map.get_mut(id as uint) = entry;
+        self.map[id as uint] = entry;
     }
 
     fn insert(&mut self, id: NodeId, node: Node<'ast>) {

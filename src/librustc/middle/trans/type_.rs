@@ -284,7 +284,7 @@ impl Type {
                 return Vec::new();
             }
             let mut elts = Vec::from_elem(n_elts, 0 as TypeRef);
-            llvm::LLVMGetStructElementTypes(self.to_ref(), elts.get_mut(0));
+            llvm::LLVMGetStructElementTypes(self.to_ref(), &mut elts[0]);
             mem::transmute(elts)
         }
     }

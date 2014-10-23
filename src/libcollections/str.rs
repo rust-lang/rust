@@ -692,17 +692,17 @@ pub trait StrAllocating: Str {
         for (i, sc) in me.chars().enumerate() {
 
             let mut current = i;
-            *dcol.get_mut(0) = current + 1;
+            dcol[0] = current + 1;
 
             for (j, tc) in t.chars().enumerate() {
 
                 let next = dcol[j + 1];
 
                 if sc == tc {
-                    *dcol.get_mut(j + 1) = current;
+                    dcol[j + 1] = current;
                 } else {
-                    *dcol.get_mut(j + 1) = cmp::min(current, next);
-                    *dcol.get_mut(j + 1) = cmp::min(dcol[j + 1], dcol[j]) + 1;
+                    dcol[j + 1] = cmp::min(current, next);
+                    dcol[j + 1] = cmp::min(dcol[j + 1], dcol[j]) + 1;
                 }
 
                 current = next;

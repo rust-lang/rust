@@ -308,7 +308,7 @@ impl<'a> Condvar<'a> {
                     // To avoid :broadcast_heavy, we make a new waitqueue,
                     // swap it out with the old one, and broadcast on the
                     // old one outside of the little-lock.
-                    queue = Some(mem::replace(state.blocked.get_mut(condvar_id),
+                    queue = Some(mem::replace(&mut state.blocked[condvar_id],
                                               WaitQueue::new()));
                 } else {
                     out_of_bounds = Some(state.blocked.len());

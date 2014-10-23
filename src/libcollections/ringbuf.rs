@@ -58,7 +58,7 @@ impl<T> Deque<T> for RingBuf<T> {
 
     /// Returns a mutable reference to the first element in the `RingBuf`.
     fn front_mut<'a>(&'a mut self) -> Option<&'a mut T> {
-        if self.nelts > 0 { Some(self.get_mut(0)) } else { None }
+        if self.nelts > 0 { Some(&mut self[0]) } else { None }
     }
 
     /// Returns a reference to the last element in the `RingBuf`.
@@ -69,13 +69,13 @@ impl<T> Deque<T> for RingBuf<T> {
     /// Returns a mutable reference to the last element in the `RingBuf`.
     fn back_mut<'a>(&'a mut self) -> Option<&'a mut T> {
         let nelts = self.nelts;
-        if nelts > 0 { Some(self.get_mut(nelts - 1)) } else { None }
+        if nelts > 0 { Some(&mut self[nelts - 1]) } else { None }
     }
 
     /// Removes and returns the first element in the `RingBuf`, or `None` if it
     /// is empty.
     fn pop_front(&mut self) -> Option<T> {
-        let result = self.elts.get_mut(self.lo).take();
+        let result = self.elts[self.lo].take();
         if result.is_some() {
             self.lo = (self.lo + 1u) % self.elts.len();
             self.nelts -= 1u;
@@ -91,7 +91,7 @@ impl<T> Deque<T> for RingBuf<T> {
         if self.lo == 0u {
             self.lo = self.elts.len() - 1u;
         } else { self.lo -= 1u; }
-        *self.elts.get_mut(self.lo) = Some(t);
+        self.elts[self.lo] = Some(t);
         self.nelts += 1u;
     }
 }
@@ -102,14 +102,14 @@ impl<T> MutableSeq<T> for RingBuf<T> {
             grow(self.nelts, &mut self.lo, &mut self.elts);
         }
         let hi = self.raw_index(self.nelts);
-        *self.elts.get_mut(hi) = Some(t);
+        self.elts[hi] = Some(t);
         self.nelts += 1u;
     }
     fn pop(&mut self) -> Option<T> {
         if self.nelts > 0 {
             self.nelts -= 1;
             let hi = self.raw_index(self.nelts);
-            self.elts.get_mut(hi).take()
+            self.elts[hi].take()
         } else {
             None
         }
@@ -140,6 +140,7 @@ impl<T> RingBuf<T> {
     /// # Example
     ///
     /// ```rust
+    /// # #![allow(deprecated)]
     /// use std::collections::RingBuf;
     ///
     /// let mut buf = RingBuf::new();
@@ -149,12 +150,9 @@ impl<T> RingBuf<T> {
     /// *buf.get_mut(1) = 7;
     /// assert_eq!(buf[1], 7);
     /// ```
+    #[deprecated = "use indexing instead: `buf[index] = value`"]
     pub fn get_mut<'a>(&'a mut self, i: uint) -> &'a mut T {
-        let idx = self.raw_index(i);
-        match *self.elts.get_mut(idx) {
-            None => panic!(),
-            Some(ref mut v) => v
-        }
+        &mut self[i]
     }
 
     /// Swaps elements at indices `i` and `j`.
@@ -466,13 +464,16 @@ impl<A> Index<uint, A> for RingBuf<A> {
     }
 }
 
-// FIXME(#12825) Indexing will always try IndexMut first and that causes issues.
-/*impl<A> IndexMut<uint, A> for RingBuf<A> {
+impl<A> IndexMut<uint, A> for RingBuf<A> {
     #[inline]
-    fn index_mut<'a>(&'a mut self, index: &uint) -> &'a mut A {
-        self.get_mut(*index)
+    fn index_mut<'a>(&'a mut self, i: &uint) -> &'a mut A {
+        let idx = self.raw_index(*i);
+        match *(&mut self.elts[idx]) {
+            None => panic!(),
+            Some(ref mut v) => v
+        }
     }
-}*/
+}
 
 impl<A> FromIterator<A> for RingBuf<A> {
     fn from_iter<T: Iterator<A>>(iterator: T) -> RingBuf<A> {

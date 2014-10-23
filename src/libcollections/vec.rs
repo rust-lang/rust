@@ -46,7 +46,7 @@ use slice::{Items, MutItems};
 /// assert_eq!(vec.pop(), Some(2));
 /// assert_eq!(vec.len(), 1);
 ///
-/// *vec.get_mut(0) = 7i;
+/// vec[0] = 7i;
 /// assert_eq!(vec[0], 7);
 ///
 /// vec.push_all([1, 2, 3]);
@@ -414,11 +414,10 @@ impl<T> Index<uint,T> for Vec<T> {
     }
 }
 
-#[cfg(not(stage0))]
 impl<T> IndexMut<uint,T> for Vec<T> {
     #[inline]
     fn index_mut<'a>(&'a mut self, index: &uint) -> &'a mut T {
-        self.get_mut(*index)
+        &mut self.as_mut_slice()[*index]
     }
 }
 
@@ -712,14 +711,6 @@ impl<T> Vec<T> {
         }
     }
 
-    /// Deprecated, use `.extend(other.into_iter())`
-    #[inline]
-    #[deprecated = "use .extend(other.into_iter())"]
-    #[cfg(stage0)]
-    pub fn push_all_move(&mut self, other: Vec<T>) {
-            self.extend(other.into_iter());
-    }
-
     /// Returns a mutable slice of the elements of `self`.
     ///
     /// # Example
@@ -799,12 +790,13 @@ impl<T> Vec<T> {
     /// # Example
     ///
     /// ```
+    /// # #![allow(deprecated)]
     /// let mut vec = vec![1i, 2, 3];
     /// *vec.get_mut(1) = 4;
     /// assert_eq!(vec, vec![1i, 4, 3]);
     /// ```
     #[inline]
-    #[unstable = "this is likely to be moved to actual indexing"]
+    #[deprecated = "use `foo[index] = bar` instead"]
     pub fn get_mut<'a>(&'a mut self, index: uint) -> &'a mut T {
         &mut self.as_mut_slice()[index]
     }

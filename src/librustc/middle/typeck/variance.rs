@@ -994,7 +994,7 @@ impl<'a, 'tcx> SolveContext<'a, 'tcx> {
                             new_value,
                             term.to_string());
 
-                    *self.solutions.get_mut(inferred) = new_value;
+                    self.solutions[inferred] = new_value;
                     changed = true;
                 }
             }

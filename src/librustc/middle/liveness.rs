@@ -756,7 +756,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
     }
 
     fn init_empty(&mut self, ln: LiveNode, succ_ln: LiveNode) {
-        *self.successors.get_mut(ln.get()) = succ_ln;
+        self.successors[ln.get()] = succ_ln;
 
         // It is not necessary to initialize the
         // values to empty because this is the value
@@ -770,10 +770,10 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 
     fn init_from_succ(&mut self, ln: LiveNode, succ_ln: LiveNode) {
         // more efficient version of init_empty() / merge_from_succ()
-        *self.successors.get_mut(ln.get()) = succ_ln;
+        self.successors[ln.get()] = succ_ln;
 
         self.indices2(ln, succ_ln, |this, idx, succ_idx| {
-            *this.users.get_mut(idx) = this.users[succ_idx]
+            this.users[idx] = this.users[succ_idx]
         });
         debug!("init_from_succ(ln={}, succ={})",
                self.ln_str(ln), self.ln_str(succ_ln));
@@ -789,11 +789,11 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         let mut changed = false;
         self.indices2(ln, succ_ln, |this, idx, succ_idx| {
             changed |= copy_if_invalid(this.users[succ_idx].reader,
-                                       &mut this.users.get_mut(idx).reader);
+                                       &mut this.users[idx].reader);
             changed |= copy_if_invalid(this.users[succ_idx].writer,
-                                       &mut this.users.get_mut(idx).writer);
+                                       &mut this.users[idx].writer);
             if this.users[succ_idx].used && !this.users[idx].used {
-                this.users.get_mut(idx).used = true;
+                this.users[idx].used = true;
                 changed = true;
             }
         });
@@ -817,8 +817,8 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
     // this) so we just clear out all the data.
     fn define(&mut self, writer: LiveNode, var: Variable) {
         let idx = self.idx(writer, var);
-        self.users.get_mut(idx).reader = invalid_node();
-        self.users.get_mut(idx).writer = invalid_node();
+        self.users[idx].reader = invalid_node();
+        self.users[idx].writer = invalid_node();
 
         debug!("{} defines {} (idx={}): {}", writer.to_string(), var.to_string(),
                idx, self.ln_str(writer));
@@ -830,7 +830,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                ln.to_string(), acc, var.to_string(), self.ln_str(ln));
 
         let idx = self.idx(ln, var);
-        let user = self.users.get_mut(idx);
+        let user = &mut self.users[idx];
 
         if (acc & ACC_WRITE) != 0 {
             user.reader = invalid_node();

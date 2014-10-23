@@ -14,19 +14,14 @@ use clone::Clone;
 use cmp::{max, Eq, Equiv, PartialEq};
 use collections::{Collection, Mutable, MutableSet, Map, MutableMap};
 use default::Default;
-use fmt::Show;
-use fmt;
+use fmt::{mod, Show};
 use hash::{Hash, Hasher, RandomSipHasher};
-use iter::{Iterator, FromIterator, Extendable};
-use iter;
-use mem::replace;
-use mem;
+use iter::{mod, Iterator, FromIterator, Extendable};
+use mem::{mod, replace};
 use num;
-use ops::Deref;
+use ops::{Deref, Index, IndexMut};
 use option::{Some, None, Option};
-use result::{Ok, Err};
-use ops::Index;
-use core::result::Result;
+use result::{Result, Ok, Err};
 
 use super::table;
 use super::table::{
@@ -837,6 +832,7 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     /// # Example
     ///
     /// ```
+    /// # #![allow(deprecated)]
     /// use std::collections::HashMap;
     ///
     /// let mut map = HashMap::new();
@@ -852,11 +848,9 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     /// *map.get_mut(&"a") = -2;
     /// assert_eq!(map["a"], -2);
     /// ```
+    #[deprecated = "use indexing instead: `&mut map[key]`"]
     pub fn get_mut<'a>(&'a mut self, k: &K) -> &'a mut V {
-        match self.find_mut(k) {
-            Some(v) => v,
-            None => panic!("no entry found for key")
-        }
+        &mut self[*k]
     }
 
     /// Return true if the map contains a value for the specified key,
@@ -1194,13 +1188,15 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> Index<K, V> for HashMap<K, V, H> {
     }
 }
 
-// FIXME(#12825) Indexing will always try IndexMut first and that causes issues.
-/*impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> ops::IndexMut<K, V> for HashMap<K, V, H> {
+impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> IndexMut<K, V> for HashMap<K, V, H> {
     #[inline]
     fn index_mut<'a>(&'a mut self, index: &K) -> &'a mut V {
-        self.get_mut(index)
+        match self.find_mut(index) {
+            Some(v) => v,
+            None => panic!("no entry found for key")
+        }
     }
-}*/
+}
 
 /// HashMap iterator
 pub struct Entries<'a, K: 'a, V: 'a> {

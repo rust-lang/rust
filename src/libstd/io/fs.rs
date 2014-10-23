@@ -963,7 +963,7 @@ mod test {
 
     macro_rules! error( ($e:expr, $s:expr) => (
         match $e {
-            Ok(val) => panic!("Unexpected success. Should've been: {}", $s),
+            Ok(_) => panic!("Unexpected success. Should've been: {}", $s),
             Err(ref err) => assert!(err.to_string().as_slice().contains($s.as_slice()),
                                     format!("`{}` did not contain `{}`", err, $s))
         }
