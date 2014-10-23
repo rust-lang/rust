@@ -36,7 +36,8 @@ use syntax::ast;
 use syntax::codemap;
 use syntax::codemap::Span;
 use util::common::indent;
-use util::ppaux::{bound_region_to_string, ty_to_string, trait_ref_to_string, Repr};
+use util::ppaux::{bound_region_to_string, ty_to_string};
+use util::ppaux::{trait_ref_to_string, Repr};
 
 use self::coercion::Coerce;
 use self::combine::{Combine, CombineFields};
@@ -900,31 +901,24 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                                                 err: Option<&ty::type_err>) {
         debug!("hi! expected_ty = {}, actual_ty = {}", expected_ty, actual_ty);
 
-        let error_str = err.map_or("".to_string(), |t_err| {
-            format!(" ({})", ty::type_err_to_str(self.tcx, t_err))
-        });
         let resolved_expected = expected_ty.map(|e_ty| {
             self.resolve_type_vars_if_possible(e_ty)
         });
-        if !resolved_expected.map_or(false, |e| { ty::type_is_error(e) }) {
-            match resolved_expected {
-                None => {
-                    self.tcx
-                        .sess
-                        .span_err(sp,
-                                  format!("{}{}",
-                                          mk_msg(None, actual_ty),
-                                          error_str).as_slice())
+
+        match resolved_expected {
+            Some(t) if ty::type_is_error(t) => (),
+            _ => {
+                let error_str = err.map_or("".to_string(), |t_err| {
+                    format!(" ({})", ty::type_err_to_str(self.tcx, t_err))
+                });
+
+                self.tcx.sess.span_err(sp, format!("{}{}",
+                    mk_msg(resolved_expected.map(|t| self.ty_to_string(t)), actual_ty),
+                    error_str).as_slice());
+
+                for err in err.iter() {
+                    ty::note_and_explain_type_err(self.tcx, *err)
                 }
-                Some(e) => {
-                    self.tcx.sess.span_err(sp,
-                        format!("{}{}",
-                                mk_msg(Some(self.ty_to_string(e)), actual_ty),
-                                error_str).as_slice());
-                }
-            }
-            for err in err.iter() {
-                ty::note_and_explain_type_err(self.tcx, *err)
             }
         }
     }
@@ -945,25 +939,18 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     }
 
     pub fn report_mismatched_types(&self,
-                                   sp: Span,
-                                   e: ty::t,
-                                   a: ty::t,
+                                   span: Span,
+                                   expected: ty::t,
+                                   actual: ty::t,
                                    err: &ty::type_err) {
-        let resolved_expected =
-            self.resolve_type_vars_if_possible(e);
-        let mk_msg = match ty::get(resolved_expected).sty {
-            // Don't report an error if expected is ty_err
-            ty::ty_err => return,
-            _ => {
-                // if I leave out : String, it infers &str and complains
-                |actual: String| {
-                    format!("mismatched types: expected `{}`, found `{}`",
-                            self.ty_to_string(resolved_expected),
-                            actual)
-                }
-            }
+        let trace = TypeTrace {
+            origin: Misc(span),
+            values: Types(ty::expected_found {
+                expected: expected,
+                found: actual
+            })
         };
-        self.type_error_message(sp, mk_msg, a, Some(err));
+        self.report_and_explain_type_error(trace, err);
     }
 
     pub fn replace_late_bound_regions_with_fresh_regions(&self,
