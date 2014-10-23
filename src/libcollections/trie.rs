@@ -515,13 +515,12 @@ impl<T> Index<uint, T> for TrieMap<T> {
     }
 }
 
-// FIXME(#12825) Indexing will always try IndexMut first and that causes issues.
-/*impl<T> IndexMut<uint, T> for TrieMap<T> {
+impl<T> IndexMut<uint, T> for TrieMap<T> {
     #[inline]
     fn index_mut<'a>(&'a mut self, i: &uint) -> &'a mut T {
         self.find_mut(i).expect("key not present")
     }
-}*/
+}
 
 /// A set implemented as a radix trie.
 ///

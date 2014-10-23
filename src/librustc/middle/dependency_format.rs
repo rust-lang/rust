@@ -161,7 +161,7 @@ fn calculate_type(sess: &session::Session,
         if src.dylib.is_none() && !formats.contains_key(&cnum) {
             assert!(src.rlib.is_some());
             add_library(sess, cnum, cstore::RequireStatic, &mut formats);
-            *ret.get_mut(cnum as uint - 1) = Some(cstore::RequireStatic);
+            ret[cnum as uint - 1] = Some(cstore::RequireStatic);
             debug!("adding staticlib: {}", data.name);
         }
     });

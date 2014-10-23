@@ -214,13 +214,13 @@ impl MoveData {
     fn set_path_first_move(&self,
                            index: MovePathIndex,
                            first_move: MoveIndex) {
-        self.paths.borrow_mut().get_mut(index.get()).first_move = first_move
+        (*self.paths.borrow_mut())[index.get()].first_move = first_move
     }
 
     fn set_path_first_child(&self,
                             index: MovePathIndex,
                             first_child: MovePathIndex) {
-        self.paths.borrow_mut().get_mut(index.get()).first_child = first_child
+        (*self.paths.borrow_mut())[index.get()].first_child = first_child
     }
 
     fn move_next_move(&self, index: MoveIndex) -> MoveIndex {

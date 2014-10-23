@@ -257,12 +257,12 @@ impl<K: Ord, V> Index<K, V> for TreeMap<K, V> {
     }
 }
 
-/*impl<K: Ord, V> IndexMut<K, V> for TreeMap<K, V> {
+impl<K: Ord, V> IndexMut<K, V> for TreeMap<K, V> {
     #[inline]
     fn index_mut<'a>(&'a mut self, i: &K) -> &'a mut V {
         self.find_mut(i).expect("no entry found for key")
     }
-}*/
+}
 
 impl<K: Ord, V> TreeMap<K, V> {
     /// Creates an empty `TreeMap`.

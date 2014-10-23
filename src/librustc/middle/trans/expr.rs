@@ -1331,7 +1331,7 @@ fn trans_struct<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                           field_ty.name == field.ident.node.name);
             match opt_pos {
                 Some(i) => {
-                    *need_base.get_mut(i) = false;
+                    need_base[i] = false;
                     (i, &*field.expr)
                 }
                 None => {

@@ -261,7 +261,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
         if snapshot.length == 0 {
             undo_log.truncate(0);
         } else {
-            *undo_log.get_mut(snapshot.length) = CommitedSnapshot;
+            (*undo_log)[snapshot.length] = CommitedSnapshot;
         }
     }
 
