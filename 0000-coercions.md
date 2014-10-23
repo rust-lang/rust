@@ -5,7 +5,7 @@
 # Summary
 
 Describe the various kinds of type conversions available in Rust and suggest
-some tweeks.
+some tweaks.
 
 Provide a mechanism for smart pointers to be part of the DST coercion system.
 
@@ -177,7 +177,7 @@ And where coerce_inner is defined as
 
 * coerce_inner(`(..., T)`) = `(..., coerce_inner(T))`.
 
-Note that coercing from sub-trait to a super-trait it a new coercion and is non-
+Note that coercing from sub-trait to a super-trait is a new coercion and is non-
 trivial. One implementation strategy which avoids re-computation of vtables is
 given in RFC PR #250.
 
@@ -259,6 +259,8 @@ Here is an example implementation of `CoerceUnsized` for `Rc`:
 
 ```
 impl<Sized? T, Sized? U> CoerceUnsized<Rc<T>> for Rc<U> {
+    where U: Unsize<T>
+
     fn coerce(self) -> Rc<T> {
         let new_ptr: *const RcBox<T> = fat_pointer_convert(self._ptr);
         Rc { _ptr: new_ptr }
@@ -304,7 +306,7 @@ reference apply. (Note that the implementation of the coercion isn't so simple,
 it is embedded in the search for candidate methods, but from the point of view
 of type conversions, that is not relevant).
 
-Alternatively, a recevier coercion may be thought of as a two stage process.
+Alternatively, a receiver coercion may be thought of as a two stage process.
 First, we dereference and then take the address until the source type has the
 same shape (i.e., has the same kind and number of indirection) as the target
 type. Then we try to coerce the adjusted source type to the target type using
@@ -317,13 +319,20 @@ descriptions are equivalent.
 Casting is indicated by the `as` keyword. A cast `e as U` is valid if one of the
 following holds:
 
-* `e` has type `T` and `T` coerces to `U`
+* `e` has type `T` and `T` coerces to `U`;
 
-* `e` is a C-like enum and `U` is any integer type, `bool`, or a raw pointer;
+* `e` has type `*T` and `U` is `*U_0` (i.e., between any raw pointers);
 
-* `T == u8` and `U == char`;
+* `e` has type `*T` and `U` is `uint` , or vice versa;
 
-* `T == &[V]` or `T == &[V, ..n]` and `U == *V`.
+* `e` has type `T` and `T` and `U` are any numeric types;
+
+* `e` is a C-like enum and `U` is any integer type, `bool`;
+
+* `e` has type `T` and `T == u8` and `U == char`;
+
+* `e` has type `T` and `T == &[V, ..n]` or `T == &V` and `U == *const V`, and
+  similarly for the mutable variants to either `*const V` or `*mut V`.
 
 Casting is not transitive, that is, even if `e as U1 as U2` is a valid
 expression, `e as U2` is not necessarily so (in fact it will only be valid if
@@ -420,6 +429,9 @@ worse.
 
 These rules could be tweaked in any number of ways.
 
+Specifically for the DST custom coercions, the compiler could throw an error if
+it finds a user-supplied implementation of the `Unsize` trait, rather than
+silently ignoring them.
 
 # Unresolved questions
 
