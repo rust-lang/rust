@@ -920,7 +920,7 @@ pub mod placer {
 
     /// The first argument, `<place>` in `box (<place>) <value>`, must
     /// implement `Placer`.
-    pub fn parenthesized_input_to_box_must_be_placer<Sized? Data, Owner, A, P>(p: P) -> P
+    pub fn parenthesized_input_to_box_must_be_placer<'a, Sized? Data, Owner, A, P>(p: &'a P) -> &'a P
         where A:PlacementAgent<Data, Owner>,
               P:Placer<Data, Owner, A>+Sized {
         p

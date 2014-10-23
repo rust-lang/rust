@@ -88,8 +88,8 @@ pub fn expand_expr(e: P<ast::Expr>, fld: &mut MacroExpander) -> P<ast::Expr> {
             // analogous to:
             //
             // {
-            //     fn force_placer<D,T,I,P>(p: P) -> P where P : Placer<D,T,I> { p }
-            //     let place = force_placer(<place_expr>);
+            //     fn force_placer<'a, D,T,I,P>(p: &'a P) -> &'a P where P : Placer<D,T,I> { p }
+            //     let place = force_placer(& <place_expr> );
             //     let agent = place.make_place();
             //     let value = <value_expr>
             //     unsafe {
@@ -192,22 +192,21 @@ pub fn expand_expr(e: P<ast::Expr>, fld: &mut MacroExpander) -> P<ast::Expr> {
                 span,
                 vec![],
                 vec![
-                    // let place1 = <place_expr>; // default of ::std::boxed::HEAP
-                    stmt_let(place_span, place_ident, match maybe_place {
-                        Some(place_expr) => place_expr,
-                        None => fld.cx.expr_path(boxed_heap()),
-                    }),
+                    // let place1 = & <place_expr> ; // default of ::std::boxed::HEAP
+                    stmt_let(place_span,
+                             place_ident,
+                             fld.cx.expr_addr_of(place_span, match maybe_place {
+                                 Some(place_expr) => place_expr,
+                                 None => fld.cx.expr_path(boxed_heap()),
+                             })),
 
                     // See "FIXME RE place2" above.
                     //
                     // // let place2 = force_placer(place1);
                     // stmt_let(place_span, place2_ident, make_call(force_placer(), vec![place])),
 
-                    // let agent = placer::make_place(&place1);
-                    stmt_let(place_span, agent_ident,
-                             make_call(placer_make_place(),
-                                       vec![fld.cx.expr_addr_of(place_span,
-                                                                place)])),
+                    // let agent = placer::make_place(place1);
+                    stmt_let(place_span, agent_ident, make_call(placer_make_place(), vec![place])),
 
                     // let value = <value_expr>;
                     stmt_let(value_span, value_ident, value_expr),
