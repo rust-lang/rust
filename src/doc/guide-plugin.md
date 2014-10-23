@@ -151,8 +151,7 @@ higher-level syntax elements like expressions:
 fn expand_foo(cx: &mut ExtCtxt, sp: Span, args: &[TokenTree])
         -> Box<MacResult+'static> {
 
-    let mut parser =
-        parse::new_parser_from_tts(cx.parse_sess(), cx.cfg(), args.to_slice())
+    let mut parser = cx.new_parser_from_tts(args);
 
     let expr: P<Expr> = parser.parse_expr();
 ```
