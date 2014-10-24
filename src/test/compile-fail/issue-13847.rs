@@ -9,5 +9,5 @@
 // except according to those terms.
 
 fn main() {
-    return.is_failure //~ ERROR unconstrained type variable
+    return.is_failure //~ ERROR the type of this value must be known in this context
 }

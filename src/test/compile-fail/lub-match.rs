@@ -33,7 +33,8 @@ pub fn opt_str1<'a>(maybestr: &'a Option<String>) -> &'a str {
 }
 
 pub fn opt_str2<'a>(maybestr: &'a Option<String>) -> &'static str {
-    match *maybestr {  //~ ERROR cannot infer an appropriate lifetime for automatic coercion due to
+    match *maybestr {
+    //~^ ERROR cannot infer an appropriate lifetime due to conflicting requirements
         None => "(none)",
         Some(ref s) => {
             let s: &'a str = s.as_slice();
@@ -43,7 +44,8 @@ pub fn opt_str2<'a>(maybestr: &'a Option<String>) -> &'static str {
 }
 
 pub fn opt_str3<'a>(maybestr: &'a Option<String>) -> &'static str {
-    match *maybestr {  //~ ERROR cannot infer an appropriate lifetime for automatic coercion due to
+    match *maybestr {
+    //~^ ERROR cannot infer an appropriate lifetime due to conflicting requirements
         Some(ref s) => {
             let s: &'a str = s.as_slice();
             s

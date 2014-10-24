@@ -9,8 +9,9 @@
 // except according to those terms.
 
 // Tests that a function with a ! annotation always actually fails
-// error-pattern: some control paths may return
 
-fn bad_bang(i: uint) -> ! { println!("{}", 3i); }
+fn bad_bang(i: uint) -> ! { //~ ERROR computation may converge in a function marked as diverging
+    println!("{}", 3i);
+}
 
 fn main() { bad_bang(5u); }
