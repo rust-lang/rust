@@ -65,6 +65,7 @@
 
 pub use core_collections::hash::{Hash, Hasher, Writer, hash, sip};
 
+use core::kinds::Sized;
 use default::Default;
 use rand::Rng;
 use rand;
@@ -91,7 +92,7 @@ impl RandomSipHasher {
 
 impl Hasher<sip::SipState> for RandomSipHasher {
     #[inline]
-    fn hash<T: Hash<sip::SipState>>(&self, value: &T) -> u64 {
+    fn hash<Sized? T: Hash<sip::SipState>>(&self, value: &T) -> u64 {
         self.hasher.hash(value)
     }
 }

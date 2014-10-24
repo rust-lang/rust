@@ -20,6 +20,6 @@ impl Registry {
     }
 
     pub fn find_description(&self, code: &str) -> Option<&'static str> {
-        self.descriptions.find_equiv(&code).map(|desc| *desc)
+        self.descriptions.find_equiv(code).map(|desc| *desc)
     }
 }

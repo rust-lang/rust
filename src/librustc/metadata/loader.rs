@@ -631,7 +631,7 @@ impl<'a> Context<'a> {
     }
 
     fn find_commandline_library(&mut self) -> Option<Library> {
-        let locs = match self.sess.opts.externs.find_equiv(&self.crate_name) {
+        let locs = match self.sess.opts.externs.find_equiv(self.crate_name) {
             Some(s) => s,
             None => return None,
         };

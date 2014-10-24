@@ -1670,7 +1670,7 @@ fn declare_local(bcx: Block,
 }
 
 fn file_metadata(cx: &CrateContext, full_path: &str) -> DIFile {
-    match debug_context(cx).created_files.borrow().find_equiv(&full_path) {
+    match debug_context(cx).created_files.borrow().find_equiv(full_path) {
         Some(file_metadata) => return *file_metadata,
         None => ()
     }
