@@ -72,7 +72,7 @@ use collections::str::SendStr;
 /// # fn main() {
 ///
 /// // Create a task using a native runtime
-/// let task = native::task::new((0, uint::MAX));
+/// let task = native::task::new((0, uint::MAX), 0);
 ///
 /// // Run some code, catching any possible failures
 /// let task = task.run(|| {
@@ -197,7 +197,7 @@ impl Task {
     /// # fn main() {
     ///
     /// // Create a new native task
-    /// let task = native::task::new((0, uint::MAX));
+    /// let task = native::task::new((0, uint::MAX), 0);
     ///
     /// // Run some code once and then destroy this task
     /// task.run(|| {
