@@ -1782,7 +1782,7 @@ pub mod bytes {
 
     use collections::Collection;
     use slice::{MutableSlice, ImmutableSlice};
-    use option::{Option, Some, None};
+    use option::{Option, Some};
     use iter::{Iterator};
     use ptr::{mod, RawPtr};
     use {mem, cmp};
@@ -1900,11 +1900,7 @@ pub mod bytes {
 
         // If we broke out of the previous loop, then one of the following `UINT_SIZE`
         // bytes will contain `needle`.
-        if let Some(i) = haystack.slice_from(pos).iter().position(|&c| c == needle) {
-            return Some(i + pos);
-        }
-
-        None
+        haystack.slice_from(pos).iter().position(|&c| c == needle).map(|i| i + pos)
     }
 }
 
