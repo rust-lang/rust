@@ -287,7 +287,7 @@ want to be able to cache results even when all the types in the trait
 reference are not fully known. In that case, it may happen that the
 trait selection process is also influencing type variables, so we have
 to be able to not only cache the *result* of the selection process,
-but *reply* its effects on the type variables.
+but *replay* its effects on the type variables.
 
 ## An example
 
