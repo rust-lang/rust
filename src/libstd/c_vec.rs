@@ -165,11 +165,11 @@ mod tests {
     use super::CVec;
     use libc;
     use ptr;
-    use rt::libc_heap::malloc_raw;
 
     fn malloc(n: uint) -> CVec<u8> {
         unsafe {
-            let mem = malloc_raw(n);
+            let mem = libc::malloc(n as libc::size_t);
+            if mem.is_null() { fail!("out of memory") }
 
             CVec::new_with_dtor(mem as *mut u8, n,
                 proc() { libc::free(mem as *mut libc::c_void); })
