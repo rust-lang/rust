@@ -38,8 +38,8 @@ pub unsafe fn reallocate(ptr: *mut u8, old_size: uint, size: uint, align: uint) 
 /// Extends or shrinks the allocation referenced by `ptr` to `size` bytes of
 /// memory in-place.
 ///
-/// Returns true if successful, otherwise false if the allocation was not
-/// altered.
+/// If the operation succeeds, it returns `usable_size(size, align)` and if it
+/// fails (or is a no-op) it returns `usable_size(old_size, align)`.
 ///
 /// Behavior is undefined if the requested size is 0 or the alignment is not a
 /// power of 2. The alignment must be no larger than the largest supported page
@@ -49,7 +49,7 @@ pub unsafe fn reallocate(ptr: *mut u8, old_size: uint, size: uint, align: uint) 
 /// create the allocation referenced by `ptr`. The `old_size` parameter may be
 /// any value in range_inclusive(requested_size, usable_size).
 #[inline]
-pub unsafe fn reallocate_inplace(ptr: *mut u8, old_size: uint, size: uint, align: uint) -> bool {
+pub unsafe fn reallocate_inplace(ptr: *mut u8, old_size: uint, size: uint, align: uint) -> uint {
     imp::reallocate_inplace(ptr, old_size, size, align)
 }
 
@@ -178,16 +178,10 @@ mod imp {
     }
 
     #[inline]
-    pub unsafe fn reallocate_inplace(ptr: *mut u8, old_size: uint, size: uint,
-                                     align: uint) -> bool {
+    pub unsafe fn reallocate_inplace(ptr: *mut u8, _old_size: uint, size: uint,
+                                     align: uint) -> uint {
         let flags = align_to_flags(align);
-        let new_size = je_xallocx(ptr as *mut c_void, size as size_t, 0, flags) as uint;
-        // checking for failure to shrink is tricky
-        if size < old_size {
-            usable_size(size, align) == new_size as uint
-        } else {
-            new_size >= size
-        }
+        je_xallocx(ptr as *mut c_void, size as size_t, 0, flags) as uint
     }
 
     #[inline]
@@ -260,9 +254,9 @@ mod imp {
     }
 
     #[inline]
-    pub unsafe fn reallocate_inplace(_ptr: *mut u8, old_size: uint, size: uint,
-                                     _align: uint) -> bool {
-        size == old_size
+    pub unsafe fn reallocate_inplace(_ptr: *mut u8, old_size: uint, _size: uint,
+                                     _align: uint) -> uint {
+        old_size
     }
 
     #[inline]
@@ -328,9 +322,9 @@ mod imp {
     }
 
     #[inline]
-    pub unsafe fn reallocate_inplace(_ptr: *mut u8, old_size: uint, size: uint,
-                                     _align: uint) -> bool {
-        size == old_size
+    pub unsafe fn reallocate_inplace(_ptr: *mut u8, old_size: uint, _size: uint,
+                                     _align: uint) -> uint {
+        old_size
     }
 
     #[inline]
@@ -363,7 +357,7 @@ mod test {
             let ptr = heap::allocate(size, 8);
             let ret = heap::reallocate_inplace(ptr, size, size, 8);
             heap::deallocate(ptr, size, 8);
-            assert!(ret);
+            assert_eq!(ret, heap::usable_size(size, 8));
         }
     }
 
