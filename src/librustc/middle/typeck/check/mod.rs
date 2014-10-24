@@ -5703,6 +5703,11 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &ast::ForeignItem) {
 
             "return_address" => (0, vec![], ty::mk_imm_ptr(tcx, ty::mk_u8())),
 
+            "expect8" => (0, vec![ty::mk_u8(), ty::mk_u8()], ty::mk_u8()),
+            "expect16" => (0, vec![ty::mk_u16(), ty::mk_u16()], ty::mk_u16()),
+            "expect32" => (0, vec![ty::mk_u32(), ty::mk_u32()], ty::mk_u32()),
+            "expect64" => (0, vec![ty::mk_u64(), ty::mk_u64()], ty::mk_u64()),
+
             ref other => {
                 span_err!(tcx.sess, it.span, E0093,
                     "unrecognized intrinsic function: `{}`", *other);
