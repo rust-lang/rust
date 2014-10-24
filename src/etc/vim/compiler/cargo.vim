@@ -6,6 +6,7 @@
 if exists('current_compiler')
   finish
 endif
+runtime compiler/rustc.vim
 let current_compiler = "cargo"
 
 if exists(':CompilerSet') != 2
@@ -13,28 +14,18 @@ if exists(':CompilerSet') != 2
 endif
 
 if exists('g:cargo_makeprg_params')
-    execute 'CompilerSet makeprg=cargo\ '.g:cargo_makeprg_params.'\ $*'
+    execute 'CompilerSet makeprg=cargo\ '.escape(g:cargo_makeprg_params, ' \|"').'\ $*'
 else
     CompilerSet makeprg=cargo\ $*
 endif
 
-CompilerSet errorformat=
-			\%f:%l:%c:\ %t%*[^:]:\ %m,
-			\%f:%l:%c:\ %*\\d:%*\\d\ %t%*[^:]:\ %m,
-			\%-G%f:%l\ %s,
-			\%-G%*[\ ]^,
-			\%-G%*[\ ]^%*[~],
-			\%-G%*[\ ]...
-
 " Allow a configurable global Cargo.toml name. This makes it easy to
 " support variations like 'cargo.toml'.
-if !exists('g:cargo_manifest_name')
-    let g:cargo_manifest_name = 'Cargo.toml'
-endif
+let s:cargo_manifest_name = get(g:, 'cargo_manifest_name', 'Cargo.toml')
 
-let s:local_manifest = fnamemodify(findfile(g:cargo_manifest_name, '.;'), ':p:h').'/'
-
+let s:local_manifest = findfile(s:cargo_manifest_name, '.;')
 if s:local_manifest != ''
+	let s:local_manifest = fnamemodify(s:local_manifest, ':p:h').'/'
     augroup cargo
         au!
         au QuickfixCmdPost make call s:FixPaths()
@@ -46,23 +37,23 @@ if s:local_manifest != ''
         let qflist = getqflist()
         let manifest = s:local_manifest
         for qf in qflist
-            if !qf['valid']
-                let m = matchlist(qf['text'], '\v.*\(file://(.*)\)$')
-                if len(m) > 0
+            if !qf.valid
+                let m = matchlist(qf.text, '(file://\(.*\))$')
+                if !empty(m)
                     let manifest = m[1].'/'
                     " Manually strip another slash if needed; usually just an
                     " issue on Windows.
-                    if manifest =~ '^/[A-Z]*:/'
+                    if manifest =~ '^/[A-Z]:/'
                         let manifest = manifest[1:]
                     endif
                 endif
                 continue
             endif
-            let filename = bufname(qf['bufnr'])
+            let filename = bufname(qf.bufnr)
             if filereadable(filename)
                 continue
             endif
-            let qf['filename'] = simplify(manifest.filename)
+            let qf.filename = simplify(manifest.filename)
             call remove(qf, 'bufnr')
         endfor
         call setqflist(qflist, 'r')
