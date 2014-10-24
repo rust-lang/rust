@@ -1502,6 +1502,36 @@ impl MemoryMap {
         }
     }
 
+    /// Change protection attributes of this map.
+    ///
+    /// Only accepts protection-related MapOptions (MapReadable, MapWritable, MapExecutable)
+    pub fn protect(&mut self, options: &[MapOption]) -> Result<(), MapError> {
+        let mut prot = 0;
+
+        for &o in options.iter() {
+            match o {
+                MapReadable => { prot |= libc::PROT_READ; },
+                MapWritable => { prot |= libc::PROT_WRITE; },
+                MapExecutable => { prot |= libc::PROT_EXEC; },
+                a => { fail!("Invalid memory protection option"); }
+            }
+        }
+
+        let r = unsafe {
+            libc::mprotect(self.data as *mut c_void, self.len as libc::size_t, prot)
+        };
+
+        if r == -1 {
+            Err(match errno() as c_int {
+                libc::EACCES => ErrFdNotAvail,
+                libc::ENOMEM => ErrNoMem,
+                code => ErrUnknown(code as int)
+            })
+        } else {
+            Ok(())
+        }
+    }
+
     /// Granularity that the offset or address must be for `MapOffset` and
     /// `MapAddr` respectively.
     pub fn granularity() -> uint {
@@ -1613,6 +1643,47 @@ impl MemoryMap {
                     })
                 }
             }
+        }
+    }
+
+    /// Change protection attributes of this map.
+    /// Only accepts protection-related MapOptions (MapReadable, MapWritable, MapExecutable)
+    pub fn protect(&mut self, option: &[MapOption]) -> Result<(), MapError> {
+        use libc::types::os::arch::extra::{LPVOID, DWORD, SIZE_T, LPDWORD};
+
+        let mut readable = false;
+        let mut writable = false;
+        let mut executable = false;
+
+        for &o in options.iter() {
+            match o {
+                MapReadable => { readable = true; },
+                MapWritable => { writable = true; },
+                MapExecutable => { executable = true; },
+                a => { fail!("Invalid memory protection option"); }
+            }
+        }
+
+        let flProtect = match (executable, readable, writable) {
+            (false, false, false) if fd == -1 => libc::PAGE_NOACCESS,
+            (false, true, false) => libc::PAGE_READONLY,
+            (false, true, true) => libc::PAGE_READWRITE,
+            (true, false, false) if fd == -1 => libc::PAGE_EXECUTE,
+            (true, true, false) => libc::PAGE_EXECUTE_READ,
+            (true, true, true) => libc::PAGE_EXECUTE_READWRITE,
+            _ => return Err(ErrUnsupProt)
+        };
+
+        let old: DWORD = 0;
+
+        let r = unsafe {
+            libc::VirtualProtect(self.data as LPVOID, self.size as SIZE_T,
+                                 flProtect as DWORD, old as LPDWORD)
+        };
+
+        match r as uint {
+            0 => Err(ErrUnknown(errno())),
+            _ => Ok(()),
         }
     }
 
