@@ -4488,9 +4488,10 @@ range(1i, 100i).map(|x| println!("{}", x));
 If you are trying to execute a closure on an iterator for its side effects,
 just use `for` instead.
 
-There are tons of interesting iterator adapters. `take(n)` will get the
-first `n` items out of an iterator, and return them as a list. Let's
-try it out with our infinite iterator from before, `count()`:
+There are tons of interesting iterator adapters. `take(n)` will return an
+iterator over the next `n` elements of the original iterator, note that this
+has no side effect on the original iterator. Let's try it out with our infinite
+iterator from before, `count()`:
 
 ```{rust}
 for i in std::iter::count(1i, 5i).take(5) {
