@@ -179,8 +179,8 @@ impl OverloadedCallType {
             MethodStaticUnboxedClosure(def_id) => {
                 OverloadedCallType::from_unboxed_closure(tcx, def_id)
             }
-            MethodTypeParam(MethodParam { trait_ref: ref trait_ref, .. }) |
-            MethodTraitObject(MethodObject { trait_ref: ref trait_ref, .. }) => {
+            MethodTypeParam(MethodParam { ref trait_ref, .. }) |
+            MethodTraitObject(MethodObject { ref trait_ref, .. }) => {
                 OverloadedCallType::from_trait_id(tcx, trait_ref.def_id)
             }
         }

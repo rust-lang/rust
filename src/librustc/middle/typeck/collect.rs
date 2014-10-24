@@ -71,7 +71,7 @@ use syntax::visit;
 pub fn collect_item_types(ccx: &CrateCtxt) {
     fn collect_intrinsic_type(ccx: &CrateCtxt,
                               lang_item: ast::DefId) {
-        let ty::Polytype { ty: ty, .. } =
+        let ty::Polytype { ty, .. } =
             ccx.get_item_ty(lang_item);
         ccx.tcx.intrinsic_defs.borrow_mut().insert(lang_item, ty);
     }

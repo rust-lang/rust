@@ -102,7 +102,7 @@ fn trans<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, expr: &ast::Expr)
 
     fn datum_callee<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, expr: &ast::Expr)
                                 -> Callee<'blk, 'tcx> {
-        let DatumBlock {bcx: mut bcx, datum} = expr::trans(bcx, expr);
+        let DatumBlock {mut bcx, datum} = expr::trans(bcx, expr);
         match ty::get(datum.ty).sty {
             ty::ty_bare_fn(..) => {
                 let llval = datum.to_llscalarish(bcx);

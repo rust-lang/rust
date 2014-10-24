@@ -1143,6 +1143,40 @@ impl LintPass for UnusedImportBraces {
     }
 }
 
+declare_lint!(NON_SHORTHAND_FIELD_PATTERNS, Warn,
+              "using `Struct { x: x }` instead of `Struct { x }`")
+
+pub struct NonShorthandFieldPatterns;
+
+impl LintPass for NonShorthandFieldPatterns {
+    fn get_lints(&self) -> LintArray {
+        lint_array!(NON_SHORTHAND_FIELD_PATTERNS)
+    }
+
+    fn check_pat(&mut self, cx: &Context, pat: &ast::Pat) {
+        let def_map = cx.tcx.def_map.borrow();
+        match pat.node {
+            ast::PatStruct(_, ref v, _) => {
+                for fieldpat in v.iter()
+                                 .filter(|fieldpat| !fieldpat.node.is_shorthand)
+                                 .filter(|fieldpat| def_map.find(&fieldpat.node.pat.id)
+                                    == Some(&def::DefLocal(fieldpat.node.pat.id))) {
+                    match fieldpat.node.pat.node {
+                        ast::PatIdent(_, ident, None) if ident.node.as_str()
+                                                         == fieldpat.node.ident.as_str() => {
+                            cx.span_lint(NON_SHORTHAND_FIELD_PATTERNS, fieldpat.span,
+                                         format!("the `{}:` in this pattern is redundant and can \
+                                                  be removed", ident.node.as_str()).as_slice())
+                        },
+                        _ => {},
+                    }
+                }
+            },
+            _ => {}
+        }
+    }
+}
+
 declare_lint!(pub UNUSED_UNSAFE, Warn,
               "unnecessary use of an `unsafe` block")
 
@@ -1523,12 +1557,12 @@ impl LintPass for Stability {
                                 def_id
                             }
                             typeck::MethodTypeParam(typeck::MethodParam {
-                                trait_ref: ref trait_ref,
+                                ref trait_ref,
                                 method_num: index,
                                 ..
                             }) |
                             typeck::MethodTraitObject(typeck::MethodObject {
-                                trait_ref: ref trait_ref,
+                                ref trait_ref,
                                 method_num: index,
                                 ..
                             }) => {

@@ -1139,10 +1139,12 @@ pub fn noop_fold_pat<T: Folder>(p: P<Pat>, folder: &mut T) -> P<Pat> {
             PatStruct(pth, fields, etc) => {
                 let pth = folder.fold_path(pth);
                 let fs = fields.move_map(|f| {
-                    ast::FieldPat {
-                        ident: f.ident,
-                        pat: folder.fold_pat(f.pat)
-                    }
+                    Spanned { span: folder.new_span(f.span),
+                              node: ast::FieldPat {
+                                  ident: f.node.ident,
+                                  pat: folder.fold_pat(f.node.pat),
+                                  is_shorthand: f.node.is_shorthand,
+                              }}
                 });
                 PatStruct(pth, fs, etc)
             }

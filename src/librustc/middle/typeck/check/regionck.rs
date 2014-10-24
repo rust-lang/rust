@@ -845,7 +845,7 @@ fn check_expr_fn_block(rcx: &mut Rcx,
 
     match ty::get(function_type).sty {
         ty::ty_closure(box ty::ClosureTy{store: ty::RegionTraitStore(..),
-                                         bounds: ref bounds,
+                                         ref bounds,
                                          ..}) => {
             // For closure, ensure that the variables outlive region
             // bound, since they are captured by reference.

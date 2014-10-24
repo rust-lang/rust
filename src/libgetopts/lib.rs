@@ -235,10 +235,10 @@ impl OptGroup {
     /// (Both short and long names correspond to different Opts).
     pub fn long_to_short(&self) -> Opt {
         let OptGroup {
-            short_name: short_name,
-            long_name: long_name,
-            hasarg: hasarg,
-            occur: occur,
+            short_name,
+            long_name,
+            hasarg,
+            occur,
             ..
         } = (*self).clone();
 
@@ -671,11 +671,11 @@ pub fn usage(brief: &str, opts: &[OptGroup]) -> String {
     let desc_sep = format!("\n{}", " ".repeat(24));
 
     let mut rows = opts.iter().map(|optref| {
-        let OptGroup{short_name: short_name,
-                     long_name: long_name,
-                     hint: hint,
-                     desc: desc,
-                     hasarg: hasarg,
+        let OptGroup{short_name,
+                     long_name,
+                     hint,
+                     desc,
+                     hasarg,
                      ..} = (*optref).clone();
 
         let mut row = " ".repeat(4);

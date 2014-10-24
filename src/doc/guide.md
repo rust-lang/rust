@@ -3877,6 +3877,7 @@ match x {
 If you have a struct, you can destructure it inside of a pattern:
 
 ```{rust}
+# #![allow(non_shorthand_field_patterns)]
 struct Point {
     x: int,
     y: int,
@@ -3892,6 +3893,7 @@ match origin {
 If we only care about some of the values, we don't have to give them all names:
 
 ```{rust}
+# #![allow(non_shorthand_field_patterns)]
 struct Point {
     x: int,
     y: int,
@@ -3977,6 +3979,7 @@ You can also define methods that do not take a `self` parameter. Here's a
 pattern that's very common in Rust code:
 
 ```{rust}
+# #![allow(non_shorthand_field_patterns)]
 struct Circle {
     x: f64,
     y: f64,

@@ -25,7 +25,7 @@ use syntax::parse::token::InternedString;
 use syntax::ptr::P;
 use syntax::visit::Visitor;
 use syntax::visit;
-use syntax::{ast, ast_map, ast_util};
+use syntax::{ast, ast_map, ast_util, codemap};
 
 use std::rc::Rc;
 use std::collections::hashmap::Vacant;
@@ -115,7 +115,7 @@ fn lookup_variant_by_id<'a>(tcx: &'a ty::ctxt,
         match tcx.map.find(enum_def.node) {
             None => None,
             Some(ast_map::NodeItem(it)) => match it.node {
-                ItemEnum(ast::EnumDef { variants: ref variants }, _) => {
+                ItemEnum(ast::EnumDef { ref variants }, _) => {
                     variant_expr(variants.as_slice(), variant_def.node)
                 }
                 _ => None
@@ -133,7 +133,7 @@ fn lookup_variant_by_id<'a>(tcx: &'a ty::ctxt,
         let expr_id = match csearch::maybe_get_item_ast(tcx, enum_def,
             |a, b, c, d| astencode::decode_inlined_item(a, b, c, d)) {
             csearch::found(&ast::IIItem(ref item)) => match item.node {
-                ItemEnum(ast::EnumDef { variants: ref variants }, _) => {
+                ItemEnum(ast::EnumDef { ref variants }, _) => {
                     // NOTE this doesn't do the right thing, it compares inlined
                     // NodeId's to the original variant_def's NodeId, but they
                     // come from different crates, so they will likely never match.
@@ -336,9 +336,13 @@ pub fn const_expr_to_pat(tcx: &ty::ctxt, expr: &Expr) -> P<Pat> {
         }
 
         ExprStruct(ref path, ref fields, None) => {
-            let field_pats = fields.iter().map(|field| FieldPat {
-                ident: field.ident.node,
-                pat: const_expr_to_pat(tcx, &*field.expr)
+            let field_pats = fields.iter().map(|field| codemap::Spanned {
+                span: codemap::DUMMY_SP,
+                node: FieldPat {
+                    ident: field.ident.node,
+                    pat: const_expr_to_pat(tcx, &*field.expr),
+                    is_shorthand: true,
+                },
             }).collect();
             PatStruct(path.clone(), field_pats, false)
         }

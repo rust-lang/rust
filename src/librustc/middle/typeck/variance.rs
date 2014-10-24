@@ -805,7 +805,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                     variance);
             }
 
-            ty::ty_param(ty::ParamTy { def_id: ref def_id, .. }) => {
+            ty::ty_param(ty::ParamTy { ref def_id, .. }) => {
                 assert_eq!(def_id.krate, ast::LOCAL_CRATE);
                 match self.terms_cx.inferred_map.find(&def_id.node) {
                     Some(&index) => {

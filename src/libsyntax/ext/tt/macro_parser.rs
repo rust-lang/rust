@@ -250,7 +250,7 @@ pub fn parse(sess: &ParseSess,
         let mut next_eis = Vec::new(); // or proceed normally
         let mut eof_eis = Vec::new();
 
-        let TokenAndSpan {tok: tok, sp: sp} = rdr.peek();
+        let TokenAndSpan { tok, sp } = rdr.peek();
 
         /* we append new items to this while we go */
         loop {

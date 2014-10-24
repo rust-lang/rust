@@ -647,7 +647,7 @@ fn resolve_local(visitor: &mut RegionResolutionVisitor, local: &ast::Local) {
             ast::PatIdent(ast::BindByRef(_), _, _) => true,
 
             ast::PatStruct(_, ref field_pats, _) => {
-                field_pats.iter().any(|fp| is_binding_pat(&*fp.pat))
+                field_pats.iter().any(|fp| is_binding_pat(&*fp.node.pat))
             }
 
             ast::PatVec(ref pats1, ref pats2, ref pats3) => {

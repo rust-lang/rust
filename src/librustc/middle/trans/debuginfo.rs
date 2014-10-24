@@ -1449,7 +1449,7 @@ pub fn create_function_debug_context(cx: &CrateContext,
 
         // Handle other generic parameters
         let actual_types = param_substs.substs.types.get_slice(subst::FnSpace);
-        for (index, &ast::TyParam{ ident: ident, .. }) in generics.ty_params.iter().enumerate() {
+        for (index, &ast::TyParam{ ident, .. }) in generics.ty_params.iter().enumerate() {
             let actual_type = actual_types[index];
             // Add actual type name to <...> clause of function name
             let actual_type_name = compute_debuginfo_type_name(cx,
@@ -3344,7 +3344,10 @@ fn populate_scope_map(cx: &CrateContext,
             ast::PatStruct(_, ref field_pats, _) => {
                 scope_map.insert(pat.id, scope_stack.last().unwrap().scope_metadata);
 
-                for &ast::FieldPat { pat: ref sub_pat, .. } in field_pats.iter() {
+                for &codemap::Spanned {
+                    node: ast::FieldPat { pat: ref sub_pat, .. },
+                    ..
+                } in field_pats.iter() {
                     walk_pattern(cx, &**sub_pat, scope_stack, scope_map);
                 }
             }
@@ -3602,8 +3605,8 @@ fn populate_scope_map(cx: &CrateContext,
                 }
             }
 
-            ast::ExprInlineAsm(ast::InlineAsm { inputs: ref inputs,
-                                                outputs: ref outputs,
+            ast::ExprInlineAsm(ast::InlineAsm { ref inputs,
+                                                ref outputs,
                                                 .. }) => {
                 // inputs, outputs: Vec<(String, P<Expr>)>
                 for &(_, ref exp) in inputs.iter() {

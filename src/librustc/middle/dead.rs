@@ -102,12 +102,12 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
                     }
                     typeck::MethodStaticUnboxedClosure(_) => {}
                     typeck::MethodTypeParam(typeck::MethodParam {
-                        trait_ref: ref trait_ref,
+                        ref trait_ref,
                         method_num: index,
                         ..
                     }) |
                     typeck::MethodTraitObject(typeck::MethodObject {
-                        trait_ref: ref trait_ref,
+                        ref trait_ref,
                         method_num: index,
                         ..
                     }) => {
@@ -156,7 +156,8 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
         }
     }
 
-    fn handle_field_pattern_match(&mut self, lhs: &ast::Pat, pats: &[ast::FieldPat]) {
+    fn handle_field_pattern_match(&mut self, lhs: &ast::Pat,
+                                  pats: &[codemap::Spanned<ast::FieldPat>]) {
         let id = match (*self.tcx.def_map.borrow())[lhs.id] {
             def::DefVariant(_, id, _) => id,
             _ => {
@@ -174,7 +175,7 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
         let fields = ty::lookup_struct_fields(self.tcx, id);
         for pat in pats.iter() {
             let field_id = fields.iter()
-                .find(|field| field.name == pat.ident.name).unwrap().id;
+                .find(|field| field.name == pat.node.ident.name).unwrap().id;
             self.live_symbols.insert(field_id.node);
         }
     }
