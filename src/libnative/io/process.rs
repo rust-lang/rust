@@ -68,11 +68,6 @@ impl Process {
     pub fn spawn(cfg: ProcessConfig)
         -> IoResult<(Process, Vec<Option<file::FileDesc>>)>
     {
-        // right now we only handle stdin/stdout/stderr.
-        if cfg.extra_io.len() > 0 {
-            return Err(super::unimpl());
-        }
-
         fn get_io(io: rtio::StdioContainer,
                   ret: &mut Vec<Option<file::FileDesc>>)
             -> IoResult<Option<file::FileDesc>>
@@ -97,12 +92,16 @@ impl Process {
         }
 
         let mut ret_io = Vec::new();
-        let res = spawn_process_os(cfg,
-                                   try!(get_io(cfg.stdin, &mut ret_io)),
-                                   try!(get_io(cfg.stdout, &mut ret_io)),
-                                   try!(get_io(cfg.stderr, &mut ret_io)));
+        let stdin = try!(get_io(cfg.stdin, &mut ret_io));
+        let stdout = try!(get_io(cfg.stdout, &mut ret_io));
+        let stderr = try!(get_io(cfg.stderr, &mut ret_io));
 
-        match res {
+        let mut child_extra_io = Vec::new();
+        for io in cfg.extra_io.iter() {
+            child_extra_io.push(try!(get_io(*io, &mut ret_io)));
+        }
+
+        match spawn_process_os(cfg, stdin, stdout, stderr, child_extra_io) {
             Ok(res) => {
                 let p = Process {
                     pid: res.pid,
@@ -277,7 +276,8 @@ struct SpawnProcessResult {
 fn spawn_process_os(cfg: ProcessConfig,
                     in_fd: Option<file::FileDesc>,
                     out_fd: Option<file::FileDesc>,
-                    err_fd: Option<file::FileDesc>)
+                    err_fd: Option<file::FileDesc>,
+                    extra_fds: Vec<Option<file::FileDesc>>)
                  -> IoResult<SpawnProcessResult> {
     use libc::types::os::arch::extra::{DWORD, HANDLE, STARTUPINFO};
     use libc::consts::os::extra::{
@@ -297,6 +297,11 @@ fn spawn_process_os(cfg: ProcessConfig,
     use std::mem;
     use std::iter::Iterator;
     use std::str::StrSlice;
+
+    // right now we only handle stdin/stdout/stderr.
+    if extra_fds.len() > 0 {
+        return Err(super::unimpl());
+    }
 
     if cfg.gid.is_some() || cfg.uid.is_some() {
         return Err(IoError {
@@ -529,12 +534,15 @@ fn make_command_line(prog: &CString, args: &[CString]) -> String {
 fn spawn_process_os(cfg: ProcessConfig,
                     in_fd: Option<file::FileDesc>,
                     out_fd: Option<file::FileDesc>,
-                    err_fd: Option<file::FileDesc>)
+                    err_fd: Option<file::FileDesc>,
+                    extra_fds: Vec<Option<file::FileDesc>>)
                 -> IoResult<SpawnProcessResult>
 {
     use libc::funcs::posix88::unistd::{fork, dup2, close, chdir, execvp};
     use libc::funcs::bsd44::getdtablesize;
     use io::c;
+    use std::collections::HashSet;
+    use std::iter::FromIterator;
 
     mod rustrt {
         extern {
@@ -565,15 +573,30 @@ fn spawn_process_os(cfg: ProcessConfig,
         mem::transmute::<ProcessConfig,ProcessConfig<'static>>(cfg)
     };
 
+    // Pre-calculate file descriptors to save/close
+    // before forking to avoid allocation issues
+    let mut extra_io: Vec<Option<c_int>> = extra_fds.iter().map(|opt| match opt {
+        &Some(ref fd) => Some(fd.fd()),
+        &None => None,
+    }).collect();
+
+    let inherit_fd_lookup: HashSet<c_int> = FromIterator::from_iter(
+        extra_fds.iter()
+            .filter(|opt| opt.is_some())
+            .map(|opt| opt.as_ref().unwrap().fd())
+    );
+
+    let fds_to_close: Vec<c_int> = range(3, unsafe { getdtablesize() })
+        .filter(|fd| !inherit_fd_lookup.contains(fd))
+        .collect();
+
     with_envp(cfg.env, proc(envp) {
         with_argv(cfg.program, cfg.args, proc(argv) unsafe {
-            let (mut input, mut output) = try!(pipe());
+            let (mut input, output) = try!(pipe());
 
             // We may use this in the child, so perform allocations before the
             // fork
             let devnull = "/dev/null".to_c_str();
-
-            set_cloexec(output.fd());
 
             let pid = fork();
             if pid < 0 {
@@ -635,7 +658,15 @@ fn spawn_process_os(cfg: ProcessConfig,
             // child will either exec() or invoke libc::exit)
             let _ = libc::close(input.fd());
 
-            fn fail(output: &mut file::FileDesc) -> ! {
+            // If the child process needs to inherit a large number of
+            // file descriptors, we might have to overwrite the fd of
+            // the output pipe back to the parent. Thus we'll duplicate
+            // its fd around as necessary, but we'll use it directly,
+            // since we cannot allocate a new FileDesc wrapper at this time.
+            let mut output_fd = output.fd();
+            mem::forget(output);
+
+            fn fail(output_fd: c_int) -> ! {
                 let errno = os::errno();
                 let bytes = [
                     (errno >> 24) as u8,
@@ -643,7 +674,12 @@ fn spawn_process_os(cfg: ProcessConfig,
                     (errno >>  8) as u8,
                     (errno >>  0) as u8,
                 ];
-                assert!(output.inner_write(bytes).is_ok());
+                let num = unsafe{
+                    libc::write(output_fd,
+                                bytes.as_ptr() as *const libc::c_void,
+                                bytes.len() as libc::size_t)
+                };
+                assert_eq!(num, bytes.len() as libc::ssize_t);
                 unsafe { libc::_exit(1) }
             }
 
@@ -676,21 +712,80 @@ fn spawn_process_os(cfg: ProcessConfig,
                 src != -1 && retry(|| dup2(src, dst)) != -1
             };
 
-            if !setup(in_fd, libc::STDIN_FILENO) { fail(&mut output) }
-            if !setup(out_fd, libc::STDOUT_FILENO) { fail(&mut output) }
-            if !setup(err_fd, libc::STDERR_FILENO) { fail(&mut output) }
+            if !setup(in_fd, libc::STDIN_FILENO) { fail(output_fd) }
+            if !setup(out_fd, libc::STDOUT_FILENO) { fail(output_fd) }
+            if !setup(err_fd, libc::STDERR_FILENO) { fail(output_fd) }
 
-            // close all other fds
-            for fd in range(3, getdtablesize()).rev() {
-                if fd != output.fd() {
+            // close all fds we don't care about
+            for fd in fds_to_close.into_iter().rev() {
+                if fd != output_fd {
                     let _ = close(fd as c_int);
+                }
+            }
+
+            // Now we must juggle any inherited file descriptors and position
+            // them in the order requested.
+            for idx in range(0, extra_io.len()) {
+                let child_fd = 3 + idx as c_int; // stdio fds (0, 1, 2) already handled
+
+                let backup = match retry(|| libc::dup(child_fd)) {
+                    // Current fd is not used, no need to restore later
+                    -1 if os::errno() as c_int == libc::EBADF => None,
+                    -1 => fail(output_fd), // Unforseen error, fail
+                    fd => { // Current fd is used, "restore" it later
+                        if child_fd == output_fd {
+                            output_fd = fd;
+                        }
+
+                        Some(fd)
+                    },
+                };
+
+                match extra_io[idx] {
+                    None => (),
+                    Some(cur_fd) => {
+                        // Copy the fd in the child's next available slot
+                        if retry(|| dup2(cur_fd, child_fd)) == -1 {
+                            fail(output_fd);
+                        }
+
+                        // Close the inherited fd unless it's to be duplicated later
+                        let searchable = extra_io.slice(idx, extra_io.len());
+                        if !searchable.iter().any(|&fd| fd == Some(cur_fd)) {
+                            if retry(|| close(cur_fd)) == -1 {
+                                fail(output_fd);
+                            }
+                        }
+                    },
+                }
+
+                // If the current child fd we overwrote was to be inherited,
+                // replace any references to it with the duplicate fd.
+                match backup {
+                    None => (),
+                    Some(fd) => {
+                        let mut will_be_inherited = false;
+                        for i in range(idx, extra_io.len()) {
+                            if extra_io[idx] == Some(child_fd) {
+                                *extra_io.get_mut(idx) = Some(fd);
+                                will_be_inherited = true;
+                            }
+                        }
+
+                        // Close the saved fd if we won't need it later
+                        if !will_be_inherited {
+                            if retry(|| close(fd)) == -1 {
+                                fail(output_fd);
+                            }
+                        }
+                    },
                 }
             }
 
             match cfg.gid {
                 Some(u) => {
                     if libc::setgid(u as libc::gid_t) != 0 {
-                        fail(&mut output);
+                        fail(output_fd);
                     }
                 }
                 None => {}
@@ -711,7 +806,7 @@ fn spawn_process_os(cfg: ProcessConfig,
                     let _ = setgroups(0, 0 as *const libc::c_void);
 
                     if libc::setuid(u as libc::uid_t) != 0 {
-                        fail(&mut output);
+                        fail(output_fd);
                     }
                 }
                 None => {}
@@ -723,13 +818,14 @@ fn spawn_process_os(cfg: ProcessConfig,
                 let _ = libc::setsid();
             }
             if !dirp.is_null() && chdir(dirp) == -1 {
-                fail(&mut output);
+                fail(output_fd);
             }
             if !envp.is_null() {
                 set_environ(envp);
             }
+            set_cloexec(output_fd);
             let _ = execvp(*argv, argv as *mut _);
-            fail(&mut output);
+            fail(output_fd);
         })
     })
 }
