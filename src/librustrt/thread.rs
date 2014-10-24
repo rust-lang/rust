@@ -285,7 +285,7 @@ mod imp {
     pub type rust_thread = libc::pthread_t;
     pub type rust_thread_return = *mut u8;
 
-    #[cfg(all(not(target_os = "linux"), not(target_os = "macos")))]
+    #[cfg(all(not(target_os = "linux"), not(target_os = "macos"), not(target_os = "android")))]
     pub mod guard {
         pub unsafe fn current() -> uint {
             0
@@ -299,7 +299,7 @@ mod imp {
         }
     }
 
-    #[cfg(any(target_os = "linux", target_os = "macos"))]
+    #[cfg(any(target_os = "linux", target_os = "macos", target_os = "android"))]
     pub mod guard {
         use super::*;
         #[cfg(any(target_os = "linux", target_os = "android"))]
@@ -489,7 +489,7 @@ mod imp {
         PTHREAD_STACK_MIN
     }
 
-    #[cfg(any(target_os = "linux"))]
+    #[cfg(any(target_os = "linux", target_os = "android"))]
     extern {
         pub fn pthread_self() -> libc::pthread_t;
         pub fn pthread_getattr_np(native: libc::pthread_t,

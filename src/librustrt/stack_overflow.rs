@@ -62,7 +62,7 @@ pub unsafe fn report() {
 // It returns the guard page of the current task or 0 if that
 // guard page doesn't exist. None is returned if there's currently
 // no local task.
-#[cfg(any(windows, target_os = "linux", target_os = "macos"))]
+#[cfg(any(windows, target_os = "linux", target_os = "android", target_os = "macos"))]
 unsafe fn get_task_guard_page() -> Option<uint> {
     let task: Option<*mut Task> = Local::try_unsafe_borrow();
 
@@ -167,7 +167,7 @@ mod imp {
     }
 }
 
-#[cfg(any(target_os = "linux", target_os = "macos"))]
+#[cfg(any(target_os = "linux", target_os = "macos", target_os = "android"))]
 mod imp {
     use core::prelude::*;
     use stack;
@@ -386,6 +386,7 @@ mod imp {
 }
 
 #[cfg(not(any(target_os = "linux",
+              target_os = "android",
               target_os = "macos",
               windows)))]
 mod imp {
