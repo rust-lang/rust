@@ -54,6 +54,13 @@ fn quoted_bracket_set() {
 }
 
 #[test]
+fn first_range_starts_with_left_bracket() {
+    let re = regex!(r"([[-z])");
+    let ms = re.find_iter("[]").collect::<Vec<(uint, uint)>>();
+    assert_eq!(ms, vec![(0, 1), (1, 2)]);
+}
+
+#[test]
 fn range_ends_with_escape() {
     let re = regex!(r"([\[-\x{5d}])");
     let ms = re.find_iter("[]").collect::<Vec<(uint, uint)>>();

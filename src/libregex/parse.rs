@@ -374,10 +374,6 @@ impl<'a> Parser<'a> {
         let mut ranges: Vec<(char, char)> = vec!();
         let mut alts: Vec<Ast> = vec!();
 
-        if self.peek_is(1, ']') {
-            try!(self.expect(']'));
-            ranges.push((']', ']'))
-        }
         while self.peek_is(1, '-') {
             try!(self.expect('-'));
             ranges.push(('-', '-'))
@@ -411,7 +407,7 @@ impl<'a> Parser<'a> {
                         ast => fail!("Unexpected AST item '{}'", ast),
                     }
                 }
-                ']' => {
+                ']' if ranges.len() > 0 || alts.len() > 0 => {
                     if ranges.len() > 0 {
                         let flags = negated | (self.flags & FLAG_NOCASE);
                         let mut ast = AstClass(combine_ranges(ranges), flags);
