@@ -112,10 +112,10 @@ unsafe fn exchange_free(ptr: *mut u8, size: uint, align: uint) {
 #[cfg(any(target_arch = "arm",
           target_arch = "mips",
           target_arch = "mipsel"))]
-static MIN_ALIGN: uint = 8;
+const MIN_ALIGN: uint = 8;
 #[cfg(any(target_arch = "x86",
           target_arch = "x86_64"))]
-static MIN_ALIGN: uint = 16;
+const MIN_ALIGN: uint = 16;
 
 #[cfg(jemalloc)]
 mod imp {
