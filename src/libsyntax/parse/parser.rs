@@ -2498,28 +2498,30 @@ impl<'a> Parser<'a> {
     }
 
     /// Parse an optional separator followed by a kleene-style
-    /// repetition token (+ or *).
-    pub fn parse_sep_and_zerok(&mut self) -> (Option<token::Token>, bool) {
-        fn parse_zerok(parser: &mut Parser) -> Option<bool> {
-            match parser.token {
-                token::BINOP(token::STAR) | token::BINOP(token::PLUS) => {
-                    let zerok = parser.token == token::BINOP(token::STAR);
-                    parser.bump();
-                    Some(zerok)
-                },
+    /// repetition token (?, + or *).
+    pub fn parse_sep_and_reps(&mut self) -> (Option<token::Token>, ast::MatchReps) {
+        fn parse_reps(parser: &mut Parser) -> Option<ast::MatchReps> {
+            let result = match parser.token {
+                token::QUESTION => Some(ast::ZeroOrOne),
+                token::BINOP(token::PLUS) => Some(ast::OneOrMore),
+                token::BINOP(token::STAR) => Some(ast::ZeroOrMore),
                 _ => None
+            };
+            if result.is_some() {
+                parser.bump();
             }
+            result
         };
 
-        match parse_zerok(self) {
-            Some(zerok) => return (None, zerok),
+        match parse_reps(self) {
+            Some(reps) => return (None, reps),
             None => {}
         }
 
         let separator = self.bump_and_get();
-        match parse_zerok(self) {
-            Some(zerok) => (Some(separator), zerok),
-            None => self.fatal("expected `*` or `+`")
+        match parse_reps(self) {
+            Some(reps) => (Some(separator), reps),
+            None => self.fatal("expected `?`, `*` or `+`")
         }
     }
 
@@ -2564,11 +2566,11 @@ impl<'a> Parser<'a> {
                         seq_sep_none(),
                         |p| p.parse_token_tree()
                     );
-                    let (s, z) = p.parse_sep_and_zerok();
+                    let (s, r) = p.parse_sep_and_reps();
                     let seq = match seq {
                         Spanned { node, .. } => node,
                     };
-                    TTSeq(mk_sp(sp.lo, p.span.hi), Rc::new(seq), s, z)
+                    TTSeq(mk_sp(sp.lo, p.span.hi), Rc::new(seq), s, r)
                 } else {
                     TTNonterminal(sp, p.parse_ident())
                 }
@@ -2673,8 +2675,8 @@ impl<'a> Parser<'a> {
                 if ms.len() == 0u {
                     self.fatal("repetition body must be nonempty");
                 }
-                let (sep, zerok) = self.parse_sep_and_zerok();
-                MatchSeq(ms, sep, zerok, name_idx_lo, *name_idx)
+                let (sep, reps) = self.parse_sep_and_reps();
+                MatchSeq(ms, sep, reps, name_idx_lo, *name_idx)
             } else {
                 let bound_to = self.parse_ident();
                 self.expect(&token::COLON);

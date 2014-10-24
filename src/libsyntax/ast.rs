@@ -618,13 +618,19 @@ pub enum TokenTree {
     // These only make sense for right-hand-sides of MBE macros:
 
     /// A kleene-style repetition sequence with a span, a TTForest,
-    /// an optional separator, and a boolean where true indicates
-    /// zero or more (..), and false indicates one or more (+).
+    /// an optional separator, and a repetition indicator.
     // FIXME(eddyb) #6308 Use Rc<[TokenTree]> after DST.
-    TTSeq(Span, Rc<Vec<TokenTree>>, Option<::parse::token::Token>, bool),
+    TTSeq(Span, Rc<Vec<TokenTree>>, Option<::parse::token::Token>, MatchReps),
 
     /// A syntactic variable that will be filled in by macro expansion.
     TTNonterminal(Span, Ident)
+}
+
+#[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
+pub enum MatchReps {
+    ZeroOrOne, // ?
+    OneOrMore, // +
+    ZeroOrMore // *
 }
 
 // Matchers are nodes defined-by and recognized-by the main rust parser and
@@ -683,9 +689,9 @@ pub type Matcher = Spanned<Matcher_>;
 pub enum Matcher_ {
     /// Match one token
     MatchTok(::parse::token::Token),
-    /// Match repetitions of a sequence: body, separator, zero ok?,
+    /// Match repetitions of a sequence: body, separator, repetitions,
     /// lo, hi position-in-match-array used:
-    MatchSeq(Vec<Matcher> , Option<::parse::token::Token>, bool, uint, uint),
+    MatchSeq(Vec<Matcher> , Option<::parse::token::Token>, MatchReps, uint, uint),
     /// Parse a Rust NT: name to bind, name of NT, position in match array:
     MatchNonterminal(Ident, Ident, uint)
 }

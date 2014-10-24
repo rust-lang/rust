@@ -323,9 +323,9 @@ pub fn parse(sess: &ParseSess,
             } else {
                 match ei.elts[idx].node.clone() {
                   /* need to descend into sequence */
-                  MatchSeq(ref matchers, ref sep, zero_ok,
+                  MatchSeq(ref matchers, ref sep, reps,
                            match_idx_lo, match_idx_hi) => {
-                    if zero_ok {
+                    if reps == ast::ZeroOrOne || reps == ast::ZeroOrMore {
                         let mut new_ei = ei.clone();
                         new_ei.idx += 1u;
                         //we specifically matched zero repeats.
