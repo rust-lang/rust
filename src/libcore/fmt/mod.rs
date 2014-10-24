@@ -16,7 +16,7 @@ use any;
 use cell::{Cell, Ref, RefMut};
 use collections::Collection;
 use iter::{Iterator, range};
-use kinds::Copy;
+use kinds::{Copy, Sized};
 use mem;
 use option::{Option, Some, None};
 use ops::Deref;
@@ -168,85 +168,85 @@ impl<'a> Show for Arguments<'a> {
 /// When a format is not otherwise specified, types are formatted by ascribing
 /// to this trait. There is not an explicit way of selecting this trait to be
 /// used for formatting, it is only if no other format is specified.
-pub trait Show {
+pub trait Show for Sized? {
     /// Formats the value using the given formatter.
     fn fmt(&self, &mut Formatter) -> Result;
 }
 
 /// Format trait for the `b` character
-pub trait Bool {
+pub trait Bool for Sized? {
     /// Formats the value using the given formatter.
     fn fmt(&self, &mut Formatter) -> Result;
 }
 
 /// Format trait for the `c` character
-pub trait Char {
+pub trait Char for Sized? {
     /// Formats the value using the given formatter.
     fn fmt(&self, &mut Formatter) -> Result;
 }
 
 /// Format trait for the `i` and `d` characters
-pub trait Signed {
+pub trait Signed for Sized? {
     /// Formats the value using the given formatter.
     fn fmt(&self, &mut Formatter) -> Result;
 }
 
 /// Format trait for the `u` character
-pub trait Unsigned {
+pub trait Unsigned for Sized? {
     /// Formats the value using the given formatter.
     fn fmt(&self, &mut Formatter) -> Result;
 }
 
 /// Format trait for the `o` character
-pub trait Octal {
+pub trait Octal for Sized? {
     /// Formats the value using the given formatter.
     fn fmt(&self, &mut Formatter) -> Result;
 }
 
 /// Format trait for the `t` character
-pub trait Binary {
+pub trait Binary for Sized? {
     /// Formats the value using the given formatter.
     fn fmt(&self, &mut Formatter) -> Result;
 }
 
 /// Format trait for the `x` character
-pub trait LowerHex {
+pub trait LowerHex for Sized? {
     /// Formats the value using the given formatter.
     fn fmt(&self, &mut Formatter) -> Result;
 }
 
 /// Format trait for the `X` character
-pub trait UpperHex {
+pub trait UpperHex for Sized? {
     /// Formats the value using the given formatter.
     fn fmt(&self, &mut Formatter) -> Result;
 }
 
 /// Format trait for the `s` character
-pub trait String {
+pub trait String for Sized? {
     /// Formats the value using the given formatter.
     fn fmt(&self, &mut Formatter) -> Result;
 }
 
 /// Format trait for the `p` character
-pub trait Pointer {
+pub trait Pointer for Sized? {
     /// Formats the value using the given formatter.
     fn fmt(&self, &mut Formatter) -> Result;
 }
 
 /// Format trait for the `f` character
-pub trait Float {
+pub trait Float for Sized? {
     /// Formats the value using the given formatter.
     fn fmt(&self, &mut Formatter) -> Result;
 }
 
 /// Format trait for the `e` character
-pub trait LowerExp {
+pub trait LowerExp for Sized? {
     /// Formats the value using the given formatter.
     fn fmt(&self, &mut Formatter) -> Result;
 }
 
 /// Format trait for the `E` character
-pub trait UpperExp {
+pub trait UpperExp for Sized? {
     /// Formats the value using the given formatter.
     fn fmt(&self, &mut Formatter) -> Result;
 }
@@ -257,7 +257,7 @@ macro_rules! uniform_fn_call_workaround {
     ($( $name: ident, $trait_: ident; )*) => {
         $(
             #[doc(hidden)]
-            pub fn $name<T: $trait_>(x: &T, fmt: &mut Formatter) -> Result {
+            pub fn $name<Sized? T: $trait_>(x: &T, fmt: &mut Formatter) -> Result {
                 x.fmt(fmt)
             }
             )*
@@ -583,10 +583,10 @@ pub fn argumentuint<'a>(s: &'a uint) -> Argument<'a> {
 
 // Implementations of the core formatting traits
 
-impl<'a, T: Show> Show for &'a T {
+impl<'a, Sized? T: Show> Show for &'a T {
     fn fmt(&self, f: &mut Formatter) -> Result { secret_show(*self, f) }
 }
-impl<'a, T: Show> Show for &'a mut T {
+impl<'a, Sized? T: Show> Show for &'a mut T {
     fn fmt(&self, f: &mut Formatter) -> Result { secret_show(&**self, f) }
 }
 impl<'a> Show for &'a Show+'a {
@@ -599,9 +599,15 @@ impl Bool for bool {
     }
 }
 
-impl<'a, T: str::Str> String for T {
+impl<T: str::Str> String for T {
     fn fmt(&self, f: &mut Formatter) -> Result {
         f.pad(self.as_slice())
+    }
+}
+
+impl String for str {
+    fn fmt(&self, f: &mut Formatter) -> Result {
+        f.pad(self)
     }
 }
 
@@ -708,13 +714,13 @@ floating!(f64)
 // Implementation of Show for various core types
 
 macro_rules! delegate(($ty:ty to $other:ident) => {
-    impl<'a> Show for $ty {
+    impl Show for $ty {
         fn fmt(&self, f: &mut Formatter) -> Result {
             (concat_idents!(secret_, $other)(self, f))
         }
     }
 })
-delegate!(&'a str to string)
+delegate!(str to string)
 delegate!(bool to bool)
 delegate!(char to char)
 delegate!(f32 to float)
@@ -761,7 +767,7 @@ impl<'a> Show for &'a any::Any+'a {
     fn fmt(&self, f: &mut Formatter) -> Result { f.pad("&Any") }
 }
 
-impl<'a, T: Show> Show for &'a [T] {
+impl<T: Show> Show for [T] {
     fn fmt(&self, f: &mut Formatter) -> Result {
         if f.flags & (1 << (rt::FlagAlternate as uint)) == 0 {
             try!(write!(f, "["));
@@ -779,12 +785,6 @@ impl<'a, T: Show> Show for &'a [T] {
             try!(write!(f, "]"));
         }
         Ok(())
-    }
-}
-
-impl<'a, T: Show> Show for &'a mut [T] {
-    fn fmt(&self, f: &mut Formatter) -> Result {
-        secret_show(&self.as_slice(), f)
     }
 }
 
