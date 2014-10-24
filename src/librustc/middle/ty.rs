@@ -589,14 +589,19 @@ pub struct ctxt<'tcx> {
 // through the type during type construction, so that we can quickly
 // check whether the type has various kinds of types in it without
 // recursing over the type itself.
-const HAS_PARAMS: uint = 1;
-const HAS_SELF: uint = 2;
-const HAS_TY_INFER: uint = 4;
-const HAS_RE_INFER: uint = 8;
-const HAS_REGIONS: uint = 16;
-const HAS_TY_ERR: uint = 32;
-const HAS_TY_BOT: uint = 64;
-const NEEDS_SUBST: uint = HAS_PARAMS | HAS_SELF | HAS_REGIONS;
+bitflags! {
+    flags TypeFlags: u32 {
+        const NO_TYPE_FLAGS = 0b0,
+        const HAS_PARAMS    = 0b1,
+        const HAS_SELF      = 0b10,
+        const HAS_TY_INFER  = 0b100,
+        const HAS_RE_INFER  = 0b1000,
+        const HAS_REGIONS   = 0b10000,
+        const HAS_TY_ERR    = 0b100000,
+        const HAS_TY_BOT    = 0b1000000,
+        const NEEDS_SUBST   = HAS_PARAMS.bits | HAS_SELF.bits | HAS_REGIONS.bits,
+    }
+}
 
 pub type t_box = &'static t_box_;
 
@@ -604,7 +609,13 @@ pub type t_box = &'static t_box_;
 pub struct t_box_ {
     pub sty: sty,
     pub id: uint,
-    pub flags: uint,
+    pub flags: TypeFlags,
+}
+
+impl fmt::Show for TypeFlags {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.bits)
+    }
 }
 
 // To reduce refcounting cost, we're representing types as unsafe pointers
@@ -631,8 +642,8 @@ pub fn get(t: t) -> t_box {
     }
 }
 
-fn tbox_has_flag(tb: t_box, flag: uint) -> bool {
-    (tb.flags & flag) != 0u
+fn tbox_has_flag(tb: t_box, flag: TypeFlags) -> bool {
+    tb.flags.intersects(flag)
 }
 pub fn type_has_params(t: t) -> bool {
     tbox_has_flag(get(t), HAS_PARAMS)
@@ -887,7 +898,7 @@ mod primitives {
             pub static $name: t_box_ = t_box_ {
                 sty: $sty,
                 id: $id,
-                flags: 0,
+                flags: super::NO_TYPE_FLAGS,
             };
         )
     )
@@ -1578,32 +1589,32 @@ pub fn mk_t(cx: &ctxt, st: sty) -> t {
         _ => ()
     }
 
-    let mut flags = 0u;
-    fn rflags(r: Region) -> uint {
+    let mut flags = NO_TYPE_FLAGS;
+    fn rflags(r: Region) -> TypeFlags {
         HAS_REGIONS | {
             match r {
               ty::ReInfer(_) => HAS_RE_INFER,
-              _ => 0u
+              _ => NO_TYPE_FLAGS,
             }
         }
     }
-    fn sflags(substs: &Substs) -> uint {
-        let mut f = 0u;
+    fn sflags(substs: &Substs) -> TypeFlags {
+        let mut f = NO_TYPE_FLAGS;
         let mut i = substs.types.iter();
         for tt in i {
-            f |= get(*tt).flags;
+            f = f | get(*tt).flags;
         }
         match substs.regions {
             subst::ErasedRegions => {}
             subst::NonerasedRegions(ref regions) => {
                 for r in regions.iter() {
-                    f |= rflags(*r)
+                    f = f | rflags(*r)
                 }
             }
         }
         return f;
     }
-    fn flags_for_bounds(bounds: &ExistentialBounds) -> uint {
+    fn flags_for_bounds(bounds: &ExistentialBounds) -> TypeFlags {
         rflags(bounds.region_bound)
     }
     match &st {
@@ -1616,53 +1627,53 @@ pub fn mk_t(cx: &ctxt, st: sty) -> t {
       // But doing so caused sporadic memory corruption, and
       // neither I (tjc) nor nmatsakis could figure out why,
       // so we're doing it this way.
-      &ty_bot => flags |= HAS_TY_BOT,
-      &ty_err => flags |= HAS_TY_ERR,
+      &ty_bot => flags = flags | HAS_TY_BOT,
+      &ty_err => flags = flags | HAS_TY_ERR,
       &ty_param(ref p) => {
           if p.space == subst::SelfSpace {
-              flags |= HAS_SELF;
+              flags = flags | HAS_SELF;
           } else {
-              flags |= HAS_PARAMS;
+              flags = flags | HAS_PARAMS;
           }
       }
-      &ty_unboxed_closure(_, ref region) => flags |= rflags(*region),
-      &ty_infer(_) => flags |= HAS_TY_INFER,
+      &ty_unboxed_closure(_, ref region) => flags = flags | rflags(*region),
+      &ty_infer(_) => flags = flags | HAS_TY_INFER,
       &ty_enum(_, ref substs) | &ty_struct(_, ref substs) => {
-          flags |= sflags(substs);
+          flags = flags | sflags(substs);
       }
       &ty_trait(box TyTrait { ref substs, ref bounds, .. }) => {
-          flags |= sflags(substs);
-          flags |= flags_for_bounds(bounds);
+          flags = flags | sflags(substs);
+          flags = flags | flags_for_bounds(bounds);
       }
       &ty_uniq(tt) | &ty_vec(tt, _) | &ty_open(tt) => {
-        flags |= get(tt).flags
+        flags = flags | get(tt).flags
       }
       &ty_ptr(ref m) => {
-        flags |= get(m.ty).flags;
+        flags = flags | get(m.ty).flags;
       }
       &ty_rptr(r, ref m) => {
-        flags |= rflags(r);
-        flags |= get(m.ty).flags;
+        flags = flags | rflags(r);
+        flags = flags | get(m.ty).flags;
       }
-      &ty_tup(ref ts) => for tt in ts.iter() { flags |= get(*tt).flags; },
+      &ty_tup(ref ts) => for tt in ts.iter() { flags = flags | get(*tt).flags; },
       &ty_bare_fn(ref f) => {
-        for a in f.sig.inputs.iter() { flags |= get(*a).flags; }
-        flags |= get(f.sig.output).flags;
+        for a in f.sig.inputs.iter() { flags = flags | get(*a).flags; }
+        flags = flags | get(f.sig.output).flags;
         // T -> _|_ is *not* _|_ !
-        flags &= !HAS_TY_BOT;
+        flags = flags - HAS_TY_BOT;
       }
       &ty_closure(ref f) => {
         match f.store {
             RegionTraitStore(r, _) => {
-                flags |= rflags(r);
+                flags = flags | rflags(r);
             }
             _ => {}
         }
-        for a in f.sig.inputs.iter() { flags |= get(*a).flags; }
-        flags |= get(f.sig.output).flags;
+        for a in f.sig.inputs.iter() { flags = flags | get(*a).flags; }
+        flags = flags | get(f.sig.output).flags;
         // T -> _|_ is *not* _|_ !
-        flags &= !HAS_TY_BOT;
-        flags |= flags_for_bounds(&f.bounds);
+        flags = flags - HAS_TY_BOT;
+        flags = flags | flags_for_bounds(&f.bounds);
       }
     }
 
@@ -1977,14 +1988,16 @@ impl ItemSubsts {
 
 // Type utilities
 
-pub fn type_is_nil(ty: t) -> bool { get(ty).sty == ty_nil }
+pub fn type_is_nil(ty: t) -> bool {
+    get(ty).sty == ty_nil
+}
 
 pub fn type_is_bot(ty: t) -> bool {
-    (get(ty).flags & HAS_TY_BOT) != 0
+    get(ty).flags.intersects(HAS_TY_BOT)
 }
 
 pub fn type_is_error(ty: t) -> bool {
-    (get(ty).flags & HAS_TY_ERR) != 0
+    get(ty).flags.intersects(HAS_TY_ERR)
 }
 
 pub fn type_needs_subst(ty: t) -> bool {
