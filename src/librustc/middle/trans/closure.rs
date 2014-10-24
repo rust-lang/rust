@@ -623,10 +623,17 @@ pub fn get_wrapper_for_bare_fn(ccx: &CrateContext,
     llargs.extend(args.iter().map(|arg| arg.val));
 
     let retval = Call(bcx, fn_ptr, llargs.as_slice(), None);
-    if type_is_zero_size(ccx, f.sig.output) || fcx.llretslotptr.get().is_some() {
-        RetVoid(bcx);
-    } else {
-        Ret(bcx, retval);
+    match f.sig.output {
+        ty::FnConverging(output_type) => {
+            if type_is_zero_size(ccx, output_type) || fcx.llretslotptr.get().is_some() {
+                RetVoid(bcx);
+            } else {
+                Ret(bcx, retval);
+            }
+        }
+        ty::FnDiverging => {
+            RetVoid(bcx);
+        }
     }
 
     // HACK(eddyb) finish_fn cannot be used here, we returned directly.

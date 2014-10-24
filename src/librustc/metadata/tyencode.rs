@@ -200,7 +200,6 @@ pub fn enc_trait_store(w: &mut SeekableMemWriter, cx: &ctxt, s: ty::TraitStore) 
 fn enc_sty(w: &mut SeekableMemWriter, cx: &ctxt, st: &ty::sty) {
     match *st {
         ty::ty_nil => mywrite!(w, "n"),
-        ty::ty_bot => mywrite!(w, "z"),
         ty::ty_bool => mywrite!(w, "b"),
         ty::ty_char => mywrite!(w, "c"),
         ty::ty_int(t) => {
@@ -346,7 +345,14 @@ fn enc_fn_sig(w: &mut SeekableMemWriter, cx: &ctxt, fsig: &ty::FnSig) {
     } else {
         mywrite!(w, "N");
     }
-    enc_ty(w, cx, fsig.output);
+    match fsig.output {
+        ty::FnConverging(result_type) => {
+            enc_ty(w, cx, result_type);
+        }
+        ty::FnDiverging => {
+            mywrite!(w, "z");
+        }
+    }
 }
 
 pub fn enc_builtin_bounds(w: &mut SeekableMemWriter, _cx: &ctxt, bs: &ty::BuiltinBounds) {

@@ -538,10 +538,10 @@ fn make_generic_glue(ccx: &CrateContext,
 
     let arena = TypedArena::new();
     let empty_param_substs = param_substs::empty();
-    let fcx = new_fn_ctxt(ccx, llfn, ast::DUMMY_NODE_ID, false, ty::mk_nil(),
+    let fcx = new_fn_ctxt(ccx, llfn, ast::DUMMY_NODE_ID, false, ty::FnConverging(ty::mk_nil()),
                           &empty_param_substs, None, &arena);
 
-    let bcx = init_function(&fcx, false, ty::mk_nil());
+    let bcx = init_function(&fcx, false, ty::FnConverging(ty::mk_nil()));
 
     update_linkage(ccx, llfn, None, OriginalTranslation);
 
@@ -556,7 +556,7 @@ fn make_generic_glue(ccx: &CrateContext,
 
     let llrawptr0 = get_param(llfn, fcx.arg_pos(0) as c_uint);
     let bcx = helper(bcx, llrawptr0, t);
-    finish_fn(&fcx, bcx, ty::mk_nil());
+    finish_fn(&fcx, bcx, ty::FnConverging(ty::mk_nil()));
 
     llfn
 }

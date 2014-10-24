@@ -80,7 +80,6 @@ pub fn ty_is_local(tcx: &ty::ctxt,
 
     match ty::get(ty).sty {
         ty::ty_nil |
-        ty::ty_bot |
         ty::ty_bool |
         ty::ty_char |
         ty::ty_int(..) |

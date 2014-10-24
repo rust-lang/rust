@@ -129,10 +129,6 @@ impl<'f, 'tcx> Combine<'tcx> for Sub<'f, 'tcx> {
         let a = infcx.type_variables.borrow().replace_if_possible(a);
         let b = infcx.type_variables.borrow().replace_if_possible(b);
         match (&ty::get(a).sty, &ty::get(b).sty) {
-            (&ty::ty_bot, _) => {
-                Ok(a)
-            }
-
             (&ty::ty_infer(TyVar(a_id)), &ty::ty_infer(TyVar(b_id))) => {
                 infcx.type_variables
                     .borrow_mut()
@@ -152,10 +148,6 @@ impl<'f, 'tcx> Combine<'tcx> for Sub<'f, 'tcx> {
 
             (&ty::ty_err, _) | (_, &ty::ty_err) => {
                 Ok(ty::mk_err())
-            }
-
-            (_, &ty::ty_bot) => {
-                Err(ty::terr_sorts(expected_found(self, a, b)))
             }
 
             _ => {

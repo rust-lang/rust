@@ -510,6 +510,13 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         t.fold_with(&mut self.skolemizer())
     }
 
+    pub fn type_var_diverges(&'a self, ty: ty::t) -> bool {
+        match ty::get(ty).sty {
+            ty::ty_infer(ty::TyVar(vid)) => self.type_variables.borrow().var_diverges(vid),
+            _ => false
+        }
+    }
+
     pub fn skolemizer<'a>(&'a self) -> TypeSkolemizer<'a, 'tcx> {
         skolemize::TypeSkolemizer::new(self)
     }
@@ -684,14 +691,18 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
-    pub fn next_ty_var_id(&self) -> TyVid {
+    pub fn next_ty_var_id(&self, diverging: bool) -> TyVid {
         self.type_variables
             .borrow_mut()
-            .new_var()
+            .new_var(diverging)
     }
 
     pub fn next_ty_var(&self) -> ty::t {
-        ty::mk_var(self.tcx, self.next_ty_var_id())
+        ty::mk_var(self.tcx, self.next_ty_var_id(false))
+    }
+
+    pub fn next_diverging_ty_var(&self) -> ty::t {
+        ty::mk_var(self.tcx, self.next_ty_var_id(true))
     }
 
     pub fn next_ty_vars(&self, n: uint) -> Vec<ty::t> {

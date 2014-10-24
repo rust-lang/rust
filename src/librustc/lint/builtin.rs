@@ -683,7 +683,7 @@ impl LintPass for UnusedResults {
         let t = ty::expr_ty(cx.tcx, expr);
         let mut warned = false;
         match ty::get(t).sty {
-            ty::ty_nil | ty::ty_bot | ty::ty_bool => return,
+            ty::ty_nil | ty::ty_bool => return,
             ty::ty_struct(did, _) |
             ty::ty_enum(did, _) => {
                 if ast_util::is_local(did) {

@@ -49,9 +49,6 @@ struct ForeignTypes {
 
     /// LLVM types that will appear on the foreign function
     llsig: LlvmSignature,
-
-    /// True if there is a return value (not bottom, not unit)
-    ret_def: bool,
 }
 
 struct LlvmSignature {
@@ -63,6 +60,9 @@ struct LlvmSignature {
     // function, because the foreign function may opt to return via an
     // out pointer.
     llret_ty: Type,
+
+    /// True if there is a return value (not bottom, not unit)
+    ret_def: bool,
 }
 
 
@@ -286,11 +286,10 @@ pub fn trans_native_call<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         _ => ccx.sess().bug("trans_native_call called on non-function type")
     };
     let llsig = foreign_signature(ccx, &fn_sig, passed_arg_tys.as_slice());
-    let ret_def = !return_type_is_void(bcx.ccx(), fn_sig.output);
     let fn_type = cabi::compute_abi_info(ccx,
                                          llsig.llarg_tys.as_slice(),
                                          llsig.llret_ty,
-                                         ret_def);
+                                         llsig.ret_def);
 
     let arg_tys: &[cabi::ArgType] = fn_type.arg_tys.as_slice();
 
@@ -437,7 +436,7 @@ pub fn trans_native_call<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     // type to match because some ABIs will use a different type than
     // the Rust type. e.g., a {u32,u32} struct could be returned as
     // u64.
-    if ret_def && !fn_type.ret_ty.is_indirect() {
+    if llsig.ret_def && !fn_type.ret_ty.is_indirect() {
         let llrust_ret_ty = llsig.llret_ty;
         let llforeign_ret_ty = match fn_type.ret_ty.cast {
             Some(ty) => ty,
@@ -450,7 +449,12 @@ pub fn trans_native_call<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         debug!("llforeign_ret_ty={}", ccx.tn().type_to_string(llforeign_ret_ty));
 
         if llrust_ret_ty == llforeign_ret_ty {
-            base::store_ty(bcx, llforeign_retval, llretptr, fn_sig.output)
+            match fn_sig.output {
+                ty::FnConverging(result_ty) => {
+                    base::store_ty(bcx, llforeign_retval, llretptr, result_ty)
+                }
+                ty::FnDiverging => {}
+            }
         } else {
             // The actual return type is a struct, but the ABI
             // adaptation code has cast it into some scalar type.  The
@@ -549,7 +553,7 @@ pub fn decl_rust_fn_with_foreign_abi(ccx: &CrateContext,
         }
         _ => fail!("expected bare fn in decl_rust_fn_with_foreign_abi")
     };
-    let llfn = base::decl_fn(ccx, name, cconv, llfn_ty, ty::mk_nil());
+    let llfn = base::decl_fn(ccx, name, cconv, llfn_ty, ty::FnConverging(ty::mk_nil()));
     add_argument_attributes(&tys, llfn);
     debug!("decl_rust_fn_with_foreign_abi(llfn_ty={}, llfn={})",
            ccx.tn().type_to_string(llfn_ty), ccx.tn().val_to_string(llfn));
@@ -698,8 +702,10 @@ pub fn trans_rust_fn_with_foreign_abi(ccx: &CrateContext,
         };
 
         // Push Rust return pointer, using null if it will be unused.
-        let rust_uses_outptr =
-            type_of::return_uses_outptr(ccx, tys.fn_sig.output);
+        let rust_uses_outptr = match tys.fn_sig.output {
+            ty::FnConverging(ret_ty) => type_of::return_uses_outptr(ccx, ret_ty),
+            ty::FnDiverging => false
+        };
         let return_alloca: Option<ValueRef>;
         let llrust_ret_ty = tys.llsig.llret_ty;
         let llrust_retptr_ty = llrust_ret_ty.ptr_to();
@@ -714,7 +720,7 @@ pub fn trans_rust_fn_with_foreign_abi(ccx: &CrateContext,
                     debug!("out pointer, foreign={}",
                            ccx.tn().val_to_string(llforeign_outptr));
                     let llrust_retptr =
-                        builder.bitcast(llforeign_outptr, llrust_ret_ty.ptr_to());
+                        builder.bitcast(llforeign_outptr, llrust_retptr_ty);
                     debug!("out pointer, foreign={} (casted)",
                            ccx.tn().val_to_string(llrust_retptr));
                     llrust_args.push(llrust_retptr);
@@ -817,7 +823,7 @@ pub fn trans_rust_fn_with_foreign_abi(ccx: &CrateContext,
             None => tys.fn_ty.ret_ty.ty
         };
         match foreign_outptr {
-            None if !tys.ret_def => {
+            None if !tys.llsig.ret_def => {
                 // Function returns `()` or `bot`, which in Rust is the LLVM
                 // type "{}" but in foreign ABIs is "Void".
                 builder.ret_void();
@@ -896,10 +902,16 @@ fn foreign_signature(ccx: &CrateContext, fn_sig: &ty::FnSig, arg_tys: &[ty::t])
      */
 
     let llarg_tys = arg_tys.iter().map(|&arg| arg_type_of(ccx, arg)).collect();
-    let llret_ty = type_of::arg_type_of(ccx, fn_sig.output);
+    let (llret_ty, ret_def) = match fn_sig.output {
+        ty::FnConverging(ret_ty) =>
+            (type_of::arg_type_of(ccx, ret_ty), !return_type_is_void(ccx, ret_ty)),
+        ty::FnDiverging =>
+            (Type::nil(ccx), false)
+    };
     LlvmSignature {
         llarg_tys: llarg_tys,
-        llret_ty: llret_ty
+        llret_ty: llret_ty,
+        ret_def: ret_def
     }
 }
 
@@ -915,11 +927,10 @@ fn foreign_types_for_fn_ty(ccx: &CrateContext,
         _ => ccx.sess().bug("foreign_types_for_fn_ty called on non-function type")
     };
     let llsig = foreign_signature(ccx, &fn_sig, fn_sig.inputs.as_slice());
-    let ret_def = !return_type_is_void(ccx, fn_sig.output);
     let fn_ty = cabi::compute_abi_info(ccx,
                                        llsig.llarg_tys.as_slice(),
                                        llsig.llret_ty,
-                                       ret_def);
+                                       llsig.ret_def);
     debug!("foreign_types_for_fn_ty(\
            ty={}, \
            llsig={} -> {}, \
@@ -930,12 +941,11 @@ fn foreign_types_for_fn_ty(ccx: &CrateContext,
            ccx.tn().type_to_string(llsig.llret_ty),
            ccx.tn().types_to_str(fn_ty.arg_tys.iter().map(|t| t.ty).collect::<Vec<_>>().as_slice()),
            ccx.tn().type_to_string(fn_ty.ret_ty.ty),
-           ret_def);
+           llsig.ret_def);
 
     ForeignTypes {
         fn_sig: fn_sig,
         llsig: llsig,
-        ret_def: ret_def,
         fn_ty: fn_ty
     }
 }

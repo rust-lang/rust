@@ -42,20 +42,12 @@ use util::ppaux::Repr;
 use std::collections::HashMap;
 
 pub trait LatticeDir {
-    // Relates the bottom type to `t` and returns LUB(t, _|_) or
-    // GLB(t, _|_) as appropriate.
-    fn ty_bot(&self, t: ty::t) -> cres<ty::t>;
-
     // Relates the type `v` to `a` and `b` such that `v` represents
     // the LUB/GLB of `a` and `b` as appropriate.
     fn relate_bound<'a>(&'a self, v: ty::t, a: ty::t, b: ty::t) -> cres<()>;
 }
 
 impl<'a, 'tcx> LatticeDir for Lub<'a, 'tcx> {
-    fn ty_bot(&self, t: ty::t) -> cres<ty::t> {
-        Ok(t)
-    }
-
     fn relate_bound<'a>(&'a self, v: ty::t, a: ty::t, b: ty::t) -> cres<()> {
         let sub = self.sub();
         try!(sub.tys(a, v));
@@ -65,10 +57,6 @@ impl<'a, 'tcx> LatticeDir for Lub<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> LatticeDir for Glb<'a, 'tcx> {
-    fn ty_bot(&self, _: ty::t) -> cres<ty::t> {
-        Ok(ty::mk_bot())
-    }
-
     fn relate_bound<'a>(&'a self, v: ty::t, a: ty::t, b: ty::t) -> cres<()> {
         let sub = self.sub();
         try!(sub.tys(v, a));
@@ -95,8 +83,12 @@ pub fn super_lattice_tys<'tcx, L:LatticeDir+Combine<'tcx>>(this: &L,
     let a = infcx.type_variables.borrow().replace_if_possible(a);
     let b = infcx.type_variables.borrow().replace_if_possible(b);
     match (&ty::get(a).sty, &ty::get(b).sty) {
-        (&ty::ty_bot, _) => { this.ty_bot(b) }
-        (_, &ty::ty_bot) => { this.ty_bot(a) }
+        (&ty::ty_infer(TyVar(..)), &ty::ty_infer(TyVar(..)))
+            if infcx.type_var_diverges(a) && infcx.type_var_diverges(b) => {
+            let v = infcx.next_diverging_ty_var();
+            try!(this.relate_bound(v, a, b));
+            Ok(v)
+        }
 
         (&ty::ty_infer(TyVar(..)), _) |
         (_, &ty::ty_infer(TyVar(..))) => {
