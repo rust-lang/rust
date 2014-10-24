@@ -213,8 +213,8 @@ mod imp {
 mod imp {
     use core::cmp;
     use core::ptr;
+    use core::ptr::RawPtr;
     use libc;
-    use libc_heap;
     use super::MIN_ALIGN;
 
     extern {
@@ -226,7 +226,11 @@ mod imp {
     #[inline]
     pub unsafe fn allocate(size: uint, align: uint) -> *mut u8 {
         if align <= MIN_ALIGN {
-            libc_heap::malloc_raw(size)
+            let ptr = libc::malloc(size as libc::size_t);
+            if ptr.is_null() {
+                ::oom();
+            }
+            ptr as *mut u8
         } else {
             let mut out = 0 as *mut libc::c_void;
             let ret = posix_memalign(&mut out,
@@ -242,7 +246,11 @@ mod imp {
     #[inline]
     pub unsafe fn reallocate(ptr: *mut u8, old_size: uint, size: uint, align: uint) -> *mut u8 {
         if align <= MIN_ALIGN {
-            libc_heap::realloc_raw(ptr, size)
+            let ptr = libc::realloc(ptr as *mut libc::c_void, size as libc::size_t);
+            if ptr.is_null() {
+                ::oom();
+            }
+            ptr as *mut u8
         } else {
             let new_ptr = allocate(size, align);
             ptr::copy_memory(new_ptr, ptr as *const u8, cmp::min(size, old_size));
@@ -274,7 +282,6 @@ mod imp {
 mod imp {
     use libc::{c_void, size_t};
     use libc;
-    use libc_heap;
     use core::ptr::RawPtr;
     use super::MIN_ALIGN;
 
@@ -288,7 +295,11 @@ mod imp {
     #[inline]
     pub unsafe fn allocate(size: uint, align: uint) -> *mut u8 {
         if align <= MIN_ALIGN {
-            libc_heap::malloc_raw(size)
+            let ptr = libc::malloc(size as size_t);
+            if ptr.is_null() {
+                ::oom();
+            }
+            ptr as *mut u8
         } else {
             let ptr = _aligned_malloc(size as size_t, align as size_t);
             if ptr.is_null() {
@@ -301,7 +312,11 @@ mod imp {
     #[inline]
     pub unsafe fn reallocate(ptr: *mut u8, _old_size: uint, size: uint, align: uint) -> *mut u8 {
         if align <= MIN_ALIGN {
-            libc_heap::realloc_raw(ptr, size)
+            let ptr = libc::realloc(ptr as *mut c_void, size as size_t);
+            if ptr.is_null() {
+                ::oom();
+            }
+            ptr as *mut u8
         } else {
             let ptr = _aligned_realloc(ptr as *mut c_void, size as size_t,
                                        align as size_t);
