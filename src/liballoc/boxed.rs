@@ -16,6 +16,7 @@ use core::cmp::{PartialEq, PartialOrd, Eq, Ord, Ordering};
 use core::default::Default;
 use core::fmt;
 use core::intrinsics;
+use core::kinds::Sized;
 use core::mem;
 use core::option::Option;
 use core::raw::TraitObject;
@@ -120,7 +121,7 @@ impl BoxAny for Box<Any+'static> {
     }
 }
 
-impl<T: fmt::Show> fmt::Show for Box<T> {
+impl<Sized? T: fmt::Show> fmt::Show for Box<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         (**self).fmt(f)
     }
