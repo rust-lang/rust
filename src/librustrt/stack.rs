@@ -55,10 +55,6 @@ pub const RED_ZONE: uint = 20 * 1024;
 #[cfg(not(test))] // in testing, use the original libstd's version
 #[lang = "stack_exhausted"]
 extern fn stack_exhausted() {
-    use core::prelude::*;
-    use alloc::boxed::Box;
-    use local::Local;
-    use task::Task;
     use core::intrinsics;
 
     unsafe {
@@ -104,21 +100,7 @@ extern fn stack_exhausted() {
         //  #9854 - unwinding on windows through __morestack has never worked
         //  #2361 - possible implementation of not using landing pads
 
-        let task: Option<Box<Task>> = Local::try_take();
-        let name = match task {
-            Some(ref task) => {
-                task.name.as_ref().map(|n| n.as_slice())
-            }
-            None => None
-        };
-        let name = name.unwrap_or("<unknown>");
-
-        // See the message below for why this is not emitted to the
-        // task's logger. This has the additional conundrum of the
-        // logger may not be initialized just yet, meaning that an FFI
-        // call would happen to initialized it (calling out to libuv),
-        // and the FFI call needs 2MB of stack when we just ran out.
-        rterrln!("task '{}' has overflowed its stack", name);
+        ::stack_overflow::report();
 
         intrinsics::abort();
     }

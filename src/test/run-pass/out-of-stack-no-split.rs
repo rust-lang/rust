@@ -8,6 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+//ignore-android
+//ignore-linux
+//ignore-freebsd
+//ignore-ios
+//ignore-dragonfly
+
 #![feature(asm)]
 
 use std::io::process::Command;
@@ -17,36 +23,25 @@ use std::os;
 // Inlining to avoid llvm turning the recursive functions into tail calls,
 // which doesn't consume stack.
 #[inline(always)]
+#[no_stack_check]
 pub fn black_box<T>(dummy: T) { unsafe { asm!("" : : "r"(&dummy)) } }
 
-fn silent_recurse() {
-    let buf = [0i, ..1000];
+#[no_stack_check]
+fn recurse() {
+    let buf = [0i, ..10];
     black_box(buf);
-    silent_recurse();
-}
-
-fn loud_recurse() {
-    println!("hello!");
-    loud_recurse();
-    black_box(()); // don't optimize this into a tail call. please.
+    recurse();
 }
 
 fn main() {
     let args = os::args();
     let args = args.as_slice();
-    if args.len() > 1 && args[1].as_slice() == "silent" {
-        silent_recurse();
-    } else if args.len() > 1 && args[1].as_slice() == "loud" {
-        loud_recurse();
+    if args.len() > 1 && args[1].as_slice() == "recurse" {
+        recurse();
     } else {
-        let silent = Command::new(args[0].as_slice()).arg("silent").output().unwrap();
-        assert!(!silent.status.success());
-        let error = String::from_utf8_lossy(silent.error.as_slice());
-        assert!(error.as_slice().contains("has overflowed its stack"));
-
-        let loud = Command::new(args[0].as_slice()).arg("loud").output().unwrap();
-        assert!(!loud.status.success());
-        let error = String::from_utf8_lossy(silent.error.as_slice());
+        let recurse = Command::new(args[0].as_slice()).arg("recurse").output().unwrap();
+        assert!(!recurse.status.success());
+        let error = String::from_utf8_lossy(recurse.error.as_slice());
         assert!(error.as_slice().contains("has overflowed its stack"));
     }
 }
