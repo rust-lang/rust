@@ -909,7 +909,7 @@ def_fn_mut!(A0 A1 A2 A3 A4 A5 A6 A7 A8 A9 A10 A11 A12 A13 A14 A15)
 pub trait Placer<Sized? Data, Owner, Interim: PlacementAgent<Data, Owner>> {
     /// Allocates a place for the data to live, returning an
     /// intermediate agent to negotiate ownership.
-    fn make_place(&self) -> Interim;
+    fn make_place(&mut self) -> Interim;
 }
 
 /// Some free functions called by expansions of `box <value_expr>` and
@@ -920,7 +920,7 @@ pub mod placer {
 
     /// The first argument, `<place>` in `box (<place>) <value>`, must
     /// implement `Placer`.
-    pub fn parenthesized_input_to_box_must_be_placer<'a, Sized? Data, Owner, A, P>(p: &'a P) -> &'a P
+    pub fn parenthesized_input_to_box_must_be_placer<'a, Sized? Data, Owner, A, P>(p: &'a mut P) -> &'a mut P
         where A:PlacementAgent<Data, Owner>,
               P:Placer<Data, Owner, A>+Sized {
         p
@@ -932,7 +932,7 @@ pub mod placer {
     /// `use std::ops::Placer;` and `use std::ops::PlacementAgent;`
 
     /// Calls `p.make_place()` as work-around for lack of UFCS.
-    pub fn make_place<Sized? Data, Owner, A, P>(p: &P) -> A
+    pub fn make_place<Sized? Data, Owner, A, P>(p: &mut P) -> A
         where A:PlacementAgent<Data, Owner>,
               P:Placer<Data, Owner, A> {
         p.make_place()

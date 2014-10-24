@@ -40,7 +40,7 @@ use core::result::{Ok, Err, Result};
 /// ```
 #[lang = "exchange_heap"]
 #[experimental = "may be renamed; uncertain about custom allocator design"]
-pub static HEAP: ExchangeHeapSingleton =
+pub const HEAP: ExchangeHeapSingleton =
     ExchangeHeapSingleton { _force_singleton: () };
 
 /// This the singleton type used solely for `boxed::HEAP`.
@@ -76,7 +76,7 @@ pub struct IntermediateBox<Sized? T>{
 }
 
 impl<T> Placer<T, Box<T>, IntermediateBox<T>> for ExchangeHeapSingleton {
-    fn make_place(&self) -> IntermediateBox<T> {
+    fn make_place(&mut self) -> IntermediateBox<T> {
         let size = mem::size_of::<T>();
         let align = mem::align_of::<T>();
 

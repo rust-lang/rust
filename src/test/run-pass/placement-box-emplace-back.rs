@@ -61,7 +61,7 @@ struct EmplaceBackAgent<T> {
 }
 
 impl<'a, T> Placer<T, (), EmplaceBackAgent<T>> for EmplaceBackPlacer<'a, T> {
-    fn make_place(&self) -> EmplaceBackAgent<T> {
+    fn make_place(&mut self) -> EmplaceBackAgent<T> {
         let len = self.vec.len();
         let v = self.vec as *mut Vec<T>;
         unsafe {

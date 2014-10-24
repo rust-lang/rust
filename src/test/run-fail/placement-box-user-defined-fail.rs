@@ -39,7 +39,7 @@ struct InterimAtom {
 
 struct AtomPool {
     record: *mut Record,
-    total_count: Cell<uint>,
+    total_count: uint,
 }
 
 struct ExpectDropRecord<'a> {
@@ -59,7 +59,7 @@ impl<'a> Drop for ExpectDropRecord<'a> {
 pub fn main() {
     let mut record = vec![];
     let record = &mut record as *mut Record;
-    let pool = &AtomPool::new(record);
+    let mut pool = &mut AtomPool::new(record);
 
     let expect = [FinalizeInterim(0),
                   DropInterim(1),
@@ -68,7 +68,7 @@ pub fn main() {
     inner(pool);
 }
 
-fn inner(pool: &AtomPool) {
+fn inner(mut pool: &mut AtomPool) {
     let a = box (pool) "hello";
     let b = box (pool) { fail!("the right fail"); "world" };
     let c = box (pool) { fail!("we never"); "get here " };
@@ -76,14 +76,14 @@ fn inner(pool: &AtomPool) {
 
 impl AtomPool {
     fn new(record: *mut Record) -> AtomPool {
-        AtomPool { record: record, total_count: Cell::new(0) }
+        AtomPool { record: record, total_count: 0 }
     }
 }
 
-impl<'a> Placer<&'static str, Atom, InterimAtom> for &'a AtomPool {
-    fn make_place(&self) -> InterimAtom {
-        let c = self.total_count.get();
-        self.total_count.set(c + 1);
+impl<'a> Placer<&'static str, Atom, InterimAtom> for &'a mut AtomPool {
+    fn make_place(&mut self) -> InterimAtom {
+        let c = self.total_count;
+        self.total_count = c + 1;
         InterimAtom {
             record: self.record,
             name_todo: "",

@@ -89,7 +89,7 @@ pub fn expand_expr(e: P<ast::Expr>, fld: &mut MacroExpander) -> P<ast::Expr> {
             //
             // {
             //     fn force_placer<'a, D,T,I,P>(p: &'a P) -> &'a P where P : Placer<D,T,I> { p }
-            //     let place = force_placer(& <place_expr> );
+            //     let place = force_placer(&mut <place_expr> );
             //     let agent = place.make_place();
             //     let value = <value_expr>
             //     unsafe {
@@ -177,7 +177,7 @@ pub fn expand_expr(e: P<ast::Expr>, fld: &mut MacroExpander) -> P<ast::Expr> {
             let stmt_let = |span, bind, expr| fld.cx.stmt_let(span, false, bind, expr);
 
             // FIXME RE place2 (pnkfelix): This attempt to encode an
-            // assertion that the <place-expr> implements `Placer` is
+            // assertion that the <place_expr> implements `Placer` is
             // not working yet; gets type-inference failure with
             // message "error: unable to infer enough type information
             // to locate the impl of the trait `core::kinds::Sized`
@@ -192,10 +192,10 @@ pub fn expand_expr(e: P<ast::Expr>, fld: &mut MacroExpander) -> P<ast::Expr> {
                 span,
                 vec![],
                 vec![
-                    // let place1 = & <place_expr> ; // default of ::std::boxed::HEAP
+                    // let place1 = &mut <place_expr> ; // default of ::std::boxed::HEAP
                     stmt_let(place_span,
                              place_ident,
-                             fld.cx.expr_addr_of(place_span, match maybe_place {
+                             fld.cx.expr_mut_addr_of(place_span, match maybe_place {
                                  Some(place_expr) => place_expr,
                                  None => fld.cx.expr_path(boxed_heap()),
                              })),

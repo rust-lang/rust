@@ -20,28 +20,28 @@ use std::mem;
 use std::ops::{Placer,PlacementAgent};
 
 pub fn main() {
-    let ref arena = PoolFloat4::new();
+    let ref mut arena = PoolFloat4::new();
     inner(arena);
 
     let expecting = [true, true, true, true, true];
     assert_eq!(arena.avail_snapshot().as_slice(), expecting.as_slice());
 }
 
-fn inner(arena: &PoolFloat4) {
-    let avail = || -> Vec<bool> { arena.avail_snapshot() };
+fn inner(arena: &mut PoolFloat4) {
+    fn avail<'a>(arena: &PoolFloat4) -> [bool, ..5] { arena.avail_snapshot() }
 
     let expecting = [true, true, true, true, true];
-    assert_eq!(avail().as_slice(), expecting.as_slice());
+    assert_eq!(avail(arena).as_slice(), expecting.as_slice());
 
-    let a: BoxFloat4 = box (arena) [1.0, 2.0, 3.0, 4.0];
+    let a: BoxFloat4 = box (*arena) [1.0, 2.0, 3.0, 4.0];
 
     let expecting = [false, true, true, true, true];
-    assert_eq!(avail().as_slice(), expecting.as_slice());
+    assert_eq!(avail(arena).as_slice(), expecting.as_slice());
     assert_eq!(a.xyzw(), (1.0, 2.0, 3.0, 4.0));
 
     let mut order = vec![];
 
-    let b: BoxFloat4 = box ({ order.push("arena"); arena }) [
+    let b: BoxFloat4 = box (*{ order.push("arena"); &mut *arena }) [
         { order.push("10.0"); 10.0 },
         { order.push("20.0"); 20.0 },
         { order.push("30.0"); 30.0 },
@@ -49,22 +49,22 @@ fn inner(arena: &PoolFloat4) {
         ];
 
     let expecting = [false, false, true, true, true];
-    assert_eq!(avail().as_slice(), expecting.as_slice());
+    assert_eq!(avail(arena).as_slice(), expecting.as_slice());
     assert_eq!(a.xyzw(), (1.0, 2.0, 3.0, 4.0));
     assert_eq!(b.xyzw(), (10.0, 20.0, 30.0, 40.0));
     assert_eq!(order, vec!["arena", "10.0", "20.0", "30.0", "40.0"]);
 
     {
-        let c: BoxFloat4 = box (arena) [100.0, 200.0, 300.0, 400.0];
+        let c: BoxFloat4 = box (*arena) [100.0, 200.0, 300.0, 400.0];
         let expecting = [false, false, false, true, true];
-        assert_eq!(avail().as_slice(), expecting.as_slice());
+        assert_eq!(avail(arena).as_slice(), expecting.as_slice());
         assert_eq!(a.xyzw(), (1.0, 2.0, 3.0, 4.0));
         assert_eq!(b.xyzw(), (10.0, 20.0, 30.0, 40.0));
         assert_eq!(c.xyzw(), (100.0, 200.0, 300.0, 400.0));
     }
 
     let expecting = [false, false, true, true, true];
-    assert_eq!(avail().as_slice(), expecting.as_slice());
+    assert_eq!(avail(arena).as_slice(), expecting.as_slice());
     assert_eq!(a.xyzw(), (1.0, 2.0, 3.0, 4.0));
     assert_eq!(b.xyzw(), (10.0, 20.0, 30.0, 40.0));
 }
@@ -92,7 +92,7 @@ struct InterimBoxFloat4 {
 
 struct PoolFloat4 {
     pool: [f32, ..20],
-    avail: [Cell<bool>, ..5],
+    avail: [bool, ..5],
     no_copy: marker::NoCopy,
 }
 
@@ -100,25 +100,20 @@ impl PoolFloat4 {
     fn new() -> PoolFloat4 {
         let ret = PoolFloat4 {
             pool: [0.0, ..20],
-            avail: [Cell::new(true),
-                    Cell::new(true),
-                    Cell::new(true),
-                    Cell::new(true),
-                    Cell::new(true),
-                    ],
+            avail: [true, ..5],
             no_copy: marker::NoCopy,
         };
 
         ret
     }
 
-    fn avail_snapshot(&self) -> Vec<bool> {
-        self.avail.iter().map(|c|c.get()).collect()
+    fn avail_snapshot(&self) -> [bool, ..5] {
+        self.avail
     }
 
     fn first_avail(&self) -> Option<uint> {
         for i in range(0u, 5) {
-            if self.avail[i].get() {
+            if self.avail[i] {
                 return Some(i);
             }
         }
@@ -145,22 +140,22 @@ impl PoolFloat4 {
                 return;
             }
         };
-        self.avail[i].set(true);
-        assert_eq!(self.avail[i].get(), true);
+        self.avail[i] = true;
+        assert_eq!(self.avail[i], true);
     }
 }
 
 impl<'a> Placer<[f32, ..4], BoxFloat4, InterimBoxFloat4>
-    for &'a PoolFloat4 {
-    fn make_place(&self) -> InterimBoxFloat4 {
+    for PoolFloat4 {
+    fn make_place(&mut self) -> InterimBoxFloat4 {
         let i = self.first_avail()
             .unwrap_or_else(|| fail!("exhausted all spots"));
 
-        self.avail[i].set(false);
-        assert_eq!(self.avail[i].get(), false);
+        self.avail[i] = false;
+        assert_eq!(self.avail[i], false);
         unsafe {
-            InterimBoxFloat4 { arena: mem::transmute(*self),
-                               f4: mem::transmute(&self.pool[i*4]) }
+            let f4 : *mut f32 = mem::transmute(&self.pool[i*4]);
+            InterimBoxFloat4 { arena: mem::transmute(self), f4: f4 }
         }
     }
 }
