@@ -1606,8 +1606,8 @@ impl<'a, 'tcx> LookupContext<'a, 'tcx> {
             MethodStaticUnboxedClosure(_) => {
                 false
             }
-            MethodTypeParam(MethodParam { trait_ref: ref trait_ref, .. }) |
-            MethodTraitObject(MethodObject { trait_ref: ref trait_ref, .. }) => {
+            MethodTypeParam(MethodParam { ref trait_ref, .. }) |
+            MethodTraitObject(MethodObject { ref trait_ref, .. }) => {
                 Some(trait_ref.def_id) == self.tcx().lang_items.drop_trait()
             }
         };

@@ -739,9 +739,9 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
                 resolve::LastMod(resolve::DependsOn(def)) => {
                     self.report_error(ck_public(def));
                 },
-                resolve::LastImport{value_priv: value_priv,
+                resolve::LastImport{value_priv,
                                     value_used: check_value,
-                                    type_priv: type_priv,
+                                    type_priv,
                                     type_used: check_type} => {
                     // This dance with found_error is because we don't want to report
                     // a privacy error twice for the same directive.
@@ -828,8 +828,8 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
             MethodStaticUnboxedClosure(_) => {}
             // Trait methods are always all public. The only controlling factor
             // is whether the trait itself is accessible or not.
-            MethodTypeParam(MethodParam { trait_ref: ref trait_ref, .. }) |
-            MethodTraitObject(MethodObject { trait_ref: ref trait_ref, .. }) => {
+            MethodTypeParam(MethodParam { ref trait_ref, .. }) |
+            MethodTraitObject(MethodObject { ref trait_ref, .. }) => {
                 self.report_error(self.ensure_public(span, trait_ref.def_id,
                                                      None, "source trait"));
             }
@@ -991,7 +991,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for PrivacyVisitor<'a, 'tcx> {
                     ty::ty_struct(id, _) => {
                         for field in fields.iter() {
                             self.check_field(pattern.span, id,
-                                             NamedField(field.ident));
+                                             NamedField(field.node.ident));
                         }
                     }
                     ty::ty_enum(_, _) => {
@@ -999,7 +999,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for PrivacyVisitor<'a, 'tcx> {
                             Some(&def::DefVariant(_, variant_id, _)) => {
                                 for field in fields.iter() {
                                     self.check_field(pattern.span, variant_id,
-                                                     NamedField(field.ident));
+                                                     NamedField(field.node.ident));
                                 }
                             }
                             _ => self.tcx.sess.span_bug(pattern.span,

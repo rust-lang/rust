@@ -1093,9 +1093,9 @@ impl<'a> rbml_writer_helpers for Encoder<'a> {
                         this.emit_enum_variant_arg(1, |this| idx.encode(this))
                     })
                 }
-                ty::UnsizeVtable(ty::TyTrait { def_id: def_id,
+                ty::UnsizeVtable(ty::TyTrait { def_id,
                                                bounds: ref b,
-                                               substs: ref substs },
+                                               ref substs },
                                  self_ty) => {
                     this.emit_enum_variant("UnsizeVtable", 2, 4, |this| {
                         this.emit_enum_variant_arg(

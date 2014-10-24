@@ -340,6 +340,7 @@ pub struct Pat {
 pub struct FieldPat {
     pub ident: Ident,
     pub pat: P<Pat>,
+    pub is_shorthand: bool,
 }
 
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
@@ -374,7 +375,7 @@ pub enum Pat_ {
     /// "None" means a * pattern where we don't bind the fields to names.
     PatEnum(Path, Option<Vec<P<Pat>>>),
 
-    PatStruct(Path, Vec<FieldPat>, bool),
+    PatStruct(Path, Vec<Spanned<FieldPat>>, bool),
     PatTup(Vec<P<Pat>>),
     PatBox(P<Pat>),
     PatRegion(P<Pat>), // reference pattern

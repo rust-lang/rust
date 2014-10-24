@@ -765,7 +765,7 @@ pub fn trans_set_discr(bcx: Block, r: &Repr, val: ValueRef, discr: Disr) {
                 Store(bcx, C_null(llptrty), val)
             }
         }
-        StructWrappedNullablePointer { nonnull: ref nonnull, nndiscr, ptrfield, .. } => {
+        StructWrappedNullablePointer { ref nonnull, nndiscr, ptrfield, .. } => {
             if discr != nndiscr {
                 let (llptrptr, llptrty) = match ptrfield {
                     ThinPointer(field) =>
@@ -806,8 +806,8 @@ pub fn num_args(r: &Repr, discr: Disr) -> uint {
         RawNullablePointer { nndiscr, ref nullfields, .. } => {
             if discr == nndiscr { 1 } else { nullfields.len() }
         }
-        StructWrappedNullablePointer { nonnull: ref nonnull, nndiscr,
-                                       nullfields: ref nullfields, .. } => {
+        StructWrappedNullablePointer { ref nonnull, nndiscr,
+                                       ref nullfields, .. } => {
             if discr == nndiscr { nonnull.fields.len() } else { nullfields.len() }
         }
     }
@@ -988,7 +988,7 @@ pub fn trans_const(ccx: &CrateContext, r: &Repr, discr: Disr,
                 C_null(type_of::sizing_type_of(ccx, nnty))
             }
         }
-        StructWrappedNullablePointer { nonnull: ref nonnull, nndiscr, .. } => {
+        StructWrappedNullablePointer { ref nonnull, nndiscr, .. } => {
             if discr == nndiscr {
                 C_struct(ccx, build_const_struct(ccx,
                                                  nonnull,

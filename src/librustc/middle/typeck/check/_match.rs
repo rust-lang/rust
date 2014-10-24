@@ -27,7 +27,7 @@ use std::collections::{HashMap, HashSet};
 use syntax::ast;
 use syntax::ast_util;
 use syntax::parse::token;
-use syntax::codemap::Span;
+use syntax::codemap::{Span, Spanned};
 use syntax::print::pprust;
 use syntax::ptr::P;
 
@@ -294,7 +294,7 @@ pub fn check_pat_variant(pcx: &pat_ctxt, pat: &ast::Pat, path: &ast::Path,
 /// `etc` is true if the pattern said '...' and false otherwise.
 pub fn check_struct_pat_fields(pcx: &pat_ctxt,
                                span: Span,
-                               fields: &[ast::FieldPat],
+                               fields: &[Spanned<ast::FieldPat>],
                                class_fields: Vec<ty::field_ty>,
                                class_id: ast::DefId,
                                substitutions: &subst::Substs,
@@ -310,7 +310,7 @@ pub fn check_struct_pat_fields(pcx: &pat_ctxt,
 
     // Typecheck each field.
     let mut found_fields = HashSet::new();
-    for field in fields.iter() {
+    for &Spanned { node: ref field, span } in fields.iter() {
         match field_map.find_mut(&field.ident.name) {
             Some(&(_, true)) => {
                 // Check the pattern anyway, so that attempts to look
@@ -356,7 +356,7 @@ pub fn check_struct_pat_fields(pcx: &pat_ctxt,
 }
 
 pub fn check_struct_pat(pcx: &pat_ctxt, span: Span,
-                        fields: &[ast::FieldPat], etc: bool,
+                        fields: &[Spanned<ast::FieldPat>], etc: bool,
                         struct_id: ast::DefId,
                         substitutions: &subst::Substs) {
     let _fcx = pcx.fcx;
@@ -373,7 +373,7 @@ pub fn check_struct_like_enum_variant_pat(pcx: &pat_ctxt,
                                           span: Span,
                                           expected: ty::t,
                                           path: &ast::Path,
-                                          fields: &[ast::FieldPat],
+                                          fields: &[Spanned<ast::FieldPat>],
                                           etc: bool,
                                           enum_id: ast::DefId,
                                           substitutions: &subst::Substs) {
@@ -416,7 +416,7 @@ pub fn check_struct_like_enum_variant_pat(pcx: &pat_ctxt,
 
     if ty::type_is_error(fcx.node_ty(pat_id)) {
         for field in fields.iter() {
-            check_pat(pcx, &*field.pat, ty::mk_err());
+            check_pat(pcx, &*field.node.pat, ty::mk_err());
         }
     }
 }
