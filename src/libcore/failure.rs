@@ -30,40 +30,69 @@
 
 #![allow(dead_code, missing_doc)]
 
-use fmt;
-use intrinsics;
+pub use failure::internal::{fail, fail_fmt};
 
-#[cold] #[inline(never)] // this is the slow path, always
-#[lang="fail"]
-pub fn fail(expr_file_line: &(&'static str, &'static str, uint)) -> ! {
-    let (expr, file, line) = *expr_file_line;
-    let ref file_line = (file, line);
-    format_args!(|args| -> () {
-        fail_fmt(args, file_line);
-    }, "{}", expr);
+#[cfg(not(no_fail_fmt))]
+mod internal {
+    use fmt;
+    use intrinsics;
 
-    unsafe { intrinsics::abort() }
-}
+    #[cold] #[inline(never)] // this is the slow path, always
+    #[lang="fail"]
+    pub fn fail(expr_file_line: &(&'static str, &'static str, uint)) -> ! {
+        let (expr, file, line) = *expr_file_line;
+        let ref file_line = (file, line);
+        format_args!(|args| -> () {
+            fail_fmt(args, file_line);
+        }, "{}", expr);
 
-#[cold] #[inline(never)]
-#[lang="fail_bounds_check"]
-fn fail_bounds_check(file_line: &(&'static str, uint),
-                     index: uint, len: uint) -> ! {
-    format_args!(|args| -> () {
-        fail_fmt(args, file_line);
-    }, "index out of bounds: the len is {} but the index is {}", len, index);
-    unsafe { intrinsics::abort() }
-}
-
-#[cold] #[inline(never)]
-pub fn fail_fmt(fmt: &fmt::Arguments, file_line: &(&'static str, uint)) -> ! {
-    #[allow(ctypes)]
-    extern {
-        #[lang = "fail_fmt"]
-        fn fail_impl(fmt: &fmt::Arguments, file: &'static str,
-                        line: uint) -> !;
-
+        unsafe { intrinsics::abort() }
     }
-    let (file, line) = *file_line;
-    unsafe { fail_impl(fmt, file, line) }
+
+    #[cold] #[inline(never)]
+    #[lang="fail_bounds_check"]
+    fn fail_bounds_check(file_line: &(&'static str, uint),
+                         index: uint, len: uint) -> ! {
+        format_args!(|args| -> () {
+            fail_fmt(args, file_line);
+        }, "index out of bounds: the len is {} but the index is {}", len, index);
+        unsafe { intrinsics::abort() }
+    }
+
+    #[cold] #[inline(never)]
+    pub fn fail_fmt(fmt: &fmt::Arguments, file_line: &(&'static str, uint)) -> ! {
+        #[allow(ctypes)]
+        extern {
+            #[lang = "fail_fmt"]
+            fn fail_impl(fmt: &fmt::Arguments, file: &'static str,
+                            line: uint) -> !;
+        }
+
+        let (file, line) = *file_line;
+        unsafe { fail_impl(fmt, file, line) }
+    }
+}
+
+#[cfg(no_fail_fmt)]
+mod internal {
+    use fmt;
+    use intrinsics;
+
+    #[cold] #[inline(never)] // this is the slow path, always
+    #[lang="fail"]
+    pub fn fail(_expr_file_line: &(&'static str, &'static str, uint)) -> ! {
+        unsafe { intrinsics::abort() }
+    }
+
+    #[cold] #[inline(never)]
+    #[lang="fail_bounds_check"]
+    fn fail_bounds_check(_file_line: &(&'static str, uint),
+                         _index: uint, _len: uint) -> ! {
+        unsafe { intrinsics::abort() }
+    }
+
+    #[cold] #[inline(never)]
+    pub fn fail_fmt(_fmt: &fmt::Arguments, _file_line: &(&'static str, uint)) -> ! {
+        unsafe { intrinsics::abort() }
+    }
 }
