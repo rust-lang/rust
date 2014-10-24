@@ -17,7 +17,7 @@ use syntax::ast_util;
 use syntax::ast_util::PostExpansionMethod;
 use syntax::attr;
 use syntax::attr::{AttributeMethods, AttrMetaMethods};
-use syntax::codemap::{DUMMY_SP, Pos};
+use syntax::codemap::{DUMMY_SP, Pos, Spanned};
 use syntax::parse::token::InternedString;
 use syntax::parse::token;
 use syntax::ptr::P;
@@ -2045,7 +2045,7 @@ fn name_from_pat(p: &ast::Pat) -> String {
         PatEnum(ref p, _) => path_to_string(p),
         PatStruct(ref name, ref fields, etc) => {
             format!("{} {{ {}{} }}", path_to_string(name),
-                fields.iter().map(|fp|
+                fields.iter().map(|&Spanned { node: ref fp, .. }|
                                   format!("{}: {}", fp.ident.as_str(), name_from_pat(&*fp.pat)))
                              .collect::<Vec<String>>().connect(", "),
                 if etc { ", ..." } else { "" }

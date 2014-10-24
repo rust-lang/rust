@@ -434,7 +434,7 @@ impl<K: Ord, V> TreeMap<K, V> {
     /// assert_eq!(vec, vec![("a", 1), ("b", 2), ("c", 3)]);
     /// ```
     pub fn into_iter(self) -> MoveEntries<K, V> {
-        let TreeMap { root: root, length: length } = self;
+        let TreeMap { root, length } = self;
         let stk = match root {
             None => vec!(),
             Some(box tn) => vec!(tn)
@@ -898,11 +898,11 @@ impl<K, V> Iterator<(K, V)> for MoveEntries<K,V> {
     fn next(&mut self) -> Option<(K, V)> {
         while !self.stack.is_empty() {
             let TreeNode {
-                key: key,
-                value: value,
-                left: left,
-                right: right,
-                level: level
+                key,
+                value,
+                left,
+                right,
+                level,
             } = self.stack.pop().unwrap();
 
             match left {

@@ -1281,7 +1281,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 }
             }
 
-            ty::ty_rptr(_, ty::mt { ty: referent_ty, mutbl: mutbl }) => {
+            ty::ty_rptr(_, ty::mt { ty: referent_ty, mutbl }) => {
                 // &mut T or &T
                 match bound {
                     ty::BoundCopy => {

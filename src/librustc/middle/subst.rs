@@ -165,7 +165,7 @@ impl Substs {
     }
 
     pub fn erase_regions(self) -> Substs {
-        let Substs { types: types, regions: _ } = self;
+        let Substs { types, regions: _ } = self;
         Substs { types: types, regions: ErasedRegions }
     }
 

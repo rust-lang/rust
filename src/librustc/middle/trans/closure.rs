@@ -190,7 +190,7 @@ pub fn store_environment<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     }
 
     // allocate closure in the heap
-    let Result {bcx: bcx, val: llbox} = allocate_cbox(bcx, store, cdata_ty);
+    let Result {bcx, val: llbox} = allocate_cbox(bcx, store, cdata_ty);
 
     let llbox = PointerCast(bcx, llbox, llboxptr_ty);
     debug!("tuplify_box_ty = {}", ty_to_string(tcx, cbox_ty));

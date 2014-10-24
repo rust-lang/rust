@@ -276,58 +276,6 @@ impl<'a> SpanUtils<'a> {
         }
     }
 
-    // Return an owned vector of the subspans of the tokens that come before tok2
-    // which is before tok1. If there is no instance of tok2 before tok1, then that
-    // place in the result is None.
-    // Everything returned must be inside a set of (non-angle) brackets, but no
-    // more deeply nested than that.
-    pub fn sub_spans_before_tokens(&self,
-                               span: Span,
-                               tok1: Token,
-                               tok2: Token) -> Vec<Option<Span>> {
-        let mut sub_spans : Vec<Option<Span>> = vec!();
-        let mut toks = self.retokenise_span(span);
-        let mut prev = toks.next_token();
-        let mut next = toks.next_token();
-        let mut stored_val = false;
-        let mut found_val = false;
-        let mut bracket_count = 0u;
-        while next.tok != token::EOF {
-            if bracket_count == 1 {
-                if next.tok == tok2 {
-                    sub_spans.push(self.make_sub_span(span, Some(prev.sp)));
-                    stored_val = true;
-                    found_val = false;
-                }
-                if next.tok == tok1 {
-                    if !stored_val {
-                        sub_spans.push(None);
-                    } else {
-                        stored_val = false;
-                    }
-                    found_val = false;
-                }
-                if !stored_val &&
-                   is_ident(&next.tok) {
-                    found_val = true;
-                }
-            }
-
-            bracket_count += match next.tok {
-                token::LPAREN | token::LBRACE => 1,
-                token::RPAREN | token::RBRACE => -1,
-                _ => 0
-            };
-
-            prev = next;
-            next = toks.next_token();
-        }
-        if found_val {
-            sub_spans.push(None);
-        }
-        return sub_spans;
-    }
-
     pub fn sub_span_after_keyword(&self,
                               span: Span,
                               keyword: keywords::Keyword) -> Option<Span> {

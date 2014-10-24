@@ -1354,11 +1354,11 @@ impl<'a, 'tcx> Rebuilder<'a, 'tcx> {
                     lifetime: ast::Lifetime)
                     -> ast::Path {
         let RebuildPathInfo {
-            path: path,
-            indexes: indexes,
-            expected: expected,
-            anon_nums: anon_nums,
-            region_names: region_names,
+            path,
+            indexes,
+            expected,
+            anon_nums,
+            region_names,
         } = rebuild_info;
 
         let last_seg = path.segments.last().unwrap();

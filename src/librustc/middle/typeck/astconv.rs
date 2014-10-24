@@ -382,7 +382,7 @@ pub fn ast_path_to_ty<'tcx, AC: AstConv<'tcx>, RS: RegionScope>(
     -> TypeAndSubsts {
     let tcx = this.tcx();
     let ty::Polytype {
-        generics: generics,
+        generics,
         ty: decl_ty
     } = this.get_item_ty(did);
 
@@ -411,7 +411,7 @@ pub fn ast_path_to_ty_relaxed<'tcx, AC: AstConv<'tcx>,
                               -> TypeAndSubsts {
     let tcx = this.tcx();
     let ty::Polytype {
-        generics: generics,
+        generics,
         ty: decl_ty
     } = this.get_item_ty(did);
 

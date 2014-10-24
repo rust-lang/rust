@@ -38,7 +38,7 @@ enum XYZ {
 
 fn field_match_in_patterns(b: XYZ) -> String {
     match b {
-        Y { a: a, .. } => a,
+        Y { a, .. } => a,
         _ => "".to_string()
     }
 }

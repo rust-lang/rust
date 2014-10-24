@@ -132,7 +132,7 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
 
             ast::PatStruct(_, ref subpats, _) => {
                 let pats_exit =
-                    self.pats_all(subpats.iter().map(|f| &f.pat), pred);
+                    self.pats_all(subpats.iter().map(|f| &f.node.pat), pred);
                 self.add_node(pat.id, [pats_exit])
             }
 

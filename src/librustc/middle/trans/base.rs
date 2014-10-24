@@ -401,7 +401,7 @@ pub fn malloc_raw_dyn_proc<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, t: ty::t) -> Resu
     let llalign = C_uint(ccx, llalign_of_min(bcx.ccx(), llty));
 
     // Allocate space and store the destructor pointer:
-    let Result {bcx: bcx, val: llbox} = malloc_raw_dyn(bcx, ptr_llty, t, size, llalign);
+    let Result {bcx, val: llbox} = malloc_raw_dyn(bcx, ptr_llty, t, size, llalign);
     let dtor_ptr = GEPi(bcx, llbox, [0u, abi::box_field_drop_glue]);
     let drop_glue_field_ty = type_of(ccx, ty::mk_nil_ptr(bcx.tcx()));
     let drop_glue = PointerCast(bcx, glue::get_drop_glue(ccx, ty::mk_uniq(bcx.tcx(), t)),

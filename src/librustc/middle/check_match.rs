@@ -413,12 +413,16 @@ fn construct_witness(cx: &MatchCheckCtxt, ctor: &Constructor,
             };
             if is_structure {
                 let fields = ty::lookup_struct_fields(cx.tcx, vid);
-                let field_pats: Vec<FieldPat> = fields.into_iter()
+                let field_pats: Vec<Spanned<FieldPat>> = fields.into_iter()
                     .zip(pats)
                     .filter(|&(_, ref pat)| pat.node != PatWild(PatWildSingle))
-                    .map(|(field, pat)| FieldPat {
-                        ident: Ident::new(field.name),
-                        pat: pat
+                    .map(|(field, pat)| Spanned {
+                        span: DUMMY_SP,
+                        node: FieldPat {
+                            ident: Ident::new(field.name),
+                            pat: pat,
+                            is_shorthand: true,
+                        }
                     }).collect();
                 let has_more_fields = field_pats.len() < pats_len;
                 PatStruct(def_to_path(cx.tcx, vid), field_pats, has_more_fields)
@@ -427,7 +431,7 @@ fn construct_witness(cx: &MatchCheckCtxt, ctor: &Constructor,
             }
         }
 
-        ty::ty_rptr(_, ty::mt { ty: ty, .. }) => {
+        ty::ty_rptr(_, ty::mt { ty, .. }) => {
             match ty::get(ty).sty {
                ty::ty_vec(_, Some(n)) => match ctor {
                     &Single => {
@@ -495,7 +499,7 @@ fn all_constructors(cx: &MatchCheckCtxt, left_ty: ty::t,
         ty::ty_nil =>
             vec!(ConstantValue(const_nil)),
 
-        ty::ty_rptr(_, ty::mt { ty: ty, .. }) => match ty::get(ty).sty {
+        ty::ty_rptr(_, ty::mt { ty, .. }) => match ty::get(ty).sty {
             ty::ty_vec(_, None) =>
                 range_inclusive(0, max_slice_length).map(|length| Slice(length)).collect(),
             _ => vec!(Single)
@@ -692,7 +696,7 @@ pub fn constructor_arity(cx: &MatchCheckCtxt, ctor: &Constructor, ty: ty::t) -> 
     match ty::get(ty).sty {
         ty::ty_tup(ref fs) => fs.len(),
         ty::ty_uniq(_) => 1u,
-        ty::ty_rptr(_, ty::mt { ty: ty, .. }) => match ty::get(ty).sty {
+        ty::ty_rptr(_, ty::mt { ty, .. }) => match ty::get(ty).sty {
             ty::ty_vec(_, None) => match *ctor {
                 Slice(length) => length,
                 ConstantValue(_) => 0u,
@@ -740,7 +744,7 @@ fn range_covered_by_constructor(ctor: &Constructor,
 pub fn specialize<'a>(cx: &MatchCheckCtxt, r: &[&'a Pat],
                       constructor: &Constructor, col: uint, arity: uint) -> Option<Vec<&'a Pat>> {
     let &Pat {
-        id: pat_id, node: ref node, span: pat_span
+        id: pat_id, ref node, span: pat_span
     } = raw_pat(r[col]);
     let head: Option<Vec<&Pat>> = match node {
 
@@ -806,8 +810,8 @@ pub fn specialize<'a>(cx: &MatchCheckCtxt, r: &[&'a Pat],
             class_id.map(|variant_id| {
                 let struct_fields = ty::lookup_struct_fields(cx.tcx, variant_id);
                 let args = struct_fields.iter().map(|sf| {
-                    match pattern_fields.iter().find(|f| f.ident.name == sf.name) {
-                        Some(ref f) => &*f.pat,
+                    match pattern_fields.iter().find(|f| f.node.ident.name == sf.name) {
+                        Some(ref f) => &*f.node.pat,
                         _ => DUMMY_WILD_PAT
                     }
                 }).collect();

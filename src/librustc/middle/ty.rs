@@ -378,13 +378,13 @@ pub fn type_of_adjust(cx: &ctxt, adj: &AutoAdjustment) -> Option<t> {
     fn type_of_autoref(cx: &ctxt, autoref: &AutoRef) -> Option<t> {
         match autoref {
             &AutoUnsize(ref k) => match k {
-                &UnsizeVtable(TyTrait { def_id, substs: ref substs, bounds }, _) => {
+                &UnsizeVtable(TyTrait { def_id, ref substs, bounds }, _) => {
                     Some(mk_trait(cx, def_id, substs.clone(), bounds))
                 }
                 _ => None
             },
             &AutoUnsizeUniq(ref k) => match k {
-                &UnsizeVtable(TyTrait { def_id, substs: ref substs, bounds }, _) => {
+                &UnsizeVtable(TyTrait { def_id, ref substs, bounds }, _) => {
                     Some(mk_uniq(cx, mk_trait(cx, def_id, substs.clone(), bounds)))
                 }
                 _ => None
@@ -3522,7 +3522,7 @@ pub fn unsize_ty(cx: &ctxt,
                                   format!("UnsizeStruct with bad sty: {}",
                                           ty_to_string(cx, ty)).as_slice())
         },
-        &UnsizeVtable(TyTrait { def_id, substs: ref substs, bounds }, _) => {
+        &UnsizeVtable(TyTrait { def_id, ref substs, bounds }, _) => {
             mk_trait(cx, def_id, substs.clone(), bounds)
         }
     }
@@ -5484,7 +5484,7 @@ pub fn accumulate_lifetimes_in_type(accumulator: &mut Vec<ty::Region>,
             ty_rptr(region, _) => accumulator.push(region),
             ty_enum(_, ref substs) |
             ty_trait(box TyTrait {
-                substs: ref substs,
+                ref substs,
                 ..
             }) |
             ty_struct(_, ref substs) => {
