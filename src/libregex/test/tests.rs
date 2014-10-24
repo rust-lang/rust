@@ -43,6 +43,16 @@ fn empty_regex_nonempty_match() {
     assert_eq!(ms, vec![(0, 0), (1, 1), (2, 2), (3, 3)]);
 }
 
+#[test]
+fn quoted_bracket_set() {
+    let re = regex!(r"([\x{5b}\x{5d}])");
+    let ms = re.find_iter("[]").collect::<Vec<(uint, uint)>>();
+    assert_eq!(ms, vec![(0, 1), (1, 2)]);
+    let re = regex!(r"([\[\]])");
+    let ms = re.find_iter("[]").collect::<Vec<(uint, uint)>>();
+    assert_eq!(ms, vec![(0, 1), (1, 2)]);
+}
+
 macro_rules! replace(
     ($name:ident, $which:ident, $re:expr,
      $search:expr, $replace:expr, $result:expr) => (

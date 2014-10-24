@@ -411,9 +411,6 @@ impl<'a> Parser<'a> {
                         ast => fail!("Unexpected AST item '{}'", ast),
                     }
                 }
-                _ => {},
-            }
-            match c {
                 ']' => {
                     if ranges.len() > 0 {
                         let flags = negated | (self.flags & FLAG_NOCASE);
@@ -431,22 +428,21 @@ impl<'a> Parser<'a> {
                     }
                     return Ok(())
                 }
-                c => {
-                    if self.peek_is(1, '-') && !self.peek_is(2, ']') {
-                        try!(self.expect('-'))
-                        try!(self.noteof("not a ']'"))
-                        let c2 = self.cur();
-                        if c2 < c {
-                            return self.err(format!("Invalid character class \
-                                                     range '{}-{}'",
-                                                    c,
-                                                    c2).as_slice())
-                        }
-                        ranges.push((c, self.cur()))
-                    } else {
-                        ranges.push((c, c))
-                    }
+            }
+
+            if self.peek_is(1, '-') && !self.peek_is(2, ']') {
+                try!(self.expect('-'))
+                try!(self.noteof("not a ']'"))
+                let c2 = self.cur();
+                if c2 < c {
+                    return self.err(format!("Invalid character class \
+                                             range '{}-{}'",
+                                            c,
+                                            c2).as_slice())
                 }
+                ranges.push((c, self.cur()))
+            } else {
+                ranges.push((c, c))
             }
         }
     }
