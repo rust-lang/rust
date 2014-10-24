@@ -4225,10 +4225,10 @@ call the `.next()` method on repeatedly, and it gives us a sequence of things.
 Like this:
 
 ```{rust}
-let mut range = range(0i, 10i);
+let mut iterator = range(0i, 10i);
 
 loop {
-    match range.next() {
+    match iterator.next() {
         Some(x) => {
             println!("{}", x);
         },
