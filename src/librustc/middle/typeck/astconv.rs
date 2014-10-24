@@ -793,7 +793,7 @@ pub fn ast_ty_to_ty<'tcx, AC: AstConv<'tcx>, RS: RegionScope>(
     let typ = ast_ty_to_builtin_ty(this, rscope, ast_ty).unwrap_or_else(|| {
         match ast_ty.node {
             ast::TyNil => ty::mk_nil(),
-            ast::TyBot => ty::mk_bot(),
+            ast::TyBot => unreachable!(),
             ast::TyUniq(ref ty) => {
                 mk_pointer(this, rscope, ast::MutImmutable, &**ty, Uniq,
                            |ty| ty::mk_uniq(tcx, ty))
@@ -1171,22 +1171,21 @@ fn ty_of_method_or_bare_fn<'tcx, AC: AstConv<'tcx>>(
                                                                    .collect();
 
     let output_ty = match decl.output.node {
-        ast::TyInfer => this.ty_infer(decl.output.span),
-        _ => {
-            match implied_output_region {
-                Some(implied_output_region) => {
-                    let rb = SpecificRscope::new(implied_output_region);
-                    ast_ty_to_ty(this, &rb, &*decl.output)
-                }
-                None => {
-                    // All regions must be explicitly specified in the output
-                    // if the lifetime elision rules do not apply. This saves
-                    // the user from potentially-confusing errors.
-                    let rb = UnelidableRscope::new(param_lifetimes);
-                    ast_ty_to_ty(this, &rb, &*decl.output)
-                }
+        ast::TyBot => ty::FnDiverging,
+        ast::TyInfer => ty::FnConverging(this.ty_infer(decl.output.span)),
+        _ => ty::FnConverging(match implied_output_region {
+            Some(implied_output_region) => {
+                let rb = SpecificRscope::new(implied_output_region);
+                ast_ty_to_ty(this, &rb, &*decl.output)
             }
-        }
+            None => {
+                // All regions must be explicitly specified in the output
+                // if the lifetime elision rules do not apply. This saves
+                // the user from potentially-confusing errors.
+                let rb = UnelidableRscope::new(param_lifetimes);
+                ast_ty_to_ty(this, &rb, &*decl.output)
+            }
+        })
     };
 
     (ty::BareFnTy {
@@ -1308,10 +1307,12 @@ pub fn ty_of_closure<'tcx, AC: AstConv<'tcx>>(
     }).collect();
 
     let expected_ret_ty = expected_sig.map(|e| e.output);
+
     let output_ty = match decl.output.node {
+        ast::TyBot => ty::FnDiverging,
         ast::TyInfer if expected_ret_ty.is_some() => expected_ret_ty.unwrap(),
-        ast::TyInfer => this.ty_infer(decl.output.span),
-        _ => ast_ty_to_ty(this, &rb, &*decl.output)
+        ast::TyInfer => ty::FnConverging(this.ty_infer(decl.output.span)),
+        _ => ty::FnConverging(ast_ty_to_ty(this, &rb, &*decl.output))
     };
 
     ty::ClosureTy {

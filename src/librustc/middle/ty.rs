@@ -598,7 +598,6 @@ bitflags! {
         const HAS_RE_INFER  = 0b1000,
         const HAS_REGIONS   = 0b10000,
         const HAS_TY_ERR    = 0b100000,
-        const HAS_TY_BOT    = 0b1000000,
         const NEEDS_SUBST   = HAS_PARAMS.bits | HAS_SELF.bits | HAS_REGIONS.bits,
     }
 }
@@ -672,6 +671,21 @@ pub struct ClosureTy {
     pub abi: abi::Abi,
 }
 
+#[deriving(Clone, PartialEq, Eq, Hash)]
+pub enum FnOutput {
+    FnConverging(ty::t),
+    FnDiverging
+}
+
+impl FnOutput {
+    pub fn unwrap(&self) -> ty::t {
+        match *self {
+            ty::FnConverging(ref t) => *t,
+            ty::FnDiverging => unreachable!()
+        }
+    }
+}
+
 /**
  * Signature of a function type, which I have arbitrarily
  * decided to use to refer to the input/output types.
@@ -688,7 +702,7 @@ pub struct ClosureTy {
 pub struct FnSig {
     pub binder_id: ast::NodeId,
     pub inputs: Vec<t>,
-    pub output: t,
+    pub output: FnOutput,
     pub variadic: bool
 }
 
@@ -919,12 +933,6 @@ mod primitives {
     def_prim_ty!(TY_F32,    super::ty_float(ast::TyF32),    14)
     def_prim_ty!(TY_F64,    super::ty_float(ast::TyF64),    15)
 
-    pub static TY_BOT: t_box_ = t_box_ {
-        sty: super::ty_bot,
-        id: 16,
-        flags: super::HAS_TY_BOT,
-    };
-
     pub static TY_ERR: t_box_ = t_box_ {
         sty: super::ty_err,
         id: 17,
@@ -939,7 +947,6 @@ mod primitives {
 #[deriving(Clone, PartialEq, Eq, Hash, Show)]
 pub enum sty {
     ty_nil,
-    ty_bot,
     ty_bool,
     ty_char,
     ty_int(ast::IntTy),
@@ -1044,6 +1051,7 @@ pub enum type_err {
     terr_builtin_bounds(expected_found<BuiltinBounds>),
     terr_variadic_mismatch(expected_found<bool>),
     terr_cyclic_ty,
+    terr_convergence_mismatch(expected_found<bool>)
 }
 
 /// Bounds suitable for a named type parameter like `A` in `fn foo<A>`
@@ -1578,7 +1586,6 @@ pub fn mk_t(cx: &ctxt, st: sty) -> t {
         ty_uint(u) => return mk_mach_uint(u),
         ty_float(f) => return mk_mach_float(f),
         ty_char => return mk_char(),
-        ty_bot => return mk_bot(),
         _ => {}
     };
 
@@ -1627,7 +1634,6 @@ pub fn mk_t(cx: &ctxt, st: sty) -> t {
       // But doing so caused sporadic memory corruption, and
       // neither I (tjc) nor nmatsakis could figure out why,
       // so we're doing it this way.
-      &ty_bot => flags = flags | HAS_TY_BOT,
       &ty_err => flags = flags | HAS_TY_ERR,
       &ty_param(ref p) => {
           if p.space == subst::SelfSpace {
@@ -1661,9 +1667,9 @@ pub fn mk_t(cx: &ctxt, st: sty) -> t {
       &ty_tup(ref ts) => for tt in ts.iter() { flags = flags | get(*tt).flags; },
       &ty_bare_fn(ref f) => {
         for a in f.sig.inputs.iter() { flags = flags | get(*a).flags; }
-        flags = flags | get(f.sig.output).flags;
-        // T -> _|_ is *not* _|_ !
-        flags = flags - HAS_TY_BOT;
+        if let ty::FnConverging(output) = f.sig.output {
+            flags = flags | get(output).flags;
+        }
       }
       &ty_closure(ref f) => {
         match f.store {
@@ -1673,9 +1679,9 @@ pub fn mk_t(cx: &ctxt, st: sty) -> t {
             _ => {}
         }
         for a in f.sig.inputs.iter() { flags = flags | get(*a).flags; }
-        flags = flags | get(f.sig.output).flags;
-        // T -> _|_ is *not* _|_ !
-        flags = flags - HAS_TY_BOT;
+        if let ty::FnConverging(output) = f.sig.output {
+            flags = flags | get(output).flags;
+        }
         flags = flags | flags_for_bounds(&f.bounds);
       }
     }
@@ -1713,9 +1719,6 @@ pub fn mk_nil() -> t { mk_prim_t(&primitives::TY_NIL) }
 
 #[inline]
 pub fn mk_err() -> t { mk_prim_t(&primitives::TY_ERR) }
-
-#[inline]
-pub fn mk_bot() -> t { mk_prim_t(&primitives::TY_BOT) }
 
 #[inline]
 pub fn mk_bool() -> t { mk_prim_t(&primitives::TY_BOOL) }
@@ -1862,7 +1865,7 @@ pub fn mk_ctor_fn(cx: &ctxt,
                    sig: FnSig {
                     binder_id: binder_id,
                     inputs: input_args,
-                    output: output,
+                    output: ty::FnConverging(output),
                     variadic: false
                    }
                 })
@@ -1924,7 +1927,7 @@ pub fn maybe_walk_ty(ty: t, f: |t| -> bool) {
         return;
     }
     match get(ty).sty {
-        ty_nil | ty_bot | ty_bool | ty_char | ty_int(_) | ty_uint(_) | ty_float(_) |
+        ty_nil | ty_bool | ty_char | ty_int(_) | ty_uint(_) | ty_float(_) |
         ty_str | ty_infer(_) | ty_param(_) | ty_err => {}
         ty_uniq(ty) | ty_vec(ty, _) | ty_open(ty) => maybe_walk_ty(ty, f),
         ty_ptr(ref tm) | ty_rptr(_, ref tm) => {
@@ -1939,11 +1942,15 @@ pub fn maybe_walk_ty(ty: t, f: |t| -> bool) {
         ty_tup(ref ts) => { for tt in ts.iter() { maybe_walk_ty(*tt, |x| f(x)); } }
         ty_bare_fn(ref ft) => {
             for a in ft.sig.inputs.iter() { maybe_walk_ty(*a, |x| f(x)); }
-            maybe_walk_ty(ft.sig.output, f);
+            if let ty::FnConverging(output) = ft.sig.output {
+                maybe_walk_ty(output, f);
+            }
         }
         ty_closure(ref ft) => {
             for a in ft.sig.inputs.iter() { maybe_walk_ty(*a, |x| f(x)); }
-            maybe_walk_ty(ft.sig.output, f);
+            if let ty::FnConverging(output) = ft.sig.output {
+                maybe_walk_ty(output, f);
+            }
         }
     }
 }
@@ -1995,10 +2002,6 @@ pub fn type_is_nil(ty: t) -> bool {
     get(ty).sty == ty_nil
 }
 
-pub fn type_is_bot(ty: t) -> bool {
-    get(ty).flags.intersects(HAS_TY_BOT)
-}
-
 pub fn type_is_error(ty: t) -> bool {
     get(ty).flags.intersects(HAS_TY_ERR)
 }
@@ -2013,8 +2016,8 @@ pub fn trait_ref_contains_error(tref: &ty::TraitRef) -> bool {
 
 pub fn type_is_ty_var(ty: t) -> bool {
     match get(ty).sty {
-      ty_infer(TyVar(_)) => true,
-      _ => false
+        ty_infer(TyVar(_)) => true,
+        _ => false
     }
 }
 
@@ -2170,7 +2173,7 @@ pub fn type_needs_unwind_cleanup(cx: &ctxt, ty: t) -> bool {
         let mut needs_unwind_cleanup = false;
         maybe_walk_ty(ty, |ty| {
             needs_unwind_cleanup |= match get(ty).sty {
-                ty_nil | ty_bot | ty_bool | ty_int(_) | ty_uint(_) |
+                ty_nil | ty_bool | ty_int(_) | ty_uint(_) |
                 ty_float(_) | ty_tup(_) | ty_ptr(_) => false,
 
                 ty_enum(did, ref substs) =>
@@ -2430,7 +2433,7 @@ pub fn type_contents(cx: &ctxt, ty: t) -> TypeContents {
 
             // Scalar and unique types are sendable, and durable
             ty_infer(ty::SkolemizedIntTy(_)) |
-            ty_nil | ty_bot | ty_bool | ty_int(_) | ty_uint(_) | ty_float(_) |
+            ty_nil | ty_bool | ty_int(_) | ty_uint(_) | ty_float(_) |
             ty_bare_fn(_) | ty::ty_char => {
                 TC::None
             }
@@ -2560,7 +2563,7 @@ pub fn type_contents(cx: &ctxt, ty: t) -> TypeContents {
                 // We only ever ask for the kind of types that are defined in
                 // the current crate; therefore, the only type parameters that
                 // could be in scope are those defined in the current crate.
-                // If this assertion failures, it is likely because of a
+                // If this assertion fails, it is likely because of a
                 // failure in the cross-crate inlining code to translate a
                 // def-id.
                 assert_eq!(p.def_id.krate, ast::LOCAL_CRATE);
@@ -2742,7 +2745,6 @@ pub fn is_instantiable(cx: &ctxt, r_ty: t) -> bool {
             ty_vec(ty, Some(_)) => type_requires(cx, seen, r_ty, ty),
 
             ty_nil |
-            ty_bot |
             ty_bool |
             ty_char |
             ty_int(_) |
@@ -3276,7 +3278,7 @@ pub fn ty_closure_store(fty: t) -> TraitStore {
     }
 }
 
-pub fn ty_fn_ret(fty: t) -> t {
+pub fn ty_fn_ret(fty: t) -> FnOutput {
     match get(fty).sty {
         ty_bare_fn(ref f) => f.sig.output,
         ty_closure(ref f) => f.sig.output,
@@ -3451,7 +3453,9 @@ pub fn adjust_ty(cx: &ctxt,
                             let method_call = typeck::MethodCall::autoderef(expr_id, i);
                             match method_type(method_call) {
                                 Some(method_ty) => {
-                                    adjusted_ty = ty_fn_ret(method_ty);
+                                    if let ty::FnConverging(result_type) = ty_fn_ret(method_ty) {
+                                        adjusted_ty = result_type;
+                                    }
                                 }
                                 None => {}
                             }
@@ -3779,7 +3783,7 @@ pub fn impl_or_trait_item_idx(id: ast::Name, trait_items: &[ImplOrTraitItem])
 
 pub fn ty_sort_string(cx: &ctxt, t: t) -> String {
     match get(t).sty {
-        ty_nil | ty_bot | ty_bool | ty_char | ty_int(_) |
+        ty_nil | ty_bool | ty_char | ty_int(_) |
         ty_uint(_) | ty_float(_) | ty_str => {
             ::util::ppaux::ty_to_string(cx, t)
         }
@@ -3958,6 +3962,11 @@ pub fn type_err_to_str(cx: &ctxt, err: &type_err) -> String {
             format!("expected {} fn, found {} function",
                     if values.expected { "variadic" } else { "non-variadic" },
                     if values.found { "variadic" } else { "non-variadic" })
+        }
+        terr_convergence_mismatch(ref values) => {
+            format!("expected {} fn, found {} function",
+                    if values.expected { "converging" } else { "diverging" },
+                    if values.found { "converging" } else { "diverging" })
         }
     }
 }
@@ -4667,7 +4676,6 @@ pub fn is_binopable(cx: &ctxt, ty: t, op: ast::BinOp) -> bool {
     static tycat_char: int = 2;
     static tycat_int: int = 3;
     static tycat_float: int = 4;
-    static tycat_bot: int = 5;
     static tycat_raw_ptr: int = 6;
 
     static opcat_add: int = 0;
@@ -4712,7 +4720,6 @@ pub fn is_binopable(cx: &ctxt, ty: t, op: ast::BinOp) -> bool {
           ty_bool => tycat_bool,
           ty_int(_) | ty_uint(_) | ty_infer(IntVar(_)) => tycat_int,
           ty_float(_) | ty_infer(FloatVar(_)) => tycat_float,
-          ty_bot => tycat_bot,
           ty_ptr(_) => tycat_raw_ptr,
           _ => tycat_other
         }
@@ -5149,7 +5156,6 @@ pub fn hash_crate_independent(tcx: &ctxt, t: t, svh: &Svh) -> u64 {
     ty::walk_ty(t, |t| {
         match ty::get(t).sty {
             ty_nil => byte!(0),
-            ty_bot => byte!(1),
             ty_bool => byte!(2),
             ty_char => byte!(3),
             ty_int(i) => {
@@ -5520,7 +5526,6 @@ pub fn accumulate_lifetimes_in_type(accumulator: &mut Vec<ty::Region>,
                 accum_substs(accumulator, substs);
             }
             ty_nil |
-            ty_bot |
             ty_bool |
             ty_char |
             ty_int(_) |

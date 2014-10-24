@@ -1193,7 +1193,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             ty::ty_uint(_) |
             ty::ty_int(_) |
             ty::ty_nil |
-            ty::ty_bot |
             ty::ty_bool |
             ty::ty_float(_) |
             ty::ty_bare_fn(_) |
@@ -1681,7 +1680,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             def_id: obligation.trait_ref.def_id,
             substs: Substs::new_trait(
                 vec![arguments_tuple.subst(self.tcx(), substs),
-                     new_signature.output.subst(self.tcx(), substs)],
+                     new_signature.output.unwrap().subst(self.tcx(), substs)],
                 vec![],
                 obligation.self_ty())
         });

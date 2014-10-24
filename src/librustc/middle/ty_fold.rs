@@ -91,6 +91,12 @@ pub trait TypeFolder<'tcx> {
         super_fold_sig(self, sig)
     }
 
+    fn fold_output(&mut self,
+                      output: &ty::FnOutput)
+                      -> ty::FnOutput {
+        super_fold_output(self, output)
+    }
+
     fn fold_bare_fn_ty(&mut self,
                        fty: &ty::BareFnTy)
                        -> ty::BareFnTy
@@ -204,6 +210,12 @@ impl TypeFoldable for ty::ClosureTy {
 impl TypeFoldable for ty::mt {
     fn fold_with<'tcx, F: TypeFolder<'tcx>>(&self, folder: &mut F) -> ty::mt {
         folder.fold_mt(self)
+    }
+}
+
+impl TypeFoldable for ty::FnOutput {
+    fn fold_with<'tcx, F: TypeFolder<'tcx>>(&self, folder: &mut F) -> ty::FnOutput {
+        folder.fold_output(self)
     }
 }
 
@@ -453,6 +465,15 @@ pub fn super_fold_sig<'tcx, T: TypeFolder<'tcx>>(this: &mut T,
                 variadic: sig.variadic }
 }
 
+pub fn super_fold_output<'tcx, T: TypeFolder<'tcx>>(this: &mut T,
+                                                    output: &ty::FnOutput)
+                                                    -> ty::FnOutput {
+    match *output {
+        ty::FnConverging(ref ty) => ty::FnConverging(ty.fold_with(this)),
+        ty::FnDiverging => ty::FnDiverging
+    }
+}
+
 pub fn super_fold_bare_fn_ty<'tcx, T: TypeFolder<'tcx>>(this: &mut T,
                                                         fty: &ty::BareFnTy)
                                                         -> ty::BareFnTy
@@ -537,7 +558,7 @@ pub fn super_fold_sty<'tcx, T: TypeFolder<'tcx>>(this: &mut T,
         ty::ty_unboxed_closure(did, ref region, ref substs) => {
             ty::ty_unboxed_closure(did, region.fold_with(this), substs.fold_with(this))
         }
-        ty::ty_nil | ty::ty_bot | ty::ty_bool | ty::ty_char | ty::ty_str |
+        ty::ty_nil | ty::ty_bool | ty::ty_char | ty::ty_str |
         ty::ty_int(_) | ty::ty_uint(_) | ty::ty_float(_) |
         ty::ty_err | ty::ty_infer(_) |
         ty::ty_param(..) => {
