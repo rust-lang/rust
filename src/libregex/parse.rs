@@ -375,15 +375,15 @@ impl<'a> Parser<'a> {
         let mut alts: Vec<Ast> = vec!();
 
         if self.peek_is(1, ']') {
-            try!(self.expect(']'))
+            try!(self.expect(']'));
             ranges.push((']', ']'))
         }
         while self.peek_is(1, '-') {
-            try!(self.expect('-'))
+            try!(self.expect('-'));
             ranges.push(('-', '-'))
         }
         loop {
-            try!(self.noteof("a closing ']' or a non-empty character class)"))
+            try!(self.noteof("a closing ']' or a non-empty character class)"));
             let mut c = self.cur();
             match c {
                 '[' =>
@@ -428,12 +428,23 @@ impl<'a> Parser<'a> {
                     }
                     return Ok(())
                 }
+                _ => {}
             }
 
             if self.peek_is(1, '-') && !self.peek_is(2, ']') {
-                try!(self.expect('-'))
-                try!(self.noteof("not a ']'"))
-                let c2 = self.cur();
+                try!(self.expect('-'));
+                // The regex can't end here.
+                try!(self.noteof("not a ']'"));
+                // End the range with a single character or character escape.
+                let mut c2 = self.cur();
+                if c2 == '\\' {
+                    match try!(self.parse_escape()) {
+                        Literal(c3, _) => c2 = c3, // allow literal escapes below
+                        ast =>
+                            return self.err(format!("Expected a literal, but got {}.",
+                                                    ast).as_slice()),
+                    }
+                }
                 if c2 < c {
                     return self.err(format!("Invalid character class \
                                              range '{}-{}'",
