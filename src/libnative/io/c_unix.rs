@@ -252,16 +252,6 @@ mod signal {
         pub status: libc::c_int,
     }
 
-    #[cfg(any(target_os = "macos", target_os = "ios"))]
-    #[repr(C)]
-    pub struct sigaction {
-        pub sa_handler: extern fn(libc::c_int),
-        sa_tramp: *mut libc::c_void,
-        pub sa_mask: sigset_t,
-        pub sa_flags: libc::c_int,
-    }
-
-    #[cfg(any(target_os = "freebsd", target_os = "dragonfly"))]
     #[repr(C)]
     pub struct sigaction {
         pub sa_handler: extern fn(libc::c_int),
