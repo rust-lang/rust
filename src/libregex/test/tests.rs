@@ -53,6 +53,13 @@ fn quoted_bracket_set() {
     assert_eq!(ms, vec![(0, 1), (1, 2)]);
 }
 
+#[test]
+fn range_ends_with_escape() {
+    let re = regex!(r"([\[-\x{5d}])");
+    let ms = re.find_iter("[]").collect::<Vec<(uint, uint)>>();
+    assert_eq!(ms, vec![(0, 1), (1, 2)]);
+}
+
 macro_rules! replace(
     ($name:ident, $which:ident, $re:expr,
      $search:expr, $replace:expr, $result:expr) => (
@@ -124,6 +131,10 @@ noparse!(fail_double_neg, "(?-i-i)")
 noparse!(fail_neg_empty, "(?i-)")
 noparse!(fail_empty_group, "()")
 noparse!(fail_dupe_named, "(?P<a>.)(?P<a>.)")
+noparse!(fail_range_end_no_class, "[a-[:lower:]]")
+noparse!(fail_range_end_no_begin, r"[a-\A]")
+noparse!(fail_range_end_no_end, r"[a-\z]")
+noparse!(fail_range_end_no_boundary, r"[a-\b]")
 
 macro_rules! mat(
     ($name:ident, $re:expr, $text:expr, $($loc:tt)+) => (
