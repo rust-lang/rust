@@ -12,8 +12,12 @@
 
 fn g() -> ! { fail!(); }
 fn f() -> ! {
-    return g();
-    g(); //~ ERROR: unreachable statement
+    return g(); //~ ERROR `return` in a function declared as diverging
+    g();
+}
+fn h() -> ! {
+    loop {}
+    g();
 }
 
 fn main() { f() }

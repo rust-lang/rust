@@ -9,5 +9,6 @@
 // except according to those terms.
 
 fn main() {
-    *return; //~ ERROR type `!` cannot be dereferenced
+    *return //~ ERROR the type of this value must be known in this context
+    ;
 }
