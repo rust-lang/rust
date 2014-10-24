@@ -49,10 +49,10 @@ pub fn main() {
     assert!(!map.insert(Owned("cde".to_string()), c));
     assert!(!map.insert(Slice("def"), d));
 
-    assert_eq!(map.find_equiv(&("abc")), Some(&a));
-    assert_eq!(map.find_equiv(&("bcd")), Some(&b));
-    assert_eq!(map.find_equiv(&("cde")), Some(&c));
-    assert_eq!(map.find_equiv(&("def")), Some(&d));
+    assert_eq!(map.find_equiv("abc"), Some(&a));
+    assert_eq!(map.find_equiv("bcd"), Some(&b));
+    assert_eq!(map.find_equiv("cde"), Some(&c));
+    assert_eq!(map.find_equiv("def"), Some(&d));
 
     assert_eq!(map.find_equiv(&Slice("abc")), Some(&a));
     assert_eq!(map.find_equiv(&Slice("bcd")), Some(&b));

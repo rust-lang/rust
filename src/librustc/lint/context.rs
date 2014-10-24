@@ -164,7 +164,7 @@ impl LintStore {
     }
 
     fn register_renamed(&mut self, old_name: &str, new_name: &str) {
-        let target = match self.by_name.find_equiv(&new_name) {
+        let target = match self.by_name.find_equiv(new_name) {
             Some(&Id(lint_id)) => lint_id.clone(),
             _ => panic!("invalid lint renaming of {} to {}", old_name, new_name)
         };
@@ -258,7 +258,7 @@ impl LintStore {
     fn find_lint(&self, lint_name: &str, sess: &Session, span: Option<Span>)
                  -> Option<LintId>
     {
-        match self.by_name.find_equiv(&lint_name) {
+        match self.by_name.find_equiv(lint_name) {
             Some(&Id(lint_id)) => Some(lint_id),
             Some(&Renamed(ref new_name, lint_id)) => {
                 let warning = format!("lint {} has been renamed to {}",
@@ -280,7 +280,7 @@ impl LintStore {
                 None => {
                     match self.lint_groups.iter().map(|(&x, pair)| (x, pair.ref0().clone()))
                                                  .collect::<HashMap<&'static str, Vec<LintId>>>()
-                                                 .find_equiv(&lint_name.as_slice()) {
+                                                 .find_equiv(lint_name.as_slice()) {
                         Some(v) => {
                             v.iter()
                              .map(|lint_id: &LintId|
@@ -487,7 +487,7 @@ impl<'a, 'tcx> Context<'a, 'tcx> {
                     match self.lints.find_lint(lint_name.get(), &self.tcx.sess, Some(span)) {
                         Some(lint_id) => vec![(lint_id, level, span)],
                         None => {
-                            match self.lints.lint_groups.find_equiv(&lint_name.get()) {
+                            match self.lints.lint_groups.find_equiv(lint_name.get()) {
                                 Some(&(ref v, _)) => v.iter()
                                                       .map(|lint_id: &LintId|
                                                            (*lint_id, level, span))

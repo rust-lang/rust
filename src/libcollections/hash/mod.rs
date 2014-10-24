@@ -80,7 +80,7 @@ pub mod sip;
 /// A hashable type. The `S` type parameter is an abstract hash state that is
 /// used by the `Hash` to compute the hash. It defaults to
 /// `std::hash::sip::SipState`.
-pub trait Hash<S = sip::SipState> {
+pub trait Hash<S = sip::SipState> for Sized? {
     /// Computes the hash of a value.
     fn hash(&self, state: &mut S);
 }
@@ -89,7 +89,7 @@ pub trait Hash<S = sip::SipState> {
 /// containers like `HashMap`, which need a generic way hash multiple types.
 pub trait Hasher<S> {
     /// Compute the hash of a value.
-    fn hash<T: Hash<S>>(&self, value: &T) -> u64;
+    fn hash<Sized? T: Hash<S>>(&self, value: &T) -> u64;
 }
 
 pub trait Writer {
@@ -137,7 +137,7 @@ impl<S: Writer> Hash<S> for char {
     }
 }
 
-impl<'a, S: Writer> Hash<S> for &'a str {
+impl<S: Writer> Hash<S> for str {
     #[inline]
     fn hash(&self, state: &mut S) {
         state.write(self.as_bytes());
@@ -186,7 +186,7 @@ impl_hash_tuple!(A B C D E F G H I J)
 impl_hash_tuple!(A B C D E F G H I J K)
 impl_hash_tuple!(A B C D E F G H I J K L)
 
-impl<'a, S: Writer, T: Hash<S>> Hash<S> for &'a [T] {
+impl<S: Writer, T: Hash<S>> Hash<S> for [T] {
     #[inline]
     fn hash(&self, state: &mut S) {
         self.len().hash(state);
@@ -197,13 +197,6 @@ impl<'a, S: Writer, T: Hash<S>> Hash<S> for &'a [T] {
 }
 
 
-impl<'a, S: Writer, T: Hash<S>> Hash<S> for &'a mut [T] {
-    #[inline]
-    fn hash(&self, state: &mut S) {
-        self.as_slice().hash(state);
-    }
-}
-
 impl<S: Writer, T: Hash<S>> Hash<S> for Vec<T> {
     #[inline]
     fn hash(&self, state: &mut S) {
@@ -211,27 +204,28 @@ impl<S: Writer, T: Hash<S>> Hash<S> for Vec<T> {
     }
 }
 
-impl<'a, S: Writer, T: Hash<S>> Hash<S> for &'a T {
+impl<'a, S: Writer, Sized? T: Hash<S>> Hash<S> for &'a T {
     #[inline]
     fn hash(&self, state: &mut S) {
         (**self).hash(state);
     }
 }
 
-impl<'a, S: Writer, T: Hash<S>> Hash<S> for &'a mut T {
+impl<'a, S: Writer, Sized? T: Hash<S>> Hash<S> for &'a mut T {
     #[inline]
     fn hash(&self, state: &mut S) {
         (**self).hash(state);
     }
 }
 
-impl<S: Writer, T: Hash<S>> Hash<S> for Box<T> {
+impl<S: Writer, Sized? T: Hash<S>> Hash<S> for Box<T> {
     #[inline]
     fn hash(&self, state: &mut S) {
         (**self).hash(state);
     }
 }
 
+// FIXME (#18248) Make `T` `Sized?`
 impl<S: Writer, T: Hash<S>> Hash<S> for Rc<T> {
     #[inline]
     fn hash(&self, state: &mut S) {
@@ -293,6 +287,7 @@ impl<S: Writer, T: Hash<S>, U: Hash<S>> Hash<S> for Result<T, U> {
 
 #[cfg(test)]
 mod tests {
+    use core::kinds::Sized;
     use std::mem;
 
     use slice::ImmutableSlice;
@@ -301,7 +296,7 @@ mod tests {
     struct MyWriterHasher;
 
     impl Hasher<MyWriter> for MyWriterHasher {
-        fn hash<T: Hash<MyWriter>>(&self, value: &T) -> u64 {
+        fn hash<Sized? T: Hash<MyWriter>>(&self, value: &T) -> u64 {
             let mut state = MyWriter { hash: 0 };
             value.hash(&mut state);
             state.hash
@@ -323,6 +318,8 @@ mod tests {
 
     #[test]
     fn test_writer_hasher() {
+        use alloc::boxed::Box;
+
         let hasher = MyWriterHasher;
 
         assert_eq!(hasher.hash(&()), 0);
@@ -344,9 +341,17 @@ mod tests {
 
         assert_eq!(hasher.hash(&'a'), 97);
 
-        assert_eq!(hasher.hash(&("a")), 97 + 0xFF);
+        let s: &str = "a";
+        assert_eq!(hasher.hash(& s), 97 + 0xFF);
+        // FIXME (#18283) Enable test
+        //let s: Box<str> = box "a";
+        //assert_eq!(hasher.hash(& s), 97 + 0xFF);
         let cs: &[u8] = &[1u8, 2u8, 3u8];
         assert_eq!(hasher.hash(& cs), 9);
+        let cs: Box<[u8]> = box [1u8, 2u8, 3u8];
+        assert_eq!(hasher.hash(& cs), 9);
+
+        // FIXME (#18248) Add tests for hashing Rc<str> and Rc<[T]>
 
         unsafe {
             let ptr: *const int = mem::transmute(5i);
