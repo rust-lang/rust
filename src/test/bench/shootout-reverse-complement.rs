@@ -38,6 +38,8 @@
 // ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
 // OF THE POSSIBILITY OF SUCH DAMAGE.
 
+// ignore-android doesn't terminate?
+
 #![feature(slicing_syntax, asm, if_let, tuple_indexing)]
 
 extern crate libc;
