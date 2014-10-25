@@ -119,7 +119,7 @@ impl Name {
     pub fn as_str<'a>(&'a self) -> &'a str {
         unsafe {
             // FIXME #12938: can't use copy_lifetime since &str isn't a &T
-            ::std::mem::transmute(token::get_name(*self).get())
+            ::std::mem::transmute::<&str,&str>(token::get_name(*self).get())
         }
     }
 
