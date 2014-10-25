@@ -1130,12 +1130,12 @@ fn main() {
     let y = Missing;
 
     match x {
-        Value(n) => println!("x is {:d}", n),
+        Value(n) => println!("x is {}", n),
         Missing  => println!("x is missing!"),
     }
 
     match y {
-        Value(n) => println!("y is {:d}", n),
+        Value(n) => println!("y is {}", n),
         Missing  => println!("y is missing!"),
     }
 }
@@ -1301,7 +1301,7 @@ Instead, it looks like this:
 
 ```{rust}
 for x in range(0i, 10i) {
-    println!("{:d}", x);
+    println!("{}", x);
 }
 ```
 
@@ -1408,7 +1408,7 @@ iteration: This will only print the odd numbers:
 for x in range(0i, 10i) {
     if x % 2 == 0 { continue; }
 
-    println!("{:d}", x);
+    println!("{}", x);
 }
 ```
 
@@ -1677,12 +1677,12 @@ fn main() {
     let y = Missing;
 
     match x {
-        Value(n) => println!("x is {:d}", n),
+        Value(n) => println!("x is {}", n),
         Missing  => println!("x is missing!"),
     }
 
     match y {
-        Value(n) => println!("y is {:d}", n),
+        Value(n) => println!("y is {}", n),
         Missing  => println!("y is missing!"),
     }
 }
@@ -4217,7 +4217,7 @@ Remember Rust's `for` loop? Here's an example:
 
 ```{rust}
 for x in range(0i, 10i) {
-    println!("{:d}", x);
+    println!("{}", x);
 }
 ```
 
