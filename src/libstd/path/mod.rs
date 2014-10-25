@@ -67,6 +67,7 @@ println!("path exists: {}", path.exists());
 
 #![experimental]
 
+use core::kinds::Sized;
 use c_str::CString;
 use clone::Clone;
 use fmt;
@@ -626,7 +627,7 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     /// ```
     #[inline]
     fn push_many<T: BytesContainer>(&mut self, paths: &[T]) {
-        let t: Option<T> = None;
+        let t: Option<&T> = None;
         if BytesContainer::is_str(t) {
             for p in paths.iter() {
                 self.push(p.container_as_str().unwrap())
@@ -791,14 +792,9 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
 }
 
 /// A trait that represents something bytes-like (e.g. a &[u8] or a &str)
-pub trait BytesContainer {
+pub trait BytesContainer for Sized? {
     /// Returns a &[u8] representing the receiver
     fn container_as_bytes<'a>(&'a self) -> &'a [u8];
-    /// Consumes the receiver and converts it into Vec<u8>
-    #[inline]
-    fn container_into_owned_bytes(self) -> Vec<u8> {
-        self.container_as_bytes().to_vec()
-    }
     /// Returns the receiver interpreted as a utf-8 string, if possible
     #[inline]
     fn container_as_str<'a>(&'a self) -> Option<&'a str> {
@@ -807,7 +803,7 @@ pub trait BytesContainer {
     /// Returns whether .container_as_str() is guaranteed to not fail
     // FIXME (#8888): Remove unused arg once ::<for T> works
     #[inline]
-    fn is_str(_: Option<Self>) -> bool { false }
+    fn is_str(_: Option<&Self>) -> bool { false }
 }
 
 /// A trait that represents the unsafe operations on GenericPaths
@@ -859,47 +855,43 @@ impl<'a, P: GenericPath> Display<'a, P> {
     }
 }
 
-impl<'a> BytesContainer for &'a str {
+impl BytesContainer for str {
     #[inline]
-    fn container_as_bytes<'a>(&'a self) -> &'a [u8] {
+    fn container_as_bytes(&self) -> &[u8] {
         self.as_bytes()
     }
     #[inline]
-    fn container_as_str<'a>(&'a self) -> Option<&'a str> {
-        Some(*self)
+    fn container_as_str(&self) -> Option<&str> {
+        Some(self)
     }
     #[inline]
-    fn is_str(_: Option<&'a str>) -> bool { true }
+    fn is_str(_: Option<&str>) -> bool { true }
 }
 
 impl BytesContainer for String {
     #[inline]
-    fn container_as_bytes<'a>(&'a self) -> &'a [u8] {
+    fn container_as_bytes(&self) -> &[u8] {
         self.as_bytes()
     }
     #[inline]
-    fn container_as_str<'a>(&'a self) -> Option<&'a str> {
+    fn container_as_str(&self) -> Option<&str> {
         Some(self.as_slice())
     }
     #[inline]
-    fn is_str(_: Option<String>) -> bool { true }
+    fn is_str(_: Option<&String>) -> bool { true }
 }
 
-impl<'a> BytesContainer for &'a [u8] {
+impl BytesContainer for [u8] {
     #[inline]
-    fn container_as_bytes<'a>(&'a self) -> &'a [u8] {
-        *self
+    fn container_as_bytes(&self) -> &[u8] {
+        self
     }
 }
 
 impl BytesContainer for Vec<u8> {
     #[inline]
-    fn container_as_bytes<'a>(&'a self) -> &'a [u8] {
+    fn container_as_bytes(&self) -> &[u8] {
         self.as_slice()
-    }
-    #[inline]
-    fn container_into_owned_bytes(self) -> Vec<u8> {
-        self
     }
 }
 
@@ -920,7 +912,20 @@ impl<'a> BytesContainer for str::MaybeOwned<'a> {
         Some(self.as_slice())
     }
     #[inline]
-    fn is_str(_: Option<str::MaybeOwned>) -> bool { true }
+    fn is_str(_: Option<&str::MaybeOwned>) -> bool { true }
+}
+
+impl<'a, Sized? T: BytesContainer> BytesContainer for &'a T {
+    #[inline]
+    fn container_as_bytes(&self) -> &[u8] {
+        (**self).container_as_bytes()
+    }
+    #[inline]
+    fn container_as_str(&self) -> Option<&str> {
+        (**self).container_as_str()
+    }
+    #[inline]
+    fn is_str(_: Option<& &'a T>) -> bool { BytesContainer::is_str(None::<&T>) }
 }
 
 #[inline(always)]
