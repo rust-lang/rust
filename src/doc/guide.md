@@ -3466,13 +3466,14 @@ for destroying that resource as well. Given that we're discussing pointers
 right now, let's discuss this in the context of memory allocation, though
 it applies to other resources as well.
 
-When you allocate heap memory, you need a mechanism to free that memory.  Many
-languages let the programmer control the allocation, and then use a garbage
-collector to handle the deallocation. This is a valid, time-tested strategy,
-but it's not without its drawbacks. Because the programmer does not have to
-think as much about deallocation, allocation becomes something commonplace,
-because it's easy. And if you need precise control over when something is
-deallocated, leaving it up to your runtime can make this difficult.
+When you allocate heap memory, you need a mechanism to free that memory. Many
+languages use a garbage collector to handle deallocation. This is a valid,
+time-tested strategy, but it's not without its drawbacks: it adds overhead, and
+can lead to unpredictable pauses in execution. Because the programmer does not
+have to think as much about deallocation, allocation becomes something
+commonplace, leading to more memory usage. And if you need precise control
+over when something is deallocated, leaving it up to your runtime can make this
+difficult.
 
 Rust chooses a different path, and that path is called **ownership**. Any
 binding that creates a resource is the **owner** of that resource.
@@ -3498,17 +3499,19 @@ memory. The length of time that the borrower is borrowing the pointer
 from you is called a **lifetime**.
 
 If two distinct bindings share a pointer, and the memory that pointer points to
-is immutable, then there are no problems. But if it's mutable, both pointers
-can attempt to write to the memory at the same time, causing a **race
-condition**. Therefore, if someone wants to mutate something that they've
-borrowed from you, you must not have lent out that pointer to anyone else.
+is immutable, then there are no problems. But if it's mutable, the result of
+changing it can vary unpredictably depending on who happens to access it first,
+which is called a **race condition**. To avoid this, if someone wants to mutate
+something that they've borrowed from you, you must not have lent out that
+pointer to anyone else.
 
 Rust has a sophisticated system called the **borrow checker** to make sure that
 everyone plays by these rules. At compile time, it verifies that none of these
-rules are broken. If there's no problem, our program compiles successfully, and
-there is no runtime overhead for any of this. The borrow checker works only at
-compile time. If the borrow checker did find a problem, it will report a
-**lifetime error**, and your program will refuse to compile.
+rules are broken. If our program compiles successfully, Rust can guarantee it
+is free of data races and other memory errors, and there is no runtime overhead
+for any of this. The borrow checker works only at compile time. If the borrow
+checker did find a problem, it will report a **lifetime error**, and your
+program will refuse to compile.
 
 That's a lot to take in. It's also one of the _most_ important concepts in
 all of Rust. Let's see this syntax in action:
