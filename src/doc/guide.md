@@ -1793,7 +1793,7 @@ Finally, Cargo generated a hello, world for us. Check out `src/main.rs`:
 
 ```{rust}
 fn main() {
-    println!("Hello, world!");
+    println!("Hello, world!")
 }
 ```
 
@@ -2682,12 +2682,12 @@ like this:
 
 ```
 fn main() {
-    println!("Hello, world!");
+    println!("Hello, world!")
 }
 
 mod hello {
     fn print_hello() {
-        println!("Hello, world!");
+        println!("Hello, world!")
     }
 }
 ```
@@ -2721,7 +2721,7 @@ fn main() {
 
 mod hello {
     fn print_hello() {
-        println!("Hello, world!");
+        println!("Hello, world!")
     }
 }
 ```
@@ -2744,7 +2744,7 @@ fn main() {
 
 mod hello {
     pub fn print_hello() {
-        println!("Hello, world!");
+        println!("Hello, world!")
     }
 }
 ```
@@ -2923,7 +2923,7 @@ $ cargo test
    Compiling testing v0.0.1 (file:///home/you/projects/testing)
 /home/you/projects/testing/src/main.rs:1:1: 3:2 warning: code is never used: `main`, #[warn(dead_code)] on by default
 /home/you/projects/testing/src/main.rs:1 fn main() {
-/home/you/projects/testing/src/main.rs:2     println!("Hello, world");
+/home/you/projects/testing/src/main.rs:2     println!("Hello, world!")
 /home/you/projects/testing/src/main.rs:3 }
 
 running 0 tests
@@ -2962,7 +2962,7 @@ You can run all of your tests with `cargo test`. This runs both your tests in
 ```{notrust,ignore}
 /home/you/projects/testing/src/main.rs:1:1: 3:2 warning: code is never used: `main`, #[warn(dead_code)] on by default
 /home/you/projects/testing/src/main.rs:1 fn main() {
-/home/you/projects/testing/src/main.rs:2     println!("Hello, world");
+/home/you/projects/testing/src/main.rs:2     println!("Hello, world!")
 /home/you/projects/testing/src/main.rs:3 }
 ```
 
@@ -3051,7 +3051,7 @@ function. Change your `src/main.rs` to look like this:
 ```{rust}
 #[cfg(not(test))]
 fn main() {
-    println!("Hello, world");
+    println!("Hello, world!")
 }
 ```
 
@@ -3133,7 +3133,7 @@ extern crate testing;
 
 #[cfg(not(test))]
 fn main() {
-    println!("Hello, world");
+    println!("Hello, world!")
 }
 ```
 
