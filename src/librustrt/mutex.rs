@@ -516,7 +516,7 @@ mod imp {
 
 #[cfg(windows)]
 mod imp {
-    use alloc::libc_heap::malloc_raw;
+    use alloc::heap;
     use core::atomic;
     use core::ptr;
     use libc::{HANDLE, BOOL, LPSECURITY_ATTRIBUTES, c_void, DWORD, LPCSTR};
@@ -607,7 +607,7 @@ mod imp {
     }
 
     pub unsafe fn init_lock() -> uint {
-        let block = malloc_raw(CRIT_SECTION_SIZE as uint) as *mut c_void;
+        let block = heap::allocate(CRIT_SECTION_SIZE, 8) as *mut c_void;
         InitializeCriticalSectionAndSpinCount(block, SPIN_COUNT);
         return block as uint;
     }
@@ -619,7 +619,7 @@ mod imp {
 
     pub unsafe fn free_lock(h: uint) {
         DeleteCriticalSection(h as LPCRITICAL_SECTION);
-        libc::free(h as *mut c_void);
+        heap::deallocate(h as *mut u8, CRIT_SECTION_SIZE, 8);
     }
 
     pub unsafe fn free_cond(h: uint) {
