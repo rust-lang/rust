@@ -9,11 +9,23 @@
 // except according to those terms.
 
 struct Foo {
-  a: uint,
+    a: uint,
 }
 
-fn main(){
-    let Foo {a: _, a: _} = Foo {a: 29};
-    //~^ ERROR field `a` bound twice in pattern
-}
+fn main() {
+    let Foo {
+        a: _, //~ NOTE field `a` previously bound here
+        a: _ //~ ERROR field `a` bound multiple times in the pattern
+    } = Foo { a: 29 };
 
+    let Foo {
+        a, //~ NOTE field `a` previously bound here
+        a: _ //~ ERROR field `a` bound multiple times in the pattern
+    } = Foo { a: 29 };
+
+    let Foo {
+        a, //~ NOTE field `a` previously bound here
+        a: _, //~ ERROR field `a` bound multiple times in the pattern
+        a: x //~ ERROR field `a` bound multiple times in the pattern
+    } = Foo { a: 29 };
+}

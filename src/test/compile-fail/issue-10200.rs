@@ -8,14 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-enum MyOption<T> {
-    MySome(T),
-    MyNone,
-}
+struct Foo(bool);
+fn foo(_: uint) -> Foo { Foo(false) }
 
 fn main() {
-    match MySome(42i) {
-        MySome { x: 42i } => (), //~ ERROR `MySome` does not name a struct or a struct variant
-        _ => (),
+    match Foo(true) {
+        foo(x) //~ ERROR `foo` is not an enum variant, struct or const
+        => ()
     }
 }

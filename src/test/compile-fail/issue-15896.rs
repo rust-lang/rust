@@ -18,7 +18,9 @@ fn main() {
     let e = B(REB(()), Tau { t: 3 });
     let u = match e {
         B(
-          Tau{t: x}, //~ ERROR `Tau` does not name a variant
+          Tau{t: x},
+          //~^ ERROR mismatched types: expected `main::R`, found `main::Tau`
+          //        (expected enum main::R, found struct main::Tau)
           _) => x,
     };
 }

@@ -10,6 +10,7 @@
 
 fn main() {
     match () {
-        [()] => { } //~ ERROR mismatched types: expected `()`, found an array pattern
+        [()] => { }
+//~^ ERROR mismatched types: expected `()`, found `&[<generic #1>]` (expected (), found &-ptr)
     }
 }
