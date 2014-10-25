@@ -793,54 +793,47 @@ mod test {
         let tts = string_to_tts("macro_rules! zip (($a)=>($a))".to_string());
         let tts: &[ast::TokenTree] = tts.as_slice();
         match tts {
-            [ast::TtToken(_, _),
+            [ast::TtToken(_, token::IDENT(name_macro_rules, false)),
              ast::TtToken(_, token::NOT),
-             ast::TtToken(_, _),
-             ast::TtDelimited(_, ast::TtToken(_, token::LPAREN),
-                          ref delim_elts,
-                          ast::TtToken(_, token::RPAREN))] => {
-                let delim_elts: &[ast::TokenTree] = delim_elts.as_slice();
-                match delim_elts {
-                    [ast::TtDelimited(_, ast::TtToken(_, token::LPAREN),
-                                  ref first_set,
-                                  ast::TtToken(_, token::RPAREN)),
-                     ast::TtToken(_, token::FAT_ARROW),
-                     ast::TtDelimited(_, ast::TtToken(_, token::LPAREN),
-                                  ref second_set,
-                                  ast::TtToken(_, token::RPAREN))] => {
-                        let first_set: &[ast::TokenTree] =
-                            first_set.as_slice();
-                        match first_set {
-                            [ast::TtToken(_, token::DOLLAR), ast::TtToken(_, _)] => {
-                                let second_set: &[ast::TokenTree] =
-                                    second_set.as_slice();
-                                match second_set {
-                                    [ast::TtToken(_, token::DOLLAR), ast::TtToken(_, _)] => {
-                                        assert_eq!("correct","correct")
-                                    }
-                                    _ => assert_eq!("wrong 4","correct")
-                                }
-                            },
-                            _ => {
-                                error!("failing value 3: {}",first_set);
-                                assert_eq!("wrong 3","correct")
-                            }
+             ast::TtToken(_, token::IDENT(name_zip, false)),
+             ast::TtDelimited(_, ref macro_delimed)]
+            if name_macro_rules.as_str() == "macro_rules"
+            && name_zip.as_str() == "zip" => {
+                let (ref macro_open, ref macro_tts, ref macro_close) = **macro_delimed;
+                match (macro_open, macro_tts.as_slice(), macro_close) {
+                    (&ast::Delimiter { token: token::LPAREN, .. },
+                     [ast::TtDelimited(_, ref first_delimed),
+                      ast::TtToken(_, token::FAT_ARROW),
+                      ast::TtDelimited(_, ref second_delimed)],
+                     &ast::Delimiter { token: token::RPAREN, .. }) => {
+                        let (ref first_open, ref first_tts, ref first_close) = **first_delimed;
+                        match (first_open, first_tts.as_slice(), first_close) {
+                            (&ast::Delimiter { token: token::LPAREN, .. },
+                             [ast::TtToken(_, token::DOLLAR),
+                              ast::TtToken(_, token::IDENT(name, false))],
+                             &ast::Delimiter { token: token::RPAREN, .. })
+                            if name.as_str() == "a" => {},
+                            _ => fail!("value 3: {}", **first_delimed),
+                        }
+                        let (ref second_open, ref second_tts, ref second_close) = **second_delimed;
+                        match (second_open, second_tts.as_slice(), second_close) {
+                            (&ast::Delimiter { token: token::LPAREN, .. },
+                             [ast::TtToken(_, token::DOLLAR),
+                              ast::TtToken(_, token::IDENT(name, false))],
+                             &ast::Delimiter { token: token::RPAREN, .. })
+                            if name.as_str() == "a" => {},
+                            _ => fail!("value 4: {}", **second_delimed),
                         }
                     },
-                    _ => {
-                        error!("failing value 2: {}",delim_elts);
-                        assert_eq!("wrong","correct");
-                    }
+                    _ => fail!("value 2: {}", **macro_delimed),
                 }
             },
-            _ => {
-                error!("failing value: {}",tts);
-                assert_eq!("wrong 1","correct");
-            },
+            _ => fail!("value: {}",tts),
         }
     }
 
-    #[test] fn string_to_tts_1 () {
+    #[test]
+    fn string_to_tts_1 () {
         let tts = string_to_tts("fn a (b : int) { b; }".to_string());
         assert_eq!(json::encode(&tts),
         "[\
@@ -873,53 +866,50 @@ mod test {
     {\
         \"variant\":\"TtDelimited\",\
         \"fields\":[\
+            null,\
             [\
                 {\
-                    \"variant\":\"TtToken\",\
-                    \"fields\":[\
-                        null,\
-                        \"LPAREN\"\
-                    ]\
+                    \"span\":null,\
+                    \"token\":\"LPAREN\"\
                 },\
+                [\
+                    {\
+                        \"variant\":\"TtToken\",\
+                        \"fields\":[\
+                            null,\
+                            {\
+                                \"variant\":\"IDENT\",\
+                                \"fields\":[\
+                                    \"b\",\
+                                    false\
+                                ]\
+                            }\
+                        ]\
+                    },\
+                    {\
+                        \"variant\":\"TtToken\",\
+                        \"fields\":[\
+                            null,\
+                            \"COLON\"\
+                        ]\
+                    },\
+                    {\
+                        \"variant\":\"TtToken\",\
+                        \"fields\":[\
+                            null,\
+                            {\
+                                \"variant\":\"IDENT\",\
+                                \"fields\":[\
+                                    \"int\",\
+                                    false\
+                                ]\
+                            }\
+                        ]\
+                    }\
+                ],\
                 {\
-                    \"variant\":\"TtToken\",\
-                    \"fields\":[\
-                        null,\
-                        {\
-                            \"variant\":\"IDENT\",\
-                            \"fields\":[\
-                                \"b\",\
-                                false\
-                            ]\
-                        }\
-                    ]\
-                },\
-                {\
-                    \"variant\":\"TtToken\",\
-                    \"fields\":[\
-                        null,\
-                        \"COLON\"\
-                    ]\
-                },\
-                {\
-                    \"variant\":\"TtToken\",\
-                    \"fields\":[\
-                        null,\
-                        {\
-                            \"variant\":\"IDENT\",\
-                            \"fields\":[\
-                                \"int\",\
-                                false\
-                            ]\
-                        }\
-                    ]\
-                },\
-                {\
-                    \"variant\":\"TtToken\",\
-                    \"fields\":[\
-                        null,\
-                        \"RPAREN\"\
-                    ]\
+                    \"span\":null,\
+                    \"token\":\"RPAREN\"\
                 }\
             ]\
         ]\
@@ -927,40 +917,37 @@ mod test {
     {\
         \"variant\":\"TtDelimited\",\
         \"fields\":[\
+            null,\
             [\
                 {\
-                    \"variant\":\"TtToken\",\
-                    \"fields\":[\
-                        null,\
-                        \"LBRACE\"\
-                    ]\
+                    \"span\":null,\
+                    \"token\":\"LBRACE\"\
                 },\
+                [\
+                    {\
+                        \"variant\":\"TtToken\",\
+                        \"fields\":[\
+                            null,\
+                            {\
+                                \"variant\":\"IDENT\",\
+                                \"fields\":[\
+                                    \"b\",\
+                                    false\
+                                ]\
+                            }\
+                        ]\
+                    },\
+                    {\
+                        \"variant\":\"TtToken\",\
+                        \"fields\":[\
+                            null,\
+                            \"SEMI\"\
+                        ]\
+                    }\
+                ],\
                 {\
-                    \"variant\":\"TtToken\",\
-                    \"fields\":[\
-                        null,\
-                        {\
-                            \"variant\":\"IDENT\",\
-                            \"fields\":[\
-                                \"b\",\
-                                false\
-                            ]\
-                        }\
-                    ]\
-                },\
-                {\
-                    \"variant\":\"TtToken\",\
-                    \"fields\":[\
-                        null,\
-                        \"SEMI\"\
-                    ]\
-                },\
-                {\
-                    \"variant\":\"TtToken\",\
-                    \"fields\":[\
-                        null,\
-                        \"RBRACE\"\
-                    ]\
+                    \"span\":null,\
+                    \"token\":\"RBRACE\"\
                 }\
             ]\
         ]\
