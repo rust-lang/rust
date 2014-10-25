@@ -2921,15 +2921,11 @@ it `false`, so this test should fail. Let's try it!
 ```{notrust,ignore}
 $ cargo test
    Compiling testing v0.0.1 (file:///home/you/projects/testing)
-/home/you/projects/testing/src/main.rs:1:1: 3:2 warning: code is never used: `main`, #[warn(dead_code)] on by default
+/home/you/projects/testing/src/main.rs:1:1: 3:2 warning: function is never used: `main`, #[warn(dead_code)] on by default
 /home/you/projects/testing/src/main.rs:1 fn main() {
 /home/you/projects/testing/src/main.rs:2     println!("Hello, world!")
 /home/you/projects/testing/src/main.rs:3 }
-
-running 0 tests
-
-test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured
-
+     Running target/lib-654ce120f310a3a5
 
 running 1 test
 test foo ... FAILED
@@ -2946,7 +2942,7 @@ failures:
 
 test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured
 
-task '<main>' failed at 'Some tests failed', /home/you/src/rust/src/libtest/lib.rs:242
+task '<main>' failed at 'Some tests failed', /home/you/src/rust/src/libtest/lib.rs:243
 ```
 
 Lots of output! Let's break this down:
@@ -2960,7 +2956,7 @@ You can run all of your tests with `cargo test`. This runs both your tests in
 `tests`, as well as the tests you put inside of your crate.
 
 ```{notrust,ignore}
-/home/you/projects/testing/src/main.rs:1:1: 3:2 warning: code is never used: `main`, #[warn(dead_code)] on by default
+/home/you/projects/testing/src/main.rs:1:1: 3:2 warning: function is never used: `main`, #[warn(dead_code)] on by default
 /home/you/projects/testing/src/main.rs:1 fn main() {
 /home/you/projects/testing/src/main.rs:2     println!("Hello, world!")
 /home/you/projects/testing/src/main.rs:3 }
@@ -2974,18 +2970,8 @@ We'll turn this lint off for just this function soon. For now, just ignore this
 output.
 
 ```{notrust,ignore}
-running 0 tests
+     Running target/lib-654ce120f310a3a5
 
-test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured
-```
-
-Wait a minute, zero tests? Didn't we define one? Yup. This output is from
-attempting to run the tests in our crate, of which we don't have any.
-You'll note that Rust reports on several kinds of tests: passed, failed,
-ignored, and measured. The 'measured' tests refer to benchmark tests, which
-we'll cover soon enough!
-
-```{notrust,ignore}
 running 1 test
 test foo ... FAILED
 ```
@@ -3008,7 +2994,7 @@ failures:
 
 test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured
 
-task '<main>' failed at 'Some tests failed', /home/you/src/rust/src/libtest/lib.rs:242
+task '<main>' failed at 'Some tests failed', /home/you/src/rust/src/libtest/lib.rs:243
 ```
 
 After all the tests run, Rust will show us any output from our failed tests.
@@ -3029,24 +3015,25 @@ And then try to run our tests again:
 ```{notrust,ignore}
 $ cargo test
    Compiling testing v0.0.1 (file:///home/you/projects/testing)
-/home/you/projects/testing/src/main.rs:1:1: 3:2 warning: code is never used: `main`, #[warn(dead_code)] on by default
-/home/you/projects/testing/src/main.rs:1 fn main() {
-/home/you/projects/testing/src/main.rs:2     println!("Hello, world");
-/home/you/projects/testing/src/main.rs:3 }
-
-running 0 tests
-
-test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured
-
+     Running target/lib-654ce120f310a3a5
 
 running 1 test
 test foo ... ok
 
 test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured
+
+     Running target/testing-6d7518593c7c3ee5
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured
 ```
 
-Nice! Our test passes, as we expected. Let's get rid of that warning for our `main`
-function. Change your `src/main.rs` to look like this:
+Nice! Our test passes, as we expected. Note how we didn't get the
+`main` warning this time? This is because `src/main.rs` didn't
+need recompiling, but we'll get that warning again if we
+change (and recompile) that file. Let's get rid of that
+warning; change your `src/main.rs` to look like this:
 
 ```{rust}
 #[cfg(not(test))]
@@ -3062,21 +3049,24 @@ our tests, it sets things up so that `cfg(test)` is true. But we want to only
 include `main` when it's _not_ true. So we use `not` to negate things:
 `cfg(not(test))` will only compile our code when the `cfg(test)` is false.
 
-With this attribute, we won't get the warning:
+With this attribute we won't get the warning (even
+though `src/main.rs` gets recompiled this time):
 
 ```{notrust,ignore}
 $ cargo test
    Compiling testing v0.0.1 (file:///home/you/projects/testing)
-
-running 0 tests
-
-test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured
-
+     Running target/lib-654ce120f310a3a5
 
 running 1 test
 test foo ... ok
 
 test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured
+
+     Running target/testing-6d7518593c7c3ee5
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured
 ```
 
 Nice. Okay, let's write a real test now. Change your `tests/lib.rs`
@@ -3156,21 +3146,30 @@ Let's give it a run:
 ```{ignore,notrust}
 $ cargo test
    Compiling testing v0.0.1 (file:///home/you/projects/testing)
-
-running 0 tests
-
-test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured
-
-
-running 0 tests
-
-test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured
-
+     Running target/lib-654ce120f310a3a5
 
 running 1 test
 test math_checks_out ... ok
 
 test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured
+
+     Running target/testing-6d7518593c7c3ee5
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured
+
+     Running target/testing-8a94b31f7fd2e8fe
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured
+
+   Doc-tests testing
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured
 ```
 
 Great! One test passed. We've got an integration test showing that our public
@@ -3196,21 +3195,30 @@ If you run `cargo test`, you should get the same output:
 ```{ignore,notrust}
 $ cargo test
    Compiling testing v0.0.1 (file:///home/you/projects/testing)
-
-running 0 tests
-
-test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured
-
-
-running 0 tests
-
-test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured
-
+     Running target/lib-654ce120f310a3a5
 
 running 1 test
 test math_checks_out ... ok
 
 test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured
+
+     Running target/testing-6d7518593c7c3ee5
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured
+
+     Running target/testing-8a94b31f7fd2e8fe
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured
+
+   Doc-tests testing
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured
 ```
 
 If we tried to write a test for these two new functions, it wouldn't
@@ -3283,6 +3291,20 @@ Let's give it a shot:
 ```{ignore,notrust}
 $ cargo test
    Compiling testing v0.0.1 (file:///home/you/projects/testing)
+     Running target/lib-654ce120f310a3a5
+
+running 1 test
+test math_checks_out ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured
+
+     Running target/testing-6d7518593c7c3ee5
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured
+
+     Running target/testing-8a94b31f7fd2e8fe
 
 running 2 tests
 test test::test_times_four ... ok
@@ -3290,16 +3312,11 @@ test test::test_add_three ... ok
 
 test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured
 
+   Doc-tests testing
 
 running 0 tests
 
 test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured
-
-
-running 1 test
-test math_checks_out ... ok
-
-test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured
 ```
 
 Cool! We now have two tests of our internal functions. You'll note that there
