@@ -71,7 +71,6 @@ fn main() {
 
 */
 
-use alloc::libc_heap::malloc_raw;
 use collections::string::String;
 use collections::hash;
 use core::fmt;
@@ -101,7 +100,8 @@ impl Clone for CString {
     /// with C's allocator API, rather than the usual shallow clone.
     fn clone(&self) -> CString {
         let len = self.len() + 1;
-        let buf = unsafe { malloc_raw(len) } as *mut libc::c_char;
+        let buf = unsafe { libc::malloc(len as libc::size_t) } as *mut libc::c_char;
+        if buf.is_null() { fail!("out of memory") }
         unsafe { ptr::copy_nonoverlapping_memory(buf, self.buf, len); }
         CString { buf: buf as *const libc::c_char, owns_buffer_: true }
     }
@@ -393,7 +393,8 @@ impl<'a> ToCStr for &'a [u8] {
 
     unsafe fn to_c_str_unchecked(&self) -> CString {
         let self_len = self.len();
-        let buf = malloc_raw(self_len + 1);
+        let buf = libc::malloc(self_len as libc::size_t + 1) as *mut u8;
+        if buf.is_null() { fail!("out of memory") }
 
         ptr::copy_memory(buf, self.as_ptr(), self_len);
         *buf.offset(self_len as int) = 0;

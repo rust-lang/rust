@@ -54,11 +54,8 @@
 //!
 //! ## Heap interfaces
 //!
-//! The [`heap`](heap/index.html) and [`libc_heap`](libc_heap/index.html)
-//! modules are the unsafe interfaces to the underlying allocation systems. The
-//! `heap` module is considered the default heap, and is not necessarily backed
-//! by libc malloc/free.  The `libc_heap` module is defined to be wired up to
-//! the system malloc/free.
+//! The [`heap`](heap/index.html) module defines the low-level interface to the
+//! default global allocator. It is not compatible with the libc allocator API.
 
 #![crate_name = "alloc"]
 #![experimental]
@@ -90,7 +87,6 @@ pub use boxed as owned;
 // Heaps provided for low-level allocation strategies
 
 pub mod heap;
-pub mod libc_heap;
 
 // Primitive types using the heaps above
 
