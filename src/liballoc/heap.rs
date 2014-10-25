@@ -28,8 +28,8 @@ pub unsafe fn allocate(size: uint, align: uint) -> *mut u8 {
 /// size on the platform.
 ///
 /// The `old_size` and `align` parameters are the parameters that were used to
-/// create the allocation referenced by `ptr`. The `old_size` parameter may also
-/// be the value returned by `usable_size` for the requested size.
+/// create the allocation referenced by `ptr`. The `old_size` parameter may be
+/// any value in range_inclusive(requested_size, usable_size).
 #[inline]
 pub unsafe fn reallocate(ptr: *mut u8, old_size: uint, size: uint, align: uint) -> *mut u8 {
     imp::reallocate(ptr, old_size, size, align)
@@ -57,12 +57,12 @@ pub unsafe fn reallocate_inplace(ptr: *mut u8, old_size: uint, size: uint, align
 ///
 /// The `ptr` parameter must not be null.
 ///
-/// The `size` and `align` parameters are the parameters that were used to
-/// create the allocation referenced by `ptr`. The `size` parameter may also be
-/// the value returned by `usable_size` for the requested size.
+/// The `old_size` and `align` parameters are the parameters that were used to
+/// create the allocation referenced by `ptr`. The `old_size` parameter may be
+/// any value in range_inclusive(requested_size, usable_size).
 #[inline]
-pub unsafe fn deallocate(ptr: *mut u8, size: uint, align: uint) {
-    imp::deallocate(ptr, size, align)
+pub unsafe fn deallocate(ptr: *mut u8, old_size: uint, align: uint) {
+    imp::deallocate(ptr, old_size, align)
 }
 
 /// Returns the usable size of an allocation created with the specified the
@@ -102,8 +102,8 @@ unsafe fn exchange_malloc(size: uint, align: uint) -> *mut u8 {
 #[cfg(not(test))]
 #[lang="exchange_free"]
 #[inline]
-unsafe fn exchange_free(ptr: *mut u8, size: uint, align: uint) {
-    deallocate(ptr, size, align);
+unsafe fn exchange_free(ptr: *mut u8, old_size: uint, align: uint) {
+    deallocate(ptr, old_size, align);
 }
 
 // The minimum alignment guaranteed by the architecture. This value is used to
@@ -185,9 +185,9 @@ mod imp {
     }
 
     #[inline]
-    pub unsafe fn deallocate(ptr: *mut u8, size: uint, align: uint) {
+    pub unsafe fn deallocate(ptr: *mut u8, old_size: uint, align: uint) {
         let flags = align_to_flags(align);
-        je_sdallocx(ptr as *mut c_void, size as size_t, flags)
+        je_sdallocx(ptr as *mut c_void, old_size as size_t, flags)
     }
 
     #[inline]
@@ -260,7 +260,7 @@ mod imp {
     }
 
     #[inline]
-    pub unsafe fn deallocate(ptr: *mut u8, _size: uint, _align: uint) {
+    pub unsafe fn deallocate(ptr: *mut u8, _old_size: uint, _align: uint) {
         libc::free(ptr as *mut libc::c_void)
     }
 
@@ -328,7 +328,7 @@ mod imp {
     }
 
     #[inline]
-    pub unsafe fn deallocate(ptr: *mut u8, _size: uint, align: uint) {
+    pub unsafe fn deallocate(ptr: *mut u8, _old_size: uint, align: uint) {
         if align <= MIN_ALIGN {
             libc::free(ptr as *mut libc::c_void)
         } else {
