@@ -562,10 +562,12 @@ pub mod reader {
                          f: |&mut Decoder<'doc>| -> DecodeResult<T>) -> DecodeResult<T> {
             debug!("read_tuple()");
             self.read_seq(|d, len| {
-                assert!(len == tuple_len,
-                        "expected tuple of length `{}`, found tuple \
-                         of length `{}`", tuple_len, len);
-                f(d)
+                if len == tuple_len {
+                    f(d)
+                } else {
+                    Err(Expected(format!("Expected tuple of length `{}`, \
+                                          found tuple of length `{}`", tuple_len, len)))
+                }
             })
         }
 

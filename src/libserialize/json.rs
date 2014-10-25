@@ -2153,13 +2153,17 @@ impl ::Decoder<DecoderError> for Decoder {
         Ok(value)
     }
 
-    fn read_tuple<T>(&mut self, tuple_len: uint, f: |&mut Decoder| -> DecodeResult<T>) -> DecodeResult<T> {
+    fn read_tuple<T>(&mut self,
+                     tuple_len: uint,
+                     f: |&mut Decoder| -> DecodeResult<T>)
+                     -> DecodeResult<T> {
         debug!("read_tuple()");
         self.read_seq(|d, len| {
-            assert!(len == tuple_len,
-                    "expected tuple of length `{}`, found tuple \
-                         of length `{}`", tuple_len, len);
-            f(d)
+            if len == tuple_len {
+                f(d)
+            } else {
+                Err(ExpectedError(format!("Tuple{}", tuple_len), format!("Tuple{}", len)))
+            }
         })
     }
 
@@ -2893,9 +2897,8 @@ mod tests {
     }
 
     #[test]
-    #[should_fail]
     fn test_decode_tuple_malformed_length() {
-        let _ = super::decode::<(uint, uint)>("[1, 2, 3]");
+        assert!(super::decode::<(uint, uint)>("[1, 2, 3]").is_err());
     }
 
     #[test]
