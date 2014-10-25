@@ -130,18 +130,6 @@ impl ToCStr for Path {
     }
 }
 
-impl<'a> ToCStr for &'a Path {
-    #[inline]
-    fn to_c_str(&self) -> CString {
-        (*self).to_c_str()
-    }
-
-    #[inline]
-    unsafe fn to_c_str_unchecked(&self) -> CString {
-        (*self).to_c_str_unchecked()
-    }
-}
-
 impl<S: hash::Writer> hash::Hash<S> for Path {
     #[cfg(not(test))]
     #[inline]
