@@ -4474,7 +4474,7 @@ range(1i, 100i).map(|x| x + 1i);
 
 `map` is called upon another iterator, and produces a new iterator where each
 element reference has the closure it's been given as an argument called on it.
-So this would give us the numbers from `2-101`. Well, almost! If you
+So this would give us the numbers from `2-100`. Well, almost! If you
 compile the example, you'll get a warning:
 
 ```{notrust,ignore}
