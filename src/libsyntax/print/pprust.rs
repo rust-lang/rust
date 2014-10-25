@@ -169,17 +169,14 @@ pub fn to_string(f: |&mut State| -> IoResult<()>) -> String {
     let mut s = rust_printer(box MemWriter::new());
     f(&mut s).unwrap();
     eof(&mut s.s).unwrap();
-    unsafe {
+    let wr = unsafe {
         // FIXME(pcwalton): A nasty function to extract the string from an `io::Writer`
         // that we "know" to be a `MemWriter` that works around the lack of checked
         // downcasts.
-        let obj: TraitObject = mem::transmute_copy(&s.s.out);
-        let wr: Box<MemWriter> = mem::transmute(obj.data);
-        let result =
-            String::from_utf8(wr.get_ref().as_slice().to_vec()).unwrap();
-        mem::forget(wr);
-        result.to_string()
-    }
+        let obj: &TraitObject = mem::transmute(&s.s.out);
+        mem::transmute::<*mut (), &MemWriter>(obj.data)
+    };
+    String::from_utf8(wr.get_ref().to_vec()).unwrap()
 }
 
 pub fn binop_to_string(op: BinOpToken) -> &'static str {
