@@ -118,7 +118,6 @@ use util::nodemap::NodeMap;
 
 use std::fmt;
 use std::io;
-use std::mem::transmute;
 use std::rc::Rc;
 use std::str;
 use std::uint;
@@ -380,10 +379,7 @@ fn visit_fn(ir: &mut IrMaps,
     // swap in a new set of IR maps for this function body:
     let mut fn_maps = IrMaps::new(ir.tcx);
 
-    unsafe {
-        debug!("creating fn_maps: {}",
-               transmute::<&IrMaps, *const IrMaps>(&fn_maps));
-    }
+    debug!("creating fn_maps: {}", &fn_maps as *const IrMaps);
 
     for arg in decl.inputs.iter() {
         pat_util::pat_bindings(&ir.tcx.def_map,

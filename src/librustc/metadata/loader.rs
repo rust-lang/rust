@@ -231,7 +231,6 @@ use std::c_str::ToCStr;
 use std::cmp;
 use std::io::fs::PathExtensions;
 use std::io;
-use std::mem;
 use std::ptr;
 use std::slice;
 use std::string;
@@ -287,8 +286,8 @@ pub struct Library {
 
 pub struct ArchiveMetadata {
     _archive: ArchiveRO,
-    // See comments in ArchiveMetadata::new for why this is static
-    data: &'static [u8],
+    // points into self._archive
+    data: *const [u8],
 }
 
 pub struct CratePaths {
@@ -709,33 +708,21 @@ pub fn note_crate_name(diag: &SpanHandler, name: &str) {
 
 impl ArchiveMetadata {
     fn new(ar: ArchiveRO) -> Option<ArchiveMetadata> {
-        let data: &'static [u8] = {
-            let data = match ar.read(METADATA_FILENAME) {
-                Some(data) => data,
-                None => {
-                    debug!("didn't find '{}' in the archive", METADATA_FILENAME);
-                    return None;
-                }
-            };
-            // This data is actually a pointer inside of the archive itself, but
-            // we essentially want to cache it because the lookup inside the
-            // archive is a fairly expensive operation (and it's queried for
-            // *very* frequently). For this reason, we transmute it to the
-            // static lifetime to put into the struct. Note that the buffer is
-            // never actually handed out with a static lifetime, but rather the
-            // buffer is loaned with the lifetime of this containing object.
-            // Hence, we're guaranteed that the buffer will never be used after
-            // this object is dead, so this is a safe operation to transmute and
-            // store the data as a static buffer.
-            unsafe { mem::transmute(data) }
+        let data = match ar.read(METADATA_FILENAME) {
+            Some(data) => data as *const [u8],
+            None => {
+                debug!("didn't find '{}' in the archive", METADATA_FILENAME);
+                return None;
+            }
         };
+
         Some(ArchiveMetadata {
             _archive: ar,
             data: data,
         })
     }
 
-    pub fn as_slice<'a>(&'a self) -> &'a [u8] { self.data }
+    pub fn as_slice<'a>(&'a self) -> &'a [u8] { unsafe { &*self.data } }
 }
 
 // Just a small wrapper to time how long reading metadata takes.
@@ -798,7 +785,7 @@ fn get_metadata_section_imp(os: abi::Os, filename: &Path) -> Result<MetadataBlob
                 let csz = llvm::LLVMGetSectionSize(si.llsi) as uint;
                 let mut found =
                     Err(format!("metadata not found: '{}'", filename.display()));
-                let cvbuf: *const u8 = mem::transmute(cbuf);
+                let cvbuf: *const u8 = cbuf as *const u8;
                 let vlen = encoder::metadata_encoding_version.len();
                 debug!("checking {} bytes of metadata-version stamp",
                        vlen);
