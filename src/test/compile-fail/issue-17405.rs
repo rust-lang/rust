@@ -14,6 +14,6 @@ enum Foo {
 
 fn main() {
     match Bar(1i) {
-        Foo { i } => () //~ ERROR `Foo` does not name a variant
+        Foo { i } => () //~ ERROR `Foo` does not name a struct or a struct variant
     }
 }

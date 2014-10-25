@@ -9,6 +9,7 @@
 // except according to those terms.
 
 fn main() {
-    let (x, y) = (); //~ ERROR expected `()`, found tuple (types differ)
+    let (x, y) = ();
+//~^ ERROR types: expected `()`, found `(<generic #3>,<generic #4>)` (expected (), found tuple)
     return x;
 }

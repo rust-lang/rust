@@ -12,7 +12,8 @@ fn main() {
   let x = [1,2];
   let y = match x {
     [] => None,
-//~^ ERROR expected `[<generic integer #0>, ..2]`, found a fixed array pattern of size 0
+//~^ ERROR mismatched types: expected `[<generic integer #0>, ..2]`, found `[<generic #7>, ..0]`
+//         (expected array, found array)
     [a,_] => Some(a)
   };
 }

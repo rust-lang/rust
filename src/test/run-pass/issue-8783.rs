@@ -8,14 +8,23 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-enum MyOption<T> {
-    MySome(T),
-    MyNone,
+use std::default::Default;
+
+struct X { pub x: uint }
+impl Default for X {
+    fn default() -> X {
+        X { x: 42u }
+    }
+}
+
+struct Y<T> { pub y: T }
+impl<T: Default> Default for Y<T> {
+    fn default() -> Y<T> {
+        Y { y: Default::default() }
+    }
 }
 
 fn main() {
-    match MySome(42i) {
-        MySome { x: 42i } => (), //~ ERROR `MySome` does not name a struct or a struct variant
-        _ => (),
-    }
+    let X { x: _ } = Default::default();
+    let Y { y: X { x } } = Default::default();
 }
