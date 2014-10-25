@@ -2730,6 +2730,8 @@ impl<'a> Parser<'a> {
                 return self.parse_dot_or_call_expr();
             }
 
+            let lo = self.span.lo;
+
             self.bump();
 
             // Check for a place: `box(PLACE) EXPR`.
@@ -2738,6 +2740,18 @@ impl<'a> Parser<'a> {
                 if !self.eat(&token::RParen) {
                     let place = self.parse_expr();
                     self.expect(&token::RParen);
+                    // Give a suggestion to use `box()` when a parenthesised expression is used
+                    if !self.token.can_begin_expr() {
+                        let span = self.span;
+                        let this_token_to_string = self.this_token_to_string();
+                        self.span_err(span,
+                                      format!("expected expression, found `{}`",
+                                              this_token_to_string).as_slice());
+                        let box_span = mk_sp(lo, self.last_span.hi);
+                        self.span_help(box_span,
+                                       "perhaps you meant `box() (foo)` instead?");
+                        self.abort_if_errors();
+                    }
                     let subexpression = self.parse_prefix_expr();
                     hi = subexpression.span.hi;
                     ex = ExprBox(place, subexpression);
