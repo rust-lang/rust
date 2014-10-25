@@ -673,9 +673,14 @@ pub fn get_enum_variants(intr: Rc<IdentInterner>, cdata: Cmd, id: ast::NodeId,
         let ctor_ty = item_type(ast::DefId { krate: cdata.cnum, node: id},
                                 item, tcx, cdata);
         let name = item_name(&*intr, item);
-        let arg_tys = match ty::get(ctor_ty).sty {
-            ty::ty_bare_fn(ref f) => f.sig.inputs.clone(),
-            _ => Vec::new(), // Nullary enum variant.
+        let (ctor_ty, arg_tys) = match ty::get(ctor_ty).sty {
+            ty::ty_bare_fn(ref f) =>
+                (Some(ctor_ty), f.sig.inputs.clone()),
+            _ => // Nullary or struct enum variant.
+                (None, get_struct_fields(intr.clone(), cdata, did.node)
+                    .iter()
+                    .map(|field_ty| get_type(cdata, field_ty.id.node, tcx).ty)
+                    .collect())
         };
         match variant_disr_val(item) {
             Some(val) => { disr_val = val; }

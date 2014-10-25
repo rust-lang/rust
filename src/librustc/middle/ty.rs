@@ -50,7 +50,7 @@ use syntax::ast::{CrateNum, DefId, FnStyle, Ident, ItemTrait, LOCAL_CRATE};
 use syntax::ast::{MutImmutable, MutMutable, Name, NamedField, NodeId};
 use syntax::ast::{Onceness, StmtExpr, StmtSemi, StructField, UnnamedField};
 use syntax::ast::{Visibility};
-use syntax::ast_util::{mod, PostExpansionMethod, is_local, lit_is_str};
+use syntax::ast_util::{mod, is_local, lit_is_str, local_def, PostExpansionMethod};
 use syntax::attr::{mod, AttrMetaMethods};
 use syntax::codemap::Span;
 use syntax::parse::token::{mod, InternedString};
@@ -4221,7 +4221,7 @@ pub fn ty_to_def_id(ty: t) -> Option<ast::DefId> {
 pub struct VariantInfo {
     pub args: Vec<t>,
     pub arg_names: Option<Vec<ast::Ident> >,
-    pub ctor_ty: t,
+    pub ctor_ty: Option<t>,
     pub name: ast::Name,
     pub id: ast::DefId,
     pub disr_val: Disr,
@@ -4249,7 +4249,7 @@ impl VariantInfo {
                 return VariantInfo {
                     args: arg_tys,
                     arg_names: None,
-                    ctor_ty: ctor_ty,
+                    ctor_ty: Some(ctor_ty),
                     name: ast_variant.node.name.name,
                     id: ast_util::local_def(ast_variant.node.id),
                     disr_val: discriminant,
@@ -4262,7 +4262,8 @@ impl VariantInfo {
 
                 assert!(fields.len() > 0);
 
-                let arg_tys = ty_fn_args(ctor_ty).iter().map(|a| *a).collect();
+                let arg_tys = struct_def.fields.iter()
+                    .map(|field| node_id_to_type(cx, field.node.id)).collect();
                 let arg_names = fields.iter().map(|field| {
                     match field.node.kind {
                         NamedField(ident, _) => ident,
@@ -4274,7 +4275,7 @@ impl VariantInfo {
                 return VariantInfo {
                     args: arg_tys,
                     arg_names: Some(arg_names),
-                    ctor_ty: ctor_ty,
+                    ctor_ty: None,
                     name: ast_variant.node.name.name,
                     id: ast_util::local_def(ast_variant.node.id),
                     disr_val: discriminant,

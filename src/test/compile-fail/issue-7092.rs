@@ -13,8 +13,9 @@ enum Whatever {
 
 fn foo(x: Whatever) {
     match x {
-        Some(field) => field.access(),
-        //~^ ERROR: mismatched types: expected `Whatever`, found
+        Some(field) =>
+//~^ ERROR: mismatched types: expected `Whatever`, found `core::option::Option<<generic #3>>`
+            field.access(), //~ ERROR the type of this value must be known in this context
     }
 }
 

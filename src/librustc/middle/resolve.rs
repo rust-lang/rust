@@ -5077,7 +5077,6 @@ impl<'a> Resolver<'a> {
                 PatEnum(ref path, _) => {
                     // This must be an enum variant, struct or const.
                     match self.resolve_path(pat_id, path, ValueNS, false) {
-                        Some(def @ (DefFn(..), _))      |
                         Some(def @ (DefVariant(..), _)) |
                         Some(def @ (DefStruct(..), _))  |
                         Some(def @ (DefConst(..), _)) => {
