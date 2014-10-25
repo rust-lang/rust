@@ -5703,6 +5703,8 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &ast::ForeignItem) {
 
             "return_address" => (0, vec![], ty::mk_imm_ptr(tcx, ty::mk_u8())),
 
+            "assume" => (0, vec![ty::mk_bool()], ty::mk_nil()),
+
             ref other => {
                 span_err!(tcx.sess, it.span, E0093,
                     "unrecognized intrinsic function: `{}`", *other);
