@@ -3605,7 +3605,7 @@ pub fn expr_kind(tcx: &ctxt, expr: &ast::Expr) -> ExprKind {
 
                 // Special case: A unit like struct's constructor must be called without () at the
                 // end (like `UnitStruct`) which means this is an ExprPath to a DefFn. But in case
-                // of unit structs this is should not be interpretet as function pointer but as
+                // of unit structs this is should not be interpreted as function pointer but as
                 // call to the constructor.
                 def::DefFn(_, _, true) => RvalueDpsExpr,
 
@@ -5409,7 +5409,7 @@ impl BorrowKind {
             MutBorrow => ast::MutMutable,
             ImmBorrow => ast::MutImmutable,
 
-            // We have no type correponding to a unique imm borrow, so
+            // We have no type corresponding to a unique imm borrow, so
             // use `&mut`. It gives all the capabilities of an `&uniq`
             // and hence is a safe "over approximation".
             UniqueImmBorrow => ast::MutMutable,

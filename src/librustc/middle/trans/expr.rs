@@ -2117,7 +2117,7 @@ fn deref_once<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 deref_owned_pointer(bcx, expr, datum, content_ty)
             } else {
                 // A fat pointer and an opened DST value have the same
-                // represenation just different types. Since there is no
+                // representation just different types. Since there is no
                 // temporary for `*e` here (because it is unsized), we cannot
                 // emulate the sized object code path for running drop glue and
                 // free. Instead, we schedule cleanup for `e`, turning it into
@@ -2142,7 +2142,7 @@ fn deref_once<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 // owner (or, in the case of *T, by the user).
                 DatumBlock::new(bcx, Datum::new(ptr, content_ty, LvalueExpr))
             } else {
-                // A fat pointer and an opened DST value have the same represenation
+                // A fat pointer and an opened DST value have the same representation
                 // just different types.
                 DatumBlock::new(bcx, Datum::new(datum.val,
                                                 ty::mk_open(bcx.tcx(), content_ty),

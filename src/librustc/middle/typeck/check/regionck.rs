@@ -1675,7 +1675,7 @@ fn link_reborrowed_region(rcx: &Rcx,
             //
             // If mutability was inferred from an upvar, we may be
             // forced to revisit this decision later if processing
-            // another borrow or nested closure ends up coverting the
+            // another borrow or nested closure ends up converting the
             // upvar borrow kind to mutable/unique.  Record the
             // information needed to perform the recursive link in the
             // maybe link map.

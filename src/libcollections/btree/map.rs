@@ -41,10 +41,10 @@ use ringbuf::RingBuf;
 /// the BST strategy.
 ///
 /// A B-Tree instead makes each node contain B-1 to 2B-1 elements in a contiguous array. By doing
-/// this, we reduce the number of allocations by a factor of B, and improve cache effeciency in
+/// this, we reduce the number of allocations by a factor of B, and improve cache efficiency in
 /// searches. However, this does mean that searches will have to do *more* comparisons on average.
 /// The precise number of comparisons depends on the node search strategy used. For optimal cache
-/// effeciency, one could search the nodes linearly. For optimal comparisons, one could search
+/// efficiency, one could search the nodes linearly. For optimal comparisons, one could search
 /// the node using binary search. As a compromise, one could also perform a linear search
 /// that initially only checks every i<sup>th</sup> element for some choice of i.
 ///
