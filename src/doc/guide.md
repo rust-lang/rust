@@ -4210,7 +4210,7 @@ Doing this is not particularly common, but it's useful every once in a while.
 That's all you need to get the hang of closures! Closures are a little bit
 strange at first, but once you're used to them, you'll miss them
 in other languages. Passing functions to other functions is
-incredibly powerful; let's look at one of such situations: iterators.
+incredibly powerful, as you will see in the following chapter about iterators.
 
 # Iterators
 
