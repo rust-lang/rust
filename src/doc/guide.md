@@ -3801,7 +3801,7 @@ the value to a name with `@`:
 let x = 1i;
 
 match x {
-    x @ 1 ... 5 => println!("got {}", x),
+    e @ 1 ... 5 => println!("got a range element {}", e),
     _ => println!("anything"),
 }
 ```
@@ -3834,7 +3834,7 @@ enum OptionalInt {
 let x = Value(5i);
 
 match x {
-    Value(x) if x > 5 => println!("Got an int bigger than five!"),
+    Value(i) if i > 5 => println!("Got an int bigger than five!"),
     Value(..) => println!("Got an int!"),
     Missing   => println!("No such luck."),
 }
@@ -3847,12 +3847,12 @@ with. First, `&`:
 let x = &5i;
 
 match x {
-    &x => println!("Got a value: {}", x),
+    &val => println!("Got a value: {}", val),
 }
 ```
 
-Here, the `x` inside the `match` has type `int`. In other words, the left hand
-side of the pattern destructures the value. If we have `&5i`, then in `&x`, `x`
+Here, the `val` inside the `match` has type `int`. In other words, the left hand
+side of the pattern destructures the value. If we have `&5i`, then in `&val`, `val`
 would be `5i`.
 
 If you want to get a reference, use the `ref` keyword:
@@ -3861,11 +3861,11 @@ If you want to get a reference, use the `ref` keyword:
 let x = 5i;
 
 match x {
-    ref x => println!("Got a reference to {}", x),
+    ref r => println!("Got a reference to {}", r),
 }
 ```
 
-Here, the `x` inside the `match` has the type `&int`. In other words, the `ref`
+Here, the `r` inside the `match` has the type `&int`. In other words, the `ref`
 keyword _creates_ a reference, for use in the pattern. If you need a mutable
 reference, `ref mut` will work in the same way:
 
@@ -3873,7 +3873,7 @@ reference, `ref mut` will work in the same way:
 let mut x = 5i;
 
 match x {
-    ref mut x => println!("Got a mutable reference to {}", x),
+    ref mut mr => println!("Got a mutable reference to {}", mr),
 }
 ```
 
