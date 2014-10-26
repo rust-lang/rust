@@ -71,7 +71,8 @@ fn color_to_bits(color: color::Color) -> u16 {
 }
 
 fn bits_to_color(bits: u16) -> color::Color {
-    let color = match bits & 0x7 {
+    let bits = bits & 0x7;
+    let color = match bits {
         0 => color::BLACK,
         0x1 => color::BLUE,
         0x2 => color::GREEN,
