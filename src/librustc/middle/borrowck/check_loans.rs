@@ -825,10 +825,18 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
                     mc::cat_rvalue(..) |
                     mc::cat_static_item |
                     mc::cat_deref(_, _, mc::UnsafePtr(..)) |
-                    mc::cat_deref(_, _, mc::BorrowedPtr(..)) |
                     mc::cat_deref(_, _, mc::Implicit(..)) => {
                         assert_eq!(cmt.mutbl, mc::McDeclared);
                         return;
+                    }
+
+                    mc::cat_deref(_, _, mc::BorrowedPtr(..)) => {
+                        assert_eq!(cmt.mutbl, mc::McDeclared);
+                        // We need to drill down to upvar if applicable
+                        match cmt.upvar() {
+                            Some(b) => cmt = b,
+                            None => return
+                        }
                     }
 
                     mc::cat_discr(b, _) |
