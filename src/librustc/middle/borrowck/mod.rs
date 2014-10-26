@@ -626,7 +626,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
         match err.code {
             err_mutbl => {
                 let descr = match err.cmt.note {
-                    mc::NoteClosureEnv(_) => {
+                    mc::NoteClosureEnv(_) | mc::NoteUpvarRef(_) => {
                         self.cmt_to_string(&*err.cmt)
                     }
                     _ => match opt_loan_path(&err.cmt) {
@@ -762,11 +762,20 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
         match code {
             err_mutbl(..) => {
                 match err.cmt.note {
-                    mc::NoteClosureEnv(upvar_id) => {
-                        self.tcx.sess.span_note(
-                            self.tcx.map.span(upvar_id.closure_expr_id),
-                            "consider changing this closure to take \
-                             self by mutable reference");
+                    mc::NoteClosureEnv(upvar_id) | mc::NoteUpvarRef(upvar_id) => {
+                        // If this is an `Fn` closure, it simply can't mutate upvars.
+                        // If it's an `FnMut` closure, the original variable was declared immutable.
+                        // We need to determine which is the case here.
+                        let kind = match err.cmt.upvar().unwrap().cat {
+                            mc::cat_upvar(mc::Upvar { kind, .. }) => kind,
+                            _ => unreachable!()
+                        };
+                        if kind == ty::FnUnboxedClosureKind {
+                            self.tcx.sess.span_note(
+                                self.tcx.map.span(upvar_id.closure_expr_id),
+                                "consider changing this closure to take \
+                                 self by mutable reference");
+                        }
                     }
                     _ => {}
                 }
