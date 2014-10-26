@@ -17,6 +17,7 @@ Core encoding and decoding interfaces.
 use std::path;
 use std::rc::Rc;
 use std::cell::{Cell, RefCell};
+use std::sync::Arc;
 
 pub trait Encoder<E> {
     // Primitive types:
@@ -553,6 +554,18 @@ impl<E, S: Encoder<E>, T: Encodable<S, E>> Encodable<S, E> for RefCell<T> {
 impl<E, D: Decoder<E>, T: Decodable<D, E>> Decodable<D, E> for RefCell<T> {
     fn decode(d: &mut D) -> Result<RefCell<T>, E> {
         Ok(RefCell::new(try!(Decodable::decode(d))))
+    }
+}
+
+impl<E, S:Encoder<E>, T:Encodable<S, E>+Send+Sync> Encodable<S, E> for Arc<T> {
+    fn encode(&self, s: &mut S) -> Result<(), E> {
+        (**self).encode(s)
+    }
+}
+
+impl<E, D:Decoder<E>,T:Decodable<D, E>+Send+Sync> Decodable<D, E> for Arc<T> {
+    fn decode(d: &mut D) -> Result<Arc<T>, E> {
+        Ok(Arc::new(try!(Decodable::decode(d))))
     }
 }
 
