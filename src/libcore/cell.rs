@@ -191,6 +191,17 @@ impl<T:Copy> Cell<T> {
             *self.value.get() = value;
         }
     }
+
+    /// Get a reference to the underlying `UnsafeCell`.
+    ///
+    /// This can be used to circumvent `Cell`'s safety checks.
+    ///
+    /// This function is `unsafe` because `UnsafeCell`'s field is public.
+    #[inline]
+    #[experimental]
+    pub unsafe fn as_unsafe_cell<'a>(&'a self) -> &'a UnsafeCell<T> {
+        &self.value
+    }
 }
 
 #[unstable = "waiting for `Clone` trait to become stable"]
@@ -305,6 +316,17 @@ impl<T> RefCell<T> {
             Some(ptr) => ptr,
             None => fail!("RefCell<T> already borrowed")
         }
+    }
+
+    /// Get a reference to the underlying `UnsafeCell`.
+    ///
+    /// This can be used to circumvent `RefCell`'s safety checks.
+    ///
+    /// This function is `unsafe` because `UnsafeCell`'s field is public.
+    #[inline]
+    #[experimental]
+    pub unsafe fn as_unsafe_cell<'a>(&'a self) -> &'a UnsafeCell<T> {
+        &self.value
     }
 }
 
