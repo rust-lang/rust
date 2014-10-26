@@ -3419,7 +3419,7 @@ let y = &mut x;
 Rust will complain:
 
 ```{ignore,notrust}
-6:19 error: cannot borrow immutable local variable `x` as mutable
+error: cannot borrow immutable local variable `x` as mutable
  let y = &mut x;
               ^
 ```
@@ -3734,10 +3734,10 @@ let y = &mut x;
 This gives us this error:
 
 ```{notrust,ignore}
-8:7 error: cannot use `*x` because it was mutably borrowed
+error: cannot use `*x` because it was mutably borrowed
  *x;
  ^~
- 6:19 note: borrow of `x` occurs here
+note: borrow of `x` occurs here
  let y = &mut x;
               ^
 ```
@@ -4530,8 +4530,8 @@ So this would give us the numbers from `2-100`. Well, almost! If you
 compile the example, you'll get a warning:
 
 ```{notrust,ignore}
-2:37 warning: unused result which must be used: iterator adaptors are lazy and
-              do nothing unless consumed, #[warn(unused_must_use)] on by default
+warning: unused result which must be used: iterator adaptors are lazy and
+         do nothing unless consumed, #[warn(unused_must_use)] on by default
  range(1i, 100i).map(|x| x + 1i);
  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ```
