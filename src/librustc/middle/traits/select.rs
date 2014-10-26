@@ -211,7 +211,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     // can be applied to particular types. It skips the "confirmation"
     // step and hence completely ignores output type parameters.
     //
-    // The result is "true" if the obliation *may* hold and "false" if
+    // The result is "true" if the obligation *may* hold and "false" if
     // we can be sure it does not.
 
     pub fn evaluate_obligation_intercrate(&mut self,

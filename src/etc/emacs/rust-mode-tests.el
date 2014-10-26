@@ -376,7 +376,7 @@ fn bar(   a:int,
           -> int
 { }
 
-fn baz(   a:int,  // shoudl work with a comment here
+fn baz(   a:int,  // should work with a comment here
           b:char)
           -> int
 { }

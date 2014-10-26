@@ -436,7 +436,7 @@ pub enum Stmt_ {
     /// Expr with trailing semi-colon (may have any type):
     StmtSemi(P<Expr>, NodeId),
 
-    /// bool: is there a trailing sem-colon?
+    /// bool: is there a trailing semi-colon?
     StmtMac(Mac, bool),
 }
 
