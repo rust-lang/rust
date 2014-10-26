@@ -4418,7 +4418,7 @@ see why consumers matter.
 
 As we've said before, an iterator is something that we can call the `.next()`
 method on repeatedly, and it gives us a sequence of things. Because you need
-to call the method, this means that iterators are **lazy**. This code, for
+to call the method, this means that iterators can be **lazy** and don't need to generate all of the values upfront. This code, for
 example, does not actually generate the numbers `1-100`, and just creates a
 value that represents the sequence:
 
@@ -4427,7 +4427,7 @@ let nums = range(1i, 100i);
 ```
 
 Since we didn't do anything with the range, it didn't generate the sequence.
-Once we add the consumer:
+Let's add the consumer:
 
 ```{rust}
 let nums = range(1i, 100i).collect::<Vec<int>>();
@@ -4456,8 +4456,8 @@ std::iter::count(1i, 5i);
 ```
 
 This iterator counts up from one, adding five each time. It will give
-you a new integer every time, forever. Well, technically, until the
-maximum number that an `int` can represent. But since iterators are lazy,
+you a new integer every time, forever (well, technically, until it reaches the
+maximum number representable by an `int`). But since iterators are lazy,
 that's okay! You probably don't want to use `collect()` on it, though...
 
 That's enough about iterators. Iterator adapters are the last concept
@@ -5199,8 +5199,8 @@ to do something that it can't currently do? You may be able to write a macro
 to extend Rust's capabilities.
 
 You've already used one macro extensively: `println!`. When we invoke
-a Rust macro, we need to use the exclamation mark (`!`). There's two reasons
-that this is true: the first is that it makes it clear when you're using a
+a Rust macro, we need to use the exclamation mark (`!`). There are two reasons
+why this is so: the first is that it makes it clear when you're using a
 macro. The second is that macros allow for flexible syntax, and so Rust must
 be able to tell where a macro starts and ends. The `!(...)` helps with this.
 
@@ -5215,7 +5215,7 @@ println!("x is: {}", x);
 
 The `println!` macro does a few things:
 
-1. It parses the string to find any `{}`s
+1. It parses the string to find any `{}`s.
 2. It checks that the number of `{}`s matches the number of other arguments.
 3. It generates a bunch of Rust code, taking this in mind.
 
@@ -5224,8 +5224,8 @@ Rust will generate code that takes all of the types into account. If
 `println!` was a function, it could still do this type checking, but it
 would happen at run time rather than compile time.
 
-We can check this out using a special flag to `rustc`. This code, in a file
-`print.rs`:
+We can check this out using a special flag to `rustc`. Put this code in a file
+called `print.rs`:
 
 ```{rust}
 fn main() {
@@ -5234,7 +5234,7 @@ fn main() {
 }
 ```
 
-Can have its macros expanded like this: `rustc print.rs --pretty=expanded`, will
+You can have the macros expanded like this: `rustc print.rs --pretty=expanded` – which will
 give us this huge result:
 
 ```{rust,ignore}
@@ -5273,12 +5273,12 @@ invoke the `println_args` function with the generated arguments.
 This is the code that Rust actually compiles. You can see all of the extra
 information that's here. We get all of the type safety and options that it
 provides, but at compile time, and without needing to type all of this out.
-This is how macros are powerful. Without them, you would need to type all of
-this by hand to get a type checked `println`.
+This is how macros are powerful: without them you would need to type all of
+this by hand to get a type-checked `println`.
 
 For more on macros, please consult [the Macros Guide](guide-macros.html).
-Macros are a very advanced and still slightly experimental feature, but don't
-require a deep understanding to call, since they look just like functions. The
+Macros are a very advanced and still slightly experimental feature, but they don't
+require a deep understanding to be called, since they look just like functions. The
 Guide can help you if you want to write your own.
 
 # Unsafe
@@ -5295,8 +5295,8 @@ keyword, which indicates that the function may not behave properly.
 
 Second, if you'd like to create some sort of shared-memory data structure, Rust
 won't allow it, because memory must be owned by a single owner. However, if
-you're planning on making access to that shared memory safe, such as with a
-mutex, _you_ know that it's safe, but Rust can't know. Writing an `unsafe`
+you're planning on making access to that shared memory safe – such as with a
+mutex – _you_ know that it's safe, but Rust can't know. Writing an `unsafe`
 block allows you to ask the compiler to trust you. In this case, the _internal_
 implementation of the mutex is considered unsafe, but the _external_ interface
 we present is safe. This allows it to be effectively used in normal Rust, while
