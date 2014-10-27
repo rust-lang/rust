@@ -1035,7 +1035,7 @@ impl<'a> State<'a> {
             ast::TtToken(_, ref tk) => {
                 try!(word(&mut self.s, parse::token::to_string(tk).as_slice()));
                 match *tk {
-                    parse::token::DOC_COMMENT(..) => {
+                    parse::token::DocComment(..) => {
                         hardbreak(&mut self.s)
                     }
                     _ => Ok(())

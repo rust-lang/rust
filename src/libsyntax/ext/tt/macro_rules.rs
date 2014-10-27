@@ -20,7 +20,7 @@ use parse::lexer::new_tt_reader;
 use parse::parser::Parser;
 use parse::attr::ParserAttr;
 use parse::token::{special_idents, gensym_ident};
-use parse::token::{FAT_ARROW, SEMI, NtMatchers, NtTT, EOF};
+use parse::token::{NtMatchers, NtTT};
 use parse::token;
 use print;
 use ptr::P;
@@ -43,10 +43,10 @@ impl<'a> ParserAnyMacro<'a> {
     /// allowed to be there.
     fn ensure_complete_parse(&self, allow_semi: bool) {
         let mut parser = self.parser.borrow_mut();
-        if allow_semi && parser.token == SEMI {
+        if allow_semi && parser.token == token::Semi {
             parser.bump()
         }
-        if parser.token != EOF {
+        if parser.token != token::Eof {
             let token_str = parser.this_token_to_string();
             let msg = format!("macro expansion ignores token `{}` and any \
                                following",
@@ -89,7 +89,7 @@ impl<'a> MacResult for ParserAnyMacro<'a> {
         loop {
             let mut parser = self.parser.borrow_mut();
             match parser.token {
-                EOF => break,
+                token::Eof => break,
                 _ => {
                     let attrs = parser.parse_outer_attributes();
                     ret.push(parser.parse_method(attrs, ast::Inherited))
@@ -231,12 +231,13 @@ pub fn add_new_extension<'cx>(cx: &'cx mut ExtCtxt,
     let argument_gram = vec!(
         ms(MatchSeq(vec!(
             ms(MatchNonterminal(lhs_nm, special_idents::matchers, 0u)),
-            ms(MatchTok(FAT_ARROW)),
-            ms(MatchNonterminal(rhs_nm, special_idents::tt, 1u))), Some(SEMI),
-                                ast::OneOrMore, 0u, 2u)),
+            ms(MatchTok(token::FatArrow)),
+            ms(MatchNonterminal(rhs_nm, special_idents::tt, 1u))),
+                                Some(token::Semi), ast::OneOrMore, 0u, 2u)),
         //to phase into semicolon-termination instead of
         //semicolon-separation
-        ms(MatchSeq(vec!(ms(MatchTok(SEMI))), None, ast::ZeroOrMore, 2u, 2u)));
+        ms(MatchSeq(vec!(ms(MatchTok(token::Semi))), None,
+                            ast::ZeroOrMore, 2u, 2u)));
 
 
     // Parse the macro_rules! invocation (`none` is for no interpolations):
