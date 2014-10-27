@@ -74,7 +74,7 @@ pub fn check_pat(pcx: &pat_ctxt, pat: &ast::Pat, expected: ty::t) {
             let const_did = tcx.def_map.borrow().get_copy(&pat.id).def_id();
             let const_pty = ty::lookup_item_type(tcx, const_did);
             fcx.write_ty(pat.id, const_pty.ty);
-            demand::eqtype(fcx, pat.span, expected, const_pty.ty);
+            demand::suptype(fcx, pat.span, expected, const_pty.ty);
         }
         ast::PatIdent(bm, ref path, ref sub) if pat_is_binding(&tcx.def_map, pat) => {
             let typ = fcx.local_ty(pat.span, pat.id);

@@ -279,4 +279,132 @@ selection. This is because it must account for the transformed self
 type of the receiver and various other complications. The procedure is
 described in `select.rs` in the "METHOD MATCHING" section.
 
+# Caching and subtle considerations therewith
+
+In general we attempt to cache the results of trait selection.  This
+is a somewhat complex process. Part of the reason for this is that we
+want to be able to cache results even when all the types in the trait
+reference are not fully known. In that case, it may happen that the
+trait selection process is also influencing type variables, so we have
+to be able to not only cache the *result* of the selection process,
+but *replay* its effects on the type variables.
+
+## An example
+
+The high-level idea of how the cache works is that we first replace
+all unbound inference variables with skolemized versions. Therefore,
+if we had a trait reference `uint : Foo<$1>`, where `$n` is an unbound
+inference variable, we might replace it with `uint : Foo<%0>`, where
+`%n` is a skolemized type. We would then look this up in the cache.
+If we found a hit, the hit would tell us the immediate next step to
+take in the selection process: i.e., apply impl #22, or apply where
+clause `X : Foo<Y>`. Let's say in this case there is no hit.
+Therefore, we search through impls and where clauses and so forth, and
+we come to the conclusion that the only possible impl is this one,
+with def-id 22:
+
+    impl Foo<int> for uint { ... } // Impl #22
+
+We would then record in the cache `uint : Foo<%0> ==>
+ImplCandidate(22)`. Next we would confirm `ImplCandidate(22)`, which
+would (as a side-effect) unify `$1` with `int`.
+
+Now, at some later time, we might come along and see a `uint :
+Foo<$3>`.  When skolemized, this would yield `uint : Foo<%0>`, just as
+before, and hence the cache lookup would succeed, yielding
+`ImplCandidate(22)`. We would confirm `ImplCandidate(22)` which would
+(as a side-effect) unify `$3` with `int`.
+
+## Where clauses and the local vs global cache
+
+One subtle interaction is that the results of trait lookup will vary
+depending on what where clauses are in scope. Therefore, we actually
+have *two* caches, a local and a global cache. The local cache is
+attached to the `ParameterEnvironment` and the global cache attached
+to the `tcx`. We use the local cache whenever the result might depend
+on the where clauses that are in scope. The determination of which
+cache to use is done by the method `pick_candidate_cache` in
+`select.rs`.
+
+There are two cases where we currently use the local cache. The
+current rules are probably more conservative than necessary.
+
+### Trait references that involve parameter types
+
+The most obvious case where you need the local environment is
+when the trait reference includes parameter types. For example,
+consider the following function:
+
+    impl<T> Vec<T> {
+        fn foo(x: T)
+            where T : Foo
+        { ... }
+
+        fn bar(x: T)
+        { ... }
+    }
+
+If there is an obligation `T : Foo`, or `int : Bar<T>`, or whatever,
+clearly the results from `foo` and `bar` are potentially different,
+since the set of where clauses in scope are different.
+
+### Trait references with unbound variables when where clauses are in scope
+
+There is another less obvious interaction which involves unbound variables
+where *only* where clauses are in scope (no impls). This manifested as
+issue #18209 (`run-pass/trait-cache-issue-18209.rs`). Consider
+this snippet:
+
+```
+pub trait Foo {
+    fn load_from() -> Box<Self>;
+    fn load() -> Box<Self> {
+        Foo::load_from()
+    }
+}
+```
+
+The default method will incur an obligation `$0 : Foo` from the call
+to `load_from`. If there are no impls, this can be eagerly resolved to
+`VtableParam(Self : Foo)` and cached. Because the trait reference
+doesn't involve any parameters types (only the resolution does), this
+result was stored in the global cache, causing later calls to
+`Foo::load_from()` to get nonsense.
+
+To fix this, we always use the local cache if there are unbound
+variables and where clauses in scope. This is more conservative than
+necessary as far as I can tell. However, it still seems to be a simple
+rule and I observe ~99% hit rate on rustc, so it doesn't seem to hurt
+us in particular.
+
+Here is an example of the kind of subtle case that I would be worried
+about with a more complex rule (although this particular case works
+out ok). Imagine the trait reference doesn't directly reference a
+where clause, but the where clause plays a role in the winnowing
+phase. Something like this:
+
+```
+pub trait Foo<T> { ... }
+pub trait Bar { ... }
+impl<U,T:Bar> Foo<U> for T { ... } // Impl A
+impl Foo<char> for uint { ... }    // Impl B
+```
+
+Now, in some function, we have no where clauses in scope, and we have
+an obligation `$1 : Foo<$0>`. We might then conclude that `$0=char`
+and `$1=uint`: this is because for impl A to apply, `uint:Bar` would
+have to hold, and we know it does not or else the coherence check
+would have failed.  So we might enter into our global cache: `$1 :
+Foo<$0> => Impl B`.  Then we come along in a different scope, where a
+generic type `A` is around with the bound `A:Bar`. Now suddenly the
+impl is viable.
+
+The flaw in this imaginary DOOMSDAY SCENARIO is that we would not
+currently conclude that `$1 : Foo<$0>` implies that `$0 == uint` and
+`$1 == char`, even though it is true that (absent type parameters)
+there is no other type the user could enter. However, it is not
+*completely* implausible that we *could* draw this conclusion in the
+future; we wouldn't have to guess types, in particular, we could be
+led by the impls.
+
 */

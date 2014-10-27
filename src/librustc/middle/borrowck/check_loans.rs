@@ -777,13 +777,28 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
         // Otherwise, just a plain error.
         match assignee_cmt.note {
             mc::NoteClosureEnv(upvar_id) => {
-                self.bccx.span_err(
-                    assignment_span,
-                    format!("cannot assign to {}",
-                            self.bccx.cmt_to_string(&*assignee_cmt)).as_slice());
-                self.bccx.span_note(
-                    self.tcx().map.span(upvar_id.closure_expr_id),
-                    "consider changing this closure to take self by mutable reference");
+                // If this is an `Fn` closure, it simply can't mutate upvars.
+                // If it's an `FnMut` closure, the original variable was declared immutable.
+                // We need to determine which is the case here.
+                let kind = match assignee_cmt.upvar().unwrap().cat {
+                    mc::cat_upvar(mc::Upvar { kind, .. }) => kind,
+                    _ => unreachable!()
+                };
+                if kind == ty::FnUnboxedClosureKind {
+                    self.bccx.span_err(
+                        assignment_span,
+                        format!("cannot assign to {}",
+                                self.bccx.cmt_to_string(&*assignee_cmt)).as_slice());
+                    self.bccx.span_note(
+                        self.tcx().map.span(upvar_id.closure_expr_id),
+                        "consider changing this closure to take self by mutable reference");
+                } else {
+                    self.bccx.span_err(
+                        assignment_span,
+                        format!("cannot assign to {} {}",
+                                assignee_cmt.mutbl.to_user_str(),
+                                self.bccx.cmt_to_string(&*assignee_cmt)).as_slice());
+                }
             }
             _ => match opt_loan_path(&assignee_cmt) {
                 Some(lp) => {
@@ -825,10 +840,18 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
                     mc::cat_rvalue(..) |
                     mc::cat_static_item |
                     mc::cat_deref(_, _, mc::UnsafePtr(..)) |
-                    mc::cat_deref(_, _, mc::BorrowedPtr(..)) |
                     mc::cat_deref(_, _, mc::Implicit(..)) => {
                         assert_eq!(cmt.mutbl, mc::McDeclared);
                         return;
+                    }
+
+                    mc::cat_deref(_, _, mc::BorrowedPtr(..)) => {
+                        assert_eq!(cmt.mutbl, mc::McDeclared);
+                        // We need to drill down to upvar if applicable
+                        match cmt.upvar() {
+                            Some(b) => cmt = b,
+                            None => return
+                        }
                     }
 
                     mc::cat_deref(b, _, mc::OwnedPtr) => {

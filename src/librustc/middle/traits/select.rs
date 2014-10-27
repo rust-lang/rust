@@ -211,7 +211,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     // can be applied to particular types. It skips the "confirmation"
     // step and hence completely ignores output type parameters.
     //
-    // The result is "true" if the obliation *may* hold and "false" if
+    // The result is "true" if the obligation *may* hold and "false" if
     // we can be sure it does not.
 
     pub fn evaluate_obligation_intercrate(&mut self,
@@ -844,19 +844,36 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                             cache_skol_trait_ref: &Rc<ty::TraitRef>)
                             -> &SelectionCache
     {
+        // High-level idea: we have to decide whether to consult the
+        // cache that is specific to this scope, or to consult the
+        // global cache. We want the cache that is specific to this
+        // scope whenever where clauses might affect the result.
+
         // If the trait refers to any parameters in scope, then use
-        // the cache of the param-environment. This is because the
-        // result will depend on the where clauses that are in
-        // scope. Otherwise, use the generic tcx cache, since the
-        // result holds across all environments.
+        // the cache of the param-environment.
         if
             cache_skol_trait_ref.input_types().iter().any(
                 |&t| ty::type_has_self(t) || ty::type_has_params(t))
         {
-            &self.param_env.selection_cache
-        } else {
-            &self.tcx().selection_cache
+            return &self.param_env.selection_cache;
         }
+
+        // If the trait refers to unbound type variables, and there
+        // are where clauses in scope, then use the local environment.
+        // If there are no where clauses in scope, which is a very
+        // common case, then we can use the global environment.
+        // See the discussion in doc.rs for more details.
+        if
+            !self.param_env.caller_obligations.is_empty()
+            &&
+            cache_skol_trait_ref.input_types().iter().any(
+                |&t| ty::type_has_ty_infer(t))
+        {
+            return &self.param_env.selection_cache;
+        }
+
+        // Otherwise, we can use the global cache.
+        &self.tcx().selection_cache
     }
 
     fn check_candidate_cache(&mut self,
@@ -1934,26 +1951,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                                  impl_def_id).generics;
         util::obligations_for_generics(self.tcx(), cause, recursion_depth,
                                        &impl_generics, impl_substs)
-    }
-
-    fn contains_skolemized_types(&self,
-                                 ty: ty::t)
-                                 -> bool
-    {
-        /*!
-         * True if the type contains skolemized variables.
-         */
-
-        let mut found_skol = false;
-
-        ty::walk_ty(ty, |t| {
-            match ty::get(t).sty {
-                ty::ty_infer(ty::SkolemizedTy(_)) => { found_skol = true; }
-                _ => { }
-            }
-        });
-
-        found_skol
     }
 }
 

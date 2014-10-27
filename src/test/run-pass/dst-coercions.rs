@@ -28,7 +28,7 @@ pub fn main() {
 
     let x: *mut S = &mut S;
 
-    // Test we can chnage the mutability from mut to const.
+    // Test we can change the mutability from mut to const.
     let x: &T = &mut S;
     let x: *const T = &mut S;
 }
