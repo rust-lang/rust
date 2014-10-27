@@ -94,6 +94,7 @@ const UINT_TRUE: uint = -1;
 #[stable]
 impl AtomicBool {
     /// Create a new `AtomicBool`
+    #[inline]
     pub fn new(v: bool) -> AtomicBool {
         let val = if v { UINT_TRUE } else { 0 };
         AtomicBool { v: UnsafeCell::new(val), nocopy: marker::NoCopy }
@@ -305,6 +306,7 @@ impl AtomicBool {
 #[stable]
 impl AtomicInt {
     /// Create a new `AtomicInt`
+    #[inline]
     pub fn new(v: int) -> AtomicInt {
         AtomicInt {v: UnsafeCell::new(v), nocopy: marker::NoCopy}
     }
@@ -426,6 +428,7 @@ impl AtomicInt {
 #[stable]
 impl AtomicUint {
     /// Create a new `AtomicUint`
+    #[inline]
     pub fn new(v: uint) -> AtomicUint {
         AtomicUint { v: UnsafeCell::new(v), nocopy: marker::NoCopy }
     }
@@ -547,6 +550,7 @@ impl AtomicUint {
 #[stable]
 impl<T> AtomicPtr<T> {
     /// Create a new `AtomicPtr`
+    #[inline]
     pub fn new(p: *mut T) -> AtomicPtr<T> {
         AtomicPtr { p: UnsafeCell::new(p as uint), nocopy: marker::NoCopy }
     }
