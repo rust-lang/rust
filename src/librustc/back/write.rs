@@ -714,7 +714,13 @@ pub fn run_passes(sess: &Session,
            .stdout(::std::io::process::InheritFd(1))
            .stderr(::std::io::process::InheritFd(2));
         match cmd.status() {
-            Ok(_) => {},
+            Ok(status) => {
+                if !status.success() {
+                    sess.err(format!("linking of {} with `{}` failed",
+                                     output_path.display(), cmd).as_slice());
+                    sess.abort_if_errors();
+                }
+            },
             Err(e) => {
                 sess.err(format!("could not exec the linker `{}`: {}",
                                  pname,
