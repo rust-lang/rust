@@ -2013,6 +2013,7 @@ On `struct`s:
 - `unsafe_no_drop_flag` - on structs, remove the flag that prevents
   destructors from being run twice. Destructors might be run multiple times on
   the same object with this attribute.
+- `doc` - Doc comments such as `/// foo` are equivalent to `#[doc = "foo"]`.
 
 ### Conditional compilation
 
