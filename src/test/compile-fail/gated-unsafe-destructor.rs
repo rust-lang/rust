@@ -10,14 +10,18 @@
 
 // Test that `#[unsafe_destructor]` attribute is gated by `unsafe_destructor`
 // feature gate.
+//
+// (This test can be removed entirely when we remove the
+// `unsafe_destructor` feature itself.)
 
 struct D<'a>(&'a u32);
 
 #[unsafe_destructor]
+//~^ ERROR `#[unsafe_destructor]` does nothing anymore
+//~| HELP: add #![feature(unsafe_destructor)] to the crate attributes to enable
+// (but of couse there is no point in doing so)
 impl<'a> Drop for D<'a> {
-    //~^ ERROR `#[unsafe_destructor]` allows too many unsafe patterns
     fn drop(&mut self) { }
 }
-//~^ HELP: add #![feature(unsafe_destructor)] to the crate attributes to enable
 
 pub fn main() { }

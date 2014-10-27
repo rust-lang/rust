@@ -58,7 +58,6 @@ const KNOWN_FEATURES: &'static [(&'static str, &'static str, Status)] = &[
     ("log_syntax", "1.0.0", Active),
     ("trace_macros", "1.0.0", Active),
     ("concat_idents", "1.0.0", Active),
-    ("unsafe_destructor", "1.0.0", Active),
     ("intrinsics", "1.0.0", Active),
     ("lang_items", "1.0.0", Active),
 
@@ -91,6 +90,10 @@ const KNOWN_FEATURES: &'static [(&'static str, &'static str, Status)] = &[
     ("plugin", "1.0.0", Active),
     ("start", "1.0.0", Active),
     ("main", "1.0.0", Active),
+
+    // Deprecate after snapshot
+    // SNAP a923278
+    ("unsafe_destructor", "1.0.0", Active),
 
     // A temporary feature gate used to enable parser extensions needed
     // to bootstrap fix for #5723.
@@ -193,7 +196,6 @@ pub const KNOWN_ATTRIBUTES: &'static [(&'static str, AttributeType)] = &[
     ("repr", Normal),
     ("path", Normal),
     ("abi", Normal),
-    ("unsafe_destructor", Normal),
     ("automatically_derived", Normal),
     ("no_mangle", Normal),
     ("no_link", Normal),
@@ -205,7 +207,8 @@ pub const KNOWN_ATTRIBUTES: &'static [(&'static str, AttributeType)] = &[
     ("link_args", Normal),
     ("macro_escape", Normal),
 
-
+    ("unsafe_destructor", Gated("unsafe_destructor",
+                                "`#[unsafe_destructor]` does nothing anymore")),
     ("staged_api", Gated("staged_api",
                          "staged_api is for use by rustc only")),
     ("plugin", Gated("plugin",
@@ -569,15 +572,6 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
                                           use marker types for now");
                     },
                     _ => {}
-                }
-
-                if attr::contains_name(&i.attrs,
-                                       "unsafe_destructor") {
-                    self.gate_feature("unsafe_destructor",
-                                      i.span,
-                                      "`#[unsafe_destructor]` allows too \
-                                       many unsafe patterns and may be \
-                                       removed in the future");
                 }
 
                 if attr::contains_name(&i.attrs[..],
