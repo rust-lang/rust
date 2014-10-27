@@ -921,12 +921,14 @@ impl<'a> StringReader<'a> {
                 if string == "_" {
                     token::Underscore
                 } else {
-                    let is_mod_name = self.curr_is(':') && self.nextch_is(':');
-
                     // FIXME: perform NFKC normalization here. (Issue #2253)
-                    token::Ident(str_to_ident(string), is_mod_name)
+                    if self.curr_is(':') && self.nextch_is(':') {
+                        token::Ident(str_to_ident(string), token::ModName)
+                    } else {
+                        token::Ident(str_to_ident(string), token::Plain)
+                    }
                 }
-            })
+            });
         }
 
         if is_dec_digit(c) {
@@ -937,8 +939,11 @@ impl<'a> StringReader<'a> {
             match (c.unwrap(), self.nextch(), self.nextnextch()) {
                 ('\x00', Some('n'), Some('a')) => {
                     let ast_ident = self.scan_embedded_hygienic_ident();
-                    let is_mod_name = self.curr_is(':') && self.nextch_is(':');
-                    return token::Ident(ast_ident, is_mod_name);
+                    return if self.curr_is(':') && self.nextch_is(':') {
+                        token::Ident(ast_ident, token::ModName)
+                    } else {
+                        token::Ident(ast_ident, token::Plain)
+                    };
                 }
                 _ => {}
             }
@@ -1056,7 +1061,7 @@ impl<'a> StringReader<'a> {
                         str_to_ident(lifetime_name)
                     });
                 let keyword_checking_token =
-                    &token::Ident(keyword_checking_ident, false);
+                    &token::Ident(keyword_checking_ident, token::Plain);
                 let last_bpos = self.last_pos;
                 if keyword_checking_token.is_keyword(token::keywords::Self) {
                     self.err_span_(start,
@@ -1434,7 +1439,7 @@ mod test {
         assert_eq!(string_reader.next_token().tok, token::Whitespace);
         let tok1 = string_reader.next_token();
         let tok2 = TokenAndSpan{
-            tok:token::Ident(id, false),
+            tok:token::Ident(id, token::Plain),
             sp:Span {lo:BytePos(21),hi:BytePos(23),expn_id: NO_EXPANSION}};
         assert_eq!(tok1,tok2);
         assert_eq!(string_reader.next_token().tok, token::Whitespace);
@@ -1443,7 +1448,7 @@ mod test {
         // read another token:
         let tok3 = string_reader.next_token();
         let tok4 = TokenAndSpan{
-            tok:token::Ident(str_to_ident("main"), false),
+            tok:token::Ident(str_to_ident("main"), token::Plain),
             sp:Span {lo:BytePos(24),hi:BytePos(28),expn_id: NO_EXPANSION}};
         assert_eq!(tok3,tok4);
         // the lparen is already read:
@@ -1458,39 +1463,45 @@ mod test {
         }
     }
 
-    // make the identifier by looking up the string in the interner
+    #[cfg(stage0)]
     fn mk_ident (id: &str, is_mod_name: bool) -> token::Token {
-        token::Ident (str_to_ident(id),is_mod_name)
+        token::Ident(str_to_ident(id), is_mod_name)
+    }
+
+    // make the identifier by looking up the string in the interner
+    #[cfg(not(stage0))]
+    fn mk_ident(id: &str, style: token::IdentStyle) -> token::Token {
+        token::Ident(str_to_ident(id), style)
     }
 
     #[test] fn doublecolonparsing () {
         check_tokenization(setup(&mk_sh(), "a b".to_string()),
-                           vec!(mk_ident("a",false),
-                            token::Whitespace,
-                             mk_ident("b",false)));
+                           vec![mk_ident("a", token::Plain),
+                                token::Whitespace,
+                                mk_ident("b", token::Plain)]);
     }
 
     #[test] fn dcparsing_2 () {
         check_tokenization(setup(&mk_sh(), "a::b".to_string()),
-                           vec!(mk_ident("a",true),
-                             token::ModSep,
-                             mk_ident("b",false)));
+                           vec![mk_ident("a",token::ModName),
+                                token::ModSep,
+                                mk_ident("b", token::Plain)]);
     }
 
     #[test] fn dcparsing_3 () {
         check_tokenization(setup(&mk_sh(), "a ::b".to_string()),
-                           vec!(mk_ident("a",false),
-                             token::Whitespace,
-                             token::ModSep,
-                             mk_ident("b",false)));
+                           vec![mk_ident("a", token::Plain),
+                                token::Whitespace,
+                                token::ModSep,
+                                mk_ident("b", token::Plain)]);
     }
 
     #[test] fn dcparsing_4 () {
         check_tokenization(setup(&mk_sh(), "a:: b".to_string()),
-                           vec!(mk_ident("a",true),
-                             token::ModSep,
-                             token::Whitespace,
-                             mk_ident("b",false)));
+                           vec![mk_ident("a",token::ModName),
+                                token::ModSep,
+                                token::Whitespace,
+                                mk_ident("b", token::Plain)]);
     }
 
     #[test] fn character_a() {

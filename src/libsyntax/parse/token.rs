@@ -98,6 +98,21 @@ pub enum BinOpToken {
     Shr,
 }
 
+#[cfg(stage0)]
+#[allow(non_uppercase_statics)]
+pub const ModName: bool = true;
+#[cfg(stage0)]
+#[allow(non_uppercase_statics)]
+pub const Plain: bool = false;
+
+#[deriving(Clone, Encodable, Decodable, PartialEq, Eq, Hash, Show)]
+#[cfg(not(stage0))]
+pub enum IdentStyle {
+    /// `::` follows the identifier with no whitespace in-between.
+    ModName,
+    Plain,
+}
+
 #[allow(non_camel_case_types)]
 #[deriving(Clone, Encodable, Decodable, PartialEq, Eq, Hash, Show)]
 pub enum Token {
@@ -149,10 +164,10 @@ pub enum Token {
     LitBinaryRaw(ast::Name, uint), /* raw binary str delimited by n hash symbols */
 
     /* Name components */
-    /// An identifier contains an "is_mod_name" boolean,
-    /// indicating whether :: follows this token with no
-    /// whitespace in between.
+    #[cfg(stage0)]
     Ident(ast::Ident, bool),
+    #[cfg(not(stage0))]
+    Ident(ast::Ident, IdentStyle),
     Underscore,
     Lifetime(ast::Ident),
 
@@ -252,10 +267,11 @@ impl Token {
 
     /// Returns `true` if the token is a path that is not followed by a `::`
     /// token.
+    #[allow(non_uppercase_statics)] // NOTE(stage0): remove this attribute after the next snapshot
     pub fn is_plain_ident(&self) -> bool {
         match *self {
-            Ident(_, false) => true,
-            _               => false,
+            Ident(_, Plain) => true,
+            _                    => false,
         }
     }
 
@@ -299,18 +315,20 @@ impl Token {
     }
 
     /// Returns `true` if the token is a given keyword, `kw`.
+    #[allow(non_uppercase_statics)] // NOTE(stage0): remove this attribute after the next snapshot
     pub fn is_keyword(&self, kw: keywords::Keyword) -> bool {
         match *self {
-            Ident(sid, false)   => kw.to_name() == sid.name,
-            _                   => false,
+            Ident(sid, Plain) => kw.to_name() == sid.name,
+            _                      => false,
         }
     }
 
     /// Returns `true` if the token is either a special identifier, or a strict
     /// or reserved keyword.
+    #[allow(non_uppercase_statics)] // NOTE(stage0): remove this attribute after the next snapshot
     pub fn is_any_keyword(&self) -> bool {
         match *self {
-            Ident(sid, false) => {
+            Ident(sid, Plain) => {
                 let n = sid.name;
 
                    n == SELF_KEYWORD_NAME
@@ -324,9 +342,10 @@ impl Token {
     }
 
     /// Returns `true` if the token may not appear as an identifier.
+    #[allow(non_uppercase_statics)] // NOTE(stage0): remove this attribute after the next snapshot
     pub fn is_strict_keyword(&self) -> bool {
         match *self {
-            Ident(sid, false) => {
+            Ident(sid, Plain) => {
                 let n = sid.name;
 
                    n == SELF_KEYWORD_NAME
@@ -335,7 +354,7 @@ impl Token {
                 || STRICT_KEYWORD_START <= n
                 && n <= STRICT_KEYWORD_FINAL
             },
-            Ident(sid, true) => {
+            Ident(sid, ModName) => {
                 let n = sid.name;
 
                    n != SELF_KEYWORD_NAME
@@ -349,9 +368,10 @@ impl Token {
 
     /// Returns `true` if the token is a keyword that has been reserved for
     /// possible future use.
+    #[allow(non_uppercase_statics)] // NOTE(stage0): remove this attribute after the next snapshot
     pub fn is_reserved_keyword(&self) -> bool {
         match *self {
-            Ident(sid, false) => {
+            Ident(sid, Plain) => {
                 let n = sid.name;
 
                    RESERVED_KEYWORD_START <= n
@@ -382,8 +402,10 @@ pub enum Nonterminal {
     NtPat(  P<ast::Pat>),
     NtExpr( P<ast::Expr>),
     NtTy(   P<ast::Ty>),
-    /// See IDENT, above, for meaning of bool in NtIdent:
+    #[cfg(stage0)]
     NtIdent(Box<ast::Ident>, bool),
+    #[cfg(not(stage0))]
+    NtIdent(Box<ast::Ident>, IdentStyle),
     /// Stuff inside brackets for attributes
     NtMeta( P<ast::MetaItem>),
     NtPath(Box<ast::Path>),
@@ -857,6 +879,6 @@ mod test {
         assert!(Gt.mtwt_eq(&Gt));
         let a = str_to_ident("bac");
         let a1 = mark_ident(a,92);
-        assert!(Ident(a,true).mtwt_eq(&Ident(a1,false)));
+        assert!(Ident(a, ModName).mtwt_eq(&Ident(a1, Plain)));
     }
 }
