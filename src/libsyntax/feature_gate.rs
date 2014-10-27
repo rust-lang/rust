@@ -220,9 +220,8 @@ impl<'a, 'v> Visitor<'v> for Context<'a> {
                                        "unsafe_destructor") {
                     self.gate_feature("unsafe_destructor",
                                       i.span,
-                                      "`#[unsafe_destructor]` allows too \
-                                       many unsafe patterns and may be \
-                                       removed in the future");
+                                      "`#[unsafe_destructor]` does nothing \
+                                       anymore")
                 }
 
                 for item in items.iter() {

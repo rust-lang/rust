@@ -198,22 +198,6 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
             let trait_ref = (*trait_ref).subst(fcx.tcx(), &fcx.inh.param_env.free_substs);
             let trait_ref = liberate_late_bound_regions(fcx.tcx(), item_scope, &trait_ref);
 
-            // There are special rules that apply to drop.
-            if
-                fcx.tcx().lang_items.drop_trait() == Some(trait_ref.def_id) &&
-                !attr::contains_name(item.attrs.as_slice(), "unsafe_destructor")
-            {
-                match self_ty.sty {
-                    ty::ty_struct(def_id, _) |
-                    ty::ty_enum(def_id, _) => {
-                        check_struct_safe_for_destructor(fcx, item.span, self_ty, def_id);
-                    }
-                    _ => {
-                        // Coherence already reports an error in this case.
-                    }
-                }
-            }
-
             // We are stricter on the trait-ref in an impl than the
             // self-type.  In particular, we enforce region
             // relationships. The reason for this is that (at least
@@ -469,34 +453,4 @@ fn enum_variants<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
             }
         })
         .collect()
-}
-
-///////////////////////////////////////////////////////////////////////////
-// Special drop trait checking
-
-fn check_struct_safe_for_destructor<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
-                                              span: Span,
-                                              self_ty: Ty<'tcx>,
-                                              struct_did: ast::DefId) {
-    let struct_tpt = ty::lookup_item_type(fcx.tcx(), struct_did);
-    if !struct_tpt.generics.has_type_params(subst::TypeSpace)
-        && !struct_tpt.generics.has_region_params(subst::TypeSpace)
-    {
-        let cause = traits::ObligationCause::new(span, traits::DropTrait);
-        let obligation = traits::obligation_for_builtin_bound(fcx.tcx(),
-                                                              cause,
-                                                              self_ty,
-                                                              ty::BoundSend);
-        match obligation {
-            Ok(obligation) => fcx.register_obligation(obligation),
-            _ => {}
-        }
-    } else {
-        span_err!(fcx.tcx().sess, span, E0141,
-                  "cannot implement a destructor on a structure \
-                       with type parameters");
-            span_note!(fcx.tcx().sess, span,
-                       "use \"#[unsafe_destructor]\" on the implementation \
-                        to force the compiler to allow this");
-    }
 }
