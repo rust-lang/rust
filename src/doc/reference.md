@@ -185,27 +185,28 @@ grammar as double-quoted strings. Other tokens have exact rules given.
 
 ### Keywords
 
-<p id="keyword-table-marker">The keywords are the following strings, organized by first letter:</p>
+<p id="keyword-table-marker"></p>
 
-|          |        |        |       |
-|----------|--------|--------|-------|
-| as       |        |        |       |
-| box      | break  |        |       |
-| continue | crate  |        |       |
-| else     | enum   | extern |       |
-| false    | fn     | for    |       |
-| if       | impl   | in     |       |
-| let      | loop   |        |       |
-| match    | mod    | mut    |       |
-| priv     | proc   | pub    |       |
-| ref      | return |        |       |
-| self     | static | struct | super |
-| trait    | true   | type   |       |
-| unsafe   | use    |        |       |
-| while    |        |        |       |
+|          |          |          |          |        |
+|----------|----------|----------|----------|--------|
+| abstract | alignof  | as       | be       | box    |
+| break    | const    | continue | crate    | do     |
+| else     | enum     | extern   | false    | final  |
+| fn       | for      | if       | impl     | in     |
+| let      | loop     | match    | mod      | move   |
+| mut      | offsetof | once     | override | priv   |
+| proc     | pub      | pure     | ref      | return |
+| sizeof   | static   | self     | struct   | super  |
+| true     | trait    | type     | typeof   | unsafe |
+| unsized  | use      | virtual  | where    | while  |
+| yield    |          |          |          |        |
+
 
 Each of these keywords has special meaning in its grammar, and all of them are
 excluded from the `ident` rule.
+
+Note that some of these keywords are reserved, and do not currently do
+anything.
 
 ### Literals
 
