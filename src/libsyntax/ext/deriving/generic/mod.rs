@@ -1250,7 +1250,7 @@ impl<'a> TraitDef<'a> {
                 // id is guaranteed to be Some
                 codemap::Spanned {
                     span: pat.span,
-                    node: ast::FieldPat { ident: id.unwrap(), pat: pat, is_shorthand: true },
+                    node: ast::FieldPat { ident: id.unwrap(), pat: pat, is_shorthand: false },
                 }
             }).collect();
             cx.pat_struct(self.span, matching_path, field_pats)
