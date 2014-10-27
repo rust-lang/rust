@@ -317,26 +317,29 @@ impl Div<i32,Duration> for Duration {
 
 impl fmt::Show for Duration {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let days = self.num_days();
-        let secs = self.secs - days * SECS_PER_DAY;
-        let hasdate = days != 0;
-        let hastime = (secs != 0 || self.nanos != 0) || !hasdate;
+        // technically speaking, negative duration is not valid ISO 8601,
+        // but we need to print it anyway.
+        let (abs, sign) = if self.secs < 0 { (-self, "-") } else { (*self, "") };
 
-        try!(write!(f, "P"));
+        let days = abs.secs / SECS_PER_DAY;
+        let secs = abs.secs - days * SECS_PER_DAY;
+        let hasdate = days != 0;
+        let hastime = (secs != 0 || abs.nanos != 0) || !hasdate;
+
+        try!(write!(f, "{}P", sign));
+
         if hasdate {
-            // technically speaking the negative part is not the valid ISO 8601,
-            // but we need to print it anyway.
             try!(write!(f, "{}D", days));
         }
         if hastime {
-            if self.nanos == 0 {
+            if abs.nanos == 0 {
                 try!(write!(f, "T{}S", secs));
-            } else if self.nanos % NANOS_PER_MILLI == 0 {
-                try!(write!(f, "T{}.{:03}S", secs, self.nanos / NANOS_PER_MILLI));
-            } else if self.nanos % NANOS_PER_MICRO == 0 {
-                try!(write!(f, "T{}.{:06}S", secs, self.nanos / NANOS_PER_MICRO));
+            } else if abs.nanos % NANOS_PER_MILLI == 0 {
+                try!(write!(f, "T{}.{:03}S", secs, abs.nanos / NANOS_PER_MILLI));
+            } else if abs.nanos % NANOS_PER_MICRO == 0 {
+                try!(write!(f, "T{}.{:06}S", secs, abs.nanos / NANOS_PER_MICRO));
             } else {
-                try!(write!(f, "T{}.{:09}S", secs, self.nanos));
+                try!(write!(f, "T{}.{:09}S", secs, abs.nanos));
             }
         }
         Ok(())
@@ -540,13 +543,15 @@ mod tests {
         let d: Duration = Zero::zero();
         assert_eq!(d.to_string(), "PT0S".to_string());
         assert_eq!(Duration::days(42).to_string(), "P42D".to_string());
-        assert_eq!(Duration::days(-42).to_string(), "P-42D".to_string());
+        assert_eq!(Duration::days(-42).to_string(), "-P42D".to_string());
         assert_eq!(Duration::seconds(42).to_string(), "PT42S".to_string());
         assert_eq!(Duration::milliseconds(42).to_string(), "PT0.042S".to_string());
         assert_eq!(Duration::microseconds(42).to_string(), "PT0.000042S".to_string());
         assert_eq!(Duration::nanoseconds(42).to_string(), "PT0.000000042S".to_string());
         assert_eq!((Duration::days(7) + Duration::milliseconds(6543)).to_string(),
                    "P7DT6.543S".to_string());
+        assert_eq!(Duration::seconds(-86401).to_string(), "-P1DT1S".to_string());
+        assert_eq!(Duration::nanoseconds(-1).to_string(), "-PT0.000000001S".to_string());
 
         // the format specifier should have no effect on `Duration`
         assert_eq!(format!("{:30}", Duration::days(1) + Duration::milliseconds(2345)),
