@@ -754,6 +754,22 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
                     sup,
                     "");
             }
+            infer::SafeDestructor(span) => {
+                self.tcx.sess.span_err(
+                    span,
+                    "unsafe use of destructor: destructor might be called \
+                     while references are dead");
+                note_and_explain_region(
+                    self.tcx,
+                    "superregion: ",
+                    sup,
+                    "");
+                note_and_explain_region(
+                    self.tcx,
+                    "subregion: ",
+                    sub,
+                    "");
+            }
             infer::BindingTypeIsNotValidAtDecl(span) => {
                 self.tcx.sess.span_err(
                     span,
@@ -1669,6 +1685,12 @@ impl<'a, 'tcx> ErrorReportingHelpers<'tcx> for InferCtxt<'a, 'tcx> {
                     span,
                     format!("...so that the declared lifetime parameter bounds \
                                 are satisfied").as_slice());
+            }
+            infer::SafeDestructor(span) => {
+                self.tcx.sess.span_note(
+                    span,
+                    "...so that references are valid when the destructor \
+                     runs")
             }
         }
     }
