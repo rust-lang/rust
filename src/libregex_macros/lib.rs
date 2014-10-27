@@ -634,7 +634,7 @@ fn parse(cx: &mut ExtCtxt, tts: &[ast::TokenTree]) -> Option<String> {
             return None
         }
     };
-    if !parser.eat(&token::EOF) {
+    if !parser.eat(&token::Eof) {
         cx.span_err(parser.span, "only one string literal allowed");
         return None;
     }

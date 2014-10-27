@@ -14,7 +14,6 @@ use codemap::{spanned, Spanned, mk_sp, Span};
 use parse::common::*; //resolve bug?
 use parse::token;
 use parse::parser::Parser;
-use parse::token::INTERPOLATED;
 use ptr::P;
 
 /// A parser that can parse attributes.
@@ -36,10 +35,10 @@ impl<'a> ParserAttr for Parser<'a> {
             debug!("parse_outer_attributes: self.token={}",
                    self.token);
             match self.token {
-              token::POUND => {
+              token::Pound => {
                 attrs.push(self.parse_attribute(false));
               }
-              token::DOC_COMMENT(s) => {
+              token::DocComment(s) => {
                 let attr = ::attr::mk_sugared_doc_attr(
                     attr::mk_attr_id(),
                     self.id_to_interned_str(s.ident()),
@@ -66,11 +65,11 @@ impl<'a> ParserAttr for Parser<'a> {
         debug!("parse_attributes: permit_inner={} self.token={}",
                permit_inner, self.token);
         let (span, value, mut style) = match self.token {
-            token::POUND => {
+            token::Pound => {
                 let lo = self.span.lo;
                 self.bump();
 
-                let style = if self.eat(&token::NOT) {
+                let style = if self.eat(&token::Not) {
                     if !permit_inner {
                         let span = self.span;
                         self.span_err(span,
@@ -82,10 +81,10 @@ impl<'a> ParserAttr for Parser<'a> {
                     ast::AttrOuter
                 };
 
-                self.expect(&token::LBRACKET);
+                self.expect(&token::LBracket);
                 let meta_item = self.parse_meta_item();
                 let hi = self.span.hi;
-                self.expect(&token::RBRACKET);
+                self.expect(&token::RBracket);
 
                 (mk_sp(lo, hi), meta_item, style)
             }
@@ -96,7 +95,7 @@ impl<'a> ParserAttr for Parser<'a> {
             }
         };
 
-        if permit_inner && self.eat(&token::SEMI) {
+        if permit_inner && self.eat(&token::Semi) {
             self.span_warn(span, "this inner attribute syntax is deprecated. \
                            The new syntax is `#![foo]`, with a bang and no semicolon.");
             style = ast::AttrInner;
@@ -130,10 +129,10 @@ impl<'a> ParserAttr for Parser<'a> {
         let mut next_outer_attrs: Vec<ast::Attribute> = Vec::new();
         loop {
             let attr = match self.token {
-                token::POUND => {
+                token::Pound => {
                     self.parse_attribute(true)
                 }
-                token::DOC_COMMENT(s) => {
+                token::DocComment(s) => {
                     // we need to get the position of this token before we bump.
                     let Span { lo, hi, .. } = self.span;
                     self.bump();
@@ -161,7 +160,7 @@ impl<'a> ParserAttr for Parser<'a> {
     /// | IDENT meta_seq
     fn parse_meta_item(&mut self) -> P<ast::MetaItem> {
         let nt_meta = match self.token {
-            token::INTERPOLATED(token::NtMeta(ref e)) => {
+            token::Interpolated(token::NtMeta(ref e)) => {
                 Some(e.clone())
             }
             _ => None
@@ -179,7 +178,7 @@ impl<'a> ParserAttr for Parser<'a> {
         let ident = self.parse_ident();
         let name = self.id_to_interned_str(ident);
         match self.token {
-            token::EQ => {
+            token::Eq => {
                 self.bump();
                 let lit = self.parse_lit();
                 // FIXME #623 Non-string meta items are not serialized correctly;
@@ -195,7 +194,7 @@ impl<'a> ParserAttr for Parser<'a> {
                 let hi = self.span.hi;
                 P(spanned(lo, hi, ast::MetaNameValue(name, lit)))
             }
-            token::LPAREN => {
+            token::LParen => {
                 let inner_items = self.parse_meta_seq();
                 let hi = self.span.hi;
                 P(spanned(lo, hi, ast::MetaList(name, inner_items)))
@@ -209,15 +208,15 @@ impl<'a> ParserAttr for Parser<'a> {
 
     /// matches meta_seq = ( COMMASEP(meta_item) )
     fn parse_meta_seq(&mut self) -> Vec<P<ast::MetaItem>> {
-        self.parse_seq(&token::LPAREN,
-                       &token::RPAREN,
-                       seq_sep_trailing_disallowed(token::COMMA),
+        self.parse_seq(&token::LParen,
+                       &token::RParen,
+                       seq_sep_trailing_disallowed(token::Comma),
                        |p| p.parse_meta_item()).node
     }
 
     fn parse_optional_meta(&mut self) -> Vec<P<ast::MetaItem>> {
         match self.token {
-            token::LPAREN => self.parse_meta_seq(),
+            token::LParen => self.parse_meta_seq(),
             _ => Vec::new()
         }
     }

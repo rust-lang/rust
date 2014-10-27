@@ -93,7 +93,7 @@ impl<'a> SpanUtils<'a> {
         let mut bracket_count = 0u;
         loop {
             let ts = toks.next_token();
-            if ts.tok == token::EOF {
+            if ts.tok == token::Eof {
                 return self.make_sub_span(span, result)
             }
             if bracket_count == 0 &&
@@ -102,9 +102,9 @@ impl<'a> SpanUtils<'a> {
             }
 
             bracket_count += match ts.tok {
-                token::LT => 1,
-                token::GT => -1,
-                token::BINOP(token::SHR) => -2,
+                token::Lt => 1,
+                token::Gt => -1,
+                token::BinOp(token::Shr) => -2,
                 _ => 0
             }
         }
@@ -116,7 +116,7 @@ impl<'a> SpanUtils<'a> {
         let mut bracket_count = 0u;
         loop {
             let ts = toks.next_token();
-            if ts.tok == token::EOF {
+            if ts.tok == token::Eof {
                 return None;
             }
             if bracket_count == 0 &&
@@ -125,9 +125,9 @@ impl<'a> SpanUtils<'a> {
             }
 
             bracket_count += match ts.tok {
-                token::LT => 1,
-                token::GT => -1,
-                token::BINOP(token::SHR) => -2,
+                token::Lt => 1,
+                token::Gt => -1,
+                token::BinOp(token::Shr) => -2,
                 _ => 0
             }
         }
@@ -141,32 +141,32 @@ impl<'a> SpanUtils<'a> {
         let mut result = None;
         let mut bracket_count = 0u;
         let mut last_span = None;
-        while prev.tok != token::EOF {
+        while prev.tok != token::Eof {
             last_span = None;
             let mut next = toks.next_token();
 
-            if (next.tok == token::LPAREN ||
-                next.tok == token::LT) &&
+            if (next.tok == token::LParen ||
+                next.tok == token::Lt) &&
                bracket_count == 0 &&
                is_ident(&prev.tok) {
                 result = Some(prev.sp);
             }
 
             if bracket_count == 0 &&
-                next.tok == token::MOD_SEP {
+                next.tok == token::ModSep {
                 let old = prev;
                 prev = next;
                 next = toks.next_token();
-                if next.tok == token::LT &&
+                if next.tok == token::Lt &&
                    is_ident(&old.tok) {
                     result = Some(old.sp);
                 }
             }
 
             bracket_count += match prev.tok {
-                token::LPAREN | token::LT => 1,
-                token::RPAREN | token::GT => -1,
-                token::BINOP(token::SHR) => -2,
+                token::LParen | token::Lt => 1,
+                token::RParen | token::Gt => -1,
+                token::BinOp(token::Shr) => -2,
                 _ => 0
             };
 
@@ -191,21 +191,21 @@ impl<'a> SpanUtils<'a> {
         loop {
             let next = toks.next_token();
 
-            if (next.tok == token::LT ||
-                next.tok == token::COLON) &&
+            if (next.tok == token::Lt ||
+                next.tok == token::Colon) &&
                bracket_count == 0 &&
                is_ident(&prev.tok) {
                 result = Some(prev.sp);
             }
 
             bracket_count += match prev.tok {
-                token::LT => 1,
-                token::GT => -1,
-                token::BINOP(token::SHR) => -2,
+                token::Lt => 1,
+                token::Gt => -1,
+                token::BinOp(token::Shr) => -2,
                 _ => 0
             };
 
-            if next.tok == token::EOF {
+            if next.tok == token::Eof {
                 break;
             }
             prev = next;
@@ -235,7 +235,7 @@ impl<'a> SpanUtils<'a> {
         let mut bracket_count = 0i;
         loop {
             let ts = toks.next_token();
-            if ts.tok == token::EOF {
+            if ts.tok == token::Eof {
                 if bracket_count != 0 {
                     let loc = self.sess.codemap().lookup_char_pos(span.lo);
                     self.sess.span_bug(span, format!(
@@ -248,10 +248,10 @@ impl<'a> SpanUtils<'a> {
                 return result;
             }
             bracket_count += match ts.tok {
-                token::LT => 1,
-                token::GT => -1,
-                token::BINOP(token::SHL) => 2,
-                token::BINOP(token::SHR) => -2,
+                token::Lt => 1,
+                token::Gt => -1,
+                token::BinOp(token::Shl) => 2,
+                token::BinOp(token::Shr) => -2,
                 _ => 0
             };
             if is_ident(&ts.tok) &&
@@ -265,7 +265,7 @@ impl<'a> SpanUtils<'a> {
         let mut toks = self.retokenise_span(span);
         let mut prev = toks.next_token();
         loop {
-            if prev.tok == token::EOF {
+            if prev.tok == token::Eof {
                 return None;
             }
             let next = toks.next_token();
@@ -282,12 +282,12 @@ impl<'a> SpanUtils<'a> {
         let mut toks = self.retokenise_span(span);
         loop {
             let ts = toks.next_token();
-            if ts.tok == token::EOF {
+            if ts.tok == token::Eof {
                 return None;
             }
             if is_keyword(keyword, &ts.tok) {
                 let ts = toks.next_token();
-                if ts.tok == token::EOF {
+                if ts.tok == token::Eof {
                     return None
                 } else {
                     return self.make_sub_span(span, Some(ts.sp));

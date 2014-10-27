@@ -602,11 +602,11 @@ pub fn noop_fold_tts<T: Folder>(tts: &[TokenTree], fld: &mut T) -> Vec<TokenTree
 // apply ident folder if it's an ident, apply other folds to interpolated nodes
 pub fn noop_fold_token<T: Folder>(t: token::Token, fld: &mut T) -> token::Token {
     match t {
-        token::IDENT(id, followed_by_colons) => {
-            token::IDENT(fld.fold_ident(id), followed_by_colons)
+        token::Ident(id, followed_by_colons) => {
+            token::Ident(fld.fold_ident(id), followed_by_colons)
         }
-        token::LIFETIME(id) => token::LIFETIME(fld.fold_ident(id)),
-        token::INTERPOLATED(nt) => token::INTERPOLATED(fld.fold_interpolated(nt)),
+        token::Lifetime(id) => token::Lifetime(fld.fold_ident(id)),
+        token::Interpolated(nt) => token::Interpolated(fld.fold_interpolated(nt)),
         _ => t
     }
 }
