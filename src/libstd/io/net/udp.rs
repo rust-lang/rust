@@ -100,6 +100,8 @@ impl UdpSocket {
     ///
     /// Note that this call does not perform any actual network communication,
     /// because UDP is a datagram protocol.
+    #[deprecated = "`UdpStream` has been deprecated"]
+    #[allow(deprecated)]
     pub fn connect(self, other: SocketAddr) -> UdpStream {
         UdpStream {
             socket: self,
@@ -205,6 +207,14 @@ impl Clone for UdpSocket {
 
 /// A type that allows convenient usage of a UDP stream connected to one
 /// address via the `Reader` and `Writer` traits.
+///
+/// # Note
+///
+/// This structure has been deprecated because `Reader` is a stream-oriented API but UDP
+/// is a packet-oriented protocol. Every `Reader` method will read a whole packet and
+/// throw all superfluous bytes away so that they are no longer available for further
+/// method calls.
+#[deprecated]
 pub struct UdpStream {
     socket: UdpSocket,
     connected_to: SocketAddr
@@ -225,13 +235,15 @@ impl UdpStream {
 }
 
 impl Reader for UdpStream {
+    /// Returns the next non-empty message from the specified address.
     fn read(&mut self, buf: &mut [u8]) -> IoResult<uint> {
         let peer = self.connected_to;
         self.as_socket(|sock| {
-            match sock.recv_from(buf) {
-                Ok((_nread, src)) if src != peer => Ok(0),
-                Ok((nread, _src)) => Ok(nread),
-                Err(e) => Err(e),
+            loop {
+                let (nread, src) = try!(sock.recv_from(buf));
+                if nread > 0 && src == peer {
+                    return Ok(nread);
+                }
             }
         })
     }
@@ -334,22 +346,28 @@ mod test {
     }
 
     #[test]
+    #[allow(deprecated)]
     fn stream_smoke_test_ip4() {
         let server_ip = next_test_ip4();
         let client_ip = next_test_ip4();
+        let dummy_ip = next_test_ip4();
         let (tx1, rx1) = channel();
         let (tx2, rx2) = channel();
 
         spawn(proc() {
-            match UdpSocket::bind(client_ip) {
-                Ok(client) => {
-                    let client = box client;
-                    let mut stream = client.connect(server_ip);
-                    rx1.recv();
-                    stream.write([99]).unwrap();
+            let send_as = |ip, val: &[u8]| {
+                match UdpSocket::bind(ip) {
+                    Ok(client) => {
+                        let client = box client;
+                        let mut stream = client.connect(server_ip);
+                        stream.write(val).unwrap();
+                    }
+                    Err(..) => fail!()
                 }
-                Err(..) => fail!()
-            }
+            };
+            rx1.recv();
+            send_as(dummy_ip, [98]);
+            send_as(client_ip, [99]);
             tx2.send(());
         });
 
@@ -364,7 +382,7 @@ mod test {
                         assert_eq!(nread, 1);
                         assert_eq!(buf[0], 99);
                     }
-                    Err(..) => fail!()
+                    Err(..) => fail!(),
                 }
             }
             Err(..) => fail!()
@@ -373,6 +391,7 @@ mod test {
     }
 
     #[test]
+    #[allow(deprecated)]
     fn stream_smoke_test_ip6() {
         let server_ip = next_test_ip6();
         let client_ip = next_test_ip6();
