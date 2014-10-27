@@ -283,7 +283,7 @@ def load_east_asian_width(want_widths, except_cats):
     return widths
 
 def escape_char(c):
-    if c <= 0xff:
+    if c <= 0x7f:
         return "'\\x%2.2x'" % c
     if c <= 0xffff:
         return "'\\u%4.4x'" % c

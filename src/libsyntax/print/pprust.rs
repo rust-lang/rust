@@ -30,6 +30,7 @@ use print::pp::{Breaks, Consistent, Inconsistent, eof};
 use print::pp;
 use ptr::P;
 
+use std::ascii;
 use std::io::{IoResult, MemWriter};
 use std::io;
 use std::mem;
@@ -2776,7 +2777,7 @@ impl<'a> State<'a> {
             ast::LitStr(ref st, style) => self.print_string(st.get(), style),
             ast::LitByte(byte) => {
                 let mut res = String::from_str("b'");
-                (byte as char).escape_default(|c| res.push(c));
+                ascii::escape_default(byte, |c| res.push(c as char));
                 res.push('\'');
                 word(&mut self.s, res.as_slice())
             }
@@ -2821,8 +2822,12 @@ impl<'a> State<'a> {
                 if val { word(&mut self.s, "true") } else { word(&mut self.s, "false") }
             }
             ast::LitBinary(ref v) => {
-                let escaped: String = v.iter().map(|&b| b as char).collect();
-                word(&mut self.s, format!("b\"{}\"", escaped.escape_default()).as_slice())
+                let mut escaped: String = String::new();
+                for &ch in v.iter() {
+                    ascii::escape_default(ch as u8,
+                                          |ch| escaped.push(ch as char));
+                }
+                word(&mut self.s, format!("b\"{}\"", escaped).as_slice())
             }
         }
     }
