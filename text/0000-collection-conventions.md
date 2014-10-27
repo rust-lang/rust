@@ -975,6 +975,7 @@ Operation | Collections
 `fn insert(&mut self, K::Owned) -> bool` | `HashSet`, `TreeSet`, `TrieSet`, `BitvSet`
 `fn insert(&mut self, K::Owned, V) -> Option<V>`    | `HashMap`, `TreeMap`, `TrieMap`, `SmallIntMap`
 `fn append(&mut self, Self)`        | `DList`
+`fn prepend(&mut self, Self)`        | `DList`
 
 There are a few changes here from the current state of affairs:
 
@@ -1238,13 +1239,13 @@ fn difference<'a>(&'a self, other: &'a Self) -> I;
 fn symmetric_difference<'a>(&'a self, other: &'a Self) -> I;
 ```
 
-where the `I` type is an iterator over keys that varies by concrete set. Working
-with these iterators avoids materializing intermediate sets when they're not
-needed; the `collect` method can be used to create sets when they are.
-
-To clarify the API, this RFC proposes renaming the methods to `iter_or`,
-`iter_and`, `iter_sub`, and `iter_xor` respectively. These names emphasize the
-fact that the methods return iterators, which may be surprising.
+where the `I` type is an iterator over keys that varies by concrete
+set. Working with these iterators avoids materializing intermediate
+sets when they're not needed; the `collect` method can be used to
+create sets when they are. This RFC proposes to keep these names
+intact, following the
+[RFC](https://github.com/rust-lang/rfcs/pull/344) on iterator
+conventions.
 
 Sets should also implement the `BitOr`, `BitAnd`, `BitXor` and `Sub` traits from
 `std::ops`, allowing overloaded notation `|`, `&`, `|^` and `-` to be used with
@@ -1487,13 +1488,15 @@ v.push_all_move(some_vec);
 v.extend(some_vec);
 ```
 
-However, currently the `push_all` and `push_all_move` methods can rely on the
-*exact* size of the container being pushed, in order to elide bounds checks. We
-do not currently have a way to "trust" methods like `len` on iterators to elide
-bounds checks. A separate RFC will introduce the notion of a "trusted" method
-which should support such optimization and allow us to deprecate the `push_all`
-and `push_all_move` variants. (This is unlikely to happen before 1.0, so the
-methods will probably still be included with "experimental" status.)
+However, currently the `push_all` and `push_all_move` methods can rely
+on the *exact* size of the container being pushed, in order to elide
+bounds checks. We do not currently have a way to "trust" methods like
+`len` on iterators to elide bounds checks. A separate RFC will
+introduce the notion of a "trusted" method which should support such
+optimization and allow us to deprecate the `push_all` and
+`push_all_move` variants. (This is unlikely to happen before 1.0, so
+the methods will probably still be included with "experimental"
+status, and likely with different names.)
 
 # Alternatives
 
@@ -1767,4 +1770,5 @@ Using the `Borrow` trait, it might be possible to safely add a coercion for auto
 For sized types, this coercion is *forced* to be trivial, so the only time it
 would involve running user code is for unsized values.
 
-A general story about such coercions will be left to a follow-up RFC.
+A general story about such coercions will be left to a
+[follow-up RFC](https://github.com/rust-lang/rfcs/pull/241).
