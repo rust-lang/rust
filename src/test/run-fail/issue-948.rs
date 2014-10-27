@@ -10,7 +10,7 @@
 
 // error-pattern:beep boop
 
-#![allow(unused_variable)]
+#![allow(unused_variables)]
 
 struct Point { x: int, y: int }
 

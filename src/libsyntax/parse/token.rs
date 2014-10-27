@@ -384,14 +384,14 @@ macro_rules! declare_special_idents_and_keywords {(
     pub mod special_idents {
         use ast::{Ident, Name};
         $(
-            #[allow(non_uppercase_statics)]
+            #[allow(non_upper_case_globals)]
             pub const $si_static: Ident = Ident { name: Name($si_name), ctxt: 0 };
          )*
     }
 
     pub mod special_names {
         use ast::Name;
-        $( #[allow(non_uppercase_statics)] pub const $si_static: Name =  Name($si_name); )*
+        $( #[allow(non_upper_case_globals)] pub const $si_static: Name =  Name($si_name); )*
     }
 
     /**

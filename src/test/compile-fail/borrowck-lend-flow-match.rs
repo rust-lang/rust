@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![allow(unused_variable)]
-#![allow(dead_assignment)]
+#![allow(unused_variables)]
+#![allow(unused_assignments)]
 
 fn separate_arms() {
     // Here both arms perform assignments, but only is illegal.

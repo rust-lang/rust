@@ -81,7 +81,7 @@
 // lldb-check:[...]$11 = 8
 // lldb-command:continue
 
-#![allow(unused_variable)]
+#![allow(unused_variables)]
 
 struct Struct {
     a: int,

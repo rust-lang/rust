@@ -11,7 +11,7 @@
 //! A simple map based on a vector for small integer keys. Space requirements
 //! are O(highest integer key).
 
-#![allow(missing_doc)]
+#![allow(missing_docs)]
 
 use core::prelude::*;
 

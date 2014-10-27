@@ -11,7 +11,7 @@
 // error-pattern:explicit failure
 
 #![allow(unreachable_code)]
-#![allow(unused_variable)]
+#![allow(unused_variables)]
 
 fn foo(s: String) { }
 

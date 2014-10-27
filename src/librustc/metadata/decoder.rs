@@ -1330,9 +1330,9 @@ pub fn get_missing_lang_items(cdata: Cmd)
 {
     let items = reader::get_doc(rbml::Doc::new(cdata.data()), tag_lang_items);
     let mut result = Vec::new();
-    reader::tagged_docs(items, tag_lang_items_missing, |missing_doc| {
+    reader::tagged_docs(items, tag_lang_items_missing, |missing_docs| {
         let item: lang_items::LangItem =
-            FromPrimitive::from_u32(reader::doc_as_u32(missing_doc)).unwrap();
+            FromPrimitive::from_u32(reader::doc_as_u32(missing_docs)).unwrap();
         result.push(item);
         true
     });

@@ -62,7 +62,7 @@
 // lldb-command:print sizeof(packedInPacked)
 // lldb-check:[...]$5 = 40
 
-#![allow(unused_variable)]
+#![allow(unused_variables)]
 
 #[repr(packed)]
 struct Packed {

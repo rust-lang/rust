@@ -52,7 +52,7 @@
 // gdb-check:$14 = 3.5
 // gdb-command:continue
 
-#![allow(unused_variable)]
+#![allow(unused_variables)]
 
 static B: bool = false;
 static I: int = -1;

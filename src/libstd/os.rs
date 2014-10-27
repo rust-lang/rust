@@ -28,7 +28,7 @@
 
 #![experimental]
 
-#![allow(missing_doc)]
+#![allow(missing_docs)]
 #![allow(non_snake_case)]
 
 use clone::Clone;

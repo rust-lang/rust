@@ -113,7 +113,7 @@
 // Don't link to std. We are std.
 #![no_std]
 
-#![deny(missing_doc)]
+#![deny(missing_docs)]
 
 #![reexport_test_harness_main = "test_main"]
 

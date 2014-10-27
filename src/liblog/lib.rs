@@ -167,7 +167,7 @@
        html_root_url = "http://doc.rust-lang.org/nightly/",
        html_playground_url = "http://play.rust-lang.org/")]
 #![feature(macro_rules)]
-#![deny(missing_doc)]
+#![deny(missing_docs)]
 
 extern crate regex;
 

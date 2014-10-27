@@ -15,7 +15,7 @@
 // compile-flags:-g
 // gdb-command:run
 
-#![allow(unused_variable)]
+#![allow(unused_variables)]
 
 
 trait Trait {

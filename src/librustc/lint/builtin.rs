@@ -1021,7 +1021,7 @@ declare_lint!(UNUSED_PARENS, Warn,
 pub struct UnusedParens;
 
 impl UnusedParens {
-    fn check_unnecessary_parens_core(&self, cx: &Context, value: &ast::Expr, msg: &str,
+    fn check_unused_parens_core(&self, cx: &Context, value: &ast::Expr, msg: &str,
                                      struct_lit_needs_parens: bool) {
         match value.node {
             ast::ExprParen(ref inner) => {
@@ -1090,7 +1090,7 @@ impl LintPass for UnusedParens {
             ast::ExprAssignOp(_, _, ref value) => (value, "assigned value", false),
             _ => return
         };
-        self.check_unnecessary_parens_core(cx, &**value, msg, struct_lit_needs_parens);
+        self.check_unused_parens_core(cx, &**value, msg, struct_lit_needs_parens);
     }
 
     fn check_stmt(&mut self, cx: &Context, s: &ast::Stmt) {
@@ -1104,7 +1104,7 @@ impl LintPass for UnusedParens {
             },
             _ => return
         };
-        self.check_unnecessary_parens_core(cx, &**value, msg, false);
+        self.check_unused_parens_core(cx, &**value, msg, false);
     }
 }
 
@@ -1364,7 +1364,7 @@ impl MissingDoc {
         *self.doc_hidden_stack.last().expect("empty doc_hidden_stack")
     }
 
-    fn check_missing_doc_attrs(&self,
+    fn check_missing_docs_attrs(&self,
                                cx: &Context,
                                id: Option<ast::NodeId>,
                                attrs: &[ast::Attribute],
@@ -1374,7 +1374,7 @@ impl MissingDoc {
         // documentation is probably not really relevant right now.
         if cx.sess().opts.test { return }
 
-        // `#[doc(hidden)]` disables missing_doc check.
+        // `#[doc(hidden)]` disables missing_docs check.
         if self.doc_hidden() { return }
 
         // Only check publicly-visible items, using the result from the privacy pass.
@@ -1429,7 +1429,7 @@ impl LintPass for MissingDoc {
     }
 
     fn check_crate(&mut self, cx: &Context, krate: &ast::Crate) {
-        self.check_missing_doc_attrs(cx, None, krate.attrs.as_slice(),
+        self.check_missing_docs_attrs(cx, None, krate.attrs.as_slice(),
                                      krate.span, "crate");
     }
 
@@ -1442,7 +1442,7 @@ impl LintPass for MissingDoc {
             ast::ItemTrait(..) => "a trait",
             _ => return
         };
-        self.check_missing_doc_attrs(cx, Some(it.id), it.attrs.as_slice(),
+        self.check_missing_docs_attrs(cx, Some(it.id), it.attrs.as_slice(),
                                      it.span, desc);
     }
 
@@ -1456,7 +1456,7 @@ impl LintPass for MissingDoc {
 
                 // Otherwise, doc according to privacy. This will also check
                 // doc for default methods defined on traits.
-                self.check_missing_doc_attrs(cx, Some(m.id), m.attrs.as_slice(),
+                self.check_missing_docs_attrs(cx, Some(m.id), m.attrs.as_slice(),
                                              m.span, "a method");
             }
             _ => {}
@@ -1464,7 +1464,7 @@ impl LintPass for MissingDoc {
     }
 
     fn check_ty_method(&mut self, cx: &Context, tm: &ast::TypeMethod) {
-        self.check_missing_doc_attrs(cx, Some(tm.id), tm.attrs.as_slice(),
+        self.check_missing_docs_attrs(cx, Some(tm.id), tm.attrs.as_slice(),
                                      tm.span, "a type method");
     }
 
@@ -1473,7 +1473,7 @@ impl LintPass for MissingDoc {
             ast::NamedField(_, vis) if vis == ast::Public => {
                 let cur_struct_def = *self.struct_def_stack.last()
                     .expect("empty struct_def_stack");
-                self.check_missing_doc_attrs(cx, Some(cur_struct_def),
+                self.check_missing_docs_attrs(cx, Some(cur_struct_def),
                                              sf.node.attrs.as_slice(), sf.span,
                                              "a struct field")
             }
@@ -1482,7 +1482,7 @@ impl LintPass for MissingDoc {
     }
 
     fn check_variant(&mut self, cx: &Context, v: &ast::Variant, _: &ast::Generics) {
-        self.check_missing_doc_attrs(cx, Some(v.node.id), v.node.attrs.as_slice(),
+        self.check_missing_docs_attrs(cx, Some(v.node.id), v.node.attrs.as_slice(),
                                      v.span, "a variant");
     }
 }

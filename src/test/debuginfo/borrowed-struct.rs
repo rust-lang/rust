@@ -65,7 +65,7 @@
 // lldb-command:print *unique_val_interior_ref_2
 // lldb-check:[...]$6 = 26.5
 
-#![allow(unused_variable)]
+#![allow(unused_variables)]
 
 struct SomeStruct {
     x: int,

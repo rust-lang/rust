@@ -12,7 +12,7 @@
 
 // FIXME: #6220 Implement floating point formatting
 
-#![allow(unsigned_negate)]
+#![allow(unsigned_negation)]
 
 use collections::Collection;
 use fmt;
