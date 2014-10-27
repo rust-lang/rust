@@ -4387,7 +4387,7 @@ is one:
 
 ```{rust}
 let greater_than_forty_two = range(0i, 100i)
-                             .find(|x| *x >= 42);
+                             .find(|x| *x > 42);
 
 match greater_than_forty_two {
     Some(_) => println!("We got some numbers!"),
