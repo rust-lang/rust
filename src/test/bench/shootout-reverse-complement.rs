@@ -62,7 +62,6 @@ impl Tables {
         }
         let mut table16 = [0, ..1 << 16];
         for (i, v) in table16.iter_mut().enumerate() {
-            // assume little endian
             *v = table8[i & 255] as u16 << 8 |
                  table8[i >> 8]  as u16;
         }
@@ -104,9 +103,10 @@ impl Tables {
 
 /// Reads all remaining bytes from the stream.
 fn read_to_end<R: Reader>(r: &mut R) -> IoResult<Vec<u8>> {
-    // FIXME: this method is a temporary workaround for jemalloc on
-    // linux.  Replace it with Reader::read_to_end() once the jemalloc
-    // issue has been fixed.
+    // As reading the input stream in memory is a bottleneck, we tune
+    // Reader::read_to_end() with a fast growing policy to limit
+    // recopies.  If MREMAP_RETAIN is implemented in the linux kernel
+    // and jemalloc use it, this trick will become useless.
     const CHUNK: uint = 64 * 1024;
 
     let mut vec = Vec::with_capacity(CHUNK);
