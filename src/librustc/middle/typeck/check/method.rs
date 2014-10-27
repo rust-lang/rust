@@ -223,16 +223,36 @@ pub fn report_error(fcx: &FnCtxt,
 {
     match error {
         NoMatch(static_sources) => {
+            let cx = fcx.tcx();
+            let method_ustring = method_name.user_string(cx);
+
+            // True if the type is a struct and contains a field with
+            // the same name as the not-found method
+            let is_field = match ty::get(rcvr_ty).sty {
+                ty_struct(did, _) =>
+                    ty::lookup_struct_fields(cx, did)
+                        .iter()
+                        .any(|f| f.name.user_string(cx) == method_ustring),
+                _ => false
+            };
+
             fcx.type_error_message(
                 span,
                 |actual| {
                     format!("type `{}` does not implement any \
                              method in scope named `{}`",
                             actual,
-                            method_name.user_string(fcx.tcx()))
+                            method_ustring)
                 },
                 rcvr_ty,
                 None);
+
+            // If the method has the name of a field, give a help note
+            if is_field {
+                cx.sess.span_note(span,
+                    format!("use `(s.{0})(...)` if you meant to call the \
+                            function stored in the `{0}` field", method_ustring).as_slice());
+            }
 
             if static_sources.len() > 0 {
                 fcx.tcx().sess.fileline_note(
