@@ -160,7 +160,7 @@ If conflicts arise from having multiple packages in a dependency graph linking
 to the same C library, the C dependency should be refactored into a common
 Cargo-packaged dependency.
 
-It is illegal to define `link` without also defining `build`.
+It is illegal to define `links` without also defining `build`.
 
 ## Platform-specific dependencies
 
@@ -179,7 +179,7 @@ git = "https://github.com/user/crypt32-rs"
 path = "winhttp"
 ```
 
-Here the top-level configuration key `platform` will be a table whose sub-keys
+Here the top-level configuration key `target` will be a table whose sub-keys
 are target triples. The dependencies section underneath is the same as the
 top-level dependencies section in terms of functionality.
 
@@ -327,7 +327,7 @@ cargo:include=/path/to/foo/include
 ```
 
 Each line that begins with `cargo:` is interpreted as a line of metadata for
-Cargo to store. The remainig part of the line is of the form `key=value` (like
+Cargo to store. The remaining part of the line is of the form `key=value` (like
 environment variables).
 
 This output is similar to the pre-built libraries section above in that most
