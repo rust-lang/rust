@@ -341,7 +341,7 @@ pub fn const_expr_to_pat(tcx: &ty::ctxt, expr: &Expr) -> P<Pat> {
                 node: FieldPat {
                     ident: field.ident.node,
                     pat: const_expr_to_pat(tcx, &*field.expr),
-                    is_shorthand: true,
+                    is_shorthand: false,
                 },
             }).collect();
             PatStruct(path.clone(), field_pats, false)

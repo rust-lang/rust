@@ -48,8 +48,8 @@ use ast::{StmtExpr, StmtSemi, StmtMac, StructDef, StructField};
 use ast::{StructVariantKind, BiSub};
 use ast::StrStyle;
 use ast::{SelfExplicit, SelfRegion, SelfStatic, SelfValue};
-use ast::{TokenTree, TraitItem, TraitRef, TTDelim, TTSeq, TTTok};
-use ast::{TTNonterminal, TupleVariantKind, Ty, Ty_, TyBot};
+use ast::{Delimiter, TokenTree, TraitItem, TraitRef, TtDelimited, TtSequence, TtToken};
+use ast::{TtNonterminal, TupleVariantKind, Ty, Ty_, TyBot};
 use ast::{TypeField, TyFixedLengthVec, TyClosure, TyProc, TyBareFn};
 use ast::{TyTypeof, TyInfer, TypeMethod};
 use ast::{TyNil, TyParam, TyParamBound, TyParen, TyPath, TyPtr, TyQPath};
@@ -2497,27 +2497,30 @@ impl<'a> Parser<'a> {
         return e;
     }
 
-    /// Parse an optional separator followed by a kleene-style
+    /// Parse an optional separator followed by a Kleene-style
     /// repetition token (+ or *).
-    pub fn parse_sep_and_zerok(&mut self) -> (Option<token::Token>, bool) {
-        fn parse_zerok(parser: &mut Parser) -> Option<bool> {
+    pub fn parse_sep_and_kleene_op(&mut self) -> (Option<token::Token>, ast::KleeneOp) {
+        fn parse_kleene_op(parser: &mut Parser) -> Option<ast::KleeneOp> {
             match parser.token {
-                token::BINOP(token::STAR) | token::BINOP(token::PLUS) => {
-                    let zerok = parser.token == token::BINOP(token::STAR);
+                token::BINOP(token::STAR) => {
                     parser.bump();
-                    Some(zerok)
+                    Some(ast::ZeroOrMore)
+                },
+                token::BINOP(token::PLUS) => {
+                    parser.bump();
+                    Some(ast::OneOrMore)
                 },
                 _ => None
             }
         };
 
-        match parse_zerok(self) {
-            Some(zerok) => return (None, zerok),
+        match parse_kleene_op(self) {
+            Some(kleene_op) => return (None, kleene_op),
             None => {}
         }
 
         let separator = self.bump_and_get();
-        match parse_zerok(self) {
+        match parse_kleene_op(self) {
             Some(zerok) => (Some(separator), zerok),
             None => self.fatal("expected `*` or `+`")
         }
@@ -2526,8 +2529,8 @@ impl<'a> Parser<'a> {
     /// parse a single token tree from the input.
     pub fn parse_token_tree(&mut self) -> TokenTree {
         // FIXME #6994: currently, this is too eager. It
-        // parses token trees but also identifies TTSeq's
-        // and TTNonterminal's; it's too early to know yet
+        // parses token trees but also identifies TtSequence's
+        // and TtNonterminal's; it's too early to know yet
         // whether something will be a nonterminal or a seq
         // yet.
         maybe_whole!(deref self, NtTT);
@@ -2564,24 +2567,19 @@ impl<'a> Parser<'a> {
                         seq_sep_none(),
                         |p| p.parse_token_tree()
                     );
-                    let (s, z) = p.parse_sep_and_zerok();
+                    let (sep, repeat) = p.parse_sep_and_kleene_op();
                     let seq = match seq {
                         Spanned { node, .. } => node,
                     };
-                    TTSeq(mk_sp(sp.lo, p.span.hi), Rc::new(seq), s, z)
+                    TtSequence(mk_sp(sp.lo, p.span.hi), Rc::new(seq), sep, repeat)
                 } else {
-                    TTNonterminal(sp, p.parse_ident())
+                    TtNonterminal(sp, p.parse_ident())
                 }
               }
               _ => {
-                  parse_any_tt_tok(p)
+                  TtToken(p.span, p.bump_and_get())
               }
             }
-        }
-
-        // turn the next token into a TTTok:
-        fn parse_any_tt_tok(p: &mut Parser) -> TokenTree {
-            TTTok(p.span, p.bump_and_get())
         }
 
         match (&self.token, token::close_delimiter_for(&self.token)) {
@@ -2595,21 +2593,32 @@ impl<'a> Parser<'a> {
                 self.fatal("this file contains an un-closed delimiter ");
             }
             (_, Some(close_delim)) => {
+                // The span for beginning of the delimited section
+                let pre_span = self.span;
+
                 // Parse the open delimiter.
                 self.open_braces.push(self.span);
-                let mut result = vec!(parse_any_tt_tok(self));
+                let open = Delimiter {
+                    span: self.span,
+                    token: self.bump_and_get(),
+                };
 
-                let trees =
-                    self.parse_seq_to_before_end(&close_delim,
-                                                 seq_sep_none(),
-                                                 |p| p.parse_token_tree());
-                result.extend(trees.into_iter());
+                // Parse the token trees within the delimeters
+                let tts = self.parse_seq_to_before_end(
+                    &close_delim, seq_sep_none(), |p| p.parse_token_tree()
+                );
 
                 // Parse the close delimiter.
-                result.push(parse_any_tt_tok(self));
+                let close = Delimiter {
+                    span: self.span,
+                    token: self.bump_and_get(),
+                };
                 self.open_braces.pop().unwrap();
 
-                TTDelim(Rc::new(result))
+                // Expand to cover the entire delimited token tree
+                let span = Span { hi: self.span.hi, ..pre_span };
+
+                TtDelimited(span, Rc::new((open, tts, close)))
             }
             _ => parse_non_delim_tt_tok(self)
         }
@@ -2673,8 +2682,8 @@ impl<'a> Parser<'a> {
                 if ms.len() == 0u {
                     self.fatal("repetition body must be nonempty");
                 }
-                let (sep, zerok) = self.parse_sep_and_zerok();
-                MatchSeq(ms, sep, zerok, name_idx_lo, *name_idx)
+                let (sep, kleene_op) = self.parse_sep_and_kleene_op();
+                MatchSeq(ms, sep, kleene_op, name_idx_lo, *name_idx)
             } else {
                 let bound_to = self.parse_ident();
                 self.expect(&token::COLON);

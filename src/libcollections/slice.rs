@@ -292,7 +292,7 @@ impl<T> BoxedSlice<T> for Box<[T]> {
     #[experimental]
     fn into_vec(mut self) -> Vec<T> {
         unsafe {
-            let xs = Vec::from_raw_parts(self.len(), self.len(), self.as_mut_ptr());
+            let xs = Vec::from_raw_parts(self.as_mut_ptr(), self.len(), self.len());
             mem::forget(self);
             xs
         }

@@ -684,8 +684,8 @@ pub fn get_single_str_from_tts(cx: &ExtCtxt,
         cx.span_err(sp, format!("{} takes 1 argument.", name).as_slice());
     } else {
         match tts[0] {
-            ast::TTTok(_, token::LIT_STR(ident)) => return Some(parse::str_lit(ident.as_str())),
-            ast::TTTok(_, token::LIT_STR_RAW(ident, _)) => {
+            ast::TtToken(_, token::LIT_STR(ident)) => return Some(parse::str_lit(ident.as_str())),
+            ast::TtToken(_, token::LIT_STR_RAW(ident, _)) => {
                 return Some(parse::raw_str_lit(ident.as_str()))
             }
             _ => {

@@ -421,7 +421,7 @@ fn construct_witness(cx: &MatchCheckCtxt, ctor: &Constructor,
                         node: FieldPat {
                             ident: Ident::new(field.name),
                             pat: pat,
-                            is_shorthand: true,
+                            is_shorthand: false,
                         }
                     }).collect();
                 let has_more_fields = field_pats.len() < pats_len;

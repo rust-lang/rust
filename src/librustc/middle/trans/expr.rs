@@ -940,6 +940,7 @@ fn trans_rvalue_stmt_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             controlflow::trans_loop(bcx, expr.id, &**body)
         }
         ast::ExprAssign(ref dst, ref src) => {
+            let src_datum = unpack_datum!(bcx, trans(bcx, &**src));
             let dst_datum = unpack_datum!(bcx, trans_to_lvalue(bcx, &**dst, "assign"));
 
             if ty::type_needs_drop(bcx.tcx(), dst_datum.ty) {
@@ -960,7 +961,6 @@ fn trans_rvalue_stmt_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 // We could avoid this intermediary with some analysis
                 // to determine whether `dst` may possibly own `src`.
                 debuginfo::set_source_location(bcx.fcx, expr.id, expr.span);
-                let src_datum = unpack_datum!(bcx, trans(bcx, &**src));
                 let src_datum = unpack_datum!(
                     bcx, src_datum.to_rvalue_datum(bcx, "ExprAssign"));
                 bcx = glue::drop_ty(bcx,
@@ -969,7 +969,7 @@ fn trans_rvalue_stmt_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                     Some(NodeInfo { id: expr.id, span: expr.span }));
                 src_datum.store_to(bcx, dst_datum.val)
             } else {
-                trans_into(bcx, &**src, SaveIn(dst_datum.to_llref()))
+                src_datum.store_to(bcx, dst_datum.val)
             }
         }
         ast::ExprAssignOp(op, ref dst, ref src) => {
@@ -2117,7 +2117,7 @@ fn deref_once<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 deref_owned_pointer(bcx, expr, datum, content_ty)
             } else {
                 // A fat pointer and an opened DST value have the same
-                // represenation just different types. Since there is no
+                // representation just different types. Since there is no
                 // temporary for `*e` here (because it is unsized), we cannot
                 // emulate the sized object code path for running drop glue and
                 // free. Instead, we schedule cleanup for `e`, turning it into
@@ -2142,7 +2142,7 @@ fn deref_once<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 // owner (or, in the case of *T, by the user).
                 DatumBlock::new(bcx, Datum::new(ptr, content_ty, LvalueExpr))
             } else {
-                // A fat pointer and an opened DST value have the same represenation
+                // A fat pointer and an opened DST value have the same representation
                 // just different types.
                 DatumBlock::new(bcx, Datum::new(datum.val,
                                                 ty::mk_open(bcx.tcx(), content_ty),

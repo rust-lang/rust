@@ -9,6 +9,9 @@
 // except according to those terms.
 
 #![allow(dead_code)]
+#![feature(unboxed_closures, unboxed_closure_sugar)]
+
+// compile-flags:-g
 
 fn foo<T>() {}
 
@@ -82,6 +85,9 @@ fn bar<'b>() {
     // issue #13490
     let _ = || -> ! loop {};
     let _ = proc() -> ! loop {};
+
+    // issue #17021
+    let c = box |&:| {};
 }
 
 struct B<T>;

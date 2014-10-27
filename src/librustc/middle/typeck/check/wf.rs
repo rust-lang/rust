@@ -14,7 +14,7 @@ use middle::traits;
 use middle::ty;
 use middle::ty_fold::{TypeFolder, TypeFoldable};
 use middle::typeck::astconv::AstConv;
-use middle::typeck::check::{FnCtxt, Inherited, blank_fn_ctxt, vtable2, regionck};
+use middle::typeck::check::{FnCtxt, Inherited, blank_fn_ctxt, vtable, regionck};
 use middle::typeck::check::regionmanip::replace_late_bound_regions;
 use middle::typeck::CrateCtxt;
 use util::ppaux::Repr;
@@ -100,7 +100,7 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
         let inh = Inherited::new(ccx.tcx, param_env);
         let fcx = blank_fn_ctxt(ccx, &inh, polytype.ty, item.id);
         f(self, &fcx);
-        vtable2::select_all_fcx_obligations_or_error(&fcx);
+        vtable::select_all_fcx_obligations_or_error(&fcx);
         regionck::regionck_item(&fcx, item);
     }
 

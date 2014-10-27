@@ -50,7 +50,7 @@ pub fn expand_diagnostic_used<'cx>(ecx: &'cx mut ExtCtxt,
                                    token_tree: &[TokenTree])
                                    -> Box<MacResult+'cx> {
     let code = match token_tree {
-        [ast::TTTok(_, token::IDENT(code, _))] => code,
+        [ast::TtToken(_, token::IDENT(code, _))] => code,
         _ => unreachable!()
     };
     with_registered_diagnostics(|diagnostics| {
@@ -82,12 +82,12 @@ pub fn expand_register_diagnostic<'cx>(ecx: &'cx mut ExtCtxt,
                                        token_tree: &[TokenTree])
                                        -> Box<MacResult+'cx> {
     let (code, description) = match token_tree {
-        [ast::TTTok(_, token::IDENT(ref code, _))] => {
+        [ast::TtToken(_, token::IDENT(ref code, _))] => {
             (code, None)
         },
-        [ast::TTTok(_, token::IDENT(ref code, _)),
-         ast::TTTok(_, token::COMMA),
-         ast::TTTok(_, token::LIT_STR_RAW(description, _))] => {
+        [ast::TtToken(_, token::IDENT(ref code, _)),
+         ast::TtToken(_, token::COMMA),
+         ast::TtToken(_, token::LIT_STR_RAW(description, _))] => {
             (code, Some(description))
         }
         _ => unreachable!()
@@ -110,7 +110,7 @@ pub fn expand_build_diagnostic_array<'cx>(ecx: &'cx mut ExtCtxt,
                                           token_tree: &[TokenTree])
                                           -> Box<MacResult+'cx> {
     let name = match token_tree {
-        [ast::TTTok(_, token::IDENT(ref name, _))] => name,
+        [ast::TtToken(_, token::IDENT(ref name, _))] => name,
         _ => unreachable!()
     };
 

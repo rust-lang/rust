@@ -56,7 +56,7 @@ extern crate rustc;
 
 use syntax::codemap::Span;
 use syntax::parse::token::{IDENT, get_ident};
-use syntax::ast::{TokenTree, TTTok};
+use syntax::ast::{TokenTree, TtToken};
 use syntax::ext::base::{ExtCtxt, MacResult, DummyResult, MacExpr};
 use syntax::ext::build::AstBuilder;  // trait for expr_uint
 use rustc::plugin::Registry;
@@ -71,7 +71,7 @@ fn expand_rn(cx: &mut ExtCtxt, sp: Span, args: &[TokenTree])
         ("I",    1)];
 
     let text = match args {
-        [TTTok(_, IDENT(s, _))] => get_ident(s).to_string(),
+        [TtToken(_, IDENT(s, _))] => get_ident(s).to_string(),
         _ => {
             cx.span_err(sp, "argument should be a single identifier");
             return DummyResult::any(sp);
@@ -151,8 +151,7 @@ higher-level syntax elements like expressions:
 fn expand_foo(cx: &mut ExtCtxt, sp: Span, args: &[TokenTree])
         -> Box<MacResult+'static> {
 
-    let mut parser =
-        parse::new_parser_from_tts(cx.parse_sess(), cx.cfg(), args.to_slice())
+    let mut parser = cx.new_parser_from_tts(args);
 
     let expr: P<Expr> = parser.parse_expr();
 ```

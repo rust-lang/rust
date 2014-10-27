@@ -8,8 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-static X: uint = 0 as *const uint as uint;
+mod foo { pub fn bar() {} }
 
 fn main() {
-    assert_eq!(X, 0);
+    match () {
+        foo::bar => {} //~ ERROR `bar` is not an enum variant, struct or const
+    }
 }

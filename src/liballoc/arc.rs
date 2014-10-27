@@ -15,6 +15,7 @@
 
 use core::atomic;
 use core::clone::Clone;
+use core::fmt::{mod, Show};
 use core::kinds::{Sync, Send};
 use core::mem::{min_align_of, size_of, drop};
 use core::mem;
@@ -144,6 +145,12 @@ impl<T: Send + Sync> Deref<T> for Arc<T> {
     #[inline]
     fn deref(&self) -> &T {
         &self.inner().data
+    }
+}
+
+impl<T: Send + Sync + Show> Show for Arc<T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        (**self).fmt(f)
     }
 }
 
@@ -280,6 +287,7 @@ mod tests {
     use std::mem::drop;
     use std::ops::Drop;
     use std::option::{Option, Some, None};
+    use std::str::Str;
     use std::sync::atomic;
     use std::task;
     use std::vec::Vec;
@@ -425,5 +433,11 @@ mod tests {
         drop(arc);
         assert!(canary.load(atomic::Acquire) == 1);
         drop(arc_weak);
+    }
+
+    #[test]
+    fn show_arc() {
+        let a = Arc::new(5u32);
+        assert!(format!("{}", a).as_slice() == "5")
     }
 }

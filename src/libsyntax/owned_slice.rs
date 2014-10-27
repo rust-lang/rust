@@ -74,7 +74,7 @@ impl<T> OwnedSlice<T> {
     pub fn into_vec(self) -> Vec<T> {
         // null is ok, because len == 0 in that case, as required by Vec.
         unsafe {
-            let ret = Vec::from_raw_parts(self.len, self.len, self.data);
+            let ret = Vec::from_raw_parts(self.data, self.len, self.len);
             // the vector owns the allocation now
             mem::forget(self);
             ret
