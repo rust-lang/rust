@@ -1058,15 +1058,14 @@ impl<'a> StringReader<'a> {
                 let keyword_checking_token =
                     &token::Ident(keyword_checking_ident, false);
                 let last_bpos = self.last_pos;
-                if token::is_keyword(token::keywords::Self,
-                                     keyword_checking_token) {
+                if keyword_checking_token.is_keyword(token::keywords::Self) {
                     self.err_span_(start,
                                    last_bpos,
                                    "invalid lifetime name: 'self \
                                     is no longer a special lifetime");
-                } else if token::is_any_keyword(keyword_checking_token) &&
-                    !token::is_keyword(token::keywords::Static,
-                                       keyword_checking_token) {
+                } else if keyword_checking_token.is_any_keyword() &&
+                    !keyword_checking_token.is_keyword(token::keywords::Static)
+                {
                     self.err_span_(start,
                                    last_bpos,
                                    "invalid lifetime name");

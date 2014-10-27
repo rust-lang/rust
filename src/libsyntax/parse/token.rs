@@ -173,6 +173,206 @@ pub enum Token {
     Eof,
 }
 
+impl Token {
+    /// Returns `true` if the token can appear at the start of an expression.
+    pub fn can_begin_expr(&self) -> bool {
+        match *self {
+            LParen                      => true,
+            LBrace                      => true,
+            LBracket                    => true,
+            Ident(_, _)                 => true,
+            Underscore                  => true,
+            Tilde                       => true,
+            LitByte(_)                  => true,
+            LitChar(_)                  => true,
+            LitInteger(_)               => true,
+            LitFloat(_)                 => true,
+            LitStr(_)                   => true,
+            LitStrRaw(_, _)             => true,
+            LitBinary(_)                => true,
+            LitBinaryRaw(_, _)          => true,
+            Pound                       => true,
+            At                          => true,
+            Not                         => true,
+            BinOp(Minus)                => true,
+            BinOp(Star)                 => true,
+            BinOp(And)                  => true,
+            BinOp(Or)                   => true, // in lambda syntax
+            OrOr                        => true, // in lambda syntax
+            ModSep                      => true,
+            Interpolated(NtExpr(..))    => true,
+            Interpolated(NtIdent(..))   => true,
+            Interpolated(NtBlock(..))   => true,
+            Interpolated(NtPath(..))    => true,
+            _                           => false,
+        }
+    }
+
+    /// Returns the matching close delimiter if this is an open delimiter,
+    /// otherwise `None`.
+    pub fn get_close_delimiter(&self) -> Option<Token> {
+        match *self {
+            LParen   => Some(RParen),
+            LBrace   => Some(RBrace),
+            LBracket => Some(RBracket),
+            _        => None,
+        }
+    }
+
+    /// Returns `true` if the token is any literal
+    pub fn is_lit(&self) -> bool {
+        match *self {
+            LitByte(_)          => true,
+            LitChar(_)          => true,
+            LitInteger(_)       => true,
+            LitFloat(_)         => true,
+            LitStr(_)           => true,
+            LitStrRaw(_, _)     => true,
+            LitBinary(_)        => true,
+            LitBinaryRaw(_, _)  => true,
+            _                   => false,
+        }
+    }
+
+    /// Returns `true` if the token is an identifier.
+    pub fn is_ident(&self) -> bool {
+        match *self {
+            Ident(_, _) => true,
+            _           => false,
+        }
+    }
+
+    /// Returns `true` if the token is an interpolated path.
+    pub fn is_path(&self) -> bool {
+        match *self {
+            Interpolated(NtPath(..))    => true,
+            _                           => false,
+        }
+    }
+
+    /// Returns `true` if the token is a path that is not followed by a `::`
+    /// token.
+    pub fn is_plain_ident(&self) -> bool {
+        match *self {
+            Ident(_, false) => true,
+            _               => false,
+        }
+    }
+
+    /// Returns `true` if the token is a lifetime.
+    pub fn is_lifetime(&self) -> bool {
+        match *self {
+            Lifetime(..) => true,
+            _            => false,
+        }
+    }
+
+    /// Returns `true` if the token is either the `mut` or `const` keyword.
+    pub fn is_mutability(&self) -> bool {
+        self.is_keyword(keywords::Mut) ||
+        self.is_keyword(keywords::Const)
+    }
+
+    /// Maps a token to its corresponding binary operator.
+    pub fn to_binop(&self) -> Option<ast::BinOp> {
+        match *self {
+            BinOp(Star)     => Some(ast::BiMul),
+            BinOp(Slash)    => Some(ast::BiDiv),
+            BinOp(Percent)  => Some(ast::BiRem),
+            BinOp(Plus)     => Some(ast::BiAdd),
+            BinOp(Minus)    => Some(ast::BiSub),
+            BinOp(Shl)      => Some(ast::BiShl),
+            BinOp(Shr)      => Some(ast::BiShr),
+            BinOp(And)      => Some(ast::BiBitAnd),
+            BinOp(Caret)    => Some(ast::BiBitXor),
+            BinOp(Or)       => Some(ast::BiBitOr),
+            Lt              => Some(ast::BiLt),
+            Le              => Some(ast::BiLe),
+            Ge              => Some(ast::BiGe),
+            Gt              => Some(ast::BiGt),
+            EqEq            => Some(ast::BiEq),
+            Ne              => Some(ast::BiNe),
+            AndAnd          => Some(ast::BiAnd),
+            OrOr            => Some(ast::BiOr),
+            _               => None,
+        }
+    }
+
+    /// Returns `true` if the token is a given keyword, `kw`.
+    pub fn is_keyword(&self, kw: keywords::Keyword) -> bool {
+        match *self {
+            Ident(sid, false)   => kw.to_name() == sid.name,
+            _                   => false,
+        }
+    }
+
+    /// Returns `true` if the token is either a special identifier, or a strict
+    /// or reserved keyword.
+    pub fn is_any_keyword(&self) -> bool {
+        match *self {
+            Ident(sid, false) => {
+                let n = sid.name;
+
+                   n == SELF_KEYWORD_NAME
+                || n == STATIC_KEYWORD_NAME
+                || n == SUPER_KEYWORD_NAME
+                || STRICT_KEYWORD_START <= n
+                && n <= RESERVED_KEYWORD_FINAL
+            },
+            _ => false
+        }
+    }
+
+    /// Returns `true` if the token may not appear as an identifier.
+    pub fn is_strict_keyword(&self) -> bool {
+        match *self {
+            Ident(sid, false) => {
+                let n = sid.name;
+
+                   n == SELF_KEYWORD_NAME
+                || n == STATIC_KEYWORD_NAME
+                || n == SUPER_KEYWORD_NAME
+                || STRICT_KEYWORD_START <= n
+                && n <= STRICT_KEYWORD_FINAL
+            },
+            Ident(sid, true) => {
+                let n = sid.name;
+
+                   n != SELF_KEYWORD_NAME
+                && n != SUPER_KEYWORD_NAME
+                && STRICT_KEYWORD_START <= n
+                && n <= STRICT_KEYWORD_FINAL
+            }
+            _ => false,
+        }
+    }
+
+    /// Returns `true` if the token is a keyword that has been reserved for
+    /// possible future use.
+    pub fn is_reserved_keyword(&self) -> bool {
+        match *self {
+            Ident(sid, false) => {
+                let n = sid.name;
+
+                   RESERVED_KEYWORD_START <= n
+                && n <= RESERVED_KEYWORD_FINAL
+            },
+            _ => false,
+        }
+    }
+
+    /// Hygienic identifier equality comparison.
+    ///
+    /// See `styntax::ext::mtwt`.
+    pub fn mtwt_eq(&self, other : &Token) -> bool {
+        match (self, other) {
+            (&Ident(id1,_), &Ident(id2,_)) | (&Lifetime(id1), &Lifetime(id2)) =>
+                mtwt::resolve(id1) == mtwt::resolve(id2),
+            _ => *self == *other
+        }
+    }
+}
+
 #[deriving(Clone, Encodable, Decodable, PartialEq, Eq, Hash)]
 /// For interpolation during macro expansion.
 pub enum Nonterminal {
@@ -301,86 +501,6 @@ pub fn to_string(t: &Token) -> String {
             NtTT(..)       => "an interpolated tt".into_string(),
             NtMatchers(..) => "an interpolated matcher sequence".into_string(),
         }
-    }
-}
-
-pub fn can_begin_expr(t: &Token) -> bool {
-    match *t {
-        LParen              => true,
-        LBrace              => true,
-        LBracket            => true,
-        Ident(_, _)         => true,
-        Underscore          => true,
-        Tilde               => true,
-        LitByte(_)          => true,
-        LitChar(_)          => true,
-        LitInteger(_)       => true,
-        LitFloat(_)         => true,
-        LitStr(_)           => true,
-        LitStrRaw(_, _)     => true,
-        LitBinary(_)        => true,
-        LitBinaryRaw(_, _)  => true,
-        Pound               => true,
-        At                  => true,
-        Not                 => true,
-        BinOp(Minus)        => true,
-        BinOp(Star)         => true,
-        BinOp(And)          => true,
-        BinOp(Or)           => true, // in lambda syntax
-        OrOr                => true, // in lambda syntax
-        ModSep              => true,
-        Interpolated(NtExpr(..))    => true,
-        Interpolated(NtIdent(..))   => true,
-        Interpolated(NtBlock(..))   => true,
-        Interpolated(NtPath(..))    => true,
-        _                   => false,
-    }
-}
-
-/// Returns the matching close delimiter if this is an open delimiter,
-/// otherwise `None`.
-pub fn close_delimiter_for(t: &Token) -> Option<Token> {
-    match *t {
-        LParen   => Some(RParen),
-        LBrace   => Some(RBrace),
-        LBracket => Some(RBracket),
-        _        => None,
-    }
-}
-
-pub fn is_lit(t: &Token) -> bool {
-    match *t {
-        LitByte(_)          => true,
-        LitChar(_)          => true,
-        LitInteger(_)       => true,
-        LitFloat(_)         => true,
-        LitStr(_)           => true,
-        LitStrRaw(_, _)     => true,
-        LitBinary(_)        => true,
-        LitBinaryRaw(_, _)  => true,
-        _ => false,
-    }
-}
-
-pub fn is_ident(t: &Token) -> bool {
-    match *t {
-        Ident(_, _) => true,
-        _           => false,
-    }
-}
-
-pub fn is_ident_or_path(t: &Token) -> bool {
-    match *t {
-        Ident(_, _)                 => true,
-        Interpolated(NtPath(..))    => true,
-        _                           => false,
-    }
-}
-
-pub fn is_plain_ident(t: &Token) -> bool {
-    match *t {
-        Ident(_, false) => true,
-        _               => false,
     }
 }
 
@@ -570,34 +690,6 @@ declare_special_idents_and_keywords! {
     }
 }
 
-/**
- * Maps a token to a record specifying the corresponding binary
- * operator
- */
-pub fn token_to_binop(tok: &Token) -> Option<ast::BinOp> {
-    match *tok {
-        BinOp(Star)     => Some(ast::BiMul),
-        BinOp(Slash)    => Some(ast::BiDiv),
-        BinOp(Percent)  => Some(ast::BiRem),
-        BinOp(Plus)     => Some(ast::BiAdd),
-        BinOp(Minus)    => Some(ast::BiSub),
-        BinOp(Shl)      => Some(ast::BiShl),
-        BinOp(Shr)      => Some(ast::BiShr),
-        BinOp(And)      => Some(ast::BiBitAnd),
-        BinOp(Caret)    => Some(ast::BiBitXor),
-        BinOp(Or)       => Some(ast::BiBitOr),
-        Lt              => Some(ast::BiLt),
-        Le              => Some(ast::BiLe),
-        Ge              => Some(ast::BiGe),
-        Gt              => Some(ast::BiGt),
-        EqEq            => Some(ast::BiEq),
-        Ne              => Some(ast::BiNe),
-        AndAnd          => Some(ast::BiAnd),
-        OrOr            => Some(ast::BiOr),
-        _               => None
-    }
-}
-
 // looks like we can get rid of this completely...
 pub type IdentInterner = StrInterner;
 
@@ -751,74 +843,6 @@ pub fn fresh_mark() -> ast::Mrk {
     gensym("mark").uint() as u32
 }
 
-// See the macro above about the types of keywords
-
-pub fn is_keyword(kw: keywords::Keyword, tok: &Token) -> bool {
-    match *tok {
-        Ident(sid, false) => { kw.to_name() == sid.name }
-        _ => { false }
-    }
-}
-
-pub fn is_any_keyword(tok: &Token) -> bool {
-    match *tok {
-        Ident(sid, false) => {
-            let n = sid.name;
-
-               n == SELF_KEYWORD_NAME
-            || n == STATIC_KEYWORD_NAME
-            || n == SUPER_KEYWORD_NAME
-            || STRICT_KEYWORD_START <= n
-            && n <= RESERVED_KEYWORD_FINAL
-        },
-        _ => false
-    }
-}
-
-pub fn is_strict_keyword(tok: &Token) -> bool {
-    match *tok {
-        Ident(sid, false) => {
-            let n = sid.name;
-
-               n == SELF_KEYWORD_NAME
-            || n == STATIC_KEYWORD_NAME
-            || n == SUPER_KEYWORD_NAME
-            || STRICT_KEYWORD_START <= n
-            && n <= STRICT_KEYWORD_FINAL
-        },
-        Ident(sid, true) => {
-            let n = sid.name;
-
-               n != SELF_KEYWORD_NAME
-            && n != SUPER_KEYWORD_NAME
-            && STRICT_KEYWORD_START <= n
-            && n <= STRICT_KEYWORD_FINAL
-        }
-        _ => false,
-    }
-}
-
-pub fn is_reserved_keyword(tok: &Token) -> bool {
-    match *tok {
-        Ident(sid, false) => {
-            let n = sid.name;
-
-               RESERVED_KEYWORD_START <= n
-            && n <= RESERVED_KEYWORD_FINAL
-        },
-        _ => false,
-    }
-}
-
-pub fn mtwt_token_eq(t1 : &Token, t2 : &Token) -> bool {
-    match (t1,t2) {
-        (&Ident(id1,_),&Ident(id2,_)) | (&Lifetime(id1),&Lifetime(id2)) =>
-            mtwt::resolve(id1) == mtwt::resolve(id2),
-        _ => *t1 == *t2
-    }
-}
-
-
 #[cfg(test)]
 mod test {
     use super::*;
@@ -830,9 +854,9 @@ mod test {
     }
 
     #[test] fn mtwt_token_eq_test() {
-        assert!(mtwt_token_eq(&Gt,&Gt));
+        assert!(Gt.mtwt_eq(&Gt));
         let a = str_to_ident("bac");
         let a1 = mark_ident(a,92);
-        assert!(mtwt_token_eq(&Ident(a,true),&Ident(a1,false)));
+        assert!(Ident(a,true).mtwt_eq(&Ident(a1,false)));
     }
 }

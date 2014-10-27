@@ -101,7 +101,7 @@ fn doit(sess: &parse::ParseSess, mut lexer: lexer::StringReader,
                 token::RParen | token::LBracket | token::LBrace | token::RBrace |
                 token::Question => "",
             token::Dollar => {
-                if token::is_ident(&lexer.peek().tok) {
+                if lexer.peek().tok.is_ident() {
                     is_macro_nonterminal = true;
                     "macro-nonterminal"
                 } else {
@@ -146,7 +146,7 @@ fn doit(sess: &parse::ParseSess, mut lexer: lexer::StringReader,
                     "Option" | "Result" => "prelude-ty",
                     "Some" | "None" | "Ok" | "Err" => "prelude-val",
 
-                    _ if token::is_any_keyword(&next.tok) => "kw",
+                    _ if next.tok.is_any_keyword() => "kw",
                     _ => {
                         if is_macro_nonterminal {
                             is_macro_nonterminal = false;

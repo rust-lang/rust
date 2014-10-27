@@ -19,7 +19,7 @@ use syntax::codemap::*;
 use syntax::parse::lexer;
 use syntax::parse::lexer::{Reader,StringReader};
 use syntax::parse::token;
-use syntax::parse::token::{is_keyword,keywords,is_ident,Token};
+use syntax::parse::token::{keywords, Token};
 
 pub struct SpanUtils<'a> {
     pub sess: &'a Session,
@@ -97,7 +97,7 @@ impl<'a> SpanUtils<'a> {
                 return self.make_sub_span(span, result)
             }
             if bracket_count == 0 &&
-               (is_ident(&ts.tok) || is_keyword(keywords::Self, &ts.tok)) {
+               (ts.tok.is_ident() || ts.tok.is_keyword(keywords::Self)) {
                 result = Some(ts.sp);
             }
 
@@ -120,7 +120,7 @@ impl<'a> SpanUtils<'a> {
                 return None;
             }
             if bracket_count == 0 &&
-               (is_ident(&ts.tok) || is_keyword(keywords::Self, &ts.tok)) {
+               (ts.tok.is_ident() || ts.tok.is_keyword(keywords::Self)) {
                 return self.make_sub_span(span, Some(ts.sp));
             }
 
@@ -148,7 +148,7 @@ impl<'a> SpanUtils<'a> {
             if (next.tok == token::LParen ||
                 next.tok == token::Lt) &&
                bracket_count == 0 &&
-               is_ident(&prev.tok) {
+               prev.tok.is_ident() {
                 result = Some(prev.sp);
             }
 
@@ -158,7 +158,7 @@ impl<'a> SpanUtils<'a> {
                 prev = next;
                 next = toks.next_token();
                 if next.tok == token::Lt &&
-                   is_ident(&old.tok) {
+                   old.tok.is_ident() {
                     result = Some(old.sp);
                 }
             }
@@ -170,7 +170,7 @@ impl<'a> SpanUtils<'a> {
                 _ => 0
             };
 
-            if is_ident(&prev.tok) && bracket_count == 0 {
+            if prev.tok.is_ident() && bracket_count == 0 {
                 last_span = Some(prev.sp);
             }
             prev = next;
@@ -194,7 +194,7 @@ impl<'a> SpanUtils<'a> {
             if (next.tok == token::Lt ||
                 next.tok == token::Colon) &&
                bracket_count == 0 &&
-               is_ident(&prev.tok) {
+               prev.tok.is_ident() {
                 result = Some(prev.sp);
             }
 
@@ -216,7 +216,7 @@ impl<'a> SpanUtils<'a> {
                 format!("Mis-counted brackets when breaking path? Parsing '{}' in {}, line {}",
                         self.snippet(span), loc.file.name, loc.line).as_slice());
         }
-        if result.is_none() && is_ident(&prev.tok) && bracket_count == 0 {
+        if result.is_none() && prev.tok.is_ident() && bracket_count == 0 {
             return self.make_sub_span(span, Some(prev.sp));
         }
         self.make_sub_span(span, result)
@@ -254,7 +254,7 @@ impl<'a> SpanUtils<'a> {
                 token::BinOp(token::Shr) => -2,
                 _ => 0
             };
-            if is_ident(&ts.tok) &&
+            if ts.tok.is_ident() &&
                bracket_count == nesting {
                 result.push(self.make_sub_span(span, Some(ts.sp)).unwrap());
             }
@@ -285,7 +285,7 @@ impl<'a> SpanUtils<'a> {
             if ts.tok == token::Eof {
                 return None;
             }
-            if is_keyword(keyword, &ts.tok) {
+            if ts.tok.is_keyword(keyword) {
                 let ts = toks.next_token();
                 if ts.tok == token::Eof {
                     return None

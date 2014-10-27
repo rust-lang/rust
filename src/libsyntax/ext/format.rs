@@ -116,8 +116,7 @@ fn parse_args(ecx: &mut ExtCtxt, sp: Span, allow_method: bool,
             return (invocation, None);
         }
         if p.token == token::Eof { break } // accept trailing commas
-        if named || (token::is_ident(&p.token) &&
-                     p.look_ahead(1, |t| *t == token::Eq)) {
+        if named || (p.token.is_ident() && p.look_ahead(1, |t| *t == token::Eq)) {
             named = true;
             let ident = match p.token {
                 token::Ident(i, _) => {

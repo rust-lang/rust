@@ -82,7 +82,7 @@ impl PartialEq for Ident {
             //
             // On the other hand, if the comparison does need to be hygienic,
             // one example and its non-hygienic counterpart would be:
-            //      syntax::parse::token::mtwt_token_eq
+            //      syntax::parse::token::Token::mtwt_eq
             //      syntax::ext::tt::macro_parser::token_name_eq
             fail!("not allowed to compare these idents: {}, {}. \
                    Probably related to issue \\#6993", self, other);
