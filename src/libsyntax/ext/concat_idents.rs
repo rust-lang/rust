@@ -23,7 +23,7 @@ pub fn expand_syntax_ext<'cx>(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree]
     for (i, e) in tts.iter().enumerate() {
         if i & 1 == 1 {
             match *e {
-                ast::TTTok(_, token::COMMA) => (),
+                ast::TtToken(_, token::COMMA) => (),
                 _ => {
                     cx.span_err(sp, "concat_idents! expecting comma.");
                     return DummyResult::expr(sp);
@@ -31,7 +31,7 @@ pub fn expand_syntax_ext<'cx>(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree]
             }
         } else {
             match *e {
-                ast::TTTok(_, token::IDENT(ident,_)) => {
+                ast::TtToken(_, token::IDENT(ident,_)) => {
                     res_str.push_str(token::get_ident(ident).get())
                 }
                 _ => {

@@ -21,18 +21,21 @@
 use mem;
 
 /// The representation of a Rust slice
+#[repr(C)]
 pub struct Slice<T> {
     pub data: *const T,
     pub len: uint,
 }
 
 /// The representation of a Rust closure
+#[repr(C)]
 pub struct Closure {
     pub code: *mut (),
     pub env: *mut (),
 }
 
 /// The representation of a Rust procedure (`proc()`)
+#[repr(C)]
 pub struct Procedure {
     pub code: *mut (),
     pub env: *mut (),
@@ -42,6 +45,7 @@ pub struct Procedure {
 ///
 /// This struct does not have a `Repr` implementation
 /// because there is no way to refer to all trait objects generically.
+#[repr(C)]
 pub struct TraitObject {
     pub data: *mut (),
     pub vtable: *mut (),
@@ -60,4 +64,3 @@ pub trait Repr<T> {
 
 impl<'a, T> Repr<Slice<T>> for &'a [T] {}
 impl<'a> Repr<Slice<u8>> for &'a str {}
-

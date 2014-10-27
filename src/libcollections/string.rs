@@ -780,7 +780,7 @@ pub mod raw {
     #[inline]
     pub unsafe fn from_parts(buf: *mut u8, length: uint, capacity: uint) -> String {
         String {
-            vec: Vec::from_raw_parts(length, capacity, buf),
+            vec: Vec::from_raw_parts(buf, length, capacity),
         }
     }
 

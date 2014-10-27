@@ -24,6 +24,9 @@ use std::fmt::Show;
 use std::rc::Rc;
 use serialize::{Encodable, Decodable, Encoder, Decoder};
 
+#[cfg(stage0)]
+pub use self::TtToken as TTTok;
+
 // FIXME #6993: in librustc, uses of "ident" should be replaced
 // by just "Name".
 
@@ -436,7 +439,7 @@ pub enum Stmt_ {
     /// Expr with trailing semi-colon (may have any type):
     StmtSemi(P<Expr>, NodeId),
 
-    /// bool: is there a trailing sem-colon?
+    /// bool: is there a trailing semi-colon?
     StmtMac(Mac, bool),
 }
 
@@ -592,6 +595,28 @@ pub enum CaptureClause {
     CaptureByRef,
 }
 
+/// A token that delimits a sequence of token trees
+#[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
+pub struct Delimiter {
+    pub span: Span,
+    pub token: ::parse::token::Token,
+}
+
+impl Delimiter {
+    /// Convert the delimiter to a `TtToken`
+    pub fn to_tt(&self) -> TokenTree {
+        TtToken(self.span, self.token.clone())
+    }
+}
+
+/// A Kleene-style [repetition operator](http://en.wikipedia.org/wiki/Kleene_star)
+/// for token sequences.
+#[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
+pub enum KleeneOp {
+    ZeroOrMore,
+    OneOrMore,
+}
+
 /// When the main rust parser encounters a syntax-extension invocation, it
 /// parses the arguments to the invocation as a token-tree. This is a very
 /// loose structure, such that all sorts of different AST-fragments can
@@ -600,9 +625,9 @@ pub enum CaptureClause {
 /// If the syntax extension is an MBE macro, it will attempt to match its
 /// LHS "matchers" against the provided token tree, and if it finds a
 /// match, will transcribe the RHS token tree, splicing in any captured
-/// macro_parser::matched_nonterminals into the TTNonterminals it finds.
+/// `macro_parser::matched_nonterminals` into the `TtNonterminal`s it finds.
 ///
-/// The RHS of an MBE macro is the only place a TTNonterminal or TTSeq
+/// The RHS of an MBE macro is the only place a `TtNonterminal` or `TtSequence`
 /// makes any real sense. You could write them elsewhere but nothing
 /// else knows what to do with them, so you'll probably get a syntax
 /// error.
@@ -610,22 +635,29 @@ pub enum CaptureClause {
 #[doc="For macro invocations; parsing is delegated to the macro"]
 pub enum TokenTree {
     /// A single token
-    TTTok(Span, ::parse::token::Token),
-    /// A delimited sequence (the delimiters appear as the first
-    /// and last elements of the vector)
-    // FIXME(eddyb) #6308 Use Rc<[TokenTree]> after DST.
-    TTDelim(Rc<Vec<TokenTree>>),
+    TtToken(Span, ::parse::token::Token),
+    /// A delimited sequence of token trees
+    TtDelimited(Span, Rc<(Delimiter, Vec<TokenTree>, Delimiter)>),
 
     // These only make sense for right-hand-sides of MBE macros:
 
-    /// A kleene-style repetition sequence with a span, a TTForest,
-    /// an optional separator, and a boolean where true indicates
-    /// zero or more (..), and false indicates one or more (+).
+    /// A Kleene-style repetition sequence with an optional separator.
     // FIXME(eddyb) #6308 Use Rc<[TokenTree]> after DST.
-    TTSeq(Span, Rc<Vec<TokenTree>>, Option<::parse::token::Token>, bool),
-
+    TtSequence(Span, Rc<Vec<TokenTree>>, Option<::parse::token::Token>, KleeneOp),
     /// A syntactic variable that will be filled in by macro expansion.
-    TTNonterminal(Span, Ident)
+    TtNonterminal(Span, Ident)
+}
+
+impl TokenTree {
+    /// Returns the `Span` corresponding to this token tree.
+    pub fn get_span(&self) -> Span {
+        match *self {
+            TtToken(span, _)           => span,
+            TtDelimited(span, _)       => span,
+            TtSequence(span, _, _, _)  => span,
+            TtNonterminal(span, _)     => span,
+        }
+    }
 }
 
 // Matchers are nodes defined-by and recognized-by the main rust parser and
@@ -684,9 +716,9 @@ pub type Matcher = Spanned<Matcher_>;
 pub enum Matcher_ {
     /// Match one token
     MatchTok(::parse::token::Token),
-    /// Match repetitions of a sequence: body, separator, zero ok?,
+    /// Match repetitions of a sequence: body, separator, Kleene operator,
     /// lo, hi position-in-match-array used:
-    MatchSeq(Vec<Matcher> , Option<::parse::token::Token>, bool, uint, uint),
+    MatchSeq(Vec<Matcher> , Option<::parse::token::Token>, KleeneOp, uint, uint),
     /// Parse a Rust NT: name to bind, name of NT, position in match array:
     MatchNonterminal(Ident, Ident, uint)
 }

@@ -23,7 +23,7 @@ use ptr::P;
 *
 * This is registered as a set of expression syntax extension called quote!
 * that lifts its argument token-tree to an AST representing the
-* construction of the same token tree, with ast::TTNonterminal nodes
+* construction of the same token tree, with ast::TtNonterminal nodes
 * interpreted as antiquotes (splices).
 *
 */
@@ -637,12 +637,12 @@ fn mk_token(cx: &ExtCtxt, sp: Span, tok: &token::Token) -> P<ast::Expr> {
 }
 
 
-fn mk_tt(cx: &ExtCtxt, sp: Span, tt: &ast::TokenTree) -> Vec<P<ast::Stmt>> {
+fn mk_tt(cx: &ExtCtxt, _: Span, tt: &ast::TokenTree) -> Vec<P<ast::Stmt>> {
     match *tt {
-        ast::TTTok(sp, ref tok) => {
+        ast::TtToken(sp, ref tok) => {
             let e_sp = cx.expr_ident(sp, id_ext("_sp"));
             let e_tok = cx.expr_call(sp,
-                                     mk_ast_path(cx, sp, "TTTok"),
+                                     mk_ast_path(cx, sp, "TtToken"),
                                      vec!(e_sp, mk_token(cx, sp, tok)));
             let e_push =
                 cx.expr_method_call(sp,
@@ -650,13 +650,16 @@ fn mk_tt(cx: &ExtCtxt, sp: Span, tt: &ast::TokenTree) -> Vec<P<ast::Stmt>> {
                                     id_ext("push"),
                                     vec!(e_tok));
             vec!(cx.stmt_expr(e_push))
-        }
-
-        ast::TTDelim(ref tts) => mk_tts(cx, sp, tts.as_slice()),
-        ast::TTSeq(..) => fail!("TTSeq in quote!"),
-
-        ast::TTNonterminal(sp, ident) => {
-
+        },
+        ast::TtDelimited(sp, ref delimed) => {
+            let (ref open, ref tts, ref close) = **delimed;
+            mk_tt(cx, sp, &open.to_tt()).into_iter()
+                .chain(tts.iter().flat_map(|tt| mk_tt(cx, sp, tt).into_iter()))
+                .chain(mk_tt(cx, sp, &close.to_tt()).into_iter())
+                .collect()
+        },
+        ast::TtSequence(..) => fail!("TtSequence in quote!"),
+        ast::TtNonterminal(sp, ident) => {
             // tt.extend($ident.to_tokens(ext_cx).into_iter())
 
             let e_to_toks =
@@ -674,7 +677,7 @@ fn mk_tt(cx: &ExtCtxt, sp: Span, tt: &ast::TokenTree) -> Vec<P<ast::Stmt>> {
                                     vec!(e_to_toks));
 
             vec!(cx.stmt_expr(e_push))
-        }
+        },
     }
 }
 
@@ -690,7 +693,7 @@ fn mk_tts(cx: &ExtCtxt, sp: Span, tts: &[ast::TokenTree])
 fn expand_tts(cx: &ExtCtxt, sp: Span, tts: &[ast::TokenTree])
               -> (P<ast::Expr>, P<ast::Expr>) {
     // NB: It appears that the main parser loses its mind if we consider
-    // $foo as a TTNonterminal during the main parse, so we have to re-parse
+    // $foo as a TtNonterminal during the main parse, so we have to re-parse
     // under quote_depth > 0. This is silly and should go away; the _guess_ is
     // it has to do with transition away from supporting old-style macros, so
     // try removing it when enough of them are gone.

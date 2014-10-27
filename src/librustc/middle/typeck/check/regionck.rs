@@ -126,7 +126,7 @@ use middle::ty;
 use middle::typeck::astconv::AstConv;
 use middle::typeck::check::FnCtxt;
 use middle::typeck::check::regionmanip;
-use middle::typeck::check::vtable2;
+use middle::typeck::check::vtable;
 use middle::typeck::infer::resolve_and_force_all_but_regions;
 use middle::typeck::infer::resolve_type;
 use middle::typeck::infer;
@@ -172,7 +172,7 @@ pub fn regionck_fn(fcx: &FnCtxt, id: ast::NodeId, blk: &ast::Block) {
 
     // Region checking a fn can introduce new trait obligations,
     // particularly around closure bounds.
-    vtable2::select_all_fcx_obligations_or_error(fcx);
+    vtable::select_all_fcx_obligations_or_error(fcx);
 
     fcx.infcx().resolve_regions_and_report_errors();
 }
@@ -1674,7 +1674,7 @@ fn link_reborrowed_region(rcx: &Rcx,
             //
             // If mutability was inferred from an upvar, we may be
             // forced to revisit this decision later if processing
-            // another borrow or nested closure ends up coverting the
+            // another borrow or nested closure ends up converting the
             // upvar borrow kind to mutable/unique.  Record the
             // information needed to perform the recursive link in the
             // maybe link map.
