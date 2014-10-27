@@ -159,8 +159,7 @@ fn check_and_get_illegal_move_origin(bccx: &BorrowckCtxt,
             }
         }
 
-        mc::cat_deref(ref b, _, mc::OwnedPtr) |
-        mc::cat_discr(ref b, _) => {
+        mc::cat_deref(ref b, _, mc::OwnedPtr) => {
             check_and_get_illegal_move_origin(bccx, b)
         }
     }
