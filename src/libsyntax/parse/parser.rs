@@ -2067,10 +2067,10 @@ impl<'a> Parser<'a> {
             },
             // FIXME #13626: Should be able to stick in
             // token::SELF_KEYWORD_NAME
-            token::Ident(id @ ast::Ident{
-                        name: ast::Name(token::SELF_KEYWORD_NAME_NUM),
-                        ctxt: _
-                    } ,false) => {
+            token::Ident(id @ ast::Ident {
+                            name: ast::Name(token::SELF_KEYWORD_NAME_NUM),
+                            ctxt: _
+                         }, token::Plain) => {
                 self.bump();
                 let path = ast_util::ident_to_path(mk_sp(lo, hi), id);
                 ex = ExprPath(path);
@@ -4094,14 +4094,14 @@ impl<'a> Parser<'a> {
 
     fn is_self_ident(&mut self) -> bool {
         match self.token {
-          token::Ident(id, false) => id.name == special_idents::self_.name,
+          token::Ident(id, token::Plain) => id.name == special_idents::self_.name,
           _ => false
         }
     }
 
     fn expect_self_ident(&mut self) -> ast::Ident {
         match self.token {
-            token::Ident(id, false) if id.name == special_idents::self_.name => {
+            token::Ident(id, token::Plain) if id.name == special_idents::self_.name => {
                 self.bump();
                 id
             },

@@ -793,9 +793,9 @@ mod test {
         let tts = string_to_tts("macro_rules! zip (($a)=>($a))".to_string());
         let tts: &[ast::TokenTree] = tts.as_slice();
         match tts {
-            [ast::TtToken(_, token::Ident(name_macro_rules, false)),
+            [ast::TtToken(_, token::Ident(name_macro_rules, token::Plain)),
              ast::TtToken(_, token::Not),
-             ast::TtToken(_, token::Ident(name_zip, false)),
+             ast::TtToken(_, token::Ident(name_zip, token::Plain)),
              ast::TtDelimited(_, ref macro_delimed)]
             if name_macro_rules.as_str() == "macro_rules"
             && name_zip.as_str() == "zip" => {
@@ -810,7 +810,7 @@ mod test {
                         match (first_open, first_tts.as_slice(), first_close) {
                             (&ast::Delimiter { token: token::LParen, .. },
                              [ast::TtToken(_, token::Dollar),
-                              ast::TtToken(_, token::Ident(name, false))],
+                              ast::TtToken(_, token::Ident(name, token::Plain))],
                              &ast::Delimiter { token: token::RParen, .. })
                             if name.as_str() == "a" => {},
                             _ => fail!("value 3: {}", **first_delimed),
@@ -819,7 +819,7 @@ mod test {
                         match (second_open, second_tts.as_slice(), second_close) {
                             (&ast::Delimiter { token: token::LParen, .. },
                              [ast::TtToken(_, token::Dollar),
-                              ast::TtToken(_, token::Ident(name, false))],
+                              ast::TtToken(_, token::Ident(name, token::Plain))],
                              &ast::Delimiter { token: token::RParen, .. })
                             if name.as_str() == "a" => {},
                             _ => fail!("value 4: {}", **second_delimed),
@@ -845,7 +845,7 @@ mod test {
                 \"variant\":\"Ident\",\
                 \"fields\":[\
                     \"fn\",\
-                    false\
+                    \"Plain\"\
                 ]\
             }\
         ]\
@@ -858,7 +858,7 @@ mod test {
                 \"variant\":\"Ident\",\
                 \"fields\":[\
                     \"a\",\
-                    false\
+                    \"Plain\"\
                 ]\
             }\
         ]\
@@ -881,7 +881,7 @@ mod test {
                                 \"variant\":\"Ident\",\
                                 \"fields\":[\
                                     \"b\",\
-                                    false\
+                                    \"Plain\"\
                                 ]\
                             }\
                         ]\
@@ -901,7 +901,7 @@ mod test {
                                 \"variant\":\"Ident\",\
                                 \"fields\":[\
                                     \"int\",\
-                                    false\
+                                    \"Plain\"\
                                 ]\
                             }\
                         ]\
@@ -932,7 +932,7 @@ mod test {
                                 \"variant\":\"Ident\",\
                                 \"fields\":[\
                                     \"b\",\
-                                    false\
+                                    \"Plain\"\
                                 ]\
                             }\
                         ]\

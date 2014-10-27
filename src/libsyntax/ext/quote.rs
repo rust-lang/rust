@@ -531,6 +531,7 @@ fn mk_binop(cx: &ExtCtxt, sp: Span, bop: token::BinOpToken) -> P<ast::Expr> {
     mk_token_path(cx, sp, name)
 }
 
+#[allow(non_uppercase_statics)] // NOTE(stage0): remove this attribute after the next snapshot
 fn mk_token(cx: &ExtCtxt, sp: Span, tok: &token::Token) -> P<ast::Expr> {
     match *tok {
         token::BinOp(binop) => {
@@ -575,10 +576,14 @@ fn mk_token(cx: &ExtCtxt, sp: Span, tok: &token::Token) -> P<ast::Expr> {
                                 vec!(mk_name(cx, sp, ident.ident()), cx.expr_uint(sp, n)));
         }
 
-        token::Ident(ident, b) => {
+        token::Ident(ident, style) => {
             return cx.expr_call(sp,
                                 mk_token_path(cx, sp, "Ident"),
-                                vec!(mk_ident(cx, sp, ident), cx.expr_bool(sp, b)));
+                                vec![mk_ident(cx, sp, ident),
+                                     match style {
+                                        ModName => mk_token_path(cx, sp, "ModName"),
+                                        Plain   => mk_token_path(cx, sp, "Plain"),
+                                     }]);
         }
 
         token::Lifetime(ident) => {
