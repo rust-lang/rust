@@ -3592,6 +3592,16 @@ impl<'a> Parser<'a> {
             let hi = self.span.hi;
 
             if id.name == token::special_idents::invalid.name {
+                if self.token == token::Dot {
+                    let span = self.span;
+                    let token_string = self.this_token_to_string();
+                    self.span_err(span,
+                                  format!("expected statement, found `{}`",
+                                          token_string).as_slice());
+                    let mac_span = mk_sp(lo, hi);
+                    self.span_help(mac_span, "try parenthesizing this macro invocation");
+                    self.abort_if_errors();
+                }
                 P(spanned(lo, hi, StmtMac(
                     spanned(lo, hi, MacInvocTT(pth, tts, EMPTY_CTXT)), false)))
             } else {
