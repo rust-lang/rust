@@ -1997,8 +1997,10 @@ impl<'a> State<'a> {
                     Consistent, fields.as_slice(),
                     |s, f| {
                         try!(s.cbox(indent_unit));
-                        try!(s.print_ident(f.node.ident));
-                        try!(s.word_nbsp(":"));
+                        if !f.node.is_shorthand {
+                            try!(s.print_ident(f.node.ident));
+                            try!(s.word_nbsp(":"));
+                        }
                         try!(s.print_pat(&*f.node.pat));
                         s.end()
                     },
