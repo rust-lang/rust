@@ -416,7 +416,7 @@ great detail, so if you want the full details, check that out.
 
 In general, prefer stack allocation over heap allocation. Using references to
 stack allocated information is preferred whenever possible. Therefore,
-references are the default pointer type you should use, unless you have
+references are the default pointer type you should use, unless you have a
 specific reason to use a different type. The other types of pointers cover when
 they're appropriate to use in their own best practices sections.
 
