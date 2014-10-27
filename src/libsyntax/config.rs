@@ -250,30 +250,18 @@ fn impl_item_in_cfg(cx: &mut Context, impl_item: &ast::ImplItem) -> bool {
 // Determine if an item should be translated in the current crate
 // configuration based on the item's attributes
 fn in_cfg(diagnostic: &SpanHandler, cfg: &[P<ast::MetaItem>], attrs: &[ast::Attribute]) -> bool {
-    let mut in_cfg = false;
-    let mut seen_cfg = false;
-    for attr in attrs.iter() {
+    attrs.iter().all(|attr| {
         let mis = match attr.node.value.node {
             ast::MetaList(_, ref mis) if attr.check_name("cfg") => mis,
-            _ => continue
+            _ => return true
         };
 
         if mis.len() != 1 {
             diagnostic.span_err(attr.span, "expected 1 cfg-pattern");
-            return false;
+            return true;
         }
 
-        if seen_cfg {
-            diagnostic.span_err(attr.span, "The semantics of multiple `#[cfg(..)]` attributes on \
-                                            same item are changing from the union of the cfgs to \
-                                            the intersection of the cfgs. Change `#[cfg(a)] \
-                                            #[cfg(b)]` to `#[cfg(any(a, b))]`.");
-            return false;
-        }
-
-        seen_cfg = true;
-        in_cfg |= attr::cfg_matches(diagnostic, cfg, &*mis[0]);
-    }
-    in_cfg | !seen_cfg
+        attr::cfg_matches(diagnostic, cfg, &*mis[0])
+    })
 }
 
