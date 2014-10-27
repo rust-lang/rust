@@ -103,9 +103,9 @@ use slice::{Items, MutItems};
 #[unsafe_no_drop_flag]
 #[stable]
 pub struct Vec<T> {
+    ptr: *mut T,
     len: uint,
     cap: uint,
-    ptr: *mut T
 }
 
 impl<T> Vec<T> {
@@ -125,7 +125,7 @@ impl<T> Vec<T> {
         // non-null value which is fine since we never call deallocate on the ptr
         // if cap is 0. The reason for this is because the pointer of a slice
         // being NULL would break the null pointer optimization for enums.
-        Vec { len: 0, cap: 0, ptr: EMPTY as *mut T }
+        Vec { ptr: EMPTY as *mut T, len: 0, cap: 0 }
     }
 
     /// Constructs a new, empty `Vec` with the specified capacity.
@@ -159,14 +159,14 @@ impl<T> Vec<T> {
     #[stable]
     pub fn with_capacity(capacity: uint) -> Vec<T> {
         if mem::size_of::<T>() == 0 {
-            Vec { len: 0, cap: uint::MAX, ptr: EMPTY as *mut T }
+            Vec { ptr: EMPTY as *mut T, len: 0, cap: uint::MAX }
         } else if capacity == 0 {
             Vec::new()
         } else {
             let size = capacity.checked_mul(&mem::size_of::<T>())
                                .expect("capacity overflow");
             let ptr = unsafe { allocate(size, mem::min_align_of::<T>()) };
-            Vec { len: 0, cap: capacity, ptr: ptr as *mut T }
+            Vec { ptr: ptr as *mut T, len: 0, cap: capacity }
         }
     }
 
@@ -237,9 +237,9 @@ impl<T> Vec<T> {
     /// }
     /// ```
     #[experimental]
-    pub unsafe fn from_raw_parts(length: uint, capacity: uint,
-                                 ptr: *mut T) -> Vec<T> {
-        Vec { len: length, cap: capacity, ptr: ptr }
+    pub unsafe fn from_raw_parts(ptr: *mut T, length: uint,
+                                 capacity: uint) -> Vec<T> {
+        Vec { ptr: ptr, len: length, cap: capacity }
     }
 
     /// Consumes the `Vec`, partitioning it based on a predicate.
@@ -1680,7 +1680,7 @@ impl<'a, T> Drop for DerefVec<'a, T> {
 pub fn as_vec<'a, T>(x: &'a [T]) -> DerefVec<'a, T> {
     unsafe {
         DerefVec {
-            x: Vec::from_raw_parts(x.len(), x.len(), x.as_ptr() as *mut T),
+            x: Vec::from_raw_parts(x.as_ptr() as *mut T, x.len(), x.len()),
             l: ContravariantLifetime::<'a>
         }
     }
@@ -1929,7 +1929,7 @@ impl<T> Vec<T> {
                 let vec_cap = pv.vec.capacity();
                 let vec_ptr = pv.vec.as_mut_ptr() as *mut U;
                 mem::forget(pv);
-                Vec::from_raw_parts(vec_len, vec_cap, vec_ptr)
+                Vec::from_raw_parts(vec_ptr, vec_len, vec_cap)
             }
         } else {
             // Put the `Vec` into the `PartialVecZeroSized` structure and
