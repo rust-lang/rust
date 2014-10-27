@@ -46,7 +46,7 @@
 // lldb-command:print *owned
 // lldb-check:[...]$4 = 6
 
-#![allow(unused_variable)]
+#![allow(unused_variables)]
 
 struct Struct {
     a: int,

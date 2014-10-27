@@ -76,7 +76,7 @@
 // lldb-check:[...]$7 = DeeplyNested { a: PackedInPacked { a: 1, b: Packed { x: 2, y: 3, z: 4 }, c: 5, d: Packed { x: 6, y: 7, z: 8 } }, b: UnpackedInPackedWithDrop { a: 9, b: Unpacked { x: 10, y: 11, z: 12 }, c: Unpacked { x: 13, y: 14, z: 15 }, d: 16 }, c: PackedInUnpacked { a: 17, b: Packed { x: 18, y: 19, z: 20 }, c: 21, d: Packed { x: 22, y: 23, z: 24 } }, d: PackedInUnpackedWithDrop { a: 25, b: Packed { x: 26, y: 27, z: 28 }, c: 29, d: Packed { x: 30, y: 31, z: 32 } }, e: UnpackedInPacked { a: 33, b: Unpacked { x: 34, y: 35, z: 36 }, c: Unpacked { x: 37, y: 38, z: 39 }, d: 40 }, f: PackedInPackedWithDrop { a: 41, b: Packed { x: 42, y: 43, z: 44 }, c: 45, d: Packed { x: 46, y: 47, z: 48 } } }
 
 
-#![allow(unused_variable)]
+#![allow(unused_variables)]
 
 #[repr(packed)]
 struct Packed {

@@ -10,7 +10,7 @@
 //
 // ignore-lexer-test FIXME #15679
 
-#![allow(missing_doc)]
+#![allow(missing_docs)]
 
 use char;
 use clone::Clone;

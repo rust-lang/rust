@@ -333,7 +333,7 @@
 // lldb-check:[...]$48 = 62
 // lldb-command:continue
 
-#![allow(unused_variable)]
+#![allow(unused_variables)]
 
 
 struct Struct {

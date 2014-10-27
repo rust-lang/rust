@@ -17,7 +17,7 @@ A simple wrapper over the platform's dynamic library facilities
 */
 
 #![experimental]
-#![allow(missing_doc)]
+#![allow(missing_docs)]
 
 use clone::Clone;
 use collections::MutableSeq;

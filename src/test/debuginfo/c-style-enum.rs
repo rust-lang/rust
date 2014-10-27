@@ -101,7 +101,7 @@
 // lldb-command:print single_variant
 // lldb-check:[...]$6 = TheOnlyVariant
 
-#![allow(unused_variable)]
+#![allow(unused_variables)]
 #![allow(dead_code)]
 
 enum AutoDiscriminant {

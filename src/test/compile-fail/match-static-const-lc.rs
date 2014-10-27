@@ -11,9 +11,9 @@
 // Issue #7526: lowercase static constants in patterns look like bindings
 
 #![allow(dead_code)]
-#![deny(non_uppercase_statics)]
+#![deny(non_upper_case_globals)]
 
-#[allow(non_uppercase_statics)]
+#[allow(non_upper_case_globals)]
 pub const a : int = 97;
 
 fn f() {
@@ -26,7 +26,7 @@ fn f() {
 }
 
 mod m {
-    #[allow(non_uppercase_statics)]
+    #[allow(non_upper_case_globals)]
     pub const aha : int = 7;
 }
 

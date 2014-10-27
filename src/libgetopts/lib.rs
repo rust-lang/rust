@@ -89,7 +89,7 @@
        html_playground_url = "http://play.rust-lang.org/")]
 #![feature(globs, phase)]
 #![feature(import_shadowing)]
-#![deny(missing_doc)]
+#![deny(missing_docs)]
 
 #[cfg(test)] #[phase(plugin, link)] extern crate log;
 
@@ -201,7 +201,7 @@ pub enum Fail_ {
 
 /// The type of failure that occurred.
 #[deriving(PartialEq, Eq)]
-#[allow(missing_doc)]
+#[allow(missing_docs)]
 pub enum FailType {
     ArgumentMissing_,
     UnrecognizedOption_,

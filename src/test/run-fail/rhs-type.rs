@@ -13,7 +13,7 @@
 // error-pattern:bye
 
 #![allow(unreachable_code)]
-#![allow(unused_variable)]
+#![allow(unused_variables)]
 
 struct T { t: String }
 

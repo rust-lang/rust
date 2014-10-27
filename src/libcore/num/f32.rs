@@ -12,7 +12,7 @@
 
 #![doc(primitive = "f32")]
 // FIXME: MIN_VALUE and MAX_VALUE literals are parsed as -inf and inf #14353
-#![allow(type_overflow)]
+#![allow(overflowing_literals)]
 
 use intrinsics;
 use mem;

@@ -25,7 +25,7 @@
 // gdb-check:abc = 10
 // gdb-command:continue
 
-#![allow(unused_variable)]
+#![allow(unused_variables)]
 
 fn function_with_debuginfo() {
     let abc = 10u;

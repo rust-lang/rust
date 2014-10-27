@@ -9,13 +9,13 @@
 // except according to those terms.
 //
 
-#![deny(type_overflow)]
+#![deny(overflowing_literals)]
 
 fn test(x: i8) {
     println!("x {}", x);
 }
 
-#[allow(unused_variable)]
+#[allow(unused_variables)]
 fn main() {
     let x1: u8 = 255; // should be OK
     let x1: u8 = 256; //~ error: literal out of range for its type

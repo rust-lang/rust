@@ -32,7 +32,7 @@
 // lldb-command:print a
 // lldb-check:[...]$0 = [1, 2, 3]
 
-#![allow(unused_variable)]
+#![allow(unused_variables)]
 
 static mut VECT: [i32, ..3] = [1, 2, 3];
 

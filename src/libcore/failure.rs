@@ -28,7 +28,7 @@
 //! one function. Currently, the actual symbol is declared in the standard
 //! library, but the location of this may change over time.
 
-#![allow(dead_code, missing_doc)]
+#![allow(dead_code, missing_docs)]
 
 use fmt;
 use intrinsics;
@@ -57,7 +57,7 @@ fn fail_bounds_check(file_line: &(&'static str, uint),
 
 #[cold] #[inline(never)]
 pub fn fail_fmt(fmt: &fmt::Arguments, file_line: &(&'static str, uint)) -> ! {
-    #[allow(ctypes)]
+    #[allow(improper_ctypes)]
     extern {
         #[lang = "fail_fmt"]
         fn fail_impl(fmt: &fmt::Arguments, file: &'static str,

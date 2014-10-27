@@ -52,7 +52,7 @@
 #![allow(unknown_features)]
 #![feature(macro_rules, phase, slicing_syntax)]
 
-#![deny(missing_doc)]
+#![deny(missing_docs)]
 
 #[phase(plugin, link)] extern crate log;
 

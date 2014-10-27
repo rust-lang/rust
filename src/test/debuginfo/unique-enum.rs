@@ -43,7 +43,7 @@
 // lldb-command:print *univariant
 // lldb-check:[...]$2 = TheOnlyCase(123234)
 
-#![allow(unused_variable)]
+#![allow(unused_variables)]
 #![feature(struct_variant)]
 
 // The first element is to ensure proper alignment, irrespective of the machines word size. Since

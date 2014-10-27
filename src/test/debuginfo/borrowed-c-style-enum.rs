@@ -42,7 +42,7 @@
 // lldb-command:print *the_c_ref
 // lldb-check:[...]$2 = TheC
 
-#![allow(unused_variable)]
+#![allow(unused_variables)]
 
 enum ABC { TheA, TheB, TheC }
 

@@ -291,7 +291,7 @@ pub fn operator_prec(op: ast::BinOp) -> uint {
 
 /// Precedence of the `as` operator, which is a binary operator
 /// not appearing in the prior table.
-#[allow(non_uppercase_statics)]
+#[allow(non_upper_case_globals)]
 pub static as_prec: uint = 12u;
 
 pub fn empty_generics() -> Generics {

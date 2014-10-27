@@ -43,7 +43,7 @@
 // lldb-check:[...]$2 = (-17, -22)
 
 
-#![allow(unused_variable)]
+#![allow(unused_variables)]
 
 fn main() {
     let stack_val: (i16, f32) = (-14, -19f32);

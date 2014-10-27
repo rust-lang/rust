@@ -9,9 +9,9 @@
 // except according to those terms.
 
 #![no_std]
-#![allow(unused_variable)]
+#![allow(unused_variables)]
 #![allow(non_camel_case_types)]
-#![allow(non_uppercase_statics)]
+#![allow(non_upper_case_globals)]
 #![deny(dead_code)]
 
 #![crate_type="lib"]

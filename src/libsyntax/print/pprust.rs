@@ -89,10 +89,10 @@ pub fn rust_printer_annotated<'a>(writer: Box<io::Writer+'static>,
     }
 }
 
-#[allow(non_uppercase_statics)]
+#[allow(non_upper_case_globals)]
 pub const indent_unit: uint = 4u;
 
-#[allow(non_uppercase_statics)]
+#[allow(non_upper_case_globals)]
 pub const default_columns: uint = 78u;
 
 /// Requires you to pass an input filename and reader so that
