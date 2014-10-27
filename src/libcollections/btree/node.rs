@@ -53,7 +53,7 @@ pub struct Node<K, V> {
     // hard. For now, we accept this cost in the name of correctness and simplicity.
     //
     // As a compromise, keys and vals could be merged into one Vec<(K, V)>, which would shave
-    // off 3 words, but possibly hurt our cache effeciency during search, which only cares about
+    // off 3 words, but possibly hurt our cache efficiency during search, which only cares about
     // keys. This would also avoid the Zip we use in our iterator implementations. This is
     // probably worth investigating.
     //
@@ -72,7 +72,7 @@ impl<K: Ord, V> Node<K, V> {
     /// `GoDown` will be yielded with the index of the subtree the key must lie in.
     pub fn search(&self, key: &K) -> SearchResult {
         // FIXME(Gankro): Tune when to search linear or binary based on B (and maybe K/V).
-        // For the B configured as of this writing (B = 6), binary search was *singnificantly*
+        // For the B configured as of this writing (B = 6), binary search was *significantly*
         // worse for uints.
         self.search_linear(key)
     }
@@ -375,7 +375,7 @@ impl<K, V> Node<K, V> {
         }
     }
 
-    /// Steal! Stealing is roughly analagous to a binary tree rotation.
+    /// Steal! Stealing is roughly analogous to a binary tree rotation.
     /// In this case, we're "rotating" right.
     unsafe fn steal_to_left(&mut self, underflowed_child_index: uint) {
         // Take the biggest stuff off left
@@ -387,7 +387,7 @@ impl<K, V> Node<K, V> {
             }
         };
 
-        // Swap the parent's seperating key-value pair with left's
+        // Swap the parent's separating key-value pair with left's
         self.unsafe_swap(underflowed_child_index - 1, &mut key, &mut val);
 
         // Put them at the start of right
@@ -402,7 +402,7 @@ impl<K, V> Node<K, V> {
         }
     }
 
-    /// Steal! Stealing is roughly analagous to a binary tree rotation.
+    /// Steal! Stealing is roughly analogous to a binary tree rotation.
     /// In this case, we're "rotating" left.
     unsafe fn steal_to_right(&mut self, underflowed_child_index: uint) {
         // Take the smallest stuff off right
@@ -414,7 +414,7 @@ impl<K, V> Node<K, V> {
             }
         };
 
-        // Swap the parent's seperating key-value pair with right's
+        // Swap the parent's separating key-value pair with right's
         self.unsafe_swap(underflowed_child_index, &mut key, &mut val);
 
         // Put them at the end of left
@@ -430,9 +430,9 @@ impl<K, V> Node<K, V> {
     }
 
     /// Merge! Left and right will be smooshed into one node, along with the key-value
-    /// pair that seperated them in their parent.
+    /// pair that separated them in their parent.
     unsafe fn merge_children(&mut self, left_index: uint) {
-        // Permanently remove right's index, and the key-value pair that seperates
+        // Permanently remove right's index, and the key-value pair that separates
         // left and right
         let (key, val, right) = {
             match (self.keys.remove(left_index),
@@ -448,7 +448,7 @@ impl<K, V> Node<K, V> {
         left.absorb(key, val, right);
     }
 
-    /// Take all the values from right, seperated by the given key and value
+    /// Take all the values from right, separated by the given key and value
     fn absorb(&mut self, key: K, val: V, right: Node<K, V>) {
         // Just as a sanity check, make sure we can fit this guy in
         debug_assert!(self.len() + right.len() <= self.capacity())

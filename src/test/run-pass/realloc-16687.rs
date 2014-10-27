@@ -30,7 +30,7 @@ unsafe fn test_triangle() -> bool {
     let ascend = ascend.as_mut_slice();
     static ALIGN : uint = 1;
 
-    // Checks that `ascend` forms triangle of acending size formed
+    // Checks that `ascend` forms triangle of ascending size formed
     // from pairs of rows (where each pair of rows is equally sized),
     // and the elements of the triangle match their row-pair index.
     unsafe fn sanity_check(ascend: &[*mut u8]) {
