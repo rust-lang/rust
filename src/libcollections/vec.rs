@@ -231,7 +231,7 @@ impl<T> Vec<T> {
     ///         }
     ///
     ///         // Put everything back together into a Vec
-    ///         let rebuilt = Vec::from_raw_parts(len, cap, p);
+    ///         let rebuilt = Vec::from_raw_parts(p, len, cap);
     ///         assert_eq!(rebuilt, vec![4i, 5i, 6i]);
     ///     }
     /// }

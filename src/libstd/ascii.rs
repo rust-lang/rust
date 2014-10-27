@@ -259,9 +259,9 @@ impl OwnedAsciiCast for Vec<u8> {
 
     #[inline]
     unsafe fn into_ascii_nocheck(self) -> Vec<Ascii> {
-        let v = Vec::from_raw_parts(self.len(),
-                                    self.capacity(),
-                                    mem::transmute(self.as_ptr()));
+        let v = Vec::from_raw_parts(self.as_ptr() as *mut Ascii,
+                                    self.len(),
+                                    self.capacity());
 
         // We forget `self` to avoid freeing it at the end of the scope
         // Otherwise, the returned `Vec` would point to freed memory
@@ -345,9 +345,9 @@ pub trait IntoBytes {
 impl IntoBytes for Vec<Ascii> {
     fn into_bytes(self) -> Vec<u8> {
         unsafe {
-            let v = Vec::from_raw_parts(self.len(),
-                                        self.capacity(),
-                                        mem::transmute(self.as_ptr()));
+            let v = Vec::from_raw_parts(self.as_ptr() as *mut u8,
+                                        self.len(),
+                                        self.capacity());
 
             // We forget `self` to avoid freeing it at the end of the scope
             // Otherwise, the returned `Vec` would point to freed memory
