@@ -14,8 +14,8 @@ Rust has two main types of strings: `&str` and `String`.
 
 # &str
 
-The first kind is a `&str`. This is pronounced a 'string slice.' String literals
-are of the type `&str`:
+The first kind is a `&str`. This is pronounced a 'string slice'.
+String literals are of the type `&str`:
 
 ```{rust}
 let string = "Hello there.";
@@ -121,8 +121,8 @@ Both of these lines will print `12`.
 To compare a String to a constant string, prefer `as_slice()`...
 
 ```{rust}
-fn compare(string: String) {
-    if string.as_slice() == "Hello" {
+fn compare(x: String) {
+    if x.as_slice() == "Hello" {
         println!("yes");
     }
 }
@@ -131,8 +131,8 @@ fn compare(string: String) {
 ... over `to_string()`:
 
 ```{rust}
-fn compare(string: String) {
-    if string == "Hello".to_string() {
+fn compare(x: String) {
+    if x == "Hello".to_string() {
         println!("yes");
     }
 }
