@@ -9,6 +9,7 @@
 // except according to those terms.
 
 static X: uint = 0 as *const uint as uint;
+//~^ ERROR: can not cast a pointer to an integer in a constant expression
 
 fn main() {
     assert_eq!(X, 0);
