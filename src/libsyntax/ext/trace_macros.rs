@@ -20,10 +20,10 @@ pub fn expand_trace_macros(cx: &mut ExtCtxt,
                            tt: &[ast::TokenTree])
                            -> Box<base::MacResult+'static> {
     match tt {
-        [ast::TTTok(_, ref tok)] if is_keyword(keywords::True, tok) => {
+        [ast::TtToken(_, ref tok)] if is_keyword(keywords::True, tok) => {
             cx.set_trace_macros(true);
         }
-        [ast::TTTok(_, ref tok)] if is_keyword(keywords::False, tok) => {
+        [ast::TtToken(_, ref tok)] if is_keyword(keywords::False, tok) => {
             cx.set_trace_macros(false);
         }
         _ => cx.span_err(sp, "trace_macros! accepts only `true` or `false`"),

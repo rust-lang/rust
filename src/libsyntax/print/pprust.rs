@@ -1020,8 +1020,15 @@ impl<'a> State<'a> {
     /// expression arguments as expressions). It can be done! I think.
     pub fn print_tt(&mut self, tt: &ast::TokenTree) -> IoResult<()> {
         match *tt {
-            ast::TTDelim(ref tts) => self.print_tts(tts.as_slice()),
-            ast::TTTok(_, ref tk) => {
+            ast::TtDelimited(_, ref delimed) => {
+                let (ref open, ref tts, ref close) = **delimed;
+                try!(word(&mut self.s, parse::token::to_string(&open.token).as_slice()));
+                try!(space(&mut self.s));
+                try!(self.print_tts(tts.as_slice()));
+                try!(space(&mut self.s));
+                word(&mut self.s, parse::token::to_string(&close.token).as_slice())
+            },
+            ast::TtToken(_, ref tk) => {
                 try!(word(&mut self.s, parse::token::to_string(tk).as_slice()));
                 match *tk {
                     parse::token::DOC_COMMENT(..) => {
@@ -1030,22 +1037,25 @@ impl<'a> State<'a> {
                     _ => Ok(())
                 }
             }
-            ast::TTSeq(_, ref tts, ref sep, zerok) => {
+            ast::TtSequence(_, ref tts, ref separator, kleene_op) => {
                 try!(word(&mut self.s, "$("));
                 for tt_elt in (*tts).iter() {
                     try!(self.print_tt(tt_elt));
                 }
                 try!(word(&mut self.s, ")"));
-                match *sep {
+                match *separator {
                     Some(ref tk) => {
                         try!(word(&mut self.s,
                                   parse::token::to_string(tk).as_slice()));
                     }
                     None => ()
                 }
-                word(&mut self.s, if zerok { "*" } else { "+" })
+                match kleene_op {
+                    ast::ZeroOrMore => word(&mut self.s, "*"),
+                    ast::OneOrMore => word(&mut self.s, "+"),
+                }
             }
-            ast::TTNonterminal(_, name) => {
+            ast::TtNonterminal(_, name) => {
                 try!(word(&mut self.s, "$"));
                 self.print_ident(name)
             }

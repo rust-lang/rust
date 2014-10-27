@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use ast::{Ident, Matcher_, Matcher, MatchTok, MatchNonterminal, MatchSeq, TTDelim};
+use ast::{Ident, Matcher_, Matcher, MatchTok, MatchNonterminal, MatchSeq, TtDelimited};
 use ast;
 use codemap::{Span, Spanned, DUMMY_SP};
 use ext::base::{ExtCtxt, MacResult, MacroDef};
@@ -147,13 +147,9 @@ fn generic_extension<'cx>(cx: &'cx ExtCtxt,
                           rhses: &[Rc<NamedMatch>])
                           -> Box<MacResult+'cx> {
     if cx.trace_macros() {
-        println!("{}! {} {} {}",
+        println!("{}! {{ {} }}",
                  token::get_ident(name),
-                 "{",
-                 print::pprust::tt_to_string(&TTDelim(Rc::new(arg.iter()
-                                                              .map(|x| (*x).clone())
-                                                              .collect()))),
-                 "}");
+                 print::pprust::tts_to_string(arg));
     }
 
     // Which arm's failure should we report? (the one furthest along)
@@ -175,15 +171,12 @@ fn generic_extension<'cx>(cx: &'cx ExtCtxt,
                     // okay, what's your transcriber?
                     MatchedNonterminal(NtTT(ref tt)) => {
                         match **tt {
-                            // cut off delimiters; don't parse 'em
-                            TTDelim(ref tts) => {
-                                (*tts).slice(1u,(*tts).len()-1u)
-                                      .iter()
-                                      .map(|x| (*x).clone())
-                                      .collect()
-                            }
-                            _ => cx.span_fatal(
-                                sp, "macro rhs must be delimited")
+                            // ignore delimiters
+                            TtDelimited(_, ref delimed) => {
+                                let (_, ref tts, _) = **delimed;
+                                tts.clone()
+                            },
+                            _ => cx.span_fatal(sp, "macro rhs must be delimited"),
                         }
                     },
                     _ => cx.span_bug(sp, "bad thing in rhs")
@@ -239,10 +232,11 @@ pub fn add_new_extension<'cx>(cx: &'cx mut ExtCtxt,
         ms(MatchSeq(vec!(
             ms(MatchNonterminal(lhs_nm, special_idents::matchers, 0u)),
             ms(MatchTok(FAT_ARROW)),
-            ms(MatchNonterminal(rhs_nm, special_idents::tt, 1u))), Some(SEMI), false, 0u, 2u)),
+            ms(MatchNonterminal(rhs_nm, special_idents::tt, 1u))), Some(SEMI),
+                                ast::OneOrMore, 0u, 2u)),
         //to phase into semicolon-termination instead of
         //semicolon-separation
-        ms(MatchSeq(vec!(ms(MatchTok(SEMI))), None, true, 2u, 2u)));
+        ms(MatchSeq(vec!(ms(MatchTok(SEMI))), None, ast::ZeroOrMore, 2u, 2u)));
 
 
     // Parse the macro_rules! invocation (`none` is for no interpolations):
