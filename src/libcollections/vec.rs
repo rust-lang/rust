@@ -636,7 +636,9 @@ impl<T> Vec<T> {
         }
     }
 
-    /// Shrinks the capacity of the vector as much as possible.
+    /// Shrinks the capacity of the vector as much as possible. It will drop
+    /// down as close as possible to the length but the allocator may still
+    /// inform the vector that there is space for a few more elements.
     ///
     /// # Example
     ///
@@ -645,7 +647,7 @@ impl<T> Vec<T> {
     /// vec.push_all([1, 2, 3]);
     /// assert_eq!(vec.capacity(), 10);
     /// vec.shrink_to_fit();
-    /// assert_eq!(vec.capacity(), 3);
+    /// assert!(vec.capacity() >= 3);
     /// ```
     #[stable]
     pub fn shrink_to_fit(&mut self) {
