@@ -368,20 +368,20 @@ HOST_TRIPLE="${CFG_CPUTYPE}-${CFG_OSTYPE}"
 # Is this a triple we have nightlies for?
 case $HOST_TRIPLE in
 
-	x86_64-unknown-linux-gnu)
-		;;
+        x86_64-unknown-linux-gnu)
+                ;;
 
-	i686-unknown-linux-gnu)
-		;;
+        i686-unknown-linux-gnu)
+                ;;
 
-	x86_64-apple-darwin)
-		;;
+        x86_64-apple-darwin)
+                ;;
 
-	i686-apple-darwin)
-		;;
+        i686-apple-darwin)
+                ;;
 
-	*)
-		err "rustup.sh doesn't work for host $HOST_TRIPLE"
+        *)
+                err "rustup.sh doesn't work for host $HOST_TRIPLE"
 
 esac
 
@@ -414,8 +414,8 @@ msg "downloading rust installer"
 "${CFG_CURL}" "${REMOTE_TARBALL}" > "${LOCAL_TARBALL}"
 if [ $? -ne 0 ]
 then
-	rm -Rf "${TMP_DIR}"
-	err "failed to download installer"
+        rm -Rf "${TMP_DIR}"
+        err "failed to download installer"
 fi
 
 if [ -z "${CFG_DISABLE_CARGO}" ]; then
@@ -432,27 +432,27 @@ fi
 (cd "${TMP_DIR}" && tar xzf "${TARBALL_NAME}")
 if [ $? -ne 0 ]
 then
-	rm -Rf "${TMP_DIR}"
-	err "failed to unpack installer"
+        rm -Rf "${TMP_DIR}"
+        err "failed to unpack installer"
 fi
 
 MAYBE_UNINSTALL=
 if [ -n "${CFG_UNINSTALL}" ]
 then
-	MAYBE_UNINSTALL="--uninstall"
+        MAYBE_UNINSTALL="--uninstall"
 fi
 
 MAYBE_PREFIX=
 if [ -n "${CFG_PREFIX}" ]
 then
-	MAYBE_PREFIX="--prefix=${CFG_PREFIX}"
+        MAYBE_PREFIX="--prefix=${CFG_PREFIX}"
 fi
 
 sh "${LOCAL_INSTALL_SCRIPT}" "${MAYBE_UNINSTALL}" "${MAYBE_PREFIX}"
 if [ $? -ne 0 ]
 then
-	rm -Rf "${TMP_DIR}"
-	err "failed to install Rust"
+        rm -Rf "${TMP_DIR}"
+        err "failed to install Rust"
 fi
 
 if [ -z "${CFG_DISABLE_CARGO}" ]; then
