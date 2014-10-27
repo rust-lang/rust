@@ -87,7 +87,6 @@ pub enum categorization {
     cat_deref(cmt, uint, PointerKind), // deref of a ptr
     cat_interior(cmt, InteriorKind),   // something interior: field, tuple, etc
     cat_downcast(cmt),                 // selects a particular enum variant (*1)
-    cat_discr(cmt, ast::NodeId),       // match discriminant (see preserve())
 
     // (*1) downcast is only required if the enum has more than one variant
 }
@@ -1339,9 +1338,6 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
           cat_upvar(ref var) => {
               upvar_to_string(var, true)
           }
-          cat_discr(ref cmt, _) => {
-            self.cmt_to_string(&**cmt)
-          }
           cat_downcast(ref cmt) => {
             self.cmt_to_string(&**cmt)
           }
@@ -1379,7 +1375,6 @@ impl cmt_ {
                 Rc::new((*self).clone())
             }
             cat_downcast(ref b) |
-            cat_discr(ref b, _) |
             cat_interior(ref b, _) |
             cat_deref(ref b, _, OwnedPtr) => {
                 b.guarantor()
@@ -1404,8 +1399,7 @@ impl cmt_ {
             cat_deref(ref b, _, Implicit(ty::UniqueImmBorrow, _)) |
             cat_downcast(ref b) |
             cat_deref(ref b, _, OwnedPtr) |
-            cat_interior(ref b, _) |
-            cat_discr(ref b, _) => {
+            cat_interior(ref b, _) => {
                 // Aliasability depends on base cmt
                 b.freely_aliasable(ctxt)
             }
@@ -1489,9 +1483,6 @@ impl Repr for categorization {
             }
             cat_downcast(ref cmt) => {
                 format!("{}->(enum)", cmt.cat.repr(tcx))
-            }
-            cat_discr(ref cmt, _) => {
-                cmt.cat.repr(tcx)
             }
         }
     }
