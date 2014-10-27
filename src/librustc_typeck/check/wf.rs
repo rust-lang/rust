@@ -147,7 +147,9 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
                                                         item.span,
                                                         item.id,
                                                         Some(&mut this.cache));
-            for variant in &variants {
+            debug!("check_type_defn at bounds_checker.scope: {:?}", bounds_checker.scope);
+
+             for variant in &variants {
                 for field in &variant.fields {
                     // Regions are checked below.
                     bounds_checker.check_traits_in_ty(field.ty);
@@ -182,6 +184,7 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
                                                         item.span,
                                                         item.id,
                                                         Some(&mut this.cache));
+            debug!("check_item_type at bounds_checker.scope: {:?}", bounds_checker.scope);
 
             let type_scheme = ty::lookup_item_type(fcx.tcx(), local_def(item.id));
             let item_ty = fcx.instantiate_type_scheme(item.span,
@@ -200,6 +203,7 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
                                                         item.span,
                                                         item.id,
                                                         Some(&mut this.cache));
+            debug!("check_impl at bounds_checker.scope: {:?}", bounds_checker.scope);
 
             // Find the impl self type as seen from the "inside" --
             // that is, with all type parameters converted from bound

@@ -215,6 +215,9 @@ pub enum SubregionOrigin<'tcx> {
 
     // An auto-borrow that does not enclose the expr where it occurs
     AutoBorrow(Span),
+
+    // Region constraint arriving from destructor safety
+    SafeDestructor(Span),
 }
 
 /// Times when we replace late-bound regions with variables:
@@ -1197,6 +1200,7 @@ impl<'tcx> SubregionOrigin<'tcx> {
             CallReturn(a) => a,
             AddrOf(a) => a,
             AutoBorrow(a) => a,
+            SafeDestructor(a) => a,
         }
     }
 }
@@ -1259,6 +1263,7 @@ impl<'tcx> Repr<'tcx> for SubregionOrigin<'tcx> {
             CallReturn(a) => format!("CallReturn({})", a.repr(tcx)),
             AddrOf(a) => format!("AddrOf({})", a.repr(tcx)),
             AutoBorrow(a) => format!("AutoBorrow({})", a.repr(tcx)),
+            SafeDestructor(a) => format!("SafeDestructor({})", a.repr(tcx)),
         }
     }
 }
