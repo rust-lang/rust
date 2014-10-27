@@ -1398,6 +1398,8 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
             for upper_bound in upper_bounds.iter() {
                 if !self.is_subregion_of(lower_bound.region,
                                          upper_bound.region) {
+                    debug!("pushing SubSupConflict sub: {:?} sup: {:?}",
+                           lower_bound.region, upper_bound.region);
                     errors.push(SubSupConflict(
                         (*self.var_origins.borrow())[node_idx.index as uint].clone(),
                         lower_bound.origin.clone(),

@@ -118,6 +118,8 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
                                                         item.span,
                                                         region::CodeExtent::from_node_id(item.id),
                                                         Some(&mut this.cache));
+            debug!("check_type_defn at bounds_checker.scope: {:?}", bounds_checker.scope);
+
             for variant in variants.iter() {
                 for field in variant.fields.iter() {
                     // Regions are checked below.
@@ -153,6 +155,7 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
                                                         item.span,
                                                         region::CodeExtent::from_node_id(item.id),
                                                         Some(&mut this.cache));
+            debug!("check_item_type at bounds_checker.scope: {:?}", bounds_checker.scope);
 
             let type_scheme = ty::lookup_item_type(fcx.tcx(), local_def(item.id));
             let item_ty = fcx.instantiate_type_scheme(item.span,
@@ -167,12 +170,20 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
                   item: &ast::Item)
     {
         self.with_fcx(item, |this, fcx| {
+
+            // FIXME (pnkfelix): what is the "extent" of an item impl?
+            // This seems fundamentally different from the dynamic
+            // extent represented by a block or a function body.
+            //
+            // For now, just leaving as the default you get via
+            // `fn CodeExtent::from_node_id`.
             let item_scope = region::CodeExtent::from_node_id(item.id);
 
             let mut bounds_checker = BoundsChecker::new(fcx,
                                                         item.span,
                                                         item_scope,
                                                         Some(&mut this.cache));
+            debug!("check_impl at bounds_checker.scope: {:?}", bounds_checker.scope);
 
             // Find the impl self type as seen from the "inside" --
             // that is, with all type parameters converted from bound
@@ -420,8 +431,8 @@ impl<'cx,'tcx> TypeFolder<'tcx> for BoundsChecker<'cx,'tcx> {
     {
         self.binding_count += 1;
         let value = liberate_late_bound_regions(self.fcx.tcx(), self.scope, binder);
-        debug!("BoundsChecker::fold_binder: late-bound regions replaced: {}",
-               value.repr(self.tcx()));
+        debug!("BoundsChecker::fold_binder: late-bound regions replaced: {} at scope: {:?}",
+               value.repr(self.tcx()), self.scope);
         let value = value.fold_with(self);
         self.binding_count -= 1;
         ty::Binder(value)

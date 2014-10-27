@@ -242,7 +242,7 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
                     }
                 }
                 SubSupConflict(var_origin, _, sub_r, _, sup_r) => {
-                    debug!("processing SubSupConflict");
+                    debug!("processing SubSupConflict sub: {:?} sup: {:?}", sub_r, sup_r);
                     match free_regions_from_same_fn(self.tcx, sub_r, sup_r) {
                         Some(ref same_frs) => {
                             var_origins.push(var_origin);
@@ -719,6 +719,22 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
                     self.tcx,
                     "type is only valid for ",
                     sup,
+                    "");
+            }
+            infer::SafeDestructor(span) => {
+                self.tcx.sess.span_err(
+                    span,
+                    "unsafe use of destructor: destructor might be called \
+                     while references are dead");
+                note_and_explain_region(
+                    self.tcx,
+                    "superregion: ",
+                    sup,
+                    "");
+                note_and_explain_region(
+                    self.tcx,
+                    "subregion: ",
+                    sub,
                     "");
             }
             infer::BindingTypeIsNotValidAtDecl(span) => {
@@ -1640,6 +1656,12 @@ impl<'a, 'tcx> ErrorReportingHelpers<'tcx> for InferCtxt<'a, 'tcx> {
                     span,
                     &format!("...so that the declared lifetime parameter bounds \
                                 are satisfied")[]);
+            }
+            infer::SafeDestructor(span) => {
+                self.tcx.sess.span_note(
+                    span,
+                    "...so that references are valid when the destructor \
+                     runs")
             }
         }
     }

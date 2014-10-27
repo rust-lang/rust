@@ -126,6 +126,7 @@ use syntax::ptr::P;
 use syntax::visit::{self, Visitor};
 
 mod assoc;
+pub mod dropck;
 pub mod _match;
 pub mod vtable;
 pub mod writeback;
