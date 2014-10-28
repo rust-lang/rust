@@ -804,12 +804,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                                                           &candidates[i],
                                                                           &candidates[j]));
                 if is_dup {
-                    debug!("Dropping candidate #{}/#{}: {}",
+                    debug!("Dropping candidate #{}/{}: {}",
                            i, candidates.len(), candidates[i].repr(self.tcx()));
                     candidates.swap_remove(i);
                 } else {
-                    debug!("Retaining candidate #{}/#{}",
-                           i, candidates.len());
+                    debug!("Retaining candidate #{}/{}: {}",
+                           i, candidates.len(), candidates[i].repr(self.tcx()));
                     i += 1;
                 }
             }

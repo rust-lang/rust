@@ -3493,6 +3493,11 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
             ast::FnOnceUnboxedClosureKind => ty::FnOnceUnboxedClosureKind,
         };
 
+        debug!("unboxed_closure for {} --> sig={} kind={}",
+               local_def(expr.id).repr(fcx.tcx()),
+               fn_ty.sig.repr(fcx.tcx()),
+               kind);
+
         let unboxed_closure = ty::UnboxedClosure {
             closure_type: fn_ty,
             kind: kind,
