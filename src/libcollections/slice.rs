@@ -89,6 +89,7 @@
 
 use alloc::boxed::Box;
 use core::cmp;
+use core::kinds::Sized;
 use core::mem::size_of;
 use core::mem;
 use core::prelude::{Clone, Collection, Greater, Iterator, Less, None, Option};
@@ -109,7 +110,7 @@ pub use core::slice::{Found, NotFound};
 // Functional utilities
 
 #[allow(missing_doc)]
-pub trait VectorVector<T> {
+pub trait VectorVector<T> for Sized? {
     // FIXME #5898: calling these .concat and .connect conflicts with
     // StrVector::con{cat,nect}, since they have generic contents.
     /// Flattens a vector of vectors of `T` into a single `Vec<T>`.
@@ -119,7 +120,7 @@ pub trait VectorVector<T> {
     fn connect_vec(&self, sep: &T) -> Vec<T>;
 }
 
-impl<'a, T: Clone, V: AsSlice<T>> VectorVector<T> for &'a [V] {
+impl<T: Clone, V: AsSlice<T>> VectorVector<T> for [V] {
     fn concat_vec(&self) -> Vec<T> {
         let size = self.iter().fold(0u, |acc, v| acc + v.as_slice().len());
         let mut result = Vec::with_capacity(size);
@@ -267,17 +268,17 @@ impl<T: Clone> Iterator<Vec<T>> for Permutations<T> {
 }
 
 /// Extension methods for vector slices with cloneable elements
-pub trait CloneableVector<T> {
+pub trait CloneableVector<T> for Sized? {
     /// Copies `self` into a new `Vec`.
     fn to_vec(&self) -> Vec<T>;
 }
 
-impl<'a, T: Clone> CloneableVector<T> for &'a [T] {
+impl<T: Clone> CloneableVector<T> for [T] {
     /// Returns a copy of `v`.
     #[inline]
     fn to_vec(&self) -> Vec<T> {
         let mut vector = Vec::with_capacity(self.len());
-        vector.push_all(*self);
+        vector.push_all(self);
         vector
     }
 }
@@ -300,7 +301,7 @@ impl<T> BoxedSlice<T> for Box<[T]> {
 }
 
 /// Extension methods for vectors containing `Clone` elements.
-pub trait ImmutableCloneableVector<T> {
+pub trait ImmutableCloneableVector<T> for Sized? {
     /// Partitions the vector into two vectors `(a, b)`, where all
     /// elements of `a` satisfy `f` and all elements of `b` do not.
     fn partitioned(&self, f: |&T| -> bool) -> (Vec<T>, Vec<T>);
@@ -329,10 +330,10 @@ pub trait ImmutableCloneableVector<T> {
     /// assert_eq!(Some(vec![1i, 3, 2]), perms.next());
     /// assert_eq!(Some(vec![3i, 1, 2]), perms.next());
     /// ```
-    fn permutations(self) -> Permutations<T>;
+    fn permutations(&self) -> Permutations<T>;
 }
 
-impl<'a,T:Clone> ImmutableCloneableVector<T> for &'a [T] {
+impl<T: Clone> ImmutableCloneableVector<T> for [T] {
     #[inline]
     fn partitioned(&self, f: |&T| -> bool) -> (Vec<T>, Vec<T>) {
         let mut lefts  = Vec::new();
@@ -350,7 +351,7 @@ impl<'a,T:Clone> ImmutableCloneableVector<T> for &'a [T] {
     }
 
     /// Returns an iterator over all permutations of a vector.
-    fn permutations(self) -> Permutations<T> {
+    fn permutations(&self) -> Permutations<T> {
         Permutations{
             swaps: ElementSwaps::new(self.len()),
             v: self.to_vec(),
@@ -564,7 +565,7 @@ fn merge_sort<T>(v: &mut [T], compare: |&T, &T| -> Ordering) {
 
 /// Extension methods for vectors such that their elements are
 /// mutable.
-pub trait MutableSliceAllocating<'a, T> {
+pub trait MutableSliceAllocating<T> for Sized? {
     /// Sorts the slice, in place, using `compare` to compare
     /// elements.
     ///
@@ -582,7 +583,7 @@ pub trait MutableSliceAllocating<'a, T> {
     /// v.sort_by(|a, b| b.cmp(a));
     /// assert!(v == [5, 4, 3, 2, 1]);
     /// ```
-    fn sort_by(self, compare: |&T, &T| -> Ordering);
+    fn sort_by(&mut self, compare: |&T, &T| -> Ordering);
 
     /// Consumes `src` and moves as many elements as it can into `self`
     /// from the range [start,end).
@@ -605,17 +606,17 @@ pub trait MutableSliceAllocating<'a, T> {
     /// assert_eq!(num_moved, 3);
     /// assert!(a == [6i, 7, 8, 4, 5]);
     /// ```
-    fn move_from(self, src: Vec<T>, start: uint, end: uint) -> uint;
+    fn move_from(&mut self, src: Vec<T>, start: uint, end: uint) -> uint;
 }
 
-impl<'a,T> MutableSliceAllocating<'a, T> for &'a mut [T] {
+impl<T> MutableSliceAllocating<T> for [T] {
     #[inline]
-    fn sort_by(self, compare: |&T, &T| -> Ordering) {
+    fn sort_by(&mut self, compare: |&T, &T| -> Ordering) {
         merge_sort(self, compare)
     }
 
     #[inline]
-    fn move_from(self, mut src: Vec<T>, start: uint, end: uint) -> uint {
+    fn move_from(&mut self, mut src: Vec<T>, start: uint, end: uint) -> uint {
         for (a, b) in self.iter_mut().zip(src[mut start..end].iter_mut()) {
             mem::swap(a, b);
         }
@@ -625,7 +626,7 @@ impl<'a,T> MutableSliceAllocating<'a, T> for &'a mut [T] {
 
 /// Methods for mutable vectors with orderable elements, such as
 /// in-place sorting.
-pub trait MutableOrdSlice<T> {
+pub trait MutableOrdSlice<T> for Sized? {
     /// Sorts the slice, in place.
     ///
     /// This is equivalent to `self.sort_by(|a, b| a.cmp(b))`.
@@ -638,7 +639,7 @@ pub trait MutableOrdSlice<T> {
     /// v.sort();
     /// assert!(v == [-5i, -3, 1, 2, 4]);
     /// ```
-    fn sort(self);
+    fn sort(&mut self);
 
     /// Mutates the slice to the next lexicographic permutation.
     ///
@@ -656,7 +657,7 @@ pub trait MutableOrdSlice<T> {
     /// let b: &mut [_] = &mut [1i, 0, 2];
     /// assert!(v == b);
     /// ```
-    fn next_permutation(self) -> bool;
+    fn next_permutation(&mut self) -> bool;
 
     /// Mutates the slice to the previous lexicographic permutation.
     ///
@@ -674,16 +675,16 @@ pub trait MutableOrdSlice<T> {
     /// let b: &mut [_] = &mut [0i, 1, 2];
     /// assert!(v == b);
     /// ```
-    fn prev_permutation(self) -> bool;
+    fn prev_permutation(&mut self) -> bool;
 }
 
-impl<'a, T: Ord> MutableOrdSlice<T> for &'a mut [T] {
+impl<T: Ord> MutableOrdSlice<T> for [T] {
     #[inline]
-    fn sort(self) {
-        self.sort_by(|a,b| a.cmp(b))
+    fn sort(&mut self) {
+        self.sort_by(|a, b| a.cmp(b))
     }
 
-    fn next_permutation(self) -> bool {
+    fn next_permutation(&mut self) -> bool {
         // These cases only have 1 permutation each, so we can't do anything.
         if self.len() < 2 { return false; }
 
@@ -713,7 +714,7 @@ impl<'a, T: Ord> MutableOrdSlice<T> for &'a mut [T] {
         true
     }
 
-    fn prev_permutation(self) -> bool {
+    fn prev_permutation(&mut self) -> bool {
         // These cases only have 1 permutation each, so we can't do anything.
         if self.len() < 2 { return false; }
 

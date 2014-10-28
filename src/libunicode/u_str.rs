@@ -21,6 +21,7 @@ use core::clone::Clone;
 use core::cmp;
 use core::collections::Collection;
 use core::iter::{Filter, AdditiveIterator, Iterator, DoubleEndedIterator};
+use core::kinds::Sized;
 use core::option::{Option, None, Some};
 use core::str::{CharSplits, StrSlice};
 use u_char;
@@ -32,7 +33,7 @@ pub type Words<'a> =
     Filter<'a, &'a str, CharSplits<'a, extern "Rust" fn(char) -> bool>>;
 
 /// Methods for Unicode string slices
-pub trait UnicodeStrSlice<'a> {
+pub trait UnicodeStrSlice for Sized? {
     /// Returns an iterator over the
     /// [grapheme clusters](http://www.unicode.org/reports/tr29/#Grapheme_Cluster_Boundaries)
     /// of the string.
@@ -52,7 +53,7 @@ pub trait UnicodeStrSlice<'a> {
     /// let b: &[_] = &["a", "\r\n", "b", "🇷🇺🇸🇹"];
     /// assert_eq!(gr2.as_slice(), b);
     /// ```
-    fn graphemes(&self, is_extended: bool) -> Graphemes<'a>;
+    fn graphemes<'a>(&'a self, is_extended: bool) -> Graphemes<'a>;
 
     /// Returns an iterator over the grapheme clusters of self and their byte offsets.
     /// See `graphemes()` method for more information.
@@ -64,7 +65,7 @@ pub trait UnicodeStrSlice<'a> {
     /// let b: &[_] = &[(0u, "a̐"), (3, "é"), (6, "ö̲"), (11, "\r\n")];
     /// assert_eq!(gr_inds.as_slice(), b);
     /// ```
-    fn grapheme_indices(&self, is_extended: bool) -> GraphemeIndices<'a>;
+    fn grapheme_indices<'a>(&'a self, is_extended: bool) -> GraphemeIndices<'a>;
 
     /// An iterator over the words of a string (subsequences separated
     /// by any sequence of whitespace). Sequences of whitespace are
@@ -77,7 +78,7 @@ pub trait UnicodeStrSlice<'a> {
     /// let v: Vec<&str> = some_words.words().collect();
     /// assert_eq!(v, vec!["Mary", "had", "a", "little", "lamb"]);
     /// ```
-    fn words(&self) -> Words<'a>;
+    fn words<'a>(&'a self) -> Words<'a>;
 
     /// Returns true if the string contains only whitespace.
     ///
@@ -120,28 +121,28 @@ pub trait UnicodeStrSlice<'a> {
     fn width(&self, is_cjk: bool) -> uint;
 
     /// Returns a string with leading and trailing whitespace removed.
-    fn trim(&self) -> &'a str;
+    fn trim<'a>(&'a self) -> &'a str;
 
     /// Returns a string with leading whitespace removed.
-    fn trim_left(&self) -> &'a str;
+    fn trim_left<'a>(&'a self) -> &'a str;
 
     /// Returns a string with trailing whitespace removed.
-    fn trim_right(&self) -> &'a str;
+    fn trim_right<'a>(&'a self) -> &'a str;
 }
 
-impl<'a> UnicodeStrSlice<'a> for &'a str {
+impl UnicodeStrSlice for str {
     #[inline]
-    fn graphemes(&self, is_extended: bool) -> Graphemes<'a> {
-        Graphemes { string: *self, extended: is_extended, cat: None, catb: None }
+    fn graphemes(&self, is_extended: bool) -> Graphemes {
+        Graphemes { string: self, extended: is_extended, cat: None, catb: None }
     }
 
     #[inline]
-    fn grapheme_indices(&self, is_extended: bool) -> GraphemeIndices<'a> {
+    fn grapheme_indices(&self, is_extended: bool) -> GraphemeIndices {
         GraphemeIndices { start_offset: self.as_ptr() as uint, iter: self.graphemes(is_extended) }
     }
 
     #[inline]
-    fn words(&self) -> Words<'a> {
+    fn words(&self) -> Words {
         self.split(u_char::is_whitespace).filter(|s| !s.is_empty())
     }
 
@@ -157,17 +158,17 @@ impl<'a> UnicodeStrSlice<'a> for &'a str {
     }
 
     #[inline]
-    fn trim(&self) -> &'a str {
+    fn trim(&self) -> &str {
         self.trim_left().trim_right()
     }
 
     #[inline]
-    fn trim_left(&self) -> &'a str {
+    fn trim_left(&self) -> &str {
         self.trim_left_chars(u_char::is_whitespace)
     }
 
     #[inline]
-    fn trim_right(&self) -> &'a str {
+    fn trim_right(&self) -> &str {
         self.trim_right_chars(u_char::is_whitespace)
     }
 }
