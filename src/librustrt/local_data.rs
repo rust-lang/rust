@@ -354,6 +354,7 @@ impl TLDValue {
         let box_ptr = unsafe {
             let allocation = heap::allocate(mem::size_of::<TLDValueBox<T>>(),
                                             mem::min_align_of::<TLDValueBox<T>>());
+            if allocation.is_null() { ::alloc::oom() }
             let value_box = allocation as *mut TLDValueBox<T>;
             ptr::write(value_box, TLDValueBox {
                 value: value,
