@@ -86,7 +86,7 @@ impl<'v> Visitor<'v> for Annotator {
                 }
             }
 
-            TypeTraitItem(ref typedef) => (typedef.id, &typedef.attrs),
+            TypeTraitItem(ref typedef) => (typedef.ty_param.id, &typedef.attrs),
         };
         self.annotate(id, attrs, |v| visit::walk_trait_item(v, t));
     }

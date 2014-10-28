@@ -405,7 +405,9 @@ impl<'ast> Map<'ast> {
                         MethMac(_) => panic!("no path elem for {}", node),
                     }
                 }
-                TypeTraitItem(ref m) => PathName(m.ident.name),
+                TypeTraitItem(ref m) => {
+                    PathName(m.ty_param.ident.name)
+                }
             },
             NodeVariant(v) => PathName(v.node.name.name),
             _ => panic!("no path elem for {}", node)
@@ -510,7 +512,7 @@ impl<'ast> Map<'ast> {
                 match *trait_method {
                     RequiredMethod(ref type_method) => type_method.span,
                     ProvidedMethod(ref method) => method.span,
-                    TypeTraitItem(ref typedef) => typedef.span,
+                    TypeTraitItem(ref typedef) => typedef.ty_param.span,
                 }
             }
             Some(NodeImplItem(ref impl_item)) => {
@@ -650,7 +652,7 @@ impl Named for TraitItem {
         match *self {
             RequiredMethod(ref tm) => tm.ident.name,
             ProvidedMethod(ref m) => m.name(),
-            TypeTraitItem(ref at) => at.ident.name,
+            TypeTraitItem(ref at) => at.ty_param.ident.name,
         }
     }
 }
@@ -783,7 +785,7 @@ impl<'ast> Visitor<'ast> for NodeCollector<'ast> {
                             self.insert(m.id, NodeTraitItem(tm));
                         }
                         TypeTraitItem(ref typ) => {
-                            self.insert(typ.id, NodeTraitItem(tm));
+                            self.insert(typ.ty_param.id, NodeTraitItem(tm));
                         }
                     }
                 }
@@ -976,7 +978,7 @@ pub fn map_decoded_item<'ast, F: FoldOps>(map: &Map<'ast>,
             let trait_item_id = match *trait_item {
                 ProvidedMethod(ref m) => m.id,
                 RequiredMethod(ref m) => m.id,
-                TypeTraitItem(ref ty) => ty.id,
+                TypeTraitItem(ref ty) => ty.ty_param.id,
             };
 
             collector.insert(trait_item_id, NodeTraitItem(trait_item));
@@ -1080,7 +1082,7 @@ fn node_id_to_string(map: &Map, id: NodeId) -> String {
                 }
                 TypeTraitItem(ref t) => {
                     format!("type item {} in {} (id={})",
-                            token::get_ident(t.ident),
+                            token::get_ident(t.ty_param.ident),
                             map.path_to_string(id),
                             id)
                 }

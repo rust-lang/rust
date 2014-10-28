@@ -81,7 +81,7 @@ pub fn encode_inlined_item(ecx: &e::EncodeContext,
         e::IIForeignRef(i) => i.id,
         e::IITraitItemRef(_, &ast::ProvidedMethod(ref m)) => m.id,
         e::IITraitItemRef(_, &ast::RequiredMethod(ref m)) => m.id,
-        e::IITraitItemRef(_, &ast::TypeTraitItem(ref ti)) => ti.id,
+        e::IITraitItemRef(_, &ast::TypeTraitItem(ref ti)) => ti.ty_param.id,
         e::IIImplItemRef(_, &ast::MethodImplItem(ref m)) => m.id,
         e::IIImplItemRef(_, &ast::TypeImplItem(ref ti)) => ti.id,
     };
@@ -156,7 +156,7 @@ pub fn decode_inlined_item<'tcx>(cdata: &cstore::crate_metadata,
                 match *ti {
                     ast::ProvidedMethod(ref m) => m.pe_ident(),
                     ast::RequiredMethod(ref ty_m) => ty_m.ident,
-                    ast::TypeTraitItem(ref ti) => ti.ident,
+                    ast::TypeTraitItem(ref ti) => ti.ty_param.ident,
                 }
             },
             ast::IIImplItem(_, ref m) => {

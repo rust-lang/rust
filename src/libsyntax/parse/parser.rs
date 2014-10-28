@@ -1229,16 +1229,13 @@ impl<'a> Parser<'a> {
     /// Parses `type Foo;` in a trait declaration only. The `type` keyword has
     /// already been parsed.
     fn parse_associated_type(&mut self, attrs: Vec<Attribute>)
-                             -> AssociatedType {
-        let lo = self.span.lo;
-        let ident = self.parse_ident();
-        let hi = self.span.hi;
+                             -> AssociatedType
+    {
+        let ty_param = self.parse_ty_param();
         self.expect(&token::Semi);
         AssociatedType {
-            id: ast::DUMMY_NODE_ID,
-            span: mk_sp(lo, hi),
-            ident: ident,
             attrs: attrs,
+            ty_param: ty_param,
         }
     }
 

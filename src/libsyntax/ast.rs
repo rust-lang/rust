@@ -861,10 +861,8 @@ pub enum ImplItem {
 
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
 pub struct AssociatedType {
-    pub id: NodeId,
-    pub span: Span,
-    pub ident: Ident,
     pub attrs: Vec<Attribute>,
+    pub ty_param: TyParam,
 }
 
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
