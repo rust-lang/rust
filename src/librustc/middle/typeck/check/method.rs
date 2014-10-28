@@ -1082,7 +1082,7 @@ impl<'a, 'tcx> LookupContext<'a, 'tcx> {
             ty_bare_fn(..) | ty_uniq(..) | ty_rptr(..) |
             ty_infer(IntVar(_)) |
             ty_infer(FloatVar(_)) |
-            ty_param(..) | ty_nil | ty_bot | ty_bool |
+            ty_param(..) | ty_nil | ty_bool |
             ty_char | ty_int(..) | ty_uint(..) |
             ty_float(..) | ty_enum(..) | ty_ptr(..) | ty_struct(..) |
             ty_unboxed_closure(..) | ty_tup(..) | ty_open(..) |
@@ -1603,8 +1603,10 @@ impl<'a, 'tcx> LookupContext<'a, 'tcx> {
                 return false;
             }
         }
-        if !check_for_self_ty(sig.output) {
-            return false;
+        if let ty::FnConverging(result_type) = sig.output {
+            if !check_for_self_ty(result_type) {
+                return false;
+            }
         }
 
         if candidate.method_ty.generics.has_type_params(subst::FnSpace) {

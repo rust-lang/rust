@@ -381,7 +381,7 @@ fn check_main_fn_ty(ccx: &CrateCtxt,
                 sig: ty::FnSig {
                     binder_id: main_id,
                     inputs: Vec::new(),
-                    output: ty::mk_nil(),
+                    output: ty::FnConverging(ty::mk_nil()),
                     variadic: false
                 }
             });
@@ -433,7 +433,7 @@ fn check_start_fn_ty(ccx: &CrateCtxt,
                         ty::mk_int(),
                         ty::mk_imm_ptr(tcx, ty::mk_imm_ptr(tcx, ty::mk_u8()))
                     ),
-                    output: ty::mk_int(),
+                    output: ty::FnConverging(ty::mk_int()),
                     variadic: false
                 }
             });

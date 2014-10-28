@@ -149,12 +149,12 @@ pub fn trans_intrinsic_call<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>, node: ast::N
         ty::ty_bare_fn(ref f) => f.sig.output,
         _ => fail!("expected bare_fn in trans_intrinsic_call")
     };
-    let llret_ty = type_of::type_of(ccx, ret_ty);
     let foreign_item = tcx.map.expect_foreign_item(node);
     let name = token::get_ident(foreign_item.ident);
 
     // For `transmute` we can just trans the input expr directly into dest
     if name.get() == "transmute" {
+        let llret_ty = type_of::type_of(ccx, ret_ty.unwrap());
         match args {
             callee::ArgExprs(arg_exprs) => {
                 assert_eq!(arg_exprs.len(), 1);
@@ -192,6 +192,36 @@ pub fn trans_intrinsic_call<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>, node: ast::N
         }
     }
 
+    // Push the arguments.
+    let mut llargs = Vec::new();
+    bcx = callee::trans_args(bcx,
+                             args,
+                             callee_ty,
+                             &mut llargs,
+                             cleanup::CustomScope(cleanup_scope),
+                             false,
+                             RustIntrinsic);
+
+    fcx.pop_custom_cleanup_scope(cleanup_scope);
+
+    // These are the only intrinsic functions that diverge.
+    if name.get() == "abort" {
+        let llfn = ccx.get_intrinsic(&("llvm.trap"));
+        Call(bcx, llfn, [], None);
+        Unreachable(bcx);
+        return Result::new(bcx, C_undef(Type::nil(ccx).ptr_to()));
+    } else if name.get() == "unreachable" {
+        Unreachable(bcx);
+        return Result::new(bcx, C_nil(ccx));
+    }
+
+    let ret_ty = match ret_ty {
+        ty::FnConverging(ret_ty) => ret_ty,
+        ty::FnDiverging => unreachable!()
+    };
+
+    let llret_ty = type_of::type_of(ccx, ret_ty);
+
     // Get location to store the result. If the user does
     // not care about the result, just make a stack slot
     let llresult = match dest {
@@ -205,33 +235,10 @@ pub fn trans_intrinsic_call<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>, node: ast::N
         }
     };
 
-    // Push the arguments.
-    let mut llargs = Vec::new();
-    bcx = callee::trans_args(bcx,
-                             args,
-                             callee_ty,
-                             &mut llargs,
-                             cleanup::CustomScope(cleanup_scope),
-                             false,
-                             RustIntrinsic);
-
-    fcx.pop_custom_cleanup_scope(cleanup_scope);
-
     let simple = get_simple_intrinsic(ccx, &*foreign_item);
-
     let llval = match (simple, name.get()) {
         (Some(llfn), _) => {
             Call(bcx, llfn, llargs.as_slice(), None)
-        }
-        (_, "abort") => {
-            let llfn = ccx.get_intrinsic(&("llvm.trap"));
-            let v = Call(bcx, llfn, [], None);
-            Unreachable(bcx);
-            v
-        }
-        (_, "unreachable") => {
-            Unreachable(bcx);
-            C_nil(ccx)
         }
         (_, "breakpoint") => {
             let llfn = ccx.get_intrinsic(&("llvm.debugtrap"));

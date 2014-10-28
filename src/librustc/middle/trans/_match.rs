@@ -1462,15 +1462,11 @@ pub fn store_local<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             // General path.
             let init_datum =
                 unpack_datum!(bcx, expr::trans_to_lvalue(bcx, &**init_expr, "let"));
-            if ty::type_is_bot(expr_ty(bcx, &**init_expr)) {
-                create_dummy_locals(bcx, pat)
-            } else {
-                if bcx.sess().asm_comments() {
-                    add_comment(bcx, "creating zeroable ref llval");
-                }
-                let var_scope = cleanup::var_scope(tcx, local.id);
-                bind_irrefutable_pat(bcx, pat, init_datum.val, var_scope)
+            if bcx.sess().asm_comments() {
+                add_comment(bcx, "creating zeroable ref llval");
             }
+            let var_scope = cleanup::var_scope(tcx, local.id);
+            bind_irrefutable_pat(bcx, pat, init_datum.val, var_scope)
         }
         None => {
             create_dummy_locals(bcx, pat)

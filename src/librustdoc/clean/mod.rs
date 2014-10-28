@@ -880,6 +880,15 @@ impl Clean<FnDecl> for ast::FnDecl {
     }
 }
 
+impl<'a> Clean<Type> for ty::FnOutput {
+    fn clean(&self, cx: &DocContext) -> Type {
+        match *self {
+            ty::FnConverging(ty) => ty.clean(cx),
+            ty::FnDiverging => Bottom
+        }
+    }
+}
+
 impl<'a> Clean<FnDecl> for (ast::DefId, &'a ty::FnSig) {
     fn clean(&self, cx: &DocContext) -> FnDecl {
         let (did, sig) = *self;
@@ -1258,7 +1267,6 @@ impl Clean<Type> for ast::Ty {
 impl Clean<Type> for ty::t {
     fn clean(&self, cx: &DocContext) -> Type {
         match ty::get(*self).sty {
-            ty::ty_bot => Bottom,
             ty::ty_nil => Primitive(Unit),
             ty::ty_bool => Primitive(Bool),
             ty::ty_char => Primitive(Char),

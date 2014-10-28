@@ -74,7 +74,7 @@ pub fn type_is_immediate(ccx: &CrateContext, ty: ty::t) -> bool {
     let tcx = ccx.tcx();
     let simple = ty::type_is_scalar(ty) ||
         ty::type_is_unique(ty) || ty::type_is_region_ptr(ty) ||
-        type_is_newtype_immediate(ccx, ty) || ty::type_is_bot(ty) ||
+        type_is_newtype_immediate(ccx, ty) ||
         ty::type_is_simd(tcx, ty);
     if simple && !ty::type_is_fat_ptr(tcx, ty) {
         return true;
@@ -83,7 +83,6 @@ pub fn type_is_immediate(ccx: &CrateContext, ty: ty::t) -> bool {
         return false;
     }
     match ty::get(ty).sty {
-        ty::ty_bot => true,
         ty::ty_struct(..) | ty::ty_enum(..) | ty::ty_tup(..) |
         ty::ty_unboxed_closure(..) => {
             let llty = sizing_type_of(ccx, ty);
@@ -113,7 +112,7 @@ pub fn return_type_is_void(ccx: &CrateContext, ty: ty::t) -> bool {
      * return type (in order to aid with C ABI compatibility).
      */
 
-    ty::type_is_nil(ty) || ty::type_is_bot(ty) || ty::type_is_empty(ccx.tcx(), ty)
+    ty::type_is_nil(ty) || ty::type_is_empty(ccx.tcx(), ty)
 }
 
 /// Generates a unique symbol based off the name given. This is used to create
@@ -217,7 +216,7 @@ pub trait SubstP {
               -> Self;
 }
 
-impl<T:Subst+Clone> SubstP for T {
+impl<T: Subst + Clone> SubstP for T {
     fn substp(&self, tcx: &ty::ctxt, substs: &param_substs) -> T {
         self.subst(tcx, &substs.substs)
     }
@@ -343,9 +342,12 @@ impl<'a, 'tcx> FunctionContext<'a, 'tcx> {
         self.llreturn.get().unwrap()
     }
 
-    pub fn get_ret_slot(&self, bcx: Block, ty: ty::t, name: &str) -> ValueRef {
+    pub fn get_ret_slot(&self, bcx: Block, output: ty::FnOutput, name: &str) -> ValueRef {
         if self.needs_ret_allocas {
-            base::alloca_no_lifetime(bcx, type_of::type_of(bcx.ccx(), ty), name)
+            base::alloca_no_lifetime(bcx, match output {
+                ty::FnConverging(output_type) => type_of::type_of(bcx.ccx(), output_type),
+                ty::FnDiverging => Type::void(bcx.ccx())
+            }, name)
         } else {
             self.llretslotptr.get().unwrap()
         }

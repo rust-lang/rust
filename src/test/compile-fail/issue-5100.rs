@@ -27,13 +27,13 @@ fn main() {
 
     match (true, false) {
         box (true, false) => ()
-        //~^ ERROR mismatched types: expected `(bool,bool)`, found `Box<<generic #11>>`
+        //~^ ERROR mismatched types: expected `(bool,bool)`, found `Box<<generic #15>>`
         //         (expected tuple, found box)
     }
 
     match (true, false) {
         &(true, false) => ()
-        //~^ ERROR mismatched types: expected `(bool,bool)`, found `&<generic #15>`
+        //~^ ERROR mismatched types: expected `(bool,bool)`, found `&<generic #21>`
         //         (expected tuple, found &-ptr)
     }
 

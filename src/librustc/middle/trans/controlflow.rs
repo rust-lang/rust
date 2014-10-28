@@ -296,7 +296,7 @@ pub fn trans_for<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                                      .borrow())[method_call]
                                      .ty;
     let method_type = monomorphize_type(loopback_bcx_in, method_type);
-    let method_result_type = ty::ty_fn_ret(method_type);
+    let method_result_type = ty::ty_fn_ret(method_type).unwrap();
     let option_cleanup_scope = body_bcx_in.fcx.push_custom_cleanup_scope();
     let option_cleanup_scope_id = cleanup::CustomScope(option_cleanup_scope);
 
@@ -402,10 +402,6 @@ pub fn trans_loop<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
     fcx.pop_loop_cleanup_scope(loop_id);
 
-    if ty::type_is_bot(node_id_type(bcx, loop_id)) {
-        Unreachable(next_bcx_in);
-    }
-
     return next_bcx_in;
 }
 
@@ -465,7 +461,7 @@ pub fn trans_ret<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let dest = match (fcx.llretslotptr.get(), e) {
         (Some(_), Some(e)) => {
             let ret_ty = expr_ty(bcx, &*e);
-            expr::SaveIn(fcx.get_ret_slot(bcx, ret_ty, "ret_slot"))
+            expr::SaveIn(fcx.get_ret_slot(bcx, ty::FnConverging(ret_ty), "ret_slot"))
         }
         _ => expr::Ignore,
     };

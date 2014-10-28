@@ -205,7 +205,8 @@ impl<'a, 'tcx> ResolveState<'a, 'tcx> {
 
     pub fn resolve_ty_var(&mut self, vid: TyVid) -> ty::t {
         let tcx = self.infcx.tcx;
-        let t1 = match self.infcx.type_variables.borrow().probe(vid) {
+        let tv = self.infcx.type_variables.borrow();
+        match tv.probe(vid) {
             Some(t) => {
                 self.resolve_type(t)
             }
@@ -215,8 +216,7 @@ impl<'a, 'tcx> ResolveState<'a, 'tcx> {
                 }
                 ty::mk_var(tcx, vid)
             }
-        };
-        return t1;
+        }
     }
 
     pub fn resolve_int_var(&mut self, vid: IntVid) -> ty::t {

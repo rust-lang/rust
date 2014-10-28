@@ -98,7 +98,7 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
                                                 &polytype.generics,
                                                 item.id);
         let inh = Inherited::new(ccx.tcx, param_env);
-        let fcx = blank_fn_ctxt(ccx, &inh, polytype.ty, item.id);
+        let fcx = blank_fn_ctxt(ccx, &inh, ty::FnConverging(polytype.ty), item.id);
         f(self, &fcx);
         vtable::select_all_fcx_obligations_or_error(&fcx);
         regionck::regionck_item(&fcx, item);

@@ -728,7 +728,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
         debug!("add_constraints_from_ty(ty={})", ty.repr(self.tcx()));
 
         match ty::get(ty).sty {
-            ty::ty_nil | ty::ty_bot | ty::ty_bool |
+            ty::ty_nil | ty::ty_bool |
             ty::ty_char | ty::ty_int(_) | ty::ty_uint(_) |
             ty::ty_float(_) | ty::ty_str => {
                 /* leaf type -- noop */
@@ -882,7 +882,9 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
         for &input in sig.inputs.iter() {
             self.add_constraints_from_ty(input, contra);
         }
-        self.add_constraints_from_ty(sig.output, variance);
+        if let ty::FnConverging(result_type) = sig.output {
+            self.add_constraints_from_ty(result_type, variance);
+        }
     }
 
     /// Adds constraints appropriate for a region appearing in a

@@ -149,7 +149,6 @@ impl<'a, 'tcx> TypeFolder<'tcx> for TypeSkolemizer<'a, 'tcx> {
             }
 
             ty::ty_nil |
-            ty::ty_bot |
             ty::ty_bool |
             ty::ty_char |
             ty::ty_int(..) |

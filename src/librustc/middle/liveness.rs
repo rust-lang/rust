@@ -100,11 +100,18 @@
  * - `no_ret_var`: a synthetic variable that is only 'read' from, the
  *   fallthrough node.  This allows us to detect functions where we fail
  *   to return explicitly.
+ * - `clean_exit_var`: a synthetic variable that is only 'read' from the
+ *   fallthrough node.  It is only live if the function could converge
+ *   via means other than an explicit `return` expression. That is, it is
+ *   only dead if the end of the function's block can never be reached.
+ *   It is the responsibility of typeck to ensure that there are no
+ *   `return` expressions in a function declared as diverging.
  */
 
 use middle::def::*;
 use middle::mem_categorization::Typer;
 use middle::pat_util;
+use middle::typeck;
 use middle::ty;
 use lint;
 use util::nodemap::NodeMap;
@@ -250,7 +257,8 @@ struct LocalInfo {
 enum VarKind {
     Arg(NodeId, Ident),
     Local(LocalInfo),
-    ImplicitRet
+    ImplicitRet,
+    CleanExit
 }
 
 struct IrMaps<'a, 'tcx: 'a> {
@@ -306,7 +314,7 @@ impl<'a, 'tcx> IrMaps<'a, 'tcx> {
             Local(LocalInfo { id: node_id, .. }) | Arg(node_id, _) => {
                 self.variable_map.insert(node_id, v);
             },
-            ImplicitRet => {}
+            ImplicitRet | CleanExit => {}
         }
 
         debug!("{} is {}", v.to_string(), vk);
@@ -331,7 +339,8 @@ impl<'a, 'tcx> IrMaps<'a, 'tcx> {
             Local(LocalInfo { ident: nm, .. }) | Arg(_, nm) => {
                 token::get_ident(nm).get().to_string()
             },
-            ImplicitRet => "<implicit-ret>".to_string()
+            ImplicitRet => "<implicit-ret>".to_string(),
+            CleanExit => "<clean-exit>".to_string()
         }
     }
 
@@ -397,7 +406,8 @@ fn visit_fn(ir: &mut IrMaps,
     let specials = Specials {
         exit_ln: fn_maps.add_live_node(ExitNode),
         fallthrough_ln: fn_maps.add_live_node(ExitNode),
-        no_ret_var: fn_maps.add_variable(ImplicitRet)
+        no_ret_var: fn_maps.add_variable(ImplicitRet),
+        clean_exit_var: fn_maps.add_variable(CleanExit)
     };
 
     // compute liveness
@@ -546,7 +556,8 @@ fn invalid_users() -> Users {
 struct Specials {
     exit_ln: LiveNode,
     fallthrough_ln: LiveNode,
-    no_ret_var: Variable
+    no_ret_var: Variable,
+    clean_exit_var: Variable
 }
 
 static ACC_READ: uint = 1u;
@@ -873,6 +884,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         if blk.expr.is_none() {
             self.acc(s.fallthrough_ln, s.no_ret_var, ACC_READ)
         }
+        self.acc(s.fallthrough_ln, s.clean_exit_var, ACC_READ);
 
         self.propagate_through_block(blk, s.fallthrough_ln)
     }
@@ -943,9 +955,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                                   opt_expr: Option<&Expr>,
                                   succ: LiveNode)
                                   -> LiveNode {
-        opt_expr.iter().fold(succ, |succ, expr| {
-            self.propagate_through_expr(&**expr, succ)
-        })
+        opt_expr.map_or(succ, |expr| self.propagate_through_expr(expr, succ))
     }
 
     fn propagate_through_expr(&mut self, expr: &Expr, succ: LiveNode)
@@ -1146,13 +1156,11 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
           }
 
           ExprCall(ref f, ref args) => {
-            // calling a fn with bot return type means that the fn
-            // will fail, and hence the successors can be ignored
-            let is_bot = !self.ir.tcx.is_method_call(expr.id) && {
+            let diverges = !self.ir.tcx.is_method_call(expr.id) && {
                 let t_ret = ty::ty_fn_ret(ty::expr_ty(self.ir.tcx, &**f));
-                ty::type_is_bot(t_ret)
+                t_ret == ty::FnDiverging
             };
-            let succ = if is_bot {
+            let succ = if diverges {
                 self.s.exit_ln
             } else {
                 succ
@@ -1162,11 +1170,14 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
           }
 
           ExprMethodCall(_, _, ref args) => {
-            // calling a method with bot return type means that the method
-            // will fail, and hence the successors can be ignored
-            let t_ret = ty::node_id_to_type(self.ir.tcx, expr.id);
-            let succ = if ty::type_is_bot(t_ret) {self.s.exit_ln}
-                       else {succ};
+            let method_call = typeck::MethodCall::expr(expr.id);
+            let method_ty = self.ir.tcx.method_map.borrow().find(&method_call).unwrap().ty;
+            let diverges = ty::ty_fn_ret(method_ty) == ty::FnDiverging;
+            let succ = if diverges {
+                self.s.exit_ln
+            } else {
+                succ
+            };
             self.propagate_through_exprs(args.as_slice(), succ)
           }
 
@@ -1507,50 +1518,68 @@ fn check_fn(_v: &Liveness,
 }
 
 impl<'a, 'tcx> Liveness<'a, 'tcx> {
+    fn fn_ret(&self, id: NodeId) -> ty::FnOutput {
+        let fn_ty = ty::node_id_to_type(self.ir.tcx, id);
+        match ty::get(fn_ty).sty {
+            ty::ty_unboxed_closure(closure_def_id, _, _) =>
+                self.ir.tcx.unboxed_closures()
+                    .borrow()
+                    .find(&closure_def_id)
+                    .unwrap()
+                    .closure_type
+                    .sig
+                    .output,
+            _ => ty::ty_fn_ret(fn_ty)
+        }
+    }
+
     fn check_ret(&self,
                  id: NodeId,
                  sp: Span,
                  _fk: FnKind,
                  entry_ln: LiveNode,
                  body: &Block) {
-        if self.live_on_entry(entry_ln, self.s.no_ret_var).is_some() {
-            // if no_ret_var is live, then we fall off the end of the
-            // function without any kind of return expression:
+        match self.fn_ret(id) {
+            ty::FnConverging(t_ret)
+                if self.live_on_entry(entry_ln, self.s.no_ret_var).is_some() => {
 
-            let t_ret = ty::ty_fn_ret(ty::node_id_to_type(self.ir.tcx, id));
-            if ty::type_is_nil(t_ret) {
-                // for nil return types, it is ok to not return a value expl.
-            } else if ty::type_is_bot(t_ret) {
-                // for bot return types, not ok.  Function should fail.
-                self.ir.tcx.sess.span_err(
-                    sp, "some control paths may return");
-            } else {
-                let ends_with_stmt = match body.expr {
-                    None if body.stmts.len() > 0 =>
-                        match body.stmts.last().unwrap().node {
-                            StmtSemi(ref e, _) => {
-                                let t_stmt = ty::expr_ty(self.ir.tcx, &**e);
-                                ty::get(t_stmt).sty == ty::get(t_ret).sty
+                if ty::type_is_nil(t_ret) {
+                    // for nil return types, it is ok to not return a value expl.
+                } else {
+                    let ends_with_stmt = match body.expr {
+                        None if body.stmts.len() > 0 =>
+                            match body.stmts.last().unwrap().node {
+                                StmtSemi(ref e, _) => {
+                                    let t_stmt = ty::expr_ty(self.ir.tcx, &**e);
+                                    ty::get(t_stmt).sty == ty::get(t_ret).sty
+                                },
+                                _ => false
                             },
-                            _ => false
-                        },
-                    _ => false
-                };
-                self.ir.tcx.sess.span_err(
-                    sp, "not all control paths return a value");
-                if ends_with_stmt {
-                    let last_stmt = body.stmts.last().unwrap();
-                    let original_span = original_sp(self.ir.tcx.sess.codemap(),
-                                                    last_stmt.span, sp);
-                    let span_semicolon = Span {
-                        lo: original_span.hi - BytePos(1),
-                        hi: original_span.hi,
-                        expn_id: original_span.expn_id
+                        _ => false
                     };
-                    self.ir.tcx.sess.span_note(
-                        span_semicolon, "consider removing this semicolon:");
+                    self.ir.tcx.sess.span_err(
+                        sp, "not all control paths return a value");
+                    if ends_with_stmt {
+                        let last_stmt = body.stmts.last().unwrap();
+                        let original_span = original_sp(self.ir.tcx.sess.codemap(),
+                                                        last_stmt.span, sp);
+                        let span_semicolon = Span {
+                            lo: original_span.hi - BytePos(1),
+                            hi: original_span.hi,
+                            expn_id: original_span.expn_id
+                        };
+                        self.ir.tcx.sess.span_note(
+                            span_semicolon, "consider removing this semicolon:");
+                    }
                 }
-           }
+            }
+            ty::FnDiverging
+                if self.live_on_entry(entry_ln, self.s.clean_exit_var).is_some() => {
+                    self.ir.tcx.sess.span_err(sp,
+                        "computation may converge in a function marked as diverging");
+                }
+
+            _ => {}
         }
     }
 
