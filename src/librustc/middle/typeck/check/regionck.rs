@@ -867,7 +867,7 @@ fn check_expr_fn_block(rcx: &mut Rcx,
                 }
             });
         }
-        ty::ty_unboxed_closure(_, region) => {
+        ty::ty_unboxed_closure(_, region, _) => {
             if tcx.capture_modes.borrow().get_copy(&expr.id) == ast::CaptureByRef {
                 ty::with_freevars(tcx, expr.id, |freevars| {
                     if !freevars.is_empty() {
@@ -908,7 +908,7 @@ fn check_expr_fn_block(rcx: &mut Rcx,
                 ensure_free_variable_types_outlive_closure_bound(rcx, bounds, expr, freevars);
             })
         }
-        ty::ty_unboxed_closure(_, region) => {
+        ty::ty_unboxed_closure(_, region, _) => {
             ty::with_freevars(tcx, expr.id, |freevars| {
                 let bounds = ty::region_existential_bound(region);
                 ensure_free_variable_types_outlive_closure_bound(rcx, bounds, expr, freevars);

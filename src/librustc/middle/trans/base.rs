@@ -253,21 +253,19 @@ fn get_extern_rust_fn(ccx: &CrateContext, fn_ty: ty::t, name: &str, did: ast::De
 }
 
 pub fn self_type_for_unboxed_closure(ccx: &CrateContext,
-                                     closure_id: ast::DefId)
+                                     closure_id: ast::DefId,
+                                     fn_ty: ty::t)
                                      -> ty::t {
-    let unboxed_closure_type = ty::mk_unboxed_closure(ccx.tcx(),
-                                                      closure_id,
-                                                      ty::ReStatic);
     let unboxed_closures = ccx.tcx().unboxed_closures.borrow();
     let unboxed_closure = &(*unboxed_closures)[closure_id];
     match unboxed_closure.kind {
         ty::FnUnboxedClosureKind => {
-            ty::mk_imm_rptr(ccx.tcx(), ty::ReStatic, unboxed_closure_type)
+            ty::mk_imm_rptr(ccx.tcx(), ty::ReStatic, fn_ty)
         }
         ty::FnMutUnboxedClosureKind => {
-            ty::mk_mut_rptr(ccx.tcx(), ty::ReStatic, unboxed_closure_type)
+            ty::mk_mut_rptr(ccx.tcx(), ty::ReStatic, fn_ty)
         }
-        ty::FnOnceUnboxedClosureKind => unboxed_closure_type,
+        ty::FnOnceUnboxedClosureKind => fn_ty
     }
 }
 
@@ -285,14 +283,14 @@ pub fn decl_rust_fn(ccx: &CrateContext, fn_ty: ty::t, name: &str) -> ValueRef {
         ty::ty_closure(ref f) => {
             (f.sig.inputs.clone(), f.sig.output, f.abi, Some(Type::i8p(ccx)))
         }
-        ty::ty_unboxed_closure(closure_did, _) => {
+        ty::ty_unboxed_closure(closure_did, _, ref substs) => {
             let unboxed_closures = ccx.tcx().unboxed_closures.borrow();
             let unboxed_closure = &(*unboxed_closures)[closure_did];
             let function_type = unboxed_closure.closure_type.clone();
-            let self_type = self_type_for_unboxed_closure(ccx, closure_did);
+            let self_type = self_type_for_unboxed_closure(ccx, closure_did, fn_ty);
             let llenvironment_type = type_of_explicit_arg(ccx, self_type);
-            (function_type.sig.inputs.clone(),
-             function_type.sig.output,
+            (function_type.sig.inputs.iter().map(|t| t.subst(ccx.tcx(), substs)).collect(),
+             function_type.sig.output.subst(ccx.tcx(), substs),
              RustCall,
              Some(llenvironment_type))
         }
@@ -738,9 +736,9 @@ pub fn iter_structural_ty<'a, 'blk, 'tcx>(cx: Block<'blk, 'tcx>,
               }
           })
       }
-      ty::ty_unboxed_closure(def_id, _) => {
+      ty::ty_unboxed_closure(def_id, _, ref substs) => {
           let repr = adt::represent_type(cx.ccx(), t);
-          let upvars = ty::unboxed_closure_upvars(cx.tcx(), def_id);
+          let upvars = ty::unboxed_closure_upvars(cx.tcx(), def_id, substs);
           for (i, upvar) in upvars.iter().enumerate() {
               let llupvar = adt::trans_field_ptr(cx, &*repr, data_ptr, 0, i);
               cx = f(cx, llupvar, upvar.ty);
@@ -2351,12 +2349,12 @@ pub fn get_fn_llvm_attributes(ccx: &CrateContext, fn_ty: ty::t)
     let (fn_sig, abi, has_env) = match ty::get(fn_ty).sty {
         ty::ty_closure(ref f) => (f.sig.clone(), f.abi, true),
         ty::ty_bare_fn(ref f) => (f.sig.clone(), f.abi, false),
-        ty::ty_unboxed_closure(closure_did, _) => {
+        ty::ty_unboxed_closure(closure_did, _, ref substs) => {
             let unboxed_closures = ccx.tcx().unboxed_closures.borrow();
             let ref function_type = (*unboxed_closures)[closure_did]
                                                     .closure_type;
 
-            (function_type.sig.clone(), RustCall, true)
+            (function_type.sig.subst(ccx.tcx(), substs), RustCall, true)
         }
         _ => ccx.sess().bug("expected closure or function.")
     };
@@ -2371,7 +2369,7 @@ pub fn get_fn_llvm_attributes(ccx: &CrateContext, fn_ty: ty::t)
     // These have an odd calling convention, so we need to manually
     // unpack the input ty's
     let input_tys = match ty::get(fn_ty).sty {
-        ty::ty_unboxed_closure(_, _) => {
+        ty::ty_unboxed_closure(_, _, _) => {
             assert!(abi == RustCall);
 
             match ty::get(fn_sig.inputs[0]).sty {

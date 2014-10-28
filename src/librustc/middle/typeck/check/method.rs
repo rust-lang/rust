@@ -505,7 +505,7 @@ impl<'a, 'tcx> LookupContext<'a, 'tcx> {
                 }
                 ty_enum(did, _) |
                 ty_struct(did, _) |
-                ty_unboxed_closure(did, _) => {
+                ty_unboxed_closure(did, _, _) => {
                     if self.check_traits == CheckTraitsAndInherentMethods {
                         self.push_inherent_impl_candidates_for_type(did);
                     }

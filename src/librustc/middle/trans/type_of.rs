@@ -309,11 +309,15 @@ pub fn type_of(cx: &CrateContext, t: ty::t) -> Type {
           let name = llvm_type_name(cx, an_enum, did, tps);
           adt::incomplete_type_of(cx, &*repr, name.as_slice())
       }
-      ty::ty_unboxed_closure(did, _) => {
+      ty::ty_unboxed_closure(did, _, ref substs) => {
           // Only create the named struct, but don't fill it in. We
           // fill it in *after* placing it into the type cache.
           let repr = adt::represent_type(cx, t);
-          let name = llvm_type_name(cx, an_unboxed_closure, did, []);
+          // Unboxed closures can have substitutions in all spaces
+          // inherited from their environment, so we use entire
+          // contents of the VecPerParamSpace to to construct the llvm
+          // name
+          let name = llvm_type_name(cx, an_unboxed_closure, did, substs.types.as_slice());
           adt::incomplete_type_of(cx, &*repr, name.as_slice())
       }
 
