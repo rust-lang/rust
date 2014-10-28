@@ -298,7 +298,7 @@ fn collect_trait_methods(ccx: &CrateCtxt,
                                             &*m.pe_fn_decl())
                                     }
                                     ast::TypeTraitItem(ref at) => {
-                                        tcx.sess.span_bug(at.span,
+                                        tcx.sess.span_bug(at.ty_param.span,
                                                           "there shouldn't \
                                                            be a type trait \
                                                            item here")
@@ -315,9 +315,9 @@ fn collect_trait_methods(ccx: &CrateCtxt,
                             ast::TypeTraitItem(ref ast_associated_type) => {
                                 let trait_did = local_def(trait_id);
                                 let associated_type = ty::AssociatedType {
-                                    name: ast_associated_type.ident.name,
+                                    name: ast_associated_type.ty_param.ident.name,
                                     vis: ast::Public,
-                                    def_id: local_def(ast_associated_type.id),
+                                    def_id: local_def(ast_associated_type.ty_param.id),
                                     container: TraitContainer(trait_did),
                                 };
 
@@ -345,7 +345,7 @@ fn collect_trait_methods(ccx: &CrateCtxt,
                                             method.id))
                                 }
                                 ast::TypeTraitItem(ref typedef) => {
-                                    ty::TypeTraitItemId(local_def(typedef.id))
+                                    ty::TypeTraitItemId(local_def(typedef.ty_param.id))
                                 }
                             }
                         }).collect());
@@ -463,12 +463,12 @@ fn convert_associated_type(ccx: &CrateCtxt,
                                       .get_slice(subst::TypeSpace)
                                       .iter()
                                       .find(|def| {
-        def.def_id == local_def(associated_type.id)
+        def.def_id == local_def(associated_type.ty_param.id)
     });
     let type_parameter_def = match type_parameter_def {
         Some(type_parameter_def) => type_parameter_def,
         None => {
-            ccx.tcx().sess.span_bug(associated_type.span,
+            ccx.tcx().sess.span_bug(associated_type.ty_param.span,
                                     "`convert_associated_type()` didn't find \
                                      a type parameter ID corresponding to \
                                      this type")
@@ -477,18 +477,18 @@ fn convert_associated_type(ccx: &CrateCtxt,
     let param_type = ty::mk_param(ccx.tcx,
                                   subst::TypeSpace,
                                   type_parameter_def.index,
-                                  local_def(associated_type.id));
-    ccx.tcx.tcache.borrow_mut().insert(local_def(associated_type.id),
+                                  local_def(associated_type.ty_param.id));
+    ccx.tcx.tcache.borrow_mut().insert(local_def(associated_type.ty_param.id),
                                        Polytype {
                                         generics: ty::Generics::empty(),
                                         ty: param_type,
                                        });
-    write_ty_to_tcx(ccx.tcx, associated_type.id, param_type);
+    write_ty_to_tcx(ccx.tcx, associated_type.ty_param.id, param_type);
 
     let associated_type = Rc::new(ty::AssociatedType {
-        name: associated_type.ident.name,
+        name: associated_type.ty_param.ident.name,
         vis: ast::Public,
-        def_id: local_def(associated_type.id),
+        def_id: local_def(associated_type.ty_param.id),
         container: TraitContainer(trait_def.trait_ref.def_id),
     });
     ccx.tcx
@@ -978,7 +978,7 @@ impl<'a,'tcx> AstConv<'tcx> for TraitMethodCtxt<'a,'tcx> {
                 match *item {
                     ast::RequiredMethod(_) | ast::ProvidedMethod(_) => {}
                     ast::TypeTraitItem(ref item) => {
-                        if local_def(item.id) == associated_type_id {
+                        if local_def(item.ty_param.id) == associated_type_id {
                             return ty::mk_param(self.tcx(),
                                                 subst::TypeSpace,
                                                 index,
@@ -1480,7 +1480,7 @@ pub fn trait_def_of_item(ccx: &CrateCtxt, it: &ast::Item) -> Rc<ty::TraitDef> {
                     types.push(ty::mk_param(ccx.tcx,
                                             subst::TypeSpace,
                                             index,
-                                            local_def(trait_item.id)))
+                                            local_def(trait_item.ty_param.id)))
                 }
                 ast::RequiredMethod(_) | ast::ProvidedMethod(_) => {}
             }
@@ -1630,11 +1630,11 @@ fn ty_of_trait_item(ccx: &CrateCtxt, trait_item: &ast::TraitItem)
                                   "ty_of_trait_item() on provided method")
         }
         ast::TypeTraitItem(ref associated_type) => {
-            let parent = ccx.tcx.map.get_parent(associated_type.id);
+            let parent = ccx.tcx.map.get_parent(associated_type.ty_param.id);
             let trait_def = match ccx.tcx.map.get(parent) {
                 ast_map::NodeItem(item) => trait_def_of_item(ccx, &*item),
                 _ => {
-                    ccx.tcx.sess.span_bug(associated_type.span,
+                    ccx.tcx.sess.span_bug(associated_type.ty_param.span,
                                           "associated type's parent wasn't \
                                            an item?!")
                 }
@@ -1680,8 +1680,8 @@ fn ty_generics_for_trait(ccx: &CrateCtxt,
                 let def = ty::TypeParameterDef {
                     space: subst::TypeSpace,
                     index: generics.types.len(subst::TypeSpace),
-                    name: associated_type.ident.name,
-                    def_id: local_def(associated_type.id),
+                    name: associated_type.ty_param.ident.name,
+                    def_id: local_def(associated_type.ty_param.id),
                     bounds: ty::ParamBounds {
                         builtin_bounds: ty::empty_builtin_bounds(),
                         trait_bounds: Vec::new(),
@@ -1690,7 +1690,7 @@ fn ty_generics_for_trait(ccx: &CrateCtxt,
                     associated_with: Some(local_def(trait_id)),
                     default: None,
                 };
-                ccx.tcx.ty_param_defs.borrow_mut().insert(associated_type.id,
+                ccx.tcx.ty_param_defs.borrow_mut().insert(associated_type.ty_param.id,
                                                           def.clone());
                 generics.types.push(subst::TypeSpace, def);
             }
@@ -1810,9 +1810,9 @@ fn ensure_associated_types<'tcx,AC>(this: &AC, trait_id: ast::DefId)
                                 ast::ProvidedMethod(_) => {}
                                 ast::TypeTraitItem(ref associated_type) => {
                                     let info = ty::AssociatedTypeInfo {
-                                        def_id: local_def(associated_type.id),
+                                        def_id: local_def(associated_type.ty_param.id),
                                         index: index,
-                                        name: associated_type.ident.name,
+                                        name: associated_type.ty_param.ident.name,
                                     };
                                     result.push(info);
                                     index += 1;

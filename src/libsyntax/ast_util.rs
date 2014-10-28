@@ -525,7 +525,7 @@ impl<'a, 'v, O: IdVisitingOperation> Visitor<'v> for IdVisitor<'a, O> {
         match *tm {
             ast::RequiredMethod(ref m) => self.operation.visit_id(m.id),
             ast::ProvidedMethod(ref m) => self.operation.visit_id(m.id),
-            ast::TypeTraitItem(ref typ) => self.operation.visit_id(typ.id),
+            ast::TypeTraitItem(ref typ) => self.operation.visit_id(typ.ty_param.id),
         }
         visit::walk_trait_item(self, tm);
     }
