@@ -636,13 +636,18 @@ impl<T> Vec<T> {
         }
     }
 
-    /// Shrinks the capacity of the vector as much as possible.
+    /// Shrinks the capacity of the vector as much as possible. It will drop
+    /// down as close as possible to the length but the allocator may still
+    /// inform the vector that there is space for a few more elements.
     ///
     /// # Example
     ///
     /// ```
-    /// let mut vec = vec![1i, 2, 3];
+    /// let mut vec: Vec<int> = Vec::with_capacity(10);
+    /// vec.push_all([1, 2, 3]);
+    /// assert_eq!(vec.capacity(), 10);
     /// vec.shrink_to_fit();
+    /// assert!(vec.capacity() >= 3);
     /// ```
     #[stable]
     pub fn shrink_to_fit(&mut self) {
@@ -830,6 +835,7 @@ impl<T> Vec<T> {
     /// for num in vec.iter_mut() {
     ///     *num = 0;
     /// }
+    /// assert_eq!(vec, vec![0i, 0, 0]);
     /// ```
     #[inline]
     pub fn iter_mut<'a>(&'a mut self) -> MutItems<'a,T> {
