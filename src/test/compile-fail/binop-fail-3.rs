@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn foo() -> ! { fail!("quux"); }
+fn foo() -> ! { panic!("quux"); }
 fn main() {
     foo() //~ ERROR the type of this value must be known in this context
     ==

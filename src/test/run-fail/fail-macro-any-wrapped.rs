@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern:failed at 'Box<Any>'
+// error-pattern:panicked at 'Box<Any>'
 
 fn main() {
     panic!(box 612_i64);

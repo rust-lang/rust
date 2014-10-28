@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern:explicit failure
+// error-pattern:explicit panic
 
 #![allow(unreachable_code)]
 #![allow(unused_variable)]

@@ -14,7 +14,7 @@
 //
 // Expanded pretty printing causes resolve conflicts.
 
-// error-pattern:fail works
+// error-pattern:panic works
 #![feature(globs)]
 
 use std::*;

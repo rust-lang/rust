@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern:failed at 'test-assert-static'
+// error-pattern:panicked at 'test-assert-static'
 
 fn main() {
     assert!(false, "test-assert-static");

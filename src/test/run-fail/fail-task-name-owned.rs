@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern:task 'owned name' failed at 'test'
+// error-pattern:task 'owned name' panicked at 'test'
 
 use std::task::TaskBuilder;
 

@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern:task '<main>' failed at
+// error-pattern:task '<main>' panicked at
 
 fn main() {
     panic!()
