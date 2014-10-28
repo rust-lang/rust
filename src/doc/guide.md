@@ -4416,11 +4416,12 @@ see why consumers matter.
 
 ## Iterators
 
-As we've said before, an iterator is something that we can call the `.next()`
-method on repeatedly, and it gives us a sequence of things. Because you need
-to call the method, this means that iterators can be **lazy** and don't need to generate all of the values upfront. This code, for
-example, does not actually generate the numbers `1-100`, and just creates a
-value that represents the sequence:
+As we've said before, an iterator is something that we can call the
+`.next()` method on repeatedly, and it gives us a sequence of things.
+Because you need to call the method, this means that iterators
+are **lazy** and don't need to generate all of the values upfront.
+This code, for example, does not actually generate the numbers
+`1-100`, and just creates a value that represents the sequence:
 
 ```{rust}
 let nums = range(1i, 100i);
