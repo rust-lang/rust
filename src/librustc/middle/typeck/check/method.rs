@@ -88,7 +88,7 @@ use middle::ty;
 use middle::typeck::astconv::AstConv;
 use middle::typeck::check::{FnCtxt, NoPreference, PreferMutLvalue};
 use middle::typeck::check::{impl_self_ty};
-use middle::typeck::check::vtable::select_fcx_obligations_where_possible;
+use middle::typeck::check::vtable::select_new_fcx_obligations;
 use middle::typeck::check;
 use middle::typeck::infer;
 use middle::typeck::{MethodCall, MethodCallee};
@@ -1302,7 +1302,7 @@ impl<'a, 'tcx> LookupContext<'a, 'tcx> {
         // the `Self` trait).
         let callee = self.confirm_candidate(rcvr_ty, &candidate);
 
-        select_fcx_obligations_where_possible(self.fcx);
+        select_new_fcx_obligations(self.fcx);
 
         Some(Ok(callee))
     }

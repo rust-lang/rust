@@ -339,6 +339,24 @@ pub fn select_fcx_obligations_where_possible(fcx: &FnCtxt) {
     }
 }
 
+pub fn select_new_fcx_obligations(fcx: &FnCtxt) {
+    /*!
+     * Try to select any fcx obligation that we haven't tried yet,
+     * in an effort to improve inference. You could just call
+     * `select_fcx_obligations_where_possible` except that it leads
+     * to repeated work.
+     */
+
+    match
+        fcx.inh.fulfillment_cx
+        .borrow_mut()
+        .select_new_obligations(fcx.infcx(), &fcx.inh.param_env, fcx)
+    {
+        Ok(()) => { }
+        Err(errors) => { report_fulfillment_errors(fcx, &errors); }
+    }
+}
+
 fn note_obligation_cause(fcx: &FnCtxt,
                          obligation: &Obligation) {
     let tcx = fcx.tcx();
