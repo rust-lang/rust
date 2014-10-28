@@ -15,6 +15,7 @@
 #![experimental]
 
 use collections::Collection;
+use core::kinds::Sized;
 use fmt;
 use iter::Iterator;
 use mem;
@@ -272,7 +273,7 @@ impl OwnedAsciiCast for Vec<u8> {
 
 /// Trait for converting an ascii type to a string. Needed to convert
 /// `&[Ascii]` to `&str`.
-pub trait AsciiStr {
+pub trait AsciiStr for Sized? {
     /// Convert to a string.
     fn as_str_ascii<'a>(&'a self) -> &'a str;
 
@@ -291,13 +292,13 @@ pub trait AsciiStr {
     fn to_uppercase(&self) -> Vec<Ascii>;
 
     /// Compares two Ascii strings ignoring case.
-    fn eq_ignore_case(self, other: &[Ascii]) -> bool;
+    fn eq_ignore_case(&self, other: &[Ascii]) -> bool;
 }
 
-impl<'a> AsciiStr for &'a [Ascii] {
+impl AsciiStr for [Ascii] {
     #[inline]
     fn as_str_ascii<'a>(&'a self) -> &'a str {
-        unsafe { mem::transmute(*self) }
+        unsafe { mem::transmute(self) }
     }
 
     #[inline]
@@ -321,7 +322,7 @@ impl<'a> AsciiStr for &'a [Ascii] {
     }
 
     #[inline]
-    fn eq_ignore_case(self, other: &[Ascii]) -> bool {
+    fn eq_ignore_case(&self, other: &[Ascii]) -> bool {
         self.iter().zip(other.iter()).all(|(&a, &b)| a.eq_ignore_case(b))
     }
 }
@@ -372,7 +373,7 @@ pub trait OwnedAsciiExt {
 }
 
 /// Extension methods for ASCII-subset only operations on string slices
-pub trait AsciiExt<T> {
+pub trait AsciiExt<T> for Sized? {
     /// Makes a copy of the string in ASCII upper case:
     /// ASCII letters 'a' to 'z' are mapped to 'A' to 'Z',
     /// but non-ASCII letters are unchanged.
@@ -386,10 +387,10 @@ pub trait AsciiExt<T> {
     /// Check that two strings are an ASCII case-insensitive match.
     /// Same as `to_ascii_lower(a) == to_ascii_lower(b)`,
     /// but without allocating and copying temporary strings.
-    fn eq_ignore_ascii_case(&self, other: Self) -> bool;
+    fn eq_ignore_ascii_case(&self, other: &Self) -> bool;
 }
 
-impl<'a> AsciiExt<String> for &'a str {
+impl AsciiExt<String> for str {
     #[inline]
     fn to_ascii_upper(&self) -> String {
         // Vec<u8>::to_ascii_upper() preserves the UTF-8 invariant.
@@ -422,7 +423,7 @@ impl OwnedAsciiExt for String {
     }
 }
 
-impl<'a> AsciiExt<Vec<u8>> for &'a [u8] {
+impl AsciiExt<Vec<u8>> for [u8] {
     #[inline]
     fn to_ascii_upper(&self) -> Vec<u8> {
         self.iter().map(|&byte| ASCII_UPPER_MAP[byte as uint]).collect()
