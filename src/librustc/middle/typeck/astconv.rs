@@ -674,7 +674,7 @@ fn mk_pointer<'tcx, AC: AstConv<'tcx>, RS: RegionScope>(
                             return constr(ty::mk_str(tcx));
                         }
                         RPtr(r) => {
-                            return ty::mk_str_slice(tcx, r, ast::MutImmutable);
+                            return ty::mk_str_slice(tcx, r, a_seq_mutbl);
                         }
                     }
                 }
