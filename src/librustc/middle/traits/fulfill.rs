@@ -35,12 +35,18 @@ pub struct FulfillmentContext {
     // A list of all obligations that have been registered with this
     // fulfillment context.
     trait_obligations: Vec<Obligation>,
+
+    // Remembers the count of trait obligations that we have already
+    // attempted to select. This is used to avoid repeating work
+    // when `select_new_obligations` is called.
+    attempted_mark: uint,
 }
 
 impl FulfillmentContext {
     pub fn new() -> FulfillmentContext {
         FulfillmentContext {
             trait_obligations: Vec::new(),
+            attempted_mark: 0,
         }
     }
 
@@ -74,18 +80,49 @@ impl FulfillmentContext {
         }
     }
 
+    pub fn select_new_obligations<'a,'tcx>(&mut self,
+                                           infcx: &InferCtxt<'a,'tcx>,
+                                           param_env: &ty::ParameterEnvironment,
+                                           typer: &Typer<'tcx>)
+                                           -> Result<(),Vec<FulfillmentError>>
+    {
+        /*!
+         * Attempts to select obligations that were registered since
+         * the call to a selection routine. This is used by the type checker
+         * to eagerly attempt to resolve obligations in hopes of gaining
+         * type information. It'd be equally valid to use `select_where_possible`
+         * but it results in `O(n^2)` performance (#18208).
+         */
+
+        let mut selcx = SelectionContext::new(infcx, param_env, typer);
+        self.select(&mut selcx, true)
+    }
+
     pub fn select_where_possible<'a,'tcx>(&mut self,
                                           infcx: &InferCtxt<'a,'tcx>,
                                           param_env: &ty::ParameterEnvironment,
                                           typer: &Typer<'tcx>)
                                           -> Result<(),Vec<FulfillmentError>>
     {
-        let tcx = infcx.tcx;
         let mut selcx = SelectionContext::new(infcx, param_env, typer);
+        self.select(&mut selcx, false)
+    }
 
-        debug!("select_where_possible({} obligations) start",
-               self.trait_obligations.len());
+    fn select(&mut self,
+              selcx: &mut SelectionContext,
+              only_new_obligations: bool)
+              -> Result<(),Vec<FulfillmentError>>
+    {
+        /*!
+         * Attempts to select obligations using `selcx`. If
+         * `only_new_obligations` is true, then it only attempts to
+         * select obligations that haven't been seen before.
+         */
+        debug!("select({} obligations, only_new_obligations={}) start",
+               self.trait_obligations.len(),
+               only_new_obligations);
 
+        let tcx = selcx.tcx();
         let mut errors = Vec::new();
 
         loop {
@@ -96,29 +133,46 @@ impl FulfillmentContext {
 
             let mut selections = Vec::new();
 
+            // If we are only attempting obligations we haven't seen yet,
+            // then set `skip` to the number of obligations we've already
+            // seen.
+            let mut skip = if only_new_obligations {
+                self.attempted_mark
+            } else {
+                0
+            };
+
             // First pass: walk each obligation, retaining
             // only those that we cannot yet process.
             self.trait_obligations.retain(|obligation| {
-                match selcx.select(obligation) {
-                    Ok(None) => {
-                        true
-                    }
-                    Ok(Some(s)) => {
-                        selections.push(s);
-                        false
-                    }
-                    Err(selection_err) => {
-                        debug!("obligation: {} error: {}",
-                               obligation.repr(tcx),
-                               selection_err.repr(tcx));
-
-                        errors.push(FulfillmentError::new(
-                            (*obligation).clone(),
-                            CodeSelectionError(selection_err)));
-                        false
+                // Hack: Retain does not pass in the index, but we want
+                // to avoid processing the first `start_count` entries.
+                if skip > 0 {
+                    skip -= 1;
+                    true
+                } else {
+                    match selcx.select(obligation) {
+                        Ok(None) => {
+                            true
+                        }
+                        Ok(Some(s)) => {
+                            selections.push(s);
+                            false
+                        }
+                        Err(selection_err) => {
+                            debug!("obligation: {} error: {}",
+                                   obligation.repr(tcx),
+                                   selection_err.repr(tcx));
+                            errors.push(FulfillmentError::new(
+                                (*obligation).clone(),
+                                CodeSelectionError(selection_err)));
+                            false
+                        }
                     }
                 }
             });
+
+            self.attempted_mark = self.trait_obligations.len();
 
             if self.trait_obligations.len() == count {
                 // Nothing changed.
@@ -133,7 +187,7 @@ impl FulfillmentContext {
             }
         }
 
-        debug!("select_where_possible({} obligations, {} errors) done",
+        debug!("select({} obligations, {} errors) done",
                self.trait_obligations.len(),
                errors.len());
 

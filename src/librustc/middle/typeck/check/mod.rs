@@ -101,7 +101,6 @@ use middle::typeck::check::method::{AutoderefReceiver};
 use middle::typeck::check::method::{CheckTraitsAndInherentMethods};
 use middle::typeck::check::regionmanip::replace_late_bound_regions;
 use middle::typeck::CrateCtxt;
-use middle::typeck::infer::{resolve_type, force_tvar};
 use middle::typeck::infer;
 use middle::typeck::rscope::RegionScope;
 use middle::typeck::{lookup_def_ccx};
@@ -1412,7 +1411,7 @@ fn check_cast(fcx: &FnCtxt,
         }
         // casts from C-like enums are allowed
     } else if t_1_is_char {
-        let t_e = fcx.infcx().resolve_type_vars_if_possible(t_e);
+        let t_e = fcx.infcx().shallow_resolve(t_e);
         if ty::get(t_e).sty != ty::ty_uint(ast::TyU8) {
             fcx.type_error_message(span, |actual| {
                 format!("only `u8` can be cast as \
@@ -2564,7 +2563,7 @@ fn check_argument_types<'a>(fcx: &FnCtxt,
         // an "opportunistic" vtable resolution of any trait
         // bounds on the call.
         if check_blocks {
-            vtable::select_fcx_obligations_where_possible(fcx);
+            vtable::select_new_fcx_obligations(fcx);
         }
 
         // For variadic functions, we don't have a declared type for all of
@@ -2988,9 +2987,11 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
         // 'else' branch.
         let expected = match expected.only_has_type() {
             ExpectHasType(ety) => {
-                match infer::resolve_type(fcx.infcx(), Some(sp), ety, force_tvar) {
-                    Ok(rty) if !ty::type_is_ty_var(rty) => ExpectHasType(rty),
-                    _ => NoExpectation
+                let ety = fcx.infcx().shallow_resolve(ety);
+                if !ty::type_is_ty_var(ety) {
+                    ExpectHasType(ety)
+                } else {
+                    NoExpectation
                 }
             }
             _ => NoExpectation
@@ -4037,7 +4038,7 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
       ast::ExprForLoop(ref pat, ref head, ref block, _) => {
         check_expr(fcx, &**head);
         let typ = lookup_method_for_for_loop(fcx, &**head, expr.id);
-        vtable::select_fcx_obligations_where_possible(fcx);
+        vtable::select_new_fcx_obligations(fcx);
 
         let pcx = pat_ctxt {
             fcx: fcx,
@@ -5393,18 +5394,32 @@ pub fn instantiate_path(fcx: &FnCtxt,
 
 // Resolves `typ` by a single level if `typ` is a type variable.  If no
 // resolution is possible, then an error is reported.
-pub fn structurally_resolved_type(fcx: &FnCtxt, sp: Span, tp: ty::t) -> ty::t {
-    match infer::resolve_type(fcx.infcx(), Some(sp), tp, force_tvar) {
-        Ok(t_s) if !ty::type_is_ty_var(t_s) => t_s,
-        _ => {
-            fcx.type_error_message(sp, |_actual| {
-                "the type of this value must be known in this \
-                 context".to_string()
-            }, tp, None);
-            demand::suptype(fcx, sp, ty::mk_err(), tp);
-            tp
-        }
+pub fn structurally_resolved_type(fcx: &FnCtxt, sp: Span, mut ty: ty::t) -> ty::t {
+    // If `ty` is a type variable, see whether we already know what it is.
+    ty = fcx.infcx().shallow_resolve(ty);
+
+    // If not, try resolve pending fcx obligations. Those can shed light.
+    //
+    // FIXME(#18391) -- This current strategy can lead to bad performance in
+    // extreme cases.  We probably ought to smarter in general about
+    // only resolving when we need help and only resolving obligations
+    // will actually help.
+    if ty::type_is_ty_var(ty) {
+        vtable::select_fcx_obligations_where_possible(fcx);
+        ty = fcx.infcx().shallow_resolve(ty);
     }
+
+    // If not, error.
+    if ty::type_is_ty_var(ty) {
+        fcx.type_error_message(sp, |_actual| {
+            "the type of this value must be known in this \
+             context".to_string()
+        }, ty, None);
+        demand::suptype(fcx, sp, ty::mk_err(), ty);
+        ty = ty::mk_err();
+    }
+
+    ty
 }
 
 // Returns the one-level-deep structure of the given type.
