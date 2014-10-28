@@ -17,7 +17,8 @@ pub struct TypeVariableTable {
 }
 
 struct TypeVariableData {
-    value: TypeVariableValue
+    value: TypeVariableValue,
+    diverging: bool
 }
 
 enum TypeVariableValue {
@@ -61,6 +62,10 @@ impl TypeVariableTable {
 
     fn relations<'a>(&'a mut self, a: ty::TyVid) -> &'a mut Vec<Relation> {
         relations(self.values.get_mut(a.index))
+    }
+
+    pub fn var_diverges<'a>(&'a self, vid: ty::TyVid) -> bool {
+        self.values.get(vid.index).diverging
     }
 
     pub fn relate_vars(&mut self, a: ty::TyVid, dir: RelationDir, b: ty::TyVid) {
@@ -108,10 +113,11 @@ impl TypeVariableTable {
         self.values.record(SpecifyVar(vid, relations));
     }
 
-    pub fn new_var(&mut self) -> ty::TyVid {
-        let index =
-            self.values.push(
-                TypeVariableData { value: Bounded(Vec::new()) });
+    pub fn new_var(&mut self, diverging: bool) -> ty::TyVid {
+        let index = self.values.push(TypeVariableData {
+            value: Bounded(vec![]),
+            diverging: diverging
+        });
         ty::TyVid { index: index }
     }
 

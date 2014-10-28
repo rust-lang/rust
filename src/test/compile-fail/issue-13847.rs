@@ -9,6 +9,5 @@
 // except according to those terms.
 
 fn main() {
-    return.is_failure
-//~^ ERROR attempted access of field `is_failure` on type `!`, but no field with that name was found
+    return.is_failure //~ ERROR the type of this value must be known in this context
 }

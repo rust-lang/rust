@@ -2236,7 +2236,10 @@ pub fn ty_of_foreign_fn_decl(ccx: &CrateCtxt,
                         .map(|a| ty_of_arg(ccx, &rb, a, None))
                         .collect();
 
-    let output_ty = ast_ty_to_ty(ccx, &rb, &*decl.output);
+    let output = match decl.output.node {
+        ast::TyBot => ty::FnDiverging,
+        _ => ty::FnConverging(ast_ty_to_ty(ccx, &rb, &*decl.output))
+    };
 
     let t_fn = ty::mk_bare_fn(
         ccx.tcx,
@@ -2245,7 +2248,7 @@ pub fn ty_of_foreign_fn_decl(ccx: &CrateCtxt,
             fn_style: ast::UnsafeFn,
             sig: ty::FnSig {binder_id: def_id.node,
                             inputs: input_tys,
-                            output: output_ty,
+                            output: output,
                             variadic: decl.variadic}
         });
     let pty = Polytype {

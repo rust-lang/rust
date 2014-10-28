@@ -112,15 +112,6 @@ impl<'f, 'tcx> Combine<'tcx> for Equate<'f, 'tcx> {
         let a = infcx.type_variables.borrow().replace_if_possible(a);
         let b = infcx.type_variables.borrow().replace_if_possible(b);
         match (&ty::get(a).sty, &ty::get(b).sty) {
-            (&ty::ty_bot, &ty::ty_bot) => {
-                Ok(a)
-            }
-
-            (&ty::ty_bot, _) |
-            (_, &ty::ty_bot) => {
-                Err(ty::terr_sorts(expected_found(self, a, b)))
-            }
-
             (&ty::ty_infer(TyVar(a_id)), &ty::ty_infer(TyVar(b_id))) => {
                 infcx.type_variables.borrow_mut().relate_vars(a_id, EqTo, b_id);
                 Ok(a)

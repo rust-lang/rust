@@ -609,7 +609,7 @@ fn trans_datum_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             start.as_ref().map(|e| args.push((unpack_datum!(bcx, trans(bcx, &**e)), e.id)));
             end.as_ref().map(|e| args.push((unpack_datum!(bcx, trans(bcx, &**e)), e.id)));
 
-            let result_ty = ty::ty_fn_ret(monomorphize_type(bcx, method_ty.unwrap()));
+            let result_ty = ty::ty_fn_ret(monomorphize_type(bcx, method_ty.unwrap())).unwrap();
             let scratch = rvalue_scratch_datum(bcx, result_ty, "trans_slice");
 
             unpack_result!(bcx,
@@ -757,7 +757,7 @@ fn trans_index<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                                    base_datum,
                                                    vec![(ix_datum, idx.id)],
                                                    None));
-            let ref_ty = ty::ty_fn_ret(monomorphize_type(bcx, method_ty));
+            let ref_ty = ty::ty_fn_ret(monomorphize_type(bcx, method_ty)).unwrap();
             let elt_ty = match ty::deref(ref_ty, true) {
                 None => {
                     bcx.tcx().sess.span_bug(index_expr.span,
@@ -1614,8 +1614,7 @@ fn trans_eager_binop<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let tcx = bcx.tcx();
     let is_simd = ty::type_is_simd(tcx, lhs_t);
     let intype = {
-        if ty::type_is_bot(lhs_t) { rhs_t }
-        else if is_simd { ty::simd_type(tcx, lhs_t) }
+        if is_simd { ty::simd_type(tcx, lhs_t) }
         else { lhs_t }
     };
     let is_float = ty::type_is_fp(intype);
@@ -1675,9 +1674,7 @@ fn trans_eager_binop<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         } else { LShr(bcx, lhs, rhs) }
       }
       ast::BiEq | ast::BiNe | ast::BiLt | ast::BiGe | ast::BiLe | ast::BiGt => {
-        if ty::type_is_bot(rhs_t) {
-            C_bool(bcx.ccx(), false)
-        } else if ty::type_is_scalar(rhs_t) {
+        if ty::type_is_scalar(rhs_t) {
             unpack_result!(bcx, base::compare_scalar_types(bcx, lhs, rhs, rhs_t, op))
         } else if is_simd {
             base::compare_simd_types(bcx, lhs, rhs, intype, ty::simd_size(tcx, lhs_t), op)
@@ -2098,7 +2095,7 @@ fn deref_once<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 _ => datum
             };
 
-            let ref_ty = ty::ty_fn_ret(monomorphize_type(bcx, method_ty));
+            let ref_ty = ty::ty_fn_ret(monomorphize_type(bcx, method_ty)).unwrap();
             let scratch = rvalue_scratch_datum(bcx, ref_ty, "overloaded_deref");
 
             unpack_result!(bcx, trans_overloaded_op(bcx, expr, method_call,
