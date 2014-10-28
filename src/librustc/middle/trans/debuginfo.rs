@@ -190,7 +190,7 @@ use llvm;
 use llvm::{ModuleRef, ContextRef, ValueRef};
 use llvm::debuginfo::*;
 use metadata::csearch;
-use middle::subst;
+use middle::subst::{mod, Subst};
 use middle::trans::adt;
 use middle::trans::common::*;
 use middle::trans::machine;
@@ -460,9 +460,9 @@ impl TypeMap {
                                                         closure_ty.clone(),
                                                         &mut unique_type_id);
             },
-            ty::ty_unboxed_closure(ref def_id, _) => {
+            ty::ty_unboxed_closure(ref def_id, _, ref substs) => {
                 let closure_ty = cx.tcx().unboxed_closures.borrow()
-                                   .find(def_id).unwrap().closure_type.clone();
+                                   .find(def_id).unwrap().closure_type.subst(cx.tcx(), substs);
                 self.get_unique_type_id_of_closure_type(cx,
                                                         closure_ty,
                                                         &mut unique_type_id);
@@ -2911,9 +2911,9 @@ fn type_metadata(cx: &CrateContext,
         ty::ty_closure(ref closurety) => {
             subroutine_type_metadata(cx, unique_type_id, &closurety.sig, usage_site_span)
         }
-        ty::ty_unboxed_closure(ref def_id, _) => {
+        ty::ty_unboxed_closure(ref def_id, _, ref substs) => {
             let sig = cx.tcx().unboxed_closures.borrow()
-                        .find(def_id).unwrap().closure_type.sig.clone();
+                        .find(def_id).unwrap().closure_type.sig.subst(cx.tcx(), substs);
             subroutine_type_metadata(cx, unique_type_id, &sig, usage_site_span)
         }
         ty::ty_struct(def_id, ref substs) => {

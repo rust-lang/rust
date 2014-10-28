@@ -962,7 +962,7 @@ pub enum sty {
     ty_closure(Box<ClosureTy>),
     ty_trait(Box<TyTrait>),
     ty_struct(DefId, Substs),
-    ty_unboxed_closure(DefId, Region),
+    ty_unboxed_closure(DefId, Region, Substs),
     ty_tup(Vec<t>),
 
     ty_param(ParamTy), // type parameter
@@ -1636,7 +1636,10 @@ pub fn mk_t(cx: &ctxt, st: sty) -> t {
               flags = flags | HAS_PARAMS;
           }
       }
-      &ty_unboxed_closure(_, ref region) => flags = flags | rflags(*region),
+      &ty_unboxed_closure(_, ref region, ref substs) => {
+          flags = flags | rflags(*region);
+          flags = flags | sflags(substs);
+      }
       &ty_infer(_) => flags = flags | HAS_TY_INFER,
       &ty_enum(_, ref substs) | &ty_struct(_, ref substs) => {
           flags = flags | sflags(substs);
@@ -1885,9 +1888,9 @@ pub fn mk_struct(cx: &ctxt, struct_id: ast::DefId, substs: Substs) -> t {
     mk_t(cx, ty_struct(struct_id, substs))
 }
 
-pub fn mk_unboxed_closure(cx: &ctxt, closure_id: ast::DefId, region: Region)
+pub fn mk_unboxed_closure(cx: &ctxt, closure_id: ast::DefId, region: Region, substs: Substs)
                           -> t {
-    mk_t(cx, ty_unboxed_closure(closure_id, region))
+    mk_t(cx, ty_unboxed_closure(closure_id, region, substs))
 }
 
 pub fn mk_var(cx: &ctxt, v: TyVid) -> t { mk_infer(cx, TyVar(v)) }
@@ -1922,12 +1925,12 @@ pub fn maybe_walk_ty(ty: t, f: |t| -> bool) {
     }
     match get(ty).sty {
         ty_nil | ty_bot | ty_bool | ty_char | ty_int(_) | ty_uint(_) | ty_float(_) |
-        ty_str | ty_infer(_) | ty_param(_) | ty_unboxed_closure(_, _) | ty_err => {}
+        ty_str | ty_infer(_) | ty_param(_) | ty_err => {}
         ty_uniq(ty) | ty_vec(ty, _) | ty_open(ty) => maybe_walk_ty(ty, f),
         ty_ptr(ref tm) | ty_rptr(_, ref tm) => {
             maybe_walk_ty(tm.ty, f);
         }
-        ty_enum(_, ref substs) | ty_struct(_, ref substs) |
+        ty_enum(_, ref substs) | ty_struct(_, ref substs) | ty_unboxed_closure(_, _, ref substs) |
         ty_trait(box TyTrait { ref substs, .. }) => {
             for subty in (*substs).types.iter() {
                 maybe_walk_ty(*subty, |x| f(x));
@@ -2484,10 +2487,10 @@ pub fn type_contents(cx: &ctxt, ty: t) -> TypeContents {
                 apply_lang_items(cx, did, res)
             }
 
-            ty_unboxed_closure(did, r) => {
+            ty_unboxed_closure(did, r, ref substs) => {
                 // FIXME(#14449): `borrowed_contents` below assumes `&mut`
                 // unboxed closure.
-                let upvars = unboxed_closure_upvars(cx, did);
+                let upvars = unboxed_closure_upvars(cx, did, substs);
                 TypeContents::union(upvars.as_slice(),
                                     |f| tc_ty(cx, f.ty, cache)) |
                     borrowed_contents(r, MutMutable)
@@ -2781,8 +2784,8 @@ pub fn is_instantiable(cx: &ctxt, r_ty: t) -> bool {
                 r
             }
 
-            ty_unboxed_closure(did, _) => {
-                let upvars = unboxed_closure_upvars(cx, did);
+            ty_unboxed_closure(did, _, ref substs) => {
+                let upvars = unboxed_closure_upvars(cx, did, substs);
                 upvars.iter().any(|f| type_requires(cx, seen, r_ty, f.ty))
             }
 
@@ -2869,8 +2872,8 @@ pub fn is_type_representable(cx: &ctxt, sp: Span, ty: t) -> Representability {
 
                 find_nonrepresentable(cx, sp, seen, iter)
             }
-            ty_unboxed_closure(did, _) => {
-                let upvars = unboxed_closure_upvars(cx, did);
+            ty_unboxed_closure(did, _, ref substs) => {
+                let upvars = unboxed_closure_upvars(cx, did, substs);
                 find_nonrepresentable(cx, sp, seen, upvars.iter().map(|f| f.ty))
             }
             _ => Representable,
@@ -4225,7 +4228,7 @@ pub fn ty_to_def_id(ty: t) -> Option<ast::DefId> {
         ty_trait(box TyTrait { def_id: id, .. }) |
         ty_struct(id, _) |
         ty_enum(id, _) |
-        ty_unboxed_closure(id, _) => Some(id),
+        ty_unboxed_closure(id, _, _) => Some(id),
         _ => None
     }
 }
@@ -4623,7 +4626,7 @@ pub struct UnboxedClosureUpvar {
 }
 
 // Returns a list of `UnboxedClosureUpvar`s for each upvar.
-pub fn unboxed_closure_upvars(tcx: &ctxt, closure_id: ast::DefId)
+pub fn unboxed_closure_upvars(tcx: &ctxt, closure_id: ast::DefId, substs: &Substs)
                               -> Vec<UnboxedClosureUpvar> {
     if closure_id.krate == ast::LOCAL_CRATE {
         let capture_mode = tcx.capture_modes.borrow().get_copy(&closure_id.node);
@@ -4632,7 +4635,8 @@ pub fn unboxed_closure_upvars(tcx: &ctxt, closure_id: ast::DefId)
             Some(ref freevars) => {
                 freevars.iter().map(|freevar| {
                     let freevar_def_id = freevar.def.def_id();
-                    let mut freevar_ty = node_id_to_type(tcx, freevar_def_id.node);
+                    let freevar_ty = node_id_to_type(tcx, freevar_def_id.node);
+                    let mut freevar_ty = freevar_ty.subst(tcx, substs);
                     if capture_mode == ast::CaptureByRef {
                         let borrow = tcx.upvar_borrow_map.borrow().get_copy(&ty::UpvarId {
                             var_id: freevar_def_id.node,
@@ -5226,7 +5230,7 @@ pub fn hash_crate_independent(tcx: &ctxt, t: t, svh: &Svh) -> u64 {
             ty_open(_) => byte!(22),
             ty_infer(_) => unreachable!(),
             ty_err => byte!(23),
-            ty_unboxed_closure(d, r) => {
+            ty_unboxed_closure(d, r, _) => {
                 byte!(24);
                 did(&mut state, d);
                 region(&mut state, r);
@@ -5503,14 +5507,7 @@ pub fn accumulate_lifetimes_in_type(accumulator: &mut Vec<ty::Region>,
                 ..
             }) |
             ty_struct(_, ref substs) => {
-                match substs.regions {
-                    subst::ErasedRegions => {}
-                    subst::NonerasedRegions(ref regions) => {
-                        for region in regions.iter() {
-                            accumulator.push(*region)
-                        }
-                    }
-                }
+                accum_substs(accumulator, substs);
             }
             ty_closure(ref closure_ty) => {
                 match closure_ty.store {
@@ -5518,7 +5515,10 @@ pub fn accumulate_lifetimes_in_type(accumulator: &mut Vec<ty::Region>,
                     UniqTraitStore => {}
                 }
             }
-            ty_unboxed_closure(_, ref region) => accumulator.push(*region),
+            ty_unboxed_closure(_, ref region, ref substs) => {
+                accumulator.push(*region);
+                accum_substs(accumulator, substs);
+            }
             ty_nil |
             ty_bot |
             ty_bool |
@@ -5537,7 +5537,18 @@ pub fn accumulate_lifetimes_in_type(accumulator: &mut Vec<ty::Region>,
             ty_open(_) |
             ty_err => {}
         }
-    })
+    });
+
+    fn accum_substs(accumulator: &mut Vec<Region>, substs: &Substs) {
+        match substs.regions {
+            subst::ErasedRegions => {}
+            subst::NonerasedRegions(ref regions) => {
+                for region in regions.iter() {
+                    accumulator.push(*region)
+                }
+            }
+        }
+    }
 }
 
 /// A free variable referred to in a function.
