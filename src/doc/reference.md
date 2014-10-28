@@ -1170,6 +1170,9 @@ exposing an API making it possible for it to occur in safe code.
   * A discriminant in an `enum` not included in the type definition
   * A value in a `char` which is a surrogate or above `char::MAX`
   * non-UTF-8 byte sequences in a `str`
+* Unwinding into Rust from foreign code or unwinding from Rust into foreign
+  code. Rust's failure system is not compatible with exception handling in
+  other languages. Unwinding must be caught and handled at FFI boundaries.
 
 ##### Behaviour not considered unsafe
 
