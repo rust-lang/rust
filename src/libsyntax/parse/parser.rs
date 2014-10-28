@@ -78,6 +78,7 @@ use parse::token::InternedString;
 use parse::token::{keywords, special_idents};
 use parse::token;
 use parse::{new_sub_parser_from_file, ParseSess};
+use print::pprust;
 use ptr::P;
 use owned_slice::OwnedSlice;
 
@@ -394,7 +395,7 @@ impl<'a> Parser<'a> {
 
     /// Convert a token to a string using self's reader
     pub fn token_to_string(token: &token::Token) -> String {
-        token::to_string(token)
+        pprust::token_to_string(token)
     }
 
     /// Convert the current token to a string using self's reader
