@@ -104,6 +104,8 @@
  *   fallthrough node.  It is only live if the function could converge
  *   via means other than an explicit `return` expression. That is, it is
  *   only dead if the end of the function's block can never be reached.
+ *   It is the responsibility of typeck to ensure that there are no
+ *   `return` expressions in a function declared as diverging.
  */
 
 use middle::def::*;

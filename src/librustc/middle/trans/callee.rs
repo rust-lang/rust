@@ -876,11 +876,8 @@ pub fn trans_call_inner<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         _ => {}
     }
 
-    match ret_ty {
-        ty::FnConverging(_) => {},
-        ty::FnDiverging => {
-            Unreachable(bcx);
-        }
+    if ret_ty == ty::FnDiverging {
+        Unreachable(bcx);
     }
 
     Result::new(bcx, llresult)
