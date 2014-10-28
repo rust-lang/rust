@@ -329,7 +329,8 @@ case $CFG_OSTYPE in
         ;;
 
 # We do not detect other OS such as XP/2003 using 64 bit using uname.
-# If we want to in the future, we will need to use Cygwin - Chuck's csih helper in /usr/lib/csih/winProductName.exe or alternative.
+# If we want to in the future, we will need to use Cygwin
+# Chuck's csih helper in /usr/lib/csih/winProductName.exe or alternative.
     *)
         err "unknown OS type: $CFG_OSTYPE"
         ;;
