@@ -344,13 +344,10 @@ fn trans_monomorphized_callee<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             Callee { bcx: bcx, data: Fn(llfn) }
         }
         traits::VtableUnboxedClosure(closure_def_id) => {
-          // The static region and type parameters are lies, but we're in
-          // trans so it doesn't matter.
-          //
-          // FIXME(pcwalton): Is this true in the case of type parameters?
-          let callee_substs = get_callee_substitutions_for_unboxed_closure(
+            let self_ty = node_id_type(bcx, closure_def_id.node);
+            let callee_substs = get_callee_substitutions_for_unboxed_closure(
                 bcx,
-                closure_def_id);
+                self_ty);
 
             let llfn = trans_fn_ref_with_substs(bcx,
                                                 closure_def_id,
@@ -504,24 +501,22 @@ pub fn trans_trait_callee_from_llval<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     };
 }
 
-/// Creates the self type and (fake) callee substitutions for an unboxed
-/// closure with the given def ID. The static region and type parameters are
-/// lies, but we're in trans so it doesn't matter.
+/// Looks up the substitutions for an unboxed closure and adds the
+/// self type
 fn get_callee_substitutions_for_unboxed_closure(bcx: Block,
-                                                def_id: ast::DefId)
+                                                self_ty: ty::t)
                                                 -> subst::Substs {
-    let self_ty = ty::mk_unboxed_closure(bcx.tcx(), def_id, ty::ReStatic);
-    subst::Substs::erased(
-        VecPerParamSpace::new(Vec::new(),
-                              vec![
-                                  ty::mk_rptr(bcx.tcx(),
-                                              ty::ReStatic,
-                                              ty::mt {
+    match ty::get(self_ty).sty {
+        ty::ty_unboxed_closure(_, _, ref substs) => {
+            substs.with_self_ty(ty::mk_rptr(bcx.tcx(),
+                                            ty::ReStatic,
+                                            ty::mt {
                                                 ty: self_ty,
                                                 mutbl: ast::MutMutable,
-                                              })
-                              ],
-                              Vec::new()))
+                                            }))
+        },
+        _ => unreachable!()
+    }
 }
 
 /// Creates a returns a dynamic vtable for the given type and vtable origin.
@@ -569,10 +564,12 @@ pub fn get_vtable(bcx: Block,
                 emit_vtable_methods(bcx, id, substs).into_iter()
             }
             traits::VtableUnboxedClosure(closure_def_id) => {
+                let self_ty = node_id_type(bcx, closure_def_id.node);
+
                 let callee_substs =
                     get_callee_substitutions_for_unboxed_closure(
                         bcx,
-                        closure_def_id);
+                        self_ty.clone());
 
                 let mut llfn = trans_fn_ref_with_substs(
                     bcx,
@@ -590,25 +587,28 @@ pub fn get_vtable(bcx: Block,
                                                  unboxed closure");
                     if closure_info.kind == ty::FnOnceUnboxedClosureKind {
                         // Untuple the arguments and create an unboxing shim.
-                        let mut new_inputs = vec![
-                            ty::mk_unboxed_closure(bcx.tcx(),
-                                                   closure_def_id,
-                                                   ty::ReStatic)
-                        ];
-                        match ty::get(closure_info.closure_type
-                                                  .sig
-                                                  .inputs[0]).sty {
-                            ty::ty_tup(ref elements) => {
-                                for element in elements.iter() {
-                                    new_inputs.push(*element)
+                        let (new_inputs, new_output) = match ty::get(self_ty).sty {
+                            ty::ty_unboxed_closure(_, _, ref substs) => {
+                                let mut new_inputs = vec![self_ty.clone()];
+                                match ty::get(closure_info.closure_type
+                                              .sig
+                                              .inputs[0]).sty {
+                                    ty::ty_tup(ref elements) => {
+                                        for element in elements.iter() {
+                                            new_inputs.push(element.subst(bcx.tcx(), substs));
+                                        }
+                                    }
+                                    ty::ty_nil => {}
+                                    _ => {
+                                        bcx.tcx().sess.bug("get_vtable(): closure \
+                                                            type wasn't a tuple")
+                                    }
                                 }
-                            }
-                            ty::ty_nil => {}
-                            _ => {
-                                bcx.tcx().sess.bug("get_vtable(): closure \
-                                                    type wasn't a tuple")
-                            }
-                        }
+                                (new_inputs,
+                                 closure_info.closure_type.sig.output.subst(bcx.tcx(), substs))
+                            },
+                            _ => bcx.tcx().sess.bug("get_vtable(): def wasn't an unboxed closure")
+                        };
 
                         let closure_type = ty::BareFnTy {
                             fn_style: closure_info.closure_type.fn_style,
@@ -618,7 +618,7 @@ pub fn get_vtable(bcx: Block,
                                                        .sig
                                                        .binder_id,
                                 inputs: new_inputs,
-                                output: closure_info.closure_type.sig.output,
+                                output: new_output,
                                 variadic: false,
                             },
                         };
