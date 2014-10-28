@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern:task '<unnamed>' failed at 'test'
+// error-pattern:task '<unnamed>' panicked at 'test'
 
 use std::task;
 

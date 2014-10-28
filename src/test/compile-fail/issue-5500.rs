@@ -9,6 +9,6 @@
 // except according to those terms.
 
 fn main() {
-    &fail!()
+    &panic!()
     //~^ ERROR mismatched types: expected `()`, found `&<generic #2>` (expected (), found &-ptr)
 }

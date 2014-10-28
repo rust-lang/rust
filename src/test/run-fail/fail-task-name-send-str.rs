@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern:task 'send name' failed at 'test'
+// error-pattern:task 'send name' panicked at 'test'
 
 fn main() {
     let r: Result<int,_> =

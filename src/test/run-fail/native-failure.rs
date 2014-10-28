@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // ignore-android (FIXME #11419)
-// error-pattern:explicit failure
+// error-pattern:explicit panic
 
 extern crate native;
 

@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern:failed at 'explicit failure'
+// error-pattern:panicked at 'explicit panic'
 
 fn main() {
     panic!();
