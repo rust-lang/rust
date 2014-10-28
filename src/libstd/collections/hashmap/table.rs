@@ -607,6 +607,7 @@ impl<K, V> RawTable<K, V> {
                 "capacity overflow");
 
         let buffer = allocate(size, malloc_alignment);
+        if buffer.is_null() { ::alloc::oom() }
 
         let hashes = buffer.offset(hash_offset as int) as *mut u64;
 

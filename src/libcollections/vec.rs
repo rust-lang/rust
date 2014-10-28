@@ -629,6 +629,7 @@ impl<T> Vec<T> {
                                .expect("capacity overflow");
             unsafe {
                 self.ptr = alloc_or_realloc(self.ptr, self.cap * mem::size_of::<T>(), size);
+                if self.ptr.is_null() { ::alloc::oom() }
             }
             self.cap = capacity;
         }
@@ -666,6 +667,7 @@ impl<T> Vec<T> {
                                       self.cap * mem::size_of::<T>(),
                                       self.len * mem::size_of::<T>(),
                                       mem::min_align_of::<T>()) as *mut T;
+                if self.ptr.is_null() { ::alloc::oom() }
             }
             self.cap = self.len;
         }
@@ -988,6 +990,7 @@ impl<T> Vec<T> {
             if old_size > size { panic!("capacity overflow") }
             unsafe {
                 self.ptr = alloc_or_realloc(self.ptr, old_size, size);
+                if self.ptr.is_null() { ::alloc::oom() }
             }
             self.cap = max(self.cap, 2) * 2;
         }

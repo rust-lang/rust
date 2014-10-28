@@ -8,9 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use core::ptr::RawPtr;
+
 // FIXME: #13996: mark the `allocate` and `reallocate` return value as `noalias`
 
-/// Returns a pointer to `size` bytes of memory.
+/// Return a pointer to `size` bytes of memory aligned to `align`.
+///
+/// On failure, return a null pointer.
 ///
 /// Behavior is undefined if the requested size is 0 or the alignment is not a
 /// power of 2. The alignment must be no larger than the largest supported page
@@ -20,8 +24,9 @@ pub unsafe fn allocate(size: uint, align: uint) -> *mut u8 {
     imp::allocate(size, align)
 }
 
-/// Extends or shrinks the allocation referenced by `ptr` to `size` bytes of
-/// memory.
+/// Resize the allocation referenced by `ptr` to `size` bytes.
+///
+/// On failure, return a null pointer and leave the original allocation intact.
 ///
 /// Behavior is undefined if the requested size is 0 or the alignment is not a
 /// power of 2. The alignment must be no larger than the largest supported page
@@ -35,8 +40,7 @@ pub unsafe fn reallocate(ptr: *mut u8, old_size: uint, size: uint, align: uint) 
     imp::reallocate(ptr, old_size, size, align)
 }
 
-/// Extends or shrinks the allocation referenced by `ptr` to `size` bytes of
-/// memory in-place.
+/// Resize the allocation referenced by `ptr` to `size` bytes.
 ///
 /// If the operation succeeds, it returns `usable_size(size, align)` and if it
 /// fails (or is a no-op) it returns `usable_size(old_size, align)`.
@@ -95,7 +99,9 @@ unsafe fn exchange_malloc(size: uint, align: uint) -> *mut u8 {
     if size == 0 {
         EMPTY as *mut u8
     } else {
-        allocate(size, align)
+        let ptr = allocate(size, align);
+        if ptr.is_null() { ::oom() }
+        ptr
     }
 }
 
@@ -120,7 +126,7 @@ const MIN_ALIGN: uint = 16;
 #[cfg(jemalloc)]
 mod imp {
     use core::option::{None, Option};
-    use core::ptr::{RawPtr, null_mut, null};
+    use core::ptr::{null_mut, null};
     use core::num::Int;
     use libc::{c_char, c_int, c_void, size_t};
     use super::MIN_ALIGN;
@@ -131,10 +137,8 @@ mod imp {
 
     extern {
         fn je_mallocx(size: size_t, flags: c_int) -> *mut c_void;
-        fn je_rallocx(ptr: *mut c_void, size: size_t,
-                      flags: c_int) -> *mut c_void;
-        fn je_xallocx(ptr: *mut c_void, size: size_t, extra: size_t,
-                      flags: c_int) -> size_t;
+        fn je_rallocx(ptr: *mut c_void, size: size_t, flags: c_int) -> *mut c_void;
+        fn je_xallocx(ptr: *mut c_void, size: size_t, extra: size_t, flags: c_int) -> size_t;
         fn je_sdallocx(ptr: *mut c_void, size: size_t, flags: c_int);
         fn je_nallocx(size: size_t, flags: c_int) -> size_t;
         fn je_malloc_stats_print(write_cb: Option<extern "C" fn(cbopaque: *mut c_void,
@@ -160,21 +164,13 @@ mod imp {
     #[inline]
     pub unsafe fn allocate(size: uint, align: uint) -> *mut u8 {
         let flags = align_to_flags(align);
-        let ptr = je_mallocx(size as size_t, flags) as *mut u8;
-        if ptr.is_null() {
-            ::oom()
-        }
-        ptr
+        je_mallocx(size as size_t, flags) as *mut u8
     }
 
     #[inline]
     pub unsafe fn reallocate(ptr: *mut u8, _old_size: uint, size: uint, align: uint) -> *mut u8 {
         let flags = align_to_flags(align);
-        let ptr = je_rallocx(ptr as *mut c_void, size as size_t, flags) as *mut u8;
-        if ptr.is_null() {
-            ::oom()
-        }
-        ptr
+        je_rallocx(ptr as *mut c_void, size as size_t, flags) as *mut u8
     }
 
     #[inline]
@@ -207,7 +203,6 @@ mod imp {
 mod imp {
     use core::cmp;
     use core::ptr;
-    use core::ptr::RawPtr;
     use libc;
     use super::MIN_ALIGN;
 
@@ -220,31 +215,24 @@ mod imp {
     #[inline]
     pub unsafe fn allocate(size: uint, align: uint) -> *mut u8 {
         if align <= MIN_ALIGN {
-            let ptr = libc::malloc(size as libc::size_t);
-            if ptr.is_null() {
-                ::oom();
-            }
-            ptr as *mut u8
+            libc::malloc(size as libc::size_t) as *mut u8
         } else {
             let mut out = 0 as *mut libc::c_void;
             let ret = posix_memalign(&mut out,
                                      align as libc::size_t,
                                      size as libc::size_t);
             if ret != 0 {
-                ::oom();
+                ptr::null_mut()
+            } else {
+                out as *mut u8
             }
-            out as *mut u8
         }
     }
 
     #[inline]
     pub unsafe fn reallocate(ptr: *mut u8, old_size: uint, size: uint, align: uint) -> *mut u8 {
         if align <= MIN_ALIGN {
-            let ptr = libc::realloc(ptr as *mut libc::c_void, size as libc::size_t);
-            if ptr.is_null() {
-                ::oom();
-            }
-            ptr as *mut u8
+            libc::realloc(ptr as *mut libc::c_void, size as libc::size_t) as *mut u8
         } else {
             let new_ptr = allocate(size, align);
             ptr::copy_memory(new_ptr, ptr as *const u8, cmp::min(size, old_size));
@@ -276,7 +264,6 @@ mod imp {
 mod imp {
     use libc::{c_void, size_t};
     use libc;
-    use core::ptr::RawPtr;
     use super::MIN_ALIGN;
 
     extern {
@@ -289,35 +276,18 @@ mod imp {
     #[inline]
     pub unsafe fn allocate(size: uint, align: uint) -> *mut u8 {
         if align <= MIN_ALIGN {
-            let ptr = libc::malloc(size as size_t);
-            if ptr.is_null() {
-                ::oom();
-            }
-            ptr as *mut u8
+            libc::malloc(size as size_t) as *mut u8
         } else {
-            let ptr = _aligned_malloc(size as size_t, align as size_t);
-            if ptr.is_null() {
-                ::oom();
-            }
-            ptr as *mut u8
+            _aligned_malloc(size as size_t, align as size_t) as *mut u8
         }
     }
 
     #[inline]
     pub unsafe fn reallocate(ptr: *mut u8, _old_size: uint, size: uint, align: uint) -> *mut u8 {
         if align <= MIN_ALIGN {
-            let ptr = libc::realloc(ptr as *mut c_void, size as size_t);
-            if ptr.is_null() {
-                ::oom();
-            }
-            ptr as *mut u8
+            libc::realloc(ptr as *mut c_void, size as size_t) as *mut u8
         } else {
-            let ptr = _aligned_realloc(ptr as *mut c_void, size as size_t,
-                                       align as size_t);
-            if ptr.is_null() {
-                ::oom();
-            }
-            ptr as *mut u8
+            _aligned_realloc(ptr as *mut c_void, size as size_t, align as size_t) as *mut u8
         }
     }
 
@@ -348,6 +318,7 @@ mod imp {
 mod test {
     extern crate test;
     use self::test::Bencher;
+    use core::ptr::RawPtr;
     use heap;
 
     #[test]
@@ -355,6 +326,7 @@ mod test {
         unsafe {
             let size = 4000;
             let ptr = heap::allocate(size, 8);
+            if ptr.is_null() { ::oom() }
             let ret = heap::reallocate_inplace(ptr, size, size, 8);
             heap::deallocate(ptr, size, 8);
             assert_eq!(ret, heap::usable_size(size, 8));
