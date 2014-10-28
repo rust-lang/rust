@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn f() -> ! {
-    3i //~ ERROR expected `!`, found `int`
+fn f() -> ! { //~ ERROR computation may converge in a function marked as diverging
+    3i
 }
 fn main() { }

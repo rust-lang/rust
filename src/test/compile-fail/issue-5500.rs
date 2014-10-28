@@ -8,8 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern:explicit failure
-
 fn main() {
     &fail!()
+    //~^ ERROR mismatched types: expected `()`, found `&<generic #2>` (expected (), found &-ptr)
 }

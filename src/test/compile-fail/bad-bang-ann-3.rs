@@ -11,8 +11,7 @@
 // Tests that a function with a ! annotation always actually fails
 
 fn bad_bang(i: uint) -> ! {
-    return 7u;
-    //~^ ERROR expected `!`, found `uint`
+    return 7u; //~ ERROR `return` in a function declared as diverging [E0166]
 }
 
 fn main() { bad_bang(5u); }

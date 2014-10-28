@@ -359,7 +359,18 @@ pub fn super_fn_sigs<'tcx, C: Combine<'tcx>>(this: &C,
     let inputs = try!(argvecs(this,
                                 a.inputs.as_slice(),
                                 b.inputs.as_slice()));
-    let output = try!(this.tys(a.output, b.output));
+
+    let output = try!(match (a.output, b.output) {
+        (ty::FnConverging(a_ty), ty::FnConverging(b_ty)) =>
+            Ok(ty::FnConverging(try!(this.tys(a_ty, b_ty)))),
+        (ty::FnDiverging, ty::FnDiverging) =>
+            Ok(ty::FnDiverging),
+        (a, b) =>
+            Err(ty::terr_convergence_mismatch(
+                expected_found(this, a != ty::FnDiverging, b != ty::FnDiverging)
+            )),
+    });
+
     Ok(FnSig {binder_id: a.binder_id,
               inputs: inputs,
               output: output,
@@ -373,9 +384,7 @@ pub fn super_tys<'tcx, C: Combine<'tcx>>(this: &C, a: ty::t, b: ty::t) -> cres<t
     let b_sty = &ty::get(b).sty;
     debug!("super_tys: a_sty={} b_sty={}", a_sty, b_sty);
     return match (a_sty, b_sty) {
-      // The "subtype" ought to be handling cases involving bot or var:
-      (&ty::ty_bot, _) |
-      (_, &ty::ty_bot) |
+      // The "subtype" ought to be handling cases involving var:
       (&ty::ty_infer(TyVar(_)), _) |
       (_, &ty::ty_infer(TyVar(_))) => {
         tcx.sess.bug(

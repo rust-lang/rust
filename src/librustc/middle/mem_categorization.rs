@@ -485,7 +485,7 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
                 Some(method_ty) => {
                     // If this is an index implemented by a method call, then it will
                     // include an implicit deref of the result.
-                    let ret_ty = ty::ty_fn_ret(method_ty);
+                    let ret_ty = ty::ty_fn_ret(method_ty).unwrap();
                     Ok(self.cat_deref(expr,
                                       self.cat_rvalue_node(expr.id(),
                                                            expr.span(),
@@ -878,7 +878,7 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
 
         let base_cmt = match method_ty {
             Some(method_ty) => {
-                let ref_ty = ty::ty_fn_ret(method_ty);
+                let ref_ty = ty::ty_fn_ret(method_ty).unwrap();
                 self.cat_rvalue_node(node.id(), node.span(), ref_ty)
             }
             None => base_cmt
@@ -957,7 +957,7 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
 
         let element_ty = match method_ty {
             Some(method_ty) => {
-                let ref_ty = ty::ty_fn_ret(method_ty);
+                let ref_ty = ty::ty_fn_ret(method_ty).unwrap();
                 base_cmt = self.cat_rvalue_node(elt.id(), elt.span(), ref_ty);
                 ty::ty_fn_args(method_ty)[0]
             }

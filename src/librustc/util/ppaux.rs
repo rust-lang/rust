@@ -17,7 +17,7 @@ use middle::ty::{ReEarlyBound, BrFresh, ctxt};
 use middle::ty::{ReFree, ReScope, ReInfer, ReStatic, Region, ReEmpty};
 use middle::ty::{ReSkolemized, ReVar, BrEnv};
 use middle::ty::{mt, t, ParamTy};
-use middle::ty::{ty_bool, ty_char, ty_bot, ty_struct, ty_enum};
+use middle::ty::{ty_bool, ty_char, ty_struct, ty_enum};
 use middle::ty::{ty_err, ty_str, ty_vec, ty_float, ty_bare_fn, ty_closure};
 use middle::ty::{ty_nil, ty_param, ty_ptr, ty_rptr, ty_tup, ty_open};
 use middle::ty::{ty_unboxed_closure};
@@ -352,12 +352,15 @@ pub fn ty_to_string(cx: &ctxt, typ: t) -> String {
             s.push_str(bounds);
         }
 
-        if ty::get(sig.output).sty != ty_nil {
-            s.push_str(" -> ");
-            if ty::type_is_bot(sig.output) {
-                s.push('!');
-            } else {
-                s.push_str(ty_to_string(cx, sig.output).as_slice());
+        match sig.output {
+            ty::FnConverging(t) => {
+                if !ty::type_is_nil(t) {
+                    s.push_str(" -> ");
+                   s.push_str(ty_to_string(cx, t).as_slice());
+                }
+            }
+            ty::FnDiverging => {
+                s.push_str(" -> !");
             }
         }
     }
@@ -371,7 +374,6 @@ pub fn ty_to_string(cx: &ctxt, typ: t) -> String {
     // pretty print the structural type representation:
     return match ty::get(typ).sty {
       ty_nil => "()".to_string(),
-      ty_bot => "!".to_string(),
       ty_bool => "bool".to_string(),
       ty_char => "char".to_string(),
       ty_int(t) => ast_util::int_ty_to_string(t, None).to_string(),
@@ -949,6 +951,17 @@ impl Repr for ty::BareFnTy {
 impl Repr for ty::FnSig {
     fn repr(&self, tcx: &ctxt) -> String {
         fn_sig_to_string(tcx, self)
+    }
+}
+
+impl Repr for ty::FnOutput {
+    fn repr(&self, tcx: &ctxt) -> String {
+        match *self {
+            ty::FnConverging(ty) =>
+                format!("FnConverging({0})", ty.repr(tcx)),
+            ty::FnDiverging =>
+                "FnDiverging".to_string()
+        }
     }
 }
 

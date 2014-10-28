@@ -126,9 +126,10 @@ impl<'a, 'tcx, 'v> Visitor<'v> for IntrinsicCheckingVisitor<'a, 'tcx> {
                         match ty::get(typ).sty {
                             ty_bare_fn(ref bare_fn_ty)
                                     if bare_fn_ty.abi == RustIntrinsic => {
-                                let from = bare_fn_ty.sig.inputs[0];
-                                let to = bare_fn_ty.sig.output;
-                                self.check_transmute(expr.span, from, to, expr.id);
+                                if let ty::FnConverging(to) = bare_fn_ty.sig.output {
+                                    let from = bare_fn_ty.sig.inputs[0];
+                                    self.check_transmute(expr.span, from, to, expr.id);
+                                }
                             }
                             _ => {
                                 self.tcx

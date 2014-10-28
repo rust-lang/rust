@@ -17,5 +17,4 @@ fn main() {
         unsafe { libc::exit(0 as libc::c_int); }
     });
     2u + (loop {});
-    -(loop {});
 }

@@ -97,7 +97,7 @@ pub fn untuple_arguments_if_necessary(ccx: &CrateContext,
 pub fn type_of_rust_fn(cx: &CrateContext,
                        llenvironment_type: Option<Type>,
                        inputs: &[ty::t],
-                       output: ty::t,
+                       output: ty::FnOutput,
                        abi: abi::Abi)
                        -> Type {
     let mut atys: Vec<Type> = Vec::new();
@@ -107,11 +107,22 @@ pub fn type_of_rust_fn(cx: &CrateContext,
 
     // Arg 0: Output pointer.
     // (if the output type is non-immediate)
-    let use_out_pointer = return_uses_outptr(cx, output);
-    let lloutputtype = arg_type_of(cx, output);
-    if use_out_pointer {
-        atys.push(lloutputtype.ptr_to());
-    }
+    let lloutputtype = match output {
+        ty::FnConverging(output) => {
+            let use_out_pointer = return_uses_outptr(cx, output);
+            let lloutputtype = arg_type_of(cx, output);
+            // Use the output as the actual return value if it's immediate.
+            if use_out_pointer {
+                atys.push(lloutputtype.ptr_to());
+                Type::void(cx)
+            } else if return_type_is_void(cx, output) {
+                Type::void(cx)
+            } else {
+                lloutputtype
+            }
+        }
+        ty::FnDiverging => Type::void(cx)
+    };
 
     // Arg 1: Environment
     match llenvironment_type {
@@ -123,12 +134,7 @@ pub fn type_of_rust_fn(cx: &CrateContext,
     let input_tys = inputs.iter().map(|&arg_ty| type_of_explicit_arg(cx, arg_ty));
     atys.extend(input_tys);
 
-    // Use the output as the actual return value if it's immediate.
-    if use_out_pointer || return_type_is_void(cx, output) {
-        Type::func(atys.as_slice(), &Type::void(cx))
-    } else {
-        Type::func(atys.as_slice(), &lloutputtype)
-    }
+    Type::func(atys.as_slice(), &lloutputtype)
 }
 
 // Given a function type and a count of ty params, construct an llvm type
@@ -181,7 +187,7 @@ pub fn sizing_type_of(cx: &CrateContext, t: ty::t) -> Type {
                                   ppaux::ty_to_string(cx.tcx(), t)).as_slice())
         }
 
-        ty::ty_nil | ty::ty_bot => Type::nil(cx),
+        ty::ty_nil => Type::nil(cx),
         ty::ty_bool => Type::bool(cx),
         ty::ty_char => Type::char(cx),
         ty::ty_int(t) => Type::int_from_ty(cx, t),
@@ -293,7 +299,7 @@ pub fn type_of(cx: &CrateContext, t: ty::t) -> Type {
     }
 
     let mut llty = match ty::get(t).sty {
-      ty::ty_nil | ty::ty_bot => Type::nil(cx),
+      ty::ty_nil => Type::nil(cx),
       ty::ty_bool => Type::bool(cx),
       ty::ty_char => Type::char(cx),
       ty::ty_int(t) => Type::int_from_ty(cx, t),

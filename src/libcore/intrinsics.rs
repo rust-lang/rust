@@ -149,7 +149,7 @@ pub trait TyVisitor {
     fn visit_fn_input(&mut self, i: uint, mode: uint,
                       inner: *const TyDesc) -> bool;
     fn visit_fn_output(&mut self, retstyle: uint, variadic: bool,
-                       inner: *const TyDesc) -> bool;
+                       converging: bool, inner: *const TyDesc) -> bool;
     fn visit_leave_fn(&mut self, purity: uint, proto: uint,
                       n_inputs: uint, retstyle: uint) -> bool;
 
