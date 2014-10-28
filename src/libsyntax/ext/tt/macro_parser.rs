@@ -87,6 +87,7 @@ use parse::attr::ParserAttr;
 use parse::parser::{LifetimeAndTypesWithoutColons, Parser};
 use parse::token::{Token, Nonterminal};
 use parse::token;
+use print::pprust;
 use ptr::P;
 
 use std::rc::Rc;
@@ -402,7 +403,7 @@ pub fn parse(sess: &ParseSess,
                     nts, next_eis.len()).to_string());
             } else if bb_eis.len() == 0u && next_eis.len() == 0u {
                 return Failure(sp, format!("no rules expected the token `{}`",
-                            token::to_string(&tok)).to_string());
+                            pprust::token_to_string(&tok)).to_string());
             } else if next_eis.len() > 0u {
                 /* Now process the next token */
                 while next_eis.len() > 0u {
@@ -449,7 +450,7 @@ pub fn parse_nt(p: &mut Parser, name: &str) -> Nonterminal {
       "ident" => match p.token {
         token::Ident(sn,b) => { p.bump(); token::NtIdent(box sn,b) }
         _ => {
-            let token_str = token::to_string(&p.token);
+            let token_str = pprust::token_to_string(&p.token);
             p.fatal((format!("expected ident, found {}",
                              token_str.as_slice())).as_slice())
         }
