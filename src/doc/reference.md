@@ -1165,7 +1165,7 @@ exposing an API making it possible for it to occur in safe code.
   * Using `std::ptr::copy_nonoverlapping_memory` (`memcpy32`/`memcpy64`
     instrinsics) on overlapping buffers
 * Invalid values in primitive types, even in private fields/locals:
-  * Dangling/null pointers in non-raw pointers, or slices
+  * Dangling/null references or boxes
   * A value other than `false` (0) or `true` (1) in a `bool`
   * A discriminant in an `enum` not included in the type definition
   * A value in a `char` which is a surrogate or above `char::MAX`
