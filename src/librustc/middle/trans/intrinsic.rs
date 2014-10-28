@@ -204,7 +204,7 @@ pub fn trans_intrinsic_call<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>, node: ast::N
 
     fcx.pop_custom_cleanup_scope(cleanup_scope);
 
-    // The only intrinsic function that diverges.
+    // These are the only intrinsic functions that diverge.
     if name.get() == "abort" {
         let llfn = ccx.get_intrinsic(&("llvm.trap"));
         Call(bcx, llfn, [], None);

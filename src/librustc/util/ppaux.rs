@@ -957,12 +957,10 @@ impl Repr for ty::FnSig {
 impl Repr for ty::FnOutput {
     fn repr(&self, tcx: &ctxt) -> String {
         match *self {
-          ty::FnConverging(ty) => {
-            format!("FnConverging({0})", ty.repr(tcx))
-          }
-          ty::FnDiverging => {
-            "FnDiverging".to_string()
-          }
+            ty::FnConverging(ty) =>
+                format!("FnConverging({0})", ty.repr(tcx)),
+            ty::FnDiverging =>
+                "FnDiverging".to_string()
         }
     }
 }
