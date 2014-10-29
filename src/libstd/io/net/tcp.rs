@@ -67,7 +67,7 @@ impl TcpStream {
     /// trait can be supplied for the address; see this trait documentation for
     /// concrete examples.
     pub fn connect<A: ToSocketAddr>(addr: A) -> IoResult<TcpStream> {
-        super::with_addresses(addr, |io, addr| io.tcp_connect(addr, None).map(TcpStream::new))
+        super::with_addresses_io(addr, |io, addr| io.tcp_connect(addr, None).map(TcpStream::new))
     }
 
     /// Creates a TCP connection to a remote socket address, timing out after
@@ -89,7 +89,7 @@ impl TcpStream {
             return Err(standard_error(TimedOut));
         }
 
-        super::with_addresses(addr, |io, addr|
+        super::with_addresses_io(addr, |io, addr|
             io.tcp_connect(addr, Some(timeout.num_milliseconds() as u64)).map(TcpStream::new)
         )
     }
@@ -324,7 +324,7 @@ impl TcpListener {
     /// to this listener. The port allocated can be queried via the
     /// `socket_name` function.
     pub fn bind<A: ToSocketAddr>(addr: A) -> IoResult<TcpListener> {
-        super::with_addresses(addr, |io, addr| io.tcp_bind(addr).map(|l| TcpListener { obj: l }))
+        super::with_addresses_io(addr, |io, addr| io.tcp_bind(addr).map(|l| TcpListener { obj: l }))
     }
 
     /// Returns the local socket address of this listener.
