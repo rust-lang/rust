@@ -19,8 +19,7 @@
 use mem;
 use char;
 use char::Char;
-use cmp;
-use cmp::{PartialEq, Eq};
+use cmp::{Eq, mod};
 use default::Default;
 use iter::{Map, Iterator};
 use iter::{DoubleEndedIterator, ExactSize};
