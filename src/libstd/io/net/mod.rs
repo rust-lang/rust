@@ -10,11 +10,11 @@
 
 //! Networking I/O
 
-use io::{IoError, InvalidInput};
+use io::{IoError, IoResult, InvalidInput};
 use option::None;
 use result::{Result, Ok, Err};
 use rt::rtio;
-use self::ip::{Ipv4Addr, Ipv6Addr, IpAddr, ToSocketAddr};
+use self::ip::{Ipv4Addr, Ipv6Addr, IpAddr, SocketAddr, ToSocketAddr};
 
 pub use self::addrinfo::get_host_addresses;
 
@@ -42,7 +42,7 @@ fn from_rtio(ip: rtio::IpAddr) -> IpAddr {
     }
 }
 
-fn with_addresses<A: ToSocketAddr, T>(
+fn with_addresses_io<A: ToSocketAddr, T>(
     addr: A, 
     action: |&mut rtio::IoFactory, rtio::SocketAddr| -> Result<T, rtio::IoError>
 ) -> Result<T, IoError> {
@@ -59,6 +59,25 @@ fn with_addresses<A: ToSocketAddr, T>(
         match rtio::LocalIo::maybe_raise(|io| action(io, addr)) {
             Ok(r) => return Ok(r),
             Err(e) => err = IoError::from_rtio_error(e)
+        }
+    }
+    Err(err)
+}
+
+fn with_addresses<A: ToSocketAddr, T>(addr: A, action: |SocketAddr| -> IoResult<T>)
+    -> IoResult<T> {
+    const DEFAULT_ERROR: IoError = IoError {
+        kind: InvalidInput,
+        desc: "no addresses found for hostname",
+        detail: None
+    };
+
+    let addresses = try!(addr.to_socket_addr_all());
+    let mut err = DEFAULT_ERROR;
+    for addr in addresses.into_iter() {
+        match action(addr) {
+            Ok(r) => return Ok(r),
+            Err(e) => err = e
         }
     }
     Err(err)
