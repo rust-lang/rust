@@ -47,7 +47,7 @@ release: 0.12.0
 ```
 
 Finally, if you can run the offending command under gdb, pasting a stack trace can be
-useful; to do so, you will need to set a breakpoint on `rust_fail`.
+useful; to do so, you will need to set a breakpoint on `rust_panic`.
 
 # I submitted a bug, but nobody has commented on it!
 

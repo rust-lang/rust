@@ -177,7 +177,7 @@ pub unsafe fn try(f: ||) -> ::core::result::Result<(), Box<Any + Send>> {
 // An uninlined, unmangled function upon which to slap yer breakpoints
 #[inline(never)]
 #[no_mangle]
-fn rust_fail(cause: Box<Any + Send>) -> ! {
+fn rust_panic(cause: Box<Any + Send>) -> ! {
     rtdebug!("begin_unwind()");
 
     unsafe {
@@ -588,7 +588,7 @@ fn begin_unwind_inner(msg: Box<Any + Send>, file_line: &(&'static str, uint)) ->
     // (hopefully someone printed something about this).
     let mut task: Box<Task> = match Local::try_take() {
         Some(task) => task,
-        None => rust_fail(msg),
+        None => rust_panic(msg),
     };
 
     if task.unwinder.unwinding {
@@ -605,7 +605,7 @@ fn begin_unwind_inner(msg: Box<Any + Send>, file_line: &(&'static str, uint)) ->
     // requires the task. We need a handle to its unwinder, however, so after
     // this we unsafely extract it and continue along.
     Local::put(task);
-    rust_fail(msg);
+    rust_panic(msg);
 }
 
 /// Register a callback to be invoked when a task unwinds.
