@@ -12,9 +12,7 @@
 // min-lldb-version: 310
 
 // compile-flags:-g
-// gdb-command:rbreak zzz
 // gdb-command:run
-// gdb-command:finish
 // gdb-command:whatis unit
 // gdb-check:type = ()
 // gdb-command:whatis b
@@ -67,7 +65,7 @@ fn main() {
     let u64: u64 = 64;
     let f32: f32 = 2.5;
     let f64: f64 = 3.5;
-    _zzz();
+    _zzz(); // #break
     if 1i == 1 { _yyy(); }
 }
 

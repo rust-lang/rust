@@ -15,17 +15,14 @@
 
 // === GDB TESTS ===================================================================================
 
-// gdb-command:rbreak zzz
 // gdb-command:run
 
-// gdb-command:finish
 // gdb-command:print shadowed
 // gdb-check:$1 = 231
 // gdb-command:print not_shadowed
 // gdb-check:$2 = 232
 // gdb-command:continue
 
-// gdb-command:finish
 // gdb-command:print shadowed
 // gdb-check:$3 = 233
 // gdb-command:print not_shadowed
@@ -34,14 +31,12 @@
 // gdb-check:$5 = 234
 // gdb-command:continue
 
-// gdb-command:finish
 // gdb-command:print shadowed
 // gdb-check:$6 = 236
 // gdb-command:print not_shadowed
 // gdb-check:$7 = 232
 // gdb-command:continue
 
-// gdb-command:finish
 // gdb-command:print shadowed
 // gdb-check:$8 = 237
 // gdb-command:print not_shadowed
@@ -50,28 +45,24 @@
 // gdb-check:$10 = 238
 // gdb-command:continue
 
-// gdb-command:finish
 // gdb-command:print shadowed
 // gdb-check:$11 = 239
 // gdb-command:print not_shadowed
 // gdb-check:$12 = 232
 // gdb-command:continue
 
-// gdb-command:finish
 // gdb-command:print shadowed
 // gdb-check:$13 = 241
 // gdb-command:print not_shadowed
 // gdb-check:$14 = 232
 // gdb-command:continue
 
-// gdb-command:finish
 // gdb-command:print shadowed
 // gdb-check:$15 = 243
 // gdb-command:print *local_to_arm
 // gdb-check:$16 = 244
 // gdb-command:continue
 
-// gdb-command:finish
 // gdb-command:print shadowed
 // gdb-check:$17 = 231
 // gdb-command:print not_shadowed

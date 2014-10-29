@@ -13,8 +13,6 @@
 
 // compile-flags:-g
 
-// gdb-command:break 'no-debug-attribute.rs':32
-// gdb-command:break 'no-debug-attribute.rs':38
 // gdb-command:run
 
 // gdb-command:info locals

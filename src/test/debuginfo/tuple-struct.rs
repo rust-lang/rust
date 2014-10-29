@@ -15,10 +15,7 @@
 
 // === GDB TESTS ===================================================================================
 
-// gdb-command:set print pretty off
-// gdb-command:rbreak zzz
 // gdb-command:run
-// gdb-command:finish
 
 // gdb-command:print no_padding16
 // gdb-check:$1 = {10000, -10001}

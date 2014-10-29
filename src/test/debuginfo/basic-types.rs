@@ -21,9 +21,7 @@
 
 // === GDB TESTS ===================================================================================
 
-// gdb-command:rbreak zzz
 // gdb-command:run
-// gdb-command:finish
 // gdb-command:print b
 // gdb-check:$1 = false
 // gdb-command:print i

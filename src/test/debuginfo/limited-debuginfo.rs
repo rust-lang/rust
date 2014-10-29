@@ -21,11 +21,9 @@
 // gdb-check:[...]void[...]some_other_function([...]);
 // gdb-check:[...]void[...]zzz([...]);
 
-// gdb-command:rbreak zzz
 // gdb-command:run
 
 // Make sure there is no information about locals
-// gdb-command:finish
 // gdb-command:info locals
 // gdb-check:No locals.
 // gdb-command:continue
@@ -49,7 +47,7 @@ fn zzz() {()}
 fn some_function(a: int, b: int) {
     let some_variable = Struct { a: 11, b: 22 };
     let some_other_variable = 23i;
-    zzz();
+    zzz(); // #break
 }
 
 fn some_other_function(a: int, b: int) -> bool { true }

@@ -15,23 +15,19 @@
 
 // === GDB TESTS ===================================================================================
 
-// gdb-command:rbreak zzz
 // gdb-command:run
-// gdb-command:finish
 
 // gdb-command:print x
 // gdb-check:$1 = 111102
 // gdb-command:print y
 // gdb-check:$2 = true
-
 // gdb-command:continue
-// gdb-command:finish
 
 // gdb-command:print a
 // gdb-check:$3 = 2000
 // gdb-command:print b
 // gdb-check:$4 = 3000
-
+// gdb-command:continue
 
 // === LLDB TESTS ==================================================================================
 
