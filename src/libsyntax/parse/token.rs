@@ -56,12 +56,6 @@ use std::rc::Rc;
 #[cfg(stage0)] pub use self::RArrow         as RARROW;
 #[cfg(stage0)] pub use self::LArrow         as LARROW;
 #[cfg(stage0)] pub use self::FatArrow       as FAT_ARROW;
-#[cfg(stage0)] pub use self::LParen         as LPAREN;
-#[cfg(stage0)] pub use self::RParen         as RPAREN;
-#[cfg(stage0)] pub use self::LBracket       as LBRACKET;
-#[cfg(stage0)] pub use self::RBracket       as RBRACKET;
-#[cfg(stage0)] pub use self::LBrace         as LBRACE;
-#[cfg(stage0)] pub use self::RBrace         as RBRACE;
 #[cfg(stage0)] pub use self::Pound          as POUND;
 #[cfg(stage0)] pub use self::Dollar         as DOLLAR;
 #[cfg(stage0)] pub use self::Question       as QUESTION;
@@ -82,6 +76,12 @@ use std::rc::Rc;
 #[cfg(stage0)] pub use self::Comment        as COMMENT;
 #[cfg(stage0)] pub use self::Shebang        as SHEBANG;
 #[cfg(stage0)] pub use self::Eof            as EOF;
+#[cfg(stage0)] pub const LPAREN:    Token = OpenDelim(Paren);
+#[cfg(stage0)] pub const RPAREN:    Token = CloseDelim(Paren);
+#[cfg(stage0)] pub const LBRACKET:  Token = OpenDelim(Bracket);
+#[cfg(stage0)] pub const RBRACKET:  Token = CloseDelim(Bracket);
+#[cfg(stage0)] pub const LBRACE:    Token = OpenDelim(Brace);
+#[cfg(stage0)] pub const RBRACE:    Token = CloseDelim(Brace);
 
 #[allow(non_camel_case_types)]
 #[deriving(Clone, Encodable, Decodable, PartialEq, Eq, Hash, Show)]
@@ -96,6 +96,17 @@ pub enum BinOpToken {
     Or,
     Shl,
     Shr,
+}
+
+/// A delimeter token
+#[deriving(Clone, Encodable, Decodable, PartialEq, Eq, Hash, Show)]
+pub enum DelimToken {
+    /// A round parenthesis: `(` or `)`
+    Paren,
+    /// A square bracket: `[` or `]`
+    Bracket,
+    /// A curly brace: `{` or `}`
+    Brace,
 }
 
 #[cfg(stage0)]
@@ -143,15 +154,13 @@ pub enum Token {
     RArrow,
     LArrow,
     FatArrow,
-    LParen,
-    RParen,
-    LBracket,
-    RBracket,
-    LBrace,
-    RBrace,
     Pound,
     Dollar,
     Question,
+    /// An opening delimeter, eg. `{`
+    OpenDelim(DelimToken),
+    /// A closing delimeter, eg. `}`
+    CloseDelim(DelimToken),
 
     /* Literals */
     LitByte(ast::Name),
@@ -192,9 +201,7 @@ impl Token {
     /// Returns `true` if the token can appear at the start of an expression.
     pub fn can_begin_expr(&self) -> bool {
         match *self {
-            LParen                      => true,
-            LBrace                      => true,
-            LBracket                    => true,
+            OpenDelim(_)                => true,
             Ident(_, _)                 => true,
             Underscore                  => true,
             Tilde                       => true,
@@ -227,10 +234,10 @@ impl Token {
     /// otherwise `None`.
     pub fn get_close_delimiter(&self) -> Option<Token> {
         match *self {
-            LParen   => Some(RParen),
-            LBrace   => Some(RBrace),
-            LBracket => Some(RBracket),
-            _        => None,
+            OpenDelim(Paren)   => Some(CloseDelim(Paren)),
+            OpenDelim(Brace)   => Some(CloseDelim(Brace)),
+            OpenDelim(Bracket) => Some(CloseDelim(Bracket)),
+            _                  => None,
         }
     }
 
