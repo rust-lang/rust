@@ -20,7 +20,7 @@ trait MyTrait<T> {
 
 impl<T> MyTrait<T> for T { //~ ERROR E0119
     fn get(&self) -> T {
-        fail!()
+        panic!()
     }
 }
 

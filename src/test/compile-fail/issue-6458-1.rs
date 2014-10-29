@@ -9,5 +9,5 @@
 // except according to those terms.
 
 fn foo<T>(t: T) {}
-fn main() { foo(fail!()) }
+fn main() { foo(panic!()) }
     //~^ ERROR type annotations required

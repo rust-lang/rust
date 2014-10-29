@@ -30,7 +30,7 @@ macro_rules! regex(
     ($re:expr) => (
         match ::regex::Regex::new($re) {
             Ok(re) => re,
-            Err(err) => fail!("{}", err),
+            Err(err) => panic!("{}", err),
         }
     );
 )

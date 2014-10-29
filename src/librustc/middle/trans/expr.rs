@@ -1263,7 +1263,7 @@ pub fn with_field_tys<R>(tcx: &ty::ctxt,
      * Helper for enumerating the field types of structs, enums, or records.
      * The optional node ID here is the node ID of the path identifying the enum
      * variant in use. If none, this cannot possibly an enum variant (so, if it
-     * is and `node_id_opt` is none, this function fails).
+     * is and `node_id_opt` is none, this function panics).
      */
 
     match ty::get(ty).sty {
@@ -1421,7 +1421,7 @@ pub fn trans_adt<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
     };
 
     // This scope holds intermediates that must be cleaned should
-    // failure occur before the ADT as a whole is ready.
+    // panic occur before the ADT as a whole is ready.
     let custom_cleanup_scope = fcx.push_custom_cleanup_scope();
 
     // First we trans the base, if we have one, to the dest

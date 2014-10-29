@@ -131,7 +131,7 @@ fn str_to_binop(s: &str) -> BinOpToken {
         "|"     => token::Or,
         "<<"    => token::Shl,
         ">>"    => token::Shr,
-        _       => fail!("Bad binop str `{}`", s),
+        _       => panic!("Bad binop str `{}`", s),
     }
 }
 
@@ -276,7 +276,7 @@ fn main() {
                                 warn!("Different names for {} and {}", rustc_tok, antlr_tok);
                             }
                         }
-                        _ => fail!("{} is not {}", antlr_tok, rustc_tok)
+                        _ => panic!("{} is not {}", antlr_tok, rustc_tok)
                     },)*
                     ref c => assert!(c == &antlr_tok.tok, "{} is not {}", rustc_tok, antlr_tok)
                 }

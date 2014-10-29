@@ -308,7 +308,7 @@ impl Type {
             Double => 64,
             X86_FP80 => 80,
             FP128 | PPC_FP128 => 128,
-            _ => fail!("llvm_float_width called on a non-float type")
+            _ => panic!("llvm_float_width called on a non-float type")
         }
     }
 }

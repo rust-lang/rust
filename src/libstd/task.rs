@@ -28,12 +28,12 @@
 //! using the atomically-reference-counted container,
 //! [`Arc`](../../std/sync/struct.Arc.html).
 //!
-//! Fatal logic errors in Rust cause *task failure*, during which
+//! Fatal logic errors in Rust cause *task panic*, during which
 //! a task will unwind the stack, running destructors and freeing
-//! owned resources. Task failure is unrecoverable from within
-//! the failing task (i.e. there is no 'try/catch' in Rust), but
-//! failure may optionally be detected from a different task. If
-//! the main task fails the application will exit with a non-zero
+//! owned resources. Task panic is unrecoverable from within
+//! the panicking task (i.e. there is no 'try/catch' in Rust), but
+//! panic may optionally be detected from a different task. If
+//! the main task panics the application will exit with a non-zero
 //! exit code.
 //!
 //! # Basic task scheduling
@@ -123,7 +123,7 @@ impl Spawner for SiblingSpawner {
         let tb: Option<Box<Task>> = Local::try_take();
         match tb {
             Some(t) => t.spawn_sibling(opts, f),
-            None => fail!("need a local task to spawn a sibling task"),
+            None => panic!("need a local task to spawn a sibling task"),
         };
     }
 }
@@ -140,7 +140,7 @@ impl Spawner for SiblingSpawner {
 // sidestep that whole issue by making builders uncopyable and making
 // the run function move them in.
 pub struct TaskBuilder<S = SiblingSpawner> {
-    // A name for the task-to-be, for identification in failure messages
+    // A name for the task-to-be, for identification in panic messages
     name: Option<SendStr>,
     // The size of the stack for the spawned task
     stack_size: Option<uint>,
@@ -173,7 +173,7 @@ impl TaskBuilder<SiblingSpawner> {
 
 impl<S: Spawner> TaskBuilder<S> {
     /// Name the task-to-be. Currently the name is used for identification
-    /// only in failure messages.
+    /// only in panic messages.
     #[unstable = "IntoMaybeOwned will probably change."]
     pub fn named<T: IntoMaybeOwned<'static>>(mut self, name: T) -> TaskBuilder<S> {
         self.name = Some(name.into_maybe_owned());
@@ -269,10 +269,10 @@ impl<S: Spawner> TaskBuilder<S> {
     ///
     /// # Return value
     ///
-    /// If the child task executes successfully (without failing) then the
+    /// If the child task executes successfully (without panicking) then the
     /// future returns `result::Ok` containing the value returned by the
-    /// function. If the child task fails then the future returns `result::Err`
-    /// containing the argument to `fail!(...)` as an `Any` trait object.
+    /// function. If the child task panics then the future returns `result::Err`
+    /// containing the argument to `panic!(...)` as an `Any` trait object.
     #[experimental = "Futures are experimental."]
     pub fn try_future<T:Send>(self, f: proc():Send -> T)
                               -> Future<Result<T, Box<Any + Send>>> {
@@ -293,7 +293,7 @@ impl<S: Spawner> TaskBuilder<S> {
     }
 
     /// Execute a function in a newly-spawnedtask and block until the task
-    /// completes or fails. Equivalent to `.try_future(f).unwrap()`.
+    /// completes or panics. Equivalent to `.try_future(f).unwrap()`.
     #[unstable = "Error type may change."]
     pub fn try<T:Send>(self, f: proc():Send -> T) -> Result<T, Box<Any + Send>> {
         self.try_future(f).unwrap()
@@ -313,7 +313,7 @@ pub fn spawn(f: proc(): Send) {
 }
 
 /// Execute a function in a newly-spawned task and return either the return
-/// value of the function or an error if the task failed.
+/// value of the function or an error if the task panicked.
 ///
 /// This is equivalent to `TaskBuilder::new().try`.
 #[unstable = "Error type may change."]
@@ -355,8 +355,8 @@ pub fn deschedule() {
     task.yield_now();
 }
 
-/// True if the running task is currently failing (e.g. will return `true` inside a
-/// destructor that is run while unwinding the stack after a call to `fail!()`).
+/// True if the running task is currently panicking (e.g. will return `true` inside a
+/// destructor that is run while unwinding the stack after a call to `panic!()`).
 #[unstable = "May move to a different module."]
 pub fn failing() -> bool {
     use rt::task::Task;
@@ -420,7 +420,7 @@ mod test {
         assert!(result.unwrap().is_ok());
 
         let result = TaskBuilder::new().try_future(proc() -> () {
-            fail!();
+            panic!();
         });
         assert!(result.unwrap().is_err());
     }
@@ -431,17 +431,17 @@ mod test {
             "Success!".to_string()
         }).as_ref().map(|s| s.as_slice()) {
             result::Ok("Success!") => (),
-            _ => fail!()
+            _ => panic!()
         }
     }
 
     #[test]
-    fn test_try_fail() {
+    fn test_try_panic() {
         match try(proc() {
-            fail!()
+            panic!()
         }) {
             result::Err(_) => (),
-            result::Ok(()) => fail!()
+            result::Ok(()) => panic!()
         }
     }
 
@@ -541,37 +541,37 @@ mod test {
     }
 
     #[test]
-    fn test_try_fail_message_static_str() {
+    fn test_try_panic_message_static_str() {
         match try(proc() {
-            fail!("static string");
+            panic!("static string");
         }) {
             Err(e) => {
                 type T = &'static str;
                 assert!(e.is::<T>());
                 assert_eq!(*e.downcast::<T>().unwrap(), "static string");
             }
-            Ok(()) => fail!()
+            Ok(()) => panic!()
         }
     }
 
     #[test]
-    fn test_try_fail_message_owned_str() {
+    fn test_try_panic_message_owned_str() {
         match try(proc() {
-            fail!("owned string".to_string());
+            panic!("owned string".to_string());
         }) {
             Err(e) => {
                 type T = String;
                 assert!(e.is::<T>());
                 assert_eq!(*e.downcast::<T>().unwrap(), "owned string".to_string());
             }
-            Ok(()) => fail!()
+            Ok(()) => panic!()
         }
     }
 
     #[test]
-    fn test_try_fail_message_any() {
+    fn test_try_panic_message_any() {
         match try(proc() {
-            fail!(box 413u16 as Box<Any + Send>);
+            panic!(box 413u16 as Box<Any + Send>);
         }) {
             Err(e) => {
                 type T = Box<Any + Send>;
@@ -580,19 +580,19 @@ mod test {
                 assert!(any.is::<u16>());
                 assert_eq!(*any.downcast::<u16>().unwrap(), 413u16);
             }
-            Ok(()) => fail!()
+            Ok(()) => panic!()
         }
     }
 
     #[test]
-    fn test_try_fail_message_unit_struct() {
+    fn test_try_panic_message_unit_struct() {
         struct Juju;
 
         match try(proc() {
-            fail!(Juju)
+            panic!(Juju)
         }) {
             Err(ref e) if e.is::<Juju>() => {}
-            Err(_) | Ok(()) => fail!()
+            Err(_) | Ok(()) => panic!()
         }
     }
 

@@ -70,7 +70,7 @@ impl<'r, R: Reader> Iterator<IoResult<u8>> for Bytes<'r, R> {
 ///
 /// * `n`: The value to convert.
 /// * `size`: The size of the value, in bytes. This must be 8 or less, or task
-///           failure occurs. If this is less than 8, then a value of that
+///           panic occurs. If this is less than 8, then a value of that
 ///           many bytes is produced. For example, if `size` is 4, then a
 ///           32-bit byte representation is produced.
 /// * `f`: A callback that receives the value.
@@ -109,7 +109,7 @@ pub fn u64_to_le_bytes<T>(n: u64, size: uint, f: |v: &[u8]| -> T) -> T {
 ///
 /// * `n`: The value to convert.
 /// * `size`: The size of the value, in bytes. This must be 8 or less, or task
-///           failure occurs. If this is less than 8, then a value of that
+///           panic occurs. If this is less than 8, then a value of that
 ///           many bytes is produced. For example, if `size` is 4, then a
 ///           32-bit byte representation is produced.
 /// * `f`: A callback that receives the value.
@@ -146,7 +146,7 @@ pub fn u64_to_be_bytes<T>(n: u64, size: uint, f: |v: &[u8]| -> T) -> T {
 /// * `data`: The buffer in which to extract the value.
 /// * `start`: The offset at which to extract the value.
 /// * `size`: The size of the value in bytes to extract. This must be 8 or
-///           less, or task failure occurs. If this is less than 8, then only
+///           less, or task panic occurs. If this is less than 8, then only
 ///           that many bytes are parsed. For example, if `size` is 4, then a
 ///           32-bit value is parsed.
 pub fn u64_from_be_bytes(data: &[u8], start: uint, size: uint) -> u64 {
@@ -156,7 +156,7 @@ pub fn u64_from_be_bytes(data: &[u8], start: uint, size: uint) -> u64 {
     assert!(size <= 8u);
 
     if data.len() - start < size {
-        fail!("index out of bounds");
+        panic!("index out of bounds");
     }
 
     let mut buf = [0u8, ..8];

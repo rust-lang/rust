@@ -237,7 +237,7 @@ pub fn sizing_type_of(cx: &CrateContext, t: ty::t) -> Type {
             cx.sess().bug(format!("fictitious type {} in sizing_type_of()",
                                   ppaux::ty_to_string(cx.tcx(), t)).as_slice())
         }
-        ty::ty_vec(_, None) | ty::ty_trait(..) | ty::ty_str => fail!("unreachable")
+        ty::ty_vec(_, None) | ty::ty_trait(..) | ty::ty_str => panic!("unreachable")
     };
 
     cx.llsizingtypes().borrow_mut().insert(t, llsizingty);
@@ -266,7 +266,7 @@ pub fn type_of(cx: &CrateContext, t: ty::t) -> Type {
         match ty::get(ty::unsized_part_of_type(cx.tcx(), t)).sty {
             ty::ty_str | ty::ty_vec(..) => Type::uint_from_ty(cx, ast::TyU),
             ty::ty_trait(_) => Type::vtable_ptr(cx),
-            _ => fail!("Unexpected type returned from unsized_part_of_type : {}",
+            _ => panic!("Unexpected type returned from unsized_part_of_type : {}",
                        t.repr(cx.tcx()))
         }
     }

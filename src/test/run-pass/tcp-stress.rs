@@ -40,7 +40,7 @@ fn main() {
             let mut stream = match acceptor.accept() {
                 Ok(stream) => stream,
                 Err(error) => {
-                    debug!("accept failed: {}", error);
+                    debug!("accept panicked: {}", error);
                     continue;
                 }
             };

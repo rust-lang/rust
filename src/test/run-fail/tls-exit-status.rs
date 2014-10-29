@@ -15,5 +15,5 @@ use std::os;
 
 fn main() {
     os::args();
-    fail!("please have a nonzero exit status");
+    panic!("please have a nonzero exit status");
 }

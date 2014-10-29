@@ -142,7 +142,7 @@ pub fn start(argc: int, argv: *const *const u8, main: proc()) -> int {
         exit_code = Some(run(main.take().unwrap()));
     }).destroy());
     unsafe { rt::cleanup(); }
-    // If the exit code wasn't set, then the task block must have failed.
+    // If the exit code wasn't set, then the task block must have panicked.
     return exit_code.unwrap_or(rt::DEFAULT_ERROR_CODE);
 }
 

@@ -8,14 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern:task 'owned name' failed at 'test'
+// error-pattern:task 'owned name' panicked at 'test'
 
 use std::task::TaskBuilder;
 
 fn main() {
     let r: Result<int,_> = TaskBuilder::new().named("owned name".to_string())
                                              .try(proc() {
-        fail!("test");
+        panic!("test");
         1i
     });
     assert!(r.is_ok());

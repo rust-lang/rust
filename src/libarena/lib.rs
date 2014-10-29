@@ -69,7 +69,7 @@ impl Chunk {
 /// element). When the arena is destroyed, it iterates through all of its
 /// chunks, and uses the tydesc information to trace through the objects,
 /// calling the destructors on them. One subtle point that needs to be
-/// addressed is how to handle failures while running the user provided
+/// addressed is how to handle panics while running the user provided
 /// initializer function. It is important to not run the destructor on
 /// uninitialized objects, but how to detect them is somewhat subtle. Since
 /// `alloc()` can be invoked recursively, it is not sufficient to simply exclude
@@ -162,7 +162,7 @@ unsafe fn destroy_chunk(chunk: &Chunk) {
 
 // We encode whether the object a tydesc describes has been
 // initialized in the arena in the low bit of the tydesc pointer. This
-// is necessary in order to properly do cleanup if a failure occurs
+// is necessary in order to properly do cleanup if a panic occurs
 // during an initializer.
 #[inline]
 fn bitpack_tydesc_ptr(p: *const TyDesc, is_done: bool) -> uint {
@@ -337,10 +337,9 @@ fn test_arena_destructors_fail() {
         // things interesting.
         arena.alloc(|| { [0u8, 1u8, 2u8] });
     }
-    // Now, fail while allocating
+    // Now, panic while allocating
     arena.alloc::<Rc<int>>(|| {
-        // Now fail.
-        fail!();
+        panic!();
     });
 }
 

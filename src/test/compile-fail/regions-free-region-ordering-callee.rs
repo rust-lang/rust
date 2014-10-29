@@ -27,7 +27,7 @@ fn ordering3<'a, 'b>(x: &'a uint, y: &'b uint) -> &'a &'b uint {
     // Do not infer an ordering from the return value.
     let z: &'b uint = &*x;
     //~^ ERROR cannot infer
-    fail!();
+    panic!();
 }
 
 fn ordering4<'a, 'b>(a: &'a uint, b: &'b uint, x: |&'a &'b uint|) {

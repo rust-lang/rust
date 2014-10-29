@@ -102,14 +102,14 @@ impl Context {
             // Right before we switch to the new context, set the new context's
             // stack limit in the OS-specified TLS slot. This also  means that
             // we cannot call any more rust functions after record_stack_bounds
-            // returns because they would all likely fail due to the limit being
+            // returns because they would all likely panic due to the limit being
             // invalid for the current task. Lucky for us `rust_swap_registers`
             // is a C function so we don't have to worry about that!
             match in_context.stack_bounds {
                 Some((lo, hi)) => stack::record_rust_managed_stack_bounds(lo, hi),
                 // If we're going back to one of the original contexts or
                 // something that's possibly not a "normal task", then reset
-                // the stack limit to 0 to make morestack never fail
+                // the stack limit to 0 to make morestack never panic
                 None => stack::record_rust_managed_stack_bounds(0, uint::MAX),
             }
             rust_swap_registers(out_regs, in_regs);

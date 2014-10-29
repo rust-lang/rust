@@ -760,11 +760,11 @@ mod tests {
         loop {
             match (last_ptr, node_ptr.prev.resolve_immut()) {
                 (None   , None      ) => {}
-                (None   , _         ) => fail!("prev link for list_head"),
+                (None   , _         ) => panic!("prev link for list_head"),
                 (Some(p), Some(pptr)) => {
                     assert_eq!(p as *const Node<T>, pptr as *const Node<T>);
                 }
-                _ => fail!("prev link is none, not good"),
+                _ => panic!("prev link is none, not good"),
             }
             match node_ptr.next {
                 Some(ref next) => {

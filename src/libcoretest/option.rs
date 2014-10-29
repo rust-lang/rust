@@ -139,14 +139,14 @@ fn test_unwrap() {
 
 #[test]
 #[should_fail]
-fn test_unwrap_fail1() {
+fn test_unwrap_panic1() {
     let x: Option<int> = None;
     x.unwrap();
 }
 
 #[test]
 #[should_fail]
-fn test_unwrap_fail2() {
+fn test_unwrap_panic2() {
     let x: Option<String> = None;
     x.unwrap();
 }
@@ -233,7 +233,7 @@ fn test_collect() {
     assert!(v == None);
 
     // test that it does not take more elements than it needs
-    let mut functions = [|| Some(()), || None, || fail!()];
+    let mut functions = [|| Some(()), || None, || panic!()];
 
     let v: Option<Vec<()>> = functions.iter_mut().map(|f| (*f)()).collect();
 

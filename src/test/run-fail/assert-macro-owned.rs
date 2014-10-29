@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern:failed at 'test-assert-owned'
+// error-pattern:panicked at 'test-assert-owned'
 
 fn main() {
     assert!(false, "test-assert-owned".to_string());

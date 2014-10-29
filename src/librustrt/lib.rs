@@ -101,7 +101,7 @@ pub trait Runtime {
     fn wrap(self: Box<Self>) -> Box<Any+'static>;
 }
 
-/// The default error code of the rust runtime if the main task fails instead
+/// The default error code of the rust runtime if the main task panics instead
 /// of exiting cleanly.
 pub const DEFAULT_ERROR_CODE: int = 101;
 

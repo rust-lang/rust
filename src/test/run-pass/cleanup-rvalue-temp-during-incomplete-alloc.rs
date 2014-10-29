@@ -14,7 +14,7 @@
 //
 // 1. Partial cleanup of `box` is in scope,
 // 2. cleanup of return value from `get_bar()` is in scope,
-// 3. do_it() fails.
+// 3. do_it() panics.
 //
 // This led to a bug because `the top-most frame that was to be
 // cleaned (which happens to be the partial cleanup of `box`) required
@@ -33,7 +33,7 @@ enum Conzabble {
 struct Foo { field: Box<uint> }
 
 fn do_it(x: &[uint]) -> Foo {
-    fail!()
+    panic!()
 }
 
 fn get_bar(x: uint) -> Vec<uint> { vec!(x * 2) }

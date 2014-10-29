@@ -17,7 +17,7 @@ fn main() {
     let stderr = ChanWriter::new(tx);
 
     let res = TaskBuilder::new().stderr(box stderr as Box<Writer + Send>).try(proc() -> () {
-        fail!("Hello, world!")
+        panic!("Hello, world!")
     });
     assert!(res.is_err());
 

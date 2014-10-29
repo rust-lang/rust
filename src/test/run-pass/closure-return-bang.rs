@@ -15,6 +15,6 @@ fn f(x: || -> !) -> ! {
 }
 
 fn main() {
-    let x: || -> ! = || fail!();
+    let x: || -> ! = || panic!();
     let _y: || -> ! = || x();
 }

@@ -65,7 +65,7 @@ impl ParseSess {
 
         match v.checked_add(&count) {
             Some(next) => { self.node_id.set(next); }
-            None => fail!("Input too large, ran out of node ids!")
+            None => panic!("Input too large, ran out of node ids!")
         }
 
         v
@@ -381,7 +381,7 @@ pub fn char_lit(lit: &str) -> (char, int) {
             '0' => Some('\0'),
             _ => { None }
         },
-        _ => fail!("lexer accepted invalid char escape `{}`", lit)
+        _ => panic!("lexer accepted invalid char escape `{}`", lit)
     };
 
     match c {
@@ -434,7 +434,7 @@ pub fn str_lit(lit: &str) -> String {
                 match c {
                     '\\' => {
                         let ch = chars.peek().unwrap_or_else(|| {
-                            fail!("{}", error(i).as_slice())
+                            panic!("{}", error(i).as_slice())
                         }).val1();
 
                         if ch == '\n' {
@@ -442,11 +442,11 @@ pub fn str_lit(lit: &str) -> String {
                         } else if ch == '\r' {
                             chars.next();
                             let ch = chars.peek().unwrap_or_else(|| {
-                                fail!("{}", error(i).as_slice())
+                                panic!("{}", error(i).as_slice())
                             }).val1();
 
                             if ch != '\n' {
-                                fail!("lexer accepted bare CR");
+                                panic!("lexer accepted bare CR");
                             }
                             eat(&mut chars);
                         } else {
@@ -460,11 +460,11 @@ pub fn str_lit(lit: &str) -> String {
                     },
                     '\r' => {
                         let ch = chars.peek().unwrap_or_else(|| {
-                            fail!("{}", error(i).as_slice())
+                            panic!("{}", error(i).as_slice())
                         }).val1();
 
                         if ch != '\n' {
-                            fail!("lexer accepted bare CR");
+                            panic!("lexer accepted bare CR");
                         }
                         chars.next();
                         res.push('\n');
@@ -494,7 +494,7 @@ pub fn raw_str_lit(lit: &str) -> String {
             Some(c) => {
                 if c == '\r' {
                     if *chars.peek().unwrap() != '\n' {
-                        fail!("lexer accepted bare CR");
+                        panic!("lexer accepted bare CR");
                     }
                     chars.next();
                     res.push('\n');
@@ -553,11 +553,11 @@ pub fn byte_lit(lit: &str) -> (u8, uint) {
                 match ::std::num::from_str_radix::<u64>(lit.slice(2, 4), 16) {
                     Some(c) =>
                         if c > 0xFF {
-                            fail!(err(2))
+                            panic!(err(2))
                         } else {
                             return (c as u8, 4)
                         },
-                    None => fail!(err(3))
+                    None => panic!(err(3))
                 }
             }
         };
@@ -594,7 +594,7 @@ pub fn binary_lit(lit: &str) -> Rc<Vec<u8>> {
                     b'\r' => {
                         chars.next();
                         if chars.peek().expect(em.as_slice()).val1() != b'\n' {
-                            fail!("lexer accepted bare CR");
+                            panic!("lexer accepted bare CR");
                         }
                         eat(&mut chars);
                     }
@@ -612,7 +612,7 @@ pub fn binary_lit(lit: &str) -> Rc<Vec<u8>> {
             Some((i, b'\r')) => {
                 let em = error(i);
                 if chars.peek().expect(em.as_slice()).val1() != b'\n' {
-                    fail!("lexer accepted bare CR");
+                    panic!("lexer accepted bare CR");
                 }
                 chars.next();
                 res.push(b'\n');
@@ -813,7 +813,7 @@ mod test {
                               ast::TtToken(_, token::Ident(name, token::Plain))],
                              &ast::Delimiter { token: token::RParen, .. })
                             if name.as_str() == "a" => {},
-                            _ => fail!("value 3: {}", **first_delimed),
+                            _ => panic!("value 3: {}", **first_delimed),
                         }
                         let (ref second_open, ref second_tts, ref second_close) = **second_delimed;
                         match (second_open, second_tts.as_slice(), second_close) {
@@ -822,13 +822,13 @@ mod test {
                               ast::TtToken(_, token::Ident(name, token::Plain))],
                              &ast::Delimiter { token: token::RParen, .. })
                             if name.as_str() == "a" => {},
-                            _ => fail!("value 4: {}", **second_delimed),
+                            _ => panic!("value 4: {}", **second_delimed),
                         }
                     },
-                    _ => fail!("value 2: {}", **macro_delimed),
+                    _ => panic!("value 2: {}", **macro_delimed),
                 }
             },
-            _ => fail!("value: {}",tts),
+            _ => panic!("value: {}",tts),
         }
     }
 

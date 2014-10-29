@@ -10,7 +10,7 @@
 
 struct A { foo: int }
 
-fn a() -> A { fail!() }
+fn a() -> A { panic!() }
 
 fn main() {
     let A { .., } = a(); //~ ERROR: expected `}`

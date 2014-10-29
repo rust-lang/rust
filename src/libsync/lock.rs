@@ -12,11 +12,11 @@
 //!
 //! The wrappers in this module build on the primitives from `sync::raw` to
 //! provide safe interfaces around using the primitive locks. These primitives
-//! implement a technique called "poisoning" where when a task failed with a
-//! held lock, all future attempts to use the lock will fail.
+//! implement a technique called "poisoning" where when a task panicked with a
+//! held lock, all future attempts to use the lock will panic.
 //!
-//! For example, if two tasks are contending on a mutex and one of them fails
-//! after grabbing the lock, the second task will immediately fail because the
+//! For example, if two tasks are contending on a mutex and one of them panics
+//! after grabbing the lock, the second task will immediately panic because the
 //! lock is now poisoned.
 
 use core::prelude::*;
@@ -43,7 +43,7 @@ fn failing() -> bool {
 impl<'a> PoisonOnFail<'a> {
     fn check(flag: bool, name: &str) {
         if flag {
-            fail!("Poisoned {} - another task failed inside!", name);
+            panic!("Poisoned {} - another task failed inside!", name);
         }
     }
 
@@ -99,10 +99,10 @@ impl<'a> Condvar<'a> {
     ///
     /// wait() is equivalent to wait_on(0).
     ///
-    /// # Failure
+    /// # Panics
     ///
     /// A task which is killed while waiting on a condition variable will wake
-    /// up, fail, and unlock the associated lock as it unwinds.
+    /// up, panic, and unlock the associated lock as it unwinds.
     #[inline]
     pub fn wait(&self) { self.wait_on(0) }
 
@@ -213,12 +213,12 @@ impl<T: Send> Mutex<T> {
     /// when dropped. All concurrent tasks attempting to lock the mutex will
     /// block while the returned value is still alive.
     ///
-    /// # Failure
+    /// # Panics
     ///
-    /// Failing while inside the Mutex will unlock the Mutex while unwinding, so
+    /// Panicking while inside the Mutex will unlock the Mutex while unwinding, so
     /// that other tasks won't block forever. It will also poison the Mutex:
     /// any tasks that subsequently try to access it (including those already
-    /// blocked on the mutex) will also fail immediately.
+    /// blocked on the mutex) will also panic immediately.
     #[inline]
     pub fn lock<'a>(&'a self) -> MutexGuard<'a, T> {
         let guard = self.lock.lock();
@@ -317,11 +317,11 @@ impl<T: Send + Sync> RWLock<T> {
     /// Access the underlying data mutably. Locks the rwlock in write mode;
     /// other readers and writers will block.
     ///
-    /// # Failure
+    /// # Panics
     ///
-    /// Failing while inside the lock will unlock the lock while unwinding, so
+    /// Panicking while inside the lock will unlock the lock while unwinding, so
     /// that other tasks won't block forever. As Mutex.lock, it will also poison
-    /// the lock, so subsequent readers and writers will both also fail.
+    /// the lock, so subsequent readers and writers will both also panic.
     #[inline]
     pub fn write<'a>(&'a self) -> RWLockWriteGuard<'a, T> {
         let guard = self.lock.write();
@@ -496,7 +496,7 @@ mod tests {
             let lock = arc2.lock();
             lock.cond.signal();
             // Parent should fail when it wakes up.
-            fail!();
+            panic!();
         });
 
         let lock = arc.lock();
@@ -546,7 +546,7 @@ mod tests {
                 }
             }
             let _u = Unwinder { i: arc2 };
-            fail!();
+            panic!();
         });
         let lock = arc.lock();
         assert_eq!(*lock, 2);
@@ -661,7 +661,7 @@ mod tests {
                 }
             }
             let _u = Unwinder { i: arc2 };
-            fail!();
+            panic!();
         });
         let lock = arc.read();
         assert_eq!(*lock, 2);

@@ -761,7 +761,7 @@ impl Scheduler {
         // task-local lock around this block. The resumption of the task in
         // context switching will bounce on the lock, thereby waiting for this
         // block to finish, eliminating the race mentioned above.
-        // fail!("should never return!");
+        // panic!("should never return!");
         //
         // To actually maintain a handle to the lock, we use an unsafe pointer
         // to it, but we're guaranteed that the task won't exit until we've
@@ -806,7 +806,7 @@ impl Scheduler {
             coroutine.recycle(&mut sched.stack_pool);
             sched.task_state.decrement();
         });
-        fail!("should never return!");
+        panic!("should never return!");
     }
 
     pub fn run_task(self: Box<Scheduler>,
@@ -1054,7 +1054,7 @@ mod test {
                 task.put_runtime(green);
                 return ret;
             }
-            None => fail!()
+            None => panic!()
         }
     }
 
@@ -1202,8 +1202,8 @@ mod test {
                     }))) => {
                         *id == sched_id
                     }
-                    TypeGreen(None) => { fail!("task without home"); }
-                    TypeSched => { fail!("expected green task"); }
+                    TypeGreen(None) => { panic!("task without home"); }
+                    TypeSched => { panic!("expected green task"); }
                 };
                 task.put();
                 ret

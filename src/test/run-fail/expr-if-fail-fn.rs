@@ -8,11 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// error-pattern:explicit panic
 
-
-
-// error-pattern:explicit failure
-fn f() -> ! { fail!() }
+fn f() -> ! { panic!() }
 
 fn g() -> int { let x = if true { f() } else { 10 }; return x; }
 

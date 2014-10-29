@@ -11,8 +11,8 @@
 struct A { foo: int }
 struct B { a: int, b: int, c: int }
 
-fn mka() -> A { fail!() }
-fn mkb() -> B { fail!() }
+fn mka() -> A { panic!() }
+fn mkb() -> B { panic!() }
 
 fn test() {
     let A { foo, } = mka();

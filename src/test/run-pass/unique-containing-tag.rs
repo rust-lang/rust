@@ -17,13 +17,13 @@ pub fn main() {
       t1(a) {
         assert_eq!(a, 10);
       }
-      _ { fail!(); }
+      _ { panic!(); }
     }*/
 
     /*alt x {
       box t1(a) {
         assert_eq!(a, 10);
       }
-      _ { fail!(); }
+      _ { panic!(); }
     }*/
 }

@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern:failed at 'test-fail-static'
+// error-pattern:panicked at 'test-fail-static'
 
 fn main() {
-    fail!("test-fail-static");
+    panic!("test-fail-static");
 }

@@ -103,7 +103,7 @@ pub trait Visitor<'v> {
         walk_explicit_self(self, es)
     }
     fn visit_mac(&mut self, _macro: &'v Mac) {
-        fail!("visit_mac disabled by default");
+        panic!("visit_mac disabled by default");
         // NB: see note about macros above.
         // if you really want a visitor that
         // works on macros, use this

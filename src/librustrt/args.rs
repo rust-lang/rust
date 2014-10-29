@@ -160,14 +160,14 @@ mod imp {
     }
 
     pub fn take() -> Option<Vec<Vec<u8>>> {
-        fail!()
+        panic!()
     }
 
     pub fn put(_args: Vec<Vec<u8>>) {
-        fail!()
+        panic!()
     }
 
     pub fn clone() -> Option<Vec<Vec<u8>>> {
-        fail!()
+        panic!()
     }
 }

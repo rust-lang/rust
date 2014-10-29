@@ -100,7 +100,7 @@ pub fn check_object_cast(fcx: &FnCtxt,
     fn object_trait<'a>(t: &'a ty::t) -> &'a ty::TyTrait {
         match ty::get(*t).sty {
             ty::ty_trait(ref ty_trait) => &**ty_trait,
-            _ => fail!("expected ty_trait")
+            _ => panic!("expected ty_trait")
         }
     }
 

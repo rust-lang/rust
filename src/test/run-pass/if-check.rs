@@ -18,7 +18,7 @@ fn foo(x: uint) {
     if even(x) {
         println!("{}", x);
     } else {
-        fail!();
+        panic!();
     }
 }
 

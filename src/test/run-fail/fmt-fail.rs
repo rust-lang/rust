@@ -12,5 +12,5 @@
 
 fn main() {
     let str_var: String = "meh".to_string();
-    fail!("{}", str_var);
+    panic!("{}", str_var);
 }

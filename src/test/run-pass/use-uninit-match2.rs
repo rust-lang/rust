@@ -13,7 +13,7 @@
 fn foo<T>(o: myoption<T>) -> int {
     let mut x: int;
     match o {
-        none::<T> => { fail!(); }
+        none::<T> => { panic!(); }
         some::<T>(_t) => { x = 5; }
     }
     return x;

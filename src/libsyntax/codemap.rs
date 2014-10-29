@@ -425,7 +425,7 @@ impl CodeMap {
 
         // FIXME #8256: this used to be an assert but whatever precondition
         // it's testing isn't true for all spans in the AST, so to allow the
-        // caller to not have to fail (and it can't catch it since the CodeMap
+        // caller to not have to panic (and it can't catch it since the CodeMap
         // isn't sendable), return None
         if begin.fm.start_pos != end.fm.start_pos {
             None
@@ -441,7 +441,7 @@ impl CodeMap {
                 return fm.clone();
             }
         }
-        fail!("asking for {} which we don't know about", filename);
+        panic!("asking for {} which we don't know about", filename);
     }
 
     pub fn lookup_byte_offset(&self, bpos: BytePos) -> FileMapAndBytePos {
@@ -503,13 +503,13 @@ impl CodeMap {
                 break;
             }
             if a == 0 {
-                fail!("position {} does not resolve to a source location",
+                panic!("position {} does not resolve to a source location",
                       pos.to_uint());
             }
             a -= 1;
         }
         if a >= len {
-            fail!("position {} does not resolve to a source location",
+            panic!("position {} does not resolve to a source location",
                   pos.to_uint())
         }
 

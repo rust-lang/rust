@@ -80,7 +80,7 @@ mod m {
 // Since the bogus configuration isn't defined main will just be
 // parsed, but nothing further will be done with it
 #[cfg(bogus)]
-pub fn main() { fail!() }
+pub fn main() { panic!() }
 
 pub fn main() {
     // Exercise some of the configured items in ways that wouldn't be possible
@@ -94,7 +94,7 @@ pub fn main() {
 
 fn test_in_fn_ctxt() {
     #[cfg(bogus)]
-    fn f() { fail!() }
+    fn f() { panic!() }
     fn f() { }
     f();
 

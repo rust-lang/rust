@@ -20,7 +20,7 @@ pub fn main() {
             Some(ref z) if *z.lock() => {
                 assert!(*z.lock());
             },
-            _ => fail!()
+            _ => panic!()
         }
     }
 }

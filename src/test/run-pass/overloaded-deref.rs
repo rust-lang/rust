@@ -34,7 +34,7 @@ pub fn main() {
 
     let mut_s = Rc::new(RefCell::new(String::from_str("foo")));
     (*(*mut_s).borrow_mut()).push_str("bar");
-    // assert_eq! would fail here because it stores the LHS and RHS in two locals.
+    // assert_eq! would panic here because it stores the LHS and RHS in two locals.
     assert!((*(*mut_s).borrow()).as_slice() == "foobar");
     assert!((*(*mut_s).borrow_mut()).as_slice() == "foobar");
 

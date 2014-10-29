@@ -123,8 +123,8 @@
 //! warning (by default, controlled by the `unused_must_use` lint).
 //!
 //! You might instead, if you don't want to handle the error, simply
-//! fail, by converting to an `Option` with `ok`, then asserting
-//! success with `expect`. This will fail if the write fails, proving
+//! panic, by converting to an `Option` with `ok`, then asserting
+//! success with `expect`. This will panic if the write fails, proving
 //! a marginally useful message indicating why:
 //!
 //! ```{.no_run}
@@ -250,29 +250,29 @@
 //! let mut t = Timer::new().ok().expect("failed to create timer!");
 //! ```
 //!
-//! # `Result` vs. `fail!`
+//! # `Result` vs. `panic!`
 //!
-//! `Result` is for recoverable errors; `fail!` is for unrecoverable
-//! errors. Callers should always be able to avoid failure if they
+//! `Result` is for recoverable errors; `panic!` is for unrecoverable
+//! errors. Callers should always be able to avoid panics if they
 //! take the proper precautions, for example, calling `is_some()`
 //! on an `Option` type before calling `unwrap`.
 //!
-//! The suitability of `fail!` as an error handling mechanism is
+//! The suitability of `panic!` as an error handling mechanism is
 //! limited by Rust's lack of any way to "catch" and resume execution
-//! from a thrown exception. Therefore using failure for error
-//! handling requires encapsulating fallible code in a task. Calling
-//! the `fail!` macro, or invoking `fail!` indirectly should be
-//! avoided as an error reporting strategy. Failure is only for
-//! unrecoverable errors and a failing task is typically the sign of
+//! from a thrown exception. Therefore using panics for error
+//! handling requires encapsulating code that may panic in a task.
+//! Calling the `panic!` macro, or invoking `panic!` indirectly should be
+//! avoided as an error reporting strategy. Panics is only for
+//! unrecoverable errors and a panicking task is typically the sign of
 //! a bug.
 //!
 //! A module that instead returns `Results` is alerting the caller
-//! that failure is possible, and providing precise control over how
+//! that panics are possible, and providing precise control over how
 //! it is handled.
 //!
-//! Furthermore, failure may not be recoverable at all, depending on
-//! the context. The caller of `fail!` should assume that execution
-//! will not resume after failure, that failure is catastrophic.
+//! Furthermore, panics may not be recoverable at all, depending on
+//! the context. The caller of `panic!` should assume that execution
+//! will not resume after the panic, that a panic is catastrophic.
 
 #![stable]
 
@@ -764,9 +764,9 @@ impl<T, E> Result<T, E> {
 impl<T, E: Show> Result<T, E> {
     /// Unwraps a result, yielding the content of an `Ok`.
     ///
-    /// # Failure
+    /// # Panics
     ///
-    /// Fails if the value is an `Err`, with a custom failure message provided
+    /// Panics if the value is an `Err`, with a custom panic message provided
     /// by the `Err`'s value.
     ///
     /// # Example
@@ -778,7 +778,7 @@ impl<T, E: Show> Result<T, E> {
     ///
     /// ```{.should_fail}
     /// let x: Result<uint, &str> = Err("emergency failure");
-    /// x.unwrap(); // fails with `emergency failure`
+    /// x.unwrap(); // panics with `emergency failure`
     /// ```
     #[inline]
     #[unstable = "waiting for conventions"]
@@ -786,7 +786,7 @@ impl<T, E: Show> Result<T, E> {
         match self {
             Ok(t) => t,
             Err(e) =>
-                fail!("called `Result::unwrap()` on an `Err` value: {}", e)
+                panic!("called `Result::unwrap()` on an `Err` value: {}", e)
         }
     }
 }
@@ -794,16 +794,16 @@ impl<T, E: Show> Result<T, E> {
 impl<T: Show, E> Result<T, E> {
     /// Unwraps a result, yielding the content of an `Err`.
     ///
-    /// # Failure
+    /// # Panics
     ///
-    /// Fails if the value is an `Ok`, with a custom failure message provided
+    /// Panics if the value is an `Ok`, with a custom panic message provided
     /// by the `Ok`'s value.
     ///
     /// # Example
     ///
     /// ```{.should_fail}
     /// let x: Result<uint, &str> = Ok(2u);
-    /// x.unwrap_err(); // fails with `2`
+    /// x.unwrap_err(); // panics with `2`
     /// ```
     ///
     /// ```
@@ -815,7 +815,7 @@ impl<T: Show, E> Result<T, E> {
     pub fn unwrap_err(self) -> E {
         match self {
             Ok(t) =>
-                fail!("called `Result::unwrap_err()` on an `Ok` value: {}", t),
+                panic!("called `Result::unwrap_err()` on an `Ok` value: {}", t),
             Err(e) => e
         }
     }

@@ -9,4 +9,4 @@
 // except according to those terms.
 
 // error-pattern:moop
-fn main() { fail!("moop"); }
+fn main() { panic!("moop"); }

@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Simple backtrace functionality (to print on failure)
+//! Simple backtrace functionality (to print on panic)
 
 #![allow(non_camel_case_types)]
 
@@ -265,7 +265,7 @@ mod imp {
 
         // while it doesn't requires lock for work as everything is
         // local, it still displays much nicer backtraces when a
-        // couple of tasks fail simultaneously
+        // couple of tasks panic simultaneously
         static LOCK: StaticNativeMutex = NATIVE_MUTEX_INIT;
         let _g = unsafe { LOCK.lock() };
 
@@ -327,7 +327,7 @@ mod imp {
             // FindEnclosingFunction on non-osx platforms. In doing so, we get a
             // slightly more accurate stack trace in the process.
             //
-            // This is often because failure involves the last instruction of a
+            // This is often because panic involves the last instruction of a
             // function being "call std::rt::begin_unwind", with no ret
             // instructions after it. This means that the return instruction
             // pointer points *outside* of the calling function, and by

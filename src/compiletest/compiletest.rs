@@ -41,7 +41,7 @@ pub fn main() {
     let config = parse_config(args);
 
     if config.valgrind_path.is_none() && config.force_valgrind {
-        fail!("Can't find Valgrind to run Valgrind tests");
+        panic!("Can't find Valgrind to run Valgrind tests");
     }
 
     log_config(&config);
@@ -94,20 +94,20 @@ pub fn parse_config(args: Vec<String> ) -> Config {
         let message = format!("Usage: {} [OPTIONS] [TESTNAME...]", argv0);
         println!("{}", getopts::usage(message.as_slice(), groups.as_slice()));
         println!("");
-        fail!()
+        panic!()
     }
 
     let matches =
         &match getopts::getopts(args_.as_slice(), groups.as_slice()) {
           Ok(m) => m,
-          Err(f) => fail!("{}", f)
+          Err(f) => panic!("{}", f)
         };
 
     if matches.opt_present("h") || matches.opt_present("help") {
         let message = format!("Usage: {} [OPTIONS]  [TESTNAME...]", argv0);
         println!("{}", getopts::usage(message.as_slice(), groups.as_slice()));
         println!("");
-        fail!()
+        panic!()
     }
 
     fn opt_path(m: &getopts::Matches, nm: &str) -> Path {
@@ -120,7 +120,7 @@ pub fn parse_config(args: Vec<String> ) -> Config {
             Ok(re) => Some(re),
             Err(e) => {
                 println!("failed to parse filter /{}/: {}", s, e);
-                fail!()
+                panic!()
             }
         }
     } else {
@@ -263,7 +263,7 @@ pub fn run_tests(config: &Config) {
     let res = test::run_tests_console(&opts, tests.into_iter().collect());
     match res {
         Ok(true) => {}
-        Ok(false) => fail!("Some tests failed"),
+        Ok(false) => panic!("Some tests failed"),
         Err(e) => {
             println!("I/O failure during tests: {}", e);
         }

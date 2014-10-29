@@ -67,23 +67,23 @@ impl Runtime for SimpleTask {
         }
     }
 
-    // These functions are all unimplemented and fail as a result. This is on
+    // These functions are all unimplemented and panic as a result. This is on
     // purpose. A "simple task" is just that, a very simple task that can't
     // really do a whole lot. The only purpose of the task is to get us off our
     // feet and running.
-    fn yield_now(self: Box<SimpleTask>, _cur_task: Box<Task>) { fail!() }
-    fn maybe_yield(self: Box<SimpleTask>, _cur_task: Box<Task>) { fail!() }
+    fn yield_now(self: Box<SimpleTask>, _cur_task: Box<Task>) { panic!() }
+    fn maybe_yield(self: Box<SimpleTask>, _cur_task: Box<Task>) { panic!() }
     fn spawn_sibling(self: Box<SimpleTask>,
                      _cur_task: Box<Task>,
                      _opts: TaskOpts,
                      _f: proc():Send) {
-        fail!()
+        panic!()
     }
     fn local_io<'a>(&'a mut self) -> Option<rtio::LocalIo<'a>> { None }
-    fn stack_bounds(&self) -> (uint, uint) { fail!() }
-    fn stack_guard(&self) -> Option<uint> { fail!() }
+    fn stack_bounds(&self) -> (uint, uint) { panic!() }
+    fn stack_guard(&self) -> Option<uint> { panic!() }
     fn can_block(&self) -> bool { true }
-    fn wrap(self: Box<SimpleTask>) -> Box<Any+'static> { fail!() }
+    fn wrap(self: Box<SimpleTask>) -> Box<Any+'static> { panic!() }
 }
 
 pub fn task() -> Box<Task> {

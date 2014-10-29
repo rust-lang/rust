@@ -53,7 +53,7 @@ use collections::str::SendStr;
 ///
 /// * `run` - This function will execute a closure inside the context of a task.
 ///           Failure is caught and handled via the task's on_exit callback. If
-///           this fails, the task is still returned, but it can no longer be
+///           this panics, the task is still returned, but it can no longer be
 ///           used, it is poisoned.
 ///
 /// * `destroy` - This is a required function to call to destroy a task. If a
@@ -74,18 +74,18 @@ use collections::str::SendStr;
 /// // Create a task using a native runtime
 /// let task = native::task::new((0, uint::MAX), 0);
 ///
-/// // Run some code, catching any possible failures
+/// // Run some code, catching any possible panic
 /// let task = task.run(|| {
 ///     // Run some code inside this task
 ///     println!("Hello with a native runtime!");
 /// });
 ///
-/// // Run some code again, catching the failure
+/// // Run some code again, catching the panic
 /// let task = task.run(|| {
-///     fail!("oh no, what to do!");
+///     panic!("oh no, what to do!");
 /// });
 ///
-/// // Now that the task is failed, it can never be used again
+/// // Now that the task has panicked, it can never be used again
 /// assert!(task.is_destroyed());
 ///
 /// // Deallocate the resources associated with this task
@@ -114,7 +114,7 @@ enum TaskState {
 pub struct TaskOpts {
     /// Invoke this procedure with the result of the task when it finishes.
     pub on_exit: Option<proc(Result): Send>,
-    /// A name for the task-to-be, for identification in failure messages
+    /// A name for the task-to-be, for identification in panic messages
     pub name: Option<SendStr>,
     /// The size of the stack for the spawned task
     pub stack_size: Option<uint>,
@@ -122,7 +122,7 @@ pub struct TaskOpts {
 
 /// Indicates the manner in which a task exited.
 ///
-/// A task that completes without failing is considered to exit successfully.
+/// A task that completes without panicking is considered to exit successfully.
 ///
 /// If you wish for this result's delivery to block until all
 /// children tasks complete, recommend using a result future.
@@ -138,7 +138,7 @@ pub enum BlockedTask {
     Shared(Arc<AtomicUint>),
 }
 
-/// Per-task state related to task death, killing, failure, etc.
+/// Per-task state related to task death, killing, panic, etc.
 pub struct Death {
     pub on_exit: Option<proc(Result):Send>,
     marker: marker::NoCopy,
@@ -175,15 +175,15 @@ impl Task {
     /// try/catch). Invoking this function is quite cheap.
     ///
     /// If the closure `f` succeeds, then the returned task can be used again
-    /// for another invocation of `run`. If the closure `f` fails then `self`
+    /// for another invocation of `run`. If the closure `f` panics then `self`
     /// will be internally destroyed along with all of the other associated
     /// resources of this task. The `on_exit` callback is invoked with the
-    /// cause of failure (not returned here). This can be discovered by querying
+    /// cause of panic (not returned here). This can be discovered by querying
     /// `is_destroyed()`.
     ///
     /// Note that it is possible to view partial execution of the closure `f`
     /// because it is not guaranteed to run to completion, but this function is
-    /// guaranteed to return if it fails. Care should be taken to ensure that
+    /// guaranteed to return if it panicks. Care should be taken to ensure that
     /// stack references made by `f` are handled appropriately.
     ///
     /// It is invalid to call this function with a task that has been previously
@@ -212,7 +212,7 @@ impl Task {
         // recursive invocations of run(). If there's no one else, then
         // relinquish ownership of ourselves back into TLS.
         if Local::exists(None::<Task>) {
-            fail!("cannot run a task recursively inside another");
+            panic!("cannot run a task recursively inside another");
         }
         self.state = Armed;
         Local::put(self);
@@ -226,7 +226,7 @@ impl Task {
         let result = unsafe { unwind::try(f) };
 
         // After running the closure given return the task back out if it ran
-        // successfully, or clean up the task if it failed.
+        // successfully, or clean up the task if it panicked.
         let task: Box<Task> = Local::take();
         match result {
             Ok(()) => task,
@@ -275,7 +275,7 @@ impl Task {
         //    There is a test for this at fail-during-tld-destroy.rs.
         //
         // 2. One failure in destruction is tolerable, so long as the task
-        //    didn't originally fail while it was running.
+        //    didn't originally panic while it was running.
         //
         // And with all that in mind, we attempt to clean things up!
         let mut task = self.run(|| {
@@ -290,7 +290,7 @@ impl Task {
             drop(tld);
         });
 
-        // If the above `run` block failed, then it must be the case that the
+        // If the above `run` block panicked, then it must be the case that the
         // task had previously succeeded. This also means that the code below
         // was recursively run via the `run` method invoking this method. In
         // this case, we just make sure the world is as we thought, and return.
@@ -306,7 +306,7 @@ impl Task {
 
         // FIXME: this is running in a seriously constrained context. If this
         //        allocates TLD then it will likely abort the runtime. Similarly,
-        //        if this fails, this will also likely abort the runtime.
+        //        if this panics, this will also likely abort the runtime.
         //
         //        This closure is currently limited to a channel send via the
         //        standard library's task interface, but this needs
@@ -490,7 +490,7 @@ impl BlockedTask {
     }
 
     // This assertion has two flavours because the wake involves an atomic op.
-    // In the faster version, destructors will fail dramatically instead.
+    // In the faster version, destructors will panic dramatically instead.
     #[cfg(not(test))] pub fn trash(self) { }
     #[cfg(test)]      pub fn trash(self) { assert!(self.wake().is_none()); }
 
@@ -570,7 +570,7 @@ mod test {
         let result = task::try(proc()());
         rtdebug!("trying first assert");
         assert!(result.is_ok());
-        let result = task::try::<()>(proc() fail!());
+        let result = task::try::<()>(proc() panic!());
         rtdebug!("trying second assert");
         assert!(result.is_err());
     }

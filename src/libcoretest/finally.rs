@@ -35,7 +35,7 @@ fn test_fail() {
         &mut i, (),
         |i, ()| {
             *i = 10;
-            fail!();
+            panic!();
         },
         |i| {
             assert!(failing());

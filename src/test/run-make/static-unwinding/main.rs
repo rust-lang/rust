@@ -24,7 +24,7 @@ impl Drop for A {
 fn main() {
     task::try(proc() {
         let _a = A;
-        lib::callback(|| fail!());
+        lib::callback(|| panic!());
         1i
     });
 

@@ -32,11 +32,11 @@ impl Foo {
     );
     match s {
       box Bar2(id, rest) => declare!(id, self.elaborate_stm(rest)),
-      _ => fail!()
+      _ => panic!()
     }
   }
 
-  fn check_id(&mut self, s: int) { fail!() }
+  fn check_id(&mut self, s: int) { panic!() }
 }
 
 pub fn main() { }

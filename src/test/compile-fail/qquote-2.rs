@@ -57,5 +57,5 @@ fn main() {
 }
 
 fn check_pp<T>(expr: T, f: |pprust::ps, T|, expect: str) {
-    fail!();
+    panic!();
 }

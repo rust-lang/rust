@@ -192,15 +192,15 @@ fn runtest(test: &str, cratename: &str, libs: Vec<Path>, externs: core::Externs,
     cmd.env(DynamicLibrary::envvar(), newpath.as_slice());
 
     match cmd.output() {
-        Err(e) => fail!("couldn't run the test: {}{}", e,
+        Err(e) => panic!("couldn't run the test: {}{}", e,
                         if e.kind == io::PermissionDenied {
                             " - maybe your tempdir is mounted with noexec?"
                         } else { "" }),
         Ok(out) => {
             if should_fail && out.status.success() {
-                fail!("test executable succeeded when it should have failed");
+                panic!("test executable succeeded when it should have failed");
             } else if !should_fail && !out.status.success() {
-                fail!("test executable failed:\n{}",
+                panic!("test executable failed:\n{}",
                       str::from_utf8(out.error.as_slice()));
             }
         }

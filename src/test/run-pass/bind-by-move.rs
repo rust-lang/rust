@@ -16,6 +16,6 @@ pub fn main() {
     let x = Some(p);
     match x {
         Some(z) => { dispose(z); },
-        None => fail!()
+        None => panic!()
     }
 }

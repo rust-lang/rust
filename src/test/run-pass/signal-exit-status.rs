@@ -25,7 +25,7 @@ pub fn main() {
         match status {
             ExitSignal(_) if cfg!(unix) => {},
             ExitStatus(0xC0000028) if cfg!(windows) => {},
-            _ => fail!("invalid termination (was not signalled): {}", status)
+            _ => panic!("invalid termination (was not signalled): {}", status)
         }
     }
 }

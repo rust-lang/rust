@@ -600,7 +600,7 @@ impl Printer {
           }
           Eof => {
             // Eof should never get here.
-            fail!();
+            panic!();
           }
         }
     }

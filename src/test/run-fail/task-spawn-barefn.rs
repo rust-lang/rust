@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern:Ensure that the child task runs by failing
+// error-pattern:Ensure that the child task runs by panicking
 
 use std::task;
 
@@ -17,10 +17,10 @@ fn main() {
     // works when provided with a bare function:
     let r = task::try(startfn);
     if r.is_err() {
-        fail!()
+        panic!()
     }
 }
 
 fn startfn() {
-    assert!("Ensure that the child task runs by failing".is_empty());
+    assert!("Ensure that the child task runs by panicking".is_empty());
 }

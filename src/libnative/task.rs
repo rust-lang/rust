@@ -297,11 +297,11 @@ mod tests {
     }
 
     #[test]
-    fn smoke_fail() {
+    fn smoke_panic() {
         let (tx, rx) = channel::<()>();
         spawn(proc() {
             let _tx = tx;
-            fail!()
+            panic!()
         });
         assert_eq!(rx.recv_opt(), Err(()));
     }
@@ -318,11 +318,11 @@ mod tests {
     }
 
     #[test]
-    fn smoke_opts_fail() {
+    fn smoke_opts_panic() {
         let mut opts = TaskOpts::new();
         let (tx, rx) = channel();
         opts.on_exit = Some(proc(r) tx.send(r));
-        NativeSpawner.spawn(opts, proc() { fail!() });
+        NativeSpawner.spawn(opts, proc() { panic!() });
         assert!(rx.recv().is_err());
     }
 
@@ -365,7 +365,7 @@ mod tests {
                     Some(ops) => {
                         task.put_runtime(ops);
                     }
-                    None => fail!(),
+                    None => panic!(),
                 }
                 Local::put(task);
                 tx.send(());

@@ -1367,7 +1367,7 @@ mod tests {
         // original problem code path anymore.)
         let s = String::from_str("");
         let _bytes = s.as_bytes();
-        fail!();
+        panic!();
     }
 
     #[test]
@@ -1586,7 +1586,7 @@ mod tests {
             let len = c.encode_utf8(bytes).unwrap_or(0);
             let s = ::core::str::from_utf8(bytes[..len]).unwrap();
             if Some(c) != s.chars().next() {
-                fail!("character {:x}={} does not decode correctly", c as u32, c);
+                panic!("character {:x}={} does not decode correctly", c as u32, c);
             }
         }
     }
@@ -1598,7 +1598,7 @@ mod tests {
             let len = c.encode_utf8(bytes).unwrap_or(0);
             let s = ::core::str::from_utf8(bytes[..len]).unwrap();
             if Some(c) != s.chars().rev().next() {
-                fail!("character {:x}={} does not decode correctly", c as u32, c);
+                panic!("character {:x}={} does not decode correctly", c as u32, c);
             }
         }
     }

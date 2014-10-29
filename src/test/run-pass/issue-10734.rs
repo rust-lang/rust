@@ -35,7 +35,7 @@ pub fn main() {
 
     // An `if false {} else { expr }` statement should compile the same as `{ expr }`.
     if false {
-        fail!();
+        panic!();
     } else {
         let _a = Foo{ dropped: false };
     }

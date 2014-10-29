@@ -263,12 +263,12 @@ impl<'ast> Map<'ast> {
         &self.forest.krate
     }
 
-    /// Retrieve the Node corresponding to `id`, failing if it cannot
+    /// Retrieve the Node corresponding to `id`, panicking if it cannot
     /// be found.
     pub fn get(&self, id: NodeId) -> Node<'ast> {
         match self.find(id) {
             Some(node) => node,
-            None => fail!("couldn't find node id {} in the AST map", id)
+            None => panic!("couldn't find node id {} in the AST map", id)
         }
     }
 
@@ -308,7 +308,7 @@ impl<'ast> Map<'ast> {
         };
         match abi {
             Some(abi) => abi,
-            None => fail!("expected foreign mod or inlined parent, found {}",
+            None => panic!("expected foreign mod or inlined parent, found {}",
                           self.node_to_string(parent))
         }
     }
@@ -324,7 +324,7 @@ impl<'ast> Map<'ast> {
     pub fn expect_item(&self, id: NodeId) -> &'ast Item {
         match self.find(id) {
             Some(NodeItem(item)) => item,
-            _ => fail!("expected item, found {}", self.node_to_string(id))
+            _ => panic!("expected item, found {}", self.node_to_string(id))
         }
     }
 
@@ -333,37 +333,37 @@ impl<'ast> Map<'ast> {
             Some(NodeItem(i)) => {
                 match i.node {
                     ItemStruct(ref struct_def, _) => &**struct_def,
-                    _ => fail!("struct ID bound to non-struct")
+                    _ => panic!("struct ID bound to non-struct")
                 }
             }
             Some(NodeVariant(variant)) => {
                 match variant.node.kind {
                     StructVariantKind(ref struct_def) => &**struct_def,
-                    _ => fail!("struct ID bound to enum variant that isn't struct-like"),
+                    _ => panic!("struct ID bound to enum variant that isn't struct-like"),
                 }
             }
-            _ => fail!(format!("expected struct, found {}", self.node_to_string(id))),
+            _ => panic!(format!("expected struct, found {}", self.node_to_string(id))),
         }
     }
 
     pub fn expect_variant(&self, id: NodeId) -> &'ast Variant {
         match self.find(id) {
             Some(NodeVariant(variant)) => variant,
-            _ => fail!(format!("expected variant, found {}", self.node_to_string(id))),
+            _ => panic!(format!("expected variant, found {}", self.node_to_string(id))),
         }
     }
 
     pub fn expect_foreign_item(&self, id: NodeId) -> &'ast ForeignItem {
         match self.find(id) {
             Some(NodeForeignItem(item)) => item,
-            _ => fail!("expected foreign item, found {}", self.node_to_string(id))
+            _ => panic!("expected foreign item, found {}", self.node_to_string(id))
         }
     }
 
     pub fn expect_expr(&self, id: NodeId) -> &'ast Expr {
         match self.find(id) {
             Some(NodeExpr(expr)) => expr,
-            _ => fail!("expected expr, found {}", self.node_to_string(id))
+            _ => panic!("expected expr, found {}", self.node_to_string(id))
         }
     }
 
@@ -388,7 +388,7 @@ impl<'ast> Map<'ast> {
                                 PathName(ident.name)
                             }
                             MethMac(_) => {
-                                fail!("no path elem for {}", node)
+                                panic!("no path elem for {}", node)
                             }
                         }
                     }
@@ -402,13 +402,13 @@ impl<'ast> Map<'ast> {
                         MethDecl(ident, _, _, _, _, _, _, _) => {
                             PathName(ident.name)
                         }
-                        MethMac(_) => fail!("no path elem for {}", node),
+                        MethMac(_) => panic!("no path elem for {}", node),
                     }
                 }
                 TypeTraitItem(ref m) => PathName(m.ident.name),
             },
             NodeVariant(v) => PathName(v.node.name.name),
-            _ => fail!("no path elem for {}", node)
+            _ => panic!("no path elem for {}", node)
         }
     }
 
@@ -533,7 +533,7 @@ impl<'ast> Map<'ast> {
 
     pub fn span(&self, id: NodeId) -> Span {
         self.opt_span(id)
-            .unwrap_or_else(|| fail!("AstMap.span: could not find span for id {}", id))
+            .unwrap_or_else(|| panic!("AstMap.span: could not find span for id {}", id))
     }
 
     pub fn def_id_span(&self, def_id: DefId, fallback: Span) -> Span {
@@ -666,7 +666,7 @@ impl Named for Method {
     fn name(&self) -> Name {
         match self.node {
             MethDecl(i, _, _, _, _, _, _, _) => i.name,
-            MethMac(_) => fail!("encountered unexpanded method macro."),
+            MethMac(_) => panic!("encountered unexpanded method macro."),
         }
     }
 }
@@ -1018,9 +1018,9 @@ impl<'a> NodePrinter for pprust::State<'a> {
             // these cases do not carry enough information in the
             // ast_map to reconstruct their full structure for pretty
             // printing.
-            NodeLocal(_)       => fail!("cannot print isolated Local"),
-            NodeArg(_)         => fail!("cannot print isolated Arg"),
-            NodeStructCtor(_)  => fail!("cannot print isolated StructCtor"),
+            NodeLocal(_)       => panic!("cannot print isolated Local"),
+            NodeArg(_)         => panic!("cannot print isolated Arg"),
+            NodeStructCtor(_)  => panic!("cannot print isolated StructCtor"),
         }
     }
 }

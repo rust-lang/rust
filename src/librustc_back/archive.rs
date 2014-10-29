@@ -91,7 +91,7 @@ fn run_ar(handler: &ErrorHandler, maybe_ar_prog: &Option<String>,
             handler.err(format!("could not exec `{}`: {}", ar.as_slice(),
                              e).as_slice());
             handler.abort_if_errors();
-            fail!("rustc::back::archive::run_ar() should not reach this point");
+            panic!("rustc::back::archive::run_ar() should not reach this point");
         }
     }
 }

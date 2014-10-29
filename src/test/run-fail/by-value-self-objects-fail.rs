@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern:explicit failure
+// error-pattern:explicit panic
 
 trait Foo {
     fn foo(self, x: int);
@@ -23,7 +23,7 @@ struct S {
 
 impl Foo for S {
     fn foo(self, x: int) {
-        fail!()
+        panic!()
     }
 }
 

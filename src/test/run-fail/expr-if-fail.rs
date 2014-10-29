@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// error-pattern:explicit panic
 
-
-
-// error-pattern:explicit failure
-fn main() { let _x = if false { 0i } else if true { fail!() } else { 10i }; }
+fn main() { let _x = if false { 0i } else if true { panic!() } else { 10i }; }

@@ -182,7 +182,7 @@ code:
 - implement the `Drop` for resource clean-up via a destructor, and use
   RAII (Resource Acquisition Is Initialization). This reduces the need
   for any manual memory management by users, and automatically ensures
-  that clean-up is always run, even when the task fails.
+  that clean-up is always run, even when the task panics.
 - ensure that any data stored behind a raw pointer is destroyed at the
   appropriate time.
 
@@ -462,7 +462,7 @@ fn start(_argc: int, _argv: *const *const u8) -> int {
 // provided by libstd.
 #[lang = "stack_exhausted"] extern fn stack_exhausted() {}
 #[lang = "eh_personality"] extern fn eh_personality() {}
-#[lang = "fail_fmt"] fn fail_fmt() -> ! { loop {} }
+#[lang = "panic_fmt"] fn panic_fmt() -> ! { loop {} }
 # // fn main() {} tricked you, rustdoc!
 ```
 
@@ -485,7 +485,7 @@ pub extern fn main(argc: int, argv: *const *const u8) -> int {
 
 #[lang = "stack_exhausted"] extern fn stack_exhausted() {}
 #[lang = "eh_personality"] extern fn eh_personality() {}
-#[lang = "fail_fmt"] fn fail_fmt() -> ! { loop {} }
+#[lang = "panic_fmt"] fn panic_fmt() -> ! { loop {} }
 # // fn main() {} tricked you, rustdoc!
 ```
 
@@ -504,8 +504,8 @@ The second of these three functions, `eh_personality`, is used by the
 failure mechanisms of the compiler. This is often mapped to GCC's
 personality function (see the
 [libstd implementation](std/rt/unwind/index.html) for more
-information), but crates which do not trigger failure can be assured
-that this function is never called. The final function, `fail_fmt`, is
+information), but crates which do not trigger a panic can be assured
+that this function is never called. The final function, `panic_fmt`, is
 also used by the failure mechanisms of the compiler.
 
 ## Using libcore
@@ -565,8 +565,8 @@ pub extern fn dot_product(a: *const u32, a_len: u32,
     return ret;
 }
 
-#[lang = "fail_fmt"]
-extern fn fail_fmt(args: &core::fmt::Arguments,
+#[lang = "panic_fmt"]
+extern fn panic_fmt(args: &core::fmt::Arguments,
                        file: &str,
                        line: uint) -> ! {
     loop {}
@@ -579,9 +579,9 @@ extern fn fail_fmt(args: &core::fmt::Arguments,
 ```
 
 Note that there is one extra lang item here which differs from the examples
-above, `fail_fmt`. This must be defined by consumers of libcore because the
-core library declares failure, but it does not define it. The `fail_fmt`
-lang item is this crate's definition of failure, and it must be guaranteed to
+above, `panic_fmt`. This must be defined by consumers of libcore because the
+core library declares panics, but it does not define it. The `panic_fmt`
+lang item is this crate's definition of panic, and it must be guaranteed to
 never return.
 
 As can be seen in this example, the core library is intended to provide the
@@ -686,7 +686,7 @@ fn main(argc: int, argv: *const *const u8) -> int {
 
 #[lang = "stack_exhausted"] extern fn stack_exhausted() {}
 #[lang = "eh_personality"] extern fn eh_personality() {}
-#[lang = "fail_fmt"] fn fail_fmt() -> ! { loop {} }
+#[lang = "panic_fmt"] fn panic_fmt() -> ! { loop {} }
 ```
 
 Note the use of `abort`: the `exchange_malloc` lang item is assumed to

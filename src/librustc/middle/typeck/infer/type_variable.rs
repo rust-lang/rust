@@ -102,7 +102,7 @@ impl TypeVariableTable {
 
         let relations = match old_value {
             Bounded(b) => b,
-            Known(_) => fail!("Asked to instantiate variable that is \
+            Known(_) => panic!("Asked to instantiate variable that is \
                                already instantiated")
         };
 
@@ -172,7 +172,7 @@ impl sv::SnapshotVecDelegate<TypeVariableData,UndoEntry> for Delegate {
 
 fn relations<'a>(v: &'a mut TypeVariableData) -> &'a mut Vec<Relation> {
     match v.value {
-        Known(_) => fail!("var_sub_var: variable is known"),
+        Known(_) => panic!("var_sub_var: variable is known"),
         Bounded(ref mut relations) => relations
     }
 }

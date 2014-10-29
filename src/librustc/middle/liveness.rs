@@ -93,7 +93,7 @@
  * These are described in the `specials` struct:
  *
  * - `exit_ln`: a live node that is generated to represent every 'exit' from
- *   the function, whether it be by explicit return, fail, or other means.
+ *   the function, whether it be by explicit return, panic, or other means.
  *
  * - `fallthrough_ln`: a live node that represents a fallthrough
  *
@@ -400,7 +400,7 @@ fn visit_fn(ir: &mut IrMaps,
     visit::walk_fn(&mut fn_maps, fk, decl, body, sp);
 
     // Special nodes and variables:
-    // - exit_ln represents the end of the fn, either by return or fail
+    // - exit_ln represents the end of the fn, either by return or panic
     // - implicit_ret_var is a pseudo-variable that represents
     //   an implicit return
     let specials = Specials {

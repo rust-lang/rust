@@ -225,7 +225,7 @@ fn pack_symbol(c: u8) -> u8 {
         'C' => 1,
         'G' => 2,
         'T' => 3,
-        _ => fail!("{}", c as char),
+        _ => panic!("{}", c as char),
     }
 }
 

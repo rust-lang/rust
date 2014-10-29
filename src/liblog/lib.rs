@@ -255,7 +255,7 @@ impl Logger for DefaultLogger {
                        record.level,
                        record.module_path,
                        record.args) {
-            Err(e) => fail!("failed to log: {}", e),
+            Err(e) => panic!("failed to log: {}", e),
             Ok(()) => {}
         }
     }
@@ -263,9 +263,9 @@ impl Logger for DefaultLogger {
 
 impl Drop for DefaultLogger {
     fn drop(&mut self) {
-        // FIXME(#12628): is failure the right thing to do?
+        // FIXME(#12628): is panicking the right thing to do?
         match self.handle.flush() {
-            Err(e) => fail!("failed to flush a logger: {}", e),
+            Err(e) => panic!("failed to flush a logger: {}", e),
             Ok(()) => {}
         }
     }

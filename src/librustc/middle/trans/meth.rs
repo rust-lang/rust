@@ -193,7 +193,7 @@ pub fn trans_static_method_callee(bcx: Block,
                 };
                 ident.name
             }
-            _ => fail!("callee is not a trait method")
+            _ => panic!("callee is not a trait method")
         }
     } else {
         csearch::get_item_path(bcx.tcx(), method_id).last().unwrap().name()

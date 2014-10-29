@@ -243,13 +243,13 @@ pub fn main_args(args: &[String]) -> int {
         Some("html") | None => {
             match html::render::run(krate, &external_html, output.unwrap_or(Path::new("doc"))) {
                 Ok(()) => {}
-                Err(e) => fail!("failed to generate documentation: {}", e),
+                Err(e) => panic!("failed to generate documentation: {}", e),
             }
         }
         Some("json") => {
             match json_output(krate, res, output.unwrap_or(Path::new("doc.json"))) {
                 Ok(()) => {}
-                Err(e) => fail!("failed to write json: {}", e),
+                Err(e) => panic!("failed to write json: {}", e),
             }
         }
         Some(s) => {
@@ -480,7 +480,7 @@ fn json_output(krate: clean::Crate, res: Vec<plugins::PluginJson> ,
     };
     let crate_json = match json::from_str(crate_json_str.as_slice()) {
         Ok(j) => j,
-        Err(e) => fail!("Rust generated JSON is invalid: {}", e)
+        Err(e) => panic!("Rust generated JSON is invalid: {}", e)
     };
 
     json.insert("crate".to_string(), crate_json);

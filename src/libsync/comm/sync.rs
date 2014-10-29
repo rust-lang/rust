@@ -19,7 +19,7 @@
 /// which means that every successful send is paired with a successful recv.
 ///
 /// This flavor of channels defines a new `send_opt` method for channels which
-/// is the method by which a message is sent but the task does not fail if it
+/// is the method by which a message is sent but the task does not panic if it
 /// cannot be delivered.
 ///
 /// Another major difference is that send() will *always* return back the data
@@ -193,7 +193,7 @@ impl<T: Send> Packet<T> {
             // success, someone's about to receive our buffered data.
             BlockedReceiver(task) => { wakeup(task, guard); Ok(()) }
 
-            BlockedSender(..) => fail!("lolwut"),
+            BlockedSender(..) => panic!("lolwut"),
         }
     }
 

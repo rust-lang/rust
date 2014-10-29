@@ -139,14 +139,14 @@ mod darwin_fd_limit {
         if sysctl(&mut mib[0], 2, &mut maxfiles as *mut libc::c_int as *mut libc::c_void, &mut size,
                   null_mut(), 0) != 0 {
             let err = last_os_error();
-            fail!("raise_fd_limit: error calling sysctl: {}", err);
+            panic!("raise_fd_limit: error calling sysctl: {}", err);
         }
 
         // Fetch the current resource limits
         let mut rlim = rlimit{rlim_cur: 0, rlim_max: 0};
         if getrlimit(RLIMIT_NOFILE, &mut rlim) != 0 {
             let err = last_os_error();
-            fail!("raise_fd_limit: error calling getrlimit: {}", err);
+            panic!("raise_fd_limit: error calling getrlimit: {}", err);
         }
 
         // Bump the soft limit to the smaller of kern.maxfilesperproc and the hard limit
@@ -155,7 +155,7 @@ mod darwin_fd_limit {
         // Set our newly-increased resource limit
         if setrlimit(RLIMIT_NOFILE, &rlim) != 0 {
             let err = last_os_error();
-            fail!("raise_fd_limit: error calling setrlimit: {}", err);
+            panic!("raise_fd_limit: error calling setrlimit: {}", err);
         }
     }
 }

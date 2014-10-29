@@ -15,7 +15,7 @@ fn uhoh<T>(v: Vec<clam<T>> ) {
       a::<T>(ref _t, ref u) => {
           println!("incorrect");
           println!("{}", u);
-          fail!();
+          panic!();
       }
       b::<T> => { println!("correct"); }
     }

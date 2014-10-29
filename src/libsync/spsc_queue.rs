@@ -369,7 +369,7 @@ mod test {
                     loop {
                         match consumer.pop() {
                             Some(1i) => break,
-                            Some(_) => fail!(),
+                            Some(_) => panic!(),
                             None => {}
                         }
                     }

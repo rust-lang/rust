@@ -11,7 +11,7 @@
 use llvm::*;
 use driver::config::FullDebugInfo;
 use middle::def;
-use middle::lang_items::{FailFnLangItem, FailBoundsCheckFnLangItem};
+use middle::lang_items::{PanicFnLangItem, PanicBoundsCheckFnLangItem};
 use middle::trans::_match;
 use middle::trans::adt;
 use middle::trans::base::*;
@@ -498,7 +498,7 @@ pub fn trans_fail<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let expr_file_line_const = C_struct(ccx, &[v_str, filename, line], false);
     let expr_file_line = consts::const_addr_of(ccx, expr_file_line_const, ast::MutImmutable);
     let args = vec!(expr_file_line);
-    let did = langcall(bcx, Some(sp), "", FailFnLangItem);
+    let did = langcall(bcx, Some(sp), "", PanicFnLangItem);
     let bcx = callee::trans_lang_call(bcx,
                                       did,
                                       args.as_slice(),
@@ -525,7 +525,7 @@ pub fn trans_fail_bounds_check<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let file_line_const = C_struct(ccx, &[filename, line], false);
     let file_line = consts::const_addr_of(ccx, file_line_const, ast::MutImmutable);
     let args = vec!(file_line, index, len);
-    let did = langcall(bcx, Some(sp), "", FailBoundsCheckFnLangItem);
+    let did = langcall(bcx, Some(sp), "", PanicBoundsCheckFnLangItem);
     let bcx = callee::trans_lang_call(bcx,
                                       did,
                                       args.as_slice(),

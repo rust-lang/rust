@@ -1730,7 +1730,7 @@ pub enum FileType {
 /// # fn foo() {
 /// let info = match Path::new("foo.txt").stat() {
 ///     Ok(stat) => stat,
-///     Err(e) => fail!("couldn't read foo.txt: {}", e),
+///     Err(e) => panic!("couldn't read foo.txt: {}", e),
 /// };
 ///
 /// println!("byte size: {}", info.size);

@@ -8,12 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// When all branches of an if expression result in fail, the entire if
-// expression results in fail.
+// When all branches of an if expression result in panic, the entire if
+// expression results in panic.
 pub fn main() {
     let _x = if true {
         10i
     } else {
-        if true { fail!() } else { fail!() }
+        if true { panic!() } else { panic!() }
     };
 }

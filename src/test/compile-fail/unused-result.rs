@@ -17,7 +17,7 @@ enum MustUse { Test }
 #[must_use = "some message"]
 enum MustUseMsg { Test2 }
 
-fn foo<T>() -> T { fail!() }
+fn foo<T>() -> T { panic!() }
 
 fn bar() -> int { return foo::<int>(); }
 fn baz() -> MustUse { return foo::<MustUse>(); }
