@@ -364,7 +364,7 @@ fn run_debuginfo_gdb_test(config: &Config, props: &TestProps, testfile: &Path) {
         commands,
         check_lines,
         use_gdb_pretty_printer,
-        ..
+        breakpoint_lines
     } = parse_debugger_commands(testfile, "gdb");
     let mut cmds = commands.connect("\n");
 
@@ -535,10 +535,21 @@ fn run_debuginfo_gdb_test(config: &Config, props: &TestProps, testfile: &Path) {
                 }
             }
 
+            // The following line actually doesn't have to do anything with
+            // pretty printing, it just tells GDB to print values on one line:
+            script_str.push_str("set print pretty off\n");
+
             // Load the target executable
             script_str.push_str(format!("file {}\n",
                                         exe_file.as_str().unwrap().replace("\\", "\\\\"))
                                     .as_slice());
+
+            // Add line breakpoints
+            for line in breakpoint_lines.iter() {
+                script_str.push_str(format!("break '{}':{}\n",
+                                            testfile.filename_display(),
+                                            *line)[]);
+            }
 
             script_str.push_str(cmds.as_slice());
             script_str.push_str("quit\n");

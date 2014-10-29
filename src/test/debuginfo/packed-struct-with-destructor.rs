@@ -16,10 +16,7 @@
 
 // === GDB TESTS ===================================================================================
 
-// gdb-command:set print pretty off
-// gdb-command:rbreak zzz
 // gdb-command:run
-// gdb-command:finish
 
 // gdb-command:print packed
 // gdb-check:$1 = {x = 123, y = 234, z = 345}

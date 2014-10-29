@@ -16,10 +16,7 @@
 
 // === GDB TESTS ===================================================================================
 
-// gdb-command:set print pretty off
-// gdb-command:rbreak zzz
 // gdb-command:run
-// gdb-command:finish
 // gdb-command:print a
 // gdb-check:$1 = {1, 2, 3}
 // gdb-command:print vec::VECT

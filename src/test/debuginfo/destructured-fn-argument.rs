@@ -15,17 +15,14 @@
 
 // === GDB TESTS ===================================================================================
 
-// gdb-command:rbreak zzz
 // gdb-command:run
 
-// gdb-command:finish
 // gdb-command:print a
 // gdb-check:$1 = 1
 // gdb-command:print b
 // gdb-check:$2 = false
 // gdb-command:continue
 
-// gdb-command:finish
 // gdb-command:print a
 // gdb-check:$3 = 2
 // gdb-command:print b
@@ -34,14 +31,12 @@
 // gdb-check:$5 = 4
 // gdb-command:continue
 
-// gdb-command:finish
 // gdb-command:print a
 // gdb-check:$6 = 5
 // gdb-command:print b
 // gdb-check:$7 = {6, 7}
 // gdb-command:continue
 
-// gdb-command:finish
 // gdb-command:print h
 // gdb-check:$8 = 8
 // gdb-command:print i
@@ -50,26 +45,22 @@
 // gdb-check:$10 = 11
 // gdb-command:continue
 
-// gdb-command:finish
 // gdb-command:print k
 // gdb-check:$11 = 12
 // gdb-command:print l
 // gdb-check:$12 = 13
 // gdb-command:continue
 
-// gdb-command:finish
 // gdb-command:print m
 // gdb-check:$13 = 14
 // gdb-command:print n
 // gdb-check:$14 = 16
 // gdb-command:continue
 
-// gdb-command:finish
 // gdb-command:print o
 // gdb-check:$15 = 18
 // gdb-command:continue
 
-// gdb-command:finish
 // gdb-command:print p
 // gdb-check:$16 = 19
 // gdb-command:print q
@@ -78,14 +69,12 @@
 // gdb-check:$18 = {a = 21, b = 22}
 // gdb-command:continue
 
-// gdb-command:finish
 // gdb-command:print s
 // gdb-check:$19 = 24
 // gdb-command:print t
 // gdb-check:$20 = 23
 // gdb-command:continue
 
-// gdb-command:finish
 // gdb-command:print u
 // gdb-check:$21 = 25
 // gdb-command:print v
@@ -106,68 +95,56 @@
 // gdb-check:$29 = 33
 // gdb-command:continue
 
-// gdb-command:finish
 // gdb-command:print aa
 // gdb-check:$30 = {34, 35}
 // gdb-command:continue
 
-// gdb-command:finish
 // gdb-command:print bb
 // gdb-check:$31 = {36, 37}
 // gdb-command:continue
 
-// gdb-command:finish
 // gdb-command:print cc
 // gdb-check:$32 = 38
 // gdb-command:continue
 
-// gdb-command:finish
 // gdb-command:print dd
 // gdb-check:$33 = {40, 41, 42}
 // gdb-command:continue
 
-// gdb-command:finish
 // gdb-command:print *ee
 // gdb-check:$34 = {43, 44, 45}
 // gdb-command:continue
 
-// gdb-command:finish
 // gdb-command:print *ff
 // gdb-check:$35 = 46
 // gdb-command:print gg
 // gdb-check:$36 = {47, 48}
 // gdb-command:continue
 
-// gdb-command:finish
 // gdb-command:print *hh
 // gdb-check:$37 = 50
 // gdb-command:continue
 
-// gdb-command:finish
 // gdb-command:print ii
 // gdb-check:$38 = 51
 // gdb-command:continue
 
-// gdb-command:finish
 // gdb-command:print *jj
 // gdb-check:$39 = 52
 // gdb-command:continue
 
-// gdb-command:finish
 // gdb-command:print kk
 // gdb-check:$40 = 53
 // gdb-command:print ll
 // gdb-check:$41 = 54
 // gdb-command:continue
 
-// gdb-command:finish
 // gdb-command:print mm
 // gdb-check:$42 = 55
 // gdb-command:print *nn
 // gdb-check:$43 = 56
 // gdb-command:continue
 
-// gdb-command:finish
 // gdb-command:print oo
 // gdb-check:$44 = 57
 // gdb-command:print pp
@@ -176,7 +153,6 @@
 // gdb-check:$46 = 59
 // gdb-command:continue
 
-// gdb-command:finish
 // gdb-command:print rr
 // gdb-check:$47 = 60
 // gdb-command:print ss
@@ -187,6 +163,7 @@
 
 
 // === LLDB TESTS ==================================================================================
+
 // lldb-command:run
 
 // lldb-command:print a

@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // compile-flags:--debuginfo=1
-// ignore-lldb
+// min-lldb-version: 310
 
 pub trait TraitWithDefaultMethod {
     fn method(self) {

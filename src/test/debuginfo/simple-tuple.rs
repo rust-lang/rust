@@ -16,9 +16,6 @@
 
 // === GDB TESTS ===================================================================================
 
-// gdb-command:set print pretty off
-// gdb-command:rbreak zzz
-
 // gdb-command:print/d 'simple-tuple::NO_PADDING_8'
 // gdb-check:$1 = {-50, 50}
 // gdb-command:print 'simple-tuple::NO_PADDING_16'
@@ -37,7 +34,6 @@
 // gdb-check:$7 = {16, 17}
 
 // gdb-command:run
-// gdb-command:finish
 
 // gdb-command:print/d noPadding8
 // gdb-check:$8 = {-100, 100}

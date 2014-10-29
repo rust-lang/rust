@@ -16,10 +16,8 @@
 
 // === GDB TESTS ===================================================================================
 
-// gdb-command:rbreak zzz
 // gdb-command:run
 
-// gdb-command:finish
 // gdb-command:print int_int
 // gdb-check:$1 = {key = 0, value = 1}
 // gdb-command:print int_float

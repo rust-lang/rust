@@ -16,9 +16,7 @@
 
 // === GDB TESTS ===================================================================================
 
-// gdb-command:rbreak zzz
 // gdb-command:run
-// gdb-command:finish
 
 // gdb-command:print some
 // gdb-check:$1 = {RUST$ENCODED$ENUM$0$None = {0x12345678}}

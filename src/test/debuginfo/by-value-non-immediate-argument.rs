@@ -16,15 +16,12 @@
 
 // === GDB TESTS ===================================================================================
 
-// gdb-command:rbreak zzz
 // gdb-command:run
 
-// gdb-command:finish
 // gdb-command:print s
 // gdb-check:$1 = {a = 1, b = 2.5}
 // gdb-command:continue
 
-// gdb-command:finish
 // gdb-command:print x
 // gdb-check:$2 = {a = 3, b = 4.5}
 // gdb-command:print y
@@ -33,17 +30,14 @@
 // gdb-check:$4 = 6.5
 // gdb-command:continue
 
-// gdb-command:finish
 // gdb-command:print a
 // gdb-check:$5 = {7, 8, 9.5, 10.5}
 // gdb-command:continue
 
-// gdb-command:finish
 // gdb-command:print a
 // gdb-check:$6 = {11.5, 12.5, 13, 14}
 // gdb-command:continue
 
-// gdb-command:finish
 // gdb-command:print x
 // gdb-check:$7 = {{RUST$ENUM$DISR = Case1, x = 0, y = 8970181431921507452}, {RUST$ENUM$DISR = Case1, 0, 2088533116, 2088533116}}
 // gdb-command:continue

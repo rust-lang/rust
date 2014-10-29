@@ -13,9 +13,7 @@
 // min-lldb-version: 310
 
 // compile-flags:-g
-// gdb-command:rbreak zzz
 // gdb-command:run
-// gdb-command:finish
 // gdb-command:whatis 'basic-types-globals-metadata::B'
 // gdb-check:type = bool
 // gdb-command:whatis 'basic-types-globals-metadata::I'
@@ -66,7 +64,7 @@ static F32: f32 = 2.5;
 static F64: f64 = 3.5;
 
 fn main() {
-    _zzz();
+    _zzz(); // #break
 
     let a = (B, I, C, I8, I16, I32, I64, U, U8, U16, U32, U64, F32, F64);
 }

@@ -16,44 +16,36 @@
 
 // === GDB TESTS ===================================================================================
 
-// gdb-command:rbreak zzz
 // gdb-command:run
 
 // FIRST ITERATION
-// gdb-command:finish
 // gdb-command:print x
 // gdb-check:$1 = 1
 // gdb-command:continue
 
-// gdb-command:finish
 // gdb-command:print x
 // gdb-check:$2 = -1
 // gdb-command:continue
 
 // SECOND ITERATION
-// gdb-command:finish
 // gdb-command:print x
 // gdb-check:$3 = 2
 // gdb-command:continue
 
-// gdb-command:finish
 // gdb-command:print x
 // gdb-check:$4 = -2
 // gdb-command:continue
 
 // THIRD ITERATION
-// gdb-command:finish
 // gdb-command:print x
 // gdb-check:$5 = 3
 // gdb-command:continue
 
-// gdb-command:finish
 // gdb-command:print x
 // gdb-check:$6 = -3
 // gdb-command:continue
 
 // AFTER LOOP
-// gdb-command:finish
 // gdb-command:print x
 // gdb-check:$7 = 1000000
 // gdb-command:continue
