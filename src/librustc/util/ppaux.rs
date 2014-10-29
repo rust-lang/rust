@@ -43,9 +43,6 @@ pub trait Repr {
 /// Produces a string suitable for showing to the user.
 pub trait UserString {
     fn user_string(&self, tcx: &ctxt) -> String;
-    fn user_string_with_var_ids(&self, tcx: &ctxt, _: bool) -> String {
-        self.user_string(tcx)
-    }
 }
 
 pub fn note_and_explain_region(cx: &ctxt,
@@ -231,14 +228,10 @@ pub fn mutability_to_string(m: ast::Mutability) -> String {
     }
 }
 
-pub fn mt_to_string_with_var_ids(cx: &ctxt, m: &mt, print_var_ids: bool) -> String {
+pub fn mt_to_string(cx: &ctxt, m: &mt) -> String {
     format!("{}{}",
         mutability_to_string(m.mutbl),
-        ty_to_string_with_var_ids(cx, m.ty, print_var_ids))
-}
-
-pub fn mt_to_string(cx: &ctxt, m: &mt) -> String {
-    mt_to_string_with_var_ids(cx, m, false)
+        ty_to_string(cx, m.ty))
 }
 
 pub fn trait_store_to_string(cx: &ctxt, s: ty::TraitStore) -> String {
@@ -265,17 +258,11 @@ pub fn trait_ref_to_string(cx: &ctxt, trait_ref: &ty::TraitRef) -> String {
 }
 
 pub fn ty_to_string(cx: &ctxt, typ: t) -> String {
-    ty_to_string_with_var_ids(cx, typ, true)
-}
-
-pub fn ty_to_string_with_var_ids(cx: &ctxt, typ: t, mut print_var_ids: bool) -> String {
-    print_var_ids = print_var_ids || cx.sess.verbose();
     fn bare_fn_to_string(cx: &ctxt,
                       fn_style: ast::FnStyle,
                       abi: abi::Abi,
                       ident: Option<ast::Ident>,
-                      sig: &ty::FnSig,
-                      print_var_ids: bool)
+                      sig: &ty::FnSig)
                       -> String {
         let mut s = String::new();
         match fn_style {
@@ -300,12 +287,12 @@ pub fn ty_to_string_with_var_ids(cx: &ctxt, typ: t, mut print_var_ids: bool) -> 
             _ => { }
         }
 
-        push_sig_to_string(cx, &mut s, '(', ')', sig, "", print_var_ids);
+        push_sig_to_string(cx, &mut s, '(', ')', sig, "");
 
         s
     }
 
-    fn closure_to_string(cx: &ctxt, cty: &ty::ClosureTy, print_var_ids: bool) -> String {
+    fn closure_to_string(cx: &ctxt, cty: &ty::ClosureTy) -> String {
         let mut s = String::new();
 
         match cty.store {
@@ -330,7 +317,7 @@ pub fn ty_to_string_with_var_ids(cx: &ctxt, typ: t, mut print_var_ids: bool) -> 
                 assert_eq!(cty.onceness, ast::Once);
                 s.push_str("proc");
                 push_sig_to_string(cx, &mut s, '(', ')', &cty.sig,
-                                   bounds_str.as_slice(), print_var_ids);
+                                   bounds_str.as_slice());
             }
             ty::RegionTraitStore(..) => {
                 match cty.onceness {
@@ -338,7 +325,7 @@ pub fn ty_to_string_with_var_ids(cx: &ctxt, typ: t, mut print_var_ids: bool) -> 
                     ast::Once => s.push_str("once ")
                 }
                 push_sig_to_string(cx, &mut s, '|', '|', &cty.sig,
-                                   bounds_str.as_slice(), print_var_ids);
+                                   bounds_str.as_slice());
             }
         }
 
@@ -350,12 +337,11 @@ pub fn ty_to_string_with_var_ids(cx: &ctxt, typ: t, mut print_var_ids: bool) -> 
                        bra: char,
                        ket: char,
                        sig: &ty::FnSig,
-                       bounds: &str,
-                       print_var_ids: bool) {
+                       bounds: &str) {
         s.push(bra);
         let strs = sig.inputs
             .iter()
-            .map(|a| ty_to_string_with_var_ids(cx, *a, print_var_ids))
+            .map(|a| ty_to_string(cx, *a))
             .collect::<Vec<_>>();
         s.push_str(strs.connect(", ").as_slice());
         if sig.variadic {
@@ -372,7 +358,7 @@ pub fn ty_to_string_with_var_ids(cx: &ctxt, typ: t, mut print_var_ids: bool) -> 
             ty::FnConverging(t) => {
                 if !ty::type_is_nil(t) {
                    s.push_str(" -> ");
-                   s.push_str(ty_to_string_with_var_ids(cx, t, print_var_ids).as_slice());
+                   s.push_str(ty_to_string(cx, t).as_slice());
                 }
             }
             ty::FnDiverging => {
@@ -381,21 +367,20 @@ pub fn ty_to_string_with_var_ids(cx: &ctxt, typ: t, mut print_var_ids: bool) -> 
         }
     }
 
-    fn infer_ty_to_string(ty: ty::InferTy, print_var_ids: bool) -> String {
+    fn infer_ty_to_string(cx: &ctxt, ty: ty::InferTy) -> String {
+        let print_var_ids = cx.sess.verbose();
         match ty {
-            ty::TyVar(ty::TyVid { index: vid }) |
-            ty::IntVar(ty::IntVid { index: vid }) |
-            ty::FloatVar(ty::FloatVid { index: vid }) => {
-                match ty {
-                    ty::TyVar(_) if print_var_ids => format!("_#{}", vid),
-                    ty::TyVar(_) => "_".to_string(),
-                    ty::IntVar(_) => format!("_#{}i", vid),
-                    ty::FloatVar(_) => format!("_#{}f", vid),
-                    _ => unreachable!()
-                }
-            }
+            ty::TyVar(ty::TyVid { index: vid }) if print_var_ids =>
+                format!("_#{}", vid),
+            ty::IntVar(ty::IntVid { index: vid }) if print_var_ids =>
+                format!("_#{}i", vid),
+            ty::FloatVar(ty::FloatVid { index: vid }) if print_var_ids =>
+                format!("_#{}f", vid),
+            ty::TyVar(_) => "_".to_string(),
+            ty::IntVar(_) => "_#i".to_string(),
+            ty::FloatVar(_) => "_#f".to_string(),
             ty::SkolemizedTy(v) => format!("SkolemizedTy({})", v),
-            ty::SkolemizedIntTy(v) => format!("SkolemizedIntTy({})", v),
+            ty::SkolemizedIntTy(v) => format!("SkolemizedIntTy({})", v)
         }
     }
 
@@ -407,7 +392,7 @@ pub fn ty_to_string_with_var_ids(cx: &ctxt, typ: t, mut print_var_ids: bool) -> 
         ty_int(t) => ast_util::int_ty_to_string(t, None).to_string(),
         ty_uint(t) => ast_util::uint_ty_to_string(t, None).to_string(),
         ty_float(t) => ast_util::float_ty_to_string(t).to_string(),
-        ty_uniq(typ) => format!("Box<{}>", ty_to_string_with_var_ids(cx, typ, print_var_ids)),
+        ty_uniq(typ) => format!("Box<{}>", ty_to_string(cx, typ)),
         ty_ptr(ref tm) => {
             format!("*{} {}", match tm.mutbl {
                 ast::MutMutable => "mut",
@@ -416,15 +401,15 @@ pub fn ty_to_string_with_var_ids(cx: &ctxt, typ: t, mut print_var_ids: bool) -> 
         }
         ty_rptr(r, ref tm) => {
             let mut buf = region_ptr_to_string(cx, r);
-            buf.push_str(mt_to_string_with_var_ids(cx, tm, print_var_ids).as_slice());
+            buf.push_str(mt_to_string(cx, tm).as_slice());
             buf
         }
         ty_open(typ) =>
-            format!("opened<{}>", ty_to_string_with_var_ids(cx, typ, print_var_ids)),
+            format!("opened<{}>", ty_to_string(cx, typ)),
         ty_tup(ref elems) => {
             let strs = elems
                 .iter()
-                .map(|elem| ty_to_string_with_var_ids(cx, *elem, print_var_ids))
+                .map(|elem| ty_to_string(cx, *elem))
                 .collect::<Vec<_>>();
             match strs.as_slice() {
                 [ref string] => format!("({},)", string),
@@ -432,18 +417,18 @@ pub fn ty_to_string_with_var_ids(cx: &ctxt, typ: t, mut print_var_ids: bool) -> 
             }
         }
         ty_closure(ref f) => {
-            closure_to_string(cx, &**f, print_var_ids)
+            closure_to_string(cx, &**f)
         }
         ty_bare_fn(ref f) => {
-            bare_fn_to_string(cx, f.fn_style, f.abi, None, &f.sig, print_var_ids)
+            bare_fn_to_string(cx, f.fn_style, f.abi, None, &f.sig)
         }
-        ty_infer(infer_ty) => infer_ty_to_string(infer_ty, print_var_ids),
+        ty_infer(infer_ty) => infer_ty_to_string(cx, infer_ty),
         ty_err => "[type error]".to_string(),
         ty_param(ref param_ty) => param_ty.repr(cx),
         ty_enum(did, ref substs) | ty_struct(did, ref substs) => {
             let base = ty::item_path_str(cx, did);
             let generics = ty::lookup_item_type(cx, did).generics;
-            parameterized(cx, base.as_slice(), substs, &generics, print_var_ids)
+            parameterized(cx, base.as_slice(), substs, &generics)
         }
         ty_trait(box ty::TyTrait {
             def_id: did, ref substs, ref bounds
@@ -451,7 +436,7 @@ pub fn ty_to_string_with_var_ids(cx: &ctxt, typ: t, mut print_var_ids: bool) -> 
             let base = ty::item_path_str(cx, did);
             let trait_def = ty::lookup_trait_def(cx, did);
             let ty = parameterized(cx, base.as_slice(),
-                                   substs, &trait_def.generics, print_var_ids);
+                                   substs, &trait_def.generics);
             let bound_str = bounds.user_string(cx);
             let bound_sep = if bound_str.is_empty() { "" } else { "+" };
             format!("{}{}{}",
@@ -463,11 +448,11 @@ pub fn ty_to_string_with_var_ids(cx: &ctxt, typ: t, mut print_var_ids: bool) -> 
         ty_unboxed_closure(ref did, _, ref substs) => {
             let unboxed_closures = cx.unboxed_closures.borrow();
             unboxed_closures.find(did).map(|cl| {
-                closure_to_string(cx, &cl.closure_type.subst(cx, substs), print_var_ids)
+                closure_to_string(cx, &cl.closure_type.subst(cx, substs))
             }).unwrap_or_else(|| "closure".to_string())
         }
         ty_vec(t, sz) => {
-            let inner_str = ty_to_string_with_var_ids(cx, t, print_var_ids);
+            let inner_str = ty_to_string(cx, t);
             match sz {
                 Some(n) => format!("[{}, ..{}]", inner_str, n),
                 None => format!("[{}]", inner_str),
@@ -492,8 +477,7 @@ pub fn explicit_self_category_to_str(category: &ty::ExplicitSelfCategory)
 pub fn parameterized(cx: &ctxt,
                      base: &str,
                      substs: &subst::Substs,
-                     generics: &ty::Generics,
-                     print_var_ids: bool)
+                     generics: &ty::Generics)
                      -> String
 {
     let mut strs = Vec::new();
@@ -532,7 +516,7 @@ pub fn parameterized(cx: &ctxt,
     };
 
     for t in tps[..tps.len() - num_defaults].iter() {
-        strs.push(ty_to_string_with_var_ids(cx, *t, print_var_ids))
+        strs.push(ty_to_string(cx, *t))
     }
 
     if cx.sess.verbose() {
@@ -743,7 +727,7 @@ impl Repr for ty::TraitRef {
         let trait_def = ty::lookup_trait_def(tcx, self.def_id);
         format!("<{} as {}>",
                 self.substs.self_ty().repr(tcx),
-                parameterized(tcx, base.as_slice(), &self.substs, &trait_def.generics, false))
+                parameterized(tcx, base.as_slice(), &self.substs, &trait_def.generics))
     }
 }
 
@@ -1128,21 +1112,15 @@ impl UserString for ty::BuiltinBounds {
 
 impl UserString for ty::TraitRef {
     fn user_string(&self, tcx: &ctxt) -> String {
-        self.user_string_with_var_ids(tcx, false)
-    }
-    fn user_string_with_var_ids(&self, tcx: &ctxt, print_var_ids: bool) -> String {
         let base = ty::item_path_str(tcx, self.def_id);
         let trait_def = ty::lookup_trait_def(tcx, self.def_id);
-        parameterized(tcx, base.as_slice(), &self.substs, &trait_def.generics, print_var_ids)
+        parameterized(tcx, base.as_slice(), &self.substs, &trait_def.generics)
     }
 }
 
 impl UserString for ty::t {
     fn user_string(&self, tcx: &ctxt) -> String {
         ty_to_string(tcx, *self)
-    }
-    fn user_string_with_var_ids(&self, tcx: &ctxt, print_var_ids: bool) -> String {
-        ty_to_string_with_var_ids(tcx, *self, print_var_ids)
     }
 }
 

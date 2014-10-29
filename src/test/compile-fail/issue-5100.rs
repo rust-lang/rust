@@ -19,7 +19,7 @@ fn main() {
 
     match (true, false) {
         (true, false, false) => ()
-//~^ ERROR mismatched types: expected `(bool, bool)`, found `(_#9, _#10, _#11)`
+//~^ ERROR mismatched types: expected `(bool, bool)`, found `(_, _, _)`
     }
 
     match (true, false) {
