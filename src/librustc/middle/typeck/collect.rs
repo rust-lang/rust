@@ -1661,35 +1661,30 @@ fn ty_generics_for_type(ccx: &CrateCtxt,
 fn ty_generics_for_trait(ccx: &CrateCtxt,
                          trait_id: ast::NodeId,
                          substs: &subst::Substs,
-                         generics: &ast::Generics,
+                         ast_generics: &ast::Generics,
                          items: &[ast::TraitItem])
                          -> ty::Generics {
     let mut generics =
         ty_generics(ccx,
                     subst::TypeSpace,
-                    generics.lifetimes.as_slice(),
-                    generics.ty_params.as_slice(),
+                    ast_generics.lifetimes.as_slice(),
+                    ast_generics.ty_params.as_slice(),
                     ty::Generics::empty(),
-                    &generics.where_clause,
+                    &ast_generics.where_clause,
                     DontCreateTypeParametersForAssociatedTypes);
 
     // Add in type parameters for any associated types.
     for item in items.iter() {
         match *item {
             ast::TypeTraitItem(ref associated_type) => {
-                let def = ty::TypeParameterDef {
-                    space: subst::TypeSpace,
-                    index: generics.types.len(subst::TypeSpace),
-                    name: associated_type.ty_param.ident.name,
-                    def_id: local_def(associated_type.ty_param.id),
-                    bounds: ty::ParamBounds {
-                        builtin_bounds: ty::empty_builtin_bounds(),
-                        trait_bounds: Vec::new(),
-                        region_bounds: Vec::new(),
-                    },
-                    associated_with: Some(local_def(trait_id)),
-                    default: None,
-                };
+                let def =
+                    get_or_create_type_parameter_def(
+                        ccx,
+                        subst::TypeSpace,
+                        &associated_type.ty_param,
+                        generics.types.len(subst::TypeSpace),
+                        &ast_generics.where_clause,
+                        Some(local_def(trait_id)));
                 ccx.tcx.ty_param_defs.borrow_mut().insert(associated_type.ty_param.id,
                                                           def.clone());
                 generics.types.push(subst::TypeSpace, def);
@@ -1960,7 +1955,8 @@ fn ty_generics<'tcx,AC>(this: &AC,
                                                    space,
                                                    param,
                                                    i,
-                                                   where_clause);
+                                                   where_clause,
+                                                   None);
         debug!("ty_generics: def for type param: {}, {}",
                def.repr(this.tcx()),
                space);
@@ -1980,63 +1976,64 @@ fn ty_generics<'tcx,AC>(this: &AC,
     }
 
     return result;
+}
 
-    fn get_or_create_type_parameter_def<'tcx,AC>(
-                                        this: &AC,
-                                        space: subst::ParamSpace,
-                                        param: &ast::TyParam,
-                                        index: uint,
-                                        where_clause: &ast::WhereClause)
-                                        -> ty::TypeParameterDef
-                                        where AC: AstConv<'tcx> {
-        match this.tcx().ty_param_defs.borrow().find(&param.id) {
-            Some(d) => { return (*d).clone(); }
-            None => { }
-        }
+fn get_or_create_type_parameter_def<'tcx,AC>(this: &AC,
+                                             space: subst::ParamSpace,
+                                             param: &ast::TyParam,
+                                             index: uint,
+                                             where_clause: &ast::WhereClause,
+                                             associated_with: Option<ast::DefId>)
+                                             -> ty::TypeParameterDef
+    where AC: AstConv<'tcx>
+{
+    match this.tcx().ty_param_defs.borrow().find(&param.id) {
+        Some(d) => { return (*d).clone(); }
+        None => { }
+    }
 
-        let param_ty = ty::ParamTy::new(space, index, local_def(param.id));
-        let bounds = compute_bounds(this,
-                                    param.ident.name,
-                                    param_ty,
-                                    param.bounds.as_slice(),
-                                    &param.unbound,
-                                    param.span,
-                                    where_clause);
-        let default = match param.default {
-            None => None,
-            Some(ref path) => {
-                let ty = ast_ty_to_ty(this, &ExplicitRscope, &**path);
-                let cur_idx = index;
+    let param_ty = ty::ParamTy::new(space, index, local_def(param.id));
+    let bounds = compute_bounds(this,
+                                param.ident.name,
+                                param_ty,
+                                param.bounds.as_slice(),
+                                &param.unbound,
+                                param.span,
+                                where_clause);
+    let default = match param.default {
+        None => None,
+        Some(ref path) => {
+            let ty = ast_ty_to_ty(this, &ExplicitRscope, &**path);
+            let cur_idx = index;
 
-                ty::walk_ty(ty, |t| {
-                    match ty::get(t).sty {
-                        ty::ty_param(p) => if p.idx > cur_idx {
+            ty::walk_ty(ty, |t| {
+                match ty::get(t).sty {
+                    ty::ty_param(p) => if p.idx > cur_idx {
                         span_err!(this.tcx().sess, path.span, E0128,
                                   "type parameters with a default cannot use \
                                    forward declared identifiers");
                         },
                         _ => {}
                     }
-                });
+            });
 
-                Some(ty)
-            }
-        };
+            Some(ty)
+        }
+    };
 
-        let def = ty::TypeParameterDef {
-            space: space,
-            index: index,
-            name: param.ident.name,
-            def_id: local_def(param.id),
-            associated_with: None,
-            bounds: bounds,
-            default: default
-        };
+    let def = ty::TypeParameterDef {
+        space: space,
+        index: index,
+        name: param.ident.name,
+        def_id: local_def(param.id),
+        associated_with: associated_with,
+        bounds: bounds,
+        default: default
+    };
 
-        this.tcx().ty_param_defs.borrow_mut().insert(param.id, def.clone());
+    this.tcx().ty_param_defs.borrow_mut().insert(param.id, def.clone());
 
-        def
-    }
+    def
 }
 
 fn compute_bounds<'tcx,AC>(this: &AC,
