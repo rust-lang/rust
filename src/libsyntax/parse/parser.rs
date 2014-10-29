@@ -2013,6 +2013,16 @@ impl<'a> Parser<'a> {
         })
     }
 
+    fn expect_open_delim(&mut self) -> token::DelimToken {
+        match self.token {
+            token::OpenDelim(delim) => {
+                self.bump();
+                delim
+            },
+            _ => self.fatal("expected open delimiter"),
+        }
+    }
+
     /// At the bottom (top?) of the precedence hierarchy,
     /// parse things like parenthesized exprs,
     /// macros, return, etc.
@@ -2209,14 +2219,9 @@ impl<'a> Parser<'a> {
                         // MACRO INVOCATION expression
                         self.bump();
 
-                        let ket = self.token.get_close_delimiter()
-                            .unwrap_or_else(|| {
-                                self.fatal("expected open delimiter")
-                            });
-                        self.bump();
-
+                        let delim = self.expect_open_delim();
                         let tts = self.parse_seq_to_end(
-                            &ket,
+                            &token::CloseDelim(delim),
                             seq_sep_none(),
                             |p| p.parse_token_tree());
                         let hi = self.span.hi;
@@ -2624,13 +2629,8 @@ impl<'a> Parser<'a> {
         // the interpolation of Matcher's
         maybe_whole!(self, NtMatchers);
         let mut name_idx = 0u;
-        match self.token.get_close_delimiter() {
-            Some(other_delimiter) => {
-                self.bump();
-                self.parse_matcher_subseq_upto(&mut name_idx, &other_delimiter)
-            }
-            None => self.fatal("expected open delimiter")
-        }
+        let delim = self.expect_open_delim();
+        self.parse_matcher_subseq_upto(&mut name_idx, &token::CloseDelim(delim))
     }
 
     /// This goofy function is necessary to correctly match parens in Matcher's.
@@ -3325,11 +3325,8 @@ impl<'a> Parser<'a> {
                 let pth1 = codemap::Spanned{span:id_span, node: id};
                 if self.eat(&token::Not) {
                     // macro invocation
-                    let ket = self.token.get_close_delimiter()
-                                    .unwrap_or_else(|| self.fatal("expected open delimiter"));
-                    self.bump();
-
-                    let tts = self.parse_seq_to_end(&ket,
+                    let delim = self.expect_open_delim();
+                    let tts = self.parse_seq_to_end(&token::CloseDelim(delim),
                                                     seq_sep_none(),
                                                     |p| p.parse_token_tree());
 
@@ -3545,18 +3542,17 @@ impl<'a> Parser<'a> {
             let pth = self.parse_path(NoTypesAllowed).path;
             self.bump();
 
-            let id = if self.token.get_close_delimiter().is_some() {
-                token::special_idents::invalid // no special identifier
-            } else {
-                self.parse_ident()
+            let id = match self.token {
+                token::OpenDelim(_) => token::special_idents::invalid, // no special identifier
+                _ => self.parse_ident(),
             };
 
             // check that we're pointing at delimiters (need to check
             // again after the `if`, because of `parse_ident`
             // consuming more tokens).
-            let (bra, ket) = match self.token.get_close_delimiter() {
-                Some(ket) => (self.token.clone(), ket),
-                None      => {
+            let delim = match self.token {
+                token::OpenDelim(delim) => delim,
+                _ => {
                     // we only expect an ident if we didn't parse one
                     // above.
                     let ident_str = if id.name == token::special_idents::invalid.name {
@@ -3568,12 +3564,12 @@ impl<'a> Parser<'a> {
                     self.fatal(format!("expected {}`(` or `{{`, found `{}`",
                                        ident_str,
                                        tok_str).as_slice())
-                }
+                },
             };
 
             let tts = self.parse_unspanned_seq(
-                &bra,
-                &ket,
+                &token::OpenDelim(delim),
+                &token::CloseDelim(delim),
                 seq_sep_none(),
                 |p| p.parse_token_tree()
             );
@@ -4414,15 +4410,10 @@ impl<'a> Parser<'a> {
                 self.expect(&token::Not);
 
                 // eat a matched-delimiter token tree:
-                let tts = match self.token.get_close_delimiter() {
-                    Some(ket) => {
-                        self.bump();
-                        self.parse_seq_to_end(&ket,
-                                              seq_sep_none(),
-                                              |p| p.parse_token_tree())
-                    }
-                    None => self.fatal("expected open delimiter")
-                };
+                let delim = self.expect_open_delim();
+                let tts = self.parse_seq_to_end(&token::CloseDelim(delim),
+                                                seq_sep_none(),
+                                                |p| p.parse_token_tree());
                 let m_ = ast::MacInvocTT(pth, tts, EMPTY_CTXT);
                 let m: ast::Mac = codemap::Spanned { node: m_,
                                                  span: mk_sp(self.span.lo,
@@ -5505,15 +5496,10 @@ impl<'a> Parser<'a> {
                 token::special_idents::invalid // no special identifier
             };
             // eat a matched-delimiter token tree:
-            let tts = match self.token.get_close_delimiter() {
-                Some(ket) => {
-                    self.bump();
-                    self.parse_seq_to_end(&ket,
-                                          seq_sep_none(),
-                                          |p| p.parse_token_tree())
-                }
-                None => self.fatal("expected open delimiter")
-            };
+            let delim = self.expect_open_delim();
+            let tts = self.parse_seq_to_end(&token::CloseDelim(delim),
+                                            seq_sep_none(),
+                                            |p| p.parse_token_tree());
             // single-variant-enum... :
             let m = ast::MacInvocTT(pth, tts, EMPTY_CTXT);
             let m: ast::Mac = codemap::Spanned { node: m,
