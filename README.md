@@ -42,6 +42,7 @@ the direction the language is evolving in.
 * [0221-panic.md](text/0221-panic.md)
 * [0230-remove-runtime.md](text/0230-remove-runtime.md)
 * [0231-upvar-capture-inference.md](text/0231-upvar-capture-inference.md)
+* [0235-collections-conventions.md](text/0235-collections-conventions.md)
 * [0240-unsafe-api-location.md](text/0240-unsafe-api-location.md)
 * [0246-const-vs-static.md](text/0246-const-vs-static.md)
 * [0255-object-safety.md](text/0255-object-safety.md)
