@@ -27,12 +27,17 @@
 //! necessary lang items for the compiler. All failure is funneled through this
 //! one function. Currently, the actual symbol is declared in the standard
 //! library, but the location of this may change over time.
+//!
+//! Users that have no use for formatted failure messages can define
+//! `cfg(no_fail_fmt)` to reduce their binary size by 1.5 kilobytes
+//! or so.
 
 #![allow(dead_code, missing_doc)]
 
 use fmt;
 use intrinsics;
 
+#[cfg(not(no_fail_fmt))]
 #[cold] #[inline(never)] // this is the slow path, always
 #[lang="fail"]
 pub fn fail(expr_file_line: &(&'static str, &'static str, uint)) -> ! {
@@ -45,6 +50,20 @@ pub fn fail(expr_file_line: &(&'static str, &'static str, uint)) -> ! {
     unsafe { intrinsics::abort() }
 }
 
+#[cfg(no_fail_fmt)]
+#[cold] #[inline(never)] // this is the slow path, always
+#[lang="fail"]
+pub fn fail(expr_file_line: &(&'static str, &'static str, uint)) -> ! {
+    let (_, file, line) = *expr_file_line;
+    let ref file_line = (file, line);
+    format_args!(|args| -> () {
+        fail_fmt(args, file_line);
+    }, "");
+
+    unsafe { intrinsics::abort() }
+}
+
+#[cfg(not(no_fail_fmt))]
 #[cold] #[inline(never)]
 #[lang="fail_bounds_check"]
 fn fail_bounds_check(file_line: &(&'static str, uint),
@@ -52,6 +71,19 @@ fn fail_bounds_check(file_line: &(&'static str, uint),
     format_args!(|args| -> () {
         fail_fmt(args, file_line);
     }, "index out of bounds: the len is {} but the index is {}", len, index);
+
+    unsafe { intrinsics::abort() }
+}
+
+#[cfg(no_fail_fmt)]
+#[cold] #[inline(never)]
+#[lang="fail_bounds_check"]
+fn fail_bounds_check(file_line: &(&'static str, uint),
+                     _index: uint, _len: uint) -> ! {
+    format_args!(|args| -> () {
+        fail_fmt(args, file_line);
+    }, "");
+
     unsafe { intrinsics::abort() }
 }
 
@@ -62,7 +94,6 @@ pub fn fail_fmt(fmt: &fmt::Arguments, file_line: &(&'static str, uint)) -> ! {
         #[lang = "fail_fmt"]
         fn fail_impl(fmt: &fmt::Arguments, file: &'static str,
                         line: uint) -> !;
-
     }
     let (file, line) = *file_line;
     unsafe { fail_impl(fmt, file, line) }
