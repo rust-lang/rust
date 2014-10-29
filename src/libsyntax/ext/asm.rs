@@ -72,21 +72,21 @@ pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
                 asm_str_style = Some(style);
             }
             Outputs => {
-                while p.token != token::EOF &&
-                      p.token != token::COLON &&
-                      p.token != token::MOD_SEP {
+                while p.token != token::Eof &&
+                      p.token != token::Colon &&
+                      p.token != token::ModSep {
 
                     if outputs.len() != 0 {
-                        p.eat(&token::COMMA);
+                        p.eat(&token::Comma);
                     }
 
                     let (constraint, _str_style) = p.parse_str();
 
                     let span = p.last_span;
 
-                    p.expect(&token::LPAREN);
+                    p.expect(&token::LParen);
                     let out = p.parse_expr();
-                    p.expect(&token::RPAREN);
+                    p.expect(&token::RParen);
 
                     // Expands a read+write operand into two operands.
                     //
@@ -113,12 +113,12 @@ pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
                 }
             }
             Inputs => {
-                while p.token != token::EOF &&
-                      p.token != token::COLON &&
-                      p.token != token::MOD_SEP {
+                while p.token != token::Eof &&
+                      p.token != token::Colon &&
+                      p.token != token::ModSep {
 
                     if inputs.len() != 0 {
-                        p.eat(&token::COMMA);
+                        p.eat(&token::Comma);
                     }
 
                     let (constraint, _str_style) = p.parse_str();
@@ -129,21 +129,21 @@ pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
                         cx.span_err(p.last_span, "input operand constraint contains '+'");
                     }
 
-                    p.expect(&token::LPAREN);
+                    p.expect(&token::LParen);
                     let input = p.parse_expr();
-                    p.expect(&token::RPAREN);
+                    p.expect(&token::RParen);
 
                     inputs.push((constraint, input));
                 }
             }
             Clobbers => {
                 let mut clobs = Vec::new();
-                while p.token != token::EOF &&
-                      p.token != token::COLON &&
-                      p.token != token::MOD_SEP {
+                while p.token != token::Eof &&
+                      p.token != token::Colon &&
+                      p.token != token::ModSep {
 
                     if clobs.len() != 0 {
-                        p.eat(&token::COMMA);
+                        p.eat(&token::Comma);
                     }
 
                     let (s, _str_style) = p.parse_str();
@@ -172,8 +172,8 @@ pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
                     cx.span_warn(p.last_span, "unrecognized option");
                 }
 
-                if p.token == token::COMMA {
-                    p.eat(&token::COMMA);
+                if p.token == token::Comma {
+                    p.eat(&token::Comma);
                 }
             }
             StateNone => ()
@@ -183,17 +183,17 @@ pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
             // MOD_SEP is a double colon '::' without space in between.
             // When encountered, the state must be advanced twice.
             match (&p.token, state.next(), state.next().next()) {
-                (&token::COLON, StateNone, _)   |
-                (&token::MOD_SEP, _, StateNone) => {
+                (&token::Colon, StateNone, _)   |
+                (&token::ModSep, _, StateNone) => {
                     p.bump();
                     break 'statement;
                 }
-                (&token::COLON, st, _)   |
-                (&token::MOD_SEP, _, st) => {
+                (&token::Colon, st, _)   |
+                (&token::ModSep, _, st) => {
                     p.bump();
                     state = st;
                 }
-                (&token::EOF, _, _) => break 'statement,
+                (&token::Eof, _, _) => break 'statement,
                 _ => break
             }
         }

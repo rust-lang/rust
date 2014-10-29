@@ -684,8 +684,8 @@ pub fn get_single_str_from_tts(cx: &ExtCtxt,
         cx.span_err(sp, format!("{} takes 1 argument.", name).as_slice());
     } else {
         match tts[0] {
-            ast::TtToken(_, token::LIT_STR(ident)) => return Some(parse::str_lit(ident.as_str())),
-            ast::TtToken(_, token::LIT_STR_RAW(ident, _)) => {
+            ast::TtToken(_, token::LitStr(ident)) => return Some(parse::str_lit(ident.as_str())),
+            ast::TtToken(_, token::LitStrRaw(ident, _)) => {
                 return Some(parse::raw_str_lit(ident.as_str()))
             }
             _ => {
@@ -704,12 +704,12 @@ pub fn get_exprs_from_tts(cx: &mut ExtCtxt,
                           tts: &[ast::TokenTree]) -> Option<Vec<P<ast::Expr>>> {
     let mut p = cx.new_parser_from_tts(tts);
     let mut es = Vec::new();
-    while p.token != token::EOF {
+    while p.token != token::Eof {
         es.push(cx.expander().fold_expr(p.parse_expr()));
-        if p.eat(&token::COMMA) {
+        if p.eat(&token::Comma) {
             continue;
         }
-        if p.token != token::EOF {
+        if p.token != token::Eof {
             cx.span_err(sp, "expected token: `,`");
             return None;
         }
