@@ -13,7 +13,7 @@ struct S;
 impl Drop for S { fn drop(&mut self) { } }
 
 // user-defined function "returning" bottom (i.e. no return at all).
-fn my_fail() -> ! { loop {} }
+fn my_panic() -> ! { loop {} }
 
 pub fn step(f: bool) {
     let mut g = S;
@@ -30,7 +30,7 @@ pub fn step(f: bool) {
             continue;
         }
 
-        my_fail();
+        my_panic();
 
         // we never get here, so we do not need to re-initialize g.
     }

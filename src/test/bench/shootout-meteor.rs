@@ -207,7 +207,7 @@ fn get_id(m: u64) -> u8 {
     for id in range(0u8, 10) {
         if m & (1 << (id + 50) as uint) != 0 {return id;}
     }
-    fail!("{:016x} does not have a valid identifier", m);
+    panic!("{:016x} does not have a valid identifier", m);
 }
 
 // Converts a list of mask to a Vec<u8>.

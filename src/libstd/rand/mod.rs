@@ -297,7 +297,7 @@ impl<'a> SeedableRng<&'a [uint]> for StdRng {
 pub fn weak_rng() -> XorShiftRng {
     match OsRng::new() {
         Ok(mut r) => r.gen(),
-        Err(e) => fail!("weak_rng: failed to create seeded RNG: {}", e)
+        Err(e) => panic!("weak_rng: failed to create seeded RNG: {}", e)
     }
 }
 
@@ -308,7 +308,7 @@ impl reseeding::Reseeder<StdRng> for TaskRngReseeder {
     fn reseed(&mut self, rng: &mut StdRng) {
         *rng = match StdRng::new() {
             Ok(r) => r,
-            Err(e) => fail!("could not reseed task_rng: {}", e)
+            Err(e) => panic!("could not reseed task_rng: {}", e)
         }
     }
 }
@@ -339,7 +339,7 @@ pub fn task_rng() -> TaskRng {
         None => {
             let r = match StdRng::new() {
                 Ok(r) => r,
-                Err(e) => fail!("could not initialize task_rng: {}", e)
+                Err(e) => panic!("could not initialize task_rng: {}", e)
             };
             let rng = reseeding::ReseedingRng::new(r,
                                                    TASK_RNG_RESEED_THRESHOLD,
@@ -445,7 +445,7 @@ mod test {
             // use this to get nicer error messages.
             for (i, &byte) in v.iter().enumerate() {
                 if byte == 0 {
-                    fail!("byte {} of {} is zero", i, n)
+                    panic!("byte {} of {} is zero", i, n)
                 }
             }
         }
@@ -472,14 +472,14 @@ mod test {
 
     #[test]
     #[should_fail]
-    fn test_gen_range_fail_int() {
+    fn test_gen_range_panic_int() {
         let mut r = task_rng();
         r.gen_range(5i, -2);
     }
 
     #[test]
     #[should_fail]
-    fn test_gen_range_fail_uint() {
+    fn test_gen_range_panic_uint() {
         let mut r = task_rng();
         r.gen_range(5u, 2u);
     }

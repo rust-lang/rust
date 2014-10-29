@@ -299,7 +299,7 @@ impl<T: Send> Packet<T> {
                     Thread::yield_now();
                     match self.queue.pop() {
                         mpsc::Data(t) => { data = t; break }
-                        mpsc::Empty => fail!("inconsistent => empty"),
+                        mpsc::Empty => panic!("inconsistent => empty"),
                         mpsc::Inconsistent => {}
                     }
                 }
@@ -358,7 +358,7 @@ impl<T: Send> Packet<T> {
         match self.channels.fetch_sub(1, atomic::SeqCst) {
             1 => {}
             n if n > 1 => return,
-            n => fail!("bad number of channels left {}", n),
+            n => panic!("bad number of channels left {}", n),
         }
 
         match self.cnt.swap(DISCONNECTED, atomic::SeqCst) {

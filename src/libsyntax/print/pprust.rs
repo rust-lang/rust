@@ -1072,7 +1072,7 @@ impl<'a> State<'a> {
                     Inconsistent, struct_def.fields.as_slice(),
                     |s, field| {
                         match field.node.kind {
-                            ast::NamedField(..) => fail!("unexpected named field"),
+                            ast::NamedField(..) => panic!("unexpected named field"),
                             ast::UnnamedField(vis) => {
                                 try!(s.print_visibility(vis));
                                 try!(s.maybe_print_comment(field.span.lo));
@@ -1093,7 +1093,7 @@ impl<'a> State<'a> {
 
             for field in struct_def.fields.iter() {
                 match field.node.kind {
-                    ast::UnnamedField(..) => fail!("unexpected unnamed field"),
+                    ast::UnnamedField(..) => panic!("unexpected unnamed field"),
                     ast::NamedField(ident, visibility) => {
                         try!(self.hardbreak_if_not_bol());
                         try!(self.maybe_print_comment(field.span.lo));
@@ -1440,7 +1440,7 @@ impl<'a> State<'a> {
                     }
                     // BLEAH, constraints would be great here
                     _ => {
-                        fail!("print_if saw if with weird alternative");
+                        panic!("print_if saw if with weird alternative");
                     }
                 }
             }

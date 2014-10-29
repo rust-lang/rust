@@ -5213,17 +5213,17 @@ immediately.
 
 ## Success and failure
 
-Tasks don't always succeed, they can also fail. A task that wishes to fail
-can call the `fail!` macro, passing a message:
+Tasks don't always succeed, they can also panic. A task that wishes to panic 
+can call the `panic!` macro, passing a message:
 
 ```{rust}
 spawn(proc() {
-    fail!("Nope.");
+    panic!("Nope.");
 });
 ```
 
-If a task fails, it is not possible for it to recover. However, it can
-notify other tasks that it has failed. We can do this with `task::try`:
+If a task panics, it is not possible for it to recover. However, it can
+notify other tasks that it has panicked. We can do this with `task::try`:
 
 ```{rust}
 use std::task;
@@ -5233,14 +5233,14 @@ let result = task::try(proc() {
     if rand::random() {
         println!("OK");
     } else {
-        fail!("oops!");
+        panic!("oops!");
     }
 });
 ```
 
-This task will randomly fail or succeed. `task::try` returns a `Result`
+This task will randomly panic or succeed. `task::try` returns a `Result`
 type, so we can handle the response like any other computation that may
-fail.
+panic.
 
 # Macros
 

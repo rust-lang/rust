@@ -245,7 +245,7 @@ impl<V:PartialEq+Clone+Repr,K:UnifyKey<V>> UnificationTable<K,V> {
 
 impl<K,V> sv::SnapshotVecDelegate<VarValue<K,V>,()> for Delegate {
     fn reverse(&mut self, _: &mut Vec<VarValue<K,V>>, _: ()) {
-        fail!("Nothing to reverse");
+        panic!("Nothing to reverse");
     }
 }
 

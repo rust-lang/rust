@@ -11,7 +11,7 @@
 // error-pattern:test
 
 fn f() {
-    fail!("test");
+    panic!("test");
 }
 
 fn main() {

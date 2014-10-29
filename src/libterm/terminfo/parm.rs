@@ -474,7 +474,7 @@ impl FormatOp {
             'x' => FormatHex,
             'X' => FormatHEX,
             's' => FormatString,
-            _ => fail!("bad FormatOp char")
+            _ => panic!("bad FormatOp char")
         }
     }
     fn to_char(self) -> char {

@@ -31,7 +31,7 @@ pub fn get_os(triple: &str) -> &'static str {
             return os
         }
     }
-    fail!("Cannot determine OS from triple");
+    panic!("Cannot determine OS from triple");
 }
 
 #[cfg(target_os = "windows")]

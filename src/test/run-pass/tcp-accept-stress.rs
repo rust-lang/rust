@@ -45,7 +45,7 @@ fn test() {
                         }
                     }
                     Err(ref e) if e.kind == EndOfFile => break,
-                    Err(e) => fail!("{}", e),
+                    Err(e) => panic!("{}", e),
                 }
             }
             srv_tx.send(());
@@ -67,7 +67,7 @@ fn test() {
     // wait for senders
     if cli_rx.iter().take(N).count() != N {
         a.close_accept().unwrap();
-        fail!("clients failed");
+        panic!("clients panicked");
     }
 
     // wait for one acceptor to die

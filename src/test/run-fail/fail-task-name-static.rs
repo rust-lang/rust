@@ -8,12 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern:task 'static name' failed at 'test'
+// error-pattern:task 'static name' panicked at 'test'
 
 fn main() {
     let r: Result<int,_> =
         ::std::task::TaskBuilder::new().named("static name").try(proc() {
-            fail!("test");
+            panic!("test");
         });
     assert!(r.is_ok());
 }

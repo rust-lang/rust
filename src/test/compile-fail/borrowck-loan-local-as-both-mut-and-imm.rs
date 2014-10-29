@@ -16,7 +16,7 @@ enum Either<T, U> { Left(T), Right(U) }
                 *x = Right(1.0);
                 *z
             }
-            _ => fail!()
+            _ => panic!()
         }
     }
 

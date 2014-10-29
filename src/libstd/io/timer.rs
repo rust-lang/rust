@@ -340,7 +340,7 @@ mod test {
     fn oneshot_fail() {
         let mut timer = Timer::new().unwrap();
         let _rx = timer.oneshot(Duration::milliseconds(1));
-        fail!();
+        panic!();
     }
 
     #[test]
@@ -348,14 +348,14 @@ mod test {
     fn period_fail() {
         let mut timer = Timer::new().unwrap();
         let _rx = timer.periodic(Duration::milliseconds(1));
-        fail!();
+        panic!();
     }
 
     #[test]
     #[should_fail]
     fn normal_fail() {
         let _timer = Timer::new().unwrap();
-        fail!();
+        panic!();
     }
 
     #[test]

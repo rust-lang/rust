@@ -244,7 +244,7 @@ pub mod reader {
             Some(d) => d,
             None => {
                 error!("failed to find block with tag {}", tg);
-                fail!();
+                panic!();
             }
         }
     }

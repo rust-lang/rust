@@ -9,12 +9,12 @@
 // except according to those terms.
 
 // check-stdout
-// error-pattern:task 'test_foo' failed at
+// error-pattern:task 'test_foo' panicked at
 // compile-flags: --test
 // ignore-pretty: does not work well with `--test`
 
 #[test]
 fn test_foo() {
-    fail!()
+    panic!()
 }
 

@@ -409,7 +409,7 @@ mod test {
         writer.write([0]).unwrap();
 
         match writer.write([0, 0]) {
-            Ok(..) => fail!(),
+            Ok(..) => panic!(),
             Err(e) => assert_eq!(e.kind, io::OtherIoError),
         }
     }
@@ -510,7 +510,7 @@ mod test {
         let buf = [0xff];
         let mut r = BufReader::new(buf);
         match r.read_to_string() {
-            Ok(..) => fail!(),
+            Ok(..) => panic!(),
             Err(..) => {}
         }
     }

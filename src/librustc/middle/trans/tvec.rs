@@ -315,7 +315,7 @@ pub fn write_content<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                         return bcx;
                     }
 
-                    // Some cleanup would be required in the case in which failure happens
+                    // Some cleanup would be required in the case in which panic happens
                     // during a copy. But given that copy constructors are not overridable,
                     // this can only happen as a result of OOM. So we just skip out on the
                     // cleanup since things would *probably* be broken at that point anyways.

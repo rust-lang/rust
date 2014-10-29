@@ -1259,7 +1259,7 @@ impl Clean<Type> for ast::Ty {
             TyBareFn(ref barefn) => BareFunction(box barefn.clean(cx)),
             TyParen(ref ty) => ty.clean(cx),
             TyBot => Bottom,
-            ref x => fail!("Unimplemented type {}", x),
+            ref x => panic!("Unimplemented type {}", x),
         }
     }
 }
@@ -1354,9 +1354,9 @@ impl Clean<Type> for ty::t {
 
             ty::ty_unboxed_closure(..) => Primitive(Unit), // FIXME(pcwalton)
 
-            ty::ty_infer(..) => fail!("ty_infer"),
-            ty::ty_open(..) => fail!("ty_open"),
-            ty::ty_err => fail!("ty_err"),
+            ty::ty_infer(..) => panic!("ty_infer"),
+            ty::ty_open(..) => panic!("ty_open"),
+            ty::ty_err => panic!("ty_err"),
         }
     }
 }
@@ -2068,9 +2068,9 @@ fn name_from_pat(p: &ast::Pat) -> String {
                   which is silly in function arguments");
             "()".to_string()
         },
-        PatRange(..) => fail!("tried to get argument name from PatRange, \
+        PatRange(..) => panic!("tried to get argument name from PatRange, \
                               which is not allowed in function arguments"),
-        PatVec(..) => fail!("tried to get argument name from pat_vec, \
+        PatVec(..) => panic!("tried to get argument name from pat_vec, \
                              which is not allowed in function arguments"),
         PatMac(..) => {
             warn!("can't document the name of a function argument \
@@ -2092,7 +2092,7 @@ fn resolve_type(cx: &DocContext, path: Path,
     debug!("searching for {} in defmap", id);
     let def = match tcx.def_map.borrow().find(&id) {
         Some(&k) => k,
-        None => fail!("unresolved id not in defmap")
+        None => panic!("unresolved id not in defmap")
     };
 
     match def {

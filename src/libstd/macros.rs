@@ -17,29 +17,29 @@
 #![experimental]
 #![macro_escape]
 
-/// The entry point for failure of rust tasks.
+/// The entry point for panic of Rust tasks.
 ///
-/// This macro is used to inject failure into a rust task, causing the task to
-/// unwind and fail entirely. Each task's failure can be reaped as the
-/// `Box<Any>` type, and the single-argument form of the `fail!` macro will be
+/// This macro is used to inject panic into a Rust task, causing the task to
+/// unwind and panic entirely. Each task's panic can be reaped as the
+/// `Box<Any>` type, and the single-argument form of the `panic!` macro will be
 /// the value which is transmitted.
 ///
-/// The multi-argument form of this macro fails with a string and has the
+/// The multi-argument form of this macro panics with a string and has the
 /// `format!` syntax for building a string.
 ///
 /// # Example
 ///
 /// ```should_fail
 /// # #![allow(unreachable_code)]
-/// fail!();
-/// fail!("this is a terrible mistake!");
-/// fail!(4i); // fail with the value of 4 to be collected elsewhere
-/// fail!("this is a {} {message}", "fancy", message = "message");
+/// panic!();
+/// panic!("this is a terrible mistake!");
+/// panic!(4i); // panic with the value of 4 to be collected elsewhere
+/// panic!("this is a {} {message}", "fancy", message = "message");
 /// ```
 #[macro_export]
-macro_rules! fail(
+macro_rules! panic(
     () => ({
-        fail!("explicit failure")
+        panic!("explicit panic")
     });
     ($msg:expr) => ({
         // static requires less code at runtime, more constant data
@@ -57,7 +57,7 @@ macro_rules! fail(
         // as returning !. We really do want this to be inlined, however,
         // because it's just a tiny wrapper. Small wins (156K to 149K in size)
         // were seen when forcing this to be inlined, and that number just goes
-        // up with the number of calls to fail!()
+        // up with the number of calls to panic!()
         //
         // The leading _'s are to avoid dead code warnings if this is
         // used inside a dead function. Just `#[allow(dead_code)]` is
@@ -74,13 +74,13 @@ macro_rules! fail(
 
 /// Ensure that a boolean expression is `true` at runtime.
 ///
-/// This will invoke the `fail!` macro if the provided expression cannot be
+/// This will invoke the `panic!` macro if the provided expression cannot be
 /// evaluated to `true` at runtime.
 ///
 /// # Example
 ///
 /// ```
-/// // the failure message for these assertions is the stringified value of the
+/// // the panic message for these assertions is the stringified value of the
 /// // expression given.
 /// assert!(true);
 /// # fn some_computation() -> bool { true }
@@ -96,12 +96,12 @@ macro_rules! fail(
 macro_rules! assert(
     ($cond:expr) => (
         if !$cond {
-            fail!(concat!("assertion failed: ", stringify!($cond)))
+            panic!(concat!("assertion failed: ", stringify!($cond)))
         }
     );
     ($cond:expr, $($arg:expr),+) => (
         if !$cond {
-            fail!($($arg),+)
+            panic!($($arg),+)
         }
     );
 )
@@ -109,7 +109,7 @@ macro_rules! assert(
 /// Asserts that two expressions are equal to each other, testing equality in
 /// both directions.
 ///
-/// On failure, this macro will print the values of the expressions.
+/// On panic, this macro will print the values of the expressions.
 ///
 /// # Example
 ///
@@ -126,7 +126,7 @@ macro_rules! assert_eq(
                 // check both directions of equality....
                 if !((*given_val == *expected_val) &&
                      (*expected_val == *given_val)) {
-                    fail!("assertion failed: `(left == right) && (right == left)` \
+                    panic!("assertion failed: `(left == right) && (right == left)` \
                            (left: `{}`, right: `{}`)", *given_val, *expected_val)
                 }
             }
@@ -136,7 +136,7 @@ macro_rules! assert_eq(
 
 /// Ensure that a boolean expression is `true` at runtime.
 ///
-/// This will invoke the `fail!` macro if the provided expression cannot be
+/// This will invoke the `panic!` macro if the provided expression cannot be
 /// evaluated to `true` at runtime.
 ///
 /// Unlike `assert!`, `debug_assert!` statements can be disabled by passing
@@ -147,7 +147,7 @@ macro_rules! assert_eq(
 /// # Example
 ///
 /// ```
-/// // the failure message for these assertions is the stringified value of the
+/// // the panic message for these assertions is the stringified value of the
 /// // expression given.
 /// debug_assert!(true);
 /// # fn some_expensive_computation() -> bool { true }
@@ -167,7 +167,7 @@ macro_rules! debug_assert(
 /// Asserts that two expressions are equal to each other, testing equality in
 /// both directions.
 ///
-/// On failure, this macro will print the values of the expressions.
+/// On panic, this macro will print the values of the expressions.
 ///
 /// Unlike `assert_eq!`, `debug_assert_eq!` statements can be disabled by
 /// passing `--cfg ndebug` to the compiler. This makes `debug_assert_eq!`
@@ -186,7 +186,7 @@ macro_rules! debug_assert_eq(
     ($($arg:tt)*) => (if cfg!(not(ndebug)) { assert_eq!($($arg)*); })
 )
 
-/// A utility macro for indicating unreachable code. It will fail if
+/// A utility macro for indicating unreachable code. It will panic if
 /// executed. This is occasionally useful to put after loops that never
 /// terminate normally, but instead directly return from a function.
 ///
@@ -211,14 +211,14 @@ macro_rules! debug_assert_eq(
 /// ```
 #[macro_export]
 macro_rules! unreachable(
-    () => (fail!("internal error: entered unreachable code"))
+    () => (panic!("internal error: entered unreachable code"))
 )
 
-/// A standardised placeholder for marking unfinished code. It fails with the
+/// A standardised placeholder for marking unfinished code. It panics with the
 /// message `"not yet implemented"` when executed.
 #[macro_export]
 macro_rules! unimplemented(
-    () => (fail!("not yet implemented"))
+    () => (panic!("not yet implemented"))
 )
 
 /// Use the syntax described in `std::fmt` to create a value of type `String`.

@@ -65,14 +65,15 @@ Data values in the language can only be constructed through a fixed set of initi
 * There is no global inter-crate namespace; all name management occurs within a crate.
  * Using another crate binds the root of _its_ namespace into the user's namespace.
 
-## Why is failure unwinding non-recoverable within a task? Why not try to "catch exceptions"?
+## Why is panic unwinding non-recoverable within a task? Why not try to "catch exceptions"?
 
 In short, because too few guarantees could be made about the dynamic environment of the catch block, as well as invariants holding in the unwound heap, to be able to safely resume; we believe that other methods of signalling and logging errors are more appropriate, with tasks playing the role of a "hard" isolation boundary between separate heaps.
 
 Rust provides, instead, three predictable and well-defined options for handling any combination of the three main categories of "catch" logic:
 
 * Failure _logging_ is done by the integrated logging subsystem.
-* _Recovery_ after a failure is done by trapping a task failure from _outside_ the task, where other tasks are known to be unaffected.
+* _Recovery_ after a panic is done by trapping a task panic from _outside_
+  the task, where other tasks are known to be unaffected.
 * _Cleanup_ of resources is done by RAII-style objects with destructors.
 
 Cleanup through RAII-style destructors is more likely to work than in catch blocks anyways, since it will be better tested (part of the non-error control paths, so executed all the time).

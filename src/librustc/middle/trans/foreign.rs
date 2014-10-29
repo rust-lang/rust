@@ -551,7 +551,7 @@ pub fn decl_rust_fn_with_foreign_abi(ccx: &CrateContext,
             let c = llvm_calling_convention(ccx, fn_ty.abi);
             c.unwrap_or(llvm::CCallConv)
         }
-        _ => fail!("expected bare fn in decl_rust_fn_with_foreign_abi")
+        _ => panic!("expected bare fn in decl_rust_fn_with_foreign_abi")
     };
     let llfn = base::decl_fn(ccx, name, cconv, llfn_ty, ty::FnConverging(ty::mk_nil()));
     add_argument_attributes(&tys, llfn);
@@ -575,7 +575,7 @@ pub fn register_rust_fn_with_foreign_abi(ccx: &CrateContext,
             let c = llvm_calling_convention(ccx, fn_ty.abi);
             c.unwrap_or(llvm::CCallConv)
         }
-        _ => fail!("expected bare fn in register_rust_fn_with_foreign_abi")
+        _ => panic!("expected bare fn in register_rust_fn_with_foreign_abi")
     };
     let llfn = base::register_fn_llvmty(ccx, sp, sym, node_id, cconv, llfn_ty);
     add_argument_attributes(&tys, llfn);

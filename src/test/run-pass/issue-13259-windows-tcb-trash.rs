@@ -32,7 +32,7 @@ mod imp {
             FormatMessageW(0x1000, 0 as *mut c_void, 1, 0x400,
                            buf.as_mut_ptr(), buf.len() as u32, 0 as *const c_void)
         };
-        // On some 32-bit Windowses (Win7-8 at least) this will fail with segmented
+        // On some 32-bit Windowses (Win7-8 at least) this will panic with segmented
         // stacks taking control of pvArbitrary
         assert!(ret != 0);
     }

@@ -142,7 +142,7 @@ pub fn strip_doc_comment_decoration(comment: &str) -> String {
         return lines.connect("\n");
     }
 
-    fail!("not a doc-comment: {}", comment);
+    panic!("not a doc-comment: {}", comment);
 }
 
 fn push_blank_line_comment(rdr: &StringReader, comments: &mut Vec<Comment>) {
@@ -322,7 +322,7 @@ fn consume_comment(rdr: &mut StringReader,
         read_block_comment(rdr, code_to_the_left, comments);
     } else if rdr.curr_is('#') && rdr.nextch_is('!') {
         read_shebang_comment(rdr, code_to_the_left, comments);
-    } else { fail!(); }
+    } else { panic!(); }
     debug!("<<< consume comment");
 }
 

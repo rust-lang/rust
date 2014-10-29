@@ -96,7 +96,7 @@ pub fn getcwd() -> Path {
     let mut buf = [0 as c_char, ..BUF_BYTES];
     unsafe {
         if libc::getcwd(buf.as_mut_ptr(), buf.len() as libc::size_t).is_null() {
-            fail!()
+            panic!()
         }
         Path::new(CString::new(buf.as_ptr(), false))
     }
@@ -130,7 +130,7 @@ pub fn getcwd() -> Path {
     let mut buf = [0 as u16, ..BUF_BYTES];
     unsafe {
         if libc::GetCurrentDirectoryW(buf.len() as DWORD, buf.as_mut_ptr()) == 0 as DWORD {
-            fail!();
+            panic!();
         }
     }
     Path::new(String::from_utf16(::str::truncate_utf16_at_nul(buf))
@@ -238,7 +238,7 @@ pub fn env_as_bytes() -> Vec<(Vec<u8>,Vec<u8>)> {
             };
             let ch = GetEnvironmentStringsW();
             if ch as uint == 0 {
-                fail!("os::env() failure getting env string from OS: {}",
+                panic!("os::env() failure getting env string from OS: {}",
                        os::last_os_error());
             }
             // Here, we lossily decode the string as UTF16.
@@ -280,7 +280,7 @@ pub fn env_as_bytes() -> Vec<(Vec<u8>,Vec<u8>)> {
             }
             let mut environ = rust_env_pairs();
             if environ as uint == 0 {
-                fail!("os::env() failure getting env string from OS: {}",
+                panic!("os::env() failure getting env string from OS: {}",
                        os::last_os_error());
             }
             let mut result = Vec::new();
@@ -1009,7 +1009,7 @@ pub fn error_string(errnum: uint) -> String {
         let p = buf.as_mut_ptr();
         unsafe {
             if strerror_r(errnum as c_int, p, buf.len() as libc::size_t) < 0 {
-                fail!("strerror_r failure");
+                panic!("strerror_r failure");
             }
 
             ::string::raw::from_buf(p as *const u8)
@@ -1079,9 +1079,9 @@ static EXIT_STATUS: AtomicInt = INIT_ATOMIC_INT;
  * Sets the process exit code
  *
  * Sets the exit code returned by the process if all supervised tasks
- * terminate successfully (without failing). If the current root task fails
+ * terminate successfully (without panicking). If the current root task panics
  * and is supervised by the scheduler then any user-specified exit status is
- * ignored and the process exits with the default failure status.
+ * ignored and the process exits with the default panic status.
  *
  * Note that this is not synchronized against modifications of other threads.
  */
@@ -1185,7 +1185,7 @@ fn real_args_as_bytes() -> Vec<Vec<u8>> {
 
     match rt::args::clone() {
         Some(args) => args,
-        None => fail!("process arguments not initialized")
+        None => panic!("process arguments not initialized")
     }
 }
 
@@ -1511,12 +1511,12 @@ impl MemoryMap {
 
 #[cfg(unix)]
 impl Drop for MemoryMap {
-    /// Unmap the mapping. Fails the task if `munmap` fails.
+    /// Unmap the mapping. Panics the task if `munmap` panics.
     fn drop(&mut self) {
         if self.len == 0 { /* workaround for dummy_stack */ return; }
 
         unsafe {
-            // `munmap` only fails due to logic errors
+            // `munmap` only panics due to logic errors
             libc::munmap(self.data as *mut c_void, self.len as libc::size_t);
         }
     }
@@ -2098,7 +2098,7 @@ mod tests {
             os::MapWritable
         ]) {
             Ok(chunk) => chunk,
-            Err(msg) => fail!("{}", msg)
+            Err(msg) => panic!("{}", msg)
         };
         assert!(chunk.len >= 16);
 
@@ -2147,7 +2147,7 @@ mod tests {
             MapOffset(size / 2)
         ]) {
             Ok(chunk) => chunk,
-            Err(msg) => fail!("{}", msg)
+            Err(msg) => panic!("{}", msg)
         };
         assert!(chunk.len > 0);
 

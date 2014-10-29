@@ -284,9 +284,9 @@ pub fn closure_to_block(closure_id: ast::NodeId,
             ast::ExprProc(_, ref block) |
             ast::ExprFnBlock(_, _, ref block) |
             ast::ExprUnboxedFn(_, _, _, ref block) => { block.id }
-            _ => fail!("encountered non-closure id: {}", closure_id)
+            _ => panic!("encountered non-closure id: {}", closure_id)
         },
-        _ => fail!("encountered non-expr id: {}", closure_id)
+        _ => panic!("encountered non-expr id: {}", closure_id)
     }
 }
 

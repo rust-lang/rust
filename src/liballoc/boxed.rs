@@ -148,11 +148,11 @@ mod test {
 
         match a.downcast::<uint>() {
             Ok(a) => { assert!(a == box 8u); }
-            Err(..) => fail!()
+            Err(..) => panic!()
         }
         match b.downcast::<Test>() {
             Ok(a) => { assert!(a == box Test); }
-            Err(..) => fail!()
+            Err(..) => panic!()
         }
 
         let a = box 8u as Box<Any>;

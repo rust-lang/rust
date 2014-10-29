@@ -56,7 +56,7 @@ use std::hash::sip::SipState;
 ///
 /// let mut child = match Command::new("/bin/cat").arg("file.txt").spawn() {
 ///     Ok(child) => child,
-///     Err(e) => fail!("failed to execute child: {}", e),
+///     Err(e) => panic!("failed to execute child: {}", e),
 /// };
 ///
 /// let contents = child.stdout.as_mut().unwrap().read_to_end();
@@ -145,7 +145,7 @@ pub type EnvMap = HashMap<EnvKey, CString>;
 ///
 /// let mut process = match Command::new("sh").arg("-c").arg("echo hello").spawn() {
 ///   Ok(p) => p,
-///   Err(e) => fail!("failed to execute process: {}", e),
+///   Err(e) => panic!("failed to execute process: {}", e),
 /// };
 ///
 /// let output = process.stdout.as_mut().unwrap().read_to_end();
@@ -372,7 +372,7 @@ impl Command {
     ///
     /// let output = match Command::new("cat").arg("foot.txt").output() {
     ///     Ok(output) => output,
-    ///     Err(e) => fail!("failed to execute process: {}", e),
+    ///     Err(e) => panic!("failed to execute process: {}", e),
     /// };
     ///
     /// println!("status: {}", output.status);
@@ -393,7 +393,7 @@ impl Command {
     ///
     /// let status = match Command::new("ls").status() {
     ///     Ok(status) => status,
-    ///     Err(e) => fail!("failed to execute process: {}", e),
+    ///     Err(e) => panic!("failed to execute process: {}", e),
     /// };
     ///
     /// println!("process exited with: {}", status);
@@ -691,7 +691,7 @@ mod tests {
     #[test]
     fn smoke_failure() {
         match Command::new("if-this-is-a-binary-then-the-world-has-ended").spawn() {
-            Ok(..) => fail!(),
+            Ok(..) => panic!(),
             Err(..) => {}
         }
     }
@@ -714,7 +714,7 @@ mod tests {
         let mut p = p.unwrap();
         match p.wait().unwrap() {
             process::ExitSignal(1) => {},
-            result => fail!("not terminated by signal 1 (instead, {})", result),
+            result => panic!("not terminated by signal 1 (instead, {})", result),
         }
     }
 
@@ -815,7 +815,7 @@ mod tests {
     fn test_process_output_fail_to_start() {
         match Command::new("/no-binary-by-this-name-should-exist").output() {
             Err(e) => assert_eq!(e.kind, FileNotFound),
-            Ok(..) => fail!()
+            Ok(..) => panic!()
         }
     }
 
@@ -1063,7 +1063,7 @@ mod tests {
             }
             timer::sleep(Duration::milliseconds(100));
         }
-        fail!("never saw the child go away");
+        panic!("never saw the child go away");
     }
 
     #[test]
@@ -1121,7 +1121,7 @@ mod tests {
 
         let mut fdes = match file::open(&path.to_c_str(), Truncate, Write) {
             Ok(f) => f,
-            Err(_) => fail!("failed to open file descriptor"),
+            Err(_) => panic!("failed to open file descriptor"),
         };
 
         let mut cmd = pwd_cmd();

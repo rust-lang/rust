@@ -171,7 +171,7 @@ pub trait Folder {
     }
 
     fn fold_mac(&mut self, _macro: Mac) -> Mac {
-        fail!("fold_mac disabled by default");
+        panic!("fold_mac disabled by default");
         // NB: see note about macros above.
         // if you really want a folder that
         // works on macros, use this
@@ -1404,7 +1404,7 @@ mod test {
                 let a_val = $a;
                 let b_val = $b;
                 if !(pred_val(a_val.as_slice(),b_val.as_slice())) {
-                    fail!("expected args satisfying {}, got {} and {}",
+                    panic!("expected args satisfying {}, got {} and {}",
                           $predname, a_val, b_val);
                 }
             }

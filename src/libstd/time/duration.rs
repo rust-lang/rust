@@ -107,7 +107,7 @@ impl Duration {
     pub fn seconds(seconds: i64) -> Duration {
         let d = Duration { secs: seconds, nanos: 0 };
         if d < MIN || d > MAX {
-            fail!("Duration::seconds out of bounds");
+            panic!("Duration::seconds out of bounds");
         }
         d
     }

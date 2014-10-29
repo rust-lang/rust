@@ -10,10 +10,10 @@
 
 // ignore-pretty
 
-// Don't fail on blocks without results
+// Don't panic on blocks without results
 // There are several tests in this run-pass that raised
 // when this bug was opened. The cases where the compiler
-// failed before the fix have a comment.
+// panics before the fix have a comment.
 
 struct S {x:()}
 
@@ -31,8 +31,8 @@ fn not(b: bool) -> bool {
     if b {
         !b
     } else {
-        // `fail!(...)` would break
-        fail!("Break the compiler");
+        // `panic!(...)` would break
+        panic!("Break the compiler");
     }
 }
 

@@ -67,7 +67,7 @@ pub use rustrt::{task, local, mutex, exclusive, stack, args, rtio, thread};
 pub use rustrt::{Stdio, Stdout, Stderr, begin_unwind, begin_unwind_fmt};
 pub use rustrt::{bookkeeping, at_exit, unwind, DEFAULT_ERROR_CODE, Runtime};
 
-// Simple backtrace functionality (to print on failure)
+// Simple backtrace functionality (to print on panic)
 pub mod backtrace;
 
 // Just stuff

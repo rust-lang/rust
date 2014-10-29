@@ -17,7 +17,7 @@ fn surrounding() {
         unsafe { calls += 1 }
 
         if n >= 0 { return; }
-        fail!()
+        panic!()
     };
 
     return_works(10);
@@ -28,7 +28,7 @@ fn surrounding() {
         unsafe { calls += 1 }
 
         if n >= 0 { return; }
-        fail!()
+        panic!()
     };
 
     return_works_proc(10);

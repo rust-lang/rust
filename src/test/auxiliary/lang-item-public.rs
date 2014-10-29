@@ -14,8 +14,8 @@
 #[lang="sized"]
 pub trait Sized for Sized? {}
 
-#[lang="fail"]
-fn fail(_: &(&'static str, &'static str, uint)) -> ! { loop {} }
+#[lang="panic"]
+fn panic(_: &(&'static str, &'static str, uint)) -> ! { loop {} }
 
 #[lang = "stack_exhausted"]
 extern fn stack_exhausted() {}

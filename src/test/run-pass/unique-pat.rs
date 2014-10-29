@@ -11,7 +11,7 @@
 fn simple() {
     match box true {
       box true => { }
-      _ => { fail!(); }
+      _ => { panic!(); }
     }
 }
 

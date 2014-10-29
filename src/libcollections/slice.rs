@@ -1181,7 +1181,7 @@ mod tests {
                 3 => assert!(v == [2, 3, 1]),
                 4 => assert!(v == [2, 1, 3]),
                 5 => assert!(v == [1, 2, 3]),
-                _ => fail!(),
+                _ => panic!(),
             }
         }
     }
@@ -1391,7 +1391,7 @@ mod tests {
             }
         }
 
-        // shouldn't fail/crash
+        // shouldn't panic
         let mut v: [uint, .. 0] = [];
         v.sort();
 
@@ -1545,7 +1545,7 @@ mod tests {
     #[should_fail]
     fn test_from_fn_fail() {
         Vec::from_fn(100, |v| {
-            if v == 50 { fail!() }
+            if v == 50 { panic!() }
             box 0i
         });
     }
@@ -1562,7 +1562,7 @@ mod tests {
         impl Clone for S {
             fn clone(&self) -> S {
                 self.f.set(self.f.get() + 1);
-                if self.f.get() == 10 { fail!() }
+                if self.f.get() == 10 { panic!() }
                 S { f: self.f, boxes: self.boxes.clone() }
             }
         }
@@ -1577,7 +1577,7 @@ mod tests {
         let mut v = vec![];
         v.grow_fn(100, |i| {
             if i == 50 {
-                fail!()
+                panic!()
             }
             (box 0i, Rc::new(0i))
         })
@@ -1591,7 +1591,7 @@ mod tests {
         let mut i = 0u;
         for _ in v.permutations() {
             if i == 2 {
-                fail!()
+                panic!()
             }
             i += 1;
         }
@@ -2189,7 +2189,7 @@ mod bench {
                 sum += *x;
             }
             // sum == 11806, to stop dead code elimination.
-            if sum == 0 {fail!()}
+            if sum == 0 {panic!()}
         })
     }
 

@@ -24,7 +24,7 @@ pub struct Stack {
 // Try to use MAP_STACK on platforms that support it (it's what we're doing
 // anyway), but some platforms don't support it at all. For example, it appears
 // that there's a bug in freebsd that MAP_STACK implies MAP_FIXED (so it always
-// fails): http://lists.freebsd.org/pipermail/freebsd-bugs/2011-July/044840.html
+// panics): http://lists.freebsd.org/pipermail/freebsd-bugs/2011-July/044840.html
 //
 // DragonFly BSD also seems to suffer from the same problem. When MAP_STACK is
 // used, it returns the same `ptr` multiple times.
@@ -37,7 +37,7 @@ static STACK_FLAGS: libc::c_int = libc::MAP_PRIVATE | libc::MAP_ANON;
 static STACK_FLAGS: libc::c_int = 0;
 
 impl Stack {
-    /// Allocate a new stack of `size`. If size = 0, this will fail. Use
+    /// Allocate a new stack of `size`. If size = 0, this will panic. Use
     /// `dummy_stack` if you want a zero-sized stack.
     pub fn new(size: uint) -> Stack {
         // Map in a stack. Eventually we might be able to handle stack
@@ -47,7 +47,7 @@ impl Stack {
         let stack = match MemoryMap::new(size, [MapReadable, MapWritable,
                                          MapNonStandardFlags(STACK_FLAGS)]) {
             Ok(map) => map,
-            Err(e) => fail!("mmap for stack of size {} failed: {}", size, e)
+            Err(e) => panic!("mmap for stack of size {} failed: {}", size, e)
         };
 
         // Change the last page to be inaccessible. This is to provide safety;
@@ -55,7 +55,7 @@ impl Stack {
         // page. It isn't guaranteed, but that's why FFI is unsafe. buf.data is
         // guaranteed to be aligned properly.
         if !protect_last_page(&stack) {
-            fail!("Could not memory-protect guard page. stack={}, errno={}",
+            panic!("Could not memory-protect guard page. stack={}, errno={}",
                   stack.data(), errno());
         }
 

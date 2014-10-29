@@ -373,7 +373,7 @@ fn test_all() {
     assert!(v.iter().all(|&x| x < 10));
     assert!(!v.iter().all(|&x| x % 2 == 0));
     assert!(!v.iter().all(|&x| x > 100));
-    assert!(v.slice_or_fail(&0, &0).iter().all(|_| fail!()));
+    assert!(v.slice_or_fail(&0, &0).iter().all(|_| panic!()));
 }
 
 #[test]
@@ -382,7 +382,7 @@ fn test_any() {
     assert!(v.iter().any(|&x| x < 10));
     assert!(v.iter().any(|&x| x % 2 == 0));
     assert!(!v.iter().any(|&x| x > 100));
-    assert!(!v.slice_or_fail(&0, &0).iter().any(|_| fail!()));
+    assert!(!v.slice_or_fail(&0, &0).iter().any(|_| panic!()));
 }
 
 #[test]
@@ -528,13 +528,13 @@ fn test_rposition() {
 
 #[test]
 #[should_fail]
-fn test_rposition_fail() {
+fn test_rposition_panic() {
     let v = [(box 0i, box 0i), (box 0i, box 0i),
              (box 0i, box 0i), (box 0i, box 0i)];
     let mut i = 0i;
     v.iter().rposition(|_elt| {
         if i == 2 {
-            fail!()
+            panic!()
         }
         i += 1;
         false
@@ -678,12 +678,12 @@ fn test_random_access_cycle() {
 fn test_double_ended_range() {
     assert!(range(11i, 14).rev().collect::<Vec<int>>() == vec![13i, 12, 11]);
     for _ in range(10i, 0).rev() {
-        fail!("unreachable");
+        panic!("unreachable");
     }
 
     assert!(range(11u, 14).rev().collect::<Vec<uint>>() == vec![13u, 12, 11]);
     for _ in range(10u, 0).rev() {
-        fail!("unreachable");
+        panic!("unreachable");
     }
 }
 

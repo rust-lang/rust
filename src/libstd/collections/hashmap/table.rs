@@ -470,7 +470,7 @@ impl<K, V, M> BucketState<K, V, M> {
     pub fn expect_full(self) -> FullBucket<K, V, M> {
         match self {
             Full(full) => full,
-            Empty(..) => fail!("Expected full bucket")
+            Empty(..) => panic!("Expected full bucket")
         }
     }
 }

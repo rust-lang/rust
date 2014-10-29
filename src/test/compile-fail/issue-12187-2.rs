@@ -9,7 +9,7 @@
 // except according to those terms.
 
 fn new<'r, T>() -> &'r T {
-    fail!()
+    panic!()
 }
 
 fn main() {

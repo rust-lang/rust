@@ -99,7 +99,7 @@ macro_rules! noparse(
             let re = $re;
             match Regex::new(re) {
                 Err(_) => {},
-                Ok(_) => fail!("Regex '{}' should cause a parse error.", re),
+                Ok(_) => panic!("Regex '{}' should cause a parse error.", re),
             }
         }
     );
@@ -161,7 +161,7 @@ macro_rules! mat(
                 sgot = sgot[0..sexpect.len()]
             }
             if sexpect != sgot {
-                fail!("For RE '{}' against '{}', expected '{}' but got '{}'",
+                panic!("For RE '{}' against '{}', expected '{}' but got '{}'",
                       $re, text, sexpect, sgot);
             }
         }

@@ -12,7 +12,7 @@
 // Previously failed formating invalid utf8.
 // cc #16877
 
-// error-pattern:failed at 'hello�'
+// error-pattern:panicked at 'hello�'
 
 struct Foo;
 impl std::fmt::Show for Foo {
@@ -22,5 +22,5 @@ impl std::fmt::Show for Foo {
     }
 }
 fn main() {
-    fail!("{}", Foo)
+    panic!("{}", Foo)
 }

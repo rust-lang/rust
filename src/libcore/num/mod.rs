@@ -1349,7 +1349,7 @@ checked_impl!(CheckedMul, checked_mul, i16, intrinsics::i16_mul_with_overflow)
 checked_impl!(CheckedMul, checked_mul, i32, intrinsics::i32_mul_with_overflow)
 checked_impl!(CheckedMul, checked_mul, i64, intrinsics::i64_mul_with_overflow)
 
-/// Performs division that returns `None` instead of failing on division by zero and instead of
+/// Performs division that returns `None` instead of panicking on division by zero and instead of
 /// wrapping around on underflow and overflow.
 pub trait CheckedDiv: Div<Self, Self> {
     /// Divides two numbers, checking for underflow, overflow and division by zero. If any of that

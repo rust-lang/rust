@@ -60,7 +60,7 @@ impl<T> Finally<T> for fn() -> T {
 
 /**
  * The most general form of the `finally` functions. The function
- * `try_fn` will be invoked first; whether or not it fails, the
+ * `try_fn` will be invoked first; whether or not it panics, the
  * function `finally_fn` will be invoked next. The two parameters
  * `mutate` and `drop` are used to thread state through the two
  * closures. `mutate` is used for any shared, mutable state that both
@@ -69,7 +69,7 @@ impl<T> Finally<T> for fn() -> T {
  *
  * **WARNING:** While shared, mutable state between the try and finally
  * function is often necessary, one must be very careful; the `try`
- * function could have failed at any point, so the values of the shared
+ * function could have panicked at any point, so the values of the shared
  * state may be inconsistent.
  *
  * # Example

@@ -145,7 +145,7 @@ fn is_utf8_ascii() {
     for _ in range(0u, 20000) {
         v.push('b' as u8);
         if !str::is_utf8(v.as_slice()) {
-            fail!("is_utf8 failed");
+            panic!("is_utf8 panicked");
         }
     }
 }
@@ -156,7 +156,7 @@ fn is_utf8_multibyte() {
     for _ in range(0u, 5000) {
         v.push_all(s.as_bytes());
         if !str::is_utf8(v.as_slice()) {
-            fail!("is_utf8 failed");
+            panic!("is_utf8 panicked");
         }
     }
 }

@@ -555,8 +555,8 @@ impl<'a> StringReader<'a> {
                                                whence: &str) {
             match r.curr {
                 Some(r_c) if r_c == c => r.bump(),
-                Some(r_c) => fail!("expected {}, hit {}, {}", described_c, r_c, whence),
-                None      => fail!("expected {}, hit EOF, {}", described_c, whence),
+                Some(r_c) => panic!("expected {}, hit {}, {}", described_c, r_c, whence),
+                None      => panic!("expected {}, hit EOF, {}", described_c, whence),
             }
         }
 
@@ -577,7 +577,7 @@ impl<'a> StringReader<'a> {
         self.scan_digits(base);
         let encoded_name : u32 = self.with_str_from(start_bpos, |s| {
             num::from_str_radix(s, 10).unwrap_or_else(|| {
-                fail!("expected digits representing a name, got `{}`, {}, range [{},{}]",
+                panic!("expected digits representing a name, got `{}`, {}, range [{},{}]",
                       s, whence, start_bpos, self.last_pos);
             })
         });
@@ -595,7 +595,7 @@ impl<'a> StringReader<'a> {
         self.scan_digits(base);
         let encoded_ctxt : ast::SyntaxContext = self.with_str_from(start_bpos, |s| {
             num::from_str_radix(s, 10).unwrap_or_else(|| {
-                fail!("expected digits representing a ctxt, got `{}`, {}", s, whence);
+                panic!("expected digits representing a ctxt, got `{}`, {}", s, whence);
             })
         });
 
@@ -1542,7 +1542,7 @@ mod test {
         let mut lexer = setup(&sh, "/* /* */ */'a'".to_string());
         match lexer.next_token().tok {
             token::Comment => { },
-            _ => fail!("expected a comment!")
+            _ => panic!("expected a comment!")
         }
         assert_eq!(lexer.next_token().tok, token::LitChar(token::intern("a")));
     }

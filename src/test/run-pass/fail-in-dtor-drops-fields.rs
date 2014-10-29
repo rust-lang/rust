@@ -22,7 +22,7 @@ struct B {
 
 impl Drop for A {
     fn drop(&mut self) {
-        fail!()
+        panic!()
     }
 }
 

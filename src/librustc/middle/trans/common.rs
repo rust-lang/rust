@@ -603,7 +603,7 @@ pub fn C_int<I: AsI64>(ccx: &CrateContext, i: I) -> ValueRef {
     match machine::llbitsize_of_real(ccx, ccx.int_type()) {
         32 => assert!(v < (1<<31) && v >= -(1<<31)),
         64 => {},
-        n => fail!("unsupported target size: {}", n)
+        n => panic!("unsupported target size: {}", n)
     }
 
     C_integral(ccx.int_type(), v as u64, true)
@@ -615,7 +615,7 @@ pub fn C_uint<I: AsU64>(ccx: &CrateContext, i: I) -> ValueRef {
     match machine::llbitsize_of_real(ccx, ccx.int_type()) {
         32 => assert!(v < (1<<32)),
         64 => {},
-        n => fail!("unsupported target size: {}", n)
+        n => panic!("unsupported target size: {}", n)
     }
 
     C_integral(ccx.int_type(), v, false)

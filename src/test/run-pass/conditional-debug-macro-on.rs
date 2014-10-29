@@ -12,8 +12,8 @@
 
 pub fn main() {
     // exits early if println! evaluates its arguments, otherwise it
-    // will hit the fail.
+    // will hit the panic.
     println!("{}", { if true { return; } });
 
-    fail!();
+    panic!();
 }

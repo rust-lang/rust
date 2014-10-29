@@ -31,7 +31,7 @@ fn innocent_looking_victim() {
                     //~^ ERROR: cannot borrow `*f` as mutable because
                     println!("{}", msg);
                 },
-                None => fail!("oops"),
+                None => panic!("oops"),
             }
         }
     })

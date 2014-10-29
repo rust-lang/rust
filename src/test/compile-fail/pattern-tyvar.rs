@@ -17,7 +17,7 @@ fn foo(t: bar) {
       t1(_, Some::<int>(x)) => {
         println!("{}", x);
       }
-      _ => { fail!(); }
+      _ => { panic!(); }
     }
 }
 

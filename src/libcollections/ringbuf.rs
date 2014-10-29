@@ -152,7 +152,7 @@ impl<T> RingBuf<T> {
     pub fn get_mut<'a>(&'a mut self, i: uint) -> &'a mut T {
         let idx = self.raw_index(i);
         match *self.elts.get_mut(idx) {
-            None => fail!(),
+            None => panic!(),
             Some(ref mut v) => v
         }
     }
@@ -460,7 +460,7 @@ impl<A> Index<uint, A> for RingBuf<A> {
     fn index<'a>(&'a self, i: &uint) -> &'a A {
         let idx = self.raw_index(*i);
         match self.elts[idx] {
-            None => fail!(),
+            None => panic!(),
             Some(ref v) => v,
         }
     }

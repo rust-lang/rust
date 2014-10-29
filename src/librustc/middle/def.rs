@@ -74,7 +74,7 @@ impl Def {
                 local_def(id)
             }
 
-            DefPrimTy(_) => fail!()
+            DefPrimTy(_) => panic!()
         }
     }
 

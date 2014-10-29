@@ -20,7 +20,7 @@ struct r {
 }
 
 // Setting the exit status after the runtime has already
-// failed has no effect and the process exits with the
+// panicked has no effect and the process exits with the
 // runtime's exit code
 impl Drop for r {
     fn drop(&mut self) {
@@ -39,5 +39,5 @@ fn main() {
     task::spawn(proc() {
       let _i = r(5);
     });
-    fail!();
+    panic!();
 }

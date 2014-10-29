@@ -115,11 +115,11 @@ impl Unwinder {
     }
 }
 
-/// Invoke a closure, capturing the cause of failure if one occurs.
+/// Invoke a closure, capturing the cause of panic if one occurs.
 ///
-/// This function will return `None` if the closure did not fail, and will
-/// return `Some(cause)` if the closure fails. The `cause` returned is the
-/// object with which failure was originally invoked.
+/// This function will return `None` if the closure did not panic, and will
+/// return `Some(cause)` if the closure panics. The `cause` returned is the
+/// object with which panic was originally invoked.
 ///
 /// This function also is unsafe for a variety of reasons:
 ///
@@ -489,18 +489,26 @@ pub mod eabi {
     }
 }
 
-// Entry point of failure from the libcore crate
+// Entry point of panic from the libcore crate
 #[cfg(not(test))]
-#[lang = "fail_fmt"]
+#[lang = "panic_fmt"]
 pub extern fn rust_begin_unwind(msg: &fmt::Arguments,
                                 file: &'static str, line: uint) -> ! {
     begin_unwind_fmt(msg, &(file, line))
 }
 
+// NOTE(stage0): remove after a snapshot
+#[cfg(not(test))]
+#[lang = "fail_fmt"]
+pub extern fn rust_fail_begin_unwind(msg: &fmt::Arguments,
+                                file: &'static str, line: uint) -> ! {
+    rust_begin_unwind(msg, file, line)
+}
+
 /// The entry point for unwinding with a formatted message.
 ///
 /// This is designed to reduce the amount of code required at the call
-/// site as much as possible (so that `fail!()` has as low an impact
+/// site as much as possible (so that `panic!()` has as low an impact
 /// on (e.g.) the inlining of other functions as possible), by moving
 /// the actual formatting into this shared place.
 #[inline(never)] #[cold]
@@ -509,7 +517,7 @@ pub fn begin_unwind_fmt(msg: &fmt::Arguments, file_line: &(&'static str, uint)) 
 
     // We do two allocations here, unfortunately. But (a) they're
     // required with the current scheme, and (b) we don't handle
-    // failure + OOM properly anyway (see comment in begin_unwind
+    // panic + OOM properly anyway (see comment in begin_unwind
     // below).
 
     struct VecWriter<'a> { v: &'a mut Vec<u8> }
@@ -528,15 +536,15 @@ pub fn begin_unwind_fmt(msg: &fmt::Arguments, file_line: &(&'static str, uint)) 
     begin_unwind_inner(msg, file_line)
 }
 
-/// This is the entry point of unwinding for fail!() and assert!().
+/// This is the entry point of unwinding for panic!() and assert!().
 #[inline(never)] #[cold] // avoid code bloat at the call sites as much as possible
 pub fn begin_unwind<M: Any + Send>(msg: M, file_line: &(&'static str, uint)) -> ! {
     // Note that this should be the only allocation performed in this code path.
-    // Currently this means that fail!() on OOM will invoke this code path,
-    // but then again we're not really ready for failing on OOM anyway. If
+    // Currently this means that panic!() on OOM will invoke this code path,
+    // but then again we're not really ready for panic on OOM anyway. If
     // we do start doing this, then we should propagate this allocation to
     // be performed in the parent of this task instead of the task that's
-    // failing.
+    // panicking.
 
     // see below for why we do the `Any` coercion here.
     begin_unwind_inner(box msg, file_line)
@@ -549,11 +557,11 @@ pub fn begin_unwind<M: Any + Send>(msg: M, file_line: &(&'static str, uint)) -> 
 /// we need the `Any` object anyway, we're not just creating it to
 /// avoid being generic.)
 ///
-/// Do this split took the LLVM IR line counts of `fn main() { fail!()
+/// Do this split took the LLVM IR line counts of `fn main() { panic!()
 /// }` from ~1900/3700 (-O/no opts) to 180/590.
 #[inline(never)] #[cold] // this is the slow path, please never inline this
 fn begin_unwind_inner(msg: Box<Any + Send>, file_line: &(&'static str, uint)) -> ! {
-    // First, invoke call the user-defined callbacks triggered on task failure.
+    // First, invoke call the user-defined callbacks triggered on task panic.
     //
     // By the time that we see a callback has been registered (by reading
     // MAX_CALLBACKS), the actual callback itself may have not been stored yet,
@@ -584,7 +592,7 @@ fn begin_unwind_inner(msg: Box<Any + Send>, file_line: &(&'static str, uint)) ->
     };
 
     if task.unwinder.unwinding {
-        // If a task fails while it's already unwinding then we
+        // If a task panics while it's already unwinding then we
         // have limited options. Currently our preference is to
         // just abort. In the future we may consider resuming
         // unwinding or otherwise exiting the task cleanly.
@@ -603,7 +611,7 @@ fn begin_unwind_inner(msg: Box<Any + Send>, file_line: &(&'static str, uint)) ->
 /// Register a callback to be invoked when a task unwinds.
 ///
 /// This is an unsafe and experimental API which allows for an arbitrary
-/// callback to be invoked when a task fails. This callback is invoked on both
+/// callback to be invoked when a task panics. This callback is invoked on both
 /// the initial unwinding and a double unwinding if one occurs. Additionally,
 /// the local `Task` will be in place for the duration of the callback, and
 /// the callback must ensure that it remains in place once the callback returns.

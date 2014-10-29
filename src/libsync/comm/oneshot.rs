@@ -94,7 +94,7 @@ impl<T: Send> Packet<T> {
         // Sanity check
         match self.upgrade {
             NothingSent => {}
-            _ => fail!("sending on a oneshot that's already sent on "),
+            _ => panic!("sending on a oneshot that's already sent on "),
         }
         assert!(self.data.is_none());
         self.data = Some(t);
@@ -203,7 +203,7 @@ impl<T: Send> Packet<T> {
         let prev = match self.upgrade {
             NothingSent => NothingSent,
             SendUsed => SendUsed,
-            _ => fail!("upgrading again"),
+            _ => panic!("upgrading again"),
         };
         self.upgrade = GoUp(up);
 

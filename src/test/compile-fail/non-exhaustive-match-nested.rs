@@ -23,7 +23,7 @@ fn match_nested_vecs<'a, T>(l1: Option<&'a [T]>, l2: Result<&'a [T], ()>) -> &'s
 fn main() {
     let x = a(c);
     match x { //~ ERROR non-exhaustive patterns: `a(c)` not covered
-        a(d) => { fail!("hello"); }
-        b => { fail!("goodbye"); }
+        a(d) => { panic!("hello"); }
+        b => { panic!("goodbye"); }
     }
 }

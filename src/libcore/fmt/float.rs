@@ -94,7 +94,7 @@ pub fn float_to_str_bytes_common<T: Primitive + Float, U>(
     assert!(2 <= radix && radix <= 36);
     match exp_format {
         ExpDec if radix >= DIGIT_E_RADIX       // decimal exponent 'e'
-          => fail!("float_to_str_bytes_common: radix {} incompatible with \
+          => panic!("float_to_str_bytes_common: radix {} incompatible with \
                     use of 'e' as decimal exponent", radix),
         _ => ()
     }
@@ -127,7 +127,7 @@ pub fn float_to_str_bytes_common<T: Primitive + Float, U>(
         ExpDec => {
             let (exp, exp_base) = match exp_format {
                 ExpDec => (num.abs().log10().floor(), cast::<f64, T>(10.0f64).unwrap()),
-                ExpNone => fail!("unreachable"),
+                ExpNone => panic!("unreachable"),
             };
 
             (num / exp_base.powf(exp), cast::<T, i32>(exp).unwrap())
@@ -299,7 +299,7 @@ pub fn float_to_str_bytes_common<T: Primitive + Float, U>(
             buf[end] = match exp_format {
                 ExpDec if exp_upper => 'E',
                 ExpDec if !exp_upper => 'e',
-                _ => fail!("unreachable"),
+                _ => panic!("unreachable"),
             } as u8;
             end += 1;
 

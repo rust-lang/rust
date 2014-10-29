@@ -91,13 +91,13 @@ impl<'l> List<'l> {
     fn car<'m>(&'m self) -> int {
         match self {
             &Cons(car, _) => car,
-            &Null => fail!(),
+            &Null => panic!(),
         }
     }
     fn cdr<'n>(&'n self) -> &'l List<'l> {
         match self {
             &Cons(_, cdr) => cdr,
-            &Null => fail!(),
+            &Null => panic!(),
         }
     }
 }

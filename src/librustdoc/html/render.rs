@@ -1042,7 +1042,7 @@ impl Context {
     /// sure it always points to the top (relatively)
     fn recurse<T>(&mut self, s: String, f: |&mut Context| -> T) -> T {
         if s.len() == 0 {
-            fail!("Unexpected empty destination: {}", self.current);
+            panic!("Unexpected empty destination: {}", self.current);
         }
         let prev = self.dst.clone();
         self.dst.push(s.as_slice());

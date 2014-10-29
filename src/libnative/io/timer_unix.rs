@@ -194,7 +194,7 @@ fn helper(input: libc::c_int, messages: Receiver<Req>, _: ()) {
             }
 
             -1 if os::errno() == libc::EINTR as int => {}
-            n => fail!("helper thread failed in select() with error: {} ({})",
+            n => panic!("helper thread panicked in select() with error: {} ({})",
                        n, os::last_os_error())
         }
     }
@@ -227,7 +227,7 @@ impl Timer {
         };
         while unsafe { libc::nanosleep(&to_sleep, &mut to_sleep) } != 0 {
             if os::errno() as int != libc::EINTR as int {
-                fail!("failed to sleep, but not because of EINTR?");
+                panic!("failed to sleep, but not because of EINTR?");
             }
         }
     }

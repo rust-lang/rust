@@ -20,7 +20,7 @@ fn main() {
         x: 3i
     };
 
-    let baz: Foo<uint> = fail!();
+    let baz: Foo<uint> = panic!();
     //~^ ERROR not implemented
 }
 

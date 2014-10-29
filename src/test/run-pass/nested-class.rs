@@ -23,7 +23,7 @@ pub fn main() {
         }
     }
 
-    //  fn b(x:int) -> int { fail!(); }
+    //  fn b(x:int) -> int { panic!(); }
 
     let z = b(42);
     assert_eq!(z.i, 42);

@@ -42,9 +42,9 @@ impl<T> TaskPool<T> {
     /// `init_fn_factory` returns a function which, given the index of the
     /// task, should return local data to be kept around in that task.
     ///
-    /// # Failure
+    /// # Panics
     ///
-    /// This function will fail if `n_tasks` is less than 1.
+    /// This function will panic if `n_tasks` is less than 1.
     pub fn new(n_tasks: uint,
                init_fn_factory: || -> proc(uint):Send -> T)
                -> TaskPool<T> {
@@ -96,7 +96,7 @@ fn test_task_pool() {
 
 #[test]
 #[should_fail]
-fn test_zero_tasks_failure() {
+fn test_zero_tasks_panic() {
     let f: || -> proc(uint):Send -> uint = || { proc(i) i };
     TaskPool::new(0, f);
 }

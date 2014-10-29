@@ -341,7 +341,7 @@ impl Folder for NestedItemsDropper {
                             ast::DeclItem(_) => false,
                         }
                     }
-                    ast::StmtMac(..) => fail!("unexpanded macro in astencode")
+                    ast::StmtMac(..) => panic!("unexpanded macro in astencode")
                 };
                 if use_stmt {
                     Some(stmt)
@@ -795,7 +795,7 @@ impl<'a> vtable_decoder_helpers for reader::Decoder<'a> {
                   3 => {
                     typeck::vtable_error
                   }
-                  _ => fail!("bad enum variant")
+                  _ => panic!("bad enum variant")
                 })
             })
         }).unwrap()
@@ -1488,7 +1488,7 @@ impl<'a> rbml_decoder_decoder_helpers for reader::Decoder<'a> {
                         }).unwrap()
                     }
 
-                    _ => fail!("..")
+                    _ => panic!("..")
                 })
             })
         }).unwrap()
@@ -1618,7 +1618,7 @@ impl<'a> rbml_decoder_decoder_helpers for reader::Decoder<'a> {
 
                         ty::AdjustDerefRef(auto_deref_ref)
                     }
-                    _ => fail!("bad enum variant for ty::AutoAdjustment")
+                    _ => panic!("bad enum variant for ty::AutoAdjustment")
                 })
             })
         }).unwrap()
@@ -1695,7 +1695,7 @@ impl<'a> rbml_decoder_decoder_helpers for reader::Decoder<'a> {
 
                         ty::AutoUnsafe(m, a)
                     }
-                    _ => fail!("bad enum variant for ty::AutoRef")
+                    _ => panic!("bad enum variant for ty::AutoRef")
                 })
             })
         }).unwrap()
@@ -1736,7 +1736,7 @@ impl<'a> rbml_decoder_decoder_helpers for reader::Decoder<'a> {
                                                      substs: substs };
                         ty::UnsizeVtable(ty_trait, self_ty)
                     }
-                    _ => fail!("bad enum variant for ty::UnsizeKind")
+                    _ => panic!("bad enum variant for ty::UnsizeKind")
                 })
             })
         }).unwrap()
@@ -1762,7 +1762,7 @@ impl<'a> rbml_decoder_decoder_helpers for reader::Decoder<'a> {
                 0 => ty::FnUnboxedClosureKind,
                 1 => ty::FnMutUnboxedClosureKind,
                 2 => ty::FnOnceUnboxedClosureKind,
-                _ => fail!("bad enum variant for ty::UnboxedClosureKind"),
+                _ => panic!("bad enum variant for ty::UnboxedClosureKind"),
             })
         }).unwrap();
         ty::UnboxedClosure {
@@ -2032,6 +2032,6 @@ fn test_simplification() {
         assert!(pprust::item_to_string(&*item_out) ==
                 pprust::item_to_string(&*item_exp));
       }
-      _ => fail!()
+      _ => panic!()
     }
 }

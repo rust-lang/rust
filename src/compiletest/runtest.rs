@@ -39,7 +39,7 @@ pub fn run(config: Config, testfile: String) {
 
         "arm-linux-androideabi" => {
             if !config.adb_device_status {
-                fail!("android device not available");
+                panic!("android device not available");
             }
         }
 
@@ -316,7 +316,7 @@ actual:\n\
 ------------------------------------------\n\
 \n",
                      expected, actual);
-            fail!();
+            panic!();
         }
     }
 
@@ -1453,7 +1453,7 @@ fn maybe_dump_to_stdout(config: &Config, out: &str, err: &str) {
 
 fn error(err: &str) { println!("\nerror: {}", err); }
 
-fn fatal(err: &str) -> ! { error(err); fail!(); }
+fn fatal(err: &str) -> ! { error(err); panic!(); }
 
 fn fatal_proc_rec(err: &str, proc_res: &ProcRes) -> ! {
     print!("\n\
@@ -1471,7 +1471,7 @@ stderr:\n\
 \n",
              err, proc_res.status, proc_res.cmdline, proc_res.stdout,
              proc_res.stderr);
-    fail!();
+    panic!();
 }
 
 fn _arm_exec_compiled_test(config: &Config,

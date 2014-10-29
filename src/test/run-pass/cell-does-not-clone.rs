@@ -20,7 +20,7 @@ impl Clone for Foo {
         // invoked -- after all, that would permit evil user code to
         // abuse `Cell` and trigger crashes.
 
-        fail!();
+        panic!();
     }
 }
 

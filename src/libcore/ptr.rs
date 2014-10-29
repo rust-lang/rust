@@ -76,7 +76,7 @@
 //!     unsafe {
 //!         let my_num: *mut int = libc::malloc(mem::size_of::<int>() as libc::size_t) as *mut int;
 //!         if my_num.is_null() {
-//!             fail!("failed to allocate memory");
+//!             panic!("failed to allocate memory");
 //!         }
 //!         libc::free(my_num as *mut libc::c_void);
 //!     }

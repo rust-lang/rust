@@ -10,5 +10,5 @@
 
 
 pub unsafe fn f(xs: Vec<int> ) {
-    xs.iter().map(|_x| { unsafe fn q() { fail!(); } }).collect::<Vec<()>>();
+    xs.iter().map(|_x| { unsafe fn q() { panic!(); } }).collect::<Vec<()>>();
 }

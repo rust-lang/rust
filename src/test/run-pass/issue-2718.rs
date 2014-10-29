@@ -56,9 +56,9 @@ pub mod pipes {
     }
 
     mod rusti {
-      pub fn atomic_xchg(_dst: &mut int, _src: int) -> int { fail!(); }
-      pub fn atomic_xchg_acq(_dst: &mut int, _src: int) -> int { fail!(); }
-      pub fn atomic_xchg_rel(_dst: &mut int, _src: int) -> int { fail!(); }
+      pub fn atomic_xchg(_dst: &mut int, _src: int) -> int { panic!(); }
+      pub fn atomic_xchg_acq(_dst: &mut int, _src: int) -> int { panic!(); }
+      pub fn atomic_xchg_rel(_dst: &mut int, _src: int) -> int { panic!(); }
     }
 
     // We should consider moving this to ::std::unsafe, although I
@@ -92,7 +92,7 @@ pub mod pipes {
             // The receiver will eventually clean this up.
             unsafe { forget(p); }
           }
-          full => { fail!("duplicate send") }
+          full => { panic!("duplicate send") }
           blocked => {
 
             // The receiver will eventually clean this up.
@@ -134,7 +134,7 @@ pub mod pipes {
           }
           full => {
             // This is impossible
-            fail!("you dun goofed")
+            panic!("you dun goofed")
           }
           terminated => {
             // I have to clean up, use drop_glue
@@ -151,7 +151,7 @@ pub mod pipes {
           }
           blocked => {
             // this shouldn't happen.
-            fail!("terminating a blocked packet")
+            panic!("terminating a blocked packet")
           }
           terminated | full => {
             // I have to clean up, use drop_glue
@@ -236,7 +236,7 @@ pub mod pingpong {
             let _addr : *const ::pipes::send_packet<pong> = match &p {
               &ping(ref x) => { mem::transmute(x) }
             };
-            fail!()
+            panic!()
         }
     }
 
@@ -245,7 +245,7 @@ pub mod pingpong {
             let _addr : *const ::pipes::send_packet<ping> = match &p {
               &pong(ref x) => { mem::transmute(x) }
             };
-            fail!()
+            panic!()
         }
     }
 
@@ -269,7 +269,7 @@ pub mod pingpong {
         pub fn do_pong(c: pong) -> (ping, ()) {
             let packet = ::pipes::recv(c);
             if packet.is_none() {
-                fail!("sender closed the connection")
+                panic!("sender closed the connection")
             }
             (pingpong::liberate_pong(packet.unwrap()), ())
         }
@@ -284,7 +284,7 @@ pub mod pingpong {
         pub fn do_ping(c: ping) -> (pong, ()) {
             let packet = ::pipes::recv(c);
             if packet.is_none() {
-                fail!("sender closed the connection")
+                panic!("sender closed the connection")
             }
             (pingpong::liberate_ping(packet.unwrap()), ())
         }

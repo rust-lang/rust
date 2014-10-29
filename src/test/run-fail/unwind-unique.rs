@@ -12,7 +12,7 @@
 
 
 fn failfn() {
-    fail!();
+    panic!();
 }
 
 fn main() {

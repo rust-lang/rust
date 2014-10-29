@@ -16,7 +16,7 @@ fn build1() -> Vec<int> {
 }
 
 fn build2() -> Vec<int> {
-    fail!();
+    panic!();
 }
 
 struct Blk { node: Vec<int> , span: Vec<int> }

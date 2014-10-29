@@ -50,7 +50,7 @@ fn ty_align(ty: Type) -> uint {
             let elt = ty.element_type();
             ty_align(elt)
         }
-        _ => fail!("ty_size: unhandled type")
+        _ => panic!("ty_size: unhandled type")
     }
 }
 
@@ -80,7 +80,7 @@ fn ty_size(ty: Type) -> uint {
             let eltsz = ty_size(elt);
             len * eltsz
         }
-        _ => fail!("ty_size: unhandled type")
+        _ => panic!("ty_size: unhandled type")
     }
 }
 

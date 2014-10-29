@@ -11,8 +11,8 @@
 #![deny(unreachable_code)]
 
 fn f() -> ! {
-    return fail!(); //~ ERROR `return` in a function declared as diverging
-    fail!(); // the unreachable statement error is in <std macro>, at this line, there
+    return panic!(); //~ ERROR `return` in a function declared as diverging
+    panic!(); // the unreachable statement error is in <std macro>, at this line, there
              // only is a note
 }
 

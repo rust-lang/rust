@@ -14,11 +14,11 @@
 fn foo() { //~ ERROR function is never used
 
     // none of these should have any dead_code exposed to the user
-    fail!();
+    panic!();
 
-    fail!("foo");
+    panic!("foo");
 
-    fail!("bar {}", "baz")
+    panic!("bar {}", "baz")
 }
 
 

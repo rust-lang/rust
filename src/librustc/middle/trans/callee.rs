@@ -689,9 +689,9 @@ pub fn trans_call_inner<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
     // Introduce a temporary cleanup scope that will contain cleanups
     // for the arguments while they are being evaluated. The purpose
-    // this cleanup is to ensure that, should a failure occur while
+    // this cleanup is to ensure that, should a panic occur while
     // evaluating argument N, the values for arguments 0...N-1 are all
-    // cleaned up. If no failure occurs, the values are handed off to
+    // cleaned up. If no panic occurs, the values are handed off to
     // the callee, and hence none of the cleanups in this temporary
     // scope will ever execute.
     let fcx = bcx.fcx;
@@ -704,7 +704,7 @@ pub fn trans_call_inner<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let (abi, ret_ty) = match ty::get(callee_ty).sty {
         ty::ty_bare_fn(ref f) => (f.abi, f.sig.output),
         ty::ty_closure(ref f) => (f.abi, f.sig.output),
-        _ => fail!("expected bare rust fn or closure in trans_call_inner")
+        _ => panic!("expected bare rust fn or closure in trans_call_inner")
     };
 
     let (llfn, llenv, llself) = match callee.data {
@@ -847,7 +847,7 @@ pub fn trans_call_inner<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         let mut llargs = Vec::new();
         let arg_tys = match args {
             ArgExprs(a) => a.iter().map(|x| expr_ty(bcx, &**x)).collect(),
-            _ => fail!("expected arg exprs.")
+            _ => panic!("expected arg exprs.")
         };
         bcx = trans_args(bcx,
                          args,
@@ -1141,7 +1141,7 @@ pub fn trans_arg_datum<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 bcx, arg_datum.to_appropriate_datum(bcx));
 
             // Technically, ownership of val passes to the callee.
-            // However, we must cleanup should we fail before the
+            // However, we must cleanup should we panic before the
             // callee is actually invoked.
             val = arg_datum.add_clean(bcx.fcx, arg_cleanup_scope);
         }

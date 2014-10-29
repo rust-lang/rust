@@ -8,10 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// error-pattern:explicit panic
 
-
-
-// error-pattern:explicit failure
-fn f() -> ! { fail!() }
+fn f() -> ! { panic!() }
 
 fn main() { f(); }

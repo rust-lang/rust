@@ -15,7 +15,7 @@
 use std::vec::Vec;
 
 fn last<T>(v: Vec<&T> ) -> std::option::Option<T> {
-    fail!();
+    panic!();
 }
 
 fn main() {

@@ -85,7 +85,7 @@ struct Diagnostic {
 
 // We use an Arc instead of just returning a list of diagnostics from the
 // child task because we need to make sure that the messages are seen even
-// if the child task fails (for example, when `fatal` is called).
+// if the child task panics (for example, when `fatal` is called).
 #[deriving(Clone)]
 struct SharedEmitter {
     buffer: Arc<Mutex<Vec<Diagnostic>>>,
@@ -133,7 +133,7 @@ impl Emitter for SharedEmitter {
 
     fn custom_emit(&mut self, _cm: &codemap::CodeMap,
                    _sp: diagnostic::RenderSpan, _msg: &str, _lvl: Level) {
-        fail!("SharedEmitter doesn't support custom_emit");
+        panic!("SharedEmitter doesn't support custom_emit");
     }
 }
 
@@ -897,19 +897,19 @@ fn run_work_multithreaded(sess: &Session,
         futures.push(future);
     }
 
-    let mut failed = false;
+    let mut panicked = false;
     for future in futures.into_iter() {
         match future.unwrap() {
             Ok(()) => {},
             Err(_) => {
-                failed = true;
+                panicked = true;
             },
         }
         // Display any new diagnostics.
         diag_emitter.dump(sess.diagnostic().handler());
     }
-    if failed {
-        sess.fatal("aborting due to worker thread failure");
+    if panicked {
+        sess.fatal("aborting due to worker thread panic");
     }
 }
 

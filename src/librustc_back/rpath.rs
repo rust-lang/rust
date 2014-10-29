@@ -206,7 +206,7 @@ mod test {
             os: abi::OsLinux,
             used_crates: Vec::new(),
             out_filename: Path::new("bin/rustc"),
-            get_install_prefix_lib_path: || fail!(),
+            get_install_prefix_lib_path: || panic!(),
             realpath: |p| Ok(p.clone())
         };
         let res = get_rpath_relative_to_output(config, &Path::new("lib/libstd.so"));
@@ -220,7 +220,7 @@ mod test {
             os: abi::OsFreebsd,
             used_crates: Vec::new(),
             out_filename: Path::new("bin/rustc"),
-            get_install_prefix_lib_path: || fail!(),
+            get_install_prefix_lib_path: || panic!(),
             realpath: |p| Ok(p.clone())
         };
         let res = get_rpath_relative_to_output(config, &Path::new("lib/libstd.so"));
@@ -234,7 +234,7 @@ mod test {
             os: abi::OsDragonfly,
             used_crates: Vec::new(),
             out_filename: Path::new("bin/rustc"),
-            get_install_prefix_lib_path: || fail!(),
+            get_install_prefix_lib_path: || panic!(),
             realpath: |p| Ok(p.clone())
         };
         let res = get_rpath_relative_to_output(config, &Path::new("lib/libstd.so"));
@@ -248,7 +248,7 @@ mod test {
             os: abi::OsMacos,
             used_crates: Vec::new(),
             out_filename: Path::new("bin/rustc"),
-            get_install_prefix_lib_path: || fail!(),
+            get_install_prefix_lib_path: || panic!(),
             realpath: |p| Ok(p.clone())
         };
         let res = get_rpath_relative_to_output(config, &Path::new("lib/libstd.so"));

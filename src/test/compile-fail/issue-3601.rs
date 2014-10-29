@@ -38,6 +38,6 @@ fn main() {
         box Element(ed) => match ed.kind { //~ ERROR non-exhaustive patterns
             box HTMLImageElement(ref d) if d.image.is_some() => { true }
         },
-        _ => fail!("WAT") //~ ERROR unreachable pattern
+        _ => panic!("WAT") //~ ERROR unreachable pattern
     };
 }
