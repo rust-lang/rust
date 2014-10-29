@@ -1353,7 +1353,7 @@ checked_impl!(CheckedMul, checked_mul, i64, intrinsics::i64_mul_with_overflow)
 /// wrapping around on underflow and overflow.
 pub trait CheckedDiv: Div<Self, Self> {
     /// Divides two numbers, checking for underflow, overflow and division by zero. If any of that
-    /// happens, / `None` is returned.
+    /// happens, `None` is returned.
     ///
     /// # Example
     ///
