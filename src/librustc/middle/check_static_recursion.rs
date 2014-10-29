@@ -96,10 +96,20 @@ impl<'a, 'ast, 'v> Visitor<'v> for CheckItemRecursionVisitor<'a, 'ast> {
         match e.node {
             ast::ExprPath(..) => {
                 match self.def_map.borrow().find(&e.id) {
-                    Some(&DefStatic(def_id, _)) |
-                    Some(&DefConst(def_id)) if
+                    Some(&DefStatic(def_id, _)) | Some(&DefConst(def_id)) if
                             ast_util::is_local(def_id) => {
-                        self.visit_item(&*self.ast_map.expect_item(def_id.node));
+                        match self.ast_map.find(def_id.node) {
+                            Some(ast_map::NodeItem(item)) => {
+                                self.visit_item(item);
+                            }
+                            Some(ast_map::NodeForeignItem(item)) => {
+                                //External statics don't have values so it
+                                //won't be recursive.
+                                self.visit_foreign_item(item);
+                            }
+                            _ => fail!("expected item or foreign item, got {}",
+                                      self.ast_map.node_to_string(def_id.node))
+                        }
                     }
                     _ => ()
                 }
