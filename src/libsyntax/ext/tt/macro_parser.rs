@@ -84,7 +84,7 @@ use codemap;
 use parse::lexer::*; //resolve bug?
 use parse::ParseSess;
 use parse::attr::ParserAttr;
-use parse::parser::{LifetimeAndTypesWithoutColons, Parser};
+use parse::parser::{LifetimeAndTypesWithoutColons, Parser, RESTRICT_NO_STRUCT_LITERAL};
 use parse::token::{Token, EOF, Nonterminal};
 use parse::token;
 use ptr::P;
@@ -444,6 +444,9 @@ pub fn parse_nt(p: &mut Parser, name: &str) -> Nonterminal {
       "stmt" => token::NtStmt(p.parse_stmt(Vec::new())),
       "pat" => token::NtPat(p.parse_pat()),
       "expr" => token::NtExpr(p.parse_expr()),
+      "no_struct_literal_expr" => {
+        token::NtExpr(p.parse_expr_res(RESTRICT_NO_STRUCT_LITERAL))
+      }
       "ty" => token::NtTy(p.parse_ty(false /* no need to disambiguate*/)),
       // this could be handled like a token, since it is one
       "ident" => match p.token {
