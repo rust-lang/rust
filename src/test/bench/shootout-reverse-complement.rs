@@ -38,185 +38,93 @@
 // ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
 // OF THE POSSIBILITY OF SUCH DAMAGE.
 
-// ignore-android doesn't terminate?
+// ignore-android see #10393 #13206
 
-#![feature(slicing_syntax, asm, if_let, tuple_indexing)]
+#![feature(slicing_syntax, unboxed_closures, overloaded_calls)]
 
 extern crate libc;
 
 use std::io::stdio::{stdin_raw, stdout_raw};
-use std::sync::{Future};
 use std::num::{div_rem};
 use std::ptr::{copy_memory};
 use std::io::{IoResult, EndOfFile};
-use std::slice::raw::{mut_buf_as_slice};
 
-use shared_memory::{SharedMemory};
-
-mod tables {
-    use std::sync::{Once, ONCE_INIT};
-
-    /// Lookup tables.
-    static mut CPL16: [u16, ..1 << 16] = [0, ..1 << 16];
-    static mut CPL8:  [u8,  ..1 << 8]  = [0, ..1 << 8];
-
-    /// Generates the tables.
-    pub fn get() -> Tables {
-        /// To make sure we initialize the tables only once.
-        static INIT: Once = ONCE_INIT;
-        INIT.doit(|| {
-            unsafe {
-                for i in range(0, 1 << 8) {
-                    CPL8[i] = match i as u8 {
-                        b'A' | b'a' => b'T',
-                        b'C' | b'c' => b'G',
-                        b'G' | b'g' => b'C',
-                        b'T' | b't' => b'A',
-                        b'U' | b'u' => b'A',
-                        b'M' | b'm' => b'K',
-                        b'R' | b'r' => b'Y',
-                        b'W' | b'w' => b'W',
-                        b'S' | b's' => b'S',
-                        b'Y' | b'y' => b'R',
-                        b'K' | b'k' => b'M',
-                        b'V' | b'v' => b'B',
-                        b'H' | b'h' => b'D',
-                        b'D' | b'd' => b'H',
-                        b'B' | b'b' => b'V',
-                        b'N' | b'n' => b'N',
-                        i => i,
-                    };
-                }
-
-                for (i, v) in CPL16.iter_mut().enumerate() {
-                    *v = *CPL8.unsafe_get(i & 255) as u16 << 8 |
-                         *CPL8.unsafe_get(i >> 8)  as u16;
-                }
-            }
-        });
-        Tables { _dummy: () }
-    }
-
-    /// Accessor for the static arrays.
-    ///
-    /// To make sure that the tables can't be accessed without having been initialized.
-    pub struct Tables {
-        _dummy: ()
-    }
-
-    impl Tables {
-        /// Retreives the complement for `i`.
-        pub fn cpl8(self, i: u8) -> u8 {
-            // Not really unsafe.
-            unsafe { CPL8[i as uint] }
-        }
-
-        /// Retreives the complement for `i`.
-        pub fn cpl16(self, i: u16) -> u16 {
-            unsafe { CPL16[i as uint] }
-        }
-    }
+struct Tables {
+    table8: [u8, ..1 << 8],
+    table16: [u16, ..1 << 16]
 }
 
-mod shared_memory {
-    use std::sync::{Arc};
-    use std::mem::{transmute};
-    use std::raw::{Slice};
-
-    /// Structure for sharing disjoint parts of a vector mutably across tasks.
-    pub struct SharedMemory {
-        ptr: Arc<Vec<u8>>,
-        start: uint,
-        len: uint,
+impl Tables {
+    fn new() -> Tables {
+        let mut table8 = [0, ..1 << 8];
+        for (i, v) in table8.iter_mut().enumerate() {
+            *v = Tables::computed_cpl8(i as u8);
+        }
+        let mut table16 = [0, ..1 << 16];
+        for (i, v) in table16.iter_mut().enumerate() {
+            *v = table8[i & 255] as u16 << 8 |
+                 table8[i >> 8]  as u16;
+        }
+        Tables { table8: table8, table16: table16 }
     }
 
-    impl SharedMemory {
-        pub fn new(ptr: Vec<u8>) -> SharedMemory {
-            let len = ptr.len();
-            SharedMemory {
-                ptr: Arc::new(ptr),
-                start: 0,
-                len: len,
-            }
+    fn computed_cpl8(c: u8) -> u8 {
+        match c {
+            b'A' | b'a' => b'T',
+            b'C' | b'c' => b'G',
+            b'G' | b'g' => b'C',
+            b'T' | b't' => b'A',
+            b'U' | b'u' => b'A',
+            b'M' | b'm' => b'K',
+            b'R' | b'r' => b'Y',
+            b'W' | b'w' => b'W',
+            b'S' | b's' => b'S',
+            b'Y' | b'y' => b'R',
+            b'K' | b'k' => b'M',
+            b'V' | b'v' => b'B',
+            b'H' | b'h' => b'D',
+            b'D' | b'd' => b'H',
+            b'B' | b'b' => b'V',
+            b'N' | b'n' => b'N',
+            i => i,
         }
+    }
 
-        pub fn as_mut_slice(&mut self) -> &mut [u8] {
-            unsafe {
-                transmute(Slice {
-                    data: self.ptr.as_ptr().offset(self.start as int) as *const u8,
-                    len: self.len,
-                })
-            }
-        }
+    /// Retreives the complement for `i`.
+    fn cpl8(&self, i: u8) -> u8 {
+        self.table8[i as uint]
+    }
 
-        pub fn len(&self) -> uint {
-            self.len
-        }
-
-        pub fn split_at(self, mid: uint) -> (SharedMemory, SharedMemory) {
-            assert!(mid <= self.len);
-            let left = SharedMemory {
-                ptr: self.ptr.clone(),
-                start: self.start,
-                len: mid,
-            };
-            let right = SharedMemory {
-                ptr: self.ptr,
-                start: self.start + mid,
-                len: self.len - mid,
-            };
-            (left, right)
-        }
-
-        /// Resets the object so that it covers the whole range of the contained vector.
-        ///
-        /// You must not call this method if `self` is not the only reference to the
-        /// shared memory.
-        ///
-        /// FIXME: If `Arc` had a method to check if the reference is unique, then we
-        /// wouldn't need the `unsafe` here.
-        ///
-        /// FIXME: If `Arc` had a method to unwrap the contained value, then we could
-        /// simply unwrap here.
-        pub unsafe fn reset(self) -> SharedMemory {
-            let len = self.ptr.len();
-            SharedMemory {
-                ptr: self.ptr,
-                start: 0,
-                len: len,
-            }
-        }
+    /// Retreives the complement for `i`.
+    fn cpl16(&self, i: u16) -> u16 {
+        self.table16[i as uint]
     }
 }
-
 
 /// Reads all remaining bytes from the stream.
 fn read_to_end<R: Reader>(r: &mut R) -> IoResult<Vec<u8>> {
+    // As reading the input stream in memory is a bottleneck, we tune
+    // Reader::read_to_end() with a fast growing policy to limit
+    // recopies.  If MREMAP_RETAIN is implemented in the linux kernel
+    // and jemalloc use it, this trick will become useless.
     const CHUNK: uint = 64 * 1024;
 
-    let mut vec = Vec::with_capacity(1024 * 1024);
+    let mut vec = Vec::with_capacity(CHUNK);
     loop {
+        // workaround: very fast growing
         if vec.capacity() - vec.len() < CHUNK {
             let cap = vec.capacity();
             let mult = if cap < 256 * 1024 * 1024 {
-                // FIXME (mahkoh): Temporary workaround for jemalloc on linux. Replace
-                // this by 2x once the jemalloc preformance issue has been fixed.
                 16
             } else {
                 2
             };
             vec.reserve_exact(mult * cap);
         }
-        unsafe {
-            let ptr = vec.as_mut_ptr().offset(vec.len() as int);
-            match mut_buf_as_slice(ptr, CHUNK, |s| r.read(s)) {
-                Ok(n) => {
-                    let len = vec.len();
-                    vec.set_len(len + n);
-                },
-                Err(ref e) if e.kind == EndOfFile => break,
-                Err(e) => return Err(e),
-            }
+        match r.push_at_least(1, CHUNK, &mut vec) {
+            Ok(_) => {}
+            Err(ref e) if e.kind == EndOfFile => break,
+            Err(e) => return Err(e)
         }
     }
     Ok(vec)
@@ -225,11 +133,8 @@ fn read_to_end<R: Reader>(r: &mut R) -> IoResult<Vec<u8>> {
 /// Finds the first position at which `b` occurs in `s`.
 fn memchr(h: &[u8], n: u8) -> Option<uint> {
     use libc::{c_void, c_int, size_t};
-    extern {
-        fn memchr(h: *const c_void, n: c_int, s: size_t) -> *mut c_void;
-    }
     let res = unsafe {
-        memchr(h.as_ptr() as *const c_void, n as c_int, h.len() as size_t)
+        libc::memchr(h.as_ptr() as *const c_void, n as c_int, h.len() as size_t)
     };
     if res.is_null() {
         None
@@ -238,13 +143,36 @@ fn memchr(h: &[u8], n: u8) -> Option<uint> {
     }
 }
 
+/// A mutable iterator over DNA sequences
+struct MutDnaSeqs<'a> { s: &'a mut [u8] }
+fn mut_dna_seqs<'a>(s: &'a mut [u8]) -> MutDnaSeqs<'a> {
+    MutDnaSeqs { s: s }
+}
+impl<'a> Iterator<&'a mut [u8]> for MutDnaSeqs<'a> {
+    fn next(&mut self) -> Option<&'a mut [u8]> {
+        let tmp = std::mem::replace(&mut self.s, &mut []);
+        let tmp = match memchr(tmp, b'\n') {
+            Some(i) => tmp.slice_from_mut(i + 1),
+            None => return None,
+        };
+        let (seq, tmp) = match memchr(tmp, b'>') {
+            Some(i) => tmp.split_at_mut(i),
+            None => {
+                let len = tmp.len();
+                tmp.split_at_mut(len)
+            }
+        };
+        self.s = tmp;
+        Some(seq)
+    }
+}
+
 /// Length of a normal line without the terminating \n.
 const LINE_LEN: uint = 60;
 
 /// Compute the reverse complement.
-fn reverse_complement(mut view: SharedMemory, tables: tables::Tables) {
-    // Drop the last newline
-    let seq = view.as_mut_slice().init_mut();
+fn reverse_complement(seq: &mut [u8], tables: &Tables) {
+    let seq = seq.init_mut();// Drop the last newline
     let len = seq.len();
     let off = LINE_LEN - len % (LINE_LEN + 1);
     let mut i = LINE_LEN;
@@ -290,34 +218,36 @@ fn reverse_complement(mut view: SharedMemory, tables: tables::Tables) {
     }
 }
 
+/// Executes a closure in parallel over the given iterator over mutable slice.
+/// The closure `f` is run in parallel with an element of `iter`.
+fn parallel<'a, I, T, F>(mut iter: I, f: F)
+        where T: Send + Sync,
+              I: Iterator<&'a mut [T]>,
+              F: Fn(&'a mut [T]) + Sync {
+    use std::mem;
+    use std::raw::Repr;
+
+    let (tx, rx) = channel();
+    for chunk in iter {
+        let tx = tx.clone();
+
+        // Need to convert `f` and `chunk` to something that can cross the task
+        // boundary.
+        let f = &f as *const F as *const uint;
+        let raw = chunk.repr();
+        spawn(proc() {
+            let f = f as *const F;
+            unsafe { (*f)(mem::transmute(raw)) }
+            drop(tx)
+        });
+    }
+    drop(tx);
+    for () in rx.iter() {}
+}
+
 fn main() {
-    let mut data = SharedMemory::new(read_to_end(&mut stdin_raw()).unwrap());
-    let tables = tables::get();
-
-    let mut futures = vec!();
-    loop {
-        let (_, mut tmp_data) = match memchr(data.as_mut_slice(), b'\n') {
-            Some(i) => data.split_at(i + 1),
-            _ => break,
-        };
-        let (view, tmp_data) = match memchr(tmp_data.as_mut_slice(), b'>') {
-            Some(i) => tmp_data.split_at(i),
-            None => {
-                let len = tmp_data.len();
-                tmp_data.split_at(len)
-            },
-        };
-        futures.push(Future::spawn(proc() reverse_complement(view, tables)));
-        data = tmp_data;
-    }
-
-    for f in futures.iter_mut() {
-        f.get();
-    }
-
-    // Not actually unsafe. If Arc had a way to check uniqueness then we could do that in
-    // `reset` and it would tell us that, yes, it is unique at this point.
-    data = unsafe { data.reset() };
-
+    let mut data = read_to_end(&mut stdin_raw()).unwrap();
+    let tables = &Tables::new();
+    parallel(mut_dna_seqs(data[mut]), |&: seq| reverse_complement(seq, tables));
     stdout_raw().write(data.as_mut_slice()).unwrap();
 }
