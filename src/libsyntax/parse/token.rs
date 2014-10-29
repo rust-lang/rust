@@ -230,17 +230,6 @@ impl Token {
         }
     }
 
-    /// Returns the matching close delimiter if this is an open delimiter,
-    /// otherwise `None`.
-    pub fn get_close_delimiter(&self) -> Option<Token> {
-        match *self {
-            OpenDelim(Paren)   => Some(CloseDelim(Paren)),
-            OpenDelim(Brace)   => Some(CloseDelim(Brace)),
-            OpenDelim(Bracket) => Some(CloseDelim(Bracket)),
-            _                  => None,
-        }
-    }
-
     /// Returns `true` if the token is any literal
     pub fn is_lit(&self) -> bool {
         match *self {
