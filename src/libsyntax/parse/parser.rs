@@ -1706,50 +1706,18 @@ impl<'a> Parser<'a> {
         // Parse any number of segments and bound sets. A segment is an
         // identifier followed by an optional lifetime and a set of types.
         // A bound set is a set of type parameter bounds.
-        let mut segments = Vec::new();
-        loop {
-            // First, parse an identifier.
-            let identifier = self.parse_ident();
-
-            // Parse the '::' before type parameters if it's required. If
-            // it is required and wasn't present, then we're done.
-            if mode == LifetimeAndTypesWithColons &&
-                    !self.eat(&token::ModSep) {
-                segments.push(ast::PathSegment {
-                    identifier: identifier,
-                    lifetimes: Vec::new(),
-                    types: OwnedSlice::empty(),
-                });
-                break
+        let segments = match mode {
+            LifetimeAndTypesWithoutColons |
+            LifetimeAndTypesAndBounds => {
+                self.parse_path_segments_without_colons()
             }
-
-            // Parse the `<` before the lifetime and types, if applicable.
-            let (any_lifetime_or_types, lifetimes, types) = {
-                if mode != NoTypesAllowed && self.eat_lt(false) {
-                    let (lifetimes, types) =
-                        self.parse_generic_values_after_lt();
-                    (true, lifetimes, OwnedSlice::from_vec(types))
-                } else {
-                    (false, Vec::new(), OwnedSlice::empty())
-                }
-            };
-
-            // Assemble and push the result.
-            segments.push(ast::PathSegment {
-                identifier: identifier,
-                lifetimes: lifetimes,
-                types: types,
-            });
-
-            // We're done if we don't see a '::', unless the mode required
-            // a double colon to get here in the first place.
-            if !(mode == LifetimeAndTypesWithColons &&
-                    !any_lifetime_or_types) {
-                if !self.eat(&token::ModSep) {
-                    break
-                }
+            LifetimeAndTypesWithColons => {
+                self.parse_path_segments_with_colons()
             }
-        }
+            NoTypesAllowed => {
+                self.parse_path_segments_without_types()
+            }
+        };
 
         // Next, parse a plus and bounded type parameters, if
         // applicable. We need to remember whether the separate was
@@ -1789,6 +1757,104 @@ impl<'a> Parser<'a> {
                 segments: segments,
             },
             bounds: opt_bounds,
+        }
+    }
+
+    /// Examples:
+    /// - `a::b<T,U>::c<V,W>`
+    /// - `a::b<T,U>::c(V) -> W`
+    /// - `a::b<T,U>::c(V)`
+    pub fn parse_path_segments_without_colons(&mut self) -> Vec<ast::PathSegment> {
+        let mut segments = Vec::new();
+        loop {
+            // First, parse an identifier.
+            let identifier = self.parse_ident();
+
+            // Parse types, optionally.
+            let (lifetimes, types) = if self.eat_lt(false) {
+                self.parse_generic_values_after_lt()
+            } else if false && self.eat(&token::LParen) {
+                let mut types = self.parse_seq_to_end(
+                    &token::RParen,
+                    seq_sep_trailing_allowed(token::Comma),
+                    |p| p.parse_ty(true));
+
+                if self.eat(&token::RArrow) {
+                    types.push(self.parse_ty(true))
+                }
+
+                (Vec::new(), types)
+            } else {
+                (Vec::new(), Vec::new())
+            };
+
+            // Assemble and push the result.
+            segments.push(ast::PathSegment { identifier: identifier,
+                                             lifetimes: lifetimes,
+                                             types: OwnedSlice::from_vec(types), });
+
+            // Continue only if we see a `::`
+            if !self.eat(&token::ModSep) {
+                return segments;
+            }
+        }
+    }
+
+    /// Examples:
+    /// - `a::b::<T,U>::c`
+    pub fn parse_path_segments_with_colons(&mut self) -> Vec<ast::PathSegment> {
+        let mut segments = Vec::new();
+        loop {
+            // First, parse an identifier.
+            let identifier = self.parse_ident();
+
+            // If we do not see a `::`, stop.
+            if !self.eat(&token::ModSep) {
+                segments.push(ast::PathSegment { identifier: identifier,
+                                                 lifetimes: Vec::new(),
+                                                 types: OwnedSlice::empty() });
+                return segments;
+            }
+
+            // Check for a type segment.
+            if self.eat_lt(false) {
+                // Consumed `a::b::<`, go look for types
+                let (lifetimes, types) = self.parse_generic_values_after_lt();
+                segments.push(ast::PathSegment { identifier: identifier,
+                                                 lifetimes: lifetimes,
+                                                 types: OwnedSlice::from_vec(types) });
+
+                // Consumed `a::b::<T,U>`, check for `::` before proceeding
+                if !self.eat(&token::ModSep) {
+                    return segments;
+                }
+            } else {
+                // Consumed `a::`, go look for `b`
+                segments.push(ast::PathSegment { identifier: identifier,
+                                                 lifetimes: Vec::new(),
+                                                 types: OwnedSlice::empty() });
+            }
+        }
+    }
+
+
+    /// Examples:
+    /// - `a::b::c`
+    pub fn parse_path_segments_without_types(&mut self) -> Vec<ast::PathSegment> {
+        let mut segments = Vec::new();
+        loop {
+            // First, parse an identifier.
+            let identifier = self.parse_ident();
+
+            // Assemble and push the result.
+            segments.push(ast::PathSegment { identifier: identifier,
+                                             lifetimes: Vec::new(),
+                                             types: OwnedSlice::empty(), });
+
+            // If we do not see a `::`, stop.
+            if !self.eat(&token::ModSep) {
+                return segments;
+            }
         }
     }
 
