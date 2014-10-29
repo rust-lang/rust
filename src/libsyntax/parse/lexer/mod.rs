@@ -69,7 +69,7 @@ impl<'a> Reader for StringReader<'a> {
     /// Return the next token. EFFECT: advances the string_reader.
     fn next_token(&mut self) -> TokenAndSpan {
         let ret_val = TokenAndSpan {
-            tok: replace(&mut self.peek_tok, token::UNDERSCORE),
+            tok: replace(&mut self.peek_tok, token::Underscore),
             sp: self.peek_span,
         };
         self.advance_token();
@@ -92,7 +92,7 @@ impl<'a> Reader for StringReader<'a> {
 
 impl<'a> Reader for TtReader<'a> {
     fn is_eof(&self) -> bool {
-        self.cur_tok == token::EOF
+        self.cur_tok == token::Eof
     }
     fn next_token(&mut self) -> TokenAndSpan {
         let r = tt_next_token(self);
@@ -136,7 +136,7 @@ impl<'a> StringReader<'a> {
             curr: Some('\n'),
             filemap: filemap,
             /* dummy values; not read */
-            peek_tok: token::EOF,
+            peek_tok: token::Eof,
             peek_span: codemap::DUMMY_SP,
             read_embedded_ident: false,
         };
@@ -213,7 +213,7 @@ impl<'a> StringReader<'a> {
             },
             None => {
                 if self.is_eof() {
-                    self.peek_tok = token::EOF;
+                    self.peek_tok = token::Eof;
                 } else {
                     let start_bytepos = self.last_pos;
                     self.peek_tok = self.next_token_inner();
@@ -396,9 +396,9 @@ impl<'a> StringReader<'a> {
                         return self.with_str_from(start_bpos, |string| {
                             // but comments with only more "/"s are not
                             let tok = if is_doc_comment(string) {
-                                token::DOC_COMMENT(token::intern(string))
+                                token::DocComment(token::intern(string))
                             } else {
-                                token::COMMENT
+                                token::Comment
                             };
 
                             return Some(TokenAndSpan{
@@ -410,7 +410,7 @@ impl<'a> StringReader<'a> {
                         let start_bpos = self.last_pos - BytePos(2);
                         while !self.curr_is('\n') && !self.is_eof() { self.bump(); }
                         return Some(TokenAndSpan {
-                            tok: token::COMMENT,
+                            tok: token::Comment,
                             sp: codemap::mk_sp(start_bpos, self.last_pos)
                         });
                     }
@@ -440,7 +440,7 @@ impl<'a> StringReader<'a> {
                     let start = self.last_pos;
                     while !self.curr_is('\n') && !self.is_eof() { self.bump(); }
                     return Some(TokenAndSpan {
-                        tok: token::SHEBANG(self.name_from(start)),
+                        tok: token::Shebang(self.name_from(start)),
                         sp: codemap::mk_sp(start, self.last_pos)
                     });
                 }
@@ -466,7 +466,7 @@ impl<'a> StringReader<'a> {
                 let start_bpos = self.last_pos;
                 while is_whitespace(self.curr) { self.bump(); }
                 let c = Some(TokenAndSpan {
-                    tok: token::WS,
+                    tok: token::Whitespace,
                     sp: codemap::mk_sp(start_bpos, self.last_pos)
                 });
                 debug!("scanning whitespace: {}", c);
@@ -519,9 +519,9 @@ impl<'a> StringReader<'a> {
                     self.translate_crlf(start_bpos, string,
                                         "bare CR not allowed in block doc-comment")
                 } else { string.into_maybe_owned() };
-                token::DOC_COMMENT(token::intern(string.as_slice()))
+                token::DocComment(token::intern(string.as_slice()))
             } else {
-                token::COMMENT
+                token::Comment
             };
 
             Some(TokenAndSpan{
@@ -642,17 +642,17 @@ impl<'a> StringReader<'a> {
                 }
                 'u' | 'i' => {
                     self.scan_int_suffix();
-                    return token::LIT_INTEGER(self.name_from(start_bpos));
+                    return token::LitInteger(self.name_from(start_bpos));
                 },
                 'f' => {
                     let last_pos = self.last_pos;
                     self.scan_float_suffix();
                     self.check_float_base(start_bpos, last_pos, base);
-                    return token::LIT_FLOAT(self.name_from(start_bpos));
+                    return token::LitFloat(self.name_from(start_bpos));
                 }
                 _ => {
                     // just a 0
-                    return token::LIT_INTEGER(self.name_from(start_bpos));
+                    return token::LitInteger(self.name_from(start_bpos));
                 }
             }
         } else if c.is_digit_radix(10) {
@@ -665,7 +665,7 @@ impl<'a> StringReader<'a> {
             self.err_span_(start_bpos, self.last_pos, "no valid digits found for number");
             // eat any suffix
             self.scan_int_suffix();
-            return token::LIT_INTEGER(token::intern("0"));
+            return token::LitInteger(token::intern("0"));
         }
 
         // might be a float, but don't be greedy if this is actually an
@@ -683,13 +683,13 @@ impl<'a> StringReader<'a> {
             }
             let last_pos = self.last_pos;
             self.check_float_base(start_bpos, last_pos, base);
-            return token::LIT_FLOAT(self.name_from(start_bpos));
+            return token::LitFloat(self.name_from(start_bpos));
         } else if self.curr_is('f') {
             // or it might be an integer literal suffixed as a float
             self.scan_float_suffix();
             let last_pos = self.last_pos;
             self.check_float_base(start_bpos, last_pos, base);
-            return token::LIT_FLOAT(self.name_from(start_bpos));
+            return token::LitFloat(self.name_from(start_bpos));
         } else {
             // it might be a float if it has an exponent
             if self.curr_is('e') || self.curr_is('E') {
@@ -697,11 +697,11 @@ impl<'a> StringReader<'a> {
                 self.scan_float_suffix();
                 let last_pos = self.last_pos;
                 self.check_float_base(start_bpos, last_pos, base);
-                return token::LIT_FLOAT(self.name_from(start_bpos));
+                return token::LitFloat(self.name_from(start_bpos));
             }
             // but we certainly have an integer!
             self.scan_int_suffix();
-            return token::LIT_INTEGER(self.name_from(start_bpos));
+            return token::LitInteger(self.name_from(start_bpos));
         }
     }
 
@@ -889,13 +889,13 @@ impl<'a> StringReader<'a> {
         }
     }
 
-    fn binop(&mut self, op: token::BinOp) -> token::Token {
+    fn binop(&mut self, op: token::BinOpToken) -> token::Token {
         self.bump();
         if self.curr_is('=') {
             self.bump();
-            return token::BINOPEQ(op);
+            return token::BinOpEq(op);
         } else {
-            return token::BINOP(op);
+            return token::BinOp(op);
         }
     }
 
@@ -919,14 +919,16 @@ impl<'a> StringReader<'a> {
 
             return self.with_str_from(start, |string| {
                 if string == "_" {
-                    token::UNDERSCORE
+                    token::Underscore
                 } else {
-                    let is_mod_name = self.curr_is(':') && self.nextch_is(':');
-
                     // FIXME: perform NFKC normalization here. (Issue #2253)
-                    token::IDENT(str_to_ident(string), is_mod_name)
+                    if self.curr_is(':') && self.nextch_is(':') {
+                        token::Ident(str_to_ident(string), token::ModName)
+                    } else {
+                        token::Ident(str_to_ident(string), token::Plain)
+                    }
                 }
-            })
+            });
         }
 
         if is_dec_digit(c) {
@@ -937,8 +939,11 @@ impl<'a> StringReader<'a> {
             match (c.unwrap(), self.nextch(), self.nextnextch()) {
                 ('\x00', Some('n'), Some('a')) => {
                     let ast_ident = self.scan_embedded_hygienic_ident();
-                    let is_mod_name = self.curr_is(':') && self.nextch_is(':');
-                    return token::IDENT(ast_ident, is_mod_name);
+                    return if self.curr_is(':') && self.nextch_is(':') {
+                        token::Ident(ast_ident, token::ModName)
+                    } else {
+                        token::Ident(ast_ident, token::Plain)
+                    };
                 }
                 _ => {}
             }
@@ -946,84 +951,84 @@ impl<'a> StringReader<'a> {
 
         match c.expect("next_token_inner called at EOF") {
           // One-byte tokens.
-          ';' => { self.bump(); return token::SEMI; }
-          ',' => { self.bump(); return token::COMMA; }
+          ';' => { self.bump(); return token::Semi; }
+          ',' => { self.bump(); return token::Comma; }
           '.' => {
               self.bump();
               return if self.curr_is('.') {
                   self.bump();
                   if self.curr_is('.') {
                       self.bump();
-                      token::DOTDOTDOT
+                      token::DotDotDot
                   } else {
-                      token::DOTDOT
+                      token::DotDot
                   }
               } else {
-                  token::DOT
+                  token::Dot
               };
           }
-          '(' => { self.bump(); return token::LPAREN; }
-          ')' => { self.bump(); return token::RPAREN; }
-          '{' => { self.bump(); return token::LBRACE; }
-          '}' => { self.bump(); return token::RBRACE; }
-          '[' => { self.bump(); return token::LBRACKET; }
-          ']' => { self.bump(); return token::RBRACKET; }
-          '@' => { self.bump(); return token::AT; }
-          '#' => { self.bump(); return token::POUND; }
-          '~' => { self.bump(); return token::TILDE; }
-          '?' => { self.bump(); return token::QUESTION; }
+          '(' => { self.bump(); return token::LParen; }
+          ')' => { self.bump(); return token::RParen; }
+          '{' => { self.bump(); return token::LBrace; }
+          '}' => { self.bump(); return token::RBrace; }
+          '[' => { self.bump(); return token::LBracket; }
+          ']' => { self.bump(); return token::RBracket; }
+          '@' => { self.bump(); return token::At; }
+          '#' => { self.bump(); return token::Pound; }
+          '~' => { self.bump(); return token::Tilde; }
+          '?' => { self.bump(); return token::Question; }
           ':' => {
             self.bump();
             if self.curr_is(':') {
                 self.bump();
-                return token::MOD_SEP;
+                return token::ModSep;
             } else {
-                return token::COLON;
+                return token::Colon;
             }
           }
 
-          '$' => { self.bump(); return token::DOLLAR; }
+          '$' => { self.bump(); return token::Dollar; }
 
           // Multi-byte tokens.
           '=' => {
             self.bump();
             if self.curr_is('=') {
                 self.bump();
-                return token::EQEQ;
+                return token::EqEq;
             } else if self.curr_is('>') {
                 self.bump();
-                return token::FAT_ARROW;
+                return token::FatArrow;
             } else {
-                return token::EQ;
+                return token::Eq;
             }
           }
           '!' => {
             self.bump();
             if self.curr_is('=') {
                 self.bump();
-                return token::NE;
-            } else { return token::NOT; }
+                return token::Ne;
+            } else { return token::Not; }
           }
           '<' => {
             self.bump();
             match self.curr.unwrap_or('\x00') {
-              '=' => { self.bump(); return token::LE; }
-              '<' => { return self.binop(token::SHL); }
+              '=' => { self.bump(); return token::Le; }
+              '<' => { return self.binop(token::Shl); }
               '-' => {
                 self.bump();
                 match self.curr.unwrap_or('\x00') {
-                  _ => { return token::LARROW; }
+                  _ => { return token::LArrow; }
                 }
               }
-              _ => { return token::LT; }
+              _ => { return token::Lt; }
             }
           }
           '>' => {
             self.bump();
             match self.curr.unwrap_or('\x00') {
-              '=' => { self.bump(); return token::GE; }
-              '>' => { return self.binop(token::SHR); }
-              _ => { return token::GT; }
+              '=' => { self.bump(); return token::Ge; }
+              '>' => { return self.binop(token::Shr); }
+              _ => { return token::Gt; }
             }
           }
           '\'' => {
@@ -1056,22 +1061,21 @@ impl<'a> StringReader<'a> {
                         str_to_ident(lifetime_name)
                     });
                 let keyword_checking_token =
-                    &token::IDENT(keyword_checking_ident, false);
+                    &token::Ident(keyword_checking_ident, token::Plain);
                 let last_bpos = self.last_pos;
-                if token::is_keyword(token::keywords::Self,
-                                     keyword_checking_token) {
+                if keyword_checking_token.is_keyword(token::keywords::Self) {
                     self.err_span_(start,
                                    last_bpos,
                                    "invalid lifetime name: 'self \
                                     is no longer a special lifetime");
-                } else if token::is_any_keyword(keyword_checking_token) &&
-                    !token::is_keyword(token::keywords::Static,
-                                       keyword_checking_token) {
+                } else if keyword_checking_token.is_any_keyword() &&
+                    !keyword_checking_token.is_keyword(token::keywords::Static)
+                {
                     self.err_span_(start,
                                    last_bpos,
                                    "invalid lifetime name");
                 }
-                return token::LIFETIME(ident);
+                return token::Lifetime(ident);
             }
 
             // Otherwise it is a character constant:
@@ -1087,7 +1091,7 @@ impl<'a> StringReader<'a> {
             }
             let id = if valid { self.name_from(start) } else { token::intern("0") };
             self.bump(); // advance curr past token
-            return token::LIT_CHAR(id);
+            return token::LitChar(id);
           }
           'b' => {
             self.bump();
@@ -1095,7 +1099,7 @@ impl<'a> StringReader<'a> {
                 Some('\'') => self.scan_byte(),
                 Some('"') => self.scan_byte_string(),
                 Some('r') => self.scan_raw_byte_string(),
-                _ => unreachable!()  // Should have been a token::IDENT above.
+                _ => unreachable!()  // Should have been a token::Ident above.
             };
 
           }
@@ -1118,7 +1122,7 @@ impl<'a> StringReader<'a> {
             let id = if valid { self.name_from(start_bpos + BytePos(1)) }
                      else { token::intern("??") };
             self.bump();
-            return token::LIT_STR(id);
+            return token::LitStr(id);
           }
           'r' => {
             let start_bpos = self.last_pos;
@@ -1185,33 +1189,33 @@ impl<'a> StringReader<'a> {
             } else {
                 token::intern("??")
             };
-            return token::LIT_STR_RAW(id, hash_count);
+            return token::LitStrRaw(id, hash_count);
           }
           '-' => {
             if self.nextch_is('>') {
                 self.bump();
                 self.bump();
-                return token::RARROW;
-            } else { return self.binop(token::MINUS); }
+                return token::RArrow;
+            } else { return self.binop(token::Minus); }
           }
           '&' => {
             if self.nextch_is('&') {
                 self.bump();
                 self.bump();
-                return token::ANDAND;
-            } else { return self.binop(token::AND); }
+                return token::AndAnd;
+            } else { return self.binop(token::And); }
           }
           '|' => {
             match self.nextch() {
-              Some('|') => { self.bump(); self.bump(); return token::OROR; }
-              _ => { return self.binop(token::OR); }
+              Some('|') => { self.bump(); self.bump(); return token::OrOr; }
+              _ => { return self.binop(token::Or); }
             }
           }
-          '+' => { return self.binop(token::PLUS); }
-          '*' => { return self.binop(token::STAR); }
-          '/' => { return self.binop(token::SLASH); }
-          '^' => { return self.binop(token::CARET); }
-          '%' => { return self.binop(token::PERCENT); }
+          '+' => { return self.binop(token::Plus); }
+          '*' => { return self.binop(token::Star); }
+          '/' => { return self.binop(token::Slash); }
+          '^' => { return self.binop(token::Caret); }
+          '%' => { return self.binop(token::Percent); }
           c => {
               let last_bpos = self.last_pos;
               let bpos = self.pos;
@@ -1275,7 +1279,7 @@ impl<'a> StringReader<'a> {
 
         let id = if valid { self.name_from(start) } else { token::intern("??") };
         self.bump(); // advance curr past token
-        return token::LIT_BYTE(id);
+        return token::LitByte(id);
     }
 
     fn scan_byte_string(&mut self) -> token::Token {
@@ -1297,7 +1301,7 @@ impl<'a> StringReader<'a> {
         }
         let id = if valid { self.name_from(start) } else { token::intern("??") };
         self.bump();
-        return token::LIT_BINARY(id);
+        return token::LitBinary(id);
     }
 
     fn scan_raw_byte_string(&mut self) -> token::Token {
@@ -1348,7 +1352,7 @@ impl<'a> StringReader<'a> {
             self.bump();
         }
         self.bump();
-        return token::LIT_BINARY_RAW(self.name_from_to(content_start_bpos, content_end_bpos),
+        return token::LitBinaryRaw(self.name_from_to(content_start_bpos, content_end_bpos),
                                      hash_count);
     }
 }
@@ -1431,20 +1435,20 @@ mod test {
             "/* my source file */ \
              fn main() { println!(\"zebra\"); }\n".to_string());
         let id = str_to_ident("fn");
-        assert_eq!(string_reader.next_token().tok, token::COMMENT);
-        assert_eq!(string_reader.next_token().tok, token::WS);
+        assert_eq!(string_reader.next_token().tok, token::Comment);
+        assert_eq!(string_reader.next_token().tok, token::Whitespace);
         let tok1 = string_reader.next_token();
         let tok2 = TokenAndSpan{
-            tok:token::IDENT(id, false),
+            tok:token::Ident(id, token::Plain),
             sp:Span {lo:BytePos(21),hi:BytePos(23),expn_id: NO_EXPANSION}};
         assert_eq!(tok1,tok2);
-        assert_eq!(string_reader.next_token().tok, token::WS);
+        assert_eq!(string_reader.next_token().tok, token::Whitespace);
         // the 'main' id is already read:
         assert_eq!(string_reader.last_pos.clone(), BytePos(28));
         // read another token:
         let tok3 = string_reader.next_token();
         let tok4 = TokenAndSpan{
-            tok:token::IDENT(str_to_ident("main"), false),
+            tok:token::Ident(str_to_ident("main"), token::Plain),
             sp:Span {lo:BytePos(24),hi:BytePos(28),expn_id: NO_EXPANSION}};
         assert_eq!(tok3,tok4);
         // the lparen is already read:
@@ -1459,66 +1463,72 @@ mod test {
         }
     }
 
-    // make the identifier by looking up the string in the interner
+    #[cfg(stage0)]
     fn mk_ident (id: &str, is_mod_name: bool) -> token::Token {
-        token::IDENT (str_to_ident(id),is_mod_name)
+        token::Ident(str_to_ident(id), is_mod_name)
+    }
+
+    // make the identifier by looking up the string in the interner
+    #[cfg(not(stage0))]
+    fn mk_ident(id: &str, style: token::IdentStyle) -> token::Token {
+        token::Ident(str_to_ident(id), style)
     }
 
     #[test] fn doublecolonparsing () {
         check_tokenization(setup(&mk_sh(), "a b".to_string()),
-                           vec!(mk_ident("a",false),
-                            token::WS,
-                             mk_ident("b",false)));
+                           vec![mk_ident("a", token::Plain),
+                                token::Whitespace,
+                                mk_ident("b", token::Plain)]);
     }
 
     #[test] fn dcparsing_2 () {
         check_tokenization(setup(&mk_sh(), "a::b".to_string()),
-                           vec!(mk_ident("a",true),
-                             token::MOD_SEP,
-                             mk_ident("b",false)));
+                           vec![mk_ident("a",token::ModName),
+                                token::ModSep,
+                                mk_ident("b", token::Plain)]);
     }
 
     #[test] fn dcparsing_3 () {
         check_tokenization(setup(&mk_sh(), "a ::b".to_string()),
-                           vec!(mk_ident("a",false),
-                             token::WS,
-                             token::MOD_SEP,
-                             mk_ident("b",false)));
+                           vec![mk_ident("a", token::Plain),
+                                token::Whitespace,
+                                token::ModSep,
+                                mk_ident("b", token::Plain)]);
     }
 
     #[test] fn dcparsing_4 () {
         check_tokenization(setup(&mk_sh(), "a:: b".to_string()),
-                           vec!(mk_ident("a",true),
-                             token::MOD_SEP,
-                             token::WS,
-                             mk_ident("b",false)));
+                           vec![mk_ident("a",token::ModName),
+                                token::ModSep,
+                                token::Whitespace,
+                                mk_ident("b", token::Plain)]);
     }
 
     #[test] fn character_a() {
         assert_eq!(setup(&mk_sh(), "'a'".to_string()).next_token().tok,
-                   token::LIT_CHAR(token::intern("a")));
+                   token::LitChar(token::intern("a")));
     }
 
     #[test] fn character_space() {
         assert_eq!(setup(&mk_sh(), "' '".to_string()).next_token().tok,
-                   token::LIT_CHAR(token::intern(" ")));
+                   token::LitChar(token::intern(" ")));
     }
 
     #[test] fn character_escaped() {
         assert_eq!(setup(&mk_sh(), "'\\n'".to_string()).next_token().tok,
-                   token::LIT_CHAR(token::intern("\\n")));
+                   token::LitChar(token::intern("\\n")));
     }
 
     #[test] fn lifetime_name() {
         assert_eq!(setup(&mk_sh(), "'abc".to_string()).next_token().tok,
-                   token::LIFETIME(token::str_to_ident("'abc")));
+                   token::Lifetime(token::str_to_ident("'abc")));
     }
 
     #[test] fn raw_string() {
         assert_eq!(setup(&mk_sh(),
                          "r###\"\"#a\\b\x00c\"\"###".to_string()).next_token()
                                                                  .tok,
-                   token::LIT_STR_RAW(token::intern("\"#a\\b\x00c\""), 3));
+                   token::LitStrRaw(token::intern("\"#a\\b\x00c\""), 3));
     }
 
     #[test] fn line_doc_comments() {
@@ -1531,10 +1541,10 @@ mod test {
         let sh = mk_sh();
         let mut lexer = setup(&sh, "/* /* */ */'a'".to_string());
         match lexer.next_token().tok {
-            token::COMMENT => { },
+            token::Comment => { },
             _ => fail!("expected a comment!")
         }
-        assert_eq!(lexer.next_token().tok, token::LIT_CHAR(token::intern("a")));
+        assert_eq!(lexer.next_token().tok, token::LitChar(token::intern("a")));
     }
 
 }

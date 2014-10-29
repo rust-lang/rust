@@ -30,12 +30,12 @@ use rustc::driver::{session, config};
 
 use syntax::ast;
 use syntax::ast::Name;
-use syntax::parse::token::*;
+use syntax::parse::token;
 use syntax::parse::lexer::TokenAndSpan;
 
 fn parse_token_list(file: &str) -> HashMap<String, Token> {
     fn id() -> Token {
-        IDENT(ast::Ident { name: Name(0), ctxt: 0, }, false)
+        token::Ident(ast::Ident { name: Name(0), ctxt: 0, }, token::Plain)
     }
 
     let mut res = HashMap::new();
@@ -52,64 +52,64 @@ fn parse_token_list(file: &str) -> HashMap<String, Token> {
         let num = line.slice_from(eq + 1);
 
         let tok = match val {
-            "SHR" => BINOP(SHR),
-            "DOLLAR" => DOLLAR,
-            "LT" => LT,
-            "STAR" => BINOP(STAR),
-            "FLOAT_SUFFIX" => id(),
-            "INT_SUFFIX" => id(),
-            "SHL" => BINOP(SHL),
-            "LBRACE" => LBRACE,
-            "RARROW" => RARROW,
-            "LIT_STR" => LIT_STR(Name(0)),
-            "DOTDOT" => DOTDOT,
-            "MOD_SEP" => MOD_SEP,
-            "DOTDOTDOT" => DOTDOTDOT,
-            "NOT" => NOT,
-            "AND" => BINOP(AND),
-            "LPAREN" => LPAREN,
-            "ANDAND" => ANDAND,
-            "AT" => AT,
-            "LBRACKET" => LBRACKET,
-            "LIT_STR_RAW" => LIT_STR_RAW(Name(0), 0),
-            "RPAREN" => RPAREN,
-            "SLASH" => BINOP(SLASH),
-            "COMMA" => COMMA,
-            "LIFETIME" => LIFETIME(ast::Ident { name: Name(0), ctxt: 0 }),
-            "CARET" => BINOP(CARET),
-            "TILDE" => TILDE,
-            "IDENT" => id(),
-            "PLUS" => BINOP(PLUS),
-            "LIT_CHAR" => LIT_CHAR(Name(0)),
-            "LIT_BYTE" => LIT_BYTE(Name(0)),
-            "EQ" => EQ,
-            "RBRACKET" => RBRACKET,
-            "COMMENT" => COMMENT,
-            "DOC_COMMENT" => DOC_COMMENT(Name(0)),
-            "DOT" => DOT,
-            "EQEQ" => EQEQ,
-            "NE" => NE,
-            "GE" => GE,
-            "PERCENT" => BINOP(PERCENT),
-            "RBRACE" => RBRACE,
-            "BINOP" => BINOP(PLUS),
-            "POUND" => POUND,
-            "OROR" => OROR,
-            "LIT_INTEGER" => LIT_INTEGER(Name(0)),
-            "BINOPEQ" => BINOPEQ(PLUS),
-            "LIT_FLOAT" => LIT_FLOAT(Name(0)),
-            "WHITESPACE" => WS,
-            "UNDERSCORE" => UNDERSCORE,
-            "MINUS" => BINOP(MINUS),
-            "SEMI" => SEMI,
-            "COLON" => COLON,
-            "FAT_ARROW" => FAT_ARROW,
-            "OR" => BINOP(OR),
-            "GT" => GT,
-            "LE" => LE,
-            "LIT_BINARY" => LIT_BINARY(Name(0)),
-            "LIT_BINARY_RAW" => LIT_BINARY_RAW(Name(0), 0),
-            _ => continue
+            "SHR"               => token::BinOp(token::Shr),
+            "DOLLAR"            => token::Dollar,
+            "LT"                => token::Lt,
+            "STAR"              => token::BinOp(token::Star),
+            "FLOAT_SUFFIX"      => id(),
+            "INT_SUFFIX"        => id(),
+            "SHL"               => token::BinOp(token::Shl),
+            "LBRACE"            => token::LBrace,
+            "RARROW"            => token::Rarrow,
+            "LIT_STR"           => token::LitStr(Name(0)),
+            "DOTDOT"            => token::DotDot,
+            "MOD_SEP"           => token::ModSep,
+            "DOTDOTDOT"         => token::DotDotDot,
+            "NOT"               => token::Not,
+            "AND"               => token::BinOp(token::And),
+            "LPAREN"            => token::LParen,
+            "ANDAND"            => token::AndAnd,
+            "AT"                => token::At,
+            "LBRACKET"          => token::LBracket,
+            "LIT_STR_RAW"       => token::LitStrRaw(Name(0), 0),
+            "RPAREN"            => token::RParen,
+            "SLASH"             => token::BinOp(token::Slash),
+            "COMMA"             => token::Comma,
+            "LIFETIME"          => token::Lifetime(ast::Ident { name: Name(0), ctxt: 0 }),
+            "CARET"             => token::BinOp(token::Caret),
+            "TILDE"             => token::Tilde,
+            "IDENT"             => token::Id(),
+            "PLUS"              => token::BinOp(token::Plus),
+            "LIT_CHAR"          => token::LitChar(Name(0)),
+            "LIT_BYTE"          => token::LitByte(Name(0)),
+            "EQ"                => token::Eq,
+            "RBRACKET"          => token::RBracket,
+            "COMMENT"           => token::Comment,
+            "DOC_COMMENT"       => token::DocComment(Name(0)),
+            "DOT"               => token::Dot,
+            "EQEQ"              => token::EqEq,
+            "NE"                => token::Ne,
+            "GE"                => token::Ge,
+            "PERCENT"           => token::BinOp(token::Percent),
+            "RBRACE"            => token::RBrace,
+            "BINOP"             => token::BinOp(token::Plus),
+            "POUND"             => token::Pound,
+            "OROR"              => token::OrOr,
+            "LIT_INTEGER"       => token::LitInteger(Name(0)),
+            "BINOPEQ"           => token::BinOpEq(token::Plus),
+            "LIT_FLOAT"         => token::LitFloat(Name(0)),
+            "WHITESPACE"        => token::Whitespace,
+            "UNDERSCORE"        => token::Underscore,
+            "MINUS"             => token::BinOp(token::Minus),
+            "SEMI"              => token::Semi,
+            "COLON"             => token::Colon,
+            "FAT_ARROW"         => token::FatArrow,
+            "OR"                => token::BinOp(token::Or),
+            "GT"                => token::Gt,
+            "LE"                => token::Le,
+            "LIT_BINARY"        => token::LitBinary(Name(0)),
+            "LIT_BINARY_RAW"    => token::LitBinaryRaw(Name(0), 0),
+            _                   => continue,
         };
 
         res.insert(num.to_string(), tok);
@@ -119,19 +119,19 @@ fn parse_token_list(file: &str) -> HashMap<String, Token> {
     res
 }
 
-fn str_to_binop(s: &str) -> BinOp {
+fn str_to_binop(s: &str) -> BinOpToken {
     match s {
-        "+" => PLUS,
-        "/" => SLASH,
-        "-" => MINUS,
-        "*" => STAR,
-        "%" => PERCENT,
-        "^" => CARET,
-        "&" => AND,
-        "|" => OR,
-        "<<" => SHL,
-        ">>" => SHR,
-        _ => fail!("Bad binop str `{}`", s)
+        "+"     => token::Plus,
+        "/"     => token::Slash,
+        "-"     => token::Minus,
+        "*"     => token::Star,
+        "%"     => token::Percent,
+        "^"     => token::Caret,
+        "&"     => token::And,
+        "|"     => token::Or,
+        "<<"    => token::Shl,
+        ">>"    => token::Shr,
+        _       => fail!("Bad binop str `{}`", s),
     }
 }
 
@@ -186,19 +186,21 @@ fn parse_antlr_token(s: &str, tokens: &HashMap<String, Token>) -> TokenAndSpan {
     debug!("What we got: content (`{}`), proto: {}", content, proto_tok);
 
     let real_tok = match *proto_tok {
-        BINOP(..) => BINOP(str_to_binop(content)),
-        BINOPEQ(..) => BINOPEQ(str_to_binop(content.slice_to(content.len() - 1))),
-        LIT_STR(..) => LIT_STR(fix(content)),
-        LIT_STR_RAW(..) => LIT_STR_RAW(fix(content), count(content)),
-        LIT_CHAR(..) => LIT_CHAR(fixchar(content)),
-        LIT_BYTE(..) => LIT_BYTE(fixchar(content)),
-        DOC_COMMENT(..) => DOC_COMMENT(nm),
-        LIT_INTEGER(..) => LIT_INTEGER(nm),
-        LIT_FLOAT(..) => LIT_FLOAT(nm),
-        LIT_BINARY(..) => LIT_BINARY(nm),
-        LIT_BINARY_RAW(..) => LIT_BINARY_RAW(fix(content), count(content)),
-        IDENT(..) => IDENT(ast::Ident { name: nm, ctxt: 0 }, true),
-        LIFETIME(..) => LIFETIME(ast::Ident { name: nm, ctxt: 0 }),
+        token::BinOp(..)           => token::BinOp(str_to_binop(content)),
+        token::BinOpEq(..)         => token::BinOpEq(str_to_binop(content.slice_to(
+                                                                    content.len() - 1))),
+        token::LitStr(..)          => token::LitStr(fix(content)),
+        token::LitStrRaw(..)       => token::LitStrRaw(fix(content), count(content)),
+        token::LitChar(..)         => token::LitChar(fixchar(content)),
+        token::LitByte(..)         => token::LitByte(fixchar(content)),
+        token::DocComment(..)      => token::DocComment(nm),
+        token::LitInteger(..)      => token::LitInteger(nm),
+        token::LitFloat(..)        => token::LitFloat(nm),
+        token::LitBinary(..)       => token::LitBinary(nm),
+        token::LitBinaryRaw(..)    => token::LitBinaryRaw(fix(content), count(content)),
+        token::Ident(..)           => token::Ident(ast::Ident { name: nm, ctxt: 0 },
+                                                   token::ModName),
+        token::Lifetime(..)        => token::Lifetime(ast::Ident { name: nm, ctxt: 0 }),
         ref t => t.clone()
     };
 
@@ -222,8 +224,8 @@ fn parse_antlr_token(s: &str, tokens: &HashMap<String, Token>) -> TokenAndSpan {
 
 fn tok_cmp(a: &Token, b: &Token) -> bool {
     match a {
-        &IDENT(id, _) => match b {
-                &IDENT(id2, _) => id == id2,
+        &token::Ident(id, _) => match b {
+                &token::Ident(id2, _) => id == id2,
                 _ => false
         },
         _ => a == b
@@ -281,19 +283,20 @@ fn main() {
             )
         )
 
-        matches!(LIT_BYTE(..),
-            LIT_CHAR(..),
-            LIT_INTEGER(..),
-            LIT_FLOAT(..),
-            LIT_STR(..),
-            LIT_STR_RAW(..),
-            LIT_BINARY(..),
-            LIT_BINARY_RAW(..),
-            IDENT(..),
-            LIFETIME(..),
-            INTERPOLATED(..),
-            DOC_COMMENT(..),
-            SHEBANG(..)
+        matches!(
+            LitByte(..),
+            LitChar(..),
+            LitInteger(..),
+            LitFloat(..),
+            LitStr(..),
+            LitStrRaw(..),
+            LitBinary(..),
+            LitBinaryRaw(..),
+            Ident(..),
+            Lifetime(..),
+            Interpolated(..),
+            DocComment(..),
+            Shebang(..)
         );
     }
 }

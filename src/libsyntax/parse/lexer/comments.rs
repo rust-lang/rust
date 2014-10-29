@@ -15,7 +15,7 @@ use parse::lexer::{is_whitespace, Reader};
 use parse::lexer::{StringReader, TokenAndSpan};
 use parse::lexer::is_block_doc_comment;
 use parse::lexer;
-use parse::token;
+use print::pprust;
 
 use std::io;
 use std::str;
@@ -367,13 +367,13 @@ pub fn gather_comments_and_literals(span_diagnostic: &diagnostic::SpanHandler,
         rdr.next_token();
         //discard, and look ahead; we're working with internal state
         let TokenAndSpan { tok, sp } = rdr.peek();
-        if token::is_lit(&tok) {
+        if tok.is_lit() {
             rdr.with_str_from(bstart, |s| {
                 debug!("tok lit: {}", s);
                 literals.push(Literal {lit: s.to_string(), pos: sp.lo});
             })
         } else {
-            debug!("tok: {}", token::to_string(&tok));
+            debug!("tok: {}", pprust::token_to_string(&tok));
         }
         first_read = false;
     }
