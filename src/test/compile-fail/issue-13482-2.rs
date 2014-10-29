@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,8 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// compile-flags:-Z verbose
+
 fn main() {
-    let (x, y) = ();
-//~^ ERROR expected `()`, found `(_, _)` (expected (), found tuple)
-    return x;
+    let x = [1,2];
+    let y = match x {
+        [] => None,
+        //~^ ERROR types: expected `[_#0i, ..2]`, found `[_#7, ..0]`
+        //         (expected array of 2 elements, found array of 0 elements)
+        [a,_] => Some(a)
+    };
 }
