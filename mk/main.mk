@@ -157,13 +157,6 @@ RUSTFLAGS_STAGE1 += -C prefer-dynamic
 # by not emitting them.
 RUSTFLAGS_STAGE0 += -Z no-landing-pads
 
-# Go fast for stage0, and also for stage1/stage2 if optimization is off.
-RUSTFLAGS_STAGE0 += -C codegen-units=4
-ifdef CFG_DISABLE_OPTIMIZE
-	RUSTFLAGS_STAGE1 += -C codegen-units=4
-	RUSTFLAGS_STAGE2 += -C codegen-units=4
-endif
-
 # platform-specific auto-configuration
 include $(CFG_SRC_DIR)mk/platform.mk
 
