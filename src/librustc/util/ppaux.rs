@@ -383,9 +383,9 @@ pub fn ty_to_string_with_var_ids(cx: &ctxt, typ: t, mut print_var_ids: bool) -> 
 
     fn infer_ty_to_string(ty: ty::InferTy, print_var_ids: bool) -> String {
         match ty {
-            ty::TyVar(ty::TyVid { index: vid })
-              | ty::IntVar(ty::IntVid { index: vid })
-              | ty::FloatVar(ty::FloatVid { index: vid }) => {
+            ty::TyVar(ty::TyVid { index: vid }) |
+            ty::IntVar(ty::IntVid { index: vid }) |
+            ty::FloatVar(ty::FloatVid { index: vid }) => {
                 match ty {
                     ty::TyVar(_) if print_var_ids => format!("_#{}", vid),
                     ty::TyVar(_) => "_".to_string(),

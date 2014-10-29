@@ -3912,9 +3912,15 @@ pub fn type_err_to_str(cx: &ctxt, err: &type_err) -> String {
                     trait_store_to_string(cx, (*values).found))
         }
         terr_sorts(values) => {
-            format!("expected {}, found {}",
-                    ty_sort_string(cx, values.expected),
-                    ty_sort_string(cx, values.found))
+            // A naive approach to making sure that we're not reporting silly errors such as:
+            // (expected closure, found closure).
+            let expected_str = ty_sort_string(cx, values.expected);
+            let found_str = ty_sort_string(cx, values.found);
+            if expected_str == found_str {
+                format!("expected {}, found a different {}", expected_str, found_str)
+            } else {
+                format!("expected {}, found {}", expected_str, found_str)
+            }
         }
         terr_traits(values) => {
             format!("expected trait `{}`, found trait `{}`",
