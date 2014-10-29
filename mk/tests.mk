@@ -633,10 +633,6 @@ CTEST_RUSTC_FLAGS := $$(subst -O,,$$(CTEST_RUSTC_FLAGS))
 ifndef CFG_DISABLE_OPTIMIZE_TESTS
 CTEST_RUSTC_FLAGS += -O
 endif
-# Force codegen-units=1 for compiletest tests.  compiletest does its own
-# parallelization internally, so rustc's default codegen-units=2 will actually
-# slow things down.
-CTEST_RUSTC_FLAGS += -C codegen-units=1
 
 
 CTEST_COMMON_ARGS$(1)-T-$(2)-H-$(3) := \
