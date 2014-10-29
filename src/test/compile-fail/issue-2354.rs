@@ -10,8 +10,8 @@
 
 fn foo() { //~ NOTE Did you mean to close this delimiter?
   match Some(x) {
-      Some(y) { fail!(); }
-      None    { fail!(); }
+      Some(y) { panic!(); }
+      None    { panic!(); }
 }
 
 fn bar() {

@@ -26,7 +26,7 @@ macro_rules! test(
             match (a, b) {
                 (A($id1), A($id2)) => A($e),
                 (B($id1), B($id2)) => B($e),
-                _ => fail!()
+                _ => panic!()
             }
         }
     )

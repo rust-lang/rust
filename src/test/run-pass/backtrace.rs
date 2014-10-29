@@ -26,16 +26,16 @@ fn start(argc: int, argv: *const *const u8) -> int {
 fn foo() {
     let _v = vec![1i, 2, 3];
     if os::getenv("IS_TEST").is_some() {
-        fail!()
+        panic!()
     }
 }
 
 #[inline(never)]
 fn double() {
     (|| {
-        fail!("once");
+        panic!("once");
     }).finally(|| {
-        fail!("twice");
+        panic!("twice");
     })
 }
 

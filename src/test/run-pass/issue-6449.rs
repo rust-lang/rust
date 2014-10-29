@@ -20,25 +20,25 @@ enum Other {
 
 fn main() {
     match Baz {
-        ::Bar(3) => fail!(),
-        ::Bar(_) if false => fail!(),
-        ::Bar(..) if false => fail!(),
-        ::Bar(_n) => fail!(),
+        ::Bar(3) => panic!(),
+        ::Bar(_) if false => panic!(),
+        ::Bar(..) if false => panic!(),
+        ::Bar(_n) => panic!(),
         ::Baz => {}
     }
     match Bar(3) {
         ::Bar(3) => {}
-        ::Bar(_) if false => fail!(),
-        ::Bar(..) if false => fail!(),
-        ::Bar(_n) => fail!(),
-        ::Baz => fail!(),
+        ::Bar(_) if false => panic!(),
+        ::Bar(..) if false => panic!(),
+        ::Bar(_n) => panic!(),
+        ::Baz => panic!(),
     }
     match Bar(4) {
-        ::Bar(3) => fail!(),
-        ::Bar(_) if false => fail!(),
-        ::Bar(..) if false => fail!(),
+        ::Bar(3) => panic!(),
+        ::Bar(_) if false => panic!(),
+        ::Bar(..) if false => panic!(),
         ::Bar(n) => assert_eq!(n, 4),
-        ::Baz => fail!(),
+        ::Baz => panic!(),
     }
 
     match Other1(Baz) {

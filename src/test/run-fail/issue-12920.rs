@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern:explicit failure
+// error-pattern:explicit panic
 
 pub fn main() {
-    fail!(); println!("{}", 1i);
+    panic!(); println!("{}", 1i);
 }

@@ -19,7 +19,7 @@ fn foo(x: uint) {
     if even(x) {
         println!("{}", x);
     } else {
-        fail!("Number is odd");
+        panic!("Number is odd");
     }
 }
 

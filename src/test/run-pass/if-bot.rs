@@ -9,6 +9,6 @@
 // except according to those terms.
 
 pub fn main() {
-    let i: int = if false { fail!() } else { 5 };
+    let i: int = if false { panic!() } else { 5 };
     println!("{}", i);
 }

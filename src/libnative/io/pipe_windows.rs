@@ -710,7 +710,7 @@ impl UnixAcceptor {
         if new_handle == libc::INVALID_HANDLE_VALUE {
             let ret = Err(super::last_error());
             // If our disconnection fails, then there's not really a whole lot
-            // that we can do, so fail the task.
+            // that we can do, so panic
             let err = unsafe { libc::DisconnectNamedPipe(handle) };
             assert!(err != 0);
             return ret;

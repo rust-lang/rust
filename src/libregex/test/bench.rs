@@ -15,7 +15,7 @@ use stdtest::Bencher;
 use regex::{Regex, NoExpand};
 
 fn bench_assert_match(b: &mut Bencher, re: Regex, text: &str) {
-    b.iter(|| if !re.is_match(text) { fail!("no match") });
+    b.iter(|| if !re.is_match(text) { panic!("no match") });
 }
 
 #[bench]
@@ -143,7 +143,7 @@ macro_rules! throughput(
         fn $name(b: &mut Bencher) {
             let text = gen_text($size);
             b.bytes = $size;
-            b.iter(|| if $regex.is_match(text.as_slice()) { fail!("match") });
+            b.iter(|| if $regex.is_match(text.as_slice()) { panic!("match") });
         }
     );
 )

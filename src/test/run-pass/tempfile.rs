@@ -39,7 +39,7 @@ fn test_rm_tempdir() {
     let f: proc():Send = proc() {
         let tmp = TempDir::new("test_rm_tempdir").unwrap();
         tx.send(tmp.path().clone());
-        fail!("fail to unwind past `tmp`");
+        panic!("panic to unwind past `tmp`");
     };
     task::try(f);
     let path = rx.recv();
@@ -49,7 +49,7 @@ fn test_rm_tempdir() {
     let path = tmp.path().clone();
     let f: proc():Send = proc() {
         let _tmp = tmp;
-        fail!("fail to unwind past `tmp`");
+        panic!("panic to unwind past `tmp`");
     };
     task::try(f);
     assert!(!path.exists());
@@ -81,7 +81,7 @@ fn test_rm_tempdir_close() {
         let tmp = TempDir::new("test_rm_tempdir").unwrap();
         tx.send(tmp.path().clone());
         tmp.close();
-        fail!("fail to unwind past `tmp`");
+        panic!("panic when unwinding past `tmp`");
     };
     task::try(f);
     let path = rx.recv();
@@ -92,7 +92,7 @@ fn test_rm_tempdir_close() {
     let f: proc():Send = proc() {
         let tmp = tmp;
         tmp.close();
-        fail!("fail to unwind past `tmp`");
+        panic!("panic when unwinding past `tmp`");
     };
     task::try(f);
     assert!(!path.exists());
@@ -175,15 +175,15 @@ pub fn test_rmdir_recursive_ok() {
     assert!(!root.join("bar").join("blat").exists());
 }
 
-pub fn dont_double_fail() {
+pub fn dont_double_panic() {
     let r: Result<(), _> = task::try(proc() {
         let tmpdir = TempDir::new("test").unwrap();
         // Remove the temporary directory so that TempDir sees
         // an error on drop
         fs::rmdir(tmpdir.path());
-        // Trigger failure. If TempDir fails *again* due to the rmdir
+        // Panic. If TempDir panics *again* due to the rmdir
         // error then the process will abort.
-        fail!();
+        panic!();
     });
     assert!(r.is_err());
 }
@@ -203,5 +203,5 @@ pub fn main() {
     in_tmpdir(recursive_mkdir_dot);
     in_tmpdir(recursive_mkdir_rel_2);
     in_tmpdir(test_rmdir_recursive_ok);
-    in_tmpdir(dont_double_fail);
+    in_tmpdir(dont_double_panic);
 }

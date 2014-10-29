@@ -133,10 +133,10 @@ fn report_cannot_move_out_of(bccx: &BorrowckCtxt, move_from: mc::cmt) {
                                  which defines the `Drop` trait",
                                 b.ty.user_string(bccx.tcx)).as_slice());
                 },
-                _ => fail!("this path should not cause illegal move")
+                _ => panic!("this path should not cause illegal move")
             }
         }
-        _ => fail!("this path should not cause illegal move")
+        _ => panic!("this path should not cause illegal move")
     }
 }
 

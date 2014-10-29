@@ -12,21 +12,21 @@
 
 pub fn main() {
     // check
-    if ! cfg!(foo) { fail!() }
-    if   cfg!(not(foo)) { fail!() }
+    if ! cfg!(foo) { panic!() }
+    if   cfg!(not(foo)) { panic!() }
 
-    if ! cfg!(qux="foo") { fail!() }
-    if   cfg!(not(qux="foo")) { fail!() }
+    if ! cfg!(qux="foo") { panic!() }
+    if   cfg!(not(qux="foo")) { panic!() }
 
-    if ! cfg!(all(foo, qux="foo")) { fail!() }
-    if   cfg!(not(all(foo, qux="foo"))) { fail!() }
-    if   cfg!(all(not(all(foo, qux="foo")))) { fail!() }
+    if ! cfg!(all(foo, qux="foo")) { panic!() }
+    if   cfg!(not(all(foo, qux="foo"))) { panic!() }
+    if   cfg!(all(not(all(foo, qux="foo")))) { panic!() }
 
-    if cfg!(not_a_cfg) { fail!() }
-    if cfg!(all(not_a_cfg, foo, qux="foo")) { fail!() }
-    if cfg!(all(not_a_cfg, foo, qux="foo")) { fail!() }
-    if ! cfg!(any(not_a_cfg, foo)) { fail!() }
+    if cfg!(not_a_cfg) { panic!() }
+    if cfg!(all(not_a_cfg, foo, qux="foo")) { panic!() }
+    if cfg!(all(not_a_cfg, foo, qux="foo")) { panic!() }
+    if ! cfg!(any(not_a_cfg, foo)) { panic!() }
 
-    if ! cfg!(not(not_a_cfg)) { fail!() }
-    if ! cfg!(all(not(not_a_cfg), foo, qux="foo")) { fail!() }
+    if ! cfg!(not(not_a_cfg)) { panic!() }
+    if ! cfg!(all(not(not_a_cfg), foo, qux="foo")) { panic!() }
 }

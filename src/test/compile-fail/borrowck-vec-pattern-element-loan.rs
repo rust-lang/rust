@@ -15,7 +15,7 @@ fn a<'a>() -> &'a [int] {
     let vec: &[int] = vec.as_slice(); //~ ERROR does not live long enough
     let tail = match vec {
         [_, tail..] => tail,
-        _ => fail!("a")
+        _ => panic!("a")
     };
     tail
 }
@@ -25,7 +25,7 @@ fn b<'a>() -> &'a [int] {
     let vec: &[int] = vec.as_slice(); //~ ERROR does not live long enough
     let init = match vec {
         [init.., _] => init,
-        _ => fail!("b")
+        _ => panic!("b")
     };
     init
 }
@@ -35,7 +35,7 @@ fn c<'a>() -> &'a [int] {
     let vec: &[int] = vec.as_slice(); //~ ERROR does not live long enough
     let slice = match vec {
         [_, slice.., _] => slice,
-        _ => fail!("c")
+        _ => panic!("c")
     };
     slice
 }

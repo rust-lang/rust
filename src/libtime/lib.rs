@@ -1305,7 +1305,7 @@ mod tests {
             == Err(InvalidTime));
 
         match strptime("Fri Feb 13 15:31:30.01234 2009", format) {
-          Err(e) => fail!(e),
+          Err(e) => panic!(e),
           Ok(ref tm) => {
             assert!(tm.tm_sec == 30_i32);
             assert!(tm.tm_min == 31_i32);
@@ -1324,7 +1324,7 @@ mod tests {
         fn test(s: &str, format: &str) -> bool {
             match strptime(s, format) {
               Ok(ref tm) => tm.strftime(format).unwrap() == s.to_string(),
-              Err(e) => fail!(e)
+              Err(e) => panic!(e)
             }
         }
 

@@ -511,7 +511,7 @@ mod test_map {
         assert!(m.insert(5, 14));
         let new = 100;
         match m.find_mut(&5) {
-            None => fail!(), Some(x) => *x = new
+            None => panic!(), Some(x) => *x = new
         }
         assert_eq!(m.find(&5), Some(&new));
     }

@@ -14,7 +14,7 @@
 fn id(x: bool) -> bool { x }
 
 fn call_id() {
-    let c = fail!();
+    let c = panic!();
     id(c); //~ WARNING unreachable statement
 }
 

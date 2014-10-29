@@ -67,7 +67,7 @@ fn remove_message(e: &mut ExpectErrorEmitter, msg: &str, lvl: Level) {
             e.messages.remove(i);
         }
         None => {
-            fail!("Unexpected error: {} Expected: {}",
+            panic!("Unexpected error: {} Expected: {}",
                   msg, e.messages);
         }
     }
@@ -169,7 +169,7 @@ impl<'a, 'tcx> Env<'a, 'tcx> {
         return match search_mod(self, &self.infcx.tcx.map.krate().module, 0, names) {
             Some(id) => id,
             None => {
-                fail!("no item found: `{}`", names.connect("::"));
+                panic!("no item found: `{}`", names.connect("::"));
             }
         };
 
@@ -218,7 +218,7 @@ impl<'a, 'tcx> Env<'a, 'tcx> {
     pub fn make_subtype(&self, a: ty::t, b: ty::t) -> bool {
         match infer::mk_subty(self.infcx, true, infer::Misc(DUMMY_SP), a, b) {
             Ok(_) => true,
-            Err(ref e) => fail!("Encountered error: {}",
+            Err(ref e) => panic!("Encountered error: {}",
                                 ty::type_err_to_str(self.infcx.tcx, e))
         }
     }
@@ -232,7 +232,7 @@ impl<'a, 'tcx> Env<'a, 'tcx> {
 
     pub fn assert_subtype(&self, a: ty::t, b: ty::t) {
         if !self.is_subtype(a, b) {
-            fail!("{} is not a subtype of {}, but it should be",
+            panic!("{} is not a subtype of {}, but it should be",
                   self.ty_to_string(a),
                   self.ty_to_string(b));
         }
@@ -240,7 +240,7 @@ impl<'a, 'tcx> Env<'a, 'tcx> {
 
     pub fn assert_not_subtype(&self, a: ty::t, b: ty::t) {
         if self.is_subtype(a, b) {
-            fail!("{} is a subtype of {}, but it shouldn't be",
+            panic!("{} is a subtype of {}, but it shouldn't be",
                   self.ty_to_string(a),
                   self.ty_to_string(b));
         }
@@ -315,7 +315,7 @@ impl<'a, 'tcx> Env<'a, 'tcx> {
     pub fn make_lub_ty(&self, t1: ty::t, t2: ty::t) -> ty::t {
         match self.lub().tys(t1, t2) {
             Ok(t) => t,
-            Err(ref e) => fail!("unexpected error computing LUB: {}",
+            Err(ref e) => panic!("unexpected error computing LUB: {}",
                                 ty::type_err_to_str(self.infcx.tcx, e))
         }
     }
@@ -327,7 +327,7 @@ impl<'a, 'tcx> Env<'a, 'tcx> {
                 self.assert_eq(t, t_lub);
             }
             Err(ref e) => {
-                fail!("unexpected error in LUB: {}",
+                panic!("unexpected error in LUB: {}",
                       ty::type_err_to_str(self.infcx.tcx, e))
             }
         }
@@ -341,7 +341,7 @@ impl<'a, 'tcx> Env<'a, 'tcx> {
                self.ty_to_string(t_glb));
         match self.glb().tys(t1, t2) {
             Err(e) => {
-                fail!("unexpected error computing LUB: {}", e)
+                panic!("unexpected error computing LUB: {}", e)
             }
             Ok(t) => {
                 self.assert_eq(t, t_glb);
@@ -358,7 +358,7 @@ impl<'a, 'tcx> Env<'a, 'tcx> {
         match self.lub().tys(t1, t2) {
             Err(_) => {}
             Ok(t) => {
-                fail!("unexpected success computing LUB: {}", self.ty_to_string(t))
+                panic!("unexpected success computing LUB: {}", self.ty_to_string(t))
             }
         }
     }
@@ -368,7 +368,7 @@ impl<'a, 'tcx> Env<'a, 'tcx> {
         match self.glb().tys(t1, t2) {
             Err(_) => {}
             Ok(t) => {
-                fail!("unexpected success computing GLB: {}", self.ty_to_string(t))
+                panic!("unexpected success computing GLB: {}", self.ty_to_string(t))
             }
         }
     }

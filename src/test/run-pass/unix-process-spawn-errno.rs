@@ -87,7 +87,7 @@ fn main() {
     };
 
     match process::Process::spawn(cfg) {
-        Ok(_) => { fail!("spawn() should have failled"); }
+        Ok(_) => { panic!("spawn() should have panicked"); }
         Err(rtio::IoError { code: err, ..}) => {
             assert_eq!(err as c_int, EXPECTED_ERRNO);
         }

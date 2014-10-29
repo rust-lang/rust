@@ -190,7 +190,7 @@ impl LintPass for TypeLimits {
                                     return;
                                 }
                             }
-                            _ => fail!()
+                            _ => panic!()
                         };
                     },
                     ty::ty_uint(t) => {
@@ -201,7 +201,7 @@ impl LintPass for TypeLimits {
                         let lit_val: u64 = match lit.node {
                             ast::LitByte(_v) => return,  // _v is u8, within range by definition
                             ast::LitInt(v, _) => v,
-                            _ => fail!()
+                            _ => panic!()
                         };
                         if  lit_val < min || lit_val > max {
                             cx.span_lint(OVERFLOWING_LITERALS, e.span,
@@ -216,7 +216,7 @@ impl LintPass for TypeLimits {
                                 Some(f) => f,
                                 None => return
                             },
-                            _ => fail!()
+                            _ => panic!()
                         };
                         if lit_val < min || lit_val > max {
                             cx.span_lint(OVERFLOWING_LITERALS, e.span,
@@ -237,7 +237,7 @@ impl LintPass for TypeLimits {
                 ast::BiGt => v >= min && v <  max,
                 ast::BiGe => v >  min && v <= max,
                 ast::BiEq | ast::BiNe => v >= min && v <= max,
-                _ => fail!()
+                _ => panic!()
             }
         }
 
@@ -301,7 +301,7 @@ impl LintPass for TypeLimits {
                             ast::LitInt(v, ast::UnsuffixedIntLit(ast::Minus)) => -(v as i64),
                             _ => return true
                         },
-                        _ => fail!()
+                        _ => panic!()
                     };
                     is_valid(norm_binop, lit_val, min, max)
                 }
@@ -312,7 +312,7 @@ impl LintPass for TypeLimits {
                             ast::LitInt(v, _) => v,
                             _ => return true
                         },
-                        _ => fail!()
+                        _ => panic!()
                     };
                     is_valid(norm_binop, lit_val, min, max)
                 }
@@ -353,7 +353,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             def::DefTy(..) => {
                 let tty = match self.cx.tcx.ast_ty_to_ty_cache.borrow().find(&ty_id) {
                     Some(&ty::atttce_resolved(t)) => t,
-                    _ => fail!("ast_ty_to_ty_cache was incomplete after typeck!")
+                    _ => panic!("ast_ty_to_ty_cache was incomplete after typeck!")
                 };
 
                 if !ty::is_ffi_safe(self.cx.tcx, tty) {

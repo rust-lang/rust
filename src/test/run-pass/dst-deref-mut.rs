@@ -16,7 +16,7 @@ pub struct Arr {
 
 impl Deref<[uint]> for Arr {
     fn deref(&self) -> &[uint] {
-        fail!();
+        panic!();
     }
 }
 

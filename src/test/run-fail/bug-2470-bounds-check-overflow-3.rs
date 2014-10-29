@@ -17,7 +17,7 @@ use std::u64;
 fn main() {
     let x = vec!(1u,2u,3u);
 
-    // This should cause a bounds-check failure, but may not if we do our
+    // This should cause a bounds-check panic, but may not if we do our
     // bounds checking by truncating the index value to the size of the
     // machine word, losing relevant bits of the index value.
 
@@ -28,13 +28,13 @@ fn main() {
            (idx >> 32) as uint,
            idx as uint);
 
-    // This should fail.
+    // This should panic.
     println!("ov3 0x%x",  x.as_slice()[idx]);
 }
 
 #[cfg(target_arch="x86_64")]
 fn main() {
-    // This version just fails anyways, for symmetry on 64-bit hosts.
+    // This version just panics anyways, for symmetry on 64-bit hosts.
     let x = vec!(1u,2u,3u);
     error!("ov3 0x%x",  x.as_slice()[200]);
 }

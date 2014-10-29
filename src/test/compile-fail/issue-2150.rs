@@ -14,7 +14,7 @@
 
 fn fail_len(v: Vec<int> ) -> uint {
     let mut i = 3;
-    fail!();
+    panic!();
     for x in v.iter() { i += 1u; }
     //~^ ERROR: unreachable statement
     return i;

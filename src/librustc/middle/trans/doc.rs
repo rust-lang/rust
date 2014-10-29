@@ -132,7 +132,7 @@ cleanup arranged, and the slot from `rvalue_scratch_datum` does not.
 ## The Cleanup module
 
 The cleanup module tracks what values need to be cleaned up as scopes
-are exited, either via failure or just normal control flow. The basic
+are exited, either via panic or just normal control flow. The basic
 idea is that the function context maintains a stack of cleanup scopes
 that are pushed/popped as we traverse the AST tree. There is typically
 at least one cleanup scope per AST node; some AST nodes may introduce
@@ -142,9 +142,9 @@ Cleanup items can be scheduled into any of the scopes on the stack.
 Typically, when a scope is popped, we will also generate the code for
 each of its cleanups at that time. This corresponds to a normal exit
 from a block (for example, an expression completing evaluation
-successfully without failure). However, it is also possible to pop a
+successfully without panic). However, it is also possible to pop a
 block *without* executing its cleanups; this is typically used to
-guard intermediate values that must be cleaned up on failure, but not
+guard intermediate values that must be cleaned up on panic, but not
 if everything goes right. See the section on custom scopes below for
 more details.
 
@@ -170,7 +170,7 @@ drop uninitialized memory. If the initialization itself produces
 byproducts that need to be freed, then you should use temporary custom
 scopes to ensure that those byproducts will get freed on unwind.  For
 example, an expression like `box foo()` will first allocate a box in the
-heap and then call `foo()` -- if `foo()` should fail, this box needs
+heap and then call `foo()` -- if `foo()` should panic, this box needs
 to be *shallowly* freed.
 
 ### Long-distance jumps
@@ -178,13 +178,13 @@ to be *shallowly* freed.
 In addition to popping a scope, which corresponds to normal control
 flow exiting the scope, we may also *jump out* of a scope into some
 earlier scope on the stack. This can occur in response to a `return`,
-`break`, or `continue` statement, but also in response to failure. In
+`break`, or `continue` statement, but also in response to panic. In
 any of these cases, we will generate a series of cleanup blocks for
 each of the scopes that is exited. So, if the stack contains scopes A
 ... Z, and we break out of a loop whose corresponding cleanup scope is
 X, we would generate cleanup blocks for the cleanups in X, Y, and Z.
 After cleanup is done we would branch to the exit point for scope X.
-But if failure should occur, we would generate cleanups for all the
+But if panic should occur, we would generate cleanups for all the
 scopes from A to Z and then resume the unwind process afterwards.
 
 To avoid generating tons of code, we cache the cleanup blocks that we
@@ -211,7 +211,7 @@ the basic blocks where control should flow after a "continue" or
 
 Custom cleanup scopes are used for a variety of purposes. The most
 common though is to handle temporary byproducts, where cleanup only
-needs to occur on failure. The general strategy is to push a custom
+needs to occur on panic. The general strategy is to push a custom
 cleanup scope, schedule *shallow* cleanups into the custom scope, and
 then pop the custom scope (without transing the cleanups) when
 execution succeeds normally. This way the cleanups are only trans'd on
@@ -229,7 +229,7 @@ We would basically:
 5. Pop the scope C.
 6. Return the box as an rvalue.
 
-This way, if a failure occurs while transing `expr`, the custom
+This way, if a panic occurs while transing `expr`, the custom
 cleanup scope C is pushed and hence the box will be freed. The trans
 code for `expr` itself is responsible for freeing any other byproducts
 that may be in play.

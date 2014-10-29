@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern:failed at 'test-fail-fmt 42 rust'
+// error-pattern:panicked at 'test-fail-fmt 42 rust'
 
 fn main() {
-    fail!("test-fail-fmt {} {}", 42i, "rust");
+    panic!("test-fail-fmt {} {}", 42i, "rust");
 }

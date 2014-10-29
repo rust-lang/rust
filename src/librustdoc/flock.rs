@@ -128,7 +128,7 @@ mod imp {
             };
             if ret == -1 {
                 unsafe { libc::close(fd); }
-                fail!("could not lock `{}`", p.display())
+                panic!("could not lock `{}`", p.display())
             }
             Lock { fd: fd }
         }
@@ -197,7 +197,7 @@ mod imp {
                                   ptr::null_mut())
             };
             if handle == libc::INVALID_HANDLE_VALUE {
-                fail!("create file error: {}", os::last_os_error());
+                panic!("create file error: {}", os::last_os_error());
             }
             let mut overlapped: libc::OVERLAPPED = unsafe { mem::zeroed() };
             let ret = unsafe {
@@ -206,7 +206,7 @@ mod imp {
             };
             if ret == 0 {
                 unsafe { libc::CloseHandle(handle); }
-                fail!("could not lock `{}`: {}", p.display(),
+                panic!("could not lock `{}`: {}", p.display(),
                       os::last_os_error())
             }
             Lock { handle: handle }

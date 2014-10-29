@@ -198,17 +198,17 @@ impl<'a> FnLikeNode<'a> {
                         ident: i.ident, decl: &**decl, style: style, body: &**block,
                         generics: generics, abi: abi, id: i.id, span: i.span
                     }),
-                _ => fail!("item FnLikeNode that is not fn-like"),
+                _ => panic!("item FnLikeNode that is not fn-like"),
             },
             ast_map::NodeTraitItem(t) => match *t {
                 ast::ProvidedMethod(ref m) => method(&**m),
-                _ => fail!("trait method FnLikeNode that is not fn-like"),
+                _ => panic!("trait method FnLikeNode that is not fn-like"),
             },
             ast_map::NodeImplItem(ii) => {
                 match *ii {
                     ast::MethodImplItem(ref m) => method(&**m),
                     ast::TypeImplItem(_) => {
-                        fail!("impl method FnLikeNode that is not fn-like")
+                        panic!("impl method FnLikeNode that is not fn-like")
                     }
                 }
             }
@@ -217,9 +217,9 @@ impl<'a> FnLikeNode<'a> {
                     closure(ClosureParts::new(&**decl, &**block, e.id, e.span)),
                 ast::ExprProc(ref decl, ref block) =>
                     closure(ClosureParts::new(&**decl, &**block, e.id, e.span)),
-                _ => fail!("expr FnLikeNode that is not fn-like"),
+                _ => panic!("expr FnLikeNode that is not fn-like"),
             },
-            _ => fail!("other FnLikeNode that is not fn-like"),
+            _ => panic!("other FnLikeNode that is not fn-like"),
         }
     }
 }

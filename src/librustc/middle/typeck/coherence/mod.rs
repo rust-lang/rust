@@ -90,7 +90,7 @@ fn get_base_type(inference_context: &InferCtxt,
                    get(original_type).sty);
             None
         }
-        ty_trait(..) => fail!("should have been caught")
+        ty_trait(..) => panic!("should have been caught")
     }
 }
 
@@ -116,7 +116,7 @@ fn get_base_type_def_id(inference_context: &InferCtxt,
                             Some(def_id)
                         }
                         _ => {
-                            fail!("get_base_type() returned a type that wasn't an \
+                            panic!("get_base_type() returned a type that wasn't an \
                                    enum, struct, or trait");
                         }
                     }
@@ -125,7 +125,7 @@ fn get_base_type_def_id(inference_context: &InferCtxt,
                     Some(def_id)
                 }
                 _ => {
-                    fail!("get_base_type() returned a type that wasn't an \
+                    panic!("get_base_type() returned a type that wasn't an \
                            enum, struct, or trait");
                 }
             }

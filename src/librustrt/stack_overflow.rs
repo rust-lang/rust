@@ -116,7 +116,7 @@ mod imp {
         PAGE_SIZE = info.dwPageSize as uint;
 
         if AddVectoredExceptionHandler(0, vectored_handler) == ptr::null_mut() {
-            fail!("failed to install exception handler");
+            panic!("failed to install exception handler");
         }
 
         mem::forget(make_handler());
@@ -127,7 +127,7 @@ mod imp {
 
     pub unsafe fn make_handler() -> Handler {
         if SetThreadStackGuarantee(&mut 0x5000) == 0 {
-            fail!("failed to reserve stack space for exception handling");
+            panic!("failed to reserve stack space for exception handling");
         }
 
         super::Handler { _data: 0i as *mut libc::c_void }
@@ -232,7 +232,7 @@ mod imp {
     pub unsafe fn init() {
         let psize = libc::sysconf(libc::consts::os::sysconf::_SC_PAGESIZE);
         if psize == -1 {
-            fail!("failed to get page size");
+            panic!("failed to get page size");
         }
 
         PAGE_SIZE = psize as uint;
@@ -260,7 +260,7 @@ mod imp {
                              -1,
                              0);
         if alt_stack == MAP_FAILED {
-            fail!("failed to allocate an alternative stack");
+            panic!("failed to allocate an alternative stack");
         }
 
         let mut stack: sigaltstack = mem::zeroed();

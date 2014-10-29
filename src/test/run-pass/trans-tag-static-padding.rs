@@ -57,10 +57,10 @@ fn non_default_instance() -> &'static Request {
 pub fn main() {
     match default_instance() {
         &Request { foo: TestNone, bar: 17 } => {},
-        _ => fail!(),
+        _ => panic!(),
     };
     match non_default_instance() {
         &Request { foo: TestSome(0x1020304050607080), bar: 19 } => {},
-        _ => fail!(),
+        _ => panic!(),
     };
 }

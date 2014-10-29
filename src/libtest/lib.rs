@@ -130,7 +130,7 @@ pub trait TDynBenchFn {
 }
 
 // A function that runs a test. If the function returns successfully,
-// the test succeeds; if the function fails then the test fails. We
+// the test succeeds; if the function panics then the test fails. We
 // may need to come up with a more clever definition of test in order
 // to support isolation of tests into tasks.
 pub enum TestFn {
@@ -235,18 +235,18 @@ pub fn test_main(args: &[String], tests: Vec<TestDescAndFn> ) {
     let opts =
         match parse_opts(args) {
             Some(Ok(o)) => o,
-            Some(Err(msg)) => fail!("{}", msg),
+            Some(Err(msg)) => panic!("{}", msg),
             None => return
         };
     match run_tests_console(&opts, tests) {
         Ok(true) => {}
-        Ok(false) => fail!("Some tests failed"),
-        Err(e) => fail!("io error when running tests: {}", e),
+        Ok(false) => panic!("Some tests failed"),
+        Err(e) => panic!("io error when running tests: {}", e),
     }
 }
 
 // A variant optimized for invocation with a static test vector.
-// This will fail (intentionally) when fed any dynamic tests, because
+// This will panic (intentionally) when fed any dynamic tests, because
 // it is copying the static values out into a dynamic vector and cannot
 // copy dynamic values. It is doing this because from this point on
 // a ~[TestDescAndFn] is used in order to effect ownership-transfer
@@ -257,7 +257,7 @@ pub fn test_main_static(args: &[String], tests: &[TestDescAndFn]) {
         match t.testfn {
             StaticTestFn(f) => TestDescAndFn { testfn: StaticTestFn(f), desc: t.desc.clone() },
             StaticBenchFn(f) => TestDescAndFn { testfn: StaticBenchFn(f), desc: t.desc.clone() },
-            _ => fail!("non-static tests passed to test::test_main_static")
+            _ => panic!("non-static tests passed to test::test_main_static")
         }
     }).collect();
     test_main(args, owned_tests)
@@ -352,7 +352,7 @@ Test Attributes:
     #[bench]       - Indicates a function is a benchmark to be run. This
                      function takes one argument (test::Bencher).
     #[should_fail] - This function (also labeled with #[test]) will only pass if
-                     the code causes a failure (an assertion failure or fail!)
+                     the code causes a failure (an assertion failure or panic!)
     #[ignore]      - When applied to a function which is already attributed as a
                      test, then the test runner will ignore these tests during
                      normal test runs. Running with --ignored will run these
@@ -445,7 +445,7 @@ pub fn opt_shard(maybestr: Option<String>) -> Option<(uint,uint)> {
                    it.next()) {
                 (Some(a), Some(b), None) => {
                     if a <= 0 || a > b {
-                        fail!("tried to run shard {a}.{b}, but {a} is out of bounds \
+                        panic!("tried to run shard {a}.{b}, but {a} is out of bounds \
                               (should be between 1 and {b}", a=a, b=b)
                     }
                     Some((a, b))
@@ -964,7 +964,7 @@ fn get_concurrency() -> uint {
             let opt_n: Option<uint> = FromStr::from_str(s.as_slice());
             match opt_n {
                 Some(n) if n > 0 => n,
-                _ => fail!("RUST_TEST_TASKS is `{}`, should be a positive integer.", s)
+                _ => panic!("RUST_TEST_TASKS is `{}`, should be a positive integer.", s)
             }
         }
         None => {
@@ -1120,7 +1120,7 @@ impl MetricMap {
     ///
     /// # Failure
     ///
-    /// This function will fail if the path does not exist or the path does not
+    /// This function will panic if the path does not exist or the path does not
     /// contain a valid metric map.
     pub fn load(p: &Path) -> MetricMap {
         assert!(p.exists());
@@ -1129,7 +1129,7 @@ impl MetricMap {
         let mut decoder = json::Decoder::new(value);
         MetricMap(match Decodable::decode(&mut decoder) {
             Ok(t) => t,
-            Err(e) => fail!("failure decoding JSON: {}", e)
+            Err(e) => panic!("failure decoding JSON: {}", e)
         })
     }
 
@@ -1401,7 +1401,7 @@ mod tests {
 
     #[test]
     pub fn do_not_run_ignored_tests() {
-        fn f() { fail!(); }
+        fn f() { panic!(); }
         let desc = TestDescAndFn {
             desc: TestDesc {
                 name: StaticTestName("whatever"),
@@ -1435,7 +1435,7 @@ mod tests {
 
     #[test]
     fn test_should_fail() {
-        fn f() { fail!(); }
+        fn f() { panic!(); }
         let desc = TestDescAndFn {
             desc: TestDesc {
                 name: StaticTestName("whatever"),
@@ -1472,7 +1472,7 @@ mod tests {
         let args = vec!("progname".to_string(), "some_regex_filter".to_string());
         let opts = match parse_opts(args.as_slice()) {
             Some(Ok(o)) => o,
-            _ => fail!("Malformed arg in first_free_arg_should_be_a_filter")
+            _ => panic!("Malformed arg in first_free_arg_should_be_a_filter")
         };
         assert!(opts.filter.expect("should've found filter").is_match("some_regex_filter"))
     }
@@ -1484,7 +1484,7 @@ mod tests {
                         "--ignored".to_string());
         let opts = match parse_opts(args.as_slice()) {
             Some(Ok(o)) => o,
-            _ => fail!("Malformed arg in parse_ignored_flag")
+            _ => panic!("Malformed arg in parse_ignored_flag")
         };
         assert!((opts.run_ignored));
     }

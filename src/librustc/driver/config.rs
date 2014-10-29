@@ -898,7 +898,7 @@ mod test {
         let matches =
             &match getopts(["--test".to_string()], optgroups().as_slice()) {
               Ok(m) => m,
-              Err(f) => fail!("test_switch_implies_cfg_test: {}", f)
+              Err(f) => panic!("test_switch_implies_cfg_test: {}", f)
             };
         let registry = diagnostics::registry::Registry::new([]);
         let sessopts = build_session_options(matches);
@@ -916,7 +916,7 @@ mod test {
                            optgroups().as_slice()) {
               Ok(m) => m,
               Err(f) => {
-                fail!("test_switch_implies_cfg_test_unless_cfg_test: {}", f)
+                panic!("test_switch_implies_cfg_test_unless_cfg_test: {}", f)
               }
             };
         let registry = diagnostics::registry::Registry::new([]);

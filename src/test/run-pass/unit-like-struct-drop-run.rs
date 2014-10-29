@@ -17,7 +17,7 @@ struct Foo;
 
 impl Drop for Foo {
     fn drop(&mut self) {
-        fail!("This failure should happen.");
+        panic!("This panic should happen.");
     }
 }
 
@@ -27,5 +27,5 @@ pub fn main() {
     });
 
     let s = x.unwrap_err().downcast::<&'static str>().unwrap();
-    assert_eq!(s.as_slice(), "This failure should happen.");
+    assert_eq!(s.as_slice(), "This panic should happen.");
 }

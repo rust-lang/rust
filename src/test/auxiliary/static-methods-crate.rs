@@ -36,6 +36,6 @@ impl read for bool {
 pub fn read<T:read>(s: String) -> T {
     match read::readMaybe(s) {
       Some(x) => x,
-      _ => fail!("read failed!")
+      _ => panic!("read panicked!")
     }
 }

@@ -235,7 +235,7 @@ mod imp {
         if ret as uint == 0 {
             // be sure to not leak the closure
             let _p: Box<proc():Send> = mem::transmute(arg);
-            fail!("failed to spawn native thread: {}", ret);
+            panic!("failed to spawn native thread: {}", ret);
         }
         return ret;
     }
@@ -327,15 +327,15 @@ mod imp {
         unsafe fn get_stack_start() -> *mut libc::c_void {
             let mut attr: libc::pthread_attr_t = mem::zeroed();
             if pthread_getattr_np(pthread_self(), &mut attr) != 0 {
-                fail!("failed to get thread attributes");
+                panic!("failed to get thread attributes");
             }
             let mut stackaddr = ptr::null_mut();
             let mut stacksize = 0;
             if pthread_attr_getstack(&attr, &mut stackaddr, &mut stacksize) != 0 {
-                fail!("failed to get stack information");
+                panic!("failed to get stack information");
             }
             if pthread_attr_destroy(&mut attr) != 0 {
-                fail!("failed to destroy thread attributes");
+                panic!("failed to destroy thread attributes");
             }
             stackaddr
         }
@@ -343,7 +343,7 @@ mod imp {
         pub unsafe fn init() {
             let psize = libc::sysconf(libc::consts::os::sysconf::_SC_PAGESIZE);
             if psize == -1 {
-                fail!("failed to get page size");
+                panic!("failed to get page size");
             }
 
             PAGE_SIZE = psize as uint;
@@ -361,7 +361,7 @@ mod imp {
                               0);
 
             if result != stackaddr || result == MAP_FAILED {
-                fail!("failed to allocate a guard page");
+                panic!("failed to allocate a guard page");
             }
 
             let offset = if cfg!(target_os = "linux") {
@@ -387,22 +387,22 @@ mod imp {
         pub unsafe fn current() -> uint {
             let mut attr: libc::pthread_attr_t = mem::zeroed();
             if pthread_getattr_np(pthread_self(), &mut attr) != 0 {
-                fail!("failed to get thread attributes");
+                panic!("failed to get thread attributes");
             }
             let mut guardsize = 0;
             if pthread_attr_getguardsize(&attr, &mut guardsize) != 0 {
-                fail!("failed to get stack guard page");
+                panic!("failed to get stack guard page");
             }
             if guardsize == 0 {
-                fail!("there is no guard page");
+                panic!("there is no guard page");
             }
             let mut stackaddr = ptr::null_mut();
             let mut stacksize = 0;
             if pthread_attr_getstack(&attr, &mut stackaddr, &mut stacksize) != 0 {
-                fail!("failed to get stack information");
+                panic!("failed to get stack information");
             }
             if pthread_attr_destroy(&mut attr) != 0 {
-                fail!("failed to destroy thread attributes");
+                panic!("failed to destroy thread attributes");
             }
 
             stackaddr as uint + guardsize as uint
@@ -433,7 +433,7 @@ mod imp {
             },
             errno => {
                 // This cannot really happen.
-                fail!("pthread_attr_setstacksize() error: {}", errno);
+                panic!("pthread_attr_setstacksize() error: {}", errno);
             },
         };
 
@@ -444,7 +444,7 @@ mod imp {
         if ret != 0 {
             // be sure to not leak the closure
             let _p: Box<proc():Send> = mem::transmute(arg);
-            fail!("failed to spawn native thread: {}", ret);
+            panic!("failed to spawn native thread: {}", ret);
         }
         native
     }

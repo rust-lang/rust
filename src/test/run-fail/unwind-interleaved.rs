@@ -12,7 +12,7 @@
 
 fn a() { }
 
-fn b() { fail!(); }
+fn b() { panic!(); }
 
 fn main() {
     let _x = vec!(0i);

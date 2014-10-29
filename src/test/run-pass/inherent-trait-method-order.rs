@@ -13,7 +13,7 @@ struct Foo;
 impl Foo {
     #[allow(dead_code)]
     fn foo(self) {
-        fail!("wrong method!")
+        panic!("wrong method!")
     }
 }
 

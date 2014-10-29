@@ -264,18 +264,18 @@ lets_do_this! {
 
     StrEqFnLangItem,                 "str_eq",                  str_eq_fn;
 
-    // A number of failure-related lang items. The `fail` item corresponds to
-    // divide-by-zero and various failure cases with `match`. The
-    // `fail_bounds_check` item is for indexing arrays.
+    // A number of panic-related lang items. The `panic` item corresponds to
+    // divide-by-zero and various panic cases with `match`. The
+    // `panic_bounds_check` item is for indexing arrays.
     //
     // The `begin_unwind` lang item has a predefined symbol name and is sort of
     // a "weak lang item" in the sense that a crate is not required to have it
     // defined to use it, but a final product is required to define it
     // somewhere. Additionally, there are restrictions on crates that use a weak
     // lang item, but do not have it defined.
-    FailFnLangItem,                  "fail",                    fail_fn;
-    FailBoundsCheckFnLangItem,       "fail_bounds_check",       fail_bounds_check_fn;
-    FailFmtLangItem,                 "fail_fmt",                fail_fmt;
+    PanicFnLangItem,                 "panic",                   panic_fn;
+    PanicBoundsCheckFnLangItem,      "panic_bounds_check",      panic_bounds_check_fn;
+    PanicFmtLangItem,                "panic_fmt",               panic_fmt;
 
     ExchangeMallocFnLangItem,        "exchange_malloc",         exchange_malloc_fn;
     ExchangeFreeFnLangItem,          "exchange_free",           exchange_free_fn;

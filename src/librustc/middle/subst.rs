@@ -177,7 +177,7 @@ impl Substs {
          */
 
         match self.regions {
-            ErasedRegions => fail!("Erased regions only expected in trans"),
+            ErasedRegions => panic!("Erased regions only expected in trans"),
             NonerasedRegions(ref r) => r
         }
     }
@@ -190,7 +190,7 @@ impl Substs {
          */
 
         match self.regions {
-            ErasedRegions => fail!("Erased regions only expected in trans"),
+            ErasedRegions => panic!("Erased regions only expected in trans"),
             NonerasedRegions(ref mut r) => r
         }
     }
@@ -249,7 +249,7 @@ impl ParamSpace {
             0 => TypeSpace,
             1 => SelfSpace,
             2 => FnSpace,
-            _ => fail!("Invalid ParamSpace: {}", u)
+            _ => panic!("Invalid ParamSpace: {}", u)
         }
     }
 }

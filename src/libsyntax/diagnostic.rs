@@ -63,7 +63,7 @@ pub trait Emitter {
                    sp: RenderSpan, msg: &str, lvl: Level);
 }
 
-/// This structure is used to signify that a task has failed with a fatal error
+/// This structure is used to signify that a task has panicked with a fatal error
 /// from the diagnostics. You can use this with the `Any` trait to figure out
 /// how a rustc task died (if so desired).
 pub struct FatalError;
@@ -83,7 +83,7 @@ pub struct SpanHandler {
 impl SpanHandler {
     pub fn span_fatal(&self, sp: Span, msg: &str) -> ! {
         self.handler.emit(Some((&self.cm, sp)), msg, Fatal);
-        fail!(FatalError);
+        panic!(FatalError);
     }
     pub fn span_err(&self, sp: Span, msg: &str) {
         self.handler.emit(Some((&self.cm, sp)), msg, Error);
@@ -113,7 +113,7 @@ impl SpanHandler {
     }
     pub fn span_bug(&self, sp: Span, msg: &str) -> ! {
         self.handler.emit(Some((&self.cm, sp)), msg, Bug);
-        fail!(ExplicitBug);
+        panic!(ExplicitBug);
     }
     pub fn span_unimpl(&self, sp: Span, msg: &str) -> ! {
         self.span_bug(sp, format!("unimplemented {}", msg).as_slice());
@@ -134,7 +134,7 @@ pub struct Handler {
 impl Handler {
     pub fn fatal(&self, msg: &str) -> ! {
         self.emit.borrow_mut().emit(None, msg, None, Fatal);
-        fail!(FatalError);
+        panic!(FatalError);
     }
     pub fn err(&self, msg: &str) {
         self.emit.borrow_mut().emit(None, msg, None, Error);
@@ -172,7 +172,7 @@ impl Handler {
     }
     pub fn bug(&self, msg: &str) -> ! {
         self.emit.borrow_mut().emit(None, msg, None, Bug);
-        fail!(ExplicitBug);
+        panic!(ExplicitBug);
     }
     pub fn unimpl(&self, msg: &str) -> ! {
         self.bug(format!("unimplemented {}", msg).as_slice());
@@ -367,7 +367,7 @@ impl Emitter for EmitterWriter {
 
         match error {
             Ok(()) => {}
-            Err(e) => fail!("failed to print diagnostics: {}", e),
+            Err(e) => panic!("failed to print diagnostics: {}", e),
         }
     }
 
@@ -375,7 +375,7 @@ impl Emitter for EmitterWriter {
                    sp: RenderSpan, msg: &str, lvl: Level) {
         match emit(self, cm, sp, msg, None, lvl, true) {
             Ok(()) => {}
-            Err(e) => fail!("failed to print diagnostics: {}", e),
+            Err(e) => panic!("failed to print diagnostics: {}", e),
         }
     }
 }

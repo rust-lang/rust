@@ -96,11 +96,11 @@ mod test {
             Err(io::standard_error(io::EndOfFile));
 
         match writer.write([0, 0, 0]) {
-            Ok(..) => fail!(),
+            Ok(..) => panic!(),
             Err(e) => assert_eq!(e.kind, io::EndOfFile),
         }
         match writer.flush() {
-            Ok(..) => fail!(),
+            Ok(..) => panic!(),
             Err(e) => assert_eq!(e.kind, io::EndOfFile),
         }
     }
@@ -122,7 +122,7 @@ mod test {
         let mut buf = [];
 
         match reader.read(buf) {
-            Ok(..) => fail!(),
+            Ok(..) => panic!(),
             Err(e) => assert_eq!(e.kind, io::EndOfFile),
         }
     }

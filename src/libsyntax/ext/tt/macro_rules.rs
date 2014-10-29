@@ -39,7 +39,7 @@ impl<'a> ParserAnyMacro<'a> {
     /// silently drop anything. `allow_semi` is so that "optional"
     /// semicolons at the end of normal expressions aren't complained
     /// about e.g. the semicolon in `macro_rules! kapow( () => {
-    /// fail!(); } )` doesn't get picked up by .parse_expr(), but it's
+    /// panic!(); } )` doesn't get picked up by .parse_expr(), but it's
     /// allowed to be there.
     fn ensure_complete_parse(&self, allow_semi: bool) {
         let mut parser = self.parser.borrow_mut();

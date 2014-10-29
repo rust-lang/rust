@@ -599,8 +599,8 @@ unsafe fn atomic_store<T>(dst: *mut T, val: T, order:Ordering) {
         Release => intrinsics::atomic_store_rel(dst, val),
         Relaxed => intrinsics::atomic_store_relaxed(dst, val),
         SeqCst  => intrinsics::atomic_store(dst, val),
-        Acquire => fail!("there is no such thing as an acquire store"),
-        AcqRel  => fail!("there is no such thing as an acquire/release store"),
+        Acquire => panic!("there is no such thing as an acquire store"),
+        AcqRel  => panic!("there is no such thing as an acquire/release store"),
     }
 }
 
@@ -610,8 +610,8 @@ unsafe fn atomic_load<T>(dst: *const T, order:Ordering) -> T {
         Acquire => intrinsics::atomic_load_acq(dst),
         Relaxed => intrinsics::atomic_load_relaxed(dst),
         SeqCst  => intrinsics::atomic_load(dst),
-        Release => fail!("there is no such thing as a release load"),
-        AcqRel  => fail!("there is no such thing as an acquire/release load"),
+        Release => panic!("there is no such thing as a release load"),
+        AcqRel  => panic!("there is no such thing as an acquire/release load"),
     }
 }
 
@@ -737,7 +737,7 @@ pub fn fence(order: Ordering) {
             Release => intrinsics::atomic_fence_rel(),
             AcqRel  => intrinsics::atomic_fence_acqrel(),
             SeqCst  => intrinsics::atomic_fence(),
-            Relaxed => fail!("there is no such thing as a relaxed fence")
+            Relaxed => panic!("there is no such thing as a relaxed fence")
         }
     }
 }

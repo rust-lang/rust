@@ -9,22 +9,22 @@
 // except according to those terms.
 
 // check that the derived impls for the comparison traits shortcircuit
-// where possible, by having a type that fails when compared as the
+// where possible, by having a type that panics when compared as the
 // second element, so this passes iff the instances shortcircuit.
 
 pub struct FailCmp;
 impl PartialEq for FailCmp {
-    fn eq(&self, _: &FailCmp) -> bool { fail!("eq") }
+    fn eq(&self, _: &FailCmp) -> bool { panic!("eq") }
 }
 
 impl PartialOrd for FailCmp {
-    fn partial_cmp(&self, _: &FailCmp) -> Option<Ordering> { fail!("partial_cmp") }
+    fn partial_cmp(&self, _: &FailCmp) -> Option<Ordering> { panic!("partial_cmp") }
 }
 
 impl Eq for FailCmp {}
 
 impl Ord for FailCmp {
-    fn cmp(&self, _: &FailCmp) -> Ordering { fail!("cmp") }
+    fn cmp(&self, _: &FailCmp) -> Ordering { panic!("cmp") }
 }
 
 #[deriving(PartialEq,PartialOrd,Eq,Ord)]

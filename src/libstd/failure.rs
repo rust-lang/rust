@@ -51,11 +51,11 @@ pub fn on_fail(obj: &Any + Send, file: &'static str, line: uint) {
     // all times. This means that this `exists` will return true almost all of
     // the time. There are border cases, however, when the runtime has
     // *almost* set up the local task, but hasn't quite gotten there yet. In
-    // order to get some better diagnostics, we print on failure and
+    // order to get some better diagnostics, we print on panic and
     // immediately abort the whole process if there is no local task
     // available.
     if !Local::exists(None::<Task>) {
-        let _ = writeln!(&mut err, "failed at '{}', {}:{}", msg, file, line);
+        let _ = writeln!(&mut err, "panicked at '{}', {}:{}", msg, file, line);
         if backtrace::log_enabled() {
             let _ = backtrace::write(&mut err);
         } else {
@@ -76,9 +76,9 @@ pub fn on_fail(obj: &Any + Send, file: &'static str, line: uint) {
 
         match local_stderr.replace(None) {
             Some(mut stderr) => {
-                // FIXME: what to do when the task printing fails?
+                // FIXME: what to do when the task printing panics?
                 let _ = writeln!(stderr,
-                                 "task '{}' failed at '{}', {}:{}\n",
+                                 "task '{}' panicked at '{}', {}:{}\n",
                                  n, msg, file, line);
                 if backtrace::log_enabled() {
                     let _ = backtrace::write(&mut *stderr);
@@ -86,7 +86,7 @@ pub fn on_fail(obj: &Any + Send, file: &'static str, line: uint) {
                 local_stderr.replace(Some(stderr));
             }
             None => {
-                let _ = writeln!(&mut err, "task '{}' failed at '{}', {}:{}",
+                let _ = writeln!(&mut err, "task '{}' panicked at '{}', {}:{}",
                                  n, msg, file, line);
                 if backtrace::log_enabled() {
                     let _ = backtrace::write(&mut err);
@@ -94,8 +94,8 @@ pub fn on_fail(obj: &Any + Send, file: &'static str, line: uint) {
             }
         }
 
-        // If this is a double failure, make sure that we printed a backtrace
-        // for this failure.
+        // If this is a double panic, make sure that we printed a backtrace
+        // for this panic.
         if unwinding && !backtrace::log_enabled() {
             let _ = backtrace::write(&mut err);
         }

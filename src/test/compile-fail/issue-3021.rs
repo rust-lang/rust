@@ -23,7 +23,7 @@ fn siphash(k0 : u64) -> SipHash {
            //~^ ERROR unresolved name `k0`.
         }
     }
-    fail!();
+    panic!();
 }
 
 fn main() {}

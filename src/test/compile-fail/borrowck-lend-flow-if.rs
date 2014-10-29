@@ -17,9 +17,9 @@
 
 fn borrow(_v: &int) {}
 fn borrow_mut(_v: &mut int) {}
-fn cond() -> bool { fail!() }
-fn for_func(_f: || -> bool) { fail!() }
-fn produce<T>() -> T { fail!(); }
+fn cond() -> bool { panic!() }
+fn for_func(_f: || -> bool) { panic!() }
+fn produce<T>() -> T { panic!(); }
 
 fn inc(v: &mut Box<int>) {
     *v = box() (**v + 1);

@@ -46,13 +46,13 @@
 //! ## Failure Propagation
 //!
 //! In addition to being a core primitive for communicating in rust, channels
-//! are the points at which failure is propagated among tasks.  Whenever the one
+//! are the points at which panics are propagated among tasks.  Whenever the one
 //! half of channel is closed, the other half will have its next operation
-//! `fail!`. The purpose of this is to allow propagation of failure among tasks
+//! `panic!`. The purpose of this is to allow propagation of panics among tasks
 //! that are linked to one another via channels.
 //!
 //! There are methods on both of senders and receivers to perform their
-//! respective operations without failing, however.
+//! respective operations without panicking, however.
 //!
 //! ## Runtime Requirements
 //!
@@ -102,10 +102,10 @@
 //! }
 //! ```
 //!
-//! Propagating failure:
+//! Propagating panics:
 //!
 //! ```should_fail
-//! // The call to recv() will fail!() because the channel has already hung
+//! // The call to recv() will panic!() because the channel has already hung
 //! // up (or been deallocated)
 //! let (tx, rx) = channel::<int>();
 //! drop(tx);
@@ -506,7 +506,7 @@ pub fn channel<T: Send>() -> (Sender<T>, Receiver<T>) {
 /// becomes  "rendezvous channel" where each send will not return until a recv
 /// is paired with it.
 ///
-/// As with asynchronous channels, all senders will fail in `send` if the
+/// As with asynchronous channels, all senders will panic in `send` if the
 /// `Receiver` has been destroyed.
 ///
 /// # Example
@@ -550,25 +550,25 @@ impl<T: Send> Sender<T> {
     ///
     /// Rust channels are infinitely buffered so this method will never block.
     ///
-    /// # Failure
+    /// # Panics
     ///
-    /// This function will fail if the other end of the channel has hung up.
+    /// This function will panic if the other end of the channel has hung up.
     /// This means that if the corresponding receiver has fallen out of scope,
-    /// this function will trigger a fail message saying that a message is
+    /// this function will trigger a panic message saying that a message is
     /// being sent on a closed channel.
     ///
-    /// Note that if this function does *not* fail, it does not mean that the
+    /// Note that if this function does *not* panic, it does not mean that the
     /// data will be successfully received. All sends are placed into a queue,
     /// so it is possible for a send to succeed (the other end is alive), but
     /// then the other end could immediately disconnect.
     ///
-    /// The purpose of this functionality is to propagate failure among tasks.
-    /// If failure is not desired, then consider using the `send_opt` method
+    /// The purpose of this functionality is to propagate panicks among tasks.
+    /// If a panic is not desired, then consider using the `send_opt` method
     #[experimental = "this function is being considered candidate for removal \
                       to adhere to the general guidelines of rust"]
     pub fn send(&self, t: T) {
         if self.send_opt(t).is_err() {
-            fail!("sending on a closed channel");
+            panic!("sending on a closed channel");
         }
     }
 
@@ -585,9 +585,9 @@ impl<T: Send> Sender<T> {
     ///
     /// Like `send`, this method will never block.
     ///
-    /// # Failure
+    /// # Panics
     ///
-    /// This method will never fail, it will return the message back to the
+    /// This method will never panic, it will return the message back to the
     /// caller if the other end is disconnected
     ///
     /// # Example
@@ -634,7 +634,7 @@ impl<T: Send> Sender<T> {
                             }
                             oneshot::UpDisconnected => (a, Err(t)),
                             oneshot::UpWoke(task) => {
-                                // This send cannot fail because the task is
+                                // This send cannot panic because the task is
                                 // asleep (we're looking at it), so the receiver
                                 // can't go away.
                                 (*a.get()).send(t).ok().unwrap();
@@ -731,20 +731,20 @@ impl<T: Send> SyncSender<T> {
     /// time. If the buffer size is 0, however, it can be guaranteed that the
     /// receiver has indeed received the data if this function returns success.
     ///
-    /// # Failure
+    /// # Panics
     ///
-    /// Similarly to `Sender::send`, this function will fail if the
+    /// Similarly to `Sender::send`, this function will panic if the
     /// corresponding `Receiver` for this channel has disconnected. This
-    /// behavior is used to propagate failure among tasks.
+    /// behavior is used to propagate panics among tasks.
     ///
-    /// If failure is not desired, you can achieve the same semantics with the
-    /// `SyncSender::send_opt` method which will not fail if the receiver
+    /// If a panic is not desired, you can achieve the same semantics with the
+    /// `SyncSender::send_opt` method which will not panic if the receiver
     /// disconnects.
     #[experimental = "this function is being considered candidate for removal \
                       to adhere to the general guidelines of rust"]
     pub fn send(&self, t: T) {
         if self.send_opt(t).is_err() {
-            fail!("sending on a closed channel");
+            panic!("sending on a closed channel");
         }
     }
 
@@ -756,9 +756,9 @@ impl<T: Send> SyncSender<T> {
     /// is returned back to the callee. This function is similar to `try_send`,
     /// except that it will block if the channel is currently full.
     ///
-    /// # Failure
+    /// # Panics
     ///
-    /// This function cannot fail.
+    /// This function cannot panic.
     #[unstable = "this function may be renamed to send() in the future"]
     pub fn send_opt(&self, t: T) -> Result<(), T> {
         unsafe { (*self.inner.get()).send(t) }
@@ -774,9 +774,9 @@ impl<T: Send> SyncSender<T> {
     /// See `SyncSender::send` for notes about guarantees of whether the
     /// receiver has received the data or not if this function is successful.
     ///
-    /// # Failure
+    /// # Panics
     ///
-    /// This function cannot fail
+    /// This function cannot panic
     #[unstable = "the return type of this function is candidate for \
                   modification"]
     pub fn try_send(&self, t: T) -> Result<(), TrySendError<T>> {
@@ -814,13 +814,13 @@ impl<T: Send> Receiver<T> {
     /// on the channel from its paired `Sender` structure. This receiver will
     /// be woken up when data is ready, and the data will be returned.
     ///
-    /// # Failure
+    /// # Panics
     ///
-    /// Similar to channels, this method will trigger a task failure if the
+    /// Similar to channels, this method will trigger a task panic if the
     /// other end of the channel has hung up (been deallocated). The purpose of
-    /// this is to propagate failure among tasks.
+    /// this is to propagate panicks among tasks.
     ///
-    /// If failure is not desired, then there are two options:
+    /// If a panic is not desired, then there are two options:
     ///
     /// * If blocking is still desired, the `recv_opt` method will return `None`
     ///   when the other end hangs up
@@ -832,7 +832,7 @@ impl<T: Send> Receiver<T> {
     pub fn recv(&self) -> T {
         match self.recv_opt() {
             Ok(t) => t,
-            Err(()) => fail!("receiving on a closed channel"),
+            Err(()) => panic!("receiving on a closed channel"),
         }
     }
 
@@ -845,7 +845,9 @@ impl<T: Send> Receiver<T> {
     /// This is useful for a flavor of "optimistic check" before deciding to
     /// block on a receiver.
     ///
-    /// This function cannot fail.
+    /// # Panics
+    ///
+    /// This function cannot panic.
     #[unstable = "the return type of this function may be altered"]
     pub fn try_recv(&self) -> Result<T, TryRecvError> {
         // If a thread is spinning in try_recv, we should take the opportunity
@@ -899,15 +901,15 @@ impl<T: Send> Receiver<T> {
         }
     }
 
-    /// Attempt to wait for a value on this receiver, but does not fail if the
+    /// Attempt to wait for a value on this receiver, but does not panic if the
     /// corresponding channel has hung up.
     ///
     /// This implementation of iterators for ports will always block if there is
-    /// not data available on the receiver, but it will not fail in the case
+    /// not data available on the receiver, but it will not panic in the case
     /// that the channel has been deallocated.
     ///
     /// In other words, this function has the same semantics as the `recv`
-    /// method except for the failure aspect.
+    /// method except for the panic aspect.
     ///
     /// If the channel has hung up, then `Err` is returned. Otherwise `Ok` of
     /// the value found on the receiver is returned.
@@ -947,7 +949,7 @@ impl<T: Send> Receiver<T> {
     }
 
     /// Returns an iterator which will block waiting for messages, but never
-    /// `fail!`. It will return `None` when the channel has hung up.
+    /// `panic!`. It will return `None` when the channel has hung up.
     #[unstable]
     pub fn iter<'a>(&'a self) -> Messages<'a, T> {
         Messages { rx: self }
@@ -1191,7 +1193,7 @@ mod test {
                 assert_eq!(rx.recv(), 1);
             }
             match rx.try_recv() {
-                Ok(..) => fail!(),
+                Ok(..) => panic!(),
                 _ => {}
             }
             dtx.send(());
@@ -1287,7 +1289,7 @@ mod test {
     } #[should_fail])
 
     test!(fn oneshot_single_thread_recv_chan_close() {
-        // Receiving on a closed chan will fail
+        // Receiving on a closed chan will panic
         let res = task::try(proc() {
             let (tx, rx) = channel::<int>();
             drop(tx);
@@ -1711,7 +1713,7 @@ mod sync_tests {
                 assert_eq!(rx.recv(), 1);
             }
             match rx.try_recv() {
-                Ok(..) => fail!(),
+                Ok(..) => panic!(),
                 _ => {}
             }
             dtx.send(());
@@ -1747,7 +1749,7 @@ mod sync_tests {
     } #[should_fail])
 
     test!(fn oneshot_single_thread_recv_chan_close() {
-        // Receiving on a closed chan will fail
+        // Receiving on a closed chan will panic
         let res = task::try(proc() {
             let (tx, rx) = sync_channel::<int>(0);
             drop(tx);

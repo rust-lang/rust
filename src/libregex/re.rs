@@ -76,7 +76,7 @@ pub fn is_match(regex: &str, text: &str) -> Result<bool, parse::Error> {
 /// # use regex::Regex;
 /// let re = match Regex::new("[0-9]{3}-[0-9]{3}-[0-9]{4}") {
 ///     Ok(re) => re,
-///     Err(err) => fail!("{}", err),
+///     Err(err) => panic!("{}", err),
 /// };
 /// assert_eq!(re.find("phone: 111-222-3333"), Some((7, 19)));
 /// ```

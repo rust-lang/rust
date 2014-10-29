@@ -444,7 +444,7 @@ pub fn pretty_print_input(sess: Session,
             let r = io::File::create(&p);
             match r {
                 Ok(w) => box w as Box<Writer+'static>,
-                Err(e) => fail!("print-print failed to open {} due to {}",
+                Err(e) => panic!("print-print failed to open {} due to {}",
                                 p.display(), e),
             }
         }

@@ -32,7 +32,7 @@ fn complainer(tx: Sender<bool>) -> complainer {
 
 fn f(tx: Sender<bool>) {
     let _tx = complainer(tx);
-    fail!();
+    panic!();
 }
 
 pub fn main() {

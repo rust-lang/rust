@@ -395,7 +395,7 @@ pub fn parse(sess: &ParseSess,
                                 token::get_ident(name),
                                 token::get_ident(bind))).to_string()
                       }
-                      _ => fail!()
+                      _ => panic!()
                     } }).collect::<Vec<String>>().connect(" or ");
                 return Error(sp, format!(
                     "local ambiguity: multiple parsing options: \
@@ -421,7 +421,7 @@ pub fn parse(sess: &ParseSess,
                         parse_nt(&mut rust_parser, name_string.get()))));
                     ei.idx += 1u;
                   }
-                  _ => fail!()
+                  _ => panic!()
                 }
                 cur_eis.push(ei);
 

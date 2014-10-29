@@ -11,12 +11,12 @@
 
 
 
-// When all branches of a match expression result in fail, the entire
-// match expression results in fail.
+// When all branches of a match expression result in panic, the entire
+// match expression results in panic.
 pub fn main() {
     let _x =
         match true {
           true => { 10i }
-          false => { match true { true => { fail!() } false => { fail!() } } }
+          false => { match true { true => { panic!() } false => { panic!() } } }
         };
 }

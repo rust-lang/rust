@@ -92,7 +92,7 @@ pub trait Rng {
     /// not be relied upon.
     ///
     /// This method should guarantee that `dest` is entirely filled
-    /// with new data, and may fail if this is impossible
+    /// with new data, and may panic if this is impossible
     /// (e.g. reading past the end of a file that is being used as the
     /// source of randomness).
     ///
@@ -375,7 +375,7 @@ impl Rng for XorShiftRng {
 }
 
 impl SeedableRng<[u32, .. 4]> for XorShiftRng {
-    /// Reseed an XorShiftRng. This will fail if `seed` is entirely 0.
+    /// Reseed an XorShiftRng. This will panic if `seed` is entirely 0.
     fn reseed(&mut self, seed: [u32, .. 4]) {
         assert!(!seed.iter().all(|&x| x == 0),
                 "XorShiftRng.reseed called with an all zero seed.");
@@ -386,7 +386,7 @@ impl SeedableRng<[u32, .. 4]> for XorShiftRng {
         self.w = seed[3];
     }
 
-    /// Create a new XorShiftRng. This will fail if `seed` is entirely 0.
+    /// Create a new XorShiftRng. This will panic if `seed` is entirely 0.
     fn from_seed(seed: [u32, .. 4]) -> XorShiftRng {
         assert!(!seed.iter().all(|&x| x == 0),
                 "XorShiftRng::from_seed called with an all zero seed.");
@@ -446,7 +446,7 @@ pub struct Closed01<F>(pub F);
 
 #[cfg(not(test))]
 mod std {
-    pub use core::{option, fmt}; // fail!()
+    pub use core::{option, fmt}; // panic!()
 }
 
 #[cfg(test)]

@@ -177,7 +177,7 @@ mod tests {
         let q = Queue::new();
         match q.pop() {
             Empty => {}
-            Inconsistent | Data(..) => fail!()
+            Inconsistent | Data(..) => panic!()
         }
         let (tx, rx) = channel();
         let q = Arc::new(q);

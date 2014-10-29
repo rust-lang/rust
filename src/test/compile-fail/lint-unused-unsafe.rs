@@ -20,7 +20,7 @@ mod foo {
     }
 }
 
-fn callback<T>(_f: || -> T) -> T { fail!() }
+fn callback<T>(_f: || -> T) -> T { panic!() }
 unsafe fn unsf() {}
 
 fn bad1() { unsafe {} }                  //~ ERROR: unnecessary `unsafe` block
@@ -50,7 +50,7 @@ fn good2() {
        sure that when purity is inherited that the source of the unsafe-ness
        is tracked correctly */
     unsafe {
-        unsafe fn what() -> Vec<String> { fail!() }
+        unsafe fn what() -> Vec<String> { panic!() }
 
         callback(|| {
             what();

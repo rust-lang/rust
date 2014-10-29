@@ -31,7 +31,7 @@
 //! tracked statically, at compile time. Because `RefCell` borrows are
 //! dynamic it is possible to attempt to borrow a value that is
 //! already mutably borrowed; when this happens it results in task
-//! failure.
+//! panic.
 //!
 //! # When to choose interior mutability
 //!
@@ -109,7 +109,7 @@
 //!         // Recursive call to return the just-cached value.
 //!         // Note that if we had not let the previous borrow
 //!         // of the cache fall out of scope then the subsequent
-//!         // recursive borrow would cause a dynamic task failure.
+//!         // recursive borrow would cause a dynamic task panic.
 //!         // This is the major hazard of using `RefCell`.
 //!         self.minimum_spanning_tree()
 //!     }
@@ -281,7 +281,7 @@ impl<T> RefCell<T> {
     pub fn borrow<'a>(&'a self) -> Ref<'a, T> {
         match self.try_borrow() {
             Some(ptr) => ptr,
-            None => fail!("RefCell<T> already mutably borrowed")
+            None => panic!("RefCell<T> already mutably borrowed")
         }
     }
 
@@ -314,7 +314,7 @@ impl<T> RefCell<T> {
     pub fn borrow_mut<'a>(&'a self) -> RefMut<'a, T> {
         match self.try_borrow_mut() {
             Some(ptr) => ptr,
-            None => fail!("RefCell<T> already borrowed")
+            None => panic!("RefCell<T> already borrowed")
         }
     }
 

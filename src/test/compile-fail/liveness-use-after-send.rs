@@ -11,7 +11,7 @@
 fn send<T:Send + std::fmt::Show>(ch: _chan<T>, data: T) {
     println!("{}", ch);
     println!("{}", data);
-    fail!();
+    panic!();
 }
 
 #[deriving(Show)]
@@ -24,4 +24,4 @@ fn test00_start(ch: _chan<Box<int>>, message: Box<int>, _count: Box<int>) {
     println!("{}", message); //~ ERROR use of moved value: `message`
 }
 
-fn main() { fail!(); }
+fn main() { panic!(); }

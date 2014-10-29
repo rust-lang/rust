@@ -14,7 +14,7 @@ type compare<T> = |Box<T>, Box<T>|: 'static -> bool;
 fn test_generic<T:Clone>(expected: Box<T>, eq: compare<T>) {
     let actual: Box<T> = match true {
         true => { expected.clone() },
-        _ => fail!("wat")
+        _ => panic!("wat")
     };
     assert!((eq(expected, actual)));
 }

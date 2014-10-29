@@ -11,4 +11,4 @@
 // error-pattern:woe
 fn f(a: int) { println!("{}", a); }
 
-fn main() { f(fail!("woe")); }
+fn main() { f(panic!("woe")); }

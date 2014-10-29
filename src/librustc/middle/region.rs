@@ -157,7 +157,7 @@ impl RegionMaps {
         //! Returns the narrowest scope that encloses `id`, if any.
         match self.scope_map.borrow().find(&id) {
             Some(&r) => r,
-            None => { fail!("no enclosing scope for id {}", id); }
+            None => { panic!("no enclosing scope for id {}", id); }
         }
     }
 
@@ -167,7 +167,7 @@ impl RegionMaps {
          */
         match self.var_map.borrow().find(&var_id) {
             Some(&r) => r,
-            None => { fail!("no enclosing scope for id {}", var_id); }
+            None => { panic!("no enclosing scope for id {}", var_id); }
         }
     }
 

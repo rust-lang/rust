@@ -16,7 +16,7 @@ use std::uint;
 fn main() {
     let x = vec!(1u,2u,3u);
 
-    // This should cause a bounds-check failure, but may not if we do our
+    // This should cause a bounds-check panic, but may not if we do our
     // bounds checking by comparing a scaled index value to the vector's
     // length (in bytes), because the scaling of the index will cause it to
     // wrap around to a small number.
@@ -24,6 +24,6 @@ fn main() {
     let idx = uint::MAX & !(uint::MAX >> 1u);
     println!("ov2 idx = 0x%x", idx);
 
-    // This should fail.
+    // This should panic.
     println!("ov2 0x%x",  x[idx]);
 }

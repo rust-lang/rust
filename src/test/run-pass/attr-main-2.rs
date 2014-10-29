@@ -10,7 +10,7 @@
 
 
 pub fn main() {
-    fail!()
+    panic!()
 }
 
 #[main]

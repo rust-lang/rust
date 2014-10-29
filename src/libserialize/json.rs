@@ -1229,7 +1229,7 @@ impl Stack {
         let len = self.stack.len();
         let idx = match *self.stack.last().unwrap() {
             InternalIndex(i) => { i + 1 }
-            _ => { fail!(); }
+            _ => { panic!(); }
         };
         *self.stack.get_mut(len - 1) = InternalIndex(idx);
     }
@@ -1814,7 +1814,7 @@ impl<T: Iterator<char>> Builder<T> {
         match self.token {
             None => {}
             Some(Error(e)) => { return Err(e); }
-            ref tok => { fail!("unexpected token {}", tok.clone()); }
+            ref tok => { panic!("unexpected token {}", tok.clone()); }
         }
         result
     }
@@ -1874,7 +1874,7 @@ impl<T: Iterator<char>> Builder<T> {
             }
             let key = match self.parser.stack().top() {
                 Some(Key(k)) => { k.to_string() }
-                _ => { fail!("invalid state"); }
+                _ => { panic!("invalid state"); }
             };
             match self.build_value() {
                 Ok(value) => { values.insert(key, value); }
@@ -3015,9 +3015,9 @@ mod tests {
             Ok(json) => Decodable::decode(&mut Decoder::new(json))
         };
         match res {
-            Ok(_) => fail!("`{}` parsed & decoded ok, expecting error `{}`",
+            Ok(_) => panic!("`{}` parsed & decoded ok, expecting error `{}`",
                               to_parse, expected),
-            Err(ParseError(e)) => fail!("`{}` is not valid json: {}",
+            Err(ParseError(e)) => panic!("`{}` is not valid json: {}",
                                            to_parse, e),
             Err(e) => {
                 assert_eq!(e, expected);
@@ -3226,7 +3226,7 @@ mod tests {
         let bytes = mem_buf.unwrap();
         let json_str = from_utf8(bytes.as_slice()).unwrap();
         match from_str(json_str) {
-            Err(_) => fail!("Unable to parse json_str: {}", json_str),
+            Err(_) => panic!("Unable to parse json_str: {}", json_str),
             _ => {} // it parsed and we are good to go
         }
     }
@@ -3247,7 +3247,7 @@ mod tests {
         let bytes = mem_buf.unwrap();
         let json_str = from_utf8(bytes.as_slice()).unwrap();
         match from_str(json_str) {
-            Err(_) => fail!("Unable to parse json_str: {}", json_str),
+            Err(_) => panic!("Unable to parse json_str: {}", json_str),
             _ => {} // it parsed and we are good to go
         }
     }
@@ -3315,7 +3315,7 @@ mod tests {
         use Decodable;
         let json_str = "{\"1\":true}";
         let json_obj = match from_str(json_str) {
-            Err(_) => fail!("Unable to parse json_str: {}", json_str),
+            Err(_) => panic!("Unable to parse json_str: {}", json_str),
             Ok(o) => o
         };
         let mut decoder = Decoder::new(json_obj);
@@ -3328,7 +3328,7 @@ mod tests {
         use Decodable;
         let json_str = "{\"a\":true}";
         let json_obj = match from_str(json_str) {
-            Err(_) => fail!("Unable to parse json_str: {}", json_str),
+            Err(_) => panic!("Unable to parse json_str: {}", json_str),
             Ok(o) => o
         };
         let mut decoder = Decoder::new(json_obj);
@@ -3347,7 +3347,7 @@ mod tests {
             };
             let (ref expected_evt, ref expected_stack) = expected[i];
             if !parser.stack().is_equal_to(expected_stack.as_slice()) {
-                fail!("Parser stack is not equal to {}", expected_stack);
+                panic!("Parser stack is not equal to {}", expected_stack);
             }
             assert_eq!(&evt, expected_evt);
             i+=1;
