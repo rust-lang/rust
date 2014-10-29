@@ -1661,7 +1661,10 @@ impl<'a> Parser<'a> {
                 LitBinary(parse::binary_lit(i.as_str())),
             token::LitBinaryRaw(i, _) =>
                 LitBinary(Rc::new(i.as_str().as_bytes().iter().map(|&x| x).collect())),
-            token::OpenDelim(token::Paren) => { self.expect(&token::CloseDelim(token::Paren)); LitNil },
+            token::OpenDelim(token::Paren) => {
+                self.expect(&token::CloseDelim(token::Paren));
+                LitNil
+            },
             _ => { self.unexpected_last(tok); }
         }
     }
@@ -2047,7 +2050,8 @@ impl<'a> Parser<'a> {
                     return self.mk_expr(lo, hi, ExprLit(lit));
                 }
                 let mut es = vec!(self.parse_expr());
-                self.commit_expr(&**es.last().unwrap(), &[], &[token::Comma, token::CloseDelim(token::Paren)]);
+                self.commit_expr(&**es.last().unwrap(), &[],
+                                 &[token::Comma, token::CloseDelim(token::Paren)]);
                 while self.token == token::Comma {
                     self.bump();
                     if self.token != token::CloseDelim(token::Paren) {
@@ -2454,7 +2458,8 @@ impl<'a> Parser<'a> {
                                     // e[e..e]
                                     _ => {
                                         let e2 = self.parse_expr();
-                                        self.commit_expr_expecting(&*e2, token::CloseDelim(token::Bracket));
+                                        self.commit_expr_expecting(&*e2,
+                                            token::CloseDelim(token::Bracket));
                                         Some(e2)
                                     }
                                 };
@@ -2720,7 +2725,9 @@ impl<'a> Parser<'a> {
             self.bump();
             let last_span = self.last_span;
             match self.token {
-                token::OpenDelim(token::Bracket) => self.obsolete(last_span, ObsoleteOwnedVector),
+                token::OpenDelim(token::Bracket) => {
+                    self.obsolete(last_span, ObsoleteOwnedVector)
+                },
                 _ => self.obsolete(last_span, ObsoleteOwnedExpr)
             }
 
@@ -3704,7 +3711,8 @@ impl<'a> Parser<'a> {
                             // expression without semicolon
                             if classify::expr_requires_semi_to_be_stmt(&*e) {
                                 // Just check for errors and recover; do not eat semicolon yet.
-                                self.commit_stmt(&[], &[token::Semi, token::CloseDelim(token::Brace)]);
+                                self.commit_stmt(&[], &[token::Semi,
+                                    token::CloseDelim(token::Brace)]);
                             }
 
                             match self.token {

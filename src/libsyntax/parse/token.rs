@@ -267,7 +267,7 @@ impl Token {
     pub fn is_plain_ident(&self) -> bool {
         match *self {
             Ident(_, Plain) => true,
-            _                    => false,
+            _               => false,
         }
     }
 
@@ -392,20 +392,20 @@ impl Token {
 #[deriving(Clone, Encodable, Decodable, PartialEq, Eq, Hash)]
 /// For interpolation during macro expansion.
 pub enum Nonterminal {
-    NtItem( P<ast::Item>),
+    NtItem(P<ast::Item>),
     NtBlock(P<ast::Block>),
-    NtStmt( P<ast::Stmt>),
-    NtPat(  P<ast::Pat>),
-    NtExpr( P<ast::Expr>),
-    NtTy(   P<ast::Ty>),
+    NtStmt(P<ast::Stmt>),
+    NtPat(P<ast::Pat>),
+    NtExpr(P<ast::Expr>),
+    NtTy(P<ast::Ty>),
     #[cfg(stage0)]
     NtIdent(Box<ast::Ident>, bool),
     #[cfg(not(stage0))]
     NtIdent(Box<ast::Ident>, IdentStyle),
     /// Stuff inside brackets for attributes
-    NtMeta( P<ast::MetaItem>),
+    NtMeta(P<ast::MetaItem>),
     NtPath(Box<ast::Path>),
-    NtTT(   P<ast::TokenTree>), // needs P'ed to break a circularity
+    NtTT(P<ast::TokenTree>), // needs P'ed to break a circularity
     NtMatchers(Vec<ast::Matcher>)
 }
 
