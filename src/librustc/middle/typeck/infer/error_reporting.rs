@@ -112,7 +112,7 @@ pub trait ErrorReporting {
 
     fn values_str(&self, values: &ValuePairs) -> Option<String>;
 
-    fn expected_found_str<T: UserString + Resolvable>(
+    fn expected_found_str<T: UserString + Resolvable + HasRemainingTypeVariables>(
         &self,
         exp_found: &ty::expected_found<T>)
         -> Option<String>;
@@ -402,7 +402,7 @@ impl<'a, 'tcx> ErrorReporting for InferCtxt<'a, 'tcx> {
         }
     }
 
-    fn expected_found_str<T: UserString + Resolvable>(
+    fn expected_found_str<T: UserString + Resolvable + HasRemainingTypeVariables>(
         &self,
         exp_found: &ty::expected_found<T>)
         -> Option<String>
@@ -1656,16 +1656,13 @@ impl<'a, 'tcx> ErrorReportingHelpers for InferCtxt<'a, 'tcx> {
 pub trait Resolvable {
     fn resolve(&self, infcx: &InferCtxt) -> Self;
     fn contains_error(&self) -> bool;
+}
+
+pub trait HasRemainingTypeVariables {
     fn remaining_type_variables(&self, tcx: &ty::ctxt) -> HashSet<ty::InferTy>;
 }
 
-impl Resolvable for ty::t {
-    fn resolve(&self, infcx: &InferCtxt) -> ty::t {
-        infcx.resolve_type_vars_if_possible(*self)
-    }
-    fn contains_error(&self) -> bool {
-        ty::type_is_error(*self)
-    }
+impl<T: TypeFoldable> HasRemainingTypeVariables for T {
     fn remaining_type_variables(&self, tcx: &ty::ctxt) -> HashSet<ty::InferTy> {
         let mut vars = HashSet::new();
         {
@@ -1684,15 +1681,21 @@ impl Resolvable for ty::t {
     }
 }
 
+impl Resolvable for ty::t {
+    fn resolve(&self, infcx: &InferCtxt) -> ty::t {
+        infcx.resolve_type_vars_if_possible(*self)
+    }
+    fn contains_error(&self) -> bool {
+        ty::type_is_error(*self)
+    }
+}
+
 impl Resolvable for Rc<ty::TraitRef> {
     fn resolve(&self, infcx: &InferCtxt) -> Rc<ty::TraitRef> {
         Rc::new(infcx.resolve_type_vars_in_trait_ref_if_possible(&**self))
     }
     fn contains_error(&self) -> bool {
         ty::trait_ref_contains_error(&**self)
-    }
-    fn remaining_type_variables(&self, _: &ty::ctxt) -> HashSet<ty::InferTy> {
-        HashSet::new()
     }
 }
 
