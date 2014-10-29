@@ -515,123 +515,127 @@ fn mk_token_path(cx: &ExtCtxt, sp: Span, name: &str) -> P<ast::Expr> {
     cx.expr_path(cx.path_global(sp, idents))
 }
 
-fn mk_binop(cx: &ExtCtxt, sp: Span, bop: token::BinOp) -> P<ast::Expr> {
+fn mk_binop(cx: &ExtCtxt, sp: Span, bop: token::BinOpToken) -> P<ast::Expr> {
     let name = match bop {
-        PLUS => "PLUS",
-        MINUS => "MINUS",
-        STAR => "STAR",
-        SLASH => "SLASH",
-        PERCENT => "PERCENT",
-        CARET => "CARET",
-        AND => "AND",
-        OR => "OR",
-        SHL => "SHL",
-        SHR => "SHR"
+        token::Plus     => "Plus",
+        token::Minus    => "Minus",
+        token::Star     => "Star",
+        token::Slash    => "Slash",
+        token::Percent  => "Percent",
+        token::Caret    => "Caret",
+        token::And      => "And",
+        token::Or       => "Or",
+        token::Shl      => "Shl",
+        token::Shr      => "Shr"
     };
     mk_token_path(cx, sp, name)
 }
 
+#[allow(non_uppercase_statics)] // NOTE(stage0): remove this attribute after the next snapshot
 fn mk_token(cx: &ExtCtxt, sp: Span, tok: &token::Token) -> P<ast::Expr> {
-
     match *tok {
-        BINOP(binop) => {
-            return cx.expr_call(sp, mk_token_path(cx, sp, "BINOP"), vec!(mk_binop(cx, sp, binop)));
+        token::BinOp(binop) => {
+            return cx.expr_call(sp, mk_token_path(cx, sp, "BinOp"), vec!(mk_binop(cx, sp, binop)));
         }
-        BINOPEQ(binop) => {
-            return cx.expr_call(sp, mk_token_path(cx, sp, "BINOPEQ"),
+        token::BinOpEq(binop) => {
+            return cx.expr_call(sp, mk_token_path(cx, sp, "BinOpEq"),
                                 vec!(mk_binop(cx, sp, binop)));
         }
 
-        LIT_BYTE(i) => {
+        token::LitByte(i) => {
             let e_byte = mk_name(cx, sp, i.ident());
 
-            return cx.expr_call(sp, mk_token_path(cx, sp, "LIT_BYTE"), vec!(e_byte));
+            return cx.expr_call(sp, mk_token_path(cx, sp, "LitByte"), vec!(e_byte));
         }
 
-        LIT_CHAR(i) => {
+        token::LitChar(i) => {
             let e_char = mk_name(cx, sp, i.ident());
 
-            return cx.expr_call(sp, mk_token_path(cx, sp, "LIT_CHAR"), vec!(e_char));
+            return cx.expr_call(sp, mk_token_path(cx, sp, "LitChar"), vec!(e_char));
         }
 
-        LIT_INTEGER(i) => {
+        token::LitInteger(i) => {
             let e_int = mk_name(cx, sp, i.ident());
-            return cx.expr_call(sp, mk_token_path(cx, sp, "LIT_INTEGER"), vec!(e_int));
+            return cx.expr_call(sp, mk_token_path(cx, sp, "LitInteger"), vec!(e_int));
         }
 
-        LIT_FLOAT(fident) => {
+        token::LitFloat(fident) => {
             let e_fident = mk_name(cx, sp, fident.ident());
-            return cx.expr_call(sp, mk_token_path(cx, sp, "LIT_FLOAT"), vec!(e_fident));
+            return cx.expr_call(sp, mk_token_path(cx, sp, "LitFloat"), vec!(e_fident));
         }
 
-        LIT_STR(ident) => {
+        token::LitStr(ident) => {
             return cx.expr_call(sp,
-                                mk_token_path(cx, sp, "LIT_STR"),
+                                mk_token_path(cx, sp, "LitStr"),
                                 vec!(mk_name(cx, sp, ident.ident())));
         }
 
-        LIT_STR_RAW(ident, n) => {
+        token::LitStrRaw(ident, n) => {
             return cx.expr_call(sp,
-                                mk_token_path(cx, sp, "LIT_STR_RAW"),
+                                mk_token_path(cx, sp, "LitStrRaw"),
                                 vec!(mk_name(cx, sp, ident.ident()), cx.expr_uint(sp, n)));
         }
 
-        IDENT(ident, b) => {
+        token::Ident(ident, style) => {
             return cx.expr_call(sp,
-                                mk_token_path(cx, sp, "IDENT"),
-                                vec!(mk_ident(cx, sp, ident), cx.expr_bool(sp, b)));
+                                mk_token_path(cx, sp, "Ident"),
+                                vec![mk_ident(cx, sp, ident),
+                                     match style {
+                                        ModName => mk_token_path(cx, sp, "ModName"),
+                                        Plain   => mk_token_path(cx, sp, "Plain"),
+                                     }]);
         }
 
-        LIFETIME(ident) => {
+        token::Lifetime(ident) => {
             return cx.expr_call(sp,
-                                mk_token_path(cx, sp, "LIFETIME"),
+                                mk_token_path(cx, sp, "Lifetime"),
                                 vec!(mk_ident(cx, sp, ident)));
         }
 
-        DOC_COMMENT(ident) => {
+        token::DocComment(ident) => {
             return cx.expr_call(sp,
-                                mk_token_path(cx, sp, "DOC_COMMENT"),
+                                mk_token_path(cx, sp, "DocComment"),
                                 vec!(mk_name(cx, sp, ident.ident())));
         }
 
-        INTERPOLATED(_) => fail!("quote! with interpolated token"),
+        token::Interpolated(_) => fail!("quote! with interpolated token"),
 
         _ => ()
     }
 
     let name = match *tok {
-        EQ => "EQ",
-        LT => "LT",
-        LE => "LE",
-        EQEQ => "EQEQ",
-        NE => "NE",
-        GE => "GE",
-        GT => "GT",
-        ANDAND => "ANDAND",
-        OROR => "OROR",
-        NOT => "NOT",
-        TILDE => "TILDE",
-        AT => "AT",
-        DOT => "DOT",
-        DOTDOT => "DOTDOT",
-        COMMA => "COMMA",
-        SEMI => "SEMI",
-        COLON => "COLON",
-        MOD_SEP => "MOD_SEP",
-        RARROW => "RARROW",
-        LARROW => "LARROW",
-        FAT_ARROW => "FAT_ARROW",
-        LPAREN => "LPAREN",
-        RPAREN => "RPAREN",
-        LBRACKET => "LBRACKET",
-        RBRACKET => "RBRACKET",
-        LBRACE => "LBRACE",
-        RBRACE => "RBRACE",
-        POUND => "POUND",
-        DOLLAR => "DOLLAR",
-        UNDERSCORE => "UNDERSCORE",
-        EOF => "EOF",
-        _ => fail!()
+        token::Eq           => "Eq",
+        token::Lt           => "Lt",
+        token::Le           => "Le",
+        token::EqEq         => "EqEq",
+        token::Ne           => "Ne",
+        token::Ge           => "Ge",
+        token::Gt           => "Gt",
+        token::AndAnd       => "AndAnd",
+        token::OrOr         => "OrOr",
+        token::Not          => "Not",
+        token::Tilde        => "Tilde",
+        token::At           => "At",
+        token::Dot          => "Dot",
+        token::DotDot       => "DotDot",
+        token::Comma        => "Comma",
+        token::Semi         => "Semi",
+        token::Colon        => "Colon",
+        token::ModSep       => "ModSep",
+        token::RArrow       => "RArrow",
+        token::LArrow       => "LArrow",
+        token::FatArrow     => "FatArrow",
+        token::LParen       => "LParen",
+        token::RParen       => "RParen",
+        token::LBracket     => "LBracket",
+        token::RBracket     => "RBracket",
+        token::LBrace       => "LBrace",
+        token::RBrace       => "RBrace",
+        token::Pound        => "Pound",
+        token::Dollar       => "Dollar",
+        token::Underscore   => "Underscore",
+        token::Eof          => "Eof",
+        _                   => fail!(),
     };
     mk_token_path(cx, sp, name)
 }
@@ -702,7 +706,7 @@ fn expand_tts(cx: &ExtCtxt, sp: Span, tts: &[ast::TokenTree])
     p.quote_depth += 1u;
 
     let cx_expr = p.parse_expr();
-    if !p.eat(&token::COMMA) {
+    if !p.eat(&token::Comma) {
         p.fatal("expected token `,`");
     }
 

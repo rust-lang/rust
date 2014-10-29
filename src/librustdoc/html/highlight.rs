@@ -17,7 +17,7 @@ use html::escape::Escape;
 
 use std::io;
 use syntax::parse::lexer;
-use syntax::parse::token as t;
+use syntax::parse::token;
 use syntax::parse;
 
 /// Highlights some source code, returning the HTML output.
@@ -63,19 +63,19 @@ fn doit(sess: &parse::ParseSess, mut lexer: lexer::StringReader,
 
         let snip = |sp| sess.span_diagnostic.cm.span_to_snippet(sp).unwrap();
 
-        if next.tok == t::EOF { break }
+        if next.tok == token::Eof { break }
 
         let klass = match next.tok {
-            t::WS => {
+            token::Whitespace => {
                 try!(write!(out, "{}", Escape(snip(next.sp).as_slice())));
                 continue
             },
-            t::COMMENT => {
+            token::Comment => {
                 try!(write!(out, "<span class='comment'>{}</span>",
                             Escape(snip(next.sp).as_slice())));
                 continue
             },
-            t::SHEBANG(s) => {
+            token::Shebang(s) => {
                 try!(write!(out, "{}", Escape(s.as_str())));
                 continue
             },
@@ -83,24 +83,25 @@ fn doit(sess: &parse::ParseSess, mut lexer: lexer::StringReader,
             // that it's the address-of operator instead of the and-operator.
             // This allows us to give all pointers their own class (`Box` and
             // `@` are below).
-            t::BINOP(t::AND) if lexer.peek().sp.lo == next.sp.hi => "kw-2",
-            t::AT | t::TILDE => "kw-2",
+            token::BinOp(token::And) if lexer.peek().sp.lo == next.sp.hi => "kw-2",
+            token::At | token::Tilde => "kw-2",
 
             // consider this as part of a macro invocation if there was a
             // leading identifier
-            t::NOT if is_macro => { is_macro = false; "macro" }
+            token::Not if is_macro => { is_macro = false; "macro" }
 
             // operators
-            t::EQ | t::LT | t::LE | t::EQEQ | t::NE | t::GE | t::GT |
-                t::ANDAND | t::OROR | t::NOT | t::BINOP(..) | t::RARROW |
-                t::BINOPEQ(..) | t::FAT_ARROW => "op",
+            token::Eq | token::Lt | token::Le | token::EqEq | token::Ne | token::Ge | token::Gt |
+                token::AndAnd | token::OrOr | token::Not | token::BinOp(..) | token::RArrow |
+                token::BinOpEq(..) | token::FatArrow => "op",
 
             // miscellaneous, no highlighting
-            t::DOT | t::DOTDOT | t::DOTDOTDOT | t::COMMA | t::SEMI |
-                t::COLON | t::MOD_SEP | t::LARROW | t::LPAREN |
-                t::RPAREN | t::LBRACKET | t::LBRACE | t::RBRACE | t::QUESTION => "",
-            t::DOLLAR => {
-                if t::is_ident(&lexer.peek().tok) {
+            token::Dot | token::DotDot | token::DotDotDot | token::Comma | token::Semi |
+                token::Colon | token::ModSep | token::LArrow | token::LParen |
+                token::RParen | token::LBracket | token::LBrace | token::RBrace |
+                token::Question => "",
+            token::Dollar => {
+                if lexer.peek().tok.is_ident() {
                     is_macro_nonterminal = true;
                     "macro-nonterminal"
                 } else {
@@ -112,12 +113,12 @@ fn doit(sess: &parse::ParseSess, mut lexer: lexer::StringReader,
             // continue highlighting it as an attribute until the ending ']' is
             // seen, so skip out early. Down below we terminate the attribute
             // span when we see the ']'.
-            t::POUND => {
+            token::Pound => {
                 is_attribute = true;
                 try!(write!(out, r"<span class='attribute'>#"));
                 continue
             }
-            t::RBRACKET => {
+            token::RBracket => {
                 if is_attribute {
                     is_attribute = false;
                     try!(write!(out, "]</span>"));
@@ -128,15 +129,15 @@ fn doit(sess: &parse::ParseSess, mut lexer: lexer::StringReader,
             }
 
             // text literals
-            t::LIT_BYTE(..) | t::LIT_BINARY(..) | t::LIT_BINARY_RAW(..) |
-                t::LIT_CHAR(..) | t::LIT_STR(..) | t::LIT_STR_RAW(..) => "string",
+            token::LitByte(..) | token::LitBinary(..) | token::LitBinaryRaw(..) |
+                token::LitChar(..) | token::LitStr(..) | token::LitStrRaw(..) => "string",
 
             // number literals
-            t::LIT_INTEGER(..) | t::LIT_FLOAT(..) => "number",
+            token::LitInteger(..) | token::LitFloat(..) => "number",
 
             // keywords are also included in the identifier set
-            t::IDENT(ident, _is_mod_sep) => {
-                match t::get_ident(ident).get() {
+            token::Ident(ident, _is_mod_sep) => {
+                match token::get_ident(ident).get() {
                     "ref" | "mut" => "kw-2",
 
                     "self" => "self",
@@ -145,12 +146,12 @@ fn doit(sess: &parse::ParseSess, mut lexer: lexer::StringReader,
                     "Option" | "Result" => "prelude-ty",
                     "Some" | "None" | "Ok" | "Err" => "prelude-val",
 
-                    _ if t::is_any_keyword(&next.tok) => "kw",
+                    _ if next.tok.is_any_keyword() => "kw",
                     _ => {
                         if is_macro_nonterminal {
                             is_macro_nonterminal = false;
                             "macro-nonterminal"
-                        } else if lexer.peek().tok == t::NOT {
+                        } else if lexer.peek().tok == token::Not {
                             is_macro = true;
                             "macro"
                         } else {
@@ -160,9 +161,9 @@ fn doit(sess: &parse::ParseSess, mut lexer: lexer::StringReader,
                 }
             }
 
-            t::LIFETIME(..) => "lifetime",
-            t::DOC_COMMENT(..) => "doccomment",
-            t::UNDERSCORE | t::EOF | t::INTERPOLATED(..) => "",
+            token::Lifetime(..) => "lifetime",
+            token::DocComment(..) => "doccomment",
+            token::Underscore | token::Eof | token::Interpolated(..) => "",
         };
 
         // as mentioned above, use the original source code instead of

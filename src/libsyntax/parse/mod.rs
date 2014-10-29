@@ -793,34 +793,34 @@ mod test {
         let tts = string_to_tts("macro_rules! zip (($a)=>($a))".to_string());
         let tts: &[ast::TokenTree] = tts.as_slice();
         match tts {
-            [ast::TtToken(_, token::IDENT(name_macro_rules, false)),
-             ast::TtToken(_, token::NOT),
-             ast::TtToken(_, token::IDENT(name_zip, false)),
+            [ast::TtToken(_, token::Ident(name_macro_rules, token::Plain)),
+             ast::TtToken(_, token::Not),
+             ast::TtToken(_, token::Ident(name_zip, token::Plain)),
              ast::TtDelimited(_, ref macro_delimed)]
             if name_macro_rules.as_str() == "macro_rules"
             && name_zip.as_str() == "zip" => {
                 let (ref macro_open, ref macro_tts, ref macro_close) = **macro_delimed;
                 match (macro_open, macro_tts.as_slice(), macro_close) {
-                    (&ast::Delimiter { token: token::LPAREN, .. },
+                    (&ast::Delimiter { token: token::LParen, .. },
                      [ast::TtDelimited(_, ref first_delimed),
-                      ast::TtToken(_, token::FAT_ARROW),
+                      ast::TtToken(_, token::FatArrow),
                       ast::TtDelimited(_, ref second_delimed)],
-                     &ast::Delimiter { token: token::RPAREN, .. }) => {
+                     &ast::Delimiter { token: token::RParen, .. }) => {
                         let (ref first_open, ref first_tts, ref first_close) = **first_delimed;
                         match (first_open, first_tts.as_slice(), first_close) {
-                            (&ast::Delimiter { token: token::LPAREN, .. },
-                             [ast::TtToken(_, token::DOLLAR),
-                              ast::TtToken(_, token::IDENT(name, false))],
-                             &ast::Delimiter { token: token::RPAREN, .. })
+                            (&ast::Delimiter { token: token::LParen, .. },
+                             [ast::TtToken(_, token::Dollar),
+                              ast::TtToken(_, token::Ident(name, token::Plain))],
+                             &ast::Delimiter { token: token::RParen, .. })
                             if name.as_str() == "a" => {},
                             _ => fail!("value 3: {}", **first_delimed),
                         }
                         let (ref second_open, ref second_tts, ref second_close) = **second_delimed;
                         match (second_open, second_tts.as_slice(), second_close) {
-                            (&ast::Delimiter { token: token::LPAREN, .. },
-                             [ast::TtToken(_, token::DOLLAR),
-                              ast::TtToken(_, token::IDENT(name, false))],
-                             &ast::Delimiter { token: token::RPAREN, .. })
+                            (&ast::Delimiter { token: token::LParen, .. },
+                             [ast::TtToken(_, token::Dollar),
+                              ast::TtToken(_, token::Ident(name, token::Plain))],
+                             &ast::Delimiter { token: token::RParen, .. })
                             if name.as_str() == "a" => {},
                             _ => fail!("value 4: {}", **second_delimed),
                         }
@@ -842,10 +842,10 @@ mod test {
         \"fields\":[\
             null,\
             {\
-                \"variant\":\"IDENT\",\
+                \"variant\":\"Ident\",\
                 \"fields\":[\
                     \"fn\",\
-                    false\
+                    \"Plain\"\
                 ]\
             }\
         ]\
@@ -855,10 +855,10 @@ mod test {
         \"fields\":[\
             null,\
             {\
-                \"variant\":\"IDENT\",\
+                \"variant\":\"Ident\",\
                 \"fields\":[\
                     \"a\",\
-                    false\
+                    \"Plain\"\
                 ]\
             }\
         ]\
@@ -870,7 +870,7 @@ mod test {
             [\
                 {\
                     \"span\":null,\
-                    \"token\":\"LPAREN\"\
+                    \"token\":\"LParen\"\
                 },\
                 [\
                     {\
@@ -878,10 +878,10 @@ mod test {
                         \"fields\":[\
                             null,\
                             {\
-                                \"variant\":\"IDENT\",\
+                                \"variant\":\"Ident\",\
                                 \"fields\":[\
                                     \"b\",\
-                                    false\
+                                    \"Plain\"\
                                 ]\
                             }\
                         ]\
@@ -890,7 +890,7 @@ mod test {
                         \"variant\":\"TtToken\",\
                         \"fields\":[\
                             null,\
-                            \"COLON\"\
+                            \"Colon\"\
                         ]\
                     },\
                     {\
@@ -898,10 +898,10 @@ mod test {
                         \"fields\":[\
                             null,\
                             {\
-                                \"variant\":\"IDENT\",\
+                                \"variant\":\"Ident\",\
                                 \"fields\":[\
                                     \"int\",\
-                                    false\
+                                    \"Plain\"\
                                 ]\
                             }\
                         ]\
@@ -909,7 +909,7 @@ mod test {
                 ],\
                 {\
                     \"span\":null,\
-                    \"token\":\"RPAREN\"\
+                    \"token\":\"RParen\"\
                 }\
             ]\
         ]\
@@ -921,7 +921,7 @@ mod test {
             [\
                 {\
                     \"span\":null,\
-                    \"token\":\"LBRACE\"\
+                    \"token\":\"LBrace\"\
                 },\
                 [\
                     {\
@@ -929,10 +929,10 @@ mod test {
                         \"fields\":[\
                             null,\
                             {\
-                                \"variant\":\"IDENT\",\
+                                \"variant\":\"Ident\",\
                                 \"fields\":[\
                                     \"b\",\
-                                    false\
+                                    \"Plain\"\
                                 ]\
                             }\
                         ]\
@@ -941,13 +941,13 @@ mod test {
                         \"variant\":\"TtToken\",\
                         \"fields\":[\
                             null,\
-                            \"SEMI\"\
+                            \"Semi\"\
                         ]\
                     }\
                 ],\
                 {\
                     \"span\":null,\
-                    \"token\":\"RBRACE\"\
+                    \"token\":\"RBrace\"\
                 }\
             ]\
         ]\
@@ -1002,7 +1002,7 @@ mod test {
     }
 
     fn parser_done(p: Parser){
-        assert_eq!(p.token.clone(), token::EOF);
+        assert_eq!(p.token.clone(), token::Eof);
     }
 
     #[test] fn parse_ident_pat () {

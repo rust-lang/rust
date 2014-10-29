@@ -428,7 +428,7 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
                 let qualname = format!("{}::{}", qualname, name);
                 let typ = ppaux::ty_to_string(&self.analysis.ty_cx,
                     (*self.analysis.ty_cx.node_types.borrow())[field.node.id as uint]);
-                match self.span.sub_span_before_token(field.span, token::COLON) {
+                match self.span.sub_span_before_token(field.span, token::Colon) {
                     Some(sub_span) => self.fmt.field_str(field.span,
                                                          Some(sub_span),
                                                          field.node.id,
@@ -1175,7 +1175,7 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DxrVisitor<'l, 'tcx> {
                         // 'use' always introduces an alias, if there is not an explicit
                         // one, there is an implicit one.
                         let sub_span =
-                            match self.span.sub_span_before_token(path.span, token::EQ) {
+                            match self.span.sub_span_before_token(path.span, token::Eq) {
                                 Some(sub_span) => Some(sub_span),
                                 None => sub_span,
                             };
