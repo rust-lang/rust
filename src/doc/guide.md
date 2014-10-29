@@ -4061,8 +4061,8 @@ syntax.
 
 # Closures
 
-So far, we've made lots of functions in Rust. But we've given them all names.
-Rust also allows us to create anonymous functions too. Rust's anonymous
+So far, we've made lots of functions in Rust, but we've given them all names.
+Rust also allows us to create anonymous functions. Rust's anonymous
 functions are called **closure**s. By themselves, closures aren't all that
 interesting, but when you combine them with functions that take closures as
 arguments, really powerful things are possible.
@@ -4091,7 +4091,7 @@ don't need to declare one. This is different from named functions, which
 default to returning unit (`()`).
 
 There's one big difference between a closure and named functions, and it's in
-the name: a closure "closes over its environment." What's that mean? It means
+the name: a closure "closes over its environment." What does that mean? It means
 this:
 
 ```{rust}
@@ -4107,8 +4107,8 @@ fn main() {
 The `||` syntax means this is an anonymous closure that takes no arguments.
 Without it, we'd just have a block of code in `{}`s.
 
-In other words, a closure has access to variables in the scope that it's
-defined. The closure borrows any variables that it uses. This will error:
+In other words, a closure has access to variables in the scope where it's
+defined. The closure borrows any variables it uses, so this will error:
 
 ```{rust,ignore}
 fn main() {
@@ -4132,7 +4132,7 @@ let p = proc() { x * x };
 println!("{}", p()); // prints 25
 ```
 
-Procs have a big difference from closures: they may only be called once. This
+There is a big difference between procs and closures: procs may only be called once. This
 will error when we try to compile:
 
 ```{rust,ignore}
@@ -4225,10 +4225,10 @@ before. And we pass in our `x` argument to each one. Hence 'twice.'
 If you do the math, `(5 * 5) + (5 * 5) == 50`, so that's the output we get.
 
 Play around with this concept until you're comfortable with it. Rust's standard
-library uses lots of closures, where appropriate, so you'll be using
+library uses lots of closures where appropriate, so you'll be using
 this technique a lot.
 
-If we didn't want to give `square` a name, we could also just define it inline.
+If we didn't want to give `square` a name, we could just define it inline.
 This example is the same as the previous one:
 
 ```{rust}
@@ -4256,12 +4256,12 @@ fn main() {
 }
 ```
 
-Doing this is not particularly common, but every once in a while, it's useful.
+Doing this is not particularly common, but it's useful every once in a while.
 
 That's all you need to get the hang of closures! Closures are a little bit
-strange at first, but once you're used to using them, you'll miss them in any
-language that doesn't have them. Passing functions to other functions is
-incredibly powerful. Next, let's look at one of those things: iterators.
+strange at first, but once you're used to them, you'll miss them
+in other languages. Passing functions to other functions is
+incredibly powerful, as you will see in the following chapter about iterators.
 
 # Iterators
 
