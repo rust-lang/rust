@@ -1013,7 +1013,7 @@ fn check_expected_errors(expected_errors: Vec<errors::ExpectedError> ,
                 if prefix_matches(line, prefixes[i].as_slice()) &&
                     line.contains(ee.kind.as_slice()) &&
                     line.contains(ee.msg.as_slice()) {
-                    *found_flags.get_mut(i) = true;
+                    found_flags[i] = true;
                     was_expected = true;
                     break;
                 }

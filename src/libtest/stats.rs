@@ -185,7 +185,7 @@ impl<'a, T: FloatMath + FromPrimitive> Stats<T> for &'a [T] {
                 let hi = x + y;
                 let lo = y - (hi - x);
                 if !lo.is_zero() {
-                    *partials.get_mut(j) = lo;
+                    partials[j] = lo;
                     j += 1;
                 }
                 x = hi;
@@ -193,7 +193,7 @@ impl<'a, T: FloatMath + FromPrimitive> Stats<T> for &'a [T] {
             if j >= partials.len() {
                 partials.push(x);
             } else {
-                *partials.get_mut(j) = x;
+                partials[j] = x;
                 partials.truncate(j+1);
             }
         }

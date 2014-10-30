@@ -243,7 +243,7 @@ impl Bitv {
         let used_bits = bitv.nbits % u32::BITS;
         if init && used_bits != 0 {
             let largest_used_word = (bitv.nbits + u32::BITS - 1) / u32::BITS - 1;
-            *bitv.storage.get_mut(largest_used_word) &= (1 << used_bits) - 1;
+            bitv.storage[largest_used_word] &= (1 << used_bits) - 1;
         }
 
         bitv
@@ -297,8 +297,9 @@ impl Bitv {
         let w = i / u32::BITS;
         let b = i % u32::BITS;
         let flag = 1 << b;
-        *self.storage.get_mut(w) = if x { self.storage[w] | flag }
-                          else { self.storage[w] & !flag };
+        let val = if x { self.storage[w] | flag }
+                  else { self.storage[w] & !flag };
+        self.storage[w] = val;
     }
 
     /// Sets all bits to 1.
@@ -617,7 +618,7 @@ impl Bitv {
             self.storage.truncate(word_len);
             if len % u32::BITS > 0 {
                 let mask = (1 << len % u32::BITS) - 1;
-                *self.storage.get_mut(word_len - 1) &= mask;
+                self.storage[word_len - 1] &= mask;
             }
         }
     }
@@ -681,15 +682,15 @@ impl Bitv {
             let overhang = self.nbits % u32::BITS; // # of already-used bits
             let mask = !((1 << overhang) - 1);  // e.g. 5 unused bits => 111110....0
             if value {
-                *self.storage.get_mut(old_last_word) |= mask;
+                self.storage[old_last_word] |= mask;
             } else {
-                *self.storage.get_mut(old_last_word) &= !mask;
+                self.storage[old_last_word] &= !mask;
             }
         }
         // Fill in words after the old tail word
         let stop_idx = cmp::min(self.storage.len(), new_nwords);
         for idx in range(old_last_word + 1, stop_idx) {
-            *self.storage.get_mut(idx) = full_value;
+            self.storage[idx] = full_value;
         }
         // Allocate new words, if needed
         if new_nwords > self.storage.len() {
@@ -700,7 +701,7 @@ impl Bitv {
             if value {
                 let tail_word = new_nwords - 1;
                 let used_bits = new_nbits % u32::BITS;
-                *self.storage.get_mut(tail_word) &= (1 << used_bits) - 1;
+                self.storage[tail_word] &= (1 << used_bits) - 1;
             }
         }
         // Adjust internal bit count
@@ -728,7 +729,7 @@ impl Bitv {
         let ret = self.get(self.nbits - 1);
         // If we are unusing a whole word, make sure it is zeroed out
         if self.nbits % u32::BITS == 1 {
-            *self.storage.get_mut(self.nbits / u32::BITS) = 0;
+            self.storage[self.nbits / u32::BITS] = 0;
         }
         self.nbits -= 1;
         ret
@@ -1184,7 +1185,7 @@ impl BitvSet {
         for (i, w) in other_words {
             let old = self_bitv.storage[i];
             let new = f(old, w);
-            *self_bitv.storage.get_mut(i) = new;
+            self_bitv.storage[i] = new;
         }
     }
 

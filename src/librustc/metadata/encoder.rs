@@ -1619,7 +1619,7 @@ fn encode_index<T: Hash>(rbml_w: &mut Encoder, index: Vec<entry<T>>,
     let mut buckets: Vec<Vec<entry<T>>> = Vec::from_fn(256, |_| Vec::new());
     for elt in index.into_iter() {
         let h = hash::hash(&elt.val) as uint;
-        buckets.get_mut(h % 256).push(elt);
+        buckets[h % 256].push(elt);
     }
 
     rbml_w.start_tag(tag_index);

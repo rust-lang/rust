@@ -105,7 +105,7 @@ impl<T,U,D:SnapshotVecDelegate<T,U>> SnapshotVec<T,U,D> {
          * action.
          */
 
-        self.values.get_mut(index)
+        &mut self.values[index]
     }
 
     pub fn set(&mut self, index: uint, new_elem: T) {
@@ -114,7 +114,7 @@ impl<T,U,D:SnapshotVecDelegate<T,U>> SnapshotVec<T,U,D> {
          * saved (and perhaps restored) if a snapshot is active.
          */
 
-        let old_elem = mem::replace(self.values.get_mut(index), new_elem);
+        let old_elem = mem::replace(&mut self.values[index], new_elem);
         if self.in_snapshot() {
             self.undo_log.push(SetElem(index, old_elem));
         }
@@ -162,7 +162,7 @@ impl<T,U,D:SnapshotVecDelegate<T,U>> SnapshotVec<T,U,D> {
                 }
 
                 SetElem(i, v) => {
-                    *self.values.get_mut(i) = v;
+                    self.values[i] = v;
                 }
 
                 Other(u) => {
@@ -189,7 +189,7 @@ impl<T,U,D:SnapshotVecDelegate<T,U>> SnapshotVec<T,U,D> {
             // The root snapshot.
             self.undo_log.truncate(0);
         } else {
-            *self.undo_log.get_mut(snapshot.length) = CommittedSnapshot;
+            self.undo_log[snapshot.length] = CommittedSnapshot;
         }
     }
 }

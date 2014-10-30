@@ -461,13 +461,13 @@ impl Threads {
     }
 
     fn add(&mut self, pc: uint, groups: &[Option<uint>], empty: bool) {
-        let t = self.queue.get_mut(self.size);
+        let t = &mut self.queue[self.size];
         t.pc = pc;
         match (empty, self.which) {
             (_, Exists) | (true, _) => {},
             (false, Location) => {
-                *t.groups.get_mut(0) = groups[0];
-                *t.groups.get_mut(1) = groups[1];
+                t.groups[0] = groups[0];
+                t.groups[1] = groups[1];
             }
             (false, Submatches) => {
                 for (slot, val) in t.groups.iter_mut().zip(groups.iter()) {
@@ -475,7 +475,7 @@ impl Threads {
                 }
             }
         }
-        *self.sparse.get_mut(pc) = self.size;
+        self.sparse[pc] = self.size;
         self.size += 1;
     }
 
@@ -497,7 +497,7 @@ impl Threads {
 
     #[inline]
     fn groups<'r>(&'r mut self, i: uint) -> &'r mut [Option<uint>] {
-        self.queue.get_mut(i).groups.as_mut_slice()
+        self.queue[i].groups.as_mut_slice()
     }
 }
 

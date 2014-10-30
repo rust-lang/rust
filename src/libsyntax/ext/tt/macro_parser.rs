@@ -288,8 +288,7 @@ pub fn parse(sess: &ParseSess,
                         // Only touch the binders we have actually bound
                         for idx in range(ei.match_lo, ei.match_hi) {
                             let sub = (ei.matches[idx]).clone();
-                            new_pos.matches
-                                   .get_mut(idx)
+                            new_pos.matches[idx]
                                    .push(Rc::new(MatchedSeq(sub, mk_sp(ei.sp_lo,
                                                                        sp.hi))));
                         }
@@ -331,8 +330,7 @@ pub fn parse(sess: &ParseSess,
                         new_ei.idx += 1u;
                         //we specifically matched zero repeats.
                         for idx in range(match_idx_lo, match_idx_hi) {
-                            new_ei.matches
-                                  .get_mut(idx)
+                            new_ei.matches[idx]
                                   .push(Rc::new(MatchedSeq(Vec::new(), sp)));
                         }
 
@@ -374,7 +372,7 @@ pub fn parse(sess: &ParseSess,
         if token_name_eq(&tok, &token::Eof) {
             if eof_eis.len() == 1u {
                 let mut v = Vec::new();
-                for dv in eof_eis.get_mut(0).matches.iter_mut() {
+                for dv in eof_eis[0].matches.iter_mut() {
                     v.push(dv.pop().unwrap());
                 }
                 return Success(nameize(sess, ms, v.as_slice()));
@@ -415,7 +413,7 @@ pub fn parse(sess: &ParseSess,
                 match ei.elts[ei.idx].node {
                   MatchNonterminal(_, name, idx) => {
                     let name_string = token::get_ident(name);
-                    ei.matches.get_mut(idx).push(Rc::new(MatchedNonterminal(
+                    ei.matches[idx].push(Rc::new(MatchedNonterminal(
                         parse_nt(&mut rust_parser, name_string.get()))));
                     ei.idx += 1u;
                   }

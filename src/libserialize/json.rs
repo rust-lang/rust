@@ -1231,7 +1231,7 @@ impl Stack {
             InternalIndex(i) => { i + 1 }
             _ => { panic!(); }
         };
-        *self.stack.get_mut(len - 1) = InternalIndex(idx);
+        self.stack[len - 1] = InternalIndex(idx);
     }
 }
 
