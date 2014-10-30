@@ -40,6 +40,13 @@ macro_rules! span_note(
 )
 
 #[macro_export]
+macro_rules! span_help(
+    ($session:expr, $span:expr, $($message:tt)*) => ({
+        ($session).span_help($span, format!($($message)*).as_slice())
+    })
+)
+
+#[macro_export]
 macro_rules! register_diagnostics(
     ($($code:tt),*) => (
         $(register_diagnostic!($code))*
