@@ -8,18 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-trait MatrixShape {}
-
-struct Col<D, C> {
-    data: D,
-    col: C,
+fn main() {
+    foo!() //~ HELP try parenthesizing this macro invocation
+    .bar //~ ERROR expected statement
 }
-
-impl<T, M: MatrixShape> Collection for Col<M, uint> {
-//~^ ERROR unable to infer enough type information
-    fn len(&self) -> uint {
-        unimplemented!()
-    }
-}
-
-fn main() {}
