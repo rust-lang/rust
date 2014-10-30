@@ -376,9 +376,8 @@ pub fn ty_to_string(cx: &ctxt, typ: t) -> String {
                 format!("_#{}i", vid),
             ty::FloatVar(ty::FloatVid { index: vid }) if print_var_ids =>
                 format!("_#{}f", vid),
-            ty::TyVar(_) => "_".to_string(),
-            ty::IntVar(_) => "_#i".to_string(),
-            ty::FloatVar(_) => "_#f".to_string(),
+            ty::TyVar(_) | ty::IntVar(_) | ty::FloatVar(_) =>
+                "_".to_string(),
             ty::SkolemizedTy(v) => format!("SkolemizedTy({})", v),
             ty::SkolemizedIntTy(v) => format!("SkolemizedIntTy({})", v)
         }
