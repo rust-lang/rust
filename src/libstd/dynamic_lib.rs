@@ -286,6 +286,7 @@ pub mod dl {
     use os;
     use ptr;
     use result::{Ok, Err, Result};
+    use slice::ImmutableSlice;
     use str::StrSlice;
     use str;
     use string::String;
