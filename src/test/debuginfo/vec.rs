@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-windows: FIXME #13256
 // ignore-android: FIXME(#10381)
 // min-lldb-version: 310
 

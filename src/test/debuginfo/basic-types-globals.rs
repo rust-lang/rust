@@ -14,7 +14,6 @@
 // about UTF-32 character encoding and will print a rust char as only
 // its numerical value.
 
-// ignore-windows: FIXME #13256
 // ignore-android: FIXME(#10381)
 // min-lldb-version: 310
 
