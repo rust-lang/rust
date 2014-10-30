@@ -10,10 +10,10 @@
 
 //! A wrapper around any Reader to treat it as an RNG.
 
-use collections::Collection;
 use io::Reader;
 use rand::Rng;
 use result::{Ok, Err};
+use slice::ImmutableSlice;
 
 /// An RNG that reads random bytes straight from a `Reader`. This will
 /// work best with an infinite reader, but this is not required.

@@ -772,14 +772,14 @@ impl<'t> Captures<'t> {
         let re = Regex::new(r"\$\$").unwrap();
         re.replace_all(text.as_slice(), NoExpand("$"))
     }
-}
 
-impl<'t> Collection for Captures<'t> {
     /// Returns the number of captured groups.
     #[inline]
-    fn len(&self) -> uint {
-        self.locs.len() / 2
-    }
+    pub fn len(&self) -> uint { self.locs.len() / 2 }
+
+    /// Returns if there are no captured groups.
+    #[inline]
+    pub fn is_empty(&self) -> bool { self.len() == 0 }
 }
 
 /// An iterator over capture groups for a particular match of a regular

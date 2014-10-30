@@ -20,7 +20,6 @@ A simple wrapper over the platform's dynamic library facilities
 #![allow(missing_docs)]
 
 use clone::Clone;
-use collections::MutableSeq;
 use c_str::ToCStr;
 use iter::Iterator;
 use mem;
@@ -280,7 +279,6 @@ pub mod dl {
 #[cfg(target_os = "windows")]
 pub mod dl {
     use c_str::ToCStr;
-    use collections::MutableSeq;
     use iter::Iterator;
     use libc;
     use os;

@@ -15,7 +15,6 @@
 use core::prelude::*;
 
 use alloc::boxed::Box;
-use collections::MutableSeq;
 use collections::vec::Vec;
 use core::atomic;
 use core::mem;

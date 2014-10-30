@@ -22,7 +22,7 @@ use core::finally::Finally;
 use core::kinds::marker;
 use core::mem;
 use core::cell::UnsafeCell;
-use collections::{Vec, MutableSeq};
+use collections::Vec;
 
 use mutex;
 use comm::{Receiver, Sender, channel};

@@ -15,7 +15,6 @@
 // FIXME: Not sure how this should be structured
 // FIXME: Iteration should probably be considered separately
 
-use collections::{Collection, MutableSeq};
 use io::{IoError, IoResult, Reader};
 use io;
 use iter::Iterator;
@@ -502,7 +501,6 @@ mod test {
 mod bench {
     extern crate test;
 
-    use collections::Collection;
     use prelude::*;
     use self::test::Bencher;
 
