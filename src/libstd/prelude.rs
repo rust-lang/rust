@@ -76,7 +76,7 @@
 #[doc(no_inline)] pub use num::{FloatMath, ToPrimitive, FromPrimitive};
 #[doc(no_inline)] pub use boxed::Box;
 #[doc(no_inline)] pub use path::{GenericPath, Path, PosixPath, WindowsPath};
-#[doc(no_inline)] pub use ptr::RawPtr;
+#[doc(no_inline)] pub use ptr::{RawPtr, RawMutPtr};
 #[doc(no_inline)] pub use io::{Buffer, Writer, Reader, Seek};
 #[doc(no_inline)] pub use str::{Str, StrVector, StrSlice};
 #[doc(no_inline)] pub use str::{IntoMaybeOwned, StrAllocating, UnicodeStrSlice};
