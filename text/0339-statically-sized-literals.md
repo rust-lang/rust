@@ -1,6 +1,6 @@
 - Start Date: 2014-09-29
-- RFC PR: (leave this empty)
-- Rust Issue: (leave this empty)
+- RFC PR: [rust-lang/rfcs#339](https://github.com/rust-lang/rfcs/pull/339)
+- Rust Issue: [rust-lang/rust#18465](https://github.com/rust-lang/rust/issues/18465)
 
 # Summary
 
@@ -9,8 +9,8 @@ Ensure the same change can be performed backward compatibly for string literals 
 
 # Motivation
 
-Currently byte string and string literals have types `&'static [u8]` and `&'static str`.  
-Therefore, although the sizes of the literals are known at compile time, they are erased from their types and inaccessible until runtime.  
+Currently byte string and string literals have types `&'static [u8]` and `&'static str`.
+Therefore, although the sizes of the literals are known at compile time, they are erased from their types and inaccessible until runtime.
 This RFC suggests to change the type of byte string literals to `&'static [u8, ..N]`.
 In addition this RFC suggest not to introduce any changes to `str` or string literals, that would prevent a backward compatible addition of strings of fixed size `FixedString<N>` (the name FixedString in this RFC is a placeholder and is open for bikeshedding) and the change of the type of string literals to `&'static FixedString<N>` in the future.
 
@@ -71,14 +71,14 @@ So, we don't propose to make these changes today and suggest to wait until gener
 
 ### Precedents
 
-C and C++ string literals are lvalue `char` arrays of fixed size with static duration.  
+C and C++ string literals are lvalue `char` arrays of fixed size with static duration.
 C++ library proposal for strings of fixed size ([link][1]), the paper also contains some discussion and motivation.
 
 # Rejected alternatives and discussion
 
 ## Array literals
 
-The types of array literals potentially can be changed from `[T, ..N]` to `&'a [T, ..N]` for consistency with the other literals and ergonomics.  
+The types of array literals potentially can be changed from `[T, ..N]` to `&'a [T, ..N]` for consistency with the other literals and ergonomics.
 The major blocker for this change is the inability to move out from a dereferenced array literal if `T` is not `Copy`.
 ```
 let mut a = *[box 1i, box 2, box 3]; // Wouldn't work without special-casing of array literals with regard to moving out from dereferenced borrowed pointer
@@ -87,18 +87,18 @@ Despite that array literals as references have better usability, possible `stati
 
 ### Usage statistics for array literals
 
-Array literals can be used both as slices, when a view to array is sufficient to perform the task, and as values when arrays themselves should be copied or modified.  
-The exact estimation of the frequencies of both uses is problematic, but some regex search in the Rust codebase gives the next statistics:  
-In approximately *70%* of cases array literals are used as slices (explicit `&` on array literals, immutable bindings).  
-In approximately *20%* of cases array literals are used as values (initialization of struct fields, mutable bindings,   boxes).  
-In the rest *10%* of cases the usage is unclear.  
+Array literals can be used both as slices, when a view to array is sufficient to perform the task, and as values when arrays themselves should be copied or modified.
+The exact estimation of the frequencies of both uses is problematic, but some regex search in the Rust codebase gives the next statistics:
+In approximately *70%* of cases array literals are used as slices (explicit `&` on array literals, immutable bindings).
+In approximately *20%* of cases array literals are used as values (initialization of struct fields, mutable bindings,   boxes).
+In the rest *10%* of cases the usage is unclear.
 
 So, in most cases the change to the types of array literals will lead to shorter notation.
 
 ### Static lifetime
 
-Although all the literals under consideration are similar and are essentially arrays of fixed size, array literals are different from byte string and string literals with regard to lifetimes.  
-While byte string and string literals can always be placed into static memory and have static lifetime, array literals can depend on local variables and can't have static lifetime in general case.  
+Although all the literals under consideration are similar and are essentially arrays of fixed size, array literals are different from byte string and string literals with regard to lifetimes.
+While byte string and string literals can always be placed into static memory and have static lifetime, array literals can depend on local variables and can't have static lifetime in general case.
 The chosen design potentially allows to trivially enhance *some* array literals with static lifetime in the future to allow use like
 ```
 fn f() -> &'static [int] {
@@ -112,19 +112,19 @@ The alternative design is to make the literals the values and not the references
 
 ### The changes
 
-1)  
-Keep the types of array literals as `[T, ..N]`.  
-Change the types of byte literals from `&'static [u8]` to `[u8, ..N]`.  
-Change the types of string literals form `&'static str` to to `FixedString<N>`.  
-2)  
-Introduce the missing family of types - strings of fixed size - `FixedString<N>`.  
-...  
-3)  
-Add the autocoercion of array *literals* (not arrays of fixed size in general) to slices.  
-Add the autocoercion of new byte literals to slices.  
-Add the autocoercion of new string literals to slices.  
-Non-literal arrays and strings do not autocoerce to slices, in accordance with the general agreements on explicitness.  
-4)  
+1)
+Keep the types of array literals as `[T, ..N]`.
+Change the types of byte literals from `&'static [u8]` to `[u8, ..N]`.
+Change the types of string literals form `&'static str` to to `FixedString<N>`.
+2)
+Introduce the missing family of types - strings of fixed size - `FixedString<N>`.
+...
+3)
+Add the autocoercion of array *literals* (not arrays of fixed size in general) to slices.
+Add the autocoercion of new byte literals to slices.
+Add the autocoercion of new string literals to slices.
+Non-literal arrays and strings do not autocoerce to slices, in accordance with the general agreements on explicitness.
+4)
 Make string and byte literals lvalues with static lifetime.
 
 Examples of use:
