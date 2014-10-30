@@ -159,12 +159,12 @@ impl sv::SnapshotVecDelegate<TypeVariableData,UndoEntry> for Delegate {
                action: UndoEntry) {
         match action {
             SpecifyVar(vid, relations) => {
-                values.get_mut(vid.index).value = Bounded(relations);
+                values[vid.index].value = Bounded(relations);
             }
 
             Relate(a, b) => {
-                relations(values.get_mut(a.index)).pop();
-                relations(values.get_mut(b.index)).pop();
+                relations(&mut (*values)[a.index]).pop();
+                relations(&mut (*values)[b.index]).pop();
             }
         }
     }

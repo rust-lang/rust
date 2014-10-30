@@ -1757,7 +1757,7 @@ fn adjust_upvar_borrow_kind_for_mut(rcx: &Rcx,
                         // is inferred to mutable if necessary
                         let mut upvar_borrow_map =
                             rcx.fcx.inh.upvar_borrow_map.borrow_mut();
-                        let ub = upvar_borrow_map.get_mut(upvar_id);
+                        let ub = &mut (*upvar_borrow_map)[*upvar_id];
                         return adjust_upvar_borrow_kind(rcx, *upvar_id, ub, ty::MutBorrow);
                     }
 
@@ -1807,7 +1807,7 @@ fn adjust_upvar_borrow_kind_for_unique(rcx: &Rcx, cmt: mc::cmt) {
                         // borrow_kind of the upvar to make sure it
                         // is inferred to unique if necessary
                         let mut ub = rcx.fcx.inh.upvar_borrow_map.borrow_mut();
-                        let ub = ub.get_mut(upvar_id);
+                        let ub = &mut (*ub)[*upvar_id];
                         return adjust_upvar_borrow_kind(rcx, *upvar_id, ub, ty::UniqueImmBorrow);
                     }
 

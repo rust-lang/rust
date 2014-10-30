@@ -157,7 +157,7 @@ impl<'r> Compiler<'r> {
                 if cap >= len {
                     self.names.grow(10 + cap - len, None)
                 }
-                *self.names.get_mut(cap) = name;
+                self.names[cap] = name;
 
                 self.push(Save(2 * cap));
                 self.compile(*x);
@@ -243,7 +243,7 @@ impl<'r> Compiler<'r> {
     /// `panic!` is called.
     #[inline]
     fn set_split(&mut self, i: InstIdx, pc1: InstIdx, pc2: InstIdx) {
-        let split = self.insts.get_mut(i);
+        let split = &mut self.insts[i];
         match *split {
             Split(_, _) => *split = Split(pc1, pc2),
             _ => panic!("BUG: Invalid split index."),
@@ -263,7 +263,7 @@ impl<'r> Compiler<'r> {
     /// `panic!` is called.
     #[inline]
     fn set_jump(&mut self, i: InstIdx, pc: InstIdx) {
-        let jmp = self.insts.get_mut(i);
+        let jmp = &mut self.insts[i];
         match *jmp {
             Jump(_) => *jmp = Jump(pc),
             _ => panic!("BUG: Invalid jump index."),

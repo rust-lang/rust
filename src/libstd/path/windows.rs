@@ -776,7 +776,7 @@ impl Path {
                                 let mut s = String::from_str(s.slice_to(len));
                                 unsafe {
                                     let v = s.as_mut_vec();
-                                    *v.get_mut(0) = (*v)[0]
+                                    v[0] = (*v)[0]
                                                      .to_ascii()
                                                      .to_uppercase()
                                                      .to_byte();
@@ -784,7 +784,7 @@ impl Path {
                                 if is_abs {
                                     // normalize C:/ to C:\
                                     unsafe {
-                                        *s.as_mut_vec().get_mut(2) = SEP_BYTE;
+                                        s.as_mut_vec()[2] = SEP_BYTE;
                                     }
                                 }
                                 Some(s)
@@ -794,7 +794,7 @@ impl Path {
                                 let mut s = String::from_str(s.slice_to(len));
                                 unsafe {
                                     let v = s.as_mut_vec();
-                                    *v.get_mut(4) = (*v)[4].to_ascii().to_uppercase().to_byte();
+                                    v[4] = (*v)[4].to_ascii().to_uppercase().to_byte();
                                 }
                                 Some(s)
                             }
