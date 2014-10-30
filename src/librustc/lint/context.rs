@@ -221,8 +221,8 @@ impl LintStore {
 
         add_lint_group!(sess, "unused",
                         UNUSED_IMPORTS, UNUSED_VARIABLES, UNUSED_ASSIGNMENTS, DEAD_CODE,
-                        UNUSED_MUT, UNREACHABLE_CODE, UNUSED_EXTERN_CRATES, UNUSED_MUST_USE,
-                        UNUSED_UNSAFE, UNUSED_RESULTS, PATH_STATEMENTS)
+                        UNUSED_MUT, UNREACHABLE_CODE, UNUSED_MUST_USE,
+                        UNUSED_UNSAFE, PATH_STATEMENTS)
 
         // We have one lint pass defined in this module.
         self.register_pass(sess, false, box GatherNodeLevels as LintPassObject);
