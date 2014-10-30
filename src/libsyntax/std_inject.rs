@@ -205,7 +205,7 @@ impl<'a> fold::Folder for PreludeInjector<'a> {
             node: ast::ViewItemUse(vp),
             attrs: vec![ast::Attribute {
                 span: DUMMY_SP,
-                node: ast::Attribute_ {
+                node: ast::AttributeNode {
                     id: attr::mk_attr_id(),
                     style: ast::AttrOuter,
                     value: P(ast::MetaItem {

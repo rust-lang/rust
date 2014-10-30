@@ -452,7 +452,7 @@ impl<'a, 'tcx> DeadVisitor<'a, 'tcx> {
         should_warn && !self.symbol_is_live(item.id, ctor_id)
     }
 
-    fn should_warn_about_field(&mut self, node: &ast::StructField_) -> bool {
+    fn should_warn_about_field(&mut self, node: &ast::StructFieldNode) -> bool {
         let is_named = node.ident().is_some();
         let field_type = ty::node_id_to_type(self.tcx, node.id);
         let is_marker_field = match ty::ty_to_def_id(field_type) {
@@ -465,7 +465,7 @@ impl<'a, 'tcx> DeadVisitor<'a, 'tcx> {
             && !has_allow_dead_code_or_lang_attr(node.attrs.as_slice())
     }
 
-    fn should_warn_about_variant(&mut self, variant: &ast::Variant_) -> bool {
+    fn should_warn_about_variant(&mut self, variant: &ast::VariantNode) -> bool {
         !self.symbol_is_live(variant.id, None)
             && !has_allow_dead_code_or_lang_attr(variant.attrs.as_slice())
     }

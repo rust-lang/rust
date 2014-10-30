@@ -957,7 +957,7 @@ impl LintPass for NonSnakeCase {
             _: ast::Ident, _: &ast::Generics, _: ast::NodeId) {
         for sf in s.fields.iter() {
             match sf.node {
-                ast::StructField_ { kind: ast::NamedField(ident, _), .. } => {
+                ast::StructFieldNode { kind: ast::NamedField(ident, _), .. } => {
                     self.check_snake_case(cx, "structure field", ident, sf.span);
                 }
                 _ => {}

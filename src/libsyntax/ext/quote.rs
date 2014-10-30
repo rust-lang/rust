@@ -189,12 +189,12 @@ pub mod rt {
     impl_to_source_slice!(ast::Ty, ", ")
     impl_to_source_slice!(P<ast::Item>, "\n\n")
 
-    impl ToSource for ast::Attribute_ {
+    impl ToSource for ast::AttributeNode {
         fn to_source(&self) -> String {
             pprust::attribute_to_string(&dummy_spanned(self.clone()))
         }
     }
-    impl ToSourceWithHygiene for ast::Attribute_ {
+    impl ToSourceWithHygiene for ast::AttributeNode {
         fn to_source_with_hygiene(&self) -> String {
             self.to_source()
         }
@@ -325,7 +325,7 @@ pub mod rt {
     impl_to_tokens!(P<ast::Expr>)
     impl_to_tokens!(ast::Block)
     impl_to_tokens!(ast::Arg)
-    impl_to_tokens!(ast::Attribute_)
+    impl_to_tokens!(ast::AttributeNode)
     impl_to_tokens_lifetime!(&'a str)
     impl_to_tokens!(())
     impl_to_tokens!(char)

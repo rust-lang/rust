@@ -795,7 +795,7 @@ pub enum SelfTy {
     SelfExplicit(Type),
 }
 
-impl Clean<SelfTy> for ast::ExplicitSelf_ {
+impl Clean<SelfTy> for ast::ExplicitSelfNode {
     fn clean(&self, cx: &DocContext) -> SelfTy {
         match *self {
             ast::SelfStatic => SelfStatic,
@@ -1842,7 +1842,7 @@ impl Clean<Vec<Item>> for ast::ViewItem {
                 None => false,
             }
         });
-        let convert = |node: &ast::ViewItem_| {
+        let convert = |node: &ast::ViewItemNode| {
             Item {
                 name: None,
                 attrs: self.attrs.clean(cx),
@@ -1898,7 +1898,7 @@ pub enum ViewItemInner {
     Import(ViewPath)
 }
 
-impl Clean<ViewItemInner> for ast::ViewItem_ {
+impl Clean<ViewItemInner> for ast::ViewItemNode {
     fn clean(&self, cx: &DocContext) -> ViewItemInner {
         match self {
             &ast::ViewItemExternCrate(ref i, ref p, ref id) => {

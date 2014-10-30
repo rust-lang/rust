@@ -60,7 +60,7 @@ pub fn indenter() -> Indenter {
 }
 
 struct LoopQueryVisitor<'a> {
-    p: |&ast::Expr_|: 'a -> bool,
+    p: |&ast::ExprNode|: 'a -> bool,
     flag: bool,
 }
 
@@ -78,7 +78,7 @@ impl<'a, 'v> Visitor<'v> for LoopQueryVisitor<'a> {
 
 // Takes a predicate p, returns true iff p is true for any subexpressions
 // of b -- skipping any inner loops (loop, while, loop_body)
-pub fn loop_query(b: &ast::Block, p: |&ast::Expr_| -> bool) -> bool {
+pub fn loop_query(b: &ast::Block, p: |&ast::ExprNode| -> bool) -> bool {
     let mut v = LoopQueryVisitor {
         p: p,
         flag: false,

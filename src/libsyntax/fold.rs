@@ -98,7 +98,7 @@ pub trait Folder {
         noop_fold_struct_field(sf, self)
     }
 
-    fn fold_item_underscore(&mut self, i: Item_) -> Item_ {
+    fn fold_item_underscore(&mut self, i: ItemNode) -> ItemNode {
         noop_fold_item_underscore(i, self)
     }
 
@@ -183,7 +183,7 @@ pub trait Folder {
         noop_fold_explicit_self(es, self)
     }
 
-    fn fold_explicit_self_underscore(&mut self, es: ExplicitSelf_) -> ExplicitSelf_ {
+    fn fold_explicit_self_underscore(&mut self, es: ExplicitSelfNode) -> ExplicitSelfNode {
         noop_fold_explicit_self_underscore(es, self)
     }
 
@@ -448,8 +448,8 @@ pub fn noop_fold_foreign_mod<T: Folder>(ForeignMod {abi, view_items, items}: For
 }
 
 pub fn noop_fold_variant<T: Folder>(v: P<Variant>, fld: &mut T) -> P<Variant> {
-    v.map(|Spanned {node: Variant_ {id, name, attrs, kind, disr_expr, vis}, span}| Spanned {
-        node: Variant_ {
+    v.map(|Spanned {node: VariantNode {id, name, attrs, kind, disr_expr, vis}, span}| Spanned {
+        node: VariantNode {
             id: fld.new_id(id),
             name: name,
             attrs: attrs.move_map(|x| fld.fold_attribute(x)),
@@ -501,9 +501,9 @@ pub fn noop_fold_local<T: Folder>(l: P<Local>, fld: &mut T) -> P<Local> {
 }
 
 pub fn noop_fold_attribute<T: Folder>(at: Attribute, fld: &mut T) -> Attribute {
-    let Spanned {node: Attribute_ {id, style, value, is_sugared_doc}, span} = at;
+    let Spanned {node: AttributeNode {id, style, value, is_sugared_doc}, span} = at;
     Spanned {
-        node: Attribute_ {
+        node: AttributeNode {
             id: id,
             style: style,
             value: fld.fold_meta_item(value),
@@ -513,8 +513,8 @@ pub fn noop_fold_attribute<T: Folder>(at: Attribute, fld: &mut T) -> Attribute {
     }
 }
 
-pub fn noop_fold_explicit_self_underscore<T: Folder>(es: ExplicitSelf_, fld: &mut T)
-                                                     -> ExplicitSelf_ {
+pub fn noop_fold_explicit_self_underscore<T: Folder>(es: ExplicitSelfNode, fld: &mut T)
+                                                     -> ExplicitSelfNode {
     match es {
         SelfStatic | SelfValue(_) => es,
         SelfRegion(lifetime, m, ident) => {
@@ -831,9 +831,9 @@ pub fn noop_fold_trait_ref<T: Folder>(p: TraitRef, fld: &mut T) -> TraitRef {
 }
 
 pub fn noop_fold_struct_field<T: Folder>(f: StructField, fld: &mut T) -> StructField {
-    let StructField {node: StructField_ {id, kind, ty, attrs}, span} = f;
+    let StructField {node: StructFieldNode {id, kind, ty, attrs}, span} = f;
     Spanned {
-        node: StructField_ {
+        node: StructFieldNode {
             id: fld.new_id(id),
             kind: kind,
             ty: fld.fold_ty(ty),
@@ -905,7 +905,7 @@ pub fn noop_fold_block<T: Folder>(b: P<Block>, folder: &mut T) -> P<Block> {
     })
 }
 
-pub fn noop_fold_item_underscore<T: Folder>(i: Item_, folder: &mut T) -> Item_ {
+pub fn noop_fold_item_underscore<T: Folder>(i: ItemNode, folder: &mut T) -> ItemNode {
     match i {
         ItemStatic(t, m, e) => {
             ItemStatic(folder.fold_ty(t), m, folder.fold_expr(e))

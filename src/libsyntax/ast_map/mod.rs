@@ -644,7 +644,7 @@ impl<T:Named> Named for Spanned<T> { fn name(&self) -> Name { self.node.name() }
 
 impl Named for Item { fn name(&self) -> Name { self.ident.name } }
 impl Named for ForeignItem { fn name(&self) -> Name { self.ident.name } }
-impl Named for Variant_ { fn name(&self) -> Name { self.name.name } }
+impl Named for VariantNode { fn name(&self) -> Name { self.name.name } }
 impl Named for TraitItem {
     fn name(&self) -> Name {
         match *self {

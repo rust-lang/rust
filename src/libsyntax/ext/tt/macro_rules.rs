@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use ast::{Ident, Matcher_, Matcher, MatchTok, MatchNonterminal, MatchSeq, TtDelimited};
+use ast::{Ident, MatcherNode, Matcher, MatchTok, MatchNonterminal, MatchSeq, TtDelimited};
 use ast;
 use codemap::{Span, Spanned, DUMMY_SP};
 use ext::base::{ExtCtxt, MacResult, MacroDef};
@@ -211,7 +211,7 @@ pub fn add_new_extension<'cx>(cx: &'cx mut ExtCtxt,
                               arg: Vec<ast::TokenTree> )
                               -> Box<MacResult+'cx> {
     // these spans won't matter, anyways
-    fn ms(m: Matcher_) -> Matcher {
+    fn ms(m: MatcherNode) -> Matcher {
         Spanned {
             node: m.clone(),
             span: DUMMY_SP

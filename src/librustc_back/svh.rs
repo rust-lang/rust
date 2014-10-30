@@ -208,7 +208,7 @@ mod svh_visitor {
     /// subsequent recursive traversal of the expression's
     /// substructure by the visitor.
     ///
-    /// We know every Expr_ variant is covered by a variant because
+    /// We know every `ExprNode` variant is covered by a variant because
     /// `fn saw_expr` maps each to some case below.  Ensuring that
     /// each variant carries an appropriate payload has to be verified
     /// by hand.
@@ -233,7 +233,7 @@ mod svh_visitor {
         SawExprTup,
         SawExprBinary(ast::BinOp),
         SawExprUnary(ast::UnOp),
-        SawExprLit(ast::Lit_),
+        SawExprLit(ast::LitNode),
         SawExprCast,
         SawExprIf,
         SawExprWhile,
@@ -256,7 +256,7 @@ mod svh_visitor {
         SawExprForLoop,
     }
 
-    fn saw_expr<'a>(node: &'a Expr_) -> SawExprComponent<'a> {
+    fn saw_expr<'a>(node: &'a ExprNode) -> SawExprComponent<'a> {
         match *node {
             ExprBox(..)              => SawExprBox,
             ExprVec(..)              => SawExprVec,
@@ -307,7 +307,7 @@ mod svh_visitor {
         SawStmtSemi,
     }
 
-    fn saw_stmt(node: &Stmt_) -> SawStmtComponent {
+    fn saw_stmt(node: &StmtNode) -> SawStmtComponent {
         match *node {
             StmtDecl(..) => SawStmtDecl,
             StmtExpr(..) => SawStmtExpr,

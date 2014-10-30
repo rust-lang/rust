@@ -479,7 +479,7 @@ fn expand_item_modifiers(mut it: P<ast::Item>, fld: &mut MacroExpander)
 }
 
 /// Expand item_underscore
-fn expand_item_underscore(item: ast::Item_, fld: &mut MacroExpander) -> ast::Item_ {
+fn expand_item_underscore(item: ast::ItemNode, fld: &mut MacroExpander) -> ast::ItemNode {
     match item {
         ast::ItemFn(decl, fn_style, abi, generics, body) => {
             let (rewritten_fn_decl, rewritten_body)
@@ -1068,7 +1068,7 @@ impl<'a, 'b> Folder for MacroExpander<'a, 'b> {
         expand_item(item, self)
     }
 
-    fn fold_item_underscore(&mut self, item: ast::Item_) -> ast::Item_ {
+    fn fold_item_underscore(&mut self, item: ast::ItemNode) -> ast::ItemNode {
         expand_item_underscore(item, self)
     }
 
@@ -1249,7 +1249,7 @@ mod test {
     use super::{pattern_bindings, expand_crate, contains_macro_escape};
     use super::{PatIdentFinder, IdentRenamer, PatIdentRenamer, ExpansionConfig};
     use ast;
-    use ast::{Attribute_, AttrOuter, MetaWord, Name};
+    use ast::{AttributeNode, AttrOuter, MetaWord, Name};
     use attr;
     use codemap;
     use codemap::Spanned;
@@ -1369,7 +1369,7 @@ mod test {
     fn make_dummy_attr(s: &str) -> ast::Attribute {
         Spanned {
             span:codemap::DUMMY_SP,
-            node: Attribute_ {
+            node: AttributeNode {
                 id: attr::mk_attr_id(),
                 style: AttrOuter,
                 value: P(Spanned {

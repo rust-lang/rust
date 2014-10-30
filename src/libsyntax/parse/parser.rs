@@ -19,7 +19,7 @@ use ast::{BiBitAnd, BiBitOr, BiBitXor, BiRem, Block};
 use ast::{BlockCheckMode, CaptureByRef, CaptureByValue, CaptureClause};
 use ast::{Crate, CrateConfig, Decl, DeclItem};
 use ast::{DeclLocal, DefaultBlock, UnDeref, BiDiv, EMPTY_CTXT, EnumDef, ExplicitSelf};
-use ast::{Expr, Expr_, ExprAddrOf, ExprMatch, ExprAgain};
+use ast::{Expr, ExprNode, ExprAddrOf, ExprMatch, ExprAgain};
 use ast::{ExprAssign, ExprAssignOp, ExprBinary, ExprBlock, ExprBox};
 use ast::{ExprBreak, ExprCall, ExprCast};
 use ast::{ExprField, ExprTupField, ExprFnBlock, ExprIf, ExprIfLet, ExprIndex, ExprSlice};
@@ -31,13 +31,13 @@ use ast::{Once, Many};
 use ast::{FnUnboxedClosureKind, FnMutUnboxedClosureKind};
 use ast::{FnOnceUnboxedClosureKind};
 use ast::{ForeignItem, ForeignItemStatic, ForeignItemFn, ForeignMod};
-use ast::{Ident, NormalFn, Inherited, ImplItem, Item, Item_, ItemStatic};
+use ast::{Ident, NormalFn, Inherited, ImplItem, Item, ItemNode, ItemStatic};
 use ast::{ItemEnum, ItemFn, ItemForeignMod, ItemImpl, ItemConst};
 use ast::{ItemMac, ItemMod, ItemStruct, ItemTrait, ItemTy};
-use ast::{LifetimeDef, Lit, Lit_};
+use ast::{LifetimeDef, Lit, LitNode};
 use ast::{LitBool, LitChar, LitByte, LitBinary};
 use ast::{LitNil, LitStr, LitInt, Local, LocalLet};
-use ast::{MutImmutable, MutMutable, Mac_, MacInvocTT, Matcher, MatchNonterminal, MatchNormal};
+use ast::{MutImmutable, MutMutable, MacNode, MacInvocTT, Matcher, MatchNonterminal, MatchNormal};
 use ast::{MatchSeq, MatchTok, Method, MutTy, BiMul, Mutability};
 use ast::{MethodImplItem, NamedField, UnNeg, NoReturn, UnNot};
 use ast::{Pat, PatEnum, PatIdent, PatLit, PatRange, PatRegion, PatStruct};
@@ -49,7 +49,7 @@ use ast::{StructVariantKind, BiSub};
 use ast::StrStyle;
 use ast::{SelfExplicit, SelfRegion, SelfStatic, SelfValue};
 use ast::{Delimited, TokenTree, TraitItem, TraitRef, TtDelimited, TtSequence, TtToken};
-use ast::{TtNonterminal, TupleVariantKind, Ty, Ty_, TyBot};
+use ast::{TtNonterminal, TupleVariantKind, Ty, TyNode, TyBot};
 use ast::{TypeField, TyFixedLengthVec, TyClosure, TyProc, TyBareFn};
 use ast::{TyTypeof, TyInfer, TypeMethod};
 use ast::{TyNil, TyParam, TyParamBound, TyParen, TyPath, TyPtr, TyQPath};
@@ -57,7 +57,7 @@ use ast::{TyRptr, TyTup, TyU32, TyUnboxedFn, TyUniq, TyVec, UnUniq};
 use ast::{TypeImplItem, TypeTraitItem, Typedef, UnboxedClosureKind};
 use ast::{UnboxedFnBound, UnboxedFnTy, UnboxedFnTyParamBound};
 use ast::{UnnamedField, UnsafeBlock};
-use ast::{UnsafeFn, ViewItem, ViewItem_, ViewItemExternCrate, ViewItemUse};
+use ast::{UnsafeFn, ViewItem, ViewItemNode, ViewItemExternCrate, ViewItemUse};
 use ast::{ViewPath, ViewPathGlob, ViewPathList, ViewPathSimple};
 use ast::{Visibility, WhereClause, WherePredicate};
 use ast;
@@ -98,7 +98,7 @@ bitflags! {
     }
 }
 
-type ItemInfo = (Ident, Item_, Option<Vec<Attribute> >);
+type ItemInfo = (Ident, ItemNode, Option<Vec<Attribute> >);
 
 /// How to parse a path. There are four different kinds of paths, all of which
 /// are parsed somewhat differently.
@@ -1016,7 +1016,7 @@ impl<'a> Parser<'a> {
     }
 
     /// parse a TyBareFn type:
-    pub fn parse_ty_bare_fn(&mut self) -> Ty_ {
+    pub fn parse_ty_bare_fn(&mut self) -> TyNode {
         /*
 
         [unsafe] [extern "ABI"] fn <'lt> (S) -> T
@@ -1048,7 +1048,7 @@ impl<'a> Parser<'a> {
 
     /// Parses a procedure type (`proc`). The initial `proc` keyword must
     /// already have been parsed.
-    pub fn parse_proc_type(&mut self) -> Ty_ {
+    pub fn parse_proc_type(&mut self) -> TyNode {
         /*
 
         proc <'lt> (S) [:Bounds] -> T
@@ -1115,7 +1115,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parse a TyClosure type
-    pub fn parse_ty_closure(&mut self) -> Ty_ {
+    pub fn parse_ty_closure(&mut self) -> TyNode {
         /*
 
         [unsafe] [once] <'lt> |S| [:Bounds] -> T
@@ -1536,7 +1536,7 @@ impl<'a> Parser<'a> {
         P(Ty {id: ast::DUMMY_NODE_ID, node: t, span: sp})
     }
 
-    pub fn parse_borrowed_pointee(&mut self) -> Ty_ {
+    pub fn parse_borrowed_pointee(&mut self) -> TyNode {
         // look for `&'lt` or `&'foo ` and interpret `foo` as the region name:
         let opt_lifetime = self.parse_opt_lifetime();
 
@@ -1642,7 +1642,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Matches token_lit = LIT_INTEGER | ...
-    pub fn lit_from_token(&mut self, tok: &token::Token) -> Lit_ {
+    pub fn lit_from_token(&mut self, tok: &token::Token) -> LitNode {
         match *tok {
             token::LitByte(i) => LitByte(parse::byte_lit(i.as_str()).val0()),
             token::LitChar(i) => LitChar(parse::char_lit(i.as_str()).val0()),
@@ -1939,7 +1939,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    pub fn mk_expr(&mut self, lo: BytePos, hi: BytePos, node: Expr_) -> P<Expr> {
+    pub fn mk_expr(&mut self, lo: BytePos, hi: BytePos, node: ExprNode) -> P<Expr> {
         P(Expr {
             id: ast::DUMMY_NODE_ID,
             node: node,
@@ -1947,15 +1947,15 @@ impl<'a> Parser<'a> {
         })
     }
 
-    pub fn mk_unary(&mut self, unop: ast::UnOp, expr: P<Expr>) -> ast::Expr_ {
+    pub fn mk_unary(&mut self, unop: ast::UnOp, expr: P<Expr>) -> ast::ExprNode {
         ExprUnary(unop, expr)
     }
 
-    pub fn mk_binary(&mut self, binop: ast::BinOp, lhs: P<Expr>, rhs: P<Expr>) -> ast::Expr_ {
+    pub fn mk_binary(&mut self, binop: ast::BinOp, lhs: P<Expr>, rhs: P<Expr>) -> ast::ExprNode {
         ExprBinary(binop, lhs, rhs)
     }
 
-    pub fn mk_call(&mut self, f: P<Expr>, args: Vec<P<Expr>>) -> ast::Expr_ {
+    pub fn mk_call(&mut self, f: P<Expr>, args: Vec<P<Expr>>) -> ast::ExprNode {
         ExprCall(f, args)
     }
 
@@ -1963,11 +1963,11 @@ impl<'a> Parser<'a> {
                       ident: ast::SpannedIdent,
                       tps: Vec<P<Ty>>,
                       args: Vec<P<Expr>>)
-                      -> ast::Expr_ {
+                      -> ast::ExprNode {
         ExprMethodCall(ident, tps, args)
     }
 
-    pub fn mk_index(&mut self, expr: P<Expr>, idx: P<Expr>) -> ast::Expr_ {
+    pub fn mk_index(&mut self, expr: P<Expr>, idx: P<Expr>) -> ast::ExprNode {
         ExprIndex(expr, idx)
     }
 
@@ -1975,26 +1975,26 @@ impl<'a> Parser<'a> {
                     start: Option<P<Expr>>,
                     end: Option<P<Expr>>,
                     mutbl: Mutability)
-                    -> ast::Expr_ {
+                    -> ast::ExprNode {
         ExprSlice(expr, start, end, mutbl)
     }
 
     pub fn mk_field(&mut self, expr: P<Expr>, ident: ast::SpannedIdent,
-                    tys: Vec<P<Ty>>) -> ast::Expr_ {
+                    tys: Vec<P<Ty>>) -> ast::ExprNode {
         ExprField(expr, ident, tys)
     }
 
     pub fn mk_tup_field(&mut self, expr: P<Expr>, idx: codemap::Spanned<uint>,
-                    tys: Vec<P<Ty>>) -> ast::Expr_ {
+                    tys: Vec<P<Ty>>) -> ast::ExprNode {
         ExprTupField(expr, idx, tys)
     }
 
     pub fn mk_assign_op(&mut self, binop: ast::BinOp,
-                        lhs: P<Expr>, rhs: P<Expr>) -> ast::Expr_ {
+                        lhs: P<Expr>, rhs: P<Expr>) -> ast::ExprNode {
         ExprAssignOp(binop, lhs, rhs)
     }
 
-    pub fn mk_mac_expr(&mut self, lo: BytePos, hi: BytePos, m: Mac_) -> P<Expr> {
+    pub fn mk_mac_expr(&mut self, lo: BytePos, hi: BytePos, m: MacNode) -> P<Expr> {
         P(Expr {
             id: ast::DUMMY_NODE_ID,
             node: ExprMac(codemap::Spanned {node: m, span: mk_sp(lo, hi)}),
@@ -2035,7 +2035,7 @@ impl<'a> Parser<'a> {
         let lo = self.span.lo;
         let mut hi = self.span.hi;
 
-        let ex: Expr_;
+        let ex: ExprNode;
 
         match self.token {
             token::OpenDelim(token::Paren) => {
@@ -3441,7 +3441,7 @@ impl<'a> Parser<'a> {
     /// error message when parsing mistakes like ref foo(a,b)
     fn parse_pat_ident(&mut self,
                        binding_mode: ast::BindingMode)
-                       -> ast::Pat_ {
+                       -> ast::PatNode {
         if !self.token.is_plain_ident() {
             let span = self.span;
             let tok_str = self.this_token_to_string();
@@ -3514,7 +3514,7 @@ impl<'a> Parser<'a> {
         let name = self.parse_ident();
         self.expect(&token::Colon);
         let ty = self.parse_ty(true);
-        spanned(lo, self.last_span.hi, ast::StructField_ {
+        spanned(lo, self.last_span.hi, ast::StructFieldNode {
             kind: NamedField(name, pr),
             id: ast::DUMMY_NODE_ID,
             ty: ty,
@@ -3525,7 +3525,7 @@ impl<'a> Parser<'a> {
     /// Get an expected item after attributes error message.
     fn expected_item_err(attrs: &[Attribute]) -> &'static str {
         match attrs.last() {
-            Some(&Attribute { node: ast::Attribute_ { is_sugared_doc: true, .. }, .. }) => {
+            Some(&Attribute { node: ast::AttributeNode { is_sugared_doc: true, .. }, .. }) => {
                 "expected item after doc comment"
             }
             _ => "expected item after attributes",
@@ -4149,7 +4149,7 @@ impl<'a> Parser<'a> {
     fn parse_fn_decl_with_self(&mut self, parse_arg_fn: |&mut Parser| -> Arg)
                                -> (ExplicitSelf, P<FnDecl>) {
         fn maybe_parse_borrowed_explicit_self(this: &mut Parser)
-                                              -> ast::ExplicitSelf_ {
+                                              -> ast::ExplicitSelfNode {
             // The following things are possible to see here:
             //
             //     fn(&mut self)
@@ -4396,7 +4396,7 @@ impl<'a> Parser<'a> {
     }
 
     fn mk_item(&mut self, lo: BytePos, hi: BytePos, ident: Ident,
-               node: Item_, vis: Visibility,
+               node: ItemNode, vis: Visibility,
                attrs: Vec<Attribute>) -> P<Item> {
         P(Item {
             ident: ident,
@@ -4619,7 +4619,7 @@ impl<'a> Parser<'a> {
                 |p| {
                 let attrs = p.parse_outer_attributes();
                 let lo = p.span.lo;
-                let struct_field_ = ast::StructField_ {
+                let struct_field_ = ast::StructFieldNode {
                     kind: UnnamedField(p.parse_visibility()),
                     id: ast::DUMMY_NODE_ID,
                     ty: p.parse_ty(true),
@@ -4828,7 +4828,7 @@ impl<'a> Parser<'a> {
                     id: ast::Ident,
                     outer_attrs: &[ast::Attribute],
                     id_sp: Span)
-                    -> (ast::Item_, Vec<ast::Attribute> ) {
+                    -> (ast::ItemNode, Vec<ast::Attribute> ) {
         let mut prefix = Path::new(self.sess.span_diagnostic.cm.span_to_filename(self.span));
         prefix.pop();
         let mod_path = Path::new(".").join_many(self.mod_path_stack.as_slice());
@@ -4898,7 +4898,7 @@ impl<'a> Parser<'a> {
                               path: Path,
                               owns_directory: bool,
                               name: String,
-                              id_sp: Span) -> (ast::Item_, Vec<ast::Attribute> ) {
+                              id_sp: Span) -> (ast::ItemNode, Vec<ast::Attribute> ) {
         let mut included_mod_stack = self.sess.included_mod_stack.borrow_mut();
         match included_mod_stack.iter().position(|p| *p == path) {
             Some(i) => {
@@ -5177,7 +5177,7 @@ impl<'a> Parser<'a> {
                 kind = TupleVariantKind(Vec::new());
             }
 
-            let vr = ast::Variant_ {
+            let vr = ast::VariantNode {
                 name: ident,
                 attrs: variant_attrs,
                 kind: kind,
@@ -5580,7 +5580,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parse, e.g., "use a::b::{z,y}"
-    fn parse_use(&mut self) -> ViewItem_ {
+    fn parse_use(&mut self) -> ViewItemNode {
         return ViewItemUse(self.parse_view_path());
     }
 
