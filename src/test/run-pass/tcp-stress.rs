@@ -33,7 +33,7 @@ fn main() {
 
     let (tx, rx) = channel();
     spawn(proc() {
-        let mut listener = TcpListener::bind("127.0.0.1", 0).unwrap();
+        let mut listener = TcpListener::bind("127.0.0.1:0").unwrap();
         tx.send(listener.socket_name().unwrap());
         let mut acceptor = listener.listen();
         loop {
@@ -54,9 +54,7 @@ fn main() {
     for _ in range(0u, 1000) {
         let tx = tx.clone();
         TaskBuilder::new().stack_size(64 * 1024).spawn(proc() {
-            let host = addr.ip.to_string();
-            let port = addr.port;
-            match TcpStream::connect(host.as_slice(), port) {
+            match TcpStream::connect(addr) {
                 Ok(stream) => {
                     let mut stream = stream;
                     stream.write([1]);
