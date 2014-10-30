@@ -3527,8 +3527,8 @@ everyone plays by these rules. At compile time, it verifies that none of these
 rules are broken. If our program compiles successfully, Rust can guarantee it
 is free of data races and other memory errors, and there is no runtime overhead
 for any of this. The borrow checker works only at compile time. If the borrow
-checker did find a problem, it will report a **lifetime error**, and your
-program will refuse to compile.
+checker did find a problem, it will report an error and your program will
+refuse to compile.
 
 That's a lot to take in. It's also one of the _most_ important concepts in
 all of Rust. Let's see this syntax in action:
