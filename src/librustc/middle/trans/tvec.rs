@@ -310,26 +310,23 @@ pub fn write_content<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                     return expr::trans_into(bcx, &**element, Ignore);
                 }
                 SaveIn(lldest) => {
-                    let count = ty::eval_repeat_count(bcx.tcx(), &**count_expr);
-                    if count == 0 {
-                        return bcx;
+                    match ty::eval_repeat_count(bcx.tcx(), &**count_expr) {
+                        0 => bcx,
+                        1 => expr::trans_into(bcx, &**element, SaveIn(lldest)),
+                        count => {
+                            let elem = unpack_datum!(bcx, expr::trans(bcx, &**element));
+                            assert!(!ty::type_moves_by_default(bcx.tcx(), elem.ty));
+
+                            let bcx = iter_vec_loop(bcx, lldest, vt,
+                                                    C_uint(bcx.ccx(), count),
+                                                    |set_bcx, lleltptr, _| {
+                                                        elem.shallow_copy(set_bcx, lleltptr)
+                                                    });
+
+                            elem.add_clean_if_rvalue(bcx, element.id);
+                            bcx
+                        }
                     }
-
-                    // Some cleanup would be required in the case in which panic happens
-                    // during a copy. But given that copy constructors are not overridable,
-                    // this can only happen as a result of OOM. So we just skip out on the
-                    // cleanup since things would *probably* be broken at that point anyways.
-
-                    let elem = unpack_datum!(bcx, expr::trans(bcx, &**element));
-                    assert!(!ty::type_moves_by_default(bcx.tcx(), elem.ty));
-
-                    let bcx = iter_vec_loop(bcx, lldest, vt,
-                                  C_uint(bcx.ccx(), count), |set_bcx, lleltptr, _| {
-                        elem.shallow_copy(set_bcx, lleltptr)
-                    });
-
-                    elem.add_clean_if_rvalue(bcx, element.id);
-                    bcx
                 }
             }
         }
