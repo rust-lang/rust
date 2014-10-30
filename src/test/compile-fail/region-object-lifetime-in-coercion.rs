@@ -11,24 +11,27 @@
 // Test that attempts to implicitly coerce a value into an
 // object respect the lifetime bound on the object type.
 
-fn a(v: &[u8]) -> Box<Clone + 'static> {
-    let x: Box<Clone + 'static> = box v; //~ ERROR does not outlive
+trait Foo {}
+impl<'a> Foo for &'a [u8] {}
+
+fn a(v: &[u8]) -> Box<Foo + 'static> {
+    let x: Box<Foo + 'static> = box v; //~ ERROR does not outlive
     x
 }
 
-fn b(v: &[u8]) -> Box<Clone + 'static> {
+fn b(v: &[u8]) -> Box<Foo + 'static> {
     box v //~ ERROR does not outlive
 }
 
-fn c(v: &[u8]) -> Box<Clone> {
+fn c(v: &[u8]) -> Box<Foo> {
     box v // OK thanks to lifetime elision
 }
 
-fn d<'a,'b>(v: &'a [u8]) -> Box<Clone+'b> {
+fn d<'a,'b>(v: &'a [u8]) -> Box<Foo+'b> {
     box v //~ ERROR does not outlive
 }
 
-fn e<'a:'b,'b>(v: &'a [u8]) -> Box<Clone+'b> {
+fn e<'a:'b,'b>(v: &'a [u8]) -> Box<Foo+'b> {
     box v // OK, thanks to 'a:'b
 }
 

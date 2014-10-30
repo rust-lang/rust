@@ -712,17 +712,6 @@ pub trait Reader {
         })
     }
 
-    /// Create an iterator that reads a single byte on
-    /// each iteration, until EOF.
-    ///
-    /// # Error
-    ///
-    /// Any error other than `EndOfFile` that is produced by the underlying Reader
-    /// is returned by the iterator and should be handled by the caller.
-    fn bytes<'r>(&'r mut self) -> extensions::Bytes<'r, Self> {
-        extensions::Bytes::new(self)
-    }
-
     // Byte conversion helpers
 
     /// Reads `n` little-endian unsigned integer bytes.
@@ -932,13 +921,38 @@ pub trait Reader {
     fn read_i8(&mut self) -> IoResult<i8> {
         self.read_byte().map(|i| i as i8)
     }
+}
 
+/// A reader which can be converted to a RefReader.
+pub trait AsRefReader {
     /// Creates a wrapper around a mutable reference to the reader.
     ///
     /// This is useful to allow applying adaptors while still
     /// retaining ownership of the original value.
-    fn by_ref<'a>(&'a mut self) -> RefReader<'a, Self> {
+    fn by_ref<'a>(&'a mut self) -> RefReader<'a, Self>;
+}
+
+impl<T: Reader> AsRefReader for T {
+    fn by_ref<'a>(&'a mut self) -> RefReader<'a, T> {
         RefReader { inner: self }
+    }
+}
+
+/// A reader which can be converted to bytes.
+pub trait BytesReader {
+    /// Create an iterator that reads a single byte on
+    /// each iteration, until EOF.
+    ///
+    /// # Error
+    ///
+    /// Any error other than `EndOfFile` that is produced by the underlying Reader
+    /// is returned by the iterator and should be handled by the caller.
+    fn bytes<'r>(&'r mut self) -> extensions::Bytes<'r, Self>;
+}
+
+impl<T: Reader> BytesReader for T {
+    fn bytes<'r>(&'r mut self) -> extensions::Bytes<'r, T> {
+        extensions::Bytes::new(self)
     }
 }
 
@@ -986,6 +1000,7 @@ unsafe fn slice_vec_capacity<'a, T>(v: &'a mut Vec<T>, start: uint, end: uint) -
 /// # fn process_input<R: Reader>(r: R) {}
 /// # fn foo() {
 /// use std::io;
+/// use std::io::AsRefReader;
 /// use std::io::util::LimitReader;
 ///
 /// let mut stream = io::stdin();
@@ -1268,13 +1283,20 @@ pub trait Writer {
     fn write_i8(&mut self, n: i8) -> IoResult<()> {
         self.write([n as u8])
     }
+}
 
+/// A writer which can be converted to a RefWriter.
+pub trait AsRefWriter {
     /// Creates a wrapper around a mutable reference to the writer.
     ///
     /// This is useful to allow applying wrappers while still
     /// retaining ownership of the original value.
     #[inline]
-    fn by_ref<'a>(&'a mut self) -> RefWriter<'a, Self> {
+    fn by_ref<'a>(&'a mut self) -> RefWriter<'a, Self>;
+}
+
+impl<T: Writer> AsRefWriter for T {
+    fn by_ref<'a>(&'a mut self) -> RefWriter<'a, T> {
         RefWriter { inner: self }
     }
 }
@@ -1309,7 +1331,7 @@ impl<'a> Writer for &'a mut Writer+'a {
 /// # fn process_input<R: Reader>(r: R) {}
 /// # fn foo () {
 /// use std::io::util::TeeReader;
-/// use std::io::{stdin, MemWriter};
+/// use std::io::{stdin, MemWriter, AsRefWriter};
 ///
 /// let mut output = MemWriter::new();
 ///
