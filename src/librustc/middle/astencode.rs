@@ -717,8 +717,9 @@ impl<'a> vtable_decoder_helpers for reader::Decoder<'a> {
     {
         let types = self.read_to_vec(|this| Ok(f(this))).unwrap();
         let selfs = self.read_to_vec(|this| Ok(f(this))).unwrap();
+        let assocs = self.read_to_vec(|this| Ok(f(this))).unwrap();
         let fns = self.read_to_vec(|this| Ok(f(this))).unwrap();
-        VecPerParamSpace::new(types, selfs, fns)
+        VecPerParamSpace::new(types, selfs, assocs, fns)
     }
 
     fn read_vtable_res_with_key(&mut self,

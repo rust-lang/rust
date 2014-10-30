@@ -112,8 +112,8 @@ impl Substs {
                     r: Vec<ty::Region>)
                     -> Substs
     {
-        Substs::new(VecPerParamSpace::new(t, Vec::new(), Vec::new()),
-                    VecPerParamSpace::new(r, Vec::new(), Vec::new()))
+        Substs::new(VecPerParamSpace::new(t, Vec::new(), Vec::new(), Vec::new()),
+                    VecPerParamSpace::new(r, Vec::new(), Vec::new(), Vec::new()))
     }
 
     pub fn new_trait(t: Vec<ty::t>,
@@ -121,8 +121,8 @@ impl Substs {
                      s: ty::t)
                     -> Substs
     {
-        Substs::new(VecPerParamSpace::new(t, vec!(s), Vec::new()),
-                    VecPerParamSpace::new(r, Vec::new(), Vec::new()))
+        Substs::new(VecPerParamSpace::new(t, vec!(s), Vec::new(), Vec::new()),
+                    VecPerParamSpace::new(r, Vec::new(), Vec::new(), Vec::new()))
     }
 
     pub fn erased(t: VecPerParamSpace<ty::t>) -> Substs
@@ -226,21 +226,23 @@ impl RegionSubsts {
 #[deriving(PartialOrd, Ord, PartialEq, Eq,
            Clone, Hash, Encodable, Decodable, Show)]
 pub enum ParamSpace {
-    TypeSpace, // Type parameters attached to a type definition, trait, or impl
-    SelfSpace, // Self parameter on a trait
-    FnSpace,   // Type parameters attached to a method or fn
+    TypeSpace,  // Type parameters attached to a type definition, trait, or impl
+    SelfSpace,  // Self parameter on a trait
+    AssocSpace, // Assoc types defined in a trait/impl
+    FnSpace,    // Type parameters attached to a method or fn
 }
 
 impl ParamSpace {
-    pub fn all() -> [ParamSpace, ..3] {
-        [TypeSpace, SelfSpace, FnSpace]
+    pub fn all() -> [ParamSpace, ..4] {
+        [TypeSpace, SelfSpace, AssocSpace, FnSpace]
     }
 
     pub fn to_uint(self) -> uint {
         match self {
             TypeSpace => 0,
             SelfSpace => 1,
-            FnSpace => 2,
+            AssocSpace => 2,
+            FnSpace => 3,
         }
     }
 
@@ -248,7 +250,8 @@ impl ParamSpace {
         match u {
             0 => TypeSpace,
             1 => SelfSpace,
-            2 => FnSpace,
+            2 => AssocSpace,
+            3 => FnSpace,
             _ => panic!("Invalid ParamSpace: {}", u)
         }
     }
@@ -268,11 +271,13 @@ pub struct VecPerParamSpace<T> {
     // Here is how the representation corresponds to the abstraction
     // i.e. the "abstraction function" AF:
     //
-    // AF(self) = (self.content.slice_to(self.type_limit),
-    //             self.content.slice(self.type_limit, self.self_limit),
-    //             self.content.slice_from(self.self_limit))
+    // AF(self) = (self.content[..self.type_limit],
+    //             self.content[self.type_limit..self.self_limit],
+    //             self.content[self.self_limit..self.assoc_limit],
+    //             self.content[self.assoc_limit..])
     type_limit: uint,
     self_limit: uint,
+    assoc_limit: uint,
     content: Vec<T>,
 }
 
@@ -292,7 +297,8 @@ impl<T> VecPerParamSpace<T> {
         match space {
             TypeSpace => (0, self.type_limit),
             SelfSpace => (self.type_limit, self.self_limit),
-            FnSpace => (self.self_limit, self.content.len()),
+            AssocSpace => (self.self_limit, self.assoc_limit),
+            FnSpace => (self.assoc_limit, self.content.len()),
         }
     }
 
@@ -300,6 +306,7 @@ impl<T> VecPerParamSpace<T> {
         VecPerParamSpace {
             type_limit: 0,
             self_limit: 0,
+            assoc_limit: 0,
             content: Vec::new()
         }
     }
@@ -310,26 +317,33 @@ impl<T> VecPerParamSpace<T> {
 
     /// `t` is the type space.
     /// `s` is the self space.
+    /// `a` is the assoc space.
     /// `f` is the fn space.
-    pub fn new(t: Vec<T>, s: Vec<T>, f: Vec<T>) -> VecPerParamSpace<T> {
+    pub fn new(t: Vec<T>, s: Vec<T>, a: Vec<T>, f: Vec<T>) -> VecPerParamSpace<T> {
         let type_limit = t.len();
-        let self_limit = t.len() + s.len();
+        let self_limit = type_limit + s.len();
+        let assoc_limit = self_limit + a.len();
+
         let mut content = t;
         content.extend(s.into_iter());
+        content.extend(a.into_iter());
         content.extend(f.into_iter());
+
         VecPerParamSpace {
             type_limit: type_limit,
             self_limit: self_limit,
+            assoc_limit: assoc_limit,
             content: content,
         }
     }
 
-    fn new_internal(content: Vec<T>, type_limit: uint, self_limit: uint)
+    fn new_internal(content: Vec<T>, type_limit: uint, self_limit: uint, assoc_limit: uint)
                     -> VecPerParamSpace<T>
     {
         VecPerParamSpace {
             type_limit: type_limit,
             self_limit: self_limit,
+            assoc_limit: assoc_limit,
             content: content,
         }
     }
@@ -341,9 +355,10 @@ impl<T> VecPerParamSpace<T> {
     pub fn push(&mut self, space: ParamSpace, value: T) {
         let (_, limit) = self.limits(space);
         match space {
-            TypeSpace => { self.type_limit += 1; self.self_limit += 1; }
-            SelfSpace => { self.self_limit += 1; }
-            FnSpace   => {}
+            TypeSpace => { self.type_limit += 1; self.self_limit += 1; self.assoc_limit += 1; }
+            SelfSpace => { self.self_limit += 1; self.assoc_limit += 1; }
+            AssocSpace => { self.assoc_limit += 1; }
+            FnSpace => { }
         }
         self.content.insert(limit, value);
     }
@@ -354,9 +369,10 @@ impl<T> VecPerParamSpace<T> {
             None
         } else {
             match space {
-                TypeSpace => { self.type_limit -= 1; self.self_limit -= 1; }
-                SelfSpace => { self.self_limit -= 1; }
-                FnSpace   => {}
+                TypeSpace => { self.type_limit -= 1; self.self_limit -= 1; self.assoc_limit -= 1; }
+                SelfSpace => { self.self_limit -= 1; self.assoc_limit -= 1; }
+                AssocSpace => { self.assoc_limit -= 1; }
+                FnSpace => {}
             }
             self.content.remove(limit - 1)
         }
@@ -442,35 +458,29 @@ impl<T> VecPerParamSpace<T> {
         let result = self.iter().map(pred).collect();
         VecPerParamSpace::new_internal(result,
                                        self.type_limit,
-                                       self.self_limit)
+                                       self.self_limit,
+                                       self.assoc_limit)
     }
 
     pub fn map_move<U>(self, pred: |T| -> U) -> VecPerParamSpace<U> {
-        let (t, s, f) = self.split();
+        let (t, s, a, f) = self.split();
         VecPerParamSpace::new(t.into_iter().map(|p| pred(p)).collect(),
                               s.into_iter().map(|p| pred(p)).collect(),
+                              a.into_iter().map(|p| pred(p)).collect(),
                               f.into_iter().map(|p| pred(p)).collect())
     }
 
-    pub fn split(self) -> (Vec<T>, Vec<T>, Vec<T>) {
-        // FIXME (#15418): this does two traversals when in principle
-        // one would suffice.  i.e. change to use `move_iter`.
-        let VecPerParamSpace { type_limit, self_limit, content } = self;
-        let mut i = 0;
-        let (prefix, fn_vec) = content.partition(|_| {
-            let on_left = i < self_limit;
-            i += 1;
-            on_left
-        });
+    pub fn split(self) -> (Vec<T>, Vec<T>, Vec<T>, Vec<T>) {
+        let VecPerParamSpace { type_limit, self_limit, assoc_limit, content } = self;
 
-        let mut i = 0;
-        let (type_vec, self_vec) = prefix.partition(|_| {
-            let on_left = i < type_limit;
-            i += 1;
-            on_left
-        });
+        let mut content_iter = content.into_iter();
 
-        (type_vec, self_vec, fn_vec)
+        let types = content_iter.by_ref().take(type_limit).collect();
+        let selfs = content_iter.by_ref().take(self_limit - type_limit).collect();
+        let assocs = content_iter.by_ref().take(assoc_limit - self_limit).collect();
+        let fns = content_iter.collect();
+
+        (types, selfs, assocs, fns)
     }
 
     pub fn with_vec(mut self, space: ParamSpace, vec: Vec<T>)
@@ -616,12 +626,13 @@ impl<'a, 'tcx> TypeFolder<'tcx> for SubstFolder<'a, 'tcx> {
                     this.tcx().sess.span_bug(
                         span,
                         format!("Type parameter `{}` ({}/{}/{}) out of range \
-                                 when substituting (root type={})",
+                                 when substituting (root type={}) substs={}",
                                 p.repr(this.tcx()),
                                 source_ty.repr(this.tcx()),
                                 space,
                                 index,
-                                this.root_ty.repr(this.tcx())).as_slice());
+                                this.root_ty.repr(this.tcx()),
+                                this.substs.repr(this.tcx())).as_slice());
                 }
             }
         }
