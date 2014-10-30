@@ -258,7 +258,7 @@ macro_rules! bitflags {
 }
 
 #[cfg(test)]
-#[allow(non_uppercase_statics)]
+#[allow(non_upper_case_globals)]
 mod tests {
     use hash;
     use option::{Some, None};

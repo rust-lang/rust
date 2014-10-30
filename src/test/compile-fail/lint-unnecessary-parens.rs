@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![deny(unnecessary_parens)]
+#![deny(unused_parens)]
 #![feature(if_let,while_let)]
 
 #[deriving(Eq, PartialEq)]

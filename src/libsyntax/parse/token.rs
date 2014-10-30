@@ -469,7 +469,7 @@ macro_rules! declare_special_idents_and_keywords {(
     pub mod special_idents {
         use ast;
         $(
-            #[allow(non_uppercase_statics)]
+            #[allow(non_upper_case_globals)]
             pub const $si_static: ast::Ident = ast::Ident {
                 name: ast::Name($si_name),
                 ctxt: 0,
@@ -480,7 +480,7 @@ macro_rules! declare_special_idents_and_keywords {(
     pub mod special_names {
         use ast;
         $(
-            #[allow(non_uppercase_statics)]
+            #[allow(non_upper_case_globals)]
             pub const $si_static: ast::Name =  ast::Name($si_name);
         )*
     }

@@ -9,7 +9,7 @@
 // except according to those terms.
 
 #![deny(unreachable_code)]
-#![allow(unused_variable)]
+#![allow(unused_variables)]
 #![allow(dead_code)]
 
 fn fail_len(v: Vec<int> ) -> uint {

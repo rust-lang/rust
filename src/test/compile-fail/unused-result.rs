@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![deny(unused_result, unused_must_use)]
+#![deny(unused_results, unused_must_use)]
 #![allow(dead_code)]
 
 #[must_use]
@@ -23,14 +23,14 @@ fn bar() -> int { return foo::<int>(); }
 fn baz() -> MustUse { return foo::<MustUse>(); }
 fn qux() -> MustUseMsg { return foo::<MustUseMsg>(); }
 
-#[allow(unused_result)]
+#[allow(unused_results)]
 fn test() {
     foo::<int>();
     foo::<MustUse>(); //~ ERROR: unused result which must be used
     foo::<MustUseMsg>(); //~ ERROR: unused result which must be used: some message
 }
 
-#[allow(unused_result, unused_must_use)]
+#[allow(unused_results, unused_must_use)]
 fn test2() {
     foo::<int>();
     foo::<MustUse>();

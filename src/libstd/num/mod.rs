@@ -14,7 +14,7 @@
 //! u32, u64, uint, i8, i16, i32, i64, int, f32, f64}`.
 
 #![experimental]
-#![allow(missing_doc)]
+#![allow(missing_docs)]
 
 use option::Option;
 

@@ -81,7 +81,7 @@ macro_rules! tuple_impls {
         }
     )+) => {
         $(
-            #[allow(missing_doc)]
+            #[allow(missing_docs)]
             #[stable]
             pub trait $Tuple<$($T),+> {
                 $(
@@ -97,21 +97,21 @@ macro_rules! tuple_impls {
             impl<$($T),+> $Tuple<$($T),+> for ($($T,)+) {
                 $(
                     #[inline]
-                    #[allow(unused_variable)]
+                    #[allow(unused_variables)]
                     #[unstable = "may rename pending accessor naming conventions"]
                     fn $valN(self) -> $T {
                         let ($($x,)+) = self; $ret
                     }
 
                     #[inline]
-                    #[allow(unused_variable)]
+                    #[allow(unused_variables)]
                     #[unstable = "may rename pending accessor naming conventions"]
                     fn $refN<'a>(&'a self) -> &'a $T {
                         let ($(ref $x,)+) = *self; $ret
                     }
 
                     #[inline]
-                    #[allow(unused_variable)]
+                    #[allow(unused_variables)]
                     #[unstable = "may rename pending accessor naming conventions"]
                     fn $mutN<'a>(&'a mut self) -> &'a mut $T {
                         let ($(ref mut $x,)+) = *self; $ret

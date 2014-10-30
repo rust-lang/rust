@@ -10,7 +10,7 @@
 
 //! C definitions used by libnative that don't belong in liblibc
 
-#![allow(type_overflow)]
+#![allow(overflowing_literals)]
 
 use libc;
 
