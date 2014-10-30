@@ -56,7 +56,7 @@ a reference.
 fn compute_distance(p1: &Point, p2: &Point) -> f64 {
     let x_d = p1.x - p2.x;
     let y_d = p1.y - p2.y;
-    sqrt(x_d * x_d + y_d * y_d)
+    (x_d * x_d + y_d * y_d).sqrt()
 }
 ~~~
 
