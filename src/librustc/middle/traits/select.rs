@@ -1607,7 +1607,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             Ok(o) => o,
             Err(ErrorReported) => Vec::new()
         };
-        let obligations = VecPerParamSpace::new(obligations, Vec::new(), Vec::new());
+        let obligations = VecPerParamSpace::new(obligations, Vec::new(),
+                                                Vec::new(), Vec::new());
         VtableBuiltinData { nested: obligations }
     }
 

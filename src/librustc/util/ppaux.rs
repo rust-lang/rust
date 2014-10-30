@@ -666,10 +666,11 @@ impl Repr for subst::Substs {
 
 impl<T:Repr> Repr for subst::VecPerParamSpace<T> {
     fn repr(&self, tcx: &ctxt) -> String {
-        format!("[{};{};{}]",
-                       self.get_slice(subst::TypeSpace).repr(tcx),
-                       self.get_slice(subst::SelfSpace).repr(tcx),
-                       self.get_slice(subst::FnSpace).repr(tcx))
+        format!("[{};{};{};{}]",
+                self.get_slice(subst::TypeSpace).repr(tcx),
+                self.get_slice(subst::SelfSpace).repr(tcx),
+                self.get_slice(subst::AssocSpace).repr(tcx),
+                self.get_slice(subst::FnSpace).repr(tcx))
     }
 }
 
