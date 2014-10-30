@@ -327,7 +327,7 @@ fn item_to_def_like(item: rbml::Doc, did: ast::DefId, cnum: ast::CrateNum)
                 // We don't bother to get encode/decode the trait id, we don't need it.
                 Method => DlDef(def::DefMethod(did, None, provenance)),
                 StaticMethod => DlDef(def::DefStaticMethod(did, provenance)),
-                _ => fail!()
+                _ => panic!()
             }
         }
         Type | ForeignType => DlDef(def::DefTy(did, false)),
@@ -931,7 +931,7 @@ pub fn get_methods_if_impl(intr: Rc<IdentInterner>,
         match family {
             StaticMethod | Method => {
                 impl_methods.push(MethodInfo {
-                    ident: item_name(&*intr, impl_method_doc),
+                    name: item_name(&*intr, impl_method_doc),
                     def_id: item_def_id(impl_method_doc, cdata),
                     vis: item_visibility(impl_method_doc),
                 });

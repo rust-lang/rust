@@ -10,22 +10,12 @@
 
 // Test method calls with self as an argument (cross-crate)
 
-// aux-build:method_self_arg.rs
-extern crate method_self_arg;
-use method_self_arg::{Foo, Bar};
+// aux-build:method_self_arg2.rs
+extern crate method_self_arg2;
+use method_self_arg2::{Foo, Bar};
 
 fn main() {
     let x = Foo;
-    // Test external call.
-    Foo::bar(&x);
-    Foo::baz(x);
-    Foo::qux(box x);
-
-    x.foo(&x);
-
-    assert!(method_self_arg::get_count() == 2u64*3*3*3*5*5*5*7*7*7);
-
-    method_self_arg::reset_count();
     // Test external call.
     Bar::foo1(&x);
     Bar::foo2(x);
@@ -37,6 +27,5 @@ fn main() {
 
     x.run_trait();
 
-    println!("{}, {}", method_self_arg::get_count(), 2u64*2*3*3*5*5*7*7*11*11*13*13*17);
-    assert!(method_self_arg::get_count() == 2u64*2*3*3*5*5*7*7*11*11*13*13*17);
+    assert!(method_self_arg2::get_count() == 2u64*2*3*3*5*5*7*7*11*11*13*13*17);
 }
