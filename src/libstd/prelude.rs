@@ -53,7 +53,7 @@
 
 // Reexported functions
 #[doc(no_inline)] pub use from_str::from_str;
-#[doc(no_inline)] pub use iter::range;
+#[doc(no_inline)] pub use iter::{range, repeat};
 #[doc(no_inline)] pub use mem::drop;
 
 // Reexported types and traits
