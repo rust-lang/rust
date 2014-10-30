@@ -58,7 +58,7 @@ impl<'a,T> IntoMaybeOwnedVector<'a,T> for &'a [T] {
 impl<'a,T> MaybeOwnedVector<'a,T> {
     pub fn iter(&'a self) -> slice::Items<'a,T> {
         match self {
-            &Growable(ref v) => v.iter(),
+            &Growable(ref v) => v.as_slice().iter(),
             &Borrowed(ref v) => v.iter(),
         }
     }

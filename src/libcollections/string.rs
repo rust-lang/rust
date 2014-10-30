@@ -744,6 +744,11 @@ impl ops::Slice<uint, str> for String {
     }
 }
 
+#[experimental = "waiting on Deref stabilization"]
+impl ops::Deref<str> for String {
+    fn deref<'a>(&'a self) -> &'a str { self.as_slice() }
+}
+
 /// Wrapper type providing a `&String` reference via `Deref`.
 #[experimental]
 pub struct DerefString<'a> {
