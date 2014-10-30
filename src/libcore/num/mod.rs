@@ -1502,7 +1502,7 @@ pub trait Float: Signed + Primitive {
 
     /// Take the square root of a number.
     ///
-    /// Returns NaN if `self` is not a non-negative number.
+    /// Returns NaN if `self` is a negative number.
     fn sqrt(self) -> Self;
     /// Take the reciprocal (inverse) square root of a number, `1/sqrt(x)`.
     fn rsqrt(self) -> Self;
