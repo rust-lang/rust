@@ -540,7 +540,7 @@ fn mk_delim(cx: &ExtCtxt, sp: Span, delim: token::DelimToken) -> P<ast::Expr> {
     mk_token_path(cx, sp, name)
 }
 
-#[allow(non_uppercase_statics)] // NOTE(stage0): remove this attribute after the next snapshot
+#[allow(non_upper_case_globals)]
 fn mk_token(cx: &ExtCtxt, sp: Span, tok: &token::Token) -> P<ast::Expr> {
     match *tok {
         token::BinOp(binop) => {

@@ -254,7 +254,7 @@ impl LintStore {
 
     }
 
-    #[allow(unused_variable)]
+    #[allow(unused_variables)]
     fn find_lint(&self, lint_name: &str, sess: &Session, span: Option<Span>)
                  -> Option<LintId>
     {

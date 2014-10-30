@@ -110,10 +110,10 @@ pub enum DelimToken {
 }
 
 #[cfg(stage0)]
-#[allow(non_uppercase_statics)]
+#[allow(non_upper_case_globals)]
 pub const ModName: bool = true;
 #[cfg(stage0)]
-#[allow(non_uppercase_statics)]
+#[allow(non_upper_case_globals)]
 pub const Plain: bool = false;
 
 #[deriving(Clone, Encodable, Decodable, PartialEq, Eq, Hash, Show)]
@@ -263,7 +263,7 @@ impl Token {
 
     /// Returns `true` if the token is a path that is not followed by a `::`
     /// token.
-    #[allow(non_uppercase_statics)] // NOTE(stage0): remove this attribute after the next snapshot
+    #[allow(non_upper_case_globals)]
     pub fn is_plain_ident(&self) -> bool {
         match *self {
             Ident(_, Plain) => true,
@@ -311,7 +311,7 @@ impl Token {
     }
 
     /// Returns `true` if the token is a given keyword, `kw`.
-    #[allow(non_uppercase_statics)] // NOTE(stage0): remove this attribute after the next snapshot
+    #[allow(non_upper_case_globals)]
     pub fn is_keyword(&self, kw: keywords::Keyword) -> bool {
         match *self {
             Ident(sid, Plain) => kw.to_name() == sid.name,
@@ -321,7 +321,7 @@ impl Token {
 
     /// Returns `true` if the token is either a special identifier, or a strict
     /// or reserved keyword.
-    #[allow(non_uppercase_statics)] // NOTE(stage0): remove this attribute after the next snapshot
+    #[allow(non_upper_case_globals)]
     pub fn is_any_keyword(&self) -> bool {
         match *self {
             Ident(sid, Plain) => {
@@ -338,7 +338,7 @@ impl Token {
     }
 
     /// Returns `true` if the token may not appear as an identifier.
-    #[allow(non_uppercase_statics)] // NOTE(stage0): remove this attribute after the next snapshot
+    #[allow(non_upper_case_globals)]
     pub fn is_strict_keyword(&self) -> bool {
         match *self {
             Ident(sid, Plain) => {
@@ -364,7 +364,7 @@ impl Token {
 
     /// Returns `true` if the token is a keyword that has been reserved for
     /// possible future use.
-    #[allow(non_uppercase_statics)] // NOTE(stage0): remove this attribute after the next snapshot
+    #[allow(non_upper_case_globals)]
     pub fn is_reserved_keyword(&self) -> bool {
         match *self {
             Ident(sid, Plain) => {
