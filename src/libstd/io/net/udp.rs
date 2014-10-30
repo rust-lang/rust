@@ -22,7 +22,7 @@ use kinds::Send;
 use boxed::Box;
 use option::Option;
 use result::{Ok, Err};
-use rt::rtio::{RtioSocket, RtioUdpSocket, IoFactory, LocalIo};
+use rt::rtio::{RtioSocket, RtioUdpSocket, IoFactory};
 use rt::rtio;
 
 /// A User Datagram Protocol socket.
