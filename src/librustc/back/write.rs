@@ -226,12 +226,10 @@ fn create_target_machine(sess: &Session) -> TargetMachineRef {
         }
     };
 
-    unsafe {
-        sess.targ_cfg
-             .target_strs
-             .target_triple
-             .as_slice()
-             .with_c_str(|t| {
+    let triple = sess.targ_cfg.target_strs.target_triple.as_slice();
+
+    let tm = unsafe {
+            triple.with_c_str(|t| {
             sess.opts.cg.target_cpu.as_slice().with_c_str(|cpu| {
                 target_feature(sess).with_c_str(|features| {
                     llvm::LLVMRustCreateTargetMachine(
@@ -249,7 +247,15 @@ fn create_target_machine(sess: &Session) -> TargetMachineRef {
                 })
             })
         })
-    }
+    };
+
+    if tm.is_null() {
+        llvm_err(sess.diagnostic().handler(),
+                 format!("Could not create LLVM TargetMachine for triple: {}",
+                         triple).to_string());
+    } else {
+        return tm;
+    };
 }
 
 
