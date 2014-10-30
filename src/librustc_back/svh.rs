@@ -90,14 +90,14 @@ impl Svh {
         }
 
         // FIXME (#14132): This hash is still sensitive to e.g. the
-        // spans of the crate Attributes and their underlying
-        // MetaItems; we should make ContentHashable impl for those
+        // spans of the crate `Attribute`s and their underlying
+        // `MetaItem`s; we should make `ContentHashable` impl for those
         // types and then use hash_content.  But, since all crate
         // attributes should appear near beginning of the file, it is
         // not such a big deal to be sensitive to their spans for now.
         //
-        // We hash only the MetaItems instead of the entire Attribute
-        // to avoid hashing the AttrId
+        // We hash only the MetaItems instead of the entire `Attribute`
+        // to avoid hashing the `AttrId`.
         for attr in krate.attrs.iter() {
             attr.node.value.hash(&mut state);
         }
@@ -156,7 +156,7 @@ mod svh_visitor {
     // The important invariant is that all of the Saw*Component enums
     // do not carry any Spans, Names, or Idents.
     //
-    // Not carrying any Names/Idents is the important fix for problem
+    // Not carrying any `Name`s/`Ident`s is the important fix for problem
     // noted on PR #13948: using the ident.name as the basis for a
     // hash leads to unstable SVH, because ident.name is just an index
     // into intern table (i.e. essentially a random address), not
@@ -203,7 +203,7 @@ mod svh_visitor {
         SawStmt(SawStmtComponent),
     }
 
-    /// SawExprComponent carries all of the information that we want
+    /// `SawExprComponent` carries all of the information that we want
     /// to include in the hash that *won't* be covered by the
     /// subsequent recursive traversal of the expression's
     /// substructure by the visitor.
@@ -299,7 +299,7 @@ mod svh_visitor {
         }
     }
 
-    /// SawStmtComponent is analogous to SawExprComponent, but for statements.
+    /// `SawStmtComponent` is analogous to SawExprComponent, but for statements.
     #[deriving(Hash)]
     pub enum SawStmtComponent {
         SawStmtDecl,
@@ -316,7 +316,7 @@ mod svh_visitor {
         }
     }
 
-    // Ad-hoc overloading between Ident and Name to their intern table lookups.
+    // Ad-hoc overloading between `Ident` and `Name` to their intern table lookups.
     trait InternKey { fn get_content(self) -> token::InternedString; }
     impl InternKey for Ident {
         fn get_content(self) -> token::InternedString { token::get_ident(self) }

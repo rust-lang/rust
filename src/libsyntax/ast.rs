@@ -371,8 +371,8 @@ pub enum PatNode {
     /// is None).
     /// In the nullary enum case, the parser can't determine
     /// which it is. The resolver determines this, and
-    /// records this pattern's NodeId in an auxiliary
-    /// set (of "PatIdents that refer to nullary enums")
+    /// records this pattern's `NodeId` in an auxiliary
+    /// set (of "`PatIdent`s that refer to nullary enums")
     PatIdent(BindingMode, SpannedIdent, Option<P<Pat>>),
 
     /// "None" means a * pattern where we don't bind the fields to names.
@@ -453,7 +453,7 @@ pub enum LocalSource {
 
 // FIXME (pending discussion of #1697, #2178...): local should really be
 // a refinement on pat.
-/// Local represents a `let` statement, e.g., `let <pat>:<ty> = <expr>;`
+/// Represents a `let` statement, e.g., `let <pat>:<ty> = <expr>;`
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
 pub struct Local {
     pub ty: P<Ty>,
@@ -634,7 +634,9 @@ impl Delimited {
 /// for token sequences.
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
 pub enum KleeneOp {
+    /// Kleene star operator
     ZeroOrMore,
+    /// Kleene plus operator
     OneOrMore,
 }
 
@@ -681,57 +683,59 @@ impl TokenTree {
     }
 }
 
-// Matchers are nodes defined-by and recognized-by the main rust parser and
-// language, but they're only ever found inside syntax-extension invocations;
-// indeed, the only thing that ever _activates_ the rules in the rust parser
-// for parsing a matcher is a matcher looking for the 'matchers' nonterminal
-// itself. Matchers represent a small sub-language for pattern-matching
-// token-trees, and are thus primarily used by the macro-defining extension
-// itself.
-//
-// MatchTok
-// --------
-//
-//     A matcher that matches a single token, denoted by the token itself. So
-//     long as there's no $ involved.
-//
-//
-// MatchSeq
-// --------
-//
-//     A matcher that matches a sequence of sub-matchers, denoted various
-//     possible ways:
-//
-//             $(M)*       zero or more Ms
-//             $(M)+       one or more Ms
-//             $(M),+      one or more comma-separated Ms
-//             $(A B C);*  zero or more semi-separated 'A B C' seqs
-//
-//
-// MatchNonterminal
-// -----------------
-//
-//     A matcher that matches one of a few interesting named rust
-//     nonterminals, such as types, expressions, items, or raw token-trees. A
-//     black-box matcher on expr, for example, binds an expr to a given ident,
-//     and that ident can re-occur as an interpolation in the RHS of a
-//     macro-by-example rule. For example:
-//
-//        $foo:expr   =>     1 + $foo    // interpolate an expr
-//        $foo:tt     =>     $foo        // interpolate a token-tree
-//        $foo:tt     =>     bar! $foo   // only other valid interpolation
-//                                       // is in arg position for another
-//                                       // macro
-//
-// As a final, horrifying aside, note that macro-by-example's input is
-// also matched by one of these matchers. Holy self-referential! It is matched
-// by a MatchSeq, specifically this one:
-//
-//                   $( $lhs:matchers => $rhs:tt );+
-//
-// If you understand that, you have closed the loop and understand the whole
-// macro system. Congratulations.
-pub type Matcher = Spanned<Matcher_>;
+/// `Matcher`s are nodes defined-by and recognized-by the main rust parser and
+/// language, but they're only ever found inside syntax-extension invocations;
+/// indeed, the only thing that ever _activates_ the rules in the rust parser
+/// for parsing a matcher is a matcher looking for the 'matchers' nonterminal
+/// itself. `Matcher`s represent a small sub-language for pattern-matching
+/// token-trees, and are thus primarily used by the macro-defining extension
+/// itself.
+///
+/// # `MatchTok`
+///
+/// A matcher that matches a single token, denoted by the token itself. So
+/// long as there's no $ involved.
+///
+///
+/// # `MatchSeq`
+///
+/// A matcher that matches a sequence of sub-matchers, denoted various
+/// possible ways:
+///
+/// ~~~
+/// $(M)*       zero or more Ms
+/// $(M)+       one or more Ms
+/// $(M),+      one or more comma-separated Ms
+/// $(A B C);*  zero or more semi-separated 'A B C' seqs
+/// ~~~
+///
+/// # `MatchNonterminal`
+///
+/// A matcher that matches one of a few interesting named rust
+/// nonterminals, such as types, expressions, items, or raw token-trees. A
+/// black-box matcher on expr, for example, binds an expr to a given ident,
+/// and that ident can re-occur as an interpolation in the RHS of a
+/// macro-by-example rule. For example:
+///
+/// ~~~
+/// $foo:expr   =>     1 + $foo    // interpolate an expr
+/// $foo:tt     =>     $foo        // interpolate a token-tree
+/// $foo:tt     =>     bar! $foo   // only other valid interpolation
+///                                // is in arg position for another
+///                                // macro
+/// ~~~
+///
+/// As a final, horrifying aside, note that macro-by-example's input is
+/// also matched by one of these matchers. Holy self-referential! It is matched
+/// by a `MatchSeq`, specifically this one:
+///
+/// ~~~
+/// $( $lhs:matchers => $rhs:tt );+
+/// ~~~
+///
+/// If you understand that, you have closed the loop and understand the whole
+/// macro system. Congratulations.
+pub type Matcher = Spanned<MatcherNode>;
 
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
 pub enum MatcherNode {
@@ -947,7 +951,7 @@ impl FloatTy {
     }
 }
 
-// NB PartialEq method appears below.
+// NB `PartialEq` method appears below.
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
 pub struct Ty {
     pub id: NodeId,
@@ -1049,7 +1053,7 @@ pub struct InlineAsm {
     pub expn_id: ExpnId,
 }
 
-/// represents an argument in a function header
+/// An argument in a function header.
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
 pub struct Arg {
     pub ty: P<Ty>,
@@ -1077,7 +1081,7 @@ impl Arg {
     }
 }
 
-/// represents the header (not the body) of a function declaration
+/// The header (not the body) of a function declaration.
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
 pub struct FnDecl {
     pub inputs: Vec<Arg>,
@@ -1112,7 +1116,7 @@ pub enum RetStyle {
     Return,
 }
 
-/// Represents the kind of 'self' associated with a method
+/// The kind of `self` associated with a method.
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
 pub enum ExplicitSelfNode {
     /// No self
@@ -1239,19 +1243,20 @@ pub struct ViewItem {
 }
 
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
-pub enum ViewItem_ {
-    /// Ident: name used to refer to this crate in the code
-    /// optional (InternedString,StrStyle): if present, this is a location
-    /// (containing arbitrary characters) from which to fetch the crate sources
-    /// For example, extern crate whatever = "github.com/rust-lang/rust"
-    ViewItemExternCrate(Ident, Option<(InternedString,StrStyle)>, NodeId),
+pub enum ViewItemNode {
+    /// `Ident` is the name used to refer to this crate in the code.
+    /// If the ptional (`InternedString`, `StrStyle`) is present, this is a
+    /// location (containing arbitrary characters) from which to fetch the
+    /// crate sources. For example,
+    /// `extern crate whatever = "github.com/rust-lang/rust"`.
+    ViewItemExternCrate(Ident, Option<(InternedString, StrStyle)>, NodeId),
     ViewItemUse(P<ViewPath>),
 }
 
 /// Meta-data associated with an item
 pub type Attribute = Spanned<AttributeNode>;
 
-/// Distinguishes between Attributes that decorate items and Attributes that
+/// Distinguishes between `Attribute`s that decorate items and `Attribute`s that
 /// are contained as statements within items. These two cases need to be
 /// distinguished for pretty-printing.
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
@@ -1263,7 +1268,7 @@ pub enum AttrStyle {
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
 pub struct AttrId(pub uint);
 
-/// Doc-comments are promoted to attributes that have is_sugared_doc = true
+/// Doc-comments are promoted to attributes that have `is_sugared_doc = true`.
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
 pub struct AttributeNode {
     pub id: AttrId,
@@ -1273,10 +1278,10 @@ pub struct AttributeNode {
 }
 
 
-/// TraitRef's appear in impls.
-/// resolve maps each TraitRef's ref_id to its defining trait; that's all
-/// that the ref_id is for. The impl_id maps to the "self type" of this impl.
-/// If this impl is an ItemImpl, the impl_id is redundant (it could be the
+/// `TraitRef`s appear in impls.
+/// Resolve maps each `TraitRef`s `ref_id` to its defining trait; that's all
+/// that the ref_id is for. The `impl_id` maps to the "self type" of this impl.
+/// If this impl is an ItemImpl, the `impl_id` is redundant (it could be the
 /// same as the impl's node id).
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
 pub struct TraitRef {
@@ -1370,8 +1375,8 @@ pub enum ItemNode {
     ItemStruct(P<StructDef>, Generics),
     /// Represents a Trait Declaration
     ItemTrait(Generics,
-              Option<TyParamBound>, // (optional) default bound not required for Self.
-                                    // Currently, only Sized makes sense here.
+              Option<TyParamBound>, // (optional) default bound not required for `Self`.
+                                    // Currently, only `Sized` makes sense here.
               TyParamBounds,
               Vec<TraitItem>),
     ItemImpl(Generics,
