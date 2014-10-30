@@ -1,6 +1,6 @@
-- Start Date: (fill me in with today's date, YYYY-MM-DD)
-- RFC PR #: (leave this empty)
-- Rust Issue #: (leave this empty)
+- Start Date: 2014-10-30
+- RFC PR #: https://github.com/rust-lang/rfcs/pull/401
+- Rust Issue #: https://github.com/rust-lang/rust/issues/18469
 
 # Summary
 
@@ -375,7 +375,7 @@ fn main() {
     let x: fn() = foo;   // `foo` is coerced to `fn()`.
     let y: || = x;       // `x` is coerced to `&Fn` (a closure object),
                          // legal due to the `fn()` auto-impls.
-    
+
     let z: || = foo;     // `foo` is coerced to `&T` where `T` is fresh and
                          // bounded by `Fn`. Legal due to the fresh function
                          // type auto-impls.
@@ -434,4 +434,3 @@ it finds a user-supplied implementation of the `Unsize` trait, rather than
 silently ignoring them.
 
 # Unresolved questions
-
