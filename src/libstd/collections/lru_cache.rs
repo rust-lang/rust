@@ -38,7 +38,7 @@
 //! ```
 
 use cmp::{PartialEq, Eq};
-use collections::{HashMap, Collection, Mutable, MutableMap};
+use collections::HashMap;
 use fmt;
 use hash::Hash;
 use iter::{range, Iterator};
@@ -288,6 +288,15 @@ impl<K: Hash + Eq, V> LruCache<K, V> {
             (*(*node).next).prev = node;
         }
     }
+
+    /// Return the number of key-value pairs in the cache.
+    pub fn len(&self) -> uint { self.map.len() }
+
+    /// Returns whether the cache is currently empty.
+    pub fn is_empty(&self) -> bool { self.len() == 0 }
+
+    /// Clear the cache of all key-value pairs.
+    pub fn clear(&mut self) { self.map.clear(); }
 }
 
 impl<A: fmt::Show + Hash + Eq, B: fmt::Show> fmt::Show for LruCache<A, B> {
@@ -308,20 +317,6 @@ impl<A: fmt::Show + Hash + Eq, B: fmt::Show> fmt::Show for LruCache<A, B> {
             }
         }
         write!(f, r"}}")
-    }
-}
-
-impl<K: Hash + Eq, V> Collection for LruCache<K, V> {
-    /// Return the number of key-value pairs in the cache.
-    fn len(&self) -> uint {
-        self.map.len()
-    }
-}
-
-impl<K: Hash + Eq, V> Mutable for LruCache<K, V> {
-    /// Clear the cache of all key-value pairs.
-    fn clear(&mut self) {
-        self.map.clear();
     }
 }
 

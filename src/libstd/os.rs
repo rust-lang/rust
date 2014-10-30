@@ -32,7 +32,6 @@
 #![allow(non_snake_case)]
 
 use clone::Clone;
-use collections::{Collection, MutableSeq};
 use fmt;
 use io::{IoResult, IoError};
 use iter::Iterator;
