@@ -22,7 +22,6 @@ use core::ops;
 // FIXME: ICE's abound if you import the `Slice` type while importing `Slice` trait
 use core::raw::Slice as RawSlice;
 
-use {Mutable, MutableSeq};
 use hash;
 use slice::CloneableVector;
 use str;
@@ -626,22 +625,43 @@ impl String {
     pub unsafe fn as_mut_vec<'a>(&'a mut self) -> &'a mut Vec<u8> {
         &mut self.vec
     }
-}
 
-#[experimental = "collection traits will probably be removed"]
-impl Collection for String {
+    /// Return the number of bytes in this string.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// let a = "foo".to_string();
+    /// assert_eq!(a.len(), 3);
+    /// ```
     #[inline]
     #[stable]
-    fn len(&self) -> uint {
-        self.vec.len()
-    }
-}
+    pub fn len(&self) -> uint { self.vec.len() }
 
-#[experimental = "collection traits will probably be removed"]
-impl Mutable for String {
+    /// Returns true if the string contains no bytes
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// let mut v = String::new();
+    /// assert!(v.is_empty());
+    /// v.push('a');
+    /// assert!(!v.is_empty());
+    /// ```
+    pub fn is_empty(&self) -> bool { self.len() == 0 }
+
+    /// Truncates the string, returning it to 0 length.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// let mut s = "foo".to_string();
+    /// s.clear();
+    /// assert!(s.is_empty());
+    /// ```
     #[inline]
     #[stable]
-    fn clear(&mut self) {
+    pub fn clear(&mut self) {
         self.vec.clear()
     }
 }
@@ -830,7 +850,6 @@ mod tests {
     use std::prelude::*;
     use test::Bencher;
 
-    use {Mutable, MutableSeq};
     use str;
     use str::{Str, StrSlice, Owned};
     use super::{as_string, String};

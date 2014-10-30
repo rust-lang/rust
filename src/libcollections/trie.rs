@@ -29,7 +29,6 @@ use core::uint;
 use core::iter;
 use std::hash::{Writer, Hash};
 
-use {Mutable, Map, MutableMap, Set, MutableSet};
 use slice::{Items, MutItems};
 use slice;
 
@@ -123,72 +122,6 @@ impl<T: Show> Show for TrieMap<T> {
         }
 
         write!(f, "}}")
-    }
-}
-
-impl<T> Collection for TrieMap<T> {
-    /// Returns the number of elements in the map.
-    #[inline]
-    fn len(&self) -> uint { self.length }
-}
-
-impl<T> Mutable for TrieMap<T> {
-    /// Clears the map, removing all values.
-    #[inline]
-    fn clear(&mut self) {
-        self.root = TrieNode::new();
-        self.length = 0;
-    }
-}
-
-impl<T> Map<uint, T> for TrieMap<T> {
-    /// Returns a reference to the value corresponding to the key.
-    #[inline]
-    fn find<'a>(&'a self, key: &uint) -> Option<&'a T> {
-        let mut node: &'a TrieNode<T> = &self.root;
-        let mut idx = 0;
-        loop {
-            match node.children[chunk(*key, idx)] {
-              Internal(ref x) => node = &**x,
-              External(stored, ref value) => {
-                if stored == *key {
-                    return Some(value)
-                } else {
-                    return None
-                }
-              }
-              Nothing => return None
-            }
-            idx += 1;
-        }
-    }
-}
-
-impl<T> MutableMap<uint, T> for TrieMap<T> {
-    /// Returns a mutable reference to the value corresponding to the key.
-    #[inline]
-    fn find_mut<'a>(&'a mut self, key: &uint) -> Option<&'a mut T> {
-        find_mut(&mut self.root.children[chunk(*key, 0)], *key, 1)
-    }
-
-    /// Inserts a key-value pair from the map. If the key already had a value
-    /// present in the map, that value is returned. Otherwise, `None` is returned.
-    fn swap(&mut self, key: uint, value: T) -> Option<T> {
-        let ret = insert(&mut self.root.count,
-                         &mut self.root.children[chunk(key, 0)],
-                         key, value, 1);
-        if ret.is_none() { self.length += 1 }
-        ret
-    }
-
-    /// Removes a key from the map, returning the value at the key if the key
-    /// was previously in the map.
-    fn pop(&mut self, key: &uint) -> Option<T> {
-        let ret = remove(&mut self.root.count,
-                         &mut self.root.children[chunk(*key, 0)],
-                         *key, 1);
-        if ret.is_some() { self.length -= 1 }
-        ret
     }
 }
 
@@ -293,6 +226,205 @@ impl<T> TrieMap<T> {
         iter.remaining_max = self.length;
 
         iter
+    }
+
+    /// Return the number of elements in the map.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::TrieMap;
+    ///
+    /// let mut a = TrieMap::new();
+    /// assert_eq!(a.len(), 0);
+    /// a.insert(1, "a");
+    /// assert_eq!(a.len(), 1);
+    /// ```
+    #[inline]
+    pub fn len(&self) -> uint { self.length }
+
+    /// Return true if the map contains no elements.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::TrieMap;
+    ///
+    /// let mut a = TrieMap::new();
+    /// assert!(a.is_empty());
+    /// a.insert(1, "a");
+    /// assert!(!a.is_empty());
+    /// ```
+    #[inline]
+    pub fn is_empty(&self) -> bool { self.len() == 0 }
+
+    /// Clears the map, removing all values.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::TrieMap;
+    ///
+    /// let mut a = TrieMap::new();
+    /// a.insert(1, "a");
+    /// a.clear();
+    /// assert!(a.is_empty());
+    /// ```
+    #[inline]
+    pub fn clear(&mut self) {
+        self.root = TrieNode::new();
+        self.length = 0;
+    }
+
+    /// Returns a reference to the value corresponding to the key.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::TrieMap;
+    ///
+    /// let mut map = TrieMap::new();
+    /// map.insert(1, "a");
+    /// assert_eq!(map.find(&1), Some(&"a"));
+    /// assert_eq!(map.find(&2), None);
+    /// ```
+    #[inline]
+    pub fn find<'a>(&'a self, key: &uint) -> Option<&'a T> {
+        let mut node: &'a TrieNode<T> = &self.root;
+        let mut idx = 0;
+        loop {
+            match node.children[chunk(*key, idx)] {
+              Internal(ref x) => node = &**x,
+              External(stored, ref value) => {
+                if stored == *key {
+                    return Some(value)
+                } else {
+                    return None
+                }
+              }
+              Nothing => return None
+            }
+            idx += 1;
+        }
+    }
+
+    /// Returns true if the map contains a value for the specified key.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::TrieMap;
+    ///
+    /// let mut map = TrieMap::new();
+    /// map.insert(1, "a");
+    /// assert_eq!(map.contains_key(&1), true);
+    /// assert_eq!(map.contains_key(&2), false);
+    /// ```
+    #[inline]
+    pub fn contains_key(&self, key: &uint) -> bool {
+        self.find(key).is_some()
+    }
+
+    /// Returns a mutable reference to the value corresponding to the key.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::TrieMap;
+    ///
+    /// let mut map = TrieMap::new();
+    /// map.insert(1, "a");
+    /// match map.find_mut(&1) {
+    ///     Some(x) => *x = "b",
+    ///     None => (),
+    /// }
+    /// assert_eq!(map[1], "b");
+    /// ```
+    #[inline]
+    pub fn find_mut<'a>(&'a mut self, key: &uint) -> Option<&'a mut T> {
+        find_mut(&mut self.root.children[chunk(*key, 0)], *key, 1)
+    }
+
+    /// Inserts a key-value pair into the map. An existing value for a
+    /// key is replaced by the new value. Returns `true` if the key did
+    /// not already exist in the map.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::TrieMap;
+    ///
+    /// let mut map = TrieMap::new();
+    /// assert_eq!(map.insert(2, "value"), true);
+    /// assert_eq!(map.insert(2, "value2"), false);
+    /// assert_eq!(map[2], "value2");
+    /// ```
+    #[inline]
+    pub fn insert(&mut self, key: uint, value: T) -> bool {
+        self.swap(key, value).is_none()
+    }
+
+    /// Removes a key-value pair from the map. Returns `true` if the key
+    /// was present in the map.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::TrieMap;
+    ///
+    /// let mut map = TrieMap::new();
+    /// assert_eq!(map.remove(&1), false);
+    /// map.insert(1, "a");
+    /// assert_eq!(map.remove(&1), true);
+    /// ```
+    #[inline]
+    pub fn remove(&mut self, key: &uint) -> bool {
+        self.pop(key).is_some()
+    }
+
+    /// Inserts a key-value pair from the map. If the key already had a value
+    /// present in the map, that value is returned. Otherwise, `None` is returned.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::TrieMap;
+    ///
+    /// let mut map = TrieMap::new();
+    /// assert_eq!(map.swap(37, "a"), None);
+    /// assert_eq!(map.is_empty(), false);
+    ///
+    /// map.insert(37, "b");
+    /// assert_eq!(map.swap(37, "c"), Some("b"));
+    /// assert_eq!(map[37], "c");
+    /// ```
+    pub fn swap(&mut self, key: uint, value: T) -> Option<T> {
+        let ret = insert(&mut self.root.count,
+                         &mut self.root.children[chunk(key, 0)],
+                         key, value, 1);
+        if ret.is_none() { self.length += 1 }
+        ret
+    }
+
+    /// Removes a key from the map, returning the value at the key if the key
+    /// was previously in the map.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::TrieMap;
+    ///
+    /// let mut map = TrieMap::new();
+    /// map.insert(1, "a");
+    /// assert_eq!(map.pop(&1), Some("a"));
+    /// assert_eq!(map.pop(&1), None);
+    /// ```
+    pub fn pop(&mut self, key: &uint) -> Option<T> {
+        let ret = remove(&mut self.root.count,
+                         &mut self.root.children[chunk(*key, 0)],
+                         *key, 1);
+        if ret.is_some() { self.length -= 1 }
+        ret
     }
 }
 
@@ -569,52 +701,6 @@ impl Show for TrieSet {
     }
 }
 
-impl Collection for TrieSet {
-    /// Returns the number of elements in the set.
-    #[inline]
-    fn len(&self) -> uint { self.map.len() }
-}
-
-impl Mutable for TrieSet {
-    /// Clears the set, removing all values.
-    #[inline]
-    fn clear(&mut self) { self.map.clear() }
-}
-
-impl Set<uint> for TrieSet {
-    #[inline]
-    fn contains(&self, value: &uint) -> bool {
-        self.map.contains_key(value)
-    }
-
-    #[inline]
-    fn is_disjoint(&self, other: &TrieSet) -> bool {
-        self.iter().all(|v| !other.contains(&v))
-    }
-
-    #[inline]
-    fn is_subset(&self, other: &TrieSet) -> bool {
-        self.iter().all(|v| other.contains(&v))
-    }
-
-    #[inline]
-    fn is_superset(&self, other: &TrieSet) -> bool {
-        other.is_subset(self)
-    }
-}
-
-impl MutableSet<uint> for TrieSet {
-    #[inline]
-    fn insert(&mut self, value: uint) -> bool {
-        self.map.insert(value, ())
-    }
-
-    #[inline]
-    fn remove(&mut self, value: &uint) -> bool {
-        self.map.remove(value)
-    }
-}
-
 impl Default for TrieSet {
     #[inline]
     fn default() -> TrieSet { TrieSet::new() }
@@ -713,6 +799,171 @@ impl TrieSet {
     /// ```
     pub fn upper_bound<'a>(&'a self, val: uint) -> SetItems<'a> {
         SetItems{iter: self.map.upper_bound(val)}
+    }
+
+    /// Return the number of elements in the set
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::TrieSet;
+    ///
+    /// let mut v = TrieSet::new();
+    /// assert_eq!(v.len(), 0);
+    /// v.insert(1);
+    /// assert_eq!(v.len(), 1);
+    /// ```
+    #[inline]
+    pub fn len(&self) -> uint { self.map.len() }
+
+    /// Returns true if the set contains no elements
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::TrieSet;
+    ///
+    /// let mut v = TrieSet::new();
+    /// assert!(v.is_empty());
+    /// v.insert(1);
+    /// assert!(!v.is_empty());
+    /// ```
+    pub fn is_empty(&self) -> bool { self.len() == 0 }
+
+    /// Clears the set, removing all values.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::TrieSet;
+    ///
+    /// let mut v = TrieSet::new();
+    /// v.insert(1);
+    /// v.clear();
+    /// assert!(v.is_empty());
+    /// ```
+    #[inline]
+    pub fn clear(&mut self) { self.map.clear() }
+
+    /// Returns `true` if the set contains a value.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::TrieSet;
+    ///
+    /// let set: TrieSet = [1, 2, 3].iter().map(|&x| x).collect();
+    /// assert_eq!(set.contains(&1), true);
+    /// assert_eq!(set.contains(&4), false);
+    /// ```
+    #[inline]
+    pub fn contains(&self, value: &uint) -> bool {
+        self.map.contains_key(value)
+    }
+
+    /// Returns `true` if the set has no elements in common with `other`.
+    /// This is equivalent to checking for an empty intersection.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::TrieSet;
+    ///
+    /// let a: TrieSet = [1, 2, 3].iter().map(|&x| x).collect();
+    /// let mut b: TrieSet = TrieSet::new();
+    ///
+    /// assert_eq!(a.is_disjoint(&b), true);
+    /// b.insert(4);
+    /// assert_eq!(a.is_disjoint(&b), true);
+    /// b.insert(1);
+    /// assert_eq!(a.is_disjoint(&b), false);
+    /// ```
+    #[inline]
+    pub fn is_disjoint(&self, other: &TrieSet) -> bool {
+        self.iter().all(|v| !other.contains(&v))
+    }
+
+    /// Returns `true` if the set is a subset of another.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::TrieSet;
+    ///
+    /// let sup: TrieSet = [1, 2, 3].iter().map(|&x| x).collect();
+    /// let mut set: TrieSet = TrieSet::new();
+    ///
+    /// assert_eq!(set.is_subset(&sup), true);
+    /// set.insert(2);
+    /// assert_eq!(set.is_subset(&sup), true);
+    /// set.insert(4);
+    /// assert_eq!(set.is_subset(&sup), false);
+    /// ```
+    #[inline]
+    pub fn is_subset(&self, other: &TrieSet) -> bool {
+        self.iter().all(|v| other.contains(&v))
+    }
+
+    /// Returns `true` if the set is a superset of another.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::TrieSet;
+    ///
+    /// let sub: TrieSet = [1, 2].iter().map(|&x| x).collect();
+    /// let mut set: TrieSet = TrieSet::new();
+    ///
+    /// assert_eq!(set.is_superset(&sub), false);
+    ///
+    /// set.insert(0);
+    /// set.insert(1);
+    /// assert_eq!(set.is_superset(&sub), false);
+    ///
+    /// set.insert(2);
+    /// assert_eq!(set.is_superset(&sub), true);
+    /// ```
+    #[inline]
+    pub fn is_superset(&self, other: &TrieSet) -> bool {
+        other.is_subset(self)
+    }
+
+    /// Adds a value to the set. Returns `true` if the value was not already
+    /// present in the set.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::TrieSet;
+    ///
+    /// let mut set = TrieSet::new();
+    ///
+    /// assert_eq!(set.insert(2), true);
+    /// assert_eq!(set.insert(2), false);
+    /// assert_eq!(set.len(), 1);
+    /// ```
+    #[inline]
+    pub fn insert(&mut self, value: uint) -> bool {
+        self.map.insert(value, ())
+    }
+
+    /// Removes a value from the set. Returns `true` if the value was
+    /// present in the set.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::TrieSet;
+    ///
+    /// let mut set = TrieSet::new();
+    ///
+    /// set.insert(2);
+    /// assert_eq!(set.remove(&2), true);
+    /// assert_eq!(set.remove(&2), false);
+    /// ```
+    #[inline]
+    pub fn remove(&mut self, value: &uint) -> bool {
+        self.map.remove(value)
     }
 }
 
@@ -1026,7 +1277,6 @@ mod test_map {
     use std::uint;
     use std::hash;
 
-    use {MutableMap, Map, MutableSeq};
     use super::{TrieMap, TrieNode, Internal, External, Nothing};
 
     fn check_integrity<T>(trie: &TrieNode<T>) {
@@ -1442,7 +1692,6 @@ mod bench_map {
     use std::rand::{weak_rng, Rng};
     use test::{Bencher, black_box};
 
-    use MutableMap;
     use super::TrieMap;
 
     fn bench_iter(b: &mut Bencher, size: uint) {
@@ -1559,7 +1808,6 @@ mod test_set {
     use std::prelude::*;
     use std::uint;
 
-    use {MutableSet, Set, MutableSeq};
     use super::TrieSet;
 
     #[test]

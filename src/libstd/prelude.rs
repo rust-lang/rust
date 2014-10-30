@@ -65,8 +65,6 @@
 #[doc(no_inline)] pub use clone::Clone;
 #[doc(no_inline)] pub use cmp::{PartialEq, PartialOrd, Eq, Ord};
 #[doc(no_inline)] pub use cmp::{Ordering, Less, Equal, Greater, Equiv};
-#[doc(no_inline)] pub use collections::{Collection, Mutable, Map, MutableMap, MutableSeq};
-#[doc(no_inline)] pub use collections::{Set, MutableSet};
 #[doc(no_inline)] pub use iter::{FromIterator, Extendable, ExactSize};
 #[doc(no_inline)] pub use iter::{Iterator, DoubleEndedIterator};
 #[doc(no_inline)] pub use iter::{RandomAccessIterator, CloneableIterator};

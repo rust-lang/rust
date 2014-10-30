@@ -222,7 +222,6 @@ responding to errors that may occur while attempting to read the numbers.
 #![deny(unused_must_use)]
 
 use char::Char;
-use collections::Collection;
 use default::Default;
 use fmt;
 use int;

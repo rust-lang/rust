@@ -18,7 +18,7 @@
 use mem::transmute;
 use option::{None, Option, Some};
 use iter::range_step;
-use collections::Collection;
+use slice::ImmutableSlice;
 
 // UTF-8 ranges and tags for encoding characters
 static TAG_CONT: u8    = 0b1000_0000u8;

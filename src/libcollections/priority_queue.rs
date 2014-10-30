@@ -159,7 +159,6 @@ use core::default::Default;
 use core::mem::{zeroed, replace, swap};
 use core::ptr;
 
-use {Mutable, MutableSeq};
 use slice;
 use vec::Vec;
 
@@ -169,16 +168,6 @@ use vec::Vec;
 #[deriving(Clone)]
 pub struct PriorityQueue<T> {
     data: Vec<T>,
-}
-
-impl<T: Ord> Collection for PriorityQueue<T> {
-    /// Returns the length of the queue.
-    fn len(&self) -> uint { self.data.len() }
-}
-
-impl<T: Ord> Mutable for PriorityQueue<T> {
-    /// Drops all items from the queue.
-    fn clear(&mut self) { self.data.truncate(0) }
 }
 
 impl<T: Ord> Default for PriorityQueue<T> {
@@ -504,6 +493,15 @@ impl<T: Ord> PriorityQueue<T> {
         let len = self.len();
         self.siftdown_range(pos, len);
     }
+
+    /// Returns the length of the queue.
+    pub fn len(&self) -> uint { self.data.len() }
+
+    /// Returns true if the queue contains no elements
+    pub fn is_empty(&self) -> bool { self.len() == 0 }
+
+    /// Drops all items from the queue.
+    pub fn clear(&mut self) { self.data.truncate(0) }
 }
 
 /// `PriorityQueue` iterator.
@@ -545,7 +543,6 @@ mod tests {
 
     use priority_queue::PriorityQueue;
     use vec::Vec;
-    use MutableSeq;
 
     #[test]
     fn test_iterator() {
