@@ -172,7 +172,7 @@ pub fn u64_from_be_bytes(data: &[u8], start: uint, size: uint) -> u64 {
 mod test {
     use prelude::*;
     use io;
-    use io::{MemReader, MemWriter};
+    use io::{MemReader, MemWriter, BytesReader};
 
     struct InitialZeroByteReader {
         count: int,

@@ -265,7 +265,7 @@ impl<T: Iterator<u8>> Reader for IterReader<T> {
 
 #[cfg(test)]
 mod test {
-    use io::{MemReader, MemWriter, BufReader};
+    use io::{MemReader, MemWriter, BufReader, AsRefReader};
     use io;
     use boxed::Box;
     use super::*;

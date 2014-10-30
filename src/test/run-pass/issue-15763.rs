@@ -60,16 +60,16 @@ fn dd() -> Result<int, int> {
 }
 
 trait A {
-    fn aaa(self) -> int {
+    fn aaa(&self) -> int {
         3
     }
-    fn bbb(self) -> int {
+    fn bbb(&self) -> int {
         return 3;
     }
-    fn ccc(self) -> Result<int, int> {
+    fn ccc(&self) -> Result<int, int> {
         Ok(3)
     }
-    fn ddd(self) -> Result<int, int> {
+    fn ddd(&self) -> Result<int, int> {
         return Ok(3);
     }
 }

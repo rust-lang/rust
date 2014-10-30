@@ -53,7 +53,6 @@ register_diagnostics!(
     E0035,
     E0036,
     E0038,
-    E0039,
     E0040,
     E0044,
     E0045,

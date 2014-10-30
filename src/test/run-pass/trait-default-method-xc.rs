@@ -72,9 +72,6 @@ pub fn main() {
     assert_eq!(g(0i, 3.14f64, 1i), (3.14f64, 1i));
     assert_eq!(g(false, 3.14f64, 1i), (3.14, 1));
 
-    let obj = box 0i as Box<A>;
-    assert_eq!(obj.h(), 11);
-
 
     // Trying out a real one
     assert!(12i.test_neq(&10i));
