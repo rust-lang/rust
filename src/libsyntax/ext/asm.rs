@@ -84,9 +84,9 @@ pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
 
                     let span = p.last_span;
 
-                    p.expect(&token::LParen);
+                    p.expect(&token::OpenDelim(token::Paren));
                     let out = p.parse_expr();
-                    p.expect(&token::RParen);
+                    p.expect(&token::CloseDelim(token::Paren));
 
                     // Expands a read+write operand into two operands.
                     //
@@ -129,9 +129,9 @@ pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
                         cx.span_err(p.last_span, "input operand constraint contains '+'");
                     }
 
-                    p.expect(&token::LParen);
+                    p.expect(&token::OpenDelim(token::Paren));
                     let input = p.parse_expr();
-                    p.expect(&token::RParen);
+                    p.expect(&token::CloseDelim(token::Paren));
 
                     inputs.push((constraint, input));
                 }
