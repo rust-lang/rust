@@ -12,11 +12,14 @@
 
 struct Empty;
 
-impl Iterator<int> for Empty {
+trait T<U> {
+    fn next(&mut self) -> Option<U>;
+}
+impl T<int> for Empty {
     fn next(&mut self) -> Option<int> { None }
 }
 
-fn do_something_with(a : &mut Iterator<int>) {
+fn do_something_with(a : &mut T<int>) {
     println!("{}", a.next())
 }
 
