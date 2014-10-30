@@ -355,10 +355,8 @@ pub fn parse(sess: &ParseSess,
                     // Built-in nonterminals never start with these tokens,
                     // so we can eliminate them from consideration.
                     match tok {
-                        token::RParen |
-                        token::RBrace |
-                        token::RBracket => {},
-                        _ => bb_eis.push(ei)
+                        token::CloseDelim(_) => {},
+                        _ => bb_eis.push(ei),
                     }
                   }
                   MatchTok(ref t) => {

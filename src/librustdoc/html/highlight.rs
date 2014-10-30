@@ -97,8 +97,8 @@ fn doit(sess: &parse::ParseSess, mut lexer: lexer::StringReader,
 
             // miscellaneous, no highlighting
             token::Dot | token::DotDot | token::DotDotDot | token::Comma | token::Semi |
-                token::Colon | token::ModSep | token::LArrow | token::LParen |
-                token::RParen | token::LBracket | token::LBrace | token::RBrace |
+                token::Colon | token::ModSep | token::LArrow | token::OpenDelim(_) |
+                token::CloseDelim(token::Brace) | token::CloseDelim(token::Paren) |
                 token::Question => "",
             token::Dollar => {
                 if lexer.peek().tok.is_ident() {
@@ -118,7 +118,7 @@ fn doit(sess: &parse::ParseSess, mut lexer: lexer::StringReader,
                 try!(write!(out, r"<span class='attribute'>#"));
                 continue
             }
-            token::RBracket => {
+            token::CloseDelim(token::Bracket) => {
                 if is_attribute {
                     is_attribute = false;
                     try!(write!(out, "]</span>"));
