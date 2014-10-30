@@ -13,7 +13,7 @@ struct Foo<T,U>(T);
 fn main() {
     match Foo(1.1) {
         1 => {}
-    //~^ ERROR expected `Foo<_#f, _>`, found `_#i`
+    //~^ ERROR expected `Foo<_, _>`, found `_`
     }
 
 }
