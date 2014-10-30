@@ -1418,7 +1418,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
             encode_parent_sort(rbml_w, 't');
 
             let trait_item = &ms[i];
-            let foo = |rbml_w: &mut Encoder| {
+            let encode_trait_item = |rbml_w: &mut Encoder| {
                 // If this is a static method, we've already
                 // encoded this.
                 if is_nonstatic_method {
@@ -1431,14 +1431,14 @@ fn encode_info_for_item(ecx: &EncodeContext,
             match trait_item {
                 &RequiredMethod(ref m) => {
                     encode_attributes(rbml_w, m.attrs.as_slice());
-                    foo(rbml_w);
+                    encode_trait_item(rbml_w);
                     encode_item_sort(rbml_w, 'r');
                     encode_method_argument_names(rbml_w, &*m.decl);
                 }
 
                 &ProvidedMethod(ref m) => {
                     encode_attributes(rbml_w, m.attrs.as_slice());
-                    foo(rbml_w);
+                    encode_trait_item(rbml_w);
                     encode_item_sort(rbml_w, 'p');
                     encode_inlined_item(ecx, rbml_w, IITraitItemRef(def_id, trait_item));
                     encode_method_argument_names(rbml_w, &*m.pe_fn_decl());
