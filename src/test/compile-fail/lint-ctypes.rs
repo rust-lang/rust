@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![deny(ctypes)]
+#![deny(improper_ctypes)]
 
 extern crate libc;
 

@@ -89,7 +89,7 @@
 // lldb-command:print f64
 // lldb-check:[...]$12 = 3.5
 
-#![allow(unused_variable)]
+#![allow(unused_variables)]
 
 fn main() {
     let b: bool = false;

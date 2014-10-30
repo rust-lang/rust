@@ -24,7 +24,7 @@
 // gdb-command:print second
 // gdb-check:$2 = {<No data fields>}
 
-#![allow(unused_variable)]
+#![allow(unused_variables)]
 
 enum ANilEnum {}
 enum AnotherNilEnum {}

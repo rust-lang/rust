@@ -3158,7 +3158,7 @@ impl<'a> Resolver<'a> {
                                         (_, _) => {
                                             search_module = module_def.clone();
 
-                                            // track extern crates for unused_extern_crate lint
+                                            // track extern crates for unused_extern_crates lint
                                             match module_def.def_id.get() {
                                                 Some(did) => {
                                                     self.used_crates.insert(did.krate);

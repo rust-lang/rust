@@ -42,7 +42,7 @@ A quick refresher on memory ordering:
 */
 
 #![experimental]
-#![allow(missing_doc)]
+#![allow(missing_docs)]
 
 pub type GlueFn = extern "Rust" fn(*const i8);
 

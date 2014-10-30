@@ -9,7 +9,7 @@
 // except according to those terms.
 
 #![allow(dead_code)]
-#![deny(dead_assignment)]
+#![deny(unused_assignments)]
 
 fn f1(x: &mut int) {
     *x = 1; // no error

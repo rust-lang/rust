@@ -29,7 +29,7 @@
        html_root_url = "http://doc.rust-lang.org/nightly/")]
 
 #![feature(unsafe_destructor)]
-#![allow(missing_doc)]
+#![allow(missing_docs)]
 
 use std::cell::{Cell, RefCell};
 use std::cmp;

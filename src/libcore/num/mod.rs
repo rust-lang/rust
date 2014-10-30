@@ -12,7 +12,7 @@
 
 //! Numeric traits and functions for generic mathematics
 
-#![allow(missing_doc)]
+#![allow(missing_docs)]
 
 use intrinsics;
 use {int, i8, i16, i32, i64};

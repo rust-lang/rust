@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,15 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![allow(unused_allocation)]
-#![allow(unreachable_code)]
-#![allow(unused_variables)]
+// Check that lint deprecation works
 
-
-// error-pattern:so long
-fn main() {
-    let mut x = Vec::new();
-    let y = vec!(3i);
-    panic!("so long");
-    x.extend(y.into_iter());
+#[deny(unused_variable)] //~ warning: lint unused_variable has been renamed to unused_variables
+pub fn main() {
+    let x = 0u8; //~ error: unused variable:
 }

@@ -11,8 +11,8 @@
 //! Operations and constants for 32-bits floats (`f32` type)
 
 #![experimental]
-#![allow(missing_doc)]
-#![allow(unsigned_negate)]
+#![allow(missing_docs)]
+#![allow(unsigned_negation)]
 #![doc(primitive = "f32")]
 
 use prelude::*;

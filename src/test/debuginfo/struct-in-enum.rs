@@ -43,7 +43,7 @@
 // lldb-command:print univariant
 // lldb-check:[...]$2 = TheOnlyCase(Struct { x: 123, y: 456, z: 789 })
 
-#![allow(unused_variable)]
+#![allow(unused_variables)]
 
 struct Struct {
     x: u32,

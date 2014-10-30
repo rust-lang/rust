@@ -10,7 +10,7 @@
 
 //! Utilities for formatting and printing strings
 
-#![allow(unused_variable)]
+#![allow(unused_variables)]
 
 use any;
 use cell::{Cell, Ref, RefMut};
@@ -733,7 +733,7 @@ macro_rules! tuple (
     () => ();
     ( $($name:ident,)+ ) => (
         impl<$($name:Show),*> Show for ($($name,)*) {
-            #[allow(non_snake_case, dead_assignment)]
+            #[allow(non_snake_case, unused_assignments)]
             fn fmt(&self, f: &mut Formatter) -> Result {
                 try!(write!(f, "("));
                 let ($(ref $name,)*) = *self;

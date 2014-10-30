@@ -112,7 +112,7 @@
 // lldb-command:print *f64_ref
 // lldb-check:[...]$12 = 3.5
 
-#![allow(unused_variable)]
+#![allow(unused_variables)]
 
 
 fn main() {

@@ -245,7 +245,7 @@
 // lldb-check:[...]$42 = 56
 
 
-#![allow(unused_variable)]
+#![allow(unused_variables)]
 
 struct Struct {
     a: i64,

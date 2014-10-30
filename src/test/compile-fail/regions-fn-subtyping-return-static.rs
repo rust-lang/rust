@@ -17,7 +17,7 @@
 // lifetimes are sublifetimes of 'static.
 
 #![allow(dead_code)]
-#![allow(unused_variable)]
+#![allow(unused_variables)]
 
 struct S;
 

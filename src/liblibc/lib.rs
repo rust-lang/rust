@@ -75,8 +75,8 @@
 
 #![allow(non_camel_case_types)]
 #![allow(non_snake_case)]
-#![allow(non_uppercase_statics)]
-#![allow(missing_doc)]
+#![allow(non_upper_case_globals)]
+#![allow(missing_docs)]
 #![allow(non_snake_case)]
 
 extern crate core;

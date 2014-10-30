@@ -59,7 +59,7 @@
 // lldb-command:print padding_at_end2
 // lldb-check:[...]$6 = ((21, 22), 23)
 
-#![allow(unused_variable)]
+#![allow(unused_variables)]
 
 fn main() {
     let no_padding1: ((u32, u32), u32, u32) = ((0, 1), 2, 3);

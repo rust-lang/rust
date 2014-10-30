@@ -15,7 +15,7 @@
 extern crate regex;
 #[phase(plugin)] extern crate regex_macros;
 
-#[deny(unused_variable)]
+#[deny(unused_variables)]
 #[deny(dead_code)]
 
 // Tests to make sure that extraneous dead code warnings aren't emitted from
