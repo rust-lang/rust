@@ -182,6 +182,8 @@ Available lint options:
 
 ");
 
+    // NOTE(stage0): remove function after a snapshot
+    #[cfg(stage0)]
     fn sort_lints(lints: Vec<(&'static Lint, bool)>) -> Vec<&'static Lint> {
         let mut lints: Vec<_> = lints.into_iter().map(|(x, _)| x).collect();
         lints.sort_by(|x: &&Lint, y: &&Lint| {
@@ -194,12 +196,38 @@ Available lint options:
         lints
     }
 
+    #[cfg(not(stage0))]  // NOTE(stage0): remove cfg after a snapshot
+    fn sort_lints(lints: Vec<(&'static Lint, bool)>) -> Vec<&'static Lint> {
+        let mut lints: Vec<_> = lints.into_iter().map(|(x, _)| x).collect();
+        lints.sort_by(|x: &&Lint, y: &&Lint| {
+            match x.default_level.cmp(&y.default_level) {
+                // The sort doesn't case-fold but it's doubtful we care.
+                Equal => x.name.cmp(y.name),
+                r => r,
+            }
+        });
+        lints
+    }
+
+    // NOTE(stage0): remove function after a snapshot
+    #[cfg(stage0)]
     fn sort_lint_groups(lints: Vec<(&'static str, Vec<lint::LintId>, bool)>)
                      -> Vec<(&'static str, Vec<lint::LintId>)> {
         let mut lints: Vec<_> = lints.into_iter().map(|(x, y, _)| (x, y)).collect();
         lints.sort_by(|&(x, _): &(&'static str, Vec<lint::LintId>),
                        &(y, _): &(&'static str, Vec<lint::LintId>)| {
             x.cmp(&y)
+        });
+        lints
+    }
+
+    #[cfg(not(stage0))]  // NOTE(stage0): remove cfg after a snapshot
+    fn sort_lint_groups(lints: Vec<(&'static str, Vec<lint::LintId>, bool)>)
+                     -> Vec<(&'static str, Vec<lint::LintId>)> {
+        let mut lints: Vec<_> = lints.into_iter().map(|(x, y, _)| (x, y)).collect();
+        lints.sort_by(|&(x, _): &(&'static str, Vec<lint::LintId>),
+                       &(y, _): &(&'static str, Vec<lint::LintId>)| {
+            x.cmp(y)
         });
         lints
     }

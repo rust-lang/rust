@@ -973,6 +973,8 @@ fn get_concurrency() -> uint {
     }
 }
 
+// NOTE(stage0): remove function after a snapshot
+#[cfg(stage0)]
 pub fn filter_tests(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> Vec<TestDescAndFn> {
     let mut filtered = tests;
 
@@ -1005,6 +1007,54 @@ pub fn filter_tests(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> Vec<TestDescA
 
     // Sort the tests alphabetically
     filtered.sort_by(|t1, t2| t1.desc.name.as_slice().cmp(&t2.desc.name.as_slice()));
+
+    // Shard the remaining tests, if sharding requested.
+    match opts.test_shard {
+        None => filtered,
+        Some((a,b)) => {
+            filtered.into_iter().enumerate()
+            // note: using a - 1 so that the valid shards, for example, are
+            // 1.2 and 2.2 instead of 0.2 and 1.2
+            .filter(|&(i,_)| i % b == (a - 1))
+            .map(|(_,t)| t)
+            .collect()
+        }
+    }
+}
+
+#[cfg(not(stage0))]  // NOTE(stage0): remove cfg after a snapshot
+pub fn filter_tests(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> Vec<TestDescAndFn> {
+    let mut filtered = tests;
+
+    // Remove tests that don't match the test filter
+    filtered = match opts.filter {
+        None => filtered,
+        Some(ref re) => {
+            filtered.into_iter()
+                .filter(|test| re.is_match(test.desc.name.as_slice())).collect()
+        }
+    };
+
+    // Maybe pull out the ignored test and unignore them
+    filtered = if !opts.run_ignored {
+        filtered
+    } else {
+        fn filter(test: TestDescAndFn) -> Option<TestDescAndFn> {
+            if test.desc.ignore {
+                let TestDescAndFn {desc, testfn} = test;
+                Some(TestDescAndFn {
+                    desc: TestDesc {ignore: false, ..desc},
+                    testfn: testfn
+                })
+            } else {
+                None
+            }
+        };
+        filtered.into_iter().filter_map(|x| filter(x)).collect()
+    };
+
+    // Sort the tests alphabetically
+    filtered.sort_by(|t1, t2| t1.desc.name.as_slice().cmp(t2.desc.name.as_slice()));
 
     // Shard the remaining tests, if sharding requested.
     match opts.test_shard {
