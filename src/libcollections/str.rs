@@ -59,12 +59,11 @@ use core::fmt;
 use core::cmp;
 use core::iter::AdditiveIterator;
 use core::kinds::Sized;
-use core::prelude::{Char, Clone, Collection, Eq, Equiv, ImmutableSlice};
+use core::prelude::{Char, Clone, Eq, Equiv, ImmutableSlice};
 use core::prelude::{Iterator, MutableSlice, None, Option, Ord, Ordering};
 use core::prelude::{PartialEq, PartialOrd, Result, AsSlice, Some, Tuple2};
 use core::prelude::{range};
 
-use {Deque, MutableSeq};
 use hash;
 use ringbuf::RingBuf;
 use string::String;
@@ -464,6 +463,14 @@ impl<'a> MaybeOwned<'a> {
             Owned(_) => false
         }
     }
+
+    /// Return the number of bytes in this string.
+    #[inline]
+    pub fn len(&self) -> uint { self.as_slice().len() }
+
+    /// Returns true if the string contains no bytes
+    #[inline]
+    pub fn is_empty(&self) -> bool { self.len() == 0 }
 }
 
 /// Trait for moving into a `MaybeOwned`.
@@ -559,11 +566,6 @@ impl<'a> StrAllocating for MaybeOwned<'a> {
             Owned(s) => s
         }
     }
-}
-
-impl<'a> Collection for MaybeOwned<'a> {
-    #[inline]
-    fn len(&self) -> uint { self.as_slice().len() }
 }
 
 impl<'a> Clone for MaybeOwned<'a> {
@@ -782,7 +784,6 @@ mod tests {
     use std::option::{Some, None};
     use std::ptr::RawPtr;
     use std::iter::{Iterator, DoubleEndedIterator};
-    use {Collection, MutableSeq};
 
     use super::*;
     use std::slice::{AsSlice, ImmutableSlice};
@@ -2142,14 +2143,16 @@ mod tests {
 
     #[test]
     fn test_str_container() {
-        fn sum_len<S: Collection>(v: &[S]) -> uint {
+        fn sum_len(v: &[&str]) -> uint {
             v.iter().map(|x| x.len()).sum()
         }
 
         let s = String::from_str("01234");
         assert_eq!(5, sum_len(["012", "", "34"]));
-        assert_eq!(5, sum_len([String::from_str("01"), String::from_str("2"),
-                               String::from_str("34"), String::from_str("")]));
+        assert_eq!(5, sum_len([String::from_str("01").as_slice(),
+                               String::from_str("2").as_slice(),
+                               String::from_str("34").as_slice(),
+                               String::from_str("").as_slice()]));
         assert_eq!(5, sum_len([s.as_slice()]));
     }
 
@@ -2232,7 +2235,8 @@ mod bench {
     use test::black_box;
     use super::*;
     use std::iter::{Iterator, DoubleEndedIterator};
-    use std::collections::Collection;
+    use std::str::StrSlice;
+    use std::slice::ImmutableSlice;
 
     #[bench]
     fn char_iterator(b: &mut Bencher) {

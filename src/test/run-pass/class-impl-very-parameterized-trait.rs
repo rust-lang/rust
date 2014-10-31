@@ -46,18 +46,9 @@ impl<T> cat<T> {
             return false;
         }
     }
-}
-
-impl<T> Collection for cat<T> {
     fn len(&self) -> uint { self.meows as uint }
     fn is_empty(&self) -> bool { self.meows == 0 }
-}
-
-impl<T> Mutable for cat<T> {
     fn clear(&mut self) {}
-}
-
-impl<T> Map<int, T> for cat<T> {
     fn contains_key(&self, k: &int) -> bool { *k <= self.meows }
 
     fn find(&self, k: &int) -> Option<&T> {
@@ -67,9 +58,6 @@ impl<T> Map<int, T> for cat<T> {
             None
         }
     }
-}
-
-impl<T> MutableMap<int, T> for cat<T> {
     fn insert(&mut self, k: int, _: T) -> bool {
         self.meows += k;
         true

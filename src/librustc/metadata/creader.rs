@@ -238,7 +238,7 @@ fn visit_item(e: &Env, i: &ast::Item) {
                                 if k.equiv(&("static")) {
                                     cstore::NativeStatic
                                 } else if k.equiv(&("framework")) {
-                                    cstore::NativeUnknown
+                                    cstore::NativeFramework
                                 } else {
                                     e.sess.span_err(m.span,
                                         format!("unknown kind: `{}`",

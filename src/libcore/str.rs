@@ -22,7 +22,6 @@ use char::Char;
 use clone::Clone;
 use cmp;
 use cmp::{PartialEq, Eq};
-use collections::Collection;
 use default::Default;
 use iter::{Map, Iterator};
 use iter::{DoubleEndedIterator, ExactSize};
@@ -1057,7 +1056,6 @@ const TAG_CONT_U8: u8 = 0b1000_0000u8;
 /// Unsafe operations
 pub mod raw {
     use mem;
-    use collections::Collection;
     use ptr::RawPtr;
     use raw::Slice;
     use slice::{ImmutableSlice};
@@ -1121,7 +1119,6 @@ Section: Trait implementations
 #[allow(missing_docs)]
 pub mod traits {
     use cmp::{Ord, Ordering, Less, Equal, Greater, PartialEq, PartialOrd, Equiv, Eq};
-    use collections::Collection;
     use iter::Iterator;
     use option::{Option, Some};
     use ops;
@@ -1197,13 +1194,6 @@ pub trait Str {
 impl<'a> Str for &'a str {
     #[inline]
     fn as_slice<'a>(&'a self) -> &'a str { *self }
-}
-
-impl<'a> Collection for &'a str {
-    #[inline]
-    fn len(&self) -> uint {
-        self.repr().len
-    }
 }
 
 /// Methods for string slices
@@ -1827,6 +1817,28 @@ pub trait StrSlice for Sized? {
 
     /// Return an iterator of `u16` over the string encoded as UTF-16.
     fn utf16_units<'a>(&'a self) -> Utf16CodeUnits<'a>;
+
+    /// Return the number of bytes in this string
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// assert_eq!("foo".len(), 3);
+    /// assert_eq!("ƒoo".len(), 4);
+    /// ```
+    #[experimental = "not triaged yet"]
+    fn len(&self) -> uint;
+
+    /// Returns true if this slice contains no bytes
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// assert!("".is_empty());
+    /// ```
+    #[inline]
+    #[experimental = "not triaged yet"]
+    fn is_empty(&self) -> bool { self.len() == 0 }
 }
 
 #[inline(never)]
@@ -2179,6 +2191,9 @@ impl StrSlice for str {
     fn utf16_units(&self) -> Utf16CodeUnits {
         Utf16CodeUnits{ chars: self.chars(), extra: 0}
     }
+
+    #[inline]
+    fn len(&self) -> uint { self.repr().len }
 }
 
 impl<'a> Default for &'a str {

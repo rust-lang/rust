@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::collections::Collection;
 use std::default::Default;
 use std::fmt;
 use std::iter::FromIterator;
@@ -62,6 +61,10 @@ impl<'a,T> MaybeOwnedVector<'a,T> {
             &Borrowed(ref v) => v.iter(),
         }
     }
+
+    pub fn len(&self) -> uint { self.as_slice().len() }
+
+    pub fn is_empty(&self) -> bool { self.len() == 0 }
 }
 
 impl<'a, T: PartialEq> PartialEq for MaybeOwnedVector<'a, T> {
@@ -142,12 +145,6 @@ impl<'a, T: Clone> Clone for MaybeOwnedVector<'a, T> {
 impl<'a, T> Default for MaybeOwnedVector<'a, T> {
     fn default() -> MaybeOwnedVector<'a, T> {
         Growable(Vec::new())
-    }
-}
-
-impl<'a, T> Collection for MaybeOwnedVector<'a, T> {
-    fn len(&self) -> uint {
-        self.as_slice().len()
     }
 }
 
