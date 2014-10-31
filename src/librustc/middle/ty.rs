@@ -5566,3 +5566,18 @@ pub fn with_freevars<T>(tcx: &ty::ctxt, fid: ast::NodeId, f: |&[Freevar]| -> T) 
         Some(d) => f(d.as_slice())
     }
 }
+
+impl AutoAdjustment {
+    pub fn is_identity(&self) -> bool {
+        match *self {
+            AdjustAddEnv(..) => false,
+            AdjustDerefRef(ref r) => r.is_identity(),
+        }
+    }
+}
+
+impl AutoDerefRef {
+    pub fn is_identity(&self) -> bool {
+        self.autoderefs == 0 && self.autoref.is_none()
+    }
+}

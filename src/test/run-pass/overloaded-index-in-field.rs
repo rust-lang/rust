@@ -8,9 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// Test using overloaded indexing when the "map" is stored in a
+// field. This caused problems at some point.
+
 struct Foo {
     x: int,
     y: int,
+}
+
+struct Bar {
+    foo: Foo
 }
 
 impl Index<int,int> for Foo {
@@ -19,16 +26,6 @@ impl Index<int,int> for Foo {
             &self.x
         } else {
             &self.y
-        }
-    }
-}
-
-impl IndexMut<int,int> for Foo {
-    fn index_mut(&mut self, z: &int) -> &mut int {
-        if *z == 0 {
-            &mut self.x
-        } else {
-            &mut self.y
         }
     }
 }
@@ -46,25 +43,10 @@ impl Int for int {
 }
 
 fn main() {
-    let mut f = Foo {
+    let f = Bar { foo: Foo {
         x: 1,
         y: 2,
-    };
-    assert_eq!(f[1], 2);
-    f[0] = 3;
-    assert_eq!(f[0], 3);
-    {
-        let p = &mut f[1];
-        *p = 4;
-    }
-    {
-        let p = &f[1];
-        assert_eq!(*p, 4);
-    }
-
-    // Test calling methods with `&mut self`, `self, and `&self` receivers:
-    f[1].inc();
-    assert_eq!(f[1].get(), 5);
-    assert_eq!(f[1].get_from_ref(), 5);
+    } };
+    assert_eq!(f.foo[1].get(), 2);
 }
 
