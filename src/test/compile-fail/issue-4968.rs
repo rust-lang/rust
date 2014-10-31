@@ -13,6 +13,6 @@
 const A: (int,int) = (4,2);
 fn main() {
     match 42 { A => () }
-    //~^ ERROR mismatched types: expected `<generic integer #0>`, found `(int,int)`
+    //~^ ERROR mismatched types: expected `_`, found `(int, int)`
     //         (expected integral variable, found tuple)
 }

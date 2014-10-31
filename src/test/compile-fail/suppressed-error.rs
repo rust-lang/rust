@@ -10,6 +10,6 @@
 
 fn main() {
     let (x, y) = ();
-//~^ ERROR types: expected `()`, found `(<generic #3>,<generic #4>)` (expected (), found tuple)
+//~^ ERROR expected `()`, found `(_, _)` (expected (), found tuple)
     return x;
 }

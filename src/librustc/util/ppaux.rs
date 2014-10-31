@@ -229,7 +229,9 @@ pub fn mutability_to_string(m: ast::Mutability) -> String {
 }
 
 pub fn mt_to_string(cx: &ctxt, m: &mt) -> String {
-    format!("{}{}", mutability_to_string(m.mutbl), ty_to_string(cx, m.ty))
+    format!("{}{}",
+        mutability_to_string(m.mutbl),
+        ty_to_string(cx, m.ty))
 }
 
 pub fn trait_store_to_string(cx: &ctxt, s: ty::TraitStore) -> String {
@@ -256,9 +258,6 @@ pub fn trait_ref_to_string(cx: &ctxt, trait_ref: &ty::TraitRef) -> String {
 }
 
 pub fn ty_to_string(cx: &ctxt, typ: t) -> String {
-    fn fn_input_to_string(cx: &ctxt, input: ty::t) -> String {
-        ty_to_string(cx, input).to_string()
-    }
     fn bare_fn_to_string(cx: &ctxt,
                       fn_style: ast::FnStyle,
                       abi: abi::Abi,
@@ -340,7 +339,10 @@ pub fn ty_to_string(cx: &ctxt, typ: t) -> String {
                        sig: &ty::FnSig,
                        bounds: &str) {
         s.push(bra);
-        let strs: Vec<String> = sig.inputs.iter().map(|a| fn_input_to_string(cx, *a)).collect();
+        let strs = sig.inputs
+            .iter()
+            .map(|a| ty_to_string(cx, *a))
+            .collect::<Vec<_>>();
         s.push_str(strs.connect(", ").as_slice());
         if sig.variadic {
             s.push_str(", ...");
@@ -355,7 +357,7 @@ pub fn ty_to_string(cx: &ctxt, typ: t) -> String {
         match sig.output {
             ty::FnConverging(t) => {
                 if !ty::type_is_nil(t) {
-                    s.push_str(" -> ");
+                   s.push_str(" -> ");
                    s.push_str(ty_to_string(cx, t).as_slice());
                 }
             }
@@ -365,82 +367,96 @@ pub fn ty_to_string(cx: &ctxt, typ: t) -> String {
         }
     }
 
-    // if there is an id, print that instead of the structural type:
-    /*for def_id in ty::type_def_id(typ).iter() {
-        // note that this typedef cannot have type parameters
-        return ty::item_path_str(cx, *def_id);
-    }*/
+    fn infer_ty_to_string(cx: &ctxt, ty: ty::InferTy) -> String {
+        let print_var_ids = cx.sess.verbose();
+        match ty {
+            ty::TyVar(ty::TyVid { index: vid }) if print_var_ids =>
+                format!("_#{}", vid),
+            ty::IntVar(ty::IntVid { index: vid }) if print_var_ids =>
+                format!("_#{}i", vid),
+            ty::FloatVar(ty::FloatVid { index: vid }) if print_var_ids =>
+                format!("_#{}f", vid),
+            ty::TyVar(_) | ty::IntVar(_) | ty::FloatVar(_) =>
+                "_".to_string(),
+            ty::SkolemizedTy(v) => format!("SkolemizedTy({})", v),
+            ty::SkolemizedIntTy(v) => format!("SkolemizedIntTy({})", v)
+        }
+    }
 
     // pretty print the structural type representation:
-    return match ty::get(typ).sty {
-      ty_nil => "()".to_string(),
-      ty_bool => "bool".to_string(),
-      ty_char => "char".to_string(),
-      ty_int(t) => ast_util::int_ty_to_string(t, None).to_string(),
-      ty_uint(t) => ast_util::uint_ty_to_string(t, None).to_string(),
-      ty_float(t) => ast_util::float_ty_to_string(t).to_string(),
-      ty_uniq(typ) => format!("Box<{}>", ty_to_string(cx, typ)),
-      ty_ptr(ref tm) => {
-          format!("*{} {}", match tm.mutbl {
-              ast::MutMutable => "mut",
-              ast::MutImmutable => "const",
-          }, ty_to_string(cx, tm.ty))
-      }
-      ty_rptr(r, ref tm) => {
-          let mut buf = region_ptr_to_string(cx, r);
-          buf.push_str(mt_to_string(cx, tm).as_slice());
-          buf
-      }
-      ty_open(typ) => format!("opened<{}>", ty_to_string(cx, typ)),
-      ty_tup(ref elems) => {
-        let strs: Vec<String> = elems.iter().map(|elem| ty_to_string(cx, *elem)).collect();
-        format!("({})", strs.connect(","))
-      }
-      ty_closure(ref f) => {
-          closure_to_string(cx, &**f)
-      }
-      ty_bare_fn(ref f) => {
-          bare_fn_to_string(cx, f.fn_style, f.abi, None, &f.sig)
-      }
-      ty_infer(infer_ty) => infer_ty.to_string(),
-      ty_err => "[type error]".to_string(),
-      ty_param(ref param_ty) => {
-          param_ty.repr(cx)
-      }
-      ty_enum(did, ref substs) | ty_struct(did, ref substs) => {
-          let base = ty::item_path_str(cx, did);
-          let generics = ty::lookup_item_type(cx, did).generics;
-          parameterized(cx, base.as_slice(), substs, &generics)
-      }
-      ty_trait(box ty::TyTrait {
-          def_id: did, ref substs, ref bounds
-      }) => {
-          let base = ty::item_path_str(cx, did);
-          let trait_def = ty::lookup_trait_def(cx, did);
-          let ty = parameterized(cx, base.as_slice(),
-                                 substs, &trait_def.generics);
-          let bound_str = bounds.user_string(cx);
-          let bound_sep = if bound_str.is_empty() { "" } else { "+" };
-          format!("{}{}{}",
-                  ty,
-                  bound_sep,
-                  bound_str)
-      }
-      ty_str => "str".to_string(),
-      ty_unboxed_closure(ref did, _, ref substs) => {
-          let unboxed_closures = cx.unboxed_closures.borrow();
-          unboxed_closures.find(did).map(|cl| {
-              closure_to_string(cx, &cl.closure_type.subst(cx, substs))
-          }).unwrap_or_else(|| "closure".to_string())
-      }
-      ty_vec(t, sz) => {
-          match sz {
-              Some(n) => {
-                  format!("[{}, ..{}]", ty_to_string(cx, t), n)
-              }
-              None => format!("[{}]", ty_to_string(cx, t)),
-          }
-      }
+    match ty::get(typ).sty {
+        ty_nil => "()".to_string(),
+        ty_bool => "bool".to_string(),
+        ty_char => "char".to_string(),
+        ty_int(t) => ast_util::int_ty_to_string(t, None).to_string(),
+        ty_uint(t) => ast_util::uint_ty_to_string(t, None).to_string(),
+        ty_float(t) => ast_util::float_ty_to_string(t).to_string(),
+        ty_uniq(typ) => format!("Box<{}>", ty_to_string(cx, typ)),
+        ty_ptr(ref tm) => {
+            format!("*{} {}", match tm.mutbl {
+                ast::MutMutable => "mut",
+                ast::MutImmutable => "const",
+            }, ty_to_string(cx, tm.ty))
+        }
+        ty_rptr(r, ref tm) => {
+            let mut buf = region_ptr_to_string(cx, r);
+            buf.push_str(mt_to_string(cx, tm).as_slice());
+            buf
+        }
+        ty_open(typ) =>
+            format!("opened<{}>", ty_to_string(cx, typ)),
+        ty_tup(ref elems) => {
+            let strs = elems
+                .iter()
+                .map(|elem| ty_to_string(cx, *elem))
+                .collect::<Vec<_>>();
+            match strs.as_slice() {
+                [ref string] => format!("({},)", string),
+                strs => format!("({})", strs.connect(", "))
+            }
+        }
+        ty_closure(ref f) => {
+            closure_to_string(cx, &**f)
+        }
+        ty_bare_fn(ref f) => {
+            bare_fn_to_string(cx, f.fn_style, f.abi, None, &f.sig)
+        }
+        ty_infer(infer_ty) => infer_ty_to_string(cx, infer_ty),
+        ty_err => "[type error]".to_string(),
+        ty_param(ref param_ty) => param_ty.repr(cx),
+        ty_enum(did, ref substs) | ty_struct(did, ref substs) => {
+            let base = ty::item_path_str(cx, did);
+            let generics = ty::lookup_item_type(cx, did).generics;
+            parameterized(cx, base.as_slice(), substs, &generics)
+        }
+        ty_trait(box ty::TyTrait {
+            def_id: did, ref substs, ref bounds
+        }) => {
+            let base = ty::item_path_str(cx, did);
+            let trait_def = ty::lookup_trait_def(cx, did);
+            let ty = parameterized(cx, base.as_slice(),
+                                   substs, &trait_def.generics);
+            let bound_str = bounds.user_string(cx);
+            let bound_sep = if bound_str.is_empty() { "" } else { "+" };
+            format!("{}{}{}",
+                    ty,
+                    bound_sep,
+                    bound_str)
+        }
+        ty_str => "str".to_string(),
+        ty_unboxed_closure(ref did, _, ref substs) => {
+            let unboxed_closures = cx.unboxed_closures.borrow();
+            unboxed_closures.find(did).map(|cl| {
+                closure_to_string(cx, &cl.closure_type.subst(cx, substs))
+            }).unwrap_or_else(|| "closure".to_string())
+        }
+        ty_vec(t, sz) => {
+            let inner_str = ty_to_string(cx, t);
+            match sz {
+                Some(n) => format!("[{}, ..{}]", inner_str, n),
+                None => format!("[{}]", inner_str),
+            }
+        }
     }
 }
 
@@ -470,15 +486,15 @@ pub fn parameterized(cx: &ctxt,
         subst::NonerasedRegions(ref regions) => {
             for &r in regions.iter() {
                 let s = region_to_string(cx, "", false, r);
-                if !s.is_empty() {
-                    strs.push(s)
-                } else {
+                if s.is_empty() {
                     // This happens when the value of the region
                     // parameter is not easily serialized. This may be
                     // because the user omitted it in the first place,
                     // or because it refers to some block in the code,
                     // etc. I'm not sure how best to serialize this.
                     strs.push(format!("'_"));
+                } else {
+                    strs.push(s)
                 }
             }
         }
@@ -515,7 +531,7 @@ pub fn parameterized(cx: &ctxt,
     }
 
     if strs.len() > 0u {
-        format!("{}<{}>", base, strs.connect(","))
+        format!("{}<{}>", base, strs.connect(", "))
     } else {
         format!("{}", base)
     }

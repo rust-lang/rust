@@ -13,32 +13,32 @@ enum A { B, C }
 fn main() {
     match (true, false) {
         B => (),
-        //~^ ERROR mismatched types: expected `(bool,bool)`, found `A`
-        //         (expected tuple, found enum A)
+//~^ ERROR mismatched types: expected `(bool, bool)`, found `A` (expected tuple, found enum A)
         _ => ()
     }
 
     match (true, false) {
         (true, false, false) => ()
-        //~^ ERROR mismatched types: expected `(bool,bool)`,
-        //         found `(<generic #7>,<generic #8>,<generic #9>)`
-        //         (expected a tuple with 2 elements, found one with 3 elements)
+//~^ ERROR mismatched types: expected `(bool, bool)`, found `(_, _, _)`
+    }
+
+    match (true, false) {
+        (true, false, false) => ()
+//~^ ERROR (expected a tuple with 2 elements, found one with 3 elements)
     }
 
     match (true, false) {
         box (true, false) => ()
-        //~^ ERROR mismatched types: expected `(bool,bool)`, found `Box<<generic #15>>`
-        //         (expected tuple, found box)
+//~^ ERROR mismatched types: expected `(bool, bool)`, found `Box<_>` (expected tuple, found box)
     }
 
     match (true, false) {
         &(true, false) => ()
-        //~^ ERROR mismatched types: expected `(bool,bool)`, found `&<generic #21>`
-        //         (expected tuple, found &-ptr)
+//~^ ERROR mismatched types: expected `(bool, bool)`, found `&_` (expected tuple, found &-ptr)
     }
 
 
-    let v = [('a', 'b')   //~ ERROR expected function, found `(char,char)`
+    let v = [('a', 'b')   //~ ERROR expected function, found `(char, char)`
              ('c', 'd'),
              ('e', 'f')];
 

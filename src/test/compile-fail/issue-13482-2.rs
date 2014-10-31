@@ -8,11 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// compile-flags:-Z verbose
+
 fn main() {
-    let a = if true {
-        0
-    } else if false {
-//~^ ERROR if may be missing an else clause: expected `()`, found `_`
-        1
+    let x = [1,2];
+    let y = match x {
+        [] => None,
+        //~^ ERROR types: expected `[_#0i, ..2]`, found `[_#7, ..0]`
+        //         (expected array of 2 elements, found array of 0 elements)
+        [a,_] => Some(a)
     };
 }

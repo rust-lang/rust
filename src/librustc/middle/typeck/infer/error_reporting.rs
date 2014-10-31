@@ -111,7 +111,7 @@ pub trait ErrorReporting {
 
     fn values_str(&self, values: &ValuePairs) -> Option<String>;
 
-    fn expected_found_str<T:UserString+Resolvable>(
+    fn expected_found_str<T: UserString + Resolvable>(
         &self,
         exp_found: &ty::expected_found<T>)
         -> Option<String>;
@@ -396,16 +396,12 @@ impl<'a, 'tcx> ErrorReporting for InferCtxt<'a, 'tcx> {
          * or None if this is a derived error.
          */
         match *values {
-            infer::Types(ref exp_found) => {
-                self.expected_found_str(exp_found)
-            }
-            infer::TraitRefs(ref exp_found) => {
-                self.expected_found_str(exp_found)
-            }
+            infer::Types(ref exp_found) => self.expected_found_str(exp_found),
+            infer::TraitRefs(ref exp_found) => self.expected_found_str(exp_found)
         }
     }
 
-    fn expected_found_str<T:UserString+Resolvable>(
+    fn expected_found_str<T: UserString + Resolvable>(
         &self,
         exp_found: &ty::expected_found<T>)
         -> Option<String>

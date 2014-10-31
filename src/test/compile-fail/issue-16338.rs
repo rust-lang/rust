@@ -12,7 +12,7 @@ use std::raw::Slice;
 
 fn main() {
     let Slice { data: data, len: len } = "foo";
-    //~^ ERROR mismatched types: expected `&str`, found `core::raw::Slice<<generic #3>>`
+    //~^ ERROR mismatched types: expected `&str`, found `core::raw::Slice<_>`
     //         (expected &-ptr, found struct core::raw::Slice)
 }
 
