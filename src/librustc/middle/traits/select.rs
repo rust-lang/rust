@@ -1683,6 +1683,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 vec![arguments_tuple.subst(self.tcx(), substs),
                      new_signature.output.unwrap().subst(self.tcx(), substs)],
                 vec![],
+                vec![],
                 obligation.self_ty())
         });
 

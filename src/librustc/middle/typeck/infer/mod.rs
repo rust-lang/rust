@@ -774,10 +774,15 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         assert!(generics.regions.len(subst::FnSpace) == 0);
 
         let type_parameter_count = generics.types.len(subst::TypeSpace);
+        let type_parameters = self.next_ty_vars(type_parameter_count);
+
         let region_param_defs = generics.regions.get_slice(subst::TypeSpace);
         let regions = self.region_vars_for_defs(span, region_param_defs);
-        let type_parameters = self.next_ty_vars(type_parameter_count);
-        subst::Substs::new_trait(type_parameters, regions, self_ty)
+
+        let assoc_type_parameter_count = generics.types.len(subst::AssocSpace);
+        let assoc_type_parameters = self.next_ty_vars(assoc_type_parameter_count);
+
+        subst::Substs::new_trait(type_parameters, regions, assoc_type_parameters, self_ty)
     }
 
     pub fn fresh_bound_region(&self, binder_id: ast::NodeId) -> ty::Region {
@@ -791,7 +796,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
     pub fn ty_to_string(&self, t: ty::t) -> String {
         ty_to_string(self.tcx,
-                  self.resolve_type_vars_if_possible(t))
+                     self.resolve_type_vars_if_possible(t))
     }
 
     pub fn tys_to_string(&self, ts: &[ty::t]) -> String {
