@@ -41,7 +41,7 @@ use syntax::ast::{TyF64, TyFloat, TyI, TyI8, TyI16, TyI32, TyI64, TyInt};
 use syntax::ast::{TyParam, TyParamBound, TyPath, TyPtr, TyProc, TyQPath};
 use syntax::ast::{TyRptr, TyStr, TyU, TyU8, TyU16, TyU32, TyU64, TyUint};
 use syntax::ast::{TypeImplItem, UnboxedFnTyParamBound, UnnamedField};
-use syntax::ast::{UnsafeFn, Variant, ViewItem, ViewItemExternCrate};
+use syntax::ast::{Variant, ViewItem, ViewItemExternCrate};
 use syntax::ast::{ViewItemUse, ViewPathGlob, ViewPathList, ViewPathSimple};
 use syntax::ast::{Visibility};
 use syntax::ast;
@@ -1250,11 +1250,11 @@ impl<'a> Resolver<'a> {
                                   sp, is_public);
                 parent
             }
-            ItemFn(_, fn_style, _, _, _) => {
+            ItemFn(_, _, _, _, _) => {
                 let name_bindings =
                     self.add_child(name, parent.clone(), ForbidDuplicateValues, sp);
 
-                let def = DefFn(local_def(item.id), fn_style, false);
+                let def = DefFn(local_def(item.id), false);
                 name_bindings.define_value(def, sp, is_public);
                 parent
             }
@@ -1392,8 +1392,7 @@ impl<'a> Resolver<'a> {
                                             // Static methods become
                                             // `DefStaticMethod`s.
                                             DefStaticMethod(local_def(method.id),
-                                                            FromImpl(local_def(item.id)),
-                                                                     method.pe_fn_style())
+                                                            FromImpl(local_def(item.id)))
                                         }
                                         _ => {
                                             // Non-static methods become
@@ -1483,8 +1482,7 @@ impl<'a> Resolver<'a> {
                                     // Static methods become `DefStaticMethod`s.
                                     (DefStaticMethod(
                                             local_def(ty_m.id),
-                                            FromTrait(local_def(item.id)),
-                                            ty_m.fn_style),
+                                            FromTrait(local_def(item.id))),
                                      StaticMethodTraitItemKind)
                                 }
                                 _ => {
@@ -1711,7 +1709,7 @@ impl<'a> Resolver<'a> {
 
         match foreign_item.node {
             ForeignItemFn(_, ref generics) => {
-                let def = DefFn(local_def(foreign_item.id), UnsafeFn, false);
+                let def = DefFn(local_def(foreign_item.id), false);
                 name_bindings.define_value(def, foreign_item.span, is_public);
 
                 self.with_type_parameter_rib(
@@ -1832,12 +1830,12 @@ impl<'a> Resolver<'a> {
                 child_name_bindings.define_value(def, DUMMY_SP, is_exported);
             }
           }
-          DefFn(ctor_id, _, true) => {
+          DefFn(ctor_id, true) => {
             child_name_bindings.define_value(
                 csearch::get_tuple_struct_definition_if_ctor(&self.session.cstore, ctor_id)
                     .map_or(def, |_| DefStruct(ctor_id)), DUMMY_SP, is_public);
           }
-          DefFn(..) | DefStaticMethod(..) | DefStatic(..) | DefConst(..) => {
+          DefFn(..) | DefStaticMethod(..) | DefStatic(..) | DefConst(..) | DefMethod(..) => {
             debug!("(building reduced graph for external \
                     crate) building value (fn/static) {}", final_ident);
             child_name_bindings.define_value(def, DUMMY_SP, is_public);
@@ -1902,11 +1900,6 @@ impl<'a> Resolver<'a> {
             // Record the def ID and fields of this struct.
             self.structs.insert(def_id, fields);
           }
-          DefMethod(..) => {
-              debug!("(building reduced graph for external crate) \
-                      ignoring {}", def);
-              // Ignored; handled elsewhere.
-          }
           DefLocal(..) | DefPrimTy(..) | DefTyParam(..) |
           DefUse(..) | DefUpvar(..) | DefRegion(..) |
           DefTyParamBinder(..) | DefLabel(..) | DefSelfTy(..) => {
@@ -1957,15 +1950,14 @@ impl<'a> Resolver<'a> {
                 }
             }
             DlImpl(def) => {
-                // We only process static methods of impls here.
                 match csearch::get_type_name_if_impl(&self.session.cstore, def) {
                     None => {}
                     Some(final_name) => {
-                        let static_methods_opt =
-                            csearch::get_static_methods_if_impl(&self.session.cstore, def);
-                        match static_methods_opt {
-                            Some(ref static_methods) if
-                                static_methods.len() >= 1 => {
+                        let methods_opt =
+                            csearch::get_methods_if_impl(&self.session.cstore, def);
+                        match methods_opt {
+                            Some(ref methods) if
+                                methods.len() >= 1 => {
                                 debug!("(building reduced graph for \
                                         external crate) processing \
                                         static methods for type name {}",
@@ -2015,9 +2007,8 @@ impl<'a> Resolver<'a> {
                                 // Add each static method to the module.
                                 let new_parent =
                                     ModuleReducedGraphParent(type_module);
-                                for static_method_info in
-                                        static_methods.iter() {
-                                    let name = static_method_info.name;
+                                for method_info in methods.iter() {
+                                    let name = method_info.name;
                                     debug!("(building reduced graph for \
                                              external crate) creating \
                                              static method '{}'",
@@ -2028,10 +2019,7 @@ impl<'a> Resolver<'a> {
                                                        new_parent.clone(),
                                                        OverwriteDuplicates,
                                                        DUMMY_SP);
-                                    let def = DefFn(
-                                        static_method_info.def_id,
-                                        static_method_info.fn_style,
-                                        false);
+                                    let def = DefFn(method_info.def_id, false);
 
                                     method_name_bindings.define_value(
                                         def, DUMMY_SP,
@@ -5646,7 +5634,7 @@ impl<'a> Resolver<'a> {
                 Some(binding) => {
                     let p_str = self.path_names_to_string(&path);
                     match binding.def_for_namespace(ValueNS) {
-                        Some(DefStaticMethod(_, provenance, _)) => {
+                        Some(DefStaticMethod(_, provenance)) => {
                             match provenance {
                                 FromImpl(_) => return StaticMethod(p_str),
                                 FromTrait(_) => unreachable!()

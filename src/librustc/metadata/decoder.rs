@@ -15,7 +15,7 @@
 use back::svh::Svh;
 use metadata::cstore::crate_metadata;
 use metadata::common::*;
-use metadata::csearch::StaticMethodInfo;
+use metadata::csearch::MethodInfo;
 use metadata::csearch;
 use metadata::cstore;
 use metadata::tydecode::{parse_ty_data, parse_region_data, parse_def_id,
@@ -111,10 +111,9 @@ enum Family {
     ImmStatic,             // c
     MutStatic,             // b
     Fn,                    // f
-    UnsafeFn,              // u
     CtorFn,                // o
     StaticMethod,          // F
-    UnsafeStaticMethod,    // U
+    Method,                // h
     Type,                  // y
     ForeignType,           // T
     Mod,                   // m
@@ -137,10 +136,9 @@ fn item_family(item: rbml::Doc) -> Family {
       'c' => ImmStatic,
       'b' => MutStatic,
       'f' => Fn,
-      'u' => UnsafeFn,
       'o' => CtorFn,
       'F' => StaticMethod,
-      'U' => UnsafeStaticMethod,
+      'h' => Method,
       'y' => Type,
       'T' => ForeignType,
       'm' => Mod,
@@ -309,15 +307,9 @@ fn item_to_def_like(item: rbml::Doc, did: ast::DefId, cnum: ast::CrateNum)
         ImmStatic => DlDef(def::DefStatic(did, false)),
         MutStatic => DlDef(def::DefStatic(did, true)),
         Struct    => DlDef(def::DefStruct(did)),
-        UnsafeFn  => DlDef(def::DefFn(did, ast::UnsafeFn, false)),
-        Fn        => DlDef(def::DefFn(did, ast::NormalFn, false)),
-        CtorFn    => DlDef(def::DefFn(did, ast::NormalFn, true)),
-        StaticMethod | UnsafeStaticMethod => {
-            let fn_style = if fam == UnsafeStaticMethod {
-                ast::UnsafeFn
-            } else {
-                ast::NormalFn
-            };
+        Fn        => DlDef(def::DefFn(did, false)),
+        CtorFn    => DlDef(def::DefFn(did, true)),
+        Method | StaticMethod => {
             // def_static_method carries an optional field of its enclosing
             // trait or enclosing impl (if this is an inherent static method).
             // So we need to detect whether this is in a trait or not, which
@@ -331,7 +323,12 @@ fn item_to_def_like(item: rbml::Doc, did: ast::DefId, cnum: ast::CrateNum)
                 def::FromImpl(item_reqd_and_translated_parent_item(cnum,
                                                                    item))
             };
-            DlDef(def::DefStaticMethod(did, provenance, fn_style))
+            match fam {
+                // We don't bother to get encode/decode the trait id, we don't need it.
+                Method => DlDef(def::DefMethod(did, None, provenance)),
+                StaticMethod => DlDef(def::DefStaticMethod(did, provenance)),
+                _ => panic!()
+            }
         }
         Type | ForeignType => DlDef(def::DefTy(did, false)),
         Mod => DlDef(def::DefMod(did)),
@@ -518,7 +515,7 @@ fn each_child_of_item_or_crate(intr: Rc<IdentInterner>,
                         None => {}
                         Some(impl_method_doc) => {
                             match item_family(impl_method_doc) {
-                                StaticMethod | UnsafeStaticMethod => {
+                                StaticMethod => {
                                     // Hand off the static method
                                     // to the callback.
                                     let static_method_name =
@@ -905,10 +902,10 @@ pub fn get_type_name_if_impl(cdata: Cmd,
     ret
 }
 
-pub fn get_static_methods_if_impl(intr: Rc<IdentInterner>,
+pub fn get_methods_if_impl(intr: Rc<IdentInterner>,
                                   cdata: Cmd,
                                   node_id: ast::NodeId)
-                               -> Option<Vec<StaticMethodInfo> > {
+                               -> Option<Vec<MethodInfo> > {
     let item = lookup_item(node_id, cdata.data());
     if item_family(item) != Impl {
         return None;
@@ -927,23 +924,15 @@ pub fn get_static_methods_if_impl(intr: Rc<IdentInterner>,
         true
     });
 
-    let mut static_impl_methods = Vec::new();
+    let mut impl_methods = Vec::new();
     for impl_method_id in impl_method_ids.iter() {
         let impl_method_doc = lookup_item(impl_method_id.node, cdata.data());
         let family = item_family(impl_method_doc);
         match family {
-            StaticMethod | UnsafeStaticMethod => {
-                let fn_style;
-                match item_family(impl_method_doc) {
-                    StaticMethod => fn_style = ast::NormalFn,
-                    UnsafeStaticMethod => fn_style = ast::UnsafeFn,
-                    _ => panic!()
-                }
-
-                static_impl_methods.push(StaticMethodInfo {
+            StaticMethod | Method => {
+                impl_methods.push(MethodInfo {
                     name: item_name(&*intr, impl_method_doc),
                     def_id: item_def_id(impl_method_doc, cdata),
-                    fn_style: fn_style,
                     vis: item_visibility(impl_method_doc),
                 });
             }
@@ -951,7 +940,7 @@ pub fn get_static_methods_if_impl(intr: Rc<IdentInterner>,
         }
     }
 
-    return Some(static_impl_methods);
+    return Some(impl_methods);
 }
 
 /// If node_id is the constructor of a tuple struct, retrieve the NodeId of
