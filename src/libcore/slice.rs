@@ -1565,7 +1565,7 @@ impl<'a,T:PartialEq> PartialEq for &'a [T] {
 impl<'a,T:Eq> Eq for &'a [T] {}
 
 #[unstable = "waiting for DST"]
-impl<'a,T:PartialEq, V: AsSlice<T>> Equiv<V> for &'a [T] {
+impl<T: PartialEq, V: AsSlice<T>> Equiv<V> for [T] {
     #[inline]
     fn equiv(&self, other: &V) -> bool { self.as_slice() == other.as_slice() }
 }
