@@ -9,10 +9,7 @@
 // except according to those terms.
 
 fn main() {
-    let a = if true {
-        0
-    } else if false {
-//~^ ERROR if may be missing an else clause: expected `()`, found `_`
-        1
-    };
+    let mut x = 2;
+    x = 5.0;
+//~^ ERROR expected `_`, found `_` (expected integral variable, found floating-point variable)
 }
