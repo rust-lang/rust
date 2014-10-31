@@ -1124,21 +1124,6 @@ enum OptionalInt {
     Value(int),
     Missing,
 }
-
-fn main() {
-    let x = Value(5);
-    let y = Missing;
-
-    match x {
-        Value(n) => println!("x is {}", n),
-        Missing  => println!("x is missing!"),
-    }
-
-    match y {
-        Value(n) => println!("y is {}", n),
-        Missing  => println!("y is missing!"),
-    }
-}
 ```
 
 This enum represents an `int` that we may or may not have. In the `Missing`
@@ -1146,7 +1131,7 @@ case, we have no value, but in the `Value` case, we do. This enum is specific
 to `int`s, though. We can make it usable by any type, but we haven't quite
 gotten there yet!
 
-You can have any number of values in an enum:
+You can also have any number of values in an enum:
 
 ```{rust}
 enum OptionalColor {
@@ -1155,10 +1140,23 @@ enum OptionalColor {
 }
 ```
 
-Enums with values are quite useful, but as I mentioned, they're even more
-useful when they're generic across types. But before we get to generics, let's
-talk about how to fix these big `if`/`else` statements we've been writing. We'll
-do that with `match`.
+And you can also have something like this:
+
+```{rust}
+enum StringResult {
+    StringOK(String),
+    ErrorReason(String),
+}
+```
+Where a `StringResult` is either an `StringOK`, with the result of a computation, or an
+`ErrorReason` with a `String` explaining what caused the computation to fail. This kind of
+`enum`s are actually very useful and are even part of the standard library.
+
+As you can see `enum`s with values are quite a powerful tool for data representation,
+and can be even more useful when they're generic across types. But before we get to
+generics, let's talk about how to use them with pattern matching, a tool that will
+let us deconstruct this sum type (the type theory term for enums) in a very elegant
+way and avoid all these messy `if`/`else`s.
 
 # Match
 
@@ -1188,7 +1186,7 @@ expression will be evaluated. It's called `match` because of the term 'pattern
 matching,' which `match` is an implementation of.
 
 So what's the big advantage here? Well, there are a few. First of all, `match`
-does 'exhaustiveness checking.' Do you see that last arm, the one with the
+enforces 'exhaustiveness checking.' Do you see that last arm, the one with the
 underscore (`_`)? If we remove that arm, Rust will give us an error:
 
 ```{ignore,notrust}
@@ -1254,6 +1252,37 @@ that we have covered all possible variants of `Ordering`. With our `if`/`else`
 version, if we had forgotten the `Greater` case, for example, our program would
 have happily compiled. If we forget in the `match`, it will not. Rust helps us
 make sure to cover all of our bases.
+
+`match` expressions also allow us to get the values contained in an `enum`
+(also known as destructuring) as follows:
+
+```{rust}
+enum OptionalInt {
+    Value(int),
+    Missing,
+}
+
+fn main() {
+    let x = Value(5);
+    let y = Missing;
+
+    match x {
+        Value(n) => println!("x is {}", n),
+        Missing  => println!("x is missing!"),
+    }
+
+    match y {
+        Value(n) => println!("y is {}", n),
+        Missing  => println!("y is missing!"),
+    }
+}
+```
+
+That is how you can get and use the values contained in `enum`s.
+It can also allow us to treat errors or unexpected computations, for example, a
+function that is not guaranteed to be able to compute a result (an `int` here),
+could return an `OptionalInt`, and we would handle that value with a `match`.
+As you can see, `enum` and `match` used together are quite useful!
 
 `match` is also an expression, which means we can use it on the right
 hand side of a `let` binding or directly where an expression is
