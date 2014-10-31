@@ -173,7 +173,7 @@ fn create_steps<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                 None::<()> // keep iterating until we can't anymore
             });
 
-    match ty::get(fully_dereferenced_ty).sty {
+    match fully_dereferenced_ty.sty {
         ty::ty_vec(elem_ty, Some(len)) => {
             steps.push(CandidateStep {
                 self_ty: ty::mk_vec(fcx.tcx(), elem_ty, None),
@@ -186,9 +186,9 @@ fn create_steps<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
 
     return steps;
 
-    fn consider_reborrow(t: Ty, d: uint) -> PickAdjustment {
+    fn consider_reborrow(ty: Ty, d: uint) -> PickAdjustment {
         // Insert a `&*` or `&mut *` if this is a reference type:
-        match ty::get(t).sty {
+        match ty.sty {
             ty::ty_rptr(_, ref mt) => AutoRef(mt.mutbl, box AutoDeref(d+1)),
             _ => AutoDeref(d),
         }
@@ -238,7 +238,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
         debug!("assemble_probe: self_ty={}",
                self_ty.repr(self.tcx()));
 
-        match ty::get(self_ty).sty {
+        match self_ty.sty {
             ty::ty_trait(box ty::TyTrait { ref principal, bounds, .. }) => {
                 self.assemble_inherent_candidates_from_object(self_ty, &*principal, bounds);
                 self.assemble_inherent_impl_candidates_for_type(principal.def_id);
@@ -562,7 +562,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
         // If so, add "synthetic impls".
         let steps = self.steps.clone();
         for step in steps.iter() {
-            let (closure_def_id, _, _) = match ty::get(step.self_ty).sty {
+            let (closure_def_id, _, _) = match step.self_ty.sty {
                 ty::ty_unboxed_closure(a, b, ref c) => (a, b, c),
                 _ => continue,
             };
@@ -638,7 +638,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
 
         // FIXME -- Super hack. For DST types, we will convert to
         // &&[T] or &&str, as part of a kind of legacy lookup scheme.
-        match ty::get(step.self_ty).sty {
+        match step.self_ty.sty {
             ty::ty_str | ty::ty_vec(_, None) => self.pick_autorefrefd_method(step),
             _ => None
         }

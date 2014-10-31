@@ -53,7 +53,7 @@ pub fn simplify_type(tcx: &ty::ctxt,
      * are to be considered bound.
      */
 
-    match ty::get(ty).sty {
+    match ty.sty {
         ty::ty_bool => Some(BoolSimplifiedType),
         ty::ty_char => Some(CharSimplifiedType),
         ty::ty_int(int_type) => Some(IntSimplifiedType(int_type)),

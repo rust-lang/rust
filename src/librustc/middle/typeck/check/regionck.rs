@@ -693,7 +693,7 @@ fn visit_expr(rcx: &mut Rcx, expr: &ast::Expr) {
                 }
                 None => rcx.resolve_node_type(base.id)
             };
-            match ty::get(base_ty).sty {
+            match base_ty.sty {
                 ty::ty_rptr(r_ptr, _) => {
                     mk_subregion_due_to_dereference(rcx, expr.span,
                                                     ty::ReScope(expr.id), r_ptr);
@@ -814,7 +814,7 @@ fn constrain_cast(rcx: &mut Rcx,
         debug!("walk_cast(from_ty={}, to_ty={})",
                from_ty.repr(rcx.tcx()),
                to_ty.repr(rcx.tcx()));
-        match (&ty::get(from_ty).sty, &ty::get(to_ty).sty) {
+        match (&from_ty.sty, &to_ty.sty) {
             /*From:*/ (&ty::ty_rptr(from_r, ref from_mt),
             /*To:  */  &ty::ty_rptr(to_r, ref to_mt)) => {
                 // Target cannot outlive source, naturally.
@@ -846,7 +846,7 @@ fn check_expr_fn_block(rcx: &mut Rcx,
     let tcx = rcx.fcx.tcx();
     let function_type = rcx.resolve_node_type(expr.id);
 
-    match ty::get(function_type).sty {
+    match function_type.sty {
         ty::ty_closure(box ty::ClosureTy{store: ty::RegionTraitStore(..),
                                          ref bounds,
                                          ..}) => {
@@ -889,7 +889,7 @@ fn check_expr_fn_block(rcx: &mut Rcx,
     visit::walk_expr(rcx, expr);
     rcx.set_repeating_scope(repeating_scope);
 
-    match ty::get(function_type).sty {
+    match function_type.sty {
         ty::ty_closure(box ty::ClosureTy { store: ty::RegionTraitStore(..), .. }) => {
             ty::with_freevars(tcx, expr.id, |freevars| {
                 propagate_upupvar_borrow_kind(rcx, expr, freevars);
@@ -905,7 +905,7 @@ fn check_expr_fn_block(rcx: &mut Rcx,
         _ => {}
     }
 
-    match ty::get(function_type).sty {
+    match function_type.sty {
         ty::ty_closure(box ty::ClosureTy {bounds, ..}) => {
             ty::with_freevars(tcx, expr.id, |freevars| {
                 ensure_free_variable_types_outlive_closure_bound(rcx, bounds, expr, freevars);
@@ -1092,7 +1092,7 @@ fn constrain_callee(rcx: &mut Rcx,
     let call_region = ty::ReScope(call_expr.id);
 
     let callee_ty = rcx.resolve_node_type(callee_id);
-    match ty::get(callee_ty).sty {
+    match callee_ty.sty {
         ty::ty_bare_fn(..) => { }
         ty::ty_closure(ref closure_ty) => {
             let region = match closure_ty.store {
@@ -1204,7 +1204,7 @@ fn constrain_autoderefs<'a, 'tcx>(rcx: &mut Rcx<'a, 'tcx>,
                 // was applied on the base type, as that is always the case.
                 let fn_sig = ty::ty_fn_sig(method.ty);
                 let self_ty = fn_sig.inputs[0];
-                let (m, r) = match ty::get(self_ty).sty {
+                let (m, r) = match self_ty.sty {
                     ty::ty_rptr(r, ref m) => (m.mutbl, r),
                     _ => rcx.tcx().sess.span_bug(deref_expr.span,
                             format!("bad overloaded deref type {}",
@@ -1232,7 +1232,7 @@ fn constrain_autoderefs<'a, 'tcx>(rcx: &mut Rcx<'a, 'tcx>,
             None => derefd_ty
         };
 
-        match ty::get(derefd_ty).sty {
+        match derefd_ty.sty {
             ty::ty_rptr(r_ptr, _) => {
                 mk_subregion_due_to_dereference(rcx, deref_expr.span,
                                                 r_deref_expr, r_ptr);
@@ -1272,8 +1272,8 @@ fn constrain_index<'a, 'tcx>(rcx: &mut Rcx<'a, 'tcx>,
            rcx.fcx.infcx().ty_to_string(indexed_ty));
 
     let r_index_expr = ty::ReScope(index_expr.id);
-    match ty::get(indexed_ty).sty {
-        ty::ty_rptr(r_ptr, mt) => match ty::get(mt.ty).sty {
+    match indexed_ty.sty {
+        ty::ty_rptr(r_ptr, mt) => match mt.ty.sty {
             ty::ty_vec(_, None) | ty::ty_str => {
                 rcx.fcx.mk_subr(infer::IndexSlice(index_expr.span),
                                 r_index_expr, r_ptr);

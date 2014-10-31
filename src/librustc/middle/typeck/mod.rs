@@ -363,7 +363,7 @@ fn check_main_fn_ty(ccx: &CrateCtxt,
                     main_span: Span) {
     let tcx = ccx.tcx;
     let main_t = ty::node_id_to_type(tcx, main_id);
-    match ty::get(main_t).sty {
+    match main_t.sty {
         ty::ty_bare_fn(..) => {
             match tcx.map.find(main_id) {
                 Some(ast_map::NodeItem(it)) => {
@@ -410,7 +410,7 @@ fn check_start_fn_ty(ccx: &CrateCtxt,
                      start_span: Span) {
     let tcx = ccx.tcx;
     let start_t = ty::node_id_to_type(tcx, start_id);
-    match ty::get(start_t).sty {
+    match start_t.sty {
         ty::ty_bare_fn(_) => {
             match tcx.map.find(start_id) {
                 Some(ast_map::NodeItem(it)) => {

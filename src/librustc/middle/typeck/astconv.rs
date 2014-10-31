@@ -667,7 +667,7 @@ pub fn ast_ty_to_builtin_ty<'tcx, AC: AstConv<'tcx>, RS: RegionScope>(
                 def::DefTy(did, _) |
                 def::DefStruct(did) if Some(did) == this.tcx().lang_items.owned_box() => {
                     let ty = ast_path_to_ty(this, rscope, did, path).ty;
-                    match ty::get(ty).sty {
+                    match ty.sty {
                         ty::ty_struct(struct_def_id, ref substs) => {
                             assert_eq!(struct_def_id, did);
                             assert_eq!(substs.types.len(TypeSpace), 1);
@@ -1294,7 +1294,7 @@ fn determine_explicit_self_category<'a, 'tcx, AC: AstConv<'tcx>,
             if impl_modifiers >= method_modifiers {
                 ty::ByValueExplicitSelfCategory
             } else {
-                match ty::get(explicit_type).sty {
+                match explicit_type.sty {
                     ty::ty_rptr(r, mt) => ty::ByReferenceExplicitSelfCategory(r, mt.mutbl),
                     ty::ty_uniq(_) => ty::ByBoxExplicitSelfCategory,
                     _ => ty::ByValueExplicitSelfCategory,
@@ -1304,7 +1304,7 @@ fn determine_explicit_self_category<'a, 'tcx, AC: AstConv<'tcx>,
     };
 
     fn count_modifiers(ty: Ty) -> uint {
-        match ty::get(ty).sty {
+        match ty.sty {
             ty::ty_rptr(_, mt) => count_modifiers(mt.ty) + 1,
             ty::ty_uniq(t) => count_modifiers(t) + 1,
             _ => 0,

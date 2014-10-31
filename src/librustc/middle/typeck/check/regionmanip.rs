@@ -59,7 +59,7 @@ impl<'a, 'tcx> Wf<'a, 'tcx> {
         debug!("Wf::accumulate_from_ty(ty={})",
                ty.repr(self.tcx));
 
-        match ty::get(ty).sty {
+        match ty.sty {
             ty::ty_bool |
             ty::ty_char |
             ty::ty_int(..) |

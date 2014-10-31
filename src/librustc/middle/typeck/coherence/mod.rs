@@ -20,7 +20,6 @@ use metadata::csearch::{each_impl, get_impl_trait};
 use metadata::csearch;
 use middle::subst;
 use middle::subst::{Substs};
-use middle::ty::get;
 use middle::ty::{ImplContainer, ImplOrTraitItemId, MethodTraitItemId};
 use middle::ty::{TypeTraitItemId, lookup_item_type};
 use middle::ty::{Ty, ty_bool, ty_char, ty_enum, ty_err};
@@ -71,7 +70,7 @@ fn get_base_type<'a, 'tcx>(inference_context: &InferCtxt<'a, 'tcx>,
         }
     };
 
-    match get(resolved_type).sty {
+    match resolved_type.sty {
         ty_enum(..) | ty_struct(..) | ty_unboxed_closure(..) => {
             debug!("(getting base type) found base type");
             Some(resolved_type)
@@ -87,7 +86,7 @@ fn get_base_type<'a, 'tcx>(inference_context: &InferCtxt<'a, 'tcx>,
         ty_infer(..) | ty_param(..) | ty_err | ty_open(..) | ty_uniq(_) |
         ty_ptr(_) | ty_rptr(_, _) => {
             debug!("(getting base type) no base type; found {}",
-                   get(original_type).sty);
+                   original_type.sty);
             None
         }
         ty_trait(..) => panic!("should have been caught")
@@ -102,7 +101,7 @@ fn get_base_type_def_id<'a, 'tcx>(inference_context: &InferCtxt<'a, 'tcx>,
     match get_base_type(inference_context, span, original_type) {
         None => None,
         Some(base_type) => {
-            match get(base_type).sty {
+            match base_type.sty {
                 ty_enum(def_id, _) |
                 ty_struct(def_id, _) |
                 ty_unboxed_closure(def_id, _, _) => {
@@ -111,7 +110,7 @@ fn get_base_type_def_id<'a, 'tcx>(inference_context: &InferCtxt<'a, 'tcx>,
                 ty_ptr(ty::mt {ty, ..}) |
                 ty_rptr(_, ty::mt {ty, ..}) |
                 ty_uniq(ty) => {
-                    match ty::get(ty).sty {
+                    match ty.sty {
                         ty_trait(box ty::TyTrait { ref principal, .. }) => {
                             Some(principal.def_id)
                         }
@@ -442,7 +441,7 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
             let method_def_id = items[0];
 
             let self_type = self.get_self_type_for_implementation(impl_did);
-            match ty::get(self_type.ty).sty {
+            match self_type.ty.sty {
                 ty::ty_enum(type_def_id, _) |
                 ty::ty_struct(type_def_id, _) |
                 ty::ty_unboxed_closure(type_def_id, _, _) => {

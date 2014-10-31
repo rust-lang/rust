@@ -663,7 +663,7 @@ fn is_associated_type_valid_for_param(ty: Ty,
                                       trait_id: ast::DefId,
                                       generics: &ty::Generics)
                                       -> bool {
-    match ty::get(ty).sty {
+    match ty.sty {
         ty::ty_param(param_ty) => {
             let type_parameter = generics.types.get(param_ty.space,
                                                     param_ty.idx);
@@ -694,7 +694,7 @@ fn find_associated_type_in_generics<'tcx>(tcx: &ty::ctxt<'tcx>,
         Some(ty) => ty,
     };
 
-    match ty::get(ty).sty {
+    match ty.sty {
         ty::ty_param(ref param_ty) => {
             /*let type_parameter = generics.types.get(param_ty.space,
                                                     param_ty.idx);
@@ -722,7 +722,7 @@ fn find_associated_type_in_generics<'tcx>(tcx: &ty::ctxt<'tcx>,
 }
 
 fn type_is_self(ty: Ty) -> bool {
-    match ty::get(ty).sty {
+    match ty.sty {
         ty::ty_param(ref param_ty) if param_ty.is_self() => true,
         _ => false,
     }
@@ -1908,7 +1908,7 @@ fn get_or_create_type_parameter_def<'tcx,AC>(this: &AC,
             let cur_idx = index;
 
             ty::walk_ty(ty, |t| {
-                match ty::get(t).sty {
+                match t.sty {
                     ty::ty_param(p) => if p.idx > cur_idx {
                         span_err!(this.tcx().sess, path.span, E0128,
                                   "type parameters with a default cannot use \
@@ -2150,7 +2150,7 @@ fn check_method_self_type<'a, 'tcx, RS:RegionScope>(
     match explicit_self.node {
         ast::SelfExplicit(ref ast_type, _) => {
             let typ = crate_context.to_ty(rs, &**ast_type);
-            let base_type = match ty::get(typ).sty {
+            let base_type = match typ.sty {
                 ty::ty_ptr(tm) | ty::ty_rptr(_, tm) => tm.ty,
                 ty::ty_uniq(typ) => typ,
                 _ => typ,

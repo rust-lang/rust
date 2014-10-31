@@ -111,7 +111,7 @@ impl<'f, 'tcx> Combine<'tcx> for Equate<'f, 'tcx> {
         let infcx = self.fields.infcx;
         let a = infcx.type_variables.borrow().replace_if_possible(a);
         let b = infcx.type_variables.borrow().replace_if_possible(b);
-        match (&ty::get(a).sty, &ty::get(b).sty) {
+        match (&a.sty, &b.sty) {
             (&ty::ty_infer(TyVar(a_id)), &ty::ty_infer(TyVar(b_id))) => {
                 infcx.type_variables.borrow_mut().relate_vars(a_id, EqTo, b_id);
                 Ok(a)

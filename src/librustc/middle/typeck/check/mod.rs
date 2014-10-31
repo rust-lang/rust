@@ -405,7 +405,7 @@ fn check_bare_fn<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     // (replace any type-scheme with a type)
     let fty = fty.subst(ccx.tcx, &param_env.free_substs);
 
-    match ty::get(fty).sty {
+    match fty.sty {
         ty::ty_bare_fn(ref fn_ty) => {
             let inh = Inherited::new(ccx.tcx, param_env);
             let fcx = check_fn(ccx, fn_ty.fn_style, id, &fn_ty.sig,
@@ -1436,7 +1436,7 @@ fn check_cast(fcx: &FnCtxt,
         fcx.type_error_message(span, |actual| {
             format!("cast to unsized type: `{}` as `{}`", actual, tstr)
         }, t_e, None);
-        match ty::get(t_e).sty {
+        match t_e.sty {
             ty::ty_rptr(_, ty::mt { mutbl: mt, .. }) => {
                 let mtstr = match mt {
                     ast::MutMutable => "mut ",
@@ -1505,19 +1505,19 @@ fn check_cast(fcx: &FnCtxt,
         // casts from C-like enums are allowed
     } else if t_1_is_char {
         let t_e = fcx.infcx().shallow_resolve(t_e);
-        if ty::get(t_e).sty != ty::ty_uint(ast::TyU8) {
+        if t_e.sty != ty::ty_uint(ast::TyU8) {
             fcx.type_error_message(span, |actual| {
                 format!("only `u8` can be cast as \
                          `char`, not `{}`", actual)
             }, t_e, None);
         }
-    } else if ty::get(t_1).sty == ty::ty_bool {
+    } else if t_1.sty == ty::ty_bool {
         span_err!(fcx.tcx().sess, span, E0054,
             "cannot cast as `bool`, compare with zero instead");
     } else if ty::type_is_region_ptr(t_e) && ty::type_is_unsafe_ptr(t_1) {
         fn types_compatible<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>, sp: Span,
                                       t1: Ty<'tcx>, t2: Ty<'tcx>) -> bool {
-            match ty::get(t1).sty {
+            match t1.sty {
                 ty::ty_vec(_, Some(_)) => {}
                 _ => return false
             }
@@ -1545,7 +1545,7 @@ fn check_cast(fcx: &FnCtxt,
 
         /* this cast is only allowed from &[T, ..n] to *T or
         &T to *T. */
-        match (&ty::get(t_e).sty, &ty::get(t_1).sty) {
+        match (&t_e.sty, &t_1.sty) {
             (&ty::ty_rptr(_, ty::mt { ty: mt1, mutbl: ast::MutImmutable }),
              &ty::ty_ptr(ty::mt { ty: mt2, mutbl: ast::MutImmutable }))
             if types_compatible(fcx, e.span, mt1, mt2) => {
@@ -2370,7 +2370,7 @@ fn autoderef_for_index<'a, 'tcx, T>(fcx: &FnCtxt<'a, 'tcx>,
 
     // After we have fully autoderef'd, if the resulting type is [T, ..n], then
     // do a final unsized coercion to yield [T].
-    match ty::get(ty).sty {
+    match ty.sty {
         ty::ty_vec(element_ty, Some(n)) => {
             let adjusted_ty = ty::mk_vec(fcx.tcx(), element_ty, None);
             let autoderefref = ty::AutoDerefRef {
@@ -2653,7 +2653,7 @@ fn lookup_method_for_for_loop<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                     structurally_resolved_type(fcx, iterator_expr.span, return_type),
                 ty::FnDiverging => ty::mk_err()
             };
-            match ty::get(return_type).sty {
+            match return_type.sty {
                 ty::ty_enum(_, ref substs)
                         if !substs.types.is_empty_in(subst::TypeSpace) => {
                     *substs.types.get(subst::TypeSpace, 0)
@@ -2695,7 +2695,7 @@ fn check_method_argument_types<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                              tuple_arguments);
         ty::FnConverging(ty::mk_err())
     } else {
-        match ty::get(method_fn_ty).sty {
+        match method_fn_ty.sty {
             ty::ty_bare_fn(ref fty) => {
                 // HACK(eddyb) ignore self in the definition (see above).
                 check_argument_types(fcx,
@@ -2743,7 +2743,7 @@ fn check_argument_types<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     let expected_arg_count = fn_inputs.len();
     let formal_tys = if tuple_arguments == TupleArguments {
         let tuple_type = structurally_resolved_type(fcx, sp, fn_inputs[0]);
-        match ty::get(tuple_type).sty {
+        match tuple_type.sty {
             ty::ty_tup(ref arg_types) => {
                 if arg_types.len() != args.len() {
                     span_err!(tcx.sess, sp, E0057,
@@ -2834,7 +2834,7 @@ fn check_argument_types<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
 
                 match deref_args {
                     DoDerefArgs => {
-                        match ty::get(formal_ty).sty {
+                        match formal_ty.sty {
                             ty::ty_rptr(_, mt) => formal_ty = mt.ty,
                             ty::ty_err => (),
                             _ => {
@@ -2866,7 +2866,7 @@ fn check_argument_types<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
             // in C but we just error out instead and require explicit casts.
             let arg_ty = structurally_resolved_type(fcx, arg.span,
                                                     fcx.expr_ty(&***arg));
-            match ty::get(arg_ty).sty {
+            match arg_ty.sty {
                 ty::ty_float(ast::TyF32) => {
                     fcx.type_error_message(arg.span,
                                            |t| {
@@ -3298,7 +3298,7 @@ fn check_expr_with_unifier<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                 //   could also solve this with variance or different
                 //   traits that don't force left and right to have same
                 //   type.
-                let (adj_ty, adjustment) = match ty::get(lhs_ty).sty {
+                let (adj_ty, adjustment) = match lhs_ty.sty {
                     ty::ty_rptr(r_in, mt) => {
                         let r_adj = fcx.infcx().next_region_var(infer::Autoref(lhs.span));
                         fcx.mk_subr(infer::Reborrow(lhs.span), r_adj, r_in);
@@ -3700,7 +3700,7 @@ fn check_expr_with_unifier<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         // FIXME(eddyb) #12808 Integrate privacy into this auto-deref loop.
         let (_, autoderefs, field_ty) =
             autoderef(fcx, expr.span, expr_t, Some(base.id), lvalue_pref, |base_t, _| {
-                match ty::get(base_t).sty {
+                match base_t.sty {
                     ty::ty_struct(base_id, ref substs) => {
                         debug!("struct named {}", ppaux::ty_to_string(tcx, base_t));
                         let fields = ty::lookup_struct_fields(tcx, base_id);
@@ -3761,7 +3761,7 @@ fn check_expr_with_unifier<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         // FIXME(eddyb) #12808 Integrate privacy into this auto-deref loop.
         let (_, autoderefs, field_ty) =
             autoderef(fcx, expr.span, expr_t, Some(base.id), lvalue_pref, |base_t, _| {
-                match ty::get(base_t).sty {
+                match base_t.sty {
                     ty::ty_struct(base_id, ref substs) => {
                         tuple_like = ty::is_tuple_struct(tcx, base_id);
                         if tuple_like {
@@ -4092,7 +4092,7 @@ fn check_expr_with_unifier<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                                            Some(&**oprnd), oprnd_t, lvalue_pref) {
                             Some(mt) => mt.ty,
                             None => {
-                                let is_newtype = match ty::get(oprnd_t).sty {
+                                let is_newtype = match oprnd_t.sty {
                                     ty::ty_struct(did, ref substs) => {
                                         let fields = ty::struct_fields(fcx.tcx(), did, substs);
                                         fields.len() == 1
@@ -4121,7 +4121,7 @@ fn check_expr_with_unifier<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                     oprnd_t = structurally_resolved_type(fcx, oprnd.span,
                                                          oprnd_t);
                     if !(ty::type_is_integral(oprnd_t) ||
-                         ty::get(oprnd_t).sty == ty::ty_bool) {
+                         oprnd_t.sty == ty::ty_bool) {
                         oprnd_t = check_user_unop(fcx, "!", "not",
                                                   tcx.lang_items.not_trait(),
                                                   expr, &**oprnd, oprnd_t);
@@ -4387,7 +4387,7 @@ fn check_expr_with_unifier<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
       ast::ExprVec(ref args) => {
         let uty = match expected {
             ExpectHasType(uty) => {
-                match ty::get(uty).sty {
+                match uty.sty {
                         ty::ty_vec(ty, _) => Some(ty),
                         _ => None
                 }
@@ -4419,7 +4419,7 @@ fn check_expr_with_unifier<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
 
         let uty = match expected {
             ExpectHasType(uty) => {
-                match ty::get(uty).sty {
+                match uty.sty {
                         ty::ty_vec(ty, _) => Some(ty),
                         _ => None
                 }
@@ -4510,7 +4510,7 @@ fn check_expr_with_unifier<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
             Some(def) => {
                 // Verify that this was actually a struct.
                 let typ = ty::lookup_item_type(fcx.ccx.tcx, def.def_id());
-                match ty::get(typ.ty).sty {
+                match typ.ty.sty {
                     ty::ty_struct(struct_did, _) => {
                         check_struct_constructor(fcx,
                                                  id,
@@ -4733,7 +4733,7 @@ impl<'tcx> Expectation<'tcx> {
                -> Expectation<'tcx> {
         match self.resolve(fcx) {
             NoExpectation => NoExpectation,
-            ExpectCastableToType(t) | ExpectHasType(t) => unpack(&ty::get(t).sty),
+            ExpectCastableToType(t) | ExpectHasType(t) => unpack(&t.sty),
         }
     }
 
@@ -4744,7 +4744,7 @@ impl<'tcx> Expectation<'tcx> {
     {
         match self.resolve(fcx) {
             NoExpectation => None,
-            ExpectCastableToType(t) | ExpectHasType(t) => unpack(&ty::get(t).sty),
+            ExpectCastableToType(t) | ExpectHasType(t) => unpack(&t.sty),
         }
     }
 }
@@ -5042,7 +5042,7 @@ pub fn check_simd(tcx: &ty::ctxt, sp: Span, id: ast::NodeId) {
         span_err!(tcx.sess, sp, E0074, "SIMD vector cannot be generic");
         return;
     }
-    match ty::get(t).sty {
+    match t.sty {
         ty::ty_struct(did, ref substs) => {
             let fields = ty::lookup_struct_fields(tcx, did);
             if fields.is_empty() {
@@ -5750,7 +5750,7 @@ pub fn structurally_resolved_type<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>, sp: Span,
 // Returns the one-level-deep structure of the given type.
 pub fn structure_of<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>, sp: Span, typ: Ty<'tcx>)
                         -> &'tcx ty::sty<'tcx> {
-    &ty::get(structurally_resolved_type(fcx, sp, typ)).sty
+    &structurally_resolved_type(fcx, sp, typ).sty
 }
 
 // Returns true if b contains a break that can exit from b
@@ -5789,7 +5789,7 @@ pub fn check_bounds_are_used<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     let mut tps_used = Vec::from_elem(tps.len(), false);
 
     ty::walk_ty(ty, |t| {
-            match ty::get(t).sty {
+            match t.sty {
                 ty::ty_param(ParamTy {idx, ..}) => {
                     debug!("Found use of ty param num {}", idx);
                     tps_used[idx] = true;

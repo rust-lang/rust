@@ -15,7 +15,6 @@ use back::link::mangle_internal_name_by_path_and_seq;
 use llvm::ValueRef;
 use middle::def;
 use middle::mem_categorization::Typer;
-use middle::subst::Substs;
 use trans::adt;
 use trans::base::*;
 use trans::build::*;
@@ -470,7 +469,7 @@ pub fn get_or_create_declaration_if_unboxed_closure<'blk, 'tcx>(bcx: Block<'blk,
     // Normalize type so differences in regions and typedefs don't cause
     // duplicate declarations
     let function_type = ty::normalize_ty(bcx.tcx(), function_type);
-    let params = match ty::get(function_type).sty {
+    let params = match function_type.sty {
         ty::ty_unboxed_closure(_, _, ref substs) => substs.types.clone(),
         _ => unreachable!()
     };
@@ -605,7 +604,7 @@ pub fn get_wrapper_for_bare_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
     debug!("get_wrapper_for_bare_fn(closure_ty={})", closure_ty.repr(tcx));
 
-    let f = match ty::get(closure_ty).sty {
+    let f = match closure_ty.sty {
         ty::ty_closure(ref f) => f,
         _ => {
             ccx.sess().bug(format!("get_wrapper_for_bare_fn: \

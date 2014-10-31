@@ -305,7 +305,7 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
             check::autoderef(
                 self.fcx, self.span, self_ty, None, NoPreference,
                 |ty, _| {
-                    match ty::get(ty).sty {
+                    match ty.sty {
                         ty::ty_trait(ref data) => Some(closure(self, ty, &**data)),
                         _ => None,
                     }
@@ -482,13 +482,13 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
          * `DerefMut` and `IndexMut` respectively.
          */
 
-        let sig = match ty::get(method_callee.ty).sty {
+        let sig = match method_callee.ty.sty {
             ty::ty_bare_fn(ref f) => f.sig.clone(),
             ty::ty_closure(ref f) => f.sig.clone(),
             _ => return,
         };
 
-        match ty::get(sig.inputs[0]).sty {
+        match sig.inputs[0].sty {
             ty::ty_rptr(_, ty::mt {
                 ty: _,
                 mutbl: ast::MutMutable,

@@ -166,7 +166,7 @@ pub fn represent_type<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 
 fn represent_type_uncached<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                      t: Ty<'tcx>) -> Repr<'tcx> {
-    match ty::get(t).sty {
+    match t.sty {
         ty::ty_tup(ref elems) => {
             Univariant(mk_struct(cx, elems.as_slice(), false, t), false)
         }
@@ -306,9 +306,9 @@ impl<'tcx> Case<'tcx> {
 
     fn find_ptr<'a>(&self, cx: &CrateContext<'a, 'tcx>) -> Option<PointerField> {
         for (i, &ty) in self.tys.iter().enumerate() {
-            match ty::get(ty).sty {
+            match ty.sty {
                 // &T/&mut T/Box<T> could either be a thin or fat pointer depending on T
-                ty::ty_rptr(_, ty::mt { ty, .. }) | ty::ty_uniq(ty) => match ty::get(ty).sty {
+                ty::ty_rptr(_, ty::mt { ty, .. }) | ty::ty_uniq(ty) => match ty.sty {
                     // &[T] and &str are a pointer and length pair
                     ty::ty_vec(_, None) | ty::ty_str => return Some(FatPointer(i)),
 

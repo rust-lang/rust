@@ -146,7 +146,7 @@ fn check_and_get_illegal_move_origin<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
 
         mc::cat_downcast(ref b) |
         mc::cat_interior(ref b, _) => {
-            match ty::get(b.ty).sty {
+            match b.ty.sty {
                 ty::ty_struct(did, _) | ty::ty_enum(did, _) => {
                     if ty::has_dtor(bccx.tcx, did) {
                         Some(cmt.clone())

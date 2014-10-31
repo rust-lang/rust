@@ -113,7 +113,7 @@ impl<'a, 'tcx> TypeFolder<'tcx> for TypeSkolemizer<'a, 'tcx> {
     }
 
     fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
-        match ty::get(t).sty {
+        match t.sty {
             ty::ty_infer(ty::TyVar(v)) => {
                 self.skolemize(self.infcx.type_variables.borrow().probe(v),
                                ty::TyVar(v),

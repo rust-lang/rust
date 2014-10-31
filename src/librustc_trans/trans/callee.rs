@@ -107,7 +107,7 @@ fn trans<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, expr: &ast::Expr)
     fn datum_callee<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, expr: &ast::Expr)
                                 -> Callee<'blk, 'tcx> {
         let DatumBlock {mut bcx, datum} = expr::trans(bcx, expr);
-        match ty::get(datum.ty).sty {
+        match datum.ty.sty {
             ty::ty_bare_fn(..) => {
                 let llval = datum.to_llscalarish(bcx);
                 return Callee {
@@ -163,7 +163,7 @@ fn trans<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, expr: &ast::Expr)
                     data: NamedTupleConstructor(substs, 0)
                 }
             }
-            def::DefFn(did, _) if match ty::get(expr_ty).sty {
+            def::DefFn(did, _) if match expr_ty.sty {
                 ty::ty_bare_fn(ref f) => f.abi == synabi::RustIntrinsic,
                 _ => false
             } => {
@@ -707,7 +707,7 @@ pub fn trans_call_inner<'a, 'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let callee = get_callee(bcx, cleanup::CustomScope(arg_cleanup_scope));
     let mut bcx = callee.bcx;
 
-    let (abi, ret_ty) = match ty::get(callee_ty).sty {
+    let (abi, ret_ty) = match callee_ty.sty {
         ty::ty_bare_fn(ref f) => (f.abi, f.sig.output),
         ty::ty_closure(ref f) => (f.abi, f.sig.output),
         _ => panic!("expected bare rust fn or closure in trans_call_inner")
@@ -933,7 +933,7 @@ fn trans_args_under_call_abi<'blk, 'tcx>(
     let tuple_expr = &arg_exprs[1];
     let tuple_type = node_id_type(bcx, tuple_expr.id);
 
-    match ty::get(tuple_type).sty {
+    match tuple_type.sty {
         ty::ty_tup(ref field_types) => {
             let tuple_datum = unpack_datum!(bcx,
                                             expr::trans(bcx, &**tuple_expr));
@@ -991,7 +991,7 @@ fn trans_overloaded_call_args<'blk, 'tcx>(
 
     // Now untuple the rest of the arguments.
     let tuple_type = arg_tys[1];
-    match ty::get(tuple_type).sty {
+    match tuple_type.sty {
         ty::ty_tup(ref field_types) => {
             for (i, &field_type) in field_types.iter().enumerate() {
                 let arg_datum =

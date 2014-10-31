@@ -1300,9 +1300,7 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DxrVisitor<'l, 'tcx> {
 
                 self.visit_expr(&**sub_ex);
 
-                let t = ty::expr_ty_adjusted(&self.analysis.ty_cx, &**sub_ex);
-                let t_box = ty::get(t);
-                match t_box.sty {
+                match ty::expr_ty_adjusted(&self.analysis.ty_cx, &**sub_ex).sty {
                     ty::ty_struct(def_id, _) => {
                         let fields = ty::lookup_struct_fields(&self.analysis.ty_cx, def_id);
                         for f in fields.iter() {
@@ -1328,9 +1326,7 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DxrVisitor<'l, 'tcx> {
 
                 self.visit_expr(&**sub_ex);
 
-                let t = ty::expr_ty_adjusted(&self.analysis.ty_cx, &**sub_ex);
-                let t_box = ty::get(t);
-                match t_box.sty {
+                match ty::expr_ty_adjusted(&self.analysis.ty_cx, &**sub_ex).sty {
                     ty::ty_struct(def_id, _) => {
                         let fields = ty::lookup_struct_fields(&self.analysis.ty_cx, def_id);
                         for (i, f) in fields.iter().enumerate() {

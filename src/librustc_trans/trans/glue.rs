@@ -87,7 +87,7 @@ pub fn get_drop_glue_type<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     if !ty::type_needs_drop(tcx, t) {
         return ty::mk_i8();
     }
-    match ty::get(t).sty {
+    match t.sty {
         ty::ty_uniq(typ) if !ty::type_needs_drop(tcx, typ)
                          && ty::type_is_sized(tcx, typ) => {
             let llty = sizing_type_of(ccx, typ);
@@ -225,7 +225,7 @@ fn trans_struct_drop<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     };
 
     let fty = ty::lookup_item_type(bcx.tcx(), dtor_did).ty.subst(bcx.tcx(), substs);
-    let self_ty = match ty::get(fty).sty {
+    let self_ty = match fty.sty {
         ty::ty_bare_fn(ref f) => {
             assert!(f.sig.inputs.len() == 1);
             f.sig.inputs[0]
@@ -308,7 +308,7 @@ fn size_and_align_of_dst<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, t: Ty<'tcx>, info: 
         let align = C_uint(bcx.ccx(), align_of(bcx.ccx(), t));
         return (size, align);
     }
-    match ty::get(t).sty {
+    match t.sty {
         ty::ty_struct(id, ref substs) => {
             let ccx = bcx.ccx();
             // First get the size of all statically known fields.
@@ -358,9 +358,9 @@ fn make_drop_glue<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, v0: ValueRef, t: Ty<'tcx>)
                               -> Block<'blk, 'tcx> {
     // NB: v0 is an *alias* of type t here, not a direct value.
     let _icx = push_ctxt("make_drop_glue");
-    match ty::get(t).sty {
+    match t.sty {
         ty::ty_uniq(content_ty) => {
-            match ty::get(content_ty).sty {
+            match content_ty.sty {
                 ty::ty_vec(ty, None) => {
                     tvec::make_drop_glue_unboxed(bcx, v0, ty, true)
                 }

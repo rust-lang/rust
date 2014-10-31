@@ -54,7 +54,7 @@ pub fn enc_ty<'a, 'tcx>(w: &mut SeekableMemWriter, cx: &ctxt<'a, 'tcx>, t: Ty<'t
         None => {}
     }
     let pos = w.tell().unwrap();
-    enc_sty(w, cx, &ty::get(t).sty);
+    enc_sty(w, cx, &t.sty);
     let end = w.tell().unwrap();
     let len = end - pos;
     fn estimate_sz(u: u64) -> u64 {

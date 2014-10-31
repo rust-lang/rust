@@ -52,7 +52,7 @@ pub fn const_lit(cx: &CrateContext, e: &ast::Expr, lit: &ast::Lit)
         }
         ast::LitInt(i, ast::UnsuffixedIntLit(_)) => {
             let lit_int_ty = ty::node_id_to_type(cx.tcx(), e.id);
-            match ty::get(lit_int_ty).sty {
+            match lit_int_ty.sty {
                 ty::ty_int(t) => {
                     C_integral(Type::int_from_ty(cx, t), i as u64, true)
                 }
@@ -70,7 +70,7 @@ pub fn const_lit(cx: &CrateContext, e: &ast::Expr, lit: &ast::Lit)
         }
         ast::LitFloatUnsuffixed(ref fs) => {
             let lit_float_ty = ty::node_id_to_type(cx.tcx(), e.id);
-            match ty::get(lit_float_ty).sty {
+            match lit_float_ty.sty {
                 ty::ty_float(t) => {
                     C_floating(fs.get(), Type::float_from_ty(cx, t))
                 }
@@ -144,7 +144,7 @@ fn const_deref<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, v: ValueRef,
                          -> (ValueRef, Ty<'tcx>) {
     match ty::deref(t, explicit) {
         Some(ref mt) => {
-            match ty::get(t).sty {
+            match t.sty {
                 ty::ty_ptr(mt) | ty::ty_rptr(_, mt) => {
                     if ty::type_is_sized(cx.tcx(), mt.ty) {
                         (const_deref_ptr(cx, v), mt.ty)
@@ -260,7 +260,7 @@ pub fn const_expr<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, e: &ast::Expr)
                                         llconst = const_addr_of(cx, llconst, ast::MutImmutable)
                                     }
 
-                                    match ty::get(ty).sty {
+                                    match ty.sty {
                                         ty::ty_vec(unit_ty, Some(len)) => {
                                             let llunitty = type_of::type_of(cx, unit_ty);
                                             let llptr = const_ptrcast(cx, llconst, llunitty);
@@ -442,9 +442,9 @@ fn const_expr_unadjusted(cx: &CrateContext, e: &ast::Expr) -> ValueRef {
                   _ => cx.sess().span_bug(index.span,
                                           "index is not an integer-constant expression")
               };
-              let (arr, len) = match ty::get(bt).sty {
+              let (arr, len) = match bt.sty {
                   ty::ty_vec(_, Some(u)) => (bv, C_uint(cx, u)),
-                  ty::ty_open(ty) => match ty::get(ty).sty {
+                  ty::ty_open(ty) => match ty.sty {
                       ty::ty_vec(_, None) | ty::ty_str => {
                           let e1 = const_get_elt(cx, bv, &[0]);
                           (const_deref_ptr(cx, e1), const_get_elt(cx, bv, &[1]))
@@ -454,7 +454,7 @@ fn const_expr_unadjusted(cx: &CrateContext, e: &ast::Expr) -> ValueRef {
                                                        or string type, found {}",
                                                       ty_to_string(cx.tcx(), bt)).as_slice())
                   },
-                  ty::ty_rptr(_, mt) => match ty::get(mt.ty).sty {
+                  ty::ty_rptr(_, mt) => match mt.ty.sty {
                       ty::ty_vec(_, Some(u)) => {
                           (const_deref_ptr(cx, bv), C_uint(cx, u))
                       },
@@ -470,8 +470,8 @@ fn const_expr_unadjusted(cx: &CrateContext, e: &ast::Expr) -> ValueRef {
               };
 
               let len = llvm::LLVMConstIntGetZExtValue(len) as u64;
-              let len = match ty::get(bt).sty {
-                  ty::ty_uniq(ty) | ty::ty_rptr(_, ty::mt{ty, ..}) => match ty::get(ty).sty {
+              let len = match bt.sty {
+                  ty::ty_uniq(ty) | ty::ty_rptr(_, ty::mt{ty, ..}) => match ty.sty {
                       ty::ty_str => {
                           assert!(len > 0);
                           len - 1

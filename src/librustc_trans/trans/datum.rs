@@ -518,7 +518,7 @@ impl<'tcx> Datum<'tcx, Lvalue> {
     pub fn get_element<'blk>(&self, bcx: Block<'blk, 'tcx>, ty: Ty<'tcx>,
                              gep: |ValueRef| -> ValueRef)
                              -> Datum<'tcx, Lvalue> {
-        let val = match ty::get(self.ty).sty {
+        let val = match self.ty.sty {
             _ if ty::type_is_sized(bcx.tcx(), self.ty) => gep(self.val),
             ty::ty_open(_) => {
                 let base = Load(bcx, expr::get_dataptr(bcx, self.val));
