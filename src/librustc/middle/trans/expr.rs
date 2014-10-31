@@ -1189,13 +1189,13 @@ fn trans_def_fn_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let _icx = push_ctxt("trans_def_datum_unadjusted");
 
     let llfn = match def {
-        def::DefFn(did, _, _) |
+        def::DefFn(did, _) |
         def::DefStruct(did) | def::DefVariant(_, did, _) |
-        def::DefStaticMethod(did, def::FromImpl(_), _) |
+        def::DefStaticMethod(did, def::FromImpl(_)) |
         def::DefMethod(did, _, def::FromImpl(_)) => {
             callee::trans_fn_ref(bcx, did, ExprId(ref_expr.id))
         }
-        def::DefStaticMethod(impl_did, def::FromTrait(trait_did), _) |
+        def::DefStaticMethod(impl_did, def::FromTrait(trait_did)) |
         def::DefMethod(impl_did, _, def::FromTrait(trait_did)) => {
             meth::trans_static_method_callee(bcx, impl_did,
                                              trait_did, ref_expr.id)

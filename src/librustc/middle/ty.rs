@@ -3626,7 +3626,7 @@ pub fn expr_kind(tcx: &ctxt, expr: &ast::Expr) -> ExprKind {
                 // end (like `UnitStruct`) which means this is an ExprPath to a DefFn. But in case
                 // of unit structs this is should not be interpreted as function pointer but as
                 // call to the constructor.
-                def::DefFn(_, _, true) => RvalueDpsExpr,
+                def::DefFn(_, true) => RvalueDpsExpr,
 
                 // Fn pointers are just scalar values.
                 def::DefFn(..) | def::DefStaticMethod(..) | def::DefMethod(..) => RvalueDatumExpr,

@@ -32,10 +32,9 @@ use syntax::parse::token;
 
 use std::collections::hashmap::HashMap;
 
-pub struct StaticMethodInfo {
+pub struct MethodInfo {
     pub name: ast::Name,
     pub def_id: ast::DefId,
-    pub fn_style: ast::FnStyle,
     pub vis: ast::Visibility,
 }
 
@@ -178,11 +177,11 @@ pub fn get_type_name_if_impl(cstore: &cstore::CStore, def: ast::DefId)
     decoder::get_type_name_if_impl(&*cdata, def.node)
 }
 
-pub fn get_static_methods_if_impl(cstore: &cstore::CStore,
+pub fn get_methods_if_impl(cstore: &cstore::CStore,
                                   def: ast::DefId)
-                               -> Option<Vec<StaticMethodInfo> > {
+                               -> Option<Vec<MethodInfo> > {
     let cdata = cstore.get_crate_data(def.krate);
-    decoder::get_static_methods_if_impl(cstore.intr.clone(), &*cdata, def.node)
+    decoder::get_methods_if_impl(cstore.intr.clone(), &*cdata, def.node)
 }
 
 pub fn get_item_attrs(cstore: &cstore::CStore,

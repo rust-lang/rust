@@ -73,10 +73,10 @@ fn try_inline_def(cx: &DocContext, tcx: &ty::ctxt,
             record_extern_fqn(cx, did, clean::TypeTrait);
             clean::TraitItem(build_external_trait(cx, tcx, did))
         }
-        def::DefFn(did, style, false) => {
+        def::DefFn(did, false) => {
             // If this function is a tuple struct constructor, we just skip it
             record_extern_fqn(cx, did, clean::TypeFunction);
-            clean::FunctionItem(build_external_function(cx, tcx, did, style))
+            clean::FunctionItem(build_external_function(cx, tcx, did))
         }
         def::DefStruct(did) => {
             record_extern_fqn(cx, did, clean::TypeStruct);
@@ -167,15 +167,14 @@ pub fn build_external_trait(cx: &DocContext, tcx: &ty::ctxt,
     }
 }
 
-fn build_external_function(cx: &DocContext, tcx: &ty::ctxt,
-                           did: ast::DefId,
-                           style: ast::FnStyle) -> clean::Function {
+fn build_external_function(cx: &DocContext, tcx: &ty::ctxt, did: ast::DefId) -> clean::Function {
     let t = ty::lookup_item_type(tcx, did);
+    let (decl, style) = match ty::get(t.ty).sty {
+        ty::ty_bare_fn(ref f) => ((did, &f.sig).clean(cx), f.fn_style),
+        _ => panic!("bad function"),
+    };
     clean::Function {
-        decl: match ty::get(t.ty).sty {
-            ty::ty_bare_fn(ref f) => (did, &f.sig).clean(cx),
-            _ => panic!("bad function"),
-        },
+        decl: decl,
         generics: (&t.generics, subst::FnSpace).clean(cx),
         fn_style: style,
     }

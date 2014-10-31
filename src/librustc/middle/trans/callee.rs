@@ -144,7 +144,7 @@ fn trans<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, expr: &ast::Expr)
         debug!("trans_def(def={}, ref_expr={})", def.repr(bcx.tcx()), ref_expr.repr(bcx.tcx()));
         let expr_ty = node_id_type(bcx, ref_expr.id);
         match def {
-            def::DefFn(did, _, _) if {
+            def::DefFn(did, _) if {
                 let maybe_def_id = inline::get_local_instance(bcx.ccx(), did);
                 let maybe_ast_node = maybe_def_id.and_then(|def_id| bcx.tcx().map
                                                                              .find(def_id.node));
@@ -159,7 +159,7 @@ fn trans<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, expr: &ast::Expr)
                     data: NamedTupleConstructor(substs, 0)
                 }
             }
-            def::DefFn(did, _, _) if match ty::get(expr_ty).sty {
+            def::DefFn(did, _) if match ty::get(expr_ty).sty {
                 ty::ty_bare_fn(ref f) => f.abi == synabi::RustIntrinsic,
                 _ => false
             } => {
@@ -167,11 +167,11 @@ fn trans<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, expr: &ast::Expr)
                 let def_id = inline::maybe_instantiate_inline(bcx.ccx(), did);
                 Callee { bcx: bcx, data: Intrinsic(def_id.node, substs) }
             }
-            def::DefFn(did, _, _) | def::DefMethod(did, _, def::FromImpl(_)) |
-            def::DefStaticMethod(did, def::FromImpl(_), _) => {
+            def::DefFn(did, _) | def::DefMethod(did, _, def::FromImpl(_)) |
+            def::DefStaticMethod(did, def::FromImpl(_)) => {
                 fn_callee(bcx, trans_fn_ref(bcx, did, ExprId(ref_expr.id)))
             }
-            def::DefStaticMethod(meth_did, def::FromTrait(trait_did), _) |
+            def::DefStaticMethod(meth_did, def::FromTrait(trait_did)) |
             def::DefMethod(meth_did, _, def::FromTrait(trait_did)) => {
                 fn_callee(bcx, meth::trans_static_method_callee(bcx, meth_did,
                                                                 trait_did,
