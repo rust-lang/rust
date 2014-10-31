@@ -572,8 +572,9 @@ impl Module {
 bitflags! {
     #[deriving(Show)]
     flags DefModifiers: u8 {
-        const PUBLIC     = 0b0000_0001,
-        const IMPORTABLE = 0b0000_0010,
+        const PUBLIC            = 0b0000_0001,
+        const IMPORTABLE        = 0b0000_0010,
+        const ENUM_STAGING_HACK = 0b0000_0100,
     }
 }
 
@@ -1316,14 +1317,14 @@ impl<'a> Resolver<'a> {
                         &**variant,
                         local_def(item.id),
                         ModuleReducedGraphParent(name_bindings.get_module()),
-                        is_public);
+                        modifiers);
 
                     // Temporary staging hack
                     self.build_reduced_graph_for_variant(
                         &**variant,
                         local_def(item.id),
                         parent.clone(),
-                        is_public);
+                        modifiers | ENUM_STAGING_HACK);
                 }
                 parent
             }
@@ -1592,9 +1593,8 @@ impl<'a> Resolver<'a> {
                                        variant: &Variant,
                                        item_id: DefId,
                                        parent: ReducedGraphParent,
-                                       is_public: bool) {
+                                       modifiers: DefModifiers) {
         let name = variant.node.name.name;
-        let modifiers = IMPORTABLE | if is_public { PUBLIC } else { DefModifiers::empty() };
         let is_exported = match variant.node.kind {
             TupleVariantKind(_) => false,
             StructVariantKind(_) => {
@@ -1881,7 +1881,11 @@ impl<'a> Resolver<'a> {
             // definition.
             let is_exported = is_public ||
                               self.external_exports.contains(&enum_did);
-            let modifiers = if is_exported { PUBLIC } else { DefModifiers::empty() } | IMPORTABLE;
+            let modifiers = IMPORTABLE | ENUM_STAGING_HACK | if is_exported {
+                PUBLIC
+            } else {
+                DefModifiers::empty()
+            };
             if is_struct {
                 child_name_bindings.define_type(def, DUMMY_SP, modifiers);
                 // Not adding fields for variants as they are not accessed with a self receiver
@@ -3060,8 +3064,8 @@ impl<'a> Resolver<'a> {
         match import_resolution.value_target {
             Some(ref target) if !target.shadowable => {
                 match *name_bindings.value_def.borrow() {
-                    None => {}
-                    Some(ref value) => {
+                    // We want to allow the "flat" def of enum variants to be shadowed
+                    Some(ref value) if !value.modifiers.contains(ENUM_STAGING_HACK) => {
                         let msg = format!("import `{}` conflicts with value \
                                            in this module",
                                           token::get_name(name).get());
@@ -3075,6 +3079,7 @@ impl<'a> Resolver<'a> {
                             }
                         }
                     }
+                    _ => {}
                 }
             }
             Some(_) | None => {}
@@ -3083,8 +3088,8 @@ impl<'a> Resolver<'a> {
         match import_resolution.type_target {
             Some(ref target) if !target.shadowable => {
                 match *name_bindings.type_def.borrow() {
-                    None => {}
-                    Some(ref ty) => {
+                    // We want to allow the "flat" def of enum variants to be shadowed
+                    Some(ref ty) if !ty.modifiers.contains(ENUM_STAGING_HACK) => {
                         match ty.module_def {
                             None => {
                                 let msg = format!("import `{}` conflicts with type in \
@@ -3135,6 +3140,7 @@ impl<'a> Resolver<'a> {
                             }
                         }
                     }
+                    _ => {}
                 }
             }
             Some(_) | None => {}
