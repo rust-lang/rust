@@ -231,7 +231,7 @@ pub fn build_session_(sopts: config::Options,
         if path.is_absolute() {
             path.clone()
         } else {
-            os::getcwd().join(path.clone())
+            os::getcwd().join(&path)
         }
     );
 
