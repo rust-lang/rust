@@ -50,7 +50,7 @@ use middle::trans::cleanup;
 use middle::trans::common::{Block, C_bool, C_bytes_in_context, C_i32, C_integral, C_nil};
 use middle::trans::common::{C_null, C_struct_in_context, C_u64, C_u8, C_uint, C_undef};
 use middle::trans::common::{CrateContext, ExternMap, FunctionContext};
-use middle::trans::common::{NodeInfo, Result, SubstP, monomorphize_type};
+use middle::trans::common::{NodeInfo, Result, SubstP};
 use middle::trans::common::{node_id_type, param_substs, return_type_is_void};
 use middle::trans::common::{tydesc_info, type_is_immediate};
 use middle::trans::common::{type_is_zero_size, val_ty};
@@ -1794,7 +1794,6 @@ pub fn trans_closure(ccx: &CrateContext,
                      param_substs: &param_substs,
                      fn_ast_id: ast::NodeId,
                      _attributes: &[ast::Attribute],
-                     arg_types: Vec<ty::t>,
                      output_type: ty::FnOutput,
                      abi: Abi,
                      has_env: bool,
@@ -1829,9 +1828,19 @@ pub fn trans_closure(ccx: &CrateContext,
 
     // Set up arguments to the function.
     let monomorphized_arg_types =
-        arg_types.iter()
-                 .map(|at| monomorphize_type(bcx, *at))
-                 .collect::<Vec<_>>();
+        decl.inputs.iter()
+                   .map(|arg| node_id_type(bcx, arg.id))
+                   .collect::<Vec<_>>();
+    let monomorphized_arg_types = match is_unboxed_closure {
+        NotUnboxedClosure => monomorphized_arg_types,
+
+        // Tuple up closure argument types for the "rust-call" ABI.
+        IsUnboxedClosure => vec![if monomorphized_arg_types.is_empty() {
+            ty::mk_nil()
+        } else {
+            ty::mk_tup(ccx.tcx(), monomorphized_arg_types)
+        }]
+    };
     for monomorphized_arg_type in monomorphized_arg_types.iter() {
         debug!("trans_closure: monomorphized_arg_type: {}",
                ty_to_string(ccx.tcx(), *monomorphized_arg_type));
@@ -1933,7 +1942,6 @@ pub fn trans_fn(ccx: &CrateContext,
     debug!("trans_fn(param_substs={})", param_substs.repr(ccx.tcx()));
     let _icx = push_ctxt("trans_fn");
     let fn_ty = ty::node_id_to_type(ccx.tcx(), id);
-    let arg_types = ty::ty_fn_args(fn_ty);
     let output_type = ty::ty_fn_ret(fn_ty);
     let abi = ty::ty_fn_abi(fn_ty);
     trans_closure(ccx,
@@ -1943,7 +1951,6 @@ pub fn trans_fn(ccx: &CrateContext,
                   param_substs,
                   id,
                   attrs,
-                  arg_types,
                   output_type,
                   abi,
                   false,
