@@ -22,7 +22,29 @@ fn timed(label: &str, f: ||) {
     println!("  {}: {}", label, end - start);
 }
 
-fn ascending<M: MutableMap<uint, uint>>(map: &mut M, n_keys: uint) {
+trait MutableMap {
+    fn insert(&mut self, k: uint, v: uint);
+    fn remove(&mut self, k: &uint) -> bool;
+    fn find(&self, k: &uint) -> Option<&uint>;
+}
+
+impl MutableMap for TreeMap<uint, uint> {
+    fn insert(&mut self, k: uint, v: uint) { self.insert(k, v); }
+    fn remove(&mut self, k: &uint) -> bool { self.remove(k) }
+    fn find(&self, k: &uint) -> Option<&uint> { self.find(k) }
+}
+impl MutableMap for HashMap<uint, uint> {
+    fn insert(&mut self, k: uint, v: uint) { self.insert(k, v); }
+    fn remove(&mut self, k: &uint) -> bool { self.remove(k) }
+    fn find(&self, k: &uint) -> Option<&uint> { self.find(k) }
+}
+impl MutableMap for TrieMap<uint> {
+    fn insert(&mut self, k: uint, v: uint) { self.insert(k, v); }
+    fn remove(&mut self, k: &uint) -> bool { self.remove(k) }
+    fn find(&self, k: &uint) -> Option<&uint> { self.find(k) }
+}
+
+fn ascending<M: MutableMap>(map: &mut M, n_keys: uint) {
     println!(" Ascending integers:");
 
     timed("insert", || {
@@ -44,7 +66,7 @@ fn ascending<M: MutableMap<uint, uint>>(map: &mut M, n_keys: uint) {
     });
 }
 
-fn descending<M: MutableMap<uint, uint>>(map: &mut M, n_keys: uint) {
+fn descending<M: MutableMap>(map: &mut M, n_keys: uint) {
     println!(" Descending integers:");
 
     timed("insert", || {
@@ -66,7 +88,7 @@ fn descending<M: MutableMap<uint, uint>>(map: &mut M, n_keys: uint) {
     });
 }
 
-fn vector<M: MutableMap<uint, uint>>(map: &mut M, n_keys: uint, dist: &[uint]) {
+fn vector<M: MutableMap>(map: &mut M, n_keys: uint, dist: &[uint]) {
     timed("insert", || {
         for i in range(0u, n_keys) {
             map.insert(dist[i], i + 1);

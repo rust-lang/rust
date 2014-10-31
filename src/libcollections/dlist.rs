@@ -31,8 +31,6 @@ use core::mem;
 use core::ptr;
 use std::hash::{Writer, Hash};
 
-use {Mutable, Deque, MutableSeq};
-
 /// A doubly-linked list.
 pub struct DList<T> {
     length: uint,
@@ -129,34 +127,6 @@ fn link_with_prev<T>(mut next: Box<Node<T>>, prev: Rawlink<Node<T>>)
     Some(next)
 }
 
-impl<T> Collection for DList<T> {
-    /// Returns `true` if the `DList` is empty.
-    ///
-    /// This operation should compute in O(1) time.
-    #[inline]
-    fn is_empty(&self) -> bool {
-        self.list_head.is_none()
-    }
-
-    /// Returns the length of the `DList`.
-    ///
-    /// This operation should compute in O(1) time.
-    #[inline]
-    fn len(&self) -> uint {
-        self.length
-    }
-}
-
-impl<T> Mutable for DList<T> {
-    /// Removes all elements from the `DList`.
-    ///
-    /// This operation should compute in O(n) time.
-    #[inline]
-    fn clear(&mut self) {
-        *self = DList::new()
-    }
-}
-
 // private methods
 impl<T> DList<T> {
     /// Add a Node first in the list
@@ -214,60 +184,6 @@ impl<T> DList<T> {
                 Some(tail_prev) => tail_prev.next.take()
             }
         })
-    }
-}
-
-impl<T> Deque<T> for DList<T> {
-    /// Provides a reference to the front element, or `None` if the list is
-    /// empty.
-    #[inline]
-    fn front<'a>(&'a self) -> Option<&'a T> {
-        self.list_head.as_ref().map(|head| &head.value)
-    }
-
-    /// Provides a mutable reference to the front element, or `None` if the list
-    /// is empty.
-    #[inline]
-    fn front_mut<'a>(&'a mut self) -> Option<&'a mut T> {
-        self.list_head.as_mut().map(|head| &mut head.value)
-    }
-
-    /// Provides a reference to the back element, or `None` if the list is
-    /// empty.
-    #[inline]
-    fn back<'a>(&'a self) -> Option<&'a T> {
-        self.list_tail.resolve_immut().as_ref().map(|tail| &tail.value)
-    }
-
-    /// Provides a mutable reference to the back element, or `None` if the list
-    /// is empty.
-    #[inline]
-    fn back_mut<'a>(&'a mut self) -> Option<&'a mut T> {
-        self.list_tail.resolve().map(|tail| &mut tail.value)
-    }
-
-    /// Adds an element first in the list.
-    ///
-    /// This operation should compute in O(1) time.
-    fn push_front(&mut self, elt: T) {
-        self.push_front_node(box Node::new(elt))
-    }
-
-    /// Removes the first element and returns it, or `None` if the list is
-    /// empty.
-    ///
-    /// This operation should compute in O(1) time.
-    fn pop_front(&mut self) -> Option<T> {
-        self.pop_front_node().map(|box Node{value, ..}| value)
-    }
-}
-
-impl<T> MutableSeq<T> for DList<T> {
-    fn push(&mut self, elt: T) {
-        self.push_back_node(box Node::new(elt))
-    }
-    fn pop(&mut self) -> Option<T> {
-        self.pop_back_node().map(|box Node{value, ..}| value)
     }
 }
 
@@ -494,6 +410,107 @@ impl<T> DList<T> {
     #[inline]
     pub fn into_iter(self) -> MoveItems<T> {
         MoveItems{list: self}
+    }
+
+    /// Returns `true` if the `DList` is empty.
+    ///
+    /// This operation should compute in O(1) time.
+    #[inline]
+    pub fn is_empty(&self) -> bool {
+        self.list_head.is_none()
+    }
+
+    /// Returns the length of the `DList`.
+    ///
+    /// This operation should compute in O(1) time.
+    #[inline]
+    pub fn len(&self) -> uint {
+        self.length
+    }
+
+    /// Removes all elements from the `DList`.
+    ///
+    /// This operation should compute in O(n) time.
+    #[inline]
+    pub fn clear(&mut self) {
+        *self = DList::new()
+    }
+
+    /// Provides a reference to the front element, or `None` if the list is
+    /// empty.
+    #[inline]
+    pub fn front<'a>(&'a self) -> Option<&'a T> {
+        self.list_head.as_ref().map(|head| &head.value)
+    }
+
+    /// Provides a mutable reference to the front element, or `None` if the list
+    /// is empty.
+    #[inline]
+    pub fn front_mut<'a>(&'a mut self) -> Option<&'a mut T> {
+        self.list_head.as_mut().map(|head| &mut head.value)
+    }
+
+    /// Provides a reference to the back element, or `None` if the list is
+    /// empty.
+    #[inline]
+    pub fn back<'a>(&'a self) -> Option<&'a T> {
+        self.list_tail.resolve_immut().as_ref().map(|tail| &tail.value)
+    }
+
+    /// Provides a mutable reference to the back element, or `None` if the list
+    /// is empty.
+    #[inline]
+    pub fn back_mut<'a>(&'a mut self) -> Option<&'a mut T> {
+        self.list_tail.resolve().map(|tail| &mut tail.value)
+    }
+
+    /// Adds an element first in the list.
+    ///
+    /// This operation should compute in O(1) time.
+    pub fn push_front(&mut self, elt: T) {
+        self.push_front_node(box Node::new(elt))
+    }
+
+    /// Removes the first element and returns it, or `None` if the list is
+    /// empty.
+    ///
+    /// This operation should compute in O(1) time.
+    pub fn pop_front(&mut self) -> Option<T> {
+        self.pop_front_node().map(|box Node{value, ..}| value)
+    }
+
+    /// Appends an element to the back of a list
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use std::collections::DList;
+    ///
+    /// let mut d = DList::new();
+    /// d.push(1i);
+    /// d.push(3);
+    /// assert_eq!(3, *d.back().unwrap());
+    /// ```
+    pub fn push(&mut self, elt: T) {
+        self.push_back_node(box Node::new(elt))
+    }
+
+    /// Removes the last element from a list and returns it, or `None` if
+    /// it is empty.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use std::collections::DList;
+    ///
+    /// let mut d = DList::new();
+    /// assert_eq!(d.pop(), None);
+    /// d.push(1i);
+    /// d.push(3);
+    /// assert_eq!(d.pop(), Some(3));
+    /// ```
+    pub fn pop(&mut self) -> Option<T> {
+        self.pop_back_node().map(|box Node{value, ..}| value)
     }
 }
 
@@ -745,7 +762,6 @@ mod tests {
     use test::Bencher;
     use test;
 
-    use {Deque, MutableSeq};
     use super::{DList, Node, ListInsertion};
     use vec::Vec;
 

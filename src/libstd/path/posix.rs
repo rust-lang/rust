@@ -13,7 +13,6 @@
 use c_str::{CString, ToCStr};
 use clone::Clone;
 use cmp::{PartialEq, Eq, PartialOrd, Ord, Ordering};
-use collections::{Collection, MutableSeq};
 use from_str::FromStr;
 use hash;
 use io::Writer;
@@ -106,18 +105,6 @@ impl ToCStr for Path {
     }
 }
 
-impl<'a> ToCStr for &'a Path {
-    #[inline]
-    fn to_c_str(&self) -> CString {
-        (*self).to_c_str()
-    }
-
-    #[inline]
-    unsafe fn to_c_str_unchecked(&self) -> CString {
-        (*self).to_c_str_unchecked()
-    }
-}
-
 impl<S: hash::Writer> hash::Hash<S> for Path {
     #[inline]
     fn hash(&self, state: &mut S) {
@@ -126,17 +113,6 @@ impl<S: hash::Writer> hash::Hash<S> for Path {
 }
 
 impl BytesContainer for Path {
-    #[inline]
-    fn container_as_bytes<'a>(&'a self) -> &'a [u8] {
-        self.as_vec()
-    }
-    #[inline]
-    fn container_into_owned_bytes(self) -> Vec<u8> {
-        self.into_vec()
-    }
-}
-
-impl<'a> BytesContainer for &'a Path {
     #[inline]
     fn container_as_bytes<'a>(&'a self) -> &'a [u8] {
         self.as_vec()

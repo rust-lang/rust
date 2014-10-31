@@ -16,7 +16,6 @@ use ascii::AsciiCast;
 use c_str::{CString, ToCStr};
 use clone::Clone;
 use cmp::{PartialEq, Eq, PartialOrd, Ord, Ordering};
-use collections::{Collection, MutableSeq};
 use from_str::FromStr;
 use hash;
 use io::Writer;
@@ -130,18 +129,6 @@ impl ToCStr for Path {
     }
 }
 
-impl<'a> ToCStr for &'a Path {
-    #[inline]
-    fn to_c_str(&self) -> CString {
-        (*self).to_c_str()
-    }
-
-    #[inline]
-    unsafe fn to_c_str_unchecked(&self) -> CString {
-        (*self).to_c_str_unchecked()
-    }
-}
-
 impl<S: hash::Writer> hash::Hash<S> for Path {
     #[cfg(not(test))]
     #[inline]
@@ -162,28 +149,11 @@ impl BytesContainer for Path {
         self.as_vec()
     }
     #[inline]
-    fn container_into_owned_bytes(self) -> Vec<u8> {
-        self.into_vec()
-    }
-    #[inline]
     fn container_as_str<'a>(&'a self) -> Option<&'a str> {
         self.as_str()
     }
     #[inline]
-    fn is_str(_: Option<Path>) -> bool { true }
-}
-
-impl<'a> BytesContainer for &'a Path {
-    #[inline]
-    fn container_as_bytes<'a>(&'a self) -> &'a [u8] {
-        self.as_vec()
-    }
-    #[inline]
-    fn container_as_str<'a>(&'a self) -> Option<&'a str> {
-        self.as_str()
-    }
-    #[inline]
-    fn is_str(_: Option<&'a Path>) -> bool { true }
+    fn is_str(_: Option<&Path>) -> bool { true }
 }
 
 impl GenericPathUnsafe for Path {

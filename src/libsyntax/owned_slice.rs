@@ -112,6 +112,10 @@ impl<T> OwnedSlice<T> {
     pub fn map<U>(&self, f: |&T| -> U) -> OwnedSlice<U> {
         self.iter().map(f).collect()
     }
+
+    pub fn len(&self) -> uint { self.len }
+
+    pub fn is_empty(&self) -> bool { self.len == 0 }
 }
 
 impl<T> Default for OwnedSlice<T> {
@@ -139,10 +143,6 @@ impl<T: PartialEq> PartialEq for OwnedSlice<T> {
 }
 
 impl<T: Eq> Eq for OwnedSlice<T> {}
-
-impl<T> Collection for OwnedSlice<T> {
-    fn len(&self) -> uint { self.len }
-}
 
 impl<T> FromIterator<T> for OwnedSlice<T> {
     fn from_iter<I: Iterator<T>>(mut iter: I) -> OwnedSlice<T> {

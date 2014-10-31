@@ -41,7 +41,7 @@ pub use option::{Option, Some, None};
 pub use result::{Result, Ok, Err};
 
 // Reexported functions
-pub use iter::range;
+pub use iter::{range, repeat};
 pub use mem::drop;
 
 // Reexported types and traits
@@ -50,7 +50,6 @@ pub use char::Char;
 pub use clone::Clone;
 pub use cmp::{PartialEq, PartialOrd, Eq, Ord};
 pub use cmp::{Ordering, Less, Equal, Greater, Equiv};
-pub use collections::Collection;
 pub use iter::{FromIterator, Extendable};
 pub use iter::{Iterator, DoubleEndedIterator, RandomAccessIterator, CloneableIterator};
 pub use iter::{OrdIterator, MutableDoubleEndedIterator, ExactSize};

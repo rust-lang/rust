@@ -21,7 +21,6 @@ use core::iter;
 use core::iter::{Enumerate, FilterMap};
 use core::mem::replace;
 
-use {Mutable, Map, MutableMap, MutableSeq};
 use {vec, slice};
 use vec::Vec;
 use hash;
@@ -63,90 +62,6 @@ use hash::Hash;
 #[deriving(PartialEq, Eq)]
 pub struct SmallIntMap<T> {
     v: Vec<Option<T>>,
-}
-
-impl<V> Collection for SmallIntMap<V> {
-    /// Returns the number of elements in the map.
-    fn len(&self) -> uint {
-        self.v.iter().filter(|elt| elt.is_some()).count()
-    }
-
-    /// Returns`true` if there are no elements in the map.
-    fn is_empty(&self) -> bool {
-        self.v.iter().all(|elt| elt.is_none())
-    }
-}
-
-impl<V> Mutable for SmallIntMap<V> {
-    /// Clears the map, removing all key-value pairs.
-    fn clear(&mut self) { self.v.clear() }
-}
-
-impl<V> Map<uint, V> for SmallIntMap<V> {
-    /// Returns a reference to the value corresponding to the key.
-    fn find<'a>(&'a self, key: &uint) -> Option<&'a V> {
-        if *key < self.v.len() {
-            match self.v[*key] {
-              Some(ref value) => Some(value),
-              None => None
-            }
-        } else {
-            None
-        }
-    }
-}
-
-impl<V> MutableMap<uint, V> for SmallIntMap<V> {
-    /// Returns a mutable reference to the value corresponding to the key.
-    fn find_mut<'a>(&'a mut self, key: &uint) -> Option<&'a mut V> {
-        if *key < self.v.len() {
-            match *self.v.index_mut(key) {
-              Some(ref mut value) => Some(value),
-              None => None
-            }
-        } else {
-            None
-        }
-    }
-
-    /// Inserts a key-value pair into the map. An existing value for a
-    /// key is replaced by the new value. Returns `true` if the key did
-    /// not already exist in the map.
-    fn insert(&mut self, key: uint, value: V) -> bool {
-        let exists = self.contains_key(&key);
-        let len = self.v.len();
-        if len <= key {
-            self.v.grow_fn(key - len + 1, |_| None);
-        }
-        self.v[key] = Some(value);
-        !exists
-    }
-
-    /// Removes a key-value pair from the map. Returns `true` if the key
-    /// was present in the map.
-    fn remove(&mut self, key: &uint) -> bool {
-        self.pop(key).is_some()
-    }
-
-    /// Inserts a key-value pair into the map. If the key already had a value
-    /// present in the map, that value is returned. Otherwise `None` is returned.
-    fn swap(&mut self, key: uint, value: V) -> Option<V> {
-        match self.find_mut(&key) {
-            Some(loc) => { return Some(replace(loc, value)); }
-            None => ()
-        }
-        self.insert(key, value);
-        return None;
-    }
-
-    /// Removes a key from the map, returning the value at the key if the key
-    /// was previously in the map.
-    fn pop(&mut self, key: &uint) -> Option<V> {
-        if *key >= self.v.len() {
-            return None;
-        }
-        self.v[*key].take()
-    }
 }
 
 impl<V> Default for SmallIntMap<V> {
@@ -294,6 +209,204 @@ impl<V> SmallIntMap<V> {
         values.into_iter().enumerate().filter_map(|(i, v)| {
             v.map(|v| (i, v))
         })
+    }
+
+    /// Return the number of elements in the map.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::SmallIntMap;
+    ///
+    /// let mut a = SmallIntMap::new();
+    /// assert_eq!(a.len(), 0);
+    /// a.insert(1, "a");
+    /// assert_eq!(a.len(), 1);
+    /// ```
+    pub fn len(&self) -> uint {
+        self.v.iter().filter(|elt| elt.is_some()).count()
+    }
+
+    /// Return true if the map contains no elements.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::SmallIntMap;
+    ///
+    /// let mut a = SmallIntMap::new();
+    /// assert!(a.is_empty());
+    /// a.insert(1, "a");
+    /// assert!(!a.is_empty());
+    /// ```
+    pub fn is_empty(&self) -> bool {
+        self.v.iter().all(|elt| elt.is_none())
+    }
+
+    /// Clears the map, removing all key-value pairs.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::SmallIntMap;
+    ///
+    /// let mut a = SmallIntMap::new();
+    /// a.insert(1, "a");
+    /// a.clear();
+    /// assert!(a.is_empty());
+    /// ```
+    pub fn clear(&mut self) { self.v.clear() }
+
+    /// Returns a reference to the value corresponding to the key.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::SmallIntMap;
+    ///
+    /// let mut map = SmallIntMap::new();
+    /// map.insert(1, "a");
+    /// assert_eq!(map.find(&1), Some(&"a"));
+    /// assert_eq!(map.find(&2), None);
+    /// ```
+    pub fn find<'a>(&'a self, key: &uint) -> Option<&'a V> {
+        if *key < self.v.len() {
+            match self.v[*key] {
+              Some(ref value) => Some(value),
+              None => None
+            }
+        } else {
+            None
+        }
+    }
+
+    /// Returns true if the map contains a value for the specified key.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::SmallIntMap;
+    ///
+    /// let mut map = SmallIntMap::new();
+    /// map.insert(1, "a");
+    /// assert_eq!(map.contains_key(&1), true);
+    /// assert_eq!(map.contains_key(&2), false);
+    /// ```
+    #[inline]
+    pub fn contains_key(&self, key: &uint) -> bool {
+        self.find(key).is_some()
+    }
+
+    /// Returns a mutable reference to the value corresponding to the key.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::SmallIntMap;
+    ///
+    /// let mut map = SmallIntMap::new();
+    /// map.insert(1, "a");
+    /// match map.find_mut(&1) {
+    ///     Some(x) => *x = "b",
+    ///     None => (),
+    /// }
+    /// assert_eq!(map[1], "b");
+    /// ```
+    pub fn find_mut<'a>(&'a mut self, key: &uint) -> Option<&'a mut V> {
+        if *key < self.v.len() {
+            match *(&mut self.v[*key]) {
+              Some(ref mut value) => Some(value),
+              None => None
+            }
+        } else {
+            None
+        }
+    }
+
+    /// Inserts a key-value pair into the map. An existing value for a
+    /// key is replaced by the new value. Returns `true` if the key did
+    /// not already exist in the map.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::SmallIntMap;
+    ///
+    /// let mut map = SmallIntMap::new();
+    /// assert_eq!(map.insert(2, "value"), true);
+    /// assert_eq!(map.insert(2, "value2"), false);
+    /// assert_eq!(map[2], "value2");
+    /// ```
+    pub fn insert(&mut self, key: uint, value: V) -> bool {
+        let exists = self.contains_key(&key);
+        let len = self.v.len();
+        if len <= key {
+            self.v.grow_fn(key - len + 1, |_| None);
+        }
+        self.v[key] = Some(value);
+        !exists
+    }
+
+    /// Removes a key-value pair from the map. Returns `true` if the key
+    /// was present in the map.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::SmallIntMap;
+    ///
+    /// let mut map = SmallIntMap::new();
+    /// assert_eq!(map.remove(&1), false);
+    /// map.insert(1, "a");
+    /// assert_eq!(map.remove(&1), true);
+    /// ```
+    pub fn remove(&mut self, key: &uint) -> bool {
+        self.pop(key).is_some()
+    }
+
+    /// Inserts a key-value pair from the map. If the key already had a value
+    /// present in the map, that value is returned. Otherwise, `None` is returned.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::SmallIntMap;
+    ///
+    /// let mut map = SmallIntMap::new();
+    /// assert_eq!(map.swap(37, "a"), None);
+    /// assert_eq!(map.is_empty(), false);
+    ///
+    /// map.insert(37, "b");
+    /// assert_eq!(map.swap(37, "c"), Some("b"));
+    /// assert_eq!(map[37], "c");
+    /// ```
+    pub fn swap(&mut self, key: uint, value: V) -> Option<V> {
+        match self.find_mut(&key) {
+            Some(loc) => { return Some(replace(loc, value)); }
+            None => ()
+        }
+        self.insert(key, value);
+        return None;
+    }
+
+    /// Removes a key from the map, returning the value at the key if the key
+    /// was previously in the map.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::SmallIntMap;
+    ///
+    /// let mut map = SmallIntMap::new();
+    /// map.insert(1, "a");
+    /// assert_eq!(map.pop(&1), Some("a"));
+    /// assert_eq!(map.pop(&1), None);
+    /// ```
+    pub fn pop(&mut self, key: &uint) -> Option<V> {
+        if *key >= self.v.len() {
+            return None;
+        }
+        self.v[*key].take()
     }
 }
 
@@ -499,7 +612,6 @@ mod test_map {
     use vec::Vec;
     use hash;
 
-    use {Map, MutableMap, Mutable, MutableSeq};
     use super::SmallIntMap;
 
     #[test]
@@ -869,57 +981,72 @@ mod bench {
     extern crate test;
     use self::test::Bencher;
     use super::SmallIntMap;
-    use deque::bench::{insert_rand_n, insert_seq_n, find_rand_n, find_seq_n};
+    use bench::{insert_rand_n, insert_seq_n, find_rand_n, find_seq_n};
 
-    // Find seq
     #[bench]
     pub fn insert_rand_100(b: &mut Bencher) {
         let mut m : SmallIntMap<uint> = SmallIntMap::new();
-        insert_rand_n(100, &mut m, b);
+        insert_rand_n(100, &mut m, b,
+                      |m, i| { m.insert(i, 1); },
+                      |m, i| { m.remove(&i); });
     }
 
     #[bench]
     pub fn insert_rand_10_000(b: &mut Bencher) {
         let mut m : SmallIntMap<uint> = SmallIntMap::new();
-        insert_rand_n(10_000, &mut m, b);
+        insert_rand_n(10_000, &mut m, b,
+                      |m, i| { m.insert(i, 1); },
+                      |m, i| { m.remove(&i); });
     }
 
     // Insert seq
     #[bench]
     pub fn insert_seq_100(b: &mut Bencher) {
         let mut m : SmallIntMap<uint> = SmallIntMap::new();
-        insert_seq_n(100, &mut m, b);
+        insert_seq_n(100, &mut m, b,
+                     |m, i| { m.insert(i, 1); },
+                     |m, i| { m.remove(&i); });
     }
 
     #[bench]
     pub fn insert_seq_10_000(b: &mut Bencher) {
         let mut m : SmallIntMap<uint> = SmallIntMap::new();
-        insert_seq_n(10_000, &mut m, b);
+        insert_seq_n(10_000, &mut m, b,
+                     |m, i| { m.insert(i, 1); },
+                     |m, i| { m.remove(&i); });
     }
 
     // Find rand
     #[bench]
     pub fn find_rand_100(b: &mut Bencher) {
         let mut m : SmallIntMap<uint> = SmallIntMap::new();
-        find_rand_n(100, &mut m, b);
+        find_rand_n(100, &mut m, b,
+                    |m, i| { m.insert(i, 1); },
+                    |m, i| { m.find(&i); });
     }
 
     #[bench]
     pub fn find_rand_10_000(b: &mut Bencher) {
         let mut m : SmallIntMap<uint> = SmallIntMap::new();
-        find_rand_n(10_000, &mut m, b);
+        find_rand_n(10_000, &mut m, b,
+                    |m, i| { m.insert(i, 1); },
+                    |m, i| { m.find(&i); });
     }
 
     // Find seq
     #[bench]
     pub fn find_seq_100(b: &mut Bencher) {
         let mut m : SmallIntMap<uint> = SmallIntMap::new();
-        find_seq_n(100, &mut m, b);
+        find_seq_n(100, &mut m, b,
+                   |m, i| { m.insert(i, 1); },
+                   |m, i| { m.find(&i); });
     }
 
     #[bench]
     pub fn find_seq_10_000(b: &mut Bencher) {
         let mut m : SmallIntMap<uint> = SmallIntMap::new();
-        find_seq_n(10_000, &mut m, b);
+        find_seq_n(10_000, &mut m, b,
+                   |m, i| { m.insert(i, 1); },
+                   |m, i| { m.find(&i); });
     }
 }
