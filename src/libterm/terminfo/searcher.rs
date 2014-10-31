@@ -41,7 +41,7 @@ pub fn get_dbpath_for_term(term: &str) -> Option<Box<Path>> {
                     if i == "" {
                         dirs_to_search.push(Path::new("/usr/share/terminfo"));
                     } else {
-                        dirs_to_search.push(Path::new(i.to_string()));
+                        dirs_to_search.push(Path::new(i));
                     }
                 },
                 // Found nothing in TERMINFO_DIRS, use the default paths:
