@@ -24,7 +24,7 @@ use plugin::load::PluginMetadata;
 
 use std::rc::Rc;
 use std::collections::HashMap;
-use std::collections::hashmap::{Occupied, Vacant};
+use std::collections::hash_map::{Occupied, Vacant};
 use syntax::ast;
 use syntax::abi;
 use syntax::attr;

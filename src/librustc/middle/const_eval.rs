@@ -28,7 +28,7 @@ use syntax::visit;
 use syntax::{ast, ast_map, ast_util, codemap};
 
 use std::rc::Rc;
-use std::collections::hashmap::Vacant;
+use std::collections::hash_map::Vacant;
 
 //
 // This pass classifies expressions by their constant-ness.

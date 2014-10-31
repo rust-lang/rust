@@ -41,7 +41,7 @@ assert_eq!(*key_vector.get().unwrap(), vec![4]);
 use core::prelude::*;
 
 use alloc::heap;
-use collections::treemap::TreeMap;
+use collections::TreeMap;
 use core::cmp;
 use core::kinds::marker;
 use core::mem;

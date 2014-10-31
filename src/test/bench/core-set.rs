@@ -14,7 +14,7 @@ extern crate collections;
 extern crate rand;
 extern crate time;
 
-use std::collections::bitv::BitvSet;
+use std::collections::BitvSet;
 use std::collections::TreeSet;
 use std::hash::Hash;
 use std::collections::HashSet;

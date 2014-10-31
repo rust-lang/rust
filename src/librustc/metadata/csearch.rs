@@ -31,7 +31,7 @@ use syntax::attr;
 use syntax::diagnostic::expect;
 use syntax::parse::token;
 
-use std::collections::hashmap::HashMap;
+use std::collections::hash_map::HashMap;
 
 pub struct MethodInfo {
     pub name: ast::Name,

@@ -19,7 +19,7 @@ use middle::typeck::require_same_types;
 
 use std::cmp;
 use std::collections::HashMap;
-use std::collections::hashmap::{Occupied, Vacant};
+use std::collections::hash_map::{Occupied, Vacant};
 use syntax::ast;
 use syntax::ast_util;
 use syntax::codemap::{Span, Spanned};
