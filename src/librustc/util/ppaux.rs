@@ -32,6 +32,7 @@ use syntax::ast_map;
 use syntax::codemap::{Span, Pos};
 use syntax::parse::token;
 use syntax::print::pprust;
+use syntax::ptr::P;
 use syntax::{ast, ast_util};
 use syntax::owned_slice::OwnedSlice;
 
@@ -558,6 +559,12 @@ impl<T:Repr> Repr for Option<T> {
             &None => "None".to_string(),
             &Some(ref t) => t.repr(tcx),
         }
+    }
+}
+
+impl<T:Repr> Repr for P<T> {
+    fn repr(&self, tcx: &ctxt) -> String {
+        (*self).repr(tcx)
     }
 }
 

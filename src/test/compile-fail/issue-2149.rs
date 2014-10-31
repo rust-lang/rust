@@ -18,7 +18,6 @@ impl<A> vec_monad<A> for Vec<A> {
         let mut r = panic!();
         for elt in self.iter() { r = r + f(*elt); }
         //~^ ERROR the type of this value must be known
-        //~^^ ERROR not implemented
    }
 }
 fn main() {

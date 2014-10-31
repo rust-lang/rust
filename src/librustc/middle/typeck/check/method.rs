@@ -96,6 +96,7 @@ use middle::typeck::{MethodOrigin, MethodParam, MethodTypeParam};
 use middle::typeck::{MethodStatic, MethodStaticUnboxedClosure, MethodObject, MethodTraitObject};
 use middle::typeck::check::regionmanip::replace_late_bound_regions;
 use middle::typeck::TypeAndSubsts;
+use middle::typeck::check::vtable;
 use middle::ty_fold::TypeFoldable;
 use util::common::indenter;
 use util::ppaux;
@@ -173,46 +174,178 @@ pub fn lookup<'a, 'tcx>(
 
 pub fn lookup_in_trait<'a, 'tcx>(
     fcx: &'a FnCtxt<'a, 'tcx>,
-
-    // In a call `a.b::<X, Y, ...>(...)`:
-    span: Span,                         // The expression `a.b(...)`'s span.
-    self_expr: Option<&'a ast::Expr>,   // The expression `a`, if available.
-    m_name: ast::Name,                  // The name `b`.
-    trait_did: DefId,                   // The trait to limit the lookup to.
-    self_ty: ty::t,                     // The type of `a`.
-    supplied_tps: &'a [ty::t])          // The list of types X, Y, ... .
+    span: Span,
+    self_expr: Option<&'a ast::Expr>,
+    m_name: ast::Name,
+    trait_def_id: DefId,
+    self_ty: ty::t,
+    opt_input_types: Option<Vec<ty::t>>)
     -> Option<MethodCallee>
 {
-    let mut lcx = LookupContext {
-        fcx: fcx,
-        span: span,
-        self_expr: self_expr,
-        m_name: m_name,
-        supplied_tps: supplied_tps,
-        impl_dups: HashSet::new(),
-        inherent_candidates: Vec::new(),
-        extension_candidates: Vec::new(),
-        static_candidates: Vec::new(),
-        deref_args: check::DoDerefArgs,
-        check_traits: CheckTraitsOnly,
-        autoderef_receiver: DontAutoderefReceiver,
-    };
+    lookup_in_trait_adjusted(fcx, span, self_expr, m_name, trait_def_id,
+                             ty::AutoDerefRef { autoderefs: 0, autoref: None },
+                             self_ty, opt_input_types)
+}
 
-    debug!("method lookup_in_trait(self_ty={}, self_expr={}, m_name={}, trait_did={})",
+pub fn lookup_in_trait_adjusted<'a, 'tcx>(
+    fcx: &'a FnCtxt<'a, 'tcx>,
+    span: Span,
+    self_expr: Option<&'a ast::Expr>,
+    m_name: ast::Name,
+    trait_def_id: DefId,
+    autoderefref: ty::AutoDerefRef,
+    self_ty: ty::t,
+    opt_input_types: Option<Vec<ty::t>>)
+    -> Option<MethodCallee>
+{
+    debug!("method lookup_in_trait(self_ty={}, self_expr={}, m_name={}, trait_def_id={})",
            self_ty.repr(fcx.tcx()),
            self_expr.repr(fcx.tcx()),
            m_name.repr(fcx.tcx()),
-           trait_did.repr(fcx.tcx()));
+           trait_def_id.repr(fcx.tcx()));
 
-    lcx.push_bound_candidates(self_ty, Some(trait_did));
-    lcx.push_extension_candidate(trait_did);
+    let trait_def = ty::lookup_trait_def(fcx.tcx(), trait_def_id);
 
-    // when doing a trait search, ambiguity can't really happen except
-    // as part of the trait-lookup in general
-    match lcx.search(self_ty) {
-        Ok(callee) => Some(callee),
-        Err(_) => None
+    let expected_number_of_input_types = trait_def.generics.types.len(subst::TypeSpace);
+    let input_types = match opt_input_types {
+        Some(input_types) => {
+            assert_eq!(expected_number_of_input_types, input_types.len());
+            input_types
+        }
+
+        None => {
+            fcx.inh.infcx.next_ty_vars(expected_number_of_input_types)
+        }
+    };
+
+    let number_assoc_types = trait_def.generics.types.len(subst::AssocSpace);
+    let assoc_types = fcx.inh.infcx.next_ty_vars(number_assoc_types);
+
+    assert_eq!(trait_def.generics.types.len(subst::FnSpace), 0);
+    assert!(trait_def.generics.regions.is_empty());
+
+    // Construct a trait-reference `self_ty : Trait<input_tys>`
+    let substs = subst::Substs::new_trait(input_types, Vec::new(), assoc_types, self_ty);
+    let trait_ref = Rc::new(ty::TraitRef::new(trait_def_id, substs));
+
+    // Construct an obligation
+    let obligation = traits::Obligation::misc(span, trait_ref.clone());
+
+    // Now we want to know if this can be matched
+    let mut selcx = traits::SelectionContext::new(fcx.infcx(),
+                                                  &fcx.inh.param_env,
+                                                  fcx);
+    if !selcx.evaluate_obligation_intracrate(&obligation) {
+        debug!("--> Cannot match obligation");
+        return None; // Cannot be matched, no such method resolution is possible.
     }
+
+    // Trait must have a method named `m_name` and it should not have
+    // type parameters or early-bound regions.
+    let tcx = fcx.tcx();
+    let (method_num, method_ty) = trait_method(tcx, trait_def_id, m_name).unwrap();
+    assert_eq!(method_ty.generics.types.len(subst::FnSpace), 0);
+    assert_eq!(method_ty.generics.regions.len(subst::FnSpace), 0);
+
+    // Substitute the trait parameters into the method type and
+    // instantiate late-bound regions to get the actual method type.
+    let ref bare_fn_ty = method_ty.fty;
+    let fn_sig = bare_fn_ty.sig.subst(tcx, &trait_ref.substs);
+    let fn_sig = replace_late_bound_regions_with_fresh_var(fcx.infcx(), span,
+                                                           fn_sig.binder_id, &fn_sig);
+    let transformed_self_ty = fn_sig.inputs[0];
+    let fty = ty::mk_bare_fn(tcx, ty::BareFnTy {
+        sig: fn_sig,
+        fn_style: bare_fn_ty.fn_style,
+        abi: bare_fn_ty.abi.clone(),
+    });
+
+    debug!("matched method fty={} obligation={}",
+           fty.repr(fcx.tcx()),
+           obligation.repr(fcx.tcx()));
+
+    // Register obligations for the parameters.  This will include the
+    // `Self` parameter, which in turn has a bound of the main trait,
+    // so this also effectively registers `obligation` as well.  (We
+    // used to register `obligation` explicitly, but that resulted in
+    // double error messages being reported.)
+    fcx.add_obligations_for_parameters(
+        traits::ObligationCause::misc(span),
+        &trait_ref.substs,
+        &method_ty.generics);
+
+    // FIXME(#18653) -- Try to resolve obligations, giving us more
+    // typing information, which can sometimes be needed to avoid
+    // pathological region inference failures.
+    vtable::select_new_fcx_obligations(fcx);
+
+    // Insert any adjustments needed (always an autoref of some mutability).
+    match self_expr {
+        None => { }
+
+        Some(self_expr) => {
+            debug!("inserting adjustment if needed (self-id = {}, \
+                   base adjustment = {}, explicit self = {})",
+                   self_expr.id, autoderefref, method_ty.explicit_self);
+
+            match method_ty.explicit_self {
+                ty::ByValueExplicitSelfCategory => {
+                    // Trait method is fn(self), no transformation needed.
+                    if !autoderefref.is_identity() {
+                        fcx.write_adjustment(
+                            self_expr.id,
+                            span,
+                            ty::AdjustDerefRef(autoderefref));
+                    }
+                }
+
+                ty::ByReferenceExplicitSelfCategory(..) => {
+                    // Trait method is fn(&self) or fn(&mut self), need an
+                    // autoref. Pull the region etc out of the type of first argument.
+                    match ty::get(transformed_self_ty).sty {
+                        ty::ty_rptr(region, ty::mt { mutbl, ty: _ }) => {
+                            let ty::AutoDerefRef { autoderefs, autoref } = autoderefref;
+                            let autoref = autoref.map(|r| box r);
+                            fcx.write_adjustment(
+                                self_expr.id,
+                                span,
+                                ty::AdjustDerefRef(ty::AutoDerefRef {
+                                    autoderefs: autoderefs,
+                                    autoref: Some(ty::AutoPtr(region, mutbl, autoref))
+                                }));
+                        }
+
+                        _ => {
+                            fcx.tcx().sess.span_bug(
+                                span,
+                                format!(
+                                    "trait method is &self but first arg is: {}",
+                                    transformed_self_ty.repr(fcx.tcx())).as_slice());
+                        }
+                    }
+                }
+
+                _ => {
+                    fcx.tcx().sess.span_bug(
+                        span,
+                        format!(
+                            "unexpected explicit self type in operator method: {}",
+                            method_ty.explicit_self).as_slice());
+                }
+            }
+        }
+    }
+
+    let callee = MethodCallee {
+        origin: MethodTypeParam(MethodParam{trait_ref: trait_ref.clone(),
+                                            method_num: method_num}),
+        ty: fty,
+        substs: trait_ref.substs.clone()
+    };
+
+    debug!("callee = {}", callee.repr(fcx.tcx()));
+
+    Some(callee)
 }
 
 pub fn report_error(fcx: &FnCtxt,
@@ -1446,9 +1579,8 @@ impl<'a, 'tcx> LookupContext<'a, 'tcx> {
         }
     }
 
-    fn fixup_derefs_on_method_receiver_if_necessary(
-            &self,
-            method_callee: &MethodCallee) {
+    fn fixup_derefs_on_method_receiver_if_necessary(&self,
+                                                    method_callee: &MethodCallee) {
         let sig = match ty::get(method_callee.ty).sty {
             ty::ty_bare_fn(ref f) => f.sig.clone(),
             ty::ty_closure(ref f) => f.sig.clone(),
@@ -1485,6 +1617,9 @@ impl<'a, 'tcx> LookupContext<'a, 'tcx> {
             }
         }
 
+        debug!("fixup_derefs_on_method_receiver_if_necessary: exprs={}",
+               exprs.repr(self.tcx()));
+
         // Fix up autoderefs and derefs.
         for (i, expr) in exprs.iter().rev().enumerate() {
             // Count autoderefs.
@@ -1499,6 +1634,9 @@ impl<'a, 'tcx> LookupContext<'a, 'tcx> {
                 })) => autoderef_count,
                 Some(_) | None => 0,
             };
+
+            debug!("fixup_derefs_on_method_receiver_if_necessary: i={} expr={} autoderef_count={}",
+                   i, expr.repr(self.tcx()), autoderef_count);
 
             if autoderef_count > 0 {
                 check::autoderef(self.fcx,
@@ -1518,24 +1656,59 @@ impl<'a, 'tcx> LookupContext<'a, 'tcx> {
             // Don't retry the first one or we might infinite loop!
             if i != 0 {
                 match expr.node {
-                    ast::ExprIndex(ref base_expr, ref index_expr) => {
-                        check::try_overloaded_index(
-                                self.fcx,
-                                Some(MethodCall::expr(expr.id)),
-                                *expr,
+                    ast::ExprIndex(ref base_expr, _) => {
+                        let mut base_adjustment =
+                            match self.fcx.inh.adjustments.borrow().find(&base_expr.id) {
+                                Some(&ty::AdjustDerefRef(ref adr)) => (*adr).clone(),
+                                None => ty::AutoDerefRef { autoderefs: 0, autoref: None },
+                                Some(_) => {
+                                    self.tcx().sess.span_bug(
+                                        base_expr.span,
+                                        "unexpected adjustment type");
+                                }
+                            };
+
+                        // If this is an overloaded index, the
+                        // adjustment will include an extra layer of
+                        // autoref because the method is an &self/&mut
+                        // self method. We have to peel it off to get
+                        // the raw adjustment that `try_index_step`
+                        // expects. This is annoying and horrible. We
+                        // ought to recode this routine so it doesn't
+                        // (ab)use the normal type checking paths.
+                        base_adjustment.autoref = match base_adjustment.autoref {
+                            None => { None }
+                            Some(AutoPtr(_, _, None)) => { None }
+                            Some(AutoPtr(_, _, Some(box r))) => { Some(r) }
+                            Some(_) => {
+                                self.tcx().sess.span_bug(
+                                    base_expr.span,
+                                    "unexpected adjustment autoref");
+                            }
+                        };
+
+                        let adjusted_base_ty =
+                            self.fcx.adjust_expr_ty(
                                 &**base_expr,
-                                self.fcx.expr_ty(&**base_expr),
-                                index_expr,
-                                PreferMutLvalue);
+                                Some(&ty::AdjustDerefRef(base_adjustment.clone())));
+
+                        check::try_index_step(
+                            self.fcx,
+                            MethodCall::expr(expr.id),
+                            *expr,
+                            &**base_expr,
+                            adjusted_base_ty,
+                            base_adjustment,
+                            PreferMutLvalue);
                     }
                     ast::ExprUnary(ast::UnDeref, ref base_expr) => {
                         check::try_overloaded_deref(
-                                self.fcx,
-                                expr.span,
-                                Some(MethodCall::expr(expr.id)),
-                                Some(&**base_expr),
-                                self.fcx.expr_ty(&**base_expr),
-                                PreferMutLvalue);
+                            self.fcx,
+                            expr.span,
+                            Some(MethodCall::expr(expr.id)),
+                            Some(&**base_expr),
+                            self.fcx.expr_ty(&**base_expr),
+                            PreferMutLvalue);
                     }
                     _ => {}
                 }
@@ -1623,13 +1796,23 @@ impl<'a, 'tcx> LookupContext<'a, 'tcx> {
     fn replace_late_bound_regions_with_fresh_var<T>(&self, binder_id: ast::NodeId, value: &T) -> T
         where T : TypeFoldable + Repr
     {
-        let (_, value) = replace_late_bound_regions(
-            self.fcx.tcx(),
-            binder_id,
-            value,
-            |br| self.fcx.infcx().next_region_var(infer::LateBoundRegion(self.span, br)));
-        value
+        replace_late_bound_regions_with_fresh_var(self.fcx.infcx(), self.span, binder_id, value)
     }
+}
+
+fn replace_late_bound_regions_with_fresh_var<T>(infcx: &infer::InferCtxt,
+                                                span: Span,
+                                                binder_id: ast::NodeId,
+                                                value: &T)
+                                                -> T
+    where T : TypeFoldable + Repr
+{
+    let (_, value) = replace_late_bound_regions(
+        infcx.tcx,
+        binder_id,
+        value,
+        |br| infcx.next_region_var(infer::LateBoundRegion(span, br)));
+    value
 }
 
 fn trait_method(tcx: &ty::ctxt,
