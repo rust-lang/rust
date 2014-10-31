@@ -2155,7 +2155,7 @@ type IterateState<'a, T> = (|T|: 'a -> T, Option<T>, bool);
 /// from a given seed value.
 pub type Iterate<'a, T> = Unfold<'a, T, IterateState<'a, T>>;
 
-/// Creates a new iterator that produces an infinite sequence of
+/// Create a new iterator that produces an infinite sequence of
 /// repeated applications of the given function `f`.
 pub fn iterate<'a, T: Clone>(seed: T, f: |T|: 'a -> T) -> Iterate<'a, T> {
     Unfold::new((f, Some(seed), true), |st| {
@@ -2172,6 +2172,11 @@ pub fn iterate<'a, T: Clone>(seed: T, f: |T|: 'a -> T) -> Iterate<'a, T> {
         }
         val.clone()
     })
+}
+
+/// Create a new iterator that endlessly repeats the element `elt`.
+pub fn repeat<T: Clone>(elt: T) -> Repeat<T> {
+    Repeat::new(elt)
 }
 
 /// Functions for lexicographical ordering of sequences.

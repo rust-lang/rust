@@ -41,7 +41,7 @@ pub use option::{Option, Some, None};
 pub use result::{Result, Ok, Err};
 
 // Reexported functions
-pub use iter::range;
+pub use iter::{range, repeat};
 pub use mem::drop;
 
 // Reexported types and traits
