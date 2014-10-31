@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![deny(unused_variable)]
+#![deny(unused_variables)]
 
 fn main() {
     for _ in range(1i, 101) {

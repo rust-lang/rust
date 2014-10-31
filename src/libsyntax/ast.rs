@@ -595,17 +595,38 @@ pub enum CaptureClause {
     CaptureByRef,
 }
 
-/// A token that delimits a sequence of token trees
+/// A delimited sequence of token trees
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
-pub struct Delimiter {
-    pub span: Span,
-    pub token: ::parse::token::Token,
+pub struct Delimited {
+    /// The type of delimiter
+    pub delim: token::DelimToken,
+    /// The span covering the opening delimiter
+    pub open_span: Span,
+    /// The delimited sequence of token trees
+    pub tts: Vec<TokenTree>,
+    /// The span covering the closing delimiter
+    pub close_span: Span,
 }
 
-impl Delimiter {
-    /// Convert the delimiter to a `TtToken`
-    pub fn to_tt(&self) -> TokenTree {
-        TtToken(self.span, self.token.clone())
+impl Delimited {
+    /// Returns the opening delimiter as a token.
+    pub fn open_token(&self) -> token::Token {
+        token::OpenDelim(self.delim)
+    }
+
+    /// Returns the closing delimiter as a token.
+    pub fn close_token(&self) -> token::Token {
+        token::CloseDelim(self.delim)
+    }
+
+    /// Returns the opening delimiter as a token tree.
+    pub fn open_tt(&self) -> TokenTree {
+        TtToken(self.open_span, self.open_token())
+    }
+
+    /// Returns the closing delimiter as a token tree.
+    pub fn close_tt(&self) -> TokenTree {
+        TtToken(self.close_span, self.close_token())
     }
 }
 
@@ -635,15 +656,15 @@ pub enum KleeneOp {
 #[doc="For macro invocations; parsing is delegated to the macro"]
 pub enum TokenTree {
     /// A single token
-    TtToken(Span, ::parse::token::Token),
+    TtToken(Span, token::Token),
     /// A delimited sequence of token trees
-    TtDelimited(Span, Rc<(Delimiter, Vec<TokenTree>, Delimiter)>),
+    TtDelimited(Span, Rc<Delimited>),
 
     // These only make sense for right-hand-sides of MBE macros:
 
     /// A Kleene-style repetition sequence with an optional separator.
     // FIXME(eddyb) #6308 Use Rc<[TokenTree]> after DST.
-    TtSequence(Span, Rc<Vec<TokenTree>>, Option<::parse::token::Token>, KleeneOp),
+    TtSequence(Span, Rc<Vec<TokenTree>>, Option<token::Token>, KleeneOp),
     /// A syntactic variable that will be filled in by macro expansion.
     TtNonterminal(Span, Ident)
 }
@@ -715,10 +736,10 @@ pub type Matcher = Spanned<Matcher_>;
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
 pub enum Matcher_ {
     /// Match one token
-    MatchTok(::parse::token::Token),
+    MatchTok(token::Token),
     /// Match repetitions of a sequence: body, separator, Kleene operator,
     /// lo, hi position-in-match-array used:
-    MatchSeq(Vec<Matcher> , Option<::parse::token::Token>, KleeneOp, uint, uint),
+    MatchSeq(Vec<Matcher>, Option<token::Token>, KleeneOp, uint, uint),
     /// Parse a Rust NT: name to bind, name of NT, position in match array:
     MatchNonterminal(Ident, Ident, uint)
 }

@@ -245,7 +245,7 @@
 // lldb-check:[...]$31 = 45
 // lldb-command:continue
 
-#![allow(unused_variable)]
+#![allow(unused_variables)]
 
 #[no_stack_check]
 fn immediate_args(a: int, b: bool, c: f64) {

@@ -66,7 +66,7 @@ use task::{Task, LocalStorage};
  */
 pub type Key<T> = &'static KeyValue<T>;
 
-#[allow(missing_doc)]
+#[allow(missing_docs)]
 pub enum KeyValue<T> { KeyValueKey }
 
 // The task-local-map stores all TLD information for the currently running

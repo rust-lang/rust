@@ -331,8 +331,7 @@ impl IntoStr for Vec<Ascii> {
     #[inline]
     fn into_string(self) -> String {
         unsafe {
-            let s: &str = mem::transmute(self.as_slice());
-            String::from_str(s)
+            string::raw::from_utf8(self.into_bytes())
         }
     }
 }

@@ -66,7 +66,7 @@
 // lldb-command:print struct_with_drop
 // lldb-check:[...]$6 = (StructWithDrop { a: OneHundred, b: Vienna }, 9)
 
-#![allow(unused_variable)]
+#![allow(unused_variables)]
 
 enum AnEnum {
     OneHundred = 100,

@@ -221,8 +221,8 @@ impl LintStore {
 
         add_lint_group!(sess, "unused",
                         UNUSED_IMPORTS, UNUSED_VARIABLES, UNUSED_ASSIGNMENTS, DEAD_CODE,
-                        UNUSED_MUT, UNREACHABLE_CODE, UNUSED_EXTERN_CRATES, UNUSED_MUST_USE,
-                        UNUSED_UNSAFE, UNUSED_RESULTS, PATH_STATEMENTS)
+                        UNUSED_MUT, UNREACHABLE_CODE, UNUSED_MUST_USE,
+                        UNUSED_UNSAFE, PATH_STATEMENTS)
 
         // We have one lint pass defined in this module.
         self.register_pass(sess, false, box GatherNodeLevels as LintPassObject);
@@ -254,21 +254,19 @@ impl LintStore {
 
     }
 
-    #[allow(unused_variable)]
+    #[allow(unused_variables)]
     fn find_lint(&self, lint_name: &str, sess: &Session, span: Option<Span>)
                  -> Option<LintId>
     {
         match self.by_name.find_equiv(&lint_name) {
             Some(&Id(lint_id)) => Some(lint_id),
             Some(&Renamed(ref new_name, lint_id)) => {
-                // NOTE(stage0): add the following code after the next snapshot
-
-                // let warning = format!("lint {} has been renamed to {}",
-                //                       lint_name, new_name);
-                // match span {
-                //     Some(span) => sess.span_warn(span, warning.as_slice()),
-                //     None => sess.warn(warning.as_slice()),
-                // };
+                let warning = format!("lint {} has been renamed to {}",
+                                      lint_name, new_name);
+                match span {
+                    Some(span) => sess.span_warn(span, warning.as_slice()),
+                    None => sess.warn(warning.as_slice()),
+                };
                 Some(lint_id)
             }
             None => None

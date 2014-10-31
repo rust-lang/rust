@@ -10,12 +10,12 @@
 
 #![allow(unused_unsafe)]
 #![allow(dead_code)]
-#![deny(unsafe_block)]
+#![deny(unsafe_blocks)]
 #![feature(macro_rules)]
 
 unsafe fn allowed() {}
 
-#[allow(unsafe_block)] fn also_allowed() { unsafe {} }
+#[allow(unsafe_blocks)] fn also_allowed() { unsafe {} }
 
 macro_rules! unsafe_in_macro {
     () => {

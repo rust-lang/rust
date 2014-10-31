@@ -212,7 +212,7 @@ pub fn maketest(s: &str, cratename: Option<&str>, lints: bool, dont_insert_main:
     if lints {
         prog.push_str(r"
 #![deny(warnings)]
-#![allow(unused_variable, dead_assignment, unused_mut, unused_attribute, dead_code)]
+#![allow(unused_variables, unused_assignments, unused_mut, unused_attributes, dead_code)]
 ");
     }
 

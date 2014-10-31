@@ -236,7 +236,7 @@
 
 
 
-#![allow(unused_variable)]
+#![allow(unused_variables)]
 
 
 

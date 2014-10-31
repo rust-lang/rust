@@ -715,7 +715,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
             }
 
             _ => {
-                self.terms_cx.arena.alloc(|| TransformTerm(v1, v2))
+                &*self.terms_cx.arena.alloc(|| TransformTerm(v1, v2))
             }
         }
     }
@@ -994,7 +994,7 @@ impl<'a, 'tcx> SolveContext<'a, 'tcx> {
                             new_value,
                             term.to_string());
 
-                    *self.solutions.get_mut(inferred) = new_value;
+                    self.solutions[inferred] = new_value;
                     changed = true;
                 }
             }

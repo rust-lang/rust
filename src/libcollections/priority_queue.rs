@@ -71,7 +71,7 @@
 //!     let mut pq = PriorityQueue::new();
 //!
 //!     // We're at `start`, with a zero cost
-//!     *dist.get_mut(start) = 0u;
+//!     dist[start] = 0u;
 //!     pq.push(State { cost: 0u, position: start });
 //!
 //!     // Examine the frontier with lower cost nodes first (min-heap)
@@ -96,7 +96,7 @@
 //!             if next.cost < dist[next.position] {
 //!                 pq.push(next);
 //!                 // Relaxation, we have now found a better way
-//!                 *dist.get_mut(next.position) = next.cost;
+//!                 dist[next.position] = next.cost;
 //!             }
 //!         }
 //!     }
@@ -151,7 +151,7 @@
 //! }
 //! ```
 
-#![allow(missing_doc)]
+#![allow(missing_docs)]
 
 use core::prelude::*;
 
@@ -330,7 +330,7 @@ impl<T: Ord> PriorityQueue<T> {
             None           => { None }
             Some(mut item) => {
                 if !self.is_empty() {
-                    swap(&mut item, self.data.get_mut(0));
+                    swap(&mut item, &mut self.data[0]);
                     self.siftdown(0);
                 }
                 Some(item)
@@ -378,7 +378,7 @@ impl<T: Ord> PriorityQueue<T> {
     /// ```
     pub fn push_pop(&mut self, mut item: T) -> T {
         if !self.is_empty() && *self.top().unwrap() > item {
-            swap(&mut item, self.data.get_mut(0));
+            swap(&mut item, &mut self.data[0]);
             self.siftdown(0);
         }
         item
@@ -402,7 +402,7 @@ impl<T: Ord> PriorityQueue<T> {
     /// ```
     pub fn replace(&mut self, mut item: T) -> Option<T> {
         if !self.is_empty() {
-            swap(&mut item, self.data.get_mut(0));
+            swap(&mut item, &mut self.data[0]);
             self.siftdown(0);
             Some(item)
         } else {
@@ -462,26 +462,26 @@ impl<T: Ord> PriorityQueue<T> {
     // compared to using swaps, which involves twice as many moves.
     fn siftup(&mut self, start: uint, mut pos: uint) {
         unsafe {
-            let new = replace(self.data.get_mut(pos), zeroed());
+            let new = replace(&mut self.data[pos], zeroed());
 
             while pos > start {
                 let parent = (pos - 1) >> 1;
                 if new > self.data[parent] {
-                    let x = replace(self.data.get_mut(parent), zeroed());
-                    ptr::write(self.data.get_mut(pos), x);
+                    let x = replace(&mut self.data[parent], zeroed());
+                    ptr::write(&mut self.data[pos], x);
                     pos = parent;
                     continue
                 }
                 break
             }
-            ptr::write(self.data.get_mut(pos), new);
+            ptr::write(&mut self.data[pos], new);
         }
     }
 
     fn siftdown_range(&mut self, mut pos: uint, end: uint) {
         unsafe {
             let start = pos;
-            let new = replace(self.data.get_mut(pos), zeroed());
+            let new = replace(&mut self.data[pos], zeroed());
 
             let mut child = 2 * pos + 1;
             while child < end {
@@ -489,13 +489,13 @@ impl<T: Ord> PriorityQueue<T> {
                 if right < end && !(self.data[child] > self.data[right]) {
                     child = right;
                 }
-                let x = replace(self.data.get_mut(child), zeroed());
-                ptr::write(self.data.get_mut(pos), x);
+                let x = replace(&mut self.data[child], zeroed());
+                ptr::write(&mut self.data[pos], x);
                 pos = child;
                 child = 2 * pos + 1;
             }
 
-            ptr::write(self.data.get_mut(pos), new);
+            ptr::write(&mut self.data[pos], new);
             self.siftup(start, pos);
         }
     }

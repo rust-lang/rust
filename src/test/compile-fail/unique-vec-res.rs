@@ -29,14 +29,16 @@ impl<'a> Drop for r<'a> {
 fn f<T>(_i: Vec<T> , _j: Vec<T> ) {
 }
 
+fn clone<T: Clone>(t: &T) -> T { t.clone() }
+
 fn main() {
     let i1 = &Cell::new(0);
     let i2 = &Cell::new(1);
     let r1 = vec!(box r { i: i1 });
     let r2 = vec!(box r { i: i2 });
-    f(r1.clone(), r2.clone());
-    //~^ ERROR does not implement any method in scope named `clone`
-    //~^^ ERROR does not implement any method in scope named `clone`
+    f(clone(&r1), clone(&r2));
+    //~^ ERROR the trait `core::clone::Clone` is not implemented for the type
+    //~^^ ERROR the trait `core::clone::Clone` is not implemented for the type
     println!("{}", (r2, i1.get()));
     println!("{}", (r1, i2.get()));
 }

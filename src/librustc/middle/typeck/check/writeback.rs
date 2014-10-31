@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -282,7 +282,9 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                             }
                             _ => {
                                 span_err!(self.tcx().sess, reason.span(self.tcx()), E0100,
-                                    "cannot coerce non-statically resolved bare fn");
+                                    "cannot coerce non-statically resolved bare fn to closure");
+                                span_help!(self.tcx().sess, reason.span(self.tcx()),
+                                    "consider embedding the function in a closure");
                             }
                         }
 

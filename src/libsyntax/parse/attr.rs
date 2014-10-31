@@ -81,10 +81,10 @@ impl<'a> ParserAttr for Parser<'a> {
                     ast::AttrOuter
                 };
 
-                self.expect(&token::LBracket);
+                self.expect(&token::OpenDelim(token::Bracket));
                 let meta_item = self.parse_meta_item();
                 let hi = self.span.hi;
-                self.expect(&token::RBracket);
+                self.expect(&token::CloseDelim(token::Bracket));
 
                 (mk_sp(lo, hi), meta_item, style)
             }
@@ -194,7 +194,7 @@ impl<'a> ParserAttr for Parser<'a> {
                 let hi = self.span.hi;
                 P(spanned(lo, hi, ast::MetaNameValue(name, lit)))
             }
-            token::LParen => {
+            token::OpenDelim(token::Paren) => {
                 let inner_items = self.parse_meta_seq();
                 let hi = self.span.hi;
                 P(spanned(lo, hi, ast::MetaList(name, inner_items)))
@@ -208,15 +208,15 @@ impl<'a> ParserAttr for Parser<'a> {
 
     /// matches meta_seq = ( COMMASEP(meta_item) )
     fn parse_meta_seq(&mut self) -> Vec<P<ast::MetaItem>> {
-        self.parse_seq(&token::LParen,
-                       &token::RParen,
+        self.parse_seq(&token::OpenDelim(token::Paren),
+                       &token::CloseDelim(token::Paren),
                        seq_sep_trailing_disallowed(token::Comma),
                        |p| p.parse_meta_item()).node
     }
 
     fn parse_optional_meta(&mut self) -> Vec<P<ast::MetaItem>> {
         match self.token {
-            token::LParen => self.parse_meta_seq(),
+            token::OpenDelim(token::Paren) => self.parse_meta_seq(),
             _ => Vec::new()
         }
     }

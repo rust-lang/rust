@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![allow(missing_doc)]
+#![allow(missing_docs)]
 
 use std::collections::hashmap;
 use std::collections::hashmap::{Occupied, Vacant};
@@ -128,7 +128,7 @@ pub trait Stats <T: FloatMath + FromPrimitive>{
 
 /// Extracted collection of all the summary statistics of a sample set.
 #[deriving(Clone, PartialEq)]
-#[allow(missing_doc)]
+#[allow(missing_docs)]
 pub struct Summary<T> {
     pub sum: T,
     pub min: T,
@@ -185,7 +185,7 @@ impl<'a, T: FloatMath + FromPrimitive> Stats<T> for &'a [T] {
                 let hi = x + y;
                 let lo = y - (hi - x);
                 if !lo.is_zero() {
-                    *partials.get_mut(j) = lo;
+                    partials[j] = lo;
                     j += 1;
                 }
                 x = hi;
@@ -193,7 +193,7 @@ impl<'a, T: FloatMath + FromPrimitive> Stats<T> for &'a [T] {
             if j >= partials.len() {
                 partials.push(x);
             } else {
-                *partials.get_mut(j) = x;
+                partials[j] = x;
                 partials.truncate(j+1);
             }
         }

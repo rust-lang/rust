@@ -403,7 +403,7 @@ fn expand_nested_bindings<'a, 'p, 'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         }
 
         let mut pats = br.pats.clone();
-        *pats.get_mut(col) = pat;
+        pats[col] = pat;
         Match {
             pats: pats,
             data: &*br.data,

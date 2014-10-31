@@ -56,12 +56,6 @@ use std::rc::Rc;
 #[cfg(stage0)] pub use self::RArrow         as RARROW;
 #[cfg(stage0)] pub use self::LArrow         as LARROW;
 #[cfg(stage0)] pub use self::FatArrow       as FAT_ARROW;
-#[cfg(stage0)] pub use self::LParen         as LPAREN;
-#[cfg(stage0)] pub use self::RParen         as RPAREN;
-#[cfg(stage0)] pub use self::LBracket       as LBRACKET;
-#[cfg(stage0)] pub use self::RBracket       as RBRACKET;
-#[cfg(stage0)] pub use self::LBrace         as LBRACE;
-#[cfg(stage0)] pub use self::RBrace         as RBRACE;
 #[cfg(stage0)] pub use self::Pound          as POUND;
 #[cfg(stage0)] pub use self::Dollar         as DOLLAR;
 #[cfg(stage0)] pub use self::Question       as QUESTION;
@@ -82,6 +76,12 @@ use std::rc::Rc;
 #[cfg(stage0)] pub use self::Comment        as COMMENT;
 #[cfg(stage0)] pub use self::Shebang        as SHEBANG;
 #[cfg(stage0)] pub use self::Eof            as EOF;
+#[cfg(stage0)] pub const LPAREN:    Token = OpenDelim(Paren);
+#[cfg(stage0)] pub const RPAREN:    Token = CloseDelim(Paren);
+#[cfg(stage0)] pub const LBRACKET:  Token = OpenDelim(Bracket);
+#[cfg(stage0)] pub const RBRACKET:  Token = CloseDelim(Bracket);
+#[cfg(stage0)] pub const LBRACE:    Token = OpenDelim(Brace);
+#[cfg(stage0)] pub const RBRACE:    Token = CloseDelim(Brace);
 
 #[allow(non_camel_case_types)]
 #[deriving(Clone, Encodable, Decodable, PartialEq, Eq, Hash, Show)]
@@ -98,11 +98,22 @@ pub enum BinOpToken {
     Shr,
 }
 
+/// A delimeter token
+#[deriving(Clone, Encodable, Decodable, PartialEq, Eq, Hash, Show)]
+pub enum DelimToken {
+    /// A round parenthesis: `(` or `)`
+    Paren,
+    /// A square bracket: `[` or `]`
+    Bracket,
+    /// A curly brace: `{` or `}`
+    Brace,
+}
+
 #[cfg(stage0)]
-#[allow(non_uppercase_statics)]
+#[allow(non_upper_case_globals)]
 pub const ModName: bool = true;
 #[cfg(stage0)]
-#[allow(non_uppercase_statics)]
+#[allow(non_upper_case_globals)]
 pub const Plain: bool = false;
 
 #[deriving(Clone, Encodable, Decodable, PartialEq, Eq, Hash, Show)]
@@ -143,15 +154,13 @@ pub enum Token {
     RArrow,
     LArrow,
     FatArrow,
-    LParen,
-    RParen,
-    LBracket,
-    RBracket,
-    LBrace,
-    RBrace,
     Pound,
     Dollar,
     Question,
+    /// An opening delimeter, eg. `{`
+    OpenDelim(DelimToken),
+    /// A closing delimeter, eg. `}`
+    CloseDelim(DelimToken),
 
     /* Literals */
     LitByte(ast::Name),
@@ -192,9 +201,7 @@ impl Token {
     /// Returns `true` if the token can appear at the start of an expression.
     pub fn can_begin_expr(&self) -> bool {
         match *self {
-            LParen                      => true,
-            LBrace                      => true,
-            LBracket                    => true,
+            OpenDelim(_)                => true,
             Ident(_, _)                 => true,
             Underscore                  => true,
             Tilde                       => true,
@@ -220,17 +227,6 @@ impl Token {
             Interpolated(NtBlock(..))   => true,
             Interpolated(NtPath(..))    => true,
             _                           => false,
-        }
-    }
-
-    /// Returns the matching close delimiter if this is an open delimiter,
-    /// otherwise `None`.
-    pub fn get_close_delimiter(&self) -> Option<Token> {
-        match *self {
-            LParen   => Some(RParen),
-            LBrace   => Some(RBrace),
-            LBracket => Some(RBracket),
-            _        => None,
         }
     }
 
@@ -267,11 +263,11 @@ impl Token {
 
     /// Returns `true` if the token is a path that is not followed by a `::`
     /// token.
-    #[allow(non_uppercase_statics)] // NOTE(stage0): remove this attribute after the next snapshot
+    #[allow(non_upper_case_globals)]
     pub fn is_plain_ident(&self) -> bool {
         match *self {
             Ident(_, Plain) => true,
-            _                    => false,
+            _               => false,
         }
     }
 
@@ -315,7 +311,7 @@ impl Token {
     }
 
     /// Returns `true` if the token is a given keyword, `kw`.
-    #[allow(non_uppercase_statics)] // NOTE(stage0): remove this attribute after the next snapshot
+    #[allow(non_upper_case_globals)]
     pub fn is_keyword(&self, kw: keywords::Keyword) -> bool {
         match *self {
             Ident(sid, Plain) => kw.to_name() == sid.name,
@@ -325,7 +321,7 @@ impl Token {
 
     /// Returns `true` if the token is either a special identifier, or a strict
     /// or reserved keyword.
-    #[allow(non_uppercase_statics)] // NOTE(stage0): remove this attribute after the next snapshot
+    #[allow(non_upper_case_globals)]
     pub fn is_any_keyword(&self) -> bool {
         match *self {
             Ident(sid, Plain) => {
@@ -342,7 +338,7 @@ impl Token {
     }
 
     /// Returns `true` if the token may not appear as an identifier.
-    #[allow(non_uppercase_statics)] // NOTE(stage0): remove this attribute after the next snapshot
+    #[allow(non_upper_case_globals)]
     pub fn is_strict_keyword(&self) -> bool {
         match *self {
             Ident(sid, Plain) => {
@@ -368,7 +364,7 @@ impl Token {
 
     /// Returns `true` if the token is a keyword that has been reserved for
     /// possible future use.
-    #[allow(non_uppercase_statics)] // NOTE(stage0): remove this attribute after the next snapshot
+    #[allow(non_upper_case_globals)]
     pub fn is_reserved_keyword(&self) -> bool {
         match *self {
             Ident(sid, Plain) => {
@@ -396,20 +392,20 @@ impl Token {
 #[deriving(Clone, Encodable, Decodable, PartialEq, Eq, Hash)]
 /// For interpolation during macro expansion.
 pub enum Nonterminal {
-    NtItem( P<ast::Item>),
+    NtItem(P<ast::Item>),
     NtBlock(P<ast::Block>),
-    NtStmt( P<ast::Stmt>),
-    NtPat(  P<ast::Pat>),
-    NtExpr( P<ast::Expr>),
-    NtTy(   P<ast::Ty>),
+    NtStmt(P<ast::Stmt>),
+    NtPat(P<ast::Pat>),
+    NtExpr(P<ast::Expr>),
+    NtTy(P<ast::Ty>),
     #[cfg(stage0)]
     NtIdent(Box<ast::Ident>, bool),
     #[cfg(not(stage0))]
     NtIdent(Box<ast::Ident>, IdentStyle),
     /// Stuff inside brackets for attributes
-    NtMeta( P<ast::MetaItem>),
+    NtMeta(P<ast::MetaItem>),
     NtPath(Box<ast::Path>),
-    NtTT(   P<ast::TokenTree>), // needs P'ed to break a circularity
+    NtTT(P<ast::TokenTree>), // needs P'ed to break a circularity
     NtMatchers(Vec<ast::Matcher>)
 }
 
@@ -469,7 +465,7 @@ macro_rules! declare_special_idents_and_keywords {(
     pub mod special_idents {
         use ast;
         $(
-            #[allow(non_uppercase_statics)]
+            #[allow(non_upper_case_globals)]
             pub const $si_static: ast::Ident = ast::Ident {
                 name: ast::Name($si_name),
                 ctxt: 0,
@@ -480,7 +476,7 @@ macro_rules! declare_special_idents_and_keywords {(
     pub mod special_names {
         use ast;
         $(
-            #[allow(non_uppercase_statics)]
+            #[allow(non_upper_case_globals)]
             pub const $si_static: ast::Name =  ast::Name($si_name);
         )*
     }

@@ -98,7 +98,7 @@ macro_rules! declare_lint (
 #[macro_export]
 macro_rules! lint_array ( ($( $lint:expr ),*) => (
     {
-        #[allow(non_uppercase_statics)]
+        #[allow(non_upper_case_globals)]
         static array: LintArray = &[ $( &$lint ),* ];
         array
     }

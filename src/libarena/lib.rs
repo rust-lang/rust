@@ -29,7 +29,7 @@
        html_root_url = "http://doc.rust-lang.org/nightly/")]
 
 #![feature(unsafe_destructor)]
-#![allow(missing_doc)]
+#![allow(missing_docs)]
 
 use std::cell::{Cell, RefCell};
 use std::cmp;
@@ -208,13 +208,13 @@ impl Arena {
     }
 
     #[inline]
-    fn alloc_copy<T>(&self, op: || -> T) -> &T {
+    fn alloc_copy<T>(&self, op: || -> T) -> &mut T {
         unsafe {
             let ptr = self.alloc_copy_inner(mem::size_of::<T>(),
                                             mem::min_align_of::<T>());
             let ptr = ptr as *mut T;
             ptr::write(&mut (*ptr), op());
-            return &*ptr;
+            return &mut *ptr;
         }
     }
 
@@ -262,7 +262,7 @@ impl Arena {
     }
 
     #[inline]
-    fn alloc_noncopy<T>(&self, op: || -> T) -> &T {
+    fn alloc_noncopy<T>(&self, op: || -> T) -> &mut T {
         unsafe {
             let tydesc = get_tydesc::<T>();
             let (ty_ptr, ptr) =
@@ -279,14 +279,14 @@ impl Arena {
             // the object is there.
             *ty_ptr = bitpack_tydesc_ptr(tydesc, true);
 
-            return &*ptr;
+            return &mut *ptr;
         }
     }
 
     /// Allocates a new item in the arena, using `op` to initialize the value,
     /// and returns a reference to it.
     #[inline]
-    pub fn alloc<T>(&self, op: || -> T) -> &T {
+    pub fn alloc<T>(&self, op: || -> T) -> &mut T {
         unsafe {
             if intrinsics::needs_drop::<T>() {
                 self.alloc_noncopy(op)
@@ -458,12 +458,12 @@ impl<T> TypedArena<T> {
 
     /// Allocates an object in the `TypedArena`, returning a reference to it.
     #[inline]
-    pub fn alloc(&self, object: T) -> &T {
+    pub fn alloc(&self, object: T) -> &mut T {
         if self.ptr == self.end {
             self.grow()
         }
 
-        let ptr: &T = unsafe {
+        let ptr: &mut T = unsafe {
             let ptr: &mut T = mem::transmute(self.ptr);
             ptr::write(ptr, object);
             self.ptr.set(self.ptr.get().offset(1));

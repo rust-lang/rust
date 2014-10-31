@@ -967,12 +967,12 @@ impl<'a> StringReader<'a> {
                   token::Dot
               };
           }
-          '(' => { self.bump(); return token::LParen; }
-          ')' => { self.bump(); return token::RParen; }
-          '{' => { self.bump(); return token::LBrace; }
-          '}' => { self.bump(); return token::RBrace; }
-          '[' => { self.bump(); return token::LBracket; }
-          ']' => { self.bump(); return token::RBracket; }
+          '(' => { self.bump(); return token::OpenDelim(token::Paren); }
+          ')' => { self.bump(); return token::CloseDelim(token::Paren); }
+          '{' => { self.bump(); return token::OpenDelim(token::Brace); }
+          '}' => { self.bump(); return token::CloseDelim(token::Brace); }
+          '[' => { self.bump(); return token::OpenDelim(token::Bracket); }
+          ']' => { self.bump(); return token::CloseDelim(token::Bracket); }
           '@' => { self.bump(); return token::At; }
           '#' => { self.bump(); return token::Pound; }
           '~' => { self.bump(); return token::Tilde; }

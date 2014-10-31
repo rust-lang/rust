@@ -531,7 +531,16 @@ fn mk_binop(cx: &ExtCtxt, sp: Span, bop: token::BinOpToken) -> P<ast::Expr> {
     mk_token_path(cx, sp, name)
 }
 
-#[allow(non_uppercase_statics)] // NOTE(stage0): remove this attribute after the next snapshot
+fn mk_delim(cx: &ExtCtxt, sp: Span, delim: token::DelimToken) -> P<ast::Expr> {
+    let name = match delim {
+        token::Paren     => "Paren",
+        token::Bracket   => "Bracket",
+        token::Brace     => "Brace",
+    };
+    mk_token_path(cx, sp, name)
+}
+
+#[allow(non_upper_case_globals)]
 fn mk_token(cx: &ExtCtxt, sp: Span, tok: &token::Token) -> P<ast::Expr> {
     match *tok {
         token::BinOp(binop) => {
@@ -540,6 +549,15 @@ fn mk_token(cx: &ExtCtxt, sp: Span, tok: &token::Token) -> P<ast::Expr> {
         token::BinOpEq(binop) => {
             return cx.expr_call(sp, mk_token_path(cx, sp, "BinOpEq"),
                                 vec!(mk_binop(cx, sp, binop)));
+        }
+
+        token::OpenDelim(delim) => {
+            return cx.expr_call(sp, mk_token_path(cx, sp, "OpenDelim"),
+                                vec![mk_delim(cx, sp, delim)]);
+        }
+        token::CloseDelim(delim) => {
+            return cx.expr_call(sp, mk_token_path(cx, sp, "CloseDelim"),
+                                vec![mk_delim(cx, sp, delim)]);
         }
 
         token::LitByte(i) => {
@@ -625,12 +643,6 @@ fn mk_token(cx: &ExtCtxt, sp: Span, tok: &token::Token) -> P<ast::Expr> {
         token::RArrow       => "RArrow",
         token::LArrow       => "LArrow",
         token::FatArrow     => "FatArrow",
-        token::LParen       => "LParen",
-        token::RParen       => "RParen",
-        token::LBracket     => "LBracket",
-        token::RBracket     => "RBracket",
-        token::LBrace       => "LBrace",
-        token::RBrace       => "RBrace",
         token::Pound        => "Pound",
         token::Dollar       => "Dollar",
         token::Underscore   => "Underscore",
@@ -639,7 +651,6 @@ fn mk_token(cx: &ExtCtxt, sp: Span, tok: &token::Token) -> P<ast::Expr> {
     };
     mk_token_path(cx, sp, name)
 }
-
 
 fn mk_tt(cx: &ExtCtxt, _: Span, tt: &ast::TokenTree) -> Vec<P<ast::Stmt>> {
     match *tt {
@@ -656,10 +667,9 @@ fn mk_tt(cx: &ExtCtxt, _: Span, tt: &ast::TokenTree) -> Vec<P<ast::Stmt>> {
             vec!(cx.stmt_expr(e_push))
         },
         ast::TtDelimited(sp, ref delimed) => {
-            let (ref open, ref tts, ref close) = **delimed;
-            mk_tt(cx, sp, &open.to_tt()).into_iter()
-                .chain(tts.iter().flat_map(|tt| mk_tt(cx, sp, tt).into_iter()))
-                .chain(mk_tt(cx, sp, &close.to_tt()).into_iter())
+            mk_tt(cx, sp, &delimed.open_tt()).into_iter()
+                .chain(delimed.tts.iter().flat_map(|tt| mk_tt(cx, sp, tt).into_iter()))
+                .chain(mk_tt(cx, sp, &delimed.close_tt()).into_iter())
                 .collect()
         },
         ast::TtSequence(..) => panic!("TtSequence in quote!"),

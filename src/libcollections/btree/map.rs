@@ -690,6 +690,12 @@ impl<K: Ord, V> Index<K, V> for BTreeMap<K, V> {
     }
 }
 
+impl<K: Ord, V> IndexMut<K, V> for BTreeMap<K, V> {
+    fn index_mut(&mut self, key: &K) -> &mut V {
+        self.find_mut(key).expect("no entry found for key")
+    }
+}
+
 /// Genericises over how to get the correct type of iterator from the correct type
 /// of Node ownership.
 trait Traverse<N> {

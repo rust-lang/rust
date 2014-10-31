@@ -83,7 +83,7 @@ impl Clone for MovePathIndex {
     }
 }
 
-#[allow(non_uppercase_statics)]
+#[allow(non_upper_case_globals)]
 static InvalidMovePathIndex: MovePathIndex =
     MovePathIndex(uint::MAX);
 
@@ -97,7 +97,7 @@ impl MoveIndex {
     }
 }
 
-#[allow(non_uppercase_statics)]
+#[allow(non_upper_case_globals)]
 static InvalidMoveIndex: MoveIndex =
     MoveIndex(uint::MAX);
 
@@ -214,13 +214,13 @@ impl MoveData {
     fn set_path_first_move(&self,
                            index: MovePathIndex,
                            first_move: MoveIndex) {
-        self.paths.borrow_mut().get_mut(index.get()).first_move = first_move
+        (*self.paths.borrow_mut())[index.get()].first_move = first_move
     }
 
     fn set_path_first_child(&self,
                             index: MovePathIndex,
                             first_child: MovePathIndex) {
-        self.paths.borrow_mut().get_mut(index.get()).first_child = first_child
+        (*self.paths.borrow_mut())[index.get()].first_child = first_child
     }
 
     fn move_next_move(&self, index: MoveIndex) -> MoveIndex {

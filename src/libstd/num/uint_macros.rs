@@ -11,7 +11,7 @@
 #![experimental]
 #![macro_escape]
 #![doc(hidden)]
-#![allow(unsigned_negate)]
+#![allow(unsigned_negation)]
 
 macro_rules! uint_module (($T:ty) => (
 

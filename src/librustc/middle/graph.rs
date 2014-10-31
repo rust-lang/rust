@@ -66,20 +66,20 @@ impl<E: Show> Show for Edge<E> {
 
 #[deriving(Clone, PartialEq, Show)]
 pub struct NodeIndex(pub uint);
-#[allow(non_uppercase_statics)]
+#[allow(non_upper_case_globals)]
 pub const InvalidNodeIndex: NodeIndex = NodeIndex(uint::MAX);
 
 #[deriving(PartialEq, Show)]
 pub struct EdgeIndex(pub uint);
-#[allow(non_uppercase_statics)]
+#[allow(non_upper_case_globals)]
 pub const InvalidEdgeIndex: EdgeIndex = EdgeIndex(uint::MAX);
 
 // Use a private field here to guarantee no more instances are created:
 #[deriving(Show)]
 pub struct Direction { repr: uint }
-#[allow(non_uppercase_statics)]
+#[allow(non_upper_case_globals)]
 pub const Outgoing: Direction = Direction { repr: 0 };
-#[allow(non_uppercase_statics)]
+#[allow(non_upper_case_globals)]
 pub const Incoming: Direction = Direction { repr: 1 };
 
 impl NodeIndex {
@@ -142,7 +142,7 @@ impl<N,E> Graph<N,E> {
     }
 
     pub fn mut_node_data<'a>(&'a mut self, idx: NodeIndex) -> &'a mut N {
-        &mut self.nodes.get_mut(idx.get()).data
+        &mut self.nodes[idx.get()].data
     }
 
     pub fn node_data<'a>(&'a self, idx: NodeIndex) -> &'a N {
@@ -182,14 +182,14 @@ impl<N,E> Graph<N,E> {
         });
 
         // adjust the firsts for each node target be the next object.
-        self.nodes.get_mut(source.get()).first_edge[Outgoing.repr] = idx;
-        self.nodes.get_mut(target.get()).first_edge[Incoming.repr] = idx;
+        self.nodes[source.get()].first_edge[Outgoing.repr] = idx;
+        self.nodes[target.get()].first_edge[Incoming.repr] = idx;
 
         return idx;
     }
 
     pub fn mut_edge_data<'a>(&'a mut self, idx: EdgeIndex) -> &'a mut E {
-        &mut self.edges.get_mut(idx.get()).data
+        &mut self.edges[idx.get()].data
     }
 
     pub fn edge_data<'a>(&'a self, idx: EdgeIndex) -> &'a E {

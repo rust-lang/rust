@@ -79,7 +79,7 @@ fn helper(input: libc::HANDLE, messages: Receiver<Req>, _: ()) {
             }
         } else {
             let remove = {
-                match chans.get_mut(idx as uint - 1) {
+                match &mut chans[idx as uint - 1] {
                     &(ref mut c, oneshot) => { c.call(); oneshot }
                 }
             };

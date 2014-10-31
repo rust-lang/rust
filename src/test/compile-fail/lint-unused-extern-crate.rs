@@ -9,8 +9,8 @@
 // except according to those terms.
 
 #![feature(globs)]
-#![deny(unused_extern_crate)]
-#![allow(unused_variable)]
+#![deny(unused_extern_crates)]
+#![allow(unused_variables)]
 
 extern crate libc; //~ ERROR: unused extern crate
 
