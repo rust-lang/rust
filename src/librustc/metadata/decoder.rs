@@ -665,7 +665,7 @@ pub fn maybe_get_item_ast<'tcx>(cdata: Cmd, tcx: &ty::ctxt<'tcx>, id: ast::NodeI
 pub fn get_enum_variant_defs(intr: &IdentInterner,
                              cdata: Cmd,
                              id: ast::NodeId)
-                             -> Vec<(def::Def, ast::Ident, ast::Visibility)> {
+                             -> Vec<(def::Def, ast::Name, ast::Visibility)> {
     let data = cdata.data();
     let items = reader::get_doc(rbml::Doc::new(data), tag_items);
     let item = find_item(id, items);

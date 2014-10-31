@@ -1301,7 +1301,7 @@ impl<'a> Resolver<'a> {
                 name_bindings.define_type
                     (DefTy(local_def(item.id), true), sp, modifiers);
 
-                let parent_link = self.get_parent_link(parent.clone(), ident);
+                let parent_link = self.get_parent_link(parent.clone(), name);
                 // We want to make sure the module type is EnumModuleKind
                 // even if there's already an ImplModuleKind module defined,
                 // since that's how we prevent duplicate enum definitions
@@ -2720,7 +2720,7 @@ impl<'a> Resolver<'a> {
                 self.check_that_import_is_importable(
                     &**name_bindings,
                     directive.span,
-                    target.name,
+                    target,
                     ValueNS);
 
                 import_resolution.value_target =
@@ -2749,7 +2749,7 @@ impl<'a> Resolver<'a> {
                 self.check_that_import_is_importable(
                     &**name_bindings,
                     directive.span,
-                    target.name,
+                    target,
                     TypeNS);
 
                 import_resolution.type_target =

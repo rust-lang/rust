@@ -117,7 +117,7 @@ pub fn maybe_get_item_ast<'tcx>(tcx: &ty::ctxt<'tcx>, def: ast::DefId,
 }
 
 pub fn get_enum_variant_defs(cstore: &cstore::CStore, enum_id: ast::DefId)
-                             -> Vec<(def::Def, ast::Ident, ast::Visibility)> {
+                             -> Vec<(def::Def, ast::Name, ast::Visibility)> {
     let cdata = cstore.get_crate_data(enum_id.krate);
     decoder::get_enum_variant_defs(&*cstore.intr, &*cdata, enum_id.node)
 }
