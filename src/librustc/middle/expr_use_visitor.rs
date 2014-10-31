@@ -519,7 +519,7 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
         let callee_ty = ty::expr_ty_adjusted(self.tcx(), callee);
         debug!("walk_callee: callee={} callee_ty={}",
                callee.repr(self.tcx()), callee_ty.repr(self.tcx()));
-        match ty::get(callee_ty).sty {
+        match callee_ty.sty {
             ty::ty_bare_fn(..) => {
                 self.consume_expr(callee);
             }
@@ -656,7 +656,7 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
 
         // Select just those fields of the `with`
         // expression that will actually be used
-        let with_fields = match ty::get(with_cmt.ty).sty {
+        let with_fields = match with_cmt.ty.sty {
             ty::ty_struct(did, ref substs) => {
                 ty::struct_fields(self.tcx(), did, substs)
             }
@@ -745,7 +745,7 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
                 Some(method_ty) => {
                     let cmt = return_if_err!(self.mc.cat_expr_autoderefd(expr, i));
                     let self_ty = ty::ty_fn_args(method_ty)[0];
-                    let (m, r) = match ty::get(self_ty).sty {
+                    let (m, r) = match self_ty.sty {
                         ty::ty_rptr(r, ref m) => (m.mutbl, r),
                         _ => self.tcx().sess.span_bug(expr.span,
                                 format!("bad overloaded deref type {}",

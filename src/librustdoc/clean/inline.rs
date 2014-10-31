@@ -169,7 +169,7 @@ pub fn build_external_trait(cx: &DocContext, tcx: &ty::ctxt,
 
 fn build_external_function(cx: &DocContext, tcx: &ty::ctxt, did: ast::DefId) -> clean::Function {
     let t = ty::lookup_item_type(tcx, did);
-    let (decl, style) = match ty::get(t.ty).sty {
+    let (decl, style) = match t.ty.sty {
         ty::ty_bare_fn(ref f) => ((did, &f.sig).clean(cx), f.fn_style),
         _ => panic!("bad function"),
     };
@@ -201,7 +201,7 @@ fn build_struct(cx: &DocContext, tcx: &ty::ctxt, did: ast::DefId) -> clean::Stru
 
 fn build_type(cx: &DocContext, tcx: &ty::ctxt, did: ast::DefId) -> clean::ItemEnum {
     let t = ty::lookup_item_type(tcx, did);
-    match ty::get(t.ty).sty {
+    match t.ty.sty {
         ty::ty_enum(edid, _) if !csearch::is_typedef(&tcx.sess.cstore, did) => {
             return clean::EnumItem(clean::Enum {
                 generics: (&t.generics, subst::TypeSpace).clean(cx),

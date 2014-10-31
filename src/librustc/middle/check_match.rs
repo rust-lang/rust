@@ -406,7 +406,7 @@ fn construct_witness(cx: &MatchCheckCtxt, ctor: &Constructor,
                      pats: Vec<&Pat>, left_ty: Ty) -> P<Pat> {
     let pats_len = pats.len();
     let mut pats = pats.into_iter().map(|p| P((*p).clone()));
-    let pat = match ty::get(left_ty).sty {
+    let pat = match left_ty.sty {
         ty::ty_tup(_) => ast::PatTup(pats.collect()),
 
         ty::ty_enum(cid, _) | ty::ty_struct(cid, _)  => {
@@ -438,7 +438,7 @@ fn construct_witness(cx: &MatchCheckCtxt, ctor: &Constructor,
         }
 
         ty::ty_rptr(_, ty::mt { ty, .. }) => {
-            match ty::get(ty).sty {
+            match ty.sty {
                ty::ty_vec(_, Some(n)) => match ctor {
                     &Single => {
                         assert_eq!(pats_len, n);
@@ -498,11 +498,11 @@ fn missing_constructor(cx: &MatchCheckCtxt, &Matrix(ref rows): &Matrix,
 /// the column of patterns being analyzed.
 fn all_constructors(cx: &MatchCheckCtxt, left_ty: Ty,
                     max_slice_length: uint) -> Vec<Constructor> {
-    match ty::get(left_ty).sty {
+    match left_ty.sty {
         ty::ty_bool =>
             [true, false].iter().map(|b| ConstantValue(const_bool(*b))).collect(),
 
-        ty::ty_rptr(_, ty::mt { ty, .. }) => match ty::get(ty).sty {
+        ty::ty_rptr(_, ty::mt { ty, .. }) => match ty.sty {
             ty::ty_vec(_, None) =>
                 range_inclusive(0, max_slice_length).map(|length| Slice(length)).collect(),
             _ => vec!(Single)
@@ -671,7 +671,7 @@ fn pat_constructors(cx: &MatchCheckCtxt, p: &Pat,
         ast::PatRange(ref lo, ref hi) =>
             vec!(ConstantRange(eval_const_expr(cx.tcx, &**lo), eval_const_expr(cx.tcx, &**hi))),
         ast::PatVec(ref before, ref slice, ref after) =>
-            match ty::get(left_ty).sty {
+            match left_ty.sty {
                 ty::ty_vec(_, Some(_)) => vec!(Single),
                 _                      => if slice.is_some() {
                     range_inclusive(before.len() + after.len(), max_slice_length)
@@ -696,10 +696,10 @@ fn pat_constructors(cx: &MatchCheckCtxt, p: &Pat,
 /// For instance, a tuple pattern (_, 42u, Some([])) has the arity of 3.
 /// A struct pattern's arity is the number of fields it contains, etc.
 pub fn constructor_arity(cx: &MatchCheckCtxt, ctor: &Constructor, ty: Ty) -> uint {
-    match ty::get(ty).sty {
+    match ty.sty {
         ty::ty_tup(ref fs) => fs.len(),
         ty::ty_uniq(_) => 1u,
-        ty::ty_rptr(_, ty::mt { ty, .. }) => match ty::get(ty).sty {
+        ty::ty_rptr(_, ty::mt { ty, .. }) => match ty.sty {
             ty::ty_vec(_, None) => match *ctor {
                 Slice(length) => length,
                 ConstantValue(_) => 0u,

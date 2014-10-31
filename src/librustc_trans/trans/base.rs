@@ -266,7 +266,7 @@ pub fn kind_for_unboxed_closure(ccx: &CrateContext, closure_id: ast::DefId)
 
 pub fn decl_rust_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                               fn_ty: Ty<'tcx>, name: &str) -> ValueRef {
-    let (inputs, output, abi, env) = match ty::get(fn_ty).sty {
+    let (inputs, output, abi, env) = match fn_ty.sty {
         ty::ty_bare_fn(ref f) => {
             (f.sig.inputs.clone(), f.sig.output, f.abi, None)
         }
@@ -561,7 +561,7 @@ pub fn compare_scalar_types<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
                                         -> Result<'blk, 'tcx> {
     let f = |a| Result::new(cx, compare_scalar_values(cx, lhs, rhs, a, op));
 
-    match ty::get(t).sty {
+    match t.sty {
         ty::ty_tup(ref tys) if tys.is_empty() => f(nil_type),
         ty::ty_bool | ty::ty_uint(_) | ty::ty_char => f(unsigned_int),
         ty::ty_ptr(mt) if ty::type_is_sized(cx.tcx(), mt.ty) => f(unsigned_int),
@@ -642,7 +642,7 @@ pub fn compare_simd_types<'blk, 'tcx>(
                     size: uint,
                     op: ast::BinOp)
                     -> ValueRef {
-    match ty::get(t).sty {
+    match t.sty {
         ty::ty_float(_) => {
             // The comparison operators for floating point vectors are challenging.
             // LLVM outputs a `< size x i1 >`, but if we perform a sign extension
@@ -711,7 +711,7 @@ pub fn iter_structural_ty<'a, 'blk, 'tcx>(cx: Block<'blk, 'tcx>,
     };
 
     let mut cx = cx;
-    match ty::get(t).sty {
+    match t.sty {
       ty::ty_struct(..) => {
           let repr = adt::represent_type(cx.ccx(), t);
           expr::with_field_tys(cx.tcx(), t, None, |discr, field_tys| {
@@ -871,7 +871,7 @@ pub fn fail_if_zero_or_overflows<'blk, 'tcx>(
         ("attempted remainder with a divisor of zero",
          "attempted remainder with overflow")
     };
-    let (is_zero, is_signed) = match ty::get(rhs_t).sty {
+    let (is_zero, is_signed) = match rhs_t.sty {
         ty::ty_int(t) => {
             let zero = C_integral(Type::int_from_ty(cx.ccx(), t), 0u64, false);
             (ICmp(cx, llvm::IntEQ, rhs, zero), true)
@@ -899,7 +899,7 @@ pub fn fail_if_zero_or_overflows<'blk, 'tcx>(
     // signed division/remainder which would trigger overflow. For unsigned
     // integers, no action beyond checking for zero need be taken.
     if is_signed {
-        let (llty, min) = match ty::get(rhs_t).sty {
+        let (llty, min) = match rhs_t.sty {
             ty::ty_int(t) => {
                 let llty = Type::int_from_ty(cx.ccx(), t);
                 let min = match t {
@@ -932,7 +932,7 @@ pub fn fail_if_zero_or_overflows<'blk, 'tcx>(
 pub fn trans_external_path<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                      did: ast::DefId, t: Ty<'tcx>) -> ValueRef {
     let name = csearch::get_symbol(&ccx.sess().cstore, did);
-    match ty::get(t).sty {
+    match t.sty {
         ty::ty_bare_fn(ref fn_ty) => {
             match ccx.sess().target.target.adjust_abi(fn_ty.abi) {
                 Rust | RustCall => {
@@ -1564,7 +1564,7 @@ fn create_datums_for_fn_args_under_call_abi<'blk, 'tcx>(
         }
 
         // This is the last argument. Tuple it.
-        match ty::get(arg_ty).sty {
+        match arg_ty.sty {
             ty::ty_tup(ref tupled_arg_tys) => {
                 let tuple_args_scope_id = cleanup::CustomScope(arg_scope);
                 let tuple =
@@ -1661,7 +1661,7 @@ fn copy_unboxed_closure_args_to_allocas<'blk, 'tcx>(
                       arg_datum.to_lvalue_datum_in_scope(bcx,
                                                          "argtuple",
                                                          arg_scope_id));
-    let untupled_arg_types = match ty::get(monomorphized_arg_types[0]).sty {
+    let untupled_arg_types = match monomorphized_arg_types[0].sty {
         ty::ty_tup(ref types) => types.as_slice(),
         _ => {
             bcx.tcx().sess.span_bug(args[0].pat.span,
@@ -1978,7 +1978,7 @@ pub fn trans_named_tuple_constructor<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
     let ccx = bcx.fcx.ccx;
     let tcx = ccx.tcx();
 
-    let result_ty = match ty::get(ctor_ty).sty {
+    let result_ty = match ctor_ty.sty {
         ty::ty_bare_fn(ref bft) => bft.sig.output.unwrap(),
         _ => ccx.sess().bug(
             format!("trans_enum_variant_constructor: \
@@ -2050,7 +2050,7 @@ fn trans_enum_variant_or_tuple_like_struct<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx
     let ctor_ty = ty::node_id_to_type(ccx.tcx(), ctor_id);
     let ctor_ty = ctor_ty.subst(ccx.tcx(), param_substs);
 
-    let result_ty = match ty::get(ctor_ty).sty {
+    let result_ty = match ctor_ty.sty {
         ty::ty_bare_fn(ref bft) => bft.sig.output,
         _ => ccx.sess().bug(
             format!("trans_enum_variant_or_tuple_like_struct: \
@@ -2387,7 +2387,7 @@ fn register_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                          node_id: ast::NodeId,
                          node_type: Ty<'tcx>)
                          -> ValueRef {
-    match ty::get(node_type).sty {
+    match node_type.sty {
         ty::ty_bare_fn(ref f) => {
             assert!(f.abi == Rust || f.abi == RustCall);
         }
@@ -2403,7 +2403,7 @@ pub fn get_fn_llvm_attributes<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, fn_ty: Ty<
                                         -> llvm::AttrBuilder {
     use middle::ty::{BrAnon, ReLateBound};
 
-    let (fn_sig, abi, has_env) = match ty::get(fn_ty).sty {
+    let (fn_sig, abi, has_env) = match fn_ty.sty {
         ty::ty_closure(ref f) => (f.sig.clone(), f.abi, true),
         ty::ty_bare_fn(ref f) => (f.sig.clone(), f.abi, false),
         ty::ty_unboxed_closure(closure_did, _, ref substs) => {
@@ -2425,11 +2425,11 @@ pub fn get_fn_llvm_attributes<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, fn_ty: Ty<
 
     // These have an odd calling convention, so we need to manually
     // unpack the input ty's
-    let input_tys = match ty::get(fn_ty).sty {
+    let input_tys = match fn_ty.sty {
         ty::ty_unboxed_closure(_, _, _) => {
             assert!(abi == RustCall);
 
-            match ty::get(fn_sig.inputs[0]).sty {
+            match fn_sig.inputs[0].sty {
                 ty::ty_tup(ref inputs) => inputs.clone(),
                 _ => ccx.sess().bug("expected tuple'd inputs")
             }
@@ -2437,7 +2437,7 @@ pub fn get_fn_llvm_attributes<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, fn_ty: Ty<
         ty::ty_bare_fn(_) if abi == RustCall => {
             let mut inputs = vec![fn_sig.inputs[0]];
 
-            match ty::get(fn_sig.inputs[1]).sty {
+            match fn_sig.inputs[1].sty {
                 ty::ty_tup(ref t_in) => {
                     inputs.push_all(t_in.as_slice());
                     inputs
@@ -2469,7 +2469,7 @@ pub fn get_fn_llvm_attributes<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, fn_ty: Ty<
         } else {
             // The `noalias` attribute on the return value is useful to a
             // function ptr caller.
-            match ty::get(ret_ty).sty {
+            match ret_ty.sty {
                 // `~` pointer return values never alias because ownership
                 // is transferred
                 ty::ty_uniq(it) if !ty::type_is_sized(ccx.tcx(), it) => {}
@@ -2480,7 +2480,7 @@ pub fn get_fn_llvm_attributes<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, fn_ty: Ty<
             }
 
             // We can also mark the return value as `dereferenceable` in certain cases
-            match ty::get(ret_ty).sty {
+            match ret_ty.sty {
                 // These are not really pointers but pairs, (pointer, len)
                 ty::ty_uniq(it) |
                 ty::ty_rptr(_, ty::mt { ty: it, .. }) if !ty::type_is_sized(ccx.tcx(), it) => {}
@@ -2491,7 +2491,7 @@ pub fn get_fn_llvm_attributes<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, fn_ty: Ty<
                 _ => {}
             }
 
-            match ty::get(ret_ty).sty {
+            match ret_ty.sty {
                 ty::ty_bool => {
                     attrs.ret(llvm::ZExtAttribute);
                 }
@@ -2501,7 +2501,7 @@ pub fn get_fn_llvm_attributes<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, fn_ty: Ty<
     }
 
     for (idx, &t) in input_tys.iter().enumerate().map(|(i, v)| (i + first_arg_offset, v)) {
-        match ty::get(t).sty {
+        match t.sty {
             // this needs to be first to prevent fat pointers from falling through
             _ if !type_is_immediate(ccx, t) => {
                 let llarg_sz = llsize_of_real(ccx, type_of::type_of(ccx, t));

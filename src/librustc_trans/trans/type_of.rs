@@ -81,7 +81,7 @@ pub fn untuple_arguments_if_necessary<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         }
     }
 
-    match ty::get(inputs[inputs.len() - 1]).sty {
+    match inputs[inputs.len() - 1].sty {
         ty::ty_tup(ref tupled_arguments) => {
             debug!("untuple_arguments_if_necessary(): untupling arguments");
             for &tupled_argument in tupled_arguments.iter() {
@@ -142,7 +142,7 @@ pub fn type_of_rust_fn<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 
 // Given a function type and a count of ty params, construct an llvm type
 pub fn type_of_fn_from_ty<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, fty: Ty<'tcx>) -> Type {
-    match ty::get(fty).sty {
+    match fty.sty {
         ty::ty_closure(ref f) => {
             type_of_rust_fn(cx,
                             Some(Type::i8p(cx)),
@@ -184,7 +184,7 @@ pub fn sizing_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Typ
         None => ()
     }
 
-    let llsizingty = match ty::get(t).sty {
+    let llsizingty = match t.sty {
         _ if !ty::lltype_is_sized(cx.tcx(), t) => {
             cx.sess().bug(format!("trying to take the sizing type of {}, an unsized type",
                                   ppaux::ty_to_string(cx.tcx(), t)).as_slice())
@@ -269,7 +269,7 @@ pub fn type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Type {
             return Type::i8p(cx);
         }
 
-        match ty::get(ty::unsized_part_of_type(cx.tcx(), t)).sty {
+        match ty::unsized_part_of_type(cx.tcx(), t).sty {
             ty::ty_str | ty::ty_vec(..) => Type::uint_from_ty(cx, ast::TyU),
             ty::ty_trait(_) => Type::vtable_ptr(cx),
             _ => panic!("Unexpected type returned from unsized_part_of_type : {}",
@@ -283,7 +283,7 @@ pub fn type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Type {
         None => ()
     }
 
-    debug!("type_of {} {}", t.repr(cx.tcx()), ty::get(t).sty);
+    debug!("type_of {} {}", t.repr(cx.tcx()), t.sty);
 
     // Replace any typedef'd types with their equivalent non-typedef
     // type. This ensures that all LLVM nominal types that contain
@@ -304,7 +304,7 @@ pub fn type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Type {
         return llty;
     }
 
-    let mut llty = match ty::get(t).sty {
+    let mut llty = match t.sty {
       ty::ty_bool => Type::bool(cx),
       ty::ty_char => Type::char(cx),
       ty::ty_int(t) => Type::int_from_ty(cx, t),
@@ -333,7 +333,7 @@ pub fn type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Type {
       }
 
       ty::ty_uniq(ty) | ty::ty_rptr(_, ty::mt{ty, ..}) | ty::ty_ptr(ty::mt{ty, ..}) => {
-          match ty::get(ty).sty {
+          match ty.sty {
               ty::ty_str => {
                   // This means we get a nicer name in the output (str is always
                   // unsized).
@@ -393,7 +393,7 @@ pub fn type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Type {
           }
       }
 
-      ty::ty_open(t) => match ty::get(t).sty {
+      ty::ty_open(t) => match t.sty {
           ty::ty_struct(..) => {
               let p_ty = type_of(cx, t).ptr_to();
               Type::struct_(cx, &[p_ty, type_of_unsize_info(cx, t)], false)
@@ -424,7 +424,7 @@ pub fn type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Type {
     cx.lltypes().borrow_mut().insert(t, llty);
 
     // If this was an enum or struct, fill in the type now.
-    match ty::get(t).sty {
+    match t.sty {
         ty::ty_enum(..) | ty::ty_struct(..) | ty::ty_unboxed_closure(..)
                 if !ty::type_is_simd(cx.tcx(), t) => {
             let repr = adt::represent_type(cx, t);

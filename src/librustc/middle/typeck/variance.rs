@@ -729,7 +729,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                                variance: VarianceTermPtr<'a>) {
         debug!("add_constraints_from_ty(ty={})", ty.repr(self.tcx()));
 
-        match ty::get(ty).sty {
+        match ty.sty {
             ty::ty_bool |
             ty::ty_char | ty::ty_int(_) | ty::ty_uint(_) |
             ty::ty_float(_) | ty::ty_str => {

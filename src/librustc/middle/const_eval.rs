@@ -524,7 +524,7 @@ pub fn eval_const_expr_partial(tcx: &ty::ctxt, e: &Expr) -> Result<const_val, St
                     $const_type:ident,
                     $target_ty:ty
                 )),*
-            }) => (match ty::get(ety).sty {
+            }) => (match ety.sty {
                 $($ty_pat => {
                     match $val {
                         const_bool(b) => Ok($const_type(b as $intermediate_ty as $target_ty)),

@@ -105,9 +105,9 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         //
         // Note: does not attempt to resolve type variables we encounter.
         // See above for details.
-        match ty::get(b).sty {
+        match b.sty {
             ty::ty_ptr(mt_b) => {
-                match ty::get(mt_b.ty).sty {
+                match mt_b.ty.sty {
                     ty::ty_str => {
                         return self.unpack_actual_value(a, |sty_a| {
                             self.coerce_unsafe_ptr(a, sty_a, b, ast::MutImmutable)
@@ -134,7 +134,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             }
 
             ty::ty_rptr(_, mt_b) => {
-                match ty::get(mt_b.ty).sty {
+                match mt_b.ty.sty {
                     ty::ty_str => {
                         return self.unpack_actual_value(a, |sty_a| {
                             self.coerce_borrowed_pointer(a, sty_a, b, ast::MutImmutable)
@@ -202,7 +202,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         match resolve_type(self.get_ref().infcx, None,
                            a, try_resolve_tvar_shallow) {
             Ok(t) => {
-                f(&ty::get(t).sty)
+                f(&t.sty)
             }
             Err(e) => {
                 self.get_ref().infcx.tcx.sess.span_bug(
@@ -273,7 +273,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
 
         let sub = Sub(self.get_ref().clone());
 
-        let sty_b = &ty::get(b).sty;
+        let sty_b = &b.sty;
         match (sty_a, sty_b) {
             (&ty::ty_rptr(_, ty::mt{ty: t_a, mutbl: mutbl_a}), &ty::ty_rptr(_, mt_b)) => {
                 self.unpack_actual_value(t_a, |sty_a| {
@@ -472,7 +472,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         let tcx = self.get_ref().infcx.tcx;
 
         match *sty_a {
-            ty::ty_rptr(_, ty::mt{ty, mutbl}) => match ty::get(ty).sty {
+            ty::ty_rptr(_, ty::mt{ty, mutbl}) => match ty.sty {
                 ty::ty_trait(box ty::TyTrait { ref principal, bounds }) => {
                     debug!("mutbl={} b_mutbl={}", mutbl, b_mutbl);
                     // FIXME what is purpose of this type `tr`?

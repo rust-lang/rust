@@ -126,7 +126,7 @@ fn report_cannot_move_out_of<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
 
         mc::cat_downcast(ref b) |
         mc::cat_interior(ref b, _) => {
-            match ty::get(b.ty).sty {
+            match b.ty.sty {
                 ty::ty_struct(did, _)
                 | ty::ty_enum(did, _) if ty::has_dtor(bccx.tcx, did) => {
                     bccx.span_err(

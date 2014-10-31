@@ -122,7 +122,7 @@ pub fn register_static(ccx: &CrateContext,
                                           "invalid linkage specified");
                 }
             };
-            let llty2 = match ty::get(ty).sty {
+            let llty2 = match ty.sty {
                 ty::ty_ptr(ref mt) => type_of::type_of(ccx, mt.ty),
                 _ => {
                     ccx.sess().span_fatal(foreign_item.span,
@@ -235,7 +235,7 @@ pub fn trans_native_call<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
            ccx.tn().val_to_string(llfn),
            ccx.tn().val_to_string(llretptr));
 
-    let (fn_abi, fn_sig) = match ty::get(callee_ty).sty {
+    let (fn_abi, fn_sig) = match callee_ty.sty {
         ty::ty_bare_fn(ref fn_ty) => (fn_ty.abi, fn_ty.sig.clone()),
         _ => ccx.sess().bug("trans_native_call called on non-function type")
     };
@@ -490,7 +490,7 @@ pub fn decl_rust_fn_with_foreign_abi<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                                -> ValueRef {
     let tys = foreign_types_for_fn_ty(ccx, t);
     let llfn_ty = lltype_for_fn_from_foreign_types(ccx, &tys);
-    let cconv = match ty::get(t).sty {
+    let cconv = match t.sty {
         ty::ty_bare_fn(ref fn_ty) => {
             llvm_calling_convention(ccx, fn_ty.abi)
         }
@@ -513,7 +513,7 @@ pub fn register_rust_fn_with_foreign_abi(ccx: &CrateContext,
     let tys = foreign_types_for_id(ccx, node_id);
     let llfn_ty = lltype_for_fn_from_foreign_types(ccx, &tys);
     let t = ty::node_id_to_type(ccx.tcx(), node_id);
-    let cconv = match ty::get(t).sty {
+    let cconv = match t.sty {
         ty::ty_bare_fn(ref fn_ty) => {
             llvm_calling_convention(ccx, fn_ty.abi)
         }
@@ -567,7 +567,7 @@ pub fn trans_rust_fn_with_foreign_abi<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
         // Compute the type that the function would have if it were just a
         // normal Rust function. This will be the type of the wrappee fn.
-        match ty::get(t).sty {
+        match t.sty {
             ty::ty_bare_fn(ref f) => {
                 assert!(f.abi != Rust && f.abi != RustIntrinsic);
             }
@@ -864,7 +864,7 @@ fn foreign_types_for_id<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
 fn foreign_types_for_fn_ty<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                      ty: Ty<'tcx>) -> ForeignTypes<'tcx> {
-    let fn_sig = match ty::get(ty).sty {
+    let fn_sig = match ty.sty {
         ty::ty_bare_fn(ref fn_ty) => fn_ty.sig.clone(),
         _ => ccx.sess().bug("foreign_types_for_fn_ty called on non-function type")
     };

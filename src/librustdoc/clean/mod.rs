@@ -1049,7 +1049,7 @@ impl Clean<Item> for ty::Method {
                 let s = match s {
                     ty::ByValueExplicitSelfCategory => SelfValue,
                     ty::ByReferenceExplicitSelfCategory(..) => {
-                        match ty::get(self.fty.sig.inputs[0]).sty {
+                        match self.fty.sig.inputs[0].sty {
                             ty::ty_rptr(r, mt) => {
                                 SelfBorrowed(r.clean(cx), mt.mutbl.clean(cx))
                             }
@@ -1259,7 +1259,7 @@ impl Clean<Type> for ast::Ty {
 
 impl Clean<Type> for Ty {
     fn clean(&self, cx: &DocContext) -> Type {
-        match ty::get(*self).sty {
+        match self.sty {
             ty::ty_bool => Primitive(Bool),
             ty::ty_char => Primitive(Char),
             ty::ty_int(ast::TyI) => Primitive(Int),
@@ -1321,7 +1321,7 @@ impl Clean<Type> for Ty {
                 let fqn: Vec<String> = fqn.into_iter().map(|i| {
                     i.to_string()
                 }).collect();
-                let kind = match ty::get(*self).sty {
+                let kind = match self.sty {
                     ty::ty_struct(..) => TypeStruct,
                     ty::ty_trait(..) => TypeTrait,
                     _ => TypeEnum,

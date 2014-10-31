@@ -162,7 +162,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for CheckStaticVisitor<'a, 'tcx> {
 
         let node_ty = ty::node_id_to_type(self.tcx, e.id);
 
-        match ty::get(node_ty).sty {
+        match node_ty.sty {
             ty::ty_struct(did, _) |
             ty::ty_enum(did, _) if ty::has_dtor(self.tcx, did) => {
                 self.tcx.sess.span_err(e.span,

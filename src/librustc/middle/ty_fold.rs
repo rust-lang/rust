@@ -490,7 +490,7 @@ impl<'tcx> TypeFoldable<'tcx> for traits::VtableParamData<'tcx> {
 pub fn super_fold_ty<'tcx, T: TypeFolder<'tcx>>(this: &mut T,
                                                 t: Ty<'tcx>)
                                                 -> Ty<'tcx> {
-    let sty = ty::get(t).sty.fold_with(this);
+    let sty = t.sty.fold_with(this);
     ty::mk_t(this.tcx(), sty)
 }
 

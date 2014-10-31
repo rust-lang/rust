@@ -1520,7 +1520,7 @@ fn check_fn(_v: &Liveness,
 impl<'a, 'tcx> Liveness<'a, 'tcx> {
     fn fn_ret(&self, id: NodeId) -> ty::FnOutput<'tcx> {
         let fn_ty = ty::node_id_to_type(self.ir.tcx, id);
-        match ty::get(fn_ty).sty {
+        match fn_ty.sty {
             ty::ty_unboxed_closure(closure_def_id, _, _) =>
                 self.ir.tcx.unboxed_closures()
                     .borrow()
@@ -1550,8 +1550,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                         None if body.stmts.len() > 0 =>
                             match body.stmts.last().unwrap().node {
                                 ast::StmtSemi(ref e, _) => {
-                                    let t_stmt = ty::expr_ty(self.ir.tcx, &**e);
-                                    ty::get(t_stmt).sty == ty::get(t_ret).sty
+                                    ty::expr_ty(self.ir.tcx, &**e) == t_ret
                                 },
                                 _ => false
                             },

@@ -159,7 +159,7 @@ impl<'a, 'tcx> ResolveState<'a, 'tcx> {
             return typ;
         }
 
-        match ty::get(typ).sty {
+        match typ.sty {
             ty::ty_infer(TyVar(vid)) => {
                 self.resolve_ty_var(vid)
             }

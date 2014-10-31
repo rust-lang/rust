@@ -357,7 +357,7 @@ impl<'tcx> TypeMap<'tcx> {
         let mut unique_type_id = String::with_capacity(256);
         unique_type_id.push('{');
 
-        match ty::get(type_).sty {
+        match type_.sty {
             ty::ty_bool     |
             ty::ty_char     |
             ty::ty_str      |
@@ -485,7 +485,7 @@ impl<'tcx> TypeMap<'tcx> {
             _ => {
                 cx.sess().bug(format!("get_unique_type_id_of_type() - unexpected type: {}, {}",
                                       ppaux::ty_to_string(cx.tcx(), type_).as_slice(),
-                                      ty::get(type_).sty).as_slice())
+                                      type_.sty).as_slice())
             }
         };
 
@@ -1743,9 +1743,9 @@ fn diverging_type_metadata(cx: &CrateContext) -> DIType {
 fn basic_type_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                  t: Ty<'tcx>) -> DIType {
 
-    debug!("basic_type_metadata: {}", ty::get(t));
+    debug!("basic_type_metadata: {}", t);
 
-    let (name, encoding) = match ty::get(t).sty {
+    let (name, encoding) = match t.sty {
         ty::ty_tup(ref elements) if elements.is_empty() =>
             ("()".to_string(), DW_ATE_unsigned),
         ty::ty_bool => ("bool".to_string(), DW_ATE_boolean),
@@ -2787,7 +2787,7 @@ fn subroutine_type_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 
     // return type
     signature_metadata.push(match signature.output {
-        ty::FnConverging(ret_ty) => match ty::get(ret_ty).sty {
+        ty::FnConverging(ret_ty) => match ret_ty.sty {
             ty::ty_tup(ref tys) if tys.is_empty() => ptr::null_mut(),
             _ => type_metadata(cx, ret_ty, span)
         },
@@ -2826,7 +2826,7 @@ fn trait_pointer_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     // type is assigned the correct name, size, namespace, and source location.
     // But it does not describe the trait's methods.
 
-    let def_id = match ty::get(trait_type).sty {
+    let def_id = match trait_type.sty {
         ty::ty_trait(box ty::TyTrait { ref principal, .. }) => principal.def_id,
         _ => {
             let pp_type_name = ppaux::ty_to_string(cx.tcx(), trait_type);
@@ -2891,9 +2891,9 @@ fn type_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         }
     };
 
-    debug!("type_metadata: {}", ty::get(t));
+    debug!("type_metadata: {}", t);
 
-    let sty = &ty::get(t).sty;
+    let sty = &t.sty;
     let MetadataCreationResult { metadata, already_stored_in_typemap } = match *sty {
         ty::ty_bool     |
         ty::ty_char     |
@@ -2920,7 +2920,7 @@ fn type_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             false)
         }
         ty::ty_uniq(ty) | ty::ty_ptr(ty::mt{ty, ..}) | ty::ty_rptr(_, ty::mt{ty, ..}) => {
-            match ty::get(ty).sty {
+            match ty.sty {
                 ty::ty_vec(typ, None) => {
                     vec_slice_metadata(cx, t, typ, unique_type_id, usage_site_span)
                 }
@@ -3688,7 +3688,7 @@ fn push_debuginfo_type_name<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                       t: Ty<'tcx>,
                                       qualified: bool,
                                       output: &mut String) {
-    match ty::get(t).sty {
+    match t.sty {
         ty::ty_bool              => output.push_str("bool"),
         ty::ty_char              => output.push_str("char"),
         ty::ty_str               => output.push_str("str"),

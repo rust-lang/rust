@@ -262,7 +262,7 @@ pub fn lookup_in_trait_adjusted<'a, 'tcx>(fcx: &'a FnCtxt<'a, 'tcx>,
                 ty::ByReferenceExplicitSelfCategory(..) => {
                     // Trait method is fn(&self) or fn(&mut self), need an
                     // autoref. Pull the region etc out of the type of first argument.
-                    match ty::get(transformed_self_ty).sty {
+                    match transformed_self_ty.sty {
                         ty::ty_rptr(region, ty::mt { mutbl, ty: _ }) => {
                             let ty::AutoDerefRef { autoderefs, autoref } = autoderefref;
                             let autoref = autoref.map(|r| box r);
@@ -321,7 +321,7 @@ pub fn report_error<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
 
             // True if the type is a struct and contains a field with
             // the same name as the not-found method
-            let is_field = match ty::get(rcvr_ty).sty {
+            let is_field = match rcvr_ty.sty {
                 ty_struct(did, _) =>
                     ty::lookup_struct_fields(cx, did)
                         .iter()

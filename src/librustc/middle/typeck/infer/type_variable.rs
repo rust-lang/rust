@@ -133,7 +133,7 @@ impl<'tcx> TypeVariableTable<'tcx> {
     }
 
     pub fn replace_if_possible(&self, t: Ty<'tcx>) -> Ty<'tcx> {
-        match ty::get(t).sty {
+        match t.sty {
             ty::ty_infer(ty::TyVar(v)) => {
                 match self.probe(v) {
                     None => t,

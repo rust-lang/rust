@@ -212,7 +212,7 @@ fn apply_adjustments<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 // also be just in case we need to unsize. But if there are no nested
                 // adjustments then it should be a no-op).
                 Some(ty::AutoPtr(_, _, None)) if adj.autoderefs == 1 => {
-                    match ty::get(datum.ty).sty {
+                    match datum.ty.sty {
                         // Don't skip a conversion from Box<T> to &T, etc.
                         ty::ty_rptr(..) => {
                             let method_call = MethodCall::autoderef(expr.id, adj.autoderefs-1);
@@ -318,7 +318,7 @@ fn apply_adjustments<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                 mk_ty: |Ty<'tcx>| -> Ty<'tcx>) -> ValueRef {
         match kind {
             &ty::UnsizeLength(len) => C_uint(bcx.ccx(), len),
-            &ty::UnsizeStruct(box ref k, tp_index) => match ty::get(unsized_ty).sty {
+            &ty::UnsizeStruct(box ref k, tp_index) => match unsized_ty.sty {
                 ty::ty_struct(_, ref substs) => {
                     let ty_substs = substs.types.get_slice(subst::TypeSpace);
                     // The dtor for a field treats it like a value, so mk_ty
@@ -446,7 +446,7 @@ fn apply_adjustments<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         let tcx = bcx.tcx();
 
         let datum_ty = datum.ty;
-        let unboxed_ty = match ty::get(datum_ty).sty {
+        let unboxed_ty = match datum_ty.sty {
             ty::ty_uniq(t) => t,
             _ => bcx.sess().bug(format!("Expected ty_uniq, found {}",
                                         bcx.ty_to_string(datum_ty)).as_slice())
@@ -628,7 +628,7 @@ fn trans_datum_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             // Special case for `Box<T>`
             let box_ty = expr_ty(bcx, expr);
             let contents_ty = expr_ty(bcx, &**contents);
-            match ty::get(box_ty).sty {
+            match box_ty.sty {
                 ty::ty_uniq(..) => {
                     trans_uniq_expr(bcx, box_ty, &**contents, contents_ty)
                 }
@@ -1173,7 +1173,7 @@ fn trans_def_dps_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         }
         def::DefStruct(_) => {
             let ty = expr_ty(bcx, ref_expr);
-            match ty::get(ty).sty {
+            match ty.sty {
                 ty::ty_struct(did, _) if ty::has_dtor(bcx.tcx(), did) => {
                     let repr = adt::represent_type(bcx.ccx(), ty);
                     adt::trans_set_discr(bcx, &*repr, lldest, 0);
@@ -1276,7 +1276,7 @@ pub fn with_field_tys<'tcx, R>(tcx: &ty::ctxt<'tcx>,
      * is and `node_id_opt` is none, this function panics).
      */
 
-    match ty::get(ty).sty {
+    match ty.sty {
         ty::ty_struct(did, ref substs) => {
             op(0, struct_fields(tcx, did, substs).as_slice())
         }
@@ -1605,7 +1605,7 @@ fn trans_addr_of<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let _icx = push_ctxt("trans_addr_of");
     let mut bcx = bcx;
     let sub_datum = unpack_datum!(bcx, trans_to_lvalue(bcx, subexpr, "addr_of"));
-    match ty::get(sub_datum.ty).sty {
+    match sub_datum.ty.sty {
         ty::ty_open(_) => {
             // Opened DST value, close to a fat pointer
             debug!("Closing fat pointer {}", bcx.ty_to_string(sub_datum.ty));
@@ -1906,7 +1906,7 @@ pub enum cast_kind {
 }
 
 pub fn cast_type_kind<'tcx>(tcx: &ty::ctxt<'tcx>, t: Ty<'tcx>) -> cast_kind {
-    match ty::get(t).sty {
+    match t.sty {
         ty::ty_char        => cast_integral,
         ty::ty_float(..)   => cast_float,
         ty::ty_rptr(_, mt) | ty::ty_ptr(mt) => {
@@ -2139,7 +2139,7 @@ fn deref_once<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         }
     };
 
-    let r = match ty::get(datum.ty).sty {
+    let r = match datum.ty.sty {
         ty::ty_uniq(content_ty) => {
             if ty::type_is_sized(bcx.tcx(), content_ty) {
                 deref_owned_pointer(bcx, expr, datum, content_ty)

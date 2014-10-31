@@ -1030,7 +1030,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         };
 
         let self_ty = self.infcx.shallow_resolve(obligation.self_ty());
-        let (closure_def_id, substs) = match ty::get(self_ty).sty {
+        let (closure_def_id, substs) = match self_ty.sty {
             ty::ty_unboxed_closure(id, _, ref substs) => (id, substs.clone()),
             ty::ty_infer(ty::TyVar(_)) => {
                 candidates.ambiguous = true;
@@ -1233,7 +1233,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                      -> Result<BuiltinBoundConditions<'tcx>,SelectionError<'tcx>>
     {
         let self_ty = self.infcx.shallow_resolve(self_ty);
-        return match ty::get(self_ty).sty {
+        return match self_ty.sty {
             ty::ty_infer(ty::IntVar(_)) |
             ty::ty_infer(ty::FloatVar(_)) |
             ty::ty_uint(_) |

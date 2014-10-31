@@ -329,8 +329,8 @@ pub fn super_tys<'tcx, C: Combine<'tcx>>(this: &C,
                                          -> cres<'tcx, Ty<'tcx>> {
 
     let tcx = this.infcx().tcx;
-    let a_sty = &ty::get(a).sty;
-    let b_sty = &ty::get(b).sty;
+    let a_sty = &a.sty;
+    let b_sty = &b.sty;
     debug!("super_tys: a_sty={} b_sty={}", a_sty, b_sty);
     return match (a_sty, b_sty) {
       // The "subtype" ought to be handling cases involving var:
@@ -387,7 +387,7 @@ pub fn super_tys<'tcx, C: Combine<'tcx>>(this: &C,
       (&ty::ty_int(_), _) |
       (&ty::ty_uint(_), _) |
       (&ty::ty_float(_), _) => {
-        if ty::get(a).sty == ty::get(b).sty {
+        if a == b {
             Ok(a)
         } else {
             Err(ty::terr_sorts(expected_found(this, a, b)))
@@ -449,7 +449,7 @@ pub fn super_tys<'tcx, C: Combine<'tcx>>(this: &C,
             // used to use covariant subtyping. I have preserved this behaviour,
             // even though it is probably incorrect. So don't go down the usual
             // path which would require invariance.
-            let mt = match (&ty::get(a_mt.ty).sty, &ty::get(b_mt.ty).sty) {
+            let mt = match (&a_mt.ty.sty, &b_mt.ty.sty) {
                 (&ty::ty_trait(..), &ty::ty_trait(..)) if a_mt.mutbl == b_mt.mutbl => {
                     let ty = try!(this.tys(a_mt.ty, b_mt.ty));
                     ty::mt { ty: ty, mutbl: a_mt.mutbl }
@@ -692,7 +692,7 @@ impl<'cx, 'tcx> ty_fold::TypeFolder<'tcx> for Generalizer<'cx, 'tcx> {
         //
         // (In particular, you could have something like `$0 = Box<$1>`
         //  where `$1` has already been instantiated with `Box<$0>`)
-        match ty::get(t).sty {
+        match t.sty {
             ty::ty_infer(ty::TyVar(vid)) => {
                 if vid == self.for_vid {
                     self.cycle_detected = true;

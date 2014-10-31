@@ -165,7 +165,7 @@ pub fn check_pat<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
         ast::PatVec(ref before, ref slice, ref after) => {
             let expected_ty = structurally_resolved_type(fcx, pat.span, expected);
             let inner_ty = fcx.infcx().next_ty_var();
-            let pat_ty = match ty::get(expected_ty).sty {
+            let pat_ty = match expected_ty.sty {
                 ty::ty_vec(_, Some(size)) => ty::mk_vec(tcx, inner_ty, Some({
                     let min_len = before.len() + after.len();
                     match *slice {
@@ -217,7 +217,7 @@ pub fn check_dereferencable<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
         fcx.infcx(), Some(span),
         expected, resolve::try_resolve_tvar_shallow) {
         Ok(t) if pat_is_binding(&tcx.def_map, inner) => {
-            ty::deref(t, true).map_or(true, |mt| match ty::get(mt.ty).sty {
+            ty::deref(t, true).map_or(true, |mt| match mt.ty.sty {
                 ty::ty_trait(_) => {
                     // This is "x = SomeTrait" being reduced from
                     // "let &x = &SomeTrait" or "let box x = Box<SomeTrait>", an error.
@@ -313,7 +313,7 @@ pub fn check_pat_struct<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>, pat: &ast::Pat,
         },
         _ => {
             let def_type = ty::lookup_item_type(tcx, def.def_id());
-            match ty::get(def_type.ty).sty {
+            match def_type.ty.sty {
                 ty::ty_struct(struct_def_id, _) =>
                     (struct_def_id, struct_def_id),
                 ty::ty_enum(enum_def_id, _)
@@ -378,7 +378,7 @@ pub fn check_pat_enum<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>, pat: &ast::Pat,
     demand::eqtype(fcx, pat.span, expected, pat_ty);
 
     let real_path_ty = fcx.node_ty(pat.id);
-    let (arg_tys, kind_name) = match ty::get(real_path_ty).sty {
+    let (arg_tys, kind_name) = match real_path_ty.sty {
         ty::ty_enum(enum_def_id, ref expected_substs) => {
             let variant = ty::enum_variant_with_id(tcx, enum_def_id, def.def_id());
             (variant.args.iter().map(|t| t.subst(tcx, expected_substs)).collect::<Vec<_>>(),

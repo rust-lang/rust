@@ -653,28 +653,21 @@ impl<'tcx> BorrowFrom<InternedTy<'tcx>> for sty<'tcx> {
     }
 }
 
-pub fn get<'tcx>(ty: Ty<'tcx>) -> Ty<'tcx> {
-    ty
-}
-
-pub fn tbox_has_flag(tb: &TyS, flag: TypeFlags) -> bool {
-    tb.flags.intersects(flag)
-}
 pub fn type_has_params(ty: Ty) -> bool {
-    tbox_has_flag(get(ty), HAS_PARAMS)
+    ty.flags.intersects(HAS_PARAMS)
 }
 pub fn type_has_self(ty: Ty) -> bool {
-    tbox_has_flag(get(ty), HAS_SELF)
+    ty.flags.intersects(HAS_SELF)
 }
 pub fn type_has_ty_infer(ty: Ty) -> bool {
-    tbox_has_flag(get(ty), HAS_TY_INFER)
+    ty.flags.intersects(HAS_TY_INFER)
 }
 pub fn type_needs_infer(ty: Ty) -> bool {
-    tbox_has_flag(get(ty), HAS_TY_INFER | HAS_RE_INFER)
+    ty.flags.intersects(HAS_TY_INFER | HAS_RE_INFER)
 }
 
 pub fn type_has_late_bound_regions(ty: Ty) -> bool {
-    get(ty).flags.intersects(HAS_RE_LATE_BOUND)
+    ty.flags.intersects(HAS_RE_LATE_BOUND)
 }
 
 pub fn type_has_escaping_regions(ty: Ty) -> bool {
@@ -714,7 +707,7 @@ pub fn type_has_escaping_regions(ty: Ty) -> bool {
 }
 
 pub fn type_escapes_depth(ty: Ty, depth: uint) -> bool {
-    get(ty).region_depth > depth
+    ty.region_depth > depth
 }
 
 #[deriving(Clone, PartialEq, Eq, Hash, Show)]
@@ -1929,9 +1922,8 @@ impl FlagComputation {
     }
 
     fn add_ty(&mut self, ty: Ty) {
-        let t_box = get(ty);
-        self.add_flags(t_box.flags);
-        self.add_depth(t_box.region_depth);
+        self.add_flags(ty.flags);
+        self.add_depth(ty.region_depth);
     }
 
     fn add_tys(&mut self, tys: &[Ty]) {
@@ -2211,7 +2203,7 @@ pub fn maybe_walk_ty<'tcx>(ty: Ty<'tcx>, f: |Ty<'tcx>| -> bool) {
     if !f(ty) {
         return;
     }
-    match get(ty).sty {
+    match ty.sty {
         ty_bool | ty_char | ty_int(_) | ty_uint(_) | ty_float(_) |
         ty_str | ty_infer(_) | ty_param(_) | ty_err => {}
         ty_uniq(ty) | ty_vec(ty, _) | ty_open(ty) => maybe_walk_ty(ty, f),
@@ -2302,18 +2294,18 @@ impl<'tcx> ParamBounds<'tcx> {
 // Type utilities
 
 pub fn type_is_nil(ty: Ty) -> bool {
-    match get(ty).sty {
+    match ty.sty {
         ty_tup(ref tys) => tys.is_empty(),
         _ => false
     }
 }
 
 pub fn type_is_error(ty: Ty) -> bool {
-    get(ty).flags.intersects(HAS_TY_ERR)
+    ty.flags.intersects(HAS_TY_ERR)
 }
 
 pub fn type_needs_subst(ty: Ty) -> bool {
-    tbox_has_flag(get(ty), NEEDS_SUBST)
+    ty.flags.intersects(NEEDS_SUBST)
 }
 
 pub fn trait_ref_contains_error(tref: &ty::TraitRef) -> bool {
@@ -2321,24 +2313,24 @@ pub fn trait_ref_contains_error(tref: &ty::TraitRef) -> bool {
 }
 
 pub fn type_is_ty_var(ty: Ty) -> bool {
-    match get(ty).sty {
+    match ty.sty {
         ty_infer(TyVar(_)) => true,
         _ => false
     }
 }
 
-pub fn type_is_bool(ty: Ty) -> bool { get(ty).sty == ty_bool }
+pub fn type_is_bool(ty: Ty) -> bool { ty.sty == ty_bool }
 
 pub fn type_is_self(ty: Ty) -> bool {
-    match get(ty).sty {
+    match ty.sty {
         ty_param(ref p) => p.space == subst::SelfSpace,
         _ => false
     }
 }
 
 fn type_is_slice(ty: Ty) -> bool {
-    match get(ty).sty {
-        ty_ptr(mt) | ty_rptr(_, mt) => match get(mt.ty).sty {
+    match ty.sty {
+        ty_ptr(mt) | ty_rptr(_, mt) => match mt.ty.sty {
             ty_vec(_, None) | ty_str => true,
             _ => false,
         },
@@ -2347,10 +2339,10 @@ fn type_is_slice(ty: Ty) -> bool {
 }
 
 pub fn type_is_vec(ty: Ty) -> bool {
-    match get(ty).sty {
+    match ty.sty {
         ty_vec(..) => true,
         ty_ptr(mt{ty, ..}) | ty_rptr(_, mt{ty, ..}) |
-        ty_uniq(ty) => match get(ty).sty {
+        ty_uniq(ty) => match ty.sty {
             ty_vec(_, None) => true,
             _ => false
         },
@@ -2359,7 +2351,7 @@ pub fn type_is_vec(ty: Ty) -> bool {
 }
 
 pub fn type_is_structural(ty: Ty) -> bool {
-    match get(ty).sty {
+    match ty.sty {
       ty_struct(..) | ty_tup(_) | ty_enum(..) | ty_closure(_) |
       ty_vec(_, Some(_)) | ty_unboxed_closure(..) => true,
       _ => type_is_slice(ty) | type_is_trait(ty)
@@ -2367,14 +2359,14 @@ pub fn type_is_structural(ty: Ty) -> bool {
 }
 
 pub fn type_is_simd(cx: &ctxt, ty: Ty) -> bool {
-    match get(ty).sty {
+    match ty.sty {
         ty_struct(did, _) => lookup_simd(cx, did),
         _ => false
     }
 }
 
 pub fn sequence_element_type<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
-    match get(ty).sty {
+    match ty.sty {
         ty_vec(ty, _) => ty,
         ty_str => mk_mach_uint(ast::TyU8),
         ty_open(ty) => sequence_element_type(cx, ty),
@@ -2384,7 +2376,7 @@ pub fn sequence_element_type<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
 }
 
 pub fn simd_type<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
-    match get(ty).sty {
+    match ty.sty {
         ty_struct(did, ref substs) => {
             let fields = lookup_struct_fields(cx, did);
             lookup_field_type(cx, did, fields[0].id, substs)
@@ -2394,7 +2386,7 @@ pub fn simd_type<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
 }
 
 pub fn simd_size(cx: &ctxt, ty: Ty) -> uint {
-    match get(ty).sty {
+    match ty.sty {
         ty_struct(did, _) => {
             let fields = lookup_struct_fields(cx, did);
             fields.len()
@@ -2404,22 +2396,22 @@ pub fn simd_size(cx: &ctxt, ty: Ty) -> uint {
 }
 
 pub fn type_is_region_ptr(ty: Ty) -> bool {
-    match get(ty).sty {
+    match ty.sty {
         ty_rptr(..) => true,
         _ => false
     }
 }
 
 pub fn type_is_unsafe_ptr(ty: Ty) -> bool {
-    match get(ty).sty {
+    match ty.sty {
       ty_ptr(_) => return true,
       _ => return false
     }
 }
 
 pub fn type_is_unique(ty: Ty) -> bool {
-    match get(ty).sty {
-        ty_uniq(_) => match get(ty).sty {
+    match ty.sty {
+        ty_uniq(_) => match ty.sty {
             ty_trait(..) => false,
             _ => true
         },
@@ -2428,7 +2420,7 @@ pub fn type_is_unique(ty: Ty) -> bool {
 }
 
 pub fn type_is_fat_ptr<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> bool {
-    match get(ty).sty {
+    match ty.sty {
         ty_ptr(mt{ty, ..}) | ty_rptr(_, mt{ty, ..})
         | ty_uniq(ty) if !type_is_sized(cx, ty) => true,
         _ => false,
@@ -2441,7 +2433,7 @@ pub fn type_is_fat_ptr<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> bool {
  contents are abstract to rustc.)
 */
 pub fn type_is_scalar(ty: Ty) -> bool {
-    match get(ty).sty {
+    match ty.sty {
       ty_bool | ty_char | ty_int(_) | ty_float(_) | ty_uint(_) |
       ty_infer(IntVar(_)) | ty_infer(FloatVar(_)) |
       ty_bare_fn(..) | ty_ptr(_) => true,
@@ -2452,7 +2444,7 @@ pub fn type_is_scalar(ty: Ty) -> bool {
 
 /// Returns true if this type is a floating point type and false otherwise.
 pub fn type_is_floating_point(ty: Ty) -> bool {
-    match get(ty).sty {
+    match ty.sty {
         ty_float(_) => true,
         _ => false,
     }
@@ -2480,7 +2472,7 @@ pub fn type_needs_unwind_cleanup<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> bool {
 
         let mut needs_unwind_cleanup = false;
         maybe_walk_ty(ty, |ty| {
-            needs_unwind_cleanup |= match get(ty).sty {
+            needs_unwind_cleanup |= match ty.sty {
                 ty_bool | ty_int(_) | ty_uint(_) |
                 ty_float(_) | ty_tup(_) | ty_ptr(_) => false,
 
@@ -2732,7 +2724,7 @@ pub fn type_contents<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> TypeContents {
         }
         cache.insert(ty, TC::None);
 
-        let result = match get(ty).sty {
+        let result = match ty.sty {
             // uint and int are ffi-unsafe
             ty_uint(ast::TyU) | ty_int(ast::TyI) => {
                 TC::ReachesFfiUnsafe
@@ -2750,7 +2742,7 @@ pub fn type_contents<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> TypeContents {
             }
 
             ty_uniq(typ) => {
-                TC::ReachesFfiUnsafe | match get(typ).sty {
+                TC::ReachesFfiUnsafe | match typ.sty {
                     ty_str => TC::OwnsOwned,
                     _ => tc_ty(cx, typ, cache).owned_pointer(),
                 }
@@ -2765,7 +2757,7 @@ pub fn type_contents<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> TypeContents {
             }
 
             ty_rptr(r, ref mt) => {
-                TC::ReachesFfiUnsafe | match get(mt.ty).sty {
+                TC::ReachesFfiUnsafe | match mt.ty.sty {
                     ty_str => borrowed_contents(r, ast::MutImmutable),
                     ty_vec(..) => tc_ty(cx, mt.ty, cache).reference(borrowed_contents(r, mt.mutbl)),
                     _ => tc_ty(cx, mt.ty, cache).reference(borrowed_contents(r, mt.mutbl)),
@@ -2852,7 +2844,7 @@ pub fn type_contents<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> TypeContents {
                                 }
 
                                 if variants[data_idx].args.len() == 1 {
-                                    match get(variants[data_idx].args[0]).sty {
+                                    match variants[data_idx].args[0].sty {
                                         ty_bare_fn(..) => { res = res - TC::ReachesFfiUnsafe; }
                                         _ => { }
                                     }
@@ -3026,10 +3018,7 @@ pub fn is_instantiable<'tcx>(cx: &ctxt<'tcx>, r_ty: Ty<'tcx>) -> bool {
                ::util::ppaux::ty_to_string(cx, r_ty),
                ::util::ppaux::ty_to_string(cx, ty));
 
-        let r = {
-            get(r_ty).sty == get(ty).sty ||
-                subtypes_require(cx, seen, r_ty, ty)
-        };
+        let r = r_ty == ty || subtypes_require(cx, seen, r_ty, ty);
 
         debug!("type_requires({}, {})? {}",
                ::util::ppaux::ty_to_string(cx, r_ty),
@@ -3044,7 +3033,7 @@ pub fn is_instantiable<'tcx>(cx: &ctxt<'tcx>, r_ty: Ty<'tcx>) -> bool {
                ::util::ppaux::ty_to_string(cx, r_ty),
                ::util::ppaux::ty_to_string(cx, ty));
 
-        let r = match get(ty).sty {
+        let r = match ty.sty {
             // fixed length vectors need special treatment compared to
             // normal vectors, since they don't necessarily have the
             // possibility to have length zero.
@@ -3163,7 +3152,7 @@ pub fn is_type_representable<'tcx>(cx: &ctxt<'tcx>, sp: Span, ty: Ty<'tcx>)
     fn are_inner_types_recursive<'tcx>(cx: &ctxt<'tcx>, sp: Span,
                                        seen: &mut Vec<Ty<'tcx>>, ty: Ty<'tcx>)
                                        -> Representability {
-        match get(ty).sty {
+        match ty.sty {
             ty_tup(ref ts) => {
                 find_nonrepresentable(cx, sp, seen, ts.iter().map(|ty| *ty))
             }
@@ -3193,7 +3182,7 @@ pub fn is_type_representable<'tcx>(cx: &ctxt<'tcx>, sp: Span, ty: Ty<'tcx>)
     }
 
     fn same_struct_or_enum_def_id(ty: Ty, did: DefId) -> bool {
-        match get(ty).sty {
+        match ty.sty {
             ty_struct(ty_did, _) | ty_enum(ty_did, _) => {
                  ty_did == did
             }
@@ -3202,7 +3191,7 @@ pub fn is_type_representable<'tcx>(cx: &ctxt<'tcx>, sp: Span, ty: Ty<'tcx>)
     }
 
     fn same_type<'tcx>(a: Ty<'tcx>, b: Ty<'tcx>) -> bool {
-        match (&get(a).sty, &get(b).sty) {
+        match (&a.sty, &b.sty) {
             (&ty_struct(did_a, ref substs_a), &ty_struct(did_b, ref substs_b)) |
             (&ty_enum(did_a, ref substs_a), &ty_enum(did_b, ref substs_b)) => {
                 if did_a != did_b {
@@ -3230,7 +3219,7 @@ pub fn is_type_representable<'tcx>(cx: &ctxt<'tcx>, sp: Span, ty: Ty<'tcx>)
         debug!("is_type_structurally_recursive: {}",
                ::util::ppaux::ty_to_string(cx, ty));
 
-        match get(ty).sty {
+        match ty.sty {
             ty_struct(did, _) | ty_enum(did, _) => {
                 {
                     // Iterate through stack of previously seen types.
@@ -3307,8 +3296,8 @@ pub fn type_is_trait(ty: Ty) -> bool {
 }
 
 pub fn type_trait_info<'tcx>(ty: Ty<'tcx>) -> Option<&'tcx TyTrait<'tcx>> {
-    match get(ty).sty {
-        ty_uniq(ty) | ty_rptr(_, mt { ty, ..}) | ty_ptr(mt { ty, ..}) => match get(ty).sty {
+    match ty.sty {
+        ty_uniq(ty) | ty_rptr(_, mt { ty, ..}) | ty_ptr(mt { ty, ..}) => match ty.sty {
             ty_trait(ref t) => Some(&**t),
             _ => None
         },
@@ -3318,14 +3307,14 @@ pub fn type_trait_info<'tcx>(ty: Ty<'tcx>) -> Option<&'tcx TyTrait<'tcx>> {
 }
 
 pub fn type_is_integral(ty: Ty) -> bool {
-    match get(ty).sty {
+    match ty.sty {
       ty_infer(IntVar(_)) | ty_int(_) | ty_uint(_) => true,
       _ => false
     }
 }
 
 pub fn type_is_skolemized(ty: Ty) -> bool {
-    match get(ty).sty {
+    match ty.sty {
       ty_infer(SkolemizedTy(_)) => true,
       ty_infer(SkolemizedIntTy(_)) => true,
       _ => false
@@ -3333,28 +3322,28 @@ pub fn type_is_skolemized(ty: Ty) -> bool {
 }
 
 pub fn type_is_uint(ty: Ty) -> bool {
-    match get(ty).sty {
+    match ty.sty {
       ty_infer(IntVar(_)) | ty_uint(ast::TyU) => true,
       _ => false
     }
 }
 
 pub fn type_is_char(ty: Ty) -> bool {
-    match get(ty).sty {
+    match ty.sty {
         ty_char => true,
         _ => false
     }
 }
 
 pub fn type_is_bare_fn(ty: Ty) -> bool {
-    match get(ty).sty {
+    match ty.sty {
         ty_bare_fn(..) => true,
         _ => false
     }
 }
 
 pub fn type_is_fp(ty: Ty) -> bool {
-    match get(ty).sty {
+    match ty.sty {
       ty_infer(FloatVar(_)) | ty_float(_) => true,
       _ => false
     }
@@ -3365,14 +3354,14 @@ pub fn type_is_numeric(ty: Ty) -> bool {
 }
 
 pub fn type_is_signed(ty: Ty) -> bool {
-    match get(ty).sty {
+    match ty.sty {
       ty_int(_) => true,
       _ => false
     }
 }
 
 pub fn type_is_machine(ty: Ty) -> bool {
-    match get(ty).sty {
+    match ty.sty {
         ty_int(ast::TyI) | ty_uint(ast::TyU) => false,
         ty_int(..) | ty_uint(..) | ty_float(..) => true,
         _ => false
@@ -3385,7 +3374,7 @@ pub fn type_is_sized<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> bool {
 }
 
 pub fn lltype_is_sized<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> bool {
-    match get(ty).sty {
+    match ty.sty {
         ty_open(_) => true,
         _ => type_contents(cx, ty).is_sized(cx)
     }
@@ -3395,7 +3384,7 @@ pub fn lltype_is_sized<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> bool {
 // 'Smallest' here means component of the static representation of the type; not
 // the size of an object at runtime.
 pub fn unsized_part_of_type<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
-    match get(ty).sty {
+    match ty.sty {
         ty_str | ty_trait(..) | ty_vec(..) => ty,
         ty_struct(def_id, ref substs) => {
             let unsized_fields: Vec<_> = struct_fields(cx, def_id, substs).iter()
@@ -3416,7 +3405,7 @@ pub fn unsized_part_of_type<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
 // Whether a type is enum like, that is an enum type with only nullary
 // constructors
 pub fn type_is_c_like_enum(cx: &ctxt, ty: Ty) -> bool {
-    match get(ty).sty {
+    match ty.sty {
         ty_enum(did, _) => {
             let variants = enum_variants(cx, did);
             if variants.len() == 0 {
@@ -3434,7 +3423,7 @@ pub fn type_is_c_like_enum(cx: &ctxt, ty: Ty) -> bool {
 // The parameter `explicit` indicates if this is an *explicit* dereference.
 // Some types---notably unsafe ptrs---can only be dereferenced explicitly.
 pub fn deref<'tcx>(ty: Ty<'tcx>, explicit: bool) -> Option<mt<'tcx>> {
-    match get(ty).sty {
+    match ty.sty {
         ty_uniq(ty) => {
             Some(mt {
                 ty: ty,
@@ -3448,7 +3437,7 @@ pub fn deref<'tcx>(ty: Ty<'tcx>, explicit: bool) -> Option<mt<'tcx>> {
 }
 
 pub fn deref_or_dont<'tcx>(ty: Ty<'tcx>) -> Ty<'tcx> {
-    match get(ty).sty {
+    match ty.sty {
         ty_uniq(ty) => ty,
         ty_rptr(_, mt) | ty_ptr(mt) => mt.ty,
         _ => ty
@@ -3456,7 +3445,7 @@ pub fn deref_or_dont<'tcx>(ty: Ty<'tcx>) -> Ty<'tcx> {
 }
 
 pub fn close_type<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
-    match get(ty).sty {
+    match ty.sty {
         ty_open(ty) => mk_rptr(cx, ReStatic, mt {ty: ty, mutbl:ast::MutImmutable}),
         _ => cx.sess.bug(format!("Trying to close a non-open type {}",
                                  ty_to_string(cx, ty)).as_slice())
@@ -3464,7 +3453,7 @@ pub fn close_type<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
 }
 
 pub fn type_content<'tcx>(ty: Ty<'tcx>) -> Ty<'tcx> {
-    match get(ty).sty {
+    match ty.sty {
         ty_uniq(ty) => ty,
         ty_rptr(_, mt) |ty_ptr(mt) => mt.ty,
         _ => ty
@@ -3473,7 +3462,7 @@ pub fn type_content<'tcx>(ty: Ty<'tcx>) -> Ty<'tcx> {
 
 // Extract the unsized type in an open type (or just return ty if it is not open).
 pub fn unopen_type<'tcx>(ty: Ty<'tcx>) -> Ty<'tcx> {
-    match get(ty).sty {
+    match ty.sty {
         ty_open(ty) => ty,
         _ => ty
     }
@@ -3481,7 +3470,7 @@ pub fn unopen_type<'tcx>(ty: Ty<'tcx>) -> Ty<'tcx> {
 
 // Returns the type of ty[i]
 pub fn index<'tcx>(ty: Ty<'tcx>) -> Option<Ty<'tcx>> {
-    match get(ty).sty {
+    match ty.sty {
         ty_vec(ty, _) => Some(ty),
         _ => None
     }
@@ -3491,7 +3480,7 @@ pub fn index<'tcx>(ty: Ty<'tcx>) -> Option<Ty<'tcx>> {
 // This is exactly the same as the above, except it supports strings,
 // which can't actually be indexed.
 pub fn array_element_ty<'tcx>(ty: Ty<'tcx>) -> Option<Ty<'tcx>> {
-    match get(ty).sty {
+    match ty.sty {
         ty_vec(ty, _) => Some(ty),
         ty_str => Some(mk_u8()),
         _ => None
@@ -3536,7 +3525,7 @@ pub fn node_id_item_substs<'tcx>(cx: &ctxt<'tcx>, id: ast::NodeId) -> ItemSubsts
 }
 
 pub fn fn_is_variadic(fty: Ty) -> bool {
-    match get(fty).sty {
+    match fty.sty {
         ty_bare_fn(ref f) => f.sig.variadic,
         ty_closure(ref f) => f.sig.variadic,
         ref s => {
@@ -3546,7 +3535,7 @@ pub fn fn_is_variadic(fty: Ty) -> bool {
 }
 
 pub fn ty_fn_sig<'tcx>(fty: Ty<'tcx>) -> &'tcx FnSig<'tcx> {
-    match get(fty).sty {
+    match fty.sty {
         ty_bare_fn(ref f) => &f.sig,
         ty_closure(ref f) => &f.sig,
         ref s => {
@@ -3557,7 +3546,7 @@ pub fn ty_fn_sig<'tcx>(fty: Ty<'tcx>) -> &'tcx FnSig<'tcx> {
 
 /// Returns the ABI of the given function.
 pub fn ty_fn_abi(fty: Ty) -> abi::Abi {
-    match get(fty).sty {
+    match fty.sty {
         ty_bare_fn(ref f) => f.abi,
         ty_closure(ref f) => f.abi,
         _ => panic!("ty_fn_abi() called on non-fn type"),
@@ -3570,7 +3559,7 @@ pub fn ty_fn_args<'tcx>(fty: Ty<'tcx>) -> &'tcx [Ty<'tcx>] {
 }
 
 pub fn ty_closure_store(fty: Ty) -> TraitStore {
-    match get(fty).sty {
+    match fty.sty {
         ty_closure(ref f) => f.store,
         ty_unboxed_closure(..) => {
             // Close enough for the purposes of all the callers of this
@@ -3584,7 +3573,7 @@ pub fn ty_closure_store(fty: Ty) -> TraitStore {
 }
 
 pub fn ty_fn_ret<'tcx>(fty: Ty<'tcx>) -> FnOutput<'tcx> {
-    match get(fty).sty {
+    match fty.sty {
         ty_bare_fn(ref f) => f.sig.output,
         ty_closure(ref f) => f.sig.output,
         ref s => {
@@ -3594,7 +3583,7 @@ pub fn ty_fn_ret<'tcx>(fty: Ty<'tcx>) -> FnOutput<'tcx> {
 }
 
 pub fn is_fn_ty(fty: Ty) -> bool {
-    match get(fty).sty {
+    match fty.sty {
         ty_bare_fn(_) => true,
         ty_closure(_) => true,
         _ => false
@@ -3604,7 +3593,7 @@ pub fn is_fn_ty(fty: Ty) -> bool {
 pub fn ty_region(tcx: &ctxt,
                  span: Span,
                  ty: Ty) -> Region {
-    match get(ty).sty {
+    match ty.sty {
         ty_rptr(r, _) => r,
         ref s => {
             tcx.sess.span_bug(
@@ -3716,7 +3705,7 @@ pub fn adjust_ty<'tcx>(cx: &ctxt<'tcx>,
                        -> Ty<'tcx> {
     /*! See `expr_ty_adjusted` */
 
-    match get(unadjusted_ty).sty {
+    match unadjusted_ty.sty {
         ty_err => return unadjusted_ty,
         _ => {}
     }
@@ -3725,7 +3714,7 @@ pub fn adjust_ty<'tcx>(cx: &ctxt<'tcx>,
         Some(adjustment) => {
             match *adjustment {
                 AdjustAddEnv(store) => {
-                    match ty::get(unadjusted_ty).sty {
+                    match unadjusted_ty.sty {
                         ty::ty_bare_fn(ref b) => {
                             let bounds = ty::ExistentialBounds {
                                 region_bound: ReStatic,
@@ -3829,7 +3818,7 @@ pub fn unsize_ty<'tcx>(cx: &ctxt<'tcx>,
                        span: Span)
                        -> Ty<'tcx> {
     match kind {
-        &UnsizeLength(len) => match get(ty).sty {
+        &UnsizeLength(len) => match ty.sty {
             ty_vec(ty, Some(n)) => {
                 assert!(len == n);
                 mk_vec(cx, ty, None)
@@ -3838,7 +3827,7 @@ pub fn unsize_ty<'tcx>(cx: &ctxt<'tcx>,
                                   format!("UnsizeLength with bad sty: {}",
                                           ty_to_string(cx, ty)).as_slice())
         },
-        &UnsizeStruct(box ref k, tp_index) => match get(ty).sty {
+        &UnsizeStruct(box ref k, tp_index) => match ty.sty {
             ty_struct(did, ref substs) => {
                 let ty_substs = substs.types.get_slice(subst::TypeSpace);
                 let new_ty = unsize_ty(cx, ty_substs[tp_index], k, span);
@@ -3925,7 +3914,7 @@ pub fn expr_kind(tcx: &ctxt, expr: &ast::Expr) -> ExprKind {
                 }
 
                 def::DefStruct(_) => {
-                    match get(expr_ty(tcx, expr)).sty {
+                    match expr_ty(tcx, expr).sty {
                         ty_bare_fn(..) => RvalueDatumExpr,
                         _ => RvalueDpsExpr
                     }
@@ -4089,7 +4078,7 @@ pub fn impl_or_trait_item_idx(id: ast::Name, trait_items: &[ImplOrTraitItem])
 }
 
 pub fn ty_sort_string<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> String {
-    match get(ty).sty {
+    match ty.sty {
         ty_bool | ty_char | ty_int(_) |
         ty_uint(_) | ty_float(_) | ty_str => {
             ::util::ppaux::ty_to_string(cx, ty)
@@ -4529,7 +4518,7 @@ pub fn try_add_builtin_trait(
 }
 
 pub fn ty_to_def_id(ty: Ty) -> Option<ast::DefId> {
-    match get(ty).sty {
+    match ty.sty {
         ty_trait(ref tt) =>
             Some(tt.principal.def_id),
         ty_struct(id, _) |
@@ -4684,7 +4673,7 @@ pub fn enum_is_univariant(cx: &ctxt, id: ast::DefId) -> bool {
 }
 
 pub fn type_is_empty(cx: &ctxt, ty: Ty) -> bool {
-    match ty::get(ty).sty {
+    match ty.sty {
        ty_enum(did, _) => (*enum_variants(cx, did)).is_empty(),
        _ => false
      }
@@ -5108,7 +5097,7 @@ pub fn is_binopable<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>, op: ast::BinOp) -> bool
         if type_is_simd(cx, ty) {
             return tycat(cx, simd_type(cx, ty))
         }
-        match get(ty).sty {
+        match ty.sty {
           ty_char => tycat_char,
           ty_bool => tycat_bool,
           ty_int(_) | ty_uint(_) | ty_infer(IntVar(_)) => tycat_int,
@@ -5534,7 +5523,7 @@ pub fn hash_crate_independent(tcx: &ctxt, ty: Ty, svh: &Svh) -> u64 {
         mt.mutbl.hash(state);
     };
     ty::walk_ty(ty, |ty| {
-        match ty::get(ty).sty {
+        match ty.sty {
             ty_bool => byte!(2),
             ty_char => byte!(3),
             ty_int(i) => {
@@ -5870,7 +5859,7 @@ pub enum ExplicitSelfCategory {
 pub fn accumulate_lifetimes_in_type(accumulator: &mut Vec<ty::Region>,
                                     ty: Ty) {
     walk_ty(ty, |ty| {
-        match get(ty).sty {
+        match ty.sty {
             ty_rptr(region, _) => {
                 accumulator.push(region)
             }

@@ -39,7 +39,7 @@ pub fn check_object_cast<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     let source_ty = fcx.expr_ty(source_expr);
     let source_ty = structurally_resolved_type(fcx, source_expr.span, source_ty);
     debug!("source_ty={}", source_ty.repr(fcx.tcx()));
-    match (&ty::get(source_ty).sty, &ty::get(target_object_ty).sty) {
+    match (&source_ty.sty, &target_object_ty.sty) {
         (&ty::ty_uniq(referent_ty), &ty::ty_uniq(object_trait_ty)) => {
             let object_trait = object_trait(&object_trait_ty);
 
@@ -97,7 +97,7 @@ pub fn check_object_cast<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     }
 
     fn object_trait<'a, 'tcx>(t: &'a Ty<'tcx>) -> &'a ty::TyTrait<'tcx> {
-        match ty::get(*t).sty {
+        match t.sty {
             ty::ty_trait(ref ty_trait) => &**ty_trait,
             _ => panic!("expected ty_trait")
         }

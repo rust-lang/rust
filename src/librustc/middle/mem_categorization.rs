@@ -197,7 +197,7 @@ pub enum deref_kind {
 // derefable (we model an index as the combination of a deref and then a
 // pointer adjustment).
 pub fn opt_deref_kind(t: Ty) -> Option<deref_kind> {
-    match ty::get(t).sty {
+    match t.sty {
         ty::ty_uniq(_) |
         ty::ty_closure(box ty::ClosureTy {store: ty::UniqTraitStore, ..}) => {
             Some(deref_ptr(OwnedPtr))
@@ -585,7 +585,7 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
 
           def::DefUpvar(var_id, fn_node_id, _) => {
               let ty = if_ok!(self.node_ty(fn_node_id));
-              match ty::get(ty).sty {
+              match ty.sty {
                   ty::ty_closure(ref closure_ty) => {
                       // Translate old closure type info into unboxed
                       // closure kind/capture mode
@@ -808,7 +808,7 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
                            -> cmt<'tcx> {
         match self.typer.temporary_scope(id) {
             Some(scope) => {
-                match ty::get(expr_ty).sty {
+                match expr_ty.sty {
                     ty::ty_vec(_, Some(0)) => self.cat_rvalue(id, span, ty::ReStatic, expr_ty),
                     _ => self.cat_rvalue(id, span, ty::ReScope(scope), expr_ty)
                 }
@@ -1069,8 +1069,8 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
              * to recurse through rptrs.
              */
 
-            match ty::get(slice_ty).sty {
-                ty::ty_rptr(r, ref mt) => match ty::get(mt.ty).sty {
+            match slice_ty.sty {
+                ty::ty_rptr(r, ref mt) => match mt.ty.sty {
                     ty::ty_vec(_, None) => (mt.mutbl, r),
                     _ => vec_slice_info(tcx, pat, mt.ty),
                 },
@@ -1533,9 +1533,9 @@ impl<'tcx> Repr<'tcx> for InteriorKind {
 }
 
 fn element_kind(t: Ty) -> ElementKind {
-    match ty::get(t).sty {
+    match t.sty {
         ty::ty_rptr(_, ty::mt{ty, ..}) |
-        ty::ty_uniq(ty) => match ty::get(ty).sty {
+        ty::ty_uniq(ty) => match ty.sty {
             ty::ty_vec(_, None) => VecElement,
             _ => OtherElement
         },

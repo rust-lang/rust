@@ -100,7 +100,7 @@ impl LintPass for UnusedCasts {
         match e.node {
             ast::ExprCast(ref expr, ref ty) => {
                 let t_t = ast_ty_to_ty(cx, &infer::new_infer_ctxt(cx.tcx), &**ty);
-                if ty::get(ty::expr_ty(cx.tcx, &**expr)).sty == ty::get(t_t).sty {
+                if ty::expr_ty(cx.tcx, &**expr) == t_t {
                     cx.span_lint(UNUSED_TYPECASTS, ty.span, "unnecessary type cast");
                 }
             }
@@ -156,7 +156,7 @@ impl LintPass for TypeLimits {
                     },
                     _ => {
                         let t = ty::expr_ty(cx.tcx, &**expr);
-                        match ty::get(t).sty {
+                        match t.sty {
                             ty::ty_uint(_) => {
                                 cx.span_lint(UNSIGNED_NEGATION, e.span,
                                              "negation of unsigned int variable may \
@@ -181,7 +181,7 @@ impl LintPass for TypeLimits {
                 }
 
                 if is_shift_binop(binop) {
-                    let opt_ty_bits = match ty::get(ty::expr_ty(cx.tcx, &**l)).sty {
+                    let opt_ty_bits = match ty::expr_ty(cx.tcx, &**l).sty {
                         ty::ty_int(t) => Some(int_ty_bits(t, cx.sess().target.int_type)),
                         ty::ty_uint(t) => Some(uint_ty_bits(t, cx.sess().target.uint_type)),
                         _ => None
@@ -206,7 +206,7 @@ impl LintPass for TypeLimits {
                 }
             },
             ast::ExprLit(ref lit) => {
-                match ty::get(ty::expr_ty(cx.tcx, e)).sty {
+                match ty::expr_ty(cx.tcx, e).sty {
                     ty::ty_int(t) => {
                         match lit.node {
                             ast::LitInt(v, ast::SignedIntLit(_, ast::Plus)) |
@@ -344,7 +344,7 @@ impl LintPass for TypeLimits {
             // Normalize the binop so that the literal is always on the RHS in
             // the comparison
             let norm_binop = if swap { rev_binop(binop) } else { binop };
-            match ty::get(ty::expr_ty(tcx, expr)).sty {
+            match ty::expr_ty(tcx, expr).sty {
                 ty::ty_int(int_ty) => {
                     let (min, max) = int_ty_range(int_ty);
                     let lit_val: i64 = match lit.node {
@@ -478,7 +478,7 @@ impl BoxPointers {
                                  span: Span, ty: Ty<'tcx>) {
         let mut n_uniq = 0i;
         ty::fold_ty(cx.tcx, ty, |t| {
-            match ty::get(t).sty {
+            match t.sty {
                 ty::ty_uniq(_) |
                 ty::ty_closure(box ty::ClosureTy {
                     store: ty::UniqTraitStore,
@@ -578,7 +578,7 @@ impl LintPass for RawPointerDeriving {
         }
         let did = match item.node {
             ast::ItemImpl(..) => {
-                match ty::get(ty::node_id_to_type(cx.tcx, item.id)).sty {
+                match ty::node_id_to_type(cx.tcx, item.id).sty {
                     ty::ty_enum(did, _) => did,
                     ty::ty_struct(did, _) => did,
                     _ => return,
@@ -740,7 +740,7 @@ impl LintPass for UnusedResults {
 
         let t = ty::expr_ty(cx.tcx, expr);
         let mut warned = false;
-        match ty::get(t).sty {
+        match t.sty {
             ty::ty_tup(ref tys) if tys.is_empty() => return,
             ty::ty_bool => return,
             ty::ty_struct(did, _) |

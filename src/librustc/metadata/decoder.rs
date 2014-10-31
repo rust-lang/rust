@@ -699,7 +699,7 @@ pub fn get_enum_variants<'tcx>(intr: Rc<IdentInterner>, cdata: Cmd, id: ast::Nod
         let ctor_ty = item_type(ast::DefId { krate: cdata.cnum, node: id},
                                 item, tcx, cdata);
         let name = item_name(&*intr, item);
-        let (ctor_ty, arg_tys) = match ty::get(ctor_ty).sty {
+        let (ctor_ty, arg_tys) = match ctor_ty.sty {
             ty::ty_bare_fn(ref f) =>
                 (Some(ctor_ty), f.sig.inputs.clone()),
             _ => // Nullary or struct enum variant.

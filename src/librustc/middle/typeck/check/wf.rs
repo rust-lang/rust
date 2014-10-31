@@ -193,7 +193,7 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
                 fcx.tcx().lang_items.drop_trait() == Some(trait_ref.def_id) &&
                 !attr::contains_name(item.attrs.as_slice(), "unsafe_destructor")
             {
-                match ty::get(self_ty).sty {
+                match self_ty.sty {
                     ty::ty_struct(def_id, _) |
                     ty::ty_enum(def_id, _) => {
                         check_struct_safe_for_destructor(fcx, item.span, self_ty, def_id);
@@ -336,7 +336,7 @@ impl<'cx,'tcx> TypeFolder<'tcx> for BoundsChecker<'cx,'tcx> {
             None => { }
         }
 
-        match ty::get(t).sty{
+        match t.sty{
             ty::ty_struct(type_id, ref substs) |
             ty::ty_enum(type_id, ref substs) => {
                 let polytype = ty::lookup_item_type(self.fcx.tcx(), type_id);
