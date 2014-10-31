@@ -677,9 +677,8 @@ pub fn C_str_slice(cx: &CrateContext, s: InternedString) -> ValueRef {
     }
 }
 
-pub fn C_binary_slice(cx: &CrateContext, data: &[u8]) -> ValueRef {
+pub fn C_binary_array(cx: &CrateContext, data: &[u8]) -> ValueRef {
     unsafe {
-        let len = data.len();
         let lldata = C_bytes(cx, data);
 
         let gsym = token::gensym("binary");
@@ -689,9 +688,7 @@ pub fn C_binary_slice(cx: &CrateContext, data: &[u8]) -> ValueRef {
         llvm::LLVMSetInitializer(g, lldata);
         llvm::LLVMSetGlobalConstant(g, True);
         llvm::SetLinkage(g, llvm::InternalLinkage);
-
-        let cs = llvm::LLVMConstPointerCast(g, Type::i8p(cx).to_ref());
-        C_struct(cx, [cs, C_uint(cx, len)], false)
+        g
     }
 }
 
