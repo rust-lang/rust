@@ -431,7 +431,7 @@ impl<'a> LabelText<'a> {
             // not escaping \\, since Graphviz escString needs to
             // interpret backslashes; see EscStr above.
             '\\' => f(c),
-            _ => c.escape_default(f)
+            _ => for c in c.escape_default() { f(c) }
         }
     }
     fn escape_str(s: &str) -> String {

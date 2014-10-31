@@ -193,7 +193,7 @@ impl<'a> StringReader<'a> {
     fn fatal_span_char(&self, from_pos: BytePos, to_pos: BytePos, m: &str, c: char) -> ! {
         let mut m = m.to_string();
         m.push_str(": ");
-        char::escape_default(c, |c| m.push(c));
+        for c in c.escape_default() { m.push(c) }
         self.fatal_span_(from_pos, to_pos, m.as_slice());
     }
 
@@ -202,7 +202,7 @@ impl<'a> StringReader<'a> {
     fn err_span_char(&self, from_pos: BytePos, to_pos: BytePos, m: &str, c: char) {
         let mut m = m.to_string();
         m.push_str(": ");
-        char::escape_default(c, |c| m.push(c));
+        for c in c.escape_default() { m.push(c) }
         self.err_span_(from_pos, to_pos, m.as_slice());
     }
 
