@@ -17,6 +17,7 @@ use default::Default;
 use fmt::{mod, Show};
 use hash::{Hash, Hasher, RandomSipHasher};
 use iter::{mod, Iterator, FromIterator, Extendable};
+use kinds::Sized;
 use mem::{mod, replace};
 use num;
 use ops::{Deref, Index, IndexMut};
@@ -419,17 +420,17 @@ impl<K, V, M> SearchResult<K, V, M> {
 }
 
 impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
-    fn make_hash<X: Hash<S>>(&self, x: &X) -> SafeHash {
+    fn make_hash<Sized? X: Hash<S>>(&self, x: &X) -> SafeHash {
         table::make_hash(&self.hasher, x)
     }
 
-    fn search_equiv<'a, Q: Hash<S> + Equiv<K>>(&'a self, q: &Q)
+    fn search_equiv<'a, Sized? Q: Hash<S> + Equiv<K>>(&'a self, q: &Q)
                     -> Option<FullBucketImm<'a, K, V>> {
         let hash = self.make_hash(q);
         search_hashed_generic(&self.table, &hash, |k| q.equiv(k)).into_option()
     }
 
-    fn search_equiv_mut<'a, Q: Hash<S> + Equiv<K>>(&'a mut self, q: &Q)
+    fn search_equiv_mut<'a, Sized? Q: Hash<S> + Equiv<K>>(&'a mut self, q: &Q)
                     -> Option<FullBucketMut<'a, K, V>> {
         let hash = self.make_hash(q);
         search_hashed_generic(&mut self.table, &hash, |k| q.equiv(k)).into_option()
@@ -857,7 +858,7 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     /// using equivalence.
     ///
     /// See [pop_equiv](#method.pop_equiv) for an extended example.
-    pub fn contains_key_equiv<Q: Hash<S> + Equiv<K>>(&self, key: &Q) -> bool {
+    pub fn contains_key_equiv<Sized? Q: Hash<S> + Equiv<K>>(&self, key: &Q) -> bool {
         self.search_equiv(key).is_some()
     }
 
@@ -865,7 +866,7 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     /// equivalence.
     ///
     /// See [pop_equiv](#method.pop_equiv) for an extended example.
-    pub fn find_equiv<'a, Q: Hash<S> + Equiv<K>>(&'a self, k: &Q) -> Option<&'a V> {
+    pub fn find_equiv<'a, Sized? Q: Hash<S> + Equiv<K>>(&'a self, k: &Q) -> Option<&'a V> {
         match self.search_equiv(k) {
             None      => None,
             Some(bucket) => {
@@ -921,7 +922,7 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     ///
     /// ```
     #[experimental]
-    pub fn pop_equiv<Q:Hash<S> + Equiv<K>>(&mut self, k: &Q) -> Option<V> {
+    pub fn pop_equiv<Sized? Q:Hash<S> + Equiv<K>>(&mut self, k: &Q) -> Option<V> {
         if self.table.size() == 0 {
             return None
         }
@@ -1879,11 +1880,11 @@ mod test_map {
         m.insert("baz".to_string(), baz);
 
 
-        assert_eq!(m.find_equiv(&("foo")), Some(&foo));
-        assert_eq!(m.find_equiv(&("bar")), Some(&bar));
-        assert_eq!(m.find_equiv(&("baz")), Some(&baz));
+        assert_eq!(m.find_equiv("foo"), Some(&foo));
+        assert_eq!(m.find_equiv("bar"), Some(&bar));
+        assert_eq!(m.find_equiv("baz"), Some(&baz));
 
-        assert_eq!(m.find_equiv(&("qux")), None);
+        assert_eq!(m.find_equiv("qux"), None);
     }
 
     #[test]

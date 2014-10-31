@@ -75,7 +75,7 @@ impl<T: Eq + Hash + Clone + 'static> Interner<T> {
         (*vect).len()
     }
 
-    pub fn find_equiv<Q:Hash + Equiv<T>>(&self, val: &Q) -> Option<Name> {
+    pub fn find_equiv<Sized? Q: Hash + Equiv<T>>(&self, val: &Q) -> Option<Name> {
         let map = self.map.borrow();
         match (*map).find_equiv(val) {
             Some(v) => Some(*v),
@@ -149,7 +149,7 @@ impl StrInterner {
 
     pub fn intern(&self, val: &str) -> Name {
         let mut map = self.map.borrow_mut();
-        match map.find_equiv(&val) {
+        match map.find_equiv(val) {
             Some(&idx) => return idx,
             None => (),
         }
@@ -195,7 +195,7 @@ impl StrInterner {
         self.vect.borrow().len()
     }
 
-    pub fn find_equiv<Q:Hash + Equiv<RcStr>>(&self, val: &Q) -> Option<Name> {
+    pub fn find_equiv<Sized? Q:Hash + Equiv<RcStr>>(&self, val: &Q) -> Option<Name> {
         match (*self.map.borrow()).find_equiv(val) {
             Some(v) => Some(*v),
             None => None,

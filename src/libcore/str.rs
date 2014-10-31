@@ -1160,9 +1160,9 @@ pub mod traits {
         }
     }
 
-    impl<'a, S: Str> Equiv<S> for &'a str {
+    impl<S: Str> Equiv<S> for str {
         #[inline]
-        fn equiv(&self, other: &S) -> bool { eq_slice(*self, other.as_slice()) }
+        fn equiv(&self, other: &S) -> bool { eq_slice(self, other.as_slice()) }
     }
 
     impl ops::Slice<uint, str> for str {
