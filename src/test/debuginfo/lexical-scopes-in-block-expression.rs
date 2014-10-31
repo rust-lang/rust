@@ -373,8 +373,8 @@
 // lldb-check:[...]$47 = 10
 // lldb-command:continue
 
-#![allow(unused_variable)]
-#![allow(dead_assignment)]
+#![allow(unused_variables)]
+#![allow(unused_assignments)]
 
 static mut MUT_INT: int = 0;
 

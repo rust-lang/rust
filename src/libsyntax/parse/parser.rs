@@ -48,7 +48,7 @@ use ast::{StmtExpr, StmtSemi, StmtMac, StructDef, StructField};
 use ast::{StructVariantKind, BiSub};
 use ast::StrStyle;
 use ast::{SelfExplicit, SelfRegion, SelfStatic, SelfValue};
-use ast::{Delimiter, TokenTree, TraitItem, TraitRef, TtDelimited, TtSequence, TtToken};
+use ast::{Delimited, TokenTree, TraitItem, TraitRef, TtDelimited, TtSequence, TtToken};
 use ast::{TtNonterminal, TupleVariantKind, Ty, Ty_, TyBot};
 use ast::{TypeField, TyFixedLengthVec, TyClosure, TyProc, TyBareFn};
 use ast::{TyTypeof, TyInfer, TypeMethod};
@@ -474,15 +474,15 @@ impl<'a> Parser<'a> {
     /// recover (without consuming any expected input token).  Returns
     /// true if and only if input was consumed for recovery.
     pub fn check_for_erroneous_unit_struct_expecting(&mut self, expected: &[token::Token]) -> bool {
-        if self.token == token::LBrace
-            && expected.iter().all(|t| *t != token::LBrace)
-            && self.look_ahead(1, |t| *t == token::RBrace) {
+        if self.token == token::OpenDelim(token::Brace)
+            && expected.iter().all(|t| *t != token::OpenDelim(token::Brace))
+            && self.look_ahead(1, |t| *t == token::CloseDelim(token::Brace)) {
             // matched; signal non-fatal error and recover.
             let span = self.span;
             self.span_err(span,
                           "unit-like struct construction is written with no trailing `{ }`");
-            self.eat(&token::LBrace);
-            self.eat(&token::RBrace);
+            self.eat(&token::OpenDelim(token::Brace));
+            self.eat(&token::CloseDelim(token::Brace));
             true
         } else {
             false
@@ -1265,8 +1265,8 @@ impl<'a> Parser<'a> {
     /// Parse the items in a trait declaration
     pub fn parse_trait_items(&mut self) -> Vec<TraitItem> {
         self.parse_unspanned_seq(
-            &token::LBrace,
-            &token::RBrace,
+            &token::OpenDelim(token::Brace),
+            &token::CloseDelim(token::Brace),
             seq_sep_none(),
             |p| {
             let attrs = p.parse_outer_attributes();
@@ -1319,7 +1319,7 @@ impl<'a> Parser<'a> {
                         vis: vis,
                     })
                   }
-                  token::LBrace => {
+                  token::OpenDelim(token::Brace) => {
                     debug!("parse_trait_methods(): parsing provided method");
                     let (inner_attrs, body) =
                         p.parse_inner_attrs_and_block();
@@ -1411,9 +1411,9 @@ impl<'a> Parser<'a> {
 
         let lo = self.span.lo;
 
-        let t = if self.token == token::LParen {
+        let t = if self.token == token::OpenDelim(token::Paren) {
             self.bump();
-            if self.token == token::RParen {
+            if self.token == token::CloseDelim(token::Paren) {
                 self.bump();
                 TyNil
             } else {
@@ -1424,7 +1424,7 @@ impl<'a> Parser<'a> {
                 let mut one_tuple = false;
                 while self.token == token::Comma {
                     self.bump();
-                    if self.token != token::RParen {
+                    if self.token != token::CloseDelim(token::Paren) {
                         ts.push(self.parse_ty(true));
                     }
                     else {
@@ -1433,11 +1433,11 @@ impl<'a> Parser<'a> {
                 }
 
                 if ts.len() == 1 && !one_tuple {
-                    self.expect(&token::RParen);
+                    self.expect(&token::CloseDelim(token::Paren));
                     TyParen(ts.into_iter().nth(0).unwrap())
                 } else {
                     let t = TyTup(ts);
-                    self.expect(&token::RParen);
+                    self.expect(&token::CloseDelim(token::Paren));
                     t
                 }
             }
@@ -1446,7 +1446,7 @@ impl<'a> Parser<'a> {
             self.bump();
             let last_span = self.last_span;
             match self.token {
-                token::LBracket => self.obsolete(last_span, ObsoleteOwnedVector),
+                token::OpenDelim(token::Bracket) => self.obsolete(last_span, ObsoleteOwnedVector),
                 _ => self.obsolete(last_span, ObsoleteOwnedType)
             }
             TyUniq(self.parse_ty(false))
@@ -1454,9 +1454,9 @@ impl<'a> Parser<'a> {
             // STAR POINTER (bare pointer?)
             self.bump();
             TyPtr(self.parse_ptr())
-        } else if self.token == token::LBracket {
+        } else if self.token == token::OpenDelim(token::Bracket) {
             // VECTOR
-            self.expect(&token::LBracket);
+            self.expect(&token::OpenDelim(token::Bracket));
             let t = self.parse_ty(true);
 
             // Parse the `, ..e` in `[ int, ..e ]`
@@ -1465,7 +1465,7 @@ impl<'a> Parser<'a> {
                 None => TyVec(t),
                 Some(suffix) => TyFixedLengthVec(t, suffix)
             };
-            self.expect(&token::RBracket);
+            self.expect(&token::CloseDelim(token::Bracket));
             t
         } else if self.token == token::BinOp(token::And) ||
                 self.token == token::AndAnd {
@@ -1490,9 +1490,9 @@ impl<'a> Parser<'a> {
         } else if self.eat_keyword(keywords::Typeof) {
             // TYPEOF
             // In order to not be ambiguous, the type must be surrounded by parens.
-            self.expect(&token::LParen);
+            self.expect(&token::OpenDelim(token::Paren));
             let e = self.parse_expr();
-            self.expect(&token::RParen);
+            self.expect(&token::CloseDelim(token::Paren));
             TyTypeof(e)
         } else if self.eat_keyword(keywords::Proc) {
             self.parse_proc_type()
@@ -1661,7 +1661,10 @@ impl<'a> Parser<'a> {
                 LitBinary(parse::binary_lit(i.as_str())),
             token::LitBinaryRaw(i, _) =>
                 LitBinary(Rc::new(i.as_str().as_bytes().iter().map(|&x| x).collect())),
-            token::LParen => { self.expect(&token::RParen); LitNil },
+            token::OpenDelim(token::Paren) => {
+                self.expect(&token::CloseDelim(token::Paren));
+                LitNil
+            },
             _ => { self.unexpected_last(tok); }
         }
     }
@@ -2013,6 +2016,16 @@ impl<'a> Parser<'a> {
         })
     }
 
+    fn expect_open_delim(&mut self) -> token::DelimToken {
+        match self.token {
+            token::OpenDelim(delim) => {
+                self.bump();
+                delim
+            },
+            _ => self.fatal("expected open delimiter"),
+        }
+    }
+
     /// At the bottom (top?) of the precedence hierarchy,
     /// parse things like parenthesized exprs,
     /// macros, return, etc.
@@ -2025,31 +2038,32 @@ impl<'a> Parser<'a> {
         let ex: Expr_;
 
         match self.token {
-            token::LParen => {
+            token::OpenDelim(token::Paren) => {
                 self.bump();
                 // (e) is parenthesized e
                 // (e,) is a tuple with only one field, e
                 let mut trailing_comma = false;
-                if self.token == token::RParen {
+                if self.token == token::CloseDelim(token::Paren) {
                     hi = self.span.hi;
                     self.bump();
                     let lit = P(spanned(lo, hi, LitNil));
                     return self.mk_expr(lo, hi, ExprLit(lit));
                 }
                 let mut es = vec!(self.parse_expr());
-                self.commit_expr(&**es.last().unwrap(), &[], &[token::Comma, token::RParen]);
+                self.commit_expr(&**es.last().unwrap(), &[],
+                                 &[token::Comma, token::CloseDelim(token::Paren)]);
                 while self.token == token::Comma {
                     self.bump();
-                    if self.token != token::RParen {
+                    if self.token != token::CloseDelim(token::Paren) {
                         es.push(self.parse_expr());
                         self.commit_expr(&**es.last().unwrap(), &[],
-                                         &[token::Comma, token::RParen]);
+                                         &[token::Comma, token::CloseDelim(token::Paren)]);
                     } else {
                         trailing_comma = true;
                     }
                 }
                 hi = self.span.hi;
-                self.commit_expr_expecting(&**es.last().unwrap(), token::RParen);
+                self.commit_expr_expecting(&**es.last().unwrap(), token::CloseDelim(token::Paren));
 
                 return if es.len() == 1 && !trailing_comma {
                    self.mk_expr(lo, hi, ExprParen(es.into_iter().nth(0).unwrap()))
@@ -2057,7 +2071,7 @@ impl<'a> Parser<'a> {
                     self.mk_expr(lo, hi, ExprTup(es))
                 }
             },
-            token::LBrace => {
+            token::OpenDelim(token::Brace) => {
                 self.bump();
                 let blk = self.parse_block_tail(lo, DefaultBlock);
                 return self.mk_expr(blk.span.lo, blk.span.hi,
@@ -2077,10 +2091,10 @@ impl<'a> Parser<'a> {
                 ex = ExprPath(path);
                 hi = self.last_span.hi;
             }
-            token::LBracket => {
+            token::OpenDelim(token::Bracket) => {
                 self.bump();
 
-                if self.token == token::RBracket {
+                if self.token == token::CloseDelim(token::Bracket) {
                     // Empty vector.
                     self.bump();
                     ex = ExprVec(Vec::new());
@@ -2093,13 +2107,13 @@ impl<'a> Parser<'a> {
                         self.bump();
                         self.bump();
                         let count = self.parse_expr();
-                        self.expect(&token::RBracket);
+                        self.expect(&token::CloseDelim(token::Bracket));
                         ex = ExprRepeat(first_expr, count);
                     } else if self.token == token::Comma {
                         // Vector with two or more elements.
                         self.bump();
                         let remaining_exprs = self.parse_seq_to_end(
-                            &token::RBracket,
+                            &token::CloseDelim(token::Bracket),
                             seq_sep_trailing_allowed(token::Comma),
                             |p| p.parse_expr()
                                 );
@@ -2108,7 +2122,7 @@ impl<'a> Parser<'a> {
                         ex = ExprVec(exprs);
                     } else {
                         // Vector with one element.
-                        self.expect(&token::RBracket);
+                        self.expect(&token::CloseDelim(token::Bracket));
                         ex = ExprVec(vec!(first_expr));
                     }
                 }
@@ -2209,14 +2223,9 @@ impl<'a> Parser<'a> {
                         // MACRO INVOCATION expression
                         self.bump();
 
-                        let ket = self.token.get_close_delimiter()
-                            .unwrap_or_else(|| {
-                                self.fatal("expected open delimiter")
-                            });
-                        self.bump();
-
+                        let delim = self.expect_open_delim();
                         let tts = self.parse_seq_to_end(
-                            &ket,
+                            &token::CloseDelim(delim),
                             seq_sep_none(),
                             |p| p.parse_token_tree());
                         let hi = self.span.hi;
@@ -2227,7 +2236,7 @@ impl<'a> Parser<'a> {
                                                            tts,
                                                            EMPTY_CTXT));
                     }
-                    if self.token == token::LBrace {
+                    if self.token == token::OpenDelim(token::Brace) {
                         // This is a struct literal, unless we're prohibited
                         // from parsing struct literals here.
                         if !self.restrictions.contains(RESTRICTION_NO_STRUCT_LITERAL) {
@@ -2236,7 +2245,7 @@ impl<'a> Parser<'a> {
                             let mut fields = Vec::new();
                             let mut base = None;
 
-                            while self.token != token::RBrace {
+                            while self.token != token::CloseDelim(token::Brace) {
                                 if self.eat(&token::DotDot) {
                                     base = Some(self.parse_expr());
                                     break;
@@ -2245,7 +2254,7 @@ impl<'a> Parser<'a> {
                                 fields.push(self.parse_field());
                                 self.commit_expr(&*fields.last().unwrap().expr,
                                                  &[token::Comma],
-                                                 &[token::RBrace]);
+                                                 &[token::CloseDelim(token::Brace)]);
                             }
 
                             if fields.len() == 0 && base.is_none() {
@@ -2258,7 +2267,7 @@ impl<'a> Parser<'a> {
                             }
 
                             hi = self.span.hi;
-                            self.expect(&token::RBrace);
+                            self.expect(&token::CloseDelim(token::Brace));
                             ex = ExprStruct(pth, fields, base);
                             return self.mk_expr(lo, hi, ex);
                         }
@@ -2281,7 +2290,7 @@ impl<'a> Parser<'a> {
     /// Parse a block or unsafe block
     pub fn parse_block_expr(&mut self, lo: BytePos, blk_mode: BlockCheckMode)
                             -> P<Expr> {
-        self.expect(&token::LBrace);
+        self.expect(&token::OpenDelim(token::Brace));
         let blk = self.parse_block_tail(lo, blk_mode);
         return self.mk_expr(blk.span.lo, blk.span.hi, ExprBlock(blk));
     }
@@ -2313,10 +2322,10 @@ impl<'a> Parser<'a> {
 
                     // expr.f() method call
                     match self.token {
-                        token::LParen => {
+                        token::OpenDelim(token::Paren) => {
                             let mut es = self.parse_unspanned_seq(
-                                &token::LParen,
-                                &token::RParen,
+                                &token::OpenDelim(token::Paren),
+                                &token::CloseDelim(token::Paren),
                                 seq_sep_trailing_allowed(token::Comma),
                                 |p| p.parse_expr()
                             );
@@ -2376,10 +2385,10 @@ impl<'a> Parser<'a> {
             if self.expr_is_complete(&*e) { break; }
             match self.token {
               // expr(...)
-              token::LParen => {
+              token::OpenDelim(token::Paren) => {
                 let es = self.parse_unspanned_seq(
-                    &token::LParen,
-                    &token::RParen,
+                    &token::OpenDelim(token::Paren),
+                    &token::CloseDelim(token::Paren),
                     seq_sep_trailing_allowed(token::Comma),
                     |p| p.parse_expr()
                 );
@@ -2393,7 +2402,7 @@ impl<'a> Parser<'a> {
               // Could be either an index expression or a slicing expression.
               // Any slicing non-terminal can have a mutable version with `mut`
               // after the opening square bracket.
-              token::LBracket => {
+              token::OpenDelim(token::Bracket) => {
                 self.bump();
                 let mutbl = if self.eat_keyword(keywords::Mut) {
                     MutMutable
@@ -2402,7 +2411,7 @@ impl<'a> Parser<'a> {
                 };
                 match self.token {
                     // e[]
-                    token::RBracket => {
+                    token::CloseDelim(token::Bracket) => {
                         self.bump();
                         hi = self.span.hi;
                         let slice = self.mk_slice(e, None, None, mutbl);
@@ -2413,7 +2422,7 @@ impl<'a> Parser<'a> {
                         self.bump();
                         match self.token {
                             // e[..]
-                            token::RBracket => {
+                            token::CloseDelim(token::Bracket) => {
                                 self.bump();
                                 hi = self.span.hi;
                                 let slice = self.mk_slice(e, None, None, mutbl);
@@ -2427,7 +2436,7 @@ impl<'a> Parser<'a> {
                             _ => {
                                 hi = self.span.hi;
                                 let e2 = self.parse_expr();
-                                self.commit_expr_expecting(&*e2, token::RBracket);
+                                self.commit_expr_expecting(&*e2, token::CloseDelim(token::Bracket));
                                 let slice = self.mk_slice(e, None, Some(e2), mutbl);
                                 e = self.mk_expr(lo, hi, slice)
                             }
@@ -2442,14 +2451,15 @@ impl<'a> Parser<'a> {
                                 self.bump();
                                 let e2 = match self.token {
                                     // e[e..]
-                                    token::RBracket => {
+                                    token::CloseDelim(token::Bracket) => {
                                         self.bump();
                                         None
                                     }
                                     // e[e..e]
                                     _ => {
                                         let e2 = self.parse_expr();
-                                        self.commit_expr_expecting(&*e2, token::RBracket);
+                                        self.commit_expr_expecting(&*e2,
+                                            token::CloseDelim(token::Bracket));
                                         Some(e2)
                                     }
                                 };
@@ -2464,7 +2474,7 @@ impl<'a> Parser<'a> {
                                                   "`mut` keyword is invalid in index expressions");
                                 }
                                 hi = self.span.hi;
-                                self.commit_expr_expecting(&*ix, token::RBracket);
+                                self.commit_expr_expecting(&*ix, token::CloseDelim(token::Bracket));
                                 let index = self.mk_index(e, ix);
                                 e = self.mk_expr(lo, hi, index)
                             }
@@ -2525,7 +2535,7 @@ impl<'a> Parser<'a> {
         fn parse_non_delim_tt_tok(p: &mut Parser) -> TokenTree {
             maybe_whole!(deref p, NtTT);
             match p.token {
-              token::RParen | token::RBrace | token::RBracket => {
+              token::CloseDelim(_) => {
                   // This is a conservative error: only report the last unclosed delimiter. The
                   // previous unclosed delimiters could actually be closed! The parser just hasn't
                   // gotten to them yet.
@@ -2542,10 +2552,10 @@ impl<'a> Parser<'a> {
                 p.bump();
                 let sp = p.span;
 
-                if p.token == token::LParen {
+                if p.token == token::OpenDelim(token::Paren) {
                     let seq = p.parse_seq(
-                        &token::LParen,
-                        &token::RParen,
+                        &token::OpenDelim(token::Paren),
+                        &token::CloseDelim(token::Paren),
                         seq_sep_none(),
                         |p| p.parse_token_tree()
                     );
@@ -2564,8 +2574,8 @@ impl<'a> Parser<'a> {
             }
         }
 
-        match (&self.token, self.token.get_close_delimiter()) {
-            (&token::Eof, _) => {
+        match self.token {
+            token::Eof => {
                 let open_braces = self.open_braces.clone();
                 for sp in open_braces.iter() {
                     self.span_note(*sp, "Did you mean to close this delimiter?");
@@ -2573,36 +2583,39 @@ impl<'a> Parser<'a> {
                 // There shouldn't really be a span, but it's easier for the test runner
                 // if we give it one
                 self.fatal("this file contains an un-closed delimiter ");
-            }
-            (_, Some(close_delim)) => {
+            },
+            token::OpenDelim(delim) => {
                 // The span for beginning of the delimited section
                 let pre_span = self.span;
 
                 // Parse the open delimiter.
                 self.open_braces.push(self.span);
-                let open = Delimiter {
-                    span: self.span,
-                    token: self.bump_and_get(),
-                };
+                let open_span = self.span;
+                self.bump();
 
                 // Parse the token trees within the delimeters
                 let tts = self.parse_seq_to_before_end(
-                    &close_delim, seq_sep_none(), |p| p.parse_token_tree()
+                    &token::CloseDelim(delim),
+                    seq_sep_none(),
+                    |p| p.parse_token_tree()
                 );
 
                 // Parse the close delimiter.
-                let close = Delimiter {
-                    span: self.span,
-                    token: self.bump_and_get(),
-                };
+                let close_span = self.span;
+                self.bump();
                 self.open_braces.pop().unwrap();
 
                 // Expand to cover the entire delimited token tree
                 let span = Span { hi: self.span.hi, ..pre_span };
 
-                TtDelimited(span, Rc::new((open, tts, close)))
-            }
-            _ => parse_non_delim_tt_tok(self)
+                TtDelimited(span, Rc::new(Delimited {
+                    delim: delim,
+                    open_span: open_span,
+                    tts: tts,
+                    close_span: close_span,
+                }))
+            },
+            _ => parse_non_delim_tt_tok(self),
         }
     }
 
@@ -2621,13 +2634,8 @@ impl<'a> Parser<'a> {
         // the interpolation of Matcher's
         maybe_whole!(self, NtMatchers);
         let mut name_idx = 0u;
-        match self.token.get_close_delimiter() {
-            Some(other_delimiter) => {
-                self.bump();
-                self.parse_matcher_subseq_upto(&mut name_idx, &other_delimiter)
-            }
-            None => self.fatal("expected open delimiter")
-        }
+        let delim = self.expect_open_delim();
+        self.parse_matcher_subseq_upto(&mut name_idx, &token::CloseDelim(delim))
     }
 
     /// This goofy function is necessary to correctly match parens in Matcher's.
@@ -2641,8 +2649,8 @@ impl<'a> Parser<'a> {
         let mut lparens = 0u;
 
         while self.token != *ket || lparens > 0u {
-            if self.token == token::LParen { lparens += 1u; }
-            if self.token == token::RParen { lparens -= 1u; }
+            if self.token == token::OpenDelim(token::Paren) { lparens += 1u; }
+            if self.token == token::CloseDelim(token::Paren) { lparens -= 1u; }
             ret_val.push(self.parse_matcher(name_idx));
         }
 
@@ -2656,11 +2664,11 @@ impl<'a> Parser<'a> {
 
         let m = if self.token == token::Dollar {
             self.bump();
-            if self.token == token::LParen {
+            if self.token == token::OpenDelim(token::Paren) {
                 let name_idx_lo = *name_idx;
                 self.bump();
                 let ms = self.parse_matcher_subseq_upto(name_idx,
-                                                        &token::RParen);
+                                                        &token::CloseDelim(token::Paren));
                 if ms.len() == 0u {
                     self.fatal("repetition body must be nonempty");
                 }
@@ -2717,7 +2725,9 @@ impl<'a> Parser<'a> {
             self.bump();
             let last_span = self.last_span;
             match self.token {
-                token::LBracket => self.obsolete(last_span, ObsoleteOwnedVector),
+                token::OpenDelim(token::Bracket) => {
+                    self.obsolete(last_span, ObsoleteOwnedVector)
+                },
                 _ => self.obsolete(last_span, ObsoleteOwnedExpr)
             }
 
@@ -2730,14 +2740,28 @@ impl<'a> Parser<'a> {
                 return self.parse_dot_or_call_expr();
             }
 
+            let lo = self.span.lo;
+
             self.bump();
 
             // Check for a place: `box(PLACE) EXPR`.
-            if self.eat(&token::LParen) {
+            if self.eat(&token::OpenDelim(token::Paren)) {
                 // Support `box() EXPR` as the default.
-                if !self.eat(&token::RParen) {
+                if !self.eat(&token::CloseDelim(token::Paren)) {
                     let place = self.parse_expr();
-                    self.expect(&token::RParen);
+                    self.expect(&token::CloseDelim(token::Paren));
+                    // Give a suggestion to use `box()` when a parenthesised expression is used
+                    if !self.token.can_begin_expr() {
+                        let span = self.span;
+                        let this_token_to_string = self.this_token_to_string();
+                        self.span_err(span,
+                                      format!("expected expression, found `{}`",
+                                              this_token_to_string).as_slice());
+                        let box_span = mk_sp(lo, self.last_span.hi);
+                        self.span_help(box_span,
+                                       "perhaps you meant `box() (foo)` instead?");
+                        self.abort_if_errors();
+                    }
                     let subexpression = self.parse_prefix_expr();
                     hi = subexpression.span.hi;
                     ex = ExprBox(place, subexpression);
@@ -2966,9 +2990,9 @@ impl<'a> Parser<'a> {
     fn parse_match_expr(&mut self) -> P<Expr> {
         let lo = self.last_span.lo;
         let discriminant = self.parse_expr_res(RESTRICTION_NO_STRUCT_LITERAL);
-        self.commit_expr_expecting(&*discriminant, token::LBrace);
+        self.commit_expr_expecting(&*discriminant, token::OpenDelim(token::Brace));
         let mut arms: Vec<Arm> = Vec::new();
-        while self.token != token::RBrace {
+        while self.token != token::CloseDelim(token::Brace) {
             arms.push(self.parse_arm());
         }
         let hi = self.span.hi;
@@ -2988,10 +3012,10 @@ impl<'a> Parser<'a> {
 
         let require_comma =
             !classify::expr_is_simple_block(&*expr)
-            && self.token != token::RBrace;
+            && self.token != token::CloseDelim(token::Brace);
 
         if require_comma {
-            self.commit_expr(&*expr, &[token::Comma], &[token::RBrace]);
+            self.commit_expr(&*expr, &[token::Comma], &[token::CloseDelim(token::Brace)]);
         } else {
             self.eat(&token::Comma);
         }
@@ -3047,7 +3071,7 @@ impl<'a> Parser<'a> {
         let mut first = true;
         let mut before_slice = true;
 
-        while self.token != token::RBracket {
+        while self.token != token::CloseDelim(token::Bracket) {
             if first {
                 first = false;
             } else {
@@ -3059,7 +3083,7 @@ impl<'a> Parser<'a> {
                     self.bump();
 
                     if self.token == token::Comma ||
-                            self.token == token::RBracket {
+                            self.token == token::CloseDelim(token::Bracket) {
                         slice = Some(P(ast::Pat {
                             id: ast::DUMMY_NODE_ID,
                             node: PatWild(PatWildMulti),
@@ -3095,13 +3119,13 @@ impl<'a> Parser<'a> {
         let mut fields = Vec::new();
         let mut etc = false;
         let mut first = true;
-        while self.token != token::RBrace {
+        while self.token != token::CloseDelim(token::Brace) {
             if first {
                 first = false;
             } else {
                 self.expect(&token::Comma);
                 // accept trailing commas
-                if self.token == token::RBrace { break }
+                if self.token == token::CloseDelim(token::Brace) { break }
             }
 
             let lo = self.span.lo;
@@ -3109,7 +3133,7 @@ impl<'a> Parser<'a> {
 
             if self.token == token::DotDot {
                 self.bump();
-                if self.token != token::RBrace {
+                if self.token != token::CloseDelim(token::Brace) {
                     let token_str = self.this_token_to_string();
                     self.fatal(format!("expected `{}`, found `{}`", "}",
                                        token_str).as_slice())
@@ -3205,10 +3229,10 @@ impl<'a> Parser<'a> {
                 span: mk_sp(lo, hi)
             })
           }
-          token::LParen => {
+          token::OpenDelim(token::Paren) => {
             // parse (pat,pat,pat,...) as tuple
             self.bump();
-            if self.token == token::RParen {
+            if self.token == token::CloseDelim(token::Paren) {
                 hi = self.span.hi;
                 self.bump();
                 let lit = P(codemap::Spanned {
@@ -3218,15 +3242,15 @@ impl<'a> Parser<'a> {
                 pat = PatLit(expr);
             } else {
                 let mut fields = vec!(self.parse_pat());
-                if self.look_ahead(1, |t| *t != token::RParen) {
+                if self.look_ahead(1, |t| *t != token::CloseDelim(token::Paren)) {
                     while self.token == token::Comma {
                         self.bump();
-                        if self.token == token::RParen { break; }
+                        if self.token == token::CloseDelim(token::Paren) { break; }
                         fields.push(self.parse_pat());
                     }
                 }
                 if fields.len() == 1 { self.expect(&token::Comma); }
-                self.expect(&token::RParen);
+                self.expect(&token::CloseDelim(token::Paren));
                 pat = PatTup(fields);
             }
             hi = self.last_span.hi;
@@ -3236,13 +3260,13 @@ impl<'a> Parser<'a> {
                 span: mk_sp(lo, hi)
             })
           }
-          token::LBracket => {
+          token::OpenDelim(token::Bracket) => {
             // parse [pat,pat,...] as vector pattern
             self.bump();
             let (before, slice, after) =
                 self.parse_pat_vec_elements();
 
-            self.expect(&token::RBracket);
+            self.expect(&token::CloseDelim(token::Bracket));
             pat = ast::PatVec(before, slice, after);
             hi = self.last_span.hi;
             return P(ast::Pat {
@@ -3266,7 +3290,7 @@ impl<'a> Parser<'a> {
             let val = self.parse_literal_maybe_minus();
             if (self.token == token::DotDotDot) &&
                     self.look_ahead(1, |t| {
-                        *t != token::Comma && *t != token::RBracket
+                        *t != token::Comma && *t != token::CloseDelim(token::Bracket)
                     }) {
                 self.bump();
                 let end = if self.token.is_ident() || self.token.is_path() {
@@ -3303,15 +3327,14 @@ impl<'a> Parser<'a> {
         } else {
             let can_be_enum_or_struct = self.look_ahead(1, |t| {
                 match *t {
-                    token::LParen | token::LBracket | token::Lt |
-                    token::LBrace | token::ModSep => true,
+                    token::OpenDelim(_) | token::Lt | token::ModSep => true,
                     _ => false,
                 }
             });
 
             if self.look_ahead(1, |t| *t == token::DotDotDot) &&
                     self.look_ahead(2, |t| {
-                        *t != token::Comma && *t != token::RBracket
+                        *t != token::Comma && *t != token::CloseDelim(token::Bracket)
                     }) {
                 let start = self.parse_expr_res(RESTRICTION_NO_BAR_OP);
                 self.eat(&token::DotDotDot);
@@ -3323,11 +3346,8 @@ impl<'a> Parser<'a> {
                 let pth1 = codemap::Spanned{span:id_span, node: id};
                 if self.eat(&token::Not) {
                     // macro invocation
-                    let ket = self.token.get_close_delimiter()
-                                    .unwrap_or_else(|| self.fatal("expected open delimiter"));
-                    self.bump();
-
-                    let tts = self.parse_seq_to_end(&ket,
+                    let delim = self.expect_open_delim();
+                    let tts = self.parse_seq_to_end(&token::CloseDelim(delim),
                                                     seq_sep_none(),
                                                     |p| p.parse_token_tree());
 
@@ -3348,7 +3368,7 @@ impl<'a> Parser<'a> {
                 let enum_path = self.parse_path(LifetimeAndTypesWithColons)
                                     .path;
                 match self.token {
-                    token::LBrace => {
+                    token::OpenDelim(token::Brace) => {
                         self.bump();
                         let (fields, etc) =
                             self.parse_pat_fields();
@@ -3358,7 +3378,7 @@ impl<'a> Parser<'a> {
                     _ => {
                         let mut args: Vec<P<Pat>> = Vec::new();
                         match self.token {
-                          token::LParen => {
+                          token::OpenDelim(token::Paren) => {
                             let is_dotdot = self.look_ahead(1, |t| {
                                 match *t {
                                     token::DotDot => true,
@@ -3369,12 +3389,12 @@ impl<'a> Parser<'a> {
                                 // This is a "top constructor only" pat
                                 self.bump();
                                 self.bump();
-                                self.expect(&token::RParen);
+                                self.expect(&token::CloseDelim(token::Paren));
                                 pat = PatEnum(enum_path, None);
                             } else {
                                 args = self.parse_enum_variant_seq(
-                                    &token::LParen,
-                                    &token::RParen,
+                                    &token::OpenDelim(token::Paren),
+                                    &token::CloseDelim(token::Paren),
                                     seq_sep_trailing_allowed(token::Comma),
                                     |p| p.parse_pat()
                                 );
@@ -3443,7 +3463,7 @@ impl<'a> Parser<'a> {
         // leads to a parse error.  Note that if there is no explicit
         // binding mode then we do not end up here, because the lookahead
         // will direct us over to parse_enum_variant()
-        if self.token == token::LParen {
+        if self.token == token::OpenDelim(token::Paren) {
             let last_span = self.last_span;
             self.span_fatal(
                 last_span,
@@ -3543,18 +3563,17 @@ impl<'a> Parser<'a> {
             let pth = self.parse_path(NoTypesAllowed).path;
             self.bump();
 
-            let id = if self.token.get_close_delimiter().is_some() {
-                token::special_idents::invalid // no special identifier
-            } else {
-                self.parse_ident()
+            let id = match self.token {
+                token::OpenDelim(_) => token::special_idents::invalid, // no special identifier
+                _ => self.parse_ident(),
             };
 
             // check that we're pointing at delimiters (need to check
             // again after the `if`, because of `parse_ident`
             // consuming more tokens).
-            let (bra, ket) = match self.token.get_close_delimiter() {
-                Some(ket) => (self.token.clone(), ket),
-                None      => {
+            let delim = match self.token {
+                token::OpenDelim(delim) => delim,
+                _ => {
                     // we only expect an ident if we didn't parse one
                     // above.
                     let ident_str = if id.name == token::special_idents::invalid.name {
@@ -3566,18 +3585,28 @@ impl<'a> Parser<'a> {
                     self.fatal(format!("expected {}`(` or `{{`, found `{}`",
                                        ident_str,
                                        tok_str).as_slice())
-                }
+                },
             };
 
             let tts = self.parse_unspanned_seq(
-                &bra,
-                &ket,
+                &token::OpenDelim(delim),
+                &token::CloseDelim(delim),
                 seq_sep_none(),
                 |p| p.parse_token_tree()
             );
             let hi = self.span.hi;
 
             if id.name == token::special_idents::invalid.name {
+                if self.token == token::Dot {
+                    let span = self.span;
+                    let token_string = self.this_token_to_string();
+                    self.span_err(span,
+                                  format!("expected statement, found `{}`",
+                                          token_string).as_slice());
+                    let mac_span = mk_sp(lo, hi);
+                    self.span_help(mac_span, "try parenthesizing this macro invocation");
+                    self.abort_if_errors();
+                }
                 P(spanned(lo, hi, StmtMac(
                     spanned(lo, hi, MacInvocTT(pth, tts, EMPTY_CTXT)), false)))
             } else {
@@ -3632,7 +3661,7 @@ impl<'a> Parser<'a> {
         maybe_whole!(no_clone self, NtBlock);
 
         let lo = self.span.lo;
-        self.expect(&token::LBrace);
+        self.expect(&token::OpenDelim(token::Brace));
 
         return self.parse_block_tail_(lo, DefaultBlock, Vec::new());
     }
@@ -3644,7 +3673,7 @@ impl<'a> Parser<'a> {
         maybe_whole!(pair_empty self, NtBlock);
 
         let lo = self.span.lo;
-        self.expect(&token::LBrace);
+        self.expect(&token::OpenDelim(token::Brace));
         let (inner, next) = self.parse_inner_attrs_and_next();
 
         (inner, self.parse_block_tail_(lo, DefaultBlock, next))
@@ -3681,7 +3710,7 @@ impl<'a> Parser<'a> {
 
         let mut attributes_box = attrs_remaining;
 
-        while self.token != token::RBrace {
+        while self.token != token::CloseDelim(token::Brace) {
             // parsing items even when they're not allowed lets us give
             // better error messages and recover more gracefully.
             attributes_box.push_all(self.parse_outer_attributes().as_slice());
@@ -3695,7 +3724,7 @@ impl<'a> Parser<'a> {
                     }
                     self.bump(); // empty
                 }
-                token::RBrace => {
+                token::CloseDelim(token::Brace) => {
                     // fall through and out.
                 }
                 _ => {
@@ -3706,7 +3735,8 @@ impl<'a> Parser<'a> {
                             // expression without semicolon
                             if classify::expr_requires_semi_to_be_stmt(&*e) {
                                 // Just check for errors and recover; do not eat semicolon yet.
-                                self.commit_stmt(&[], &[token::Semi, token::RBrace]);
+                                self.commit_stmt(&[], &[token::Semi,
+                                    token::CloseDelim(token::Brace)]);
                             }
 
                             match self.token {
@@ -3722,7 +3752,7 @@ impl<'a> Parser<'a> {
                                         span: span_with_semi,
                                     }));
                                 }
-                                token::RBrace => {
+                                token::CloseDelim(token::Brace) => {
                                     expr = Some(e);
                                 }
                                 _ => {
@@ -3743,7 +3773,7 @@ impl<'a> Parser<'a> {
                                     }));
                                     self.bump();
                                 }
-                                token::RBrace => {
+                                token::CloseDelim(token::Brace) => {
                                     // if a block ends in `m!(arg)` without
                                     // a `;`, it must be an expr
                                     expr = Some(
@@ -3838,10 +3868,10 @@ impl<'a> Parser<'a> {
                 token::ModSep | token::Ident(..) => {
                     let path =
                         self.parse_path(LifetimeAndTypesWithoutColons).path;
-                    if self.token == token::LParen {
+                    if self.token == token::OpenDelim(token::Paren) {
                         self.bump();
                         let inputs = self.parse_seq_to_end(
-                            &token::RParen,
+                            &token::CloseDelim(token::Paren),
                             seq_sep_trailing_allowed(token::Comma),
                             |p| p.parse_arg_general(false));
                         let (return_style, output) = self.parse_ret_ty();
@@ -4035,14 +4065,14 @@ impl<'a> Parser<'a> {
         let sp = self.span;
         let mut args: Vec<Option<Arg>> =
             self.parse_unspanned_seq(
-                &token::LParen,
-                &token::RParen,
+                &token::OpenDelim(token::Paren),
+                &token::CloseDelim(token::Paren),
                 seq_sep_trailing_allowed(token::Comma),
                 |p| {
                     if p.token == token::DotDotDot {
                         p.bump();
                         if allow_variadic {
-                            if p.token != token::RParen {
+                            if p.token != token::CloseDelim(token::Paren) {
                                 let span = p.span;
                                 p.span_fatal(span,
                                     "`...` must be last in argument list for variadic function");
@@ -4154,7 +4184,7 @@ impl<'a> Parser<'a> {
             }
         }
 
-        self.expect(&token::LParen);
+        self.expect(&token::OpenDelim(token::Paren));
 
         // A bit of complexity and lookahead is needed here in order to be
         // backwards compatible.
@@ -4249,14 +4279,14 @@ impl<'a> Parser<'a> {
                     self.bump();
                     let sep = seq_sep_trailing_allowed(token::Comma);
                     let mut fn_inputs = self.parse_seq_to_before_end(
-                        &token::RParen,
+                        &token::CloseDelim(token::Paren),
                         sep,
                         parse_arg_fn
                     );
                     fn_inputs.insert(0, Arg::new_self(explicit_self_sp, mutbl_self, $self_id));
                     fn_inputs
                 }
-                token::RParen => {
+                token::CloseDelim(token::Paren) => {
                     vec!(Arg::new_self(explicit_self_sp, mutbl_self, $self_id))
                 }
                 _ => {
@@ -4271,7 +4301,7 @@ impl<'a> Parser<'a> {
         let fn_inputs = match explicit_self {
             SelfStatic =>  {
                 let sep = seq_sep_trailing_allowed(token::Comma);
-                self.parse_seq_to_before_end(&token::RParen, sep, parse_arg_fn)
+                self.parse_seq_to_before_end(&token::CloseDelim(token::Paren), sep, parse_arg_fn)
             }
             SelfValue(id) => parse_remaining_arguments!(id),
             SelfRegion(_,_,id) => parse_remaining_arguments!(id),
@@ -4279,7 +4309,7 @@ impl<'a> Parser<'a> {
         };
 
 
-        self.expect(&token::RParen);
+        self.expect(&token::CloseDelim(token::Paren));
 
         let hi = self.span.hi;
 
@@ -4335,8 +4365,8 @@ impl<'a> Parser<'a> {
     /// Parses the `(arg, arg) -> return_type` header on a procedure.
     fn parse_proc_decl(&mut self) -> P<FnDecl> {
         let inputs =
-            self.parse_unspanned_seq(&token::LParen,
-                                     &token::RParen,
+            self.parse_unspanned_seq(&token::OpenDelim(token::Paren),
+                                     &token::CloseDelim(token::Paren),
                                      seq_sep_trailing_allowed(token::Comma),
                                      |p| p.parse_fn_block_arg());
 
@@ -4405,22 +4435,17 @@ impl<'a> Parser<'a> {
         let (method_, hi, new_attrs) = {
             if !self.token.is_any_keyword()
                 && self.look_ahead(1, |t| *t == token::Not)
-                && (self.look_ahead(2, |t| *t == token::LParen)
-                    || self.look_ahead(2, |t| *t == token::LBrace)) {
+                && (self.look_ahead(2, |t| *t == token::OpenDelim(token::Paren))
+                    || self.look_ahead(2, |t| *t == token::OpenDelim(token::Brace))) {
                 // method macro.
                 let pth = self.parse_path(NoTypesAllowed).path;
                 self.expect(&token::Not);
 
                 // eat a matched-delimiter token tree:
-                let tts = match self.token.get_close_delimiter() {
-                    Some(ket) => {
-                        self.bump();
-                        self.parse_seq_to_end(&ket,
-                                              seq_sep_none(),
-                                              |p| p.parse_token_tree())
-                    }
-                    None => self.fatal("expected open delimiter")
-                };
+                let delim = self.expect_open_delim();
+                let tts = self.parse_seq_to_end(&token::CloseDelim(delim),
+                                                seq_sep_none(),
+                                                |p| p.parse_token_tree());
                 let m_ = ast::MacInvocTT(pth, tts, EMPTY_CTXT);
                 let m: ast::Mac = codemap::Spanned { node: m_,
                                                  span: mk_sp(self.span.lo,
@@ -4484,10 +4509,10 @@ impl<'a> Parser<'a> {
 
     fn parse_impl_items(&mut self) -> (Vec<ImplItem>, Vec<Attribute>) {
         let mut impl_items = Vec::new();
-        self.expect(&token::LBrace);
+        self.expect(&token::OpenDelim(token::Brace));
         let (inner_attrs, mut method_attrs) =
             self.parse_inner_attrs_and_next();
-        while !self.eat(&token::RBrace) {
+        while !self.eat(&token::CloseDelim(token::Brace)) {
             method_attrs.extend(self.parse_outer_attributes().into_iter());
             let vis = self.parse_visibility();
             if self.eat_keyword(keywords::Type) {
@@ -4513,7 +4538,7 @@ impl<'a> Parser<'a> {
 
         // Special case: if the next identifier that follows is '(', don't
         // allow this to be parsed as a trait.
-        let could_be_trait = self.token != token::LParen;
+        let could_be_trait = self.token != token::OpenDelim(token::Paren);
 
         // Parse the trait.
         let mut ty = self.parse_ty(true);
@@ -4571,11 +4596,11 @@ impl<'a> Parser<'a> {
         let mut fields: Vec<StructField>;
         let is_tuple_like;
 
-        if self.eat(&token::LBrace) {
+        if self.eat(&token::OpenDelim(token::Brace)) {
             // It's a record-like struct.
             is_tuple_like = false;
             fields = Vec::new();
-            while self.token != token::RBrace {
+            while self.token != token::CloseDelim(token::Brace) {
                 fields.push(self.parse_struct_decl_field());
             }
             if fields.len() == 0 {
@@ -4584,12 +4609,12 @@ impl<'a> Parser<'a> {
                                    token::get_ident(class_name)).as_slice());
             }
             self.bump();
-        } else if self.token == token::LParen {
+        } else if self.token == token::OpenDelim(token::Paren) {
             // It's a tuple-like struct.
             is_tuple_like = true;
             fields = self.parse_unspanned_seq(
-                &token::LParen,
-                &token::RParen,
+                &token::OpenDelim(token::Paren),
+                &token::CloseDelim(token::Paren),
                 seq_sep_trailing_allowed(token::Comma),
                 |p| {
                 let attrs = p.parse_outer_attributes();
@@ -4639,7 +4664,7 @@ impl<'a> Parser<'a> {
             token::Comma => {
                 self.bump();
             }
-            token::RBrace => {}
+            token::CloseDelim(token::Brace) => {}
             _ => {
                 let span = self.span;
                 let token_str = self.this_token_to_string();
@@ -4771,13 +4796,13 @@ impl<'a> Parser<'a> {
             (id, m, Some(attrs))
         } else {
             self.push_mod_path(id, outer_attrs);
-            self.expect(&token::LBrace);
+            self.expect(&token::OpenDelim(token::Brace));
             let mod_inner_lo = self.span.lo;
             let old_owns_directory = self.owns_directory;
             self.owns_directory = true;
             let (inner, next) = self.parse_inner_attrs_and_next();
-            let m = self.parse_mod_items(token::RBrace, next, mod_inner_lo);
-            self.expect(&token::RBrace);
+            let m = self.parse_mod_items(token::CloseDelim(token::Brace), next, mod_inner_lo);
+            self.expect(&token::CloseDelim(token::Brace));
             self.owns_directory = old_owns_directory;
             self.pop_mod_path();
             (id, ItemMod(m), Some(inner))
@@ -4978,7 +5003,7 @@ impl<'a> Parser<'a> {
             self.span_err(last_span,
                           Parser::expected_item_err(attrs_remaining.as_slice()));
         }
-        assert!(self.token == token::RBrace);
+        assert!(self.token == token::CloseDelim(token::Brace));
         ast::ForeignMod {
             abi: abi,
             view_items: view_items,
@@ -5065,13 +5090,13 @@ impl<'a> Parser<'a> {
                               attrs: Vec<Attribute> )
                               -> ItemOrViewItem {
 
-        self.expect(&token::LBrace);
+        self.expect(&token::OpenDelim(token::Brace));
 
         let abi = opt_abi.unwrap_or(abi::C);
 
         let (inner, next) = self.parse_inner_attrs_and_next();
         let m = self.parse_foreign_mod_items(abi, next);
-        self.expect(&token::RBrace);
+        self.expect(&token::CloseDelim(token::Brace));
 
         let last_span = self.last_span;
         let item = self.mk_item(lo,
@@ -5098,7 +5123,7 @@ impl<'a> Parser<'a> {
     /// this should probably be renamed or refactored...
     fn parse_struct_def(&mut self) -> P<StructDef> {
         let mut fields: Vec<StructField> = Vec::new();
-        while self.token != token::RBrace {
+        while self.token != token::CloseDelim(token::Brace) {
             fields.push(self.parse_struct_decl_field());
         }
         self.bump();
@@ -5114,7 +5139,7 @@ impl<'a> Parser<'a> {
         let mut variants = Vec::new();
         let mut all_nullary = true;
         let mut any_disr = None;
-        while self.token != token::RBrace {
+        while self.token != token::CloseDelim(token::Brace) {
             let variant_attrs = self.parse_outer_attributes();
             let vlo = self.span.lo;
 
@@ -5125,15 +5150,15 @@ impl<'a> Parser<'a> {
             let mut args = Vec::new();
             let mut disr_expr = None;
             ident = self.parse_ident();
-            if self.eat(&token::LBrace) {
+            if self.eat(&token::OpenDelim(token::Brace)) {
                 // Parse a struct variant.
                 all_nullary = false;
                 kind = StructVariantKind(self.parse_struct_def());
-            } else if self.token == token::LParen {
+            } else if self.token == token::OpenDelim(token::Paren) {
                 all_nullary = false;
                 let arg_tys = self.parse_enum_variant_seq(
-                    &token::LParen,
-                    &token::RParen,
+                    &token::OpenDelim(token::Paren),
+                    &token::CloseDelim(token::Paren),
                     seq_sep_trailing_allowed(token::Comma),
                     |p| p.parse_ty(true)
                 );
@@ -5164,7 +5189,7 @@ impl<'a> Parser<'a> {
 
             if !self.eat(&token::Comma) { break; }
         }
-        self.expect(&token::RBrace);
+        self.expect(&token::CloseDelim(token::Brace));
         match any_disr {
             Some(disr_span) if !all_nullary =>
                 self.span_err(disr_span,
@@ -5180,7 +5205,7 @@ impl<'a> Parser<'a> {
         let id = self.parse_ident();
         let mut generics = self.parse_generics();
         self.parse_where_clause(&mut generics);
-        self.expect(&token::LBrace);
+        self.expect(&token::OpenDelim(token::Brace));
 
         let enum_definition = self.parse_enum_def(&generics);
         (id, ItemEnum(enum_definition, generics), None)
@@ -5188,7 +5213,7 @@ impl<'a> Parser<'a> {
 
     fn fn_expr_lookahead(tok: &token::Token) -> bool {
         match *tok {
-          token::LParen | token::At | token::Tilde | token::BinOp(_) => true,
+          token::OpenDelim(token::Paren) | token::At | token::Tilde | token::BinOp(_) => true,
           _ => false
         }
     }
@@ -5291,7 +5316,7 @@ impl<'a> Parser<'a> {
                                         visibility,
                                         maybe_append(attrs, extra_attrs));
                 return IoviItem(item);
-            } else if self.token == token::LBrace {
+            } else if self.token == token::OpenDelim(token::Brace) {
                 return self.parse_item_foreign_mod(lo, opt_abi, visibility, attrs);
             }
 
@@ -5356,7 +5381,7 @@ impl<'a> Parser<'a> {
             return IoviItem(item);
         }
         if self.token.is_keyword(keywords::Unsafe)
-            && self.look_ahead(1u, |t| *t != token::LBrace) {
+            && self.look_ahead(1u, |t| *t != token::OpenDelim(token::Brace)) {
             // UNSAFE FUNCTION ITEM
             self.bump();
             let abi = if self.eat_keyword(keywords::Extern) {
@@ -5486,8 +5511,8 @@ impl<'a> Parser<'a> {
         if macros_allowed && !self.token.is_any_keyword()
                 && self.look_ahead(1, |t| *t == token::Not)
                 && (self.look_ahead(2, |t| t.is_plain_ident())
-                    || self.look_ahead(2, |t| *t == token::LParen)
-                    || self.look_ahead(2, |t| *t == token::LBrace)) {
+                    || self.look_ahead(2, |t| *t == token::OpenDelim(token::Paren))
+                    || self.look_ahead(2, |t| *t == token::OpenDelim(token::Brace))) {
             // MACRO INVOCATION ITEM
 
             // item macro.
@@ -5503,15 +5528,10 @@ impl<'a> Parser<'a> {
                 token::special_idents::invalid // no special identifier
             };
             // eat a matched-delimiter token tree:
-            let tts = match self.token.get_close_delimiter() {
-                Some(ket) => {
-                    self.bump();
-                    self.parse_seq_to_end(&ket,
-                                          seq_sep_none(),
-                                          |p| p.parse_token_tree())
-                }
-                None => self.fatal("expected open delimiter")
-            };
+            let delim = self.expect_open_delim();
+            let tts = self.parse_seq_to_end(&token::CloseDelim(delim),
+                                            seq_sep_none(),
+                                            |p| p.parse_token_tree());
             // single-variant-enum... :
             let m = ast::MacInvocTT(pth, tts, EMPTY_CTXT);
             let m: ast::Mac = codemap::Spanned { node: m,
@@ -5573,10 +5593,11 @@ impl<'a> Parser<'a> {
     fn parse_view_path(&mut self) -> P<ViewPath> {
         let lo = self.span.lo;
 
-        if self.token == token::LBrace {
+        if self.token == token::OpenDelim(token::Brace) {
             // use {foo,bar}
             let idents = self.parse_unspanned_seq(
-                &token::LBrace, &token::RBrace,
+                &token::OpenDelim(token::Brace),
+                &token::CloseDelim(token::Brace),
                 seq_sep_trailing_allowed(token::Comma),
                 |p| p.parse_path_list_item());
             let path = ast::Path {
@@ -5631,10 +5652,10 @@ impl<'a> Parser<'a> {
                   }
 
                   // foo::bar::{a,b,c}
-                  token::LBrace => {
+                  token::OpenDelim(token::Brace) => {
                     let idents = self.parse_unspanned_seq(
-                        &token::LBrace,
-                        &token::RBrace,
+                        &token::OpenDelim(token::Brace),
+                        &token::CloseDelim(token::Brace),
                         seq_sep_trailing_allowed(token::Comma),
                         |p| p.parse_path_list_item()
                     );
@@ -5793,7 +5814,7 @@ impl<'a> Parser<'a> {
         loop {
             match self.parse_foreign_item(attrs, macros_allowed) {
                 IoviNone(returned_attrs) => {
-                    if self.token == token::RBrace {
+                    if self.token == token::CloseDelim(token::Brace) {
                         attrs = returned_attrs;
                         break
                     }

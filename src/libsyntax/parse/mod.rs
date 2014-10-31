@@ -799,29 +799,23 @@ mod test {
              ast::TtDelimited(_, ref macro_delimed)]
             if name_macro_rules.as_str() == "macro_rules"
             && name_zip.as_str() == "zip" => {
-                let (ref macro_open, ref macro_tts, ref macro_close) = **macro_delimed;
-                match (macro_open, macro_tts.as_slice(), macro_close) {
-                    (&ast::Delimiter { token: token::LParen, .. },
-                     [ast::TtDelimited(_, ref first_delimed),
-                      ast::TtToken(_, token::FatArrow),
-                      ast::TtDelimited(_, ref second_delimed)],
-                     &ast::Delimiter { token: token::RParen, .. }) => {
-                        let (ref first_open, ref first_tts, ref first_close) = **first_delimed;
-                        match (first_open, first_tts.as_slice(), first_close) {
-                            (&ast::Delimiter { token: token::LParen, .. },
-                             [ast::TtToken(_, token::Dollar),
-                              ast::TtToken(_, token::Ident(name, token::Plain))],
-                             &ast::Delimiter { token: token::RParen, .. })
-                            if name.as_str() == "a" => {},
+                match macro_delimed.tts.as_slice() {
+                    [ast::TtDelimited(_, ref first_delimed),
+                     ast::TtToken(_, token::FatArrow),
+                     ast::TtDelimited(_, ref second_delimed)]
+                    if macro_delimed.delim == token::Paren => {
+                        match first_delimed.tts.as_slice() {
+                            [ast::TtToken(_, token::Dollar),
+                             ast::TtToken(_, token::Ident(name, token::Plain))]
+                            if first_delimed.delim == token::Paren
+                            && name.as_str() == "a" => {},
                             _ => panic!("value 3: {}", **first_delimed),
                         }
-                        let (ref second_open, ref second_tts, ref second_close) = **second_delimed;
-                        match (second_open, second_tts.as_slice(), second_close) {
-                            (&ast::Delimiter { token: token::LParen, .. },
-                             [ast::TtToken(_, token::Dollar),
-                              ast::TtToken(_, token::Ident(name, token::Plain))],
-                             &ast::Delimiter { token: token::RParen, .. })
-                            if name.as_str() == "a" => {},
+                        match second_delimed.tts.as_slice() {
+                            [ast::TtToken(_, token::Dollar),
+                             ast::TtToken(_, token::Ident(name, token::Plain))]
+                            if second_delimed.delim == token::Paren
+                            && name.as_str() == "a" => {},
                             _ => panic!("value 4: {}", **second_delimed),
                         }
                     },
@@ -867,12 +861,10 @@ mod test {
         \"variant\":\"TtDelimited\",\
         \"fields\":[\
             null,\
-            [\
-                {\
-                    \"span\":null,\
-                    \"token\":\"LParen\"\
-                },\
-                [\
+            {\
+                \"delim\":\"Paren\",\
+                \"open_span\":null,\
+                \"tts\":[\
                     {\
                         \"variant\":\"TtToken\",\
                         \"fields\":[\
@@ -907,23 +899,18 @@ mod test {
                         ]\
                     }\
                 ],\
-                {\
-                    \"span\":null,\
-                    \"token\":\"RParen\"\
-                }\
-            ]\
+                \"close_span\":null\
+            }\
         ]\
     },\
     {\
         \"variant\":\"TtDelimited\",\
         \"fields\":[\
             null,\
-            [\
-                {\
-                    \"span\":null,\
-                    \"token\":\"LBrace\"\
-                },\
-                [\
+            {\
+                \"delim\":\"Brace\",\
+                \"open_span\":null,\
+                \"tts\":[\
                     {\
                         \"variant\":\"TtToken\",\
                         \"fields\":[\
@@ -945,11 +932,8 @@ mod test {
                         ]\
                     }\
                 ],\
-                {\
-                    \"span\":null,\
-                    \"token\":\"RBrace\"\
-                }\
-            ]\
+                \"close_span\":null\
+            }\
         ]\
     }\
 ]".to_string()

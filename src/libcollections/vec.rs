@@ -28,8 +28,7 @@ use core::raw::Slice as RawSlice;
 use core::uint;
 
 use {Mutable, MutableSeq};
-use slice::{MutableOrdSlice, MutableSliceAllocating, CloneableVector};
-use slice::{Items, MutItems};
+use slice::{CloneableVector};
 
 /// An owned, growable vector.
 ///
@@ -46,7 +45,7 @@ use slice::{Items, MutItems};
 /// assert_eq!(vec.pop(), Some(2));
 /// assert_eq!(vec.len(), 1);
 ///
-/// *vec.get_mut(0) = 7i;
+/// vec[0] = 7i;
 /// assert_eq!(vec[0], 7);
 ///
 /// vec.push_all([1, 2, 3]);
@@ -414,11 +413,10 @@ impl<T> Index<uint,T> for Vec<T> {
     }
 }
 
-#[cfg(not(stage0))]
 impl<T> IndexMut<uint,T> for Vec<T> {
     #[inline]
     fn index_mut<'a>(&'a mut self, index: &uint) -> &'a mut T {
-        self.get_mut(*index)
+        &mut self.as_mut_slice()[*index]
     }
 }
 
@@ -462,6 +460,16 @@ impl<T> ops::SliceMut<uint, [T]> for Vec<T> {
     fn slice_or_fail_mut<'a>(&'a mut self, start: &uint, end: &uint) -> &'a mut [T] {
         self.as_mut_slice().slice_or_fail_mut(start, end)
     }
+}
+
+#[experimental = "waiting on Deref stability"]
+impl<T> ops::Deref<[T]> for Vec<T> {
+    fn deref<'a>(&'a self) -> &'a [T] { self.as_slice() }
+}
+
+#[experimental = "waiting on DerefMut stability"]
+impl<T> ops::DerefMut<[T]> for Vec<T> {
+    fn deref_mut<'a>(&'a mut self) -> &'a mut [T] { self.as_mut_slice() }
 }
 
 #[experimental = "waiting on FromIterator stability"]
@@ -712,14 +720,6 @@ impl<T> Vec<T> {
         }
     }
 
-    /// Deprecated, use `.extend(other.into_iter())`
-    #[inline]
-    #[deprecated = "use .extend(other.into_iter())"]
-    #[cfg(stage0)]
-    pub fn push_all_move(&mut self, other: Vec<T>) {
-            self.extend(other.into_iter());
-    }
-
     /// Returns a mutable slice of the elements of `self`.
     ///
     /// # Example
@@ -735,7 +735,7 @@ impl<T> Vec<T> {
     pub fn as_mut_slice<'a>(&'a mut self) -> &'a mut [T] {
         unsafe {
             mem::transmute(RawSlice {
-                data: self.as_mut_ptr() as *const T,
+                data: self.ptr as *const T,
                 len: self.len,
             })
         }
@@ -799,132 +799,15 @@ impl<T> Vec<T> {
     /// # Example
     ///
     /// ```
+    /// # #![allow(deprecated)]
     /// let mut vec = vec![1i, 2, 3];
     /// *vec.get_mut(1) = 4;
     /// assert_eq!(vec, vec![1i, 4, 3]);
     /// ```
     #[inline]
-    #[unstable = "this is likely to be moved to actual indexing"]
+    #[deprecated = "use `foo[index] = bar` instead"]
     pub fn get_mut<'a>(&'a mut self, index: uint) -> &'a mut T {
         &mut self.as_mut_slice()[index]
-    }
-
-    /// Returns an iterator over references to the elements of the vector in
-    /// order.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// let vec = vec![1i, 2, 3];
-    /// for num in vec.iter() {
-    ///     println!("{}", *num);
-    /// }
-    /// ```
-    #[inline]
-    pub fn iter<'a>(&'a self) -> Items<'a,T> {
-        self.as_slice().iter()
-    }
-
-    /// Returns an iterator over mutable references to the elements of the
-    /// vector in order.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// let mut vec = vec![1i, 2, 3];
-    /// for num in vec.iter_mut() {
-    ///     *num = 0;
-    /// }
-    /// assert_eq!(vec, vec![0i, 0, 0]);
-    /// ```
-    #[inline]
-    pub fn iter_mut<'a>(&'a mut self) -> MutItems<'a,T> {
-        self.as_mut_slice().iter_mut()
-    }
-
-    /// Sorts the vector, in place, using `compare` to compare elements.
-    ///
-    /// This sort is `O(n log n)` worst-case and stable, but allocates
-    /// approximately `2 * n`, where `n` is the length of `self`.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// let mut v = vec![5i, 4, 1, 3, 2];
-    /// v.sort_by(|a, b| a.cmp(b));
-    /// assert_eq!(v, vec![1i, 2, 3, 4, 5]);
-    ///
-    /// // reverse sorting
-    /// v.sort_by(|a, b| b.cmp(a));
-    /// assert_eq!(v, vec![5i, 4, 3, 2, 1]);
-    /// ```
-    #[inline]
-    pub fn sort_by(&mut self, compare: |&T, &T| -> Ordering) {
-        self.as_mut_slice().sort_by(compare)
-    }
-
-    /// Returns a slice of self spanning the interval [`start`, `end`).
-    ///
-    /// # Failure
-    ///
-    /// Fails when the slice (or part of it) is outside the bounds of self, or when
-    /// `start` > `end`.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// let vec = vec![1i, 2, 3, 4];
-    /// assert!(vec[0..2] == [1, 2]);
-    /// ```
-    #[inline]
-    pub fn slice<'a>(&'a self, start: uint, end: uint) -> &'a [T] {
-        self[start..end]
-    }
-
-    /// Returns a slice containing all but the first element of the vector.
-    ///
-    /// # Failure
-    ///
-    /// Fails when the vector is empty.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// let vec = vec![1i, 2, 3];
-    /// assert!(vec.tail() == [2, 3]);
-    /// ```
-    #[inline]
-    pub fn tail<'a>(&'a self) -> &'a [T] {
-        self[].tail()
-    }
-
-    /// Returns a reference to the last element of a vector, or `None` if it is
-    /// empty.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// let vec = vec![1i, 2, 3];
-    /// assert!(vec.last() == Some(&3));
-    /// ```
-    #[inline]
-    pub fn last<'a>(&'a self) -> Option<&'a T> {
-        self[].last()
-    }
-
-    /// Returns a mutable reference to the last element of a vector, or `None`
-    /// if it is empty.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// let mut vec = vec![1i, 2, 3];
-    /// *vec.last_mut().unwrap() = 4;
-    /// assert_eq!(vec, vec![1i, 2, 4]);
-    /// ```
-    #[inline]
-    pub fn last_mut<'a>(&'a mut self) -> Option<&'a mut T> {
-        self.as_mut_slice().last_mut()
     }
 
     /// Removes an element from anywhere in the vector and return it, replacing
@@ -1035,215 +918,6 @@ impl<T> Vec<T> {
         }
     }
 
-    /// Returns a mutable slice of `self` between `start` and `end`.
-    ///
-    /// # Failure
-    ///
-    /// Fails when `start` or `end` point outside the bounds of `self`, or when
-    /// `start` > `end`.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// let mut vec = vec![1i, 2, 3, 4];
-    /// assert!(vec[mut 0..2] == [1, 2]);
-    /// ```
-    #[inline]
-    pub fn slice_mut<'a>(&'a mut self, start: uint, end: uint)
-                         -> &'a mut [T] {
-        self[mut start..end]
-    }
-
-    /// Returns a mutable slice of `self` from `start` to the end of the `Vec`.
-    ///
-    /// # Failure
-    ///
-    /// Fails when `start` points outside the bounds of self.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// let mut vec = vec![1i, 2, 3, 4];
-    /// assert!(vec[mut 2..] == [3, 4]);
-    /// ```
-    #[inline]
-    pub fn slice_from_mut<'a>(&'a mut self, start: uint) -> &'a mut [T] {
-        self[mut start..]
-    }
-
-    /// Returns a mutable slice of `self` from the start of the `Vec` to `end`.
-    ///
-    /// # Failure
-    ///
-    /// Fails when `end` points outside the bounds of self.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// let mut vec = vec![1i, 2, 3, 4];
-    /// assert!(vec[mut ..2] == [1, 2]);
-    /// ```
-    #[inline]
-    pub fn slice_to_mut<'a>(&'a mut self, end: uint) -> &'a mut [T] {
-        self[mut ..end]
-    }
-
-    /// Returns a pair of mutable slices that divides the `Vec` at an index.
-    ///
-    /// The first will contain all indices from `[0, mid)` (excluding
-    /// the index `mid` itself) and the second will contain all
-    /// indices from `[mid, len)` (excluding the index `len` itself).
-    ///
-    /// # Failure
-    ///
-    /// Fails if `mid > len`.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// let mut vec = vec![1i, 2, 3, 4, 5, 6];
-    ///
-    /// // scoped to restrict the lifetime of the borrows
-    /// {
-    ///    let (left, right) = vec.split_at_mut(0);
-    ///    assert!(left == &mut []);
-    ///    assert!(right == &mut [1, 2, 3, 4, 5, 6]);
-    /// }
-    ///
-    /// {
-    ///     let (left, right) = vec.split_at_mut(2);
-    ///     assert!(left == &mut [1, 2]);
-    ///     assert!(right == &mut [3, 4, 5, 6]);
-    /// }
-    ///
-    /// {
-    ///     let (left, right) = vec.split_at_mut(6);
-    ///     assert!(left == &mut [1, 2, 3, 4, 5, 6]);
-    ///     assert!(right == &mut []);
-    /// }
-    /// ```
-    #[inline]
-    pub fn split_at_mut<'a>(&'a mut self, mid: uint) -> (&'a mut [T], &'a mut [T]) {
-        self[mut].split_at_mut(mid)
-    }
-
-    /// Reverses the order of elements in a vector, in place.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// let mut v = vec![1i, 2, 3];
-    /// v.reverse();
-    /// assert_eq!(v, vec![3i, 2, 1]);
-    /// ```
-    #[inline]
-    pub fn reverse(&mut self) {
-        self[mut].reverse()
-    }
-
-    /// Returns a slice of `self` from `start` to the end of the vec.
-    ///
-    /// # Failure
-    ///
-    /// Fails when `start` points outside the bounds of self.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// let vec = vec![1i, 2, 3];
-    /// assert!(vec[1..] == [2, 3]);
-    /// ```
-    #[inline]
-    pub fn slice_from<'a>(&'a self, start: uint) -> &'a [T] {
-        self[start..]
-    }
-
-    /// Returns a slice of self from the start of the vec to `end`.
-    ///
-    /// # Failure
-    ///
-    /// Fails when `end` points outside the bounds of self.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// let vec = vec![1i, 2, 3, 4];
-    /// assert!(vec[..2] == [1, 2]);
-    /// ```
-    #[inline]
-    pub fn slice_to<'a>(&'a self, end: uint) -> &'a [T] {
-        self[..end]
-    }
-
-    /// Returns a slice containing all but the last element of the vector.
-    ///
-    /// # Failure
-    ///
-    /// Fails if the vector is empty
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// let vec = vec![1i, 2, 3];
-    /// assert!(vec.init() == [1, 2]);
-    /// ```
-    #[inline]
-    pub fn init<'a>(&'a self) -> &'a [T] {
-        self[0..self.len() - 1]
-    }
-
-
-    /// Returns an unsafe pointer to the vector's buffer.
-    ///
-    /// The caller must ensure that the vector outlives the pointer this
-    /// function returns, or else it will end up pointing to garbage.
-    ///
-    /// Modifying the vector may cause its buffer to be reallocated, which
-    /// would also make any pointers to it invalid.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// let v = vec![1i, 2, 3];
-    /// let p = v.as_ptr();
-    /// unsafe {
-    ///     // Examine each element manually
-    ///     assert_eq!(*p, 1i);
-    ///     assert_eq!(*p.offset(1), 2i);
-    ///     assert_eq!(*p.offset(2), 3i);
-    /// }
-    /// ```
-    #[inline]
-    pub fn as_ptr(&self) -> *const T {
-        self.ptr as *const T
-    }
-
-    /// Returns a mutable unsafe pointer to the vector's buffer.
-    ///
-    /// The caller must ensure that the vector outlives the pointer this
-    /// function returns, or else it will end up pointing to garbage.
-    ///
-    /// Modifying the vector may cause its buffer to be reallocated, which
-    /// would also make any pointers to it invalid.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// use std::ptr;
-    ///
-    /// let mut v = vec![1i, 2, 3];
-    /// let p = v.as_mut_ptr();
-    /// unsafe {
-    ///     ptr::write(p, 9i);
-    ///     ptr::write(p.offset(2), 5i);
-    /// }
-    /// assert_eq!(v, vec![9i, 2, 5]);
-    /// ```
-    #[inline]
-    pub fn as_mut_ptr(&mut self) -> *mut T {
-        self.ptr
-    }
-
     /// Retains only the elements specified by the predicate.
     ///
     /// In other words, remove all elements `e` such that `f(&e)` returns false.
@@ -1297,24 +971,6 @@ impl<T> Vec<T> {
     }
 }
 
-impl<T:Ord> Vec<T> {
-    /// Sorts the vector in place.
-    ///
-    /// This sort is `O(n log n)` worst-case and stable, but allocates
-    /// approximately `2 * n`, where `n` is the length of `self`.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// let mut vec = vec![3i, 1, 2];
-    /// vec.sort();
-    /// assert_eq!(vec, vec![1, 2, 3]);
-    /// ```
-    pub fn sort(&mut self) {
-        self.as_mut_slice().sort()
-    }
-}
-
 #[experimental = "waiting on Mutable stability"]
 impl<T> Mutable for Vec<T> {
     #[inline]
@@ -1325,19 +981,6 @@ impl<T> Mutable for Vec<T> {
 }
 
 impl<T: PartialEq> Vec<T> {
-    /// Returns true if a vector contains an element equal to the given value.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// let vec = vec![1i, 2, 3];
-    /// assert!(vec.contains(&1));
-    /// ```
-    #[inline]
-    pub fn contains(&self, x: &T) -> bool {
-        self.as_slice().contains(x)
-    }
-
     /// Removes consecutive repeated elements in the vector.
     ///
     /// If the vector is sorted, this removes all duplicates.
@@ -1449,7 +1092,12 @@ impl<T> AsSlice<T> for Vec<T> {
     #[inline]
     #[stable]
     fn as_slice<'a>(&'a self) -> &'a [T] {
-        unsafe { mem::transmute(RawSlice { data: self.as_ptr(), len: self.len }) }
+        unsafe {
+            mem::transmute(RawSlice {
+                data: self.ptr as *const T,
+                len: self.len
+            })
+        }
     }
 }
 
@@ -1697,6 +1345,7 @@ pub fn as_vec<'a, T>(x: &'a [T]) -> DerefVec<'a, T> {
 pub mod raw {
     use super::Vec;
     use core::ptr;
+    use core::slice::MutableSlice;
 
     /// Constructs a vector from an unsafe pointer to a buffer.
     ///

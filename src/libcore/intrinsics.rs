@@ -42,7 +42,7 @@ A quick refresher on memory ordering:
 */
 
 #![experimental]
-#![allow(missing_doc)]
+#![allow(missing_docs)]
 
 pub type GlueFn = extern "Rust" fn(*const i8);
 
@@ -57,105 +57,8 @@ pub struct TyDesc {
     // Called when a value of type `T` is no longer needed
     pub drop_glue: GlueFn,
 
-    // Called by reflection visitor to visit a value of type `T`
-    #[cfg(stage0)]
-    pub visit_glue: GlueFn,
-
     // Name corresponding to the type
     pub name: &'static str,
-}
-
-#[cfg(stage0)]
-#[lang="opaque"]
-pub enum Opaque { }
-
-#[cfg(stage0)]
-pub type Disr = u64;
-
-#[cfg(stage0)]
-#[lang="ty_visitor"]
-pub trait TyVisitor {
-    fn visit_bot(&mut self) -> bool;
-    fn visit_nil(&mut self) -> bool;
-    fn visit_bool(&mut self) -> bool;
-
-    fn visit_int(&mut self) -> bool;
-    fn visit_i8(&mut self) -> bool;
-    fn visit_i16(&mut self) -> bool;
-    fn visit_i32(&mut self) -> bool;
-    fn visit_i64(&mut self) -> bool;
-
-    fn visit_uint(&mut self) -> bool;
-    fn visit_u8(&mut self) -> bool;
-    fn visit_u16(&mut self) -> bool;
-    fn visit_u32(&mut self) -> bool;
-    fn visit_u64(&mut self) -> bool;
-
-    fn visit_f32(&mut self) -> bool;
-    fn visit_f64(&mut self) -> bool;
-
-    fn visit_char(&mut self) -> bool;
-
-    fn visit_estr_slice(&mut self) -> bool;
-
-    fn visit_box(&mut self, mtbl: uint, inner: *const TyDesc) -> bool;
-    fn visit_uniq(&mut self, mtbl: uint, inner: *const TyDesc) -> bool;
-    fn visit_ptr(&mut self, mtbl: uint, inner: *const TyDesc) -> bool;
-    fn visit_rptr(&mut self, mtbl: uint, inner: *const TyDesc) -> bool;
-
-    fn visit_evec_slice(&mut self, mtbl: uint, inner: *const TyDesc) -> bool;
-    fn visit_evec_fixed(&mut self, n: uint, sz: uint, align: uint,
-                        inner: *const TyDesc) -> bool;
-
-    fn visit_enter_rec(&mut self, n_fields: uint,
-                       sz: uint, align: uint) -> bool;
-    fn visit_rec_field(&mut self, i: uint, name: &str,
-                       mtbl: uint, inner: *const TyDesc) -> bool;
-    fn visit_leave_rec(&mut self, n_fields: uint,
-                       sz: uint, align: uint) -> bool;
-
-    fn visit_enter_class(&mut self, name: &str, named_fields: bool, n_fields: uint,
-                         sz: uint, align: uint) -> bool;
-    fn visit_class_field(&mut self, i: uint, name: &str, named: bool,
-                         mtbl: uint, inner: *const TyDesc) -> bool;
-    fn visit_leave_class(&mut self, name: &str, named_fields: bool, n_fields: uint,
-                         sz: uint, align: uint) -> bool;
-
-    fn visit_enter_tup(&mut self, n_fields: uint,
-                       sz: uint, align: uint) -> bool;
-    fn visit_tup_field(&mut self, i: uint, inner: *const TyDesc) -> bool;
-    fn visit_leave_tup(&mut self, n_fields: uint,
-                       sz: uint, align: uint) -> bool;
-
-    fn visit_enter_enum(&mut self, n_variants: uint,
-                        get_disr: unsafe extern fn(ptr: *const Opaque) -> Disr,
-                        sz: uint, align: uint) -> bool;
-    fn visit_enter_enum_variant(&mut self, variant: uint,
-                                disr_val: Disr,
-                                n_fields: uint,
-                                name: &str) -> bool;
-    fn visit_enum_variant_field(&mut self, i: uint, offset: uint,
-                                inner: *const TyDesc) -> bool;
-    fn visit_leave_enum_variant(&mut self, variant: uint,
-                                disr_val: Disr,
-                                n_fields: uint,
-                                name: &str) -> bool;
-    fn visit_leave_enum(&mut self, n_variants: uint,
-                        get_disr: unsafe extern fn(ptr: *const Opaque) -> Disr,
-                        sz: uint, align: uint) -> bool;
-
-    fn visit_enter_fn(&mut self, purity: uint, proto: uint,
-                      n_inputs: uint, retstyle: uint) -> bool;
-    fn visit_fn_input(&mut self, i: uint, mode: uint,
-                      inner: *const TyDesc) -> bool;
-    fn visit_fn_output(&mut self, retstyle: uint, variadic: bool,
-                       converging: bool, inner: *const TyDesc) -> bool;
-    fn visit_leave_fn(&mut self, purity: uint, proto: uint,
-                      n_inputs: uint, retstyle: uint) -> bool;
-
-    fn visit_trait(&mut self, name: &str) -> bool;
-    fn visit_param(&mut self, i: uint) -> bool;
-    fn visit_self(&mut self) -> bool;
 }
 
 extern "rust-intrinsic" {

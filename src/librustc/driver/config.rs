@@ -498,7 +498,7 @@ pub fn get_os(triple: &str) -> Option<abi::Os> {
     }
     None
 }
-#[allow(non_uppercase_statics)]
+#[allow(non_upper_case_globals)]
 static os_names : &'static [(&'static str, abi::Os)] = &[
     ("mingw32",   abi::OsWindows),
     ("win32",     abi::OsWindows),
@@ -516,7 +516,7 @@ pub fn get_arch(triple: &str) -> Option<abi::Architecture> {
     }
     None
 }
-#[allow(non_uppercase_statics)]
+#[allow(non_upper_case_globals)]
 static architecture_abis : &'static [(&'static str, abi::Architecture)] = &[
     ("i386",   abi::X86),
     ("i486",   abi::X86),

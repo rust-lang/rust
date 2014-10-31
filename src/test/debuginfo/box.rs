@@ -33,7 +33,7 @@
 // lldb-command:print *b
 // lldb-check:[...]$1 = (2, 3.5)
 
-#![allow(unused_variable)]
+#![allow(unused_variables)]
 
 fn main() {
     let a = box 1i;

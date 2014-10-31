@@ -11,7 +11,7 @@
 //! A simple map based on a vector for small integer keys. Space requirements
 //! are O(highest integer key).
 
-#![allow(missing_doc)]
+#![allow(missing_docs)]
 
 use core::prelude::*;
 
@@ -100,7 +100,7 @@ impl<V> MutableMap<uint, V> for SmallIntMap<V> {
     /// Returns a mutable reference to the value corresponding to the key.
     fn find_mut<'a>(&'a mut self, key: &uint) -> Option<&'a mut V> {
         if *key < self.v.len() {
-            match *self.v.get_mut(*key) {
+            match *self.v.index_mut(key) {
               Some(ref mut value) => Some(value),
               None => None
             }
@@ -118,7 +118,7 @@ impl<V> MutableMap<uint, V> for SmallIntMap<V> {
         if len <= key {
             self.v.grow_fn(key - len + 1, |_| None);
         }
-        *self.v.get_mut(key) = Some(value);
+        self.v[key] = Some(value);
         !exists
     }
 
@@ -145,7 +145,7 @@ impl<V> MutableMap<uint, V> for SmallIntMap<V> {
         if *key >= self.v.len() {
             return None;
         }
-        self.v.get_mut(*key).take()
+        self.v[*key].take()
     }
 }
 
@@ -405,13 +405,12 @@ impl<V> Index<uint, V> for SmallIntMap<V> {
     }
 }
 
-// FIXME(#12825) Indexing will always try IndexMut first and that causes issues.
-/*impl<V> IndexMut<uint, V> for SmallIntMap<V> {
+impl<V> IndexMut<uint, V> for SmallIntMap<V> {
     #[inline]
     fn index_mut<'a>(&'a mut self, i: &uint) -> &'a mut V {
         self.find_mut(i).expect("key not present")
     }
-}*/
+}
 
 macro_rules! iterator {
     (impl $name:ident -> $elem:ty, $($getter:ident),+) => {

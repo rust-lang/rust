@@ -10,7 +10,7 @@
 //
 // ignore-lexer-test FIXME #15679
 
-#![allow(missing_doc)]
+#![allow(missing_docs)]
 
 use char;
 use clone::Clone;
@@ -424,10 +424,10 @@ pub fn float_to_str_bytes_common<T:NumCast+Zero+One+PartialEq+PartialOrd+Float+
                     // or set to 0 if max and carry the 1.
                     let current_digit = ascii2value(buf[i as uint]);
                     if current_digit < (radix - 1) {
-                        *buf.get_mut(i as uint) = value2ascii(current_digit+1);
+                        buf[i as uint] = value2ascii(current_digit+1);
                         break;
                     } else {
-                        *buf.get_mut(i as uint) = value2ascii(0);
+                        buf[i as uint] = value2ascii(0);
                         i -= 1;
                     }
                 }

@@ -12,7 +12,7 @@
 // Copyright (c) 2011 Google Inc.
 
 #![forbid(non_camel_case_types)]
-#![allow(missing_doc)]
+#![allow(missing_docs)]
 
 /*!
 JSON parsing and serialization
@@ -1231,7 +1231,7 @@ impl Stack {
             InternalIndex(i) => { i + 1 }
             _ => { panic!(); }
         };
-        *self.stack.get_mut(len - 1) = InternalIndex(idx);
+        self.stack[len - 1] = InternalIndex(idx);
     }
 }
 

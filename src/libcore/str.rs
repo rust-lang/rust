@@ -768,7 +768,7 @@ Section: Comparing strings
 /// to compare &[u8] byte slices that are not necessarily valid UTF-8.
 #[inline]
 fn eq_slice_(a: &str, b: &str) -> bool {
-    #[allow(ctypes)]
+    #[allow(improper_ctypes)]
     extern { fn memcmp(s1: *const i8, s2: *const i8, n: uint) -> i32; }
     a.len() == b.len() && unsafe {
         memcmp(a.as_ptr() as *const i8,
@@ -1118,7 +1118,7 @@ pub mod raw {
 Section: Trait implementations
 */
 
-#[allow(missing_doc)]
+#[allow(missing_docs)]
 pub mod traits {
     use cmp::{Ord, Ordering, Less, Equal, Greater, PartialEq, PartialOrd, Equiv, Eq};
     use collections::Collection;

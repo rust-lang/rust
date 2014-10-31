@@ -28,7 +28,7 @@
 //! one function. Currently, the actual symbol is declared in the standard
 //! library, but the location of this may change over time.
 
-#![allow(dead_code, missing_doc)]
+#![allow(dead_code, missing_docs)]
 
 use fmt;
 use intrinsics;
@@ -63,7 +63,7 @@ fn panic_bounds_check(file_line: &(&'static str, uint),
 #[cfg(stage0)]
 #[cold] #[inline(never)]
 pub fn panic_fmt(fmt: &fmt::Arguments, file_line: &(&'static str, uint)) -> ! {
-    #[allow(ctypes)]
+    #[allow(improper_ctypes)]
     extern {
         #[lang = "fail_fmt"]
         fn panic_impl(fmt: &fmt::Arguments, file: &'static str,
@@ -104,7 +104,7 @@ fn panic_bounds_check(file_line: &(&'static str, uint),
 #[cfg(not(stage0))]
 #[cold] #[inline(never)]
 pub fn panic_fmt(fmt: &fmt::Arguments, file_line: &(&'static str, uint)) -> ! {
-    #[allow(ctypes)]
+    #[allow(improper_ctypes)]
     extern {
         #[lang = "panic_fmt"]
         fn panic_impl(fmt: &fmt::Arguments, file: &'static str,

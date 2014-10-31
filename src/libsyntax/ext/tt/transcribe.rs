@@ -129,8 +129,7 @@ impl Add<LockstepIterSize, LockstepIterSize> for LockstepIterSize {
 fn lockstep_iter_size(t: &TokenTree, r: &TtReader) -> LockstepIterSize {
     match *t {
         TtDelimited(_, ref delimed) => {
-            let (_, ref tts, _) = **delimed;
-            tts.iter().fold(LisUnconstrained, |size, tt| {
+            delimed.tts.iter().fold(LisUnconstrained, |size, tt| {
                 size + lockstep_iter_size(tt, r)
             })
         },
@@ -207,14 +206,13 @@ pub fn tt_next_token(r: &mut TtReader) -> TokenAndSpan {
         };
         match t {
             TtDelimited(_, ref delimed) => {
-                let (ref open, ref tts, ref close) = **delimed;
-                let mut forest = Vec::with_capacity(1 + tts.len() + 1);
-                forest.push(open.to_tt());
-                forest.extend(tts.iter().map(|x| (*x).clone()));
-                forest.push(close.to_tt());
+                let mut tts = Vec::with_capacity(1 + delimed.tts.len() + 1);
+                tts.push(delimed.open_tt());
+                tts.extend(delimed.tts.iter().map(|tt| tt.clone()));
+                tts.push(delimed.close_tt());
 
                 r.stack.push(TtFrame {
-                    forest: Rc::new(forest),
+                    forest: Rc::new(tts),
                     idx: 0,
                     dotdotdoted: false,
                     sep: None

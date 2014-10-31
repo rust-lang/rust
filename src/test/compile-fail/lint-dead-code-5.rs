@@ -9,7 +9,7 @@
 // except according to those terms.
 
 #![feature(struct_variant)]
-#![allow(unused_variable)]
+#![allow(unused_variables)]
 #![deny(dead_code)]
 
 enum Enum1 {

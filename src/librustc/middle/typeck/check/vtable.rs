@@ -402,15 +402,25 @@ pub fn maybe_report_ambiguity(fcx: &FnCtxt, obligation: &Obligation) {
         // has_errors() to be sure that compilation isn't happening
         // anyway. In that case, why inundate the user.
         if !fcx.tcx().sess.has_errors() {
-            fcx.tcx().sess.span_err(
-                obligation.cause.span,
-                format!(
-                    "unable to infer enough type information to \
-                     locate the impl of the trait `{}` for \
-                     the type `{}`; type annotations required",
-                    trait_ref.user_string(fcx.tcx()),
-                    self_ty.user_string(fcx.tcx())).as_slice());
-            note_obligation_cause(fcx, obligation);
+            if fcx.ccx.tcx.lang_items.sized_trait()
+                  .map_or(false, |sized_id| sized_id == trait_ref.def_id) {
+                fcx.tcx().sess.span_err(
+                    obligation.cause.span,
+                    format!(
+                        "unable to infer enough type information about `{}`; type annotations \
+                         required",
+                        self_ty.user_string(fcx.tcx())).as_slice());
+            } else {
+                fcx.tcx().sess.span_err(
+                    obligation.cause.span,
+                    format!(
+                        "unable to infer enough type information to \
+                         locate the impl of the trait `{}` for \
+                         the type `{}`; type annotations required",
+                        trait_ref.user_string(fcx.tcx()),
+                        self_ty.user_string(fcx.tcx())).as_slice());
+                note_obligation_cause(fcx, obligation);
+            }
         }
     } else if !fcx.tcx().sess.has_errors() {
          // Ambiguity. Coherence should have reported an error.

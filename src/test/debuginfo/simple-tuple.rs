@@ -95,7 +95,7 @@
 // lldb-command:print paddingAtEnd
 // lldb-check:[...]$6 = (15, 16)
 
-#![allow(unused_variable)]
+#![allow(unused_variables)]
 #![allow(dead_code)]
 
 static mut NO_PADDING_8: (i8, u8) = (-50, 50);

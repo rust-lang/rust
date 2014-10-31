@@ -12,7 +12,7 @@
 // injected intrinsics by the compiler.
 #![feature(struct_variant)]
 #![feature(globs)]
-#![deny(missing_doc)]
+#![deny(missing_docs)]
 #![allow(dead_code)]
 
 //! Some garbage docs for the crate here
@@ -28,7 +28,7 @@ pub struct PubFoo { //~ ERROR: missing documentation
     b: int,
 }
 
-#[allow(missing_doc)]
+#[allow(missing_docs)]
 pub struct PubFoo2 {
     pub a: int,
     pub c: int,
@@ -41,7 +41,7 @@ pub mod pub_module_no_dox {} //~ ERROR: missing documentation
 pub fn foo() {}
 pub fn foo2() {} //~ ERROR: missing documentation
 fn foo3() {}
-#[allow(missing_doc)] pub fn foo4() {}
+#[allow(missing_docs)] pub fn foo4() {}
 
 /// dox
 pub trait A {
@@ -50,7 +50,7 @@ pub trait A {
     /// dox
     fn foo_with_impl() {}
 }
-#[allow(missing_doc)]
+#[allow(missing_docs)]
 trait B {
     fn foo();
     fn foo_with_impl() {}
@@ -59,7 +59,7 @@ pub trait C { //~ ERROR: missing documentation
     fn foo(); //~ ERROR: missing documentation
     fn foo_with_impl() {} //~ ERROR: missing documentation
 }
-#[allow(missing_doc)] pub trait D {}
+#[allow(missing_docs)] pub trait D {}
 
 impl Foo {
     pub fn foo() {}
@@ -71,10 +71,10 @@ impl PubFoo {
     /// dox
     pub fn foo1() {}
     fn foo2() {}
-    #[allow(missing_doc)] pub fn foo3() {}
+    #[allow(missing_docs)] pub fn foo3() {}
 }
 
-#[allow(missing_doc)]
+#[allow(missing_docs)]
 trait F {
     fn a();
     fn b(&self);
@@ -86,7 +86,7 @@ impl F for Foo {
     fn b(&self) {}
 }
 
-// It sure is nice if doc(hidden) implies allow(missing_doc), and that it
+// It sure is nice if doc(hidden) implies allow(missing_docs), and that it
 // applies recursively
 #[doc(hidden)]
 mod a {
@@ -121,7 +121,7 @@ pub enum PubBaz2 {
     },
 }
 
-#[allow(missing_doc)]
+#[allow(missing_docs)]
 pub enum PubBaz3 {
     PubBaz3A {
         pub a: int,

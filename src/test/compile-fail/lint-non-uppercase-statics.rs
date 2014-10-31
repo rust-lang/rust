@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![forbid(non_uppercase_statics)]
+#![forbid(non_upper_case_globals)]
 #![allow(dead_code)]
 
 static foo: int = 1; //~ ERROR static constant `foo` should have an uppercase name such as `FOO`

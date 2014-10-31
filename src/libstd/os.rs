@@ -28,7 +28,7 @@
 
 #![experimental]
 
-#![allow(missing_doc)]
+#![allow(missing_docs)]
 #![allow(non_snake_case)]
 
 use clone::Clone;
@@ -144,7 +144,7 @@ pub mod windows {
     use option::{None, Option};
     use option;
     use os::TMPBUF_SZ;
-    use slice::MutableSlice;
+    use slice::{MutableSlice, ImmutableSlice};
     use string::String;
     use str::StrSlice;
     use vec::Vec;

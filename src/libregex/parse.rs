@@ -978,7 +978,7 @@ fn combine_ranges(unordered: Vec<(char, char)>) -> Vec<(char, char)> {
         }
         match which {
             None => ordered.push((us, ue)),
-            Some(i) => *ordered.get_mut(i) = (us, ue),
+            Some(i) => ordered[i] = (us, ue),
         }
     }
     ordered.sort();

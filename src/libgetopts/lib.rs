@@ -89,7 +89,7 @@
        html_playground_url = "http://play.rust-lang.org/")]
 #![feature(globs, phase)]
 #![feature(import_shadowing)]
-#![deny(missing_doc)]
+#![deny(missing_docs)]
 
 #[cfg(test)] #[phase(plugin, link)] extern crate log;
 
@@ -201,7 +201,7 @@ pub enum Fail_ {
 
 /// The type of failure that occurred.
 #[deriving(PartialEq, Eq)]
-#[allow(missing_doc)]
+#[allow(missing_docs)]
 pub enum FailType {
     ArgumentMissing_,
     UnrecognizedOption_,
@@ -614,29 +614,29 @@ pub fn getopts(args: &[String], optgrps: &[OptGroup]) -> Result {
                     if name_pos == names.len() && !i_arg.is_none() {
                         return Err(UnexpectedArgument(nm.to_string()));
                     }
-                    vals.get_mut(optid).push(Given);
+                    vals[optid].push(Given);
                   }
                   Maybe => {
                     if !i_arg.is_none() {
-                        vals.get_mut(optid)
+                        vals[optid]
                             .push(Val((i_arg.clone())
                             .unwrap()));
                     } else if name_pos < names.len() || i + 1 == l ||
                             is_arg(args[i + 1].as_slice()) {
-                        vals.get_mut(optid).push(Given);
+                        vals[optid].push(Given);
                     } else {
                         i += 1;
-                        vals.get_mut(optid).push(Val(args[i].clone()));
+                        vals[optid].push(Val(args[i].clone()));
                     }
                   }
                   Yes => {
                     if !i_arg.is_none() {
-                        vals.get_mut(optid).push(Val(i_arg.clone().unwrap()));
+                        vals[optid].push(Val(i_arg.clone().unwrap()));
                     } else if i + 1 == l {
                         return Err(ArgumentMissing(nm.to_string()));
                     } else {
                         i += 1;
-                        vals.get_mut(optid).push(Val(args[i].clone()));
+                        vals[optid].push(Val(args[i].clone()));
                     }
                   }
                 }

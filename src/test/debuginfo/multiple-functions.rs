@@ -48,7 +48,7 @@
 // lldb-command:print c
 // lldb-check:[...]$2 = 30303
 
-#![allow(unused_variable)]
+#![allow(unused_variables)]
 
 fn function_one() {
     let a = 10101i;

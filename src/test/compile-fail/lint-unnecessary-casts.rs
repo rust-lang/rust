@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![forbid(unnecessary_typecast)]
+#![forbid(unused_typecasts)]
 
 fn foo_i32(_: i32) {}
 

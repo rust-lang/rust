@@ -109,7 +109,7 @@ pub use core::slice::{Found, NotFound};
 
 // Functional utilities
 
-#[allow(missing_doc)]
+#[allow(missing_docs)]
 pub trait VectorVector<T> for Sized? {
     // FIXME #5898: calling these .concat and .connect conflicts with
     // StrVector::con{cat,nect}, since they have generic contents.

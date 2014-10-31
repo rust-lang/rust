@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![allow(non_camel_case_types, non_uppercase_statics)]
+#![allow(non_camel_case_types, non_upper_case_globals)]
 
 use std::mem;
 use back::svh::Svh;

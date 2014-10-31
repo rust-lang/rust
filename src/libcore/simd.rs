@@ -35,7 +35,7 @@
 //! warning.
 
 #![allow(non_camel_case_types)]
-#![allow(missing_doc)]
+#![allow(missing_docs)]
 
 #[experimental]
 #[simd]

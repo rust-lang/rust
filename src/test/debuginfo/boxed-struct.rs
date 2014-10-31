@@ -36,7 +36,7 @@
 // lldb-command:print *unique_dtor
 // lldb-check:[...]$1 = StructWithDestructor { x: 77, y: 777, z: 7777, w: 77777 }
 
-#![allow(unused_variable)]
+#![allow(unused_variables)]
 
 struct StructWithSomePadding {
     x: i16,

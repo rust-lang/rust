@@ -44,7 +44,7 @@
 // gdb-command:continue
 
 #![allow(experimental)]
-#![allow(unused_variable)]
+#![allow(unused_variables)]
 
 use std::simd::{i8x16, i16x8,i32x4,i64x2,u8x16,u16x8,u32x4,u64x2,f32x4,f64x2};
 

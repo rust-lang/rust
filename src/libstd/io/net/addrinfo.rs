@@ -17,7 +17,7 @@ getaddrinfo()
 
 */
 
-#![allow(missing_doc)]
+#![allow(missing_docs)]
 
 use iter::Iterator;
 use io::{IoResult, IoError};
@@ -91,7 +91,7 @@ pub fn get_host_addresses(host: &str) -> IoResult<Vec<IpAddr>> {
 ///
 /// FIXME: this is not public because the `Hint` structure is not ready for public
 ///      consumption just yet.
-#[allow(unused_variable)]
+#[allow(unused_variables)]
 fn lookup(hostname: Option<&str>, servname: Option<&str>, hint: Option<Hint>)
           -> IoResult<Vec<Info>> {
     let hint = hint.map(|Hint { family, socktype, protocol, flags }| {
@@ -125,6 +125,7 @@ fn lookup(hostname: Option<&str>, servname: Option<&str>, hint: Option<Hint>)
 // permission without help of apk
 #[cfg(all(test, not(target_os = "android")))]
 mod test {
+    use prelude::*;
     use super::*;
     use io::net::ip::*;
 
