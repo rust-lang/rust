@@ -1011,41 +1011,52 @@ pub enum BoundRegion {
     BrEnv
 }
 
-mod primitives {
-    use super::TyS;
+#[inline]
+pub fn mk_prim_t<'tcx>(primitive: &'tcx TyS<'static>) -> Ty<'tcx> {
+    // FIXME(#17596) Ty<'tcx> is incorrectly invariant w.r.t 'tcx.
+    unsafe { &*(primitive as *const _ as *const TyS<'tcx>) }
+}
 
-    use syntax::ast;
-
-    macro_rules! def_prim_ty(
-        ($name:ident, $sty:expr) => (
-            pub static $name: TyS<'static> = TyS {
+// Do not change these from static to const, interning types requires
+// the primitives to have a significant address.
+macro_rules! def_prim_tys(
+    ($($name:ident -> $sty:expr;)*) => (
+        $(#[inline] pub fn $name<'tcx>() -> Ty<'tcx> {
+            static PRIM_TY: TyS<'static> = TyS {
                 sty: $sty,
-                flags: super::NO_TYPE_FLAGS,
+                flags: NO_TYPE_FLAGS,
                 region_depth: 0,
             };
-        )
+            mk_prim_t(&PRIM_TY)
+        })*
     )
+)
 
-    def_prim_ty!(TY_BOOL,   super::ty_bool)
-    def_prim_ty!(TY_CHAR,   super::ty_char)
-    def_prim_ty!(TY_INT,    super::ty_int(ast::TyI))
-    def_prim_ty!(TY_I8,     super::ty_int(ast::TyI8))
-    def_prim_ty!(TY_I16,    super::ty_int(ast::TyI16))
-    def_prim_ty!(TY_I32,    super::ty_int(ast::TyI32))
-    def_prim_ty!(TY_I64,    super::ty_int(ast::TyI64))
-    def_prim_ty!(TY_UINT,   super::ty_uint(ast::TyU))
-    def_prim_ty!(TY_U8,     super::ty_uint(ast::TyU8))
-    def_prim_ty!(TY_U16,    super::ty_uint(ast::TyU16))
-    def_prim_ty!(TY_U32,    super::ty_uint(ast::TyU32))
-    def_prim_ty!(TY_U64,    super::ty_uint(ast::TyU64))
-    def_prim_ty!(TY_F32,    super::ty_float(ast::TyF32))
-    def_prim_ty!(TY_F64,    super::ty_float(ast::TyF64))
+def_prim_tys!{
+    mk_bool ->  ty_bool;
+    mk_char ->  ty_char;
+    mk_int ->   ty_int(ast::TyI);
+    mk_i8 ->    ty_int(ast::TyI8);
+    mk_i16 ->   ty_int(ast::TyI16);
+    mk_i32 ->   ty_int(ast::TyI32);
+    mk_i64 ->   ty_int(ast::TyI64);
+    mk_uint ->  ty_uint(ast::TyU);
+    mk_u8 ->    ty_uint(ast::TyU8);
+    mk_u16 ->   ty_uint(ast::TyU16);
+    mk_u32 ->   ty_uint(ast::TyU32);
+    mk_u64 ->   ty_uint(ast::TyU64);
+    mk_f32 ->   ty_float(ast::TyF32);
+    mk_f64 ->   ty_float(ast::TyF64);
+}
 
-    pub static TY_ERR: TyS<'static> = TyS {
-        sty: super::ty_err,
-        flags: super::HAS_TY_ERR,
+#[inline]
+pub fn mk_err<'tcx>() -> Ty<'tcx> {
+    static TY_ERR: TyS<'static> = TyS {
+        sty: ty_err,
+        flags: HAS_TY_ERR,
         region_depth: 0,
     };
+    mk_prim_t(&TY_ERR)
 }
 
 // NB: If you change this, you'll probably want to change the corresponding
@@ -1973,54 +1984,6 @@ impl FlagComputation {
     }
 }
 
-#[inline]
-pub fn mk_prim_t<'tcx>(primitive: &'tcx TyS<'static>) -> Ty<'tcx> {
-    // FIXME(#17596) Ty<'tcx> is incorrectly invariant w.r.t 'tcx.
-    unsafe { &*(primitive as *const _ as *const TyS<'tcx>) }
-}
-
-#[inline]
-pub fn mk_err<'tcx>() -> Ty<'tcx> { mk_prim_t(&primitives::TY_ERR) }
-
-#[inline]
-pub fn mk_bool<'tcx>() -> Ty<'tcx> { mk_prim_t(&primitives::TY_BOOL) }
-
-#[inline]
-pub fn mk_int<'tcx>() -> Ty<'tcx> { mk_prim_t(&primitives::TY_INT) }
-
-#[inline]
-pub fn mk_i8<'tcx>() -> Ty<'tcx> { mk_prim_t(&primitives::TY_I8) }
-
-#[inline]
-pub fn mk_i16<'tcx>() -> Ty<'tcx> { mk_prim_t(&primitives::TY_I16) }
-
-#[inline]
-pub fn mk_i32<'tcx>() -> Ty<'tcx> { mk_prim_t(&primitives::TY_I32) }
-
-#[inline]
-pub fn mk_i64<'tcx>() -> Ty<'tcx> { mk_prim_t(&primitives::TY_I64) }
-
-#[inline]
-pub fn mk_f32<'tcx>() -> Ty<'tcx> { mk_prim_t(&primitives::TY_F32) }
-
-#[inline]
-pub fn mk_f64<'tcx>() -> Ty<'tcx> { mk_prim_t(&primitives::TY_F64) }
-
-#[inline]
-pub fn mk_uint<'tcx>() -> Ty<'tcx> { mk_prim_t(&primitives::TY_UINT) }
-
-#[inline]
-pub fn mk_u8<'tcx>() -> Ty<'tcx> { mk_prim_t(&primitives::TY_U8) }
-
-#[inline]
-pub fn mk_u16<'tcx>() -> Ty<'tcx> { mk_prim_t(&primitives::TY_U16) }
-
-#[inline]
-pub fn mk_u32<'tcx>() -> Ty<'tcx> { mk_prim_t(&primitives::TY_U32) }
-
-#[inline]
-pub fn mk_u64<'tcx>() -> Ty<'tcx> { mk_prim_t(&primitives::TY_U64) }
-
 pub fn mk_mach_int<'tcx>(tm: ast::IntTy) -> Ty<'tcx> {
     match tm {
         ast::TyI    => mk_int(),
@@ -2047,9 +2010,6 @@ pub fn mk_mach_float<'tcx>(tm: ast::FloatTy) -> Ty<'tcx> {
         ast::TyF64  => mk_f64(),
     }
 }
-
-#[inline]
-pub fn mk_char<'tcx>() -> Ty<'tcx> { mk_prim_t(&primitives::TY_CHAR) }
 
 pub fn mk_str<'tcx>(cx: &ctxt<'tcx>) -> Ty<'tcx> {
     mk_t(cx, ty_str)
