@@ -313,8 +313,8 @@ pub struct TcpListener {
 }
 
 impl TcpListener {
-    /// Creates a new `TcpListener` which will be bound to the specified address. 
-    /// This listener is not ready for accepting connections, `listen` must be called 
+    /// Creates a new `TcpListener` which will be bound to the specified address.
+    /// This listener is not ready for accepting connections, `listen` must be called
     /// on it before that's possible.
     ///
     /// Binding with a port number of 0 will request that the OS assigns a port

@@ -43,7 +43,7 @@ fn from_rtio(ip: rtio::IpAddr) -> IpAddr {
 }
 
 fn with_addresses_io<A: ToSocketAddr, T>(
-    addr: A, 
+    addr: A,
     action: |&mut rtio::IoFactory, rtio::SocketAddr| -> Result<T, rtio::IoError>
 ) -> Result<T, IoError> {
     const DEFAULT_ERROR: IoError = IoError {
