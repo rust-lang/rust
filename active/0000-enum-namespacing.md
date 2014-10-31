@@ -5,10 +5,7 @@
 # Summary
 
 The variants of an enum are currently defined in the same namespace as the enum
-itself. This RFC proposes to define variants under the enum's namespace. Since
-1.0 is fast approaching, this RFC outlines a path which requires a single,
-small, change before 1.0 that allows for the remainder to be implemented after
-1.0 while preserving backwards compatibility.
+itself. This RFC proposes to define variants under the enum's namespace.
 
 ## Note
 
@@ -230,147 +227,30 @@ use messages::{FrontendMessage, BackendMessage, WriteMessage, ReadMessage};
 
 # Detailed design
 
-The implementation is split into several stages. Only the first needs to be
-implemented before 1.0.
+The compiler's resolve stage will be altered to place the value and type
+definitions for variants in their enum's module, just as methods of inherent
+impls are. Variants will be handled differently than those methods are,
+however. Methods cannot currently be directly imported via `use`, while
+variants will be. The determination of importability currently happens at the
+module level. This logic will be adjusted to move that determination to the
+definition level. Specifically, each definition will track its "importability",
+just as it currently tracks its "publicness". All definitions will be
+importable except for methods in implementations and trait declarations.
 
-## Before 1.0
+The implementation will happen in two stages. In the first stage, resolve will
+be altered as described above. However, variants will be defined in *both* the
+flat namespace and nested namespace. This is necessary t keep the compiler
+bootstrapping.
 
-To ensure that the future changes preserve backwards compatibility, we must
-add a small restriction: an inherent `impl` for an enum may not define any
-methods with the same name as any of the enum's variants. For example, both
-methods defined for `Foo` would be forbidden:
-```rust
-enum Foo {
-    Bar,
-    Baz,
-}
-
-impl Foo {
-    fn Bar(&self) {}
-    fn Baz() {}
-}
-```
-This should not affect much if any code in practice, as Rust's naming
-conventions state that variants should be capitalized and method names should
-not.
-
-## With other post-1.0 work
-
-Part of the UFCS work will (or at least discussed) allowing this:
-```
-trait Foo {
-    fn Baz();
-}
-
-enum Bar {
-    Baz,
-}
-
-impl Foo for Bar {
-    fn Baz() {}
-}
-
-fn main() {
-    Bar::Baz(); // instead of Foo::<for Bar>::Baz()
-}
-```
-If this is implemented before namespaced enums, we must add a restriction,
-similar to the one for intrinsic methods, that prohibits something like
-`Foo::Baz` from being called as in the above example. Note that the trait may
-be implemented for `Bar` without any problems, and the method may be called via
-the long form. It's just `Bar::Baz()` that must be disallowed.
-
-## Later
-
-The compiler's resolve stage will be altered in two ways. It will place an
-enum's variants into the enum's sub-namespace in a similar way to methods
-defined in inherent `impl`s. Note that there is one key difference between
-those methods and the variants: the methods cannot be `use`d, while the
-variants can be.
-
-In addition, when searching for a name in some namespace and the name is not
-present, the compiler will search all enums defined in that namespace. If
-exactly one variant with the proper name is found, the name will resolve to
-that variant.  If there are multiple variants with the same name, an error will
-be raised (It isn't possible to end up in this situation in code written before
-this is implemented, but will be possible in code written after). This ensures
-that the namespacing change is fully backwards compatible. This behavior is
-more conservative than it needs to be - it could try to use type inference to
-determine which of the multiple variants should be selected, for example.
-However, the fallback is designed to be just that - a fallback to make sure
-that code does not break in the change. It is not intended to be depended on by
-code written after the change has been made.
-
-### Examples
-
-```rust
-enum Foo {
-    Bar,
-    Baz,
-    Buz,
-}
-
-fn ok(f: Foo) {
-    use Foo::Buz;
-
-    match f {
-        Bar => {} // backwards compatibility fallback
-        Foo::Baz => {}
-        Buz => {}
-    }
-}
-```
-
-```rust
-enum Fruit {
-    Apple,
-    Orange,
-}
-
-enum Color {
-    Red,
-    Orange,
-}
-
-fn broken(f: Fruit) {
-    match f {
-        Apple => {} // fallback
-        Orange => {} // ~ ERROR ambiguous reference to a variant
-    }
-}
-
-fn ok(f: Fruit) {
-    use Fruit::{Apple, Orange};
-    match f {
-        Apple => {}
-        Orange => {}
-    }
-}
-```
-
-```rust
-enum Foo {
-    Bar,
-    Baz
-}
-
-struct Bar;
-
-fn broken(f: Foo) {
-    match f {
-        Bar => {} // ~ ERROR expected a `Foo` but found type `Bar`
-        Baz => {}
-    }
-}
-```
-
-In addition, we can add a default-allow lint that identifies use of the
-compatibility fallback. This will allow developers to minimize the chance of
-breakage down the line if we decide to remove this fallback in Rust 2.0 as well
-as avoid code that will presumably end up being considered bad style. Note that
-this would not trigger if the variants are explicitly reexported in the module,
-so enums that are designed to be used in the current manner will not be
-affected.
+After a new stage 0 snapshot, the standard library will be ported and resolve
+will be updated to remove variant definitions in the flat namespace. This will
+happen as one atomic PR to keep the implementation phase as compressed as
+possible. In addition, if unforseen problems arise during this set of work, we
+can roll back the initial commit and put the change off until after 1.0, with
+only a small pre-1.0 change required. This initial conversion will focus on
+making the minimal set of changes required to port the compiler and standard
+libraries by reexporting variants in the old location. Later work can alter
+the APIs to take advantage of the new definition locations.
 
 ## Library changes
 
@@ -392,28 +272,37 @@ pub enum Item {
     Static(Bar),
 }
 ```
-In the Rust standard library, this can be used to update libraries to a cleaner
-API without breaking backwards compatibility if the library changes are made in
-the same release as the language change.
+To simply keep existing code compiling, a glob reexport will suffice:
+```rust
+pub use Item::*;
+
+pub enum Item {
+    ItemStruct(Foo),
+    ItemStatic(Bar),
+}
+```
+Once RFC #385 is implemented, it will be possible to write a syntax extension
+that will automatically generate the reexport:
+```rust
+#[flatten]
+pub enum Item {
+    ItemStruct(Foo),
+    ItemStatic(Bar),
+}
+```
 
 # Drawbacks
 
-This will cause a period of uncertainty in libraries, where libraries that
-aren't update become unidiomatic and libraries that are updated accumulate
-cruft if they attempt to maintain backwards compatibility.
-
-The compatibility fallback logic will add complexity to resolve, and with
-increased complexity comes an increased chance of bugs.
+The transition period will cause enormous breakage in downstream code. It is
+also a fairly large change to make to resolve, which is already a bit fragile.
 
 # Alternatives
 
-We can push to switch entirely to namespaced enums before 1.0. This will allow
-us to avoid the compatibility fallback and minimize library cruft, at the cost
-of adding a significant amount of work to the 1.0 docket. If we decide to go
-down this route, we could use the same implementation strategy laid out here to
-avoid breaking the entire world at once - implement the fallback and lint at a
-default (or forced) `warn` level and then remove both after some period of
-time.
+We can implement enum namespacing after 1.0 by adding a "fallback" case to
+resolve, where variants can be referenced from their "flat" definition location
+if no other definition would conflict in that namespace. In the grand scheme of
+hacks to preserve backwards compatibility, this is not that bad, but still
+decidedly worse than not having to worry about fallback at all.
 
 Earlier iterations of namespaced enum proposals suggested preserving flat enums
 and adding `enum mod` syntax for namespaced enums. However, variant namespacing
