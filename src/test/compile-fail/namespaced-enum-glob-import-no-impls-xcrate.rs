@@ -8,28 +8,21 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub use self::sub::{Bar, Baz};
+// aux-build:namespaced_enums.rs
+#![feature(struct_variant, globs)]
 
-pub trait Trait {
-    fn foo();
+extern crate namespaced_enums;
+
+mod m {
+    pub use namespaced_enums::Foo::*;
 }
 
-struct Foo;
+pub fn main() {
+    use namespaced_enums::Foo::*;
 
-impl Foo {
-    pub fn new() {}
+    foo(); //~ ERROR unresolved name `foo`
+    m::foo(); //~ ERROR unresolved name `m::foo`
+    bar(); //~ ERROR unresolved name `bar`
+    m::bar(); //~ ERROR unresolved name `m::bar`
 }
 
-mod sub {
-    pub struct Bar;
-
-    impl Bar {
-        pub fn new() {}
-    }
-
-    pub enum Baz {}
-
-    impl Baz {
-        pub fn new() {}
-    }
-}

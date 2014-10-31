@@ -7,29 +7,16 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
+#![feature(struct_variant)]
 
-pub use self::sub::{Bar, Baz};
-
-pub trait Trait {
-    fn foo();
+pub enum Foo {
+    A,
+    B(int),
+    C { a: int },
 }
-
-struct Foo;
 
 impl Foo {
-    pub fn new() {}
+    pub fn foo() {}
+    pub fn bar(&self) {}
 }
 
-mod sub {
-    pub struct Bar;
-
-    impl Bar {
-        pub fn new() {}
-    }
-
-    pub enum Baz {}
-
-    impl Baz {
-        pub fn new() {}
-    }
-}

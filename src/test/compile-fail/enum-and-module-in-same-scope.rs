@@ -13,7 +13,7 @@ mod Foo {
 }
 
 enum Foo {  //~ ERROR duplicate definition of type or module `Foo`
-    X
+    X //~ ERROR duplicate definition of value `X`
 }
 
 fn main() {}
