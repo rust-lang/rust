@@ -12,7 +12,7 @@
 
 //! Numeric traits and functions for generic mathematics
 
-#![allow(missing_doc)]
+#![allow(missing_docs)]
 
 use intrinsics;
 use {int, i8, i16, i32, i64};
@@ -1353,7 +1353,7 @@ checked_impl!(CheckedMul, checked_mul, i64, intrinsics::i64_mul_with_overflow)
 /// wrapping around on underflow and overflow.
 pub trait CheckedDiv: Div<Self, Self> {
     /// Divides two numbers, checking for underflow, overflow and division by zero. If any of that
-    /// happens, / `None` is returned.
+    /// happens, `None` is returned.
     ///
     /// # Example
     ///
@@ -1502,7 +1502,7 @@ pub trait Float: Signed + Primitive {
 
     /// Take the square root of a number.
     ///
-    /// Returns NaN if `self` is not a non-negative number.
+    /// Returns NaN if `self` is a negative number.
     fn sqrt(self) -> Self;
     /// Take the reciprocal (inverse) square root of a number, `1/sqrt(x)`.
     fn rsqrt(self) -> Self;

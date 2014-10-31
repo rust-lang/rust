@@ -469,7 +469,7 @@ impl<'blk, 'tcx> CleanupMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx> {
         assert!(self.is_valid_custom_scope(custom_scope));
 
         let mut scopes = self.scopes.borrow_mut();
-        let scope = scopes.get_mut(custom_scope.index);
+        let scope = &mut (*scopes)[custom_scope.index];
         scope.cleanups.push(cleanup);
         scope.clear_cached_exits();
     }

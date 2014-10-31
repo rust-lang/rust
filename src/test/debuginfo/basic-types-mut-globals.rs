@@ -87,7 +87,7 @@
 // gdb-command:detach
 // gdb-command:quit
 
-#![allow(unused_variable)]
+#![allow(unused_variables)]
 
 static mut B: bool = false;
 static mut I: int = -1;

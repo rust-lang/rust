@@ -9,7 +9,7 @@
 // except according to those terms.
 
 #![allow(dead_code)]
-#![forbid(owned_heap_memory)]
+#![forbid(box_pointers)]
 
 
 struct Foo {

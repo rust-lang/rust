@@ -648,7 +648,7 @@ impl<'a, 'tcx> LookupContext<'a, 'tcx> {
                     ByValueExplicitSelfCategory => {
                         let mut n = (*m).clone();
                         let self_ty = n.fty.sig.inputs[0];
-                        *n.fty.sig.inputs.get_mut(0) = ty::mk_uniq(tcx, self_ty);
+                        n.fty.sig.inputs[0] = ty::mk_uniq(tcx, self_ty);
                         m = Rc::new(n);
                     }
                     _ => { }

@@ -303,7 +303,7 @@ impl Printer {
     }
     // be very careful with this!
     pub fn replace_last_token(&mut self, t: Token) {
-        *self.token.get_mut(self.right) = t;
+        self.token[self.right] = t;
     }
     pub fn pretty_print(&mut self, t: Token) -> io::IoResult<()> {
         debug!("pp ~[{},{}]", self.left, self.right);
@@ -327,8 +327,8 @@ impl Printer {
             } else { self.advance_right(); }
             debug!("pp Begin({})/buffer ~[{},{}]",
                    b.offset, self.left, self.right);
-            *self.token.get_mut(self.right) = t;
-            *self.size.get_mut(self.right) = -self.right_total;
+            self.token[self.right] = t;
+            self.size[self.right] = -self.right_total;
             let right = self.right;
             self.scan_push(right);
             Ok(())
@@ -340,8 +340,8 @@ impl Printer {
             } else {
                 debug!("pp End/buffer ~[{},{}]", self.left, self.right);
                 self.advance_right();
-                *self.token.get_mut(self.right) = t;
-                *self.size.get_mut(self.right) = -1;
+                self.token[self.right] = t;
+                self.size[self.right] = -1;
                 let right = self.right;
                 self.scan_push(right);
                 Ok(())
@@ -359,8 +359,8 @@ impl Printer {
             self.check_stack(0);
             let right = self.right;
             self.scan_push(right);
-            *self.token.get_mut(self.right) = t;
-            *self.size.get_mut(self.right) = -self.right_total;
+            self.token[self.right] = t;
+            self.size[self.right] = -self.right_total;
             self.right_total += b.blank_space;
             Ok(())
           }
@@ -373,8 +373,8 @@ impl Printer {
                 debug!("pp String('{}')/buffer ~[{},{}]",
                        *s, self.left, self.right);
                 self.advance_right();
-                *self.token.get_mut(self.right) = t.clone();
-                *self.size.get_mut(self.right) = len;
+                self.token[self.right] = t.clone();
+                self.size[self.right] = len;
                 self.right_total += len;
                 self.check_stream()
             }
@@ -391,7 +391,7 @@ impl Printer {
                 if self.left == self.scan_stack[self.bottom] {
                     debug!("setting {} to infinity and popping", self.left);
                     let scanned = self.scan_pop_bottom();
-                    *self.size.get_mut(scanned) = SIZE_INFINITY;
+                    self.size[scanned] = SIZE_INFINITY;
                 }
             }
             let left = self.token[self.left].clone();
@@ -412,7 +412,7 @@ impl Printer {
             self.top %= self.buf_len;
             assert!((self.top != self.bottom));
         }
-        *self.scan_stack.get_mut(self.top) = x;
+        self.scan_stack[self.top] = x;
     }
     pub fn scan_pop(&mut self) -> uint {
         assert!((!self.scan_stack_empty));
@@ -474,20 +474,19 @@ impl Printer {
                 Begin(_) => {
                     if k > 0 {
                         let popped = self.scan_pop();
-                        *self.size.get_mut(popped) = self.size[x] +
-                            self.right_total;
+                        self.size[popped] = self.size[x] + self.right_total;
                         self.check_stack(k - 1);
                     }
                 }
                 End => {
                     // paper says + not =, but that makes no sense.
                     let popped = self.scan_pop();
-                    *self.size.get_mut(popped) = 1;
+                    self.size[popped] = 1;
                     self.check_stack(k + 1);
                 }
                 _ => {
                     let popped = self.scan_pop();
-                    *self.size.get_mut(popped) = self.size[x] + self.right_total;
+                    self.size[popped] = self.size[x] + self.right_total;
                     if k > 0 {
                         self.check_stack(k);
                     }

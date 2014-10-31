@@ -90,10 +90,10 @@ pub fn rust_printer_annotated<'a>(writer: Box<io::Writer+'static>,
     }
 }
 
-#[allow(non_uppercase_statics)]
+#[allow(non_upper_case_globals)]
 pub const indent_unit: uint = 4u;
 
-#[allow(non_uppercase_statics)]
+#[allow(non_upper_case_globals)]
 pub const default_columns: uint = 78u;
 
 /// Requires you to pass an input filename and reader so that
@@ -225,12 +225,12 @@ pub fn token_to_string(tok: &Token) -> String {
         token::RArrow               => "->".into_string(),
         token::LArrow               => "<-".into_string(),
         token::FatArrow             => "=>".into_string(),
-        token::LParen               => "(".into_string(),
-        token::RParen               => ")".into_string(),
-        token::LBracket             => "[".into_string(),
-        token::RBracket             => "]".into_string(),
-        token::LBrace               => "{".into_string(),
-        token::RBrace               => "}".into_string(),
+        token::OpenDelim(token::Paren) => "(".into_string(),
+        token::CloseDelim(token::Paren) => ")".into_string(),
+        token::OpenDelim(token::Bracket) => "[".into_string(),
+        token::CloseDelim(token::Bracket) => "]".into_string(),
+        token::OpenDelim(token::Brace) => "{".into_string(),
+        token::CloseDelim(token::Brace) => "}".into_string(),
         token::Pound                => "#".into_string(),
         token::Dollar               => "$".into_string(),
         token::Question             => "?".into_string(),
@@ -1121,12 +1121,11 @@ impl<'a> State<'a> {
     pub fn print_tt(&mut self, tt: &ast::TokenTree) -> IoResult<()> {
         match *tt {
             ast::TtDelimited(_, ref delimed) => {
-                let (ref open, ref tts, ref close) = **delimed;
-                try!(word(&mut self.s, token_to_string(&open.token).as_slice()));
+                try!(word(&mut self.s, token_to_string(&delimed.open_token()).as_slice()));
                 try!(space(&mut self.s));
-                try!(self.print_tts(tts.as_slice()));
+                try!(self.print_tts(delimed.tts.as_slice()));
                 try!(space(&mut self.s));
-                word(&mut self.s, token_to_string(&close.token).as_slice())
+                word(&mut self.s, token_to_string(&delimed.close_token()).as_slice())
             },
             ast::TtToken(_, ref tk) => {
                 try!(word(&mut self.s, token_to_string(tk).as_slice()));

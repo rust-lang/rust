@@ -2215,7 +2215,7 @@ macro_rules! def_type_content_sets(
         mod $mname {
             use middle::ty::TypeContents;
             $(
-                #[allow(non_uppercase_statics)]
+                #[allow(non_upper_case_globals)]
                 pub const $name: TypeContents = TypeContents { bits: $bits };
              )+
         }
@@ -3631,7 +3631,7 @@ pub fn expr_kind(tcx: &ctxt, expr: &ast::Expr) -> ExprKind {
                 def::DefFn(_, _, true) => RvalueDpsExpr,
 
                 // Fn pointers are just scalar values.
-                def::DefFn(..) | def::DefStaticMethod(..) => RvalueDatumExpr,
+                def::DefFn(..) | def::DefStaticMethod(..) | def::DefMethod(..) => RvalueDatumExpr,
 
                 // Note: there is actually a good case to be made that
                 // DefArg's, particularly those of immediate type, ought to
@@ -4670,7 +4670,7 @@ pub fn unboxed_closure_upvars(tcx: &ctxt, closure_id: ast::DefId, substs: &Subst
 }
 
 pub fn is_binopable(cx: &ctxt, ty: t, op: ast::BinOp) -> bool {
-    #![allow(non_uppercase_statics)]
+    #![allow(non_upper_case_globals)]
     static tycat_other: int = 0;
     static tycat_bool: int = 1;
     static tycat_char: int = 2;

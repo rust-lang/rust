@@ -9,7 +9,7 @@
 // except according to those terms.
 
 #![feature(struct_variant)]
-#![allow(unused_variable)]
+#![allow(unused_variables)]
 #![allow(non_camel_case_types)]
 #![deny(dead_code)]
 

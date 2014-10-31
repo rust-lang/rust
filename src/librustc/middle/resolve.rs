@@ -2596,7 +2596,7 @@ impl<'a> Resolver<'a> {
 
         // We've successfully resolved the import. Write the results in.
         let mut import_resolutions = module_.import_resolutions.borrow_mut();
-        let import_resolution = import_resolutions.get_mut(&target);
+        let import_resolution = &mut (*import_resolutions)[target];
 
         match value_result {
             BoundResult(ref target_module, ref name_bindings) => {
@@ -3158,7 +3158,7 @@ impl<'a> Resolver<'a> {
                                         (_, _) => {
                                             search_module = module_def.clone();
 
-                                            // track extern crates for unused_extern_crate lint
+                                            // track extern crates for unused_extern_crates lint
                                             match module_def.def_id.get() {
                                                 Some(did) => {
                                                     self.used_crates.insert(did.krate);
@@ -5697,7 +5697,7 @@ impl<'a> Resolver<'a> {
 
         let mut smallest = 0;
         for (i, other) in maybes.iter().enumerate() {
-            *values.get_mut(i) = name.lev_distance(other.get());
+            values[i] = name.lev_distance(other.get());
 
             if values[i] <= values[smallest] {
                 smallest = i;

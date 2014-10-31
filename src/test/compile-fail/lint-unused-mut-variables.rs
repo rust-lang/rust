@@ -10,8 +10,8 @@
 
 // Exercise the unused_mut attribute in some positive and negative cases
 
-#![allow(dead_assignment)]
-#![allow(unused_variable)]
+#![allow(unused_assignments)]
+#![allow(unused_variables)]
 #![allow(dead_code)]
 #![deny(unused_mut)]
 

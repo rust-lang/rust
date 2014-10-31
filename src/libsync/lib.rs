@@ -29,7 +29,7 @@
 
 #![feature(phase, globs, macro_rules, unsafe_destructor)]
 #![feature(import_shadowing)]
-#![deny(missing_doc)]
+#![deny(missing_docs)]
 #![no_std]
 
 #[phase(plugin, link)] extern crate core;

@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![deny(unnecessary_import_braces)]
+#![deny(unused_import_braces)]
 #![allow(dead_code)]
 #![allow(unused_imports)]
 

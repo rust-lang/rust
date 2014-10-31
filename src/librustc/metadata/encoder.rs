@@ -1619,7 +1619,7 @@ fn encode_index<T: Hash>(rbml_w: &mut Encoder, index: Vec<entry<T>>,
     let mut buckets: Vec<Vec<entry<T>>> = Vec::from_fn(256, |_| Vec::new());
     for elt in index.into_iter() {
         let h = hash::hash(&elt.val) as uint;
-        buckets.get_mut(h % 256).push(elt);
+        buckets[h % 256].push(elt);
     }
 
     rbml_w.start_tag(tag_index);
@@ -2028,7 +2028,7 @@ fn encode_dylib_dependency_formats(rbml_w: &mut Encoder, ecx: &EncodeContext) {
 }
 
 // NB: Increment this as you change the metadata encoding version.
-#[allow(non_uppercase_statics)]
+#[allow(non_upper_case_globals)]
 pub const metadata_encoding_version : &'static [u8] = &[b'r', b'u', b's', b't', 0, 0, 0, 1 ];
 
 pub fn encode_metadata(parms: EncodeParams, krate: &Crate) -> Vec<u8> {

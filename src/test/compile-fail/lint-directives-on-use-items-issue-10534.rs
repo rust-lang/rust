@@ -9,7 +9,7 @@
 // except according to those terms.
 
 #![deny(unused_imports)]
-#![allow(non_uppercase_statics)]
+#![allow(non_upper_case_globals)]
 
 // The aim of this test is to ensure that deny/allow/warn directives
 // are applied to individual "use" statements instead of silently

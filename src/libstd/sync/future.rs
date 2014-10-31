@@ -24,7 +24,7 @@
  * ```
  */
 
-#![allow(missing_doc)]
+#![allow(missing_docs)]
 
 use core::prelude::*;
 use core::mem::replace;

@@ -13,6 +13,6 @@
 struct B<T>;
 
 fn main() {
-    let foo = B; //~ ERROR unable to infer enough type information to locate the impl of the trait
+    let foo = B; //~ ERROR unable to infer enough type information
     let closure = |:| foo;
 }

@@ -785,6 +785,6 @@ impl SyntaxEnv {
 
     pub fn info<'a>(&'a mut self) -> &'a mut BlockInfo {
         let last_chain_index = self.chain.len() - 1;
-        &mut self.chain.get_mut(last_chain_index).info
+        &mut self.chain[last_chain_index].info
     }
 }

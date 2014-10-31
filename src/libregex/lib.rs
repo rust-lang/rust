@@ -370,7 +370,7 @@
 
 #![allow(unknown_features)]
 #![feature(macro_rules, phase, slicing_syntax)]
-#![deny(missing_doc)]
+#![deny(missing_docs)]
 
 #[cfg(test)]
 extern crate "test" as stdtest;

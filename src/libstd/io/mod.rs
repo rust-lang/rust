@@ -1856,60 +1856,60 @@ bitflags! {
         const ALL_PERMISSIONS = USER_RWX.bits | GROUP_RWX.bits | OTHER_RWX.bits,
 
         // Deprecated names
-        #[allow(non_uppercase_statics)]
+        #[allow(non_upper_case_globals)]
         #[deprecated = "use USER_READ instead"]
         const UserRead     = USER_READ.bits,
-        #[allow(non_uppercase_statics)]
+        #[allow(non_upper_case_globals)]
         #[deprecated = "use USER_WRITE instead"]
         const UserWrite    = USER_WRITE.bits,
-        #[allow(non_uppercase_statics)]
+        #[allow(non_upper_case_globals)]
         #[deprecated = "use USER_EXECUTE instead"]
         const UserExecute  = USER_EXECUTE.bits,
-        #[allow(non_uppercase_statics)]
+        #[allow(non_upper_case_globals)]
         #[deprecated = "use GROUP_READ instead"]
         const GroupRead    = GROUP_READ.bits,
-        #[allow(non_uppercase_statics)]
+        #[allow(non_upper_case_globals)]
         #[deprecated = "use GROUP_WRITE instead"]
         const GroupWrite   = GROUP_WRITE.bits,
-        #[allow(non_uppercase_statics)]
+        #[allow(non_upper_case_globals)]
         #[deprecated = "use GROUP_EXECUTE instead"]
         const GroupExecute = GROUP_EXECUTE.bits,
-        #[allow(non_uppercase_statics)]
+        #[allow(non_upper_case_globals)]
         #[deprecated = "use OTHER_READ instead"]
         const OtherRead    = OTHER_READ.bits,
-        #[allow(non_uppercase_statics)]
+        #[allow(non_upper_case_globals)]
         #[deprecated = "use OTHER_WRITE instead"]
         const OtherWrite   = OTHER_WRITE.bits,
-        #[allow(non_uppercase_statics)]
+        #[allow(non_upper_case_globals)]
         #[deprecated = "use OTHER_EXECUTE instead"]
         const OtherExecute = OTHER_EXECUTE.bits,
 
-        #[allow(non_uppercase_statics)]
+        #[allow(non_upper_case_globals)]
         #[deprecated = "use USER_RWX instead"]
         const UserRWX  = USER_RWX.bits,
-        #[allow(non_uppercase_statics)]
+        #[allow(non_upper_case_globals)]
         #[deprecated = "use GROUP_RWX instead"]
         const GroupRWX = GROUP_RWX.bits,
-        #[allow(non_uppercase_statics)]
+        #[allow(non_upper_case_globals)]
         #[deprecated = "use OTHER_RWX instead"]
         const OtherRWX = OTHER_RWX.bits,
 
         #[doc = "Deprecated: use `USER_FILE` instead."]
-        #[allow(non_uppercase_statics)]
+        #[allow(non_upper_case_globals)]
         #[deprecated = "use USER_FILE instead"]
         const UserFile = USER_FILE.bits,
 
         #[doc = "Deprecated: use `USER_DIR` instead."]
-        #[allow(non_uppercase_statics)]
+        #[allow(non_upper_case_globals)]
         #[deprecated = "use USER_DIR instead"]
         const UserDir  = USER_DIR.bits,
         #[doc = "Deprecated: use `USER_EXEC` instead."]
-        #[allow(non_uppercase_statics)]
+        #[allow(non_upper_case_globals)]
         #[deprecated = "use USER_EXEC instead"]
         const UserExec = USER_EXEC.bits,
 
         #[doc = "Deprecated: use `ALL_PERMISSIONS` instead"]
-        #[allow(non_uppercase_statics)]
+        #[allow(non_upper_case_globals)]
         #[deprecated = "use ALL_PERMISSIONS instead"]
         const AllPermissions = ALL_PERMISSIONS.bits,
     }

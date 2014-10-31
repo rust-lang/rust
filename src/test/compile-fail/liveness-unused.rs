@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![deny(unused_variable)]
-#![deny(dead_assignment)]
+#![deny(unused_variables)]
+#![deny(unused_assignments)]
 #![allow(dead_code, non_camel_case_types)]
 
 fn f1(x: int) {
@@ -20,7 +20,7 @@ fn f1b(x: &mut int) {
     //~^ ERROR unused variable: `x`
 }
 
-#[allow(unused_variable)]
+#[allow(unused_variables)]
 fn f1c(x: int) {}
 
 fn f1d() {
@@ -48,14 +48,14 @@ fn f3b() {
     }
 }
 
-#[allow(unused_variable)]
+#[allow(unused_variables)]
 fn f3c() {
     let mut z = 3i;
     loop { z += 4i; }
 }
 
-#[allow(unused_variable)]
-#[allow(dead_assignment)]
+#[allow(unused_variables)]
+#[allow(unused_assignments)]
 fn f3d() {
     let mut x = 3i;
     x += 4i;

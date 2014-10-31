@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![allow(non_uppercase_statics)]
+#![allow(non_upper_case_globals)]
 
 use llvm;
 use llvm::{TypeRef, Bool, False, True, TypeKind, ValueRef};
@@ -284,7 +284,7 @@ impl Type {
                 return Vec::new();
             }
             let mut elts = Vec::from_elem(n_elts, 0 as TypeRef);
-            llvm::LLVMGetStructElementTypes(self.to_ref(), elts.get_mut(0));
+            llvm::LLVMGetStructElementTypes(self.to_ref(), &mut elts[0]);
             mem::transmute(elts)
         }
     }

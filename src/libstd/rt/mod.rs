@@ -52,7 +52,7 @@ Several modules in `core` are clients of `rt`:
 #![experimental]
 
 // FIXME: this should not be here.
-#![allow(missing_doc)]
+#![allow(missing_docs)]
 
 use failure;
 use rustrt;

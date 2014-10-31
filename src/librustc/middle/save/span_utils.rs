@@ -145,7 +145,7 @@ impl<'a> SpanUtils<'a> {
             last_span = None;
             let mut next = toks.next_token();
 
-            if (next.tok == token::LParen ||
+            if (next.tok == token::OpenDelim(token::Paren) ||
                 next.tok == token::Lt) &&
                bracket_count == 0 &&
                prev.tok.is_ident() {
@@ -164,8 +164,8 @@ impl<'a> SpanUtils<'a> {
             }
 
             bracket_count += match prev.tok {
-                token::LParen | token::Lt => 1,
-                token::RParen | token::Gt => -1,
+                token::OpenDelim(token::Paren) | token::Lt => 1,
+                token::CloseDelim(token::Paren) | token::Gt => -1,
                 token::BinOp(token::Shr) => -2,
                 _ => 0
             };

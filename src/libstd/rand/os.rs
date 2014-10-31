@@ -88,7 +88,7 @@ mod imp {
     #[repr(C)]
     struct SecRandom;
 
-    #[allow(non_uppercase_statics)]
+    #[allow(non_upper_case_globals)]
     static kSecRandomDefault: *const SecRandom = 0 as *const SecRandom;
 
     #[link(name = "Security", kind = "framework")]

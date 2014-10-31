@@ -11,7 +11,7 @@
 // The classification code for the x86_64 ABI is taken from the clay language
 // https://github.com/jckarter/clay/blob/master/compiler/src/externals.cpp
 
-#![allow(non_uppercase_statics)]
+#![allow(non_upper_case_globals)]
 
 use llvm;
 use llvm::{Integer, Pointer, Float, Double};

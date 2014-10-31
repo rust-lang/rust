@@ -46,7 +46,7 @@
 // gdb-check:type = f64
 // gdb-command:continue
 
-#![allow(unused_variable)]
+#![allow(unused_variables)]
 #![allow(dead_code)]
 
 

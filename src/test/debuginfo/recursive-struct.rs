@@ -72,7 +72,7 @@
 
 // gdb-command:continue
 
-#![allow(unused_variable)]
+#![allow(unused_variables)]
 #![feature(struct_variant)]
 
 enum Opt<T> {

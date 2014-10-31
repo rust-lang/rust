@@ -833,7 +833,7 @@ fn trans_def<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
     let _icx = push_ctxt("trans_def_lvalue");
     match def {
-        def::DefFn(..) | def::DefStaticMethod(..) |
+        def::DefFn(..) | def::DefStaticMethod(..) | def::DefMethod(..) |
         def::DefStruct(_) | def::DefVariant(..) => {
             trans_def_fn_unadjusted(bcx, ref_expr, def)
         }
@@ -1191,10 +1191,12 @@ fn trans_def_fn_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let llfn = match def {
         def::DefFn(did, _, _) |
         def::DefStruct(did) | def::DefVariant(_, did, _) |
-        def::DefStaticMethod(did, def::FromImpl(_), _) => {
+        def::DefStaticMethod(did, def::FromImpl(_), _) |
+        def::DefMethod(did, _, def::FromImpl(_)) => {
             callee::trans_fn_ref(bcx, did, ExprId(ref_expr.id))
         }
-        def::DefStaticMethod(impl_did, def::FromTrait(trait_did), _) => {
+        def::DefStaticMethod(impl_did, def::FromTrait(trait_did), _) |
+        def::DefMethod(impl_did, _, def::FromTrait(trait_did)) => {
             meth::trans_static_method_callee(bcx, impl_did,
                                              trait_did, ref_expr.id)
         }
@@ -1331,7 +1333,7 @@ fn trans_struct<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                           field_ty.name == field.ident.node.name);
             match opt_pos {
                 Some(i) => {
-                    *need_base.get_mut(i) = false;
+                    need_base[i] = false;
                     (i, &*field.expr)
                 }
                 None => {
