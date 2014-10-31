@@ -262,7 +262,7 @@ pub fn sanitize(s: &str) -> String {
 
             _ => {
                 let mut tstr = String::new();
-                char::escape_unicode(c, |c| tstr.push(c));
+                for c in c.escape_unicode() { tstr.push(c) }
                 result.push('$');
                 result.push_str(tstr.as_slice().slice_from(1));
             }
