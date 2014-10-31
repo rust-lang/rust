@@ -10,5 +10,5 @@
 
 fn main() {
     &panic!()
-    //~^ ERROR mismatched types: expected `()`, found `&<generic #2>` (expected (), found &-ptr)
+    //~^ ERROR mismatched types: expected `()`, found `&_` (expected (), found &-ptr)
 }

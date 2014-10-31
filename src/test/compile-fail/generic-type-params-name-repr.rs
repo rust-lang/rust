@@ -29,13 +29,13 @@ fn main() {
 
     // Including cases where the default is using previous type params.
     let _: HashMap<String, int> = ();
-    //~^ ERROR mismatched types: expected `HashMap<collections::string::String,int>`, found `()`
+    //~^ ERROR mismatched types: expected `HashMap<collections::string::String, int>`, found `()`
     let _: HashMap<String, int, Hash<String>> = ();
-    //~^ ERROR mismatched types: expected `HashMap<collections::string::String,int>`, found `()`
+    //~^ ERROR mismatched types: expected `HashMap<collections::string::String, int>`, found `()`
 
     // But not when there's a different type in between.
     let _: Foo<A, int, C> = ();
-    //~^ ERROR mismatched types: expected `Foo<A,int>`, found `()`
+    //~^ ERROR mismatched types: expected `Foo<A, int>`, found `()`
 
     // And don't print <> at all when there's just defaults.
     let _: Foo<A, B, C> = ();

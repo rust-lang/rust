@@ -14,14 +14,14 @@ mod foo { pub fn bar() {} }
 
 fn main() {
     match (true, false) {
-        B => (), //~ ERROR expected `(bool,bool)`, found `A` (expected tuple, found enum A)
+        B => (), //~ ERROR expected `(bool, bool)`, found `A` (expected tuple, found enum A)
         _ => ()
     }
 
     match &Some(42i) {
         Some(x) => (), //~ ERROR expected `&core::option::Option<int>`,
-                       //        found `core::option::Option<<generic #4>>`
+                       //        found `core::option::Option<_>`
         None => ()     //~ ERROR expected `&core::option::Option<int>`,
-                       //        found `core::option::Option<<generic #5>>`
+                       //        found `core::option::Option<_>`
     }
 }

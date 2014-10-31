@@ -13,7 +13,7 @@ use std::raw::Slice;
 fn main() {
     match () {
         Slice { data: data, len: len } => (),
-        //~^ ERROR mismatched types: expected `()`, found `core::raw::Slice<<generic #3>>`
+        //~^ ERROR mismatched types: expected `()`, found `core::raw::Slice<_>`
         //         (expected (), found struct core::raw::Slice)
         _ => unreachable!()
     }
