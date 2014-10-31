@@ -13,7 +13,7 @@
 
 use core::prelude::*;
 
-use super::{BTreeMap, Keys, MoveEntries};
+use btree_map::{BTreeMap, Keys, MoveEntries};
 use std::hash::Hash;
 use core::default::Default;
 use core::{iter, fmt};

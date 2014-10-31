@@ -65,7 +65,7 @@ use core::prelude::{PartialEq, PartialOrd, Result, AsSlice, Some, Tuple2};
 use core::prelude::{range};
 
 use hash;
-use ringbuf::RingBuf;
+use ring_buf::RingBuf;
 use string::String;
 use unicode;
 use vec::Vec;
