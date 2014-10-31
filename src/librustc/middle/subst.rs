@@ -118,10 +118,11 @@ impl Substs {
 
     pub fn new_trait(t: Vec<ty::t>,
                      r: Vec<ty::Region>,
+                     a: Vec<ty::t>,
                      s: ty::t)
                     -> Substs
     {
-        Substs::new(VecPerParamSpace::new(t, vec!(s), Vec::new(), Vec::new()),
+        Substs::new(VecPerParamSpace::new(t, vec!(s), a, Vec::new()),
                     VecPerParamSpace::new(r, Vec::new(), Vec::new(), Vec::new()))
     }
 

@@ -54,7 +54,7 @@ use middle::def;
 use middle::lang_items::{FnTraitLangItem, FnMutTraitLangItem};
 use middle::lang_items::{FnOnceTraitLangItem};
 use middle::resolve_lifetime as rl;
-use middle::subst::{FnSpace, TypeSpace, SelfSpace, Subst, Substs};
+use middle::subst::{FnSpace, TypeSpace, AssocSpace, SelfSpace, Subst, Substs};
 use middle::subst::{VecPerParamSpace};
 use middle::ty;
 use middle::typeck::lookup_def_tcx;
@@ -215,7 +215,8 @@ fn ast_path_substs<'tcx,AC,RS>(
                    associated_ty: Option<ty::t>,
                    path: &ast::Path)
                    -> Substs
-                   where AC: AstConv<'tcx>, RS: RegionScope {
+                   where AC: AstConv<'tcx>, RS: RegionScope
+{
     /*!
      * Given a path `path` that refers to an item `I` with the
      * declared generics `decl_generics`, returns an appropriate
@@ -338,15 +339,19 @@ fn ast_path_substs<'tcx,AC,RS>(
                 substs.types.push(TypeSpace, default);
             }
             None => {
-                // This is an associated type.
-                substs.types.push(
-                    TypeSpace,
-                    this.associated_type_binding(path.span,
-                                                 associated_ty,
-                                                 decl_def_id,
-                                                 param.def_id))
+                tcx.sess.span_bug(path.span,
+                                  "extra parameter without default");
             }
         }
+    }
+
+    for param in decl_generics.types.get_slice(AssocSpace).iter() {
+        substs.types.push(
+            AssocSpace,
+            this.associated_type_binding(path.span,
+                                         associated_ty,
+                                         decl_def_id,
+                                         param.def_id))
     }
 
     substs
@@ -628,9 +633,13 @@ fn mk_pointer<'tcx, AC: AstConv<'tcx>, RS: RegionScope>(
         a_seq_ty: &ast::Ty,
         ptr_ty: PointerTy,
         constr: |ty::t| -> ty::t)
-        -> ty::t {
+        -> ty::t
+{
     let tcx = this.tcx();
-    debug!("mk_pointer(ptr_ty={})", ptr_ty);
+
+    debug!("mk_pointer(ptr_ty={}, a_seq_ty={})",
+           ptr_ty,
+           a_seq_ty.repr(tcx));
 
     match a_seq_ty.node {
         ast::TyVec(ref ty) => {
@@ -730,7 +739,13 @@ fn associated_ty_to_ty<'tcx,AC,RS>(this: &AC,
                                    trait_type_id: ast::DefId,
                                    span: Span)
                                    -> ty::t
-                                   where AC: AstConv<'tcx>, RS: RegionScope {
+                                   where AC: AstConv<'tcx>, RS: RegionScope
+{
+    debug!("associated_ty_to_ty(trait_path={}, for_ast_type={}, trait_type_id={})",
+           trait_path.repr(this.tcx()),
+           for_ast_type.repr(this.tcx()),
+           trait_type_id.repr(this.tcx()));
+
     // Find the trait that this associated type belongs to.
     let trait_did = match ty::impl_or_trait_item(this.tcx(),
                                                  trait_type_id).container() {
@@ -757,9 +772,16 @@ fn associated_ty_to_ty<'tcx,AC,RS>(this: &AC,
                                           None,
                                           Some(for_type),
                                           trait_path);
+
+    debug!("associated_ty_to_ty(trait_ref={})",
+           trait_ref.repr(this.tcx()));
+
     let trait_def = this.get_trait_def(trait_did);
     for type_parameter in trait_def.generics.types.iter() {
         if type_parameter.def_id == trait_type_id {
+            debug!("associated_ty_to_ty(type_parameter={} substs={})",
+                   type_parameter.repr(this.tcx()),
+                   trait_ref.substs.repr(this.tcx()));
             return *trait_ref.substs.types.get(type_parameter.space,
                                                type_parameter.index)
         }
@@ -772,7 +794,10 @@ fn associated_ty_to_ty<'tcx,AC,RS>(this: &AC,
 // Parses the programmer's textual representation of a type into our
 // internal notion of a type.
 pub fn ast_ty_to_ty<'tcx, AC: AstConv<'tcx>, RS: RegionScope>(
-        this: &AC, rscope: &RS, ast_ty: &ast::Ty) -> ty::t {
+        this: &AC, rscope: &RS, ast_ty: &ast::Ty) -> ty::t
+{
+    debug!("ast_ty_to_ty(ast_ty={})",
+           ast_ty.repr(this.tcx()));
 
     let tcx = this.tcx();
 

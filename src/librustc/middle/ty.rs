@@ -573,10 +573,6 @@ pub struct ctxt<'tcx> {
     /// Maps def IDs to true if and only if they're associated types.
     pub associated_types: RefCell<DefIdMap<bool>>,
 
-    /// Maps def IDs of traits to information about their associated types.
-    pub trait_associated_types:
-        RefCell<DefIdMap<Rc<Vec<AssociatedTypeInfo>>>>,
-
     /// Caches the results of trait selection. This cache is used
     /// for things that do not have to do with the parameters in scope.
     pub selection_cache: traits::SelectionCache,
@@ -1564,7 +1560,6 @@ pub fn mk_ctxt<'tcx>(s: Session,
         stability: RefCell::new(stability),
         capture_modes: capture_modes,
         associated_types: RefCell::new(DefIdMap::new()),
-        trait_associated_types: RefCell::new(DefIdMap::new()),
         selection_cache: traits::SelectionCache::new(),
         repr_hint_cache: RefCell::new(DefIdMap::new()),
    }
@@ -1991,6 +1986,16 @@ impl ItemSubsts {
 
     pub fn is_noop(&self) -> bool {
         self.substs.is_noop()
+    }
+}
+
+impl ParamBounds {
+    pub fn empty() -> ParamBounds {
+        ParamBounds {
+            builtin_bounds: empty_builtin_bounds(),
+            trait_bounds: Vec::new(),
+            region_bounds: Vec::new(),
+        }
     }
 }
 
@@ -4153,18 +4158,6 @@ impl Ord for AssociatedTypeInfo {
     fn cmp(&self, other: &AssociatedTypeInfo) -> Ordering {
         self.index.cmp(&other.index)
     }
-}
-
-/// Returns the associated types belonging to the given trait, in parameter
-/// order.
-pub fn associated_types_for_trait(cx: &ctxt, trait_id: ast::DefId)
-                                  -> Rc<Vec<AssociatedTypeInfo>> {
-    cx.trait_associated_types
-      .borrow()
-      .find(&trait_id)
-      .expect("associated_types_for_trait(): trait not found, try calling \
-               ensure_associated_types()")
-      .clone()
 }
 
 pub fn trait_item_def_ids(cx: &ctxt, id: ast::DefId)
