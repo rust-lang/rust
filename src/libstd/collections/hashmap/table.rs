@@ -14,7 +14,7 @@ use clone::Clone;
 use cmp;
 use hash::{Hash, Hasher};
 use iter::{Iterator, count};
-use kinds::marker;
+use kinds::{Sized, marker};
 use mem::{min_align_of, size_of};
 use mem;
 use num::{CheckedAdd, CheckedMul, is_power_of_two};
@@ -131,7 +131,7 @@ impl SafeHash {
 /// We need to remove hashes of 0. That's reserved for empty buckets.
 /// This function wraps up `hash_keyed` to be the only way outside this
 /// module to generate a SafeHash.
-pub fn make_hash<T: Hash<S>, S, H: Hasher<S>>(hasher: &H, t: &T) -> SafeHash {
+pub fn make_hash<Sized? T: Hash<S>, S, H: Hasher<S>>(hasher: &H, t: &T) -> SafeHash {
     match hasher.hash(t) {
         // This constant is exceedingly likely to hash to the same
         // bucket, but it won't be counted as empty! Just so we can maintain

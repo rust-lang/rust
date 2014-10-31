@@ -303,7 +303,7 @@ fn existing_match(e: &Env, name: &str,
         // `source` stores paths which are normalized which may be different
         // from the strings on the command line.
         let source = e.sess.cstore.get_used_crate_source(cnum).unwrap();
-        match e.sess.opts.externs.find_equiv(&name) {
+        match e.sess.opts.externs.find_equiv(name) {
             Some(locs) => {
                 let found = locs.iter().any(|l| {
                     let l = fs::realpath(&Path::new(l.as_slice())).ok();

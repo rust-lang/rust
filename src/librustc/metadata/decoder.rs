@@ -295,7 +295,7 @@ fn item_path(item_doc: rbml::Doc) -> Vec<ast_map::PathElem> {
 fn item_name(intr: &IdentInterner, item: rbml::Doc) -> ast::Name {
     let name = reader::get_doc(item, tag_paths_data_name);
     let string = name.as_str_slice();
-    match intr.find_equiv(&string) {
+    match intr.find_equiv(string) {
         None => token::intern(string),
         Some(val) => val,
     }

@@ -333,7 +333,7 @@ impl TypeNames {
     }
 
     pub fn find_type(&self, s: &str) -> Option<Type> {
-        self.named_types.borrow().find_equiv(&s).map(|x| Type::from_ref(*x))
+        self.named_types.borrow().find_equiv(s).map(|x| Type::from_ref(*x))
     }
 
     pub fn type_to_string(&self, ty: Type) -> String {

@@ -39,6 +39,7 @@
 
 #![stable]
 
+use kinds::Sized;
 use option::{Option, Some, None};
 
 /// Trait for values that can be compared for equality and inequality.
@@ -236,7 +237,7 @@ pub trait PartialOrd: PartialEq {
 /// container types; e.g. it is often desirable to be able to use `&str`
 /// values to look up entries in a container with `String` keys.
 #[experimental = "Better solutions may be discovered."]
-pub trait Equiv<T> {
+pub trait Equiv<T> for Sized? {
     /// Implement this function to decide equivalent values.
     fn equiv(&self, other: &T) -> bool;
 }
