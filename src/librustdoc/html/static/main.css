@@ -177,7 +177,7 @@ nav.sub {
     color: #333;
 }
 
-.location a:first-child { font-weight: bold; }
+.location a:first-child { font-weight: 500; }
 
 .block {
     padding: 0 10px;
@@ -494,7 +494,7 @@ pre.rust { position: relative; }
 }
 
 .collapse-toggle {
-    font-weight: 100;
+    font-weight: 300;
     position: absolute;
     left: 13px;
     color: #999;
@@ -523,7 +523,6 @@ pre.rust { position: relative; }
 
 .toggle-label {
     color: #999;
-    font-style: italic;
 }
 
 
