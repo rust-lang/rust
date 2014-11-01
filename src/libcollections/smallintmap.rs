@@ -19,7 +19,8 @@ use core::default::Default;
 use core::fmt;
 use core::iter;
 use core::iter::{Enumerate, FilterMap};
-use core::mem::replace;
+use core::mem::{replace, swap};
+use core::kinds::marker::ContravariantLifetime;
 
 use {Mutable, Map, MutableMap, MutableSeq};
 use {vec, slice};
@@ -295,6 +296,19 @@ impl<V> SmallIntMap<V> {
             v.map(|v| (i, v))
         })
     }
+
+    /// Gets the given key's corresponding entry in the map for in-place manipulation
+    pub fn entry<'a>(&'a mut self, key: uint) -> Entry<'a, V> {
+        let self_ptr = self as *mut _;
+        match self.find_mut(&key) {
+            // FIXME: So, this is absolutely awful. We absolutely *do not* need a raw ptr for
+            // VacantEntry, but borrowck thinks that self is borrowed in both this None branch,
+            // and after the match if we return in the Some branch. If anyone knows how to work
+            // around this, *please do*.
+            None => Vacant(VacantEntry{ map: self_ptr, key: key, marker: ContravariantLifetime }),
+            Some(val) => Occupied(OccupiedEntry{ map: self_ptr, key: key, val: val }),
+        }
+    }
 }
 
 impl<V:Clone> SmallIntMap<V> {
@@ -493,6 +507,82 @@ pub type Keys<'a, T> =
 pub type Values<'a, T> =
     iter::Map<'static, (uint, &'a T), &'a T, Entries<'a, T>>;
 
+/// A view into a single occupied location in a SmallIntMap
+pub struct OccupiedEntry<'a, V:'a> {
+    key: uint,
+    val: &'a mut V,
+    // We only need this for `take`. Should never be null, and we'll only use it when
+    // we we'll never touch `val` again. Totally safe, just lame that we need this.
+    // The alternative would be doing the indexing on every op, which would make this API
+    // *worse* than useless. This way it's *only* useless.
+    map: *mut SmallIntMap<V>,
+}
+
+/// A view into a single empty location in a SmallIntMap
+pub struct VacantEntry<'a, V:'a> {
+    // See the FIXME in `entry` for why this mess happened
+    map: *mut SmallIntMap<V>,
+    key: uint,
+    marker: ContravariantLifetime<'a>,
+}
+
+/// A view into a single location in a map, which may be vacant or occupied
+pub enum Entry<'a, V:'a> {
+    /// An occupied Entry
+    Occupied(OccupiedEntry<'a, V>),
+    /// A vacant Entry
+    Vacant(VacantEntry<'a, V>),
+}
+
+impl<'a, V> OccupiedEntry<'a, V> {
+    /// Gets a reference to the value in the entry
+    pub fn get(&self) -> &V {
+        &*self.val
+    }
+
+    /// Gets a mutable reference to the value in the entry
+    pub fn get_mut(&mut self) -> &mut V {
+        self.val
+    }
+
+    /// Converts the OccupiedEntry into a mutable reference to the value in the entry
+    /// with a lifetime bound to the map itself
+    pub fn into_mut(self) -> &'a mut V {
+        self.val
+    }
+
+    /// Sets the value of the entry, and returns the entry's old value
+    pub fn set(&mut self, mut value: V) -> V {
+        swap(&mut value, self.val);
+        value
+    }
+
+    /// Takes the value out of the entry, and returns it
+    pub fn take(self) -> V {
+        // This is pretty much as effecient as this can be, short of storing *another* raw ptr
+        // to the option, so that we can `None` it out directly, and then decrement the map's
+        // length directly. That would be... awful.
+        unsafe {
+            (*self.map).pop(&self.key).unwrap()
+        }
+    }
+}
+
+impl<'a, V> VacantEntry<'a, V> {
+    /// Sets the value of the entry with the VacantEntry's key,
+    /// and returns a mutable reference to it
+    pub fn set(self, value: V) -> &'a mut V {
+        // This is moderately inefficient because we do two indexing operations, where we could
+        // only do one. However insert handles all the growing and length logic for us,
+        // and this API is already pretty silly on SmallIntMap. Not worth a big refactor over.
+        //
+        // There isn't any clear way to avoid an `unwrap` of the underlying option, regardless.
+        let map = unsafe { &mut *self.map };
+        map.insert(self.key, value);
+        map.find_mut(&self.key).unwrap()
+    }
+}
+
 #[cfg(test)]
 mod test_map {
     use std::prelude::*;
@@ -500,7 +590,7 @@ mod test_map {
     use hash;
 
     use {Map, MutableMap, Mutable, MutableSeq};
-    use super::SmallIntMap;
+    use super::{SmallIntMap, Occupied, Vacant};
 
     #[test]
     fn test_find_mut() {
@@ -861,6 +951,58 @@ mod test_map {
         map.insert(3, 4);
 
         map[4];
+    }
+
+    #[test]
+    fn test_entry(){
+        let xs = [(1i, 10i), (2, 20), (3, 30), (4, 40), (5, 50), (6, 60)];
+
+        let mut map: SmallIntMap<int> = xs.iter().map(|&x| x).collect();
+
+        // Existing key (insert)
+        match map.entry(1) {
+            Vacant(_) => unreachable!(),
+            Occupied(mut view) => {
+                assert_eq!(view.get(), &10);
+                assert_eq!(view.set(100), 10);
+            }
+        }
+        assert_eq!(map.find(&1).unwrap(), &100);
+        assert_eq!(map.len(), 6);
+
+
+        // Existing key (update)
+        match map.entry(2) {
+            Vacant(_) => unreachable!(),
+            Occupied(mut view) => {
+                let v = view.get_mut();
+                let new_v = (*v) * 10;
+                *v = new_v;
+            }
+        }
+        assert_eq!(map.find(&2).unwrap(), &200);
+        assert_eq!(map.len(), 6);
+
+        // Existing key (take)
+        match map.entry(3) {
+            Vacant(_) => unreachable!(),
+            Occupied(view) => {
+                assert_eq!(view.take(), 30);
+            }
+        }
+        assert_eq!(map.find(&3), None);
+        assert_eq!(map.len(), 5);
+
+
+        // Inexistent key (insert)
+        match map.entry(10) {
+            Occupied(_) => unreachable!(),
+            Vacant(view) => {
+                assert_eq!(*view.set(1000), 1000);
+            }
+        }
+        assert_eq!(map.find(&10).unwrap(), &1000);
+        assert_eq!(map.len(), 6);
     }
 }
 
