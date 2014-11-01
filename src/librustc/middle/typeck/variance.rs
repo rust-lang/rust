@@ -778,7 +778,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                     variance);
             }
 
-            ty::ty_trait(box ty::TyTrait { def_id, ref substs, .. }) => {
+            ty::ty_trait(box ty::TyTrait { def_id, ref substs, bounds }) => {
                 let trait_def = ty::lookup_trait_def(self.tcx(), def_id);
                 let generics = &trait_def.generics;
 
@@ -795,6 +795,10 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                 // fn space.
                 assert!(generics.types.is_empty_in(subst::FnSpace));
                 assert!(generics.regions.is_empty_in(subst::FnSpace));
+
+                // The type `Foo<T+'a>` is contravariant w/r/t `'a`:
+                let contra = self.contravariant(variance);
+                self.add_constraints_from_region(bounds.region_bound, contra);
 
                 self.add_constraints_from_substs(
                     def_id,
