@@ -502,7 +502,11 @@ impl<'blk, 'tcx> mc::Typer<'tcx> for BlockS<'blk, 'tcx> {
     }
 
     fn node_method_ty(&self, method_call: typeck::MethodCall) -> Option<ty::t> {
-        self.tcx().method_map.borrow().find(&method_call).map(|method| method.ty)
+        self.tcx()
+            .method_map
+            .borrow()
+            .find(&method_call)
+            .map(|method| monomorphize_type(self, method.ty))
     }
 
     fn adjustments<'a>(&'a self) -> &'a RefCell<NodeMap<ty::AutoAdjustment>> {
