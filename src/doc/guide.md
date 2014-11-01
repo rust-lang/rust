@@ -4601,20 +4601,24 @@ returns `true` or `false`. The new iterator `filter()` produces
 only the elements that that closure returns `true` for:
 
 ```{rust}
-for i in range(1i, 100i).filter(|x| x % 2 == 0) {
+for i in range(1i, 100i).filter(|&x| x % 2 == 0) {
     println!("{}", i);
 }
 ```
 
 This will print all of the even numbers between one and a hundred.
+(Note that because `filter` doesn't consume the elements that are
+being iterated over, it is passed a reference to each element, and
+thus the filter predicate uses the `&x` pattern to extract the integer
+itself.)
 
 You can chain all three things together: start with an iterator, adapt it
 a few times, and then consume the result. Check it out:
 
 ```{rust}
 range(1i, 1000i)
-    .filter(|x| x % 2 == 0)
-    .filter(|x| x % 3 == 0)
+    .filter(|&x| x % 2 == 0)
+    .filter(|&x| x % 3 == 0)
     .take(5)
     .collect::<Vec<int>>();
 ```
