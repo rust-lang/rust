@@ -287,7 +287,7 @@ The benchmarking runner offers two ways to avoid this. Either, the
 closure that the `iter` method receives can return an arbitrary value
 which forces the optimizer to consider the result used and ensures it
 cannot remove the computation entirely. This could be done for the
-example above by adjusting the `bh.iter` call to
+example above by adjusting the `b.iter` call to
 
 ~~~
 # struct X; impl X { fn iter<T>(&self, _: || -> T) {} } let b = X;
