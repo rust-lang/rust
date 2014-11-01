@@ -16,18 +16,15 @@
 struct Foo { foo: uint }
 
 impl FnOnce<(), uint> for Foo {
-    #[rust_call_abi_hack]
-    fn call_once(self, _: ()) -> uint { self.foo }
+    extern "rust-call" fn call_once(self, _: ()) -> uint { self.foo }
 }
 
 impl FnOnce<(uint,), uint> for Foo {
-    #[rust_call_abi_hack]
-    fn call_once(self, (x,): (uint,)) -> uint { self.foo + x }
+    extern "rust-call" fn call_once(self, (x,): (uint,)) -> uint { self.foo + x }
 }
 
 impl FnOnce<(uint, uint), uint> for Foo {
-    #[rust_call_abi_hack]
-    fn call_once(self, (x, y): (uint, uint)) -> uint { self.foo + x + y }
+    extern "rust-call" fn call_once(self, (x, y): (uint, uint)) -> uint { self.foo + x + y }
 }
 
 fn main() {

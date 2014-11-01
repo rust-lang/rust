@@ -24,9 +24,6 @@ use std::fmt::Show;
 use std::rc::Rc;
 use serialize::{Encodable, Decodable, Encoder, Decoder};
 
-#[cfg(stage0)]
-pub use self::TtToken as TTTok;
-
 // FIXME #6993: in librustc, uses of "ident" should be replaced
 // by just "Name".
 
