@@ -20,69 +20,6 @@ use std::mem;
 use std::path::BytesContainer;
 use std::rc::Rc;
 
-// NOTE(stage0): remove these re-exports after the next snapshot
-// (needed to allow quotations to pass stage0)
-#[cfg(stage0)] pub use self::Plus           as PLUS;
-#[cfg(stage0)] pub use self::Minus          as MINUS;
-#[cfg(stage0)] pub use self::Star           as STAR;
-#[cfg(stage0)] pub use self::Slash          as SLASH;
-#[cfg(stage0)] pub use self::Percent        as PERCENT;
-#[cfg(stage0)] pub use self::Caret          as CARET;
-#[cfg(stage0)] pub use self::And            as AND;
-#[cfg(stage0)] pub use self::Or             as OR;
-#[cfg(stage0)] pub use self::Shl            as SHL;
-#[cfg(stage0)] pub use self::Shr            as SHR;
-#[cfg(stage0)] pub use self::Eq             as EQ;
-#[cfg(stage0)] pub use self::Lt             as LT;
-#[cfg(stage0)] pub use self::Le             as LE;
-#[cfg(stage0)] pub use self::EqEq           as EQEQ;
-#[cfg(stage0)] pub use self::Ne             as NE;
-#[cfg(stage0)] pub use self::Ge             as GE;
-#[cfg(stage0)] pub use self::Gt             as GT;
-#[cfg(stage0)] pub use self::AndAnd         as ANDAND;
-#[cfg(stage0)] pub use self::OrOr           as OROR;
-#[cfg(stage0)] pub use self::Not            as NOT;
-#[cfg(stage0)] pub use self::Tilde          as TILDE;
-#[cfg(stage0)] pub use self::BinOp          as BINOP;
-#[cfg(stage0)] pub use self::BinOpEq        as BINOPEQ;
-#[cfg(stage0)] pub use self::At             as AT;
-#[cfg(stage0)] pub use self::Dot            as DOT;
-#[cfg(stage0)] pub use self::DotDot         as DOTDOT;
-#[cfg(stage0)] pub use self::DotDotDot      as DOTDOTDOT;
-#[cfg(stage0)] pub use self::Comma          as COMMA;
-#[cfg(stage0)] pub use self::Semi           as SEMI;
-#[cfg(stage0)] pub use self::Colon          as COLON;
-#[cfg(stage0)] pub use self::ModSep         as MOD_SEP;
-#[cfg(stage0)] pub use self::RArrow         as RARROW;
-#[cfg(stage0)] pub use self::LArrow         as LARROW;
-#[cfg(stage0)] pub use self::FatArrow       as FAT_ARROW;
-#[cfg(stage0)] pub use self::Pound          as POUND;
-#[cfg(stage0)] pub use self::Dollar         as DOLLAR;
-#[cfg(stage0)] pub use self::Question       as QUESTION;
-#[cfg(stage0)] pub use self::LitByte        as LIT_BYTE;
-#[cfg(stage0)] pub use self::LitChar        as LIT_CHAR;
-#[cfg(stage0)] pub use self::LitInteger     as LIT_INTEGER;
-#[cfg(stage0)] pub use self::LitFloat       as LIT_FLOAT;
-#[cfg(stage0)] pub use self::LitStr         as LIT_STR;
-#[cfg(stage0)] pub use self::LitStrRaw      as LIT_STR_RAW;
-#[cfg(stage0)] pub use self::LitBinary      as LIT_BINARY;
-#[cfg(stage0)] pub use self::LitBinaryRaw   as LIT_BINARY_RAW;
-#[cfg(stage0)] pub use self::Ident          as IDENT;
-#[cfg(stage0)] pub use self::Underscore     as UNDERSCORE;
-#[cfg(stage0)] pub use self::Lifetime       as LIFETIME;
-#[cfg(stage0)] pub use self::Interpolated   as INTERPOLATED;
-#[cfg(stage0)] pub use self::DocComment     as DOC_COMMENT;
-#[cfg(stage0)] pub use self::Whitespace     as WS;
-#[cfg(stage0)] pub use self::Comment        as COMMENT;
-#[cfg(stage0)] pub use self::Shebang        as SHEBANG;
-#[cfg(stage0)] pub use self::Eof            as EOF;
-#[cfg(stage0)] pub const LPAREN:    Token = OpenDelim(Paren);
-#[cfg(stage0)] pub const RPAREN:    Token = CloseDelim(Paren);
-#[cfg(stage0)] pub const LBRACKET:  Token = OpenDelim(Bracket);
-#[cfg(stage0)] pub const RBRACKET:  Token = CloseDelim(Bracket);
-#[cfg(stage0)] pub const LBRACE:    Token = OpenDelim(Brace);
-#[cfg(stage0)] pub const RBRACE:    Token = CloseDelim(Brace);
-
 #[allow(non_camel_case_types)]
 #[deriving(Clone, Encodable, Decodable, PartialEq, Eq, Hash, Show)]
 pub enum BinOpToken {
@@ -109,15 +46,7 @@ pub enum DelimToken {
     Brace,
 }
 
-#[cfg(stage0)]
-#[allow(non_upper_case_globals)]
-pub const ModName: bool = true;
-#[cfg(stage0)]
-#[allow(non_upper_case_globals)]
-pub const Plain: bool = false;
-
 #[deriving(Clone, Encodable, Decodable, PartialEq, Eq, Hash, Show)]
-#[cfg(not(stage0))]
 pub enum IdentStyle {
     /// `::` follows the identifier with no whitespace in-between.
     ModName,
@@ -173,9 +102,6 @@ pub enum Token {
     LitBinaryRaw(ast::Name, uint), /* raw binary str delimited by n hash symbols */
 
     /* Name components */
-    #[cfg(stage0)]
-    Ident(ast::Ident, bool),
-    #[cfg(not(stage0))]
     Ident(ast::Ident, IdentStyle),
     Underscore,
     Lifetime(ast::Ident),
@@ -398,9 +324,6 @@ pub enum Nonterminal {
     NtPat(P<ast::Pat>),
     NtExpr(P<ast::Expr>),
     NtTy(P<ast::Ty>),
-    #[cfg(stage0)]
-    NtIdent(Box<ast::Ident>, bool),
-    #[cfg(not(stage0))]
     NtIdent(Box<ast::Ident>, IdentStyle),
     /// Stuff inside brackets for attributes
     NtMeta(P<ast::MetaItem>),
