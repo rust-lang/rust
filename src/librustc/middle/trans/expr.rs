@@ -745,18 +745,6 @@ fn trans_index<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             // Translate index expression.
             let ix_datum = unpack_datum!(bcx, trans(bcx, idx));
 
-            // Overloaded. Evaluate `trans_overloaded_op`, which will
-            // invoke the user's index() method, which basically yields
-            // a `&T` pointer.  We can then proceed down the normal
-            // path (below) to dereference that `&T`.
-            let val =
-                unpack_result!(bcx,
-                               trans_overloaded_op(bcx,
-                                                   index_expr,
-                                                   method_call,
-                                                   base_datum,
-                                                   vec![(ix_datum, idx.id)],
-                                                   None));
             let ref_ty = ty::ty_fn_ret(monomorphize_type(bcx, method_ty)).unwrap();
             let elt_ty = match ty::deref(ref_ty, true) {
                 None => {
@@ -766,7 +754,25 @@ fn trans_index<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 }
                 Some(elt_tm) => elt_tm.ty,
             };
-            Datum::new(val, elt_ty, LvalueExpr)
+
+            // Overloaded. Evaluate `trans_overloaded_op`, which will
+            // invoke the user's index() method, which basically yields
+            // a `&T` pointer.  We can then proceed down the normal
+            // path (below) to dereference that `&T`.
+            let scratch = rvalue_scratch_datum(bcx, ref_ty, "overloaded_index_elt");
+            unpack_result!(bcx,
+                           trans_overloaded_op(bcx,
+                                               index_expr,
+                                               method_call,
+                                               base_datum,
+                                               vec![(ix_datum, idx.id)],
+                                               Some(SaveIn(scratch.val))));
+            let datum = scratch.to_expr_datum();
+            if ty::type_is_sized(bcx.tcx(), elt_ty) {
+                Datum::new(datum.to_llscalarish(bcx), elt_ty, LvalueExpr)
+            } else {
+                Datum::new(datum.val, ty::mk_open(bcx.tcx(), elt_ty), LvalueExpr)
+            }
         }
         None => {
             let base_datum = unpack_datum!(bcx, trans_to_lvalue(bcx,
