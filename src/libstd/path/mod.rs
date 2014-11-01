@@ -67,7 +67,6 @@ println!("path exists: {}", path.exists());
 
 #![experimental]
 
-use collections::{Collection, MutableSeq};
 use c_str::CString;
 use clone::Clone;
 use fmt;

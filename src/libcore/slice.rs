@@ -36,7 +36,6 @@
 
 use mem::transmute;
 use clone::Clone;
-use collections::Collection;
 use cmp::{PartialEq, PartialOrd, Eq, Ord, Ordering, Less, Equal, Greater, Equiv};
 use cmp;
 use default::Default;
@@ -234,6 +233,29 @@ pub trait ImmutableSlice<T> for Sized? {
     /// ```
     #[unstable = "waiting on unboxed closures"]
     fn binary_search(&self, f: |&T| -> Ordering) -> BinarySearchResult;
+
+    /// Return the number of elements in the slice
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// let a = [1i, 2, 3];
+    /// assert_eq!(a.len(), 3);
+    /// ```
+    #[experimental = "not triaged yet"]
+    fn len(&self) -> uint;
+
+    /// Returns true if the slice has a length of 0
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// let a = [1i, 2, 3];
+    /// assert!(!a.is_empty());
+    /// ```
+    #[inline]
+    #[experimental = "not triaged yet"]
+    fn is_empty(&self) -> bool { self.len() == 0 }
 }
 
 #[unstable]
@@ -372,6 +394,9 @@ impl<T> ImmutableSlice<T> for [T] {
         }
         return NotFound(base);
     }
+
+    #[inline]
+    fn len(&self) -> uint { self.repr().len }
 }
 
 
@@ -884,24 +909,6 @@ pub trait AsSlice<T> {
 impl<'a,T> AsSlice<T> for &'a [T] {
     #[inline(always)]
     fn as_slice<'a>(&'a self) -> &'a [T] { *self }
-}
-
-#[experimental = "trait is experimental"]
-impl<'a, T> Collection for &'a [T] {
-    /// Returns the length of a slice.
-    #[inline]
-    fn len(&self) -> uint {
-        self.repr().len
-    }
-}
-
-#[experimental = "trait is experimental"]
-impl<'a, T> Collection for &'a mut [T] {
-    /// Returns the length of a slice.
-    #[inline]
-    fn len(&self) -> uint {
-        self.repr().len
-    }
 }
 
 #[unstable = "waiting for DST"]
@@ -1508,7 +1515,6 @@ pub mod raw {
 /// Operations on `[u8]`.
 #[experimental = "needs review"]
 pub mod bytes {
-    use collections::Collection;
     use kinds::Sized;
     use ptr;
     use slice::{ImmutableSlice, MutableSlice};

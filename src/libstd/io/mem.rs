@@ -13,13 +13,11 @@
 //! Readers and Writers for in-memory buffers
 
 use cmp::min;
-use collections::Collection;
 use option::None;
 use result::{Err, Ok};
 use io;
 use io::{Reader, Writer, Seek, Buffer, IoError, SeekStyle, IoResult};
-use slice;
-use slice::AsSlice;
+use slice::{mod, AsSlice, ImmutableSlice};
 use vec::Vec;
 
 const BUF_CAPACITY: uint = 128;

@@ -27,7 +27,6 @@ use core::ptr;
 use core::raw::Slice as RawSlice;
 use core::uint;
 
-use {Mutable, MutableSeq};
 use slice::{CloneableVector};
 
 /// An owned, growable vector.
@@ -530,15 +529,6 @@ impl<T: Ord> Ord for Vec<T> {
     }
 }
 
-#[experimental = "waiting on Collection stability"]
-impl<T> Collection for Vec<T> {
-    #[inline]
-    #[stable]
-    fn len(&self) -> uint {
-        self.len
-    }
-}
-
 // FIXME: #13996: need a way to mark the return value as `noalias`
 #[inline(never)]
 unsafe fn alloc_or_realloc<T>(ptr: *mut T, old_size: uint, size: uint) -> *mut T {
@@ -969,15 +959,107 @@ impl<T> Vec<T> {
             self.push(f(i));
         }
     }
-}
 
-#[experimental = "waiting on Mutable stability"]
-impl<T> Mutable for Vec<T> {
+    /// Appends an element to the back of a collection.
+    ///
+    /// # Failure
+    ///
+    /// Fails if the number of elements in the vector overflows a `uint`.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let mut vec = vec!(1i, 2);
+    /// vec.push(3);
+    /// assert_eq!(vec, vec!(1, 2, 3));
+    /// ```
     #[inline]
     #[stable]
-    fn clear(&mut self) {
+    pub fn push(&mut self, value: T) {
+        if mem::size_of::<T>() == 0 {
+            // zero-size types consume no memory, so we can't rely on the address space running out
+            self.len = self.len.checked_add(&1).expect("length overflow");
+            unsafe { mem::forget(value); }
+            return
+        }
+        if self.len == self.cap {
+            let old_size = self.cap * mem::size_of::<T>();
+            let size = max(old_size, 2 * mem::size_of::<T>()) * 2;
+            if old_size > size { panic!("capacity overflow") }
+            unsafe {
+                self.ptr = alloc_or_realloc(self.ptr, old_size, size);
+            }
+            self.cap = max(self.cap, 2) * 2;
+        }
+
+        unsafe {
+            let end = (self.ptr as *const T).offset(self.len as int) as *mut T;
+            ptr::write(&mut *end, value);
+            self.len += 1;
+        }
+    }
+
+    /// Removes the last element from a vector and returns it, or `None` if
+    /// it is empty.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let mut vec = vec![1i, 2, 3];
+    /// assert_eq!(vec.pop(), Some(3));
+    /// assert_eq!(vec, vec![1, 2]);
+    /// ```
+    #[inline]
+    #[stable]
+    pub fn pop(&mut self) -> Option<T> {
+        if self.len == 0 {
+            None
+        } else {
+            unsafe {
+                self.len -= 1;
+                Some(ptr::read(self.as_slice().unsafe_get(self.len())))
+            }
+        }
+    }
+
+    /// Clears the vector, removing all values.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// let mut v = vec![1i, 2, 3];
+    /// v.clear();
+    /// assert!(v.is_empty());
+    /// ```
+    #[inline]
+    #[stable]
+    pub fn clear(&mut self) {
         self.truncate(0)
     }
+
+    /// Return the number of elements in the vector
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// let a = vec![1i, 2, 3];
+    /// assert_eq!(a.len(), 3);
+    /// ```
+    #[inline]
+    #[stable]
+    pub fn len(&self) -> uint { self.len }
+
+    /// Returns true if the vector contains no elements
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// let mut v = Vec::new();
+    /// assert!(v.is_empty());
+    /// v.push(1i);
+    /// assert!(!v.is_empty());
+    /// ```
+    pub fn is_empty(&self) -> bool { self.len() == 0 }
 }
 
 impl<T: PartialEq> Vec<T> {
@@ -1138,61 +1220,6 @@ impl<T> Default for Vec<T> {
 impl<T:fmt::Show> fmt::Show for Vec<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.as_slice().fmt(f)
-    }
-}
-
-#[experimental = "waiting on MutableSeq stability"]
-impl<T> MutableSeq<T> for Vec<T> {
-    /// Appends an element to the back of a collection.
-    ///
-    /// # Failure
-    ///
-    /// Fails if the number of elements in the vector overflows a `uint`.
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// let mut vec = vec!(1i, 2);
-    /// vec.push(3);
-    /// assert_eq!(vec, vec!(1, 2, 3));
-    /// ```
-    #[inline]
-    #[stable]
-    fn push(&mut self, value: T) {
-        if mem::size_of::<T>() == 0 {
-            // zero-size types consume no memory, so we can't rely on the address space running out
-            self.len = self.len.checked_add(&1).expect("length overflow");
-            unsafe { mem::forget(value); }
-            return
-        }
-        if self.len == self.cap {
-            let old_size = self.cap * mem::size_of::<T>();
-            let size = max(old_size, 2 * mem::size_of::<T>()) * 2;
-            if old_size > size { panic!("capacity overflow") }
-            unsafe {
-                self.ptr = alloc_or_realloc(self.ptr, old_size, size);
-            }
-            self.cap = max(self.cap, 2) * 2;
-        }
-
-        unsafe {
-            let end = (self.ptr as *const T).offset(self.len as int) as *mut T;
-            ptr::write(&mut *end, value);
-            self.len += 1;
-        }
-    }
-
-    #[inline]
-    #[stable]
-    fn pop(&mut self) -> Option<T> {
-        if self.len == 0 {
-            None
-        } else {
-            unsafe {
-                self.len -= 1;
-                Some(ptr::read(self.as_slice().unsafe_get(self.len())))
-            }
-        }
     }
 }
 
@@ -1635,8 +1662,6 @@ mod tests {
     use std::mem::size_of;
     use test::Bencher;
     use super::{as_vec, unzip, raw, Vec};
-
-    use MutableSeq;
 
     struct DropCounter<'a> {
         count: &'a mut int

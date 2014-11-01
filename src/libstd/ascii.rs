@@ -14,7 +14,6 @@
 
 #![experimental]
 
-use collections::Collection;
 use core::kinds::Sized;
 use fmt;
 use iter::Iterator;

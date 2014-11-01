@@ -22,7 +22,6 @@ use core::iter;
 use core::slice;
 use std::hash::{Writer, Hash};
 
-use {Deque, Mutable, MutableSeq};
 use vec::Vec;
 
 static INITIAL_CAPACITY: uint = 8u; // 2^3
@@ -34,86 +33,6 @@ pub struct RingBuf<T> {
     nelts: uint,
     lo: uint,
     elts: Vec<Option<T>>
-}
-
-impl<T> Collection for RingBuf<T> {
-    /// Returns the number of elements in the `RingBuf`.
-    fn len(&self) -> uint { self.nelts }
-}
-
-impl<T> Mutable for RingBuf<T> {
-    /// Clears the `RingBuf`, removing all values.
-    fn clear(&mut self) {
-        for x in self.elts.iter_mut() { *x = None }
-        self.nelts = 0;
-        self.lo = 0;
-    }
-}
-
-impl<T> Deque<T> for RingBuf<T> {
-    /// Returns a reference to the first element in the `RingBuf`.
-    fn front<'a>(&'a self) -> Option<&'a T> {
-        if self.nelts > 0 { Some(&self[0]) } else { None }
-    }
-
-    /// Returns a mutable reference to the first element in the `RingBuf`.
-    fn front_mut<'a>(&'a mut self) -> Option<&'a mut T> {
-        if self.nelts > 0 { Some(&mut self[0]) } else { None }
-    }
-
-    /// Returns a reference to the last element in the `RingBuf`.
-    fn back<'a>(&'a self) -> Option<&'a T> {
-        if self.nelts > 0 { Some(&self[self.nelts - 1]) } else { None }
-    }
-
-    /// Returns a mutable reference to the last element in the `RingBuf`.
-    fn back_mut<'a>(&'a mut self) -> Option<&'a mut T> {
-        let nelts = self.nelts;
-        if nelts > 0 { Some(&mut self[nelts - 1]) } else { None }
-    }
-
-    /// Removes and returns the first element in the `RingBuf`, or `None` if it
-    /// is empty.
-    fn pop_front(&mut self) -> Option<T> {
-        let result = self.elts[self.lo].take();
-        if result.is_some() {
-            self.lo = (self.lo + 1u) % self.elts.len();
-            self.nelts -= 1u;
-        }
-        result
-    }
-
-    /// Prepends an element to the `RingBuf`.
-    fn push_front(&mut self, t: T) {
-        if self.nelts == self.elts.len() {
-            grow(self.nelts, &mut self.lo, &mut self.elts);
-        }
-        if self.lo == 0u {
-            self.lo = self.elts.len() - 1u;
-        } else { self.lo -= 1u; }
-        self.elts[self.lo] = Some(t);
-        self.nelts += 1u;
-    }
-}
-
-impl<T> MutableSeq<T> for RingBuf<T> {
-    fn push(&mut self, t: T) {
-        if self.nelts == self.elts.len() {
-            grow(self.nelts, &mut self.lo, &mut self.elts);
-        }
-        let hi = self.raw_index(self.nelts);
-        self.elts[hi] = Some(t);
-        self.nelts += 1u;
-    }
-    fn pop(&mut self) -> Option<T> {
-        if self.nelts > 0 {
-            self.nelts -= 1;
-            let hi = self.raw_index(self.nelts);
-            self.elts[hi].take()
-        } else {
-            None
-        }
-    }
 }
 
 impl<T> Default for RingBuf<T> {
@@ -151,7 +70,7 @@ impl<T> RingBuf<T> {
     /// assert_eq!(buf[1], 7);
     /// ```
     #[deprecated = "use indexing instead: `buf[index] = value`"]
-    pub fn get_mut<'a>(&'a mut self, i: uint) -> &'a mut T {
+    pub fn get_mut(&mut self, i: uint) -> &mut T {
         &mut self[i]
     }
 
@@ -219,7 +138,7 @@ impl<T> RingBuf<T> {
     /// let b: &[_] = &[&5, &3, &4];
     /// assert_eq!(buf.iter().collect::<Vec<&int>>().as_slice(), b);
     /// ```
-    pub fn iter<'a>(&'a self) -> Items<'a, T> {
+    pub fn iter(&self) -> Items<T> {
         Items{index: 0, rindex: self.nelts, lo: self.lo, elts: self.elts.as_slice()}
     }
 
@@ -240,7 +159,7 @@ impl<T> RingBuf<T> {
     /// let b: &[_] = &[&mut 3, &mut 1, &mut 2];
     /// assert_eq!(buf.iter_mut().collect::<Vec<&mut int>>()[], b);
     /// ```
-    pub fn iter_mut<'a>(&'a mut self) -> MutItems<'a, T> {
+    pub fn iter_mut(&mut self) -> MutItems<T> {
         let start_index = raw_index(self.lo, self.elts.len(), 0);
         let end_index = raw_index(self.lo, self.elts.len(), self.nelts);
 
@@ -266,6 +185,230 @@ impl<T> RingBuf<T> {
                 remaining2: empty.iter_mut(),
                 nelts: self.nelts,
             }
+        }
+    }
+
+    /// Returns the number of elements in the `RingBuf`.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::RingBuf;
+    ///
+    /// let mut v = RingBuf::new();
+    /// assert_eq!(v.len(), 0);
+    /// v.push(1i);
+    /// assert_eq!(v.len(), 1);
+    /// ```
+    pub fn len(&self) -> uint { self.nelts }
+
+    /// Returns true if the buffer contains no elements
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::RingBuf;
+    ///
+    /// let mut v = RingBuf::new();
+    /// assert!(v.is_empty());
+    /// v.push_front(1i);
+    /// assert!(!v.is_empty());
+    /// ```
+    pub fn is_empty(&self) -> bool { self.len() == 0 }
+
+    /// Clears the buffer, removing all values.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::RingBuf;
+    ///
+    /// let mut v = RingBuf::new();
+    /// v.push(1i);
+    /// v.clear();
+    /// assert!(v.is_empty());
+    /// ```
+    pub fn clear(&mut self) {
+        for x in self.elts.iter_mut() { *x = None }
+        self.nelts = 0;
+        self.lo = 0;
+    }
+
+    /// Provides a reference to the front element, or `None` if the sequence is
+    /// empty.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::RingBuf;
+    ///
+    /// let mut d = RingBuf::new();
+    /// assert_eq!(d.front(), None);
+    ///
+    /// d.push(1i);
+    /// d.push(2i);
+    /// assert_eq!(d.front(), Some(&1i));
+    /// ```
+    pub fn front(&self) -> Option<&T> {
+        if self.nelts > 0 { Some(&self[0]) } else { None }
+    }
+
+    /// Provides a mutable reference to the front element, or `None` if the
+    /// sequence is empty.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::RingBuf;
+    ///
+    /// let mut d = RingBuf::new();
+    /// assert_eq!(d.front_mut(), None);
+    ///
+    /// d.push(1i);
+    /// d.push(2i);
+    /// match d.front_mut() {
+    ///     Some(x) => *x = 9i,
+    ///     None => (),
+    /// }
+    /// assert_eq!(d.front(), Some(&9i));
+    /// ```
+    pub fn front_mut(&mut self) -> Option<&mut T> {
+        if self.nelts > 0 { Some(&mut self[0]) } else { None }
+    }
+
+    /// Provides a reference to the back element, or `None` if the sequence is
+    /// empty.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::RingBuf;
+    ///
+    /// let mut d = RingBuf::new();
+    /// assert_eq!(d.back(), None);
+    ///
+    /// d.push(1i);
+    /// d.push(2i);
+    /// assert_eq!(d.back(), Some(&2i));
+    /// ```
+    pub fn back(&self) -> Option<&T> {
+        if self.nelts > 0 { Some(&self[self.nelts - 1]) } else { None }
+    }
+
+    /// Provides a mutable reference to the back element, or `None` if the
+    /// sequence is empty.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::RingBuf;
+    ///
+    /// let mut d = RingBuf::new();
+    /// assert_eq!(d.back(), None);
+    ///
+    /// d.push(1i);
+    /// d.push(2i);
+    /// match d.back_mut() {
+    ///     Some(x) => *x = 9i,
+    ///     None => (),
+    /// }
+    /// assert_eq!(d.back(), Some(&9i));
+    /// ```
+    pub fn back_mut(&mut self) -> Option<&mut T> {
+        let nelts = self.nelts;
+        if nelts > 0 { Some(&mut self[nelts - 1]) } else { None }
+    }
+
+    /// Removes the first element and returns it, or `None` if the sequence is
+    /// empty.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::RingBuf;
+    ///
+    /// let mut d = RingBuf::new();
+    /// d.push(1i);
+    /// d.push(2i);
+    ///
+    /// assert_eq!(d.pop_front(), Some(1i));
+    /// assert_eq!(d.pop_front(), Some(2i));
+    /// assert_eq!(d.pop_front(), None);
+    /// ```
+    pub fn pop_front(&mut self) -> Option<T> {
+        let result = self.elts[self.lo].take();
+        if result.is_some() {
+            self.lo = (self.lo + 1u) % self.elts.len();
+            self.nelts -= 1u;
+        }
+        result
+    }
+
+    /// Inserts an element first in the sequence.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::RingBuf;
+    ///
+    /// let mut d = RingBuf::new();
+    /// d.push_front(1i);
+    /// d.push_front(2i);
+    /// assert_eq!(d.front(), Some(&2i));
+    /// ```
+    pub fn push_front(&mut self, t: T) {
+        if self.nelts == self.elts.len() {
+            grow(self.nelts, &mut self.lo, &mut self.elts);
+        }
+        if self.lo == 0u {
+            self.lo = self.elts.len() - 1u;
+        } else { self.lo -= 1u; }
+        self.elts[self.lo] = Some(t);
+        self.nelts += 1u;
+    }
+
+    /// Appends an element to the back of a buffer
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use std::collections::RingBuf;
+    ///
+    /// let mut buf = RingBuf::new();
+    /// buf.push(1i);
+    /// buf.push(3);
+    /// assert_eq!(3, *buf.back().unwrap());
+    /// ```
+    pub fn push(&mut self, t: T) {
+        if self.nelts == self.elts.len() {
+            grow(self.nelts, &mut self.lo, &mut self.elts);
+        }
+        let hi = self.raw_index(self.nelts);
+        self.elts[hi] = Some(t);
+        self.nelts += 1u;
+    }
+
+    /// Removes the last element from a buffer and returns it, or `None` if
+    /// it is empty.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use std::collections::RingBuf;
+    ///
+    /// let mut buf = RingBuf::new();
+    /// assert_eq!(buf.pop(), None);
+    /// buf.push(1i);
+    /// buf.push(3);
+    /// assert_eq!(buf.pop(), Some(3));
+    /// ```
+    pub fn pop(&mut self) -> Option<T> {
+        if self.nelts > 0 {
+            self.nelts -= 1;
+            let hi = self.raw_index(self.nelts);
+            self.elts[hi].take()
+        } else {
+            None
         }
     }
 }
@@ -513,7 +656,6 @@ mod tests {
     use test::Bencher;
     use test;
 
-    use {Deque, Mutable, MutableSeq};
     use super::RingBuf;
     use vec::Vec;
 
