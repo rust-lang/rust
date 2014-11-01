@@ -14,9 +14,7 @@
 
 // === GDB TESTS ===================================================================================
 
-// gdb-command:rbreak zzz
 // gdb-command:run
-// gdb-command:finish
 
 // gdb-command:print *stack_val_ref
 // gdb-check:$1 = {x = 10, y = 23.5}

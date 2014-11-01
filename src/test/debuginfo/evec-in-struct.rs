@@ -15,10 +15,7 @@
 
 // === GDB TESTS ===================================================================================
 
-// gdb-command:set print pretty off
-// gdb-command:rbreak zzz
 // gdb-command:run
-// gdb-command:finish
 
 // gdb-command:print no_padding1
 // gdb-check:$1 = {x = {0, 1, 2}, y = -3, z = {4.5, 5.5}}

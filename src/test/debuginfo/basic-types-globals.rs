@@ -14,14 +14,11 @@
 // about UTF-32 character encoding and will print a rust char as only
 // its numerical value.
 
-// ignore-windows: FIXME #13256
 // ignore-android: FIXME(#10381)
 // min-lldb-version: 310
 
 // compile-flags:-g
-// gdb-command:rbreak zzz
 // gdb-command:run
-// gdb-command:finish
 // gdb-command:print 'basic-types-globals::B'
 // gdb-check:$1 = false
 // gdb-command:print 'basic-types-globals::I'
@@ -70,7 +67,7 @@ static F32: f32 = 2.5;
 static F64: f64 = 3.5;
 
 fn main() {
-    _zzz();
+    _zzz(); // #break
 
     let a = (B, I, C, I8, I16, I32, I64, U, U8, U16, U32, U64, F32, F64);
 }

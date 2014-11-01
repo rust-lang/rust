@@ -8,15 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-windows: FIXME #13256
 // ignore-android: FIXME(#10381)
 // min-lldb-version: 310
 
 // compile-flags:-g
 
 // === GDB TESTS ===================================================================================
-
-// gdb-command:rbreak zzz
 
 // gdb-command:print 'c-style-enum::SINGLE_VARIANT'
 // gdb-check:$1 = TheOnlyVariant
@@ -40,7 +37,6 @@
 // gdb-check:$7 = OneHundred
 
 // gdb-command:run
-// gdb-command:finish
 
 // gdb-command:print auto_one
 // gdb-check:$8 = One

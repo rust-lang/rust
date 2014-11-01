@@ -16,10 +16,7 @@
 
 // === GDB TESTS ===================================================================================
 
-// gdb-command:set print pretty off
-// gdb-command:rbreak zzz
 // gdb-command:run
-// gdb-command:finish
 
 // gdb-command:print three_simple_structs
 // gdb-check:$1 = {x = {x = 1}, y = {x = 2}, z = {x = 3}}

@@ -14,9 +14,7 @@
 // ignore-android: FIXME(#10381)
 
 // compile-flags:-g
-// gdb-command:rbreak zzz
 // gdb-command:run
-// gdb-command:finish
 
 // gdb-command:print first
 // gdb-check:$1 = {<No data fields>}
@@ -29,16 +27,14 @@
 enum ANilEnum {}
 enum AnotherNilEnum {}
 
-// I (mw) am not sure this test case makes much sense...
-// Also, it relies on some implementation details:
-// 1. That empty enums as well as '()' are represented as empty structs
-// 2. That gdb prints the string "{<No data fields>}" for empty structs (which may change some time)
+// This test relies on gdb printing the string "{<No data fields>}" for empty
+// structs (which may change some time)
 fn main() {
     unsafe {
-        let first: ANilEnum = std::mem::transmute(());
-        let second: AnotherNilEnum = std::mem::transmute(());
+        let first: ANilEnum = ::std::mem::zeroed();
+        let second: AnotherNilEnum = ::std::mem::zeroed();
 
-        zzz();
+        zzz(); // #break
     }
 }
 

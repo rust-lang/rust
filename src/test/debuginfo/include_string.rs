@@ -12,9 +12,7 @@
 // min-lldb-version: 310
 
 // compile-flags:-g
-// gdb-command:rbreak zzz
 // gdb-command:run
-// gdb-command:finish
 // gdb-command:print string1.length
 // gdb-check:$1 = 48
 // gdb-command:print string2.length

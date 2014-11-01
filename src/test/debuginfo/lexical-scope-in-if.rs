@@ -15,11 +15,9 @@
 
 // === GDB TESTS ===================================================================================
 
-// gdb-command:rbreak zzz
 // gdb-command:run
 
 // BEFORE if
-// gdb-command:finish
 // gdb-command:print x
 // gdb-check:$1 = 999
 // gdb-command:print y
@@ -27,7 +25,6 @@
 // gdb-command:continue
 
 // AT BEGINNING of 'then' block
-// gdb-command:finish
 // gdb-command:print x
 // gdb-check:$3 = 999
 // gdb-command:print y
@@ -35,7 +32,6 @@
 // gdb-command:continue
 
 // AFTER 1st redeclaration of 'x'
-// gdb-command:finish
 // gdb-command:print x
 // gdb-check:$5 = 1001
 // gdb-command:print y
@@ -43,7 +39,6 @@
 // gdb-command:continue
 
 // AFTER 2st redeclaration of 'x'
-// gdb-command:finish
 // gdb-command:print x
 // gdb-check:$7 = 1002
 // gdb-command:print y
@@ -51,7 +46,6 @@
 // gdb-command:continue
 
 // AFTER 1st if expression
-// gdb-command:finish
 // gdb-command:print x
 // gdb-check:$9 = 999
 // gdb-command:print y
@@ -59,7 +53,6 @@
 // gdb-command:continue
 
 // BEGINNING of else branch
-// gdb-command:finish
 // gdb-command:print x
 // gdb-check:$11 = 999
 // gdb-command:print y
@@ -67,7 +60,6 @@
 // gdb-command:continue
 
 // BEGINNING of else branch
-// gdb-command:finish
 // gdb-command:print x
 // gdb-check:$13 = 1004
 // gdb-command:print y
@@ -75,7 +67,6 @@
 // gdb-command:continue
 
 // BEGINNING of else branch
-// gdb-command:finish
 // gdb-command:print x
 // gdb-check:$15 = 999
 // gdb-command:print y

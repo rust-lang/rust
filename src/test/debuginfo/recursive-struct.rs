@@ -12,12 +12,8 @@
 // ignore-android: FIXME(#10381)
 // ignore-lldb
 
-
 // compile-flags:-g
-// gdb-command:set print pretty off
-// gdb-command:rbreak zzz
 // gdb-command:run
-// gdb-command:finish
 
 // gdb-command:print stack_unique.value
 // gdb-check:$1 = 0
@@ -217,7 +213,7 @@ fn main() {
         value: 30
     };
 
-    zzz();
+    zzz(); // #break
 }
 
 fn zzz() {()}

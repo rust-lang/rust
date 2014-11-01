@@ -15,9 +15,7 @@
 
 // === GDB TESTS ===================================================================================
 
-// gdb-command:rbreak zzz
 // gdb-command:run
-// gdb-command:finish
 
 // gdb-command:print variable
 // gdb-check:$1 = 1
@@ -33,7 +31,6 @@
 // gdb-check:$6 = 8
 // gdb-command:continue
 
-// gdb-command:finish
 // gdb-command:print variable
 // gdb-check:$7 = 1
 // gdb-command:print constant

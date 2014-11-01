@@ -14,10 +14,8 @@
 // ignore-android: FIXME(#10381)
 
 // compile-flags:-g
-// gdb-command:rbreak zzz
 // gdb-command:run
 
-// gdb-command:finish
 // gdb-command:print/d vi8x16
 // gdb-check:$1 = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}
 // gdb-command:print/d vi16x8
@@ -66,7 +64,7 @@ fn main() {
     let vf32x4 = f32x4(60.5f32, 61.5f32, 62.5f32, 63.5f32);
     let vf64x2 = f64x2(64.5f64, 65.5f64);
 
-    zzz();
+    zzz(); // #break
 }
 
 #[inline(never)]
