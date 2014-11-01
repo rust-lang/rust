@@ -13,10 +13,8 @@
 // ignore-android: FIXME(#10381)
 
 // compile-flags:-g
-// gdb-command:rbreak zzz
-// gdb-command:run
-// gdb-command:finish
 
+// gdb-command:run
 
 // STRUCTS
 // gdb-command:whatis simple_struct
@@ -326,7 +324,7 @@ fn main() {
     let stack_closure1 = (|x:int| {}, 0u);
     let stack_closure2 = (|x:i8, y: f32| { (x as f32) + y }, 0u);
 
-    zzz();
+    zzz(); // #break
 }
 
 #[inline(never)]

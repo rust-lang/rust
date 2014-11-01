@@ -16,9 +16,7 @@
 
 // === GDB TESTS ===================================================================================
 
-// gdb-command:rbreak zzz
 // gdb-command:run
-// gdb-command:finish
 
 // gdb-command:print tuple_interior_padding
 // gdb-check:$1 = {0, OneHundred}

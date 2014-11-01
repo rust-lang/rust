@@ -11,17 +11,14 @@
 // except according to those terms.
 
 // compile-flags:-g
-// gdb-command:rbreak zzz
 // gdb-command:run
 
-// gdb-command:finish
 // gdb-command:print arg1
 // gdb-check:$1 = 1000
 // gdb-command:print *arg2
 // gdb-check:$2 = {1, 2.5}
 // gdb-command:continue
 
-// gdb-command:finish
 // gdb-command:print arg1
 // gdb-check:$3 = 2000
 // gdb-command:print *arg2
@@ -35,7 +32,7 @@ struct Struct {
 
 trait Trait<T1> {
     fn generic_static_default_method<T2>(arg1: int, arg2: &(T1, T2)) -> int {
-        zzz();
+        zzz(); // #break
         arg1
     }
 }

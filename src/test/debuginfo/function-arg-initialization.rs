@@ -15,21 +15,8 @@
 // first line of the function, that is if the function prologue has already been executed at the
 // first line. Note that because of the __morestack part of the prologue GDB incorrectly breaks at
 // before the arguments have been properly loaded when setting the breakpoint via the function name.
-// Therefore the setup here sets them using line numbers (so be careful when changing this file).
 
 // compile-flags:-g
-// gdb-command:set print pretty off
-// gdb-command:break function-arg-initialization.rs:244
-// gdb-command:break function-arg-initialization.rs:259
-// gdb-command:break function-arg-initialization.rs:263
-// gdb-command:break function-arg-initialization.rs:267
-// gdb-command:break function-arg-initialization.rs:271
-// gdb-command:break function-arg-initialization.rs:275
-// gdb-command:break function-arg-initialization.rs:279
-// gdb-command:break function-arg-initialization.rs:283
-// gdb-command:break function-arg-initialization.rs:287
-// gdb-command:break function-arg-initialization.rs:295
-// gdb-command:break function-arg-initialization.rs:302
 
 // === GDB TESTS ===================================================================================
 
@@ -241,7 +228,7 @@
 
 
 fn immediate_args(a: int, b: bool, c: f64) {
-    () // #break
+    ::std::io::print("") // #break
 }
 
 struct BigStruct {
@@ -256,15 +243,17 @@ struct BigStruct {
 }
 
 fn non_immediate_args(a: BigStruct, b: BigStruct) {
-    () // #break
+    ::std::io::print("") // #break
 }
 
 fn binding(a: i64, b: u64, c: f64) {
     let x = 0i; // #break
+    ::std::io::print("")
 }
 
 fn assignment(mut a: u64, b: u64, c: f64) {
     a = b; // #break
+    ::std::io::print("")
 }
 
 fn function_call(x: u64, y: u64, z: f64) {

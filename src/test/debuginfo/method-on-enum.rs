@@ -16,11 +16,9 @@
 
 // === GDB TESTS ===================================================================================
 
-// gdb-command:rbreak zzz
 // gdb-command:run
 
 // STACK BY REF
-// gdb-command:finish
 // gdb-command:print *self
 // gdb-check:$1 = {{RUST$ENUM$DISR = Variant2, [...]}, {RUST$ENUM$DISR = Variant2, 117901063}}
 // gdb-command:print arg1
@@ -30,7 +28,6 @@
 // gdb-command:continue
 
 // STACK BY VAL
-// gdb-command:finish
 // gdb-command:print self
 // gdb-check:$4 = {{RUST$ENUM$DISR = Variant2, [...]}, {RUST$ENUM$DISR = Variant2, 117901063}}
 // gdb-command:print arg1
@@ -40,7 +37,6 @@
 // gdb-command:continue
 
 // OWNED BY REF
-// gdb-command:finish
 // gdb-command:print *self
 // gdb-check:$7 = {{RUST$ENUM$DISR = Variant1, x = 1799, y = 1799}, {RUST$ENUM$DISR = Variant1, [...]}}
 // gdb-command:print arg1
@@ -50,7 +46,6 @@
 // gdb-command:continue
 
 // OWNED BY VAL
-// gdb-command:finish
 // gdb-command:print self
 // gdb-check:$10 = {{RUST$ENUM$DISR = Variant1, x = 1799, y = 1799}, {RUST$ENUM$DISR = Variant1, [...]}}
 // gdb-command:print arg1
@@ -60,7 +55,6 @@
 // gdb-command:continue
 
 // OWNED MOVED
-// gdb-command:finish
 // gdb-command:print *self
 // gdb-check:$13 = {{RUST$ENUM$DISR = Variant1, x = 1799, y = 1799}, {RUST$ENUM$DISR = Variant1, [...]}}
 // gdb-command:print arg1

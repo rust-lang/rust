@@ -15,10 +15,8 @@
 
 // === GDB TESTS ===================================================================================
 
-// gdb-command:rbreak zzz
 // gdb-command:run
 
-// gdb-command:finish
 // gdb-command:print *t0
 // gdb-check:$1 = 1
 // gdb-command:print *t1
@@ -27,7 +25,6 @@
 // gdb-check:$3 = {{1, 2.5}, {2.5, 1}}
 // gdb-command:continue
 
-// gdb-command:finish
 // gdb-command:print *t0
 // gdb-check:$4 = 3.5
 // gdb-command:print *t1
@@ -36,7 +33,6 @@
 // gdb-check:$6 = {{3.5, 4}, {4, 3.5}}
 // gdb-command:continue
 
-// gdb-command:finish
 // gdb-command:print *t0
 // gdb-check:$7 = 5
 // gdb-command:print *t1
