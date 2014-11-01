@@ -142,12 +142,13 @@ pub trait Decoder<E> {
                             f: |&mut Self| -> Result<T, E>)
                             -> Result<T, E>;
 
-    fn read_tuple<T>(&mut self, f: |&mut Self, uint| -> Result<T, E>) -> Result<T, E>;
+    fn read_tuple<T>(&mut self, len: uint, f: |&mut Self| -> Result<T, E>) -> Result<T, E>;
     fn read_tuple_arg<T>(&mut self, a_idx: uint, f: |&mut Self| -> Result<T, E>) -> Result<T, E>;
 
     fn read_tuple_struct<T>(&mut self,
                             s_name: &str,
-                            f: |&mut Self, uint| -> Result<T, E>)
+                            len: uint,
+                            f: |&mut Self| -> Result<T, E>)
                             -> Result<T, E>;
     fn read_tuple_struct_arg<T>(&mut self,
                                 a_idx: uint,
@@ -465,20 +466,24 @@ impl<E, D:Decoder<E>,T:Decodable<D, E>> Decodable<D, E> for Option<T> {
 
 macro_rules! peel(($name:ident, $($other:ident,)*) => (tuple!($($other,)*)))
 
+/// Evaluates to the number of identifiers passed to it, for example: `count_idents!(a, b, c) == 3
+macro_rules! count_idents {
+    () => { 0u };
+    ($_i:ident $(, $rest:ident)*) => { 1 + count_idents!($($rest),*) }
+}
+
 macro_rules! tuple (
     () => ();
     ( $($name:ident,)+ ) => (
         impl<E, D:Decoder<E>,$($name:Decodable<D, E>),*> Decodable<D,E> for ($($name,)*) {
             #[allow(non_snake_case)]
             fn decode(d: &mut D) -> Result<($($name,)*), E> {
-                d.read_tuple(|d, amt| {
+                let len: uint = count_idents!($($name),*);
+                d.read_tuple(len, |d| {
                     let mut i = 0;
                     let ret = ($(try!(d.read_tuple_arg({ i+=1; i-1 }, |d| -> Result<$name,E> {
                         Decodable::decode(d)
                     })),)*);
-                    assert!(amt == i,
-                            "expected tuple of length `{}`, found tuple \
-                             of length `{}`", i, amt);
                     return Ok(ret);
                 })
             }
