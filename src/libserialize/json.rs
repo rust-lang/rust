@@ -2153,9 +2153,18 @@ impl ::Decoder<DecoderError> for Decoder {
         Ok(value)
     }
 
-    fn read_tuple<T>(&mut self, f: |&mut Decoder, uint| -> DecodeResult<T>) -> DecodeResult<T> {
+    fn read_tuple<T>(&mut self,
+                     tuple_len: uint,
+                     f: |&mut Decoder| -> DecodeResult<T>)
+                     -> DecodeResult<T> {
         debug!("read_tuple()");
-        self.read_seq(f)
+        self.read_seq(|d, len| {
+            if len == tuple_len {
+                f(d)
+            } else {
+                Err(ExpectedError(format!("Tuple{}", tuple_len), format!("Tuple{}", len)))
+            }
+        })
     }
 
     fn read_tuple_arg<T>(&mut self,
@@ -2167,10 +2176,11 @@ impl ::Decoder<DecoderError> for Decoder {
 
     fn read_tuple_struct<T>(&mut self,
                             name: &str,
-                            f: |&mut Decoder, uint| -> DecodeResult<T>)
+                            len: uint,
+                            f: |&mut Decoder| -> DecodeResult<T>)
                             -> DecodeResult<T> {
         debug!("read_tuple_struct(name={})", name);
-        self.read_tuple(f)
+        self.read_tuple(len, f)
     }
 
     fn read_tuple_struct_arg<T>(&mut self,
@@ -2870,6 +2880,25 @@ mod tests {
 
         let v: Vec<Vec<uint>> = super::decode("[[3], [1, 2]]").unwrap();
         assert_eq!(v, vec![vec![3], vec![1, 2]]);
+    }
+
+    #[test]
+    fn test_decode_tuple() {
+        let t: (uint, uint, uint) = super::decode("[1, 2, 3]").unwrap();
+        assert_eq!(t, (1u, 2, 3))
+
+        let t: (uint, string::String) = super::decode("[1, \"two\"]").unwrap();
+        assert_eq!(t, (1u, "two".to_string()));
+    }
+
+    #[test]
+    fn test_decode_tuple_malformed_types() {
+        assert!(super::decode::<(uint, string::String)>("[1, 2]").is_err());
+    }
+
+    #[test]
+    fn test_decode_tuple_malformed_length() {
+        assert!(super::decode::<(uint, uint)>("[1, 2, 3]").is_err());
     }
 
     #[test]
