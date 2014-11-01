@@ -950,6 +950,29 @@ macro_rules! iterator {
                 let exact = diff / (if size == 0 {1} else {size});
                 (exact, Some(exact))
             }
+
+            #[inline]
+            fn nth(&mut self, n: uint) -> Option<$elem> {
+                unsafe {
+                    let (sz, _) = self.size_hint();
+                    if n >= sz {
+                        self.ptr = self.end;
+                        None
+                    } else {
+                        if mem::size_of::<T>() == 0 {
+                            // See above for why 'ptr.offset' isn't used
+                            self.ptr = transmute(self.ptr as uint + n + 1);
+
+                            // Use a non-null pointer value
+                            Some(transmute(1u))
+                        } else {
+                            let old = self.ptr.offset(n as int);
+                            self.ptr = self.ptr.offset(n as int + 1);
+                            Some(transmute(old))
+                        }
+                    }
+                }
+            }
         }
 
         #[experimental = "needs review"]
