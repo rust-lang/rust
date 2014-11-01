@@ -15,20 +15,16 @@
 
 // === GDB TESTS ===================================================================================
 
-// gdb-command:rbreak zzz
 // gdb-command:run
 
-// gdb-command:finish
 // gdb-command:print self
 // gdb-check:$1 = 1111
 // gdb-command:continue
 
-// gdb-command:finish
 // gdb-command:print self
 // gdb-check:$2 = {x = 2222, y = 3333}
 // gdb-command:continue
 
-// gdb-command:finish
 // gdb-command:print self
 // gdb-check:$3 = {4444.5, 5555, 6666, 7777.5}
 // gdb-command:continue

@@ -13,11 +13,9 @@
 
 // compile-flags:-g
 
-// gdb-command:rbreak zzz
 // gdb-command:run
 
 // STRUCT
-// gdb-command:finish
 // gdb-command:print arg1
 // gdb-check:$1 = 1
 // gdb-command:print arg2
@@ -25,7 +23,6 @@
 // gdb-command:continue
 
 // ENUM
-// gdb-command:finish
 // gdb-command:print arg1
 // gdb-check:$3 = -3
 // gdb-command:print arg2
@@ -43,7 +40,7 @@ struct Struct {
 impl Struct {
 
     fn static_method<T1, T2>(arg1: T1, arg2: T2) -> int {
-        zzz();
+        zzz(); // #break
         return 0;
     }
 }
@@ -57,7 +54,7 @@ enum Enum {
 impl Enum {
 
     fn static_method<T1, T2, T3>(arg1: T1, arg2: T2, arg3: T3) -> int {
-        zzz();
+        zzz(); // #break
         return 1;
     }
 }

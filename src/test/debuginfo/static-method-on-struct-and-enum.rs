@@ -15,11 +15,9 @@
 
 // === GDB TESTS ===================================================================================
 
-// gdb-command:rbreak zzz
 // gdb-command:run
 
 // STRUCT
-// gdb-command:finish
 // gdb-command:print arg1
 // gdb-check:$1 = 1
 // gdb-command:print arg2
@@ -27,7 +25,6 @@
 // gdb-command:continue
 
 // ENUM
-// gdb-command:finish
 // gdb-command:print arg1
 // gdb-check:$3 = -3
 // gdb-command:print arg2

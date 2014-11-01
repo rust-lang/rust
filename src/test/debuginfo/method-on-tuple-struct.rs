@@ -15,11 +15,9 @@
 
 // === GDB TESTS ===================================================================================
 
-// gdb-command:rbreak zzz
 // gdb-command:run
 
 // STACK BY REF
-// gdb-command:finish
 // gdb-command:print *self
 // gdb-check:$1 = {100, -100.5}
 // gdb-command:print arg1
@@ -29,7 +27,6 @@
 // gdb-command:continue
 
 // STACK BY VAL
-// gdb-command:finish
 // gdb-command:print self
 // gdb-check:$4 = {100, -100.5}
 // gdb-command:print arg1
@@ -39,7 +36,6 @@
 // gdb-command:continue
 
 // OWNED BY REF
-// gdb-command:finish
 // gdb-command:print *self
 // gdb-check:$7 = {200, -200.5}
 // gdb-command:print arg1
@@ -49,7 +45,6 @@
 // gdb-command:continue
 
 // OWNED BY VAL
-// gdb-command:finish
 // gdb-command:print self
 // gdb-check:$10 = {200, -200.5}
 // gdb-command:print arg1
@@ -59,7 +54,6 @@
 // gdb-command:continue
 
 // OWNED MOVED
-// gdb-command:finish
 // gdb-command:print *self
 // gdb-check:$13 = {200, -200.5}
 // gdb-command:print arg1

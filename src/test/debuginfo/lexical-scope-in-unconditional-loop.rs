@@ -15,73 +15,59 @@
 
 // === GDB TESTS ===================================================================================
 
-// gdb-command:rbreak zzz
 // gdb-command:run
 
 // FIRST ITERATION
-// gdb-command:finish
 // gdb-command:print x
 // gdb-check:$1 = 0
 // gdb-command:continue
 
-// gdb-command:finish
 // gdb-command:print x
 // gdb-check:$2 = 1
 // gdb-command:continue
 
-// gdb-command:finish
 // gdb-command:print x
 // gdb-check:$3 = 101
 // gdb-command:continue
 
-// gdb-command:finish
 // gdb-command:print x
 // gdb-check:$4 = 101
 // gdb-command:continue
 
-// gdb-command:finish
 // gdb-command:print x
 // gdb-check:$5 = -987
 // gdb-command:continue
 
-// gdb-command:finish
 // gdb-command:print x
 // gdb-check:$6 = 101
 // gdb-command:continue
 
 
 // SECOND ITERATION
-// gdb-command:finish
 // gdb-command:print x
 // gdb-check:$7 = 1
 // gdb-command:continue
 
-// gdb-command:finish
 // gdb-command:print x
 // gdb-check:$8 = 2
 // gdb-command:continue
 
-// gdb-command:finish
 // gdb-command:print x
 // gdb-check:$9 = 102
 // gdb-command:continue
 
-// gdb-command:finish
 // gdb-command:print x
 // gdb-check:$10 = 102
 // gdb-command:continue
 
-// gdb-command:finish
 // gdb-command:print x
 // gdb-check:$11 = -987
 // gdb-command:continue
 
-// gdb-command:finish
 // gdb-command:print x
 // gdb-check:$12 = 102
 // gdb-command:continue
 
-// gdb-command:finish
 // gdb-command:print x
 // gdb-check:$13 = 2
 // gdb-command:continue

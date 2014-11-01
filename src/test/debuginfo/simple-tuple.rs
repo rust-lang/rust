@@ -8,16 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-windows: FIXME #13256
 // ignore-android: FIXME(#10381)
 // min-lldb-version: 310
 
 // compile-flags:-g
 
 // === GDB TESTS ===================================================================================
-
-// gdb-command:set print pretty off
-// gdb-command:rbreak zzz
 
 // gdb-command:print/d 'simple-tuple::NO_PADDING_8'
 // gdb-check:$1 = {-50, 50}
@@ -37,7 +33,6 @@
 // gdb-check:$7 = {16, 17}
 
 // gdb-command:run
-// gdb-command:finish
 
 // gdb-command:print/d noPadding8
 // gdb-check:$8 = {-100, 100}

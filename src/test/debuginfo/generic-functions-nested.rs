@@ -15,31 +15,26 @@
 
 // === GDB TESTS ===================================================================================
 
-// gdb-command:rbreak zzz
 // gdb-command:run
 
-// gdb-command:finish
 // gdb-command:print x
 // gdb-check:$1 = -1
 // gdb-command:print y
 // gdb-check:$2 = 1
 // gdb-command:continue
 
-// gdb-command:finish
 // gdb-command:print x
 // gdb-check:$3 = -1
 // gdb-command:print y
 // gdb-check:$4 = 2.5
 // gdb-command:continue
 
-// gdb-command:finish
 // gdb-command:print x
 // gdb-check:$5 = -2.5
 // gdb-command:print y
 // gdb-check:$6 = 1
 // gdb-command:continue
 
-// gdb-command:finish
 // gdb-command:print x
 // gdb-check:$7 = -2.5
 // gdb-command:print y

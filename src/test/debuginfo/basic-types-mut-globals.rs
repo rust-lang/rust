@@ -14,14 +14,12 @@
 // about UTF-32 character encoding and will print a rust char as only
 // its numerical value.
 
-// ignore-windows: FIXME #13256
 // ignore-android: FIXME(#10381)
 // min-lldb-version: 310
 
 // compile-flags:-g
-// gdb-command:rbreak zzz
+
 // gdb-command:run
-// gdb-command:finish
 
 // Check initializers
 // gdb-command:print 'basic-types-mut-globals::B'
@@ -84,9 +82,6 @@
 // gdb-command:print 'basic-types-mut-globals'::F64
 // gdb-check:$28 = 9.25
 
-// gdb-command:detach
-// gdb-command:quit
-
 #![allow(unused_variables)]
 
 static mut B: bool = false;
@@ -105,7 +100,7 @@ static mut F32: f32 = 2.5;
 static mut F64: f64 = 3.5;
 
 fn main() {
-    _zzz();
+    _zzz(); // #break
 
     unsafe {
         B = true;
@@ -124,7 +119,7 @@ fn main() {
         F64 = 9.25;
     }
 
-    _zzz();
+    _zzz(); // #break
 }
 
 fn _zzz() {()}

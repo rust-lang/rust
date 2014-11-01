@@ -15,20 +15,16 @@
 
 // === GDB TESTS ===================================================================================
 
-// gdb-command:rbreak zzz
 // gdb-command:run
-// gdb-command:finish
 
 // gdb-command:print abc
 // gdb-check:$1 = 10101
 // gdb-command:continue
 
-// gdb-command:finish
 // gdb-command:print abc
 // gdb-check:$2 = 20202
 // gdb-command:continue
 
-// gdb-command:finish
 // gdb-command:print abc
 // gdb-check:$3 = 30303
 

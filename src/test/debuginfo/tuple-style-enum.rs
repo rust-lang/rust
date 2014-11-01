@@ -17,9 +17,7 @@
 // === GDB TESTS ===================================================================================
 
 // gdb-command:set print union on
-// gdb-command:rbreak zzz
 // gdb-command:run
-// gdb-command:finish
 
 // gdb-command:print case1
 // gdb-check:$1 = {{RUST$ENUM$DISR = Case1, 0, 31868, 31868, 31868, 31868}, {RUST$ENUM$DISR = Case1, 0, 2088533116, 2088533116}, {RUST$ENUM$DISR = Case1, 0, 8970181431921507452}}
