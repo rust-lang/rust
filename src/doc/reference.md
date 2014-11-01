@@ -400,11 +400,11 @@ An _integer literal_ has one of four forms:
 * A _decimal literal_ starts with a *decimal digit* and continues with any
   mixture of *decimal digits* and _underscores_.
 * A _hex literal_ starts with the character sequence `U+0030` `U+0078`
-  (`0x`) and continues as any mixture hex digits and underscores.
+  (`0x`) and continues as any mixture of hex digits and underscores.
 * An _octal literal_ starts with the character sequence `U+0030` `U+006F`
-  (`0o`) and continues as any mixture octal digits and underscores.
+  (`0o`) and continues as any mixture of octal digits and underscores.
 * A _binary literal_ starts with the character sequence `U+0030` `U+0062`
-  (`0b`) and continues as any mixture binary digits and underscores.
+  (`0b`) and continues as any mixture of binary digits and underscores.
 
 An integer literal may be followed (immediately, without any spaces) by an
 _integer suffix_, which changes the type of the literal. There are two kinds of
