@@ -328,8 +328,6 @@
 
 #![experimental]
 
-pub use core_collections::{Collection, Mutable, Map, MutableMap};
-pub use core_collections::{Set, MutableSet, Deque, MutableSeq};
 pub use core_collections::{Bitv, BitvSet, BTreeMap, BTreeSet, DList, EnumSet};
 pub use core_collections::{PriorityQueue, RingBuf, SmallIntMap};
 pub use core_collections::{TreeMap, TreeSet, TrieMap, TrieSet};

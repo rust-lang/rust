@@ -15,13 +15,12 @@
 
 #![allow(missing_docs)]
 
-use collections::Collection;
 use fmt;
 use from_str::FromStr;
 use iter::Iterator;
 use option::{Option, None, Some};
 use str::StrSlice;
-use slice::{MutableCloneableSlice, MutableSlice};
+use slice::{MutableCloneableSlice, MutableSlice, ImmutableSlice};
 
 pub type Port = u16;
 

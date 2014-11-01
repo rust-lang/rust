@@ -12,11 +12,15 @@ extern crate collections;
 
 use std::collections::HashMap;
 
+trait Map<K, V> {}
+
+impl<K, V> Map<K, V> for HashMap<K, V> {}
+
 // Test that trait types printed in error msgs include the type arguments.
 
 fn main() {
     let x: Box<HashMap<int, int>> = box HashMap::new();
     let x: Box<Map<int, int>> = x;
     let y: Box<Map<uint, int>> = box x;
-    //~^ ERROR the trait `collections::Map<uint, int>` is not implemented
+    //~^ ERROR the trait `Map<uint, int>` is not implemented
 }

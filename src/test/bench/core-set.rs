@@ -16,6 +16,7 @@ extern crate time;
 
 use std::collections::bitv::BitvSet;
 use std::collections::TreeSet;
+use std::hash::Hash;
 use std::collections::HashSet;
 use std::os;
 use std::uint;
@@ -35,6 +36,28 @@ fn timed(result: &mut f64, op: ||) {
     op();
     let end = time::precise_time_s();
     *result = (end - start);
+}
+
+trait MutableSet<T> {
+    fn insert(&mut self, k: T);
+    fn remove(&mut self, k: &T) -> bool;
+    fn contains(&self, k: &T) -> bool;
+}
+
+impl<T: Hash + Eq> MutableSet<T> for HashSet<T> {
+    fn insert(&mut self, k: T) { self.insert(k); }
+    fn remove(&mut self, k: &T) -> bool { self.remove(k) }
+    fn contains(&self, k: &T) -> bool { self.contains(k) }
+}
+impl<T: Ord> MutableSet<T> for TreeSet<T> {
+    fn insert(&mut self, k: T) { self.insert(k); }
+    fn remove(&mut self, k: &T) -> bool { self.remove(k) }
+    fn contains(&self, k: &T) -> bool { self.contains(k) }
+}
+impl MutableSet<uint> for BitvSet {
+    fn insert(&mut self, k: uint) { self.insert(k); }
+    fn remove(&mut self, k: &uint) -> bool { self.remove(k) }
+    fn contains(&self, k: &uint) -> bool { self.contains(k) }
 }
 
 impl Results {
