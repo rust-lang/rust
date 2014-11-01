@@ -12,7 +12,6 @@
 
 #![allow(non_camel_case_types)]
 
-use collections::Collection;
 use from_str::from_str;
 use io::{IoResult, Writer};
 use iter::Iterator;
@@ -390,7 +389,6 @@ mod imp {
 
     #[cfg(not(any(target_os = "macos", target_os = "ios")))]
     fn print(w: &mut Writer, idx: int, addr: *mut libc::c_void) -> IoResult<()> {
-        use collections::Collection;
         use iter::Iterator;
         use os;
         use path::GenericPath;
@@ -659,7 +657,6 @@ mod imp {
 #[allow(dead_code, non_snake_case)]
 mod imp {
     use c_str::CString;
-    use core_collections::Collection;
     use intrinsics;
     use io::{IoResult, Writer};
     use libc;

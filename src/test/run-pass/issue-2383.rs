@@ -11,7 +11,6 @@
 
 extern crate collections;
 use std::collections::RingBuf;
-use std::collections::Deque;
 
 pub fn main() {
     let mut q = RingBuf::new();

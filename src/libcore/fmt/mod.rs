@@ -14,7 +14,6 @@
 
 use any;
 use cell::{Cell, Ref, RefMut};
-use collections::Collection;
 use iter::{Iterator, range};
 use kinds::{Copy, Sized};
 use mem;

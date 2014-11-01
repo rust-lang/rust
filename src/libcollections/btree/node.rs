@@ -15,7 +15,6 @@ use core::prelude::*;
 
 use core::{slice, mem, ptr};
 use core::iter::Zip;
-use MutableSeq;
 
 use vec;
 use vec::Vec;

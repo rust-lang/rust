@@ -25,16 +25,6 @@ enum SmallVectorRepr<T> {
     Many(Vec<T>),
 }
 
-impl<T> Collection for SmallVector<T> {
-    fn len(&self) -> uint {
-        match self.repr {
-            Zero => 0,
-            One(..) => 1,
-            Many(ref vals) => vals.len()
-        }
-    }
-}
-
 impl<T> FromIterator<T> for SmallVector<T> {
     fn from_iter<I: Iterator<T>>(iter: I) -> SmallVector<T> {
         let mut v = SmallVector::zero();
@@ -131,6 +121,16 @@ impl<T> SmallVector<T> {
         };
         MoveItems { repr: repr }
     }
+
+    pub fn len(&self) -> uint {
+        match self.repr {
+            Zero => 0,
+            One(..) => 1,
+            Many(ref vals) => vals.len()
+        }
+    }
+
+    pub fn is_empty(&self) -> bool { self.len() == 0 }
 }
 
 pub struct MoveItems<T> {

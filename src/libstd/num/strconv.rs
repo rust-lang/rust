@@ -14,7 +14,6 @@
 
 use char;
 use clone::Clone;
-use collections::{Collection, MutableSeq};
 use num::{NumCast, Zero, One, cast, Int};
 use num::{Float, FPNaN, FPInfinite, ToPrimitive};
 use num;

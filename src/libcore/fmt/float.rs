@@ -11,14 +11,12 @@
 #![allow(missing_docs)]
 
 use char;
-use collections::Collection;
 use fmt;
 use iter::{range, DoubleEndedIterator};
 use num::{Float, FPNaN, FPInfinite, ToPrimitive, Primitive};
 use num::{Zero, One, cast};
 use result::Ok;
-use slice::MutableSlice;
-use slice;
+use slice::{mod, ImmutableSlice, MutableSlice};
 use str::StrSlice;
 
 /// A flag that specifies whether to use exponential (scientific) notation.
