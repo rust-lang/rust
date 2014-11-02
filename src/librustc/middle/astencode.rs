@@ -1756,12 +1756,14 @@ impl<'a> rbml_decoder_decoder_helpers for reader::Decoder<'a> {
             "FnMutUnboxedClosureKind",
             "FnOnceUnboxedClosureKind"
         ];
-        let kind = self.read_enum_variant(variants, |_, i| {
-            Ok(match i {
-                0 => ty::FnUnboxedClosureKind,
-                1 => ty::FnMutUnboxedClosureKind,
-                2 => ty::FnOnceUnboxedClosureKind,
-                _ => panic!("bad enum variant for ty::UnboxedClosureKind"),
+        let kind = self.read_enum("UnboxedClosureKind", |this| {
+            this.read_enum_variant(variants, |_, i| {
+                Ok(match i {
+                    0 => ty::FnUnboxedClosureKind,
+                    1 => ty::FnMutUnboxedClosureKind,
+                    2 => ty::FnOnceUnboxedClosureKind,
+                    _ => panic!("bad enum variant for ty::UnboxedClosureKind"),
+                })
             })
         }).unwrap();
         ty::UnboxedClosure {
