@@ -8,28 +8,25 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub use self::sub::{Bar, Baz};
+// aux-build:namespaced_enum_emulate_flat.rs
+#![feature(struct_variant)]
 
-pub trait Trait {
-    fn foo();
-}
+extern crate namespaced_enum_emulate_flat;
 
-struct Foo;
+use namespaced_enum_emulate_flat::{Foo, A, B, C};
+use namespaced_enum_emulate_flat::nest::{Bar, D, E, F};
 
-impl Foo {
-    pub fn new() {}
-}
-
-mod sub {
-    pub struct Bar;
-
-    impl Bar {
-        pub fn new() {}
-    }
-
-    pub enum Baz {}
-
-    impl Baz {
-        pub fn new() {}
+fn _f(f: Foo) {
+    match f {
+        A | B(_) | C { .. } => {}
     }
 }
+
+fn _f2(f: Bar) {
+    match f {
+        D | E(_) | F { .. } => {}
+    }
+}
+
+pub fn main() {}
+
