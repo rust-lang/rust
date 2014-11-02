@@ -368,7 +368,7 @@ pub fn to_str_exp_digits(num: f64, dig: uint, upper: bool) -> String {
 /// `Some(n)` where `n` is the floating-point number represented by `[num]`.
 #[inline]
 pub fn from_str_hex(num: &str) -> Option<f64> {
-    strconv::from_str_float(num, 16u, true, strconv::ExpBin)
+    strconv::from_str_radix_float(num, 16u)
 }
 
 impl FromStr for f64 {
@@ -399,7 +399,7 @@ impl FromStr for f64 {
     /// `Some(n)` where `n` is the floating-point number represented by `num`.
     #[inline]
     fn from_str(val: &str) -> Option<f64> {
-        strconv::from_str_float(val, 10u, true, strconv::ExpDec)
+        strconv::from_str_radix_float(val, 10u)
     }
 }
 
@@ -422,8 +422,8 @@ impl num::FromStrRadix for f64 {
     /// `None` if the string did not represent a valid number. Otherwise,
     /// `Some(n)` where `n` is the floating-point number represented by `num`.
     #[inline]
-    fn from_str_radix(val: &str, rdx: uint) -> Option<f64> {
-        strconv::from_str_float(val, rdx, false, strconv::ExpNone)
+    fn from_str_radix(val: &str, radix: uint) -> Option<f64> {
+        strconv::from_str_radix_float(val, radix)
     }
 }
 
