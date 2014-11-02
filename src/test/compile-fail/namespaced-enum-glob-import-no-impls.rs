@@ -7,29 +7,30 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
+#![feature(struct_variant, globs)]
 
-pub use self::sub::{Bar, Baz};
-
-pub trait Trait {
-    fn foo();
-}
-
-struct Foo;
-
-impl Foo {
-    pub fn new() {}
-}
-
-mod sub {
-    pub struct Bar;
-
-    impl Bar {
-        pub fn new() {}
+mod m2 {
+    pub enum Foo {
+        A,
+        B(int),
+        C { a: int },
     }
 
-    pub enum Baz {}
-
-    impl Baz {
-        pub fn new() {}
+    impl Foo {
+        pub fn foo() {}
+        pub fn bar(&self) {}
     }
+}
+
+mod m {
+    pub use m2::Foo::*;
+}
+
+pub fn main() {
+    use m2::Foo::*;
+
+    foo(); //~ ERROR unresolved name `foo`
+    m::foo(); //~ ERROR unresolved name `m::foo`
+    bar(); //~ ERROR unresolved name `bar`
+    m::bar(); //~ ERROR unresolved name `m::bar`
 }
