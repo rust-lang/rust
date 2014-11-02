@@ -170,7 +170,7 @@ mod tests {
     fn malloc(n: uint) -> CVec<u8> {
         unsafe {
             let mem = libc::malloc(n as libc::size_t);
-            if mem.is_null() { panic!("out of memory") }
+            if mem.is_null() { ::alloc::oom() }
 
             CVec::new_with_dtor(mem as *mut u8, n,
                 proc() { libc::free(mem as *mut libc::c_void); })
