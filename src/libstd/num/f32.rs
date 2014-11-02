@@ -359,8 +359,8 @@ pub fn to_str_exp_digits(num: f32, dig: uint, upper: bool) -> String {
 /// `None` if the string did not represent a valid number.  Otherwise,
 /// `Some(n)` where `n` is the floating-point number represented by `[num]`.
 #[inline]
-pub fn from_str_hex(num: &str) -> Option<f32> {
-    strconv::from_str_float(num, 16u, true, strconv::ExpBin)
+pub fn from_str_hex(src: &str) -> Option<f32> {
+    strconv::from_str_radix_float(src, 16u)
 }
 
 impl FromStr for f32 {
@@ -390,8 +390,8 @@ impl FromStr for f32 {
     /// `None` if the string did not represent a valid number.  Otherwise,
     /// `Some(n)` where `n` is the floating-point number represented by `num`.
     #[inline]
-    fn from_str(val: &str) -> Option<f32> {
-        strconv::from_str_float(val, 10u, true, strconv::ExpDec)
+    fn from_str(src: &str) -> Option<f32> {
+        strconv::from_str_radix_float(src, 10u)
     }
 }
 
@@ -414,8 +414,8 @@ impl num::FromStrRadix for f32 {
     /// `None` if the string did not represent a valid number. Otherwise,
     /// `Some(n)` where `n` is the floating-point number represented by `num`.
     #[inline]
-    fn from_str_radix(val: &str, rdx: uint) -> Option<f32> {
-        strconv::from_str_float(val, rdx, false, strconv::ExpNone)
+    fn from_str_radix(src: &str, radix: uint) -> Option<f32> {
+        strconv::from_str_radix_float(src, radix)
     }
 }
 
