@@ -233,20 +233,24 @@ pub fn add_new_extension<'cx>(cx: &'cx mut ExtCtxt,
     let match_rhs_tok = MatchNt(rhs_nm, special_idents::tt, token::Plain, token::Plain);
     let argument_gram = vec!(
         TtSequence(DUMMY_SP,
-                   Rc::new(vec![
-                       TtToken(DUMMY_SP, match_lhs),
-                       TtToken(DUMMY_SP, token::FatArrow),
-                       TtToken(DUMMY_SP, match_rhs)]),
-                   Some(token::Semi),
-                   ast::OneOrMore,
-                   2),
+                   Rc::new(ast::SequenceRepetition {
+                       tts: vec![
+                           TtToken(DUMMY_SP, match_lhs_tok),
+                           TtToken(DUMMY_SP, token::FatArrow),
+                           TtToken(DUMMY_SP, match_rhs_tok)],
+                       separator: Some(token::Semi),
+                       op: ast::OneOrMore,
+                       num_captures: 2
+                   })),
         //to phase into semicolon-termination instead of
         //semicolon-separation
         TtSequence(DUMMY_SP,
-                   Rc::new(vec![TtToken(DUMMY_SP, token::Semi)]),
-                   None,
-                   ast::ZeroOrMore,
-                   0));
+                   Rc::new(ast::SequenceRepetition {
+                       tts: vec![TtToken(DUMMY_SP, token::Semi)],
+                       separator: None,
+                       op: ast::ZeroOrMore,
+                       num_captures: 0
+                   })));
 
 
     // Parse the macro_rules! invocation (`none` is for no interpolations):

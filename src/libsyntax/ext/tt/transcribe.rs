@@ -25,7 +25,7 @@ use std::collections::HashMap;
 ///an unzipping of `TokenTree`s
 #[deriving(Clone)]
 struct TtFrame {
-    forest: Rc<Vec<ast::TokenTree>>,
+    forest: TokenTree,
     idx: uint,
     dotdotdoted: bool,
     sep: Option<Token>,
@@ -57,7 +57,11 @@ pub fn new_tt_reader<'a>(sp_diag: &'a SpanHandler,
     let mut r = TtReader {
         sp_diag: sp_diag,
         stack: vec!(TtFrame {
-            forest: Rc::new(src),
+            forest: TtSequence(DUMMY_SP, Rc::new(ast::SequenceRepetition {
+                tts: src,
+                // doesn't matter. This merely holds the root unzipping.
+                separator: None, op: ast::ZeroOrMore, num_captures: 0
+            })),
             idx: 0,
             dotdotdoted: false,
             sep: None,
@@ -129,8 +133,8 @@ fn lockstep_iter_size(t: &TokenTree, r: &TtReader) -> LockstepIterSize {
                 size + lockstep_iter_size(tt, r)
             })
         },
-        TtSequence(_, ref tts, _, _, _) => {
-            tts.iter().fold(LisUnconstrained, |size, tt| {
+        TtSequence(_, ref seq) => {
+            seq.tts.iter().fold(LisUnconstrained, |size, tt| {
                 size + lockstep_iter_size(tt, r)
             })
         },
@@ -202,12 +206,12 @@ pub fn tt_next_token(r: &mut TtReader) -> TokenAndSpan {
         let t = {
             let frame = r.stack.last().unwrap();
             // FIXME(pcwalton): Bad copy.
-            (*frame.forest)[frame.idx].clone()
+            frame.forest.get_tt(frame.idx)
         };
         match t {
-            TtSequence(sp, tts, sep, kleene_op, n) => {
+            TtSequence(sp, seq) => {
                 // FIXME(pcwalton): Bad copy.
-                match lockstep_iter_size(&TtSequence(sp, tts.clone(), sep.clone(), kleene_op, n),
+                match lockstep_iter_size(&TtSequence(sp, seq.clone()),
                                          r) {
                     LisUnconstrained => {
                         r.sp_diag.span_fatal(
@@ -222,7 +226,7 @@ pub fn tt_next_token(r: &mut TtReader) -> TokenAndSpan {
                     }
                     LisConstraint(len, _) => {
                         if len == 0 {
-                            if kleene_op == ast::OneOrMore {
+                            if seq.op == ast::OneOrMore {
                                 // FIXME #2887 blame invoker
                                 r.sp_diag.span_fatal(sp.clone(),
                                                      "this must repeat at least once");
@@ -234,10 +238,10 @@ pub fn tt_next_token(r: &mut TtReader) -> TokenAndSpan {
                         r.repeat_len.push(len);
                         r.repeat_idx.push(0);
                         r.stack.push(TtFrame {
-                            forest: tts,
                             idx: 0,
                             dotdotdoted: true,
-                            sep: sep.clone()
+                            sep: seq.separator.clone(),
+                            forest: TtSequence(sp, seq),
                         });
                     }
                 }
@@ -247,7 +251,7 @@ pub fn tt_next_token(r: &mut TtReader) -> TokenAndSpan {
                 match lookup_cur_matched(r, ident) {
                     None => {
                         r.stack.push(TtFrame {
-                            forest: TtToken(sp, SubstNt(ident, namep)).expand_into_tts(),
+                            forest: TtToken(sp, SubstNt(ident, namep)),
                             idx: 0,
                             dotdotdoted: false,
                             sep: None
@@ -285,7 +289,7 @@ pub fn tt_next_token(r: &mut TtReader) -> TokenAndSpan {
             seq @ TtDelimited(..) | seq @ TtToken(_, MatchNt(..)) => {
                 // do not advance the idx yet
                 r.stack.push(TtFrame {
-                   forest: seq.expand_into_tts(),
+                   forest: seq,
                    idx: 0,
                    dotdotdoted: false,
                    sep: None
@@ -294,7 +298,7 @@ pub fn tt_next_token(r: &mut TtReader) -> TokenAndSpan {
             }
             TtToken(sp, DocComment(name)) if r.desugar_doc_comments => {
                 r.stack.push(TtFrame {
-                   forest: TtToken(sp, DocComment(name)).expand_into_tts(),
+                   forest: TtToken(sp, DocComment(name)),
                    idx: 0,
                    dotdotdoted: false,
                    sep: None
