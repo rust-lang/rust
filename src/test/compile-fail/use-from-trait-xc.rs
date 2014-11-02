@@ -13,12 +13,15 @@
 extern crate use_from_trait_xc;
 
 use use_from_trait_xc::Trait::foo;
-//~^ ERROR unresolved import `use_from_trait_xc::Trait::foo`. Cannot import from a trait or type imp
+//~^ ERROR `foo` is not directly importable
 
 use use_from_trait_xc::Foo::new;
-//~^ ERROR unresolved import `use_from_trait_xc::Foo::new`. Cannot import from a trait or type imple
+//~^ ERROR `new` is not directly importable
 
-use use_from_trait_xc::Bar::new;
-//~^ ERROR unresolved import `use_from_trait_xc::Bar::new`. Cannot import from a trait or type
+use use_from_trait_xc::Bar::new as bnew;
+//~^ ERROR `bnew` is not directly importable
+
+use use_from_trait_xc::Baz::new as baznew;
+//~^ ERROR `baznew` is not directly importable
 
 fn main() {}
