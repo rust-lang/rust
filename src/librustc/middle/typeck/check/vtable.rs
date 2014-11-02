@@ -187,7 +187,11 @@ pub fn check_object_safety(tcx: &ty::ctxt, object_trait: &ty::TyTrait, span: Spa
                                    receiver through a trait object", method_name))
             }
 
-            ty::StaticExplicitSelfCategory |
+            ty::StaticExplicitSelfCategory => {
+                // Static methods are always object-safe since they
+                // can't be called through a trait object
+                return msgs
+            }
             ty::ByReferenceExplicitSelfCategory(..) |
             ty::ByBoxExplicitSelfCategory => {}
         }
