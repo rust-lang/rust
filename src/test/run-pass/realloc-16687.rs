@@ -49,6 +49,7 @@ unsafe fn test_triangle() -> bool {
         if PRINT { println!("allocate(size={:u} align={:u})", size, align); }
 
         let ret = heap::allocate(size, align);
+        if ret.is_null() { alloc::oom() }
 
         if PRINT { println!("allocate(size={:u} align={:u}) ret: 0x{:010x}",
                             size, align, ret as uint);
@@ -70,6 +71,7 @@ unsafe fn test_triangle() -> bool {
         }
 
         let ret = heap::reallocate(ptr, old_size, size, align);
+        if ret.is_null() { alloc::oom() }
 
         if PRINT {
             println!("reallocate(ptr=0x{:010x} old_size={:u} size={:u} align={:u}) \
