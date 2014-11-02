@@ -62,7 +62,6 @@ mod imp {
 mod imp {
     extern crate libc;
 
-    use collections::Collection;
     use io::{IoResult};
     use kinds::marker;
     use mem;
@@ -70,7 +69,7 @@ mod imp {
     use rand::Rng;
     use result::{Ok};
     use self::libc::{c_int, size_t};
-    use slice::MutableSlice;
+    use slice::{ImmutableSlice, MutableSlice};
 
     /// A random number generator that retrieves randomness straight from
     /// the operating system. Platform sources:
@@ -130,7 +129,6 @@ mod imp {
 mod imp {
     extern crate libc;
 
-    use core_collections::Collection;
     use io::{IoResult, IoError};
     use mem;
     use ops::Drop;
@@ -139,7 +137,7 @@ mod imp {
     use result::{Ok, Err};
     use self::libc::{DWORD, BYTE, LPCSTR, BOOL};
     use self::libc::types::os::arch::extra::{LONG_PTR};
-    use slice::MutableSlice;
+    use slice::{ImmutableSlice, MutableSlice};
 
     type HCRYPTPROV = LONG_PTR;
 

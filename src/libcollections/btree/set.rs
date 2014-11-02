@@ -20,8 +20,6 @@ use core::{iter, fmt};
 use core::iter::Peekable;
 use core::fmt::Show;
 
-use {Mutable, Set, MutableSet, MutableMap, Map};
-
 /// A set based on a B-Tree.
 ///
 /// See BTreeMap's documentation for a detailed discussion of this collection's performance
@@ -109,30 +107,104 @@ impl<T: Ord> BTreeSet<T> {
     pub fn union<'a>(&'a self, other: &'a BTreeSet<T>) -> UnionItems<'a, T> {
         UnionItems{a: self.iter().peekable(), b: other.iter().peekable()}
     }
-}
 
-impl<T> Collection for BTreeSet<T> {
-    fn len(&self) -> uint {
-        self.map.len()
-    }
-}
+    /// Return the number of elements in the set
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::BTreeSet;
+    ///
+    /// let mut v = BTreeSet::new();
+    /// assert_eq!(v.len(), 0);
+    /// v.insert(1i);
+    /// assert_eq!(v.len(), 1);
+    /// ```
+    pub fn len(&self) -> uint { self.map.len() }
 
-impl<T: Ord> Mutable for BTreeSet<T> {
-    fn clear(&mut self) {
+    /// Returns true if the set contains no elements
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::BTreeSet;
+    ///
+    /// let mut v = BTreeSet::new();
+    /// assert!(v.is_empty());
+    /// v.insert(1i);
+    /// assert!(!v.is_empty());
+    /// ```
+    pub fn is_empty(&self) -> bool { self.len() == 0 }
+
+    /// Clears the set, removing all values.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::BTreeSet;
+    ///
+    /// let mut v = BTreeSet::new();
+    /// v.insert(1i);
+    /// v.clear();
+    /// assert!(v.is_empty());
+    /// ```
+    pub fn clear(&mut self) {
         self.map.clear()
     }
-}
 
-impl<T: Ord> Set<T> for BTreeSet<T> {
-    fn contains(&self, value: &T) -> bool {
+    /// Returns `true` if the set contains a value.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::BTreeSet;
+    ///
+    /// let set: BTreeSet<int> = [1i, 2, 3].iter().map(|&x| x).collect();
+    /// assert_eq!(set.contains(&1), true);
+    /// assert_eq!(set.contains(&4), false);
+    /// ```
+    pub fn contains(&self, value: &T) -> bool {
         self.map.find(value).is_some()
     }
 
-    fn is_disjoint(&self, other: &BTreeSet<T>) -> bool {
+    /// Returns `true` if the set has no elements in common with `other`.
+    /// This is equivalent to checking for an empty intersection.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::BTreeSet;
+    ///
+    /// let a: BTreeSet<int> = [1i, 2, 3].iter().map(|&x| x).collect();
+    /// let mut b: BTreeSet<int> = BTreeSet::new();
+    ///
+    /// assert_eq!(a.is_disjoint(&b), true);
+    /// b.insert(4);
+    /// assert_eq!(a.is_disjoint(&b), true);
+    /// b.insert(1);
+    /// assert_eq!(a.is_disjoint(&b), false);
+    /// ```
+    pub fn is_disjoint(&self, other: &BTreeSet<T>) -> bool {
         self.intersection(other).next().is_none()
     }
 
-    fn is_subset(&self, other: &BTreeSet<T>) -> bool {
+    /// Returns `true` if the set is a subset of another.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::BTreeSet;
+    ///
+    /// let sup: BTreeSet<int> = [1i, 2, 3].iter().map(|&x| x).collect();
+    /// let mut set: BTreeSet<int> = BTreeSet::new();
+    ///
+    /// assert_eq!(set.is_subset(&sup), true);
+    /// set.insert(2);
+    /// assert_eq!(set.is_subset(&sup), true);
+    /// set.insert(4);
+    /// assert_eq!(set.is_subset(&sup), false);
+    /// ```
+    pub fn is_subset(&self, other: &BTreeSet<T>) -> bool {
         // Stolen from TreeMap
         let mut x = self.iter();
         let mut y = other.iter();
@@ -156,14 +228,63 @@ impl<T: Ord> Set<T> for BTreeSet<T> {
         }
         true
     }
-}
 
-impl<T: Ord> MutableSet<T> for BTreeSet<T>{
-    fn insert(&mut self, value: T) -> bool {
+    /// Returns `true` if the set is a superset of another.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::BTreeSet;
+    ///
+    /// let sub: BTreeSet<int> = [1i, 2].iter().map(|&x| x).collect();
+    /// let mut set: BTreeSet<int> = BTreeSet::new();
+    ///
+    /// assert_eq!(set.is_superset(&sub), false);
+    ///
+    /// set.insert(0);
+    /// set.insert(1);
+    /// assert_eq!(set.is_superset(&sub), false);
+    ///
+    /// set.insert(2);
+    /// assert_eq!(set.is_superset(&sub), true);
+    /// ```
+    pub fn is_superset(&self, other: &BTreeSet<T>) -> bool {
+        other.is_subset(self)
+    }
+
+    /// Adds a value to the set. Returns `true` if the value was not already
+    /// present in the set.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::BTreeSet;
+    ///
+    /// let mut set = BTreeSet::new();
+    ///
+    /// assert_eq!(set.insert(2i), true);
+    /// assert_eq!(set.insert(2i), false);
+    /// assert_eq!(set.len(), 1);
+    /// ```
+    pub fn insert(&mut self, value: T) -> bool {
         self.map.insert(value, ())
     }
 
-    fn remove(&mut self, value: &T) -> bool {
+    /// Removes a value from the set. Returns `true` if the value was
+    /// present in the set.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::BTreeSet;
+    ///
+    /// let mut set = BTreeSet::new();
+    ///
+    /// set.insert(2i);
+    /// assert_eq!(set.remove(&2), true);
+    /// assert_eq!(set.remove(&2), false);
+    /// ```
+    pub fn remove(&mut self, value: &T) -> bool {
         self.map.remove(value)
     }
 }
@@ -273,7 +394,6 @@ impl<'a, T: Ord> Iterator<&'a T> for UnionItems<'a, T> {
 mod test {
     use std::prelude::*;
 
-    use {Set, MutableSet};
     use super::BTreeSet;
     use std::hash;
 

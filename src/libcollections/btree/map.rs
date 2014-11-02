@@ -23,10 +23,7 @@ use core::default::Default;
 use core::{iter, fmt, mem};
 use core::fmt::Show;
 
-use {Deque, Map, MutableMap, Mutable, MutableSeq};
 use ringbuf::RingBuf;
-
-
 
 /// A map based on a B-Tree.
 ///
@@ -145,9 +142,25 @@ impl<K: Ord, V> BTreeMap<K, V> {
             b: b,
         }
     }
-}
 
-impl<K: Ord, V> Map<K, V> for BTreeMap<K, V> {
+    /// Clears the map, removing all values.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::BTreeMap;
+    ///
+    /// let mut a = BTreeMap::new();
+    /// a.insert(1u, "a");
+    /// a.clear();
+    /// assert!(a.is_empty());
+    /// ```
+    pub fn clear(&mut self) {
+        let b = self.b;
+        // avoid recursive destructors by manually traversing the tree
+        for _ in mem::replace(self, BTreeMap::with_b(b)).into_iter() {};
+    }
+
     // Searching in a B-Tree is pretty straightforward.
     //
     // Start at the root. Try to find the key in the current node. If we find it, return it.
@@ -155,7 +168,20 @@ impl<K: Ord, V> Map<K, V> for BTreeMap<K, V> {
     // the search key. If no such key exists (they're *all* smaller), then just take the last
     // edge in the node. If we're in a leaf and we don't find our key, then it's not
     // in the tree.
-    fn find(&self, key: &K) -> Option<&V> {
+
+    /// Returns a reference to the value corresponding to the key.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::BTreeMap;
+    ///
+    /// let mut map = BTreeMap::new();
+    /// map.insert(1u, "a");
+    /// assert_eq!(map.find(&1), Some(&"a"));
+    /// assert_eq!(map.find(&2), None);
+    /// ```
+    pub fn find(&self, key: &K) -> Option<&V> {
         let mut cur_node = &self.root;
         loop {
             match cur_node.search(key) {
@@ -170,11 +196,41 @@ impl<K: Ord, V> Map<K, V> for BTreeMap<K, V> {
             }
         }
     }
-}
 
-impl<K: Ord, V> MutableMap<K, V> for BTreeMap<K, V> {
+    /// Returns true if the map contains a value for the specified key.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::BTreeMap;
+    ///
+    /// let mut map = BTreeMap::new();
+    /// map.insert(1u, "a");
+    /// assert_eq!(map.contains_key(&1), true);
+    /// assert_eq!(map.contains_key(&2), false);
+    /// ```
+    #[inline]
+    pub fn contains_key(&self, key: &K) -> bool {
+        self.find(key).is_some()
+    }
+
+    /// Returns a mutable reference to the value corresponding to the key.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::BTreeMap;
+    ///
+    /// let mut map = BTreeMap::new();
+    /// map.insert(1u, "a");
+    /// match map.find_mut(&1) {
+    ///     Some(x) => *x = "b",
+    ///     None => (),
+    /// }
+    /// assert_eq!(map[1], "b");
+    /// ```
     // See `find` for implementation notes, this is basically a copy-paste with mut's added
-    fn find_mut(&mut self, key: &K) -> Option<&mut V> {
+    pub fn find_mut(&mut self, key: &K) -> Option<&mut V> {
         // temp_node is a Borrowck hack for having a mutable value outlive a loop iteration
         let mut temp_node = &mut self.root;
         loop {
@@ -218,7 +274,23 @@ impl<K: Ord, V> MutableMap<K, V> for BTreeMap<K, V> {
     // 2) While ODS may potentially return the pair we *just* inserted after
     // the split, we will never do this. Again, this shouldn't effect the analysis.
 
-    fn swap(&mut self, key: K, mut value: V) -> Option<V> {
+    /// Inserts a key-value pair from the map. If the key already had a value
+    /// present in the map, that value is returned. Otherwise, `None` is returned.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::BTreeMap;
+    ///
+    /// let mut map = BTreeMap::new();
+    /// assert_eq!(map.swap(37u, "a"), None);
+    /// assert_eq!(map.is_empty(), false);
+    ///
+    /// map.insert(37, "b");
+    /// assert_eq!(map.swap(37, "c"), Some("b"));
+    /// assert_eq!(map[37], "c");
+    /// ```
+    pub fn swap(&mut self, key: K, mut value: V) -> Option<V> {
         // This is a stack of rawptrs to nodes paired with indices, respectively
         // representing the nodes and edges of our search path. We have to store rawptrs
         // because as far as Rust is concerned, we can mutate aliased data with such a
@@ -266,6 +338,25 @@ impl<K: Ord, V> MutableMap<K, V> for BTreeMap<K, V> {
         }
     }
 
+    /// Inserts a key-value pair into the map. An existing value for a
+    /// key is replaced by the new value. Returns `true` if the key did
+    /// not already exist in the map.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::BTreeMap;
+    ///
+    /// let mut map = BTreeMap::new();
+    /// assert_eq!(map.insert(2u, "value"), true);
+    /// assert_eq!(map.insert(2, "value2"), false);
+    /// assert_eq!(map[2], "value2");
+    /// ```
+    #[inline]
+    pub fn insert(&mut self, key: K, value: V) -> bool {
+        self.swap(key, value).is_none()
+    }
+
     // Deletion is the most complicated operation for a B-Tree.
     //
     // First we do the same kind of search described in
@@ -301,7 +392,20 @@ impl<K: Ord, V> MutableMap<K, V> for BTreeMap<K, V> {
     //      the underflow handling process on the parent. If merging merges the last two children
     //      of the root, then we replace the root with the merged node.
 
-    fn pop(&mut self, key: &K) -> Option<V> {
+    /// Removes a key from the map, returning the value at the key if the key
+    /// was previously in the map.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::BTreeMap;
+    ///
+    /// let mut map = BTreeMap::new();
+    /// map.insert(1u, "a");
+    /// assert_eq!(map.pop(&1), Some("a"));
+    /// assert_eq!(map.pop(&1), None);
+    /// ```
+    pub fn pop(&mut self, key: &K) -> Option<V> {
         // See `swap` for a more thorough description of the stuff going on in here
         let mut stack = stack::PartialSearchStack::new(self);
         loop {
@@ -322,6 +426,24 @@ impl<K: Ord, V> MutableMap<K, V> for BTreeMap<K, V> {
             }
         }
     }
+
+    /// Removes a key-value pair from the map. Returns `true` if the key
+    /// was present in the map.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::BTreeMap;
+    ///
+    /// let mut map = BTreeMap::new();
+    /// assert_eq!(map.remove(&1u), false);
+    /// map.insert(1, "a");
+    /// assert_eq!(map.remove(&1), true);
+    /// ```
+    #[inline]
+    pub fn remove(&mut self, key: &K) -> bool {
+        self.pop(key).is_some()
+    }
 }
 
 /// The stack module provides a safe interface for constructing and manipulating a stack of ptrs
@@ -331,7 +453,6 @@ mod stack {
     use core::prelude::*;
     use super::BTreeMap;
     use super::super::node::*;
-    use {MutableMap, MutableSeq};
     use vec::Vec;
 
     type StackItem<K, V> = (*mut Node<K, V>, uint);
@@ -600,20 +721,6 @@ mod stack {
                 }
             }
         }
-    }
-}
-
-impl<K, V> Collection for BTreeMap<K, V> {
-    fn len(&self) -> uint {
-        self.length
-    }
-}
-
-impl<K: Ord, V> Mutable for BTreeMap<K, V> {
-    fn clear(&mut self) {
-        let b = self.b;
-        // avoid recursive destructors by manually traversing the tree
-        for _ in mem::replace(self, BTreeMap::with_b(b)).into_iter() {};
     }
 }
 
@@ -950,6 +1057,34 @@ impl<K, V> BTreeMap<K, V> {
     pub fn values<'a>(&'a self) -> Values<'a, K, V> {
         self.iter().map(|(_, v)| v)
     }
+
+    /// Return the number of elements in the map.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::BTreeMap;
+    ///
+    /// let mut a = BTreeMap::new();
+    /// assert_eq!(a.len(), 0);
+    /// a.insert(1u, "a");
+    /// assert_eq!(a.len(), 1);
+    /// ```
+    pub fn len(&self) -> uint { self.length }
+
+    /// Return true if the map contains no elements.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::BTreeMap;
+    ///
+    /// let mut a = BTreeMap::new();
+    /// assert!(a.is_empty());
+    /// a.insert(1u, "a");
+    /// assert!(!a.is_empty());
+    /// ```
+    pub fn is_empty(&self) -> bool { self.len() == 0 }
 }
 
 impl<K: Ord, V> BTreeMap<K, V> {
@@ -993,7 +1128,6 @@ impl<K: Ord, V> BTreeMap<K, V> {
 mod test {
     use std::prelude::*;
 
-    use {Map, MutableMap};
     use super::{BTreeMap, Occupied, Vacant};
 
     #[test]
@@ -1199,58 +1333,73 @@ mod bench {
     use test::{Bencher, black_box};
 
     use super::BTreeMap;
-    use MutableMap;
-    use deque::bench::{insert_rand_n, insert_seq_n, find_rand_n, find_seq_n};
+    use bench::{insert_rand_n, insert_seq_n, find_rand_n, find_seq_n};
 
     #[bench]
     pub fn insert_rand_100(b: &mut Bencher) {
         let mut m : BTreeMap<uint,uint> = BTreeMap::new();
-        insert_rand_n(100, &mut m, b);
+        insert_rand_n(100, &mut m, b,
+                      |m, i| { m.insert(i, 1); },
+                      |m, i| { m.remove(&i); });
     }
 
     #[bench]
     pub fn insert_rand_10_000(b: &mut Bencher) {
         let mut m : BTreeMap<uint,uint> = BTreeMap::new();
-        insert_rand_n(10_000, &mut m, b);
+        insert_rand_n(10_000, &mut m, b,
+                      |m, i| { m.insert(i, 1); },
+                      |m, i| { m.remove(&i); });
     }
 
     // Insert seq
     #[bench]
     pub fn insert_seq_100(b: &mut Bencher) {
         let mut m : BTreeMap<uint,uint> = BTreeMap::new();
-        insert_seq_n(100, &mut m, b);
+        insert_seq_n(100, &mut m, b,
+                     |m, i| { m.insert(i, 1); },
+                     |m, i| { m.remove(&i); });
     }
 
     #[bench]
     pub fn insert_seq_10_000(b: &mut Bencher) {
         let mut m : BTreeMap<uint,uint> = BTreeMap::new();
-        insert_seq_n(10_000, &mut m, b);
+        insert_seq_n(10_000, &mut m, b,
+                     |m, i| { m.insert(i, 1); },
+                     |m, i| { m.remove(&i); });
     }
 
     // Find rand
     #[bench]
     pub fn find_rand_100(b: &mut Bencher) {
         let mut m : BTreeMap<uint,uint> = BTreeMap::new();
-        find_rand_n(100, &mut m, b);
+        find_rand_n(100, &mut m, b,
+                    |m, i| { m.insert(i, 1); },
+                    |m, i| { m.find(&i); });
     }
 
     #[bench]
     pub fn find_rand_10_000(b: &mut Bencher) {
         let mut m : BTreeMap<uint,uint> = BTreeMap::new();
-        find_rand_n(10_000, &mut m, b);
+        find_rand_n(10_000, &mut m, b,
+                    |m, i| { m.insert(i, 1); },
+                    |m, i| { m.find(&i); });
     }
 
     // Find seq
     #[bench]
     pub fn find_seq_100(b: &mut Bencher) {
         let mut m : BTreeMap<uint,uint> = BTreeMap::new();
-        find_seq_n(100, &mut m, b);
+        find_seq_n(100, &mut m, b,
+                   |m, i| { m.insert(i, 1); },
+                   |m, i| { m.find(&i); });
     }
 
     #[bench]
     pub fn find_seq_10_000(b: &mut Bencher) {
         let mut m : BTreeMap<uint,uint> = BTreeMap::new();
-        find_seq_n(10_000, &mut m, b);
+        find_seq_n(10_000, &mut m, b,
+                   |m, i| { m.insert(i, 1); },
+                   |m, i| { m.find(&i); });
     }
 
     fn bench_iter(b: &mut Bencher, size: uint) {

@@ -12,7 +12,6 @@
 
 use clone::Clone;
 use cmp::{Eq, Equiv, PartialEq};
-use collections::{Collection, Mutable, Set, MutableSet, Map, MutableMap};
 use core::kinds::Sized;
 use default::Default;
 use fmt::Show;
@@ -376,6 +375,158 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S>> HashSet<T, H> {
         -> Chain<SetItems<'a, T>, SetAlgebraItems<'a, T, H>> {
         self.iter().chain(other.difference(self))
     }
+
+    /// Return the number of elements in the set
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::HashSet;
+    ///
+    /// let mut v = HashSet::new();
+    /// assert_eq!(v.len(), 0);
+    /// v.insert(1u);
+    /// assert_eq!(v.len(), 1);
+    /// ```
+    pub fn len(&self) -> uint { self.map.len() }
+
+    /// Returns true if the set contains no elements
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::HashSet;
+    ///
+    /// let mut v = HashSet::new();
+    /// assert!(v.is_empty());
+    /// v.insert(1u);
+    /// assert!(!v.is_empty());
+    /// ```
+    pub fn is_empty(&self) -> bool { self.map.len() == 0 }
+
+    /// Clears the set, removing all values.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::HashSet;
+    ///
+    /// let mut v = HashSet::new();
+    /// v.insert(1u);
+    /// v.clear();
+    /// assert!(v.is_empty());
+    /// ```
+    pub fn clear(&mut self) { self.map.clear() }
+
+    /// Returns `true` if the set contains a value.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::HashSet;
+    ///
+    /// let set: HashSet<uint> = [1, 2, 3].iter().map(|&x| x).collect();
+    /// assert_eq!(set.contains(&1), true);
+    /// assert_eq!(set.contains(&4), false);
+    /// ```
+    pub fn contains(&self, value: &T) -> bool { self.map.contains_key(value) }
+
+    /// Returns `true` if the set has no elements in common with `other`.
+    /// This is equivalent to checking for an empty intersection.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::HashSet;
+    ///
+    /// let a: HashSet<uint> = [1, 2, 3].iter().map(|&x| x).collect();
+    /// let mut b: HashSet<uint> = HashSet::new();
+    ///
+    /// assert_eq!(a.is_disjoint(&b), true);
+    /// b.insert(4);
+    /// assert_eq!(a.is_disjoint(&b), true);
+    /// b.insert(1);
+    /// assert_eq!(a.is_disjoint(&b), false);
+    /// ```
+    pub fn is_disjoint(&self, other: &HashSet<T, H>) -> bool {
+        self.iter().all(|v| !other.contains(v))
+    }
+
+    /// Returns `true` if the set is a subset of another.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::HashSet;
+    ///
+    /// let sup: HashSet<uint> = [1, 2, 3].iter().map(|&x| x).collect();
+    /// let mut set: HashSet<uint> = HashSet::new();
+    ///
+    /// assert_eq!(set.is_subset(&sup), true);
+    /// set.insert(2);
+    /// assert_eq!(set.is_subset(&sup), true);
+    /// set.insert(4);
+    /// assert_eq!(set.is_subset(&sup), false);
+    /// ```
+    pub fn is_subset(&self, other: &HashSet<T, H>) -> bool {
+        self.iter().all(|v| other.contains(v))
+    }
+
+    /// Returns `true` if the set is a superset of another.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::HashSet;
+    ///
+    /// let sub: HashSet<uint> = [1, 2].iter().map(|&x| x).collect();
+    /// let mut set: HashSet<uint> = HashSet::new();
+    ///
+    /// assert_eq!(set.is_superset(&sub), false);
+    ///
+    /// set.insert(0);
+    /// set.insert(1);
+    /// assert_eq!(set.is_superset(&sub), false);
+    ///
+    /// set.insert(2);
+    /// assert_eq!(set.is_superset(&sub), true);
+    /// ```
+    #[inline]
+    pub fn is_superset(&self, other: &HashSet<T, H>) -> bool {
+        other.is_subset(self)
+    }
+
+    /// Adds a value to the set. Returns `true` if the value was not already
+    /// present in the set.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::HashSet;
+    ///
+    /// let mut set = HashSet::new();
+    ///
+    /// assert_eq!(set.insert(2u), true);
+    /// assert_eq!(set.insert(2), false);
+    /// assert_eq!(set.len(), 1);
+    /// ```
+    pub fn insert(&mut self, value: T) -> bool { self.map.insert(value, ()) }
+
+    /// Removes a value from the set. Returns `true` if the value was
+    /// present in the set.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::HashSet;
+    ///
+    /// let mut set = HashSet::new();
+    ///
+    /// set.insert(2u);
+    /// assert_eq!(set.remove(&2), true);
+    /// assert_eq!(set.remove(&2), false);
+    /// ```
+    pub fn remove(&mut self, value: &T) -> bool { self.map.remove(value) }
 }
 
 impl<T: Eq + Hash<S>, S, H: Hasher<S>> PartialEq for HashSet<T, H> {
@@ -387,32 +538,6 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S>> PartialEq for HashSet<T, H> {
 }
 
 impl<T: Eq + Hash<S>, S, H: Hasher<S>> Eq for HashSet<T, H> {}
-
-impl<T: Eq + Hash<S>, S, H: Hasher<S>> Collection for HashSet<T, H> {
-    fn len(&self) -> uint { self.map.len() }
-}
-
-impl<T: Eq + Hash<S>, S, H: Hasher<S>> Mutable for HashSet<T, H> {
-    fn clear(&mut self) { self.map.clear() }
-}
-
-impl<T: Eq + Hash<S>, S, H: Hasher<S>> Set<T> for HashSet<T, H> {
-    fn contains(&self, value: &T) -> bool { self.map.contains_key(value) }
-
-    fn is_disjoint(&self, other: &HashSet<T, H>) -> bool {
-        self.iter().all(|v| !other.contains(v))
-    }
-
-    fn is_subset(&self, other: &HashSet<T, H>) -> bool {
-        self.iter().all(|v| other.contains(v))
-    }
-}
-
-impl<T: Eq + Hash<S>, S, H: Hasher<S>> MutableSet<T> for HashSet<T, H> {
-    fn insert(&mut self, value: T) -> bool { self.map.insert(value, ()) }
-
-    fn remove(&mut self, value: &T) -> bool { self.map.remove(value) }
-}
 
 impl<T: Eq + Hash<S> + fmt::Show, S, H: Hasher<S>> fmt::Show for HashSet<T, H> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -471,7 +596,6 @@ mod test_set {
 
     use super::HashSet;
     use slice::ImmutablePartialEqSlice;
-    use collections::Collection;
 
     #[test]
     fn test_disjoint() {

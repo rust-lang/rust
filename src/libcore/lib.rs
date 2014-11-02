@@ -102,7 +102,6 @@ pub mod ops;
 pub mod cmp;
 pub mod clone;
 pub mod default;
-pub mod collections;
 
 /* Core types and methods on primitives */
 

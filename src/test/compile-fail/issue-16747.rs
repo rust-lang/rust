@@ -12,6 +12,8 @@ trait ListItem<'a> {
     fn list_name() -> &'a str;
 }
 
+trait Collection { fn len(&self) -> uint; }
+
 struct List<'a, T: ListItem<'a>> {
 //~^ ERROR the parameter type `T` may not live long enough; consider adding an explicit lifetime bo
 //~^^ NOTE ...so that the reference type `&'a [T]` does not outlive the data it points at

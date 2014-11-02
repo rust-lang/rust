@@ -184,8 +184,8 @@ pub fn can_reach<S,H:Hasher<S>,T:Eq+Clone+Hash<S>>(
 /// }
 /// ```
 #[inline(always)]
-pub fn memoized<T: Clone, U: Clone, M: MutableMap<T, U>>(
-    cache: &RefCell<M>,
+pub fn memoized<T: Clone + Hash<S> + Eq, U: Clone, S, H: Hasher<S>>(
+    cache: &RefCell<HashMap<T, U, H>>,
     arg: T,
     f: |T| -> U
 ) -> U {
@@ -193,8 +193,8 @@ pub fn memoized<T: Clone, U: Clone, M: MutableMap<T, U>>(
 }
 
 #[inline(always)]
-pub fn memoized_with_key<T, K, U: Clone, M: MutableMap<K, U>>(
-    cache: &RefCell<M>,
+pub fn memoized_with_key<T, K: Hash<S> + Eq, U: Clone, S, H: Hasher<S>>(
+    cache: &RefCell<HashMap<K, U, H>>,
     arg: T,
     f: |T| -> U,
     k: |&T| -> K
