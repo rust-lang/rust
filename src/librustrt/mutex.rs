@@ -519,6 +519,7 @@ mod imp {
     use alloc::heap;
     use core::atomic;
     use core::ptr;
+    use core::ptr::RawPtr;
     use libc::{HANDLE, BOOL, LPSECURITY_ATTRIBUTES, c_void, DWORD, LPCSTR};
     use libc;
 
@@ -608,6 +609,7 @@ mod imp {
 
     pub unsafe fn init_lock() -> uint {
         let block = heap::allocate(CRIT_SECTION_SIZE, 8) as *mut c_void;
+        if block.is_null() { ::alloc::oom() }
         InitializeCriticalSectionAndSpinCount(block, SPIN_COUNT);
         return block as uint;
     }
