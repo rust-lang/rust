@@ -57,7 +57,7 @@ static KNOWN_FEATURES: &'static [(&'static str, Status)] = &[
     ("default_type_params", Active),
     ("quote", Active),
     ("linkage", Active),
-    ("struct_inherit", Active),
+    ("struct_inherit", Removed),
     ("overloaded_calls", Active),
     ("unboxed_closure_sugar", Active),
 
