@@ -1137,19 +1137,19 @@ impl<'a> State<'a> {
                 try!(space(&mut self.s));
                 word(&mut self.s, token_to_string(&delimed.close_token()).as_slice())
             },
-            ast::TtSequence(_, ref tts, ref separator, kleene_op, _) => {
+            ast::TtSequence(_, ref seq) => {
                 try!(word(&mut self.s, "$("));
-                for tt_elt in (*tts).iter() {
+                for tt_elt in seq.tts.iter() {
                     try!(self.print_tt(tt_elt));
                 }
                 try!(word(&mut self.s, ")"));
-                match *separator {
+                match seq.separator {
                     Some(ref tk) => {
                         try!(word(&mut self.s, token_to_string(tk).as_slice()));
                     }
                     None => {},
                 }
-                match kleene_op {
+                match seq.op {
                     ast::ZeroOrMore => word(&mut self.s, "*"),
                     ast::OneOrMore => word(&mut self.s, "+"),
                 }

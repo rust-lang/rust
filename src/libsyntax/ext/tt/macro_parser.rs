@@ -100,17 +100,39 @@ use std::collections::hash_map::{Vacant, Occupied};
 // To avoid costly uniqueness checks, we require that `MatchSeq` always has
 // a nonempty body.
 
+#[deriving(Clone)]
+enum TokenTreeOrTokenTreeVec {
+    Tt(ast::TokenTree),
+    TtSeq(Rc<Vec<ast::TokenTree>>),
+}
+
+impl TokenTreeOrTokenTreeVec {
+    fn len(&self) -> uint {
+        match self {
+            &TtSeq(ref v) => v.len(),
+            &Tt(ref tt) => tt.len(),
+        }
+    }
+
+    fn get_tt(&self, index: uint) -> TokenTree {
+        match self {
+            &TtSeq(ref v) => v[index].clone(),
+            &Tt(ref tt) => tt.get_tt(index),
+        }
+    }
+}
+
 /// an unzipping of `TokenTree`s
 #[deriving(Clone)]
 struct MatcherTtFrame {
-    elts: Rc<Vec<ast::TokenTree>>,
+    elts: TokenTreeOrTokenTreeVec,
     idx: uint,
 }
 
 #[deriving(Clone)]
 pub struct MatcherPos {
     stack: Vec<MatcherTtFrame>,
-    elts: Rc<Vec<ast::TokenTree>>,
+    top_elts: TokenTreeOrTokenTreeVec,
     sep: Option<Token>,
     idx: uint,
     up: Option<Box<MatcherPos>>,
@@ -124,8 +146,8 @@ pub struct MatcherPos {
 pub fn count_names(ms: &[TokenTree]) -> uint {
     ms.iter().fold(0, |count, elt| {
         count + match elt {
-            &TtSequence(_, _, _, _, advance_by) => {
-                advance_by
+            &TtSequence(_, ref seq) => {
+                seq.num_captures
             }
             &TtDelimited(_, ref delim) => {
                 count_names(delim.tts.as_slice())
@@ -144,7 +166,7 @@ pub fn initial_matcher_pos(ms: Rc<Vec<TokenTree>>, sep: Option<Token>, lo: ByteP
     let matches = Vec::from_fn(match_idx_hi, |_i| Vec::new());
     box MatcherPos {
         stack: vec![],
-        elts: ms,
+        top_elts: TtSeq(ms),
         sep: sep,
         idx: 0u,
         up: None,
@@ -183,8 +205,8 @@ pub fn nameize(p_s: &ParseSess, ms: &[TokenTree], res: &[Rc<NamedMatch>])
     fn n_rec(p_s: &ParseSess, m: &TokenTree, res: &[Rc<NamedMatch>],
              ret_val: &mut HashMap<Ident, Rc<NamedMatch>>, idx: &mut uint) {
         match m {
-            &TtSequence(_, ref more_ms, _, _, _) => {
-                for next_m in more_ms.iter() {
+            &TtSequence(_, ref seq) => {
+                for next_m in seq.tts.iter() {
                     n_rec(p_s, next_m, res, ret_val, idx)
                 }
             }
@@ -278,10 +300,10 @@ pub fn parse(sess: &ParseSess,
             };
 
             // When unzipped trees end, remove them
-            while ei.idx >= ei.elts.len() {
+            while ei.idx >= ei.top_elts.len() {
                 match ei.stack.pop() {
                     Some(MatcherTtFrame { elts, idx }) => {
-                        ei.elts = elts;
+                        ei.top_elts = elts;
                         ei.idx = idx + 1;
                     }
                     None => break
@@ -289,7 +311,7 @@ pub fn parse(sess: &ParseSess,
             }
 
             let idx = ei.idx;
-            let len = ei.elts.len();
+            let len = ei.top_elts.len();
 
             /* at end of sequence */
             if idx >= len {
@@ -352,17 +374,16 @@ pub fn parse(sess: &ParseSess,
                     eof_eis.push(ei);
                 }
             } else {
-                match (*ei.elts)[idx].clone() {
+                match ei.top_elts.get_tt(idx) {
                     /* need to descend into sequence */
-                    TtSequence(_, ref matchers, ref sep, kleene_op, match_num) => {
-                        if kleene_op == ast::ZeroOrMore {
+                    TtSequence(sp, seq) => {
+                        if seq.op == ast::ZeroOrMore {
                             let mut new_ei = ei.clone();
-                            new_ei.match_cur += match_num;
+                            new_ei.match_cur += seq.num_captures;
                             new_ei.idx += 1u;
                             //we specifically matched zero repeats.
-                            for idx in range(ei.match_cur, ei.match_cur + match_num) {
-                                new_ei.matches[idx]
-                                      .push(Rc::new(MatchedSeq(Vec::new(), sp)));
+                            for idx in range(ei.match_cur, ei.match_cur + seq.num_captures) {
+                                new_ei.matches[idx].push(Rc::new(MatchedSeq(Vec::new(), sp)));
                             }
 
                             cur_eis.push(new_ei);
@@ -372,15 +393,15 @@ pub fn parse(sess: &ParseSess,
                         let ei_t = ei;
                         cur_eis.push(box MatcherPos {
                             stack: vec![],
-                            elts: matchers.clone(),
-                            sep: (*sep).clone(),
+                            sep: seq.separator.clone(),
                             idx: 0u,
                             matches: matches,
                             match_lo: ei_t.match_cur,
                             match_cur: ei_t.match_cur,
-                            match_hi: ei_t.match_cur + match_num,
+                            match_hi: ei_t.match_cur + seq.num_captures,
                             up: Some(ei_t),
-                            sp_lo: sp.lo
+                            sp_lo: sp.lo,
+                            top_elts: Tt(TtSequence(sp, seq)),
                         });
                     }
                     TtToken(_, MatchNt(..)) => {
@@ -395,11 +416,10 @@ pub fn parse(sess: &ParseSess,
                         return Error(sp, "Cannot transcribe in macro LHS".into_string())
                     }
                     seq @ TtDelimited(..) | seq @ TtToken(_, DocComment(..)) => {
-                        let tts = seq.expand_into_tts();
-                        let elts = mem::replace(&mut ei.elts, tts);
+                        let lower_elts = mem::replace(&mut ei.top_elts, Tt(seq));
                         let idx = ei.idx;
                         ei.stack.push(MatcherTtFrame {
-                            elts: elts,
+                            elts: lower_elts,
                             idx: idx,
                         });
                         ei.idx = 0;
@@ -433,7 +453,7 @@ pub fn parse(sess: &ParseSess,
             if (bb_eis.len() > 0u && next_eis.len() > 0u)
                 || bb_eis.len() > 1u {
                 let nts = bb_eis.iter().map(|ei| {
-                    match (*ei.elts)[ei.idx] {
+                    match ei.top_elts.get_tt(ei.idx) {
                       TtToken(_, MatchNt(bind, name, _, _)) => {
                         (format!("{} ('{}')",
                                 token::get_ident(name),
@@ -458,7 +478,7 @@ pub fn parse(sess: &ParseSess,
                 let mut rust_parser = Parser::new(sess, cfg.clone(), box rdr.clone());
 
                 let mut ei = bb_eis.pop().unwrap();
-                match (*ei.elts)[ei.idx] {
+                match ei.top_elts.get_tt(ei.idx) {
                   TtToken(_, MatchNt(_, name, _, _)) => {
                     let name_string = token::get_ident(name);
                     let match_cur = ei.match_cur;

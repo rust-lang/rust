@@ -48,7 +48,8 @@ use ast::{StmtExpr, StmtSemi, StmtMac, StructDef, StructField};
 use ast::{StructVariantKind, BiSub};
 use ast::StrStyle;
 use ast::{SelfExplicit, SelfRegion, SelfStatic, SelfValue};
-use ast::{Delimited, TokenTree, TraitItem, TraitRef, TtDelimited, TtSequence, TtToken};
+use ast::{Delimited, SequenceRepetition, TokenTree, TraitItem, TraitRef};
+use ast::{TtDelimited, TtSequence, TtToken};
 use ast::{TupleVariantKind, Ty, Ty_, TyBot};
 use ast::{TypeField, TyFixedLengthVec, TyClosure, TyProc, TyBareFn};
 use ast::{TyTypeof, TyInfer, TypeMethod};
@@ -2551,7 +2552,13 @@ impl<'a> Parser<'a> {
                         Spanned { node, .. } => node,
                     };
                     let name_num = macro_parser::count_names(seq.as_slice());
-                    TtSequence(mk_sp(sp.lo, p.span.hi), Rc::new(seq), sep, repeat, name_num)
+                    TtSequence(mk_sp(sp.lo, p.span.hi),
+                               Rc::new(SequenceRepetition {
+                                   tts: seq,
+                                   separator: sep,
+                                   op: repeat,
+                                   num_captures: name_num
+                               }))
                 } else {
                     // A nonterminal that matches or not
                     let namep = match p.token { token::Ident(_, p) => p, _ => token::Plain };

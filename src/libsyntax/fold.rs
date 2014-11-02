@@ -581,12 +581,13 @@ pub fn noop_fold_tt<T: Folder>(tt: &TokenTree, fld: &mut T) -> TokenTree {
                             }
                         ))
         },
-        TtSequence(span, ref pattern, ref sep, is_optional, advance_by) =>
+        TtSequence(span, ref seq) =>
             TtSequence(span,
-                       Rc::new(fld.fold_tts(pattern.as_slice())),
-                       sep.clone().map(|tok| fld.fold_token(tok)),
-                       is_optional,
-                       advance_by),
+                       Rc::new(SequenceRepetition {
+                           tts: fld.fold_tts(seq.tts.as_slice()),
+                           separator: seq.separator.clone().map(|tok| fld.fold_token(tok)),
+                           ..**seq
+                       })),
     }
 }
 

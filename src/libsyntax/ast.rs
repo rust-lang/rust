@@ -627,6 +627,19 @@ impl Delimited {
     }
 }
 
+/// A sequence of token treesee
+#[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
+pub struct SequenceRepetition {
+    /// The sequence of token trees
+    pub tts: Vec<TokenTree>,
+    /// The optional separator
+    pub separator: Option<token::Token>,
+    /// Whether the sequence can be repeated zero (*), or one or more times (+)
+    pub op: KleeneOp,
+    /// The number of `MatchNt`s that appear in the sequence (and subsequences)
+    pub num_captures: uint,
+}
+
 /// A Kleene-style [repetition operator](http://en.wikipedia.org/wiki/Kleene_star)
 /// for token sequences.
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
@@ -657,58 +670,76 @@ pub enum TokenTree {
 
     // This only makes sense in MBE macros.
 
-    /// A kleene-style repetition sequence with a span, a TT forest,
-    /// an optional separator, and a boolean where true indicates
-    /// zero or more (..), and false indicates one or more (+).
-    /// The last member denotes the number of `MATCH_NONTERMINAL`s
-    /// in the forest.
-    // FIXME(eddyb) #12938 Use Rc<[TokenTree]> after DST.
-    TtSequence(Span, Rc<Vec<TokenTree>>, Option<::parse::token::Token>, KleeneOp, uint),
+    /// A kleene-style repetition sequence with a span
+    // FIXME(eddyb) #12938 Use DST.
+    TtSequence(Span, Rc<SequenceRepetition>),
 }
 
 impl TokenTree {
-    /// For unrolling some tokens or token trees into equivalent sequences.
-    pub fn expand_into_tts(self) -> Rc<Vec<TokenTree>> {
-        match self {
-            TtToken(sp, token::DocComment(name)) => {
+    pub fn len(&self) -> uint {
+        match *self {
+            TtToken(_, token::DocComment(_)) => 2,
+            TtToken(_, token::SubstNt(..)) => 2,
+            TtToken(_, token::MatchNt(..)) => 3,
+            TtDelimited(_, ref delimed) => {
+                delimed.tts.len() + 2
+            }
+            TtSequence(_, ref seq) => {
+                seq.tts.len()
+            }
+            TtToken(..) => 0
+        }
+    }
+
+    pub fn get_tt(&self, index: uint) -> TokenTree {
+        match (self, index) {
+            (&TtToken(sp, token::DocComment(_)), 0) => {
+                TtToken(sp, token::Pound)
+            }
+            (&TtToken(sp, token::DocComment(name)), 1) => {
                 let doc = MetaNameValue(token::intern_and_get_ident("doc"),
                                         respan(sp, LitStr(token::get_name(name), CookedStr)));
                 let doc = token::NtMeta(P(respan(sp, doc)));
-                let delimed = Delimited {
+                TtDelimited(sp, Rc::new(Delimited {
                     delim: token::Bracket,
                     open_span: sp,
                     tts: vec![TtToken(sp, token::Interpolated(doc))],
                     close_span: sp,
-                };
-                Rc::new(vec![TtToken(sp, token::Pound),
-                             TtDelimited(sp, Rc::new(delimed))])
+                }))
             }
-            TtDelimited(_, ref delimed) => {
-                let mut tts = Vec::with_capacity(1 + delimed.tts.len() + 1);
-                tts.push(delimed.open_tt());
-                tts.extend(delimed.tts.iter().map(|tt| tt.clone()));
-                tts.push(delimed.close_tt());
-                Rc::new(tts)
+            (&TtDelimited(_, ref delimed), _) => {
+                if index == 0 {
+                    return delimed.open_tt();
+                }
+                if index == delimed.tts.len() + 1 {
+                    return delimed.close_tt();
+                }
+                delimed.tts[index - 1].clone()
             }
-            TtToken(sp, token::SubstNt(name, namep)) => {
-                Rc::new(vec![TtToken(sp, token::Dollar),
-                             TtToken(sp, token::Ident(name, namep))])
+            (&TtToken(sp, token::SubstNt(name, name_st)), _) => {
+                let v = [TtToken(sp, token::Dollar),
+                         TtToken(sp, token::Ident(name, name_st))];
+                v[index]
             }
-            TtToken(sp, token::MatchNt(name, kind, namep, kindp)) => {
-                Rc::new(vec![TtToken(sp, token::SubstNt(name, namep)),
-                             TtToken(sp, token::Colon),
-                             TtToken(sp, token::Ident(kind, kindp))])
+            (&TtToken(sp, token::MatchNt(name, kind, name_st, kind_st)), _) => {
+                let v = [TtToken(sp, token::SubstNt(name, name_st)),
+                         TtToken(sp, token::Colon),
+                         TtToken(sp, token::Ident(kind, kind_st))];
+                v[index]
             }
-            _ => panic!("Cannot expand a token")
+            (&TtSequence(_, ref seq), _) => {
+                seq.tts[index].clone()
+            }
+            _ => panic!("Cannot expand a token tree")
         }
     }
 
     /// Returns the `Span` corresponding to this token tree.
     pub fn get_span(&self) -> Span {
         match *self {
-            TtToken(span, _)              => span,
-            TtDelimited(span, _)          => span,
-            TtSequence(span, _, _, _, _)  => span,
+            TtToken(span, _)     => span,
+            TtDelimited(span, _) => span,
+            TtSequence(span, _)  => span,
         }
     }
 }
