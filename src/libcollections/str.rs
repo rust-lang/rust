@@ -33,21 +33,18 @@
 //! }
 //! ```
 //!
-//! From the example above, you can see that Rust's string literals have the
+//! From the example above, you can guess that Rust's string literals have the
 //! `'static` lifetime. This is akin to C's concept of a static string.
-//!
-//! String literals are allocated statically in the rodata of the
-//! executable/library. The string then has the type `&'static str` meaning that
-//! the string is valid for the `'static` lifetime, otherwise known as the
-//! lifetime of the entire program. As can be inferred from the type, these static
-//! strings are not mutable.
+//! More precisely, string literals are immutable views with a 'static lifetime
+//! (otherwise known as the lifetime of the entire program), and thus have the
+//! type `&'static str`.
 //!
 //! # Representation
 //!
 //! Rust's string type, `str`, is a sequence of Unicode scalar values encoded as a
 //! stream of UTF-8 bytes. All strings are guaranteed to be validly encoded UTF-8
-//! sequences. Additionally, strings are not null-terminated and can contain null
-//! bytes.
+//! sequences. Additionally, strings are not null-terminated and can thus contain
+//! null bytes.
 //!
 //! The actual representation of strings have direct mappings to slices: `&str`
 //! is the same as `&[u8]`.
