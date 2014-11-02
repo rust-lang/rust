@@ -2165,11 +2165,13 @@ impl<'a> Parser<'a> {
                         return self.parse_for_expr(Some(lifetime))
                     }
                     if self.eat_keyword(keywords::Loop) {
+                        self.warn("`loop` keyword has been deprecated in favor of `while true`");
                         return self.parse_loop_expr(Some(lifetime))
                     }
-                    self.fatal("expected `while`, `for`, or `loop` after a label")
+                    self.fatal("expected `while` or `for` after a label")
                 }
                 if self.eat_keyword(keywords::Loop) {
+                    self.warn("`loop` keyword has been deprecated in favor of `while true`");
                     return self.parse_loop_expr(None);
                 }
                 if self.eat_keyword(keywords::Continue) {
@@ -2960,6 +2962,8 @@ impl<'a> Parser<'a> {
     pub fn parse_while_expr(&mut self, opt_ident: Option<ast::Ident>) -> P<Expr> {
         if self.token.is_keyword(keywords::Let) {
             return self.parse_while_let_expr(opt_ident);
+        } else if self.eat_keyword(keywords::True) {
+            return self.parse_loop_expr(opt_ident);
         }
         let lo = self.last_span.lo;
         let cond = self.parse_expr_res(RESTRICTION_NO_STRUCT_LITERAL);
