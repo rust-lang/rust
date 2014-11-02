@@ -10,7 +10,6 @@
 
 use clone::Clone;
 use cmp;
-use collections::Collection;
 use comm::{Sender, Receiver};
 use io;
 use option::{None, Some};

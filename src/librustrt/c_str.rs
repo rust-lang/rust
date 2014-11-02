@@ -76,7 +76,7 @@ use collections::hash;
 use core::fmt;
 use core::kinds::{Sized, marker};
 use core::mem;
-use core::prelude::{Clone, Collection, Drop, Eq, ImmutableSlice, Iterator};
+use core::prelude::{Clone, Drop, Eq, ImmutableSlice, Iterator};
 use core::prelude::{MutableSlice, None, Option, Ordering, PartialEq};
 use core::prelude::{PartialOrd, RawPtr, Some, StrSlice, range};
 use core::ptr;
@@ -259,6 +259,16 @@ impl CString {
         self.buf
     }
 
+    /// Return the number of bytes in the CString (not including the NUL
+    /// terminator).
+    #[inline]
+    pub fn len(&self) -> uint {
+        unsafe { libc::strlen(self.buf) as uint }
+    }
+
+    /// Returns if there are no bytes in this string
+    #[inline]
+    pub fn is_empty(&self) -> bool { self.len() == 0 }
 }
 
 impl Drop for CString {
@@ -268,14 +278,6 @@ impl Drop for CString {
                 libc::free(self.buf as *mut libc::c_void)
             }
         }
-    }
-}
-
-impl Collection for CString {
-    /// Return the number of bytes in the CString (not including the NUL terminator).
-    #[inline]
-    fn len(&self) -> uint {
-        unsafe { libc::strlen(self.buf) as uint }
     }
 }
 

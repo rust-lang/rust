@@ -45,7 +45,6 @@
 
 #![allow(unsigned_negation)]
 
-use std::collections::Map;
 use std::num::Int;
 use std::rc::Rc;
 

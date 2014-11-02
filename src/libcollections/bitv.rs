@@ -70,7 +70,6 @@ use core::slice;
 use core::u32;
 use std::hash;
 
-use {Mutable, Set, MutableSet, MutableSeq};
 use vec::Vec;
 
 type MatchWords<'a> = Chain<MaskWords<'a>, Skip<Take<Enumerate<Repeat<u32>>>>>;
@@ -755,6 +754,20 @@ impl Bitv {
         }
         self.set(insert_pos, elem);
     }
+
+    /// Return the total number of bits in this vector
+    #[inline]
+    pub fn len(&self) -> uint { self.nbits }
+
+    /// Returns true if there are no bits in this vector
+    #[inline]
+    pub fn is_empty(&self) -> bool { self.len() == 0 }
+
+    /// Clears all bits in this vector.
+    #[inline]
+    pub fn clear(&mut self) {
+        for w in self.storage.iter_mut() { *w = 0u32; }
+    }
 }
 
 /// Transforms a byte-vector into a `Bitv`. Each byte becomes eight bits,
@@ -802,18 +815,6 @@ pub fn from_fn(len: uint, f: |index: uint| -> bool) -> Bitv {
 impl Default for Bitv {
     #[inline]
     fn default() -> Bitv { Bitv::new() }
-}
-
-impl Collection for Bitv {
-    #[inline]
-    fn len(&self) -> uint { self.nbits }
-}
-
-impl Mutable for Bitv {
-    #[inline]
-    fn clear(&mut self) {
-        for w in self.storage.iter_mut() { *w = 0u32; }
-    }
 }
 
 impl FromIterator<bool> for Bitv {
@@ -1466,6 +1467,89 @@ impl BitvSet {
     pub fn symmetric_difference_with(&mut self, other: &BitvSet) {
         self.other_op(other, |w1, w2| w1 ^ w2);
     }
+
+    /// Return the number of set bits in this set.
+    #[inline]
+    pub fn len(&self) -> uint  {
+        let &BitvSet(ref bitv) = self;
+        bitv.storage.iter().fold(0, |acc, &n| acc + n.count_ones())
+    }
+
+    /// Returns whether there are no bits set in this set
+    #[inline]
+    pub fn is_empty(&self) -> bool {
+        let &BitvSet(ref bitv) = self;
+        bitv.storage.iter().all(|&n| n == 0)
+    }
+
+    /// Clears all bits in this set
+    #[inline]
+    pub fn clear(&mut self) {
+        let &BitvSet(ref mut bitv) = self;
+        bitv.clear();
+    }
+
+    /// Returns `true` if this set contains the specified integer.
+    #[inline]
+    pub fn contains(&self, value: &uint) -> bool {
+        let &BitvSet(ref bitv) = self;
+        *value < bitv.nbits && bitv.get(*value)
+    }
+
+    /// Returns `true` if the set has no elements in common with `other`.
+    /// This is equivalent to checking for an empty intersection.
+    #[inline]
+    pub fn is_disjoint(&self, other: &BitvSet) -> bool {
+        self.intersection(other).next().is_none()
+    }
+
+    /// Returns `true` if the set is a subset of another.
+    #[inline]
+    pub fn is_subset(&self, other: &BitvSet) -> bool {
+        let &BitvSet(ref self_bitv) = self;
+        let &BitvSet(ref other_bitv) = other;
+
+        // Check that `self` intersect `other` is self
+        self_bitv.mask_words(0).zip(other_bitv.mask_words(0))
+                               .all(|((_, w1), (_, w2))| w1 & w2 == w1) &&
+        // Check that `self` setminus `other` is empty
+        self_bitv.mask_words(other_bitv.storage.len()).all(|(_, w)| w == 0)
+    }
+
+    /// Returns `true` if the set is a superset of another.
+    #[inline]
+    pub fn is_superset(&self, other: &BitvSet) -> bool {
+        other.is_subset(self)
+    }
+
+    /// Adds a value to the set. Returns `true` if the value was not already
+    /// present in the set.
+    pub fn insert(&mut self, value: uint) -> bool {
+        if self.contains(&value) {
+            return false;
+        }
+
+        // Ensure we have enough space to hold the new element
+        if value >= self.capacity() {
+            let new_cap = cmp::max(value + 1, self.capacity() * 2);
+            self.reserve(new_cap);
+        }
+
+        let &BitvSet(ref mut bitv) = self;
+        bitv.set(value, true);
+        return true;
+    }
+
+    /// Removes a value from the set. Returns `true` if the value was
+    /// present in the set.
+    pub fn remove(&mut self, value: &uint) -> bool {
+        if !self.contains(value) {
+            return false;
+        }
+        let &BitvSet(ref mut bitv) = self;
+        bitv.set(*value, false);
+        return true;
+    }
 }
 
 impl fmt::Show for BitvSet {
@@ -1488,79 +1572,6 @@ impl<S: hash::Writer> hash::Hash<S> for BitvSet {
         for pos in self.iter() {
             pos.hash(state);
         }
-    }
-}
-
-impl Collection for BitvSet {
-    #[inline]
-    fn len(&self) -> uint  {
-        let &BitvSet(ref bitv) = self;
-        bitv.storage.iter().fold(0, |acc, &n| acc + n.count_ones())
-    }
-}
-
-impl Mutable for BitvSet {
-    #[inline]
-    fn clear(&mut self) {
-        let &BitvSet(ref mut bitv) = self;
-        bitv.clear();
-    }
-}
-
-impl Set<uint> for BitvSet {
-    #[inline]
-    fn contains(&self, value: &uint) -> bool {
-        let &BitvSet(ref bitv) = self;
-        *value < bitv.nbits && bitv.get(*value)
-    }
-
-    #[inline]
-    fn is_disjoint(&self, other: &BitvSet) -> bool {
-        self.intersection(other).next().is_none()
-    }
-
-    #[inline]
-    fn is_subset(&self, other: &BitvSet) -> bool {
-        let &BitvSet(ref self_bitv) = self;
-        let &BitvSet(ref other_bitv) = other;
-
-        // Check that `self` intersect `other` is self
-        self_bitv.mask_words(0).zip(other_bitv.mask_words(0))
-                               .all(|((_, w1), (_, w2))| w1 & w2 == w1) &&
-        // Check that `self` setminus `other` is empty
-        self_bitv.mask_words(other_bitv.storage.len()).all(|(_, w)| w == 0)
-    }
-
-    #[inline]
-    fn is_superset(&self, other: &BitvSet) -> bool {
-        other.is_subset(self)
-    }
-}
-
-impl MutableSet<uint> for BitvSet {
-    fn insert(&mut self, value: uint) -> bool {
-        if self.contains(&value) {
-            return false;
-        }
-
-        // Ensure we have enough space to hold the new element
-        if value >= self.capacity() {
-            let new_cap = cmp::max(value + 1, self.capacity() * 2);
-            self.reserve(new_cap);
-        }
-
-        let &BitvSet(ref mut bitv) = self;
-        bitv.set(value, true);
-        return true;
-    }
-
-    fn remove(&mut self, value: &uint) -> bool {
-        if !self.contains(value) {
-            return false;
-        }
-        let &BitvSet(ref mut bitv) = self;
-        bitv.set(*value, false);
-        return true;
     }
 }
 
@@ -1643,7 +1654,6 @@ mod tests {
     use std::rand::Rng;
     use test::Bencher;
 
-    use {Set, Mutable, MutableSet, MutableSeq};
     use bitv::{Bitv, BitvSet, from_fn, from_bytes};
     use bitv;
     use vec::Vec;
