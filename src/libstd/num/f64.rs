@@ -369,7 +369,7 @@ pub fn to_str_exp_digits(num: f64, dig: uint, upper: bool) -> String {
 #[inline]
 pub fn from_str_hex(num: &str) -> Option<f64> {
     strconv::from_str_common(num, 16u, true, true, true,
-                             strconv::ExpBin, false, false)
+                             strconv::ExpBin, false)
 }
 
 impl FromStr for f64 {
@@ -401,7 +401,7 @@ impl FromStr for f64 {
     #[inline]
     fn from_str(val: &str) -> Option<f64> {
         strconv::from_str_common(val, 10u, true, true, true,
-                                 strconv::ExpDec, false, false)
+                                 strconv::ExpDec, false)
     }
 }
 
@@ -426,7 +426,7 @@ impl num::FromStrRadix for f64 {
     #[inline]
     fn from_str_radix(val: &str, rdx: uint) -> Option<f64> {
         strconv::from_str_common(val, rdx, true, true, false,
-                                 strconv::ExpNone, false, false)
+                                 strconv::ExpNone, false)
     }
 }
 
