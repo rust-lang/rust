@@ -13,15 +13,18 @@
 #![allow(missing_docs)]
 
 use char;
+use char::Char;
 use clone::Clone;
-use num::{NumCast, Zero, One, cast, Int};
+use from_str::from_str;
+use iter::Iterator;
+use num::{NumCast, Zero, One, cast, Int, Bounded};
 use num::{Float, FPNaN, FPInfinite, ToPrimitive};
 use num;
 use ops::{Add, Sub, Mul, Div, Rem, Neg};
 use option::{None, Option, Some};
 use slice::{ImmutableSlice, MutableSlice, CloneableVector};
 use std::cmp::{PartialOrd, PartialEq};
-use str::StrSlice;
+use str::{Str, StrSlice};
 use string::String;
 use vec::Vec;
 
@@ -106,34 +109,10 @@ macro_rules! impl_NumStrConv_Floating (($t:ty) => (
     }
 ))
 
-macro_rules! impl_NumStrConv_Integer (($t:ty) => (
-    impl NumStrConv for $t {
-        #[inline] fn nan()      -> Option<$t> { None }
-        #[inline] fn inf()      -> Option<$t> { None }
-        #[inline] fn neg_inf()  -> Option<$t> { None }
-        #[inline] fn neg_zero() -> Option<$t> { None }
-
-        #[inline] fn round_to_zero(&self)   -> $t { *self }
-        #[inline] fn fractional_part(&self) -> $t {     0 }
-    }
-))
-
 // FIXME: #4955
 // Replace by two generic impls for traits 'Integral' and 'Floating'
 impl_NumStrConv_Floating!(f32)
 impl_NumStrConv_Floating!(f64)
-
-impl_NumStrConv_Integer!(int)
-impl_NumStrConv_Integer!(i8)
-impl_NumStrConv_Integer!(i16)
-impl_NumStrConv_Integer!(i32)
-impl_NumStrConv_Integer!(i64)
-
-impl_NumStrConv_Integer!(uint)
-impl_NumStrConv_Integer!(u8)
-impl_NumStrConv_Integer!(u16)
-impl_NumStrConv_Integer!(u32)
-impl_NumStrConv_Integer!(u64)
 
 
 // Special value strings as [u8] consts.
@@ -526,8 +505,6 @@ static DIGIT_E_RADIX: uint = ('e' as uint) - ('a' as uint) + 11u;
  *                  `FFp128`. The exponent string itself is always base 10.
  *                  Can conflict with `radix`, see Failure.
  * - `empty_zero` - Whether to accept an empty `buf` as a 0 or not.
- * - `ignore_underscores` - Whether all underscores within the string should
- *                          be ignored.
  *
  * # Return value
  * Returns `Some(n)` if `buf` parses to a number n without overflowing, and
@@ -548,7 +525,6 @@ pub fn from_str_bytes_common<T:NumCast+Zero+One+PartialEq+PartialOrd+Div<T,T>+
                                     NumStrConv+Clone>(
         buf: &[u8], radix: uint, negative: bool, fractional: bool,
         special: bool, exponent: ExponentFormat, empty_zero: bool,
-        ignore_underscores: bool
         ) -> Option<T> {
     match exponent {
         ExpDec if radix >= DIGIT_E_RADIX       // decimal exponent 'e'
@@ -646,7 +622,6 @@ pub fn from_str_bytes_common<T:NumCast+Zero+One+PartialEq+PartialOrd+Div<T,T>+
                 last_accum = accum.clone();
             }
             None => match c {
-                '_' if ignore_underscores => {}
                 'e' | 'E' | 'p' | 'P' => {
                     exp_found = true;
                     break;                       // start of exponent
@@ -690,7 +665,6 @@ pub fn from_str_bytes_common<T:NumCast+Zero+One+PartialEq+PartialOrd+Div<T,T>+
                     last_accum = accum.clone();
                 }
                 None => match c {
-                    '_' if ignore_underscores => {}
                     'e' | 'E' | 'p' | 'P' => {
                         exp_found = true;
                         break;                   // start of exponent
@@ -726,9 +700,7 @@ pub fn from_str_bytes_common<T:NumCast+Zero+One+PartialEq+PartialOrd+Div<T,T>+
 
         // parse remaining bytes as decimal integer,
         // skipping the exponent char
-        let exp: Option<int> = from_str_bytes_common(
-            buf[i+1..len], 10, true, false, false, ExpNone, false,
-            ignore_underscores);
+        let exp = from_str::<int>(String::from_utf8_lossy(buf[i+1..len]).as_slice());
 
         match exp {
             Some(exp_pow) => {
@@ -754,11 +726,65 @@ pub fn from_str_common<T:NumCast+Zero+One+PartialEq+PartialOrd+Div<T,T>+Mul<T,T>
                               Sub<T,T>+Neg<T>+Add<T,T>+NumStrConv+Clone>(
         buf: &str, radix: uint, negative: bool, fractional: bool,
         special: bool, exponent: ExponentFormat, empty_zero: bool,
-        ignore_underscores: bool
         ) -> Option<T> {
     from_str_bytes_common(buf.as_bytes(), radix, negative,
-                          fractional, special, exponent, empty_zero,
-                          ignore_underscores)
+                          fractional, special, exponent, empty_zero)
+}
+
+pub fn from_str_radix_int<T: Int>(src: &str, radix: uint) -> Option<T> {
+    fn cast<T: Int>(x: uint) -> T {
+        num::cast(x).unwrap()
+    }
+
+    let _0: T = num::zero();
+    let _1: T = num::one();
+    let is_signed = _0 > Bounded::min_value();
+
+    let (is_negative, src) =  match src.slice_shift_char() {
+        (Some('-'), src) if is_signed => (true, src),
+        (Some(_), _) => (false, src),
+        (None, _) => return None,
+    };
+
+    let mut xs = src.chars().map(|c| {
+        c.to_digit(radix).map(cast)
+    });
+    let radix = cast(radix);
+    let mut result = _0;
+
+    if is_negative {
+        for x in xs {
+            let x = match x {
+                Some(x) => x,
+                None => return None,
+            };
+            result = match result.checked_mul(&radix) {
+                Some(result) => result,
+                None => return None,
+            };
+            result = match result.checked_sub(&x) {
+                Some(result) => result,
+                None => return None,
+            };
+        }
+    } else {
+        for x in xs {
+            let x = match x {
+                Some(x) => x,
+                None => return None,
+            };
+            result = match result.checked_mul(&radix) {
+                Some(result) => result,
+                None => return None,
+            };
+            result = match result.checked_add(&x) {
+                Some(result) => result,
+                None => return None,
+            };
+        }
+    }
+
+    Some(result)
 }
 
 #[cfg(test)]
@@ -767,44 +793,17 @@ mod test {
     use option::*;
 
     #[test]
-    fn from_str_ignore_underscores() {
-        let s : Option<u8> = from_str_common("__1__", 2, false, false, false,
-                                             ExpNone, false, true);
-        assert_eq!(s, Some(1u8));
-
-        let n : Option<u8> = from_str_common("__1__", 2, false, false, false,
-                                             ExpNone, false, false);
-        assert_eq!(n, None);
-
-        let f : Option<f32> = from_str_common("_1_._5_e_1_", 10, false, true, false,
-                                              ExpDec, false, true);
-        assert_eq!(f, Some(1.5e1f32));
-    }
-
-    #[test]
-    fn from_str_issue5770() {
-        // try to parse 0b1_1111_1111 = 511 as a u8. Caused problems
-        // since 255*2+1 == 255 (mod 256) so the overflow wasn't
-        // detected.
-        let n : Option<u8> = from_str_common("111111111", 2, false, false, false,
-                                             ExpNone, false, false);
-        assert_eq!(n, None);
-    }
-
-    #[test]
     fn from_str_issue7588() {
-        let u : Option<u8> = from_str_common("1000", 10, false, false, false,
-                                            ExpNone, false, false);
+        let u : Option<u8> = from_str_radix_int("1000", 10);
         assert_eq!(u, None);
-        let s : Option<i16> = from_str_common("80000", 10, false, false, false,
-                                             ExpNone, false, false);
+        let s : Option<i16> = from_str_radix_int("80000", 10);
         assert_eq!(s, None);
         let f : Option<f32> = from_str_common(
             "10000000000000000000000000000000000000000", 10, false, false, false,
-            ExpNone, false, false);
+            ExpNone, false);
         assert_eq!(f, NumStrConv::inf())
         let fe : Option<f32> = from_str_common("1e40", 10, false, false, false,
-                                            ExpDec, false, false);
+                                            ExpDec, false);
         assert_eq!(fe, NumStrConv::inf())
     }
 }
