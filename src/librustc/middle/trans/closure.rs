@@ -623,7 +623,7 @@ pub fn get_wrapper_for_bare_fn(ccx: &CrateContext,
     let retval = Call(bcx, fn_ptr, llargs.as_slice(), None);
     match f.sig.output {
         ty::FnConverging(output_type) => {
-            if type_is_zero_size(ccx, output_type) || fcx.llretslotptr.get().is_some() {
+            if return_type_is_void(ccx, output_type) || fcx.llretslotptr.get().is_some() {
                 RetVoid(bcx);
             } else {
                 Ret(bcx, retval);

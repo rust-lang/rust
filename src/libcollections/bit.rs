@@ -8,6 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// FIXME(Gankro): Bitv and BitvSet are very tightly coupled. Ideally (for maintenance),
+// they should be in separate files/modules, with BitvSet only using Bitv's public API.
+
 //! Collections implemented with bit vectors.
 //!
 //! # Example
@@ -1654,7 +1657,7 @@ mod tests {
     use std::rand::Rng;
     use test::Bencher;
 
-    use bitv::{Bitv, BitvSet, from_fn, from_bytes};
+    use super::{Bitv, BitvSet, from_fn, from_bytes};
     use bitv;
     use vec::Vec;
 

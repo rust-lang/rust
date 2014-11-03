@@ -55,6 +55,15 @@ pub enum MethodProvenance {
     FromImpl(ast::DefId),
 }
 
+impl MethodProvenance {
+    pub fn map(self, f: |ast::DefId| -> ast::DefId) -> MethodProvenance {
+        match self {
+            FromTrait(did) => FromTrait(f(did)),
+            FromImpl(did) => FromImpl(f(did))
+        }
+    }
+}
+
 impl Def {
     pub fn def_id(&self) -> ast::DefId {
         match *self {

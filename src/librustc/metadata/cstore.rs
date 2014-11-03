@@ -50,7 +50,7 @@ pub enum LinkagePreference {
     RequireStatic,
 }
 
-#[deriving(PartialEq, FromPrimitive)]
+#[deriving(PartialEq, FromPrimitive, Clone)]
 pub enum NativeLibaryKind {
     NativeStatic,    // native static library (.a archive)
     NativeFramework, // OSX-specific

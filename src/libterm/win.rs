@@ -71,8 +71,7 @@ fn color_to_bits(color: color::Color) -> u16 {
 }
 
 fn bits_to_color(bits: u16) -> color::Color {
-    let bits = bits & 0x7;
-    let color = match bits {
+    let color = match bits & 0x7 {
         0 => color::BLACK,
         0x1 => color::BLUE,
         0x2 => color::GREEN,
@@ -84,11 +83,7 @@ fn bits_to_color(bits: u16) -> color::Color {
         _ => unreachable!()
     };
 
-    if bits >= 8 {
-        color | 0x8
-    } else {
-        color
-    }
+    color | (bits & 0x8) // copy the hi-intensity bit
 }
 
 impl<T: Writer+Send> WinConsole<T> {

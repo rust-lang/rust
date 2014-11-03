@@ -23,7 +23,7 @@ use core::default::Default;
 use core::{iter, fmt, mem};
 use core::fmt::Show;
 
-use ringbuf::RingBuf;
+use ring_buf::RingBuf;
 
 /// A map based on a B-Tree.
 ///

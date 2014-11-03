@@ -10,7 +10,7 @@
 
 // error-pattern:capacity overflow
 
-use std::collections::hashmap::HashMap;
+use std::collections::hash_map::HashMap;
 use std::uint;
 use std::mem::size_of;
 

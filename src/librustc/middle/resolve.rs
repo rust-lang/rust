@@ -58,7 +58,7 @@ use syntax::visit;
 use syntax::visit::Visitor;
 
 use std::collections::{HashMap, HashSet};
-use std::collections::hashmap::{Occupied, Vacant};
+use std::collections::hash_map::{Occupied, Vacant};
 use std::cell::{Cell, RefCell};
 use std::mem::replace;
 use std::rc::{Rc, Weak};

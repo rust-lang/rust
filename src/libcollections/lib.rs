@@ -37,34 +37,72 @@ extern crate alloc;
 #[cfg(test)] #[phase(plugin, link)] extern crate std;
 #[cfg(test)] #[phase(plugin, link)] extern crate log;
 
-pub use bitv::{Bitv, BitvSet};
-pub use btree::{BTreeMap, BTreeSet};
+
+pub use binary_heap::BinaryHeap;
+pub use bitv::Bitv;
+pub use bitv_set::BitvSet;
+pub use btree_map::BTreeMap;
+pub use btree_set::BTreeSet;
 pub use dlist::DList;
 pub use enum_set::EnumSet;
-pub use priority_queue::PriorityQueue;
-pub use ringbuf::RingBuf;
-pub use smallintmap::SmallIntMap;
+pub use ring_buf::RingBuf;
 pub use string::String;
-pub use treemap::{TreeMap, TreeSet};
-pub use trie::{TrieMap, TrieSet};
+pub use tree_map::TreeMap;
+pub use tree_set::TreeSet;
+pub use trie_map::TrieMap;
+pub use trie_set::TrieSet;
 pub use vec::Vec;
+pub use vec_map::VecMap;
 
 mod macros;
 
-pub mod bitv;
-pub mod btree;
+pub mod binary_heap;
+mod bit;
+mod btree;
 pub mod dlist;
 pub mod enum_set;
-pub mod priority_queue;
-pub mod ringbuf;
-pub mod smallintmap;
-pub mod treemap;
-pub mod trie;
+pub mod ring_buf;
+mod tree;
+mod trie;
 pub mod slice;
 pub mod str;
 pub mod string;
 pub mod vec;
 pub mod hash;
+pub mod vec_map;
+
+pub mod bitv {
+    pub use bit::{Bitv, Bits, from_fn, from_bytes};
+}
+
+pub mod bitv_set {
+    pub use bit::{BitvSet, BitPositions, TwoBitPositions};
+}
+
+pub mod tree_map {
+    pub use tree::map::*;
+}
+
+pub mod tree_set {
+    pub use tree::set::*;
+}
+
+pub mod trie_map {
+    pub use trie::map::*;
+}
+
+pub mod trie_set {
+    pub use trie::set::*;
+}
+
+pub mod btree_map {
+    pub use btree::map::*;
+}
+
+pub mod btree_set {
+    pub use btree::set::*;
+}
+
 
 #[cfg(test)] mod bench;
 
