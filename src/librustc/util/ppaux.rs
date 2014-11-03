@@ -48,16 +48,18 @@ pub trait UserString {
 pub fn note_and_explain_region(cx: &ctxt,
                                prefix: &str,
                                region: ty::Region,
-                               suffix: &str) {
+                               suffix: &str) -> Option<Span> {
     match explain_region_and_span(cx, region) {
       (ref str, Some(span)) => {
         cx.sess.span_note(
             span,
             format!("{}{}{}", prefix, *str, suffix).as_slice());
+        Some(span)
       }
       (ref str, None) => {
         cx.sess.note(
             format!("{}{}{}", prefix, *str, suffix).as_slice());
+        None
       }
     }
 }

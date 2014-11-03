@@ -777,7 +777,7 @@ fn add_one(x: int) -> int {
      x + 1;
 }
 
-note: consider removing this semicolon:
+help: consider removing this semicolon:
      x + 1;
           ^
 ```

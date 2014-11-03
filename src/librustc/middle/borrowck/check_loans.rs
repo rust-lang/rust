@@ -789,7 +789,7 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
                         assignment_span,
                         format!("cannot assign to {}",
                                 self.bccx.cmt_to_string(&*assignee_cmt)).as_slice());
-                    self.bccx.span_note(
+                    self.bccx.span_help(
                         self.tcx().map.span(upvar_id.closure_expr_id),
                         "consider changing this closure to take self by mutable reference");
                 } else {

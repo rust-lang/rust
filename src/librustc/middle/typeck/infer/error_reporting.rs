@@ -438,9 +438,12 @@ impl<'a, 'tcx> ErrorReporting for InferCtxt<'a, 'tcx> {
                 self.tcx.sess.span_err(
                     origin.span(),
                     format!(
-                        "the parameter type `{}` may not live long enough; \
-                         consider adding an explicit lifetime bound `{}:{}`...",
-                        param_ty.user_string(self.tcx),
+                        "the parameter type `{}` may not live long enough",
+                        param_ty.user_string(self.tcx)).as_slice());
+                self.tcx.sess.span_help(
+                    origin.span(),
+                    format!(
+                        "consider adding an explicit lifetime bound `{}: {}`...",
                         param_ty.user_string(self.tcx),
                         sub.user_string(self.tcx)).as_slice());
             }
@@ -450,9 +453,12 @@ impl<'a, 'tcx> ErrorReporting for InferCtxt<'a, 'tcx> {
                 self.tcx.sess.span_err(
                     origin.span(),
                     format!(
-                        "the parameter type `{}` may not live long enough; \
-                         consider adding an explicit lifetime bound `{}:'static`...",
-                        param_ty.user_string(self.tcx),
+                        "the parameter type `{}` may not live long enough",
+                        param_ty.user_string(self.tcx)).as_slice());
+                self.tcx.sess.span_help(
+                    origin.span(),
+                    format!(
+                        "consider adding an explicit lifetime bound `{}: 'static`...",
                         param_ty.user_string(self.tcx)).as_slice());
             }
 
@@ -461,9 +467,12 @@ impl<'a, 'tcx> ErrorReporting for InferCtxt<'a, 'tcx> {
                 self.tcx.sess.span_err(
                     origin.span(),
                     format!(
-                        "the parameter type `{}` may not live long enough; \
-                         consider adding an explicit lifetime bound to `{}`",
-                        param_ty.user_string(self.tcx),
+                        "the parameter type `{}` may not live long enough",
+                        param_ty.user_string(self.tcx)).as_slice());
+                self.tcx.sess.span_help(
+                    origin.span(),
+                    format!(
+                        "consider adding an explicit lifetime bound to `{}`",
                         param_ty.user_string(self.tcx)).as_slice());
                 note_and_explain_region(
                     self.tcx,
