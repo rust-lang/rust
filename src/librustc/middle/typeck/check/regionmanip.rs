@@ -18,7 +18,7 @@ use middle::ty_fold::{TypeFolder, TypeFoldable};
 use syntax::ast;
 
 use std::collections::HashMap;
-use std::collections::hashmap::{Occupied, Vacant};
+use std::collections::hash_map::{Occupied, Vacant};
 use util::ppaux::Repr;
 
 // Helper functions related to manipulating region types.

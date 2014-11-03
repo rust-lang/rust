@@ -944,10 +944,10 @@ An example of `use` declarations:
 ```
 use std::iter::range_step;
 use std::option::{Some, None};
-use std::collections::hashmap::{mod, HashMap};
+use std::collections::hash_map::{mod, HashMap};
 
-# fn foo<T>(_: T){}
-# fn bar(map: HashMap<String, uint>, set: hashmap::HashSet<String>){}
+fn foo<T>(_: T){}
+fn bar(map1: HashMap<String, uint>, map2: hash_map::HashMap<String, uint>){}
 
 fn main() {
     // Equivalent to 'std::iter::range_step(0u, 10u, 2u);'
@@ -957,10 +957,10 @@ fn main() {
     // std::option::None]);'
     foo(vec![Some(1.0f64), None]);
 
-    // Both `hash` and `HashMap` are in scope.
-    let map = HashMap::new();
-    let set = hashmap::HashSet::new();
-    bar(map, set);
+    // Both `hash_map` and `HashMap` are in scope.
+    let map1 = HashMap::new();
+    let map2 = hash_map::HashMap::new();
+    bar(map1, map2);
 }
 ```
 
@@ -4096,7 +4096,7 @@ cause transitions between the states. The lifecycle states of a task are:
 
 * running
 * blocked
-* panicked 
+* panicked
 * dead
 
 A task begins its lifecycle &mdash; once it has been spawned &mdash; in the

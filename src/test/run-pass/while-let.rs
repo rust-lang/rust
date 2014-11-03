@@ -10,10 +10,10 @@
 
 #![feature(while_let)]
 
-use std::collections::PriorityQueue;
+use std::collections::BinaryHeap;
 
-fn make_pq() -> PriorityQueue<int> {
-    PriorityQueue::from_vec(vec![1i,2,3])
+fn make_pq() -> BinaryHeap<int> {
+    BinaryHeap::from_vec(vec![1i,2,3])
 }
 
 pub fn main() {
