@@ -19,7 +19,6 @@
 use mem;
 use char;
 use char::Char;
-use clone::Clone;
 use cmp;
 use cmp::{PartialEq, Eq};
 use default::Default;

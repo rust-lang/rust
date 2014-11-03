@@ -17,7 +17,6 @@
  * methods provided by the UnicodeChar trait.
  */
 
-use core::clone::Clone;
 use core::cmp;
 use core::slice::ImmutableSlice;
 use core::iter::{Filter, AdditiveIterator, Iterator, DoubleEndedIterator};
