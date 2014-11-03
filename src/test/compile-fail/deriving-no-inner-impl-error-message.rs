@@ -12,8 +12,8 @@ struct NoCloneOrEq;
 
 #[deriving(PartialEq)]
 struct E {
-    x: NoCloneOrEq //~ ERROR does not implement any method in scope named `eq`
-         //~^ ERROR does not implement any method in scope named `ne`
+    x: NoCloneOrEq //~ ERROR binary operation `==` cannot be applied to type `NoCloneOrEq`
+         //~^ ERROR binary operation `!=` cannot be applied to type `NoCloneOrEq`
 }
 #[deriving(Clone)]
 struct C {
