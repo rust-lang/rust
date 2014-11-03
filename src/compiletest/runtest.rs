@@ -627,7 +627,7 @@ fn find_rust_src_root(config: &Config) -> Option<Path> {
     let path_postfix = Path::new("src/etc/lldb_batchmode.py");
 
     while path.pop() {
-        if path.join(path_postfix.clone()).is_file() {
+        if path.join(&path_postfix).is_file() {
             return Some(path);
         }
     }
