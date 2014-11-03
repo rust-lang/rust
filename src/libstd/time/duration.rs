@@ -53,9 +53,9 @@ impl Duration {
     /// Fails when the duration is out of bounds.
     #[inline]
     pub fn microseconds(n: i64) -> Duration {
-		let ticks = n.checked_mul(&TICKS_PER_MICROSECOND).expect(OUT_OF_BOUNDS);
- 		Duration(ticks)
-	}
+        let ticks = n.checked_mul(&TICKS_PER_MICROSECOND).expect(OUT_OF_BOUNDS);
+        Duration(ticks)
+    }
 
     /// Makes a new `Duration` with given number of milliseconds.
     /// Equivalent to Duration(n * TICKS_PER_MILLISECOND) with overflow checks.
@@ -63,7 +63,7 @@ impl Duration {
     #[inline]
     pub fn milliseconds(n: i64) -> Duration {
         let ticks = n.checked_mul(&TICKS_PER_MILLISECOND).expect(OUT_OF_BOUNDS);
-		Duration(ticks)
+        Duration(ticks)
     }
 
     /// Makes a new `Duration` with given number of seconds.
@@ -72,7 +72,7 @@ impl Duration {
     #[inline]
     pub fn seconds(n: i64) -> Duration {
         let ticks = n.checked_mul(&TICKS_PER_SECOND).expect(OUT_OF_BOUNDS);
-		Duration(ticks)
+        Duration(ticks)
     }
 
     /// Makes a new `Duration` with given number of minutes.
@@ -81,7 +81,7 @@ impl Duration {
     #[inline]
     pub fn minutes(n: i64) -> Duration {
         let ticks = n.checked_mul(&TICKS_PER_MINUTE).expect(OUT_OF_BOUNDS);
-		Duration(ticks)
+        Duration(ticks)
     }
 
     /// Makes a new `Duration` with given number of hours.
@@ -90,7 +90,7 @@ impl Duration {
     #[inline]
     pub fn hours(n: i64) -> Duration {
         let ticks = n.checked_mul(&TICKS_PER_HOUR).expect(OUT_OF_BOUNDS);
-		Duration(ticks)
+        Duration(ticks)
     }
 
     /// Makes a new `Duration` with given number of days.
@@ -99,13 +99,13 @@ impl Duration {
     #[inline]
     pub fn days(n: i64) -> Duration {
         let ticks = n.checked_mul(&TICKS_PER_DAY).expect(OUT_OF_BOUNDS);
-		Duration(ticks)
+        Duration(ticks)
     }
 
     /// Returns the total number of whole days in the duration.
     #[inline]
     pub fn num_days(&self) -> i64 {
-		self.num_ticks() / TICKS_PER_DAY
+        self.num_ticks() / TICKS_PER_DAY
     }
 
     /// Returns the total number of whole hours in the duration.
@@ -166,8 +166,8 @@ impl Add<Duration, Duration> for Duration {
 
 impl CheckedAdd for Duration {
     fn checked_add(&self, rhs: &Duration) -> Option<Duration> {
-		let result = try_opt!(self.num_ticks().checked_add(&rhs.num_ticks()));
-		Some(Duration(result))
+        let result = try_opt!(self.num_ticks().checked_add(&rhs.num_ticks()));
+        Some(Duration(result))
     }
 }
 
@@ -179,7 +179,7 @@ impl Sub<Duration,Duration> for Duration {
 
 impl CheckedSub for Duration {
     fn checked_sub(&self, rhs: &Duration) -> Option<Duration> {
-		let result = try_opt!(self.num_ticks().checked_sub(&rhs.num_ticks()));
+        let result = try_opt!(self.num_ticks().checked_sub(&rhs.num_ticks()));
         Some(Duration(result))
     }
 }
@@ -203,48 +203,48 @@ impl fmt::Show for Duration {
         try!(write!(f, "{}P", if ticks < 0 { "-" } else { "" }));
 
         let days = ticks / TICKS_PER_DAY;
-		ticks = (ticks - days * TICKS_PER_DAY).abs();
+        ticks = (ticks - days * TICKS_PER_DAY).abs();
 
         let hours = ticks / TICKS_PER_HOUR;
-		ticks -= hours * TICKS_PER_HOUR;
+        ticks -= hours * TICKS_PER_HOUR;
 
         let minutes = ticks / TICKS_PER_MINUTE;
-		ticks -= minutes * TICKS_PER_MINUTE;
+        ticks -= minutes * TICKS_PER_MINUTE;
 
         let seconds = ticks / TICKS_PER_SECOND;
-		ticks -= seconds * TICKS_PER_SECOND;
+        ticks -= seconds * TICKS_PER_SECOND;
 
         let hasdate = days != 0;
         let hastime = (hours != 0 || minutes != 0 || seconds != 0 || ticks != 0) || !hasdate;
 
-		if hasdate {
-			try!(write!(f, "{}D", days.abs()));
-		}
+        if hasdate {
+            try!(write!(f, "{}D", days.abs()));
+        }
 
-		if hastime {
-			try!(write!(f, "T"));
+        if hastime {
+            try!(write!(f, "T"));
 
-			if hours != 0 {
-			    try!(write!(f, "{}H", hours));
-			}
+            if hours != 0 {
+                try!(write!(f, "{}H", hours));
+            }
 
-			if minutes != 0 {
-			    try!(write!(f, "{}M", minutes));
-			}
+            if minutes != 0 {
+                try!(write!(f, "{}M", minutes));
+            }
 
-			if ticks == 0 {
-			    try!(write!(f, "{}S", seconds));
-			}
-			else if ticks % TICKS_PER_MILLISECOND == 0 {
-			    try!(write!(f, "{}.{:03}S", seconds, ticks / TICKS_PER_MILLISECOND));
-			}
-			else if ticks % TICKS_PER_MICROSECOND == 0 {
-			    try!(write!(f, "{}.{:06}S", seconds, ticks / TICKS_PER_MICROSECOND));
-			}
-			else {
-			    try!(write!(f, "{}.{:07}S", seconds, ticks));
-			}
-		}
+            if ticks == 0 {
+                try!(write!(f, "{}S", seconds));
+            }
+            else if ticks % TICKS_PER_MILLISECOND == 0 {
+                try!(write!(f, "{}.{:03}S", seconds, ticks / TICKS_PER_MILLISECOND));
+            }
+            else if ticks % TICKS_PER_MICROSECOND == 0 {
+                try!(write!(f, "{}.{:06}S", seconds, ticks / TICKS_PER_MICROSECOND));
+            }
+            else {
+                try!(write!(f, "{}.{:07}S", seconds, ticks));
+            }
+        }
 
         Ok(())
     }
@@ -333,9 +333,9 @@ mod tests {
         // overflow checks
         assert_eq!(Duration::microseconds(i64::MAX/TICKS_PER_MICROSECOND)
                     .checked_add(&Duration::seconds(1)), None);
-        assert_eq!(Duration::microseconds(101).checked_sub(&Duration::microseconds(1)), 
+        assert_eq!(Duration::microseconds(101).checked_sub(&Duration::microseconds(1)),
                     Some(Duration::microseconds(100)));
-        assert_eq!(Duration::microseconds(0).checked_sub(&Duration::microseconds(1)), 
+        assert_eq!(Duration::microseconds(0).checked_sub(&Duration::microseconds(1)),
                     Some(Duration::microseconds(-1)));
     }
 
