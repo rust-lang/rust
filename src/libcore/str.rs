@@ -28,8 +28,7 @@ use kinds::Sized;
 use num::{CheckedMul, Saturating};
 use option::{Option, None, Some};
 use raw::Repr;
-use slice::ImmutableSlice;
-use slice;
+use slice::{mod, SlicePrelude};
 use uint;
 
 /*
@@ -1056,8 +1055,8 @@ pub mod raw {
     use mem;
     use ptr::RawPtr;
     use raw::Slice;
-    use slice::{ImmutableSlice};
-    use str::{is_utf8, StrSlice};
+    use slice::SlicePrelude;
+    use str::{is_utf8, StrPrelude};
 
     /// Converts a slice of bytes to a string slice without checking
     /// that the string contains valid UTF-8.
@@ -1120,7 +1119,7 @@ pub mod traits {
     use iter::Iterator;
     use option::{Option, Some};
     use ops;
-    use str::{Str, StrSlice, eq_slice};
+    use str::{Str, StrPrelude, eq_slice};
 
     // NOTE(stage0): remove impl after a snapshot
     #[cfg(stage0)]
@@ -1240,7 +1239,7 @@ impl<'a> Str for &'a str {
 }
 
 /// Methods for string slices
-pub trait StrSlice for Sized? {
+pub trait StrPrelude for Sized? {
     /// Returns true if one string contains another
     ///
     /// # Arguments
@@ -1891,7 +1890,7 @@ fn slice_error_fail(s: &str, begin: uint, end: uint) -> ! {
           begin, end, s);
 }
 
-impl StrSlice for str {
+impl StrPrelude for str {
     #[inline]
     fn contains(&self, needle: &str) -> bool {
         self.find_str(needle).is_some()

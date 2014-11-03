@@ -70,7 +70,7 @@ use path;
 use result::{Err, Ok};
 use rt::rtio::LocalIo;
 use rt::rtio;
-use slice::ImmutableSlice;
+use slice::SlicePrelude;
 use string::String;
 use vec::Vec;
 
@@ -951,7 +951,7 @@ mod test {
     use path::Path;
     use io;
     use ops::Drop;
-    use str::StrSlice;
+    use str::StrPrelude;
 
     macro_rules! check( ($e:expr) => (
         match $e {

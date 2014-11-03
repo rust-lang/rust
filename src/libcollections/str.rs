@@ -56,8 +56,8 @@ use core::fmt;
 use core::cmp;
 use core::iter::AdditiveIterator;
 use core::kinds::Sized;
-use core::prelude::{Char, Clone, Eq, Equiv, ImmutableSlice};
-use core::prelude::{Iterator, MutableSlice, None, Option, Ord, Ordering};
+use core::prelude::{Char, Clone, Eq, Equiv};
+use core::prelude::{Iterator, SlicePrelude, None, Option, Ord, Ordering};
 use core::prelude::{PartialEq, PartialOrd, Result, AsSlice, Some, Tuple2};
 use core::prelude::{range};
 
@@ -73,8 +73,8 @@ pub use core::str::{CharSplitsN, AnyLines, MatchIndices, StrSplits};
 pub use core::str::{Utf16CodeUnits, eq_slice, is_utf8, is_utf16, Utf16Items};
 pub use core::str::{Utf16Item, ScalarValue, LoneSurrogate, utf16_items};
 pub use core::str::{truncate_utf16_at_nul, utf8_char_width, CharRange};
-pub use core::str::{Str, StrSlice};
-pub use unicode::str::{UnicodeStrSlice, Words, Graphemes, GraphemeIndices};
+pub use core::str::{Str, StrPrelude};
+pub use unicode::str::{UnicodeStrPrelude, Words, Graphemes, GraphemeIndices};
 
 /*
 Section: Creating a string
@@ -790,10 +790,10 @@ mod tests {
     use std::iter::{Iterator, DoubleEndedIterator};
 
     use super::*;
-    use std::slice::{AsSlice, ImmutableSlice};
+    use std::slice::{AsSlice, SlicePrelude};
     use string::String;
     use vec::Vec;
-    use slice::CloneableVector;
+    use slice::CloneSliceAllocPrelude;
 
     use unicode::char::UnicodeChar;
 
@@ -2240,8 +2240,8 @@ mod bench {
     use test::black_box;
     use super::*;
     use std::iter::{Iterator, DoubleEndedIterator};
-    use std::str::StrSlice;
-    use std::slice::ImmutableSlice;
+    use std::str::StrPrelude;
+    use std::slice::SlicePrelude;
 
     #[bench]
     fn char_iterator(b: &mut Bencher) {

@@ -22,8 +22,8 @@ use io::net;
 use iter::Iterator;
 use option::{Option, None, Some};
 use result::{Ok, Err};
-use str::StrSlice;
-use slice::{MutableCloneableSlice, MutableSlice, ImmutableSlice};
+use str::StrPrelude;
+use slice::{CloneSlicePrelude, SlicePrelude};
 use vec::Vec;
 
 pub type Port = u16;

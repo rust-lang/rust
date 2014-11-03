@@ -41,8 +41,8 @@ use rt;
 use rt::local::Local;
 use rt::task::Task;
 use rt::rtio::{DontClose, IoFactory, LocalIo, RtioFileStream, RtioTTY};
-use slice::ImmutableSlice;
-use str::StrSlice;
+use slice::SlicePrelude;
+use str::StrPrelude;
 use uint;
 
 // And so begins the tale of acquiring a uv handle to a stdio stream on all
