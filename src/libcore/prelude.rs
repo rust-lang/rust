@@ -37,8 +37,6 @@ pub use ops::{Shl, Shr};
 pub use ops::{Index, IndexMut};
 pub use ops::{Slice, SliceMut};
 pub use ops::{Fn, FnMut, FnOnce};
-pub use option::{Option, Some, None};
-pub use result::{Result, Ok, Err};
 
 // Reexported functions
 pub use iter::range;
@@ -56,7 +54,9 @@ pub use iter::{OrdIterator, MutableDoubleEndedIterator, ExactSize};
 pub use num::{Num, NumCast, CheckedAdd, CheckedSub, CheckedMul};
 pub use num::{Signed, Unsigned, Float};
 pub use num::{Primitive, Int, ToPrimitive, FromPrimitive};
+pub use option::{Option, Some, None};
 pub use ptr::RawPtr;
+pub use result::{Result, Ok, Err};
 pub use str::{Str, StrSlice};
 pub use tuple::{Tuple1, Tuple2, Tuple3, Tuple4};
 pub use tuple::{Tuple5, Tuple6, Tuple7, Tuple8};
