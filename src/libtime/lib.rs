@@ -91,6 +91,7 @@ impl Timespec {
     }
 }
 
+/* Temporarily disabled due to Duration refactor.
 impl Add<Duration, Timespec> for Timespec {
     fn add(&self, other: &Duration) -> Timespec {
         let d_sec = other.num_seconds();
@@ -118,6 +119,7 @@ impl Sub<Timespec, Duration> for Timespec {
         Duration::seconds(sec) + Duration::nanoseconds(nsec as i64)
     }
 }
+*/
 
 /**
  * Returns the current time as a `timespec` containing the seconds and
@@ -1569,6 +1571,7 @@ mod tests {
         assert!(d.gt(c));
     }
 
+/* Temporarily disabled due to Duration refactor.
     fn test_timespec_add() {
         let a = Timespec::new(1, 2);
         let b = Duration::seconds(2) + Duration::nanoseconds(3);
@@ -1611,6 +1614,7 @@ mod tests {
         let w = u - v;
         assert_eq!(w.num_nanoseconds(), Some(-super::NSEC_PER_SEC as i64 - 1));
     }
+*/
 
     #[test]
     #[cfg_attr(target_os = "android", ignore)] // FIXME #10958
@@ -1628,8 +1632,11 @@ mod tests {
         test_ctime();
         test_strftime();
         test_timespec_eq_ord();
+
+/* Temporarily disabled due to Duration refactor.
         test_timespec_add();
         test_timespec_sub();
+*/
     }
 
     #[bench]
