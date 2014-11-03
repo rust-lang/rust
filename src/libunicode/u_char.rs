@@ -167,7 +167,17 @@ pub trait UnicodeChar {
     /// [UAX #31](http://unicode.org/reports/tr31/#NFKC_Modifications),
     /// mostly similar to ID_Start but modified for closure under NFKx.
     #[allow(non_snake_case)]
+    #[deprecated = "use is_xid_start"]
     fn is_XID_start(self) -> bool;
+
+    /// Returns whether the specified character satisfies the 'XID_Start'
+    /// Unicode property.
+    ///
+    /// 'XID_Start' is a Unicode Derived Property specified in
+    /// [UAX #31](http://unicode.org/reports/tr31/#NFKC_Modifications),
+    /// mostly similar to ID_Start but modified for closure under NFKx.
+    #[allow(non_snake_case)]
+    fn is_xid_start(self) -> bool;
 
     /// Returns whether the specified `char` satisfies the 'XID_Continue'
     /// Unicode property.
@@ -176,8 +186,17 @@ pub trait UnicodeChar {
     /// [UAX #31](http://unicode.org/reports/tr31/#NFKC_Modifications),
     /// mostly similar to 'ID_Continue' but modified for closure under NFKx.
     #[allow(non_snake_case)]
+    #[deprecated = "use is_xid_continue"]
     fn is_XID_continue(self) -> bool;
 
+    /// Returns whether the specified `char` satisfies the 'XID_Continue'
+    /// Unicode property.
+    ///
+    /// 'XID_Continue' is a Unicode Derived Property specified in
+    /// [UAX #31](http://unicode.org/reports/tr31/#NFKC_Modifications),
+    /// mostly similar to 'ID_Continue' but modified for closure under NFKx.
+    #[allow(non_snake_case)]
+    fn is_xid_continue(self) -> bool;
 
     /// Indicates whether a character is in lowercase.
     ///
@@ -267,9 +286,15 @@ impl UnicodeChar for char {
         }
     }
 
+    #[deprecated = "use is_xid_start"]
     fn is_XID_start(self) -> bool { derived_property::XID_Start(self) }
 
+    #[deprecated = "use is_xid_continue"]
     fn is_XID_continue(self) -> bool { derived_property::XID_Continue(self) }
+
+    fn is_xid_start(self) -> bool { derived_property::XID_Start(self) }
+
+    fn is_xid_continue(self) -> bool { derived_property::XID_Continue(self) }
 
     fn is_lowercase(self) -> bool {
         match self {
