@@ -998,14 +998,14 @@ pub fn ast_ty_to_ty<'tcx, AC: AstConv<'tcx>, RS: RegionScope>(
                                            Some(i as uint)),
                             _ => {
                                 tcx.sess.span_fatal(
-                                    ast_ty.span, "expected constant expr for vector length");
+                                    ast_ty.span, "expected constant expr for array length");
                             }
                         }
                     }
                     Err(ref r) => {
                         tcx.sess.span_fatal(
                             ast_ty.span,
-                            format!("expected constant expr for vector \
+                            format!("expected constant expr for array \
                                      length: {}",
                                     *r).as_slice());
                     }
