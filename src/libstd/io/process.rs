@@ -26,7 +26,6 @@ use rt::rtio;
 use c_str::CString;
 use collections::HashMap;
 use hash::Hash;
-use clone::Clone;
 #[cfg(windows)]
 use std::hash::sip::SipState;
 
