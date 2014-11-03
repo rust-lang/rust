@@ -494,14 +494,14 @@ non-deterministic aspect:
 $ cargo run
    Compiling hello_world v0.0.1 (file:///Users/you/src/hello_world)
      Running `target/hello_world`
-numbers[1] is 2
-numbers[0] is 1
-numbers[2] is 3
+numbers[1] is 3
+numbers[0] is 2
+numbers[2] is 4
 $ cargo run
      Running `target/hello_world`
-numbers[2] is 3
-numbers[1] is 2
-numbers[0] is 1
+numbers[2] is 4
+numbers[1] is 3
+numbers[0] is 2
 ```
 
 Each time, we get a slightly different output, because each thread works in a
