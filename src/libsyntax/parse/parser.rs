@@ -338,27 +338,13 @@ fn is_plain_ident_or_underscore(t: &token::Token) -> bool {
     t.is_plain_ident() || *t == token::Underscore
 }
 
-/// Get a token the parser cares about
-fn real_token(rdr: &mut Reader) -> TokenAndSpan {
-    let mut t = rdr.next_token();
-    loop {
-        match t.tok {
-            token::Whitespace | token::Comment | token::Shebang(_) => {
-                t = rdr.next_token();
-            },
-            _ => break
-        }
-    }
-    t
-}
-
 impl<'a> Parser<'a> {
     pub fn new(sess: &'a ParseSess,
                cfg: ast::CrateConfig,
                mut rdr: Box<Reader+'a>)
                -> Parser<'a>
     {
-        let tok0 = real_token(&mut *rdr);
+        let tok0 = rdr.real_token();
         let span = tok0.sp;
         let placeholder = TokenAndSpan {
             tok: token::Underscore,
@@ -898,7 +884,7 @@ impl<'a> Parser<'a> {
             None
         };
         let next = if self.buffer_start == self.buffer_end {
-            real_token(&mut *self.reader)
+            self.reader.real_token()
         } else {
             // Avoid token copies with `replace`.
             let buffer_start = self.buffer_start as uint;
@@ -942,7 +928,7 @@ impl<'a> Parser<'a> {
                       -> R {
         let dist = distance as int;
         while self.buffer_length() < dist {
-            self.buffer[self.buffer_end as uint] = real_token(&mut *self.reader);
+            self.buffer[self.buffer_end as uint] = self.reader.real_token();
             self.buffer_end = (self.buffer_end + 1) & 3;
         }
         f(&self.buffer[((self.buffer_start + dist - 1) & 3) as uint].tok)
