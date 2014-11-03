@@ -282,6 +282,17 @@ pub struct VecPerParamSpace<T> {
     content: Vec<T>,
 }
 
+/**
+ * The `split` function converts one `VecPerParamSpace` into this
+ * `SeparateVecsPerParamSpace` structure.
+ */
+pub struct SeparateVecsPerParamSpace<T> {
+    pub types: Vec<T>,
+    pub selfs: Vec<T>,
+    pub assocs: Vec<T>,
+    pub fns: Vec<T>,
+}
+
 impl<T:fmt::Show> fmt::Show for VecPerParamSpace<T> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         try!(write!(fmt, "VecPerParamSpace {{"));
@@ -464,24 +475,30 @@ impl<T> VecPerParamSpace<T> {
     }
 
     pub fn map_move<U>(self, pred: |T| -> U) -> VecPerParamSpace<U> {
-        let (t, s, a, f) = self.split();
+        let SeparateVecsPerParamSpace {
+            types: t,
+            selfs: s,
+            assocs: a,
+            fns: f
+        } = self.split();
+
         VecPerParamSpace::new(t.into_iter().map(|p| pred(p)).collect(),
                               s.into_iter().map(|p| pred(p)).collect(),
                               a.into_iter().map(|p| pred(p)).collect(),
                               f.into_iter().map(|p| pred(p)).collect())
     }
 
-    pub fn split(self) -> (Vec<T>, Vec<T>, Vec<T>, Vec<T>) {
+    pub fn split(self) -> SeparateVecsPerParamSpace<T> {
         let VecPerParamSpace { type_limit, self_limit, assoc_limit, content } = self;
 
         let mut content_iter = content.into_iter();
 
-        let types = content_iter.by_ref().take(type_limit).collect();
-        let selfs = content_iter.by_ref().take(self_limit - type_limit).collect();
-        let assocs = content_iter.by_ref().take(assoc_limit - self_limit).collect();
-        let fns = content_iter.collect();
-
-        (types, selfs, assocs, fns)
+        SeparateVecsPerParamSpace {
+            types: content_iter.by_ref().take(type_limit).collect(),
+            selfs: content_iter.by_ref().take(self_limit - type_limit).collect(),
+            assocs: content_iter.by_ref().take(assoc_limit - self_limit).collect(),
+            fns: content_iter.collect()
+        }
     }
 
     pub fn with_vec(mut self, space: ParamSpace, vec: Vec<T>)
