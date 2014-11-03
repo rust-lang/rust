@@ -14,12 +14,8 @@
  * to all lengths.
  */
 
-#![doc(primitive = "tuple")]
 #![stable]
-
-#[unstable = "this is just a documentation module and should not be part \
-              of the public api"]
-pub use unit;
+#![experimental] // not yet reviewed
 
 use cmp::*;
 use option::{Option};
