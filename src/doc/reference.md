@@ -831,7 +831,7 @@ mod math {
 }
 ```
 
-Modules and types share the same namespace. Declaring a named type that has
+Modules and types share the same namespace. Declaring a named type with
 the same name as a module in scope is forbidden: that is, a type definition,
 trait, struct, enumeration, or type parameter can't shadow the name of a module
 in scope, or vice versa.
@@ -870,8 +870,8 @@ view_item : extern_crate_decl | use_decl ;
 ```
 
 A view item manages the namespace of a module. View items do not define new
-items, but rather, simply change other items' visibility. There are several
-kinds of view item:
+items, but rather, simply change other items' visibility. There are two
+kinds of view items:
 
 * [`extern crate` declarations](#extern-crate-declarations)
 * [`use` declarations](#use-declarations)
@@ -896,7 +896,7 @@ external crate when it was compiled. If no `crateid` is provided, a default
 `name` attribute is assumed, equal to the `ident` given in the
 `extern_crate_decl`.
 
-Four examples of `extern crate` declarations:
+Three examples of `extern crate` declarations:
 
 ```{.ignore}
 extern crate pcre;
