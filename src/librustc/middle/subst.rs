@@ -16,65 +16,9 @@ use middle::ty_fold::{TypeFoldable, TypeFolder};
 use util::ppaux::Repr;
 
 use std::fmt;
-use std::mem;
-use std::raw;
-use std::slice::{Items, MutItems};
+use std::slice::Items;
 use std::vec::Vec;
 use syntax::codemap::{Span, DUMMY_SP};
-
-///////////////////////////////////////////////////////////////////////////
-// HomogeneousTuple3 trait
-//
-// This could be moved into standard library at some point.
-
-trait HomogeneousTuple3<T> {
-    fn len(&self) -> uint;
-    fn as_slice<'a>(&'a self) -> &'a [T];
-    fn as_mut_slice<'a>(&'a mut self) -> &'a mut [T];
-    fn iter<'a>(&'a self) -> Items<'a, T>;
-    fn iter_mut<'a>(&'a mut self) -> MutItems<'a, T>;
-    fn get<'a>(&'a self, index: uint) -> Option<&'a T>;
-    fn get_mut<'a>(&'a mut self, index: uint) -> Option<&'a mut T>;
-}
-
-impl<T> HomogeneousTuple3<T> for (T, T, T) {
-    fn len(&self) -> uint {
-        3
-    }
-
-    fn as_slice<'a>(&'a self) -> &'a [T] {
-        unsafe {
-            let ptr: *const T = mem::transmute(self);
-            let slice = raw::Slice { data: ptr, len: 3 };
-            mem::transmute(slice)
-        }
-    }
-
-    fn as_mut_slice<'a>(&'a mut self) -> &'a mut [T] {
-        unsafe {
-            let ptr: *const T = mem::transmute(self);
-            let slice = raw::Slice { data: ptr, len: 3 };
-            mem::transmute(slice)
-        }
-    }
-
-    fn iter<'a>(&'a self) -> Items<'a, T> {
-        let slice: &'a [T] = self.as_slice();
-        slice.iter()
-    }
-
-    fn iter_mut<'a>(&'a mut self) -> MutItems<'a, T> {
-        self.as_mut_slice().iter_mut()
-    }
-
-    fn get<'a>(&'a self, index: uint) -> Option<&'a T> {
-        self.as_slice().get(index)
-    }
-
-    fn get_mut<'a>(&'a mut self, index: uint) -> Option<&'a mut T> {
-        Some(&mut self.as_mut_slice()[index]) // wrong: fallible
-    }
-}
 
 ///////////////////////////////////////////////////////////////////////////
 

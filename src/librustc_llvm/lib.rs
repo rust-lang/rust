@@ -547,7 +547,7 @@ extern {
     pub fn LLVMIsFunctionVarArg(FunctionTy: TypeRef) -> Bool;
     pub fn LLVMGetReturnType(FunctionTy: TypeRef) -> TypeRef;
     pub fn LLVMCountParamTypes(FunctionTy: TypeRef) -> c_uint;
-    pub fn LLVMGetParamTypes(FunctionTy: TypeRef, Dest: *const TypeRef);
+    pub fn LLVMGetParamTypes(FunctionTy: TypeRef, Dest: *mut TypeRef);
 
     /* Operations on struct types */
     pub fn LLVMStructTypeInContext(C: ContextRef,
@@ -2195,4 +2195,3 @@ pub unsafe fn static_link_hack_this_sucks() {
 // Works to the above fix for #15460 to ensure LLVM dependencies that
 // are only used by rustllvm don't get stripped by the linker.
 mod llvmdeps;
-
