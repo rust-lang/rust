@@ -993,19 +993,31 @@ impl<T: Ord> OrdSliceExt<T> for [T] {
     }
 }
 
-#[allow(missing_docs)]
-pub trait VectorVector<T> for Sized? {
-    // FIXME #5898: calling these .concat and .connect conflicts with
-    // StrVector::con{cat,nect}, since they have generic contents.
-    /// Flattens a vector of vectors of `T` into a single `Vec<T>`.
-    fn concat_vec(&self) -> Vec<T>;
+#[unstable = "U should be an associated type"]
+/// An extension trait for concatenating slices
+pub trait SliceConcatExt<Sized? T, U> for Sized? {
+    /// Flattens a slice of `T` into a single value `U`.
+    #[stable]
+    fn concat(&self) -> U;
 
-    /// Concatenate a vector of vectors, placing a given separator between each.
-    fn connect_vec(&self, sep: &T) -> Vec<T>;
+    #[deprecated = "renamed to concat"]
+    fn concat_vec(&self) -> U {
+        self.concat()
+    }
+
+    /// Flattens a slice of `T` into a single value `U`, placing a
+    /// given seperator between each.
+    #[stable]
+    fn connect(&self, sep: &T) -> U;
+
+    #[deprecated = "renamed to connect"]
+    fn connect_vec(&self, sep: &T) -> U {
+        self.connect(sep)
+    }
 }
 
-impl<'a, T: Clone, V: AsSlice<T>> VectorVector<T> for [V] {
-    fn concat_vec(&self) -> Vec<T> {
+impl<T: Clone, V: AsSlice<T>> SliceConcatExt<T, Vec<T>> for [V] {
+    fn concat(&self) -> Vec<T> {
         let size = self.iter().fold(0u, |acc, v| acc + v.as_slice().len());
         let mut result = Vec::with_capacity(size);
         for v in self.iter() {
@@ -1014,7 +1026,7 @@ impl<'a, T: Clone, V: AsSlice<T>> VectorVector<T> for [V] {
         result
     }
 
-    fn connect_vec(&self, sep: &T) -> Vec<T> {
+    fn connect(&self, sep: &T) -> Vec<T> {
         let size = self.iter().fold(0u, |acc, v| acc + v.as_slice().len());
         let mut result = Vec::with_capacity(size + self.len());
         let mut first = true;
