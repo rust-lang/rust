@@ -6,7 +6,7 @@ all:
 	echo ignored
 else
 all: $(call DYLIB,cfoo)
-	$(RUSTC) foo.rs
+	$(RUSTC) foo.rs -C prefer-dynamic
 	$(RUSTC) bar.rs
 	$(call RUN,bar)
 	$(call REMOVE_DYLIBS,cfoo)

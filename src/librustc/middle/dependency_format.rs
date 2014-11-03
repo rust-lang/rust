@@ -123,6 +123,16 @@ fn calculate_type(sess: &session::Session,
             return Vec::new();
         }
 
+        // Generating a dylib without `-C prefer-dynamic` means that we're going
+        // to try to eagerly statically link all dependencies. This is normally
+        // done for end-product dylibs, not intermediate products.
+        config::CrateTypeDylib if !sess.opts.cg.prefer_dynamic => {
+            match attempt_static(sess) {
+                Some(v) => return v,
+                None => {}
+            }
+        }
+
         // Everything else falls through below
         config::CrateTypeExecutable | config::CrateTypeDylib => {},
     }

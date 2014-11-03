@@ -9,7 +9,6 @@
 // except according to those terms.
 
 // force-host
-// no-prefer-dynamic
 
 #![crate_type = "dylib"]
 #![feature(plugin_registrar, quote, globs)]
