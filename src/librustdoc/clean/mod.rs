@@ -2203,12 +2203,12 @@ impl Clean<Stability> for attr::Stability {
 impl Clean<Item> for ast::AssociatedType {
     fn clean(&self, cx: &DocContext) -> Item {
         Item {
-            source: self.span.clean(cx),
-            name: Some(self.ident.clean(cx)),
+            source: self.ty_param.span.clean(cx),
+            name: Some(self.ty_param.ident.clean(cx)),
             attrs: self.attrs.clean(cx),
             inner: AssociatedTypeItem,
             visibility: None,
-            def_id: ast_util::local_def(self.id),
+            def_id: ast_util::local_def(self.ty_param.id),
             stability: None,
         }
     }

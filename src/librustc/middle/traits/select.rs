@@ -1618,7 +1618,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             Ok(o) => o,
             Err(ErrorReported) => Vec::new()
         };
-        let obligations = VecPerParamSpace::new(obligations, Vec::new(), Vec::new());
+        let obligations = VecPerParamSpace::new(obligations, Vec::new(),
+                                                Vec::new(), Vec::new());
         VtableBuiltinData { nested: obligations }
     }
 
@@ -1692,6 +1693,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             substs: Substs::new_trait(
                 vec![arguments_tuple.subst(self.tcx(), substs),
                      new_signature.output.unwrap().subst(self.tcx(), substs)],
+                vec![],
                 vec![],
                 obligation.self_ty())
         });

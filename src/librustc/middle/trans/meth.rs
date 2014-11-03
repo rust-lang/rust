@@ -205,7 +205,12 @@ pub fn trans_static_method_callee(bcx: Block,
     // type parameters that belong to the trait but also some that
     // belong to the method:
     let rcvr_substs = node_id_substs(bcx, ExprId(expr_id));
-    let (rcvr_type, rcvr_self, rcvr_method) = rcvr_substs.types.split();
+    let subst::SeparateVecsPerParamSpace {
+        types: rcvr_type,
+        selfs: rcvr_self,
+        assocs: rcvr_assoc,
+        fns: rcvr_method
+    } = rcvr_substs.types.split();
 
     // Lookup the precise impl being called. To do that, we need to
     // create a trait reference identifying the self type and other
@@ -232,6 +237,7 @@ pub fn trans_static_method_callee(bcx: Block,
     let trait_substs =
         Substs::erased(VecPerParamSpace::new(rcvr_type,
                                              rcvr_self,
+                                             rcvr_assoc,
                                              Vec::new()));
     debug!("trait_substs={}", trait_substs.repr(bcx.tcx()));
     let trait_ref = Rc::new(ty::TraitRef { def_id: trait_id,
@@ -265,10 +271,16 @@ pub fn trans_static_method_callee(bcx: Block,
             // that with the `rcvr_method` from before, which tells us
             // the type parameters from the *method*, to yield
             // `callee_substs=[[T=int],[],[U=String]]`.
-            let (impl_type, impl_self, _) = impl_substs.types.split();
+            let subst::SeparateVecsPerParamSpace {
+                types: impl_type,
+                selfs: impl_self,
+                assocs: impl_assoc,
+                fns: _
+            } = impl_substs.types.split();
             let callee_substs =
                 Substs::erased(VecPerParamSpace::new(impl_type,
                                                      impl_self,
+                                                     impl_assoc,
                                                      rcvr_method));
 
             let mth_id = method_with_name(ccx, impl_did, mname);
@@ -397,12 +409,17 @@ fn combine_impl_and_methods_tps(bcx: Block,
 
     // Break apart the type parameters from the node and type
     // parameters from the receiver.
-    let (_, _, node_method) = node_substs.types.split();
-    let (rcvr_type, rcvr_self, rcvr_method) = rcvr_substs.types.clone().split();
+    let node_method = node_substs.types.split().fns;
+    let subst::SeparateVecsPerParamSpace {
+        types: rcvr_type,
+        selfs: rcvr_self,
+        assocs: rcvr_assoc,
+        fns: rcvr_method
+    } = rcvr_substs.types.clone().split();
     assert!(rcvr_method.is_empty());
     subst::Substs {
         regions: subst::ErasedRegions,
-        types: subst::VecPerParamSpace::new(rcvr_type, rcvr_self, node_method)
+        types: subst::VecPerParamSpace::new(rcvr_type, rcvr_self, rcvr_assoc, node_method)
     }
 }
 
