@@ -846,6 +846,14 @@ fn test_iterate() {
     assert_eq!(it.next(), Some(8u));
 }
 
+#[test]
+fn test_repeat() {
+    let mut it = repeat(42u);
+    assert_eq!(it.next(), Some(42u));
+    assert_eq!(it.next(), Some(42u));
+    assert_eq!(it.next(), Some(42u));
+}
+
 #[bench]
 fn bench_rposition(b: &mut Bencher) {
     let it: Vec<uint> = range(0u, 300).collect();
