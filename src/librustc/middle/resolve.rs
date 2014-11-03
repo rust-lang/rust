@@ -627,7 +627,10 @@ impl NameBindings {
                      sp: Span) {
         // Merges the module with the existing type def or creates a new one.
         let modifiers = if is_public { PUBLIC } else { DefModifiers::empty() } | IMPORTABLE;
-        let module_ = Rc::new(Module::new(parent_link, def_id, kind, external,
+        let module_ = Rc::new(Module::new(parent_link,
+                                          def_id,
+                                          kind,
+                                          external,
                                           is_public));
         let type_def = self.type_def.borrow().clone();
         match type_def {
@@ -1372,6 +1375,8 @@ impl<'a> Resolver<'a> {
                 // Create the module and add all methods.
                 match ty.node {
                     TyPath(ref path, _, _) if path.segments.len() == 1 => {
+                        // FIXME(18446) we should distinguish between the name of
+                        // a trait and the name of an impl of that trait.
                         let mod_name = path.segments.last().unwrap().identifier.name;
 
                         let parent_opt = parent.module().children.borrow()
@@ -1380,8 +1385,8 @@ impl<'a> Resolver<'a> {
                             // It already exists
                             Some(ref child) if child.get_module_if_available()
                                                 .is_some() &&
-                                           child.get_module().kind.get() ==
-                                                ImplModuleKind => {
+                                           (child.get_module().kind.get() == ImplModuleKind ||
+                                            child.get_module().kind.get() == TraitModuleKind) => {
                                 ModuleReducedGraphParent(child.get_module())
                             }
                             Some(ref child) if child.get_module_if_available()
