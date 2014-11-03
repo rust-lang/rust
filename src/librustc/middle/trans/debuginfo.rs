@@ -2255,7 +2255,7 @@ impl EnumMemberDescriptionFactory {
                 let null_variant_name = token::get_name((*self.variants)[null_variant_index].name);
                 let discrfield = match ptrfield {
                     adt::ThinPointer(field) => format!("{}", field),
-                    adt::FatPointer(field, pair) => format!("{}${}", field, pair)
+                    adt::FatPointer(field) => format!("{}", field)
                 };
                 let union_member_name = format!("RUST$ENCODED$ENUM${}${}",
                                                 discrfield,
