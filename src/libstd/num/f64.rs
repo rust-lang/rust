@@ -341,92 +341,60 @@ pub fn to_str_exp_digits(num: f64, dig: uint, upper: bool) -> String {
     r
 }
 
-/// Convert a string in base 16 to a float.
-/// Accepts an optional binary exponent.
-///
-/// This function accepts strings such as
-///
-/// * 'a4.fe'
-/// * '+a4.fe', equivalent to 'a4.fe'
-/// * '-a4.fe'
-/// * '2b.aP128', or equivalently, '2b.ap128'
-/// * '2b.aP-128'
-/// * '.' (understood as 0)
-/// * 'c.'
-/// * '.c', or, equivalently,  '0.c'
-/// * '+inf', 'inf', '-inf', 'NaN'
-///
-/// Leading and trailing whitespace represent an error.
-///
-/// # Arguments
-///
-/// * num - A string
-///
-/// # Return value
-///
-/// `None` if the string did not represent a valid number.  Otherwise,
-/// `Some(n)` where `n` is the floating-point number represented by `[num]`.
 #[inline]
-pub fn from_str_hex(num: &str) -> Option<f64> {
-    strconv::from_str_common(num, 16u, true, true, true,
-                             strconv::ExpBin, false, false)
+#[deprecated="Use `FromStrRadix::from_str_radix(src, 16)`"]
+pub fn from_str_hex(src: &str) -> Option<f64> {
+    strconv::from_str_radix_float(src, 16)
 }
 
 impl FromStr for f64 {
     /// Convert a string in base 10 to a float.
     /// Accepts an optional decimal exponent.
     ///
-    /// This function accepts strings such as
+    /// This function accepts strings such as:
     ///
     /// * '3.14'
-    /// * '+3.14', equivalent to '3.14'
     /// * '-3.14'
     /// * '2.5E10', or equivalently, '2.5e10'
     /// * '2.5E-10'
     /// * '.' (understood as 0)
     /// * '5.'
     /// * '.5', or, equivalently,  '0.5'
-    /// * '+inf', 'inf', '-inf', 'NaN'
+    /// * inf', '-inf', 'NaN'
     ///
     /// Leading and trailing whitespace represent an error.
     ///
     /// # Arguments
     ///
-    /// * num - A string
+    /// * src - A string
     ///
     /// # Return value
     ///
     /// `none` if the string did not represent a valid number.  Otherwise,
-    /// `Some(n)` where `n` is the floating-point number represented by `num`.
+    /// `Some(n)` where `n` is the floating-point number represented by `src`.
     #[inline]
-    fn from_str(val: &str) -> Option<f64> {
-        strconv::from_str_common(val, 10u, true, true, true,
-                                 strconv::ExpDec, false, false)
+    fn from_str(src: &str) -> Option<f64> {
+        strconv::from_str_radix_float(src, 10u)
     }
 }
 
 impl num::FromStrRadix for f64 {
     /// Convert a string in a given base to a float.
     ///
-    /// Due to possible conflicts, this function does **not** accept
-    /// the special values `inf`, `-inf`, `+inf` and `NaN`, **nor**
-    /// does it recognize exponents of any kind.
-    ///
     /// Leading and trailing whitespace represent an error.
     ///
     /// # Arguments
     ///
-    /// * num - A string
+    /// * src - A string
     /// * radix - The base to use. Must lie in the range [2 .. 36]
     ///
     /// # Return value
     ///
     /// `None` if the string did not represent a valid number. Otherwise,
-    /// `Some(n)` where `n` is the floating-point number represented by `num`.
+    /// `Some(n)` where `n` is the floating-point number represented by `src`.
     #[inline]
-    fn from_str_radix(val: &str, rdx: uint) -> Option<f64> {
-        strconv::from_str_common(val, rdx, true, true, false,
-                                 strconv::ExpNone, false, false)
+    fn from_str_radix(src: &str, radix: uint) -> Option<f64> {
+        strconv::from_str_radix_float(src, radix)
     }
 }
 
@@ -712,8 +680,8 @@ mod tests {
     fn test_ldexp() {
         // We have to use from_str until base-2 exponents
         // are supported in floating-point literals
-        let f1: f64 = from_str_hex("1p-123").unwrap();
-        let f2: f64 = from_str_hex("1p-111").unwrap();
+        let f1: f64 = FromStrRadix::from_str_radix("1p-123", 16).unwrap();
+        let f2: f64 = FromStrRadix::from_str_radix("1p-111", 16).unwrap();
         assert_eq!(FloatMath::ldexp(1f64, -123), f1);
         assert_eq!(FloatMath::ldexp(1f64, -111), f2);
 
@@ -732,8 +700,8 @@ mod tests {
     fn test_frexp() {
         // We have to use from_str until base-2 exponents
         // are supported in floating-point literals
-        let f1: f64 = from_str_hex("1p-123").unwrap();
-        let f2: f64 = from_str_hex("1p-111").unwrap();
+        let f1: f64 = FromStrRadix::from_str_radix("1p-123", 16).unwrap();
+        let f2: f64 = FromStrRadix::from_str_radix("1p-111", 16).unwrap();
         let (x1, exp1) = f1.frexp();
         let (x2, exp2) = f2.frexp();
         assert_eq!((x1, exp1), (0.5f64, -122));
