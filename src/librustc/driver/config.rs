@@ -91,6 +91,7 @@ pub struct Options {
     pub parse_only: bool,
     pub no_trans: bool,
     pub no_analysis: bool,
+    pub notify_error_free: bool,
     pub debugging_opts: u64,
     /// Whether to write dependency files. It's (enabled, optional filename).
     pub write_dependency_info: (bool, Option<Path>),
@@ -124,6 +125,7 @@ pub fn basic_options() -> Options {
         parse_only: false,
         no_trans: false,
         no_analysis: false,
+        notify_error_free: false,
         debugging_opts: 0,
         write_dependency_info: (false, None),
         print_metas: (false, false),
@@ -601,6 +603,8 @@ pub fn optgroups() -> Vec<getopts::OptGroup> {
         optflag("", "no-trans", "Run all passes except translation; no output"),
         optflag("", "no-analysis",
               "Parse and expand the source, but run no analysis and produce no output"),
+        optflag("", "notify-error-free",
+               "Notify when the crate is known to be error free"),
         optflag("O", "", "Equivalent to --opt-level=2"),
         optopt("o", "", "Write output to <filename>", "FILENAME"),
         optopt("", "opt-level", "Optimize with possible levels 0-3", "LEVEL"),
@@ -659,6 +663,7 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
     let parse_only = matches.opt_present("parse-only");
     let no_trans = matches.opt_present("no-trans");
     let no_analysis = matches.opt_present("no-analysis");
+    let notify_error_free = matches.opt_present("notify-error-free");
 
     let mut lint_opts = vec!();
     let mut describe_lints = false;
@@ -860,6 +865,7 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
         parse_only: parse_only,
         no_trans: no_trans,
         no_analysis: no_analysis,
+        notify_error_free: notify_error_free,
         debugging_opts: debugging_opts,
         write_dependency_info: write_dependency_info,
         print_metas: print_metas,
