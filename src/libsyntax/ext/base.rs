@@ -681,6 +681,10 @@ pub fn get_single_str_from_tts(cx: &mut ExtCtxt,
                                name: &str)
                                -> Option<String> {
     let mut p = cx.new_parser_from_tts(tts);
+    if p.token == token::Eof {
+        cx.span_err(sp, format!("{} takes 1 argument", name).as_slice());
+        return None
+    }
     let ret = cx.expander().fold_expr(p.parse_expr());
     if p.token != token::Eof {
         cx.span_err(sp, format!("{} takes 1 argument", name).as_slice());
