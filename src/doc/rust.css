@@ -62,6 +62,10 @@ body {
     font-size: 18px;
     color: #333;
     line-height: 1.428571429;
+
+    -webkit-font-feature-settings: "kern", "liga";
+    -moz-font-feature-settings: "kern", "liga";
+    font-feature-settings: "kern", "liga";
 }
 @media (min-width: 768px) {
     body {
