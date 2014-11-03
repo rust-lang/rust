@@ -2536,7 +2536,7 @@ fn check_argument_types<'a>(fcx: &FnCtxt,
                 span_err!(tcx.sess, sp, E0059,
                     "cannot use call notation; the first type parameter \
                      for the function trait is neither a tuple nor unit");
-                err_args(supplied_arg_count)
+                err_args(args.len())
             }
         }
     } else if expected_arg_count == supplied_arg_count {
