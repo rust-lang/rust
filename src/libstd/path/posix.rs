@@ -20,7 +20,7 @@ use iter::{DoubleEndedIterator, AdditiveIterator, Extendable, Iterator, Map};
 use option::{Option, None, Some};
 use str::Str;
 use str;
-use slice::{CloneableVector, Splits, AsSlice, VectorVector,
+use slice::{CloneableVector, Splits, AsSlice, Concat,
             ImmutablePartialEqSlice, ImmutableSlice};
 use vec::Vec;
 
@@ -315,7 +315,7 @@ impl GenericPath for Path {
                     }
                 }
             }
-            Some(Path::new(comps.as_slice().connect_vec(&SEP_BYTE)))
+            Some(Path::new(comps.as_slice().connect(&SEP_BYTE)))
         }
     }
 
