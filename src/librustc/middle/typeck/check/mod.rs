@@ -2147,11 +2147,11 @@ fn try_overloaded_call<'a>(fcx: &FnCtxt,
         _ => {}
     }
 
-    // Try `FnOnce`, then `FnMut`, then `Fn`.
+    // Try the options that are least restrictive on the caller first.
     for &(maybe_function_trait, method_name) in [
-        (fcx.tcx().lang_items.fn_once_trait(), token::intern("call_once")),
+        (fcx.tcx().lang_items.fn_trait(), token::intern("call")),
         (fcx.tcx().lang_items.fn_mut_trait(), token::intern("call_mut")),
-        (fcx.tcx().lang_items.fn_trait(), token::intern("call"))
+        (fcx.tcx().lang_items.fn_once_trait(), token::intern("call_once")),
     ].iter() {
         let function_trait = match maybe_function_trait {
             None => continue,
