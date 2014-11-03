@@ -149,28 +149,11 @@ impl BytesContainer for Path {
         self.as_vec()
     }
     #[inline]
-    fn container_into_owned_bytes(self) -> Vec<u8> {
-        self.into_vec()
-    }
-    #[inline]
     fn container_as_str<'a>(&'a self) -> Option<&'a str> {
         self.as_str()
     }
     #[inline]
-    fn is_str(_: Option<Path>) -> bool { true }
-}
-
-impl<'a> BytesContainer for &'a Path {
-    #[inline]
-    fn container_as_bytes<'a>(&'a self) -> &'a [u8] {
-        self.as_vec()
-    }
-    #[inline]
-    fn container_as_str<'a>(&'a self) -> Option<&'a str> {
-        self.as_str()
-    }
-    #[inline]
-    fn is_str(_: Option<&'a Path>) -> bool { true }
+    fn is_str(_: Option<&Path>) -> bool { true }
 }
 
 impl GenericPathUnsafe for Path {
