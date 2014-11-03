@@ -35,6 +35,19 @@ pub trait Reader {
     /// Report a non-fatal error with the current span.
     fn err(&self, &str);
     fn peek(&self) -> TokenAndSpan;
+    /// Get a token the parser cares about.
+    fn real_token(&mut self) -> TokenAndSpan {
+        let mut t = self.next_token();
+        loop {
+            match t.tok {
+                token::Whitespace | token::Comment | token::Shebang(_) => {
+                    t = self.next_token();
+                },
+                _ => break
+            }
+        }
+        t
+    }
 }
 
 #[deriving(Clone, PartialEq, Eq, Show)]
