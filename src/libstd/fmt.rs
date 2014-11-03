@@ -424,14 +424,20 @@ pub use core::fmt::{Argument, Arguments, write, radix, Radix, RadixFmt};
 
 #[doc(hidden)]
 pub use core::fmt::{argument, argumentstr, argumentuint};
+// NOTE(stage0): remove these imports after a snapshot
+#[cfg(stage0)]
 #[doc(hidden)]
 pub use core::fmt::{secret_show, secret_string, secret_unsigned};
+#[cfg(stage0)]
 #[doc(hidden)]
 pub use core::fmt::{secret_signed, secret_lower_hex, secret_upper_hex};
+#[cfg(stage0)]
 #[doc(hidden)]
 pub use core::fmt::{secret_bool, secret_char, secret_octal, secret_binary};
+#[cfg(stage0)]
 #[doc(hidden)]
 pub use core::fmt::{secret_float, secret_upper_exp, secret_lower_exp};
+#[cfg(stage0)]
 #[doc(hidden)]
 pub use core::fmt::{secret_pointer};
 

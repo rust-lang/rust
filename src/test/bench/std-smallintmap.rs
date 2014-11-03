@@ -13,17 +13,17 @@
 extern crate collections;
 extern crate time;
 
-use std::collections::SmallIntMap;
+use std::collections::VecMap;
 use std::os;
 use std::uint;
 
-fn append_sequential(min: uint, max: uint, map: &mut SmallIntMap<uint>) {
+fn append_sequential(min: uint, max: uint, map: &mut VecMap<uint>) {
     for i in range(min, max) {
         map.insert(i, i + 22u);
     }
 }
 
-fn check_sequential(min: uint, max: uint, map: &SmallIntMap<uint>) {
+fn check_sequential(min: uint, max: uint, map: &VecMap<uint>) {
     for i in range(min, max) {
         assert_eq!(map[i], i + 22u);
     }
@@ -45,7 +45,7 @@ fn main() {
     let mut appendf = 0.0;
 
     for _ in range(0u, rep) {
-        let mut map = SmallIntMap::new();
+        let mut map = VecMap::new();
         let start = time::precise_time_s();
         append_sequential(0u, max, &mut map);
         let mid = time::precise_time_s();

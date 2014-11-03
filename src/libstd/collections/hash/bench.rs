@@ -18,7 +18,7 @@ use iter::{range_inclusive};
 
 #[bench]
 fn new_drop(b : &mut Bencher) {
-    use super::HashMap;
+    use super::map::HashMap;
 
     b.iter(|| {
         let m : HashMap<int, int> = HashMap::new();
@@ -28,7 +28,7 @@ fn new_drop(b : &mut Bencher) {
 
 #[bench]
 fn new_insert_drop(b : &mut Bencher) {
-    use super::HashMap;
+    use super::map::HashMap;
 
     b.iter(|| {
         let mut m = HashMap::new();
@@ -39,7 +39,7 @@ fn new_insert_drop(b : &mut Bencher) {
 
 #[bench]
 fn grow_by_insertion(b: &mut Bencher) {
-    use super::HashMap;
+    use super::map::HashMap;
 
     let mut m = HashMap::new();
 
@@ -57,7 +57,7 @@ fn grow_by_insertion(b: &mut Bencher) {
 
 #[bench]
 fn find_existing(b: &mut Bencher) {
-    use super::HashMap;
+    use super::map::HashMap;
 
     let mut m = HashMap::new();
 
@@ -74,7 +74,7 @@ fn find_existing(b: &mut Bencher) {
 
 #[bench]
 fn find_nonexisting(b: &mut Bencher) {
-    use super::HashMap;
+    use super::map::HashMap;
 
     let mut m = HashMap::new();
 
@@ -91,7 +91,7 @@ fn find_nonexisting(b: &mut Bencher) {
 
 #[bench]
 fn hashmap_as_queue(b: &mut Bencher) {
-    use super::HashMap;
+    use super::map::HashMap;
 
     let mut m = HashMap::new();
 
@@ -110,7 +110,7 @@ fn hashmap_as_queue(b: &mut Bencher) {
 
 #[bench]
 fn find_pop_insert(b: &mut Bencher) {
-    use super::HashMap;
+    use super::map::HashMap;
 
     let mut m = HashMap::new();
 

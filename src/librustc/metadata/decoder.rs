@@ -34,7 +34,7 @@ use std::hash::Hash;
 use std::hash;
 use std::io::extensions::u64_from_be_bytes;
 use std::io;
-use std::collections::hashmap::HashMap;
+use std::collections::hash_map::HashMap;
 use std::rc::Rc;
 use std::u64;
 use rbml::reader;

@@ -9,14 +9,16 @@
 // except according to those terms.
 
 use ast;
-use codemap;
 use codemap::{Pos, Span};
+use codemap;
 use ext::base::*;
 use ext::base;
 use ext::build::AstBuilder;
-use parse;
 use parse::token;
+use parse;
 use print::pprust;
+use ptr::P;
+use util::small_vector::SmallVector;
 
 use std::io::File;
 use std::rc::Rc;
@@ -82,14 +84,14 @@ pub fn expand_mod(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
 /// include! : parse the given file as an expr
 /// This is generally a bad idea because it's going to behave
 /// unhygienically.
-pub fn expand_include(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
-                      -> Box<base::MacResult+'static> {
+pub fn expand_include<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
+                           -> Box<base::MacResult+'cx> {
     let file = match get_single_str_from_tts(cx, sp, tts, "include!") {
         Some(f) => f,
         None => return DummyResult::expr(sp),
     };
     // The file will be added to the code map by the parser
-    let mut p =
+    let p =
         parse::new_sub_parser_from_file(cx.parse_sess(),
                                         cx.cfg(),
                                         &res_rel_file(cx,
@@ -98,7 +100,28 @@ pub fn expand_include(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
                                         true,
                                         None,
                                         sp);
-    base::MacExpr::new(p.parse_expr())
+
+    struct ExpandResult<'a> {
+        p: parse::parser::Parser<'a>,
+    }
+    impl<'a> base::MacResult for ExpandResult<'a> {
+        fn make_expr(mut self: Box<ExpandResult<'a>>) -> Option<P<ast::Expr>> {
+            Some(self.p.parse_expr())
+        }
+        fn make_items(mut self: Box<ExpandResult<'a>>)
+                      -> Option<SmallVector<P<ast::Item>>> {
+            let mut ret = SmallVector::zero();
+            loop {
+                match self.p.parse_item_with_outer_attributes() {
+                    Some(item) => ret.push(item),
+                    None => break
+                }
+            }
+            Some(ret)
+        }
+    }
+
+    box ExpandResult { p: p }
 }
 
 // include_str! : read the given file, insert it as a literal string expr

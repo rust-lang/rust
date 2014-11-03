@@ -24,7 +24,7 @@ use plugin::load::PluginMetadata;
 
 use std::rc::Rc;
 use std::collections::HashMap;
-use std::collections::hashmap::{Occupied, Vacant};
+use std::collections::hash_map::{Occupied, Vacant};
 use syntax::ast;
 use syntax::abi;
 use syntax::attr;
@@ -52,7 +52,11 @@ pub fn read_crates(sess: &Session,
     visit_crate(&e, krate);
     visit::walk_crate(&mut e, krate);
     dump_crates(&sess.cstore);
-    warn_if_multiple_versions(sess.diagnostic(), &sess.cstore)
+    warn_if_multiple_versions(sess.diagnostic(), &sess.cstore);
+
+    for &(ref name, kind) in sess.opts.libs.iter() {
+        register_native_lib(sess, None, name.clone(), kind);
+    }
 }
 
 impl<'a, 'v> visit::Visitor<'v> for Env<'a> {
@@ -233,15 +237,8 @@ fn visit_item(e: &Env, i: &ast::Item) {
                             Some(k) => {
                                 if k.equiv(&("static")) {
                                     cstore::NativeStatic
-                                } else if (e.sess.targ_cfg.os == abi::OsMacos ||
-                                           e.sess.targ_cfg.os == abi::OsiOS) &&
-                                          k.equiv(&("framework")) {
-                                    cstore::NativeFramework
                                 } else if k.equiv(&("framework")) {
-                                    e.sess.span_err(m.span,
-                                        "native frameworks are only available \
-                                         on OSX targets");
-                                    cstore::NativeUnknown
+                                    cstore::NativeFramework
                                 } else {
                                     e.sess.span_err(m.span,
                                         format!("unknown kind: `{}`",
@@ -263,15 +260,8 @@ fn visit_item(e: &Env, i: &ast::Item) {
                                 InternedString::new("foo")
                             }
                         };
-                        if n.get().is_empty() {
-                            e.sess.span_err(m.span,
-                                            "#[link(name = \"\")] given with \
-                                             empty name");
-                        } else {
-                            e.sess
-                             .cstore
-                             .add_used_library(n.get().to_string(), kind);
-                        }
+                        register_native_lib(e.sess, Some(m.span),
+                                            n.get().to_string(), kind);
                     }
                     None => {}
                 }
@@ -279,6 +269,32 @@ fn visit_item(e: &Env, i: &ast::Item) {
         }
         _ => { }
     }
+}
+
+fn register_native_lib(sess: &Session, span: Option<Span>, name: String,
+                       kind: cstore::NativeLibaryKind) {
+    if name.as_slice().is_empty() {
+        match span {
+            Some(span) => {
+                sess.span_err(span, "#[link(name = \"\")] given with \
+                                     empty name");
+            }
+            None => {
+                sess.err("empty library name given via `-l`");
+            }
+        }
+        return
+    }
+    let is_osx = sess.targ_cfg.os == abi::OsMacos ||
+                 sess.targ_cfg.os == abi::OsiOS;
+    if kind == cstore::NativeFramework && !is_osx {
+        let msg = "native frameworks are only available on OSX targets";
+        match span {
+            Some(span) => sess.span_err(span, msg),
+            None => sess.err(msg),
+        }
+    }
+    sess.cstore.add_used_library(name, kind);
 }
 
 fn existing_match(e: &Env, name: &str,

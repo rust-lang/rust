@@ -142,7 +142,7 @@ use syntax::visit::Visitor;
 
 use std::cell::{RefCell};
 use std::collections::HashMap;
-use std::collections::hashmap::{Vacant, Occupied};
+use std::collections::hash_map::{Vacant, Occupied};
 
 ///////////////////////////////////////////////////////////////////////////
 // PUBLIC ENTRY POINTS

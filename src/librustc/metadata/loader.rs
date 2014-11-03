@@ -237,7 +237,7 @@ use std::slice;
 use std::string;
 
 use std::collections::{HashMap, HashSet};
-use std::collections::hashmap::{Occupied, Vacant};
+use std::collections::hash_map::{Occupied, Vacant};
 use flate;
 use time;
 

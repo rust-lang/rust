@@ -8,27 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub use self::map::BTreeMap;
-pub use self::map::Entries;
-pub use self::map::MutEntries;
-pub use self::map::MoveEntries;
-pub use self::map::Keys;
-pub use self::map::Values;
-pub use self::map::Entry;
-pub use self::map::Occupied;
-pub use self::map::Vacant;
-pub use self::map::OccupiedEntry;
-pub use self::map::VacantEntry;
-
-pub use self::set::BTreeSet;
-pub use self::set::Items;
-pub use self::set::MoveItems;
-pub use self::set::DifferenceItems;
-pub use self::set::UnionItems;
-pub use self::set::SymDifferenceItems;
-pub use self::set::IntersectionItems;
-
-
 mod node;
-mod map;
-mod set;
+pub mod map;
+pub mod set;

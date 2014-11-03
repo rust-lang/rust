@@ -675,26 +675,23 @@ pub fn check_zero_tts(cx: &ExtCtxt,
 
 /// Extract the string literal from the first token of `tts`. If this
 /// is not a string literal, emit an error and return None.
-pub fn get_single_str_from_tts(cx: &ExtCtxt,
+pub fn get_single_str_from_tts(cx: &mut ExtCtxt,
                                sp: Span,
                                tts: &[ast::TokenTree],
                                name: &str)
                                -> Option<String> {
-    if tts.len() != 1 {
-        cx.span_err(sp, format!("{} takes 1 argument.", name).as_slice());
-    } else {
-        match tts[0] {
-            ast::TtToken(_, token::LitStr(ident)) => return Some(parse::str_lit(ident.as_str())),
-            ast::TtToken(_, token::LitStrRaw(ident, _)) => {
-                return Some(parse::raw_str_lit(ident.as_str()))
-            }
-            _ => {
-                cx.span_err(sp,
-                            format!("{} requires a string.", name).as_slice())
-            }
-        }
+    let mut p = cx.new_parser_from_tts(tts);
+    if p.token == token::Eof {
+        cx.span_err(sp, format!("{} takes 1 argument", name).as_slice());
+        return None
     }
-    None
+    let ret = cx.expander().fold_expr(p.parse_expr());
+    if p.token != token::Eof {
+        cx.span_err(sp, format!("{} takes 1 argument", name).as_slice());
+    }
+    expr_to_string(cx, ret, "argument must be a string literal").map(|(s, _)| {
+        s.get().to_string()
+    })
 }
 
 /// Extract comma-separated expressions from `tts`. If there is a

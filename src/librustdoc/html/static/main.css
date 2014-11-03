@@ -69,6 +69,10 @@ body {
     margin: 0;
     position: relative;
     padding: 10px 15px 20px 15px;
+
+    -webkit-font-feature-settings: "kern", "liga";
+    -moz-font-feature-settings: "kern", "liga";
+    font-feature-settings: "kern", "liga";
 }
 
 h1 {
@@ -101,7 +105,7 @@ h3.impl, h3.method, h4.method {
 h3.impl, h3.method {
     margin-top: 15px;
 }
-h1, h2, h3, h4, section.sidebar, a.source, .search-input, .content table a, .collapse-toggle {
+h1, h2, h3, h4, section.sidebar, a.source, .search-input, .content table :not(code)>a, .collapse-toggle {
     font-family: "Fira Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
 }
 
@@ -177,7 +181,7 @@ nav.sub {
     color: #333;
 }
 
-.location a:first-child { font-weight: bold; }
+.location a:first-child { font-weight: 500; }
 
 .block {
     padding: 0 10px;
@@ -494,7 +498,7 @@ pre.rust { position: relative; }
 }
 
 .collapse-toggle {
-    font-weight: 100;
+    font-weight: 300;
     position: absolute;
     left: 13px;
     color: #999;
@@ -523,7 +527,6 @@ pre.rust { position: relative; }
 
 .toggle-label {
     color: #999;
-    font-style: italic;
 }
 
 
