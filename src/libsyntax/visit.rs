@@ -596,7 +596,8 @@ pub fn walk_trait_item<'v, V: Visitor<'v>>(visitor: &mut V, trait_method: &'v Tr
         RequiredMethod(ref method_type) => visitor.visit_ty_method(method_type),
         ProvidedMethod(ref method) => walk_method_helper(visitor, &**method),
         TypeTraitItem(ref associated_type) => {
-            visitor.visit_ident(associated_type.span, associated_type.ident)
+            visitor.visit_ident(associated_type.ty_param.span,
+                                associated_type.ty_param.ident)
         }
     }
 }

@@ -8,19 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Checks that regions which appear in a trait object type are
-// observed by the variance inference algorithm (and hence
-// `TOption` is contavariant w/r/t `'a` and not bivariant).
-//
-// Issue #18262.
+#![feature(associated_types)]
 
-use std::mem;
-
-trait T { fn foo(); }
-
-#[rustc_variance]
-struct TOption<'a> { //~ ERROR regions=[[-];[];[];[]]
-    v: Option<Box<T + 'a>>,
+trait Get {
+    type Sized? Value;
+    fn get(&self) -> <Self as Get>::Value;
 }
 
-fn main() { }
+fn foo<T:Get>(t: T) {
+    let x = t.get(); //~ ERROR the trait `core::kinds::Sized` is not implemented
+}
+
+fn main() {
+}
+

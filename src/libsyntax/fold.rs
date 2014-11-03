@@ -793,19 +793,16 @@ pub fn noop_fold_typedef<T>(t: Typedef, folder: &mut T)
 
 pub fn noop_fold_associated_type<T>(at: AssociatedType, folder: &mut T)
                                     -> AssociatedType
-                                    where T: Folder {
-    let new_id = folder.new_id(at.id);
-    let new_span = folder.new_span(at.span);
-    let new_ident = folder.fold_ident(at.ident);
+                                    where T: Folder
+{
     let new_attrs = at.attrs
                       .iter()
                       .map(|attr| folder.fold_attribute((*attr).clone()))
                       .collect();
+    let new_param = folder.fold_ty_param(at.ty_param);
     ast::AssociatedType {
-        ident: new_ident,
         attrs: new_attrs,
-        id: new_id,
-        span: new_span,
+        ty_param: new_param,
     }
 }
 
