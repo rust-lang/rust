@@ -73,7 +73,7 @@ pub mod char {
 }
 
 pub mod str {
-    pub use u_str::{UnicodeStrSlice, Words, Graphemes, GraphemeIndices};
+    pub use u_str::{UnicodeStrPrelude, Words, Graphemes, GraphemeIndices};
 }
 
 // this lets us use #[deriving(Clone)]

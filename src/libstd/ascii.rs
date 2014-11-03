@@ -19,8 +19,8 @@ use fmt;
 use iter::Iterator;
 use mem;
 use option::{Option, Some, None};
-use slice::{ImmutableSlice, MutableSlice, AsSlice};
-use str::{Str, StrSlice};
+use slice::{SlicePrelude, AsSlice};
+use str::{Str, StrPrelude};
 use string::{mod, String};
 use to_string::IntoStr;
 use vec::Vec;
@@ -578,7 +578,7 @@ mod tests {
     use prelude::*;
     use super::*;
     use char::from_u32;
-    use str::StrSlice;
+    use str::StrPrelude;
 
     macro_rules! v2ascii (
         ( [$($e:expr),*]) => (&[$(Ascii{chr:$e}),*]);

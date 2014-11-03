@@ -330,7 +330,7 @@ macro_rules! try (
 #[macro_export]
 macro_rules! vec[
     ($($x:expr),*) => ({
-        use std::slice::BoxedSlice;
+        use std::slice::BoxedSlicePrelude;
         let xs: ::std::boxed::Box<[_]> = box [$($x),*];
         xs.into_vec()
     });

@@ -27,7 +27,7 @@ use core::ptr;
 use core::raw::Slice as RawSlice;
 use core::uint;
 
-use slice::{CloneableVector};
+use slice::{CloneSliceAllocPrelude};
 
 /// An owned, growable vector.
 ///
@@ -1389,7 +1389,7 @@ pub fn as_vec<'a, T>(x: &'a [T]) -> DerefVec<'a, T> {
 pub mod raw {
     use super::Vec;
     use core::ptr;
-    use core::slice::MutableSlice;
+    use core::slice::SlicePrelude;
 
     /// Constructs a vector from an unsafe pointer to a buffer.
     ///
