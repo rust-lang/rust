@@ -117,17 +117,6 @@ impl BytesContainer for Path {
     fn container_as_bytes<'a>(&'a self) -> &'a [u8] {
         self.as_vec()
     }
-    #[inline]
-    fn container_into_owned_bytes(self) -> Vec<u8> {
-        self.into_vec()
-    }
-}
-
-impl<'a> BytesContainer for &'a Path {
-    #[inline]
-    fn container_as_bytes<'a>(&'a self) -> &'a [u8] {
-        self.as_vec()
-    }
 }
 
 impl GenericPathUnsafe for Path {

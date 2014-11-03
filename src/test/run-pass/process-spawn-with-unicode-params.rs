@@ -48,7 +48,7 @@ fn main() {
 
         let child_filestem = Path::new(child_name);
         let child_filename = child_filestem.with_extension(my_ext);
-        let child_path     = cwd.join(child_filename.clone());
+        let child_path     = cwd.join(child_filename);
 
         // make a separate directory for the child
         drop(fs::mkdir(&cwd, io::USER_RWX).is_ok());
