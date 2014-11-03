@@ -29,7 +29,7 @@ use middle::typeck::infer;
 use middle::typeck::infer::{InferCtxt, TypeSkolemizer};
 use middle::ty_fold::TypeFoldable;
 use std::cell::RefCell;
-use std::collections::hashmap::HashMap;
+use std::collections::hash_map::HashMap;
 use std::rc::Rc;
 use syntax::ast;
 use util::ppaux::Repr;
@@ -1104,18 +1104,29 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
          * Returns true if `candidate_i` should be dropped in favor of `candidate_j`.
          * This is generally true if either:
          * - candidate i and candidate j are equivalent; or,
-         * - candidate i is a where clause bound and candidate j is a concrete impl,
+         * - candidate i is a conrete impl and candidate j is a where clause bound,
          *   and the concrete impl is applicable to the types in the where clause bound.
          *
-         * The last case basically occurs with blanket impls like
-         * `impl<T> Foo for T`.  In that case, a bound like `T:Foo` is
-         * kind of an "false" ambiguity -- both are applicable to any
-         * type, but in fact coherence requires that the bound will
-         * always be resolved to the impl anyway.
+         * The last case refers to cases where there are blanket impls (often conditional
+         * blanket impls) as well as a where clause. This can come down to one of two cases:
+         *
+         * - The impl is truly unconditional (it has no where clauses
+         *   of its own), in which case the where clause is
+         *   unnecessary, because coherence requires that we would
+         *   pick that particular impl anyhow (at least so long as we
+         *   don't have specialization).
+         *
+         * - The impl is conditional, in which case we may not have winnowed it out
+         *   because we don't know if the conditions apply, but the where clause is basically
+         *   telling us taht there is some impl, though not necessarily the one we see.
+         *
+         * In both cases we prefer to take the where clause, which is
+         * essentially harmless.  See issue #18453 for more details of
+         * a case where doing the opposite caused us harm.
          */
 
         match (candidate_i, candidate_j) {
-            (&ParamCandidate(ref vt), &ImplCandidate(impl_def_id)) => {
+            (&ImplCandidate(impl_def_id), &ParamCandidate(ref vt)) => {
                 debug!("Considering whether to drop param {} in favor of impl {}",
                        candidate_i.repr(self.tcx()),
                        candidate_j.repr(self.tcx()));

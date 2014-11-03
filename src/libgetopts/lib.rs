@@ -145,19 +145,19 @@ pub struct Opt {
     pub aliases: Vec<Opt>,
 }
 
-/// One group of options, e.g., both -h and --help, along with
+/// One group of options, e.g., both `-h` and `--help`, along with
 /// their shared description and properties.
 #[deriving(Clone, PartialEq, Eq)]
 pub struct OptGroup {
-    /// Short Name of the `OptGroup`
+    /// Short name of the option, e.g. `h` for a `-h` option
     pub short_name: String,
-    /// Long Name of the `OptGroup`
+    /// Long name of the option, e.g. `help` for a `--help` option
     pub long_name: String,
-    /// Hint
+    /// Hint for argument, e.g. `FILE` for a `-o FILE` option
     pub hint: String,
-    /// Description
+    /// Description for usage help text
     pub desc: String,
-    /// Whether it has an argument
+    /// Whether option has an argument
     pub hasarg: HasArg,
     /// How often it can occur
     pub occur: Occur
@@ -393,6 +393,12 @@ fn find_opt(opts: &[Opt], nm: Name) -> Option<uint> {
 }
 
 /// Create a long option that is required and takes an argument.
+///
+/// * `short_name` - e.g. `"h"` for a `-h` option, or `""` for none
+/// * `long_name` - e.g. `"help"` for a `--help` option, or `""` for none
+/// * `desc` - Description for usage help
+/// * `hint` - Hint that is used in place of the argument in the usage help,
+///   e.g. `"FILE"` for a `-o FILE` option
 pub fn reqopt(short_name: &str, long_name: &str, desc: &str, hint: &str) -> OptGroup {
     let len = short_name.len();
     assert!(len == 1 || len == 0);
@@ -407,6 +413,12 @@ pub fn reqopt(short_name: &str, long_name: &str, desc: &str, hint: &str) -> OptG
 }
 
 /// Create a long option that is optional and takes an argument.
+///
+/// * `short_name` - e.g. `"h"` for a `-h` option, or `""` for none
+/// * `long_name` - e.g. `"help"` for a `--help` option, or `""` for none
+/// * `desc` - Description for usage help
+/// * `hint` - Hint that is used in place of the argument in the usage help,
+///   e.g. `"FILE"` for a `-o FILE` option
 pub fn optopt(short_name: &str, long_name: &str, desc: &str, hint: &str) -> OptGroup {
     let len = short_name.len();
     assert!(len == 1 || len == 0);
@@ -421,6 +433,10 @@ pub fn optopt(short_name: &str, long_name: &str, desc: &str, hint: &str) -> OptG
 }
 
 /// Create a long option that is optional and does not take an argument.
+///
+/// * `short_name` - e.g. `"h"` for a `-h` option, or `""` for none
+/// * `long_name` - e.g. `"help"` for a `--help` option, or `""` for none
+/// * `desc` - Description for usage help
 pub fn optflag(short_name: &str, long_name: &str, desc: &str) -> OptGroup {
     let len = short_name.len();
     assert!(len == 1 || len == 0);
@@ -436,6 +452,10 @@ pub fn optflag(short_name: &str, long_name: &str, desc: &str) -> OptGroup {
 
 /// Create a long option that can occur more than once and does not
 /// take an argument.
+///
+/// * `short_name` - e.g. `"h"` for a `-h` option, or `""` for none
+/// * `long_name` - e.g. `"help"` for a `--help` option, or `""` for none
+/// * `desc` - Description for usage help
 pub fn optflagmulti(short_name: &str, long_name: &str, desc: &str) -> OptGroup {
     let len = short_name.len();
     assert!(len == 1 || len == 0);
@@ -450,6 +470,12 @@ pub fn optflagmulti(short_name: &str, long_name: &str, desc: &str) -> OptGroup {
 }
 
 /// Create a long option that is optional and takes an optional argument.
+///
+/// * `short_name` - e.g. `"h"` for a `-h` option, or `""` for none
+/// * `long_name` - e.g. `"help"` for a `--help` option, or `""` for none
+/// * `desc` - Description for usage help
+/// * `hint` - Hint that is used in place of the argument in the usage help,
+///   e.g. `"FILE"` for a `-o FILE` option
 pub fn optflagopt(short_name: &str, long_name: &str, desc: &str, hint: &str) -> OptGroup {
     let len = short_name.len();
     assert!(len == 1 || len == 0);
@@ -465,6 +491,12 @@ pub fn optflagopt(short_name: &str, long_name: &str, desc: &str, hint: &str) -> 
 
 /// Create a long option that is optional, takes an argument, and may occur
 /// multiple times.
+///
+/// * `short_name` - e.g. `"h"` for a `-h` option, or `""` for none
+/// * `long_name` - e.g. `"help"` for a `--help` option, or `""` for none
+/// * `desc` - Description for usage help
+/// * `hint` - Hint that is used in place of the argument in the usage help,
+///   e.g. `"FILE"` for a `-o FILE` option
 pub fn optmulti(short_name: &str, long_name: &str, desc: &str, hint: &str) -> OptGroup {
     let len = short_name.len();
     assert!(len == 1 || len == 0);

@@ -663,28 +663,28 @@ impl<'a, 'b> Context<'a, 'b> {
     fn format_arg(ecx: &ExtCtxt, sp: Span,
                   ty: &ArgumentType, arg: P<ast::Expr>)
                   -> P<ast::Expr> {
-        let (krate, fmt_fn) = match *ty {
+        let trait_ = match *ty {
             Known(ref tyname) => {
                 match tyname.as_slice() {
-                    ""  => ("std", "secret_show"),
-                    "b" => ("std", "secret_bool"),
-                    "c" => ("std", "secret_char"),
-                    "d" | "i" => ("std", "secret_signed"),
-                    "e" => ("std", "secret_lower_exp"),
-                    "E" => ("std", "secret_upper_exp"),
-                    "f" => ("std", "secret_float"),
-                    "o" => ("std", "secret_octal"),
-                    "p" => ("std", "secret_pointer"),
-                    "s" => ("std", "secret_string"),
-                    "t" => ("std", "secret_binary"),
-                    "u" => ("std", "secret_unsigned"),
-                    "x" => ("std", "secret_lower_hex"),
-                    "X" => ("std", "secret_upper_hex"),
+                    ""  => "Show",
+                    "b" => "Bool",
+                    "c" => "Char",
+                    "d" | "i" => "Signed",
+                    "e" => "LowerExp",
+                    "E" => "UpperExp",
+                    "f" => "Float",
+                    "o" => "Octal",
+                    "p" => "Pointer",
+                    "s" => "String",
+                    "t" => "Binary",
+                    "u" => "Unsigned",
+                    "x" => "LowerHex",
+                    "X" => "UpperHex",
                     _ => {
                         ecx.span_err(sp,
                                      format!("unknown format trait `{}`",
                                              *tyname).as_slice());
-                        ("std", "dummy")
+                        "Dummy"
                     }
                 }
             }
@@ -697,9 +697,10 @@ impl<'a, 'b> Context<'a, 'b> {
         };
 
         let format_fn = ecx.path_global(sp, vec![
-                ecx.ident_of(krate),
+                ecx.ident_of("std"),
                 ecx.ident_of("fmt"),
-                ecx.ident_of(fmt_fn)]);
+                ecx.ident_of(trait_),
+                ecx.ident_of("fmt")]);
         ecx.expr_call_global(sp, vec![
                 ecx.ident_of("std"),
                 ecx.ident_of("fmt"),

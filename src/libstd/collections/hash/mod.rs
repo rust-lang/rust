@@ -10,24 +10,7 @@
 
 //! Unordered containers, implemented as hash-tables
 
-pub use self::map::HashMap;
-pub use self::map::Entries;
-pub use self::map::MutEntries;
-pub use self::map::MoveEntries;
-pub use self::map::Entry;
-pub use self::map::Occupied;
-pub use self::map::Vacant;
-pub use self::map::OccupiedEntry;
-pub use self::map::VacantEntry;
-pub use self::map::Keys;
-pub use self::map::Values;
-pub use self::map::INITIAL_CAPACITY;
-pub use self::set::HashSet;
-pub use self::set::SetItems;
-pub use self::set::SetMoveItems;
-pub use self::set::SetAlgebraItems;
-
 mod bench;
-mod map;
-mod set;
+pub mod map;
+pub mod set;
 mod table;

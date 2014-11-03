@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![deny(missing_doc)]
+#![deny(missing_docs)]
 #![doc="module"]
 
 #[doc="struct"]
