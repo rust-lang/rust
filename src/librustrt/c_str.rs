@@ -276,7 +276,7 @@ impl CString {
     /// terminator).
     #[inline]
     pub fn len(&self) -> uint {
-        unsafe { libc::strlen(self.buf) as uint }
+        unsafe { libc::strlen(self.as_ptr()) as uint }
     }
 
     /// Returns if there are no bytes in this string
@@ -295,17 +295,6 @@ impl Drop for CString {
     }
 }
 
-<<<<<<< HEAD
-=======
-impl Collection for CString {
-    /// Return the number of bytes in the CString (not including the NUL terminator).
-    #[inline]
-    fn len(&self) -> uint {
-        unsafe { libc::strlen(self.as_ptr()) as uint }
-    }
-}
-
->>>>>>> Split CString::new into CString::new and CString::new_owned
 impl fmt::Show for CString {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         String::from_utf8_lossy(self.as_bytes_no_nul()).fmt(f)
