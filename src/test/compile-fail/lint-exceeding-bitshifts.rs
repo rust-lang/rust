@@ -10,6 +10,7 @@
 
 #![deny(exceeding_bitshifts)]
 #![allow(unused_variables)]
+#![allow(dead_code)]
 
 fn main() {
       let n = 1u8 << 7;
@@ -54,5 +55,8 @@ fn main() {
 
       let n = 1u8 << (4+3);
       let n = 1u8 << (4+4); //~ ERROR: bitshift exceeds the type's number of bits
+
+      let n = 1i << std::int::BITS; //~ ERROR: bitshift exceeds the type's number of bits
+      let n = 1u << std::uint::BITS; //~ ERROR: bitshift exceeds the type's number of bits
 }
 
