@@ -9,7 +9,8 @@
 // except according to those terms.
 
 const
-mut //~ ERROR: const globals cannot be mutable, did you mean to declare a static?
+mut //~ ERROR: const globals cannot be mutable
+//~^ HELP did you mean to declare a static?
 FOO: uint = 3;
 
 fn main() {

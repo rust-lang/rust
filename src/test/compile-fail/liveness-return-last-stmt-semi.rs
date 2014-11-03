@@ -14,12 +14,12 @@
 
 macro_rules! test ( () => { fn foo() -> int { 1i; } } )
                                              //~^ ERROR not all control paths return a value
-                                             //~^^ NOTE consider removing this semicolon
+                                             //~^^ HELP consider removing this semicolon
 
 fn no_return() -> int {} //~ ERROR  not all control paths return a value
 
 fn bar(x: u32) -> u32 { //~ ERROR  not all control paths return a value
-    x * 2; //~ NOTE consider removing this semicolon
+    x * 2; //~ HELP consider removing this semicolon
 }
 
 fn baz(x: u64) -> u32 { //~ ERROR  not all control paths return a value

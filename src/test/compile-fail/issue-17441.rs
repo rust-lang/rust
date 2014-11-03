@@ -11,14 +11,14 @@
 fn main() {
     let _foo = &[1u, 2] as [uint];
     //~^ ERROR cast to unsized type: `&[uint, ..2]` as `[uint]`
-    //~^^ NOTE consider using an implicit coercion to `&[uint]` instead
+    //~^^ HELP consider using an implicit coercion to `&[uint]` instead
     let _bar = box 1u as std::fmt::Show;
     //~^ ERROR cast to unsized type: `Box<uint>` as `core::fmt::Show`
-    //~^^ NOTE did you mean `Box<core::fmt::Show>`?
+    //~^^ HELP did you mean `Box<core::fmt::Show>`?
     let _baz = 1u as std::fmt::Show;
     //~^ ERROR cast to unsized type: `uint` as `core::fmt::Show`
-    //~^^ NOTE consider using a box or reference as appropriate
+    //~^^ HELP consider using a box or reference as appropriate
     let _quux = [1u, 2] as [uint];
     //~^ ERROR cast to unsized type: `[uint, ..2]` as `[uint]`
-    //~^^ NOTE consider using a box or reference as appropriate
+    //~^^ HELP consider using a box or reference as appropriate
 }
