@@ -11,6 +11,9 @@
 use target::Target;
 
 pub fn target() -> Target {
+    let mut base = super::apple_base::opts();
+    base.pre_link_args.push("-m32".to_string());
+
     Target {
         data_layout: "e-p:32:32:32-i1:8:8-i8:8:8-i16:16:16\
                       -i32:32:32-i64:32:64\
@@ -22,7 +25,6 @@ pub fn target() -> Target {
         target_word_size: "32".to_string(),
         arch: "x86".to_string(),
         target_os: "macos".to_string(),
-
-        options: super::apple_base::opts()
+        options: base,
     }
 }
