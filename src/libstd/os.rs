@@ -32,11 +32,13 @@
 #![allow(non_snake_case)]
 
 use clone::Clone;
+use error::{FromError, Error};
 use fmt;
 use io::{IoResult, IoError};
 use iter::Iterator;
 use libc::{c_void, c_int};
 use libc;
+use boxed::Box;
 use ops::Drop;
 use option::{Some, None, Option};
 use os;
@@ -48,6 +50,7 @@ use slice::{AsSlice, ImmutableSlice, MutableSlice, ImmutablePartialEqSlice};
 use slice::CloneableVector;
 use str::{Str, StrSlice, StrAllocating};
 use string::String;
+use to_string::ToString;
 use sync::atomic::{AtomicInt, INIT_ATOMIC_INT, SeqCst};
 use vec::Vec;
 
@@ -1434,6 +1437,17 @@ impl fmt::Show for MapError {
             }
         };
         write!(out, "{}", str)
+    }
+}
+
+impl Error for MapError {
+    fn description(&self) -> &str { "memory map error" }
+    fn detail(&self) -> Option<String> { Some(self.to_string()) }
+}
+
+impl FromError<MapError> for Box<Error> {
+    fn from_error(err: MapError) -> Box<Error> {
+        box err
     }
 }
 

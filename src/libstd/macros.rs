@@ -317,8 +317,13 @@ macro_rules! local_data_key(
 /// error if the value of the expression is `Err`. For more information, see
 /// `std::io`.
 #[macro_export]
-macro_rules! try(
-    ($e:expr) => (match $e { Ok(e) => e, Err(e) => return Err(e) })
+macro_rules! try (
+    ($expr:expr) => ({
+        match $expr {
+            Ok(val) => val,
+            Err(err) => return Err(::std::error::FromError::from_error(err))
+        }
+    })
 )
 
 /// Create a `std::vec::Vec` containing the arguments.

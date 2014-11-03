@@ -218,6 +218,7 @@ pub mod time;
 
 /* Common traits */
 
+pub mod error;
 pub mod from_str;
 pub mod num;
 pub mod to_string;
@@ -257,6 +258,7 @@ mod std {
     pub use hash;
 
     pub use comm; // used for select!()
+    pub use error; // used for try!()
     pub use fmt; // used for any formatting strings
     pub use io; // used for println!()
     pub use local_data; // used for local_data_key!()

@@ -13,6 +13,7 @@
 //! Hex binary-to-text encoding
 use std::fmt;
 use std::string;
+use std::error;
 
 /// A trait for converting a value to hexadecimal encoding
 pub trait ToHex {
@@ -76,6 +77,20 @@ impl fmt::Show for FromHexError {
         }
     }
 }
+
+impl error::Error for FromHexError {
+    fn description(&self) -> &str {
+        match *self {
+            InvalidHexCharacter(_, _) => "invalid character",
+            InvalidHexLength => "invalid length",
+        }
+    }
+
+    fn detail(&self) -> Option<String> {
+        Some(self.to_string())
+    }
+}
+
 
 impl<'a> FromHex for &'a str {
     /**

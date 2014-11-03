@@ -313,6 +313,11 @@ fn io_error_to_error(io: io::IoError) -> ParserError {
     IoError(io.kind, io.desc)
 }
 
+impl std::error::Error for DecoderError {
+    fn description(&self) -> &str { "decoder error" }
+    fn detail(&self) -> Option<std::string::String> { Some(self.to_string()) }
+}
+
 pub type EncodeResult = io::IoResult<()>;
 pub type DecodeResult<T> = Result<T, DecoderError>;
 
