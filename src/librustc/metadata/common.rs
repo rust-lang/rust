@@ -148,7 +148,7 @@ impl astencode_tag {
     pub fn from_uint(value : uint) -> Option<astencode_tag> {
         let is_a_tag = first_astencode_tag <= value && value <= last_astencode_tag;
         if !is_a_tag { None } else {
-            Some(unsafe { mem::transmute(value) })
+            Some(unsafe { mem::transmute::<uint, astencode_tag>(value) })
         }
     }
 }
@@ -247,4 +247,3 @@ pub const tag_type_param_def: uint = 0xa5;
 
 pub const tag_item_generics: uint = 0xa6;
 pub const tag_method_ty_generics: uint = 0xa7;
-
