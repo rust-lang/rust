@@ -77,6 +77,7 @@ use slice::SliceExt;
 use string::String;
 use unicode;
 use vec::Vec;
+use slice::SliceConcatExt;
 
 pub use core::str::{from_utf8, CharEq, Chars, CharIndices};
 pub use core::str::{Bytes, CharSplits, is_utf8};
@@ -93,36 +94,7 @@ pub use core::str::{SplitN, RSplitN};
 Section: Creating a string
 */
 
-/// Methods for vectors of strings.
-#[unstable = "functionality may be replaced with iterators"]
-pub trait StrVector for Sized? {
-    /// Concatenates a vector of strings.
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// let first = "Restaurant at the End of the".to_string();
-    /// let second = " Universe".to_string();
-    /// let string_vec = vec![first, second];
-    /// assert_eq!(string_vec.concat(), "Restaurant at the End of the Universe".to_string());
-    /// ```
-    fn concat(&self) -> String;
-
-    /// Concatenates a vector of strings, placing a given separator between each.
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// let first = "Roast".to_string();
-    /// let second = "Sirloin Steak".to_string();
-    /// let string_vec = vec![first, second];
-    /// assert_eq!(string_vec.connect(", "), "Roast, Sirloin Steak".to_string());
-    /// ```
-    fn connect(&self, sep: &str) -> String;
-}
-
-#[allow(deprecated)]
-impl<S: Str> StrVector for [S] {
+impl<S: Str> SliceConcatExt<str, String> for [S] {
     fn concat(&self) -> String {
         if self.is_empty() {
             return String::new();
@@ -169,16 +141,9 @@ impl<S: Str> StrVector for [S] {
     }
 }
 
-impl<S: Str, T: AsSlice<S>> StrVector for T {
-    #[inline]
-    fn concat(&self) -> String {
-        self.as_slice().concat()
-    }
-
-    #[inline]
-    fn connect(&self, sep: &str) -> String {
-        self.as_slice().connect(sep)
-    }
+impl<S: Str> SliceConcatExt<str, String> for Vec<S> {
+    fn concat(&self) -> String { self[].concat() }
+    fn connect(&self, sep: &str) -> String { self[].connect(sep) }
 }
 
 /*

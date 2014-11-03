@@ -22,7 +22,7 @@ use option::Option::{None, Some};
 use kinds::Sized;
 use str::{FromStr, Str};
 use str;
-use slice::{CloneSliceExt, Splits, AsSlice, VectorVector,
+use slice::{CloneSliceExt, Split, AsSlice, SliceConcatExt,
             PartialEqSliceExt, SliceExt};
 use vec::Vec;
 
@@ -306,7 +306,7 @@ impl GenericPath for Path {
                     }
                 }
             }
-            Some(Path::new(comps.connect_vec(&SEP_BYTE)))
+            Some(Path::new(comps.as_slice().connect(&SEP_BYTE)))
         }
     }
 
