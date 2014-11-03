@@ -23,7 +23,6 @@ use middle::ty;
 use std::rc::Rc;
 use std::str;
 use std::string::String;
-use std::uint;
 use syntax::abi;
 use syntax::ast;
 use syntax::ast::*;
@@ -615,12 +614,12 @@ pub fn parse_def_id(buf: &[u8]) -> ast::DefId {
     let crate_part = buf[0u..colon_idx];
     let def_part = buf[colon_idx + 1u..len];
 
-    let crate_num = match uint::parse_bytes(crate_part, 10u) {
+    let crate_num = match str::from_utf8(crate_part).and_then(from_str::<uint>) {
        Some(cn) => cn as ast::CrateNum,
        None => panic!("internal error: parse_def_id: crate number expected, found {}",
                      crate_part)
     };
-    let def_num = match uint::parse_bytes(def_part, 10u) {
+    let def_num = match str::from_utf8(def_part).and_then(from_str::<uint>) {
        Some(dn) => dn as ast::NodeId,
        None => panic!("internal error: parse_def_id: id expected, found {}",
                      def_part)
