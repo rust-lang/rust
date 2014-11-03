@@ -383,7 +383,7 @@ impl<'a> Parser<'a> {
     /// characters.
     fn word(&mut self) -> &'a str {
         let start = match self.cur.clone().next() {
-            Some((pos, c)) if c.is_XID_start() => {
+            Some((pos, c)) if c.is_xid_start() => {
                 self.cur.next();
                 pos
             }
@@ -392,7 +392,7 @@ impl<'a> Parser<'a> {
         let mut end;
         loop {
             match self.cur.clone().next() {
-                Some((_, c)) if c.is_XID_continue() => {
+                Some((_, c)) if c.is_xid_continue() => {
                     self.cur.next();
                 }
                 Some((pos, _)) => { end = pos; break }
