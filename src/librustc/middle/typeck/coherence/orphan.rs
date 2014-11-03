@@ -41,7 +41,8 @@ impl<'cx, 'tcx,'v> visit::Visitor<'v> for OrphanChecker<'cx, 'tcx> {
                 let self_ty = ty::lookup_item_type(self.tcx, def_id).ty;
                 match ty::get(self_ty).sty {
                     ty::ty_enum(def_id, _) |
-                    ty::ty_struct(def_id, _) => {
+                    ty::ty_struct(def_id, _) |
+                    ty::ty_trait(box ty::TyTrait{ def_id, ..}) => {
                         if def_id.krate != ast::LOCAL_CRATE {
                             span_err!(self.tcx.sess, item.span, E0116,
                                       "cannot associate methods with a type outside the \
