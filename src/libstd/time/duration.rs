@@ -331,9 +331,12 @@ mod tests {
         assert_eq!(Duration::microseconds(1) * 10, Duration::microseconds(10));
         assert_eq!(Duration::microseconds(12) / 4, Duration::microseconds(3));
         // overflow checks
-        assert_eq!(Duration::microseconds(i64::MAX/TICKS_PER_MICROSECOND).checked_add(&Duration::seconds(1)), None);
-        assert_eq!(Duration::microseconds(101).checked_sub(&Duration::microseconds(1)), Some(Duration::microseconds(100)));
-        assert_eq!(Duration::microseconds(0).checked_sub(&Duration::microseconds(1)), Some(Duration::microseconds(-1)));
+        assert_eq!(Duration::microseconds(i64::MAX/TICKS_PER_MICROSECOND)
+                    .checked_add(&Duration::seconds(1)), None);
+        assert_eq!(Duration::microseconds(101).checked_sub(&Duration::microseconds(1)), 
+                    Some(Duration::microseconds(100)));
+        assert_eq!(Duration::microseconds(0).checked_sub(&Duration::microseconds(1)), 
+                    Some(Duration::microseconds(-1)));
     }
 
     #[test]
