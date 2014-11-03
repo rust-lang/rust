@@ -385,7 +385,7 @@ pub enum Pat_ {
     PatLit(P<Expr>),
     PatRange(P<Expr>, P<Expr>),
     /// [a, b, ..i, y, z] is represented as:
-    ///     PatVec(~[a, b], Some(i), ~[y, z])
+    ///     PatVec(box [a, b], Some(i), box [y, z])
     PatVec(Vec<P<Pat>>, Option<P<Pat>>, Vec<P<Pat>>),
     PatMac(Mac),
 }
