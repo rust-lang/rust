@@ -39,7 +39,7 @@ use std::cmp;
 use std::collections::HashMap;
 use std::collections::hash_map::{Occupied, Vacant};
 use std::slice;
-use std::{int, i8, i16, i32, i64, uint, u8, u16, u32, u64, f32, f64};
+use std::{i8, i16, i32, i64, u8, u16, u32, u64, f32, f64};
 use syntax::abi;
 use syntax::ast_map;
 use syntax::ast_util::is_shift_binop;
@@ -180,8 +180,8 @@ impl LintPass for TypeLimits {
 
                 if is_shift_binop(binop) {
                     let opt_ty_bits = match ty::get(ty::expr_ty(cx.tcx, &**l)).sty {
-                        ty::ty_int(t) => Some(int_ty_bits(t)),
-                        ty::ty_uint(t) => Some(uint_ty_bits(t)),
+                        ty::ty_int(t) => Some(int_ty_bits(t, cx.sess().targ_cfg.int_type)),
+                        ty::ty_uint(t) => Some(uint_ty_bits(t, cx.sess().targ_cfg.uint_type)),
                         _ => None
                     };
 
@@ -312,9 +312,9 @@ impl LintPass for TypeLimits {
             }
         }
 
-        fn int_ty_bits(int_ty: ast::IntTy) -> u64 {
+        fn int_ty_bits(int_ty: ast::IntTy, target_int_ty: ast::IntTy) -> u64 {
             match int_ty {
-                ast::TyI =>    int::BITS as u64,
+                ast::TyI =>    int_ty_bits(target_int_ty, target_int_ty),
                 ast::TyI8 =>   i8::BITS  as u64,
                 ast::TyI16 =>  i16::BITS as u64,
                 ast::TyI32 =>  i32::BITS as u64,
@@ -322,9 +322,9 @@ impl LintPass for TypeLimits {
             }
         }
 
-        fn uint_ty_bits(uint_ty: ast::UintTy) -> u64 {
+        fn uint_ty_bits(uint_ty: ast::UintTy, target_uint_ty: ast::UintTy) -> u64 {
             match uint_ty {
-                ast::TyU =>    uint::BITS as u64,
+                ast::TyU =>    uint_ty_bits(target_uint_ty, target_uint_ty),
                 ast::TyU8 =>   u8::BITS  as u64,
                 ast::TyU16 =>  u16::BITS as u64,
                 ast::TyU32 =>  u32::BITS as u64,
