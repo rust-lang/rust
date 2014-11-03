@@ -39,7 +39,7 @@ pub use ops::{Slice, SliceMut};
 pub use ops::{Fn, FnMut, FnOnce};
 
 // Reexported functions
-pub use iter::range;
+pub use iter::{range, repeat};
 pub use mem::drop;
 
 // Reexported types and traits
