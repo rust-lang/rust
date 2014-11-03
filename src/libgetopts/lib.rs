@@ -886,7 +886,7 @@ fn each_split_within<'a>(ss: &'a str, lim: uint, it: |&'a str| -> bool)
     }
 
     let machine: |&mut bool, (uint, char)| -> bool = |cont, (i, c)| {
-        let whitespace = if ::std::char::is_whitespace(c) { Ws }       else { Cr };
+        let whitespace = if c.is_whitespace() { Ws }       else { Cr };
         let limit      = if (i - slice_start + 1) <= lim  { UnderLim } else { OverLim };
 
         state = match (state, whitespace, limit) {

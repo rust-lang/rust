@@ -9,7 +9,6 @@
 // except according to those terms.
 
 use std::cell::RefCell;
-use std::char;
 use std::dynamic_lib::DynamicLibrary;
 use std::io::{Command, TempDir};
 use std::io;
@@ -300,8 +299,8 @@ impl Collector {
             // we use these headings as test names, so it's good if
             // they're valid identifiers.
             let name = name.chars().enumerate().map(|(i, c)| {
-                    if (i == 0 && char::is_XID_start(c)) ||
-                        (i != 0 && char::is_XID_continue(c)) {
+                    if (i == 0 && c.is_XID_start()) ||
+                        (i != 0 && c.is_XID_continue()) {
                         c
                     } else {
                         '_'
