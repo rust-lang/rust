@@ -166,7 +166,7 @@ pub fn width(c: char, is_cjk: bool) -> Option<uint> {
 pub trait UnicodeChar {
     /// Returns whether the specified character is considered a Unicode
     /// alphabetic code point.
-    fn is_alphabetic(&self) -> bool;
+    fn is_alphabetic(self) -> bool;
 
     /// Returns whether the specified character satisfies the 'XID_Start'
     /// Unicode property.
@@ -175,7 +175,7 @@ pub trait UnicodeChar {
     /// [UAX #31](http://unicode.org/reports/tr31/#NFKC_Modifications),
     /// mostly similar to ID_Start but modified for closure under NFKx.
     #[allow(non_snake_case)]
-    fn is_XID_start(&self) -> bool;
+    fn is_XID_start(self) -> bool;
 
     /// Returns whether the specified `char` satisfies the 'XID_Continue'
     /// Unicode property.
@@ -184,40 +184,40 @@ pub trait UnicodeChar {
     /// [UAX #31](http://unicode.org/reports/tr31/#NFKC_Modifications),
     /// mostly similar to 'ID_Continue' but modified for closure under NFKx.
     #[allow(non_snake_case)]
-    fn is_XID_continue(&self) -> bool;
+    fn is_XID_continue(self) -> bool;
 
 
     /// Indicates whether a character is in lowercase.
     ///
     /// This is defined according to the terms of the Unicode Derived Core
     /// Property `Lowercase`.
-    fn is_lowercase(&self) -> bool;
+    fn is_lowercase(self) -> bool;
 
     /// Indicates whether a character is in uppercase.
     ///
     /// This is defined according to the terms of the Unicode Derived Core
     /// Property `Uppercase`.
-    fn is_uppercase(&self) -> bool;
+    fn is_uppercase(self) -> bool;
 
     /// Indicates whether a character is whitespace.
     ///
     /// Whitespace is defined in terms of the Unicode Property `White_Space`.
-    fn is_whitespace(&self) -> bool;
+    fn is_whitespace(self) -> bool;
 
     /// Indicates whether a character is alphanumeric.
     ///
     /// Alphanumericness is defined in terms of the Unicode General Categories
     /// 'Nd', 'Nl', 'No' and the Derived Core Property 'Alphabetic'.
-    fn is_alphanumeric(&self) -> bool;
+    fn is_alphanumeric(self) -> bool;
 
     /// Indicates whether a character is a control code point.
     ///
     /// Control code points are defined in terms of the Unicode General
     /// Category `Cc`.
-    fn is_control(&self) -> bool;
+    fn is_control(self) -> bool;
 
     /// Indicates whether the character is numeric (Nd, Nl, or No).
-    fn is_numeric(&self) -> bool;
+    fn is_numeric(self) -> bool;
 
     /// Converts a character to its lowercase equivalent.
     ///
@@ -228,7 +228,7 @@ pub trait UnicodeChar {
     ///
     /// Returns the lowercase equivalent of the character, or the character
     /// itself if no conversion is possible.
-    fn to_lowercase(&self) -> char;
+    fn to_lowercase(self) -> char;
 
     /// Converts a character to its uppercase equivalent.
     ///
@@ -250,7 +250,7 @@ pub trait UnicodeChar {
     /// [`SpecialCasing`.txt`]: ftp://ftp.unicode.org/Public/UNIDATA/SpecialCasing.txt
     ///
     /// [2]: http://www.unicode.org/versions/Unicode4.0.0/ch03.pdf#G33992
-    fn to_uppercase(&self) -> char;
+    fn to_uppercase(self) -> char;
 
     /// Returns this character's displayed width in columns, or `None` if it is a
     /// control character other than `'\x00'`.
@@ -261,31 +261,33 @@ pub trait UnicodeChar {
     /// [Unicode Standard Annex #11](http://www.unicode.org/reports/tr11/)
     /// recommends that these characters be treated as 1 column (i.e.,
     /// `is_cjk` = `false`) if the context cannot be reliably determined.
-    fn width(&self, is_cjk: bool) -> Option<uint>;
+    #[experimental = "needs expert opinion. is_cjk flag stands out as ugly"]
+    fn width(self, is_cjk: bool) -> Option<uint>;
 }
 
 impl UnicodeChar for char {
-    fn is_alphabetic(&self) -> bool { is_alphabetic(*self) }
+    fn is_alphabetic(self) -> bool { is_alphabetic(self) }
 
-    fn is_XID_start(&self) -> bool { is_XID_start(*self) }
+    fn is_XID_start(self) -> bool { is_XID_start(self) }
 
-    fn is_XID_continue(&self) -> bool { is_XID_continue(*self) }
+    fn is_XID_continue(self) -> bool { is_XID_continue(self) }
 
-    fn is_lowercase(&self) -> bool { is_lowercase(*self) }
+    fn is_lowercase(self) -> bool { is_lowercase(self) }
 
-    fn is_uppercase(&self) -> bool { is_uppercase(*self) }
+    fn is_uppercase(self) -> bool { is_uppercase(self) }
 
-    fn is_whitespace(&self) -> bool { is_whitespace(*self) }
+    fn is_whitespace(self) -> bool { is_whitespace(self) }
 
-    fn is_alphanumeric(&self) -> bool { is_alphanumeric(*self) }
+    fn is_alphanumeric(self) -> bool { is_alphanumeric(self) }
 
-    fn is_control(&self) -> bool { is_control(*self) }
+    fn is_control(self) -> bool { is_control(self) }
 
-    fn is_numeric(&self) -> bool { is_digit(*self) }
+    fn is_numeric(self) -> bool { is_digit(self) }
 
-    fn to_lowercase(&self) -> char { to_lowercase(*self) }
+    fn to_lowercase(self) -> char { to_lowercase(self) }
 
-    fn to_uppercase(&self) -> char { to_uppercase(*self) }
+    fn to_uppercase(self) -> char { to_uppercase(self) }
 
-    fn width(&self, is_cjk: bool) -> Option<uint> { width(*self, is_cjk) }
+    #[experimental = "needs expert opinion. is_cjk flag stands out as ugly"]
+    fn width(self, is_cjk: bool) -> Option<uint> { width(self, is_cjk) }
 }
