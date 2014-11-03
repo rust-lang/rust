@@ -31,13 +31,16 @@ impl<'a> SpanUtils<'a> {
     pub fn extent_str(&self, span: Span) -> String {
         let lo_loc = self.sess.codemap().lookup_char_pos(span.lo);
         let hi_loc = self.sess.codemap().lookup_char_pos(span.hi);
-        let lo_pos = self.sess.codemap().lookup_byte_offset(span.lo).pos;
-        let hi_pos = self.sess.codemap().lookup_byte_offset(span.hi).pos;
+        let lo_pos = self.sess.codemap().bytepos_to_file_charpos(span.lo);
+        let hi_pos = self.sess.codemap().bytepos_to_file_charpos(span.hi);
+        let lo_pos_byte = self.sess.codemap().lookup_byte_offset(span.lo).pos;
+        let hi_pos_byte = self.sess.codemap().lookup_byte_offset(span.hi).pos;
 
-        format!("file_name,{},file_line,{},file_col,{},extent_start,{},\
-                 file_line_end,{},file_col_end,{},extent_end,{}",
-                lo_loc.file.name, lo_loc.line, lo_loc.col.to_uint(), lo_pos.to_uint(),
-                hi_loc.line, hi_loc.col.to_uint(), hi_pos.to_uint())
+        format!("file_name,{},file_line,{},file_col,{},extent_start,{},extent_start_bytes,{},\
+                 file_line_end,{},file_col_end,{},extent_end,{},extent_end_bytes,{}",
+                lo_loc.file.name,
+                lo_loc.line, lo_loc.col.to_uint(), lo_pos.to_uint(), lo_pos_byte.to_uint(),
+                hi_loc.line, hi_loc.col.to_uint(), hi_pos.to_uint(), hi_pos_byte.to_uint())
     }
 
     // sub_span starts at span.lo, so we need to adjust the positions etc.
