@@ -17,7 +17,7 @@ extern crate time;
 // These tests used to be separate files, but I wanted to refactor all
 // the common code.
 
-use std::hashmap::{HashMap, HashSet};
+use std::collections::{HashMap, HashSet};
 
 use rbml::reader as EBReader;
 use rbml::writer as EBWriter;

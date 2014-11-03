@@ -20,7 +20,7 @@ use ast::{Ident, Mrk, Name, SyntaxContext};
 use std::cell::RefCell;
 use std::rc::Rc;
 use std::collections::HashMap;
-use std::collections::hashmap::{Occupied, Vacant};
+use std::collections::hash_map::{Occupied, Vacant};
 
 /// The SCTable contains a table of SyntaxContext_'s. It
 /// represents a flattened tree structure, to avoid having

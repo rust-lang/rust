@@ -44,7 +44,7 @@ use middle::ty;
 use middle::ty_fold;
 use middle::ty_fold::TypeFoldable;
 use middle::ty_fold::TypeFolder;
-use std::collections::hashmap;
+use std::collections::hash_map;
 
 use super::InferCtxt;
 use super::unify::InferCtxtMethodsForSimplyUnifiableTypes;
@@ -52,7 +52,7 @@ use super::unify::InferCtxtMethodsForSimplyUnifiableTypes;
 pub struct TypeSkolemizer<'a, 'tcx:'a> {
     infcx: &'a InferCtxt<'a, 'tcx>,
     skolemization_count: uint,
-    skolemization_map: hashmap::HashMap<ty::InferTy, ty::t>,
+    skolemization_map: hash_map::HashMap<ty::InferTy, ty::t>,
 }
 
 impl<'a, 'tcx> TypeSkolemizer<'a, 'tcx> {
@@ -60,7 +60,7 @@ impl<'a, 'tcx> TypeSkolemizer<'a, 'tcx> {
         TypeSkolemizer {
             infcx: infcx,
             skolemization_count: 0,
-            skolemization_map: hashmap::HashMap::new(),
+            skolemization_map: hash_map::HashMap::new(),
         }
     }
 
@@ -76,8 +76,8 @@ impl<'a, 'tcx> TypeSkolemizer<'a, 'tcx> {
         }
 
         match self.skolemization_map.entry(key) {
-            hashmap::Occupied(entry) => *entry.get(),
-            hashmap::Vacant(entry) => {
+            hash_map::Occupied(entry) => *entry.get(),
+            hash_map::Vacant(entry) => {
                 let index = self.skolemization_count;
                 self.skolemization_count += 1;
                 let t = ty::mk_infer(self.infcx.tcx, skolemizer(index));

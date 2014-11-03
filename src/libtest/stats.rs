@@ -10,8 +10,8 @@
 
 #![allow(missing_docs)]
 
-use std::collections::hashmap;
-use std::collections::hashmap::{Occupied, Vacant};
+use std::collections::hash_map;
+use std::collections::hash_map::{Occupied, Vacant};
 use std::fmt::Show;
 use std::hash::Hash;
 use std::io;
@@ -440,8 +440,8 @@ pub fn write_boxplot<T: Float + Show + FromPrimitive>(
 
 /// Returns a HashMap with the number of occurrences of every element in the
 /// sequence that the iterator exposes.
-pub fn freq_count<T: Iterator<U>, U: Eq+Hash>(mut iter: T) -> hashmap::HashMap<U, uint> {
-    let mut map: hashmap::HashMap<U,uint> = hashmap::HashMap::new();
+pub fn freq_count<T: Iterator<U>, U: Eq+Hash>(mut iter: T) -> hash_map::HashMap<U, uint> {
+    let mut map: hash_map::HashMap<U,uint> = hash_map::HashMap::new();
     for elem in iter {
         match map.entry(elem) {
             Occupied(mut entry) => { *entry.get_mut() += 1; },

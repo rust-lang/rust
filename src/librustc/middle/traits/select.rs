@@ -29,7 +29,7 @@ use middle::typeck::infer;
 use middle::typeck::infer::{InferCtxt, TypeSkolemizer};
 use middle::ty_fold::TypeFoldable;
 use std::cell::RefCell;
-use std::collections::hashmap::HashMap;
+use std::collections::hash_map::HashMap;
 use std::rc::Rc;
 use syntax::ast;
 use util::ppaux::Repr;
