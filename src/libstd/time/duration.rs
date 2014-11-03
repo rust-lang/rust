@@ -21,8 +21,8 @@ macro_rules! try_opt(
     ($e:expr) => (match $e { Some(v) => v, None => return None })
 )
 
-/// An absolute amount of time, independent of time zones and calendars with tick precision. 
-/// A single tick represents 100 nanoseconds. A duration can express the positive or negative 
+/// An absolute amount of time, independent of time zones and calendars with tick precision.
+/// A single tick represents 100 nanoseconds. A duration can express the positive or negative
 /// difference between two instants in time according to a particular clock.
 #[deriving(Clone, PartialEq, Eq, PartialOrd, Ord, Zero, Default, Hash, Rand)]
 pub struct Duration(pub i64);
@@ -167,7 +167,7 @@ impl Add<Duration, Duration> for Duration {
 impl CheckedAdd for Duration {
     fn checked_add(&self, rhs: &Duration) -> Option<Duration> {
 		let result = try_opt!(self.num_ticks().checked_add(&rhs.num_ticks()));
-		Some(Duration(result)) 
+		Some(Duration(result))
     }
 }
 
@@ -180,19 +180,19 @@ impl Sub<Duration,Duration> for Duration {
 impl CheckedSub for Duration {
     fn checked_sub(&self, rhs: &Duration) -> Option<Duration> {
 		let result = try_opt!(self.num_ticks().checked_sub(&rhs.num_ticks()));
-        Some(Duration(result)) 
+        Some(Duration(result))
     }
 }
 
 impl Mul<i64, Duration> for Duration {
     fn mul(&self, rhs: &i64) -> Duration {
-        Duration(*rhs * self.num_ticks()) 
+        Duration(*rhs * self.num_ticks())
     }
 }
 
 impl Div<i64, Duration> for Duration {
     fn div(&self, rhs: &i64) -> Duration {
-        Duration(self.num_ticks() / *rhs) 
+        Duration(self.num_ticks() / *rhs)
     }
 }
 
