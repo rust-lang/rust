@@ -78,6 +78,46 @@ pub trait Rng {
         (self.next_u32() as u64 << 32) | (self.next_u32() as u64)
     }
 
+    /// Return the next random f32 selected from the half-open
+    /// interval `[0, 1)`.
+    ///
+    /// By default this is implemented in terms of `next_u32`, but a
+    /// random number generator which can generate numbers satisfying
+    /// the requirements directly can overload this for performance.
+    /// It is required that the return value lies in `[0, 1)`.
+    ///
+    /// See `Closed01` for the closed interval `[0,1]`, and
+    /// `Open01` for the open interval `(0,1)`.
+    fn next_f32(&mut self) -> f32 {
+        const MANTISSA_BITS: uint = 24;
+        const IGNORED_BITS: uint = 8;
+        const SCALE: f32 = (1u64 << MANTISSA_BITS) as f32;
+
+        // using any more than `MANTISSA_BITS` bits will
+        // cause (e.g.) 0xffff_ffff to correspond to 1
+        // exactly, so we need to drop some (8 for f32, 11
+        // for f64) to guarantee the open end.
+        (self.next_u32() >> IGNORED_BITS) as f32 / SCALE
+    }
+
+    /// Return the next random f64 selected from the half-open
+    /// interval `[0, 1)`.
+    ///
+    /// By default this is implemented in terms of `next_u64`, but a
+    /// random number generator which can generate numbers satisfying
+    /// the requirements directly can overload this for performance.
+    /// It is required that the return value lies in `[0, 1)`.
+    ///
+    /// See `Closed01` for the closed interval `[0,1]`, and
+    /// `Open01` for the open interval `(0,1)`.
+    fn next_f64(&mut self) -> f64 {
+        const MANTISSA_BITS: uint = 53;
+        const IGNORED_BITS: uint = 11;
+        const SCALE: f64 = (1u64 << MANTISSA_BITS) as f64;
+
+        (self.next_u64() >> IGNORED_BITS) as f64 / SCALE
+    }
+
     /// Fill `dest` with random data.
     ///
     /// This has a default implementation in terms of `next_u64` and
