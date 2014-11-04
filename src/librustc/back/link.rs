@@ -19,7 +19,7 @@ use driver::config::NoDebugInfo;
 use driver::session::Session;
 use driver::config;
 use metadata::common::LinkMeta;
-use metadata::{encoder, cstore, filesearch, csearch, loader, creader};
+use metadata::{encoder, cstore, filesearch, csearch, creader};
 use middle::trans::context::CrateContext;
 use middle::trans::common::gensym_name;
 use middle::ty;
@@ -36,7 +36,6 @@ use std::str;
 use std::string::String;
 use flate;
 use serialize::hex::ToHex;
-use syntax::abi;
 use syntax::ast;
 use syntax::ast_map::{PathElem, PathElems, PathName};
 use syntax::ast_map;
@@ -363,17 +362,8 @@ pub fn mangle_internal_name_by_path_and_seq(path: PathElems, flav: &str) -> Stri
 pub fn get_cc_prog(sess: &Session) -> String {
     match sess.opts.cg.linker {
         Some(ref linker) => return linker.to_string(),
-        None => {}
+        None => sess.target.target.options.linker.clone(),
     }
-
-    // In the future, FreeBSD will use clang as default compiler.
-    // It would be flexible to use cc (system's default C compiler)
-    // instead of hard-coded gcc.
-    // For Windows, there is no cc command, so we add a condition to make it use gcc.
-    match sess.targ_cfg.os {
-        abi::OsWindows => "gcc",
-        _ => "cc",
-    }.to_string()
 }
 
 pub fn remove(sess: &Session, path: &Path) {
@@ -397,7 +387,7 @@ pub fn link_binary(sess: &Session,
     for &crate_type in sess.crate_types.borrow().iter() {
         if invalid_output_for_target(sess, crate_type) {
             sess.bug(format!("invalid output type `{}` for target os `{}`",
-                             crate_type, sess.targ_cfg.os).as_slice());
+                             crate_type, sess.opts.target_triple).as_slice());
         }
         let out_file = link_binary_output(sess, trans, crate_type, outputs,
                                           crate_name);
@@ -427,17 +417,20 @@ pub fn link_binary(sess: &Session,
 /// interaction with Rust code through static library is the only
 /// option for now
 pub fn default_output_for_target(sess: &Session) -> config::CrateType {
-    match sess.targ_cfg.os {
-        abi::OsiOS => config::CrateTypeStaticlib,
-        _ => config::CrateTypeExecutable
+    if !sess.target.target.options.executables {
+        config::CrateTypeStaticlib
+    } else {
+        config::CrateTypeExecutable
     }
 }
 
 /// Checks if target supports crate_type as output
 pub fn invalid_output_for_target(sess: &Session,
                                  crate_type: config::CrateType) -> bool {
-    match (sess.targ_cfg.os, crate_type) {
-        (abi::OsiOS, config::CrateTypeDylib) => true,
+    match (sess.target.target.options.dynamic_linking,
+           sess.target.target.options.executables, crate_type) {
+        (false, _, config::CrateTypeDylib) => true,
+        (_, false, config::CrateTypeExecutable) => true,
         _ => false
     }
 }
@@ -459,15 +452,8 @@ pub fn filename_for_input(sess: &Session,
             out_filename.with_filename(format!("lib{}.rlib", libname))
         }
         config::CrateTypeDylib => {
-            let (prefix, suffix) = match sess.targ_cfg.os {
-                abi::OsWindows => (loader::WIN32_DLL_PREFIX, loader::WIN32_DLL_SUFFIX),
-                abi::OsMacos => (loader::MACOS_DLL_PREFIX, loader::MACOS_DLL_SUFFIX),
-                abi::OsLinux => (loader::LINUX_DLL_PREFIX, loader::LINUX_DLL_SUFFIX),
-                abi::OsAndroid => (loader::ANDROID_DLL_PREFIX, loader::ANDROID_DLL_SUFFIX),
-                abi::OsFreebsd => (loader::FREEBSD_DLL_PREFIX, loader::FREEBSD_DLL_SUFFIX),
-                abi::OsDragonfly => (loader::DRAGONFLY_DLL_PREFIX, loader::DRAGONFLY_DLL_SUFFIX),
-                abi::OsiOS => unreachable!(),
-            };
+            let (prefix, suffix) = (sess.target.target.options.dll_prefix.as_slice(),
+                                    sess.target.target.options.dll_suffix.as_slice());
             out_filename.with_filename(format!("{}{}{}",
                                                prefix,
                                                libname,
@@ -477,15 +463,8 @@ pub fn filename_for_input(sess: &Session,
             out_filename.with_filename(format!("lib{}.a", libname))
         }
         config::CrateTypeExecutable => {
-            match sess.targ_cfg.os {
-                abi::OsWindows => out_filename.with_extension("exe"),
-                abi::OsMacos |
-                abi::OsLinux |
-                abi::OsAndroid |
-                abi::OsFreebsd |
-                abi::OsDragonfly |
-                abi::OsiOS => out_filename.clone(),
-            }
+            let suffix = sess.target.target.options.exe_suffix.as_slice();
+            out_filename.with_filename(format!("{}{}", libname, suffix))
         }
     }
 }
@@ -562,7 +541,8 @@ fn link_rlib<'a>(sess: &'a Session,
         handler: handler,
         dst: out_filename.clone(),
         lib_search_paths: archive_search_paths(sess),
-        os: sess.targ_cfg.os,
+        slib_prefix: sess.target.target.options.staticlib_prefix.clone(),
+        slib_suffix: sess.target.target.options.staticlib_suffix.clone(),
         maybe_ar_prog: sess.opts.cg.ar.clone()
     };
     let mut ab = ArchiveBuilder::create(config);
@@ -581,12 +561,12 @@ fn link_rlib<'a>(sess: &'a Session,
     // symbol table of the archive.
     ab.update_symbols();
 
-    let mut ab = match sess.targ_cfg.os {
+    let mut ab = match sess.target.target.options.is_like_osx {
         // For OSX/iOS, we must be careful to update symbols only when adding
         // object files.  We're about to start adding non-object files, so run
         // `ar` now to process the object files.
-        abi::OsMacos | abi::OsiOS => ab.build().extend(),
-        _ => ab,
+        true => ab.build().extend(),
+        false => ab,
     };
 
     // Note that it is important that we add all of our non-object "magical
@@ -686,6 +666,13 @@ fn link_rlib<'a>(sess: &'a Session,
                     remove(sess, &bc_filename);
                 }
             }
+
+            // After adding all files to the archive, we need to update the
+            // symbol table of the archive. This currently dies on OSX (see
+            // #11162), and isn't necessary there anyway
+            if !sess.target.target.options.is_like_osx {
+                ab.update_symbols();
+            }
         }
 
         None => {}
@@ -734,11 +721,13 @@ fn write_rlib_bytecode_object_v1<T: Writer>(writer: &mut T,
 // metadata file).
 fn link_staticlib(sess: &Session, obj_filename: &Path, out_filename: &Path) {
     let ab = link_rlib(sess, None, obj_filename, out_filename);
-    let mut ab = match sess.targ_cfg.os {
-        abi::OsMacos | abi::OsiOS => ab.build().extend(),
-        _ => ab,
+    let mut ab = match sess.target.target.options.is_like_osx {
+        true => ab.build().extend(),
+        false => ab,
     };
-    ab.add_native_library("morestack").unwrap();
+    if sess.target.target.options.morestack {
+        ab.add_native_library("morestack").unwrap();
+    }
     ab.add_native_library("compiler-rt").unwrap();
 
     let crates = sess.cstore.get_used_crates(cstore::RequireStatic);
@@ -791,9 +780,13 @@ fn link_natively(sess: &Session, trans: &CrateTranslation, dylib: bool,
     let pname = get_cc_prog(sess);
     let mut cmd = Command::new(pname.as_slice());
 
-    cmd.args(sess.targ_cfg.target_strs.cc_args.as_slice());
+    cmd.args(sess.target.target.options.pre_link_args.as_slice());
     link_args(&mut cmd, sess, dylib, tmpdir.path(),
               trans, obj_filename, out_filename);
+    cmd.args(sess.target.target.options.post_link_args.as_slice());
+    if !sess.target.target.options.no_compiler_rt {
+        cmd.arg("-lcompiler-rt");
+    }
 
     if (sess.opts.debugging_opts & config::PRINT_LINK_ARGS) != 0 {
         println!("{}", &cmd);
@@ -831,16 +824,15 @@ fn link_natively(sess: &Session, trans: &CrateTranslation, dylib: bool,
 
     // On OSX, debuggers need this utility to get run to do some munging of
     // the symbols
-    if (sess.targ_cfg.os == abi::OsMacos || sess.targ_cfg.os == abi::OsiOS)
-        && (sess.opts.debuginfo != NoDebugInfo) {
-            match Command::new("dsymutil").arg(out_filename).output() {
-                Ok(..) => {}
-                Err(e) => {
-                    sess.err(format!("failed to run dsymutil: {}", e).as_slice());
-                    sess.abort_if_errors();
-                }
+    if sess.target.target.options.is_like_osx && sess.opts.debuginfo != NoDebugInfo {
+        match Command::new("dsymutil").arg(out_filename).output() {
+            Ok(..) => {}
+            Err(e) => {
+                sess.err(format!("failed to run dsymutil: {}", e).as_slice());
+                sess.abort_if_errors();
             }
         }
+    }
 }
 
 fn link_args(cmd: &mut Command,
@@ -854,9 +846,14 @@ fn link_args(cmd: &mut Command,
     // The default library location, we need this to find the runtime.
     // The location of crates will be determined as needed.
     let lib_path = sess.target_filesearch().get_lib_path();
+
+    // target descriptor
+    let t = &sess.target.target;
+
     cmd.arg("-L").arg(&lib_path);
 
     cmd.arg("-o").arg(out_filename).arg(obj_filename);
+
 
     // Stack growth requires statically linking a __morestack function. Note
     // that this is listed *before* all other libraries. Due to the usage of the
@@ -874,17 +871,15 @@ fn link_args(cmd: &mut Command,
     // all contents of this library. This way we're guaranteed that the linker
     // will include the __morestack symbol 100% of the time, always resolving
     // references to it even if the object above didn't use it.
-    match sess.targ_cfg.os {
-        abi::OsMacos | abi::OsiOS => {
+    if t.options.morestack {
+        if t.options.is_like_osx {
             let morestack = lib_path.join("libmorestack.a");
 
             let mut v = b"-Wl,-force_load,".to_vec();
             v.push_all(morestack.as_vec());
             cmd.arg(v.as_slice());
-        }
-        _ => {
-            cmd.args(["-Wl,--whole-archive", "-lmorestack",
-                      "-Wl,--no-whole-archive"]);
+        } else {
+            cmd.args(["-Wl,--whole-archive", "-lmorestack", "-Wl,--no-whole-archive"]);
         }
     }
 
@@ -895,60 +890,10 @@ fn link_args(cmd: &mut Command,
         cmd.arg(obj_filename.with_extension("metadata.o"));
     }
 
-    // We want to prevent the compiler from accidentally leaking in any system
-    // libraries, so we explicitly ask gcc to not link to any libraries by
-    // default. Note that this does not happen for windows because windows pulls
-    // in some large number of libraries and I couldn't quite figure out which
-    // subset we wanted.
-    //
-    // FIXME(#11937) we should invoke the system linker directly
-    if sess.targ_cfg.os != abi::OsWindows {
-        cmd.arg("-nodefaultlibs");
-    }
-
     // Rust does its' own LTO
     cmd.arg("-fno-lto");
 
-    // clang fails hard if -fno-use-linker-plugin is passed
-    if sess.targ_cfg.os == abi::OsWindows {
-        cmd.arg("-fno-use-linker-plugin");
-    }
-
-    // If we're building a dylib, we don't use --gc-sections because LLVM has
-    // already done the best it can do, and we also don't want to eliminate the
-    // metadata. If we're building an executable, however, --gc-sections drops
-    // the size of hello world from 1.8MB to 597K, a 67% reduction.
-    if !dylib && sess.targ_cfg.os != abi::OsMacos && sess.targ_cfg.os != abi::OsiOS {
-        cmd.arg("-Wl,--gc-sections");
-    }
-
-    let used_link_args = sess.cstore.get_used_link_args().borrow();
-
-    // Dynamically linked executables can be compiled as position independent if the default
-    // relocation model of position independent code is not changed. This is a requirement to take
-    // advantage of ASLR, as otherwise the functions in the executable are not randomized and can
-    // be used during an exploit of a vulnerability in any code.
-    if sess.targ_cfg.os == abi::OsLinux {
-        let mut args = sess.opts.cg.link_args.iter().chain(used_link_args.iter());
-        if !dylib && sess.opts.cg.relocation_model.as_slice() == "pic" &&
-            !args.any(|x| x.as_slice() == "-static") {
-            cmd.arg("-pie");
-        }
-    }
-
-    if sess.targ_cfg.os == abi::OsLinux || sess.targ_cfg.os == abi::OsDragonfly {
-        // GNU-style linkers will use this to omit linking to libraries which
-        // don't actually fulfill any relocations, but only for libraries which
-        // follow this flag. Thus, use it before specifying libraries to link to.
-        cmd.arg("-Wl,--as-needed");
-
-        // GNU-style linkers support optimization with -O. GNU ld doesn't need a
-        // numeric argument, but other linkers do.
-        if sess.opts.optimize == config::Default ||
-           sess.opts.optimize == config::Aggressive {
-            cmd.arg("-Wl,-O1");
-        }
-    } else if sess.targ_cfg.os == abi::OsMacos || sess.targ_cfg.os == abi::OsiOS {
+    if t.options.is_like_osx {
         // The dead_strip option to the linker specifies that functions and data
         // unreachable by the entry point will be removed. This is quite useful
         // with Rust's compilation model of compiling libraries at a time into
@@ -959,67 +904,58 @@ fn link_args(cmd: &mut Command,
         // won't get much benefit from dylibs because LLVM will have already
         // stripped away as much as it could. This has not been seen to impact
         // link times negatively.
+        //
+        // -dead_strip can't be part of the pre_link_args because it's also used for partial
+        // linking when using multiple codegen units (-r). So we insert it here.
         cmd.arg("-Wl,-dead_strip");
     }
 
-    if sess.targ_cfg.os == abi::OsWindows {
-        if sess.targ_cfg.arch == abi::X86 {
-            // Make sure that we link to the dynamic libgcc, otherwise cross-module
-            // DWARF stack unwinding will not work.
-            // This behavior may be overridden by -Clink-args="-static-libgcc"
-            cmd.arg("-shared-libgcc");
-        } else {
-            // On Win64 unwinding is handled by the OS, so we can link libgcc statically.
-            cmd.arg("-static-libgcc");
-        }
+    // If we're building a dylib, we don't use --gc-sections because LLVM has
+    // already done the best it can do, and we also don't want to eliminate the
+    // metadata. If we're building an executable, however, --gc-sections drops
+    // the size of hello world from 1.8MB to 597K, a 67% reduction.
+    if !dylib && !t.options.is_like_osx {
+        cmd.arg("-Wl,--gc-sections");
+    }
 
-        // And here, we see obscure linker flags #45. On windows, it has been
-        // found to be necessary to have this flag to compile liblibc.
-        //
-        // First a bit of background. On Windows, the file format is not ELF,
-        // but COFF (at least according to LLVM). COFF doesn't officially allow
-        // for section names over 8 characters, apparently. Our metadata
-        // section, ".note.rustc", you'll note is over 8 characters.
-        //
-        // On more recent versions of gcc on mingw, apparently the section name
-        // is *not* truncated, but rather stored elsewhere in a separate lookup
-        // table. On older versions of gcc, they apparently always truncated the
-        // section names (at least in some cases). Truncating the section name
-        // actually creates "invalid" objects [1] [2], but only for some
-        // introspection tools, not in terms of whether it can be loaded.
-        //
-        // Long story short, passing this flag forces the linker to *not*
-        // truncate section names (so we can find the metadata section after
-        // it's compiled). The real kicker is that rust compiled just fine on
-        // windows for quite a long time *without* this flag, so I have no idea
-        // why it suddenly started failing for liblibc. Regardless, we
-        // definitely don't want section name truncation, so we're keeping this
-        // flag for windows.
-        //
-        // [1] - https://sourceware.org/bugzilla/show_bug.cgi?id=13130
-        // [2] - https://code.google.com/p/go/issues/detail?id=2139
-        cmd.arg("-Wl,--enable-long-section-names");
+    let used_link_args = sess.cstore.get_used_link_args().borrow();
 
-        // Always enable DEP (NX bit) when it is available
-        cmd.arg("-Wl,--nxcompat");
-
-        // Mark all dynamic libraries and executables as compatible with ASLR
-        // FIXME #16514: ASLR is disabled on Windows due to MinGW-w64 bugs:
-        // FIXME #17098: ASLR breaks gdb on Windows
-        // FIXME #17684: ASLR breaks thread-local storage on Windows
-        //cmd.arg("-Wl,--dynamicbase");
-
-        // Mark all dynamic libraries and executables as compatible with the larger 4GiB address
-        // space available to x86 Windows binaries on x86_64.
-        if sess.targ_cfg.arch == abi::X86 {
-            cmd.arg("-Wl,--large-address-aware");
+    if t.options.position_independant_executables {
+        let empty_vec = Vec::new();
+        let empty_str = String::new();
+        let args = sess.opts.cg.link_args.as_ref().unwrap_or(&empty_vec);
+        let mut args = args.iter().chain(used_link_args.iter());
+        if !dylib
+            && (t.options.relocation_model.as_slice() == "pic"
+                || sess.opts.cg.relocation_model.as_ref()
+                   .unwrap_or(&empty_str).as_slice() == "pic")
+            && !args.any(|x| x.as_slice() == "-static") {
+            cmd.arg("-pie");
         }
     }
 
-    if sess.targ_cfg.os == abi::OsAndroid {
-        // Many of the symbols defined in compiler-rt are also defined in libgcc.
-        // Android linker doesn't like that by default.
-        cmd.arg("-Wl,--allow-multiple-definition");
+    if t.options.linker_is_gnu {
+        // GNU-style linkers support optimization with -O. GNU ld doesn't need a
+        // numeric argument, but other linkers do.
+        if sess.opts.optimize == config::Default ||
+           sess.opts.optimize == config::Aggressive {
+            cmd.arg("-Wl,-O1");
+        }
+    }
+
+    // We want to prevent the compiler from accidentally leaking in any system
+    // libraries, so we explicitly ask gcc to not link to any libraries by
+    // default. Note that this does not happen for windows because windows pulls
+    // in some large number of libraries and I couldn't quite figure out which
+    // subset we wanted.
+    if !t.options.is_like_windows {
+        cmd.arg("-nodefaultlibs");
+    }
+
+    // Mark all dynamic libraries and executables as compatible with ASLR
+    // FIXME #17098: ASLR breaks gdb
+    if t.options.is_like_windows && sess.opts.debuginfo == NoDebugInfo {
+        // cmd.arg("-Wl,--dynamicbase");
     }
 
     // Take careful note of the ordering of the arguments we pass to the linker
@@ -1063,7 +999,7 @@ fn link_args(cmd: &mut Command,
 
     if dylib {
         // On mac we need to tell the linker to let this library be rpathed
-        if sess.targ_cfg.os == abi::OsMacos {
+        if sess.target.target.options.is_like_osx {
             cmd.args(["-dynamiclib", "-Wl,-dylib"]);
 
             if sess.opts.cg.rpath {
@@ -1075,18 +1011,6 @@ fn link_args(cmd: &mut Command,
             cmd.arg("-shared");
         }
     }
-
-    if sess.targ_cfg.os == abi::OsFreebsd {
-        cmd.args(["-L/usr/local/lib",
-                  "-L/usr/local/lib/gcc46",
-                  "-L/usr/local/lib/gcc44"]);
-    }
-    else if sess.targ_cfg.os == abi::OsDragonfly {
-        cmd.args(["-L/usr/local/lib",
-                  "-L/usr/lib/gcc47",
-                  "-L/usr/lib/gcc44"]);
-    }
-
 
     // FIXME (#2397): At some point we want to rpath our guesses as to
     // where extern libraries might live, based on the
@@ -1103,27 +1027,20 @@ fn link_args(cmd: &mut Command,
             path
         };
         let rpath_config = RPathConfig {
-            os: sess.targ_cfg.os,
             used_crates: sess.cstore.get_used_crates(cstore::RequireDynamic),
             out_filename: out_filename.clone(),
+            has_rpath: sess.target.target.options.has_rpath,
+            is_like_osx: sess.target.target.options.is_like_osx,
             get_install_prefix_lib_path: get_install_prefix_lib_path,
             realpath: ::util::fs::realpath
         };
         cmd.args(rpath::get_rpath_flags(rpath_config).as_slice());
     }
 
-    // compiler-rt contains implementations of low-level LLVM helpers. This is
-    // used to resolve symbols from the object file we just created, as well as
-    // any system static libraries that may be expecting gcc instead. Most
-    // symbols in libgcc also appear in compiler-rt.
-    //
-    // This is the end of the command line, so this library is used to resolve
-    // *all* undefined symbols in all other libraries, and this is intentional.
-    cmd.arg("-lcompiler-rt");
-
     // Finally add all the linker arguments provided on the command line along
     // with any #[link_args] attributes found inside the crate
-    cmd.args(sess.opts.cg.link_args.as_slice());
+    let empty = Vec::new();
+    cmd.args(sess.opts.cg.link_args.as_ref().unwrap_or(&empty).as_slice());
     cmd.args(used_link_args.as_slice());
 }
 
@@ -1152,8 +1069,7 @@ fn add_local_native_libraries(cmd: &mut Command, sess: &Session) {
     // For those that support this, we ensure we pass the option if the library
     // was flagged "static" (most defaults are dynamic) to ensure that if
     // libfoo.a and libfoo.so both exist that the right one is chosen.
-    let takes_hints = sess.targ_cfg.os != abi::OsMacos &&
-                      sess.targ_cfg.os != abi::OsiOS;
+    let takes_hints = !sess.target.target.options.is_like_osx;
 
     let libs = sess.cstore.get_used_libraries();
     let libs = libs.borrow();
@@ -1184,7 +1100,8 @@ fn add_local_native_libraries(cmd: &mut Command, sess: &Session) {
             // -force_load is the OSX equivalent of --whole-archive, but it
             // involves passing the full path to the library to link.
             let lib = archive::find_library(l.as_slice(),
-                                            sess.targ_cfg.os,
+                                            sess.target.target.options.staticlib_prefix.as_slice(),
+                                            sess.target.target.options.staticlib_suffix.as_slice(),
                                             search_path.as_slice(),
                                             &sess.diagnostic().handler);
             let mut v = b"-Wl,-force_load,".to_vec();
@@ -1257,7 +1174,7 @@ fn add_upstream_rust_crates(cmd: &mut Command, sess: &Session,
 
     // Converts a library file-stem into a cc -l argument
     fn unlib<'a>(config: &config::Config, stem: &'a [u8]) -> &'a [u8] {
-        if stem.starts_with("lib".as_bytes()) && config.os != abi::OsWindows {
+        if stem.starts_with("lib".as_bytes()) && !config.target.options.is_like_windows {
             stem[3..]
         } else {
             stem
@@ -1315,7 +1232,8 @@ fn add_upstream_rust_crates(cmd: &mut Command, sess: &Session,
                     handler: handler,
                     dst: dst.clone(),
                     lib_search_paths: archive_search_paths(sess),
-                    os: sess.targ_cfg.os,
+                    slib_prefix: sess.target.target.options.staticlib_prefix.clone(),
+                    slib_suffix: sess.target.target.options.staticlib_suffix.clone(),
                     maybe_ar_prog: sess.opts.cg.ar.clone()
                 };
                 let mut archive = Archive::open(config);
@@ -1342,7 +1260,7 @@ fn add_upstream_rust_crates(cmd: &mut Command, sess: &Session,
         if !dir.is_empty() { cmd.arg("-L").arg(dir); }
 
         let mut v = "-l".as_bytes().to_vec();
-        v.push_all(unlib(&sess.targ_cfg, cratepath.filestem().unwrap()));
+        v.push_all(unlib(&sess.target, cratepath.filestem().unwrap()));
         cmd.arg(v.as_slice());
     }
 }

@@ -1,0 +1,9 @@
+{
+    "data-layout": "e-p:32:32-f64:32:64-i64:32:64-f80:32:32-n8:16:32",
+    "llvm-target": "i686-unknown-linux-gnu",
+    "target-endian": "little",
+    "target-word-size": "32",
+    "arch": "x86",
+    "os": "linux",
+    "morestack": false
+}

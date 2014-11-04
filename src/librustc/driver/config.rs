@@ -17,17 +17,15 @@ use driver::session::Session;
 
 use back;
 use back::write;
-use back::target_strs;
-use back::{arm, x86, x86_64, mips, mipsel};
+use rustc_back::target::Target;
 use lint;
 use metadata::cstore;
 
-use syntax::abi;
 use syntax::ast;
 use syntax::ast::{IntTy, UintTy};
 use syntax::attr;
 use syntax::attr::AttrMetaMethods;
-use syntax::diagnostic::{ColorConfig, Auto, Always, Never};
+use syntax::diagnostic::{ColorConfig, Auto, Always, Never, SpanHandler};
 use syntax::parse;
 use syntax::parse::token::InternedString;
 
@@ -41,9 +39,7 @@ use std::fmt;
 use llvm;
 
 pub struct Config {
-    pub os: abi::Os,
-    pub arch: abi::Architecture,
-    pub target_strs: target_strs::t,
+    pub target: Target,
     pub int_type: IntTy,
     pub uint_type: UintTy,
 }
@@ -291,6 +287,13 @@ macro_rules! cgoptions(
             }
         }
 
+        fn parse_opt_bool(slot: &mut Option<bool>, v: Option<&str>) -> bool {
+            match v {
+                Some(..) => false,
+                None => { *slot = Some(true); true }
+            }
+        }
+
         fn parse_opt_string(slot: &mut Option<String>, v: Option<&str>) -> bool {
             match v {
                 Some(s) => { *slot = Some(s.to_string()); true },
@@ -312,6 +315,18 @@ macro_rules! cgoptions(
                     for s in s.words() {
                         slot.push(s.to_string());
                     }
+                    true
+                },
+                None => false,
+            }
+        }
+
+        fn parse_opt_list(slot: &mut Option<Vec<String>>, v: Option<&str>)
+                      -> bool {
+            match v {
+                Some(s) => {
+                    let v = s.words().map(|s| s.to_string()).collect();
+                    *slot = Some(v);
                     true
                 },
                 None => false,
@@ -351,11 +366,11 @@ cgoptions!(
         "tool to assemble archives with"),
     linker: Option<String> = (None, parse_opt_string,
         "system linker to link outputs with"),
-    link_args: Vec<String> = (Vec::new(), parse_list,
+    link_args: Option<Vec<String>> = (None, parse_opt_list,
         "extra arguments to pass to the linker (space separated)"),
     lto: bool = (false, parse_bool,
         "perform LLVM link-time optimizations"),
-    target_cpu: String = ("generic".to_string(), parse_string,
+    target_cpu: Option<String> = (None, parse_opt_string,
         "select target processor (llc -mcpu=help for details)"),
     target_feature: String = ("".to_string(), parse_string,
         "target specific attributes (llc -mattr=help for details)"),
@@ -379,11 +394,11 @@ cgoptions!(
         "prefer dynamic linking to static linking"),
     no_integrated_as: bool = (false, parse_bool,
         "use an external assembler rather than LLVM's integrated one"),
-    no_redzone: bool = (false, parse_bool,
+    no_redzone: Option<bool> = (None, parse_opt_bool,
         "disable the use of the redzone"),
-    relocation_model: String = ("pic".to_string(), parse_string,
+    relocation_model: Option<String> = (None, parse_opt_string,
          "choose the relocation model to use (llc -relocation-model for details)"),
-    code_model: String = ("default".to_string(), parse_string,
+    code_model: Option<String> = (None, parse_opt_string,
          "choose the code model to use (llc -code-model for details)"),
     metadata: Vec<String> = (Vec::new(), parse_list,
          "metadata to mangle symbol names with"),
@@ -437,40 +452,27 @@ pub fn default_lib_output() -> CrateType {
 }
 
 pub fn default_configuration(sess: &Session) -> ast::CrateConfig {
-    let tos = match sess.targ_cfg.os {
-        abi::OsWindows =>   InternedString::new("windows"),
-        abi::OsMacos =>     InternedString::new("macos"),
-        abi::OsLinux =>     InternedString::new("linux"),
-        abi::OsAndroid =>   InternedString::new("android"),
-        abi::OsFreebsd =>   InternedString::new("freebsd"),
-        abi::OsDragonfly => InternedString::new("dragonfly"),
-        abi::OsiOS =>       InternedString::new("ios"),
-    };
+    use syntax::parse::token::intern_and_get_ident as intern;
 
-    // ARM is bi-endian, however using NDK seems to default
-    // to little-endian unless a flag is provided.
-    let (end,arch,wordsz) = match sess.targ_cfg.arch {
-        abi::X86 =>    ("little", "x86",    "32"),
-        abi::X86_64 => ("little", "x86_64", "64"),
-        abi::Arm =>    ("little", "arm",    "32"),
-        abi::Mips =>   ("big",    "mips",   "32"),
-        abi::Mipsel => ("little", "mipsel", "32")
-    };
+    let end = sess.target.target.target_endian.as_slice();
+    let arch = sess.target.target.arch.as_slice();
+    let wordsz = sess.target.target.target_word_size.as_slice();
+    let os = sess.target.target.target_os.as_slice();
 
-    let fam = match sess.targ_cfg.os {
-        abi::OsWindows => InternedString::new("windows"),
-        _ => InternedString::new("unix")
+    let fam = match sess.target.target.options.is_like_windows {
+        true  => InternedString::new("windows"),
+        false => InternedString::new("unix")
     };
 
     let mk = attr::mk_name_value_item_str;
     return vec!(// Target bindings.
          attr::mk_word_item(fam.clone()),
-         mk(InternedString::new("target_os"), tos),
+         mk(InternedString::new("target_os"), intern(os)),
          mk(InternedString::new("target_family"), fam),
-         mk(InternedString::new("target_arch"), InternedString::new(arch)),
-         mk(InternedString::new("target_endian"), InternedString::new(end)),
+         mk(InternedString::new("target_arch"), intern(arch)),
+         mk(InternedString::new("target_endian"), intern(end)),
          mk(InternedString::new("target_word_size"),
-            InternedString::new(wordsz))
+            intern(wordsz))
     );
 }
 
@@ -495,78 +497,23 @@ pub fn build_configuration(sess: &Session) -> ast::CrateConfig {
     v
 }
 
-pub fn get_os(triple: &str) -> Option<abi::Os> {
-    for &(name, os) in os_names.iter() {
-        if triple.contains(name) { return Some(os) }
+pub fn build_target_config(opts: &Options, sp: &SpanHandler) -> Config {
+    let target = match Target::search(opts.target_triple.as_slice()) {
+        Ok(t) => t,
+        Err(e) => {
+            sp.handler().fatal((format!("Error loading target specification: {}", e)).as_slice());
     }
-    None
-}
-#[allow(non_upper_case_globals)]
-static os_names : &'static [(&'static str, abi::Os)] = &[
-    ("mingw32",   abi::OsWindows),
-    ("win32",     abi::OsWindows),
-    ("windows",   abi::OsWindows),
-    ("darwin",    abi::OsMacos),
-    ("android",   abi::OsAndroid),
-    ("linux",     abi::OsLinux),
-    ("freebsd",   abi::OsFreebsd),
-    ("dragonfly", abi::OsDragonfly),
-    ("ios",       abi::OsiOS)];
-
-pub fn get_arch(triple: &str) -> Option<abi::Architecture> {
-    for &(arch, abi) in architecture_abis.iter() {
-        if triple.contains(arch) { return Some(abi) }
-    }
-    None
-}
-#[allow(non_upper_case_globals)]
-static architecture_abis : &'static [(&'static str, abi::Architecture)] = &[
-    ("i386",   abi::X86),
-    ("i486",   abi::X86),
-    ("i586",   abi::X86),
-    ("i686",   abi::X86),
-    ("i786",   abi::X86),
-
-    ("x86_64", abi::X86_64),
-
-    ("arm",    abi::Arm),
-    ("xscale", abi::Arm),
-    ("thumb",  abi::Arm),
-
-    ("mipsel", abi::Mipsel),
-    ("mips",   abi::Mips)];
-
-pub fn build_target_config(sopts: &Options) -> Config {
-    let os = match get_os(sopts.target_triple.as_slice()) {
-      Some(os) => os,
-      None => early_error("unknown operating system")
     };
-    let arch = match get_arch(sopts.target_triple.as_slice()) {
-      Some(arch) => arch,
-      None => {
-          early_error(format!("unknown architecture: {}",
-                              sopts.target_triple.as_slice()).as_slice())
-      }
+
+    let (int_type, uint_type) = match target.target_word_size.as_slice() {
+        "32" => (ast::TyI32, ast::TyU32),
+        "64" => (ast::TyI64, ast::TyU64),
+        w    => sp.handler().fatal((format!("target specification was invalid: unrecognized \
+                                            target-word-size {}", w)).as_slice())
     };
-    let (int_type, uint_type) = match arch {
-      abi::X86 => (ast::TyI32, ast::TyU32),
-      abi::X86_64 => (ast::TyI64, ast::TyU64),
-      abi::Arm => (ast::TyI32, ast::TyU32),
-      abi::Mips => (ast::TyI32, ast::TyU32),
-      abi::Mipsel => (ast::TyI32, ast::TyU32)
-    };
-    let target_triple = sopts.target_triple.clone();
-    let target_strs = match arch {
-      abi::X86 => x86::get_target_strs(target_triple, os),
-      abi::X86_64 => x86_64::get_target_strs(target_triple, os),
-      abi::Arm => arm::get_target_strs(target_triple, os),
-      abi::Mips => mips::get_target_strs(target_triple, os),
-      abi::Mipsel => mipsel::get_target_strs(target_triple, os)
-    };
+
     Config {
-        os: os,
-        arch: arch,
-        target_strs: target_strs,
+        target: target,
         int_type: int_type,
         uint_type: uint_type,
     }
