@@ -389,7 +389,7 @@ fn ast_path_substs<'tcx,AC,RS>(
 
         let output = match data.output {
             Some(ref output_ty) => ast_ty_to_ty(this, &binding_rscope, &**output_ty),
-            None => ty::mk_nil()
+            None => ty::mk_nil(this.tcx())
         };
 
         (Vec::new(), vec![input_ty, output])
@@ -824,7 +824,7 @@ pub fn ast_ty_to_ty<'tcx, AC: AstConv<'tcx>, RS: RegionScope>(
 
     let typ = ast_ty_to_builtin_ty(this, rscope, ast_ty).unwrap_or_else(|| {
         match ast_ty.node {
-            ast::TyNil => ty::mk_nil(),
+            ast::TyNil => ty::mk_nil(this.tcx()),
             ast::TyBot => unreachable!(),
             ast::TyUniq(ref ty) => {
                 mk_pointer(this, rscope, ast::MutImmutable, &**ty, Uniq,

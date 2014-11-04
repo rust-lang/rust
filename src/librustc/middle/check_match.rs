@@ -402,7 +402,7 @@ fn construct_witness(cx: &MatchCheckCtxt, ctor: &Constructor,
     let pats_len = pats.len();
     let mut pats = pats.into_iter().map(|p| P((*p).clone()));
     let pat = match ty::get(left_ty).sty {
-        ty::ty_tup(_) => PatTup(pats.collect()),
+        ty::ty_tup(ref tys) if !tys.is_empty() => PatTup(pats.collect()),
 
         ty::ty_enum(cid, _) | ty::ty_struct(cid, _)  => {
             let (vid, is_structure) = match ctor {
@@ -497,7 +497,7 @@ fn all_constructors(cx: &MatchCheckCtxt, left_ty: ty::t,
         ty::ty_bool =>
             [true, false].iter().map(|b| ConstantValue(const_bool(*b))).collect(),
 
-        ty::ty_nil =>
+        ty::ty_tup(ref tys) if tys.is_empty() =>
             vec!(ConstantValue(const_nil)),
 
         ty::ty_rptr(_, ty::mt { ty, .. }) => match ty::get(ty).sty {
@@ -552,7 +552,7 @@ fn is_useful(cx: &MatchCheckCtxt,
         None => v[0]
     };
     let left_ty = if real_pat.id == DUMMY_NODE_ID {
-        ty::mk_nil()
+        ty::mk_nil(cx.tcx)
     } else {
         ty::pat_ty(cx.tcx, &*real_pat)
     };

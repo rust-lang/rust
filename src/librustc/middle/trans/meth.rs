@@ -594,7 +594,6 @@ pub fn get_vtable(bcx: Block,
                                             new_inputs.push(element.subst(bcx.tcx(), substs));
                                         }
                                     }
-                                    ty::ty_nil => {}
                                     _ => {
                                         bcx.tcx().sess.bug("get_vtable(): closure \
                                                             type wasn't a tuple")

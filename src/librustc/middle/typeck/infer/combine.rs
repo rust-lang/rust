@@ -433,7 +433,6 @@ pub fn super_tys<'tcx, C: Combine<'tcx>>(this: &C, a: ty::t, b: ty::t) -> cres<t
         }
 
       (&ty::ty_char, _) |
-      (&ty::ty_nil, _) |
       (&ty::ty_bool, _) |
       (&ty::ty_int(_), _) |
       (&ty::ty_uint(_), _) |
