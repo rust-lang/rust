@@ -8,7 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn fn1(0: Box) {} //~ ERROR: wrong number of type arguments: expected 1, found 0
+// Test that `Box` cannot be used with a lifetime parameter.
 
-fn main() {}
+struct Foo<'a> {
+    x: Box<'a, int> //~ ERROR wrong number of lifetime parameters
+}
 
+pub fn main() {
+}

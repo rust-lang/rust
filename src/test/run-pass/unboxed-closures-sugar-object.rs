@@ -8,7 +8,27 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn fn1(0: Box) {} //~ ERROR: wrong number of type arguments: expected 1, found 0
+// Test unboxed closure sugar used in object types.
 
-fn main() {}
+#![allow(dead_code)]
 
+struct Foo<T,U> {
+    t: T, u: U
+}
+
+trait Getter<A,R> {
+    fn get(&self, arg: A) -> R;
+}
+
+struct Identity;
+impl<X> Getter<X,X> for Identity {
+    fn get(&self, arg: X) -> X {
+        arg
+    }
+}
+
+fn main() {
+    let x: &Getter(int) -> (int,) = &Identity;
+    let (y,) = x.get((22,));
+    assert_eq!(y, 22);
+}

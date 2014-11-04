@@ -313,14 +313,15 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
                                                       .map(|ident| {
             ast::PathSegment {
                 identifier: ident,
-                lifetimes: Vec::new(),
-                types: OwnedSlice::empty(),
+                parameters: ast::PathParameters::none(),
             }
         }).collect();
         segments.push(ast::PathSegment {
             identifier: last_identifier,
-            lifetimes: lifetimes,
-            types: OwnedSlice::from_vec(types),
+            parameters: ast::AngleBracketedParameters(ast::AngleBracketedParameterData {
+                lifetimes: lifetimes,
+                types: OwnedSlice::from_vec(types),
+            })
         });
         ast::Path {
             span: sp,

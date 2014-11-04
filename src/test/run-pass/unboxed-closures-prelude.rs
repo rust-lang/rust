@@ -13,7 +13,7 @@
 #![feature(unboxed_closures, unboxed_closure_sugar)]
 
 fn main() {
-    let task: Box<|: int| -> int> = box |: x| x;
+    let task: Box<FnOnce(int) -> int> = box |: x| x;
     task.call_once((0i, ));
 }
 
