@@ -49,12 +49,11 @@ Here are some examples:
    &'a Object+'a                      &'a (Object+'a)
    Box<Object+Send>                   Box<Object+Send>
    foo::<Object+Send,int>(...)        foo::<Object+Send,int>(...)
-   Fn() -> Object+Send                Fn() -> (Object+Send)         (*)
+   Fn() -> Object+Send                Fn() -> (Object+Send)         // (*)
    Fn() -> &Object+Send               Fn() -> &(Object+Send)
+   
+// (*) Must yield a type error, as return type must be `Sized`.
 ```
-
-Note that the case `(*)` must yield a type error, as the return type
-of a function must be sized.
 
 More fully, the type grammar is as follows (EBNF notation):
 
