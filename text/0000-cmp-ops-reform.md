@@ -313,9 +313,11 @@ In addition, this RFC proposes another trait, `IndexSet`, that is used for `expr
 ```rust
 pub trait IndexSet<Idx> {
     type Val;
-    fn index_mut<'a>(&'a mut self, index: Idx, val: Val);
+    fn index_set<'a>(&'a mut self, index: Idx, val: Val);
 }
 ```
+
+(This idea is borrowed from [@sfackler's earlier RFC](https://github.com/rust-lang/rfcs/pull/159/files).)
 
 The motivation for this trait is cases like `map["key"] = val`, which
 should correspond to an *insertion* rather than a mutable lookup. With
