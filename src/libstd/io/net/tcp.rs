@@ -74,8 +74,8 @@ impl TcpStream {
     /// specified elapses before a connection is made an error will be
     /// returned. The error's kind will be `TimedOut`.
     ///
-    /// Same as the `connect` method, `addr` argument type can vary as defined
-    /// by `ToSocketAddr` trait.
+    /// Same as the `connect` method, `addr` argument type can be anything which
+    /// implements `ToSocketAddr` trait.
     ///
     /// If a `timeout` with zero or negative duration is specified then
     /// the function returns `Err`, with the error kind set to `TimedOut`.
@@ -320,6 +320,9 @@ impl TcpListener {
     /// Binding with a port number of 0 will request that the OS assigns a port
     /// to this listener. The port allocated can be queried via the
     /// `socket_name` function.
+    ///
+    /// The address type can be any implementor of `ToSocketAddr` trait. See its
+    /// documentation for concrete examples.
     pub fn bind<A: ToSocketAddr>(addr: A) -> IoResult<TcpListener> {
         super::with_addresses_io(addr, |io, addr| io.tcp_bind(addr).map(|l| TcpListener { obj: l }))
     }
