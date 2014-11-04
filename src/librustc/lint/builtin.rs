@@ -180,8 +180,8 @@ impl LintPass for TypeLimits {
 
                 if is_shift_binop(binop) {
                     let opt_ty_bits = match ty::get(ty::expr_ty(cx.tcx, &**l)).sty {
-                        ty::ty_int(t) => Some(int_ty_bits(t, cx.sess().targ_cfg.int_type)),
-                        ty::ty_uint(t) => Some(uint_ty_bits(t, cx.sess().targ_cfg.uint_type)),
+                        ty::ty_int(t) => Some(int_ty_bits(t, cx.sess().target.int_type)),
+                        ty::ty_uint(t) => Some(uint_ty_bits(t, cx.sess().target.uint_type)),
                         _ => None
                     };
 
