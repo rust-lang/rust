@@ -424,12 +424,6 @@ pub fn noop_fold_ty<T: Folder>(t: P<Ty>, fld: &mut T) -> P<Ty> {
                     decl: fld.fold_fn_decl(decl)
                 }))
             }
-            TyUnboxedFn(f) => {
-                TyUnboxedFn(f.map(|UnboxedFnTy {decl, kind}| UnboxedFnTy {
-                    decl: fld.fold_fn_decl(decl),
-                    kind: kind,
-                }))
-            }
             TyTup(tys) => TyTup(tys.move_map(|ty| fld.fold_ty(ty))),
             TyParen(ty) => TyParen(fld.fold_ty(ty)),
             TyPath(path, bounds, id) => {
@@ -715,23 +709,6 @@ pub fn noop_fold_ty_param_bound<T>(tpb: TyParamBound, fld: &mut T)
     match tpb {
         TraitTyParamBound(ty) => TraitTyParamBound(fld.fold_trait_ref(ty)),
         RegionTyParamBound(lifetime) => RegionTyParamBound(fld.fold_lifetime(lifetime)),
-        UnboxedFnTyParamBound(bound) => {
-            match *bound {
-                UnboxedFnBound {
-                    ref path,
-                    ref decl,
-                    ref lifetimes,
-                    ref_id
-                } => {
-                    UnboxedFnTyParamBound(P(UnboxedFnBound {
-                        path: fld.fold_path(path.clone()),
-                        decl: fld.fold_fn_decl(decl.clone()),
-                        lifetimes: fld.fold_lifetime_defs(lifetimes.clone()),
-                        ref_id: fld.new_id(ref_id),
-                    }))
-                }
-            }
-        }
     }
 }
 

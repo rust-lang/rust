@@ -313,11 +313,6 @@ impl<'a, 'v> Visitor<'v> for Context<'a> {
                                    experimental and likely to be removed");
 
             },
-            ast::TyUnboxedFn(..) => {
-                self.gate_feature("unboxed_closure_sugar",
-                                  t.span,
-                                  "unboxed closure trait sugar is experimental");
-            }
             _ => {}
         }
 

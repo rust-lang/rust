@@ -25,7 +25,7 @@ fn call_it<F:FnMut(int)->int>(mut f: F, x: int) -> int {
     f.call_mut((x,)) + 3
 }
 
-fn call_box(f: &mut |&mut: int|->int, x: int) -> int {
+fn call_box(f: &mut FnMut(int) -> int, x: int) -> int {
     f.call_mut((x,)) + 3
 }
 

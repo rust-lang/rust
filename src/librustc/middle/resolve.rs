@@ -40,7 +40,7 @@ use syntax::ast::{TupleVariantKind, Ty, TyBool, TyChar, TyClosure, TyF32};
 use syntax::ast::{TyF64, TyFloat, TyI, TyI8, TyI16, TyI32, TyI64, TyInt};
 use syntax::ast::{TyParam, TyParamBound, TyPath, TyPtr, TyProc, TyQPath};
 use syntax::ast::{TyRptr, TyStr, TyU, TyU8, TyU16, TyU32, TyU64, TyUint};
-use syntax::ast::{TypeImplItem, UnboxedFnTyParamBound, UnnamedField};
+use syntax::ast::{TypeImplItem, UnnamedField};
 use syntax::ast::{Variant, ViewItem, ViewItemExternCrate};
 use syntax::ast::{ViewItemUse, ViewPathGlob, ViewPathList, ViewPathSimple};
 use syntax::ast::{Visibility};
@@ -4522,41 +4522,6 @@ impl<'a> Resolver<'a> {
         match *type_parameter_bound {
             TraitTyParamBound(ref tref) => {
                 self.resolve_trait_reference(id, tref, reference_type)
-            }
-            UnboxedFnTyParamBound(ref unboxed_function) => {
-                match self.resolve_path(unboxed_function.ref_id,
-                                        &unboxed_function.path,
-                                        TypeNS,
-                                        true) {
-                    None => {
-                        let path_str = self.path_names_to_string(
-                            &unboxed_function.path);
-                        self.resolve_error(unboxed_function.path.span,
-                                           format!("unresolved trait `{}`",
-                                                   path_str).as_slice())
-                    }
-                    Some(def) => {
-                        match def {
-                            (DefTrait(_), _) => {
-                                self.record_def(unboxed_function.ref_id, def);
-                            }
-                            _ => {
-                                let msg =
-                                    format!("`{}` is not a trait",
-                                            self.path_names_to_string(
-                                                &unboxed_function.path));
-                                self.resolve_error(unboxed_function.path.span,
-                                                   msg.as_slice());
-                            }
-                        }
-                    }
-                }
-
-                for argument in unboxed_function.decl.inputs.iter() {
-                    self.resolve_type(&*argument.ty);
-                }
-
-                self.resolve_type(&*unboxed_function.decl.output);
             }
             RegionTyParamBound(..) => {}
         }

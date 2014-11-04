@@ -323,7 +323,6 @@ fn build_impl(cx: &DocContext, tcx: &ty::ctxt,
             trait_: associated_trait.clean(cx).map(|bound| {
                 match bound {
                     clean::TraitBound(ty) => ty,
-                    clean::UnboxedFnBound(..) |
                     clean::RegionBound(..) => unreachable!(),
                 }
             }),
