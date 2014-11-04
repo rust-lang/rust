@@ -100,7 +100,7 @@ pub fn getcwd() -> Path {
         if libc::getcwd(buf.as_mut_ptr(), buf.len() as libc::size_t).is_null() {
             panic!()
         }
-        Path::new(CString::new(buf.as_ptr(), false))
+        Path::new(CString::new(buf.as_ptr()))
     }
 }
 
@@ -288,7 +288,7 @@ pub fn env_as_bytes() -> Vec<(Vec<u8>,Vec<u8>)> {
             let mut result = Vec::new();
             while *environ != 0 as *const _ {
                 let env_pair =
-                    CString::new(*environ, false).as_bytes_no_nul().to_vec();
+                    CString::new(*environ).as_bytes_no_nul().to_vec();
                 result.push(env_pair);
                 environ = environ.offset(1);
             }
@@ -355,7 +355,7 @@ pub fn getenv_as_bytes(n: &str) -> Option<Vec<u8>> {
             if s.is_null() {
                 None
             } else {
-                Some(CString::new(s as *const i8, false).as_bytes_no_nul().to_vec())
+                Some(CString::new(s as *const i8).as_bytes_no_nul().to_vec())
             }
         })
     }
@@ -1103,7 +1103,7 @@ unsafe fn load_argc_and_argv(argc: int,
     use c_str::CString;
 
     Vec::from_fn(argc as uint, |i| {
-        CString::new(*argv.offset(i as int), false).as_bytes_no_nul().to_vec()
+        CString::new(*argv.offset(i as int)).as_bytes_no_nul().to_vec()
     })
 }
 
@@ -1170,7 +1170,7 @@ fn real_args_as_bytes() -> Vec<Vec<u8>> {
             let tmp = objc_msgSend(args, objectAtSel, i);
             let utf_c_str: *const libc::c_char =
                 mem::transmute(objc_msgSend(tmp, utf8Sel));
-            let s = CString::new(utf_c_str, false);
+            let s = CString::new(utf_c_str);
             res.push(s.as_bytes_no_nul().to_vec())
         }
     }

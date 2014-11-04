@@ -242,7 +242,7 @@ pub mod dl {
             let ret = if ptr::null() == last_error {
                 Ok(result)
             } else {
-                Err(String::from_str(CString::new(last_error, false).as_str()
+                Err(String::from_str(CString::new(last_error).as_str()
                     .unwrap()))
             };
 

@@ -1625,7 +1625,7 @@ extern {
 
     /** Returns a string describing the last error caused by an LLVMRust*
     call. */
-    pub fn LLVMRustGetLastError() -> *const c_char;
+    pub fn LLVMRustGetLastError() -> *mut c_char;
 
     /// Print the pass timings since static dtors aren't picking them up.
     pub fn LLVMRustPrintPassTimings();

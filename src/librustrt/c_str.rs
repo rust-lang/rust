@@ -22,20 +22,6 @@ strings can validly contain a null-byte in the middle of the string (0 is a
 valid Unicode codepoint). This means that not all Rust strings can actually be
 translated to C strings.
 
-# Creation of a C string
-
-A C string is managed through the `CString` type defined in this module. It
-"owns" the internal buffer of characters and will automatically deallocate the
-buffer when the string is dropped. The `ToCStr` trait is implemented for `&str`
-and `&[u8]`, but the conversions can fail due to some of the limitations
-explained above.
-
-This also means that currently whenever a C string is created, an allocation
-must be performed to place the data elsewhere (the lifetime of the C string is
-not tied to the lifetime of the original string/data buffer). If C strings are
-heavily used in applications, then caching may be advisable to prevent
-unnecessary amounts of allocations.
-
 Be carefull to remember that the memory is managed by C allocator API and not
 by Rust allocator API.
 That means that the CString pointers should be freed with C allocator API
@@ -85,13 +71,17 @@ use core::slice;
 use core::str;
 use libc;
 
+enum CStringInner {
+  Owned(*mut libc::c_char),
+  NotOwned(*const libc::c_char),
+}
+
 /// The representation of a C String.
 ///
 /// This structure wraps a `*libc::c_char`, and will automatically free the
 /// memory it is pointing to when it goes out of scope.
 pub struct CString {
-    buf: *const libc::c_char,
-    owns_buffer_: bool,
+  inner: CStringInner,
 }
 
 impl Clone for CString {
@@ -102,19 +92,19 @@ impl Clone for CString {
         let len = self.len() + 1;
         let buf = unsafe { libc::malloc(len as libc::size_t) } as *mut libc::c_char;
         if buf.is_null() { ::alloc::oom() }
-        unsafe { ptr::copy_nonoverlapping_memory(buf, self.buf, len); }
-        CString { buf: buf as *const libc::c_char, owns_buffer_: true }
+        unsafe { ptr::copy_nonoverlapping_memory(buf, self.as_ptr(), len); }
+        CString { inner: Owned(buf) }
     }
 }
 
 impl PartialEq for CString {
     fn eq(&self, other: &CString) -> bool {
         // Check if the two strings share the same buffer
-        if self.buf as uint == other.buf as uint {
+        if self.as_ptr() as uint == other.as_ptr() as uint {
             true
         } else {
             unsafe {
-                libc::strcmp(self.buf, other.buf) == 0
+                libc::strcmp(self.as_ptr(), other.as_ptr()) == 0
             }
         }
     }
@@ -144,9 +134,20 @@ impl CString {
     ///# Failure
     ///
     /// Fails if `buf` is null
-    pub unsafe fn new(buf: *const libc::c_char, owns_buffer: bool) -> CString {
+    pub unsafe fn new(buf: *const libc::c_char) -> CString {
         assert!(!buf.is_null());
-        CString { buf: buf, owns_buffer_: owns_buffer }
+        CString { inner: NotOwned(buf) }
+    }
+
+    /// Like CString::new except that `buf` will be freed when the value goes
+    /// out of scope.
+    ///
+    ///# Failure
+    ///
+    /// Fails if `buf` is null
+    pub unsafe fn new_owned(buf: *mut libc::c_char) -> CString {
+        assert!(!buf.is_null());
+        CString { inner: Owned(buf) }
     }
 
     /// Return a pointer to the NUL-terminated string data.
@@ -179,8 +180,12 @@ impl CString {
     ///     }
     /// }
     /// ```
+    #[inline]
     pub fn as_ptr(&self) -> *const libc::c_char {
-        self.buf
+        match self.inner {
+            Owned(buf)    => buf as *const libc::c_char,
+            NotOwned(buf) => buf,
+        }
     }
 
     /// Return a mutable pointer to the NUL-terminated string data.
@@ -200,13 +205,20 @@ impl CString {
     /// // wrong (the CString will be freed, invalidating `p`)
     /// let p = foo.to_c_str().as_mut_ptr();
     /// ```
+    #[inline]
     pub fn as_mut_ptr(&mut self) -> *mut libc::c_char {
-        self.buf as *mut _
+        match self.inner {
+            Owned(buf)    => buf,
+            NotOwned(buf) => buf as *mut libc::c_char,
+        }
     }
 
     /// Returns whether or not the `CString` owns the buffer.
     pub fn owns_buffer(&self) -> bool {
-        self.owns_buffer_
+        match self.inner {
+            Owned(_)    => true,
+            NotOwned(_) => false,
+        }
     }
 
     /// Converts the CString into a `&[u8]` without copying.
@@ -214,7 +226,7 @@ impl CString {
     #[inline]
     pub fn as_bytes<'a>(&'a self) -> &'a [u8] {
         unsafe {
-            mem::transmute(Slice { data: self.buf, len: self.len() + 1 })
+            mem::transmute(Slice { data: self.as_ptr(), len: self.len() + 1 })
         }
     }
 
@@ -223,7 +235,7 @@ impl CString {
     #[inline]
     pub fn as_bytes_no_nul<'a>(&'a self) -> &'a [u8] {
         unsafe {
-            mem::transmute(Slice { data: self.buf, len: self.len() })
+            mem::transmute(Slice { data: self.as_ptr(), len: self.len() })
         }
     }
 
@@ -238,7 +250,7 @@ impl CString {
     /// Return a CString iterator.
     pub fn iter<'a>(&'a self) -> CChars<'a> {
         CChars {
-            ptr: self.buf,
+            ptr: self.as_ptr(),
             marker: marker::ContravariantLifetime,
         }
     }
@@ -255,15 +267,16 @@ impl CString {
     /// Prefer `.as_ptr()` when just retrieving a pointer to the
     /// string data, as that does not relinquish ownership.
     pub unsafe fn unwrap(mut self) -> *const libc::c_char {
-        self.owns_buffer_ = false;
-        self.buf
+        let ret = self.as_ptr();
+        self.inner = NotOwned(ret);
+        ret
     }
 
     /// Return the number of bytes in the CString (not including the NUL
     /// terminator).
     #[inline]
     pub fn len(&self) -> uint {
-        unsafe { libc::strlen(self.buf) as uint }
+        unsafe { libc::strlen(self.as_ptr()) as uint }
     }
 
     /// Returns if there are no bytes in this string
@@ -273,10 +286,11 @@ impl CString {
 
 impl Drop for CString {
     fn drop(&mut self) {
-        if self.owns_buffer_ {
-            unsafe {
-                libc::free(self.buf as *mut libc::c_void)
-            }
+        match self.inner {
+            Owned(buf)  => unsafe {
+                libc::free(buf as *mut libc::c_void)
+            },
+            _ => {},
         }
     }
 }
@@ -393,7 +407,7 @@ impl ToCStr for [u8] {
         ptr::copy_memory(buf, self.as_ptr(), self_len);
         *buf.offset(self_len as int) = 0;
 
-        CString::new(buf as *const libc::c_char, true)
+        CString::new_owned(buf as *mut libc::c_char)
     }
 
     fn with_c_str<T>(&self, f: |*const libc::c_char| -> T) -> T {
@@ -500,7 +514,7 @@ pub unsafe fn from_c_multistring(buf: *const libc::c_char,
     };
     while ((limited_count && ctr < limit) || !limited_count)
           && *(curr_ptr as *const libc::c_char) != 0 as libc::c_char {
-        let cstr = CString::new(curr_ptr as *const libc::c_char, false);
+        let cstr = CString::new(curr_ptr as *const libc::c_char);
         f(&cstr);
         curr_ptr += cstr.len() + 1;
         ctr += 1;
@@ -665,7 +679,7 @@ mod tests {
     #[test]
     #[should_fail]
     fn test_new_fail() {
-        let _c_str = unsafe { CString::new(ptr::null(), false) };
+        let _c_str = unsafe { CString::new(ptr::null()) };
     }
 
     #[test]
@@ -681,7 +695,7 @@ mod tests {
             let s = "test".to_string();
             let c = s.to_c_str();
             // give the closure a non-owned CString
-            let mut c_ = unsafe { CString::new(c.as_ptr(), false) };
+            let mut c_ = unsafe { CString::new(c.as_ptr()) };
             f(&c_);
             // muck with the buffer for later printing
             unsafe { *c_.as_mut_ptr() = 'X' as libc::c_char }
