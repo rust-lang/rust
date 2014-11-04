@@ -64,7 +64,10 @@ pub struct UdpSocket {
 }
 
 impl UdpSocket {
-    /// Creates a UDP socket from the given socket address.
+    /// Creates a UDP socket from the given address.
+    ///
+    /// Address type can be any implementor of `ToSocketAddr` trait. See its
+    /// documentation for concrete examples.
     pub fn bind<A: ToSocketAddr>(addr: A) -> IoResult<UdpSocket> {
         super::with_addresses_io(addr, |io, addr| io.udp_bind(addr).map(|s| UdpSocket { obj: s }))
     }
@@ -82,6 +85,9 @@ impl UdpSocket {
 
     /// Sends data on the socket to the given address. Returns nothing on
     /// success.
+    ///
+    /// Address type can be any implementor of `ToSocketAddr` trait. See its
+    /// documentation for concrete examples.
     pub fn send_to<A: ToSocketAddr>(&mut self, buf: &[u8], addr: A) -> IoResult<()> {
         super::with_addresses(addr, |addr| self.obj.send_to(buf, rtio::SocketAddr {
             ip: super::to_rtio(addr.ip),

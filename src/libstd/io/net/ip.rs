@@ -352,7 +352,80 @@ impl FromStr for SocketAddr {
     }
 }
 
+/// A trait for objects which can be converted or resolved to one or more `SocketAddr` values.
+///
+/// Implementing types minimally have to implement either `to_socket_addr` or `to_socket_addr_all`
+/// method, and its trivial counterpart will be available automatically.
+///
+/// This trait is used for generic address resolution when constructing network objects.
+/// By default it is implemented for the following types:
+///
+///  * `SocketAddr` - `to_socket_addr` is identity function.
+///
+///  * `(IpAddr, u16)` - `to_socket_addr` constructs `SocketAddr` trivially.
+///
+///  * `(&str, u16)` - the string should be either a string representation of an IP address
+///    expected by `FromStr` implementation for `IpAddr` or a host name.
+///
+///    For the former, `to_socket_addr_all` returns a vector with a single element corresponding
+///    to that IP address joined with the given port.
+///
+///    For the latter, it tries to resolve the host name and returns a vector of all IP addresses
+///    for the host name, each joined with the given port.
+///
+///  * `&str` - the string should be either a string representation of a `SocketAddr` as
+///    expected by its `FromStr` implementation or a string like `<host_name>:<port>` pair
+///    where `<port>` is a `u16` value.
+///
+///    For the former, `to_socker_addr_all` returns a vector with a single element corresponding
+///    to that socker address.
+///
+///    For the latter, it tries to resolve the host name and returns a vector of all IP addresses
+///    for the host name, each joined with the port.
+///
+///
+/// This trait allows constructing network objects like `TcpStream` or `UdpSocket` easily with
+/// values of various types for the bind/connection address. It is needed because sometimes
+/// one type is more appropriate than the other: for simple uses a string like `"localhost:12345"`
+/// is much nicer than manual construction of the corresponding `SocketAddr`, but sometimes
+/// `SocketAddr` value is *the* main source of the address, and converting it to some other type
+/// (e.g. a string) just for it to be converted back to `SocketAddr` in constructor methods
+/// is pointless.
+///
+/// Some examples:
+///
+/// ```rust,no_run
+/// # #![allow(unused_must_use)]
+///
+/// use std::io::{TcpStream, TcpListener};
+/// use std::io::net::udp::UdpSocket;
+/// use std::io::net::ip::{ToSocketAddr, Ipv4Addr, SocketAddr};
+///
+/// fn main() {
+///     // The following lines are equivalent modulo possible "localhost" name resolution
+///     // differences
+///     let tcp_s = TcpStream::connect(SocketAddr { ip: Ipv4Addr(127, 0, 0, 1), port: 12345 });
+///     let tcp_s = TcpStream::connect((Ipv4Addr(127, 0, 0, 1), 12345u16));
+///     let tcp_s = TcpStream::connect(("127.0.0.1", 12345u16));
+///     let tcp_s = TcpStream::connect(("localhost", 12345u16));
+///     let tcp_s = TcpStream::connect("127.0.0.1:12345");
+///     let tcp_s = TcpStream::connect("localhost:12345");
+///
+///     // TcpListener::bind(), UdpSocket::bind() and UdpSocket::send_to() behave similarly
+///     let tcp_l = TcpListener::bind("localhost:12345");
+///
+///     let udp_s = UdpSocket::bind(("127.0.0.1", 23451u16));
+///     udp_s.send_to([7u8, 7u8, 7u8].as_slice(), (Ipv4Addr(127, 0, 0, 1), 23451u16));
+/// }
+/// ```
 pub trait ToSocketAddr {
+    /// Converts this object to single socket address value.
+    ///
+    /// If more than one value is available, this method returns the first one. If no
+    /// values are available, this method returns an `IoError`.
+    ///
+    /// By default this method delegates to `to_socket_addr_all` method, taking the first
+    /// item from its result.
     fn to_socket_addr(&self) -> IoResult<SocketAddr> {
         self.to_socket_addr_all()
             .and_then(|v| v.into_iter().next().ok_or_else(|| IoError {
@@ -362,6 +435,13 @@ pub trait ToSocketAddr {
             }))
     }
 
+    /// Converts this object to all available socket address values.
+    ///
+    /// Some values like host name string naturally corrrespond to multiple IP addresses.
+    /// This method tries to return all available addresses corresponding to this object.
+    ///
+    /// By default this method delegates to `to_socket_addr` method, creating a singleton
+    /// vector from its result.
     #[inline]
     fn to_socket_addr_all(&self) -> IoResult<Vec<SocketAddr>> {
         self.to_socket_addr().map(|a| vec![a])
