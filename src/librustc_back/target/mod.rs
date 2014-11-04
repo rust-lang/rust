@@ -217,7 +217,7 @@ impl Target {
         let handler = diagnostic::default_handler(diagnostic::Auto, None);
 
         let get_req_field = |name: &str| {
-            match obj.find(&name.to_string())
+            match obj.find(name)
                      .map(|s| s.as_string())
                      .and_then(|os| os.map(|s| s.to_string())) {
                 Some(val) => val,
@@ -240,16 +240,16 @@ impl Target {
         macro_rules! key (
             ($key_name:ident) => ( {
                 let name = (stringify!($key_name)).replace("_", "-");
-                obj.find(&name).map(|o| o.as_string()
+                obj.find(name[]).map(|o| o.as_string()
                                     .map(|s| base.options.$key_name = s.to_string()));
             } );
             ($key_name:ident, bool) => ( {
                 let name = (stringify!($key_name)).replace("_", "-");
-                obj.find(&name).map(|o| o.as_boolean().map(|s| base.options.$key_name = s));
+                obj.find(name[]).map(|o| o.as_boolean().map(|s| base.options.$key_name = s));
             } );
             ($key_name:ident, list) => ( {
                 let name = (stringify!($key_name)).replace("_", "-");
-                obj.find(&name).map(|o| o.as_list()
+                obj.find(name[]).map(|o| o.as_list()
                     .map(|v| base.options.$key_name = v.iter()
                         .map(|a| a.as_string().unwrap().to_string()).collect()
                         )
