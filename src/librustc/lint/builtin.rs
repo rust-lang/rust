@@ -45,7 +45,7 @@ use syntax::ast_map;
 use syntax::ast_util::is_shift_binop;
 use syntax::attr::AttrMetaMethods;
 use syntax::attr;
-use syntax::codemap::Span;
+use syntax::codemap::{Span, DUMMY_SP};
 use syntax::parse::token;
 use syntax::{ast, ast_util, visit};
 use syntax::ast::{TyI, TyU, TyI8, TyU8, TyI16, TyU16, TyI32, TyU32, TyI64, TyU64};
@@ -1553,9 +1553,55 @@ declare_lint!(UNSTABLE, Allow,
 /// `#[unstable]` attributes, or no stability attribute.
 pub struct Stability;
 
+impl Stability {
+    fn lint(&self, cx: &Context, id: ast::DefId, span: Span) {
+        let stability = stability::lookup(cx.tcx, id);
+        let cross_crate = !ast_util::is_local(id);
+
+        // stability attributes are promises made across crates; only
+        // check DEPRECATED for crate-local usage.
+        let (lint, label) = match stability {
+            // no stability attributes == Unstable
+            None if cross_crate => (UNSTABLE, "unmarked"),
+            Some(attr::Stability { level: attr::Unstable, .. }) if cross_crate =>
+                (UNSTABLE, "unstable"),
+            Some(attr::Stability { level: attr::Experimental, .. }) if cross_crate =>
+                (EXPERIMENTAL, "experimental"),
+            Some(attr::Stability { level: attr::Deprecated, .. }) =>
+                (DEPRECATED, "deprecated"),
+            _ => return
+        };
+
+        let msg = match stability {
+            Some(attr::Stability { text: Some(ref s), .. }) => {
+                format!("use of {} item: {}", label, *s)
+            }
+            _ => format!("use of {} item", label)
+        };
+
+        cx.span_lint(lint, span, msg.as_slice());
+    }
+}
+
 impl LintPass for Stability {
     fn get_lints(&self) -> LintArray {
         lint_array!(DEPRECATED, EXPERIMENTAL, UNSTABLE)
+    }
+
+    fn check_view_item(&mut self, cx: &Context, item: &ast::ViewItem) {
+        // compiler-generated `extern crate` statements have a dummy span.
+        if item.span == DUMMY_SP { return }
+
+        let id = match item.node {
+            ast::ViewItemExternCrate(_, _, id) => id,
+            ast::ViewItemUse(..) => return,
+        };
+        let cnum = match cx.tcx.sess.cstore.find_extern_mod_stmt_cnum(id) {
+            Some(cnum) => cnum,
+            None => return,
+        };
+        let id = ast::DefId { krate: cnum, node: ast::CRATE_NODE_ID };
+        self.lint(cx, id, item.span);
     }
 
     fn check_expr(&mut self, cx: &Context, e: &ast::Expr) {
@@ -1629,32 +1675,7 @@ impl LintPass for Stability {
             }
             _ => return
         };
-
-        let stability = stability::lookup(cx.tcx, id);
-        let cross_crate = !ast_util::is_local(id);
-
-        // stability attributes are promises made across crates; only
-        // check DEPRECATED for crate-local usage.
-        let (lint, label) = match stability {
-            // no stability attributes == Unstable
-            None if cross_crate => (UNSTABLE, "unmarked"),
-            Some(attr::Stability { level: attr::Unstable, .. }) if cross_crate =>
-                (UNSTABLE, "unstable"),
-            Some(attr::Stability { level: attr::Experimental, .. }) if cross_crate =>
-                (EXPERIMENTAL, "experimental"),
-            Some(attr::Stability { level: attr::Deprecated, .. }) =>
-                (DEPRECATED, "deprecated"),
-            _ => return
-        };
-
-        let msg = match stability {
-            Some(attr::Stability { text: Some(ref s), .. }) => {
-                format!("use of {} item: {}", label, *s)
-            }
-            _ => format!("use of {} item", label)
-        };
-
-        cx.span_lint(lint, span, msg.as_slice());
+        self.lint(cx, id, span);
     }
 }
 

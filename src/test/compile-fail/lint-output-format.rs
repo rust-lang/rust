@@ -11,7 +11,7 @@
 // compile-flags:-F experimental -D unstable
 // aux-build:lint_output_format.rs
 
-extern crate lint_output_format;
+extern crate lint_output_format; //~ ERROR: use of unmarked item
 use lint_output_format::{foo, bar, baz};
 
 fn main() {
