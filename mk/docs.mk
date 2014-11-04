@@ -25,7 +25,7 @@
 # L10N_LANGS are the languages for which the docs have been
 # translated.
 ######################################################################
-DOCS := index intro tutorial guide guide-ffi guide-macros guide-lifetimes \
+DOCS := index intro tutorial guide guide-ffi guide-macros guide-ownership \
 	guide-tasks guide-container guide-pointers guide-testing \
 	guide-plugin guide-crates complement-bugreport guide-error-handling \
 	complement-lang-faq complement-design-faq complement-project-faq \
