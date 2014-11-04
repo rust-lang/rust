@@ -105,6 +105,11 @@ them without trouble for a while.
 Change the `Status` of the `struct_variant` feature from `Active` to
 `Accepted`.
 
+The fields of struct variants use the same style of privacy as normal struct
+fields - they're private unless tagged `pub`. This is inconsistent with tuple
+variants, where the fields have inherited visibility. Struct variant fields
+will be changed to have inhereted privacy, and `pub` will no longer be allowed.
+
 # Drawbacks
 
 Adding formal support for a feature increases the maintenance burden of rustc.
