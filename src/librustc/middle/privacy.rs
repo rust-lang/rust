@@ -296,8 +296,8 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EmbargoVisitor<'a, 'tcx> {
                             self.exported_items.insert(m.id);
                         }
                         ast::TypeTraitItem(ref t) => {
-                            debug!("typedef {}", t.id);
-                            self.exported_items.insert(t.id);
+                            debug!("typedef {}", t.ty_param.id);
+                            self.exported_items.insert(t.ty_param.id);
                         }
                     }
                 }

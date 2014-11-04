@@ -169,17 +169,14 @@ pub fn to_string(f: |&mut State| -> IoResult<()>) -> String {
     let mut s = rust_printer(box MemWriter::new());
     f(&mut s).unwrap();
     eof(&mut s.s).unwrap();
-    unsafe {
+    let wr = unsafe {
         // FIXME(pcwalton): A nasty function to extract the string from an `io::Writer`
         // that we "know" to be a `MemWriter` that works around the lack of checked
         // downcasts.
-        let obj: TraitObject = mem::transmute_copy(&s.s.out);
-        let wr: Box<MemWriter> = mem::transmute(obj.data);
-        let result =
-            String::from_utf8(wr.get_ref().as_slice().to_vec()).unwrap();
-        mem::forget(wr);
-        result.to_string()
-    }
+        let obj: &TraitObject = mem::transmute(&s.s.out);
+        mem::transmute::<*mut (), &MemWriter>(obj.data)
+    };
+    String::from_utf8(wr.get_ref().to_vec()).unwrap()
 }
 
 pub fn binop_to_string(op: BinOpToken) -> &'static str {
@@ -818,9 +815,11 @@ impl<'a> State<'a> {
     }
 
     fn print_associated_type(&mut self, typedef: &ast::AssociatedType)
-                             -> IoResult<()> {
+                             -> IoResult<()>
+    {
+        try!(self.print_outer_attributes(typedef.attrs[]));
         try!(self.word_space("type"));
-        try!(self.print_ident(typedef.ident));
+        try!(self.print_ty_param(&typedef.ty_param));
         word(&mut self.s, ";")
     }
 
@@ -2434,28 +2433,32 @@ impl<'a> State<'a> {
             } else {
                 let idx = idx - generics.lifetimes.len();
                 let param = generics.ty_params.get(idx);
-                match param.unbound {
-                    Some(TraitTyParamBound(ref tref)) => {
-                        try!(s.print_trait_ref(tref));
-                        try!(s.word_space("?"));
-                    }
-                    _ => {}
-                }
-                try!(s.print_ident(param.ident));
-                try!(s.print_bounds(":", &param.bounds));
-                match param.default {
-                    Some(ref default) => {
-                        try!(space(&mut s.s));
-                        try!(s.word_space("="));
-                        s.print_type(&**default)
-                    }
-                    _ => Ok(())
-                }
+                s.print_ty_param(param)
             }
         }));
 
         try!(word(&mut self.s, ">"));
         Ok(())
+    }
+
+    pub fn print_ty_param(&mut self, param: &ast::TyParam) -> IoResult<()> {
+        match param.unbound {
+            Some(TraitTyParamBound(ref tref)) => {
+                try!(self.print_trait_ref(tref));
+                try!(self.word_space("?"));
+            }
+            _ => {}
+        }
+        try!(self.print_ident(param.ident));
+        try!(self.print_bounds(":", &param.bounds));
+        match param.default {
+            Some(ref default) => {
+                try!(space(&mut self.s));
+                try!(self.word_space("="));
+                self.print_type(&**default)
+            }
+            _ => Ok(())
+        }
     }
 
     pub fn print_where_clause(&mut self, generics: &ast::Generics)

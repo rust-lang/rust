@@ -532,7 +532,7 @@ impl<'a, 'tcx> Context<'a, 'tcx> {
         }
     }
 
-    fn visit_ids(&self, f: |&mut ast_util::IdVisitor<Context>|) {
+    fn visit_ids(&mut self, f: |&mut ast_util::IdVisitor<Context>|) {
         let mut v = ast_util::IdVisitor {
             operation: self,
             pass_through_items: false,
@@ -749,7 +749,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for Context<'a, 'tcx> {
 
 // Output any lints that were previously added to the session.
 impl<'a, 'tcx> IdVisitingOperation for Context<'a, 'tcx> {
-    fn visit_id(&self, id: ast::NodeId) {
+    fn visit_id(&mut self, id: ast::NodeId) {
         match self.tcx.sess.lints.borrow_mut().pop(&id) {
             None => {}
             Some(lints) => {

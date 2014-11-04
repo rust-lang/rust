@@ -31,13 +31,16 @@ impl<'a> SpanUtils<'a> {
     pub fn extent_str(&self, span: Span) -> String {
         let lo_loc = self.sess.codemap().lookup_char_pos(span.lo);
         let hi_loc = self.sess.codemap().lookup_char_pos(span.hi);
-        let lo_pos = self.sess.codemap().lookup_byte_offset(span.lo).pos;
-        let hi_pos = self.sess.codemap().lookup_byte_offset(span.hi).pos;
+        let lo_pos = self.sess.codemap().bytepos_to_file_charpos(span.lo);
+        let hi_pos = self.sess.codemap().bytepos_to_file_charpos(span.hi);
+        let lo_pos_byte = self.sess.codemap().lookup_byte_offset(span.lo).pos;
+        let hi_pos_byte = self.sess.codemap().lookup_byte_offset(span.hi).pos;
 
-        format!("file_name,{},file_line,{},file_col,{},extent_start,{},\
-                 file_line_end,{},file_col_end,{},extent_end,{}",
-                lo_loc.file.name, lo_loc.line, lo_loc.col.to_uint(), lo_pos.to_uint(),
-                hi_loc.line, hi_loc.col.to_uint(), hi_pos.to_uint())
+        format!("file_name,{},file_line,{},file_col,{},extent_start,{},extent_start_bytes,{},\
+                 file_line_end,{},file_col_end,{},extent_end,{},extent_end_bytes,{}",
+                lo_loc.file.name,
+                lo_loc.line, lo_loc.col.to_uint(), lo_pos.to_uint(), lo_pos_byte.to_uint(),
+                hi_loc.line, hi_loc.col.to_uint(), hi_pos.to_uint(), hi_pos_byte.to_uint())
     }
 
     // sub_span starts at span.lo, so we need to adjust the positions etc.
@@ -92,7 +95,7 @@ impl<'a> SpanUtils<'a> {
         let mut toks = self.retokenise_span(span);
         let mut bracket_count = 0u;
         loop {
-            let ts = toks.next_token();
+            let ts = toks.real_token();
             if ts.tok == token::Eof {
                 return self.make_sub_span(span, result)
             }
@@ -115,7 +118,7 @@ impl<'a> SpanUtils<'a> {
         let mut toks = self.retokenise_span(span);
         let mut bracket_count = 0u;
         loop {
-            let ts = toks.next_token();
+            let ts = toks.real_token();
             if ts.tok == token::Eof {
                 return None;
             }
@@ -137,13 +140,13 @@ impl<'a> SpanUtils<'a> {
     // any brackets, or the last span.
     pub fn sub_span_for_meth_name(&self, span: Span) -> Option<Span> {
         let mut toks = self.retokenise_span(span);
-        let mut prev = toks.next_token();
+        let mut prev = toks.real_token();
         let mut result = None;
         let mut bracket_count = 0u;
         let mut last_span = None;
         while prev.tok != token::Eof {
             last_span = None;
-            let mut next = toks.next_token();
+            let mut next = toks.real_token();
 
             if (next.tok == token::OpenDelim(token::Paren) ||
                 next.tok == token::Lt) &&
@@ -156,7 +159,7 @@ impl<'a> SpanUtils<'a> {
                 next.tok == token::ModSep {
                 let old = prev;
                 prev = next;
-                next = toks.next_token();
+                next = toks.real_token();
                 if next.tok == token::Lt &&
                    old.tok.is_ident() {
                     result = Some(old.sp);
@@ -185,11 +188,11 @@ impl<'a> SpanUtils<'a> {
     // brackets, or the last span.
     pub fn sub_span_for_type_name(&self, span: Span) -> Option<Span> {
         let mut toks = self.retokenise_span(span);
-        let mut prev = toks.next_token();
+        let mut prev = toks.real_token();
         let mut result = None;
         let mut bracket_count = 0u;
         loop {
-            let next = toks.next_token();
+            let next = toks.real_token();
 
             if (next.tok == token::Lt ||
                 next.tok == token::Colon) &&
@@ -234,7 +237,7 @@ impl<'a> SpanUtils<'a> {
         // We keep track of how many brackets we're nested in
         let mut bracket_count = 0i;
         loop {
-            let ts = toks.next_token();
+            let ts = toks.real_token();
             if ts.tok == token::Eof {
                 if bracket_count != 0 {
                     let loc = self.sess.codemap().lookup_char_pos(span.lo);
@@ -263,12 +266,12 @@ impl<'a> SpanUtils<'a> {
 
     pub fn sub_span_before_token(&self, span: Span, tok: Token) -> Option<Span> {
         let mut toks = self.retokenise_span(span);
-        let mut prev = toks.next_token();
+        let mut prev = toks.real_token();
         loop {
             if prev.tok == token::Eof {
                 return None;
             }
-            let next = toks.next_token();
+            let next = toks.real_token();
             if next.tok == tok {
                 return self.make_sub_span(span, Some(prev.sp));
             }
@@ -281,15 +284,16 @@ impl<'a> SpanUtils<'a> {
                               keyword: keywords::Keyword) -> Option<Span> {
         let mut toks = self.retokenise_span(span);
         loop {
-            let ts = toks.next_token();
+            let ts = toks.real_token();
             if ts.tok == token::Eof {
                 return None;
             }
             if ts.tok.is_keyword(keyword) {
-                let ts = toks.next_token();
+                let ts = toks.real_token();
                 if ts.tok == token::Eof {
                     return None
                 } else {
+                    println!("found keyword: {} at {}", ts, ts.sp);
                     return self.make_sub_span(span, Some(ts.sp));
                 }
             }

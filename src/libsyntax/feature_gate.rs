@@ -260,7 +260,7 @@ impl<'a, 'v> Visitor<'v> for Context<'a> {
             ast::RequiredMethod(_) | ast::ProvidedMethod(_) => {}
             ast::TypeTraitItem(ref ti) => {
                 self.gate_feature("associated_types",
-                                  ti.span,
+                                  ti.ty_param.span,
                                   "associated types are experimental")
             }
         }

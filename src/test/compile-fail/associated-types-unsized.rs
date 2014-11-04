@@ -8,18 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct NoCloneOrEq;
+#![feature(associated_types)]
 
-#[deriving(PartialEq)]
-struct E {
-    x: NoCloneOrEq //~ ERROR does not implement any method in scope named `eq`
-         //~^ ERROR does not implement any method in scope named `ne`
-}
-#[deriving(Clone)]
-struct C {
-    x: NoCloneOrEq
-    //~^ ERROR the trait `core::clone::Clone` is not implemented for the type `NoCloneOrEq`
+trait Get {
+    type Sized? Value;
+    fn get(&self) -> <Self as Get>::Value;
 }
 
+fn foo<T:Get>(t: T) {
+    let x = t.get(); //~ ERROR the trait `core::kinds::Sized` is not implemented
+}
 
-fn main() {}
+fn main() {
+}
+

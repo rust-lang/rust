@@ -276,7 +276,6 @@
 
 #![stable]
 
-use clone::Clone;
 use cmp::PartialEq;
 use std::fmt::Show;
 use slice;

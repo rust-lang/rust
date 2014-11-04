@@ -8,18 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct NoCloneOrEq;
+// Test that overloaded call parameter checking does not ICE
+// when a type error or unconstrained type variable propagates
+// into it.
 
-#[deriving(PartialEq)]
-struct E {
-    x: NoCloneOrEq //~ ERROR does not implement any method in scope named `eq`
-         //~^ ERROR does not implement any method in scope named `ne`
+#![feature(overloaded_calls)]
+
+fn main() {
+    (return)((),());
+    //~^ ERROR the type of this value must be known
+    //~^^ ERROR the type of this value must be known
+    //~^^^ ERROR cannot use call notation
 }
-#[deriving(Clone)]
-struct C {
-    x: NoCloneOrEq
-    //~^ ERROR the trait `core::clone::Clone` is not implemented for the type `NoCloneOrEq`
-}
-
-
-fn main() {}

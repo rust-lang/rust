@@ -52,11 +52,19 @@ fn cs_clone(
     name: &str,
     cx: &mut ExtCtxt, trait_span: Span,
     substr: &Substructure) -> P<Expr> {
-    let clone_ident = substr.method_ident;
     let ctor_ident;
     let all_fields;
-    let subcall = |field: &FieldInfo|
-        cx.expr_method_call(field.span, field.self_.clone(), clone_ident, Vec::new());
+    let fn_path = vec![
+        cx.ident_of("std"),
+        cx.ident_of("clone"),
+        cx.ident_of("Clone"),
+        cx.ident_of("clone"),
+    ];
+    let subcall = |field: &FieldInfo| {
+        let args = vec![cx.expr_addr_of(field.span, field.self_.clone())];
+
+        cx.expr_call_global(field.span, fn_path.clone(), args)
+    };
 
     match *substr.fields {
         Struct(ref af) => {

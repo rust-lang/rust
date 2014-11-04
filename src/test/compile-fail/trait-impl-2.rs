@@ -8,18 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct NoCloneOrEq;
+// Test calling methods on an impl for a bare trait. This test checks trait impls
+// must be in the same module as the trait.
 
-#[deriving(PartialEq)]
-struct E {
-    x: NoCloneOrEq //~ ERROR does not implement any method in scope named `eq`
-         //~^ ERROR does not implement any method in scope named `ne`
-}
-#[deriving(Clone)]
-struct C {
-    x: NoCloneOrEq
-    //~^ ERROR the trait `core::clone::Clone` is not implemented for the type `NoCloneOrEq`
+mod Foo {
+    trait T {}
 }
 
+mod Bar {
+    impl<'a> ::Foo::T+'a { //~ERROR: inherent implementations may only be implemented in the same
+        fn foo(&self) {}
+    }
+}
 
 fn main() {}

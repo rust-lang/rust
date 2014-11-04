@@ -668,12 +668,12 @@ impl InternedString {
 
 impl BytesContainer for InternedString {
     fn container_as_bytes<'a>(&'a self) -> &'a [u8] {
-        // FIXME(pcwalton): This is a workaround for the incorrect signature
+        // FIXME #12938: This is a workaround for the incorrect signature
         // of `BytesContainer`, which is itself a workaround for the lack of
         // DST.
         unsafe {
             let this = self.get();
-            mem::transmute(this.container_as_bytes())
+            mem::transmute::<&[u8],&[u8]>(this.container_as_bytes())
         }
     }
 }

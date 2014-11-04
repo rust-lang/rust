@@ -36,7 +36,7 @@ use std::io::extensions::u64_from_be_bytes;
 use std::io;
 use std::collections::hash_map::HashMap;
 use std::rc::Rc;
-use std::u64;
+use std::str;
 use rbml::reader;
 use rbml;
 use serialize::Decodable;
@@ -215,7 +215,9 @@ fn each_reexport(d: rbml::Doc, f: |rbml::Doc| -> bool) -> bool {
 
 fn variant_disr_val(d: rbml::Doc) -> Option<ty::Disr> {
     reader::maybe_get_doc(d, tag_disr_val).and_then(|val_doc| {
-        reader::with_doc_data(val_doc, |data| u64::parse_bytes(data, 10u))
+        reader::with_doc_data(val_doc, |data| {
+            str::from_utf8(data).and_then(from_str)
+        })
     })
 }
 
