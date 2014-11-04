@@ -131,7 +131,7 @@ impl<'a> Context<'a> {
     fn gate_feature(&self, feature: &str, span: Span, explain: &str) {
         if !self.has_feature(feature) {
             self.span_handler.span_err(span, explain);
-            self.span_handler.span_note(span, format!("add #![feature({})] to the \
+            self.span_handler.span_help(span, format!("add #![feature({})] to the \
                                                        crate attributes to enable",
                                                       feature).as_slice());
         }

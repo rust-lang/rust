@@ -11,7 +11,7 @@
 fn f() {
     let x = [1i].iter(); //~ ERROR borrowed value does not live long enough
                          //~^^ NOTE reference must be valid for the block
-                         //~^^ NOTE consider using a `let` binding to increase its lifetime
+                         //~^^ HELP consider using a `let` binding to increase its lifetime
 }
 
 fn main() {

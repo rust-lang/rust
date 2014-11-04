@@ -11,7 +11,7 @@
 fn blah() -> int { //~ ERROR not all control paths return a value
     1i
 
-    ; //~ NOTE consider removing this semicolon:
+    ; //~ HELP consider removing this semicolon:
 }
 
 fn main() { }

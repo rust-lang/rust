@@ -10,13 +10,13 @@
 
 // Lifetime annotation needed because we have no arguments.
 fn f() -> &int {    //~ ERROR missing lifetime specifier
-//~^ NOTE there is no value for it to be borrowed from
+//~^ HELP there is no value for it to be borrowed from
     panic!()
 }
 
 // Lifetime annotation needed because we have two by-reference parameters.
 fn g(_x: &int, _y: &int) -> &int {    //~ ERROR missing lifetime specifier
-//~^ NOTE the signature does not say whether it is borrowed from `_x` or `_y`
+//~^ HELP the signature does not say whether it is borrowed from `_x` or `_y`
     panic!()
 }
 
@@ -27,7 +27,13 @@ struct Foo<'a> {
 // Lifetime annotation needed because we have two lifetimes: one as a parameter
 // and one on the reference.
 fn h(_x: &Foo) -> &int { //~ ERROR missing lifetime specifier
-//~^ NOTE the signature does not say which one of `_x`'s 2 elided lifetimes it is borrowed from
+//~^ HELP the signature does not say which one of `_x`'s 2 elided lifetimes it is borrowed from
+    panic!()
+}
+
+fn i(_x: int) -> &int { //~ ERROR missing lifetime specifier
+//~^ HELP this function's return type contains a borrowed value
+//~^^ HELP consider giving it a 'static lifetime
     panic!()
 }
 
