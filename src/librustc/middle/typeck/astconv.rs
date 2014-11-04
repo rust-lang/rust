@@ -620,15 +620,6 @@ enum PointerTy {
     Uniq
 }
 
-impl PointerTy {
-    fn default_region(&self) -> ty::Region {
-        match *self {
-            Uniq => ty::ReStatic,
-            RPtr(r) => r,
-        }
-    }
-}
-
 pub fn trait_ref_for_unboxed_function<'tcx, AC: AstConv<'tcx>,
                                       RS:RegionScope>(
                                       this: &AC,
@@ -686,31 +677,6 @@ fn mk_pointer<'tcx, AC: AstConv<'tcx>, RS: RegionScope>(
         ast::TyVec(ref ty) => {
             let ty = ast_ty_to_ty(this, rscope, &**ty);
             return constr(ty::mk_vec(tcx, ty, None));
-        }
-        ast::TyUnboxedFn(ref unboxed_function) => {
-            let ty::TraitRef {
-                def_id,
-                substs
-            } = trait_ref_for_unboxed_function(this,
-                                               rscope,
-                                               unboxed_function.kind,
-                                               &*unboxed_function.decl,
-                                               None);
-            let r = ptr_ty.default_region();
-            let tr = ty::mk_trait(this.tcx(),
-                                  def_id,
-                                  substs,
-                                  ty::region_existential_bound(r));
-            match ptr_ty {
-                Uniq => {
-                    return ty::mk_uniq(this.tcx(), tr);
-                }
-                RPtr(r) => {
-                    return ty::mk_rptr(this.tcx(),
-                                       r,
-                                       ty::mt {mutbl: a_seq_mutbl, ty: tr});
-                }
-            }
         }
         ast::TyPath(ref path, ref opt_bounds, id) => {
             // Note that the "bounds must be empty if path is not a trait"
@@ -940,11 +906,6 @@ pub fn ast_ty_to_ty<'tcx, AC: AstConv<'tcx>, RS: RegionScope>(
                                             None);
 
                 ty::mk_closure(tcx, fn_decl)
-            }
-            ast::TyUnboxedFn(..) => {
-                tcx.sess.span_err(ast_ty.span,
-                                  "cannot use unboxed functions here");
-                ty::mk_err()
             }
             ast::TyPath(ref path, ref bounds, id) => {
                 let a_def = match tcx.def_map.borrow().find(&id) {
@@ -1425,21 +1386,13 @@ pub fn conv_existential_bounds<'tcx, AC: AstConv<'tcx>, RS:RegionScope>(
 
     let PartitionedBounds { builtin_bounds,
                             trait_bounds,
-                            region_bounds,
-                            unboxed_fn_ty_bounds } =
+                            region_bounds } =
         partition_bounds(this.tcx(), span, ast_bound_refs.as_slice());
 
     if !trait_bounds.is_empty() {
         let b = &trait_bounds[0];
         this.tcx().sess.span_err(
             b.path.span,
-            format!("only the builtin traits can be used \
-                     as closure or object bounds").as_slice());
-    }
-
-    if !unboxed_fn_ty_bounds.is_empty() {
-        this.tcx().sess.span_err(
-            span,
             format!("only the builtin traits can be used \
                      as closure or object bounds").as_slice());
     }
@@ -1572,7 +1525,6 @@ fn compute_region_bound<'tcx, AC: AstConv<'tcx>, RS:RegionScope>(
 pub struct PartitionedBounds<'a> {
     pub builtin_bounds: ty::BuiltinBounds,
     pub trait_bounds: Vec<&'a ast::TraitRef>,
-    pub unboxed_fn_ty_bounds: Vec<&'a ast::UnboxedFnBound>,
     pub region_bounds: Vec<&'a ast::Lifetime>,
 }
 
@@ -1590,7 +1542,6 @@ pub fn partition_bounds<'a>(tcx: &ty::ctxt,
     let mut builtin_bounds = ty::empty_builtin_bounds();
     let mut region_bounds = Vec::new();
     let mut trait_bounds = Vec::new();
-    let mut unboxed_fn_ty_bounds = Vec::new();
     let mut trait_def_ids = HashMap::new();
     for &ast_bound in ast_bounds.iter() {
         match *ast_bound {
@@ -1635,9 +1586,6 @@ pub fn partition_bounds<'a>(tcx: &ty::ctxt,
             ast::RegionTyParamBound(ref l) => {
                 region_bounds.push(l);
             }
-            ast::UnboxedFnTyParamBound(ref unboxed_function) => {
-                unboxed_fn_ty_bounds.push(&**unboxed_function);
-            }
         }
     }
 
@@ -1645,7 +1593,6 @@ pub fn partition_bounds<'a>(tcx: &ty::ctxt,
         builtin_bounds: builtin_bounds,
         trait_bounds: trait_bounds,
         region_bounds: region_bounds,
-        unboxed_fn_ty_bounds: unboxed_fn_ty_bounds
     }
 }
 

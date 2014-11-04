@@ -308,19 +308,10 @@ pub const DUMMY_NODE_ID: NodeId = -1;
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
 pub enum TyParamBound {
     TraitTyParamBound(TraitRef),
-    UnboxedFnTyParamBound(P<UnboxedFnBound>),
     RegionTyParamBound(Lifetime)
 }
 
 pub type TyParamBounds = OwnedSlice<TyParamBound>;
-
-#[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
-pub struct UnboxedFnBound {
-    pub path: Path,
-    pub decl: P<FnDecl>,
-    pub lifetimes: Vec<LifetimeDef>,
-    pub ref_id: NodeId,
-}
 
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
 pub struct TyParam {
@@ -1090,12 +1081,6 @@ pub struct BareFnTy {
 }
 
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
-pub struct UnboxedFnTy {
-    pub kind: UnboxedClosureKind,
-    pub decl: P<FnDecl>,
-}
-
-#[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
 pub enum Ty_ {
     TyNil,
     TyBot, /* bottom type */
@@ -1107,7 +1092,6 @@ pub enum Ty_ {
     TyClosure(P<ClosureTy>),
     TyProc(P<ClosureTy>),
     TyBareFn(P<BareFnTy>),
-    TyUnboxedFn(P<UnboxedFnTy>),
     TyTup(Vec<P<Ty>> ),
     TyPath(Path, Option<TyParamBounds>, NodeId), // for #7264; see above
     /// A "qualified path", e.g. `<Vec<T> as SomeTrait>::SomeType`

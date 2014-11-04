@@ -848,9 +848,6 @@ impl<'ast> Visitor<'ast> for NodeCollector<'ast> {
             TyBareFn(ref fd) => {
                 self.visit_fn_decl(&*fd.decl);
             }
-            TyUnboxedFn(ref fd) => {
-                self.visit_fn_decl(&*fd.decl);
-            }
             _ => {}
         }
         visit::walk_ty(self, ty);

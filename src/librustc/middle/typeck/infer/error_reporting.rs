@@ -1102,9 +1102,6 @@ impl<'a, 'tcx> Rebuilder<'a, 'tcx> {
                     // be passing down a map.
                     ast::RegionTyParamBound(lt)
                 }
-                &ast::UnboxedFnTyParamBound(ref unboxed_function_type) => {
-                    ast::UnboxedFnTyParamBound((*unboxed_function_type).clone())
-                }
                 &ast::TraitTyParamBound(ref tr) => {
                     let last_seg = tr.path.segments.last().unwrap();
                     let mut insert = Vec::new();
