@@ -333,35 +333,10 @@ pub fn to_str_exp_digits(num: f32, dig: uint, upper: bool) -> String {
     r
 }
 
-/// Convert a string in base 16 to a float.
-/// Accepts an optional binary exponent.
-///
-/// This function accepts strings such as
-///
-/// * 'a4.fe'
-/// * '+a4.fe', equivalent to 'a4.fe'
-/// * '-a4.fe'
-/// * '2b.aP128', or equivalently, '2b.ap128'
-/// * '2b.aP-128'
-/// * '.' (understood as 0)
-/// * 'c.'
-/// * '.c', or, equivalently,  '0.c'
-/// * '+inf', 'inf', '-inf', 'NaN'
-///
-/// Leading and trailing whitespace represent an error.
-///
-/// # Arguments
-///
-/// * num - A string
-///
-/// # Return value
-///
-/// `None` if the string did not represent a valid number.  Otherwise,
-/// `Some(n)` where `n` is the floating-point number represented by `[num]`.
 #[inline]
-pub fn from_str_hex(num: &str) -> Option<f32> {
-    strconv::from_str_common(num, 16u, true, true, true,
-                             strconv::ExpBin, false, false)
+#[deprecated="Use `FromStrRadix::from_str_radix(src, 16)`"]
+pub fn from_str_hex(src: &str) -> Option<f32> {
+    strconv::from_str_radix_float(src, 16)
 }
 
 impl FromStr for f32 {
@@ -384,16 +359,15 @@ impl FromStr for f32 {
     ///
     /// # Arguments
     ///
-    /// * num - A string
+    /// * src - A string
     ///
     /// # Return value
     ///
     /// `None` if the string did not represent a valid number.  Otherwise,
-    /// `Some(n)` where `n` is the floating-point number represented by `num`.
+    /// `Some(n)` where `n` is the floating-point number represented by `src`.
     #[inline]
-    fn from_str(val: &str) -> Option<f32> {
-        strconv::from_str_common(val, 10u, true, true, true,
-                                 strconv::ExpDec, false, false)
+    fn from_str(src: &str) -> Option<f32> {
+        strconv::from_str_radix_float(src, 10u)
     }
 }
 
@@ -408,17 +382,16 @@ impl num::FromStrRadix for f32 {
     ///
     /// # Arguments
     ///
-    /// * num - A string
+    /// * src - A string
     /// * radix - The base to use. Must lie in the range [2 .. 36]
     ///
     /// # Return value
     ///
     /// `None` if the string did not represent a valid number. Otherwise,
-    /// `Some(n)` where `n` is the floating-point number represented by `num`.
+    /// `Some(n)` where `n` is the floating-point number represented by `src`.
     #[inline]
-    fn from_str_radix(val: &str, rdx: uint) -> Option<f32> {
-        strconv::from_str_common(val, rdx, true, true, false,
-                                 strconv::ExpNone, false, false)
+    fn from_str_radix(src: &str, radix: uint) -> Option<f32> {
+        strconv::from_str_radix_float(src, radix)
     }
 }
 
@@ -710,8 +683,8 @@ mod tests {
     fn test_ldexp() {
         // We have to use from_str until base-2 exponents
         // are supported in floating-point literals
-        let f1: f32 = from_str_hex("1p-123").unwrap();
-        let f2: f32 = from_str_hex("1p-111").unwrap();
+        let f1: f32 = FromStrRadix::from_str_radix("1p-123", 16).unwrap();
+        let f2: f32 = FromStrRadix::from_str_radix("1p-111", 16).unwrap();
         assert_eq!(FloatMath::ldexp(1f32, -123), f1);
         assert_eq!(FloatMath::ldexp(1f32, -111), f2);
 
@@ -730,8 +703,8 @@ mod tests {
     fn test_frexp() {
         // We have to use from_str until base-2 exponents
         // are supported in floating-point literals
-        let f1: f32 = from_str_hex("1p-123").unwrap();
-        let f2: f32 = from_str_hex("1p-111").unwrap();
+        let f1: f32 = FromStrRadix::from_str_radix("1p-123", 16).unwrap();
+        let f2: f32 = FromStrRadix::from_str_radix("1p-111", 16).unwrap();
         let (x1, exp1) = f1.frexp();
         let (x2, exp2) = f2.frexp();
         assert_eq!((x1, exp1), (0.5f32, -122));

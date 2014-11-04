@@ -10,7 +10,6 @@
 //
 // ignore-lexer-test FIXME #15883
 
-use clone::Clone;
 use cmp::{Eq, Equiv, PartialEq};
 use core::kinds::Sized;
 use default::Default;

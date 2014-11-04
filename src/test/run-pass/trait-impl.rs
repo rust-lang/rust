@@ -8,18 +8,29 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct NoCloneOrEq;
+// Test calling methods on an impl for a bare trait.
 
-#[deriving(PartialEq)]
-struct E {
-    x: NoCloneOrEq //~ ERROR does not implement any method in scope named `eq`
-         //~^ ERROR does not implement any method in scope named `ne`
+static mut COUNT: uint = 1;
+
+trait T {}
+
+impl<'a> T+'a {
+    fn foo(&self) {
+        unsafe { COUNT *= 2; }
+    }
+    fn bar() {
+        unsafe { COUNT *= 3; }
+    }
 }
-#[deriving(Clone)]
-struct C {
-    x: NoCloneOrEq
-    //~^ ERROR the trait `core::clone::Clone` is not implemented for the type `NoCloneOrEq`
+
+impl T for int {}
+
+fn main() {
+    let x: &T = &42i;
+
+    x.foo();
+    T::foo(x);
+    T::bar();
+
+    unsafe { assert!(COUNT == 12); }
 }
-
-
-fn main() {}

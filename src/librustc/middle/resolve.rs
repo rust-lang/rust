@@ -627,7 +627,10 @@ impl NameBindings {
                      sp: Span) {
         // Merges the module with the existing type def or creates a new one.
         let modifiers = if is_public { PUBLIC } else { DefModifiers::empty() } | IMPORTABLE;
-        let module_ = Rc::new(Module::new(parent_link, def_id, kind, external,
+        let module_ = Rc::new(Module::new(parent_link,
+                                          def_id,
+                                          kind,
+                                          external,
                                           is_public));
         let type_def = self.type_def.borrow().clone();
         match type_def {
@@ -1372,6 +1375,8 @@ impl<'a> Resolver<'a> {
                 // Create the module and add all methods.
                 match ty.node {
                     TyPath(ref path, _, _) if path.segments.len() == 1 => {
+                        // FIXME(18446) we should distinguish between the name of
+                        // a trait and the name of an impl of that trait.
                         let mod_name = path.segments.last().unwrap().identifier.name;
 
                         let parent_opt = parent.module().children.borrow()
@@ -1380,8 +1385,8 @@ impl<'a> Resolver<'a> {
                             // It already exists
                             Some(ref child) if child.get_module_if_available()
                                                 .is_some() &&
-                                           child.get_module().kind.get() ==
-                                                ImplModuleKind => {
+                                           (child.get_module().kind.get() == ImplModuleKind ||
+                                            child.get_module().kind.get() == TraitModuleKind) => {
                                 ModuleReducedGraphParent(child.get_module())
                             }
                             Some(ref child) if child.get_module_if_available()
@@ -1559,19 +1564,19 @@ impl<'a> Resolver<'a> {
                         }
                         ast::TypeTraitItem(ref associated_type) => {
                             let def = DefAssociatedTy(local_def(
-                                    associated_type.id));
+                                    associated_type.ty_param.id));
 
                             let name_bindings =
-                                self.add_child(associated_type.ident.name,
+                                self.add_child(associated_type.ty_param.ident.name,
                                                module_parent.clone(),
                                                ForbidDuplicateTypesAndValues,
-                                               associated_type.span);
+                                               associated_type.ty_param.span);
                             // NB: not IMPORTABLE
                             name_bindings.define_type(def,
-                                                      associated_type.span,
+                                                      associated_type.ty_param.span,
                                                       PUBLIC);
 
-                            (associated_type.ident.name, TypeTraitItemKind)
+                            (associated_type.ty_param.ident.name, TypeTraitItemKind)
                         }
                     };
 
@@ -4218,7 +4223,7 @@ impl<'a> Resolver<'a> {
                                             impl_items.as_slice());
             }
 
-            ItemTrait(ref generics, ref unbound, ref bounds, ref methods) => {
+            ItemTrait(ref generics, ref unbound, ref bounds, ref trait_items) => {
                 // Create a new rib for the self type.
                 let mut self_type_rib = Rib::new(ItemRibKind);
 
@@ -4246,13 +4251,13 @@ impl<'a> Resolver<'a> {
                         _ => {}
                     }
 
-                    for method in (*methods).iter() {
-                        // Create a new rib for the method-specific type
+                    for trait_item in (*trait_items).iter() {
+                        // Create a new rib for the trait_item-specific type
                         // parameters.
                         //
                         // FIXME #4951: Do we need a node ID here?
 
-                        match *method {
+                        match *trait_item {
                           ast::RequiredMethod(ref ty_m) => {
                             this.with_type_parameter_rib
                                 (HasTypeParameters(&ty_m.generics,
@@ -4287,8 +4292,9 @@ impl<'a> Resolver<'a> {
                                                                 ProvidedMethod(m.id)),
                                                   &**m)
                           }
-                          ast::TypeTraitItem(_) => {
-                              visit::walk_trait_item(this, method);
+                          ast::TypeTraitItem(ref data) => {
+                              this.resolve_type_parameter(&data.ty_param);
+                              visit::walk_trait_item(this, trait_item);
                           }
                         }
                     }
@@ -4477,20 +4483,25 @@ impl<'a> Resolver<'a> {
     fn resolve_type_parameters(&mut self,
                                type_parameters: &OwnedSlice<TyParam>) {
         for type_parameter in type_parameters.iter() {
-            for bound in type_parameter.bounds.iter() {
-                self.resolve_type_parameter_bound(type_parameter.id, bound,
-                                                  TraitBoundingTypeParameter);
-            }
-            match &type_parameter.unbound {
-                &Some(ref unbound) =>
-                    self.resolve_type_parameter_bound(
-                        type_parameter.id, unbound, TraitBoundingTypeParameter),
-                &None => {}
-            }
-            match type_parameter.default {
-                Some(ref ty) => self.resolve_type(&**ty),
-                None => {}
-            }
+            self.resolve_type_parameter(type_parameter);
+        }
+    }
+
+    fn resolve_type_parameter(&mut self,
+                              type_parameter: &TyParam) {
+        for bound in type_parameter.bounds.iter() {
+            self.resolve_type_parameter_bound(type_parameter.id, bound,
+                                              TraitBoundingTypeParameter);
+        }
+        match &type_parameter.unbound {
+            &Some(ref unbound) =>
+                self.resolve_type_parameter_bound(
+                    type_parameter.id, unbound, TraitBoundingTypeParameter),
+            &None => {}
+        }
+        match type_parameter.default {
+            Some(ref ty) => self.resolve_type(&**ty),
+            None => {}
         }
     }
 
@@ -4577,14 +4588,14 @@ impl<'a> Resolver<'a> {
                         self.resolve_error(trait_reference.path.span,
                                            format!("`{}` is not a trait",
                                                    self.path_names_to_string(
-                                                        &trait_reference.path)));
+                                                       &trait_reference.path)));
 
                         // If it's a typedef, give a note
                         match def {
                             DefTy(..) => {
                                 self.session.span_note(
-                                                trait_reference.path.span,
-                                                format!("`type` aliases cannot \
+                                    trait_reference.path.span,
+                                    format!("`type` aliases cannot \
                                                         be used for traits")
                                                         .as_slice());
                             }

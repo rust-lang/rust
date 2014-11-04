@@ -119,7 +119,7 @@ impl Name {
     pub fn as_str<'a>(&'a self) -> &'a str {
         unsafe {
             // FIXME #12938: can't use copy_lifetime since &str isn't a &T
-            ::std::mem::transmute(token::get_name(*self).get())
+            ::std::mem::transmute::<&str,&str>(token::get_name(*self).get())
         }
     }
 
@@ -385,7 +385,7 @@ pub enum Pat_ {
     PatLit(P<Expr>),
     PatRange(P<Expr>, P<Expr>),
     /// [a, b, ..i, y, z] is represented as:
-    ///     PatVec(~[a, b], Some(i), ~[y, z])
+    ///     PatVec(box [a, b], Some(i), box [y, z])
     PatVec(Vec<P<Pat>>, Option<P<Pat>>, Vec<P<Pat>>),
     PatMac(Mac),
 }
@@ -861,10 +861,8 @@ pub enum ImplItem {
 
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
 pub struct AssociatedType {
-    pub id: NodeId,
-    pub span: Span,
-    pub ident: Ident,
     pub attrs: Vec<Attribute>,
+    pub ty_param: TyParam,
 }
 
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
