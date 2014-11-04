@@ -19,7 +19,7 @@
 
 mod cross_crate {
     #[phase(plugin, link)]
-    extern crate lint_stability;
+    extern crate lint_stability; //~ ERROR: use of unmarked item
     use self::lint_stability::*;
 
     fn test() {
@@ -144,7 +144,7 @@ mod cross_crate {
 }
 
 mod inheritance {
-    extern crate inherited_stability;
+    extern crate inherited_stability; //~ ERROR: use of experimental item
     use self::inherited_stability::*;
 
     fn test_inheritance() {
