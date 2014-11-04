@@ -47,6 +47,7 @@ the direction the language is evolving in.
 * [0339-statically-sized-literals.md](text/0339-statically-sized-literals.md)
 * [0344-conventions-galore.md](text/0344-conventions-galore.md)
 * [0356-no-module-prefixes.md](text/0356-no-module-prefixes.md)
+* [0378-expr-macros.md](text/0378-expr-macros.md)
 * [0385-module-system-cleanup.md](text/0385-module-system-cleanup.md)
 
 ## Table of Contents
