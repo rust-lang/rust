@@ -121,7 +121,7 @@ pub trait VectorVector<T> for Sized? {
     fn connect_vec(&self, sep: &T) -> Vec<T>;
 }
 
-impl<T: Clone, V: AsSlice<T>> VectorVector<T> for [V] {
+impl<'a, T: Clone, V: AsSlice<T>> VectorVector<T> for [V] {
     fn concat_vec(&self) -> Vec<T> {
         let size = self.iter().fold(0u, |acc, v| acc + v.as_slice().len());
         let mut result = Vec::with_capacity(size);
