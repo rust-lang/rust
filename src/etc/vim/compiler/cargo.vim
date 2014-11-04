@@ -23,9 +23,13 @@ endif
 " support variations like 'cargo.toml'.
 let s:cargo_manifest_name = get(g:, 'cargo_manifest_name', 'Cargo.toml')
 
+function! s:is_absolute(path)
+    return a:path[0] == '/' || a:path =~ '[A-Z]\+:'
+endfunction
+
 let s:local_manifest = findfile(s:cargo_manifest_name, '.;')
 if s:local_manifest != ''
-	let s:local_manifest = fnamemodify(s:local_manifest, ':p:h').'/'
+    let s:local_manifest = fnamemodify(s:local_manifest, ':p:h').'/'
     augroup cargo
         au!
         au QuickfixCmdPost make call s:FixPaths()
@@ -43,14 +47,14 @@ if s:local_manifest != ''
                     let manifest = m[1].'/'
                     " Manually strip another slash if needed; usually just an
                     " issue on Windows.
-                    if manifest =~ '^/[A-Z]:/'
+                    if manifest =~ '^/[A-Z]\+:/'
                         let manifest = manifest[1:]
                     endif
                 endif
                 continue
             endif
             let filename = bufname(qf.bufnr)
-            if filereadable(filename)
+            if s:is_absolute(filename)
                 continue
             endif
             let qf.filename = simplify(manifest.filename)
