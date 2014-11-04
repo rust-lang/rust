@@ -928,7 +928,7 @@ fn link_args(cmd: &mut Command,
     // relocation model of position independent code is not changed. This is a requirement to take
     // advantage of ASLR, as otherwise the functions in the executable are not randomized and can
     // be used during an exploit of a vulnerability in any code.
-    if sess.targ_cfg.os == abi::OsLinux {
+    if sess.targ_cfg.os == abi::OsLinux || sess.targ_cfg.os == abi::OsAndroid {
         let mut args = sess.opts.cg.link_args.iter().chain(used_link_args.iter());
         if !dylib && sess.opts.cg.relocation_model.as_slice() == "pic" &&
             !args.any(|x| x.as_slice() == "-static") {
