@@ -8,6 +8,5 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub fn expr_add_3() {
-    3i + 4;
-}
+#![cfg_attr(foo, experimental)]
+#![cfg_attr(not(foo), stable)]

@@ -212,11 +212,6 @@ pub fn phase_2_configure_and_expand(sess: &Session,
         *ty == config::CrateTypeExecutable
     });
 
-    krate = time(time_passes, "crate injection", krate, |krate|
-                 syntax::std_inject::maybe_inject_crates_ref(krate,
-                                                             sess.opts.alt_std_name.clone(),
-                                                             any_exe));
-
     // strip before expansion to allow macros to depend on
     // configuration variables e.g/ in
     //
@@ -227,6 +222,11 @@ pub fn phase_2_configure_and_expand(sess: &Session,
 
     krate = time(time_passes, "configuration 1", krate, |krate|
                  syntax::config::strip_unconfigured_items(sess.diagnostic(), krate));
+
+    krate = time(time_passes, "crate injection", krate, |krate|
+                 syntax::std_inject::maybe_inject_crates_ref(krate,
+                                                             sess.opts.alt_std_name.clone(),
+                                                             any_exe));
 
     let mut addl_plugins = Some(addl_plugins);
     let Plugins { macros, registrars }
