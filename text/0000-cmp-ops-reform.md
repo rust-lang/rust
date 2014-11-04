@@ -103,12 +103,16 @@ It also means that the compiler does not have to introduce a silent
 using these operators is much more clear.
 
 Fortunately, there is no loss in expressiveness, since you can always
-implement the trait on reference types.
+implement the trait on reference types. However, for types that *do*
+need to be taken by reference, there is a slight loss in ergonomics
+since you may need to explicitly borrow the operands with `&`. The
+upside is that the ownership semantics become clearer: they more
+closely resemble normal function arguments.
 
-By keeping Rhs as an input trait on the trait, you can overload on the
+By keeping `Rhs` as an input trait on the trait, you can overload on the
 types of both operands via
 [multidispatch](https://github.com/rust-lang/rfcs/pull/195).  By
-defaulting Rhs to `Self`, in
+defaulting `Rhs` to `Self`, in
 [the future](https://github.com/rust-lang/rfcs/pull/213) it will be
 possible to simply say `T: Add` as shorthand for `T: Add<T>`, which is
 the common case.
@@ -134,7 +138,7 @@ impl Add<Complex> for Complex {
 }
 
 // Recovering by-ref semantics:
-impl<'a, 'b> Add<&'a str> for &'b String {
+impl<'a, 'b> Add<&'a str> for &'b str {
     type Result = String;
     fn add(self, rhs: &'a str) -> String { ... }
 }
@@ -293,12 +297,12 @@ will still be possible to write `v[3]` for vectors. In addition, the
 outlined above:
 
 ```rust
-pub trait Index<Idx> {
+pub trait Index<Idx> for Sized?  {
     type Sized? Result;
     fn index<'a>(&'a self, index: Idx) -> &'a Result;
 }
 
-pub trait IndexMut<Idx> {
+pub trait IndexMut<Idx> for Sized? {
     type Sized? Result;
     fn index_mut<'a>(&'a mut self, index: Idx) -> &'a mut Result;
 }
@@ -439,6 +443,8 @@ to be done for 1.0.
 
 # Alternatives
 
+## Comparison traits
+
 We could pursue a more aggressive change to the comparison traits by
 not having `PartialOrd` be a super trait of `Ord`, but instead
 providing a blanket `impl` for `PartialOrd` for any `T:
@@ -452,6 +458,22 @@ true).
 
 Since it's unlikely that these other changes can happen in time for
 1.0, this RFC takes a more conservative approach.
+
+## Slicing
+
+We may want to drop the `[]` notation. This notation was introduced to
+improve ergonomics (from `foo(v.as_slice())` to `foo(v[]`), but now
+that [collections reform](https://github.com/rust-lang/rfcs/pull/235)
+is starting to land we can instead write `foo(&*v)`. If we also had
+[deref coercions](https://github.com/rust-lang/rfcs/pull/241), that
+would be just `foo(&v)`.
+
+While `&*v` notation is more ergonomic than `v.as_slice()`, it is also
+somewhat intimidating notation for a situation that newcomers to the
+language are likely to face quickly.
+
+In the opinion of this RFC author, we should either keep `[]`
+notation, or provide deref coercions so that you can just say `&v`.
 
 # Unresolved questions
 
