@@ -1836,11 +1836,7 @@ pub fn trans_closure(ccx: &CrateContext,
         NotUnboxedClosure => monomorphized_arg_types,
 
         // Tuple up closure argument types for the "rust-call" ABI.
-        IsUnboxedClosure => vec![if monomorphized_arg_types.is_empty() {
-            ty::mk_nil()
-        } else {
-            ty::mk_tup(ccx.tcx(), monomorphized_arg_types)
-        }]
+        IsUnboxedClosure => vec![ty::mk_tup_or_nil(ccx.tcx(), monomorphized_arg_types)]
     };
     for monomorphized_arg_type in monomorphized_arg_types.iter() {
         debug!("trans_closure: monomorphized_arg_type: {}",

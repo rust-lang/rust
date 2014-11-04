@@ -1838,6 +1838,14 @@ pub fn mk_slice(cx: &ctxt, r: Region, tm: mt) -> t {
 
 pub fn mk_tup(cx: &ctxt, ts: Vec<t>) -> t { mk_t(cx, ty_tup(ts)) }
 
+pub fn mk_tup_or_nil(cx: &ctxt, ts: Vec<t>) -> t {
+    if ts.len() == 0 {
+        ty::mk_nil()
+    } else {
+        mk_t(cx, ty_tup(ts))
+    }
+}
+
 pub fn mk_closure(cx: &ctxt, fty: ClosureTy) -> t {
     mk_t(cx, ty_closure(box fty))
 }

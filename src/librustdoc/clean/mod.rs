@@ -1641,10 +1641,23 @@ pub struct PathSegment {
 
 impl Clean<PathSegment> for ast::PathSegment {
     fn clean(&self, cx: &DocContext) -> PathSegment {
+        let (lifetimes, types) = match self.parameters {
+            ast::AngleBracketedParameters(ref data) => {
+                (data.lifetimes.clean(cx), data.types.clean(cx))
+            }
+
+            ast::ParenthesizedParameters(ref data) => {
+                // FIXME -- rustdoc should be taught about Foo() notation
+                let inputs = Tuple(data.inputs.clean(cx));
+                let output = data.output.as_ref().map(|t| t.clean(cx)).unwrap_or(Tuple(Vec::new()));
+                (Vec::new(), vec![inputs, output])
+            }
+        };
+
         PathSegment {
             name: self.identifier.clean(cx),
-            lifetimes: self.lifetimes.clean(cx),
-            types: self.types.clean(cx),
+            lifetimes: lifetimes,
+            types: types,
         }
     }
 }

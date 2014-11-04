@@ -407,11 +407,23 @@ pub fn walk_path<'v, V: Visitor<'v>>(visitor: &mut V, path: &'v Path) {
     for segment in path.segments.iter() {
         visitor.visit_ident(path.span, segment.identifier);
 
-        for typ in segment.types.iter() {
-            visitor.visit_ty(&**typ);
-        }
-        for lifetime in segment.lifetimes.iter() {
-            visitor.visit_lifetime_ref(lifetime);
+        match segment.parameters {
+            ast::AngleBracketedParameters(ref data) => {
+                for typ in data.types.iter() {
+                    visitor.visit_ty(&**typ);
+                }
+                for lifetime in data.lifetimes.iter() {
+                    visitor.visit_lifetime_ref(lifetime);
+                }
+            }
+            ast::ParenthesizedParameters(ref data) => {
+                for typ in data.inputs.iter() {
+                    visitor.visit_ty(&**typ);
+                }
+                for typ in data.output.iter() {
+                    visitor.visit_ty(&**typ);
+                }
+            }
         }
     }
 }

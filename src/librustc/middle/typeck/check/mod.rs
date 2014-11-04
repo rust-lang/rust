@@ -3481,11 +3481,7 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
 
         // Tuple up the arguments and insert the resulting function type into
         // the `unboxed_closures` table.
-        fn_ty.sig.inputs = if fn_ty.sig.inputs.len() == 0 {
-            vec![ty::mk_nil()]
-        } else {
-            vec![ty::mk_tup(fcx.tcx(), fn_ty.sig.inputs)]
-        };
+        fn_ty.sig.inputs = vec![ty::mk_tup_or_nil(fcx.tcx(), fn_ty.sig.inputs)];
 
         let kind = match kind {
             ast::FnUnboxedClosureKind => ty::FnUnboxedClosureKind,
@@ -4478,7 +4474,8 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
             let type_and_substs = astconv::ast_path_to_ty_relaxed(fcx,
                                                                   fcx.infcx(),
                                                                   struct_id,
-                                                                  path);
+                                                                  path,
+                                                                  expr.id);
             match fcx.mk_subty(false,
                                infer::Misc(path.span),
                                actual_structure_type,
@@ -5339,6 +5336,7 @@ pub fn instantiate_path(fcx: &FnCtxt,
             Some(space) => {
                 push_explicit_parameters_from_segment_to_substs(fcx,
                                                                 space,
+                                                                path.span,
                                                                 type_defs,
                                                                 region_defs,
                                                                 segment,
@@ -5374,13 +5372,13 @@ pub fn instantiate_path(fcx: &FnCtxt,
         fcx: &FnCtxt,
         segment: &ast::PathSegment)
     {
-        for typ in segment.types.iter() {
+        for typ in segment.parameters.types().iter() {
             span_err!(fcx.tcx().sess, typ.span, E0085,
                 "type parameters may not appear here");
             break;
         }
 
-        for lifetime in segment.lifetimes.iter() {
+        for lifetime in segment.parameters.lifetimes().iter() {
             span_err!(fcx.tcx().sess, lifetime.span, E0086,
                 "lifetime parameters may not appear here");
             break;
@@ -5390,6 +5388,7 @@ pub fn instantiate_path(fcx: &FnCtxt,
     fn push_explicit_parameters_from_segment_to_substs(
         fcx: &FnCtxt,
         space: subst::ParamSpace,
+        span: Span,
         type_defs: &VecPerParamSpace<ty::TypeParameterDef>,
         region_defs: &VecPerParamSpace<ty::RegionParameterDef>,
         segment: &ast::PathSegment,
@@ -5412,10 +5411,31 @@ pub fn instantiate_path(fcx: &FnCtxt,
          * span of the N+1'th parameter.
          */
 
+        match segment.parameters {
+            ast::AngleBracketedParameters(ref data) => {
+                push_explicit_angle_bracketed_parameters_from_segment_to_substs(
+                    fcx, space, type_defs, region_defs, data, substs);
+            }
+
+            ast::ParenthesizedParameters(ref data) => {
+                push_explicit_parenthesized_parameters_from_segment_to_substs(
+                    fcx, space, span, type_defs, data, substs);
+            }
+        }
+    }
+
+    fn push_explicit_angle_bracketed_parameters_from_segment_to_substs(
+        fcx: &FnCtxt,
+        space: subst::ParamSpace,
+        type_defs: &VecPerParamSpace<ty::TypeParameterDef>,
+        region_defs: &VecPerParamSpace<ty::RegionParameterDef>,
+        data: &ast::AngleBracketedParameterData,
+        substs: &mut Substs)
+    {
         {
             let type_count = type_defs.len(space);
             assert_eq!(substs.types.len(space), 0);
-            for (i, typ) in segment.types.iter().enumerate() {
+            for (i, typ) in data.types.iter().enumerate() {
                 let t = fcx.to_ty(&**typ);
                 if i < type_count {
                     substs.types.push(space, t);
@@ -5424,7 +5444,7 @@ pub fn instantiate_path(fcx: &FnCtxt,
                         "too many type parameters provided: \
                          expected at most {} parameter(s), \
                          found {} parameter(s)",
-                         type_count, segment.types.len());
+                         type_count, data.types.len());
                     substs.types.truncate(space, 0);
                 }
             }
@@ -5433,7 +5453,7 @@ pub fn instantiate_path(fcx: &FnCtxt,
         {
             let region_count = region_defs.len(space);
             assert_eq!(substs.regions().len(space), 0);
-            for (i, lifetime) in segment.lifetimes.iter().enumerate() {
+            for (i, lifetime) in data.lifetimes.iter().enumerate() {
                 let r = ast_region_to_region(fcx.tcx(), lifetime);
                 if i < region_count {
                     substs.mut_regions().push(space, r);
@@ -5442,10 +5462,56 @@ pub fn instantiate_path(fcx: &FnCtxt,
                         "too many lifetime parameters provided: \
                          expected {} parameter(s), found {} parameter(s)",
                         region_count,
-                        segment.lifetimes.len());
+                        data.lifetimes.len());
                     substs.mut_regions().truncate(space, 0);
                 }
             }
+        }
+    }
+
+    fn push_explicit_parenthesized_parameters_from_segment_to_substs(
+        fcx: &FnCtxt,
+        space: subst::ParamSpace,
+        span: Span,
+        type_defs: &VecPerParamSpace<ty::TypeParameterDef>,
+        data: &ast::ParenthesizedParameterData,
+        substs: &mut Substs)
+    {
+        /*!
+         * As with
+         * `push_explicit_angle_bracketed_parameters_from_segment_to_substs`,
+         * but intended for `Foo(A,B) -> C` form. This expands to
+         * roughly the same thing as `Foo<(A,B),C>`. One important
+         * difference has to do with the treatment of anonymous
+         * regions, which are translated into bound regions (NYI).
+         */
+
+        let type_count = type_defs.len(space);
+        if type_count < 2 {
+            span_err!(fcx.tcx().sess, span, E0167,
+                      "parenthesized form always supplies 2 type parameters, \
+                      but only {} parameter(s) were expected",
+                      type_count);
+        }
+
+        let input_tys: Vec<ty::t> =
+            data.inputs.iter().map(|ty| fcx.to_ty(&**ty)).collect();
+
+        let tuple_ty =
+            ty::mk_tup_or_nil(fcx.tcx(), input_tys);
+
+        if type_count >= 1 {
+            substs.types.push(space, tuple_ty);
+        }
+
+        let output_ty: Option<ty::t> =
+            data.output.as_ref().map(|ty| fcx.to_ty(&**ty));
+
+        let output_ty =
+            output_ty.unwrap_or(ty::mk_nil());
+
+        if type_count >= 2 {
+            substs.types.push(space, output_ty);
         }
     }
 
