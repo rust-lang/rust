@@ -213,7 +213,7 @@ fn add_library(sess: &session::Session,
                 sess.err(format!("cannot satisfy dependencies so `{}` only \
                                   shows up once",
                                  data.name).as_slice());
-                sess.note("having upstream crates all available in one format \
+                sess.help("having upstream crates all available in one format \
                            will likely make this go away");
             }
         }
