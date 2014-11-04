@@ -1,565 +1,454 @@
-% The Rust References and Lifetimes Guide
+% The Rust Ownership Guide
 
-# Introduction
+This guide presents Rust's ownership system. This is one of Rust's most unique
+and compelling features, with which Rust developers should become quite
+acquainted. Ownership is how Rust achieves its largest goal, memory safety.
+The ownership system has a few distinct concepts: **ownership**, **borrowing**,
+and **lifetimes**. We'll talk about each one in turn.
 
-References are one of the more flexible and powerful tools available in
-Rust. They can point anywhere: into the heap, stack, and even into the
-interior of another data structure. A reference is as flexible as a C pointer
-or C++ reference.
+# Meta
 
-Unlike C and C++ compilers, the Rust compiler includes special static
-checks that ensure that programs use references safely.
+Before we get to the details, two important notes about the ownership system.
 
-Despite their complete safety, a reference's representation at runtime
-is the same as that of an ordinary pointer in a C program. They introduce zero
-overhead. The compiler does all safety checks at compile time.
+Rust has a focus on safety and speed. It accomplishes these goals through many
+"zero cost abstractions," which means that in Rust, abstractions cost as little
+as possible in order to make them work. The ownership system is a prime example
+of a zero cost abstraction. All of the analysis we'll talk about in this guide
+is _done at compile time_. You do not pay any run-time cost for any of these
+features.
 
-Although references have rather elaborate theoretical underpinnings
-(e.g. region pointers), the core concepts will be familiar to anyone
-who has worked with C or C++. The best way to explain how they are
-used—and their limitations—is probably just to work through several examples.
+However, this system does have a certain cost: learning curve. Many new users
+to Rust experience something we like to call "fighting with the borrow
+checker," where the Rust compiler refuses to compile a program that the author
+thinks is valid. This often happens because the programmer's mental model of
+how ownership should work doesn't match the actual rules that Rust implements.
+You probably will experience similar things at first. There is good news,
+however: more experienced Rust developers report that once they work with the
+rules of the ownership system for a period of time, they fight the borrow
+checker less and less.
 
-# By example
+With that in mind, let's learn about ownership.
 
-References, sometimes known as *borrowed pointers*, are only valid for
-a limited duration. References never claim any kind of ownership
-over the data that they point to. Instead, they are used for cases
-where you would like to use data for a short time.
+# Ownership
 
-Consider a simple struct type `Point`:
+At its core, ownership is about 'resources.' For the purposes of the vast
+majority of this guide, we will talk about a specific resource: memory. The
+concept generalizes to any kind of resource, like a file handle, but to make it
+more concrete, we'll focus on memory.
 
-~~~
-struct Point {x: f64, y: f64}
-~~~
+When your program allocates some memory, it needs some way to deallocate that
+memory. Imagine a function `foo` that allocates four bytes of memory, and then
+never deallocates that memory. We call this problem 'leaking' memory, because
+each time we call `foo`, we're allocating another four bytes. Eventually, with
+enough calls to `foo`, we will run our system out of memory. That's no good. So
+we need some way for `foo` to deallocate those four bytes. It's also important
+that we don't deallocate too many times, either. Without getting into the
+details, attempting to deallocate memory multiple times can lead to problems.
+In other words, any time some memory is allocated, we need to make sure that we
+deallocate that memory once and only once. Too many times is bad, not enough
+times is bad. The counts must match.
 
-We can use this simple definition to allocate points in many different ways. For
-example, in this code, each of these local variables contains a point,
-but allocated in a different place:
+There's one other important detail with regards to allocating memory. Whenever
+we request some amount of memory, what we are given is a handle to that memory.
+This handle (often called a 'pointer', when we're referring to memory) is how
+we interact with the allocated memory. As long as we have that handle, we can
+do something with the memory. Once we're done with the handle, we're also done
+with the memory, as we can't do anything useful without a handle to it.
 
-~~~
-# struct Point {x: f64, y: f64}
-let on_the_stack : Point      =     Point {x: 3.0, y: 4.0};
-let on_the_heap  : Box<Point> = box Point {x: 7.0, y: 9.0};
-~~~
+Historically, systems programming languages require you to track these
+allocations, deallocations, and handles yourself. For example, if we want some
+memory from the heap in a language like C, we do this:
 
-Suppose we wanted to write a procedure that computed the distance between any
-two points, no matter where they were stored. One option is to define a function
-that takes two arguments of type `Point`—that is, it takes the points by value.
-But if we define it this way, calling the function will cause the points to be
-copied. For points, this is probably not so bad, but often copies are
-expensive. So we'd like to define a function that takes the points just as
-a reference.
+```c
+{
+    int *x = malloc(sizeof(int));
 
-~~~
-# use std::num::Float;
-# struct Point {x: f64, y: f64}
-# fn sqrt(f: f64) -> f64 { 0.0 }
-fn compute_distance(p1: &Point, p2: &Point) -> f64 {
-    let x_d = p1.x - p2.x;
-    let y_d = p1.y - p2.y;
-    (x_d * x_d + y_d * y_d).sqrt()
+    // we can now do stuff with our handle x
+    *x = 5;
+
+    free(x);
 }
-~~~
+```
 
-Now we can call `compute_distance()`:
+The call to `malloc` allocates some memory. The call to `free` deallocates the
+memory. There's also bookkeeping about allocating the correct amount of memory.
 
-~~~
-# struct Point {x: f64, y: f64}
-# let on_the_stack :     Point  =     Point{x: 3.0, y: 4.0};
-# let on_the_heap  : Box<Point> = box Point{x: 7.0, y: 9.0};
-# fn compute_distance(p1: &Point, p2: &Point) -> f64 { 0.0 }
-compute_distance(&on_the_stack, &*on_the_heap);
-~~~
+Rust combines these two aspects of allocating memory (and other resources) into
+a concept called 'ownership.' Whenever we request some memory, that handle we
+receive is called the 'owning handle.' Whenever that handle goes out of scope,
+Rust knows that you cannot do anything with the memory anymore, and so
+therefore deallocates the memory for you. Here's the equivalent example in
+Rust:
 
-Here, the `&` operator takes the address of the variable
-`on_the_stack`; this is because `on_the_stack` has the type `Point`
-(that is, a struct value) and we have to take its address to get a
-value. We also call this _borrowing_ the local variable
-`on_the_stack`, because we have created an alias: that is, another
-name for the same data.
+```rust
+{
+    let x = box 5i;
+}
+```
 
-Likewise, in the case of `on_the_heap`,
-the `&` operator is used in conjunction with the `*` operator
-to take a reference to the contents of the box.
+The `box` keyword creates a `Box<T>` (specifically `Box<int>` in this case) by
+allocating a small segment of memory on the heap with enough space to fit an
+`int`. But where in the code is the box deallocated? We said before that we
+must have a deallocation for each allocation. Rust handles this for you. It
+knows that our handle, `x`, is the owning reference to our box. Rust knows that
+`x` will go out of scope at the end of the block, and so it inserts a call to
+deallocate the memory at the end of the scope. Because the compiler does this
+for us, it's impossible to forget. We always exaclty one deallocations paired
+with each of our allocations.
 
-Whenever a caller lends data to a callee, there are some limitations on what
-the caller can do with the original. For example, if the contents of a
-variable have been lent out, you cannot send that variable to another task. In
-addition, the compiler will reject any code that might cause the borrowed
-value to be freed or overwrite its component fields with values of different
-types (I'll get into what kinds of actions those are shortly). This rule
-should make intuitive sense: you must wait for a borrower to return the value
-that you lent it (that is, wait for the reference to go out of scope)
-before you can make full use of it again.
+This is pretty straightforward, but what happens when we want to pass our box
+to a function? Let's look at some code:
 
-# Other uses for the & operator
+```rust
+fn main() {
+    let x = box 5i;
 
-In the previous example, the value `on_the_stack` was defined like so:
+    add_one(x);
+}
 
-~~~
-# struct Point {x: f64, y: f64}
-let on_the_stack: Point = Point {x: 3.0, y: 4.0};
-~~~
+fn add_one(mut num: Box<int>) {
+    *num += 1;
+}
+```
 
-This declaration means that code can only pass `Point` by value to other
-functions. As a consequence, we had to explicitly take the address of
-`on_the_stack` to get a reference. Sometimes however it is more
-convenient to move the & operator into the definition of `on_the_stack`:
+This code works, but it's not ideal. For example, let's add one more line of
+code, where we print out the value of `x`:
 
-~~~
-# struct Point {x: f64, y: f64}
-let on_the_stack2: &Point = &Point {x: 3.0, y: 4.0};
-~~~
+```{rust,ignore}
+fn main() {
+    let x = box 5i;
 
-Applying `&` to an rvalue (non-assignable location) is just a convenient
-shorthand for creating a temporary and taking its address. A more verbose
-way to write the same code is:
+    add_one(x);
 
-~~~
-# struct Point {x: f64, y: f64}
-let tmp = Point {x: 3.0, y: 4.0};
-let on_the_stack2 : &Point = &tmp;
-~~~
+    println!("{}", x);
+}
 
-# Taking the address of fields
+fn add_one(mut num: Box<int>) {
+    *num += 1;
+}
+```
 
-The `&` operator is not limited to taking the address of
-local variables. It can also take the address of fields or
-individual array elements. For example, consider this type definition
-for `Rectangle`:
+This does not compile, and gives us an error:
 
-~~~
-struct Point {x: f64, y: f64} // as before
-struct Size {w: f64, h: f64} // as before
-struct Rectangle {origin: Point, size: Size}
-~~~
+```{notrust,ignore}
+error: use of moved value: `x`
+   println!("{}", x);
+                  ^
+```
 
-Now, as before, we can define rectangles in a few different ways:
+Remember, we need one deallocation for every allocation. When we try to pass
+our box to `add_one`, we would have two handles to the memory: `x` in `main`,
+and `num` in `add_one`. If we deallocated the memory when each handle went out
+of scope, we would have two deallocations and one allocation, and that's wrong.
+So when we call `add_one`, Rust defines `num` as the owner of the handle. And
+so, now that we've given ownership to `num`, `x` is invalid. `x`'s value has
+"moved" from `x` to `num`. Hence the error: use of moved value `x`.
 
-~~~
-# struct Point {x: f64, y: f64}
-# struct Size {w: f64, h: f64} // as before
-# struct Rectangle {origin: Point, size: Size}
-let rect_stack   =    &Rectangle {origin: Point {x: 1.0, y: 2.0},
-                                  size: Size {w: 3.0, h: 4.0}};
-let rect_heap    = box Rectangle {origin: Point {x: 5.0, y: 6.0},
-                                  size: Size {w: 3.0, h: 4.0}};
-~~~
+To fix this, we can have `add_one` give ownership back when it's done with the
+box:
 
-In each case, we can extract out individual subcomponents with the `&`
-operator. For example, I could write:
+```rust
+fn main() {
+    let x = box 5i;
 
-~~~
-# struct Point {x: f64, y: f64} // as before
-# struct Size {w: f64, h: f64} // as before
-# struct Rectangle {origin: Point, size: Size}
-# let rect_stack  = &Rectangle {origin: Point {x: 1.0, y: 2.0}, size: Size {w: 3.0, h: 4.0}};
-# let rect_heap   = box Rectangle {origin: Point {x: 5.0, y: 6.0}, size: Size {w: 3.0, h: 4.0}};
-# fn compute_distance(p1: &Point, p2: &Point) -> f64 { 0.0 }
-compute_distance(&rect_stack.origin, &rect_heap.origin);
-~~~
+    let y = add_one(x);
 
-which would borrow the field `origin` from the rectangle on the stack
-as well as from the owned box, and then compute the distance between them.
+    println!("{}", y);
+}
+
+fn add_one(mut num: Box<int>) -> Box<int> {
+    *num += 1;
+
+    num
+}
+```
+
+This code will compile and run just fine. Now, we return a `box`, and so the
+ownership is transferred back to `y` in `main`. We only have ownership for the
+duration of our function before giving it back. This pattern is very common,
+and so Rust introduces a concept to describe a handle which temporarily refers
+to something another handle owns. It's called "borrowing," and it's done with
+"references", designated by the `&` symbol.
+
+# Borrowing
+
+Here's the current state of our `add_one` function:
+
+```rust
+fn add_one(mut num: Box<int>) -> Box<int> {
+    *num += 1;
+
+    num
+}
+```
+
+This function takes ownership, because it takes a `Box`, which owns its
+contents. But then we give ownership right back.
+
+In the physical world, you can give one of your possessions to someone for a
+short period of time. You still own your posession, you're just letting someone
+else use it for a while. We call that 'lending' something to someone, and that
+person is said to be 'borrowing' that something from you.
+
+Rust's ownershp system also allows an owner to lend out a handle for a limited
+period. This is also called 'borrowing.' Here's a version of `add_one` which
+borrows its argument rather than taking ownership:
+
+```rust
+fn add_one(num: &mut int) {
+    *num += 1;
+}
+```
+
+This function borrows an `int` from its caller, and then increments it. When
+the function is over, and `num` goes out of scope, the borrow is over.
 
 # Lifetimes
 
-We’ve seen a few examples of borrowing data. To this point, we’ve glossed
-over issues of safety. As stated in the introduction, at runtime a reference
-is simply a pointer, nothing more. Therefore, avoiding C's problems with
-dangling pointers requires a compile-time safety check.
+Lending out a reference to a resource that someone else owns can be
+complicated, however. For example, imagine this set of operations:
 
-The basis for the check is the notion of _lifetimes_. A lifetime is a
-static approximation of the span of execution during which the pointer
-is valid: it always corresponds to some expression or block within the
-program.
+1. I aquire a handle to some kind of resource.
+2. I lend you a reference to the resource.
+3. I decide I'm done with the resource, and deallocate it, while you still have
+   your reference.
+4. You decide to use the resource.
 
-The compiler will only allow a borrow *if it can guarantee that the data will
-not be reassigned or moved for the lifetime of the pointer*. This does not
-necessarily mean that the data is stored in immutable memory. For example,
-the following function is legal:
+Uh oh! Your reference is pointing to an invalid resource. This is called a
+"dangling pointer" or "use after free," when the resource is memory.
 
-~~~
-# fn some_condition() -> bool { true }
-# struct Foo { f: int }
-fn example3() -> int {
-    let mut x = box Foo {f: 3};
-    if some_condition() {
-        let y = &x.f;      // -+ L
-        return *y;         //  |
-    }                      // -+
-    x = box Foo {f: 4};
-    // ...
-# return 0;
+To fix this, we have to make sure that step four never happens after step
+three. The ownership system in Rust does this through a concept called
+"lifetimes," which describe the scope that a reference is valid for.
+
+Let's look at that function which borrows an `int` again:
+
+```rust
+fn add_one(num: &int) -> int {
+    *num + 1
 }
-~~~
+```
 
-Here, the interior of the variable `x` is being borrowed
-and `x` is declared as mutable. However, the compiler can prove that
-`x` is not assigned anywhere in the lifetime L of the variable
-`y`. Therefore, it accepts the function, even though `x` is mutable
-and in fact is mutated later in the function.
+Rust has a feature called 'lifetime elision,' which allows you to not write
+lifetime annotations in certain circumstances. This is one of them. Without
+eliding the liftimes, `add_one` looks like this:
 
-It may not be clear why we are so concerned about mutating a borrowed
-variable. The reason is that the runtime system frees any box
-_as soon as its owning reference changes or goes out of
-scope_. Therefore, a program like this is illegal (and would be
-rejected by the compiler):
-
-~~~ {.ignore}
-fn example3() -> int {
-    let mut x = box X {f: 3};
-    let y = &x.f;
-    x = box X {f: 4};  // Error reported here.
-    *y
+```rust
+fn add_one<'a>(num: &'a int) -> int {
+    *num + 1
 }
-~~~
+```
 
-To make this clearer, consider this diagram showing the state of
-memory immediately before the re-assignment of `x`:
+The `'a` is called a **lifetime**. Most lifetimes are used in places where
+short names like `'a`, `'b` and `'c` are clearest, but it's often useful to
+have more descriptive names. Let's dig into the syntax in a bit more detail:
 
-~~~ {.text}
-    Stack               Exchange Heap
+```{rust,ignore}
+fn add_one<'a>(...)
+```
 
-  x +-------------+
-    | box {f:int} | ----+
-  y +-------------+     |
-    | &int        | ----+
-    +-------------+     |    +---------+
-                        +--> |  f: 3   |
-                             +---------+
-~~~
+This part _declares_ our lifetimes. This says that `add_one` has one lifetime,
+`'a`. If we had two, it would look like this:
 
-Once the reassignment occurs, the memory will look like this:
+```{rust,ignore}
+fn add_two<'a, 'b>(...)
+```
 
-~~~ {.text}
-    Stack               Exchange Heap
+Then in our parameter list, we use the liftimes we've named:
 
-  x +-------------+          +---------+
-    | box {f:int} | -------> |  f: 4   |
-  y +-------------+          +---------+
-    | &int        | ----+
-    +-------------+     |    +---------+
-                        +--> | (freed) |
-                             +---------+
-~~~
+```{rust,ignore}
+...(num: &'a int) -> ...
+```
 
-Here you can see that the variable `y` still points at the old `f`
-property of Foo, which has been freed.
+If you compare `&int` to `&'a int`, they're the same, it's just that the
+lifetime `'a` has snuck in between the `&` and the `int`. We read `&int` as "a
+reference to an int" and `&'a int` as "a reference to an int with the lifetime 'a.'"
 
-In fact, the compiler can apply the same kind of reasoning to any
-memory that is (uniquely) owned by the stack frame. So we could
-modify the previous example to introduce additional owned pointers
-and structs, and the compiler will still be able to detect possible
-mutations. This time, we'll use an analogy to illustrate the concept.
+Why do lifetimes matter? Well, for example, here's some code:
 
-~~~ {.ignore}
-fn example3() -> int {
-    struct House { owner: Box<Person> }
-    struct Person { age: int }
-
-    let mut house = box House {
-        owner: box Person {age: 30}
-    };
-
-    let owner_age = &house.owner.age;
-    house = box House {owner: box Person {age: 40}};  // Error reported here.
-    house.owner = box Person {age: 50};               // Error reported here.
-    *owner_age
+```rust
+struct Foo<'a> {
+    x: &'a int,
 }
-~~~
 
-In this case, two errors are reported, one when the variable `house` is
-modified and another when `house.owner` is modified. Either modification would
-invalidate the pointer `owner_age`.
+fn main() {
+    let y = &5i; // this is the same as `let _y = 5; let y = &_y;
+    let f = Foo { x: y };
 
-# Borrowing and enums
-
-The previous example showed that the type system forbids any mutations
-of owned boxed values while they are being borrowed. In general, the type
-system also forbids borrowing a value as mutable if it is already being
-borrowed - either as a mutable reference or an immutable one. This restriction
-prevents pointers from pointing into freed memory. There is one other
-case where the compiler must be very careful to ensure that pointers
-remain valid: pointers into the interior of an `enum`.
-
-Let’s look at the following `shape` type that can represent both rectangles
-and circles:
-
-~~~
-struct Point {x: f64, y: f64}; // as before
-struct Size {w: f64, h: f64}; // as before
-enum Shape {
-    Circle(Point, f64),   // origin, radius
-    Rectangle(Point, Size)  // upper-left, dimensions
+    println!("{}", f.x);
 }
-~~~
+```
 
-Now we might write a function to compute the area of a shape. This
-function takes a reference to a shape, to avoid the need for
-copying.
+As you can see, `struct`s can also have liftimes. In a similar way to functions,
 
-~~~
-# struct Point {x: f64, y: f64}; // as before
-# struct Size {w: f64, h: f64}; // as before
-# enum Shape {
-#     Circle(Point, f64),   // origin, radius
-#     Rectangle(Point, Size)  // upper-left, dimensions
+```{rust}
+struct Foo<'a> {
+# x: &'a int,
 # }
-fn compute_area(shape: &Shape) -> f64 {
-    match *shape {
-        Shape::Circle(_, radius) => std::f64::consts::PI * radius * radius,
-        Shape::Rectangle(_, ref size) => size.w * size.h
+```
+
+declares a lifetime, and
+
+```rust
+# struct Foo<'a> {
+x: &'a int,
+# }
+```
+
+uses it. So why do we need a liftime here? We need to ensure that any reference
+to a `Foo` cannot outlive the reference to an `int` it contains.
+
+## Thinking in scopes
+
+A way to think about lifetimes is to visualize the scope that a reference is
+valid for. For example:
+
+```rust
+fn main() {
+    let y = &5i;    // -+ y goes into scope
+                    //  |
+    // stuff        //  |
+                    //  |
+}                   // -+ y goes out of scope
+```
+
+Adding in our `Foo`:
+
+```rust
+struct Foo<'a> {
+    x: &'a int,
+}
+
+fn main() {
+    let y = &5i;          // -+ y goes into scope
+    let f = Foo { x: y }; // -+ f goes into scope
+    // stuff              //  |
+                          //  |
+}                         // -+ f & y go out of scope
+```
+
+Our `f` lives within the scope of `y`, so everything works. What if it didn't?
+This code won't work:
+
+```{rust,ignore}
+struct Foo<'a> {
+    x: &'a int,
+}
+
+fn main() {
+    let x;                    // -+ x goes into scope
+                              //  |
+    {                         //  |
+        let y = &5i;          // ---+ y goes into scope
+        let f = Foo { x: y }; // ---+ f goes into scope
+	x = &f.x;	      //  | | error here
+    }                         // ---+ f & y go out of scope
+                              //  |
+    println!("{}", x);        //  |
+}                             // -+ x goes out of scope
+```
+
+Whew! As you can see here, the scopes of `f` and `y` are smaller than the scope
+of `x`. But when we do `x = &f.x`, we make `x` a reference to something that's
+about to go out of scope.
+
+Named lifetimes are a way of giving these scopes a name. Giving something a
+name is the first step towards being able to talk about it.
+
+## 'static
+
+The lifetime named 'static' is a special lifetime. It signals that something
+has the lifetime of the entire program. Most Rust programmers first come across
+`'static` when dealing with strings:
+
+```rust
+let x: &'static str = "Hello, world.";
+```
+
+String literals have the type `&'static str` because the reference is always
+alive: they are baked into the data segment of the final binary. Another
+example are globals:
+
+```rust
+static FOO: int = 5i;
+let x: &'static int = &FOO;
+```
+
+This adds an `int` to the data segment of the binary, and FOO is a reference to
+it.
+
+# Shared Ownership
+
+In all the examples we've considered so far, we've assumed that each handle has
+a singular owner. But sometimes, this doesn't work. Consider a car. Cars have
+four wheels. We would want a wheel to know which car it was attached to. But
+this won't work:
+
+```{rust,ignore}
+struct Car {
+    name: String,
+}
+
+struct Wheel {
+    size: int,
+    owner: Car,
+}
+
+fn main() {
+    let car = Car { name: "DeLorian".to_string() };
+
+    for _ in range(0u, 4) {
+        Wheel { size: 360, owner: car };
     }
 }
-~~~
+```
 
-The first case matches against circles. Here, the pattern extracts the
-radius from the shape variant and the action uses it to compute the
-area of the circle.
+We try to make four `Wheel`s, each with a `Car` that it's attached to. But the
+compiler knows that on the second iteration of the loop, there's a problem:
 
-The second match is more interesting. Here we match against a
-rectangle and extract its size: but rather than copy the `size`
-struct, we use a by-reference binding to create a pointer to it. In
-other words, a pattern binding like `ref size` binds the name `size`
-to a pointer of type `&size` into the _interior of the enum_.
+```{notrust,ignore}
+error: use of moved value: `car`
+    Wheel { size: 360, owner: car };
+                              ^~~
+note: `car` moved here because it has type `Car`, which is non-copyable
+    Wheel { size: 360, owner: car };
+                              ^~~
+```
 
-To make this more clear, let's look at a diagram of memory layout in
-the case where `shape` points at a rectangle:
+We need our `Car` to be pointed to by multiple `Wheel`s. We can't do that with
+`Box<T>`, because it has a single owner. We can do t with `Rc<T>` instead:
 
-~~~ {.text}
-Stack             Memory
+```rust
+use std::rc::Rc;
 
-+-------+         +---------------+
-| shape | ------> | rectangle(    |
-+-------+         |   {x: f64,    |
-| size  | -+      |    y: f64},   |
-+-------+  +----> |   {w: f64,    |
-                  |    h: f64})   |
-                  +---------------+
-~~~
-
-Here you can see that rectangular shapes are composed of five words of
-memory. The first is a tag indicating which variant this enum is
-(`rectangle`, in this case). The next two words are the `x` and `y`
-fields for the point and the remaining two are the `w` and `h` fields
-for the size. The binding `size` is then a pointer into the inside of
-the shape.
-
-Perhaps you can see where the danger lies: if the shape were somehow
-to be reassigned, perhaps to a circle, then although the memory used
-to store that shape value would still be valid, _it would have a
-different type_! The following diagram shows what memory would look
-like if code overwrote `shape` with a circle:
-
-~~~ {.text}
-Stack             Memory
-
-+-------+         +---------------+
-| shape | ------> | circle(       |
-+-------+         |   {x: f64,    |
-| size  | -+      |    y: f64},   |
-+-------+  +----> |   f64)        |
-                  |               |
-                  +---------------+
-~~~
-
-As you can see, the `size` pointer would be pointing at a `f64`
-instead of a struct. This is not good: dereferencing the second field
-of a `f64` as if it were a struct with two fields would be a memory
-safety violation.
-
-So, in fact, for every `ref` binding, the compiler will impose the
-same rules as the ones we saw for borrowing the interior of an owned
-box: it must be able to guarantee that the `enum` will not be
-overwritten for the duration of the borrow.  In fact, the compiler
-would accept the example we gave earlier. The example is safe because
-the shape pointer has type `&Shape`, which means "reference to
-immutable memory containing a `shape`". If, however, the type of that
-pointer were `&mut Shape`, then the ref binding would be ill-typed.
-Just as with owned boxes, the compiler will permit `ref` bindings
-into data owned by the stack frame even if the data are mutable,
-but otherwise it requires that the data reside in immutable memory.
-
-# Returning references
-
-So far, all of the examples we have looked at, use references in a
-“downward” direction. That is, a method or code block creates a
-reference, then uses it within the same scope. It is also
-possible to return references as the result of a function, but
-as we'll see, doing so requires some explicit annotation.
-
-We could write a subroutine like this:
-
-~~~
-struct Point {x: f64, y: f64}
-fn get_x<'r>(p: &'r Point) -> &'r f64 { &p.x }
-~~~
-
-Here, the function `get_x()` returns a pointer into the structure it
-was given. The type of the parameter (`&'r Point`) and return type
-(`&'r f64`) both use a new syntactic form that we have not seen so
-far.  Here the identifier `r` names the lifetime of the pointer
-explicitly. So in effect, this function declares that it takes a
-pointer with lifetime `r` and returns a pointer with that same
-lifetime.
-
-In general, it is only possible to return references if they
-are derived from a parameter to the procedure. In that case, the
-pointer result will always have the same lifetime as one of the
-parameters; named lifetimes indicate which parameter that
-is.
-
-In the previous code samples, function parameter types did not include a
-lifetime name. The compiler simply creates a fresh name for the lifetime
-automatically: that is, the lifetime name is guaranteed to refer to a distinct
-lifetime from the lifetimes of all other parameters.
-
-Named lifetimes that appear in function signatures are conceptually
-the same as the other lifetimes we have seen before, but they are a bit
-abstract: they don’t refer to a specific expression within `get_x()`,
-but rather to some expression within the *caller of `get_x()`*.  The
-lifetime `r` is actually a kind of *lifetime parameter*: it is defined
-by the caller to `get_x()`, just as the value for the parameter `p` is
-defined by that caller.
-
-In any case, whatever the lifetime of `r` is, the pointer produced by
-`&p.x` always has the same lifetime as `p` itself: a pointer to a
-field of a struct is valid as long as the struct is valid. Therefore,
-the compiler accepts the function `get_x()`.
-
-In general, if you borrow a struct or box to create a
-reference, it will only be valid within the function
-and cannot be returned. This is why the typical way to return references
-is to take references as input (the only other case in
-which it can be legal to return a reference is if it
-points at a static constant).
-
-# Named lifetimes
-
-Lifetimes can be named and referenced. For example, the special lifetime
-`'static`, which does not go out of scope, can be used to create global
-variables and communicate between tasks (see the manual for use cases).
-
-## Parameter Lifetimes
-
-Named lifetimes allow for grouping of parameters by lifetime.
-For example, consider this function:
-
-~~~
-# struct Point {x: f64, y: f64}; // as before
-# struct Size {w: f64, h: f64}; // as before
-# enum Shape {
-#     Circle(Point, f64),   // origin, radius
-#     Rectangle(Point, Size)  // upper-left, dimensions
-# }
-# fn compute_area(shape: &Shape) -> f64 { 0.0 }
-fn select<'r, T>(shape: &'r Shape, threshold: f64,
-                 a: &'r T, b: &'r T) -> &'r T {
-    if compute_area(shape) > threshold {a} else {b}
+struct Car {
+    name: String,
 }
-~~~
 
-This function takes three references and assigns each the same
-lifetime `r`.  In practice, this means that, in the caller, the
-lifetime `r` will be the *intersection of the lifetime of the three
-region parameters*. This may be overly conservative, as in this
-example:
-
-~~~
-# struct Point {x: f64, y: f64}; // as before
-# struct Size {w: f64, h: f64}; // as before
-# enum Shape {
-#     Circle(Point, f64),   // origin, radius
-#     Rectangle(Point, Size)  // upper-left, dimensions
-# }
-# fn compute_area(shape: &Shape) -> f64 { 0.0 }
-# fn select<'r, T>(shape: &Shape, threshold: f64,
-#                  a: &'r T, b: &'r T) -> &'r T {
-#     if compute_area(shape) > threshold {a} else {b}
-# }
-                                                            // -+ r
-fn select_based_on_unit_circle<'r, T>(                      //  |-+ B
-    threshold: f64, a: &'r T, b: &'r T) -> &'r T {          //  | |
-                                                            //  | |
-    let shape = Shape::Circle(Point {x: 0., y: 0.}, 1.);    //  | |
-    select(&shape, threshold, a, b)                         //  | |
-}                                                           //  |-+
-                                                            // -+
-~~~
-
-In this call to `select()`, the lifetime of the first parameter shape
-is B, the function body. Both of the second two parameters `a` and `b`
-share the same lifetime, `r`, which is a lifetime parameter of
-`select_based_on_unit_circle()`. The caller will infer the
-intersection of these two lifetimes as the lifetime of the returned
-value, and hence the return value of `select()` will be assigned a
-lifetime of B. This will in turn lead to a compilation error, because
-`select_based_on_unit_circle()` is supposed to return a value with the
-lifetime `r`.
-
-To address this, we can modify the definition of `select()` to
-distinguish the lifetime of the first parameter from the lifetime of
-the latter two. After all, the first parameter is not being
-returned. Here is how the new `select()` might look:
-
-~~~
-# struct Point {x: f64, y: f64}; // as before
-# struct Size {w: f64, h: f64}; // as before
-# enum Shape {
-#     Circle(Point, f64),   // origin, radius
-#     Rectangle(Point, Size)  // upper-left, dimensions
-# }
-# fn compute_area(shape: &Shape) -> f64 { 0.0 }
-fn select<'r, 'tmp, T>(shape: &'tmp Shape, threshold: f64,
-                       a: &'r T, b: &'r T) -> &'r T {
-    if compute_area(shape) > threshold {a} else {b}
+struct Wheel {
+    size: int,
+    owner: Rc<Car>,
 }
-~~~
 
-Here you can see that `shape`'s lifetime is now named `tmp`. The
-parameters `a`, `b`, and the return value all have the lifetime `r`.
-However, since the lifetime `tmp` is not returned, it would be more
-concise to just omit the named lifetime for `shape` altogether:
+fn main() {
+    let car = Car { name: "DeLorian".to_string() };
 
-~~~
-# struct Point {x: f64, y: f64}; // as before
-# struct Size {w: f64, h: f64}; // as before
-# enum Shape {
-#     Circle(Point, f64),   // origin, radius
-#     Rectangle(Point, Size)  // upper-left, dimensions
-# }
-# fn compute_area(shape: &Shape) -> f64 { 0.0 }
-fn select<'r, T>(shape: &Shape, threshold: f64,
-                 a: &'r T, b: &'r T) -> &'r T {
-    if compute_area(shape) > threshold {a} else {b}
-}
-~~~
+    let car_owner = Rc::new(car);
 
-This is equivalent to the previous definition.
-
-## Labeled Control Structures
-
-Named lifetime notation can also be used to control the flow of execution:
-
-~~~
-'h: for i in range(0u, 10) {
-    'g: loop {
-        if i % 2 == 0 { continue 'h; }
-        if i == 9 { break 'h; }
-        break 'g;
+    for _ in range(0u, 4) {
+        Wheel { size: 360, owner: car_owner.clone() };
     }
 }
-~~~
+```
 
-> *Note:* Labelled breaks are not currently supported within `while` loops.
+We wrap our `Car` in an `Rc<T>`, getting an `Rc<Car>`, and then use the
+`clone()` method to make new references. We've also changed our `Wheel` to have
+an `Rc<Car>` rather than just a `Car`.
 
-Named labels are hygienic and can be used safely within macros.
-See the macros guide section on hygiene for more details.
+This is the simplest kind of multiple ownership possible. For example, there's
+also `Arc<T>`, which uses more expensive atomic instructions to be the
+thread-safe counterpart of `Rc<T>`.
 
-# Conclusion
+# Related Resources
 
-So there you have it: a (relatively) brief tour of the lifetime
-system. For more details, we refer to the (yet to be written) reference
-document on references, which will explain the full notation
-and give more examples.
+Coming Soon.
