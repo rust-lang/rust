@@ -148,7 +148,6 @@ impl<'a, 'tcx> TypeFolder<'tcx> for TypeSkolemizer<'a, 'tcx> {
                 self.tcx().sess.bug("Cannot skolemize an open existential type");
             }
 
-            ty::ty_nil |
             ty::ty_bool |
             ty::ty_char |
             ty::ty_int(..) |

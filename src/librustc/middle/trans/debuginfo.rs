@@ -350,7 +350,6 @@ impl TypeMap {
         unique_type_id.push('{');
 
         match ty::get(type_).sty {
-            ty::ty_nil      |
             ty::ty_bool     |
             ty::ty_char     |
             ty::ty_str      |
@@ -366,6 +365,9 @@ impl TypeMap {
             ty::ty_struct(def_id, ref substs) => {
                 unique_type_id.push_str("struct ");
                 from_def_id_and_substs(self, cx, def_id, substs, &mut unique_type_id);
+            },
+            ty::ty_tup(ref component_types) if component_types.is_empty() => {
+                push_debuginfo_type_name(cx, type_, false, &mut unique_type_id);
             },
             ty::ty_tup(ref component_types) => {
                 unique_type_id.push_str("tuple ");
@@ -1736,7 +1738,6 @@ fn basic_type_metadata(cx: &CrateContext, t: ty::t) -> DIType {
     debug!("basic_type_metadata: {}", ty::get(t));
 
     let (name, encoding) = match ty::get(t).sty {
-        ty::ty_nil => ("()".to_string(), DW_ATE_unsigned),
         ty::ty_bool => ("bool".to_string(), DW_ATE_boolean),
         ty::ty_char => ("char".to_string(), DW_ATE_unsigned_char),
         ty::ty_int(int_ty) => match int_ty {
@@ -2773,7 +2774,7 @@ fn subroutine_type_metadata(cx: &CrateContext,
     // return type
     signature_metadata.push(match signature.output {
         ty::FnConverging(ret_ty) => match ty::get(ret_ty).sty {
-            ty::ty_nil => ptr::null_mut(),
+            ty::ty_tup(ref tys) if tys.is_empty() => ptr::null_mut(),
             _ => type_metadata(cx, ret_ty, span)
         },
         ty::FnDiverging => diverging_type_metadata(cx)
@@ -2880,7 +2881,6 @@ fn type_metadata(cx: &CrateContext,
 
     let sty = &ty::get(t).sty;
     let MetadataCreationResult { metadata, already_stored_in_typemap } = match *sty {
-        ty::ty_nil      |
         ty::ty_bool     |
         ty::ty_char     |
         ty::ty_int(_)   |
@@ -3671,7 +3671,6 @@ fn push_debuginfo_type_name(cx: &CrateContext,
                             qualified: bool,
                             output:&mut String) {
     match ty::get(t).sty {
-        ty::ty_nil               => output.push_str("()"),
         ty::ty_bool              => output.push_str("bool"),
         ty::ty_char              => output.push_str("char"),
         ty::ty_str               => output.push_str("str"),

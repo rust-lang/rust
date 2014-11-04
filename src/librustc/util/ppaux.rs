@@ -19,7 +19,7 @@ use middle::ty::{ReSkolemized, ReVar, BrEnv};
 use middle::ty::{mt, t, ParamTy};
 use middle::ty::{ty_bool, ty_char, ty_struct, ty_enum};
 use middle::ty::{ty_err, ty_str, ty_vec, ty_float, ty_bare_fn, ty_closure};
-use middle::ty::{ty_nil, ty_param, ty_ptr, ty_rptr, ty_tup, ty_open};
+use middle::ty::{ty_param, ty_ptr, ty_rptr, ty_tup, ty_open};
 use middle::ty::{ty_unboxed_closure};
 use middle::ty::{ty_uniq, ty_trait, ty_int, ty_uint, ty_infer};
 use middle::ty;
@@ -384,7 +384,6 @@ pub fn ty_to_string(cx: &ctxt, typ: t) -> String {
 
     // pretty print the structural type representation:
     match ty::get(typ).sty {
-        ty_nil => "()".to_string(),
         ty_bool => "bool".to_string(),
         ty_char => "char".to_string(),
         ty_int(t) => ast_util::int_ty_to_string(t, None).to_string(),
