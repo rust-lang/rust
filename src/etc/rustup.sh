@@ -231,6 +231,42 @@ validate_opt () {
 
 probe_need CFG_CURL  curl
 
+version() {
+    local bin_dir=$1
+    local bin=$2
+    local arg=
+    if [ "$bin" = "cargo" ]
+    then
+            arg="version"
+    else
+            arg="--version"
+    fi
+    echo $($bin_dir/$bin $arg 2>&1)
+}
+
+version_revision() {
+    local vers=$1
+    echo $(echo "$vers" |sed -E "s/[^(]+\(([^ ]+).*/\1/")
+}
+
+print_version_diff() {
+    local prev=$1
+    local cur=$2
+    local upstream="https://github.com/$3"
+    if [ "$prev" = "$cur" ]
+    then
+            echo "    Version was the same"
+    else
+            echo "    Went from version:"
+            echo "    $prev"
+            echo "    to"
+            echo "    $cur"
+            local v1=$(version_revision "$prev")
+            local v2=$(version_revision "$cur")
+            echo "    See diff here: ${upstream}/compare/${v1}...${v2}"
+    fi
+}
+
 CFG_SRC_DIR="$(cd $(dirname $0) && pwd)/"
 CFG_SELF="$0"
 CFG_ARGS="$@"
@@ -444,9 +480,16 @@ then
 fi
 
 MAYBE_PREFIX=
+BIN_DIR="/usr/local/bin"
 if [ -n "${CFG_PREFIX}" ]
 then
         MAYBE_PREFIX="--prefix=${CFG_PREFIX}"
+        BIN_DIR="${CFG_PREFIX}/bin"
+fi
+
+PREV_VERS=$(version "$BIN_DIR" rustc)
+if [ -z "${CFG_DISABLE_CARGO}" ]; then
+        PREV_CARGO_VERS=$(version "$BIN_DIR" cargo)
 fi
 
 sh "${LOCAL_INSTALL_SCRIPT}" "${MAYBE_UNINSTALL}" "${MAYBE_PREFIX}"
@@ -454,6 +497,10 @@ if [ $? -ne 0 ]
 then
         rm -Rf "${TMP_DIR}"
         err "failed to install Rust"
+elif [ -n "${PREV_VERS}" ]
+then
+        VERS=$(version "$BIN_DIR" rustc)
+        print_version_diff "$PREV_VERS" "$VERS" "rust-lang/rust"
 fi
 
 if [ -z "${CFG_DISABLE_CARGO}" ]; then
@@ -469,6 +516,12 @@ if [ -z "${CFG_DISABLE_CARGO}" ]; then
     then
             rm -Rf "${TMP_DIR}"
             err "failed to install Cargo"
+    elif [ -n "${PREV_CARGO_VERS}" ]
+    then
+            CARGO_VERS=$(version "$BIN_DIR" cargo)
+            print_version_diff "$PREV_CARGO_VERS" \
+                               "$CARGO_VERS" \
+                               "rust-lang/cargo"
     fi
 fi
 
