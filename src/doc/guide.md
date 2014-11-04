@@ -3448,7 +3448,7 @@ let y = &mut x;
 Rust will complain:
 
 ```{ignore,notrust}
-6:19 error: cannot borrow immutable local variable `x` as mutable
+error: cannot borrow immutable local variable `x` as mutable
  let y = &mut x;
               ^
 ```
@@ -3492,7 +3492,7 @@ note: previous borrow ends here
 
 This is a big error message. Let's dig into it for a moment. There are three
 parts: the error and two notes. The error says what we expected, we cannot have
-two pointers that point to the same memory.
+two mutable pointers that point to the same memory.
 
 The two notes give some extra context. Rust's error messages often contain this
 kind of extra information when the error is complex. Rust is telling us two
@@ -3763,10 +3763,10 @@ let y = &mut x;
 This gives us this error:
 
 ```{notrust,ignore}
-8:7 error: cannot use `*x` because it was mutably borrowed
+error: cannot use `*x` because it was mutably borrowed
  *x;
  ^~
- 6:19 note: borrow of `x` occurs here
+note: borrow of `x` occurs here
  let y = &mut x;
               ^
 ```
@@ -3791,7 +3791,7 @@ value that must persist as long as any of several referrers, read on.
 
 ## Rc and Arc
 
-Sometimes, you need a variable that is referenced from multiple places
+Sometimes you need a variable that is referenced from multiple places
 (immutably!), lasting as long as any of those places, and disappearing when it
 is no longer referenced. For instance, in a graph-like data structure, a node
 might be referenced from all of its neighbors. In this case, it is not possible
@@ -3887,7 +3887,7 @@ match x {
 ```
 
 If you're matching on an enum which has variants, you can use `..` to
-ignore the value in the variant:
+ignore the value and type in the variant:
 
 ```{rust}
 enum OptionalInt {
@@ -4559,8 +4559,8 @@ So this would give us the numbers from `2-100`. Well, almost! If you
 compile the example, you'll get a warning:
 
 ```{notrust,ignore}
-2:37 warning: unused result which must be used: iterator adaptors are lazy and
-              do nothing unless consumed, #[warn(unused_must_use)] on by default
+warning: unused result which must be used: iterator adaptors are lazy and
+         do nothing unless consumed, #[warn(unused_must_use)] on by default
  range(1i, 100i).map(|x| x + 1i);
  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ```
