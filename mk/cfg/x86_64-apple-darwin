@@ -24,3 +24,4 @@ CFG_PATH_MUNGE_x86_64-apple-darwin := true
 CFG_LDPATH_x86_64-apple-darwin :=
 CFG_RUN_x86_64-apple-darwin=$(2)
 CFG_RUN_TARG_x86_64-apple-darwin=$(call CFG_RUN_x86_64-apple-darwin,,$(2))
+CFG_GNU_TRIPLE_x86_64-apple-darwin := x86_64-apple-darwin

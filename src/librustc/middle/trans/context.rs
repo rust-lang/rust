@@ -34,7 +34,6 @@ use std::c_str::ToCStr;
 use std::ptr;
 use std::rc::Rc;
 use std::collections::{HashMap, HashSet};
-use syntax::abi;
 use syntax::ast;
 use syntax::parse::token::InternedString;
 
@@ -220,16 +219,16 @@ unsafe fn create_context_and_module(sess: &Session, mod_name: &str) -> (ContextR
     let llmod = mod_name.with_c_str(|buf| {
         llvm::LLVMModuleCreateWithNameInContext(buf, llcx)
     });
-    sess.targ_cfg
-        .target_strs
+    sess.target
+        .target
         .data_layout
         .as_slice()
         .with_c_str(|buf| {
         llvm::LLVMSetDataLayout(llmod, buf);
     });
-    sess.targ_cfg
-        .target_strs
-        .target_triple
+    sess.target
+        .target
+        .llvm_target
         .as_slice()
         .with_c_str(|buf| {
         llvm::LLVMRustSetNormalizedTarget(llmod, buf);
@@ -378,8 +377,8 @@ impl LocalCrateContext {
 
             let td = mk_target_data(shared.tcx
                                           .sess
-                                          .targ_cfg
-                                          .target_strs
+                                          .target
+                                          .target
                                           .data_layout
                                           .as_slice());
 
@@ -531,16 +530,8 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
         }
     }
 
-    // Although there is an experimental implementation of LLVM which
-    // supports SS on armv7 it wasn't approved by Apple, see:
-    // http://lists.cs.uiuc.edu/pipermail/llvm-commits/Week-of-Mon-20140505/216350.html
-    // It looks like it might be never accepted to upstream LLVM.
-    //
-    // So far the decision was to disable them in default builds
-    // but it could be enabled (with patched LLVM)
     pub fn is_split_stack_supported(&self) -> bool {
-        let ref cfg = self.sess().targ_cfg;
-        (cfg.os != abi::OsiOS || cfg.arch != abi::Arm) && cfg.os != abi::OsWindows
+        self.sess().target.target.options.morestack
     }
 
 

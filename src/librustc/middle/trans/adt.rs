@@ -62,7 +62,6 @@ use middle::trans::type_::Type;
 use middle::trans::type_of;
 use middle::ty;
 use middle::ty::Disr;
-use syntax::abi::{X86, X86_64, Arm, Mips, Mipsel};
 use syntax::ast;
 use syntax::attr;
 use syntax::attr::IntType;
@@ -410,14 +409,12 @@ fn range_to_inttype(cx: &CrateContext, hint: Hint, bounds: &IntBounds) -> IntTyp
             return ity;
         }
         attr::ReprExtern => {
-            attempts = match cx.sess().targ_cfg.arch {
-                X86 | X86_64 => at_least_32,
+            attempts = match cx.sess().target.target.arch.as_slice() {
                 // WARNING: the ARM EABI has two variants; the one corresponding to `at_least_32`
                 // appears to be used on Linux and NetBSD, but some systems may use the variant
                 // corresponding to `choose_shortest`.  However, we don't run on those yet...?
-                Arm => at_least_32,
-                Mips => at_least_32,
-                Mipsel => at_least_32,
+                "arm" => at_least_32,
+                _ => at_least_32,
             }
         }
         attr::ReprAny => {

@@ -37,9 +37,6 @@ pub enum Abi {
 #[allow(non_camel_case_types)]
 #[deriving(PartialEq)]
 pub enum Architecture {
-    // NB. You cannot change the ordering of these
-    // constants without adjusting IntelBits below.
-    // (This is ensured by the test indices_are_correct().)
     X86,
     X86_64,
     Arm,
@@ -47,20 +44,11 @@ pub enum Architecture {
     Mipsel
 }
 
-#[allow(non_upper_case_globals)]
-const IntelBits: u32 = (1 << (X86 as uint)) | (1 << (X86_64 as uint));
-#[allow(non_upper_case_globals)]
-const ArmBits: u32 = (1 << (Arm as uint));
-
 pub struct AbiData {
     abi: Abi,
 
     // Name of this ABI as we like it called.
     name: &'static str,
-
-    // Is it specific to a platform? If so, which one?  Also, what is
-    // the name that LLVM gives it (in case we disagree)
-    abi_arch: AbiArchitecture
 }
 
 pub enum AbiArchitecture {
@@ -75,22 +63,21 @@ pub enum AbiArchitecture {
 #[allow(non_upper_case_globals)]
 static AbiDatas: &'static [AbiData] = &[
     // Platform-specific ABIs
-    AbiData {abi: Cdecl, name: "cdecl", abi_arch: Archs(IntelBits)},
-    AbiData {abi: Stdcall, name: "stdcall", abi_arch: Archs(IntelBits)},
-    AbiData {abi: Fastcall, name:"fastcall", abi_arch: Archs(IntelBits)},
-    AbiData {abi: Aapcs, name: "aapcs", abi_arch: Archs(ArmBits)},
-    AbiData {abi: Win64, name: "win64",
-             abi_arch: Archs(1 << (X86_64 as uint))},
+    AbiData {abi: Cdecl, name: "cdecl" },
+    AbiData {abi: Stdcall, name: "stdcall" },
+    AbiData {abi: Fastcall, name:"fastcall" },
+    AbiData {abi: Aapcs, name: "aapcs" },
+    AbiData {abi: Win64, name: "win64" },
 
     // Cross-platform ABIs
     //
     // NB: Do not adjust this ordering without
     // adjusting the indices below.
-    AbiData {abi: Rust, name: "Rust", abi_arch: RustArch},
-    AbiData {abi: C, name: "C", abi_arch: AllArch},
-    AbiData {abi: System, name: "system", abi_arch: AllArch},
-    AbiData {abi: RustIntrinsic, name: "rust-intrinsic", abi_arch: RustArch},
-    AbiData {abi: RustCall, name: "rust-call", abi_arch: RustArch},
+    AbiData {abi: Rust, name: "Rust" },
+    AbiData {abi: C, name: "C" },
+    AbiData {abi: System, name: "system" },
+    AbiData {abi: RustIntrinsic, name: "rust-intrinsic" },
+    AbiData {abi: RustCall, name: "rust-call" },
 ];
 
 /// Returns the ABI with the given name (if any).
@@ -115,28 +102,6 @@ impl Abi {
 
     pub fn name(&self) -> &'static str {
         self.data().name
-    }
-
-    pub fn for_target(&self, os: Os, arch: Architecture) -> Option<Abi> {
-        // If this ABI isn't actually for the specified architecture, then we
-        // short circuit early
-        match self.data().abi_arch {
-            Archs(a) if a & arch.bit() == 0 => return None,
-            Archs(_) | RustArch | AllArch => {}
-        }
-        // Transform this ABI as appropriate for the requested os/arch
-        // combination.
-        Some(match (*self, os, arch) {
-            (System, OsWindows, X86) => Stdcall,
-            (System, _, _) => C,
-            (me, _, _) => me,
-        })
-    }
-}
-
-impl Architecture {
-    fn bit(&self) -> u32 {
-        1 << (*self as uint)
     }
 }
 
@@ -184,23 +149,4 @@ fn indices_are_correct() {
     for (i, abi_data) in AbiDatas.iter().enumerate() {
         assert_eq!(i, abi_data.abi.index());
     }
-
-    let bits = 1 << (X86 as uint);
-    let bits = bits | 1 << (X86_64 as uint);
-    assert_eq!(IntelBits, bits);
-
-    let bits = 1 << (Arm as uint);
-    assert_eq!(ArmBits, bits);
-}
-
-#[test]
-fn pick_uniplatform() {
-    assert_eq!(Stdcall.for_target(OsLinux, X86), Some(Stdcall));
-    assert_eq!(Stdcall.for_target(OsLinux, Arm), None);
-    assert_eq!(System.for_target(OsLinux, X86), Some(C));
-    assert_eq!(System.for_target(OsWindows, X86), Some(Stdcall));
-    assert_eq!(System.for_target(OsWindows, X86_64), Some(C));
-    assert_eq!(System.for_target(OsWindows, Arm), Some(C));
-    assert_eq!(Stdcall.for_target(OsWindows, X86), Some(Stdcall));
-    assert_eq!(Stdcall.for_target(OsWindows, X86_64), Some(Stdcall));
 }

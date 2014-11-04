@@ -26,3 +26,4 @@ CFG_RUN_arm-linux-androideabi=
 CFG_RUN_TARG_arm-linux-androideabi=
 RUSTC_FLAGS_arm-linux-androideabi :=
 RUSTC_CROSS_FLAGS_arm-linux-androideabi :=
+CFG_GNU_TRIPLE_arm-linux-androideabi := arm-linux-androideabi

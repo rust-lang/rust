@@ -23,3 +23,4 @@ CFG_PATH_MUNGE_x86_64-unknown-dragonfly :=
 CFG_LDPATH_x86_64-unknown-dragonfly :=
 CFG_RUN_x86_64-unknown-dragonfly=$(2)
 CFG_RUN_TARG_x86_64-unknown-dragonfly=$(call CFG_RUN_x86_64-unknown-dragonfly,,$(2))
+CFG_GNU_TRIPLE_x86_64-unknown-dragonfly := x86_64-unknown-dragonfly

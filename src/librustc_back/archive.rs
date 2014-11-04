@@ -16,7 +16,6 @@ use std::io::{fs, TempDir};
 use std::io;
 use std::os;
 use std::str;
-use syntax::abi;
 use syntax::diagnostic::Handler as ErrorHandler;
 
 pub static METADATA_FILENAME: &'static str = "rust.metadata.bin";
@@ -25,7 +24,8 @@ pub struct ArchiveConfig<'a> {
     pub handler: &'a ErrorHandler,
     pub dst: Path,
     pub lib_search_paths: Vec<Path>,
-    pub os: abi::Os,
+    pub slib_prefix: String,
+    pub slib_suffix: String,
     pub maybe_ar_prog: Option<String>
 }
 
@@ -33,7 +33,8 @@ pub struct Archive<'a> {
     handler: &'a ErrorHandler,
     dst: Path,
     lib_search_paths: Vec<Path>,
-    os: abi::Os,
+    slib_prefix: String,
+    slib_suffix: String,
     maybe_ar_prog: Option<String>
 }
 
@@ -96,14 +97,11 @@ fn run_ar(handler: &ErrorHandler, maybe_ar_prog: &Option<String>,
     }
 }
 
-pub fn find_library(name: &str, os: abi::Os, search_paths: &[Path],
-                    handler: &ErrorHandler) -> Path {
-    let (osprefix, osext) = match os {
-        abi::OsWindows => ("", "lib"), _ => ("lib", "a"),
-    };
+pub fn find_library(name: &str, osprefix: &str, ossuffix: &str,
+                    search_paths: &[Path], handler: &ErrorHandler) -> Path {
     // On Windows, static libraries sometimes show up as libfoo.a and other
     // times show up as foo.lib
-    let oslibname = format!("{}{}.{}", osprefix, name, osext);
+    let oslibname = format!("{}{}{}", osprefix, name, ossuffix);
     let unixlibname = format!("lib{}.a", name);
 
     for path in search_paths.iter() {
@@ -122,12 +120,14 @@ pub fn find_library(name: &str, os: abi::Os, search_paths: &[Path],
 
 impl<'a> Archive<'a> {
     fn new(config: ArchiveConfig<'a>) -> Archive<'a> {
-        let ArchiveConfig { handler, dst, lib_search_paths, os, maybe_ar_prog } = config;
+        let ArchiveConfig { handler, dst, lib_search_paths, slib_prefix, slib_suffix,
+            maybe_ar_prog } = config;
         Archive {
             handler: handler,
             dst: dst,
             lib_search_paths: lib_search_paths,
-            os: os,
+            slib_prefix: slib_prefix,
+            slib_suffix: slib_suffix,
             maybe_ar_prog: maybe_ar_prog
         }
     }
@@ -178,7 +178,9 @@ impl<'a> ArchiveBuilder<'a> {
     /// Adds all of the contents of a native library to this archive. This will
     /// search in the relevant locations for a library named `name`.
     pub fn add_native_library(&mut self, name: &str) -> io::IoResult<()> {
-        let location = find_library(name, self.archive.os,
+        let location = find_library(name,
+                                    self.archive.slib_prefix.as_slice(),
+                                    self.archive.slib_suffix.as_slice(),
                                     self.archive.lib_search_paths.as_slice(),
                                     self.archive.handler);
         self.add_archive(&location, name, [])
