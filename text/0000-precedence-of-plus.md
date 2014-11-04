@@ -58,10 +58,11 @@ Here are some examples:
 More fully, the type grammar is as follows (EBNF notation):
 
     TYPE = PATH
-         | '&' TYPE
-         | '&' 'mut' TYPE
+         | '&' [LIFETIME] TYPE
+         | '&' [LIFETIME] 'mut' TYPE
          | '*' 'const' TYPE
          | '*' 'mut' TYPE
+         | ...
          | '(' SUM ')'
     SUM  = TYPE { '+' TYPE }
     PATH = IDS '<' SUM { ',' SUM } '>' '->' TYPE
