@@ -1493,9 +1493,9 @@ impl<'a> Parser<'a> {
                 trait_name: trait_name.path,
                 item_name: item_name,
             }))
-        } else if self.token == token::ModSep
-            || self.token.is_ident()
-            || self.token.is_path() {
+        } else if self.token == token::ModSep ||
+                  self.token.is_ident() ||
+                  self.token.is_path() {
             // NAMED TYPE
             let mode = if plus_allowed {
                 LifetimeAndTypesAndBounds
@@ -1777,27 +1777,36 @@ impl<'a> Parser<'a> {
             let identifier = self.parse_ident();
 
             // Parse types, optionally.
-            let (lifetimes, types) = if self.eat_lt(false) {
-                self.parse_generic_values_after_lt()
-            } else if false && self.eat(&token::LParen) {
-                let mut types = self.parse_seq_to_end(
-                    &token::RParen,
+            let parameters = if self.eat_lt(false) {
+                let (lifetimes, types) = self.parse_generic_values_after_lt();
+
+                ast::AngleBracketedParameters(ast::AngleBracketedParameterData {
+                    lifetimes: lifetimes,
+                    types: OwnedSlice::from_vec(types),
+                })
+            } else if self.eat(&token::OpenDelim(token::Paren)) {
+                let inputs = self.parse_seq_to_end(
+                    &token::CloseDelim(token::Paren),
                     seq_sep_trailing_allowed(token::Comma),
                     |p| p.parse_ty(true));
 
-                if self.eat(&token::RArrow) {
-                    types.push(self.parse_ty(true))
-                }
+                let output_ty = if self.eat(&token::RArrow) {
+                    Some(self.parse_ty(true))
+                } else {
+                    None
+                };
 
-                (Vec::new(), types)
+                ast::ParenthesizedParameters(ast::ParenthesizedParameterData {
+                    inputs: inputs,
+                    output: output_ty
+                })
             } else {
-                (Vec::new(), Vec::new())
+                ast::PathParameters::none()
             };
 
             // Assemble and push the result.
             segments.push(ast::PathSegment { identifier: identifier,
-                                             lifetimes: lifetimes,
-                                             types: OwnedSlice::from_vec(types), });
+                                             parameters: parameters });
 
             // Continue only if we see a `::`
             if !self.eat(&token::ModSep) {
@@ -1816,9 +1825,13 @@ impl<'a> Parser<'a> {
 
             // If we do not see a `::`, stop.
             if !self.eat(&token::ModSep) {
-                segments.push(ast::PathSegment { identifier: identifier,
-                                                 lifetimes: Vec::new(),
-                                                 types: OwnedSlice::empty() });
+                segments.push(ast::PathSegment {
+                    identifier: identifier,
+                    parameters: ast::AngleBracketedParameters(ast::AngleBracketedParameterData {
+                        lifetimes: Vec::new(),
+                        types: OwnedSlice::empty(),
+                    })
+                });
                 return segments;
             }
 
@@ -1826,9 +1839,13 @@ impl<'a> Parser<'a> {
             if self.eat_lt(false) {
                 // Consumed `a::b::<`, go look for types
                 let (lifetimes, types) = self.parse_generic_values_after_lt();
-                segments.push(ast::PathSegment { identifier: identifier,
-                                                 lifetimes: lifetimes,
-                                                 types: OwnedSlice::from_vec(types) });
+                segments.push(ast::PathSegment {
+                    identifier: identifier,
+                    parameters: ast::AngleBracketedParameters(ast::AngleBracketedParameterData {
+                        lifetimes: lifetimes,
+                        types: OwnedSlice::from_vec(types),
+                    }),
+                });
 
                 // Consumed `a::b::<T,U>`, check for `::` before proceeding
                 if !self.eat(&token::ModSep) {
@@ -1836,9 +1853,10 @@ impl<'a> Parser<'a> {
                 }
             } else {
                 // Consumed `a::`, go look for `b`
-                segments.push(ast::PathSegment { identifier: identifier,
-                                                 lifetimes: Vec::new(),
-                                                 types: OwnedSlice::empty() });
+                segments.push(ast::PathSegment {
+                    identifier: identifier,
+                    parameters: ast::PathParameters::none(),
+                });
             }
         }
     }
@@ -1853,9 +1871,10 @@ impl<'a> Parser<'a> {
             let identifier = self.parse_ident();
 
             // Assemble and push the result.
-            segments.push(ast::PathSegment { identifier: identifier,
-                                             lifetimes: Vec::new(),
-                                             types: OwnedSlice::empty(), });
+            segments.push(ast::PathSegment {
+                identifier: identifier,
+                parameters: ast::PathParameters::none()
+            });
 
             // If we do not see a `::`, stop.
             if !self.eat(&token::ModSep) {
@@ -3461,13 +3480,9 @@ impl<'a> Parser<'a> {
                           },
                           _ => {
                               if !enum_path.global &&
-                                    enum_path.segments.len() == 1 &&
-                                    enum_path.segments[0]
-                                             .lifetimes
-                                             .len() == 0 &&
-                                    enum_path.segments[0]
-                                             .types
-                                             .len() == 0 {
+                                  enum_path.segments.len() == 1 &&
+                                  enum_path.segments[0].parameters.is_empty()
+                              {
                                   // it could still be either an enum
                                   // or an identifier pattern, resolve
                                   // will sort it out:
@@ -3966,8 +3981,7 @@ impl<'a> Parser<'a> {
     fn trait_ref_from_ident(ident: Ident, span: Span) -> ast::TraitRef {
         let segment = ast::PathSegment {
             identifier: ident,
-            lifetimes: Vec::new(),
-            types: OwnedSlice::empty(),
+            parameters: ast::PathParameters::none()
         };
         let path = ast::Path {
             span: span,
@@ -5688,8 +5702,7 @@ impl<'a> Parser<'a> {
                 segments: path.into_iter().map(|identifier| {
                     ast::PathSegment {
                         identifier: identifier,
-                        lifetimes: Vec::new(),
-                        types: OwnedSlice::empty(),
+                        parameters: ast::PathParameters::none(),
                     }
                 }).collect()
             };
@@ -5723,8 +5736,7 @@ impl<'a> Parser<'a> {
                         segments: path.into_iter().map(|identifier| {
                             ast::PathSegment {
                                 identifier: identifier,
-                                lifetimes: Vec::new(),
-                                types: OwnedSlice::empty(),
+                                parameters: ast::PathParameters::none(),
                             }
                         }).collect()
                     };
@@ -5741,8 +5753,7 @@ impl<'a> Parser<'a> {
                         segments: path.into_iter().map(|identifier| {
                             ast::PathSegment {
                                 identifier: identifier,
-                                lifetimes: Vec::new(),
-                                types: OwnedSlice::empty(),
+                                parameters: ast::PathParameters::none(),
                             }
                         }).collect()
                     };
@@ -5763,8 +5774,7 @@ impl<'a> Parser<'a> {
             segments: path.into_iter().map(|identifier| {
                 ast::PathSegment {
                     identifier: identifier,
-                    lifetimes: Vec::new(),
-                    types: OwnedSlice::empty(),
+                    parameters: ast::PathParameters::none(),
                 }
             }).collect()
         };

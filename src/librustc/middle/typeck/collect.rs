@@ -1354,7 +1354,8 @@ pub fn instantiate_trait_ref<'tcx,AC>(this: &AC,
                                                trait_did,
                                                Some(self_ty),
                                                associated_type,
-                                               &ast_trait_ref.path);
+                                               &ast_trait_ref.path,
+                                               ast_trait_ref.ref_id);
 
             this.tcx().trait_refs.borrow_mut().insert(ast_trait_ref.ref_id,
                                                       trait_ref.clone());

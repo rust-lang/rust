@@ -4951,12 +4951,12 @@ impl<'a> Resolver<'a> {
 
                             if path.segments
                                    .iter()
-                                   .any(|s| !s.lifetimes.is_empty()) {
+                                   .any(|s| s.parameters.has_lifetimes()) {
                                 span_err!(self.session, path.span, E0157,
                                     "lifetime parameters are not allowed on this type");
                             } else if path.segments
                                           .iter()
-                                          .any(|s| s.types.len() > 0) {
+                                          .any(|s| !s.parameters.is_empty()) {
                                 span_err!(self.session, path.span, E0153,
                                     "type parameters are not allowed on this type");
                             }
@@ -5234,7 +5234,7 @@ impl<'a> Resolver<'a> {
                     // Check the types in the path pattern.
                     for ty in path.segments
                                   .iter()
-                                  .flat_map(|s| s.types.iter()) {
+                                  .flat_map(|s| s.parameters.types().into_iter()) {
                         self.resolve_type(&**ty);
                     }
                 }
@@ -5340,7 +5340,7 @@ impl<'a> Resolver<'a> {
                     namespace: Namespace,
                     check_ribs: bool) -> Option<(Def, LastPrivate)> {
         // First, resolve the types.
-        for ty in path.segments.iter().flat_map(|s| s.types.iter()) {
+        for ty in path.segments.iter().flat_map(|s| s.parameters.types().into_iter()) {
             self.resolve_type(&**ty);
         }
 

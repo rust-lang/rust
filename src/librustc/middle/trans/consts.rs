@@ -625,7 +625,7 @@ fn const_expr_unadjusted(cx: &CrateContext, e: &ast::Expr) -> ValueRef {
           }
           ast::ExprPath(ref pth) => {
             // Assert that there are no type parameters in this path.
-            assert!(pth.segments.iter().all(|seg| seg.types.is_empty()));
+            assert!(pth.segments.iter().all(|seg| !seg.parameters.has_types()));
 
             let opt_def = cx.tcx().def_map.borrow().find_copy(&e.id);
             match opt_def {
