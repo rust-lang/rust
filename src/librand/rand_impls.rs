@@ -96,11 +96,11 @@ impl Rand for u64 {
 }
 
 macro_rules! float_impls {
-    ($mod_name:ident, $ty:ty, $mantissa_bits:expr, $method_name:ident, $ignored_bits:expr) => {
+    ($mod_name:ident, $ty:ty, $mantissa_bits:expr, $method_name:ident) => {
         mod $mod_name {
             use {Rand, Rng, Open01, Closed01};
 
-            static SCALE: $ty = (1u64 << $mantissa_bits) as $ty;
+            const SCALE: $ty = (1u64 << $mantissa_bits) as $ty;
 
             impl Rand for $ty {
                 /// Generate a floating point number in the half-open
@@ -110,11 +110,7 @@ macro_rules! float_impls {
                 /// and `Open01` for the open interval `(0,1)`.
                 #[inline]
                 fn rand<R: Rng>(rng: &mut R) -> $ty {
-                    // using any more than `mantissa_bits` bits will
-                    // cause (e.g.) 0xffff_ffff to correspond to 1
-                    // exactly, so we need to drop some (8 for f32, 11
-                    // for f64) to guarantee the open end.
-                    (rng.$method_name() >> $ignored_bits) as $ty / SCALE
+                    rng.$method_name()
                 }
             }
             impl Rand for Open01<$ty> {
@@ -124,23 +120,22 @@ macro_rules! float_impls {
                     // the precision of f64/f32 at 1.0), so that small
                     // numbers are larger than 0, but large numbers
                     // aren't pushed to/above 1.
-                    Open01(((rng.$method_name() >> $ignored_bits) as $ty + 0.25) / SCALE)
+                    Open01(rng.$method_name() + 0.25 / SCALE)
                 }
             }
             impl Rand for Closed01<$ty> {
                 #[inline]
                 fn rand<R: Rng>(rng: &mut R) -> Closed01<$ty> {
-                    // divide by the maximum value of the numerator to
-                    // get a non-zero probability of getting exactly
-                    // 1.0.
-                    Closed01((rng.$method_name() >> $ignored_bits) as $ty / (SCALE - 1.0))
+                    // rescale so that 1.0 - epsilon becomes 1.0
+                    // precisely.
+                    Closed01(rng.$method_name() * SCALE / (SCALE - 1.0))
                 }
             }
         }
     }
 }
-float_impls! { f64_rand_impls, f64, 53, next_u64, 11 }
-float_impls! { f32_rand_impls, f32, 24, next_u32, 8 }
+float_impls! { f64_rand_impls, f64, 53, next_f64 }
+float_impls! { f32_rand_impls, f32, 24, next_f32 }
 
 impl Rand for char {
     #[inline]

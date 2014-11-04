@@ -425,7 +425,13 @@ pub fn ty_to_string(cx: &ctxt, typ: t) -> String {
         }
         ty_infer(infer_ty) => infer_ty_to_string(cx, infer_ty),
         ty_err => "[type error]".to_string(),
-        ty_param(ref param_ty) => param_ty.repr(cx),
+        ty_param(ref param_ty) => {
+            if cx.sess.verbose() {
+                param_ty.repr(cx)
+            } else {
+                param_ty.user_string(cx)
+            }
+        }
         ty_enum(did, ref substs) | ty_struct(did, ref substs) => {
             let base = ty::item_path_str(cx, did);
             let generics = ty::lookup_item_type(cx, did).generics;
@@ -481,6 +487,17 @@ pub fn parameterized(cx: &ctxt,
                      generics: &ty::Generics)
                      -> String
 {
+    if cx.sess.verbose() {
+        if substs.is_noop() {
+            return format!("{}", base);
+        } else {
+            return format!("{}<{},{}>",
+                           base,
+                           substs.regions.repr(cx),
+                           substs.types.repr(cx));
+        }
+    }
+
     let mut strs = Vec::new();
 
     match substs.regions {
@@ -505,7 +522,7 @@ pub fn parameterized(cx: &ctxt,
     let tps = substs.types.get_slice(subst::TypeSpace);
     let ty_params = generics.types.get_slice(subst::TypeSpace);
     let has_defaults = ty_params.last().map_or(false, |def| def.default.is_some());
-    let num_defaults = if has_defaults && !cx.sess.verbose() {
+    let num_defaults = if has_defaults {
         ty_params.iter().zip(tps.iter()).rev().take_while(|&(def, &actual)| {
             match def.default {
                 Some(default) => default.subst(cx, substs) == actual,
@@ -518,18 +535,6 @@ pub fn parameterized(cx: &ctxt,
 
     for t in tps[..tps.len() - num_defaults].iter() {
         strs.push(ty_to_string(cx, *t))
-    }
-
-    if cx.sess.verbose() {
-        for t in substs.types.get_slice(subst::SelfSpace).iter() {
-            strs.push(format!("self {}", t.repr(cx)));
-        }
-
-        // generally there shouldn't be any substs in the fn param
-        // space, but in verbose mode, print them out.
-        for t in substs.types.get_slice(subst::FnSpace).iter() {
-            strs.push(format!("fn {}", t.repr(cx)));
-        }
     }
 
     if strs.len() > 0u {
@@ -668,10 +673,11 @@ impl Repr for subst::Substs {
 
 impl<T:Repr> Repr for subst::VecPerParamSpace<T> {
     fn repr(&self, tcx: &ctxt) -> String {
-        format!("[{};{};{}]",
-                       self.get_slice(subst::TypeSpace).repr(tcx),
-                       self.get_slice(subst::SelfSpace).repr(tcx),
-                       self.get_slice(subst::FnSpace).repr(tcx))
+        format!("[{};{};{};{}]",
+                self.get_slice(subst::TypeSpace).repr(tcx),
+                self.get_slice(subst::SelfSpace).repr(tcx),
+                self.get_slice(subst::AssocSpace).repr(tcx),
+                self.get_slice(subst::FnSpace).repr(tcx))
     }
 }
 
@@ -726,7 +732,7 @@ impl Repr for ty::TraitRef {
     fn repr(&self, tcx: &ctxt) -> String {
         let base = ty::item_path_str(tcx, self.def_id);
         let trait_def = ty::lookup_trait_def(tcx, self.def_id);
-        format!("<{} as {}>",
+        format!("<{} : {}>",
                 self.substs.self_ty().repr(tcx),
                 parameterized(tcx, base.as_slice(), &self.substs, &trait_def.generics))
     }
@@ -738,6 +744,19 @@ impl Repr for ty::TraitDef {
                 self.generics.repr(tcx),
                 self.bounds.repr(tcx),
                 self.trait_ref.repr(tcx))
+    }
+}
+
+impl Repr for ast::TraitItem {
+    fn repr(&self, _tcx: &ctxt) -> String {
+        match *self {
+            ast::RequiredMethod(ref data) => format!("RequiredMethod({}, id={})",
+                                                     data.ident, data.id),
+            ast::ProvidedMethod(ref data) => format!("ProvidedMethod(id={})",
+                                                     data.id),
+            ast::TypeTraitItem(ref data) => format!("TypeTraitItem({}, id={})",
+                                                     data.ty_param.ident, data.ty_param.id),
+        }
     }
 }
 
@@ -756,6 +775,12 @@ impl Repr for ast::Path {
 impl UserString for ast::Path {
     fn user_string(&self, _tcx: &ctxt) -> String {
         pprust::path_to_string(self)
+    }
+}
+
+impl Repr for ast::Ty {
+    fn repr(&self, _tcx: &ctxt) -> String {
+        format!("type({})", pprust::ty_to_string(self))
     }
 }
 
@@ -1262,7 +1287,8 @@ impl UserString for ParamTy {
 
 impl Repr for ParamTy {
     fn repr(&self, tcx: &ctxt) -> String {
-        self.user_string(tcx)
+        let ident = self.user_string(tcx);
+        format!("{}/{}.{}", ident, self.space, self.idx)
     }
 }
 

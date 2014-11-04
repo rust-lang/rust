@@ -178,14 +178,14 @@ function! s:WithPath(func, ...)
 			call mkdir(tmpdir)
 
 			let save_cwd = getcwd()
-			silent exe 'lcd' tmpdir
+			silent exe 'lcd' fnameescape(tmpdir)
 
 			let path = 'unnamed.rs'
 
 			let save_mod = &mod
 			set nomod
 
-			silent exe 'keepalt write! ' . path
+			silent exe 'keepalt write! ' . fnameescape(path)
 			if pathisempty
 				silent keepalt 0file
 			endif
@@ -195,10 +195,10 @@ function! s:WithPath(func, ...)
 
 		call call(a:func, [path] + a:000)
 	finally
-		if exists("save_mod")   | let &mod = save_mod          | endif
-		if exists("save_write") | let &write = save_write      | endif
-		if exists("save_cwd")   | silent exe 'lcd' save_cwd    | endif
-		if exists("tmpdir")     | silent call s:RmDir(tmpdir)  | endif
+		if exists("save_mod")   | let &mod = save_mod                    | endif
+		if exists("save_write") | let &write = save_write                | endif
+		if exists("save_cwd")   | silent exe 'lcd' fnameescape(save_cwd) | endif
+		if exists("tmpdir")     | silent call s:RmDir(tmpdir)            | endif
 	endtry
 endfunction
 

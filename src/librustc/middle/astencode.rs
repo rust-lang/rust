@@ -38,9 +38,7 @@ use syntax::parse::token;
 use syntax::ptr::P;
 use syntax;
 
-use libc;
 use std::io::Seek;
-use std::mem;
 use std::rc::Rc;
 
 use rbml::io::SeekableMemWriter;
@@ -81,7 +79,7 @@ pub fn encode_inlined_item(ecx: &e::EncodeContext,
         e::IIForeignRef(i) => i.id,
         e::IITraitItemRef(_, &ast::ProvidedMethod(ref m)) => m.id,
         e::IITraitItemRef(_, &ast::RequiredMethod(ref m)) => m.id,
-        e::IITraitItemRef(_, &ast::TypeTraitItem(ref ti)) => ti.id,
+        e::IITraitItemRef(_, &ast::TypeTraitItem(ref ti)) => ti.ty_param.id,
         e::IIImplItemRef(_, &ast::MethodImplItem(ref m)) => m.id,
         e::IIImplItemRef(_, &ast::TypeImplItem(ref ti)) => ti.id,
     };
@@ -156,7 +154,7 @@ pub fn decode_inlined_item<'tcx>(cdata: &cstore::crate_metadata,
                 match *ti {
                     ast::ProvidedMethod(ref m) => m.pe_ident(),
                     ast::RequiredMethod(ref ty_m) => ty_m.ident,
-                    ast::TypeTraitItem(ref ti) => ti.ident,
+                    ast::TypeTraitItem(ref ti) => ti.ty_param.ident,
                 }
             },
             ast::IIImplItem(_, ref m) => {
@@ -711,8 +709,9 @@ impl<'a> vtable_decoder_helpers for reader::Decoder<'a> {
     {
         let types = self.read_to_vec(|this| Ok(f(this))).unwrap();
         let selfs = self.read_to_vec(|this| Ok(f(this))).unwrap();
+        let assocs = self.read_to_vec(|this| Ok(f(this))).unwrap();
         let fns = self.read_to_vec(|this| Ok(f(this))).unwrap();
-        VecPerParamSpace::new(types, selfs, fns)
+        VecPerParamSpace::new(types, selfs, assocs, fns)
     }
 
     fn read_vtable_res_with_key(&mut self,
@@ -1122,27 +1121,15 @@ impl<'a> write_tag_and_id for Encoder<'a> {
     }
 }
 
-struct SideTableEncodingIdVisitor<'a,'b:'a> {
-    ecx_ptr: *const libc::c_void,
-    new_rbml_w: &'a mut Encoder<'b>,
+struct SideTableEncodingIdVisitor<'a, 'b:'a, 'c:'a, 'tcx:'c> {
+    ecx: &'a e::EncodeContext<'c, 'tcx>,
+    rbml_w: &'a mut Encoder<'b>,
 }
 
-impl<'a,'b> ast_util::IdVisitingOperation for
-        SideTableEncodingIdVisitor<'a,'b> {
-    fn visit_id(&self, id: ast::NodeId) {
-        // Note: this will cause a copy of rbml_w, which is bad as
-        // it is mutable. But I believe it's harmless since we generate
-        // balanced EBML.
-        //
-        // FIXME(pcwalton): Don't copy this way.
-        let mut new_rbml_w = unsafe {
-            self.new_rbml_w.unsafe_clone()
-        };
-        // See above
-        let ecx: &e::EncodeContext = unsafe {
-            mem::transmute(self.ecx_ptr)
-        };
-        encode_side_tables_for_id(ecx, &mut new_rbml_w, id)
+impl<'a, 'b, 'c, 'tcx> ast_util::IdVisitingOperation for
+        SideTableEncodingIdVisitor<'a, 'b, 'c, 'tcx> {
+    fn visit_id(&mut self, id: ast::NodeId) {
+        encode_side_tables_for_id(self.ecx, self.rbml_w, id)
     }
 }
 
@@ -1150,18 +1137,9 @@ fn encode_side_tables_for_ii(ecx: &e::EncodeContext,
                              rbml_w: &mut Encoder,
                              ii: &ast::InlinedItem) {
     rbml_w.start_tag(c::tag_table as uint);
-    let mut new_rbml_w = unsafe {
-        rbml_w.unsafe_clone()
-    };
-
-    // Because the ast visitor uses @IdVisitingOperation, I can't pass in
-    // ecx directly, but /I/ know that it'll be fine since the lifetime is
-    // tied to the CrateContext that lives throughout this entire section.
-    ast_util::visit_ids_for_inlined_item(ii, &SideTableEncodingIdVisitor {
-        ecx_ptr: unsafe {
-            mem::transmute(ecx)
-        },
-        new_rbml_w: &mut new_rbml_w,
+    ast_util::visit_ids_for_inlined_item(ii, &mut SideTableEncodingIdVisitor {
+        ecx: ecx,
+        rbml_w: rbml_w
     });
     rbml_w.end_tag();
 }

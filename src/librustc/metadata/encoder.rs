@@ -29,7 +29,6 @@ use serialize::Encodable;
 use std::cell::RefCell;
 use std::hash::Hash;
 use std::hash;
-use std::mem;
 use std::collections::HashMap;
 use syntax::abi;
 use syntax::ast::*;
@@ -1508,44 +1507,36 @@ fn my_visit_expr(_e: &Expr) { }
 
 fn my_visit_item(i: &Item,
                  rbml_w: &mut Encoder,
-                 ecx_ptr: *const int,
+                 ecx: &EncodeContext,
                  index: &mut Vec<entry<i64>>) {
-    let mut rbml_w = unsafe { rbml_w.unsafe_clone() };
-    // See above
-    let ecx: &EncodeContext = unsafe { mem::transmute(ecx_ptr) };
     ecx.tcx.map.with_path(i.id, |path| {
-        encode_info_for_item(ecx, &mut rbml_w, i, index, path, i.vis);
+        encode_info_for_item(ecx, rbml_w, i, index, path, i.vis);
     });
 }
 
 fn my_visit_foreign_item(ni: &ForeignItem,
                          rbml_w: &mut Encoder,
-                         ecx_ptr:*const int,
+                         ecx: &EncodeContext,
                          index: &mut Vec<entry<i64>>) {
-    // See above
-    let ecx: &EncodeContext = unsafe { mem::transmute(ecx_ptr) };
     debug!("writing foreign item {}::{}",
             ecx.tcx.map.path_to_string(ni.id),
             token::get_ident(ni.ident));
 
-    let mut rbml_w = unsafe {
-        rbml_w.unsafe_clone()
-    };
     let abi = ecx.tcx.map.get_foreign_abi(ni.id);
     ecx.tcx.map.with_path(ni.id, |path| {
-        encode_info_for_foreign_item(ecx, &mut rbml_w,
+        encode_info_for_foreign_item(ecx, rbml_w,
                                      ni, index,
                                      path, abi);
     });
 }
 
-struct EncodeVisitor<'a,'b:'a> {
+struct EncodeVisitor<'a, 'b:'a, 'c:'a, 'tcx:'c> {
     rbml_w_for_visit_item: &'a mut Encoder<'b>,
-    ecx_ptr:*const int,
+    ecx: &'a EncodeContext<'c,'tcx>,
     index: &'a mut Vec<entry<i64>>,
 }
 
-impl<'a, 'b, 'v> Visitor<'v> for EncodeVisitor<'a, 'b> {
+impl<'a, 'b, 'c, 'tcx, 'v> Visitor<'v> for EncodeVisitor<'a, 'b, 'c, 'tcx> {
     fn visit_expr(&mut self, ex: &Expr) {
         visit::walk_expr(self, ex);
         my_visit_expr(ex);
@@ -1554,14 +1545,14 @@ impl<'a, 'b, 'v> Visitor<'v> for EncodeVisitor<'a, 'b> {
         visit::walk_item(self, i);
         my_visit_item(i,
                       self.rbml_w_for_visit_item,
-                      self.ecx_ptr,
+                      self.ecx,
                       self.index);
     }
     fn visit_foreign_item(&mut self, ni: &ForeignItem) {
         visit::walk_foreign_item(self, ni);
         my_visit_foreign_item(ni,
                               self.rbml_w_for_visit_item,
-                              self.ecx_ptr,
+                              self.ecx,
                               self.index);
     }
 }
@@ -1585,11 +1576,9 @@ fn encode_info_for_items(ecx: &EncodeContext,
                         syntax::parse::token::special_idents::invalid,
                         Public);
 
-    // See comment in `encode_side_tables_for_ii` in astencode
-    let ecx_ptr: *const int = unsafe { mem::transmute(ecx) };
     visit::walk_crate(&mut EncodeVisitor {
         index: &mut index,
-        ecx_ptr: ecx_ptr,
+        ecx: ecx,
         rbml_w_for_visit_item: &mut *rbml_w,
     }, krate);
 
