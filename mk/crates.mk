@@ -51,7 +51,7 @@
 
 TARGET_CRATES := libc std green native flate arena term \
                  serialize sync getopts collections test time rand \
-                 log regex graphviz core rbml rlibc alloc rustrt \
+                 log regex graphviz core rbml alloc rustrt \
                  unicode
 HOST_CRATES := syntax rustc rustdoc regex_macros fmt_macros \
 	       rustc_llvm rustc_back
@@ -60,7 +60,6 @@ TOOLS := compiletest rustdoc rustc
 
 DEPS_core :=
 DEPS_libc := core
-DEPS_rlibc := core
 DEPS_unicode := core
 DEPS_alloc := core libc native:jemalloc
 DEPS_rustrt := alloc core libc collections native:rustrt_native
@@ -104,7 +103,6 @@ TOOL_SOURCE_rustc := $(S)src/driver/driver.rs
 
 ONLY_RLIB_core := 1
 ONLY_RLIB_libc := 1
-ONLY_RLIB_rlibc := 1
 ONLY_RLIB_alloc := 1
 ONLY_RLIB_rand := 1
 ONLY_RLIB_collections := 1
