@@ -148,12 +148,13 @@ endif
 # libraries, so in the interest of space, prefer dynamic linking throughout the
 # compilation process.
 #
-# Note though that these flags are omitted for stage2+. This means that the
-# snapshot will be generated with a statically linked rustc so we only have to
-# worry about the distribution of one file (with its native dynamic
+# Note though that these flags are omitted for the *bins* in stage2+. This means
+# that the snapshot will be generated with a statically linked rustc so we only
+# have to worry about the distribution of one file (with its native dynamic
 # dependencies)
 RUSTFLAGS_STAGE0 += -C prefer-dynamic
 RUSTFLAGS_STAGE1 += -C prefer-dynamic
+RUST_LIB_FLAGS_ST2 += -C prefer-dynamic
 
 # Landing pads require a lot of codegen. We can get through bootstrapping faster
 # by not emitting them.
