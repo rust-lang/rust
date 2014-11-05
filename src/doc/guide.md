@@ -131,16 +131,11 @@ $ cd hello_world
 If you're on Windows and not using PowerShell, the `~` may not work. Consult
 the documentation for your shell for more details.
 
-Let's make a new source file next. I'm going to use the syntax `editor
-filename` to represent editing a file in these examples, but you should use
-whatever method you want. We'll call our file `main.rs`:
-
-```{bash}
-$ editor main.rs
-```
+Let's make a new source file next. Open a new file named `main.rs` in your
+favorite editor.
 
 Rust files always end in a `.rs` extension. If you're using more than one word
-in your file name, use an underscore. `hello_world.rs` rather than
+in your file name, use an underscore: `hello_world.rs` rather than
 `helloworld.rs`.
 
 Now that you've got your file open, type this in:
@@ -298,12 +293,7 @@ the top level for other things, like READMEs, license information, and anything
 not related to your code. Cargo helps us keep our projects nice and tidy. A
 place for everything, and everything in its place.
 
-Next, our configuration file:
-
-```{bash}
-$ editor Cargo.toml
-```
-
+Next, edit the `Cargo.toml` configuration file.
 Make sure to get this name right: you need the capital `C`!
 
 Put this inside:
