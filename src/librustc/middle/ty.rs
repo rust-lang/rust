@@ -1167,25 +1167,25 @@ impl cmp::PartialEq for InferRegion {
 
 impl fmt::Show for TyVid {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result{
-        write!(f, "<generic #{}>", self.index)
+        write!(f, "_#{}t", self.index)
     }
 }
 
 impl fmt::Show for IntVid {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "<generic integer #{}>", self.index)
+        write!(f, "_#{}i", self.index)
     }
 }
 
 impl fmt::Show for FloatVid {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "<generic float #{}>", self.index)
+        write!(f, "_#{}f", self.index)
     }
 }
 
 impl fmt::Show for RegionVid {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "'<generic lifetime #{}>", self.index)
+        write!(f, "'_#{}r", self.index)
     }
 }
 
@@ -5564,5 +5564,20 @@ pub fn with_freevars<T>(tcx: &ty::ctxt, fid: ast::NodeId, f: |&[Freevar]| -> T) 
     match tcx.freevars.borrow().find(&fid) {
         None => f(&[]),
         Some(d) => f(d.as_slice())
+    }
+}
+
+impl AutoAdjustment {
+    pub fn is_identity(&self) -> bool {
+        match *self {
+            AdjustAddEnv(..) => false,
+            AdjustDerefRef(ref r) => r.is_identity(),
+        }
+    }
+}
+
+impl AutoDerefRef {
+    pub fn is_identity(&self) -> bool {
+        self.autoderefs == 0 && self.autoref.is_none()
     }
 }

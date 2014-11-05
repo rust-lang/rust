@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// Test overloaded indexing combined with autoderef.
+
 struct Foo {
     x: int,
     y: int,
@@ -46,17 +48,24 @@ impl Int for int {
 }
 
 fn main() {
-    let mut f = Foo {
+    let mut f = box Foo {
         x: 1,
         y: 2,
     };
+
     assert_eq!(f[1], 2);
+
     f[0] = 3;
+
     assert_eq!(f[0], 3);
+
+    // Test explicit IndexMut where `f` must be autoderef:
     {
         let p = &mut f[1];
         *p = 4;
     }
+
+    // Test explicit Index where `f` must be autoderef:
     {
         let p = &f[1];
         assert_eq!(*p, 4);

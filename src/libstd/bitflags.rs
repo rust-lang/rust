@@ -177,13 +177,13 @@ macro_rules! bitflags {
             /// Returns `true` if there are flags common to both `self` and `other`.
             #[inline]
             pub fn intersects(&self, other: $BitFlags) -> bool {
-                !(self & other).is_empty()
+                !(*self & other).is_empty()
             }
 
             /// Returns `true` all of the flags in `other` are contained within `self`.
             #[inline]
             pub fn contains(&self, other: $BitFlags) -> bool {
-                (self & other) == other
+                (*self & other) == other
             }
 
             /// Inserts the specified flags in-place.
