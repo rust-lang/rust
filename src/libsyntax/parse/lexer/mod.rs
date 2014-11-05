@@ -1491,13 +1491,7 @@ mod test {
         }
     }
 
-    #[cfg(stage0)]
-    fn mk_ident (id: &str, is_mod_name: bool) -> token::Token {
-        token::Ident(str_to_ident(id), is_mod_name)
-    }
-
     // make the identifier by looking up the string in the interner
-    #[cfg(not(stage0))]
     fn mk_ident(id: &str, style: token::IdentStyle) -> token::Token {
         token::Ident(str_to_ident(id), style)
     }

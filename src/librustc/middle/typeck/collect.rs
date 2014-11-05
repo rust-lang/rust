@@ -574,20 +574,6 @@ fn convert_methods<'a,I>(ccx: &CrateCtxt,
                     rcvr_ty_generics: &ty::Generics,
                     rcvr_visibility: ast::Visibility)
                     -> ty::Method {
-        // FIXME(pcwalton): Hack until we have syntax in stage0 for snapshots.
-        let real_abi = match container {
-            ty::TraitContainer(trait_id) => {
-                if ccx.tcx.lang_items.fn_trait() == Some(trait_id) ||
-                        ccx.tcx.lang_items.fn_mut_trait() == Some(trait_id) ||
-                        ccx.tcx.lang_items.fn_once_trait() == Some(trait_id) {
-                    abi::RustCall
-                } else {
-                    m.pe_abi()
-                }
-            }
-            _ => m.pe_abi(),
-        };
-
         let m_ty_generics =
             ty_generics_for_fn_or_method(
                 ccx,
@@ -607,7 +593,7 @@ fn convert_methods<'a,I>(ccx: &CrateCtxt,
                                       untransformed_rcvr_ty,
                                       m.pe_explicit_self(),
                                       &*m.pe_fn_decl(),
-                                      real_abi)
+                                      m.pe_abi())
             }
             TraitConvertMethodContext(trait_id, trait_items) => {
                 let tmcx = TraitMethodCtxt {
@@ -622,7 +608,7 @@ fn convert_methods<'a,I>(ccx: &CrateCtxt,
                                       untransformed_rcvr_ty,
                                       m.pe_explicit_self(),
                                       &*m.pe_fn_decl(),
-                                      real_abi)
+                                      m.pe_abi())
             }
         };
 

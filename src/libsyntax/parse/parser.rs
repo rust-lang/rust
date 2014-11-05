@@ -63,7 +63,6 @@ use ast::{Visibility, WhereClause, WherePredicate};
 use ast;
 use ast_util::{as_prec, ident_to_path, operator_prec};
 use ast_util;
-use attr;
 use codemap::{Span, BytePos, Spanned, spanned, mk_sp};
 use codemap;
 use parse;
@@ -1262,11 +1261,6 @@ impl<'a> Parser<'a> {
                 let vis = p.parse_visibility();
                 let abi = if p.eat_keyword(keywords::Extern) {
                     p.parse_opt_abi().unwrap_or(abi::C)
-                } else if attr::contains_name(attrs.as_slice(),
-                                              "rust_call_abi_hack") {
-                    // FIXME(stage0, pcwalton): Remove this awful hack after a
-                    // snapshot, and change to `extern "rust-call" fn`.
-                    abi::RustCall
                 } else {
                     abi::Rust
                 };
@@ -4446,11 +4440,6 @@ impl<'a> Parser<'a> {
             } else {
                 let abi = if self.eat_keyword(keywords::Extern) {
                     self.parse_opt_abi().unwrap_or(abi::C)
-                } else if attr::contains_name(attrs.as_slice(),
-                                              "rust_call_abi_hack") {
-                    // FIXME(stage0, pcwalton): Remove this awful hack after a
-                    // snapshot, and change to `extern "rust-call" fn`.
-                    abi::RustCall
                 } else {
                     abi::Rust
                 };
