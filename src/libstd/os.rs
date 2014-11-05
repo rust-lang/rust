@@ -905,59 +905,9 @@ pub fn change_dir(p: &Path) -> bool {
     }
 }
 
-#[cfg(unix)]
 /// Returns the platform-specific value of errno
 pub fn errno() -> int {
-    #[cfg(any(target_os = "macos",
-              target_os = "ios",
-              target_os = "freebsd"))]
-    fn errno_location() -> *const c_int {
-        extern {
-            fn __error() -> *const c_int;
-        }
-        unsafe {
-            __error()
-        }
-    }
-
-    #[cfg(target_os = "dragonfly")]
-    fn errno_location() -> *const c_int {
-        extern {
-            fn __dfly_error() -> *const c_int;
-        }
-        unsafe {
-            __dfly_error()
-        }
-    }
-
-    #[cfg(any(target_os = "linux", target_os = "android"))]
-    fn errno_location() -> *const c_int {
-        extern {
-            fn __errno_location() -> *const c_int;
-        }
-        unsafe {
-            __errno_location()
-        }
-    }
-
-    unsafe {
-        (*errno_location()) as int
-    }
-}
-
-#[cfg(windows)]
-/// Returns the platform-specific value of errno
-pub fn errno() -> uint {
-    use libc::types::os::arch::extra::DWORD;
-
-    #[link_name = "kernel32"]
-    extern "system" {
-        fn GetLastError() -> DWORD;
-    }
-
-    unsafe {
-        GetLastError() as uint
-    }
+    libc::errno() as int
 }
 
 /// Return the string corresponding to an `errno()` value of `errnum`.
@@ -2041,6 +1991,24 @@ mod tests {
 
         e = env();
         assert!(e.contains(&(n, "VALUE".to_string())));
+    }
+
+    #[test]
+    #[cfg(unix)]
+    fn test_errno() {
+        os::set_errno(100);
+        assert!(os::errno() == 100);
+        os::set_errno(0);
+        assert!(os::errno() == 0);
+    }
+
+    #[test]
+    #[cfg(windows)]
+    fn test_errno() {
+        os::set_errno(100);
+        assert!(os::errno() == 100);
+        os::set_errno(0);
+        assert!(os::errno() == 0);
     }
 
     #[test]
