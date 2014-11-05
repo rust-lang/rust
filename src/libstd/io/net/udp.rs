@@ -16,13 +16,13 @@
 //! datagram protocol.
 
 use clone::Clone;
-use io::net::ip::{SocketAddr, IpAddr};
+use io::net::ip::{SocketAddr, IpAddr, ToSocketAddr};
 use io::{Reader, Writer, IoResult, IoError};
 use kinds::Send;
 use boxed::Box;
 use option::Option;
 use result::{Ok, Err};
-use rt::rtio::{RtioSocket, RtioUdpSocket, IoFactory, LocalIo};
+use rt::rtio::{RtioSocket, RtioUdpSocket, IoFactory};
 use rt::rtio;
 
 /// A User Datagram Protocol socket.
@@ -64,19 +64,17 @@ pub struct UdpSocket {
 }
 
 impl UdpSocket {
-    /// Creates a UDP socket from the given socket address.
-    pub fn bind(addr: SocketAddr) -> IoResult<UdpSocket> {
-        let SocketAddr { ip, port } = addr;
-        LocalIo::maybe_raise(|io| {
-            let addr = rtio::SocketAddr { ip: super::to_rtio(ip), port: port };
-            io.udp_bind(addr).map(|s| UdpSocket { obj: s })
-        }).map_err(IoError::from_rtio_error)
+    /// Creates a UDP socket from the given address.
+    ///
+    /// Address type can be any implementor of `ToSocketAddr` trait. See its
+    /// documentation for concrete examples.
+    pub fn bind<A: ToSocketAddr>(addr: A) -> IoResult<UdpSocket> {
+        super::with_addresses_io(addr, |io, addr| io.udp_bind(addr).map(|s| UdpSocket { obj: s }))
     }
 
     /// Receives data from the socket. On success, returns the number of bytes
     /// read and the address from whence the data came.
-    pub fn recv_from(&mut self, buf: &mut [u8])
-                    -> IoResult<(uint, SocketAddr)> {
+    pub fn recv_from(&mut self, buf: &mut [u8]) -> IoResult<(uint, SocketAddr)> {
         match self.obj.recv_from(buf) {
             Ok((amt, rtio::SocketAddr { ip, port })) => {
                 Ok((amt, SocketAddr { ip: super::from_rtio(ip), port: port }))
@@ -87,11 +85,14 @@ impl UdpSocket {
 
     /// Sends data on the socket to the given address. Returns nothing on
     /// success.
-    pub fn send_to(&mut self, buf: &[u8], dst: SocketAddr) -> IoResult<()> {
-        self.obj.send_to(buf, rtio::SocketAddr {
-            ip: super::to_rtio(dst.ip),
-            port: dst.port,
-        }).map_err(IoError::from_rtio_error)
+    ///
+    /// Address type can be any implementor of `ToSocketAddr` trait. See its
+    /// documentation for concrete examples.
+    pub fn send_to<A: ToSocketAddr>(&mut self, buf: &[u8], addr: A) -> IoResult<()> {
+        super::with_addresses(addr, |addr| self.obj.send_to(buf, rtio::SocketAddr {
+            ip: super::to_rtio(addr.ip),
+            port: addr.port,
+        }).map_err(IoError::from_rtio_error))
     }
 
     /// Creates a `UdpStream`, which allows use of the `Reader` and `Writer`
