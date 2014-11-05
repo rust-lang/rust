@@ -5,7 +5,7 @@
 # Summary
 
 This RFC proposes a number of design improvements to the `cmp` and
-`ord` modules in preparation for 1.0. The impetus for these
+`ops` modules in preparation for 1.0. The impetus for these
 improvements, besides the need for stabilization, is that we've added
 several important language features (like multidispatch) that greatly
 impact the design. Highlights:
@@ -317,7 +317,8 @@ pub trait IndexSet<Idx> {
 }
 ```
 
-(This idea is borrowed from [@sfackler's earlier RFC](https://github.com/rust-lang/rfcs/pull/159/files).)
+(This idea is borrowed from
+[@sfackler's earlier RFC](https://github.com/rust-lang/rfcs/pull/159/files).)
 
 The motivation for this trait is cases like `map["key"] = val`, which
 should correspond to an *insertion* rather than a mutable lookup. With
