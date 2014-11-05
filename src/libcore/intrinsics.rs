@@ -171,7 +171,6 @@ extern "rust-intrinsic" {
     /// with optimization of surrounding code and reduce performance. It should
     /// not be used if the invariant can be discovered by the optimizer on its
     /// own, or if it does not enable any significant optimizations.
-    #[cfg(not(stage0))]
     pub fn assume(b: bool);
 
     /// Execute a breakpoint trap, for inspection by a debugger.
