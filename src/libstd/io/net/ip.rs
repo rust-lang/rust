@@ -399,7 +399,7 @@ impl FromStr for SocketAddr {
 ///
 /// use std::io::{TcpStream, TcpListener};
 /// use std::io::net::udp::UdpSocket;
-/// use std::io::net::ip::{ToSocketAddr, Ipv4Addr, SocketAddr};
+/// use std::io::net::ip::{Ipv4Addr, SocketAddr};
 ///
 /// fn main() {
 ///     // The following lines are equivalent modulo possible "localhost" name resolution
@@ -414,7 +414,7 @@ impl FromStr for SocketAddr {
 ///     // TcpListener::bind(), UdpSocket::bind() and UdpSocket::send_to() behave similarly
 ///     let tcp_l = TcpListener::bind("localhost:12345");
 ///
-///     let udp_s = UdpSocket::bind(("127.0.0.1", 23451u16));
+///     let mut udp_s = UdpSocket::bind(("127.0.0.1", 23451u16)).unwrap();
 ///     udp_s.send_to([7u8, 7u8, 7u8].as_slice(), (Ipv4Addr(127, 0, 0, 1), 23451u16));
 /// }
 /// ```
