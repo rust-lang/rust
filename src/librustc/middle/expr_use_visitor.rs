@@ -672,6 +672,10 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,TYPER> {
             }
         }
 
+        // walk the with expression so that complex expressions
+        // are properly handled.
+        self.walk_expr(with_expr);
+
         fn contains_field_named(field: &ty::field,
                                 fields: &Vec<ast::Field>)
                                 -> bool
