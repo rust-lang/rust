@@ -497,14 +497,6 @@ pub extern fn rust_begin_unwind(msg: &fmt::Arguments,
     begin_unwind_fmt(msg, &(file, line))
 }
 
-// NOTE(stage0): remove after a snapshot
-#[cfg(not(test))]
-#[lang = "fail_fmt"]
-pub extern fn rust_fail_begin_unwind(msg: &fmt::Arguments,
-                                file: &'static str, line: uint) -> ! {
-    rust_begin_unwind(msg, file, line)
-}
-
 /// The entry point for unwinding with a formatted message.
 ///
 /// This is designed to reduce the amount of code required at the call

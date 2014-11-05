@@ -849,24 +849,21 @@ pub trait DerefMut<Sized? Result>: Deref<Result> {
 #[lang="fn"]
 pub trait Fn<Args,Result> {
     /// This is called when the call operator is used.
-    #[rust_call_abi_hack]
-    fn call(&self, args: Args) -> Result;
+    extern "rust-call" fn call(&self, args: Args) -> Result;
 }
 
 /// A version of the call operator that takes a mutable receiver.
 #[lang="fn_mut"]
 pub trait FnMut<Args,Result> {
     /// This is called when the call operator is used.
-    #[rust_call_abi_hack]
-    fn call_mut(&mut self, args: Args) -> Result;
+    extern "rust-call" fn call_mut(&mut self, args: Args) -> Result;
 }
 
 /// A version of the call operator that takes a by-value receiver.
 #[lang="fn_once"]
 pub trait FnOnce<Args,Result> {
     /// This is called when the call operator is used.
-    #[rust_call_abi_hack]
-    fn call_once(self, args: Args) -> Result;
+    extern "rust-call" fn call_once(self, args: Args) -> Result;
 }
 
 macro_rules! def_fn_mut(
@@ -874,9 +871,8 @@ macro_rules! def_fn_mut(
         impl<Result$(,$args)*>
         FnMut<($($args,)*),Result>
         for extern "Rust" fn($($args: $args,)*) -> Result {
-            #[rust_call_abi_hack]
             #[allow(non_snake_case)]
-            fn call_mut(&mut self, args: ($($args,)*)) -> Result {
+            extern "rust-call" fn call_mut(&mut self, args: ($($args,)*)) -> Result {
                 let ($($args,)*) = args;
                 (*self)($($args,)*)
             }
