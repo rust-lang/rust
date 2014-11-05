@@ -112,7 +112,7 @@ pub trait Drop {
  * ```
  */
 #[lang="add"]
-pub trait Add<RHS,Result> {
+pub trait Add<Sized? RHS,Result> for Sized? {
     /// The method for the `+` operator
     fn add(&self, rhs: &RHS) -> Result;
 }
@@ -153,7 +153,7 @@ add_impl!(uint u8 u16 u32 u64 int i8 i16 i32 i64 f32 f64)
  * ```
  */
 #[lang="sub"]
-pub trait Sub<RHS,Result> {
+pub trait Sub<Sized? RHS, Result> for Sized? {
     /// The method for the `-` operator
     fn sub(&self, rhs: &RHS) -> Result;
 }
@@ -194,7 +194,7 @@ sub_impl!(uint u8 u16 u32 u64 int i8 i16 i32 i64 f32 f64)
  * ```
  */
 #[lang="mul"]
-pub trait Mul<RHS,Result> {
+pub trait Mul<Sized? RHS, Result>  for Sized? {
     /// The method for the `*` operator
     fn mul(&self, rhs: &RHS) -> Result;
 }
@@ -235,7 +235,7 @@ mul_impl!(uint u8 u16 u32 u64 int i8 i16 i32 i64 f32 f64)
  * ```
  */
 #[lang="div"]
-pub trait Div<RHS,Result> {
+pub trait Div<Sized? RHS, Result> for Sized? {
     /// The method for the `/` operator
     fn div(&self, rhs: &RHS) -> Result;
 }
@@ -276,7 +276,7 @@ div_impl!(uint u8 u16 u32 u64 int i8 i16 i32 i64 f32 f64)
  * ```
  */
 #[lang="rem"]
-pub trait Rem<RHS,Result> {
+pub trait Rem<Sized? RHS, Result>  for Sized? {
     /// The method for the `%` operator
     fn rem(&self, rhs: &RHS) -> Result;
 }
@@ -331,7 +331,7 @@ rem_float_impl!(f64, fmod)
  * ```
  */
 #[lang="neg"]
-pub trait Neg<Result> {
+pub trait Neg<Result> for Sized? {
     /// The method for the unary `-` operator
     fn neg(&self) -> Result;
 }
@@ -388,7 +388,7 @@ neg_uint_impl!(u64, i64)
  * ```
  */
 #[lang="not"]
-pub trait Not<Result> {
+pub trait Not<Result> for Sized? {
     /// The method for the unary `!` operator
     fn not(&self) -> Result;
 }
@@ -430,7 +430,7 @@ not_impl!(bool uint u8 u16 u32 u64 int i8 i16 i32 i64)
  * ```
  */
 #[lang="bitand"]
-pub trait BitAnd<RHS,Result> {
+pub trait BitAnd<Sized? RHS, Result> for Sized? {
     /// The method for the `&` operator
     fn bitand(&self, rhs: &RHS) -> Result;
 }
@@ -471,7 +471,7 @@ bitand_impl!(bool uint u8 u16 u32 u64 int i8 i16 i32 i64)
  * ```
  */
 #[lang="bitor"]
-pub trait BitOr<RHS,Result> {
+pub trait BitOr<Sized? RHS, Result> for Sized? {
     /// The method for the `|` operator
     fn bitor(&self, rhs: &RHS) -> Result;
 }
@@ -512,7 +512,7 @@ bitor_impl!(bool uint u8 u16 u32 u64 int i8 i16 i32 i64)
  * ```
  */
 #[lang="bitxor"]
-pub trait BitXor<RHS,Result> {
+pub trait BitXor<Sized? RHS, Result> for Sized? {
     /// The method for the `^` operator
     fn bitxor(&self, rhs: &RHS) -> Result;
 }
@@ -553,7 +553,7 @@ bitxor_impl!(bool uint u8 u16 u32 u64 int i8 i16 i32 i64)
  * ```
  */
 #[lang="shl"]
-pub trait Shl<RHS,Result> {
+pub trait Shl<Sized? RHS, Result> for Sized? {
     /// The method for the `<<` operator
     fn shl(&self, rhs: &RHS) -> Result;
 }
@@ -596,7 +596,7 @@ shl_impl!(uint u8 u16 u32 u64 int i8 i16 i32 i64)
  * ```
  */
 #[lang="shr"]
-pub trait Shr<RHS,Result> {
+pub trait Shr<Sized? RHS, Result> for Sized? {
     /// The method for the `>>` operator
     fn shr(&self, rhs: &RHS) -> Result;
 }
@@ -669,7 +669,7 @@ pub trait Index<Sized? Index, Sized? Result> for Sized? {
  * ```
  */
 #[lang="index_mut"]
-pub trait IndexMut<Sized? Index, Result> for Sized? {
+pub trait IndexMut<Sized? Index, Sized? Result> for Sized? {
     /// The method for the indexing (`Foo[Bar]`) operation
     fn index_mut<'a>(&'a mut self, index: &Index) -> &'a mut Result;
 }
@@ -712,7 +712,7 @@ pub trait IndexMut<Sized? Index, Result> for Sized? {
  * ```
  */
 #[lang="slice"]
-pub trait Slice<Idx, Sized? Result> for Sized? {
+pub trait Slice<Sized? Idx, Sized? Result> for Sized? {
     /// The method for the slicing operation foo[]
     fn as_slice_<'a>(&'a self) -> &'a Result;
     /// The method for the slicing operation foo[from..]
@@ -761,7 +761,7 @@ pub trait Slice<Idx, Sized? Result> for Sized? {
  * ```
  */
 #[lang="slice_mut"]
-pub trait SliceMut<Idx, Sized? Result> for Sized? {
+pub trait SliceMut<Sized? Idx, Sized? Result> for Sized? {
     /// The method for the slicing operation foo[]
     fn as_mut_slice_<'a>(&'a mut self) -> &'a mut Result;
     /// The method for the slicing operation foo[from..]
@@ -800,7 +800,7 @@ pub trait SliceMut<Idx, Sized? Result> for Sized? {
  * ```
  */
 #[lang="deref"]
-pub trait Deref<Sized? Result> {
+pub trait Deref<Sized? Result> for Sized? {
     /// The method called to dereference a value
     fn deref<'a>(&'a self) -> &'a Result;
 }
@@ -859,21 +859,21 @@ impl<'a, Sized? T> DerefMut<T> for &'a mut T {
 
 /// A version of the call operator that takes an immutable receiver.
 #[lang="fn"]
-pub trait Fn<Args,Result> {
+pub trait Fn<Args,Result> for Sized? {
     /// This is called when the call operator is used.
     extern "rust-call" fn call(&self, args: Args) -> Result;
 }
 
 /// A version of the call operator that takes a mutable receiver.
 #[lang="fn_mut"]
-pub trait FnMut<Args,Result> {
+pub trait FnMut<Args,Result> for Sized? {
     /// This is called when the call operator is used.
     extern "rust-call" fn call_mut(&mut self, args: Args) -> Result;
 }
 
 /// A version of the call operator that takes a by-value receiver.
 #[lang="fn_once"]
-pub trait FnOnce<Args,Result> {
+pub trait FnOnce<Args,Result> for Sized? {
     /// This is called when the call operator is used.
     extern "rust-call" fn call_once(self, args: Args) -> Result;
 }
