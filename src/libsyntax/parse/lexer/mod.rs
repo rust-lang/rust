@@ -720,7 +720,11 @@ impl<'a> StringReader<'a> {
 
     /// Scan over `n_digits` hex digits, stopping at `delim`, reporting an
     /// error if too many or too few digits are encountered.
-    fn scan_hex_digits(&mut self, n_digits: uint, delim: char) -> bool {
+    fn scan_hex_digits(&mut self,
+                       n_digits: uint,
+                       delim: char,
+                       below_0x7f_only: bool)
+                       -> bool {
         debug!("scanning {} digits until {}", n_digits, delim);
         let start_bpos = self.last_pos;
         let mut accum_int = 0;
@@ -743,6 +747,13 @@ impl<'a> StringReader<'a> {
                 0
             }) as u32;
             self.bump();
+        }
+
+        if below_0x7f_only && accum_int >= 0x80 {
+            self.err_span_(start_bpos,
+                           self.last_pos,
+                           "this form of character escape may only be used \
+                            with characters in the range [\\x00-\\x7f]");
         }
 
         match char::from_u32(accum_int) {
@@ -773,9 +784,13 @@ impl<'a> StringReader<'a> {
                     Some(e) => {
                         return match e {
                             'n' | 'r' | 't' | '\\' | '\'' | '"' | '0' => true,
-                            'x' => self.scan_hex_digits(2u, delim),
-                            'u' if !ascii_only => self.scan_hex_digits(4u, delim),
-                            'U' if !ascii_only => self.scan_hex_digits(8u, delim),
+                            'x' => self.scan_hex_digits(2u, delim, !ascii_only),
+                            'u' if !ascii_only => {
+                                self.scan_hex_digits(4u, delim, false)
+                            }
+                            'U' if !ascii_only => {
+                                self.scan_hex_digits(8u, delim, false)
+                            }
                             '\n' if delim == '"' => {
                                 self.consume_whitespace();
                                 true

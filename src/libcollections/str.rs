@@ -810,7 +810,7 @@ mod tests {
         assert_eq!("".len(), 0u);
         assert_eq!("hello world".len(), 11u);
         assert_eq!("\x63".len(), 1u);
-        assert_eq!("\xa2".len(), 2u);
+        assert_eq!("\u00a2".len(), 2u);
         assert_eq!("\u03c0".len(), 2u);
         assert_eq!("\u2620".len(), 3u);
         assert_eq!("\U0001d11e".len(), 4u);
@@ -818,7 +818,7 @@ mod tests {
         assert_eq!("".char_len(), 0u);
         assert_eq!("hello world".char_len(), 11u);
         assert_eq!("\x63".char_len(), 1u);
-        assert_eq!("\xa2".char_len(), 1u);
+        assert_eq!("\u00a2".char_len(), 1u);
         assert_eq!("\u03c0".char_len(), 1u);
         assert_eq!("\u2620".char_len(), 1u);
         assert_eq!("\U0001d11e".char_len(), 1u);
@@ -1499,7 +1499,8 @@ mod tests {
         assert_eq!("a c".escape_unicode(), String::from_str("\\x61\\x20\\x63"));
         assert_eq!("\r\n\t".escape_unicode(), String::from_str("\\x0d\\x0a\\x09"));
         assert_eq!("'\"\\".escape_unicode(), String::from_str("\\x27\\x22\\x5c"));
-        assert_eq!("\x00\x01\xfe\xff".escape_unicode(), String::from_str("\\x00\\x01\\xfe\\xff"));
+        assert_eq!("\x00\x01\u00fe\u00ff".escape_unicode(),
+                   String::from_str("\\x00\\x01\\u00fe\\u00ff"));
         assert_eq!("\u0100\uffff".escape_unicode(), String::from_str("\\u0100\\uffff"));
         assert_eq!("\U00010000\U0010ffff".escape_unicode(),
                    String::from_str("\\U00010000\\U0010ffff"));
@@ -1783,11 +1784,11 @@ mod tests {
         t!("\u2126", "\u03a9");
         t!("\u1e0b\u0323", "\u1e0d\u0307");
         t!("\u1e0d\u0307", "\u1e0d\u0307");
-        t!("a\u0301", "\xe1");
+        t!("a\u0301", "\u00e1");
         t!("\u0301a", "\u0301a");
         t!("\ud4db", "\ud4db");
         t!("\uac1c", "\uac1c");
-        t!("a\u0300\u0305\u0315\u05aeb", "\xe0\u05ae\u0305\u0315b");
+        t!("a\u0300\u0305\u0315\u05aeb", "\u00e0\u05ae\u0305\u0315b");
     }
 
     #[test]
@@ -1803,11 +1804,11 @@ mod tests {
         t!("\u2126", "\u03a9");
         t!("\u1e0b\u0323", "\u1e0d\u0307");
         t!("\u1e0d\u0307", "\u1e0d\u0307");
-        t!("a\u0301", "\xe1");
+        t!("a\u0301", "\u00e1");
         t!("\u0301a", "\u0301a");
         t!("\ud4db", "\ud4db");
         t!("\uac1c", "\uac1c");
-        t!("a\u0300\u0305\u0315\u05aeb", "\xe0\u05ae\u0305\u0315b");
+        t!("a\u0300\u0305\u0315\u05aeb", "\u00e0\u05ae\u0305\u0315b");
     }
 
     #[test]
