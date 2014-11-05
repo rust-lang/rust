@@ -27,7 +27,7 @@ use libc::{mod, c_int};
 use std::c_str::CString;
 use std::os;
 use std::rt::rtio::{mod, IoResult, IoError};
-use std::num;
+use std::num::{mod, Zero, One};
 
 // Local re-exports
 pub use self::file::FileDesc;
@@ -96,7 +96,7 @@ fn last_error() -> IoError {
 }
 
 // unix has nonzero values as errors
-fn mkerr_libc <Int: num::Zero>(ret: Int) -> IoResult<()> {
+fn mkerr_libc <Int: Zero>(ret: Int) -> IoResult<()> {
     if !ret.is_zero() {
         Err(last_error())
     } else {
@@ -120,7 +120,7 @@ fn retry<I> (f: || -> I) -> I { f() } // PR rust-lang/rust/#17020
 
 #[cfg(unix)]
 #[inline]
-fn retry<I: PartialEq + num::One + Neg<I>> (f: || -> I) -> I {
+fn retry<I: PartialEq + One + Neg<I>> (f: || -> I) -> I {
     let minus_one = -num::one::<I>();
     loop {
         let n = f();
@@ -129,8 +129,11 @@ fn retry<I: PartialEq + num::One + Neg<I>> (f: || -> I) -> I {
     }
 }
 
-
-fn keep_going(data: &[u8], f: |*const u8, uint| -> i64) -> i64 {
+// 32-bit Windows with 4GT (aka 3G/1G split) enabled is practically the only platform
+// whose I/O system calls can handle a buffer longer than int::MAX bytes.
+// It is such a rare configuration that the user should know what they is doing.
+// Moreover, it would be unlikely to succeed in allocating such a large buffer.
+fn keep_going(data: &[u8], f: |*const u8, uint| -> int) -> int {
     let origamt = data.len();
     let mut data = data.as_ptr();
     let mut amt = origamt;
@@ -140,12 +143,12 @@ fn keep_going(data: &[u8], f: |*const u8, uint| -> i64) -> i64 {
             break
         } else if ret != -1 {
             amt -= ret as uint;
-            data = unsafe { data.offset(ret as int) };
+            data = unsafe { data.offset(ret) };
         } else {
             return ret;
         }
     }
-    return (origamt - amt) as i64;
+    return (origamt - amt) as int;
 }
 
 /// Implementation of rt::rtio's IoFactory trait to generate handles to the

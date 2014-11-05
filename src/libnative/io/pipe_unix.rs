@@ -162,7 +162,7 @@ impl rtio::RtioPipe for UnixStream {
             libc::recv(fd,
                        buf.as_mut_ptr() as *mut libc::c_void,
                        buf.len() as libc::size_t,
-                       flags) as libc::c_int
+                       flags) as int
         };
         net::read(fd, self.read_deadline, dolock, doread)
     }
@@ -175,7 +175,7 @@ impl rtio::RtioPipe for UnixStream {
             libc::send(fd,
                        buf as *const _,
                        len as libc::size_t,
-                       flags) as i64
+                       flags) as int
         };
         match net::write(fd, self.write_deadline, buf, true, dolock, dowrite) {
             Ok(_) => Ok(()),

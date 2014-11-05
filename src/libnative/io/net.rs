@@ -326,7 +326,7 @@ impl rtio::RtioTcpStream for TcpStream {
             libc::recv(fd,
                        buf.as_mut_ptr() as *mut libc::c_void,
                        buf.len() as wrlen,
-                       flags) as libc::c_int
+                       flags) as int
         };
         read(fd, self.read_deadline, dolock, doread)
     }
@@ -339,7 +339,7 @@ impl rtio::RtioTcpStream for TcpStream {
             libc::send(fd,
                        buf as *const _,
                        len as wrlen,
-                       flags) as i64
+                       flags) as int
         };
         match write(fd, self.write_deadline, buf, true, dolock, dowrite) {
             Ok(_) => Ok(()),
@@ -780,7 +780,7 @@ impl rtio::RtioUdpSocket for UdpSocket {
                            buf.len() as msglen_t,
                            flags,
                            storagep,
-                           &mut addrlen) as libc::c_int
+                           &mut addrlen) as int
         }));
         sockaddr_to_addr(&storage, addrlen as uint).and_then(|addr| {
             Ok((n as uint, addr))
@@ -801,7 +801,7 @@ impl rtio::RtioUdpSocket for UdpSocket {
                          len as msglen_t,
                          flags,
                          dstp,
-                         dstlen) as i64
+                         dstlen) as int
         };
 
         let n = try!(write(fd, self.write_deadline, buf, false, dolock, dowrite));
@@ -933,7 +933,7 @@ impl rtio::RtioUdpSocket for UdpSocket {
 pub fn read<T>(fd: sock_t,
                deadline: u64,
                lock: || -> T,
-               read: |bool| -> libc::c_int) -> IoResult<uint> {
+               read: |bool| -> int) -> IoResult<uint> {
     let mut ret = -1;
     if deadline == 0 {
         ret = retry(|| read(false));
@@ -977,14 +977,17 @@ pub fn write<T>(fd: sock_t,
                 buf: &[u8],
                 write_everything: bool,
                 lock: || -> T,
-                write: |bool, *const u8, uint| -> i64) -> IoResult<uint> {
+                write: |bool, *const u8, uint| -> int) -> IoResult<uint> {
     let mut ret = -1;
     let mut written = 0;
     if deadline == 0 {
         if write_everything {
             ret = keep_going(buf, |inner, len| {
-                written = buf.len() - len;
-                write(false, inner, len)
+                let n = write(false, inner, len);
+                if 0 < n {
+                    written += n as uint
+                }
+                n
             });
         } else {
             ret = retry(|| { write(false, buf.as_ptr(), buf.len()) });

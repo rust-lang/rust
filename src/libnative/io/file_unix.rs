@@ -14,6 +14,7 @@ use alloc::arc::Arc;
 use libc::{mod, c_int, c_void};
 use std::c_str::CString;
 use std::mem;
+use std::num::{mod, Zero};
 use std::rt::rtio::{mod, IoResult};
 
 use io::{retry, keep_going};
@@ -28,6 +29,40 @@ struct Inner {
 
 pub struct FileDesc {
     inner: Arc<Inner>
+}
+
+enum CheckEofMode {
+    MayHaveEof,
+    NeverEof
+}
+
+#[inline]
+fn check_error<I: PartialEq + PartialOrd + Zero + ToPrimitive, Ret: NumCast>
+    (ret: I, check_eof: CheckEofMode) -> IoResult<Ret>
+{
+    let zero = num::zero::<I>();
+    match check_eof {
+        MayHaveEof if ret == zero => Err(util::eof()),
+        _ => {
+            if ret < zero {
+                Err(super::last_error())
+            } else {
+                // ToPrimitive and NumCast help us here because
+                // we can't simply typecast by writing "ret as Ret";
+                // http://stackoverflow.com/questions/26042703/
+                Ok(NumCast::from(ret).unwrap())
+            }
+        }
+    }
+}
+
+#[inline]
+fn check_error_unit(ret: int) -> IoResult<()>  {
+    if ret < 0 {
+        Err(super::last_error())
+    } else {
+        Ok(())
+    }
 }
 
 impl FileDesc {
@@ -50,31 +85,19 @@ impl FileDesc {
     //               native::io wanting to use them is forced to have all the
     //               rtio traits in scope
     pub fn inner_read(&mut self, buf: &mut [u8]) -> IoResult<uint> {
-        let ret = retry(|| unsafe {
+        check_error(retry(|| unsafe {
             libc::read(self.fd(),
                        buf.as_mut_ptr() as *mut libc::c_void,
                        buf.len() as libc::size_t)
-        });
-        if ret == 0 {
-            Err(util::eof())
-        } else if ret < 0 {
-            Err(super::last_error())
-        } else {
-            Ok(ret as uint)
-        }
+        }), MayHaveEof)
     }
     pub fn inner_write(&mut self, buf: &[u8]) -> IoResult<()> {
-        let ret = keep_going(buf, |buf, len| {
+        check_error_unit(keep_going(buf, |buf, len| {
             unsafe {
                 libc::write(self.fd(), buf as *const libc::c_void,
-                            len as libc::size_t) as i64
+                            len as libc::size_t) as int
             }
-        });
-        if ret < 0 {
-            Err(super::last_error())
-        } else {
-            Ok(())
-        }
+        }))
     }
 
     pub fn fd(&self) -> fd_t { self.inner.fd }
@@ -88,19 +111,20 @@ impl rtio::RtioFileStream for FileDesc {
         self.inner_write(buf)
     }
     fn pread(&mut self, buf: &mut [u8], offset: u64) -> IoResult<int> {
-        match retry(|| unsafe {
-            libc::pread(self.fd(), buf.as_ptr() as *mut _,
-                        buf.len() as libc::size_t,
-                        offset as libc::off_t)
-        }) {
-            -1 => Err(super::last_error()),
-            n => Ok(n as int)
-        }
+        check_error(retry(|| unsafe {
+            libc::pread(self.fd(), buf.as_mut_ptr() as *mut libc::c_void,
+                        buf.len() as libc::size_t, offset as libc::off_t)
+        }), MayHaveEof)
     }
     fn pwrite(&mut self, buf: &[u8], offset: u64) -> IoResult<()> {
-        super::mkerr_libc(retry(|| unsafe {
-            libc::pwrite(self.fd(), buf.as_ptr() as *const _,
-                         buf.len() as libc::size_t, offset as libc::off_t)
+        let mut offset = offset as libc::off_t;
+        check_error_unit(keep_going(buf, |buf, len| {
+            let r = unsafe { libc::pwrite(self.fd(), buf as *const libc::c_void,
+                                          len as libc::size_t, offset) };
+            if 0 < r {
+                offset += r as libc::off_t
+            }
+            r as int
         }))
     }
     fn seek(&mut self, pos: i64, whence: rtio::SeekStyle) -> IoResult<u64> {
@@ -109,20 +133,14 @@ impl rtio::RtioFileStream for FileDesc {
             rtio::SeekEnd => libc::SEEK_END,
             rtio::SeekCur => libc::SEEK_CUR,
         };
-        let n = unsafe { libc::lseek(self.fd(), pos as libc::off_t, whence) };
-        if n < 0 {
-            Err(super::last_error())
-        } else {
-            Ok(n as u64)
-        }
+        check_error(unsafe {
+            libc::lseek(self.fd(), pos as libc::off_t, whence)
+        }, NeverEof)
     }
     fn tell(&self) -> IoResult<u64> {
-        let n = unsafe { libc::lseek(self.fd(), 0, libc::SEEK_CUR) };
-        if n < 0 {
-            Err(super::last_error())
-        } else {
-            Ok(n as u64)
-        }
+        check_error(unsafe {
+            libc::lseek(self.fd(), 0, libc::SEEK_CUR)
+        }, NeverEof)
     }
     fn fsync(&mut self) -> IoResult<()> {
         super::mkerr_libc(retry(|| unsafe { libc::fsync(self.fd()) }))
@@ -242,33 +260,21 @@ impl CFile {
 
 impl rtio::RtioFileStream for CFile {
     fn read(&mut self, buf: &mut [u8]) -> IoResult<int> {
-        let ret = keep_going(buf, |buf, len| {
+        check_error(keep_going(buf, |buf, len| {
             unsafe {
                 libc::fread(buf as *mut libc::c_void, 1, len as libc::size_t,
-                            self.file) as i64
+                            self.file) as int
             }
-        });
-        if ret == 0 {
-            Err(util::eof())
-        } else if ret < 0 {
-            Err(super::last_error())
-        } else {
-            Ok(ret as int)
-        }
+        }), MayHaveEof)
     }
 
     fn write(&mut self, buf: &[u8]) -> IoResult<()> {
-        let ret = keep_going(buf, |buf, len| {
+        check_error_unit(keep_going(buf, |buf, len| {
             unsafe {
                 libc::fwrite(buf as *const libc::c_void, 1, len as libc::size_t,
-                            self.file) as i64
+                            self.file) as int
             }
-        });
-        if ret < 0 {
-            Err(super::last_error())
-        } else {
-            Ok(())
-        }
+        }))
     }
 
     fn pread(&mut self, buf: &mut [u8], offset: u64) -> IoResult<int> {
@@ -283,20 +289,12 @@ impl rtio::RtioFileStream for CFile {
             rtio::SeekEnd => libc::SEEK_END,
             rtio::SeekCur => libc::SEEK_CUR,
         };
-        let n = unsafe { libc::fseek(self.file, pos as libc::c_long, whence) };
-        if n < 0 {
-            Err(super::last_error())
-        } else {
-            Ok(n as u64)
-        }
+        check_error(unsafe {
+            libc::fseek(self.file, pos as libc::c_long, whence)
+        }, NeverEof)
     }
     fn tell(&self) -> IoResult<u64> {
-        let ret = unsafe { libc::ftell(self.file) };
-        if ret < 0 {
-            Err(super::last_error())
-        } else {
-            Ok(ret as u64)
-        }
+        check_error( unsafe { libc::ftell(self.file) }, NeverEof)
     }
     fn fsync(&mut self) -> IoResult<()> {
         self.flush().and_then(|()| self.fd.fsync())
