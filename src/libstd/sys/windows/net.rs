@@ -61,27 +61,28 @@ fn last_error() -> io::Error {
 }
 
 /// Checks if the signed integer is the Windows constant `SOCKET_ERROR` (-1)
-/// and if so, returns the last error from the Windows socket interface. . This
+/// and if so, returns the last error from the Windows socket interface. This
 /// function must be called before another call to the socket API is made.
-pub fn cvt<T: One + Neg<Output=T> + PartialEq>(t: T) -> io::Result<T> {
-    let one: T = T::one();
-    if t == -one {
+pub fn cvt<T: One + PartialEq + Neg<Output=T>>(t: T) -> io::Result<T> {
+    if t == -T::one() {
         Err(last_error())
     } else {
         Ok(t)
     }
 }
 
-/// Provides the functionality of `cvt` for the return values of `getaddrinfo`
-/// and similar, meaning that they return an error if the return value is 0.
+/// A variant of `cvt` for `getaddrinfo` which return 0 for a success.
 pub fn cvt_gai(err: c_int) -> io::Result<()> {
-    if err == 0 { return Ok(()) }
-    cvt(err).map(|_| ())
+    if err == 0 {
+        Ok(())
+    } else {
+        Err(last_error())
+    }
 }
 
-/// Provides the functionality of `cvt` for a closure.
+/// Just to provide the same interface as sys/unix/net.rs
 pub fn cvt_r<T, F>(mut f: F) -> io::Result<T>
-    where F: FnMut() -> T, T: One + Neg<Output=T> + PartialEq
+    where T: One + PartialEq + Neg<Output=T>, F: FnMut() -> T
 {
     cvt(f())
 }
