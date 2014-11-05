@@ -132,7 +132,7 @@ impl Drop for Arena {
 
 #[inline]
 fn round_up(base: uint, align: uint) -> uint {
-    (base.checked_add(&(align - 1))).unwrap() & !(&(align - 1))
+    (base.checked_add(&(align - 1))).unwrap() & !(align - 1)
 }
 
 // Walk down a chunk, running the destructors for any objects stored

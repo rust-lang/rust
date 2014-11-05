@@ -919,7 +919,7 @@ impl<T> Vec<T> {
     ///
     /// ```
     /// let mut vec = vec![1i, 2, 3, 4];
-    /// vec.retain(|x| x%2 == 0);
+    /// vec.retain(|&x| x%2 == 0);
     /// assert_eq!(vec, vec![2, 4]);
     /// ```
     #[unstable = "the closure argument may become an unboxed closure"]
@@ -1800,7 +1800,7 @@ mod tests {
             let (left, right) = values.split_at_mut(2);
             {
                 let left: &[_] = left;
-                assert!(left[0..left.len()] == [1, 2]);
+                assert!(left[0..left.len()] == [1, 2][]);
             }
             for p in left.iter_mut() {
                 *p += 1;
@@ -1808,7 +1808,7 @@ mod tests {
 
             {
                 let right: &[_] = right;
-                assert!(right[0..right.len()] == [3, 4, 5]);
+                assert!(right[0..right.len()] == [3, 4, 5][]);
             }
             for p in right.iter_mut() {
                 *p += 2;
@@ -1863,7 +1863,7 @@ mod tests {
     #[test]
     fn test_retain() {
         let mut vec = vec![1u, 2, 3, 4];
-        vec.retain(|x| x%2 == 0);
+        vec.retain(|&x| x % 2 == 0);
         assert!(vec == vec![2u, 4]);
     }
 
