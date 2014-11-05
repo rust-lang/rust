@@ -49,6 +49,7 @@ the direction the language is evolving in.
 * [0356-no-module-prefixes.md](text/0356-no-module-prefixes.md)
 * [0378-expr-macros.md](text/0378-expr-macros.md)
 * [0385-module-system-cleanup.md](text/0385-module-system-cleanup.md)
+* [0418-struct-variants.md](text/0418-struct-variants.md)
 
 ## Table of Contents
 [Table of Contents]: #table-of-contents
