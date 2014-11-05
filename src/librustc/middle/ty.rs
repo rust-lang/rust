@@ -1167,25 +1167,25 @@ impl cmp::PartialEq for InferRegion {
 
 impl fmt::Show for TyVid {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result{
-        write!(f, "<generic #{}>", self.index)
+        write!(f, "_#{}t", self.index)
     }
 }
 
 impl fmt::Show for IntVid {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "<generic integer #{}>", self.index)
+        write!(f, "_#{}i", self.index)
     }
 }
 
 impl fmt::Show for FloatVid {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "<generic float #{}>", self.index)
+        write!(f, "_#{}f", self.index)
     }
 }
 
 impl fmt::Show for RegionVid {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "'<generic lifetime #{}>", self.index)
+        write!(f, "'_#{}r", self.index)
     }
 }
 
