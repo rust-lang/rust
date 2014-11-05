@@ -4,7 +4,7 @@
 ifndef IS_WINDOWS
 
 all:
-	$(RUSTC) foo.rs
+	$(RUSTC) foo.rs -C prefer-dynamic
 	mkdir -p $(TMPDIR)/other
 	ln -nsf $(TMPDIR)/$(call DYLIB_GLOB,foo) $(TMPDIR)/other
 	$(RUSTC) bar.rs -L $(TMPDIR)/other
