@@ -477,7 +477,7 @@ impl<K: Hash + Eq, V> HashMap<K, V, RandomSipHasher> {
     ///
     /// ```
     /// use std::collections::HashMap;
-    /// let mut map: HashMap<&str, int> = HashMap::with_capacity(10);
+    /// let mut map: HashMap<&str, int> = HashMap::new();
     /// ```
     #[inline]
     pub fn new() -> HashMap<K, V, RandomSipHasher> {
