@@ -140,8 +140,8 @@ fn test_escape_default() {
     assert_eq!(s.as_slice(), "\\x1f");
     let s = string('\x7f');
     assert_eq!(s.as_slice(), "\\x7f");
-    let s = string('\xff');
-    assert_eq!(s.as_slice(), "\\xff");
+    let s = string('\u00ff');
+    assert_eq!(s.as_slice(), "\\u00ff");
     let s = string('\u011b');
     assert_eq!(s.as_slice(), "\\u011b");
     let s = string('\U0001d4b6');
@@ -211,8 +211,8 @@ fn test_width() {
     assert_eq!('ｈ'.width(false),Some(2));
     assert_eq!('ｈ'.width(true),Some(2));
 
-    assert_eq!('\xAD'.width(false),Some(1));
-    assert_eq!('\xAD'.width(true),Some(1));
+    assert_eq!('\u00AD'.width(false),Some(1));
+    assert_eq!('\u00AD'.width(true),Some(1));
 
     assert_eq!('\u1160'.width(false),Some(0));
     assert_eq!('\u1160'.width(true),Some(0));
