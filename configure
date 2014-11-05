@@ -76,6 +76,19 @@ putvar() {
     printf "%-20s := %s\n" $1 "$T" >>config.tmp
 }
 
+putpathvar() {
+    local T
+    eval T=\$$1
+    eval TLEN=\${#$1}
+    if [ $TLEN -gt 35 ]
+    then
+        printf "configure: %-20s := %.35s ...\n" $1 "$T"
+    else
+        printf "configure: %-20s := %s %s\n" $1 "$T" "$2"
+    fi
+    printf "%-20s := %q\n" $1 "$T" >>config.tmp
+}
+
 probe() {
     local V=$1
     shift
@@ -101,7 +114,7 @@ probe() {
         fi
     done
     eval $V=\$T
-    putvar $V "$VER"
+    putpathvar $V "$VER"
 }
 
 probe_need() {
@@ -1330,8 +1343,7 @@ do
 done
 
 # Munge any paths that appear in config.mk back to posix-y
-perl -i.bak -p -e 's@ ([a-zA-Z]):[/\\]@ /\1/@go;' \
-               -e 's@\\@/@go;' config.tmp
+perl -i.bak -p -e 's@ ([a-zA-Z]):[/\\]@ /\1/@go;' config.tmp
 rm -f config.tmp.bak
 
 msg
