@@ -1,4 +1,4 @@
-# The Rust Programming Language
+ The Rust Programming Language
 
 This is a compiler for Rust, including standard libraries, tools and
 documentation.
