@@ -21,7 +21,7 @@ use metadata::encoder as e;
 use middle::region;
 use metadata::tydecode;
 use metadata::tydecode::{DefIdSource, NominalType, TypeWithId, TypeParameter};
-use metadata::tydecode::{RegionParameter};
+use metadata::tydecode::{RegionParameter, UnboxedClosureSource};
 use metadata::tyencode;
 use middle::mem_categorization::Typer;
 use middle::subst;
@@ -1728,12 +1728,14 @@ impl<'a> rbml_decoder_decoder_helpers for reader::Decoder<'a> {
             "FnMutUnboxedClosureKind",
             "FnOnceUnboxedClosureKind"
         ];
-        let kind = self.read_enum_variant(variants, |_, i| {
-            Ok(match i {
-                0 => ty::FnUnboxedClosureKind,
-                1 => ty::FnMutUnboxedClosureKind,
-                2 => ty::FnOnceUnboxedClosureKind,
-                _ => panic!("bad enum variant for ty::UnboxedClosureKind"),
+        let kind = self.read_enum("UnboxedClosureKind", |this| {
+            this.read_enum_variant(variants, |_, i| {
+                Ok(match i {
+                    0 => ty::FnUnboxedClosureKind,
+                    1 => ty::FnMutUnboxedClosureKind,
+                    2 => ty::FnOnceUnboxedClosureKind,
+                    _ => panic!("bad enum variant for ty::UnboxedClosureKind"),
+                })
             })
         }).unwrap();
         ty::UnboxedClosure {
@@ -1771,13 +1773,17 @@ impl<'a> rbml_decoder_decoder_helpers for reader::Decoder<'a> {
          * case. We translate them with `tr_def_id()` which will map
          * the crate numbers back to the original source crate.
          *
+         * Unboxed closures are cloned along with the function being
+         * inlined, and all side tables use interned node IDs, so we
+         * translate their def IDs accordingly.
+         *
          * It'd be really nice to refactor the type repr to not include
          * def-ids so that all these distinctions were unnecessary.
          */
 
         let r = match source {
             NominalType | TypeWithId | RegionParameter => dcx.tr_def_id(did),
-            TypeParameter => dcx.tr_intern_def_id(did)
+            TypeParameter | UnboxedClosureSource => dcx.tr_intern_def_id(did)
         };
         debug!("convert_def_id(source={}, did={})={}", source, did, r);
         return r;
