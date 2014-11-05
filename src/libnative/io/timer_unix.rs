@@ -190,7 +190,7 @@ fn helper(input: libc::c_int, messages: Receiver<Req>, _: ()) {
 
                 // drain the file descriptor
                 let mut buf = [0];
-                assert_eq!(fd.inner_read(buf).ok().unwrap(), 1);
+                assert_eq!(fd.inner_read(&mut buf).ok().unwrap(), 1);
             }
 
             -1 if os::errno() == libc::EINTR as int => {}

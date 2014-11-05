@@ -392,7 +392,7 @@ impl<'a> Formatter<'a> {
         let write_prefix = |f: &mut Formatter| {
             for c in sign.into_iter() {
                 let mut b = [0, ..4];
-                let n = c.encode_utf8(b).unwrap_or(0);
+                let n = c.encode_utf8(&mut b).unwrap_or(0);
                 try!(f.buf.write(b[..n]));
             }
             if prefixed { f.buf.write(prefix.as_bytes()) }
@@ -497,7 +497,7 @@ impl<'a> Formatter<'a> {
         };
 
         let mut fill = [0u8, ..4];
-        let len = self.fill.encode_utf8(fill).unwrap_or(0);
+        let len = self.fill.encode_utf8(&mut fill).unwrap_or(0);
 
         for _ in range(0, pre_pad) {
             try!(self.buf.write(fill[..len]));
@@ -586,7 +586,7 @@ impl Char for char {
         use char::Char;
 
         let mut utf8 = [0u8, ..4];
-        let amt = self.encode_utf8(utf8).unwrap_or(0);
+        let amt = self.encode_utf8(&mut utf8).unwrap_or(0);
         let s: &str = unsafe { mem::transmute(utf8[..amt]) };
         String::fmt(s, f)
     }

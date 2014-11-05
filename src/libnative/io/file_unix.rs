@@ -516,7 +516,7 @@ mod tests {
 
         writer.inner_write(b"test").ok().unwrap();
         let mut buf = [0u8, ..4];
-        match reader.inner_read(buf) {
+        match reader.inner_read(&mut buf) {
             Ok(4) => {
                 assert_eq!(buf[0], 't' as u8);
                 assert_eq!(buf[1], 'e' as u8);
@@ -526,8 +526,8 @@ mod tests {
             r => panic!("invalid read: {}", r),
         }
 
-        assert!(writer.inner_read(buf).is_err());
-        assert!(reader.inner_write(buf).is_err());
+        assert!(writer.inner_read(&mut buf).is_err());
+        assert!(reader.inner_write(&buf).is_err());
     }
 
     #[test]
@@ -540,7 +540,7 @@ mod tests {
             file.write(b"test").ok().unwrap();
             let mut buf = [0u8, ..4];
             let _ = file.seek(0, SeekSet).ok().unwrap();
-            match file.read(buf) {
+            match file.read(&mut buf) {
                 Ok(4) => {
                     assert_eq!(buf[0], 't' as u8);
                     assert_eq!(buf[1], 'e' as u8);

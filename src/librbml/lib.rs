@@ -598,7 +598,7 @@ pub mod reader {
                           f: |&mut Decoder<'doc>, bool| -> DecodeResult<T>) -> DecodeResult<T> {
             debug!("read_option()");
             self.read_enum("Option", |this| {
-                this.read_enum_variant(["None", "Some"], |this, idx| {
+                this.read_enum_variant(&["None", "Some"], |this, idx| {
                     match idx {
                         0 => f(this, false),
                         1 => f(this, true),
@@ -1075,34 +1075,34 @@ mod tests {
         let mut res: reader::Res;
 
         // Class A
-        res = reader::vuint_at(data, 0).unwrap();
+        res = reader::vuint_at(&data, 0).unwrap();
         assert_eq!(res.val, 0);
         assert_eq!(res.next, 1);
-        res = reader::vuint_at(data, res.next).unwrap();
+        res = reader::vuint_at(&data, res.next).unwrap();
         assert_eq!(res.val, (1 << 7) - 1);
         assert_eq!(res.next, 2);
 
         // Class B
-        res = reader::vuint_at(data, res.next).unwrap();
+        res = reader::vuint_at(&data, res.next).unwrap();
         assert_eq!(res.val, 0);
         assert_eq!(res.next, 4);
-        res = reader::vuint_at(data, res.next).unwrap();
+        res = reader::vuint_at(&data, res.next).unwrap();
         assert_eq!(res.val, (1 << 14) - 1);
         assert_eq!(res.next, 6);
 
         // Class C
-        res = reader::vuint_at(data, res.next).unwrap();
+        res = reader::vuint_at(&data, res.next).unwrap();
         assert_eq!(res.val, 0);
         assert_eq!(res.next, 9);
-        res = reader::vuint_at(data, res.next).unwrap();
+        res = reader::vuint_at(&data, res.next).unwrap();
         assert_eq!(res.val, (1 << 21) - 1);
         assert_eq!(res.next, 12);
 
         // Class D
-        res = reader::vuint_at(data, res.next).unwrap();
+        res = reader::vuint_at(&data, res.next).unwrap();
         assert_eq!(res.val, 0);
         assert_eq!(res.next, 16);
-        res = reader::vuint_at(data, res.next).unwrap();
+        res = reader::vuint_at(&data, res.next).unwrap();
         assert_eq!(res.val, (1 << 28) - 1);
         assert_eq!(res.next, 20);
     }

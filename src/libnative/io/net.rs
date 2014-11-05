@@ -549,7 +549,7 @@ impl TcpAcceptor {
                 -1 => return Err(os::last_error()),
                 fd => return Ok(TcpStream::new(Inner::new(fd as sock_t))),
             }
-            try!(util::await([self.fd(), self.inner.reader.fd()],
+            try!(util::await(&[self.fd(), self.inner.reader.fd()],
                              deadline, util::Readable));
         }
 
@@ -660,7 +660,7 @@ impl rtio::RtioTcpAcceptor for TcpAcceptor {
     fn close_accept(&mut self) -> IoResult<()> {
         self.inner.closed.store(true, atomic::SeqCst);
         let mut fd = FileDesc::new(self.inner.writer.fd(), false);
-        match fd.inner_write([0]) {
+        match fd.inner_write(&[0]) {
             Ok(..) => Ok(()),
             Err(..) if util::wouldblock() => Ok(()),
             Err(e) => Err(e),
@@ -948,7 +948,7 @@ pub fn read<T>(fd: sock_t,
             // With a timeout, first we wait for the socket to become
             // readable using select(), specifying the relevant timeout for
             // our previously set deadline.
-            try!(util::await([fd], deadline, util::Readable));
+            try!(util::await(&[fd], deadline, util::Readable));
 
             // At this point, we're still within the timeout, and we've
             // determined that the socket is readable (as returned by
@@ -1000,7 +1000,7 @@ pub fn write<T>(fd: sock_t,
         while written < buf.len() && (write_everything || written == 0) {
             // As with read(), first wait for the socket to be ready for
             // the I/O operation.
-            match util::await([fd], deadline, util::Writable) {
+            match util::await(&[fd], deadline, util::Writable) {
                 Err(ref e) if e.code == libc::EOF as uint && written > 0 => {
                     assert!(deadline.is_some());
                     return Err(util::short_write(written, "short write"))

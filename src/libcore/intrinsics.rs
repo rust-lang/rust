@@ -228,7 +228,7 @@ extern "rust-intrinsic" {
     /// use std::mem;
     ///
     /// let v: &[u8] = unsafe { mem::transmute("L") };
-    /// assert!(v == [76u8]);
+    /// assert!(v == &[76u8]);
     /// ```
     pub fn transmute<T,U>(e: T) -> U;
 
