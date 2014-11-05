@@ -30,6 +30,7 @@ import sys
 import threading
 import re
 import atexit
+import time
 
 # Set this to True for additional output
 DEBUG_OUTPUT = False
@@ -175,6 +176,10 @@ try:
 
   for line in script_file:
     command = line.strip()
+    if command == "run" or command == "r" or re.match("^process\s+launch.*", command):
+      # Before starting to run the program, let the thread sleep a bit, so all
+      # breakpoint added events can be processed
+      time.sleep(0.5)
     if command != '':
       execute_command(command_interpreter, command)
 
