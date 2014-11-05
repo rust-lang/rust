@@ -91,7 +91,7 @@ Some examples of obvious things you might want to do
     # // locally, we still want to be type checking this code, so lets
     # // just stop it running (#11576)
     # if false {
-    let mut socket = TcpStream::connect("127.0.0.1", 8080).unwrap();
+    let mut socket = TcpStream::connect("127.0.0.1:8080").unwrap();
     socket.write(b"GET / HTTP/1.0\n\n");
     let response = socket.read_to_end();
     # }
@@ -106,7 +106,7 @@ Some examples of obvious things you might want to do
     use std::io::{TcpListener, TcpStream};
     use std::io::{Acceptor, Listener};
 
-    let listener = TcpListener::bind("127.0.0.1", 80);
+    let listener = TcpListener::bind("127.0.0.1:80");
 
     // bind the listener to the specified address
     let mut acceptor = listener.listen();
