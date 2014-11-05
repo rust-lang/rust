@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn f<F:Nonexist(int) -> int>(x: F) {} //~ ERROR unresolved trait
+fn f<F:Nonexist(int) -> int>(x: F) {} //~ ERROR nonexistent trait `Nonexist`
 
 type Typedef = int;
 

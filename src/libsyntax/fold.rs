@@ -166,6 +166,22 @@ pub trait Folder {
         noop_fold_path(p, self)
     }
 
+    fn fold_path_parameters(&mut self, p: PathParameters) -> PathParameters {
+        noop_fold_path_parameters(p, self)
+    }
+
+    fn fold_angle_bracketed_parameter_data(&mut self, p: AngleBracketedParameterData)
+                                           -> AngleBracketedParameterData
+    {
+        noop_fold_angle_bracketed_parameter_data(p, self)
+    }
+
+    fn fold_parenthesized_parameter_data(&mut self, p: ParenthesizedParameterData)
+                                         -> ParenthesizedParameterData
+    {
+        noop_fold_parenthesized_parameter_data(p, self)
+    }
+
     fn fold_local(&mut self, l: P<Local>) -> P<Local> {
         noop_fold_local(l, self)
     }
@@ -480,13 +496,41 @@ pub fn noop_fold_uint<T: Folder>(i: uint, _: &mut T) -> uint {
 pub fn noop_fold_path<T: Folder>(Path {global, segments, span}: Path, fld: &mut T) -> Path {
     Path {
         global: global,
-        segments: segments.move_map(|PathSegment {identifier, lifetimes, types}| PathSegment {
+        segments: segments.move_map(|PathSegment {identifier, parameters}| PathSegment {
             identifier: fld.fold_ident(identifier),
-            lifetimes: fld.fold_lifetimes(lifetimes),
-            types: types.move_map(|typ| fld.fold_ty(typ)),
+            parameters: fld.fold_path_parameters(parameters),
         }),
         span: fld.new_span(span)
     }
+}
+
+pub fn noop_fold_path_parameters<T: Folder>(path_parameters: PathParameters, fld: &mut T)
+                                            -> PathParameters
+{
+    match path_parameters {
+        AngleBracketedParameters(data) =>
+            AngleBracketedParameters(fld.fold_angle_bracketed_parameter_data(data)),
+        ParenthesizedParameters(data) =>
+            ParenthesizedParameters(fld.fold_parenthesized_parameter_data(data)),
+    }
+}
+
+pub fn noop_fold_angle_bracketed_parameter_data<T: Folder>(data: AngleBracketedParameterData,
+                                                           fld: &mut T)
+                                                           -> AngleBracketedParameterData
+{
+    let AngleBracketedParameterData { lifetimes, types } = data;
+    AngleBracketedParameterData { lifetimes: fld.fold_lifetimes(lifetimes),
+                                  types: types.move_map(|ty| fld.fold_ty(ty)) }
+}
+
+pub fn noop_fold_parenthesized_parameter_data<T: Folder>(data: ParenthesizedParameterData,
+                                                         fld: &mut T)
+                                                         -> ParenthesizedParameterData
+{
+    let ParenthesizedParameterData { inputs, output } = data;
+    ParenthesizedParameterData { inputs: inputs.move_map(|ty| fld.fold_ty(ty)),
+                                 output: output.map(|ty| fld.fold_ty(ty)) }
 }
 
 pub fn noop_fold_local<T: Folder>(l: P<Local>, fld: &mut T) -> P<Local> {

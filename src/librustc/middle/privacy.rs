@@ -27,7 +27,6 @@ use syntax::ast_map;
 use syntax::ast_util::{is_local, local_def, PostExpansionMethod};
 use syntax::codemap::Span;
 use syntax::parse::token;
-use syntax::owned_slice::OwnedSlice;
 use syntax::visit;
 use syntax::visit::Visitor;
 
@@ -945,8 +944,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for PrivacyVisitor<'a, 'tcx> {
                                     debug!("privacy - ident item {}", id);
                                     let seg = ast::PathSegment {
                                         identifier: name,
-                                        lifetimes: Vec::new(),
-                                        types: OwnedSlice::empty(),
+                                        parameters: ast::PathParameters::none(),
                                     };
                                     let segs = vec![seg];
                                     let path = ast::Path {
