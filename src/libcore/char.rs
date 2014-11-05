@@ -176,7 +176,7 @@ pub fn escape_unicode(c: char, f: |char|) {
     // here.
     f('\\');
     let pad = match () {
-        _ if c <= '\xff'    => { f('x'); 2 }
+        _ if c <= '\x7f'    => { f('x'); 2 }
         _ if c <= '\uffff'  => { f('u'); 4 }
         _                   => { f('U'); 8 }
     };
