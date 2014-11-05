@@ -8,10 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// force-host
+extern void bar();
 
-#![crate_type = "dylib"]
-
-pub fn the_answer() -> int {
-    2
+int main() {
+    bar();
+    return 0;
 }

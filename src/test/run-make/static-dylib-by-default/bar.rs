@@ -8,10 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// force-host
-
 #![crate_type = "dylib"]
 
-pub fn the_answer() -> int {
-    2
+extern crate foo;
+
+#[no_mangle]
+pub extern fn bar() {
+    foo::foo();
 }
