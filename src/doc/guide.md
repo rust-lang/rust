@@ -131,7 +131,7 @@ $ cd hello_world
 If you're on Windows and not using PowerShell, the `~` may not work. Consult
 the documentation for your shell for more details.
 
-Let's make a new source file next. Open a new file named `main.rs` in your
+Let's make a new source file next. Open a file named `main.rs` in your
 favorite editor.
 
 Rust files always end in a `.rs` extension. If you're using more than one word
