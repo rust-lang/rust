@@ -414,7 +414,7 @@ mod tests {
             assert_eq!(f, v);
 
             buf.push(t as u8);
-            state_inc.write([t as u8]);
+            state_inc.write(&[t as u8]);
 
             t += 1;
         }

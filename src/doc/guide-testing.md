@@ -84,7 +84,7 @@ will be counted as a failure. For example:
 #[test]
 #[should_fail]
 fn test_out_of_bounds_failure() {
-    let v: &[int] = [];
+    let v: &[int] = &[];
     v[0];
 }
 ~~~
