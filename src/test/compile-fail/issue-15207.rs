@@ -11,7 +11,6 @@
 fn main() {
     loop {
         break.push(1) //~ ERROR the type of this value must be known in this context
-        //~^ ERROR multiple applicable methods in scope
         ;
     }
 }

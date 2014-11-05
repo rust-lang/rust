@@ -290,7 +290,7 @@ fn search(
     let masks_at = &masks[i];
 
     // for every unused piece
-    for id in range(0u, 10).filter(|id| board & (1 << (id + 50)) == 0) {
+    for id in range(0u, 10).filter(|&id| board & (1 << (id + 50)) == 0) {
         // for each mask that fits on the board
         for m in masks_at[id].iter().filter(|&m| board & *m == 0) {
             // This check is too costly.

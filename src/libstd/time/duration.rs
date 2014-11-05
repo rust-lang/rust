@@ -319,7 +319,7 @@ impl fmt::Show for Duration {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         // technically speaking, negative duration is not valid ISO 8601,
         // but we need to print it anyway.
-        let (abs, sign) = if self.secs < 0 { (-self, "-") } else { (*self, "") };
+        let (abs, sign) = if self.secs < 0 { (-*self, "-") } else { (*self, "") };
 
         let days = abs.secs / SECS_PER_DAY;
         let secs = abs.secs - days * SECS_PER_DAY;
