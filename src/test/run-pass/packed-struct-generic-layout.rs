@@ -23,15 +23,15 @@ pub fn main() {
         let transd : [u8, .. 9] = mem::transmute(s);
         // Don't worry about endianness, the numbers are palindromic.
         assert!(transd ==
-                   [0xff, 0xff, 0xff, 0xff,
-                    1,
-                    0xaa, 0xaa, 0xaa, 0xaa]);
+                   &[0xff, 0xff, 0xff, 0xff,
+                     1,
+                     0xaa, 0xaa, 0xaa, 0xaa]);
 
 
         let s = S { a: 1u8, b: 2u8, c: 0b10000001_10000001 as i16};
         let transd : [u8, .. 4] = mem::transmute(s);
         // Again, no endianness problems.
         assert!(transd ==
-                   [1, 2, 0b10000001, 0b10000001]);
+                   &[1, 2, 0b10000001, 0b10000001]);
     }
 }

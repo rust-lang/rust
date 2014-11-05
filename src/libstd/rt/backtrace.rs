@@ -528,7 +528,7 @@ mod imp {
             Some(string) => try!(super::demangle(w, string)),
             None => try!(write!(w, "<unknown>")),
         }
-        w.write(['\n' as u8])
+        w.write(&['\n' as u8])
     }
 
     /// Unwind library interface used for backtraces

@@ -13,7 +13,7 @@ pub fn main() {
     match x {
         [2, _, _] => panic!(),
         [1, a, b] => {
-            assert!([a, b] == [2, 3]);
+            assert!([a, b] == &[2, 3]);
         }
         [_, _, _] => panic!(),
     }

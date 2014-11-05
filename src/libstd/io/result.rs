@@ -85,7 +85,7 @@ mod test {
     #[test]
     fn test_option_writer() {
         let mut writer: io::IoResult<MemWriter> = Ok(MemWriter::new());
-        writer.write([0, 1, 2]).unwrap();
+        writer.write(&[0, 1, 2]).unwrap();
         writer.flush().unwrap();
         assert_eq!(writer.unwrap().unwrap(), vec!(0, 1, 2));
     }
@@ -95,7 +95,7 @@ mod test {
         let mut writer: io::IoResult<MemWriter> =
             Err(io::standard_error(io::EndOfFile));
 
-        match writer.write([0, 0, 0]) {
+        match writer.write(&[0, 0, 0]) {
             Ok(..) => panic!(),
             Err(e) => assert_eq!(e.kind, io::EndOfFile),
         }
@@ -110,7 +110,7 @@ mod test {
         let mut reader: io::IoResult<MemReader> =
             Ok(MemReader::new(vec!(0, 1, 2, 3)));
         let mut buf = [0, 0];
-        reader.read(buf).unwrap();
+        reader.read(&mut buf).unwrap();
         let b: &[_] = &[0, 1];
         assert_eq!(buf.as_slice(), b);
     }
@@ -121,7 +121,7 @@ mod test {
             Err(io::standard_error(io::EndOfFile));
         let mut buf = [];
 
-        match reader.read(buf) {
+        match reader.read(&mut buf) {
             Ok(..) => panic!(),
             Err(e) => assert_eq!(e.kind, io::EndOfFile),
         }

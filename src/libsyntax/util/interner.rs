@@ -247,7 +247,7 @@ mod tests {
 
     #[test]
     fn i3 () {
-        let i : Interner<RcStr> = Interner::prefill([
+        let i : Interner<RcStr> = Interner::prefill(&[
             RcStr::new("Alan"),
             RcStr::new("Bob"),
             RcStr::new("Carol")

@@ -776,11 +776,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             self.count_insn("inlineasm");
             let asm = comment_text.as_slice().with_c_str(|c| {
                 unsafe {
-                    llvm::LLVMConstInlineAsm(Type::func([], &Type::void(self.ccx)).to_ref(),
+                    llvm::LLVMConstInlineAsm(Type::func(&[], &Type::void(self.ccx)).to_ref(),
                                              c, noname(), False, False)
                 }
             });
-            self.call(asm, [], None);
+            self.call(asm, &[], None);
         }
     }
 
@@ -930,7 +930,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 llvm::LLVMGetNamedFunction(m, buf)
             });
             assert!((t as int != 0));
-            let args: &[ValueRef] = [];
+            let args: &[ValueRef] = &[];
             self.count_insn("trap");
             llvm::LLVMBuildCall(
                 self.llbuilder, t, args.as_ptr(), args.len() as c_uint, noname());

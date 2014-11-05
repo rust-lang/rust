@@ -432,7 +432,7 @@ unsafe fn with_c_str<T>(v: &[u8], checked: bool,
                         f: |*const libc::c_char| -> T) -> T {
     let c_str = if v.len() < BUF_LEN {
         let mut buf: [u8, .. BUF_LEN] = mem::uninitialized();
-        slice::bytes::copy_memory(buf, v);
+        slice::bytes::copy_memory(&mut buf, v);
         buf[v.len()] = 0;
 
         let buf = buf.as_mut_ptr();
@@ -554,7 +554,7 @@ mod tests {
 
     #[test]
     fn test_vec_to_c_str() {
-        let b: &[u8] = [];
+        let b: &[u8] = &[];
         let c_str = b.to_c_str();
         unsafe {
             assert_eq!(*c_str.as_ptr().offset(0), 0);
@@ -646,7 +646,7 @@ mod tests {
         let c_str = "hello".to_c_str();
         assert_eq!(c_str.as_bytes_no_nul(), b"hello");
         let c_str = "".to_c_str();
-        let exp: &[u8] = [];
+        let exp: &[u8] = &[];
         assert_eq!(c_str.as_bytes_no_nul(), exp);
         let c_str = b"foo\xFF".to_c_str();
         assert_eq!(c_str.as_bytes_no_nul(), b"foo\xFF");

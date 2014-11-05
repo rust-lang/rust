@@ -37,7 +37,7 @@ impl<S: Stream, H: StreamHasher<S>> Hash<H> for u8 {
 
 impl<S: Stream, H: StreamHasher<S>> StreamHash<S, H> for u8 {
     fn input_stream(&self, stream: &mut S) {
-        stream.input([*self]);
+        stream.input(&[*self]);
     }
 }
 

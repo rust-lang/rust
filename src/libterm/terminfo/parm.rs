@@ -581,13 +581,13 @@ mod test {
     #[test]
     fn test_basic_setabf() {
         let s = b"\\E[48;5;%p1%dm";
-        assert_eq!(expand(s, [Number(1)], &mut Variables::new()).unwrap(),
+        assert_eq!(expand(s, &[Number(1)], &mut Variables::new()).unwrap(),
                    "\\E[48;5;1m".bytes().collect());
     }
 
     #[test]
     fn test_multiple_int_constants() {
-        assert_eq!(expand(b"%{1}%{2}%d%d", [], &mut Variables::new()).unwrap(),
+        assert_eq!(expand(b"%{1}%{2}%d%d", &[], &mut Variables::new()).unwrap(),
                    "21".bytes().collect());
     }
 
@@ -595,9 +595,9 @@ mod test {
     fn test_op_i() {
         let mut vars = Variables::new();
         assert_eq!(expand(b"%p1%d%p2%d%p3%d%i%p1%d%p2%d%p3%d",
-                          [Number(1),Number(2),Number(3)], &mut vars),
+                          &[Number(1),Number(2),Number(3)], &mut vars),
                    Ok("123233".bytes().collect()));
-        assert_eq!(expand(b"%p1%d%p2%d%i%p1%d%p2%d", [], &mut vars),
+        assert_eq!(expand(b"%p1%d%p2%d%i%p1%d%p2%d", &[], &mut vars),
                    Ok("0011".bytes().collect()));
     }
 
@@ -615,7 +615,7 @@ mod test {
 
         let caps = ["%d", "%c", "%s", "%Pa", "%l", "%!", "%~"];
         for &cap in caps.iter() {
-            let res = get_res("", cap, [], vars);
+            let res = get_res("", cap, &[], vars);
             assert!(res.is_err(),
                     "Op {} succeeded incorrectly with 0 stack entries", cap);
             let p = if cap == "%s" || cap == "%l" {
@@ -623,19 +623,19 @@ mod test {
             } else {
                 Number(97)
             };
-            let res = get_res("%p1", cap, [p], vars);
+            let res = get_res("%p1", cap, &[p], vars);
             assert!(res.is_ok(),
                     "Op {} failed with 1 stack entry: {}", cap, res.unwrap_err());
         }
         let caps = ["%+", "%-", "%*", "%/", "%m", "%&", "%|", "%A", "%O"];
         for &cap in caps.iter() {
-            let res = expand(cap.as_bytes(), [], vars);
+            let res = expand(cap.as_bytes(), &[], vars);
             assert!(res.is_err(),
                     "Binop {} succeeded incorrectly with 0 stack entries", cap);
-            let res = get_res("%{1}", cap, [], vars);
+            let res = get_res("%{1}", cap, &[], vars);
             assert!(res.is_err(),
                     "Binop {} succeeded incorrectly with 1 stack entry", cap);
-            let res = get_res("%{1}%{2}", cap, [], vars);
+            let res = get_res("%{1}%{2}", cap, &[], vars);
             assert!(res.is_ok(),
                     "Binop {} failed with 2 stack entries: {}", cap, res.unwrap_err());
         }
@@ -643,7 +643,7 @@ mod test {
 
     #[test]
     fn test_push_bad_param() {
-        assert!(expand(b"%pa", [], &mut Variables::new()).is_err());
+        assert!(expand(b"%pa", &[], &mut Variables::new()).is_err());
     }
 
     #[test]
@@ -651,15 +651,15 @@ mod test {
         let v = [('<', [1u8, 0u8, 0u8]), ('=', [0u8, 1u8, 0u8]), ('>', [0u8, 0u8, 1u8])];
         for &(op, bs) in v.iter() {
             let s = format!("%{{1}}%{{2}}%{}%d", op);
-            let res = expand(s.as_bytes(), [], &mut Variables::new());
+            let res = expand(s.as_bytes(), &[], &mut Variables::new());
             assert!(res.is_ok(), res.unwrap_err());
             assert_eq!(res.unwrap(), vec!(b'0' + bs[0]));
             let s = format!("%{{1}}%{{1}}%{}%d", op);
-            let res = expand(s.as_bytes(), [], &mut Variables::new());
+            let res = expand(s.as_bytes(), &[], &mut Variables::new());
             assert!(res.is_ok(), res.unwrap_err());
             assert_eq!(res.unwrap(), vec!(b'0' + bs[1]));
             let s = format!("%{{2}}%{{1}}%{}%d", op);
-            let res = expand(s.as_bytes(), [], &mut Variables::new());
+            let res = expand(s.as_bytes(), &[], &mut Variables::new());
             assert!(res.is_ok(), res.unwrap_err());
             assert_eq!(res.unwrap(), vec!(b'0' + bs[2]));
         }
@@ -669,15 +669,15 @@ mod test {
     fn test_conditionals() {
         let mut vars = Variables::new();
         let s = b"\\E[%?%p1%{8}%<%t3%p1%d%e%p1%{16}%<%t9%p1%{8}%-%d%e38;5;%p1%d%;m";
-        let res = expand(s, [Number(1)], &mut vars);
+        let res = expand(s, &[Number(1)], &mut vars);
         assert!(res.is_ok(), res.unwrap_err());
         assert_eq!(res.unwrap(),
                    "\\E[31m".bytes().collect());
-        let res = expand(s, [Number(8)], &mut vars);
+        let res = expand(s, &[Number(8)], &mut vars);
         assert!(res.is_ok(), res.unwrap_err());
         assert_eq!(res.unwrap(),
                    "\\E[90m".bytes().collect());
-        let res = expand(s, [Number(42)], &mut vars);
+        let res = expand(s, &[Number(42)], &mut vars);
         assert!(res.is_ok(), res.unwrap_err());
         assert_eq!(res.unwrap(),
                    "\\E[38;5;42m".bytes().collect());
@@ -688,17 +688,17 @@ mod test {
         let mut varstruct = Variables::new();
         let vars = &mut varstruct;
         assert_eq!(expand(b"%p1%s%p2%2s%p3%2s%p4%.2s",
-                          [Words("foo".to_string()),
-                           Words("foo".to_string()),
-                           Words("f".to_string()),
-                           Words("foo".to_string())], vars),
+                          &[Words("foo".to_string()),
+                            Words("foo".to_string()),
+                            Words("f".to_string()),
+                            Words("foo".to_string())], vars),
                    Ok("foofoo ffo".bytes().collect()));
-        assert_eq!(expand(b"%p1%:-4.2s", [Words("foo".to_string())], vars),
+        assert_eq!(expand(b"%p1%:-4.2s", &[Words("foo".to_string())], vars),
                    Ok("fo  ".bytes().collect()));
 
-        assert_eq!(expand(b"%p1%d%p1%.3d%p1%5d%p1%:+d", [Number(1)], vars),
+        assert_eq!(expand(b"%p1%d%p1%.3d%p1%5d%p1%:+d", &[Number(1)], vars),
                    Ok("1001    1+1".bytes().collect()));
-        assert_eq!(expand(b"%p1%o%p1%#o%p2%6.4x%p2%#6.4X", [Number(15), Number(27)], vars),
+        assert_eq!(expand(b"%p1%o%p1%#o%p2%6.4x%p2%#6.4X", &[Number(15), Number(27)], vars),
                    Ok("17017  001b0X001B".bytes().collect()));
     }
 }

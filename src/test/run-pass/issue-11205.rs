@@ -72,11 +72,11 @@ fn main() {
     let r = &1i;
     let r: [&Foo, ..2] = [r, ..2];
     let _n = F {
-        t: r
+        t: &r
     };
     let x: [&Foo, ..2] = [&1i, &2i];
     let _n = F {
-        t: x
+        t: &x
     };
 
     struct M<'a> {
@@ -87,6 +87,6 @@ fn main() {
     };
     let x: [Box<Foo>, ..2] = [box 1i, box 2i];
     let _n = M {
-        t: x
+        t: &x
     };
 }
