@@ -655,7 +655,7 @@ pub fn _UndefReturn(cx: Block, fn_: ValueRef) -> ValueRef {
     unsafe {
         let ccx = cx.fcx.ccx;
         let ty = val_ty(fn_);
-        let retty = if ty.kind() == llvm::Integer {
+        let retty = if ty.kind() == llvm::Function {
             ty.return_type()
         } else {
             ccx.int_type()
