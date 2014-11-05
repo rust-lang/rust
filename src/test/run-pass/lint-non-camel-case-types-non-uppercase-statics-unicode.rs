@@ -12,7 +12,7 @@
 
 
 #![forbid(non_camel_case_types)]
-#![forbid(non_uppercase_statics)]
+#![forbid(non_upper_case_globals)]
 #![feature(non_ascii_idents)]
 
 // Some scripts (e.g. hiragana) don't have a concept of
