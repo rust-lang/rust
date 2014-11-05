@@ -20,18 +20,15 @@
 use clone::Clone;
 use io::IoResult;
 use iter::Iterator;
-use slice::ImmutableSlice;
 use result::{Ok,Err};
-use io::net::addrinfo::get_host_addresses;
-use io::net::ip::SocketAddr;
-use io::{IoError, ConnectionFailed, InvalidInput};
+use io::net::ip::{SocketAddr, ToSocketAddr};
+use io::IoError;
 use io::{Reader, Writer, Listener, Acceptor};
 use io::{standard_error, TimedOut};
-use from_str::FromStr;
 use kinds::Send;
 use option::{None, Some, Option};
 use boxed::Box;
-use rt::rtio::{IoFactory, LocalIo, RtioSocket, RtioTcpListener};
+use rt::rtio::{IoFactory, RtioSocket, RtioTcpListener};
 use rt::rtio::{RtioTcpAcceptor, RtioTcpStream};
 use rt::rtio;
 use time::Duration;
@@ -45,7 +42,7 @@ use time::Duration;
 /// # #![allow(unused_must_use)]
 /// use std::io::TcpStream;
 ///
-/// let mut stream = TcpStream::connect("127.0.0.1", 34254);
+/// let mut stream = TcpStream::connect("127.0.0.1:34254");
 ///
 /// stream.write([1]);
 /// let mut buf = [0];
@@ -61,35 +58,13 @@ impl TcpStream {
         TcpStream { obj: s }
     }
 
-    /// Open a TCP connection to a remote host by hostname or IP address.
+    /// Open a TCP connection to a remote host.
     ///
-    /// `host` can be a hostname or IP address string. If no error is
-    /// encountered, then `Ok(stream)` is returned.
-    pub fn connect(host: &str, port: u16) -> IoResult<TcpStream> {
-        let addresses = match FromStr::from_str(host) {
-            Some(addr) => vec!(addr),
-            None => try!(get_host_addresses(host))
-        };
-        let mut err = IoError {
-            kind: ConnectionFailed,
-            desc: "no addresses found for hostname",
-            detail: None
-        };
-        for addr in addresses.iter() {
-            let addr = rtio::SocketAddr{ ip: super::to_rtio(*addr), port: port };
-            let result = LocalIo::maybe_raise(|io| {
-                io.tcp_connect(addr, None).map(TcpStream::new)
-            });
-            match result {
-                Ok(stream) => {
-                    return Ok(stream)
-                }
-                Err(connect_err) => {
-                    err = IoError::from_rtio_error(connect_err)
-                }
-            }
-        }
-        Err(err)
+    /// `addr` is an address of the remote host. Anything which implements `ToSocketAddr`
+    /// trait can be supplied for the address; see this trait documentation for
+    /// concrete examples.
+    pub fn connect<A: ToSocketAddr>(addr: A) -> IoResult<TcpStream> {
+        super::with_addresses_io(addr, |io, addr| io.tcp_connect(addr, None).map(TcpStream::new))
     }
 
     /// Creates a TCP connection to a remote socket address, timing out after
@@ -99,23 +74,21 @@ impl TcpStream {
     /// specified elapses before a connection is made an error will be
     /// returned. The error's kind will be `TimedOut`.
     ///
-    /// Note that the `addr` argument may one day be split into a separate host
-    /// and port, similar to the API seen in `connect`.
+    /// Same as the `connect` method, `addr` argument type can be anything which
+    /// implements `ToSocketAddr` trait.
     ///
     /// If a `timeout` with zero or negative duration is specified then
     /// the function returns `Err`, with the error kind set to `TimedOut`.
     #[experimental = "the timeout argument may eventually change types"]
-    pub fn connect_timeout(addr: SocketAddr,
-                           timeout: Duration) -> IoResult<TcpStream> {
+    pub fn connect_timeout<A: ToSocketAddr>(addr: A,
+                                            timeout: Duration) -> IoResult<TcpStream> {
         if timeout <= Duration::milliseconds(0) {
             return Err(standard_error(TimedOut));
         }
 
-        let SocketAddr { ip, port } = addr;
-        let addr = rtio::SocketAddr { ip: super::to_rtio(ip), port: port };
-        LocalIo::maybe_raise(|io| {
+        super::with_addresses_io(addr, |io, addr|
             io.tcp_connect(addr, Some(timeout.num_milliseconds() as u64)).map(TcpStream::new)
-        }).map_err(IoError::from_rtio_error)
+        )
     }
 
     /// Returns the socket address of the remote peer of this TCP connection.
@@ -174,7 +147,7 @@ impl TcpStream {
     /// use std::io::TcpStream;
     /// use std::time::Duration;
     ///
-    /// let mut stream = TcpStream::connect("127.0.0.1", 34254).unwrap();
+    /// let mut stream = TcpStream::connect("127.0.0.1:34254").unwrap();
     /// let stream2 = stream.clone();
     ///
     /// spawn(proc() {
@@ -311,7 +284,7 @@ impl Writer for TcpStream {
 /// use std::io::{TcpListener, TcpStream};
 /// use std::io::{Acceptor, Listener};
 ///
-/// let listener = TcpListener::bind("127.0.0.1", 80);
+/// let listener = TcpListener::bind("127.0.0.1:80");
 ///
 /// // bind the listener to the specified address
 /// let mut acceptor = listener.listen();
@@ -340,32 +313,18 @@ pub struct TcpListener {
 }
 
 impl TcpListener {
-    /// Creates a new `TcpListener` which will be bound to the specified IP
-    /// and port. This listener is not ready for accepting connections,
-    /// `listen` must be called on it before that's possible.
+    /// Creates a new `TcpListener` which will be bound to the specified address.
+    /// This listener is not ready for accepting connections, `listen` must be called
+    /// on it before that's possible.
     ///
     /// Binding with a port number of 0 will request that the OS assigns a port
     /// to this listener. The port allocated can be queried via the
     /// `socket_name` function.
-    pub fn bind(addr: &str, port: u16) -> IoResult<TcpListener> {
-        match FromStr::from_str(addr) {
-            Some(ip) => {
-                let addr = rtio::SocketAddr{
-                    ip: super::to_rtio(ip),
-                    port: port,
-                };
-                LocalIo::maybe_raise(|io| {
-                    io.tcp_bind(addr).map(|l| TcpListener { obj: l })
-                }).map_err(IoError::from_rtio_error)
-            }
-            None => {
-                Err(IoError{
-                    kind: InvalidInput,
-                    desc: "invalid IP address specified",
-                    detail: None
-                })
-            }
-        }
+    ///
+    /// The address type can be any implementor of `ToSocketAddr` trait. See its
+    /// documentation for concrete examples.
+    pub fn bind<A: ToSocketAddr>(addr: A) -> IoResult<TcpListener> {
+        super::with_addresses_io(addr, |io, addr| io.tcp_bind(addr).map(|l| TcpListener { obj: l }))
     }
 
     /// Returns the local socket address of this listener.
@@ -419,7 +378,7 @@ impl TcpAcceptor {
     /// use std::io::TcpListener;
     /// use std::io::{Listener, Acceptor, TimedOut};
     ///
-    /// let mut a = TcpListener::bind("127.0.0.1", 8482).listen().unwrap();
+    /// let mut a = TcpListener::bind("127.0.0.1:8482").listen().unwrap();
     ///
     /// // After 100ms have passed, all accepts will fail
     /// a.set_timeout(Some(100));
@@ -462,7 +421,7 @@ impl TcpAcceptor {
     /// # #![allow(experimental)]
     /// use std::io::{TcpListener, Listener, Acceptor, EndOfFile};
     ///
-    /// let mut a = TcpListener::bind("127.0.0.1", 8482).listen().unwrap();
+    /// let mut a = TcpListener::bind("127.0.0.1:8482").listen().unwrap();
     /// let a2 = a.clone();
     ///
     /// spawn(proc() {
@@ -531,7 +490,7 @@ mod test {
     #[cfg_attr(any(windows, target_os = "android"), ignore)]
     #[test]
     fn bind_error() {
-        match TcpListener::bind("0.0.0.0", 1) {
+        match TcpListener::bind("0.0.0.0:1") {
             Ok(..) => panic!(),
             Err(e) => assert_eq!(e.kind, PermissionDenied),
         }
@@ -539,7 +498,7 @@ mod test {
 
     #[test]
     fn connect_error() {
-        match TcpStream::connect("0.0.0.0", 1) {
+        match TcpStream::connect("0.0.0.0:1") {
             Ok(..) => panic!(),
             Err(e) => assert_eq!(e.kind, ConnectionRefused),
         }
@@ -548,13 +507,11 @@ mod test {
     #[test]
     fn listen_ip4_localhost() {
         let socket_addr = next_test_ip4();
-        let ip_str = socket_addr.ip.to_string();
-        let port = socket_addr.port;
-        let listener = TcpListener::bind(ip_str.as_slice(), port);
+        let listener = TcpListener::bind(socket_addr);
         let mut acceptor = listener.listen();
 
         spawn(proc() {
-            let mut stream = TcpStream::connect("localhost", port);
+            let mut stream = TcpStream::connect(("localhost", socket_addr.port));
             stream.write([144]).unwrap();
         });
 
@@ -567,12 +524,10 @@ mod test {
     #[test]
     fn connect_localhost() {
         let addr = next_test_ip4();
-        let ip_str = addr.ip.to_string();
-        let port = addr.port;
-        let mut acceptor = TcpListener::bind(ip_str.as_slice(), port).listen();
+        let mut acceptor = TcpListener::bind(addr).listen();
 
         spawn(proc() {
-            let mut stream = TcpStream::connect("localhost", addr.port);
+            let mut stream = TcpStream::connect(("localhost", addr.port));
             stream.write([64]).unwrap();
         });
 
@@ -585,12 +540,10 @@ mod test {
     #[test]
     fn connect_ip4_loopback() {
         let addr = next_test_ip4();
-        let ip_str = addr.ip.to_string();
-        let port = addr.port;
-        let mut acceptor = TcpListener::bind(ip_str.as_slice(), port).listen();
+        let mut acceptor = TcpListener::bind(addr).listen();
 
         spawn(proc() {
-            let mut stream = TcpStream::connect("127.0.0.1", addr.port);
+            let mut stream = TcpStream::connect(("127.0.0.1", addr.port));
             stream.write([44]).unwrap();
         });
 
@@ -603,12 +556,10 @@ mod test {
     #[test]
     fn connect_ip6_loopback() {
         let addr = next_test_ip6();
-        let ip_str = addr.ip.to_string();
-        let port = addr.port;
-        let mut acceptor = TcpListener::bind(ip_str.as_slice(), port).listen();
+        let mut acceptor = TcpListener::bind(addr).listen();
 
         spawn(proc() {
-            let mut stream = TcpStream::connect("::1", addr.port);
+            let mut stream = TcpStream::connect(("::1", addr.port));
             stream.write([66]).unwrap();
         });
 
@@ -621,12 +572,10 @@ mod test {
     #[test]
     fn smoke_test_ip4() {
         let addr = next_test_ip4();
-        let ip_str = addr.ip.to_string();
-        let port = addr.port;
-        let mut acceptor = TcpListener::bind(ip_str.as_slice(), port).listen();
+        let mut acceptor = TcpListener::bind(addr).listen();
 
         spawn(proc() {
-            let mut stream = TcpStream::connect(ip_str.as_slice(), port);
+            let mut stream = TcpStream::connect(addr);
             stream.write([99]).unwrap();
         });
 
@@ -639,12 +588,10 @@ mod test {
     #[test]
     fn smoke_test_ip6() {
         let addr = next_test_ip6();
-        let ip_str = addr.ip.to_string();
-        let port = addr.port;
-        let mut acceptor = TcpListener::bind(ip_str.as_slice(), port).listen();
+        let mut acceptor = TcpListener::bind(addr).listen();
 
         spawn(proc() {
-            let mut stream = TcpStream::connect(ip_str.as_slice(), port);
+            let mut stream = TcpStream::connect(addr);
             stream.write([99]).unwrap();
         });
 
@@ -657,12 +604,10 @@ mod test {
     #[test]
     fn read_eof_ip4() {
         let addr = next_test_ip4();
-        let ip_str = addr.ip.to_string();
-        let port = addr.port;
-        let mut acceptor = TcpListener::bind(ip_str.as_slice(), port).listen();
+        let mut acceptor = TcpListener::bind(addr).listen();
 
         spawn(proc() {
-            let _stream = TcpStream::connect(ip_str.as_slice(), port);
+            let _stream = TcpStream::connect(addr);
             // Close
         });
 
@@ -675,12 +620,10 @@ mod test {
     #[test]
     fn read_eof_ip6() {
         let addr = next_test_ip6();
-        let ip_str = addr.ip.to_string();
-        let port = addr.port;
-        let mut acceptor = TcpListener::bind(ip_str.as_slice(), port).listen();
+        let mut acceptor = TcpListener::bind(addr).listen();
 
         spawn(proc() {
-            let _stream = TcpStream::connect(ip_str.as_slice(), port);
+            let _stream = TcpStream::connect(addr);
             // Close
         });
 
@@ -693,12 +636,10 @@ mod test {
     #[test]
     fn read_eof_twice_ip4() {
         let addr = next_test_ip4();
-        let ip_str = addr.ip.to_string();
-        let port = addr.port;
-        let mut acceptor = TcpListener::bind(ip_str.as_slice(), port).listen();
+        let mut acceptor = TcpListener::bind(addr).listen();
 
         spawn(proc() {
-            let _stream = TcpStream::connect(ip_str.as_slice(), port);
+            let _stream = TcpStream::connect(addr);
             // Close
         });
 
@@ -719,12 +660,10 @@ mod test {
     #[test]
     fn read_eof_twice_ip6() {
         let addr = next_test_ip6();
-        let ip_str = addr.ip.to_string();
-        let port = addr.port;
-        let mut acceptor = TcpListener::bind(ip_str.as_slice(), port).listen();
+        let mut acceptor = TcpListener::bind(addr).listen();
 
         spawn(proc() {
-            let _stream = TcpStream::connect(ip_str.as_slice(), port);
+            let _stream = TcpStream::connect(addr);
             // Close
         });
 
@@ -745,12 +684,10 @@ mod test {
     #[test]
     fn write_close_ip4() {
         let addr = next_test_ip4();
-        let ip_str = addr.ip.to_string();
-        let port = addr.port;
-        let mut acceptor = TcpListener::bind(ip_str.as_slice(), port).listen();
+        let mut acceptor = TcpListener::bind(addr).listen();
 
         spawn(proc() {
-            let _stream = TcpStream::connect(ip_str.as_slice(), port);
+            let _stream = TcpStream::connect(addr);
             // Close
         });
 
@@ -773,12 +710,10 @@ mod test {
     #[test]
     fn write_close_ip6() {
         let addr = next_test_ip6();
-        let ip_str = addr.ip.to_string();
-        let port = addr.port;
-        let mut acceptor = TcpListener::bind(ip_str.as_slice(), port).listen();
+        let mut acceptor = TcpListener::bind(addr).listen();
 
         spawn(proc() {
-            let _stream = TcpStream::connect(ip_str.as_slice(), port);
+            let _stream = TcpStream::connect(addr);
             // Close
         });
 
@@ -801,14 +736,12 @@ mod test {
     #[test]
     fn multiple_connect_serial_ip4() {
         let addr = next_test_ip4();
-        let ip_str = addr.ip.to_string();
-        let port = addr.port;
         let max = 10u;
-        let mut acceptor = TcpListener::bind(ip_str.as_slice(), port).listen();
+        let mut acceptor = TcpListener::bind(addr).listen();
 
         spawn(proc() {
             for _ in range(0, max) {
-                let mut stream = TcpStream::connect(ip_str.as_slice(), port);
+                let mut stream = TcpStream::connect(addr);
                 stream.write([99]).unwrap();
             }
         });
@@ -823,14 +756,12 @@ mod test {
     #[test]
     fn multiple_connect_serial_ip6() {
         let addr = next_test_ip6();
-        let ip_str = addr.ip.to_string();
-        let port = addr.port;
         let max = 10u;
-        let mut acceptor = TcpListener::bind(ip_str.as_slice(), port).listen();
+        let mut acceptor = TcpListener::bind(addr).listen();
 
         spawn(proc() {
             for _ in range(0, max) {
-                let mut stream = TcpStream::connect(ip_str.as_slice(), port);
+                let mut stream = TcpStream::connect(addr);
                 stream.write([99]).unwrap();
             }
         });
@@ -845,10 +776,8 @@ mod test {
     #[test]
     fn multiple_connect_interleaved_greedy_schedule_ip4() {
         let addr = next_test_ip4();
-        let ip_str = addr.ip.to_string();
-        let port = addr.port;
         static MAX: int = 10;
-        let acceptor = TcpListener::bind(ip_str.as_slice(), port).listen();
+        let acceptor = TcpListener::bind(addr).listen();
 
         spawn(proc() {
             let mut acceptor = acceptor;
@@ -867,13 +796,11 @@ mod test {
         connect(0, addr);
 
         fn connect(i: int, addr: SocketAddr) {
-            let ip_str = addr.ip.to_string();
-            let port = addr.port;
             if i == MAX { return }
 
             spawn(proc() {
                 debug!("connecting");
-                let mut stream = TcpStream::connect(ip_str.as_slice(), port);
+                let mut stream = TcpStream::connect(addr);
                 // Connect again before writing
                 connect(i + 1, addr);
                 debug!("writing");
@@ -885,10 +812,8 @@ mod test {
     #[test]
     fn multiple_connect_interleaved_greedy_schedule_ip6() {
         let addr = next_test_ip6();
-        let ip_str = addr.ip.to_string();
-        let port = addr.port;
         static MAX: int = 10;
-        let acceptor = TcpListener::bind(ip_str.as_slice(), port).listen();
+        let acceptor = TcpListener::bind(addr).listen();
 
         spawn(proc() {
             let mut acceptor = acceptor;
@@ -907,13 +832,11 @@ mod test {
         connect(0, addr);
 
         fn connect(i: int, addr: SocketAddr) {
-            let ip_str = addr.ip.to_string();
-            let port = addr.port;
             if i == MAX { return }
 
             spawn(proc() {
                 debug!("connecting");
-                let mut stream = TcpStream::connect(ip_str.as_slice(), port);
+                let mut stream = TcpStream::connect(addr);
                 // Connect again before writing
                 connect(i + 1, addr);
                 debug!("writing");
@@ -926,9 +849,7 @@ mod test {
     fn multiple_connect_interleaved_lazy_schedule_ip4() {
         static MAX: int = 10;
         let addr = next_test_ip4();
-        let ip_str = addr.ip.to_string();
-        let port = addr.port;
-        let acceptor = TcpListener::bind(ip_str.as_slice(), port).listen();
+        let acceptor = TcpListener::bind(addr).listen();
 
         spawn(proc() {
             let mut acceptor = acceptor;
@@ -947,13 +868,11 @@ mod test {
         connect(0, addr);
 
         fn connect(i: int, addr: SocketAddr) {
-            let ip_str = addr.ip.to_string();
-            let port = addr.port;
             if i == MAX { return }
 
             spawn(proc() {
                 debug!("connecting");
-                let mut stream = TcpStream::connect(ip_str.as_slice(), port);
+                let mut stream = TcpStream::connect(addr);
                 // Connect again before writing
                 connect(i + 1, addr);
                 debug!("writing");
@@ -966,9 +885,7 @@ mod test {
     fn multiple_connect_interleaved_lazy_schedule_ip6() {
         static MAX: int = 10;
         let addr = next_test_ip6();
-        let ip_str = addr.ip.to_string();
-        let port = addr.port;
-        let acceptor = TcpListener::bind(ip_str.as_slice(), port).listen();
+        let acceptor = TcpListener::bind(addr).listen();
 
         spawn(proc() {
             let mut acceptor = acceptor;
@@ -987,13 +904,11 @@ mod test {
         connect(0, addr);
 
         fn connect(i: int, addr: SocketAddr) {
-            let ip_str = addr.ip.to_string();
-            let port = addr.port;
             if i == MAX { return }
 
             spawn(proc() {
                 debug!("connecting");
-                let mut stream = TcpStream::connect(ip_str.as_slice(), port);
+                let mut stream = TcpStream::connect(addr);
                 // Connect again before writing
                 connect(i + 1, addr);
                 debug!("writing");
@@ -1003,9 +918,7 @@ mod test {
     }
 
     pub fn socket_name(addr: SocketAddr) {
-        let ip_str = addr.ip.to_string();
-        let port = addr.port;
-        let mut listener = TcpListener::bind(ip_str.as_slice(), port).unwrap();
+        let mut listener = TcpListener::bind(addr).unwrap();
 
         // Make sure socket_name gives
         // us the socket we binded to.
@@ -1015,15 +928,13 @@ mod test {
     }
 
     pub fn peer_name(addr: SocketAddr) {
-        let ip_str = addr.ip.to_string();
-        let port = addr.port;
-        let acceptor = TcpListener::bind(ip_str.as_slice(), port).listen();
+        let acceptor = TcpListener::bind(addr).listen();
         spawn(proc() {
             let mut acceptor = acceptor;
             acceptor.accept().unwrap();
         });
 
-        let stream = TcpStream::connect(ip_str.as_slice(), port);
+        let stream = TcpStream::connect(addr);
 
         assert!(stream.is_ok());
         let mut stream = stream.unwrap();
@@ -1052,11 +963,9 @@ mod test {
     #[test]
     fn partial_read() {
         let addr = next_test_ip4();
-        let port = addr.port;
         let (tx, rx) = channel();
         spawn(proc() {
-            let ip_str = addr.ip.to_string();
-            let mut srv = TcpListener::bind(ip_str.as_slice(), port).listen().unwrap();
+            let mut srv = TcpListener::bind(addr).listen().unwrap();
             tx.send(());
             let mut cl = srv.accept().unwrap();
             cl.write([10]).unwrap();
@@ -1066,8 +975,7 @@ mod test {
         });
 
         rx.recv();
-        let ip_str = addr.ip.to_string();
-        let mut c = TcpStream::connect(ip_str.as_slice(), port).unwrap();
+        let mut c = TcpStream::connect(addr).unwrap();
         let mut b = [0, ..10];
         assert_eq!(c.read(b), Ok(1));
         c.write([1]).unwrap();
@@ -1077,11 +985,9 @@ mod test {
     #[test]
     fn double_bind() {
         let addr = next_test_ip4();
-        let ip_str = addr.ip.to_string();
-        let port = addr.port;
-        let listener = TcpListener::bind(ip_str.as_slice(), port).unwrap().listen();
+        let listener = TcpListener::bind(addr).unwrap().listen();
         assert!(listener.is_ok());
-        match TcpListener::bind(ip_str.as_slice(), port).listen() {
+        match TcpListener::bind(addr).listen() {
             Ok(..) => panic!(),
             Err(e) => {
                 assert!(e.kind == ConnectionRefused || e.kind == OtherIoError,
@@ -1093,20 +999,17 @@ mod test {
     #[test]
     fn fast_rebind() {
         let addr = next_test_ip4();
-        let port = addr.port;
         let (tx, rx) = channel();
 
         spawn(proc() {
-            let ip_str = addr.ip.to_string();
             rx.recv();
-            let _stream = TcpStream::connect(ip_str.as_slice(), port).unwrap();
+            let _stream = TcpStream::connect(addr).unwrap();
             // Close
             rx.recv();
         });
 
         {
-            let ip_str = addr.ip.to_string();
-            let mut acceptor = TcpListener::bind(ip_str.as_slice(), port).listen();
+            let mut acceptor = TcpListener::bind(addr).listen();
             tx.send(());
             {
                 let _stream = acceptor.accept().unwrap();
@@ -1115,18 +1018,16 @@ mod test {
             }
             // Close listener
         }
-        let _listener = TcpListener::bind(addr.ip.to_string().as_slice(), port);
+        let _listener = TcpListener::bind(addr);
     }
 
     #[test]
     fn tcp_clone_smoke() {
         let addr = next_test_ip4();
-        let ip_str = addr.ip.to_string();
-        let port = addr.port;
-        let mut acceptor = TcpListener::bind(ip_str.as_slice(), port).listen();
+        let mut acceptor = TcpListener::bind(addr).listen();
 
         spawn(proc() {
-            let mut s = TcpStream::connect(ip_str.as_slice(), port);
+            let mut s = TcpStream::connect(addr);
             let mut buf = [0, 0];
             assert_eq!(s.read(buf), Ok(1));
             assert_eq!(buf[0], 1);
@@ -1153,14 +1054,12 @@ mod test {
     #[test]
     fn tcp_clone_two_read() {
         let addr = next_test_ip6();
-        let ip_str = addr.ip.to_string();
-        let port = addr.port;
-        let mut acceptor = TcpListener::bind(ip_str.as_slice(), port).listen();
+        let mut acceptor = TcpListener::bind(addr).listen();
         let (tx1, rx) = channel();
         let tx2 = tx1.clone();
 
         spawn(proc() {
-            let mut s = TcpStream::connect(ip_str.as_slice(), port);
+            let mut s = TcpStream::connect(addr);
             s.write([1]).unwrap();
             rx.recv();
             s.write([2]).unwrap();
@@ -1188,12 +1087,10 @@ mod test {
     #[test]
     fn tcp_clone_two_write() {
         let addr = next_test_ip4();
-        let ip_str = addr.ip.to_string();
-        let port = addr.port;
-        let mut acceptor = TcpListener::bind(ip_str.as_slice(), port).listen();
+        let mut acceptor = TcpListener::bind(addr).listen();
 
         spawn(proc() {
-            let mut s = TcpStream::connect(ip_str.as_slice(), port);
+            let mut s = TcpStream::connect(addr);
             let mut buf = [0, 1];
             s.read(buf).unwrap();
             s.read(buf).unwrap();
@@ -1218,9 +1115,7 @@ mod test {
         use rt::rtio::RtioTcpStream;
 
         let addr = next_test_ip4();
-        let ip_str = addr.ip.to_string();
-        let port = addr.port;
-        let a = TcpListener::bind(ip_str.as_slice(), port).unwrap().listen();
+        let a = TcpListener::bind(addr).unwrap().listen();
         spawn(proc() {
             let mut a = a;
             let mut c = a.accept().unwrap();
@@ -1228,7 +1123,7 @@ mod test {
             c.write([1]).unwrap();
         });
 
-        let mut s = TcpStream::connect(ip_str.as_slice(), port).unwrap();
+        let mut s = TcpStream::connect(addr).unwrap();
         assert!(s.obj.close_write().is_ok());
         assert!(s.write([1]).is_err());
         assert_eq!(s.read_to_end(), Ok(vec!(1)));
@@ -1237,9 +1132,7 @@ mod test {
     #[test]
     fn accept_timeout() {
         let addr = next_test_ip4();
-        let ip_str = addr.ip.to_string();
-        let port = addr.port;
-        let mut a = TcpListener::bind(ip_str.as_slice(), port).unwrap().listen().unwrap();
+        let mut a = TcpListener::bind(addr).unwrap().listen().unwrap();
 
         a.set_timeout(Some(10));
 
@@ -1258,8 +1151,7 @@ mod test {
         if !cfg!(target_os = "freebsd") {
             let (tx, rx) = channel();
             spawn(proc() {
-                tx.send(TcpStream::connect(addr.ip.to_string().as_slice(),
-                                           port).unwrap());
+                tx.send(TcpStream::connect(addr).unwrap());
             });
             let _l = rx.recv();
             for i in range(0i, 1001) {
@@ -1276,8 +1168,7 @@ mod test {
         // Unset the timeout and make sure that this always blocks.
         a.set_timeout(None);
         spawn(proc() {
-            drop(TcpStream::connect(addr.ip.to_string().as_slice(),
-                                    port).unwrap());
+            drop(TcpStream::connect(addr).unwrap());
         });
         a.accept().unwrap();
     }
@@ -1285,9 +1176,7 @@ mod test {
     #[test]
     fn close_readwrite_smoke() {
         let addr = next_test_ip4();
-        let ip_str = addr.ip.to_string();
-        let port = addr.port;
-        let a = TcpListener::bind(ip_str.as_slice(), port).listen().unwrap();
+        let a = TcpListener::bind(addr).listen().unwrap();
         let (_tx, rx) = channel::<()>();
         spawn(proc() {
             let mut a = a;
@@ -1296,7 +1185,7 @@ mod test {
         });
 
         let mut b = [0];
-        let mut s = TcpStream::connect(ip_str.as_slice(), port).unwrap();
+        let mut s = TcpStream::connect(addr).unwrap();
         let mut s2 = s.clone();
 
         // closing should prevent reads/writes
@@ -1324,9 +1213,7 @@ mod test {
     #[test]
     fn close_read_wakes_up() {
         let addr = next_test_ip4();
-        let ip_str = addr.ip.to_string();
-        let port = addr.port;
-        let a = TcpListener::bind(ip_str.as_slice(), port).listen().unwrap();
+        let a = TcpListener::bind(addr).listen().unwrap();
         let (_tx, rx) = channel::<()>();
         spawn(proc() {
             let mut a = a;
@@ -1334,7 +1221,7 @@ mod test {
             let _ = rx.recv_opt();
         });
 
-        let mut s = TcpStream::connect(ip_str.as_slice(), port).unwrap();
+        let mut s = TcpStream::connect(addr).unwrap();
         let s2 = s.clone();
         let (tx, rx) = channel();
         spawn(proc() {
@@ -1352,12 +1239,10 @@ mod test {
     #[test]
     fn readwrite_timeouts() {
         let addr = next_test_ip6();
-        let ip_str = addr.ip.to_string();
-        let port = addr.port;
-        let mut a = TcpListener::bind(ip_str.as_slice(), port).listen().unwrap();
+        let mut a = TcpListener::bind(addr).listen().unwrap();
         let (tx, rx) = channel::<()>();
         spawn(proc() {
-            let mut s = TcpStream::connect(ip_str.as_slice(), port).unwrap();
+            let mut s = TcpStream::connect(addr).unwrap();
             rx.recv();
             assert!(s.write([0]).is_ok());
             let _ = rx.recv_opt();
@@ -1387,12 +1272,10 @@ mod test {
     #[test]
     fn read_timeouts() {
         let addr = next_test_ip6();
-        let ip_str = addr.ip.to_string();
-        let port = addr.port;
-        let mut a = TcpListener::bind(ip_str.as_slice(), port).listen().unwrap();
+        let mut a = TcpListener::bind(addr).listen().unwrap();
         let (tx, rx) = channel::<()>();
         spawn(proc() {
-            let mut s = TcpStream::connect(ip_str.as_slice(), port).unwrap();
+            let mut s = TcpStream::connect(addr).unwrap();
             rx.recv();
             let mut amt = 0;
             while amt < 100 * 128 * 1024 {
@@ -1418,12 +1301,10 @@ mod test {
     #[test]
     fn write_timeouts() {
         let addr = next_test_ip6();
-        let ip_str = addr.ip.to_string();
-        let port = addr.port;
-        let mut a = TcpListener::bind(ip_str.as_slice(), port).listen().unwrap();
+        let mut a = TcpListener::bind(addr).listen().unwrap();
         let (tx, rx) = channel::<()>();
         spawn(proc() {
-            let mut s = TcpStream::connect(ip_str.as_slice(), port).unwrap();
+            let mut s = TcpStream::connect(addr).unwrap();
             rx.recv();
             assert!(s.write([0]).is_ok());
             let _ = rx.recv_opt();
@@ -1448,12 +1329,10 @@ mod test {
     #[test]
     fn timeout_concurrent_read() {
         let addr = next_test_ip6();
-        let ip_str = addr.ip.to_string();
-        let port = addr.port;
-        let mut a = TcpListener::bind(ip_str.as_slice(), port).listen().unwrap();
+        let mut a = TcpListener::bind(addr).listen().unwrap();
         let (tx, rx) = channel::<()>();
         spawn(proc() {
-            let mut s = TcpStream::connect(ip_str.as_slice(), port).unwrap();
+            let mut s = TcpStream::connect(addr).unwrap();
             rx.recv();
             assert_eq!(s.write([0]), Ok(()));
             let _ = rx.recv_opt();
@@ -1478,7 +1357,7 @@ mod test {
     #[test]
     fn clone_while_reading() {
         let addr = next_test_ip6();
-        let listen = TcpListener::bind(addr.ip.to_string().as_slice(), addr.port);
+        let listen = TcpListener::bind(addr);
         let mut accept = listen.listen().unwrap();
 
         // Enqueue a task to write to a socket
@@ -1486,8 +1365,7 @@ mod test {
         let (txdone, rxdone) = channel();
         let txdone2 = txdone.clone();
         spawn(proc() {
-            let mut tcp = TcpStream::connect(addr.ip.to_string().as_slice(),
-                                             addr.port).unwrap();
+            let mut tcp = TcpStream::connect(addr).unwrap();
             rx.recv();
             tcp.write_u8(0).unwrap();
             txdone2.send(());
@@ -1519,15 +1397,15 @@ mod test {
     #[test]
     fn clone_accept_smoke() {
         let addr = next_test_ip4();
-        let l = TcpListener::bind(addr.ip.to_string().as_slice(), addr.port);
+        let l = TcpListener::bind(addr);
         let mut a = l.listen().unwrap();
         let mut a2 = a.clone();
 
         spawn(proc() {
-            let _ = TcpStream::connect(addr.ip.to_string().as_slice(), addr.port);
+            let _ = TcpStream::connect(addr);
         });
         spawn(proc() {
-            let _ = TcpStream::connect(addr.ip.to_string().as_slice(), addr.port);
+            let _ = TcpStream::connect(addr);
         });
 
         assert!(a.accept().is_ok());
@@ -1537,7 +1415,7 @@ mod test {
     #[test]
     fn clone_accept_concurrent() {
         let addr = next_test_ip4();
-        let l = TcpListener::bind(addr.ip.to_string().as_slice(), addr.port);
+        let l = TcpListener::bind(addr);
         let a = l.listen().unwrap();
         let a2 = a.clone();
 
@@ -1548,10 +1426,10 @@ mod test {
         spawn(proc() { let mut a = a2; tx2.send(a.accept()) });
 
         spawn(proc() {
-            let _ = TcpStream::connect(addr.ip.to_string().as_slice(), addr.port);
+            let _ = TcpStream::connect(addr);
         });
         spawn(proc() {
-            let _ = TcpStream::connect(addr.ip.to_string().as_slice(), addr.port);
+            let _ = TcpStream::connect(addr);
         });
 
         assert!(rx.recv().is_ok());
@@ -1561,7 +1439,7 @@ mod test {
     #[test]
     fn close_accept_smoke() {
         let addr = next_test_ip4();
-        let l = TcpListener::bind(addr.ip.to_string().as_slice(), addr.port);
+        let l = TcpListener::bind(addr);
         let mut a = l.listen().unwrap();
 
         a.close_accept().unwrap();
@@ -1571,7 +1449,7 @@ mod test {
     #[test]
     fn close_accept_concurrent() {
         let addr = next_test_ip4();
-        let l = TcpListener::bind(addr.ip.to_string().as_slice(), addr.port);
+        let l = TcpListener::bind(addr);
         let a = l.listen().unwrap();
         let mut a2 = a.clone();
 
