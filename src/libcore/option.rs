@@ -143,7 +143,7 @@
 
 #![stable]
 
-use cmp::{PartialEq, Eq, Ord};
+use cmp::{Eq, Ord};
 use default::Default;
 use iter::{Iterator, DoubleEndedIterator, FromIterator, ExactSize};
 use mem;

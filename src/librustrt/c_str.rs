@@ -121,9 +121,16 @@ impl PartialEq for CString {
 }
 
 impl PartialOrd for CString {
+    // NOTE(stage0): remove method after a snapshot
+    #[cfg(stage0)]
     #[inline]
     fn partial_cmp(&self, other: &CString) -> Option<Ordering> {
         self.as_bytes().partial_cmp(&other.as_bytes())
+    }
+    #[cfg(not(stage0))]  // NOTE(stage0): remove cfg after a snapshot
+    #[inline]
+    fn partial_cmp(&self, other: &CString) -> Option<Ordering> {
+        self.as_bytes().partial_cmp(other.as_bytes())
     }
 }
 

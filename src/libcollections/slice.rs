@@ -1598,15 +1598,15 @@ mod tests {
     #[test]
     fn test_total_ord() {
         let c: &[int] = &[1, 2, 3];
-        [1, 2, 3, 4][].cmp(& c) == Greater;
+        [1, 2, 3, 4][].cmp(c) == Greater;
         let c: &[int] = &[1, 2, 3, 4];
-        [1, 2, 3][].cmp(& c) == Less;
+        [1, 2, 3][].cmp(c) == Less;
         let c: &[int] = &[1, 2, 3, 6];
-        [1, 2, 3, 4][].cmp(& c) == Equal;
+        [1, 2, 3, 4][].cmp(c) == Equal;
         let c: &[int] = &[1, 2, 3, 4, 5, 6];
-        [1, 2, 3, 4, 5, 5, 5, 5][].cmp(& c) == Less;
+        [1, 2, 3, 4, 5, 5, 5, 5][].cmp(c) == Less;
         let c: &[int] = &[1, 2, 3, 4];
-        [2, 2][].cmp(& c) == Greater;
+        [2, 2][].cmp(c) == Greater;
     }
 
     #[test]
