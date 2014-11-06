@@ -322,7 +322,7 @@ impl<'a, 'tcx> TermsContext<'a, 'tcx> {
                                                 index: index,
                                                 param_id: param_id,
                                                 term: term });
-        let newly_added = self.inferred_map.insert(param_id, inf_index);
+        let newly_added = self.inferred_map.insert(param_id, inf_index).is_none();
         assert!(newly_added);
 
         debug!("add_inferred(item_id={}, \
@@ -376,7 +376,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for TermsContext<'a, 'tcx> {
                 if self.num_inferred() == inferreds_on_entry {
                     let newly_added = self.tcx.item_variance_map.borrow_mut().insert(
                         ast_util::local_def(item.id),
-                        self.empty_variances.clone());
+                        self.empty_variances.clone()).is_none();
                     assert!(newly_added);
                 }
 
@@ -556,7 +556,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
     }
 
     fn inferred_index(&self, param_id: ast::NodeId) -> InferredIndex {
-        match self.terms_cx.inferred_map.find(&param_id) {
+        match self.terms_cx.inferred_map.get(&param_id) {
             Some(&index) => index,
             None => {
                 self.tcx().sess.bug(format!(
@@ -569,7 +569,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
     fn find_binding_for_lifetime(&self, param_id: ast::NodeId) -> ast::NodeId {
         let tcx = self.terms_cx.tcx;
         assert!(is_lifetime(&tcx.map, param_id));
-        match tcx.named_region_map.find(&param_id) {
+        match tcx.named_region_map.get(&param_id) {
             Some(&rl::DefEarlyBoundRegion(_, _, lifetime_decl_id))
                 => lifetime_decl_id,
             Some(_) => panic!("should not encounter non early-bound cases"),
@@ -810,7 +810,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
 
             ty::ty_param(ty::ParamTy { ref def_id, .. }) => {
                 assert_eq!(def_id.krate, ast::LOCAL_CRATE);
-                match self.terms_cx.inferred_map.find(&def_id.node) {
+                match self.terms_cx.inferred_map.get(&def_id.node) {
                     Some(&index) => {
                         self.add_constraint(index, variance);
                     }
@@ -1060,7 +1060,7 @@ impl<'a, 'tcx> SolveContext<'a, 'tcx> {
             }
 
             let newly_added = tcx.item_variance_map.borrow_mut()
-                                 .insert(item_def_id, Rc::new(item_variances));
+                                 .insert(item_def_id, Rc::new(item_variances)).is_none();
             assert!(newly_added);
         }
     }

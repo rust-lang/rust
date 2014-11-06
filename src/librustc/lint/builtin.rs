@@ -403,7 +403,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                                    libc::c_uint or libc::c_ulong should be used");
             }
             def::DefTy(..) => {
-                let tty = match self.cx.tcx.ast_ty_to_ty_cache.borrow().find(&ty_id) {
+                let tty = match self.cx.tcx.ast_ty_to_ty_cache.borrow().get(&ty_id) {
                     Some(&ty::atttce_resolved(t)) => t,
                     _ => panic!("ast_ty_to_ty_cache was incomplete after typeck!")
                 };
@@ -994,7 +994,7 @@ impl LintPass for NonSnakeCase {
     fn check_pat(&mut self, cx: &Context, p: &ast::Pat) {
         match &p.node {
             &ast::PatIdent(_, ref path1, _) => {
-                match cx.tcx.def_map.borrow().find(&p.id) {
+                match cx.tcx.def_map.borrow().get(&p.id) {
                     Some(&def::DefLocal(_)) => {
                         self.check_snake_case(cx, "variable", path1.node, p.span);
                     }
@@ -1051,7 +1051,7 @@ impl LintPass for NonUpperCaseGlobals {
 
     fn check_pat(&mut self, cx: &Context, p: &ast::Pat) {
         // Lint for constants that look like binding identifiers (#7526)
-        match (&p.node, cx.tcx.def_map.borrow().find(&p.id)) {
+        match (&p.node, cx.tcx.def_map.borrow().get(&p.id)) {
             (&ast::PatIdent(_, ref path1, _), Some(&def::DefConst(..))) => {
                 let s = token::get_ident(path1.node);
                 if s.get().chars().any(|c| c.is_lowercase()) {
@@ -1211,7 +1211,7 @@ impl LintPass for NonShorthandFieldPatterns {
             ast::PatStruct(_, ref v, _) => {
                 for fieldpat in v.iter()
                                  .filter(|fieldpat| !fieldpat.node.is_shorthand)
-                                 .filter(|fieldpat| def_map.find(&fieldpat.node.pat.id)
+                                 .filter(|fieldpat| def_map.get(&fieldpat.node.pat.id)
                                     == Some(&def::DefLocal(fieldpat.node.pat.id))) {
                     match fieldpat.node.pat.node {
                         ast::PatIdent(_, ident, None) if ident.node.as_str()
@@ -1368,7 +1368,7 @@ impl LintPass for UnusedAllocation {
             _ => return
         }
 
-        match cx.tcx.adjustments.borrow().find(&e.id) {
+        match cx.tcx.adjustments.borrow().get(&e.id) {
             Some(adjustment) => {
                 match *adjustment {
                     ty::AdjustDerefRef(ty::AutoDerefRef { ref autoref, .. }) => {
@@ -1637,7 +1637,7 @@ impl LintPass for Stability {
 
         let id = match e.node {
             ast::ExprPath(..) | ast::ExprStruct(..) => {
-                match cx.tcx.def_map.borrow().find(&e.id) {
+                match cx.tcx.def_map.borrow().get(&e.id) {
                     Some(&def) => def.def_id(),
                     None => return
                 }
@@ -1645,7 +1645,7 @@ impl LintPass for Stability {
             ast::ExprMethodCall(i, _, _) => {
                 span = i.span;
                 let method_call = typeck::MethodCall::expr(e.id);
-                match cx.tcx.method_map.borrow().find(&method_call) {
+                match cx.tcx.method_map.borrow().get(&method_call) {
                     Some(method) => {
                         match method.origin {
                             typeck::MethodStatic(def_id) => {

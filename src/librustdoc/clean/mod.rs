@@ -1395,7 +1395,7 @@ impl Clean<Item> for ty::field_ty {
         let (name, attrs) = if self.name == unnamed_field.name {
             (None, None)
         } else {
-            (Some(self.name), Some(attr_map.find(&self.id.node).unwrap()))
+            (Some(self.name), Some(attr_map.get(&self.id.node).unwrap()))
         };
 
         let ty = ty::lookup_item_type(cx.tcx(), self.id);
@@ -2090,7 +2090,7 @@ fn resolve_type(cx: &DocContext, path: Path,
         None => return Primitive(Bool),
     };
     debug!("searching for {} in defmap", id);
-    let def = match tcx.def_map.borrow().find(&id) {
+    let def = match tcx.def_map.borrow().get(&id) {
         Some(&k) => k,
         None => panic!("unresolved id not in defmap")
     };
@@ -2159,7 +2159,7 @@ fn resolve_use_source(cx: &DocContext, path: Path, id: ast::NodeId) -> ImportSou
 
 fn resolve_def(cx: &DocContext, id: ast::NodeId) -> Option<ast::DefId> {
     cx.tcx_opt().and_then(|tcx| {
-        tcx.def_map.borrow().find(&id).map(|&def| register_def(cx, def))
+        tcx.def_map.borrow().get(&id).map(|&def| register_def(cx, def))
     })
 }
 

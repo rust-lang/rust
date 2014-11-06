@@ -162,6 +162,8 @@ use core::ptr;
 use slice;
 use vec::Vec;
 
+// FIXME(conventions): implement into_iter
+
 /// A priority queue implemented with a binary heap.
 ///
 /// This will be a max-heap.
@@ -184,6 +186,7 @@ impl<T: Ord> BinaryHeap<T> {
     /// use std::collections::BinaryHeap;
     /// let pq: BinaryHeap<uint> = BinaryHeap::new();
     /// ```
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn new() -> BinaryHeap<T> { BinaryHeap{data: vec!(),} }
 
     /// Creates an empty `BinaryHeap` with a specific capacity.
@@ -197,6 +200,7 @@ impl<T: Ord> BinaryHeap<T> {
     /// use std::collections::BinaryHeap;
     /// let pq: BinaryHeap<uint> = BinaryHeap::with_capacity(10u);
     /// ```
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn with_capacity(capacity: uint) -> BinaryHeap<T> {
         BinaryHeap { data: Vec::with_capacity(capacity) }
     }
@@ -234,6 +238,7 @@ impl<T: Ord> BinaryHeap<T> {
     ///     println!("{}", x);
     /// }
     /// ```
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn iter<'a>(&'a self) -> Items<'a, T> {
         Items { iter: self.data.iter() }
     }
@@ -268,10 +273,19 @@ impl<T: Ord> BinaryHeap<T> {
     /// let pq: BinaryHeap<uint> = BinaryHeap::with_capacity(100u);
     /// assert!(pq.capacity() >= 100u);
     /// ```
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn capacity(&self) -> uint { self.data.capacity() }
 
-    /// Reserves capacity for exactly `n` elements in the `BinaryHeap`.
-    /// Do nothing if the capacity is already sufficient.
+    /// Reserves the minimum capacity for exactly `additional` more elements to be inserted in the
+    /// given `BinaryHeap`. Does nothing if the capacity is already sufficient.
+    ///
+    /// Note that the allocator may give the collection more space than it requests. Therefore
+    /// capacity can not be relied upon to be precisely minimal. Prefer `reserve` if future
+    /// insertions are expected.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the new capacity overflows `uint`.
     ///
     /// # Example
     ///
@@ -280,12 +294,17 @@ impl<T: Ord> BinaryHeap<T> {
     ///
     /// let mut pq: BinaryHeap<uint> = BinaryHeap::new();
     /// pq.reserve_exact(100u);
-    /// assert!(pq.capacity() == 100u);
+    /// assert!(pq.capacity() >= 100u);
     /// ```
-    pub fn reserve_exact(&mut self, n: uint) { self.data.reserve_exact(n) }
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
+    pub fn reserve_exact(&mut self, additional: uint) { self.data.reserve_exact(additional) }
 
-    /// Reserves capacity for at least `n` elements in the `BinaryHeap`.
-    /// Do nothing if the capacity is already sufficient.
+    /// Reserves capacity for at least `additional` more elements to be inserted in the
+    /// `BinaryHeap`. The collection may reserve more space to avoid frequent reallocations.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the new capacity overflows `uint`.
     ///
     /// # Example
     ///
@@ -296,8 +315,15 @@ impl<T: Ord> BinaryHeap<T> {
     /// pq.reserve(100u);
     /// assert!(pq.capacity() >= 100u);
     /// ```
-    pub fn reserve(&mut self, n: uint) {
-        self.data.reserve(n)
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
+    pub fn reserve(&mut self, additional: uint) {
+        self.data.reserve(additional)
+    }
+
+    /// Discards as much additional capacity as possible.
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
+    pub fn shrink_to_fit(&mut self) {
+        self.data.shrink_to_fit()
     }
 
     /// Removes the greatest item from a queue and returns it, or `None` if it
@@ -314,6 +340,7 @@ impl<T: Ord> BinaryHeap<T> {
     /// assert_eq!(pq.pop(), Some(1i));
     /// assert_eq!(pq.pop(), None);
     /// ```
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn pop(&mut self) -> Option<T> {
         match self.data.pop() {
             None           => { None }
@@ -342,6 +369,7 @@ impl<T: Ord> BinaryHeap<T> {
     /// assert_eq!(pq.len(), 3);
     /// assert_eq!(pq.top(), Some(&5i));
     /// ```
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn push(&mut self, item: T) {
         self.data.push(item);
         let new_len = self.len() - 1;
@@ -495,12 +523,15 @@ impl<T: Ord> BinaryHeap<T> {
     }
 
     /// Returns the length of the queue.
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn len(&self) -> uint { self.data.len() }
 
     /// Returns true if the queue contains no elements
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn is_empty(&self) -> bool { self.len() == 0 }
 
     /// Drops all items from the queue.
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn clear(&mut self) { self.data.truncate(0) }
 }
 
@@ -528,8 +559,7 @@ impl<T: Ord> Extendable<T> for BinaryHeap<T> {
     fn extend<Iter: Iterator<T>>(&mut self, mut iter: Iter) {
         let (lower, _) = iter.size_hint();
 
-        let len = self.capacity();
-        self.reserve(len + lower);
+        self.reserve(lower);
 
         for elem in iter {
             self.push(elem);

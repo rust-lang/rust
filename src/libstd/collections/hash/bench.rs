@@ -102,14 +102,14 @@ fn hashmap_as_queue(b: &mut Bencher) {
     let mut k = 1i;
 
     b.iter(|| {
-        m.pop(&k);
+        m.remove(&k);
         m.insert(k + 1000, k + 1000);
         k += 1;
     });
 }
 
 #[bench]
-fn find_pop_insert(b: &mut Bencher) {
+fn get_remove_insert(b: &mut Bencher) {
     use super::map::HashMap;
 
     let mut m = HashMap::new();
@@ -121,9 +121,9 @@ fn find_pop_insert(b: &mut Bencher) {
     let mut k = 1i;
 
     b.iter(|| {
-        m.find(&(k + 400));
-        m.find(&(k + 2000));
-        m.pop(&k);
+        m.get(&(k + 400));
+        m.get(&(k + 2000));
+        m.remove(&k);
         m.insert(k + 1000, k + 1000);
         k += 1;
     })

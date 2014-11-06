@@ -30,18 +30,18 @@ trait MutableMap {
 
 impl MutableMap for TreeMap<uint, uint> {
     fn insert(&mut self, k: uint, v: uint) { self.insert(k, v); }
-    fn remove(&mut self, k: &uint) -> bool { self.remove(k) }
-    fn find(&self, k: &uint) -> Option<&uint> { self.find(k) }
+    fn remove(&mut self, k: &uint) -> bool { self.remove(k).is_some() }
+    fn find(&self, k: &uint) -> Option<&uint> { self.get(k) }
 }
 impl MutableMap for HashMap<uint, uint> {
     fn insert(&mut self, k: uint, v: uint) { self.insert(k, v); }
-    fn remove(&mut self, k: &uint) -> bool { self.remove(k) }
-    fn find(&self, k: &uint) -> Option<&uint> { self.find(k) }
+    fn remove(&mut self, k: &uint) -> bool { self.remove(k).is_some() }
+    fn find(&self, k: &uint) -> Option<&uint> { self.get(k) }
 }
 impl MutableMap for TrieMap<uint> {
     fn insert(&mut self, k: uint, v: uint) { self.insert(k, v); }
-    fn remove(&mut self, k: &uint) -> bool { self.remove(k) }
-    fn find(&self, k: &uint) -> Option<&uint> { self.find(k) }
+    fn remove(&mut self, k: &uint) -> bool { self.remove(k).is_some() }
+    fn find(&self, k: &uint) -> Option<&uint> { self.get(k) }
 }
 
 fn ascending<M: MutableMap>(map: &mut M, n_keys: uint) {

@@ -16,7 +16,7 @@ pub fn main() {
     assert_eq!(a[2], 4);
     assert_eq!(a[4], 2);
     let mut n = 42;
-    swap(&mut n, a.get_mut(0));
+    swap(&mut n, &mut a[0]);
     assert_eq!(a[0], 42);
     assert_eq!(n, 0);
 }

@@ -15,7 +15,7 @@ pub fn main() {
     let mut a: Vec<int> = vec!(-1, -1, -1, -1);
     let mut p: int = 0;
     two(|i| {
-        two(|j| { *a.get_mut(p as uint) = 10 * i + j; p += 1; })
+        two(|j| { a[p as uint] = 10 * i + j; p += 1; })
     });
     assert_eq!(a[0], 0);
     assert_eq!(a[1], 1);

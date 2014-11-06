@@ -197,8 +197,8 @@ fn rendezvous(nn: uint, set: Vec<Color>) {
 
         creatures_met += 2;
 
-        to_creature.get_mut(fst_creature.name).send(snd_creature);
-        to_creature.get_mut(snd_creature.name).send(fst_creature);
+        to_creature[fst_creature.name].send(snd_creature);
+        to_creature[snd_creature.name].send(fst_creature);
     }
 
     // tell each creature to stop

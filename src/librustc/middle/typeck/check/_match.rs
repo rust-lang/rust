@@ -324,7 +324,7 @@ pub fn check_pat_struct(pcx: &pat_ctxt, pat: &ast::Pat,
 
     let item_substs = fcx
         .item_substs()
-        .find(&pat.id)
+        .get(&pat.id)
         .map(|substs| substs.substs.clone())
         .unwrap_or_else(|| Substs::empty());
 

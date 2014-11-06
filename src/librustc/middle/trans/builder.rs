@@ -81,7 +81,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 s.push('/');
                 s.push_str(category);
 
-                let n = match h.find(&s) {
+                let n = match h.get(&s) {
                     Some(&n) => n,
                     _ => 0u
                 };

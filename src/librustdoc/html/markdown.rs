@@ -242,7 +242,7 @@ pub fn render(w: &mut fmt::Formatter, s: &str, print_toc: bool) -> fmt::Result {
 
         // Make sure our hyphenated ID is unique for this page
         let map = used_header_map.get().unwrap();
-        let id = match map.borrow_mut().find_mut(&id) {
+        let id = match map.borrow_mut().get_mut(&id) {
             None => id,
             Some(a) => { *a += 1; format!("{}-{}", id, *a - 1) }
         };

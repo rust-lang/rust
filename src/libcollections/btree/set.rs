@@ -20,6 +20,9 @@ use core::{iter, fmt};
 use core::iter::Peekable;
 use core::fmt::Show;
 
+// FIXME(conventions): implement bounded iterators
+// FIXME(conventions): implement BitOr, BitAnd, BitXor, and Sub
+
 /// A set based on a B-Tree.
 ///
 /// See BTreeMap's documentation for a detailed discussion of this collection's performance
@@ -61,6 +64,7 @@ pub struct UnionItems<'a, T:'a> {
 
 impl<T: Ord> BTreeSet<T> {
     /// Makes a new BTreeSet with a reasonable choice of B.
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn new() -> BTreeSet<T> {
         BTreeSet { map: BTreeMap::new() }
     }
@@ -75,11 +79,13 @@ impl<T: Ord> BTreeSet<T> {
 
 impl<T> BTreeSet<T> {
     /// Gets an iterator over the BTreeSet's contents.
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn iter<'a>(&'a self) -> Items<'a, T> {
         self.map.keys()
     }
 
     /// Gets an iterator for moving out the BtreeSet's contents.
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn into_iter(self) -> MoveItems<T> {
         self.map.into_iter().map(|(k, _)| k)
     }
@@ -87,23 +93,27 @@ impl<T> BTreeSet<T> {
 
 impl<T: Ord> BTreeSet<T> {
     /// Visits the values representing the difference, in ascending order.
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn difference<'a>(&'a self, other: &'a BTreeSet<T>) -> DifferenceItems<'a, T> {
         DifferenceItems{a: self.iter().peekable(), b: other.iter().peekable()}
     }
 
     /// Visits the values representing the symmetric difference, in ascending order.
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn symmetric_difference<'a>(&'a self, other: &'a BTreeSet<T>)
         -> SymDifferenceItems<'a, T> {
         SymDifferenceItems{a: self.iter().peekable(), b: other.iter().peekable()}
     }
 
     /// Visits the values representing the intersection, in ascending order.
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn intersection<'a>(&'a self, other: &'a BTreeSet<T>)
         -> IntersectionItems<'a, T> {
         IntersectionItems{a: self.iter().peekable(), b: other.iter().peekable()}
     }
 
     /// Visits the values representing the union, in ascending order.
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn union<'a>(&'a self, other: &'a BTreeSet<T>) -> UnionItems<'a, T> {
         UnionItems{a: self.iter().peekable(), b: other.iter().peekable()}
     }
@@ -120,6 +130,7 @@ impl<T: Ord> BTreeSet<T> {
     /// v.insert(1i);
     /// assert_eq!(v.len(), 1);
     /// ```
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn len(&self) -> uint { self.map.len() }
 
     /// Returns true if the set contains no elements
@@ -134,6 +145,7 @@ impl<T: Ord> BTreeSet<T> {
     /// v.insert(1i);
     /// assert!(!v.is_empty());
     /// ```
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn is_empty(&self) -> bool { self.len() == 0 }
 
     /// Clears the set, removing all values.
@@ -148,6 +160,7 @@ impl<T: Ord> BTreeSet<T> {
     /// v.clear();
     /// assert!(v.is_empty());
     /// ```
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn clear(&mut self) {
         self.map.clear()
     }
@@ -163,8 +176,9 @@ impl<T: Ord> BTreeSet<T> {
     /// assert_eq!(set.contains(&1), true);
     /// assert_eq!(set.contains(&4), false);
     /// ```
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn contains(&self, value: &T) -> bool {
-        self.map.find(value).is_some()
+        self.map.contains_key(value)
     }
 
     /// Returns `true` if the set has no elements in common with `other`.
@@ -184,6 +198,7 @@ impl<T: Ord> BTreeSet<T> {
     /// b.insert(1);
     /// assert_eq!(a.is_disjoint(&b), false);
     /// ```
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn is_disjoint(&self, other: &BTreeSet<T>) -> bool {
         self.intersection(other).next().is_none()
     }
@@ -204,6 +219,7 @@ impl<T: Ord> BTreeSet<T> {
     /// set.insert(4);
     /// assert_eq!(set.is_subset(&sup), false);
     /// ```
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn is_subset(&self, other: &BTreeSet<T>) -> bool {
         // Stolen from TreeMap
         let mut x = self.iter();
@@ -248,6 +264,7 @@ impl<T: Ord> BTreeSet<T> {
     /// set.insert(2);
     /// assert_eq!(set.is_superset(&sub), true);
     /// ```
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn is_superset(&self, other: &BTreeSet<T>) -> bool {
         other.is_subset(self)
     }
@@ -266,8 +283,9 @@ impl<T: Ord> BTreeSet<T> {
     /// assert_eq!(set.insert(2i), false);
     /// assert_eq!(set.len(), 1);
     /// ```
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn insert(&mut self, value: T) -> bool {
-        self.map.insert(value, ())
+        self.map.insert(value, ()).is_none()
     }
 
     /// Removes a value from the set. Returns `true` if the value was
@@ -284,8 +302,9 @@ impl<T: Ord> BTreeSet<T> {
     /// assert_eq!(set.remove(&2), true);
     /// assert_eq!(set.remove(&2), false);
     /// ```
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn remove(&mut self, value: &T) -> bool {
-        self.map.remove(value)
+        self.map.remove(value).is_some()
     }
 }
 

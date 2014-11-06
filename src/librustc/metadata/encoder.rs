@@ -253,7 +253,7 @@ fn encode_symbol(ecx: &EncodeContext,
                  rbml_w: &mut Encoder,
                  id: NodeId) {
     rbml_w.start_tag(tag_items_data_item_symbol);
-    match ecx.item_symbols.borrow().find(&id) {
+    match ecx.item_symbols.borrow().get(&id) {
         Some(x) => {
             debug!("encode_symbol(id={}, str={})", id, *x);
             rbml_w.writer.write(x.as_bytes());
@@ -397,7 +397,7 @@ fn encode_reexported_static_base_methods(ecx: &EncodeContext,
                                          exp: &middle::resolve::Export2)
                                          -> bool {
     let impl_items = ecx.tcx.impl_items.borrow();
-    match ecx.tcx.inherent_impls.borrow().find(&exp.def_id) {
+    match ecx.tcx.inherent_impls.borrow().get(&exp.def_id) {
         Some(implementations) => {
             for base_impl_did in implementations.iter() {
                 for &method_did in (*impl_items)[*base_impl_did].iter() {
@@ -426,7 +426,7 @@ fn encode_reexported_static_trait_methods(ecx: &EncodeContext,
                                           rbml_w: &mut Encoder,
                                           exp: &middle::resolve::Export2)
                                           -> bool {
-    match ecx.tcx.trait_items_cache.borrow().find(&exp.def_id) {
+    match ecx.tcx.trait_items_cache.borrow().get(&exp.def_id) {
         Some(trait_items) => {
             for trait_item in trait_items.iter() {
                 match *trait_item {
@@ -531,7 +531,7 @@ fn encode_reexports(ecx: &EncodeContext,
                     id: NodeId,
                     path: PathElems) {
     debug!("(encoding info for module) encoding reexports for {}", id);
-    match ecx.reexports2.find(&id) {
+    match ecx.reexports2.get(&id) {
         Some(ref exports) => {
             debug!("(encoding info for module) found reexports for {}", id);
             for exp in exports.iter() {
@@ -978,7 +978,7 @@ fn should_inline(attrs: &[Attribute]) -> bool {
 fn encode_inherent_implementations(ecx: &EncodeContext,
                                    rbml_w: &mut Encoder,
                                    def_id: DefId) {
-    match ecx.tcx.inherent_impls.borrow().find(&def_id) {
+    match ecx.tcx.inherent_impls.borrow().get(&def_id) {
         None => {}
         Some(implementations) => {
             for &impl_def_id in implementations.iter() {
@@ -994,7 +994,7 @@ fn encode_inherent_implementations(ecx: &EncodeContext,
 fn encode_extension_implementations(ecx: &EncodeContext,
                                     rbml_w: &mut Encoder,
                                     trait_def_id: DefId) {
-    match ecx.tcx.trait_impls.borrow().find(&trait_def_id) {
+    match ecx.tcx.trait_impls.borrow().get(&trait_def_id) {
         None => {}
         Some(implementations) => {
             for &impl_def_id in implementations.borrow().iter() {
@@ -1987,7 +1987,7 @@ fn encode_crate_triple(rbml_w: &mut Encoder, triple: &str) {
 
 fn encode_dylib_dependency_formats(rbml_w: &mut Encoder, ecx: &EncodeContext) {
     rbml_w.start_tag(tag_dylib_dependency_formats);
-    match ecx.tcx.dependency_formats.borrow().find(&config::CrateTypeDylib) {
+    match ecx.tcx.dependency_formats.borrow().get(&config::CrateTypeDylib) {
         Some(arr) => {
             let s = arr.iter().enumerate().filter_map(|(i, slot)| {
                 slot.map(|kind| (format!("{}:{}", i + 1, match kind {

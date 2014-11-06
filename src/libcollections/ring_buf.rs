@@ -27,6 +27,11 @@ use vec::Vec;
 static INITIAL_CAPACITY: uint = 8u; // 2^3
 static MINIMUM_CAPACITY: uint = 2u;
 
+// FIXME(conventions): implement shrink_to_fit. Awkward with the current design, but it should
+// be scrapped anyway. Defer to rewrite?
+// FIXME(conventions): implement into_iter
+
+
 /// `RingBuf` is a circular buffer that implements `Deque`.
 #[deriving(Clone)]
 pub struct RingBuf<T> {
@@ -42,11 +47,13 @@ impl<T> Default for RingBuf<T> {
 
 impl<T> RingBuf<T> {
     /// Creates an empty `RingBuf`.
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn new() -> RingBuf<T> {
         RingBuf::with_capacity(INITIAL_CAPACITY)
     }
 
     /// Creates an empty `RingBuf` with space for at least `n` elements.
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn with_capacity(n: uint) -> RingBuf<T> {
         RingBuf{nelts: 0, lo: 0,
               elts: Vec::from_fn(cmp::max(MINIMUM_CAPACITY, n), |_| None)}
@@ -54,24 +61,51 @@ impl<T> RingBuf<T> {
 
     /// Retrieves an element in the `RingBuf` by index.
     ///
-    /// Fails if there is no element with the given index.
+    /// # Example
+    ///
+    /// ```rust
+    /// use std::collections::RingBuf;
+    ///
+    /// let mut buf = RingBuf::new();
+    /// buf.push_back(3i);
+    /// buf.push_back(4);
+    /// buf.push_back(5);
+    /// assert_eq!(buf.get(1).unwrap(), &4);
+    /// ```
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
+    pub fn get(&self, i: uint) -> Option<&T> {
+        match self.elts.get(i) {
+            None => None,
+            Some(opt) => opt.as_ref(),
+        }
+    }
+
+    /// Retrieves an element in the `RingBuf` mutably by index.
     ///
     /// # Example
     ///
     /// ```rust
-    /// # #![allow(deprecated)]
     /// use std::collections::RingBuf;
     ///
     /// let mut buf = RingBuf::new();
-    /// buf.push(3i);
-    /// buf.push(4);
-    /// buf.push(5);
-    /// *buf.get_mut(1) = 7;
+    /// buf.push_back(3i);
+    /// buf.push_back(4);
+    /// buf.push_back(5);
+    /// match buf.get_mut(1) {
+    ///     None => {}
+    ///     Some(elem) => {
+    ///         *elem = 7;
+    ///     }
+    /// }
+    ///
     /// assert_eq!(buf[1], 7);
     /// ```
-    #[deprecated = "use indexing instead: `buf[index] = value`"]
-    pub fn get_mut(&mut self, i: uint) -> &mut T {
-        &mut self[i]
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
+    pub fn get_mut(&mut self, i: uint) -> Option<&mut T> {
+        match self.elts.get_mut(i) {
+            None => None,
+            Some(opt) => opt.as_mut(),
+        }
     }
 
     /// Swaps elements at indices `i` and `j`.
@@ -86,9 +120,9 @@ impl<T> RingBuf<T> {
     /// use std::collections::RingBuf;
     ///
     /// let mut buf = RingBuf::new();
-    /// buf.push(3i);
-    /// buf.push(4);
-    /// buf.push(5);
+    /// buf.push_back(3i);
+    /// buf.push_back(4);
+    /// buf.push_back(5);
     /// buf.swap(0, 2);
     /// assert_eq!(buf[0], 5);
     /// assert_eq!(buf[2], 3);
@@ -107,21 +141,70 @@ impl<T> RingBuf<T> {
         raw_index(self.lo, self.elts.len(), idx)
     }
 
-    /// Reserves capacity for exactly `n` elements in the given `RingBuf`,
-    /// doing nothing if `self`'s capacity is already equal to or greater
-    /// than the requested capacity.
-    pub fn reserve_exact(&mut self, n: uint) {
-        self.elts.reserve_exact(n);
+    /// Returns the number of elements the `RingBuf` can hold without
+    /// reallocating.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::RingBuf;
+    ///
+    /// let buf: RingBuf<int> = RingBuf::with_capacity(10);
+    /// assert_eq!(buf.capacity(), 10);
+    /// ```
+    #[inline]
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
+    pub fn capacity(&self) -> uint {
+        // FXIME(Gankro): not the actual usable capacity if you use reserve/reserve_exact
+        self.elts.capacity()
     }
 
-    /// Reserves capacity for at least `n` elements in the given `RingBuf`,
-    /// over-allocating in case the caller needs to reserve additional
-    /// space.
+    /// Reserves the minimum capacity for exactly `additional` more elements to be inserted in the
+    /// given `RingBuf`. Does nothing if the capacity is already sufficient.
     ///
-    /// Do nothing if `self`'s capacity is already equal to or greater
-    /// than the requested capacity.
-    pub fn reserve(&mut self, n: uint) {
-        self.elts.reserve(n);
+    /// Note that the allocator may give the collection more space than it requests. Therefore
+    /// capacity can not be relied upon to be precisely minimal. Prefer `reserve` if future
+    /// insertions are expected.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the new capacity overflows `uint`.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::RingBuf;
+    ///
+    /// let mut buf: RingBuf<int> = vec![1].into_iter().collect();
+    /// buf.reserve_exact(10);
+    /// assert!(buf.capacity() >= 11);
+    /// ```
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
+    pub fn reserve_exact(&mut self, additional: uint) {
+        // FIXME(Gankro): this is just wrong. The ringbuf won't actually use this space
+        self.elts.reserve_exact(additional);
+    }
+
+    /// Reserves capacity for at least `additional` more elements to be inserted in the given
+    /// `Ringbuf`. The collection may reserve more space to avoid frequent reallocations.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the new capacity overflows `uint`.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::RingBuf;
+    ///
+    /// let mut buf: RingBuf<int> = vec![1].into_iter().collect();
+    /// buf.reserve(10);
+    /// assert!(buf.capacity() >= 11);
+    /// ```
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
+    pub fn reserve(&mut self, additional: uint) {
+        // FIXME(Gankro): this is just wrong. The ringbuf won't actually use this space
+        self.elts.reserve(additional);
     }
 
     /// Returns a front-to-back iterator.
@@ -132,12 +215,13 @@ impl<T> RingBuf<T> {
     /// use std::collections::RingBuf;
     ///
     /// let mut buf = RingBuf::new();
-    /// buf.push(5i);
-    /// buf.push(3);
-    /// buf.push(4);
+    /// buf.push_back(5i);
+    /// buf.push_back(3);
+    /// buf.push_back(4);
     /// let b: &[_] = &[&5, &3, &4];
     /// assert_eq!(buf.iter().collect::<Vec<&int>>().as_slice(), b);
     /// ```
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn iter(&self) -> Items<T> {
         Items{index: 0, rindex: self.nelts, lo: self.lo, elts: self.elts.as_slice()}
     }
@@ -150,15 +234,16 @@ impl<T> RingBuf<T> {
     /// use std::collections::RingBuf;
     ///
     /// let mut buf = RingBuf::new();
-    /// buf.push(5i);
-    /// buf.push(3);
-    /// buf.push(4);
+    /// buf.push_back(5i);
+    /// buf.push_back(3);
+    /// buf.push_back(4);
     /// for num in buf.iter_mut() {
     ///     *num = *num - 2;
     /// }
     /// let b: &[_] = &[&mut 3, &mut 1, &mut 2];
     /// assert_eq!(buf.iter_mut().collect::<Vec<&mut int>>()[], b);
     /// ```
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn iter_mut(&mut self) -> MutItems<T> {
         let start_index = raw_index(self.lo, self.elts.len(), 0);
         let end_index = raw_index(self.lo, self.elts.len(), self.nelts);
@@ -197,9 +282,10 @@ impl<T> RingBuf<T> {
     ///
     /// let mut v = RingBuf::new();
     /// assert_eq!(v.len(), 0);
-    /// v.push(1i);
+    /// v.push_back(1i);
     /// assert_eq!(v.len(), 1);
     /// ```
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn len(&self) -> uint { self.nelts }
 
     /// Returns true if the buffer contains no elements
@@ -214,6 +300,7 @@ impl<T> RingBuf<T> {
     /// v.push_front(1i);
     /// assert!(!v.is_empty());
     /// ```
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn is_empty(&self) -> bool { self.len() == 0 }
 
     /// Clears the buffer, removing all values.
@@ -224,10 +311,11 @@ impl<T> RingBuf<T> {
     /// use std::collections::RingBuf;
     ///
     /// let mut v = RingBuf::new();
-    /// v.push(1i);
+    /// v.push_back(1i);
     /// v.clear();
     /// assert!(v.is_empty());
     /// ```
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn clear(&mut self) {
         for x in self.elts.iter_mut() { *x = None }
         self.nelts = 0;
@@ -245,10 +333,11 @@ impl<T> RingBuf<T> {
     /// let mut d = RingBuf::new();
     /// assert_eq!(d.front(), None);
     ///
-    /// d.push(1i);
-    /// d.push(2i);
+    /// d.push_back(1i);
+    /// d.push_back(2i);
     /// assert_eq!(d.front(), Some(&1i));
     /// ```
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn front(&self) -> Option<&T> {
         if self.nelts > 0 { Some(&self[0]) } else { None }
     }
@@ -264,14 +353,15 @@ impl<T> RingBuf<T> {
     /// let mut d = RingBuf::new();
     /// assert_eq!(d.front_mut(), None);
     ///
-    /// d.push(1i);
-    /// d.push(2i);
+    /// d.push_back(1i);
+    /// d.push_back(2i);
     /// match d.front_mut() {
     ///     Some(x) => *x = 9i,
     ///     None => (),
     /// }
     /// assert_eq!(d.front(), Some(&9i));
     /// ```
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn front_mut(&mut self) -> Option<&mut T> {
         if self.nelts > 0 { Some(&mut self[0]) } else { None }
     }
@@ -287,10 +377,11 @@ impl<T> RingBuf<T> {
     /// let mut d = RingBuf::new();
     /// assert_eq!(d.back(), None);
     ///
-    /// d.push(1i);
-    /// d.push(2i);
+    /// d.push_back(1i);
+    /// d.push_back(2i);
     /// assert_eq!(d.back(), Some(&2i));
     /// ```
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn back(&self) -> Option<&T> {
         if self.nelts > 0 { Some(&self[self.nelts - 1]) } else { None }
     }
@@ -306,14 +397,15 @@ impl<T> RingBuf<T> {
     /// let mut d = RingBuf::new();
     /// assert_eq!(d.back(), None);
     ///
-    /// d.push(1i);
-    /// d.push(2i);
+    /// d.push_back(1i);
+    /// d.push_back(2i);
     /// match d.back_mut() {
     ///     Some(x) => *x = 9i,
     ///     None => (),
     /// }
     /// assert_eq!(d.back(), Some(&9i));
     /// ```
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn back_mut(&mut self) -> Option<&mut T> {
         let nelts = self.nelts;
         if nelts > 0 { Some(&mut self[nelts - 1]) } else { None }
@@ -328,13 +420,14 @@ impl<T> RingBuf<T> {
     /// use std::collections::RingBuf;
     ///
     /// let mut d = RingBuf::new();
-    /// d.push(1i);
-    /// d.push(2i);
+    /// d.push_back(1i);
+    /// d.push_back(2i);
     ///
     /// assert_eq!(d.pop_front(), Some(1i));
     /// assert_eq!(d.pop_front(), Some(2i));
     /// assert_eq!(d.pop_front(), None);
     /// ```
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn pop_front(&mut self) -> Option<T> {
         let result = self.elts[self.lo].take();
         if result.is_some() {
@@ -356,6 +449,7 @@ impl<T> RingBuf<T> {
     /// d.push_front(2i);
     /// assert_eq!(d.front(), Some(&2i));
     /// ```
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn push_front(&mut self, t: T) {
         if self.nelts == self.elts.len() {
             grow(self.nelts, &mut self.lo, &mut self.elts);
@@ -367,6 +461,12 @@ impl<T> RingBuf<T> {
         self.nelts += 1u;
     }
 
+    /// Deprecated: Renamed to `push_back`.
+    #[deprecated = "Renamed to `push_back`"]
+    pub fn push(&mut self, t: T) {
+        self.push_back(t)
+    }
+
     /// Appends an element to the back of a buffer
     ///
     /// # Example
@@ -375,17 +475,24 @@ impl<T> RingBuf<T> {
     /// use std::collections::RingBuf;
     ///
     /// let mut buf = RingBuf::new();
-    /// buf.push(1i);
-    /// buf.push(3);
+    /// buf.push_back(1i);
+    /// buf.push_back(3);
     /// assert_eq!(3, *buf.back().unwrap());
     /// ```
-    pub fn push(&mut self, t: T) {
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
+    pub fn push_back(&mut self, t: T) {
         if self.nelts == self.elts.len() {
             grow(self.nelts, &mut self.lo, &mut self.elts);
         }
         let hi = self.raw_index(self.nelts);
         self.elts[hi] = Some(t);
         self.nelts += 1u;
+    }
+
+    /// Deprecated: Renamed to `pop_back`.
+    #[deprecated = "Renamed to `pop_back`"]
+    pub fn pop(&mut self) -> Option<T> {
+        self.pop_back()
     }
 
     /// Removes the last element from a buffer and returns it, or `None` if
@@ -397,12 +504,13 @@ impl<T> RingBuf<T> {
     /// use std::collections::RingBuf;
     ///
     /// let mut buf = RingBuf::new();
-    /// assert_eq!(buf.pop(), None);
-    /// buf.push(1i);
-    /// buf.push(3);
-    /// assert_eq!(buf.pop(), Some(3));
+    /// assert_eq!(buf.pop_back(), None);
+    /// buf.push_back(1i);
+    /// buf.push_back(3);
+    /// assert_eq!(buf.pop_back(), Some(3));
     /// ```
-    pub fn pop(&mut self) -> Option<T> {
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
+    pub fn pop_back(&mut self) -> Option<T> {
         if self.nelts > 0 {
             self.nelts -= 1;
             let hi = self.raw_index(self.nelts);
@@ -523,7 +631,7 @@ impl<'a, T> ExactSize<&'a mut T> for MutItems<'a, T> {}
 fn grow<T>(nelts: uint, loptr: &mut uint, elts: &mut Vec<Option<T>>) {
     assert_eq!(nelts, elts.len());
     let lo = *loptr;
-    elts.reserve(nelts * 2);
+    elts.reserve_exact(nelts);
     let newlen = elts.capacity();
 
     /* fill with None */
@@ -630,7 +738,7 @@ impl<A> FromIterator<A> for RingBuf<A> {
 impl<A> Extendable<A> for RingBuf<A> {
     fn extend<T: Iterator<A>>(&mut self, mut iterator: T) {
         for elt in iterator {
-            self.push(elt);
+            self.push_back(elt);
         }
     }
 }
@@ -666,9 +774,9 @@ mod tests {
         assert_eq!(d.len(), 0u);
         d.push_front(17i);
         d.push_front(42i);
-        d.push(137);
+        d.push_back(137);
         assert_eq!(d.len(), 3u);
-        d.push(137);
+        d.push_back(137);
         assert_eq!(d.len(), 4u);
         debug!("{}", d.front());
         assert_eq!(*d.front().unwrap(), 42);
@@ -677,21 +785,21 @@ mod tests {
         let mut i = d.pop_front();
         debug!("{}", i);
         assert_eq!(i, Some(42));
-        i = d.pop();
+        i = d.pop_back();
         debug!("{}", i);
         assert_eq!(i, Some(137));
-        i = d.pop();
+        i = d.pop_back();
         debug!("{}", i);
         assert_eq!(i, Some(137));
-        i = d.pop();
+        i = d.pop_back();
         debug!("{}", i);
         assert_eq!(i, Some(17));
         assert_eq!(d.len(), 0u);
-        d.push(3);
+        d.push_back(3);
         assert_eq!(d.len(), 1u);
         d.push_front(2);
         assert_eq!(d.len(), 2u);
-        d.push(4);
+        d.push_back(4);
         assert_eq!(d.len(), 3u);
         d.push_front(1);
         assert_eq!(d.len(), 4u);
@@ -711,22 +819,22 @@ mod tests {
         assert_eq!(deq.len(), 0);
         deq.push_front(a.clone());
         deq.push_front(b.clone());
-        deq.push(c.clone());
+        deq.push_back(c.clone());
         assert_eq!(deq.len(), 3);
-        deq.push(d.clone());
+        deq.push_back(d.clone());
         assert_eq!(deq.len(), 4);
         assert_eq!((*deq.front().unwrap()).clone(), b.clone());
         assert_eq!((*deq.back().unwrap()).clone(), d.clone());
         assert_eq!(deq.pop_front().unwrap(), b.clone());
-        assert_eq!(deq.pop().unwrap(), d.clone());
-        assert_eq!(deq.pop().unwrap(), c.clone());
-        assert_eq!(deq.pop().unwrap(), a.clone());
+        assert_eq!(deq.pop_back().unwrap(), d.clone());
+        assert_eq!(deq.pop_back().unwrap(), c.clone());
+        assert_eq!(deq.pop_back().unwrap(), a.clone());
         assert_eq!(deq.len(), 0);
-        deq.push(c.clone());
+        deq.push_back(c.clone());
         assert_eq!(deq.len(), 1);
         deq.push_front(b.clone());
         assert_eq!(deq.len(), 2);
-        deq.push(d.clone());
+        deq.push_back(d.clone());
         assert_eq!(deq.len(), 3);
         deq.push_front(a.clone());
         assert_eq!(deq.len(), 4);
@@ -750,7 +858,7 @@ mod tests {
 
         let mut deq = RingBuf::new();
         for i in range(0u, 66) {
-            deq.push(i);
+            deq.push_back(i);
         }
 
         for i in range(0u, 66) {
@@ -788,7 +896,7 @@ mod tests {
     fn bench_push_back(b: &mut test::Bencher) {
         let mut deq = RingBuf::new();
         b.iter(|| {
-            deq.push(0i);
+            deq.push_back(0i);
         })
     }
 
@@ -861,17 +969,17 @@ mod tests {
     #[test]
     fn test_with_capacity() {
         let mut d = RingBuf::with_capacity(0);
-        d.push(1i);
+        d.push_back(1i);
         assert_eq!(d.len(), 1);
         let mut d = RingBuf::with_capacity(50);
-        d.push(1i);
+        d.push_back(1i);
         assert_eq!(d.len(), 1);
     }
 
     #[test]
     fn test_with_capacity_non_power_two() {
         let mut d3 = RingBuf::with_capacity(3);
-        d3.push(1i);
+        d3.push_back(1i);
 
         // X = None, | = lo
         // [|1, X, X]
@@ -880,20 +988,20 @@ mod tests {
         assert_eq!(d3.front(), None);
 
         // [X, |3, X]
-        d3.push(3);
+        d3.push_back(3);
         // [X, |3, 6]
-        d3.push(6);
+        d3.push_back(6);
         // [X, X, |6]
         assert_eq!(d3.pop_front(), Some(3));
 
         // Pushing the lo past half way point to trigger
         // the 'B' scenario for growth
         // [9, X, |6]
-        d3.push(9);
+        d3.push_back(9);
         // [9, 12, |6]
-        d3.push(12);
+        d3.push_back(12);
 
-        d3.push(15);
+        d3.push_back(15);
         // There used to be a bug here about how the
         // RingBuf made growth assumptions about the
         // underlying Vec which didn't hold and lead
@@ -912,25 +1020,25 @@ mod tests {
     #[test]
     fn test_reserve_exact() {
         let mut d = RingBuf::new();
-        d.push(0u64);
+        d.push_back(0u64);
         d.reserve_exact(50);
-        assert_eq!(d.elts.capacity(), 50);
+        assert!(d.capacity() >= 51);
         let mut d = RingBuf::new();
-        d.push(0u32);
+        d.push_back(0u32);
         d.reserve_exact(50);
-        assert_eq!(d.elts.capacity(), 50);
+        assert!(d.capacity() >= 51);
     }
 
     #[test]
     fn test_reserve() {
         let mut d = RingBuf::new();
-        d.push(0u64);
+        d.push_back(0u64);
         d.reserve(50);
-        assert_eq!(d.elts.capacity(), 64);
+        assert!(d.capacity() >= 64);
         let mut d = RingBuf::new();
-        d.push(0u32);
+        d.push_back(0u32);
         d.reserve(50);
-        assert_eq!(d.elts.capacity(), 64);
+        assert!(d.capacity() >= 64);
     }
 
     #[test]
@@ -948,7 +1056,7 @@ mod tests {
         assert_eq!(d.iter().size_hint(), (0, Some(0)));
 
         for i in range(0i, 5) {
-            d.push(i);
+            d.push_back(i);
         }
         {
             let b: &[_] = &[&0,&1,&2,&3,&4];
@@ -979,7 +1087,7 @@ mod tests {
         assert_eq!(d.iter().rev().next(), None);
 
         for i in range(0i, 5) {
-            d.push(i);
+            d.push_back(i);
         }
         {
             let b: &[_] = &[&4,&3,&2,&1,&0];
@@ -998,11 +1106,11 @@ mod tests {
         let mut d = RingBuf::with_capacity(3);
         assert!(d.iter_mut().rev().next().is_none());
 
-        d.push(1i);
-        d.push(2);
-        d.push(3);
+        d.push_back(1i);
+        d.push_back(2);
+        d.push_back(3);
         assert_eq!(d.pop_front(), Some(1));
-        d.push(4);
+        d.push_back(4);
 
         assert_eq!(d.iter_mut().rev().map(|x| *x).collect::<Vec<int>>(),
                    vec!(4, 3, 2));
@@ -1075,13 +1183,13 @@ mod tests {
         let mut d = RingBuf::new();
         d.push_front(17i);
         d.push_front(42);
-        d.push(137);
-        d.push(137);
+        d.push_back(137);
+        d.push_back(137);
         assert_eq!(d.len(), 4u);
         let mut e = d.clone();
         assert_eq!(e.len(), 4u);
         while !d.is_empty() {
-            assert_eq!(d.pop(), e.pop());
+            assert_eq!(d.pop_back(), e.pop_back());
         }
         assert_eq!(d.len(), 0u);
         assert_eq!(e.len(), 0u);
@@ -1094,15 +1202,15 @@ mod tests {
         d.push_front(137i);
         d.push_front(17);
         d.push_front(42);
-        d.push(137);
+        d.push_back(137);
         let mut e = RingBuf::with_capacity(0);
-        e.push(42);
-        e.push(17);
-        e.push(137);
-        e.push(137);
+        e.push_back(42);
+        e.push_back(17);
+        e.push_back(137);
+        e.push_back(137);
         assert!(&e == &d);
-        e.pop();
-        e.push(0);
+        e.pop_back();
+        e.push_back(0);
         assert!(e != d);
         e.clear();
         assert!(e == RingBuf::new());
@@ -1113,15 +1221,15 @@ mod tests {
       let mut x = RingBuf::new();
       let mut y = RingBuf::new();
 
-      x.push(1i);
-      x.push(2);
-      x.push(3);
+      x.push_back(1i);
+      x.push_back(2);
+      x.push_back(3);
 
-      y.push(0i);
-      y.push(1i);
+      y.push_back(0i);
+      y.push_back(1i);
       y.pop_front();
-      y.push(2);
-      y.push(3);
+      y.push_back(2);
+      y.push_back(3);
 
       assert!(hash::hash(&x) == hash::hash(&y));
     }
@@ -1130,9 +1238,9 @@ mod tests {
     fn test_ord() {
         let x = RingBuf::new();
         let mut y = RingBuf::new();
-        y.push(1i);
-        y.push(2);
-        y.push(3);
+        y.push_back(1i);
+        y.push_back(2);
+        y.push_back(3);
         assert!(x < y);
         assert!(y > x);
         assert!(x <= x);
