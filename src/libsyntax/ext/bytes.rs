@@ -100,7 +100,7 @@ pub fn expand_syntax_ext<'cx>(cx: &'cx mut ExtCtxt,
     let e = cx.expr_vec(sp, bytes);
     let ty = cx.ty(sp, ast::TyFixedLengthVec(cx.ty_ident(sp, cx.ident_of("u8")),
                                              cx.expr_uint(sp, len)));
-    let item = cx.item_static(sp, cx.ident_of("BYTES"), ty, ast::MutImmutable, e);
+    let item = cx.item_const(sp, cx.ident_of("BYTES"), ty, e);
     let ret = cx.expr_ident(sp, cx.ident_of("BYTES"));
     let ret = cx.expr_addr_of(sp, ret);
     let e = cx.expr_block(cx.block(sp, vec![cx.stmt_item(sp, item)],
