@@ -480,7 +480,7 @@ impl<K: Hash + Eq, V> HashMap<K, V, RandomSipHasher> {
     ///
     /// ```
     /// use std::collections::HashMap;
-    /// let mut map: HashMap<&str, int> = HashMap::with_capacity(10);
+    /// let mut map: HashMap<&str, int> = HashMap::new();
     /// ```
     #[inline]
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
