@@ -10,7 +10,6 @@
 
 // When denying at the crate level, be sure to not get random warnings from the
 // injected intrinsics by the compiler.
-#![feature(struct_variant)]
 #![feature(globs)]
 #![deny(missing_docs)]
 #![allow(dead_code)]

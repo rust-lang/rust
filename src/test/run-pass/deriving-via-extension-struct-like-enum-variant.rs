@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(struct_variant)]
-
 #[deriving(PartialEq, Show)]
 enum S {
     X { x: int, y: int },

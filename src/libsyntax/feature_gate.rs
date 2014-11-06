@@ -37,7 +37,7 @@ use std::slice;
 static KNOWN_FEATURES: &'static [(&'static str, Status)] = &[
     ("globs", Active),
     ("macro_rules", Active),
-    ("struct_variant", Active),
+    ("struct_variant", Removed),
     ("once_fns", Active),
     ("asm", Active),
     ("managed_boxes", Removed),

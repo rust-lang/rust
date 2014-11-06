@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(struct_variant)]
-
 pub struct BTree<V> {
     pub node: TreeItem<V>,
 }
