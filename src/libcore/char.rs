@@ -262,7 +262,8 @@ pub trait Char {
     #[deprecated = "use the char::from_u32 free function"]
     fn from_u32(i: u32) -> Option<char>;
 
-    /// Returns the hexadecimal Unicode escape of a character.
+    /// Returns an iterator that yields the hexadecimal Unicode escape
+    /// of a character, as `char`s.
     ///
     /// The rules are as follows:
     ///
@@ -272,8 +273,8 @@ pub trait Char {
     #[unstable = "pending error conventions, trait organization"]
     fn escape_unicode(self) -> UnicodeEscapedChars;
 
-    /// Returns a 'default' ASCII and C++11-like literal escape of a
-    /// character.
+    /// Returns an iterator that yields the 'default' ASCII and
+    /// C++11-like literal escape of a character, as `char`s.
     ///
     /// The default is chosen with a bias toward producing literals that are
     /// legal in a variety of languages, including C++11 and similar C-family
