@@ -1901,8 +1901,8 @@ result is a link to
 click on that result, we'll be taken to its documentation page.
 
 This page shows us a few things: the type signature of the function, some
-explanatory text, and then an example. Let's modify our code to add in the
-`random` function:
+explanatory text, and then an example. Let's try to modify our code to add in the
+`random` function and see what happens:
 
 ```{rust,ignore}
 use std::io;
