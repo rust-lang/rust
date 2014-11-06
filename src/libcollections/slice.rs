@@ -18,7 +18,7 @@
 //! let vec = vec!(1i, 2, 3);
 //! let int_slice = vec.as_slice();
 //! // coercing an array to a slice
-//! let str_slice: &[&str] = ["one", "two", "three"];
+//! let str_slice: &[&str] = &["one", "two", "three"];
 //! ```
 //!
 //! Slices are either mutable or shared. The shared slice type is `&[T]`,
@@ -26,7 +26,7 @@
 //! block of memory that a mutable slice points to:
 //!
 //! ```rust
-//! let x: &mut[int] = [1i, 2, 3];
+//! let x: &mut[int] = &mut [1i, 2, 3];
 //! x[1] = 7;
 //! assert_eq!(x[0], 1);
 //! assert_eq!(x[1], 7);
@@ -576,11 +576,11 @@ pub trait MutableSliceAllocating<T> for Sized? {
     /// ```rust
     /// let mut v = [5i, 4, 1, 3, 2];
     /// v.sort_by(|a, b| a.cmp(b));
-    /// assert!(v == [1, 2, 3, 4, 5]);
+    /// assert!(v == &[1, 2, 3, 4, 5]);
     ///
     /// // reverse sorting
     /// v.sort_by(|a, b| b.cmp(a));
-    /// assert!(v == [5, 4, 3, 2, 1]);
+    /// assert!(v == &[5, 4, 3, 2, 1]);
     /// ```
     fn sort_by(&mut self, compare: |&T, &T| -> Ordering);
 
@@ -603,7 +603,7 @@ pub trait MutableSliceAllocating<T> for Sized? {
     /// let b = vec![6i, 7, 8];
     /// let num_moved = a.move_from(b, 0, 3);
     /// assert_eq!(num_moved, 3);
-    /// assert!(a == [6i, 7, 8, 4, 5]);
+    /// assert!(a == &[6i, 7, 8, 4, 5]);
     /// ```
     fn move_from(&mut self, src: Vec<T>, start: uint, end: uint) -> uint;
 }
@@ -636,7 +636,7 @@ pub trait MutableOrdSlice<T> for Sized? {
     /// let mut v = [-5i, 4, 1, -3, 2];
     ///
     /// v.sort();
-    /// assert!(v == [-5i, -3, 1, 2, 4]);
+    /// assert!(v == &[-5i, -3, 1, 2, 4]);
     /// ```
     fn sort(&mut self);
 
@@ -1173,12 +1173,12 @@ mod tests {
         for (i, (a, b)) in ElementSwaps::new(v.len()).enumerate() {
             v.swap(a, b);
             match i {
-                0 => assert!(v == [1, 3, 2]),
-                1 => assert!(v == [3, 1, 2]),
-                2 => assert!(v == [3, 2, 1]),
-                3 => assert!(v == [2, 3, 1]),
-                4 => assert!(v == [2, 1, 3]),
-                5 => assert!(v == [1, 2, 3]),
+                0 => assert!(v == &[1, 3, 2]),
+                1 => assert!(v == &[3, 1, 2]),
+                2 => assert!(v == &[3, 2, 1]),
+                3 => assert!(v == &[2, 3, 1]),
+                4 => assert!(v == &[2, 1, 3]),
+                5 => assert!(v == &[1, 2, 3]),
                 _ => panic!(),
             }
         }
@@ -1395,7 +1395,7 @@ mod tests {
 
         let mut v = [0xDEADBEEFu];
         v.sort();
-        assert!(v == [0xDEADBEEF]);
+        assert!(v == &[0xDEADBEEF]);
     }
 
     #[test]
@@ -1689,7 +1689,7 @@ mod tests {
         for x in xs.iter_mut() {
             *x += 1;
         }
-        assert!(xs == [2, 3, 4, 5, 6])
+        assert!(xs == &[2, 3, 4, 5, 6])
     }
 
     #[test]
@@ -1711,7 +1711,7 @@ mod tests {
         for (i,x) in xs.iter_mut().rev().enumerate() {
             *x += i;
         }
-        assert!(xs == [5, 5, 5, 5, 5])
+        assert!(xs == &[5, 5, 5, 5, 5])
     }
 
     #[test]
@@ -1885,26 +1885,26 @@ mod tests {
         let mut a = [1i,2,3,4,5];
         let b = vec![6i,7,8];
         assert_eq!(a.move_from(b, 0, 3), 3);
-        assert!(a == [6i,7,8,4,5]);
+        assert!(a == &mut [6i,7,8,4,5]);
         let mut a = [7i,2,8,1];
         let b = vec![3i,1,4,1,5,9];
         assert_eq!(a.move_from(b, 0, 6), 4);
-        assert!(a == [3i,1,4,1]);
+        assert!(a == &mut [3i,1,4,1]);
         let mut a = [1i,2,3,4];
         let b = vec![5i,6,7,8,9,0];
         assert_eq!(a.move_from(b, 2, 3), 1);
-        assert!(a == [7i,2,3,4]);
+        assert!(a == &mut [7i,2,3,4]);
         let mut a = [1i,2,3,4,5];
         let b = vec![5i,6,7,8,9,0];
         assert_eq!(a[mut 2..4].move_from(b,1,6), 2);
-        assert!(a == [1i,2,6,7,5]);
+        assert!(a == &mut [1i,2,6,7,5]);
     }
 
     #[test]
     fn test_reverse_part() {
         let mut values = [1i,2,3,4,5];
         values[mut 1..4].reverse();
-        assert!(values == [1,4,3,2,5]);
+        assert!(values == &mut [1,4,3,2,5]);
     }
 
     #[test]
@@ -1949,11 +1949,11 @@ mod tests {
     #[test]
     fn test_bytes_set_memory() {
         use slice::bytes::MutableByteVector;
-        let mut values = [1u8,2,3,4,5];
+        let values: &mut [_] = &mut [1u8,2,3,4,5];
         values[mut 0..5].set_memory(0xAB);
-        assert!(values == [0xAB, 0xAB, 0xAB, 0xAB, 0xAB]);
+        assert!(values == &mut [0xAB, 0xAB, 0xAB, 0xAB, 0xAB]);
         values[mut 2..4].set_memory(0xFF);
-        assert!(values == [0xAB, 0xAB, 0xFF, 0xFF, 0xAB]);
+        assert!(values == &mut [0xAB, 0xAB, 0xFF, 0xFF, 0xAB]);
     }
 
     #[test]
@@ -1995,7 +1995,7 @@ mod tests {
             }
         }
 
-        assert!(values == [2, 3, 5, 6, 7]);
+        assert!(values == &[2, 3, 5, 6, 7]);
     }
 
     #[deriving(Clone, PartialEq)]
@@ -2060,7 +2060,7 @@ mod tests {
         assert!(!b"foo".starts_with(b"foobar"));
         assert!(!b"bar".starts_with(b"foobar"));
         assert!(b"foobar".starts_with(b"foobar"));
-        let empty: &[u8] = [];
+        let empty: &[u8] = &[];
         assert!(empty.starts_with(empty));
         assert!(!empty.starts_with(b"foo"));
         assert!(b"foobar".starts_with(empty));
@@ -2074,7 +2074,7 @@ mod tests {
         assert!(!b"foo".ends_with(b"foobar"));
         assert!(!b"bar".ends_with(b"foobar"));
         assert!(b"foobar".ends_with(b"foobar"));
-        let empty: &[u8] = [];
+        let empty: &[u8] = &[];
         assert!(empty.ends_with(empty));
         assert!(!empty.ends_with(b"foo"));
         assert!(b"foobar".ends_with(empty));
@@ -2087,13 +2087,13 @@ mod tests {
         for slice in xs.split_mut(|x| *x == 0) {
             slice.reverse();
         }
-        assert!(xs == [0,1,0,3,2,0,0,5,4,0]);
+        assert!(xs == &[0,1,0,3,2,0,0,5,4,0]);
 
         let mut xs = [0i,1,0,2,3,0,0,4,5,0,6,7];
         for slice in xs.split_mut(|x| *x == 0).take(5) {
             slice.reverse();
         }
-        assert!(xs == [0,1,0,3,2,0,0,5,4,0,6,7]);
+        assert!(xs == &[0,1,0,3,2,0,0,5,4,0,6,7]);
     }
 
     #[test]
@@ -2102,7 +2102,7 @@ mod tests {
         for slice in xs.split_mut(|x| *x == 0).rev().take(4) {
             slice.reverse();
         }
-        assert!(xs == [1,2,0,4,3,0,0,6,5,0]);
+        assert!(xs == &[1,2,0,4,3,0,0,6,5,0]);
     }
 
     #[test]
@@ -2124,7 +2124,7 @@ mod tests {
             }
         }
         let result = [0u8, 0, 0, 1, 1, 1, 2];
-        assert!(v == result);
+        assert!(v == &result);
     }
 
     #[test]
@@ -2136,7 +2136,7 @@ mod tests {
             }
         }
         let result = [2u8, 2, 2, 1, 1, 1, 0];
-        assert!(v == result);
+        assert!(v == &result);
     }
 
     #[test]
@@ -2152,7 +2152,7 @@ mod tests {
         let h = x.last_mut();
         assert_eq!(*h.unwrap(), 5);
 
-        let y: &mut [int] = [];
+        let y: &mut [int] = &mut [];
         assert!(y.last_mut().is_none());
     }
 
@@ -2318,7 +2318,7 @@ mod bench {
                 v.set_len(1024);
             }
             for i in range(0u, 1024) {
-                *v.get_mut(i) = 0;
+                v[i] = 0;
             }
         });
     }

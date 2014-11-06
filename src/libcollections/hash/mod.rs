@@ -150,7 +150,7 @@ macro_rules! impl_hash_tuple(
         impl<S: Writer> Hash<S> for () {
             #[inline]
             fn hash(&self, state: &mut S) {
-                state.write([]);
+                state.write(&[]);
             }
         }
     );
