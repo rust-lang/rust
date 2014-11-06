@@ -414,7 +414,9 @@ impl<N:TypeFoldable> TypeFoldable for traits::Vtable<N> {
     fn fold_with<'tcx, F:TypeFolder<'tcx>>(&self, folder: &mut F) -> traits::Vtable<N> {
         match *self {
             traits::VtableImpl(ref v) => traits::VtableImpl(v.fold_with(folder)),
-            traits::VtableUnboxedClosure(d) => traits::VtableUnboxedClosure(d),
+            traits::VtableUnboxedClosure(d, ref s) => {
+                traits::VtableUnboxedClosure(d, s.fold_with(folder))
+            }
             traits::VtableParam(ref p) => traits::VtableParam(p.fold_with(folder)),
             traits::VtableBuiltin(ref d) => traits::VtableBuiltin(d.fold_with(folder)),
         }
