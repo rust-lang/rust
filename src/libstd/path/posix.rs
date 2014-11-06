@@ -463,7 +463,7 @@ mod tests {
 
     #[test]
     fn test_paths() {
-        let empty: &[u8] = [];
+        let empty: &[u8] = &[];
         t!(v: Path::new(empty), b".");
         t!(v: Path::new(b"/"), b"/");
         t!(v: Path::new(b"a/b/c"), b"a/b/c");
@@ -732,14 +732,14 @@ mod tests {
             (s: $path:expr, $push:expr, $exp:expr) => (
                 {
                     let mut p = Path::new($path);
-                    p.push_many($push);
+                    p.push_many(&$push);
                     assert!(p.as_str() == Some($exp));
                 }
             );
             (v: $path:expr, $push:expr, $exp:expr) => (
                 {
                     let mut p = Path::new($path);
-                    p.push_many($push);
+                    p.push_many(&$push);
                     assert!(p.as_vec() == $exp);
                 }
             )
@@ -837,14 +837,14 @@ mod tests {
             (s: $path:expr, $join:expr, $exp:expr) => (
                 {
                     let path = Path::new($path);
-                    let res = path.join_many($join);
+                    let res = path.join_many(&$join);
                     assert!(res.as_str() == Some($exp));
                 }
             );
             (v: $path:expr, $join:expr, $exp:expr) => (
                 {
                     let path = Path::new($path);
-                    let res = path.join_many($join);
+                    let res = path.join_many(&$join);
                     assert!(res.as_vec() == $exp);
                 }
             )
@@ -860,7 +860,7 @@ mod tests {
 
     #[test]
     fn test_with_helpers() {
-        let empty: &[u8] = [];
+        let empty: &[u8] = &[];
 
         t!(v: Path::new(b"a/b/c").with_filename(b"d"), b"a/b/d");
         t!(v: Path::new(b"a/b/c\xFF").with_filename(b"\x80"), b"a/b/\x80");
@@ -1174,7 +1174,7 @@ mod tests {
                 {
                     let path = Path::new($path);
                     let comps = path.components().collect::<Vec<&[u8]>>();
-                    let exp: &[&str] = $exp;
+                    let exp: &[&str] = &$exp;
                     let exps = exp.iter().map(|x| x.as_bytes()).collect::<Vec<&[u8]>>();
                     assert!(comps == exps, "components: Expected {}, found {}",
                             comps, exps);
@@ -1188,7 +1188,7 @@ mod tests {
                 {
                     let path = Path::new($arg);
                     let comps = path.components().collect::<Vec<&[u8]>>();
-                    let exp: &[&[u8]] = [$($exp),*];
+                    let exp: &[&[u8]] = &[$($exp),*];
                     assert_eq!(comps.as_slice(), exp);
                     let comps = path.components().rev().collect::<Vec<&[u8]>>();
                     let exp = exp.iter().rev().map(|&x|x).collect::<Vec<&[u8]>>();
@@ -1220,7 +1220,7 @@ mod tests {
                 {
                     let path = Path::new($arg);
                     let comps = path.str_components().collect::<Vec<Option<&str>>>();
-                    let exp: &[Option<&str>] = $exp;
+                    let exp: &[Option<&str>] = &$exp;
                     assert_eq!(comps.as_slice(), exp);
                     let comps = path.str_components().rev().collect::<Vec<Option<&str>>>();
                     let exp = exp.iter().rev().map(|&x|x).collect::<Vec<Option<&str>>>();

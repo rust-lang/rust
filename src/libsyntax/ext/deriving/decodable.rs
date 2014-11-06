@@ -136,6 +136,7 @@ fn decodable_substructure(cx: &mut ExtCtxt, trait_span: Span,
                                                   cx.expr_ident(trait_span, variant), arms));
             let lambda = cx.lambda_expr(trait_span, vec!(blkarg, variant), result);
             let variant_vec = cx.expr_vec(trait_span, variants);
+            let variant_vec = cx.expr_addr_of(trait_span, variant_vec);
             let result = cx.expr_method_call(trait_span, blkdecoder,
                                              cx.ident_of("read_enum_variant"),
                                              vec!(variant_vec, lambda));

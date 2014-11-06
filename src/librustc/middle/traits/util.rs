@@ -57,7 +57,7 @@ pub fn supertraits<'cx, 'tcx>(tcx: &'cx ty::ctxt<'tcx>,
      * `supertraits(Baz)` yields `[Baz, Bar, Foo, Foo]` in some order.
      */
 
-    transitive_bounds(tcx, [trait_ref])
+    transitive_bounds(tcx, &[trait_ref])
 }
 
 pub fn transitive_bounds<'cx, 'tcx>(tcx: &'cx ty::ctxt<'tcx>,

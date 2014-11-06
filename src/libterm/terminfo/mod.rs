@@ -81,7 +81,7 @@ impl<T: Writer+Send> Terminal<T> for TerminfoTerminal<T> {
                                .find_equiv("setaf")
                                .unwrap()
                                .as_slice(),
-                           [Number(color as int)], &mut Variables::new());
+                           &[Number(color as int)], &mut Variables::new());
             if s.is_ok() {
                 try!(self.out.write(s.unwrap().as_slice()));
                 return Ok(true)
@@ -98,7 +98,7 @@ impl<T: Writer+Send> Terminal<T> for TerminfoTerminal<T> {
                                .find_equiv("setab")
                                .unwrap()
                                .as_slice(),
-                           [Number(color as int)], &mut Variables::new());
+                           &[Number(color as int)], &mut Variables::new());
             if s.is_ok() {
                 try!(self.out.write(s.unwrap().as_slice()));
                 return Ok(true)
@@ -116,7 +116,7 @@ impl<T: Writer+Send> Terminal<T> for TerminfoTerminal<T> {
                 let parm = self.ti.strings.find_equiv(cap);
                 if parm.is_some() {
                     let s = expand(parm.unwrap().as_slice(),
-                                   [],
+                                   &[],
                                    &mut Variables::new());
                     if s.is_ok() {
                         try!(self.out.write(s.unwrap().as_slice()));
@@ -151,7 +151,7 @@ impl<T: Writer+Send> Terminal<T> for TerminfoTerminal<T> {
             }
         }
         let s = cap.map_or(Err("can't find terminfo capability `sgr0`".to_string()), |op| {
-            expand(op.as_slice(), [], &mut Variables::new())
+            expand(op.as_slice(), &[], &mut Variables::new())
         });
         if s.is_ok() {
             return self.out.write(s.unwrap().as_slice())

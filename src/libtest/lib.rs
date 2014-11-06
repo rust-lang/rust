@@ -1373,7 +1373,7 @@ impl Bencher {
         if n == 0 { n = 1; }
 
         let mut total_run = 0;
-        let samples : &mut [f64] = [0.0_f64, ..50];
+        let samples : &mut [f64] = &mut [0.0_f64, ..50];
         loop {
             let loop_start = precise_time_ns();
 

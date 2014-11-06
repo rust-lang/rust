@@ -166,7 +166,7 @@ fn instantiate_inline(ccx: &CrateContext, fn_id: ast::DefId)
                                  llfn,
                                  &param_substs::empty(),
                                  mth.id,
-                                 []);
+                                 &[]);
                         // Use InternalLinkage so LLVM can optimize more
                         // aggressively.
                         SetLinkage(llfn, InternalLinkage);

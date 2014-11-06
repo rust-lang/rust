@@ -152,9 +152,9 @@ impl<'a, 'tcx, 'v> visit::Visitor<'v> for CoherenceCheckVisitor<'a, 'tcx> {
             ItemImpl(_, ref opt_trait, _, _) => {
                 match opt_trait.clone() {
                     Some(opt_trait) => {
-                        self.cc.check_implementation(item, [opt_trait]);
+                        self.cc.check_implementation(item, &[opt_trait]);
                     }
-                    None => self.cc.check_implementation(item, [])
+                    None => self.cc.check_implementation(item, &[])
                 }
             }
             _ => {
