@@ -13,6 +13,7 @@
 #![experimental]
 
 use {fmt, i64};
+use from_str::FromStr;
 use ops::{Add, Sub, Mul, Div, Neg};
 use option::{Option, Some, None};
 use num;
@@ -40,7 +41,7 @@ const NANOS_PER_MILLI: i64 = 1000_000;
 const OUT_OF_BOUNDS: &'static str = "Duration out of bounds";
 
 /// An absolute amount of time, independent of time zones and calendars with nanosecond precision.
-/// A duration can express the positive or negative difference between two instants in time 
+/// A duration can express the positive or negative difference between two instants in time
 /// according to a particular clock.
 #[deriving(Clone, PartialEq, Eq, PartialOrd, Ord, Zero, Default, Hash, Rand)]
 pub struct Duration {
@@ -57,13 +58,13 @@ macro_rules! duration(
 macro_rules! carry(
     ($millis:expr, $nanos:expr) => (
         if $millis > 0 && $nanos < 0 {
-            (-1, NANOS_PER_MILLI) 
+            (-1, NANOS_PER_MILLI)
         }
         else if $millis < 0 && $nanos > 0 {
-            (1, -NANOS_PER_MILLI) 
+            (1, -NANOS_PER_MILLI)
         }
         else {
-            (0, 0) 
+            (0, 0)
         }
     )
 )
@@ -119,7 +120,7 @@ impl Duration {
     #[inline]
     pub fn microseconds(microseconds: i64) -> Duration {
         duration!(
-            microseconds / MICROS_PER_MILLI, 
+            microseconds / MICROS_PER_MILLI,
             (NANOS_PER_MICRO * (microseconds % MICROS_PER_MILLI)) as i32
         )
     }
@@ -291,35 +292,72 @@ impl fmt::Show for Duration {
             try!(write!(f, "{}D", days.abs()));
         }
 
-	    if hastime {
-	        try!(write!(f, "T"));
+        if hastime {
+            try!(write!(f, "T"));
 
-	        if hours != 0 {
-	            try!(write!(f, "{}H", hours));
-	        }
+            if hours != 0 {
+                try!(write!(f, "{}H", hours));
+            }
 
-	        if minutes != 0 {
-	            try!(write!(f, "{}M", minutes));
-	        }
+            if minutes != 0 {
+                try!(write!(f, "{}M", minutes));
+            }
 
-	        if rem == 0 {
-	            try!(write!(f, "{}S", seconds));
-	        }
-	        else if rem % NANOS_PER_MILLI == 0 {
-	            try!(write!(f, "{}.{:03}S", seconds, rem / NANOS_PER_MILLI));
-	        }
-	        else if rem % NANOS_PER_MICRO == 0 {
-	            try!(write!(f, "{}.{:06}S", seconds, rem / NANOS_PER_MICRO));
-	        }
-	        else {
-	            try!(write!(f, "{}.{:09}S", seconds, rem));
-	        }
-	    }
+            if rem == 0 {
+                try!(write!(f, "{}S", seconds));
+            }
+            else if rem % NANOS_PER_MILLI == 0 {
+                try!(write!(f, "{}.{:03}S", seconds, rem / NANOS_PER_MILLI));
+            }
+            else if rem % NANOS_PER_MICRO == 0 {
+                try!(write!(f, "{}.{:06}S", seconds, rem / NANOS_PER_MICRO));
+            }
+            else {
+                try!(write!(f, "{}.{:09}S", seconds, rem));
+            }
+        }
 
         Ok(())
     }
 }
 
+impl FromStr for Duration {
+    /// Parse a `Duration` from a string.
+    ///
+    /// Durations are represented by the format ±P[n]DT[n]H[n]M[n]S, where [n] is a decimal positive
+    /// number (last one possibly using a comma), and the remaining characters are case-insensitive.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// assert_eq!(from_str::<Duration>("-P106751991167DT7H12M55.808999999S"), Some(Duration::MIN));
+    /// assert_eq!(from_str::<Duration>("P106751991167DT7H12M55.807999999S"), Some(Duration::MAX));
+    /// assert_eq!(from_str::<Duration>("not even a Duration"), None);
+    /// ```
+    #[inline]
+    fn from_str(s: &str) -> Option<Duration> {
+        fn atoi(source: &str) -> (Option<i64>, &str) {
+            let mut value: Option<i64> = None;
+            let mut s = source;
+
+            while !s.is_empty() {
+                s = match s.slice_shift_char() {
+                    (Some(c), rem) if c.is_digit() => {
+                        let digit = (c as u8 - b'0') as i64;
+
+                        value = Some(digit + 10 * value.unwrap_or(0));
+                        rem
+                    },
+                    _ => break
+                }
+            }
+
+            (value, s)
+        }
+
+        None
+    }
+}
 
 #[cfg(test)]
 mod tests {
