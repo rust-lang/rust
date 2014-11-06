@@ -19,7 +19,7 @@ ifndef CFG_DISABLE_MANAGE_SUBMODULES
 # (nothing checked out at all).  `./configure --{llvm,jemalloc}-root`
 # will explicitly deinitialize the corresponding submodules, and we don't
 # want to force constant rebuilds in that case.
-NEED_GIT_RECONFIG=$(shell cd "$(CFG_SRC_DIR)" && "$(CFG_GIT)" submodule status | grep -c '^+')
+NEED_GIT_RECONFIG=$(shell cd "$(CFG_SRC_DIR)" && $(CFG_GIT) submodule status | grep -c '^+')
 else
 NEED_GIT_RECONFIG=0
 endif
