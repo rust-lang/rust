@@ -108,19 +108,19 @@ pub use core::slice::{Found, NotFound};
 
 // Functional utilities
 
+#[experimental = "U should be an associated type"]
 #[allow(missing_docs)]
-pub trait VectorVector<T> for Sized? {
-    // FIXME #5898: calling these .concat and .connect conflicts with
-    // StrVector::con{cat,nect}, since they have generic contents.
-    /// Flattens a vector of vectors of `T` into a single `Vec<T>`.
-    fn concat_vec(&self) -> Vec<T>;
+pub trait Concat<Sized? T, U> for Sized? {
+    /// Flattens a slice of `T` into a single value `U`.
+    fn concat(&self) -> U;
 
-    /// Concatenate a vector of vectors, placing a given separator between each.
-    fn connect_vec(&self, sep: &T) -> Vec<T>;
+    /// Flattens a slice of `T` into a single value `U`, placing a
+    /// given seperator between each.
+    fn connect(&self, sep: &T) -> U;
 }
 
-impl<T: Clone, V: AsSlice<T>> VectorVector<T> for [V] {
-    fn concat_vec(&self) -> Vec<T> {
+impl<T: Clone, V: AsSlice<T>> Concat<T, Vec<T>> for [V] {
+    fn concat(&self) -> Vec<T> {
         let size = self.iter().fold(0u, |acc, v| acc + v.as_slice().len());
         let mut result = Vec::with_capacity(size);
         for v in self.iter() {
@@ -129,7 +129,7 @@ impl<T: Clone, V: AsSlice<T>> VectorVector<T> for [V] {
         result
     }
 
-    fn connect_vec(&self, sep: &T) -> Vec<T> {
+    fn connect(&self, sep: &T) -> Vec<T> {
         let size = self.iter().fold(0u, |acc, v| acc + v.as_slice().len());
         let mut result = Vec::with_capacity(size + self.len());
         let mut first = true;
@@ -138,6 +138,28 @@ impl<T: Clone, V: AsSlice<T>> VectorVector<T> for [V] {
             result.push_all(v.as_slice())
         }
         result
+    }
+}
+
+#[allow(missing_docs)]
+#[deprecated]
+pub trait VectorVector<T> for Sized? {
+    /// Deprecated: use `concat` instead.
+    #[deprecated = "use concat instead"]
+    fn concat_vec(&self) -> Vec<T>;
+
+    /// Deprecated: use `connect` instead.
+    #[deprecated = "use connect instead"]
+    fn connect_vec(&self, sep: &T) -> Vec<T>;
+}
+
+impl<T: Clone, V: AsSlice<T>> VectorVector<T> for [V] {
+    fn concat_vec(&self) -> Vec<T> {
+        self.concat()
+    }
+
+    fn connect_vec(&self, sep: &T) -> Vec<T> {
+        self.connect(sep)
     }
 }
 

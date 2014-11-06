@@ -55,7 +55,6 @@ use core::default::Default;
 use core::fmt;
 use core::cmp;
 use core::iter::AdditiveIterator;
-use core::kinds::Sized;
 use core::prelude::{Char, Clone, Eq, Equiv, ImmutableSlice};
 use core::prelude::{Iterator, MutableSlice, None, Option, Ord, Ordering};
 use core::prelude::{PartialEq, PartialOrd, Result, AsSlice, Some, Tuple2};
@@ -66,6 +65,7 @@ use ring_buf::RingBuf;
 use string::String;
 use unicode;
 use vec::Vec;
+use slice::Concat;
 
 pub use core::str::{from_utf8, CharEq, Chars, CharOffsets};
 pub use core::str::{Bytes, CharSplits};
@@ -80,34 +80,7 @@ pub use unicode::str::{UnicodeStrSlice, Words, Graphemes, GraphemeIndices};
 Section: Creating a string
 */
 
-/// Methods for vectors of strings.
-pub trait StrVector for Sized? {
-    /// Concatenates a vector of strings.
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// let first = "Restaurant at the End of the".to_string();
-    /// let second = " Universe".to_string();
-    /// let string_vec = vec![first, second];
-    /// assert_eq!(string_vec.concat(), "Restaurant at the End of the Universe".to_string());
-    /// ```
-    fn concat(&self) -> String;
-
-    /// Concatenates a vector of strings, placing a given separator between each.
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// let first = "Roast".to_string();
-    /// let second = "Sirloin Steak".to_string();
-    /// let string_vec = vec![first, second];
-    /// assert_eq!(string_vec.connect(", "), "Roast, Sirloin Steak".to_string());
-    /// ```
-    fn connect(&self, sep: &str) -> String;
-}
-
-impl<S: Str> StrVector for [S] {
+impl<S: Str> Concat<str, String> for [S] {
     fn concat(&self) -> String {
         if self.is_empty() {
             return String::new();
@@ -154,16 +127,9 @@ impl<S: Str> StrVector for [S] {
     }
 }
 
-impl<S: Str> StrVector for Vec<S> {
-    #[inline]
-    fn concat(&self) -> String {
-        self.as_slice().concat()
-    }
-
-    #[inline]
-    fn connect(&self, sep: &str) -> String {
-        self.as_slice().connect(sep)
-    }
+impl<S: Str> Concat<str, String> for Vec<S> {
+    fn concat(&self) -> String { self[].concat() }
+    fn connect(&self, sep: &str) -> String { self[].connect(sep) }
 }
 
 /*
