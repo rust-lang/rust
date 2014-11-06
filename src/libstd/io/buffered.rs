@@ -18,7 +18,7 @@ use iter::ExactSize;
 use ops::Drop;
 use option::{Some, None, Option};
 use result::{Ok, Err};
-use slice::{ImmutableSlice, MutableSlice};
+use slice::{SlicePrelude};
 use slice;
 use vec::Vec;
 
@@ -376,7 +376,7 @@ mod test {
     use super::super::{IoResult, EndOfFile};
     use super::super::mem::{MemReader, MemWriter, BufReader};
     use self::test::Bencher;
-    use str::StrSlice;
+    use str::StrPrelude;
 
     /// A type, free to create, primarily intended for benchmarking creation of
     /// wrappers that, just for construction, don't need a Reader/Writer that

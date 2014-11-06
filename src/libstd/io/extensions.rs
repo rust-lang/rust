@@ -22,7 +22,7 @@ use num::Int;
 use option::{Option, Some, None};
 use ptr::RawPtr;
 use result::{Ok, Err};
-use slice::{ImmutableSlice, AsSlice};
+use slice::{SlicePrelude, AsSlice};
 
 /// An iterator that reads a single byte on each iteration,
 /// until `.read_byte()` returns `EndOfFile`.
@@ -150,7 +150,7 @@ pub fn u64_to_be_bytes<T>(n: u64, size: uint, f: |v: &[u8]| -> T) -> T {
 ///           32-bit value is parsed.
 pub fn u64_from_be_bytes(data: &[u8], start: uint, size: uint) -> u64 {
     use ptr::{copy_nonoverlapping_memory};
-    use slice::MutableSlice;
+    use slice::SlicePrelude;
 
     assert!(size <= 8u);
 

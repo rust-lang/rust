@@ -74,10 +74,10 @@ use fmt;
 use iter::Iterator;
 use option::{Option, None, Some};
 use str;
-use str::{MaybeOwned, Str, StrSlice};
+use str::{MaybeOwned, Str, StrPrelude};
 use string::String;
-use slice::{AsSlice, CloneableVector};
-use slice::{ImmutablePartialEqSlice, ImmutableSlice};
+use slice::{AsSlice, CloneSliceAllocPrelude};
+use slice::{PartialEqSlicePrelude, SlicePrelude};
 use vec::Vec;
 
 /// Typedef for POSIX file paths.

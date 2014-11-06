@@ -17,7 +17,7 @@ use option::None;
 use result::{Err, Ok};
 use io;
 use io::{Reader, Writer, Seek, Buffer, IoError, SeekStyle, IoResult};
-use slice::{mod, AsSlice, ImmutableSlice};
+use slice::{mod, AsSlice, SlicePrelude};
 use vec::Vec;
 
 const BUF_CAPACITY: uint = 128;
@@ -341,7 +341,7 @@ mod test {
     use io::*;
     use io;
     use self::test::Bencher;
-    use str::StrSlice;
+    use str::StrPrelude;
 
     #[test]
     fn test_mem_writer() {

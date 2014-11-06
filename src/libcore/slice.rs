@@ -57,9 +57,9 @@ use raw::Slice as RawSlice;
 // Extension traits
 //
 
-/// Extension methods for immutable slices.
-#[unstable = "may merge with other traits; region parameter may disappear"]
-pub trait ImmutableSlice<T> for Sized? {
+/// Extension methods for slices.
+#[unstable = "may merge with other traits"]
+pub trait SlicePrelude<T> for Sized? {
     /// Returns a subslice spanning the interval [`start`, `end`).
     ///
     /// Fails when the end of the new slice lies beyond the end of the
@@ -256,216 +256,12 @@ pub trait ImmutableSlice<T> for Sized? {
     #[inline]
     #[experimental = "not triaged yet"]
     fn is_empty(&self) -> bool { self.len() == 0 }
-}
 
-#[unstable]
-impl<T> ImmutableSlice<T> for [T] {
-    #[inline]
-    fn slice(&self, start: uint, end: uint) -> &[T] {
-        assert!(start <= end);
-        assert!(end <= self.len());
-        unsafe {
-            transmute(RawSlice {
-                data: self.as_ptr().offset(start as int),
-                len: (end - start)
-            })
-        }
-    }
-
-    #[inline]
-    fn slice_from(&self, start: uint) -> &[T] {
-        self.slice(start, self.len())
-    }
-
-    #[inline]
-    fn slice_to(&self, end: uint) -> &[T] {
-        self.slice(0, end)
-    }
-
-    #[inline]
-    fn split_at(&self, mid: uint) -> (&[T], &[T]) {
-        (self[..mid], self[mid..])
-    }
-
-    #[inline]
-    fn iter<'a>(&'a self) -> Items<'a, T> {
-        unsafe {
-            let p = self.as_ptr();
-            if mem::size_of::<T>() == 0 {
-                Items{ptr: p,
-                      end: (p as uint + self.len()) as *const T,
-                      marker: marker::ContravariantLifetime::<'a>}
-            } else {
-                Items{ptr: p,
-                      end: p.offset(self.len() as int),
-                      marker: marker::ContravariantLifetime::<'a>}
-            }
-        }
-    }
-
-    #[inline]
-    fn split<'a>(&'a self, pred: |&T|: 'a -> bool) -> Splits<'a, T> {
-        Splits {
-            v: self,
-            pred: pred,
-            finished: false
-        }
-    }
-
-    #[inline]
-    fn splitn<'a>(&'a self, n: uint, pred: |&T|: 'a -> bool) -> SplitsN<Splits<'a, T>> {
-        SplitsN {
-            iter: self.split(pred),
-            count: n,
-            invert: false
-        }
-    }
-
-    #[inline]
-    fn rsplitn<'a>(&'a self, n: uint, pred: |&T|: 'a -> bool) -> SplitsN<Splits<'a, T>> {
-        SplitsN {
-            iter: self.split(pred),
-            count: n,
-            invert: true
-        }
-    }
-
-    #[inline]
-    fn windows(&self, size: uint) -> Windows<T> {
-        assert!(size != 0);
-        Windows { v: self, size: size }
-    }
-
-    #[inline]
-    fn chunks(&self, size: uint) -> Chunks<T> {
-        assert!(size != 0);
-        Chunks { v: self, size: size }
-    }
-
-    #[inline]
-    fn get(&self, index: uint) -> Option<&T> {
-        if index < self.len() { Some(&self[index]) } else { None }
-    }
-
-    #[inline]
-    fn head(&self) -> Option<&T> {
-        if self.len() == 0 { None } else { Some(&self[0]) }
-    }
-
-    #[inline]
-    fn tail(&self) -> &[T] { self[1..] }
-
-    #[inline]
-    fn init(&self) -> &[T] {
-        self[..self.len() - 1]
-    }
-
-    #[inline]
-    fn last(&self) -> Option<&T> {
-        if self.len() == 0 { None } else { Some(&self[self.len() - 1]) }
-    }
-
-    #[inline]
-    unsafe fn unsafe_get(&self, index: uint) -> &T {
-        transmute(self.repr().data.offset(index as int))
-    }
-
-    #[inline]
-    fn as_ptr(&self) -> *const T {
-        self.repr().data
-    }
-
-    #[unstable]
-    fn binary_search(&self, f: |&T| -> Ordering) -> BinarySearchResult {
-        let mut base : uint = 0;
-        let mut lim : uint = self.len();
-
-        while lim != 0 {
-            let ix = base + (lim >> 1);
-            match f(&self[ix]) {
-                Equal => return Found(ix),
-                Less => {
-                    base = ix + 1;
-                    lim -= 1;
-                }
-                Greater => ()
-            }
-            lim >>= 1;
-        }
-        return NotFound(base);
-    }
-
-    #[inline]
-    fn len(&self) -> uint { self.repr().len }
-}
-
-
-
-impl<T> ops::Slice<uint, [T]> for [T] {
-    #[inline]
-    fn as_slice_<'a>(&'a self) -> &'a [T] {
-        self
-    }
-
-    #[inline]
-    fn slice_from_or_fail<'a>(&'a self, start: &uint) -> &'a [T] {
-        self.slice_or_fail(start, &self.len())
-    }
-
-    #[inline]
-    fn slice_to_or_fail<'a>(&'a self, end: &uint) -> &'a [T] {
-        self.slice_or_fail(&0, end)
-    }
-    #[inline]
-    fn slice_or_fail<'a>(&'a self, start: &uint, end: &uint) -> &'a [T] {
-        assert!(*start <= *end);
-        assert!(*end <= self.len());
-        unsafe {
-            transmute(RawSlice {
-                    data: self.as_ptr().offset(*start as int),
-                    len: (*end - *start)
-                })
-        }
-    }
-}
-
-impl<T> ops::SliceMut<uint, [T]> for [T] {
-    #[inline]
-    fn as_mut_slice_<'a>(&'a mut self) -> &'a mut [T] {
-        self
-    }
-
-    #[inline]
-    fn slice_from_or_fail_mut<'a>(&'a mut self, start: &uint) -> &'a mut [T] {
-        let len = &self.len();
-        self.slice_or_fail_mut(start, len)
-    }
-
-    #[inline]
-    fn slice_to_or_fail_mut<'a>(&'a mut self, end: &uint) -> &'a mut [T] {
-        self.slice_or_fail_mut(&0, end)
-    }
-    #[inline]
-    fn slice_or_fail_mut<'a>(&'a mut self, start: &uint, end: &uint) -> &'a mut [T] {
-        assert!(*start <= *end);
-        assert!(*end <= self.len());
-        unsafe {
-            transmute(RawSlice {
-                    data: self.as_ptr().offset(*start as int),
-                    len: (*end - *start)
-                })
-        }
-    }
-}
-
-/// Extension methods for slices such that their elements are
-/// mutable.
-#[experimental = "may merge with other traits; may lose region param; needs review"]
-pub trait MutableSlice<T> for Sized? {
     /// Returns a mutable reference to the element at the given index,
     /// or `None` if the index is out of bounds
     #[unstable = "waiting on final error conventions"]
     fn get_mut<'a>(&'a mut self, index: uint) -> Option<&'a mut T>;
+
     /// Work with `self` as a mut slice.
     /// Primarily intended for getting a &mut [T] from a [T, ..N].
     fn as_mut_slice<'a>(&'a mut self) -> &'a mut [T];
@@ -626,8 +422,146 @@ pub trait MutableSlice<T> for Sized? {
     fn as_mut_ptr(&mut self) -> *mut T;
 }
 
-#[experimental = "trait is experimental"]
-impl<T> MutableSlice<T> for [T] {
+#[unstable]
+impl<T> SlicePrelude<T> for [T] {
+    #[inline]
+    fn slice(&self, start: uint, end: uint) -> &[T] {
+        assert!(start <= end);
+        assert!(end <= self.len());
+        unsafe {
+            transmute(RawSlice {
+                data: self.as_ptr().offset(start as int),
+                len: (end - start)
+            })
+        }
+    }
+
+    #[inline]
+    fn slice_from(&self, start: uint) -> &[T] {
+        self.slice(start, self.len())
+    }
+
+    #[inline]
+    fn slice_to(&self, end: uint) -> &[T] {
+        self.slice(0, end)
+    }
+
+    #[inline]
+    fn split_at(&self, mid: uint) -> (&[T], &[T]) {
+        (self[..mid], self[mid..])
+    }
+
+    #[inline]
+    fn iter<'a>(&'a self) -> Items<'a, T> {
+        unsafe {
+            let p = self.as_ptr();
+            if mem::size_of::<T>() == 0 {
+                Items{ptr: p,
+                      end: (p as uint + self.len()) as *const T,
+                      marker: marker::ContravariantLifetime::<'a>}
+            } else {
+                Items{ptr: p,
+                      end: p.offset(self.len() as int),
+                      marker: marker::ContravariantLifetime::<'a>}
+            }
+        }
+    }
+
+    #[inline]
+    fn split<'a>(&'a self, pred: |&T|: 'a -> bool) -> Splits<'a, T> {
+        Splits {
+            v: self,
+            pred: pred,
+            finished: false
+        }
+    }
+
+    #[inline]
+    fn splitn<'a>(&'a self, n: uint, pred: |&T|: 'a -> bool) -> SplitsN<Splits<'a, T>> {
+        SplitsN {
+            iter: self.split(pred),
+            count: n,
+            invert: false
+        }
+    }
+
+    #[inline]
+    fn rsplitn<'a>(&'a self, n: uint, pred: |&T|: 'a -> bool) -> SplitsN<Splits<'a, T>> {
+        SplitsN {
+            iter: self.split(pred),
+            count: n,
+            invert: true
+        }
+    }
+
+    #[inline]
+    fn windows(&self, size: uint) -> Windows<T> {
+        assert!(size != 0);
+        Windows { v: self, size: size }
+    }
+
+    #[inline]
+    fn chunks(&self, size: uint) -> Chunks<T> {
+        assert!(size != 0);
+        Chunks { v: self, size: size }
+    }
+
+    #[inline]
+    fn get(&self, index: uint) -> Option<&T> {
+        if index < self.len() { Some(&self[index]) } else { None }
+    }
+
+    #[inline]
+    fn head(&self) -> Option<&T> {
+        if self.len() == 0 { None } else { Some(&self[0]) }
+    }
+
+    #[inline]
+    fn tail(&self) -> &[T] { self[1..] }
+
+    #[inline]
+    fn init(&self) -> &[T] {
+        self[..self.len() - 1]
+    }
+
+    #[inline]
+    fn last(&self) -> Option<&T> {
+        if self.len() == 0 { None } else { Some(&self[self.len() - 1]) }
+    }
+
+    #[inline]
+    unsafe fn unsafe_get(&self, index: uint) -> &T {
+        transmute(self.repr().data.offset(index as int))
+    }
+
+    #[inline]
+    fn as_ptr(&self) -> *const T {
+        self.repr().data
+    }
+
+    #[unstable]
+    fn binary_search(&self, f: |&T| -> Ordering) -> BinarySearchResult {
+        let mut base : uint = 0;
+        let mut lim : uint = self.len();
+
+        while lim != 0 {
+            let ix = base + (lim >> 1);
+            match f(&self[ix]) {
+                Equal => return Found(ix),
+                Less => {
+                    base = ix + 1;
+                    lim -= 1;
+                }
+                Greater => ()
+            }
+            lim >>= 1;
+        }
+        return NotFound(base);
+    }
+
+    #[inline]
+    fn len(&self) -> uint { self.repr().len }
+
     #[inline]
     fn get_mut(&mut self, index: uint) -> Option<&mut T> {
         if index < self.len() { Some(&mut self[index]) } else { None }
@@ -764,9 +698,66 @@ impl<T> MutableSlice<T> for [T] {
     }
 }
 
+impl<T> ops::Slice<uint, [T]> for [T] {
+    #[inline]
+    fn as_slice_<'a>(&'a self) -> &'a [T] {
+        self
+    }
+
+    #[inline]
+    fn slice_from_or_fail<'a>(&'a self, start: &uint) -> &'a [T] {
+        self.slice_or_fail(start, &self.len())
+    }
+
+    #[inline]
+    fn slice_to_or_fail<'a>(&'a self, end: &uint) -> &'a [T] {
+        self.slice_or_fail(&0, end)
+    }
+    #[inline]
+    fn slice_or_fail<'a>(&'a self, start: &uint, end: &uint) -> &'a [T] {
+        assert!(*start <= *end);
+        assert!(*end <= self.len());
+        unsafe {
+            transmute(RawSlice {
+                    data: self.as_ptr().offset(*start as int),
+                    len: (*end - *start)
+                })
+        }
+    }
+}
+
+impl<T> ops::SliceMut<uint, [T]> for [T] {
+    #[inline]
+    fn as_mut_slice_<'a>(&'a mut self) -> &'a mut [T] {
+        self
+    }
+
+    #[inline]
+    fn slice_from_or_fail_mut<'a>(&'a mut self, start: &uint) -> &'a mut [T] {
+        let len = &self.len();
+        self.slice_or_fail_mut(start, len)
+    }
+
+    #[inline]
+    fn slice_to_or_fail_mut<'a>(&'a mut self, end: &uint) -> &'a mut [T] {
+        self.slice_or_fail_mut(&0, end)
+    }
+    #[inline]
+    fn slice_or_fail_mut<'a>(&'a mut self, start: &uint, end: &uint) -> &'a mut [T] {
+        assert!(*start <= *end);
+        assert!(*end <= self.len());
+        unsafe {
+            transmute(RawSlice {
+                    data: self.as_ptr().offset(*start as int),
+                    len: (*end - *start)
+                })
+        }
+    }
+}
+
 /// Extension methods for slices containing `PartialEq` elements.
 #[unstable = "may merge with other traits"]
-pub trait ImmutablePartialEqSlice<T: PartialEq> for Sized? {
+pub trait PartialEqSlicePrelude<T: PartialEq> for Sized? {
     /// Find the first index containing a matching value.
     fn position_elem(&self, t: &T) -> Option<uint>;
 
@@ -784,7 +775,7 @@ pub trait ImmutablePartialEqSlice<T: PartialEq> for Sized? {
 }
 
 #[unstable = "trait is unstable"]
-impl<T: PartialEq> ImmutablePartialEqSlice<T> for [T] {
+impl<T: PartialEq> PartialEqSlicePrelude<T> for [T] {
     #[inline]
     fn position_elem(&self, x: &T) -> Option<uint> {
         self.iter().position(|y| *x == *y)
@@ -815,7 +806,7 @@ impl<T: PartialEq> ImmutablePartialEqSlice<T> for [T] {
 
 /// Extension methods for slices containing `Ord` elements.
 #[unstable = "may merge with other traits"]
-pub trait ImmutableOrdSlice<T: Ord> for Sized? {
+pub trait OrdSlicePrelude<T: Ord> for Sized? {
     /// Binary search a sorted slice for a given element.
     ///
     /// If the value is found then `Found` is returned, containing the
@@ -842,19 +833,119 @@ pub trait ImmutableOrdSlice<T: Ord> for Sized? {
     /// ```
     #[unstable = "name likely to change"]
     fn binary_search_elem(&self, x: &T) -> BinarySearchResult;
+
+    /// Mutates the slice to the next lexicographic permutation.
+    ///
+    /// Returns `true` if successful and `false` if the slice is at the
+    /// last-ordered permutation.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let v: &mut [_] = &mut [0i, 1, 2];
+    /// v.next_permutation();
+    /// let b: &mut [_] = &mut [0i, 2, 1];
+    /// assert!(v == b);
+    /// v.next_permutation();
+    /// let b: &mut [_] = &mut [1i, 0, 2];
+    /// assert!(v == b);
+    /// ```
+    #[experimental]
+    fn next_permutation(&mut self) -> bool;
+
+    /// Mutates the slice to the previous lexicographic permutation.
+    ///
+    /// Returns `true` if successful and `false` if the slice is at the
+    /// first-ordered permutation.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let v: &mut [_] = &mut [1i, 0, 2];
+    /// v.prev_permutation();
+    /// let b: &mut [_] = &mut [0i, 2, 1];
+    /// assert!(v == b);
+    /// v.prev_permutation();
+    /// let b: &mut [_] = &mut [0i, 1, 2];
+    /// assert!(v == b);
+    /// ```
+    #[experimental]
+    fn prev_permutation(&mut self) -> bool;
 }
 
 #[unstable = "trait is unstable"]
-impl<T: Ord> ImmutableOrdSlice<T> for [T] {
+impl<T: Ord> OrdSlicePrelude<T> for [T] {
     #[unstable]
     fn binary_search_elem(&self, x: &T) -> BinarySearchResult {
         self.binary_search(|p| p.cmp(x))
     }
+
+    #[experimental]
+    fn next_permutation(&mut self) -> bool {
+        // These cases only have 1 permutation each, so we can't do anything.
+        if self.len() < 2 { return false; }
+
+        // Step 1: Identify the longest, rightmost weakly decreasing part of the vector
+        let mut i = self.len() - 1;
+        while i > 0 && self[i-1] >= self[i] {
+            i -= 1;
+        }
+
+        // If that is the entire vector, this is the last-ordered permutation.
+        if i == 0 {
+            return false;
+        }
+
+        // Step 2: Find the rightmost element larger than the pivot (i-1)
+        let mut j = self.len() - 1;
+        while j >= i && self[j] <= self[i-1]  {
+            j -= 1;
+        }
+
+        // Step 3: Swap that element with the pivot
+        self.swap(j, i-1);
+
+        // Step 4: Reverse the (previously) weakly decreasing part
+        self[mut i..].reverse();
+
+        true
+    }
+
+    #[experimental]
+    fn prev_permutation(&mut self) -> bool {
+        // These cases only have 1 permutation each, so we can't do anything.
+        if self.len() < 2 { return false; }
+
+        // Step 1: Identify the longest, rightmost weakly increasing part of the vector
+        let mut i = self.len() - 1;
+        while i > 0 && self[i-1] <= self[i] {
+            i -= 1;
+        }
+
+        // If that is the entire vector, this is the first-ordered permutation.
+        if i == 0 {
+            return false;
+        }
+
+        // Step 2: Reverse the weakly increasing part
+        self[mut i..].reverse();
+
+        // Step 3: Find the rightmost element equal to or bigger than the pivot (i-1)
+        let mut j = self.len() - 1;
+        while j >= i && self[j-1] < self[i-1]  {
+            j -= 1;
+        }
+
+        // Step 4: Swap that element with the pivot
+        self.swap(i-1, j);
+
+        true
+    }
 }
 
-/// Trait for &[T] where T is Cloneable
+/// Extension methods for slices on Clone elements
 #[unstable = "may merge with other traits"]
-pub trait MutableCloneableSlice<T> for Sized? {
+pub trait CloneSlicePrelude<T> for Sized? {
     /// Copies as many elements from `src` as it can into `self` (the
     /// shorter of `self.len()` and `src.len()`). Returns the number
     /// of elements copied.
@@ -862,7 +953,7 @@ pub trait MutableCloneableSlice<T> for Sized? {
     /// # Example
     ///
     /// ```rust
-    /// use std::slice::MutableCloneableSlice;
+    /// use std::slice::CloneSlicePrelude;
     ///
     /// let mut dst = [0i, 0, 0];
     /// let src = [1i, 2];
@@ -878,7 +969,7 @@ pub trait MutableCloneableSlice<T> for Sized? {
 }
 
 #[unstable = "trait is unstable"]
-impl<T: Clone> MutableCloneableSlice<T> for [T] {
+impl<T: Clone> CloneSlicePrelude<T> for [T] {
     #[inline]
     fn clone_from_slice(&mut self, src: &[T]) -> uint {
         let min = cmp::min(self.len(), src.len());
@@ -1517,7 +1608,7 @@ pub mod raw {
 pub mod bytes {
     use kinds::Sized;
     use ptr;
-    use slice::{ImmutableSlice, MutableSlice};
+    use slice::SlicePrelude;
 
     /// A trait for operations on mutable `[u8]`s.
     pub trait MutableByteVector for Sized? {

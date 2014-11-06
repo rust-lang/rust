@@ -594,7 +594,7 @@ mod test_set {
     use prelude::*;
 
     use super::HashSet;
-    use slice::ImmutablePartialEqSlice;
+    use slice::PartialEqSlicePrelude;
 
     #[test]
     fn test_disjoint() {

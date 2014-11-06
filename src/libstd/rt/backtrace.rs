@@ -18,7 +18,7 @@ use iter::Iterator;
 use option::{Some, None};
 use os;
 use result::{Ok, Err};
-use str::StrSlice;
+use str::StrPrelude;
 use sync::atomic;
 use unicode::char::UnicodeChar;
 
@@ -255,7 +255,7 @@ mod imp {
     pub fn write(w: &mut Writer) -> IoResult<()> {
         use iter::{Iterator, range};
         use result;
-        use slice::{MutableSlice};
+        use slice::{SlicePrelude};
 
         extern {
             fn backtrace(buf: *mut *mut libc::c_void,
@@ -394,7 +394,7 @@ mod imp {
         use path::GenericPath;
         use ptr::RawPtr;
         use ptr;
-        use slice::{ImmutableSlice, MutableSlice};
+        use slice::{SlicePrelude};
 
         ////////////////////////////////////////////////////////////////////////
         // libbacktrace.h API
@@ -666,8 +666,8 @@ mod imp {
     use path::Path;
     use result::{Ok, Err};
     use rt::mutex::{StaticNativeMutex, NATIVE_MUTEX_INIT};
-    use slice::ImmutableSlice;
-    use str::StrSlice;
+    use slice::SlicePrelude;
+    use str::StrPrelude;
     use dynamic_lib::DynamicLibrary;
 
     #[allow(non_snake_case)]

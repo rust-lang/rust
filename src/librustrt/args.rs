@@ -47,7 +47,7 @@ mod imp {
     use core::prelude::*;
 
     use alloc::boxed::Box;
-    use collections::slice::CloneableVector;
+    use collections::slice::CloneSliceAllocPrelude;
     use collections::vec::Vec;
     use core::mem;
     use core::slice;

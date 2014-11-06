@@ -20,8 +20,8 @@ use num;
 use num::{Int, Bounded};
 use num::{Float, FPNaN, FPInfinite, ToPrimitive};
 use option::{None, Option, Some};
-use slice::{ImmutableSlice, MutableSlice, CloneableVector};
-use str::StrSlice;
+use slice::{SlicePrelude, CloneSliceAllocPrelude};
+use str::StrPrelude;
 use string::String;
 use vec::Vec;
 

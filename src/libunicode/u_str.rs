@@ -18,11 +18,11 @@
  */
 
 use core::cmp;
-use core::slice::ImmutableSlice;
+use core::slice::SlicePrelude;
 use core::iter::{Filter, AdditiveIterator, Iterator, DoubleEndedIterator};
 use core::kinds::Sized;
 use core::option::{Option, None, Some};
-use core::str::{CharSplits, StrSlice};
+use core::str::{CharSplits, StrPrelude};
 use u_char;
 use u_char::UnicodeChar;
 use tables::grapheme::GraphemeCat;
@@ -32,7 +32,7 @@ pub type Words<'a> =
     Filter<'a, &'a str, CharSplits<'a, extern "Rust" fn(char) -> bool>>;
 
 /// Methods for Unicode string slices
-pub trait UnicodeStrSlice for Sized? {
+pub trait UnicodeStrPrelude for Sized? {
     /// Returns an iterator over the
     /// [grapheme clusters](http://www.unicode.org/reports/tr29/#Grapheme_Cluster_Boundaries)
     /// of the string.
@@ -129,7 +129,7 @@ pub trait UnicodeStrSlice for Sized? {
     fn trim_right<'a>(&'a self) -> &'a str;
 }
 
-impl UnicodeStrSlice for str {
+impl UnicodeStrPrelude for str {
     #[inline]
     fn graphemes(&self, is_extended: bool) -> Graphemes {
         Graphemes { string: self, extended: is_extended, cat: None, catb: None }

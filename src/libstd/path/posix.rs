@@ -20,8 +20,8 @@ use iter::{DoubleEndedIterator, AdditiveIterator, Extendable, Iterator, Map};
 use option::{Option, None, Some};
 use str::Str;
 use str;
-use slice::{CloneableVector, Splits, AsSlice, VectorVector,
-            ImmutablePartialEqSlice, ImmutableSlice};
+use slice::{CloneSliceAllocPrelude, Splits, AsSlice, VectorVector,
+            PartialEqSlicePrelude, SlicePrelude};
 use vec::Vec;
 
 use super::{BytesContainer, GenericPath, GenericPathUnsafe};
@@ -444,7 +444,7 @@ mod tests {
     use super::*;
     use mem;
     use str;
-    use str::StrSlice;
+    use str::StrPrelude;
 
     macro_rules! t(
         (s: $path:expr, $exp:expr) => (

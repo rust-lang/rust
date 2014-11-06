@@ -23,7 +23,7 @@ use core::ops;
 use core::raw::Slice as RawSlice;
 
 use hash;
-use slice::CloneableVector;
+use slice::CloneSliceAllocPrelude;
 use str;
 use str::{CharRange, StrAllocating, MaybeOwned, Owned};
 use str::Slice as MaybeOwnedSlice; // So many `Slice`s...
@@ -815,7 +815,7 @@ pub mod raw {
     /// * A raw pointer is dereferenced and transmuted to `&[u8]`;
     /// * The slice is not checked to see whether it contains valid UTF-8.
     pub unsafe fn from_buf_len(buf: *const u8, len: uint) -> String {
-        use slice::CloneableVector;
+        use slice::CloneSliceAllocPrelude;
         let slice: &[u8] = mem::transmute(Slice {
             data: buf,
             len: len,
@@ -851,10 +851,10 @@ mod tests {
     use test::Bencher;
 
     use str;
-    use str::{Str, StrSlice, Owned};
+    use str::{Str, StrPrelude, Owned};
     use super::{as_string, String};
     use vec::Vec;
-    use slice::CloneableVector;
+    use slice::CloneSliceAllocPrelude;
 
     #[test]
     fn test_as_string() {
