@@ -235,7 +235,7 @@ pub fn lookup_in_trait_adjusted<'a, 'tcx>(
     let mut selcx = traits::SelectionContext::new(fcx.infcx(),
                                                   &fcx.inh.param_env,
                                                   fcx);
-    if !selcx.evaluate_obligation_intracrate(&obligation) {
+    if !selcx.evaluate_obligation(&obligation) {
         debug!("--> Cannot match obligation");
         return None; // Cannot be matched, no such method resolution is possible.
     }
