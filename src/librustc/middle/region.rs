@@ -103,7 +103,7 @@ struct RegionResolutionVisitor<'a> {
 
 impl RegionMaps {
     pub fn relate_free_regions(&self, sub: FreeRegion, sup: FreeRegion) {
-        match self.free_region_map.borrow_mut().find_mut(&sub) {
+        match self.free_region_map.borrow_mut().get_mut(&sub) {
             Some(sups) => {
                 if !sups.iter().any(|x| x == &sup) {
                     sups.push(sup);
@@ -149,13 +149,13 @@ impl RegionMaps {
 
     pub fn opt_encl_scope(&self, id: ast::NodeId) -> Option<ast::NodeId> {
         //! Returns the narrowest scope that encloses `id`, if any.
-        self.scope_map.borrow().find(&id).map(|x| *x)
+        self.scope_map.borrow().get(&id).map(|x| *x)
     }
 
     #[allow(dead_code)] // used in middle::cfg
     pub fn encl_scope(&self, id: ast::NodeId) -> ast::NodeId {
         //! Returns the narrowest scope that encloses `id`, if any.
-        match self.scope_map.borrow().find(&id) {
+        match self.scope_map.borrow().get(&id) {
             Some(&r) => r,
             None => { panic!("no enclosing scope for id {}", id); }
         }
@@ -165,7 +165,7 @@ impl RegionMaps {
         /*!
          * Returns the lifetime of the local variable `var_id`
          */
-        match self.var_map.borrow().find(&var_id) {
+        match self.var_map.borrow().get(&var_id) {
             Some(&r) => r,
             None => { panic!("no enclosing scope for id {}", var_id); }
         }
@@ -175,7 +175,7 @@ impl RegionMaps {
         //! Returns the scope when temp created by expr_id will be cleaned up
 
         // check for a designated rvalue scope
-        match self.rvalue_scopes.borrow().find(&expr_id) {
+        match self.rvalue_scopes.borrow().get(&expr_id) {
             Some(&s) => {
                 debug!("temporary_scope({}) = {} [custom]", expr_id, s);
                 return Some(s);
@@ -232,7 +232,7 @@ impl RegionMaps {
 
         let mut s = subscope;
         while superscope != s {
-            match self.scope_map.borrow().find(&s) {
+            match self.scope_map.borrow().get(&s) {
                 None => {
                     debug!("is_subscope_of({}, {}, s={})=false",
                            subscope, superscope, s);
@@ -356,7 +356,7 @@ impl RegionMaps {
             let mut result = vec!(scope);
             let mut scope = scope;
             loop {
-                match this.scope_map.borrow().find(&scope) {
+                match this.scope_map.borrow().get(&scope) {
                     None => return result,
                     Some(&superscope) => {
                         result.push(superscope);

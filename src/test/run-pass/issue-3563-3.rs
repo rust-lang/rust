@@ -86,8 +86,8 @@ impl AsciiArt {
                 // element is:
                 // 1) potentially large
                 // 2) needs to be modified
-                let row = self.lines.get_mut(v);
-                *row.get_mut(h) = self.fill;
+                let row = &mut self.lines[v];
+                row[h] = self.fill;
             }
         }
     }

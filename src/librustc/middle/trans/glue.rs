@@ -144,7 +144,7 @@ pub fn get_drop_glue(ccx: &CrateContext, t: ty::t) -> ValueRef {
     debug!("make drop glue for {}", ppaux::ty_to_string(ccx.tcx(), t));
     let t = get_drop_glue_type(ccx, t);
     debug!("drop glue type {}", ppaux::ty_to_string(ccx.tcx(), t));
-    match ccx.drop_glues().borrow().find(&t) {
+    match ccx.drop_glues().borrow().get(&t) {
         Some(&glue) => return glue,
         _ => { }
     }
@@ -157,7 +157,7 @@ pub fn get_drop_glue(ccx: &CrateContext, t: ty::t) -> ValueRef {
 
     let llfnty = Type::glue_fn(ccx, llty);
 
-    let (glue, new_sym) = match ccx.available_drop_glues().borrow().find(&t) {
+    let (glue, new_sym) = match ccx.available_drop_glues().borrow().get(&t) {
         Some(old_sym) => {
             let glue = decl_cdecl_fn(ccx, old_sym.as_slice(), llfnty, ty::mk_nil());
             (glue, None)

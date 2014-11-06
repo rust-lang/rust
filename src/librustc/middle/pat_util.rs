@@ -34,7 +34,7 @@ pub fn pat_is_refutable(dm: &resolve::DefMap, pat: &Pat) -> bool {
     match pat.node {
         PatLit(_) | PatRange(_, _) => true,
         PatEnum(_, _) | PatIdent(_, _, None) | PatStruct(..) => {
-            match dm.borrow().find(&pat.id) {
+            match dm.borrow().get(&pat.id) {
                 Some(&DefVariant(..)) => true,
                 _ => false
             }
@@ -47,7 +47,7 @@ pub fn pat_is_refutable(dm: &resolve::DefMap, pat: &Pat) -> bool {
 pub fn pat_is_variant_or_struct(dm: &resolve::DefMap, pat: &Pat) -> bool {
     match pat.node {
         PatEnum(_, _) | PatIdent(_, _, None) | PatStruct(..) => {
-            match dm.borrow().find(&pat.id) {
+            match dm.borrow().get(&pat.id) {
                 Some(&DefVariant(..)) | Some(&DefStruct(..)) => true,
                 _ => false
             }
@@ -59,7 +59,7 @@ pub fn pat_is_variant_or_struct(dm: &resolve::DefMap, pat: &Pat) -> bool {
 pub fn pat_is_const(dm: &resolve::DefMap, pat: &Pat) -> bool {
     match pat.node {
         PatIdent(_, _, None) | PatEnum(..) => {
-            match dm.borrow().find(&pat.id) {
+            match dm.borrow().get(&pat.id) {
                 Some(&DefConst(..)) => true,
                 _ => false
             }

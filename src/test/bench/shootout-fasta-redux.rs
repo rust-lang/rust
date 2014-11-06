@@ -100,7 +100,7 @@ fn sum_and_scale(a: &'static [AminoAcid]) -> Vec<AminoAcid> {
         result.push(a_i);
     }
     let result_len = result.len();
-    result.get_mut(result_len - 1).p = LOOKUP_SCALE;
+    result[result_len - 1].p = LOOKUP_SCALE;
     result
 }
 

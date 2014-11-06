@@ -1243,7 +1243,7 @@ pub fn convert_struct(ccx: &CrateCtxt,
         let result = convert_field(ccx, &pty.generics, f, local_def(id));
 
         if result.name != special_idents::unnamed_field.name {
-            let dup = match seen_fields.find(&result.name) {
+            let dup = match seen_fields.get(&result.name) {
                 Some(prev_span) => {
                     span_err!(tcx.sess, f.span, E0124,
                               "field `{}` is already declared",
@@ -1386,7 +1386,7 @@ fn get_trait_def(ccx: &CrateCtxt, trait_id: ast::DefId) -> Rc<ty::TraitDef> {
 pub fn trait_def_of_item(ccx: &CrateCtxt, it: &ast::Item) -> Rc<ty::TraitDef> {
     let def_id = local_def(it.id);
     let tcx = ccx.tcx;
-    match tcx.trait_defs.borrow().find(&def_id) {
+    match tcx.trait_defs.borrow().get(&def_id) {
         Some(def) => return def.clone(),
         _ => {}
     }
@@ -1486,7 +1486,7 @@ pub fn ty_of_item(ccx: &CrateCtxt, it: &ast::Item)
                   -> ty::Polytype {
     let def_id = local_def(it.id);
     let tcx = ccx.tcx;
-    match tcx.tcache.borrow().find(&def_id) {
+    match tcx.tcache.borrow().get(&def_id) {
         Some(pty) => return pty.clone(),
         _ => {}
     }
@@ -1528,7 +1528,7 @@ pub fn ty_of_item(ccx: &CrateCtxt, it: &ast::Item)
             return pty;
         }
         ast::ItemTy(ref t, ref generics) => {
-            match tcx.tcache.borrow_mut().find(&local_def(it.id)) {
+            match tcx.tcache.borrow_mut().get(&local_def(it.id)) {
                 Some(pty) => return pty.clone(),
                 None => { }
             }
@@ -1933,7 +1933,7 @@ fn get_or_create_type_parameter_def<'tcx,AC>(this: &AC,
                                              -> ty::TypeParameterDef
     where AC: AstConv<'tcx>
 {
-    match this.tcx().ty_param_defs.borrow().find(&param.id) {
+    match this.tcx().ty_param_defs.borrow().get(&param.id) {
         Some(d) => { return (*d).clone(); }
         None => { }
     }
@@ -2027,13 +2027,13 @@ fn check_bounds_compatible(tcx: &ty::ctxt,
                            span: Span) {
     // Currently the only bound which is incompatible with other bounds is
     // Sized/Unsized.
-    if !param_bounds.builtin_bounds.contains_elem(ty::BoundSized) {
+    if !param_bounds.builtin_bounds.contains(&ty::BoundSized) {
         ty::each_bound_trait_and_supertraits(
             tcx,
             param_bounds.trait_bounds.as_slice(),
             |trait_ref| {
                 let trait_def = ty::lookup_trait_def(tcx, trait_ref.def_id);
-                if trait_def.bounds.builtin_bounds.contains_elem(ty::BoundSized) {
+                if trait_def.bounds.builtin_bounds.contains(&ty::BoundSized) {
                     span_err!(tcx.sess, span, E0129,
                               "incompatible bounds on type parameter `{}`, \
                                bound `{}` does not allow unsized type",
@@ -2136,7 +2136,7 @@ fn merge_param_bounds<'a>(tcx: &ty::ctxt,
         let predicate_param_id =
             tcx.def_map
                .borrow()
-               .find(&predicate.id)
+               .get(&predicate.id)
                .expect("compute_bounds(): resolve didn't resolve the type \
                         parameter identifier in a `where` clause")
                .def_id();

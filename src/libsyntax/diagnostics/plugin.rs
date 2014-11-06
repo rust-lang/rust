@@ -63,7 +63,7 @@ pub fn expand_diagnostic_used<'cx>(ecx: &'cx mut ExtCtxt,
         ()
     });
     with_used_diagnostics(|diagnostics| {
-        match diagnostics.swap(code.name, span) {
+        match diagnostics.insert(code.name, span) {
             Some(previous_span) => {
                 ecx.span_warn(span, format!(
                     "diagnostic code {} already used", token::get_ident(code).get()
@@ -93,7 +93,7 @@ pub fn expand_register_diagnostic<'cx>(ecx: &'cx mut ExtCtxt,
         _ => unreachable!()
     };
     with_registered_diagnostics(|diagnostics| {
-        if !diagnostics.insert(code.name, description) {
+        if diagnostics.insert(code.name, description).is_some() {
             ecx.span_err(span, format!(
                 "diagnostic code {} already registered", token::get_ident(*code).get()
             ).as_slice());

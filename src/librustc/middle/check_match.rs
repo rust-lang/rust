@@ -639,7 +639,7 @@ fn pat_constructors(cx: &MatchCheckCtxt, p: &Pat,
     let pat = raw_pat(p);
     match pat.node {
         PatIdent(..) =>
-            match cx.tcx.def_map.borrow().find(&pat.id) {
+            match cx.tcx.def_map.borrow().get(&pat.id) {
                 Some(&DefConst(..)) =>
                     cx.tcx.sess.span_bug(pat.span, "const pattern should've \
                                                     been rewritten"),
@@ -648,7 +648,7 @@ fn pat_constructors(cx: &MatchCheckCtxt, p: &Pat,
                 _ => vec!()
             },
         PatEnum(..) =>
-            match cx.tcx.def_map.borrow().find(&pat.id) {
+            match cx.tcx.def_map.borrow().get(&pat.id) {
                 Some(&DefConst(..)) =>
                     cx.tcx.sess.span_bug(pat.span, "const pattern should've \
                                                     been rewritten"),
@@ -656,7 +656,7 @@ fn pat_constructors(cx: &MatchCheckCtxt, p: &Pat,
                 _ => vec!(Single)
             },
         PatStruct(..) =>
-            match cx.tcx.def_map.borrow().find(&pat.id) {
+            match cx.tcx.def_map.borrow().get(&pat.id) {
                 Some(&DefConst(..)) =>
                     cx.tcx.sess.span_bug(pat.span, "const pattern should've \
                                                     been rewritten"),

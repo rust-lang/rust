@@ -15,7 +15,7 @@ struct HasNested {
 
 impl HasNested {
     fn method_push_local(&mut self) {
-        self.nest.get_mut(0).push(0);
+        self.nest[0].push(0);
     }
 }
 
