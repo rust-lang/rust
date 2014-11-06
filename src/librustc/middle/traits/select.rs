@@ -45,6 +45,22 @@ pub struct SelectionContext<'cx, 'tcx:'cx> {
     /// which is important for checking for trait bounds that
     /// recursively require themselves.
     skolemizer: TypeSkolemizer<'cx, 'tcx>,
+
+    /// If true, indicates that the evaluation should be conservative
+    /// and consider the possibility of types outside this crate.
+    /// This comes up primarily when resolving ambiguity. Imagine
+    /// there is some trait reference `$0 : Bar` where `$0` is an
+    /// inference variable. If `intercrate` is true, then we can never
+    /// say for sure that this reference is not implemented, even if
+    /// there are *no impls at all for `Bar`*, because `$0` could be
+    /// bound to some type that in a downstream crate that implements
+    /// `Bar`. This is the suitable mode for coherence. Elsewhere,
+    /// though, we set this to false, because we are only interested
+    /// in types that the user could actually have written --- in
+    /// other words, we consider `$0 : Bar` to be unimplemented if
+    /// there is no type that the user could *actually name* that
+    /// would satisfy it. This avoids crippling inference, basically.
+    intercrate: bool,
 }
 
 // A stack that walks back up the stack frame.
@@ -142,6 +158,20 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             param_env: param_env,
             typer: typer,
             skolemizer: infcx.skolemizer(),
+            intercrate: false,
+        }
+    }
+
+    pub fn intercrate(infcx: &'cx InferCtxt<'cx, 'tcx>,
+                      param_env: &'cx ty::ParameterEnvironment,
+                      typer: &'cx Typer<'tcx>)
+                      -> SelectionContext<'cx, 'tcx> {
+        SelectionContext {
+            infcx: infcx,
+            param_env: param_env,
+            typer: typer,
+            skolemizer: infcx.skolemizer(),
+            intercrate: true,
         }
     }
 
@@ -214,44 +244,20 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     // The result is "true" if the obligation *may* hold and "false" if
     // we can be sure it does not.
 
-    pub fn evaluate_obligation_intercrate(&mut self,
-                                          obligation: &Obligation)
-                                          -> bool
+    pub fn evaluate_obligation(&mut self,
+                               obligation: &Obligation)
+                               -> bool
     {
         /*!
          * Evaluates whether the obligation `obligation` can be
-         * satisfied (by any means). This "intercrate" version allows
-         * for the possibility that unbound type variables may be
-         * instantiated with types from another crate. This is
-         * important for coherence. In practice this means that
-         * unbound type variables must always be considered ambiguous.
+         * satisfied (by any means).
          */
 
-        debug!("evaluate_obligation_intercrate({})",
+        debug!("evaluate_obligation({})",
                obligation.repr(self.tcx()));
 
         let stack = self.push_stack(None, obligation);
-        self.evaluate_stack_intercrate(&stack).may_apply()
-    }
-
-    pub fn evaluate_obligation_intracrate(&mut self,
-                                            obligation: &Obligation)
-                                            -> bool
-    {
-        /*!
-         * Evaluates whether the obligation `obligation` can be
-         * satisfied (by any means). This "intracrate" version does
-         * not allow for the possibility that unbound type variables
-         * may be instantiated with types from another crate; hence,
-         * if there are unbound inputs but no crates locally visible,
-         * it considers the result to be unimplemented.
-         */
-
-        debug!("evaluate_obligation_intracrate({})",
-               obligation.repr(self.tcx()));
-
-        let stack = self.push_stack(None, obligation);
-        self.evaluate_stack_intracrate(&stack).may_apply()
+        self.evaluate_stack(&stack).may_apply()
     }
 
     fn evaluate_builtin_bound_recursively(&mut self,
@@ -288,46 +294,53 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         let stack = self.push_stack(previous_stack.map(|x| x), obligation);
 
-        // FIXME(#17901) -- Intercrate vs intracrate resolution is a
-        // tricky question here. For coherence, we want
-        // intercrate. Also, there was a nasty cycle around impls like
-        // `impl<T:Eq> Eq for Vec<T>` (which would wind up checking
-        // whether `$0:Eq`, where $0 was the value substituted for
-        // `T`, which could then be checked against the very same
-        // impl). This problem is avoided by the stricter rules around
-        // unbound type variables by intercrate. I suspect that in the
-        // latter case a more fine-grained rule would suffice (i.e.,
-        // consider it ambiguous if even 1 impl matches, no need to
-        // figure out which one, but call it unimplemented if 0 impls
-        // match).
-        let result = self.evaluate_stack_intercrate(&stack);
+        let result = self.evaluate_stack(&stack);
 
         debug!("result: {}", result);
         result
     }
 
-    fn evaluate_stack_intercrate(&mut self,
+    fn evaluate_stack(&mut self,
                       stack: &ObligationStack)
                       -> EvaluationResult
     {
-        // Whenever any of the types are unbound, there can always be
-        // an impl.  Even if there are no impls in this crate, perhaps
-        // the type would be unified with something from another crate
-        // that does provide an impl.
+        // In intercrate mode, whenever any of the types are unbound,
+        // there can always be an impl. Even if there are no impls in
+        // this crate, perhaps the type would be unified with
+        // something from another crate that does provide an impl.
+        //
+        // In intracrate mode, we must still be conservative. The reason is
+        // that we want to avoid cycles. Imagine an impl like:
+        //
+        //     impl<T:Eq> Eq for Vec<T>
+        //
+        // and a trait reference like `$0 : Eq` where `$0` is an
+        // unbound variable. When we evaluate this trait-reference, we
+        // will unify `$0` with `Vec<$1>` (for some fresh variable
+        // `$1`), on the condition that `$1 : Eq`. We will then wind
+        // up with many candidates (since that are other `Eq` impls
+        // that apply) and try to winnow things down. This results in
+        // a recurssive evaluation that `$1 : Eq` -- as you can
+        // imagine, this is just where we started. To avoid that, we
+        // check for unbound variables and return an ambiguous (hence possible)
+        // match if we've seen this trait before.
+        //
+        // This suffices to allow chains like `FnMut` implemented in
+        // terms of `Fn` etc, but we could probably make this more
+        // precise still.
         let input_types = stack.skol_trait_ref.input_types();
-        if input_types.iter().any(|&t| ty::type_is_skolemized(t)) {
-            debug!("evaluate_stack_intercrate({}) --> unbound argument, must be ambiguous",
+        let unbound_input_types = input_types.iter().any(|&t| ty::type_is_skolemized(t));
+        if
+            unbound_input_types &&
+             (self.intercrate ||
+              stack.iter().skip(1).any(
+                  |prev| stack.skol_trait_ref.def_id == prev.skol_trait_ref.def_id))
+        {
+            debug!("evaluate_stack_intracrate({}) --> unbound argument, recursion -->  ambiguous",
                    stack.skol_trait_ref.repr(self.tcx()));
             return EvaluatedToAmbig;
         }
 
-        self.evaluate_stack_intracrate(stack)
-    }
-
-    fn evaluate_stack_intracrate(&mut self,
-                                 stack: &ObligationStack)
-                                 -> EvaluationResult
-    {
         // If there is any previous entry on the stack that precisely
         // matches this obligation, then we can assume that the
         // obligation is satisfied for now (still all other conditions
@@ -592,7 +605,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 Err(_) => { return Err(()); }
             }
 
-            if self.evaluate_obligation_intracrate(obligation) {
+            if self.evaluate_obligation(obligation) {
                 Ok(())
             } else {
                 Err(())
@@ -804,12 +817,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                                                           &candidates[i],
                                                                           &candidates[j]));
                 if is_dup {
-                    debug!("Dropping candidate #{}/#{}: {}",
+                    debug!("Dropping candidate #{}/{}: {}",
                            i, candidates.len(), candidates[i].repr(self.tcx()));
                     candidates.swap_remove(i);
                 } else {
-                    debug!("Retaining candidate #{}/#{}",
-                           i, candidates.len());
+                    debug!("Retaining candidate #{}/{}: {}",
+                           i, candidates.len(), candidates[i].repr(self.tcx()));
                     i += 1;
                 }
             }
@@ -828,7 +841,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // be the case that you could still satisfy the obligation
         // from another crate by instantiating the type variables with
         // a type from another crate that does have an impl. This case
-        // is checked for in `evaluate_obligation` (and hence users
+        // is checked for in `evaluate_stack` (and hence users
         // who might care about this case, like coherence, should use
         // that function).
         if candidates.len() == 0 {
@@ -848,6 +861,17 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // cache that is specific to this scope, or to consult the
         // global cache. We want the cache that is specific to this
         // scope whenever where clauses might affect the result.
+
+        // Avoid using the master cache during coherence and just rely
+        // on the local cache. This effectively disables caching
+        // during coherence. It is really just a simplification to
+        // avoid us having to fear that coherence results "pollute"
+        // the master cache. Since coherence executes pretty quickly,
+        // it's not worth going to more trouble to increase the
+        // hit-rate I don't think.
+        if self.intercrate {
+            return &self.param_env.selection_cache;
+        }
 
         // If the trait refers to any parameters in scope, then use
         // the cache of the param-environment.

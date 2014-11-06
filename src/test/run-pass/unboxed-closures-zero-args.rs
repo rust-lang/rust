@@ -12,6 +12,6 @@
 
 fn main() {
     let mut zero = |&mut:| {};
-    zero.call_mut(());
+    let () = zero.call_mut(());
 }
 
