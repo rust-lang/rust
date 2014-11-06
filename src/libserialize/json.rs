@@ -2303,7 +2303,7 @@ impl ::Decoder<DecoderError> for Decoder {
 }
 
 /// A trait for converting values to JSON
-pub trait ToJson {
+pub trait ToJson for Sized? {
     /// Converts the value of `self` to an instance of JSON
     fn to_json(&self) -> Json;
 }
@@ -2389,7 +2389,7 @@ tuple_impl!{A, B, C, D, E, F, G, H, I, J}
 tuple_impl!{A, B, C, D, E, F, G, H, I, J, K}
 tuple_impl!{A, B, C, D, E, F, G, H, I, J, K, L}
 
-impl<'a, A: ToJson> ToJson for &'a [A] {
+impl<A: ToJson> ToJson for [A] {
     fn to_json(&self) -> Json { List(self.iter().map(|elt| elt.to_json()).collect()) }
 }
 
