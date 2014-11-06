@@ -135,16 +135,37 @@ mod imp {
     #[cfg(not(test))]
     extern {}
 
+    #[cfg(all(not(target_os = "ios"), not(target_os = "macos"), not(target_os = "windows")))]
     extern {
-        fn je_mallocx(size: size_t, flags: c_int) -> *mut c_void;
-        fn je_rallocx(ptr: *mut c_void, size: size_t, flags: c_int) -> *mut c_void;
-        fn je_xallocx(ptr: *mut c_void, size: size_t, extra: size_t, flags: c_int) -> size_t;
-        fn je_sdallocx(ptr: *mut c_void, size: size_t, flags: c_int);
-        fn je_nallocx(size: size_t, flags: c_int) -> size_t;
-        fn je_malloc_stats_print(write_cb: Option<extern "C" fn(cbopaque: *mut c_void,
+        fn mallocx(size: size_t, flags: c_int) -> *mut c_void;
+        fn rallocx(ptr: *mut c_void, size: size_t, flags: c_int) -> *mut c_void;
+        fn xallocx(ptr: *mut c_void, size: size_t, extra: size_t, flags: c_int) -> size_t;
+        fn sdallocx(ptr: *mut c_void, size: size_t, flags: c_int);
+        fn nallocx(size: size_t, flags: c_int) -> size_t;
+        fn malloc_stats_print(write_cb: Option<extern "C" fn(cbopaque: *mut c_void,
                                                                 *const c_char)>,
-                                 cbopaque: *mut c_void,
-                                 opts: *const c_char);
+                              cbopaque: *mut c_void,
+                              opts: *const c_char);
+    }
+
+    // jemalloc uses a prefix on Darwin and Windows as a workaround for linking deficiencies
+    #[cfg(any(target_os = "ios", target_os = "macos", target_os = "windows"))]
+    extern {
+        #[link_name = "je_mallocx"]
+        fn mallocx(size: size_t, flags: c_int) -> *mut c_void;
+        #[link_name = "je_rallocx"]
+        fn rallocx(ptr: *mut c_void, size: size_t, flags: c_int) -> *mut c_void;
+        #[link_name = "je_xallocx"]
+        fn xallocx(ptr: *mut c_void, size: size_t, extra: size_t, flags: c_int) -> size_t;
+        #[link_name = "je_sdallocx"]
+        fn sdallocx(ptr: *mut c_void, size: size_t, flags: c_int);
+        #[link_name = "je_nallocx"]
+        fn nallocx(size: size_t, flags: c_int) -> size_t;
+        #[link_name = "je_malloc_stats_print"]
+        fn malloc_stats_print(write_cb: Option<extern "C" fn(cbopaque: *mut c_void,
+                                                                *const c_char)>,
+                              cbopaque: *mut c_void,
+                              opts: *const c_char);
     }
 
     // -lpthread needs to occur after -ljemalloc, the earlier argument isn't enough
@@ -164,37 +185,37 @@ mod imp {
     #[inline]
     pub unsafe fn allocate(size: uint, align: uint) -> *mut u8 {
         let flags = align_to_flags(align);
-        je_mallocx(size as size_t, flags) as *mut u8
+        mallocx(size as size_t, flags) as *mut u8
     }
 
     #[inline]
     pub unsafe fn reallocate(ptr: *mut u8, _old_size: uint, size: uint, align: uint) -> *mut u8 {
         let flags = align_to_flags(align);
-        je_rallocx(ptr as *mut c_void, size as size_t, flags) as *mut u8
+        rallocx(ptr as *mut c_void, size as size_t, flags) as *mut u8
     }
 
     #[inline]
     pub unsafe fn reallocate_inplace(ptr: *mut u8, _old_size: uint, size: uint,
                                      align: uint) -> uint {
         let flags = align_to_flags(align);
-        je_xallocx(ptr as *mut c_void, size as size_t, 0, flags) as uint
+        xallocx(ptr as *mut c_void, size as size_t, 0, flags) as uint
     }
 
     #[inline]
     pub unsafe fn deallocate(ptr: *mut u8, old_size: uint, align: uint) {
         let flags = align_to_flags(align);
-        je_sdallocx(ptr as *mut c_void, old_size as size_t, flags)
+        sdallocx(ptr as *mut c_void, old_size as size_t, flags)
     }
 
     #[inline]
     pub fn usable_size(size: uint, align: uint) -> uint {
         let flags = align_to_flags(align);
-        unsafe { je_nallocx(size as size_t, flags) as uint }
+        unsafe { nallocx(size as size_t, flags) as uint }
     }
 
     pub fn stats_print() {
         unsafe {
-            je_malloc_stats_print(None, null_mut(), null())
+            malloc_stats_print(None, null_mut(), null())
         }
     }
 }
