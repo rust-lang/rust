@@ -8,18 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct NoCloneOrEq;
-
 #[deriving(PartialEq)]
-struct E {
-    x: NoCloneOrEq //~ ERROR binary operation `==` cannot be applied to type `NoCloneOrEq`
-         //~^ ERROR binary operation `!=` cannot be applied to type `NoCloneOrEq`
-}
-#[deriving(Clone)]
-struct C {
-    x: NoCloneOrEq
-    //~^ ERROR the trait `core::clone::Clone` is not implemented for the type `NoCloneOrEq`
+enum Test<'a> {
+    Slice(&'a int)
 }
 
-
-fn main() {}
+fn main() {
+    assert!(Slice(&1) == Slice(&1))
+}

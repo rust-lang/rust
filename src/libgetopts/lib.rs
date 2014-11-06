@@ -93,7 +93,6 @@
 
 #[cfg(test)] #[phase(plugin, link)] extern crate log;
 
-use std::cmp::PartialEq;
 use std::fmt;
 use std::result::{Err, Ok};
 use std::result;

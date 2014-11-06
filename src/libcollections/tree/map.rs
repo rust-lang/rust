@@ -579,7 +579,7 @@ impl<K, V> TreeMap<K, V> {
     /// let headers = get_headers();
     /// let ua_key = "User-Agent";
     /// let ua = headers.find_with(|k| {
-    ///    ua_key.cmp(&k.as_slice())
+    ///    ua_key.cmp(k.as_slice())
     /// });
     ///
     /// assert_eq!((*ua.unwrap()).as_slice(), "Curl-Rust/0.1");
@@ -603,7 +603,7 @@ impl<K, V> TreeMap<K, V> {
     /// t.insert("User-Agent", "Curl-Rust/0.1");
     ///
     /// let new_ua = "Safari/156.0";
-    /// match t.find_with_mut(|k| "User-Agent".cmp(k)) {
+    /// match t.find_with_mut(|&k| "User-Agent".cmp(k)) {
     ///    Some(x) => *x = new_ua,
     ///    None => panic!(),
     /// }
@@ -1302,7 +1302,7 @@ mod test_treemap {
     #[test]
     fn find_with_empty() {
         let m: TreeMap<&'static str,int> = TreeMap::new();
-        assert!(m.find_with(|k| "test".cmp(k)) == None);
+        assert!(m.find_with(|&k| "test".cmp(k)) == None);
     }
 
     #[test]
@@ -1311,7 +1311,7 @@ mod test_treemap {
         assert!(m.insert("test1", 2i));
         assert!(m.insert("test2", 3i));
         assert!(m.insert("test3", 3i));
-        assert_eq!(m.find_with(|k| "test4".cmp(k)), None);
+        assert_eq!(m.find_with(|&k| "test4".cmp(k)), None);
     }
 
     #[test]
@@ -1320,7 +1320,7 @@ mod test_treemap {
         assert!(m.insert("test1", 2i));
         assert!(m.insert("test2", 3i));
         assert!(m.insert("test3", 4i));
-        assert_eq!(m.find_with(|k| "test2".cmp(k)), Some(&3i));
+        assert_eq!(m.find_with(|&k| "test2".cmp(k)), Some(&3i));
     }
 
     #[test]
@@ -1343,10 +1343,10 @@ mod test_treemap {
         assert!(m.insert("t2", 8));
         assert!(m.insert("t5", 14));
         let new = 100;
-        match m.find_with_mut(|k| "t5".cmp(k)) {
+        match m.find_with_mut(|&k| "t5".cmp(k)) {
           None => panic!(), Some(x) => *x = new
         }
-        assert_eq!(m.find_with(|k| "t5".cmp(k)), Some(&new));
+        assert_eq!(m.find_with(|&k| "t5".cmp(k)), Some(&new));
     }
 
     #[test]
