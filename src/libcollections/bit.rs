@@ -68,7 +68,7 @@ use core::prelude::*;
 use core::cmp;
 use core::default::Default;
 use core::fmt;
-use core::iter::{Chain, Enumerate, Repeat, Skip, Take};
+use core::iter::{Chain, Enumerate, Repeat, Skip, Take, repeat};
 use core::iter;
 use core::num::Int;
 use core::slice;
@@ -88,11 +88,11 @@ fn match_words <'a,'b>(a: &'a Bitv, b: &'b Bitv) -> (MatchWords<'a>, MatchWords<
 
     // have to uselessly pretend to pad the longer one for type matching
     if a_len < b_len {
-        (a.mask_words(0).chain(Repeat::new(0u32).enumerate().take(b_len).skip(a_len)),
-         b.mask_words(0).chain(Repeat::new(0u32).enumerate().take(0).skip(0)))
+        (a.mask_words(0).chain(repeat(0u32).enumerate().take(b_len).skip(a_len)),
+         b.mask_words(0).chain(repeat(0u32).enumerate().take(0).skip(0)))
     } else {
-        (a.mask_words(0).chain(Repeat::new(0u32).enumerate().take(0).skip(0)),
-         b.mask_words(0).chain(Repeat::new(0u32).enumerate().take(a_len).skip(b_len)))
+        (a.mask_words(0).chain(repeat(0u32).enumerate().take(0).skip(0)),
+         b.mask_words(0).chain(repeat(0u32).enumerate().take(a_len).skip(b_len)))
     }
 }
 
@@ -943,7 +943,7 @@ impl<'a> DoubleEndedIterator<bool> for Bits<'a> {
     }
 }
 
-impl<'a> ExactSize<bool> for Bits<'a> {}
+impl<'a> ExactSizeIterator<bool> for Bits<'a> {}
 
 impl<'a> RandomAccessIterator<bool> for Bits<'a> {
     #[inline]

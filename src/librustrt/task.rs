@@ -19,7 +19,7 @@ use alloc::arc::Arc;
 use alloc::boxed::Box;
 use core::any::Any;
 use core::atomic::{AtomicUint, SeqCst};
-use core::iter::Take;
+use core::iter::{IteratorExt, Take};
 use core::kinds::marker;
 use core::mem;
 use core::prelude::{Clone, Drop, Err, Iterator, None, Ok, Option, Send, Some};

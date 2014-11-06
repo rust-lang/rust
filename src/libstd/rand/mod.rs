@@ -224,7 +224,7 @@
 use cell::RefCell;
 use clone::Clone;
 use io::IoResult;
-use iter::Iterator;
+use iter::{Iterator, IteratorExt};
 use mem;
 use rc::Rc;
 use result::{Ok, Err};

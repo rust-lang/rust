@@ -15,9 +15,10 @@ use clone::Clone;
 use cmp::{PartialEq, Eq, PartialOrd, Ord, Ordering};
 use hash;
 use io::Writer;
-use iter::{DoubleEndedIterator, AdditiveIterator, Extend, Iterator, Map};
-use kinds::Sized;
+use iter::{DoubleEndedIteratorExt, AdditiveIterator, Extend};
+use iter::{Iterator, IteratorExt, Map};
 use option::{Option, None, Some};
+use kinds::Sized;
 use str::{FromStr, Str};
 use str;
 use slice::{CloneSliceAllocPrelude, Splits, AsSlice, VectorVector,

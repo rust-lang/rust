@@ -2696,7 +2696,7 @@ fn exported_name<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, id: ast::NodeId,
         // Use provided name
         Some(name) => name.get().to_string(),
 
-        _ => ccx.tcx().map.with_path(id, |mut path| {
+        _ => ccx.tcx().map.with_path(id, |path| {
             if attr::contains_name(attrs, "no_mangle") {
                 // Don't mangle
                 path.last().unwrap().to_string()
