@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use ast::{MetaItem, Item, Expr};
+use ast::{MetaItem, Item, Expr, mod};
 use codemap::Span;
 use ext::base::ExtCtxt;
 use ext::build::AstBuilder;
@@ -25,12 +25,38 @@ pub fn expand_deriving_eq(cx: &mut ExtCtxt,
     // structures are equal if all fields are equal, and non equal, if
     // any fields are not equal or if the enum variants are different
     fn cs_eq(cx: &mut ExtCtxt, span: Span, substr: &Substructure) -> P<Expr> {
-        cs_and(|cx, span, _, _| cx.expr_bool(span, false),
-                                 cx, span, substr)
+        cs_fold(
+            true,  // use foldl
+            |cx, span, subexpr, self_f, other_fs| {
+                let other_f = match other_fs {
+                    [ref o_f] => o_f,
+                    _ => cx.span_bug(span, "not exactly 2 arguments in `deriving(Eq)`")
+                };
+
+                let eq = cx.expr_binary(span, ast::BiEq, self_f, other_f.clone());
+
+                cx.expr_binary(span, ast::BiAnd, subexpr, eq)
+            },
+            cx.expr_bool(span, true),
+            |cx, span, _, _| cx.expr_bool(span, false),
+            cx, span, substr)
     }
     fn cs_ne(cx: &mut ExtCtxt, span: Span, substr: &Substructure) -> P<Expr> {
-        cs_or(|cx, span, _, _| cx.expr_bool(span, true),
-              cx, span, substr)
+        cs_fold(
+            true,  // use foldl
+            |cx, span, subexpr, self_f, other_fs| {
+                let other_f = match other_fs {
+                    [ref o_f] => o_f,
+                    _ => cx.span_bug(span, "not exactly 2 arguments in `deriving(Eq)`")
+                };
+
+                let eq = cx.expr_binary(span, ast::BiNe, self_f, other_f.clone());
+
+                cx.expr_binary(span, ast::BiOr, subexpr, eq)
+            },
+            cx.expr_bool(span, false),
+            |cx, span, _, _| cx.expr_bool(span, true),
+            cx, span, substr)
     }
 
     macro_rules! md (

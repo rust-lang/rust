@@ -890,9 +890,21 @@ impl Json {
 
      /// If the Json value is an Object, returns the value associated with the provided key.
     /// Otherwise, returns None.
+    // NOTE(stage0): remove function after a snapshot
+    #[cfg(stage0)]
     pub fn find<'a>(&'a self, key: &str) -> Option<&'a Json>{
         match self {
             &Object(ref map) => map.find_with(|s| key.cmp(&s.as_slice())),
+            _ => None
+        }
+    }
+
+     /// If the Json value is an Object, returns the value associated with the provided key.
+    /// Otherwise, returns None.
+    #[cfg(not(stage0))]  // NOTE(stage0): remove cfg after a snapshot
+    pub fn find<'a>(&'a self, key: &str) -> Option<&'a Json>{
+        match self {
+            &Object(ref map) => map.find_with(|s| key.cmp(s.as_slice())),
             _ => None
         }
     }
@@ -914,10 +926,36 @@ impl Json {
     /// If the Json value is an Object, performs a depth-first search until
     /// a value associated with the provided key is found. If no value is found
     /// or the Json value is not an Object, returns None.
+    // NOTE(stage0): remove function after a snapshot
+    #[cfg(stage0)]
     pub fn search<'a>(&'a self, key: &str) -> Option<&'a Json> {
         match self {
             &Object(ref map) => {
                 match map.find_with(|s| key.cmp(&s.as_slice())) {
+                    Some(json_value) => Some(json_value),
+                    None => {
+                        for (_, v) in map.iter() {
+                            match v.search(key) {
+                                x if x.is_some() => return x,
+                                _ => ()
+                            }
+                        }
+                        None
+                    }
+                }
+            },
+            _ => None
+        }
+    }
+
+    /// If the Json value is an Object, performs a depth-first search until
+    /// a value associated with the provided key is found. If no value is found
+    /// or the Json value is not an Object, returns None.
+    #[cfg(not(stage0))]  // NOTE(stage0): remove cfg after a snapshot
+    pub fn search<'a>(&'a self, key: &str) -> Option<&'a Json> {
+        match self {
+            &Object(ref map) => {
+                match map.find_with(|s| key.cmp(s.as_slice())) {
                     Some(json_value) => Some(json_value),
                     None => {
                         for (_, v) in map.iter() {

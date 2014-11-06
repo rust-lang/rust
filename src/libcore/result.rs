@@ -276,7 +276,6 @@
 
 #![stable]
 
-use cmp::PartialEq;
 use std::fmt::Show;
 use slice;
 use slice::AsSlice;

@@ -532,9 +532,16 @@ impl<'a> PartialOrd for MaybeOwned<'a> {
 }
 
 impl<'a> Ord for MaybeOwned<'a> {
+    // NOTE(stage0): remove method after a snapshot
+    #[cfg(stage0)]
     #[inline]
     fn cmp(&self, other: &MaybeOwned) -> Ordering {
         self.as_slice().cmp(&other.as_slice())
+    }
+    #[cfg(not(stage0))]  // NOTE(stage0): remove cfg after a snapshot
+    #[inline]
+    fn cmp(&self, other: &MaybeOwned) -> Ordering {
+        self.as_slice().cmp(other.as_slice())
     }
 }
 
@@ -1523,11 +1530,11 @@ mod tests {
 
     #[test]
     fn test_total_ord() {
-        "1234".cmp(&("123")) == Greater;
-        "123".cmp(&("1234")) == Less;
-        "1234".cmp(&("1234")) == Equal;
-        "12345555".cmp(&("123456")) == Less;
-        "22".cmp(&("1234")) == Greater;
+        "1234".cmp("123") == Greater;
+        "123".cmp("1234") == Less;
+        "1234".cmp("1234") == Equal;
+        "12345555".cmp("123456") == Less;
+        "22".cmp("1234") == Greater;
     }
 
     #[test]
