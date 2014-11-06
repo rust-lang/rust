@@ -16,7 +16,6 @@ use std::collections::HashMap;
 use syntax::ast::*;
 use syntax::ast_util::{walk_pat};
 use syntax::codemap::{Span, DUMMY_SP};
-use syntax::owned_slice::OwnedSlice;
 
 pub type PatIdMap = HashMap<Ident, NodeId>;
 
@@ -133,8 +132,7 @@ pub fn def_to_path(tcx: &ty::ctxt, id: DefId) -> Path {
         global: false,
         segments: path.last().map(|elem| PathSegment {
             identifier: Ident::new(elem.name()),
-            lifetimes: vec!(),
-            types: OwnedSlice::empty()
+            parameters: PathParameters::none(),
         }).into_iter().collect(),
         span: DUMMY_SP,
     })

@@ -204,9 +204,6 @@ impl<'a> LifetimeContext<'a> {
                 ast::TraitTyParamBound(ref trait_ref) => {
                     self.visit_trait_ref(trait_ref);
                 }
-                ast::UnboxedFnTyParamBound(ref fn_decl) => {
-                    self.visit_unboxed_fn_ty_param_bound(&**fn_decl);
-                }
                 ast::RegionTyParamBound(ref lifetime) => {
                     self.visit_lifetime_ref(lifetime);
                 }
@@ -223,18 +220,6 @@ impl<'a> LifetimeContext<'a> {
                 v.visit_lifetime_decl(lifetime);
             }
             v.visit_path(&trait_ref.path, trait_ref.ref_id);
-        })
-    }
-
-    fn visit_unboxed_fn_ty_param_bound(&mut self,
-                                       bound: &ast::UnboxedFnBound) {
-        self.with(|scope, f| {
-            f(LateScope(bound.ref_id, &bound.lifetimes, scope))
-        }, |v| {
-            for argument in bound.decl.inputs.iter() {
-                v.visit_ty(&*argument.ty);
-            }
-            v.visit_ty(&*bound.decl.output);
         })
     }
 

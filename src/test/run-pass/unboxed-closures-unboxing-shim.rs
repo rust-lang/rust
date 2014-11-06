@@ -13,7 +13,7 @@
 use std::ops::FnOnce;
 
 fn main() {
-    let task: Box<|: int| -> int> = box |: x| x;
+    let task: Box<FnOnce(int) -> int> = box |: x| x;
     assert!(task.call_once((1234i,)) == 1234i);
 }
 
