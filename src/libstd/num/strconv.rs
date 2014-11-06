@@ -451,7 +451,7 @@ pub fn from_str_radix_float<T: Float>(src: &str, radix: uint) -> Option<T> {
     };
 
     // The significand to accumulate
-    let mut sig = if is_positive { _0 } else { -_1 };
+    let mut sig = if is_positive { _0 } else { -_0 };
     // Necessary to detect overflow
     let mut prev_sig = sig;
     let mut cs = src.chars().enumerate();
@@ -646,6 +646,22 @@ mod test {
         assert_eq!(f, Some(Float::infinity()))
         let fe : Option<f32> = from_str_radix_float("1e40", 10);
         assert_eq!(fe, Some(Float::infinity()))
+    }
+
+    #[test]
+    fn test_from_str_radix_float() {
+        let x1 : Option<f64> = from_str_radix_float("-123.456", 10);
+        assert_eq!(x1, Some(-123.456));
+        let x2 : Option<f32> = from_str_radix_float("123.456", 10);
+        assert_eq!(x2, Some(123.456));
+        let x3 : Option<f32> = from_str_radix_float("-0.0", 10);
+        assert_eq!(x3, Some(-0.0));
+        let x4 : Option<f32> = from_str_radix_float("0.0", 10);
+        assert_eq!(x4, Some(0.0));
+        let x4 : Option<f32> = from_str_radix_float("1.0", 10);
+        assert_eq!(x4, Some(1.0));
+        let x5 : Option<f32> = from_str_radix_float("-1.0", 10);
+        assert_eq!(x5, Some(-1.0));
     }
 }
 
