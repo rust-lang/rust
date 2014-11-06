@@ -74,7 +74,7 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
     }
 
     fn lookup_and_handle_definition(&mut self, id: &ast::NodeId) {
-        self.tcx.def_map.borrow().find(id).map(|def| {
+        self.tcx.def_map.borrow().get(id).map(|def| {
             match def {
                 &def::DefConst(_) => {
                     self.check_def_id(def.def_id())
@@ -95,7 +95,7 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
     fn lookup_and_handle_method(&mut self, id: ast::NodeId,
                                 span: codemap::Span) {
         let method_call = typeck::MethodCall::expr(id);
-        match self.tcx.method_map.borrow().find(&method_call) {
+        match self.tcx.method_map.borrow().get(&method_call) {
             Some(method) => {
                 match method.origin {
                     typeck::MethodStatic(def_id) => {
@@ -493,7 +493,7 @@ impl<'a, 'tcx> DeadVisitor<'a, 'tcx> {
         // method of a private type is used, but the type itself is never
         // called directly.
         let impl_items = self.tcx.impl_items.borrow();
-        match self.tcx.inherent_impls.borrow().find(&local_def(id)) {
+        match self.tcx.inherent_impls.borrow().get(&local_def(id)) {
             None => (),
             Some(impl_list) => {
                 for impl_did in impl_list.iter() {

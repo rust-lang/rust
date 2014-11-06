@@ -417,7 +417,7 @@ fn json_input(input: &str) -> Result<Output, String> {
         Ok(json::Object(obj)) => {
             let mut obj = obj;
             // Make sure the schema is what we expect
-            match obj.pop(&"schema".to_string()) {
+            match obj.remove(&"schema".to_string()) {
                 Some(json::String(version)) => {
                     if version.as_slice() != SCHEMA_VERSION {
                         return Err(format!(
@@ -428,7 +428,7 @@ fn json_input(input: &str) -> Result<Output, String> {
                 Some(..) => return Err("malformed json".to_string()),
                 None => return Err("expected a schema version".to_string()),
             }
-            let krate = match obj.pop(&"crate".to_string()) {
+            let krate = match obj.remove(&"crate".to_string()) {
                 Some(json) => {
                     let mut d = json::Decoder::new(json);
                     Decodable::decode(&mut d).unwrap()

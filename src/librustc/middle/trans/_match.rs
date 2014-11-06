@@ -696,13 +696,13 @@ fn any_irrefutable_adt_pat(tcx: &ty::ctxt, m: &[Match], col: uint) -> bool {
         match pat.node {
             ast::PatTup(_) => true,
             ast::PatStruct(..) => {
-                match tcx.def_map.borrow().find(&pat.id) {
+                match tcx.def_map.borrow().get(&pat.id) {
                     Some(&def::DefVariant(..)) => false,
                     _ => true,
                 }
             }
             ast::PatEnum(..) | ast::PatIdent(_, _, None) => {
-                match tcx.def_map.borrow().find(&pat.id) {
+                match tcx.def_map.borrow().get(&pat.id) {
                     Some(&def::DefStruct(..)) => true,
                     _ => false
                 }

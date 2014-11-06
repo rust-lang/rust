@@ -1080,14 +1080,14 @@ pub enum BuiltinBound {
 }
 
 pub fn empty_builtin_bounds() -> BuiltinBounds {
-    EnumSet::empty()
+    EnumSet::new()
 }
 
 pub fn all_builtin_bounds() -> BuiltinBounds {
-    let mut set = EnumSet::empty();
-    set.add(BoundSend);
-    set.add(BoundSized);
-    set.add(BoundSync);
+    let mut set = EnumSet::new();
+    set.insert(BoundSend);
+    set.insert(BoundSized);
+    set.insert(BoundSync);
     set
 }
 
@@ -1584,7 +1584,7 @@ pub fn mk_t(cx: &ctxt, st: sty) -> t {
 
     let key = intern_key { sty: &st };
 
-    match cx.interner.borrow().find(&key) {
+    match cx.interner.borrow().get(&key) {
         Some(t) => unsafe { return mem::transmute(&t.sty); },
         _ => ()
     }
@@ -1837,6 +1837,14 @@ pub fn mk_slice(cx: &ctxt, r: Region, tm: mt) -> t {
 }
 
 pub fn mk_tup(cx: &ctxt, ts: Vec<t>) -> t { mk_t(cx, ty_tup(ts)) }
+
+pub fn mk_tup_or_nil(cx: &ctxt, ts: Vec<t>) -> t {
+    if ts.len() == 0 {
+        ty::mk_nil()
+    } else {
+        mk_t(cx, ty_tup(ts))
+    }
+}
 
 pub fn mk_closure(cx: &ctxt, fty: ClosureTy) -> t {
     mk_t(cx, ty_closure(box fty))
@@ -2418,11 +2426,11 @@ pub fn type_contents(cx: &ctxt, ty: t) -> TypeContents {
         // value for the type contents of list.  The correct value is
         // TC::OwnsOwned.  This manifested as issue #4821.
         let ty_id = type_id(ty);
-        match cache.find(&ty_id) {
+        match cache.get(&ty_id) {
             Some(tc) => { return *tc; }
             None => {}
         }
-        match cx.tc_cache.borrow().find(&ty_id) {    // Must check both caches!
+        match cx.tc_cache.borrow().get(&ty_id) {    // Must check both caches!
             Some(tc) => { return *tc; }
             None => {}
         }
@@ -3192,7 +3200,7 @@ pub fn array_element_ty(t: t) -> Option<t> {
 }
 
 pub fn node_id_to_trait_ref(cx: &ctxt, id: ast::NodeId) -> Rc<ty::TraitRef> {
-    match cx.trait_refs.borrow().find(&id) {
+    match cx.trait_refs.borrow().get(&id) {
         Some(t) => t.clone(),
         None => cx.sess.bug(
             format!("node_id_to_trait_ref: no trait ref for node `{}`",
@@ -3214,14 +3222,14 @@ pub fn node_id_to_type(cx: &ctxt, id: ast::NodeId) -> t {
 }
 
 pub fn node_id_to_type_opt(cx: &ctxt, id: ast::NodeId) -> Option<t> {
-    match cx.node_types.borrow().find(&(id as uint)) {
+    match cx.node_types.borrow().get(&(id as uint)) {
        Some(&t) => Some(t),
        None => None
     }
 }
 
 pub fn node_id_item_substs(cx: &ctxt, id: ast::NodeId) -> ItemSubsts {
-    match cx.item_substs.borrow().find(&id) {
+    match cx.item_substs.borrow().get(&id) {
       None => ItemSubsts::empty(),
       Some(ts) => ts.clone(),
     }
@@ -3361,8 +3369,8 @@ pub fn expr_ty_adjusted(cx: &ctxt, expr: &ast::Expr) -> t {
      */
 
     adjust_ty(cx, expr.span, expr.id, expr_ty(cx, expr),
-              cx.adjustments.borrow().find(&expr.id),
-              |method_call| cx.method_map.borrow().find(&method_call).map(|method| method.ty))
+              cx.adjustments.borrow().get(&expr.id),
+              |method_call| cx.method_map.borrow().get(&method_call).map(|method| method.ty))
 }
 
 pub fn expr_span(cx: &ctxt, id: NodeId) -> Span {
@@ -3553,7 +3561,7 @@ pub fn unsize_ty(cx: &ctxt,
 }
 
 pub fn resolve_expr(tcx: &ctxt, expr: &ast::Expr) -> def::Def {
-    match tcx.def_map.borrow().find(&expr.id) {
+    match tcx.def_map.borrow().get(&expr.id) {
         Some(&def) => def,
         None => {
             tcx.sess.span_bug(expr.span, format!(
@@ -3690,7 +3698,7 @@ pub fn expr_kind(tcx: &ctxt, expr: &ast::Expr) -> ExprKind {
         }
 
         ast::ExprCast(..) => {
-            match tcx.node_types.borrow().find(&(expr.id as uint)) {
+            match tcx.node_types.borrow().get(&(expr.id as uint)) {
                 Some(&t) => {
                     if type_is_trait(t) {
                         RvalueDpsExpr
@@ -3736,7 +3744,7 @@ pub fn expr_kind(tcx: &ctxt, expr: &ast::Expr) -> ExprKind {
 
         ast::ExprBox(ref place, _) => {
             // Special case `Box<T>` for now:
-            let definition = match tcx.def_map.borrow().find(&place.id) {
+            let definition = match tcx.def_map.borrow().get(&place.id) {
                 Some(&def) => def,
                 None => panic!("no def for place"),
             };
@@ -4003,7 +4011,7 @@ pub fn note_and_explain_type_err(cx: &ctxt, err: &type_err) {
 }
 
 pub fn provided_source(cx: &ctxt, id: ast::DefId) -> Option<ast::DefId> {
-    cx.provided_method_sources.borrow().find(&id).map(|x| *x)
+    cx.provided_method_sources.borrow().get(&id).map(|x| *x)
 }
 
 pub fn provided_trait_methods(cx: &ctxt, id: ast::DefId) -> Vec<Rc<Method>> {
@@ -4113,7 +4121,7 @@ pub fn impl_or_trait_item(cx: &ctxt, id: ast::DefId) -> ImplOrTraitItem {
 pub fn is_associated_type(cx: &ctxt, id: ast::DefId) -> bool {
     memoized(&cx.associated_types, id, |id: ast::DefId| {
         if id.krate == ast::LOCAL_CRATE {
-            match cx.impl_or_trait_items.borrow().find(&id) {
+            match cx.impl_or_trait_items.borrow().get(&id) {
                 Some(ref item) => {
                     match **item {
                         TypeTraitItem(_) => true,
@@ -4198,7 +4206,7 @@ pub fn impl_trait_ref(cx: &ctxt, id: ast::DefId) -> Option<Rc<TraitRef>> {
 
 pub fn trait_ref_to_def_id(tcx: &ctxt, tr: &ast::TraitRef) -> ast::DefId {
     let def = *tcx.def_map.borrow()
-                     .find(&tr.ref_id)
+                     .get(&tr.ref_id)
                      .expect("no def-map entry for trait");
     def.def_id()
 }
@@ -4215,7 +4223,7 @@ pub fn try_add_builtin_trait(
     //! is a builtin trait.
 
     match tcx.lang_items.to_builtin_kind(trait_def_id) {
-        Some(bound) => { builtin_bounds.add(bound); true }
+        Some(bound) => { builtin_bounds.insert(bound); true }
         None => false
     }
 }
@@ -4346,7 +4354,7 @@ impl DtorKind {
 /* If struct_id names a struct with a dtor, return Some(the dtor's id).
    Otherwise return none. */
 pub fn ty_dtor(cx: &ctxt, struct_id: DefId) -> DtorKind {
-    match cx.destructor_for_type.borrow().find(&struct_id) {
+    match cx.destructor_for_type.borrow().get(&struct_id) {
         Some(&method_def_id) => {
             let flag = !has_attr(cx, struct_id, "unsafe_no_drop_flag");
 
@@ -4569,7 +4577,7 @@ pub fn lookup_field_type(tcx: &ctxt,
 pub fn lookup_struct_fields(cx: &ctxt, did: ast::DefId) -> Vec<field_ty> {
     if did.krate == ast::LOCAL_CRATE {
         let struct_fields = cx.struct_fields.borrow();
-        match struct_fields.find(&did) {
+        match struct_fields.get(&did) {
             Some(fields) => (**fields).clone(),
             _ => {
                 cx.sess.bug(
@@ -4632,7 +4640,7 @@ pub fn unboxed_closure_upvars(tcx: &ctxt, closure_id: ast::DefId, substs: &Subst
     // implemented.
     assert!(closure_id.krate == ast::LOCAL_CRATE);
     let capture_mode = tcx.capture_modes.borrow().get_copy(&closure_id.node);
-    match tcx.freevars.borrow().find(&closure_id.node) {
+    match tcx.freevars.borrow().get(&closure_id.node) {
         None => vec![],
         Some(ref freevars) => {
             freevars.iter().map(|freevar| {
@@ -4898,7 +4906,7 @@ pub fn required_region_bounds(tcx: &ctxt,
                           all_bounds: &mut Vec<ty::Region>) {
         all_bounds.push_all(region_bounds.as_slice());
 
-        if builtin_bounds.contains_elem(ty::BoundSend) {
+        if builtin_bounds.contains(&ty::BoundSend) {
             all_bounds.push(ty::ReStatic);
         }
     }
@@ -4921,7 +4929,7 @@ pub fn item_variances(tcx: &ctxt, item_id: ast::DefId) -> Rc<ItemVariances> {
 pub fn record_trait_implementation(tcx: &ctxt,
                                    trait_def_id: DefId,
                                    impl_def_id: DefId) {
-    match tcx.trait_impls.borrow().find(&trait_def_id) {
+    match tcx.trait_impls.borrow().get(&trait_def_id) {
         Some(impls_for_trait) => {
             impls_for_trait.borrow_mut().push(impl_def_id);
             return;
@@ -5094,7 +5102,7 @@ pub fn trait_of_item(tcx: &ctxt, def_id: ast::DefId) -> Option<ast::DefId> {
 /// Otherwise, return `None`.
 pub fn trait_item_of_item(tcx: &ctxt, def_id: ast::DefId)
                           -> Option<ImplOrTraitItemId> {
-    let impl_item = match tcx.impl_or_trait_items.borrow().find(&def_id) {
+    let impl_item = match tcx.impl_or_trait_items.borrow().get(&def_id) {
         Some(m) => m.clone(),
         None => return None,
     };
@@ -5449,7 +5457,7 @@ impl<'tcx> mc::Typer<'tcx> for ty::ctxt<'tcx> {
     }
 
     fn node_method_ty(&self, method_call: typeck::MethodCall) -> Option<ty::t> {
-        self.method_map.borrow().find(&method_call).map(|method| method.ty)
+        self.method_map.borrow().get(&method_call).map(|method| method.ty)
     }
 
     fn adjustments<'a>(&'a self) -> &'a RefCell<NodeMap<ty::AutoAdjustment>> {
@@ -5561,7 +5569,7 @@ pub type FreevarMap = NodeMap<Vec<Freevar>>;
 pub type CaptureModeMap = NodeMap<ast::CaptureClause>;
 
 pub fn with_freevars<T>(tcx: &ty::ctxt, fid: ast::NodeId, f: |&[Freevar]| -> T) -> T {
-    match tcx.freevars.borrow().find(&fid) {
+    match tcx.freevars.borrow().get(&fid) {
         None => f(&[]),
         Some(d) => f(d.as_slice())
     }

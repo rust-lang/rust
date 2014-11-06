@@ -40,7 +40,7 @@ use syntax::ast::{TupleVariantKind, Ty, TyBool, TyChar, TyClosure, TyF32};
 use syntax::ast::{TyF64, TyFloat, TyI, TyI8, TyI16, TyI32, TyI64, TyInt};
 use syntax::ast::{TyParam, TyParamBound, TyPath, TyPtr, TyProc, TyQPath};
 use syntax::ast::{TyRptr, TyStr, TyU, TyU8, TyU16, TyU32, TyU64, TyUint};
-use syntax::ast::{TypeImplItem, UnboxedFnTyParamBound, UnnamedField};
+use syntax::ast::{TypeImplItem, UnnamedField};
 use syntax::ast::{Variant, ViewItem, ViewItemExternCrate};
 use syntax::ast::{ViewItemUse, ViewPathGlob, ViewPathList, ViewPathSimple};
 use syntax::ast::{Visibility};
@@ -2234,7 +2234,7 @@ impl<'a> Resolver<'a> {
 
                 let mut import_resolutions = module_.import_resolutions
                                                     .borrow_mut();
-                match import_resolutions.find_mut(&target) {
+                match import_resolutions.get_mut(&target) {
                     Some(resolution) => {
                         debug!("(building import directive) bumping \
                                 reference");
@@ -2552,7 +2552,7 @@ impl<'a> Resolver<'a> {
         // Search for direct children of the containing module.
         self.populate_module_if_necessary(&containing_module);
 
-        match containing_module.children.borrow().find(&source) {
+        match containing_module.children.borrow().get(&source) {
             None => {
                 // Continue.
             }
@@ -2588,7 +2588,7 @@ impl<'a> Resolver<'a> {
                 }
 
                 // Now search the exported imports within the containing module.
-                match containing_module.import_resolutions.borrow().find(&source) {
+                match containing_module.import_resolutions.borrow().get(&source) {
                     None => {
                         debug!("(resolving single import) no import");
                         // The containing module definitely doesn't have an
@@ -2853,7 +2853,7 @@ impl<'a> Resolver<'a> {
 
             // Here we merge two import resolutions.
             let mut import_resolutions = module_.import_resolutions.borrow_mut();
-            match import_resolutions.find_mut(ident) {
+            match import_resolutions.get_mut(ident) {
                 Some(dest_import_resolution) => {
                     // Merge the two import resolutions at a finer-grained
                     // level.
@@ -3046,7 +3046,7 @@ impl<'a> Resolver<'a> {
 
         // Check for item conflicts.
         let children = module.children.borrow();
-        let name_bindings = match children.find(&name) {
+        let name_bindings = match children.get(&name) {
             None => {
                 // There can't be any conflicts.
                 return
@@ -3432,7 +3432,7 @@ impl<'a> Resolver<'a> {
         // its immediate children.
         self.populate_module_if_necessary(&module_);
 
-        match module_.children.borrow().find(&name) {
+        match module_.children.borrow().get(&name) {
             Some(name_bindings)
                     if name_bindings.defined_in_namespace(namespace) => {
                 debug!("top name bindings succeeded");
@@ -3448,7 +3448,7 @@ impl<'a> Resolver<'a> {
         // all its imports in the usual way; this is because chains of
         // adjacent import statements are processed as though they mutated the
         // current scope.
-        match module_.import_resolutions.borrow().find(&name) {
+        match module_.import_resolutions.borrow().get(&name) {
             None => {
                 // Not found; continue.
             }
@@ -3705,7 +3705,7 @@ impl<'a> Resolver<'a> {
         // First, check the direct children of the module.
         self.populate_module_if_necessary(&module_);
 
-        match module_.children.borrow().find(&name) {
+        match module_.children.borrow().get(&name) {
             Some(name_bindings)
                     if name_bindings.defined_in_namespace(namespace) => {
                 debug!("(resolving name in module) found node as child");
@@ -3728,7 +3728,7 @@ impl<'a> Resolver<'a> {
         }
 
         // Check the list of resolved imports.
-        match module_.import_resolutions.borrow().find(&name) {
+        match module_.import_resolutions.borrow().get(&name) {
             Some(import_resolution) if allow_private_imports ||
                                        import_resolution.is_public => {
 
@@ -3967,7 +3967,7 @@ impl<'a> Resolver<'a> {
             Some(name) => {
                 self.populate_module_if_necessary(&orig_module);
 
-                match orig_module.children.borrow().find(&name) {
+                match orig_module.children.borrow().get(&name) {
                     None => {
                         debug!("!!! (with scope) didn't find `{}` in `{}`",
                                token::get_name(name),
@@ -4523,41 +4523,6 @@ impl<'a> Resolver<'a> {
             TraitTyParamBound(ref tref) => {
                 self.resolve_trait_reference(id, tref, reference_type)
             }
-            UnboxedFnTyParamBound(ref unboxed_function) => {
-                match self.resolve_path(unboxed_function.ref_id,
-                                        &unboxed_function.path,
-                                        TypeNS,
-                                        true) {
-                    None => {
-                        let path_str = self.path_names_to_string(
-                            &unboxed_function.path);
-                        self.resolve_error(unboxed_function.path.span,
-                                           format!("unresolved trait `{}`",
-                                                   path_str).as_slice())
-                    }
-                    Some(def) => {
-                        match def {
-                            (DefTrait(_), _) => {
-                                self.record_def(unboxed_function.ref_id, def);
-                            }
-                            _ => {
-                                let msg =
-                                    format!("`{}` is not a trait",
-                                            self.path_names_to_string(
-                                                &unboxed_function.path));
-                                self.resolve_error(unboxed_function.path.span,
-                                                   msg.as_slice());
-                            }
-                        }
-                    }
-                }
-
-                for argument in unboxed_function.decl.inputs.iter() {
-                    self.resolve_type(&*argument.ty);
-                }
-
-                self.resolve_type(&*unboxed_function.decl.output);
-            }
             RegionTyParamBound(..) => {}
         }
     }
@@ -4691,7 +4656,7 @@ impl<'a> Resolver<'a> {
             Some(ref trait_ref) => {
                 self.resolve_trait_reference(id, trait_ref, TraitImplementation);
 
-                match self.def_map.borrow().find(&trait_ref.ref_id) {
+                match self.def_map.borrow().get(&trait_ref.ref_id) {
                     Some(def) => {
                         let did = def.def_id();
                         Some((did, trait_ref.clone()))
@@ -4767,7 +4732,7 @@ impl<'a> Resolver<'a> {
                 // a type (shadowing any imported modules or types with this name), leading
                 // to weird user-visible bugs. So we ward this off here. See #15060.
                 TyPath(ref path, _, path_id) => {
-                    match self.def_map.borrow().find(&path_id) {
+                    match self.def_map.borrow().get(&path_id) {
                         // FIXME: should we catch other options and give more precise errors?
                         Some(&DefMod(_)) => {
                             self.resolve_error(path.span, "inherent implementations are not \
@@ -4785,7 +4750,7 @@ impl<'a> Resolver<'a> {
     fn check_trait_item(&self, name: Name, span: Span) {
         // If there is a TraitRef in scope for an impl, then the method must be in the trait.
         for &(did, ref trait_ref) in self.current_trait_ref.iter() {
-            if self.trait_item_map.find(&(name, did)).is_none() {
+            if self.trait_item_map.get(&(name, did)).is_none() {
                 let path_str = self.path_names_to_string(&trait_ref.path);
                 self.resolve_error(span,
                                     format!("method `{}` is not a member of trait `{}`",
@@ -4849,7 +4814,7 @@ impl<'a> Resolver<'a> {
             let map_i = self.binding_mode_map(&**p);
 
             for (&key, &binding_0) in map_0.iter() {
-                match map_i.find(&key) {
+                match map_i.get(&key) {
                   None => {
                     self.resolve_error(
                         p.span,
@@ -4908,7 +4873,7 @@ impl<'a> Resolver<'a> {
 
         // Move down in the graph, if there's an anonymous module rooted here.
         let orig_module = self.current_module.clone();
-        match orig_module.anonymous_children.borrow().find(&block.id) {
+        match orig_module.anonymous_children.borrow().get(&block.id) {
             None => { /* Nothing to do. */ }
             Some(anonymous_module) => {
                 debug!("(resolving block) found anonymous module, moving \
@@ -4943,7 +4908,7 @@ impl<'a> Resolver<'a> {
 
                     match self.primitive_type_table
                             .primitive_types
-                            .find(&id.name) {
+                            .get(&id.name) {
 
                         Some(&primitive_type) => {
                             result_def =
@@ -4951,12 +4916,12 @@ impl<'a> Resolver<'a> {
 
                             if path.segments
                                    .iter()
-                                   .any(|s| !s.lifetimes.is_empty()) {
+                                   .any(|s| s.parameters.has_lifetimes()) {
                                 span_err!(self.session, path.span, E0157,
                                     "lifetime parameters are not allowed on this type");
                             } else if path.segments
                                           .iter()
-                                          .any(|s| s.types.len() > 0) {
+                                          .any(|s| !s.parameters.is_empty()) {
                                 span_err!(self.session, path.span, E0153,
                                     "type parameters are not allowed on this type");
                             }
@@ -5181,7 +5146,7 @@ impl<'a> Resolver<'a> {
                                                            token::get_ident(
                                                                ident))
                                                    .as_slice())
-                            } else if bindings_list.find(&renamed) ==
+                            } else if bindings_list.get(&renamed) ==
                                     Some(&pat_id) {
                                 // Then this is a duplicate variable in the
                                 // same disjunction, which is an error.
@@ -5234,7 +5199,7 @@ impl<'a> Resolver<'a> {
                     // Check the types in the path pattern.
                     for ty in path.segments
                                   .iter()
-                                  .flat_map(|s| s.types.iter()) {
+                                  .flat_map(|s| s.parameters.types().into_iter()) {
                         self.resolve_type(&**ty);
                     }
                 }
@@ -5340,7 +5305,7 @@ impl<'a> Resolver<'a> {
                     namespace: Namespace,
                     check_ribs: bool) -> Option<(Def, LastPrivate)> {
         // First, resolve the types.
-        for ty in path.segments.iter().flat_map(|s| s.types.iter()) {
+        for ty in path.segments.iter().flat_map(|s| s.parameters.types().into_iter()) {
             self.resolve_type(&**ty);
         }
 
@@ -5407,7 +5372,7 @@ impl<'a> Resolver<'a> {
         // First, search children.
         self.populate_module_if_necessary(&containing_module);
 
-        match containing_module.children.borrow().find(&name) {
+        match containing_module.children.borrow().get(&name) {
             Some(child_name_bindings) => {
                 match child_name_bindings.def_for_namespace(namespace) {
                     Some(def) => {
@@ -5426,7 +5391,7 @@ impl<'a> Resolver<'a> {
         }
 
         // Next, search import resolutions.
-        match containing_module.import_resolutions.borrow().find(&name) {
+        match containing_module.import_resolutions.borrow().get(&name) {
             Some(import_resolution) if import_resolution.is_public => {
                 match (*import_resolution).target_for_namespace(namespace) {
                     Some(target) => {
@@ -5715,10 +5680,10 @@ impl<'a> Resolver<'a> {
             let last_name = name_path.last().unwrap();
 
             if name_path.len() == 1 {
-                match this.primitive_type_table.primitive_types.find(last_name) {
+                match this.primitive_type_table.primitive_types.get(last_name) {
                     Some(_) => None,
                     None => {
-                        match this.current_module.children.borrow().find(last_name) {
+                        match this.current_module.children.borrow().get(last_name) {
                             Some(child) => child.get_module_if_available(),
                             None => None
                         }
@@ -5746,10 +5711,10 @@ impl<'a> Resolver<'a> {
 
         if allowed == Everything {
             // Look for a field with the same name in the current self_type.
-            match self.def_map.borrow().find(&node_id) {
+            match self.def_map.borrow().get(&node_id) {
                  Some(&DefTy(did, _))
                 | Some(&DefStruct(did))
-                | Some(&DefVariant(_, did, _)) => match self.structs.find(&did) {
+                | Some(&DefVariant(_, did, _)) => match self.structs.get(&did) {
                     None => {}
                     Some(fields) => {
                         if fields.iter().any(|&field_name| name == field_name) {
@@ -5765,7 +5730,7 @@ impl<'a> Resolver<'a> {
 
         // Look for a method in the current self type's impl module.
         match get_module(self, path.span, name_path.as_slice()) {
-            Some(module) => match module.children.borrow().find(&name) {
+            Some(module) => match module.children.borrow().get(&name) {
                 Some(binding) => {
                     let p_str = self.path_names_to_string(&path);
                     match binding.def_for_namespace(ValueNS) {
@@ -5790,7 +5755,7 @@ impl<'a> Resolver<'a> {
             Some((did, ref trait_ref)) => {
                 let path_str = self.path_names_to_string(&trait_ref.path);
 
-                match self.trait_item_map.find(&(name, did)) {
+                match self.trait_item_map.get(&(name, did)) {
                     Some(&StaticMethodTraitItemKind) => {
                         return TraitMethod(path_str)
                     }
@@ -6270,7 +6235,7 @@ impl<'a> Resolver<'a> {
                                   "unused import".to_string());
         }
 
-        let (v_priv, t_priv) = match self.last_private.find(&id) {
+        let (v_priv, t_priv) = match self.last_private.get(&id) {
             Some(&LastImport {
                 value_priv: v,
                 value_used: _,

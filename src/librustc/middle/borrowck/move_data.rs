@@ -242,7 +242,7 @@ impl MoveData {
          * base paths that do not yet have an index.
          */
 
-        match self.path_map.borrow().find(&lp) {
+        match self.path_map.borrow().get(&lp) {
             Some(&index) => {
                 return index;
             }
@@ -577,7 +577,7 @@ impl<'a, 'tcx> FlowedMoveData<'a, 'tcx> {
         //! Returns the kind of a move of `loan_path` by `id`, if one exists.
 
         let mut ret = None;
-        for loan_path_index in self.move_data.path_map.borrow().find(&*loan_path).iter() {
+        for loan_path_index in self.move_data.path_map.borrow().get(&*loan_path).iter() {
             self.dfcx_moves.each_gen_bit(id, |move_index| {
                 let the_move = self.move_data.moves.borrow();
                 let the_move = (*the_move)[move_index];

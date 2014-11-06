@@ -11,7 +11,7 @@
 trait Trait {}
 
 fn f<F:Trait(int) -> int>(x: F) {}
-//~^ ERROR unboxed function trait must be one of `Fn`, `FnMut`, or `FnOnce`
+//~^ ERROR wrong number of type arguments: expected 0, found 2
 
 fn main() {}
 

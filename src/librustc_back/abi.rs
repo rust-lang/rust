@@ -14,6 +14,9 @@ pub const box_field_refcnt: uint = 0u;
 pub const box_field_drop_glue: uint = 1u;
 pub const box_field_body: uint = 4u;
 
+// FIXME(18590) although we have three different layouts here, the compiler relies on
+// them being the same. We should replace them with one set of constants.
+
 // The two halves of a closure: code and environment.
 pub const fn_field_code: uint = 0u;
 pub const fn_field_box: uint = 1u;

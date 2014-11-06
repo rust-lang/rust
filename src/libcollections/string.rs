@@ -330,8 +330,8 @@ impl String {
 
         let mut buf = String::new();
         buf.push(ch);
-        let size = buf.len() * length;
-        buf.reserve(size);
+        let size = buf.len() * (length - 1);
+        buf.reserve_exact(size);
         for _ in range(1, length) {
             buf.push(ch)
         }
@@ -379,27 +379,23 @@ impl String {
     /// assert!(s.capacity() >= 10);
     /// ```
     #[inline]
-    #[unstable = "just implemented, needs to prove itself"]
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn capacity(&self) -> uint {
         self.vec.capacity()
     }
 
-    /// Reserves capacity for at least `extra` additional bytes in this string buffer.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// let mut s = String::with_capacity(10);
-    /// let before = s.capacity();
-    /// s.reserve_additional(100);
-    /// assert!(s.capacity() - before >= 100);
-    /// ```
-    #[inline]
+    /// Deprecated: Renamed to `reserve`.
+    #[deprecated = "Renamed to `reserve`"]
     pub fn reserve_additional(&mut self, extra: uint) {
-        self.vec.reserve_additional(extra)
+        self.vec.reserve(extra)
     }
 
-    /// Reserves capacity for at least `capacity` bytes in this string buffer.
+    /// Reserves capacity for at least `additional` more bytes to be inserted in the given
+    /// `String`. The collection may reserve more space to avoid frequent reallocations.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the new capacity overflows `uint`.
     ///
     /// # Example
     ///
@@ -409,22 +405,33 @@ impl String {
     /// assert!(s.capacity() >= 10);
     /// ```
     #[inline]
-    pub fn reserve(&mut self, capacity: uint) {
-        self.vec.reserve(capacity)
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
+    pub fn reserve(&mut self, additional: uint) {
+        self.vec.reserve(additional)
     }
 
-    /// Reserves capacity for exactly `capacity` bytes in this string buffer.
+    /// Reserves the minimum capacity for exactly `additional` more bytes to be inserted in the
+    /// given `String`. Does nothing if the capacity is already sufficient.
+    ///
+    /// Note that the allocator may give the collection more space than it requests. Therefore
+    /// capacity can not be relied upon to be precisely minimal. Prefer `reserve` if future
+    /// insertions are expected.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the new capacity overflows `uint`.
     ///
     /// # Example
     ///
     /// ```
     /// let mut s = String::new();
-    /// s.reserve_exact(10);
-    /// assert_eq!(s.capacity(), 10);
+    /// s.reserve(10);
+    /// assert!(s.capacity() >= 10);
     /// ```
     #[inline]
-    pub fn reserve_exact(&mut self, capacity: uint) {
-        self.vec.reserve_exact(capacity)
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
+    pub fn reserve_exact(&mut self, additional: uint) {
+        self.vec.reserve_exact(additional)
     }
 
     /// Shrinks the capacity of this string buffer to match its length.
@@ -439,6 +446,7 @@ impl String {
     /// assert_eq!(s.capacity(), 3);
     /// ```
     #[inline]
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn shrink_to_fit(&mut self) {
         self.vec.shrink_to_fit()
     }
@@ -459,7 +467,7 @@ impl String {
     pub fn push(&mut self, ch: char) {
         let cur_len = self.len();
         // This may use up to 4 bytes.
-        self.vec.reserve_additional(4);
+        self.vec.reserve(4);
 
         unsafe {
             // Attempt to not use an intermediate buffer by just pushing bytes
@@ -590,7 +598,7 @@ impl String {
         let len = self.len();
         assert!(idx <= len);
         assert!(self.as_slice().is_char_boundary(idx));
-        self.vec.reserve_additional(4);
+        self.vec.reserve(4);
         let mut bits = [0, ..4];
         let amt = ch.encode_utf8(bits).unwrap();
 

@@ -298,7 +298,7 @@ impl<'a, 'tcx> mem_categorization::Typer<'tcx> for FnCtxt<'a, 'tcx> {
     }
     fn node_method_ty(&self, method_call: typeck::MethodCall)
                       -> Option<ty::t> {
-        self.inh.method_map.borrow().find(&method_call).map(|m| m.ty)
+        self.inh.method_map.borrow().get(&method_call).map(|m| m.ty)
     }
     fn adjustments<'a>(&'a self) -> &'a RefCell<NodeMap<ty::AutoAdjustment>> {
         &self.inh.adjustments
@@ -1556,7 +1556,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     pub fn local_ty(&self, span: Span, nid: ast::NodeId) -> ty::t {
-        match self.inh.locals.borrow().find(&nid) {
+        match self.inh.locals.borrow().get(&nid) {
             Some(&t) => t,
             None => {
                 self.tcx().sess.span_bug(
@@ -1808,7 +1808,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     pub fn expr_ty(&self, ex: &ast::Expr) -> ty::t {
-        match self.inh.node_types.borrow().find(&ex.id) {
+        match self.inh.node_types.borrow().get(&ex.id) {
             Some(&t) => t,
             None => {
                 self.tcx().sess.bug(format!("no type for expr in fcx {}",
@@ -1824,7 +1824,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
          */
 
         let adjustments = self.inh.adjustments.borrow();
-        let adjustment = adjustments.find(&expr.id);
+        let adjustment = adjustments.get(&expr.id);
         self.adjust_expr_ty(expr, adjustment)
     }
 
@@ -1845,12 +1845,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                       raw_ty,
                       adjustment,
                       |method_call| self.inh.method_map.borrow()
-                                                       .find(&method_call)
+                                                       .get(&method_call)
                                                        .map(|method| method.ty))
     }
 
     pub fn node_ty(&self, id: ast::NodeId) -> ty::t {
-        match self.inh.node_types.borrow().find(&id) {
+        match self.inh.node_types.borrow().get(&id) {
             Some(&t) => t,
             None => {
                 self.tcx().sess.bug(
@@ -1868,7 +1868,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub fn opt_node_ty_substs(&self,
                               id: ast::NodeId,
                               f: |&ty::ItemSubsts|) {
-        match self.inh.item_substs.borrow().find(&id) {
+        match self.inh.item_substs.borrow().get(&id) {
             Some(s) => { f(s) }
             None => { }
         }
@@ -3481,11 +3481,7 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
 
         // Tuple up the arguments and insert the resulting function type into
         // the `unboxed_closures` table.
-        fn_ty.sig.inputs = if fn_ty.sig.inputs.len() == 0 {
-            vec![ty::mk_nil()]
-        } else {
-            vec![ty::mk_tup(fcx.tcx(), fn_ty.sig.inputs)]
-        };
+        fn_ty.sig.inputs = vec![ty::mk_tup_or_nil(fcx.tcx(), fn_ty.sig.inputs)];
 
         let kind = match kind {
             ast::FnUnboxedClosureKind => ty::FnUnboxedClosureKind,
@@ -3554,7 +3550,7 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
                     let (bounds, onceness) = match expr.node {
                         ast::ExprProc(..) => {
                             let mut bounds = ty::region_existential_bound(ty::ReStatic);
-                            bounds.builtin_bounds.add(ty::BoundSend); // FIXME
+                            bounds.builtin_bounds.insert(ty::BoundSend); // FIXME
                             (bounds, ast::Once)
                         }
                         _ => {
@@ -3763,7 +3759,7 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
         for field in ast_fields.iter() {
             let mut expected_field_type = ty::mk_err();
 
-            let pair = class_field_map.find(&field.ident.node.name).map(|x| *x);
+            let pair = class_field_map.get(&field.ident.node.name).map(|x| *x);
             match pair {
                 None => {
                     fcx.type_error_message(
@@ -4422,7 +4418,7 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
       }
       ast::ExprStruct(ref path, ref fields, ref base_expr) => {
         // Resolve the path.
-        let def = tcx.def_map.borrow().find(&id).map(|i| *i);
+        let def = tcx.def_map.borrow().get(&id).map(|i| *i);
         let struct_id = match def {
             Some(def::DefVariant(enum_id, variant_id, true)) => {
                 check_struct_enum_variant(fcx, id, expr.span, enum_id,
@@ -4478,7 +4474,8 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
             let type_and_substs = astconv::ast_path_to_ty_relaxed(fcx,
                                                                   fcx.infcx(),
                                                                   struct_id,
-                                                                  path);
+                                                                  path,
+                                                                  expr.id);
             match fcx.mk_subty(false,
                                infer::Misc(path.span),
                                actual_structure_type,
@@ -5339,6 +5336,7 @@ pub fn instantiate_path(fcx: &FnCtxt,
             Some(space) => {
                 push_explicit_parameters_from_segment_to_substs(fcx,
                                                                 space,
+                                                                path.span,
                                                                 type_defs,
                                                                 region_defs,
                                                                 segment,
@@ -5374,13 +5372,13 @@ pub fn instantiate_path(fcx: &FnCtxt,
         fcx: &FnCtxt,
         segment: &ast::PathSegment)
     {
-        for typ in segment.types.iter() {
+        for typ in segment.parameters.types().iter() {
             span_err!(fcx.tcx().sess, typ.span, E0085,
                 "type parameters may not appear here");
             break;
         }
 
-        for lifetime in segment.lifetimes.iter() {
+        for lifetime in segment.parameters.lifetimes().iter() {
             span_err!(fcx.tcx().sess, lifetime.span, E0086,
                 "lifetime parameters may not appear here");
             break;
@@ -5390,6 +5388,7 @@ pub fn instantiate_path(fcx: &FnCtxt,
     fn push_explicit_parameters_from_segment_to_substs(
         fcx: &FnCtxt,
         space: subst::ParamSpace,
+        span: Span,
         type_defs: &VecPerParamSpace<ty::TypeParameterDef>,
         region_defs: &VecPerParamSpace<ty::RegionParameterDef>,
         segment: &ast::PathSegment,
@@ -5412,10 +5411,31 @@ pub fn instantiate_path(fcx: &FnCtxt,
          * span of the N+1'th parameter.
          */
 
+        match segment.parameters {
+            ast::AngleBracketedParameters(ref data) => {
+                push_explicit_angle_bracketed_parameters_from_segment_to_substs(
+                    fcx, space, type_defs, region_defs, data, substs);
+            }
+
+            ast::ParenthesizedParameters(ref data) => {
+                push_explicit_parenthesized_parameters_from_segment_to_substs(
+                    fcx, space, span, type_defs, data, substs);
+            }
+        }
+    }
+
+    fn push_explicit_angle_bracketed_parameters_from_segment_to_substs(
+        fcx: &FnCtxt,
+        space: subst::ParamSpace,
+        type_defs: &VecPerParamSpace<ty::TypeParameterDef>,
+        region_defs: &VecPerParamSpace<ty::RegionParameterDef>,
+        data: &ast::AngleBracketedParameterData,
+        substs: &mut Substs)
+    {
         {
             let type_count = type_defs.len(space);
             assert_eq!(substs.types.len(space), 0);
-            for (i, typ) in segment.types.iter().enumerate() {
+            for (i, typ) in data.types.iter().enumerate() {
                 let t = fcx.to_ty(&**typ);
                 if i < type_count {
                     substs.types.push(space, t);
@@ -5424,7 +5444,7 @@ pub fn instantiate_path(fcx: &FnCtxt,
                         "too many type parameters provided: \
                          expected at most {} parameter(s), \
                          found {} parameter(s)",
-                         type_count, segment.types.len());
+                         type_count, data.types.len());
                     substs.types.truncate(space, 0);
                 }
             }
@@ -5433,7 +5453,7 @@ pub fn instantiate_path(fcx: &FnCtxt,
         {
             let region_count = region_defs.len(space);
             assert_eq!(substs.regions().len(space), 0);
-            for (i, lifetime) in segment.lifetimes.iter().enumerate() {
+            for (i, lifetime) in data.lifetimes.iter().enumerate() {
                 let r = ast_region_to_region(fcx.tcx(), lifetime);
                 if i < region_count {
                     substs.mut_regions().push(space, r);
@@ -5442,10 +5462,56 @@ pub fn instantiate_path(fcx: &FnCtxt,
                         "too many lifetime parameters provided: \
                          expected {} parameter(s), found {} parameter(s)",
                         region_count,
-                        segment.lifetimes.len());
+                        data.lifetimes.len());
                     substs.mut_regions().truncate(space, 0);
                 }
             }
+        }
+    }
+
+    fn push_explicit_parenthesized_parameters_from_segment_to_substs(
+        fcx: &FnCtxt,
+        space: subst::ParamSpace,
+        span: Span,
+        type_defs: &VecPerParamSpace<ty::TypeParameterDef>,
+        data: &ast::ParenthesizedParameterData,
+        substs: &mut Substs)
+    {
+        /*!
+         * As with
+         * `push_explicit_angle_bracketed_parameters_from_segment_to_substs`,
+         * but intended for `Foo(A,B) -> C` form. This expands to
+         * roughly the same thing as `Foo<(A,B),C>`. One important
+         * difference has to do with the treatment of anonymous
+         * regions, which are translated into bound regions (NYI).
+         */
+
+        let type_count = type_defs.len(space);
+        if type_count < 2 {
+            span_err!(fcx.tcx().sess, span, E0167,
+                      "parenthesized form always supplies 2 type parameters, \
+                      but only {} parameter(s) were expected",
+                      type_count);
+        }
+
+        let input_tys: Vec<ty::t> =
+            data.inputs.iter().map(|ty| fcx.to_ty(&**ty)).collect();
+
+        let tuple_ty =
+            ty::mk_tup_or_nil(fcx.tcx(), input_tys);
+
+        if type_count >= 1 {
+            substs.types.push(space, tuple_ty);
+        }
+
+        let output_ty: Option<ty::t> =
+            data.output.as_ref().map(|ty| fcx.to_ty(&**ty));
+
+        let output_ty =
+            output_ty.unwrap_or(ty::mk_nil());
+
+        if type_count >= 2 {
+            substs.types.push(space, output_ty);
         }
     }
 
@@ -5603,7 +5669,7 @@ pub fn may_break(cx: &ty::ctxt, id: ast::NodeId, b: &ast::Block) -> bool {
     (block_query(b, |e| {
         match e.node {
             ast::ExprBreak(Some(_)) => {
-                match cx.def_map.borrow().find(&e.id) {
+                match cx.def_map.borrow().get(&e.id) {
                     Some(&def::DefLabel(loop_id)) if id == loop_id => true,
                     _ => false,
                 }

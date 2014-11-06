@@ -28,8 +28,10 @@ import lldb
 import os
 import sys
 import threading
+import thread
 import re
 import atexit
+import time
 
 # Set this to True for additional output
 DEBUG_OUTPUT = False
@@ -130,6 +132,22 @@ def start_breakpoint_listener(target):
   target.GetBroadcaster().AddListener(listener, lldb.SBTarget.eBroadcastBitBreakpointChanged)
 
 
+def start_watchdog():
+  "Starts a watchdog thread that will terminate the process after a certain period of time"
+  watchdog_start_time = time.clock()
+  watchdog_max_time = watchdog_start_time + 30
+
+  def watchdog():
+    while time.clock() < watchdog_max_time:
+      time.sleep(1)
+    print("TIMEOUT: lldb_batchmode.py has been running for too long. Aborting!")
+    thread.interrupt_main()
+
+  # Start the listener and let it run as a daemon
+  watchdog_thread = threading.Thread(target = watchdog)
+  watchdog_thread.daemon = True
+  watchdog_thread.start()
+
 ####################################################################################################
 # ~main
 ####################################################################################################
@@ -146,6 +164,9 @@ print("----------------------")
 print("Debugger commands script is '%s'." % script_path)
 print("Target executable is '%s'." % target_path)
 print("Current working directory is '%s'" % os.getcwd())
+
+# Start the timeout watchdog
+start_watchdog()
 
 # Create a new debugger instance
 debugger = lldb.SBDebugger.Create()
@@ -175,6 +196,10 @@ try:
 
   for line in script_file:
     command = line.strip()
+    if command == "run" or command == "r" or re.match("^process\s+launch.*", command):
+      # Before starting to run the program, let the thread sleep a bit, so all
+      # breakpoint added events can be processed
+      time.sleep(0.5)
     if command != '':
       execute_command(command_interpreter, command)
 

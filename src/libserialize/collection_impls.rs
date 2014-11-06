@@ -39,7 +39,7 @@ impl<E, D:Decoder<E>,T:Decodable<D, E>> Decodable<D, E> for DList<T> {
         d.read_seq(|d, len| {
             let mut list = DList::new();
             for i in range(0u, len) {
-                list.push(try!(d.read_seq_elt(i, |d| Decodable::decode(d))));
+                list.push_back(try!(d.read_seq_elt(i, |d| Decodable::decode(d))));
             }
             Ok(list)
         })
@@ -66,7 +66,7 @@ impl<E, D:Decoder<E>,T:Decodable<D, E>> Decodable<D, E> for RingBuf<T> {
         d.read_seq(|d, len| {
             let mut deque: RingBuf<T> = RingBuf::new();
             for i in range(0u, len) {
-                deque.push(try!(d.read_seq_elt(i, |d| Decodable::decode(d))));
+                deque.push_back(try!(d.read_seq_elt(i, |d| Decodable::decode(d))));
             }
             Ok(deque)
         })
@@ -165,10 +165,10 @@ impl<
 > Decodable<D, E> for EnumSet<T> {
     fn decode(d: &mut D) -> Result<EnumSet<T>, E> {
         let bits = try!(d.read_uint());
-        let mut set = EnumSet::empty();
+        let mut set = EnumSet::new();
         for bit in range(0, uint::BITS) {
             if bits & (1 << bit) != 0 {
-                set.add(CLike::from_uint(1 << bit));
+                set.insert(CLike::from_uint(1 << bit));
             }
         }
         Ok(set)

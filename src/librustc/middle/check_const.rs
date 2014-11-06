@@ -138,12 +138,12 @@ fn check_expr(v: &mut CheckCrateVisitor, e: &Expr) -> bool {
             // to handle on-demand instantiation of functions via
             // foo::<bar> in a const. Currently that is only done on
             // a path in trans::callee that only works in block contexts.
-            if !pth.segments.iter().all(|segment| segment.types.is_empty()) {
+            if !pth.segments.iter().all(|segment| segment.parameters.is_empty()) {
                 span_err!(v.tcx.sess, e.span, E0013,
                           "paths in constants may only refer to items without \
                            type parameters");
             }
-            match v.tcx.def_map.borrow().find(&e.id) {
+            match v.tcx.def_map.borrow().get(&e.id) {
                 Some(&DefStatic(..)) |
                 Some(&DefConst(..)) |
                 Some(&DefFn(..)) |
@@ -162,7 +162,7 @@ fn check_expr(v: &mut CheckCrateVisitor, e: &Expr) -> bool {
             }
         }
         ExprCall(ref callee, _) => {
-            match v.tcx.def_map.borrow().find(&callee.id) {
+            match v.tcx.def_map.borrow().get(&callee.id) {
                 Some(&DefStruct(..)) |
                 Some(&DefVariant(..)) => {}    // OK.
 

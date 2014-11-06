@@ -45,8 +45,12 @@
 //!     so the "quality" of `/dev/random` is not better than `/dev/urandom` in most cases.
 //!     However, this means that `/dev/urandom` can yield somewhat predictable randomness
 //!     if the entropy pool is very small, such as immediately after first booting.
-//!     If an application likely to be run soon after first booting, or on a system with very
-//!     few entropy sources, one should consider using `/dev/random` via `ReaderRng`.
+//!     Linux 3,17 added `getrandom(2)` system call which solves the issue: it blocks if entropy
+//!     pool is not initialized yet, but it does not block once initialized.
+//!     `OsRng` tries to use `getrandom(2)` if available, and use `/dev/urandom` fallback if not.
+//!     If an application does not have `getrandom` and likely to be run soon after first booting,
+//!     or on a system with very few entropy sources, one should consider using `/dev/random` via
+//!     `ReaderRng`.
 //! -   On some systems (e.g. FreeBSD, OpenBSD and Mac OS X) there is no difference
 //!     between the two sources. (Also note that, on some systems e.g. FreeBSD, both `/dev/random`
 //!     and `/dev/urandom` may block once if the CSPRNG has not seeded yet.)

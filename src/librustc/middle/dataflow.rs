@@ -86,7 +86,7 @@ struct PropagationContext<'a, 'b: 'a, 'tcx: 'b, O: 'a> {
 }
 
 fn to_cfgidx_or_die(id: ast::NodeId, index: &NodeMap<CFGIndex>) -> CFGIndex {
-    let opt_cfgindex = index.find(&id).map(|&i|i);
+    let opt_cfgindex = index.get(&id).map(|&i|i);
     opt_cfgindex.unwrap_or_else(|| {
         panic!("nodeid_to_index does not have entry for NodeId {}", id);
     })
@@ -397,7 +397,7 @@ impl<'a, 'tcx, O:DataFlowOperator> DataFlowContext<'a, 'tcx, O> {
 
             let mut changed = false;
             for &node_id in edge.data.exiting_scopes.iter() {
-                let opt_cfg_idx = self.nodeid_to_index.find(&node_id).map(|&i|i);
+                let opt_cfg_idx = self.nodeid_to_index.get(&node_id).map(|&i|i);
                 match opt_cfg_idx {
                     Some(cfg_idx) => {
                         let (start, end) = self.compute_id_range(cfg_idx);

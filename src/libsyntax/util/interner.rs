@@ -45,7 +45,7 @@ impl<T: Eq + Hash + Clone + 'static> Interner<T> {
 
     pub fn intern(&self, val: T) -> Name {
         let mut map = self.map.borrow_mut();
-        match (*map).find(&val) {
+        match (*map).get(&val) {
             Some(&idx) => return idx,
             None => (),
         }

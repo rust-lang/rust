@@ -113,7 +113,7 @@ impl<'f, 'tcx> Combine<'tcx> for Sub<'f, 'tcx> {
         // e.g., fn:Copy() <: fn(), because the former is a function
         // that only closes over copyable things, but the latter is
         // any function at all.
-        if a.contains(b) {
+        if a.is_superset(&b) {
             Ok(a)
         } else {
             Err(ty::terr_builtin_bounds(expected_found(self, a, b)))

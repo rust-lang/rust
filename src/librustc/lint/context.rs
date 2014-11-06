@@ -84,7 +84,7 @@ enum TargetLint {
 
 impl LintStore {
     fn get_level_source(&self, lint: LintId) -> LevelSource {
-        match self.levels.find(&lint) {
+        match self.levels.get(&lint) {
             Some(&s) => s,
             None => (Allow, Default),
         }
@@ -124,7 +124,7 @@ impl LintStore {
             self.lints.push((*lint, from_plugin));
 
             let id = LintId::of(*lint);
-            if !self.by_name.insert(lint.name_lower(), Id(id)) {
+            if self.by_name.insert(lint.name_lower(), Id(id)).is_some() {
                 let msg = format!("duplicate specification of lint {}", lint.name_lower());
                 match (sess, from_plugin) {
                     // We load builtin lints first, so a duplicate is a compiler bug.
@@ -147,7 +147,7 @@ impl LintStore {
     pub fn register_group(&mut self, sess: Option<&Session>,
                           from_plugin: bool, name: &'static str,
                           to: Vec<LintId>) {
-        let new = self.lint_groups.insert(name, (to, from_plugin));
+        let new = self.lint_groups.insert(name, (to, from_plugin)).is_none();
 
         if !new {
             let msg = format!("duplicate specification of lint group {}", name);
@@ -437,11 +437,11 @@ impl<'a, 'tcx> Context<'a, 'tcx> {
     /// Get the level of `lint` at the current position of the lint
     /// traversal.
     pub fn current_level(&self, lint: &'static Lint) -> Level {
-        self.lints.levels.find(&LintId::of(lint)).map_or(Allow, |&(lvl, _)| lvl)
+        self.lints.levels.get(&LintId::of(lint)).map_or(Allow, |&(lvl, _)| lvl)
     }
 
     fn lookup_and_emit(&self, lint: &'static Lint, span: Option<Span>, msg: &str) {
-        let (level, src) = match self.lints.levels.find(&LintId::of(lint)) {
+        let (level, src) = match self.lints.levels.get(&LintId::of(lint)) {
             None => return,
             Some(&(Warn, src)) => {
                 let lint_id = LintId::of(builtin::WARNINGS);
@@ -750,7 +750,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for Context<'a, 'tcx> {
 // Output any lints that were previously added to the session.
 impl<'a, 'tcx> IdVisitingOperation for Context<'a, 'tcx> {
     fn visit_id(&mut self, id: ast::NodeId) {
-        match self.tcx.sess.lints.borrow_mut().pop(&id) {
+        match self.tcx.sess.lints.borrow_mut().remove(&id) {
             None => {}
             Some(lints) => {
                 for (lint_id, span, msg) in lints.into_iter() {

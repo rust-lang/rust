@@ -1209,7 +1209,7 @@ impl MetricMap {
         let MetricMap(ref selfmap) = *self;
         let MetricMap(ref old) = *old;
         for (k, vold) in old.iter() {
-            let r = match selfmap.find(k) {
+            let r = match selfmap.get(k) {
                 None => MetricRemoved,
                 Some(v) => {
                     let delta = v.value - vold.value;
@@ -1678,31 +1678,31 @@ mod tests {
 
         let diff1 = m2.compare_to_old(&m1, None);
 
-        assert_eq!(*(diff1.find(&"in-both-noise".to_string()).unwrap()), LikelyNoise);
-        assert_eq!(*(diff1.find(&"in-first-noise".to_string()).unwrap()), MetricRemoved);
-        assert_eq!(*(diff1.find(&"in-second-noise".to_string()).unwrap()), MetricAdded);
-        assert_eq!(*(diff1.find(&"in-both-want-downwards-but-regressed".to_string()).unwrap()),
+        assert_eq!(*(diff1.get(&"in-both-noise".to_string()).unwrap()), LikelyNoise);
+        assert_eq!(*(diff1.get(&"in-first-noise".to_string()).unwrap()), MetricRemoved);
+        assert_eq!(*(diff1.get(&"in-second-noise".to_string()).unwrap()), MetricAdded);
+        assert_eq!(*(diff1.get(&"in-both-want-downwards-but-regressed".to_string()).unwrap()),
                    Regression(100.0));
-        assert_eq!(*(diff1.find(&"in-both-want-downwards-and-improved".to_string()).unwrap()),
+        assert_eq!(*(diff1.get(&"in-both-want-downwards-and-improved".to_string()).unwrap()),
                    Improvement(50.0));
-        assert_eq!(*(diff1.find(&"in-both-want-upwards-but-regressed".to_string()).unwrap()),
+        assert_eq!(*(diff1.get(&"in-both-want-upwards-but-regressed".to_string()).unwrap()),
                    Regression(50.0));
-        assert_eq!(*(diff1.find(&"in-both-want-upwards-and-improved".to_string()).unwrap()),
+        assert_eq!(*(diff1.get(&"in-both-want-upwards-and-improved".to_string()).unwrap()),
                    Improvement(100.0));
         assert_eq!(diff1.len(), 7);
 
         let diff2 = m2.compare_to_old(&m1, Some(200.0));
 
-        assert_eq!(*(diff2.find(&"in-both-noise".to_string()).unwrap()), LikelyNoise);
-        assert_eq!(*(diff2.find(&"in-first-noise".to_string()).unwrap()), MetricRemoved);
-        assert_eq!(*(diff2.find(&"in-second-noise".to_string()).unwrap()), MetricAdded);
-        assert_eq!(*(diff2.find(&"in-both-want-downwards-but-regressed".to_string()).unwrap()),
+        assert_eq!(*(diff2.get(&"in-both-noise".to_string()).unwrap()), LikelyNoise);
+        assert_eq!(*(diff2.get(&"in-first-noise".to_string()).unwrap()), MetricRemoved);
+        assert_eq!(*(diff2.get(&"in-second-noise".to_string()).unwrap()), MetricAdded);
+        assert_eq!(*(diff2.get(&"in-both-want-downwards-but-regressed".to_string()).unwrap()),
                    LikelyNoise);
-        assert_eq!(*(diff2.find(&"in-both-want-downwards-and-improved".to_string()).unwrap()),
+        assert_eq!(*(diff2.get(&"in-both-want-downwards-and-improved".to_string()).unwrap()),
                    LikelyNoise);
-        assert_eq!(*(diff2.find(&"in-both-want-upwards-but-regressed".to_string()).unwrap()),
+        assert_eq!(*(diff2.get(&"in-both-want-upwards-but-regressed".to_string()).unwrap()),
                    LikelyNoise);
-        assert_eq!(*(diff2.find(&"in-both-want-upwards-and-improved".to_string()).unwrap()),
+        assert_eq!(*(diff2.get(&"in-both-want-upwards-and-improved".to_string()).unwrap()),
                    LikelyNoise);
         assert_eq!(diff2.len(), 7);
     }
@@ -1727,29 +1727,29 @@ mod tests {
         let (diff1, ok1) = m2.ratchet(&pth, None);
         assert_eq!(ok1, false);
         assert_eq!(diff1.len(), 2);
-        assert_eq!(*(diff1.find(&"runtime".to_string()).unwrap()), Regression(10.0));
-        assert_eq!(*(diff1.find(&"throughput".to_string()).unwrap()), LikelyNoise);
+        assert_eq!(*(diff1.get(&"runtime".to_string()).unwrap()), Regression(10.0));
+        assert_eq!(*(diff1.get(&"throughput".to_string()).unwrap()), LikelyNoise);
 
         // Check that it was not rewritten.
         let m3 = MetricMap::load(&pth);
         let MetricMap(m3) = m3;
         assert_eq!(m3.len(), 2);
-        assert_eq!(*(m3.find(&"runtime".to_string()).unwrap()), Metric::new(1000.0, 2.0));
-        assert_eq!(*(m3.find(&"throughput".to_string()).unwrap()), Metric::new(50.0, 2.0));
+        assert_eq!(*(m3.get(&"runtime".to_string()).unwrap()), Metric::new(1000.0, 2.0));
+        assert_eq!(*(m3.get(&"throughput".to_string()).unwrap()), Metric::new(50.0, 2.0));
 
         // Ask for a ratchet with an explicit noise-percentage override,
         // that should advance.
         let (diff2, ok2) = m2.ratchet(&pth, Some(10.0));
         assert_eq!(ok2, true);
         assert_eq!(diff2.len(), 2);
-        assert_eq!(*(diff2.find(&"runtime".to_string()).unwrap()), LikelyNoise);
-        assert_eq!(*(diff2.find(&"throughput".to_string()).unwrap()), LikelyNoise);
+        assert_eq!(*(diff2.get(&"runtime".to_string()).unwrap()), LikelyNoise);
+        assert_eq!(*(diff2.get(&"throughput".to_string()).unwrap()), LikelyNoise);
 
         // Check that it was rewritten.
         let m4 = MetricMap::load(&pth);
         let MetricMap(m4) = m4;
         assert_eq!(m4.len(), 2);
-        assert_eq!(*(m4.find(&"runtime".to_string()).unwrap()), Metric::new(1100.0, 2.0));
-        assert_eq!(*(m4.find(&"throughput".to_string()).unwrap()), Metric::new(50.0, 2.0));
+        assert_eq!(*(m4.get(&"runtime".to_string()).unwrap()), Metric::new(1100.0, 2.0));
+        assert_eq!(*(m4.get(&"throughput".to_string()).unwrap()), Metric::new(50.0, 2.0));
     }
 }

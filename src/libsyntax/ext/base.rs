@@ -768,7 +768,7 @@ impl SyntaxEnv {
 
     pub fn find(&self, k: &Name) -> Option<Rc<SyntaxExtension>> {
         for frame in self.chain.iter().rev() {
-            match frame.map.find(k) {
+            match frame.map.get(k) {
                 Some(v) => return Some(v.clone()),
                 None => {}
             }

@@ -27,7 +27,6 @@ use syntax::ast_map;
 use syntax::ast_util::{is_local, local_def, PostExpansionMethod};
 use syntax::codemap::Span;
 use syntax::parse::token;
-use syntax::owned_slice::OwnedSlice;
 use syntax::visit;
 use syntax::visit::Visitor;
 
@@ -399,7 +398,7 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
             }
             debug!("privacy - is {} a public method", did);
 
-            return match self.tcx.impl_or_trait_items.borrow().find(&did) {
+            return match self.tcx.impl_or_trait_items.borrow().get(&did) {
                 Some(&ty::MethodTraitItem(ref meth)) => {
                     debug!("privacy - well at least it's a method: {}",
                            *meth);
@@ -462,7 +461,7 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
         debug!("privacy - local {} not public all the way down",
                self.tcx.map.node_to_string(did.node));
         // return quickly for things in the same module
-        if self.parents.find(&did.node) == self.parents.find(&self.curitem) {
+        if self.parents.get(&did.node) == self.parents.get(&self.curitem) {
             debug!("privacy - same parent, we're done here");
             return Allowable;
         }
@@ -855,7 +854,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for PrivacyVisitor<'a, 'tcx> {
             }
             ast::ExprMethodCall(ident, _, _) => {
                 let method_call = MethodCall::expr(expr.id);
-                match self.tcx.method_map.borrow().find(&method_call) {
+                match self.tcx.method_map.borrow().get(&method_call) {
                     None => {
                         self.tcx.sess.span_bug(expr.span,
                                                 "method call not in \
@@ -909,7 +908,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for PrivacyVisitor<'a, 'tcx> {
                              with private fields");
                     }
                 };
-                match self.tcx.def_map.borrow().find(&expr.id) {
+                match self.tcx.def_map.borrow().get(&expr.id) {
                     Some(&def::DefStruct(did)) => {
                         guard(if is_local(did) {
                             local_def(self.tcx.map.get_parent(did.node))
@@ -945,8 +944,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for PrivacyVisitor<'a, 'tcx> {
                                     debug!("privacy - ident item {}", id);
                                     let seg = ast::PathSegment {
                                         identifier: name,
-                                        lifetimes: Vec::new(),
-                                        types: OwnedSlice::empty(),
+                                        parameters: ast::PathParameters::none(),
                                     };
                                     let segs = vec![seg];
                                     let path = ast::Path {
@@ -986,7 +984,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for PrivacyVisitor<'a, 'tcx> {
                         }
                     }
                     ty::ty_enum(_, _) => {
-                        match self.tcx.def_map.borrow().find(&pattern.id) {
+                        match self.tcx.def_map.borrow().get(&pattern.id) {
                             Some(&def::DefVariant(_, variant_id, _)) => {
                                 for field in fields.iter() {
                                     self.check_field(pattern.span, variant_id,

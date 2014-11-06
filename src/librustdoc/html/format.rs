@@ -143,9 +143,6 @@ impl fmt::Show for clean::TyParamBound {
             clean::RegionBound(ref lt) => {
                 write!(f, "{}", *lt)
             }
-            clean::UnboxedFnBound(ref ty) => {
-                write!(f, "{}{}", ty.path, ty.decl)
-            }
             clean::TraitBound(ref ty) => {
                 write!(f, "{}", *ty)
             }
@@ -208,7 +205,7 @@ fn resolved_path(w: &mut fmt::Formatter, did: ast::DefId, p: &clean::Path,
             }
         },
         |cache| {
-            match cache.paths.find(&did) {
+            match cache.paths.get(&did) {
                 None => None,
                 Some(&(ref fqp, shortty)) => Some((fqp.clone(), shortty))
             }
@@ -313,7 +310,7 @@ fn primitive_link(f: &mut fmt::Formatter,
                   name: &str) -> fmt::Result {
     let m = cache_key.get().unwrap();
     let mut needs_termination = false;
-    match m.primitive_locations.find(&prim) {
+    match m.primitive_locations.get(&prim) {
         Some(&ast::LOCAL_CRATE) => {
             let loc = current_location_key.get().unwrap();
             let len = if loc.len() == 0 {0} else {loc.len() - 1};
@@ -404,8 +401,7 @@ impl fmt::Show for clean::Type {
                            let mut ret = String::new();
                            for bound in decl.bounds.iter() {
                                 match *bound {
-                                    clean::RegionBound(..) |
-                                    clean::UnboxedFnBound(..) => {}
+                                    clean::RegionBound(..) => {}
                                     clean::TraitBound(ref t) => {
                                         if ret.len() == 0 {
                                             ret.push_str(": ");

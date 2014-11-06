@@ -194,7 +194,7 @@ fn is_board_unfeasible(board: u64, masks: &Vec<Vec<Vec<u64>>>) -> bool {
 fn filter_masks(masks: &mut Vec<Vec<Vec<u64>>>) {
     for i in range(0, masks.len()) {
         for j in range(0, (*masks)[i].len()) {
-            *masks.get_mut(i).get_mut(j) =
+            masks[i][j] =
                 (*masks)[i][j].iter().map(|&m| m)
                 .filter(|&m| !is_board_unfeasible(m, masks))
                 .collect();
@@ -217,7 +217,7 @@ fn to_vec(raw_sol: &List<u64>) -> Vec<u8> {
         let id = '0' as u8 + get_id(m);
         for i in range(0u, 50) {
             if m & 1 << i != 0 {
-                *sol.get_mut(i) = id;
+                sol[i] = id;
             }
         }
     }

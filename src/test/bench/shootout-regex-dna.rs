@@ -114,7 +114,7 @@ fn main() {
     }
 
     for (i, variant) in variant_strs.iter().enumerate() {
-        println!("{} {}", variant, counts.get_mut(i).get());
+        println!("{} {}", variant, counts[i].get());
     }
     println!("");
     println!("{}", ilen);

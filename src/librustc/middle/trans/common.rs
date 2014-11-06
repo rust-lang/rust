@@ -466,7 +466,7 @@ impl<'blk, 'tcx> BlockS<'blk, 'tcx> {
     }
 
     pub fn def(&self, nid: ast::NodeId) -> def::Def {
-        match self.tcx().def_map.borrow().find(&nid) {
+        match self.tcx().def_map.borrow().get(&nid) {
             Some(v) => v.clone(),
             None => {
                 self.tcx().sess.bug(format!(
@@ -505,7 +505,7 @@ impl<'blk, 'tcx> mc::Typer<'tcx> for BlockS<'blk, 'tcx> {
         self.tcx()
             .method_map
             .borrow()
-            .find(&method_call)
+            .get(&method_call)
             .map(|method| monomorphize_type(self, method.ty))
     }
 
@@ -647,7 +647,7 @@ pub fn C_u8(ccx: &CrateContext, i: uint) -> ValueRef {
 // our boxed-and-length-annotated strings.
 pub fn C_cstr(cx: &CrateContext, s: InternedString, null_terminated: bool) -> ValueRef {
     unsafe {
-        match cx.const_cstr_cache().borrow().find(&s) {
+        match cx.const_cstr_cache().borrow().get(&s) {
             Some(&llval) => return llval,
             None => ()
         }
@@ -813,7 +813,7 @@ pub fn fulfill_obligation(ccx: &CrateContext,
     let trait_ref = ty_fold::erase_regions(tcx, trait_ref);
 
     // First check the cache.
-    match ccx.trait_cache().borrow().find(&trait_ref) {
+    match ccx.trait_cache().borrow().get(&trait_ref) {
         Some(vtable) => {
             info!("Cache hit: {}", trait_ref.repr(ccx.tcx()));
             return (*vtable).clone();

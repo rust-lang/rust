@@ -1961,8 +1961,10 @@ On an `extern` block, the following attributes are interpreted:
   name and type. This is feature gated and the exact behavior is
   implementation-defined (due to variety of linker invocation syntax).
 - `link` - indicate that a native library should be linked to for the
-  declarations in this block to be linked correctly. See [external
-  blocks](#external-blocks)
+  declarations in this block to be linked correctly. `link` supports an optional `kind`
+  key with three possible values: `dylib`, `static`, and `framework`. See [external blocks](#external-blocks) for more about external blocks. Two
+  examples: `#[link(name = "readline")]` and
+  `#[link(name = "CoreFoundation", kind = "framework")]`.
 
 On declarations inside an `extern` block, the following attributes are
 interpreted:
