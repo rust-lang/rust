@@ -65,9 +65,9 @@ More fully, the type grammar is as follows (EBNF notation):
          | ...
          | '(' SUM ')'
     SUM  = TYPE { '+' TYPE }
-    PATH = IDS '<' SUM { ',' SUM } '>' '->' TYPE
-         | IDS '(' SUM { ',' SUM } '>' '->' TYPE
-    IDS  = ID { :: ID }
+    PATH = IDS '<' SUM { ',' SUM } '>'
+         | IDS '(' SUM { ',' SUM } ')' '->' TYPE
+    IDS  = ['::'] ID { '::' ID }
 
 Where clauses would use the following grammar:
 
