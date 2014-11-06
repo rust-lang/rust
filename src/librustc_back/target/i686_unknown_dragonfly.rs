@@ -11,7 +11,7 @@
 use target::Target;
 
 pub fn target() -> Target {
-    let mut base = super::draginfly_base::opts();
+    let mut base = super::dragonfly_base::opts();
     base.pre_link_args.push("-m32".to_string());
 
     Target {

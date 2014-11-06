@@ -63,6 +63,7 @@ mod arm_unknown_linux_gnueabihf;
 mod i686_apple_darwin;
 mod i386_apple_ios;
 mod i686_pc_windows_gnu;
+mod i686_unknown_dragonfly;
 mod i686_unknown_linux_gnu;
 mod mips_unknown_linux_gnu;
 mod mipsel_unknown_linux_gnu;
@@ -338,6 +339,7 @@ impl Target {
 
             x86_64_unknown_freebsd,
 
+            i686_unknown_dragonfly,
             x86_64_unknown_dragonfly,
 
             x86_64_apple_darwin,
