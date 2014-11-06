@@ -159,7 +159,7 @@ pub struct TargetOptions {
     /// relocation model of position independent code is not changed. This is a requirement to take
     /// advantage of ASLR, as otherwise the functions in the executable are not randomized and can
     /// be used during an exploit of a vulnerability in any code.
-    pub position_independant_executables: bool,
+    pub position_independent_executables: bool,
 }
 
 impl Default for TargetOptions {
@@ -190,7 +190,7 @@ impl Default for TargetOptions {
             linker_is_gnu: false,
             has_rpath: false,
             no_compiler_rt: false,
-            position_independant_executables: false,
+            position_independent_executables: false,
         }
     }
 }
