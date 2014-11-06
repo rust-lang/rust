@@ -124,7 +124,7 @@ impl Process {
         use libc::funcs::extra::msvcrt::get_osfhandle;
 
         use mem;
-        use iter::Iterator;
+        use iter::{Iterator, IteratorExt};
         use str::StrPrelude;
 
         if cfg.gid().is_some() || cfg.uid().is_some() {

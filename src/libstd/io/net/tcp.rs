@@ -19,7 +19,6 @@
 
 use clone::Clone;
 use io::IoResult;
-use iter::Iterator;
 use result::Err;
 use io::net::ip::{SocketAddr, ToSocketAddr};
 use io::{Reader, Writer, Listener, Acceptor};

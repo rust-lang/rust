@@ -233,7 +233,7 @@ use default::Default;
 use error::{FromError, Error};
 use fmt;
 use int;
-use iter::Iterator;
+use iter::{Iterator, IteratorExt};
 use mem::transmute;
 use ops::{BitOr, BitXor, BitAnd, Sub, Not};
 use option::{Option, Some, None};

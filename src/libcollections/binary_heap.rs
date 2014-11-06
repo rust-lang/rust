@@ -585,10 +585,10 @@ impl<T> DoubleEndedIterator<T> for MoveItems<T> {
     fn next_back(&mut self) -> Option<T> { self.iter.next_back() }
 }
 
-impl<T> ExactSize<T> for MoveItems<T> {}
+impl<T> ExactSizeIterator<T> for MoveItems<T> {}
 
 impl<T: Ord> FromIterator<T> for BinaryHeap<T> {
-    fn from_iter<Iter: Iterator<T>>(mut iter: Iter) -> BinaryHeap<T> {
+    fn from_iter<Iter: Iterator<T>>(iter: Iter) -> BinaryHeap<T> {
         let vec: Vec<T> = iter.collect();
         BinaryHeap::from_vec(vec)
     }

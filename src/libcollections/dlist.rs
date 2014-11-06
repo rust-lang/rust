@@ -607,7 +607,7 @@ impl<'a, A> DoubleEndedIterator<&'a A> for Items<'a, A> {
     }
 }
 
-impl<'a, A> ExactSize<&'a A> for Items<'a, A> {}
+impl<'a, A> ExactSizeIterator<&'a A> for Items<'a, A> {}
 
 impl<'a, A> Iterator<&'a mut A> for MutItems<'a, A> {
     #[inline]
@@ -645,7 +645,7 @@ impl<'a, A> DoubleEndedIterator<&'a mut A> for MutItems<'a, A> {
     }
 }
 
-impl<'a, A> ExactSize<&'a mut A> for MutItems<'a, A> {}
+impl<'a, A> ExactSizeIterator<&'a mut A> for MutItems<'a, A> {}
 
 /// Allows mutating a `DList` while iterating.
 pub trait ListInsertion<A> {

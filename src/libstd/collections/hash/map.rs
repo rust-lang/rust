@@ -20,7 +20,7 @@ use cmp::{max, Eq, Equiv, PartialEq};
 use default::Default;
 use fmt::{mod, Show};
 use hash::{Hash, Hasher, RandomSipHasher};
-use iter::{mod, Iterator, FromIterator, Extend};
+use iter::{mod, Iterator, IteratorExt, FromIterator, Extend};
 use kinds::Sized;
 use mem::{mod, replace};
 use num::UnsignedInt;

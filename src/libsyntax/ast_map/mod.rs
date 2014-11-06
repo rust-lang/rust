@@ -87,7 +87,7 @@ impl<'a, T: Copy> Iterator<T> for Values<'a, T> {
 /// The type of the iterator used by with_path.
 pub type PathElems<'a, 'b> = iter::Chain<Values<'a, PathElem>, LinkedPath<'b>>;
 
-pub fn path_to_string<PI: Iterator<PathElem>>(mut path: PI) -> String {
+pub fn path_to_string<PI: Iterator<PathElem>>(path: PI) -> String {
     let itr = token::get_ident_interner();
 
     path.fold(String::new(), |mut s, e| {

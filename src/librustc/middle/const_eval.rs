@@ -80,7 +80,7 @@ pub fn join(a: constness, b: constness) -> constness {
     }
 }
 
-pub fn join_all<It: Iterator<constness>>(mut cs: It) -> constness {
+pub fn join_all<It: Iterator<constness>>(cs: It) -> constness {
     cs.fold(integral_const, |a, b| join(a, b))
 }
 

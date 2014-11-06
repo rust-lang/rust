@@ -13,7 +13,7 @@
 #![allow(non_camel_case_types)]
 
 use io::{IoResult, Writer};
-use iter::Iterator;
+use iter::{Iterator, IteratorExt};
 use option::{Some, None};
 use os;
 use result::{Ok, Err};
@@ -388,7 +388,7 @@ mod imp {
 
     #[cfg(not(any(target_os = "macos", target_os = "ios")))]
     fn print(w: &mut Writer, idx: int, addr: *mut libc::c_void) -> IoResult<()> {
-        use iter::Iterator;
+        use iter::IteratorExt;
         use os;
         use path::GenericPath;
         use ptr::RawPtr;

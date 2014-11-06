@@ -94,7 +94,7 @@ use core::cmp;
 use core::kinds::Sized;
 use core::mem::size_of;
 use core::mem;
-use core::prelude::{Clone, Greater, Iterator, Less, None, Option};
+use core::prelude::{Clone, Greater, Iterator, IteratorExt, Less, None, Option};
 use core::prelude::{Ord, Ordering, RawPtr, Some, range};
 use core::ptr;
 use core::iter::{range_step, MultiplicativeIterator};

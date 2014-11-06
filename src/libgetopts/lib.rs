@@ -710,7 +710,7 @@ pub fn usage(brief: &str, opts: &[OptGroup]) -> String {
 
     let desc_sep = format!("\n{}", " ".repeat(24));
 
-    let mut rows = opts.iter().map(|optref| {
+    let rows = opts.iter().map(|optref| {
         let OptGroup{short_name,
                      long_name,
                      hint,
