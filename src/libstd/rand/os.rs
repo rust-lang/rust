@@ -15,45 +15,149 @@ pub use self::imp::OsRng;
 
 #[cfg(all(unix, not(target_os = "ios")))]
 mod imp {
+    extern crate libc;
+
     use io::{IoResult, File};
     use path::Path;
     use rand::Rng;
     use rand::reader::ReaderRng;
     use result::{Ok, Err};
+    use slice::{ImmutableSlice, MutableSlice};
+    use mem;
+    use os::errno;
+
+    #[cfg(all(target_os = "linux",
+              any(target_arch = "x86_64", target_arch = "x86", target_arch = "arm")))]
+    fn getrandom(buf: &mut [u8]) -> libc::c_long {
+        extern "C" {
+            fn syscall(number: libc::c_long, ...) -> libc::c_long;
+        }
+
+        #[cfg(target_arch = "x86_64")]
+        const NR_GETRANDOM: libc::c_long = 318;
+        #[cfg(target_arch = "x86")]
+        const NR_GETRANDOM: libc::c_long = 355;
+        #[cfg(target_arch = "arm")]
+        const NR_GETRANDOM: libc::c_long = 384;
+
+        unsafe {
+            syscall(NR_GETRANDOM, buf.as_mut_ptr(), buf.len(), 0u)
+        }
+    }
+
+    #[cfg(not(all(target_os = "linux",
+                  any(target_arch = "x86_64", target_arch = "x86", target_arch = "arm"))))]
+    fn getrandom(_buf: &mut [u8]) -> libc::c_long { -1 }
+
+    fn getrandom_fill_bytes(v: &mut [u8]) {
+        let mut read = 0;
+        let len = v.len();
+        while read < len {
+            let result = getrandom(v[mut read..]);
+            if result == -1 {
+                let err = errno() as libc::c_int;
+                if err == libc::EINTR {
+                    continue;
+                } else {
+                    panic!("unexpected getrandom error: {}", err);
+                }
+            } else {
+                read += result as uint;
+            }
+        }
+    }
+
+    fn getrandom_next_u32() -> u32 {
+        let mut buf: [u8, ..4] = [0u8, ..4];
+        getrandom_fill_bytes(&mut buf);
+        unsafe { mem::transmute::<[u8, ..4], u32>(buf) }
+    }
+
+    fn getrandom_next_u64() -> u64 {
+        let mut buf: [u8, ..8] = [0u8, ..8];
+        getrandom_fill_bytes(&mut buf);
+        unsafe { mem::transmute::<[u8, ..8], u64>(buf) }
+    }
+
+    #[cfg(all(target_os = "linux",
+              any(target_arch = "x86_64", target_arch = "x86", target_arch = "arm")))]
+    fn is_getrandom_available() -> bool {
+        use sync::atomic::{AtomicBool, INIT_ATOMIC_BOOL, Relaxed};
+
+        static GETRANDOM_CHECKED: AtomicBool = INIT_ATOMIC_BOOL;
+        static GETRANDOM_AVAILABLE: AtomicBool = INIT_ATOMIC_BOOL;
+
+        if !GETRANDOM_CHECKED.load(Relaxed) {
+            let mut buf: [u8, ..0] = [];
+            let result = getrandom(&mut buf);
+            let available = if result == -1 {
+                let err = errno() as libc::c_int;
+                err != libc::ENOSYS
+            } else {
+                true
+            };
+            GETRANDOM_AVAILABLE.store(available, Relaxed);
+            GETRANDOM_CHECKED.store(true, Relaxed);
+            available
+        } else {
+            GETRANDOM_AVAILABLE.load(Relaxed)
+        }
+    }
+
+    #[cfg(not(all(target_os = "linux",
+                  any(target_arch = "x86_64", target_arch = "x86", target_arch = "arm"))))]
+    fn is_getrandom_available() -> bool { false }
 
     /// A random number generator that retrieves randomness straight from
     /// the operating system. Platform sources:
     ///
     /// - Unix-like systems (Linux, Android, Mac OSX): read directly from
-    ///   `/dev/urandom`.
+    ///   `/dev/urandom`, or from `getrandom(2)` system call if available.
     /// - Windows: calls `CryptGenRandom`, using the default cryptographic
     ///   service provider with the `PROV_RSA_FULL` type.
     /// - iOS: calls SecRandomCopyBytes as /dev/(u)random is sandboxed
     /// This does not block.
-    #[cfg(unix)]
     pub struct OsRng {
-        inner: ReaderRng<File>
+        inner: OsRngInner,
+    }
+
+    enum OsRngInner {
+        OsGetrandomRng,
+        OsReaderRng(ReaderRng<File>),
     }
 
     impl OsRng {
         /// Create a new `OsRng`.
         pub fn new() -> IoResult<OsRng> {
+            if is_getrandom_available() {
+                return Ok(OsRng { inner: OsGetrandomRng });
+            }
+
             let reader = try!(File::open(&Path::new("/dev/urandom")));
             let reader_rng = ReaderRng::new(reader);
 
-            Ok(OsRng { inner: reader_rng })
+            Ok(OsRng { inner: OsReaderRng(reader_rng) })
         }
     }
 
     impl Rng for OsRng {
         fn next_u32(&mut self) -> u32 {
-            self.inner.next_u32()
+            match self.inner {
+                OsGetrandomRng => getrandom_next_u32(),
+                OsReaderRng(ref mut rng) => rng.next_u32(),
+            }
         }
         fn next_u64(&mut self) -> u64 {
-            self.inner.next_u64()
+            match self.inner {
+                OsGetrandomRng => getrandom_next_u64(),
+                OsReaderRng(ref mut rng) => rng.next_u64(),
+            }
         }
         fn fill_bytes(&mut self, v: &mut [u8]) {
-            self.inner.fill_bytes(v)
+            match self.inner {
+                OsGetrandomRng => getrandom_fill_bytes(v),
+                OsReaderRng(ref mut rng) => rng.fill_bytes(v)
+            }
         }
     }
 }
@@ -75,7 +179,7 @@ mod imp {
     /// the operating system. Platform sources:
     ///
     /// - Unix-like systems (Linux, Android, Mac OSX): read directly from
-    ///   `/dev/urandom`.
+    ///   `/dev/urandom`, or from `getrandom(2)` system call if available.
     /// - Windows: calls `CryptGenRandom`, using the default cryptographic
     ///   service provider with the `PROV_RSA_FULL` type.
     /// - iOS: calls SecRandomCopyBytes as /dev/(u)random is sandboxed
@@ -145,10 +249,10 @@ mod imp {
     /// the operating system. Platform sources:
     ///
     /// - Unix-like systems (Linux, Android, Mac OSX): read directly from
-    ///   `/dev/urandom`.
+    ///   `/dev/urandom`, or from `getrandom(2)` system call if available.
     /// - Windows: calls `CryptGenRandom`, using the default cryptographic
     ///   service provider with the `PROV_RSA_FULL` type.
-    ///
+    /// - iOS: calls SecRandomCopyBytes as /dev/(u)random is sandboxed
     /// This does not block.
     pub struct OsRng {
         hcryptprov: HCRYPTPROV
