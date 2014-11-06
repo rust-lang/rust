@@ -100,7 +100,7 @@ impl<E:CLike> EnumSet<E> {
     /// Returns `true` if this `EnumSet` is included in the given `EnumSet`.
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn is_subset(&self, other: &EnumSet<E>) -> bool {
-        other.is_subset(self)
+        other.is_superset(self)
     }
 
     /// Returns the union of both `EnumSets`.
@@ -302,8 +302,13 @@ mod test {
         e2.insert(A);
         e2.insert(B);
 
-        assert!(!e1.is_superset(&e2));
+        let mut e3: EnumSet<Foo> = EnumSet::new();
+        e3.insert(C);
+
+        assert!(e1.is_subset(&e2));
         assert!(e2.is_superset(&e1));
+        assert!(!e3.is_superset(&e2))
+        assert!(!e2.is_superset(&e3))
     }
 
     #[test]
