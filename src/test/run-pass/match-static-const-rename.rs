@@ -16,7 +16,7 @@
 // around this problem locally by renaming the constant in the `use`
 // form to an uppercase identifier that placates the lint.
 
-#![deny(non_uppercase_statics)]
+#![deny(non_upper_case_globals)]
 
 pub const A : int = 97;
 
@@ -34,7 +34,7 @@ fn f() {
 }
 
 mod m {
-    #[allow(non_uppercase_statics)]
+    #[allow(non_upper_case_globals)]
     pub const aha : int = 7;
 }
 
