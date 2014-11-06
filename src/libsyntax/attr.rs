@@ -11,7 +11,7 @@
 // Functions dealing with attributes and meta items
 
 use ast;
-use ast::{AttrId, Attribute, Attribute_, MetaItem, MetaWord, MetaNameValue, MetaList};
+use ast::{AttrId, Attribute, AttributeNode, MetaItem, MetaWord, MetaNameValue, MetaList};
 use codemap::{Span, Spanned, spanned, dummy_spanned};
 use codemap::BytePos;
 use diagnostic::SpanHandler;
@@ -172,7 +172,7 @@ pub fn mk_attr_id() -> AttrId {
 
 /// Returns an inner attribute with the given value.
 pub fn mk_attr_inner(id: AttrId, item: P<MetaItem>) -> Attribute {
-    dummy_spanned(Attribute_ {
+    dummy_spanned(AttributeNode {
         id: id,
         style: ast::AttrInner,
         value: item,
@@ -182,7 +182,7 @@ pub fn mk_attr_inner(id: AttrId, item: P<MetaItem>) -> Attribute {
 
 /// Returns an outer attribute with the given value.
 pub fn mk_attr_outer(id: AttrId, item: P<MetaItem>) -> Attribute {
-    dummy_spanned(Attribute_ {
+    dummy_spanned(AttributeNode {
         id: id,
         style: ast::AttrOuter,
         value: item,
@@ -195,7 +195,7 @@ pub fn mk_sugared_doc_attr(id: AttrId, text: InternedString, lo: BytePos,
                            -> Attribute {
     let style = doc_comment_style(text.get());
     let lit = spanned(lo, hi, ast::LitStr(text, ast::CookedStr));
-    let attr = Attribute_ {
+    let attr = AttributeNode {
         id: id,
         style: style,
         value: P(spanned(lo, hi, MetaNameValue(InternedString::new("doc"),

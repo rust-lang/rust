@@ -973,7 +973,7 @@ impl Repr for ast::Ident {
     }
 }
 
-impl Repr for ast::ExplicitSelf_ {
+impl Repr for ast::ExplicitSelfNode {
     fn repr(&self, _tcx: &ctxt) -> String {
         format!("{}", *self)
     }

@@ -285,18 +285,18 @@ pub struct Crate {
     pub exported_macros: Vec<P<Item>>
 }
 
-pub type MetaItem = Spanned<MetaItem_>;
+pub type MetaItem = Spanned<MetaItemNode>;
 
 #[deriving(Clone, Eq, Encodable, Decodable, Hash, Show)]
-pub enum MetaItem_ {
+pub enum MetaItemNode {
     MetaWord(InternedString),
     MetaList(InternedString, Vec<P<MetaItem>>),
     MetaNameValue(InternedString, Lit),
 }
 
-// can't be derived because the MetaList requires an unordered comparison
-impl PartialEq for MetaItem_ {
-    fn eq(&self, other: &MetaItem_) -> bool {
+// Can't be derived because the `MetaList` requires an unordered comparison
+impl PartialEq for MetaItemNode {
+    fn eq(&self, other: &MetaItemNode) -> bool {
         match *self {
             MetaWord(ref ns) => match *other {
                 MetaWord(ref no) => (*ns) == (*no),
@@ -332,7 +332,7 @@ pub struct Block {
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
 pub struct Pat {
     pub id: NodeId,
-    pub node: Pat_,
+    pub node: PatNode,
     pub span: Span,
 }
 
@@ -359,7 +359,7 @@ pub enum PatWildKind {
 }
 
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
-pub enum Pat_ {
+pub enum PatNode {
     /// Represents a wildcard pattern (either `_` or `..`)
     PatWild(PatWildKind),
 
@@ -368,8 +368,8 @@ pub enum Pat_ {
     /// is None).
     /// In the nullary enum case, the parser can't determine
     /// which it is. The resolver determines this, and
-    /// records this pattern's NodeId in an auxiliary
-    /// set (of "PatIdents that refer to nullary enums")
+    /// records this pattern's `NodeId` in an auxiliary
+    /// set (of "`PatIdent`s that refer to nullary enums")
     PatIdent(BindingMode, SpannedIdent, Option<P<Pat>>),
 
     /// "None" means a * pattern where we don't bind the fields to names.
@@ -423,10 +423,10 @@ pub enum UnOp {
     UnNeg
 }
 
-pub type Stmt = Spanned<Stmt_>;
+pub type Stmt = Spanned<StmtNode>;
 
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
-pub enum Stmt_ {
+pub enum StmtNode {
     /// Could be an item or a local (let) binding:
     StmtDecl(P<Decl>, NodeId),
 
@@ -450,7 +450,7 @@ pub enum LocalSource {
 
 // FIXME (pending discussion of #1697, #2178...): local should really be
 // a refinement on pat.
-/// Local represents a `let` statement, e.g., `let <pat>:<ty> = <expr>;`
+/// Represents a `let` statement, e.g., `let <pat>:<ty> = <expr>;`
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
 pub struct Local {
     pub ty: P<Ty>,
@@ -461,10 +461,10 @@ pub struct Local {
     pub source: LocalSource,
 }
 
-pub type Decl = Spanned<Decl_>;
+pub type Decl = Spanned<DeclNode>;
 
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
-pub enum Decl_ {
+pub enum DeclNode {
     /// A local (let) binding:
     DeclLocal(P<Local>),
     /// An item binding:
@@ -504,12 +504,12 @@ pub enum UnsafeSource {
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
 pub struct Expr {
     pub id: NodeId,
-    pub node: Expr_,
+    pub node: ExprNode,
     pub span: Span,
 }
 
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
-pub enum Expr_ {
+pub enum ExprNode {
     /// First expr is the place; second expr is the value.
     ExprBox(P<Expr>, P<Expr>),
     ExprVec(Vec<P<Expr>>),
@@ -631,7 +631,9 @@ impl Delimited {
 /// for token sequences.
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
 pub enum KleeneOp {
+    /// Kleene star operator
     ZeroOrMore,
+    /// Kleene plus operator
     OneOrMore,
 }
 
@@ -678,60 +680,62 @@ impl TokenTree {
     }
 }
 
-// Matchers are nodes defined-by and recognized-by the main rust parser and
-// language, but they're only ever found inside syntax-extension invocations;
-// indeed, the only thing that ever _activates_ the rules in the rust parser
-// for parsing a matcher is a matcher looking for the 'matchers' nonterminal
-// itself. Matchers represent a small sub-language for pattern-matching
-// token-trees, and are thus primarily used by the macro-defining extension
-// itself.
-//
-// MatchTok
-// --------
-//
-//     A matcher that matches a single token, denoted by the token itself. So
-//     long as there's no $ involved.
-//
-//
-// MatchSeq
-// --------
-//
-//     A matcher that matches a sequence of sub-matchers, denoted various
-//     possible ways:
-//
-//             $(M)*       zero or more Ms
-//             $(M)+       one or more Ms
-//             $(M),+      one or more comma-separated Ms
-//             $(A B C);*  zero or more semi-separated 'A B C' seqs
-//
-//
-// MatchNonterminal
-// -----------------
-//
-//     A matcher that matches one of a few interesting named rust
-//     nonterminals, such as types, expressions, items, or raw token-trees. A
-//     black-box matcher on expr, for example, binds an expr to a given ident,
-//     and that ident can re-occur as an interpolation in the RHS of a
-//     macro-by-example rule. For example:
-//
-//        $foo:expr   =>     1 + $foo    // interpolate an expr
-//        $foo:tt     =>     $foo        // interpolate a token-tree
-//        $foo:tt     =>     bar! $foo   // only other valid interpolation
-//                                       // is in arg position for another
-//                                       // macro
-//
-// As a final, horrifying aside, note that macro-by-example's input is
-// also matched by one of these matchers. Holy self-referential! It is matched
-// by a MatchSeq, specifically this one:
-//
-//                   $( $lhs:matchers => $rhs:tt );+
-//
-// If you understand that, you have closed the loop and understand the whole
-// macro system. Congratulations.
-pub type Matcher = Spanned<Matcher_>;
+/// `Matcher`s are nodes defined-by and recognized-by the main rust parser and
+/// language, but they're only ever found inside syntax-extension invocations;
+/// indeed, the only thing that ever _activates_ the rules in the rust parser
+/// for parsing a matcher is a matcher looking for the 'matchers' nonterminal
+/// itself. `Matcher`s represent a small sub-language for pattern-matching
+/// token-trees, and are thus primarily used by the macro-defining extension
+/// itself.
+///
+/// # `MatchTok`
+///
+/// A matcher that matches a single token, denoted by the token itself. So
+/// long as there's no $ involved.
+///
+///
+/// # `MatchSeq`
+///
+/// A matcher that matches a sequence of sub-matchers, denoted various
+/// possible ways:
+///
+/// ~~~
+/// $(M)*       zero or more Ms
+/// $(M)+       one or more Ms
+/// $(M),+      one or more comma-separated Ms
+/// $(A B C);*  zero or more semi-separated 'A B C' seqs
+/// ~~~
+///
+/// # `MatchNonterminal`
+///
+/// A matcher that matches one of a few interesting named rust
+/// nonterminals, such as types, expressions, items, or raw token-trees. A
+/// black-box matcher on expr, for example, binds an expr to a given ident,
+/// and that ident can re-occur as an interpolation in the RHS of a
+/// macro-by-example rule. For example:
+///
+/// ~~~
+/// $foo:expr   =>     1 + $foo    // interpolate an expr
+/// $foo:tt     =>     $foo        // interpolate a token-tree
+/// $foo:tt     =>     bar! $foo   // only other valid interpolation
+///                                // is in arg position for another
+///                                // macro
+/// ~~~
+///
+/// As a final, horrifying aside, note that macro-by-example's input is
+/// also matched by one of these matchers. Holy self-referential! It is matched
+/// by a `MatchSeq`, specifically this one:
+///
+/// ~~~
+/// $( $lhs:matchers => $rhs:tt );+
+/// ~~~
+///
+/// If you understand that, you have closed the loop and understand the whole
+/// macro system. Congratulations.
+pub type Matcher = Spanned<MatcherNode>;
 
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
-pub enum Matcher_ {
+pub enum MatcherNode {
     /// Match one token
     MatchTok(token::Token),
     /// Match repetitions of a sequence: body, separator, Kleene operator,
@@ -741,14 +745,14 @@ pub enum Matcher_ {
     MatchNonterminal(Ident, Ident, uint)
 }
 
-pub type Mac = Spanned<Mac_>;
+pub type Mac = Spanned<MacNode>;
 
 /// Represents a macro invocation. The Path indicates which macro
 /// is being invoked, and the vector of token-trees contains the source
 /// of the macro invocation.
 /// There's only one flavor, now, so this could presumably be simplified.
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
-pub enum Mac_ {
+pub enum MacNode {
     // NB: the additional ident for a macro_rules-style macro is actually
     // stored in the enclosing item. Oog.
     MacInvocTT(Path, Vec<TokenTree> , SyntaxContext),   // new macro-invocation
@@ -760,7 +764,7 @@ pub enum StrStyle {
     RawStr(uint)
 }
 
-pub type Lit = Spanned<Lit_>;
+pub type Lit = Spanned<LitNode>;
 
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
 pub enum Sign {
@@ -796,7 +800,7 @@ impl LitIntType {
 }
 
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
-pub enum Lit_ {
+pub enum LitNode {
     LitStr(InternedString, StrStyle),
     LitBinary(Rc<Vec<u8> >),
     LitByte(u8),
@@ -942,11 +946,11 @@ impl FloatTy {
     }
 }
 
-// NB PartialEq method appears below.
+// NB `PartialEq` method appears below.
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
 pub struct Ty {
     pub id: NodeId,
-    pub node: Ty_,
+    pub node: TyNode,
     pub span: Span,
 }
 
@@ -1001,7 +1005,7 @@ pub struct UnboxedFnTy {
 }
 
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
-pub enum Ty_ {
+pub enum TyNode {
     TyNil,
     TyBot, /* bottom type */
     TyUniq(P<Ty>),
@@ -1044,7 +1048,7 @@ pub struct InlineAsm {
     pub expn_id: ExpnId,
 }
 
-/// represents an argument in a function header
+/// An argument in a function header.
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
 pub struct Arg {
     pub ty: P<Ty>,
@@ -1072,7 +1076,7 @@ impl Arg {
     }
 }
 
-/// represents the header (not the body) of a function declaration
+/// The header (not the body) of a function declaration.
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
 pub struct FnDecl {
     pub inputs: Vec<Arg>,
@@ -1107,9 +1111,9 @@ pub enum RetStyle {
     Return,
 }
 
-/// Represents the kind of 'self' associated with a method
+/// The kind of `self` associated with a method.
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
-pub enum ExplicitSelf_ {
+pub enum ExplicitSelfNode {
     /// No self
     SelfStatic,
     /// `self`
@@ -1120,18 +1124,18 @@ pub enum ExplicitSelf_ {
     SelfExplicit(P<Ty>, Ident),
 }
 
-pub type ExplicitSelf = Spanned<ExplicitSelf_>;
+pub type ExplicitSelf = Spanned<ExplicitSelfNode>;
 
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
 pub struct Method {
     pub attrs: Vec<Attribute>,
     pub id: NodeId,
     pub span: Span,
-    pub node: Method_,
+    pub node: MethodNode,
 }
 
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
-pub enum Method_ {
+pub enum MethodNode {
     /// Represents a method declaration
     MethDecl(Ident,
              Generics,
@@ -1180,7 +1184,7 @@ pub struct EnumDef {
 }
 
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
-pub struct Variant_ {
+pub struct VariantNode {
     pub name: Ident,
     pub attrs: Vec<Attribute>,
     pub kind: VariantKind,
@@ -1189,15 +1193,15 @@ pub struct Variant_ {
     pub vis: Visibility,
 }
 
-pub type Variant = Spanned<Variant_>;
+pub type Variant = Spanned<VariantNode>;
 
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
-pub enum PathListItem_ {
+pub enum PathListItemNode {
     PathListIdent { pub name: Ident, pub id: NodeId },
     PathListMod { pub id: NodeId }
 }
 
-impl PathListItem_ {
+impl PathListItemNode {
     pub fn id(&self) -> NodeId {
         match *self {
             PathListIdent { id, .. } | PathListMod { id } => id
@@ -1205,13 +1209,12 @@ impl PathListItem_ {
     }
 }
 
-pub type PathListItem = Spanned<PathListItem_>;
+pub type PathListItem = Spanned<PathListItemNode>;
 
-pub type ViewPath = Spanned<ViewPath_>;
+pub type ViewPath = Spanned<ViewPathNode>;
 
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
-pub enum ViewPath_ {
-
+pub enum ViewPathNode {
     /// `foo::bar::baz as quux`
     ///
     /// or just
@@ -1228,26 +1231,27 @@ pub enum ViewPath_ {
 
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
 pub struct ViewItem {
-    pub node: ViewItem_,
+    pub node: ViewItemNode,
     pub attrs: Vec<Attribute>,
     pub vis: Visibility,
     pub span: Span,
 }
 
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
-pub enum ViewItem_ {
-    /// Ident: name used to refer to this crate in the code
-    /// optional (InternedString,StrStyle): if present, this is a location
-    /// (containing arbitrary characters) from which to fetch the crate sources
-    /// For example, extern crate whatever = "github.com/rust-lang/rust"
-    ViewItemExternCrate(Ident, Option<(InternedString,StrStyle)>, NodeId),
+pub enum ViewItemNode {
+    /// `Ident` is the name used to refer to this crate in the code.
+    /// If the ptional (`InternedString`, `StrStyle`) is present, this is a
+    /// location (containing arbitrary characters) from which to fetch the
+    /// crate sources. For example,
+    /// `extern crate whatever = "github.com/rust-lang/rust"`.
+    ViewItemExternCrate(Ident, Option<(InternedString, StrStyle)>, NodeId),
     ViewItemUse(P<ViewPath>),
 }
 
 /// Meta-data associated with an item
-pub type Attribute = Spanned<Attribute_>;
+pub type Attribute = Spanned<AttributeNode>;
 
-/// Distinguishes between Attributes that decorate items and Attributes that
+/// Distinguishes between `Attribute`s that decorate items and `Attribute`s that
 /// are contained as statements within items. These two cases need to be
 /// distinguished for pretty-printing.
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
@@ -1259,9 +1263,9 @@ pub enum AttrStyle {
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
 pub struct AttrId(pub uint);
 
-/// Doc-comments are promoted to attributes that have is_sugared_doc = true
+/// Doc-comments are promoted to attributes that have `is_sugared_doc = true`.
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
-pub struct Attribute_ {
+pub struct AttributeNode {
     pub id: AttrId,
     pub style: AttrStyle,
     pub value: P<MetaItem>,
@@ -1269,10 +1273,10 @@ pub struct Attribute_ {
 }
 
 
-/// TraitRef's appear in impls.
-/// resolve maps each TraitRef's ref_id to its defining trait; that's all
-/// that the ref_id is for. The impl_id maps to the "self type" of this impl.
-/// If this impl is an ItemImpl, the impl_id is redundant (it could be the
+/// `TraitRef`s appear in impls.
+/// Resolve maps each `TraitRef`s `ref_id` to its defining trait; that's all
+/// that the ref_id is for. The `impl_id` maps to the "self type" of this impl.
+/// If this impl is an ItemImpl, the `impl_id` is redundant (it could be the
 /// same as the impl's node id).
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
 pub struct TraitRef {
@@ -1297,14 +1301,14 @@ impl Visibility {
 }
 
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
-pub struct StructField_ {
+pub struct StructFieldNode {
     pub kind: StructFieldKind,
     pub id: NodeId,
     pub ty: P<Ty>,
     pub attrs: Vec<Attribute>,
 }
 
-impl StructField_ {
+impl StructFieldNode {
     pub fn ident(&self) -> Option<Ident> {
         match self.kind {
             NamedField(ref ident, _) => Some(ident.clone()),
@@ -1313,7 +1317,7 @@ impl StructField_ {
     }
 }
 
-pub type StructField = Spanned<StructField_>;
+pub type StructField = Spanned<StructFieldNode>;
 
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
 pub enum StructFieldKind {
@@ -1349,13 +1353,13 @@ pub struct Item {
     pub ident: Ident,
     pub attrs: Vec<Attribute>,
     pub id: NodeId,
-    pub node: Item_,
+    pub node: ItemNode,
     pub vis: Visibility,
     pub span: Span,
 }
 
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
-pub enum Item_ {
+pub enum ItemNode {
     ItemStatic(P<Ty>, Mutability, P<Expr>),
     ItemConst(P<Ty>, P<Expr>),
     ItemFn(P<FnDecl>, FnStyle, Abi, Generics, P<Block>),
@@ -1366,8 +1370,8 @@ pub enum Item_ {
     ItemStruct(P<StructDef>, Generics),
     /// Represents a Trait Declaration
     ItemTrait(Generics,
-              Option<TyParamBound>, // (optional) default bound not required for Self.
-                                    // Currently, only Sized makes sense here.
+              Option<TyParamBound>, // (optional) default bound not required for `Self`.
+                                    // Currently, only `Sized` makes sense here.
               TyParamBounds,
               Vec<TraitItem>),
     ItemImpl(Generics,
@@ -1378,7 +1382,7 @@ pub enum Item_ {
     ItemMac(Mac),
 }
 
-impl Item_ {
+impl ItemNode {
     pub fn descriptive_variant(&self) -> &str {
         match *self {
             ItemStatic(..) => "static item",
@@ -1400,19 +1404,19 @@ impl Item_ {
 pub struct ForeignItem {
     pub ident: Ident,
     pub attrs: Vec<Attribute>,
-    pub node: ForeignItem_,
+    pub node: ForeignItemNode,
     pub id: NodeId,
     pub span: Span,
     pub vis: Visibility,
 }
 
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
-pub enum ForeignItem_ {
+pub enum ForeignItemNode {
     ForeignItemFn(P<FnDecl>, Generics),
     ForeignItemStatic(P<Ty>, /* is_mutbl */ bool),
 }
 
-impl ForeignItem_ {
+impl ForeignItemNode {
     pub fn descriptive_variant(&self) -> &str {
         match *self {
             ForeignItemFn(..) => "foreign function",

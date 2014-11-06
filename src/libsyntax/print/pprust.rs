@@ -347,7 +347,7 @@ pub fn ident_to_string(id: &ast::Ident) -> String {
 }
 
 pub fn fun_to_string(decl: &ast::FnDecl, fn_style: ast::FnStyle, name: ast::Ident,
-                  opt_explicit_self: Option<&ast::ExplicitSelf_>,
+                  opt_explicit_self: Option<&ast::ExplicitSelfNode>,
                   generics: &ast::Generics) -> String {
     $to_string(|s| {
         try!(s.print_fn(decl, Some(fn_style), abi::Rust,
@@ -379,7 +379,7 @@ pub fn lit_to_string(l: &ast::Lit) -> String {
     $to_string(|s| s.print_literal(l))
 }
 
-pub fn explicit_self_to_string(explicit_self: &ast::ExplicitSelf_) -> String {
+pub fn explicit_self_to_string(explicit_self: &ast::ExplicitSelfNode) -> String {
     $to_string(|s| s.print_explicit_self(explicit_self, ast::MutImmutable).map(|_| {}))
 }
 
@@ -2204,7 +2204,7 @@ impl<'a> State<'a> {
 
     // Returns whether it printed anything
     fn print_explicit_self(&mut self,
-                           explicit_self: &ast::ExplicitSelf_,
+                           explicit_self: &ast::ExplicitSelfNode,
                            mutbl: ast::Mutability) -> IoResult<bool> {
         try!(self.print_mutability(mutbl));
         match *explicit_self {
@@ -2233,7 +2233,7 @@ impl<'a> State<'a> {
                     abi: abi::Abi,
                     name: ast::Ident,
                     generics: &ast::Generics,
-                    opt_explicit_self: Option<&ast::ExplicitSelf_>,
+                    opt_explicit_self: Option<&ast::ExplicitSelfNode>,
                     vis: ast::Visibility) -> IoResult<()> {
         try!(self.head(""));
         try!(self.print_fn_header_info(opt_explicit_self, fn_style, abi, vis));
@@ -2245,7 +2245,7 @@ impl<'a> State<'a> {
     }
 
     pub fn print_fn_args(&mut self, decl: &ast::FnDecl,
-                         opt_explicit_self: Option<&ast::ExplicitSelf_>)
+                         opt_explicit_self: Option<&ast::ExplicitSelfNode>)
         -> IoResult<()> {
         // It is unfortunate to duplicate the commasep logic, but we want the
         // self type and the args all in the same box.
@@ -2278,7 +2278,7 @@ impl<'a> State<'a> {
     }
 
     pub fn print_fn_args_and_ret(&mut self, decl: &ast::FnDecl,
-                                 opt_explicit_self: Option<&ast::ExplicitSelf_>)
+                                 opt_explicit_self: Option<&ast::ExplicitSelfNode>)
         -> IoResult<()> {
         try!(self.popen());
         try!(self.print_fn_args(decl, opt_explicit_self));
@@ -2641,7 +2641,7 @@ impl<'a> State<'a> {
                        id: Option<ast::Ident>,
                        bounds: &OwnedSlice<ast::TyParamBound>,
                        generics: Option<&ast::Generics>,
-                       opt_explicit_self: Option<&ast::ExplicitSelf_>,
+                       opt_explicit_self: Option<&ast::ExplicitSelfNode>,
                        opt_unboxed_closure_kind:
                         Option<ast::UnboxedClosureKind>)
                        -> IoResult<()> {
@@ -2974,7 +2974,7 @@ impl<'a> State<'a> {
     }
 
     pub fn print_fn_header_info(&mut self,
-                                _opt_explicit_self: Option<&ast::ExplicitSelf_>,
+                                _opt_explicit_self: Option<&ast::ExplicitSelfNode>,
                                 opt_fn_style: Option<ast::FnStyle>,
                                 abi: abi::Abi,
                                 vis: ast::Visibility) -> IoResult<()> {
@@ -3036,7 +3036,7 @@ mod test {
     fn test_variant_to_string() {
         let ident = token::str_to_ident("principal_skinner");
 
-        let var = codemap::respan(codemap::DUMMY_SP, ast::Variant_ {
+        let var = codemap::respan(codemap::DUMMY_SP, ast::VariantNode {
             name: ident,
             attrs: Vec::new(),
             // making this up as I go.... ?

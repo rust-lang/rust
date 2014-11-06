@@ -510,7 +510,7 @@ pub fn raw_str_lit(lit: &str) -> String {
     res
 }
 
-pub fn float_lit(s: &str) -> ast::Lit_ {
+pub fn float_lit(s: &str) -> ast::LitNode {
     debug!("float_lit: {}", s);
     // FIXME #2252: bounds checking float literals is defered until trans
     let s2 = s.chars().filter(|&c| c != '_').collect::<String>();
@@ -625,7 +625,7 @@ pub fn binary_lit(lit: &str) -> Rc<Vec<u8>> {
     Rc::new(res)
 }
 
-pub fn integer_lit(s: &str, sd: &SpanHandler, sp: Span) -> ast::Lit_ {
+pub fn integer_lit(s: &str, sd: &SpanHandler, sp: Span) -> ast::LitNode {
     // s can only be ascii, byte indexing is fine
 
     let s2 = s.chars().filter(|&c| c != '_').collect::<String>();

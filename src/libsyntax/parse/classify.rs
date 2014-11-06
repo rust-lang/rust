@@ -45,7 +45,7 @@ pub fn expr_is_simple_block(e: &ast::Expr) -> bool {
 /// this statement requires a semicolon after it.
 /// note that in one case (stmt_semi), we've already
 /// seen the semicolon, and thus don't need another.
-pub fn stmt_ends_with_semi(stmt: &ast::Stmt_) -> bool {
+pub fn stmt_ends_with_semi(stmt: &ast::StmtNode) -> bool {
     match *stmt {
         ast::StmtDecl(ref d, _) => {
             match d.node {

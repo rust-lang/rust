@@ -38,7 +38,7 @@ impl<'a> fold::Folder for Context<'a> {
     fn fold_foreign_mod(&mut self, foreign_mod: ast::ForeignMod) -> ast::ForeignMod {
         fold_foreign_mod(self, foreign_mod)
     }
-    fn fold_item_underscore(&mut self, item: ast::Item_) -> ast::Item_ {
+    fn fold_item_underscore(&mut self, item: ast::ItemNode) -> ast::ItemNode {
         fold_item_underscore(self, item)
     }
     fn fold_expr(&mut self, expr: P<ast::Expr>) -> P<ast::Expr> {
@@ -104,7 +104,7 @@ fn fold_foreign_mod(cx: &mut Context, ast::ForeignMod {abi, view_items, items}: 
     }
 }
 
-fn fold_item_underscore(cx: &mut Context, item: ast::Item_) -> ast::Item_ {
+fn fold_item_underscore(cx: &mut Context, item: ast::ItemNode) -> ast::ItemNode {
     let item = match item {
         ast::ItemImpl(a, b, c, impl_items) => {
             let impl_items = impl_items.into_iter()
@@ -126,10 +126,10 @@ fn fold_item_underscore(cx: &mut Context, item: ast::Item_) -> ast::Item_ {
                 if !(cx.in_cfg)(v.node.attrs.as_slice()) {
                     None
                 } else {
-                    Some(v.map(|Spanned {node: ast::Variant_ {id, name, attrs, kind,
+                    Some(v.map(|Spanned {node: ast::VariantNode {id, name, attrs, kind,
                                                               disr_expr, vis}, span}| {
                         Spanned {
-                            node: ast::Variant_ {
+                            node: ast::VariantNode {
                                 id: id,
                                 name: name,
                                 attrs: attrs,

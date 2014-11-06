@@ -160,7 +160,7 @@ trait ErrorReportingHelpers {
                                 decl: &ast::FnDecl,
                                 fn_style: ast::FnStyle,
                                 ident: ast::Ident,
-                                opt_explicit_self: Option<&ast::ExplicitSelf_>,
+                                opt_explicit_self: Option<&ast::ExplicitSelfNode>,
                                 generics: &ast::Generics,
                                 span: codemap::Span);
 }
@@ -918,7 +918,7 @@ struct RebuildPathInfo<'a> {
 struct Rebuilder<'a, 'tcx: 'a> {
     tcx: &'a ty::ctxt<'tcx>,
     fn_decl: &'a ast::FnDecl,
-    expl_self_opt: Option<&'a ast::ExplicitSelf_>,
+    expl_self_opt: Option<&'a ast::ExplicitSelfNode>,
     generics: &'a ast::Generics,
     same_regions: &'a [SameRegions],
     life_giver: &'a LifeGiver,
@@ -934,7 +934,7 @@ enum FreshOrKept {
 impl<'a, 'tcx> Rebuilder<'a, 'tcx> {
     fn new(tcx: &'a ty::ctxt<'tcx>,
            fn_decl: &'a ast::FnDecl,
-           expl_self_opt: Option<&'a ast::ExplicitSelf_>,
+           expl_self_opt: Option<&'a ast::ExplicitSelfNode>,
            generics: &'a ast::Generics,
            same_regions: &'a [SameRegions],
            life_giver: &'a LifeGiver)
@@ -952,7 +952,7 @@ impl<'a, 'tcx> Rebuilder<'a, 'tcx> {
     }
 
     fn rebuild(&self)
-               -> (ast::FnDecl, Option<ast::ExplicitSelf_>, ast::Generics) {
+               -> (ast::FnDecl, Option<ast::ExplicitSelfNode>, ast::Generics) {
         let mut expl_self_opt = self.expl_self_opt.map(|x| x.clone());
         let mut inputs = self.fn_decl.inputs.clone();
         let mut output = self.fn_decl.output.clone();
@@ -1132,11 +1132,11 @@ impl<'a, 'tcx> Rebuilder<'a, 'tcx> {
     }
 
     fn rebuild_expl_self(&self,
-                         expl_self_opt: Option<ast::ExplicitSelf_>,
+                         expl_self_opt: Option<ast::ExplicitSelfNode>,
                          lifetime: ast::Lifetime,
                          anon_nums: &HashSet<uint>,
                          region_names: &HashSet<ast::Name>)
-                         -> Option<ast::ExplicitSelf_> {
+                         -> Option<ast::ExplicitSelfNode> {
         match expl_self_opt {
             Some(ref expl_self) => match *expl_self {
                 ast::SelfRegion(lt_opt, muta, id) => match lt_opt {
@@ -1415,7 +1415,7 @@ impl<'a, 'tcx> ErrorReportingHelpers for InferCtxt<'a, 'tcx> {
                                 decl: &ast::FnDecl,
                                 fn_style: ast::FnStyle,
                                 ident: ast::Ident,
-                                opt_explicit_self: Option<&ast::ExplicitSelf_>,
+                                opt_explicit_self: Option<&ast::ExplicitSelfNode>,
                                 generics: &ast::Generics,
                                 span: codemap::Span) {
         let suggested_fn = pprust::fun_to_string(decl, fn_style, ident,

@@ -1091,7 +1091,7 @@ fn get_attributes(md: rbml::Doc) -> Vec<ast::Attribute> {
             let meta_item = meta_items.into_iter().nth(0).unwrap();
             attrs.push(
                 codemap::Spanned {
-                    node: ast::Attribute_ {
+                    node: ast::AttributeNode {
                         id: attr::mk_attr_id(),
                         style: ast::AttrOuter,
                         value: meta_item,

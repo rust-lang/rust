@@ -103,7 +103,7 @@ impl<'a> ParserAttr for Parser<'a> {
 
         return Spanned {
             span: span,
-            node: ast::Attribute_ {
+            node: ast::AttributeNode {
                 id: attr::mk_attr_id(),
                 style: style,
                 value: value,

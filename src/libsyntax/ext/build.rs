@@ -43,7 +43,7 @@ pub trait AstBuilder {
     // types
     fn ty_mt(&self, ty: P<ast::Ty>, mutbl: ast::Mutability) -> ast::MutTy;
 
-    fn ty(&self, span: Span, ty: ast::Ty_) -> P<ast::Ty>;
+    fn ty(&self, span: Span, ty: ast::TyNode) -> P<ast::Ty>;
     fn ty_path(&self, ast::Path, Option<OwnedSlice<ast::TyParamBound>>) -> P<ast::Ty>;
     fn ty_ident(&self, span: Span, idents: ast::Ident) -> P<ast::Ty>;
 
@@ -102,7 +102,7 @@ pub trait AstBuilder {
                  expr: Option<P<ast::Expr>>) -> P<ast::Block>;
 
     // expressions
-    fn expr(&self, span: Span, node: ast::Expr_) -> P<ast::Expr>;
+    fn expr(&self, span: Span, node: ast::ExprNode) -> P<ast::Expr>;
     fn expr_path(&self, path: ast::Path) -> P<ast::Expr>;
     fn expr_ident(&self, span: Span, id: ast::Ident) -> P<ast::Expr>;
 
@@ -132,7 +132,7 @@ pub trait AstBuilder {
     fn expr_struct_ident(&self, span: Span, id: ast::Ident,
                          fields: Vec<ast::Field>) -> P<ast::Expr>;
 
-    fn expr_lit(&self, sp: Span, lit: ast::Lit_) -> P<ast::Expr>;
+    fn expr_lit(&self, sp: Span, lit: ast::LitNode) -> P<ast::Expr>;
 
     fn expr_uint(&self, span: Span, i: uint) -> P<ast::Expr>;
     fn expr_int(&self, sp: Span, i: int) -> P<ast::Expr>;
@@ -158,7 +158,7 @@ pub trait AstBuilder {
     fn expr_err(&self, span: Span, expr: P<ast::Expr>) -> P<ast::Expr>;
     fn expr_try(&self, span: Span, head: P<ast::Expr>) -> P<ast::Expr>;
 
-    fn pat(&self, span: Span, pat: ast::Pat_) -> P<ast::Pat>;
+    fn pat(&self, span: Span, pat: ast::PatNode) -> P<ast::Pat>;
     fn pat_wild(&self, span: Span) -> P<ast::Pat>;
     fn pat_lit(&self, span: Span, expr: P<ast::Expr>) -> P<ast::Pat>;
     fn pat_ident(&self, span: Span, ident: ast::Ident) -> P<ast::Pat>;
@@ -205,7 +205,7 @@ pub trait AstBuilder {
 
     // items
     fn item(&self, span: Span,
-            name: Ident, attrs: Vec<ast::Attribute> , node: ast::Item_) -> P<ast::Item>;
+            name: Ident, attrs: Vec<ast::Attribute> , node: ast::ItemNode) -> P<ast::Item>;
 
     fn arg(&self, span: Span, name: Ident, ty: P<ast::Ty>) -> ast::Arg;
     // FIXME unused self
@@ -277,7 +277,7 @@ pub trait AstBuilder {
     fn meta_name_value(&self,
                        sp: Span,
                        name: InternedString,
-                       value: ast::Lit_)
+                       value: ast::LitNode)
                        -> P<ast::MetaItem>;
 
     fn view_use(&self, sp: Span,
@@ -336,7 +336,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
         }
     }
 
-    fn ty(&self, span: Span, ty: ast::Ty_) -> P<ast::Ty> {
+    fn ty(&self, span: Span, ty: ast::TyNode) -> P<ast::Ty> {
         P(ast::Ty {
             id: ast::DUMMY_NODE_ID,
             span: span,
@@ -542,7 +542,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
             })
     }
 
-    fn expr(&self, span: Span, node: ast::Expr_) -> P<ast::Expr> {
+    fn expr(&self, span: Span, node: ast::ExprNode) -> P<ast::Expr> {
         P(ast::Expr {
             id: ast::DUMMY_NODE_ID,
             node: node,
@@ -635,7 +635,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
         self.expr_struct(span, self.path_ident(span, id), fields)
     }
 
-    fn expr_lit(&self, sp: Span, lit: ast::Lit_) -> P<ast::Expr> {
+    fn expr_lit(&self, sp: Span, lit: ast::LitNode) -> P<ast::Expr> {
         self.expr(sp, ast::ExprLit(P(respan(sp, lit))))
     }
     fn expr_uint(&self, span: Span, i: uint) -> P<ast::Expr> {
@@ -771,7 +771,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
     }
 
 
-    fn pat(&self, span: Span, pat: ast::Pat_) -> P<ast::Pat> {
+    fn pat(&self, span: Span, pat: ast::PatNode) -> P<ast::Pat> {
         P(ast::Pat { id: ast::DUMMY_NODE_ID, node: pat, span: span })
     }
     fn pat_wild(&self, span: Span) -> P<ast::Pat> {
@@ -933,7 +933,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
     }
 
     fn item(&self, span: Span, name: Ident,
-            attrs: Vec<ast::Attribute>, node: ast::Item_) -> P<ast::Item> {
+            attrs: Vec<ast::Attribute>, node: ast::ItemNode) -> P<ast::Item> {
         // FIXME: Would be nice if our generated code didn't violate
         // Rust coding conventions
         P(ast::Item {
@@ -985,7 +985,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
         }).collect();
 
         respan(span,
-               ast::Variant_ {
+               ast::VariantNode {
                    name: name,
                    attrs: Vec::new(),
                    kind: ast::TupleVariantKind(args),
@@ -1067,7 +1067,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
     }
 
     fn attribute(&self, sp: Span, mi: P<ast::MetaItem>) -> ast::Attribute {
-        respan(sp, ast::Attribute_ {
+        respan(sp, ast::AttributeNode {
             id: attr::mk_attr_id(),
             style: ast::AttrOuter,
             value: mi,
@@ -1088,7 +1088,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
     fn meta_name_value(&self,
                        sp: Span,
                        name: InternedString,
-                       value: ast::Lit_)
+                       value: ast::LitNode)
                        -> P<ast::MetaItem> {
         P(respan(sp, ast::MetaNameValue(name, respan(sp, value))))
     }
