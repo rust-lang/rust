@@ -365,12 +365,6 @@ pub fn walk_ty<'v, V: Visitor<'v>>(visitor: &mut V, typ: &'v Ty) {
             visitor.visit_ty(&*function_declaration.decl.output);
             walk_lifetime_decls(visitor, &function_declaration.lifetimes);
         }
-        TyUnboxedFn(ref function_declaration) => {
-            for argument in function_declaration.decl.inputs.iter() {
-                visitor.visit_ty(&*argument.ty)
-            }
-            visitor.visit_ty(&*function_declaration.decl.output);
-        }
         TyPath(ref path, ref opt_bounds, id) => {
             visitor.visit_path(path, id);
             match *opt_bounds {
@@ -407,11 +401,23 @@ pub fn walk_path<'v, V: Visitor<'v>>(visitor: &mut V, path: &'v Path) {
     for segment in path.segments.iter() {
         visitor.visit_ident(path.span, segment.identifier);
 
-        for typ in segment.types.iter() {
-            visitor.visit_ty(&**typ);
-        }
-        for lifetime in segment.lifetimes.iter() {
-            visitor.visit_lifetime_ref(lifetime);
+        match segment.parameters {
+            ast::AngleBracketedParameters(ref data) => {
+                for typ in data.types.iter() {
+                    visitor.visit_ty(&**typ);
+                }
+                for lifetime in data.lifetimes.iter() {
+                    visitor.visit_lifetime_ref(lifetime);
+                }
+            }
+            ast::ParenthesizedParameters(ref data) => {
+                for typ in data.inputs.iter() {
+                    visitor.visit_ty(&**typ);
+                }
+                for typ in data.output.iter() {
+                    visitor.visit_ty(&**typ);
+                }
+            }
         }
     }
 }
@@ -492,13 +498,6 @@ pub fn walk_ty_param_bounds<'v, V: Visitor<'v>>(visitor: &mut V,
         match *bound {
             TraitTyParamBound(ref typ) => {
                 walk_trait_ref_helper(visitor, typ)
-            }
-            UnboxedFnTyParamBound(ref function_declaration) => {
-                for argument in function_declaration.decl.inputs.iter() {
-                    visitor.visit_ty(&*argument.ty)
-                }
-                visitor.visit_ty(&*function_declaration.decl.output);
-                walk_lifetime_decls(visitor, &function_declaration.lifetimes);
             }
             RegionTyParamBound(ref lifetime) => {
                 visitor.visit_lifetime_ref(lifetime);

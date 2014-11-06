@@ -40,7 +40,7 @@ use syntax::ast::{TupleVariantKind, Ty, TyBool, TyChar, TyClosure, TyF32};
 use syntax::ast::{TyF64, TyFloat, TyI, TyI8, TyI16, TyI32, TyI64, TyInt};
 use syntax::ast::{TyParam, TyParamBound, TyPath, TyPtr, TyProc, TyQPath};
 use syntax::ast::{TyRptr, TyStr, TyU, TyU8, TyU16, TyU32, TyU64, TyUint};
-use syntax::ast::{TypeImplItem, UnboxedFnTyParamBound, UnnamedField};
+use syntax::ast::{TypeImplItem, UnnamedField};
 use syntax::ast::{Variant, ViewItem, ViewItemExternCrate};
 use syntax::ast::{ViewItemUse, ViewPathGlob, ViewPathList, ViewPathSimple};
 use syntax::ast::{Visibility};
@@ -4523,41 +4523,6 @@ impl<'a> Resolver<'a> {
             TraitTyParamBound(ref tref) => {
                 self.resolve_trait_reference(id, tref, reference_type)
             }
-            UnboxedFnTyParamBound(ref unboxed_function) => {
-                match self.resolve_path(unboxed_function.ref_id,
-                                        &unboxed_function.path,
-                                        TypeNS,
-                                        true) {
-                    None => {
-                        let path_str = self.path_names_to_string(
-                            &unboxed_function.path);
-                        self.resolve_error(unboxed_function.path.span,
-                                           format!("unresolved trait `{}`",
-                                                   path_str).as_slice())
-                    }
-                    Some(def) => {
-                        match def {
-                            (DefTrait(_), _) => {
-                                self.record_def(unboxed_function.ref_id, def);
-                            }
-                            _ => {
-                                let msg =
-                                    format!("`{}` is not a trait",
-                                            self.path_names_to_string(
-                                                &unboxed_function.path));
-                                self.resolve_error(unboxed_function.path.span,
-                                                   msg.as_slice());
-                            }
-                        }
-                    }
-                }
-
-                for argument in unboxed_function.decl.inputs.iter() {
-                    self.resolve_type(&*argument.ty);
-                }
-
-                self.resolve_type(&*unboxed_function.decl.output);
-            }
             RegionTyParamBound(..) => {}
         }
     }
@@ -4951,12 +4916,12 @@ impl<'a> Resolver<'a> {
 
                             if path.segments
                                    .iter()
-                                   .any(|s| !s.lifetimes.is_empty()) {
+                                   .any(|s| s.parameters.has_lifetimes()) {
                                 span_err!(self.session, path.span, E0157,
                                     "lifetime parameters are not allowed on this type");
                             } else if path.segments
                                           .iter()
-                                          .any(|s| s.types.len() > 0) {
+                                          .any(|s| !s.parameters.is_empty()) {
                                 span_err!(self.session, path.span, E0153,
                                     "type parameters are not allowed on this type");
                             }
@@ -5234,7 +5199,7 @@ impl<'a> Resolver<'a> {
                     // Check the types in the path pattern.
                     for ty in path.segments
                                   .iter()
-                                  .flat_map(|s| s.types.iter()) {
+                                  .flat_map(|s| s.parameters.types().into_iter()) {
                         self.resolve_type(&**ty);
                     }
                 }
@@ -5340,7 +5305,7 @@ impl<'a> Resolver<'a> {
                     namespace: Namespace,
                     check_ribs: bool) -> Option<(Def, LastPrivate)> {
         // First, resolve the types.
-        for ty in path.segments.iter().flat_map(|s| s.types.iter()) {
+        for ty in path.segments.iter().flat_map(|s| s.parameters.types().into_iter()) {
             self.resolve_type(&**ty);
         }
 

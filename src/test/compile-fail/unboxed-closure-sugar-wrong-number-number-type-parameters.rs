@@ -8,7 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn fn1(0: Box) {} //~ ERROR: wrong number of type arguments: expected 1, found 0
+struct Zero;
 
-fn main() {}
+fn foo(_: Zero()) //~ ERROR wrong number of type arguments
+{}
 
+fn main() { }
