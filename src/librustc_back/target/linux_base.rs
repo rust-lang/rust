@@ -25,7 +25,7 @@ pub fn opts() -> TargetOptions {
             // follow this flag. Thus, use it before specifying libraries to link to.
             "-Wl,--as-needed".to_string(),
         ),
-        position_independant_executables: true,
+        position_independent_executables: true,
         .. Default::default()
     }
 }
