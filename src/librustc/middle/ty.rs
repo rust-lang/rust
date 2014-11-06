@@ -3213,13 +3213,6 @@ pub fn node_id_to_type(cx: &ctxt, id: ast::NodeId) -> t {
     }
 }
 
-pub fn node_id_to_type_opt(cx: &ctxt, id: ast::NodeId) -> Option<t> {
-    match cx.node_types.borrow().find(&(id as uint)) {
-       Some(&t) => Some(t),
-       None => None
-    }
-}
-
 pub fn node_id_item_substs(cx: &ctxt, id: ast::NodeId) -> ItemSubsts {
     match cx.item_substs.borrow().find(&id) {
       None => ItemSubsts::empty(),
@@ -3343,7 +3336,7 @@ pub fn expr_ty(cx: &ctxt, expr: &ast::Expr) -> t {
 }
 
 pub fn expr_ty_opt(cx: &ctxt, expr: &ast::Expr) -> Option<t> {
-    return node_id_to_type_opt(cx, expr.id);
+    return try_node_id_to_type(cx, expr.id)
 }
 
 pub fn expr_ty_adjusted(cx: &ctxt, expr: &ast::Expr) -> t {

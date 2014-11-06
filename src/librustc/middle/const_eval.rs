@@ -322,10 +322,9 @@ pub fn const_expr_to_pat(tcx: &ty::ctxt, expr: &Expr) -> P<Pat> {
 
         ExprCall(ref callee, ref args) => {
             let def = tcx.def_map.borrow().get_copy(&callee.id);
-            match tcx.def_map.borrow_mut().entry(expr.id) {
-              Vacant(entry) => { entry.set(def); }
-              _ => {}
-            };
+            if let Vacant(entry) = tcx.def_map.borrow_mut().entry(expr.id) {
+                entry.set(def);
+            }
             let path = match def {
                 def::DefStruct(def_id) => def_to_path(tcx, def_id),
                 def::DefVariant(_, variant_did, _) => def_to_path(tcx, variant_did),
@@ -560,7 +559,7 @@ pub fn eval_const_expr_partial(tcx: &ty::ctxt, e: &Expr) -> Result<const_val, St
               None => Err("non-constant path in constant expr".to_string())
           }
       }
-      ExprLit(ref lit) => Ok(lit_to_const(&**lit)),
+      ExprLit(ref lit) => Ok(lit_to_const(tcx, e.id, &**lit)),
       ExprParen(ref e)     => eval_const_expr_partial(tcx, &**e),
       ExprBlock(ref block) => {
         match block.expr {
@@ -572,25 +571,28 @@ pub fn eval_const_expr_partial(tcx: &ty::ctxt, e: &Expr) -> Result<const_val, St
     }
 }
 
-pub fn lit_to_const(lit: &Lit) -> const_val {
+pub fn lit_to_const(tcx: &ty::ctxt, id: ast::NodeId, lit: &Lit) -> const_val {
+    let t = ty::try_node_id_to_type(tcx, id);
     match lit.node {
-        LitStr(ref s, _) => const_str((*s).clone()),
-        LitBinary(ref data) => {
-            const_binary(Rc::new(data.iter().map(|x| *x).collect()))
-        }
-        LitByte(n) => const_uint(n as u64),
-        LitChar(n) => const_uint(n as u64),
-        LitInt(n, ast::SignedIntLit(_, ast::Plus)) |
-        LitInt(n, ast::UnsuffixedIntLit(ast::Plus)) => const_int(n as i64),
-        LitInt(n, ast::SignedIntLit(_, ast::Minus)) |
-        LitInt(n, ast::UnsuffixedIntLit(ast::Minus)) => const_int(-(n as i64)),
-        LitInt(n, ast::UnsignedIntLit(_)) => const_uint(n),
-        LitFloat(ref n, _) |
-        LitFloatUnsuffixed(ref n) => {
+        LitNil =>
+            const_nil,
+        LitBool(b) =>
+            const_bool(b),
+        LitByte(n) =>
+            const_uint(n as u64),
+        LitInt(n, _) => if t.into_iter().any(ty::type_is_signed) {
+            const_int(n as i64)
+        } else {
+            const_uint(n as u64)
+        },
+        LitChar(n) =>
+            const_uint(n as u64),
+        LitBinary(ref data) =>
+            const_binary(Rc::new(data.iter().map(|x| *x).collect())),
+        LitStr(ref s, _) =>
+            const_str((*s).clone()),
+        LitFloat(ref n, _) | LitFloatUnsuffixed(ref n) =>
             const_float(from_str::<f64>(n.get()).unwrap() as f64)
-        }
-        LitNil => const_nil,
-        LitBool(b) => const_bool(b)
     }
 }
 
