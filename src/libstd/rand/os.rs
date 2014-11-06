@@ -22,7 +22,7 @@ mod imp {
     use rand::Rng;
     use rand::reader::ReaderRng;
     use result::{Ok, Err};
-    use slice::{ImmutableSlice, MutableSlice};
+    use slice::SlicePrelude;
     use mem;
     use os::errno;
 
