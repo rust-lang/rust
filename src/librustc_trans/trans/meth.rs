@@ -87,7 +87,7 @@ pub fn trans_impl(ccx: &CrateContext,
                                  method.pe_fn_decl(),
                                  method.pe_body(),
                                  llfn,
-                                 &param_substs::empty(),
+                                 &Substs::trans_empty(),
                                  method.id,
                                  &[]);
                         update_linkage(ccx,
@@ -136,8 +136,7 @@ pub fn trans_method_callee<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             method_num
         }) => {
             let trait_ref =
-                Rc::new(trait_ref.subst(bcx.tcx(),
-                                        bcx.fcx.param_substs.substs()));
+                Rc::new(trait_ref.subst(bcx.tcx(), bcx.fcx.param_substs));
             let span = bcx.tcx().map.span(method_call.expr_id);
             debug!("method_call={} trait_ref={}",
                    method_call,
