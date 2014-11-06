@@ -10,7 +10,14 @@
 
 use middle::ty;
 use std::mem;
+use std::sync::atomic;
 use util::snapshot_vec as sv;
+
+// Give each inference variable a unique stamp in addition to their
+// index into the array. This is really helpful for debugging, since
+// otherwise variable numbers get reused across functions and even
+// within functions, when transactions are in play.
+static GLOBAL_COUNTER: atomic::AtomicUint = atomic::INIT_ATOMIC_UINT;
 
 pub struct TypeVariableTable {
     values: sv::SnapshotVec<TypeVariableData,UndoEntry,Delegate>,
@@ -114,11 +121,14 @@ impl TypeVariableTable {
     }
 
     pub fn new_var(&mut self, diverging: bool) -> ty::TyVid {
+        let counter = GLOBAL_COUNTER.fetch_add(1, atomic::SeqCst);
         let index = self.values.push(TypeVariableData {
             value: Bounded(vec![]),
             diverging: diverging
         });
-        ty::TyVid { index: index }
+        let vid = ty::TyVid { index: index, counter: counter };
+        debug!("Created new type variable: {}", vid);
+        vid
     }
 
     pub fn probe(&self, vid: ty::TyVid) -> Option<ty::t> {

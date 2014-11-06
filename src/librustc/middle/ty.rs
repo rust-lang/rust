@@ -1111,7 +1111,8 @@ impl CLike for BuiltinBound {
 
 #[deriving(Clone, PartialEq, Eq, Hash)]
 pub struct TyVid {
-    pub index: uint
+    pub index: uint,
+    pub counter: uint,
 }
 
 #[deriving(Clone, PartialEq, Eq, Hash)]
@@ -1167,7 +1168,7 @@ impl cmp::PartialEq for InferRegion {
 
 impl fmt::Show for TyVid {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result{
-        write!(f, "_#{}t", self.index)
+        write!(f, "_#{}/{}t", self.index, self.counter)
     }
 }
 
