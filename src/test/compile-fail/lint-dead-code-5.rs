@@ -31,10 +31,10 @@ enum Enum3 { //~ ERROR: enum is never used
 }
 
 fn main() {
-    let v = Variant1(1);
+    let v = Enum1::Variant1(1);
     match v {
-        Variant1(_) => (),
-        Variant2 => ()
+        Enum1::Variant1(_) => (),
+        Enum1::Variant2 => ()
     }
-    let x = Variant3(true);
+    let x = Enum2::Variant3(true);
 }

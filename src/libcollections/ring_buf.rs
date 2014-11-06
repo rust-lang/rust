@@ -845,6 +845,8 @@ impl<T: fmt::Show> fmt::Show for RingBuf<T> {
 
 #[cfg(test)]
 mod tests {
+    use self::Taggy::*;
+    use self::Taggypar::*;
     use std::fmt::Show;
     use std::prelude::*;
     use std::hash;

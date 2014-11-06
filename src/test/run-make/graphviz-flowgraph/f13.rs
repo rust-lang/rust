@@ -10,9 +10,9 @@
 
 enum E13 { E13a, E13b(int) }
 pub fn expr_match_13() {
-    let x = E13b(13); let _y;
+    let x = E13::E13b(13); let _y;
     match x {
-        E13a => _y = 1,
-        E13b(v) => _y = v + 1,
+        E13::E13a => _y = 1,
+        E13::E13b(v) => _y = v + 1,
     }
 }

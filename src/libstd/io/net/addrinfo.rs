@@ -19,6 +19,10 @@ getaddrinfo()
 
 #![allow(missing_docs)]
 
+pub use self::SocketType::*;
+pub use self::Flag::*;
+pub use self::Protocol::*;
+
 use iter::Iterator;
 use io::{IoResult};
 use io::net::ip::{SocketAddr, IpAddr};

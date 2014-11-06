@@ -13,7 +13,8 @@ The compiler code necessary for `#[deriving(Decodable)]`. See
 encodable.rs for more.
 */
 
-use ast::{MetaItem, Item, Expr, MutMutable, Ident};
+use ast;
+use ast::{MetaItem, Item, Expr, MutMutable};
 use codemap::Span;
 use ext::base::ExtCtxt;
 use ext::build::AstBuilder;
@@ -82,9 +83,10 @@ fn decodable_substructure(cx: &mut ExtCtxt, trait_span: Span,
             };
             let read_struct_field = cx.ident_of("read_struct_field");
 
+            let path = cx.path_ident(trait_span, substr.type_ident);
             let result = decode_static_fields(cx,
                                               trait_span,
-                                              substr.type_ident,
+                                              path,
                                               summary,
                                               |cx, span, name, field| {
                 cx.expr_try(span,
@@ -113,9 +115,10 @@ fn decodable_substructure(cx: &mut ExtCtxt, trait_span: Span,
             for (i, &(name, v_span, ref parts)) in fields.iter().enumerate() {
                 variants.push(cx.expr_str(v_span, token::get_ident(name)));
 
+                let path = cx.path(trait_span, vec![substr.type_ident, name]);
                 let decoded = decode_static_fields(cx,
                                                    v_span,
-                                                   name,
+                                                   path,
                                                    parts,
                                                    |cx, span, _, field| {
                     let idx = cx.expr_uint(span, field);
@@ -153,18 +156,19 @@ fn decodable_substructure(cx: &mut ExtCtxt, trait_span: Span,
 }
 
 /// Create a decoder for a single enum variant/struct:
-/// - `outer_pat_ident` is the name of this enum variant/struct
+/// - `outer_pat_path` is the path to this enum variant/struct
 /// - `getarg` should retrieve the `uint`-th field with name `@str`.
 fn decode_static_fields(cx: &mut ExtCtxt,
                         trait_span: Span,
-                        outer_pat_ident: Ident,
+                        outer_pat_path: ast::Path,
                         fields: &StaticFields,
                         getarg: |&mut ExtCtxt, Span, InternedString, uint| -> P<Expr>)
                         -> P<Expr> {
     match *fields {
         Unnamed(ref fields) => {
+            let path_expr = cx.expr_path(outer_pat_path);
             if fields.is_empty() {
-                cx.expr_ident(trait_span, outer_pat_ident)
+                path_expr
             } else {
                 let fields = fields.iter().enumerate().map(|(i, &span)| {
                     getarg(cx, span,
@@ -173,7 +177,7 @@ fn decode_static_fields(cx: &mut ExtCtxt,
                            i)
                 }).collect();
 
-                cx.expr_call_ident(trait_span, outer_pat_ident, fields)
+                cx.expr_call(trait_span, path_expr, fields)
             }
         }
         Named(ref fields) => {
@@ -182,7 +186,7 @@ fn decode_static_fields(cx: &mut ExtCtxt,
                 let arg = getarg(cx, span, token::get_ident(name), i);
                 cx.field_imm(span, name, arg)
             }).collect();
-            cx.expr_struct_ident(trait_span, outer_pat_ident, fields)
+            cx.expr_struct(trait_span, outer_pat_path, fields)
         }
     }
 }

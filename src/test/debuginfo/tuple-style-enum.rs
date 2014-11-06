@@ -50,6 +50,9 @@
 
 #![allow(unused_variables)]
 
+use self::Regular::{Case1, Case2, Case3};
+use self::Univariant::TheOnlyCase;
+
 // The first element is to ensure proper alignment, irrespective of the machines word size. Since
 // the size of the discriminant value is machine dependent, this has be taken into account when
 // datatype layout should be predictable as in this case.

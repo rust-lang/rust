@@ -33,6 +33,9 @@
 //
 // [1] - http://swtch.com/~rsc/regex/regex3.html
 
+pub use self::MatchKind::*;
+pub use self::StepState::*;
+
 use std::cmp;
 use std::mem;
 use std::slice::SlicePrelude;

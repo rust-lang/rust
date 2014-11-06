@@ -11,6 +11,8 @@
 //! A pass that checks to make sure private fields and methods aren't used
 //! outside their scopes. This pass will also generate a set of exported items
 //! which are available for use externally when compiled as a library.
+use self::PrivacyResult::*;
+use self::FieldName::*;
 
 use std::mem::replace;
 

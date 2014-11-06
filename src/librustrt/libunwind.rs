@@ -15,6 +15,12 @@
 #![allow(non_snake_case)]
 #![allow(dead_code)] // these are just bindings
 
+#[cfg(any(not(target_arch = "arm"), target_os = "ios"))]
+pub use self::_Unwind_Action::*;
+#[cfg(target_arch = "arm")]
+pub use self::_Unwind_State::*;
+pub use self::_Unwind_Reason_Code::*;
+
 use libc;
 
 #[cfg(any(not(target_arch = "arm"), target_os = "ios"))]

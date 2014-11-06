@@ -23,6 +23,7 @@
  * make and also supplying a delegate capable of reversing those
  * changes.
  */
+use self::UndoLog::*;
 
 use std::kinds::marker;
 use std::mem;

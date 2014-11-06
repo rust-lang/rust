@@ -12,6 +12,11 @@
  * Trait Resolution. See doc.rs.
  */
 
+pub use self::SelectionError::*;
+pub use self::FulfillmentErrorCode::*;
+pub use self::Vtable::*;
+pub use self::ObligationCauseCode::*;
+
 use middle::mem_categorization::Typer;
 use middle::subst;
 use middle::ty;

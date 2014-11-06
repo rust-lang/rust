@@ -102,7 +102,8 @@ fn cs_from(name: &str, cx: &mut ExtCtxt, trait_span: Span, substr: &Substructure
                         let span = variant.span;
 
                         // expr for `$n == $variant as $name`
-                        let variant = cx.expr_ident(span, variant.node.name);
+                        let path = cx.path(span, vec![substr.type_ident, variant.node.name]);
+                        let variant = cx.expr_path(path);
                         let ty = cx.ty_ident(span, cx.ident_of(name));
                         let cast = cx.expr_cast(span, variant.clone(), ty);
                         let guard = cx.expr_binary(span, ast::BiEq, n.clone(), cast);

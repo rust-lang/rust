@@ -183,6 +183,14 @@ the unique type ID as described above *can* be used as identifier. Since it is
 comparatively expensive to construct, though, `ty::type_id()` is still used
 additionally as an optimization for cases where the exact same type has been
 seen before (which is most of the time). */
+use self::FunctionDebugContextRepr::*;
+use self::VariableAccess::*;
+use self::VariableKind::*;
+use self::MemberOffset::*;
+use self::MemberDescriptionFactory::*;
+use self::RecursiveTypeDescription::*;
+use self::EnumDiscriminantInfo::*;
+use self::DebugLocation::*;
 
 use driver::config;
 use driver::config::{FullDebugInfo, LimitedDebugInfo, NoDebugInfo};

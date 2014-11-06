@@ -12,6 +12,8 @@
 
 #![stable]
 
+pub use self::Ordering::*;
+
 use intrinsics;
 use std::kinds::marker;
 use cell::UnsafeCell;

@@ -16,8 +16,8 @@ enum Foo {
 
 macro_rules! match_inside_expansion(
     () => (
-        match (B { b1:29 , bb1: 100}) {
-            B { b1:b2 , bb1:bb2 } => b2+bb2
+        match (Foo::B { b1:29 , bb1: 100}) {
+            Foo::B { b1:b2 , bb1:bb2 } => b2+bb2
         }
     )
 )

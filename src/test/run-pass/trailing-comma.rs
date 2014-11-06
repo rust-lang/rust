@@ -34,5 +34,5 @@ pub fn main() {
     Bar.g(0i,);
     Bar.h();
 
-    let x = Qux(1,);
+    let x = Baz::Qux(1,);
 }

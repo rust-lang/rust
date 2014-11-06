@@ -18,9 +18,9 @@ enum E {
 }
 
 pub fn main() {
-    let e = Bar;
+    let e = E::Bar;
     match e {
-        Foo{f: _f} => panic!(),
+        E::Foo{f: _f} => panic!(),
         _ => (),
     }
 }

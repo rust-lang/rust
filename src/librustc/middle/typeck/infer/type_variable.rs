@@ -8,6 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+pub use self::RelationDir::*;
+use self::TypeVariableValue::*;
+use self::UndoEntry::*;
+
 use middle::ty;
 use std::mem;
 use util::snapshot_vec as sv;

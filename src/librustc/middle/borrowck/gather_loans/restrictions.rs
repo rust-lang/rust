@@ -12,6 +12,8 @@
  * Computes the restrictions that result from a borrow.
  */
 
+pub use self::RestrictionResult::*;
+
 use middle::borrowck::*;
 use middle::expr_use_visitor as euv;
 use middle::mem_categorization as mc;

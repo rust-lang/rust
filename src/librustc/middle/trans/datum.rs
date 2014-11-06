@@ -13,6 +13,9 @@
  * Datums are and how they are intended to be used.
  */
 
+pub use self::Expr::*;
+pub use self::RvalueMode::*;
+
 use llvm::ValueRef;
 use middle::trans::base::*;
 use middle::trans::build::Load;

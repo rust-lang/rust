@@ -21,12 +21,15 @@
        html_favicon_url = "http://www.rust-lang.org/favicon.ico",
        html_root_url = "http://doc.rust-lang.org/nightly/",
        html_playground_url = "http://play.rust-lang.org/")]
-#![feature(phase)]
+#![feature(phase, globs)]
 
 #[cfg(test)] #[phase(plugin, link)] extern crate log;
 
 extern crate serialize;
 extern crate libc;
+
+pub use self::ParseError::*;
+use self::Fmt::*;
 
 use std::fmt::Show;
 use std::fmt;

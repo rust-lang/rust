@@ -25,13 +25,13 @@ fn f(s: &S, g: |&S|) {
 }
 
 fn main() {
-    let s = S { x: box Bar(box 42) };
+    let s = S { x: box E::Bar(box 42) };
     loop {
         f(&s, |hellothere| {
             match hellothere.x { //~ ERROR cannot move out
-                box Foo(_) => {}
-                box Bar(x) => println!("{}", x.to_string()), //~ NOTE attempting to move value to here
-                box Baz => {}
+                box E::Foo(_) => {}
+                box E::Bar(x) => println!("{}", x.to_string()), //~ NOTE attempting to move value to here
+                box E::Baz => {}
             }
         })
     }

@@ -101,19 +101,19 @@ fn main() {
     let some: Option<&u32> = Some(unsafe { std::mem::transmute(0x12345678u) });
     let none: Option<&u32> = None;
 
-    let full = Full(454545, unsafe { std::mem::transmute(0x87654321u) }, 9988);
+    let full = MoreFields::Full(454545, unsafe { std::mem::transmute(0x87654321u) }, 9988);
 
-    let empty = Empty;
-    let empty_gdb: &MoreFieldsRepr = unsafe { std::mem::transmute(&Empty) };
+    let empty = MoreFields::Empty;
+    let empty_gdb: &MoreFieldsRepr = unsafe { std::mem::transmute(&MoreFields::Empty) };
 
-    let droid = Droid {
+    let droid = NamedFields::Droid {
         id: 675675,
         range: 10000001,
         internals: unsafe { std::mem::transmute(0x43218765u) }
     };
 
-    let void_droid = Void;
-    let void_droid_gdb: &NamedFieldsRepr = unsafe { std::mem::transmute(&Void) };
+    let void_droid = NamedFields::Void;
+    let void_droid_gdb: &NamedFieldsRepr = unsafe { std::mem::transmute(&NamedFields::Void) };
 
     zzz(); // #break
 }

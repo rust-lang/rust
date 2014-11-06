@@ -1331,8 +1331,8 @@ enum Animal {
   Cat
 }
 
-let mut a: Animal = Dog;
-a = Cat;
+let mut a: Animal = Animal::Dog;
+a = Animal::Cat;
 ```
 
 Enumeration constructors can have either named or unnamed fields:
@@ -1345,8 +1345,8 @@ enum Animal {
     Cat { name: String, weight: f64 }
 }
 
-let mut a: Animal = Dog("Cocoa".to_string(), 37.2);
-a = Cat { name: "Spotty".to_string(), weight: 2.7 };
+let mut a: Animal = Animal::Dog("Cocoa".to_string(), 37.2);
+a = Animal::Cat { name: "Spotty".to_string(), weight: 2.7 };
 # }
 ```
 
@@ -3308,12 +3308,12 @@ fields of a particular variant. For example:
 ```
 enum List<X> { Nil, Cons(X, Box<List<X>>) }
 
-let x: List<int> = Cons(10, box Cons(11, box Nil));
+let x: List<int> = List::Cons(10, box List::Cons(11, box List::Nil));
 
 match x {
-    Cons(_, box Nil) => panic!("singleton list"),
-    Cons(..)         => return,
-    Nil              => panic!("empty list")
+    List::Cons(_, box List::Nil) => panic!("singleton list"),
+    List::Cons(..)               => return,
+    List::Nil                    => panic!("empty list")
 }
 ```
 
@@ -3371,16 +3371,16 @@ An example of a `match` expression:
 
 enum List<X> { Nil, Cons(X, Box<List<X>>) }
 
-let x: List<int> = Cons(10, box Cons(11, box Nil));
+let x: List<int> = List::Cons(10, box List::Cons(11, box List::Nil));
 
 match x {
-    Cons(a, box Cons(b, _)) => {
+    List::Cons(a, box List::Cons(b, _)) => {
         process_pair(a, b);
     }
-    Cons(10, _) => {
+    List::Cons(10, _) => {
         process_ten();
     }
-    Nil => {
+    List::Nil => {
         return;
     }
     _ => {
@@ -3402,10 +3402,10 @@ enum List { Nil, Cons(uint, Box<List>) }
 
 fn is_sorted(list: &List) -> bool {
     match *list {
-        Nil | Cons(_, box Nil) => true,
-        Cons(x, ref r @ box Cons(_, _)) => {
+        List::Nil | List::Cons(_, box List::Nil) => true,
+        List::Cons(x, ref r @ box List::Cons(_, _)) => {
             match *r {
-                box Cons(y, _) => (x <= y) && is_sorted(&**r),
+                box List::Cons(y, _) => (x <= y) && is_sorted(&**r),
                 _ => panic!()
             }
         }
@@ -3413,7 +3413,7 @@ fn is_sorted(list: &List) -> bool {
 }
 
 fn main() {
-    let a = Cons(6, box Cons(7, box Cons(42, box Nil)));
+    let a = List::Cons(6, box List::Cons(7, box List::Cons(42, box List::Nil)));
     assert!(is_sorted(&a));
 }
 
@@ -3718,7 +3718,7 @@ enum List<T> {
   Cons(T, Box<List<T>>)
 }
 
-let a: List<int> = Cons(7, box Cons(13, box Nil));
+let a: List<int> = List::Cons(7, box List::Cons(13, box List::Nil));
 ```
 
 ### Pointer types

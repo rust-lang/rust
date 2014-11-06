@@ -15,6 +15,8 @@ comments in the section "Moves and initialization" and in `doc.rs`.
 
 */
 
+pub use self::MoveKind::*;
+
 use std::cell::RefCell;
 use std::rc::Rc;
 use std::uint;

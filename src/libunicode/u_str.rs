@@ -17,6 +17,7 @@
  * methods provided by the UnicodeChar trait.
  */
 
+use self::GraphemeState::*;
 use core::cmp;
 use core::slice::SlicePrelude;
 use core::iter::{Filter, AdditiveIterator, Iterator, DoubleEndedIterator};

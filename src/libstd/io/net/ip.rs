@@ -15,6 +15,8 @@
 
 #![allow(missing_docs)]
 
+pub use self::IpAddr::*;
+
 use fmt;
 use io::{mod, IoResult, IoError};
 use io::net;

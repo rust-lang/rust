@@ -7,6 +7,7 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
+use self::Req::*;
 
 use libc::{mod, pid_t, c_void, c_int};
 use c_str::CString;

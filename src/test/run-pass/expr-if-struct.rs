@@ -32,8 +32,8 @@ impl PartialEq for mood {
 }
 
 fn test_tag() {
-    let rs = if true { happy } else { sad };
-    assert_eq!(rs, happy);
+    let rs = if true { mood::happy } else { mood::sad };
+    assert_eq!(rs, mood::happy);
 }
 
 pub fn main() { test_rec(); test_tag(); }

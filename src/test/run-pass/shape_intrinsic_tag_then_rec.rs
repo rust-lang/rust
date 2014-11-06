@@ -53,7 +53,7 @@ struct X {
 }
 
 pub fn main() {
-    let sp: Span = Span {lo: 57451u, hi: 57542u, expanded_from: os_none};
+    let sp: Span = Span {lo: 57451u, hi: 57542u, expanded_from: opt_span::os_none};
     let t: Box<ty> = box Spanned { data: 3u, span: sp.clone() };
     let p_: Path_ = Path_ {
         global: true,

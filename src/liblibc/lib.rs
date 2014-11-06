@@ -85,6 +85,8 @@ extern crate core;
 #[cfg(test)] extern crate test;
 #[cfg(test)] extern crate native;
 
+pub use self::Nullable::*;
+
 // Explicit export lists for the intersection (provided here) mean that
 // you can write more-platform-agnostic code if you stick to just these
 // symbols.

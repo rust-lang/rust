@@ -78,18 +78,18 @@ fn recurse_or_panic(depth: int, st: Option<State>) {
         let st = match st {
             None => {
                 State {
-                    unique: box Nil,
-                    vec: vec!(box Nil),
-                    res: r(box Nil)
+                    unique: box List::Nil,
+                    vec: vec!(box List::Nil),
+                    res: r(box List::Nil)
                 }
             }
             Some(st) => {
                 let mut v = st.vec.clone();
-                v.push_all(&[box Cons((), st.vec.last().unwrap().clone())]);
+                v.push_all(&[box List::Cons((), st.vec.last().unwrap().clone())]);
                 State {
-                    unique: box Cons((), box *st.unique),
+                    unique: box List::Cons((), box *st.unique),
                     vec: v,
-                    res: r(box Cons((), st.res._l.clone())),
+                    res: r(box List::Cons((), st.res._l.clone())),
                 }
             }
         };

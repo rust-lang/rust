@@ -13,8 +13,8 @@
 fn foo<T>(o: myoption<T>) -> int {
     let mut x: int = 5;
     match o {
-        none::<T> => { }
-        some::<T>(_t) => { x += 1; }
+        myoption::none::<T> => { }
+        myoption::some::<T>(_t) => { x += 1; }
     }
     return x;
 }

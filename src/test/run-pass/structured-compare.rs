@@ -29,9 +29,9 @@ pub fn main() {
     assert!((a <= (1, 2, 4)));
     assert!(((1i, 2i, 4i) > a));
     assert!(((1i, 2i, 4i) >= a));
-    let x = large;
-    let y = small;
+    let x = foo::large;
+    let y = foo::small;
     assert!((x != y));
-    assert_eq!(x, large);
-    assert!((x != small));
+    assert_eq!(x, foo::large);
+    assert!((x != foo::small));
 }

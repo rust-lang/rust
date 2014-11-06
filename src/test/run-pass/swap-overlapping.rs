@@ -15,10 +15,10 @@ use std::ptr;
 pub fn main() {
     let mut test = TestDescAndFn {
         desc: TestDesc {
-            name: DynTestName("test".to_string()),
+            name: TestName::DynTestName("test".to_string()),
             should_fail: false
         },
-        testfn: DynTestFn(proc() ()),
+        testfn: TestFn::DynTestFn(proc() ()),
     };
     do_swap(&mut test);
 }

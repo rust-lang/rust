@@ -38,8 +38,8 @@
 //!         return Err("invalid header length");
 //!     }
 //!     match header[0] {
-//!         1 => Ok(Version1),
-//!         2 => Ok(Version2),
+//!         1 => Ok(Version::Version1),
+//!         2 => Ok(Version::Version2),
 //!         _ => Err("invalid version")
 //!     }
 //! }
@@ -275,6 +275,8 @@
 //! will not resume after the panic, that a panic is catastrophic.
 
 #![stable]
+
+pub use self::Result::*;
 
 use std::fmt::Show;
 use slice;

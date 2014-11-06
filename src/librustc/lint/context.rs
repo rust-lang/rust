@@ -23,6 +23,7 @@
 //! previous lint state is pushed onto a stack and the ast is then recursed
 //! upon.  As the ast is traversed, this keeps track of the current lint level
 //! for all lint attributes.
+use self::TargetLint::*;
 
 use middle::privacy::ExportedItems;
 use middle::subst;

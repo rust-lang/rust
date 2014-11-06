@@ -13,6 +13,10 @@
 // The crate store - a central repo for information collected about external
 // crates and libraries
 
+pub use self::MetadataBlob::*;
+pub use self::LinkagePreference::*;
+pub use self::NativeLibaryKind::*;
+
 use back::svh::Svh;
 use metadata::decoder;
 use metadata::loader;

@@ -100,6 +100,10 @@
 #![allow(unused_variables)]
 #![allow(dead_code)]
 
+use self::AutoDiscriminant::{One, Two, Three};
+use self::ManualDiscriminant::{OneHundred, OneThousand, OneMillion};
+use self::SingleVariant::TheOnlyVariant;
+
 enum AutoDiscriminant {
     One,
     Two,

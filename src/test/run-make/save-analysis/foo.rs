@@ -48,11 +48,11 @@ enum En {
 fn main() {
     let x = Foo { f: 237 };
     let _f = x.bar();
-    let en = Var2;
+    let en = En::Var2;
 
     let _ = match en {
-        Var1 => x.bar(),
-        Var2 => 34,
-        Var3(x, y, f) => f.bar()
+        En::Var1 => x.bar(),
+        En::Var2 => 34,
+        En::Var3(x, y, f) => f.bar()
     };
 }

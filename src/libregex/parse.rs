@@ -8,6 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+pub use self::Ast::*;
+pub use self::Repeater::*;
+pub use self::Greed::*;
+use self::BuildAst::*;
+
 use std::char;
 use std::cmp;
 use std::fmt;

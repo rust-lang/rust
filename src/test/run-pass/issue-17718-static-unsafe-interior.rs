@@ -24,7 +24,7 @@ enum UnsafeEnum<T> {
     VariantUnsafe(UnsafeCell<T>)
 }
 
-static STATIC1: UnsafeEnum<int> = VariantSafe;
+static STATIC1: UnsafeEnum<int> = UnsafeEnum::VariantSafe;
 
 static STATIC2: UnsafeCell<int> = UnsafeCell { value: 1 };
 const CONST: UnsafeCell<int> = UnsafeCell { value: 1 };

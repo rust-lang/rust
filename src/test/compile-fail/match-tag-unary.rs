@@ -13,4 +13,4 @@
 enum a { A(int), }
 enum b { B(int), }
 
-fn main() { let x: a = A(0); match x { B(y) => { } } }
+fn main() { let x: a = a::A(0); match x { b::B(y) => { } } }

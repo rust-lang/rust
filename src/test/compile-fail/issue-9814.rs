@@ -14,5 +14,5 @@
 enum Foo { Bar(int) }
 
 fn main() {
-    let _ = *Bar(2); //~ ERROR type `Foo` cannot be dereferenced
+    let _ = *Foo::Bar(2); //~ ERROR type `Foo` cannot be dereferenced
 }

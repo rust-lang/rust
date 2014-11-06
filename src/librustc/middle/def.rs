@@ -8,6 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+pub use self::Def::*;
+pub use self::MethodProvenance::*;
+
 use middle::subst::ParamSpace;
 use syntax::ast;
 use syntax::ast_util::local_def;

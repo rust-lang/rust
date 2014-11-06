@@ -41,7 +41,7 @@ fn get_bar(x: uint) -> Vec<uint> { vec!(x * 2) }
 pub fn fails() {
     let x = 2;
     let mut y = Vec::new();
-    y.push(box Bickwick(do_it(get_bar(x).as_slice())));
+    y.push(box Conzabble::Bickwick(do_it(get_bar(x).as_slice())));
 }
 
 pub fn main() {

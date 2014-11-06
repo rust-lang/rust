@@ -26,7 +26,7 @@ struct Rec<A,B> {
 }
 
 fn mk_rec<A,B>(a: A, b: B) -> Rec<A,B> {
-    Rec { chA:0u8, tA:VarA(a), chB:1u8, tB:VarB(b) }
+    Rec { chA:0u8, tA:Tag::VarA(a), chB:1u8, tB:Tag::VarB(b) }
 }
 
 fn is_aligned<A>(amnt: uint, u: &A) -> bool {
@@ -36,8 +36,8 @@ fn is_aligned<A>(amnt: uint, u: &A) -> bool {
 
 fn variant_data_is_aligned<A,B>(amnt: uint, u: &Tag<A,B>) -> bool {
     match u {
-      &VarA(ref a) => is_aligned(amnt, a),
-      &VarB(ref b) => is_aligned(amnt, b)
+      &Tag::VarA(ref a) => is_aligned(amnt, a),
+      &Tag::VarB(ref b) => is_aligned(amnt, b)
     }
 }
 

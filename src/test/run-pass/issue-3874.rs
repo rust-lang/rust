@@ -11,7 +11,7 @@
 enum PureCounter { PureCounterVariant(uint) }
 
 fn each(thing: PureCounter, blk: |v: &uint|) {
-    let PureCounterVariant(ref x) = thing;
+    let PureCounter::PureCounterVariant(ref x) = thing;
     blk(x);
 }
 

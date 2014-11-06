@@ -15,6 +15,6 @@ enum Either {
     Other(String,String)
 }
 
-static one : Either = One;
+static one : Either = Either::One;
 
 pub fn main () { }

@@ -11,8 +11,8 @@
 pub fn main() {
     enum State { BadChar, BadSyntax }
 
-    match BadChar {
-        _ if true => BadChar,
-        BadChar | BadSyntax => panic!() ,
+    match State::BadChar {
+        _ if true => State::BadChar,
+        State::BadChar | State::BadSyntax => panic!() ,
     };
 }

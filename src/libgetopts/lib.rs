@@ -93,6 +93,13 @@
 
 #[cfg(test)] #[phase(plugin, link)] extern crate log;
 
+pub use self::Name::*;
+pub use self::HasArg::*;
+pub use self::Occur::*;
+pub use self::Fail_::*;
+pub use self::FailType::*;
+use self::Optval::*;
+
 use std::fmt;
 use std::result::{Err, Ok};
 use std::result;
@@ -831,6 +838,20 @@ pub fn short_usage(program_name: &str, opts: &[OptGroup]) -> String {
     line
 }
 
+enum SplitWithinState {
+    A,  // leading whitespace, initial state
+    B,  // words
+    C,  // internal and trailing whitespace
+}
+enum Whitespace {
+    Ws, // current char is whitespace
+    Cr  // current char is not whitespace
+}
+enum LengthLimit {
+    UnderLim, // current char makes current substring still fit in limit
+    OverLim   // current char makes current substring no longer fit in limit
+}
+
 
 /// Splits a string into substrings with possibly internal whitespace,
 /// each of them at most `lim` bytes long. The substrings have leading and trailing
@@ -845,21 +866,10 @@ pub fn short_usage(program_name: &str, opts: &[OptGroup]) -> String {
 /// sequence longer than the limit.
 fn each_split_within<'a>(ss: &'a str, lim: uint, it: |&'a str| -> bool)
                      -> bool {
+    use self::SplitWithinState::*;
+    use self::Whitespace::*;
+    use self::LengthLimit::*;
     // Just for fun, let's write this as a state machine:
-
-    enum SplitWithinState {
-        A,  // leading whitespace, initial state
-        B,  // words
-        C,  // internal and trailing whitespace
-    }
-    enum Whitespace {
-        Ws, // current char is whitespace
-        Cr  // current char is not whitespace
-    }
-    enum LengthLimit {
-        UnderLim, // current char makes current substring still fit in limit
-        OverLim   // current char makes current substring no longer fit in limit
-    }
 
     let mut slice_start = 0;
     let mut last_start = 0;

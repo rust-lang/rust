@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+pub use self::Row::*;
+
 use middle::save::escape;
 use middle::save::span_utils::SpanUtils;
 

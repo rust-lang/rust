@@ -44,5 +44,5 @@ impl<V> Trait<u8,V> for () {
 
 pub fn main() {
     let a = box() () as Box<Trait<u8, u8>>;
-    assert_eq!(a.method(Constant), 0);
+    assert_eq!(a.method(Type::Constant), 0);
 }

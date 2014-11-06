@@ -17,6 +17,8 @@ pub use self::imp::OsRng;
 mod imp {
     extern crate libc;
 
+    use self::OsRngInner::*;
+
     use io::{IoResult, File};
     use path::Path;
     use rand::Rng;

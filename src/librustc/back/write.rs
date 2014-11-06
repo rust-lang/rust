@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+pub use self::OutputType::*;
+
 use back::lto;
 use back::link::{get_cc_prog, remove};
 use driver::driver::{CrateTranslation, ModuleTranslation, OutputFilenames};

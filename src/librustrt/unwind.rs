@@ -398,6 +398,7 @@ pub mod eabi {
 #[doc(hidden)]
 #[allow(non_camel_case_types, non_snake_case)]
 pub mod eabi {
+    pub use self::EXCEPTION_DISPOSITION::*;
     use libunwind as uw;
     use libc::{c_void, c_int};
 

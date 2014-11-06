@@ -45,7 +45,7 @@ fn main() {
     assert!(unsafe { DROPPED });
     unsafe { DROPPED = false; }
     {
-        let f = box DroppableVariant1;
+        let f = box DroppableEnum::DroppableVariant1;
         let _a = Whatever::new(box f as Box<MyTrait>);
     }
     assert!(unsafe { DROPPED });

@@ -274,6 +274,9 @@ pub fn main() {
 #![doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
        html_favicon_url = "http://www.rust-lang.org/favicon.ico",
        html_root_url = "http://doc.rust-lang.org/nightly/")]
+#![feature(globs)]
+
+pub use self::LabelText::*;
 
 use std::io;
 use std::str;
@@ -539,6 +542,7 @@ pub fn render<'a, N:'a, E:'a, G:Labeller<'a,N,E>+GraphWalk<'a,N,E>, W:Writer>(
 
 #[cfg(test)]
 mod tests {
+    use self::NodeLabels::*;
     use super::{Id, LabelText, LabelStr, EscStr, Labeller};
     use super::{Nodes, Edges, GraphWalk, render};
     use std::io::{MemWriter, BufReader, IoResult};
