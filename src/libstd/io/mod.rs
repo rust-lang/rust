@@ -229,20 +229,22 @@ use fmt;
 use int;
 use iter::Iterator;
 use libc;
-use mem::transmute;
+use mem::{transmute, uninitialized}; // std::mem is shadowed by self::mem
+use cmp;
 use ops::{BitOr, BitXor, BitAnd, Sub, Not};
 use option::{Option, Some, None};
 use os;
 use boxed::Box;
 use result::{Ok, Err, Result};
 use rt::rtio;
-use slice::{AsSlice, ImmutableSlice};
+use slice::{AsSlice, ImmutableSlice, MutableSlice};
 use str::{Str, StrSlice};
 use str;
 use string::String;
 use uint;
 use unicode::char::UnicodeChar;
 use vec::Vec;
+use num::ToPrimitive;
 
 // Reexports
 pub use self::stdio::stdin;
@@ -538,7 +540,8 @@ impl<T> UpdateIoError<T> for IoResult<T> {
     }
 }
 
-static NO_PROGRESS_LIMIT: uint = 1000;
+const NO_PROGRESS_LIMIT: uint = 1000;
+const SKIP_SIZE: uint = 1 << 10;
 
 /// A trait for objects which are byte-oriented streams. Readers are defined by
 /// one method, `read`. This function will block until data is available,
@@ -952,6 +955,23 @@ pub trait AsRefReader {
 impl<T: Reader> AsRefReader for T {
     fn by_ref<'a>(&'a mut self) -> RefReader<'a, T> {
         RefReader { inner: self }
+    }
+
+    /// Issue the read() method inside but discard the result.
+    ///
+    /// Return the number of bytes read until it encounters any Err or 0 bytes return.
+    fn skip(&mut self, num_bytes: uint) -> IoResult<uint> {
+        let mut remaining = num_bytes;
+        let mut buf: [u8, .. SKIP_SIZE] = unsafe { uninitialized() };
+        loop {
+            let n_bytes_to_read = cmp::max(buf.len(), remaining);
+            let n_read_bytes = try!( self.read(buf.slice_to_mut(n_bytes_to_read)) );
+            remaining -= n_read_bytes;
+            if n_read_bytes == 0 || remaining == 0 {
+                break;
+            }
+        }
+        Ok(num_bytes - remaining)
     }
 }
 
@@ -1622,6 +1642,16 @@ pub trait Seek {
     ///   stream, but the next write may cause the previous data to be filled in
     ///   with a bit pattern.
     fn seek(&mut self, pos: i64, style: SeekStyle) -> IoResult<()>;
+
+    /// Wrap seek(num_byes, SeekCur) to provide something similar with Reader::skip().
+    ///
+    /// # Failure
+    ///
+    /// Fails when num_bytes doesn't fit into i64.
+    #[inline]
+    fn skip(&mut self, num_bytes: uint) -> IoResult<uint> {
+        self.seek(num_bytes.to_i64().unwrap(), SeekCur).and(Ok(num_bytes))
+    }
 }
 
 /// A listener is a value that can consume itself to start listening for
@@ -1947,7 +1977,8 @@ impl fmt::Show for FilePermission {
 
 #[cfg(test)]
 mod tests {
-    use super::{IoResult, Reader, MemReader, NoProgress, InvalidInput};
+    use super::{IoResult, Reader, MemReader, NoProgress, InvalidInput, EndOfFile};
+    use super::SKIP_SIZE;
     use prelude::*;
     use uint;
 
@@ -1965,6 +1996,10 @@ mod tests {
     impl<T: Reader> BadReader<T> {
         fn new(r: T, behavior: Vec<BadReaderBehavior>) -> BadReader<T> {
             BadReader { behavior: behavior, r: r }
+        }
+
+        fn simply_new(r: T) -> BadReader<T> {
+            BadReader::new(r, vec![])
         }
     }
 
@@ -1995,20 +2030,18 @@ mod tests {
 
     #[test]
     fn test_read_at_least() {
-        let mut r = BadReader::new(MemReader::new(b"hello, world!".to_vec()),
-                                   vec![GoodBehavior(uint::MAX)]);
+        let mut r = BadReader::simply_new(MemReader::new(b"hello, world!".to_vec()));
         let mut buf = [0u8, ..5];
         assert!(r.read_at_least(1, buf).unwrap() >= 1);
         assert!(r.read_exact(5).unwrap().len() == 5); // read_exact uses read_at_least
         assert!(r.read_at_least(0, buf).is_ok());
 
         let mut r = BadReader::new(MemReader::new(b"hello, world!".to_vec()),
-                                   vec![BadBehavior(50), GoodBehavior(uint::MAX)]);
+                                   vec![BadBehavior(50)]);
         assert!(r.read_at_least(1, buf).unwrap() >= 1);
 
         let mut r = BadReader::new(MemReader::new(b"hello, world!".to_vec()),
-                                   vec![BadBehavior(1), GoodBehavior(1),
-                                        BadBehavior(50), GoodBehavior(uint::MAX)]);
+                                   vec![BadBehavior(1), GoodBehavior(1), BadBehavior(50)]);
         assert!(r.read_at_least(1, buf).unwrap() >= 1);
         assert!(r.read_at_least(1, buf).unwrap() >= 1);
 
@@ -2023,19 +2056,17 @@ mod tests {
 
     #[test]
     fn test_push_at_least() {
-        let mut r = BadReader::new(MemReader::new(b"hello, world!".to_vec()),
-                                   vec![GoodBehavior(uint::MAX)]);
+        let mut r = BadReader::new(MemReader::new(b"hello, world!".to_vec()), vec![]);
         let mut buf = Vec::new();
         assert!(r.push_at_least(1, 5, &mut buf).unwrap() >= 1);
         assert!(r.push_at_least(0, 5, &mut buf).is_ok());
 
         let mut r = BadReader::new(MemReader::new(b"hello, world!".to_vec()),
-                                   vec![BadBehavior(50), GoodBehavior(uint::MAX)]);
+                                   vec![BadBehavior(50)]);
         assert!(r.push_at_least(1, 5, &mut buf).unwrap() >= 1);
 
         let mut r = BadReader::new(MemReader::new(b"hello, world!".to_vec()),
-                                   vec![BadBehavior(1), GoodBehavior(1),
-                                        BadBehavior(50), GoodBehavior(uint::MAX)]);
+                                   vec![BadBehavior(1), GoodBehavior(1), BadBehavior(50)]);
         assert!(r.push_at_least(1, 5, &mut buf).unwrap() >= 1);
         assert!(r.push_at_least(1, 5, &mut buf).unwrap() >= 1);
 
@@ -2045,6 +2076,51 @@ mod tests {
 
         let mut r = MemReader::new(b"hello, world!".to_vec());
         assert_eq!(r.push_at_least(5, 1, &mut buf).unwrap_err().kind, InvalidInput);
+    }
+
+    #[test]
+    fn test_reader_skip() {
+        {
+            let mut r = BadReader::simply_new(MemReader::new(b"hello, world!".to_vec()));
+            assert_eq!(7, r.skip(7).unwrap());
+            let mut buf = [0_u8, .. 10];
+            assert_eq!(6, r.read(buf).unwrap());
+            assert_eq!(b"world!".as_slice(), buf.as_slice());
+            assert_eq!(EndOfFile, r.skip(0).unwrap_err().kind);
+        }
+        {
+            let mut r = BadReader::simply_new(MemReader::new(
+                Vec::from_fn(SKIP_SIZE + 20, |i| i as u8)));
+            assert_eq!(10, r.skip(10).unwrap());
+            assert_eq!(10, r.read_u8().unwrap());
+            assert_eq!(SKIP_SIZE, r.skip(SKIP_SIZE).unwrap());
+            assert_eq!((SKIP_SIZE + 11) as u8, r.read_u8().unwrap());
+            let mut buf = [0_u8, .. 10];
+            assert_eq!(8, r.read(buf).unwrap());
+            assert_eq!(EndOfFile, r.read(buf).unwrap_err().kind);
+        }
+        {
+            let mut r = BadReader::simply_new(MemReader::new(
+                Vec::from_fn(SKIP_SIZE + 20, |i| i as u8)));
+            assert_eq!(SKIP_SIZE, r.skip(SKIP_SIZE).unwrap());
+            assert_eq!(SKIP_SIZE as u8, r.read_u8().unwrap());
+            assert_eq!(10, r.skip(10).unwrap());
+            assert_eq!((SKIP_SIZE + 11) as u8, r.read_u8().unwrap());
+            let mut buf = [0_u8, .. 10];
+            assert_eq!(8, r.read(buf).unwrap());
+            assert_eq!(EndOfFile, r.read(buf).unwrap_err().kind);
+        }
+        {
+            let mut r = BadReader::simply_new(MemReader::new(
+                Vec::from_fn(2 * SKIP_SIZE + 20, |i| i as u8)));
+            assert_eq!(10, r.skip(10).unwrap());
+            assert_eq!(10, r.read_u8().unwrap());
+            assert_eq!(2 * SKIP_SIZE, r.skip(2 * SKIP_SIZE).unwrap());
+            assert_eq!((2 * SKIP_SIZE + 11) as u8, r.read_u8().unwrap());
+            let mut buf = [0_u8, .. 10];
+            assert_eq!(8, r.read(buf).unwrap());
+            assert_eq!(EndOfFile, r.read(buf).unwrap_err().kind);
+        }
     }
 
     #[test]

@@ -115,6 +115,17 @@ impl<R: Reader> Reader for BufferedReader<R> {
         self.pos += nread;
         Ok(nread)
     }
+
+    fn skip(&mut self, num_bytes: uint) -> IoResult<uint> {
+        let bytes_in_buf = self.cap - self.pos;
+        Ok( if num_bytes <= bytes_in_buf {
+            self.pos += num_bytes;
+            num_bytes
+        } else {
+            self.pos += bytes_in_buf;
+            bytes_in_buf + try!( self.inner.skip(num_bytes - bytes_in_buf) )
+        } )
+    }
 }
 
 /// Wraps a Writer and buffers output to it

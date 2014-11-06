@@ -140,6 +140,12 @@ impl MemReader {
     /// Unwraps this `MemReader`, returning the underlying buffer
     #[inline]
     pub fn unwrap(self) -> Vec<u8> { self.buf }
+
+    /// Call Seek::skip(), not Reader::skip().
+    #[inline]
+    pub fn skip(&mut self, num_bytes: uint) -> IoResult<uint> {
+        Seek::skip(self, num_bytes)
+    }
 }
 
 impl Reader for MemReader {

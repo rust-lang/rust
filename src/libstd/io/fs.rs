@@ -258,6 +258,12 @@ impl File {
         err.update_err("couldn't fstat file",
                        |e| format!("{}; path={}", e, self.path.display()))
     }
+
+    /// Call Seek::skip(), not Reader::skip().
+    #[inline]
+    pub fn skip(&mut self, num_bytes: uint) -> IoResult<uint> {
+        Seek::skip(self, num_bytes)
+    }
 }
 
 /// Unlink a file from the underlying filesystem.
