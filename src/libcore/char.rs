@@ -225,9 +225,9 @@ pub trait Char {
     /// Returns `true` if `c` is a valid digit under `radix`, and `false`
     /// otherwise.
     ///
-    /// # Failure
+    /// # Panics
     ///
-    /// Fails if given a radix > 36.
+    /// Panics if given a radix > 36.
     #[unstable = "pending error conventions"]
     fn is_digit(self, radix: uint) -> bool;
 
