@@ -1714,7 +1714,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 closure_type.sig.binder_id,
                 &closure_type.sig,
                 |br| self.infcx.next_region_var(
-                         infer::LateBoundRegion(obligation.cause.span, br)));
+                         infer::LateBoundRegion(obligation.cause.span, br,
+                                                infer::FnCall)));
 
         let arguments_tuple = new_signature.inputs[0];
         let trait_ref = Rc::new(ty::TraitRef {
