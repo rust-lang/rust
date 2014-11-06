@@ -1461,14 +1461,35 @@ pub fn trans_adt<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
         None => {}
     };
 
-    // Now, we just overwrite the fields we've explicitly specified
-    for &(i, ref e) in fields.iter() {
-        let dest = adt::trans_field_ptr(bcx, &*repr, addr, discr, i);
-        let e_ty = expr_ty_adjusted(bcx, &**e);
-        bcx = trans_into(bcx, &**e, SaveIn(dest));
-        let scope = cleanup::CustomScope(custom_cleanup_scope);
-        fcx.schedule_lifetime_end(scope, dest);
-        fcx.schedule_drop_mem(scope, dest, e_ty);
+    if ty::type_is_simd(bcx.tcx(), ty) {
+        // This is the constructor of a SIMD type, such types are
+        // always primitive machine types and so do not have a
+        // destructor or require any clean-up.
+        let llty = type_of::type_of(bcx.ccx(), ty);
+
+        // keep a vector as a register, and running through the field
+        // `insertelement`ing them directly into that register
+        // (i.e. avoid GEPi and `store`s to an alloca) .
+        let mut vec_val = C_undef(llty);
+
+        for &(i, ref e) in fields.iter() {
+            let block_datum = trans(bcx, &**e);
+            bcx = block_datum.bcx;
+            let position = C_uint(bcx.ccx(), i);
+            let value = block_datum.datum.to_llscalarish(bcx);
+            vec_val = InsertElement(bcx, vec_val, value, position);
+        }
+        Store(bcx, vec_val, addr);
+    } else {
+        // Now, we just overwrite the fields we've explicitly specified
+        for &(i, ref e) in fields.iter() {
+            let dest = adt::trans_field_ptr(bcx, &*repr, addr, discr, i);
+            let e_ty = expr_ty_adjusted(bcx, &**e);
+            bcx = trans_into(bcx, &**e, SaveIn(dest));
+            let scope = cleanup::CustomScope(custom_cleanup_scope);
+            fcx.schedule_lifetime_end(scope, dest);
+            fcx.schedule_drop_mem(scope, dest, e_ty);
+        }
     }
 
     adt::trans_set_discr(bcx, &*repr, addr, discr);
