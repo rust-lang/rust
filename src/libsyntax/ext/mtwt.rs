@@ -15,6 +15,8 @@
 //! and definition contexts*. J. Funct. Program. 22, 2 (March 2012), 181-216.
 //! DOI=10.1017/S0956796812000093 http://dx.doi.org/10.1017/S0956796812000093
 
+pub use self::SyntaxContext_::*;
+
 use ast::{Ident, Mrk, Name, SyntaxContext};
 
 use std::cell::RefCell;
@@ -278,6 +280,7 @@ fn xor_push(marks: &mut Vec<Mrk>, mark: Mrk) {
 
 #[cfg(test)]
 mod tests {
+    use self::TestSC::*;
     use ast::{EMPTY_CTXT, Ident, Mrk, Name, SyntaxContext};
     use super::{resolve, xor_push, apply_mark_internal, new_sctable_internal};
     use super::{apply_rename_internal, apply_renames, marksof_internal, resolve_internal};

@@ -19,6 +19,7 @@
 //
 // * Functions called by the compiler itself.
 
+pub use self::LangItem::*;
 
 use driver::session::Session;
 use metadata::csearch::each_lang_item;

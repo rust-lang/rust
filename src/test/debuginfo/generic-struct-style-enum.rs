@@ -31,6 +31,9 @@
 
 #![feature(struct_variant)]
 
+use self::Regular::{Case1, Case2, Case3};
+use self::Univariant::TheOnlyCase;
+
 // NOTE: This is a copy of the non-generic test case. The `Txx` type parameters have to be
 // substituted with something of size `xx` bits and the same alignment as an integer type of the
 // same size.

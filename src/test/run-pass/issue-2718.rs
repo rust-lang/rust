@@ -17,6 +17,7 @@ pub type Task = int;
 
 // tjc: I don't know why
 pub mod pipes {
+    use self::state::{empty, full, blocked, terminated};
     use super::Task;
     use std::mem::{forget, transmute};
     use std::mem::{replace, swap};

@@ -23,6 +23,8 @@
 //! instance, a walker looking for item names in a module will miss all of
 //! those that are created by the expansion of a macro.
 
+pub use self::FnKind::*;
+
 use abi::Abi;
 use ast::*;
 use ast;

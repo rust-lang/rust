@@ -13,7 +13,7 @@ enum roption<'a> {
 }
 
 fn mk(cond: bool, ptr: &uint) -> roption {
-    if cond {a} else {b(ptr)}
+    if cond {roption::a} else {roption::b(ptr)}
 }
 
 pub fn main() {}

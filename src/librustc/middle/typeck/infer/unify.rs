@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+pub use self::VarValue::*;
+
 use std::kinds::marker;
 
 use middle::ty::{expected_found, IntVarValue};

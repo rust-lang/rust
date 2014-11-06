@@ -50,7 +50,7 @@
        html_playground_url = "http://play.rust-lang.org/")]
 
 #![allow(unknown_features)]
-#![feature(macro_rules, phase, slicing_syntax)]
+#![feature(macro_rules, phase, slicing_syntax, globs)]
 
 #![deny(missing_docs)]
 
@@ -166,6 +166,8 @@ pub mod color {
 
 /// Terminal attributes
 pub mod attr {
+    pub use self::Attr::*;
+
     /// Terminal attributes for use with term.attr().
     ///
     /// Most attributes can only be turned on and must be turned off with term.reset().

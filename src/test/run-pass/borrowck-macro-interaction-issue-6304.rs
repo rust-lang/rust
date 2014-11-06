@@ -27,11 +27,11 @@ impl Foo {
     macro_rules! declare(
       ($id:expr, $rest:expr) => ({
         self.check_id($id);
-        box Bar2($id, $rest)
+        box Bar::Bar2($id, $rest)
       })
     );
     match s {
-      box Bar2(id, rest) => declare!(id, self.elaborate_stm(rest)),
+      box Bar::Bar2(id, rest) => declare!(id, self.elaborate_stm(rest)),
       _ => panic!()
     }
   }

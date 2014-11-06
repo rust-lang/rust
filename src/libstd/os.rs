@@ -31,6 +31,10 @@
 #![allow(missing_docs)]
 #![allow(non_snake_case)]
 
+pub use self::MemoryMapKind::*;
+pub use self::MapOption::*;
+pub use self::MapError::*;
+
 use clone::Clone;
 use error::{FromError, Error};
 use fmt;

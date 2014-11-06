@@ -76,6 +76,11 @@ type parameter).
 
 */
 
+pub use self::LvaluePreference::*;
+pub use self::DerefArgs::*;
+use self::Expectation::*;
+use self::IsBinopAssignment::*;
+use self::TupleArgumentsFlag::*;
 
 use driver::session::Session;
 use middle::const_eval;

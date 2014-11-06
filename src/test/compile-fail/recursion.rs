@@ -28,6 +28,6 @@ fn test<T:Dot> (n:int, i:int, first:T, second:T) ->int {
   }
 }
 pub fn main() {
-  let n = test(1, 0, NilValue, NilValue);
+  let n = test(1, 0, Nil::NilValue, Nil::NilValue);
   println!("{}", n);
 }

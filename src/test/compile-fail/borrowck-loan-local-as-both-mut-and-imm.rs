@@ -12,8 +12,8 @@ enum Either<T, U> { Left(T), Right(U) }
 
     fn f(x: &mut Either<int,f64>, y: &Either<int,f64>) -> int {
         match *y {
-            Left(ref z) => {
-                *x = Right(1.0);
+            Either::Left(ref z) => {
+                *x = Either::Right(1.0);
                 *z
             }
             _ => panic!()
@@ -21,12 +21,12 @@ enum Either<T, U> { Left(T), Right(U) }
     }
 
     fn g() {
-        let mut x: Either<int,f64> = Left(3);
+        let mut x: Either<int,f64> = Either::Left(3);
         println!("{}", f(&mut x, &x)); //~ ERROR cannot borrow
     }
 
     fn h() {
-        let mut x: Either<int,f64> = Left(3);
+        let mut x: Either<int,f64> = Either::Left(3);
         let y: &Either<int, f64> = &x;
         let z: &mut Either<int, f64> = &mut x; //~ ERROR cannot borrow
         *z = *y;

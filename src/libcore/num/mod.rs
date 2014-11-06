@@ -14,6 +14,8 @@
 
 #![allow(missing_docs)]
 
+pub use self::FPCategory::*;
+
 use {int, i8, i16, i32, i64};
 use {uint, u8, u16, u32, u64};
 use {f32, f64};

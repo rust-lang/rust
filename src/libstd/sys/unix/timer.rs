@@ -46,6 +46,8 @@
 //!
 //! Note that all time units in this file are in *milliseconds*.
 
+pub use self::Req::*;
+
 use libc;
 use mem;
 use os;

@@ -58,7 +58,7 @@
 #![deny(unused_results, unused_must_use)]
 #![allow(non_camel_case_types)]
 #![allow(unknown_features)]
-#![feature(default_type_params, lang_items, slicing_syntax)]
+#![feature(default_type_params, lang_items, slicing_syntax, globs)]
 
 // NB this crate explicitly does *not* allow glob imports, please seriously
 //    consider whether they're needed before adding that feature here (the

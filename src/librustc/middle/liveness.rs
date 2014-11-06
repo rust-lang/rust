@@ -107,6 +107,9 @@
  *   It is the responsibility of typeck to ensure that there are no
  *   `return` expressions in a function declared as diverging.
  */
+use self::LoopKind::*;
+use self::LiveNodeKind::*;
+use self::VarKind::*;
 
 use middle::def::*;
 use middle::mem_categorization::Typer;

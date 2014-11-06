@@ -34,6 +34,8 @@
 // * The `raw` and `bytes` submodules.
 // * Boilerplate trait implementations.
 
+pub use self::BinarySearchResult::*;
+
 use mem::transmute;
 use clone::Clone;
 use cmp::{PartialEq, PartialOrd, Eq, Ord, Ordering, Less, Equal, Greater, Equiv};

@@ -176,6 +176,7 @@
 // gdb-command:whatis stack_closure2
 // gdb-check:type = struct (&mut|i8, f32| -> f32, uint)
 
+use self::Enum1::{Variant1_1, Variant1_2};
 use std::ptr;
 
 struct Struct1;
@@ -187,6 +188,7 @@ enum Enum1 {
 }
 
 mod Mod1 {
+    pub use self::Enum2::{Variant2_1, Variant2_2};
     pub struct Struct2;
 
     pub enum Enum2 {
@@ -195,6 +197,7 @@ mod Mod1 {
     }
 
     pub mod Mod2 {
+        pub use self::Enum3::{Variant3_1, Variant3_2};
         pub struct Struct3;
 
         pub enum Enum3<T> {

@@ -17,6 +17,8 @@ Obsolete syntax that becomes too hard to parse can be
 removed.
 */
 
+pub use self::ObsoleteSyntax::*;
+
 use ast::{Expr, ExprTup};
 use codemap::Span;
 use parse::parser;

@@ -20,7 +20,7 @@ trait Wrap<'a> {
 
 impl<'a, R: Reader> Wrap<'a> for &'a mut R {
     fn wrap(self) -> Wrapper<'a> {
-        WrapReader(self as &'a mut Reader)
+        Wrapper::WrapReader(self as &'a mut Reader)
     }
 }
 

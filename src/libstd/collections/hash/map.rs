@@ -10,6 +10,10 @@
 //
 // ignore-lexer-test FIXME #15883
 
+pub use self::Entry::*;
+use self::SearchResult::*;
+use self::VacantEntryState::*;
+
 use clone::Clone;
 use cmp::{max, Eq, Equiv, PartialEq};
 use default::Default;

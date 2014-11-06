@@ -11,6 +11,9 @@
 #![allow(non_camel_case_types)]
 #![allow(unsigned_negation)]
 
+pub use self::const_val::*;
+pub use self::constness::*;
+
 use metadata::csearch;
 use middle::astencode;
 use middle::def;

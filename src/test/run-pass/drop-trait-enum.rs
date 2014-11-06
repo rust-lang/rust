@@ -24,7 +24,7 @@ struct SendOnDrop {
 
 impl Drop for SendOnDrop {
     fn drop(&mut self) {
-        self.sender.send(Dropped);
+        self.sender.send(Message::Dropped);
     }
 }
 
@@ -37,13 +37,13 @@ enum Foo {
 impl Drop for Foo {
     fn drop(&mut self) {
         match self {
-            &SimpleVariant(ref mut sender) => {
-                sender.send(DestructorRan);
+            &Foo::SimpleVariant(ref mut sender) => {
+                sender.send(Message::DestructorRan);
             }
-            &NestedVariant(_, _, ref mut sender) => {
-                sender.send(DestructorRan);
+            &Foo::NestedVariant(_, _, ref mut sender) => {
+                sender.send(Message::DestructorRan);
             }
-            &FailingVariant { .. } => {
+            &Foo::FailingVariant { .. } => {
                 panic!("Failed");
             }
         }
@@ -53,42 +53,42 @@ impl Drop for Foo {
 pub fn main() {
     let (sender, receiver) = channel();
     {
-        let v = SimpleVariant(sender);
+        let v = Foo::SimpleVariant(sender);
     }
-    assert_eq!(receiver.recv(), DestructorRan);
+    assert_eq!(receiver.recv(), Message::DestructorRan);
     assert_eq!(receiver.recv_opt().ok(), None);
 
     let (sender, receiver) = channel();
     {
-        let v = NestedVariant(box 42u, SendOnDrop { sender: sender.clone() }, sender);
+        let v = Foo::NestedVariant(box 42u, SendOnDrop { sender: sender.clone() }, sender);
     }
-    assert_eq!(receiver.recv(), DestructorRan);
-    assert_eq!(receiver.recv(), Dropped);
+    assert_eq!(receiver.recv(), Message::DestructorRan);
+    assert_eq!(receiver.recv(), Message::Dropped);
     assert_eq!(receiver.recv_opt().ok(), None);
 
     let (sender, receiver) = channel();
     task::spawn(proc() {
-        let v = FailingVariant { on_drop: SendOnDrop { sender: sender } };
+        let v = Foo::FailingVariant { on_drop: SendOnDrop { sender: sender } };
     });
-    assert_eq!(receiver.recv(), Dropped);
+    assert_eq!(receiver.recv(), Message::Dropped);
     assert_eq!(receiver.recv_opt().ok(), None);
 
     let (sender, receiver) = channel();
     {
         task::spawn(proc() {
-            let mut v = NestedVariant(box 42u, SendOnDrop {
+            let mut v = Foo::NestedVariant(box 42u, SendOnDrop {
                 sender: sender.clone()
             }, sender.clone());
-            v = NestedVariant(box 42u, SendOnDrop { sender: sender.clone() }, sender.clone());
-            v = SimpleVariant(sender.clone());
-            v = FailingVariant { on_drop: SendOnDrop { sender: sender } };
+            v = Foo::NestedVariant(box 42u, SendOnDrop { sender: sender.clone() }, sender.clone());
+            v = Foo::SimpleVariant(sender.clone());
+            v = Foo::FailingVariant { on_drop: SendOnDrop { sender: sender } };
         });
     }
-    assert_eq!(receiver.recv(), DestructorRan);
-    assert_eq!(receiver.recv(), Dropped);
-    assert_eq!(receiver.recv(), DestructorRan);
-    assert_eq!(receiver.recv(), Dropped);
-    assert_eq!(receiver.recv(), DestructorRan);
-    assert_eq!(receiver.recv(), Dropped);
+    assert_eq!(receiver.recv(), Message::DestructorRan);
+    assert_eq!(receiver.recv(), Message::Dropped);
+    assert_eq!(receiver.recv(), Message::DestructorRan);
+    assert_eq!(receiver.recv(), Message::Dropped);
+    assert_eq!(receiver.recv(), Message::DestructorRan);
+    assert_eq!(receiver.recv(), Message::Dropped);
     assert_eq!(receiver.recv_opt().ok(), None);
 }

@@ -323,6 +323,10 @@
 
 use core::prelude::*;
 
+pub use self::TryRecvError::*;
+pub use self::TrySendError::*;
+use self::Flavor::*;
+
 use alloc::arc::Arc;
 use alloc::boxed::Box;
 use core::cell::Cell;

@@ -11,8 +11,8 @@
 enum bar { u(Box<int>), w(int), }
 
 pub fn main() {
-    assert!(match u(box 10) {
-      u(a) => {
+    assert!(match bar::u(box 10) {
+      bar::u(a) => {
         println!("{}", a);
         *a
       }

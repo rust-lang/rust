@@ -58,6 +58,7 @@ ported to this system, and which relies on string concatenation at the
 time of error detection.
 
 */
+use self::FreshOrKept::*;
 
 use std::collections::HashSet;
 use middle::def;

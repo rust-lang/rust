@@ -24,7 +24,7 @@ pub fn main() {
     assert_eq!(1, make_a_1!());
     assert_eq!(2, exported_macro!());
 
-    assert_eq!(Bar, Bar);
+    assert_eq!(Foo::Bar, Foo::Bar);
     test(None::<Foo>);
 }
 

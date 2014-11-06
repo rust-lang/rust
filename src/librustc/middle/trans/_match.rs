@@ -186,6 +186,12 @@
  *
  */
 
+pub use self::BranchKind::*;
+pub use self::OptResult::*;
+pub use self::TransBindingMode::*;
+use self::Opt::*;
+use self::FailureHandler::*;
+
 use back::abi;
 use driver::config::FullDebugInfo;
 use llvm::{ValueRef, BasicBlockRef};
@@ -544,7 +550,7 @@ fn enter_opt<'a, 'p, 'blk, 'tcx>(
         &SliceLengthGreaterOrEqual(before, after) =>
             check_match::SliceWithSubslice(before, after),
         &Variant(_, _, def_id) =>
-            check_match::Variant(def_id)
+            check_match::Constructor::Variant(def_id)
     };
 
     let mcx = check_match::MatchCheckCtxt { tcx: bcx.tcx() };

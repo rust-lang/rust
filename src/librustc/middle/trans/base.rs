@@ -25,6 +25,10 @@
 
 #![allow(non_camel_case_types)]
 
+pub use self::IsUnboxedClosureFlag::*;
+pub use self::ValueOrigin::*;
+pub use self::scalar_type::*;
+
 use back::link::{mangle_exported_name};
 use back::{link, abi};
 use driver::config;

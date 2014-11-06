@@ -12,6 +12,6 @@
 enum t { foo(Box<int>), }
 
 pub fn main() {
-    let tt = foo(box 10);
-    match tt { foo(_z) => { } }
+    let tt = t::foo(box 10);
+    match tt { t::foo(_z) => { } }
 }

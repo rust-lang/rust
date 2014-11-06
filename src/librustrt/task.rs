@@ -12,6 +12,9 @@
 //! to be available 'everywhere'. Unwinding, local storage, and logging.
 //! Even a 'freestanding' Rust would likely want to implement this.
 
+pub use self::BlockedTask::*;
+use self::TaskState::*;
+
 use alloc::arc::Arc;
 use alloc::boxed::{BoxAny, Box};
 use core::any::Any;

@@ -51,7 +51,7 @@
 //! }
 //!
 //! impl Default for Kind {
-//!     fn default() -> Kind { A }
+//!     fn default() -> Kind { Kind::A }
 //! }
 //!
 //! #[deriving(Default)]
@@ -127,7 +127,7 @@ pub trait Default {
     /// }
     ///
     /// impl Default for Kind {
-    ///     fn default() -> Kind { A }
+    ///     fn default() -> Kind { Kind::A }
     /// }
     /// ```
     fn default() -> Self;

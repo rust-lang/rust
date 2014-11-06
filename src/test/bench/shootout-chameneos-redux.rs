@@ -40,6 +40,7 @@
 
 // no-pretty-expanded
 
+use self::Color::{Red, Yellow, Blue};
 use std::string::String;
 use std::fmt;
 

@@ -24,14 +24,14 @@ enum E<T> { Thing(int, T), Nothing((), ((), ()), [i8, ..0]) }
 impl<T> E<T> {
     fn is_none(&self) -> bool {
         match *self {
-            Thing(..) => false,
-            Nothing(..) => true
+            E::Thing(..) => false,
+            E::Nothing(..) => true
         }
     }
     fn get_ref(&self) -> (int, &T) {
         match *self {
-            Nothing(..) => panic!("E::get_ref(Nothing::<{}>)",  stringify!(T)),
-            Thing(x, ref y) => (x, y)
+            E::Nothing(..) => panic!("E::get_ref(Nothing::<{}>)",  stringify!(T)),
+            E::Thing(x, ref y) => (x, y)
         }
     }
 }
@@ -54,9 +54,9 @@ macro_rules! check_fancy {
         check_fancy!($e: $T, |ptr| assert!(*ptr == $e));
     }};
     ($e:expr: $T:ty, |$v:ident| $chk:expr) => {{
-        assert!(Nothing::<$T>((), ((), ()), [23i8, ..0]).is_none());
+        assert!(E::Nothing::<$T>((), ((), ()), [23i8, ..0]).is_none());
         let e = $e;
-        let t_ = Thing::<$T>(23, e);
+        let t_ = E::Thing::<$T>(23, e);
         match t_.get_ref() {
             (23, $v) => { $chk }
             _ => panic!("Thing::<{}>(23, {}).get_ref() != (23, _)",

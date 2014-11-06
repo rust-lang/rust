@@ -19,12 +19,12 @@ macro_rules! check {
                 V = $v,
                 A = 0
             }
-            static C: E = V;
+            static C: E = E::V;
             pub fn check() {
                 assert_eq!(size_of::<E>(), size_of::<$t>());
-                assert_eq!(V as $t, $v as $t);
+                assert_eq!(E::V as $t, $v as $t);
                 assert_eq!(C as $t, $v as $t);
-                assert_eq!(format!("{}", V), "V".to_string());
+                assert_eq!(format!("{}", E::V), "V".to_string());
                 assert_eq!(format!("{}", C), "V".to_string());
             }
         }

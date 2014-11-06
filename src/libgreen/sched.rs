@@ -8,6 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+pub use self::SchedMessage::*;
+use self::EffortLevel::*;
+
 use std::mem;
 use std::rt::local::Local;
 use std::rt::mutex::NativeMutex;

@@ -13,6 +13,9 @@
 #![allow(experimental)]
 #![allow(non_upper_case_globals)]
 
+pub use self::StdioContainer::*;
+pub use self::ProcessExit::*;
+
 use prelude::*;
 
 use fmt;

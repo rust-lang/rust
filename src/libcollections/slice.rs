@@ -87,6 +87,7 @@
 
 #![doc(primitive = "slice")]
 
+use self::Direction::*;
 use alloc::boxed::Box;
 use core::cmp;
 use core::kinds::Sized;

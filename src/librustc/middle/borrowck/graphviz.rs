@@ -12,6 +12,8 @@
 //! libgraphviz traits, specialized to attaching borrowck analysis
 //! data to rendered labels.
 
+pub use self::Variant::*;
+
 /// For clarity, rename the graphviz crate locally to dot.
 use graphviz as dot;
 pub use middle::cfg::graphviz::{Node, Edge};

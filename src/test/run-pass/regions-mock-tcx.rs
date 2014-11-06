@@ -19,6 +19,8 @@ extern crate arena;
 extern crate collections;
 extern crate libc;
 
+use TypeStructure::{TypeInt, TypeFunction};
+use AstKind::{ExprInt, ExprVar, ExprLambda};
 use arena::Arena;
 use std::collections::HashMap;
 use std::mem;

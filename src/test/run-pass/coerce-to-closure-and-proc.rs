@@ -33,11 +33,11 @@ pub fn main() {
     let f: proc(int) -> Foo<int> = Foo;
     assert_eq!(f(5), Foo(5));
 
-    let f: |int| -> Bar<int> = Baz;
-    assert_eq!(f(5), Baz(5));
+    let f: |int| -> Bar<int> = Bar::Baz;
+    assert_eq!(f(5), Bar::Baz(5));
 
-    let f: proc(int) -> Bar<int> = Baz;
-    assert_eq!(f(5), Baz(5));
+    let f: proc(int) -> Bar<int> = Bar::Baz;
+    assert_eq!(f(5), Bar::Baz(5));
 
     let f: |int| -> Option<int> = Some;
     assert_eq!(f(5), Some(5));

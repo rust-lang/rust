@@ -75,8 +75,8 @@ enum tri {
 }
 
 fn f4b() -> int {
-    match a(3i) {
-      a(i) | b(i) | c(i) => {
+    match tri::a(3i) {
+      tri::a(i) | tri::b(i) | tri::c(i) => {
         i
       }
     }

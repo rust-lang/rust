@@ -16,7 +16,7 @@
 // 2. loans made in overlapping scopes do not conflict
 // 3. assignments do not affect things loaned out as immutable
 // 4. moves do not affect things loaned out in any way
-
+use self::UseError::*;
 
 use middle::borrowck::*;
 use middle::expr_use_visitor as euv;

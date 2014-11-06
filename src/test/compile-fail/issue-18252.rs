@@ -13,5 +13,5 @@ enum Foo {
 }
 
 fn main() {
-    let f = Variant(42u); //~ ERROR expected function, found `Foo`
+    let f = Foo::Variant(42u); //~ ERROR expected function, found `Foo`
 }

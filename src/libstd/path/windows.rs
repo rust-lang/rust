@@ -12,6 +12,8 @@
 
 //! Windows file path handling
 
+pub use self::PathPrefix::*;
+
 use ascii::AsciiCast;
 use c_str::{CString, ToCStr};
 use clone::Clone;

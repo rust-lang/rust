@@ -10,6 +10,11 @@
 
 //! The various pretty print routines.
 
+pub use self::UserIdentifiedItem::*;
+pub use self::PpSourceMode::*;
+pub use self::PpMode::*;
+use self::NodesMatchingUII::*;
+
 use back::link;
 
 use driver::config;

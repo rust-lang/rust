@@ -17,7 +17,7 @@ mod a {
     impl X for int {}
 
     pub struct Z<'a>(Enum<&'a X+'a>);
-    fn foo() { let x = 42i; let z = Z(A(&x as &X)); let _ = z; }
+    fn foo() { let x = 42i; let z = Z(Enum::A(&x as &X)); let _ = z; }
 }
 
 mod b {

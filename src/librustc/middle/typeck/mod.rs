@@ -61,6 +61,10 @@ independently:
 
 #![allow(non_camel_case_types)]
 
+pub use self::ExprAdjustment::*;
+pub use self::vtable_origin::*;
+pub use self::MethodOrigin::*;
+
 use driver::config;
 
 use middle::def;
