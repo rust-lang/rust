@@ -417,7 +417,7 @@ impl SchedPool {
         }
 
         // Jettison the task away!
-        self.handles.get_mut(idx).send(TaskFromFriend(task));
+        self.handles[idx].send(TaskFromFriend(task));
     }
 
     /// Spawns a new scheduler into this M:N pool. A handle is returned to the

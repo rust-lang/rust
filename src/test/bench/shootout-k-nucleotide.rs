@@ -171,13 +171,13 @@ impl Table {
                     next: None,
                 };
                 c.f(&mut *entry);
-                *self.items.get_mut(index as uint) = Some(entry);
+                self.items[index as uint] = Some(entry);
                 return;
             }
         }
 
         {
-            let entry = self.items.get_mut(index as uint).as_mut().unwrap();
+            let entry = self.items[index as uint].as_mut().unwrap();
             if entry.code == key {
                 c.f(&mut **entry);
                 return;

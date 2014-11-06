@@ -263,7 +263,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
     }
 
     fn visit_adjustments(&self, reason: ResolveReason, id: ast::NodeId) {
-        match self.fcx.inh.adjustments.borrow_mut().pop(&id) {
+        match self.fcx.inh.adjustments.borrow_mut().remove(&id) {
             None => {
                 debug!("No adjustments for node {}", id);
             }
@@ -275,7 +275,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                         // FIXME(eddyb) #2190 Allow only statically resolved
                         // bare functions to coerce to a closure to avoid
                         // constructing (slower) indirect call wrappers.
-                        match self.tcx().def_map.borrow().find(&id) {
+                        match self.tcx().def_map.borrow().get(&id) {
                             Some(&def::DefFn(..)) |
                             Some(&def::DefStaticMethod(..)) |
                             Some(&def::DefVariant(..)) |
@@ -320,7 +320,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                               reason: ResolveReason,
                               method_call: MethodCall) {
         // Resolve any method map entry
-        match self.fcx.inh.method_map.borrow_mut().pop(&method_call) {
+        match self.fcx.inh.method_map.borrow_mut().remove(&method_call) {
             Some(method) => {
                 debug!("writeback::resolve_method_map_entry(call={}, entry={})",
                        method_call,

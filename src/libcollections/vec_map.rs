@@ -26,6 +26,8 @@ use vec::Vec;
 use hash;
 use hash::Hash;
 
+// FIXME(conventions): capacity management???
+
 /// A map optimized for small integer keys.
 ///
 /// # Example
@@ -42,14 +44,14 @@ use hash::Hash;
 ///     println!("The end is near!");
 /// }
 ///
-/// assert_eq!(months.find(&1), Some(&"Jan"));
+/// assert_eq!(months.get(&1), Some(&"Jan"));
 ///
-/// match months.find_mut(&3) {
+/// match months.get_mut(&3) {
 ///     Some(value) => *value = "Venus",
 ///     None => (),
 /// }
 ///
-/// assert_eq!(months.find(&3), Some(&"Venus"));
+/// assert_eq!(months.get(&3), Some(&"Venus"));
 ///
 /// // Print out all months
 /// for (key, value) in months.iter() {
@@ -77,10 +79,7 @@ impl<V:Clone> Clone for VecMap<V> {
 
     #[inline]
     fn clone_from(&mut self, source: &VecMap<V>) {
-        self.v.reserve(source.v.len());
-        for (i, w) in self.v.iter_mut().enumerate() {
-            *w = source.v[i].clone();
-        }
+        self.v.clone_from(&source.v);
     }
 }
 
@@ -99,6 +98,7 @@ impl<V> VecMap<V> {
     /// use std::collections::VecMap;
     /// let mut map: VecMap<&str> = VecMap::new();
     /// ```
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn new() -> VecMap<V> { VecMap{v: vec!()} }
 
     /// Creates an empty `VecMap` with space for at least `capacity`
@@ -110,18 +110,21 @@ impl<V> VecMap<V> {
     /// use std::collections::VecMap;
     /// let mut map: VecMap<&str> = VecMap::with_capacity(10);
     /// ```
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn with_capacity(capacity: uint) -> VecMap<V> {
         VecMap { v: Vec::with_capacity(capacity) }
     }
 
     /// Returns an iterator visiting all keys in ascending order by the keys.
     /// The iterator's element type is `uint`.
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn keys<'r>(&'r self) -> Keys<'r, V> {
         self.iter().map(|(k, _v)| k)
     }
 
     /// Returns an iterator visiting all values in ascending order by the keys.
     /// The iterator's element type is `&'r V`.
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn values<'r>(&'r self) -> Values<'r, V> {
         self.iter().map(|(_k, v)| v)
     }
@@ -144,6 +147,7 @@ impl<V> VecMap<V> {
     ///     println!("{}: {}", key, value);
     /// }
     /// ```
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn iter<'r>(&'r self) -> Entries<'r, V> {
         Entries {
             front: 0,
@@ -174,6 +178,7 @@ impl<V> VecMap<V> {
     ///     assert_eq!(value, &"x");
     /// }
     /// ```
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn iter_mut<'r>(&'r mut self) -> MutEntries<'r, V> {
         MutEntries {
             front: 0,
@@ -201,6 +206,7 @@ impl<V> VecMap<V> {
     ///
     /// assert_eq!(vec, vec![(1, "a"), (2, "b"), (3, "c")]);
     /// ```
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn into_iter(&mut self)
         -> FilterMap<(uint, Option<V>), (uint, V),
                 Enumerate<vec::MoveItems<Option<V>>>>
@@ -223,6 +229,7 @@ impl<V> VecMap<V> {
     /// a.insert(1, "a");
     /// assert_eq!(a.len(), 1);
     /// ```
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn len(&self) -> uint {
         self.v.iter().filter(|elt| elt.is_some()).count()
     }
@@ -239,6 +246,7 @@ impl<V> VecMap<V> {
     /// a.insert(1, "a");
     /// assert!(!a.is_empty());
     /// ```
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn is_empty(&self) -> bool {
         self.v.iter().all(|elt| elt.is_none())
     }
@@ -255,7 +263,14 @@ impl<V> VecMap<V> {
     /// a.clear();
     /// assert!(a.is_empty());
     /// ```
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn clear(&mut self) { self.v.clear() }
+
+    /// Deprecated: Renamed to `get`.
+    #[deprecated = "Renamed to `get`"]
+    pub fn find(&self, key: &uint) -> Option<&V> {
+        self.get(key)
+    }
 
     /// Returns a reference to the value corresponding to the key.
     ///
@@ -266,10 +281,11 @@ impl<V> VecMap<V> {
     ///
     /// let mut map = VecMap::new();
     /// map.insert(1, "a");
-    /// assert_eq!(map.find(&1), Some(&"a"));
-    /// assert_eq!(map.find(&2), None);
+    /// assert_eq!(map.get(&1), Some(&"a"));
+    /// assert_eq!(map.get(&2), None);
     /// ```
-    pub fn find<'a>(&'a self, key: &uint) -> Option<&'a V> {
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
+    pub fn get(&self, key: &uint) -> Option<&V> {
         if *key < self.v.len() {
             match self.v[*key] {
               Some(ref value) => Some(value),
@@ -293,8 +309,15 @@ impl<V> VecMap<V> {
     /// assert_eq!(map.contains_key(&2), false);
     /// ```
     #[inline]
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn contains_key(&self, key: &uint) -> bool {
-        self.find(key).is_some()
+        self.get(key).is_some()
+    }
+
+    /// Deprecated: Renamed to `get_mut`.
+    #[deprecated = "Renamed to `get_mut`"]
+    pub fn find_mut(&mut self, key: &uint) -> Option<&mut V> {
+        self.get_mut(key)
     }
 
     /// Returns a mutable reference to the value corresponding to the key.
@@ -306,13 +329,14 @@ impl<V> VecMap<V> {
     ///
     /// let mut map = VecMap::new();
     /// map.insert(1, "a");
-    /// match map.find_mut(&1) {
+    /// match map.get_mut(&1) {
     ///     Some(x) => *x = "b",
     ///     None => (),
     /// }
     /// assert_eq!(map[1], "b");
     /// ```
-    pub fn find_mut<'a>(&'a mut self, key: &uint) -> Option<&'a mut V> {
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
+    pub fn get_mut(&mut self, key: &uint) -> Option<&mut V> {
         if *key < self.v.len() {
             match *(&mut self.v[*key]) {
               Some(ref mut value) => Some(value),
@@ -323,45 +347,10 @@ impl<V> VecMap<V> {
         }
     }
 
-    /// Inserts a key-value pair into the map. An existing value for a
-    /// key is replaced by the new value. Returns `true` if the key did
-    /// not already exist in the map.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// use std::collections::VecMap;
-    ///
-    /// let mut map = VecMap::new();
-    /// assert_eq!(map.insert(2, "value"), true);
-    /// assert_eq!(map.insert(2, "value2"), false);
-    /// assert_eq!(map[2], "value2");
-    /// ```
-    pub fn insert(&mut self, key: uint, value: V) -> bool {
-        let exists = self.contains_key(&key);
-        let len = self.v.len();
-        if len <= key {
-            self.v.grow_fn(key - len + 1, |_| None);
-        }
-        self.v[key] = Some(value);
-        !exists
-    }
-
-    /// Removes a key-value pair from the map. Returns `true` if the key
-    /// was present in the map.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// use std::collections::VecMap;
-    ///
-    /// let mut map = VecMap::new();
-    /// assert_eq!(map.remove(&1), false);
-    /// map.insert(1, "a");
-    /// assert_eq!(map.remove(&1), true);
-    /// ```
-    pub fn remove(&mut self, key: &uint) -> bool {
-        self.pop(key).is_some()
+    /// Deprecated: Renamed to `insert`.
+    #[deprecated = "Renamed to `insert`"]
+    pub fn swap(&mut self, key: uint, value: V) -> Option<V> {
+        self.insert(key, value)
     }
 
     /// Inserts a key-value pair from the map. If the key already had a value
@@ -373,20 +362,26 @@ impl<V> VecMap<V> {
     /// use std::collections::VecMap;
     ///
     /// let mut map = VecMap::new();
-    /// assert_eq!(map.swap(37, "a"), None);
+    /// assert_eq!(map.insert(37, "a"), None);
     /// assert_eq!(map.is_empty(), false);
     ///
     /// map.insert(37, "b");
-    /// assert_eq!(map.swap(37, "c"), Some("b"));
+    /// assert_eq!(map.insert(37, "c"), Some("b"));
     /// assert_eq!(map[37], "c");
     /// ```
-    pub fn swap(&mut self, key: uint, value: V) -> Option<V> {
-        match self.find_mut(&key) {
-            Some(loc) => { return Some(replace(loc, value)); }
-            None => ()
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
+    pub fn insert(&mut self, key: uint, value: V) -> Option<V> {
+        let len = self.v.len();
+        if len <= key {
+            self.v.grow_fn(key - len + 1, |_| None);
         }
-        self.insert(key, value);
-        return None;
+        replace(&mut self.v[key], Some(value))
+    }
+
+    /// Deprecated: Renamed to `remove`.
+    #[deprecated = "Renamed to `remove`"]
+    pub fn pop(&mut self, key: &uint) -> Option<V> {
+        self.remove(key)
     }
 
     /// Removes a key from the map, returning the value at the key if the key
@@ -399,10 +394,11 @@ impl<V> VecMap<V> {
     ///
     /// let mut map = VecMap::new();
     /// map.insert(1, "a");
-    /// assert_eq!(map.pop(&1), Some("a"));
-    /// assert_eq!(map.pop(&1), None);
+    /// assert_eq!(map.remove(&1), Some("a"));
+    /// assert_eq!(map.remove(&1), None);
     /// ```
-    pub fn pop(&mut self, key: &uint) -> Option<V> {
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
+    pub fn remove(&mut self, key: &uint) -> Option<V> {
         if *key >= self.v.len() {
             return None;
         }
@@ -460,11 +456,11 @@ impl<V:Clone> VecMap<V> {
                            val: V,
                            ff: |uint, V, V| -> V)
                            -> bool {
-        let new_val = match self.find(&key) {
+        let new_val = match self.get(&key) {
             None => val,
             Some(orig) => ff(key, (*orig).clone(), val)
         };
-        self.insert(key, new_val)
+        self.insert(key, new_val).is_none()
     }
 }
 
@@ -514,14 +510,14 @@ impl<V> Extendable<(uint, V)> for VecMap<V> {
 impl<V> Index<uint, V> for VecMap<V> {
     #[inline]
     fn index<'a>(&'a self, i: &uint) -> &'a V {
-        self.find(i).expect("key not present")
+        self.get(i).expect("key not present")
     }
 }
 
 impl<V> IndexMut<uint, V> for VecMap<V> {
     #[inline]
     fn index_mut<'a>(&'a mut self, i: &uint) -> &'a mut V {
-        self.find_mut(i).expect("key not present")
+        self.get_mut(i).expect("key not present")
     }
 }
 
@@ -615,16 +611,16 @@ mod test_map {
     use super::VecMap;
 
     #[test]
-    fn test_find_mut() {
+    fn test_get_mut() {
         let mut m = VecMap::new();
-        assert!(m.insert(1, 12i));
-        assert!(m.insert(2, 8));
-        assert!(m.insert(5, 14));
+        assert!(m.insert(1, 12i).is_none());
+        assert!(m.insert(2, 8).is_none());
+        assert!(m.insert(5, 14).is_none());
         let new = 100;
-        match m.find_mut(&5) {
+        match m.get_mut(&5) {
             None => panic!(), Some(x) => *x = new
         }
-        assert_eq!(m.find(&5), Some(&new));
+        assert_eq!(m.get(&5), Some(&new));
     }
 
     #[test]
@@ -632,13 +628,13 @@ mod test_map {
         let mut map = VecMap::new();
         assert_eq!(map.len(), 0);
         assert!(map.is_empty());
-        assert!(map.insert(5, 20i));
+        assert!(map.insert(5, 20i).is_none());
         assert_eq!(map.len(), 1);
         assert!(!map.is_empty());
-        assert!(map.insert(11, 12));
+        assert!(map.insert(11, 12).is_none());
         assert_eq!(map.len(), 2);
         assert!(!map.is_empty());
-        assert!(map.insert(14, 22));
+        assert!(map.insert(14, 22).is_none());
         assert_eq!(map.len(), 3);
         assert!(!map.is_empty());
     }
@@ -646,14 +642,14 @@ mod test_map {
     #[test]
     fn test_clear() {
         let mut map = VecMap::new();
-        assert!(map.insert(5, 20i));
-        assert!(map.insert(11, 12));
-        assert!(map.insert(14, 22));
+        assert!(map.insert(5, 20i).is_none());
+        assert!(map.insert(11, 12).is_none());
+        assert!(map.insert(14, 22).is_none());
         map.clear();
         assert!(map.is_empty());
-        assert!(map.find(&5).is_none());
-        assert!(map.find(&11).is_none());
-        assert!(map.find(&14).is_none());
+        assert!(map.get(&5).is_none());
+        assert!(map.get(&11).is_none());
+        assert!(map.get(&14).is_none());
     }
 
     #[test]
@@ -678,28 +674,28 @@ mod test_map {
         map.update_with_key(3, 2, add_more_to_count);
 
         // check the total counts
-        assert_eq!(map.find(&3).unwrap(), &10);
-        assert_eq!(map.find(&5).unwrap(), &3);
-        assert_eq!(map.find(&9).unwrap(), &1);
+        assert_eq!(map.get(&3).unwrap(), &10);
+        assert_eq!(map.get(&5).unwrap(), &3);
+        assert_eq!(map.get(&9).unwrap(), &1);
 
         // sadly, no sevens were counted
-        assert!(map.find(&7).is_none());
+        assert!(map.get(&7).is_none());
     }
 
     #[test]
-    fn test_swap() {
+    fn test_insert() {
         let mut m = VecMap::new();
-        assert_eq!(m.swap(1, 2i), None);
-        assert_eq!(m.swap(1, 3i), Some(2));
-        assert_eq!(m.swap(1, 4i), Some(3));
+        assert_eq!(m.insert(1, 2i), None);
+        assert_eq!(m.insert(1, 3i), Some(2));
+        assert_eq!(m.insert(1, 4i), Some(3));
     }
 
     #[test]
-    fn test_pop() {
+    fn test_remove() {
         let mut m = VecMap::new();
         m.insert(1, 2i);
-        assert_eq!(m.pop(&1), Some(2));
-        assert_eq!(m.pop(&1), None);
+        assert_eq!(m.remove(&1), Some(2));
+        assert_eq!(m.remove(&1), None);
     }
 
     #[test]
@@ -732,11 +728,11 @@ mod test_map {
     fn test_iterator() {
         let mut m = VecMap::new();
 
-        assert!(m.insert(0, 1i));
-        assert!(m.insert(1, 2));
-        assert!(m.insert(3, 5));
-        assert!(m.insert(6, 10));
-        assert!(m.insert(10, 11));
+        assert!(m.insert(0, 1i).is_none());
+        assert!(m.insert(1, 2).is_none());
+        assert!(m.insert(3, 5).is_none());
+        assert!(m.insert(6, 10).is_none());
+        assert!(m.insert(10, 11).is_none());
 
         let mut it = m.iter();
         assert_eq!(it.size_hint(), (0, Some(11)));
@@ -757,11 +753,11 @@ mod test_map {
     fn test_iterator_size_hints() {
         let mut m = VecMap::new();
 
-        assert!(m.insert(0, 1i));
-        assert!(m.insert(1, 2));
-        assert!(m.insert(3, 5));
-        assert!(m.insert(6, 10));
-        assert!(m.insert(10, 11));
+        assert!(m.insert(0, 1i).is_none());
+        assert!(m.insert(1, 2).is_none());
+        assert!(m.insert(3, 5).is_none());
+        assert!(m.insert(6, 10).is_none());
+        assert!(m.insert(10, 11).is_none());
 
         assert_eq!(m.iter().size_hint(), (0, Some(11)));
         assert_eq!(m.iter().rev().size_hint(), (0, Some(11)));
@@ -773,11 +769,11 @@ mod test_map {
     fn test_mut_iterator() {
         let mut m = VecMap::new();
 
-        assert!(m.insert(0, 1i));
-        assert!(m.insert(1, 2));
-        assert!(m.insert(3, 5));
-        assert!(m.insert(6, 10));
-        assert!(m.insert(10, 11));
+        assert!(m.insert(0, 1i).is_none());
+        assert!(m.insert(1, 2).is_none());
+        assert!(m.insert(3, 5).is_none());
+        assert!(m.insert(6, 10).is_none());
+        assert!(m.insert(10, 11).is_none());
 
         for (k, v) in m.iter_mut() {
             *v += k as int;
@@ -796,11 +792,11 @@ mod test_map {
     fn test_rev_iterator() {
         let mut m = VecMap::new();
 
-        assert!(m.insert(0, 1i));
-        assert!(m.insert(1, 2));
-        assert!(m.insert(3, 5));
-        assert!(m.insert(6, 10));
-        assert!(m.insert(10, 11));
+        assert!(m.insert(0, 1i).is_none());
+        assert!(m.insert(1, 2).is_none());
+        assert!(m.insert(3, 5).is_none());
+        assert!(m.insert(6, 10).is_none());
+        assert!(m.insert(10, 11).is_none());
 
         let mut it = m.iter().rev();
         assert_eq!(it.next().unwrap(), (10, &11));
@@ -815,11 +811,11 @@ mod test_map {
     fn test_mut_rev_iterator() {
         let mut m = VecMap::new();
 
-        assert!(m.insert(0, 1i));
-        assert!(m.insert(1, 2));
-        assert!(m.insert(3, 5));
-        assert!(m.insert(6, 10));
-        assert!(m.insert(10, 11));
+        assert!(m.insert(0, 1i).is_none());
+        assert!(m.insert(1, 2).is_none());
+        assert!(m.insert(3, 5).is_none());
+        assert!(m.insert(6, 10).is_none());
+        assert!(m.insert(10, 11).is_none());
 
         for (k, v) in m.iter_mut().rev() {
             *v += k as int;
@@ -880,15 +876,15 @@ mod test_map {
         let mut b = VecMap::new();
 
         assert!(a == b);
-        assert!(a.insert(0, 5i));
+        assert!(a.insert(0, 5i).is_none());
         assert!(a != b);
-        assert!(b.insert(0, 4i));
+        assert!(b.insert(0, 4i).is_none());
         assert!(a != b);
-        assert!(a.insert(5, 19));
+        assert!(a.insert(5, 19).is_none());
         assert!(a != b);
-        assert!(!b.insert(0, 5));
+        assert!(!b.insert(0, 5).is_none());
         assert!(a != b);
-        assert!(b.insert(5, 19));
+        assert!(b.insert(5, 19).is_none());
         assert!(a == b);
     }
 
@@ -898,15 +894,15 @@ mod test_map {
         let mut b = VecMap::new();
 
         assert!(!(a < b) && !(b < a));
-        assert!(b.insert(2u, 5i));
+        assert!(b.insert(2u, 5i).is_none());
         assert!(a < b);
-        assert!(a.insert(2, 7));
+        assert!(a.insert(2, 7).is_none());
         assert!(!(a < b) && b < a);
-        assert!(b.insert(1, 0));
+        assert!(b.insert(1, 0).is_none());
         assert!(b < a);
-        assert!(a.insert(0, 6));
+        assert!(a.insert(0, 6).is_none());
         assert!(a < b);
-        assert!(a.insert(6, 2));
+        assert!(a.insert(6, 2).is_none());
         assert!(a < b && !(b < a));
     }
 
@@ -916,10 +912,10 @@ mod test_map {
         let mut b = VecMap::new();
 
         assert!(a <= b && a >= b);
-        assert!(a.insert(1u, 1i));
+        assert!(a.insert(1u, 1i).is_none());
         assert!(a > b && a >= b);
         assert!(b < a && b <= a);
-        assert!(b.insert(2, 2));
+        assert!(b.insert(2, 2).is_none());
         assert!(b > a && b >= a);
         assert!(a < b && a <= b);
     }
@@ -948,7 +944,7 @@ mod test_map {
         let map: VecMap<char> = xs.iter().map(|&x| x).collect();
 
         for &(k, v) in xs.iter() {
-            assert_eq!(map.find(&k), Some(&v));
+            assert_eq!(map.get(&k), Some(&v));
         }
     }
 
@@ -1022,7 +1018,7 @@ mod bench {
         let mut m : VecMap<uint> = VecMap::new();
         find_rand_n(100, &mut m, b,
                     |m, i| { m.insert(i, 1); },
-                    |m, i| { m.find(&i); });
+                    |m, i| { m.get(&i); });
     }
 
     #[bench]
@@ -1030,7 +1026,7 @@ mod bench {
         let mut m : VecMap<uint> = VecMap::new();
         find_rand_n(10_000, &mut m, b,
                     |m, i| { m.insert(i, 1); },
-                    |m, i| { m.find(&i); });
+                    |m, i| { m.get(&i); });
     }
 
     // Find seq
@@ -1039,7 +1035,7 @@ mod bench {
         let mut m : VecMap<uint> = VecMap::new();
         find_seq_n(100, &mut m, b,
                    |m, i| { m.insert(i, 1); },
-                   |m, i| { m.find(&i); });
+                   |m, i| { m.get(&i); });
     }
 
     #[bench]
@@ -1047,6 +1043,6 @@ mod bench {
         let mut m : VecMap<uint> = VecMap::new();
         find_seq_n(10_000, &mut m, b,
                    |m, i| { m.insert(i, 1); },
-                   |m, i| { m.find(&i); });
+                   |m, i| { m.get(&i); });
     }
 }

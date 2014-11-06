@@ -220,7 +220,7 @@ fn symbol_hash(tcx: &ty::ctxt,
 }
 
 fn get_symbol_hash(ccx: &CrateContext, t: ty::t) -> String {
-    match ccx.type_hashcodes().borrow().find(&t) {
+    match ccx.type_hashcodes().borrow().get(&t) {
         Some(h) => return h.to_string(),
         None => {}
     }

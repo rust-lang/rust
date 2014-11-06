@@ -54,7 +54,7 @@ pub fn monomorphic_fn(ccx: &CrateContext,
         params: real_substs.types.clone()
     };
 
-    match ccx.monomorphized().borrow().find(&hash_id) {
+    match ccx.monomorphized().borrow().get(&hash_id) {
         Some(&val) => {
             debug!("leaving monomorphic fn {}",
             ty::item_path_str(ccx.tcx(), fn_id));
@@ -106,7 +106,7 @@ pub fn monomorphic_fn(ccx: &CrateContext,
     let depth;
     {
         let mut monomorphizing = ccx.monomorphizing().borrow_mut();
-        depth = match monomorphizing.find(&fn_id) {
+        depth = match monomorphizing.get(&fn_id) {
             Some(&d) => d, None => 0
         };
 

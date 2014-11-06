@@ -143,7 +143,7 @@ fn check_expr(v: &mut CheckCrateVisitor, e: &Expr) -> bool {
                           "paths in constants may only refer to items without \
                            type parameters");
             }
-            match v.tcx.def_map.borrow().find(&e.id) {
+            match v.tcx.def_map.borrow().get(&e.id) {
                 Some(&DefStatic(..)) |
                 Some(&DefConst(..)) |
                 Some(&DefFn(..)) |
@@ -162,7 +162,7 @@ fn check_expr(v: &mut CheckCrateVisitor, e: &Expr) -> bool {
             }
         }
         ExprCall(ref callee, _) => {
-            match v.tcx.def_map.borrow().find(&callee.id) {
+            match v.tcx.def_map.borrow().get(&callee.id) {
                 Some(&DefStruct(..)) |
                 Some(&DefVariant(..)) => {}    // OK.
 

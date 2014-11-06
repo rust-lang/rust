@@ -45,7 +45,7 @@ pub fn try_inline(cx: &DocContext, id: ast::NodeId, into: Option<ast::Ident>)
         Some(tcx) => tcx,
         None => return None,
     };
-    let def = match tcx.def_map.borrow().find(&id) {
+    let def = match tcx.def_map.borrow().get(&id) {
         Some(def) => *def,
         None => return None,
     };
@@ -223,7 +223,7 @@ fn build_impls(cx: &DocContext, tcx: &ty::ctxt,
     ty::populate_implementations_for_type_if_necessary(tcx, did);
     let mut impls = Vec::new();
 
-    match tcx.inherent_impls.borrow().find(&did) {
+    match tcx.inherent_impls.borrow().get(&did) {
         None => {}
         Some(i) => {
             impls.extend(i.iter().map(|&did| { build_impl(cx, tcx, did) }));

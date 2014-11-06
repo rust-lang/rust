@@ -906,7 +906,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     {
         let cache = self.pick_candidate_cache(&cache_skol_trait_ref);
         let hashmap = cache.hashmap.borrow();
-        hashmap.find(&cache_skol_trait_ref).map(|c| (*c).clone())
+        hashmap.get(&cache_skol_trait_ref).map(|c| (*c).clone())
     }
 
     fn insert_candidate_cache(&mut self,
@@ -1032,7 +1032,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                self_ty.repr(self.tcx()),
                obligation.repr(self.tcx()));
 
-        let closure_kind = match self.typer.unboxed_closures().borrow().find(&closure_def_id) {
+        let closure_kind = match self.typer.unboxed_closures().borrow().get(&closure_def_id) {
             Some(closure) => closure.kind,
             None => {
                 self.tcx().sess.span_bug(
@@ -1282,7 +1282,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
                             ty::BoundSync |
                             ty::BoundSend => {
-                                if c.bounds.builtin_bounds.contains_elem(bound) {
+                                if c.bounds.builtin_bounds.contains(&bound) {
                                     Ok(If(Vec::new()))
                                 } else {
                                     Err(Unimplemented)
@@ -1306,7 +1306,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
                             ty::BoundSync |
                             ty::BoundSend => {
-                                if c.bounds.builtin_bounds.contains_elem(bound) {
+                                if c.bounds.builtin_bounds.contains(&bound) {
                                     Ok(If(Vec::new()))
                                 } else {
                                     Err(Unimplemented)
@@ -1323,7 +1323,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         Err(Unimplemented)
                     }
                     ty::BoundCopy | ty::BoundSync | ty::BoundSend => {
-                        if bounds.builtin_bounds.contains_elem(bound) {
+                        if bounds.builtin_bounds.contains(&bound) {
                             Ok(If(Vec::new()))
                         } else {
                             Err(Unimplemented)
@@ -1428,7 +1428,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 // is reserve judgement and then intertwine this
                 // analysis with closure inference.
                 assert_eq!(def_id.krate, ast::LOCAL_CRATE);
-                match self.tcx().freevars.borrow().find(&def_id.node) {
+                match self.tcx().freevars.borrow().get(&def_id.node) {
                     None => {
                         // No upvars.
                         Ok(If(Vec::new()))
@@ -1690,7 +1690,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                closure_def_id.repr(self.tcx()),
                substs.repr(self.tcx()));
 
-        let closure_type = match self.typer.unboxed_closures().borrow().find(&closure_def_id) {
+        let closure_type = match self.typer.unboxed_closures().borrow().get(&closure_def_id) {
             Some(closure) => closure.closure_type.clone(),
             None => {
                 self.tcx().sess.span_bug(
@@ -1973,7 +1973,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         ty::populate_implementations_for_trait_if_necessary(self.tcx(),
                                                             trait_def_id);
-        match self.tcx().trait_impls.borrow().find(&trait_def_id) {
+        match self.tcx().trait_impls.borrow().get(&trait_def_id) {
             None => Vec::new(),
             Some(impls) => impls.borrow().clone()
         }

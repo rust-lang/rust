@@ -114,7 +114,7 @@ impl<'cx, 'tcx> OverlapChecker<'cx, 'tcx> {
     fn push_impls_of_trait(&self,
                            trait_def_id: ast::DefId,
                            out: &mut Vec<ast::DefId>) {
-        match self.tcx.trait_impls.borrow().find(&trait_def_id) {
+        match self.tcx.trait_impls.borrow().get(&trait_def_id) {
             Some(impls) => { out.push_all(impls.borrow().as_slice()); }
             None => { /* no impls */ }
         }

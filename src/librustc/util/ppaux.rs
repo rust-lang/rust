@@ -451,7 +451,7 @@ pub fn ty_to_string(cx: &ctxt, typ: t) -> String {
         ty_str => "str".to_string(),
         ty_unboxed_closure(ref did, _, ref substs) => {
             let unboxed_closures = cx.unboxed_closures.borrow();
-            unboxed_closures.find(did).map(|cl| {
+            unboxed_closures.get(did).map(|cl| {
                 closure_to_string(cx, &cl.closure_type.subst(cx, substs))
             }).unwrap_or_else(|| "closure".to_string())
         }
@@ -1108,7 +1108,7 @@ impl UserString for ty::ParamBounds {
 
 impl UserString for ty::ExistentialBounds {
     fn user_string(&self, tcx: &ctxt) -> String {
-        if self.builtin_bounds.contains_elem(ty::BoundSend) &&
+        if self.builtin_bounds.contains(&ty::BoundSend) &&
             self.region_bound == ty::ReStatic
         { // Region bound is implied by builtin bounds:
             return self.builtin_bounds.repr(tcx);
@@ -1277,7 +1277,7 @@ impl UserString for ParamTy {
     fn user_string(&self, tcx: &ctxt) -> String {
         let id = self.idx;
         let did = self.def_id;
-        let ident = match tcx.ty_param_defs.borrow().find(&did.node) {
+        let ident = match tcx.ty_param_defs.borrow().get(&did.node) {
             Some(def) => token::get_name(def.name).get().to_string(),
 
             // This can only happen when a type mismatch error happens and
