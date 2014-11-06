@@ -16,7 +16,7 @@ use std::string;
 use std::error;
 
 /// A trait for converting a value to hexadecimal encoding
-pub trait ToHex {
+pub trait ToHex for Sized? {
     /// Converts the value of `self` to a hex value, returning the owned
     /// string.
     fn to_hex(&self) -> String;
@@ -24,7 +24,7 @@ pub trait ToHex {
 
 static CHARS: &'static[u8] = b"0123456789abcdef";
 
-impl<'a> ToHex for &'a [u8] {
+impl ToHex for [u8] {
     /**
      * Turn a vector of `u8` bytes into a hexadecimal string.
      *
@@ -54,7 +54,7 @@ impl<'a> ToHex for &'a [u8] {
 }
 
 /// A trait for converting hexadecimal encoded values
-pub trait FromHex {
+pub trait FromHex for Sized? {
     /// Converts the value of `self`, interpreted as hexadecimal encoded data,
     /// into an owned vector of bytes, returning the vector.
     fn from_hex(&self) -> Result<Vec<u8>, FromHexError>;
@@ -92,7 +92,7 @@ impl error::Error for FromHexError {
 }
 
 
-impl<'a> FromHex for &'a str {
+impl FromHex for str {
     /**
      * Convert any hexadecimal encoded string (literal, `@`, `&`, or `~`)
      * to the byte values it encodes.
