@@ -22,7 +22,7 @@ use middle::def;
 use middle::lang_items::LangItem;
 use middle::mem_categorization as mc;
 use middle::subst;
-use middle::subst::Subst;
+use middle::subst::{Subst, Substs};
 use trans::base;
 use trans::build;
 use trans::cleanup;
@@ -189,50 +189,8 @@ pub fn BuilderRef_res(b: BuilderRef) -> BuilderRef_res {
 
 pub type ExternMap = FnvHashMap<String, ValueRef>;
 
-// Here `self_ty` is the real type of the self parameter to this method. It
-// will only be set in the case of default methods.
-pub struct param_substs<'tcx> {
-    substs: subst::Substs<'tcx>,
-}
-
-impl<'tcx> param_substs<'tcx> {
-    pub fn new(substs: subst::Substs<'tcx>) -> param_substs<'tcx> {
-        assert!(substs.types.all(|t| !ty::type_needs_infer(*t)));
-        assert!(substs.types.all(|t| !ty::type_has_params(*t)));
-        assert!(substs.types.all(|t| !ty::type_has_escaping_regions(*t)));
-        param_substs { substs: substs.erase_regions() }
-    }
-
-    pub fn substs(&self) -> &subst::Substs<'tcx> {
-        &self.substs
-    }
-
-    pub fn empty() -> param_substs<'tcx> {
-        param_substs {
-            substs: subst::Substs::trans_empty(),
-        }
-    }
-
-    pub fn validate(&self) {
-        assert!(self.substs.types.all(|t| !ty::type_needs_infer(*t)));
-    }
-}
-
-impl<'tcx> Repr<'tcx> for param_substs<'tcx> {
-    fn repr(&self, tcx: &ty::ctxt<'tcx>) -> String {
-        self.substs.repr(tcx)
-    }
-}
-
-pub trait SubstP<'tcx> {
-    fn substp(&self, tcx: &ty::ctxt<'tcx>, param_substs: &param_substs<'tcx>)
-              -> Self;
-}
-
-impl<'tcx, T: Subst<'tcx> + Clone> SubstP<'tcx> for T {
-    fn substp(&self, tcx: &ty::ctxt<'tcx>, substs: &param_substs<'tcx>) -> T {
-        self.subst(tcx, &substs.substs)
-    }
+pub fn validate_substs(substs: &Substs) {
+    assert!(substs.types.all(|t| !ty::type_needs_infer(*t)));
 }
 
 // work around bizarre resolve errors
@@ -292,7 +250,7 @@ pub struct FunctionContext<'a, 'tcx: 'a> {
 
     // If this function is being monomorphized, this contains the type
     // substitutions used.
-    pub param_substs: &'a param_substs<'tcx>,
+    pub param_substs: &'a Substs<'tcx>,
 
     // The source span and nesting context where this function comes from, for
     // error reporting and symbol generation.
@@ -792,7 +750,7 @@ pub fn is_null(val: ValueRef) -> bool {
 }
 
 pub fn monomorphize_type<'blk, 'tcx>(bcx: &BlockS<'blk, 'tcx>, t: Ty<'tcx>) -> Ty<'tcx> {
-    t.subst(bcx.tcx(), &bcx.fcx.param_substs.substs)
+    t.subst(bcx.tcx(), bcx.fcx.param_substs)
 }
 
 pub fn node_id_type<'blk, 'tcx>(bcx: &BlockS<'blk, 'tcx>, id: ast::NodeId) -> Ty<'tcx> {
@@ -950,7 +908,7 @@ pub fn node_id_substs<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     }
 
     let substs = substs.erase_regions();
-    substs.substp(tcx, bcx.fcx.param_substs)
+    substs.subst(tcx, bcx.fcx.param_substs)
 }
 
 pub fn langcall(bcx: Block,

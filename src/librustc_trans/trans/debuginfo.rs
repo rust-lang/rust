@@ -196,7 +196,7 @@ use llvm;
 use llvm::{ModuleRef, ContextRef, ValueRef};
 use llvm::debuginfo::*;
 use metadata::csearch;
-use middle::subst::{mod, Subst};
+use middle::subst::{mod, Subst, Substs};
 use trans::adt;
 use trans::common::*;
 use trans::machine;
@@ -1171,7 +1171,7 @@ pub fn start_emitting_source_locations(fcx: &FunctionContext) {
 /// for the function.
 pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                                fn_ast_id: ast::NodeId,
-                                               param_substs: &param_substs<'tcx>,
+                                               param_substs: &Substs<'tcx>,
                                                llfn: ValueRef) -> FunctionDebugContext {
     if cx.sess().opts.debuginfo == NoDebugInfo {
         return FunctionDebugContext { repr: DebugInfoDisabled };
@@ -1373,7 +1373,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     fn get_function_signature<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                         fn_ast_id: ast::NodeId,
                                         fn_decl: &ast::FnDecl,
-                                        param_substs: &param_substs<'tcx>,
+                                        param_substs: &Substs<'tcx>,
                                         error_reporting_span: Span) -> DIArray {
         if cx.sess().opts.debuginfo == LimitedDebugInfo {
             return create_DIArray(DIB(cx), &[]);
@@ -1389,7 +1389,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                 assert_type_for_node_id(cx, fn_ast_id, error_reporting_span);
 
                 let return_type = ty::node_id_to_type(cx.tcx(), fn_ast_id);
-                let return_type = return_type.substp(cx.tcx(), param_substs);
+                let return_type = return_type.subst(cx.tcx(), param_substs);
                 signature.push(type_metadata(cx, return_type, codemap::DUMMY_SP));
             }
         }
@@ -1398,7 +1398,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         for arg in fn_decl.inputs.iter() {
             assert_type_for_node_id(cx, arg.pat.id, arg.pat.span);
             let arg_type = ty::node_id_to_type(cx.tcx(), arg.pat.id);
-            let arg_type = arg_type.substp(cx.tcx(), param_substs);
+            let arg_type = arg_type.subst(cx.tcx(), param_substs);
             signature.push(type_metadata(cx, arg_type, codemap::DUMMY_SP));
         }
 
@@ -1407,11 +1407,11 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 
     fn get_template_parameters<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                          generics: &ast::Generics,
-                                         param_substs: &param_substs<'tcx>,
+                                         param_substs: &Substs<'tcx>,
                                          file_metadata: DIFile,
                                          name_to_append_suffix_to: &mut String)
                                          -> DIArray {
-        let self_type = param_substs.substs().self_ty();
+        let self_type = param_substs.self_ty();
 
         // Only true for static default methods:
         let has_self_type = self_type.is_some();
@@ -1468,7 +1468,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         }
 
         // Handle other generic parameters
-        let actual_types = param_substs.substs().types.get_slice(subst::FnSpace);
+        let actual_types = param_substs.types.get_slice(subst::FnSpace);
         for (index, &ast::TyParam{ ident, .. }) in generics.ty_params.iter().enumerate() {
             let actual_type = actual_types[index];
             // Add actual type name to <...> clause of function name

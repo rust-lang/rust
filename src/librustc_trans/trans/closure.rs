@@ -15,6 +15,7 @@ use back::link::mangle_internal_name_by_path_and_seq;
 use llvm::ValueRef;
 use middle::def;
 use middle::mem_categorization::Typer;
+use middle::subst::Substs;
 use trans::adt;
 use trans::base::*;
 use trans::build::*;
@@ -520,7 +521,7 @@ pub fn trans_unboxed_closure<'blk, 'tcx>(
     let llfn = get_or_create_declaration_if_unboxed_closure(
         bcx,
         closure_id,
-        bcx.fcx.param_substs.substs()).unwrap();
+        bcx.fcx.param_substs).unwrap();
 
     let function_type = (*bcx.tcx().unboxed_closures.borrow())[closure_id]
                                                               .closure_type
@@ -633,7 +634,7 @@ pub fn get_wrapper_for_bare_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     let _icx = push_ctxt("closure::get_wrapper_for_bare_fn");
 
     let arena = TypedArena::new();
-    let empty_param_substs = param_substs::empty();
+    let empty_param_substs = Substs::trans_empty();
     let fcx = new_fn_ctxt(ccx, llfn, ast::DUMMY_NODE_ID, true, f.sig.output,
                           &empty_param_substs, None, &arena);
     let bcx = init_function(&fcx, true, f.sig.output);
