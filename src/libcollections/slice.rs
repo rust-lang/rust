@@ -42,10 +42,10 @@
 //!
 //! ## Traits
 //!
-//! A number of traits add methods that allow you to accomplish tasks with slices.
-//! These traits include `ImmutableSlice`, which is defined for `&[T]` types,
-//! `MutableSlice`, defined for `&mut [T]` types, and `Slice` and `SliceMut`
-//! which are defined for `[T]`.
+//! A number of traits add methods that allow you to accomplish tasks
+//! with slices, the most important being `SlicePrelude`. Other traits
+//! apply only to slices of elements satisfying certain bounds (like
+//! `Ord`).
 //!
 //! An example is the `slice` method which enables slicing syntax `[a..b]` that
 //! returns an immutable "view" into a `Vec` or another slice from the index
@@ -99,11 +99,11 @@ use core::iter::{range_step, MultiplicativeIterator};
 
 use vec::Vec;
 
-pub use core::slice::{Chunks, AsSlice, ImmutableSlice, ImmutablePartialEqSlice};
-pub use core::slice::{ImmutableOrdSlice, MutableSlice, Items, MutItems};
+pub use core::slice::{Chunks, AsSlice, SlicePrelude, PartialEqSlicePrelude};
+pub use core::slice::{OrdSlicePrelude, SlicePrelude, Items, MutItems};
 pub use core::slice::{ImmutableIntSlice, MutableIntSlice};
 pub use core::slice::{MutSplits, MutChunks, Splits};
-pub use core::slice::{bytes, mut_ref_slice, ref_slice, MutableCloneableSlice};
+pub use core::slice::{bytes, mut_ref_slice, ref_slice, CloneSlicePrelude};
 pub use core::slice::{Found, NotFound};
 
 // Functional utilities
@@ -266,29 +266,13 @@ impl<T: Clone> Iterator<Vec<T>> for Permutations<T> {
     }
 }
 
-/// Extension methods for vector slices with cloneable elements
-pub trait CloneableVector<T> for Sized? {
-    /// Copies `self` into a new `Vec`.
-    fn to_vec(&self) -> Vec<T>;
-}
-
-impl<T: Clone> CloneableVector<T> for [T] {
-    /// Returns a copy of `v`.
-    #[inline]
-    fn to_vec(&self) -> Vec<T> {
-        let mut vector = Vec::with_capacity(self.len());
-        vector.push_all(self);
-        vector
-    }
-}
-
-#[experimental]
-pub trait BoxedSlice<T> {
+/// Extension methods for boxed slices.
+pub trait BoxedSlicePrelude<T> {
     /// Convert `self` into a vector without clones or allocation.
     fn into_vec(self) -> Vec<T>;
 }
 
-impl<T> BoxedSlice<T> for Box<[T]> {
+impl<T> BoxedSlicePrelude<T> for Box<[T]> {
     #[experimental]
     fn into_vec(mut self) -> Vec<T> {
         unsafe {
@@ -299,8 +283,11 @@ impl<T> BoxedSlice<T> for Box<[T]> {
     }
 }
 
-/// Extension methods for vectors containing `Clone` elements.
-pub trait ImmutableCloneableVector<T> for Sized? {
+/// Allocating extension methods for slices containing `Clone` elements.
+pub trait CloneSliceAllocPrelude<T> for Sized? {
+    /// Copies `self` into a new `Vec`.
+    fn to_vec(&self) -> Vec<T>;
+
     /// Partitions the vector into two vectors `(a, b)`, where all
     /// elements of `a` satisfy `f` and all elements of `b` do not.
     fn partitioned(&self, f: |&T| -> bool) -> (Vec<T>, Vec<T>);
@@ -332,7 +319,16 @@ pub trait ImmutableCloneableVector<T> for Sized? {
     fn permutations(&self) -> Permutations<T>;
 }
 
-impl<T: Clone> ImmutableCloneableVector<T> for [T] {
+impl<T: Clone> CloneSliceAllocPrelude<T> for [T] {
+    /// Returns a copy of `v`.
+    #[inline]
+    fn to_vec(&self) -> Vec<T> {
+        let mut vector = Vec::with_capacity(self.len());
+        vector.push_all(self);
+        vector
+    }
+
+
     #[inline]
     fn partitioned(&self, f: |&T| -> bool) -> (Vec<T>, Vec<T>) {
         let mut lefts  = Vec::new();
@@ -562,9 +558,36 @@ fn merge_sort<T>(v: &mut [T], compare: |&T, &T| -> Ordering) {
     }
 }
 
-/// Extension methods for vectors such that their elements are
-/// mutable.
-pub trait MutableSliceAllocating<T> for Sized? {
+/// Allocating extension methods for slices on Ord values.
+#[experimental = "likely to merge with other traits"]
+pub trait OrdSliceAllocPrelude<T> for Sized? {
+    /// Sorts the slice, in place.
+    ///
+    /// This is equivalent to `self.sort_by(|a, b| a.cmp(b))`.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let mut v = [-5i, 4, 1, -3, 2];
+    ///
+    /// v.sort();
+    /// assert!(v == [-5i, -3, 1, 2, 4]);
+    /// ```
+    #[experimental]
+    fn sort(&mut self);
+}
+
+impl<T: Ord> OrdSliceAllocPrelude<T> for [T] {
+    #[experimental]
+    #[inline]
+    fn sort(&mut self) {
+        self.sort_by(|a, b| a.cmp(b))
+    }
+}
+
+/// Allocating extension methods for slices.
+#[experimental = "likely to merge with other traits"]
+pub trait SliceAllocPrelude<T> for Sized? {
     /// Sorts the slice, in place, using `compare` to compare
     /// elements.
     ///
@@ -608,7 +631,7 @@ pub trait MutableSliceAllocating<T> for Sized? {
     fn move_from(&mut self, src: Vec<T>, start: uint, end: uint) -> uint;
 }
 
-impl<T> MutableSliceAllocating<T> for [T] {
+impl<T> SliceAllocPrelude<T> for [T] {
     #[inline]
     fn sort_by(&mut self, compare: |&T, &T| -> Ordering) {
         merge_sort(self, compare)
@@ -620,127 +643,6 @@ impl<T> MutableSliceAllocating<T> for [T] {
             mem::swap(a, b);
         }
         cmp::min(self.len(), end-start)
-    }
-}
-
-/// Methods for mutable vectors with orderable elements, such as
-/// in-place sorting.
-pub trait MutableOrdSlice<T> for Sized? {
-    /// Sorts the slice, in place.
-    ///
-    /// This is equivalent to `self.sort_by(|a, b| a.cmp(b))`.
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// let mut v = [-5i, 4, 1, -3, 2];
-    ///
-    /// v.sort();
-    /// assert!(v == [-5i, -3, 1, 2, 4]);
-    /// ```
-    fn sort(&mut self);
-
-    /// Mutates the slice to the next lexicographic permutation.
-    ///
-    /// Returns `true` if successful and `false` if the slice is at the
-    /// last-ordered permutation.
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// let v: &mut [_] = &mut [0i, 1, 2];
-    /// v.next_permutation();
-    /// let b: &mut [_] = &mut [0i, 2, 1];
-    /// assert!(v == b);
-    /// v.next_permutation();
-    /// let b: &mut [_] = &mut [1i, 0, 2];
-    /// assert!(v == b);
-    /// ```
-    fn next_permutation(&mut self) -> bool;
-
-    /// Mutates the slice to the previous lexicographic permutation.
-    ///
-    /// Returns `true` if successful and `false` if the slice is at the
-    /// first-ordered permutation.
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// let v: &mut [_] = &mut [1i, 0, 2];
-    /// v.prev_permutation();
-    /// let b: &mut [_] = &mut [0i, 2, 1];
-    /// assert!(v == b);
-    /// v.prev_permutation();
-    /// let b: &mut [_] = &mut [0i, 1, 2];
-    /// assert!(v == b);
-    /// ```
-    fn prev_permutation(&mut self) -> bool;
-}
-
-impl<T: Ord> MutableOrdSlice<T> for [T] {
-    #[inline]
-    fn sort(&mut self) {
-        self.sort_by(|a, b| a.cmp(b))
-    }
-
-    fn next_permutation(&mut self) -> bool {
-        // These cases only have 1 permutation each, so we can't do anything.
-        if self.len() < 2 { return false; }
-
-        // Step 1: Identify the longest, rightmost weakly decreasing part of the vector
-        let mut i = self.len() - 1;
-        while i > 0 && self[i-1] >= self[i] {
-            i -= 1;
-        }
-
-        // If that is the entire vector, this is the last-ordered permutation.
-        if i == 0 {
-            return false;
-        }
-
-        // Step 2: Find the rightmost element larger than the pivot (i-1)
-        let mut j = self.len() - 1;
-        while j >= i && self[j] <= self[i-1]  {
-            j -= 1;
-        }
-
-        // Step 3: Swap that element with the pivot
-        self.swap(j, i-1);
-
-        // Step 4: Reverse the (previously) weakly decreasing part
-        self[mut i..].reverse();
-
-        true
-    }
-
-    fn prev_permutation(&mut self) -> bool {
-        // These cases only have 1 permutation each, so we can't do anything.
-        if self.len() < 2 { return false; }
-
-        // Step 1: Identify the longest, rightmost weakly increasing part of the vector
-        let mut i = self.len() - 1;
-        while i > 0 && self[i-1] <= self[i] {
-            i -= 1;
-        }
-
-        // If that is the entire vector, this is the first-ordered permutation.
-        if i == 0 {
-            return false;
-        }
-
-        // Step 2: Reverse the weakly increasing part
-        self[mut i..].reverse();
-
-        // Step 3: Find the rightmost element equal to or bigger than the pivot (i-1)
-        let mut j = self.len() - 1;
-        while j >= i && self[j-1] < self[i-1]  {
-            j -= 1;
-        }
-
-        // Step 4: Swap that element with the pivot
-        self.swap(i-1, j);
-
-        true
     }
 }
 

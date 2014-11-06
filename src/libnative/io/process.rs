@@ -296,7 +296,7 @@ fn spawn_process_os(cfg: ProcessConfig,
 
     use std::mem;
     use std::iter::Iterator;
-    use std::str::StrSlice;
+    use std::str::StrPrelude;
 
     if cfg.gid.is_some() || cfg.uid.is_some() {
         return Err(IoError {

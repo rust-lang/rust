@@ -16,7 +16,7 @@
 use core::cmp::{Equal, Less, Greater};
 use core::option::{Option, Some, None};
 use core::slice;
-use core::slice::ImmutableSlice;
+use core::slice::SlicePrelude;
 use tables::normalization::{canonical_table, compatibility_table, composition_table};
 
 fn bsearch_table<T>(c: char, r: &'static [(char, &'static [T])]) -> Option<&'static [T]> {

@@ -21,9 +21,9 @@ use option::{Option, Some, None};
 use ops::Deref;
 use result::{Ok, Err};
 use result;
-use slice::{AsSlice, ImmutableSlice};
+use slice::{AsSlice, SlicePrelude};
 use slice;
-use str::StrSlice;
+use str::StrPrelude;
 use str;
 
 pub use self::num::radix;

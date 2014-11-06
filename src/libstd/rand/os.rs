@@ -69,7 +69,7 @@ mod imp {
     use rand::Rng;
     use result::{Ok};
     use self::libc::{c_int, size_t};
-    use slice::{ImmutableSlice, MutableSlice};
+    use slice::{SlicePrelude};
 
     /// A random number generator that retrieves randomness straight from
     /// the operating system. Platform sources:
@@ -137,7 +137,7 @@ mod imp {
     use result::{Ok, Err};
     use self::libc::{DWORD, BYTE, LPCSTR, BOOL};
     use self::libc::types::os::arch::extra::{LONG_PTR};
-    use slice::{ImmutableSlice, MutableSlice};
+    use slice::{SlicePrelude};
 
     type HCRYPTPROV = LONG_PTR;
 

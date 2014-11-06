@@ -16,8 +16,8 @@ use iter::{range, DoubleEndedIterator};
 use num::{Float, FPNaN, FPInfinite, ToPrimitive, Primitive};
 use num::{Zero, One, cast};
 use result::Ok;
-use slice::{mod, ImmutableSlice, MutableSlice};
-use str::StrSlice;
+use slice::{mod, SlicePrelude};
+use str::StrPrelude;
 
 /// A flag that specifies whether to use exponential (scientific) notation.
 pub enum ExponentFormat {

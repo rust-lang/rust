@@ -46,9 +46,9 @@ use path::{Path, GenericPath, BytesContainer};
 use ptr::RawPtr;
 use ptr;
 use result::{Err, Ok, Result};
-use slice::{AsSlice, ImmutableSlice, MutableSlice, ImmutablePartialEqSlice};
-use slice::CloneableVector;
-use str::{Str, StrSlice, StrAllocating};
+use slice::{AsSlice, SlicePrelude, PartialEqSlicePrelude};
+use slice::CloneSliceAllocPrelude;
+use str::{Str, StrPrelude, StrAllocating};
 use string::String;
 use to_string::ToString;
 use sync::atomic::{AtomicInt, INIT_ATOMIC_INT, SeqCst};
@@ -146,9 +146,9 @@ pub mod windows {
     use option::{None, Option};
     use option;
     use os::TMPBUF_SZ;
-    use slice::{MutableSlice, ImmutableSlice};
+    use slice::{SlicePrelude};
     use string::String;
-    use str::StrSlice;
+    use str::StrPrelude;
     use vec::Vec;
 
     pub fn fill_utf16_buf_and_decode(f: |*mut u16, DWORD| -> DWORD)
