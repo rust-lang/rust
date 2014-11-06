@@ -118,6 +118,9 @@ pub trait Trait {
 
 impl Trait for MethodTester {}
 
+#[experimental]
+pub trait ExperimentalTrait {}
+
 #[deprecated]
 pub struct DeprecatedStruct { pub i: int }
 #[experimental]
