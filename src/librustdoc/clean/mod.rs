@@ -478,7 +478,7 @@ impl Clean<TyParam> for ast::TyParam {
     }
 }
 
-impl Clean<TyParam> for ty::TypeParameterDef {
+impl<'tcx> Clean<TyParam> for ty::TypeParameterDef<'tcx> {
     fn clean(&self, cx: &DocContext) -> TyParam {
         cx.external_typarams.borrow_mut().as_mut().unwrap()
           .insert(self.def_id, self.name.clean(cx));
@@ -567,7 +567,7 @@ impl Clean<TyParamBound> for ty::BuiltinBound {
     }
 }
 
-impl Clean<TyParamBound> for ty::TraitRef {
+impl<'tcx> Clean<TyParamBound> for ty::TraitRef<'tcx> {
     fn clean(&self, cx: &DocContext) -> TyParamBound {
         let tcx = match cx.tcx_opt() {
             Some(tcx) => tcx,
@@ -588,7 +588,7 @@ impl Clean<TyParamBound> for ty::TraitRef {
     }
 }
 
-impl Clean<Vec<TyParamBound>> for ty::ParamBounds {
+impl<'tcx> Clean<Vec<TyParamBound>> for ty::ParamBounds<'tcx> {
     fn clean(&self, cx: &DocContext) -> Vec<TyParamBound> {
         let mut v = Vec::new();
         for b in self.builtin_bounds.iter() {
@@ -606,7 +606,7 @@ impl Clean<Vec<TyParamBound>> for ty::ParamBounds {
     }
 }
 
-impl Clean<Option<Vec<TyParamBound>>> for subst::Substs {
+impl<'tcx> Clean<Option<Vec<TyParamBound>>> for subst::Substs<'tcx> {
     fn clean(&self, cx: &DocContext) -> Option<Vec<TyParamBound>> {
         let mut v = Vec::new();
         v.extend(self.regions().iter().filter_map(|r| r.clean(cx)).map(RegionBound));
@@ -698,7 +698,7 @@ impl Clean<Generics> for ast::Generics {
     }
 }
 
-impl<'a> Clean<Generics> for (&'a ty::Generics, subst::ParamSpace) {
+impl<'a, 'tcx> Clean<Generics> for (&'a ty::Generics<'tcx>, subst::ParamSpace) {
     fn clean(&self, cx: &DocContext) -> Generics {
         let (me, space) = *self;
         Generics {
@@ -877,7 +877,7 @@ impl Clean<FnDecl> for ast::FnDecl {
     }
 }
 
-impl<'a> Clean<Type> for ty::FnOutput {
+impl<'tcx> Clean<Type> for ty::FnOutput<'tcx> {
     fn clean(&self, cx: &DocContext) -> Type {
         match *self {
             ty::FnConverging(ty) => ty.clean(cx),
@@ -886,7 +886,7 @@ impl<'a> Clean<Type> for ty::FnOutput {
     }
 }
 
-impl<'a> Clean<FnDecl> for (ast::DefId, &'a ty::FnSig) {
+impl<'a, 'tcx> Clean<FnDecl> for (ast::DefId, &'a ty::FnSig<'tcx>) {
     fn clean(&self, cx: &DocContext) -> FnDecl {
         let (did, sig) = *self;
         let mut names = if did.node != 0 {
@@ -1036,7 +1036,7 @@ impl Clean<ImplMethod> for ast::ImplItem {
     }
 }
 
-impl Clean<Item> for ty::Method {
+impl<'tcx> Clean<Item> for ty::Method<'tcx> {
     fn clean(&self, cx: &DocContext) -> Item {
         let (self_, sig) = match self.explicit_self {
             ty::StaticExplicitSelfCategory => (ast::SelfStatic.clean(cx),
@@ -1082,7 +1082,7 @@ impl Clean<Item> for ty::Method {
     }
 }
 
-impl Clean<Item> for ty::ImplOrTraitItem {
+impl<'tcx> Clean<Item> for ty::ImplOrTraitItem<'tcx> {
     fn clean(&self, cx: &DocContext) -> Item {
         match *self {
             ty::MethodTraitItem(ref mti) => mti.clean(cx),
@@ -1257,7 +1257,7 @@ impl Clean<Type> for ast::Ty {
     }
 }
 
-impl Clean<Type> for Ty {
+impl<'tcx> Clean<Type> for ty::Ty<'tcx> {
     fn clean(&self, cx: &DocContext) -> Type {
         match self.sty {
             ty::ty_bool => Primitive(Bool),
@@ -1506,7 +1506,7 @@ impl Clean<Item> for doctree::Variant {
     }
 }
 
-impl Clean<Item> for ty::VariantInfo {
+impl<'tcx> Clean<Item> for ty::VariantInfo<'tcx> {
     fn clean(&self, cx: &DocContext) -> Item {
         // use syntax::parse::token::special_idents::unnamed_field;
         let kind = match self.arg_names.as_ref().map(|s| s.as_slice()) {
@@ -2255,7 +2255,7 @@ impl Clean<Item> for ast::Typedef {
 }
 
 fn lang_struct(cx: &DocContext, did: Option<ast::DefId>,
-               t: Ty, name: &str,
+               t: ty::Ty, name: &str,
                fallback: fn(Box<Type>) -> Type) -> Type {
     let did = match did {
         Some(did) => did,
