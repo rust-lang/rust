@@ -958,6 +958,21 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         self.report_and_explain_type_error(trace, err);
     }
 
+    pub fn replace_late_bound_regions_with_fresh_var<T>(&self,
+                                                    binder_id: ast::NodeId,
+                                                    span: Span,
+                                                    value: &T)
+                                                    -> T
+        where T : TypeFoldable + Repr
+    {
+        let (_, value) = replace_late_bound_regions(
+            self.tcx,
+            binder_id,
+            value,
+            |br| self.next_region_var(LateBoundRegion(span, br)));
+        value
+    }
+
     pub fn replace_late_bound_regions_with_fresh_regions(&self,
                                                          trace: TypeTrace,
                                                          fsig: &ty::FnSig)

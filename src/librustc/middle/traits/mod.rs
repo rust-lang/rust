@@ -276,6 +276,16 @@ pub fn overlapping_impls(infcx: &InferCtxt,
     coherence::impl_can_satisfy(infcx, impl2_def_id, impl1_def_id)
 }
 
+pub fn impl_obligations(tcx: &ty::ctxt,
+                        cause: ObligationCause,
+                        impl_def_id: ast::DefId,
+                        impl_substs: &subst::Substs)
+                        -> subst::VecPerParamSpace<Obligation>
+{
+    let impl_generics = ty::lookup_item_type(tcx, impl_def_id).generics;
+    obligations_for_generics(tcx, cause, &impl_generics, impl_substs)
+}
+
 pub fn obligations_for_generics(tcx: &ty::ctxt,
                                 cause: ObligationCause,
                                 generics: &ty::Generics,
