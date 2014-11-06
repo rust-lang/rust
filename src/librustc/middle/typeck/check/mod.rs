@@ -3917,15 +3917,15 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
     let id = expr.id;
     match expr.node {
       ast::ExprBox(ref place, ref subexpr) => {
-          check_expr(fcx, &**place);
+          place.as_ref().map(|e|check_expr(fcx, &**e));
           check_expr(fcx, &**subexpr);
 
           let mut checked = false;
-          match place.node {
+          place.as_ref().map(|e| match e.node {
               ast::ExprPath(ref path) => {
                   // FIXME(pcwalton): For now we hardcode the two permissible
                   // places: the exchange heap and the managed heap.
-                  let definition = lookup_def(fcx, path.span, place.id);
+                  let definition = lookup_def(fcx, path.span, e.id);
                   let def_id = definition.def_id();
                   let referent_ty = fcx.expr_ty(&**subexpr);
                   if tcx.lang_items.exchange_heap() == Some(def_id) {
@@ -3934,7 +3934,7 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
                   }
               }
               _ => {}
-          }
+          });
 
           if !checked {
               span_err!(tcx.sess, expr.span, E0066,

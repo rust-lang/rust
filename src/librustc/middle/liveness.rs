@@ -1193,7 +1193,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 
           ExprIndex(ref l, ref r) |
           ExprBinary(_, ref l, ref r) |
-          ExprBox(ref l, ref r) => {
+          ExprBox(Some(ref l), ref r) => {
             let r_succ = self.propagate_through_expr(&**r, succ);
             self.propagate_through_expr(&**l, r_succ)
           }
@@ -1204,6 +1204,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             self.propagate_through_expr(&**e1, succ)
           }
 
+          ExprBox(None, ref e) |
           ExprAddrOf(_, ref e) |
           ExprCast(ref e, _) |
           ExprUnary(_, ref e) |

@@ -10,6 +10,8 @@
 
 //! A unique pointer type.
 
+use heap;
+
 use core::any::{Any, AnyRefExt};
 use core::clone::Clone;
 use core::cmp::{PartialEq, PartialOrd, Eq, Ord, Ordering};
@@ -18,6 +20,7 @@ use core::fmt;
 use core::intrinsics;
 use core::kinds::Sized;
 use core::mem;
+use core::ops::{Drop, Placer, PlacementAgent};
 use core::option::Option;
 use core::raw::TraitObject;
 use core::result::{Ok, Err, Result};
@@ -37,22 +40,91 @@ use core::result::{Ok, Err, Result};
 /// ```
 #[lang = "exchange_heap"]
 #[experimental = "may be renamed; uncertain about custom allocator design"]
-pub static HEAP: () = ();
+pub const HEAP: ExchangeHeapSingleton =
+    ExchangeHeapSingleton { _force_singleton: () };
+
+/// This the singleton type used solely for `boxed::HEAP`.
+pub struct ExchangeHeapSingleton { _force_singleton: () }
 
 /// A type that represents a uniquely-owned value.
 #[lang = "owned_box"]
 #[unstable = "custom allocators will add an additional type parameter (with default)"]
-pub struct Box<T>(*mut T);
+pub struct Box<Sized? T>(*mut T);
+
+/// `IntermediateBox` represents uninitialized backing storage for `Box`.
+///
+/// FIXME (pnkfelix): Ideally we would just reuse `Box<T>` instead of
+/// introducing a separate `IntermediateBox<T>`; but then you hit
+/// issues when you e.g. attempt to destructure an instance of `Box`,
+/// since it is a lang item and so it gets special handling by the
+/// compiler.  Easier just to make this parallel type for now.
+///
+/// FIXME (pnkfelix): Currently the `box` protocol only supports
+/// creating instances of sized types. This IntermediateBox is
+/// designed to be forward-compatible with a future protocol that
+/// supports creating instances of unsized types; that is why the type
+/// parameter has the `Sized?` generalization marker, and is also why
+/// this carries an explicit size. However, it probably does not need
+/// to carry the explicit alignment; that is just a work-around for
+/// the fact that the `align_of` intrinsic currently requires the
+/// input type to be Sized (which I do not think is strictly
+/// necessary).
+pub struct IntermediateBox<Sized? T>{
+    ptr: *mut u8,
+    size: uint,
+    align: uint,
+}
+
+impl<T> Placer<T, Box<T>, IntermediateBox<T>> for ExchangeHeapSingleton {
+    fn make_place(&mut self) -> IntermediateBox<T> {
+        let size = mem::size_of::<T>();
+        let align = mem::align_of::<T>();
+
+        let p = if size == 0 {
+            heap::EMPTY as *mut u8
+        } else {
+            unsafe {
+                heap::allocate(size, align)
+            }
+        };
+
+        IntermediateBox { ptr: p, size: size, align: align }
+    }
+}
+
+impl<Sized? T> PlacementAgent<T, Box<T>> for IntermediateBox<T> {
+    unsafe fn pointer(&self) -> *mut T {
+        self.ptr as *mut T
+    }
+    unsafe fn finalize(self) -> Box<T> {
+        let p = self.ptr as *mut T;
+        mem::forget(self);
+        mem::transmute(p)
+    }
+}
+
+#[unsafe_destructor]
+impl<Sized? T> Drop for IntermediateBox<T> {
+    fn drop(&mut self) {
+        if self.size > 0 {
+            unsafe {
+                heap::deallocate(self.ptr as *mut u8, self.size, self.align)
+            }
+        }
+    }
+}
 
 impl<T: Default> Default for Box<T> {
-    fn default() -> Box<T> { box Default::default() }
+    fn default() -> Box<T> {
+        box (HEAP) { let t : T = Default::default(); t }
+    }
 }
 
 #[unstable]
 impl<T: Clone> Clone for Box<T> {
     /// Returns a copy of the owned box.
     #[inline]
-    fn clone(&self) -> Box<T> { box {(**self).clone()} }
+    fn clone(&self) -> Box<T> { box (HEAP) {(**self).clone()} }
 
     /// Performs copy-assignment from `source` by reusing the existing allocation.
     #[inline]

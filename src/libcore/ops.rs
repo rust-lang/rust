@@ -897,3 +897,67 @@ def_fn_mut!(A0 A1 A2 A3 A4 A5 A6 A7 A8 A9 A10 A11 A12)
 def_fn_mut!(A0 A1 A2 A3 A4 A5 A6 A7 A8 A9 A10 A11 A12 A13)
 def_fn_mut!(A0 A1 A2 A3 A4 A5 A6 A7 A8 A9 A10 A11 A12 A13 A14)
 def_fn_mut!(A0 A1 A2 A3 A4 A5 A6 A7 A8 A9 A10 A11 A12 A13 A14 A15)
+
+/// Interface to user-implementations of `box (<placer_expr>) <value_expr>`.
+///
+/// `box (P) V` effectively expands into:
+/// `{ let b = P.make_place(); let v = V; unsafe { b.pointer() = v; b.finalize() } }`
+pub trait Placer<Sized? Data, Owner, Interim: PlacementAgent<Data, Owner>> {
+    /// Allocates a place for the data to live, returning an
+    /// intermediate agent to negotiate ownership.
+    fn make_place(&mut self) -> Interim;
+}
+
+/// Some free functions called by expansions of `box <value_expr>` and
+/// `box (<place>) <value_expr>`.
+pub mod placer {
+    use kinds::Sized;
+    use ops::{Placer, PlacementAgent};
+
+    /// The first argument, `<place>` in `box (<place>) <value>`, must
+    /// implement `Placer`.
+    pub fn parenthesized_input_to_box_must_be_placer<'a, Sized? Data, Owner, A, P>(p: &'a mut P) -> &'a mut P
+        where A:PlacementAgent<Data, Owner>,
+              P:Placer<Data, Owner, A>+Sized {
+        p
+    }
+
+    /// Work-around for lack of UFCS: the `box (<place>) <value>`
+    /// syntax expands into calls to the three free functions below in
+    /// order to avoid requiring (or expanding into) declarations like
+    /// `use std::ops::Placer;` and `use std::ops::PlacementAgent;`
+
+    /// Calls `p.make_place()` as work-around for lack of UFCS.
+    pub fn make_place<Sized? Data, Owner, A, P>(p: &mut P) -> A
+        where A:PlacementAgent<Data, Owner>,
+              P:Placer<Data, Owner, A> {
+        p.make_place()
+    }
+
+    /// Calls `a.pointer()` as work-around for lack of UFCS.
+    pub unsafe fn pointer<Sized? Data, Owner, A>(a: &A) -> *mut Data
+        where A:PlacementAgent<Data, Owner> {
+        a.pointer()
+    }
+
+    /// Calls `a.finalize()` as work-around for lack of UFCS.
+    pub unsafe fn finalize<Sized? Data, Owner, A>(a: A) -> Owner
+        where A:PlacementAgent<Data, Owner> {
+        a.finalize()
+    }
+}
+
+/// Helper trait for expansion of `box (P) V`.
+///
+/// We force all implementers to implement `Drop`, since in the majority of
+/// cases, leaving out a user-defined drop is a bug for these values.
+///
+/// See also `Placer`.
+pub trait PlacementAgent<Sized? Data, Owner> : Drop {
+    /// Returns a pointer to the offset in the place where the data lives.
+    unsafe fn pointer(&self) -> *mut Data;
+
+    /// Converts this intermediate agent into owning pointer for the data,
+    /// forgetting self in the process.
+    unsafe fn finalize(self) -> Owner;
+}

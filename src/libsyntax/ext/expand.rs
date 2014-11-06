@@ -22,6 +22,7 @@ use codemap::{Span, Spanned, ExpnInfo, NameAndSpan, MacroBang, MacroAttribute};
 use ext::base::*;
 use fold;
 use fold::*;
+use owned_slice::OwnedSlice;
 use parse;
 use parse::token::{fresh_mark, fresh_name, intern};
 use parse::token;
@@ -59,6 +60,181 @@ pub fn expand_expr(e: P<ast::Expr>, fld: &mut MacroExpander) -> P<ast::Expr> {
                 node: e.node,
                 span: span,
             })
+        }
+
+        // FIXME (pnkfelix): The code below is designed to handle
+        // *both* `box <value>` and `box (<place>) <value>`, but for
+        // now the desugaring will only apply to the latter.
+        //
+        // The motivation is mostly to make it easier to land without
+        // having to update many tests that are not expecting to deal
+        // with the desugared form in terms of (1.) error messages and
+        // (2.) the dependencies on `::std::ops::placer`.
+        //
+        // To re-enable the more general code paths, just change the
+        // `Some(place)` in this binding to `maybe_place`, and revise
+        // the `let maybe_place = ...` to call `fld.fold_expr(place)`
+        // directly.
+
+        // Desugar ExprBox: `box (<place_expr>) <value_expr>`
+        ast::ExprBox(Some(place), value_expr) => {
+            let value_span = value_expr.span;
+            let place_span = place.span;
+
+            let maybe_place : Option<P<ast::Expr>> = Some(fld.fold_expr(place));
+            let value_expr = fld.fold_expr(value_expr);
+
+            // Desugar `box (<place_expr>) <value_expr>` to something
+            // analogous to:
+            //
+            // {
+            //     fn force_placer<'a, D,T,I,P>(p: &'a P) -> &'a P where P : Placer<D,T,I> { p }
+            //     let place = force_placer(&mut <place_expr> );
+            //     let agent = place.make_place();
+            //     let value = <value_expr>
+            //     unsafe {
+            //         ptr::write(agent.pointer(), value);
+            //         agent.finalize()
+            //     }
+            // }
+            //
+            // The intention of `fn force_placer` is to provide better
+            // error messages when the `<place_expr>` does not
+            // implement the Placer trait.  Likewise, the actual
+            // expansion below actually calls free functions in
+            // `std::ops::placer`, in order to avoid the need for UFCS
+            // (and also to hopefully produce better error messags).
+
+            let place_ident = token::gensym_ident("place1");
+            let agent_ident = token::gensym_ident("agent");
+            let value_ident = token::gensym_ident("value");
+
+            let place = fld.cx.expr_ident(span, place_ident);
+            let agent = fld.cx.expr_ident(span, agent_ident);
+            let value = fld.cx.expr_ident(span, value_ident);
+
+            fn mk_path_for_idents(span: Span,
+                                  idents: &[&'static str]) -> ast::Path {
+                let segments : Vec<ast::PathSegment> =
+                    idents.iter().map(|s| {
+                        ast::PathSegment {
+                            identifier: token::str_to_ident(*s),
+                            lifetimes: vec![],
+                            types: OwnedSlice::empty(),
+                        }
+                    }).collect();
+                ast::Path {
+                    span: span, global: true, segments: segments,
+                }
+            }
+
+            // NOTE: clients using `box <expr>` short-hand need to
+            // either use `libstd` or must make their own local
+            //
+            // ```
+            // mod std { mod boxed { pub use ... as HEAP; }
+            //           mod ops { mod placer { ... } }
+            //           mod ptr { pub use ... as write; } }
+            // ```
+            //
+            // as appropriate.
+
+            let boxed_heap = || -> ast::Path {
+                let idents = ["std", "boxed", "HEAP"];
+                mk_path_for_idents(place_span, idents)
+            };
+
+            let _force_placer = || -> ast::Path {
+                let idents = ["std", "ops", "placer",
+                              "parenthesized_input_to_box_must_be_placer"];
+                mk_path_for_idents(place_span, idents)
+            };
+
+            let placer_make_place = || -> ast::Path {
+                let idents = ["std", "ops", "placer", "make_place"];
+                mk_path_for_idents(place_span, idents)
+            };
+
+            let placer_pointer = || -> ast::Path {
+                let idents = ["std", "ops", "placer", "pointer"];
+                mk_path_for_idents(place_span, idents)
+            };
+
+            let placer_finalize = || -> ast::Path {
+                let idents = ["std", "ops", "placer", "finalize"];
+                mk_path_for_idents(place_span, idents)
+            };
+
+            let ptr_write = || -> ast::Path {
+                let idents = ["std", "ptr", "write"];
+                mk_path_for_idents(place_span, idents)
+            };
+
+            let make_call = |f: ast::Path, args: Vec<P<ast::Expr>>| -> P<ast::Expr> {
+                fld.cx.expr_call(span, fld.cx.expr_path(f), args)
+            };
+
+            let stmt_let = |span, bind, expr| fld.cx.stmt_let(span, false, bind, expr);
+
+            // FIXME RE place2 (pnkfelix): This attempt to encode an
+            // assertion that the <place_expr> implements `Placer` is
+            // not working yet; gets type-inference failure with
+            // message "error: unable to infer enough type information
+            // to locate the impl of the trait `core::kinds::Sized`
+            // for the type `<generic #9>`; type annotations required"
+            //
+            // So for now pnkfelix is leaving out the `force_placer`
+            // invocation, which means we may get different type
+            // inference failures that are hard to diagnose, but at
+            // least we will be able to get something running.
+
+            fld.cx.expr_block(fld.cx.block_all(
+                span,
+                vec![],
+                vec![
+                    // let place1 = &mut <place_expr> ; // default of ::std::boxed::HEAP
+                    stmt_let(place_span,
+                             place_ident,
+                             fld.cx.expr_mut_addr_of(place_span, match maybe_place {
+                                 Some(place_expr) => place_expr,
+                                 None => fld.cx.expr_path(boxed_heap()),
+                             })),
+
+                    // See "FIXME RE place2" above.
+                    //
+                    // // let place2 = force_placer(place1);
+                    // stmt_let(place_span, place2_ident, make_call(force_placer(), vec![place])),
+
+                    // let agent = placer::make_place(place1);
+                    stmt_let(place_span, agent_ident, make_call(placer_make_place(), vec![place])),
+
+                    // let value = <value_expr>;
+                    stmt_let(value_span, value_ident, value_expr),
+                    ],
+
+                // unsafe { ptr::write(placer::pointer(&agent), value);
+                //          placer::finalizer(agent) }
+                {
+                    let call_agent_ptr =
+                        make_call(placer_pointer(),
+                                  vec![fld.cx.expr_addr_of(place_span,
+                                                           agent.clone())]);
+                    let call_ptr_write =
+                        StmtSemi(make_call(ptr_write(),
+                                           vec![call_agent_ptr, value]),
+                                 ast::DUMMY_NODE_ID);
+                    let call_ptr_write =
+                        codemap::respan(value_span, call_ptr_write);
+
+                    Some(fld.cx.expr_block(P(ast::Block {
+                        view_items: vec![],
+                        stmts: vec![P(call_ptr_write)],
+                        expr: Some(make_call(placer_finalize(), vec![agent])),
+                        id: ast::DUMMY_NODE_ID,
+                        rules: ast::UnsafeBlock(ast::CompilerGenerated),
+                        span: span,
+                    })))
+                }))
         }
 
         ast::ExprWhile(cond, body, opt_ident) => {
