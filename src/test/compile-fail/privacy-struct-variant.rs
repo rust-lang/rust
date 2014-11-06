@@ -10,8 +10,6 @@
 
 // aux-build:privacy-struct-variant.rs
 
-#![feature(struct_variant)]
-
 extern crate "privacy-struct-variant" as other;
 
 mod a {

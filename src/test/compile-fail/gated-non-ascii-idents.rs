@@ -9,8 +9,6 @@
 // except according to those terms.
 
 
-#![feature(struct_variant)]
-
 extern crate bäz; //~ ERROR non-ascii idents
 
 use föö::bar; //~ ERROR non-ascii idents

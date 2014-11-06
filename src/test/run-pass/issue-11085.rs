@@ -10,8 +10,6 @@
 
 // compile-flags: --cfg foo
 
-#![feature(struct_variant)]
-
 struct Foo {
     #[cfg(fail)]
     bar: baz,
