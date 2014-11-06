@@ -10,7 +10,7 @@
 
 
 #![forbid(non_camel_case_types)]
-#![forbid(non_uppercase_statics)]
+#![forbid(non_upper_case_globals)]
 
 static mut bar: int = 2;
 
