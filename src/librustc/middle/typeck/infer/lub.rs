@@ -13,6 +13,7 @@ use middle::ty::RegionVid;
 use middle::ty;
 use middle::typeck::infer::combine::*;
 use middle::typeck::infer::equate::Equate;
+use middle::typeck::infer::FnType;
 use middle::typeck::infer::glb::Glb;
 use middle::typeck::infer::lattice::*;
 use middle::typeck::infer::sub::Sub;
@@ -126,11 +127,11 @@ impl<'f, 'tcx> Combine<'tcx> for Lub<'f, 'tcx> {
 
         // Instantiate each bound region with a fresh region variable.
         let (a_with_fresh, a_map) =
-            self.fields.infcx.replace_late_bound_regions_with_fresh_regions(
-                self.trace(), a);
+            self.fields.infcx.replace_late_bound_regions_with_fresh_var(
+                a.binder_id, self.trace().span(), FnType, a);
         let (b_with_fresh, _) =
-            self.fields.infcx.replace_late_bound_regions_with_fresh_regions(
-                self.trace(), b);
+            self.fields.infcx.replace_late_bound_regions_with_fresh_var(
+                b.binder_id, self.trace().span(), FnType, b);
 
         // Collect constraints.
         let sig0 = try!(super_fn_sigs(self, &a_with_fresh, &b_with_fresh));

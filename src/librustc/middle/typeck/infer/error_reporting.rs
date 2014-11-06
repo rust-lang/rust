@@ -1456,11 +1456,11 @@ impl<'a, 'tcx> ErrorReportingHelpers for InferCtxt<'a, 'tcx> {
             infer::AddrOfSlice(_) => " for slice expression".to_string(),
             infer::Autoref(_) => " for autoref".to_string(),
             infer::Coercion(_) => " for automatic coercion".to_string(),
-            infer::LateBoundRegion(_, br) => {
+            infer::LateBoundRegion(_, br, infer::FnCall) => {
                 format!(" for {}in function call",
                         bound_region_to_string(self.tcx, "lifetime parameter ", true, br))
             }
-            infer::BoundRegionInFnType(_, br) => {
+            infer::LateBoundRegion(_, br, infer::FnType) => {
                 format!(" for {}in function type",
                         bound_region_to_string(self.tcx, "lifetime parameter ", true, br))
             }
