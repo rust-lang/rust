@@ -19,189 +19,165 @@ use num;
 use num::{CheckedAdd, CheckedMul};
 use result::{Result, Ok, Err};
 
+/// The number of milliseconds in a second.
+const MILLIS_PER_SECOND: i64 = 1000;
+/// The number of milliseconds in a minute.
+const MILLIS_PER_MINUTE: i64 = 60 * MILLIS_PER_SECOND;
+/// The number of milliseconds in an hour.
+const MILLIS_PER_HOUR: i64 = 60 * MILLIS_PER_MINUTE;
+/// The number of milliseconds in a day.
+const MILLIS_PER_DAY: i64 = 24 * MILLIS_PER_HOUR;
+/// The number of milliseconds in a week.
+const MILLIS_PER_WEEK: i64 = 7 * MILLIS_PER_DAY;
+
+/// The number of microseconds in a millisecond.
+const MICROS_PER_MILLI: i64 = 1000;
 /// The number of nanoseconds in a microsecond.
-const NANOS_PER_MICRO: i32 = 1000;
+const NANOS_PER_MICRO: i64 = 1000;
 /// The number of nanoseconds in a millisecond.
-const NANOS_PER_MILLI: i32 = 1000_000;
-/// The number of nanoseconds in seconds.
-const NANOS_PER_SEC: i32 = 1_000_000_000;
-/// The number of microseconds per second.
-const MICROS_PER_SEC: i64 = 1000_000;
-/// The number of milliseconds per second.
-const MILLIS_PER_SEC: i64 = 1000;
-/// The number of seconds in a minute.
-const SECS_PER_MINUTE: i64 = 60;
-/// The number of seconds in an hour.
-const SECS_PER_HOUR: i64 = 3600;
-/// The number of (non-leap) seconds in days.
-const SECS_PER_DAY: i64 = 86400;
-/// The number of (non-leap) seconds in a week.
-const SECS_PER_WEEK: i64 = 604800;
+const NANOS_PER_MILLI: i64 = 1000_000;
+
+const OUT_OF_BOUNDS: &'static str = "Duration out of bounds";
+
+/// An absolute amount of time, independent of time zones and calendars with nanosecond precision.
+/// A duration can express the positive or negative difference between two instants in time 
+/// according to a particular clock.
+#[deriving(Clone, PartialEq, Eq, PartialOrd, Ord, Zero, Default, Hash, Rand)]
+pub struct Duration {
+    millis: i64, // Milliseconds
+    nanos:  i32, // Nanoseconds, |nanos| < NANOS_PER_MILLI
+}
 
 macro_rules! try_opt(
     ($e:expr) => (match $e { Some(v) => v, None => return None })
 )
+macro_rules! duration(
+    ($millis:expr, $nanos:expr) => (Duration { millis: $millis, nanos: $nanos })
+)
+macro_rules! carry(
+    ($millis:expr, $nanos:expr) => (
+        if $millis > 0 && $nanos < 0 {
+            (-1, NANOS_PER_MILLI) 
+        }
+        else if $millis < 0 && $nanos > 0 {
+            (1, -NANOS_PER_MILLI) 
+        }
+        else {
+            (0, 0) 
+        }
+    )
+)
 
-
-/// ISO 8601 time duration with nanosecond precision.
-/// This also allows for the negative duration; see individual methods for details.
-#[deriving(Clone, PartialEq, Eq, PartialOrd, Ord)]
-pub struct Duration {
-    secs: i64,
-    nanos: i32, // Always 0 <= nanos < NANOS_PER_SEC
-}
-
-/// The minimum possible `Duration`: `i64::MIN` milliseconds.
-pub const MIN: Duration = Duration {
-    secs: i64::MIN / MILLIS_PER_SEC - 1,
-    nanos: NANOS_PER_SEC + (i64::MIN % MILLIS_PER_SEC) as i32 * NANOS_PER_MILLI
-};
-
-/// The maximum possible `Duration`: `i64::MAX` milliseconds.
-pub const MAX: Duration = Duration {
-    secs: i64::MAX / MILLIS_PER_SEC,
-    nanos: (i64::MAX % MILLIS_PER_SEC) as i32 * NANOS_PER_MILLI
-};
+/// The minimum possible `Duration` (-P106751991167DT7H12M55.808999999S).
+pub const MIN: Duration = duration!(i64::MIN, -NANOS_PER_MILLI as i32 + 1);
+/// The maximum possible `Duration` (P106751991167DT7H12M55.807999999S).
+pub const MAX: Duration = duration!(i64::MAX,  NANOS_PER_MILLI as i32 - 1);
 
 impl Duration {
-    /// Makes a new `Duration` with given number of weeks.
-    /// Equivalent to `Duration::seconds(weeks * 7 * 24 * 60 * 60), with overflow checks.
+    /// Makes a new `Duration` with given number of weeks with overflow checks.
     /// Fails when the duration is out of bounds.
     #[inline]
     pub fn weeks(weeks: i64) -> Duration {
-        let secs = weeks.checked_mul(&SECS_PER_WEEK).expect("Duration::weeks out of bounds");
-        Duration::seconds(secs)
+        duration!(weeks.checked_mul(&MILLIS_PER_WEEK).expect(OUT_OF_BOUNDS), 0)
     }
 
-    /// Makes a new `Duration` with given number of days.
-    /// Equivalent to `Duration::seconds(days * 24 * 60 * 60)` with overflow checks.
+    /// Makes a new `Duration` with given number of days with overflow checks.
     /// Fails when the duration is out of bounds.
     #[inline]
     pub fn days(days: i64) -> Duration {
-        let secs = days.checked_mul(&SECS_PER_DAY).expect("Duration::days out of bounds");
-        Duration::seconds(secs)
+        duration!(days.checked_mul(&MILLIS_PER_DAY).expect(OUT_OF_BOUNDS), 0)
     }
 
-    /// Makes a new `Duration` with given number of hours.
-    /// Equivalent to `Duration::seconds(hours * 60 * 60)` with overflow checks.
+    /// Makes a new `Duration` with given number of hours with overflow checks.
     /// Fails when the duration is out of bounds.
     #[inline]
     pub fn hours(hours: i64) -> Duration {
-        let secs = hours.checked_mul(&SECS_PER_HOUR).expect("Duration::hours ouf of bounds");
-        Duration::seconds(secs)
+        duration!(hours.checked_mul(&MILLIS_PER_HOUR).expect(OUT_OF_BOUNDS), 0)
     }
 
-    /// Makes a new `Duration` with given number of minutes.
-    /// Equivalent to `Duration::seconds(minutes * 60)` with overflow checks.
+    /// Makes a new `Duration` with given number of minutes with overflow checks.
     /// Fails when the duration is out of bounds.
     #[inline]
     pub fn minutes(minutes: i64) -> Duration {
-        let secs = minutes.checked_mul(&SECS_PER_MINUTE).expect("Duration::minutes out of bounds");
-        Duration::seconds(secs)
+        duration!(minutes.checked_mul(&MILLIS_PER_MINUTE).expect(OUT_OF_BOUNDS), 0)
     }
 
-    /// Makes a new `Duration` with given number of seconds.
-    /// Fails when the duration is more than `i64::MAX` milliseconds
-    /// or less than `i64::MIN` milliseconds.
+    /// Makes a new `Duration` with given number of seconds with overflow checks.
+    /// Fails when the duration is out of bounds.
     #[inline]
     pub fn seconds(seconds: i64) -> Duration {
-        let d = Duration { secs: seconds, nanos: 0 };
-        if d < MIN || d > MAX {
-            panic!("Duration::seconds out of bounds");
-        }
-        d
+        duration!(seconds.checked_mul(&MILLIS_PER_SECOND).expect(OUT_OF_BOUNDS), 0)
     }
 
     /// Makes a new `Duration` with given number of milliseconds.
     #[inline]
     pub fn milliseconds(milliseconds: i64) -> Duration {
-        let (secs, millis) = div_mod_floor_64(milliseconds, MILLIS_PER_SEC);
-        let nanos = millis as i32 * NANOS_PER_MILLI;
-        Duration { secs: secs, nanos: nanos }
+        duration!(milliseconds, 0)
     }
 
     /// Makes a new `Duration` with given number of microseconds.
     #[inline]
     pub fn microseconds(microseconds: i64) -> Duration {
-        let (secs, micros) = div_mod_floor_64(microseconds, MICROS_PER_SEC);
-        let nanos = micros as i32 * NANOS_PER_MICRO;
-        Duration { secs: secs, nanos: nanos }
+        duration!(
+            microseconds / MICROS_PER_MILLI, 
+            (NANOS_PER_MICRO * (microseconds % MICROS_PER_MILLI)) as i32
+        )
     }
 
     /// Makes a new `Duration` with given number of nanoseconds.
     #[inline]
-    pub fn nanoseconds(nanos: i64) -> Duration {
-        let (secs, nanos) = div_mod_floor_64(nanos, NANOS_PER_SEC as i64);
-        Duration { secs: secs, nanos: nanos as i32 }
+    pub fn nanoseconds(nanoseconds: i64) -> Duration {
+        duration!(nanoseconds / NANOS_PER_MILLI, (nanoseconds % NANOS_PER_MILLI) as i32)
     }
 
     /// Returns the total number of whole weeks in the duration.
     #[inline]
     pub fn num_weeks(&self) -> i64 {
-        self.num_days() / 7
+        self.millis / MILLIS_PER_WEEK
     }
 
     /// Returns the total number of whole days in the duration.
+    #[inline]
     pub fn num_days(&self) -> i64 {
-        self.num_seconds() / SECS_PER_DAY
+        self.millis / MILLIS_PER_DAY
     }
 
     /// Returns the total number of whole hours in the duration.
     #[inline]
     pub fn num_hours(&self) -> i64 {
-        self.num_seconds() / SECS_PER_HOUR
+        self.millis / MILLIS_PER_HOUR
     }
 
     /// Returns the total number of whole minutes in the duration.
     #[inline]
     pub fn num_minutes(&self) -> i64 {
-        self.num_seconds() / SECS_PER_MINUTE
+        self.millis / MILLIS_PER_MINUTE
     }
 
     /// Returns the total number of whole seconds in the duration.
+    #[inline]
     pub fn num_seconds(&self) -> i64 {
-        // If secs is negative, nanos should be subtracted from the duration.
-        if self.secs < 0 && self.nanos > 0 {
-            self.secs + 1
-        } else {
-            self.secs
-        }
+        self.millis / MILLIS_PER_SECOND
     }
 
-    /// Returns the number of nanoseconds such that
-    /// `nanos_mod_sec() + num_seconds() * NANOS_PER_SEC` is the total number of
-    /// nanoseconds in the duration.
-    fn nanos_mod_sec(&self) -> i32 {
-        if self.secs < 0 && self.nanos > 0 {
-            self.nanos - NANOS_PER_SEC
-        } else {
-            self.nanos
-        }
-    }
-
-    /// Returns the total number of whole milliseconds in the duration,
+    /// Returns the total number of milliseconds in the duration.
+    #[inline]
     pub fn num_milliseconds(&self) -> i64 {
-        // A proper Duration will not overflow, because MIN and MAX are defined
-        // such that the range is exactly i64 milliseconds.
-        let secs_part = self.num_seconds() * MILLIS_PER_SEC;
-        let nanos_part = self.nanos_mod_sec() / NANOS_PER_MILLI;
-        secs_part + nanos_part as i64
+        self.millis
     }
 
-    /// Returns the total number of whole microseconds in the duration,
-    /// or `None` on overflow (exceeding 2^63 microseconds in either direction).
+    /// Returns the total number of microseconds in the duration.
+    #[inline]
     pub fn num_microseconds(&self) -> Option<i64> {
-        let secs_part = try_opt!(self.num_seconds().checked_mul(&MICROS_PER_SEC));
-        let nanos_part = self.nanos_mod_sec() / NANOS_PER_MICRO;
-        secs_part.checked_add(&(nanos_part as i64))
+        let micros = try_opt!(self.millis.checked_mul(&MICROS_PER_MILLI));
+        micros.checked_add(&(self.nanos as i64/ NANOS_PER_MICRO))
     }
 
-    /// Returns the total number of whole nanoseconds in the duration,
-    /// or `None` on overflow (exceeding 2^63 nanoseconds in either direction).
+    /// Returns the total number of nanoseconds in the duration.
+    #[inline]
     pub fn num_nanoseconds(&self) -> Option<i64> {
-        let secs_part = try_opt!(self.num_seconds().checked_mul(&(NANOS_PER_SEC as i64)));
-        let nanos_part = self.nanos_mod_sec();
-        secs_part.checked_add(&(nanos_part as i64))
+        let nanos = try_opt!(self.millis.checked_mul(&NANOS_PER_MILLI));
+        nanos.checked_add(&(self.nanos as i64))
     }
 }
 
@@ -210,170 +186,140 @@ impl num::Bounded for Duration {
     #[inline] fn max_value() -> Duration { MAX }
 }
 
-impl num::Zero for Duration {
-    #[inline]
-    fn zero() -> Duration {
-        Duration { secs: 0, nanos: 0 }
-    }
-
-    #[inline]
-    fn is_zero(&self) -> bool {
-        self.secs == 0 && self.nanos == 0
-    }
-}
-
 impl Neg<Duration> for Duration {
     #[inline]
     fn neg(&self) -> Duration {
-        if self.nanos == 0 {
-            Duration { secs: -self.secs, nanos: 0 }
-        } else {
-            Duration { secs: -self.secs - 1, nanos: NANOS_PER_SEC - self.nanos }
-        }
+        duration!(-self.millis, -self.nanos)
     }
 }
 
 impl Add<Duration,Duration> for Duration {
     fn add(&self, rhs: &Duration) -> Duration {
-        let mut secs = self.secs + rhs.secs;
-        let mut nanos = self.nanos + rhs.nanos;
-        if nanos >= NANOS_PER_SEC {
-            nanos -= NANOS_PER_SEC;
-            secs += 1;
-        }
-        Duration { secs: secs, nanos: nanos }
-    }
-}
+        let nanos_sum = self.nanos + rhs.nanos;
 
-impl num::CheckedAdd for Duration {
-    fn checked_add(&self, rhs: &Duration) -> Option<Duration> {
-        let mut secs = try_opt!(self.secs.checked_add(&rhs.secs));
-        let mut nanos = self.nanos + rhs.nanos;
-        if nanos >= NANOS_PER_SEC {
-            nanos -= NANOS_PER_SEC;
-            secs = try_opt!(secs.checked_add(&1));
-        }
-        let d = Duration { secs: secs, nanos: nanos };
-        // Even if d is within the bounds of i64 seconds,
-        // it might still overflow i64 milliseconds.
-        if d < MIN || d > MAX { None } else { Some(d) }
+        let millis = self.millis + rhs.millis + (nanos_sum as i64) / NANOS_PER_MILLI;
+        let nanos = nanos_sum % (NANOS_PER_MILLI as i32);
+
+        let (m, n) = carry!(millis, nanos);
+
+        duration!(millis + m, nanos + n as i32)
     }
 }
 
 impl Sub<Duration,Duration> for Duration {
     fn sub(&self, rhs: &Duration) -> Duration {
-        let mut secs = self.secs - rhs.secs;
-        let mut nanos = self.nanos - rhs.nanos;
-        if nanos < 0 {
-            nanos += NANOS_PER_SEC;
-            secs -= 1;
-        }
-        Duration { secs: secs, nanos: nanos }
+        let nanos_sub = self.nanos - rhs.nanos;
+
+        let millis = self.millis - rhs.millis + (nanos_sub as i64) / NANOS_PER_MILLI;
+        let nanos = nanos_sub % (NANOS_PER_MILLI as i32);
+
+        let (m, n) = carry!(millis, nanos);
+
+        duration!(millis + m, nanos + n as i32)
     }
 }
 
+impl num::CheckedAdd for Duration {
+    fn checked_add(&self, rhs: &Duration) -> Option<Duration> {
+        let nanos_sum = self.nanos + rhs.nanos; // cannot overflow
+        let millis_sum = try_opt!(self.millis.checked_add(&rhs.millis));
+
+        let millis = try_opt!(millis_sum.checked_add(&((nanos_sum as i64) / NANOS_PER_MILLI)));
+        let nanos = nanos_sum % (NANOS_PER_MILLI as i32);
+
+        let (m, n) = carry!(millis, nanos);
+
+        Some(duration!(try_opt!(millis.checked_add(&m)), nanos + n as i32))
+    }
+}
+
+
 impl num::CheckedSub for Duration {
     fn checked_sub(&self, rhs: &Duration) -> Option<Duration> {
-        let mut secs = try_opt!(self.secs.checked_sub(&rhs.secs));
-        let mut nanos = self.nanos - rhs.nanos;
-        if nanos < 0 {
-            nanos += NANOS_PER_SEC;
-            secs = try_opt!(secs.checked_sub(&1));
-        }
-        let d = Duration { secs: secs, nanos: nanos };
-        // Even if d is within the bounds of i64 seconds,
-        // it might still overflow i64 milliseconds.
-        if d < MIN || d > MAX { None } else { Some(d) }
+        let nanos_sub = self.nanos - rhs.nanos; // cannot overflow
+        let millis_sub = try_opt!(self.millis.checked_sub(&rhs.millis));
+
+        let millis = try_opt!(millis_sub.checked_sub(&((nanos_sub as i64) / NANOS_PER_MILLI)));
+        let nanos = nanos_sub % (NANOS_PER_MILLI as i32);
+
+        let (m, n) = carry!(millis, nanos);
+
+        Some(duration!(try_opt!(millis.checked_add(&m)), nanos + n as i32))
     }
 }
 
 impl Mul<i32,Duration> for Duration {
     fn mul(&self, rhs: &i32) -> Duration {
-        // Multiply nanoseconds as i64, because it cannot overflow that way.
-        let total_nanos = self.nanos as i64 * *rhs as i64;
-        let (extra_secs, nanos) = div_mod_floor_64(total_nanos, NANOS_PER_SEC as i64);
-        let secs = self.secs * *rhs as i64 + extra_secs;
-        Duration { secs: secs, nanos: nanos as i32 }
+        let nanos_mul = self.nanos as i64 * *rhs as i64;
+
+        let millis = self.millis * *rhs as i64 + nanos_mul / NANOS_PER_MILLI;
+        let nanos = (nanos_mul % NANOS_PER_MILLI) as i32;
+
+        duration!(millis, nanos)
     }
 }
 
 impl Div<i32,Duration> for Duration {
     fn div(&self, rhs: &i32) -> Duration {
-        let mut secs = self.secs / *rhs as i64;
-        let carry = self.secs - secs * *rhs as i64;
-        let extra_nanos = carry * NANOS_PER_SEC as i64 / *rhs as i64;
-        let mut nanos = self.nanos / *rhs + extra_nanos as i32;
-        if nanos >= NANOS_PER_SEC {
-            nanos -= NANOS_PER_SEC;
-            secs += 1;
-        }
-        if nanos < 0 {
-            nanos += NANOS_PER_SEC;
-            secs -= 1;
-        }
-        Duration { secs: secs, nanos: nanos }
+        let millis = self.millis / *rhs as i64;
+        let nanos = ((self.millis % *rhs as i64)*NANOS_PER_MILLI + self.nanos as i64)/ *rhs as i64;
+
+        duration!(millis + nanos / NANOS_PER_MILLI, (nanos % NANOS_PER_MILLI) as i32)
     }
 }
 
 impl fmt::Show for Duration {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        // technically speaking, negative duration is not valid ISO 8601,
-        // but we need to print it anyway.
-        let (abs, sign) = if self.secs < 0 { (-*self, "-") } else { (*self, "") };
+        try!(write!(f, "{}P", if self.millis < 0 || self.nanos < 0 { "-" } else { "" }));
 
-        let days = abs.secs / SECS_PER_DAY;
-        let secs = abs.secs - days * SECS_PER_DAY;
+        let days = self.num_days();
+        let mut rem = (self.millis - days * MILLIS_PER_DAY).abs();
+
+        let hours = rem / MILLIS_PER_HOUR;
+        rem -= hours * MILLIS_PER_HOUR;
+
+        let minutes = rem / MILLIS_PER_MINUTE;
+        rem -= minutes * MILLIS_PER_MINUTE;
+
+        let seconds = rem / MILLIS_PER_SECOND;
+        rem = (rem - seconds * MILLIS_PER_SECOND) * NANOS_PER_MILLI + (self.nanos as i64).abs();
+
         let hasdate = days != 0;
-        let hastime = (secs != 0 || abs.nanos != 0) || !hasdate;
-
-        try!(write!(f, "{}P", sign));
+        let hastime = (hours != 0 || minutes != 0 || seconds != 0 || rem != 0) || !hasdate;
 
         if hasdate {
-            try!(write!(f, "{}D", days));
+            try!(write!(f, "{}D", days.abs()));
         }
-        if hastime {
-            if abs.nanos == 0 {
-                try!(write!(f, "T{}S", secs));
-            } else if abs.nanos % NANOS_PER_MILLI == 0 {
-                try!(write!(f, "T{}.{:03}S", secs, abs.nanos / NANOS_PER_MILLI));
-            } else if abs.nanos % NANOS_PER_MICRO == 0 {
-                try!(write!(f, "T{}.{:06}S", secs, abs.nanos / NANOS_PER_MICRO));
-            } else {
-                try!(write!(f, "T{}.{:09}S", secs, abs.nanos));
-            }
-        }
+
+	    if hastime {
+	        try!(write!(f, "T"));
+
+	        if hours != 0 {
+	            try!(write!(f, "{}H", hours));
+	        }
+
+	        if minutes != 0 {
+	            try!(write!(f, "{}M", minutes));
+	        }
+
+	        if rem == 0 {
+	            try!(write!(f, "{}S", seconds));
+	        }
+	        else if rem % NANOS_PER_MILLI == 0 {
+	            try!(write!(f, "{}.{:03}S", seconds, rem / NANOS_PER_MILLI));
+	        }
+	        else if rem % NANOS_PER_MICRO == 0 {
+	            try!(write!(f, "{}.{:06}S", seconds, rem / NANOS_PER_MICRO));
+	        }
+	        else {
+	            try!(write!(f, "{}.{:09}S", seconds, rem));
+	        }
+	    }
+
         Ok(())
     }
 }
 
-// Copied from libnum
-#[inline]
-fn div_mod_floor_64(this: i64, other: i64) -> (i64, i64) {
-    (div_floor_64(this, other), mod_floor_64(this, other))
-}
-
-#[inline]
-fn div_floor_64(this: i64, other: i64) -> i64 {
-    match div_rem_64(this, other) {
-        (d, r) if (r > 0 && other < 0)
-               || (r < 0 && other > 0) => d - 1,
-        (d, _)                         => d,
-    }
-}
-
-#[inline]
-fn mod_floor_64(this: i64, other: i64) -> i64 {
-    match this % other {
-        r if (r > 0 && other < 0)
-          || (r < 0 && other > 0) => r + other,
-        r                         => r,
-    }
-}
-
-#[inline]
-fn div_rem_64(this: i64, other: i64) -> (i64, i64) {
-    (this / other, this % other)
-}
 
 #[cfg(test)]
 mod tests {
@@ -552,9 +498,12 @@ mod tests {
                    "P7DT6.543S".to_string());
         assert_eq!(Duration::seconds(-86401).to_string(), "-P1DT1S".to_string());
         assert_eq!(Duration::nanoseconds(-1).to_string(), "-PT0.000000001S".to_string());
+        assert_eq!(MIN.to_string(), "-P106751991167DT7H12M55.808999999S".to_string());
+        assert_eq!(MAX.to_string(), "P106751991167DT7H12M55.807999999S".to_string());
 
         // the format specifier should have no effect on `Duration`
         assert_eq!(format!("{:30}", Duration::days(1) + Duration::milliseconds(2345)),
                    "P1DT2.345S".to_string());
     }
 }
+
