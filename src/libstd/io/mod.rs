@@ -1737,7 +1737,7 @@ pub enum FileAccess {
 }
 
 /// Different kinds of files which can be identified by a call to stat
-#[deriving(PartialEq, Show, Hash)]
+#[deriving(PartialEq, Show, Hash, Clone)]
 pub enum FileType {
     /// This is a normal file, corresponding to `S_IFREG`
     TypeFile,
