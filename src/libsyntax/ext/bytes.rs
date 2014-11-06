@@ -21,14 +21,6 @@ pub fn expand_syntax_ext<'cx>(cx: &'cx mut ExtCtxt,
                               sp: Span,
                               tts: &[ast::TokenTree])
                               -> Box<base::MacResult+'cx> {
-    cx.span_warn(sp, "`bytes!` is deprecated, use `b\"foo\"` literals instead");
-    cx.parse_sess.span_diagnostic.span_help(sp,
-        "see http://doc.rust-lang.org/reference.html#byte-and-byte-string-literals \
-         for documentation");
-    cx.parse_sess.span_diagnostic.span_help(sp,
-        "see https://github.com/rust-lang/rust/blob/master/src/etc/2014-06-rewrite-bytes-macros.py \
-         for an automated migration");
-
     // Gather all argument expressions
     let exprs = match get_exprs_from_tts(cx, sp, tts) {
         None => return DummyResult::expr(sp),
