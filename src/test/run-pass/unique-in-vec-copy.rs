@@ -17,7 +17,7 @@ pub fn main() {
     assert_eq!(*b[0], 10);
 
     // This should only modify the value in a, not b
-    **a.get_mut(0) = 20;
+    *a[0] = 20;
 
     assert_eq!(*a[0], 20);
     assert_eq!(*b[0], 10);

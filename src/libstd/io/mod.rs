@@ -627,7 +627,7 @@ pub trait Reader {
     /// as `Err(IoError)`. See `read()` for more details.
     fn push(&mut self, len: uint, buf: &mut Vec<u8>) -> IoResult<uint> {
         let start_len = buf.len();
-        buf.reserve_additional(len);
+        buf.reserve(len);
 
         let n = {
             let s = unsafe { slice_vec_capacity(buf, start_len, start_len + len) };
@@ -658,7 +658,7 @@ pub trait Reader {
         }
 
         let start_len = buf.len();
-        buf.reserve_additional(len);
+        buf.reserve(len);
 
         // we can't just use self.read_at_least(min, slice) because we need to push
         // successful reads onto the vector before any returned errors.

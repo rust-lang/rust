@@ -208,7 +208,7 @@ fn resolved_path(w: &mut fmt::Formatter, did: ast::DefId, p: &clean::Path,
             }
         },
         |cache| {
-            match cache.paths.find(&did) {
+            match cache.paths.get(&did) {
                 None => None,
                 Some(&(ref fqp, shortty)) => Some((fqp.clone(), shortty))
             }
@@ -313,7 +313,7 @@ fn primitive_link(f: &mut fmt::Formatter,
                   name: &str) -> fmt::Result {
     let m = cache_key.get().unwrap();
     let mut needs_termination = false;
-    match m.primitive_locations.find(&prim) {
+    match m.primitive_locations.get(&prim) {
         Some(&ast::LOCAL_CRATE) => {
             let loc = current_location_key.get().unwrap();
             let len = if loc.len() == 0 {0} else {loc.len() - 1};

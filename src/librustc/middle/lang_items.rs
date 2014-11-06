@@ -173,7 +173,7 @@ impl<'a> LanguageItemCollector<'a> {
         }
 
         // Matched.
-        *self.items.items.get_mut(item_index) = Some(item_def_id);
+        self.items.items[item_index] = Some(item_def_id);
     }
 
     pub fn collect_local_language_items(&mut self, krate: &ast::Crate) {

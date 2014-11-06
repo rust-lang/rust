@@ -116,7 +116,7 @@ pub fn trans_method_callee<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let (origin, method_ty) =
         bcx.tcx().method_map
                  .borrow()
-                 .find(&method_call)
+                 .get(&method_call)
                  .map(|method| (method.origin.clone(), method.ty))
                  .unwrap();
 
@@ -308,7 +308,7 @@ fn method_with_name(ccx: &CrateContext, impl_id: ast::DefId, name: ast::Name)
 
     let impl_items = ccx.tcx().impl_items.borrow();
     let impl_items =
-        impl_items.find(&impl_id)
+        impl_items.get(&impl_id)
                   .expect("could not find impl while translating");
     let meth_did = impl_items.iter()
                              .find(|&did| {
@@ -559,7 +559,7 @@ pub fn get_vtable(bcx: Block,
 
     // Check the cache.
     let cache_key = (box_ty, trait_ref.clone());
-    match ccx.vtables().borrow().find(&cache_key) {
+    match ccx.vtables().borrow().get(&cache_key) {
         Some(&val) => { return val }
         None => { }
     }
@@ -599,7 +599,7 @@ pub fn get_vtable(bcx: Block,
                                               .unboxed_closures
                                               .borrow();
                     let closure_info =
-                        unboxed_closures.find(&closure_def_id)
+                        unboxed_closures.get(&closure_def_id)
                                         .expect("get_vtable(): didn't find \
                                                  unboxed closure");
                     if closure_info.kind == ty::FnOnceUnboxedClosureKind {

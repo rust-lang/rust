@@ -106,7 +106,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for ReachableContext<'a, 'tcx> {
 
         match expr.node {
             ast::ExprPath(_) => {
-                let def = match self.tcx.def_map.borrow().find(&expr.id) {
+                let def = match self.tcx.def_map.borrow().get(&expr.id) {
                     Some(&def) => def,
                     None => {
                         self.tcx.sess.span_bug(expr.span,

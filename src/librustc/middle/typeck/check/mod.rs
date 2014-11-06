@@ -298,7 +298,7 @@ impl<'a, 'tcx> mem_categorization::Typer<'tcx> for FnCtxt<'a, 'tcx> {
     }
     fn node_method_ty(&self, method_call: typeck::MethodCall)
                       -> Option<ty::t> {
-        self.inh.method_map.borrow().find(&method_call).map(|m| m.ty)
+        self.inh.method_map.borrow().get(&method_call).map(|m| m.ty)
     }
     fn adjustments<'a>(&'a self) -> &'a RefCell<NodeMap<ty::AutoAdjustment>> {
         &self.inh.adjustments
@@ -1556,7 +1556,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     pub fn local_ty(&self, span: Span, nid: ast::NodeId) -> ty::t {
-        match self.inh.locals.borrow().find(&nid) {
+        match self.inh.locals.borrow().get(&nid) {
             Some(&t) => t,
             None => {
                 self.tcx().sess.span_bug(
@@ -1808,7 +1808,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     pub fn expr_ty(&self, ex: &ast::Expr) -> ty::t {
-        match self.inh.node_types.borrow().find(&ex.id) {
+        match self.inh.node_types.borrow().get(&ex.id) {
             Some(&t) => t,
             None => {
                 self.tcx().sess.bug(format!("no type for expr in fcx {}",
@@ -1824,7 +1824,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
          */
 
         let adjustments = self.inh.adjustments.borrow();
-        let adjustment = adjustments.find(&expr.id);
+        let adjustment = adjustments.get(&expr.id);
         self.adjust_expr_ty(expr, adjustment)
     }
 
@@ -1845,12 +1845,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                       raw_ty,
                       adjustment,
                       |method_call| self.inh.method_map.borrow()
-                                                       .find(&method_call)
+                                                       .get(&method_call)
                                                        .map(|method| method.ty))
     }
 
     pub fn node_ty(&self, id: ast::NodeId) -> ty::t {
-        match self.inh.node_types.borrow().find(&id) {
+        match self.inh.node_types.borrow().get(&id) {
             Some(&t) => t,
             None => {
                 self.tcx().sess.bug(
@@ -1868,7 +1868,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub fn opt_node_ty_substs(&self,
                               id: ast::NodeId,
                               f: |&ty::ItemSubsts|) {
-        match self.inh.item_substs.borrow().find(&id) {
+        match self.inh.item_substs.borrow().get(&id) {
             Some(s) => { f(s) }
             None => { }
         }
@@ -3554,7 +3554,7 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
                     let (bounds, onceness) = match expr.node {
                         ast::ExprProc(..) => {
                             let mut bounds = ty::region_existential_bound(ty::ReStatic);
-                            bounds.builtin_bounds.add(ty::BoundSend); // FIXME
+                            bounds.builtin_bounds.insert(ty::BoundSend); // FIXME
                             (bounds, ast::Once)
                         }
                         _ => {
@@ -3763,7 +3763,7 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
         for field in ast_fields.iter() {
             let mut expected_field_type = ty::mk_err();
 
-            let pair = class_field_map.find(&field.ident.node.name).map(|x| *x);
+            let pair = class_field_map.get(&field.ident.node.name).map(|x| *x);
             match pair {
                 None => {
                     fcx.type_error_message(
@@ -4422,7 +4422,7 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
       }
       ast::ExprStruct(ref path, ref fields, ref base_expr) => {
         // Resolve the path.
-        let def = tcx.def_map.borrow().find(&id).map(|i| *i);
+        let def = tcx.def_map.borrow().get(&id).map(|i| *i);
         let struct_id = match def {
             Some(def::DefVariant(enum_id, variant_id, true)) => {
                 check_struct_enum_variant(fcx, id, expr.span, enum_id,
@@ -5603,7 +5603,7 @@ pub fn may_break(cx: &ty::ctxt, id: ast::NodeId, b: &ast::Block) -> bool {
     (block_query(b, |e| {
         match e.node {
             ast::ExprBreak(Some(_)) => {
-                match cx.def_map.borrow().find(&e.id) {
+                match cx.def_map.borrow().get(&e.id) {
                     Some(&def::DefLabel(loop_id)) if id == loop_id => true,
                     _ => false,
                 }

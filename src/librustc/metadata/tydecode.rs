@@ -675,16 +675,16 @@ fn parse_builtin_bounds(st: &mut PState, _conv: conv_did) -> ty::BuiltinBounds {
     loop {
         match next(st) {
             'S' => {
-                builtin_bounds.add(ty::BoundSend);
+                builtin_bounds.insert(ty::BoundSend);
             }
             'Z' => {
-                builtin_bounds.add(ty::BoundSized);
+                builtin_bounds.insert(ty::BoundSized);
             }
             'P' => {
-                builtin_bounds.add(ty::BoundCopy);
+                builtin_bounds.insert(ty::BoundCopy);
             }
             'T' => {
-                builtin_bounds.add(ty::BoundSync);
+                builtin_bounds.insert(ty::BoundSync);
             }
             '.' => {
                 return builtin_bounds;

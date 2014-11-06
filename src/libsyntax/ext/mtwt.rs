@@ -182,7 +182,7 @@ fn resolve_internal(id: Ident,
                     resolve_table: &mut ResolveTable) -> Name {
     let key = (id.name, id.ctxt);
 
-    match resolve_table.find(&key) {
+    match resolve_table.get(&key) {
         Some(&name) => return name,
         None => {}
     }

@@ -99,7 +99,7 @@ pub trait AstConv<'tcx> {
 
 pub fn ast_region_to_region(tcx: &ty::ctxt, lifetime: &ast::Lifetime)
                             -> ty::Region {
-    let r = match tcx.named_region_map.find(&lifetime.id) {
+    let r = match tcx.named_region_map.get(&lifetime.id) {
         None => {
             // should have been recorded by the `resolve_lifetime` pass
             tcx.sess.span_bug(lifetime.span, "unresolved lifetime");
@@ -467,7 +467,7 @@ fn check_path_args(tcx: &ty::ctxt,
 pub fn ast_ty_to_prim_ty(tcx: &ty::ctxt, ast_ty: &ast::Ty) -> Option<ty::t> {
     match ast_ty.node {
         ast::TyPath(ref path, _, id) => {
-            let a_def = match tcx.def_map.borrow().find(&id) {
+            let a_def = match tcx.def_map.borrow().get(&id) {
                 None => {
                     tcx.sess.span_bug(ast_ty.span,
                                       format!("unbound path {}",
@@ -524,7 +524,7 @@ pub fn ast_ty_to_builtin_ty<'tcx, AC: AstConv<'tcx>, RS: RegionScope>(
 
     match ast_ty.node {
         ast::TyPath(ref path, _, id) => {
-            let a_def = match this.tcx().def_map.borrow().find(&id) {
+            let a_def = match this.tcx().def_map.borrow().get(&id) {
                 None => {
                     this.tcx()
                         .sess
@@ -675,7 +675,7 @@ fn mk_pointer<'tcx, AC: AstConv<'tcx>, RS: RegionScope>(
             // Note that the "bounds must be empty if path is not a trait"
             // restriction is enforced in the below case for ty_path, which
             // will run after this as long as the path isn't a trait.
-            match tcx.def_map.borrow().find(&id) {
+            match tcx.def_map.borrow().get(&id) {
                 Some(&def::DefPrimTy(ast::TyStr)) => {
                     check_path_args(tcx, path, NO_TPS | NO_REGIONS);
                     match ptr_ty {
@@ -802,7 +802,7 @@ pub fn ast_ty_to_ty<'tcx, AC: AstConv<'tcx>, RS: RegionScope>(
     let tcx = this.tcx();
 
     let mut ast_ty_to_ty_cache = tcx.ast_ty_to_ty_cache.borrow_mut();
-    match ast_ty_to_ty_cache.find(&ast_ty.id) {
+    match ast_ty_to_ty_cache.get(&ast_ty.id) {
         Some(&ty::atttce_resolved(ty)) => return ty,
         Some(&ty::atttce_unresolved) => {
             tcx.sess.span_fatal(ast_ty.span,
@@ -900,7 +900,7 @@ pub fn ast_ty_to_ty<'tcx, AC: AstConv<'tcx>, RS: RegionScope>(
                 ty::mk_err()
             }
             ast::TyPath(ref path, ref bounds, id) => {
-                let a_def = match tcx.def_map.borrow().find(&id) {
+                let a_def = match tcx.def_map.borrow().get(&id) {
                     None => {
                         tcx.sess
                            .span_bug(ast_ty.span,
@@ -990,7 +990,7 @@ pub fn ast_ty_to_ty<'tcx, AC: AstConv<'tcx>, RS: RegionScope>(
                 }
             }
             ast::TyQPath(ref qpath) => {
-                match tcx.def_map.borrow().find(&ast_ty.id) {
+                match tcx.def_map.borrow().get(&ast_ty.id) {
                     None => {
                         tcx.sess.span_bug(ast_ty.span,
                                           "unbound qualified path")
@@ -1549,7 +1549,7 @@ pub fn partition_bounds<'a>(tcx: &ty::ctxt,
             ast::TraitTyParamBound(ref b) => {
                 match lookup_def_tcx(tcx, b.path.span, b.ref_id) {
                     def::DefTrait(trait_did) => {
-                        match trait_def_ids.find(&trait_did) {
+                        match trait_def_ids.get(&trait_did) {
                             // Already seen this trait. We forbid
                             // duplicates in the list (for some
                             // reason).

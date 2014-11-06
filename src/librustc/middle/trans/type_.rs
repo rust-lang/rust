@@ -332,7 +332,7 @@ impl TypeNames {
 
     pub fn associate_type(&self, s: &str, t: &Type) {
         assert!(self.named_types.borrow_mut().insert(s.to_string(),
-                                                     t.to_ref()));
+                                                     t.to_ref()).is_none());
     }
 
     pub fn find_type(&self, s: &str) -> Option<Type> {
