@@ -176,7 +176,6 @@ pub trait UnicodeChar {
     /// 'XID_Start' is a Unicode Derived Property specified in
     /// [UAX #31](http://unicode.org/reports/tr31/#NFKC_Modifications),
     /// mostly similar to ID_Start but modified for closure under NFKx.
-    #[allow(non_snake_case)]
     fn is_xid_start(self) -> bool;
 
     /// Returns whether the specified `char` satisfies the 'XID_Continue'
@@ -195,7 +194,6 @@ pub trait UnicodeChar {
     /// 'XID_Continue' is a Unicode Derived Property specified in
     /// [UAX #31](http://unicode.org/reports/tr31/#NFKC_Modifications),
     /// mostly similar to 'ID_Continue' but modified for closure under NFKx.
-    #[allow(non_snake_case)]
     fn is_xid_continue(self) -> bool;
 
     /// Indicates whether a character is in lowercase.
