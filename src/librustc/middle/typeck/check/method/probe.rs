@@ -827,6 +827,32 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
                method.fty.sig.inputs[0].repr(self.tcx()),
                substs.repr(self.tcx()));
 
+        // It is possible for type parameters or early-bound lifetimes
+        // to appear in the signature of `self`. The substitutions we
+        // are given do not include type/lifetime parameters for the
+        // method yet. So create fresh variables here for those too,
+        // if there are any.
+        assert_eq!(substs.types.len(subst::FnSpace), 0);
+        assert_eq!(substs.regions().len(subst::FnSpace), 0);
+        let mut substs = substs;
+        let placeholder;
+        if
+            !method.generics.types.is_empty_in(subst::FnSpace) ||
+            !method.generics.regions.is_empty_in(subst::FnSpace)
+        {
+            let method_types =
+                self.infcx().next_ty_vars(
+                    method.generics.types.len(subst::FnSpace));
+
+            let method_regions =
+                self.infcx().region_vars_for_defs(
+                    self.span,
+                    method.generics.regions.get_slice(subst::FnSpace));
+
+            placeholder = (*substs).clone().with_method(method_types, method_regions);
+            substs = &placeholder;
+        }
+
         let xform_self_ty = method.fty.sig.inputs[0].subst(self.tcx(), substs);
         self.infcx().replace_late_bound_regions_with_fresh_var(method.fty.sig.binder_id,
                                                                self.span,
