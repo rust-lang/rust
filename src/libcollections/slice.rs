@@ -1523,10 +1523,10 @@ mod tests {
     fn test_capacity() {
         let mut v = vec![0u64];
         v.reserve_exact(10u);
-        assert_eq!(v.capacity(), 10u);
+        assert!(v.capacity() >= 11u);
         let mut v = vec![0u32];
         v.reserve_exact(10u);
-        assert_eq!(v.capacity(), 10u);
+        assert!(v.capacity() >= 11u);
     }
 
     #[test]
@@ -2318,7 +2318,7 @@ mod bench {
                 v.set_len(1024);
             }
             for i in range(0u, 1024) {
-                *v.get_mut(i) = 0;
+                v[i] = 0;
             }
         });
     }
