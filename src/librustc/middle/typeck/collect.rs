@@ -1335,13 +1335,13 @@ pub fn instantiate_trait_ref<'tcx,AC>(this: &AC,
                          ast_trait_ref.ref_id) {
         def::DefTrait(trait_did) => {
             let trait_ref =
-                astconv::ast_path_to_trait_ref(this,
-                                               &rscope,
-                                               trait_did,
-                                               Some(self_ty),
-                                               associated_type,
-                                               &ast_trait_ref.path,
-                                               ast_trait_ref.ref_id);
+                Rc::new(astconv::ast_path_to_trait_ref(this,
+                                                       &rscope,
+                                                       trait_did,
+                                                       Some(self_ty),
+                                                       associated_type,
+                                                       &ast_trait_ref.path,
+                                                       ast_trait_ref.ref_id));
 
             this.tcx().trait_refs.borrow_mut().insert(ast_trait_ref.ref_id,
                                                       trait_ref.clone());

@@ -423,8 +423,8 @@ impl TypeMap {
 
                 from_def_id_and_substs(self,
                                        cx,
-                                       trait_data.def_id,
-                                       &trait_data.substs,
+                                       trait_data.principal.def_id,
+                                       &trait_data.principal.substs,
                                        &mut unique_type_id);
             },
             ty::ty_bare_fn(ty::BareFnTy{ fn_style, abi, ref sig } ) => {
@@ -2813,7 +2813,7 @@ fn trait_pointer_metadata(cx: &CrateContext,
     // But it does not describe the trait's methods.
 
     let def_id = match ty::get(trait_type).sty {
-        ty::ty_trait(box ty::TyTrait { def_id, .. }) => def_id,
+        ty::ty_trait(box ty::TyTrait { ref principal, .. }) => principal.def_id,
         _ => {
             let pp_type_name = ppaux::ty_to_string(cx.tcx(), trait_type);
             cx.sess().bug(format!("debuginfo: Unexpected trait-object type in \
@@ -3739,8 +3739,8 @@ fn push_debuginfo_type_name(cx: &CrateContext,
             output.push(']');
         },
         ty::ty_trait(ref trait_data) => {
-            push_item_name(cx, trait_data.def_id, false, output);
-            push_type_params(cx, &trait_data.substs, output);
+            push_item_name(cx, trait_data.principal.def_id, false, output);
+            push_type_params(cx, &trait_data.principal.substs, output);
         },
         ty::ty_bare_fn(ty::BareFnTy{ fn_style, abi, ref sig } ) => {
             if fn_style == ast::UnsafeFn {

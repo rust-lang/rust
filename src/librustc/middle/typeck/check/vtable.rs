@@ -140,11 +140,11 @@ pub fn check_object_safety(tcx: &ty::ctxt, object_trait: &ty::TyTrait, span: Spa
     // `call_once` which is the method which takes self by value. What could go
     // wrong?
     match tcx.lang_items.fn_once_trait() {
-        Some(def_id) if def_id == object_trait.def_id => return,
+        Some(def_id) if def_id == object_trait.principal.def_id => return,
         _ => {}
     }
 
-    let trait_items = ty::trait_items(tcx, object_trait.def_id);
+    let trait_items = ty::trait_items(tcx, object_trait.principal.def_id);
 
     let mut errors = Vec::new();
     for item in trait_items.iter() {
@@ -158,7 +158,7 @@ pub fn check_object_safety(tcx: &ty::ctxt, object_trait: &ty::TyTrait, span: Spa
 
     let mut errors = errors.iter().flat_map(|x| x.iter()).peekable();
     if errors.peek().is_some() {
-        let trait_name = ty::item_path_str(tcx, object_trait.def_id);
+        let trait_name = ty::item_path_str(tcx, object_trait.principal.def_id);
         span_err!(tcx.sess, span, E0038,
             "cannot convert to a trait object because trait `{}` is not object-safe",
             trait_name);
@@ -241,8 +241,7 @@ pub fn register_object_cast_obligations(fcx: &FnCtxt,
     // needs some refactoring so there is a more convenient type to pass around.
     let object_trait_ty =
         ty::mk_trait(fcx.tcx(),
-                     object_trait.def_id,
-                     object_trait.substs.clone(),
+                     object_trait.principal.clone(),
                      object_trait.bounds);
 
     debug!("register_object_cast_obligations: referent_ty={} object_trait_ty={}",
@@ -252,13 +251,13 @@ pub fn register_object_cast_obligations(fcx: &FnCtxt,
     // Take the type parameters from the object type, but set
     // the Self type (which is unknown, for the object type)
     // to be the type we are casting from.
-    let mut object_substs = object_trait.substs.clone();
+    let mut object_substs = object_trait.principal.substs.clone();
     assert!(object_substs.self_ty().is_none());
     object_substs.types.push(SelfSpace, referent_ty);
 
     // Create the obligation for casting from T to Trait.
     let object_trait_ref =
-        Rc::new(ty::TraitRef { def_id: object_trait.def_id,
+        Rc::new(ty::TraitRef { def_id: object_trait.principal.def_id,
                                substs: object_substs });
     let object_obligation =
         Obligation::new(
