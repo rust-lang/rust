@@ -1707,7 +1707,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             node_id: ast::NodeId,
                             span: Span,
                             adj: ty::AutoAdjustment<'tcx>) {
-        debug!("write_adjustment(node_id={}, adj={})", node_id, adj);
+        debug!("write_adjustment(node_id={}, adj={})", node_id, adj.repr(self.tcx()));
 
         if adj.is_identity() {
             return;
