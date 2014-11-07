@@ -150,6 +150,7 @@ use mem;
 use result::{Result, Ok, Err};
 use slice;
 use slice::AsSlice;
+use clone::Clone;
 
 // Note that this is not a lang item per se, but it has a hidden dependency on
 // `Iterator`, which is one. The compiler assumes that the `next` method of
@@ -673,6 +674,14 @@ impl<T> Option<T> {
     #[stable]
     pub fn take(&mut self) -> Option<T> {
         mem::replace(self, None)
+    }
+}
+
+impl<'a, T: Clone> Option<&'a T> {
+    /// Maps an Option<&T> to an Option<T> by cloning the contents of the Option<&T>.
+    #[unstable = "recently added as part of collections reform"]
+    pub fn cloned(self) -> Option<T> {
+        self.map(|t| t.clone())
     }
 }
 
