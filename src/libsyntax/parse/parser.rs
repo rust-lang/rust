@@ -37,8 +37,8 @@ use ast::{ItemMac, ItemMod, ItemStruct, ItemTrait, ItemTy};
 use ast::{LifetimeDef, Lit, Lit_};
 use ast::{LitBool, LitChar, LitByte, LitBinary};
 use ast::{LitNil, LitStr, LitInt, Local, LocalLet};
-use ast::{MutImmutable, MutMutable, Mac_, MacInvocTT, Matcher, MatchNonterminal, MatchNormal};
-use ast::{MatchSeq, MatchTok, Method, MutTy, BiMul, Mutability};
+use ast::{MutImmutable, MutMutable, Mac_, MacInvocTT, MatchNormal};
+use ast::{Method, MutTy, BiMul, Mutability};
 use ast::{MethodImplItem, NamedField, UnNeg, NoReturn, UnNot};
 use ast::{Pat, PatEnum, PatIdent, PatLit, PatRange, PatRegion, PatStruct};
 use ast::{PatTup, PatBox, PatWild, PatWildMulti, PatWildSingle};
@@ -48,8 +48,9 @@ use ast::{StmtExpr, StmtSemi, StmtMac, StructDef, StructField};
 use ast::{StructVariantKind, BiSub};
 use ast::StrStyle;
 use ast::{SelfExplicit, SelfRegion, SelfStatic, SelfValue};
-use ast::{Delimited, TokenTree, TraitItem, TraitRef, TtDelimited, TtSequence, TtToken};
-use ast::{TtNonterminal, TupleVariantKind, Ty, Ty_, TyBot};
+use ast::{Delimited, SequenceRepetition, TokenTree, TraitItem, TraitRef};
+use ast::{TtDelimited, TtSequence, TtToken};
+use ast::{TupleVariantKind, Ty, Ty_, TyBot};
 use ast::{TypeField, TyFixedLengthVec, TyClosure, TyProc, TyBareFn};
 use ast::{TyTypeof, TyInfer, TypeMethod};
 use ast::{TyNil, TyParam, TyParamBound, TyParen, TyPath, TyPtr, TyQPath};
@@ -64,6 +65,7 @@ use ast_util::{as_prec, ident_to_path, operator_prec};
 use ast_util;
 use codemap::{Span, BytePos, Spanned, spanned, mk_sp};
 use codemap;
+use ext::tt::macro_parser;
 use parse;
 use parse::attr::ParserAttr;
 use parse::classify;
@@ -72,7 +74,7 @@ use parse::common::{seq_sep_trailing_allowed};
 use parse::lexer::Reader;
 use parse::lexer::TokenAndSpan;
 use parse::obsolete::*;
-use parse::token::InternedString;
+use parse::token::{MatchNt, SubstNt, InternedString};
 use parse::token::{keywords, special_idents};
 use parse::token;
 use parse::{new_sub_parser_from_file, ParseSess};
@@ -2579,7 +2581,7 @@ impl<'a> Parser<'a> {
     pub fn parse_token_tree(&mut self) -> TokenTree {
         // FIXME #6994: currently, this is too eager. It
         // parses token trees but also identifies TtSequence's
-        // and TtNonterminal's; it's too early to know yet
+        // and token::SubstNt's; it's too early to know yet
         // whether something will be a nonterminal or a seq
         // yet.
         maybe_whole!(deref self, NtTT);
@@ -2620,9 +2622,27 @@ impl<'a> Parser<'a> {
                     let seq = match seq {
                         Spanned { node, .. } => node,
                     };
-                    TtSequence(mk_sp(sp.lo, p.span.hi), Rc::new(seq), sep, repeat)
+                    let name_num = macro_parser::count_names(seq.as_slice());
+                    TtSequence(mk_sp(sp.lo, p.span.hi),
+                               Rc::new(SequenceRepetition {
+                                   tts: seq,
+                                   separator: sep,
+                                   op: repeat,
+                                   num_captures: name_num
+                               }))
                 } else {
-                    TtNonterminal(sp, p.parse_ident())
+                    // A nonterminal that matches or not
+                    let namep = match p.token { token::Ident(_, p) => p, _ => token::Plain };
+                    let name = p.parse_ident();
+                    if p.token == token::Colon && p.look_ahead(1, |t| t.is_ident()) {
+                        p.bump();
+                        let kindp = match p.token { token::Ident(_, p) => p, _ => token::Plain };
+                        let nt_kind = p.parse_ident();
+                        let m = TtToken(sp, MatchNt(name, nt_kind, namep, kindp));
+                        m
+                    } else {
+                        TtToken(sp, SubstNt(name, namep))
+                    }
                 }
               }
               _ => {
@@ -2684,66 +2704,6 @@ impl<'a> Parser<'a> {
             tts.push(self.parse_token_tree());
         }
         tts
-    }
-
-    pub fn parse_matchers(&mut self) -> Vec<Matcher> {
-        // unification of Matcher's and TokenTree's would vastly improve
-        // the interpolation of Matcher's
-        maybe_whole!(self, NtMatchers);
-        let mut name_idx = 0u;
-        let delim = self.expect_open_delim();
-        self.parse_matcher_subseq_upto(&mut name_idx, &token::CloseDelim(delim))
-    }
-
-    /// This goofy function is necessary to correctly match parens in Matcher's.
-    /// Otherwise, `$( ( )` would be a valid Matcher, and `$( () )` would be
-    /// invalid. It's similar to common::parse_seq.
-    pub fn parse_matcher_subseq_upto(&mut self,
-                                     name_idx: &mut uint,
-                                     ket: &token::Token)
-                                     -> Vec<Matcher> {
-        let mut ret_val = Vec::new();
-        let mut lparens = 0u;
-
-        while self.token != *ket || lparens > 0u {
-            if self.token == token::OpenDelim(token::Paren) { lparens += 1u; }
-            if self.token == token::CloseDelim(token::Paren) { lparens -= 1u; }
-            ret_val.push(self.parse_matcher(name_idx));
-        }
-
-        self.bump();
-
-        return ret_val;
-    }
-
-    pub fn parse_matcher(&mut self, name_idx: &mut uint) -> Matcher {
-        let lo = self.span.lo;
-
-        let m = if self.token == token::Dollar {
-            self.bump();
-            if self.token == token::OpenDelim(token::Paren) {
-                let name_idx_lo = *name_idx;
-                self.bump();
-                let ms = self.parse_matcher_subseq_upto(name_idx,
-                                                        &token::CloseDelim(token::Paren));
-                if ms.len() == 0u {
-                    self.fatal("repetition body must be nonempty");
-                }
-                let (sep, kleene_op) = self.parse_sep_and_kleene_op();
-                MatchSeq(ms, sep, kleene_op, name_idx_lo, *name_idx)
-            } else {
-                let bound_to = self.parse_ident();
-                self.expect(&token::Colon);
-                let nt_name = self.parse_ident();
-                let m = MatchNonterminal(bound_to, nt_name, *name_idx);
-                *name_idx += 1;
-                m
-            }
-        } else {
-            MatchTok(self.bump_and_get())
-        };
-
-        return spanned(lo, self.span.hi, m);
     }
 
     /// Parse a prefix-operator expr
