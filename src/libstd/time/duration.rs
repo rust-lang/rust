@@ -382,7 +382,7 @@ impl FromStr for Duration {
             (Some(c), rem) if c == 'P' || c == 'p' => rem,
             _ => return None
         };
- 
+
         // D - days
         let (days, _, next) = atoi(s);
 
@@ -411,14 +411,14 @@ impl FromStr for Duration {
             }
 
             s = match next.slice_shift_char() {
-                (Some(c), rem) if (c == 'H' || c == 'h') 
+                (Some(c), rem) if (c == 'H' || c == 'h')
                                             && hours.is_none() && minutes.is_none()
                                             && seconds.is_none() && nanos.is_none() => {
                     hours = value;
                     rem
                 },
-                (Some(c), rem) if (c == 'M' || c == 'm') 
-                                            && minutes.is_none() && seconds.is_none() 
+                (Some(c), rem) if (c == 'M' || c == 'm')
+                                            && minutes.is_none() && seconds.is_none()
                                             && nanos.is_none() => {
                     minutes = value;
                     rem
@@ -427,7 +427,7 @@ impl FromStr for Duration {
                     seconds = value;
                     rem
                 },
-                (Some(c), rem) if (c == 'S' || c == 's') 
+                (Some(c), rem) if (c == 'S' || c == 's')
                                             && (seconds.is_none() || nanos.is_none()) => {
                     if seconds.is_none() {
                         seconds = value;
@@ -457,17 +457,17 @@ impl FromStr for Duration {
 
         millis = try_opt!(millis.checked_add(&minutes_millis));
         millis = try_opt!(millis.checked_add(&seconds_millis));
-        
+
         let mut nanos = nanos.unwrap_or(0);
 
-        if sign == '-' { 
+        if sign == '-' {
             millis = -millis;
             nanos = -nanos;
         }
 
         Some(
             duration!(
-                try_opt!(millis.checked_add(&(nanos / NANOS_PER_MILLI))), 
+                try_opt!(millis.checked_add(&(nanos / NANOS_PER_MILLI))),
                 (nanos % NANOS_PER_MILLI) as i32
             )
         )
