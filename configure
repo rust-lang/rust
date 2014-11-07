@@ -76,6 +76,24 @@ putvar() {
     printf "%-20s := %s\n" $1 "$T" >>config.tmp
 }
 
+putpathvar() {
+    local T
+    eval T=\$$1
+    eval TLEN=\${#$1}
+    if [ $TLEN -gt 35 ]
+    then
+        printf "configure: %-20s := %.35s ...\n" $1 "$T"
+    else
+        printf "configure: %-20s := %s %s\n" $1 "$T" "$2"
+    fi
+    if [ -z "$T" ]
+    then
+        printf "%-20s := \n" $1 >>config.tmp
+    else
+        printf "%-20s := \"%s\"\n" $1 "$T" >>config.tmp
+    fi
+}
+
 probe() {
     local V=$1
     shift
@@ -101,7 +119,7 @@ probe() {
         fi
     done
     eval $V=\$T
-    putvar $V "$VER"
+    putpathvar $V "$VER"
 }
 
 probe_need() {
@@ -638,9 +656,9 @@ probe CFG_ADB        adb
 
 if [ ! -z "$CFG_PANDOC" ]
 then
-    PV_MAJOR_MINOR=$(pandoc --version | grep '^pandoc ' |
+    PV_MAJOR_MINOR=$(pandoc --version | grep '^pandoc\(.exe\)\? ' |
         # extract the first 2 version fields, ignore everything else
-        sed 's/pandoc \([0-9]*\)\.\([0-9]*\).*/\1 \2/')
+        sed 's/pandoc\(.exe\)\? \([0-9]*\)\.\([0-9]*\).*/\2 \3/')
 
     MIN_PV_MAJOR="1"
     MIN_PV_MINOR="9"
@@ -1330,8 +1348,7 @@ do
 done
 
 # Munge any paths that appear in config.mk back to posix-y
-perl -i.bak -p -e 's@ ([a-zA-Z]):[/\\]@ /\1/@go;' \
-               -e 's@\\@/@go;' config.tmp
+perl -i.bak -p -e 's@ ([a-zA-Z]):[/\\]@ /\1/@go;' config.tmp
 rm -f config.tmp.bak
 
 msg
