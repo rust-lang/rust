@@ -1097,7 +1097,7 @@ impl<'a> Resolver<'a> {
                                                                    sp);
 
         // Add or reuse the child.
-        let child = module_.children.borrow().find_copy(&name);
+        let child = module_.children.borrow().get(&name).cloned();
         match child {
             None => {
                 let child = Rc::new(NameBindings::new());
@@ -1381,7 +1381,7 @@ impl<'a> Resolver<'a> {
                         let mod_name = path.segments.last().unwrap().identifier.name;
 
                         let parent_opt = parent.module().children.borrow()
-                                               .find_copy(&mod_name);
+                                               .get(&mod_name).cloned();
                         let new_parent = match parent_opt {
                             // It already exists
                             Some(ref child) if child.get_module_if_available()
@@ -2676,7 +2676,7 @@ impl<'a> Resolver<'a> {
             BoundResult(..) => {}
             _ => {
                 match containing_module.external_module_children.borrow_mut()
-                                       .find_copy(&source) {
+                                       .get(&source).cloned() {
                     None => {} // Continue.
                     Some(module) => {
                         debug!("(resolving single import) found external \
@@ -3191,7 +3191,7 @@ impl<'a> Resolver<'a> {
         fn search_parent_externals(needle: Name, module: &Rc<Module>)
                                 -> Option<Rc<Module>> {
             module.external_module_children.borrow()
-                                            .find_copy(&needle)
+                                            .get(&needle).cloned()
                                             .map(|_| module.clone())
                                             .or_else(|| {
                 match module.parent_link.clone() {
@@ -3478,7 +3478,7 @@ impl<'a> Resolver<'a> {
 
         // Search for external modules.
         if namespace == TypeNS {
-            match module_.external_module_children.borrow().find_copy(&name) {
+            match module_.external_module_children.borrow().get(&name).cloned() {
                 None => {}
                 Some(module) => {
                     let name_bindings =
@@ -3763,7 +3763,7 @@ impl<'a> Resolver<'a> {
 
         // Finally, search through external children.
         if namespace == TypeNS {
-            match module_.external_module_children.borrow().find_copy(&name) {
+            match module_.external_module_children.borrow().get(&name).cloned() {
                 None => {}
                 Some(module) => {
                     let name_bindings =
@@ -4043,7 +4043,7 @@ impl<'a> Resolver<'a> {
                             // item, it's ok
                             match def {
                                 DefTyParam(_, did, _) if {
-                                    self.def_map.borrow().find_copy(&did.node)
+                                    self.def_map.borrow().get(&did.node).cloned()
                                         == Some(DefTyParamBinder(item_id))
                                 } => {} // ok
                                 DefSelfTy(did) if did == item_id => {} // ok
@@ -4096,7 +4096,7 @@ impl<'a> Resolver<'a> {
                             // item, it's ok
                             match def {
                                 DefTyParam(_, did, _) if {
-                                    self.def_map.borrow().find_copy(&did.node)
+                                    self.def_map.borrow().get(&did.node).cloned()
                                         == Some(DefTyParamBinder(item_id))
                                 } => {} // ok
                                 DefSelfTy(did) if did == item_id => {} // ok
@@ -4148,7 +4148,7 @@ impl<'a> Resolver<'a> {
         // FIXME #4950: Try caching?
 
         for (i, rib) in ribs.iter().enumerate().rev() {
-            match rib.bindings.find_copy(&name) {
+            match rib.bindings.get(&name).cloned() {
                 Some(def_like) => {
                     return self.upvarify(ribs[i + 1..], def_like, span);
                 }
@@ -5440,7 +5440,7 @@ impl<'a> Resolver<'a> {
         // Finally, search through external children.
         if namespace == TypeNS {
             match containing_module.external_module_children.borrow()
-                                   .find_copy(&name) {
+                                   .get(&name).cloned() {
                 None => {}
                 Some(module) => {
                     match module.def_id.get() {

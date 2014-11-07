@@ -309,7 +309,7 @@ impl<'a, 'tcx> mem_categorization::Typer<'tcx> for FnCtxt<'a, 'tcx> {
         self.tcx().temporary_scope(rvalue_id)
     }
     fn upvar_borrow(&self, upvar_id: ty::UpvarId) -> ty::UpvarBorrow {
-        self.inh.upvar_borrow_map.borrow().get_copy(&upvar_id)
+        self.inh.upvar_borrow_map.borrow()[upvar_id].clone()
     }
     fn capture_mode(&self, closure_expr_id: ast::NodeId)
                     -> ast::CaptureClause {
@@ -450,7 +450,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for GatherLocalsVisitor<'a, 'tcx> {
         debug!("Local variable {} is assigned type {}",
                self.fcx.pat_to_string(&*local.pat),
                self.fcx.infcx().ty_to_string(
-                   self.fcx.inh.locals.borrow().get_copy(&local.id)));
+                   self.fcx.inh.locals.borrow()[local.id].clone()));
         visit::walk_local(self, local);
     }
 
@@ -467,7 +467,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for GatherLocalsVisitor<'a, 'tcx> {
                     debug!("Pattern binding {} is assigned to {} with type {}",
                            token::get_ident(path1.node),
                            self.fcx.infcx().ty_to_string(
-                               self.fcx.inh.locals.borrow().get_copy(&p.id)),
+                               self.fcx.inh.locals.borrow()[p.id].clone()),
                            var_ty.repr(self.fcx.tcx()));
                 }
             _ => {}

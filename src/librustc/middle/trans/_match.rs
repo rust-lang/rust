@@ -568,7 +568,7 @@ fn get_branches<'a, 'p, 'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             ast::PatLit(ref l) => ConstantValue(ConstantExpr(&**l)),
             ast::PatIdent(..) | ast::PatEnum(..) | ast::PatStruct(..) => {
                 // This is either an enum variant or a variable binding.
-                let opt_def = tcx.def_map.borrow().find_copy(&cur.id);
+                let opt_def = tcx.def_map.borrow().get(&cur.id).cloned();
                 match opt_def {
                     Some(def::DefVariant(enum_id, var_id, _)) => {
                         let variant = ty::enum_variant_with_id(tcx, enum_id, var_id);
@@ -1642,7 +1642,7 @@ fn bind_irrefutable_pat<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             }
         }
         ast::PatEnum(_, ref sub_pats) => {
-            let opt_def = bcx.tcx().def_map.borrow().find_copy(&pat.id);
+            let opt_def = bcx.tcx().def_map.borrow().get(&pat.id).cloned();
             match opt_def {
                 Some(def::DefVariant(enum_id, var_id, _)) => {
                     let repr = adt::represent_node(bcx, pat.id);

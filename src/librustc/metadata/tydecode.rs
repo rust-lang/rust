@@ -440,7 +440,7 @@ fn parse_ty(st: &mut PState, conv: conv_did) -> ty::t {
                                          pos: pos,
                                          len: len };
 
-        match st.tcx.rcache.borrow().find_copy(&key) {
+        match st.tcx.rcache.borrow().get(&key).cloned() {
           Some(tt) => return tt,
           None => {}
         }

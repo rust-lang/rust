@@ -37,7 +37,6 @@ use super::table::{
 };
 
 // FIXME(conventions): update capacity management to match other collections (no auto-shrink)
-// FIXME(conventions): axe find_copy/get_copy in favour of Option.cloned (also implement that)
 
 const INITIAL_LOG2_CAP: uint = 5;
 pub const INITIAL_CAPACITY: uint = 1 << INITIAL_LOG2_CAP; // 2^5
@@ -1826,6 +1825,7 @@ mod test_map {
     }
 
     #[test]
+    #[allow(deprecated)]
     fn test_find_copy() {
         let mut m = HashMap::new();
         assert!(m.get(&1i).is_none());

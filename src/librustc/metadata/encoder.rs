@@ -1863,7 +1863,7 @@ impl<'a, 'b, 'c, 'tcx, 'v> Visitor<'v> for ImplVisitor<'a, 'b, 'c, 'tcx> {
         match item.node {
             ItemImpl(_, Some(ref trait_ref), _, _) => {
                 let def_map = &self.ecx.tcx.def_map;
-                let trait_def = def_map.borrow().get_copy(&trait_ref.ref_id);
+                let trait_def = def_map.borrow()[trait_ref.ref_id].clone();
                 let def_id = trait_def.def_id();
 
                 // Load eagerly if this is an implementation of the Drop trait

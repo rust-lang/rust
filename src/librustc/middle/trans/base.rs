@@ -2274,7 +2274,7 @@ pub fn trans_item(ccx: &CrateContext, item: &ast::Item) {
                                          static");
               }
 
-              let v = ccx.static_values().borrow().get_copy(&item.id);
+              let v = ccx.static_values().borrow()[item.id].clone();
               unsafe {
                   if !(llvm::LLVMConstIntGetZExtValue(v) != 0) {
                       ccx.sess().span_fatal(expr.span, "static assertion failed");
@@ -2666,7 +2666,7 @@ fn contains_null(s: &str) -> bool {
 pub fn get_item_val(ccx: &CrateContext, id: ast::NodeId) -> ValueRef {
     debug!("get_item_val(id=`{}`)", id);
 
-    match ccx.item_vals().borrow().find_copy(&id) {
+    match ccx.item_vals().borrow().get(&id).cloned() {
         Some(v) => return v,
         None => {}
     }

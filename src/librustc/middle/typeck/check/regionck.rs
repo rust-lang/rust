@@ -479,12 +479,12 @@ impl<'fcx, 'tcx> mc::Typer<'tcx> for Rcx<'fcx, 'tcx> {
     }
 
     fn upvar_borrow(&self, id: ty::UpvarId) -> ty::UpvarBorrow {
-        self.fcx.inh.upvar_borrow_map.borrow().get_copy(&id)
+        self.fcx.inh.upvar_borrow_map.borrow()[id].clone()
     }
 
     fn capture_mode(&self, closure_expr_id: ast::NodeId)
                     -> ast::CaptureClause {
-        self.tcx().capture_modes.borrow().get_copy(&closure_expr_id)
+        self.tcx().capture_modes.borrow()[closure_expr_id].clone()
     }
 
     fn unboxed_closures<'a>(&'a self)
@@ -871,7 +871,7 @@ fn check_expr_fn_block(rcx: &mut Rcx,
             });
         }
         ty::ty_unboxed_closure(_, region, _) => {
-            if tcx.capture_modes.borrow().get_copy(&expr.id) == ast::CaptureByRef {
+            if tcx.capture_modes.borrow()[expr.id].clone() == ast::CaptureByRef {
                 ty::with_freevars(tcx, expr.id, |freevars| {
                     if !freevars.is_empty() {
                         // Variables being referenced must be constrained and registered
@@ -896,7 +896,7 @@ fn check_expr_fn_block(rcx: &mut Rcx,
             })
         }
         ty::ty_unboxed_closure(..) => {
-            if tcx.capture_modes.borrow().get_copy(&expr.id) == ast::CaptureByRef {
+            if tcx.capture_modes.borrow()[expr.id].clone() == ast::CaptureByRef {
                 ty::with_freevars(tcx, expr.id, |freevars| {
                     propagate_upupvar_borrow_kind(rcx, expr, freevars);
                 });
@@ -1847,7 +1847,7 @@ fn link_upvar_borrow_kind_for_nested_closures(rcx: &mut Rcx,
            inner_upvar_id, outer_upvar_id);
 
     let mut upvar_borrow_map = rcx.fcx.inh.upvar_borrow_map.borrow_mut();
-    let inner_borrow = upvar_borrow_map.get_copy(&inner_upvar_id);
+    let inner_borrow = upvar_borrow_map[inner_upvar_id].clone();
     match upvar_borrow_map.get_mut(&outer_upvar_id) {
         Some(outer_borrow) => {
             adjust_upvar_borrow_kind(rcx, outer_upvar_id, outer_borrow, inner_borrow.kind);

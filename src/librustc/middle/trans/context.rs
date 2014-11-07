@@ -519,7 +519,7 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
     }
 
     pub fn get_intrinsic(&self, key: & &'static str) -> ValueRef {
-        match self.intrinsics().borrow().find_copy(key) {
+        match self.intrinsics().borrow().get(key).cloned() {
             Some(v) => return v,
             _ => {}
         }
