@@ -46,8 +46,15 @@ The behavior would otherwise be identical.
 
 # Drawbacks
 
-This is a breaking change and updating code for it manually is annoying.
-It is however very mechanical, and we could provide scripts to automate it.
+* This is a breaking change and updating code for it manually is annoying.
+  It is however very mechanical, and we could provide scripts to automate it.
+* Formatting templates already use curly braces.
+  Having multiple curly braces pairs in the same strings that have a very
+  different meaning can be surprising:
+  `format!("\u{e8}_{e8}", e8 = "é")` would be `"è_é"`.
+  However, there is a precedent of overriding characters:
+  `\` can start an escape sequence both in the Rust lexer for strings
+  and in regular expressions.
 
 
 # Alternatives
