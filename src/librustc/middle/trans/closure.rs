@@ -482,10 +482,9 @@ pub fn trans_unboxed_closure<'blk, 'tcx>(
         bcx,
         closure_id).unwrap();
 
-    let unboxed_closures = bcx.tcx().unboxed_closures.borrow();
-    let function_type = (*unboxed_closures)[closure_id]
-                                        .closure_type
-                                        .clone();
+    let function_type = (*bcx.tcx().unboxed_closures.borrow())[closure_id]
+                                                              .closure_type
+                                                              .clone();
     let function_type = ty::mk_closure(bcx.tcx(), function_type);
 
     let freevars: Vec<ty::Freevar> =
