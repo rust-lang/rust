@@ -5,8 +5,8 @@
 # Summary
 
 Restore the integer inference fallback that was removed. Integer
-literals whose type is unconstrained will default to `i32`, unlike the previous
-fallback to `int`.
+literals whose type is unconstrained will default to `i32`, unlike the
+previous fallback to `int`.
 Floating point literals will default to `f64`.
 
 # Motivation
@@ -124,6 +124,12 @@ from the C programming language (where the default int type is 32-bit in
 the major calling conventions), it's faster than 64-bit integers in
 arithmetic today, and is superior in memory usage while still providing
 a reasonable range of possible values.
+
+To expand on the perfomance argument: `i32` obviously uses half of the
+memory of `i64` meaning half the memory bandwidth used, half as much
+cache consumption and twice as much vectorization – additionally
+arithmetic (like multiplication and division) is faster on some of the
+modern CPUs.
 
 ## Case analysis
 
