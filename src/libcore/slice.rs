@@ -256,7 +256,6 @@ pub trait SlicePrelude<T> for Sized? {
     #[inline]
     #[experimental = "not triaged yet"]
     fn is_empty(&self) -> bool { self.len() == 0 }
-
     /// Returns a mutable reference to the element at the given index,
     /// or `None` if the index is out of bounds
     #[unstable = "waiting on final error conventions"]
@@ -695,6 +694,22 @@ impl<T> SlicePrelude<T> for [T] {
     #[inline]
     fn as_mut_ptr(&mut self) -> *mut T {
         self.repr().data as *mut T
+    }
+}
+
+impl<T> ops::Index<uint, T> for [T] {
+    fn index(&self, &index: &uint) -> &T {
+        assert!(index < self.len());
+
+        unsafe { mem::transmute(self.repr().data.offset(index as int)) }
+    }
+}
+
+impl<T> ops::IndexMut<uint, T> for [T] {
+    fn index_mut(&mut self, &index: &uint) -> &mut T {
+        assert!(index < self.len());
+
+        unsafe { mem::transmute(self.repr().data.offset(index as int)) }
     }
 }
 
