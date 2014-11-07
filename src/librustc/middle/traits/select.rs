@@ -1582,9 +1582,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 Ok(VtableImpl(vtable_impl))
             }
 
-            UnboxedClosureCandidate(closure_def_id, ref substs) => {
-                try!(self.confirm_unboxed_closure_candidate(obligation, closure_def_id, substs));
-                Ok(VtableUnboxedClosure(closure_def_id))
+            UnboxedClosureCandidate(closure_def_id, substs) => {
+                try!(self.confirm_unboxed_closure_candidate(obligation, closure_def_id, &substs));
+                Ok(VtableUnboxedClosure(closure_def_id, substs))
             }
         }
     }
