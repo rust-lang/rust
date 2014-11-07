@@ -11,6 +11,8 @@
 use middle::mem_categorization::Typer;
 use middle::ty;
 use middle::typeck::infer::InferCtxt;
+use std::collections::HashSet;
+use std::rc::Rc;
 use util::ppaux::Repr;
 
 use super::CodeAmbiguity;
@@ -30,6 +32,13 @@ use super::select::SelectionContext;
 /// method `select_all_or_error` can be used to report any remaining
 /// ambiguous cases as errors.
 pub struct FulfillmentContext<'tcx> {
+    // a simple cache that aims to cache *exact duplicate obligations*
+    // and avoid adding them twice. This serves a different purpose
+    // than the `SelectionCache`: it avoids duplicate errors and
+    // permits recursive obligations, which are often generated from
+    // traits like `Send` et al.
+    duplicate_set: HashSet<Rc<ty::TraitRef<'tcx>>>,
+
     // A list of all obligations that have been registered with this
     // fulfillment context.
     trait_obligations: Vec<Obligation<'tcx>>,
@@ -43,6 +52,7 @@ pub struct FulfillmentContext<'tcx> {
 impl<'tcx> FulfillmentContext<'tcx> {
     pub fn new() -> FulfillmentContext<'tcx> {
         FulfillmentContext {
+            duplicate_set: HashSet::new(),
             trait_obligations: Vec::new(),
             attempted_mark: 0,
         }
@@ -52,9 +62,13 @@ impl<'tcx> FulfillmentContext<'tcx> {
                                tcx: &ty::ctxt<'tcx>,
                                obligation: Obligation<'tcx>)
     {
-        debug!("register_obligation({})", obligation.repr(tcx));
-        assert!(!obligation.trait_ref.has_escaping_regions());
-        self.trait_obligations.push(obligation);
+        if self.duplicate_set.insert(obligation.trait_ref.clone()) {
+            debug!("register_obligation({})", obligation.repr(tcx));
+            assert!(!obligation.trait_ref.has_escaping_regions());
+            self.trait_obligations.push(obligation);
+        } else {
+            debug!("register_obligation({}) -- already seen, skip", obligation.repr(tcx));
+        }
     }
 
     pub fn select_all_or_error<'a>(&mut self,
