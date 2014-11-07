@@ -154,6 +154,10 @@ Although there seems to be little motivation for `int` to be the
 default, there might be use cases where `int` is a more correct fallback
 than `i32`.
 
+Additionally, it might seem weird to some that `i32` is a default, when
+`int` looks like the default from other languages. The name of `int`
+however is not in the scope of this RFC.
+
 
 # Alternatives
 
