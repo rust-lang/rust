@@ -169,7 +169,7 @@ pub trait Decoder<E> {
     fn error(&mut self, err: &str) -> E;
 }
 
-pub trait Encodable<S:Encoder<E>, E> {
+pub trait Encodable<S:Encoder<E>, E> for Sized? {
     fn encode(&self, s: &mut S) -> Result<(), E>;
 }
 
@@ -297,9 +297,9 @@ impl<E, D:Decoder<E>> Decodable<D, E> for i64 {
     }
 }
 
-impl<'a, E, S:Encoder<E>> Encodable<S, E> for &'a str {
+impl<E, S:Encoder<E>> Encodable<S, E> for str {
     fn encode(&self, s: &mut S) -> Result<(), E> {
-        s.emit_str(*self)
+        s.emit_str(self)
     }
 }
 
@@ -375,21 +375,28 @@ impl<E, D:Decoder<E>> Decodable<D, E> for () {
     }
 }
 
-impl<'a, E, S:Encoder<E>,T:Encodable<S, E>> Encodable<S, E> for &'a T {
+impl<'a, E, S: Encoder<E>, Sized? T: Encodable<S, E>> Encodable<S, E> for &'a T {
     fn encode(&self, s: &mut S) -> Result<(), E> {
         (**self).encode(s)
     }
 }
 
-impl<E, S:Encoder<E>,T:Encodable<S, E>> Encodable<S, E> for Box<T> {
+impl<E, S: Encoder<E>, Sized? T: Encodable<S, E>> Encodable<S, E> for Box<T> {
     fn encode(&self, s: &mut S) -> Result<(), E> {
         (**self).encode(s)
     }
 }
 
-impl<E, D:Decoder<E>,T:Decodable<D, E>> Decodable<D, E> for Box<T> {
+impl<E, D:Decoder<E>, T: Decodable<D, E>> Decodable<D, E> for Box<T> {
     fn decode(d: &mut D) -> Result<Box<T>, E> {
         Ok(box try!(Decodable::decode(d)))
+    }
+}
+
+impl<E, D:Decoder<E>, T: Decodable<D, E>> Decodable<D, E> for Box<[T]> {
+    fn decode(d: &mut D) -> Result<Box<[T]>, E> {
+        let v: Vec<T> = try!(Decodable::decode(d));
+        Ok(v.into_boxed_slice())
     }
 }
 
@@ -407,7 +414,7 @@ impl<E, D:Decoder<E>,T:Decodable<D, E>> Decodable<D, E> for Rc<T> {
     }
 }
 
-impl<'a, E, S:Encoder<E>,T:Encodable<S, E>> Encodable<S, E> for &'a [T] {
+impl<E, S:Encoder<E>,T:Encodable<S, E>> Encodable<S, E> for [T] {
     fn encode(&self, s: &mut S) -> Result<(), E> {
         s.emit_seq(self.len(), |s| {
             for (i, e) in self.iter().enumerate() {

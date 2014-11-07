@@ -389,7 +389,7 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
     fn expr_ty_adjusted(&self, expr: &ast::Expr) -> McResult<ty::t> {
         let unadjusted_ty = if_ok!(self.expr_ty(expr));
         Ok(ty::adjust_ty(self.tcx(), expr.span, expr.id, unadjusted_ty,
-                         self.typer.adjustments().borrow().find(&expr.id),
+                         self.typer.adjustments().borrow().get(&expr.id),
                          |method_call| self.typer.node_method_ty(method_call)))
     }
 
@@ -402,7 +402,7 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
     }
 
     pub fn cat_expr(&self, expr: &ast::Expr) -> McResult<cmt> {
-        match self.typer.adjustments().borrow().find(&expr.id) {
+        match self.typer.adjustments().borrow().get(&expr.id) {
             None => {
                 // No adjustments.
                 self.cat_expr_unadjusted(expr)
@@ -861,7 +861,7 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
                              deref_cnt: uint,
                              implicit: bool)
                              -> cmt {
-        let adjustment = match self.typer.adjustments().borrow().find(&node.id()) {
+        let adjustment = match self.typer.adjustments().borrow().get(&node.id()) {
             Some(adj) if ty::adjust_is_object(adj) => typeck::AutoObject,
             _ if deref_cnt != 0 => typeck::AutoDeref(deref_cnt),
             _ => typeck::NoAdjustment
@@ -1170,7 +1170,7 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
             // variant(..)
           }
           ast::PatEnum(_, Some(ref subpats)) => {
-            match self.tcx().def_map.borrow().find(&pat.id) {
+            match self.tcx().def_map.borrow().get(&pat.id) {
                 Some(&def::DefVariant(enum_did, _, _)) => {
                     // variant(x, y, z)
 

@@ -32,6 +32,10 @@ use std::hash::{Writer, Hash};
 use slice::{Items, MutItems};
 use slice;
 
+// FIXME(conventions): implement bounded iterators
+// FIXME(conventions): implement into_iter
+// FIXME(conventions): replace each_reverse by making iter DoubleEnded
+
 // FIXME: #5244: need to manually update the TrieNode constructor
 const SHIFT: uint = 4;
 const SIZE: uint = 1 << SHIFT;
@@ -59,14 +63,14 @@ enum Child<T> {
 /// map.insert(1, "Martin");
 ///
 /// assert_eq!(map.len(), 3);
-/// assert_eq!(map.find(&1), Some(&"Martin"));
+/// assert_eq!(map.get(&1), Some(&"Martin"));
 ///
 /// if !map.contains_key(&90) {
 ///     println!("Nobody is keyed 90");
 /// }
 ///
 /// // Update a key
-/// match map.find_mut(&1) {
+/// match map.get_mut(&1) {
 ///     Some(value) => *value = "Olga",
 ///     None => (),
 /// }
@@ -140,6 +144,7 @@ impl<T> TrieMap<T> {
     /// let mut map: TrieMap<&str> = TrieMap::new();
     /// ```
     #[inline]
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn new() -> TrieMap<T> {
         TrieMap{root: TrieNode::new(), length: 0}
     }
@@ -169,12 +174,14 @@ impl<T> TrieMap<T> {
 
     /// Gets an iterator visiting all keys in ascending order by the keys.
     /// The iterator's element type is `uint`.
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn keys<'r>(&'r self) -> Keys<'r, T> {
         self.iter().map(|(k, _v)| k)
     }
 
     /// Gets an iterator visiting all values in ascending order by the keys.
     /// The iterator's element type is `&'r T`.
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn values<'r>(&'r self) -> Values<'r, T> {
         self.iter().map(|(_k, v)| v)
     }
@@ -191,6 +198,7 @@ impl<T> TrieMap<T> {
     ///     println!("{}: {}", key, value);
     /// }
     /// ```
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn iter<'a>(&'a self) -> Entries<'a, T> {
         let mut iter = unsafe {Entries::new()};
         iter.stack[0] = self.root.children.iter();
@@ -214,10 +222,11 @@ impl<T> TrieMap<T> {
     ///     *value = -(key as int);
     /// }
     ///
-    /// assert_eq!(map.find(&1), Some(&-1));
-    /// assert_eq!(map.find(&2), Some(&-2));
-    /// assert_eq!(map.find(&3), Some(&-3));
+    /// assert_eq!(map.get(&1), Some(&-1));
+    /// assert_eq!(map.get(&2), Some(&-2));
+    /// assert_eq!(map.get(&3), Some(&-3));
     /// ```
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn iter_mut<'a>(&'a mut self) -> MutEntries<'a, T> {
         let mut iter = unsafe {MutEntries::new()};
         iter.stack[0] = self.root.children.iter_mut();
@@ -241,6 +250,7 @@ impl<T> TrieMap<T> {
     /// assert_eq!(a.len(), 1);
     /// ```
     #[inline]
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn len(&self) -> uint { self.length }
 
     /// Return true if the map contains no elements.
@@ -256,6 +266,7 @@ impl<T> TrieMap<T> {
     /// assert!(!a.is_empty());
     /// ```
     #[inline]
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn is_empty(&self) -> bool { self.len() == 0 }
 
     /// Clears the map, removing all values.
@@ -271,9 +282,16 @@ impl<T> TrieMap<T> {
     /// assert!(a.is_empty());
     /// ```
     #[inline]
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn clear(&mut self) {
         self.root = TrieNode::new();
         self.length = 0;
+    }
+
+    /// Deprecated: renamed to `get`.
+    #[deprecated = "renamed to `get`"]
+    pub fn find(&self, key: &uint) -> Option<&T> {
+        self.get(key)
     }
 
     /// Returns a reference to the value corresponding to the key.
@@ -285,12 +303,13 @@ impl<T> TrieMap<T> {
     ///
     /// let mut map = TrieMap::new();
     /// map.insert(1, "a");
-    /// assert_eq!(map.find(&1), Some(&"a"));
-    /// assert_eq!(map.find(&2), None);
+    /// assert_eq!(map.get(&1), Some(&"a"));
+    /// assert_eq!(map.get(&2), None);
     /// ```
     #[inline]
-    pub fn find<'a>(&'a self, key: &uint) -> Option<&'a T> {
-        let mut node: &'a TrieNode<T> = &self.root;
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
+    pub fn get(&self, key: &uint) -> Option<&T> {
+        let mut node = &self.root;
         let mut idx = 0;
         loop {
             match node.children[chunk(*key, idx)] {
@@ -321,8 +340,15 @@ impl<T> TrieMap<T> {
     /// assert_eq!(map.contains_key(&2), false);
     /// ```
     #[inline]
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn contains_key(&self, key: &uint) -> bool {
-        self.find(key).is_some()
+        self.get(key).is_some()
+    }
+
+    /// Deprecated: renamed to `get_mut`.
+    #[deprecated = "renamed to `get_mut`"]
+    pub fn find_mut(&mut self, key: &uint) -> Option<&mut T> {
+        self.get_mut(key)
     }
 
     /// Returns a mutable reference to the value corresponding to the key.
@@ -334,52 +360,22 @@ impl<T> TrieMap<T> {
     ///
     /// let mut map = TrieMap::new();
     /// map.insert(1, "a");
-    /// match map.find_mut(&1) {
+    /// match map.get_mut(&1) {
     ///     Some(x) => *x = "b",
     ///     None => (),
     /// }
     /// assert_eq!(map[1], "b");
     /// ```
     #[inline]
-    pub fn find_mut<'a>(&'a mut self, key: &uint) -> Option<&'a mut T> {
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
+    pub fn get_mut<'a>(&'a mut self, key: &uint) -> Option<&'a mut T> {
         find_mut(&mut self.root.children[chunk(*key, 0)], *key, 1)
     }
 
-    /// Inserts a key-value pair into the map. An existing value for a
-    /// key is replaced by the new value. Returns `true` if the key did
-    /// not already exist in the map.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// use std::collections::TrieMap;
-    ///
-    /// let mut map = TrieMap::new();
-    /// assert_eq!(map.insert(2, "value"), true);
-    /// assert_eq!(map.insert(2, "value2"), false);
-    /// assert_eq!(map[2], "value2");
-    /// ```
-    #[inline]
-    pub fn insert(&mut self, key: uint, value: T) -> bool {
-        self.swap(key, value).is_none()
-    }
-
-    /// Removes a key-value pair from the map. Returns `true` if the key
-    /// was present in the map.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// use std::collections::TrieMap;
-    ///
-    /// let mut map = TrieMap::new();
-    /// assert_eq!(map.remove(&1), false);
-    /// map.insert(1, "a");
-    /// assert_eq!(map.remove(&1), true);
-    /// ```
-    #[inline]
-    pub fn remove(&mut self, key: &uint) -> bool {
-        self.pop(key).is_some()
+    /// Deprecated: Renamed to `insert`.
+    #[deprecated = "Renamed to `insert`"]
+    pub fn swap(&mut self, key: uint, value: T) -> Option<T> {
+        self.insert(key, value)
     }
 
     /// Inserts a key-value pair from the map. If the key already had a value
@@ -391,19 +387,26 @@ impl<T> TrieMap<T> {
     /// use std::collections::TrieMap;
     ///
     /// let mut map = TrieMap::new();
-    /// assert_eq!(map.swap(37, "a"), None);
+    /// assert_eq!(map.insert(37, "a"), None);
     /// assert_eq!(map.is_empty(), false);
     ///
     /// map.insert(37, "b");
-    /// assert_eq!(map.swap(37, "c"), Some("b"));
+    /// assert_eq!(map.insert(37, "c"), Some("b"));
     /// assert_eq!(map[37], "c");
     /// ```
-    pub fn swap(&mut self, key: uint, value: T) -> Option<T> {
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
+    pub fn insert(&mut self, key: uint, value: T) -> Option<T> {
         let ret = insert(&mut self.root.count,
                          &mut self.root.children[chunk(key, 0)],
                          key, value, 1);
         if ret.is_none() { self.length += 1 }
         ret
+    }
+
+    /// Deprecated: Renamed to `remove`.
+    #[deprecated = "Renamed to `remove`"]
+    pub fn pop(&mut self, key: &uint) -> Option<T> {
+        self.remove(key)
     }
 
     /// Removes a key from the map, returning the value at the key if the key
@@ -416,10 +419,11 @@ impl<T> TrieMap<T> {
     ///
     /// let mut map = TrieMap::new();
     /// map.insert(1, "a");
-    /// assert_eq!(map.pop(&1), Some("a"));
-    /// assert_eq!(map.pop(&1), None);
+    /// assert_eq!(map.remove(&1), Some("a"));
+    /// assert_eq!(map.remove(&1), None);
     /// ```
-    pub fn pop(&mut self, key: &uint) -> Option<T> {
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
+    pub fn remove(&mut self, key: &uint) -> Option<T> {
         let ret = remove(&mut self.root.count,
                          &mut self.root.children[chunk(*key, 0)],
                          *key, 1);
@@ -582,9 +586,9 @@ impl<T> TrieMap<T> {
     ///     *value = "changed";
     /// }
     ///
-    /// assert_eq!(map.find(&2), Some(&"a"));
-    /// assert_eq!(map.find(&4), Some(&"changed"));
-    /// assert_eq!(map.find(&6), Some(&"changed"));
+    /// assert_eq!(map.get(&2), Some(&"a"));
+    /// assert_eq!(map.get(&4), Some(&"changed"));
+    /// assert_eq!(map.get(&6), Some(&"changed"));
     /// ```
     pub fn lower_bound_mut<'a>(&'a mut self, key: uint) -> MutEntries<'a, T> {
         self.bound_mut(key, false)
@@ -607,9 +611,9 @@ impl<T> TrieMap<T> {
     ///     *value = "changed";
     /// }
     ///
-    /// assert_eq!(map.find(&2), Some(&"a"));
-    /// assert_eq!(map.find(&4), Some(&"b"));
-    /// assert_eq!(map.find(&6), Some(&"changed"));
+    /// assert_eq!(map.get(&2), Some(&"a"));
+    /// assert_eq!(map.get(&4), Some(&"b"));
+    /// assert_eq!(map.get(&6), Some(&"changed"));
     /// ```
     pub fn upper_bound_mut<'a>(&'a mut self, key: uint) -> MutEntries<'a, T> {
         self.bound_mut(key, true)
@@ -643,14 +647,14 @@ impl<S: Writer, T: Hash<S>> Hash<S> for TrieMap<T> {
 impl<T> Index<uint, T> for TrieMap<T> {
     #[inline]
     fn index<'a>(&'a self, i: &uint) -> &'a T {
-        self.find(i).expect("key not present")
+        self.get(i).expect("key not present")
     }
 }
 
 impl<T> IndexMut<uint, T> for TrieMap<T> {
     #[inline]
     fn index_mut<'a>(&'a mut self, i: &uint) -> &'a mut T {
-        self.find_mut(i).expect("key not present")
+        self.get_mut(i).expect("key not present")
     }
 }
 
@@ -957,24 +961,24 @@ mod test {
     #[test]
     fn test_find_mut() {
         let mut m = TrieMap::new();
-        assert!(m.insert(1u, 12i));
-        assert!(m.insert(2u, 8i));
-        assert!(m.insert(5u, 14i));
+        assert!(m.insert(1u, 12i).is_none());
+        assert!(m.insert(2u, 8i).is_none());
+        assert!(m.insert(5u, 14i).is_none());
         let new = 100;
-        match m.find_mut(&5) {
+        match m.get_mut(&5) {
             None => panic!(), Some(x) => *x = new
         }
-        assert_eq!(m.find(&5), Some(&new));
+        assert_eq!(m.get(&5), Some(&new));
     }
 
     #[test]
     fn test_find_mut_missing() {
         let mut m = TrieMap::new();
-        assert!(m.find_mut(&0).is_none());
-        assert!(m.insert(1u, 12i));
-        assert!(m.find_mut(&0).is_none());
-        assert!(m.insert(2, 8));
-        assert!(m.find_mut(&0).is_none());
+        assert!(m.get_mut(&0).is_none());
+        assert!(m.insert(1u, 12i).is_none());
+        assert!(m.get_mut(&0).is_none());
+        assert!(m.insert(2, 8).is_none());
+        assert!(m.get_mut(&0).is_none());
     }
 
     #[test]
@@ -983,32 +987,32 @@ mod test {
         let n = 300u;
 
         for x in range_step(1u, n, 2) {
-            assert!(trie.insert(x, x + 1));
+            assert!(trie.insert(x, x + 1).is_none());
             assert!(trie.contains_key(&x));
             check_integrity(&trie.root);
         }
 
         for x in range_step(0u, n, 2) {
             assert!(!trie.contains_key(&x));
-            assert!(trie.insert(x, x + 1));
+            assert!(trie.insert(x, x + 1).is_none());
             check_integrity(&trie.root);
         }
 
         for x in range(0u, n) {
             assert!(trie.contains_key(&x));
-            assert!(!trie.insert(x, x + 1));
+            assert!(!trie.insert(x, x + 1).is_none());
             check_integrity(&trie.root);
         }
 
         for x in range_step(1u, n, 2) {
-            assert!(trie.remove(&x));
+            assert!(trie.remove(&x).is_some());
             assert!(!trie.contains_key(&x));
             check_integrity(&trie.root);
         }
 
         for x in range_step(0u, n, 2) {
             assert!(trie.contains_key(&x));
-            assert!(!trie.insert(x, x + 1));
+            assert!(!trie.insert(x, x + 1).is_none());
             check_integrity(&trie.root);
         }
     }
@@ -1017,11 +1021,11 @@ mod test {
     fn test_each_reverse() {
         let mut m = TrieMap::new();
 
-        assert!(m.insert(3, 6));
-        assert!(m.insert(0, 0));
-        assert!(m.insert(4, 8));
-        assert!(m.insert(2, 4));
-        assert!(m.insert(1, 2));
+        assert!(m.insert(3, 6).is_none());
+        assert!(m.insert(0, 0).is_none());
+        assert!(m.insert(4, 8).is_none());
+        assert!(m.insert(2, 4).is_none());
+        assert!(m.insert(1, 2).is_none());
 
         let mut n = 4;
         m.each_reverse(|k, v| {
@@ -1054,19 +1058,19 @@ mod test {
     }
 
     #[test]
-    fn test_swap() {
+    fn test_insert() {
         let mut m = TrieMap::new();
-        assert_eq!(m.swap(1u, 2i), None);
-        assert_eq!(m.swap(1u, 3i), Some(2));
-        assert_eq!(m.swap(1u, 4i), Some(3));
+        assert_eq!(m.insert(1u, 2i), None);
+        assert_eq!(m.insert(1u, 3i), Some(2));
+        assert_eq!(m.insert(1u, 4i), Some(3));
     }
 
     #[test]
-    fn test_pop() {
+    fn test_remove() {
         let mut m = TrieMap::new();
         m.insert(1u, 2i);
-        assert_eq!(m.pop(&1), Some(2));
-        assert_eq!(m.pop(&1), None);
+        assert_eq!(m.remove(&1), Some(2));
+        assert_eq!(m.remove(&1), None);
     }
 
     #[test]
@@ -1076,7 +1080,7 @@ mod test {
         let map: TrieMap<int> = xs.iter().map(|&x| x).collect();
 
         for &(k, v) in xs.iter() {
-            assert_eq!(map.find(&k), Some(&v));
+            assert_eq!(map.get(&k), Some(&v));
         }
     }
 
@@ -1243,15 +1247,15 @@ mod test {
         let mut b = TrieMap::new();
 
         assert!(a == b);
-        assert!(a.insert(0, 5i));
+        assert!(a.insert(0, 5i).is_none());
         assert!(a != b);
-        assert!(b.insert(0, 4i));
+        assert!(b.insert(0, 4i).is_none());
         assert!(a != b);
-        assert!(a.insert(5, 19));
+        assert!(a.insert(5, 19).is_none());
         assert!(a != b);
-        assert!(!b.insert(0, 5));
+        assert!(!b.insert(0, 5).is_none());
         assert!(a != b);
-        assert!(b.insert(5, 19));
+        assert!(b.insert(5, 19).is_none());
         assert!(a == b);
     }
 
@@ -1261,15 +1265,15 @@ mod test {
         let mut b = TrieMap::new();
 
         assert!(!(a < b) && !(b < a));
-        assert!(b.insert(2u, 5i));
+        assert!(b.insert(2u, 5i).is_none());
         assert!(a < b);
-        assert!(a.insert(2, 7));
+        assert!(a.insert(2, 7).is_none());
         assert!(!(a < b) && b < a);
-        assert!(b.insert(1, 0));
+        assert!(b.insert(1, 0).is_none());
         assert!(b < a);
-        assert!(a.insert(0, 6));
+        assert!(a.insert(0, 6).is_none());
         assert!(a < b);
-        assert!(a.insert(6, 2));
+        assert!(a.insert(6, 2).is_none());
         assert!(a < b && !(b < a));
     }
 
@@ -1279,10 +1283,10 @@ mod test {
         let mut b = TrieMap::new();
 
         assert!(a <= b && a >= b);
-        assert!(a.insert(1u, 1i));
+        assert!(a.insert(1u, 1i).is_none());
         assert!(a > b && a >= b);
         assert!(b < a && b <= a);
-        assert!(b.insert(2, 2));
+        assert!(b.insert(2, 2).is_none());
         assert!(b > a && b >= a);
         assert!(a < b && a <= b);
     }
@@ -1355,7 +1359,7 @@ mod bench {
         let mut rng = weak_rng();
 
         for _ in range(0, size) {
-            map.swap(rng.gen(), rng.gen());
+            map.insert(rng.gen(), rng.gen());
         }
 
         b.iter(|| {

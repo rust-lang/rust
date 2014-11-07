@@ -14,7 +14,6 @@ use codemap::DUMMY_SP;
 use codemap;
 use fold::Folder;
 use fold;
-use owned_slice::OwnedSlice;
 use parse::token::InternedString;
 use parse::token::special_idents;
 use parse::token;
@@ -181,13 +180,11 @@ impl<'a> fold::Folder for PreludeInjector<'a> {
             segments: vec!(
                 ast::PathSegment {
                     identifier: token::str_to_ident("std"),
-                    lifetimes: Vec::new(),
-                    types: OwnedSlice::empty(),
+                    parameters: ast::PathParameters::none(),
                 },
                 ast::PathSegment {
                     identifier: token::str_to_ident("prelude"),
-                    lifetimes: Vec::new(),
-                    types: OwnedSlice::empty(),
+                    parameters: ast::PathParameters::none(),
                 }),
         };
 

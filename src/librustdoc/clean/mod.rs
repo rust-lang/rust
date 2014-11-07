@@ -476,7 +476,6 @@ impl Clean<TyParam> for ty::TypeParameterDef {
 #[deriving(Clone, Encodable, Decodable, PartialEq)]
 pub enum TyParamBound {
     RegionBound(Lifetime),
-    UnboxedFnBound(UnboxedFnType),
     TraitBound(Type)
 }
 
@@ -484,7 +483,6 @@ impl Clean<TyParamBound> for ast::TyParamBound {
     fn clean(&self, cx: &DocContext) -> TyParamBound {
         match *self {
             ast::RegionTyParamBound(lt) => RegionBound(lt.clean(cx)),
-            ast::UnboxedFnTyParamBound(ref ty) => { UnboxedFnBound(ty.clean(cx)) },
             ast::TraitTyParamBound(ref t) => TraitBound(t.clean(cx)),
         }
     }
@@ -596,21 +594,6 @@ impl Clean<Option<Vec<TyParamBound>>> for subst::Substs {
         v.extend(self.regions().iter().filter_map(|r| r.clean(cx)).map(RegionBound));
         v.extend(self.types.iter().map(|t| TraitBound(t.clean(cx))));
         if v.len() > 0 {Some(v)} else {None}
-    }
-}
-
-#[deriving(Clone, Encodable, Decodable, PartialEq)]
-pub struct UnboxedFnType {
-    pub path: Path,
-    pub decl: FnDecl
-}
-
-impl Clean<UnboxedFnType> for ast::UnboxedFnBound {
-    fn clean(&self, cx: &DocContext) -> UnboxedFnType {
-        UnboxedFnType {
-            path: self.path.clean(cx),
-            decl: self.decl.clean(cx)
-        }
     }
 }
 
@@ -1395,7 +1378,7 @@ impl Clean<Item> for ty::field_ty {
         let (name, attrs) = if self.name == unnamed_field.name {
             (None, None)
         } else {
-            (Some(self.name), Some(attr_map.find(&self.id.node).unwrap()))
+            (Some(self.name), Some(attr_map.get(&self.id.node).unwrap()))
         };
 
         let ty = ty::lookup_item_type(cx.tcx(), self.id);
@@ -1641,10 +1624,23 @@ pub struct PathSegment {
 
 impl Clean<PathSegment> for ast::PathSegment {
     fn clean(&self, cx: &DocContext) -> PathSegment {
+        let (lifetimes, types) = match self.parameters {
+            ast::AngleBracketedParameters(ref data) => {
+                (data.lifetimes.clean(cx), data.types.clean(cx))
+            }
+
+            ast::ParenthesizedParameters(ref data) => {
+                // FIXME -- rustdoc should be taught about Foo() notation
+                let inputs = Tuple(data.inputs.clean(cx));
+                let output = data.output.as_ref().map(|t| t.clean(cx)).unwrap_or(Tuple(Vec::new()));
+                (Vec::new(), vec![inputs, output])
+            }
+        };
+
         PathSegment {
             name: self.identifier.clean(cx),
-            lifetimes: self.lifetimes.clean(cx),
-            types: self.types.clean(cx),
+            lifetimes: lifetimes,
+            types: types,
         }
     }
 }
@@ -2090,7 +2086,7 @@ fn resolve_type(cx: &DocContext, path: Path,
         None => return Primitive(Bool),
     };
     debug!("searching for {} in defmap", id);
-    let def = match tcx.def_map.borrow().find(&id) {
+    let def = match tcx.def_map.borrow().get(&id) {
         Some(&k) => k,
         None => panic!("unresolved id not in defmap")
     };
@@ -2159,7 +2155,7 @@ fn resolve_use_source(cx: &DocContext, path: Path, id: ast::NodeId) -> ImportSou
 
 fn resolve_def(cx: &DocContext, id: ast::NodeId) -> Option<ast::DefId> {
     cx.tcx_opt().and_then(|tcx| {
-        tcx.def_map.borrow().find(&id).map(|&def| register_def(cx, def))
+        tcx.def_map.borrow().get(&id).map(|&def| register_def(cx, def))
     })
 }
 

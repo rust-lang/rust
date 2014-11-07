@@ -95,7 +95,7 @@ impl<'a, 'ast, 'v> Visitor<'v> for CheckItemRecursionVisitor<'a, 'ast> {
     fn visit_expr(&mut self, e: &ast::Expr) {
         match e.node {
             ast::ExprPath(..) => {
-                match self.def_map.borrow().find(&e.id) {
+                match self.def_map.borrow().get(&e.id) {
                     Some(&DefStatic(def_id, _)) |
                     Some(&DefConst(def_id)) if
                             ast_util::is_local(def_id) => {

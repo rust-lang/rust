@@ -139,7 +139,7 @@ pub fn can_reach<S,H:Hasher<S>,T:Eq+Clone+Hash<S>>(
     let mut queue = vec!(source);
     let mut i = 0;
     while i < queue.len() {
-        match edges_map.find(&queue[i]) {
+        match edges_map.get(&queue[i]) {
             Some(edges) => {
                 for target in edges.iter() {
                     if *target == destination {
@@ -200,7 +200,7 @@ pub fn memoized_with_key<T, K: Hash<S> + Eq, U: Clone, S, H: Hasher<S>>(
     k: |&T| -> K
 ) -> U {
     let key = k(&arg);
-    let result = cache.borrow().find(&key).map(|result| result.clone());
+    let result = cache.borrow().get(&key).map(|result| result.clone());
     match result {
         Some(result) => result,
         None => {

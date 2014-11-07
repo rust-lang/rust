@@ -76,6 +76,8 @@ pub use core::str::{truncate_utf16_at_nul, utf8_char_width, CharRange};
 pub use core::str::{Str, StrPrelude};
 pub use unicode::str::{UnicodeStrPrelude, Words, Graphemes, GraphemeIndices};
 
+// FIXME(conventions): ensure bit/char conventions are followed by str's API
+
 /*
 Section: Creating a string
 */
@@ -308,7 +310,7 @@ impl<'a> Iterator<char> for Recompositions<'a> {
                                             self.composee = Some(ch);
                                             return Some(k);
                                         }
-                                        self.buffer.push(ch);
+                                        self.buffer.push_back(ch);
                                         self.last_ccc = Some(ch_class);
                                     }
                                 }
@@ -322,7 +324,7 @@ impl<'a> Iterator<char> for Recompositions<'a> {
                                         self.state = Purging;
                                         return Some(k);
                                     }
-                                    self.buffer.push(ch);
+                                    self.buffer.push_back(ch);
                                     self.last_ccc = Some(ch_class);
                                     continue;
                                 }
@@ -332,7 +334,7 @@ impl<'a> Iterator<char> for Recompositions<'a> {
                                         continue;
                                     }
                                     None => {
-                                        self.buffer.push(ch);
+                                        self.buffer.push_back(ch);
                                         self.last_ccc = Some(ch_class);
                                     }
                                 }

@@ -127,7 +127,7 @@ impl Session {
                     msg: String) {
         let lint_id = lint::LintId::of(lint);
         let mut lints = self.lints.borrow_mut();
-        match lints.find_mut(&id) {
+        match lints.get_mut(&id) {
             Some(arr) => { arr.push((lint_id, sp, msg)); return; }
             None => {}
         }

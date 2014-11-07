@@ -638,7 +638,7 @@ pub fn ensure_no_ty_param_bounds(ccx: &CrateCtxt,
         let mut bounds = bounds.chain(ty_param.unbound.iter());
         for bound in bounds {
             match *bound {
-                ast::TraitTyParamBound(..) | ast::UnboxedFnTyParamBound(..) => {
+                ast::TraitTyParamBound(..) => {
                     // According to accepted RFC #XXX, we should
                     // eventually accept these, but it will not be
                     // part of this PR. Still, convert to warning to
@@ -1243,7 +1243,7 @@ pub fn convert_struct(ccx: &CrateCtxt,
         let result = convert_field(ccx, &pty.generics, f, local_def(id));
 
         if result.name != special_idents::unnamed_field.name {
-            let dup = match seen_fields.find(&result.name) {
+            let dup = match seen_fields.get(&result.name) {
                 Some(prev_span) => {
                     span_err!(tcx.sess, f.span, E0124,
                               "field `{}` is already declared",
@@ -1340,7 +1340,8 @@ pub fn instantiate_trait_ref<'tcx,AC>(this: &AC,
                                                trait_did,
                                                Some(self_ty),
                                                associated_type,
-                                               &ast_trait_ref.path);
+                                               &ast_trait_ref.path,
+                                               ast_trait_ref.ref_id);
 
             this.tcx().trait_refs.borrow_mut().insert(ast_trait_ref.ref_id,
                                                       trait_ref.clone());
@@ -1353,20 +1354,6 @@ pub fn instantiate_trait_ref<'tcx,AC>(this: &AC,
                         path_to_string(&ast_trait_ref.path)).as_slice());
         }
     }
-}
-
-pub fn instantiate_unboxed_fn_ty<'tcx,AC>(this: &AC,
-                                          unboxed_function: &ast::UnboxedFnTy,
-                                          param_ty: ty::ParamTy)
-                                          -> Rc<ty::TraitRef>
-                                          where AC: AstConv<'tcx> {
-    let rscope = ExplicitRscope;
-    let param_ty = param_ty.to_ty(this.tcx());
-    Rc::new(astconv::trait_ref_for_unboxed_function(this,
-                                                    &rscope,
-                                                    unboxed_function.kind,
-                                                    &*unboxed_function.decl,
-                                                    Some(param_ty)))
 }
 
 fn get_trait_def(ccx: &CrateCtxt, trait_id: ast::DefId) -> Rc<ty::TraitDef> {
@@ -1386,7 +1373,7 @@ fn get_trait_def(ccx: &CrateCtxt, trait_id: ast::DefId) -> Rc<ty::TraitDef> {
 pub fn trait_def_of_item(ccx: &CrateCtxt, it: &ast::Item) -> Rc<ty::TraitDef> {
     let def_id = local_def(it.id);
     let tcx = ccx.tcx;
-    match tcx.trait_defs.borrow().find(&def_id) {
+    match tcx.trait_defs.borrow().get(&def_id) {
         Some(def) => return def.clone(),
         _ => {}
     }
@@ -1486,7 +1473,7 @@ pub fn ty_of_item(ccx: &CrateCtxt, it: &ast::Item)
                   -> ty::Polytype {
     let def_id = local_def(it.id);
     let tcx = ccx.tcx;
-    match tcx.tcache.borrow().find(&def_id) {
+    match tcx.tcache.borrow().get(&def_id) {
         Some(pty) => return pty.clone(),
         _ => {}
     }
@@ -1528,7 +1515,7 @@ pub fn ty_of_item(ccx: &CrateCtxt, it: &ast::Item)
             return pty;
         }
         ast::ItemTy(ref t, ref generics) => {
-            match tcx.tcache.borrow_mut().find(&local_def(it.id)) {
+            match tcx.tcache.borrow_mut().get(&local_def(it.id)) {
                 Some(pty) => return pty.clone(),
                 None => { }
             }
@@ -1878,7 +1865,6 @@ fn ty_generics<'tcx,AC>(this: &AC,
                 // In the above example, `ast_trait_ref` is `Iterator`.
                 let ast_trait_ref = match *bound {
                     ast::TraitTyParamBound(ref r) => r,
-                    ast::UnboxedFnTyParamBound(..) => { continue; }
                     ast::RegionTyParamBound(..) => { continue; }
                 };
 
@@ -1933,7 +1919,7 @@ fn get_or_create_type_parameter_def<'tcx,AC>(this: &AC,
                                              -> ty::TypeParameterDef
     where AC: AstConv<'tcx>
 {
-    match this.tcx().ty_param_defs.borrow().find(&param.id) {
+    match this.tcx().ty_param_defs.borrow().get(&param.id) {
         Some(d) => { return (*d).clone(); }
         None => { }
     }
@@ -2027,13 +2013,13 @@ fn check_bounds_compatible(tcx: &ty::ctxt,
                            span: Span) {
     // Currently the only bound which is incompatible with other bounds is
     // Sized/Unsized.
-    if !param_bounds.builtin_bounds.contains_elem(ty::BoundSized) {
+    if !param_bounds.builtin_bounds.contains(&ty::BoundSized) {
         ty::each_bound_trait_and_supertraits(
             tcx,
             param_bounds.trait_bounds.as_slice(),
             |trait_ref| {
                 let trait_def = ty::lookup_trait_def(tcx, trait_ref.def_id);
-                if trait_def.bounds.builtin_bounds.contains_elem(ty::BoundSized) {
+                if trait_def.bounds.builtin_bounds.contains(&ty::BoundSized) {
                     span_err!(tcx.sess, span, E0129,
                               "incompatible bounds on type parameter `{}`, \
                                bound `{}` does not allow unsized type",
@@ -2056,45 +2042,8 @@ fn conv_param_bounds<'tcx,AC>(this: &AC,
         merge_param_bounds(this.tcx(), param_ty, ast_bounds, where_clause);
     let astconv::PartitionedBounds { builtin_bounds,
                                      trait_bounds,
-                                     region_bounds,
-                                     unboxed_fn_ty_bounds } =
+                                     region_bounds } =
         astconv::partition_bounds(this.tcx(), span, all_bounds.as_slice());
-
-    let unboxed_fn_ty_bounds = unboxed_fn_ty_bounds.into_iter().map(|b| {
-        let trait_id = (*this.tcx().def_map.borrow())[b.ref_id].def_id();
-        let mut kind = None;
-        for &(lang_item, this_kind) in [
-            (this.tcx().lang_items.fn_trait(), ast::FnUnboxedClosureKind),
-            (this.tcx().lang_items.fn_mut_trait(),
-             ast::FnMutUnboxedClosureKind),
-            (this.tcx().lang_items.fn_once_trait(),
-             ast::FnOnceUnboxedClosureKind)
-        ].iter() {
-            if Some(trait_id) == lang_item {
-                kind = Some(this_kind);
-                break
-            }
-        }
-
-        let kind = match kind {
-            Some(kind) => kind,
-            None => {
-                this.tcx().sess.span_err(b.path.span,
-                                         "unboxed function trait must be one \
-                                          of `Fn`, `FnMut`, or `FnOnce`");
-                ast::FnMutUnboxedClosureKind
-            }
-        };
-
-        let rscope = ExplicitRscope;
-        let param_ty = param_ty.to_ty(this.tcx());
-        Rc::new(astconv::trait_ref_for_unboxed_function(this,
-                                                        &rscope,
-                                                        kind,
-                                                        &*b.decl,
-                                                        Some(param_ty)))
-    });
-
     let trait_bounds: Vec<Rc<ty::TraitRef>> =
         trait_bounds.into_iter()
         .map(|b| {
@@ -2103,7 +2052,6 @@ fn conv_param_bounds<'tcx,AC>(this: &AC,
                                   param_ty.to_ty(this.tcx()),
                                   Some(param_ty.to_ty(this.tcx())))
         })
-        .chain(unboxed_fn_ty_bounds)
         .collect();
     let region_bounds: Vec<ty::Region> =
         region_bounds.into_iter()
@@ -2136,7 +2084,7 @@ fn merge_param_bounds<'a>(tcx: &ty::ctxt,
         let predicate_param_id =
             tcx.def_map
                .borrow()
-               .find(&predicate.id)
+               .get(&predicate.id)
                .expect("compute_bounds(): resolve didn't resolve the type \
                         parameter identifier in a `where` clause")
                .def_id();

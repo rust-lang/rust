@@ -212,7 +212,7 @@ fn apply_adjustments<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                         // Don't skip a conversion from Box<T> to &T, etc.
                         ty::ty_rptr(..) => {
                             let method_call = MethodCall::autoderef(expr.id, adj.autoderefs-1);
-                            let method = bcx.tcx().method_map.borrow().find(&method_call).is_some();
+                            let method = bcx.tcx().method_map.borrow().get(&method_call).is_some();
                             if method {
                                 // Don't skip an overloaded deref.
                                 (adj.autoderefs, true)
@@ -601,7 +601,7 @@ fn trans_datum_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             let method_ty = ccx.tcx()
                                .method_map
                                .borrow()
-                               .find(&method_call)
+                               .get(&method_call)
                                .map(|method| method.ty);
             let base_datum = unpack_datum!(bcx, trans(bcx, &**base));
 
@@ -736,7 +736,7 @@ fn trans_index<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let method_ty = ccx.tcx()
                        .method_map
                        .borrow()
-                       .find(&method_call)
+                       .get(&method_call)
                        .map(|method| method.ty);
     let elt_datum = match method_ty {
         Some(method_ty) => {
@@ -1114,7 +1114,7 @@ fn trans_rvalue_dps_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             if ty::type_is_trait(node_id_type(bcx, expr.id)) {
                 let trait_ref =
                     bcx.tcx().object_cast_map.borrow()
-                                             .find(&expr.id)
+                                             .get(&expr.id)
                                              .map(|t| (*t).clone())
                                              .unwrap();
                 let trait_ref =
@@ -1232,7 +1232,7 @@ pub fn trans_local_var<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         def::DefUpvar(nid, _, _) => {
             // Can't move upvars, so this is never a ZeroMemLastUse.
             let local_ty = node_id_type(bcx, nid);
-            match bcx.fcx.llupvars.borrow().find(&nid) {
+            match bcx.fcx.llupvars.borrow().get(&nid) {
                 Some(&val) => Datum::new(val, local_ty, Lvalue),
                 None => {
                     bcx.sess().bug(format!(
@@ -1242,7 +1242,7 @@ pub fn trans_local_var<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             }
         }
         def::DefLocal(nid) => {
-            let datum = match bcx.fcx.lllocals.borrow().find(&nid) {
+            let datum = match bcx.fcx.lllocals.borrow().get(&nid) {
                 Some(&v) => v,
                 None => {
                     bcx.sess().bug(format!(
@@ -1461,14 +1461,35 @@ pub fn trans_adt<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
         None => {}
     };
 
-    // Now, we just overwrite the fields we've explicitly specified
-    for &(i, ref e) in fields.iter() {
-        let dest = adt::trans_field_ptr(bcx, &*repr, addr, discr, i);
-        let e_ty = expr_ty_adjusted(bcx, &**e);
-        bcx = trans_into(bcx, &**e, SaveIn(dest));
-        let scope = cleanup::CustomScope(custom_cleanup_scope);
-        fcx.schedule_lifetime_end(scope, dest);
-        fcx.schedule_drop_mem(scope, dest, e_ty);
+    if ty::type_is_simd(bcx.tcx(), ty) {
+        // This is the constructor of a SIMD type, such types are
+        // always primitive machine types and so do not have a
+        // destructor or require any clean-up.
+        let llty = type_of::type_of(bcx.ccx(), ty);
+
+        // keep a vector as a register, and running through the field
+        // `insertelement`ing them directly into that register
+        // (i.e. avoid GEPi and `store`s to an alloca) .
+        let mut vec_val = C_undef(llty);
+
+        for &(i, ref e) in fields.iter() {
+            let block_datum = trans(bcx, &**e);
+            bcx = block_datum.bcx;
+            let position = C_uint(bcx.ccx(), i);
+            let value = block_datum.datum.to_llscalarish(bcx);
+            vec_val = InsertElement(bcx, vec_val, value, position);
+        }
+        Store(bcx, vec_val, addr);
+    } else {
+        // Now, we just overwrite the fields we've explicitly specified
+        for &(i, ref e) in fields.iter() {
+            let dest = adt::trans_field_ptr(bcx, &*repr, addr, discr, i);
+            let e_ty = expr_ty_adjusted(bcx, &**e);
+            bcx = trans_into(bcx, &**e, SaveIn(dest));
+            let scope = cleanup::CustomScope(custom_cleanup_scope);
+            fcx.schedule_lifetime_end(scope, dest);
+            fcx.schedule_drop_mem(scope, dest, e_ty);
+        }
     }
 
     adt::trans_set_discr(bcx, &*repr, addr, discr);
@@ -2089,7 +2110,7 @@ fn deref_once<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
     // Check for overloaded deref.
     let method_ty = ccx.tcx().method_map.borrow()
-                       .find(&method_call).map(|method| method.ty);
+                       .get(&method_call).map(|method| method.ty);
     let datum = match method_ty {
         Some(method_ty) => {
             // Overloaded. Evaluate `trans_overloaded_op`, which will

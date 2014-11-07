@@ -2113,7 +2113,7 @@ impl ::Decoder<DecoderError> for Decoder {
         let name = match self.pop() {
             String(s) => s,
             Object(mut o) => {
-                let n = match o.pop(&"variant".to_string()) {
+                let n = match o.remove(&"variant".to_string()) {
                     Some(String(s)) => s,
                     Some(val) => {
                         return Err(ExpectedError("String".to_string(), format!("{}", val)))
@@ -2122,7 +2122,7 @@ impl ::Decoder<DecoderError> for Decoder {
                         return Err(MissingFieldError("variant".to_string()))
                     }
                 };
-                match o.pop(&"fields".to_string()) {
+                match o.remove(&"fields".to_string()) {
                     Some(List(l)) => {
                         for field in l.into_iter().rev() {
                             self.stack.push(field);
@@ -2192,7 +2192,7 @@ impl ::Decoder<DecoderError> for Decoder {
         debug!("read_struct_field(name={}, idx={})", name, idx);
         let mut obj = try!(expect!(self.pop(), Object));
 
-        let value = match obj.pop(&name.to_string()) {
+        let value = match obj.remove(&name.to_string()) {
             None => {
                 // Add a Null and try to parse it as an Option<_>
                 // to get None as a default value.
@@ -2303,7 +2303,7 @@ impl ::Decoder<DecoderError> for Decoder {
 }
 
 /// A trait for converting values to JSON
-pub trait ToJson {
+pub trait ToJson for Sized? {
     /// Converts the value of `self` to an instance of JSON
     fn to_json(&self) -> Json;
 }
@@ -2389,7 +2389,7 @@ tuple_impl!{A, B, C, D, E, F, G, H, I, J}
 tuple_impl!{A, B, C, D, E, F, G, H, I, J, K}
 tuple_impl!{A, B, C, D, E, F, G, H, I, J, K, L}
 
-impl<'a, A: ToJson> ToJson for &'a [A] {
+impl<A: ToJson> ToJson for [A] {
     fn to_json(&self) -> Json { List(self.iter().map(|elt| elt.to_json()).collect()) }
 }
 
@@ -3072,8 +3072,8 @@ mod tests {
                   \"fields\":[\"Henry\", 349]}}";
         let mut map: TreeMap<string::String, Animal> = super::decode(s).unwrap();
 
-        assert_eq!(map.pop(&"a".to_string()), Some(Dog));
-        assert_eq!(map.pop(&"b".to_string()), Some(Frog("Henry".to_string(), 349)));
+        assert_eq!(map.remove(&"a".to_string()), Some(Dog));
+        assert_eq!(map.remove(&"b".to_string()), Some(Frog("Henry".to_string(), 349)));
     }
 
     #[test]

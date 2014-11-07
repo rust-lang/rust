@@ -282,7 +282,7 @@ impl TypeMap {
                                    cx: &CrateContext,
                                    type_: ty::t,
                                    metadata: DIType) {
-        if !self.type_to_metadata.insert(ty::type_id(type_), metadata) {
+        if self.type_to_metadata.insert(ty::type_id(type_), metadata).is_some() {
             cx.sess().bug(format!("Type metadata for ty::t '{}' is already in the TypeMap!",
                                    ppaux::ty_to_string(cx.tcx(), type_)).as_slice());
         }
@@ -294,7 +294,7 @@ impl TypeMap {
                                         cx: &CrateContext,
                                         unique_type_id: UniqueTypeId,
                                         metadata: DIType) {
-        if !self.unique_id_to_metadata.insert(unique_type_id, metadata) {
+        if self.unique_id_to_metadata.insert(unique_type_id, metadata).is_some() {
             let unique_type_id_str = self.get_unique_type_id_as_string(unique_type_id);
             cx.sess().bug(format!("Type metadata for unique id '{}' is already in the TypeMap!",
                                   unique_type_id_str.as_slice()).as_slice());
@@ -468,7 +468,7 @@ impl TypeMap {
             },
             ty::ty_unboxed_closure(ref def_id, _, ref substs) => {
                 let closure_ty = cx.tcx().unboxed_closures.borrow()
-                                   .find(def_id).unwrap().closure_type.subst(cx.tcx(), substs);
+                                   .get(def_id).unwrap().closure_type.subst(cx.tcx(), substs);
                 self.get_unique_type_id_of_closure_type(cx,
                                                         closure_ty,
                                                         &mut unique_type_id);
@@ -2255,7 +2255,7 @@ impl EnumMemberDescriptionFactory {
                 let null_variant_name = token::get_name((*self.variants)[null_variant_index].name);
                 let discrfield = match ptrfield {
                     adt::ThinPointer(field) => format!("{}", field),
-                    adt::FatPointer(field, pair) => format!("{}${}", field, pair)
+                    adt::FatPointer(field) => format!("{}", field)
                 };
                 let union_member_name = format!("RUST$ENCODED$ENUM${}${}",
                                                 discrfield,
@@ -2939,7 +2939,7 @@ fn type_metadata(cx: &CrateContext,
         }
         ty::ty_unboxed_closure(ref def_id, _, ref substs) => {
             let sig = cx.tcx().unboxed_closures.borrow()
-                        .find(def_id).unwrap().closure_type.sig.subst(cx.tcx(), substs);
+                        .get(def_id).unwrap().closure_type.sig.subst(cx.tcx(), substs);
             subroutine_type_metadata(cx, unique_type_id, &sig, usage_site_span)
         }
         ty::ty_struct(def_id, ref substs) => {

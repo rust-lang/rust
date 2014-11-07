@@ -316,7 +316,7 @@ pub fn get_extern_const(ccx: &CrateContext, did: ast::DefId,
                         t: ty::t) -> ValueRef {
     let name = csearch::get_symbol(&ccx.sess().cstore, did);
     let ty = type_of(ccx, t);
-    match ccx.externs().borrow_mut().find(&name) {
+    match ccx.externs().borrow_mut().get(&name) {
         Some(n) => return *n,
         None => ()
     }
@@ -409,7 +409,7 @@ pub fn malloc_raw_dyn_proc<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, t: ty::t) -> Resu
 // Type descriptor and type glue stuff
 
 pub fn get_tydesc(ccx: &CrateContext, t: ty::t) -> Rc<tydesc_info> {
-    match ccx.tydescs().borrow().find(&t) {
+    match ccx.tydescs().borrow().get(&t) {
         Some(inf) => return inf.clone(),
         _ => { }
     }
@@ -1836,11 +1836,7 @@ pub fn trans_closure(ccx: &CrateContext,
         NotUnboxedClosure => monomorphized_arg_types,
 
         // Tuple up closure argument types for the "rust-call" ABI.
-        IsUnboxedClosure => vec![if monomorphized_arg_types.is_empty() {
-            ty::mk_nil()
-        } else {
-            ty::mk_tup(ccx.tcx(), monomorphized_arg_types)
-        }]
+        IsUnboxedClosure => vec![ty::mk_tup_or_nil(ccx.tcx(), monomorphized_arg_types)]
     };
     for monomorphized_arg_type in monomorphized_arg_types.iter() {
         debug!("trans_closure: monomorphized_arg_type: {}",
@@ -2100,7 +2096,7 @@ fn enum_variant_size_lint(ccx: &CrateContext, enum_def: &ast::EnumDef, sp: Span,
 
     let levels = ccx.tcx().node_lint_levels.borrow();
     let lint_id = lint::LintId::of(lint::builtin::VARIANT_SIZE_DIFFERENCES);
-    let lvlsrc = match levels.find(&(id, lint_id)) {
+    let lvlsrc = match levels.get(&(id, lint_id)) {
         None | Some(&(lint::Allow, _)) => return,
         Some(&lvlsrc) => lvlsrc,
     };
@@ -2645,7 +2641,7 @@ pub fn create_entry_wrapper(ccx: &CrateContext,
 
 fn exported_name(ccx: &CrateContext, id: ast::NodeId,
                  ty: ty::t, attrs: &[ast::Attribute]) -> String {
-    match ccx.external_srcs().borrow().find(&id) {
+    match ccx.external_srcs().borrow().get(&id) {
         Some(&did) => {
             let sym = csearch::get_symbol(&ccx.sess().cstore, did);
             debug!("found item {} in other crate...", sym);
@@ -3123,7 +3119,7 @@ pub fn trans_crate<'tcx>(analysis: CrateAnalysis<'tcx>)
         .collect();
 
     let mut reachable: Vec<String> = shared_ccx.reachable().iter().filter_map(|id| {
-        shared_ccx.item_symbols().borrow().find(id).map(|s| s.to_string())
+        shared_ccx.item_symbols().borrow().get(id).map(|s| s.to_string())
     }).collect();
 
     // For the purposes of LTO, we add to the reachable set all of the upstream

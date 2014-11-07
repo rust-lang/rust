@@ -19,7 +19,7 @@ fn a() {
     // Create an immutable pointer into p's contents:
     let q: &int = &p[0];
 
-    *p.get_mut(0) = 5; //~ ERROR cannot borrow
+    p[0] = 5; //~ ERROR cannot borrow
 
     println!("{}", *q);
 }
@@ -34,7 +34,7 @@ fn b() {
 
     borrow(
         p.as_slice(),
-        || *p.get_mut(0) = 5); //~ ERROR cannot borrow `p` as mutable
+        || p[0] = 5); //~ ERROR cannot borrow `p` as mutable
 }
 
 fn c() {
@@ -42,7 +42,7 @@ fn c() {
     // modification:
     let mut p = vec!(1);
     borrow(p.as_slice(), ||{});
-    *p.get_mut(0) = 5;
+    p[0] = 5;
 }
 
 fn main() {

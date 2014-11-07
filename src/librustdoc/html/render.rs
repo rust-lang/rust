@@ -389,7 +389,7 @@ fn build_index(krate: &clean::Crate, cache: &mut Cache) -> io::IoResult<String> 
         // has since been learned.
         for &(pid, ref item) in orphan_methods.iter() {
             let did = ast_util::local_def(pid);
-            match paths.find(&did) {
+            match paths.get(&did) {
                 Some(&(ref fqp, _)) => {
                     search_index.push(IndexItem {
                         ty: shortty(item),
@@ -443,7 +443,7 @@ fn build_index(krate: &clean::Crate, cache: &mut Cache) -> io::IoResult<String> 
                     item.desc.to_json().to_string()));
         match item.parent {
             Some(nodeid) => {
-                let pathid = *nodeid_to_pathid.find(&nodeid).unwrap();
+                let pathid = *nodeid_to_pathid.get(&nodeid).unwrap();
                 try!(write!(&mut w, ",{}", pathid));
             }
             None => {}
@@ -454,7 +454,7 @@ fn build_index(krate: &clean::Crate, cache: &mut Cache) -> io::IoResult<String> 
     try!(write!(&mut w, r#"],"paths":["#));
 
     for (i, &did) in pathid_to_nodeid.iter().enumerate() {
-        let &(ref fqp, short) = cache.paths.find(&did).unwrap();
+        let &(ref fqp, short) = cache.paths.get(&did).unwrap();
         if i > 0 {
             try!(write!(&mut w, ","));
         }
@@ -543,7 +543,7 @@ fn write_shared(cx: &Context,
         //
         // FIXME: this is a vague explanation for why this can't be a `get`, in
         //        theory it should be...
-        let &(ref remote_path, remote_item_type) = match cache.paths.find(&did) {
+        let &(ref remote_path, remote_item_type) = match cache.paths.get(&did) {
             Some(p) => p,
             None => continue,
         };
@@ -838,7 +838,7 @@ impl DocFolder for Cache {
                         } else {
                             let last = self.parent_stack.last().unwrap();
                             let did = *last;
-                            let path = match self.paths.find(&did) {
+                            let path = match self.paths.get(&did) {
                                 Some(&(_, item_type::Trait)) =>
                                     Some(self.stack[..self.stack.len() - 1]),
                                 // The current stack not necessarily has correlation for
@@ -1170,7 +1170,7 @@ impl Context {
                                     &Item{ cx: cx, item: it }));
             } else {
                 let mut url = "../".repeat(cx.current.len());
-                match cache_key.get().unwrap().paths.find(&it.def_id) {
+                match cache_key.get().unwrap().paths.get(&it.def_id) {
                     Some(&(ref names, _)) => {
                         for name in names[..names.len() - 1].iter() {
                             url.push_str(name.as_slice());
@@ -1735,7 +1735,7 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
         <h2 id='implementors'>Implementors</h2>
         <ul class='item-list' id='implementors-list'>
     "));
-    match cache.implementors.find(&it.def_id) {
+    match cache.implementors.get(&it.def_id) {
         Some(implementors) => {
             for i in implementors.iter() {
                 try!(writeln!(w, "<li>{}<code>impl{} {} for {}{}</code></li>",
@@ -1992,7 +1992,7 @@ fn render_struct(w: &mut fmt::Formatter, it: &clean::Item,
 }
 
 fn render_methods(w: &mut fmt::Formatter, it: &clean::Item) -> fmt::Result {
-    match cache_key.get().unwrap().impls.find(&it.def_id) {
+    match cache_key.get().unwrap().impls.get(&it.def_id) {
         Some(v) => {
             let (non_trait, traits) = v.partitioned(|i| i.impl_.trait_.is_none());
             if non_trait.len() > 0 {
@@ -2080,7 +2080,7 @@ fn render_impl(w: &mut fmt::Formatter, i: &Impl) -> fmt::Result {
     match i.impl_.trait_ {
         Some(clean::ResolvedPath { did, .. }) => {
             try!({
-                match cache_key.get().unwrap().traits.find(&did) {
+                match cache_key.get().unwrap().traits.get(&did) {
                     Some(t) => try!(render_default_methods(w, t, &i.impl_)),
                     None => {}
                 }

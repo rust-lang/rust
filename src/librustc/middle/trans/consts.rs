@@ -90,7 +90,7 @@ pub fn const_lit(cx: &CrateContext, e: &ast::Expr, lit: &ast::Lit)
 pub fn const_ptrcast(cx: &CrateContext, a: ValueRef, t: Type) -> ValueRef {
     unsafe {
         let b = llvm::LLVMConstPointerCast(a, t.ptr_to().to_ref());
-        assert!(cx.const_globals().borrow_mut().insert(b as int, a));
+        assert!(cx.const_globals().borrow_mut().insert(b as int, a).is_none());
         b
     }
 }
@@ -125,7 +125,7 @@ pub fn const_addr_of(cx: &CrateContext, cv: ValueRef, mutbl: ast::Mutability) ->
 }
 
 fn const_deref_ptr(cx: &CrateContext, v: ValueRef) -> ValueRef {
-    let v = match cx.const_globals().borrow().find(&(v as int)) {
+    let v = match cx.const_globals().borrow().get(&(v as int)) {
         Some(&v) => v,
         None => v
     };
@@ -625,7 +625,7 @@ fn const_expr_unadjusted(cx: &CrateContext, e: &ast::Expr) -> ValueRef {
           }
           ast::ExprPath(ref pth) => {
             // Assert that there are no type parameters in this path.
-            assert!(pth.segments.iter().all(|seg| seg.types.is_empty()));
+            assert!(pth.segments.iter().all(|seg| !seg.parameters.has_types()));
 
             let opt_def = cx.tcx().def_map.borrow().find_copy(&e.id);
             match opt_def {

@@ -502,7 +502,7 @@ impl Scheduler {
         let len = work_queues.len();
         let start_index = self.rng.gen_range(0, len);
         for index in range(0, len).map(|i| (i + start_index) % len) {
-            match work_queues.get_mut(index).steal() {
+            match work_queues[index].steal() {
                 deque::Data(task) => {
                     rtdebug!("found task by stealing");
                     return Some(task)

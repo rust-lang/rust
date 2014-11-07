@@ -25,6 +25,8 @@ use core::fmt::Show;
 
 use ring_buf::RingBuf;
 
+// FIXME(conventions): implement bounded iterators
+
 /// A map based on a B-Tree.
 ///
 /// B-Trees represent a fundamental compromise between cache-efficiency and actually minimizing
@@ -125,6 +127,7 @@ pub struct OccupiedEntry<'a, K:'a, V:'a> {
 
 impl<K: Ord, V> BTreeMap<K, V> {
     /// Makes a new empty BTreeMap with a reasonable choice for B.
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn new() -> BTreeMap<K, V> {
         //FIXME(Gankro): Tune this as a function of size_of<K/V>?
         BTreeMap::with_b(6)
@@ -155,10 +158,17 @@ impl<K: Ord, V> BTreeMap<K, V> {
     /// a.clear();
     /// assert!(a.is_empty());
     /// ```
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn clear(&mut self) {
         let b = self.b;
         // avoid recursive destructors by manually traversing the tree
         for _ in mem::replace(self, BTreeMap::with_b(b)).into_iter() {};
+    }
+
+    /// Deprecated: renamed to `get`.
+    #[deprecated = "renamed to `get`"]
+    pub fn find(&self, key: &K) -> Option<&V> {
+        self.get(key)
     }
 
     // Searching in a B-Tree is pretty straightforward.
@@ -178,10 +188,11 @@ impl<K: Ord, V> BTreeMap<K, V> {
     ///
     /// let mut map = BTreeMap::new();
     /// map.insert(1u, "a");
-    /// assert_eq!(map.find(&1), Some(&"a"));
-    /// assert_eq!(map.find(&2), None);
+    /// assert_eq!(map.get(&1), Some(&"a"));
+    /// assert_eq!(map.get(&2), None);
     /// ```
-    pub fn find(&self, key: &K) -> Option<&V> {
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
+    pub fn get(&self, key: &K) -> Option<&V> {
         let mut cur_node = &self.root;
         loop {
             match cur_node.search(key) {
@@ -209,9 +220,15 @@ impl<K: Ord, V> BTreeMap<K, V> {
     /// assert_eq!(map.contains_key(&1), true);
     /// assert_eq!(map.contains_key(&2), false);
     /// ```
-    #[inline]
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn contains_key(&self, key: &K) -> bool {
-        self.find(key).is_some()
+        self.get(key).is_some()
+    }
+
+    /// Deprecated: renamed to `get_mut`.
+    #[deprecated = "renamed to `get_mut`"]
+    pub fn find_mut(&mut self, key: &K) -> Option<&mut V> {
+        self.get_mut(key)
     }
 
     /// Returns a mutable reference to the value corresponding to the key.
@@ -223,14 +240,15 @@ impl<K: Ord, V> BTreeMap<K, V> {
     ///
     /// let mut map = BTreeMap::new();
     /// map.insert(1u, "a");
-    /// match map.find_mut(&1) {
+    /// match map.get_mut(&1) {
     ///     Some(x) => *x = "b",
     ///     None => (),
     /// }
     /// assert_eq!(map[1], "b");
     /// ```
-    // See `find` for implementation notes, this is basically a copy-paste with mut's added
-    pub fn find_mut(&mut self, key: &K) -> Option<&mut V> {
+    // See `get` for implementation notes, this is basically a copy-paste with mut's added
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
+    pub fn get_mut(&mut self, key: &K) -> Option<&mut V> {
         // temp_node is a Borrowck hack for having a mutable value outlive a loop iteration
         let mut temp_node = &mut self.root;
         loop {
@@ -246,6 +264,12 @@ impl<K: Ord, V> BTreeMap<K, V> {
                 }
             }
         }
+    }
+
+    /// Deprecated: renamed to `insert`.
+    #[deprecated = "renamed to `insert`"]
+    pub fn swap(&mut self, key: K, value: V) -> Option<V> {
+        self.insert(key, value)
     }
 
     // Insertion in a B-Tree is a bit complicated.
@@ -283,14 +307,15 @@ impl<K: Ord, V> BTreeMap<K, V> {
     /// use std::collections::BTreeMap;
     ///
     /// let mut map = BTreeMap::new();
-    /// assert_eq!(map.swap(37u, "a"), None);
+    /// assert_eq!(map.insert(37u, "a"), None);
     /// assert_eq!(map.is_empty(), false);
     ///
     /// map.insert(37, "b");
-    /// assert_eq!(map.swap(37, "c"), Some("b"));
+    /// assert_eq!(map.insert(37, "c"), Some("b"));
     /// assert_eq!(map[37], "c");
     /// ```
-    pub fn swap(&mut self, key: K, mut value: V) -> Option<V> {
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
+    pub fn insert(&mut self, key: K, mut value: V) -> Option<V> {
         // This is a stack of rawptrs to nodes paired with indices, respectively
         // representing the nodes and edges of our search path. We have to store rawptrs
         // because as far as Rust is concerned, we can mutate aliased data with such a
@@ -338,25 +363,6 @@ impl<K: Ord, V> BTreeMap<K, V> {
         }
     }
 
-    /// Inserts a key-value pair into the map. An existing value for a
-    /// key is replaced by the new value. Returns `true` if the key did
-    /// not already exist in the map.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// use std::collections::BTreeMap;
-    ///
-    /// let mut map = BTreeMap::new();
-    /// assert_eq!(map.insert(2u, "value"), true);
-    /// assert_eq!(map.insert(2, "value2"), false);
-    /// assert_eq!(map[2], "value2");
-    /// ```
-    #[inline]
-    pub fn insert(&mut self, key: K, value: V) -> bool {
-        self.swap(key, value).is_none()
-    }
-
     // Deletion is the most complicated operation for a B-Tree.
     //
     // First we do the same kind of search described in
@@ -392,6 +398,12 @@ impl<K: Ord, V> BTreeMap<K, V> {
     //      the underflow handling process on the parent. If merging merges the last two children
     //      of the root, then we replace the root with the merged node.
 
+    /// Deprecated: renamed to `remove`.
+    #[deprecated = "renamed to `remove`"]
+    pub fn pop(&mut self, key: &K) -> Option<V> {
+        self.remove(key)
+    }
+
     /// Removes a key from the map, returning the value at the key if the key
     /// was previously in the map.
     ///
@@ -402,10 +414,11 @@ impl<K: Ord, V> BTreeMap<K, V> {
     ///
     /// let mut map = BTreeMap::new();
     /// map.insert(1u, "a");
-    /// assert_eq!(map.pop(&1), Some("a"));
-    /// assert_eq!(map.pop(&1), None);
+    /// assert_eq!(map.remove(&1), Some("a"));
+    /// assert_eq!(map.remove(&1), None);
     /// ```
-    pub fn pop(&mut self, key: &K) -> Option<V> {
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
+    pub fn remove(&mut self, key: &K) -> Option<V> {
         // See `swap` for a more thorough description of the stuff going on in here
         let mut stack = stack::PartialSearchStack::new(self);
         loop {
@@ -425,24 +438,6 @@ impl<K: Ord, V> BTreeMap<K, V> {
                 }
             }
         }
-    }
-
-    /// Removes a key-value pair from the map. Returns `true` if the key
-    /// was present in the map.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// use std::collections::BTreeMap;
-    ///
-    /// let mut map = BTreeMap::new();
-    /// assert_eq!(map.remove(&1u), false);
-    /// map.insert(1, "a");
-    /// assert_eq!(map.remove(&1), true);
-    /// ```
-    #[inline]
-    pub fn remove(&mut self, key: &K) -> bool {
-        self.pop(key).is_some()
     }
 }
 
@@ -793,13 +788,13 @@ impl<K: Show, V: Show> Show for BTreeMap<K, V> {
 
 impl<K: Ord, V> Index<K, V> for BTreeMap<K, V> {
     fn index(&self, key: &K) -> &V {
-        self.find(key).expect("no entry found for key")
+        self.get(key).expect("no entry found for key")
     }
 }
 
 impl<K: Ord, V> IndexMut<K, V> for BTreeMap<K, V> {
     fn index_mut(&mut self, key: &K) -> &mut V {
-        self.find_mut(key).expect("no entry found for key")
+        self.get_mut(key).expect("no entry found for key")
     }
 }
 
@@ -891,8 +886,8 @@ impl<K, V, E, T: Traverse<E> + DoubleEndedIterator<TraversalItem<K, V, E>>>
 
             // Handle any operation on the left stack as necessary
             match op {
-                Push(item) => { self.left.push(item); },
-                Pop => { self.left.pop(); },
+                Push(item) => { self.left.push_back(item); },
+                Pop => { self.left.pop_back(); },
             }
         }
     }
@@ -933,8 +928,8 @@ impl<K, V, E, T: Traverse<E> + DoubleEndedIterator<TraversalItem<K, V, E>>>
             };
 
             match op {
-                Push(item) => { self.right.push(item); },
-                Pop => { self.right.pop(); }
+                Push(item) => { self.right.push_back(item); },
+                Pop => { self.right.pop_back(); }
             }
         }
     }
@@ -1010,6 +1005,7 @@ impl<'a, K: Ord, V> OccupiedEntry<'a, K, V> {
 
 impl<K, V> BTreeMap<K, V> {
     /// Gets an iterator over the entries of the map.
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn iter<'a>(&'a self) -> Entries<'a, K, V> {
         let len = self.len();
         Entries {
@@ -1023,6 +1019,7 @@ impl<K, V> BTreeMap<K, V> {
     }
 
     /// Gets a mutable iterator over the entries of the map.
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn iter_mut<'a>(&'a mut self) -> MutEntries<'a, K, V> {
         let len = self.len();
         MutEntries {
@@ -1036,6 +1033,7 @@ impl<K, V> BTreeMap<K, V> {
     }
 
     /// Gets an owning iterator over the entries of the map.
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn into_iter(self) -> MoveEntries<K, V> {
         let len = self.len();
         MoveEntries {
@@ -1049,11 +1047,13 @@ impl<K, V> BTreeMap<K, V> {
     }
 
     /// Gets an iterator over the keys of the map.
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn keys<'a>(&'a self) -> Keys<'a, K, V> {
         self.iter().map(|(k, _)| k)
     }
 
     /// Gets an iterator over the values of the map.
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn values<'a>(&'a self) -> Values<'a, K, V> {
         self.iter().map(|(_, v)| v)
     }
@@ -1070,6 +1070,7 @@ impl<K, V> BTreeMap<K, V> {
     /// a.insert(1u, "a");
     /// assert_eq!(a.len(), 1);
     /// ```
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn len(&self) -> uint { self.length }
 
     /// Return true if the map contains no elements.
@@ -1084,6 +1085,7 @@ impl<K, V> BTreeMap<K, V> {
     /// a.insert(1u, "a");
     /// assert!(!a.is_empty());
     /// ```
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn is_empty(&self) -> bool { self.len() == 0 }
 }
 
@@ -1137,40 +1139,40 @@ mod test {
         assert_eq!(map.len(), 0);
 
         for i in range(0, size) {
-            assert_eq!(map.swap(i, 10*i), None);
+            assert_eq!(map.insert(i, 10*i), None);
             assert_eq!(map.len(), i + 1);
         }
 
         for i in range(0, size) {
-            assert_eq!(map.find(&i).unwrap(), &(i*10));
+            assert_eq!(map.get(&i).unwrap(), &(i*10));
         }
 
         for i in range(size, size*2) {
-            assert_eq!(map.find(&i), None);
+            assert_eq!(map.get(&i), None);
         }
 
         for i in range(0, size) {
-            assert_eq!(map.swap(i, 100*i), Some(10*i));
+            assert_eq!(map.insert(i, 100*i), Some(10*i));
             assert_eq!(map.len(), size);
         }
 
         for i in range(0, size) {
-            assert_eq!(map.find(&i).unwrap(), &(i*100));
+            assert_eq!(map.get(&i).unwrap(), &(i*100));
         }
 
         for i in range(0, size/2) {
-            assert_eq!(map.pop(&(i*2)), Some(i*200));
+            assert_eq!(map.remove(&(i*2)), Some(i*200));
             assert_eq!(map.len(), size - i - 1);
         }
 
         for i in range(0, size/2) {
-            assert_eq!(map.find(&(2*i)), None);
-            assert_eq!(map.find(&(2*i+1)).unwrap(), &(i*200 + 100));
+            assert_eq!(map.get(&(2*i)), None);
+            assert_eq!(map.get(&(2*i+1)).unwrap(), &(i*200 + 100));
         }
 
         for i in range(0, size/2) {
-            assert_eq!(map.pop(&(2*i)), None);
-            assert_eq!(map.pop(&(2*i+1)), Some(i*200 + 100));
+            assert_eq!(map.remove(&(2*i)), None);
+            assert_eq!(map.remove(&(2*i+1)), Some(i*200 + 100));
             assert_eq!(map.len(), size/2 - i - 1);
         }
     }
@@ -1178,17 +1180,17 @@ mod test {
     #[test]
     fn test_basic_small() {
         let mut map = BTreeMap::new();
-        assert_eq!(map.pop(&1), None);
-        assert_eq!(map.find(&1), None);
-        assert_eq!(map.swap(1u, 1u), None);
-        assert_eq!(map.find(&1), Some(&1));
-        assert_eq!(map.swap(1, 2), Some(1));
-        assert_eq!(map.find(&1), Some(&2));
-        assert_eq!(map.swap(2, 4), None);
-        assert_eq!(map.find(&2), Some(&4));
-        assert_eq!(map.pop(&1), Some(2));
-        assert_eq!(map.pop(&2), Some(4));
-        assert_eq!(map.pop(&1), None);
+        assert_eq!(map.remove(&1), None);
+        assert_eq!(map.get(&1), None);
+        assert_eq!(map.insert(1u, 1u), None);
+        assert_eq!(map.get(&1), Some(&1));
+        assert_eq!(map.insert(1, 2), Some(1));
+        assert_eq!(map.get(&1), Some(&2));
+        assert_eq!(map.insert(2, 4), None);
+        assert_eq!(map.get(&2), Some(&4));
+        assert_eq!(map.remove(&1), Some(2));
+        assert_eq!(map.remove(&2), Some(4));
+        assert_eq!(map.remove(&1), None);
     }
 
     #[test]
@@ -1283,7 +1285,7 @@ mod test {
                 assert_eq!(view.set(100), 10);
             }
         }
-        assert_eq!(map.find(&1).unwrap(), &100);
+        assert_eq!(map.get(&1).unwrap(), &100);
         assert_eq!(map.len(), 6);
 
 
@@ -1295,7 +1297,7 @@ mod test {
                 *v *= 10;
             }
         }
-        assert_eq!(map.find(&2).unwrap(), &200);
+        assert_eq!(map.get(&2).unwrap(), &200);
         assert_eq!(map.len(), 6);
 
         // Existing key (take)
@@ -1305,7 +1307,7 @@ mod test {
                 assert_eq!(view.take(), 30);
             }
         }
-        assert_eq!(map.find(&3), None);
+        assert_eq!(map.get(&3), None);
         assert_eq!(map.len(), 5);
 
 
@@ -1316,7 +1318,7 @@ mod test {
                 assert_eq!(*view.set(1000), 1000);
             }
         }
-        assert_eq!(map.find(&10).unwrap(), &1000);
+        assert_eq!(map.get(&10).unwrap(), &1000);
         assert_eq!(map.len(), 6);
     }
 }
@@ -1374,7 +1376,7 @@ mod bench {
         let mut m : BTreeMap<uint,uint> = BTreeMap::new();
         find_rand_n(100, &mut m, b,
                     |m, i| { m.insert(i, 1); },
-                    |m, i| { m.find(&i); });
+                    |m, i| { m.get(&i); });
     }
 
     #[bench]
@@ -1382,7 +1384,7 @@ mod bench {
         let mut m : BTreeMap<uint,uint> = BTreeMap::new();
         find_rand_n(10_000, &mut m, b,
                     |m, i| { m.insert(i, 1); },
-                    |m, i| { m.find(&i); });
+                    |m, i| { m.get(&i); });
     }
 
     // Find seq
@@ -1391,7 +1393,7 @@ mod bench {
         let mut m : BTreeMap<uint,uint> = BTreeMap::new();
         find_seq_n(100, &mut m, b,
                    |m, i| { m.insert(i, 1); },
-                   |m, i| { m.find(&i); });
+                   |m, i| { m.get(&i); });
     }
 
     #[bench]
@@ -1399,7 +1401,7 @@ mod bench {
         let mut m : BTreeMap<uint,uint> = BTreeMap::new();
         find_seq_n(10_000, &mut m, b,
                    |m, i| { m.insert(i, 1); },
-                   |m, i| { m.find(&i); });
+                   |m, i| { m.get(&i); });
     }
 
     fn bench_iter(b: &mut Bencher, size: uint) {
@@ -1407,7 +1409,7 @@ mod bench {
         let mut rng = weak_rng();
 
         for _ in range(0, size) {
-            map.swap(rng.gen(), rng.gen());
+            map.insert(rng.gen(), rng.gen());
         }
 
         b.iter(|| {

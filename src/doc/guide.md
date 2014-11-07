@@ -1149,7 +1149,7 @@ enum StringResult {
 }
 ```
 Where a `StringResult` is either an `StringOK`, with the result of a computation, or an
-`ErrorReason` with a `String` explaining what caused the computation to fail. This kind of
+`ErrorReason` with a `String` explaining what caused the computation to fail. These kinds of
 `enum`s are actually very useful and are even part of the standard library.
 
 As you can see `enum`s with values are quite a powerful tool for data representation,
@@ -1901,8 +1901,8 @@ result is a link to
 click on that result, we'll be taken to its documentation page.
 
 This page shows us a few things: the type signature of the function, some
-explanatory text, and then an example. Let's modify our code to add in the
-`random` function:
+explanatory text, and then an example. Let's try to modify our code to add in the
+`random` function and see what happens:
 
 ```{rust,ignore}
 use std::io;

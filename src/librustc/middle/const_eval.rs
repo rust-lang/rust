@@ -123,7 +123,7 @@ fn lookup_variant_by_id<'a>(tcx: &'a ty::ctxt,
             Some(_) => None
         }
     } else {
-        match tcx.extern_const_variants.borrow().find(&variant_def) {
+        match tcx.extern_const_variants.borrow().get(&variant_def) {
             Some(&ast::DUMMY_NODE_ID) => return None,
             Some(&expr_id) => {
                 return Some(tcx.map.expect_expr(expr_id));
@@ -163,7 +163,7 @@ pub fn lookup_const_by_id<'a>(tcx: &'a ty::ctxt, def_id: ast::DefId)
             Some(_) => None
         }
     } else {
-        match tcx.extern_const_statics.borrow().find(&def_id) {
+        match tcx.extern_const_statics.borrow().get(&def_id) {
             Some(&ast::DUMMY_NODE_ID) => return None,
             Some(&expr_id) => {
                 return Some(tcx.map.expect_expr(expr_id));
@@ -192,7 +192,7 @@ struct ConstEvalVisitor<'a, 'tcx: 'a> {
 impl<'a, 'tcx> ConstEvalVisitor<'a, 'tcx> {
     fn classify(&mut self, e: &Expr) -> constness {
         let did = ast_util::local_def(e.id);
-        match self.ccache.find(&did) {
+        match self.ccache.get(&did) {
             Some(&x) => return x,
             None => {}
         }

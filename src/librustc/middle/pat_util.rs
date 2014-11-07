@@ -16,7 +16,6 @@ use std::collections::HashMap;
 use syntax::ast::*;
 use syntax::ast_util::{walk_pat};
 use syntax::codemap::{Span, DUMMY_SP};
-use syntax::owned_slice::OwnedSlice;
 
 pub type PatIdMap = HashMap<Ident, NodeId>;
 
@@ -34,7 +33,7 @@ pub fn pat_is_refutable(dm: &resolve::DefMap, pat: &Pat) -> bool {
     match pat.node {
         PatLit(_) | PatRange(_, _) => true,
         PatEnum(_, _) | PatIdent(_, _, None) | PatStruct(..) => {
-            match dm.borrow().find(&pat.id) {
+            match dm.borrow().get(&pat.id) {
                 Some(&DefVariant(..)) => true,
                 _ => false
             }
@@ -47,7 +46,7 @@ pub fn pat_is_refutable(dm: &resolve::DefMap, pat: &Pat) -> bool {
 pub fn pat_is_variant_or_struct(dm: &resolve::DefMap, pat: &Pat) -> bool {
     match pat.node {
         PatEnum(_, _) | PatIdent(_, _, None) | PatStruct(..) => {
-            match dm.borrow().find(&pat.id) {
+            match dm.borrow().get(&pat.id) {
                 Some(&DefVariant(..)) | Some(&DefStruct(..)) => true,
                 _ => false
             }
@@ -59,7 +58,7 @@ pub fn pat_is_variant_or_struct(dm: &resolve::DefMap, pat: &Pat) -> bool {
 pub fn pat_is_const(dm: &resolve::DefMap, pat: &Pat) -> bool {
     match pat.node {
         PatIdent(_, _, None) | PatEnum(..) => {
-            match dm.borrow().find(&pat.id) {
+            match dm.borrow().get(&pat.id) {
                 Some(&DefConst(..)) => true,
                 _ => false
             }
@@ -133,8 +132,7 @@ pub fn def_to_path(tcx: &ty::ctxt, id: DefId) -> Path {
         global: false,
         segments: path.last().map(|elem| PathSegment {
             identifier: Ident::new(elem.name()),
-            lifetimes: vec!(),
-            types: OwnedSlice::empty()
+            parameters: PathParameters::none(),
         }).into_iter().collect(),
         span: DUMMY_SP,
     })

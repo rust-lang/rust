@@ -112,14 +112,15 @@ fn read_to_end<R: Reader>(r: &mut R) -> IoResult<Vec<u8>> {
     let mut vec = Vec::with_capacity(CHUNK);
     loop {
         // workaround: very fast growing
-        if vec.capacity() - vec.len() < CHUNK {
+        let len = vec.len();
+        if vec.capacity() - len < CHUNK {
             let cap = vec.capacity();
             let mult = if cap < 256 * 1024 * 1024 {
                 16
             } else {
                 2
             };
-            vec.reserve_exact(mult * cap);
+            vec.reserve_exact(mult * cap - len);
         }
         match r.push_at_least(1, CHUNK, &mut vec) {
             Ok(_) => {}

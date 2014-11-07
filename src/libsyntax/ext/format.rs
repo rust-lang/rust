@@ -252,7 +252,7 @@ impl<'a, 'b> Context<'a, 'b> {
             }
 
             Named(name) => {
-                let span = match self.names.find(&name) {
+                let span = match self.names.get(&name) {
                     Some(e) => e.span,
                     None => {
                         let msg = format!("there is no argument named `{}`", name);
@@ -260,7 +260,7 @@ impl<'a, 'b> Context<'a, 'b> {
                         return;
                     }
                 };
-                self.verify_same(span, &ty, self.name_types.find(&name));
+                self.verify_same(span, &ty, self.name_types.get(&name));
                 if !self.name_types.contains_key(&name) {
                     self.name_types.insert(name.clone(), ty);
                 }
@@ -555,11 +555,11 @@ impl<'a, 'b> Context<'a, 'b> {
             heads.push(self.ecx.expr_addr_of(e.span, e));
         }
         for name in self.name_ordering.iter() {
-            let e = match self.names.pop(name) {
+            let e = match self.names.remove(name) {
                 Some(e) => e,
                 None => continue
             };
-            let arg_ty = match self.name_types.find(name) {
+            let arg_ty = match self.name_types.get(name) {
                 Some(ty) => ty,
                 None => continue
             };
