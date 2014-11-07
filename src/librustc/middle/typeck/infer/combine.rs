@@ -52,7 +52,6 @@ use middle::typeck::infer::type_variable::{RelationDir, EqTo,
 use middle::ty_fold::{TypeFoldable};
 use util::ppaux::Repr;
 
-
 use syntax::ast::{Onceness, FnStyle};
 use syntax::ast;
 use syntax::abi;
