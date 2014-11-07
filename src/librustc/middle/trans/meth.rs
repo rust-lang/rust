@@ -355,16 +355,13 @@ fn trans_monomorphized_callee<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
             Callee { bcx: bcx, data: Fn(llfn) }
         }
-        traits::VtableUnboxedClosure(closure_def_id) => {
-            let self_ty = node_id_type(bcx, closure_def_id.node);
-            let callee_substs = get_callee_substitutions_for_unboxed_closure(
-                bcx,
-                self_ty);
-
+        traits::VtableUnboxedClosure(closure_def_id, substs) => {
+            // The substitutions should have no type parameters remaining
+            // after passing through fulfill_obligation
             let llfn = trans_fn_ref_with_substs(bcx,
                                                 closure_def_id,
                                                 MethodCall(method_call),
-                                                callee_substs);
+                                                substs);
 
             Callee {
                 bcx: bcx,
@@ -518,24 +515,6 @@ pub fn trans_trait_callee_from_llval<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     };
 }
 
-/// Looks up the substitutions for an unboxed closure and adds the
-/// self type
-fn get_callee_substitutions_for_unboxed_closure(bcx: Block,
-                                                self_ty: ty::t)
-                                                -> subst::Substs {
-    match ty::get(self_ty).sty {
-        ty::ty_unboxed_closure(_, _, ref substs) => {
-            substs.with_self_ty(ty::mk_rptr(bcx.tcx(),
-                                            ty::ReStatic,
-                                            ty::mt {
-                                                ty: self_ty,
-                                                mutbl: ast::MutMutable,
-                                            }))
-        },
-        _ => unreachable!()
-    }
-}
-
 /// Creates a returns a dynamic vtable for the given type and vtable origin.
 /// This is used only for objects.
 ///
@@ -580,19 +559,19 @@ pub fn get_vtable(bcx: Block,
                     nested: _ }) => {
                 emit_vtable_methods(bcx, id, substs).into_iter()
             }
-            traits::VtableUnboxedClosure(closure_def_id) => {
-                let self_ty = node_id_type(bcx, closure_def_id.node);
-
-                let callee_substs =
-                    get_callee_substitutions_for_unboxed_closure(
-                        bcx,
-                        self_ty.clone());
+            traits::VtableUnboxedClosure(closure_def_id, substs) => {
+                // Look up closure type
+                let self_ty = ty::node_id_to_type(bcx.tcx(), closure_def_id.node);
+                // Apply substitutions from closure param environment.
+                // The substitutions should have no type parameters
+                // remaining after passing through fulfill_obligation
+                let self_ty = self_ty.subst(bcx.tcx(), &substs);
 
                 let mut llfn = trans_fn_ref_with_substs(
                     bcx,
                     closure_def_id,
                     ExprId(0),
-                    callee_substs.clone());
+                    substs.clone());
 
                 {
                     let unboxed_closures = bcx.tcx()
@@ -645,7 +624,7 @@ pub fn get_vtable(bcx: Block,
                                                    llfn,
                                                    &closure_type,
                                                    closure_def_id,
-                                                   callee_substs);
+                                                   substs);
                     }
                 }
 
