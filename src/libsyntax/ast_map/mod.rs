@@ -770,7 +770,7 @@ impl<'ast> Visitor<'ast> for NodeCollector<'ast> {
                 for b in bounds.iter() {
                     match *b {
                         TraitTyParamBound(ref t) => {
-                            self.insert(t.ref_id, NodeItem(i));
+                            self.insert(t.trait_ref.ref_id, NodeItem(i));
                         }
                         _ => {}
                     }

@@ -1291,7 +1291,7 @@ impl<'a, 'tcx> VisiblePrivateTypesVisitor<'a, 'tcx> {
         match *ty_param_bound {
             ast::TraitTyParamBound(ref trait_ref) => {
                 if !self.tcx.sess.features.borrow().visible_private_types &&
-                        self.path_is_private_type(trait_ref.ref_id) {
+                        self.path_is_private_type(trait_ref.trait_ref.ref_id) {
                     self.tcx.sess.span_err(span,
                                            "private type in exported type \
                                             parameter bound");
@@ -1432,7 +1432,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for VisiblePrivateTypesVisitor<'a, 'tcx> {
                             //
                             // Those in 2. are warned via walk_generics and this
                             // call here.
-                            visit::walk_trait_ref_helper(self, tr)
+                            self.visit_trait_ref(tr)
                         }
                     }
                 } else if trait_ref.is_none() && self_is_public_path {

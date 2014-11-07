@@ -75,6 +75,10 @@ pub trait Visitor<'v> {
     }
     fn visit_ty_method(&mut self, t: &'v TypeMethod) { walk_ty_method(self, t) }
     fn visit_trait_item(&mut self, t: &'v TraitItem) { walk_trait_item(self, t) }
+    fn visit_trait_ref(&mut self, t: &'v TraitRef) { walk_trait_ref(self, t) }
+    fn visit_poly_trait_ref(&mut self, t: &'v PolyTraitRef) {
+        walk_poly_trait_ref(self, t)
+    }
     fn visit_struct_def(&mut self, s: &'v StructDef, _: Ident, _: &'v Generics, _: NodeId) {
         walk_struct_def(self, s)
     }
@@ -202,9 +206,20 @@ pub fn walk_explicit_self<'v, V: Visitor<'v>>(visitor: &mut V,
 
 /// Like with walk_method_helper this doesn't correspond to a method
 /// in Visitor, and so it gets a _helper suffix.
-pub fn walk_trait_ref_helper<'v,V>(visitor: &mut V, trait_ref: &'v TraitRef)
-                                   where V: Visitor<'v> {
-    walk_lifetime_decls(visitor, &trait_ref.lifetimes);
+pub fn walk_poly_trait_ref<'v, V>(visitor: &mut V,
+                                         trait_ref: &'v PolyTraitRef)
+    where V: Visitor<'v>
+{
+    walk_lifetime_decls(visitor, &trait_ref.bound_lifetimes);
+    visitor.visit_trait_ref(&trait_ref.trait_ref);
+}
+
+/// Like with walk_method_helper this doesn't correspond to a method
+/// in Visitor, and so it gets a _helper suffix.
+pub fn walk_trait_ref<'v,V>(visitor: &mut V,
+                                   trait_ref: &'v TraitRef)
+    where V: Visitor<'v>
+{
     visitor.visit_path(&trait_ref.path, trait_ref.ref_id)
 }
 
@@ -248,8 +263,7 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item) {
                  ref impl_items) => {
             visitor.visit_generics(type_parameters);
             match *trait_reference {
-                Some(ref trait_reference) => walk_trait_ref_helper(visitor,
-                                                                   trait_reference),
+                Some(ref trait_reference) => visitor.visit_trait_ref(trait_reference),
                 None => ()
             }
             visitor.visit_ty(&**typ);
@@ -383,6 +397,9 @@ pub fn walk_ty<'v, V: Visitor<'v>>(visitor: &mut V, typ: &'v Ty) {
             visitor.visit_ty(&**ty);
             visitor.visit_expr(&**expression)
         }
+        TyPolyTraitRef(ref poly_trait_ref) => {
+            visitor.visit_poly_trait_ref(&**poly_trait_ref)
+        }
         TyTypeof(ref expression) => {
             visitor.visit_expr(&**expression)
         }
@@ -497,7 +514,7 @@ pub fn walk_ty_param_bounds<'v, V: Visitor<'v>>(visitor: &mut V,
     for bound in bounds.iter() {
         match *bound {
             TraitTyParamBound(ref typ) => {
-                walk_trait_ref_helper(visitor, typ)
+                visitor.visit_poly_trait_ref(typ)
             }
             RegionTyParamBound(ref lifetime) => {
                 visitor.visit_lifetime_ref(lifetime);

@@ -1690,8 +1690,8 @@ impl LintPass for Stability {
                 for t in supertraits.iter() {
                     match *t {
                         ast::TraitTyParamBound(ref t) => {
-                            let id = ty::trait_ref_to_def_id(cx.tcx, t);
-                            self.lint(cx, id, t.path.span);
+                            let id = ty::trait_ref_to_def_id(cx.tcx, &t.trait_ref);
+                            self.lint(cx, id, t.trait_ref.path.span);
                         }
                         _ => (/* pass */)
                     }

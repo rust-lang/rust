@@ -5546,7 +5546,8 @@ pub fn accumulate_lifetimes_in_type(accumulator: &mut Vec<ty::Region>,
             ty_param(_) |
             ty_infer(_) |
             ty_open(_) |
-            ty_err => {}
+            ty_err => {
+            }
         }
     });
 
