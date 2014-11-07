@@ -5,8 +5,8 @@
 # Summary
 
 Restore the integer inference fallback that was removed. Integer
-literals whose type is unconstrained will default to `i32`, unlike
-before when it defaulted to `int`.
+literals whose type is unconstrained will default to `i32`, unlike the previous
+fallback to `int`.
 Floating point literals will default to `f64`.
 
 # Motivation
@@ -114,12 +114,12 @@ a struct or array, must wind up with a specific type.
 
 ## Rationale for the choice of defaulting to `i32`
 
-Unlike in the first revision of the RFC, the fallback type suggested is
-`i32`. This is, for one, to that a case analysis showed that there does
-not exist a compelling reason for having a signed pointer-sized integer
-type as the default.
+In contrast to the first revision of the RFC, the fallback type
+suggested is `i32`. This is justified by a case analysis which showed
+that there does not exist a compelling reason for having a signed
+pointer-sized integer type as the default.
 
-The reasons for using `i32` instead is that it's familiar to programmers
+There are reasons *for* using `i32` instead: It's familiar to programmers
 from the C programming language (where the default int type is 32-bit in
 the major calling conventions), it's faster than 64-bit integers in
 arithmetic today, and is superior in memory usage while still providing
@@ -130,7 +130,7 @@ a reasonable range of possible values.
 This is an analysis of cases where `int` inference might be thought of
 as useful:
 
-**Indexing into an array with unconstrained integer literal**:
+**Indexing into an array with unconstrained integer literal:**
 
 ```
 let array = [0u8, 1, 2, 3];
@@ -140,15 +140,15 @@ array[index]
 
 In this case, `index` is already automatically inferred to be a `uint`.
 
-**Using a default integer for tests, tutorials, etc.**: Examples of this
+**Using a default integer for tests, tutorials, etc.:** Examples of this
 include "The Guide", the Rust API docs and the Rust standard library
 unit tests. This is better served by a smaller, faster and platform
 independent type as default.
 
-**Using an integer for an upper bound or for simply printing it**: This
+**Using an integer for an upper bound or for simply printing it:** This
 is also served very well by `i32`.
 
-**Counting of loop iterations**: This is a part where `int` is as badly
+**Counting of loop iterations:** This is a part where `int` is as badly
 suited as `i32`, so at least the move to `i32` doesn't create new
 hazards (note that the number of elements of a vector might not
 necessarily fit into an `int`).
