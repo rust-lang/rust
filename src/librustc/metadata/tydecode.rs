@@ -389,11 +389,10 @@ fn parse_ty(st: &mut PState, conv: conv_did) -> ty::t {
       }
       'x' => {
         assert_eq!(next(st), '[');
-        let def = parse_def(st, NominalType, |x,y| conv(x,y));
-        let substs = parse_substs(st, |x,y| conv(x,y));
+        let trait_ref = parse_trait_ref(st, |x,y| conv(x,y));
         let bounds = parse_existential_bounds(st, |x,y| conv(x,y));
         assert_eq!(next(st), ']');
-        return ty::mk_trait(st.tcx, def, substs, bounds);
+        return ty::mk_trait(st.tcx, trait_ref, bounds);
       }
       'p' => {
         let did = parse_def(st, TypeParameter, |x,y| conv(x,y));

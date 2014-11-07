@@ -112,8 +112,8 @@ fn get_base_type_def_id(inference_context: &InferCtxt,
                 ty_rptr(_, ty::mt {ty, ..}) |
                 ty_uniq(ty) => {
                     match ty::get(ty).sty {
-                        ty_trait(box ty::TyTrait { def_id, .. }) => {
-                            Some(def_id)
+                        ty_trait(box ty::TyTrait { ref principal, .. }) => {
+                            Some(principal.def_id)
                         }
                         _ => {
                             panic!("get_base_type() returned a type that wasn't an \
@@ -121,8 +121,8 @@ fn get_base_type_def_id(inference_context: &InferCtxt,
                         }
                     }
                 }
-                ty_trait(box ty::TyTrait { def_id, .. }) => {
-                    Some(def_id)
+                ty_trait(box ty::TyTrait { ref principal, .. }) => {
+                    Some(principal.def_id)
                 }
                 _ => {
                     panic!("get_base_type() returned a type that wasn't an \

@@ -18,6 +18,7 @@ use middle::ty;
 use syntax::ast::{Item, ItemImpl};
 use syntax::ast;
 use syntax::ast_util;
+use syntax::codemap::Span;
 use syntax::visit;
 use util::ppaux::Repr;
 
@@ -28,6 +29,17 @@ pub fn check(tcx: &ty::ctxt) {
 
 struct OrphanChecker<'cx, 'tcx:'cx> {
     tcx: &'cx ty::ctxt<'tcx>
+}
+
+impl<'cx, 'tcx> OrphanChecker<'cx, 'tcx> {
+    fn check_def_id(&self, span: Span, def_id: ast::DefId) {
+        if def_id.krate != ast::LOCAL_CRATE {
+            span_err!(self.tcx.sess, span, E0116,
+                      "cannot associate methods with a type outside the \
+                       crate the type is defined in; define and implement \
+                       a trait or new type instead");
+        }
+    }
 }
 
 impl<'cx, 'tcx,'v> visit::Visitor<'v> for OrphanChecker<'cx, 'tcx> {
@@ -41,14 +53,11 @@ impl<'cx, 'tcx,'v> visit::Visitor<'v> for OrphanChecker<'cx, 'tcx> {
                 let self_ty = ty::lookup_item_type(self.tcx, def_id).ty;
                 match ty::get(self_ty).sty {
                     ty::ty_enum(def_id, _) |
-                    ty::ty_struct(def_id, _) |
-                    ty::ty_trait(box ty::TyTrait{ def_id, ..}) => {
-                        if def_id.krate != ast::LOCAL_CRATE {
-                            span_err!(self.tcx.sess, item.span, E0116,
-                                      "cannot associate methods with a type outside the \
-                                      crate the type is defined in; define and implement \
-                                      a trait or new type instead");
-                        }
+                    ty::ty_struct(def_id, _) => {
+                        self.check_def_id(item.span, def_id);
+                    }
+                    ty::ty_trait(box ty::TyTrait{ ref principal, ..}) => {
+                        self.check_def_id(item.span, principal.def_id);
                     }
                     _ => {
                         span_err!(self.tcx.sess, item.span, E0118,

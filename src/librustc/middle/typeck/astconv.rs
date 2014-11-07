@@ -405,11 +405,11 @@ pub fn ast_path_to_trait_ref<'tcx,AC,RS>(this: &AC,
                                          associated_type: Option<ty::t>,
                                          path: &ast::Path,
                                          binder_id: ast::NodeId)
-                                         -> Rc<ty::TraitRef>
+                                         -> ty::TraitRef
                                          where AC: AstConv<'tcx>,
                                                RS: RegionScope {
     let trait_def = this.get_trait_def(trait_def_id);
-    Rc::new(ty::TraitRef {
+    ty::TraitRef {
         def_id: trait_def_id,
         substs: ast_path_substs(this,
                                 rscope,
@@ -419,7 +419,7 @@ pub fn ast_path_to_trait_ref<'tcx,AC,RS>(this: &AC,
                                 associated_type,
                                 path,
                                 binder_id)
-    })
+    }
 }
 
 pub fn ast_path_to_ty<'tcx, AC: AstConv<'tcx>, RS: RegionScope>(
@@ -702,26 +702,17 @@ fn mk_pointer<'tcx, AC: AstConv<'tcx>, RS: RegionScope>(
                                                        None,
                                                        path,
                                                        id);
-                    let bounds = match *opt_bounds {
-                        None => {
-                            conv_existential_bounds(this,
-                                                    rscope,
-                                                    path.span,
-                                                    [result.clone()].as_slice(),
-                                                    [].as_slice())
-                        }
-                        Some(ref bounds) => {
-                            conv_existential_bounds(this,
-                                                    rscope,
-                                                    path.span,
-                                                    [result.clone()].as_slice(),
-                                                    bounds.as_slice())
-                        }
-                    };
+                    let empty_vec = [];
+                    let bounds = match *opt_bounds { None => empty_vec.as_slice(),
+                                                     Some(ref bounds) => bounds.as_slice() };
+                    let existential_bounds = conv_existential_bounds(this,
+                                                                     rscope,
+                                                                     path.span,
+                                                                     &[Rc::new(result.clone())],
+                                                                     bounds);
                     let tr = ty::mk_trait(tcx,
-                                          result.def_id,
-                                          result.substs.clone(),
-                                          bounds);
+                                          result,
+                                          existential_bounds);
                     return match ptr_ty {
                         Uniq => {
                             return ty::mk_uniq(tcx, tr);
@@ -943,11 +934,10 @@ pub fn ast_ty_to_ty<'tcx, AC: AstConv<'tcx>, RS: RegionScope>(
                         let bounds = conv_existential_bounds(this,
                                                              rscope,
                                                              ast_ty.span,
-                                                             &[result.clone()],
+                                                             &[Rc::new(result.clone())],
                                                              ast_bounds);
                         ty::mk_trait(tcx,
-                                     result.def_id,
-                                     result.substs.clone(),
+                                     result,
                                      bounds)
                     }
                     def::DefTy(did, _) | def::DefStruct(did) => {
