@@ -448,8 +448,8 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
             }
 
             ast::ExprStruct(_, ref fields, ref base) => {
-                let base_exit = self.opt_expr(base, pred);
-                self.straightline(expr, base_exit, fields.iter().map(|f| &*f.expr))
+                let field_cfg = self.straightline(expr, pred, fields.iter().map(|f| &*f.expr));
+                self.opt_expr(base, field_cfg)
             }
 
             ast::ExprRepeat(ref elem, ref count) => {
