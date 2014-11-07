@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -10,20 +10,14 @@
 
 #![feature(macro_rules)]
 
-macro_rules! print_hd_tl (
-    ($field_hd:ident, $($field_tl:ident),+) => ({
-        print!("{}", stringify!($field)); //~ ERROR unknown macro variable
-        print!("::[");
-        $(
-            print!("{}", stringify!($field_tl));
-            print!(", ");
-        )+
-        // FIXME: #9970
-        print!("{}", "]\n");
-    })
+macro_rules! higher_order (
+    (subst $lhs:tt => $rhs:tt) => ({
+            macro_rules! anon ( $lhs => $rhs )
+            anon!(1u, 2u, "foo")
+    });
 )
 
 fn main() {
-    print_hd_tl!(x, y, z, w)
+    let val = higher_order!(subst ($x:expr, $y:expr, $foo:expr) => (($x + $y, $foo)));
+    assert_eq!(val, (3, "foo"));
 }
-
