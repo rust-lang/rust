@@ -1771,12 +1771,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
             ty::UnsizeVtable(ref ty_trait, self_ty) => {
                 vtable::check_object_safety(self.tcx(), ty_trait, span);
+
                 // If the type is `Foo+'a`, ensures that the type
                 // being cast to `Foo+'a` implements `Foo`:
                 vtable::register_object_cast_obligations(self,
-                                                          span,
-                                                          ty_trait,
-                                                          self_ty);
+                                                         span,
+                                                         ty_trait,
+                                                         self_ty);
 
                 // If the type is `Foo+'a`, ensures that the type
                 // being cast to `Foo+'a` outlives `'a`:
