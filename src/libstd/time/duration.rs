@@ -332,12 +332,14 @@ impl FromStr for Duration {
     /// ```rust
     /// assert_eq!(from_str::<Duration>("-P106751991167DT7H12M55.808999999S"), Some(Duration::MIN));
     /// assert_eq!(from_str::<Duration>("P106751991167DT7H12M55.807999999S"), Some(Duration::MAX));
+    /// assert_eq!(from_str::<Duration>("P31D"), Some(Duration::days(31)));
     /// assert_eq!(from_str::<Duration>("not even a Duration"), None);
     /// ```
     #[inline]
-    fn from_str(s: &str) -> Option<Duration> {
-        fn atoi(source: &str) -> (Option<i64>, &str) {
+    fn from_str(source: &str) -> Option<Duration> {
+        fn atoi(source: &str) -> (Option<i64>, i64, &str) {
             let mut value: Option<i64> = None;
+            let mut scale = 1i64;
             let mut s = source;
 
             while !s.is_empty() {
@@ -345,17 +347,130 @@ impl FromStr for Duration {
                     (Some(c), rem) if c.is_digit() => {
                         let digit = (c as u8 - b'0') as i64;
 
-                        value = Some(digit + 10 * value.unwrap_or(0));
+                        value = value.unwrap_or(0).checked_mul(&10);
+
+                        if value.is_none() {
+                            break;
+                        }
+
+                        value = value.unwrap().checked_add(&digit);
+
+                        if value.is_none() {
+                            break;
+                        }
+
+                        scale *= 10;
                         rem
                     },
                     _ => break
                 }
             }
 
-            (value, s)
+            (value, scale, s)
         }
 
-        None
+        let source = source.trim_left();
+
+        // Sign
+        let (mut s, sign) = match source.slice_shift_char() {
+            (Some(c), rem) if c == '-' || c == '+' => (rem, c),
+            _ => (source, '+'),
+        };
+
+        // P - period
+        s = match s.slice_shift_char() {
+            (Some(c), rem) if c == 'P' || c == 'p' => rem,
+            _ => return None
+        };
+ 
+        // D - days
+        let (days, _, next) = atoi(s);
+
+        if days.is_some() {
+            s = match next.slice_shift_char() {
+                (Some(c), rem) if c == 'D' || c == 'd' => rem,
+                _ => return None
+            };
+        }
+
+        // T - time
+        s = match s.slice_shift_char() {
+            (Some(c), rem) if c == 'T' || c == 't' => rem,
+            (None, _) if days.is_some() => s,
+            _ => return None
+        };
+
+        let (mut hours, mut minutes): (Option<i64>, Option<i64>) = (None, None);
+        let (mut seconds, mut nanos): (Option<i64>, Option<i64>) = (None, None);
+
+        while !s.is_empty() {
+            let (value, scale, next) = atoi(s);
+
+            if value.is_none() || next.is_empty() {
+                return None;
+            }
+
+            s = match next.slice_shift_char() {
+                (Some(c), rem) if (c == 'H' || c == 'h') 
+                                            && hours.is_none() && minutes.is_none()
+                                            && seconds.is_none() && nanos.is_none() => {
+                    hours = value;
+                    rem
+                },
+                (Some(c), rem) if (c == 'M' || c == 'm') 
+                                            && minutes.is_none() && seconds.is_none() 
+                                            && nanos.is_none() => {
+                    minutes = value;
+                    rem
+                },
+                (Some(c), rem) if (c == '.') && seconds.is_none() && nanos.is_none() => {
+                    seconds = value;
+                    rem
+                },
+                (Some(c), rem) if (c == 'S' || c == 's') 
+                                            && (seconds.is_none() || nanos.is_none()) => {
+                    if seconds.is_none() {
+                        seconds = value;
+                    }
+                    else {
+                        nanos = value.unwrap().checked_mul(&(MILLIS_PER_SECOND * NANOS_PER_MILLI));
+
+                        if nanos.is_none() {
+                            return None;
+                        }
+
+                        nanos = Some(nanos.unwrap() / scale);
+                    }
+
+                    rem
+                },
+                _ => return None
+            }
+        };
+
+        let days_millis = try_opt!(days.unwrap_or(0).checked_mul(&MILLIS_PER_DAY));
+        let hours_millis = try_opt!(hours.unwrap_or(0).checked_mul(&MILLIS_PER_HOUR));
+        let minutes_millis = try_opt!(minutes.unwrap_or(0).checked_mul(&MILLIS_PER_MINUTE));
+        let seconds_millis = try_opt!(seconds.unwrap_or(0).checked_mul(&MILLIS_PER_SECOND));
+
+        let mut millis = try_opt!(days_millis.checked_add(&hours_millis));
+
+        millis = try_opt!(millis.checked_add(&minutes_millis));
+        millis = try_opt!(millis.checked_add(&seconds_millis));
+        
+        let mut nanos = nanos.unwrap_or(0);
+
+        if sign == '-' { 
+            millis = -millis;
+            nanos = -nanos;
+        }
+
+        Some(
+            duration!(
+                try_opt!(millis.checked_add(&(nanos / NANOS_PER_MILLI))), 
+                (nanos % NANOS_PER_MILLI) as i32
+            )
+        )
     }
 }
 
@@ -542,6 +657,42 @@ mod tests {
         // the format specifier should have no effect on `Duration`
         assert_eq!(format!("{:30}", Duration::days(1) + Duration::milliseconds(2345)),
                    "P1DT2.345S".to_string());
+    }
+
+    #[test]
+    fn test_duration_from_str() {
+        assert_eq!(from_str::<Duration>("not even a Duration"), None);
+        assert_eq!(from_str::<Duration>("DT755S"), None);
+        assert_eq!(from_str::<Duration>("P123T9S"), None);
+        assert_eq!(from_str::<Duration>("PDT7S"), None);
+        assert_eq!(from_str::<Duration>("P1D7S"), None);
+        assert_eq!(from_str::<Duration>("P1D"), Some(Duration::days(1)));
+        assert_eq!(from_str::<Duration>("+P2D"), Some(Duration::days(2)));
+        assert_eq!(from_str::<Duration>("-P3D"), Some(Duration::days(-3)));
+        assert_eq!(from_str::<Duration>("-PT5H"), Some(Duration::hours(-5)));
+        assert_eq!(from_str::<Duration>("PT5H30M"), Some(Duration::seconds(19800)));
+        assert_eq!(from_str::<Duration>("PT30M"), Some(Duration::minutes(30)));
+        assert_eq!(from_str::<Duration>("PT30M5H"), None);
+        assert_eq!(from_str::<Duration>("PT1M5S"), Some(Duration::seconds(65)));
+        assert_eq!(from_str::<Duration>("PT5S1M"), None);
+        assert_eq!(from_str::<Duration>("PT5S1H"), None);
+        assert_eq!(from_str::<Duration>("PT1H2M5S"), Some(Duration::seconds(3725)));
+        assert_eq!(from_str::<Duration>("PT1H1H2M5S"), None);
+        assert_eq!(from_str::<Duration>("PT1H2M1H5S"), None);
+        assert_eq!(from_str::<Duration>("PT1H2M5S1H"), None);
+        assert_eq!(from_str::<Duration>("PT1H2M5.S"), None);
+        assert_eq!(from_str::<Duration>("PT1H2M5.5S"), Some(Duration::milliseconds(3725500)));
+        assert_eq!(from_str::<Duration>("PT1H2M5.05S"), Some(Duration::milliseconds(3725050)));
+        assert_eq!(from_str::<Duration>("PT1H2M5.005S"), Some(Duration::milliseconds(3725005)));
+        assert_eq!(from_str::<Duration>("PT1H2M5.0005S"), Some(duration!(3725000, 500000)));
+        assert_eq!(from_str::<Duration>("PT1H2M5.00005S"), Some(duration!(3725000, 50000)));
+        assert_eq!(from_str::<Duration>("PT1H2M5.000005S"), Some(duration!(3725000, 5000)));
+        assert_eq!(from_str::<Duration>("PT1H2M5.0000005S"), Some(duration!(3725000, 500)));
+        assert_eq!(from_str::<Duration>("PT1H2M5.00000005S"), Some(duration!(3725000, 50)));
+        assert_eq!(from_str::<Duration>("PT1H2M5.000000005S"), Some(duration!(3725000, 5)));
+        assert_eq!(from_str::<Duration>("PT1H2M5.500000005S"), Some(duration!(3725500, 5)));
+        assert_eq!(from_str::<Duration>("-P106751991167DT7H12M55.808999999S"), Some(MIN));
+        assert_eq!(from_str::<Duration>("P106751991167DT7H12M55.807999999S"), Some(MAX));
     }
 }
 
