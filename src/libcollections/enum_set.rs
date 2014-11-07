@@ -403,9 +403,29 @@ mod test {
         let elems = e_intersection.iter().collect();
         assert_eq!(vec![C], elems)
 
+        // Another way to express intersection
+        let e_intersection = e1 - (e1 - e2);
+        let elems = e_intersection.iter().collect();
+        assert_eq!(vec![C], elems)
+
         let e_subtract = e1 - e2;
         let elems = e_subtract.iter().collect();
         assert_eq!(vec![A], elems)
+
+        // Bitwise XOR of two sets, aka symmetric difference
+        let e_symmetric_diff = e1 ^ e2;
+        let elems = e_symmetric_diff.iter().collect();
+        assert_eq!(vec![A,B], elems)
+
+        // Another way to express symmetric difference
+        let e_symmetric_diff = (e1 - e2) | (e2 - e1);
+        let elems = e_symmetric_diff.iter().collect();
+        assert_eq!(vec![A,B], elems)
+
+        // Yet another way to express symmetric difference
+        let e_symmetric_diff = (e1 | e2) - (e1 & e2);
+        let elems = e_symmetric_diff.iter().collect();
+        assert_eq!(vec![A,B], elems)
     }
 
     #[test]
