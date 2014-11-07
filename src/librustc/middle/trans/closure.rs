@@ -27,6 +27,7 @@ use middle::trans::monomorphize::MonoId;
 use middle::trans::type_of::*;
 use middle::trans::type_::Type;
 use middle::ty;
+use middle::subst::{Subst, Substs};
 use util::ppaux::Repr;
 use util::ppaux::ty_to_string;
 
@@ -420,7 +421,8 @@ pub fn trans_expr_fn<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 /// Returns the LLVM function declaration for an unboxed closure, creating it
 /// if necessary. If the ID does not correspond to a closure ID, returns None.
 pub fn get_or_create_declaration_if_unboxed_closure<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
-                                                                closure_id: ast::DefId)
+                                                                closure_id: ast::DefId,
+                                                                substs: &Substs)
                                                                 -> Option<ValueRef> {
     let ccx = bcx.ccx();
     if !ccx.tcx().unboxed_closures.borrow().contains_key(&closure_id) {
@@ -428,7 +430,12 @@ pub fn get_or_create_declaration_if_unboxed_closure<'blk, 'tcx>(bcx: Block<'blk,
         return None
     }
 
-    let function_type = node_id_type(bcx, closure_id.node);
+    let function_type = ty::node_id_to_type(bcx.tcx(), closure_id.node);
+    let function_type = function_type.subst(bcx.tcx(), substs);
+
+    // Normalize type so differences in regions and typedefs don't cause
+    // duplicate declarations
+    let function_type = ty::normalize_ty(bcx.tcx(), function_type);
     let params = match ty::get(function_type).sty {
         ty::ty_unboxed_closure(_, _, ref substs) => substs.types.clone(),
         _ => unreachable!()
@@ -447,7 +454,6 @@ pub fn get_or_create_declaration_if_unboxed_closure<'blk, 'tcx>(bcx: Block<'blk,
         None => {}
     }
 
-    let function_type = node_id_type(bcx, closure_id.node);
     let symbol = ccx.tcx().map.with_path(closure_id.node, |path| {
         mangle_internal_name_by_path_and_seq(path, "unboxed_closure")
     });
@@ -480,7 +486,8 @@ pub fn trans_unboxed_closure<'blk, 'tcx>(
     let closure_id = ast_util::local_def(id);
     let llfn = get_or_create_declaration_if_unboxed_closure(
         bcx,
-        closure_id).unwrap();
+        closure_id,
+        &bcx.fcx.param_substs.substs).unwrap();
 
     let unboxed_closures = bcx.tcx().unboxed_closures.borrow();
     let function_type = (*unboxed_closures)[closure_id]

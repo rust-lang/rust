@@ -311,9 +311,10 @@ impl<N:Repr> Repr for super::Vtable<N> {
             super::VtableImpl(ref v) =>
                 v.repr(tcx),
 
-            super::VtableUnboxedClosure(ref d) =>
-                format!("VtableUnboxedClosure({})",
-                        d.repr(tcx)),
+            super::VtableUnboxedClosure(ref d, ref s) =>
+                format!("VtableUnboxedClosure({},{})",
+                        d.repr(tcx),
+                        s.repr(tcx)),
 
             super::VtableParam(ref v) =>
                 format!("VtableParam({})", v.repr(tcx)),
