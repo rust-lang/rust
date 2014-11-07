@@ -557,7 +557,7 @@ impl<K: Ord, V> TreeMap<K, V> {
     /// ```
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn remove(&mut self, key: &K) -> Option<V> {
-        let ret = remove(&mut self.root, key);
+        let ret = remove(&mut self.root, |x| key.cmp(x));
         if ret.is_some() { self.length -= 1 }
         ret
     }
@@ -615,6 +615,33 @@ impl<K, V> TreeMap<K, V> {
     #[inline]
     pub fn find_with_mut<'a>(&'a mut self, f:|&K| -> Ordering) -> Option<&'a mut V> {
         tree_find_with_mut(&mut self.root, f)
+    }
+}
+
+impl<K: Ord, V> TreeMap<K, V> {
+    /// Returns the value for which `f(key)` returns `Equal`. `f` is invoked
+    /// with current key and guides tree navigation. That means `f` should
+    /// be aware of natural ordering of the tree.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::TreeMap;
+    ///
+    /// let mut t = TreeMap::new();
+    /// t.insert("Content-Type".to_string(), "application/xml".to_string());
+    /// t.insert("User-Agent".to_string(), "Curl-Rust/0.1".to_string());
+    ///
+    /// match t.remove_with(|k| "User-Agent".cmp(k.as_slice())) {
+    ///    Some(x) => assert_eq!(x.as_slice(), "Curl-Rust/0.1"),
+    ///    None => panic!(),
+    /// }
+    ///
+    /// assert_eq!(t.find_with(|x| "User-Agent".cmp(x.as_slice())), None);
+    /// ```
+    #[inline]
+    pub fn remove_with(&mut self, f:|&K| -> Ordering) -> Option<V> {
+        remove(&mut self.root, f)
     }
 }
 
@@ -1169,7 +1196,7 @@ fn insert<K: Ord, V>(node: &mut Option<Box<TreeNode<K, V>>>,
 }
 
 fn remove<K: Ord, V>(node: &mut Option<Box<TreeNode<K, V>>>,
-                          key: &K) -> Option<V> {
+                     f: |&K| -> Ordering) -> Option<V> {
     fn heir_swap<K: Ord, V>(node: &mut Box<TreeNode<K, V>>,
                                  child: &mut Option<Box<TreeNode<K, V>>>) {
         // *could* be done without recursion, but it won't borrow check
@@ -1188,9 +1215,9 @@ fn remove<K: Ord, V>(node: &mut Option<Box<TreeNode<K, V>>>,
         return None; // bottom of tree
       }
       Some(ref mut save) => {
-        let (ret, rebalance) = match key.cmp(&save.key) {
-          Less => (remove(&mut save.left, key), true),
-          Greater => (remove(&mut save.right, key), true),
+        let (ret, rebalance) = match f(&save.key) {
+          Less => (remove(&mut save.left, f), true),
+          Greater => (remove(&mut save.right, f), true),
           Equal => {
             if save.left.is_some() {
                 if save.right.is_some() {
@@ -1202,7 +1229,7 @@ fn remove<K: Ord, V>(node: &mut Option<Box<TreeNode<K, V>>>,
                         swap(&mut save.value, &mut left.value);
                     }
                     save.left = Some(left);
-                    (remove(&mut save.left, key), true)
+                    (remove(&mut save.left, f), true)
                 } else {
                     let new = save.left.take().unwrap();
                     let box TreeNode{value, ..} = replace(save, new);
@@ -1809,6 +1836,15 @@ mod test_treemap {
         m.insert(1u, 2i);
         assert_eq!(m.remove(&1), Some(2));
         assert_eq!(m.remove(&1), None);
+    }
+
+    #[test]
+    fn test_remove_with() {
+        let mut m = TreeMap::new();
+        m.insert(1u, 2i);
+        assert_eq!(m.remove_with(|k| k.cmp(&1)), Some(2));
+        assert_eq!(m.remove(&1), None);
+        assert_eq!(m.remove_with(|k| k.cmp(&1)), None);
     }
 }
 
