@@ -5,7 +5,8 @@
 # Summary
 
 Restore the integer inference fallback that was removed. Integer
-literals whose type is unconstrained will default to `int`, as before.
+literals whose type is unconstrained will default to `i32`, unlike
+before when it defaulted to `int`.
 Floating point literals will default to `f64`.
 
 # Motivation
@@ -102,7 +103,7 @@ To our knowledge, there has not been a single bug exposed by removing
 the fallback to the `int` type. Moreover, such bugs seem to be
 extremely unlikely.
 
-The primary reason for this is that, in production code, the `int`
+The primary reason for this is that, in production code, the `i32`
 fallback is very rarely used. In a sense, the same [measurements][m]
 that were used to justify removing the `int` fallback also justify
 keeping it. As the measurements showed, the vast, vast majority of
@@ -111,25 +112,18 @@ used to print out and do assertions with. Specifically, any integer
 that is passed as a parameter, returned from a function, or stored in
 a struct or array, must wind up with a specific type.
 
-Another secondary reason is that the lint which checks that literals
-are suitable for their assigned type will catch cases where very large
-literals were used that overflow the `int` type (for example,
-`INT_MAX`+1). (Note that the overflow lint constraints `int` literals
-to 32 bits for better portability.)
+## Rationale for the choice of defaulting to `i32`
 
-In almost all of common cases we described above, there exists *some*
-large constant representing a bound. If this constant exceeds the
-range of the chosen fallback type, then a `type_overflow` lint warning
-would be triggered. For example, in the accumulator, if the
-accumulated result `i` is compared using a call like `assert_eq(i,
-22)`, then the constant `22` will be linted. Similarly, when invoking
-range with unconstrained arguments, the arguments to range are linted.
-And so on.
+Unlike in the first revision of the RFC, the fallback type suggested is
+`i32`. This is, for one, to that a case analysis showed that there does
+not exist a compelling reason for having a signed pointer-sized integer
+type as the default.
 
-The only common case where the lint does not apply is when an
-accumulator result is only being printed to the screen or otherwise
-consumed by some generic function which never stores it to memory.
-This is a very narrow case.
+The reasons for using `i32` instead is that it's familiar to programmers
+from the C programming language (where the default int type is 32-bit in
+the major calling conventions), it's faster than 64-bit integers in
+arithmetic today, and is superior in memory usage while still providing
+a reasonable range of possible values.
 
 ## Future-proofing for overloaded literals
 
@@ -141,12 +135,12 @@ be necessary for those literals to have some sort of fallback type.
 
 # Detailed design
 
-Integeral literals are currently type-checked by creating a special
+Integral literals are currently type-checked by creating a special
 class of type variable. These variables are subject to unification as
 normal, but can only unify with integral types. This RFC proposes
 that, at the end of type inference, when all constraints are known, we
 will identify all integral type variables that have not yet been bound
-to anything and bind them to `int`. Similarly, floating point literals
+to anything and bind them to `i32`. Similarly, floating point literals
 will fallback to `f64`.
 
 For those who wish to be very careful about which integral types they
@@ -156,21 +150,19 @@ integer or floating point literal is unconstrained.
 
 # Downsides
 
-Although we give a detailed argument for why bugs are unlikely, it is
-nonetheless possible that this choice will lead to bugs in some code,
-since another choice (most likely `uint`) may have been more suitable.
+Although there seems to be little motivation for `int` to be the
+default, there might be use cases where `int` is a more correct fallback
+than `i32`.
 
-Given that the size of `int` is platform dependent, it is possible
-that a porting hazard is created. This is mitigated by the fact that
-the `type_overflow` lint constraints `int` literals to 32 bits.
 
 # Alternatives
 
 - **No fallback.** Status quo.
 
 - **Fallback to something else.** We could potentially fallback to
-  `i32` or some other integral type rather than `int`.
-  
+  `int` like the original RFC suggested or some other integral type
+  rather than `i32`.
+
 - **Fallback in a more narrow range of cases.** We could attempt to
   identify integers that are "only printed" or "only compared". There
   is no concrete proposal in this direction and it seems to lead to an
@@ -182,5 +174,10 @@ the `type_overflow` lint constraints `int` literals to 32 bits.
   like `range(0, 10)` to work even without integral fallback, because
   the `range` function itself could specify a fallback type. However,
   this does not help with many other examples.
+
+# History
+
+2014-11-07: Changed the suggested fallback from `int` to `i32`, add
+rationale.
   
 [m]: https://gist.github.com/nikomatsakis/11179747
