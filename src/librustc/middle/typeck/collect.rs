@@ -1155,7 +1155,8 @@ pub fn convert(ccx: &CrateCtxt, it: &ast::Item) {
                             parent_visibility);
 
             for trait_ref in opt_trait_ref.iter() {
-                astconv::instantiate_trait_ref(&icx, &ExplicitRscope, trait_ref, Some(selfty), None);
+                astconv::instantiate_trait_ref(&icx, &ExplicitRscope, trait_ref,
+                                               Some(selfty), None);
             }
         },
         ast::ItemTrait(_, _, _, ref trait_methods) => {
