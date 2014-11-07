@@ -183,7 +183,7 @@ impl<'a> ArchiveBuilder<'a> {
                                     self.archive.slib_suffix.as_slice(),
                                     self.archive.lib_search_paths.as_slice(),
                                     self.archive.handler);
-        self.add_archive(&location, name, [])
+        self.add_archive(&location, name, |_| false)
     }
 
     /// Adds all of the contents of the rlib at the specified path to this
@@ -193,13 +193,20 @@ impl<'a> ArchiveBuilder<'a> {
     /// then the object file also isn't added.
     pub fn add_rlib(&mut self, rlib: &Path, name: &str,
                     lto: bool) -> io::IoResult<()> {
-        let object = format!("{}.o", name);
-        let bytecode = format!("{}.bytecode.deflate", name);
-        let mut ignore = vec!(bytecode.as_slice(), METADATA_FILENAME);
-        if lto {
-            ignore.push(object.as_slice());
-        }
-        self.add_archive(rlib, name, ignore.as_slice())
+        // Ignoring obj file starting with the crate name
+        // as simple comparison is not enough - there
+        // might be also an extra name suffix
+        let obj_start = format!("{}", name);
+        let obj_start = obj_start.as_slice();
+        // Ignoring all bytecode files, no matter of
+        // name
+        let bc_ext = ".bytecode.deflate";
+
+        self.add_archive(rlib, name.as_slice(), |fname: &str| {
+            let skip_obj = lto && fname.starts_with(obj_start)
+                && fname.ends_with(".o");
+            skip_obj || fname.ends_with(bc_ext) || fname == METADATA_FILENAME
+        })
     }
 
     /// Adds an arbitrary file to this archive
@@ -273,7 +280,7 @@ impl<'a> ArchiveBuilder<'a> {
     }
 
     fn add_archive(&mut self, archive: &Path, name: &str,
-                   skip: &[&str]) -> io::IoResult<()> {
+                   skip: |&str| -> bool) -> io::IoResult<()> {
         let loc = TempDir::new("rsar").unwrap();
 
         // First, extract the contents of the archive to a temporary directory.
@@ -295,7 +302,7 @@ impl<'a> ArchiveBuilder<'a> {
         let files = try!(fs::readdir(loc.path()));
         for file in files.iter() {
             let filename = file.filename_str().unwrap();
-            if skip.iter().any(|s| *s == filename) { continue }
+            if skip(filename) { continue }
             if filename.contains(".SYMDEF") { continue }
 
             let filename = format!("r-{}-{}", name, filename);
