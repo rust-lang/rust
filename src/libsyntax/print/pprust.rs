@@ -254,6 +254,8 @@ pub fn token_to_string(tok: &Token) -> String {
 
         /* Other */
         token::DocComment(s)        => s.as_str().into_string(),
+        token::SubstNt(s, _)        => format!("${}", s),
+        token::MatchNt(s, t, _, _)  => format!("${}:{}", s, t),
         token::Eof                  => "<eof>".into_string(),
         token::Whitespace           => " ".into_string(),
         token::Comment              => "/* */".into_string(),
@@ -270,7 +272,6 @@ pub fn token_to_string(tok: &Token) -> String {
             token::NtPat(..)      => "an interpolated pattern".into_string(),
             token::NtIdent(..)    => "an interpolated identifier".into_string(),
             token::NtTT(..)       => "an interpolated tt".into_string(),
-            token::NtMatchers(..) => "an interpolated matcher sequence".into_string(),
         }
     }
 }
@@ -1105,13 +1106,6 @@ impl<'a> State<'a> {
     /// expression arguments as expressions). It can be done! I think.
     pub fn print_tt(&mut self, tt: &ast::TokenTree) -> IoResult<()> {
         match *tt {
-            ast::TtDelimited(_, ref delimed) => {
-                try!(word(&mut self.s, token_to_string(&delimed.open_token()).as_slice()));
-                try!(space(&mut self.s));
-                try!(self.print_tts(delimed.tts.as_slice()));
-                try!(space(&mut self.s));
-                word(&mut self.s, token_to_string(&delimed.close_token()).as_slice())
-            },
             ast::TtToken(_, ref tk) => {
                 try!(word(&mut self.s, token_to_string(tk).as_slice()));
                 match *tk {
@@ -1121,26 +1115,29 @@ impl<'a> State<'a> {
                     _ => Ok(())
                 }
             }
-            ast::TtSequence(_, ref tts, ref separator, kleene_op) => {
+            ast::TtDelimited(_, ref delimed) => {
+                try!(word(&mut self.s, token_to_string(&delimed.open_token()).as_slice()));
+                try!(space(&mut self.s));
+                try!(self.print_tts(delimed.tts.as_slice()));
+                try!(space(&mut self.s));
+                word(&mut self.s, token_to_string(&delimed.close_token()).as_slice())
+            },
+            ast::TtSequence(_, ref seq) => {
                 try!(word(&mut self.s, "$("));
-                for tt_elt in (*tts).iter() {
+                for tt_elt in seq.tts.iter() {
                     try!(self.print_tt(tt_elt));
                 }
                 try!(word(&mut self.s, ")"));
-                match *separator {
+                match seq.separator {
                     Some(ref tk) => {
                         try!(word(&mut self.s, token_to_string(tk).as_slice()));
                     }
                     None => {},
                 }
-                match kleene_op {
+                match seq.op {
                     ast::ZeroOrMore => word(&mut self.s, "*"),
                     ast::OneOrMore => word(&mut self.s, "+"),
                 }
-            }
-            ast::TtNonterminal(_, name) => {
-                try!(word(&mut self.s, "$"));
-                self.print_ident(name)
             }
         }
     }

@@ -616,6 +616,20 @@ fn mk_token(cx: &ExtCtxt, sp: Span, tok: &token::Token) -> P<ast::Expr> {
                                 vec!(mk_name(cx, sp, ident.ident())));
         }
 
+        token::MatchNt(name, kind, name_style, kind_style) => {
+            return cx.expr_call(sp,
+                                mk_token_path(cx, sp, "MatchNt"),
+                                vec![mk_ident(cx, sp, name),
+                                     mk_ident(cx, sp, kind),
+                                     match name_style {
+                                         ModName => mk_token_path(cx, sp, "ModName"),
+                                         Plain   => mk_token_path(cx, sp, "Plain"),
+                                     },
+                                     match kind_style {
+                                         ModName => mk_token_path(cx, sp, "ModName"),
+                                         Plain   => mk_token_path(cx, sp, "Plain"),
+                                     }]);
+        }
         token::Interpolated(_) => panic!("quote! with interpolated token"),
 
         _ => ()
@@ -654,6 +668,25 @@ fn mk_token(cx: &ExtCtxt, sp: Span, tok: &token::Token) -> P<ast::Expr> {
 
 fn mk_tt(cx: &ExtCtxt, _: Span, tt: &ast::TokenTree) -> Vec<P<ast::Stmt>> {
     match *tt {
+        ast::TtToken(sp, SubstNt(ident, _)) => {
+            // tt.extend($ident.to_tokens(ext_cx).into_iter())
+
+            let e_to_toks =
+                cx.expr_method_call(sp,
+                                    cx.expr_ident(sp, ident),
+                                    id_ext("to_tokens"),
+                                    vec!(cx.expr_ident(sp, id_ext("ext_cx"))));
+            let e_to_toks =
+                cx.expr_method_call(sp, e_to_toks, id_ext("into_iter"), vec![]);
+
+            let e_push =
+                cx.expr_method_call(sp,
+                                    cx.expr_ident(sp, id_ext("tt")),
+                                    id_ext("extend"),
+                                    vec!(e_to_toks));
+
+            vec!(cx.stmt_expr(e_push))
+        }
         ast::TtToken(sp, ref tok) => {
             let e_sp = cx.expr_ident(sp, id_ext("_sp"));
             let e_tok = cx.expr_call(sp,
@@ -673,25 +706,6 @@ fn mk_tt(cx: &ExtCtxt, _: Span, tt: &ast::TokenTree) -> Vec<P<ast::Stmt>> {
                 .collect()
         },
         ast::TtSequence(..) => panic!("TtSequence in quote!"),
-        ast::TtNonterminal(sp, ident) => {
-            // tt.extend($ident.to_tokens(ext_cx).into_iter())
-
-            let e_to_toks =
-                cx.expr_method_call(sp,
-                                    cx.expr_ident(sp, ident),
-                                    id_ext("to_tokens"),
-                                    vec!(cx.expr_ident(sp, id_ext("ext_cx"))));
-            let e_to_toks =
-                cx.expr_method_call(sp, e_to_toks, id_ext("into_iter"), vec![]);
-
-            let e_push =
-                cx.expr_method_call(sp,
-                                    cx.expr_ident(sp, id_ext("tt")),
-                                    id_ext("extend"),
-                                    vec!(e_to_toks));
-
-            vec!(cx.stmt_expr(e_push))
-        },
     }
 }
 

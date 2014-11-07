@@ -619,13 +619,13 @@ pub fn noop_fold_tt<T: Folder>(tt: &TokenTree, fld: &mut T) -> TokenTree {
                             }
                         ))
         },
-        TtSequence(span, ref pattern, ref sep, is_optional) =>
+        TtSequence(span, ref seq) =>
             TtSequence(span,
-                       Rc::new(fld.fold_tts(pattern.as_slice())),
-                       sep.clone().map(|tok| fld.fold_token(tok)),
-                       is_optional),
-        TtNonterminal(sp,ref ident) =>
-            TtNonterminal(sp,fld.fold_ident(*ident))
+                       Rc::new(SequenceRepetition {
+                           tts: fld.fold_tts(seq.tts.as_slice()),
+                           separator: seq.separator.clone().map(|tok| fld.fold_token(tok)),
+                           ..**seq
+                       })),
     }
 }
 
@@ -641,6 +641,12 @@ pub fn noop_fold_token<T: Folder>(t: token::Token, fld: &mut T) -> token::Token 
         }
         token::Lifetime(id) => token::Lifetime(fld.fold_ident(id)),
         token::Interpolated(nt) => token::Interpolated(fld.fold_interpolated(nt)),
+        token::SubstNt(ident, namep) => {
+            token::SubstNt(fld.fold_ident(ident), namep)
+        }
+        token::MatchNt(name, kind, namep, kindp) => {
+            token::MatchNt(fld.fold_ident(name), fld.fold_ident(kind), namep, kindp)
+        }
         _ => t
     }
 }
@@ -689,8 +695,6 @@ pub fn noop_fold_interpolated<T: Folder>(nt: token::Nonterminal, fld: &mut T)
         token::NtMeta(meta_item) => token::NtMeta(fld.fold_meta_item(meta_item)),
         token::NtPath(box path) => token::NtPath(box fld.fold_path(path)),
         token::NtTT(tt) => token::NtTT(P(fld.fold_tt(&*tt))),
-        // it looks to me like we can leave out the matchers: token::NtMatchers(matchers)
-        _ => nt
     }
 }
 

@@ -10,14 +10,8 @@
 
 #![feature(macro_rules)]
 
-// error-pattern: unexpected token
-
-macro_rules! e(
-    ($inp:ident) => (
-        $nonexistent
-    );
-)
+macro_rules! test ( ($a, $b) => (()); ) //~ ERROR Cannot transcribe
 
 fn main() {
-    e!(foo);
+    test!()
 }
