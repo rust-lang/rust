@@ -166,7 +166,7 @@ impl<T: Send + Sync + Clone> Arc<T> {
         // additional reference of either kind.
         if self.inner().strong.load(atomic::SeqCst) != 1 ||
            self.inner().weak.load(atomic::SeqCst) != 1 {
-            *self = Arc::new(self.deref().clone())
+            *self = Arc::new((**self).clone())
         }
         // This unsafety is ok because we're guaranteed that the pointer
         // returned is the *only* pointer that will ever be returned to T. Our

@@ -166,18 +166,22 @@ impl<K, V> RawBucket<K, V> {
 }
 
 // For parameterizing over mutability.
+
+#[cfg(stage0)]
 impl<'t, K, V> Deref<RawTable<K, V>> for &'t RawTable<K, V> {
     fn deref(&self) -> &RawTable<K, V> {
         &**self
     }
 }
 
+#[cfg(stage0)]
 impl<'t, K, V> Deref<RawTable<K, V>> for &'t mut RawTable<K, V> {
     fn deref(&self) -> &RawTable<K,V> {
         &**self
     }
 }
 
+#[cfg(stage0)]
 impl<'t, K, V> DerefMut<RawTable<K, V>> for &'t mut RawTable<K, V> {
     fn deref_mut(&mut self) -> &mut RawTable<K,V> {
         &mut **self

@@ -1702,13 +1702,18 @@ impl<'a, 'tcx> LookupContext<'a, 'tcx> {
                             PreferMutLvalue);
                     }
                     ast::ExprUnary(ast::UnDeref, ref base_expr) => {
-                        check::try_overloaded_deref(
-                            self.fcx,
-                            expr.span,
-                            Some(MethodCall::expr(expr.id)),
-                            Some(&**base_expr),
-                            self.fcx.expr_ty(&**base_expr),
-                            PreferMutLvalue);
+                        // if this is an overloaded deref, then re-evaluate with
+                        // a preference for mut
+                        let method_call = MethodCall::expr(expr.id);
+                        if self.fcx.inh.method_map.borrow().contains_key(&method_call) {
+                            check::try_overloaded_deref(
+                                self.fcx,
+                                expr.span,
+                                Some(method_call),
+                                Some(&**base_expr),
+                                self.fcx.expr_ty(&**base_expr),
+                                PreferMutLvalue);
+                        }
                     }
                     _ => {}
                 }
