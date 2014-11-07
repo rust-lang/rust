@@ -16,7 +16,6 @@
 use core::prelude::*;
 use core::fmt;
 
-// FIXME(conventions): implement BitXor
 // FIXME(contentions): implement union family of methods? (general design may be wrong here)
 // FIXME(conventions): implement len
 
@@ -193,6 +192,12 @@ impl<E:CLike> BitOr<EnumSet<E>, EnumSet<E>> for EnumSet<E> {
 impl<E:CLike> BitAnd<EnumSet<E>, EnumSet<E>> for EnumSet<E> {
     fn bitand(&self, e: &EnumSet<E>) -> EnumSet<E> {
         EnumSet {bits: self.bits & e.bits}
+    }
+}
+
+impl<E:CLike> BitXor<EnumSet<E>, EnumSet<E>> for EnumSet<E> {
+    fn bitxor(&self, e: &EnumSet<E>) -> EnumSet<E> {
+        EnumSet {bits: self.bits ^ e.bits}
     }
 }
 
