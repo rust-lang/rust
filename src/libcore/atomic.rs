@@ -717,15 +717,15 @@ unsafe fn atomic_xor<T>(dst: *mut T, val: T, order: Ordering) -> T {
 /// A fence 'A' which has `Release` ordering semantics, synchronizes with a
 /// fence 'B' with (at least) `Acquire` semantics, if and only if there exists
 /// atomic operations X and Y, both operating on some atomic object 'M' such
-/// that A is sequenced before X, Y is synchronized before B and Y observers
+/// that A is sequenced before X, Y is synchronized before B and Y observes
 /// the change to M. This provides a happens-before dependence between A and B.
 ///
 /// Atomic operations with `Release` or `Acquire` semantics can also synchronize
 /// with a fence.
 ///
-/// A fence with has `SeqCst` ordering, in addition to having both `Acquire` and
-/// `Release` semantics, participates in the global program order of the other
-/// `SeqCst` operations and/or fences.
+/// A fence which has `SeqCst` ordering, in addition to having both `Acquire`
+/// and `Release` semantics, participates in the global program order of the
+/// other `SeqCst` operations and/or fences.
 ///
 /// Accepts `Acquire`, `Release`, `AcqRel` and `SeqCst` orderings.
 ///
