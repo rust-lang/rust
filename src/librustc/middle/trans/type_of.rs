@@ -175,7 +175,7 @@ pub fn type_of_fn_from_ty(cx: &CrateContext, fty: ty::t) -> Type {
 //     recursive types. For example, enum types rely on this behavior.
 
 pub fn sizing_type_of(cx: &CrateContext, t: ty::t) -> Type {
-    match cx.llsizingtypes().borrow().find_copy(&t) {
+    match cx.llsizingtypes().borrow().get(&t).cloned() {
         Some(t) => return t,
         None => ()
     }

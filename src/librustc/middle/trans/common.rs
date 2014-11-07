@@ -526,12 +526,12 @@ impl<'blk, 'tcx> mc::Typer<'tcx> for BlockS<'blk, 'tcx> {
     }
 
     fn upvar_borrow(&self, upvar_id: ty::UpvarId) -> ty::UpvarBorrow {
-        self.tcx().upvar_borrow_map.borrow().get_copy(&upvar_id)
+        self.tcx().upvar_borrow_map.borrow()[upvar_id].clone()
     }
 
     fn capture_mode(&self, closure_expr_id: ast::NodeId)
                     -> ast::CaptureClause {
-        self.tcx().capture_modes.borrow().get_copy(&closure_expr_id)
+        self.tcx().capture_modes.borrow()[closure_expr_id].clone()
     }
 }
 

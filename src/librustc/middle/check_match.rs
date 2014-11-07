@@ -360,7 +360,7 @@ impl<'a, 'tcx> Folder for StaticInliner<'a, 'tcx> {
     fn fold_pat(&mut self, pat: P<Pat>) -> P<Pat> {
         match pat.node {
             PatIdent(..) | PatEnum(..) => {
-                let def = self.tcx.def_map.borrow().find_copy(&pat.id);
+                let def = self.tcx.def_map.borrow().get(&pat.id).cloned();
                 match def {
                     Some(DefConst(did)) => match lookup_const_by_id(self.tcx, did) {
                         Some(const_expr) => {
@@ -753,7 +753,7 @@ pub fn specialize<'a>(cx: &MatchCheckCtxt, r: &[&'a Pat],
             Some(Vec::from_elem(arity, DUMMY_WILD_PAT)),
 
         &PatIdent(_, _, _) => {
-            let opt_def = cx.tcx.def_map.borrow().find_copy(&pat_id);
+            let opt_def = cx.tcx.def_map.borrow().get(&pat_id).cloned();
             match opt_def {
                 Some(DefConst(..)) =>
                     cx.tcx.sess.span_bug(pat_span, "const pattern should've \
@@ -768,7 +768,7 @@ pub fn specialize<'a>(cx: &MatchCheckCtxt, r: &[&'a Pat],
         }
 
         &PatEnum(_, ref args) => {
-            let def = cx.tcx.def_map.borrow().get_copy(&pat_id);
+            let def = cx.tcx.def_map.borrow()[pat_id].clone();
             match def {
                 DefConst(..) =>
                     cx.tcx.sess.span_bug(pat_span, "const pattern should've \
@@ -786,7 +786,7 @@ pub fn specialize<'a>(cx: &MatchCheckCtxt, r: &[&'a Pat],
 
         &PatStruct(_, ref pattern_fields, _) => {
             // Is this a struct or an enum variant?
-            let def = cx.tcx.def_map.borrow().get_copy(&pat_id);
+            let def = cx.tcx.def_map.borrow()[pat_id].clone();
             let class_id = match def {
                 DefConst(..) =>
                     cx.tcx.sess.span_bug(pat_span, "const pattern should've \

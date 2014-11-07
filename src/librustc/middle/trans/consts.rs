@@ -185,7 +185,7 @@ pub fn get_const_val(cx: &CrateContext,
         }
     }
 
-    cx.const_values().borrow().get_copy(&def_id.node)
+    cx.const_values().borrow()[def_id.node].clone()
 }
 
 pub fn const_expr(cx: &CrateContext, e: &ast::Expr) -> (ValueRef, ty::t) {
@@ -193,7 +193,7 @@ pub fn const_expr(cx: &CrateContext, e: &ast::Expr) -> (ValueRef, ty::t) {
     let mut llconst = llconst;
     let ety = ty::expr_ty(cx.tcx(), e);
     let mut ety_adjusted = ty::expr_ty_adjusted(cx.tcx(), e);
-    let opt_adj = cx.tcx().adjustments.borrow().find_copy(&e.id);
+    let opt_adj = cx.tcx().adjustments.borrow().get(&e.id).cloned();
     match opt_adj {
         None => { }
         Some(adj) => {
@@ -552,7 +552,7 @@ fn const_expr_unadjusted(cx: &CrateContext, e: &ast::Expr) -> ValueRef {
                       _ => break,
                   }
               }
-              let opt_def = cx.tcx().def_map.borrow().find_copy(&cur.id);
+              let opt_def = cx.tcx().def_map.borrow().get(&cur.id).cloned();
               match opt_def {
                   Some(def::DefStatic(def_id, _)) => {
                       let ty = ty::expr_ty(cx.tcx(), e);
@@ -627,7 +627,7 @@ fn const_expr_unadjusted(cx: &CrateContext, e: &ast::Expr) -> ValueRef {
             // Assert that there are no type parameters in this path.
             assert!(pth.segments.iter().all(|seg| !seg.parameters.has_types()));
 
-            let opt_def = cx.tcx().def_map.borrow().find_copy(&e.id);
+            let opt_def = cx.tcx().def_map.borrow().get(&e.id).cloned();
             match opt_def {
                 Some(def::DefFn(def_id, _)) => {
                     if !ast_util::is_local(def_id) {
@@ -661,7 +661,7 @@ fn const_expr_unadjusted(cx: &CrateContext, e: &ast::Expr) -> ValueRef {
             }
           }
           ast::ExprCall(ref callee, ref args) => {
-              let opt_def = cx.tcx().def_map.borrow().find_copy(&callee.id);
+              let opt_def = cx.tcx().def_map.borrow().get(&callee.id).cloned();
               match opt_def {
                   Some(def::DefStruct(_)) => {
                       let ety = ty::expr_ty(cx.tcx(), e);
@@ -703,7 +703,7 @@ pub fn trans_static(ccx: &CrateContext, m: ast::Mutability, id: ast::NodeId) {
         let g = base::get_item_val(ccx, id);
         // At this point, get_item_val has already translated the
         // constant's initializer to determine its LLVM type.
-        let v = ccx.static_values().borrow().get_copy(&id);
+        let v = ccx.static_values().borrow()[id].clone();
         // boolean SSA values are i1, but they have to be stored in i8 slots,
         // otherwise some LLVM optimization passes don't work as expected
         let v = if llvm::LLVMTypeOf(v) == Type::i1(ccx).to_ref() {

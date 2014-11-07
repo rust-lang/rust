@@ -301,11 +301,11 @@ impl TypeMap {
     }
 
     fn find_metadata_for_type(&self, type_: ty::t) -> Option<DIType> {
-        self.type_to_metadata.find_copy(&type_)
+        self.type_to_metadata.get(&type_).cloned()
     }
 
     fn find_metadata_for_unique_id(&self, unique_type_id: UniqueTypeId) -> Option<DIType> {
-        self.unique_id_to_metadata.find_copy(&unique_type_id)
+        self.unique_id_to_metadata.get(&unique_type_id).cloned()
     }
 
     // Get the string representation of a UniqueTypeId. This method will fail if
@@ -341,7 +341,7 @@ impl TypeMap {
         // unique vec box (~[]) -> {HEAP_VEC_BOX<:pointee-uid:>}
         // gc box               -> {GC_BOX<:pointee-uid:>}
 
-        match self.type_to_unique_id.find_copy(&type_) {
+        match self.type_to_unique_id.get(&type_).cloned() {
             Some(unique_type_id) => return unique_type_id,
             None => { /* generate one */}
         };
@@ -497,7 +497,7 @@ impl TypeMap {
             // First, find out the 'real' def_id of the type. Items inlined from
             // other crates have to be mapped back to their source.
             let source_def_id = if def_id.krate == ast::LOCAL_CRATE {
-                match cx.external_srcs().borrow().find_copy(&def_id.node) {
+                match cx.external_srcs().borrow().get(&def_id.node).cloned() {
                     Some(source_def_id) => {
                         // The given def_id identifies the inlined copy of a
                         // type definition, let's take the source of the copy.
@@ -851,7 +851,7 @@ pub fn create_local_var_metadata(bcx: Block, local: &ast::Local) {
     pat_util::pat_bindings(def_map, &*local.pat, |_, node_id, span, path1| {
         let var_ident = path1.node;
 
-        let datum = match bcx.fcx.lllocals.borrow().find_copy(&node_id) {
+        let datum = match bcx.fcx.lllocals.borrow().get(&node_id).cloned() {
             Some(datum) => datum,
             None => {
                 bcx.sess().span_bug(span,
@@ -1014,7 +1014,7 @@ pub fn create_argument_metadata(bcx: Block, arg: &ast::Arg) {
     let scope_metadata = bcx.fcx.debug_context.get_ref(cx, arg.pat.span).fn_metadata;
 
     pat_util::pat_bindings(def_map, &*arg.pat, |_, node_id, span, path1| {
-        let llarg = match bcx.fcx.lllocals.borrow().find_copy(&node_id) {
+        let llarg = match bcx.fcx.lllocals.borrow().get(&node_id).cloned() {
             Some(v) => v,
             None => {
                 bcx.sess().span_bug(span,
@@ -1706,7 +1706,7 @@ fn scope_metadata(fcx: &FunctionContext,
     let scope_map = &fcx.debug_context
                         .get_ref(fcx.ccx, error_reporting_span)
                         .scope_map;
-    match scope_map.borrow().find_copy(&node_id) {
+    match scope_map.borrow().get(&node_id).cloned() {
         Some(scope_metadata) => scope_metadata,
         None => {
             let node = fcx.ccx.tcx().map.get(node_id);
@@ -2415,7 +2415,7 @@ fn prepare_enum_metadata(cx: &CrateContext,
         // this cache.
         let cached_discriminant_type_metadata = debug_context(cx).created_enum_disr_types
                                                                  .borrow()
-                                                                 .find_copy(&enum_def_id);
+                                                                 .get(&enum_def_id).cloned();
         match cached_discriminant_type_metadata {
             Some(discriminant_type_metadata) => discriminant_type_metadata,
             None => {
@@ -3982,7 +3982,7 @@ fn namespace_for_item(cx: &CrateContext, def_id: ast::DefId) -> Rc<NamespaceTree
             current_key.push(name);
 
             let existing_node = debug_context(cx).namespace_map.borrow()
-                                                 .find_copy(&current_key);
+                                                 .get(&current_key).cloned();
             let current_node = match existing_node {
                 Some(existing_node) => existing_node,
                 None => {

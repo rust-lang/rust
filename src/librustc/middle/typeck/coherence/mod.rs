@@ -317,7 +317,7 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
 
     fn get_self_type_for_implementation(&self, impl_did: DefId)
                                         -> Polytype {
-        self.crate_context.tcx.tcache.borrow().get_copy(&impl_did)
+        self.crate_context.tcx.tcache.borrow()[impl_did].clone()
     }
 
     // Converts an implementation in the AST to a vector of items.
@@ -428,7 +428,7 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
         };
 
         let impl_items = tcx.impl_items.borrow();
-        let trait_impls = match tcx.trait_impls.borrow().find_copy(&drop_trait) {
+        let trait_impls = match tcx.trait_impls.borrow().get(&drop_trait).cloned() {
             None => return, // No types with (new-style) dtors present.
             Some(found_impls) => found_impls
         };

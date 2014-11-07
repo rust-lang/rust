@@ -94,7 +94,7 @@ fn lookup_cur_matched_by_matched(r: &TtReader, start: Rc<NamedMatch>) -> Rc<Name
 }
 
 fn lookup_cur_matched(r: &TtReader, name: Ident) -> Option<Rc<NamedMatch>> {
-    let matched_opt = r.interpolations.find_copy(&name);
+    let matched_opt = r.interpolations.get(&name).cloned();
     matched_opt.map(|s| lookup_cur_matched_by_matched(r, s))
 }
 

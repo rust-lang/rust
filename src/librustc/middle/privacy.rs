@@ -245,7 +245,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EmbargoVisitor<'a, 'tcx> {
             ast::ItemImpl(_, _, ref ty, ref impl_items) => {
                 let public_ty = match ty.node {
                     ast::TyPath(_, _, id) => {
-                        match self.tcx.def_map.borrow().get_copy(&id) {
+                        match self.tcx.def_map.borrow()[id].clone() {
                             def::DefPrimTy(..) => true,
                             def => {
                                 let did = def.def_id();
@@ -313,7 +313,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EmbargoVisitor<'a, 'tcx> {
             ast::ItemTy(ref ty, _) if public_first => {
                 match ty.node {
                     ast::TyPath(_, _, id) => {
-                        match self.tcx.def_map.borrow().get_copy(&id) {
+                        match self.tcx.def_map.borrow()[id].clone() {
                             def::DefPrimTy(..) | def::DefTyParam(..) => {},
                             def => {
                                 let did = def.def_id();
@@ -620,7 +620,7 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
                             ast::TyPath(_, _, id) => id,
                             _ => return Some((err_span, err_msg, None)),
                         };
-                        let def = self.tcx.def_map.borrow().get_copy(&id);
+                        let def = self.tcx.def_map.borrow()[id].clone();
                         let did = def.def_id();
                         assert!(is_local(did));
                         match self.tcx.map.get(did.node) {
@@ -706,7 +706,7 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
     // Checks that a path is in scope.
     fn check_path(&mut self, span: Span, path_id: ast::NodeId, path: &ast::Path) {
         debug!("privacy - path {}", self.nodestr(path_id));
-        let orig_def = self.tcx.def_map.borrow().get_copy(&path_id);
+        let orig_def = self.tcx.def_map.borrow()[path_id].clone();
         let ck = |tyname: &str| {
             let ck_public = |def: ast::DefId| {
                 let name = token::get_ident(path.segments
@@ -789,7 +789,7 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
         // def map is not. Therefore the names we work out below will not always
         // be accurate and we can get slightly wonky error messages (but type
         // checking is always correct).
-        match self.tcx.def_map.borrow().get_copy(&path_id) {
+        match self.tcx.def_map.borrow()[path_id].clone() {
             def::DefStaticMethod(..) => ck("static method"),
             def::DefFn(..) => ck("function"),
             def::DefStatic(..) => ck("static"),
@@ -873,7 +873,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for PrivacyVisitor<'a, 'tcx> {
                         }
                     }
                     ty::ty_enum(_, _) => {
-                        match self.tcx.def_map.borrow().get_copy(&expr.id) {
+                        match self.tcx.def_map.borrow()[expr.id].clone() {
                             def::DefVariant(_, variant_id, _) => {
                                 for field in fields.iter() {
                                     self.check_field(expr.span, variant_id,
@@ -1254,7 +1254,7 @@ struct CheckTypeForPrivatenessVisitor<'a, 'b: 'a, 'tcx: 'b> {
 
 impl<'a, 'tcx> VisiblePrivateTypesVisitor<'a, 'tcx> {
     fn path_is_private_type(&self, path_id: ast::NodeId) -> bool {
-        let did = match self.tcx.def_map.borrow().find_copy(&path_id) {
+        let did = match self.tcx.def_map.borrow().get(&path_id).cloned() {
             // `int` etc. (None doesn't seem to occur.)
             None | Some(def::DefPrimTy(..)) => return false,
             Some(def) => def.def_id()
