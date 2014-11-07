@@ -20,7 +20,8 @@ use syntax::ast;
 use syntax::visit;
 use syntax::visit::Visitor;
 
-// An error has already been reported to the user, so no need to continue checking.
+// Useful type to use with `Result<>` indicate that an error has already
+// been reported to the user, so no need to continue checking.
 #[deriving(Clone,Show)]
 pub struct ErrorReported;
 
