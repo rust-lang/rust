@@ -1102,13 +1102,11 @@ impl<'a, 'tcx> Rebuilder<'a, 'tcx> {
                     // be passing down a map.
                     ast::RegionTyParamBound(lt)
                 }
-                &ast::UnboxedFnTyParamBound(ref unboxed_function_type) => {
-                    ast::UnboxedFnTyParamBound((*unboxed_function_type).clone())
-                }
                 &ast::TraitTyParamBound(ref tr) => {
                     let last_seg = tr.path.segments.last().unwrap();
                     let mut insert = Vec::new();
-                    for (i, lt) in last_seg.lifetimes.iter().enumerate() {
+                    let lifetimes = last_seg.parameters.lifetimes();
+                    for (i, lt) in lifetimes.iter().enumerate() {
                         if region_names.contains(&lt.name) {
                             insert.push(i);
                         }
@@ -1116,7 +1114,7 @@ impl<'a, 'tcx> Rebuilder<'a, 'tcx> {
                     let rebuild_info = RebuildPathInfo {
                         path: &tr.path,
                         indexes: insert,
-                        expected: last_seg.lifetimes.len(),
+                        expected: lifetimes.len(),
                         anon_nums: &HashSet::new(),
                         region_names: region_names
                     };
@@ -1240,7 +1238,7 @@ impl<'a, 'tcx> Rebuilder<'a, 'tcx> {
                     ty_queue.push(&*mut_ty.ty);
                 }
                 ast::TyPath(ref path, ref bounds, id) => {
-                    let a_def = match self.tcx.def_map.borrow().find(&id) {
+                    let a_def = match self.tcx.def_map.borrow().get(&id) {
                         None => {
                             self.tcx
                                 .sess
@@ -1257,7 +1255,7 @@ impl<'a, 'tcx> Rebuilder<'a, 'tcx> {
                             let expected =
                                 generics.regions.len(subst::TypeSpace);
                             let lifetimes =
-                                &path.segments.last().unwrap().lifetimes;
+                                path.segments.last().unwrap().parameters.lifetimes();
                             let mut insert = Vec::new();
                             if lifetimes.len() == 0 {
                                 let anon = self.cur_anon.get();
@@ -1357,7 +1355,8 @@ impl<'a, 'tcx> Rebuilder<'a, 'tcx> {
     fn rebuild_path(&self,
                     rebuild_info: RebuildPathInfo,
                     lifetime: ast::Lifetime)
-                    -> ast::Path {
+                    -> ast::Path
+    {
         let RebuildPathInfo {
             path,
             indexes,
@@ -1367,37 +1366,48 @@ impl<'a, 'tcx> Rebuilder<'a, 'tcx> {
         } = rebuild_info;
 
         let last_seg = path.segments.last().unwrap();
-        let mut new_lts = Vec::new();
-        if last_seg.lifetimes.len() == 0 {
-            // traverse once to see if there's a need to insert lifetime
-            let need_insert = range(0, expected).any(|i| {
-                indexes.contains(&i)
-            });
-            if need_insert {
-                for i in range(0, expected) {
-                    if indexes.contains(&i) {
-                        new_lts.push(lifetime);
-                    } else {
-                        new_lts.push(self.life_giver.give_lifetime());
+        let new_parameters = match last_seg.parameters {
+            ast::ParenthesizedParameters(..) => {
+                last_seg.parameters.clone()
+            }
+
+            ast::AngleBracketedParameters(ref data) => {
+                let mut new_lts = Vec::new();
+                if data.lifetimes.len() == 0 {
+                    // traverse once to see if there's a need to insert lifetime
+                    let need_insert = range(0, expected).any(|i| {
+                        indexes.contains(&i)
+                    });
+                    if need_insert {
+                        for i in range(0, expected) {
+                            if indexes.contains(&i) {
+                                new_lts.push(lifetime);
+                            } else {
+                                new_lts.push(self.life_giver.give_lifetime());
+                            }
+                        }
+                    }
+                } else {
+                    for (i, lt) in data.lifetimes.iter().enumerate() {
+                        if indexes.contains(&i) {
+                            new_lts.push(lifetime);
+                        } else {
+                            new_lts.push(*lt);
+                        }
                     }
                 }
+                let new_types = data.types.map(|t| {
+                    self.rebuild_arg_ty_or_output(&**t, lifetime, anon_nums, region_names)
+                });
+                ast::AngleBracketedParameters(ast::AngleBracketedParameterData {
+                    lifetimes: new_lts,
+                    types: new_types
+                })
             }
-        } else {
-            for (i, lt) in last_seg.lifetimes.iter().enumerate() {
-                if indexes.contains(&i) {
-                    new_lts.push(lifetime);
-                } else {
-                    new_lts.push(*lt);
-                }
-            }
-        }
-        let new_types = last_seg.types.map(|t| {
-            self.rebuild_arg_ty_or_output(&**t, lifetime, anon_nums, region_names)
-        });
+        };
         let new_seg = ast::PathSegment {
             identifier: last_seg.identifier,
-            lifetimes: new_lts,
-            types: new_types,
+            parameters: new_parameters
         };
         let mut new_segs = Vec::new();
         new_segs.push_all(path.segments.init());

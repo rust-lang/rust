@@ -33,9 +33,6 @@
 //! particular implementation, but also reveal some of its implementation for
 //! debugging via `cause` chains.
 //!
-//! The trait inherits from `Any` to allow *downcasting*: converting from a
-//! trait object to a specific concrete type when applicable.
-//!
 //! # The `FromError` trait
 //!
 //! `FromError` is a simple trait that expresses conversions between different

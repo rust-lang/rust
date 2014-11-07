@@ -294,7 +294,7 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
     }
 
     fn add_inherent_impl(&self, base_def_id: DefId, impl_def_id: DefId) {
-        match self.inherent_impls.borrow().find(&base_def_id) {
+        match self.inherent_impls.borrow().get(&base_def_id) {
             Some(implementation_list) => {
                 implementation_list.borrow_mut().push(impl_def_id);
                 return;

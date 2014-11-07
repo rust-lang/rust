@@ -512,7 +512,7 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
             func_or_rcvr: &ast::Expr,
             args: I) -> CFGIndex {
         let method_call = typeck::MethodCall::expr(call_expr.id);
-        let return_ty = ty::ty_fn_ret(match self.tcx.method_map.borrow().find(&method_call) {
+        let return_ty = ty::ty_fn_ret(match self.tcx.method_map.borrow().get(&method_call) {
             Some(method) => method.ty,
             None => ty::expr_ty(self.tcx, func_or_rcvr)
         });
@@ -610,7 +610,7 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
             }
 
             Some(_) => {
-                match self.tcx.def_map.borrow().find(&expr.id) {
+                match self.tcx.def_map.borrow().get(&expr.id) {
                     Some(&def::DefLabel(loop_id)) => {
                         for l in self.loop_scopes.iter() {
                             if l.loop_id == loop_id {

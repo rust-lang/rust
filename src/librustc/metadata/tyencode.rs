@@ -50,7 +50,7 @@ pub struct ty_abbrev {
 pub type abbrev_map = RefCell<HashMap<ty::t, ty_abbrev>>;
 
 pub fn enc_ty(w: &mut SeekableMemWriter, cx: &ctxt, t: ty::t) {
-    match cx.abbrevs.borrow_mut().find(&t) {
+    match cx.abbrevs.borrow_mut().get(&t) {
         Some(a) => { w.write(a.s.as_bytes()); return; }
         None => {}
     }

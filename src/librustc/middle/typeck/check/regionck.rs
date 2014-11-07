@@ -327,7 +327,7 @@ impl<'a, 'tcx> Rcx<'a, 'tcx> {
 
     fn resolve_method_type(&self, method_call: MethodCall) -> Option<ty::t> {
         let method_ty = self.fcx.inh.method_map.borrow()
-                            .find(&method_call).map(|method| method.ty);
+                            .get(&method_call).map(|method| method.ty);
         method_ty.map(|method_ty| self.resolve_type(method_ty))
     }
 
@@ -339,7 +339,7 @@ impl<'a, 'tcx> Rcx<'a, 'tcx> {
         } else {
             let tcx = self.fcx.tcx();
             ty::adjust_ty(tcx, expr.span, expr.id, ty_unadjusted,
-                          self.fcx.inh.adjustments.borrow().find(&expr.id),
+                          self.fcx.inh.adjustments.borrow().get(&expr.id),
                           |method_call| self.resolve_method_type(method_call))
         }
     }
@@ -351,7 +351,7 @@ impl<'a, 'tcx> Rcx<'a, 'tcx> {
         // When we enter a function, we can derive
 
         let fn_sig_map = self.fcx.inh.fn_sig_map.borrow();
-        let fn_sig = match fn_sig_map.find(&id) {
+        let fn_sig = match fn_sig_map.get(&id) {
             Some(f) => f,
             None => {
                 self.tcx().sess.bug(
@@ -370,7 +370,7 @@ impl<'a, 'tcx> Rcx<'a, 'tcx> {
     {
         debug!("visit_region_obligations: node_id={}", node_id);
         let region_obligations = self.fcx.inh.region_obligations.borrow();
-        match region_obligations.find(&node_id) {
+        match region_obligations.get(&node_id) {
             None => { }
             Some(vec) => {
                 for r_o in vec.iter() {
@@ -594,7 +594,7 @@ fn visit_expr(rcx: &mut Rcx, expr: &ast::Expr) {
     let has_method_map = rcx.fcx.inh.method_map.borrow().contains_key(&method_call);
 
     // Check any autoderefs or autorefs that appear.
-    for &adjustment in rcx.fcx.inh.adjustments.borrow().find(&expr.id).iter() {
+    for &adjustment in rcx.fcx.inh.adjustments.borrow().get(&expr.id).iter() {
         debug!("adjustment={}", adjustment);
         match *adjustment {
             ty::AdjustDerefRef(ty::AutoDerefRef {autoderefs, autoref: ref opt_autoref}) => {
@@ -686,7 +686,7 @@ fn visit_expr(rcx: &mut Rcx, expr: &ast::Expr) {
         ast::ExprUnary(ast::UnDeref, ref base) => {
             // For *a, the lifetime of a must enclose the deref
             let method_call = MethodCall::expr(expr.id);
-            let base_ty = match rcx.fcx.inh.method_map.borrow().find(&method_call) {
+            let base_ty = match rcx.fcx.inh.method_map.borrow().get(&method_call) {
                 Some(method) => {
                     constrain_call(rcx, expr, Some(&**base),
                                    None::<ast::Expr>.iter(), true);
@@ -950,7 +950,7 @@ fn check_expr_fn_block(rcx: &mut Rcx,
             let raw_var_ty = rcx.resolve_node_type(var_node_id);
             let upvar_id = ty::UpvarId { var_id: var_node_id,
                                          closure_expr_id: expr.id };
-            let var_ty = match rcx.fcx.inh.upvar_borrow_map.borrow().find(&upvar_id) {
+            let var_ty = match rcx.fcx.inh.upvar_borrow_map.borrow().get(&upvar_id) {
                 Some(upvar_borrow) => {
                     ty::mk_rptr(rcx.tcx(),
                                 upvar_borrow.region,
@@ -1195,7 +1195,7 @@ fn constrain_autoderefs(rcx: &mut Rcx,
                i, derefs);
 
         let method_call = MethodCall::autoderef(deref_expr.id, i);
-        derefd_ty = match rcx.fcx.inh.method_map.borrow().find(&method_call) {
+        derefd_ty = match rcx.fcx.inh.method_map.borrow().get(&method_call) {
             Some(method) => {
                 // Treat overloaded autoderefs as if an AutoRef adjustment
                 // was applied on the base type, as that is always the case.
@@ -1301,7 +1301,7 @@ fn type_of_node_must_outlive(
     // report errors later on in the writeback phase.
     let ty0 = rcx.resolve_node_type(id);
     let ty = ty::adjust_ty(tcx, origin.span(), id, ty0,
-                           rcx.fcx.inh.adjustments.borrow().find(&id),
+                           rcx.fcx.inh.adjustments.borrow().get(&id),
                            |method_call| rcx.resolve_method_type(method_call));
     debug!("constrain_regions_in_type_of_node(\
             ty={}, ty0={}, id={}, minimum_lifetime={})",
@@ -1582,7 +1582,7 @@ fn link_reborrowed_region(rcx: &Rcx,
         mc::NoteUpvarRef(ref upvar_id) => {
             let mut upvar_borrow_map =
                 rcx.fcx.inh.upvar_borrow_map.borrow_mut();
-            match upvar_borrow_map.find_mut(upvar_id) {
+            match upvar_borrow_map.get_mut(upvar_id) {
                 Some(upvar_borrow) => {
                     // Adjust mutability that we infer for the upvar
                     // so it can accommodate being borrowed with
@@ -1845,7 +1845,7 @@ fn link_upvar_borrow_kind_for_nested_closures(rcx: &mut Rcx,
 
     let mut upvar_borrow_map = rcx.fcx.inh.upvar_borrow_map.borrow_mut();
     let inner_borrow = upvar_borrow_map.get_copy(&inner_upvar_id);
-    match upvar_borrow_map.find_mut(&outer_upvar_id) {
+    match upvar_borrow_map.get_mut(&outer_upvar_id) {
         Some(outer_borrow) => {
             adjust_upvar_borrow_kind(rcx, outer_upvar_id, outer_borrow, inner_borrow.kind);
         }

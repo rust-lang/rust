@@ -220,7 +220,7 @@ fn symbol_hash(tcx: &ty::ctxt,
 }
 
 fn get_symbol_hash(ccx: &CrateContext, t: ty::t) -> String {
-    match ccx.type_hashcodes().borrow().find(&t) {
+    match ccx.type_hashcodes().borrow().get(&t) {
         Some(h) => return h.to_string(),
         None => {}
     }
@@ -920,7 +920,7 @@ fn link_args(cmd: &mut Command,
 
     let used_link_args = sess.cstore.get_used_link_args().borrow();
 
-    if t.options.position_independant_executables {
+    if t.options.position_independent_executables {
         let empty_vec = Vec::new();
         let empty_str = String::new();
         let args = sess.opts.cg.link_args.as_ref().unwrap_or(&empty_vec);

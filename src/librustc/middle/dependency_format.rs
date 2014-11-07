@@ -158,7 +158,7 @@ fn calculate_type(sess: &session::Session,
 
     // Collect what we've got so far in the return vector.
     let mut ret = range(1, sess.cstore.next_crate_num()).map(|i| {
-        match formats.find(&i).map(|v| *v) {
+        match formats.get(&i).map(|v| *v) {
             v @ Some(cstore::RequireDynamic) => v,
             _ => None,
         }
@@ -209,7 +209,7 @@ fn add_library(sess: &session::Session,
                cnum: ast::CrateNum,
                link: cstore::LinkagePreference,
                m: &mut HashMap<ast::CrateNum, cstore::LinkagePreference>) {
-    match m.find(&cnum) {
+    match m.get(&cnum) {
         Some(&link2) => {
             // If the linkages differ, then we'd have two copies of the library
             // if we continued linking. If the linkages are both static, then we

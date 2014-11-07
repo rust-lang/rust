@@ -367,7 +367,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
         debug!("RegionVarBindings: add_constraint({})",
                constraint.repr(self.tcx));
 
-        if self.constraints.borrow_mut().insert(constraint, origin) {
+        if self.constraints.borrow_mut().insert(constraint, origin).is_none() {
             if self.in_snapshot() {
                 self.undo_log.borrow_mut().push(AddConstraint(constraint));
             }
@@ -559,7 +559,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
                                  new_r: Region|)
                         -> Region {
         let vars = TwoRegions { a: a, b: b };
-        match self.combine_map(t).borrow().find(&vars) {
+        match self.combine_map(t).borrow().get(&vars) {
             Some(&c) => {
                 return ReInfer(ReVar(c));
             }
@@ -991,7 +991,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
             debug!("expansion: constraint={} origin={}",
                    constraint.repr(self.tcx),
                    self.constraints.borrow()
-                                   .find(constraint)
+                                   .get(constraint)
                                    .unwrap()
                                    .repr(self.tcx));
             match *constraint {
@@ -1075,7 +1075,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
             debug!("contraction: constraint={} origin={}",
                    constraint.repr(self.tcx),
                    self.constraints.borrow()
-                                   .find(constraint)
+                                   .get(constraint)
                                    .unwrap()
                                    .repr(self.tcx));
             match *constraint {

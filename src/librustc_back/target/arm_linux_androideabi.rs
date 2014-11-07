@@ -17,7 +17,7 @@ pub fn target() -> Target {
     // linker doesn't like that by default.
     base.pre_link_args.push("-Wl,--allow-multiple-definition".to_string());
     // FIXME #17437 (and #17448): Android doesn't support position dependant executables anymore.
-    base.position_independant_executables = false;
+    base.position_independent_executables = false;
 
     Target {
         data_layout: "e-p:32:32:32\

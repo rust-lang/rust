@@ -63,6 +63,7 @@ mod arm_unknown_linux_gnueabihf;
 mod i686_apple_darwin;
 mod i386_apple_ios;
 mod i686_pc_windows_gnu;
+mod i686_unknown_dragonfly;
 mod i686_unknown_linux_gnu;
 mod mips_unknown_linux_gnu;
 mod mipsel_unknown_linux_gnu;
@@ -158,7 +159,7 @@ pub struct TargetOptions {
     /// relocation model of position independent code is not changed. This is a requirement to take
     /// advantage of ASLR, as otherwise the functions in the executable are not randomized and can
     /// be used during an exploit of a vulnerability in any code.
-    pub position_independant_executables: bool,
+    pub position_independent_executables: bool,
 }
 
 impl Default for TargetOptions {
@@ -189,7 +190,7 @@ impl Default for TargetOptions {
             linker_is_gnu: false,
             has_rpath: false,
             no_compiler_rt: false,
-            position_independant_executables: false,
+            position_independent_executables: false,
         }
     }
 }
@@ -338,6 +339,7 @@ impl Target {
 
             x86_64_unknown_freebsd,
 
+            i686_unknown_dragonfly,
             x86_64_unknown_dragonfly,
 
             x86_64_apple_darwin,

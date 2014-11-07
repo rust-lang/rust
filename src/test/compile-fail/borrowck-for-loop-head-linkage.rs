@@ -13,7 +13,7 @@ fn main() {
     for &x in vector.iter() {
         let cap = vector.capacity();
         vector.grow(cap, 0u);      //~ ERROR cannot borrow
-        *vector.get_mut(1u) = 5u;   //~ ERROR cannot borrow
+        vector[1u] = 5u;   //~ ERROR cannot borrow
     }
 }
 

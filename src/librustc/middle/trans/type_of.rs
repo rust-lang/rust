@@ -272,7 +272,7 @@ pub fn type_of(cx: &CrateContext, t: ty::t) -> Type {
     }
 
     // Check the cache.
-    match cx.lltypes().borrow().find(&t) {
+    match cx.lltypes().borrow().get(&t) {
         Some(&llty) => return llty,
         None => ()
     }

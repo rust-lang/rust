@@ -17,49 +17,49 @@ use std::option::Some;
 
 pub fn main() {
     let mut map: TreeMap<SendStr, uint> = TreeMap::new();
-    assert!(map.insert(Slice("foo"), 42));
-    assert!(!map.insert(Owned("foo".to_string()), 42));
-    assert!(!map.insert(Slice("foo"), 42));
-    assert!(!map.insert(Owned("foo".to_string()), 42));
+    assert!(map.insert(Slice("foo"), 42).is_none());
+    assert!(map.insert(Owned("foo".to_string()), 42).is_some());
+    assert!(map.insert(Slice("foo"), 42).is_some());
+    assert!(map.insert(Owned("foo".to_string()), 42).is_some());
 
-    assert!(!map.insert(Slice("foo"), 43));
-    assert!(!map.insert(Owned("foo".to_string()), 44));
-    assert!(!map.insert(Slice("foo"), 45));
-    assert!(!map.insert(Owned("foo".to_string()), 46));
+    assert!(map.insert(Slice("foo"), 43).is_some());
+    assert!(map.insert(Owned("foo".to_string()), 44).is_some());
+    assert!(map.insert(Slice("foo"), 45).is_some());
+    assert!(map.insert(Owned("foo".to_string()), 46).is_some());
 
     let v = 46;
 
-    assert_eq!(map.find(&Owned("foo".to_string())), Some(&v));
-    assert_eq!(map.find(&Slice("foo")), Some(&v));
+    assert_eq!(map.get(&Owned("foo".to_string())), Some(&v));
+    assert_eq!(map.get(&Slice("foo")), Some(&v));
 
     let (a, b, c, d) = (50, 51, 52, 53);
 
-    assert!(map.insert(Slice("abc"), a));
-    assert!(map.insert(Owned("bcd".to_string()), b));
-    assert!(map.insert(Slice("cde"), c));
-    assert!(map.insert(Owned("def".to_string()), d));
+    assert!(map.insert(Slice("abc"), a).is_none());
+    assert!(map.insert(Owned("bcd".to_string()), b).is_none());
+    assert!(map.insert(Slice("cde"), c).is_none());
+    assert!(map.insert(Owned("def".to_string()), d).is_none());
 
-    assert!(!map.insert(Slice("abc"), a));
-    assert!(!map.insert(Owned("bcd".to_string()), b));
-    assert!(!map.insert(Slice("cde"), c));
-    assert!(!map.insert(Owned("def".to_string()), d));
+    assert!(map.insert(Slice("abc"), a).is_some());
+    assert!(map.insert(Owned("bcd".to_string()), b).is_some());
+    assert!(map.insert(Slice("cde"), c).is_some());
+    assert!(map.insert(Owned("def".to_string()), d).is_some());
 
-    assert!(!map.insert(Owned("abc".to_string()), a));
-    assert!(!map.insert(Slice("bcd"), b));
-    assert!(!map.insert(Owned("cde".to_string()), c));
-    assert!(!map.insert(Slice("def"), d));
+    assert!(map.insert(Owned("abc".to_string()), a).is_some());
+    assert!(map.insert(Slice("bcd"), b).is_some());
+    assert!(map.insert(Owned("cde".to_string()), c).is_some());
+    assert!(map.insert(Slice("def"), d).is_some());
 
-    assert_eq!(map.find(&Slice("abc")), Some(&a));
-    assert_eq!(map.find(&Slice("bcd")), Some(&b));
-    assert_eq!(map.find(&Slice("cde")), Some(&c));
-    assert_eq!(map.find(&Slice("def")), Some(&d));
+    assert_eq!(map.get(&Slice("abc")), Some(&a));
+    assert_eq!(map.get(&Slice("bcd")), Some(&b));
+    assert_eq!(map.get(&Slice("cde")), Some(&c));
+    assert_eq!(map.get(&Slice("def")), Some(&d));
 
-    assert_eq!(map.find(&Owned("abc".to_string())), Some(&a));
-    assert_eq!(map.find(&Owned("bcd".to_string())), Some(&b));
-    assert_eq!(map.find(&Owned("cde".to_string())), Some(&c));
-    assert_eq!(map.find(&Owned("def".to_string())), Some(&d));
+    assert_eq!(map.get(&Owned("abc".to_string())), Some(&a));
+    assert_eq!(map.get(&Owned("bcd".to_string())), Some(&b));
+    assert_eq!(map.get(&Owned("cde".to_string())), Some(&c));
+    assert_eq!(map.get(&Owned("def".to_string())), Some(&d));
 
-    assert!(map.pop(&Slice("foo")).is_some());
+    assert!(map.remove(&Slice("foo")).is_some());
     assert_eq!(map.into_iter().map(|(k, v)| format!("{}{}", k, v))
                               .collect::<Vec<String>>()
                               .concat(),

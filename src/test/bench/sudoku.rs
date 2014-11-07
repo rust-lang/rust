@@ -79,7 +79,7 @@ impl Sudoku {
             if comps.len() == 3u {
                 let row     = from_str::<uint>(comps[0]).unwrap() as u8;
                 let col     = from_str::<uint>(comps[1]).unwrap() as u8;
-                *g.get_mut(row as uint).get_mut(col as uint) =
+                g[row as uint][col as uint] =
                     from_str::<uint>(comps[2]).unwrap() as u8;
             }
             else {
@@ -139,10 +139,10 @@ impl Sudoku {
 
             // find first remaining color that is available
             let next = avail.next();
-            *self.grid.get_mut(row as uint).get_mut(col as uint) = next;
+            self.grid[row as uint][col as uint] = next;
             return 0u8 != next;
         }
-        *self.grid.get_mut(row as uint).get_mut(col as uint) = 0u8;
+        self.grid[row as uint][col as uint] = 0u8;
         return false;
     }
 

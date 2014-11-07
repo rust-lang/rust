@@ -749,8 +749,7 @@ mod test {
                         segments: vec!(
                             ast::PathSegment {
                                 identifier: str_to_ident("a"),
-                                lifetimes: Vec::new(),
-                                types: OwnedSlice::empty(),
+                                parameters: ast::PathParameters::none(),
                             }
                         ),
                     }),
@@ -768,13 +767,11 @@ mod test {
                             segments: vec!(
                                 ast::PathSegment {
                                     identifier: str_to_ident("a"),
-                                    lifetimes: Vec::new(),
-                                    types: OwnedSlice::empty(),
+                                    parameters: ast::PathParameters::none(),
                                 },
                                 ast::PathSegment {
                                     identifier: str_to_ident("b"),
-                                    lifetimes: Vec::new(),
-                                    types: OwnedSlice::empty(),
+                                    parameters: ast::PathParameters::none(),
                                 }
                             )
                         }),
@@ -952,8 +949,7 @@ mod test {
                             segments: vec!(
                                 ast::PathSegment {
                                     identifier: str_to_ident("d"),
-                                    lifetimes: Vec::new(),
-                                    types: OwnedSlice::empty(),
+                                    parameters: ast::PathParameters::none(),
                                 }
                             ),
                         }),
@@ -974,8 +970,7 @@ mod test {
                                segments: vec!(
                                 ast::PathSegment {
                                     identifier: str_to_ident("b"),
-                                    lifetimes: Vec::new(),
-                                    types: OwnedSlice::empty(),
+                                    parameters: ast::PathParameters::none(),
                                 }
                                ),
                             }),
@@ -1022,8 +1017,7 @@ mod test {
                                             ast::PathSegment {
                                                 identifier:
                                                     str_to_ident("int"),
-                                                lifetimes: Vec::new(),
-                                                types: OwnedSlice::empty(),
+                                                parameters: ast::PathParameters::none(),
                                             }
                                         ),
                                         }, None, ast::DUMMY_NODE_ID),
@@ -1072,10 +1066,8 @@ mod test {
                                                                 identifier:
                                                                 str_to_ident(
                                                                     "b"),
-                                                                lifetimes:
-                                                                Vec::new(),
-                                                                types:
-                                                                OwnedSlice::empty()
+                                                                parameters:
+                                                                ast::PathParameters::none(),
                                                             }
                                                         ),
                                                       }),

@@ -21,7 +21,7 @@ use syntax::ast_util::{local_def, PostExpansionMethod};
 fn instantiate_inline(ccx: &CrateContext, fn_id: ast::DefId)
     -> Option<ast::DefId> {
     let _icx = push_ctxt("maybe_instantiate_inline");
-    match ccx.external().borrow().find(&fn_id) {
+    match ccx.external().borrow().get(&fn_id) {
         Some(&Some(node_id)) => {
             // Already inline
             debug!("maybe_instantiate_inline({}): already inline as node id {}",

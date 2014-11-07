@@ -705,7 +705,7 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
                 ast::TraitTyParamBound(ref trait_ref) => {
                     trait_ref
                 }
-                ast::UnboxedFnTyParamBound(..) | ast::RegionTyParamBound(..) => {
+                ast::RegionTyParamBound(..) => {
                     continue;
                 }
             };

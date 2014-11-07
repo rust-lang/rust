@@ -19,6 +19,10 @@ use std::hash::{Writer, Hash};
 
 use tree_map::{TreeMap, Entries, RevEntries, MoveEntries};
 
+// FIXME(conventions): implement bounded iterators
+// FIXME(conventions): implement BitOr, BitAnd, BitXor, and Sub
+// FIXME(conventions): replace rev_iter(_mut) by making iter(_mut) DoubleEnded
+
 /// An implementation of the `Set` trait on top of the `TreeMap` container. The
 /// only requirement is that the type of the elements contained ascribes to the
 /// `Ord` trait.
@@ -145,6 +149,7 @@ impl<T: Ord> TreeSet<T> {
     /// let mut set: TreeSet<int> = TreeSet::new();
     /// ```
     #[inline]
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn new() -> TreeSet<T> { TreeSet{map: TreeMap::new()} }
 
     /// Gets a lazy iterator over the values in the set, in ascending order.
@@ -161,6 +166,7 @@ impl<T: Ord> TreeSet<T> {
     /// }
     /// ```
     #[inline]
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn iter<'a>(&'a self) -> SetItems<'a, T> {
         SetItems{iter: self.map.iter()}
     }
@@ -197,6 +203,7 @@ impl<T: Ord> TreeSet<T> {
     /// assert_eq!(v, vec![1, 2, 3, 4, 5]);
     /// ```
     #[inline]
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn into_iter(self) -> MoveSetItems<T> {
         self.map.into_iter().map(|(value, _)| value)
     }
@@ -261,6 +268,7 @@ impl<T: Ord> TreeSet<T> {
     /// let diff: TreeSet<int> = b.difference(&a).map(|&x| x).collect();
     /// assert_eq!(diff, [4, 5].iter().map(|&x| x).collect());
     /// ```
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn difference<'a>(&'a self, other: &'a TreeSet<T>) -> DifferenceItems<'a, T> {
         DifferenceItems{a: self.iter().peekable(), b: other.iter().peekable()}
     }
@@ -286,6 +294,7 @@ impl<T: Ord> TreeSet<T> {
     /// assert_eq!(diff1, diff2);
     /// assert_eq!(diff1, [1, 2, 4, 5].iter().map(|&x| x).collect());
     /// ```
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn symmetric_difference<'a>(&'a self, other: &'a TreeSet<T>)
         -> SymDifferenceItems<'a, T> {
         SymDifferenceItems{a: self.iter().peekable(), b: other.iter().peekable()}
@@ -309,6 +318,7 @@ impl<T: Ord> TreeSet<T> {
     /// let diff: TreeSet<int> = a.intersection(&b).map(|&x| x).collect();
     /// assert_eq!(diff, [2, 3].iter().map(|&x| x).collect());
     /// ```
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn intersection<'a>(&'a self, other: &'a TreeSet<T>)
         -> IntersectionItems<'a, T> {
         IntersectionItems{a: self.iter().peekable(), b: other.iter().peekable()}
@@ -332,6 +342,7 @@ impl<T: Ord> TreeSet<T> {
     /// let diff: TreeSet<int> = a.union(&b).map(|&x| x).collect();
     /// assert_eq!(diff, [1, 2, 3, 4, 5].iter().map(|&x| x).collect());
     /// ```
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn union<'a>(&'a self, other: &'a TreeSet<T>) -> UnionItems<'a, T> {
         UnionItems{a: self.iter().peekable(), b: other.iter().peekable()}
     }
@@ -349,6 +360,7 @@ impl<T: Ord> TreeSet<T> {
     /// assert_eq!(v.len(), 1);
     /// ```
     #[inline]
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn len(&self) -> uint { self.map.len() }
 
     /// Returns true if the set contains no elements
@@ -363,6 +375,7 @@ impl<T: Ord> TreeSet<T> {
     /// v.insert(1i);
     /// assert!(!v.is_empty());
     /// ```
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn is_empty(&self) -> bool { self.len() == 0 }
 
     /// Clears the set, removing all values.
@@ -378,6 +391,7 @@ impl<T: Ord> TreeSet<T> {
     /// assert!(v.is_empty());
     /// ```
     #[inline]
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn clear(&mut self) { self.map.clear() }
 
     /// Returns `true` if the set contains a value.
@@ -392,6 +406,7 @@ impl<T: Ord> TreeSet<T> {
     /// assert_eq!(set.contains(&4), false);
     /// ```
     #[inline]
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn contains(&self, value: &T) -> bool {
         self.map.contains_key(value)
     }
@@ -413,6 +428,7 @@ impl<T: Ord> TreeSet<T> {
     /// b.insert(1);
     /// assert_eq!(a.is_disjoint(&b), false);
     /// ```
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn is_disjoint(&self, other: &TreeSet<T>) -> bool {
         self.intersection(other).next().is_none()
     }
@@ -433,6 +449,7 @@ impl<T: Ord> TreeSet<T> {
     /// set.insert(4);
     /// assert_eq!(set.is_subset(&sup), false);
     /// ```
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn is_subset(&self, other: &TreeSet<T>) -> bool {
         let mut x = self.iter();
         let mut y = other.iter();
@@ -476,6 +493,7 @@ impl<T: Ord> TreeSet<T> {
     /// set.insert(2);
     /// assert_eq!(set.is_superset(&sub), true);
     /// ```
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn is_superset(&self, other: &TreeSet<T>) -> bool {
         other.is_subset(self)
     }
@@ -495,7 +513,8 @@ impl<T: Ord> TreeSet<T> {
     /// assert_eq!(set.len(), 1);
     /// ```
     #[inline]
-    pub fn insert(&mut self, value: T) -> bool { self.map.insert(value, ()) }
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
+    pub fn insert(&mut self, value: T) -> bool { self.map.insert(value, ()).is_none() }
 
     /// Removes a value from the set. Returns `true` if the value was
     /// present in the set.
@@ -512,7 +531,8 @@ impl<T: Ord> TreeSet<T> {
     /// assert_eq!(set.remove(&2), false);
     /// ```
     #[inline]
-    pub fn remove(&mut self, value: &T) -> bool { self.map.remove(value) }
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
+    pub fn remove(&mut self, value: &T) -> bool { self.map.remove(value).is_some() }
 }
 
 /// A lazy forward iterator over a set.

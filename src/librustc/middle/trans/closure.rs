@@ -438,7 +438,7 @@ pub fn get_or_create_declaration_if_unboxed_closure<'blk, 'tcx>(bcx: Block<'blk,
         params: params
     };
 
-    match ccx.unboxed_closure_vals().borrow().find(&mono_id) {
+    match ccx.unboxed_closure_vals().borrow().get(&mono_id) {
         Some(llfn) => {
             debug!("get_or_create_declaration_if_unboxed_closure(): found \
                     closure");
@@ -564,7 +564,7 @@ pub fn get_wrapper_for_bare_fn(ccx: &CrateContext,
         }
     };
 
-    match ccx.closure_bare_wrapper_cache().borrow().find(&fn_ptr) {
+    match ccx.closure_bare_wrapper_cache().borrow().get(&fn_ptr) {
         Some(&llval) => return llval,
         None => {}
     }
