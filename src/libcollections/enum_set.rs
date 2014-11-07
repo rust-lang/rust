@@ -43,7 +43,27 @@ impl<E:CLike+fmt::Show> fmt::Show for EnumSet<E> {
     }
 }
 
-/// An interface for casting C-like enum to uint and back.
+/**
+An interface for casting C-like enum to uint and back.
+A typically implementation is as below.
+
+```{rust,ignore}
+#[repr(uint)]
+enum Foo {
+    A, B, C
+}
+
+impl CLike for Foo {
+    fn to_uint(&self) -> uint {
+        *self as uint
+    }
+
+    fn from_uint(v: uint) -> Foo {
+        unsafe { mem::transmute(v) }
+    }
+}
+```
+*/
 pub trait CLike {
     /// Converts a C-like enum to a `uint`.
     fn to_uint(&self) -> uint;
@@ -52,7 +72,11 @@ pub trait CLike {
 }
 
 fn bit<E:CLike>(e: &E) -> uint {
-    1 << e.to_uint()
+    use core::uint;
+    let value = e.to_uint();
+    assert!(value < uint::BITS,
+            "EnumSet only supports up to {} variants.", uint::BITS - 1);
+    1 << value
 }
 
 impl<E:CLike> EnumSet<E> {
@@ -377,5 +401,32 @@ mod test {
         let e_subtract = e1 - e2;
         let elems = e_subtract.iter().collect();
         assert_eq!(vec![A], elems)
+    }
+
+    #[test]
+    #[should_fail]
+    fn test_overflow() {
+        #[allow(dead_code)]
+        #[repr(uint)]
+        enum Bar {
+            V00, V01, V02, V03, V04, V05, V06, V07, V08, V09,
+            V10, V11, V12, V13, V14, V15, V16, V17, V18, V19,
+            V20, V21, V22, V23, V24, V25, V26, V27, V28, V29,
+            V30, V31, V32, V33, V34, V35, V36, V37, V38, V39,
+            V40, V41, V42, V43, V44, V45, V46, V47, V48, V49,
+            V50, V51, V52, V53, V54, V55, V56, V57, V58, V59,
+            V60, V61, V62, V63, V64, V65, V66, V67, V68, V69,
+        }
+        impl CLike for Bar {
+            fn to_uint(&self) -> uint {
+                *self as uint
+            }
+
+            fn from_uint(v: uint) -> Bar {
+                unsafe { mem::transmute(v) }
+            }
+        }
+        let mut set = EnumSet::empty();
+        set.add(V64);
     }
 }
