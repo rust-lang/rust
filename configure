@@ -86,7 +86,12 @@ putpathvar() {
     else
         printf "configure: %-20s := %s %s\n" $1 "$T" "$2"
     fi
-    printf "%-20s := \"%s\"\n" $1 "$T" >>config.tmp
+    if [ -z "$T" ]
+    then
+        printf "%-20s := \n" $1 >>config.tmp
+    else
+        printf "%-20s := \"%s\"\n" $1 "$T" >>config.tmp
+    fi
 }
 
 probe() {
