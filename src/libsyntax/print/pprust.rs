@@ -2663,12 +2663,10 @@ impl<'a> State<'a> {
         } else if opt_sigil == Some('&') {
             try!(self.print_fn_style(fn_style));
             try!(self.print_extern_opt_abi(opt_abi));
-            try!(self.print_onceness(onceness));
         } else {
             assert!(opt_sigil.is_none());
             try!(self.print_fn_style(fn_style));
             try!(self.print_opt_abi_and_extern_if_nondefault(opt_abi));
-            try!(self.print_onceness(onceness));
             try!(word(&mut self.s, "fn"));
         }
 
@@ -2985,13 +2983,6 @@ impl<'a> State<'a> {
         match s {
             ast::NormalFn => Ok(()),
             ast::UnsafeFn => self.word_nbsp("unsafe"),
-        }
-    }
-
-    pub fn print_onceness(&mut self, o: ast::Onceness) -> IoResult<()> {
-        match o {
-            ast::Once => self.word_nbsp("once"),
-            ast::Many => Ok(())
         }
     }
 }
