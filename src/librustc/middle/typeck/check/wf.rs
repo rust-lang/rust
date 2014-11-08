@@ -12,10 +12,10 @@ use middle::subst;
 use middle::subst::{Subst};
 use middle::traits;
 use middle::ty;
+use middle::ty::replace_late_bound_regions;
 use middle::ty_fold::{TypeFolder, TypeFoldable};
 use middle::typeck::astconv::AstConv;
 use middle::typeck::check::{FnCtxt, Inherited, blank_fn_ctxt, vtable, regionck};
-use middle::typeck::check::regionmanip::replace_late_bound_regions;
 use middle::typeck::CrateCtxt;
 use util::ppaux::Repr;
 
@@ -372,9 +372,11 @@ impl<'cx,'tcx> TypeFolder<'tcx> for BoundsChecker<'cx,'tcx> {
             ty::ty_closure(box ty::ClosureTy{sig: ref fn_sig, ..}) => {
                 self.binding_count += 1;
 
-                let (_, fn_sig) =
+                let (fn_sig, _) =
                     replace_late_bound_regions(
-                        self.fcx.tcx(), fn_sig.binder_id, fn_sig,
+                        self.fcx.tcx(),
+                        fn_sig.binder_id,
+                        fn_sig,
                         |br| ty::ReFree(ty::FreeRegion{scope_id: self.scope_id,
                                                        bound_region: br}));
 

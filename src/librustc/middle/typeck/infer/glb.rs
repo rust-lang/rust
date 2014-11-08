@@ -141,11 +141,11 @@ impl<'f, 'tcx> Combine<'tcx> for Glb<'f, 'tcx> {
         // Instantiate each bound region with a fresh region variable.
         let (a_with_fresh, a_map) =
             self.fields.infcx.replace_late_bound_regions_with_fresh_regions(
-                self.trace(), a);
+                self.trace().origin.span(), a.binder_id, a);
         let a_vars = var_ids(self, &a_map);
         let (b_with_fresh, b_map) =
             self.fields.infcx.replace_late_bound_regions_with_fresh_regions(
-                self.trace(), b);
+                self.trace().origin.span(), b.binder_id, b);
         let b_vars = var_ids(self, &b_map);
 
         // Collect constraints.

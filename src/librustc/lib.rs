@@ -30,7 +30,7 @@ This API is completely unstable and subject to change.
 
 #![feature(default_type_params, globs, if_let, import_shadowing, macro_rules, phase, quote)]
 #![feature(slicing_syntax, struct_variant, unsafe_destructor)]
-#![feature(rustc_diagnostic_macros)]
+#![feature(rustc_diagnostic_macros, tuple_indexing)]
 
 extern crate arena;
 extern crate flate;

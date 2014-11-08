@@ -94,7 +94,7 @@ use middle::typeck::infer;
 use middle::typeck::{MethodCall, MethodCallee};
 use middle::typeck::{MethodOrigin, MethodParam, MethodTypeParam};
 use middle::typeck::{MethodStatic, MethodStaticUnboxedClosure, MethodObject, MethodTraitObject};
-use middle::typeck::check::regionmanip::replace_late_bound_regions;
+use middle::ty::replace_late_bound_regions;
 use middle::typeck::TypeAndSubsts;
 use middle::typeck::check::vtable;
 use middle::ty_fold::TypeFoldable;
@@ -1813,12 +1813,11 @@ fn replace_late_bound_regions_with_fresh_var<T>(infcx: &infer::InferCtxt,
                                                 -> T
     where T : TypeFoldable + Repr
 {
-    let (_, value) = replace_late_bound_regions(
+    replace_late_bound_regions(
         infcx.tcx,
         binder_id,
         value,
-        |br| infcx.next_region_var(infer::LateBoundRegion(span, br)));
-    value
+        |br| infcx.next_region_var(infer::LateBoundRegion(span, br))).0
 }
 
 fn trait_method(tcx: &ty::ctxt,

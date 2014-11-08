@@ -59,6 +59,7 @@ use syntax::codemap::Span;
 
 pub trait Combine<'tcx> {
     fn infcx<'a>(&'a self) -> &'a InferCtxt<'a, 'tcx>;
+    fn tcx<'a>(&'a self) -> &'a ty::ctxt<'tcx> { self.infcx().tcx }
     fn tag(&self) -> String;
     fn a_is_expected(&self) -> bool;
     fn trace(&self) -> TypeTrace;

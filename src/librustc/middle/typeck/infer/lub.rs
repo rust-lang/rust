@@ -50,7 +50,7 @@ impl<'f, 'tcx> Combine<'tcx> for Lub<'f, 'tcx> {
     fn glb<'a>(&'a self) -> Glb<'a, 'tcx> { Glb(self.fields.clone()) }
 
     fn mts(&self, a: &ty::mt, b: &ty::mt) -> cres<ty::mt> {
-        let tcx = self.fields.infcx.tcx;
+        let tcx = self.tcx();
 
         debug!("{}.mts({}, {})",
                self.tag(),
@@ -110,10 +110,10 @@ impl<'f, 'tcx> Combine<'tcx> for Lub<'f, 'tcx> {
     fn regions(&self, a: ty::Region, b: ty::Region) -> cres<ty::Region> {
         debug!("{}.regions({}, {})",
                self.tag(),
-               a.repr(self.fields.infcx.tcx),
-               b.repr(self.fields.infcx.tcx));
+               a.repr(self.tcx()),
+               b.repr(self.tcx()));
 
-        Ok(self.fields.infcx.region_vars.lub_regions(Subtype(self.trace()), a, b))
+        Ok(self.infcx().region_vars.lub_regions(Subtype(self.trace()), a, b))
     }
 
     fn fn_sigs(&self, a: &ty::FnSig, b: &ty::FnSig) -> cres<ty::FnSig> {
@@ -122,26 +122,26 @@ impl<'f, 'tcx> Combine<'tcx> for Lub<'f, 'tcx> {
 
         // Make a mark so we can examine "all bindings that were
         // created as part of this type comparison".
-        let mark = self.fields.infcx.region_vars.mark();
+        let mark = self.infcx().region_vars.mark();
 
         // Instantiate each bound region with a fresh region variable.
         let (a_with_fresh, a_map) =
             self.fields.infcx.replace_late_bound_regions_with_fresh_regions(
-                self.trace(), a);
+                self.trace().origin.span(), a.binder_id, a);
         let (b_with_fresh, _) =
             self.fields.infcx.replace_late_bound_regions_with_fresh_regions(
-                self.trace(), b);
+                self.trace().origin.span(), b.binder_id, b);
 
         // Collect constraints.
         let sig0 = try!(super_fn_sigs(self, &a_with_fresh, &b_with_fresh));
-        debug!("sig0 = {}", sig0.repr(self.fields.infcx.tcx));
+        debug!("sig0 = {}", sig0.repr(self.tcx()));
 
         // Generalize the regions appearing in sig0 if possible
         let new_vars =
-            self.fields.infcx.region_vars.vars_created_since_mark(mark);
+            self.infcx().region_vars.vars_created_since_mark(mark);
         let sig1 =
             fold_regions_in_sig(
-                self.fields.infcx.tcx,
+                self.tcx(),
                 &sig0,
                 |r| generalize_region(self, mark, new_vars.as_slice(),
                                       sig0.binder_id, &a_map, r));
