@@ -18,7 +18,6 @@ use core::fmt;
 
 // FIXME(conventions): implement BitXor
 // FIXME(contentions): implement union family of methods? (general design may be wrong here)
-// FIXME(conventions): implement len
 
 #[deriving(Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 /// A specialized `Set` implementation to use enum types.
@@ -90,6 +89,12 @@ impl<E:CLike> EnumSet<E> {
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn new() -> EnumSet<E> {
         EnumSet {bits: 0}
+    }
+
+    /// Returns the number of elements in the given `EnumSet`.
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
+    pub fn len(&self) -> uint {
+        self.bits.count_ones()
     }
 
     /// Returns true if the `EnumSet` is empty.
@@ -267,6 +272,20 @@ mod test {
         assert_eq!("{A}", e.to_string().as_slice());
         e.insert(C);
         assert_eq!("{A, C}", e.to_string().as_slice());
+    }
+
+    #[test]
+    fn test_len() {
+        let mut e = EnumSet::new();
+        assert_eq!(e.len(), 0);
+        e.insert(A);
+        e.insert(B);
+        e.insert(C);
+        assert_eq!(e.len(), 3);
+        e.remove(&A);
+        assert_eq!(e.len(), 2);
+        e.clear();
+        assert_eq!(e.len(), 0);
     }
 
     ///////////////////////////////////////////////////////////////////////////
