@@ -108,7 +108,7 @@ pub fn cs_cmp(cx: &mut ExtCtxt, span: Span,
         cx.expr_path(equals_path.clone()),
         |cx, span, (self_args, tag_tuple), _non_self_args| {
             if self_args.len() != 2 {
-                cx.span_bug(span, "not exactly 2 arguments in `deriving(TotalOrd)`")
+                cx.span_bug(span, "not exactly 2 arguments in `deriving(Ord)`")
             } else {
                 ordering_collapsed(cx, span, tag_tuple)
             }
