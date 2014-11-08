@@ -15,7 +15,7 @@ This feature has proven to be quite useful for tuples and struct variants, and
 it allows for the removal of some unnecessary tuple accessing traits in the
 standard library (TupleN).
 
-The implementation has also proven to be quite solid without very few reported
+The implementation has also proven to be quite solid with very few reported
 internal compiler errors related to this feature.
 
 ## `if let` and `while let`
@@ -23,7 +23,7 @@ internal compiler errors related to this feature.
 This feature has also proven to be quite useful over time. Many projects are now
 leveraging these feature gates which is a testament to their usefulness.
 
-Additionally, the implementation has also proven to be quite solid without very
+Additionally, the implementation has also proven to be quite solid with very
 few reported internal compiler errors related to this feature.
 
 # Detailed design
