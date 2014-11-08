@@ -633,6 +633,7 @@ enum TraitReferenceType {
     TraitDerivation,                 // trait T : SomeTrait { ... }
     TraitBoundingTypeParameter,      // fn f<T:SomeTrait>() { ... }
     TraitObject,                     // Box<for<'a> SomeTrait>
+    TraitQPath,                      // <T as SomeTrait>::
 }
 
 impl NameBindings {
@@ -4532,6 +4533,7 @@ impl<'a> Resolver<'a> {
                     TraitImplementation        => "implement",
                     TraitDerivation            => "derive",
                     TraitObject                => "reference",
+                    TraitQPath                 => "extract an associated type from",
                 };
 
                 let msg = format!("attempt to {} a nonexistent trait `{}`", usage_str, path_str);
@@ -4969,65 +4971,8 @@ impl<'a> Resolver<'a> {
             }
 
             TyQPath(ref qpath) => {
-                self.resolve_type(&*qpath.for_type);
-
-                let current_module = self.current_module.clone();
-                let module_path: Vec<_> =
-                    qpath.trait_name
-                         .segments
-                         .iter()
-                         .map(|ps| ps.identifier.name)
-                         .collect();
-                match self.resolve_module_path(
-                        current_module,
-                        module_path.as_slice(),
-                        UseLexicalScope,
-                        qpath.trait_name.span,
-                        PathSearch) {
-                    Success((ref module, _)) if module.kind.get() ==
-                            TraitModuleKind => {
-                        match self.resolve_definition_of_name_in_module(
-                                (*module).clone(),
-                                qpath.item_name.name,
-                                TypeNS) {
-                            ChildNameDefinition(def, lp) |
-                            ImportNameDefinition(def, lp) => {
-                                match def {
-                                    DefAssociatedTy(trait_type_id) => {
-                                        let def = DefAssociatedTy(
-                                            trait_type_id);
-                                        self.record_def(ty.id, (def, lp));
-                                    }
-                                    _ => {
-                                        self.resolve_error(
-                                            ty.span,
-                                            "not an associated type");
-                                    }
-                                }
-                            }
-                            NoNameDefinition => {
-                                self.resolve_error(ty.span,
-                                                   "unresolved associated \
-                                                    type");
-                            }
-                        }
-                    }
-                    Success(..) => self.resolve_error(ty.span, "not a trait"),
-                    Indeterminate => {
-                        self.session.span_bug(ty.span,
-                                              "indeterminate result when \
-                                               resolving associated type")
-                    }
-                    Failed(error) => {
-                        let (span, help) = match error {
-                            Some((span, msg)) => (span, format!("; {}", msg)),
-                            None => (ty.span, String::new()),
-                        };
-                        self.resolve_error(span,
-                                           format!("unresolved trait: {}",
-                                                   help).as_slice())
-                    }
-                }
+                self.resolve_type(&*qpath.self_type);
+                self.resolve_trait_reference(ty.id, &*qpath.trait_ref, TraitQPath);
             }
 
             TyClosure(ref c) | TyProc(ref c) => {

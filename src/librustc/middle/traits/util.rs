@@ -18,9 +18,10 @@ use std::fmt;
 use std::rc::Rc;
 use syntax::ast;
 use syntax::codemap::Span;
+use util::common::ErrorReported;
 use util::ppaux::Repr;
 
-use super::{ErrorReported, Obligation, ObligationCause, VtableImpl,
+use super::{Obligation, ObligationCause, VtableImpl,
             VtableParam, VtableParamData, VtableImplData};
 
 ///////////////////////////////////////////////////////////////////////////

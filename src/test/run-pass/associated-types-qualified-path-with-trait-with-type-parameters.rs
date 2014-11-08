@@ -10,23 +10,9 @@
 
 #![feature(associated_types)]
 
-trait Get {
-    type Value;
-    fn get(&self) -> <Self as Get>::Value;
+trait Foo<T> {
+    type Bar;
+    fn get_bar() -> <Self as Foo<T>>::Bar;
 }
 
-fn get(x: int) -> <int as Get>::Value {}
-//~^ ERROR unsupported
-
-struct Struct {
-    x: int,
-}
-
-impl Struct {
-    fn uhoh<T>(foo: <T as Get>::Value) {}
-    //~^ ERROR no suitable bound on `T`
-}
-
-fn main() {
-}
-
+fn main() { }

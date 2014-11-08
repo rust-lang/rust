@@ -25,6 +25,7 @@ use std::rc::Rc;
 use std::slice::Items;
 use syntax::ast;
 use syntax::codemap::{Span, DUMMY_SP};
+use util::common::ErrorReported;
 
 pub use self::fulfill::FulfillmentContext;
 pub use self::select::SelectionContext;
@@ -94,10 +95,6 @@ pub enum ObligationCauseCode<'tcx> {
     // Types of fields (other than the last) in a struct must be sized.
     FieldSized,
 }
-
-// An error has already been reported to the user, so no need to continue checking.
-#[deriving(Clone,Show)]
-pub struct ErrorReported;
 
 pub type Obligations<'tcx> = subst::VecPerParamSpace<Obligation<'tcx>>;
 
