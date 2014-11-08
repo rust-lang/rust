@@ -801,14 +801,13 @@ impl<T> Vec<T> {
     ///
     /// # Example
     /// ```
-    /// let mut v = vec!["foo".to_string(), "bar".to_string(),
-    ///                  "baz".to_string(), "qux".to_string()];
+    /// let mut v = vec!["foo", "bar", "baz", "qux"];
     ///
-    /// assert_eq!(v.swap_remove(1), Some("bar".to_string()));
-    /// assert_eq!(v, vec!["foo".to_string(), "qux".to_string(), "baz".to_string()]);
+    /// assert_eq!(v.swap_remove(1), Some("bar"));
+    /// assert_eq!(v, vec!["foo", "qux", "baz"]);
     ///
-    /// assert_eq!(v.swap_remove(0), Some("foo".to_string()));
-    /// assert_eq!(v, vec!["baz".to_string(), "qux".to_string()]);
+    /// assert_eq!(v.swap_remove(0), Some("foo"));
+    /// assert_eq!(v, vec!["baz", "qux"]);
     ///
     /// assert_eq!(v.swap_remove(2), None);
     /// ```
