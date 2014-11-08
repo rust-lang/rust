@@ -20,7 +20,6 @@ use middle::typeck::infer::combine::Combine;
 use middle::typeck::infer::{cres};
 use middle::typeck::infer::fold_regions_in;
 use middle::typeck::infer::InferCtxt;
-use middle::typeck::infer::lattice::is_var_in_set;
 use middle::typeck::infer::region_inference::{RegionMark};
 use middle::ty_fold::TypeFoldable;
 use std::collections::HashMap;
@@ -38,6 +37,9 @@ pub trait HigherRankedRelations {
         where T : HigherRanked;
 
     fn higher_ranked_lub<T>(&self, a: &T, b: &T) -> cres<T>
+        where T : HigherRanked;
+
+    fn higher_ranked_glb<T>(&self, a: &T, b: &T) -> cres<T>
         where T : HigherRanked;
 }
 
@@ -123,9 +125,6 @@ impl<'tcx,C> HigherRankedRelations for C
     fn higher_ranked_lub<T>(&self, a: &T, b: &T) -> cres<T>
         where T : HigherRanked
     {
-        // Note: this is a subtle algorithm.  For a full explanation,
-        // please see the large comment in `region_inference.rs`.
-
         // Make a mark so we can examine "all bindings that were
         // created as part of this type comparison".
         let mark = self.infcx().region_vars.mark();
@@ -202,6 +201,141 @@ impl<'tcx,C> HigherRankedRelations for C
                         r0).as_slice())
         }
     }
+
+    fn higher_ranked_glb<T>(&self, a: &T, b: &T) -> cres<T>
+        where T : HigherRanked
+    {
+        debug!("{}.higher_ranked_glb({}, {})",
+               self.tag(), a.repr(self.tcx()), b.repr(self.tcx()));
+
+        // Make a mark so we can examine "all bindings that were
+        // created as part of this type comparison".
+        let mark = self.infcx().region_vars.mark();
+
+        // Instantiate each bound region with a fresh region variable.
+        let (a_with_fresh, a_map) =
+            self.infcx().replace_late_bound_regions_with_fresh_regions(
+                self.trace().origin.span(), a.binder_id(), a);
+        let a_vars = var_ids(self, &a_map);
+        let (b_with_fresh, b_map) =
+            self.infcx().replace_late_bound_regions_with_fresh_regions(
+                self.trace().origin.span(), b.binder_id(), b);
+        let b_vars = var_ids(self, &b_map);
+
+        // Collect constraints.
+        let result0 = try!(HigherRanked::super_combine(self, &a_with_fresh, &b_with_fresh));
+        debug!("result0 = {}", result0.repr(self.tcx()));
+
+        // Generalize the regions appearing in fn_ty0 if possible
+        let new_vars = self.infcx().region_vars.vars_created_since_mark(mark);
+        let span = self.trace().origin.span();
+        let result1 =
+            fold_regions_in(
+                self.tcx(),
+                &result0,
+                |r| generalize_region(self.infcx(),
+                                      span,
+                                      mark,
+                                      new_vars.as_slice(),
+                                      result0.binder_id(),
+                                      &a_map,
+                                      a_vars.as_slice(),
+                                      b_vars.as_slice(),
+                                      r));
+        debug!("result1 = {}", result1.repr(self.tcx()));
+        return Ok(result1);
+
+        fn generalize_region(infcx: &InferCtxt,
+                             span: Span,
+                             mark: RegionMark,
+                             new_vars: &[ty::RegionVid],
+                             new_binder_id: ast::NodeId,
+                             a_map: &HashMap<ty::BoundRegion, ty::Region>,
+                             a_vars: &[ty::RegionVid],
+                             b_vars: &[ty::RegionVid],
+                             r0: ty::Region) -> ty::Region {
+            if !is_var_in_set(new_vars, r0) {
+                assert!(!r0.is_bound());
+                return r0;
+            }
+
+            let tainted = infcx.region_vars.tainted(mark, r0);
+
+            let mut a_r = None;
+            let mut b_r = None;
+            let mut only_new_vars = true;
+            for r in tainted.iter() {
+                if is_var_in_set(a_vars, *r) {
+                    if a_r.is_some() {
+                        return fresh_bound_variable(infcx, new_binder_id);
+                    } else {
+                        a_r = Some(*r);
+                    }
+                } else if is_var_in_set(b_vars, *r) {
+                    if b_r.is_some() {
+                        return fresh_bound_variable(infcx, new_binder_id);
+                    } else {
+                        b_r = Some(*r);
+                    }
+                } else if !is_var_in_set(new_vars, *r) {
+                    only_new_vars = false;
+                }
+            }
+
+            // NB---I do not believe this algorithm computes
+            // (necessarily) the GLB.  As written it can
+            // spuriously fail. In particular, if there is a case
+            // like: |fn(&a)| and fn(fn(&b)), where a and b are
+            // free, it will return fn(&c) where c = GLB(a,b).  If
+            // however this GLB is not defined, then the result is
+            // an error, even though something like
+            // "fn<X>(fn(&X))" where X is bound would be a
+            // subtype of both of those.
+            //
+            // The problem is that if we were to return a bound
+            // variable, we'd be computing a lower-bound, but not
+            // necessarily the *greatest* lower-bound.
+            //
+            // Unfortunately, this problem is non-trivial to solve,
+            // because we do not know at the time of computing the GLB
+            // whether a GLB(a,b) exists or not, because we haven't
+            // run region inference (or indeed, even fully computed
+            // the region hierarchy!). The current algorithm seems to
+            // works ok in practice.
+
+            if a_r.is_some() && b_r.is_some() && only_new_vars {
+                // Related to exactly one bound variable from each fn:
+                return rev_lookup(infcx, span, a_map, new_binder_id, a_r.unwrap());
+            } else if a_r.is_none() && b_r.is_none() {
+                // Not related to bound variables from either fn:
+                assert!(!r0.is_bound());
+                return r0;
+            } else {
+                // Other:
+                return fresh_bound_variable(infcx, new_binder_id);
+            }
+        }
+
+        fn rev_lookup(infcx: &InferCtxt,
+                      span: Span,
+                      a_map: &HashMap<ty::BoundRegion, ty::Region>,
+                      new_binder_id: ast::NodeId,
+                      r: ty::Region) -> ty::Region
+        {
+            for (a_br, a_r) in a_map.iter() {
+                if *a_r == r {
+                    return ty::ReLateBound(new_binder_id, *a_br);
+                }
+            }
+            infcx.tcx.sess.span_bug(
+                span,
+                format!("could not find original bound region for {}", r)[]);
+        }
+
+        fn fresh_bound_variable(infcx: &InferCtxt, binder_id: ast::NodeId) -> ty::Region {
+            infcx.region_vars.new_bound(binder_id)
+        }
+    }
 }
 
 impl HigherRanked for ty::FnSig {
@@ -213,6 +347,26 @@ impl HigherRanked for ty::FnSig {
                                            -> cres<ty::FnSig>
     {
         combine::super_fn_sigs(combine, a, b)
+    }
+}
+
+pub fn var_ids<'tcx, T: Combine<'tcx>>(this: &T,
+                                       map: &HashMap<ty::BoundRegion, ty::Region>)
+                                       -> Vec<ty::RegionVid> {
+    map.iter().map(|(_, r)| match *r {
+            ty::ReInfer(ty::ReVar(r)) => { r }
+            r => {
+                this.infcx().tcx.sess.span_bug(
+                    this.trace().origin.span(),
+                    format!("found non-region-vid: {}", r).as_slice());
+            }
+        }).collect()
+}
+
+pub fn is_var_in_set(new_vars: &[ty::RegionVid], r: ty::Region) -> bool {
+    match r {
+        ty::ReInfer(ty::ReVar(ref v)) => new_vars.iter().any(|x| x == v),
+        _ => false
     }
 }
 
