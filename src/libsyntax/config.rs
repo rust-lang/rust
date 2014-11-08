@@ -15,6 +15,8 @@ use {ast, fold, attr};
 use codemap::Spanned;
 use ptr::P;
 
+use util::small_vector::SmallVector;
+
 /// A folder that strips out items that do not belong in the current
 /// configuration.
 struct Context<'a> {
@@ -47,6 +49,9 @@ impl<'a> fold::Folder for Context<'a> {
     fn fold_mac(&mut self, mac: ast::Mac) -> ast::Mac {
         fold::noop_fold_mac(mac, self)
     }
+    fn fold_item(&mut self, item: P<ast::Item>) -> SmallVector<P<ast::Item>> {
+        fold_item(self, item)
+    }
 }
 
 pub fn strip_items(krate: ast::Crate,
@@ -72,13 +77,9 @@ fn fold_mod(cx: &mut Context, ast::Mod {inner, view_items, items}: ast::Mod) -> 
         view_items: view_items.into_iter().filter_map(|a| {
             filter_view_item(cx, a).map(|x| cx.fold_view_item(x))
         }).collect(),
-        items: items.into_iter().filter_map(|a| {
-            if item_in_cfg(cx, &*a) {
-                Some(cx.fold_item(a))
-            } else {
-                None
-            }
-        }).flat_map(|x| x.into_iter()).collect()
+        items: items.into_iter().flat_map(|a| {
+            cx.fold_item(a).into_iter()
+        }).collect()
     }
 }
 
@@ -101,6 +102,14 @@ fn fold_foreign_mod(cx: &mut Context, ast::ForeignMod {abi, view_items, items}: 
         items: items.into_iter()
                     .filter_map(|a| filter_foreign_item(cx, a))
                     .collect()
+    }
+}
+
+fn fold_item(cx: &mut Context, item: P<ast::Item>) -> SmallVector<P<ast::Item>> {
+    if item_in_cfg(cx, &*item) {
+        SmallVector::one(item.map(|i| cx.fold_item_simple(i)))
+    } else {
+        SmallVector::zero()
     }
 }
 
