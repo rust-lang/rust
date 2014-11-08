@@ -3348,7 +3348,7 @@ pub fn lltype_is_sized<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> bool {
     }
 }
 
-// Return the smallest part of ty which is unsized. Fails if ty is sized.
+// Return the smallest part of `ty` which is unsized. Fails if `ty` is sized.
 // 'Smallest' here means component of the static representation of the type; not
 // the size of an object at runtime.
 pub fn unsized_part_of_type<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
@@ -4916,7 +4916,7 @@ pub fn lookup_field_type<'tcx>(tcx: &ctxt<'tcx>,
 }
 
 // Look up the list of field names and IDs for a given struct.
-// Fails if the id is not bound to a struct.
+// Panics if the id is not bound to a struct.
 pub fn lookup_struct_fields(cx: &ctxt, did: ast::DefId) -> Vec<field_ty> {
     if did.krate == ast::LOCAL_CRATE {
         let struct_fields = cx.struct_fields.borrow();

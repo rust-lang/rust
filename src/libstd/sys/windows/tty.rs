@@ -14,8 +14,8 @@
 //!
 //! This module contains the implementation of a Windows specific console TTY.
 //! Also converts between UTF-16 and UTF-8. Windows has very poor support for
-//! UTF-8 and some functions will fail. In particular ReadFile and ReadConsole
-//! will fail when the codepage is set to UTF-8 and a Unicode character is
+//! UTF-8 and some functions will panic. In particular ReadFile and ReadConsole
+//! will panic when the codepage is set to UTF-8 and a Unicode character is
 //! entered.
 //!
 //! FIXME
@@ -48,7 +48,7 @@ fn invalid_encoding() -> IoError {
 
 pub fn is_tty(fd: c_int) -> bool {
     let mut out: DWORD = 0;
-    // If this function doesn't fail then fd is a TTY
+    // If this function doesn't panic then fd is a TTY
     match unsafe { GetConsoleMode(get_osfhandle(fd) as HANDLE,
                                   &mut out as LPDWORD) } {
         0 => false,
