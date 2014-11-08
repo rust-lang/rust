@@ -6,6 +6,11 @@
 
 Various enhancements to `macro_rules!` ahead of its standardization in 1.0.
 
+**Note**: This is not the final Rust macro system design for all time.  Rather,
+it addresses the largest usability problems within the limited time frame for
+1.0.  It's my hope that a lot of these problems can be solved in nicer ways
+in the long term (there is some discussion of this below).
+
 # Motivation
 
 `macro_rules!` has [many rough
