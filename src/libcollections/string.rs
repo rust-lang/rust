@@ -683,8 +683,8 @@ impl FromIterator<char> for String {
     }
 }
 
-#[experimental = "waiting on Extendable stabilization"]
-impl Extendable<char> for String {
+#[experimental = "waiting on Extend stabilization"]
+impl Extend<char> for String {
     fn extend<I:Iterator<char>>(&mut self, mut iterator: I) {
         for ch in iterator {
             self.push(ch)

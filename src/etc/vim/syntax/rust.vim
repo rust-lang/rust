@@ -93,7 +93,7 @@ syn keyword rustEnum Ordering
 syn keyword rustEnumVariant Less Equal Greater
 syn keyword rustTrait Collection Mutable Map MutableMap MutableSeq
 syn keyword rustTrait Set MutableSet
-syn keyword rustTrait FromIterator Extendable ExactSize
+syn keyword rustTrait FromIterator IntoIterator Extend ExactSize
 syn keyword rustTrait Iterator DoubleEndedIterator
 syn keyword rustTrait RandomAccessIterator CloneableIterator
 syn keyword rustTrait OrdIterator MutableDoubleEndedIterator

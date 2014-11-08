@@ -41,7 +41,7 @@ use cmp::{PartialEq, Eq};
 use collections::HashMap;
 use fmt;
 use hash::Hash;
-use iter::{range, Iterator};
+use iter::{range, Iterator, Extend};
 use mem;
 use ops::Drop;
 use option::{Some, None, Option};
@@ -329,6 +329,15 @@ impl<K: Hash + Eq, V> LruCache<K, V> {
     /// Clear the cache of all key-value pairs.
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn clear(&mut self) { self.map.clear(); }
+
+}
+
+impl<K: Hash + Eq, V> Extend<(K, V)> for LruCache<K, V> {
+    fn extend<T: Iterator<(K, V)>>(&mut self, mut iter: T) {
+        for (k, v) in iter{
+            self.insert(k, v);
+        }
+    }
 }
 
 impl<A: fmt::Show + Hash + Eq, B: fmt::Show> fmt::Show for LruCache<A, B> {
