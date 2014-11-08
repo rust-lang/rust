@@ -325,7 +325,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
         ReInfer(ReSkolemized(sc, br))
     }
 
-    pub fn new_bound(&self, binder_id: ast::NodeId) -> Region {
+    pub fn new_bound(&self) -> Region {
         // Creates a fresh bound variable for use in GLB computations.
         // See discussion of GLB computation in the large comment at
         // the top of this file for more details.
@@ -351,7 +351,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
             self.tcx.sess.bug("rollover in RegionInference new_bound()");
         }
 
-        ReLateBound(binder_id, BrFresh(sc))
+        ReLateBound(ty::DebruijnIndex::new(1), BrFresh(sc))
     }
 
     fn values_are_none(&self) -> bool {

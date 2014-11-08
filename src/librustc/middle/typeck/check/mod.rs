@@ -526,7 +526,7 @@ fn check_fn<'a, 'tcx>(ccx: &'a CrateCtxt<'a, 'tcx>,
 
     // First, we have to replace any bound regions in the fn type with free ones.
     // The free region references will be bound the node_id of the body block.
-    let (fn_sig, _) = replace_late_bound_regions(tcx, fn_sig.binder_id, fn_sig, |br| {
+    let (fn_sig, _) = replace_late_bound_regions(tcx, fn_sig, |br| {
         ty::ReFree(ty::FreeRegion {scope_id: body.id, bound_region: br})
     });
 
@@ -3037,7 +3037,6 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
         // In that case, we check each argument against "error" in order to
         // set up all the node type bindings.
         let error_fn_sig = FnSig {
-            binder_id: ast::CRATE_NODE_ID,
             inputs: err_args(args.len()),
             output: ty::FnConverging(ty::mk_err()),
             variadic: false
@@ -3057,10 +3056,8 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
         // Replace any bound regions that appear in the function
         // signature with region variables
         let (fn_sig, _) =
-            fcx.infcx().replace_late_bound_regions_with_fresh_regions(
-                call_expr.span,
-                fn_sig.binder_id,
-                fn_sig);
+            fcx.infcx().replace_late_bound_regions_with_fresh_regions(call_expr.span,
+                                                                      fn_sig);
 
         // Call the generic checker.
         check_argument_types(fcx,
@@ -3444,7 +3441,6 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
                              body: &ast::Block) {
         let mut fn_ty = astconv::ty_of_closure(
             fcx,
-            expr.id,
             ast::NormalFn,
             ast::Many,
 
@@ -3527,9 +3523,8 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
                     let (sig, _) =
                         replace_late_bound_regions(
                             tcx,
-                            cenv.sig.binder_id,
                             &cenv.sig,
-                            |_| fcx.inh.infcx.fresh_bound_region(expr.id));
+                            |_| fcx.inh.infcx.fresh_bound_region());
                     let onceness = match (&store, &cenv.store) {
                         // As the closure type and onceness go, only three
                         // combinations are legit:
@@ -3570,7 +3565,6 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
 
         // construct the function type
         let fn_ty = astconv::ty_of_closure(fcx,
-                                           expr.id,
                                            ast::NormalFn,
                                            expected_onceness,
                                            expected_bounds,
@@ -4478,8 +4472,7 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
             let type_and_substs = astconv::ast_path_to_ty_relaxed(fcx,
                                                                   fcx.infcx(),
                                                                   struct_id,
-                                                                  path,
-                                                                  expr.id);
+                                                                  path);
             match fcx.mk_subty(false,
                                infer::Misc(path.span),
                                actual_structure_type,
@@ -5763,7 +5756,8 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &ast::ForeignItem) {
             "move_val_init" => {
                 (1u,
                  vec!(
-                    ty::mk_mut_rptr(tcx, ty::ReLateBound(it.id, ty::BrAnon(0)), param(ccx, 0)),
+                    ty::mk_mut_rptr(tcx, ty::ReLateBound(ty::DebruijnIndex::new(1), ty::BrAnon(0)),
+                                    param(ccx, 0)),
                     param(ccx, 0u)
                   ),
                ty::mk_nil())
@@ -5967,7 +5961,6 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &ast::ForeignItem) {
         fn_style: ast::UnsafeFn,
         abi: abi::RustIntrinsic,
         sig: FnSig {
-            binder_id: it.id,
             inputs: inputs,
             output: output,
             variadic: false,

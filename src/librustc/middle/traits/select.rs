@@ -1705,7 +1705,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let (new_signature, _) =
             ty::replace_late_bound_regions(
                 self.tcx(),
-                closure_type.sig.binder_id,
                 &closure_type.sig,
                 |br| self.infcx.next_region_var(
                          infer::LateBoundRegion(obligation.cause.span, br)));

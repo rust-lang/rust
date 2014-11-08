@@ -27,8 +27,7 @@ use middle::subst::Substs;
 use middle::ty::{TyVid, IntVid, FloatVid, RegionVid};
 use middle::ty::replace_late_bound_regions;
 use middle::ty;
-use middle::ty_fold;
-use middle::ty_fold::{TypeFolder, TypeFoldable};
+use middle::ty_fold::{HigherRankedFoldable, TypeFolder, TypeFoldable};
 use std::cell::{RefCell};
 use std::collections::HashMap;
 use std::rc::Rc;
@@ -62,6 +61,7 @@ pub mod region_inference;
 pub mod resolve;
 mod skolemize;
 pub mod sub;
+#[cfg(test)]
 pub mod test;
 pub mod type_variable;
 pub mod unify;
@@ -786,8 +786,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         subst::Substs::new_trait(type_parameters, regions, assoc_type_parameters, self_ty)
     }
 
-    pub fn fresh_bound_region(&self, binder_id: ast::NodeId) -> ty::Region {
-        self.region_vars.new_bound(binder_id)
+    pub fn fresh_bound_region(&self) -> ty::Region {
+        self.region_vars.new_bound()
     }
 
     pub fn resolve_regions_and_report_errors(&self) {
@@ -958,25 +958,15 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     pub fn replace_late_bound_regions_with_fresh_regions<T>(
         &self,
         span: Span,
-        binder_id: ast::NodeId,
         value: &T)
         -> (T, HashMap<ty::BoundRegion,ty::Region>)
-        where T : TypeFoldable + Repr
+        where T : HigherRankedFoldable
     {
         ty::replace_late_bound_regions(
             self.tcx,
-            binder_id,
             value,
             |br| self.next_region_var(LateBoundRegion(span, br)))
     }
-}
-
-fn fold_regions_in<T:TypeFoldable>(tcx: &ty::ctxt,
-                                   value: &T,
-                                   fldr: |r: ty::Region| -> ty::Region)
-                                   -> T
-{
-    value.fold_with(&mut ty_fold::RegionFolder::regions(tcx, fldr))
 }
 
 impl TypeTrace {

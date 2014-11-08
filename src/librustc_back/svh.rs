@@ -475,7 +475,8 @@ mod svh_visitor {
 
         fn visit_fn(&mut self, fk: FnKind<'v>, fd: &'v FnDecl,
                     b: &'v Block, s: Span, _: NodeId) {
-            SawFn.hash(self.st); visit::walk_fn(self, fk, fd, b, s)
+            SawFn.hash(self.st);
+            visit::walk_fn(self, fk, fd, b, s)
         }
 
         fn visit_ty_method(&mut self, t: &TypeMethod) {

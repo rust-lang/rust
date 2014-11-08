@@ -371,8 +371,7 @@ pub fn super_fn_sigs<'tcx, C: Combine<'tcx>>(this: &C,
             )),
     });
 
-    Ok(FnSig {binder_id: a.binder_id,
-              inputs: inputs,
+    Ok(FnSig {inputs: inputs,
               output: output,
               variadic: a.variadic})
 }
