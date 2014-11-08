@@ -108,7 +108,10 @@ impl<'a> fold::Folder for TestHarnessGenerator<'a> {
     }
 
     fn fold_item(&mut self, i: P<ast::Item>) -> SmallVector<P<ast::Item>> {
-        self.cx.path.push(i.ident);
+        let ident = i.ident;
+        if ident.name != token::special_idents::invalid.name {
+            self.cx.path.push(ident);
+        }
         debug!("current path: {}",
                ast_util::path_name_i(self.cx.path.as_slice()));
 
@@ -143,7 +146,9 @@ impl<'a> fold::Folder for TestHarnessGenerator<'a> {
             ast::ItemMod(..) => fold::noop_fold_item(i, self),
             _ => SmallVector::one(i),
         };
-        self.cx.path.pop();
+        if ident.name != token::special_idents::invalid.name {
+            self.cx.path.pop();
+        }
         res
     }
 

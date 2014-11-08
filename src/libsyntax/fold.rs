@@ -1061,12 +1061,41 @@ pub fn noop_fold_mod<T: Folder>(Mod {inner, view_items, items}: Mod, folder: &mu
 
 pub fn noop_fold_crate<T: Folder>(Crate {module, attrs, config, exported_macros, span}: Crate,
                                   folder: &mut T) -> Crate {
+    let config = folder.fold_meta_items(config);
+
+    let mut items = folder.fold_item(P(ast::Item {
+        ident: token::special_idents::invalid,
+        attrs: attrs,
+        id: ast::DUMMY_NODE_ID,
+        vis: ast::Public,
+        span: span,
+        node: ast::ItemMod(module),
+    })).into_iter();
+
+    let (module, attrs, span) = match items.next() {
+        Some(item) => {
+            assert!(items.next().is_none(),
+                    "a crate cannot expand to more than one item");
+            item.and_then(|ast::Item { attrs, span, node, .. }| {
+                match node {
+                    ast::ItemMod(m) => (m, attrs, span),
+                    _ => panic!("fold converted a module to not a module"),
+                }
+            })
+        }
+        None => (ast::Mod {
+            inner: span,
+            view_items: Vec::new(),
+            items: Vec::new(),
+        }, Vec::new(), span)
+    };
+
     Crate {
-        module: folder.fold_mod(module),
-        attrs: attrs.move_map(|x| folder.fold_attribute(x)),
-        config: folder.fold_meta_items(config),
+        module: module,
+        attrs: attrs,
+        config: config,
         exported_macros: exported_macros,
-        span: folder.new_span(span)
+        span: span,
     }
 }
 
