@@ -11,5 +11,5 @@
 fn test<T: Sync>() {}
 
 fn main() {
-    test::<Sender<int>>();     //~ ERROR: `core::kinds::Sync` is not implemented
+    test::<Receiver<int>>();   //~ ERROR: `core::kinds::Sync` is not implemented
 }

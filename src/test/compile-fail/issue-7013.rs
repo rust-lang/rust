@@ -32,5 +32,5 @@ struct A {
 
 fn main() {
     let a = A {v: box B{v: None} as Box<Foo+Send>};
-    //~^ ERROR the trait `core::kinds::Send` is not implemented for the type `B`
+    //~^ ERROR the trait `core::kinds::Send` is not implemented
 }

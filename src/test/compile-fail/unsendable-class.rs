@@ -29,5 +29,5 @@ fn foo(i:int, j: Rc<String>) -> foo {
 fn main() {
   let cat = "kitty".to_string();
   let (tx, _) = channel(); //~ ERROR `core::kinds::Send` is not implemented
-  tx.send(foo(42, Rc::new(cat))); //~ ERROR `core::kinds::Send` is not implemented
+  tx.send(foo(42, Rc::new(cat)));
 }
