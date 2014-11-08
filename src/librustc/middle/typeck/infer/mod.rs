@@ -971,11 +971,12 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     }
 }
 
-pub fn fold_regions_in_sig(tcx: &ty::ctxt,
-                           fn_sig: &ty::FnSig,
-                           fldr: |r: ty::Region| -> ty::Region)
-                           -> ty::FnSig {
-    ty_fold::RegionFolder::regions(tcx, fldr).fold_sig(fn_sig)
+fn fold_regions_in<T:TypeFoldable>(tcx: &ty::ctxt,
+                                   value: &T,
+                                   fldr: |r: ty::Region| -> ty::Region)
+                                   -> T
+{
+    value.fold_with(&mut ty_fold::RegionFolder::regions(tcx, fldr))
 }
 
 impl TypeTrace {

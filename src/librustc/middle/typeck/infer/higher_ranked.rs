@@ -18,8 +18,14 @@ use middle::ty::replace_late_bound_regions;
 use middle::typeck::infer::combine;
 use middle::typeck::infer::combine::Combine;
 use middle::typeck::infer::{cres};
+use middle::typeck::infer::fold_regions_in;
+use middle::typeck::infer::InferCtxt;
+use middle::typeck::infer::lattice::is_var_in_set;
+use middle::typeck::infer::region_inference::{RegionMark};
 use middle::ty_fold::TypeFoldable;
+use std::collections::HashMap;
 use syntax::ast;
+use syntax::codemap::Span;
 use util::ppaux::{bound_region_to_string, Repr};
 
 pub trait HigherRanked : TypeFoldable + Repr {
@@ -29,6 +35,9 @@ pub trait HigherRanked : TypeFoldable + Repr {
 
 pub trait HigherRankedRelations {
     fn higher_ranked_sub<T>(&self, a: &T, b: &T) -> cres<T>
+        where T : HigherRanked;
+
+    fn higher_ranked_lub<T>(&self, a: &T, b: &T) -> cres<T>
         where T : HigherRanked;
 }
 
@@ -109,6 +118,89 @@ impl<'tcx,C> HigherRankedRelations for C
         }
 
         return Ok(sig);
+    }
+
+    fn higher_ranked_lub<T>(&self, a: &T, b: &T) -> cres<T>
+        where T : HigherRanked
+    {
+        // Note: this is a subtle algorithm.  For a full explanation,
+        // please see the large comment in `region_inference.rs`.
+
+        // Make a mark so we can examine "all bindings that were
+        // created as part of this type comparison".
+        let mark = self.infcx().region_vars.mark();
+
+        // Instantiate each bound region with a fresh region variable.
+        let (a_with_fresh, a_map) =
+            self.infcx().replace_late_bound_regions_with_fresh_regions(
+                self.trace().origin.span(), a.binder_id(), a);
+        let (b_with_fresh, _) =
+            self.infcx().replace_late_bound_regions_with_fresh_regions(
+                self.trace().origin.span(), b.binder_id(), b);
+
+        // Collect constraints.
+        let result0 = try!(HigherRanked::super_combine(self, &a_with_fresh, &b_with_fresh));
+        debug!("sig0 = {}", result0.repr(self.tcx()));
+
+        // Generalize the regions appearing in sig0 if possible
+        let new_vars = self.infcx().region_vars.vars_created_since_mark(mark);
+        let span = self.trace().origin.span();
+        let result1 =
+            fold_regions_in(
+                self.tcx(),
+                &result0,
+                |r| generalize_region(self.infcx(), span, mark, new_vars.as_slice(),
+                                      result0.binder_id(), &a_map, r));
+        return Ok(result1);
+
+        fn generalize_region(infcx: &InferCtxt,
+                             span: Span,
+                             mark: RegionMark,
+                             new_vars: &[ty::RegionVid],
+                             new_scope: ast::NodeId,
+                             a_map: &HashMap<ty::BoundRegion, ty::Region>,
+                             r0: ty::Region)
+                             -> ty::Region {
+            // Regions that pre-dated the LUB computation stay as they are.
+            if !is_var_in_set(new_vars, r0) {
+                assert!(!r0.is_bound());
+                debug!("generalize_region(r0={}): not new variable", r0);
+                return r0;
+            }
+
+            let tainted = infcx.region_vars.tainted(mark, r0);
+
+            // Variables created during LUB computation which are
+            // *related* to regions that pre-date the LUB computation
+            // stay as they are.
+            if !tainted.iter().all(|r| is_var_in_set(new_vars, *r)) {
+                debug!("generalize_region(r0={}): \
+                        non-new-variables found in {}",
+                       r0, tainted);
+                assert!(!r0.is_bound());
+                return r0;
+            }
+
+            // Otherwise, the variable must be associated with at
+            // least one of the variables representing bound regions
+            // in both A and B.  Replace the variable with the "first"
+            // bound region from A that we find it to be associated
+            // with.
+            for (a_br, a_r) in a_map.iter() {
+                if tainted.iter().any(|x| x == a_r) {
+                    debug!("generalize_region(r0={}): \
+                            replacing with {}, tainted={}",
+                           r0, *a_br, tainted);
+                    return ty::ReLateBound(new_scope, *a_br);
+                }
+            }
+
+            infcx.tcx.sess.span_bug(
+                span,
+                format!("region {} is not associated with \
+                         any bound region from A!",
+                        r0).as_slice())
+        }
     }
 }
 

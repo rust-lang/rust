@@ -19,7 +19,7 @@ use middle::typeck::infer::lub::Lub;
 use middle::typeck::infer::sub::Sub;
 use middle::typeck::infer::{cres, InferCtxt};
 use middle::typeck::infer::{TypeTrace, Subtype};
-use middle::typeck::infer::fold_regions_in_sig;
+use middle::typeck::infer::fold_regions_in;
 use middle::typeck::infer::region_inference::RegionMark;
 use syntax::ast::{Many, Once, MutImmutable, MutMutable};
 use syntax::ast::{NormalFn, UnsafeFn, NodeId};
@@ -156,19 +156,17 @@ impl<'f, 'tcx> Combine<'tcx> for Glb<'f, 'tcx> {
         let new_vars =
             self.fields.infcx.region_vars.vars_created_since_mark(mark);
         let sig1 =
-            fold_regions_in_sig(
+            fold_regions_in(
                 self.fields.infcx.tcx,
                 &sig0,
-                |r| {
-                generalize_region(self,
-                                  mark,
-                                  new_vars.as_slice(),
-                                  sig0.binder_id,
-                                  &a_map,
-                                  a_vars.as_slice(),
-                                  b_vars.as_slice(),
-                                  r)
-            });
+                |r| generalize_region(self,
+                                      mark,
+                                      new_vars.as_slice(),
+                                      sig0.binder_id,
+                                      &a_map,
+                                      a_vars.as_slice(),
+                                      b_vars.as_slice(),
+                                      r));
         debug!("sig1 = {}", sig1.repr(self.fields.infcx.tcx));
         return Ok(sig1);
 
