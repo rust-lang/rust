@@ -75,7 +75,7 @@
 #[doc(no_inline)] pub use path::{GenericPath, Path, PosixPath, WindowsPath};
 #[doc(no_inline)] pub use ptr::{RawPtr, RawMutPtr};
 #[doc(no_inline)] pub use result::{Result, Ok, Err};
-#[doc(no_inline)] pub use io::{Buffer, Writer, Reader, Seek};
+#[doc(no_inline)] pub use io::{Buffer, Writer, Reader, Seek, BufferPrelude};
 #[doc(no_inline)] pub use str::{Str, StrVector, StrPrelude};
 #[doc(no_inline)] pub use str::{IntoMaybeOwned, StrAllocating, UnicodeStrPrelude};
 #[doc(no_inline)] pub use to_string::{ToString, IntoStr};

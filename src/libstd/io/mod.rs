@@ -1402,16 +1402,6 @@ pub trait Buffer: Reader {
         )
     }
 
-    /// Create an iterator that reads a line on each iteration until EOF.
-    ///
-    /// # Error
-    ///
-    /// Any error other than `EndOfFile` that is produced by the underlying Reader
-    /// is returned by the iterator and should be handled by the caller.
-    fn lines<'r>(&'r mut self) -> Lines<'r, Self> {
-        Lines { buffer: self }
-    }
-
     /// Reads a sequence of bytes leading up to a specified delimiter. Once the
     /// specified byte is encountered, reading ceases and the bytes up to and
     /// including the delimiter are returned.
@@ -1487,7 +1477,10 @@ pub trait Buffer: Reader {
             None => Err(standard_error(InvalidInput))
         }
     }
+}
 
+/// Extension methods for the Buffer trait which are included in the prelude.
+pub trait BufferPrelude {
     /// Create an iterator that reads a utf8-encoded character on each iteration
     /// until EOF.
     ///
@@ -1495,8 +1488,24 @@ pub trait Buffer: Reader {
     ///
     /// Any error other than `EndOfFile` that is produced by the underlying Reader
     /// is returned by the iterator and should be handled by the caller.
-    fn chars<'r>(&'r mut self) -> Chars<'r, Self> {
+    fn chars<'r>(&'r mut self) -> Chars<'r, Self>;
+
+    /// Create an iterator that reads a line on each iteration until EOF.
+    ///
+    /// # Error
+    ///
+    /// Any error other than `EndOfFile` that is produced by the underlying Reader
+    /// is returned by the iterator and should be handled by the caller.
+    fn lines<'r>(&'r mut self) -> Lines<'r, Self>;
+}
+
+impl<T: Buffer> BufferPrelude for T {
+    fn chars<'r>(&'r mut self) -> Chars<'r, T> {
         Chars { buffer: self }
+    }
+
+    fn lines<'r>(&'r mut self) -> Lines<'r, T> {
+        Lines { buffer: self }
     }
 }
 
@@ -1967,5 +1976,9 @@ mod tests {
         assert_eq!(format!("{}", OTHER_RWX), "0007".to_string());
         assert_eq!(format!("{}", ALL_PERMISSIONS), "0777".to_string());
         assert_eq!(format!("{}", USER_READ | USER_WRITE | OTHER_WRITE), "0602".to_string());
+    }
+
+    fn _ensure_buffer_is_object_safe<T: Buffer>(x: &T) -> &Buffer {
+        x as &Buffer
     }
 }
