@@ -499,7 +499,7 @@ impl<V> FromIterator<(uint, V)> for VecMap<V> {
     }
 }
 
-impl<V> Extendable<(uint, V)> for VecMap<V> {
+impl<V> Extend<(uint, V)> for VecMap<V> {
     fn extend<Iter: Iterator<(uint, V)>>(&mut self, mut iter: Iter) {
         for (k, v) in iter {
             self.insert(k, v);

@@ -16,7 +16,7 @@ use cmp::{PartialEq, Eq, PartialOrd, Ord, Ordering};
 use from_str::FromStr;
 use hash;
 use io::Writer;
-use iter::{DoubleEndedIterator, AdditiveIterator, Extendable, Iterator, Map};
+use iter::{DoubleEndedIterator, AdditiveIterator, Extend, Iterator, Map};
 use option::{Option, None, Some};
 use str::Str;
 use str;

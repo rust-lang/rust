@@ -48,7 +48,7 @@ pub use char::Char;
 pub use clone::Clone;
 pub use cmp::{PartialEq, PartialOrd, Eq, Ord};
 pub use cmp::{Ordering, Less, Equal, Greater, Equiv};
-pub use iter::{FromIterator, Extendable};
+pub use iter::{FromIterator, Extend};
 pub use iter::{Iterator, DoubleEndedIterator, RandomAccessIterator, CloneableIterator};
 pub use iter::{OrdIterator, MutableDoubleEndedIterator, ExactSize};
 pub use num::{Num, NumCast, CheckedAdd, CheckedSub, CheckedMul};

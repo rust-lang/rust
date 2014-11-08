@@ -15,7 +15,7 @@ use cmp::{max, Eq, Equiv, PartialEq};
 use default::Default;
 use fmt::{mod, Show};
 use hash::{Hash, Hasher, RandomSipHasher};
-use iter::{mod, Iterator, FromIterator, Extendable};
+use iter::{mod, Iterator, FromIterator, Extend};
 use kinds::Sized;
 use mem::{mod, replace};
 use num;
@@ -1449,7 +1449,7 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S> + Default> FromIterator<(K, V)> for Has
     }
 }
 
-impl<K: Eq + Hash<S>, V, S, H: Hasher<S> + Default> Extendable<(K, V)> for HashMap<K, V, H> {
+impl<K: Eq + Hash<S>, V, S, H: Hasher<S> + Default> Extend<(K, V)> for HashMap<K, V, H> {
     fn extend<T: Iterator<(K, V)>>(&mut self, mut iter: T) {
         for (k, v) in iter {
             self.insert(k, v);

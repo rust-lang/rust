@@ -19,7 +19,7 @@ use cmp::{PartialEq, Eq, PartialOrd, Ord, Ordering};
 use from_str::FromStr;
 use hash;
 use io::Writer;
-use iter::{AdditiveIterator, DoubleEndedIterator, Extendable, Iterator, Map};
+use iter::{AdditiveIterator, DoubleEndedIterator, Extend, Iterator, Map};
 use mem;
 use option::{Option, Some, None};
 use slice::{AsSlice, SlicePrelude};
