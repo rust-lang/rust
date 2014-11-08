@@ -2605,7 +2605,7 @@ fn try_index_step<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
 }
 
 /// Given the head of a `for` expression, looks up the `next` method in the
-/// `Iterator` trait. Fails if the expression does not implement `next`.
+/// `Iterator` trait. Panics if the expression does not implement `next`.
 ///
 /// The return type of this function represents the concrete element type
 /// `A` in the type `Iterator<A>` that the method returns.

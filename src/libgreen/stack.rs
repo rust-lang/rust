@@ -42,7 +42,7 @@ impl Stack {
     pub fn new(size: uint) -> Stack {
         // Map in a stack. Eventually we might be able to handle stack
         // allocation failure, which would fail to spawn the task. But there's
-        // not many sensible things to do on OOM.  Failure seems fine (and is
+        // not many sensible things to do on OOM. Panic seems fine (and is
         // what the old stack allocation did).
         let stack = match MemoryMap::new(size, &[MapReadable, MapWritable,
                                                  MapNonStandardFlags(STACK_FLAGS)]) {

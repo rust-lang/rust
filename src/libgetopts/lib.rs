@@ -569,7 +569,7 @@ impl fmt::Show for Fail_ {
 ///
 /// On success returns `Ok(Matches)`. Use methods such as `opt_present`
 /// `opt_str`, etc. to interrogate results.
-/// # Errors
+/// # Panics
 ///
 /// Returns `Err(Fail_)` on failure: use the `Show` implementation of `Fail_` to display
 /// information about it.
@@ -860,9 +860,9 @@ enum LengthLimit {
 /// Note: Function was moved here from `std::str` because this module is the only place that
 /// uses it, and because it was too specific for a general string function.
 ///
-/// #Failure:
+/// # Panics
 ///
-/// Fails during iteration if the string contains a non-whitespace
+/// Panics during iteration if the string contains a non-whitespace
 /// sequence longer than the limit.
 fn each_split_within<'a>(ss: &'a str, lim: uint, it: |&'a str| -> bool)
                      -> bool {

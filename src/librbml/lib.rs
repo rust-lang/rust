@@ -841,7 +841,7 @@ pub mod writer {
             // the encoded EBML (normally).  This is just for
             // efficiency.  When debugging, though, we can emit such
             // labels and then they will be checked by decoder to
-            // try and check failures more quickly.
+            // try and check panics more quickly.
             if DEBUG { self.wr_tagged_str(EsLabel as uint, label) }
             else { Ok(()) }
         }

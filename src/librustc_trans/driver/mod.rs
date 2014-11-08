@@ -143,7 +143,7 @@ pub fn commit_date_str() -> Option<&'static str> {
 }
 
 /// Prints version information and returns None on success or an error
-/// message on failure.
+/// message on panic.
 pub fn version(binary: &str, matches: &getopts::Matches) -> Option<String> {
     let verbose = match matches.opt_str("version").as_ref().map(|s| s.as_slice()) {
         None => false,
@@ -425,7 +425,7 @@ pub fn list_metadata(sess: &Session, path: &Path,
     metadata::loader::list_file_metadata(sess.target.target.options.is_like_osx, path, out)
 }
 
-/// Run a procedure which will detect failures in the compiler and print nicer
+/// Run a procedure which will detect panics in the compiler and print nicer
 /// error messages rather than just failing the test.
 ///
 /// The diagnostic emitter yielded to the procedure should be used for reporting
@@ -492,7 +492,7 @@ pub fn monitor(f: proc():Send) {
             }
 
             // Panic so the process returns a failure code, but don't pollute the
-            // output with some unnecessary failure messages, we've already
+            // output with some unnecessary panic messages, we've already
             // printed everything that we needed to.
             io::stdio::set_stderr(box io::util::NullWriter);
             panic!();
