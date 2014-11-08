@@ -316,7 +316,7 @@ impl<T: Ord> FromIterator<T> for BTreeSet<T> {
     }
 }
 
-impl<T: Ord> Extendable<T> for BTreeSet<T> {
+impl<T: Ord> Extend<T> for BTreeSet<T> {
     #[inline]
     fn extend<Iter: Iterator<T>>(&mut self, mut iter: Iter) {
         for elem in iter {

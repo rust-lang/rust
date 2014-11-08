@@ -555,7 +555,7 @@ impl<T: Ord> FromIterator<T> for BinaryHeap<T> {
     }
 }
 
-impl<T: Ord> Extendable<T> for BinaryHeap<T> {
+impl<T: Ord> Extend<T> for BinaryHeap<T> {
     fn extend<Iter: Iterator<T>>(&mut self, mut iter: Iter) {
         let (lower, _) = iter.size_hint();
 

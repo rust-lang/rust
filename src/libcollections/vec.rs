@@ -484,8 +484,8 @@ impl<T> FromIterator<T> for Vec<T> {
     }
 }
 
-#[experimental = "waiting on Extendable stability"]
-impl<T> Extendable<T> for Vec<T> {
+#[experimental = "waiting on Extend stability"]
+impl<T> Extend<T> for Vec<T> {
     #[inline]
     fn extend<I: Iterator<T>>(&mut self, mut iterator: I) {
         let (lower, _) = iterator.size_hint();

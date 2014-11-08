@@ -835,7 +835,7 @@ impl FromIterator<bool> for Bitv {
     }
 }
 
-impl Extendable<bool> for Bitv {
+impl Extend<bool> for Bitv {
     #[inline]
     fn extend<I: Iterator<bool>>(&mut self, mut iterator: I) {
         let (min, _) = iterator.size_hint();
@@ -1014,7 +1014,7 @@ impl FromIterator<bool> for BitvSet {
     }
 }
 
-impl Extendable<bool> for BitvSet {
+impl Extend<bool> for BitvSet {
     #[inline]
     fn extend<I: Iterator<bool>>(&mut self, iterator: I) {
         let &BitvSet(ref mut self_bitv) = self;

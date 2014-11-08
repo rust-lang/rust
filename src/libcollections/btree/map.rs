@@ -727,7 +727,7 @@ impl<K: Ord, V> FromIterator<(K, V)> for BTreeMap<K, V> {
     }
 }
 
-impl<K: Ord, V> Extendable<(K, V)> for BTreeMap<K, V> {
+impl<K: Ord, V> Extend<(K, V)> for BTreeMap<K, V> {
     #[inline]
     fn extend<T: Iterator<(K, V)>>(&mut self, mut iter: T) {
         for (k, v) in iter {
