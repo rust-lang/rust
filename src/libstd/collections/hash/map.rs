@@ -587,9 +587,13 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
         self.resize_policy.usable_capacity(self.table.capacity())
     }
 
+    /// Reserves capacity for at least `additional` more elements to be inserted
+    /// in the `HashMap`. The collection may reserve more space to avoid
+    /// frequent reallocations.
     ///
-    /// This function has no effect on the operational semantics of the
-    /// hashtable, only on performance.
+    /// # Panics
+    ///
+    /// Panics if the new allocation size overflows `uint`.
     ///
     /// # Example
     ///
@@ -598,11 +602,18 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     /// let mut map: HashMap<&str, int> = HashMap::new();
     /// map.reserve(10);
     /// ```
-    pub fn reserve(&mut self, new_minimum_capacity: uint) {
-        let cap = max(INITIAL_CAPACITY, new_minimum_capacity).next_power_of_two();
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
+    pub fn reserve(&mut self, additional: uint) {
+        let new_size = self.len().checked_add(additional).expect("capacity overflow");
+        let min_cap = self.resize_policy.min_capacity(new_size);
 
-        if self.table.capacity() < cap {
-            self.resize(cap);
+        // An invalid value shouldn't make us run out of space. This includes
+        // an overflow check.
+        assert!(new_size <= min_cap);
+
+        if self.table.capacity() < min_cap {
+            let new_capacity = max(min_cap.next_power_of_two(), INITIAL_CAPACITY);
+            self.resize(new_capacity);
         }
     }
 
