@@ -720,7 +720,7 @@ impl<A> FromIterator<A> for DList<A> {
     }
 }
 
-impl<A> Extendable<A> for DList<A> {
+impl<A> Extend<A> for DList<A> {
     fn extend<T: Iterator<A>>(&mut self, mut iterator: T) {
         for elt in iterator { self.push_back(elt); }
     }

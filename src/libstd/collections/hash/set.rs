@@ -16,7 +16,7 @@ use default::Default;
 use fmt::Show;
 use fmt;
 use hash::{Hash, Hasher, RandomSipHasher};
-use iter::{Iterator, FromIterator, FilterMap, Chain, Repeat, Zip, Extendable};
+use iter::{Iterator, FromIterator, FilterMap, Chain, Repeat, Zip, Extend};
 use iter;
 use option::{Some, None};
 use result::{Ok, Err};
@@ -574,7 +574,7 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S> + Default> FromIterator<T> for HashSet<T, 
     }
 }
 
-impl<T: Eq + Hash<S>, S, H: Hasher<S> + Default> Extendable<T> for HashSet<T, H> {
+impl<T: Eq + Hash<S>, S, H: Hasher<S> + Default> Extend<T> for HashSet<T, H> {
     fn extend<I: Iterator<T>>(&mut self, mut iter: I) {
         for k in iter {
             self.insert(k);

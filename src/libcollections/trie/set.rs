@@ -355,7 +355,7 @@ impl FromIterator<uint> for TrieSet {
     }
 }
 
-impl Extendable<uint> for TrieSet {
+impl Extend<uint> for TrieSet {
     fn extend<Iter: Iterator<uint>>(&mut self, mut iter: Iter) {
         for elem in iter {
             self.insert(elem);

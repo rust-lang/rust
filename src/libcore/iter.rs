@@ -66,6 +66,7 @@ use num::{Zero, One, CheckedAdd, CheckedSub, Saturating, ToPrimitive, Int};
 use ops::{Add, Mul, Sub};
 use option::{Option, Some, None};
 use uint;
+#[deprecated = "renamed to Extend"] pub use self::Extend as Extendable;
 
 /// Conversion from an `Iterator`
 pub trait FromIterator<A> {
@@ -74,8 +75,8 @@ pub trait FromIterator<A> {
 }
 
 /// A type growable from an `Iterator` implementation
-pub trait Extendable<A>: FromIterator<A> {
-    /// Extend a container with the elements yielded by an iterator
+pub trait Extend<A> {
+    /// Extend a container with the elements yielded by an arbitrary iterator
     fn extend<T: Iterator<A>>(&mut self, iterator: T);
 }
 

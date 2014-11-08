@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use clean::*;
-use std::iter::Extendable;
+use std::iter::Extend;
 use std::mem::{replace, swap};
 
 pub trait DocFolder {

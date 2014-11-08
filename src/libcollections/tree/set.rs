@@ -659,7 +659,7 @@ impl<T: Ord> FromIterator<T> for TreeSet<T> {
     }
 }
 
-impl<T: Ord> Extendable<T> for TreeSet<T> {
+impl<T: Ord> Extend<T> for TreeSet<T> {
     #[inline]
     fn extend<Iter: Iterator<T>>(&mut self, mut iter: Iter) {
         for elem in iter {

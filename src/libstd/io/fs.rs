@@ -60,7 +60,7 @@ use io::{IoResult, IoError, FileStat, SeekStyle, Seek, Writer, Reader};
 use io::{Read, Truncate, SeekCur, SeekSet, ReadWrite, SeekEnd, Append};
 use io::UpdateIoError;
 use io;
-use iter::{Iterator, Extendable};
+use iter::{Iterator, Extend};
 use kinds::Send;
 use libc;
 use option::{Some, None, Option};

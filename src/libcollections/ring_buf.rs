@@ -735,7 +735,7 @@ impl<A> FromIterator<A> for RingBuf<A> {
     }
 }
 
-impl<A> Extendable<A> for RingBuf<A> {
+impl<A> Extend<A> for RingBuf<A> {
     fn extend<T: Iterator<A>>(&mut self, mut iterator: T) {
         for elt in iterator {
             self.push_back(elt);

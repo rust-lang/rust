@@ -628,7 +628,7 @@ impl<T> FromIterator<(uint, T)> for TrieMap<T> {
     }
 }
 
-impl<T> Extendable<(uint, T)> for TrieMap<T> {
+impl<T> Extend<(uint, T)> for TrieMap<T> {
     fn extend<Iter: Iterator<(uint, T)>>(&mut self, mut iter: Iter) {
         for (k, v) in iter {
             self.insert(k, v);
