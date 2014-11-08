@@ -323,7 +323,6 @@ fn load_unboxed_closure_environment<'blk, 'tcx>(
                                          self_type,
                                          "unboxed_closure_env");
         store_ty(bcx, bcx.fcx.llenv.unwrap(), datum.val, self_type);
-        assert!(freevars.len() <= 1);
         datum.val
     } else {
         bcx.fcx.llenv.unwrap()
