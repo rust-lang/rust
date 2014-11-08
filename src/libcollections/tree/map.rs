@@ -1260,7 +1260,7 @@ impl<K: Ord, V> FromIterator<(K, V)> for TreeMap<K, V> {
     }
 }
 
-impl<K: Ord, V> Extendable<(K, V)> for TreeMap<K, V> {
+impl<K: Ord, V> Extend<(K, V)> for TreeMap<K, V> {
     #[inline]
     fn extend<T: Iterator<(K, V)>>(&mut self, mut iter: T) {
         for (k, v) in iter {
