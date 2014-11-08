@@ -29,6 +29,8 @@ struct S4 {
 }
 enum E<Sized? X> {
     V1(X, int), //~ERROR `core::kinds::Sized` is not implemented
+}
+enum F<Sized? X> {
     V2{f1: X, f: int}, //~ERROR `core::kinds::Sized` is not implemented
 }
 
