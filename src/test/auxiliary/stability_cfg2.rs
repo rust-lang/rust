@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub fn expr_add_3() {
-    3i + 4;
-}
+// compile-flags:--cfg foo
+
+#![cfg_attr(foo, experimental)]
+#![cfg_attr(not(foo), stable)]
+
