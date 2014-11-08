@@ -403,8 +403,8 @@ pub fn walk_ty<'v, V: Visitor<'v>>(visitor: &mut V, typ: &'v Ty) {
             }
         }
         TyQPath(ref qpath) => {
-            visitor.visit_ty(&*qpath.for_type);
-            visitor.visit_path(&qpath.trait_name, typ.id);
+            visitor.visit_ty(&*qpath.self_type);
+            visitor.visit_trait_ref(&*qpath.trait_ref);
             visitor.visit_ident(typ.span, qpath.item_name);
         }
         TyFixedLengthVec(ref ty, ref expression) => {

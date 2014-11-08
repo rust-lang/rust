@@ -100,6 +100,10 @@ impl<'tcx> Substs<'tcx> {
         regions_is_noop && self.types.is_empty()
     }
 
+    pub fn type_for_def(&self, ty_param_def: &ty::TypeParameterDef) -> Ty<'tcx> {
+        *self.types.get(ty_param_def.space, ty_param_def.index)
+    }
+
     pub fn has_regions_escaping_depth(&self, depth: uint) -> bool {
         self.types.iter().any(|&t| ty::type_escapes_depth(t, depth)) || {
             match self.regions {

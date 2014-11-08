@@ -706,11 +706,11 @@ pub enum Expr_ {
 ///
 ///     <Vec<T> as SomeTrait>::SomeAssociatedItem
 ///      ^~~~~     ^~~~~~~~~   ^~~~~~~~~~~~~~~~~~
-///      for_type  trait_name  item_name
+///      self_type  trait_name  item_name
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
 pub struct QPath {
-    pub for_type: P<Ty>,
-    pub trait_name: Path,
+    pub self_type: P<Ty>,
+    pub trait_ref: P<TraitRef>,
     pub item_name: Ident,
 }
 
