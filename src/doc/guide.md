@@ -1481,7 +1481,7 @@ s.push_str(", world.");
 println!("{}", s);
 ```
 
-You can coerce a `String` into a `&str` with the `as_slice()` method:
+You can get a `&str` view into a `String` with the `as_slice()` method:
 
 ```{rust}
 fn takes_slice(slice: &str) {
@@ -1514,7 +1514,7 @@ fn compare(string: String) {
 }
 ```
 
-Converting a `String` to a `&str` is cheap, but converting the `&str` to a
+Viewing a `String` as a `&str` is cheap, but converting the `&str` to a
 `String` involves allocating memory. No reason to do that unless you have to!
 
 That's the basics of strings in Rust! They're probably a bit more complicated
