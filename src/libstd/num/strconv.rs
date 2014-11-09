@@ -601,11 +601,11 @@ pub fn from_str_radix_int<T: Int>(src: &str, radix: uint) -> Option<T> {
                 Some(x) => x,
                 None => return None,
             };
-            result = match result.checked_mul(&radix) {
+            result = match result.checked_mul(radix) {
                 Some(result) => result,
                 None => return None,
             };
-            result = match result.checked_add(&x) {
+            result = match result.checked_add(x) {
                 Some(result) => result,
                 None => return None,
             };
@@ -616,11 +616,11 @@ pub fn from_str_radix_int<T: Int>(src: &str, radix: uint) -> Option<T> {
                 Some(x) => x,
                 None => return None,
             };
-            result = match result.checked_mul(&radix) {
+            result = match result.checked_mul(radix) {
                 Some(result) => result,
                 None => return None,
             };
-            result = match result.checked_sub(&x) {
+            result = match result.checked_sub(x) {
                 Some(result) => result,
                 None => return None,
             };

@@ -132,7 +132,7 @@ impl Drop for Arena {
 
 #[inline]
 fn round_up(base: uint, align: uint) -> uint {
-    (base.checked_add(&(align - 1))).unwrap() & !(align - 1)
+    (base.checked_add(align - 1)).unwrap() & !(align - 1)
 }
 
 // Walk down a chunk, running the destructors for any objects stored
@@ -376,8 +376,8 @@ fn calculate_size<T>(capacity: uint) -> uint {
     let mut size = mem::size_of::<TypedArenaChunk<T>>();
     size = round_up(size, mem::min_align_of::<T>());
     let elem_size = mem::size_of::<T>();
-    let elems_size = elem_size.checked_mul(&capacity).unwrap();
-    size = size.checked_add(&elems_size).unwrap();
+    let elems_size = elem_size.checked_mul(capacity).unwrap();
+    size = size.checked_add(elems_size).unwrap();
     size
 }
 
@@ -432,7 +432,7 @@ impl<T> TypedArenaChunk<T> {
     #[inline]
     fn end(&self) -> *const u8 {
         unsafe {
-            let size = mem::size_of::<T>().checked_mul(&self.capacity).unwrap();
+            let size = mem::size_of::<T>().checked_mul(self.capacity).unwrap();
             self.start().offset(size as int)
         }
     }
@@ -481,7 +481,7 @@ impl<T> TypedArena<T> {
     fn grow(&self) {
         unsafe {
             let chunk = *self.first.borrow_mut();
-            let new_capacity = (*chunk).capacity.checked_mul(&2).unwrap();
+            let new_capacity = (*chunk).capacity.checked_mul(2).unwrap();
             let chunk = TypedArenaChunk::<T>::new(chunk, new_capacity);
             self.ptr.set((*chunk).start() as *const T);
             self.end.set((*chunk).end() as *const T);

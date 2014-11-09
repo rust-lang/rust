@@ -348,10 +348,6 @@ trait_impl!(Primitive for uint u8 u16 u32 u64 int i8 i16 i32 i64 f32 f64)
 /// operators, bit counting methods, and endian conversion functions.
 pub trait Int: Primitive
              + Ord
-             + CheckedAdd
-             + CheckedSub
-             + CheckedMul
-             + CheckedDiv
              + Bounded
              + Not<Self>
              + BitAnd<Self,Self>
@@ -526,11 +522,65 @@ pub trait Int: Primitive
         if cfg!(target_endian = "little") { self } else { self.swap_bytes() }
     }
 
+    /// Adds two numbers, checking for overflow. If overflow occurs, `None` is
+    /// returned.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use std::num::Int;
+    ///
+    /// assert_eq!(5u16.checked_add(65530), Some(65535));
+    /// assert_eq!(6u16.checked_add(65530), None);
+    /// ```
+    fn checked_add(self, other: Self) -> Option<Self>;
+
+    /// Subtracts two numbers, checking for underflow. If underflow occurs,
+    /// `None` is returned.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use std::num::Int;
+    ///
+    /// assert_eq!((-127i8).checked_sub(1), Some(-128));
+    /// assert_eq!((-128i8).checked_sub(1), None);
+    /// ```
+    fn checked_sub(self, other: Self) -> Option<Self>;
+
+    /// Multiplies two numbers, checking for underflow or overflow. If underflow
+    /// or overflow occurs, `None` is returned.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use std::num::Int;
+    ///
+    /// assert_eq!(5u8.checked_mul(51), Some(255));
+    /// assert_eq!(5u8.checked_mul(52), None);
+    /// ```
+    fn checked_mul(self, other: Self) -> Option<Self>;
+
+    /// Divides two numbers, checking for underflow, overflow and division by
+    /// zero. If underflow occurs, `None` is returned.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use std::num::Int;
+    ///
+    /// assert_eq!((-127i8).checked_div(-1), Some(127));
+    /// assert_eq!((-128i8).checked_div(-1), None);
+    /// assert_eq!((1i8).checked_div(0), None);
+    /// ```
+    #[inline]
+    fn checked_div(self, other: Self) -> Option<Self>;
+
     /// Saturating addition. Returns `self + other`, saturating at the
     /// numeric bounds instead of overflowing.
     #[inline]
     fn saturating_add(self, other: Self) -> Self {
-        match self.checked_add(&other) {
+        match self.checked_add(other) {
             Some(x)                       => x,
             None if other >= Zero::zero() => Bounded::max_value(),
             None                          => Bounded::min_value(),
@@ -541,7 +591,7 @@ pub trait Int: Primitive
     /// numeric bounds instead of overflowing.
     #[inline]
     fn saturating_sub(self, other: Self) -> Self {
-        match self.checked_sub(&other) {
+        match self.checked_sub(other) {
             Some(x)                       => x,
             None if other >= Zero::zero() => Bounded::min_value(),
             None                          => Bounded::max_value(),
@@ -549,9 +599,22 @@ pub trait Int: Primitive
     }
 }
 
+macro_rules! checked_op {
+    ($T:ty, $U:ty, $op:path, $x:expr, $y:expr) => {{
+        let (result, overflowed) = unsafe { $op($x as $U, $y as $U) };
+        if overflowed { None } else { Some(result as $T) }
+    }}
+}
+
 macro_rules! uint_impl {
-    ($T:ty, $ActualT:ty, $BITS:expr,
-     $ctpop:path, $ctlz:path, $cttz:path, $bswap:path) => {
+    ($T:ty = $ActualT:ty, $BITS:expr,
+     $ctpop:path,
+     $ctlz:path,
+     $cttz:path,
+     $bswap:path,
+     $add_with_overflow:path,
+     $sub_with_overflow:path,
+     $mul_with_overflow:path) => {
         impl Int for $T {
             #[inline]
             fn count_ones(self) -> uint { unsafe { $ctpop(self as $ActualT) as uint } }
@@ -578,6 +641,29 @@ macro_rules! uint_impl {
 
             #[inline]
             fn swap_bytes(self) -> $T { unsafe { $bswap(self as $ActualT) as $T } }
+
+            #[inline]
+            fn checked_add(self, other: $T) -> Option<$T> {
+                checked_op!($T, $ActualT, $add_with_overflow, self, other)
+            }
+
+            #[inline]
+            fn checked_sub(self, other: $T) -> Option<$T> {
+                checked_op!($T, $ActualT, $sub_with_overflow, self, other)
+            }
+
+            #[inline]
+            fn checked_mul(self, other: $T) -> Option<$T> {
+                checked_op!($T, $ActualT, $mul_with_overflow, self, other)
+            }
+
+            #[inline]
+            fn checked_div(self, v: $T) -> Option<$T> {
+                match v {
+                    0 => None,
+                    v => Some(self / v),
+                }
+            }
         }
     }
 }
@@ -586,74 +672,145 @@ macro_rules! uint_impl {
 /// consistency with the other `bswap` intrinsics.
 unsafe fn bswap8(x: u8) -> u8 { x }
 
-uint_impl!(u8, u8, 8,
+uint_impl!(u8 = u8, 8,
     intrinsics::ctpop8,
     intrinsics::ctlz8,
     intrinsics::cttz8,
-    bswap8)
+    bswap8,
+    intrinsics::u8_add_with_overflow,
+    intrinsics::u8_sub_with_overflow,
+    intrinsics::u8_mul_with_overflow)
 
-uint_impl!(u16, u16, 16,
+uint_impl!(u16 = u16, 16,
     intrinsics::ctpop16,
     intrinsics::ctlz16,
     intrinsics::cttz16,
-    intrinsics::bswap16)
+    intrinsics::bswap16,
+    intrinsics::u16_add_with_overflow,
+    intrinsics::u16_sub_with_overflow,
+    intrinsics::u16_mul_with_overflow)
 
-uint_impl!(u32, u32, 32,
+uint_impl!(u32 = u32, 32,
     intrinsics::ctpop32,
     intrinsics::ctlz32,
     intrinsics::cttz32,
-    intrinsics::bswap32)
+    intrinsics::bswap32,
+    intrinsics::u32_add_with_overflow,
+    intrinsics::u32_sub_with_overflow,
+    intrinsics::u32_mul_with_overflow)
 
-uint_impl!(u64, u64, 64,
+uint_impl!(u64 = u64, 64,
     intrinsics::ctpop64,
     intrinsics::ctlz64,
     intrinsics::cttz64,
-    intrinsics::bswap64)
+    intrinsics::bswap64,
+    intrinsics::u64_add_with_overflow,
+    intrinsics::u64_sub_with_overflow,
+    intrinsics::u64_mul_with_overflow)
 
 #[cfg(target_word_size = "32")]
-uint_impl!(uint, u32, 32,
+uint_impl!(uint = u32, 32,
     intrinsics::ctpop32,
     intrinsics::ctlz32,
     intrinsics::cttz32,
-    intrinsics::bswap32)
+    intrinsics::bswap32,
+    intrinsics::u32_add_with_overflow,
+    intrinsics::u32_sub_with_overflow,
+    intrinsics::u32_mul_with_overflow)
 
 #[cfg(target_word_size = "64")]
-uint_impl!(uint, u64, 64,
+uint_impl!(uint = u64, 64,
     intrinsics::ctpop64,
     intrinsics::ctlz64,
     intrinsics::cttz64,
-    intrinsics::bswap64)
+    intrinsics::bswap64,
+    intrinsics::u64_add_with_overflow,
+    intrinsics::u64_sub_with_overflow,
+    intrinsics::u64_mul_with_overflow)
 
 macro_rules! int_impl {
-    ($T:ty, $U:ty) => {
+    ($T:ty = $ActualT:ty, $UnsignedT:ty,
+     $add_with_overflow:path,
+     $sub_with_overflow:path,
+     $mul_with_overflow:path) => {
         impl Int for $T {
             #[inline]
-            fn count_ones(self) -> uint { (self as $U).count_ones() }
+            fn count_ones(self) -> uint { (self as $UnsignedT).count_ones() }
 
             #[inline]
-            fn leading_zeros(self) -> uint { (self as $U).leading_zeros() }
+            fn leading_zeros(self) -> uint { (self as $UnsignedT).leading_zeros() }
 
             #[inline]
-            fn trailing_zeros(self) -> uint { (self as $U).trailing_zeros() }
+            fn trailing_zeros(self) -> uint { (self as $UnsignedT).trailing_zeros() }
 
             #[inline]
-            fn rotate_left(self, n: uint) -> $T { (self as $U).rotate_left(n) as $T }
+            fn rotate_left(self, n: uint) -> $T { (self as $UnsignedT).rotate_left(n) as $T }
 
             #[inline]
-            fn rotate_right(self, n: uint) -> $T { (self as $U).rotate_right(n) as $T }
+            fn rotate_right(self, n: uint) -> $T { (self as $UnsignedT).rotate_right(n) as $T }
 
             #[inline]
-            fn swap_bytes(self) -> $T { (self as $U).swap_bytes() as $T }
+            fn swap_bytes(self) -> $T { (self as $UnsignedT).swap_bytes() as $T }
+
+            #[inline]
+            fn checked_add(self, other: $T) -> Option<$T> {
+                checked_op!($T, $ActualT, $add_with_overflow, self, other)
+            }
+
+            #[inline]
+            fn checked_sub(self, other: $T) -> Option<$T> {
+                checked_op!($T, $ActualT, $sub_with_overflow, self, other)
+            }
+
+            #[inline]
+            fn checked_mul(self, other: $T) -> Option<$T> {
+                checked_op!($T, $ActualT, $mul_with_overflow, self, other)
+            }
+
+            #[inline]
+            fn checked_div(self, v: $T) -> Option<$T> {
+                match v {
+                    0   => None,
+                   -1 if self == Bounded::min_value()
+                        => None,
+                    v   => Some(self / v),
+                }
+            }
         }
     }
 }
 
-int_impl!(i8, u8)
-int_impl!(i16, u16)
-int_impl!(i32, u32)
-int_impl!(i64, u64)
-#[cfg(target_word_size = "32")] int_impl!(int, u32)
-#[cfg(target_word_size = "64")] int_impl!(int, u64)
+int_impl!(i8 = i8, u8,
+    intrinsics::i8_add_with_overflow,
+    intrinsics::i8_sub_with_overflow,
+    intrinsics::i8_mul_with_overflow)
+
+int_impl!(i16 = i16, u16,
+    intrinsics::i16_add_with_overflow,
+    intrinsics::i16_sub_with_overflow,
+    intrinsics::i16_mul_with_overflow)
+
+int_impl!(i32 = i32, u32,
+    intrinsics::i32_add_with_overflow,
+    intrinsics::i32_sub_with_overflow,
+    intrinsics::i32_mul_with_overflow)
+
+int_impl!(i64 = i64, u64,
+    intrinsics::i64_add_with_overflow,
+    intrinsics::i64_sub_with_overflow,
+    intrinsics::i64_mul_with_overflow)
+
+#[cfg(target_word_size = "32")]
+int_impl!(int = i32, u32,
+    intrinsics::i32_add_with_overflow,
+    intrinsics::i32_sub_with_overflow,
+    intrinsics::i32_mul_with_overflow)
+
+#[cfg(target_word_size = "64")]
+int_impl!(int = i64, u64,
+    intrinsics::i64_add_with_overflow,
+    intrinsics::i64_sub_with_overflow,
+    intrinsics::i64_mul_with_overflow)
 
 /// Unsigned integers
 pub trait UnsignedInt: Int {
@@ -686,7 +843,7 @@ pub trait UnsignedInt: Int {
             tmp = tmp | (tmp >> shift);
             shift = shift << 1u;
         }
-        tmp.checked_add(&one())
+        tmp.checked_add(one())
     }
 }
 
@@ -1183,192 +1340,6 @@ impl_num_cast!(i64,   to_i64)
 impl_num_cast!(int,   to_int)
 impl_num_cast!(f32,   to_f32)
 impl_num_cast!(f64,   to_f64)
-
-/// Performs addition that returns `None` instead of wrapping around on overflow.
-pub trait CheckedAdd: Add<Self, Self> {
-    /// Adds two numbers, checking for overflow. If overflow happens, `None` is returned.
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// use std::num::CheckedAdd;
-    /// assert_eq!(5u16.checked_add(&65530), Some(65535));
-    /// assert_eq!(6u16.checked_add(&65530), None);
-    /// ```
-    fn checked_add(&self, v: &Self) -> Option<Self>;
-}
-
-macro_rules! checked_impl(
-    ($trait_name:ident, $method:ident, $t:ty, $op:path) => {
-        impl $trait_name for $t {
-            #[inline]
-            fn $method(&self, v: &$t) -> Option<$t> {
-                unsafe {
-                    let (x, y) = $op(*self, *v);
-                    if y { None } else { Some(x) }
-                }
-            }
-        }
-    }
-)
-macro_rules! checked_cast_impl(
-    ($trait_name:ident, $method:ident, $t:ty, $cast:ty, $op:path) => {
-        impl $trait_name for $t {
-            #[inline]
-            fn $method(&self, v: &$t) -> Option<$t> {
-                unsafe {
-                    let (x, y) = $op(*self as $cast, *v as $cast);
-                    if y { None } else { Some(x as $t) }
-                }
-            }
-        }
-    }
-)
-
-#[cfg(target_word_size = "32")]
-checked_cast_impl!(CheckedAdd, checked_add, uint, u32, intrinsics::u32_add_with_overflow)
-#[cfg(target_word_size = "64")]
-checked_cast_impl!(CheckedAdd, checked_add, uint, u64, intrinsics::u64_add_with_overflow)
-
-checked_impl!(CheckedAdd, checked_add, u8,  intrinsics::u8_add_with_overflow)
-checked_impl!(CheckedAdd, checked_add, u16, intrinsics::u16_add_with_overflow)
-checked_impl!(CheckedAdd, checked_add, u32, intrinsics::u32_add_with_overflow)
-checked_impl!(CheckedAdd, checked_add, u64, intrinsics::u64_add_with_overflow)
-
-#[cfg(target_word_size = "32")]
-checked_cast_impl!(CheckedAdd, checked_add, int, i32, intrinsics::i32_add_with_overflow)
-#[cfg(target_word_size = "64")]
-checked_cast_impl!(CheckedAdd, checked_add, int, i64, intrinsics::i64_add_with_overflow)
-
-checked_impl!(CheckedAdd, checked_add, i8,  intrinsics::i8_add_with_overflow)
-checked_impl!(CheckedAdd, checked_add, i16, intrinsics::i16_add_with_overflow)
-checked_impl!(CheckedAdd, checked_add, i32, intrinsics::i32_add_with_overflow)
-checked_impl!(CheckedAdd, checked_add, i64, intrinsics::i64_add_with_overflow)
-
-/// Performs subtraction that returns `None` instead of wrapping around on underflow.
-pub trait CheckedSub: Sub<Self, Self> {
-    /// Subtracts two numbers, checking for underflow. If underflow happens, `None` is returned.
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// use std::num::CheckedSub;
-    /// assert_eq!((-127i8).checked_sub(&1), Some(-128));
-    /// assert_eq!((-128i8).checked_sub(&1), None);
-    /// ```
-    fn checked_sub(&self, v: &Self) -> Option<Self>;
-}
-
-#[cfg(target_word_size = "32")]
-checked_cast_impl!(CheckedSub, checked_sub, uint, u32, intrinsics::u32_sub_with_overflow)
-#[cfg(target_word_size = "64")]
-checked_cast_impl!(CheckedSub, checked_sub, uint, u64, intrinsics::u64_sub_with_overflow)
-
-checked_impl!(CheckedSub, checked_sub, u8,  intrinsics::u8_sub_with_overflow)
-checked_impl!(CheckedSub, checked_sub, u16, intrinsics::u16_sub_with_overflow)
-checked_impl!(CheckedSub, checked_sub, u32, intrinsics::u32_sub_with_overflow)
-checked_impl!(CheckedSub, checked_sub, u64, intrinsics::u64_sub_with_overflow)
-
-#[cfg(target_word_size = "32")]
-checked_cast_impl!(CheckedSub, checked_sub, int, i32, intrinsics::i32_sub_with_overflow)
-#[cfg(target_word_size = "64")]
-checked_cast_impl!(CheckedSub, checked_sub, int, i64, intrinsics::i64_sub_with_overflow)
-
-checked_impl!(CheckedSub, checked_sub, i8,  intrinsics::i8_sub_with_overflow)
-checked_impl!(CheckedSub, checked_sub, i16, intrinsics::i16_sub_with_overflow)
-checked_impl!(CheckedSub, checked_sub, i32, intrinsics::i32_sub_with_overflow)
-checked_impl!(CheckedSub, checked_sub, i64, intrinsics::i64_sub_with_overflow)
-
-/// Performs multiplication that returns `None` instead of wrapping around on underflow or
-/// overflow.
-pub trait CheckedMul: Mul<Self, Self> {
-    /// Multiplies two numbers, checking for underflow or overflow. If underflow or overflow
-    /// happens, `None` is returned.
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// use std::num::CheckedMul;
-    /// assert_eq!(5u8.checked_mul(&51), Some(255));
-    /// assert_eq!(5u8.checked_mul(&52), None);
-    /// ```
-    fn checked_mul(&self, v: &Self) -> Option<Self>;
-}
-
-#[cfg(target_word_size = "32")]
-checked_cast_impl!(CheckedMul, checked_mul, uint, u32, intrinsics::u32_mul_with_overflow)
-#[cfg(target_word_size = "64")]
-checked_cast_impl!(CheckedMul, checked_mul, uint, u64, intrinsics::u64_mul_with_overflow)
-
-checked_impl!(CheckedMul, checked_mul, u8,  intrinsics::u8_mul_with_overflow)
-checked_impl!(CheckedMul, checked_mul, u16, intrinsics::u16_mul_with_overflow)
-checked_impl!(CheckedMul, checked_mul, u32, intrinsics::u32_mul_with_overflow)
-checked_impl!(CheckedMul, checked_mul, u64, intrinsics::u64_mul_with_overflow)
-
-#[cfg(target_word_size = "32")]
-checked_cast_impl!(CheckedMul, checked_mul, int, i32, intrinsics::i32_mul_with_overflow)
-#[cfg(target_word_size = "64")]
-checked_cast_impl!(CheckedMul, checked_mul, int, i64, intrinsics::i64_mul_with_overflow)
-
-checked_impl!(CheckedMul, checked_mul, i8,  intrinsics::i8_mul_with_overflow)
-checked_impl!(CheckedMul, checked_mul, i16, intrinsics::i16_mul_with_overflow)
-checked_impl!(CheckedMul, checked_mul, i32, intrinsics::i32_mul_with_overflow)
-checked_impl!(CheckedMul, checked_mul, i64, intrinsics::i64_mul_with_overflow)
-
-/// Performs division that returns `None` instead of panicking on division by zero and instead of
-/// wrapping around on underflow and overflow.
-pub trait CheckedDiv: Div<Self, Self> {
-    /// Divides two numbers, checking for underflow, overflow and division by zero. If any of that
-    /// happens, `None` is returned.
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// use std::num::CheckedDiv;
-    /// assert_eq!((-127i8).checked_div(&-1), Some(127));
-    /// assert_eq!((-128i8).checked_div(&-1), None);
-    /// assert_eq!((1i8).checked_div(&0), None);
-    /// ```
-    fn checked_div(&self, v: &Self) -> Option<Self>;
-}
-
-macro_rules! checkeddiv_int_impl(
-    ($t:ty, $min:expr) => {
-        impl CheckedDiv for $t {
-            #[inline]
-            fn checked_div(&self, v: &$t) -> Option<$t> {
-                if *v == 0 || (*self == $min && *v == -1) {
-                    None
-                } else {
-                    Some(*self / *v)
-                }
-            }
-        }
-    }
-)
-
-checkeddiv_int_impl!(int, int::MIN)
-checkeddiv_int_impl!(i8, i8::MIN)
-checkeddiv_int_impl!(i16, i16::MIN)
-checkeddiv_int_impl!(i32, i32::MIN)
-checkeddiv_int_impl!(i64, i64::MIN)
-
-macro_rules! checkeddiv_uint_impl(
-    ($($t:ty)*) => ($(
-        impl CheckedDiv for $t {
-            #[inline]
-            fn checked_div(&self, v: &$t) -> Option<$t> {
-                if *v == 0 {
-                    None
-                } else {
-                    Some(*self / *v)
-                }
-            }
-        }
-    )*)
-)
-
-checkeddiv_uint_impl!(uint u8 u16 u32 u64)
 
 /// Used for representing the classification of floating point numbers
 #[deriving(PartialEq, Show)]

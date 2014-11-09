@@ -24,7 +24,6 @@ pub use core::num::{Num, div_rem, Zero, zero, One, one};
 pub use core::num::{Signed, abs, signum};
 pub use core::num::{Unsigned, pow, Bounded};
 pub use core::num::{Primitive, Int, UnsignedInt};
-pub use core::num::{CheckedAdd, CheckedSub, CheckedMul, CheckedDiv};
 pub use core::num::{cast, FromPrimitive, NumCast, ToPrimitive};
 pub use core::num::{next_power_of_two, is_power_of_two};
 pub use core::num::{checked_next_power_of_two};
@@ -636,36 +635,36 @@ mod tests {
     #[test]
     fn test_checked_add() {
         let five_less = uint::MAX - 5;
-        assert_eq!(five_less.checked_add(&0), Some(uint::MAX - 5));
-        assert_eq!(five_less.checked_add(&1), Some(uint::MAX - 4));
-        assert_eq!(five_less.checked_add(&2), Some(uint::MAX - 3));
-        assert_eq!(five_less.checked_add(&3), Some(uint::MAX - 2));
-        assert_eq!(five_less.checked_add(&4), Some(uint::MAX - 1));
-        assert_eq!(five_less.checked_add(&5), Some(uint::MAX));
-        assert_eq!(five_less.checked_add(&6), None);
-        assert_eq!(five_less.checked_add(&7), None);
+        assert_eq!(five_less.checked_add(0), Some(uint::MAX - 5));
+        assert_eq!(five_less.checked_add(1), Some(uint::MAX - 4));
+        assert_eq!(five_less.checked_add(2), Some(uint::MAX - 3));
+        assert_eq!(five_less.checked_add(3), Some(uint::MAX - 2));
+        assert_eq!(five_less.checked_add(4), Some(uint::MAX - 1));
+        assert_eq!(five_less.checked_add(5), Some(uint::MAX));
+        assert_eq!(five_less.checked_add(6), None);
+        assert_eq!(five_less.checked_add(7), None);
     }
 
     #[test]
     fn test_checked_sub() {
-        assert_eq!(5u.checked_sub(&0), Some(5));
-        assert_eq!(5u.checked_sub(&1), Some(4));
-        assert_eq!(5u.checked_sub(&2), Some(3));
-        assert_eq!(5u.checked_sub(&3), Some(2));
-        assert_eq!(5u.checked_sub(&4), Some(1));
-        assert_eq!(5u.checked_sub(&5), Some(0));
-        assert_eq!(5u.checked_sub(&6), None);
-        assert_eq!(5u.checked_sub(&7), None);
+        assert_eq!(5u.checked_sub(0), Some(5));
+        assert_eq!(5u.checked_sub(1), Some(4));
+        assert_eq!(5u.checked_sub(2), Some(3));
+        assert_eq!(5u.checked_sub(3), Some(2));
+        assert_eq!(5u.checked_sub(4), Some(1));
+        assert_eq!(5u.checked_sub(5), Some(0));
+        assert_eq!(5u.checked_sub(6), None);
+        assert_eq!(5u.checked_sub(7), None);
     }
 
     #[test]
     fn test_checked_mul() {
         let third = uint::MAX / 3;
-        assert_eq!(third.checked_mul(&0), Some(0));
-        assert_eq!(third.checked_mul(&1), Some(third));
-        assert_eq!(third.checked_mul(&2), Some(third * 2));
-        assert_eq!(third.checked_mul(&3), Some(third * 3));
-        assert_eq!(third.checked_mul(&4), None);
+        assert_eq!(third.checked_mul(0), Some(0));
+        assert_eq!(third.checked_mul(1), Some(third));
+        assert_eq!(third.checked_mul(2), Some(third * 2));
+        assert_eq!(third.checked_mul(3), Some(third * 3));
+        assert_eq!(third.checked_mul(4), None);
     }
 
     macro_rules! test_next_power_of_two(

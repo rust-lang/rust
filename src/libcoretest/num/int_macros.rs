@@ -16,7 +16,6 @@ mod tests {
     use core::$T_i::*;
     use core::int;
     use num;
-    use core::num::CheckedDiv;
 
     #[test]
     fn test_overflows() {
@@ -152,9 +151,9 @@ mod tests {
 
     #[test]
     fn test_signed_checked_div() {
-        assert!(10i.checked_div(&2) == Some(5));
-        assert!(5i.checked_div(&0) == None);
-        assert!(int::MIN.checked_div(&-1) == None);
+        assert!(10i.checked_div(2) == Some(5));
+        assert!(5i.checked_div(0) == None);
+        assert!(int::MIN.checked_div(-1) == None);
     }
 }
 

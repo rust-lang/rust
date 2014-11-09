@@ -161,7 +161,7 @@ impl<T> Vec<T> {
         } else if capacity == 0 {
             Vec::new()
         } else {
-            let size = capacity.checked_mul(&mem::size_of::<T>())
+            let size = capacity.checked_mul(mem::size_of::<T>())
                                .expect("capacity overflow");
             let ptr = unsafe { allocate(size, mem::min_align_of::<T>()) };
             Vec { ptr: ptr as *mut T, len: 0, cap: capacity }
@@ -601,7 +601,7 @@ impl<T> Vec<T> {
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn reserve(&mut self, additional: uint) {
         if self.cap - self.len < additional {
-            match self.len.checked_add(&additional) {
+            match self.len.checked_add(additional) {
                 None => panic!("Vec::reserve: `uint` overflow"),
                 // if the checked_add
                 Some(new_cap) => {
@@ -638,7 +638,7 @@ impl<T> Vec<T> {
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn reserve_exact(&mut self, additional: uint) {
         if self.cap - self.len < additional {
-            match self.len.checked_add(&additional) {
+            match self.len.checked_add(additional) {
                 None => panic!("Vec::reserve: `uint` overflow"),
                 Some(new_cap) => self.grow_capacity(new_cap)
             }
@@ -971,7 +971,7 @@ impl<T> Vec<T> {
     pub fn push(&mut self, value: T) {
         if mem::size_of::<T>() == 0 {
             // zero-size types consume no memory, so we can't rely on the address space running out
-            self.len = self.len.checked_add(&1).expect("length overflow");
+            self.len = self.len.checked_add(1).expect("length overflow");
             unsafe { mem::forget(value); }
             return
         }
@@ -1064,7 +1064,7 @@ impl<T> Vec<T> {
         if mem::size_of::<T>() == 0 { return }
 
         if capacity > self.cap {
-            let size = capacity.checked_mul(&mem::size_of::<T>())
+            let size = capacity.checked_mul(mem::size_of::<T>())
                                .expect("capacity overflow");
             unsafe {
                 self.ptr = alloc_or_realloc(self.ptr, self.cap * mem::size_of::<T>(), size);
