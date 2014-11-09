@@ -11,6 +11,7 @@
 // Check that we can use `-C lto` when linking against libraries that were
 // separately compiled.
 
+// ignore-android linker weridness (see #18800)
 // aux-build:sepcomp_lib.rs
 // compile-flags: -C lto
 // no-prefer-dynamic
