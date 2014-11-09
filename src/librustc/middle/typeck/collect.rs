@@ -61,7 +61,6 @@ use syntax::ast_util::{local_def, PostExpansionMethod};
 use syntax::codemap::Span;
 use syntax::parse::token::{special_idents};
 use syntax::parse::token;
-use syntax::print::pprust::{path_to_string};
 use syntax::ptr::P;
 use syntax::visit;
 
@@ -633,24 +632,33 @@ pub fn ensure_no_ty_param_bounds(ccx: &CrateCtxt,
                                  span: Span,
                                  generics: &ast::Generics,
                                  thing: &'static str) {
+    let mut warn = false;
+
     for ty_param in generics.ty_params.iter() {
-        let bounds = ty_param.bounds.iter();
-        let mut bounds = bounds.chain(ty_param.unbound.iter());
-        for bound in bounds {
+        for bound in ty_param.bounds.iter() {
             match *bound {
                 ast::TraitTyParamBound(..) => {
-                    // According to accepted RFC #XXX, we should
-                    // eventually accept these, but it will not be
-                    // part of this PR. Still, convert to warning to
-                    // make bootstrapping easier.
-                    span_warn!(ccx.tcx.sess, span, E0122,
-                               "trait bounds are not (yet) enforced \
-                                in {} definitions",
-                               thing);
+                    warn = true;
                 }
                 ast::RegionTyParamBound(..) => { }
             }
         }
+
+        match ty_param.unbound {
+            Some(_) => { warn = true; }
+            None => { }
+        }
+    }
+
+    if warn {
+        // According to accepted RFC #XXX, we should
+        // eventually accept these, but it will not be
+        // part of this PR. Still, convert to warning to
+        // make bootstrapping easier.
+        span_warn!(ccx.tcx.sess, span, E0122,
+                   "trait bounds are not (yet) enforced \
+                   in {} definitions",
+                   thing);
     }
 }
 
@@ -1147,7 +1155,8 @@ pub fn convert(ccx: &CrateCtxt, it: &ast::Item) {
                             parent_visibility);
 
             for trait_ref in opt_trait_ref.iter() {
-                instantiate_trait_ref(&icx, trait_ref, selfty, None);
+                astconv::instantiate_trait_ref(&icx, &ExplicitRscope, trait_ref,
+                                               Some(selfty), None);
             }
         },
         ast::ItemTrait(_, _, _, ref trait_methods) => {
@@ -1313,47 +1322,6 @@ pub fn convert_foreign(ccx: &CrateCtxt, i: &ast::ForeignItem) {
     write_ty_to_tcx(ccx.tcx, i.id, pty.ty);
 
     ccx.tcx.tcache.borrow_mut().insert(local_def(i.id), pty);
-}
-
-pub fn instantiate_trait_ref<'tcx,AC>(this: &AC,
-                                      ast_trait_ref: &ast::TraitRef,
-                                      self_ty: ty::t,
-                                      associated_type: Option<ty::t>)
-                                      -> Rc<ty::TraitRef>
-                                      where AC: AstConv<'tcx> {
-    /*!
-     * Instantiates the path for the given trait reference, assuming that
-     * it's bound to a valid trait type. Returns the def_id for the defining
-     * trait. Fails if the type is a type other than a trait type.
-     */
-
-    // FIXME(#5121) -- distinguish early vs late lifetime params
-    let rscope = ExplicitRscope;
-
-    match lookup_def_tcx(this.tcx(),
-                         ast_trait_ref.path.span,
-                         ast_trait_ref.ref_id) {
-        def::DefTrait(trait_did) => {
-            let trait_ref =
-                astconv::ast_path_to_trait_ref(this,
-                                               &rscope,
-                                               trait_did,
-                                               Some(self_ty),
-                                               associated_type,
-                                               &ast_trait_ref.path,
-                                               ast_trait_ref.ref_id);
-
-            this.tcx().trait_refs.borrow_mut().insert(ast_trait_ref.ref_id,
-                                                      trait_ref.clone());
-            trait_ref
-        }
-        _ => {
-            this.tcx().sess.span_fatal(
-                ast_trait_ref.path.span,
-                format!("`{}` is not a trait",
-                        path_to_string(&ast_trait_ref.path)).as_slice());
-        }
-    }
 }
 
 fn get_trait_def(ccx: &CrateCtxt, trait_id: ast::DefId) -> Rc<ty::TraitDef> {
@@ -1720,14 +1688,14 @@ fn ty_generics_for_fn_or_method<'tcx,AC>(
 
 // Add the Sized bound, unless the type parameter is marked as `Sized?`.
 fn add_unsized_bound<'tcx,AC>(this: &AC,
-                              unbound: &Option<ast::TyParamBound>,
+                              unbound: &Option<ast::TraitRef>,
                               bounds: &mut ty::BuiltinBounds,
                               desc: &str,
                               span: Span)
                               where AC: AstConv<'tcx> {
     let kind_id = this.tcx().lang_items.require(SizedTraitLangItem);
     match unbound {
-        &Some(ast::TraitTyParamBound(ref tpb)) => {
+        &Some(ref tpb) => {
             // FIXME(#8559) currently requires the unbound to be built-in.
             let trait_def_id = ty::trait_ref_to_def_id(this.tcx(), tpb);
             match kind_id {
@@ -1752,7 +1720,7 @@ fn add_unsized_bound<'tcx,AC>(this: &AC,
             ty::try_add_builtin_trait(this.tcx(), kind_id.unwrap(), bounds);
         }
         // No lang item for Sized, so we can't add it as a bound.
-        _ => {}
+        &None => {}
     }
 }
 
@@ -1870,11 +1838,11 @@ fn ty_generics<'tcx,AC>(this: &AC,
 
                 let trait_def_id =
                     match lookup_def_tcx(this.tcx(),
-                                         ast_trait_ref.path.span,
-                                         ast_trait_ref.ref_id) {
+                                         ast_trait_ref.trait_ref.path.span,
+                                         ast_trait_ref.trait_ref.ref_id) {
                         def::DefTrait(trait_def_id) => trait_def_id,
                         _ => {
-                            this.tcx().sess.span_bug(ast_trait_ref.path.span,
+                            this.tcx().sess.span_bug(ast_trait_ref.trait_ref.path.span,
                                                      "not a trait?!")
                         }
                     };
@@ -1972,7 +1940,7 @@ fn compute_bounds<'tcx,AC>(this: &AC,
                            name_of_bounded_thing: ast::Name,
                            param_ty: ty::ParamTy,
                            ast_bounds: &[ast::TyParamBound],
-                           unbound: &Option<ast::TyParamBound>,
+                           unbound: &Option<ast::TraitRef>,
                            span: Span,
                            where_clause: &ast::WhereClause)
                            -> ty::ParamBounds
@@ -2047,10 +2015,11 @@ fn conv_param_bounds<'tcx,AC>(this: &AC,
     let trait_bounds: Vec<Rc<ty::TraitRef>> =
         trait_bounds.into_iter()
         .map(|b| {
-            instantiate_trait_ref(this,
-                                  b,
-                                  param_ty.to_ty(this.tcx()),
-                                  Some(param_ty.to_ty(this.tcx())))
+            astconv::instantiate_trait_ref(this,
+                                           &ExplicitRscope,
+                                           b,
+                                           Some(param_ty.to_ty(this.tcx())),
+                                           Some(param_ty.to_ty(this.tcx())))
         })
         .collect();
     let region_bounds: Vec<ty::Region> =

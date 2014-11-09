@@ -68,10 +68,11 @@ pub trait AstBuilder {
                span: Span,
                id: ast::Ident,
                bounds: OwnedSlice<ast::TyParamBound>,
-               unbound: Option<ast::TyParamBound>,
+               unbound: Option<ast::TraitRef>,
                default: Option<P<ast::Ty>>) -> ast::TyParam;
 
     fn trait_ref(&self, path: ast::Path) -> ast::TraitRef;
+    fn poly_trait_ref(&self, path: ast::Path) -> ast::PolyTraitRef;
     fn typarambound(&self, path: ast::Path) -> ast::TyParamBound;
     fn lifetime(&self, span: Span, ident: ast::Name) -> ast::Lifetime;
     fn lifetime_def(&self,
@@ -417,7 +418,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
                span: Span,
                id: ast::Ident,
                bounds: OwnedSlice<ast::TyParamBound>,
-               unbound: Option<ast::TyParamBound>,
+               unbound: Option<ast::TraitRef>,
                default: Option<P<ast::Ty>>) -> ast::TyParam {
         ast::TyParam {
             ident: id,
@@ -445,12 +446,18 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
         ast::TraitRef {
             path: path,
             ref_id: ast::DUMMY_NODE_ID,
-            lifetimes: Vec::new(),
+        }
+    }
+
+    fn poly_trait_ref(&self, path: ast::Path) -> ast::PolyTraitRef {
+        ast::PolyTraitRef {
+            bound_lifetimes: Vec::new(),
+            trait_ref: self.trait_ref(path)
         }
     }
 
     fn typarambound(&self, path: ast::Path) -> ast::TyParamBound {
-        ast::TraitTyParamBound(self.trait_ref(path))
+        ast::TraitTyParamBound(self.poly_trait_ref(path))
     }
 
     fn lifetime(&self, span: Span, name: ast::Name) -> ast::Lifetime {

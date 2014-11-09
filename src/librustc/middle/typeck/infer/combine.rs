@@ -52,7 +52,6 @@ use middle::typeck::infer::type_variable::{RelationDir, EqTo,
 use middle::ty_fold::{TypeFoldable};
 use util::ppaux::Repr;
 
-
 use syntax::ast::{Onceness, FnStyle};
 use syntax::ast;
 use syntax::abi;
@@ -461,15 +460,11 @@ pub fn super_tys<'tcx, C: Combine<'tcx>>(this: &C, a: ty::t, b: ty::t) -> cres<t
       }
 
       (&ty::ty_trait(ref a_),
-       &ty::ty_trait(ref b_))
-      if a_.def_id == b_.def_id => {
+       &ty::ty_trait(ref b_)) => {
           debug!("Trying to match traits {} and {}", a, b);
-          let substs = try!(this.substs(a_.def_id, &a_.substs, &b_.substs));
+          let principal = try!(this.trait_refs(&a_.principal, &b_.principal));
           let bounds = try!(this.existential_bounds(a_.bounds, b_.bounds));
-          Ok(ty::mk_trait(tcx,
-                          a_.def_id,
-                          substs.clone(),
-                          bounds))
+          Ok(ty::mk_trait(tcx, principal, bounds))
       }
 
       (&ty::ty_struct(a_id, ref a_substs), &ty::ty_struct(b_id, ref b_substs))

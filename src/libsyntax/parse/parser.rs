@@ -42,6 +42,7 @@ use ast::{Method, MutTy, BiMul, Mutability};
 use ast::{MethodImplItem, NamedField, UnNeg, NoReturn, UnNot};
 use ast::{Pat, PatEnum, PatIdent, PatLit, PatRange, PatRegion, PatStruct};
 use ast::{PatTup, PatBox, PatWild, PatWildMulti, PatWildSingle};
+use ast::{PolyTraitRef};
 use ast::{QPath, RequiredMethod};
 use ast::{RetStyle, Return, BiShl, BiShr, Stmt, StmtDecl};
 use ast::{StmtExpr, StmtSemi, StmtMac, StructDef, StructField};
@@ -53,7 +54,7 @@ use ast::{TtDelimited, TtSequence, TtToken};
 use ast::{TupleVariantKind, Ty, Ty_, TyBot};
 use ast::{TypeField, TyFixedLengthVec, TyClosure, TyProc, TyBareFn};
 use ast::{TyTypeof, TyInfer, TypeMethod};
-use ast::{TyNil, TyParam, TyParamBound, TyParen, TyPath, TyPtr, TyQPath};
+use ast::{TyNil, TyParam, TyParamBound, TyParen, TyPath, TyPolyTraitRef, TyPtr, TyQPath};
 use ast::{TyRptr, TyTup, TyU32, TyUniq, TyVec, UnUniq};
 use ast::{TypeImplItem, TypeTraitItem, Typedef, UnboxedClosureKind};
 use ast::{UnnamedField, UnsafeBlock};
@@ -968,30 +969,14 @@ impl<'a> Parser<'a> {
     /// Is the current token one of the keywords that signals a bare function
     /// type?
     pub fn token_is_bare_fn_keyword(&mut self) -> bool {
-        if self.token.is_keyword(keywords::Fn) {
-            return true
-        }
-
-        if self.token.is_keyword(keywords::Unsafe) ||
-            self.token.is_keyword(keywords::Once) {
-            return self.look_ahead(1, |t| t.is_keyword(keywords::Fn))
-        }
-
-        false
+        self.token.is_keyword(keywords::Fn) ||
+            self.token.is_keyword(keywords::Unsafe) ||
+            self.token.is_keyword(keywords::Extern)
     }
 
     /// Is the current token one of the keywords that signals a closure type?
     pub fn token_is_closure_keyword(&mut self) -> bool {
-        self.token.is_keyword(keywords::Unsafe) ||
-            self.token.is_keyword(keywords::Once)
-    }
-
-    /// Is the current token one of the keywords that signals an old-style
-    /// closure type (with explicit sigil)?
-    pub fn token_is_old_style_closure_keyword(&mut self) -> bool {
-        self.token.is_keyword(keywords::Unsafe) ||
-            self.token.is_keyword(keywords::Once) ||
-            self.token.is_keyword(keywords::Fn)
+        self.token.is_keyword(keywords::Unsafe)
     }
 
     pub fn get_lifetime(&mut self) -> ast::Ident {
@@ -1001,8 +986,57 @@ impl<'a> Parser<'a> {
         }
     }
 
+    pub fn parse_for_in_type(&mut self) -> Ty_ {
+        /*
+        Parses whatever can come after a `for` keyword in a type.
+        The `for` has already been consumed.
+
+        Deprecated:
+
+        - for <'lt> |S| -> T
+        - for <'lt> proc(S) -> T
+
+        Eventually:
+
+        - for <'lt> [unsafe] [extern "ABI"] fn (S) -> T
+        - for <'lt> path::foo(a, b)
+
+        */
+
+        // parse <'lt>
+        let lifetime_defs = self.parse_late_bound_lifetime_defs();
+
+        // examine next token to decide to do
+        if self.eat_keyword(keywords::Proc) {
+            self.parse_proc_type(lifetime_defs)
+        } else if self.token_is_bare_fn_keyword() || self.token_is_closure_keyword() {
+            self.parse_ty_bare_fn_or_ty_closure(lifetime_defs)
+        } else if self.token == token::ModSep ||
+                  self.token.is_ident() ||
+                  self.token.is_path() {
+            let trait_ref = self.parse_trait_ref();
+            TyPolyTraitRef(P(PolyTraitRef { bound_lifetimes: lifetime_defs,
+                                            trait_ref: trait_ref }))
+        } else {
+            self.parse_ty_closure(lifetime_defs)
+        }
+    }
+
+    pub fn parse_ty_path(&mut self, plus_allowed: bool) -> Ty_ {
+        let mode = if plus_allowed {
+            LifetimeAndTypesAndBounds
+        } else {
+            LifetimeAndTypesWithoutColons
+        };
+        let PathAndBounds {
+            path,
+            bounds
+        } = self.parse_path(mode);
+        TyPath(path, bounds, ast::DUMMY_NODE_ID)
+    }
+
     /// parse a TyBareFn type:
-    pub fn parse_ty_bare_fn(&mut self) -> Ty_ {
+    pub fn parse_ty_bare_fn(&mut self, lifetime_defs: Vec<ast::LifetimeDef>) -> Ty_ {
         /*
 
         [unsafe] [extern "ABI"] fn <'lt> (S) -> T
@@ -1023,18 +1057,26 @@ impl<'a> Parser<'a> {
         };
 
         self.expect_keyword(keywords::Fn);
-        let (decl, lifetimes) = self.parse_ty_fn_decl(true);
+        let lifetime_defs = self.parse_legacy_lifetime_defs(lifetime_defs);
+        let (inputs, variadic) = self.parse_fn_args(false, true);
+        let (ret_style, ret_ty) = self.parse_ret_ty();
+        let decl = P(FnDecl {
+            inputs: inputs,
+            output: ret_ty,
+            cf: ret_style,
+            variadic: variadic
+        });
         TyBareFn(P(BareFnTy {
             abi: abi,
             fn_style: fn_style,
-            lifetimes: lifetimes,
+            lifetimes: lifetime_defs,
             decl: decl
         }))
     }
 
     /// Parses a procedure type (`proc`). The initial `proc` keyword must
     /// already have been parsed.
-    pub fn parse_proc_type(&mut self) -> Ty_ {
+    pub fn parse_proc_type(&mut self, lifetime_defs: Vec<ast::LifetimeDef>) -> Ty_ {
         /*
 
         proc <'lt> (S) [:Bounds] -> T
@@ -1043,19 +1085,12 @@ impl<'a> Parser<'a> {
          |     |    |      |      Return type
          |     |    |    Bounds
          |     |  Argument types
-         |   Lifetimes
+         |   Legacy lifetimes
         the `proc` keyword
 
         */
 
-        let lifetime_defs = if self.eat(&token::Lt) {
-            let lifetime_defs = self.parse_lifetime_defs();
-            self.expect_gt();
-            lifetime_defs
-        } else {
-            Vec::new()
-        };
-
+        let lifetime_defs = self.parse_legacy_lifetime_defs(lifetime_defs);
         let (inputs, variadic) = self.parse_fn_args(false, false);
         let bounds = self.parse_colon_then_ty_param_bounds();
         let (ret_style, ret_ty) = self.parse_ret_ty();
@@ -1100,33 +1135,49 @@ impl<'a> Parser<'a> {
         return None
     }
 
+    pub fn parse_ty_bare_fn_or_ty_closure(&mut self, lifetime_defs: Vec<LifetimeDef>) -> Ty_ {
+        // Both bare fns and closures can begin with stuff like unsafe
+        // and extern. So we just scan ahead a few tokens to see if we see
+        // a `fn`.
+        //
+        // Closure:  [unsafe] <'lt> |S| [:Bounds] -> T
+        // Fn:       [unsafe] [extern "ABI"] fn <'lt> (S) -> T
+
+        if self.token.is_keyword(keywords::Fn) {
+            self.parse_ty_bare_fn(lifetime_defs)
+        } else if self.token.is_keyword(keywords::Extern) {
+            self.parse_ty_bare_fn(lifetime_defs)
+        } else if self.token.is_keyword(keywords::Unsafe) {
+            if self.look_ahead(1, |t| t.is_keyword(keywords::Fn) ||
+                                      t.is_keyword(keywords::Extern)) {
+                self.parse_ty_bare_fn(lifetime_defs)
+            } else {
+                self.parse_ty_closure(lifetime_defs)
+            }
+        } else {
+            self.parse_ty_closure(lifetime_defs)
+        }
+    }
+
     /// Parse a TyClosure type
-    pub fn parse_ty_closure(&mut self) -> Ty_ {
+    pub fn parse_ty_closure(&mut self, lifetime_defs: Vec<ast::LifetimeDef>) -> Ty_ {
         /*
 
-        [unsafe] [once] <'lt> |S| [:Bounds] -> T
-        ^~~~~~~^ ^~~~~^ ^~~~^  ^  ^~~~~~~~^    ^
-          |        |      |    |      |        |
-          |        |      |    |      |      Return type
-          |        |      |    |  Closure bounds
-          |        |      |  Argument types
-          |        |    Lifetime defs
-          |     Once-ness (a.k.a., affine)
+        [unsafe] <'lt> |S| [:Bounds] -> T
+        ^~~~~~~^ ^~~~^  ^  ^~~~~~~~^    ^
+          |        |       |      |        |
+          |        |       |      |      Return type
+          |        |       |  Closure bounds
+          |        |     Argument types
+          |      Deprecated lifetime defs
+          |
         Function Style
 
         */
 
         let fn_style = self.parse_unsafety();
-        let onceness = if self.eat_keyword(keywords::Once) {Once} else {Many};
 
-        let lifetime_defs = if self.eat(&token::Lt) {
-            let lifetime_defs = self.parse_lifetime_defs();
-            self.expect_gt();
-
-            lifetime_defs
-        } else {
-            Vec::new()
-        };
+        let lifetime_defs = self.parse_legacy_lifetime_defs(lifetime_defs);
 
         let inputs = if self.eat(&token::OrOr) {
             Vec::new()
@@ -1152,7 +1203,7 @@ impl<'a> Parser<'a> {
 
         TyClosure(P(ClosureTy {
             fn_style: fn_style,
-            onceness: onceness,
+            onceness: Many,
             bounds: bounds,
             decl: decl,
             lifetimes: lifetime_defs,
@@ -1167,36 +1218,23 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// Parse a function type (following the 'fn')
-    pub fn parse_ty_fn_decl(&mut self, allow_variadic: bool)
-                            -> (P<FnDecl>, Vec<ast::LifetimeDef>) {
-        /*
-
-        (fn) <'lt> (S) -> T
-             ^~~~^ ^~^    ^
-               |    |     |
-               |    |   Return type
-               |  Argument types
-           Lifetime_defs
-
-        */
-        let lifetime_defs = if self.eat(&token::Lt) {
-            let lifetime_defs = self.parse_lifetime_defs();
-            self.expect_gt();
-            lifetime_defs
+    /// Parses `[ 'for' '<' lifetime_defs '>' ]'
+    fn parse_legacy_lifetime_defs(&mut self,
+                                  lifetime_defs: Vec<ast::LifetimeDef>)
+                                  -> Vec<ast::LifetimeDef>
+    {
+        if self.eat(&token::Lt) {
+            if lifetime_defs.is_empty() {
+                self.warn("deprecated syntax, use `for` keyword now");
+                let lifetime_defs = self.parse_lifetime_defs();
+                self.expect_gt();
+                lifetime_defs
+            } else {
+                self.fatal("cannot use new `for` keyword and older syntax together");
+            }
         } else {
-            Vec::new()
-        };
-
-        let (inputs, variadic) = self.parse_fn_args(false, allow_variadic);
-        let (ret_style, ret_ty) = self.parse_ret_ty();
-        let decl = P(FnDecl {
-            inputs: inputs,
-            output: ret_ty,
-            cf: ret_style,
-            variadic: variadic
-        });
-        (decl, lifetime_defs)
+            lifetime_defs
+        }
     }
 
     /// Parses `type Foo;` in a trait declaration only. The `type` keyword has
@@ -1433,25 +1471,24 @@ impl<'a> Parser<'a> {
             self.expect(&token::CloseDelim(token::Bracket));
             t
         } else if self.token == token::BinOp(token::And) ||
-                self.token == token::AndAnd {
+                  self.token == token::AndAnd {
             // BORROWED POINTER
             self.expect_and();
             self.parse_borrowed_pointee()
-        } else if self.token.is_keyword(keywords::Extern) ||
-                  self.token.is_keyword(keywords::Unsafe) ||
-                self.token_is_bare_fn_keyword() {
-            // BARE FUNCTION
-            self.parse_ty_bare_fn()
-        } else if self.token_is_closure_keyword() ||
-                self.token == token::BinOp(token::Or) ||
-                self.token == token::OrOr ||
-                (self.token == token::Lt &&
-                 self.look_ahead(1, |t| {
-                     *t == token::Gt || t.is_lifetime()
-                 })) {
+        } else if self.token.is_keyword(keywords::For) {
+            self.parse_for_in_type()
+        } else if self.token_is_bare_fn_keyword() ||
+                  self.token_is_closure_keyword() {
+            // BARE FUNCTION OR CLOSURE
+            self.parse_ty_bare_fn_or_ty_closure(Vec::new())
+        } else if self.token == token::BinOp(token::Or) ||
+                  self.token == token::OrOr ||
+                  (self.token == token::Lt &&
+                   self.look_ahead(1, |t| {
+                       *t == token::Gt || t.is_lifetime()
+                   })) {
             // CLOSURE
-
-            self.parse_ty_closure()
+            self.parse_ty_closure(Vec::new())
         } else if self.eat_keyword(keywords::Typeof) {
             // TYPEOF
             // In order to not be ambiguous, the type must be surrounded by parens.
@@ -1460,7 +1497,7 @@ impl<'a> Parser<'a> {
             self.expect(&token::CloseDelim(token::Paren));
             TyTypeof(e)
         } else if self.eat_keyword(keywords::Proc) {
-            self.parse_proc_type()
+            self.parse_proc_type(Vec::new())
         } else if self.token == token::Lt {
             // QUALIFIED PATH
             self.bump();
@@ -1479,16 +1516,7 @@ impl<'a> Parser<'a> {
                   self.token.is_ident() ||
                   self.token.is_path() {
             // NAMED TYPE
-            let mode = if plus_allowed {
-                LifetimeAndTypesAndBounds
-            } else {
-                LifetimeAndTypesWithoutColons
-            };
-            let PathAndBounds {
-                path,
-                bounds
-            } = self.parse_path(mode);
-            TyPath(path, bounds, ast::DUMMY_NODE_ID)
+            self.parse_ty_path(plus_allowed)
         } else if self.eat(&token::Underscore) {
             // TYPE TO BE INFERRED
             TyInfer
@@ -3848,29 +3876,17 @@ impl<'a> Parser<'a> {
     }
 
     // matches bounds    = ( boundseq )?
-    // where   boundseq  = ( bound + boundseq ) | bound
-    // and     bound     = 'region | ty
+    // where   boundseq  = ( polybound + boundseq ) | polybound
+    // and     polybound = ( 'for' '<' 'region '>' )? bound
+    // and     bound     = 'region | trait_ref
     // NB: The None/Some distinction is important for issue #7264.
     fn parse_ty_param_bounds(&mut self)
                              -> OwnedSlice<TyParamBound>
     {
         let mut result = vec!();
         loop {
-            let lifetime_defs = if self.eat(&token::Lt) {
-                let lifetime_defs = self.parse_lifetime_defs();
-                self.expect_gt();
-                lifetime_defs
-            } else {
-                Vec::new()
-            };
             match self.token {
                 token::Lifetime(lifetime) => {
-                    if lifetime_defs.len() > 0 {
-                        let span = self.last_span;
-                        self.span_err(span, "lifetime declarations are not \
-                                             allowed here")
-                    }
-
                     result.push(RegionTyParamBound(ast::Lifetime {
                         id: ast::DUMMY_NODE_ID,
                         span: self.span,
@@ -3879,13 +3895,8 @@ impl<'a> Parser<'a> {
                     self.bump();
                 }
                 token::ModSep | token::Ident(..) => {
-                    let path =
-                        self.parse_path(LifetimeAndTypesWithoutColons).path;
-                    result.push(TraitTyParamBound(ast::TraitRef {
-                        path: path,
-                        ref_id: ast::DUMMY_NODE_ID,
-                        lifetimes: lifetime_defs,
-                    }))
+                    let poly_trait_ref = self.parse_poly_trait_ref();
+                    result.push(TraitTyParamBound(poly_trait_ref))
                 }
                 _ => break,
             }
@@ -3898,7 +3909,7 @@ impl<'a> Parser<'a> {
         return OwnedSlice::from_vec(result);
     }
 
-    fn trait_ref_from_ident(ident: Ident, span: Span) -> ast::TraitRef {
+    fn trait_ref_from_ident(ident: Ident, span: Span) -> TraitRef {
         let segment = ast::PathSegment {
             identifier: ident,
             parameters: ast::PathParameters::none()
@@ -3911,7 +3922,6 @@ impl<'a> Parser<'a> {
         ast::TraitRef {
             path: path,
             ref_id: ast::DUMMY_NODE_ID,
-            lifetimes: Vec::new(),
         }
     }
 
@@ -3927,7 +3937,7 @@ impl<'a> Parser<'a> {
         let mut unbound = None;
         if self.eat(&token::Question) {
             let tref = Parser::trait_ref_from_ident(ident, span);
-            unbound = Some(TraitTyParamBound(tref));
+            unbound = Some(tref);
             span = self.span;
             ident = self.parse_ident();
         }
@@ -4538,7 +4548,6 @@ impl<'a> Parser<'a> {
                     Some(TraitRef {
                         path: (*path).clone(),
                         ref_id: node_id,
-                        lifetimes: Vec::new(),
                     })
                 }
                 TyPath(_, Some(_), _) => {
@@ -4566,6 +4575,35 @@ impl<'a> Parser<'a> {
         (ident,
          ItemImpl(generics, opt_trait, ty, impl_items),
          Some(attrs))
+    }
+
+    /// Parse a::B<String,int>
+    fn parse_trait_ref(&mut self) -> TraitRef {
+        ast::TraitRef {
+            path: self.parse_path(LifetimeAndTypesWithoutColons).path,
+            ref_id: ast::DUMMY_NODE_ID,
+        }
+    }
+
+    fn parse_late_bound_lifetime_defs(&mut self) -> Vec<ast::LifetimeDef> {
+        if self.eat_keyword(keywords::For) {
+            self.expect(&token::Lt);
+            let lifetime_defs = self.parse_lifetime_defs();
+            self.expect_gt();
+            lifetime_defs
+        } else {
+            Vec::new()
+        }
+    }
+
+    /// Parse for<'l> a::B<String,int>
+    fn parse_poly_trait_ref(&mut self) -> PolyTraitRef {
+        let lifetime_defs = self.parse_late_bound_lifetime_defs();
+
+        ast::PolyTraitRef {
+            bound_lifetimes: lifetime_defs,
+            trait_ref: self.parse_trait_ref()
+        }
     }
 
     /// Parse struct Foo { ... }
@@ -4681,7 +4719,7 @@ impl<'a> Parser<'a> {
         else { Inherited }
     }
 
-    fn parse_for_sized(&mut self) -> Option<ast::TyParamBound> {
+    fn parse_for_sized(&mut self) -> Option<ast::TraitRef> {
         if self.eat_keyword(keywords::For) {
             let span = self.span;
             let ident = self.parse_ident();
@@ -4691,7 +4729,7 @@ impl<'a> Parser<'a> {
                 return None;
             }
             let tref = Parser::trait_ref_from_ident(ident, span);
-            Some(TraitTyParamBound(tref))
+            Some(tref)
         } else {
             None
         }

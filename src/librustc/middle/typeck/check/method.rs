@@ -632,9 +632,9 @@ impl<'a, 'tcx> LookupContext<'a, 'tcx> {
         let span = self.self_expr.map_or(self.span, |e| e.span);
         check::autoderef(self.fcx, span, self_ty, None, NoPreference, |self_ty, _| {
             match get(self_ty).sty {
-                ty_trait(box TyTrait { def_id, ref substs, bounds, .. }) => {
-                    self.push_inherent_candidates_from_object(self_ty, def_id, substs, bounds);
-                    self.push_inherent_impl_candidates_for_type(def_id);
+                ty_trait(box TyTrait { ref principal, bounds, .. }) => {
+                    self.push_inherent_candidates_from_object(self_ty, &*principal, bounds);
+                    self.push_inherent_impl_candidates_for_type(principal.def_id);
                 }
                 ty_enum(did, _) |
                 ty_struct(did, _) |
@@ -744,24 +744,23 @@ impl<'a, 'tcx> LookupContext<'a, 'tcx> {
 
     fn push_inherent_candidates_from_object(&mut self,
                                             self_ty: ty::t,
-                                            did: DefId,
-                                            substs: &subst::Substs,
+                                            principal: &ty::TraitRef,
                                             _bounds: ty::ExistentialBounds) {
         debug!("push_inherent_candidates_from_object(self_ty={})",
                self_ty.repr(self.tcx()));
 
         let tcx = self.tcx();
 
-        // It is illegal to invoke a method on a trait instance that refers to
-        // the `Self` type.  Here, we use a substitution that replaces `Self`
-        // with the object type itself. Hence, a `&self` method will wind up
-        // with an argument type like `&Trait`.
-        let rcvr_substs = substs.with_self_ty(self_ty);
-
-        let trait_ref = Rc::new(TraitRef {
-            def_id: did,
-            substs: rcvr_substs.clone()
-        });
+        // It is illegal to invoke a method on a trait instance that
+        // refers to the `Self` type. An error will be reported by
+        // `enforce_object_limitations()` if the method refers to the
+        // `Self` type anywhere other than the receiver. Here, we use
+        // a substitution that replaces `Self` with the object type
+        // itself. Hence, a `&self` method will wind up with an
+        // argument type like `&Trait`.
+        let rcvr_substs = principal.substs.with_self_ty(self_ty);
+        let trait_ref = Rc::new(TraitRef { def_id: principal.def_id,
+                                           substs: rcvr_substs.clone() });
 
         self.push_inherent_candidates_from_bounds_inner(
             &[trait_ref.clone()],
@@ -796,7 +795,7 @@ impl<'a, 'tcx> LookupContext<'a, 'tcx> {
                     method_ty: m,
                     origin: MethodTraitObject(MethodObject {
                         trait_ref: new_trait_ref,
-                        object_trait_id: did,
+                        object_trait_id: principal.def_id,
                         method_num: method_num,
                         real_index: vtable_index
                     })
@@ -1151,17 +1150,19 @@ impl<'a, 'tcx> LookupContext<'a, 'tcx> {
     fn auto_slice_trait(&self, ty: ty::t, autoderefs: uint) -> Option<MethodResult> {
         debug!("auto_slice_trait");
         match ty::get(ty).sty {
-            ty_trait(box ty::TyTrait {
-                    def_id: trt_did,
-                    substs: ref trt_substs,
-                    bounds: b,
-                    .. }) => {
+            ty_trait(box ty::TyTrait { ref principal,
+                                       bounds: b,
+                                       .. }) => {
+                let trt_did = principal.def_id;
+                let trt_substs = &principal.substs;
                 let tcx = self.tcx();
                 self.search_for_some_kind_of_autorefd_method(
                     |r, m| AutoPtr(r, m, None),
                     autoderefs, [MutImmutable, MutMutable],
                     |m, r| {
-                        let tr = ty::mk_trait(tcx, trt_did, trt_substs.clone(), b);
+                        let principal = ty::TraitRef::new(trt_did,
+                                                          trt_substs.clone());
+                        let tr = ty::mk_trait(tcx, principal, b);
                         ty::mk_rptr(tcx, r, ty::mt{ ty: tr, mutbl: m })
                     })
             }

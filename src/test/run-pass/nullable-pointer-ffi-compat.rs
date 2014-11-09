@@ -29,7 +29,7 @@ static FOO: int = 0xDEADBEE;
 
 pub fn main() {
     unsafe {
-        let f: extern "C" fn<'a>(&'a int) -> &'a int = mem::transmute(foo);
+        let f: for<'a> extern "C" fn(&'a int) -> &'a int = mem::transmute(foo);
         assert_eq!(*f(&FOO), FOO);
     }
 }
