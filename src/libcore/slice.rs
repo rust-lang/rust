@@ -353,7 +353,7 @@ pub trait SlicePrelude<T> for Sized? {
     /// ```rust
     /// let mut v = ["a", "b", "c", "d"];
     /// v.swap(1, 3);
-    /// assert!(v == ["a", "d", "c", "b"]);
+    /// assert!(v == &["a", "d", "c", "b"]);
     /// ```
     #[unstable = "waiting on final error conventions"]
     fn swap(&mut self, a: uint, b: uint);
@@ -400,7 +400,7 @@ pub trait SlicePrelude<T> for Sized? {
     /// ```rust
     /// let mut v = [1i, 2, 3];
     /// v.reverse();
-    /// assert!(v == [3i, 2, 1]);
+    /// assert!(v == &[3i, 2, 1]);
     /// ```
     #[experimental = "may be moved to iterators instead"]
     fn reverse(&mut self);
@@ -973,12 +973,12 @@ pub trait CloneSlicePrelude<T> for Sized? {
     /// let mut dst = [0i, 0, 0];
     /// let src = [1i, 2];
     ///
-    /// assert!(dst.clone_from_slice(src) == 2);
-    /// assert!(dst == [1, 2, 0]);
+    /// assert!(dst.clone_from_slice(&src) == 2);
+    /// assert!(dst == &[1, 2, 0]);
     ///
     /// let src2 = [3i, 4, 5, 6];
-    /// assert!(dst.clone_from_slice(src2) == 3);
-    /// assert!(dst == [3i, 4, 5]);
+    /// assert!(dst.clone_from_slice(&src2) == 3);
+    /// assert!(dst == &[3i, 4, 5]);
     /// ```
     fn clone_from_slice(&mut self, &[T]) -> uint;
 }

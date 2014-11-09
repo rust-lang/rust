@@ -292,8 +292,8 @@ impl UnixAcceptor {
                     fd => return Ok(UnixStream::new(Arc::new(Inner::new(fd)))),
                 }
             }
-            try!(util::await([self.fd(), self.inner.reader.fd()],
-                             deadline, util::Readable));
+            try!(util::await(&[self.fd(), self.inner.reader.fd()],
+                              deadline, util::Readable));
         }
 
         Err(util::eof())
@@ -319,7 +319,7 @@ impl rtio::RtioUnixAcceptor for UnixAcceptor {
     fn close_accept(&mut self) -> IoResult<()> {
         self.inner.closed.store(true, atomic::SeqCst);
         let mut fd = FileDesc::new(self.inner.writer.fd(), false);
-        match fd.inner_write([0]) {
+        match fd.inner_write(&[0]) {
             Ok(..) => Ok(()),
             Err(..) if util::wouldblock() => Ok(()),
             Err(e) => Err(e),

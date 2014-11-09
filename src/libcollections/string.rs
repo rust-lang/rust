@@ -246,11 +246,11 @@ impl String {
     /// // 𝄞music
     /// let mut v = [0xD834, 0xDD1E, 0x006d, 0x0075,
     ///              0x0073, 0x0069, 0x0063];
-    /// assert_eq!(String::from_utf16(v), Some("𝄞music".to_string()));
+    /// assert_eq!(String::from_utf16(&v), Some("𝄞music".to_string()));
     ///
     /// // 𝄞mu<invalid>ic
     /// v[4] = 0xD800;
-    /// assert_eq!(String::from_utf16(v), None);
+    /// assert_eq!(String::from_utf16(&v), None);
     /// ```
     #[unstable = "error value in return may change"]
     pub fn from_utf16(v: &[u16]) -> Option<String> {
@@ -274,7 +274,7 @@ impl String {
     ///          0x0073, 0xDD1E, 0x0069, 0x0063,
     ///          0xD834];
     ///
-    /// assert_eq!(String::from_utf16_lossy(v),
+    /// assert_eq!(String::from_utf16_lossy(&v),
     ///            "𝄞mus\uFFFDic\uFFFD".to_string());
     /// ```
     #[stable]
@@ -288,7 +288,7 @@ impl String {
     ///
     /// ```rust
     /// let chars = ['h', 'e', 'l', 'l', 'o'];
-    /// let s = String::from_chars(chars);
+    /// let s = String::from_chars(&chars);
     /// assert_eq!(s.as_slice(), "hello");
     /// ```
     #[inline]
@@ -600,7 +600,7 @@ impl String {
         assert!(self.as_slice().is_char_boundary(idx));
         self.vec.reserve(4);
         let mut bits = [0, ..4];
-        let amt = ch.encode_utf8(bits).unwrap();
+        let amt = ch.encode_utf8(&mut bits).unwrap();
 
         unsafe {
             ptr::copy_memory(self.vec.as_mut_ptr().offset((idx + amt) as int),
@@ -989,30 +989,30 @@ mod tests {
     fn test_utf16_invalid() {
         // completely positive cases tested above.
         // lead + eof
-        assert_eq!(String::from_utf16([0xD800]), None);
+        assert_eq!(String::from_utf16(&[0xD800]), None);
         // lead + lead
-        assert_eq!(String::from_utf16([0xD800, 0xD800]), None);
+        assert_eq!(String::from_utf16(&[0xD800, 0xD800]), None);
 
         // isolated trail
-        assert_eq!(String::from_utf16([0x0061, 0xDC00]), None);
+        assert_eq!(String::from_utf16(&[0x0061, 0xDC00]), None);
 
         // general
-        assert_eq!(String::from_utf16([0xD800, 0xd801, 0xdc8b, 0xD800]), None);
+        assert_eq!(String::from_utf16(&[0xD800, 0xd801, 0xdc8b, 0xD800]), None);
     }
 
     #[test]
     fn test_from_utf16_lossy() {
         // completely positive cases tested above.
         // lead + eof
-        assert_eq!(String::from_utf16_lossy([0xD800]), String::from_str("\uFFFD"));
+        assert_eq!(String::from_utf16_lossy(&[0xD800]), String::from_str("\uFFFD"));
         // lead + lead
-        assert_eq!(String::from_utf16_lossy([0xD800, 0xD800]), String::from_str("\uFFFD\uFFFD"));
+        assert_eq!(String::from_utf16_lossy(&[0xD800, 0xD800]), String::from_str("\uFFFD\uFFFD"));
 
         // isolated trail
-        assert_eq!(String::from_utf16_lossy([0x0061, 0xDC00]), String::from_str("a\uFFFD"));
+        assert_eq!(String::from_utf16_lossy(&[0x0061, 0xDC00]), String::from_str("a\uFFFD"));
 
         // general
-        assert_eq!(String::from_utf16_lossy([0xD800, 0xd801, 0xdc8b, 0xD800]),
+        assert_eq!(String::from_utf16_lossy(&[0xD800, 0xd801, 0xdc8b, 0xD800]),
                    String::from_str("\uFFFD𐒋\uFFFD"));
     }
 
@@ -1039,7 +1039,7 @@ mod tests {
         let mut s = String::from_str("ABC");
         unsafe {
             let mv = s.as_mut_vec();
-            mv.push_all([b'D']);
+            mv.push_all(&[b'D']);
         }
         assert_eq!(s.as_slice(), "ABCD");
     }

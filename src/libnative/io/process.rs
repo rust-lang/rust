@@ -581,7 +581,7 @@ fn spawn_process_os(cfg: ProcessConfig,
             } else if pid > 0 {
                 drop(output);
                 let mut bytes = [0, ..4];
-                return match input.inner_read(bytes) {
+                return match input.inner_read(&mut bytes) {
                     Ok(4) => {
                         let errno = (bytes[0] as i32 << 24) |
                                     (bytes[1] as i32 << 16) |
@@ -643,7 +643,7 @@ fn spawn_process_os(cfg: ProcessConfig,
                     (errno >>  8) as u8,
                     (errno >>  0) as u8,
                 ];
-                assert!(output.inner_write(bytes).is_ok());
+                assert!(output.inner_write(&bytes).is_ok());
                 unsafe { libc::_exit(1) }
             }
 

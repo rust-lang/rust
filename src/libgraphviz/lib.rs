@@ -514,13 +514,13 @@ pub fn render<'a, N:'a, E:'a, G:Labeller<'a,N,E>+GraphWalk<'a,N,E>, W:Writer>(
         w.write_str("    ")
     }
 
-    try!(writeln(w, ["digraph ", g.graph_id().as_slice(), " {"]));
+    try!(writeln(w, &["digraph ", g.graph_id().as_slice(), " {"]));
     for n in g.nodes().iter() {
         try!(indent(w));
         let id = g.node_id(n);
         let escaped = g.node_label(n).escape();
-        try!(writeln(w, [id.as_slice(),
-                         "[label=\"", escaped.as_slice(), "\"];"]));
+        try!(writeln(w, &[id.as_slice(),
+                          "[label=\"", escaped.as_slice(), "\"];"]));
     }
 
     for e in g.edges().iter() {
@@ -530,11 +530,11 @@ pub fn render<'a, N:'a, E:'a, G:Labeller<'a,N,E>+GraphWalk<'a,N,E>, W:Writer>(
         let target = g.target(e);
         let source_id = g.node_id(&source);
         let target_id = g.node_id(&target);
-        try!(writeln(w, [source_id.as_slice(), " -> ", target_id.as_slice(),
-                         "[label=\"", escaped_label.as_slice(), "\"];"]));
+        try!(writeln(w, &[source_id.as_slice(), " -> ", target_id.as_slice(),
+                          "[label=\"", escaped_label.as_slice(), "\"];"]));
     }
 
-    writeln(w, ["}"])
+    writeln(w, &["}"])
 }
 
 #[cfg(test)]
