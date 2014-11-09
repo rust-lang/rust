@@ -23,8 +23,8 @@ use ptr::P;
 *
 * This is registered as a set of expression syntax extension called quote!
 * that lifts its argument token-tree to an AST representing the
-* construction of the same token tree, with ast::TtNonterminal nodes
-* interpreted as antiquotes (splices).
+* construction of the same token tree, with token::SubstNt interpreted
+* as antiquotes (splices).
 *
 */
 
@@ -616,20 +616,6 @@ fn mk_token(cx: &ExtCtxt, sp: Span, tok: &token::Token) -> P<ast::Expr> {
                                 vec!(mk_name(cx, sp, ident.ident())));
         }
 
-        token::MatchNt(name, kind, name_style, kind_style) => {
-            return cx.expr_call(sp,
-                                mk_token_path(cx, sp, "MatchNt"),
-                                vec![mk_ident(cx, sp, name),
-                                     mk_ident(cx, sp, kind),
-                                     match name_style {
-                                         ModName => mk_token_path(cx, sp, "ModName"),
-                                         Plain   => mk_token_path(cx, sp, "Plain"),
-                                     },
-                                     match kind_style {
-                                         ModName => mk_token_path(cx, sp, "ModName"),
-                                         Plain   => mk_token_path(cx, sp, "Plain"),
-                                     }]);
-        }
         token::Interpolated(_) => panic!("quote! with interpolated token"),
 
         _ => ()
@@ -666,7 +652,7 @@ fn mk_token(cx: &ExtCtxt, sp: Span, tok: &token::Token) -> P<ast::Expr> {
     mk_token_path(cx, sp, name)
 }
 
-fn mk_tt(cx: &ExtCtxt, _: Span, tt: &ast::TokenTree) -> Vec<P<ast::Stmt>> {
+fn mk_tt(cx: &ExtCtxt, tt: &ast::TokenTree) -> Vec<P<ast::Stmt>> {
     match *tt {
         ast::TtToken(sp, SubstNt(ident, _)) => {
             // tt.extend($ident.to_tokens(ext_cx).into_iter())
@@ -687,6 +673,13 @@ fn mk_tt(cx: &ExtCtxt, _: Span, tt: &ast::TokenTree) -> Vec<P<ast::Stmt>> {
 
             vec!(cx.stmt_expr(e_push))
         }
+        ref tt @ ast::TtToken(_, MatchNt(..)) => {
+            let mut seq = vec![];
+            for i in range(0, tt.len()) {
+                seq.push(tt.get_tt(i));
+            }
+            mk_tts(cx, seq.as_slice())
+        }
         ast::TtToken(sp, ref tok) => {
             let e_sp = cx.expr_ident(sp, id_ext("_sp"));
             let e_tok = cx.expr_call(sp,
@@ -699,21 +692,20 @@ fn mk_tt(cx: &ExtCtxt, _: Span, tt: &ast::TokenTree) -> Vec<P<ast::Stmt>> {
                                     vec!(e_tok));
             vec!(cx.stmt_expr(e_push))
         },
-        ast::TtDelimited(sp, ref delimed) => {
-            mk_tt(cx, sp, &delimed.open_tt()).into_iter()
-                .chain(delimed.tts.iter().flat_map(|tt| mk_tt(cx, sp, tt).into_iter()))
-                .chain(mk_tt(cx, sp, &delimed.close_tt()).into_iter())
+        ast::TtDelimited(_, ref delimed) => {
+            mk_tt(cx, &delimed.open_tt()).into_iter()
+                .chain(delimed.tts.iter().flat_map(|tt| mk_tt(cx, tt).into_iter()))
+                .chain(mk_tt(cx, &delimed.close_tt()).into_iter())
                 .collect()
         },
         ast::TtSequence(..) => panic!("TtSequence in quote!"),
     }
 }
 
-fn mk_tts(cx: &ExtCtxt, sp: Span, tts: &[ast::TokenTree])
-    -> Vec<P<ast::Stmt>> {
+fn mk_tts(cx: &ExtCtxt, tts: &[ast::TokenTree]) -> Vec<P<ast::Stmt>> {
     let mut ss = Vec::new();
     for tt in tts.iter() {
-        ss.extend(mk_tt(cx, sp, tt).into_iter());
+        ss.extend(mk_tt(cx, tt).into_iter());
     }
     ss
 }
@@ -775,7 +767,7 @@ fn expand_tts(cx: &ExtCtxt, sp: Span, tts: &[ast::TokenTree])
     let stmt_let_tt = cx.stmt_let(sp, true, id_ext("tt"), cx.expr_vec_ng(sp));
 
     let mut vector = vec!(stmt_let_sp, stmt_let_tt);
-    vector.extend(mk_tts(cx, sp, tts.as_slice()).into_iter());
+    vector.extend(mk_tts(cx, tts.as_slice()).into_iter());
     let block = cx.expr_block(
         cx.block_all(sp,
                      Vec::new(),
