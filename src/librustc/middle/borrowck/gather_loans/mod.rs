@@ -395,10 +395,10 @@ impl<'a, 'tcx> GatherLoanCtxt<'a, 'tcx> {
             LpUpvar(ty::UpvarId{ var_id: local_id, closure_expr_id: _ }) => {
                 self.tcx().used_mut_nodes.borrow_mut().insert(local_id);
             }
-            LpExtend(ref base, mc::McInherited, _) => {
+            LpExtend(ref base, mc::McInherited, _) |
+            LpExtend(ref base, mc::McDeclared, _) => {
                 self.mark_loan_path_as_mutated(&**base);
             }
-            LpExtend(_, mc::McDeclared, _) |
             LpExtend(_, mc::McImmutable, _) => {
                 // Nothing to do.
             }
