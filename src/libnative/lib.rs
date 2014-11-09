@@ -74,7 +74,6 @@ use std::str;
 
 pub use task::NativeTaskBuilder;
 
-pub mod io;
 pub mod task;
 
 #[cfg(any(windows, android))]

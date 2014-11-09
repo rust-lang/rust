@@ -18,7 +18,7 @@
 use alloc::arc::Arc;
 use std::sync::atomic;
 use std::mem;
-use std::rt::rtio::{EventLoop, IoFactory, RemoteCallback};
+use std::rt::rtio::{EventLoop, RemoteCallback};
 use std::rt::rtio::{PausableIdleCallback, Callback};
 use std::rt::exclusive::Exclusive;
 
@@ -149,8 +149,6 @@ impl EventLoop for BasicLoop {
         box BasicRemote::new(self.messages.clone(), id) as
             Box<RemoteCallback + Send>
     }
-
-    fn io<'a>(&'a mut self) -> Option<&'a mut IoFactory> { None }
 
     fn has_active_io(&self) -> bool { false }
 }

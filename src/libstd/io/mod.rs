@@ -228,14 +228,13 @@ use error::{FromError, Error};
 use fmt;
 use int;
 use iter::Iterator;
-use libc;
 use mem::transmute;
 use ops::{BitOr, BitXor, BitAnd, Sub, Not};
 use option::{Option, Some, None};
 use os;
 use boxed::Box;
 use result::{Ok, Err, Result};
-use rt::rtio;
+use sys;
 use slice::{AsSlice, SlicePrelude};
 use str::{Str, StrPrelude};
 use str;
@@ -312,92 +311,12 @@ impl IoError {
     /// struct is filled with an allocated string describing the error
     /// in more detail, retrieved from the operating system.
     pub fn from_errno(errno: uint, detail: bool) -> IoError {
-
-        #[cfg(windows)]
-        fn get_err(errno: i32) -> (IoErrorKind, &'static str) {
-            match errno {
-                libc::EOF => (EndOfFile, "end of file"),
-                libc::ERROR_NO_DATA => (BrokenPipe, "the pipe is being closed"),
-                libc::ERROR_FILE_NOT_FOUND => (FileNotFound, "file not found"),
-                libc::ERROR_INVALID_NAME => (InvalidInput, "invalid file name"),
-                libc::WSAECONNREFUSED => (ConnectionRefused, "connection refused"),
-                libc::WSAECONNRESET => (ConnectionReset, "connection reset"),
-                libc::ERROR_ACCESS_DENIED | libc::WSAEACCES =>
-                    (PermissionDenied, "permission denied"),
-                libc::WSAEWOULDBLOCK => {
-                    (ResourceUnavailable, "resource temporarily unavailable")
-                }
-                libc::WSAENOTCONN => (NotConnected, "not connected"),
-                libc::WSAECONNABORTED => (ConnectionAborted, "connection aborted"),
-                libc::WSAEADDRNOTAVAIL => (ConnectionRefused, "address not available"),
-                libc::WSAEADDRINUSE => (ConnectionRefused, "address in use"),
-                libc::ERROR_BROKEN_PIPE => (EndOfFile, "the pipe has ended"),
-                libc::ERROR_OPERATION_ABORTED =>
-                    (TimedOut, "operation timed out"),
-                libc::WSAEINVAL => (InvalidInput, "invalid argument"),
-                libc::ERROR_CALL_NOT_IMPLEMENTED =>
-                    (IoUnavailable, "function not implemented"),
-                libc::ERROR_INVALID_HANDLE =>
-                    (MismatchedFileTypeForOperation,
-                     "invalid handle provided to function"),
-                libc::ERROR_NOTHING_TO_TERMINATE =>
-                    (InvalidInput, "no process to kill"),
-
-                // libuv maps this error code to EISDIR. we do too. if it is found
-                // to be incorrect, we can add in some more machinery to only
-                // return this message when ERROR_INVALID_FUNCTION after certain
-                // Windows calls.
-                libc::ERROR_INVALID_FUNCTION => (InvalidInput,
-                                                 "illegal operation on a directory"),
-
-                _ => (OtherIoError, "unknown error")
-            }
+        let mut err = sys::decode_error(errno as i32);
+        if detail && err.kind == OtherIoError {
+            err.detail = Some(os::error_string(errno).as_slice().chars()
+                                 .map(|c| c.to_lowercase()).collect())
         }
-
-        #[cfg(not(windows))]
-        fn get_err(errno: i32) -> (IoErrorKind, &'static str) {
-            // FIXME: this should probably be a bit more descriptive...
-            match errno {
-                libc::EOF => (EndOfFile, "end of file"),
-                libc::ECONNREFUSED => (ConnectionRefused, "connection refused"),
-                libc::ECONNRESET => (ConnectionReset, "connection reset"),
-                libc::EPERM | libc::EACCES =>
-                    (PermissionDenied, "permission denied"),
-                libc::EPIPE => (BrokenPipe, "broken pipe"),
-                libc::ENOTCONN => (NotConnected, "not connected"),
-                libc::ECONNABORTED => (ConnectionAborted, "connection aborted"),
-                libc::EADDRNOTAVAIL => (ConnectionRefused, "address not available"),
-                libc::EADDRINUSE => (ConnectionRefused, "address in use"),
-                libc::ENOENT => (FileNotFound, "no such file or directory"),
-                libc::EISDIR => (InvalidInput, "illegal operation on a directory"),
-                libc::ENOSYS => (IoUnavailable, "function not implemented"),
-                libc::EINVAL => (InvalidInput, "invalid argument"),
-                libc::ENOTTY =>
-                    (MismatchedFileTypeForOperation,
-                     "file descriptor is not a TTY"),
-                libc::ETIMEDOUT => (TimedOut, "operation timed out"),
-                libc::ECANCELED => (TimedOut, "operation aborted"),
-
-                // These two constants can have the same value on some systems,
-                // but different values on others, so we can't use a match
-                // clause
-                x if x == libc::EAGAIN || x == libc::EWOULDBLOCK =>
-                    (ResourceUnavailable, "resource temporarily unavailable"),
-
-                _ => (OtherIoError, "unknown error")
-            }
-        }
-
-        let (kind, desc) = get_err(errno as i32);
-        IoError {
-            kind: kind,
-            desc: desc,
-            detail: if detail && kind == OtherIoError {
-                Some(os::error_string(errno).as_slice().chars().map(|c| c.to_lowercase()).collect())
-            } else {
-                None
-            },
-        }
+        err
     }
 
     /// Retrieve the last error to occur as a (detailed) IoError.
@@ -408,17 +327,6 @@ impl IoError {
     /// being checked and the call of this function.
     pub fn last_error() -> IoError {
         IoError::from_errno(os::errno() as uint, true)
-    }
-
-    fn from_rtio_error(err: rtio::IoError) -> IoError {
-        let rtio::IoError { code, extra, detail } = err;
-        let mut ioerr = IoError::from_errno(code, false);
-        ioerr.detail = detail;
-        ioerr.kind = match ioerr.kind {
-            TimedOut if extra > 0 => ShortWrite(extra),
-            k => k,
-        };
-        return ioerr;
     }
 }
 

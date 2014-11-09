@@ -47,19 +47,22 @@
 //! Note that all time units in this file are in *milliseconds*.
 
 use libc;
-use std::mem;
-use std::os;
-use std::ptr;
-use std::rt::rtio;
-use std::rt::rtio::IoResult;
-use std::sync::atomic;
-use std::comm;
-
-use io::c;
-use io::file::FileDesc;
-use io::helper_thread::Helper;
+use mem;
+use os;
+use ptr;
+use sync::atomic;
+use comm;
+use sys::c;
+use sys::fs::FileDesc;
+use sys_common::helper_thread::Helper;
+use prelude::*;
+use io::IoResult;
 
 helper_init!(static HELPER: Helper<Req>)
+
+pub trait Callback {
+    fn call(&mut self);
+}
 
 pub struct Timer {
     id: uint,
@@ -67,7 +70,7 @@ pub struct Timer {
 }
 
 pub struct Inner {
-    cb: Option<Box<rtio::Callback + Send>>,
+    cb: Option<Box<Callback + Send>>,
     interval: u64,
     repeat: bool,
     target: u64,
@@ -190,11 +193,11 @@ fn helper(input: libc::c_int, messages: Receiver<Req>, _: ()) {
 
                 // drain the file descriptor
                 let mut buf = [0];
-                assert_eq!(fd.inner_read(buf).ok().unwrap(), 1);
+                assert_eq!(fd.read(buf).ok().unwrap(), 1);
             }
 
-            -1 if os::errno() == libc::EINTR as int => {}
-            n => panic!("helper thread panicked in select() with error: {} ({})",
+            -1 if os::errno() == libc::EINTR as uint => {}
+            n => panic!("helper thread failed in select() with error: {} ({})",
                        n, os::last_os_error())
         }
     }
@@ -220,7 +223,11 @@ impl Timer {
         })
     }
 
-    pub fn sleep(ms: u64) {
+    pub fn sleep(&mut self, ms: u64) {
+        let mut inner = self.inner();
+        inner.cb = None; // cancel any previous request
+        self.inner = Some(inner);
+
         let mut to_sleep = libc::timespec {
             tv_sec: (ms / 1000) as libc::time_t,
             tv_nsec: ((ms % 1000) * 1000000) as libc::c_long,
@@ -232,28 +239,7 @@ impl Timer {
         }
     }
 
-    fn inner(&mut self) -> Box<Inner> {
-        match self.inner.take() {
-            Some(i) => i,
-            None => {
-                let (tx, rx) = channel();
-                HELPER.send(RemoveTimer(self.id, tx));
-                rx.recv()
-            }
-        }
-    }
-}
-
-impl rtio::RtioTimer for Timer {
-    fn sleep(&mut self, msecs: u64) {
-        let mut inner = self.inner();
-        inner.cb = None; // cancel any previous request
-        self.inner = Some(inner);
-
-        Timer::sleep(msecs);
-    }
-
-    fn oneshot(&mut self, msecs: u64, cb: Box<rtio::Callback + Send>) {
+    pub fn oneshot(&mut self, msecs: u64, cb: Box<Callback + Send>) {
         let now = now();
         let mut inner = self.inner();
 
@@ -265,7 +251,7 @@ impl rtio::RtioTimer for Timer {
         HELPER.send(NewTimer(inner));
     }
 
-    fn period(&mut self, msecs: u64, cb: Box<rtio::Callback + Send>) {
+    pub fn period(&mut self, msecs: u64, cb: Box<Callback + Send>) {
         let now = now();
         let mut inner = self.inner();
 
@@ -275,6 +261,17 @@ impl rtio::RtioTimer for Timer {
         inner.target = now + msecs;
 
         HELPER.send(NewTimer(inner));
+    }
+
+    fn inner(&mut self) -> Box<Inner> {
+        match self.inner.take() {
+            Some(i) => i,
+            None => {
+                let (tx, rx) = channel();
+                HELPER.send(RemoveTimer(self.id, tx));
+                rx.recv()
+            }
+        }
     }
 }
 

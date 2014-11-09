@@ -11,6 +11,7 @@
 //! C definitions used by libnative that don't belong in liblibc
 
 #![allow(dead_code)]
+#![allow(non_camel_case_types)]
 
 pub use self::select::fd_set;
 pub use self::signal::{sigaction, siginfo, sigset_t};
@@ -106,7 +107,7 @@ mod select {
           target_os = "dragonfly",
           target_os = "linux"))]
 mod select {
-    use std::uint;
+    use uint;
     use libc;
 
     pub const FD_SETSIZE: uint = 1024;

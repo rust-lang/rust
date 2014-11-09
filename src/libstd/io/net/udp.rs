@@ -17,13 +17,10 @@
 
 use clone::Clone;
 use io::net::ip::{SocketAddr, IpAddr, ToSocketAddr};
-use io::{Reader, Writer, IoResult, IoError};
-use kinds::Send;
-use boxed::Box;
+use io::{Reader, Writer, IoResult};
 use option::Option;
 use result::{Ok, Err};
-use rt::rtio::{RtioSocket, RtioUdpSocket, IoFactory};
-use rt::rtio;
+use sys::udp::UdpSocket as UdpSocketImp;
 
 /// A User Datagram Protocol socket.
 ///
@@ -60,7 +57,7 @@ use rt::rtio;
 /// }
 /// ```
 pub struct UdpSocket {
-    obj: Box<RtioUdpSocket + Send>,
+    inner: UdpSocketImp,
 }
 
 impl UdpSocket {
@@ -69,18 +66,15 @@ impl UdpSocket {
     /// Address type can be any implementor of `ToSocketAddr` trait. See its
     /// documentation for concrete examples.
     pub fn bind<A: ToSocketAddr>(addr: A) -> IoResult<UdpSocket> {
-        super::with_addresses_io(addr, |io, addr| io.udp_bind(addr).map(|s| UdpSocket { obj: s }))
+        super::with_addresses(addr, |addr| {
+            UdpSocketImp::bind(addr).map(|s| UdpSocket { inner: s })
+        })
     }
 
     /// Receives data from the socket. On success, returns the number of bytes
     /// read and the address from whence the data came.
     pub fn recv_from(&mut self, buf: &mut [u8]) -> IoResult<(uint, SocketAddr)> {
-        match self.obj.recv_from(buf) {
-            Ok((amt, rtio::SocketAddr { ip, port })) => {
-                Ok((amt, SocketAddr { ip: super::from_rtio(ip), port: port }))
-            }
-            Err(e) => Err(IoError::from_rtio_error(e)),
-        }
+        self.inner.recv_from(buf)
     }
 
     /// Sends data on the socket to the given address. Returns nothing on
@@ -89,10 +83,7 @@ impl UdpSocket {
     /// Address type can be any implementor of `ToSocketAddr` trait. See its
     /// documentation for concrete examples.
     pub fn send_to<A: ToSocketAddr>(&mut self, buf: &[u8], addr: A) -> IoResult<()> {
-        super::with_addresses(addr, |addr| self.obj.send_to(buf, rtio::SocketAddr {
-            ip: super::to_rtio(addr.ip),
-            port: addr.port,
-        }).map_err(IoError::from_rtio_error))
+        super::with_addresses(addr, |addr| self.inner.send_to(buf, addr))
     }
 
     /// Creates a `UdpStream`, which allows use of the `Reader` and `Writer`
@@ -112,24 +103,19 @@ impl UdpSocket {
 
     /// Returns the socket address that this socket was created from.
     pub fn socket_name(&mut self) -> IoResult<SocketAddr> {
-        match self.obj.socket_name() {
-            Ok(a) => Ok(SocketAddr { ip: super::from_rtio(a.ip), port: a.port }),
-            Err(e) => Err(IoError::from_rtio_error(e))
-        }
+        self.inner.socket_name()
     }
 
     /// Joins a multicast IP address (becomes a member of it)
     #[experimental]
     pub fn join_multicast(&mut self, multi: IpAddr) -> IoResult<()> {
-        let e = self.obj.join_multicast(super::to_rtio(multi));
-        e.map_err(IoError::from_rtio_error)
+        self.inner.join_multicast(multi)
     }
 
     /// Leaves a multicast IP address (drops membership from it)
     #[experimental]
     pub fn leave_multicast(&mut self, multi: IpAddr) -> IoResult<()> {
-        let e = self.obj.leave_multicast(super::to_rtio(multi));
-        e.map_err(IoError::from_rtio_error)
+        self.inner.leave_multicast(multi)
     }
 
     /// Set the multicast loop flag to the specified value
@@ -137,33 +123,25 @@ impl UdpSocket {
     /// This lets multicast packets loop back to local sockets (if enabled)
     #[experimental]
     pub fn set_multicast_loop(&mut self, on: bool) -> IoResult<()> {
-        if on {
-            self.obj.loop_multicast_locally()
-        } else {
-            self.obj.dont_loop_multicast_locally()
-        }.map_err(IoError::from_rtio_error)
+        self.inner.set_multicast_loop(on)
     }
 
     /// Sets the multicast TTL
     #[experimental]
     pub fn set_multicast_ttl(&mut self, ttl: int) -> IoResult<()> {
-        self.obj.multicast_time_to_live(ttl).map_err(IoError::from_rtio_error)
+        self.inner.multicast_time_to_live(ttl)
     }
 
     /// Sets this socket's TTL
     #[experimental]
     pub fn set_ttl(&mut self, ttl: int) -> IoResult<()> {
-        self.obj.time_to_live(ttl).map_err(IoError::from_rtio_error)
+        self.inner.time_to_live(ttl)
     }
 
     /// Sets the broadcast flag on or off
     #[experimental]
     pub fn set_broadcast(&mut self, broadcast: bool) -> IoResult<()> {
-        if broadcast {
-            self.obj.hear_broadcasts()
-        } else {
-            self.obj.ignore_broadcasts()
-        }.map_err(IoError::from_rtio_error)
+        self.inner.set_broadcast(broadcast)
     }
 
     /// Sets the read/write timeout for this socket.
@@ -171,7 +149,7 @@ impl UdpSocket {
     /// For more information, see `TcpStream::set_timeout`
     #[experimental = "the timeout argument may change in type and value"]
     pub fn set_timeout(&mut self, timeout_ms: Option<u64>) {
-        self.obj.set_timeout(timeout_ms)
+        self.inner.set_timeout(timeout_ms)
     }
 
     /// Sets the read timeout for this socket.
@@ -179,7 +157,7 @@ impl UdpSocket {
     /// For more information, see `TcpStream::set_timeout`
     #[experimental = "the timeout argument may change in type and value"]
     pub fn set_read_timeout(&mut self, timeout_ms: Option<u64>) {
-        self.obj.set_read_timeout(timeout_ms)
+        self.inner.set_read_timeout(timeout_ms)
     }
 
     /// Sets the write timeout for this socket.
@@ -187,7 +165,7 @@ impl UdpSocket {
     /// For more information, see `TcpStream::set_timeout`
     #[experimental = "the timeout argument may change in type and value"]
     pub fn set_write_timeout(&mut self, timeout_ms: Option<u64>) {
-        self.obj.set_write_timeout(timeout_ms)
+        self.inner.set_write_timeout(timeout_ms)
     }
 }
 
@@ -201,7 +179,7 @@ impl Clone for UdpSocket {
     /// received, and the second read will receive the second packet.
     fn clone(&self) -> UdpSocket {
         UdpSocket {
-            obj: self.obj.clone(),
+            inner: self.inner.clone(),
         }
     }
 }
