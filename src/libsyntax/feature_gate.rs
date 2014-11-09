@@ -38,7 +38,6 @@ static KNOWN_FEATURES: &'static [(&'static str, Status)] = &[
     ("globs", Active),
     ("macro_rules", Active),
     ("struct_variant", Active),
-    ("once_fns", Active),
     ("asm", Active),
     ("managed_boxes", Removed),
     ("non_ascii_idents", Active),
@@ -307,11 +306,10 @@ impl<'a, 'v> Visitor<'v> for Context<'a> {
 
     fn visit_ty(&mut self, t: &ast::Ty) {
         match t.node {
-            ast::TyClosure(ref closure) if closure.onceness == ast::Once => {
-                self.gate_feature("once_fns", t.span,
-                                  "once functions are \
-                                   experimental and likely to be removed");
-
+            ast::TyClosure(ref closure) => {
+                // this used to be blocked by a feature gate, but it should just
+                // be plain impossible right now
+                assert!(closure.onceness != ast::Once);
             },
             _ => {}
         }

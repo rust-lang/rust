@@ -435,12 +435,12 @@ pub fn ty_to_string(cx: &ctxt, typ: t) -> String {
             parameterized(cx, base.as_slice(), substs, &generics)
         }
         ty_trait(box ty::TyTrait {
-            def_id: did, ref substs, ref bounds
+            ref principal, ref bounds
         }) => {
-            let base = ty::item_path_str(cx, did);
-            let trait_def = ty::lookup_trait_def(cx, did);
+            let base = ty::item_path_str(cx, principal.def_id);
+            let trait_def = ty::lookup_trait_def(cx, principal.def_id);
             let ty = parameterized(cx, base.as_slice(),
-                                   substs, &trait_def.generics);
+                                   &principal.substs, &trait_def.generics);
             let bound_str = bounds.user_string(cx);
             let bound_sep = if bound_str.is_empty() { "" } else { "+" };
             format!("{}{}{}",

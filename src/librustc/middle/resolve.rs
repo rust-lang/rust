@@ -33,12 +33,12 @@ use syntax::ast::{ItemTrait, ItemTy, LOCAL_CRATE, Local, ItemConst};
 use syntax::ast::{MethodImplItem, Mod, Name, NamedField, NodeId};
 use syntax::ast::{Pat, PatEnum, PatIdent, PatLit};
 use syntax::ast::{PatRange, PatStruct, Path, PathListIdent, PathListMod};
-use syntax::ast::{PrimTy, Public, SelfExplicit, SelfStatic};
+use syntax::ast::{PolyTraitRef, PrimTy, Public, SelfExplicit, SelfStatic};
 use syntax::ast::{RegionTyParamBound, StmtDecl, StructField};
 use syntax::ast::{StructVariantKind, TraitRef, TraitTyParamBound};
 use syntax::ast::{TupleVariantKind, Ty, TyBool, TyChar, TyClosure, TyF32};
 use syntax::ast::{TyF64, TyFloat, TyI, TyI8, TyI16, TyI32, TyI64, TyInt};
-use syntax::ast::{TyParam, TyParamBound, TyPath, TyPtr, TyProc, TyQPath};
+use syntax::ast::{TyParam, TyParamBound, TyPath, TyPtr, TyPolyTraitRef, TyProc, TyQPath};
 use syntax::ast::{TyRptr, TyStr, TyU, TyU8, TyU16, TyU32, TyU64, TyUint};
 use syntax::ast::{TypeImplItem, UnnamedField};
 use syntax::ast::{Variant, ViewItem, ViewItemExternCrate};
@@ -607,6 +607,7 @@ enum TraitReferenceType {
     TraitImplementation,             // impl SomeTrait for T { ... }
     TraitDerivation,                 // trait T : SomeTrait { ... }
     TraitBoundingTypeParameter,      // fn f<T:SomeTrait>() { ... }
+    TraitObject,                     // Box<for<'a> SomeTrait>
 }
 
 impl NameBindings {
@@ -4244,11 +4245,11 @@ impl<'a> Resolver<'a> {
                     this.resolve_type_parameter_bounds(item.id, bounds,
                                                        TraitDerivation);
 
-                    match unbound {
-                        &Some(ast::TraitTyParamBound(ref tpb)) => {
+                    match *unbound {
+                        Some(ref tpb) => {
                             this.resolve_trait_reference(item.id, tpb, TraitDerivation);
                         }
-                        _ => {}
+                        None => {}
                     }
 
                     for trait_item in (*trait_items).iter() {
@@ -4495,7 +4496,7 @@ impl<'a> Resolver<'a> {
         }
         match &type_parameter.unbound {
             &Some(ref unbound) =>
-                self.resolve_type_parameter_bound(
+                self.resolve_trait_reference(
                     type_parameter.id, unbound, TraitBoundingTypeParameter),
             &None => {}
         }
@@ -4521,10 +4522,17 @@ impl<'a> Resolver<'a> {
                                     reference_type: TraitReferenceType) {
         match *type_parameter_bound {
             TraitTyParamBound(ref tref) => {
-                self.resolve_trait_reference(id, tref, reference_type)
+                self.resolve_poly_trait_reference(id, tref, reference_type)
             }
             RegionTyParamBound(..) => {}
         }
+    }
+
+    fn resolve_poly_trait_reference(&mut self,
+                                    id: NodeId,
+                                    poly_trait_reference: &PolyTraitRef,
+                                    reference_type: TraitReferenceType) {
+        self.resolve_trait_reference(id, &poly_trait_reference.trait_ref, reference_type)
     }
 
     fn resolve_trait_reference(&mut self,
@@ -4538,6 +4546,7 @@ impl<'a> Resolver<'a> {
                     TraitBoundingTypeParameter => "bound type parameter with",
                     TraitImplementation        => "implement",
                     TraitDerivation            => "derive",
+                    TraitObject                => "reference",
                 };
 
                 let msg = format!("attempt to {} a nonexistent trait `{}`", usage_str, path_str);
@@ -5044,6 +5053,13 @@ impl<'a> Resolver<'a> {
                 visit::walk_ty(self, ty);
             }
 
+            TyPolyTraitRef(ref poly_trait_ref) => {
+                self.resolve_poly_trait_reference(
+                    ty.id,
+                    &**poly_trait_ref,
+                    TraitObject);
+                visit::walk_ty(self, ty);
+            }
             _ => {
                 // Just resolve embedded types.
                 visit::walk_ty(self, ty);

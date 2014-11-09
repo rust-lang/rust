@@ -194,7 +194,7 @@ impl<'a> Ty<'a> {
 
 
 fn mk_ty_param(cx: &ExtCtxt, span: Span, name: &str,
-               bounds: &[Path], unbound: Option<ast::TyParamBound>,
+               bounds: &[Path], unbound: Option<ast::TraitRef>,
                self_ident: Ident, self_generics: &Generics) -> ast::TyParam {
     let bounds =
         bounds.iter().map(|b| {
@@ -220,7 +220,7 @@ fn mk_generics(lifetimes: Vec<ast::LifetimeDef>, ty_params: Vec<ast::TyParam>)
 #[deriving(Clone)]
 pub struct LifetimeBounds<'a> {
     pub lifetimes: Vec<(&'a str, Vec<&'a str>)>,
-    pub bounds: Vec<(&'a str, Option<ast::TyParamBound>, Vec<Path<'a>>)>,
+    pub bounds: Vec<(&'a str, Option<ast::TraitRef>, Vec<Path<'a>>)>,
 }
 
 impl<'a> LifetimeBounds<'a> {

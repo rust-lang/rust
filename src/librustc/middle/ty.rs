@@ -378,14 +378,14 @@ pub fn type_of_adjust(cx: &ctxt, adj: &AutoAdjustment) -> Option<t> {
     fn type_of_autoref(cx: &ctxt, autoref: &AutoRef) -> Option<t> {
         match autoref {
             &AutoUnsize(ref k) => match k {
-                &UnsizeVtable(TyTrait { def_id, ref substs, bounds }, _) => {
-                    Some(mk_trait(cx, def_id, substs.clone(), bounds))
+                &UnsizeVtable(TyTrait { ref principal, bounds }, _) => {
+                    Some(mk_trait(cx, (*principal).clone(), bounds))
                 }
                 _ => None
             },
             &AutoUnsizeUniq(ref k) => match k {
-                &UnsizeVtable(TyTrait { def_id, ref substs, bounds }, _) => {
-                    Some(mk_uniq(cx, mk_trait(cx, def_id, substs.clone(), bounds)))
+                &UnsizeVtable(TyTrait { ref principal, bounds }, _) => {
+                    Some(mk_uniq(cx, mk_trait(cx, (*principal).clone(), bounds)))
                 }
                 _ => None
             },
@@ -983,12 +983,12 @@ pub enum sty {
 
 #[deriving(Clone, PartialEq, Eq, Hash, Show)]
 pub struct TyTrait {
-    pub def_id: DefId,
-    pub substs: Substs,
+    // Principal trait reference.
+    pub principal: TraitRef, // would use Rc<TraitRef>, but it runs afoul of some static rules
     pub bounds: ExistentialBounds
 }
 
-#[deriving(PartialEq, Eq, Hash, Show)]
+#[deriving(Clone, PartialEq, Eq, Hash, Show)]
 pub struct TraitRef {
     pub def_id: DefId,
     pub substs: Substs,
@@ -1643,8 +1643,8 @@ pub fn mk_t(cx: &ctxt, st: sty) -> t {
       &ty_enum(_, ref substs) | &ty_struct(_, ref substs) => {
           flags = flags | sflags(substs);
       }
-      &ty_trait(box TyTrait { ref substs, ref bounds, .. }) => {
-          flags = flags | sflags(substs);
+      &ty_trait(box TyTrait { ref principal, ref bounds }) => {
+          flags = flags | sflags(&principal.substs);
           flags = flags | flags_for_bounds(bounds);
       }
       &ty_uniq(tt) | &ty_vec(tt, _) | &ty_open(tt) => {
@@ -1874,14 +1874,12 @@ pub fn mk_ctor_fn(cx: &ctxt,
 
 
 pub fn mk_trait(cx: &ctxt,
-                did: ast::DefId,
-                substs: Substs,
+                principal: ty::TraitRef,
                 bounds: ExistentialBounds)
                 -> t {
     // take a copy of substs so that we own the vectors inside
     let inner = box TyTrait {
-        def_id: did,
-        substs: substs,
+        principal: principal,
         bounds: bounds
     };
     mk_t(cx, ty_trait(inner))
@@ -1934,9 +1932,15 @@ pub fn maybe_walk_ty(ty: t, f: |t| -> bool) {
         ty_ptr(ref tm) | ty_rptr(_, ref tm) => {
             maybe_walk_ty(tm.ty, f);
         }
-        ty_enum(_, ref substs) | ty_struct(_, ref substs) | ty_unboxed_closure(_, _, ref substs) |
-        ty_trait(box TyTrait { ref substs, .. }) => {
-            for subty in (*substs).types.iter() {
+        ty_trait(box TyTrait { ref principal, .. }) => {
+            for subty in principal.substs.types.iter() {
+                maybe_walk_ty(*subty, |x| f(x));
+            }
+        }
+        ty_enum(_, ref substs) |
+        ty_struct(_, ref substs) |
+        ty_unboxed_closure(_, _, ref substs) => {
+            for subty in substs.types.iter() {
                 maybe_walk_ty(*subty, |x| f(x));
             }
         }
@@ -3554,8 +3558,8 @@ pub fn unsize_ty(cx: &ctxt,
                                   format!("UnsizeStruct with bad sty: {}",
                                           ty_to_string(cx, ty)).as_slice())
         },
-        &UnsizeVtable(TyTrait { def_id, ref substs, bounds }, _) => {
-            mk_trait(cx, def_id, substs.clone(), bounds)
+        &UnsizeVtable(TyTrait { ref principal, bounds }, _) => {
+            mk_trait(cx, (*principal).clone(), bounds)
         }
     }
 }
@@ -3808,7 +3812,7 @@ pub fn ty_sort_string(cx: &ctxt, t: t) -> String {
         ty_bare_fn(_) => "extern fn".to_string(),
         ty_closure(_) => "fn".to_string(),
         ty_trait(ref inner) => {
-            format!("trait {}", item_path_str(cx, inner.def_id))
+            format!("trait {}", item_path_str(cx, inner.principal.def_id))
         }
         ty_struct(id, _) => {
             format!("struct {}", item_path_str(cx, id))
@@ -4230,11 +4234,14 @@ pub fn try_add_builtin_trait(
 
 pub fn ty_to_def_id(ty: t) -> Option<ast::DefId> {
     match get(ty).sty {
-        ty_trait(box TyTrait { def_id: id, .. }) |
+        ty_trait(ref tt) =>
+            Some(tt.principal.def_id),
         ty_struct(id, _) |
         ty_enum(id, _) |
-        ty_unboxed_closure(id, _, _) => Some(id),
-        _ => None
+        ty_unboxed_closure(id, _, _) =>
+            Some(id),
+        _ =>
+            None
     }
 }
 
@@ -5213,9 +5220,9 @@ pub fn hash_crate_independent(tcx: &ctxt, t: t, svh: &Svh) -> u64 {
                     }
                 }
             }
-            ty_trait(box TyTrait { def_id: d, bounds, .. }) => {
+            ty_trait(box TyTrait { ref principal, bounds }) => {
                 byte!(17);
-                did(&mut state, d);
+                did(&mut state, principal.def_id);
                 hash!(bounds);
             }
             ty_struct(d, _) => {
@@ -5504,12 +5511,13 @@ pub fn accumulate_lifetimes_in_type(accumulator: &mut Vec<ty::Region>,
                                     typ: t) {
     walk_ty(typ, |typ| {
         match get(typ).sty {
-            ty_rptr(region, _) => accumulator.push(region),
+            ty_rptr(region, _) => {
+                accumulator.push(region)
+            }
+            ty_trait(ref t) => {
+                accumulator.push_all(t.principal.substs.regions().as_slice());
+            }
             ty_enum(_, ref substs) |
-            ty_trait(box TyTrait {
-                ref substs,
-                ..
-            }) |
             ty_struct(_, ref substs) => {
                 accum_substs(accumulator, substs);
             }
@@ -5538,7 +5546,8 @@ pub fn accumulate_lifetimes_in_type(accumulator: &mut Vec<ty::Region>,
             ty_param(_) |
             ty_infer(_) |
             ty_open(_) |
-            ty_err => {}
+            ty_err => {
+            }
         }
     });
 

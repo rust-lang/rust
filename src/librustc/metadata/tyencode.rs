@@ -231,13 +231,10 @@ fn enc_sty(w: &mut SeekableMemWriter, cx: &ctxt, st: &ty::sty) {
             enc_substs(w, cx, substs);
             mywrite!(w, "]");
         }
-        ty::ty_trait(box ty::TyTrait {
-                def_id,
-                ref substs,
-                ref bounds
-            }) => {
-            mywrite!(w, "x[{}|", (cx.ds)(def_id));
-            enc_substs(w, cx, substs);
+        ty::ty_trait(box ty::TyTrait { ref principal,
+                                       ref bounds }) => {
+            mywrite!(w, "x[");
+            enc_trait_ref(w, cx, principal);
             enc_existential_bounds(w, cx, bounds);
             mywrite!(w, "]");
         }

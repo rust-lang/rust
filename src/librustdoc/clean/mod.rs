@@ -963,6 +963,12 @@ impl Clean<Type> for ast::TraitRef {
     }
 }
 
+impl Clean<Type> for ast::PolyTraitRef {
+    fn clean(&self, cx: &DocContext) -> Type {
+        self.trait_ref.clean(cx)
+    }
+}
+
 #[deriving(Clone, Encodable, Decodable)]
 pub enum TraitMethod {
     RequiredMethod(Item),
@@ -1306,7 +1312,8 @@ impl Clean<Type> for ty::t {
             }
             ty::ty_struct(did, ref substs) |
             ty::ty_enum(did, ref substs) |
-            ty::ty_trait(box ty::TyTrait { def_id: did, ref substs, .. }) => {
+            ty::ty_trait(box ty::TyTrait { principal: ty::TraitRef { def_id: did, ref substs },
+                                           .. }) => {
                 let fqn = csearch::get_item_path(cx.tcx(), did);
                 let fqn: Vec<String> = fqn.into_iter().map(|i| {
                     i.to_string()

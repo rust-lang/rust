@@ -743,6 +743,9 @@ impl<'a> State<'a> {
             ast::TyPath(ref path, ref bounds, _) => {
                 try!(self.print_bounded_path(path, bounds));
             }
+            ast::TyPolyTraitRef(ref poly_trait_ref) => {
+                try!(self.print_poly_trait_ref(&**poly_trait_ref));
+            }
             ast::TyQPath(ref qpath) => {
                 try!(word(&mut self.s, "<"));
                 try!(self.print_type(&*qpath.for_type));
@@ -960,7 +963,7 @@ impl<'a> State<'a> {
                 try!(self.print_ident(item.ident));
                 try!(self.print_generics(generics));
                 match unbound {
-                    &Some(TraitTyParamBound(ref tref)) => {
+                    &Some(ref tref) => {
                         try!(space(&mut self.s));
                         try!(self.word_space("for"));
                         try!(self.print_trait_ref(tref));
@@ -995,17 +998,19 @@ impl<'a> State<'a> {
     }
 
     fn print_trait_ref(&mut self, t: &ast::TraitRef) -> IoResult<()> {
-        if t.lifetimes.len() > 0 {
-            try!(self.print_generics(&ast::Generics {
-                lifetimes: t.lifetimes.clone(),
-                ty_params: OwnedSlice::empty(),
-                where_clause: ast::WhereClause {
-                    id: ast::DUMMY_NODE_ID,
-                    predicates: Vec::new(),
-                },
-            }));
-        }
         self.print_path(&t.path, false)
+    }
+
+    fn print_poly_trait_ref(&mut self, t: &ast::PolyTraitRef) -> IoResult<()> {
+        if !t.bound_lifetimes.is_empty() {
+            try!(word(&mut self.s, "for<"));
+            for lifetime_def in t.bound_lifetimes.iter() {
+                try!(self.print_lifetime_def(lifetime_def));
+            }
+            try!(word(&mut self.s, ">"));
+        }
+
+        self.print_trait_ref(&t.trait_ref)
     }
 
     pub fn print_enum_def(&mut self, enum_definition: &ast::EnumDef,
@@ -2383,7 +2388,7 @@ impl<'a> State<'a> {
 
                 try!(match *bound {
                     TraitTyParamBound(ref tref) => {
-                        self.print_trait_ref(tref)
+                        self.print_poly_trait_ref(tref)
                     }
                     RegionTyParamBound(ref lt) => {
                         self.print_lifetime(lt)
@@ -2450,7 +2455,7 @@ impl<'a> State<'a> {
 
     pub fn print_ty_param(&mut self, param: &ast::TyParam) -> IoResult<()> {
         match param.unbound {
-            Some(TraitTyParamBound(ref tref)) => {
+            Some(ref tref) => {
                 try!(self.print_trait_ref(tref));
                 try!(self.word_space("?"));
             }
@@ -2658,12 +2663,10 @@ impl<'a> State<'a> {
         } else if opt_sigil == Some('&') {
             try!(self.print_fn_style(fn_style));
             try!(self.print_extern_opt_abi(opt_abi));
-            try!(self.print_onceness(onceness));
         } else {
             assert!(opt_sigil.is_none());
             try!(self.print_fn_style(fn_style));
             try!(self.print_opt_abi_and_extern_if_nondefault(opt_abi));
-            try!(self.print_onceness(onceness));
             try!(word(&mut self.s, "fn"));
         }
 
@@ -2980,13 +2983,6 @@ impl<'a> State<'a> {
         match s {
             ast::NormalFn => Ok(()),
             ast::UnsafeFn => self.word_nbsp("unsafe"),
-        }
-    }
-
-    pub fn print_onceness(&mut self, o: ast::Onceness) -> IoResult<()> {
-        match o {
-            ast::Once => self.word_nbsp("once"),
-            ast::Many => Ok(())
         }
     }
 }

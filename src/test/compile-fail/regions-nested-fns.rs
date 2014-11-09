@@ -14,13 +14,13 @@ fn nested<'x>(x: &'x int) {
     let y = 3;
     let mut ay = &y; //~ ERROR cannot infer
 
-    ignore::< <'z>|&'z int|>(|z| {
+    ignore::< for<'z>|&'z int|>(|z| {
         ay = x;
         ay = &y;
         ay = z;
     });
 
-    ignore::< <'z>|&'z int| -> &'z int>(|z| {
+    ignore::< for<'z>|&'z int| -> &'z int>(|z| {
         if false { return x; }  //~ ERROR cannot infer an appropriate lifetime for automatic
         if false { return ay; }
         return z;

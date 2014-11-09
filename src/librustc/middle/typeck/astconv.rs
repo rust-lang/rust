@@ -51,8 +51,6 @@
 
 use middle::const_eval;
 use middle::def;
-use middle::lang_items::{FnTraitLangItem, FnMutTraitLangItem};
-use middle::lang_items::{FnOnceTraitLangItem};
 use middle::resolve_lifetime as rl;
 use middle::subst::{FnSpace, TypeSpace, AssocSpace, SelfSpace, Subst, Substs};
 use middle::subst::{VecPerParamSpace};
@@ -398,6 +396,46 @@ fn ast_path_substs<'tcx,AC,RS>(
     }
 }
 
+pub fn instantiate_trait_ref<'tcx,AC,RS>(this: &AC,
+                                         rscope: &RS,
+                                         ast_trait_ref: &ast::TraitRef,
+                                         self_ty: Option<ty::t>,
+                                         associated_type: Option<ty::t>)
+                                         -> Rc<ty::TraitRef>
+                                         where AC: AstConv<'tcx>,
+                                               RS: RegionScope
+{
+    /*!
+     * Instantiates the path for the given trait reference, assuming that
+     * it's bound to a valid trait type. Returns the def_id for the defining
+     * trait. Fails if the type is a type other than a trait type.
+     */
+
+    match lookup_def_tcx(this.tcx(),
+                         ast_trait_ref.path.span,
+                         ast_trait_ref.ref_id) {
+        def::DefTrait(trait_did) => {
+            let trait_ref =
+                Rc::new(ast_path_to_trait_ref(this,
+                                              rscope,
+                                              trait_did,
+                                              self_ty,
+                                              associated_type,
+                                              &ast_trait_ref.path,
+                                              ast_trait_ref.ref_id));
+
+            this.tcx().trait_refs.borrow_mut().insert(ast_trait_ref.ref_id,
+                                                      trait_ref.clone());
+            trait_ref
+        }
+        _ => {
+            this.tcx().sess.span_fatal(
+                ast_trait_ref.path.span,
+                format!("`{}` is not a trait", ast_trait_ref.path.user_string(this.tcx()))[]);
+        }
+    }
+}
+
 pub fn ast_path_to_trait_ref<'tcx,AC,RS>(this: &AC,
                                          rscope: &RS,
                                          trait_def_id: ast::DefId,
@@ -405,11 +443,11 @@ pub fn ast_path_to_trait_ref<'tcx,AC,RS>(this: &AC,
                                          associated_type: Option<ty::t>,
                                          path: &ast::Path,
                                          binder_id: ast::NodeId)
-                                         -> Rc<ty::TraitRef>
+                                         -> ty::TraitRef
                                          where AC: AstConv<'tcx>,
                                                RS: RegionScope {
     let trait_def = this.get_trait_def(trait_def_id);
-    Rc::new(ty::TraitRef {
+    ty::TraitRef {
         def_id: trait_def_id,
         substs: ast_path_substs(this,
                                 rscope,
@@ -419,7 +457,7 @@ pub fn ast_path_to_trait_ref<'tcx,AC,RS>(this: &AC,
                                 associated_type,
                                 path,
                                 binder_id)
-    })
+    }
 }
 
 pub fn ast_path_to_ty<'tcx, AC: AstConv<'tcx>, RS: RegionScope>(
@@ -620,41 +658,6 @@ enum PointerTy {
     Uniq
 }
 
-pub fn trait_ref_for_unboxed_function<'tcx, AC: AstConv<'tcx>,
-                                      RS:RegionScope>(
-                                      this: &AC,
-                                      rscope: &RS,
-                                      kind: ast::UnboxedClosureKind,
-                                      decl: &ast::FnDecl,
-                                      self_ty: Option<ty::t>)
-                                      -> ty::TraitRef {
-    let lang_item = match kind {
-        ast::FnUnboxedClosureKind => FnTraitLangItem,
-        ast::FnMutUnboxedClosureKind => FnMutTraitLangItem,
-        ast::FnOnceUnboxedClosureKind => FnOnceTraitLangItem,
-    };
-    let trait_did = this.tcx().lang_items.require(lang_item).unwrap();
-    let input_types = decl.inputs
-                          .iter()
-                          .map(|input| {
-                            ast_ty_to_ty(this, rscope, &*input.ty)
-                          }).collect::<Vec<_>>();
-    let input_tuple = ty::mk_tup_or_nil(this.tcx(), input_types);
-    let output_type = ast_ty_to_ty(this, rscope, &*decl.output);
-    let mut substs = Substs::new_type(vec!(input_tuple, output_type),
-                                      Vec::new());
-
-    match self_ty {
-        Some(s) => substs.types.push(SelfSpace, s),
-        None => ()
-    }
-
-    ty::TraitRef {
-        def_id: trait_did,
-        substs: substs,
-    }
-}
-
 // Handle `~`, `Box`, and `&` being able to mean strs and vecs.
 // If a_seq_ty is a str or a vec, make it a str/vec.
 // Also handle first-class trait types.
@@ -702,26 +705,17 @@ fn mk_pointer<'tcx, AC: AstConv<'tcx>, RS: RegionScope>(
                                                        None,
                                                        path,
                                                        id);
-                    let bounds = match *opt_bounds {
-                        None => {
-                            conv_existential_bounds(this,
-                                                    rscope,
-                                                    path.span,
-                                                    [result.clone()].as_slice(),
-                                                    [].as_slice())
-                        }
-                        Some(ref bounds) => {
-                            conv_existential_bounds(this,
-                                                    rscope,
-                                                    path.span,
-                                                    [result.clone()].as_slice(),
-                                                    bounds.as_slice())
-                        }
-                    };
+                    let empty_vec = [];
+                    let bounds = match *opt_bounds { None => empty_vec.as_slice(),
+                                                     Some(ref bounds) => bounds.as_slice() };
+                    let existential_bounds = conv_existential_bounds(this,
+                                                                     rscope,
+                                                                     path.span,
+                                                                     &[Rc::new(result.clone())],
+                                                                     bounds);
                     let tr = ty::mk_trait(tcx,
-                                          result.def_id,
-                                          result.substs.clone(),
-                                          bounds);
+                                          result,
+                                          existential_bounds);
                     return match ptr_ty {
                         Uniq => {
                             return ty::mk_uniq(tcx, tr);
@@ -907,6 +901,16 @@ pub fn ast_ty_to_ty<'tcx, AC: AstConv<'tcx>, RS: RegionScope>(
 
                 ty::mk_closure(tcx, fn_decl)
             }
+            ast::TyPolyTraitRef(ref data) => {
+                // FIXME(#18639) this is just a placeholder for code to come
+                let principal = instantiate_trait_ref(this, rscope, &data.trait_ref, None, None);
+                let bounds = conv_existential_bounds(this,
+                                                     rscope,
+                                                     ast_ty.span,
+                                                     &[principal.clone()],
+                                                     &[]);
+                ty::mk_trait(tcx, (*principal).clone(), bounds)
+            }
             ast::TyPath(ref path, ref bounds, id) => {
                 let a_def = match tcx.def_map.borrow().get(&id) {
                     None => {
@@ -943,11 +947,10 @@ pub fn ast_ty_to_ty<'tcx, AC: AstConv<'tcx>, RS: RegionScope>(
                         let bounds = conv_existential_bounds(this,
                                                              rscope,
                                                              ast_ty.span,
-                                                             &[result.clone()],
+                                                             &[Rc::new(result.clone())],
                                                              ast_bounds);
                         ty::mk_trait(tcx,
-                                     result.def_id,
-                                     result.substs.clone(),
+                                     result,
                                      bounds)
                     }
                     def::DefTy(did, _) | def::DefStruct(did) => {
@@ -1546,6 +1549,7 @@ pub fn partition_bounds<'a>(tcx: &ty::ctxt,
     for &ast_bound in ast_bounds.iter() {
         match *ast_bound {
             ast::TraitTyParamBound(ref b) => {
+                let b = &b.trait_ref; // FIXME
                 match lookup_def_tcx(tcx, b.path.span, b.ref_id) {
                     def::DefTrait(trait_did) => {
                         match trait_def_ids.get(&trait_did) {
