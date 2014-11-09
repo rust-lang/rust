@@ -17,7 +17,6 @@ use std::hash::Hash;
 use std::io;
 use std::mem;
 use std::num::Zero;
-use std::num;
 
 fn local_cmp<T:Float>(x: T, y: T) -> Ordering {
     // arbitrarily decide that NaNs are larger than everything.
@@ -166,7 +165,6 @@ impl<T: FloatMath + FromPrimitive> Summary<T> {
 }
 
 impl<'a, T: FloatMath + FromPrimitive> Stats<T> for &'a [T] {
-
     // FIXME #11059 handle NaN, inf and overflow
     fn sum(self) -> T {
         let mut partials = vec![];
@@ -176,8 +174,8 @@ impl<'a, T: FloatMath + FromPrimitive> Stats<T> for &'a [T] {
             // This inner loop applies `hi`/`lo` summation to each
             // partial so that the list of partial sums remains exact.
             for i in range(0, partials.len()) {
-                let mut y = partials[i];
-                if num::abs(x) < num::abs(y) {
+                let mut y: T = partials[i];
+                if x.abs() < y.abs() {
                     mem::swap(&mut x, &mut y);
                 }
                 // Rounded `x+y` is stored in `hi` with round-off stored in
@@ -249,7 +247,7 @@ impl<'a, T: FloatMath + FromPrimitive> Stats<T> for &'a [T] {
 
     fn median_abs_dev(self) -> T {
         let med = self.median();
-        let abs_devs: Vec<T> = self.iter().map(|&v| num::abs(med - v)).collect();
+        let abs_devs: Vec<T> = self.iter().map(|&v| (med - v).abs()).collect();
         // This constant is derived by smarter statistics brains than me, but it is
         // consistent with how R and other packages treat the MAD.
         let number = FromPrimitive::from_f64(1.4826).unwrap();

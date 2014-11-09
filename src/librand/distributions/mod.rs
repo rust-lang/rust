@@ -23,7 +23,6 @@ that do not need to record state.
 #![experimental]
 
 use core::prelude::*;
-use core::num;
 
 use {Rng, Rand};
 
@@ -243,7 +242,7 @@ fn ziggurat<R:Rng>(
         let u = if symmetric {2.0 * f - 1.0} else {f};
         let x = u * x_tab[i];
 
-        let test_x = if symmetric {num::abs(x)} else {x};
+        let test_x = if symmetric { x.abs() } else {x};
 
         // algebraically equivalent to |u| < x_tab[i+1]/x_tab[i] (or u < x_tab[i+1]/x_tab[i])
         if test_x < x_tab[i + 1] {
