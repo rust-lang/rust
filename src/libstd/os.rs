@@ -34,7 +34,7 @@
 use clone::Clone;
 use error::{FromError, Error};
 use fmt;
-use io::{IoResult, IoError};
+use io::IoResult;
 use iter::Iterator;
 use libc::{c_void, c_int};
 use libc;
@@ -43,6 +43,8 @@ use ops::Drop;
 use option::{Some, None, Option};
 use os;
 use path::{Path, GenericPath, BytesContainer};
+use sys;
+use sys::os as os_imp;
 use ptr::RawPtr;
 use ptr;
 use result::{Err, Ok, Result};
@@ -602,35 +604,11 @@ pub struct Pipe {
 /// descriptors to be closed, the file descriptors will leak. For safe handling
 /// of this scenario, use `std::io::PipeStream` instead.
 pub unsafe fn pipe() -> IoResult<Pipe> {
-    return _pipe();
-
-    #[cfg(unix)]
-    unsafe fn _pipe() -> IoResult<Pipe> {
-        let mut fds = [0, ..2];
-        match libc::pipe(fds.as_mut_ptr()) {
-            0 => Ok(Pipe { reader: fds[0], writer: fds[1] }),
-            _ => Err(IoError::last_error()),
-        }
-    }
-
-    #[cfg(windows)]
-    unsafe fn _pipe() -> IoResult<Pipe> {
-        // Windows pipes work subtly differently than unix pipes, and their
-        // inheritance has to be handled in a different way that I do not
-        // fully understand. Here we explicitly make the pipe non-inheritable,
-        // which means to pass it to a subprocess they need to be duplicated
-        // first, as in std::run.
-        let mut fds = [0, ..2];
-        match libc::pipe(fds.as_mut_ptr(), 1024 as ::libc::c_uint,
-                         (libc::O_BINARY | libc::O_NOINHERIT) as c_int) {
-            0 => {
-                assert!(fds[0] != -1 && fds[0] != 0);
-                assert!(fds[1] != -1 && fds[1] != 0);
-                Ok(Pipe { reader: fds[0], writer: fds[1] })
-            }
-            _ => Err(IoError::last_error()),
-        }
-    }
+    let (reader, writer) = try!(sys::os::pipe());
+    Ok(Pipe {
+        reader: reader.unwrap(),
+        writer: writer.unwrap(),
+    })
 }
 
 /// Returns the proper dll filename for the given basename of a file
@@ -905,59 +883,9 @@ pub fn change_dir(p: &Path) -> bool {
     }
 }
 
-#[cfg(unix)]
-/// Returns the platform-specific value of errno
-pub fn errno() -> int {
-    #[cfg(any(target_os = "macos",
-              target_os = "ios",
-              target_os = "freebsd"))]
-    fn errno_location() -> *const c_int {
-        extern {
-            fn __error() -> *const c_int;
-        }
-        unsafe {
-            __error()
-        }
-    }
-
-    #[cfg(target_os = "dragonfly")]
-    fn errno_location() -> *const c_int {
-        extern {
-            fn __dfly_error() -> *const c_int;
-        }
-        unsafe {
-            __dfly_error()
-        }
-    }
-
-    #[cfg(any(target_os = "linux", target_os = "android"))]
-    fn errno_location() -> *const c_int {
-        extern {
-            fn __errno_location() -> *const c_int;
-        }
-        unsafe {
-            __errno_location()
-        }
-    }
-
-    unsafe {
-        (*errno_location()) as int
-    }
-}
-
-#[cfg(windows)]
 /// Returns the platform-specific value of errno
 pub fn errno() -> uint {
-    use libc::types::os::arch::extra::DWORD;
-
-    #[link_name = "kernel32"]
-    extern "system" {
-        fn GetLastError() -> DWORD;
-    }
-
-    unsafe {
-        GetLastError() as uint
-    }
+    os_imp::errno() as uint
 }
 
 /// Return the string corresponding to an `errno()` value of `errnum`.
@@ -969,105 +897,7 @@ pub fn errno() -> uint {
 /// println!("{}", os::error_string(os::errno() as uint));
 /// ```
 pub fn error_string(errnum: uint) -> String {
-    return strerror(errnum);
-
-    #[cfg(unix)]
-    fn strerror(errnum: uint) -> String {
-        #[cfg(any(target_os = "macos",
-                  target_os = "ios",
-                  target_os = "android",
-                  target_os = "freebsd",
-                  target_os = "dragonfly"))]
-        fn strerror_r(errnum: c_int, buf: *mut c_char, buflen: libc::size_t)
-                      -> c_int {
-            extern {
-                fn strerror_r(errnum: c_int, buf: *mut c_char,
-                              buflen: libc::size_t) -> c_int;
-            }
-            unsafe {
-                strerror_r(errnum, buf, buflen)
-            }
-        }
-
-        // GNU libc provides a non-compliant version of strerror_r by default
-        // and requires macros to instead use the POSIX compliant variant.
-        // So we just use __xpg_strerror_r which is always POSIX compliant
-        #[cfg(target_os = "linux")]
-        fn strerror_r(errnum: c_int, buf: *mut c_char,
-                      buflen: libc::size_t) -> c_int {
-            extern {
-                fn __xpg_strerror_r(errnum: c_int,
-                                    buf: *mut c_char,
-                                    buflen: libc::size_t)
-                                    -> c_int;
-            }
-            unsafe {
-                __xpg_strerror_r(errnum, buf, buflen)
-            }
-        }
-
-        let mut buf = [0 as c_char, ..TMPBUF_SZ];
-
-        let p = buf.as_mut_ptr();
-        unsafe {
-            if strerror_r(errnum as c_int, p, buf.len() as libc::size_t) < 0 {
-                panic!("strerror_r failure");
-            }
-
-            ::string::raw::from_buf(p as *const u8)
-        }
-    }
-
-    #[cfg(windows)]
-    fn strerror(errnum: uint) -> String {
-        use libc::types::os::arch::extra::DWORD;
-        use libc::types::os::arch::extra::LPWSTR;
-        use libc::types::os::arch::extra::LPVOID;
-        use libc::types::os::arch::extra::WCHAR;
-
-        #[link_name = "kernel32"]
-        extern "system" {
-            fn FormatMessageW(flags: DWORD,
-                              lpSrc: LPVOID,
-                              msgId: DWORD,
-                              langId: DWORD,
-                              buf: LPWSTR,
-                              nsize: DWORD,
-                              args: *const c_void)
-                              -> DWORD;
-        }
-
-        static FORMAT_MESSAGE_FROM_SYSTEM: DWORD = 0x00001000;
-        static FORMAT_MESSAGE_IGNORE_INSERTS: DWORD = 0x00000200;
-
-        // This value is calculated from the macro
-        // MAKELANGID(LANG_SYSTEM_DEFAULT, SUBLANG_SYS_DEFAULT)
-        let langId = 0x0800 as DWORD;
-
-        let mut buf = [0 as WCHAR, ..TMPBUF_SZ];
-
-        unsafe {
-            let res = FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM |
-                                     FORMAT_MESSAGE_IGNORE_INSERTS,
-                                     ptr::null_mut(),
-                                     errnum as DWORD,
-                                     langId,
-                                     buf.as_mut_ptr(),
-                                     buf.len() as DWORD,
-                                     ptr::null());
-            if res == 0 {
-                // Sometimes FormatMessageW can fail e.g. system doesn't like langId,
-                let fm_err = errno();
-                return format!("OS Error {} (FormatMessageW() returned error {})", errnum, fm_err);
-            }
-
-            let msg = String::from_utf16(::str::truncate_utf16_at_nul(buf));
-            match msg {
-                Some(msg) => format!("OS Error {}: {}", errnum, msg),
-                None => format!("OS Error {} (FormatMessageW() returned invalid UTF-16)", errnum),
-            }
-        }
-    }
+    return os_imp::error_string(errnum as i32);
 }
 
 /// Get a string representing the platform-dependent last error

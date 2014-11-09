@@ -26,7 +26,6 @@ use core::raw;
 use local_data;
 use Runtime;
 use local::Local;
-use rtio::LocalIo;
 use unwind;
 use unwind::Unwinder;
 use collections::str::SendStr;
@@ -419,13 +418,6 @@ impl Task {
     pub fn maybe_yield(mut self: Box<Task>) {
         let ops = self.imp.take().unwrap();
         ops.maybe_yield(self);
-    }
-
-    /// Acquires a handle to the I/O factory that this task contains, normally
-    /// stored in the task's runtime. This factory may not always be available,
-    /// which is why the return type is `Option`
-    pub fn local_io<'a>(&'a mut self) -> Option<LocalIo<'a>> {
-        self.imp.as_mut().unwrap().local_io()
     }
 
     /// Returns the stack bounds for this task in (lo, hi) format. The stack

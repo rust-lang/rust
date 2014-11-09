@@ -20,16 +20,15 @@
 //! can be created in the future and there must be no active timers at that
 //! time.
 
-#![macro_escape]
+use mem;
+use rt::bookkeeping;
+use rt::mutex::StaticNativeMutex;
+use rt;
+use cell::UnsafeCell;
+use sys::helper_signal;
+use prelude::*;
 
-use std::cell::UnsafeCell;
-use std::mem;
-use std::rt::bookkeeping;
-use std::rt::mutex::StaticNativeMutex;
-use std::rt;
-use std::task::TaskBuilder;
-
-use NativeTaskBuilder;
+use task;
 
 /// A structure for management of a helper thread.
 ///
@@ -56,15 +55,6 @@ pub struct Helper<M> {
     pub initialized: UnsafeCell<bool>,
 }
 
-macro_rules! helper_init( (static $name:ident: Helper<$m:ty>) => (
-    static $name: Helper<$m> = Helper {
-        lock: ::std::rt::mutex::NATIVE_MUTEX_INIT,
-        chan: ::std::cell::UnsafeCell { value: 0 as *mut Sender<$m> },
-        signal: ::std::cell::UnsafeCell { value: 0 },
-        initialized: ::std::cell::UnsafeCell { value: false },
-    };
-) )
-
 impl<M: Send> Helper<M> {
     /// Lazily boots a helper thread, becoming a no-op if the helper has already
     /// been spawned.
@@ -77,17 +67,17 @@ impl<M: Send> Helper<M> {
     /// This function is safe to be called many times.
     pub fn boot<T: Send>(&'static self,
                          f: || -> T,
-                         helper: fn(imp::signal, Receiver<M>, T)) {
+                         helper: fn(helper_signal::signal, Receiver<M>, T)) {
         unsafe {
             let _guard = self.lock.lock();
             if !*self.initialized.get() {
                 let (tx, rx) = channel();
                 *self.chan.get() = mem::transmute(box tx);
-                let (receive, send) = imp::new();
+                let (receive, send) = helper_signal::new();
                 *self.signal.get() = send as uint;
 
                 let t = f();
-                TaskBuilder::new().native().spawn(proc() {
+                task::spawn(proc() {
                     bookkeeping::decrement();
                     helper(receive, rx, t);
                     self.lock.lock().signal()
@@ -111,7 +101,7 @@ impl<M: Send> Helper<M> {
             // send the message.
             assert!(!self.chan.get().is_null());
             (**self.chan.get()).send(msg);
-            imp::signal(*self.signal.get() as imp::signal);
+            helper_signal::signal(*self.signal.get() as helper_signal::signal);
         }
     }
 
@@ -126,7 +116,7 @@ impl<M: Send> Helper<M> {
             let chan: Box<Sender<M>> = mem::transmute(*self.chan.get());
             *self.chan.get() = 0 as *mut Sender<M>;
             drop(chan);
-            imp::signal(*self.signal.get() as imp::signal);
+            helper_signal::signal(*self.signal.get() as helper_signal::signal);
 
             // Wait for the child to exit
             guard.wait();
@@ -134,64 +124,8 @@ impl<M: Send> Helper<M> {
 
             // Clean up after ourselves
             self.lock.destroy();
-            imp::close(*self.signal.get() as imp::signal);
+            helper_signal::close(*self.signal.get() as helper_signal::signal);
             *self.signal.get() = 0;
         }
-    }
-}
-
-#[cfg(unix)]
-mod imp {
-    use libc;
-    use std::os;
-
-    use io::file::FileDesc;
-
-    pub type signal = libc::c_int;
-
-    pub fn new() -> (signal, signal) {
-        let os::Pipe { reader, writer } = unsafe { os::pipe().unwrap() };
-        (reader, writer)
-    }
-
-    pub fn signal(fd: libc::c_int) {
-        FileDesc::new(fd, false).inner_write([0]).ok().unwrap();
-    }
-
-    pub fn close(fd: libc::c_int) {
-        let _fd = FileDesc::new(fd, true);
-    }
-}
-
-#[cfg(windows)]
-mod imp {
-    use libc::{BOOL, LPCSTR, HANDLE, LPSECURITY_ATTRIBUTES, CloseHandle};
-    use std::ptr;
-    use libc;
-
-    pub type signal = HANDLE;
-
-    pub fn new() -> (HANDLE, HANDLE) {
-        unsafe {
-            let handle = CreateEventA(ptr::null_mut(), libc::FALSE, libc::FALSE,
-                                      ptr::null());
-            (handle, handle)
-        }
-    }
-
-    pub fn signal(handle: HANDLE) {
-        assert!(unsafe { SetEvent(handle) != 0 });
-    }
-
-    pub fn close(handle: HANDLE) {
-        assert!(unsafe { CloseHandle(handle) != 0 });
-    }
-
-    extern "system" {
-        fn CreateEventA(lpSecurityAttributes: LPSECURITY_ATTRIBUTES,
-                        bManualReset: BOOL,
-                        bInitialState: BOOL,
-                        lpName: LPCSTR) -> HANDLE;
-        fn SetEvent(hEvent: HANDLE) -> BOOL;
     }
 }
