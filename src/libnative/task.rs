@@ -19,13 +19,11 @@ use std::mem;
 use std::rt::bookkeeping;
 use std::rt::local::Local;
 use std::rt::mutex::NativeMutex;
-use std::rt::rtio;
 use std::rt::stack;
 use std::rt::task::{Task, BlockedTask, TaskOpts};
 use std::rt::thread::Thread;
 use std::rt;
 
-use io;
 use std::task::{TaskBuilder, Spawner};
 
 /// Creates a new Task which is ready to execute as a 1:1 task.
@@ -42,7 +40,6 @@ fn ops() -> Box<Ops> {
     box Ops {
         lock: unsafe { NativeMutex::new() },
         awoken: false,
-        io: io::IoFactory::new(),
         // these *should* get overwritten
         stack_bounds: (0, 0),
         stack_guard: 0
@@ -112,7 +109,6 @@ impl<S: Spawner> NativeTaskBuilder for TaskBuilder<S> {
 struct Ops {
     lock: NativeMutex,       // native synchronization
     awoken: bool,      // used to prevent spurious wakeups
-    io: io::IoFactory, // local I/O factory
 
     // This field holds the known bounds of the stack in (lo, hi) form. Not all
     // native tasks necessarily know their precise bounds, hence this is
@@ -271,10 +267,6 @@ impl rt::Runtime for Ops {
         Local::put(cur_task);
 
         NativeSpawner.spawn(opts, f);
-    }
-
-    fn local_io<'a>(&'a mut self) -> Option<rtio::LocalIo<'a>> {
-        Some(rtio::LocalIo::new(&mut self.io as &mut rtio::IoFactory))
     }
 }
 

@@ -21,10 +21,9 @@ and create receivers which will receive notifications after a period of time.
 
 use comm::{Receiver, Sender, channel};
 use time::Duration;
-use io::{IoResult, IoError};
-use kinds::Send;
-use boxed::Box;
-use rt::rtio::{IoFactory, LocalIo, RtioTimer, Callback};
+use io::IoResult;
+use sys::timer::Callback;
+use sys::timer::Timer as TimerImp;
 
 /// A synchronous timer object
 ///
@@ -69,7 +68,7 @@ use rt::rtio::{IoFactory, LocalIo, RtioTimer, Callback};
 /// # }
 /// ```
 pub struct Timer {
-    obj: Box<RtioTimer + Send>,
+    inner: TimerImp,
 }
 
 struct TimerCallback { tx: Sender<()> }
@@ -90,9 +89,7 @@ impl Timer {
     /// for a number of milliseconds, or to possibly create channels which will
     /// get notified after an amount of time has passed.
     pub fn new() -> IoResult<Timer> {
-        LocalIo::maybe_raise(|io| {
-            io.timer_init().map(|t| Timer { obj: t })
-        }).map_err(IoError::from_rtio_error)
+        TimerImp::new().map(|t| Timer { inner: t })
     }
 
     /// Blocks the current task for the specified duration.
@@ -106,7 +103,7 @@ impl Timer {
         // Short-circuit the timer backend for 0 duration
         let ms = in_ms_u64(duration);
         if ms == 0 { return }
-        self.obj.sleep(ms);
+        self.inner.sleep(ms);
     }
 
     /// Creates a oneshot receiver which will have a notification sent when
@@ -152,7 +149,7 @@ impl Timer {
         let (tx, rx) = channel();
         // Short-circuit the timer backend for 0 duration
         if in_ms_u64(duration) != 0 {
-            self.obj.oneshot(in_ms_u64(duration), box TimerCallback { tx: tx });
+            self.inner.oneshot(in_ms_u64(duration), box TimerCallback { tx: tx });
         } else {
             tx.send(());
         }
@@ -213,7 +210,7 @@ impl Timer {
         // not clear what use a 0ms period is anyway...
         let ms = if ms == 0 { 1 } else { ms };
         let (tx, rx) = channel();
-        self.obj.period(ms, box TimerCallback { tx: tx });
+        self.inner.period(ms, box TimerCallback { tx: tx });
         return rx
     }
 }

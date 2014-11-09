@@ -17,15 +17,17 @@
 
 use prelude::*;
 
-use io::{IoResult, IoError};
+use io::IoResult;
 use libc;
-use os;
-use rt::rtio::{RtioPipe, LocalIo};
+use sync::Arc;
+
+use sys_common;
+use sys;
+use sys::fs::FileDesc as FileDesc;
 
 /// A synchronous, in-memory pipe.
 pub struct PipeStream {
-    /// The internal, opaque runtime pipe object.
-    obj: Box<RtioPipe + Send>,
+    inner: Arc<FileDesc>
 }
 
 pub struct PipePair {
@@ -55,14 +57,14 @@ impl PipeStream {
     /// }
     /// ```
     pub fn open(fd: libc::c_int) -> IoResult<PipeStream> {
-        LocalIo::maybe_raise(|io| {
-            io.pipe_open(fd).map(|obj| PipeStream { obj: obj })
-        }).map_err(IoError::from_rtio_error)
+        Ok(PipeStream::from_filedesc(FileDesc::new(fd, true)))
     }
 
+    // FIXME: expose this some other way
+    /// Wrap a FileDesc directly, taking ownership.
     #[doc(hidden)]
-    pub fn new(inner: Box<RtioPipe + Send>) -> PipeStream {
-        PipeStream { obj: inner }
+    pub fn from_filedesc(fd: FileDesc) -> PipeStream {
+        PipeStream { inner: Arc::new(fd) }
     }
 
     /// Creates a pair of in-memory OS pipes for a unidirectional communication
@@ -76,43 +78,35 @@ impl PipeStream {
     /// This function can fail to succeed if the underlying OS has run out of
     /// available resources to allocate a new pipe.
     pub fn pair() -> IoResult<PipePair> {
-        struct Closer { fd: libc::c_int }
+        let (reader, writer) = try!(unsafe { sys::os::pipe() });
+        Ok(PipePair {
+            reader: PipeStream::from_filedesc(reader),
+            writer: PipeStream::from_filedesc(writer),
+        })
+    }
+}
 
-        let os::Pipe { reader, writer } = try!(unsafe { os::pipe() });
-        let mut reader = Closer { fd: reader };
-        let mut writer = Closer { fd: writer };
-
-        let io_reader = try!(PipeStream::open(reader.fd));
-        reader.fd = -1;
-        let io_writer = try!(PipeStream::open(writer.fd));
-        writer.fd = -1;
-        return Ok(PipePair { reader: io_reader, writer: io_writer });
-
-        impl Drop for Closer {
-            fn drop(&mut self) {
-                if self.fd != -1 {
-                    let _ = unsafe { libc::close(self.fd) };
-                }
-            }
-        }
+impl sys_common::AsFileDesc for PipeStream {
+    fn as_fd(&self) -> &sys::fs::FileDesc {
+        &*self.inner
     }
 }
 
 impl Clone for PipeStream {
     fn clone(&self) -> PipeStream {
-        PipeStream { obj: self.obj.clone() }
+        PipeStream { inner: self.inner.clone() }
     }
 }
 
 impl Reader for PipeStream {
     fn read(&mut self, buf: &mut [u8]) -> IoResult<uint> {
-        self.obj.read(buf).map_err(IoError::from_rtio_error)
+        self.inner.read(buf)
     }
 }
 
 impl Writer for PipeStream {
     fn write(&mut self, buf: &[u8]) -> IoResult<()> {
-        self.obj.write(buf).map_err(IoError::from_rtio_error)
+        self.inner.write(buf)
     }
 }
 

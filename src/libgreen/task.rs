@@ -24,7 +24,6 @@ use std::raw;
 use std::rt::Runtime;
 use std::rt::local::Local;
 use std::rt::mutex::NativeMutex;
-use std::rt::rtio;
 use std::rt::stack;
 use std::rt::task::{Task, BlockedTask, TaskOpts};
 use std::rt;
@@ -466,14 +465,6 @@ impl Runtime for GreenTask {
         let mut me = bomb.inner.take().unwrap();
         let sched = me.sched.take().unwrap();
         sched.run_task(me, sibling)
-    }
-
-    // Local I/O is provided by the scheduler's event loop
-    fn local_io<'a>(&'a mut self) -> Option<rtio::LocalIo<'a>> {
-        match self.sched.as_mut().unwrap().event_loop.io() {
-            Some(io) => Some(rtio::LocalIo::new(io)),
-            None => None,
-        }
     }
 
     fn stack_bounds(&self) -> (uint, uint) {
