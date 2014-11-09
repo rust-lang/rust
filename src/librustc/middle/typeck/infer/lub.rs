@@ -20,11 +20,11 @@ use middle::typeck::infer::{cres, InferCtxt};
 use middle::typeck::infer::fold_regions_in_sig;
 use middle::typeck::infer::{TypeTrace, Subtype};
 use middle::typeck::infer::region_inference::RegionMark;
-use std::collections::HashMap;
 use syntax::ast::{Many, Once, NodeId};
 use syntax::ast::{NormalFn, UnsafeFn};
 use syntax::ast::{Onceness, FnStyle};
 use syntax::ast::{MutMutable, MutImmutable};
+use util::nodemap::FnvHashMap;
 use util::ppaux::mt_to_string;
 use util::ppaux::Repr;
 
@@ -151,7 +151,7 @@ impl<'f, 'tcx> Combine<'tcx> for Lub<'f, 'tcx> {
                              mark: RegionMark,
                              new_vars: &[RegionVid],
                              new_scope: NodeId,
-                             a_map: &HashMap<ty::BoundRegion, ty::Region>,
+                             a_map: &FnvHashMap<ty::BoundRegion, ty::Region>,
                              r0: ty::Region)
                              -> ty::Region {
             // Regions that pre-dated the LUB computation stay as they are.

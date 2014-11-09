@@ -61,9 +61,9 @@ use middle::typeck::rscope::{UnelidableRscope, RegionScope, SpecificRscope, Bind
 use middle::typeck::rscope;
 use middle::typeck::TypeAndSubsts;
 use middle::typeck;
+use util::nodemap::DefIdMap;
 use util::ppaux::{Repr, UserString};
 
-use std::collections::HashMap;
 use std::rc::Rc;
 use std::iter::AdditiveIterator;
 use syntax::{abi, ast, ast_util};
@@ -1545,7 +1545,7 @@ pub fn partition_bounds<'a>(tcx: &ty::ctxt,
     let mut builtin_bounds = ty::empty_builtin_bounds();
     let mut region_bounds = Vec::new();
     let mut trait_bounds = Vec::new();
-    let mut trait_def_ids = HashMap::new();
+    let mut trait_def_ids = DefIdMap::new();
     for &ast_bound in ast_bounds.iter() {
         match *ast_bound {
             ast::TraitTyParamBound(ref b) => {
@@ -1599,4 +1599,3 @@ pub fn partition_bounds<'a>(tcx: &ty::ctxt,
         region_bounds: region_bounds,
     }
 }
-

@@ -48,10 +48,10 @@ use middle::typeck::infer;
 use middle::typeck::rscope::*;
 use middle::typeck::{CrateCtxt, lookup_def_tcx, no_params, write_ty_to_tcx};
 use middle::typeck;
+use util::nodemap::{FnvHashMap, FnvHashSet};
 use util::ppaux;
 use util::ppaux::{Repr,UserString};
 
-use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 
 use syntax::abi;
@@ -530,7 +530,7 @@ fn convert_methods<'a,I>(ccx: &CrateCtxt,
            rcvr_ty_generics.repr(ccx.tcx));
 
     let tcx = ccx.tcx;
-    let mut seen_methods = HashSet::new();
+    let mut seen_methods = FnvHashSet::new();
     for m in ms {
         if !seen_methods.insert(m.pe_ident().repr(tcx)) {
             tcx.sess.span_err(m.span, "duplicate method in trait impl");
@@ -1247,7 +1247,7 @@ pub fn convert_struct(ccx: &CrateCtxt,
     let tcx = ccx.tcx;
 
     // Write the type of each of the members and check for duplicate fields.
-    let mut seen_fields: HashMap<ast::Name, Span> = HashMap::new();
+    let mut seen_fields: FnvHashMap<ast::Name, Span> = FnvHashMap::new();
     let field_tys = struct_def.fields.iter().map(|f| {
         let result = convert_field(ccx, &pty.generics, f, local_def(id));
 

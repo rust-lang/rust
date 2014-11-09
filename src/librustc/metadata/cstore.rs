@@ -16,11 +16,11 @@
 use back::svh::Svh;
 use metadata::decoder;
 use metadata::loader;
+use util::nodemap::{FnvHashMap, NodeMap};
 
 use std::cell::RefCell;
 use std::c_vec::CVec;
 use std::rc::Rc;
-use std::collections::HashMap;
 use syntax::ast;
 use syntax::codemap::Span;
 use syntax::parse::token::IdentInterner;
@@ -29,7 +29,7 @@ use syntax::parse::token::IdentInterner;
 // local crate numbers (as generated during this session). Each external
 // crate may refer to types in other external crates, and each has their
 // own crate numbers.
-pub type cnum_map = HashMap<ast::CrateNum, ast::CrateNum>;
+pub type cnum_map = FnvHashMap<ast::CrateNum, ast::CrateNum>;
 
 pub enum MetadataBlob {
     MetadataVec(CVec<u8>),
@@ -67,22 +67,20 @@ pub struct CrateSource {
 }
 
 pub struct CStore {
-    metas: RefCell<HashMap<ast::CrateNum, Rc<crate_metadata>>>,
-    extern_mod_crate_map: RefCell<extern_mod_crate_map>,
+    metas: RefCell<FnvHashMap<ast::CrateNum, Rc<crate_metadata>>>,
+    /// Map from NodeId's of local extern crate statements to crate numbers
+    extern_mod_crate_map: RefCell<NodeMap<ast::CrateNum>>,
     used_crate_sources: RefCell<Vec<CrateSource>>,
     used_libraries: RefCell<Vec<(String, NativeLibaryKind)>>,
     used_link_args: RefCell<Vec<String>>,
     pub intr: Rc<IdentInterner>,
 }
 
-// Map from NodeId's of local extern crate statements to crate numbers
-type extern_mod_crate_map = HashMap<ast::NodeId, ast::CrateNum>;
-
 impl CStore {
     pub fn new(intr: Rc<IdentInterner>) -> CStore {
         CStore {
-            metas: RefCell::new(HashMap::new()),
-            extern_mod_crate_map: RefCell::new(HashMap::new()),
+            metas: RefCell::new(FnvHashMap::new()),
+            extern_mod_crate_map: RefCell::new(FnvHashMap::new()),
             used_crate_sources: RefCell::new(Vec::new()),
             used_libraries: RefCell::new(Vec::new()),
             used_link_args: RefCell::new(Vec::new()),

@@ -24,6 +24,8 @@ use driver::session::Session;
 use metadata::csearch::each_lang_item;
 use middle::ty;
 use middle::weak_lang_items;
+use util::nodemap::FnvHashMap;
+
 use syntax::ast;
 use syntax::ast_util::local_def;
 use syntax::attr::AttrMetaMethods;
@@ -32,7 +34,6 @@ use syntax::parse::token::InternedString;
 use syntax::visit::Visitor;
 use syntax::visit;
 
-use std::collections::HashMap;
 use std::iter::Enumerate;
 use std::slice;
 
@@ -123,7 +124,7 @@ struct LanguageItemCollector<'a> {
 
     session: &'a Session,
 
-    item_refs: HashMap<&'static str, uint>,
+    item_refs: FnvHashMap<&'static str, uint>,
 }
 
 impl<'a, 'v> Visitor<'v> for LanguageItemCollector<'a> {
@@ -148,7 +149,7 @@ impl<'a, 'v> Visitor<'v> for LanguageItemCollector<'a> {
 
 impl<'a> LanguageItemCollector<'a> {
     pub fn new(session: &'a Session) -> LanguageItemCollector<'a> {
-        let mut item_refs = HashMap::new();
+        let mut item_refs = FnvHashMap::new();
 
         $( item_refs.insert($name, $variant as uint); )*
 

@@ -30,12 +30,12 @@ use middle::ty_fold;
 use middle::ty_fold::{TypeFolder, TypeFoldable};
 use middle::typeck::check::regionmanip::replace_late_bound_regions;
 use std::cell::{RefCell};
-use std::collections::HashMap;
 use std::rc::Rc;
 use syntax::ast;
 use syntax::codemap;
 use syntax::codemap::Span;
 use util::common::indent;
+use util::nodemap::FnvHashMap;
 use util::ppaux::{bound_region_to_string, ty_to_string};
 use util::ppaux::{trait_ref_to_string, Repr};
 
@@ -958,7 +958,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                                                          trace: TypeTrace,
                                                          fsig: &ty::FnSig)
                                                     -> (ty::FnSig,
-                                                        HashMap<ty::BoundRegion,
+                                                        FnvHashMap<ty::BoundRegion,
                                                                 ty::Region>) {
         let (map, fn_sig) =
             replace_late_bound_regions(self.tcx, fsig.binder_id, fsig, |br| {

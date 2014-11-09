@@ -11,18 +11,18 @@
 use middle::def::*;
 use middle::resolve;
 use middle::ty;
+use util::nodemap::FnvHashMap;
 
-use std::collections::HashMap;
 use syntax::ast::*;
 use syntax::ast_util::{walk_pat};
 use syntax::codemap::{Span, DUMMY_SP};
 
-pub type PatIdMap = HashMap<Ident, NodeId>;
+pub type PatIdMap = FnvHashMap<Ident, NodeId>;
 
 // This is used because same-named variables in alternative patterns need to
 // use the NodeId of their namesake in the first pattern.
 pub fn pat_id_map(dm: &resolve::DefMap, pat: &Pat) -> PatIdMap {
-    let mut map = HashMap::new();
+    let mut map = FnvHashMap::new();
     pat_bindings(dm, pat, |_bm, p_id, _s, path1| {
         map.insert(path1.node, p_id);
     });
