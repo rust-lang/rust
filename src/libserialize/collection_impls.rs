@@ -16,7 +16,7 @@ use std::hash::{Hash, Hasher};
 
 use {Decodable, Encodable, Decoder, Encoder};
 use std::collections::{DList, RingBuf, TreeMap, TreeSet, HashMap, HashSet,
-                       TrieMap, TrieSet};
+                       TrieMap, TrieSet, VecMap};
 use std::collections::enum_set::{EnumSet, CLike};
 
 impl<
@@ -308,6 +308,40 @@ impl<E, D: Decoder<E>> Decodable<D, E> for TrieSet {
                 set.insert(try!(d.read_seq_elt(i, |d| Decodable::decode(d))));
             }
             Ok(set)
+        })
+    }
+}
+
+impl<
+    E,
+    S: Encoder<E>,
+    V: Encodable<S, E>
+> Encodable<S, E> for VecMap<V> {
+    fn encode(&self, e: &mut S) -> Result<(), E> {
+        e.emit_map(self.len(), |e| {
+                for (i, (key, val)) in self.iter().enumerate() {
+                    try!(e.emit_map_elt_key(i, |e| key.encode(e)));
+                    try!(e.emit_map_elt_val(i, |e| val.encode(e)));
+                }
+                Ok(())
+            })
+    }
+}
+
+impl<
+    E,
+    D: Decoder<E>,
+    V: Decodable<D, E>
+> Decodable<D, E> for VecMap<V> {
+    fn decode(d: &mut D) -> Result<VecMap<V>, E> {
+        d.read_map(|d, len| {
+            let mut map = VecMap::new();
+            for i in range(0u, len) {
+                let key = try!(d.read_map_elt_key(i, |d| Decodable::decode(d)));
+                let val = try!(d.read_map_elt_val(i, |d| Decodable::decode(d)));
+                map.insert(key, val);
+            }
+            Ok(map)
         })
     }
 }
