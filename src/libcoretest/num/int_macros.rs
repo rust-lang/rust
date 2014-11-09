@@ -39,10 +39,10 @@ mod tests {
 
     #[test]
     fn test_abs_sub() {
-        assert!((-1 as $T).abs_sub(&(1 as $T)) == 0 as $T);
-        assert!((1 as $T).abs_sub(&(1 as $T)) == 0 as $T);
-        assert!((1 as $T).abs_sub(&(0 as $T)) == 1 as $T);
-        assert!((1 as $T).abs_sub(&(-1 as $T)) == 2 as $T);
+        assert!((-1 as $T).abs_sub(1 as $T) == 0 as $T);
+        assert!((1 as $T).abs_sub(1 as $T) == 0 as $T);
+        assert!((1 as $T).abs_sub(0 as $T) == 1 as $T);
+        assert!((1 as $T).abs_sub(-1 as $T) == 2 as $T);
     }
 
     #[test]
