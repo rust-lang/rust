@@ -593,20 +593,20 @@ mod tests {
 
     #[test]
     fn test_abs_sub() {
-        assert_eq!((-1f32).abs_sub(&1f32), 0f32);
-        assert_eq!(1f32.abs_sub(&1f32), 0f32);
-        assert_eq!(1f32.abs_sub(&0f32), 1f32);
-        assert_eq!(1f32.abs_sub(&-1f32), 2f32);
-        assert_eq!(NEG_INFINITY.abs_sub(&0f32), 0f32);
-        assert_eq!(INFINITY.abs_sub(&1f32), INFINITY);
-        assert_eq!(0f32.abs_sub(&NEG_INFINITY), INFINITY);
-        assert_eq!(0f32.abs_sub(&INFINITY), 0f32);
+        assert_eq!((-1f32).abs_sub(1f32), 0f32);
+        assert_eq!(1f32.abs_sub(1f32), 0f32);
+        assert_eq!(1f32.abs_sub(0f32), 1f32);
+        assert_eq!(1f32.abs_sub(-1f32), 2f32);
+        assert_eq!(NEG_INFINITY.abs_sub(0f32), 0f32);
+        assert_eq!(INFINITY.abs_sub(1f32), INFINITY);
+        assert_eq!(0f32.abs_sub(NEG_INFINITY), INFINITY);
+        assert_eq!(0f32.abs_sub(INFINITY), 0f32);
     }
 
     #[test]
     fn test_abs_sub_nowin() {
-        assert!(NAN.abs_sub(&-1f32).is_nan());
-        assert!(1f32.abs_sub(&NAN).is_nan());
+        assert!(NAN.abs_sub(-1f32).is_nan());
+        assert!(1f32.abs_sub(NAN).is_nan());
     }
 
     #[test]

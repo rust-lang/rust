@@ -162,13 +162,13 @@ pub trait Signed: Num + Neg<Self> {
     /// For `f32` and `f64`, `NaN` will be returned if the number is `NaN`.
     ///
     /// For signed integers, `::MIN` will be returned if the number is `::MIN`.
-    fn abs(&self) -> Self;
+    fn abs(self) -> Self;
 
     /// The positive difference of two numbers.
     ///
     /// Returns `zero` if the number is less than or equal to `other`, otherwise the difference
     /// between `self` and `other` is returned.
-    fn abs_sub(&self, other: &Self) -> Self;
+    fn abs_sub(self, other: Self) -> Self;
 
     /// Returns the sign of the number.
     ///
@@ -183,31 +183,31 @@ pub trait Signed: Num + Neg<Self> {
     /// * `0` if the number is zero
     /// * `1` if the number is positive
     /// * `-1` if the number is negative
-    fn signum(&self) -> Self;
+    fn signum(self) -> Self;
 
     /// Returns true if the number is positive and false if the number is zero or negative.
-    fn is_positive(&self) -> bool;
+    fn is_positive(self) -> bool;
 
     /// Returns true if the number is negative and false if the number is zero or positive.
-    fn is_negative(&self) -> bool;
+    fn is_negative(self) -> bool;
 }
 
 macro_rules! signed_impl(
-    ($($t:ty)*) => ($(
-        impl Signed for $t {
+    ($($T:ty)*) => ($(
+        impl Signed for $T {
             #[inline]
-            fn abs(&self) -> $t {
-                if self.is_negative() { -*self } else { *self }
+            fn abs(self) -> $T {
+                if self.is_negative() { -self } else { self }
             }
 
             #[inline]
-            fn abs_sub(&self, other: &$t) -> $t {
-                if *self <= *other { 0 } else { *self - *other }
+            fn abs_sub(self, other: $T) -> $T {
+                if self <= other { 0 } else { self - other }
             }
 
             #[inline]
-            fn signum(&self) -> $t {
-                match *self {
+            fn signum(self) -> $T {
+                match self {
                     n if n > 0 => 1,
                     0 => 0,
                     _ => -1,
@@ -215,10 +215,10 @@ macro_rules! signed_impl(
             }
 
             #[inline]
-            fn is_positive(&self) -> bool { *self > 0 }
+            fn is_positive(self) -> bool { self > 0 }
 
             #[inline]
-            fn is_negative(&self) -> bool { *self < 0 }
+            fn is_negative(self) -> bool { self < 0 }
         }
     )*)
 )
@@ -226,21 +226,21 @@ macro_rules! signed_impl(
 signed_impl!(int i8 i16 i32 i64)
 
 macro_rules! signed_float_impl(
-    ($t:ty, $nan:expr, $inf:expr, $neg_inf:expr, $fabs:path, $fcopysign:path, $fdim:ident) => {
-        impl Signed for $t {
+    ($T:ty, $nan:expr, $inf:expr, $neg_inf:expr, $fabs:path, $fcopysign:path, $fdim:ident) => {
+        impl Signed for $T {
             /// Computes the absolute value. Returns `NAN` if the number is `NAN`.
             #[inline]
-            fn abs(&self) -> $t {
-                unsafe { $fabs(*self) }
+            fn abs(self) -> $T {
+                unsafe { $fabs(self) }
             }
 
             /// The positive difference of two numbers. Returns `0.0` if the number is
             /// less than or equal to `other`, otherwise the difference between`self`
             /// and `other` is returned.
             #[inline]
-            fn abs_sub(&self, other: &$t) -> $t {
-                extern { fn $fdim(a: $t, b: $t) -> $t; }
-                unsafe { $fdim(*self, *other) }
+            fn abs_sub(self, other: $T) -> $T {
+                extern { fn $fdim(a: $T, b: $T) -> $T; }
+                unsafe { $fdim(self, other) }
             }
 
             /// # Returns
@@ -249,19 +249,19 @@ macro_rules! signed_float_impl(
             /// - `-1.0` if the number is negative, `-0.0` or `NEG_INFINITY`
             /// - `NAN` if the number is NaN
             #[inline]
-            fn signum(&self) -> $t {
+            fn signum(self) -> $T {
                 if self != self { $nan } else {
-                    unsafe { $fcopysign(1.0, *self) }
+                    unsafe { $fcopysign(1.0, self) }
                 }
             }
 
             /// Returns `true` if the number is positive, including `+0.0` and `INFINITY`
             #[inline]
-            fn is_positive(&self) -> bool { *self > 0.0 || (1.0 / *self) == $inf }
+            fn is_positive(self) -> bool { self > 0.0 || (1.0 / self) == $inf }
 
             /// Returns `true` if the number is negative, including `-0.0` and `NEG_INFINITY`
             #[inline]
-            fn is_negative(&self) -> bool { *self < 0.0 || (1.0 / *self) == $neg_inf }
+            fn is_negative(self) -> bool { self < 0.0 || (1.0 / self) == $neg_inf }
         }
     }
 )
@@ -287,7 +287,7 @@ pub fn abs<T: Signed>(value: T) -> T {
 /// between `x` and `y` is returned.
 #[inline(always)]
 pub fn abs_sub<T: Signed>(x: T, y: T) -> T {
-    x.abs_sub(&y)
+    x.abs_sub(y)
 }
 
 /// Returns the sign of the number.
