@@ -346,7 +346,7 @@ impl FromStr for Duration {
 
             while !s.is_empty() {
                 s = match s.slice_shift_char() {
-                    (Some(c), rem) if c.is_digit() => {
+                    (Some(c), rem) if '0' <= c && c <= '9' => {
                         let digit = (c as u8 - b'0') as i64;
 
                         value = value.unwrap_or(0).checked_mul(&10);
