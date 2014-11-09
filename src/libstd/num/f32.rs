@@ -655,7 +655,7 @@ mod tests {
         let nan: f32 = Float::nan();
         let inf: f32 = Float::infinity();
         let neg_inf: f32 = Float::neg_infinity();
-        let zero: f32 = Zero::zero();
+        let zero: f32 = Float::zero();
         let neg_zero: f32 = Float::neg_zero();
         assert!(!nan.is_normal());
         assert!(!inf.is_normal());
@@ -672,7 +672,7 @@ mod tests {
         let nan: f32 = Float::nan();
         let inf: f32 = Float::infinity();
         let neg_inf: f32 = Float::neg_infinity();
-        let zero: f32 = Zero::zero();
+        let zero: f32 = Float::zero();
         let neg_zero: f32 = Float::neg_zero();
         assert_eq!(nan.classify(), FPNaN);
         assert_eq!(inf.classify(), FPInfinite);

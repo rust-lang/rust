@@ -153,7 +153,7 @@ impl UnicodeStrPrelude for str {
 
     #[inline]
     fn width(&self, is_cjk: bool) -> uint {
-        self.chars().map(|c| c.width(is_cjk).unwrap_or(0)).sum()
+        self.chars().map(|c| c.width(is_cjk).unwrap_or(0)).sum(0)
     }
 
     #[inline]

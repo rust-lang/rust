@@ -756,7 +756,7 @@ fn pick_column_to_specialize(def_map: &DefMap, m: &[Match]) -> Option<uint> {
         let total_score = m.iter()
             .map(|row| row.pats[col])
             .map(|pat| pat_score(def_map, pat))
-            .sum();
+            .sum(0);
 
         // Irrefutable columns always go first, they'd only be duplicated in the branches.
         if total_score == 0 {

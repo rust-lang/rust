@@ -15,7 +15,6 @@
 #![allow(deprecated)] // to_be32
 
 use std::iter::range_step;
-use std::num::Zero;
 use std::slice::bytes::{MutableByteVector, copy_memory};
 use serialize::hex::ToHex;
 
@@ -64,7 +63,7 @@ impl ToBits for u64 {
 fn add_bytes_to_bits<T: Int + ToBits>(bits: T, bytes: T) -> T {
     let (new_high_bits, new_low_bits) = bytes.to_bits();
 
-    if new_high_bits > Zero::zero() {
+    if new_high_bits > Int::zero() {
         panic!("numeric overflow occurred.")
     }
 

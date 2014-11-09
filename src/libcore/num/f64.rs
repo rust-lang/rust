@@ -121,7 +121,13 @@ impl Float for f64 {
     fn neg_infinity() -> f64 { NEG_INFINITY }
 
     #[inline]
+    fn zero() -> f64 { 0.0 }
+
+    #[inline]
     fn neg_zero() -> f64 { -0.0 }
+
+    #[inline]
+    fn one() -> f64 { 1.0 }
 
     /// Returns `true` if the number is NaN.
     #[inline]

@@ -14,7 +14,7 @@ use char;
 use fmt;
 use iter::{range, DoubleEndedIterator};
 use num::{Float, FPNaN, FPInfinite, ToPrimitive, Primitive};
-use num::{Zero, One, cast};
+use num::cast;
 use result::Ok;
 use slice::{mod, SlicePrelude};
 use str::StrPrelude;
@@ -97,8 +97,8 @@ pub fn float_to_str_bytes_common<T: Primitive + Float, U>(
         _ => ()
     }
 
-    let _0: T = Zero::zero();
-    let _1: T = One::one();
+    let _0: T = Float::zero();
+    let _1: T = Float::one();
 
     match num.classify() {
         FPNaN => return f("NaN".as_bytes()),

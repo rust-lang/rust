@@ -356,7 +356,7 @@ impl Path {
                         Some(vec![SEP_BYTE])
                     } else {
                         let n = if is_abs { comps.len() } else { comps.len() - 1} +
-                                comps.iter().map(|v| v.len()).sum();
+                                comps.iter().map(|v| v.len()).sum(0);
                         let mut v = Vec::with_capacity(n);
                         let mut it = comps.into_iter();
                         if !is_abs {
