@@ -21,7 +21,7 @@ use option::Option;
 #[cfg(test)] use fmt::Show;
 
 pub use core::num::{Num, div_rem, Zero, zero, One, one};
-pub use core::num::{Signed, abs, abs_sub, signum};
+pub use core::num::{Signed, abs, signum};
 pub use core::num::{Unsigned, pow, Bounded};
 pub use core::num::{Primitive, Int, Saturating};
 pub use core::num::{CheckedAdd, CheckedSub, CheckedMul, CheckedDiv};
@@ -57,6 +57,11 @@ pub trait FloatMath: Float {
     fn max(self, other: Self) -> Self;
     /// Returns the minimum of the two numbers.
     fn min(self, other: Self) -> Self;
+
+    /// The positive difference of two numbers. Returns `0.0` if the number is
+    /// less than or equal to `other`, otherwise the difference between`self`
+    /// and `other` is returned.
+    fn abs_sub(self, other: Self) -> Self;
 
     /// Take the cubic root of a number.
     fn cbrt(self) -> Self;
@@ -120,6 +125,13 @@ pub trait FromStrRadix {
 #[experimental = "might need to return Result"]
 pub fn from_str_radix<T: FromStrRadix>(str: &str, radix: uint) -> Option<T> {
     FromStrRadix::from_str_radix(str, radix)
+}
+
+// DEPRECATED
+
+#[deprecated = "Use `FloatMath::abs_sub`"]
+pub fn abs_sub<T: FloatMath>(x: T, y: T) -> T {
+    x.abs_sub(y)
 }
 
 /// Helper function for testing numeric operations

@@ -164,12 +164,6 @@ pub trait Signed: Num + Neg<Self> {
     /// For signed integers, `::MIN` will be returned if the number is `::MIN`.
     fn abs(self) -> Self;
 
-    /// The positive difference of two numbers.
-    ///
-    /// Returns `zero` if the number is less than or equal to `other`, otherwise the difference
-    /// between `self` and `other` is returned.
-    fn abs_sub(self, other: Self) -> Self;
-
     /// Returns the sign of the number.
     ///
     /// For `f32` and `f64`:
@@ -201,11 +195,6 @@ macro_rules! signed_impl(
             }
 
             #[inline]
-            fn abs_sub(self, other: $T) -> $T {
-                if self <= other { 0 } else { self - other }
-            }
-
-            #[inline]
             fn signum(self) -> $T {
                 match self {
                     n if n > 0 => 1,
@@ -232,15 +221,6 @@ macro_rules! signed_float_impl(
             #[inline]
             fn abs(self) -> $T {
                 unsafe { $fabs(self) }
-            }
-
-            /// The positive difference of two numbers. Returns `0.0` if the number is
-            /// less than or equal to `other`, otherwise the difference between`self`
-            /// and `other` is returned.
-            #[inline]
-            fn abs_sub(self, other: $T) -> $T {
-                extern { fn $fdim(a: $T, b: $T) -> $T; }
-                unsafe { $fdim(self, other) }
             }
 
             /// # Returns
@@ -1546,5 +1526,3 @@ pub trait Float: Signed + Primitive {
 
 #[deprecated = "Use `Signed::abs`"]
 pub fn abs<T: Signed>(value: T) -> T { value.abs() }
-#[deprecated = "Use `Signed::abs_sub`"]
-pub fn abs_sub<T: Signed>(x: T, y: T) -> T { x.abs_sub(y) }
