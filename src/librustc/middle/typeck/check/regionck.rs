@@ -770,8 +770,12 @@ fn visit_expr(rcx: &mut Rcx, expr: &ast::Expr) {
 
             {
                 let mc = mc::MemCategorizationContext::new(rcx);
-                let head_cmt = ignore_err!(mc.cat_expr(&**head));
-                link_pattern(rcx, mc, head_cmt, &**pat);
+                let pat_ty = rcx.resolve_node_type(pat.id);
+                let pat_cmt = mc.cat_rvalue(pat.id,
+                                            pat.span,
+                                            ty::ReScope(body.id),
+                                            pat_ty);
+                link_pattern(rcx, mc, pat_cmt, &**pat);
             }
 
             rcx.visit_expr(&**head);
