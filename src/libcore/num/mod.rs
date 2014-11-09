@@ -19,7 +19,7 @@ use {int, i8, i16, i32, i64};
 use {uint, u8, u16, u32, u64};
 use {f32, f64};
 use clone::Clone;
-use cmp::{PartialEq, PartialOrd};
+use cmp::{Ord, PartialEq, PartialOrd};
 use kinds::Copy;
 use mem::size_of;
 use ops::{Add, Sub, Mul, Div, Rem, Neg};
@@ -386,6 +386,7 @@ trait_impl!(Primitive for uint u8 u16 u32 u64 int i8 i16 i32 i64 f32 f64)
 /// A primitive signed or unsigned integer equipped with various bitwise
 /// operators, bit counting methods, and endian conversion functions.
 pub trait Int: Primitive
+             + Ord
              + CheckedAdd
              + CheckedSub
              + CheckedMul
