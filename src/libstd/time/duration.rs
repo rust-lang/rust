@@ -168,6 +168,7 @@ impl Duration {
     }
 
     /// Returns the total number of microseconds in the duration.
+    /// or `None` on overflow (exceeding 2^63 microseconds in either direction).
     #[inline]
     pub fn num_microseconds(&self) -> Option<i64> {
         let micros = try_opt!(self.millis.checked_mul(&MICROS_PER_MILLI));
@@ -175,6 +176,7 @@ impl Duration {
     }
 
     /// Returns the total number of nanoseconds in the duration.
+    /// or `None` on overflow (exceeding 2^63 nanoseconds in either direction).
     #[inline]
     pub fn num_nanoseconds(&self) -> Option<i64> {
         let nanos = try_opt!(self.millis.checked_mul(&NANOS_PER_MILLI));
