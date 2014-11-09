@@ -525,6 +525,28 @@ pub trait Int: Primitive
     fn to_le(self) -> Self {
         if cfg!(target_endian = "little") { self } else { self.swap_bytes() }
     }
+
+    /// Saturating addition. Returns `self + other`, saturating at the
+    /// numeric bounds instead of overflowing.
+    #[inline]
+    fn saturating_add(self, other: Self) -> Self {
+        match self.checked_add(&other) {
+            Some(x)                       => x,
+            None if other >= Zero::zero() => Bounded::max_value(),
+            None                          => Bounded::min_value(),
+        }
+    }
+
+    /// Saturating subtraction. Returns `self - other`, saturating at the
+    /// numeric bounds instead of overflowing.
+    #[inline]
+    fn saturating_sub(self, other: Self) -> Self {
+        match self.checked_sub(&other) {
+            Some(x)                       => x,
+            None if other >= Zero::zero() => Bounded::min_value(),
+            None                          => Bounded::max_value(),
+        }
+    }
 }
 
 macro_rules! int_impl {
@@ -1149,43 +1171,6 @@ impl_num_cast!(i64,   to_i64)
 impl_num_cast!(int,   to_int)
 impl_num_cast!(f32,   to_f32)
 impl_num_cast!(f64,   to_f64)
-
-/// Saturating math operations
-pub trait Saturating {
-    /// Saturating addition operator.
-    /// Returns a+b, saturating at the numeric bounds instead of overflowing.
-    fn saturating_add(self, v: Self) -> Self;
-
-    /// Saturating subtraction operator.
-    /// Returns a-b, saturating at the numeric bounds instead of overflowing.
-    fn saturating_sub(self, v: Self) -> Self;
-}
-
-impl<T: CheckedAdd + CheckedSub + Zero + PartialOrd + Bounded> Saturating for T {
-    #[inline]
-    fn saturating_add(self, v: T) -> T {
-        match self.checked_add(&v) {
-            Some(x) => x,
-            None => if v >= Zero::zero() {
-                Bounded::max_value()
-            } else {
-                Bounded::min_value()
-            }
-        }
-    }
-
-    #[inline]
-    fn saturating_sub(self, v: T) -> T {
-        match self.checked_sub(&v) {
-            Some(x) => x,
-            None => if v >= Zero::zero() {
-                Bounded::min_value()
-            } else {
-                Bounded::max_value()
-            }
-        }
-    }
-}
 
 /// Performs addition that returns `None` instead of wrapping around on overflow.
 pub trait CheckedAdd: Add<Self, Self> {

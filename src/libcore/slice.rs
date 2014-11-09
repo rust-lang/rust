@@ -40,7 +40,7 @@ use cmp::{PartialEq, PartialOrd, Eq, Ord, Ordering, Less, Equal, Greater, Equiv}
 use cmp;
 use default::Default;
 use iter::*;
-use num::{CheckedAdd, Saturating, div_rem};
+use num::{CheckedAdd, Int, div_rem};
 use ops;
 use option::{None, Option, Some};
 use ptr;
