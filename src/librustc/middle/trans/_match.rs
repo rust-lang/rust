@@ -214,10 +214,10 @@ use middle::trans::type_of;
 use middle::trans::debuginfo;
 use middle::ty;
 use util::common::indenter;
+use util::nodemap::FnvHashMap;
 use util::ppaux::{Repr, vec_map_to_string};
 
 use std;
-use std::collections::HashMap;
 use std::iter::AdditiveIterator;
 use std::rc::Rc;
 use syntax::ast;
@@ -336,7 +336,7 @@ pub struct BindingInfo {
     pub ty: ty::t,
 }
 
-type BindingsMap = HashMap<Ident, BindingInfo>;
+type BindingsMap = FnvHashMap<Ident, BindingInfo>;
 
 struct ArmData<'p, 'blk, 'tcx: 'blk> {
     bodycx: Block<'blk, 'tcx>,
@@ -1291,7 +1291,7 @@ fn create_bindings_map(bcx: Block, pat: &ast::Pat,
     let ccx = bcx.ccx();
     let tcx = bcx.tcx();
     let reassigned = is_discr_reassigned(bcx, discr, body);
-    let mut bindings_map = HashMap::new();
+    let mut bindings_map = FnvHashMap::new();
     pat_bindings(&tcx.def_map, &*pat, |bm, p_id, span, path1| {
         let ident = path1.node;
         let variable_ty = node_id_type(bcx, p_id);

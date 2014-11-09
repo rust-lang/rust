@@ -21,9 +21,9 @@ use metadata::decoder;
 use metadata::loader;
 use metadata::loader::CratePaths;
 use plugin::load::PluginMetadata;
+use util::nodemap::FnvHashMap;
 
 use std::rc::Rc;
-use std::collections::HashMap;
 use std::collections::hash_map::{Occupied, Vacant};
 use syntax::ast;
 use syntax::abi;
@@ -85,7 +85,7 @@ fn dump_crates(cstore: &CStore) {
 }
 
 fn warn_if_multiple_versions(diag: &SpanHandler, cstore: &CStore) {
-    let mut map = HashMap::new();
+    let mut map = FnvHashMap::new();
     cstore.iter_crate_data(|cnum, data| {
         match map.entry(data.name()) {
             Vacant(entry) => { entry.set(vec![cnum]); },

@@ -23,13 +23,12 @@ use middle::ty::{lookup_item_type};
 use middle::ty;
 use middle::stability;
 use middle;
-use util::nodemap::{NodeMap, NodeSet};
+use util::nodemap::{FnvHashMap, NodeMap, NodeSet};
 
 use serialize::Encodable;
 use std::cell::RefCell;
 use std::hash::Hash;
 use std::hash;
-use std::collections::HashMap;
 use syntax::abi;
 use syntax::ast::*;
 use syntax::ast;
@@ -2062,7 +2061,7 @@ fn encode_metadata_inner(wr: &mut SeekableMemWriter, parms: EncodeParams, krate:
         link_meta: link_meta,
         cstore: cstore,
         encode_inlined_item: RefCell::new(encode_inlined_item),
-        type_abbrevs: RefCell::new(HashMap::new()),
+        type_abbrevs: RefCell::new(FnvHashMap::new()),
         reachable: reachable,
      };
 
@@ -2167,7 +2166,7 @@ pub fn encoded_ty(tcx: &ty::ctxt, t: ty::t) -> String {
         diag: tcx.sess.diagnostic(),
         ds: def_to_string,
         tcx: tcx,
-        abbrevs: &RefCell::new(HashMap::new())
+        abbrevs: &RefCell::new(FnvHashMap::new())
     }, t);
     String::from_utf8(wr.unwrap()).unwrap()
 }

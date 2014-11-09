@@ -24,11 +24,10 @@ Most of the documentation on regions can be found in
 use driver::session::Session;
 use middle::ty::{FreeRegion};
 use middle::ty;
-use util::nodemap::NodeMap;
+use util::nodemap::{FnvHashMap, NodeMap, NodeSet};
 use util::common::can_reach;
 
 use std::cell::RefCell;
-use std::collections::{HashMap, HashSet};
 use syntax::codemap::Span;
 use syntax::{ast, visit};
 use syntax::ast::{Block, Item, FnDecl, NodeId, Arm, Pat, Stmt, Expr, Local};
@@ -79,9 +78,9 @@ The region maps encode information about region relationships.
 pub struct RegionMaps {
     scope_map: RefCell<NodeMap<ast::NodeId>>,
     var_map: RefCell<NodeMap<ast::NodeId>>,
-    free_region_map: RefCell<HashMap<FreeRegion, Vec<FreeRegion>>>,
+    free_region_map: RefCell<FnvHashMap<FreeRegion, Vec<FreeRegion>>>,
     rvalue_scopes: RefCell<NodeMap<ast::NodeId>>,
-    terminating_scopes: RefCell<HashSet<ast::NodeId>>,
+    terminating_scopes: RefCell<NodeSet>,
 }
 
 pub struct Context {
@@ -876,9 +875,9 @@ pub fn resolve_crate(sess: &Session, krate: &ast::Crate) -> RegionMaps {
     let maps = RegionMaps {
         scope_map: RefCell::new(NodeMap::new()),
         var_map: RefCell::new(NodeMap::new()),
-        free_region_map: RefCell::new(HashMap::new()),
+        free_region_map: RefCell::new(FnvHashMap::new()),
         rvalue_scopes: RefCell::new(NodeMap::new()),
-        terminating_scopes: RefCell::new(HashSet::new()),
+        terminating_scopes: RefCell::new(NodeSet::new()),
     };
     {
         let mut visitor = RegionResolutionVisitor {
@@ -901,4 +900,3 @@ pub fn resolve_inlined_item(sess: &Session,
     };
     visit::walk_inlined_item(&mut visitor, item);
 }
-
