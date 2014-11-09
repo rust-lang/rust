@@ -2131,6 +2131,7 @@ pub fn type_is_scalar(ty: t) -> bool {
       ty_bool | ty_char | ty_int(_) | ty_float(_) | ty_uint(_) |
       ty_infer(IntVar(_)) | ty_infer(FloatVar(_)) |
       ty_bare_fn(..) | ty_ptr(_) => true,
+      ty_tup(ref tys) if tys.is_empty() => true,
       _ => false
     }
 }
@@ -3777,6 +3778,7 @@ pub fn ty_sort_string(cx: &ctxt, t: t) -> String {
         ty_uint(_) | ty_float(_) | ty_str => {
             ::util::ppaux::ty_to_string(cx, t)
         }
+        ty_tup(ref tys) if tys.is_empty() => ::util::ppaux::ty_to_string(cx, t),
 
         ty_enum(id, _) => format!("enum {}", item_path_str(cx, id)),
         ty_uniq(_) => "box".to_string(),
@@ -4771,54 +4773,42 @@ pub fn normalize_ty(cx: &ctxt, t: t) -> t {
 // Returns the repeat count for a repeating vector expression.
 pub fn eval_repeat_count(tcx: &ctxt, count_expr: &ast::Expr) -> uint {
     match const_eval::eval_const_expr_partial(tcx, count_expr) {
-      Ok(ref const_val) => match *const_val {
-        const_eval::const_int(count) => if count < 0 {
-            tcx.sess.span_err(count_expr.span,
-                              "expected positive integer for \
-                               repeat count, found negative integer");
-            0
-        } else {
-            count as uint
-        },
-        const_eval::const_uint(count) => count as uint,
-        const_eval::const_float(count) => {
-            tcx.sess.span_err(count_expr.span,
-                              "expected positive integer for \
-                               repeat count, found float");
-            count as uint
+        Ok(val) => {
+            let found = match val {
+                const_eval::const_uint(count) => return count as uint,
+                const_eval::const_int(count) if count >= 0 => return count as uint,
+                const_eval::const_int(_) =>
+                    "negative integer",
+                const_eval::const_float(_) =>
+                    "float",
+                const_eval::const_str(_) =>
+                    "string",
+                const_eval::const_bool(_) =>
+                    "boolean",
+                const_eval::const_binary(_) =>
+                    "binary array"
+            };
+            tcx.sess.span_err(count_expr.span, format!(
+                "expected positive integer for repeat count, found {}",
+                found).as_slice());
         }
-        const_eval::const_str(_) => {
-            tcx.sess.span_err(count_expr.span,
-                              "expected positive integer for \
-                               repeat count, found string");
-            0
+        Err(_) => {
+            let found = match count_expr.node {
+                ast::ExprPath(ast::Path {
+                    global: false,
+                    ref segments,
+                    ..
+                }) if segments.len() == 1 =>
+                    "variable",
+                _ =>
+                    "non-constant expression"
+            };
+            tcx.sess.span_err(count_expr.span, format!(
+                "expected constant integer for repeat count, found {}",
+                found).as_slice());
         }
-        const_eval::const_bool(_) => {
-            tcx.sess.span_err(count_expr.span,
-                              "expected positive integer for \
-                               repeat count, found boolean");
-            0
-        }
-        const_eval::const_binary(_) => {
-            tcx.sess.span_err(count_expr.span,
-                              "expected positive integer for \
-                               repeat count, found binary array");
-            0
-        }
-        const_eval::const_nil => {
-            tcx.sess.span_err(count_expr.span,
-                              "expected positive integer for \
-                               repeat count, found ()");
-            0
-        }
-      },
-      Err(..) => {
-        tcx.sess.span_err(count_expr.span,
-                          "expected constant integer for repeat count, \
-                           found variable");
-        0
-      }
     }
+    0
 }
 
 // Iterate over a type parameter's bounded traits and any supertraits

@@ -1374,10 +1374,9 @@ pub fn create_function_debug_context(cx: &CrateContext,
         let mut signature = Vec::with_capacity(fn_decl.inputs.len() + 1);
 
         // Return type -- llvm::DIBuilder wants this at index 0
-        match fn_decl.output.node {
-            ast::TyNil => {
-                signature.push(ptr::null_mut());
-            }
+        match fn_decl.output {
+            ast::Return(ref ret_ty) if ret_ty.node == ast::TyTup(vec![]) =>
+                signature.push(ptr::null_mut()),
             _ => {
                 assert_type_for_node_id(cx, fn_ast_id, error_reporting_span);
 
@@ -1738,6 +1737,8 @@ fn basic_type_metadata(cx: &CrateContext, t: ty::t) -> DIType {
     debug!("basic_type_metadata: {}", ty::get(t));
 
     let (name, encoding) = match ty::get(t).sty {
+        ty::ty_tup(ref elements) if elements.is_empty() =>
+            ("()".to_string(), DW_ATE_unsigned),
         ty::ty_bool => ("bool".to_string(), DW_ATE_boolean),
         ty::ty_char => ("char".to_string(), DW_ATE_unsigned_char),
         ty::ty_int(int_ty) => match int_ty {
@@ -2888,6 +2889,9 @@ fn type_metadata(cx: &CrateContext,
         ty::ty_float(_) => {
             MetadataCreationResult::new(basic_type_metadata(cx, t), false)
         }
+        ty::ty_tup(ref elements) if elements.is_empty() => {
+            MetadataCreationResult::new(basic_type_metadata(cx, t), false)
+        }
         ty::ty_enum(def_id, _) => {
             prepare_enum_metadata(cx, t, def_id, unique_type_id, usage_site_span).finalize(cx)
         }
@@ -3669,7 +3673,7 @@ fn compute_debuginfo_type_name(cx: &CrateContext,
 fn push_debuginfo_type_name(cx: &CrateContext,
                             t: ty::t,
                             qualified: bool,
-                            output:&mut String) {
+                            output: &mut String) {
     match ty::get(t).sty {
         ty::ty_bool              => output.push_str("bool"),
         ty::ty_char              => output.push_str("char"),
@@ -3697,8 +3701,10 @@ fn push_debuginfo_type_name(cx: &CrateContext,
                 push_debuginfo_type_name(cx, component_type, true, output);
                 output.push_str(", ");
             }
-            output.pop();
-            output.pop();
+            if !component_types.is_empty() {
+                output.pop();
+                output.pop();
+            }
             output.push(')');
         },
         ty::ty_uniq(inner_type) => {

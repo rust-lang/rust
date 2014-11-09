@@ -1037,10 +1037,9 @@ mod test {
                                     }),
                                         id: ast::DUMMY_NODE_ID
                                     }),
-                                output: P(ast::Ty{id: ast::DUMMY_NODE_ID,
-                                                  node: ast::TyNil,
-                                                  span:sp(15,15)}), // not sure
-                                cf: ast::Return,
+                                output: ast::Return(P(ast::Ty{id: ast::DUMMY_NODE_ID,
+                                                  node: ast::TyTup(vec![]),
+                                                  span:sp(15,15)})), // not sure
                                 variadic: false
                             }),
                                     ast::NormalFn,

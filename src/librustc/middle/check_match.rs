@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use middle::const_eval::{compare_const_vals, const_bool, const_float, const_nil, const_val};
+use middle::const_eval::{compare_const_vals, const_bool, const_float, const_val};
 use middle::const_eval::{const_expr_to_pat, eval_const_expr, lookup_const_by_id};
 use middle::def::*;
 use middle::expr_use_visitor::{ConsumeMode, Delegate, ExprUseVisitor, Init};
@@ -332,7 +332,6 @@ fn check_exhaustive(cx: &MatchCheckCtxt, sp: Span, matrix: &Matrix) {
 fn const_val_to_expr(value: &const_val) -> P<Expr> {
     let node = match value {
         &const_bool(b) => LitBool(b),
-        &const_nil => LitNil,
         _ => unreachable!()
     };
     P(Expr {
@@ -402,7 +401,7 @@ fn construct_witness(cx: &MatchCheckCtxt, ctor: &Constructor,
     let pats_len = pats.len();
     let mut pats = pats.into_iter().map(|p| P((*p).clone()));
     let pat = match ty::get(left_ty).sty {
-        ty::ty_tup(ref tys) if !tys.is_empty() => PatTup(pats.collect()),
+        ty::ty_tup(_) => PatTup(pats.collect()),
 
         ty::ty_enum(cid, _) | ty::ty_struct(cid, _)  => {
             let (vid, is_structure) = match ctor {
@@ -496,9 +495,6 @@ fn all_constructors(cx: &MatchCheckCtxt, left_ty: ty::t,
     match ty::get(left_ty).sty {
         ty::ty_bool =>
             [true, false].iter().map(|b| ConstantValue(const_bool(*b))).collect(),
-
-        ty::ty_tup(ref tys) if tys.is_empty() =>
-            vec!(ConstantValue(const_nil)),
 
         ty::ty_rptr(_, ty::mt { ty, .. }) => match ty::get(ty).sty {
             ty::ty_vec(_, None) =>

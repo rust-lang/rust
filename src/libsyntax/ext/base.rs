@@ -248,7 +248,7 @@ impl DummyResult {
     pub fn raw_expr(sp: Span) -> P<ast::Expr> {
         P(ast::Expr {
             id: ast::DUMMY_NODE_ID,
-            node: ast::ExprLit(P(codemap::respan(sp, ast::LitNil))),
+            node: ast::ExprLit(P(codemap::respan(sp, ast::LitBool(false)))),
             span: sp,
         })
     }
