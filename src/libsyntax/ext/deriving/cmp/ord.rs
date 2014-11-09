@@ -107,12 +107,19 @@ pub fn cs_partial_cmp(cx: &mut ExtCtxt, span: Span,
     let ordering = cx.expr_path(ordering);
     let equals_expr = cx.expr_some(span, ordering);
 
+    let partial_cmp_path = vec![
+        cx.ident_of("std"),
+        cx.ident_of("cmp"),
+        cx.ident_of("PartialOrd"),
+        cx.ident_of("partial_cmp"),
+    ];
+
     /*
     Builds:
 
-    let __test = self_field1.partial_cmp(&other_field2);
+    let __test = ::std::cmp::PartialOrd::partial_cmp(&self_field1, &other_field1);
     if __test == ::std::option::Some(::std::cmp::Equal) {
-        let __test = self_field2.partial_cmp(&other_field2);
+        let __test = ::std::cmp::PartialOrd::partial_cmp(&self_field2, &other_field2);
         if __test == ::std::option::Some(::std::cmp::Equal) {
             ...
         } else {
@@ -124,17 +131,31 @@ pub fn cs_partial_cmp(cx: &mut ExtCtxt, span: Span,
 
     FIXME #6449: These `if`s could/should be `match`es.
     */
-    cs_same_method_fold(
+    cs_fold(
         // foldr nests the if-elses correctly, leaving the first field
         // as the outermost one, and the last as the innermost.
         false,
-        |cx, span, old, new| {
+        |cx, span, old, self_f, other_fs| {
             // let __test = new;
             // if __test == Some(::std::cmp::Equal) {
             //    old
             // } else {
             //    __test
             // }
+
+            let new = {
+                let other_f = match other_fs {
+                    [ref o_f] => o_f,
+                    _ => cx.span_bug(span, "not exactly 2 arguments in `deriving(PartialOrd)`"),
+                };
+
+                let args = vec![
+                    cx.expr_addr_of(span, self_f),
+                    cx.expr_addr_of(span, other_f.clone()),
+                ];
+
+                cx.expr_call_global(span, partial_cmp_path.clone(), args)
+            };
 
             let assign = cx.stmt_let(span, false, test_id, new);
 
@@ -149,7 +170,7 @@ pub fn cs_partial_cmp(cx: &mut ExtCtxt, span: Span,
         equals_expr.clone(),
         |cx, span, (self_args, tag_tuple), _non_self_args| {
             if self_args.len() != 2 {
-                cx.span_bug(span, "not exactly 2 arguments in `deriving(Ord)`")
+                cx.span_bug(span, "not exactly 2 arguments in `deriving(PartialOrd)`")
             } else {
                 some_ordering_collapsed(cx, span, PartialCmpOp, tag_tuple)
             }
@@ -183,7 +204,7 @@ fn cs_op(less: bool, equal: bool, cx: &mut ExtCtxt,
             */
             let other_f = match other_fs {
                 [ref o_f] => o_f,
-                _ => cx.span_bug(span, "not exactly 2 arguments in `deriving(Ord)`")
+                _ => cx.span_bug(span, "not exactly 2 arguments in `deriving(PartialOrd)`")
             };
 
             let cmp = cx.expr_binary(span, op, self_f.clone(), other_f.clone());
@@ -197,7 +218,7 @@ fn cs_op(less: bool, equal: bool, cx: &mut ExtCtxt,
         cx.expr_bool(span, equal),
         |cx, span, (self_args, tag_tuple), _non_self_args| {
             if self_args.len() != 2 {
-                cx.span_bug(span, "not exactly 2 arguments in `deriving(Ord)`")
+                cx.span_bug(span, "not exactly 2 arguments in `deriving(PartialOrd)`")
             } else {
                 let op = match (less, equal) {
                     (true,  true) => LeOp, (true,  false) => LtOp,
