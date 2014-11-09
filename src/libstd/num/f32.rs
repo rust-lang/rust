@@ -109,6 +109,11 @@ impl FloatMath for f32 {
     }
 
     #[inline]
+    fn abs_sub(self, other: f32) -> f32 {
+        unsafe { cmath::fdimf(self, other) }
+    }
+
+    #[inline]
     fn cbrt(self) -> f32 {
         unsafe { cmath::cbrtf(self) }
     }

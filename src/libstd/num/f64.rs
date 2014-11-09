@@ -117,6 +117,11 @@ impl FloatMath for f64 {
     }
 
     #[inline]
+    fn abs_sub(self, other: f64) -> f64 {
+        unsafe { cmath::fdim(self, other) }
+    }
+
+    #[inline]
     fn cbrt(self) -> f64 {
         unsafe { cmath::cbrt(self) }
     }
