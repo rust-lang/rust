@@ -60,9 +60,9 @@ This `for` loop syntax can be applied to any iterator over any type.
 
 use clone::Clone;
 use cmp;
-use cmp::{PartialEq, PartialOrd, Ord};
+use cmp::{PartialOrd, Ord};
 use mem;
-use num::{Zero, One, CheckedAdd, CheckedSub, ToPrimitive, Int};
+use num::{Zero, One, ToPrimitive, Int};
 use ops::{Add, Mul, Sub};
 use option::{Option, Some, None};
 use uint;
@@ -1093,7 +1093,7 @@ impl<A, T: Iterator<A>, U: Iterator<A>> Iterator<A> for Chain<T, U> {
         let lower = a_lower.saturating_add(b_lower);
 
         let upper = match (a_upper, b_upper) {
-            (Some(x), Some(y)) => x.checked_add(&y),
+            (Some(x), Some(y)) => x.checked_add(y),
             _ => None
         };
 
@@ -1415,7 +1415,7 @@ impl<A, T: Iterator<A>> Iterator<A> for Peekable<A, T> {
         if self.peeked.is_some() {
             let lo = lo.saturating_add(1);
             let hi = match hi {
-                Some(x) => x.checked_add(&1),
+                Some(x) => x.checked_add(1),
                 None => None
             };
             (lo, hi)
@@ -1680,7 +1680,7 @@ impl<'a, A, T: Iterator<A>, B, U: Iterator<B>> Iterator<B> for FlatMap<'a, A, T,
         let (blo, bhi) = self.backiter.as_ref().map_or((0, Some(0)), |it| it.size_hint());
         let lo = flo.saturating_add(blo);
         match (self.iter.size_hint(), fhi, bhi) {
-            ((0, Some(0)), Some(a), Some(b)) => (lo, a.checked_add(&b)),
+            ((0, Some(0)), Some(a), Some(b)) => (lo, a.checked_add(b)),
             _ => (lo, None)
         }
     }
@@ -1946,7 +1946,7 @@ impl<A: Add<A, A> + PartialOrd + Clone + ToPrimitive> Iterator<A> for Range<A> {
         // the i64/u64 might lie within their range.
         let bound = match self.state.to_i64() {
             Some(a) => {
-                let sz = self.stop.to_i64().map(|b| b.checked_sub(&a));
+                let sz = self.stop.to_i64().map(|b| b.checked_sub(a));
                 match sz {
                     Some(Some(bound)) => bound.to_uint(),
                     _ => None,
@@ -1954,7 +1954,7 @@ impl<A: Add<A, A> + PartialOrd + Clone + ToPrimitive> Iterator<A> for Range<A> {
             },
             None => match self.state.to_u64() {
                 Some(a) => {
-                    let sz = self.stop.to_u64().map(|b| b.checked_sub(&a));
+                    let sz = self.stop.to_u64().map(|b| b.checked_sub(a));
                     match sz {
                         Some(Some(bound)) => bound.to_uint(),
                         _ => None
@@ -2024,7 +2024,7 @@ impl<A: Add<A, A> + PartialOrd + Clone + ToPrimitive> Iterator<A> for RangeInclu
         } else {
             let lo = lo.saturating_add(1);
             let hi = match hi {
-                Some(x) => x.checked_add(&1),
+                Some(x) => x.checked_add(1),
                 None => None
             };
             (lo, hi)
@@ -2060,18 +2060,17 @@ pub struct RangeStep<A> {
 
 /// Return an iterator over the range [start, stop) by `step`. It handles overflow by stopping.
 #[inline]
-pub fn range_step<A: CheckedAdd + PartialOrd +
-                  Clone + Zero>(start: A, stop: A, step: A) -> RangeStep<A> {
+pub fn range_step<A: Int>(start: A, stop: A, step: A) -> RangeStep<A> {
     let rev = step < Zero::zero();
     RangeStep{state: start, stop: stop, step: step, rev: rev}
 }
 
-impl<A: CheckedAdd + PartialOrd + Clone> Iterator<A> for RangeStep<A> {
+impl<A: Int> Iterator<A> for RangeStep<A> {
     #[inline]
     fn next(&mut self) -> Option<A> {
         if (self.rev && self.state > self.stop) || (!self.rev && self.state < self.stop) {
-            let result = self.state.clone();
-            match self.state.checked_add(&self.step) {
+            let result = self.state;
+            match self.state.checked_add(self.step) {
                 Some(x) => self.state = x,
                 None => self.state = self.stop.clone()
             }
@@ -2094,19 +2093,18 @@ pub struct RangeStepInclusive<A> {
 
 /// Return an iterator over the range [start, stop] by `step`. It handles overflow by stopping.
 #[inline]
-pub fn range_step_inclusive<A: CheckedAdd + PartialOrd + Clone + Zero>(start: A, stop: A,
-                                                                step: A) -> RangeStepInclusive<A> {
+pub fn range_step_inclusive<A: Int>(start: A, stop: A, step: A) -> RangeStepInclusive<A> {
     let rev = step < Zero::zero();
     RangeStepInclusive{state: start, stop: stop, step: step, rev: rev, done: false}
 }
 
-impl<A: CheckedAdd + PartialOrd + Clone + PartialEq> Iterator<A> for RangeStepInclusive<A> {
+impl<A: Int> Iterator<A> for RangeStepInclusive<A> {
     #[inline]
     fn next(&mut self) -> Option<A> {
         if !self.done && ((self.rev && self.state >= self.stop) ||
                           (!self.rev && self.state <= self.stop)) {
-            let result = self.state.clone();
-            match self.state.checked_add(&self.step) {
+            let result = self.state;
+            match self.state.checked_add(self.step) {
                 Some(x) => self.state = x,
                 None => self.done = true
             }

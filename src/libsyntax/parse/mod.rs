@@ -63,7 +63,7 @@ impl ParseSess {
     pub fn reserve_node_ids(&self, count: ast::NodeId) -> ast::NodeId {
         let v = self.node_id.get();
 
-        match v.checked_add(&count) {
+        match v.checked_add(count) {
             Some(next) => { self.node_id.set(next); }
             None => panic!("Input too large, ran out of node ids!")
         }

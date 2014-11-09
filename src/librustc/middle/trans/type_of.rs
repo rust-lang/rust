@@ -24,15 +24,13 @@ use middle::trans::type_::Type;
 use syntax::abi;
 use syntax::ast;
 
-use std::num::CheckedMul;
-
 // LLVM doesn't like objects that are too big. Issue #17913
 fn ensure_array_fits_in_address_space(ccx: &CrateContext,
                                       llet: Type,
                                       size: machine::llsize,
                                       scapegoat: ty::t) {
     let esz = machine::llsize_of_alloc(ccx, llet);
-    match esz.checked_mul(&size) {
+    match esz.checked_mul(size) {
         Some(n) if n < ccx.max_obj_size() => {}
         _ => { ccx.report_overbig_object(scapegoat) }
     }

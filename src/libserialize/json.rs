@@ -609,7 +609,7 @@ impl<'a> PrettyEncoder<'a> {
     /// This is safe to set during encoding.
     pub fn set_indent<'a>(&mut self, indent: uint) {
         // self.indent very well could be 0 so we need to use checked division.
-        let level = self.curr_indent.checked_div(&self.indent).unwrap_or(0);
+        let level = self.curr_indent.checked_div(self.indent).unwrap_or(0);
         self.indent = indent;
         self.curr_indent = level * self.indent;
     }
