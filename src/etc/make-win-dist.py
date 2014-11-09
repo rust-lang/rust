@@ -42,11 +42,48 @@ def make_win_dist(dist_root, target_triple):
     else:
         rustc_dlls.append("libgcc_s_seh-1.dll")
 
-    target_libs = ["crtbegin.o", "crtend.o", "crt2.o", "dllcrt2.o",
-                   "libadvapi32.a", "libcrypt32.a", "libgcc.a", "libgcc_eh.a", "libgcc_s.a",
-                   "libimagehlp.a", "libiphlpapi.a", "libkernel32.a", "libm.a", "libmingw32.a",
-                   "libmingwex.a", "libmsvcrt.a", "libpsapi.a", "libshell32.a", "libstdc++.a",
-                   "libuser32.a", "libws2_32.a", "libiconv.a", "libmoldname.a"]
+    target_libs = [ # MinGW libs
+                    "crtbegin.o",
+                    "crtend.o",
+                    "crt2.o",
+                    "dllcrt2.o",
+                    "libgcc.a",
+                    "libgcc_eh.a",
+                    "libgcc_s.a",
+                    "libm.a",
+                    "libmingw32.a",
+                    "libmingwex.a",
+                    "libstdc++.a",
+                    "libiconv.a",
+                    "libmoldname.a",
+                    # Windows import libs
+                    "libadvapi32.a",
+                    "libbcrypt.a",
+                    "libcomctl32.a",
+                    "libcomdlg32.a",
+                    "libcrypt32.a",
+                    "libctl3d32.a",
+                    "libgdi32.a",
+                    "libimagehlp.a",
+                    "libiphlpapi.a",
+                    "libkernel32.a",
+                    "libmsvcrt.a",
+                    "libodbc32.a",
+                    "libole32.a",
+                    "liboleaut32.a",
+                    "libopengl32.a",
+                    "libpsapi.a",
+                    "librpcrt4.a",
+                    "libsetupapi.a",
+                    "libshell32.a",
+                    "libuser32.a",
+                    "libuuid.a",
+                    "libwinhttp.a",
+                    "libwinmm.a",
+                    "libwinspool.a",
+                    "libws2_32.a",
+                    "libwsock32.a",
+                    ]
 
     # Find mingw artifacts we want to bundle
     target_tools = find_files(target_tools, bin_path)
