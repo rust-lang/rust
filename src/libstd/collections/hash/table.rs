@@ -17,7 +17,7 @@ use iter::{Iterator, count};
 use kinds::{Sized, marker};
 use mem::{min_align_of, size_of};
 use mem;
-use num::{CheckedAdd, CheckedMul, is_power_of_two};
+use num::{CheckedAdd, CheckedMul, UnsignedInt};
 use ops::{Deref, DerefMut, Drop};
 use option::{Some, None, Option};
 use ptr::{RawPtr, copy_nonoverlapping_memory, zero_memory};
@@ -516,7 +516,7 @@ impl<K, V, M: Deref<RawTable<K, V>>> GapThenFull<K, V, M> {
 ///
 /// Fails if `target_alignment` is not a power of two.
 fn round_up_to_next(unrounded: uint, target_alignment: uint) -> uint {
-    assert!(is_power_of_two(target_alignment));
+    assert!(target_alignment.is_power_of_two());
     (unrounded + target_alignment - 1) & !(target_alignment - 1)
 }
 

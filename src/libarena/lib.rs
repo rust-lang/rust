@@ -38,7 +38,7 @@ use std::cmp;
 use std::intrinsics::{TyDesc, get_tydesc};
 use std::intrinsics;
 use std::mem;
-use std::num;
+use std::num::UnsignedInt;
 use std::ptr;
 use std::rc::Rc;
 use std::rt::heap::{allocate, deallocate};
@@ -187,7 +187,7 @@ impl Arena {
         self.chunks.borrow_mut().push(self.copy_head.borrow().clone());
 
         *self.copy_head.borrow_mut() =
-            chunk(num::next_power_of_two(new_min_chunk_size + 1u), true);
+            chunk((new_min_chunk_size + 1u).next_power_of_two(), true);
 
         return self.alloc_copy_inner(n_bytes, align);
     }
@@ -228,7 +228,7 @@ impl Arena {
         self.chunks.borrow_mut().push(self.head.borrow().clone());
 
         *self.head.borrow_mut() =
-            chunk(num::next_power_of_two(new_min_chunk_size + 1u), false);
+            chunk((new_min_chunk_size + 1u).next_power_of_two(), false);
 
         return self.alloc_noncopy_inner(n_bytes, align);
     }

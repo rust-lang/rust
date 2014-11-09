@@ -621,39 +621,46 @@ int_cast_impl!(i64, u64)
 #[cfg(target_word_size = "32")] int_cast_impl!(int, u32)
 #[cfg(target_word_size = "64")] int_cast_impl!(int, u64)
 
-/// Returns the smallest power of 2 greater than or equal to `n`.
-#[inline]
-pub fn next_power_of_two<T: Unsigned + Int>(n: T) -> T {
-    let halfbits = size_of::<T>() * 4;
-    let mut tmp: T = n - one();
-    let mut shift = 1u;
-    while shift <= halfbits {
-        tmp = tmp | (tmp >> shift);
-        shift = shift << 1u;
+/// Unsigned integers
+pub trait UnsignedInt: Int {
+    /// Returns `true` iff `self == 2^k` for some `k`.
+    fn is_power_of_two(self) -> bool {
+        (self - one()) & self == zero()
     }
-    tmp + one()
+
+    /// Returns the smallest power of two greater than or equal to `self`.
+    #[inline]
+    fn next_power_of_two(self) -> Self {
+        let halfbits = size_of::<Self>() * 4;
+        let mut tmp = self - one();
+        let mut shift = 1u;
+        while shift <= halfbits {
+            tmp = tmp | (tmp >> shift);
+            shift = shift << 1u;
+        }
+        tmp + one()
+    }
+
+    /// Returns the smallest power of two greater than or equal to `n`. If the
+    /// next power of two is greater than the type's maximum value, `None` is
+    /// returned, otherwise the power of two is wrapped in `Some`.
+    fn checked_next_power_of_two(self) -> Option<Self> {
+        let halfbits = size_of::<Self>() * 4;
+        let mut tmp = self - one();
+        let mut shift = 1u;
+        while shift <= halfbits {
+            tmp = tmp | (tmp >> shift);
+            shift = shift << 1u;
+        }
+        tmp.checked_add(&one())
+    }
 }
 
-// Returns `true` iff `n == 2^k` for some k.
-#[inline]
-pub fn is_power_of_two<T: Unsigned + Int>(n: T) -> bool {
-    (n - one()) & n == zero()
-}
-
-/// Returns the smallest power of 2 greater than or equal to `n`. If the next
-/// power of two is greater than the type's maximum value, `None` is returned,
-/// otherwise the power of 2 is wrapped in `Some`.
-#[inline]
-pub fn checked_next_power_of_two<T: Unsigned + Int>(n: T) -> Option<T> {
-    let halfbits = size_of::<T>() * 4;
-    let mut tmp: T = n - one();
-    let mut shift = 1u;
-    while shift <= halfbits {
-        tmp = tmp | (tmp >> shift);
-        shift = shift << 1u;
-    }
-    tmp.checked_add(&one())
-}
+impl UnsignedInt for uint {}
+impl UnsignedInt for u8 {}
+impl UnsignedInt for u16 {}
+impl UnsignedInt for u32 {}
+impl UnsignedInt for u64 {}
 
 /// A generic trait for converting a value to a number.
 pub trait ToPrimitive {
@@ -1525,4 +1532,18 @@ pub trait Float: Signed + Primitive {
 // DEPRECATED
 
 #[deprecated = "Use `Signed::abs`"]
-pub fn abs<T: Signed>(value: T) -> T { value.abs() }
+pub fn abs<T: Signed>(value: T) -> T {
+    value.abs()
+}
+#[deprecated = "Use `UnsignedInt::next_power_of_two`"]
+pub fn next_power_of_two<T: UnsignedInt>(n: T) -> T {
+    n.next_power_of_two()
+}
+#[deprecated = "Use `UnsignedInt::is_power_of_two`"]
+pub fn is_power_of_two<T: UnsignedInt>(n: T) -> bool {
+    n.is_power_of_two()
+}
+#[deprecated = "Use `UnsignedInt::checked_next_power_of_two`"]
+pub fn checked_next_power_of_two<T: UnsignedInt>(n: T) -> Option<T> {
+    n.checked_next_power_of_two()
+}
