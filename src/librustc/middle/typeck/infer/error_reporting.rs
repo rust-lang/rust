@@ -1102,7 +1102,8 @@ impl<'a, 'tcx> Rebuilder<'a, 'tcx> {
                     // be passing down a map.
                     ast::RegionTyParamBound(lt)
                 }
-                &ast::TraitTyParamBound(ref tr) => {
+                &ast::TraitTyParamBound(ref poly_tr) => {
+                    let tr = &poly_tr.trait_ref;
                     let last_seg = tr.path.segments.last().unwrap();
                     let mut insert = Vec::new();
                     let lifetimes = last_seg.parameters.lifetimes();
@@ -1119,10 +1120,12 @@ impl<'a, 'tcx> Rebuilder<'a, 'tcx> {
                         region_names: region_names
                     };
                     let new_path = self.rebuild_path(rebuild_info, lifetime);
-                    ast::TraitTyParamBound(ast::TraitRef {
-                        path: new_path,
-                        ref_id: tr.ref_id,
-                        lifetimes: tr.lifetimes.clone(),
+                    ast::TraitTyParamBound(ast::PolyTraitRef {
+                        bound_lifetimes: poly_tr.bound_lifetimes.clone(),
+                        trait_ref: ast::TraitRef {
+                            path: new_path,
+                            ref_id: tr.ref_id,
+                        }
                     })
                 }
             }

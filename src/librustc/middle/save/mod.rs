@@ -710,6 +710,7 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
                 }
             };
 
+            let trait_ref = &trait_ref.trait_ref;
             match self.lookup_type_ref(trait_ref.ref_id) {
                 Some(id) => {
                     let sub_span = self.span.sub_span_for_type_name(trait_ref.path.span);
@@ -1068,7 +1069,7 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DxrVisitor<'l, 'tcx> {
             for bound in param.bounds.iter() {
                 match *bound {
                     ast::TraitTyParamBound(ref trait_ref) => {
-                        self.process_trait_ref(trait_ref, None);
+                        self.process_trait_ref(&trait_ref.trait_ref, None);
                     }
                     _ => {}
                 }

@@ -373,12 +373,11 @@ impl TypeFoldable for ty::UnsizeKind {
         match *self {
             ty::UnsizeLength(len) => ty::UnsizeLength(len),
             ty::UnsizeStruct(box ref k, n) => ty::UnsizeStruct(box k.fold_with(folder), n),
-            ty::UnsizeVtable(ty::TyTrait{bounds, def_id, ref substs}, self_ty) => {
+            ty::UnsizeVtable(ty::TyTrait{ref principal, bounds}, self_ty) => {
                 ty::UnsizeVtable(
                     ty::TyTrait {
+                        principal: principal.fold_with(folder),
                         bounds: bounds.fold_with(folder),
-                        def_id: def_id,
-                        substs: substs.fold_with(folder)
                     },
                     self_ty.fold_with(folder))
             }
@@ -531,15 +530,10 @@ pub fn super_fold_sty<'tcx, T: TypeFolder<'tcx>>(this: &mut T,
         ty::ty_enum(tid, ref substs) => {
             ty::ty_enum(tid, substs.fold_with(this))
         }
-        ty::ty_trait(box ty::TyTrait {
-                def_id,
-                ref substs,
-                bounds
-            }) => {
+        ty::ty_trait(box ty::TyTrait { ref principal, bounds }) => {
             ty::ty_trait(box ty::TyTrait {
-                def_id: def_id,
-                substs: substs.fold_with(this),
-                bounds: this.fold_existential_bounds(bounds),
+                principal: (*principal).fold_with(this),
+                bounds: bounds.fold_with(this),
             })
         }
         ty::ty_tup(ref ts) => {

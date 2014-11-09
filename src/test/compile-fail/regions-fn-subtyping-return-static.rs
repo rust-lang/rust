@@ -22,11 +22,11 @@
 struct S;
 
 // Given 'cx, return 'cx
-type F = fn<'cx>(&'cx S) -> &'cx S;
+type F = for<'cx> fn(&'cx S) -> &'cx S;
 fn want_F(f: F) { }
 
 // Given anything, return 'static
-type G = fn<'cx>(&'cx S) -> &'static S;
+type G = for<'cx> fn(&'cx S) -> &'static S;
 fn want_G(f: G) { }
 
 // Should meet both.

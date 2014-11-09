@@ -1085,16 +1085,19 @@ impl<'a> rbml_writer_helpers for Encoder<'a> {
                         this.emit_enum_variant_arg(1, |this| idx.encode(this))
                     })
                 }
-                ty::UnsizeVtable(ty::TyTrait { def_id,
-                                               bounds: ref b,
-                                               ref substs },
+                ty::UnsizeVtable(ty::TyTrait { ref principal,
+                                               bounds: ref b },
                                  self_ty) => {
                     this.emit_enum_variant("UnsizeVtable", 2, 4, |this| {
-                        this.emit_enum_variant_arg(
-                            0, |this| Ok(this.emit_existential_bounds(ecx, b)));
-                        this.emit_enum_variant_arg(1, |this| def_id.encode(this));
-                        this.emit_enum_variant_arg(2, |this| Ok(this.emit_ty(ecx, self_ty)));
-                        this.emit_enum_variant_arg(3, |this| Ok(this.emit_substs(ecx, substs)))
+                        this.emit_enum_variant_arg(0, |this| {
+                            try!(this.emit_struct_field("principal", 0, |this| {
+                                Ok(this.emit_trait_ref(ecx, &*principal))
+                            }));
+                            this.emit_struct_field("bounds", 1, |this| {
+                                Ok(this.emit_existential_bounds(ecx, b))
+                            })
+                        });
+                        this.emit_enum_variant_arg(1, |this| Ok(this.emit_ty(ecx, self_ty)))
                     })
                 }
             }
@@ -1693,18 +1696,19 @@ impl<'a> rbml_decoder_decoder_helpers for reader::Decoder<'a> {
                         ty::UnsizeStruct(box uk, idx)
                     }
                     2 => {
-                        let b =
-                            this.read_enum_variant_arg(
-                                0, |this| Ok(this.read_existential_bounds(dcx))).unwrap();
-                        let def_id: ast::DefId =
-                            this.read_enum_variant_arg(1, |this| Decodable::decode(this)).unwrap();
+                        let ty_trait = try!(this.read_enum_variant_arg(0, |this| {
+                            let principal = try!(this.read_struct_field("principal", 0, |this| {
+                                Ok(this.read_trait_ref(dcx))
+                            }));
+                            Ok(ty::TyTrait {
+                                principal: (*principal).clone(),
+                                bounds: try!(this.read_struct_field("bounds", 1, |this| {
+                                    Ok(this.read_existential_bounds(dcx))
+                                })),
+                            })
+                        }));
                         let self_ty =
-                            this.read_enum_variant_arg(2, |this| Ok(this.read_ty(dcx))).unwrap();
-                        let substs = this.read_enum_variant_arg(3,
-                            |this| Ok(this.read_substs(dcx))).unwrap();
-                        let ty_trait = ty::TyTrait { def_id: def_id.tr(dcx),
-                                                     bounds: b,
-                                                     substs: substs };
+                            this.read_enum_variant_arg(1, |this| Ok(this.read_ty(dcx))).unwrap();
                         ty::UnsizeVtable(ty_trait, self_ty)
                     }
                     _ => panic!("bad enum variant for ty::UnsizeKind")

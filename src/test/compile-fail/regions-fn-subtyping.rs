@@ -17,29 +17,29 @@ fn test_fn<'x,'y,'z,T>(_x: &'x T, _y: &'y T, _z: &'z T) {
     // subtype::<T1>(of::<T2>()) will typecheck
     // iff T1 <: T2.
 
-    subtype::< <'a>|&'a T|>(
-        of::< <'a>|&'a T|>());
+    subtype::< for<'a>|&'a T|>(
+        of::< for<'a>|&'a T|>());
 
-    subtype::< <'a>|&'a T|>(
-        of::< <'b>|&'b T|>());
+    subtype::< for<'a>|&'a T|>(
+        of::< for<'b>|&'b T|>());
 
-    subtype::< <'b>|&'b T|>(
+    subtype::< for<'b>|&'b T|>(
         of::<|&'x T|>());
 
     subtype::<|&'x T|>(
-        of::< <'b>|&'b T|>());  //~ ERROR mismatched types
+        of::< for<'b>|&'b T|>());  //~ ERROR mismatched types
 
-    subtype::< <'a,'b>|&'a T, &'b T|>(
-        of::< <'a>|&'a T, &'a T|>());
+    subtype::< for<'a,'b>|&'a T, &'b T|>(
+        of::< for<'a>|&'a T, &'a T|>());
 
-    subtype::< <'a>|&'a T, &'a T|>(
-        of::< <'a,'b>|&'a T, &'b T|>()); //~ ERROR mismatched types
+    subtype::< for<'a>|&'a T, &'a T|>(
+        of::< for<'a,'b>|&'a T, &'b T|>()); //~ ERROR mismatched types
 
-    subtype::< <'a,'b>|&'a T, &'b T|>(
+    subtype::< for<'a,'b>|&'a T, &'b T|>(
         of::<|&'x T, &'y T|>());
 
     subtype::<|&'x T, &'y T|>(
-        of::< <'a,'b>|&'a T, &'b T|>()); //~ ERROR mismatched types
+        of::< for<'a,'b>|&'a T, &'b T|>()); //~ ERROR mismatched types
 }
 
 fn main() {}

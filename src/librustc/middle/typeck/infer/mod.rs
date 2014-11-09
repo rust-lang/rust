@@ -856,16 +856,12 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                                                       -> ty::TraitRef {
         // make up a dummy type just to reuse/abuse the resolve machinery
         let dummy0 = ty::mk_trait(self.tcx,
-                                  trait_ref.def_id,
-                                  trait_ref.substs.clone(),
+                                  (*trait_ref).clone(),
                                   ty::region_existential_bound(ty::ReStatic));
         let dummy1 = self.resolve_type_vars_if_possible(dummy0);
         match ty::get(dummy1).sty {
-            ty::ty_trait(box ty::TyTrait { ref def_id, ref substs, .. }) => {
-                ty::TraitRef {
-                    def_id: *def_id,
-                    substs: (*substs).clone(),
-                }
+            ty::ty_trait(box ty::TyTrait { ref principal, .. }) => {
+                (*principal).clone()
             }
             _ => {
                 self.tcx.sess.bug(
