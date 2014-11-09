@@ -734,7 +734,7 @@ fn link_staticlib(sess: &Session, obj_filename: &Path, out_filename: &Path) {
     let mut all_native_libs = vec![];
 
     for &(cnum, ref path) in crates.iter() {
-        let name = sess.cstore.get_crate_data(cnum).name.clone();
+        let ref name = sess.cstore.get_crate_data(cnum).name;
         let p = match *path {
             Some(ref p) => p.clone(), None => {
                 sess.err(format!("could not find rlib for: `{}`",
