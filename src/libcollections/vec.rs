@@ -21,7 +21,7 @@ use core::default::Default;
 use core::fmt;
 use core::kinds::marker::{ContravariantLifetime, InvariantType};
 use core::mem;
-use core::num;
+use core::num::UnsignedInt;
 use core::ops;
 use core::ptr;
 use core::raw::Slice as RawSlice;
@@ -605,7 +605,7 @@ impl<T> Vec<T> {
                 None => panic!("Vec::reserve: `uint` overflow"),
                 // if the checked_add
                 Some(new_cap) => {
-                    let amort_cap = num::next_power_of_two(new_cap);
+                    let amort_cap = new_cap.next_power_of_two();
                     // next_power_of_two will overflow to exactly 0 for really big capacities
                     if amort_cap == 0 {
                         self.grow_capacity(new_cap);

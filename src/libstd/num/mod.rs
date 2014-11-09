@@ -23,7 +23,7 @@ use option::Option;
 pub use core::num::{Num, div_rem, Zero, zero, One, one};
 pub use core::num::{Signed, abs, signum};
 pub use core::num::{Unsigned, pow, Bounded};
-pub use core::num::{Primitive, Int, Saturating};
+pub use core::num::{Primitive, Int, UnsignedInt, Saturating};
 pub use core::num::{CheckedAdd, CheckedSub, CheckedMul, CheckedDiv};
 pub use core::num::{cast, FromPrimitive, NumCast, ToPrimitive};
 pub use core::num::{next_power_of_two, is_power_of_two};
@@ -672,10 +672,10 @@ mod tests {
         ($test_name:ident, $T:ident) => (
             fn $test_name() {
                 #![test]
-                assert_eq!(next_power_of_two::<$T>(0), 0);
+                assert_eq!((0 as $T).next_power_of_two(), 0);
                 let mut next_power = 1;
                 for i in range::<$T>(1, 40) {
-                     assert_eq!(next_power_of_two(i), next_power);
+                     assert_eq!(i.next_power_of_two(), next_power);
                      if i == next_power { next_power *= 2 }
                 }
             }
@@ -692,15 +692,15 @@ mod tests {
         ($test_name:ident, $T:ident) => (
             fn $test_name() {
                 #![test]
-                assert_eq!(checked_next_power_of_two::<$T>(0), None);
+                assert_eq!((0 as $T).checked_next_power_of_two(), None);
                 let mut next_power = 1;
                 for i in range::<$T>(1, 40) {
-                     assert_eq!(checked_next_power_of_two(i), Some(next_power));
+                     assert_eq!(i.checked_next_power_of_two(), Some(next_power));
                      if i == next_power { next_power *= 2 }
                 }
-                assert!(checked_next_power_of_two::<$T>($T::MAX / 2).is_some());
-                assert_eq!(checked_next_power_of_two::<$T>($T::MAX - 1), None);
-                assert_eq!(checked_next_power_of_two::<$T>($T::MAX), None);
+                assert!(($T::MAX / 2).checked_next_power_of_two().is_some());
+                assert_eq!(($T::MAX - 1).checked_next_power_of_two(), None);
+                assert_eq!($T::MAX.checked_next_power_of_two(), None);
             }
         )
     )
