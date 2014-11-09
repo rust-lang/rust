@@ -549,17 +549,18 @@ pub trait Int: Primitive
     }
 }
 
-macro_rules! int_impl {
-    ($T:ty, $BITS:expr, $ctpop:path, $ctlz:path, $cttz:path, $bswap:path) => {
+macro_rules! uint_impl {
+    ($T:ty, $ActualT:ty, $BITS:expr,
+     $ctpop:path, $ctlz:path, $cttz:path, $bswap:path) => {
         impl Int for $T {
             #[inline]
-            fn count_ones(self) -> uint { unsafe { $ctpop(self) as uint } }
+            fn count_ones(self) -> uint { unsafe { $ctpop(self as $ActualT) as uint } }
 
             #[inline]
-            fn leading_zeros(self) -> uint { unsafe { $ctlz(self) as uint } }
+            fn leading_zeros(self) -> uint { unsafe { $ctlz(self as $ActualT) as uint } }
 
             #[inline]
-            fn trailing_zeros(self) -> uint { unsafe { $cttz(self) as uint } }
+            fn trailing_zeros(self) -> uint { unsafe { $cttz(self as $ActualT) as uint } }
 
             #[inline]
             fn rotate_left(self, n: uint) -> $T {
@@ -576,7 +577,7 @@ macro_rules! int_impl {
             }
 
             #[inline]
-            fn swap_bytes(self) -> $T { unsafe { $bswap(self) } }
+            fn swap_bytes(self) -> $T { unsafe { $bswap(self as $ActualT) as $T } }
         }
     }
 }
@@ -585,31 +586,45 @@ macro_rules! int_impl {
 /// consistency with the other `bswap` intrinsics.
 unsafe fn bswap8(x: u8) -> u8 { x }
 
-int_impl!(u8, 8,
+uint_impl!(u8, u8, 8,
     intrinsics::ctpop8,
     intrinsics::ctlz8,
     intrinsics::cttz8,
     bswap8)
 
-int_impl!(u16, 16,
+uint_impl!(u16, u16, 16,
     intrinsics::ctpop16,
     intrinsics::ctlz16,
     intrinsics::cttz16,
     intrinsics::bswap16)
 
-int_impl!(u32, 32,
+uint_impl!(u32, u32, 32,
     intrinsics::ctpop32,
     intrinsics::ctlz32,
     intrinsics::cttz32,
     intrinsics::bswap32)
 
-int_impl!(u64, 64,
+uint_impl!(u64, u64, 64,
     intrinsics::ctpop64,
     intrinsics::ctlz64,
     intrinsics::cttz64,
     intrinsics::bswap64)
 
-macro_rules! int_cast_impl {
+#[cfg(target_word_size = "32")]
+uint_impl!(uint, u32, 32,
+    intrinsics::ctpop32,
+    intrinsics::ctlz32,
+    intrinsics::cttz32,
+    intrinsics::bswap32)
+
+#[cfg(target_word_size = "64")]
+uint_impl!(uint, u64, 64,
+    intrinsics::ctpop64,
+    intrinsics::ctlz64,
+    intrinsics::cttz64,
+    intrinsics::bswap64)
+
+macro_rules! int_impl {
     ($T:ty, $U:ty) => {
         impl Int for $T {
             #[inline]
@@ -633,15 +648,12 @@ macro_rules! int_cast_impl {
     }
 }
 
-int_cast_impl!(i8, u8)
-int_cast_impl!(i16, u16)
-int_cast_impl!(i32, u32)
-int_cast_impl!(i64, u64)
-
-#[cfg(target_word_size = "32")] int_cast_impl!(uint, u32)
-#[cfg(target_word_size = "64")] int_cast_impl!(uint, u64)
-#[cfg(target_word_size = "32")] int_cast_impl!(int, u32)
-#[cfg(target_word_size = "64")] int_cast_impl!(int, u64)
+int_impl!(i8, u8)
+int_impl!(i16, u16)
+int_impl!(i32, u32)
+int_impl!(i64, u64)
+#[cfg(target_word_size = "32")] int_impl!(int, u32)
+#[cfg(target_word_size = "64")] int_impl!(int, u64)
 
 /// Unsigned integers
 pub trait UnsignedInt: Int {
