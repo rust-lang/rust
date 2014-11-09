@@ -131,6 +131,7 @@ pub use consts::os::extra::{IPPROTO_RAW};
 pub use funcs::c95::ctype::{isalnum, isalpha, iscntrl, isdigit};
 pub use funcs::c95::ctype::{islower, isprint, ispunct, isspace};
 pub use funcs::c95::ctype::{isupper, isxdigit, tolower, toupper};
+pub use funcs::c95::errno::{errno, set_errno};
 
 pub use funcs::c95::stdio::{fclose, feof, ferror, fflush, fgetc};
 pub use funcs::c95::stdio::{fgetpos, fgets, fopen, fputc, fputs};
@@ -3986,6 +3987,9 @@ pub mod funcs {
     // Thankfully most of c95 is universally available and does not vary by OS
     // or anything. The same is not true of POSIX.
 
+    // The interface to errno is OS dependent however, with the Windows implementation
+    // using GetLastError rather than the errno provided by CRT.
+
     pub mod c95 {
         pub mod ctype {
             use types::os::arch::c95::{c_char, c_int};
@@ -4004,6 +4008,91 @@ pub mod funcs {
                 pub fn isxdigit(c: c_int) -> c_int;
                 pub fn tolower(c: c_char) -> c_char;
                 pub fn toupper(c: c_char) -> c_char;
+            }
+        }
+
+        #[cfg(unix)]
+        pub mod errno {
+            use types::os::arch::c95::{c_int};
+
+            /// Return a pointer to the platform-specific value of errno
+            fn errno_ptr() -> *mut c_int {
+                #[cfg(any(target_os = "macos",
+                          target_os = "ios",
+                          target_os = "freebsd"))]
+                fn _errno_ptr() -> *mut c_int {
+                    extern {
+                        fn __error() -> *mut c_int;
+                    }
+                    unsafe {
+                        __error()
+                    }
+                }
+
+                #[cfg(target_os = "dragonfly")]
+                fn _errno_ptr() -> *mut c_int {
+                    extern {
+                        fn __dfly_error() -> *mut c_int;
+                    }
+                    unsafe {
+                        __dfly_error()
+                    }
+                }
+
+                #[cfg(any(target_os = "linux", target_os = "android"))]
+                fn _errno_ptr() -> *mut c_int {
+                    extern {
+                        fn __errno_location() -> *mut c_int;
+                    }
+                    unsafe {
+                        __errno_location()
+                    }
+                }
+
+                _errno_ptr()
+            }
+
+            /// Returns the platform-specific value of errno
+            pub fn errno() -> c_int {
+                unsafe {
+                    *errno_ptr()
+                }
+            }
+
+            /// Set the platform-specific value of errno
+            pub fn set_errno(e: c_int) {
+                unsafe {
+                    *errno_ptr() = e
+                }
+            }
+        }
+
+        #[cfg(windows)]
+        pub mod errno {
+            use types::os::arch::extra::DWORD;
+
+            /// Returns the platform-specific value of errno
+            pub fn errno() -> DWORD {
+                #[link_name = "kernel32"]
+                extern "system" {
+                    fn GetLastError() -> DWORD;
+                }
+
+                unsafe {
+                    GetLastError()
+                }
+            }
+
+            /// Set the platform-specific value of errno
+            pub fn set_errno(e: DWORD) {
+                #[link_name = "kernel32"]
+                extern "system" {
+                    fn SetLastError(dwErrCode: DWORD);
+                }
+
+                unsafe {
+                    SetLastError(e)
+                }
             }
         }
 
