@@ -62,7 +62,7 @@ use clone::Clone;
 use cmp;
 use cmp::{PartialEq, PartialOrd, Ord};
 use mem;
-use num::{Zero, One, CheckedAdd, CheckedSub, Saturating, ToPrimitive, Int};
+use num::{Zero, One, CheckedAdd, CheckedSub, ToPrimitive, Int};
 use ops::{Add, Mul, Sub};
 use option::{Option, Some, None};
 use uint;

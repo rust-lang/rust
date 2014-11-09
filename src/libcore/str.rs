@@ -25,7 +25,7 @@ use iter::{Map, Iterator};
 use iter::{DoubleEndedIterator, ExactSize};
 use iter::range;
 use kinds::Sized;
-use num::{CheckedMul, Saturating};
+use num::{CheckedMul, Int};
 use option::{Option, None, Some};
 use raw::Repr;
 use slice::{mod, SlicePrelude};
