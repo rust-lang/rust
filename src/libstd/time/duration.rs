@@ -43,7 +43,7 @@ const OUT_OF_BOUNDS: &'static str = "Duration out of bounds";
 /// An absolute amount of time, independent of time zones and calendars with nanosecond precision.
 /// A duration can express the positive or negative difference between two instants in time
 /// according to a particular clock.
-#[deriving(Clone, PartialEq, Eq, PartialOrd, Ord, Zero, Default, Hash, Rand)]
+#[deriving(Clone, PartialEq, Eq, PartialOrd, Ord, Zero, Default, Hash)]
 pub struct Duration {
     millis: i64, // Milliseconds
     nanos:  i32, // Nanoseconds, |nanos| < NANOS_PER_MILLI
