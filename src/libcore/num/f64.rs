@@ -184,7 +184,13 @@ impl Float for f64 {
     fn max_10_exp(_: Option<f64>) -> int { MAX_10_EXP }
 
     #[inline]
+    fn min_value() -> f64 { MIN_VALUE }
+
+    #[inline]
     fn min_pos_value(_: Option<f64>) -> f64 { MIN_POS_VALUE }
+
+    #[inline]
+    fn max_value() -> f64 { MAX_VALUE }
 
     /// Returns the mantissa, exponent and sign as integers.
     fn integer_decode(self) -> (u64, i16, i8) {

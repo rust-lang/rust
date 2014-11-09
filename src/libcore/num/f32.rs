@@ -178,7 +178,13 @@ impl Float for f32 {
     fn max_10_exp(_: Option<f32>) -> int { MAX_10_EXP }
 
     #[inline]
+    fn min_value() -> f32 { MIN_VALUE }
+
+    #[inline]
     fn min_pos_value(_: Option<f32>) -> f32 { MIN_POS_VALUE }
+
+    #[inline]
+    fn max_value() -> f32 { MAX_VALUE }
 
     /// Returns the mantissa, exponent and sign as integers.
     fn integer_decode(self) -> (u64, i16, i8) {
