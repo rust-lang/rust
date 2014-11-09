@@ -11,7 +11,7 @@
 
 use std::collections::HashSet;
 use std::os;
-use std::io::IoError;
+use std::io::IoResult;
 use syntax::ast;
 
 pub struct RPathConfig<'a> {
@@ -20,7 +20,7 @@ pub struct RPathConfig<'a> {
     pub is_like_osx: bool,
     pub has_rpath: bool,
     pub get_install_prefix_lib_path: ||:'a -> Path,
-    pub realpath: |&Path|:'a -> Result<Path, IoError>
+    pub realpath: |&Path|:'a -> IoResult<Path>
 }
 
 pub fn get_rpath_flags(config: RPathConfig) -> Vec<String> {

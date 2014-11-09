@@ -38,7 +38,7 @@ pub use self::MapError::*;
 use clone::Clone;
 use error::{FromError, Error};
 use fmt;
-use io::{IoResult, IoError};
+use io::{IoResult, IoError, ResourceUnavailable};
 use iter::Iterator;
 use libc::{c_void, c_int};
 use libc;
@@ -58,6 +58,9 @@ use str::{Str, StrPrelude, StrAllocating};
 use string::{String, ToString};
 use sync::atomic::{AtomicInt, INIT_ATOMIC_INT, SeqCst};
 use vec::Vec;
+use c_str;
+use mem;
+use iter;
 
 #[cfg(unix)] use c_str::ToCStr;
 #[cfg(unix)] use libc::c_char;
@@ -74,7 +77,7 @@ pub fn num_cpus() -> uint {
 }
 
 pub const TMPBUF_SZ : uint = 1000u;
-const BUF_BYTES : uint = 2048u;
+const BUF_BYTES : uint = 300; // a bit more than Win32 MAX_PATH (260)
 
 /// Returns the current working directory as a `Path`.
 ///
@@ -99,15 +102,52 @@ const BUF_BYTES : uint = 2048u;
 /// ```
 #[cfg(unix)]
 pub fn getcwd() -> IoResult<Path> {
-    use c_str::CString;
+    use libc::consts::os::posix88::ERANGE;
 
-    let mut buf = [0 as c_char, ..BUF_BYTES];
-    unsafe {
-        if libc::getcwd(buf.as_mut_ptr(), buf.len() as libc::size_t).is_null() {
-            Err(IoError::last_error())
-        } else {
-            Ok(Path::new(CString::new(buf.as_ptr(), false)))
+    {
+        let mut buf: [c_char, ..BUF_BYTES] = unsafe { mem::uninitialized() };
+        if OK == getcwd_into(buf.as_mut_slice()) {
+            return ok(buf.as_slice());
         }
+    } // the "buf" array goes out of scope
+    let e = os::errno();
+    if e != ERANGE as uint {
+        return err(e);
+    }
+
+    let mut buf = Vec::with_capacity(2 * BUF_BYTES);
+    for len in iter::iterate(2 * BUF_BYTES as i32, |x| 2 * x) {
+        if len <= 0 {
+            return Err(IoError { kind: ResourceUnavailable,
+                                 desc: "i32 overflow in os::getcwd()", detail: None });
+        }
+        let len = len as uint;
+        buf.reserve(len);
+        unsafe { buf.set_len(len); }
+
+        if OK == getcwd_into(buf.as_mut_slice()) {
+            return ok(buf.as_slice());
+        }
+
+        let e = os::errno();
+        if e != ERANGE as uint {
+            return err(e);
+        }
+    }
+    unreachable!();
+
+    const OK: bool = true;
+    fn getcwd_into(buf: &mut [c_char]) -> bool {
+        let ptr = unsafe { libc::getcwd(buf.as_mut_ptr(), buf.len() as libc::size_t) };
+        ! ptr.is_null()
+    }
+
+    fn ok(buf: &[c_char]) -> IoResult<Path> {
+        Ok(Path::new(unsafe { c_str::CString::new(buf.as_ptr(), false) }))
+    }
+
+    fn err(e: uint) -> IoResult<Path> {
+        Err(IoError { desc: "getcwd(2) failed", .. IoError::from_errno(e, true) })
     }
 }
 
@@ -135,23 +175,51 @@ pub fn getcwd() -> IoResult<Path> {
 #[cfg(windows)]
 pub fn getcwd() -> IoResult<Path> {
     use libc::DWORD;
-    use libc::GetCurrentDirectoryW;
-    use io::OtherIoError;
 
-    let mut buf = [0 as u16, ..BUF_BYTES];
-    unsafe {
-        if libc::GetCurrentDirectoryW(buf.len() as DWORD, buf.as_mut_ptr()) == 0 as DWORD {
-            return Err(IoError::last_error());
+    let mut bufsz;
+    {
+        let mut buf: [u16, ..BUF_BYTES] = unsafe { mem::uninitialized() };
+        match getcwd_aux(buf) {
+            Ok(_) => { return get_path(buf); },
+            Err(0) => { return err(); },
+            Err(n) => { bufsz = n; }
+        }
+    } // the "buf" array goes out of scope
+
+    let mut buf = Vec::with_capacity(bufsz);
+    loop {
+        buf.reserve(bufsz);
+        unsafe { buf.set_len(bufsz); }
+
+        match getcwd_aux(buf.as_mut_slice()) {
+            Ok(_) => { return get_path(buf); },
+            Err(0) => { return err(); }
+            Err(n) => { bufsz = n; }
         }
     }
 
-    match String::from_utf16(::str::truncate_utf16_at_nul(&buf)) {
-        Some(ref cwd) => Ok(Path::new(cwd)),
-        None => Err(IoError {
-            kind: OtherIoError,
-            desc: "GetCurrentDirectoryW returned invalid UTF-16",
-            detail: None,
-        }),
+    fn get_path(buf: &[u16]) -> IoResult<Path> {
+        match String::from_utf16(::str::truncate_utf16_at_nul(&buf)) {
+            Some(ref cwd) => Ok(Path::new(cwd)),
+            None => Err(IoError {
+                kind: OtherIoError,
+                desc: "GetCurrentDirectoryW returned invalid UTF-16",
+                detail: None,
+            })
+        }
+    }
+
+    fn getcwd_aux(buf: &mut [u16]) -> Result<(), DWORD> {
+        let n = unsafe{ libc::GetCurrentDirectoryW(buf.len() as DWORD, buf.as_mut_ptr()) };
+        if 0 < n && (n as uint) < buf.len() {
+            Ok(())
+        } else {
+            Err(n)
+        }
+    }
+
+    fn err() -> IoResult<Path> {
+        Err(IoError { desc: "GetCurrentDirectoryW failed", .. io::last_error() })
     }
 }
 
@@ -860,10 +928,13 @@ pub fn make_absolute(p: &Path) -> IoResult<Path> {
     if p.is_absolute() {
         Ok(p.clone())
     } else {
-        getcwd().map(|mut cwd| {
-            cwd.push(p);
-            cwd
-        })
+        match getcwd() {
+            Ok(mut ret) => {
+                ret.push(p);
+                Ok(ret)
+            },
+            Err(e) => Err(IoError { desc: "getcwd() inside make_absolute() failed", .. e })
+        }
     }
 }
 
