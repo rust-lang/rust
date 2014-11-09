@@ -296,42 +296,6 @@ pub fn pow<T: One + Mul<T, T>>(mut base: T, mut exp: uint) -> T {
     }
 }
 
-/// Numbers which have upper and lower bounds
-pub trait Bounded {
-    // FIXME (#5527): These should be associated constants
-    /// returns the smallest finite number this type can represent
-    fn min_value() -> Self;
-    /// returns the largest finite number this type can represent
-    fn max_value() -> Self;
-}
-
-macro_rules! bounded_impl(
-    ($t:ty, $min:expr, $max:expr) => {
-        impl Bounded for $t {
-            #[inline]
-            fn min_value() -> $t { $min }
-
-            #[inline]
-            fn max_value() -> $t { $max }
-        }
-    }
-)
-
-bounded_impl!(uint, uint::MIN, uint::MAX)
-bounded_impl!(u8, u8::MIN, u8::MAX)
-bounded_impl!(u16, u16::MIN, u16::MAX)
-bounded_impl!(u32, u32::MIN, u32::MAX)
-bounded_impl!(u64, u64::MIN, u64::MAX)
-
-bounded_impl!(int, int::MIN, int::MAX)
-bounded_impl!(i8, i8::MIN, i8::MAX)
-bounded_impl!(i16, i16::MIN, i16::MAX)
-bounded_impl!(i32, i32::MIN, i32::MAX)
-bounded_impl!(i64, i64::MIN, i64::MAX)
-
-bounded_impl!(f32, f32::MIN_VALUE, f32::MAX_VALUE)
-bounded_impl!(f64, f64::MIN_VALUE, f64::MAX_VALUE)
-
 /// Specifies the available operations common to all of Rust's core numeric primitives.
 /// These may not always make sense from a purely mathematical point of view, but
 /// may be useful for systems programming.
@@ -339,8 +303,7 @@ pub trait Primitive: Copy
                    + Clone
                    + Num
                    + NumCast
-                   + PartialOrd
-                   + Bounded {}
+                   + PartialOrd {}
 
 trait_impl!(Primitive for uint u8 u16 u32 u64 int i8 i16 i32 i64 f32 f64)
 
@@ -348,13 +311,20 @@ trait_impl!(Primitive for uint u8 u16 u32 u64 int i8 i16 i32 i64 f32 f64)
 /// operators, bit counting methods, and endian conversion functions.
 pub trait Int: Primitive
              + Ord
-             + Bounded
              + Not<Self>
              + BitAnd<Self,Self>
              + BitOr<Self,Self>
              + BitXor<Self,Self>
              + Shl<uint,Self>
              + Shr<uint,Self> {
+    /// Returns the smallest value that can be represented by this integer.
+    // FIXME (#5527): Should be and associated constant
+    fn min_value() -> Self;
+
+    /// Returns the largest value that can be represented by this integer.
+    // FIXME (#5527): Should be and associated constant
+    fn max_value() -> Self;
+
     /// Returns the number of ones in the binary representation of the integer.
     ///
     /// # Example
@@ -582,8 +552,8 @@ pub trait Int: Primitive
     fn saturating_add(self, other: Self) -> Self {
         match self.checked_add(other) {
             Some(x)                       => x,
-            None if other >= Zero::zero() => Bounded::max_value(),
-            None                          => Bounded::min_value(),
+            None if other >= Zero::zero() => Int::max_value(),
+            None                          => Int::min_value(),
         }
     }
 
@@ -593,8 +563,8 @@ pub trait Int: Primitive
     fn saturating_sub(self, other: Self) -> Self {
         match self.checked_sub(other) {
             Some(x)                       => x,
-            None if other >= Zero::zero() => Bounded::min_value(),
-            None                          => Bounded::max_value(),
+            None if other >= Zero::zero() => Int::min_value(),
+            None                          => Int::max_value(),
         }
     }
 }
@@ -616,6 +586,12 @@ macro_rules! uint_impl {
      $sub_with_overflow:path,
      $mul_with_overflow:path) => {
         impl Int for $T {
+            #[inline]
+            fn min_value() -> $T { 0 }
+
+            #[inline]
+            fn max_value() -> $T { -1 }
+
             #[inline]
             fn count_ones(self) -> uint { unsafe { $ctpop(self as $ActualT) as uint } }
 
@@ -729,11 +705,17 @@ uint_impl!(uint = u64, 64,
     intrinsics::u64_mul_with_overflow)
 
 macro_rules! int_impl {
-    ($T:ty = $ActualT:ty, $UnsignedT:ty,
+    ($T:ty = $ActualT:ty, $UnsignedT:ty, $BITS:expr,
      $add_with_overflow:path,
      $sub_with_overflow:path,
      $mul_with_overflow:path) => {
         impl Int for $T {
+            #[inline]
+            fn min_value() -> $T { (-1 as $T) << ($BITS - 1) }
+
+            #[inline]
+            fn max_value() -> $T { let min: $T = Int::min_value(); !min }
+
             #[inline]
             fn count_ones(self) -> uint { (self as $UnsignedT).count_ones() }
 
@@ -771,7 +753,7 @@ macro_rules! int_impl {
             fn checked_div(self, v: $T) -> Option<$T> {
                 match v {
                     0   => None,
-                   -1 if self == Bounded::min_value()
+                   -1 if self == Int::min_value()
                         => None,
                     v   => Some(self / v),
                 }
@@ -780,34 +762,34 @@ macro_rules! int_impl {
     }
 }
 
-int_impl!(i8 = i8, u8,
+int_impl!(i8 = i8, u8, 8,
     intrinsics::i8_add_with_overflow,
     intrinsics::i8_sub_with_overflow,
     intrinsics::i8_mul_with_overflow)
 
-int_impl!(i16 = i16, u16,
+int_impl!(i16 = i16, u16, 16,
     intrinsics::i16_add_with_overflow,
     intrinsics::i16_sub_with_overflow,
     intrinsics::i16_mul_with_overflow)
 
-int_impl!(i32 = i32, u32,
+int_impl!(i32 = i32, u32, 32,
     intrinsics::i32_add_with_overflow,
     intrinsics::i32_sub_with_overflow,
     intrinsics::i32_mul_with_overflow)
 
-int_impl!(i64 = i64, u64,
+int_impl!(i64 = i64, u64, 64,
     intrinsics::i64_add_with_overflow,
     intrinsics::i64_sub_with_overflow,
     intrinsics::i64_mul_with_overflow)
 
 #[cfg(target_word_size = "32")]
-int_impl!(int = i32, u32,
+int_impl!(int = i32, u32, 32,
     intrinsics::i32_add_with_overflow,
     intrinsics::i32_sub_with_overflow,
     intrinsics::i32_mul_with_overflow)
 
 #[cfg(target_word_size = "64")]
-int_impl!(int = i64, u64,
+int_impl!(int = i64, u64, 64,
     intrinsics::i64_add_with_overflow,
     intrinsics::i64_sub_with_overflow,
     intrinsics::i64_mul_with_overflow)
@@ -930,8 +912,8 @@ macro_rules! impl_to_primitive_int_to_int(
                 Some($slf as $DstT)
             } else {
                 let n = $slf as i64;
-                let min_value: $DstT = Bounded::min_value();
-                let max_value: $DstT = Bounded::max_value();
+                let min_value: $DstT = Int::min_value();
+                let max_value: $DstT = Int::max_value();
                 if min_value as i64 <= n && n <= max_value as i64 {
                     Some($slf as $DstT)
                 } else {
@@ -946,7 +928,7 @@ macro_rules! impl_to_primitive_int_to_uint(
     ($SrcT:ty, $DstT:ty, $slf:expr) => (
         {
             let zero: $SrcT = Zero::zero();
-            let max_value: $DstT = Bounded::max_value();
+            let max_value: $DstT = Int::max_value();
             if zero <= $slf && $slf as u64 <= max_value as u64 {
                 Some($slf as $DstT)
             } else {
@@ -998,7 +980,7 @@ impl_to_primitive_int!(i64)
 macro_rules! impl_to_primitive_uint_to_int(
     ($DstT:ty, $slf:expr) => (
         {
-            let max_value: $DstT = Bounded::max_value();
+            let max_value: $DstT = Int::max_value();
             if $slf as u64 <= max_value as u64 {
                 Some($slf as $DstT)
             } else {
@@ -1015,7 +997,7 @@ macro_rules! impl_to_primitive_uint_to_uint(
                 Some($slf as $DstT)
             } else {
                 let zero: $SrcT = Zero::zero();
-                let max_value: $DstT = Bounded::max_value();
+                let max_value: $DstT = Int::max_value();
                 if zero <= $slf && $slf as u64 <= max_value as u64 {
                     Some($slf as $DstT)
                 } else {
@@ -1071,7 +1053,7 @@ macro_rules! impl_to_primitive_float_to_float(
             Some($slf as $DstT)
         } else {
             let n = $slf as f64;
-            let max_value: $SrcT = Bounded::max_value();
+            let max_value: $SrcT = Float::max_value();
             if -max_value as f64 <= n && n <= max_value as f64 {
                 Some($slf as $DstT)
             } else {
@@ -1400,8 +1382,12 @@ pub trait Float: Signed + Primitive {
     fn min_10_exp(unused_self: Option<Self>) -> int;
     /// Returns the maximum base-10 exponent that this type can represent.
     fn max_10_exp(unused_self: Option<Self>) -> int;
+    /// Returns the smallest finite value that this type can represent.
+    fn min_value() -> Self;
     /// Returns the smallest normalized positive number that this type can represent.
     fn min_pos_value(unused_self: Option<Self>) -> Self;
+    /// Returns the largest finite value that this type can represent.
+    fn max_value() -> Self;
 
     /// Returns the mantissa, exponent and sign as integers, respectively.
     fn integer_decode(self) -> (u64, i16, i8);
@@ -1515,3 +1501,34 @@ pub fn is_power_of_two<T: UnsignedInt>(n: T) -> bool {
 pub fn checked_next_power_of_two<T: UnsignedInt>(n: T) -> Option<T> {
     n.checked_next_power_of_two()
 }
+
+#[deprecated = "Generalised bounded values are no longer supported"]
+pub trait Bounded {
+    #[deprecated = "Use `Int::min_value` or `Float::min_value`"]
+    fn min_value() -> Self;
+    #[deprecated = "Use `Int::max_value` or `Float::max_value`"]
+    fn max_value() -> Self;
+}
+macro_rules! bounded_impl {
+    ($T:ty, $min:expr, $max:expr) => {
+        impl Bounded for $T {
+            #[inline]
+            fn min_value() -> $T { $min }
+
+            #[inline]
+            fn max_value() -> $T { $max }
+        }
+    };
+}
+bounded_impl!(uint, uint::MIN, uint::MAX)
+bounded_impl!(u8, u8::MIN, u8::MAX)
+bounded_impl!(u16, u16::MIN, u16::MAX)
+bounded_impl!(u32, u32::MIN, u32::MAX)
+bounded_impl!(u64, u64::MIN, u64::MAX)
+bounded_impl!(int, int::MIN, int::MAX)
+bounded_impl!(i8, i8::MIN, i8::MAX)
+bounded_impl!(i16, i16::MIN, i16::MAX)
+bounded_impl!(i32, i32::MIN, i32::MAX)
+bounded_impl!(i64, i64::MIN, i64::MAX)
+bounded_impl!(f32, f32::MIN_VALUE, f32::MAX_VALUE)
+bounded_impl!(f64, f64::MIN_VALUE, f64::MAX_VALUE)

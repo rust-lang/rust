@@ -17,8 +17,7 @@ use char::Char;
 use from_str::from_str;
 use iter::Iterator;
 use num;
-use num::{Int, Bounded};
-use num::{Float, FPNaN, FPInfinite, ToPrimitive};
+use num::{Int, Float, FPNaN, FPInfinite, ToPrimitive};
 use option::{None, Option, Some};
 use slice::{SlicePrelude, CloneSliceAllocPrelude};
 use str::StrPrelude;
@@ -581,7 +580,7 @@ pub fn from_str_radix_int<T: Int>(src: &str, radix: uint) -> Option<T> {
 
     let _0: T = num::zero();
     let _1: T = num::one();
-    let is_signed = _0 > Bounded::min_value();
+    let is_signed = _0 > Int::min_value();
 
     let (is_positive, src) =  match src.slice_shift_char() {
         (Some('-'), src) if is_signed => (false, src),
