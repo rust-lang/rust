@@ -16,7 +16,6 @@ use std::fmt::Show;
 use std::hash::Hash;
 use std::io;
 use std::mem;
-use std::num::Zero;
 
 fn local_cmp<T:Float>(x: T, y: T) -> Ordering {
     // arbitrarily decide that NaNs are larger than everything.
@@ -144,7 +143,6 @@ pub struct Summary<T> {
 }
 
 impl<T: FloatMath + FromPrimitive> Summary<T> {
-
     /// Construct a new summary of a sample set.
     pub fn new(samples: &[T]) -> Summary<T> {
         Summary {
@@ -182,7 +180,7 @@ impl<'a, T: FloatMath + FromPrimitive> Stats<T> for &'a [T] {
                 // `lo`. Together `hi+lo` are exactly equal to `x+y`.
                 let hi = x + y;
                 let lo = y - (hi - x);
-                if !lo.is_zero() {
+                if lo != Float::zero() {
                     partials[j] = lo;
                     j += 1;
                 }
@@ -195,7 +193,7 @@ impl<'a, T: FloatMath + FromPrimitive> Stats<T> for &'a [T] {
                 partials.truncate(j+1);
             }
         }
-        let zero: T = Zero::zero();
+        let zero: T = Float::zero();
         partials.iter().fold(zero, |p, q| p + *q)
     }
 
@@ -220,10 +218,10 @@ impl<'a, T: FloatMath + FromPrimitive> Stats<T> for &'a [T] {
 
     fn var(self) -> T {
         if self.len() < 2 {
-            Zero::zero()
+            Float::zero()
         } else {
             let mean = self.mean();
-            let mut v: T = Zero::zero();
+            let mut v: T = Float::zero();
             for s in self.iter() {
                 let x = *s - mean;
                 v = v + x*x;
@@ -292,7 +290,7 @@ fn percentile_of_sorted<T: Float + FromPrimitive>(sorted_samples: &[T],
     if sorted_samples.len() == 1 {
         return sorted_samples[0];
     }
-    let zero: T = Zero::zero();
+    let zero: T = Float::zero();
     assert!(zero <= pct);
     let hundred = FromPrimitive::from_uint(100).unwrap();
     assert!(pct <= hundred);
@@ -368,14 +366,14 @@ pub fn write_boxplot<T: Float + Show + FromPrimitive>(
     let himag = ten.powf(s.max.abs().log10().floor());
 
     // need to consider when the limit is zero
-    let zero: T = Zero::zero();
-    let lo = if lomag.is_zero() {
+    let zero: T = Float::zero();
+    let lo = if lomag == Float::zero() {
         zero
     } else {
         (s.min / lomag).floor() * lomag
     };
 
-    let hi = if himag.is_zero() {
+    let hi = if himag == Float::zero() {
         zero
     } else {
         (s.max / himag).ceil() * himag
@@ -1044,11 +1042,11 @@ mod tests {
     }
     #[test]
     fn test_sum_f64s() {
-        assert_eq!([0.5f64, 3.2321f64, 1.5678f64].sum(), 5.2999);
+        assert_eq!([0.5f64, 3.2321f64, 1.5678f64].sum(0.0), 5.2999);
     }
     #[test]
     fn test_sum_f64_between_ints_that_sum_to_0() {
-        assert_eq!([1e30f64, 1.2f64, -1e30f64].sum(), 1.2);
+        assert_eq!([1e30f64, 1.2f64, -1e30f64].sum(0.0), 1.2);
     }
 }
 
@@ -1060,7 +1058,7 @@ mod bench {
     #[bench]
     pub fn sum_three_items(b: &mut Bencher) {
         b.iter(|| {
-            [1e20f64, 1.5f64, -1e20f64].sum();
+            [1e20f64, 1.5f64, -1e20f64].sum(0.0);
         })
     }
     #[bench]
@@ -1069,7 +1067,7 @@ mod bench {
         let v = Vec::from_fn(500, |i| nums[i%5]);
 
         b.iter(|| {
-            v.as_slice().sum();
+            v.as_slice().sum(0.0);
         })
     }
 }

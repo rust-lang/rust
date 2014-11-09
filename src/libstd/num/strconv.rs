@@ -94,7 +94,7 @@ pub enum SignFormat {
 fn int_to_str_bytes_common<T: Int>(num: T, radix: uint, sign: SignFormat, f: |u8|) {
     assert!(2 <= radix && radix <= 36);
 
-    let _0: T = num::zero();
+    let _0: T = Int::zero();
 
     let neg = num < _0;
     let radix_gen: T = num::cast(radix).unwrap();
@@ -194,8 +194,8 @@ pub fn float_to_str_bytes_common<T: Float>(
         _ => ()
     }
 
-    let _0: T = num::zero();
-    let _1: T = num::one();
+    let _0: T = Float::zero();
+    let _1: T = Float::one();
 
     match num.classify() {
         FPNaN => { return (b"NaN".to_vec(), true); }
@@ -430,8 +430,8 @@ pub fn from_str_radix_float<T: Float>(src: &str, radix: uint) -> Option<T> {
            "from_str_radix_float: must lie in the range `[2, 36]` - found {}",
            radix);
 
-    let _0: T = num::zero();
-    let _1: T = num::one();
+    let _0: T = Float::zero();
+    let _1: T = Float::one();
     let radix_t: T = num::cast(radix as int).unwrap();
 
     // Special values
@@ -558,8 +558,8 @@ pub fn from_str_radix_float<T: Float>(src: &str, radix: uint) -> Option<T> {
             };
 
             match (is_positive, exp) {
-                (true,  Some(exp)) => num::pow(base, exp),
-                (false, Some(exp)) => _1 / num::pow(base, exp),
+                (true,  Some(exp)) => base.powi(exp as i32),
+                (false, Some(exp)) => _1 / base.powi(exp as i32),
                 (_, None)          => return None,
             }
         },
@@ -578,8 +578,8 @@ pub fn from_str_radix_int<T: Int>(src: &str, radix: uint) -> Option<T> {
         num::cast(x).unwrap()
     }
 
-    let _0: T = num::zero();
-    let _1: T = num::one();
+    let _0: T = Int::zero();
+    let _1: T = Int::one();
     let is_signed = _0 > Int::min_value();
 
     let (is_positive, src) =  match src.slice_shift_char() {

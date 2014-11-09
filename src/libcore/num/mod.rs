@@ -27,6 +27,7 @@ use ops::{Not, BitAnd, BitOr, BitXor, Shl, Shr};
 use option::{Option, Some, None};
 
 /// The base trait for numeric types
+#[allow(deprecated)]
 pub trait Num: PartialEq + Zero + One
              + Neg<Self>
              + Add<Self,Self>
@@ -48,112 +49,6 @@ trait_impl!(Num for uint u8 u16 u32 u64 int i8 i16 i32 i64 f32 f64)
 pub fn div_rem<T: Div<T, T> + Rem<T, T>>(x: T, y: T) -> (T, T) {
     (x / y, x % y)
 }
-
-/// Defines an additive identity element for `Self`.
-///
-/// # Deriving
-///
-/// This trait can be automatically be derived using `#[deriving(Zero)]`
-/// attribute. If you choose to use this, make sure that the laws outlined in
-/// the documentation for `Zero::zero` still hold.
-pub trait Zero: Add<Self, Self> {
-    /// Returns the additive identity element of `Self`, `0`.
-    ///
-    /// # Laws
-    ///
-    /// ```{.text}
-    /// a + 0 = a       ∀ a ∈ Self
-    /// 0 + a = a       ∀ a ∈ Self
-    /// ```
-    ///
-    /// # Purity
-    ///
-    /// This function should return the same result at all times regardless of
-    /// external mutable state, for example values stored in TLS or in
-    /// `static mut`s.
-    // FIXME (#5527): This should be an associated constant
-    fn zero() -> Self;
-
-    /// Returns `true` if `self` is equal to the additive identity.
-    #[inline]
-    fn is_zero(&self) -> bool;
-}
-
-macro_rules! zero_impl(
-    ($t:ty, $v:expr) => {
-        impl Zero for $t {
-            #[inline]
-            fn zero() -> $t { $v }
-            #[inline]
-            fn is_zero(&self) -> bool { *self == $v }
-        }
-    }
-)
-
-zero_impl!(uint, 0u)
-zero_impl!(u8,   0u8)
-zero_impl!(u16,  0u16)
-zero_impl!(u32,  0u32)
-zero_impl!(u64,  0u64)
-
-zero_impl!(int, 0i)
-zero_impl!(i8,  0i8)
-zero_impl!(i16, 0i16)
-zero_impl!(i32, 0i32)
-zero_impl!(i64, 0i64)
-
-zero_impl!(f32, 0.0f32)
-zero_impl!(f64, 0.0f64)
-
-/// Returns the additive identity, `0`.
-#[inline(always)] pub fn zero<T: Zero>() -> T { Zero::zero() }
-
-/// Defines a multiplicative identity element for `Self`.
-pub trait One: Mul<Self, Self> {
-    /// Returns the multiplicative identity element of `Self`, `1`.
-    ///
-    /// # Laws
-    ///
-    /// ```{.text}
-    /// a * 1 = a       ∀ a ∈ Self
-    /// 1 * a = a       ∀ a ∈ Self
-    /// ```
-    ///
-    /// # Purity
-    ///
-    /// This function should return the same result at all times regardless of
-    /// external mutable state, for example values stored in TLS or in
-    /// `static mut`s.
-    // FIXME (#5527): This should be an associated constant
-    fn one() -> Self;
-}
-
-macro_rules! one_impl(
-    ($t:ty, $v:expr) => {
-        impl One for $t {
-            #[inline]
-            fn one() -> $t { $v }
-        }
-    }
-)
-
-one_impl!(uint, 1u)
-one_impl!(u8,  1u8)
-one_impl!(u16, 1u16)
-one_impl!(u32, 1u32)
-one_impl!(u64, 1u64)
-
-one_impl!(int, 1i)
-one_impl!(i8,  1i8)
-one_impl!(i16, 1i16)
-one_impl!(i32, 1i32)
-one_impl!(i64, 1i64)
-
-one_impl!(f32, 1.0f32)
-one_impl!(f64, 1.0f64)
-
-/// Returns the multiplicative identity, `1`.
-#[inline(always)] pub fn one<T: One>() -> T { One::one() }
 
 /// Useful functions for signed numbers (i.e. numbers that can be negative).
 pub trait Signed: Num + Neg<Self> {
@@ -281,10 +176,10 @@ trait_impl!(Unsigned for uint u8 u16 u32 u64)
 /// assert_eq!(num::pow(2i, 4), 16);
 /// ```
 #[inline]
-pub fn pow<T: One + Mul<T, T>>(mut base: T, mut exp: uint) -> T {
+pub fn pow<T: Int>(mut base: T, mut exp: uint) -> T {
     if exp == 1 { base }
     else {
-        let mut acc = one::<T>();
+        let mut acc: T = Int::one();
         while exp > 0 {
             if (exp & 1) == 1 {
                 acc = acc * base;
@@ -317,6 +212,14 @@ pub trait Int: Primitive
              + BitXor<Self,Self>
              + Shl<uint,Self>
              + Shr<uint,Self> {
+    /// Returns the `0` value of this integer.
+    // FIXME (#5527): Should be an associated constant
+    fn zero() -> Self;
+
+    /// Returns the `1` value of this integer.
+    // FIXME (#5527): Should be an associated constant
+    fn one() -> Self;
+
     /// Returns the smallest value that can be represented by this integer.
     // FIXME (#5527): Should be and associated constant
     fn min_value() -> Self;
@@ -551,9 +454,9 @@ pub trait Int: Primitive
     #[inline]
     fn saturating_add(self, other: Self) -> Self {
         match self.checked_add(other) {
-            Some(x)                       => x,
-            None if other >= Zero::zero() => Int::max_value(),
-            None                          => Int::min_value(),
+            Some(x)                      => x,
+            None if other >= Int::zero() => Int::max_value(),
+            None                         => Int::min_value(),
         }
     }
 
@@ -562,9 +465,9 @@ pub trait Int: Primitive
     #[inline]
     fn saturating_sub(self, other: Self) -> Self {
         match self.checked_sub(other) {
-            Some(x)                       => x,
-            None if other >= Zero::zero() => Int::min_value(),
-            None                          => Int::max_value(),
+            Some(x)                      => x,
+            None if other >= Int::zero() => Int::min_value(),
+            None                         => Int::max_value(),
         }
     }
 }
@@ -586,6 +489,12 @@ macro_rules! uint_impl {
      $sub_with_overflow:path,
      $mul_with_overflow:path) => {
         impl Int for $T {
+            #[inline]
+            fn zero() -> $T { 0 }
+
+            #[inline]
+            fn one() -> $T { 1 }
+
             #[inline]
             fn min_value() -> $T { 0 }
 
@@ -711,6 +620,12 @@ macro_rules! int_impl {
      $mul_with_overflow:path) => {
         impl Int for $T {
             #[inline]
+            fn zero() -> $T { 0 }
+
+            #[inline]
+            fn one() -> $T { 1 }
+
+            #[inline]
             fn min_value() -> $T { (-1 as $T) << ($BITS - 1) }
 
             #[inline]
@@ -798,20 +713,20 @@ int_impl!(int = i64, u64, 64,
 pub trait UnsignedInt: Int {
     /// Returns `true` iff `self == 2^k` for some `k`.
     fn is_power_of_two(self) -> bool {
-        (self - one()) & self == zero()
+        (self - Int::one()) & self == Int::zero()
     }
 
     /// Returns the smallest power of two greater than or equal to `self`.
     #[inline]
     fn next_power_of_two(self) -> Self {
         let halfbits = size_of::<Self>() * 4;
-        let mut tmp = self - one();
+        let mut tmp = self - Int::one();
         let mut shift = 1u;
         while shift <= halfbits {
             tmp = tmp | (tmp >> shift);
             shift = shift << 1u;
         }
-        tmp + one()
+        tmp + Int::one()
     }
 
     /// Returns the smallest power of two greater than or equal to `n`. If the
@@ -819,13 +734,13 @@ pub trait UnsignedInt: Int {
     /// returned, otherwise the power of two is wrapped in `Some`.
     fn checked_next_power_of_two(self) -> Option<Self> {
         let halfbits = size_of::<Self>() * 4;
-        let mut tmp = self - one();
+        let mut tmp = self - Int::one();
         let mut shift = 1u;
         while shift <= halfbits {
             tmp = tmp | (tmp >> shift);
             shift = shift << 1u;
         }
-        tmp.checked_add(one())
+        tmp.checked_add(Int::one())
     }
 }
 
@@ -927,7 +842,7 @@ macro_rules! impl_to_primitive_int_to_int(
 macro_rules! impl_to_primitive_int_to_uint(
     ($SrcT:ty, $DstT:ty, $slf:expr) => (
         {
-            let zero: $SrcT = Zero::zero();
+            let zero: $SrcT = Int::zero();
             let max_value: $DstT = Int::max_value();
             if zero <= $slf && $slf as u64 <= max_value as u64 {
                 Some($slf as $DstT)
@@ -996,7 +911,7 @@ macro_rules! impl_to_primitive_uint_to_uint(
             if size_of::<$SrcT>() <= size_of::<$DstT>() {
                 Some($slf as $DstT)
             } else {
-                let zero: $SrcT = Zero::zero();
+                let zero: $SrcT = Int::zero();
                 let max_value: $DstT = Int::max_value();
                 if zero <= $slf && $slf as u64 <= max_value as u64 {
                     Some($slf as $DstT)
@@ -1351,8 +1266,12 @@ pub trait Float: Signed + Primitive {
     fn infinity() -> Self;
     /// Returns the negative infinite value.
     fn neg_infinity() -> Self;
+    /// Returns the `0` value.
+    fn zero() -> Self;
     /// Returns -0.0.
     fn neg_zero() -> Self;
+    /// Returns the `1` value.
+    fn one() -> Self;
 
     /// Returns true if this value is NaN and false otherwise.
     fn is_nan(self) -> bool;
@@ -1484,6 +1403,65 @@ pub trait Float: Signed + Primitive {
 }
 
 // DEPRECATED
+
+#[deprecated = "The generic `Zero` trait will be removed soon."]
+pub trait Zero: Add<Self, Self> {
+    #[deprecated = "Use `Int::zero()` or `Float::zero()`."]
+    fn zero() -> Self;
+    #[deprecated = "Use `x == Int::zero()` or `x == Float::zero()`."]
+    fn is_zero(&self) -> bool;
+}
+#[deprecated = "Use `Int::zero()` or `Float::zero()`."]
+#[allow(deprecated)]
+pub fn zero<T: Zero>() -> T { Zero::zero() }
+macro_rules! zero_impl {
+    ($t:ty, $v:expr) => {
+        impl Zero for $t {
+            fn zero() -> $t { $v }
+            fn is_zero(&self) -> bool { *self == $v }
+        }
+    }
+}
+zero_impl!(uint, 0u)
+zero_impl!(u8,   0u8)
+zero_impl!(u16,  0u16)
+zero_impl!(u32,  0u32)
+zero_impl!(u64,  0u64)
+zero_impl!(int, 0i)
+zero_impl!(i8,  0i8)
+zero_impl!(i16, 0i16)
+zero_impl!(i32, 0i32)
+zero_impl!(i64, 0i64)
+zero_impl!(f32, 0.0f32)
+zero_impl!(f64, 0.0f64)
+
+#[deprecated = "The generic `One` trait will be removed soon."]
+pub trait One: Mul<Self, Self> {
+    #[deprecated = "Use `Int::one()` or `Float::one()`."]
+    fn one() -> Self;
+}
+#[deprecated = "Use `Int::one()` or `Float::one()`."]
+#[allow(deprecated)]
+pub fn one<T: One>() -> T { One::one() }
+macro_rules! one_impl {
+    ($t:ty, $v:expr) => {
+        impl One for $t {
+            fn one() -> $t { $v }
+        }
+    }
+}
+one_impl!(uint, 1u)
+one_impl!(u8,  1u8)
+one_impl!(u16, 1u16)
+one_impl!(u32, 1u32)
+one_impl!(u64, 1u64)
+one_impl!(int, 1i)
+one_impl!(i8,  1i8)
+one_impl!(i16, 1i16)
+one_impl!(i32, 1i32)
+one_impl!(i64, 1i64)
+one_impl!(f32, 1.0f32)
+one_impl!(f64, 1.0f64)
 
 #[deprecated = "Use `Signed::abs`"]
 pub fn abs<T: Signed>(value: T) -> T {

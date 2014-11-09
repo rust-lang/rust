@@ -115,7 +115,13 @@ impl Float for f32 {
     fn neg_infinity() -> f32 { NEG_INFINITY }
 
     #[inline]
+    fn zero() -> f32 { 0.0 }
+
+    #[inline]
     fn neg_zero() -> f32 { -0.0 }
+
+    #[inline]
+    fn one() -> f32 { 1.0 }
 
     /// Returns `true` if the number is NaN.
     #[inline]

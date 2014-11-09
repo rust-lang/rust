@@ -19,7 +19,6 @@ use parse::token;
 use ptr::P;
 
 use std::fmt;
-use std::num::Zero;
 use std::fmt::Show;
 use std::rc::Rc;
 use serialize::{Encodable, Decodable, Encoder, Decoder};
@@ -857,9 +856,9 @@ pub enum Sign {
     Plus
 }
 
-impl<T: PartialOrd+Zero> Sign {
+impl<T: Int> Sign {
     pub fn new(n: T) -> Sign {
-        if n < Zero::zero() {
+        if n < Int::zero() {
             Minus
         } else {
             Plus

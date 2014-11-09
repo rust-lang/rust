@@ -116,11 +116,11 @@ pub fn decode_error_detailed(errno: i32) -> IoError {
 }
 
 #[inline]
-pub fn retry<I: PartialEq + num::One + Neg<I>> (f: || -> I) -> I {
-    let minus_one = -num::one::<I>();
+pub fn retry<T: Signed + Int> (f: || -> T) -> T {
+    let one: T = Int::one();
     loop {
         let n = f();
-        if n == minus_one && os::errno() == libc::EINTR as int { }
+        if n == -one && os::errno() == libc::EINTR as int { }
         else { return n }
     }
 }

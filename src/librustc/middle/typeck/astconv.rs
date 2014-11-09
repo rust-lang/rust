@@ -1194,7 +1194,7 @@ fn ty_of_method_or_bare_fn<'tcx, AC: AstConv<'tcx>>(
             lifetimes_for_params.push((input_pat, accumulator));
         }
 
-        if lifetimes_for_params.iter().map(|&(_, ref x)| x.len()).sum() == 1 {
+        if lifetimes_for_params.iter().map(|&(_, ref x)| x.len()).sum(0) == 1 {
             implied_output_region =
                 Some(lifetimes_for_params.iter()
                                          .filter_map(|&(_, ref x)|

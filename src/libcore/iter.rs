@@ -60,10 +60,10 @@ This `for` loop syntax can be applied to any iterator over any type.
 
 use clone::Clone;
 use cmp;
-use cmp::{PartialOrd, Ord};
+use cmp::Ord;
 use mem;
-use num::{Zero, One, ToPrimitive, Int};
-use ops::{Add, Mul, Sub};
+use num::{ToPrimitive, Int};
+use ops::{Add, Mul};
 use option::{Option, Some, None};
 use uint;
 #[deprecated = "renamed to Extend"] pub use self::Extend as Extendable;
@@ -402,7 +402,7 @@ pub trait Iterator<A> {
     ///             .inspect(|&x| println!("filtering {}", x))
     ///             .filter(|&x| x % 2 == 0)
     ///             .inspect(|&x| println!("{} made it through", x))
-    ///             .sum();
+    ///             .sum(0);
     /// println!("{}", sum);
     /// ```
     #[inline]
@@ -780,16 +780,15 @@ pub trait AdditiveIterator<A> {
     ///
     /// let a = [1i, 2, 3, 4, 5];
     /// let mut it = a.iter().map(|&x| x);
-    /// assert!(it.sum() == 15);
+    /// assert!(it.sum(0) == 15);
     /// ```
-    fn sum(&mut self) -> A;
+    fn sum(&mut self, init: A) -> A;
 }
 
-impl<A: Add<A, A> + Zero, T: Iterator<A>> AdditiveIterator<A> for T {
+impl<A: Add<A, A>, T: Iterator<A>> AdditiveIterator<A> for T {
     #[inline]
-    fn sum(&mut self) -> A {
-        let zero: A = Zero::zero();
-        self.fold(zero, |s, x| s + x)
+    fn sum(&mut self, init: A) -> A {
+        self.fold(init, |s, x| s + x)
     }
 }
 
@@ -803,20 +802,19 @@ pub trait MultiplicativeIterator<A> {
     /// use std::iter::{count, MultiplicativeIterator};
     ///
     /// fn factorial(n: uint) -> uint {
-    ///     count(1u, 1).take_while(|&i| i <= n).product()
+    ///     count(1u, 1).take_while(|&i| i <= n).product(1)
     /// }
     /// assert!(factorial(0) == 1);
     /// assert!(factorial(1) == 1);
     /// assert!(factorial(5) == 120);
     /// ```
-    fn product(&mut self) -> A;
+    fn product(&mut self, init: A) -> A;
 }
 
-impl<A: Mul<A, A> + One, T: Iterator<A>> MultiplicativeIterator<A> for T {
+impl<A: Mul<A, A>, T: Iterator<A>> MultiplicativeIterator<A> for T {
     #[inline]
-    fn product(&mut self) -> A {
-        let one: A = One::one();
-        self.fold(one, |p, x| p * x)
+    fn product(&mut self, init: A) -> A {
+        self.fold(init, |p, x| p * x)
     }
 }
 
@@ -1905,7 +1903,7 @@ impl<A: Add<A, A> + Clone> Iterator<A> for Counter<A> {
 pub struct Range<A> {
     state: A,
     stop: A,
-    one: A
+    one: A,
 }
 
 /// Returns an iterator over the given range [start, stop) (that is, starting
@@ -1922,12 +1920,16 @@ pub struct Range<A> {
 /// }
 /// ```
 #[inline]
-pub fn range<A: Add<A, A> + PartialOrd + Clone + One>(start: A, stop: A) -> Range<A> {
-    Range{state: start, stop: stop, one: One::one()}
+pub fn range<A: Int>(start: A, stop: A) -> Range<A> {
+    Range {
+        state: start,
+        stop: stop,
+        one: Int::one(),
+    }
 }
 
 // FIXME: #10414: Unfortunate type bound
-impl<A: Add<A, A> + PartialOrd + Clone + ToPrimitive> Iterator<A> for Range<A> {
+impl<A: Int + ToPrimitive> Iterator<A> for Range<A> {
     #[inline]
     fn next(&mut self) -> Option<A> {
         if self.state < self.stop {
@@ -1974,7 +1976,7 @@ impl<A: Add<A, A> + PartialOrd + Clone + ToPrimitive> Iterator<A> for Range<A> {
 
 /// `Int` is required to ensure the range will be the same regardless of
 /// the direction it is consumed.
-impl<A: Int + PartialOrd + Clone + ToPrimitive> DoubleEndedIterator<A> for Range<A> {
+impl<A: Int + ToPrimitive> DoubleEndedIterator<A> for Range<A> {
     #[inline]
     fn next_back(&mut self) -> Option<A> {
         if self.stop > self.state {
@@ -1995,12 +1997,14 @@ pub struct RangeInclusive<A> {
 
 /// Return an iterator over the range [start, stop]
 #[inline]
-pub fn range_inclusive<A: Add<A, A> + PartialOrd + Clone + One>(start: A, stop: A)
-    -> RangeInclusive<A> {
-    RangeInclusive{range: range(start, stop), done: false}
+pub fn range_inclusive<A: Int>(start: A, stop: A) -> RangeInclusive<A> {
+    RangeInclusive {
+        range: range(start, stop),
+        done: false,
+    }
 }
 
-impl<A: Add<A, A> + PartialOrd + Clone + ToPrimitive> Iterator<A> for RangeInclusive<A> {
+impl<A: Int + ToPrimitive> Iterator<A> for RangeInclusive<A> {
     #[inline]
     fn next(&mut self) -> Option<A> {
         match self.range.next() {
@@ -2032,8 +2036,7 @@ impl<A: Add<A, A> + PartialOrd + Clone + ToPrimitive> Iterator<A> for RangeInclu
     }
 }
 
-impl<A: Sub<A, A> + Int + PartialOrd + Clone + ToPrimitive> DoubleEndedIterator<A>
-    for RangeInclusive<A> {
+impl<A: Int + ToPrimitive> DoubleEndedIterator<A> for RangeInclusive<A> {
     #[inline]
     fn next_back(&mut self) -> Option<A> {
         if self.range.stop > self.range.state {
@@ -2061,7 +2064,7 @@ pub struct RangeStep<A> {
 /// Return an iterator over the range [start, stop) by `step`. It handles overflow by stopping.
 #[inline]
 pub fn range_step<A: Int>(start: A, stop: A, step: A) -> RangeStep<A> {
-    let rev = step < Zero::zero();
+    let rev = step < Int::zero();
     RangeStep{state: start, stop: stop, step: step, rev: rev}
 }
 
@@ -2094,8 +2097,14 @@ pub struct RangeStepInclusive<A> {
 /// Return an iterator over the range [start, stop] by `step`. It handles overflow by stopping.
 #[inline]
 pub fn range_step_inclusive<A: Int>(start: A, stop: A, step: A) -> RangeStepInclusive<A> {
-    let rev = step < Zero::zero();
-    RangeStepInclusive{state: start, stop: stop, step: step, rev: rev, done: false}
+    let rev = step < Int::zero();
+    RangeStepInclusive {
+        state: start,
+        stop: stop,
+        step: step,
+        rev: rev,
+        done: false,
+    }
 }
 
 impl<A: Int> Iterator<A> for RangeStepInclusive<A> {

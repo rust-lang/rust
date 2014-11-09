@@ -1522,7 +1522,7 @@ impl<T: Iterator<char>> Parser<T> {
             }
         }
 
-        let exp = num::pow(10_f64, exp);
+        let exp = 10_f64.powi(exp as i32);
         if neg_exp {
             res /= exp;
         } else {

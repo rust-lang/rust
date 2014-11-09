@@ -16,7 +16,7 @@
 
 use fmt;
 use iter::DoubleEndedIterator;
-use num::{Int, cast, zero};
+use num::{Int, cast};
 use slice::SlicePrelude;
 
 /// A type that represents a specific radix
@@ -38,7 +38,7 @@ trait GenericRadix {
         let mut buf = [0u8, ..64];
         let base = cast(self.base()).unwrap();
         let mut curr = buf.len();
-        let is_positive = x >= zero();
+        let is_positive = x >= Int::zero();
         if is_positive {
             // Accumulate each digit of the number from the least significant
             // to the most significant figure.
@@ -47,7 +47,7 @@ trait GenericRadix {
                 x = x / base;                             // Deaccumulate the number.
                 *byte = self.digit(cast(n).unwrap());     // Store the digit in the buffer.
                 curr -= 1;
-                if x == zero() { break; }                 // No more digits left to accumulate.
+                if x == Int::zero() { break; }                 // No more digits left to accumulate.
             }
         } else {
             // Do the same as above, but accounting for two's complement.
@@ -56,7 +56,7 @@ trait GenericRadix {
                 x = x / base;                             // Deaccumulate the number.
                 *byte = self.digit(cast(n).unwrap());     // Store the digit in the buffer.
                 curr -= 1;
-                if x == zero() { break; }                 // No more digits left to accumulate.
+                if x == Int::zero() { break; }                 // No more digits left to accumulate.
             }
         }
         f.pad_integral(is_positive, self.prefix(), buf[curr..])

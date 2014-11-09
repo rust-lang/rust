@@ -771,10 +771,7 @@ mod tests {
         assert_pow!((3i,     0 ) => 1);
         assert_pow!((5i,     1 ) => 5);
         assert_pow!((-4i,    2 ) => 16);
-        assert_pow!((0.5f64, 5 ) => 0.03125);
         assert_pow!((8i,     3 ) => 512);
-        assert_pow!((8.0f64, 5 ) => 32768.0);
-        assert_pow!((8.5f64, 5 ) => 44370.53125);
         assert_pow!((2u64,   50) => 1125899906842624);
     }
 }
