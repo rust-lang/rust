@@ -556,7 +556,7 @@ fn check_fn<'a, 'tcx>(ccx: &'a CrateCtxt<'a, 'tcx>,
         .collect();
 
     if let ty::FnConverging(ret_ty) = ret_ty {
-        fcx.require_type_is_sized(ret_ty, decl.output.span, traits::ReturnType);
+        fcx.require_type_is_sized(ret_ty, decl.output.span(), traits::ReturnType);
         fn_sig_tys.push(ret_ty);
     }
 
@@ -2854,7 +2854,6 @@ fn check_lit(fcx: &FnCtxt,
             opt_ty.unwrap_or_else(
                 || ty::mk_float_var(tcx, fcx.infcx().next_float_var_id()))
         }
-        ast::LitNil => ty::mk_nil(tcx),
         ast::LitBool(_) => ty::mk_bool()
     }
 }
@@ -5486,7 +5485,7 @@ pub fn instantiate_path(fcx: &FnCtxt,
             data.inputs.iter().map(|ty| fcx.to_ty(&**ty)).collect();
 
         let tuple_ty =
-            ty::mk_tup_or_nil(fcx.tcx(), input_tys);
+            ty::mk_tup(fcx.tcx(), input_tys);
 
         if type_count >= 1 {
             substs.types.push(space, tuple_ty);

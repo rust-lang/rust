@@ -152,14 +152,9 @@ impl<'a> Ty<'a> {
                 cx.ty_path(self.to_path(cx, span, self_ty, self_generics), None)
             }
             Tuple(ref fields) => {
-                let ty = if fields.is_empty() {
-                    ast::TyNil
-                } else {
-                    ast::TyTup(fields.iter()
-                                     .map(|f| f.to_ty(cx, span, self_ty, self_generics))
-                                     .collect())
-                };
-
+                let ty = ast::TyTup(fields.iter()
+                    .map(|f| f.to_ty(cx, span, self_ty, self_generics))
+                    .collect());
                 cx.ty(span, ty)
             }
         }

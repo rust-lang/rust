@@ -383,7 +383,11 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
         for arg in method.pe_fn_decl().inputs.iter() {
             self.visit_ty(&*arg.ty);
         }
-        self.visit_ty(&*method.pe_fn_decl().output);
+
+        if let ast::Return(ref ret_ty) = method.pe_fn_decl().output {
+            self.visit_ty(&**ret_ty);
+        }
+
         // walk the fn body
         self.nest(method.id, |v| v.visit_block(&*method.pe_body()));
 
@@ -491,7 +495,10 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
         for arg in decl.inputs.iter() {
             self.visit_ty(&*arg.ty);
         }
-        self.visit_ty(&*decl.output);
+
+        if let ast::Return(ref ret_ty) = decl.output {
+            self.visit_ty(&**ret_ty);
+        }
 
         // walk the body
         self.nest(item.id, |v| v.visit_block(&*body));
@@ -1136,7 +1143,10 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DxrVisitor<'l, 'tcx> {
                 for arg in method_type.decl.inputs.iter() {
                     self.visit_ty(&*arg.ty);
                 }
-                self.visit_ty(&*method_type.decl.output);
+
+                if let ast::Return(ref ret_ty) = method_type.decl.output {
+                    self.visit_ty(&**ret_ty);
+                }
 
                 self.process_generic_params(&method_type.generics,
                                             method_type.span,
@@ -1352,7 +1362,10 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DxrVisitor<'l, 'tcx> {
                 for arg in decl.inputs.iter() {
                     self.visit_ty(&*arg.ty);
                 }
-                self.visit_ty(&*decl.output);
+
+                if let ast::Return(ref ret_ty) = decl.output {
+                    self.visit_ty(&**ret_ty);
+                }
 
                 // walk the body
                 self.nest(ex.id, |v| v.visit_block(&**body));
