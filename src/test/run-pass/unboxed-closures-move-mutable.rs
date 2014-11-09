@@ -14,7 +14,9 @@
 // Test that mutating a mutable upvar in a capture-by-value unboxed
 // closure does not ice (issue #18238) and marks the upvar as used
 // mutably so we do not get a spurious warning about it not needing to
-// be declared mutable (issue #18336).
+// be declared mutable (issue #18336 and #18769)
+
+fn set(x: &mut uint) { *x = 42; }
 
 fn main() {
     {
@@ -24,5 +26,13 @@ fn main() {
     {
         let mut x = 0u;
         move |:| x += 1;
+    }
+    {
+        let mut x = 0u;
+        move |&mut:| set(&mut x);
+    }
+    {
+        let mut x = 0u;
+        move |:| set(&mut x);
     }
 }
