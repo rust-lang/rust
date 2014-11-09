@@ -271,25 +271,6 @@ signed_float_impl!(f32, f32::NAN, f32::INFINITY, f32::NEG_INFINITY,
 signed_float_impl!(f64, f64::NAN, f64::INFINITY, f64::NEG_INFINITY,
                    intrinsics::fabsf64, intrinsics::copysignf64, fdim)
 
-/// Computes the absolute value.
-///
-/// For `f32` and `f64`, `NaN` will be returned if the number is `NaN`
-///
-/// For signed integers, `::MIN` will be returned if the number is `::MIN`.
-#[inline(always)]
-pub fn abs<T: Signed>(value: T) -> T {
-    value.abs()
-}
-
-/// The positive difference of two numbers.
-///
-/// Returns zero if `x` is less than or equal to `y`, otherwise the difference
-/// between `x` and `y` is returned.
-#[inline(always)]
-pub fn abs_sub<T: Signed>(x: T, y: T) -> T {
-    x.abs_sub(y)
-}
-
 /// Returns the sign of the number.
 ///
 /// For `f32` and `f64`:
@@ -1560,3 +1541,10 @@ pub trait Float: Signed + Primitive {
     /// Convert degrees to radians.
     fn to_radians(self) -> Self;
 }
+
+// DEPRECATED
+
+#[deprecated = "Use `Signed::abs`"]
+pub fn abs<T: Signed>(value: T) -> T { value.abs() }
+#[deprecated = "Use `Signed::abs_sub`"]
+pub fn abs_sub<T: Signed>(x: T, y: T) -> T { x.abs_sub(y) }
