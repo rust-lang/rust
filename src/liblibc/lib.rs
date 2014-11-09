@@ -203,6 +203,7 @@ pub use funcs::bsd43::{shutdown};
 #[cfg(unix)] pub use funcs::posix01::stat_::{lstat};
 #[cfg(unix)] pub use funcs::posix01::unistd::{fsync, ftruncate};
 #[cfg(unix)] pub use funcs::posix01::unistd::{readlink, symlink};
+#[cfg(unix)] pub use funcs::posix01::unistd::utimes;
 #[cfg(unix)] pub use funcs::bsd43::{getifaddrs, freeifaddrs};
 
 #[cfg(windows)] pub use consts::os::c95::{WSAECONNREFUSED, WSAECONNRESET, WSAEACCES};
@@ -4515,6 +4516,7 @@ pub mod funcs {
         pub mod unistd {
             use types::os::arch::c95::{c_char, c_int, size_t};
             use types::os::arch::posix88::{ssize_t, off_t};
+            use types::os::common::posix01::timeval;
 
             extern {
                 pub fn readlink(path: *const c_char,
@@ -4536,6 +4538,7 @@ pub mod funcs {
                                path2: *const c_char) -> c_int;
 
                 pub fn ftruncate(fd: c_int, length: off_t) -> c_int;
+                pub fn utimes(file: *const c_char, buf: *const timeval) -> c_int;
             }
         }
 
