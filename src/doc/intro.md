@@ -217,7 +217,7 @@ including the right thing!) Even though we compiled with flags to give us as
 many warnings as possible, and to treat those warnings as errors, we got no
 errors. When we ran the program, it crashed.
 
-Why does this happen? When we prepend to an array, its length changes. Since
+Why does this happen? When we append to an array, its length changes. Since
 its length changes, we may need to allocate more memory. In Ruby, this happens
 as well, we just don't think about it very often. So why does the C++ version
 segfault when we allocate more memory?
