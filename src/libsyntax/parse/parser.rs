@@ -66,6 +66,7 @@ use ast_util::{as_prec, ident_to_path, operator_prec};
 use ast_util;
 use codemap::{Span, BytePos, Spanned, spanned, mk_sp};
 use codemap;
+use diagnostic;
 use ext::tt::macro_parser;
 use parse;
 use parse::attr::ParserAttr;
@@ -939,6 +940,11 @@ impl<'a> Parser<'a> {
     }
     pub fn span_fatal(&mut self, sp: Span, m: &str) -> ! {
         self.sess.span_diagnostic.span_fatal(sp, m)
+    }
+    pub fn span_fatal_help(&mut self, sp: Span, m: &str, help: &str) -> ! {
+        self.span_err(sp, m);
+        self.span_help(sp, help);
+        panic!(diagnostic::FatalError);
     }
     pub fn span_note(&mut self, sp: Span, m: &str) {
         self.sess.span_diagnostic.span_note(sp, m)
@@ -3702,7 +3708,14 @@ impl<'a> Parser<'a> {
         maybe_whole!(no_clone self, NtBlock);
 
         let lo = self.span.lo;
-        self.expect(&token::OpenDelim(token::Brace));
+
+        if !self.eat(&token::OpenDelim(token::Brace)) {
+            let sp = self.span;
+            let tok = self.this_token_to_string();
+            self.span_fatal_help(sp,
+                                 format!("expected `{{`, found `{}`", tok).as_slice(),
+                                 "place this code inside a block");
+        }
 
         return self.parse_block_tail_(lo, DefaultBlock, Vec::new());
     }
@@ -4693,9 +4706,10 @@ impl<'a> Parser<'a> {
             _ => {
                 let span = self.span;
                 let token_str = self.this_token_to_string();
-                self.span_fatal(span,
-                                format!("expected `,`, or `}}`, found `{}`",
-                                        token_str).as_slice())
+                self.span_fatal_help(span,
+                                     format!("expected `,`, or `}}`, found `{}`",
+                                             token_str).as_slice(),
+                                     "struct fields should be separated by commas")
             }
         }
         a_var
@@ -4897,19 +4911,24 @@ impl<'a> Parser<'a> {
                     (true, false) => (default_path, false),
                     (false, true) => (secondary_path, true),
                     (false, false) => {
-                        self.span_fatal(id_sp,
-                                        format!("file not found for module \
-                                                 `{}`",
-                                                 mod_name).as_slice());
+                        self.span_fatal_help(id_sp,
+                                             format!("file not found for module `{}`",
+                                                     mod_name).as_slice(),
+                                             format!("name the file either {} or {} inside \
+                                                     the directory {}",
+                                                     default_path_str,
+                                                     secondary_path_str,
+                                                     dir_path.display()).as_slice());
                     }
                     (true, true) => {
-                        self.span_fatal(
+                        self.span_fatal_help(
                             id_sp,
                             format!("file for module `{}` found at both {} \
                                      and {}",
                                     mod_name,
                                     default_path_str,
-                                    secondary_path_str).as_slice());
+                                    secondary_path_str).as_slice(),
+                            "delete or rename one of them to remove the ambiguity");
                     }
                 }
             }
@@ -5062,9 +5081,10 @@ impl<'a> Parser<'a> {
                     // skip the ident if there is one
                     if self.token.is_ident() { self.bump(); }
 
-                    self.span_err(span,
-                                  format!("expected `;`, found `as`; perhaps you meant \
-                                          to enclose the crate name `{}` in a string?",
+                    self.span_err(span, "expected `;`, found `as`");
+                    self.span_help(span,
+                                   format!("perhaps you meant to enclose the crate name `{}` in \
+                                           a string?",
                                           the_ident.as_str()).as_slice());
                     None
                 } else {
@@ -5574,16 +5594,12 @@ impl<'a> Parser<'a> {
         }
 
         // FAILURE TO PARSE ITEM
-        if visibility != Inherited {
-            let mut s = String::from_str("unmatched visibility `");
-            if visibility == Public {
-                s.push_str("pub")
-            } else {
-                s.push_str("priv")
+        match visibility {
+            Inherited => {}
+            Public => {
+                let last_span = self.last_span;
+                self.span_fatal(last_span, "unmatched visibility `pub`");
             }
-            s.push('`');
-            let last_span = self.last_span;
-            self.span_fatal(last_span, s.as_slice());
         }
         return IoviNone(attrs);
     }
@@ -5905,4 +5921,3 @@ impl<'a> Parser<'a> {
         }
     }
 }
-
