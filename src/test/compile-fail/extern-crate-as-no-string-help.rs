@@ -11,4 +11,5 @@
 // Tests that the proper help is displayed in the error message
 
 extern crate foo as bar;
-//~^ ERROR expected `;`, found `as`; perhaps you meant to enclose the crate name `foo` in a string?
+//~^ ERROR expected `;`, found `as`
+//~^^ HELP perhaps you meant to enclose the crate name `foo` in a string?
