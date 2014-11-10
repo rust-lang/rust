@@ -10,11 +10,9 @@
 
 #![feature(unsafe_destructor)]
 
-extern crate time;
-
-use time::precise_time_s;
 use std::os;
 use std::task;
+use std::time::Duration;
 
 #[deriving(Clone)]
 enum List<T> {
@@ -37,11 +35,12 @@ fn main() {
 
 fn run(repeat: int, depth: int) {
     for _ in range(0, repeat) {
-        println!("starting {:.4f}", precise_time_s());
-        task::try(proc() {
-            recurse_or_panic(depth, None)
+        let dur = Duration::span(|| {
+            task::try(proc() {
+                recurse_or_panic(depth, None)
+            });
         });
-        println!("stopping {:.4f}", precise_time_s());
+        println!("iter: {}", dur);
     }
 }
 
@@ -72,7 +71,6 @@ fn r(l: Box<nillist>) -> r {
 
 fn recurse_or_panic(depth: int, st: Option<State>) {
     if depth == 0 {
-        println!("unwinding {:.4f}", precise_time_s());
         panic!();
     } else {
         let depth = depth - 1;

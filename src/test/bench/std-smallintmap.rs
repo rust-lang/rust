@@ -10,11 +10,9 @@
 
 // Microbenchmark for the smallintmap library
 
-extern crate collections;
-extern crate time;
-
 use std::collections::VecMap;
 use std::os;
+use std::time::Duration;
 use std::uint;
 
 fn append_sequential(min: uint, max: uint, map: &mut VecMap<uint>) {
@@ -41,25 +39,22 @@ fn main() {
     let max = from_str::<uint>(args[1].as_slice()).unwrap();
     let rep = from_str::<uint>(args[2].as_slice()).unwrap();
 
-    let mut checkf = 0.0;
-    let mut appendf = 0.0;
+    let mut checkf = Duration::seconds(0);
+    let mut appendf = Duration::seconds(0);
 
     for _ in range(0u, rep) {
         let mut map = VecMap::new();
-        let start = time::precise_time_s();
-        append_sequential(0u, max, &mut map);
-        let mid = time::precise_time_s();
-        check_sequential(0u, max, &map);
-        let end = time::precise_time_s();
+        let d1 = Duration::span(|| append_sequential(0u, max, &mut map));
+        let d2 = Duration::span(|| check_sequential(0u, max, &map));
 
-        checkf += (end - mid) as f64;
-        appendf += (mid - start) as f64;
+        checkf = checkf + d2;
+        appendf = appendf + d1;
     }
 
     let maxf = max as f64;
 
     println!("insert(): {} seconds\n", checkf);
-    println!("        : {} op/sec\n", maxf/checkf);
+    println!("        : {} op/ms\n", maxf / checkf.num_milliseconds() as f64);
     println!("get()   : {} seconds\n", appendf);
-    println!("        : {} op/sec\n", maxf/appendf);
+    println!("        : {} op/ms\n", maxf / appendf.num_milliseconds() as f64);
 }

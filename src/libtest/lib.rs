@@ -39,11 +39,9 @@ extern crate getopts;
 extern crate regex;
 extern crate serialize;
 extern crate term;
-extern crate time;
 
 use std::collections::TreeMap;
 use stats::Stats;
-use time::precise_time_ns;
 use getopts::{OptGroup, optflag, optopt};
 use regex::Regex;
 use serialize::{json, Decodable};
@@ -53,8 +51,8 @@ use term::color::{Color, RED, YELLOW, GREEN, CYAN};
 
 use std::cmp;
 use std::f64;
-use std::fmt;
 use std::fmt::Show;
+use std::fmt;
 use std::from_str::FromStr;
 use std::io::fs::PathExtensions;
 use std::io::stdio::StdWriter;
@@ -63,6 +61,7 @@ use std::io;
 use std::os;
 use std::string::String;
 use std::task::TaskBuilder;
+use std::time::Duration;
 
 // to be used by rustc to compile tests in libtest
 pub mod test {
@@ -175,8 +174,7 @@ impl fmt::Show for TestFn {
 /// call to `iter`.
 pub struct Bencher {
     iterations: u64,
-    ns_start: u64,
-    ns_end: u64,
+    dur: Duration,
     pub bytes: u64,
 }
 
@@ -1322,20 +1320,16 @@ pub fn black_box<T>(dummy: T) {
 impl Bencher {
     /// Callback for benchmark functions to run in their body.
     pub fn iter<T>(&mut self, inner: || -> T) {
-        self.ns_start = precise_time_ns();
-        let k = self.iterations;
-        for _ in range(0u64, k) {
-            black_box(inner());
-        }
-        self.ns_end = precise_time_ns();
+        self.dur = Duration::span(|| {
+            let k = self.iterations;
+            for _ in range(0u64, k) {
+                black_box(inner());
+            }
+        });
     }
 
     pub fn ns_elapsed(&mut self) -> u64 {
-        if self.ns_start == 0 || self.ns_end == 0 {
-            0
-        } else {
-            self.ns_end - self.ns_start
-        }
+        self.dur.num_nanoseconds().unwrap() as u64
     }
 
     pub fn ns_per_iter(&mut self) -> u64 {
@@ -1372,41 +1366,44 @@ impl Bencher {
         // (i.e. larger error bars).
         if n == 0 { n = 1; }
 
-        let mut total_run = 0;
+        let mut total_run = Duration::nanoseconds(0);
         let samples : &mut [f64] = [0.0_f64, ..50];
         loop {
-            let loop_start = precise_time_ns();
+            let mut summ = None;
+            let mut summ5 = None;
 
-            for p in samples.iter_mut() {
-                self.bench_n(n, |x| f(x));
-                *p = self.ns_per_iter() as f64;
-            };
+            let loop_run = Duration::span(|| {
 
-            stats::winsorize(samples, 5.0);
-            let summ = stats::Summary::new(samples);
+                for p in samples.iter_mut() {
+                    self.bench_n(n, |x| f(x));
+                    *p = self.ns_per_iter() as f64;
+                };
 
-            for p in samples.iter_mut() {
-                self.bench_n(5 * n, |x| f(x));
-                *p = self.ns_per_iter() as f64;
-            };
+                stats::winsorize(samples, 5.0);
+                summ = Some(stats::Summary::new(samples));
 
-            stats::winsorize(samples, 5.0);
-            let summ5 = stats::Summary::new(samples);
+                for p in samples.iter_mut() {
+                    self.bench_n(5 * n, |x| f(x));
+                    *p = self.ns_per_iter() as f64;
+                };
 
-            let now = precise_time_ns();
-            let loop_run = now - loop_start;
+                stats::winsorize(samples, 5.0);
+                summ5 = Some(stats::Summary::new(samples));
+            });
+            let summ = summ.unwrap();
+            let summ5 = summ5.unwrap();
 
             // If we've run for 100ms and seem to have converged to a
             // stable median.
-            if loop_run > 100_000_000 &&
+            if loop_run.num_milliseconds() > 100 &&
                 summ.median_abs_dev_pct < 1.0 &&
                 summ.median - summ5.median < summ5.median_abs_dev {
                 return summ5;
             }
 
-            total_run += loop_run;
+            total_run = total_run + loop_run;
             // Longest we ever run for is 3s.
-            if total_run > 3_000_000_000 {
+            if total_run.num_seconds() > 3 {
                 return summ5;
             }
 
@@ -1417,13 +1414,13 @@ impl Bencher {
 
 pub mod bench {
     use std::cmp;
+    use std::time::Duration;
     use super::{Bencher, BenchSamples};
 
     pub fn benchmark(f: |&mut Bencher|) -> BenchSamples {
         let mut bs = Bencher {
             iterations: 0,
-            ns_start: 0,
-            ns_end: 0,
+            dur: Duration::nanoseconds(0),
             bytes: 0
         };
 

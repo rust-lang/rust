@@ -11,7 +11,8 @@
 //! Simple time handling.
 
 #![crate_name = "time"]
-#![experimental]
+#![deprecated = "use the http://github.com/rust-lang/time crate instead"]
+#![allow(deprecated)]
 
 #![crate_type = "rlib"]
 #![crate_type = "dylib"]
