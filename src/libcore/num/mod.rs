@@ -10,7 +10,7 @@
 //
 // ignore-lexer-test FIXME #15679
 
-//! Numeric traits and functions for generic mathematics
+//! Numeric traits and functions for the built-in numeric types.
 
 #![allow(missing_docs)]
 
@@ -33,45 +33,36 @@ pub fn div_rem<T: Div<T, T> + Rem<T, T>>(x: T, y: T) -> (T, T) {
     (x / y, x % y)
 }
 
-/// Useful functions for signed numbers (i.e. numbers that can be negative).
+/// A built-in signed number.
 pub trait Signed: Neg<Self> {
-    /// Computes the absolute value.
-    ///
-    /// For `f32` and `f64`, `NaN` will be returned if the number is `NaN`.
-    ///
-    /// For signed integers, `::MIN` will be returned if the number is `::MIN`.
+    /// Computes the absolute value of `self`.
     fn abs(self) -> Self;
 
-    /// Returns the sign of the number.
-    ///
-    /// For `f32` and `f64`:
-    ///
-    /// * `1.0` if the number is positive, `+0.0` or `INFINITY`
-    /// * `-1.0` if the number is negative, `-0.0` or `NEG_INFINITY`
-    /// * `NaN` if the number is `NaN`
-    ///
-    /// For signed integers:
-    ///
-    /// * `0` if the number is zero
-    /// * `1` if the number is positive
-    /// * `-1` if the number is negative
+    /// Returns a number (either `-1`, `0` or `1`) representing sign of `self`.
     fn signum(self) -> Self;
 
-    /// Returns true if the number is positive and false if the number is zero or negative.
+    /// Returns `true` if `self` is a positive value.
     fn is_positive(self) -> bool;
 
-    /// Returns true if the number is negative and false if the number is zero or positive.
+    /// Returns `true` if `self` is a negative value.
     fn is_negative(self) -> bool;
 }
 
 macro_rules! signed_int_impl {
     ($T:ty) => {
         impl Signed for $T {
+            /// Computes the absolute value. `Int::min_value()` will be returned
+            /// if the number is `Int::min_value()`.
             #[inline]
             fn abs(self) -> $T {
                 if self.is_negative() { -self } else { self }
             }
 
+            /// # Returns
+            ///
+            /// - `0` if the number is zero
+            /// - `1` if the number is positive
+            /// - `-1` if the number is negative
             #[inline]
             fn signum(self) -> $T {
                 match self {
@@ -81,9 +72,13 @@ macro_rules! signed_int_impl {
                 }
             }
 
+            /// Returns `true` if `self` is positive and `false` if the number
+            /// is zero or negative.
             #[inline]
             fn is_positive(self) -> bool { self > 0 }
 
+            /// Returns `true` if `self` is negative and `false` if the number
+            /// is zero or positive.
             #[inline]
             fn is_negative(self) -> bool { self < 0 }
         }
@@ -99,7 +94,8 @@ signed_int_impl!(int)
 macro_rules! signed_float_impl {
     ($T:ty, $fabs:path, $fcopysign:path) => {
         impl Signed for $T {
-            /// Computes the absolute value. Returns `NAN` if the number is `NAN`.
+            /// Computes the absolute value. Returns `Float::nan()` if the
+            /// number is `Float::nan()`.
             #[inline]
             fn abs(self) -> $T {
                 unsafe { $fabs(self) }
@@ -144,7 +140,7 @@ signed_float_impl!(f64,
     intrinsics::fabsf64,
     intrinsics::copysignf64)
 
-/// Raises a value to the power of exp, using exponentiation by squaring.
+/// Raises a `base` to the power of `exp`, using exponentiation by squaring.
 ///
 /// # Example
 ///
@@ -169,8 +165,7 @@ pub fn pow<T: Int>(mut base: T, mut exp: uint) -> T {
     }
 }
 
-/// A primitive signed or unsigned integer equipped with various bitwise
-/// operators, bit counting methods, and endian conversion functions.
+/// A built-in signed or unsigned integer.
 pub trait Int
     : Copy + Clone
     + NumCast
@@ -188,23 +183,23 @@ pub trait Int
     + Shl<uint,Self>
     + Shr<uint,Self>
 {
-    /// Returns the `0` value of this integer.
+    /// Returns the `0` value of this integer type.
     // FIXME (#5527): Should be an associated constant
     fn zero() -> Self;
 
-    /// Returns the `1` value of this integer.
+    /// Returns the `1` value of this integer type.
     // FIXME (#5527): Should be an associated constant
     fn one() -> Self;
 
-    /// Returns the smallest value that can be represented by this integer.
+    /// Returns the smallest value that can be represented by this integer type.
     // FIXME (#5527): Should be and associated constant
     fn min_value() -> Self;
 
-    /// Returns the largest value that can be represented by this integer.
+    /// Returns the largest value that can be represented by this integer type.
     // FIXME (#5527): Should be and associated constant
     fn max_value() -> Self;
 
-    /// Returns the number of ones in the binary representation of the integer.
+    /// Returns the number of ones in the binary representation of `self`.
     ///
     /// # Example
     ///
@@ -215,7 +210,7 @@ pub trait Int
     /// ```
     fn count_ones(self) -> uint;
 
-    /// Returns the number of zeros in the binary representation of the integer.
+    /// Returns the number of zeros in the binary representation of `self`.
     ///
     /// # Example
     ///
@@ -230,7 +225,7 @@ pub trait Int
     }
 
     /// Returns the number of leading zeros in the binary representation
-    /// of the integer.
+    /// of `self`.
     ///
     /// # Example
     ///
@@ -242,7 +237,7 @@ pub trait Int
     fn leading_zeros(self) -> uint;
 
     /// Returns the number of trailing zeros in the binary representation
-    /// of the integer.
+    /// of `self`.
     ///
     /// # Example
     ///
@@ -331,7 +326,7 @@ pub trait Int
         if cfg!(target_endian = "little") { x } else { x.swap_bytes() }
     }
 
-    /// Convert the integer to big endian from the target's endianness.
+    /// Convert `self` to big endian from the target's endianness.
     ///
     /// On big endian this is a no-op. On little endian the bytes are swapped.
     ///
@@ -351,7 +346,7 @@ pub trait Int
         if cfg!(target_endian = "big") { self } else { self.swap_bytes() }
     }
 
-    /// Convert the integer to little endian from the target's endianness.
+    /// Convert `self` to little endian from the target's endianness.
     ///
     /// On little endian this is a no-op. On big endian the bytes are swapped.
     ///
@@ -371,8 +366,8 @@ pub trait Int
         if cfg!(target_endian = "little") { self } else { self.swap_bytes() }
     }
 
-    /// Adds two numbers, checking for overflow. If overflow occurs, `None` is
-    /// returned.
+    /// Checked integer addition. Computes `self + other`, returning `None` if
+    /// overflow occurred.
     ///
     /// # Example
     ///
@@ -384,8 +379,8 @@ pub trait Int
     /// ```
     fn checked_add(self, other: Self) -> Option<Self>;
 
-    /// Subtracts two numbers, checking for underflow. If underflow occurs,
-    /// `None` is returned.
+    /// Checked integer subtraction. Computes `self + other`, returning `None`
+    /// if underflow occurred.
     ///
     /// # Example
     ///
@@ -397,8 +392,8 @@ pub trait Int
     /// ```
     fn checked_sub(self, other: Self) -> Option<Self>;
 
-    /// Multiplies two numbers, checking for underflow or overflow. If underflow
-    /// or overflow occurs, `None` is returned.
+    /// Checked integer multiplication. Computes `self + other`, returning
+    /// `None` if underflow or overflow occurred.
     ///
     /// # Example
     ///
@@ -410,8 +405,8 @@ pub trait Int
     /// ```
     fn checked_mul(self, other: Self) -> Option<Self>;
 
-    /// Divides two numbers, checking for underflow, overflow and division by
-    /// zero. If underflow occurs, `None` is returned.
+    /// Checked integer division. Computes `self + other` returning `None` if
+    /// `self == 0` or the operation results in underflow or overflow.
     ///
     /// # Example
     ///
@@ -425,8 +420,8 @@ pub trait Int
     #[inline]
     fn checked_div(self, other: Self) -> Option<Self>;
 
-    /// Saturating addition. Returns `self + other`, saturating at the
-    /// numeric bounds instead of overflowing.
+    /// Saturating integer addition. Computes `self + other`, saturating at
+    /// the numeric bounds instead of overflowing.
     #[inline]
     fn saturating_add(self, other: Self) -> Self {
         match self.checked_add(other) {
@@ -436,8 +431,8 @@ pub trait Int
         }
     }
 
-    /// Saturating subtraction. Returns `self - other`, saturating at the
-    /// numeric bounds instead of overflowing.
+    /// Saturating integer subtraction. Computes `self - other`, saturating at
+    /// the numeric bounds instead of overflowing.
     #[inline]
     fn saturating_sub(self, other: Self) -> Self {
         match self.checked_sub(other) {
@@ -685,7 +680,7 @@ int_impl!(int = i64, u64, 64,
     intrinsics::i64_sub_with_overflow,
     intrinsics::i64_mul_with_overflow)
 
-/// Unsigned integers
+/// A built-in unsigned integer.
 pub trait UnsignedInt: Int {
     /// Returns `true` iff `self == 2^k` for some `k`.
     fn is_power_of_two(self) -> bool {
@@ -1229,7 +1224,7 @@ pub enum FPCategory {
     FPNormal,
 }
 
-/// Operations on the built-in floating point numbers.
+/// A built-in floating point number.
 // FIXME(#5527): In a future version of Rust, many of these functions will
 //               become constants.
 //
