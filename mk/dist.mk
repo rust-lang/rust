@@ -125,7 +125,7 @@ $(PKG_EXE): rust.iss modpath.iss upgrade.iss LICENSE.txt rust-logo.ico \
             dist-prepare-win
 	$(CFG_PYTHON) $(S)src/etc/make-win-dist.py tmp/dist/win $(CFG_BUILD)
 	@$(call E, ISCC: $@)
-	$(Q)"$(CFG_ISCC)" $<
+	$(Q)$(CFG_ISCC) $<
 
 $(eval $(call DEF_PREPARE,win))
 
