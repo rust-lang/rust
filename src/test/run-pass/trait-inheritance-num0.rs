@@ -11,6 +11,7 @@
 
 // Extending Num and using inherited static methods
 
+use std::cmp::PartialOrd;
 use std::num::NumCast;
 
 pub trait Num {
@@ -18,7 +19,7 @@ pub trait Num {
     fn gt(&self, other: &Self) -> bool;
 }
 
-pub trait NumExt: Num + NumCast { }
+pub trait NumExt: NumCast + PartialOrd { }
 
 fn greater_than_one<T:NumExt>(n: &T) -> bool {
     n.gt(&NumCast::from(1i).unwrap())

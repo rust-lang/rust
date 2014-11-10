@@ -116,7 +116,7 @@ fn int_to_str_bytes_common<T: Int>(num: T, radix: uint, sign: SignFormat, f: |u8
         // numbers [-35 .. 0] we always have [0 .. 35].
         let current_digit_signed = deccum % radix_gen;
         let current_digit = if current_digit_signed < _0 {
-            -current_digit_signed
+            _0 - current_digit_signed
         } else {
             current_digit_signed
         };

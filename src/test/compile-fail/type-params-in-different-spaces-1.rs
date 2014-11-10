@@ -8,15 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::num::Num;
+use std::num::Int;
 
-trait BrokenAdd: Num {
+trait BrokenAdd: Int {
     fn broken_add<T>(&self, rhs: T) -> Self {
         *self + rhs //~ ERROR expected `Self`, found `T`
     }
 }
 
-impl<T: Num> BrokenAdd for T {}
+impl<T: Int> BrokenAdd for T {}
 
 pub fn main() {
     let foo: u8 = 0u8;

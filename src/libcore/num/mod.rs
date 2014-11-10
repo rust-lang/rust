@@ -19,30 +19,13 @@ use {int, i8, i16, i32, i64};
 use {uint, u8, u16, u32, u64};
 use {f32, f64};
 use clone::Clone;
-use cmp::{Ord, PartialEq, PartialOrd};
+use cmp::{PartialEq, Eq};
+use cmp::{PartialOrd, Ord};
 use kinds::Copy;
 use mem::size_of;
 use ops::{Add, Sub, Mul, Div, Rem, Neg};
 use ops::{Not, BitAnd, BitOr, BitXor, Shl, Shr};
 use option::{Option, Some, None};
-
-/// The base trait for numeric types
-#[allow(deprecated)]
-pub trait Num: PartialEq + Zero + One
-             + Neg<Self>
-             + Add<Self,Self>
-             + Sub<Self,Self>
-             + Mul<Self,Self>
-             + Div<Self,Self>
-             + Rem<Self,Self> {}
-
-macro_rules! trait_impl(
-    ($name:ident for $($t:ty)*) => ($(
-        impl $name for $t {}
-    )*)
-)
-
-trait_impl!(Num for uint u8 u16 u32 u64 int i8 i16 i32 i64 f32 f64)
 
 /// Simultaneous division and remainder
 #[inline]
@@ -51,7 +34,7 @@ pub fn div_rem<T: Div<T, T> + Rem<T, T>>(x: T, y: T) -> (T, T) {
 }
 
 /// Useful functions for signed numbers (i.e. numbers that can be negative).
-pub trait Signed: Num + Neg<Self> {
+pub trait Signed: Neg<Self> {
     /// Computes the absolute value.
     ///
     /// For `f32` and `f64`, `NaN` will be returned if the number is `NaN`.
@@ -161,11 +144,6 @@ signed_float_impl!(f64, f64::NAN, f64::INFINITY, f64::NEG_INFINITY,
 /// * `-1` if the number is negative
 #[inline(always)] pub fn signum<T: Signed>(value: T) -> T { value.signum() }
 
-/// A trait for values which cannot be negative
-pub trait Unsigned: Num {}
-
-trait_impl!(Unsigned for uint u8 u16 u32 u64)
-
 /// Raises a value to the power of exp, using exponentiation by squaring.
 ///
 /// # Example
@@ -191,27 +169,25 @@ pub fn pow<T: Int>(mut base: T, mut exp: uint) -> T {
     }
 }
 
-/// Specifies the available operations common to all of Rust's core numeric primitives.
-/// These may not always make sense from a purely mathematical point of view, but
-/// may be useful for systems programming.
-pub trait Primitive: Copy
-                   + Clone
-                   + Num
-                   + NumCast
-                   + PartialOrd {}
-
-trait_impl!(Primitive for uint u8 u16 u32 u64 int i8 i16 i32 i64 f32 f64)
-
 /// A primitive signed or unsigned integer equipped with various bitwise
 /// operators, bit counting methods, and endian conversion functions.
-pub trait Int: Primitive
-             + Ord
-             + Not<Self>
-             + BitAnd<Self,Self>
-             + BitOr<Self,Self>
-             + BitXor<Self,Self>
-             + Shl<uint,Self>
-             + Shr<uint,Self> {
+pub trait Int
+    : Copy + Clone
+    + NumCast
+    + PartialOrd + Ord
+    + PartialEq + Eq
+    + Add<Self,Self>
+    + Sub<Self,Self>
+    + Mul<Self,Self>
+    + Div<Self,Self>
+    + Rem<Self,Self>
+    + Not<Self>
+    + BitAnd<Self,Self>
+    + BitOr<Self,Self>
+    + BitXor<Self,Self>
+    + Shl<uint,Self>
+    + Shr<uint,Self>
+{
     /// Returns the `0` value of this integer.
     // FIXME (#5527): Should be an associated constant
     fn zero() -> Self;
@@ -1253,13 +1229,24 @@ pub enum FPCategory {
     FPNormal,
 }
 
-/// Operations on primitive floating point numbers.
+/// Operations on the built-in floating point numbers.
 // FIXME(#5527): In a future version of Rust, many of these functions will
 //               become constants.
 //
 // FIXME(#8888): Several of these functions have a parameter named
 //               `unused_self`. Removing it requires #8888 to be fixed.
-pub trait Float: Signed + Primitive {
+pub trait Float
+    : Copy + Clone
+    + NumCast
+    + PartialOrd
+    + PartialEq
+    + Signed
+    + Add<Self,Self>
+    + Sub<Self,Self>
+    + Mul<Self,Self>
+    + Div<Self,Self>
+    + Rem<Self,Self>
+{
     /// Returns the NaN value.
     fn nan() -> Self;
     /// Returns the infinite value.
@@ -1403,6 +1390,33 @@ pub trait Float: Signed + Primitive {
 }
 
 // DEPRECATED
+
+macro_rules! trait_impl {
+    ($name:ident for $($t:ty)*) => {
+        $(#[allow(deprecated)] impl $name for $t {})*
+    };
+}
+
+#[deprecated = "Generalised numbers are no longer supported"]
+#[allow(deprecated)]
+pub trait Num: PartialEq + Zero + One
+             + Neg<Self>
+             + Add<Self,Self>
+             + Sub<Self,Self>
+             + Mul<Self,Self>
+             + Div<Self,Self>
+             + Rem<Self,Self> {}
+trait_impl!(Num for uint u8 u16 u32 u64 int i8 i16 i32 i64 f32 f64)
+
+#[deprecated = "Generalised unsigned numbers are no longer supported"]
+#[allow(deprecated)]
+pub trait Unsigned: Num {}
+trait_impl!(Unsigned for uint u8 u16 u32 u64)
+
+#[deprecated = "Use `Float` or `Int`"]
+#[allow(deprecated)]
+pub trait Primitive: Copy + Clone + Num + NumCast + PartialOrd {}
+trait_impl!(Primitive for uint u8 u16 u32 u64 int i8 i16 i32 i64 f32 f64)
 
 #[deprecated = "The generic `Zero` trait will be removed soon."]
 pub trait Zero: Add<Self, Self> {
