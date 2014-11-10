@@ -64,8 +64,8 @@ pub trait Signed: Neg<Self> {
     fn is_negative(self) -> bool;
 }
 
-macro_rules! signed_impl(
-    ($($T:ty)*) => ($(
+macro_rules! signed_int_impl {
+    ($T:ty) => {
         impl Signed for $T {
             #[inline]
             fn abs(self) -> $T {
@@ -75,9 +75,9 @@ macro_rules! signed_impl(
             #[inline]
             fn signum(self) -> $T {
                 match self {
-                    n if n > 0 => 1,
-                    0 => 0,
-                    _ => -1,
+                    n if n > 0 =>  1,
+                    0          =>  0,
+                    _          => -1,
                 }
             }
 
@@ -87,13 +87,17 @@ macro_rules! signed_impl(
             #[inline]
             fn is_negative(self) -> bool { self < 0 }
         }
-    )*)
-)
+    }
+}
 
-signed_impl!(int i8 i16 i32 i64)
+signed_int_impl!(i8)
+signed_int_impl!(i16)
+signed_int_impl!(i32)
+signed_int_impl!(i64)
+signed_int_impl!(int)
 
-macro_rules! signed_float_impl(
-    ($T:ty, $nan:expr, $inf:expr, $neg_inf:expr, $fabs:path, $fcopysign:path, $fdim:ident) => {
+macro_rules! signed_float_impl {
+    ($T:ty, $fabs:path, $fcopysign:path) => {
         impl Signed for $T {
             /// Computes the absolute value. Returns `NAN` if the number is `NAN`.
             #[inline]
@@ -103,46 +107,42 @@ macro_rules! signed_float_impl(
 
             /// # Returns
             ///
-            /// - `1.0` if the number is positive, `+0.0` or `INFINITY`
-            /// - `-1.0` if the number is negative, `-0.0` or `NEG_INFINITY`
-            /// - `NAN` if the number is NaN
+            /// - `1.0` if the number is positive, `+0.0` or `Float::infinity()`
+            /// - `-1.0` if the number is negative, `-0.0` or `Float::neg_infinity()`
+            /// - `Float::nan()` if the number is `Float::nan()`
             #[inline]
             fn signum(self) -> $T {
-                if self != self { $nan } else {
+                if self.is_nan() {
+                    Float::nan()
+                } else {
                     unsafe { $fcopysign(1.0, self) }
                 }
             }
 
-            /// Returns `true` if the number is positive, including `+0.0` and `INFINITY`
+            /// Returns `true` if the number is positive, including `+0.0` and
+            /// `Float::infinity()`.
             #[inline]
-            fn is_positive(self) -> bool { self > 0.0 || (1.0 / self) == $inf }
+            fn is_positive(self) -> bool {
+                self > 0.0 || (1.0 / self) == Float::infinity()
+            }
 
-            /// Returns `true` if the number is negative, including `-0.0` and `NEG_INFINITY`
+            /// Returns `true` if the number is negative, including `-0.0` and
+            /// `Float::neg_infinity()`.
             #[inline]
-            fn is_negative(self) -> bool { self < 0.0 || (1.0 / self) == $neg_inf }
+            fn is_negative(self) -> bool {
+                self < 0.0 || (1.0 / self) == Float::neg_infinity()
+            }
         }
-    }
-)
+    };
+}
 
-signed_float_impl!(f32, f32::NAN, f32::INFINITY, f32::NEG_INFINITY,
-                   intrinsics::fabsf32, intrinsics::copysignf32, fdimf)
-signed_float_impl!(f64, f64::NAN, f64::INFINITY, f64::NEG_INFINITY,
-                   intrinsics::fabsf64, intrinsics::copysignf64, fdim)
+signed_float_impl!(f32,
+    intrinsics::fabsf32,
+    intrinsics::copysignf32)
 
-/// Returns the sign of the number.
-///
-/// For `f32` and `f64`:
-///
-/// * `1.0` if the number is positive, `+0.0` or `INFINITY`
-/// * `-1.0` if the number is negative, `-0.0` or `NEG_INFINITY`
-/// * `NaN` if the number is `NaN`
-///
-/// For signed integers:
-///
-/// * `0` if the number is zero
-/// * `1` if the number is positive
-/// * `-1` if the number is negative
-#[inline(always)] pub fn signum<T: Signed>(value: T) -> T { value.signum() }
+signed_float_impl!(f64,
+    intrinsics::fabsf64,
+    intrinsics::copysignf64)
 
 /// Raises a value to the power of exp, using exponentiation by squaring.
 ///
@@ -1480,6 +1480,10 @@ one_impl!(f64, 1.0f64)
 #[deprecated = "Use `Signed::abs`"]
 pub fn abs<T: Signed>(value: T) -> T {
     value.abs()
+}
+#[deprecated = "Use `Signed::signum`"]
+pub fn signum<T: Signed>(value: T) -> T {
+    value.signum()
 }
 #[deprecated = "Use `UnsignedInt::next_power_of_two`"]
 pub fn next_power_of_two<T: UnsignedInt>(n: T) -> T {
