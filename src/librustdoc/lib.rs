@@ -86,7 +86,11 @@ static DEFAULT_PASSES: &'static [&'static str] = &[
 
 local_data_key!(pub analysiskey: core::CrateAnalysis)
 
-type Output = (clean::Crate, Vec<plugins::PluginJson> );
+struct Output {
+    krate: clean::Crate,
+    json_plugins: Vec<plugins::PluginJson>,
+    passes: Vec<String>,
+}
 
 pub fn main() {
     std::os::set_exit_status(main_args(std::os::args().as_slice()));
@@ -229,24 +233,26 @@ pub fn main_args(args: &[String]) -> int {
         (false, false) => {}
     }
 
-    let (krate, res) = match acquire_input(input, externs, &matches) {
-        Ok(pair) => pair,
+    let out = match acquire_input(input, externs, &matches) {
+        Ok(out) => out,
         Err(s) => {
             println!("input error: {}", s);
             return 1;
         }
     };
-
+    let Output { krate, json_plugins, passes, } = out;
     info!("going to format");
     match matches.opt_str("w").as_ref().map(|s| s.as_slice()) {
         Some("html") | None => {
-            match html::render::run(krate, &external_html, output.unwrap_or(Path::new("doc"))) {
+            match html::render::run(krate, &external_html, output.unwrap_or(Path::new("doc")),
+                                    passes.into_iter().collect()) {
                 Ok(()) => {}
                 Err(e) => panic!("failed to generate documentation: {}", e),
             }
         }
         Some("json") => {
-            match json_output(krate, res, output.unwrap_or(Path::new("doc.json"))) {
+            match json_output(krate, json_plugins,
+                              output.unwrap_or(Path::new("doc.json"))) {
                 Ok(()) => {}
                 Err(e) => panic!("failed to write json: {}", e),
             }
@@ -397,7 +403,8 @@ fn rust_input(cratefile: &str, externs: core::Externs, matches: &getopts::Matche
 
     // Run everything!
     info!("Executing passes/plugins");
-    return pm.run_plugins(krate);
+    let (krate, json) = pm.run_plugins(krate);
+    return Output { krate: krate, json_plugins: json, passes: passes, };
 }
 
 /// This input format purely deserializes the json output file. No passes are
@@ -435,7 +442,7 @@ fn json_input(input: &str) -> Result<Output, String> {
             // FIXME: this should read from the "plugins" field, but currently
             //      Json doesn't implement decodable...
             let plugin_output = Vec::new();
-            Ok((krate, plugin_output))
+            Ok(Output { krate: krate, json_plugins: plugin_output, passes: Vec::new(), })
         }
         Ok(..) => {
             Err("malformed json input: expected an object at the \
