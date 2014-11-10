@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,12 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![crate_name="struct_variant_xc_aux"]
-#![crate_type = "lib"]
+// Test that regionck uses the right memcat for patterns in for loops
+// and doesn't ICE.
 
-#![feature(struct_variant)]
-
-pub enum Enum {
-    Variant(u8),
-    StructVariant { arg: u8 }
+fn main() {
+    for &&x in Some(&0u).iter() {
+        assert_eq!(x, 0)
+    }
 }

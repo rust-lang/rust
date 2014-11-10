@@ -668,10 +668,8 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
         let struct_desc = match ty::get(struct_type).sty {
             ty::ty_struct(_, _) =>
                 format!("struct `{}`", ty::item_path_str(self.tcx, id)),
-            ty::ty_enum(enum_id, _) =>
-                format!("variant `{}` of enum `{}`",
-                        ty::with_path(self.tcx, id, |mut p| p.last().unwrap()),
-                        ty::item_path_str(self.tcx, enum_id)),
+            // struct variant fields have inherited visibility
+            ty::ty_enum(..) => return,
             _ => self.tcx.sess.span_bug(span, "can't find struct for field")
         };
         let msg = match name {
@@ -1214,11 +1212,6 @@ impl<'a, 'tcx> SanePrivacyVisitor<'a, 'tcx> {
             ast::ItemEnum(ref def, _) => {
                 for v in def.variants.iter() {
                     check_inherited(tcx, v.span, v.node.vis);
-
-                    match v.node.kind {
-                        ast::StructVariantKind(ref s) => check_struct(&**s),
-                        ast::TupleVariantKind(..) => {}
-                    }
                 }
             }
 
