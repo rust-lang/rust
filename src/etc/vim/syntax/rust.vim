@@ -23,14 +23,14 @@ syn keyword   rustKeyword     box nextgroup=rustBoxPlacement skipwhite skipempty
 syn keyword   rustKeyword     continue
 syn keyword   rustKeyword     extern nextgroup=rustExternCrate,rustObsoleteExternMod skipwhite skipempty
 syn keyword   rustKeyword     fn nextgroup=rustFuncName skipwhite skipempty
-syn keyword   rustKeyword     for in if impl let move
+syn keyword   rustKeyword     for in if impl let
 syn keyword   rustKeyword     loop once proc pub
 syn keyword   rustKeyword     return super
 syn keyword   rustKeyword     unsafe virtual where while
 syn keyword   rustKeyword     use nextgroup=rustModPath skipwhite skipempty
 " FIXME: Scoped impl's name is also fallen in this category
 syn keyword   rustKeyword     mod trait struct enum type nextgroup=rustIdentifier skipwhite skipempty
-syn keyword   rustStorage     mut ref static const
+syn keyword   rustStorage     move mut ref static const
 
 syn keyword   rustInvalidBareKeyword crate
 
