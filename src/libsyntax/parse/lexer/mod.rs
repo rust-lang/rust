@@ -806,6 +806,13 @@ impl<'a> StringReader<'a> {
                                     if ascii_only { "unknown byte escape" }
                                     else { "unknown character escape" },
                                     c);
+                                if e == '\r' {
+                                    let sp = codemap::mk_sp(escaped_pos, last_pos);
+                                    self.span_diagnostic.span_help(
+                                        sp,
+                                        "this is an isolated carriage return; consider checking \
+                                         your editor and version control settings.")
+                                }
                                 false
                             }
                         }
