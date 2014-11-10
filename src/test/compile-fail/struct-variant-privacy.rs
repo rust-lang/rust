@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -7,13 +7,19 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
-
-#![crate_name="struct_variant_xc_aux"]
-#![crate_type = "lib"]
-
 #![feature(struct_variant)]
 
-pub enum Enum {
-    Variant(u8),
-    StructVariant { arg: u8 }
+mod foo {
+    enum Bar {
+        Baz { a: int }
+    }
 }
+
+fn f(b: foo::Bar) { //~ ERROR enum `Bar` is private
+    match b {
+        foo::Bar::Baz { a: _a } => {} //~ ERROR variant `Baz` is inaccessible
+        // ^~ ERROR enum `Bar` is private
+    }
+}
+
+fn main() {}
