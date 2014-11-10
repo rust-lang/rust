@@ -115,15 +115,21 @@ impl<T> RingBuf<T> {
         let size = cap.checked_mul(&mem::size_of::<T>())
                       .expect("capacity overflow");
 
+        let ptr = if mem::size_of::<T>() != 0 {
+            unsafe {
+                let ptr = heap::allocate(size, mem::min_align_of::<T>())  as *mut T;;
+                if ptr.is_null() { ::alloc::oom() }
+                ptr
+            }
+        } else {
+            heap::EMPTY as *mut T
+        };
+
         RingBuf {
             tail: 0,
             head: 0,
             cap: cap,
-            ptr: if mem::size_of::<T>() != 0 {
-                unsafe { heap::allocate(size, mem::min_align_of::<T>()) as *mut T }
-            } else {
-                heap::EMPTY as *mut T
-            }
+            ptr: ptr
         }
     }
 
@@ -282,6 +288,7 @@ impl<T> RingBuf<T> {
                                                 old,
                                                 new,
                                                 mem::min_align_of::<T>()) as *mut T;
+                    if self.ptr.is_null() { ::alloc::oom() }
                 }
             }
 
@@ -422,9 +429,7 @@ impl<T> RingBuf<T> {
     /// ```
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn clear(&mut self) {
-        while !self.is_empty() {
-            self.pop_front();
-        }
+        while self.pop_front().is_some() {}
         self.head = 0;
         self.tail = 0;
     }
@@ -720,7 +725,7 @@ impl<'a, T> Iterator<&'a mut T> for MutItems<'a, T> {
         if mem::size_of::<T>() != 0 {
             unsafe { Some(&mut *self.ptr.offset(tail as int)) }
         } else {
-            // use a none zero pointer
+            // use a non-zero pointer
             Some(unsafe { mem::transmute(1u) })
         }
     }
