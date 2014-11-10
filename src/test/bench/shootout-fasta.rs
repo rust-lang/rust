@@ -43,6 +43,7 @@
 use std::io;
 use std::io::{BufferedWriter, File};
 use std::cmp::min;
+use std::num::Float;
 use std::os;
 
 const LINE_LENGTH: uint = 60;

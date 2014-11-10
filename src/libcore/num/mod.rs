@@ -204,6 +204,8 @@ pub trait Int
     /// # Example
     ///
     /// ```rust
+    /// use std::num::Int;
+    ///
     /// let n = 0b01001100u8;
     ///
     /// assert_eq!(n.count_ones(), 3);
@@ -215,6 +217,8 @@ pub trait Int
     /// # Example
     ///
     /// ```rust
+    /// use std::num::Int;
+    ///
     /// let n = 0b01001100u8;
     ///
     /// assert_eq!(n.count_zeros(), 5);
@@ -230,6 +234,8 @@ pub trait Int
     /// # Example
     ///
     /// ```rust
+    /// use std::num::Int;
+    ///
     /// let n = 0b0101000u16;
     ///
     /// assert_eq!(n.leading_zeros(), 10);
@@ -242,6 +248,8 @@ pub trait Int
     /// # Example
     ///
     /// ```rust
+    /// use std::num::Int;
+    ///
     /// let n = 0b0101000u16;
     ///
     /// assert_eq!(n.trailing_zeros(), 3);
@@ -254,6 +262,8 @@ pub trait Int
     /// # Example
     ///
     /// ```rust
+    /// use std::num::Int;
+    ///
     /// let n = 0x0123456789ABCDEFu64;
     /// let m = 0x3456789ABCDEF012u64;
     ///
@@ -267,6 +277,8 @@ pub trait Int
     /// # Example
     ///
     /// ```rust
+    /// use std::num::Int;
+    ///
     /// let n = 0x0123456789ABCDEFu64;
     /// let m = 0xDEF0123456789ABCu64;
     ///
@@ -279,6 +291,8 @@ pub trait Int
     /// # Example
     ///
     /// ```rust
+    /// use std::num::Int;
+    ///
     /// let n = 0x0123456789ABCDEFu64;
     /// let m = 0xEFCDAB8967452301u64;
     ///
@@ -293,6 +307,8 @@ pub trait Int
     /// # Example
     ///
     /// ```rust
+    /// use std::num::Int;
+    ///
     /// let n = 0x0123456789ABCDEFu64;
     ///
     /// if cfg!(target_endian = "big") {
@@ -313,6 +329,8 @@ pub trait Int
     /// # Example
     ///
     /// ```rust
+    /// use std::num::Int;
+    ///
     /// let n = 0x0123456789ABCDEFu64;
     ///
     /// if cfg!(target_endian = "little") {
@@ -333,6 +351,8 @@ pub trait Int
     /// # Example
     ///
     /// ```rust
+    /// use std::num::Int;
+    ///
     /// let n = 0x0123456789ABCDEFu64;
     ///
     /// if cfg!(target_endian = "big") {
@@ -353,6 +373,8 @@ pub trait Int
     /// # Example
     ///
     /// ```rust
+    /// use std::num::Int;
+    ///
     /// let n = 0x0123456789ABCDEFu64;
     ///
     /// if cfg!(target_endian = "little") {

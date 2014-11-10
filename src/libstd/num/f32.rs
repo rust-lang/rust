@@ -20,6 +20,7 @@ use prelude::*;
 use from_str::FromStr;
 use intrinsics;
 use libc::c_int;
+use num::{Float, FloatMath};
 use num::strconv;
 use num;
 

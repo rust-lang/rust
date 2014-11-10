@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::num::Int;
+
 extern "C" fn foo<T: Int>(a: T, b: T) -> T { a + b }
 
 fn main() {

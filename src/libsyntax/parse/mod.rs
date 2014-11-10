@@ -20,6 +20,7 @@ use ptr::P;
 use std::cell::{Cell, RefCell};
 use std::io::File;
 use std::rc::Rc;
+use std::num::Int;
 use std::str;
 use std::iter;
 

@@ -13,6 +13,7 @@
 // this is surprisingly complicated to be both generic & correct
 
 use core::prelude::*;
+use core::num::Int;
 
 use Rng;
 use distributions::{Sample, IndependentSample};
@@ -162,6 +163,7 @@ float_impl! { f64 }
 
 #[cfg(test)]
 mod tests {
+    use std::num::Int;
     use std::prelude::*;
     use distributions::{Sample, IndependentSample};
     use super::Range;

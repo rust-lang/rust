@@ -12,6 +12,7 @@
 // A more complex example of numeric extensions
 
 use std::cmp::{PartialEq, PartialOrd};
+use std::num::NumCast;
 
 pub trait TypeExt {}
 

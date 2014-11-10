@@ -114,10 +114,11 @@ pub enum Error {
 pub mod reader {
     use std::char;
 
-    use std::mem::transmute;
     use std::int;
-    use std::option::{None, Option, Some};
     use std::io::extensions::u64_from_be_bytes;
+    use std::mem::transmute;
+    use std::num::Int;
+    use std::option::{None, Option, Some};
 
     use serialize;
 

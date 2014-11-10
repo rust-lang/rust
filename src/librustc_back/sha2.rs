@@ -15,6 +15,7 @@
 #![allow(deprecated)] // to_be32
 
 use std::iter::range_step;
+use std::num::Int;
 use std::slice::bytes::{MutableByteVector, copy_memory};
 use serialize::hex::ToHex;
 
@@ -530,6 +531,7 @@ mod tests {
     use self::rand::isaac::IsaacRng;
     use self::rand::Rng;
     use serialize::hex::FromHex;
+    use std::num::Int;
 
     // A normal addition - no overflow occurs
     #[test]

@@ -199,7 +199,7 @@ use std::collections::{HashMap, TreeMap};
 use std::{char, f64, fmt, io, num, str};
 use std::io::MemWriter;
 use std::mem::{swap, transmute};
-use std::num::{FPNaN, FPInfinite};
+use std::num::{Float, FPNaN, FPInfinite, Int};
 use std::str::ScalarValue;
 use std::string;
 use std::vec::Vec;
@@ -2455,6 +2455,7 @@ mod tests {
                 TrailingCharacters, TrailingComma};
     use std::{i64, u64, f32, f64, io};
     use std::collections::TreeMap;
+    use std::num::Float;
     use std::string;
 
     #[deriving(Decodable, Eq, PartialEq, Show)]

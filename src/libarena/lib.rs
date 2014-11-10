@@ -38,7 +38,7 @@ use std::cmp;
 use std::intrinsics::{TyDesc, get_tydesc};
 use std::intrinsics;
 use std::mem;
-use std::num::UnsignedInt;
+use std::num::{Int, UnsignedInt};
 use std::ptr;
 use std::rc::Rc;
 use std::rt::heap::{allocate, deallocate};
