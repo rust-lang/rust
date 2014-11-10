@@ -14,17 +14,14 @@ pub const box_field_refcnt: uint = 0u;
 pub const box_field_drop_glue: uint = 1u;
 pub const box_field_body: uint = 4u;
 
-// FIXME(18590) although we have three different layouts here, the compiler relies on
-// them being the same. We should replace them with one set of constants.
+/// The first half of a fat pointer.
+/// - For a closure, this is the code address.
+/// - For an object or trait instance, this is the address of the box.
+/// - For a slice, this is the base address.
+pub const FAT_PTR_ADDR: uint = 0;
 
-// The two halves of a closure: code and environment.
-pub const fn_field_code: uint = 0u;
-pub const fn_field_box: uint = 1u;
-
-// The two fields of a trait object/trait instance: vtable and box.
-// The vtable contains the type descriptor as first element.
-pub const trt_field_box: uint = 0u;
-pub const trt_field_vtable: uint = 1u;
-
-pub const slice_elt_base: uint = 0u;
-pub const slice_elt_len: uint = 1u;
+/// The second half of a fat pointer.
+/// - For a closure, this is the address of the environment.
+/// - For an object or trait instance, this is the address of the vtable.
+/// - For a slice, this is the length.
+pub const FAT_PTR_EXTRA: uint = 1u;
