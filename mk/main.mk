@@ -52,7 +52,7 @@ CFG_GIT_DIR := $(CFG_SRC_DIR).git
 # so we use a hack: define $(SPACE) which contains space character.
 SPACE :=
 SPACE +=
-ifneq ($(wildcard $(subst $(SPACE),\$(SPACE),$(CFG_GIT))),)
+ifneq ($(CFG_GIT),)
 ifneq ($(wildcard $(subst $(SPACE),\$(SPACE),$(CFG_GIT_DIR))),)
     CFG_VER_DATE = $(shell git --git-dir='$(CFG_GIT_DIR)' log -1 --pretty=format:'%ci')
     CFG_VER_HASH = $(shell git --git-dir='$(CFG_GIT_DIR)' rev-parse HEAD)
