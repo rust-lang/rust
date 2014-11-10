@@ -649,8 +649,8 @@ fn bind_subslice_pat(bcx: Block,
                                 ty::mt {ty: vt.unit_ty, mutbl: ast::MutImmutable});
     let scratch = rvalue_scratch_datum(bcx, slice_ty, "");
     Store(bcx, slice_begin,
-          GEPi(bcx, scratch.val, &[0u, abi::slice_elt_base]));
-    Store(bcx, slice_len, GEPi(bcx, scratch.val, &[0u, abi::slice_elt_len]));
+          GEPi(bcx, scratch.val, &[0u, abi::FAT_PTR_ADDR]));
+    Store(bcx, slice_len, GEPi(bcx, scratch.val, &[0u, abi::FAT_PTR_EXTRA]));
     scratch.val
 }
 

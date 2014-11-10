@@ -705,8 +705,8 @@ pub fn iter_structural_ty<'a, 'blk, 'tcx>(cx: Block<'blk, 'tcx>,
     let (data_ptr, info) = if ty::type_is_sized(cx.tcx(), t) {
         (av, None)
     } else {
-        let data = GEPi(cx, av, &[0, abi::slice_elt_base]);
-        let info = GEPi(cx, av, &[0, abi::slice_elt_len]);
+        let data = GEPi(cx, av, &[0, abi::FAT_PTR_ADDR]);
+        let info = GEPi(cx, av, &[0, abi::FAT_PTR_EXTRA]);
         (Load(cx, data), Some(Load(cx, info)))
     };
 
@@ -724,8 +724,8 @@ pub fn iter_structural_ty<'a, 'blk, 'tcx>(cx: Block<'blk, 'tcx>,
                   } else {
                       let boxed_ty = ty::mk_open(cx.tcx(), field_ty);
                       let scratch = datum::rvalue_scratch_datum(cx, boxed_ty, "__fat_ptr_iter");
-                      Store(cx, llfld_a, GEPi(cx, scratch.val, &[0, abi::slice_elt_base]));
-                      Store(cx, info.unwrap(), GEPi(cx, scratch.val, &[0, abi::slice_elt_len]));
+                      Store(cx, llfld_a, GEPi(cx, scratch.val, &[0, abi::FAT_PTR_ADDR]));
+                      Store(cx, info.unwrap(), GEPi(cx, scratch.val, &[0, abi::FAT_PTR_EXTRA]));
                       scratch.val
                   };
                   cx = f(cx, val, field_ty);

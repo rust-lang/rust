@@ -52,7 +52,7 @@ use std::num::Int;
 use std::rc::Rc;
 
 use llvm::{ValueRef, True, IntEQ, IntNE};
-use back::abi::slice_elt_base;
+use back::abi;
 use middle::subst;
 use middle::subst::Subst;
 use trans::_match;
@@ -684,7 +684,7 @@ fn struct_wrapped_nullable_bitdiscr(bcx: Block, nndiscr: Disr, ptrfield: Pointer
                                     scrutinee: ValueRef) -> ValueRef {
     let llptrptr = match ptrfield {
         ThinPointer(field) => GEPi(bcx, scrutinee, &[0, field]),
-        FatPointer(field) => GEPi(bcx, scrutinee, &[0, field, slice_elt_base])
+        FatPointer(field) => GEPi(bcx, scrutinee, &[0, field, abi::FAT_PTR_ADDR])
     };
     let llptr = Load(bcx, llptrptr);
     let cmp = if nndiscr == 0 { IntEQ } else { IntNE };
@@ -782,7 +782,7 @@ pub fn trans_set_discr<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, r: &Repr<'tcx>,
                         (GEPi(bcx, val, &[0, field]),
                          type_of::type_of(bcx.ccx(), nonnull.fields[field])),
                     FatPointer(field) => {
-                        let v = GEPi(bcx, val, &[0, field, slice_elt_base]);
+                        let v = GEPi(bcx, val, &[0, field, abi::FAT_PTR_ADDR]);
                         (v, val_ty(v).element_type())
                     }
                 };
@@ -1118,7 +1118,7 @@ pub fn const_get_discrim(ccx: &CrateContext, r: &Repr, val: ValueRef)
         StructWrappedNullablePointer { nndiscr, ptrfield, .. } => {
             let (idx, sub_idx) = match ptrfield {
                 ThinPointer(field) => (field, None),
-                FatPointer(field) => (field, Some(slice_elt_base))
+                FatPointer(field) => (field, Some(abi::FAT_PTR_ADDR))
             };
             if is_null(const_struct_field(ccx, val, idx, sub_idx)) {
                 /* subtraction as uint is ok because nndiscr is either 0 or 1 */

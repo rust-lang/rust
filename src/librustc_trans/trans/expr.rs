@@ -171,11 +171,11 @@ pub fn trans<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 }
 
 pub fn get_len(bcx: Block, fat_ptr: ValueRef) -> ValueRef {
-    GEPi(bcx, fat_ptr, &[0u, abi::slice_elt_len])
+    GEPi(bcx, fat_ptr, &[0u, abi::FAT_PTR_EXTRA])
 }
 
 pub fn get_dataptr(bcx: Block, fat_ptr: ValueRef) -> ValueRef {
-    GEPi(bcx, fat_ptr, &[0u, abi::slice_elt_base])
+    GEPi(bcx, fat_ptr, &[0u, abi::FAT_PTR_ADDR])
 }
 
 fn apply_adjustments<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
