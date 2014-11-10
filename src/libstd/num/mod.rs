@@ -18,7 +18,9 @@
 
 use option::Option;
 
+#[cfg(test)] use cmp::PartialEq;
 #[cfg(test)] use fmt::Show;
+#[cfg(test)] use ops::{Add, Sub, Mul, Div, Rem};
 
 pub use core::num::{Num, div_rem, Zero, zero, One, one};
 pub use core::num::{Signed, abs, signum};
@@ -135,7 +137,12 @@ pub fn abs_sub<T: FloatMath>(x: T, y: T) -> T {
 
 /// Helper function for testing numeric operations
 #[cfg(test)]
-pub fn test_num<T: Int + Show>(ten: T, two: T) {
+pub fn test_num<T>(ten: T, two: T) where
+    T: PartialEq + NumCast
+     + Add<T, T> + Sub<T, T>
+     + Mul<T, T> + Div<T, T>
+     + Rem<T, T> + Show
+{
     assert_eq!(ten.add(&two),  cast(12i).unwrap());
     assert_eq!(ten.sub(&two),  cast(8i).unwrap());
     assert_eq!(ten.mul(&two),  cast(20i).unwrap());

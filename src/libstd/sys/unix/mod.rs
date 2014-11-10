@@ -18,6 +18,7 @@
 extern crate libc;
 
 use num;
+use num::Int;
 use prelude::*;
 use io::{mod, IoResult, IoError};
 use sys_common::mkerr_libc;

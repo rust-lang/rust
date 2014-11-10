@@ -21,6 +21,7 @@ use util::ppaux::Repr;
 
 use middle::trans::type_::Type;
 
+use std::num::Int;
 use syntax::abi;
 use syntax::ast;
 

@@ -23,6 +23,7 @@ use flate;
 
 use std::iter;
 use std::mem;
+use std::num::Int;
 
 pub fn run(sess: &session::Session, llmod: ModuleRef,
            tm: TargetMachineRef, reachable: &[String]) {

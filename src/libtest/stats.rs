@@ -16,6 +16,7 @@ use std::fmt::Show;
 use std::hash::Hash;
 use std::io;
 use std::mem;
+use std::num::{Float, FloatMath};
 
 fn local_cmp<T:Float>(x: T, y: T) -> Ordering {
     // arbitrarily decide that NaNs are larger than everything.
@@ -1042,11 +1043,11 @@ mod tests {
     }
     #[test]
     fn test_sum_f64s() {
-        assert_eq!([0.5f64, 3.2321f64, 1.5678f64].sum(0.0), 5.2999);
+        assert_eq!([0.5f64, 3.2321f64, 1.5678f64].sum(), 5.2999);
     }
     #[test]
     fn test_sum_f64_between_ints_that_sum_to_0() {
-        assert_eq!([1e30f64, 1.2f64, -1e30f64].sum(0.0), 1.2);
+        assert_eq!([1e30f64, 1.2f64, -1e30f64].sum(), 1.2);
     }
 }
 
@@ -1058,7 +1059,7 @@ mod bench {
     #[bench]
     pub fn sum_three_items(b: &mut Bencher) {
         b.iter(|| {
-            [1e20f64, 1.5f64, -1e20f64].sum(0.0);
+            [1e20f64, 1.5f64, -1e20f64].sum();
         })
     }
     #[bench]
@@ -1067,7 +1068,7 @@ mod bench {
         let v = Vec::from_fn(500, |i| nums[i%5]);
 
         b.iter(|| {
-            v.as_slice().sum(0.0);
+            v.as_slice().sum();
         })
     }
 }

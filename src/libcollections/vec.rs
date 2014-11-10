@@ -21,7 +21,7 @@ use core::default::Default;
 use core::fmt;
 use core::kinds::marker::{ContravariantLifetime, InvariantType};
 use core::mem;
-use core::num::UnsignedInt;
+use core::num::{Int, UnsignedInt};
 use core::ops;
 use core::ptr;
 use core::raw::Slice as RawSlice;

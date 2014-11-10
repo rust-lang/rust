@@ -23,6 +23,7 @@ that do not need to record state.
 #![experimental]
 
 use core::prelude::*;
+use core::num::Int;
 
 use {Rng, Rand};
 

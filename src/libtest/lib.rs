@@ -60,6 +60,7 @@ use std::io::fs::PathExtensions;
 use std::io::stdio::StdWriter;
 use std::io::{File, ChanReader, ChanWriter};
 use std::io;
+use std::num::{Int, FloatMath};
 use std::os;
 use std::string::String;
 use std::task::TaskBuilder;

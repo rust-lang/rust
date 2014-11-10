@@ -87,6 +87,7 @@ use std::collections::HashSet;
 use std::io::fs::PathExtensions;
 use std::mem::replace;
 use std::mem;
+use std::num::Float;
 use std::rc::Rc;
 use std::iter;
 

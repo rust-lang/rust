@@ -69,6 +69,7 @@ use alloc::boxed::Box;
 use alloc::rc::Rc;
 use core::intrinsics::TypeId;
 use core::mem;
+use core::num::Int;
 
 use vec::Vec;
 

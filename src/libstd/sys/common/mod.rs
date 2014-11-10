@@ -15,6 +15,7 @@ use io::{mod, IoError, IoResult};
 use prelude::*;
 use sys::{last_error, retry, fs};
 use c_str::CString;
+use num::Int;
 use path::BytesContainer;
 use collections;
 
