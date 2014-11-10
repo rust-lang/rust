@@ -955,13 +955,37 @@ pub fn change_dir(p: &Path) -> IoResult<()> {
 
     #[cfg(windows)]
     fn chdir(p: &Path) -> IoResult<()> {
-        let mut p = p.as_str().unwrap().utf16_units().collect::<Vec<u16>>();
-        p.push(0);
+        let u16iter = p.as_str().unwrap() // should always be Some on Windows
+            .utf16_units();
 
-        unsafe {
-            match libc::SetCurrentDirectoryW(p.as_ptr()) != (0 as libc::BOOL) {
-                true => Ok(()),
-                false => Err(IoError::last_error()),
+        let bufv: Vec<u16> = {
+            let mut buf: [u16, .. BUF_BYTES] = unsafe { mem::uninitialized() };
+            for bufelem in buf.iter_mut() {
+                match u16iter.next() {
+                    Some(cp) => { bufelem = cp; },
+                    None => {
+                        bufelem = 0;
+                        return chdir_win(buf.as_ptr());
+                    }
+                }
+            }
+
+            let mut bufv = buf.with_capacity(2 * buf.len());
+            bufv.push_all(buf);
+            bufv // give up sticking to stack and let buf go out of scope
+        };
+
+        for cp in u16iter {
+            bufv.push(cp);
+        }
+        bufv.push(0);
+        chdir_win(bufv.as_ptr());
+
+        fn chdir_win(tstr: *const u16) -> IoResult<()> {
+            if unsafe { libc::SetCurrentDirectoryW(tstr) } != 0 {
+                Ok(())
+            } else {
+                Err(IoError::last_error())
             }
         }
     }
