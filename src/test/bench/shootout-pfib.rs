@@ -19,11 +19,11 @@
 */
 
 extern crate getopts;
-extern crate time;
 
 use std::os;
 use std::result::{Ok, Err};
 use std::task;
+use std::time::Duration;
 
 fn fib(n: int) -> int {
     fn pfib(tx: &Sender<int>, n: int) {
@@ -107,13 +107,11 @@ fn main() {
 
         for n in range(1, max + 1) {
             for _ in range(0u, num_trials) {
-                let start = time::precise_time_ns();
-                let fibn = fib(n);
-                let stop = time::precise_time_ns();
+                let mut fibn = None;
+                let dur = Duration::span(|| fibn = Some(fib(n)));
+                let fibn = fibn.unwrap();
 
-                let elapsed = stop - start;
-
-                println!("{}\t{}\t{}", n, fibn, elapsed.to_string());
+                println!("{}\t{}\t{}", n, fibn, dur);
             }
         }
     }

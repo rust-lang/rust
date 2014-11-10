@@ -8,18 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern crate time;
-
 use std::collections::{TrieMap, TreeMap, HashMap, HashSet};
 use std::os;
 use std::rand::{Rng, IsaacRng, SeedableRng};
+use std::time::Duration;
 use std::uint;
 
 fn timed(label: &str, f: ||) {
-    let start = time::precise_time_s();
-    f();
-    let end = time::precise_time_s();
-    println!("  {}: {}", label, end - start);
+    println!("  {}: {}", label, Duration::span(f));
 }
 
 trait MutableMap {

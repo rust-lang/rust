@@ -12,13 +12,13 @@
 
 use std::cell::RefCell;
 use std::collections::HashMap;
-use std::hash::{Hash, Hasher};
 use std::fmt::Show;
+use std::hash::{Hash, Hasher};
+use std::time::Duration;
+
 use syntax::ast;
 use syntax::visit;
 use syntax::visit::Visitor;
-
-use time;
 
 pub fn time<T, U>(do_it: bool, what: &str, u: U, f: |U| -> T) -> T {
     local_data_key!(depth: uint);
@@ -27,11 +27,15 @@ pub fn time<T, U>(do_it: bool, what: &str, u: U, f: |U| -> T) -> T {
     let old = depth.get().map(|d| *d).unwrap_or(0);
     depth.replace(Some(old + 1));
 
-    let start = time::precise_time_s();
-    let rv = f(u);
-    let end = time::precise_time_s();
+    let mut u = Some(u);
+    let mut rv = None;
+    let dur = Duration::span(|| {
+        rv = Some(f(u.take().unwrap()))
+    });
+    let rv = rv.unwrap();
 
-    println!("{}time: {:3.3f} s\t{}", "  ".repeat(old), end - start, what);
+    println!("{}time: {}.{:03} \t{}", "  ".repeat(old),
+             dur.num_seconds(), dur.num_milliseconds(), what);
     depth.replace(Some(old));
 
     rv
