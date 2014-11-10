@@ -51,7 +51,8 @@ struct MarkSymbolVisitor<'a, 'tcx: 'a> {
     tcx: &'a ty::ctxt<'tcx>,
     live_symbols: Box<HashSet<ast::NodeId>>,
     struct_has_extern_repr: bool,
-    ignore_non_const_paths: bool
+    ignore_non_const_paths: bool,
+    inherited_pub_visibility: bool,
 }
 
 impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
@@ -62,7 +63,8 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
             tcx: tcx,
             live_symbols: box HashSet::new(),
             struct_has_extern_repr: false,
-            ignore_non_const_paths: false
+            ignore_non_const_paths: false,
+            inherited_pub_visibility: false,
         }
     }
 
@@ -206,6 +208,8 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
     fn visit_node(&mut self, node: &ast_map::Node) {
         let had_extern_repr = self.struct_has_extern_repr;
         self.struct_has_extern_repr = false;
+        let had_inherited_pub_visibility = self.inherited_pub_visibility;
+        self.inherited_pub_visibility = false;
         match *node {
             ast_map::NodeItem(item) => {
                 match item.node {
@@ -217,8 +221,11 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
 
                         visit::walk_item(self, &*item);
                     }
+                    ast::ItemEnum(..) => {
+                        self.inherited_pub_visibility = item.vis == ast::Public;
+                        visit::walk_item(self, &*item);
+                    }
                     ast::ItemFn(..)
-                    | ast::ItemEnum(..)
                     | ast::ItemTy(..)
                     | ast::ItemStatic(..)
                     | ast::ItemConst(..) => {
@@ -244,6 +251,7 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
             _ => ()
         }
         self.struct_has_extern_repr = had_extern_repr;
+        self.inherited_pub_visibility = had_inherited_pub_visibility;
     }
 }
 
@@ -252,8 +260,9 @@ impl<'a, 'tcx, 'v> Visitor<'v> for MarkSymbolVisitor<'a, 'tcx> {
     fn visit_struct_def(&mut self, def: &ast::StructDef, _: ast::Ident,
                         _: &ast::Generics, _: ast::NodeId) {
         let has_extern_repr = self.struct_has_extern_repr;
+        let inherited_pub_visibility = self.inherited_pub_visibility;
         let live_fields = def.fields.iter().filter(|f| {
-            has_extern_repr || match f.node.kind {
+            has_extern_repr || inherited_pub_visibility || match f.node.kind {
                 ast::NamedField(_, ast::Public) => true,
                 _ => false
             }
