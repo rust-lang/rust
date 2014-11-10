@@ -24,7 +24,7 @@ mod u64;
 mod uint;
 
 /// Helper function for testing numeric operations
-pub fn test_num<T:Num + NumCast + ::std::fmt::Show>(ten: T, two: T) {
+pub fn test_num<T: Int + ::std::fmt::Show>(ten: T, two: T) {
     assert_eq!(ten.add(&two),  cast(12i).unwrap());
     assert_eq!(ten.sub(&two),  cast(8i).unwrap());
     assert_eq!(ten.mul(&two),  cast(20i).unwrap());

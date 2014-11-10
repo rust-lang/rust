@@ -32,7 +32,7 @@ impl TypeExt for f32 {}
 impl TypeExt for f64 {}
 
 
-pub trait NumExt: TypeExt + PartialEq + PartialOrd + Num + NumCast {}
+pub trait NumExt: TypeExt + PartialEq + PartialOrd + NumCast {}
 
 impl NumExt for u8 {}
 impl NumExt for u16 {}
