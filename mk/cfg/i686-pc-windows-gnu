@@ -1,5 +1,5 @@
 # i686-pc-windows-gnu configuration
-CROSS_PREFIX_i686-pc-windows-gnu=i686-pc-windows-gnu-
+CROSS_PREFIX_i686-pc-windows-gnu=i686-w64-mingw32-
 CC_i686-pc-windows-gnu=gcc
 CXX_i686-pc-windows-gnu=g++
 CPP_i686-pc-windows-gnu=gcc -E
