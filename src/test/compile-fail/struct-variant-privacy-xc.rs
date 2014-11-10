@@ -8,10 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// aux-build:struct_variant_privacy.rs
 #![feature(struct_variant)]
 
-pub enum Foo {
-    Bar {
-        baz: int
+extern crate struct_variant_privacy;
+
+fn f(b: struct_variant_privacy::Bar) { //~ ERROR enum `Bar` is private
+    match b {
+        struct_variant_privacy::Bar::Baz { a: _a } => {} //~ ERROR variant `Baz` is private
     }
 }
+
+fn main() {}
+

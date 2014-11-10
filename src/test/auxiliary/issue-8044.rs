@@ -15,7 +15,7 @@ pub struct BTree<V> {
 }
 
 pub enum TreeItem<V> {
-    TreeLeaf { pub value: V },
+    TreeLeaf { value: V },
 }
 
 pub fn leaf<V>(value: V) -> TreeItem<V> {

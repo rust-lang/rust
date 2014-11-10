@@ -13,7 +13,7 @@
 #[deny(dead_code)]
 pub enum Foo {
     Bar {
-        pub baz: int
+        baz: int
     }
 }
 
