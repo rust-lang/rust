@@ -1646,7 +1646,8 @@ impl<'a> Parser<'a> {
             token::LitByte(i) => LitByte(parse::byte_lit(i.as_str()).val0()),
             token::LitChar(i) => LitChar(parse::char_lit(i.as_str()).val0()),
             token::LitInteger(s) => parse::integer_lit(s.as_str(),
-                                                        &self.sess.span_diagnostic, self.span),
+                                                        &self.sess.span_diagnostic,
+                                                       self.last_span),
             token::LitFloat(s) => parse::float_lit(s.as_str()),
             token::LitStr(s) => {
                 LitStr(token::intern_and_get_ident(parse::str_lit(s.as_str()).as_slice()),
