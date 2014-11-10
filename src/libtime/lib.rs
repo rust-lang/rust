@@ -267,7 +267,7 @@ pub struct Tm {
     /// Identifies the time zone that was used to compute this broken-down time value, including any
     /// adjustment for Daylight Saving Time. This is the number of seconds east of UTC. For example,
     /// for U.S. Pacific Daylight Time, the value is -7*60*60 = -25200.
-    pub tm_gmtoff: i32,
+    pub tm_utcoff: i32,
 
     /// Nanoseconds after the second - [0, 10<sup>9</sup> - 1]
     pub tm_nsec: i32,
@@ -284,7 +284,7 @@ pub fn empty_tm() -> Tm {
         tm_wday: 0_i32,
         tm_yday: 0_i32,
         tm_isdst: 0_i32,
-        tm_gmtoff: 0_i32,
+        tm_utcoff: 0_i32,
         tm_nsec: 0_i32,
     }
 }
@@ -323,7 +323,7 @@ impl Tm {
     /// Convert time to the seconds from January 1, 1970
     pub fn to_timespec(&self) -> Timespec {
         unsafe {
-            let sec = match self.tm_gmtoff {
+            let sec = match self.tm_utcoff {
                 0_i32 => rustrt::rust_timegm(self),
                 _     => rustrt::rust_mktime(self)
             };
@@ -383,7 +383,7 @@ impl Tm {
      * utc:   "Thu, 22 Mar 2012 14:53:18 GMT"
      */
     pub fn rfc822(&self) -> TmFmt {
-        if self.tm_gmtoff == 0_i32 {
+        if self.tm_utcoff == 0_i32 {
             TmFmt {
                 tm: self,
                 format: FmtStr("%a, %d %b %Y %T GMT"),
@@ -754,10 +754,10 @@ impl<'a> fmt::Show for TmFmt<'a> {
               'w' => return (tm.tm_wday as int).fmt(fmt),
               'Y' => return (tm.tm_year as int + 1900).fmt(fmt),
               'y' => return write!(fmt, "{:02d}", (tm.tm_year as int + 1900) % 100),
-              'Z' => if tm.tm_gmtoff == 0_i32 { "GMT"} else { "" }, // FIXME (#2350): support locale
+              'Z' => if tm.tm_utcoff == 0_i32 { "UTC"} else { "" }, // FIXME (#2350): support locale
               'z' => {
-                let sign = if tm.tm_gmtoff > 0_i32 { '+' } else { '-' };
-                let mut m = num::abs(tm.tm_gmtoff) / 60_i32;
+                let sign = if tm.tm_utcoff > 0_i32 { '+' } else { '-' };
+                let mut m = num::abs(tm.tm_utcoff) / 60_i32;
                 let h = m / 60_i32;
                 m -= h * 60_i32;
                 return write!(fmt, "{}{:02d}{:02d}", sign, h, m);
@@ -788,7 +788,7 @@ impl<'a> fmt::Show for TmFmt<'a> {
                 self.tm.to_local().asctime().fmt(fmt)
             }
             FmtRfc3339 => {
-                if self.tm.tm_gmtoff == 0_i32 {
+                if self.tm.tm_utcoff == 0_i32 {
                     TmFmt {
                         tm: self.tm,
                         format: FmtStr("%Y-%m-%dT%H:%M:%SZ"),
@@ -798,8 +798,8 @@ impl<'a> fmt::Show for TmFmt<'a> {
                         tm: self.tm,
                         format: FmtStr("%Y-%m-%dT%H:%M:%S"),
                     };
-                    let sign = if self.tm.tm_gmtoff > 0_i32 { '+' } else { '-' };
-                    let mut m = num::abs(self.tm.tm_gmtoff) / 60_i32;
+                    let sign = if self.tm.tm_utcoff > 0_i32 { '+' } else { '-' };
+                    let mut m = num::abs(self.tm.tm_utcoff) / 60_i32;
                     let h = m / 60_i32;
                     m -= h * 60_i32;
                     write!(fmt, "{}{}{:02d}:{:02d}", s, sign, h as int, m as int)
@@ -1160,7 +1160,7 @@ pub fn strptime(s: &str, format: &str) -> Result<Tm, ParseError> {
           }
           'Z' => {
             if match_str(s, pos, "UTC") || match_str(s, pos, "GMT") {
-                tm.tm_gmtoff = 0_i32;
+                tm.tm_utcoff = 0_i32;
                 Ok(pos + 3u)
             } else {
                 // It's odd, but to maintain compatibility with c's
@@ -1184,7 +1184,7 @@ pub fn strptime(s: &str, format: &str) -> Result<Tm, ParseError> {
                   Some(item) => {
                     let (v, pos) = item;
                     if v == 0_i32 {
-                        tm.tm_gmtoff = 0_i32;
+                        tm.tm_utcoff = 0_i32;
                     }
 
                     Ok(pos)
@@ -1211,7 +1211,7 @@ pub fn strptime(s: &str, format: &str) -> Result<Tm, ParseError> {
         tm_wday: 0_i32,
         tm_yday: 0_i32,
         tm_isdst: 0_i32,
-        tm_gmtoff: 0_i32,
+        tm_utcoff: 0_i32,
         tm_nsec: 0_i32,
     };
     let mut pos = 0u;
@@ -1257,7 +1257,7 @@ pub fn strptime(s: &str, format: &str) -> Result<Tm, ParseError> {
             tm_wday: tm.tm_wday,
             tm_yday: tm.tm_yday,
             tm_isdst: tm.tm_isdst,
-            tm_gmtoff: tm.tm_gmtoff,
+            tm_utcoff: tm.tm_utcoff,
             tm_nsec: tm.tm_nsec,
         })
     } else { result }
@@ -1359,7 +1359,7 @@ mod tests {
         assert_eq!(utc.tm_wday, 5_i32);
         assert_eq!(utc.tm_yday, 43_i32);
         assert_eq!(utc.tm_isdst, 0_i32);
-        assert_eq!(utc.tm_gmtoff, 0_i32);
+        assert_eq!(utc.tm_utcoff, 0_i32);
         assert_eq!(utc.tm_nsec, 54321_i32);
     }
 
@@ -1380,7 +1380,7 @@ mod tests {
         assert_eq!(local.tm_wday, 5_i32);
         assert_eq!(local.tm_yday, 43_i32);
         assert_eq!(local.tm_isdst, 0_i32);
-        assert_eq!(local.tm_gmtoff, -28800_i32);
+        assert_eq!(local.tm_utcoff, -28800_i32);
         assert_eq!(local.tm_nsec, 54321_i32);
     }
 
@@ -1422,7 +1422,7 @@ mod tests {
             assert!(tm.tm_year == 0_i32);
             assert!(tm.tm_wday == 0_i32);
             assert!(tm.tm_isdst == 0_i32);
-            assert!(tm.tm_gmtoff == 0_i32);
+            assert!(tm.tm_utcoff == 0_i32);
             assert!(tm.tm_nsec == 0_i32);
           }
           Err(_) => ()
@@ -1445,7 +1445,7 @@ mod tests {
             assert!(tm.tm_wday == 5_i32);
             assert!(tm.tm_yday == 0_i32);
             assert!(tm.tm_isdst == 0_i32);
-            assert!(tm.tm_gmtoff == 0_i32);
+            assert!(tm.tm_utcoff == 0_i32);
             assert!(tm.tm_nsec == 12340000_i32);
           }
         }
@@ -1559,9 +1559,9 @@ mod tests {
         assert!(test("6", "%w"));
         assert!(test("2009", "%Y"));
         assert!(test("09", "%y"));
-        assert!(strptime("-0000", "%z").unwrap().tm_gmtoff ==
+        assert!(strptime("-0000", "%z").unwrap().tm_utcoff ==
             0);
-        assert!(strptime("-0800", "%z").unwrap().tm_gmtoff ==
+        assert!(strptime("-0800", "%z").unwrap().tm_utcoff ==
             0);
         assert!(test("%", "%%"));
 

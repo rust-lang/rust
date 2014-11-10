@@ -110,7 +110,7 @@ typedef struct {
     int32_t tm_wday;
     int32_t tm_yday;
     int32_t tm_isdst;
-    int32_t tm_gmtoff;
+    int32_t tm_utcoff;
     int32_t tm_nsec;
 } rust_tm;
 
@@ -129,7 +129,7 @@ void rust_tm_to_tm(rust_tm* in_tm, struct tm* out_tm) {
 
 void tm_to_rust_tm(struct tm* in_tm,
                    rust_tm* out_tm,
-                   int32_t gmtoff,
+                   int32_t utcoff,
                    int32_t nsec) {
     out_tm->tm_sec = in_tm->tm_sec;
     out_tm->tm_min = in_tm->tm_min;
@@ -140,7 +140,7 @@ void tm_to_rust_tm(struct tm* in_tm,
     out_tm->tm_wday = in_tm->tm_wday;
     out_tm->tm_yday = in_tm->tm_yday;
     out_tm->tm_isdst = in_tm->tm_isdst;
-    out_tm->tm_gmtoff = gmtoff;
+    out_tm->tm_utcoff = utcoff;
     out_tm->tm_nsec = nsec;
 }
 
@@ -193,12 +193,12 @@ rust_localtime(int64_t sec, int32_t nsec, rust_tm *timeptr) {
     LOCALTIME(&s, &tm);
 
 #if defined(__WIN32__)
-    int32_t gmtoff = -timezone;
+    int32_t utcoff = -timezone;
 #else
-    int32_t gmtoff = tm.tm_gmtoff;
+    int32_t utcoff = tm.tm_utcoff;
 #endif
 
-    tm_to_rust_tm(&tm, timeptr, gmtoff, nsec);
+    tm_to_rust_tm(&tm, timeptr, utcoff, nsec);
 }
 
 int64_t
