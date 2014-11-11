@@ -8,11 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![allow(non_upper_case_globals)]
-
-pub const box_field_refcnt: uint = 0u;
-pub const box_field_drop_glue: uint = 1u;
-pub const box_field_body: uint = 4u;
+pub const BOX_FIELD_DROP_GLUE: uint = 1u;
+pub const BOX_FIELD_BODY: uint = 4u;
 
 /// The first half of a fat pointer.
 /// - For a closure, this is the code address.

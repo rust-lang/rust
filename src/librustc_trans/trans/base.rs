@@ -344,7 +344,7 @@ pub fn at_box_body<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let ccx = bcx.ccx();
     let ty = Type::at_box(ccx, type_of(ccx, body_t));
     let boxptr = PointerCast(bcx, boxptr, ty.ptr_to());
-    GEPi(bcx, boxptr, &[0u, abi::box_field_body])
+    GEPi(bcx, boxptr, &[0u, abi::BOX_FIELD_BODY])
 }
 
 fn require_alloc_fn<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
@@ -394,7 +394,7 @@ pub fn malloc_raw_dyn_proc<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, t: Ty<'tcx>)
 
     // Allocate space and store the destructor pointer:
     let Result {bcx, val: llbox} = malloc_raw_dyn(bcx, ptr_llty, t, size, llalign);
-    let dtor_ptr = GEPi(bcx, llbox, &[0u, abi::box_field_drop_glue]);
+    let dtor_ptr = GEPi(bcx, llbox, &[0u, abi::BOX_FIELD_DROP_GLUE]);
     let drop_glue_field_ty = type_of(ccx, ty::mk_nil_ptr(bcx.tcx()));
     let drop_glue = PointerCast(bcx, glue::get_drop_glue(ccx, ty::mk_uniq(bcx.tcx(), t)),
                                 drop_glue_field_ty);
