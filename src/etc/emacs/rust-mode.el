@@ -176,7 +176,7 @@
     "false" "fn" "for"
     "if" "impl" "in"
     "let" "loop"
-    "match" "mod" "mut"
+    "match" "mod" "move" "mut"
     "priv" "proc" "pub"
     "ref" "return"
     "self" "static" "struct" "super"
