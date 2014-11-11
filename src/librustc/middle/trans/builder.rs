@@ -18,7 +18,7 @@ use middle::trans::base;
 use middle::trans::common::*;
 use middle::trans::machine::llalign_of_pref;
 use middle::trans::type_::Type;
-use std::collections::HashMap;
+use util::nodemap::FnvHashMap;
 use libc::{c_uint, c_char};
 use std::string::String;
 use syntax::codemap::Span;
@@ -58,7 +58,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // Build version of path with cycles removed.
 
                 // Pass 1: scan table mapping str -> rightmost pos.
-                let mut mm = HashMap::new();
+                let mut mm = FnvHashMap::new();
                 let len = v.len();
                 let mut i = 0u;
                 while i < len {

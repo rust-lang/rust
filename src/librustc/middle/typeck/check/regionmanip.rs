@@ -17,8 +17,8 @@ use middle::ty_fold::{TypeFolder, TypeFoldable};
 
 use syntax::ast;
 
-use std::collections::HashMap;
 use std::collections::hash_map::{Occupied, Vacant};
+use util::nodemap::FnvHashMap;
 use util::ppaux::Repr;
 
 // Helper functions related to manipulating region types.
@@ -28,13 +28,13 @@ pub fn replace_late_bound_regions<T>(
     binder_id: ast::NodeId,
     value: &T,
     map_fn: |ty::BoundRegion| -> ty::Region)
-    -> (HashMap<ty::BoundRegion,ty::Region>, T)
+    -> (FnvHashMap<ty::BoundRegion,ty::Region>, T)
     where T : TypeFoldable + Repr
 {
     debug!("replace_late_bound_regions(binder_id={}, value={})",
            binder_id, value.repr(tcx));
 
-    let mut map = HashMap::new();
+    let mut map = FnvHashMap::new();
     let new_value = {
         let mut folder = ty_fold::RegionFolder::regions(tcx, |r| {
             match r {

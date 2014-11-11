@@ -16,9 +16,9 @@ use middle::typeck::check::{check_expr, check_expr_has_type, demand, FnCtxt};
 use middle::typeck::check::{instantiate_path, structurally_resolved_type, valid_range_bounds};
 use middle::typeck::infer::{mod, resolve};
 use middle::typeck::require_same_types;
+use util::nodemap::FnvHashMap;
 
 use std::cmp;
-use std::collections::HashMap;
 use std::collections::hash_map::{Occupied, Vacant};
 use syntax::ast;
 use syntax::ast_util;
@@ -430,10 +430,10 @@ pub fn check_struct_pat_fields(pcx: &pat_ctxt,
     let field_type_map = struct_fields
         .iter()
         .map(|field| (field.name, field.mt.ty))
-        .collect::<HashMap<_, _>>();
+        .collect::<FnvHashMap<_, _>>();
 
     // Keep track of which fields have already appeared in the pattern.
-    let mut used_fields = HashMap::new();
+    let mut used_fields = FnvHashMap::new();
 
     // Typecheck each field.
     for &Spanned { node: ref field, span } in fields.iter() {

@@ -34,8 +34,8 @@ use driver::early_error;
 use lint::{Level, LevelSource, Lint, LintId, LintArray, LintPass, LintPassObject};
 use lint::{Default, CommandLine, Node, Allow, Warn, Deny, Forbid};
 use lint::builtin;
+use util::nodemap::FnvHashMap;
 
-use std::collections::HashMap;
 use std::rc::Rc;
 use std::cell::RefCell;
 use std::tuple::Tuple2;
@@ -63,14 +63,14 @@ pub struct LintStore {
     passes: Option<Vec<LintPassObject>>,
 
     /// Lints indexed by name.
-    by_name: HashMap<String, TargetLint>,
+    by_name: FnvHashMap<String, TargetLint>,
 
     /// Current levels of each lint, and where they were set.
-    levels: HashMap<LintId, LevelSource>,
+    levels: FnvHashMap<LintId, LevelSource>,
 
     /// Map of registered lint groups to what lints they expand to. The bool
     /// is true if the lint group was added by a plugin.
-    lint_groups: HashMap<&'static str, (Vec<LintId>, bool)>,
+    lint_groups: FnvHashMap<&'static str, (Vec<LintId>, bool)>,
 }
 
 /// The targed of the `by_name` map, which accounts for renaming/deprecation.
@@ -102,9 +102,9 @@ impl LintStore {
         LintStore {
             lints: vec!(),
             passes: Some(vec!()),
-            by_name: HashMap::new(),
-            levels: HashMap::new(),
-            lint_groups: HashMap::new(),
+            by_name: FnvHashMap::new(),
+            levels: FnvHashMap::new(),
+            lint_groups: FnvHashMap::new(),
         }
     }
 
@@ -279,7 +279,8 @@ impl LintStore {
                 Some(lint_id) => self.set_level(lint_id, (level, CommandLine)),
                 None => {
                     match self.lint_groups.iter().map(|(&x, pair)| (x, pair.ref0().clone()))
-                                                 .collect::<HashMap<&'static str, Vec<LintId>>>()
+                                                 .collect::<FnvHashMap<&'static str,
+                                                                       Vec<LintId>>>()
                                                  .find_equiv(lint_name.as_slice()) {
                         Some(v) => {
                             v.iter()
@@ -317,7 +318,7 @@ pub struct Context<'a, 'tcx: 'a> {
 
     /// Level of lints for certain NodeIds, stored here because the body of
     /// the lint needs to run in trans.
-    node_levels: RefCell<HashMap<(ast::NodeId, LintId), LevelSource>>,
+    node_levels: RefCell<FnvHashMap<(ast::NodeId, LintId), LevelSource>>,
 }
 
 /// Convenience macro for calling a `LintPass` method on every pass in the context.
@@ -425,7 +426,7 @@ impl<'a, 'tcx> Context<'a, 'tcx> {
             exported_items: exported_items,
             lints: lint_store,
             level_stack: vec![],
-            node_levels: RefCell::new(HashMap::new()),
+            node_levels: RefCell::new(FnvHashMap::new()),
         }
     }
 

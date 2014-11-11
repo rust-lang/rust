@@ -36,10 +36,9 @@ use middle::ty_fold::TypeFoldable;
 use middle::typeck;
 use middle::typeck::infer;
 use util::ppaux::Repr;
-use util::nodemap::{DefIdMap, NodeMap};
+use util::nodemap::{DefIdMap, FnvHashMap, NodeMap};
 
 use arena::TypedArena;
-use std::collections::HashMap;
 use libc::{c_uint, c_char};
 use std::c_str::ToCStr;
 use std::cell::{Cell, RefCell};
@@ -185,7 +184,7 @@ pub fn BuilderRef_res(b: BuilderRef) -> BuilderRef_res {
     }
 }
 
-pub type ExternMap = HashMap<String, ValueRef>;
+pub type ExternMap = FnvHashMap<String, ValueRef>;
 
 // Here `self_ty` is the real type of the self parameter to this method. It
 // will only be set in the case of default methods.

@@ -21,11 +21,11 @@ use middle::typeck::infer;
 use middle::graph;
 use middle::graph::{Direction, NodeIndex};
 use util::common::indenter;
+use util::nodemap::{FnvHashMap, FnvHashSet};
 use util::ppaux::Repr;
 
 use std::cell::{Cell, RefCell};
 use std::uint;
-use std::collections::{HashMap, HashSet};
 use syntax::ast;
 
 mod doc;
@@ -149,7 +149,7 @@ impl SameRegions {
     }
 }
 
-pub type CombineMap = HashMap<TwoRegions, RegionVid>;
+pub type CombineMap = FnvHashMap<TwoRegions, RegionVid>;
 
 pub struct RegionVarBindings<'a, 'tcx: 'a> {
     tcx: &'a ty::ctxt<'tcx>,
@@ -158,7 +158,7 @@ pub struct RegionVarBindings<'a, 'tcx: 'a> {
     // Constraints of the form `A <= B` introduced by the region
     // checker.  Here at least one of `A` and `B` must be a region
     // variable.
-    constraints: RefCell<HashMap<Constraint, SubregionOrigin>>,
+    constraints: RefCell<FnvHashMap<Constraint, SubregionOrigin>>,
 
     // A "verify" is something that we need to verify after inference is
     // done, but which does not directly affect inference in any way.
@@ -184,7 +184,7 @@ pub struct RegionVarBindings<'a, 'tcx: 'a> {
     // record the fact that `'a <= 'b` is implied by the fn signature,
     // and then ignore the constraint when solving equations. This is
     // a bit of a hack but seems to work.
-    givens: RefCell<HashSet<(ty::FreeRegion, ty::RegionVid)>>,
+    givens: RefCell<FnvHashSet<(ty::FreeRegion, ty::RegionVid)>>,
 
     lubs: RefCell<CombineMap>,
     glbs: RefCell<CombineMap>,
@@ -223,11 +223,11 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
             tcx: tcx,
             var_origins: RefCell::new(Vec::new()),
             values: RefCell::new(None),
-            constraints: RefCell::new(HashMap::new()),
+            constraints: RefCell::new(FnvHashMap::new()),
             verifys: RefCell::new(Vec::new()),
-            givens: RefCell::new(HashSet::new()),
-            lubs: RefCell::new(HashMap::new()),
-            glbs: RefCell::new(HashMap::new()),
+            givens: RefCell::new(FnvHashSet::new()),
+            lubs: RefCell::new(FnvHashMap::new()),
+            glbs: RefCell::new(FnvHashMap::new()),
             skolemization_count: Cell::new(0),
             bound_count: Cell::new(0),
             undo_log: RefCell::new(Vec::new())
@@ -1183,7 +1183,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
                                       values: &Vec<VarValue>,
                                       errors: &mut Vec<RegionResolutionError>)
     {
-        let mut reg_reg_dups = HashSet::new();
+        let mut reg_reg_dups = FnvHashSet::new();
         for verify in self.verifys.borrow().iter() {
             match *verify {
                 VerifyRegSubReg(ref origin, sub, sup) => {
@@ -1453,13 +1453,13 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
                                 dup_vec: &mut [uint])
                                 -> (Vec<RegionAndOrigin> , bool) {
         struct WalkState {
-            set: HashSet<RegionVid>,
+            set: FnvHashSet<RegionVid>,
             stack: Vec<RegionVid> ,
             result: Vec<RegionAndOrigin> ,
             dup_found: bool
         }
         let mut state = WalkState {
-            set: HashSet::new(),
+            set: FnvHashSet::new(),
             stack: vec!(orig_node_idx),
             result: Vec::new(),
             dup_found: false
