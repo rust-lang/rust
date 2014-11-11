@@ -867,32 +867,33 @@ pub fn make_absolute(p: &Path) -> IoResult<Path> {
 /// use std::path::Path;
 ///
 /// let root = Path::new("/");
-/// assert!(os::change_dir(&root));
+/// assert!(os::change_dir(&root).is_ok());
 /// println!("Successfully changed working directory to {}!", root.display());
 /// ```
-pub fn change_dir(p: &Path) -> bool {
+pub fn change_dir(p: &Path) -> IoResult<()> {
     return chdir(p);
 
     #[cfg(windows)]
-    fn chdir(p: &Path) -> bool {
-        let p = match p.as_str() {
-            Some(s) => {
-                let mut p = s.utf16_units().collect::<Vec<u16>>();
-                p.push(0);
-                p
-            }
-            None => return false,
-        };
+    fn chdir(p: &Path) -> IoResult<()> {
+        let mut p = p.as_str().unwrap().utf16_units().collect::<Vec<u16>>();
+        p.push(0);
+
         unsafe {
-            libc::SetCurrentDirectoryW(p.as_ptr()) != (0 as libc::BOOL)
+            match libc::SetCurrentDirectoryW(p.as_ptr()) != (0 as libc::BOOL) {
+                true => Ok(()),
+                false => Err(IoError::last_error()),
+            }
         }
     }
 
     #[cfg(unix)]
-    fn chdir(p: &Path) -> bool {
+    fn chdir(p: &Path) -> IoResult<()> {
         p.with_c_str(|buf| {
             unsafe {
-                libc::chdir(buf) == (0 as c_int)
+                match libc::chdir(buf) == (0 as c_int) {
+                    true => Ok(()),
+                    false => Err(IoError::last_error()),
+                }
             }
         })
     }

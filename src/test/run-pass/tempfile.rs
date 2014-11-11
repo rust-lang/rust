@@ -190,7 +190,7 @@ pub fn dont_double_panic() {
 
 fn in_tmpdir(f: ||) {
     let tmpdir = TempDir::new("test").ok().expect("can't make tmpdir");
-    assert!(os::change_dir(tmpdir.path()));
+    assert!(os::change_dir(tmpdir.path()).is_ok());
 
     f();
 }
