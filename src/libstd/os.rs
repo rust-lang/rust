@@ -889,6 +889,7 @@ pub fn errno() -> uint {
 }
 
 /// Return the string corresponding to an `errno()` value of `errnum`.
+///
 /// # Example
 /// ```rust
 /// use std::os;
