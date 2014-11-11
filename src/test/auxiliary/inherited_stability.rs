@@ -18,10 +18,18 @@ pub fn stable() {}
 
 #[stable]
 pub mod stable_mod {
+    pub fn experimental() {}
+
+    #[stable]
+    pub fn stable() {}
+}
+
+#[unstable]
+pub mod unstable_mod {
     #[experimental]
     pub fn experimental() {}
 
-    pub fn stable() {}
+    pub fn unstable() {}
 }
 
 pub mod experimental_mod {
@@ -33,9 +41,9 @@ pub mod experimental_mod {
 
 #[stable]
 pub trait Stable {
-    #[experimental]
     fn experimental(&self);
 
+    #[stable]
     fn stable(&self);
 }
 
