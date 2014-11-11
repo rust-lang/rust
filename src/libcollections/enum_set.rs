@@ -486,7 +486,7 @@ mod test {
                 unsafe { mem::transmute(v) }
             }
         }
-        let mut set = EnumSet::empty();
-        set.add(V64);
+        let mut set = EnumSet::new();
+        set.insert(V64);
     }
 }
