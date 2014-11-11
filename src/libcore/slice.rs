@@ -62,7 +62,7 @@ use raw::Slice as RawSlice;
 pub trait SlicePrelude<T> for Sized? {
     /// Returns a subslice spanning the interval [`start`, `end`).
     ///
-    /// Fails when the end of the new slice lies beyond the end of the
+    /// Panics when the end of the new slice lies beyond the end of the
     /// original slice (i.e. when `end > self.len()`) or when `start > end`.
     ///
     /// Slicing with `start` equal to `end` yields an empty slice.
@@ -71,7 +71,7 @@ pub trait SlicePrelude<T> for Sized? {
 
     /// Returns a subslice from `start` to the end of the slice.
     ///
-    /// Fails when `start` is strictly greater than the length of the original slice.
+    /// Panics when `start` is strictly greater than the length of the original slice.
     ///
     /// Slicing from `self.len()` yields an empty slice.
     #[unstable = "waiting on final error conventions/slicing syntax"]
@@ -79,7 +79,7 @@ pub trait SlicePrelude<T> for Sized? {
 
     /// Returns a subslice from the start of the slice to `end`.
     ///
-    /// Fails when `end` is strictly greater than the length of the original slice.
+    /// Panics when `end` is strictly greater than the length of the original slice.
     ///
     /// Slicing to `0` yields an empty slice.
     #[unstable = "waiting on final error conventions/slicing syntax"]
@@ -91,7 +91,7 @@ pub trait SlicePrelude<T> for Sized? {
     /// the index `mid` itself) and the second will contain all
     /// indices from `[mid, len)` (excluding the index `len` itself).
     ///
-    /// Fails if `mid > len`.
+    /// Panics if `mid > len`.
     #[unstable = "waiting on final error conventions"]
     fn split_at<'a>(&'a self, mid: uint) -> (&'a [T], &'a [T]);
 
@@ -121,9 +121,9 @@ pub trait SlicePrelude<T> for Sized? {
     /// `size`. The windows overlap. If the slice is shorter than
     /// `size`, the iterator returns no values.
     ///
-    /// # Failure
+    /// # Panics
     ///
-    /// Fails if `size` is 0.
+    /// Panics if `size` is 0.
     ///
     /// # Example
     ///
@@ -144,9 +144,9 @@ pub trait SlicePrelude<T> for Sized? {
     /// length of the slice, then the last chunk will not have length
     /// `size`.
     ///
-    /// # Failure
+    /// # Panics
     ///
-    /// Fails if `size` is 0.
+    /// Panics if `size` is 0.
     ///
     /// # Example
     ///
@@ -267,7 +267,7 @@ pub trait SlicePrelude<T> for Sized? {
 
     /// Returns a mutable subslice spanning the interval [`start`, `end`).
     ///
-    /// Fails when the end of the new slice lies beyond the end of the
+    /// Panics when the end of the new slice lies beyond the end of the
     /// original slice (i.e. when `end > self.len()`) or when `start > end`.
     ///
     /// Slicing with `start` equal to `end` yields an empty slice.
@@ -276,7 +276,7 @@ pub trait SlicePrelude<T> for Sized? {
 
     /// Returns a mutable subslice from `start` to the end of the slice.
     ///
-    /// Fails when `start` is strictly greater than the length of the original slice.
+    /// Panics when `start` is strictly greater than the length of the original slice.
     ///
     /// Slicing from `self.len()` yields an empty slice.
     #[unstable = "waiting on final error conventions"]
@@ -284,7 +284,7 @@ pub trait SlicePrelude<T> for Sized? {
 
     /// Returns a mutable subslice from the start of the slice to `end`.
     ///
-    /// Fails when `end` is strictly greater than the length of the original slice.
+    /// Panics when `end` is strictly greater than the length of the original slice.
     ///
     /// Slicing to `0` yields an empty slice.
     #[unstable = "waiting on final error conventions"]
@@ -333,15 +333,15 @@ pub trait SlicePrelude<T> for Sized? {
     /// not divide the length of the slice, then the last chunk will not
     /// have length `chunk_size`.
     ///
-    /// # Failure
+    /// # Panics
     ///
-    /// Fails if `chunk_size` is 0.
+    /// Panics if `chunk_size` is 0.
     #[unstable = "waiting on iterator type name conventions"]
     fn chunks_mut<'a>(&'a mut self, chunk_size: uint) -> MutChunks<'a, T>;
 
     /// Swaps two elements in a slice.
     ///
-    /// Fails if `a` or `b` are out of bounds.
+    /// Panics if `a` or `b` are out of bounds.
     ///
     /// # Arguments
     ///
@@ -364,7 +364,7 @@ pub trait SlicePrelude<T> for Sized? {
     /// the index `mid` itself) and the second will contain all
     /// indices from `[mid, len)` (excluding the index `len` itself).
     ///
-    /// Fails if `mid > len`.
+    /// Panics if `mid > len`.
     ///
     /// # Example
     ///
@@ -1641,7 +1641,7 @@ pub mod bytes {
 
     /// Copies data from `src` to `dst`
     ///
-    /// `src` and `dst` must not overlap. Fails if the length of `dst`
+    /// `src` and `dst` must not overlap. Panics if the length of `dst`
     /// is less than the length of `src`.
     #[inline]
     pub fn copy_memory(dst: &mut [u8], src: &[u8]) {

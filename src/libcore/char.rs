@@ -87,9 +87,9 @@ pub fn from_u32(i: u32) -> Option<char> {
 /// Returns `true` if `c` is a valid digit under `radix`, and `false`
 /// otherwise.
 ///
-/// # Failure
+/// # Panics
 ///
-/// Fails if given a `radix` > 36.
+/// Panics if given a `radix` > 36.
 ///
 /// # Note
 ///
@@ -113,9 +113,9 @@ pub fn is_digit_radix(c: char, radix: uint) -> bool {
 /// 'b' or 'B', 11, etc. Returns none if the `char` does not
 /// refer to a digit in the given radix.
 ///
-/// # Failure
+/// # Panics
 ///
-/// Fails if given a `radix` outside the range `[0..36]`.
+/// Panics if given a `radix` outside the range `[0..36]`.
 ///
 #[inline]
 pub fn to_digit(c: char, radix: uint) -> Option<uint> {
@@ -140,9 +140,9 @@ pub fn to_digit(c: char, radix: uint) -> Option<uint> {
 /// Returns `Some(char)` if `num` represents one digit under `radix`,
 /// using one character of `0-9` or `a-z`, or `None` if it doesn't.
 ///
-/// # Failure
+/// # Panics
 ///
-/// Fails if given an `radix` > 36.
+/// Panics if given an `radix` > 36.
 ///
 #[inline]
 pub fn from_digit(num: uint, radix: uint) -> Option<char> {
@@ -240,9 +240,9 @@ pub trait Char {
     /// Returns `true` if `c` is a valid digit under `radix`, and `false`
     /// otherwise.
     ///
-    /// # Failure
+    /// # Panics
     ///
-    /// Fails if given a radix > 36.
+    /// Panics if given a radix > 36.
     fn is_digit_radix(&self, radix: uint) -> bool;
 
     /// Converts a character to the corresponding digit.
@@ -253,9 +253,9 @@ pub trait Char {
     /// 9. If `c` is 'a' or 'A', 10. If `c` is 'b' or 'B', 11, etc. Returns
     /// none if the character does not refer to a digit in the given radix.
     ///
-    /// # Failure
+    /// # Panics
     ///
-    /// Fails if given a radix outside the range [0..36].
+    /// Panics if given a radix outside the range [0..36].
     fn to_digit(&self, radix: uint) -> Option<uint>;
 
     /// Converts a number to the character representing it.
@@ -265,9 +265,9 @@ pub trait Char {
     /// Returns `Some(char)` if `num` represents one digit under `radix`,
     /// using one character of `0-9` or `a-z`, or `None` if it doesn't.
     ///
-    /// # Failure
+    /// # Panics
     ///
-    /// Fails if given a radix > 36.
+    /// Panics if given a radix > 36.
     fn from_digit(num: uint, radix: uint) -> Option<Self>;
 
     /// Returns the hexadecimal Unicode escape of a character.

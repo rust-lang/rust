@@ -327,9 +327,9 @@ impl GenericPath for Path {
 impl Path {
     /// Returns a new Path from a byte vector or string
     ///
-    /// # Failure
+    /// # Panics
     ///
-    /// Fails the task if the vector contains a NUL.
+    /// Panics the task if the vector contains a NUL.
     #[inline]
     pub fn new<T: BytesContainer>(path: T) -> Path {
         GenericPath::new(path)
