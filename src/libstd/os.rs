@@ -422,7 +422,9 @@ pub fn setenv<T: BytesContainer>(n: &str, v: T) {
             with_env_lock(|| {
                 n.with_c_str(|nbuf| {
                     v.with_c_str(|vbuf| {
-                        libc::funcs::posix01::unistd::setenv(nbuf, vbuf, 1);
+                        if libc::funcs::posix01::unistd::setenv(nbuf, vbuf, 1) != 0 {
+                            panic!(IoError::last_error());
+                        }
                     })
                 })
             })
@@ -438,7 +440,9 @@ pub fn setenv<T: BytesContainer>(n: &str, v: T) {
 
         unsafe {
             with_env_lock(|| {
-                libc::SetEnvironmentVariableW(n.as_ptr(), v.as_ptr());
+                if libc::SetEnvironmentVariableW(n.as_ptr(), v.as_ptr()) == 0 {
+                    panic!(IoError::last_error());
+                }
             })
         }
     }
@@ -453,7 +457,9 @@ pub fn unsetenv(n: &str) {
         unsafe {
             with_env_lock(|| {
                 n.with_c_str(|nbuf| {
-                    libc::funcs::posix01::unistd::unsetenv(nbuf);
+                    if libc::funcs::posix01::unistd::unsetenv(nbuf) != 0 {
+                        panic!(IoError::last_error());
+                    }
                 })
             })
         }
@@ -465,11 +471,14 @@ pub fn unsetenv(n: &str) {
         n.push(0);
         unsafe {
             with_env_lock(|| {
-                libc::SetEnvironmentVariableW(n.as_ptr(), ptr::null());
+                if libc::SetEnvironmentVariableW(n.as_ptr(), ptr::null()) == 0 {
+                    panic!(IoError::last_error());
+                }
             })
         }
     }
-    _unsetenv(n);
+
+    _unsetenv(n)
 }
 
 /// Parses input according to platform conventions for the `PATH`
