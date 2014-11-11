@@ -231,7 +231,7 @@ pub fn build_session_(sopts: config::Options,
         if path.is_absolute() {
             path.clone()
         } else {
-            os::getcwd().join(&path)
+            os::getcwd().unwrap().join(&path)
         }
     );
 
@@ -246,7 +246,7 @@ pub fn build_session_(sopts: config::Options,
         plugin_registrar_fn: Cell::new(None),
         default_sysroot: default_sysroot,
         local_crate_source_file: local_crate_source_file,
-        working_dir: os::getcwd(),
+        working_dir: os::getcwd().unwrap(),
         lint_store: RefCell::new(lint::LintStore::new()),
         lints: RefCell::new(NodeMap::new()),
         crate_types: RefCell::new(Vec::new()),
