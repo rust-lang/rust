@@ -132,7 +132,7 @@ use middle::typeck::infer::resolve_type;
 use middle::typeck::infer;
 use middle::typeck::MethodCall;
 use middle::pat_util;
-use util::nodemap::{DefIdMap, NodeMap};
+use util::nodemap::{DefIdMap, NodeMap, FnvHashMap};
 use util::ppaux::{ty_to_string, Repr};
 
 use syntax::ast;
@@ -141,7 +141,6 @@ use syntax::visit;
 use syntax::visit::Visitor;
 
 use std::cell::{RefCell};
-use std::collections::HashMap;
 use std::collections::hash_map::{Vacant, Occupied};
 
 ///////////////////////////////////////////////////////////////////////////
@@ -224,7 +223,7 @@ struct MaybeLink {
 }
 
 // A map associating an upvar ID to a vector of the above
-type MaybeLinkMap = RefCell<HashMap<ty::UpvarId, Vec<MaybeLink>>>;
+type MaybeLinkMap = RefCell<FnvHashMap<ty::UpvarId, Vec<MaybeLink>>>;
 
 pub struct Rcx<'a, 'tcx: 'a> {
     fcx: &'a FnCtxt<'a, 'tcx>,
@@ -270,7 +269,7 @@ impl<'a, 'tcx> Rcx<'a, 'tcx> {
         Rcx { fcx: fcx,
               repeating_scope: initial_repeating_scope,
               region_param_pairs: Vec::new(),
-              maybe_links: RefCell::new(HashMap::new()) }
+              maybe_links: RefCell::new(FnvHashMap::new()) }
     }
 
     pub fn tcx(&self) -> &'a ty::ctxt<'tcx> {

@@ -32,11 +32,10 @@ use middle::typeck::infer;
 use middle::{typeck, ty, def, pat_util, stability};
 use middle::const_eval::{eval_const_expr_partial, const_int, const_uint};
 use util::ppaux::{ty_to_string};
-use util::nodemap::NodeSet;
+use util::nodemap::{FnvHashMap, NodeSet};
 use lint::{Context, LintPass, LintArray};
 
 use std::cmp;
-use std::collections::HashMap;
 use std::collections::hash_map::{Occupied, Vacant};
 use std::slice;
 use std::{i8, i16, i32, i64, u8, u16, u32, u64, f32, f64};
@@ -1284,7 +1283,7 @@ impl UnusedMut {
         // collect all mutable pattern and group their NodeIDs by their Identifier to
         // avoid false warnings in match arms with multiple patterns
 
-        let mut mutables = HashMap::new();
+        let mut mutables = FnvHashMap::new();
         for p in pats.iter() {
             pat_util::pat_bindings(&cx.tcx.def_map, &**p, |mode, id, _, path1| {
                 let ident = path1.node;

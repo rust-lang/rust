@@ -14,12 +14,12 @@
 #![allow(non_camel_case_types)]
 
 use std::cell::RefCell;
-use std::collections::HashMap;
 
 use middle::subst;
 use middle::subst::VecPerParamSpace;
 use middle::ty::ParamTy;
 use middle::ty;
+use util::nodemap::FnvHashMap;
 
 use syntax::abi::Abi;
 use syntax::ast;
@@ -47,7 +47,7 @@ pub struct ty_abbrev {
     s: String
 }
 
-pub type abbrev_map = RefCell<HashMap<ty::t, ty_abbrev>>;
+pub type abbrev_map = RefCell<FnvHashMap<ty::t, ty_abbrev>>;
 
 pub fn enc_ty(w: &mut SeekableMemWriter, cx: &ctxt, t: ty::t) {
     match cx.abbrevs.borrow_mut().get(&t) {

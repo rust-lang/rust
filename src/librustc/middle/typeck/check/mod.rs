@@ -117,7 +117,6 @@ use util::ppaux::{UserString, Repr};
 use util::nodemap::{DefIdMap, FnvHashMap, NodeMap};
 
 use std::cell::{Cell, Ref, RefCell};
-use std::collections::HashMap;
 use std::collections::hash_map::{Occupied, Vacant};
 use std::mem::replace;
 use std::rc::Rc;
@@ -334,7 +333,7 @@ impl<'a, 'tcx> Inherited<'a, 'tcx> {
             adjustments: RefCell::new(NodeMap::new()),
             method_map: RefCell::new(FnvHashMap::new()),
             object_cast_map: RefCell::new(NodeMap::new()),
-            upvar_borrow_map: RefCell::new(HashMap::new()),
+            upvar_borrow_map: RefCell::new(FnvHashMap::new()),
             unboxed_closures: RefCell::new(DefIdMap::new()),
             fn_sig_map: RefCell::new(NodeMap::new()),
             region_obligations: RefCell::new(NodeMap::new()),
@@ -3747,7 +3746,7 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
                                       check_completeness: bool)  {
         let tcx = fcx.ccx.tcx;
 
-        let mut class_field_map = HashMap::new();
+        let mut class_field_map = FnvHashMap::new();
         let mut fields_found = 0;
         for field in field_types.iter() {
             class_field_map.insert(field.name, (field.id, false));

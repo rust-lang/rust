@@ -192,7 +192,6 @@ represents the "variance transform" as defined in the paper:
 
 */
 
-use std::collections::HashMap;
 use arena;
 use arena::Arena;
 use middle::resolve_lifetime as rl;
@@ -206,6 +205,7 @@ use syntax::ast_map;
 use syntax::ast_util;
 use syntax::visit;
 use syntax::visit::Visitor;
+use util::nodemap::NodeMap;
 use util::ppaux::Repr;
 
 pub fn infer_variance(tcx: &ty::ctxt) {
@@ -263,7 +263,7 @@ struct TermsContext<'a, 'tcx: 'a> {
 
     // Maps from the node id of a type/generic parameter to the
     // corresponding inferred index.
-    inferred_map: HashMap<ast::NodeId, InferredIndex>,
+    inferred_map: NodeMap<InferredIndex>,
 
     // Maps from an InferredIndex to the info for that variable.
     inferred_infos: Vec<InferredInfo<'a>> ,
@@ -291,7 +291,7 @@ fn determine_parameters_to_be_inferred<'a, 'tcx>(tcx: &'a ty::ctxt<'tcx>,
     let mut terms_cx = TermsContext {
         tcx: tcx,
         arena: arena,
-        inferred_map: HashMap::new(),
+        inferred_map: NodeMap::new(),
         inferred_infos: Vec::new(),
 
         // cache and share the variance struct used for items with

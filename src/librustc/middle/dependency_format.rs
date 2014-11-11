@@ -61,7 +61,6 @@
 //! Additionally, the algorithm is geared towards finding *any* solution rather
 //! than finding a number of solutions (there are normally quite a few).
 
-use std::collections::HashMap;
 use syntax::ast;
 
 use driver::session;
@@ -69,6 +68,7 @@ use driver::config;
 use metadata::cstore;
 use metadata::csearch;
 use middle::ty;
+use util::nodemap::FnvHashMap;
 
 /// A list of dependencies for a certain crate type.
 ///
@@ -81,7 +81,7 @@ pub type DependencyList = Vec<Option<cstore::LinkagePreference>>;
 /// A mapping of all required dependencies for a particular flavor of output.
 ///
 /// This is local to the tcx, and is generally relevant to one session.
-pub type Dependencies = HashMap<config::CrateType, DependencyList>;
+pub type Dependencies = FnvHashMap<config::CrateType, DependencyList>;
 
 pub fn calculate(tcx: &ty::ctxt) {
     let mut fmts = tcx.dependency_formats.borrow_mut();
@@ -137,7 +137,7 @@ fn calculate_type(sess: &session::Session,
         config::CrateTypeExecutable | config::CrateTypeDylib => {},
     }
 
-    let mut formats = HashMap::new();
+    let mut formats = FnvHashMap::new();
 
     // Sweep all crates for found dylibs. Add all dylibs, as well as their
     // dependencies, ensuring there are no conflicts. The only valid case for a
@@ -208,7 +208,7 @@ fn calculate_type(sess: &session::Session,
 fn add_library(sess: &session::Session,
                cnum: ast::CrateNum,
                link: cstore::LinkagePreference,
-               m: &mut HashMap<ast::CrateNum, cstore::LinkagePreference>) {
+               m: &mut FnvHashMap<ast::CrateNum, cstore::LinkagePreference>) {
     match m.get(&cnum) {
         Some(&link2) => {
             // If the linkages differ, then we'd have two copies of the library

@@ -15,13 +15,13 @@ use llvm::{TypeRef, Bool, False, True, TypeKind, ValueRef};
 use llvm::{Float, Double, X86_FP80, PPC_FP128, FP128};
 
 use middle::trans::context::CrateContext;
+use util::nodemap::FnvHashMap;
 
 use syntax::ast;
 
 use std::c_str::ToCStr;
 use std::mem;
 use std::cell::RefCell;
-use std::collections::HashMap;
 
 use libc::c_uint;
 
@@ -320,13 +320,13 @@ impl Type {
 /* Memory-managed object interface to type handles. */
 
 pub struct TypeNames {
-    named_types: RefCell<HashMap<String, TypeRef>>,
+    named_types: RefCell<FnvHashMap<String, TypeRef>>,
 }
 
 impl TypeNames {
     pub fn new() -> TypeNames {
         TypeNames {
-            named_types: RefCell::new(HashMap::new())
+            named_types: RefCell::new(FnvHashMap::new())
         }
     }
 

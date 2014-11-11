@@ -1161,7 +1161,7 @@ fn encode_side_tables_for_id(ecx: &e::EncodeContext,
         })
     }
 
-    for &ty in tcx.node_types.borrow().get(&(id as uint)).iter() {
+    for &ty in tcx.node_types.borrow().get(&id).iter() {
         rbml_w.tag(c::tag_table_node_type, |rbml_w| {
             rbml_w.id(id);
             rbml_w.tag(c::tag_table_val, |rbml_w| {
@@ -1825,7 +1825,7 @@ fn decode_side_tables(dcx: &DecodeContext,
                         let ty = val_dsr.read_ty(dcx);
                         debug!("inserting ty for node {}: {}",
                                id, ty_to_string(dcx.tcx, ty));
-                        dcx.tcx.node_types.borrow_mut().insert(id as uint, ty);
+                        dcx.tcx.node_types.borrow_mut().insert(id, ty);
                     }
                     c::tag_table_item_subst => {
                         let item_substs = ty::ItemSubsts {
