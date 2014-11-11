@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![allow(missing_doc)]
+#![allow(missing_docs)]
 #![allow(dead_code)]
 
 use io::{mod, IoError, IoResult};
