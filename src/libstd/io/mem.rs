@@ -65,16 +65,24 @@ impl MemWriter {
     pub fn new() -> MemWriter {
         MemWriter::with_capacity(BUF_CAPACITY)
     }
+
     /// Create a new `MemWriter`, allocating at least `n` bytes for
     /// the internal buffer.
     #[inline]
     pub fn with_capacity(n: uint) -> MemWriter {
         MemWriter::from_vec(Vec::with_capacity(n))
     }
+
     /// Create a new `MemWriter` that will append to an existing `Vec`.
     #[inline]
     pub fn from_vec(buf: Vec<u8>) -> MemWriter {
         MemWriter { buf: buf }
+    }
+
+    /// Clear the underlying buffer.
+    #[inline]
+    pub fn clear(&mut self) {
+        self.buf.clear();
     }
 
     /// Acquires an immutable reference to the underlying buffer of this
@@ -351,6 +359,9 @@ mod test {
         writer.write([4, 5, 6, 7]).unwrap();
         let b: &[_] = &[0, 1, 2, 3, 4, 5, 6, 7];
         assert_eq!(writer.get_ref(), b);
+
+        writer.clear();
+        assert_eq!(writer.get_ref(), &[]);
     }
 
     #[test]
