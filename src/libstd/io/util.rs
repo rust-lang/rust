@@ -265,7 +265,7 @@ impl<T: Iterator<u8>> Reader for IterReader<T> {
 
 #[cfg(test)]
 mod test {
-    use io::{MemReader, MemWriter, BufReader, ByRefReader};
+    use io::{MemReader, BufReader, ByRefReader};
     use io;
     use boxed::Box;
     use super::*;
@@ -371,18 +371,18 @@ mod test {
     #[test]
     fn test_tee_reader() {
         let mut r = TeeReader::new(MemReader::new(vec!(0, 1, 2)),
-                                   MemWriter::new());
+                                   Vec::new());
         assert_eq!(vec!(0, 1, 2), r.read_to_end().unwrap());
         let (_, w) = r.unwrap();
-        assert_eq!(vec!(0, 1, 2), w.unwrap());
+        assert_eq!(vec!(0, 1, 2), w);
     }
 
     #[test]
     fn test_copy() {
         let mut r = MemReader::new(vec!(0, 1, 2, 3, 4));
-        let mut w = MemWriter::new();
+        let mut w = Vec::new();
         copy(&mut r, &mut w).unwrap();
-        assert_eq!(vec!(0, 1, 2, 3, 4), w.unwrap());
+        assert_eq!(vec!(0, 1, 2, 3, 4), w);
     }
 
     #[test]

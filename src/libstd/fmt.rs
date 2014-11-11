@@ -256,7 +256,7 @@ actually invoking the `write` function defined in this module. Example usage is:
 # #![allow(unused_must_use)]
 use std::io;
 
-let mut w = io::MemWriter::new();
+let mut w = Vec::new();
 write!(&mut w as &mut io::Writer, "Hello {}!", "world");
 ```
 
@@ -415,6 +415,7 @@ use io::Writer;
 use io;
 use result::{Ok, Err};
 use string;
+use vec::Vec;
 
 pub use core::fmt::{Formatter, Result, FormatWriter, rt};
 pub use core::fmt::{Show, Bool, Char, Signed, Unsigned, Octal, Binary};
@@ -443,10 +444,10 @@ pub use core::fmt::{argument, argumentstr, argumentuint};
 /// let s = format_args!(fmt::format, "Hello, {}!", "world");
 /// assert_eq!(s, "Hello, world!".to_string());
 /// ```
-pub fn format(args: &Arguments) -> string::String{
-    let mut output = io::MemWriter::new();
-    let _ = write!(&mut output, "{}", args);
-    string::String::from_utf8(output.unwrap()).unwrap()
+pub fn format(args: &Arguments) -> string::String {
+    let mut output = Vec::new();
+    let _ = write!(&mut output as &mut Writer, "{}", args);
+    string::String::from_utf8(output).unwrap()
 }
 
 impl<'a> Writer for Formatter<'a> {

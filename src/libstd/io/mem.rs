@@ -12,6 +12,8 @@
 
 //! Readers and Writers for in-memory buffers
 
+#![allow(deprecated)]
+
 use cmp::min;
 use option::None;
 use result::{Err, Ok};
@@ -41,6 +43,14 @@ fn combine(seek: SeekStyle, cur: uint, end: uint, offset: i64) -> IoResult<u64> 
     }
 }
 
+impl Writer for Vec<u8> {
+    #[inline]
+    fn write(&mut self, buf: &[u8]) -> IoResult<()> {
+        self.push_all(buf);
+        Ok(())
+    }
+}
+
 /// Writes to an owned, growable byte vector
 ///
 /// # Example
@@ -54,6 +64,7 @@ fn combine(seek: SeekStyle, cur: uint, end: uint, offset: i64) -> IoResult<u64> 
 ///
 /// assert_eq!(w.unwrap(), vec!(0, 1, 2));
 /// ```
+#[deprecated = "use the Vec<u8> Writer implementation directly"]
 #[deriving(Clone)]
 pub struct MemWriter {
     buf: Vec<u8>,

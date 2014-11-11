@@ -84,15 +84,15 @@ mod test {
 
     #[test]
     fn test_option_writer() {
-        let mut writer: io::IoResult<MemWriter> = Ok(MemWriter::new());
+        let mut writer: io::IoResult<Vec<u8>> = Ok(Vec::new());
         writer.write(&[0, 1, 2]).unwrap();
         writer.flush().unwrap();
-        assert_eq!(writer.unwrap().unwrap(), vec!(0, 1, 2));
+        assert_eq!(writer.unwrap(), vec!(0, 1, 2));
     }
 
     #[test]
     fn test_option_writer_error() {
-        let mut writer: io::IoResult<MemWriter> =
+        let mut writer: io::IoResult<Vec<u8>> =
             Err(io::standard_error(io::EndOfFile));
 
         match writer.write(&[0, 0, 0]) {

@@ -16,9 +16,7 @@
 #![allow(unused_must_use)]
 
 use std::fmt;
-use std::io::MemWriter;
 use std::io;
-use std::str;
 
 struct A;
 struct B;
@@ -161,7 +159,7 @@ pub fn main() {
 // Basic test to make sure that we can invoke the `write!` macro with an
 // io::Writer instance.
 fn test_write() {
-    let mut buf = MemWriter::new();
+    let mut buf = Vec::new();
     write!(&mut buf as &mut io::Writer, "{}", 3i);
     {
         let w = &mut buf as &mut io::Writer;
@@ -171,7 +169,7 @@ fn test_write() {
         writeln!(w, "{foo}", foo="bar");
     }
 
-    let s = str::from_utf8(buf.unwrap().as_slice()).unwrap().to_string();
+    let s = String::from_utf8(buf).unwrap();
     t!(s, "34helloline\nbar\n");
 }
 
@@ -188,14 +186,14 @@ fn test_print() {
 // Just make sure that the macros are defined, there's not really a lot that we
 // can do with them just yet (to test the output)
 fn test_format_args() {
-    let mut buf = MemWriter::new();
+    let mut buf = Vec::new();
     {
         let w = &mut buf as &mut io::Writer;
         format_args!(|args| { write!(w, "{}", args); }, "{}", 1i);
         format_args!(|args| { write!(w, "{}", args); }, "test");
         format_args!(|args| { write!(w, "{}", args); }, "{test}", test=3i);
     }
-    let s = str::from_utf8(buf.unwrap().as_slice()).unwrap().to_string();
+    let s = String::from_utf8(buf).unwrap();
     t!(s, "1test3");
 
     let s = format_args!(fmt::format, "hello {}", "world");
