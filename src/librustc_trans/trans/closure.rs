@@ -208,7 +208,7 @@ pub fn store_environment<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                      bv.to_string(ccx)).as_slice());
         }
 
-        let bound_data = GEPi(bcx, llbox, &[0u, abi::box_field_body, i]);
+        let bound_data = GEPi(bcx, llbox, &[0u, abi::BOX_FIELD_BODY, i]);
 
         match bv.action {
             ast::CaptureByValue => {
