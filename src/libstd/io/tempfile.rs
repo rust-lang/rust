@@ -35,7 +35,8 @@ impl TempDir {
     /// If no directory can be created, `Err` is returned.
     pub fn new_in(tmpdir: &Path, suffix: &str) -> IoResult<TempDir> {
         if !tmpdir.is_absolute() {
-            return TempDir::new_in(&os::make_absolute(tmpdir), suffix);
+            let abs_tmpdir = try!(os::make_absolute(tmpdir));
+            return TempDir::new_in(&abs_tmpdir, suffix);
         }
 
         static CNT: atomic::AtomicUint = atomic::INIT_ATOMIC_UINT;
