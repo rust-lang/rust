@@ -31,15 +31,13 @@
  * a lattice.
  */
 
-use middle::ty::{RegionVid, TyVar};
+use middle::ty::{TyVar};
 use middle::ty;
 use middle::typeck::infer::*;
 use middle::typeck::infer::combine::*;
 use middle::typeck::infer::glb::Glb;
 use middle::typeck::infer::lub::Lub;
 use util::ppaux::Repr;
-
-use std::collections::HashMap;
 
 pub trait LatticeDir {
     // Relates the type `v` to `a` and `b` such that `v` represents
@@ -100,29 +98,5 @@ pub fn super_lattice_tys<'tcx, L:LatticeDir+Combine<'tcx>>(this: &L,
         _ => {
             super_tys(this, a, b)
         }
-    }
-}
-
-///////////////////////////////////////////////////////////////////////////
-// Random utility functions used by LUB/GLB when computing LUB/GLB of
-// fn types
-
-pub fn var_ids<'tcx, T: Combine<'tcx>>(this: &T,
-                                       map: &HashMap<ty::BoundRegion, ty::Region>)
-                                       -> Vec<RegionVid> {
-    map.iter().map(|(_, r)| match *r {
-            ty::ReInfer(ty::ReVar(r)) => { r }
-            r => {
-                this.infcx().tcx.sess.span_bug(
-                    this.trace().origin.span(),
-                    format!("found non-region-vid: {}", r).as_slice());
-            }
-        }).collect()
-}
-
-pub fn is_var_in_set(new_vars: &[RegionVid], r: ty::Region) -> bool {
-    match r {
-        ty::ReInfer(ty::ReVar(ref v)) => new_vars.iter().any(|x| x == v),
-        _ => false
     }
 }

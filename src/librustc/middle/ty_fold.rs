@@ -42,7 +42,6 @@ use middle::ty;
 use middle::traits;
 use middle::typeck;
 use std::rc::Rc;
-use syntax::ast;
 use syntax::owned_slice::OwnedSlice;
 use util::ppaux::Repr;
 
@@ -62,6 +61,17 @@ pub trait TypeFoldable {
 /// sub-item.
 pub trait TypeFolder<'tcx> {
     fn tcx<'a>(&'a self) -> &'a ty::ctxt<'tcx>;
+
+    /// Invoked by the `super_*` routines when we enter a region
+    /// binding level (for example, when entering a function
+    /// signature). This is used by clients that want to track the
+    /// Debruijn index nesting level.
+    fn enter_region_binding(&mut self) { }
+
+    /// Invoked by the `super_*` routines when we exit a region
+    /// binding level. This is used by clients that want to
+    /// track the Debruijn index nesting level.
+    fn exit_region_binding(&mut self) { }
 
     fn fold_ty(&mut self, t: ty::t) -> ty::t {
         super_fold_ty(self, t)
@@ -85,10 +95,10 @@ pub trait TypeFolder<'tcx> {
         super_fold_substs(self, substs)
     }
 
-    fn fold_sig(&mut self,
+    fn fold_fn_sig(&mut self,
                 sig: &ty::FnSig)
                 -> ty::FnSig {
-        super_fold_sig(self, sig)
+        super_fold_fn_sig(self, sig)
     }
 
     fn fold_output(&mut self,
@@ -221,7 +231,7 @@ impl TypeFoldable for ty::FnOutput {
 
 impl TypeFoldable for ty::FnSig {
     fn fold_with<'tcx, F: TypeFolder<'tcx>>(&self, folder: &mut F) -> ty::FnSig {
-        folder.fold_sig(self)
+        folder.fold_fn_sig(self)
     }
 }
 
@@ -434,6 +444,7 @@ impl TypeFoldable for traits::VtableParamData {
 // "super" routines: these are the default implementations for TypeFolder.
 //
 // They should invoke `foo.fold_with()` to do recursive folding.
+
 pub fn super_fold_ty<'tcx, T: TypeFolder<'tcx>>(this: &mut T,
                                                 t: ty::t)
                                                 -> ty::t {
@@ -457,11 +468,21 @@ pub fn super_fold_substs<'tcx, T: TypeFolder<'tcx>>(this: &mut T,
                     types: substs.types.fold_with(this) }
 }
 
-pub fn super_fold_sig<'tcx, T: TypeFolder<'tcx>>(this: &mut T,
-                                                 sig: &ty::FnSig)
-                                                 -> ty::FnSig {
-    ty::FnSig { binder_id: sig.binder_id,
-                inputs: sig.inputs.fold_with(this),
+pub fn super_fold_fn_sig<'tcx, T: TypeFolder<'tcx>>(this: &mut T,
+                                                    sig: &ty::FnSig)
+                                                    -> ty::FnSig
+{
+    this.enter_region_binding();
+    let result = super_fold_fn_sig_contents(this, sig);
+    this.exit_region_binding();
+    result
+}
+
+pub fn super_fold_fn_sig_contents<'tcx, T: TypeFolder<'tcx>>(this: &mut T,
+                                                             sig: &ty::FnSig)
+                                                             -> ty::FnSig
+{
+    ty::FnSig { inputs: sig.inputs.fold_with(this),
                 output: sig.output.fold_with(this),
                 variadic: sig.variadic }
 }
@@ -622,6 +643,27 @@ pub fn super_fold_obligation<'tcx, T:TypeFolder<'tcx>>(this: &mut T,
 }
 
 ///////////////////////////////////////////////////////////////////////////
+// Higher-ranked things
+
+pub trait HigherRankedFoldable : TypeFoldable + Repr {
+    /// Folds the contents of `self`, ignoring region binders created
+    /// by `self` (if any).
+    fn fold_contents<'tcx, F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self;
+}
+
+impl HigherRankedFoldable for ty::FnSig {
+    fn fold_contents<'tcx, F: TypeFolder<'tcx>>(&self, folder: &mut F) -> ty::FnSig {
+        super_fold_fn_sig_contents(folder, self)
+    }
+}
+
+impl HigherRankedFoldable for ty::t {
+    fn fold_contents<'tcx, F: TypeFolder<'tcx>>(&self, folder: &mut F) -> ty::t {
+        super_fold_ty(folder, *self)
+    }
+}
+
+///////////////////////////////////////////////////////////////////////////
 // Some sample folders
 
 pub struct BottomUpFolder<'a, 'tcx: 'a> {
@@ -655,77 +697,41 @@ impl<'a, 'tcx> TypeFolder<'tcx> for BottomUpFolder<'a, 'tcx> {
 /// current position of the fold.)
 pub struct RegionFolder<'a, 'tcx: 'a> {
     tcx: &'a ty::ctxt<'tcx>,
-    fld_t: |ty::t|: 'a -> ty::t,
-    fld_r: |ty::Region|: 'a -> ty::Region,
-    within_binder_ids: Vec<ast::NodeId>,
+    current_depth: uint,
+    fld_r: |ty::Region, uint|: 'a -> ty::Region,
 }
 
 impl<'a, 'tcx> RegionFolder<'a, 'tcx> {
-    pub fn general(tcx: &'a ty::ctxt<'tcx>,
-                   fld_r: |ty::Region|: 'a -> ty::Region,
-                   fld_t: |ty::t|: 'a -> ty::t)
-                   -> RegionFolder<'a, 'tcx> {
+    pub fn new(tcx: &'a ty::ctxt<'tcx>, fld_r: |ty::Region, uint|: 'a -> ty::Region)
+               -> RegionFolder<'a, 'tcx> {
         RegionFolder {
             tcx: tcx,
-            fld_t: fld_t,
+            current_depth: 1,
             fld_r: fld_r,
-            within_binder_ids: vec![],
         }
-    }
-
-    pub fn regions(tcx: &'a ty::ctxt<'tcx>, fld_r: |ty::Region|: 'a -> ty::Region)
-                   -> RegionFolder<'a, 'tcx> {
-        fn noop(t: ty::t) -> ty::t { t }
-
-        RegionFolder {
-            tcx: tcx,
-            fld_t: noop,
-            fld_r: fld_r,
-            within_binder_ids: vec![],
-        }
-    }
-}
-
-/// If `ty` has `FnSig` (i.e. closure or fn), return its binder_id;
-/// else None.
-fn opt_binder_id_of_function(t: ty::t) -> Option<ast::NodeId> {
-    match ty::get(t).sty {
-        ty::ty_closure(ref f) => Some(f.sig.binder_id),
-        ty::ty_bare_fn(ref f) => Some(f.sig.binder_id),
-        _                     => None,
     }
 }
 
 impl<'a, 'tcx> TypeFolder<'tcx> for RegionFolder<'a, 'tcx> {
     fn tcx<'a>(&'a self) -> &'a ty::ctxt<'tcx> { self.tcx }
 
-    fn fold_ty(&mut self, ty: ty::t) -> ty::t {
-        debug!("RegionFolder.fold_ty({})", ty.repr(self.tcx()));
-        let opt_binder_id = opt_binder_id_of_function(ty);
-        match opt_binder_id {
-            Some(binder_id) => self.within_binder_ids.push(binder_id),
-            None => {}
-        }
+    fn enter_region_binding(&mut self) {
+        self.current_depth += 1;
+    }
 
-        let t1 = super_fold_ty(self, ty);
-        let ret = (self.fld_t)(t1);
-
-        if opt_binder_id.is_some() {
-            self.within_binder_ids.pop();
-        }
-
-        ret
+    fn exit_region_binding(&mut self) {
+        self.current_depth -= 1;
     }
 
     fn fold_region(&mut self, r: ty::Region) -> ty::Region {
         match r {
-            ty::ReLateBound(binder_id, _) if self.within_binder_ids.contains(&binder_id) => {
+            ty::ReLateBound(debruin, _) if debruin.depth < self.current_depth => {
                 debug!("RegionFolder.fold_region({}) skipped bound region", r.repr(self.tcx()));
                 r
             }
             _ => {
                 debug!("RegionFolder.fold_region({}) folding free region", r.repr(self.tcx()));
-                (self.fld_r)(r)
+                (self.fld_r)(r, self.current_depth)
             }
         }
     }

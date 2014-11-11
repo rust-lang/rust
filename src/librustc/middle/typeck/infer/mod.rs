@@ -25,10 +25,9 @@ pub use self::skolemize::TypeSkolemizer;
 use middle::subst;
 use middle::subst::Substs;
 use middle::ty::{TyVid, IntVid, FloatVid, RegionVid};
+use middle::ty::replace_late_bound_regions;
 use middle::ty;
-use middle::ty_fold;
-use middle::ty_fold::{TypeFolder, TypeFoldable};
-use middle::typeck::check::regionmanip::replace_late_bound_regions;
+use middle::ty_fold::{HigherRankedFoldable, TypeFolder, TypeFoldable};
 use std::cell::{RefCell};
 use std::collections::HashMap;
 use std::rc::Rc;
@@ -36,7 +35,7 @@ use syntax::ast;
 use syntax::codemap;
 use syntax::codemap::Span;
 use util::common::indent;
-use util::ppaux::{bound_region_to_string, ty_to_string};
+use util::ppaux::{ty_to_string};
 use util::ppaux::{trait_ref_to_string, Repr};
 
 use self::coercion::Coerce;
@@ -55,12 +54,14 @@ pub mod doc;
 pub mod equate;
 pub mod error_reporting;
 pub mod glb;
+pub mod higher_ranked;
 pub mod lattice;
 pub mod lub;
 pub mod region_inference;
 pub mod resolve;
 mod skolemize;
 pub mod sub;
+#[cfg(test)]
 pub mod test;
 pub mod type_variable;
 pub mod unify;
@@ -785,8 +786,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         subst::Substs::new_trait(type_parameters, regions, assoc_type_parameters, self_ty)
     }
 
-    pub fn fresh_bound_region(&self, binder_id: ast::NodeId) -> ty::Region {
-        self.region_vars.new_bound(binder_id)
+    pub fn fresh_bound_region(&self) -> ty::Region {
+        self.region_vars.new_bound()
     }
 
     pub fn resolve_regions_and_report_errors(&self) {
@@ -954,30 +955,18 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         self.report_and_explain_type_error(trace, err);
     }
 
-    pub fn replace_late_bound_regions_with_fresh_regions(&self,
-                                                         trace: TypeTrace,
-                                                         fsig: &ty::FnSig)
-                                                    -> (ty::FnSig,
-                                                        HashMap<ty::BoundRegion,
-                                                                ty::Region>) {
-        let (map, fn_sig) =
-            replace_late_bound_regions(self.tcx, fsig.binder_id, fsig, |br| {
-                let rvar = self.next_region_var(
-                    BoundRegionInFnType(trace.origin.span(), br));
-                debug!("Bound region {} maps to {}",
-                       bound_region_to_string(self.tcx, "", false, br),
-                       rvar);
-                rvar
-            });
-        (fn_sig, map)
+    pub fn replace_late_bound_regions_with_fresh_regions<T>(
+        &self,
+        span: Span,
+        value: &T)
+        -> (T, HashMap<ty::BoundRegion,ty::Region>)
+        where T : HigherRankedFoldable
+    {
+        ty::replace_late_bound_regions(
+            self.tcx,
+            value,
+            |br| self.next_region_var(LateBoundRegion(span, br)))
     }
-}
-
-pub fn fold_regions_in_sig(tcx: &ty::ctxt,
-                           fn_sig: &ty::FnSig,
-                           fldr: |r: ty::Region| -> ty::Region)
-                           -> ty::FnSig {
-    ty_fold::RegionFolder::regions(tcx, fldr).fold_sig(fn_sig)
 }
 
 impl TypeTrace {

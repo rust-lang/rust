@@ -107,9 +107,8 @@ pub fn ast_region_to_region(tcx: &ty::ctxt, lifetime: &ast::Lifetime)
             ty::ReStatic
         }
 
-        Some(&rl::DefLateBoundRegion(binder_id, _, id)) => {
-            ty::ReLateBound(binder_id, ty::BrNamed(ast_util::local_def(id),
-                                                   lifetime.name))
+        Some(&rl::DefLateBoundRegion(debruijn, id)) => {
+            ty::ReLateBound(debruijn, ty::BrNamed(ast_util::local_def(id), lifetime.name))
         }
 
         Some(&rl::DefEarlyBoundRegion(space, index, id)) => {
@@ -211,8 +210,7 @@ fn ast_path_substs<'tcx,AC,RS>(
     decl_generics: &ty::Generics,
     self_ty: Option<ty::t>,
     associated_ty: Option<ty::t>,
-    path: &ast::Path,
-    binder_id: ast::NodeId)
+    path: &ast::Path)
     -> Substs
     where AC: AstConv<'tcx>, RS: RegionScope
 {
@@ -239,7 +237,7 @@ fn ast_path_substs<'tcx,AC,RS>(
         ast::AngleBracketedParameters(ref data) =>
             angle_bracketed_parameters(this, rscope, data),
         ast::ParenthesizedParameters(ref data) =>
-            parenthesized_parameters(this, binder_id, data),
+            parenthesized_parameters(this, data),
     };
 
     // If the type is parameterized by the this region, then replace this
@@ -375,12 +373,11 @@ fn ast_path_substs<'tcx,AC,RS>(
     }
 
     fn parenthesized_parameters<'tcx,AC>(this: &AC,
-                                         binder_id: ast::NodeId,
                                          data: &ast::ParenthesizedParameterData)
                                          -> (Vec<ty::Region>, Vec<ty::t>)
         where AC: AstConv<'tcx>
     {
-        let binding_rscope = BindingRscope::new(binder_id);
+        let binding_rscope = BindingRscope::new();
 
         let inputs = data.inputs.iter()
                                 .map(|a_t| ast_ty_to_ty(this, &binding_rscope, &**a_t))
@@ -421,8 +418,7 @@ pub fn instantiate_trait_ref<'tcx,AC,RS>(this: &AC,
                                               trait_did,
                                               self_ty,
                                               associated_type,
-                                              &ast_trait_ref.path,
-                                              ast_trait_ref.ref_id));
+                                              &ast_trait_ref.path));
 
             this.tcx().trait_refs.borrow_mut().insert(ast_trait_ref.ref_id,
                                                       trait_ref.clone());
@@ -441,8 +437,7 @@ pub fn ast_path_to_trait_ref<'tcx,AC,RS>(this: &AC,
                                          trait_def_id: ast::DefId,
                                          self_ty: Option<ty::t>,
                                          associated_type: Option<ty::t>,
-                                         path: &ast::Path,
-                                         binder_id: ast::NodeId)
+                                         path: &ast::Path)
                                          -> ty::TraitRef
                                          where AC: AstConv<'tcx>,
                                                RS: RegionScope {
@@ -455,8 +450,7 @@ pub fn ast_path_to_trait_ref<'tcx,AC,RS>(this: &AC,
                                 &trait_def.generics,
                                 self_ty,
                                 associated_type,
-                                path,
-                                binder_id)
+                                path)
     }
 }
 
@@ -464,8 +458,7 @@ pub fn ast_path_to_ty<'tcx, AC: AstConv<'tcx>, RS: RegionScope>(
     this: &AC,
     rscope: &RS,
     did: ast::DefId,
-    path: &ast::Path,
-    binder_id: ast::NodeId)
+    path: &ast::Path)
     -> TypeAndSubsts
 {
     let tcx = this.tcx();
@@ -480,8 +473,7 @@ pub fn ast_path_to_ty<'tcx, AC: AstConv<'tcx>, RS: RegionScope>(
                                  &generics,
                                  None,
                                  None,
-                                 path,
-                                 binder_id);
+                                 path);
     let ty = decl_ty.subst(tcx, &substs);
     TypeAndSubsts { substs: substs, ty: ty }
 }
@@ -495,8 +487,7 @@ pub fn ast_path_to_ty_relaxed<'tcx,AC,RS>(
     this: &AC,
     rscope: &RS,
     did: ast::DefId,
-    path: &ast::Path,
-    binder_id: ast::NodeId)
+    path: &ast::Path)
     -> TypeAndSubsts
     where AC : AstConv<'tcx>, RS : RegionScope
 {
@@ -522,7 +513,7 @@ pub fn ast_path_to_ty_relaxed<'tcx,AC,RS>(
         Substs::new(VecPerParamSpace::params_from_type(type_params),
                     VecPerParamSpace::params_from_type(region_params))
     } else {
-        ast_path_substs(this, rscope, did, &generics, None, None, path, binder_id)
+        ast_path_substs(this, rscope, did, &generics, None, None, path)
     };
 
     let ty = decl_ty.subst(tcx, &substs);
@@ -629,7 +620,7 @@ pub fn ast_ty_to_builtin_ty<'tcx, AC: AstConv<'tcx>, RS: RegionScope>(
             match a_def {
                 def::DefTy(did, _) |
                 def::DefStruct(did) if Some(did) == this.tcx().lang_items.owned_box() => {
-                    let ty = ast_path_to_ty(this, rscope, did, path, id).ty;
+                    let ty = ast_path_to_ty(this, rscope, did, path).ty;
                     match ty::get(ty).sty {
                         ty::ty_struct(struct_def_id, ref substs) => {
                             assert_eq!(struct_def_id, did);
@@ -703,8 +694,7 @@ fn mk_pointer<'tcx, AC: AstConv<'tcx>, RS: RegionScope>(
                                                        trait_def_id,
                                                        None,
                                                        None,
-                                                       path,
-                                                       id);
+                                                       path);
                     let empty_vec = [];
                     let bounds = match *opt_bounds { None => empty_vec.as_slice(),
                                                      Some(ref bounds) => bounds.as_slice() };
@@ -773,12 +763,7 @@ fn associated_ty_to_ty<'tcx,AC,RS>(this: &AC,
                                           trait_did,
                                           None,
                                           Some(for_type),
-                                          trait_path,
-                                          ast::DUMMY_NODE_ID); // *see below
-
-    // * The trait in a qualified path cannot be "higher-ranked" and
-    // hence cannot use the parenthetical sugar, so the binder-id is
-    // irrelevant.
+                                          trait_path);
 
     debug!("associated_ty_to_ty(trait_ref={})",
            trait_ref.repr(this.tcx()));
@@ -857,8 +842,7 @@ pub fn ast_ty_to_ty<'tcx, AC: AstConv<'tcx>, RS: RegionScope>(
                     tcx.sess.span_err(ast_ty.span,
                                       "variadic function must have C calling convention");
                 }
-                ty::mk_bare_fn(tcx, ty_of_bare_fn(this, ast_ty.id, bf.fn_style,
-                                                  bf.abi, &*bf.decl))
+                ty::mk_bare_fn(tcx, ty_of_bare_fn(this, bf.fn_style, bf.abi, &*bf.decl))
             }
             ast::TyClosure(ref f) => {
                 // Use corresponding trait store to figure out default bounds
@@ -869,7 +853,6 @@ pub fn ast_ty_to_ty<'tcx, AC: AstConv<'tcx>, RS: RegionScope>(
                                                      [].as_slice(),
                                                      f.bounds.as_slice());
                 let fn_decl = ty_of_closure(this,
-                                            ast_ty.id,
                                             f.fn_style,
                                             f.onceness,
                                             bounds,
@@ -890,7 +873,6 @@ pub fn ast_ty_to_ty<'tcx, AC: AstConv<'tcx>, RS: RegionScope>(
                                                      f.bounds.as_slice());
 
                 let fn_decl = ty_of_closure(this,
-                                            ast_ty.id,
                                             f.fn_style,
                                             f.onceness,
                                             bounds,
@@ -937,8 +919,7 @@ pub fn ast_ty_to_ty<'tcx, AC: AstConv<'tcx>, RS: RegionScope>(
                                                            trait_def_id,
                                                            None,
                                                            None,
-                                                           path,
-                                                           id);
+                                                           path);
                         let empty_bounds: &[ast::TyParamBound] = &[];
                         let ast_bounds = match *bounds {
                             Some(ref b) => b.as_slice(),
@@ -954,7 +935,7 @@ pub fn ast_ty_to_ty<'tcx, AC: AstConv<'tcx>, RS: RegionScope>(
                                      bounds)
                     }
                     def::DefTy(did, _) | def::DefStruct(did) => {
-                        ast_path_to_ty(this, rscope, did, path, id).ty
+                        ast_path_to_ty(this, rscope, did, path).ty
                     }
                     def::DefTyParam(space, id, n) => {
                         check_path_args(tcx, path, NO_TPS | NO_REGIONS);
@@ -1083,7 +1064,6 @@ struct SelfInfo<'a> {
 
 pub fn ty_of_method<'tcx, AC: AstConv<'tcx>>(
                     this: &AC,
-                    id: ast::NodeId,
                     fn_style: ast::FnStyle,
                     untransformed_self_ty: ty::t,
                     explicit_self: &ast::ExplicitSelf,
@@ -1096,7 +1076,6 @@ pub fn ty_of_method<'tcx, AC: AstConv<'tcx>>(
     });
     let (bare_fn_ty, optional_explicit_self_category) =
         ty_of_method_or_bare_fn(this,
-                                id,
                                 fn_style,
                                 abi,
                                 self_info,
@@ -1104,17 +1083,14 @@ pub fn ty_of_method<'tcx, AC: AstConv<'tcx>>(
     (bare_fn_ty, optional_explicit_self_category.unwrap())
 }
 
-pub fn ty_of_bare_fn<'tcx, AC: AstConv<'tcx>>(this: &AC, id: ast::NodeId,
-                                              fn_style: ast::FnStyle, abi: abi::Abi,
+pub fn ty_of_bare_fn<'tcx, AC: AstConv<'tcx>>(this: &AC, fn_style: ast::FnStyle, abi: abi::Abi,
                                               decl: &ast::FnDecl) -> ty::BareFnTy {
-    let (bare_fn_ty, _) =
-        ty_of_method_or_bare_fn(this, id, fn_style, abi, None, decl);
+    let (bare_fn_ty, _) = ty_of_method_or_bare_fn(this, fn_style, abi, None, decl);
     bare_fn_ty
 }
 
 fn ty_of_method_or_bare_fn<'tcx, AC: AstConv<'tcx>>(
                            this: &AC,
-                           id: ast::NodeId,
                            fn_style: ast::FnStyle,
                            abi: abi::Abi,
                            opt_self_info: Option<SelfInfo>,
@@ -1125,7 +1101,7 @@ fn ty_of_method_or_bare_fn<'tcx, AC: AstConv<'tcx>>(
 
     // New region names that appear inside of the arguments of the function
     // declaration are bound to that function type.
-    let rb = rscope::BindingRscope::new(id);
+    let rb = rscope::BindingRscope::new();
 
     // `implied_output_region` is the region that will be assumed for any
     // region parameters in the return type. In accordance with the rules for
@@ -1230,7 +1206,6 @@ fn ty_of_method_or_bare_fn<'tcx, AC: AstConv<'tcx>>(
         fn_style: fn_style,
         abi: abi,
         sig: ty::FnSig {
-            binder_id: id,
             inputs: self_and_input_tys,
             output: output_ty,
             variadic: decl.variadic
@@ -1315,7 +1290,6 @@ fn determine_explicit_self_category<'tcx, AC: AstConv<'tcx>,
 
 pub fn ty_of_closure<'tcx, AC: AstConv<'tcx>>(
     this: &AC,
-    id: ast::NodeId,
     fn_style: ast::FnStyle,
     onceness: ast::Onceness,
     bounds: ty::ExistentialBounds,
@@ -1329,7 +1303,7 @@ pub fn ty_of_closure<'tcx, AC: AstConv<'tcx>>(
 
     // new region names that appear inside of the fn decl are bound to
     // that function type
-    let rb = rscope::BindingRscope::new(id);
+    let rb = rscope::BindingRscope::new();
 
     let input_tys = decl.inputs.iter().enumerate().map(|(i, a)| {
         let expected_arg_ty = expected_sig.as_ref().and_then(|e| {
@@ -1359,8 +1333,7 @@ pub fn ty_of_closure<'tcx, AC: AstConv<'tcx>>(
         store: store,
         bounds: bounds,
         abi: abi,
-        sig: ty::FnSig {binder_id: id,
-                        inputs: input_tys,
+        sig: ty::FnSig {inputs: input_tys,
                         output: output_ty,
                         variadic: decl.variadic}
     }

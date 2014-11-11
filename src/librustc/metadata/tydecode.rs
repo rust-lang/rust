@@ -292,7 +292,7 @@ fn parse_region(st: &mut PState, conv: conv_did) -> ty::Region {
     match next(st) {
       'b' => {
         assert_eq!(next(st), '[');
-        let id = parse_uint(st) as ast::NodeId;
+        let id = ty::DebruijnIndex::new(parse_uint(st));
         assert_eq!(next(st), '|');
         let br = parse_bound_region(st, |x,y| conv(x,y));
         assert_eq!(next(st), ']');
@@ -578,8 +578,6 @@ fn parse_bare_fn_ty(st: &mut PState, conv: conv_did) -> ty::BareFnTy {
 
 fn parse_sig(st: &mut PState, conv: conv_did) -> ty::FnSig {
     assert_eq!(next(st), '[');
-    let id = parse_uint(st) as ast::NodeId;
-    assert_eq!(next(st), '|');
     let mut inputs = Vec::new();
     while peek(st) != ']' {
         inputs.push(parse_ty(st, |x,y| conv(x,y)));
@@ -597,8 +595,7 @@ fn parse_sig(st: &mut PState, conv: conv_did) -> ty::FnSig {
         }
         _ => ty::FnConverging(parse_ty(st, |x,y| conv(x,y)))
     };
-    ty::FnSig {binder_id: id,
-               inputs: inputs,
+    ty::FnSig {inputs: inputs,
                output: output,
                variadic: variadic}
 }

@@ -94,10 +94,10 @@ use middle::typeck::infer;
 use middle::typeck::{MethodCall, MethodCallee};
 use middle::typeck::{MethodOrigin, MethodParam, MethodTypeParam};
 use middle::typeck::{MethodStatic, MethodStaticUnboxedClosure, MethodObject, MethodTraitObject};
-use middle::typeck::check::regionmanip::replace_late_bound_regions;
+use middle::ty::replace_late_bound_regions;
 use middle::typeck::TypeAndSubsts;
 use middle::typeck::check::vtable;
-use middle::ty_fold::TypeFoldable;
+use middle::ty_fold::{HigherRankedFoldable};
 use util::common::indenter;
 use util::ppaux;
 use util::ppaux::{Repr, UserString};
@@ -251,8 +251,7 @@ pub fn lookup_in_trait_adjusted<'a, 'tcx>(
     // instantiate late-bound regions to get the actual method type.
     let ref bare_fn_ty = method_ty.fty;
     let fn_sig = bare_fn_ty.sig.subst(tcx, &trait_ref.substs);
-    let fn_sig = replace_late_bound_regions_with_fresh_var(fcx.infcx(), span,
-                                                           fn_sig.binder_id, &fn_sig);
+    let fn_sig = replace_late_bound_regions_with_fresh_var(fcx.infcx(), span, &fn_sig);
     let transformed_self_ty = fn_sig.inputs[0];
     let fty = ty::mk_bare_fn(tcx, ty::BareFnTy {
         sig: fn_sig,
@@ -1516,8 +1515,7 @@ impl<'a, 'tcx> LookupContext<'a, 'tcx> {
 
         // Replace any bound regions that appear in the function
         // signature with region variables
-        let fn_sig =
-            self.replace_late_bound_regions_with_fresh_var(fn_sig.binder_id, &fn_sig);
+        let fn_sig = self.replace_late_bound_regions_with_fresh_var(&fn_sig);
         let transformed_self_ty = fn_sig.inputs[0];
         let fty = ty::mk_bare_fn(tcx, ty::BareFnTy {
             sig: fn_sig,
@@ -1796,29 +1794,26 @@ impl<'a, 'tcx> LookupContext<'a, 'tcx> {
 
     fn xform_self_ty(&self, method: &Rc<ty::Method>, substs: &subst::Substs) -> ty::t {
         let xform_self_ty = method.fty.sig.inputs[0].subst(self.tcx(), substs);
-        self.replace_late_bound_regions_with_fresh_var(method.fty.sig.binder_id, &xform_self_ty)
+        self.replace_late_bound_regions_with_fresh_var(&xform_self_ty)
     }
 
-    fn replace_late_bound_regions_with_fresh_var<T>(&self, binder_id: ast::NodeId, value: &T) -> T
-        where T : TypeFoldable + Repr
+    fn replace_late_bound_regions_with_fresh_var<T>(&self, value: &T) -> T
+        where T : HigherRankedFoldable
     {
-        replace_late_bound_regions_with_fresh_var(self.fcx.infcx(), self.span, binder_id, value)
+        replace_late_bound_regions_with_fresh_var(self.fcx.infcx(), self.span, value)
     }
 }
 
 fn replace_late_bound_regions_with_fresh_var<T>(infcx: &infer::InferCtxt,
                                                 span: Span,
-                                                binder_id: ast::NodeId,
                                                 value: &T)
                                                 -> T
-    where T : TypeFoldable + Repr
+    where T : HigherRankedFoldable
 {
-    let (_, value) = replace_late_bound_regions(
+    replace_late_bound_regions(
         infcx.tcx,
-        binder_id,
         value,
-        |br| infcx.next_region_var(infer::LateBoundRegion(span, br)));
-    value
+        |br| infcx.next_region_var(infer::LateBoundRegion(span, br))).0
 }
 
 fn trait_method(tcx: &ty::ctxt,

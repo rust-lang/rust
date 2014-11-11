@@ -389,7 +389,7 @@ impl<'a, 'v> Visitor<'v> for Context<'a> {
                 fn_decl: &'v ast::FnDecl,
                 block: &'v ast::Block,
                 span: Span,
-                _: NodeId) {
+                _node_id: NodeId) {
         match fn_kind {
             visit::FkItemFn(_, _, _, abi) if abi == RustIntrinsic => {
                 self.gate_feature("intrinsics",
