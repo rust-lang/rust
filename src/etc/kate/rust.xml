@@ -34,6 +34,7 @@
 		<item> loop </item>
 		<item> match </item>
 		<item> mod </item>
+		<item> move </item>
 		<item> mut </item>
 		<item> priv </item>
 		<item> pub </item>
