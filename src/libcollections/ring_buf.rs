@@ -209,7 +209,7 @@ impl<T> RingBuf<T> {
         assert!(i < self.len());
         assert!(j < self.len());
         let ri = wrap_index(self.tail + i, self.cap);
-        let rj = wrap_index(self.tail + j, self.cap);
+        let rj = wrap_index(self.tail + j, self.cap);;
         unsafe {
             ptr::swap(self.ptr.offset(ri as int), self.ptr.offset(rj as int))
         }
@@ -320,6 +320,7 @@ impl<T> RingBuf<T> {
                     );
                 }
                 self.head += oldcap;
+                debug_assert!(self.head > self.tail);
             } else { // C
                 unsafe {
                     ptr::copy_nonoverlapping_memory(
@@ -329,7 +330,10 @@ impl<T> RingBuf<T> {
                     );
                 }
                 self.tail = count - (oldcap - self.tail);
+                debug_assert!(self.head < self.tail);
             }
+            debug_assert!(self.head < self.cap);
+            debug_assert!(self.tail < self.cap);
         }
     }
 
@@ -564,7 +568,10 @@ impl<T> RingBuf<T> {
     /// ```
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn push_front(&mut self, t: T) {
-        if self.is_full() { self.reserve(1) }
+        if self.is_full() {
+            self.reserve(1);
+            debug_assert!(!self.is_full());
+        }
 
         self.tail = wrap_index(self.tail - 1, self.cap);
         let tail = self.tail;
@@ -591,7 +598,10 @@ impl<T> RingBuf<T> {
     /// ```
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn push_back(&mut self, t: T) {
-        if self.is_full() { self.reserve(1) }
+        if self.is_full() {
+            self.reserve(1);
+            debug_assert!(!self.is_full());
+        }
 
         let head = self.head;
         self.head = wrap_index(self.head + 1, self.cap);
@@ -634,7 +644,9 @@ impl<T> RingBuf<T> {
 #[inline]
 fn wrap_index(index: uint, size: uint) -> uint {
     // size is always a power of 2
-    index & (size - 1)
+    let idx = index & (size - 1);
+    debug_assert!(idx < size);
+    idx
 }
 
 /// Calculate the number of elements left to be read in the buffer
