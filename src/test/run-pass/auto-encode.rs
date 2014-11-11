@@ -31,12 +31,11 @@ fn test_rbml<'a, 'b, A:
     Encodable<EBWriter::Encoder<'a>> +
     Decodable<EBReader::Decoder<'b>>
 >(a1: &A) {
-    let mut wr = std::io::MemWriter::new();
+    let mut wr = Vec::new();
     let mut rbml_w = EBwriter::Encoder::new(&mut wr);
     a1.encode(&mut rbml_w);
-    let bytes = wr.get_ref();
 
-    let d: serialize::rbml::Doc<'a> = EBDoc::new(bytes);
+    let d: serialize::rbml::Doc<'a> = EBDoc::new(wr[]);
     let mut decoder: EBReader::Decoder<'a> = EBreader::Decoder::new(d);
     let a2: A = Decodable::decode(&mut decoder);
     assert!(*a1 == a2);

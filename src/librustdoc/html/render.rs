@@ -38,7 +38,7 @@ use std::collections::{HashMap, HashSet};
 use std::collections::hash_map::{Occupied, Vacant};
 use std::fmt;
 use std::io::fs::PathExtensions;
-use std::io::{fs, File, BufferedWriter, MemWriter, BufferedReader};
+use std::io::{fs, File, BufferedWriter, BufferedReader};
 use std::io;
 use std::str;
 use std::string::String;
@@ -420,7 +420,7 @@ fn build_index(krate: &clean::Crate, cache: &mut Cache) -> io::IoResult<String> 
     }
 
     // Collect the index into a string
-    let mut w = MemWriter::new();
+    let mut w = Vec::new();
     try!(write!(&mut w, r#"searchIndex['{}'] = {{"items":["#, krate.name));
 
     let mut lastpath = "".to_string();
@@ -463,7 +463,7 @@ fn build_index(krate: &clean::Crate, cache: &mut Cache) -> io::IoResult<String> 
 
     try!(write!(&mut w, "]}};"));
 
-    Ok(String::from_utf8(w.unwrap()).unwrap())
+    Ok(String::from_utf8(w).unwrap())
 }
 
 fn write_shared(cx: &Context,
