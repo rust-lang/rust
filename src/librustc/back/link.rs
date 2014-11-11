@@ -890,9 +890,6 @@ fn link_args(cmd: &mut Command,
         cmd.arg(obj_filename.with_extension("metadata.o"));
     }
 
-    // Rust does its' own LTO
-    cmd.arg("-fno-lto");
-
     if t.options.is_like_osx {
         // The dead_strip option to the linker specifies that functions and data
         // unreachable by the entry point will be removed. This is quite useful

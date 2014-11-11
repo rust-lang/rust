@@ -568,8 +568,8 @@ pub fn phase_6_link_output(sess: &Session,
                            trans: &CrateTranslation,
                            outputs: &OutputFilenames) {
     let old_path = os::getenv("PATH").unwrap_or_else(||String::new());
-    let mut new_path = os::split_paths(old_path.as_slice());
-    new_path.extend(sess.host_filesearch().get_tools_search_paths().into_iter());
+    let mut new_path = sess.host_filesearch().get_tools_search_paths();
+    new_path.extend(os::split_paths(old_path.as_slice()).into_iter());
     os::setenv("PATH", os::join_paths(new_path.as_slice()).unwrap());
 
     time(sess.time_passes(), "linking", (), |_|
