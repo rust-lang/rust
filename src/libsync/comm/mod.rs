@@ -43,7 +43,7 @@
 //!    "rendezvous" channel where each sender atomically hands off a message to
 //!    a receiver.
 //!
-//! ## Failure Propagation
+//! ## Panic Propagation
 //!
 //! In addition to being a core primitive for communicating in rust, channels
 //! are the points at which panics are propagated among tasks.  Whenever the one

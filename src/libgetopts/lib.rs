@@ -562,7 +562,7 @@ impl fmt::Show for Fail_ {
 ///
 /// On success returns `Ok(Matches)`. Use methods such as `opt_present`
 /// `opt_str`, etc. to interrogate results.
-/// # Failure
+/// # Errors
 ///
 /// Returns `Err(Fail_)` on failure: use the `Show` implementation of `Fail_` to display
 /// information about it.

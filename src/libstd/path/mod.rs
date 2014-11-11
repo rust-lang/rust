@@ -154,9 +154,9 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     /// # }
     /// ```
     ///
-    /// # Failure
+    /// # Panics
     ///
-    /// Fails the task if the path contains a NUL.
+    /// Panics the task if the path contains a NUL.
     ///
     /// See individual Path impls for additional restrictions.
     #[inline]
@@ -443,9 +443,9 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     /// # }
     /// ```
     ///
-    /// # Failure
+    /// # Panics
     ///
-    /// Fails the task if the filename contains a NUL.
+    /// Panics the task if the filename contains a NUL.
     #[inline]
     fn set_filename<T: BytesContainer>(&mut self, filename: T) {
         assert!(!contains_nul(&filename));
@@ -469,9 +469,9 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     /// # }
     /// ```
     ///
-    /// # Failure
+    /// # Panics
     ///
-    /// Fails the task if the extension contains a NUL.
+    /// Panics the task if the extension contains a NUL.
     fn set_extension<T: BytesContainer>(&mut self, extension: T) {
         assert!(!contains_nul(&extension));
 
@@ -518,9 +518,9 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     /// # }
     /// ```
     ///
-    /// # Failure
+    /// # Panics
     ///
-    /// Fails the task if the filename contains a NUL.
+    /// Panics the task if the filename contains a NUL.
     #[inline]
     fn with_filename<T: BytesContainer>(&self, filename: T) -> Self {
         let mut p = self.clone();
@@ -543,9 +543,9 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     /// # }
     /// ```
     ///
-    /// # Failure
+    /// # Panics
     ///
-    /// Fails the task if the extension contains a NUL.
+    /// Panics the task if the extension contains a NUL.
     #[inline]
     fn with_extension<T: BytesContainer>(&self, extension: T) -> Self {
         let mut p = self.clone();
@@ -602,9 +602,9 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     /// # }
     /// ```
     ///
-    /// # Failure
+    /// # Panics
     ///
-    /// Fails the task if the path contains a NUL.
+    /// Panics the task if the path contains a NUL.
     #[inline]
     fn push<T: BytesContainer>(&mut self, path: T) {
         assert!(!contains_nul(&path));
@@ -671,9 +671,9 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     /// # }
     /// ```
     ///
-    /// # Failure
+    /// # Panics
     ///
-    /// Fails the task if the path contains a NUL.
+    /// Panics the task if the path contains a NUL.
     #[inline]
     fn join<T: BytesContainer>(&self, path: T) -> Self {
         let mut p = self.clone();

@@ -345,9 +345,9 @@ impl<T: Send + Sync> RWLock<T> {
     /// Access the underlying data immutably. May run concurrently with other
     /// reading tasks.
     ///
-    /// # Failure
+    /// # Panics
     ///
-    /// Failing will unlock the lock while unwinding. However, unlike all other
+    /// Panicking will unlock the lock while unwinding. However, unlike all other
     /// access modes, this will not poison the lock.
     pub fn read<'a>(&'a self) -> RWLockReadGuard<'a, T> {
         let guard = self.lock.read();
