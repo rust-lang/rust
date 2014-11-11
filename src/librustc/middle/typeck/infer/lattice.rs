@@ -37,9 +37,8 @@ use middle::typeck::infer::*;
 use middle::typeck::infer::combine::*;
 use middle::typeck::infer::glb::Glb;
 use middle::typeck::infer::lub::Lub;
+use util::nodemap::FnvHashMap;
 use util::ppaux::Repr;
-
-use std::collections::HashMap;
 
 pub trait LatticeDir {
     // Relates the type `v` to `a` and `b` such that `v` represents
@@ -108,7 +107,7 @@ pub fn super_lattice_tys<'tcx, L:LatticeDir+Combine<'tcx>>(this: &L,
 // fn types
 
 pub fn var_ids<'tcx, T: Combine<'tcx>>(this: &T,
-                                       map: &HashMap<ty::BoundRegion, ty::Region>)
+                                       map: &FnvHashMap<ty::BoundRegion, ty::Region>)
                                        -> Vec<RegionVid> {
     map.iter().map(|(_, r)| match *r {
             ty::ReInfer(ty::ReVar(r)) => { r }

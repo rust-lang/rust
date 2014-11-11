@@ -18,7 +18,6 @@ comments in the section "Moves and initialization" and in `doc.rs`.
 use std::cell::RefCell;
 use std::rc::Rc;
 use std::uint;
-use std::collections::{HashMap, HashSet};
 use middle::borrowck::*;
 use middle::cfg;
 use middle::dataflow::DataFlowContext;
@@ -30,6 +29,7 @@ use middle::ty;
 use syntax::ast;
 use syntax::ast_util;
 use syntax::codemap::Span;
+use util::nodemap::{FnvHashMap, NodeSet};
 use util::ppaux::Repr;
 
 pub struct MoveData {
@@ -37,7 +37,7 @@ pub struct MoveData {
     pub paths: RefCell<Vec<MovePath>>,
 
     /// Cache of loan path to move path index, for easy lookup.
-    pub path_map: RefCell<HashMap<Rc<LoanPath>, MovePathIndex>>,
+    pub path_map: RefCell<FnvHashMap<Rc<LoanPath>, MovePathIndex>>,
 
     /// Each move or uninitialized variable gets an entry here.
     pub moves: RefCell<Vec<Move>>,
@@ -53,7 +53,7 @@ pub struct MoveData {
     pub path_assignments: RefCell<Vec<Assignment>>,
 
     /// Assignments to a variable or path, like `x = foo`, but not `x += foo`.
-    pub assignee_ids: RefCell<HashSet<ast::NodeId>>,
+    pub assignee_ids: RefCell<NodeSet>,
 }
 
 pub struct FlowedMoveData<'a, 'tcx: 'a> {
@@ -183,11 +183,11 @@ impl MoveData {
     pub fn new() -> MoveData {
         MoveData {
             paths: RefCell::new(Vec::new()),
-            path_map: RefCell::new(HashMap::new()),
+            path_map: RefCell::new(FnvHashMap::new()),
             moves: RefCell::new(Vec::new()),
             path_assignments: RefCell::new(Vec::new()),
             var_assignments: RefCell::new(Vec::new()),
-            assignee_ids: RefCell::new(HashSet::new()),
+            assignee_ids: RefCell::new(NodeSet::new()),
         }
     }
 

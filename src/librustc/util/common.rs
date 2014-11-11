@@ -189,17 +189,7 @@ pub fn memoized<T: Clone + Hash<S> + Eq, U: Clone, S, H: Hasher<S>>(
     arg: T,
     f: |T| -> U
 ) -> U {
-    memoized_with_key(cache, arg, f, |arg| arg.clone())
-}
-
-#[inline(always)]
-pub fn memoized_with_key<T, K: Hash<S> + Eq, U: Clone, S, H: Hasher<S>>(
-    cache: &RefCell<HashMap<K, U, H>>,
-    arg: T,
-    f: |T| -> U,
-    k: |&T| -> K
-) -> U {
-    let key = k(&arg);
+    let key = arg.clone();
     let result = cache.borrow().get(&key).map(|result| result.clone());
     match result {
         Some(result) => result,

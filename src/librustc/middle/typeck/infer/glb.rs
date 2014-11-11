@@ -24,8 +24,8 @@ use middle::typeck::infer::region_inference::RegionMark;
 use syntax::ast::{Many, Once, MutImmutable, MutMutable};
 use syntax::ast::{NormalFn, UnsafeFn, NodeId};
 use syntax::ast::{Onceness, FnStyle};
-use std::collections::HashMap;
 use util::common::{indenter};
+use util::nodemap::FnvHashMap;
 use util::ppaux::mt_to_string;
 use util::ppaux::Repr;
 
@@ -176,7 +176,7 @@ impl<'f, 'tcx> Combine<'tcx> for Glb<'f, 'tcx> {
                              mark: RegionMark,
                              new_vars: &[RegionVid],
                              new_binder_id: NodeId,
-                             a_map: &HashMap<ty::BoundRegion, ty::Region>,
+                             a_map: &FnvHashMap<ty::BoundRegion, ty::Region>,
                              a_vars: &[RegionVid],
                              b_vars: &[RegionVid],
                              r0: ty::Region) -> ty::Region {
@@ -243,7 +243,7 @@ impl<'f, 'tcx> Combine<'tcx> for Glb<'f, 'tcx> {
         }
 
         fn rev_lookup(this: &Glb,
-                      a_map: &HashMap<ty::BoundRegion, ty::Region>,
+                      a_map: &FnvHashMap<ty::BoundRegion, ty::Region>,
                       new_binder_id: NodeId,
                       r: ty::Region) -> ty::Region
         {
