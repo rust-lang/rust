@@ -1661,21 +1661,6 @@ pub mod bytes {
 // Boilerplate traits
 //
 
-// NOTE(stage0): remove impl after a snapshot
-#[cfg(stage0)]
-#[unstable = "waiting for DST"]
-impl<'a,T:PartialEq> PartialEq for &'a [T] {
-    fn eq(&self, other: & &'a [T]) -> bool {
-        self.len() == other.len() &&
-            order::eq(self.iter(), other.iter())
-    }
-    fn ne(&self, other: & &'a [T]) -> bool {
-        self.len() != other.len() ||
-            order::ne(self.iter(), other.iter())
-    }
-}
-
-#[cfg(not(stage0))]  // NOTE(stage0): remove cfg after a snapshot
 #[unstable = "waiting for DST"]
 impl<T: PartialEq> PartialEq for [T] {
     fn eq(&self, other: &[T]) -> bool {
@@ -1688,12 +1673,6 @@ impl<T: PartialEq> PartialEq for [T] {
     }
 }
 
-// NOTE(stage0): remove impl after a snapshot
-#[cfg(stage0)]
-#[unstable = "waiting for DST"]
-impl<'a,T:Eq> Eq for &'a [T] {}
-
-#[cfg(not(stage0))]  // NOTE(stage0): remove cfg after a snapshot
 #[unstable = "waiting for DST"]
 impl<T: Eq> Eq for [T] {}
 
@@ -1703,41 +1682,12 @@ impl<T: PartialEq, V: AsSlice<T>> Equiv<V> for [T] {
     fn equiv(&self, other: &V) -> bool { self.as_slice() == other.as_slice() }
 }
 
-// NOTE(stage0): remove impl after a snapshot
-#[cfg(stage0)]
-#[unstable = "waiting for DST"]
-impl<'a,T:PartialEq> PartialEq for &'a mut [T] {
-    fn eq(&self, other: & &'a mut [T]) -> bool {
-        self.len() == other.len() &&
-        order::eq(self.iter(), other.iter())
-    }
-    fn ne(&self, other: & &'a mut [T]) -> bool {
-        self.len() != other.len() ||
-        order::ne(self.iter(), other.iter())
-    }
-}
-
-// NOTE(stage0): remove impl after a snapshot
-#[cfg(stage0)]
-#[unstable = "waiting for DST"]
-impl<'a,T:Eq> Eq for &'a mut [T] {}
-
 #[unstable = "waiting for DST"]
 impl<'a,T:PartialEq, V: AsSlice<T>> Equiv<V> for &'a mut [T] {
     #[inline]
     fn equiv(&self, other: &V) -> bool { self.as_slice() == other.as_slice() }
 }
 
-// NOTE(stage0): remove impl after a snapshot
-#[cfg(stage0)]
-#[unstable = "waiting for DST"]
-impl<'a,T:Ord> Ord for &'a [T] {
-    fn cmp(&self, other: & &'a [T]) -> Ordering {
-        order::cmp(self.iter(), other.iter())
-    }
-}
-
-#[cfg(not(stage0))]  // NOTE(stage0): remove cfg after a snapshot
 #[unstable = "waiting for DST"]
 impl<T: Ord> Ord for [T] {
     fn cmp(&self, other: &[T]) -> Ordering {
@@ -1745,33 +1695,6 @@ impl<T: Ord> Ord for [T] {
     }
 }
 
-// NOTE(stage0): remove impl after a snapshot
-#[cfg(stage0)]
-#[unstable = "waiting for DST"]
-impl<'a, T: PartialOrd> PartialOrd for &'a [T] {
-    #[inline]
-    fn partial_cmp(&self, other: &&'a [T]) -> Option<Ordering> {
-        order::partial_cmp(self.iter(), other.iter())
-    }
-    #[inline]
-    fn lt(&self, other: & &'a [T]) -> bool {
-        order::lt(self.iter(), other.iter())
-    }
-    #[inline]
-    fn le(&self, other: & &'a [T]) -> bool {
-        order::le(self.iter(), other.iter())
-    }
-    #[inline]
-    fn ge(&self, other: & &'a [T]) -> bool {
-        order::ge(self.iter(), other.iter())
-    }
-    #[inline]
-    fn gt(&self, other: & &'a [T]) -> bool {
-        order::gt(self.iter(), other.iter())
-    }
-}
-
-#[cfg(not(stage0))]  // NOTE(stage0): remove cfg after a snapshot
 #[unstable = "waiting for DST"]
 impl<T: PartialOrd> PartialOrd for [T] {
     #[inline]

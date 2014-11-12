@@ -506,13 +506,6 @@ impl<T: PartialEq> PartialEq for Vec<T> {
 
 #[unstable = "waiting on PartialOrd stability"]
 impl<T: PartialOrd> PartialOrd for Vec<T> {
-    // NOTE(stage0): remove method after a snapshot
-    #[cfg(stage0)]
-    #[inline]
-    fn partial_cmp(&self, other: &Vec<T>) -> Option<Ordering> {
-        self.as_slice().partial_cmp(&other.as_slice())
-    }
-    #[cfg(not(stage0))]  // NOTE(stage0): remove cfg after a snapshot
     #[inline]
     fn partial_cmp(&self, other: &Vec<T>) -> Option<Ordering> {
         self.as_slice().partial_cmp(other.as_slice())
@@ -530,13 +523,6 @@ impl<T: PartialEq, V: AsSlice<T>> Equiv<V> for Vec<T> {
 
 #[unstable = "waiting on Ord stability"]
 impl<T: Ord> Ord for Vec<T> {
-    // NOTE(stage0): remove method after a snapshot
-    #[cfg(stage0)]
-    #[inline]
-    fn cmp(&self, other: &Vec<T>) -> Ordering {
-        self.as_slice().cmp(&other.as_slice())
-    }
-    #[cfg(not(stage0))]  // NOTE(stage0): remove cfg after a snapshot
     #[inline]
     fn cmp(&self, other: &Vec<T>) -> Ordering {
         self.as_slice().cmp(other.as_slice())
