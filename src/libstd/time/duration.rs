@@ -369,7 +369,6 @@ impl FromStr for Duration {
     /// assert_eq!(from_str::<Duration>("P31D"), Some(Duration::days(31)));
     /// assert_eq!(from_str::<Duration>("not even a Duration"), None);
     /// ```
-    #[inline]
     fn from_str(source: &str) -> Option<Duration> {
         fn atoi(source: &str) -> (Option<i64>, i64, &str) {
             let mut value: Option<i64> = None;
@@ -495,7 +494,7 @@ impl FromStr for Duration {
 
         if sign == '-' {
             secs = -secs;
-            
+
             if nanos != 0 {
                 secs -= 1;
                 nanos= NANOS_PER_SEC - nanos;
@@ -743,23 +742,23 @@ mod tests {
         assert_eq!(from_str::<Duration>("PT1H2M5S1H"), None);
         assert_eq!(from_str::<Duration>("PT1H2M5.S"), None);
 
-        assert_eq!(from_str::<Duration>("PT1H2M5.5S"), 
+        assert_eq!(from_str::<Duration>("PT1H2M5.5S"),
                                             Some(Duration::nanoseconds(3725500000000)));
-        assert_eq!(from_str::<Duration>("PT1H2M5.05S"), 
+        assert_eq!(from_str::<Duration>("PT1H2M5.05S"),
                                             Some(Duration::nanoseconds(3725050000000)));
-        assert_eq!(from_str::<Duration>("PT1H2M5.005S"), 
+        assert_eq!(from_str::<Duration>("PT1H2M5.005S"),
                                             Some(Duration::nanoseconds(3725005000000)));
-        assert_eq!(from_str::<Duration>("PT1H2M5.0005S"), 
+        assert_eq!(from_str::<Duration>("PT1H2M5.0005S"),
                                             Some(Duration::nanoseconds(3725000500000)));
-        assert_eq!(from_str::<Duration>("PT1H2M5.00005S"), 
+        assert_eq!(from_str::<Duration>("PT1H2M5.00005S"),
                                             Some(Duration::nanoseconds(3725000050000)));
-        assert_eq!(from_str::<Duration>("PT1H2M5.000005S"), 
+        assert_eq!(from_str::<Duration>("PT1H2M5.000005S"),
                                             Some(Duration::nanoseconds(3725000005000)));
-        assert_eq!(from_str::<Duration>("PT1H2M5.0000005S"), 
+        assert_eq!(from_str::<Duration>("PT1H2M5.0000005S"),
                                             Some(Duration::nanoseconds(3725000000500)));
-        assert_eq!(from_str::<Duration>("PT1H2M5.00000005S"), 
+        assert_eq!(from_str::<Duration>("PT1H2M5.00000005S"),
                                             Some(Duration::nanoseconds(3725000000050)));
-        assert_eq!(from_str::<Duration>("PT1H2M5.000000005S"), 
+        assert_eq!(from_str::<Duration>("PT1H2M5.000000005S"),
                                             Some(Duration::nanoseconds(3725000000005)));
 
         assert_eq!(from_str::<Duration>("-P106751991167DT25975.808S"), Some(MIN));
