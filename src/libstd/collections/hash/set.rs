@@ -10,6 +10,7 @@
 //
 // ignore-lexer-test FIXME #15883
 
+use borrow::BorrowFrom;
 use cmp::{Eq, Equiv, PartialEq};
 use core::kinds::Sized;
 use default::Default;
@@ -184,47 +185,9 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S>> HashSet<T, H> {
         self.map.reserve(n)
     }
 
-    /// Returns true if the hash set contains a value equivalent to the
-    /// given query value.
-    ///
-    /// # Example
-    ///
-    /// This is a slightly silly example where we define the number's
-    /// parity as the equivalance class. It is important that the
-    /// values hash the same, which is why we implement `Hash`.
-    ///
-    /// ```
-    /// use std::collections::HashSet;
-    /// use std::hash::Hash;
-    /// use std::hash::sip::SipState;
-    ///
-    /// #[deriving(Eq, PartialEq)]
-    /// struct EvenOrOdd {
-    ///     num: uint
-    /// };
-    ///
-    /// impl Hash for EvenOrOdd {
-    ///     fn hash(&self, state: &mut SipState) {
-    ///         let parity = self.num % 2;
-    ///         parity.hash(state);
-    ///     }
-    /// }
-    ///
-    /// impl Equiv<EvenOrOdd> for EvenOrOdd {
-    ///     fn equiv(&self, other: &EvenOrOdd) -> bool {
-    ///         self.num % 2 == other.num % 2
-    ///     }
-    /// }
-    ///
-    /// let mut set = HashSet::new();
-    /// set.insert(EvenOrOdd { num: 3u });
-    ///
-    /// assert!(set.contains_equiv(&EvenOrOdd { num: 3u }));
-    /// assert!(set.contains_equiv(&EvenOrOdd { num: 5u }));
-    /// assert!(!set.contains_equiv(&EvenOrOdd { num: 4u }));
-    /// assert!(!set.contains_equiv(&EvenOrOdd { num: 2u }));
-    ///
-    /// ```
+    /// Deprecated: use `contains` and `BorrowFrom`.
+    #[deprecated = "use contains and BorrowFrom"]
+    #[allow(deprecated)]
     pub fn contains_equiv<Sized? Q: Hash<S> + Equiv<T>>(&self, value: &Q) -> bool {
       self.map.contains_key_equiv(value)
     }
@@ -427,6 +390,10 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S>> HashSet<T, H> {
 
     /// Returns `true` if the set contains a value.
     ///
+    /// The value may be any borrowed form of the set's value type, but
+    /// `Hash` and `Eq` on the borrowed form *must* match those for
+    /// the value type.
+    ///
     /// # Example
     ///
     /// ```
@@ -437,7 +404,11 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S>> HashSet<T, H> {
     /// assert_eq!(set.contains(&4), false);
     /// ```
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
-    pub fn contains(&self, value: &T) -> bool { self.map.contains_key(value) }
+    pub fn contains<Sized? Q>(&self, value: &Q) -> bool
+        where Q: BorrowFrom<T> + Hash<S> + Eq
+    {
+        self.map.contains_key(value)
+    }
 
     /// Returns `true` if the set has no elements in common with `other`.
     /// This is equivalent to checking for an empty intersection.
@@ -527,6 +498,10 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S>> HashSet<T, H> {
     /// Removes a value from the set. Returns `true` if the value was
     /// present in the set.
     ///
+    /// The value may be any borrowed form of the set's value type, but
+    /// `Hash` and `Eq` on the borrowed form *must* match those for
+    /// the value type.
+    ///
     /// # Example
     ///
     /// ```
@@ -539,7 +514,11 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S>> HashSet<T, H> {
     /// assert_eq!(set.remove(&2), false);
     /// ```
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
-    pub fn remove(&mut self, value: &T) -> bool { self.map.remove(value).is_some() }
+    pub fn remove<Sized? Q>(&mut self, value: &Q) -> bool
+        where Q: BorrowFrom<T> + Hash<S> + Eq
+    {
+        self.map.remove(value).is_some()
+    }
 }
 
 impl<T: Eq + Hash<S>, S, H: Hasher<S>> PartialEq for HashSet<T, H> {

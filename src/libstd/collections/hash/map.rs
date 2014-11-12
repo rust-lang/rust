@@ -14,6 +14,7 @@ pub use self::Entry::*;
 use self::SearchResult::*;
 use self::VacantEntryState::*;
 
+use borrow::BorrowFrom;
 use clone::Clone;
 use cmp::{max, Eq, Equiv, PartialEq};
 use default::Default;
@@ -142,7 +143,7 @@ impl DefaultResizePolicy {
 // about the size of rust executables.
 //
 // Annotate exceedingly likely branches in `table::make_hash`
-// and `search_hashed_generic` to reduce instruction cache pressure
+// and `search_hashed` to reduce instruction cache pressure
 // and mispredictions once it becomes possible (blocked on issue #11092).
 //
 // Shrinking the table could simply reallocate in place after moving buckets
@@ -286,10 +287,10 @@ pub struct HashMap<K, V, H = RandomSipHasher> {
 }
 
 /// Search for a pre-hashed key.
-fn search_hashed_generic<K, V, M: Deref<RawTable<K, V>>>(table: M,
-                                                         hash: &SafeHash,
-                                                         is_match: |&K| -> bool)
-                                                         -> SearchResult<K, V, M> {
+fn search_hashed<K, V, M: Deref<RawTable<K, V>>>(table: M,
+                                                 hash: &SafeHash,
+                                                 is_match: |&K| -> bool)
+                                                 -> SearchResult<K, V, M> {
     let size = table.size();
     let mut probe = Bucket::new(table, hash);
     let ib = probe.index();
@@ -323,11 +324,6 @@ fn search_hashed_generic<K, V, M: Deref<RawTable<K, V>>>(table: M,
     }
 
     TableRef(probe.into_table())
-}
-
-fn search_hashed<K: Eq, V, M: Deref<RawTable<K, V>>>(table: M, hash: &SafeHash, k: &K)
-                                                     -> SearchResult<K, V, M> {
-    search_hashed_generic(table, hash, |k_| *k == *k_)
 }
 
 fn pop_internal<K, V>(starting_bucket: FullBucketMut<K, V>) -> (K, V) {
@@ -432,26 +428,32 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     fn search_equiv<'a, Sized? Q: Hash<S> + Equiv<K>>(&'a self, q: &Q)
                     -> Option<FullBucketImm<'a, K, V>> {
         let hash = self.make_hash(q);
-        search_hashed_generic(&self.table, &hash, |k| q.equiv(k)).into_option()
+        search_hashed(&self.table, &hash, |k| q.equiv(k)).into_option()
     }
 
     fn search_equiv_mut<'a, Sized? Q: Hash<S> + Equiv<K>>(&'a mut self, q: &Q)
                     -> Option<FullBucketMut<'a, K, V>> {
         let hash = self.make_hash(q);
-        search_hashed_generic(&mut self.table, &hash, |k| q.equiv(k)).into_option()
+        search_hashed(&mut self.table, &hash, |k| q.equiv(k)).into_option()
     }
 
     /// Search for a key, yielding the index if it's found in the hashtable.
     /// If you already have the hash for the key lying around, use
     /// search_hashed.
-    fn search<'a>(&'a self, k: &K) -> Option<FullBucketImm<'a, K, V>> {
-        let hash = self.make_hash(k);
-        search_hashed(&self.table, &hash, k).into_option()
+    fn search<'a, Sized? Q>(&'a self, q: &Q) -> Option<FullBucketImm<'a, K, V>>
+        where Q: BorrowFrom<K> + Eq + Hash<S>
+    {
+        let hash = self.make_hash(q);
+        search_hashed(&self.table, &hash, |k| q.eq(BorrowFrom::borrow_from(k)))
+            .into_option()
     }
 
-    fn search_mut<'a>(&'a mut self, k: &K) -> Option<FullBucketMut<'a, K, V>> {
-        let hash = self.make_hash(k);
-        search_hashed(&mut self.table, &hash, k).into_option()
+    fn search_mut<'a, Sized? Q>(&'a mut self, q: &Q) -> Option<FullBucketMut<'a, K, V>>
+        where Q: BorrowFrom<K> + Eq + Hash<S>
+    {
+        let hash = self.make_hash(q);
+        search_hashed(&mut self.table, &hash, |k| q.eq(BorrowFrom::borrow_from(k)))
+            .into_option()
     }
 
     // The caller should ensure that invariants by Robin Hood Hashing hold.
@@ -748,18 +750,14 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
         }
     }
 
-    /// Return true if the map contains a value for the specified key,
-    /// using equivalence.
-    ///
-    /// See [pop_equiv](#method.pop_equiv) for an extended example.
+    /// Deprecated: use `contains_key` and `BorrowFrom` instead.
+    #[deprecated = "use contains_key and BorrowFrom instead"]
     pub fn contains_key_equiv<Sized? Q: Hash<S> + Equiv<K>>(&self, key: &Q) -> bool {
         self.search_equiv(key).is_some()
     }
 
-    /// Return the value corresponding to the key in the map, using
-    /// equivalence.
-    ///
-    /// See [pop_equiv](#method.pop_equiv) for an extended example.
+    /// Deprecated: use `get` and `BorrowFrom` instead.
+    #[deprecated = "use get and BorrowFrom instead"]
     pub fn find_equiv<'a, Sized? Q: Hash<S> + Equiv<K>>(&'a self, k: &Q) -> Option<&'a V> {
         match self.search_equiv(k) {
             None      => None,
@@ -770,52 +768,8 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
         }
     }
 
-    /// Remove an equivalent key from the map, returning the value at the
-    /// key if the key was previously in the map.
-    ///
-    /// # Example
-    ///
-    /// This is a slightly silly example where we define the number's
-    /// parity as the equivalence class. It is important that the
-    /// values hash the same, which is why we implement `Hash`.
-    ///
-    /// ```
-    /// use std::collections::HashMap;
-    /// use std::hash::Hash;
-    /// use std::hash::sip::SipState;
-    ///
-    /// #[deriving(Eq, PartialEq)]
-    /// struct EvenOrOdd {
-    ///     num: uint
-    /// };
-    ///
-    /// impl Hash for EvenOrOdd {
-    ///     fn hash(&self, state: &mut SipState) {
-    ///         let parity = self.num % 2;
-    ///         parity.hash(state);
-    ///     }
-    /// }
-    ///
-    /// impl Equiv<EvenOrOdd> for EvenOrOdd {
-    ///     fn equiv(&self, other: &EvenOrOdd) -> bool {
-    ///         self.num % 2 == other.num % 2
-    ///     }
-    /// }
-    ///
-    /// let mut map = HashMap::new();
-    /// map.insert(EvenOrOdd { num: 3 }, "foo");
-    ///
-    /// assert!(map.contains_key_equiv(&EvenOrOdd { num: 1 }));
-    /// assert!(!map.contains_key_equiv(&EvenOrOdd { num: 4 }));
-    ///
-    /// assert_eq!(map.find_equiv(&EvenOrOdd { num: 5 }), Some(&"foo"));
-    /// assert_eq!(map.find_equiv(&EvenOrOdd { num: 2 }), None);
-    ///
-    /// assert_eq!(map.pop_equiv(&EvenOrOdd { num: 1 }), Some("foo"));
-    /// assert_eq!(map.pop_equiv(&EvenOrOdd { num: 2 }), None);
-    ///
-    /// ```
-    #[experimental]
+    /// Deprecated: use `remove` and `BorrowFrom` instead.
+    #[deprecated = "use remove and BorrowFrom instead"]
     pub fn pop_equiv<Sized? Q:Hash<S> + Equiv<K>>(&mut self, k: &Q) -> Option<V> {
         if self.table.size() == 0 {
             return None
@@ -1036,6 +990,10 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
 
     /// Returns a reference to the value corresponding to the key.
     ///
+    /// The key may be any borrowed form of the map's key type, but
+    /// `Hash` and `Eq` on the borrowed form *must* match those for
+    /// the key type.
+    ///
     /// # Example
     ///
     /// ```
@@ -1047,7 +1005,9 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     /// assert_eq!(map.get(&2), None);
     /// ```
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
-    pub fn get(&self, k: &K) -> Option<&V> {
+    pub fn get<Sized? Q>(&self, k: &Q) -> Option<&V>
+        where Q: Hash<S> + Eq + BorrowFrom<K>
+    {
         self.search(k).map(|bucket| {
             let (_, v) = bucket.into_refs();
             v
@@ -1055,6 +1015,10 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     }
 
     /// Returns true if the map contains a value for the specified key.
+    ///
+    /// The key may be any borrowed form of the map's key type, but
+    /// `Hash` and `Eq` on the borrowed form *must* match those for
+    /// the key type.
     ///
     /// # Example
     ///
@@ -1067,7 +1031,9 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     /// assert_eq!(map.contains_key(&2), false);
     /// ```
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
-    pub fn contains_key(&self, k: &K) -> bool {
+    pub fn contains_key<Sized? Q>(&self, k: &Q) -> bool
+        where Q: Hash<S> + Eq + BorrowFrom<K>
+    {
         self.search(k).is_some()
     }
 
@@ -1078,6 +1044,10 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     }
 
     /// Returns a mutable reference to the value corresponding to the key.
+    ///
+    /// The key may be any borrowed form of the map's key type, but
+    /// `Hash` and `Eq` on the borrowed form *must* match those for
+    /// the key type.
     ///
     /// # Example
     ///
@@ -1093,7 +1063,9 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     /// assert_eq!(map[1], "b");
     /// ```
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
-    pub fn get_mut(&mut self, k: &K) -> Option<&mut V> {
+    pub fn get_mut<Sized? Q>(&mut self, k: &Q) -> Option<&mut V>
+        where Q: Hash<S> + Eq + BorrowFrom<K>
+    {
         match self.search_mut(k) {
             Some(bucket) => {
                 let (_, v) = bucket.into_mut_refs();
@@ -1147,6 +1119,10 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     /// Removes a key from the map, returning the value at the key if the key
     /// was previously in the map.
     ///
+    /// The key may be any borrowed form of the map's key type, but
+    /// `Hash` and `Eq` on the borrowed form *must* match those for
+    /// the key type.
+    ///
     /// # Example
     ///
     /// ```
@@ -1158,7 +1134,9 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     /// assert_eq!(map.remove(&1), None);
     /// ```
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
-    pub fn remove(&mut self, k: &K) -> Option<V> {
+    pub fn remove<Sized? Q>(&mut self, k: &Q) -> Option<V>
+        where Q: Hash<S> + Eq + BorrowFrom<K>
+    {
         if self.table.size() == 0 {
             return None
         }
@@ -1271,16 +1249,20 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S> + Default> Default for HashMap<K, V, H>
     }
 }
 
-impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> Index<K, V> for HashMap<K, V, H> {
+impl<K: Hash<S> + Eq, Sized? Q, V, S, H: Hasher<S>> Index<Q, V> for HashMap<K, V, H>
+    where Q: BorrowFrom<K> + Hash<S> + Eq
+{
     #[inline]
-    fn index<'a>(&'a self, index: &K) -> &'a V {
+    fn index<'a>(&'a self, index: &Q) -> &'a V {
         self.get(index).expect("no entry found for key")
     }
 }
 
-impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> IndexMut<K, V> for HashMap<K, V, H> {
+impl<K: Hash<S> + Eq, Sized? Q, V, S, H: Hasher<S>> IndexMut<Q, V> for HashMap<K, V, H>
+    where Q: BorrowFrom<K> + Hash<S> + Eq
+{
     #[inline]
-    fn index_mut<'a>(&'a mut self, index: &K) -> &'a mut V {
+    fn index_mut<'a>(&'a mut self, index: &Q) -> &'a mut V {
         match self.get_mut(index) {
             Some(v) => v,
             None => panic!("no entry found for key")
