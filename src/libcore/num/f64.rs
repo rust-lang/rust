@@ -248,6 +248,41 @@ impl Float for f64 {
     #[inline]
     fn fract(self) -> f64 { self - self.trunc() }
 
+    /// Computes the absolute value of `self`. Returns `Float::nan()` if the
+    /// number is `Float::nan()`.
+    #[inline]
+    fn abs(self) -> f64 {
+        unsafe { intrinsics::fabsf64(self) }
+    }
+
+    /// Returns a number that represents the sign of `self`.
+    ///
+    /// - `1.0` if the number is positive, `+0.0` or `Float::infinity()`
+    /// - `-1.0` if the number is negative, `-0.0` or `Float::neg_infinity()`
+    /// - `Float::nan()` if the number is `Float::nan()`
+    #[inline]
+    fn signum(self) -> f64 {
+        if self.is_nan() {
+            Float::nan()
+        } else {
+            unsafe { intrinsics::copysignf64(1.0, self) }
+        }
+    }
+
+    /// Returns `true` if `self` is positive, including `+0.0` and
+    /// `Float::infinity()`.
+    #[inline]
+    fn is_positive(self) -> bool {
+        self > 0.0 || (1.0 / self) == Float::infinity()
+    }
+
+    /// Returns `true` if `self` is negative, including `-0.0` and
+    /// `Float::neg_infinity()`.
+    #[inline]
+    fn is_negative(self) -> bool {
+        self < 0.0 || (1.0 / self) == Float::neg_infinity()
+    }
+
     /// Fused multiply-add. Computes `(self * a) + b` with only one rounding
     /// error. This produces a more accurate result with better performance than
     /// a separate multiplication operation followed by an add.

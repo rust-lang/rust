@@ -23,9 +23,8 @@ use option::Option;
 #[cfg(test)] use ops::{Add, Sub, Mul, Div, Rem};
 
 pub use core::num::{Num, div_rem, Zero, zero, One, one};
-pub use core::num::{Signed, abs, signum};
 pub use core::num::{Unsigned, pow, Bounded};
-pub use core::num::{Primitive, Int, UnsignedInt};
+pub use core::num::{Primitive, Int, SignedInt, UnsignedInt};
 pub use core::num::{cast, FromPrimitive, NumCast, ToPrimitive};
 pub use core::num::{next_power_of_two, is_power_of_two};
 pub use core::num::{checked_next_power_of_two};

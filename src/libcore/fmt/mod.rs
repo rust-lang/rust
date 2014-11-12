@@ -620,7 +620,7 @@ impl<'a, T> Pointer for &'a mut T {
 macro_rules! floating(($ty:ident) => {
     impl Float for $ty {
         fn fmt(&self, fmt: &mut Formatter) -> Result {
-            use num::{Float, Signed};
+            use num::Float;
 
             let digits = match fmt.precision {
                 Some(i) => float::DigExact(i),
@@ -641,7 +641,7 @@ macro_rules! floating(($ty:ident) => {
 
     impl LowerExp for $ty {
         fn fmt(&self, fmt: &mut Formatter) -> Result {
-            use num::{Float, Signed};
+            use num::Float;
 
             let digits = match fmt.precision {
                 Some(i) => float::DigExact(i),
@@ -662,7 +662,7 @@ macro_rules! floating(($ty:ident) => {
 
     impl UpperExp for $ty {
         fn fmt(&self, fmt: &mut Formatter) -> Result {
-            use num::{Float, Signed};
+            use num::Float;
 
             let digits = match fmt.precision {
                 Some(i) => float::DigExact(i),

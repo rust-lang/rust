@@ -18,7 +18,7 @@
 extern crate libc;
 
 use num;
-use num::Int;
+use num::{Int, SignedInt};
 use prelude::*;
 use io::{mod, IoResult, IoError};
 use sys_common::mkerr_libc;
@@ -117,7 +117,7 @@ pub fn decode_error_detailed(errno: i32) -> IoError {
 }
 
 #[inline]
-pub fn retry<T: Signed + Int> (f: || -> T) -> T {
+pub fn retry<T: SignedInt> (f: || -> T) -> T {
     let one: T = Int::one();
     loop {
         let n = f();
