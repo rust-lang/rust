@@ -624,7 +624,7 @@ pub fn get_vtable(bcx: Block,
                                                    llfn,
                                                    &closure_type,
                                                    closure_def_id,
-                                                   substs);
+                                                   &substs);
                     }
                 }
 
@@ -723,7 +723,7 @@ fn emit_vtable_methods(bcx: Block,
                                                      fn_ref,
                                                      &m.fty,
                                                      m_id,
-                                                     substs.clone());
+                                                     &substs);
                     }
                     Some(fn_ref).into_iter()
                 }
