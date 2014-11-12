@@ -120,15 +120,19 @@ fn summarize_methods(item: &Item) -> Counts {
     match cache_key.get().unwrap().impls.get(&item.def_id) {
         Some(v) => {
             v.iter().map(|i| {
-                let mut count = count_stability(i.stability.as_ref());
+                let count = count_stability(i.stability.as_ref());
                 if i.impl_.trait_.is_none() {
-                    count = count +
-                        i.impl_.items.iter().map(|ti| summarize_item(ti).0).sum();
+                    count + i.impl_.items.iter()
+                        .map(|ti| summarize_item(ti).0)
+                        .fold(Counts::zero(), |acc, c| acc + c)
+                } else {
+                    count
                 }
-                count
-            }).sum()
-        }
-        None    => Zero::zero()
+            }).fold(Counts::zero(), |acc, c| acc + c)
+        },
+        None => {
+            Counts::zero()
+        },
     }
 }
 
