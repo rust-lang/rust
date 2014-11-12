@@ -11,6 +11,8 @@
 use core::prelude::*;
 
 use alloc::boxed::Box;
+
+use core::borrow::BorrowFrom;
 use core::default::Default;
 use core::fmt;
 use core::fmt::Show;
@@ -188,16 +190,16 @@ impl<K: Ord, V> Default for TreeMap<K,V> {
     fn default() -> TreeMap<K, V> { TreeMap::new() }
 }
 
-impl<K: Ord, V> Index<K, V> for TreeMap<K, V> {
+impl<K: Ord, Sized? Q, V> Index<Q, V> for TreeMap<K, V> where Q: BorrowFrom<K> + Ord {
     #[inline]
-    fn index<'a>(&'a self, i: &K) -> &'a V {
+    fn index<'a>(&'a self, i: &Q) -> &'a V {
         self.get(i).expect("no entry found for key")
     }
 }
 
-impl<K: Ord, V> IndexMut<K, V> for TreeMap<K, V> {
+impl<K: Ord, Sized? Q, V> IndexMut<Q, V> for TreeMap<K, V> where Q: BorrowFrom<K> + Ord {
     #[inline]
-    fn index_mut<'a>(&'a mut self, i: &K) -> &'a mut V {
+    fn index_mut<'a>(&'a mut self, i: &Q) -> &'a mut V {
         self.get_mut(i).expect("no entry found for key")
     }
 }
@@ -446,6 +448,9 @@ impl<K: Ord, V> TreeMap<K, V> {
 
     /// Returns a reference to the value corresponding to the key.
     ///
+    /// The key may be any borrowed form of the map's key type, but the ordering
+    /// on the borrowed form *must* match the ordering on the key type.
+    ///
     /// # Example
     ///
     /// ```
@@ -458,11 +463,16 @@ impl<K: Ord, V> TreeMap<K, V> {
     /// ```
     #[inline]
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
-    pub fn get(&self, key: &K) -> Option<&V> {
-        tree_find_with(&self.root, |k2| key.cmp(k2))
+    pub fn get<Sized? Q>(&self, key: &Q) -> Option<&V>
+        where Q: BorrowFrom<K> + Ord
+    {
+        tree_find_with(&self.root, |k2| key.cmp(BorrowFrom::borrow_from(k2)))
     }
 
     /// Returns true if the map contains a value for the specified key.
+    ///
+    /// The key may be any borrowed form of the map's key type, but the ordering
+    /// on the borrowed form *must* match the ordering on the key type.
     ///
     /// # Example
     ///
@@ -476,7 +486,9 @@ impl<K: Ord, V> TreeMap<K, V> {
     /// ```
     #[inline]
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
-    pub fn contains_key(&self, key: &K) -> bool {
+    pub fn contains_key<Sized? Q>(&self, key: &Q) -> bool
+        where Q: BorrowFrom<K> + Ord
+    {
         self.get(key).is_some()
     }
 
@@ -487,6 +499,9 @@ impl<K: Ord, V> TreeMap<K, V> {
     }
 
     /// Returns a mutable reference to the value corresponding to the key.
+    ///
+    /// The key may be any borrowed form of the map's key type, but the ordering
+    /// on the borrowed form *must* match the ordering on the key type.
     ///
     /// # Example
     ///
@@ -503,8 +518,10 @@ impl<K: Ord, V> TreeMap<K, V> {
     /// ```
     #[inline]
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
-    pub fn get_mut(&mut self, key: &K) -> Option<&mut V> {
-        tree_find_with_mut(&mut self.root, |x| key.cmp(x))
+    pub fn get_mut<Sized? Q>(&mut self, key: &Q) -> Option<&mut V>
+        where Q: BorrowFrom<K> + Ord
+    {
+        tree_find_with_mut(&mut self.root, |x| key.cmp(BorrowFrom::borrow_from(x)))
     }
 
     /// Deprecated: Renamed to `insert`.
@@ -545,6 +562,9 @@ impl<K: Ord, V> TreeMap<K, V> {
     /// Removes a key from the map, returning the value at the key if the key
     /// was previously in the map.
     ///
+    /// The key may be any borrowed form of the map's key type, but the ordering
+    /// on the borrowed form *must* match the ordering on the key type.
+    ///
     /// # Example
     ///
     /// ```
@@ -556,7 +576,9 @@ impl<K: Ord, V> TreeMap<K, V> {
     /// assert_eq!(map.remove(&1), None);
     /// ```
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
-    pub fn remove(&mut self, key: &K) -> Option<V> {
+    pub fn remove<Sized? Q>(&mut self, key: &Q) -> Option<V>
+        where Q: BorrowFrom<K> + Ord
+    {
         let ret = remove(&mut self.root, key);
         if ret.is_some() { self.length -= 1 }
         ret
@@ -589,6 +611,7 @@ impl<K, V> TreeMap<K, V> {
     /// assert_eq!((*ua.unwrap()).as_slice(), "Curl-Rust/0.1");
     /// ```
     #[inline]
+    #[experimental = "likely to be renamed, may be removed"]
     pub fn find_with(&self, f:|&K| -> Ordering) -> Option<&V> {
         tree_find_with(&self.root, f)
     }
@@ -613,6 +636,7 @@ impl<K, V> TreeMap<K, V> {
     /// assert_eq!(t.get(&"User-Agent"), Some(&new_ua));
     /// ```
     #[inline]
+    #[experimental = "likely to be renamed, may be removed"]
     pub fn find_with_mut<'a>(&'a mut self, f:|&K| -> Ordering) -> Option<&'a mut V> {
         tree_find_with_mut(&mut self.root, f)
     }
@@ -1168,10 +1192,11 @@ fn insert<K: Ord, V>(node: &mut Option<Box<TreeNode<K, V>>>,
     }
 }
 
-fn remove<K: Ord, V>(node: &mut Option<Box<TreeNode<K, V>>>,
-                          key: &K) -> Option<V> {
+fn remove<K, Sized? Q, V>(node: &mut Option<Box<TreeNode<K, V>>>, key: &Q) -> Option<V>
+    where K: Ord, Q: BorrowFrom<K> + Ord
+{
     fn heir_swap<K: Ord, V>(node: &mut Box<TreeNode<K, V>>,
-                                 child: &mut Option<Box<TreeNode<K, V>>>) {
+                            child: &mut Option<Box<TreeNode<K, V>>>) {
         // *could* be done without recursion, but it won't borrow check
         for x in child.iter_mut() {
             if x.right.is_some() {
@@ -1188,7 +1213,7 @@ fn remove<K: Ord, V>(node: &mut Option<Box<TreeNode<K, V>>>,
         return None; // bottom of tree
       }
       Some(ref mut save) => {
-        let (ret, rebalance) = match key.cmp(&save.key) {
+        let (ret, rebalance) = match key.cmp(BorrowFrom::borrow_from(&save.key)) {
           Less => (remove(&mut save.left, key), true),
           Greater => (remove(&mut save.right, key), true),
           Equal => {
@@ -1918,4 +1943,3 @@ mod bench {
         bench_iter(b, 100000);
     }
 }
-
