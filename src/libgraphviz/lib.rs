@@ -60,10 +60,10 @@ pub fn render_to<W:Writer>(output: &mut W) {
 }
 
 impl<'a> dot::Labeller<'a, Nd, Ed> for Edges {
-    fn graph_id(&'a self) -> dot::Id<'a> { dot::Id::new("example1") }
+    fn graph_id(&'a self) -> dot::Id<'a> { dot::Id::new("example1").unwrap() }
 
     fn node_id(&'a self, n: &Nd) -> dot::Id<'a> {
-        dot::Id::new(format!("N{}", *n))
+        dot::Id::new(format!("N{}", *n)).unwrap()
     }
 }
 
@@ -163,9 +163,9 @@ pub fn render_to<W:Writer>(output: &mut W) {
 }
 
 impl<'a> dot::Labeller<'a, Nd, Ed<'a>> for Graph {
-    fn graph_id(&'a self) -> dot::Id<'a> { dot::Id::new("example2") }
+    fn graph_id(&'a self) -> dot::Id<'a> { dot::Id::new("example2").unwrap() }
     fn node_id(&'a self, n: &Nd) -> dot::Id<'a> {
-        dot::Id::new(format!("N{}", n))
+        dot::Id::new(format!("N{}", n)).unwrap()
     }
     fn node_label<'a>(&'a self, n: &Nd) -> dot::LabelText<'a> {
         dot::LabelStr(str::Slice(self.nodes[*n].as_slice()))
@@ -219,9 +219,9 @@ pub fn render_to<W:Writer>(output: &mut W) {
 }
 
 impl<'a> dot::Labeller<'a, Nd<'a>, Ed<'a>> for Graph {
-    fn graph_id(&'a self) -> dot::Id<'a> { dot::Id::new("example3") }
+    fn graph_id(&'a self) -> dot::Id<'a> { dot::Id::new("example3").unwrap() }
     fn node_id(&'a self, n: &Nd<'a>) -> dot::Id<'a> {
-        dot::Id::new(format!("N{:u}", n.val0()))
+        dot::Id::new(format!("N{:u}", n.val0())).unwrap()
     }
     fn node_label<'a>(&'a self, n: &Nd<'a>) -> dot::LabelText<'a> {
         let &(i, _) = n;
@@ -351,14 +351,22 @@ impl<'a> Id<'a> {
     /// defined by the DOT language.  This function may change in the
     /// future to accept a broader subset, or the entirety, of DOT's
     /// `ID` format.)
-    pub fn new<Name:str::IntoMaybeOwned<'a>>(name: Name) -> Id<'a> {
+    ///
+    /// Passing an invalid string (containing spaces, brackets,
+    /// quotes, ...) will return an empty `Err` value.
+    pub fn new<Name:str::IntoMaybeOwned<'a>>(name: Name) -> Result<Id<'a>, ()> {
         let name = name.into_maybe_owned();
         {
             let mut chars = name.as_slice().chars();
-            assert!(is_letter_or_underscore(chars.next().unwrap()));
-            assert!(chars.all(is_constituent));
+            match chars.next() {
+                Some(c) if is_letter_or_underscore(c) => { ; },
+                _ => return Err(())
+            }
+            if !chars.all(is_constituent) {
+                return Err(());
+            }
         }
-        return Id{ name: name };
+        return Ok(Id{ name: name });
 
         fn is_letter_or_underscore(c: char) -> bool {
             in_range('a', c, 'z') || in_range('A', c, 'Z') || c == '_'
@@ -623,12 +631,12 @@ mod tests {
     }
 
     fn id_name<'a>(n: &Node) -> Id<'a> {
-        Id::new(format!("N{:u}", *n))
+        Id::new(format!("N{:u}", *n)).unwrap()
     }
 
     impl<'a> Labeller<'a, Node, &'a Edge> for LabelledGraph {
         fn graph_id(&'a self) -> Id<'a> {
-            Id::new(self.name.as_slice())
+            Id::new(self.name.as_slice()).unwrap()
         }
         fn node_id(&'a self, n: &Node) -> Id<'a> {
             id_name(n)
@@ -820,5 +828,23 @@ r#"digraph syntax_tree {
     N2 -> N3[label=";"];
 }
 "#);
+    }
+
+    #[test]
+    fn simple_id_construction() {
+        let id1 = dot::Id::new("hello");
+        match id1 {
+            Ok(_) => {;},
+            Err(_) => panic!("'hello' is not a valid value for id anymore")
+        }
+    }
+
+    #[test]
+    fn badly_formatted_id() {
+        let id2 = dot::Id::new("Weird { struct : ure } !!!");
+        match id2 {
+            Ok(_) => panic!("graphviz id suddenly allows spaces, brackets and stuff"),
+            Err(_) => {;}
+        }
     }
 }
