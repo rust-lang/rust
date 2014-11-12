@@ -1031,6 +1031,7 @@ do
     make_dir $h/test/doc-guide-tasks
     make_dir $h/test/doc-guide-plugin
     make_dir $h/test/doc-guide-crates
+    make_dir $h/test/doc-guide-error-handling
     make_dir $h/test/doc-rust
 done
 
