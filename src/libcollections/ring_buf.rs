@@ -98,6 +98,10 @@ impl<T> RingBuf<T> {
     /// Returns true iff the buffer is at capacity
     #[inline]
     fn is_full(&self) -> bool { self.cap - self.len() == 1 }
+
+    /// Returns the index in the underlying buffer for a given logical element index.
+    #[inline]
+    fn wrap_index(&self, idx: uint) -> uint { wrap_index(idx, self.cap) }
 }
 
 impl<T> RingBuf<T> {
@@ -149,7 +153,7 @@ impl<T> RingBuf<T> {
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn get(&self, i: uint) -> Option<&T> {
         if i < self.len() {
-            let idx = wrap_index(self.tail + i, self.cap);
+            let idx = self.wrap_index(self.tail + i);
             unsafe { Some(&*self.ptr.offset(idx as int)) }
         } else {
             None
@@ -179,7 +183,7 @@ impl<T> RingBuf<T> {
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn get_mut(&mut self, i: uint) -> Option<&mut T> {
         if i < self.len() {
-            let idx = wrap_index(self.tail + i, self.cap);
+            let idx = self.wrap_index(self.tail + i);
             unsafe { Some(&mut *self.ptr.offset(idx as int)) }
         } else {
             None
@@ -208,8 +212,8 @@ impl<T> RingBuf<T> {
     pub fn swap(&mut self, i: uint, j: uint) {
         assert!(i < self.len());
         assert!(j < self.len());
-        let ri = wrap_index(self.tail + i, self.cap);
-        let rj = wrap_index(self.tail + j, self.cap);
+        let ri = self.wrap_index(self.tail + i);
+        let rj = self.wrap_index(self.tail + j);
         unsafe {
             ptr::swap(self.ptr.offset(ri as int), self.ptr.offset(rj as int))
         }
@@ -334,6 +338,7 @@ impl<T> RingBuf<T> {
             }
             debug_assert!(self.head < self.cap);
             debug_assert!(self.tail < self.cap);
+            debug_assert!(self.cap.count_ones() == 1);
         }
     }
 
@@ -549,7 +554,7 @@ impl<T> RingBuf<T> {
             None
         } else {
             let tail = self.tail;
-            self.tail = wrap_index(self.tail + 1, self.cap);
+            self.tail = self.wrap_index(self.tail + 1);
             unsafe { Some(self.buffer_read(tail)) }
         }
     }
@@ -573,7 +578,7 @@ impl<T> RingBuf<T> {
             debug_assert!(!self.is_full());
         }
 
-        self.tail = wrap_index(self.tail - 1, self.cap);
+        self.tail = self.wrap_index(self.tail - 1);
         let tail = self.tail;
         unsafe { self.buffer_write(tail, t); }
     }
@@ -604,7 +609,7 @@ impl<T> RingBuf<T> {
         }
 
         let head = self.head;
-        self.head = wrap_index(self.head + 1, self.cap);
+        self.head = self.wrap_index(self.head + 1);
         unsafe { self.buffer_write(head, t) }
     }
 
@@ -633,7 +638,7 @@ impl<T> RingBuf<T> {
         if self.is_empty() {
             None
         } else {
-            self.head = wrap_index(self.head - 1, self.cap);
+            self.head = self.wrap_index(self.head - 1);
             let head = self.head;
             unsafe { Some(self.buffer_read(head)) }
         }
@@ -644,9 +649,7 @@ impl<T> RingBuf<T> {
 #[inline]
 fn wrap_index(index: uint, size: uint) -> uint {
     // size is always a power of 2
-    let idx = index & (size - 1);
-    debug_assert!(idx < size);
-    idx
+    index & (size - 1)
 }
 
 /// Calculate the number of elements left to be read in the buffer
