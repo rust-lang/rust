@@ -97,12 +97,6 @@ pub struct RcStr {
 impl Eq for RcStr {}
 
 impl Ord for RcStr {
-    // NOTE(stage0): remove method after a snapshot
-    #[cfg(stage0)]
-    fn cmp(&self, other: &RcStr) -> Ordering {
-        self.as_slice().cmp(&other.as_slice())
-    }
-    #[cfg(not(stage0))]  // NOTE(stage0): remove cfg after a snapshot
     fn cmp(&self, other: &RcStr) -> Ordering {
         self.as_slice().cmp(other.as_slice())
     }

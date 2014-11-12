@@ -1020,16 +1020,6 @@ fn is_valid_cap(c: char) -> bool {
     || (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z')
 }
 
-// NOTE(stage0): remove function after a snapshot
-#[cfg(stage0)]
-fn find_class(classes: NamedClasses, name: &str) -> Option<Vec<(char, char)>> {
-    match classes.binary_search(|&(s, _)| s.cmp(&name)) {
-        slice::Found(i) => Some(classes[i].val1().to_vec()),
-        slice::NotFound(_) => None,
-    }
-}
-
-#[cfg(not(stage0))]  // NOTE(stage0): remove cfg after a snapshot
 fn find_class(classes: NamedClasses, name: &str) -> Option<Vec<(char, char)>> {
     match classes.binary_search(|&(s, _)| s.cmp(name)) {
         slice::Found(i) => Some(classes[i].val1().to_vec()),

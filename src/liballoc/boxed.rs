@@ -65,50 +65,12 @@ impl<T: Clone> Clone for Box<T> {
     }
 }
 
-// NOTE(stage0): remove impl after a snapshot
-#[cfg(stage0)]
-impl<T:PartialEq> PartialEq for Box<T> {
-    #[inline]
-    fn eq(&self, other: &Box<T>) -> bool { *(*self) == *(*other) }
-    #[inline]
-    fn ne(&self, other: &Box<T>) -> bool { *(*self) != *(*other) }
-}
-// NOTE(stage0): remove impl after a snapshot
-#[cfg(stage0)]
-impl<T:PartialOrd> PartialOrd for Box<T> {
-    #[inline]
-    fn partial_cmp(&self, other: &Box<T>) -> Option<Ordering> {
-        (**self).partial_cmp(&**other)
-    }
-    #[inline]
-    fn lt(&self, other: &Box<T>) -> bool { *(*self) < *(*other) }
-    #[inline]
-    fn le(&self, other: &Box<T>) -> bool { *(*self) <= *(*other) }
-    #[inline]
-    fn ge(&self, other: &Box<T>) -> bool { *(*self) >= *(*other) }
-    #[inline]
-    fn gt(&self, other: &Box<T>) -> bool { *(*self) > *(*other) }
-}
-// NOTE(stage0): remove impl after a snapshot
-#[cfg(stage0)]
-impl<T: Ord> Ord for Box<T> {
-    #[inline]
-    fn cmp(&self, other: &Box<T>) -> Ordering {
-        (**self).cmp(&**other)
-    }
-}
-// NOTE(stage0): remove impl after a snapshot
-#[cfg(stage0)]
-impl<T: Eq> Eq for Box<T> {}
-
-#[cfg(not(stage0))]  // NOTE(stage0): remove cfg after a snapshot
 impl<Sized? T: PartialEq> PartialEq for Box<T> {
     #[inline]
     fn eq(&self, other: &Box<T>) -> bool { PartialEq::eq(&**self, &**other) }
     #[inline]
     fn ne(&self, other: &Box<T>) -> bool { PartialEq::ne(&**self, &**other) }
 }
-#[cfg(not(stage0))]  // NOTE(stage0): remove cfg after a snapshot
 impl<Sized? T: PartialOrd> PartialOrd for Box<T> {
     #[inline]
     fn partial_cmp(&self, other: &Box<T>) -> Option<Ordering> {
@@ -123,14 +85,12 @@ impl<Sized? T: PartialOrd> PartialOrd for Box<T> {
     #[inline]
     fn gt(&self, other: &Box<T>) -> bool { PartialOrd::gt(&**self, &**other) }
 }
-#[cfg(not(stage0))]  // NOTE(stage0): remove cfg after a snapshot
 impl<Sized? T: Ord> Ord for Box<T> {
     #[inline]
     fn cmp(&self, other: &Box<T>) -> Ordering {
         Ord::cmp(&**self, &**other)
     }
 }
-#[cfg(not(stage0))]  // NOTE(stage0): remove cfg after a snapshot
 impl<Sized? T: Eq> Eq for Box<T> {}
 
 /// Extension methods for an owning `Any` trait object.
