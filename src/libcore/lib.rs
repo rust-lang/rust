@@ -127,7 +127,6 @@ pub mod unit;
 pub mod fmt;
 
 // note: does not need to be public
-#[cfg(not(stage0))]
 mod array;
 
 #[doc(hidden)]
