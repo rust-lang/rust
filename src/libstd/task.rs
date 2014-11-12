@@ -91,7 +91,8 @@
 //! # }
 //! ```
 
-#![stable]
+#![unstable = "The task spawning model will be changed as part of runtime reform, and the module \
+               will likely be renamed from `task` to `thread`."]
 
 use any::Any;
 use comm::channel;
