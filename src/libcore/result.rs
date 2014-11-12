@@ -267,7 +267,7 @@
 //! a bug.
 //!
 //! A module that instead returns `Results` is alerting the caller
-//! that panics are possible, and providing precise control over how
+//! that failure is possible, and providing precise control over how
 //! it is handled.
 //!
 //! Furthermore, panics may not be recoverable at all, depending on
