@@ -181,6 +181,10 @@ impl<'a, 'v> Visitor<'v> for Context<'a> {
                                   "`#[thread_local]` is an experimental feature, and does not \
                                   currently handle destructors. There is no corresponding \
                                   `#[task_local]` mapping to the task model");
+            } else if attr.name().equiv(&("linkage")) {
+                self.gate_feature("linkage", i.span,
+                                  "the `linkage` attribute is experimental \
+                                   and not portable across platforms")
             }
         }
         match i.node {
