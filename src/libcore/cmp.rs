@@ -55,33 +55,6 @@ use option::{Option, Some, None};
 ///
 /// Eventually, this will be implemented by default for types that implement
 /// `Eq`.
-// NOTE(stage0): remove trait after a snapshot
-#[cfg(stage0)]
-#[lang="eq"]
-#[unstable = "Definition may change slightly after trait reform"]
-pub trait PartialEq {
-    /// This method tests for `self` and `other` values to be equal, and is used by `==`.
-    fn eq(&self, other: &Self) -> bool;
-
-    /// This method tests for `!=`.
-    #[inline]
-    fn ne(&self, other: &Self) -> bool { !self.eq(other) }
-}
-
-/// Trait for values that can be compared for equality and inequality.
-///
-/// This trait allows for partial equality, for types that do not have an
-/// equivalence relation. For example, in floating point numbers `NaN != NaN`,
-/// so floating point types implement `PartialEq` but not `Eq`.
-///
-/// PartialEq only requires the `eq` method to be implemented; `ne` is defined
-/// in terms of it by default. Any manual implementation of `ne` *must* respect
-/// the rule that `eq` is a strict inverse of `ne`; that is, `!(a == b)` if and
-/// only if `a != b`.
-///
-/// Eventually, this will be implemented by default for types that implement
-/// `Eq`.
-#[cfg(not(stage0))]  // NOTE(stage0): remove cfg after a snapshot
 #[lang="eq"]
 #[unstable = "Definition may change slightly after trait reform"]
 pub trait PartialEq for Sized? {
@@ -102,32 +75,6 @@ pub trait PartialEq for Sized? {
 /// - reflexive: `a == a`;
 /// - symmetric: `a == b` implies `b == a`; and
 /// - transitive: `a == b` and `b == c` implies `a == c`.
-// NOTE(stage0): remove trait after a snapshot
-#[cfg(stage0)]
-#[unstable = "Definition may change slightly after trait reform"]
-pub trait Eq: PartialEq {
-    // FIXME #13101: this method is used solely by #[deriving] to
-    // assert that every component of a type implements #[deriving]
-    // itself, the current deriving infrastructure means doing this
-    // assertion without using a method on this trait is nearly
-    // impossible.
-    //
-    // This should never be implemented by hand.
-    #[doc(hidden)]
-    #[inline(always)]
-    fn assert_receiver_is_total_eq(&self) {}
-}
-
-/// Trait for equality comparisons which are [equivalence relations](
-/// https://en.wikipedia.org/wiki/Equivalence_relation).
-///
-/// This means, that in addition to `a == b` and `a != b` being strict
-/// inverses, the equality must be (for all `a`, `b` and `c`):
-///
-/// - reflexive: `a == a`;
-/// - symmetric: `a == b` implies `b == a`; and
-/// - transitive: `a == b` and `b == c` implies `a == c`.
-#[cfg(not(stage0))]  // NOTE(stage0): remove cfg after a snapshot
 #[unstable = "Definition may change slightly after trait reform"]
 pub trait Eq for Sized?: PartialEq {
     // FIXME #13101: this method is used solely by #[deriving] to
@@ -198,33 +145,6 @@ impl Ordering {
 ///   true; and
 /// - transitive, `a < b` and `b < c` implies `a < c`. The same must hold for
 ///   both `==` and `>`.
-// NOTE(stage0): remove trait after a snapshot
-#[cfg(stage0)]
-#[unstable = "Definition may change slightly after trait reform"]
-pub trait Ord: Eq + PartialOrd {
-    /// This method returns an ordering between `self` and `other` values.
-    ///
-    /// By convention, `self.cmp(&other)` returns the ordering matching
-    /// the expression `self <operator> other` if true.  For example:
-    ///
-    /// ```
-    /// assert_eq!( 5u.cmp(&10), Less);     // because 5 < 10
-    /// assert_eq!(10u.cmp(&5),  Greater);  // because 10 > 5
-    /// assert_eq!( 5u.cmp(&5),  Equal);    // because 5 == 5
-    /// ```
-    fn cmp(&self, other: &Self) -> Ordering;
-}
-
-/// Trait for types that form a [total order](
-/// https://en.wikipedia.org/wiki/Total_order).
-///
-/// An order is a total order if it is (for all `a`, `b` and `c`):
-///
-/// - total and antisymmetric: exactly one of `a < b`, `a == b` or `a > b` is
-///   true; and
-/// - transitive, `a < b` and `b < c` implies `a < c`. The same must hold for
-///   both `==` and `>`.
-#[cfg(not(stage0))]  // NOTE(stage0): remove cfg after a snapshot
 #[unstable = "Definition may change slightly after trait reform"]
 pub trait Ord for Sized?: Eq + PartialOrd {
     /// This method returns an ordering between `self` and `other` values.
@@ -268,62 +188,6 @@ impl PartialOrd for Ordering {
 /// which do not have a total order. For example, for floating point numbers,
 /// `NaN < 0 == false` and `NaN >= 0 == false` (cf. IEEE 754-2008 section
 /// 5.11).
-// NOTE(stage0): remove trait after a snapshot
-#[cfg(stage0)]
-#[lang="ord"]
-#[unstable = "Definition may change slightly after trait reform"]
-pub trait PartialOrd: PartialEq {
-    /// This method returns an ordering between `self` and `other` values
-    /// if one exists.
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering>;
-
-    /// This method tests less than (for `self` and `other`) and is used by the `<` operator.
-    #[inline]
-    fn lt(&self, other: &Self) -> bool {
-        match self.partial_cmp(other) {
-            Some(Less) => true,
-            _ => false,
-        }
-    }
-
-    /// This method tests less than or equal to (`<=`).
-    #[inline]
-    fn le(&self, other: &Self) -> bool {
-        match self.partial_cmp(other) {
-            Some(Less) | Some(Equal) => true,
-            _ => false,
-        }
-    }
-
-    /// This method tests greater than (`>`).
-    #[inline]
-    fn gt(&self, other: &Self) -> bool {
-        match self.partial_cmp(other) {
-            Some(Greater) => true,
-            _ => false,
-        }
-    }
-
-    /// This method tests greater than or equal to (`>=`).
-    #[inline]
-    fn ge(&self, other: &Self) -> bool {
-        match self.partial_cmp(other) {
-            Some(Greater) | Some(Equal) => true,
-            _ => false,
-        }
-    }
-}
-
-/// Trait for values that can be compared for a sort-order.
-///
-/// PartialOrd only requires implementation of the `partial_cmp` method,
-/// with the others generated from default implementations.
-///
-/// However it remains possible to implement the others separately for types
-/// which do not have a total order. For example, for floating point numbers,
-/// `NaN < 0 == false` and `NaN >= 0 == false` (cf. IEEE 754-2008 section
-/// 5.11).
-#[cfg(not(stage0))]  // NOTE(stage0): remove cfg after a snapshot
 #[lang="ord"]
 #[unstable = "Definition may change slightly after trait reform"]
 pub trait PartialOrd for Sized?: PartialEq {
@@ -422,7 +286,6 @@ pub fn partial_max<T: PartialOrd>(v1: T, v2: T) -> Option<T> {
 mod impls {
     use cmp::{PartialOrd, Ord, PartialEq, Eq, Ordering,
               Less, Greater, Equal};
-    #[cfg(not(stage0))]  // NOTE(stage0): remove cfg after a snapshot
     use kinds::Sized;
     use option::{Option, Some, None};
 
@@ -531,45 +394,7 @@ mod impls {
     ord_impl!(char uint u8 u16 u32 u64 int i8 i16 i32 i64)
 
     // & pointers
-    // NOTE(stage0): remove impl after a snapshot
-    #[cfg(stage0)]
-    #[unstable = "Trait is unstable."]
-    impl<'a, T: PartialEq> PartialEq for &'a T {
-        #[inline]
-        fn eq(&self, other: & &'a T) -> bool { *(*self) == *(*other) }
-        #[inline]
-        fn ne(&self, other: & &'a T) -> bool { *(*self) != *(*other) }
-    }
-    // NOTE(stage0): remove impl after a snapshot
-    #[cfg(stage0)]
-    #[unstable = "Trait is unstable."]
-    impl<'a, T: PartialOrd> PartialOrd for &'a T {
-        #[inline]
-        fn partial_cmp(&self, other: &&'a T) -> Option<Ordering> {
-            (**self).partial_cmp(*other)
-        }
-        #[inline]
-        fn lt(&self, other: & &'a T) -> bool { *(*self) < *(*other) }
-        #[inline]
-        fn le(&self, other: & &'a T) -> bool { *(*self) <= *(*other) }
-        #[inline]
-        fn ge(&self, other: & &'a T) -> bool { *(*self) >= *(*other) }
-        #[inline]
-        fn gt(&self, other: & &'a T) -> bool { *(*self) > *(*other) }
-    }
-    // NOTE(stage0): remove impl after a snapshot
-    #[cfg(stage0)]
-    #[unstable = "Trait is unstable."]
-    impl<'a, T: Ord> Ord for &'a T {
-        #[inline]
-        fn cmp(&self, other: & &'a T) -> Ordering { (**self).cmp(*other) }
-    }
-    // NOTE(stage0): remove impl after a snapshot
-    #[cfg(stage0)]
-    #[unstable = "Trait is unstable."]
-    impl<'a, T: Eq> Eq for &'a T {}
 
-    #[cfg(not(stage0))]  // NOTE(stage0): remove cfg after a snapshot
     #[unstable = "Trait is unstable."]
     impl<'a, Sized? T: PartialEq> PartialEq for &'a T {
         #[inline]
@@ -577,7 +402,6 @@ mod impls {
         #[inline]
         fn ne(&self, other: & &'a T) -> bool { PartialEq::ne(*self, *other) }
     }
-    #[cfg(not(stage0))]  // NOTE(stage0): remove cfg after a snapshot
     #[unstable = "Trait is unstable."]
     impl<'a, Sized? T: PartialOrd> PartialOrd for &'a T {
         #[inline]
@@ -593,56 +417,16 @@ mod impls {
         #[inline]
         fn gt(&self, other: & &'a T) -> bool { PartialOrd::gt(*self, *other) }
     }
-    #[cfg(not(stage0))]  // NOTE(stage0): remove cfg after a snapshot
     #[unstable = "Trait is unstable."]
     impl<'a, Sized? T: Ord> Ord for &'a T {
         #[inline]
         fn cmp(&self, other: & &'a T) -> Ordering { Ord::cmp(*self, *other) }
     }
-    #[cfg(not(stage0))]  // NOTE(stage0): remove cfg after a snapshot
     #[unstable = "Trait is unstable."]
     impl<'a, Sized? T: Eq> Eq for &'a T {}
 
     // &mut pointers
-    // NOTE(stage0): remove impl after a snapshot
-    #[cfg(stage0)]
-    #[unstable = "Trait is unstable."]
-    impl<'a, T: PartialEq> PartialEq for &'a mut T {
-        #[inline]
-        fn eq(&self, other: &&'a mut T) -> bool { **self == *(*other) }
-        #[inline]
-        fn ne(&self, other: &&'a mut T) -> bool { **self != *(*other) }
-    }
-    // NOTE(stage0): remove impl after a snapshot
-    #[cfg(stage0)]
-    #[unstable = "Trait is unstable."]
-    impl<'a, T: PartialOrd> PartialOrd for &'a mut T {
-        #[inline]
-        fn partial_cmp(&self, other: &&'a mut T) -> Option<Ordering> {
-            (**self).partial_cmp(*other)
-        }
-        #[inline]
-        fn lt(&self, other: &&'a mut T) -> bool { **self < **other }
-        #[inline]
-        fn le(&self, other: &&'a mut T) -> bool { **self <= **other }
-        #[inline]
-        fn ge(&self, other: &&'a mut T) -> bool { **self >= **other }
-        #[inline]
-        fn gt(&self, other: &&'a mut T) -> bool { **self > **other }
-    }
-    // NOTE(stage0): remove impl after a snapshot
-    #[cfg(stage0)]
-    #[unstable = "Trait is unstable."]
-    impl<'a, T: Ord> Ord for &'a mut T {
-        #[inline]
-        fn cmp(&self, other: &&'a mut T) -> Ordering { (**self).cmp(*other) }
-    }
-    // NOTE(stage0): remove impl after a snapshot
-    #[cfg(stage0)]
-    #[unstable = "Trait is unstable."]
-    impl<'a, T: Eq> Eq for &'a mut T {}
 
-    #[cfg(not(stage0))]  // NOTE(stage0): remove cfg after a snapshot
     #[unstable = "Trait is unstable."]
     impl<'a, Sized? T: PartialEq> PartialEq for &'a mut T {
         #[inline]
@@ -650,7 +434,6 @@ mod impls {
         #[inline]
         fn ne(&self, other: &&'a mut T) -> bool { PartialEq::ne(*self, *other) }
     }
-    #[cfg(not(stage0))]  // NOTE(stage0): remove cfg after a snapshot
     #[unstable = "Trait is unstable."]
     impl<'a, Sized? T: PartialOrd> PartialOrd for &'a mut T {
         #[inline]
@@ -666,13 +449,11 @@ mod impls {
         #[inline]
         fn gt(&self, other: &&'a mut T) -> bool { PartialOrd::gt(*self, *other) }
     }
-    #[cfg(not(stage0))]  // NOTE(stage0): remove cfg after a snapshot
     #[unstable = "Trait is unstable."]
     impl<'a, Sized? T: Ord> Ord for &'a mut T {
         #[inline]
         fn cmp(&self, other: &&'a mut T) -> Ordering { Ord::cmp(*self, *other) }
     }
-    #[cfg(not(stage0))]  // NOTE(stage0): remove cfg after a snapshot
     #[unstable = "Trait is unstable."]
     impl<'a, Sized? T: Eq> Eq for &'a mut T {}
 }

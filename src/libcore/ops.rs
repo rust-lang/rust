@@ -805,12 +805,10 @@ pub trait Deref<Sized? Result> {
     fn deref<'a>(&'a self) -> &'a Result;
 }
 
-#[cfg(not(stage0))]
 impl<'a, Sized? T> Deref<T> for &'a T {
     fn deref(&self) -> &T { *self }
 }
 
-#[cfg(not(stage0))]
 impl<'a, Sized? T> Deref<T> for &'a mut T {
     fn deref(&self) -> &T { *self }
 }
@@ -855,7 +853,6 @@ pub trait DerefMut<Sized? Result>: Deref<Result> {
     fn deref_mut<'a>(&'a mut self) -> &'a mut Result;
 }
 
-#[cfg(not(stage0))]
 impl<'a, Sized? T> DerefMut<T> for &'a mut T {
     fn deref_mut(&mut self) -> &mut T { *self }
 }

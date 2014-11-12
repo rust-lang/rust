@@ -1121,24 +1121,6 @@ pub mod traits {
     use ops;
     use str::{Str, StrPrelude, eq_slice};
 
-    // NOTE(stage0): remove impl after a snapshot
-    #[cfg(stage0)]
-    impl<'a> Ord for &'a str {
-        #[inline]
-        fn cmp(&self, other: & &'a str) -> Ordering {
-            for (s_b, o_b) in self.bytes().zip(other.bytes()) {
-                match s_b.cmp(&o_b) {
-                    Greater => return Greater,
-                    Less => return Less,
-                    Equal => ()
-                }
-            }
-
-            self.len().cmp(&other.len())
-        }
-    }
-
-    #[cfg(not(stage0))]  // NOTE(stage0): remove cfg after a snapshot
     impl Ord for str {
         #[inline]
         fn cmp(&self, other: &str) -> Ordering {
@@ -1154,18 +1136,6 @@ pub mod traits {
         }
     }
 
-    // NOTE(stage0): remove impl after a snapshot
-    #[cfg(stage0)]
-    impl<'a> PartialEq for &'a str {
-        #[inline]
-        fn eq(&self, other: & &'a str) -> bool {
-            eq_slice((*self), (*other))
-        }
-        #[inline]
-        fn ne(&self, other: & &'a str) -> bool { !(*self).eq(other) }
-    }
-
-    #[cfg(not(stage0))]  // NOTE(stage0): remove cfg after a snapshot
     impl PartialEq for str {
         #[inline]
         fn eq(&self, other: &str) -> bool {
@@ -1175,23 +1145,8 @@ pub mod traits {
         fn ne(&self, other: &str) -> bool { !(*self).eq(other) }
     }
 
-    // NOTE(stage0): remove impl after a snapshot
-    #[cfg(stage0)]
-    impl<'a> Eq for &'a str {}
-
-    #[cfg(not(stage0))]  // NOTE(stage0): remove cfg after a snapshot
     impl Eq for str {}
 
-    // NOTE(stage0): remove impl after a snapshot
-    #[cfg(stage0)]
-    impl<'a> PartialOrd for &'a str {
-        #[inline]
-        fn partial_cmp(&self, other: &&'a str) -> Option<Ordering> {
-            Some(self.cmp(other))
-        }
-    }
-
-    #[cfg(not(stage0))]  // NOTE(stage0): remove cfg after a snapshot
     impl PartialOrd for str {
         #[inline]
         fn partial_cmp(&self, other: &str) -> Option<Ordering> {

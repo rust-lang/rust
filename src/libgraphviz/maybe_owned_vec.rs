@@ -76,24 +76,12 @@ impl<'a, T: PartialEq> PartialEq for MaybeOwnedVector<'a, T> {
 impl<'a, T: Eq> Eq for MaybeOwnedVector<'a, T> {}
 
 impl<'a, T: PartialOrd> PartialOrd for MaybeOwnedVector<'a, T> {
-    // NOTE(stage0): remove method after a snapshot
-    #[cfg(stage0)]
-    fn partial_cmp(&self, other: &MaybeOwnedVector<T>) -> Option<Ordering> {
-        self.as_slice().partial_cmp(&other.as_slice())
-    }
-    #[cfg(not(stage0))]  // NOTE(stage0): remove cfg after a snapshot
     fn partial_cmp(&self, other: &MaybeOwnedVector<T>) -> Option<Ordering> {
         self.as_slice().partial_cmp(other.as_slice())
     }
 }
 
 impl<'a, T: Ord> Ord for MaybeOwnedVector<'a, T> {
-    // NOTE(stage0): remove method after a snapshot
-    #[cfg(stage0)]
-    fn cmp(&self, other: &MaybeOwnedVector<T>) -> Ordering {
-        self.as_slice().cmp(&other.as_slice())
-    }
-    #[cfg(not(stage0))]  // NOTE(stage0): remove cfg after a snapshot
     fn cmp(&self, other: &MaybeOwnedVector<T>) -> Ordering {
         self.as_slice().cmp(other.as_slice())
     }
