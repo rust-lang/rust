@@ -135,6 +135,14 @@ impl Duration {
         Duration { secs: secs, nanos: nanos as i32 }
     }
 
+    /// Runs a closure, returning the duration of time it took to run the
+    /// closure.
+    pub fn span(f: ||) -> Duration {
+        let before = super::precise_time_ns();
+        f();
+        Duration::nanoseconds((before - super::precise_time_ns()) as i64)
+    }
+
     /// Returns the total number of whole weeks in the duration.
     #[inline]
     pub fn num_weeks(&self) -> i64 {

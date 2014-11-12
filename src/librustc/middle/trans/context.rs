@@ -47,8 +47,8 @@ pub struct Stats {
     pub n_closures: Cell<uint>,
     pub n_llvm_insns: Cell<uint>,
     pub llvm_insns: RefCell<FnvHashMap<String, uint>>,
-    // (ident, time-in-ms, llvm-instructions)
-    pub fn_stats: RefCell<Vec<(String, uint, uint)> >,
+    // (ident, llvm-instructions)
+    pub fn_stats: RefCell<Vec<(String, uint)> >,
 }
 
 /// The shared portion of a `CrateContext`.  There is one `SharedCrateContext`

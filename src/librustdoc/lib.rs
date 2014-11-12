@@ -25,7 +25,6 @@ extern crate rustc;
 extern crate serialize;
 extern crate syntax;
 extern crate "test" as testing;
-extern crate time;
 #[phase(plugin, link)] extern crate log;
 
 use std::io;
@@ -238,7 +237,6 @@ pub fn main_args(args: &[String]) -> int {
     };
 
     info!("going to format");
-    let started = time::precise_time_ns();
     match matches.opt_str("w").as_ref().map(|s| s.as_slice()) {
         Some("html") | None => {
             match html::render::run(krate, &external_html, output.unwrap_or(Path::new("doc"))) {
@@ -257,8 +255,6 @@ pub fn main_args(args: &[String]) -> int {
             return 1;
         }
     }
-    let ended = time::precise_time_ns();
-    info!("Took {:.03f}s", (ended as f64 - started as f64) / 1e9f64);
 
     return 0;
 }
