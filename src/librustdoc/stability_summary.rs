@@ -22,7 +22,9 @@ use syntax::ast::Public;
 
 use clean::{Crate, Item, ModuleItem, Module, StructItem, Struct, EnumItem, Enum};
 use clean::{ImplItem, Impl, Trait, TraitItem, TraitMethod, ProvidedMethod, RequiredMethod};
-use clean::{TypeTraitItem, ViewItemItem, PrimitiveItem};
+use clean::{TypeTraitItem, ViewItemItem, PrimitiveItem, Stability};
+
+use html::render::cache_key;
 
 #[deriving(Zero, Encodable, Decodable, PartialEq, Eq)]
 /// The counts for each stability level.
@@ -88,12 +90,8 @@ fn visible(item: &Item) -> bool {
     }
 }
 
-// Produce the summary for an arbitrary item. If the item is a module, include a
-// module summary. The counts for items with nested items (e.g. modules, traits,
-// impls) include all children counts.
-fn summarize_item(item: &Item) -> (Counts, Option<ModuleSummary>) {
-    // count this item
-    let item_counts = match item.stability {
+fn count_stability(stab: Option<&Stability>) -> Counts {
+    match stab {
         None             => Counts { unmarked: 1,     .. Zero::zero() },
         Some(ref stab) => match stab.level {
             Deprecated   => Counts { deprecated: 1,   .. Zero::zero() },
@@ -103,7 +101,31 @@ fn summarize_item(item: &Item) -> (Counts, Option<ModuleSummary>) {
             Frozen       => Counts { frozen: 1,       .. Zero::zero() },
             Locked       => Counts { locked: 1,       .. Zero::zero() },
         }
-    };
+    }
+}
+
+fn summarize_methods(item: &Item) -> Counts {
+    match cache_key.get().unwrap().impls.get(&item.def_id) {
+        Some(v) => {
+            v.iter().map(|i| {
+                let mut count = count_stability(i.stability.as_ref());
+                if i.impl_.trait_.is_none() {
+                    count = count +
+                        i.impl_.items.iter().map(|ti| summarize_item(ti).0).sum();
+                }
+                count
+            }).sum()
+        }
+        None    => Zero::zero()
+    }
+}
+
+
+// Produce the summary for an arbitrary item. If the item is a module, include a
+// module summary. The counts for items with nested items (e.g. modules, traits,
+// impls) include all children counts.
+fn summarize_item(item: &Item) -> (Counts, Option<ModuleSummary>) {
+    let item_counts = count_stability(item.stability.as_ref()) + summarize_methods(item);
 
     // Count this item's children, if any. Note that a trait impl is
     // considered to have no children.
