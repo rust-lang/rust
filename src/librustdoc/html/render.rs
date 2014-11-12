@@ -114,19 +114,19 @@ pub enum ExternalLocation {
 
 /// Metadata about an implementor of a trait.
 pub struct Implementor {
-    def_id: ast::DefId,
-    generics: clean::Generics,
-    trait_: clean::Type,
-    for_: clean::Type,
-    stability: Option<clean::Stability>,
+    pub def_id: ast::DefId,
+    pub generics: clean::Generics,
+    pub trait_: clean::Type,
+    pub for_: clean::Type,
+    pub stability: Option<clean::Stability>,
 }
 
 /// Metadata about implementations for a type.
 #[deriving(Clone)]
 pub struct Impl {
-    impl_: clean::Impl,
-    dox: Option<String>,
-    stability: Option<clean::Stability>,
+    pub impl_: clean::Impl,
+    pub dox: Option<String>,
+    pub stability: Option<clean::Stability>,
 }
 
 /// This cache is used to store information about the `clean::Crate` being
@@ -254,11 +254,6 @@ pub fn run(mut krate: clean::Crate, external_html: &ExternalHtml, dst: Path) -> 
 
     try!(mkdir(&cx.dst));
 
-    // Crawl the crate, building a summary of the stability levels.  NOTE: this
-    // summary *must* be computed with the original `krate`; the folding below
-    // removes the impls from their modules.
-    let summary = stability_summary::build(&krate);
-
     // Crawl the crate attributes looking for attributes which control how we're
     // going to emit HTML
     let default: &[_] = &[];
@@ -371,6 +366,9 @@ pub fn run(mut krate: clean::Crate, external_html: &ExternalHtml, dst: Path) -> 
 
     try!(write_shared(&cx, &krate, &*cache, index));
     let krate = try!(render_sources(&mut cx, krate));
+
+    // Crawl the crate, building a summary of the stability levels.
+    let summary = stability_summary::build(&krate);
 
     // And finally render the whole crate's documentation
     cx.krate(krate, summary)
