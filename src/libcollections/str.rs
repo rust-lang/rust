@@ -534,13 +534,6 @@ impl<'a> PartialOrd for MaybeOwned<'a> {
 }
 
 impl<'a> Ord for MaybeOwned<'a> {
-    // NOTE(stage0): remove method after a snapshot
-    #[cfg(stage0)]
-    #[inline]
-    fn cmp(&self, other: &MaybeOwned) -> Ordering {
-        self.as_slice().cmp(&other.as_slice())
-    }
-    #[cfg(not(stage0))]  // NOTE(stage0): remove cfg after a snapshot
     #[inline]
     fn cmp(&self, other: &MaybeOwned) -> Ordering {
         self.as_slice().cmp(other.as_slice())
