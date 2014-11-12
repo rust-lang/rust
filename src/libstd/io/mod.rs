@@ -849,6 +849,7 @@ pub trait Reader {
 }
 
 /// A reader which can be converted to a RefReader.
+#[deprecated = "use ByRefReader instead"]
 pub trait AsRefReader {
     /// Creates a wrapper around a mutable reference to the reader.
     ///
@@ -857,7 +858,23 @@ pub trait AsRefReader {
     fn by_ref<'a>(&'a mut self) -> RefReader<'a, Self>;
 }
 
+#[allow(deprecated)]
 impl<T: Reader> AsRefReader for T {
+    fn by_ref<'a>(&'a mut self) -> RefReader<'a, T> {
+        RefReader { inner: self }
+    }
+}
+
+/// A reader which can be converted to a RefReader.
+pub trait ByRefReader {
+    /// Creates a wrapper around a mutable reference to the reader.
+    ///
+    /// This is useful to allow applying adaptors while still
+    /// retaining ownership of the original value.
+    fn by_ref<'a>(&'a mut self) -> RefReader<'a, Self>;
+}
+
+impl<T: Reader> ByRefReader for T {
     fn by_ref<'a>(&'a mut self) -> RefReader<'a, T> {
         RefReader { inner: self }
     }
@@ -925,7 +942,7 @@ unsafe fn slice_vec_capacity<'a, T>(v: &'a mut Vec<T>, start: uint, end: uint) -
 /// # fn process_input<R: Reader>(r: R) {}
 /// # fn foo() {
 /// use std::io;
-/// use std::io::AsRefReader;
+/// use std::io::ByRefReader;
 /// use std::io::util::LimitReader;
 ///
 /// let mut stream = io::stdin();
@@ -1211,6 +1228,7 @@ pub trait Writer {
 }
 
 /// A writer which can be converted to a RefWriter.
+#[deprecated = "use ByRefWriter instead"]
 pub trait AsRefWriter {
     /// Creates a wrapper around a mutable reference to the writer.
     ///
@@ -1220,7 +1238,24 @@ pub trait AsRefWriter {
     fn by_ref<'a>(&'a mut self) -> RefWriter<'a, Self>;
 }
 
+#[allow(deprecated)]
 impl<T: Writer> AsRefWriter for T {
+    fn by_ref<'a>(&'a mut self) -> RefWriter<'a, T> {
+        RefWriter { inner: self }
+    }
+}
+
+/// A writer which can be converted to a RefWriter.
+pub trait ByRefWriter {
+    /// Creates a wrapper around a mutable reference to the writer.
+    ///
+    /// This is useful to allow applying wrappers while still
+    /// retaining ownership of the original value.
+    #[inline]
+    fn by_ref<'a>(&'a mut self) -> RefWriter<'a, Self>;
+}
+
+impl<T: Writer> ByRefWriter for T {
     fn by_ref<'a>(&'a mut self) -> RefWriter<'a, T> {
         RefWriter { inner: self }
     }
@@ -1256,7 +1291,7 @@ impl<'a> Writer for &'a mut Writer+'a {
 /// # fn process_input<R: Reader>(r: R) {}
 /// # fn foo () {
 /// use std::io::util::TeeReader;
-/// use std::io::{stdin, MemWriter, AsRefWriter};
+/// use std::io::{stdin, MemWriter, ByRefWriter};
 ///
 /// let mut output = MemWriter::new();
 ///
