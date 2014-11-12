@@ -1944,11 +1944,11 @@ mod test_map {
         m.insert("baz".to_string(), baz);
 
 
-        assert_eq!(m.find_equiv("foo"), Some(&foo));
-        assert_eq!(m.find_equiv("bar"), Some(&bar));
-        assert_eq!(m.find_equiv("baz"), Some(&baz));
+        assert_eq!(m.get("foo"), Some(&foo));
+        assert_eq!(m.get("bar"), Some(&bar));
+        assert_eq!(m.get("baz"), Some(&baz));
 
-        assert_eq!(m.find_equiv("qux"), None);
+        assert_eq!(m.get("qux"), None);
     }
 
     #[test]

@@ -216,7 +216,7 @@ pub fn get_extern_fn(ccx: &CrateContext,
                      ty: Type,
                      output: ty::t)
                      -> ValueRef {
-    match externs.find_equiv(name) {
+    match externs.get(name) {
         Some(n) => return *n,
         None => {}
     }
@@ -226,7 +226,7 @@ pub fn get_extern_fn(ccx: &CrateContext,
 }
 
 fn get_extern_rust_fn(ccx: &CrateContext, fn_ty: ty::t, name: &str, did: ast::DefId) -> ValueRef {
-    match ccx.externs().borrow().find_equiv(name) {
+    match ccx.externs().borrow().get(name) {
         Some(n) => return *n,
         None => ()
     }
@@ -2983,7 +2983,7 @@ fn internalize_symbols(cx: &SharedCrateContext, reachable: &HashSet<String>) {
 
                 let name = CString::new(llvm::LLVMGetValueName(val), false);
                 if !declared.contains(&name) &&
-                   !reachable.contains_equiv(name.as_str().unwrap()) {
+                   !reachable.contains(name.as_str().unwrap()) {
                     llvm::SetLinkage(val, llvm::InternalLinkage);
                 }
             }

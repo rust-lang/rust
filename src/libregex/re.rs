@@ -726,7 +726,7 @@ impl<'t> Captures<'t> {
         match self.named {
             None => "",
             Some(ref h) => {
-                match h.find_equiv(name) {
+                match h.get(name) {
                     None => "",
                     Some(i) => self.at(*i),
                 }

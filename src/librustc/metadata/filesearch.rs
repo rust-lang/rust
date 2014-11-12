@@ -54,7 +54,7 @@ impl<'a> FileSearch<'a> {
         debug!("filesearch: searching lib path");
         let tlib_path = make_target_lib_path(self.sysroot,
                                     self.triple);
-        if !visited_dirs.contains_equiv(tlib_path.as_vec()) {
+        if !visited_dirs.contains(tlib_path.as_vec()) {
             match f(&tlib_path) {
                 FileMatches => found = true,
                 FileDoesntMatch => ()
@@ -69,9 +69,9 @@ impl<'a> FileSearch<'a> {
                 let tlib_path = make_rustpkg_lib_path(
                     self.sysroot, path, self.triple);
                 debug!("is {} in visited_dirs? {}", tlib_path.display(),
-                        visited_dirs.contains_equiv(&tlib_path.as_vec().to_vec()));
+                        visited_dirs.contains(&tlib_path.as_vec().to_vec()));
 
-                if !visited_dirs.contains_equiv(tlib_path.as_vec()) {
+                if !visited_dirs.contains(tlib_path.as_vec()) {
                     visited_dirs.insert(tlib_path.as_vec().to_vec());
                     // Don't keep searching the RUST_PATH if one match turns up --
                     // if we did, we'd get a "multiple matching crates" error
