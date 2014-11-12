@@ -1084,24 +1084,40 @@ pub struct BareFnTy {
 }
 
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
+/// The different kinds of types recognized by the compiler
 pub enum Ty_ {
+    /// The unit type (`()`)
     TyNil,
-    TyBot, /* bottom type */
+    /// The bottom type (`!`)
+    TyBot,
     TyUniq(P<Ty>),
+    /// An array (`[T]`)
     TyVec(P<Ty>),
+    /// A fixed length array (`[T, ..n]`)
     TyFixedLengthVec(P<Ty>, P<Expr>),
+    /// A raw pointer (`*const T` or `*mut T`)
     TyPtr(MutTy),
+    /// A reference (`&'a T` or `&'a mut T`)
     TyRptr(Option<Lifetime>, MutTy),
+    /// A closure (e.g. `|uint| -> bool`)
     TyClosure(P<ClosureTy>),
+    /// A procedure (e.g `proc(uint) -> bool`)
     TyProc(P<ClosureTy>),
+    /// A bare function (e.g. `fn(uint) -> bool`)
     TyBareFn(P<BareFnTy>),
+    /// A tuple (`(A, B, C, D,...)`)
     TyTup(Vec<P<Ty>> ),
+    /// A path (`module::module::...::Type`) or primitive
+    ///
+    /// Type parameters are stored in the Path itself
     TyPath(Path, Option<TyParamBounds>, NodeId), // for #7264; see above
-    TyPolyTraitRef(P<PolyTraitRef>), // a type like `for<'a> Foo<&'a Bar>`
+    /// A type like `for<'a> Foo<&'a Bar>`
+    TyPolyTraitRef(P<PolyTraitRef>),
     /// A "qualified path", e.g. `<Vec<T> as SomeTrait>::SomeType`
     TyQPath(P<QPath>),
     /// No-op; kept solely so that we can pretty-print faithfully
     TyParen(P<Ty>),
+    /// Unused for now
     TyTypeof(P<Expr>),
     /// TyInfer means the type should be inferred instead of it having been
     /// specified. This can appear anywhere in a type.
