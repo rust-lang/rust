@@ -965,13 +965,14 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         self.report_and_explain_type_error(trace, err);
     }
 
-    pub fn replace_late_bound_regions_with_fresh_var<T>(&self,
-                                                        binder_id: ast::NodeId,
-                                                        span: Span,
-                                                        lbrct: LateBoundRegionConversionTime,
-                                                        value: &T)
-                                                        -> (T, FnvHashMap<ty::BoundRegion,ty::Region>)
-                                                        where T : TypeFoldable + Repr
+    pub fn replace_late_bound_regions_with_fresh_var<T>(
+        &self,
+        binder_id: ast::NodeId,
+        span: Span,
+        lbrct: LateBoundRegionConversionTime,
+        value: &T)
+        -> (T, FnvHashMap<ty::BoundRegion,ty::Region>)
+        where T : TypeFoldable + Repr
     {
         let (map, value) =
             replace_late_bound_regions(
