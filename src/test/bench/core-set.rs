@@ -12,30 +12,27 @@
 
 extern crate collections;
 extern crate rand;
-extern crate time;
 
 use std::collections::BitvSet;
+use std::collections::HashSet;
 use std::collections::TreeSet;
 use std::hash::Hash;
-use std::collections::HashSet;
 use std::os;
+use std::time::Duration;
 use std::uint;
 
 struct Results {
-    sequential_ints: f64,
-    random_ints: f64,
-    delete_ints: f64,
+    sequential_ints: Duration,
+    random_ints: Duration,
+    delete_ints: Duration,
 
-    sequential_strings: f64,
-    random_strings: f64,
-    delete_strings: f64
+    sequential_strings: Duration,
+    random_strings: Duration,
+    delete_strings: Duration,
 }
 
-fn timed(result: &mut f64, op: ||) {
-    let start = time::precise_time_s();
-    op();
-    let end = time::precise_time_s();
-    *result = (end - start);
+fn timed(result: &mut Duration, op: ||) {
+    *result = Duration::span(op);
 }
 
 trait MutableSet<T> {
@@ -150,7 +147,7 @@ fn write_header(header: &str) {
     println!("{}", header);
 }
 
-fn write_row(label: &str, value: f64) {
+fn write_row(label: &str, value: Duration) {
     println!("{:30s} {} s\n", label, value);
 }
 
@@ -166,13 +163,13 @@ fn write_results(label: &str, results: &Results) {
 
 fn empty_results() -> Results {
     Results {
-        sequential_ints: 0.0,
-        random_ints: 0.0,
-        delete_ints: 0.0,
+        sequential_ints: Duration::seconds(0),
+        random_ints: Duration::seconds(0),
+        delete_ints: Duration::seconds(0),
 
-        sequential_strings: 0.0,
-        random_strings: 0.0,
-        delete_strings: 0.0,
+        sequential_strings: Duration::seconds(0),
+        random_strings: Duration::seconds(0),
+        delete_strings: Duration::seconds(0),
     }
 }
 

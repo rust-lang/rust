@@ -18,10 +18,9 @@
 // no-pretty-expanded FIXME #15189
 // ignore-lexer-test FIXME #15679
 
-extern crate time;
-
-use std::sync::{Arc, Future, Mutex};
 use std::os;
+use std::sync::{Arc, Future, Mutex};
+use std::time::Duration;
 use std::uint;
 
 // A poor man's pipe.
@@ -77,38 +76,38 @@ fn main() {
 
     let (mut num_chan, num_port) = init();
 
-    let start = time::precise_time_s();
+    let mut p = Some((num_chan, num_port));
+    let dur = Duration::span(|| {
+        let (mut num_chan, num_port) = p.take().unwrap();
 
-    // create the ring
-    let mut futures = Vec::new();
+        // create the ring
+        let mut futures = Vec::new();
 
-    for i in range(1u, num_tasks) {
-        //println!("spawning %?", i);
-        let (new_chan, num_port) = init();
-        let num_chan_2 = num_chan.clone();
-        let new_future = Future::spawn(proc() {
-            thread_ring(i, msg_per_task, num_chan_2, num_port)
-        });
-        futures.push(new_future);
-        num_chan = new_chan;
-    };
+        for i in range(1u, num_tasks) {
+            //println!("spawning %?", i);
+            let (new_chan, num_port) = init();
+            let num_chan_2 = num_chan.clone();
+            let new_future = Future::spawn(proc() {
+                thread_ring(i, msg_per_task, num_chan_2, num_port)
+            });
+            futures.push(new_future);
+            num_chan = new_chan;
+        };
 
-    // do our iteration
-    thread_ring(0, msg_per_task, num_chan, num_port);
+        // do our iteration
+        thread_ring(0, msg_per_task, num_chan, num_port);
 
-    // synchronize
-    for f in futures.iter_mut() {
-        f.get()
-    }
-
-    let stop = time::precise_time_s();
+        // synchronize
+        for f in futures.iter_mut() {
+            f.get()
+        }
+    });
 
     // all done, report stats.
     let num_msgs = num_tasks * msg_per_task;
-    let elapsed = (stop - start);
-    let rate = (num_msgs as f64) / elapsed;
+    let rate = (num_msgs as f64) / (dur.num_milliseconds() as f64);
 
-    println!("Sent {} messages in {} seconds", num_msgs, elapsed);
-    println!("  {} messages / second", rate);
-    println!("  {} μs / message", 1000000. / rate);
+    println!("Sent {} messages in {} ms", num_msgs, dur.num_milliseconds());
+    println!("  {} messages / second", rate / 1000.0);
+    println!("  {} μs / message", 1000000. / rate / 1000.0);
 }

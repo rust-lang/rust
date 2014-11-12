@@ -18,11 +18,10 @@
 // different scalability characteristics compared to the select
 // version.
 
-extern crate time;
-
 use std::comm;
 use std::os;
 use std::task;
+use std::time::Duration;
 use std::uint;
 
 fn move_out<T>(_x: T) {}
@@ -58,36 +57,39 @@ fn run(args: &[String]) {
     let size = from_str::<uint>(args[1].as_slice()).unwrap();
     let workers = from_str::<uint>(args[2].as_slice()).unwrap();
     let num_bytes = 100;
-    let start = time::precise_time_s();
-    let mut worker_results = Vec::new();
-    for _ in range(0u, workers) {
-        let to_child = to_child.clone();
-        worker_results.push(task::try_future(proc() {
-            for _ in range(0u, size / workers) {
-                //println!("worker {}: sending {} bytes", i, num_bytes);
-                to_child.send(bytes(num_bytes));
-            }
-            //println!("worker {} exiting", i);
-        }));
-    }
-    task::spawn(proc() {
-        server(&from_parent, &to_parent);
+    let mut result = None;
+    let mut p = Some((to_child, to_parent, from_parent));
+    let dur = Duration::span(|| {
+        let (to_child, to_parent, from_parent) = p.take().unwrap();
+        let mut worker_results = Vec::new();
+        for _ in range(0u, workers) {
+            let to_child = to_child.clone();
+            worker_results.push(task::try_future(proc() {
+                for _ in range(0u, size / workers) {
+                    //println!("worker {}: sending {} bytes", i, num_bytes);
+                    to_child.send(bytes(num_bytes));
+                }
+                //println!("worker {} exiting", i);
+            }));
+        }
+        task::spawn(proc() {
+            server(&from_parent, &to_parent);
+        });
+
+        for r in worker_results.into_iter() {
+            r.unwrap();
+        }
+
+        //println!("sending stop message");
+        to_child.send(stop);
+        move_out(to_child);
+        result = Some(from_child.recv());
     });
-
-    for r in worker_results.into_iter() {
-        r.unwrap();
-    }
-
-    //println!("sending stop message");
-    to_child.send(stop);
-    move_out(to_child);
-    let result = from_child.recv();
-    let end = time::precise_time_s();
-    let elapsed = end - start;
+    let result = result.unwrap();
     print!("Count is {}\n", result);
-    print!("Test took {} seconds\n", elapsed);
-    let thruput = ((size / workers * workers) as f64) / (elapsed as f64);
-    print!("Throughput={} per sec\n", thruput);
+    print!("Test took {} ms\n", dur.num_milliseconds());
+    let thruput = ((size / workers * workers) as f64) / (dur.num_milliseconds() as f64);
+    print!("Throughput={} per sec\n", thruput / 1000.0);
     assert_eq!(result, num_bytes * size);
 }
 

@@ -228,16 +228,16 @@ use util::fs;
 
 use std::c_str::ToCStr;
 use std::cmp;
+use std::collections::hash_map::{Occupied, Vacant};
+use std::collections::{HashMap, HashSet};
 use std::io::fs::PathExtensions;
 use std::io;
 use std::ptr;
 use std::slice;
 use std::string;
+use std::time::Duration;
 
-use std::collections::{HashMap, HashSet};
-use std::collections::hash_map::{Occupied, Vacant};
 use flate;
-use time;
 
 pub struct CrateMismatch {
     path: Path,
@@ -691,11 +691,13 @@ impl ArchiveMetadata {
 
 // Just a small wrapper to time how long reading metadata takes.
 fn get_metadata_section(is_osx: bool, filename: &Path) -> Result<MetadataBlob, String> {
-    let start = time::precise_time_ns();
-    let ret = get_metadata_section_imp(is_osx, filename);
+    let mut ret = None;
+    let dur = Duration::span(|| {
+        ret = Some(get_metadata_section_imp(is_osx, filename));
+    });
     info!("reading {} => {}ms", filename.filename_display(),
-           (time::precise_time_ns() - start) / 1000000);
-    return ret;
+          dur.num_milliseconds());
+    return ret.unwrap();;
 }
 
 fn get_metadata_section_imp(is_osx: bool, filename: &Path) -> Result<MetadataBlob, String> {

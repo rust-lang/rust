@@ -97,8 +97,6 @@ use syntax::visit::Visitor;
 use syntax::visit;
 use syntax::{ast, ast_util, ast_map};
 
-use time;
-
 local_data_key!(task_local_insn_key: RefCell<Vec<&'static str>>)
 
 pub fn with_insn_ctxt(blk: |&[&'static str]|) {
@@ -138,23 +136,16 @@ pub fn push_ctxt(s: &'static str) -> _InsnCtxt {
 pub struct StatRecorder<'a, 'tcx: 'a> {
     ccx: &'a CrateContext<'a, 'tcx>,
     name: Option<String>,
-    start: u64,
     istart: uint,
 }
 
 impl<'a, 'tcx> StatRecorder<'a, 'tcx> {
     pub fn new(ccx: &'a CrateContext<'a, 'tcx>, name: String)
                -> StatRecorder<'a, 'tcx> {
-        let start = if ccx.sess().trans_stats() {
-            time::precise_time_ns()
-        } else {
-            0
-        };
         let istart = ccx.stats().n_llvm_insns.get();
         StatRecorder {
             ccx: ccx,
             name: Some(name),
-            start: start,
             istart: istart,
         }
     }
@@ -164,11 +155,8 @@ impl<'a, 'tcx> StatRecorder<'a, 'tcx> {
 impl<'a, 'tcx> Drop for StatRecorder<'a, 'tcx> {
     fn drop(&mut self) {
         if self.ccx.sess().trans_stats() {
-            let end = time::precise_time_ns();
-            let elapsed = ((end - self.start) / 1_000_000) as uint;
             let iend = self.ccx.stats().n_llvm_insns.get();
             self.ccx.stats().fn_stats.borrow_mut().push((self.name.take().unwrap(),
-                                                       elapsed,
                                                        iend - self.istart));
             self.ccx.stats().n_fns.set(self.ccx.stats().n_fns.get() + 1);
             // Reset LLVM insn count to avoid compound costs.
@@ -3097,13 +3085,13 @@ pub fn trans_crate<'tcx>(analysis: CrateAnalysis<'tcx>)
         println!("n_inlines: {}", stats.n_inlines.get());
         println!("n_closures: {}", stats.n_closures.get());
         println!("fn stats:");
-        stats.fn_stats.borrow_mut().sort_by(|&(_, _, insns_a), &(_, _, insns_b)| {
+        stats.fn_stats.borrow_mut().sort_by(|&(_, insns_a), &(_, insns_b)| {
             insns_b.cmp(&insns_a)
         });
         for tuple in stats.fn_stats.borrow().iter() {
             match *tuple {
-                (ref name, ms, insns) => {
-                    println!("{} insns, {} ms, {}", insns, ms, *name);
+                (ref name, insns) => {
+                    println!("{} insns, {}", insns, *name);
                 }
             }
         }
