@@ -76,7 +76,7 @@
 //! The [`task`](task/index.html) module contains Rust's threading abstractions,
 //! while [`comm`](comm/index.html) contains the channel types for message
 //! passing. [`sync`](sync/index.html) contains further, primitive, shared
-//! memory types, including [`atomics`](sync/atomics/index.html).
+//! memory types, including [`atomic`](sync/atomic/index.html).
 //!
 //! Common types of I/O, including files, TCP, UDP, pipes, Unix domain sockets,
 //! timers, and process spawning, are defined in the [`io`](io/index.html) module.
