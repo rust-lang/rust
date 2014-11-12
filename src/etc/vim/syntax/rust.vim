@@ -97,7 +97,7 @@ syn keyword rustTrait FromIterator IntoIterator Extend ExactSize
 syn keyword rustTrait Iterator DoubleEndedIterator
 syn keyword rustTrait RandomAccessIterator CloneableIterator
 syn keyword rustTrait OrdIterator MutableDoubleEndedIterator
-syn keyword rustTrait NumCast Signed Int UnsignedInt Float
+syn keyword rustTrait NumCast Int SignedInt UnsignedInt Float
 syn keyword rustTrait FloatMath ToPrimitive FromPrimitive
 syn keyword rustTrait Box
 syn keyword rustTrait GenericPath Path PosixPath WindowsPath

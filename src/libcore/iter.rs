@@ -573,6 +573,8 @@ pub trait Iterator<A> {
     /// # Example
     ///
     /// ```rust
+    /// use core::num::SignedInt;
+    ///
     /// let xs = [-3i, 0, 1, 5, -10];
     /// assert_eq!(*xs.iter().max_by(|x| x.abs()).unwrap(), -10);
     /// ```
@@ -597,6 +599,8 @@ pub trait Iterator<A> {
     /// # Example
     ///
     /// ```rust
+    /// use core::num::SignedInt;
+    ///
     /// let xs = [-3i, 0, 1, 5, -10];
     /// assert_eq!(*xs.iter().min_by(|x| x.abs()).unwrap(), 0);
     /// ```

@@ -33,113 +33,6 @@ pub fn div_rem<T: Div<T, T> + Rem<T, T>>(x: T, y: T) -> (T, T) {
     (x / y, x % y)
 }
 
-/// A built-in signed number.
-pub trait Signed: Neg<Self> {
-    /// Computes the absolute value of `self`.
-    fn abs(self) -> Self;
-
-    /// Returns a number (either `-1`, `0` or `1`) representing sign of `self`.
-    fn signum(self) -> Self;
-
-    /// Returns `true` if `self` is a positive value.
-    fn is_positive(self) -> bool;
-
-    /// Returns `true` if `self` is a negative value.
-    fn is_negative(self) -> bool;
-}
-
-macro_rules! signed_int_impl {
-    ($T:ty) => {
-        impl Signed for $T {
-            /// Computes the absolute value. `Int::min_value()` will be returned
-            /// if the number is `Int::min_value()`.
-            #[inline]
-            fn abs(self) -> $T {
-                if self.is_negative() { -self } else { self }
-            }
-
-            /// # Returns
-            ///
-            /// - `0` if the number is zero
-            /// - `1` if the number is positive
-            /// - `-1` if the number is negative
-            #[inline]
-            fn signum(self) -> $T {
-                match self {
-                    n if n > 0 =>  1,
-                    0          =>  0,
-                    _          => -1,
-                }
-            }
-
-            /// Returns `true` if `self` is positive and `false` if the number
-            /// is zero or negative.
-            #[inline]
-            fn is_positive(self) -> bool { self > 0 }
-
-            /// Returns `true` if `self` is negative and `false` if the number
-            /// is zero or positive.
-            #[inline]
-            fn is_negative(self) -> bool { self < 0 }
-        }
-    }
-}
-
-signed_int_impl!(i8)
-signed_int_impl!(i16)
-signed_int_impl!(i32)
-signed_int_impl!(i64)
-signed_int_impl!(int)
-
-macro_rules! signed_float_impl {
-    ($T:ty, $fabs:path, $fcopysign:path) => {
-        impl Signed for $T {
-            /// Computes the absolute value. Returns `Float::nan()` if the
-            /// number is `Float::nan()`.
-            #[inline]
-            fn abs(self) -> $T {
-                unsafe { $fabs(self) }
-            }
-
-            /// # Returns
-            ///
-            /// - `1.0` if the number is positive, `+0.0` or `Float::infinity()`
-            /// - `-1.0` if the number is negative, `-0.0` or `Float::neg_infinity()`
-            /// - `Float::nan()` if the number is `Float::nan()`
-            #[inline]
-            fn signum(self) -> $T {
-                if self.is_nan() {
-                    Float::nan()
-                } else {
-                    unsafe { $fcopysign(1.0, self) }
-                }
-            }
-
-            /// Returns `true` if the number is positive, including `+0.0` and
-            /// `Float::infinity()`.
-            #[inline]
-            fn is_positive(self) -> bool {
-                self > 0.0 || (1.0 / self) == Float::infinity()
-            }
-
-            /// Returns `true` if the number is negative, including `-0.0` and
-            /// `Float::neg_infinity()`.
-            #[inline]
-            fn is_negative(self) -> bool {
-                self < 0.0 || (1.0 / self) == Float::neg_infinity()
-            }
-        }
-    };
-}
-
-signed_float_impl!(f32,
-    intrinsics::fabsf32,
-    intrinsics::copysignf32)
-
-signed_float_impl!(f64,
-    intrinsics::fabsf64,
-    intrinsics::copysignf64)
-
 /// Raises a `base` to the power of `exp`, using exponentiation by squaring.
 ///
 /// # Example
@@ -702,6 +595,63 @@ int_impl!(int = i64, u64, 64,
     intrinsics::i64_sub_with_overflow,
     intrinsics::i64_mul_with_overflow)
 
+/// A built-in two's complement integer.
+pub trait SignedInt
+    : Int
+    + Neg<Self>
+{
+    /// Computes the absolute value of `self`. `Int::min_value()` will be
+    /// returned if the number is `Int::min_value()`.
+    fn abs(self) -> Self;
+
+    /// Returns a number representing sign of `self`.
+    ///
+    /// - `0` if the number is zero
+    /// - `1` if the number is positive
+    /// - `-1` if the number is negative
+    fn signum(self) -> Self;
+
+    /// Returns `true` if `self` is positive and `false` if the number
+    /// is zero or negative.
+    fn is_positive(self) -> bool;
+
+    /// Returns `true` if `self` is negative and `false` if the number
+    /// is zero or positive.
+    fn is_negative(self) -> bool;
+}
+
+macro_rules! signed_int_impl {
+    ($T:ty) => {
+        impl SignedInt for $T {
+            #[inline]
+            fn abs(self) -> $T {
+                if self.is_negative() { -self } else { self }
+            }
+
+            #[inline]
+            fn signum(self) -> $T {
+                match self {
+                    n if n > 0 =>  1,
+                    0          =>  0,
+                    _          => -1,
+                }
+            }
+
+            #[inline]
+            fn is_positive(self) -> bool { self > 0 }
+
+            #[inline]
+            fn is_negative(self) -> bool { self < 0 }
+        }
+    }
+}
+
+signed_int_impl!(i8)
+signed_int_impl!(i16)
+signed_int_impl!(i32)
+signed_int_impl!(i64)
+signed_int_impl!(int)
+
 /// A built-in unsigned integer.
 pub trait UnsignedInt: Int {
     /// Returns `true` iff `self == 2^k` for some `k`.
@@ -1257,7 +1207,7 @@ pub trait Float
     + NumCast
     + PartialOrd
     + PartialEq
-    + Signed
+    + Neg<Self>
     + Add<Self,Self>
     + Sub<Self,Self>
     + Mul<Self,Self>
@@ -1326,6 +1276,22 @@ pub trait Float
     fn trunc(self) -> Self;
     /// Return the fractional part of a number.
     fn fract(self) -> Self;
+
+    /// Computes the absolute value of `self`. Returns `Float::nan()` if the
+    /// number is `Float::nan()`.
+    fn abs(self) -> Self;
+    /// Returns a number that represents the sign of `self`.
+    ///
+    /// - `1.0` if the number is positive, `+0.0` or `Float::infinity()`
+    /// - `-1.0` if the number is negative, `-0.0` or `Float::neg_infinity()`
+    /// - `Float::nan()` if the number is `Float::nan()`
+    fn signum(self) -> Self;
+    /// Returns `true` if `self` is positive, including `+0.0` and
+    /// `Float::infinity()`.
+    fn is_positive(self) -> bool;
+    /// Returns `true` if `self` is negative, including `-0.0` and
+    /// `Float::neg_infinity()`.
+    fn is_negative(self) -> bool;
 
     /// Fused multiply-add. Computes `(self * a) + b` with only one rounding
     /// error. This produces a more accurate result with better performance than
@@ -1494,14 +1460,6 @@ one_impl!(i64, 1i64)
 one_impl!(f32, 1.0f32)
 one_impl!(f64, 1.0f64)
 
-#[deprecated = "Use `Signed::abs`"]
-pub fn abs<T: Signed>(value: T) -> T {
-    value.abs()
-}
-#[deprecated = "Use `Signed::signum`"]
-pub fn signum<T: Signed>(value: T) -> T {
-    value.signum()
-}
 #[deprecated = "Use `UnsignedInt::next_power_of_two`"]
 pub fn next_power_of_two<T: UnsignedInt>(n: T) -> T {
     n.next_power_of_two()

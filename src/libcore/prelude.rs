@@ -51,7 +51,7 @@ pub use cmp::{Ordering, Less, Equal, Greater, Equiv};
 pub use iter::{FromIterator, Extend};
 pub use iter::{Iterator, DoubleEndedIterator, RandomAccessIterator, CloneableIterator};
 pub use iter::{OrdIterator, MutableDoubleEndedIterator, ExactSize};
-pub use num::{Signed, ToPrimitive, FromPrimitive};
+pub use num::{ToPrimitive, FromPrimitive};
 pub use option::{Option, Some, None};
 pub use ptr::RawPtr;
 pub use result::{Result, Ok, Err};

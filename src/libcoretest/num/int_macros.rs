@@ -15,7 +15,7 @@ macro_rules! int_module (($T:ty, $T_i:ident) => (
 mod tests {
     use core::$T_i::*;
     use core::int;
-    use core::num::Int;
+    use core::num::{Int, SignedInt};
     use num;
 
     #[test]
