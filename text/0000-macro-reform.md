@@ -96,6 +96,16 @@ imagine
 }
 ```
 
+or
+
+```rust
+macro atom {
+    ($name:tt) => fn expand(...) {
+        // ...
+    }
+}
+```
+
 though working out the details is far outside the scope of this RFC.
 
 We are free to change the AST and parsing after 1.0 as long as the old syntax
