@@ -140,7 +140,7 @@ impl Duration {
     pub fn span(f: ||) -> Duration {
         let before = super::precise_time_ns();
         f();
-        Duration::nanoseconds((before - super::precise_time_ns()) as i64)
+        Duration::nanoseconds((super::precise_time_ns() - before) as i64)
     }
 
     /// Returns the total number of whole weeks in the duration.
@@ -564,5 +564,12 @@ mod tests {
         // the format specifier should have no effect on `Duration`
         assert_eq!(format!("{:30}", Duration::days(1) + Duration::milliseconds(2345)),
                    "P1DT2.345S".to_string());
+    }
+
+    #[test]
+    fn span() {
+        use io::timer::sleep;
+        let dur = Duration::span(|| sleep(Duration::milliseconds(5)));
+        assert!(dur > Duration::milliseconds(1));
     }
 }
