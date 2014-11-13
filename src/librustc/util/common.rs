@@ -35,7 +35,7 @@ pub fn time<T, U>(do_it: bool, what: &str, u: U, f: |U| -> T) -> T {
     let rv = rv.unwrap();
 
     println!("{}time: {}.{:03} \t{}", "  ".repeat(old),
-             dur.num_seconds(), dur.num_milliseconds(), what);
+             dur.num_seconds(), dur.num_milliseconds() % 1000, what);
     depth.replace(Some(old));
 
     rv
