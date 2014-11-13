@@ -30,6 +30,16 @@ This RFC contains plans to do so.
 
 # Detailed design
 
+Skip ahead to
+
+* [`macro` items](#macro-items)
+* [`$crate`](#crate)
+* [Crate scope for macros](#crate-scope-for-macros)
+* [Item macro sugar](#item-macro-sugar)
+* [Macro re-export](#macro-re-export)
+* [Auto-load macros](#auto-load-macros)
+* [Unspecify order of procedural macro side effects](#unspecify-order-of-procedural-macro-side-effects)
+
 ## `macro` items
 
 Introduce a new keyword `macro`.  Use it for a new kind of item, a macro definition:
