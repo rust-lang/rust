@@ -62,7 +62,6 @@ def make_win_dist(dist_root, target_triple):
                     "libcomctl32.a",
                     "libcomdlg32.a",
                     "libcrypt32.a",
-                    "libctl3d32.a",
                     "libgdi32.a",
                     "libimagehlp.a",
                     "libiphlpapi.a",
