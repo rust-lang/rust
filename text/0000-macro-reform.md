@@ -404,9 +404,9 @@ for any references to the local crate.
 This proposal is edited by Keegan McAllister.  It has been refined through many
 engaging discussions with:
 
-* Brian Anderson, Lars Bergstrom, Nick Cameron, John Clements, Alex Crichton, Cathy Douglass, Steven Fackler, Manish Goregaokar, Dave Herman, Steve Klabnik, Felix S. Klock II, Niko Matsakis, Paul Stansifer, Sam Tobin-Hochstadt, Aaron Turon, Huon Wilson, Brendan Zabarauskas, Cameron Zwarich
+* Brian Anderson, Shachaf Ben-Kiki, Lars Bergstrom, Nick Cameron, John Clements, Alex Crichton, Cathy Douglass, Steven Fackler, Manish Goregaokar, Dave Herman, Steve Klabnik, Felix S. Klock II, Niko Matsakis, Matthew McPherrin, Paul Stansifer, Sam Tobin-Hochstadt, Aaron Turon, Huon Wilson, Brendan Zabarauskas, Cameron Zwarich
 * *GitHub*: `@bill-myers` `@blaenk` `@comex` `@glaebhoerl` `@Kimundi` `@mitchmindtree` `@mitsuhiko` `@P1Start` `@petrochenkov` `@skinner`
-* *Reddit*: `ippa` `Quxxy` `rime-frost` `Sinistersnare` `tejp`
+* *Reddit*: `ippa` `Mystor` `Quxxy` `rime-frost` `Sinistersnare` `tejp`
 * *IRC*: `bstrie` `ChrisMorgan` `cmr` `Earnestly` `eddyb` `tiffany`
 
 My apologies if I've forgotten you, used an un-preferred name, or accidentally
