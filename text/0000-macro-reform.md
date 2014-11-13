@@ -349,3 +349,16 @@ reform.  Two ways this could work out:
 Should we forbid `$crate` in non-`extern` macros?  It seems useless, however I
 think we should allow it anyway, to encourage the habit of writing `$crate::`
 for any references to the local crate.
+
+# Acknowledgements
+
+This proposal is edited by Keegan McAllister.  It has been refined through many
+engaging discussions with:
+
+* Brian Anderson, Lars Bergstrom, Nick Cameron, John Clements, Alex Crichton, Cathy Douglass, Steven Fackler, Manish Goregaokar, Dave Herman, Steve Klabnik, Felix S. Klock II, Niko Matsakis, Paul Stansifer, Sam Tobin-Hochstadt, Aaron Turon, Huon Wilson, Brendan Zabarauskas, Cameron Zwarich
+* *GitHub*: `@bill-myers` `@blaenk` `@comex` `@glaebhoerl` `@mitchmindtree` `@mitsuhiko` `@P1Start` `@petrochenkov` `@skinner`
+* *Reddit*: `ippa` `Quxxy` `rime-frost` `Sinistersnare` `tejp`
+* *IRC*: `bstrie` `ChrisMorgan` `cmr` `Earnestly` `eddyb` `tiffany`
+
+My apologies if I've forgotten you, used an un-preferred name, or accidentally
+categorized you as several different people.  Pull requests are welcome :)
