@@ -212,13 +212,14 @@ debugging_opts!(
         FLOWGRAPH_PRINT_LOANS,
         FLOWGRAPH_PRINT_MOVES,
         FLOWGRAPH_PRINT_ASSIGNS,
-        FLOWGRAPH_PRINT_ALL
+        FLOWGRAPH_PRINT_ALL,
+        PRINT_SYSROOT
     ]
     0
 )
 
 pub fn debugging_opts_map() -> Vec<(&'static str, &'static str, u64)> {
-    vec!(("verbose", "in general, enable more debug printouts", VERBOSE),
+    vec![("verbose", "in general, enable more debug printouts", VERBOSE),
      ("time-passes", "measure time of each rustc pass", TIME_PASSES),
      ("count-llvm-insns", "count where LLVM \
                            instrs originate", COUNT_LLVM_INSNS),
@@ -256,7 +257,9 @@ pub fn debugging_opts_map() -> Vec<(&'static str, &'static str, u64)> {
      ("flowgraph-print-assigns", "Include assignment analysis data in \
                        --pretty flowgraph output", FLOWGRAPH_PRINT_ASSIGNS),
      ("flowgraph-print-all", "Include all dataflow analysis data in \
-                       --pretty flowgraph output", FLOWGRAPH_PRINT_ALL))
+                       --pretty flowgraph output", FLOWGRAPH_PRINT_ALL),
+     ("print-sysroot", "Print the sysroot as used by this rustc invocation",
+      PRINT_SYSROOT)]
 }
 
 #[deriving(Clone)]
