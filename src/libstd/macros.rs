@@ -211,7 +211,15 @@ macro_rules! debug_assert_eq(
 /// ```
 #[macro_export]
 macro_rules! unreachable(
-    () => (panic!("internal error: entered unreachable code"))
+    () => ({
+        panic!("internal error: entered unreachable code")
+    });
+    ($msg:expr) => ({
+        unreachable!("{}", $msg)
+    });
+    ($fmt:expr, $($arg:tt)*) => ({
+        panic!(concat!("internal error: entered unreachable code: ", $fmt), $($arg)*)
+    });
 )
 
 /// A standardised placeholder for marking unfinished code. It panics with the
