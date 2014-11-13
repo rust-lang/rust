@@ -113,6 +113,10 @@ enables macro re-export (see below).  It is [implemented and
 tested](https://github.com/kmcallister/rust/commits/macro-reexport) but needs a
 rebase.
 
+Add a lint to warn in cases where an `extern` macro has paths that are not
+absolute-with-crate or `$crate`-relative.  This will have some (hopefully rare)
+false positives, and is not fully fleshed out yet.
+
 ## Crate scope for macros
 
 Instead of a single global namespace for macro definitions, we now have one
