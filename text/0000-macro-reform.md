@@ -65,8 +65,7 @@ There are two scope qualifiers for `macro`:
 * `pub` — this macro "escapes" up the module hierarchy to the crate root, so it
   can be used anywhere in this crate after its definition (according to a
   depth-first traversal).  This is like putting `#[macro_escape]` on the module
-  and all its ancestors, but applies *only* to the macro with the `#[visible]`
-  attribute.
+  and all its ancestors, but applies *only* to the macro with `pub`.
 
 * `extern` — this macro can be imported by other crates, i.e. the same meaning
   as `#[macro_export]` today
