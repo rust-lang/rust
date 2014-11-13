@@ -75,6 +75,13 @@ fn run_compiler(args: &[String]) {
                 describe_lints(&ls, false);
                 return;
             }
+
+            let sess = build_session(sopts, None, descriptions);
+            if sess.debugging_opt(config::PRINT_SYSROOT) {
+                println!("{}", sess.sysroot().display());
+                return;
+            }
+
             early_error("no input filename given");
         }
         1u => {
