@@ -37,7 +37,7 @@ Skip ahead to
 * [Crate scope for macros](#crate-scope-for-macros)
 * [Item macro sugar](#item-macro-sugar)
 * [Macro re-export](#macro-re-export)
-* [Auto-load macros](#auto-load-macros)
+* [`#[plugin]` attribute](#plugin-attribute)
 * [Unspecify order of procedural macro side effects](#unspecify-order-of-procedural-macro-side-effects)
 
 ## `macro` items
@@ -316,7 +316,7 @@ as long as the module `std::vec` is interface-compatible with
 (Actually the current libstd `vec!` is completely different for efficiency, but
 it's just an example.)
 
-## Auto-load macros
+## `#[plugin]` attribute
 
 Since macros are now crate-scoped, we can load macros from every `extern crate`
 without a special attribute.  (Probably we should exclude `extern crate`s that
@@ -328,10 +328,16 @@ only controls whether to search for and run a plugin registrar function.  The
 plugin itself will decide whether it's to be linked at runtime, by calling a
 `Registry` method.
 
-In the future I would like to support `#[plugin(... any metas ...)]` where
-these "arguments" are available in the registrar and can be used to configure
-how the plugin works.  This RFC does not cover that feature; I just want to
-make sure our design is compatible.
+`#[plugin]` takes an optional "arguments list" of the form
+
+```rust
+#[plugin(foo="bar", ... any metas ...)]
+extern crate myplugin;
+```
+
+rustc itself will not interpret these attribute [meta
+items](http://doc.rust-lang.org/syntax/ast/enum.MetaItem_.html), but will make
+them available to the plugin through a `Registry` method.
 
 ## Unspecify order of procedural macro side effects
 
