@@ -36,7 +36,7 @@
 # target.
 ################################################################################
 NATIVE_LIBS := rust_builtin hoedown morestack miniz context_switch \
-		rustrt_native rust_test_helpers
+		rustrt_native rust_test_helpers rust_malloc
 
 # $(1) is the target triple
 define NATIVE_LIBRARIES
@@ -58,6 +58,7 @@ NATIVE_DEPS_rustrt_native_$(1) := \
 			arch/$$(HOST_$(1))/record_sp.S
 NATIVE_DEPS_rust_test_helpers_$(1) := rust_test_helpers.c
 NATIVE_DEPS_morestack_$(1) := arch/$$(HOST_$(1))/morestack.S
+NATIVE_DEPS_rust_malloc_$(1) := rust_malloc.c
 NATIVE_DEPS_context_switch_$(1) := \
 			arch/$$(HOST_$(1))/_context.S
 

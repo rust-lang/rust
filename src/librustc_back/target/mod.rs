@@ -160,6 +160,8 @@ pub struct TargetOptions {
     /// advantage of ASLR, as otherwise the functions in the executable are not randomized and can
     /// be used during an exploit of a vulnerability in any code.
     pub position_independent_executables: bool,
+    /// The platform allocator can be replaced via weak symbols
+    pub weak_malloc: bool
 }
 
 impl Default for TargetOptions {
@@ -191,6 +193,7 @@ impl Default for TargetOptions {
             has_rpath: false,
             no_compiler_rt: false,
             position_independent_executables: false,
+            weak_malloc: false
         }
     }
 }

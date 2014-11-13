@@ -885,6 +885,19 @@ fn link_args(cmd: &mut Command,
         }
     }
 
+    if !dylib && t.options.weak_malloc &&
+        sess.opts.cg.replace_allocator.unwrap_or(sess.use_std.get()) {
+        if t.options.is_like_osx {
+            let rust_malloc = lib_path.join("librust_malloc.a");
+
+            let mut v = b"-Wl,-force_load,".to_vec();
+            v.push_all(rust_malloc.as_vec());
+            cmd.arg(v.as_slice());
+        } else {
+            cmd.args(["-Wl,--whole-archive", "-lrust_malloc", "-Wl,--no-whole-archive"]);
+        }
+    }
+
     // When linking a dynamic library, we put the metadata into a section of the
     // executable. This metadata is in a separate object file from the main
     // object file, so we link that in here.

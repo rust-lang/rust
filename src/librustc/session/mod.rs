@@ -50,6 +50,7 @@ pub struct Session {
     pub crate_types: RefCell<Vec<config::CrateType>>,
     pub crate_metadata: RefCell<Vec<String>>,
     pub features: RefCell<feature_gate::Features>,
+    pub use_std: Cell<bool>,
 
     /// The maximum recursion limit for potentially infinitely recursive
     /// operations such as auto-dereference and monomorphization.
@@ -252,6 +253,7 @@ pub fn build_session_(sopts: config::Options,
         crate_types: RefCell::new(Vec::new()),
         crate_metadata: RefCell::new(Vec::new()),
         features: RefCell::new(feature_gate::Features::new()),
+        use_std: Cell::new(false),
         recursion_limit: Cell::new(64),
     };
 
