@@ -165,6 +165,9 @@ mod inheritance {
         stable_mod::experimental(); //~ ERROR use of experimental item
         stable_mod::stable();
 
+        unstable_mod::experimental(); //~ ERROR use of experimental item
+        unstable_mod::unstable(); //~ ERROR use of unstable item
+
         experimental_mod::experimental(); //~ ERROR use of experimental item
         experimental_mod::stable();
 

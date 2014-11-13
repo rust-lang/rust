@@ -17,8 +17,7 @@ use syntax::{attr, visit};
 use syntax::ast;
 use syntax::ast::{Attribute, Block, Crate, DefId, FnDecl, NodeId, Variant};
 use syntax::ast::{Item, RequiredMethod, ProvidedMethod, TraitItem};
-use syntax::ast::{TypeMethod, Method, Generics, StructDef, StructField};
-use syntax::ast::{Ident, TypeTraitItem};
+use syntax::ast::{TypeMethod, Method, Generics, StructField, TypeTraitItem};
 use syntax::ast_util::is_local;
 use syntax::attr::Stability;
 use syntax::visit::{FnKind, FkMethod, Visitor};
@@ -48,9 +47,15 @@ impl Annotator {
         match attr::find_stability(attrs.as_slice()) {
             Some(stab) => {
                 self.index.local.insert(id, stab.clone());
-                let parent = replace(&mut self.parent, Some(stab));
-                f(self);
-                self.parent = parent;
+
+                // Don't inherit #[stable]
+                if stab.level != attr::Stable {
+                    let parent = replace(&mut self.parent, Some(stab));
+                    f(self);
+                    self.parent = parent;
+                } else {
+                    f(self);
+                }
             }
             None => {
                 self.parent.clone().map(|stab| self.index.local.insert(id, stab));
@@ -63,6 +68,15 @@ impl Annotator {
 impl<'v> Visitor<'v> for Annotator {
     fn visit_item(&mut self, i: &Item) {
         self.annotate(i.id, &i.attrs, |v| visit::walk_item(v, i));
+
+        match i.node {
+            ast::ItemStruct(ref sd, _) => {
+                sd.ctor_id.map(|id| {
+                    self.annotate(id, &i.attrs, |_| {})
+                });
+            }
+            _ => {}
+        }
     }
 
     fn visit_fn(&mut self, fk: FnKind<'v>, fd: &'v FnDecl,
@@ -93,13 +107,6 @@ impl<'v> Visitor<'v> for Annotator {
 
     fn visit_variant(&mut self, var: &Variant, g: &'v Generics) {
         self.annotate(var.node.id, &var.node.attrs, |v| visit::walk_variant(v, var, g))
-    }
-
-    fn visit_struct_def(&mut self, s: &StructDef, _: Ident, _: &Generics, _: NodeId) {
-        match s.ctor_id {
-            Some(id) => self.annotate(id, &vec![], |v| visit::walk_struct_def(v, s)),
-            None => visit::walk_struct_def(self, s)
-        }
     }
 
     fn visit_struct_field(&mut self, s: &StructField) {
