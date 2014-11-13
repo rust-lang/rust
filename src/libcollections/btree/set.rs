@@ -15,6 +15,7 @@ use core::prelude::*;
 
 use btree_map::{BTreeMap, Keys, MoveEntries};
 use std::hash::Hash;
+use core::borrow::BorrowFrom;
 use core::default::Default;
 use core::{iter, fmt};
 use core::iter::Peekable;
@@ -167,6 +168,10 @@ impl<T: Ord> BTreeSet<T> {
 
     /// Returns `true` if the set contains a value.
     ///
+    /// The value may be any borrowed form of the set's value type,
+    /// but the ordering on the borrowed form *must* match the
+    /// ordering on the value type.
+    ///
     /// # Example
     ///
     /// ```
@@ -177,7 +182,7 @@ impl<T: Ord> BTreeSet<T> {
     /// assert_eq!(set.contains(&4), false);
     /// ```
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
-    pub fn contains(&self, value: &T) -> bool {
+    pub fn contains<Sized? Q>(&self, value: &Q) -> bool where Q: BorrowFrom<T> + Ord {
         self.map.contains_key(value)
     }
 
@@ -291,6 +296,10 @@ impl<T: Ord> BTreeSet<T> {
     /// Removes a value from the set. Returns `true` if the value was
     /// present in the set.
     ///
+    /// The value may be any borrowed form of the set's value type,
+    /// but the ordering on the borrowed form *must* match the
+    /// ordering on the value type.
+    ///
     /// # Example
     ///
     /// ```
@@ -303,7 +312,7 @@ impl<T: Ord> BTreeSet<T> {
     /// assert_eq!(set.remove(&2), false);
     /// ```
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
-    pub fn remove(&mut self, value: &T) -> bool {
+    pub fn remove<Sized? Q>(&mut self, value: &Q) -> bool where Q: BorrowFrom<T> + Ord {
         self.map.remove(value).is_some()
     }
 }
