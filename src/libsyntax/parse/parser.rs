@@ -2415,9 +2415,16 @@ impl<'a> Parser<'a> {
                             e = self.mk_expr(lo, hi, nd);
                         }
                         _ => {
+                            if !tys.is_empty() {
+                                let last_span = self.last_span;
+                                self.span_err(last_span,
+                                              "field expressions may not \
+                                               have type parameters");
+                            }
+
                             let id = spanned(dot, hi, i);
                             let field = self.mk_field(e, id, tys);
-                            e = self.mk_expr(lo, hi, field)
+                            e = self.mk_expr(lo, hi, field);
                         }
                     }
                   }
