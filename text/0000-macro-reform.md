@@ -166,6 +166,79 @@ the result of invoking `declare_lint!`.
 Procedural macros need their own way to manipulate the expansion context, but
 that's an unstable internal API, so it's outside the scope of this RFC.
 
+## Item macro sugar
+
+An item defines one name in the current module, and can have "adjective"
+qualifiers such as `pub`, `extern`, etc.  We extend macro invocation in item
+position to reflect this form.  The new invocation syntax is
+
+```rust
+<quals...> foo! <ident> {
+    <body...>
+}
+```
+
+where `<quals...>` is a sequence of zero or more keywords from the set `pub`
+`priv` `extern` `unsafe` `const` `static` `box` `ref` `mut`.  This list is
+pretty arbitrary but can be expanded later.  For now it only includes keywords
+that have existing meaning(s) in Rust, which should keep things somewhat under
+control.
+
+This form of item macro is a bit like defining your own keyword that can take
+the place of `fn`, `struct`, etc.
+
+We keep the existing syntax for invoking macros in item position, and desugar
+the above syntax to it, as
+
+```rust
+foo!(<quals...> : <ident> { <body...> })
+```
+
+This extends the existing `IdentTT` macro form and makes it available to
+non-procedural macros, while reducing special cases within the compiler.
+
+An item macro invocation in either the sugared or unsugared form may expand to
+zero or more items.
+
+Item macro sugar is an integral part of macro reform because it's needed to
+make `pub` and `extern` work with macro-defining macros.  For example
+
+```rust
+macro mega_macro {
+    ($($qual:ident)* : $name:ident $body:tt) => (
+        $($qual)* macro $name {
+            // ...
+        }
+    )
+}
+```
+
+can be invoked as
+
+```rust
+pub extern mega_macro! foo {
+    (bar) => (3u)
+}
+```
+
+Here `mega_macro!` takes the place of the built-in `macro` keyword.
+
+The applications go beyond macro-defining macros.  For example, [this macro in
+rustc](https://github.com/rust-lang/rust/blob/221fc1e3cdcc208e1bb7debcc2de27d47c847747/src/librustc/lint/mod.rs#L83-L95)
+could change to support invocations like
+
+```rust
+lint! UNUSED_ATTRIBUTES {
+    Warn, "detects attributes that were not used by the compiler"
+}
+
+pub lint! PATH_STATEMENTS {
+    Warn, "path statements with no effect"
+}
+```
+
+which is considerably nicer than the current syntax.
+
 ## Macro re-export
 
 With `$crate` we can easily re-export macros that were imported from another
@@ -255,29 +328,3 @@ reform.  Two ways this could work out:
 Should we forbid `$crate` in non-`extern` macros?  It seems useless, however I
 think we should allow it anyway, to encourage the habit of writing `$crate::`
 for any references to the local crate.
-
-With `macro_rules!` gone, do we eliminate `IdentTT`-style macro syntax? There
-are some out-of-tree users.  Maybe macros in item position should automatically
-look for an identifier, desugaring an invocation like
-
-```rust
-foo! name {
-    ...
-}
-```
-
-into
-
-```rust
-foo! { name {
-    ...
-} }
-```
-
-This is appropriate in item position because every non-macro item defines one
-name.  However macros can expand to multiple items, so we should keep both
-forms.
-
-This would make the syntax accessible from non-procedural macros, and would cut
-down on special cases elsewhere in the compiler.  This change would be a
-separate RFC though.
