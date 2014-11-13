@@ -99,7 +99,7 @@ imagine
 though working out the details is far outside the scope of this RFC.
 
 We are free to change the AST and parsing after 1.0 as long as the old syntax
-still works.  So we could have a separate enum varient for procedural macros
+still works.  So we could have a separate enum variant for procedural macros
 parsed as function decls.
 
 ## `$crate`
@@ -312,7 +312,7 @@ name resolution problem after 1.0.
 
 This is big churn on a major feature, not long before 1.0.
 
-We can ship improved versions of `macro_rules!` in a back-compat way (in
+We can ship improved versions of `macro_rules!` in a back-compatible way (in
 theory; I would like to smoke test this idea before 1.0).  So we could defer
 much of this reform until after 1.0.  The main reason not to is macro
 import/export.  Right now every macro you import will be expanded using your
