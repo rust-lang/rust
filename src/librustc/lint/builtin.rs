@@ -115,7 +115,7 @@ declare_lint!(UNUSED_COMPARISONS, Warn,
 declare_lint!(OVERFLOWING_LITERALS, Warn,
               "literal out of range for its type")
 
-declare_lint!(EXCEEDING_BITSHIFTS, Allow,
+declare_lint!(EXCEEDING_BITSHIFTS, Deny,
               "shift exceeds the type's number of bits")
 
 pub struct TypeLimits {
