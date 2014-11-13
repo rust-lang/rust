@@ -266,6 +266,15 @@ pub lint! PATH_STATEMENTS {
 ```
 
 which is considerably nicer than the current syntax.
+[`lazy-static.rs`](https://github.com/Kimundi/lazy-static.rs) could support
+syntax like
+
+```rust
+pub lazy_static! LOG {
+   : Mutex<Vec<Event>>
+   = Mutex::new(Vec::with_capacity(50_000))
+}
+```
 
 ## Macro re-export
 
@@ -380,7 +389,7 @@ This proposal is edited by Keegan McAllister.  It has been refined through many
 engaging discussions with:
 
 * Brian Anderson, Lars Bergstrom, Nick Cameron, John Clements, Alex Crichton, Cathy Douglass, Steven Fackler, Manish Goregaokar, Dave Herman, Steve Klabnik, Felix S. Klock II, Niko Matsakis, Paul Stansifer, Sam Tobin-Hochstadt, Aaron Turon, Huon Wilson, Brendan Zabarauskas, Cameron Zwarich
-* *GitHub*: `@bill-myers` `@blaenk` `@comex` `@glaebhoerl` `@mitchmindtree` `@mitsuhiko` `@P1Start` `@petrochenkov` `@skinner`
+* *GitHub*: `@bill-myers` `@blaenk` `@comex` `@glaebhoerl` `@Kimundi` `@mitchmindtree` `@mitsuhiko` `@P1Start` `@petrochenkov` `@skinner`
 * *Reddit*: `ippa` `Quxxy` `rime-frost` `Sinistersnare` `tejp`
 * *IRC*: `bstrie` `ChrisMorgan` `cmr` `Earnestly` `eddyb` `tiffany`
 
