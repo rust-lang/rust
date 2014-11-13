@@ -359,7 +359,8 @@ impl FromStr for Duration {
     /// Parse a `Duration` from a string.
     ///
     /// Durations are represented by the format ±P[n]DT[n]H[n]M[n]S, where [n] is a positive decimal
-    /// number (last one possibly using a comma), and the remaining characters are case-insensitive.
+    /// number (last one possibly using either a comma or a full stop), and the remaining characters
+    /// are case-insensitive.
     ///
     /// # Examples
     ///
@@ -456,7 +457,8 @@ impl FromStr for Duration {
                     minutes = value;
                     rem
                 },
-                (Some(c), rem) if (c == '.') && seconds.is_none() && nanos.is_none() => {
+                (Some(c), rem) if (c == '.' || c == ',')
+                                            && seconds.is_none() && nanos.is_none() => {
                     seconds = value;
                     rem
                 },
@@ -762,6 +764,8 @@ mod tests {
                                             Some(Duration::nanoseconds(3725000000005)));
 
         assert_eq!(from_str::<Duration>("-P106751991167DT25975.808S"), Some(MIN));
+        assert_eq!(from_str::<Duration>("-P106751991167DT25975,808S"), Some(MIN));
         assert_eq!(from_str::<Duration>("P106751991167DT25975.807S"), Some(MAX));
+        assert_eq!(from_str::<Duration>("P106751991167DT25975,807S"), Some(MAX));
     }
 }
