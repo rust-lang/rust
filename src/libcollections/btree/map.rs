@@ -21,6 +21,7 @@ use core::prelude::*;
 
 use self::StackOp::*;
 use super::node::*;
+use core::borrow::BorrowFrom;
 use std::hash::{Writer, Hash};
 use core::default::Default;
 use core::{iter, fmt, mem};
@@ -184,6 +185,9 @@ impl<K: Ord, V> BTreeMap<K, V> {
 
     /// Returns a reference to the value corresponding to the key.
     ///
+    /// The key may be any borrowed form of the map's key type, but the ordering
+    /// on the borrowed form *must* match the ordering on the key type.
+    ///
     /// # Example
     ///
     /// ```
@@ -195,7 +199,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
     /// assert_eq!(map.get(&2), None);
     /// ```
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
-    pub fn get(&self, key: &K) -> Option<&V> {
+    pub fn get<Sized? Q>(&self, key: &Q) -> Option<&V> where Q: BorrowFrom<K> + Ord {
         let mut cur_node = &self.root;
         loop {
             match cur_node.search(key) {
@@ -213,6 +217,9 @@ impl<K: Ord, V> BTreeMap<K, V> {
 
     /// Returns true if the map contains a value for the specified key.
     ///
+    /// The key may be any borrowed form of the map's key type, but the ordering
+    /// on the borrowed form *must* match the ordering on the key type.
+    ///
     /// # Example
     ///
     /// ```
@@ -224,7 +231,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
     /// assert_eq!(map.contains_key(&2), false);
     /// ```
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
-    pub fn contains_key(&self, key: &K) -> bool {
+    pub fn contains_key<Sized? Q>(&self, key: &Q) -> bool where Q: BorrowFrom<K> + Ord {
         self.get(key).is_some()
     }
 
@@ -235,6 +242,9 @@ impl<K: Ord, V> BTreeMap<K, V> {
     }
 
     /// Returns a mutable reference to the value corresponding to the key.
+    ///
+    /// The key may be any borrowed form of the map's key type, but the ordering
+    /// on the borrowed form *must* match the ordering on the key type.
     ///
     /// # Example
     ///
@@ -251,7 +261,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
     /// ```
     // See `get` for implementation notes, this is basically a copy-paste with mut's added
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
-    pub fn get_mut(&mut self, key: &K) -> Option<&mut V> {
+    pub fn get_mut<Sized? Q>(&mut self, key: &Q) -> Option<&mut V> where Q: BorrowFrom<K> + Ord {
         // temp_node is a Borrowck hack for having a mutable value outlive a loop iteration
         let mut temp_node = &mut self.root;
         loop {
@@ -410,6 +420,9 @@ impl<K: Ord, V> BTreeMap<K, V> {
     /// Removes a key from the map, returning the value at the key if the key
     /// was previously in the map.
     ///
+    /// The key may be any borrowed form of the map's key type, but the ordering
+    /// on the borrowed form *must* match the ordering on the key type.
+    ///
     /// # Example
     ///
     /// ```
@@ -421,7 +434,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
     /// assert_eq!(map.remove(&1), None);
     /// ```
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
-    pub fn remove(&mut self, key: &K) -> Option<V> {
+    pub fn remove<Sized? Q>(&mut self, key: &Q) -> Option<V> where Q: BorrowFrom<K> + Ord {
         // See `swap` for a more thorough description of the stuff going on in here
         let mut stack = stack::PartialSearchStack::new(self);
         loop {
@@ -790,14 +803,18 @@ impl<K: Show, V: Show> Show for BTreeMap<K, V> {
     }
 }
 
-impl<K: Ord, V> Index<K, V> for BTreeMap<K, V> {
-    fn index(&self, key: &K) -> &V {
+impl<K: Ord, Sized? Q, V> Index<Q, V> for BTreeMap<K, V>
+    where Q: BorrowFrom<K> + Ord
+{
+    fn index(&self, key: &Q) -> &V {
         self.get(key).expect("no entry found for key")
     }
 }
 
-impl<K: Ord, V> IndexMut<K, V> for BTreeMap<K, V> {
-    fn index_mut(&mut self, key: &K) -> &mut V {
+impl<K: Ord, Sized? Q, V> IndexMut<Q, V> for BTreeMap<K, V>
+    where Q: BorrowFrom<K> + Ord
+{
+    fn index_mut(&mut self, key: &Q) -> &mut V {
         self.get_mut(key).expect("no entry found for key")
     }
 }
