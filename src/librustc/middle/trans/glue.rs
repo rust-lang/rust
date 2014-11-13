@@ -528,8 +528,8 @@ fn declare_generic_glue(ccx: &CrateContext, t: ty::t, llfnty: Type,
 fn make_generic_glue(ccx: &CrateContext,
                      t: ty::t,
                      llfn: ValueRef,
-                     helper: <'blk, 'tcx> |Block<'blk, 'tcx>, ValueRef, ty::t|
-                                           -> Block<'blk, 'tcx>,
+                     helper: for<'blk, 'tcx> |Block<'blk, 'tcx>, ValueRef, ty::t|
+                                              -> Block<'blk, 'tcx>,
                      name: &str)
                      -> ValueRef {
     let _icx = push_ctxt("make_generic_glue");

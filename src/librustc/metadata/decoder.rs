@@ -630,12 +630,12 @@ pub fn get_item_path(cdata: Cmd, id: ast::NodeId) -> Vec<ast_map::PathElem> {
     item_path(lookup_item(id, cdata.data()))
 }
 
-pub type DecodeInlinedItem<'a> = <'tcx> |cdata: Cmd,
-                                         tcx: &ty::ctxt<'tcx>,
-                                         path: Vec<ast_map::PathElem>,
-                                         par_doc: rbml::Doc|: 'a
-                                         -> Result<&'tcx ast::InlinedItem,
-                                                   Vec<ast_map::PathElem>>;
+pub type DecodeInlinedItem<'a> = for<'tcx> |cdata: Cmd,
+                                            tcx: &ty::ctxt<'tcx>,
+                                            path: Vec<ast_map::PathElem>,
+                                            par_doc: rbml::Doc|: 'a
+                                            -> Result<&'tcx ast::InlinedItem,
+                                                      Vec<ast_map::PathElem>>;
 
 pub fn maybe_get_item_ast<'tcx>(cdata: Cmd, tcx: &ty::ctxt<'tcx>, id: ast::NodeId,
                                 decode_inlined_item: DecodeInlinedItem)
