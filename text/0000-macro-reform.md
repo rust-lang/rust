@@ -180,6 +180,20 @@ the result of invoking `declare_lint!`.
 Procedural macros need their own way to manipulate the expansion context, but
 that's an unstable internal API, so it's outside the scope of this RFC.
 
+In the long run,
+
+```rust
+use macro std::vec;
+```
+
+may end up as a deprecated synonym for
+
+```rust
+use std::vec!;
+```
+
+but maintaining this synonym does not seem like a large burden.
+
 ## Item macro sugar
 
 An item defines one name in the current module, and can have "adjective"
