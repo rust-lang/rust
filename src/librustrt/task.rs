@@ -27,7 +27,6 @@ use core::prelude::{drop};
 
 use bookkeeping;
 use mutex::NativeMutex;
-use local_data;
 use local::Local;
 use thread::{mod, Thread};
 use stack;
@@ -40,7 +39,6 @@ use collections::str::SendStr;
 /// This structure is currently undergoing major changes, and is
 /// likely to be move/be merged with a `Thread` structure.
 pub struct Task {
-    pub storage: LocalStorage,
     pub unwinder: Unwinder,
     pub death: Death,
     pub name: Option<SendStr>,
@@ -83,8 +81,6 @@ pub struct TaskOpts {
 /// children tasks complete, recommend using a result future.
 pub type Result = ::core::result::Result<(), Box<Any + Send>>;
 
-pub struct LocalStorage(pub Option<local_data::Map>);
-
 /// A handle to a blocked task. Usually this means having the Box<Task>
 /// pointer by ownership, but if the task is killable, a killer can steal it
 /// at any time.
@@ -107,7 +103,6 @@ impl Task {
     /// Creates a new uninitialized task.
     pub fn new(stack_bounds: Option<(uint, uint)>, stack_guard: Option<uint>) -> Task {
         Task {
-            storage: LocalStorage(None),
             unwinder: Unwinder::new(),
             death: Death::new(),
             state: New,
@@ -230,54 +225,11 @@ impl Task {
     /// This function consumes ownership of the task, deallocating it once it's
     /// done being processed. It is assumed that TLD and the local heap have
     /// already been destroyed and/or annihilated.
-    fn cleanup(self: Box<Task>, result: Result) -> Box<Task> {
-        // The first thing to do when cleaning up is to deallocate our local
-        // resources, such as TLD.
-        //
-        // FIXME: there are a number of problems with this code
-        //
-        // 1. If any TLD object fails destruction, then all of TLD will leak.
-        //    This appears to be a consequence of #14875.
-        //
-        // 2. Setting a TLD key while destroying TLD will abort the runtime #14807.
-        //
-        // 3. The order of destruction of TLD matters, but either way is
-        //    susceptible to leaks (see 2) #8302.
-        //
-        // That being said, there are a few upshots to this code
-        //
-        // 1. If TLD destruction fails, heap destruction will be attempted.
-        //    There is a test for this at fail-during-tld-destroy.rs.
-        //
-        // 2. One failure in destruction is tolerable, so long as the task
-        //    didn't originally panic while it was running.
-        //
-        // And with all that in mind, we attempt to clean things up!
-        let mut task = self.run(|| {
-            let mut task = Local::borrow(None::<Task>);
-            let tld = {
-                let &LocalStorage(ref mut optmap) = &mut task.storage;
-                optmap.take()
-            };
-            drop(task);
-
-            // First, destroy task-local storage. This may run user dtors.
-            drop(tld);
-        });
-
-        // If the above `run` block panicked, then it must be the case that the
-        // task had previously succeeded. This also means that the code below
-        // was recursively run via the `run` method invoking this method. In
-        // this case, we just make sure the world is as we thought, and return.
-        if task.is_destroyed() {
-            rtassert!(result.is_ok())
-            return task
-        }
-
+    fn cleanup(mut self: Box<Task>, result: Result) -> Box<Task> {
         // After taking care of the data above, we need to transmit the result
         // of this task.
-        let what_to_do = task.death.on_exit.take();
-        Local::put(task);
+        let what_to_do = self.death.on_exit.take();
+        Local::put(self);
 
         // FIXME: this is running in a seriously constrained context. If this
         //        allocates TLD then it will likely abort the runtime. Similarly,
@@ -548,16 +500,6 @@ mod test {
     use std::prelude::*;
     use std::task;
     use unwind;
-
-    #[test]
-    fn tls() {
-        local_data_key!(key: String)
-        key.replace(Some("data".to_string()));
-        assert_eq!(key.get().unwrap().as_slice(), "data");
-        local_data_key!(key2: String)
-        key2.replace(Some("data".to_string()));
-        assert_eq!(key2.get().unwrap().as_slice(), "data");
-    }
 
     #[test]
     fn unwind() {

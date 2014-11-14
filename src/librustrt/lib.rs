@@ -52,7 +52,6 @@ pub mod bookkeeping;
 pub mod c_str;
 pub mod exclusive;
 pub mod local;
-pub mod local_data;
 pub mod mutex;
 pub mod stack;
 pub mod task;
