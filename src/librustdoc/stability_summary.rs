@@ -15,7 +15,6 @@
 
 use std::ops::Add;
 use std::num::Zero;
-use std::iter::AdditiveIterator;
 
 use syntax::attr::{Deprecated, Experimental, Unstable, Stable, Frozen, Locked};
 use syntax::ast::Public;
@@ -152,14 +151,14 @@ fn summarize_item(item: &Item) -> (Counts, Option<ModuleSummary>) {
             let subcounts = subitems.iter().filter(|i| visible(*i))
                                            .map(summarize_item)
                                            .map(|s| s.val0())
-                                           .sum(Counts::zero());
+                                           .fold(Counts::zero(), |acc, x| acc + x);
             (item_counts + subcounts, None)
         }
         // `pub` automatically
         EnumItem(Enum { variants: ref subitems, .. }) => {
             let subcounts = subitems.iter().map(summarize_item)
                                            .map(|s| s.val0())
-                                           .sum(Counts::zero());
+                                           .fold(Counts::zero(), |acc, x| acc + x);
             (item_counts + subcounts, None)
         }
         TraitItem(Trait {
@@ -177,7 +176,7 @@ fn summarize_item(item: &Item) -> (Counts, Option<ModuleSummary>) {
                                        .map(extract_item)
                                        .map(summarize_item)
                                        .map(|s| s.val0())
-                                       .sum(Counts::zero());
+                                       .fold(Counts::zero(), |acc, x| acc + x);
             (item_counts + subcounts, None)
         }
         ModuleItem(Module { ref items, .. }) => {

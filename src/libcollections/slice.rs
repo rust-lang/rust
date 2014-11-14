@@ -228,7 +228,7 @@ impl Iterator<(uint, uint)> for ElementSwaps {
     #[inline]
     fn size_hint(&self) -> (uint, Option<uint>) {
         // For a vector of size n, there are exactly n! permutations.
-        let n = range(2, self.sdir.len() + 1).product(1);
+        let n = range(2, self.sdir.len() + 1).product();
         (n - self.swaps_made, Some(n - self.swaps_made))
     }
 }

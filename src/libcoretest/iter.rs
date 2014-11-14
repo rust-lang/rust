@@ -294,17 +294,17 @@ fn test_iterator_len() {
 #[test]
 fn test_iterator_sum() {
     let v: &[_] = &[0i, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
-    assert_eq!(v[0..4].iter().map(|&x| x).sum(0), 6);
-    assert_eq!(v.iter().map(|&x| x).sum(0), 55);
-    assert_eq!(v[0..0].iter().map(|&x| x).sum(0), 0);
+    assert_eq!(v[0..4].iter().map(|&x| x).sum(), 6);
+    assert_eq!(v.iter().map(|&x| x).sum(), 55);
+    assert_eq!(v[0..0].iter().map(|&x| x).sum(), 0);
 }
 
 #[test]
 fn test_iterator_product() {
     let v: &[_] = &[0i, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
-    assert_eq!(v[0..4].iter().map(|&x| x).product(1), 0);
-    assert_eq!(v[1..5].iter().map(|&x| x).product(1), 24);
-    assert_eq!(v[0..0].iter().map(|&x| x).product(1), 1);
+    assert_eq!(v[0..4].iter().map(|&x| x).product(), 0);
+    assert_eq!(v[1..5].iter().map(|&x| x).product(), 24);
+    assert_eq!(v[0..0].iter().map(|&x| x).product(), 1);
 }
 
 #[test]

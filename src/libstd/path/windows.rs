@@ -781,7 +781,7 @@ impl Path {
                         let prefix_ = s.slice_to(prefix_len(prefix));
                         let n = prefix_.len() +
                                 if is_abs { comps.len() } else { comps.len() - 1} +
-                                comps.iter().map(|v| v.len()).sum(0);
+                                comps.iter().map(|v| v.len()).sum();
                         let mut s = String::with_capacity(n);
                         match prefix {
                             Some(DiskPrefix) => {
