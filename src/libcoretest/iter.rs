@@ -10,9 +10,9 @@
 
 use core::iter::*;
 use core::iter::order::*;
+use core::num::SignedInt;
 use core::uint;
 use core::cmp;
-use core::num;
 use core::ops::Slice;
 
 use test::Bencher;
@@ -689,50 +689,6 @@ fn test_double_ended_range() {
 
 #[test]
 fn test_range() {
-    /// A mock type to check Range when ToPrimitive returns None
-    struct Foo;
-
-    impl ToPrimitive for Foo {
-        fn to_i64(&self) -> Option<i64> { None }
-        fn to_u64(&self) -> Option<u64> { None }
-    }
-
-    impl Add<Foo, Foo> for Foo {
-        fn add(&self, _: &Foo) -> Foo {
-            Foo
-        }
-    }
-
-    impl PartialEq for Foo {
-        fn eq(&self, _: &Foo) -> bool {
-            true
-        }
-    }
-
-    impl PartialOrd for Foo {
-        fn partial_cmp(&self, _: &Foo) -> Option<Ordering> {
-            None
-        }
-    }
-
-    impl Clone for Foo {
-        fn clone(&self) -> Foo {
-            Foo
-        }
-    }
-
-    impl Mul<Foo, Foo> for Foo {
-        fn mul(&self, _: &Foo) -> Foo {
-            Foo
-        }
-    }
-
-    impl num::One for Foo {
-        fn one() -> Foo {
-            Foo
-        }
-    }
-
     assert!(range(0i, 5).collect::<Vec<int>>() == vec![0i, 1, 2, 3, 4]);
     assert!(range(-10i, -1).collect::<Vec<int>>() ==
                vec![-10, -9, -8, -7, -6, -5, -4, -3, -2]);
@@ -746,7 +702,6 @@ fn test_range() {
     // this test is only meaningful when sizeof uint < sizeof u64
     assert_eq!(range(uint::MAX - 1, uint::MAX).size_hint(), (1, Some(1)));
     assert_eq!(range(-10i, -1).size_hint(), (9, Some(9)));
-    assert_eq!(range(Foo, Foo).size_hint(), (0, None));
 }
 
 #[test]

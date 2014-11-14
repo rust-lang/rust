@@ -115,7 +115,13 @@ impl Float for f32 {
     fn neg_infinity() -> f32 { NEG_INFINITY }
 
     #[inline]
+    fn zero() -> f32 { 0.0 }
+
+    #[inline]
     fn neg_zero() -> f32 { -0.0 }
+
+    #[inline]
+    fn one() -> f32 { 1.0 }
 
     /// Returns `true` if the number is NaN.
     #[inline]
@@ -178,7 +184,13 @@ impl Float for f32 {
     fn max_10_exp(_: Option<f32>) -> int { MAX_10_EXP }
 
     #[inline]
+    fn min_value() -> f32 { MIN_VALUE }
+
+    #[inline]
     fn min_pos_value(_: Option<f32>) -> f32 { MIN_POS_VALUE }
+
+    #[inline]
+    fn max_value() -> f32 { MAX_VALUE }
 
     /// Returns the mantissa, exponent and sign as integers.
     fn integer_decode(self) -> (u64, i16, i8) {
@@ -222,11 +234,48 @@ impl Float for f32 {
     /// The fractional part of the number, satisfying:
     ///
     /// ```rust
+    /// use core::num::Float;
+    ///
     /// let x = 1.65f32;
     /// assert!(x == x.trunc() + x.fract())
     /// ```
     #[inline]
     fn fract(self) -> f32 { self - self.trunc() }
+
+    /// Computes the absolute value of `self`. Returns `Float::nan()` if the
+    /// number is `Float::nan()`.
+    #[inline]
+    fn abs(self) -> f32 {
+        unsafe { intrinsics::fabsf32(self) }
+    }
+
+    /// Returns a number that represents the sign of `self`.
+    ///
+    /// - `1.0` if the number is positive, `+0.0` or `Float::infinity()`
+    /// - `-1.0` if the number is negative, `-0.0` or `Float::neg_infinity()`
+    /// - `Float::nan()` if the number is `Float::nan()`
+    #[inline]
+    fn signum(self) -> f32 {
+        if self.is_nan() {
+            Float::nan()
+        } else {
+            unsafe { intrinsics::copysignf32(1.0, self) }
+        }
+    }
+
+    /// Returns `true` if `self` is positive, including `+0.0` and
+    /// `Float::infinity()`.
+    #[inline]
+    fn is_positive(self) -> bool {
+        self > 0.0 || (1.0 / self) == Float::infinity()
+    }
+
+    /// Returns `true` if `self` is negative, including `-0.0` and
+    /// `Float::neg_infinity()`.
+    #[inline]
+    fn is_negative(self) -> bool {
+        self < 0.0 || (1.0 / self) == Float::neg_infinity()
+    }
 
     /// Fused multiply-add. Computes `(self * a) + b` with only one rounding
     /// error. This produces a more accurate result with better performance than
@@ -240,6 +289,7 @@ impl Float for f32 {
     #[inline]
     fn recip(self) -> f32 { 1.0 / self }
 
+    #[inline]
     fn powi(self, n: i32) -> f32 {
         unsafe { intrinsics::powif32(self, n) }
     }

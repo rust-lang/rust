@@ -19,6 +19,7 @@ use prelude::*;
 use from_str::FromStr;
 use intrinsics;
 use libc::c_int;
+use num::{Float, FloatMath};
 use num::strconv;
 use num;
 
@@ -114,6 +115,11 @@ impl FloatMath for f64 {
     #[inline]
     fn min(self, other: f64) -> f64 {
         unsafe { cmath::fmin(self, other) }
+    }
+
+    #[inline]
+    fn abs_sub(self, other: f64) -> f64 {
+        unsafe { cmath::fdim(self, other) }
     }
 
     #[inline]
@@ -591,20 +597,20 @@ mod tests {
 
     #[test]
     fn test_abs_sub() {
-        assert_eq!((-1f64).abs_sub(&1f64), 0f64);
-        assert_eq!(1f64.abs_sub(&1f64), 0f64);
-        assert_eq!(1f64.abs_sub(&0f64), 1f64);
-        assert_eq!(1f64.abs_sub(&-1f64), 2f64);
-        assert_eq!(NEG_INFINITY.abs_sub(&0f64), 0f64);
-        assert_eq!(INFINITY.abs_sub(&1f64), INFINITY);
-        assert_eq!(0f64.abs_sub(&NEG_INFINITY), INFINITY);
-        assert_eq!(0f64.abs_sub(&INFINITY), 0f64);
+        assert_eq!((-1f64).abs_sub(1f64), 0f64);
+        assert_eq!(1f64.abs_sub(1f64), 0f64);
+        assert_eq!(1f64.abs_sub(0f64), 1f64);
+        assert_eq!(1f64.abs_sub(-1f64), 2f64);
+        assert_eq!(NEG_INFINITY.abs_sub(0f64), 0f64);
+        assert_eq!(INFINITY.abs_sub(1f64), INFINITY);
+        assert_eq!(0f64.abs_sub(NEG_INFINITY), INFINITY);
+        assert_eq!(0f64.abs_sub(INFINITY), 0f64);
     }
 
     #[test]
     fn test_abs_sub_nowin() {
-        assert!(NAN.abs_sub(&-1f64).is_nan());
-        assert!(1f64.abs_sub(&NAN).is_nan());
+        assert!(NAN.abs_sub(-1f64).is_nan());
+        assert!(1f64.abs_sub(NAN).is_nan());
     }
 
     #[test]
@@ -648,7 +654,7 @@ mod tests {
         let nan: f64 = Float::nan();
         let inf: f64 = Float::infinity();
         let neg_inf: f64 = Float::neg_infinity();
-        let zero: f64 = Zero::zero();
+        let zero: f64 = Float::zero();
         let neg_zero: f64 = Float::neg_zero();
         assert!(!nan.is_normal());
         assert!(!inf.is_normal());
@@ -665,7 +671,7 @@ mod tests {
         let nan: f64 = Float::nan();
         let inf: f64 = Float::infinity();
         let neg_inf: f64 = Float::neg_infinity();
-        let zero: f64 = Zero::zero();
+        let zero: f64 = Float::zero();
         let neg_zero: f64 = Float::neg_zero();
         assert_eq!(nan.classify(), FPNaN);
         assert_eq!(inf.classify(), FPInfinite);

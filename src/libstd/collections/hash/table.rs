@@ -17,7 +17,7 @@ use iter::{Iterator, count};
 use kinds::{Sized, marker};
 use mem::{min_align_of, size_of};
 use mem;
-use num::{CheckedAdd, CheckedMul, is_power_of_two};
+use num::{Int, UnsignedInt};
 use ops::{Deref, DerefMut, Drop};
 use option::{Some, None, Option};
 use ptr::{RawPtr, copy_nonoverlapping_memory, zero_memory};
@@ -493,7 +493,7 @@ impl<K, V, M: Deref<RawTable<K, V>>> GapThenFull<K, V, M> {
 ///
 /// Fails if `target_alignment` is not a power of two.
 fn round_up_to_next(unrounded: uint, target_alignment: uint) -> uint {
-    assert!(is_power_of_two(target_alignment));
+    assert!(target_alignment.is_power_of_two());
     (unrounded + target_alignment - 1) & !(target_alignment - 1)
 }
 
@@ -581,9 +581,9 @@ impl<K, V> RawTable<K, V> {
                 vals_size,   min_align_of::< V >());
 
         // One check for overflow that covers calculation and rounding of size.
-        let size_of_bucket = size_of::<u64>().checked_add(&size_of::<K>()).unwrap()
-                                             .checked_add(&size_of::<V>()).unwrap();
-        assert!(size >= capacity.checked_mul(&size_of_bucket)
+        let size_of_bucket = size_of::<u64>().checked_add(size_of::<K>()).unwrap()
+                                             .checked_add(size_of::<V>()).unwrap();
+        assert!(size >= capacity.checked_mul(size_of_bucket)
                                 .expect("capacity overflow"),
                 "capacity overflow");
 

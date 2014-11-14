@@ -25,7 +25,7 @@ use iter::{Map, Iterator};
 use iter::{DoubleEndedIterator, ExactSize};
 use iter::range;
 use kinds::Sized;
-use num::{CheckedMul, Saturating};
+use num::Int;
 use option::{Option, None, Some};
 use raw::Repr;
 use slice::{mod, SlicePrelude};
@@ -750,7 +750,7 @@ impl<'a> Iterator<u16> for Utf16CodeUnits<'a> {
         // every char gets either one u16 or two u16,
         // so this iterator is between 1 or 2 times as
         // long as the underlying iterator.
-        (low, high.and_then(|n| n.checked_mul(&2)))
+        (low, high.and_then(|n| n.checked_mul(2)))
     }
 }
 

@@ -15,7 +15,6 @@
 
 use std::ops::Add;
 use std::num::Zero;
-use std::iter::AdditiveIterator;
 
 use syntax::attr::{Deprecated, Experimental, Unstable, Stable, Frozen, Locked};
 use syntax::ast::Public;
@@ -55,6 +54,18 @@ impl Add<Counts, Counts> for Counts {
 }
 
 impl Counts {
+    fn zero() -> Counts {
+        Counts {
+            deprecated:   0,
+            experimental: 0,
+            unstable:     0,
+            stable:       0,
+            frozen:       0,
+            locked:       0,
+            unmarked:     0,
+        }
+    }
+
     pub fn total(&self) -> uint {
         self.deprecated + self.experimental + self.unstable + self.stable +
             self.frozen + self.locked + self.unmarked
@@ -92,14 +103,14 @@ fn visible(item: &Item) -> bool {
 
 fn count_stability(stab: Option<&Stability>) -> Counts {
     match stab {
-        None             => Counts { unmarked: 1,     .. Zero::zero() },
+        None             => Counts { unmarked: 1,     .. Counts::zero() },
         Some(ref stab) => match stab.level {
-            Deprecated   => Counts { deprecated: 1,   .. Zero::zero() },
-            Experimental => Counts { experimental: 1, .. Zero::zero() },
-            Unstable     => Counts { unstable: 1,     .. Zero::zero() },
-            Stable       => Counts { stable: 1,       .. Zero::zero() },
-            Frozen       => Counts { frozen: 1,       .. Zero::zero() },
-            Locked       => Counts { locked: 1,       .. Zero::zero() },
+            Deprecated   => Counts { deprecated: 1,   .. Counts::zero() },
+            Experimental => Counts { experimental: 1, .. Counts::zero() },
+            Unstable     => Counts { unstable: 1,     .. Counts::zero() },
+            Stable       => Counts { stable: 1,       .. Counts::zero() },
+            Frozen       => Counts { frozen: 1,       .. Counts::zero() },
+            Locked       => Counts { locked: 1,       .. Counts::zero() },
         }
     }
 }
@@ -108,15 +119,19 @@ fn summarize_methods(item: &Item) -> Counts {
     match cache_key.get().unwrap().impls.get(&item.def_id) {
         Some(v) => {
             v.iter().map(|i| {
-                let mut count = count_stability(i.stability.as_ref());
+                let count = count_stability(i.stability.as_ref());
                 if i.impl_.trait_.is_none() {
-                    count = count +
-                        i.impl_.items.iter().map(|ti| summarize_item(ti).0).sum();
+                    count + i.impl_.items.iter()
+                        .map(|ti| summarize_item(ti).0)
+                        .fold(Counts::zero(), |acc, c| acc + c)
+                } else {
+                    count
                 }
-                count
-            }).sum()
-        }
-        None    => Zero::zero()
+            }).fold(Counts::zero(), |acc, c| acc + c)
+        },
+        None => {
+            Counts::zero()
+        },
     }
 }
 
@@ -136,14 +151,14 @@ fn summarize_item(item: &Item) -> (Counts, Option<ModuleSummary>) {
             let subcounts = subitems.iter().filter(|i| visible(*i))
                                            .map(summarize_item)
                                            .map(|s| s.val0())
-                                           .sum();
+                                           .fold(Counts::zero(), |acc, x| acc + x);
             (item_counts + subcounts, None)
         }
         // `pub` automatically
         EnumItem(Enum { variants: ref subitems, .. }) => {
             let subcounts = subitems.iter().map(summarize_item)
                                            .map(|s| s.val0())
-                                           .sum();
+                                           .fold(Counts::zero(), |acc, x| acc + x);
             (item_counts + subcounts, None)
         }
         TraitItem(Trait {
@@ -161,7 +176,7 @@ fn summarize_item(item: &Item) -> (Counts, Option<ModuleSummary>) {
                                        .map(extract_item)
                                        .map(summarize_item)
                                        .map(|s| s.val0())
-                                       .sum();
+                                       .fold(Counts::zero(), |acc, x| acc + x);
             (item_counts + subcounts, None)
         }
         ModuleItem(Module { ref items, .. }) => {
@@ -182,7 +197,7 @@ fn summarize_item(item: &Item) -> (Counts, Option<ModuleSummary>) {
             }))
         }
         // no stability information for the following items:
-        ViewItemItem(_) | PrimitiveItem(_) => (Zero::zero(), None),
+        ViewItemItem(_) | PrimitiveItem(_) => (Counts::zero(), None),
         _ => (item_counts, None)
     }
 }
@@ -192,7 +207,7 @@ pub fn build(krate: &Crate) -> ModuleSummary {
     match krate.module {
         None => ModuleSummary {
             name: krate.name.clone(),
-            counts: Zero::zero(),
+            counts: Counts::zero(),
             submodules: Vec::new(),
         },
         Some(ref item) => ModuleSummary {

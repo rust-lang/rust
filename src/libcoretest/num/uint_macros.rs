@@ -14,8 +14,8 @@ macro_rules! uint_module (($T:ty, $T_i:ident) => (
 #[cfg(test)]
 mod tests {
     use core::$T_i::*;
+    use core::num::Int;
     use num;
-    use core::num::CheckedDiv;
 
     #[test]
     fn test_overflows() {
@@ -120,8 +120,8 @@ mod tests {
 
     #[test]
     fn test_unsigned_checked_div() {
-        assert!(10u.checked_div(&2) == Some(5));
-        assert!(5u.checked_div(&0) == None);
+        assert!(10u.checked_div(2) == Some(5));
+        assert!(5u.checked_div(0) == None);
     }
 }
 ))

@@ -78,6 +78,7 @@ mod test {
 
     use super::ReaderRng;
     use io::MemReader;
+    use num::Int;
     use rand::Rng;
 
     #[test]

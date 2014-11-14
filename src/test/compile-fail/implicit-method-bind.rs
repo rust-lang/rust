@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::num::SignedInt;
+
 fn main() {
     let _f = 10i.abs; //~ ERROR attempted to take value of method
 }

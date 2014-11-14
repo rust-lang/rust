@@ -45,6 +45,7 @@
 
 use std::iter::AdditiveIterator;
 use std::mem;
+use std::num::Float;
 use std::os;
 use std::raw::Repr;
 use std::simd::f64x2;

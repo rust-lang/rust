@@ -23,7 +23,7 @@ that do not need to record state.
 #![experimental]
 
 use core::prelude::*;
-use core::num;
+use core::num::{Float, Int};
 
 use {Rng, Rand};
 
@@ -127,7 +127,7 @@ impl<'a, T: Clone> WeightedChoice<'a, T> {
         // weights so we can binary search. This *could* drop elements
         // with weight == 0 as an optimisation.
         for item in items.iter_mut() {
-            running_total = match running_total.checked_add(&item.weight) {
+            running_total = match running_total.checked_add(item.weight) {
                 Some(n) => n,
                 None => panic!("WeightedChoice::new called with a total weight \
                                larger than a uint can contain")
@@ -243,7 +243,7 @@ fn ziggurat<R:Rng>(
         let u = if symmetric {2.0 * f - 1.0} else {f};
         let x = u * x_tab[i];
 
-        let test_x = if symmetric {num::abs(x)} else {x};
+        let test_x = if symmetric { x.abs() } else {x};
 
         // algebraically equivalent to |u| < x_tab[i+1]/x_tab[i] (or u < x_tab[i+1]/x_tab[i])
         if test_x < x_tab[i + 1] {

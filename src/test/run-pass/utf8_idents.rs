@@ -10,16 +10,15 @@
 //
 // ignore-lexer-test FIXME #15679
 
-
 #![feature(non_ascii_idents)]
 
-use std::num;
+use std::num::Float;
 
 pub fn main() {
     let ε = 0.00001f64;
     let Π = 3.14f64;
     let लंच = Π * Π + 1.54;
-    assert!(num::abs((लंच - 1.54) - (Π * Π)) < ε);
+    assert!(((लंच - 1.54) - (Π * Π)).abs() < ε);
     assert_eq!(საჭმელად_გემრიელი_სადილი(), 0);
 }
 
