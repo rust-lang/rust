@@ -8,8 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Tests that the proper help is displayed in the error message
+// issue #17123
 
-extern crate foo as bar;
-//~^ ERROR expected `;`, found `as`
-//~^^ HELP perhaps you meant to enclose the crate name `foo` in a string?
+fn main() {
+    100000000000000000000000000000000 //~ ERROR int literal is too large
+
+        ; // the span shouldn't point to this.
+}
