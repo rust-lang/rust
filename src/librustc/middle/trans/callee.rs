@@ -253,11 +253,13 @@ pub fn trans_unboxing_shim(bcx: Block,
                            llshimmedfn: ValueRef,
                            fty: &ty::BareFnTy,
                            method_id: ast::DefId,
-                           substs: subst::Substs)
+                           substs: &subst::Substs)
                            -> ValueRef {
     let _icx = push_ctxt("trans_unboxing_shim");
     let ccx = bcx.ccx();
     let tcx = bcx.tcx();
+
+    let fty = fty.subst(tcx, substs);
 
     // Transform the self type to `Box<self_type>`.
     let self_type = fty.sig.inputs[0];
@@ -279,8 +281,7 @@ pub fn trans_unboxing_shim(bcx: Block,
         abi: fty.abi,
         sig: boxed_function_type,
     };
-    let boxed_function_type =
-        ty::mk_bare_fn(tcx, boxed_function_type).subst(tcx, &substs);
+    let boxed_function_type = ty::mk_bare_fn(tcx, boxed_function_type);
     let function_type = match fty.abi {
         synabi::RustCall => {
             // We're passing through to a RustCall ABI function, but
@@ -301,10 +302,10 @@ pub fn trans_unboxing_shim(bcx: Block,
                 abi: synabi::Rust,
                 sig: fake_ty,
             };
-            ty::mk_bare_fn(tcx, fake_ty).subst(tcx, &substs)
+            ty::mk_bare_fn(tcx, fake_ty)
         }
         _ => {
-            ty::mk_bare_fn(tcx, (*fty).clone()).subst(tcx, &substs)
+            ty::mk_bare_fn(tcx, fty)
         }
     };
 
