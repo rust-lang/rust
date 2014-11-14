@@ -8,7 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+macro_rules! foo()  //~ ERROR semicolon
+
 fn main() {
-    foo!() //~ HELP try parenthesizing this macro invocation
-    .bar //~ ERROR expected statement
 }
+

@@ -113,23 +113,23 @@
 
 #![feature(macro_rules)]
 
-macro_rules! trivial(
+macro_rules! trivial {
     ($e1:expr) => ($e1)
-)
+}
 
-macro_rules! no_new_scope(
+macro_rules! no_new_scope {
     ($e1:expr) => (($e1 + 2) - 1)
-)
+}
 
-macro_rules! new_scope(
+macro_rules! new_scope {
     () => ({
         let a = 890242i;
         zzz(); // #break
         sentinel();
     })
-)
+}
 
-macro_rules! shadow_within_macro(
+macro_rules! shadow_within_macro {
     ($e1:expr) => ({
         let a = $e1 + 2;
 
@@ -141,12 +141,12 @@ macro_rules! shadow_within_macro(
         zzz(); // #break
         sentinel();
     })
-)
+}
 
 
-macro_rules! dup_expr(
+macro_rules! dup_expr {
     ($e1:expr) => (($e1) + ($e1))
-)
+}
 
 
 fn main() {

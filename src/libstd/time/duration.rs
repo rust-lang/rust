@@ -40,9 +40,9 @@ const SECS_PER_DAY: i64 = 86400;
 /// The number of (non-leap) seconds in a week.
 const SECS_PER_WEEK: i64 = 604800;
 
-macro_rules! try_opt(
+macro_rules! try_opt {
     ($e:expr) => (match $e { Some(v) => v, None => return None })
-)
+}
 
 
 /// ISO 8601 time duration with nanosecond precision.

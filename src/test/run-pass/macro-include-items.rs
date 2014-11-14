@@ -12,7 +12,7 @@
 
 fn bar() {}
 
-include!(concat!("", "", "../auxiliary/", "macro-include-items-item.rs"))
+include!(concat!("", "", "../auxiliary/", "macro-include-items-item.rs"));
 
 fn main() {
     foo();

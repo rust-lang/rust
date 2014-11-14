@@ -676,7 +676,7 @@ fn extract_vec_elems<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 // pattern.  Note that, because the macro is well-typed, either ALL of the
 // matches should fit that sort of pattern or NONE (however, some of the
 // matches may be wildcards like _ or identifiers).
-macro_rules! any_pat (
+macro_rules! any_pat {
     ($m:expr, $col:expr, $pattern:pat) => (
         ($m).iter().any(|br| {
             match br.pats[$col].node {
@@ -685,7 +685,7 @@ macro_rules! any_pat (
             }
         })
     )
-)
+}
 
 fn any_uniq_pat(m: &[Match], col: uint) -> bool {
     any_pat!(m, col, ast::PatBox(_))

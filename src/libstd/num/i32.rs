@@ -15,4 +15,4 @@
 
 pub use core::i32::{BITS, BYTES, MIN, MAX};
 
-int_module!(i32)
+int_module! { i32 }

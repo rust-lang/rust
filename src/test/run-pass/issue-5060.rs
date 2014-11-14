@@ -21,7 +21,7 @@ macro_rules! print_hd_tl (
         // FIXME: #9970
         print!("{}", "]\n");
     })
-)
+);
 
 pub fn main() {
     print_hd_tl!(x, y, z, w)

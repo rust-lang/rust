@@ -24,7 +24,7 @@ use prelude::*;
 use io::{mod, IoResult, IoError};
 use sync::{Once, ONCE_INIT};
 
-macro_rules! helper_init( (static $name:ident: Helper<$m:ty>) => (
+macro_rules! helper_init { (static $name:ident: Helper<$m:ty>) => (
     static $name: Helper<$m> = Helper {
         lock: ::sync::MUTEX_INIT,
         cond: ::sync::CONDVAR_INIT,
@@ -33,7 +33,7 @@ macro_rules! helper_init( (static $name:ident: Helper<$m:ty>) => (
         initialized: ::cell::UnsafeCell { value: false },
         shutdown: ::cell::UnsafeCell { value: false },
     };
-) )
+) }
 
 pub mod c;
 pub mod ext;

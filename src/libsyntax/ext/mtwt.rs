@@ -108,7 +108,7 @@ pub fn apply_renames(renames: &RenameList, ctxt: SyntaxContext) -> SyntaxContext
 pub fn with_sctable<T, F>(op: F) -> T where
     F: FnOnce(&SCTable) -> T,
 {
-    thread_local!(static SCTABLE_KEY: SCTable = new_sctable_internal())
+    thread_local!(static SCTABLE_KEY: SCTable = new_sctable_internal());
     SCTABLE_KEY.with(move |slot| op(slot))
 }
 
@@ -174,7 +174,7 @@ fn with_resolve_table_mut<T, F>(op: F) -> T where
 {
     thread_local!(static RESOLVE_TABLE_KEY: RefCell<ResolveTable> = {
         RefCell::new(HashMap::new())
-    })
+    });
 
     RESOLVE_TABLE_KEY.with(move |slot| op(&mut *slot.borrow_mut()))
 }

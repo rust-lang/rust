@@ -14,31 +14,31 @@ macro_rules! mypat(
     () => (
         Some('y')
     )
-)
+);
 
 macro_rules! char_x(
     () => (
         'x'
     )
-)
+);
 
 macro_rules! some(
     ($x:pat) => (
         Some($x)
     )
-)
+);
 
 macro_rules! indirect(
     () => (
         some!(char_x!())
     )
-)
+);
 
 macro_rules! ident_pat(
     ($x:ident) => (
         $x
     )
-)
+);
 
 fn f(c: Option<char>) -> uint {
     match c {

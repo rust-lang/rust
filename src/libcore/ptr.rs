@@ -367,7 +367,7 @@ mod externfnpointers {
             self_ == other_
         }
     }
-    macro_rules! fnptreq(
+    macro_rules! fnptreq {
         ($($p:ident),*) => {
             impl<_R,$($p),*> PartialEq for extern "C" fn($($p),*) -> _R {
                 #[inline]
@@ -379,12 +379,12 @@ mod externfnpointers {
                 }
             }
         }
-    )
-    fnptreq!(A)
-    fnptreq!(A,B)
-    fnptreq!(A,B,C)
-    fnptreq!(A,B,C,D)
-    fnptreq!(A,B,C,D,E)
+    }
+    fnptreq! { A }
+    fnptreq! { A,B }
+    fnptreq! { A,B,C }
+    fnptreq! { A,B,C,D }
+    fnptreq! { A,B,C,D,E }
 }
 
 // Comparison for pointers

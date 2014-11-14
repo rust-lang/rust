@@ -875,18 +875,18 @@ macro_rules! impl_additive {
         }
     };
 }
-impl_additive!(i8,   0)
-impl_additive!(i16,  0)
-impl_additive!(i32,  0)
-impl_additive!(i64,  0)
-impl_additive!(int,  0)
-impl_additive!(u8,   0)
-impl_additive!(u16,  0)
-impl_additive!(u32,  0)
-impl_additive!(u64,  0)
-impl_additive!(uint, 0)
-impl_additive!(f32,  0.0)
-impl_additive!(f64,  0.0)
+impl_additive! { i8,   0 }
+impl_additive! { i16,  0 }
+impl_additive! { i32,  0 }
+impl_additive! { i64,  0 }
+impl_additive! { int,  0 }
+impl_additive! { u8,   0 }
+impl_additive! { u16,  0 }
+impl_additive! { u32,  0 }
+impl_additive! { u64,  0 }
+impl_additive! { uint, 0 }
+impl_additive! { f32,  0.0 }
+impl_additive! { f64,  0.0 }
 
 /// A trait for iterators over elements which can be multiplied together.
 #[experimental = "needs to be re-evaluated as part of numerics reform"]
@@ -919,18 +919,18 @@ macro_rules! impl_multiplicative {
         }
     };
 }
-impl_multiplicative!(i8,   1)
-impl_multiplicative!(i16,  1)
-impl_multiplicative!(i32,  1)
-impl_multiplicative!(i64,  1)
-impl_multiplicative!(int,  1)
-impl_multiplicative!(u8,   1)
-impl_multiplicative!(u16,  1)
-impl_multiplicative!(u32,  1)
-impl_multiplicative!(u64,  1)
-impl_multiplicative!(uint, 1)
-impl_multiplicative!(f32,  1.0)
-impl_multiplicative!(f64,  1.0)
+impl_multiplicative! { i8,   1 }
+impl_multiplicative! { i16,  1 }
+impl_multiplicative! { i32,  1 }
+impl_multiplicative! { i64,  1 }
+impl_multiplicative! { int,  1 }
+impl_multiplicative! { u8,   1 }
+impl_multiplicative! { u16,  1 }
+impl_multiplicative! { u32,  1 }
+impl_multiplicative! { u64,  1 }
+impl_multiplicative! { uint, 1 }
+impl_multiplicative! { f32,  1.0 }
+impl_multiplicative! { f64,  1.0 }
 
 /// A trait for iterators over elements which can be compared to one another.
 #[unstable = "recently renamed for new extension trait conventions"]
@@ -1084,7 +1084,7 @@ impl<T: Clone> MinMaxResult<T> {
     /// use std::iter::{NoElements, OneElement, MinMax, MinMaxResult};
     ///
     /// let r: MinMaxResult<int> = NoElements;
-    /// assert_eq!(r.into_option(), None)
+    /// assert_eq!(r.into_option(), None);
     ///
     /// let r = OneElement(1i);
     /// assert_eq!(r.into_option(), Some((1,1)));

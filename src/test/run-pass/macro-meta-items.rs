@@ -27,8 +27,8 @@ macro_rules! emit {
 }
 
 // item
-compiles_fine!(bar)
-emit!(foo)
+compiles_fine!(bar);
+emit!(foo);
 
 fn foo() {
     println!("{}", MISTYPED);

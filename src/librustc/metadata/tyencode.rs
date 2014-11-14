@@ -29,7 +29,7 @@ use syntax::parse::token;
 
 use rbml::io::SeekableMemWriter;
 
-macro_rules! mywrite( ($($arg:tt)*) => ({ write!($($arg)*); }) )
+macro_rules! mywrite { ($($arg:tt)*) => ({ write!($($arg)*); }) }
 
 pub struct ctxt<'a, 'tcx: 'a> {
     pub diag: &'a SpanHandler,

@@ -1471,7 +1471,7 @@ mod test_map {
         assert_eq!(*m.get(&2).unwrap(), 4);
     }
 
-    thread_local!(static DROP_VECTOR: RefCell<Vec<int>> = RefCell::new(Vec::new()))
+    thread_local! { static DROP_VECTOR: RefCell<Vec<int>> = RefCell::new(Vec::new()) }
 
     #[deriving(Hash, PartialEq, Eq)]
     struct Dropable {

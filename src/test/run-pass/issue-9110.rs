@@ -17,8 +17,8 @@ macro_rules! silly_macro(
             pub fn bar(_foo : Foo) {}
         }
     );
-)
+);
 
-silly_macro!()
+silly_macro!();
 
 pub fn main() {}

@@ -165,7 +165,7 @@ pub fn parse(file: &mut io::Reader, longnames: bool)
             Ok(e) => e,
             Err(e) => return Err(format!("{}", e))
         }
-    ) )
+    ) );
 
     let bnames;
     let snames;
