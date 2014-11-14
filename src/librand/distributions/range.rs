@@ -13,7 +13,7 @@
 // this is surprisingly complicated to be both generic & correct
 
 use core::prelude::*;
-use core::num::Bounded;
+use core::num::Int;
 
 use Rng;
 use distributions::{Sample, IndependentSample};
@@ -98,7 +98,7 @@ macro_rules! integer_impl {
 
             fn construct_range(low: $ty, high: $ty) -> Range<$ty> {
                 let range = high as $unsigned - low as $unsigned;
-                let unsigned_max: $unsigned = Bounded::max_value();
+                let unsigned_max: $unsigned = Int::max_value();
 
                 // this is the largest number that fits into $unsigned
                 // that `range` divides evenly, so, if we've sampled
@@ -163,10 +163,10 @@ float_impl! { f64 }
 
 #[cfg(test)]
 mod tests {
+    use std::num::Int;
     use std::prelude::*;
     use distributions::{Sample, IndependentSample};
     use super::Range;
-    use std::num::Bounded;
 
     #[should_fail]
     #[test]
@@ -187,7 +187,7 @@ mod tests {
                 $(
                    let v: &[($ty, $ty)] = [(0, 10),
                                            (10, 127),
-                                           (Bounded::min_value(), Bounded::max_value())];
+                                           (Int::min_value(), Int::max_value())];
                    for &(low, high) in v.iter() {
                         let mut sampler: Range<$ty> = Range::new(low, high);
                         for _ in range(0u, 1000) {

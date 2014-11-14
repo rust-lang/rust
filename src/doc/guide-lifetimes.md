@@ -51,6 +51,7 @@ expensive. So we'd like to define a function that takes the points just as
 a reference.
 
 ~~~
+# use std::num::Float;
 # struct Point {x: f64, y: f64}
 # fn sqrt(f: f64) -> f64 { 0.0 }
 fn compute_distance(p1: &Point, p2: &Point) -> f64 {

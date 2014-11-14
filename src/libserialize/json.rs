@@ -199,7 +199,7 @@ use std::collections::{HashMap, TreeMap};
 use std::{char, f64, fmt, io, num, str};
 use std::io::MemWriter;
 use std::mem::{swap, transmute};
-use std::num::{FPNaN, FPInfinite};
+use std::num::{Float, FPNaN, FPInfinite, Int};
 use std::str::ScalarValue;
 use std::string;
 use std::vec::Vec;
@@ -609,7 +609,7 @@ impl<'a> PrettyEncoder<'a> {
     /// This is safe to set during encoding.
     pub fn set_indent<'a>(&mut self, indent: uint) {
         // self.indent very well could be 0 so we need to use checked division.
-        let level = self.curr_indent.checked_div(&self.indent).unwrap_or(0);
+        let level = self.curr_indent.checked_div(self.indent).unwrap_or(0);
         self.indent = indent;
         self.curr_indent = level * self.indent;
     }
@@ -1484,7 +1484,7 @@ impl<T: Iterator<char>> Parser<T> {
             }
         }
 
-        let exp = num::pow(10_f64, exp);
+        let exp = 10_f64.powi(exp as i32);
         if neg_exp {
             res /= exp;
         } else {
@@ -2417,6 +2417,7 @@ mod tests {
                 TrailingCharacters, TrailingComma};
     use std::{i64, u64, f32, f64, io};
     use std::collections::TreeMap;
+    use std::num::Float;
     use std::string;
 
     #[deriving(Decodable, Eq, PartialEq, Show)]

@@ -22,6 +22,7 @@
 //!
 //! ```
 //! use std::collections::{BitvSet, Bitv};
+//! use std::num::Float;
 //! use std::iter;
 //!
 //! let max_prime = 10000;
@@ -69,6 +70,7 @@ use core::default::Default;
 use core::fmt;
 use core::iter::{Chain, Enumerate, Repeat, Skip, Take};
 use core::iter;
+use core::num::Int;
 use core::slice;
 use core::u32;
 use std::hash;

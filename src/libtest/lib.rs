@@ -58,6 +58,7 @@ use std::io::fs::PathExtensions;
 use std::io::stdio::StdWriter;
 use std::io::{File, ChanReader, ChanWriter};
 use std::io;
+use std::num::{Float, FloatMath, Int};
 use std::os;
 use std::string::String;
 use std::task::TaskBuilder;
@@ -105,7 +106,6 @@ enum NamePadding { PadNone, PadOnLeft, PadOnRight }
 
 impl TestDesc {
     fn padded_name(&self, column_count: uint, align: NamePadding) -> String {
-        use std::num::Saturating;
         let mut name = String::from_str(self.name.as_slice());
         let fill = column_count.saturating_sub(name.len());
         let mut pad = " ".repeat(fill);

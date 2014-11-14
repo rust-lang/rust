@@ -21,6 +21,7 @@ use middle::ty;
 use std::fmt;
 use std::iter::AdditiveIterator;
 use std::iter::range_inclusive;
+use std::num::Float;
 use std::slice;
 use syntax::ast::*;
 use syntax::ast_util::walk_pat;

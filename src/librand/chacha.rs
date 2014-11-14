@@ -11,6 +11,7 @@
 //! The ChaCha random number generator.
 
 use core::prelude::*;
+use core::num::Int;
 
 use {Rng, SeedableRng, Rand};
 

@@ -225,6 +225,7 @@ Here is another example showing how futures allow you to background
 computations. The workload will be distributed on the available cores.
 
 ```{rust}
+# use std::num::Float;
 # use std::sync::Future;
 fn partial_sum(start: uint) -> f64 {
     let mut local_sum = 0f64;
@@ -262,6 +263,7 @@ several computations on a single large vector of floats. Each task needs the
 full vector to perform its duty.
 
 ```{rust}
+use std::num::Float;
 use std::rand;
 use std::sync::Arc;
 

@@ -13,9 +13,9 @@
 
 use io::{mod, IoError, IoResult};
 use prelude::*;
-use num;
 use sys::{last_error, retry, fs};
 use c_str::CString;
+use num::Int;
 use path::BytesContainer;
 use collections;
 
@@ -57,8 +57,8 @@ pub fn unimpl() -> IoError {
 }
 
 // unix has nonzero values as errors
-pub fn mkerr_libc<Int: num::Zero>(ret: Int) -> IoResult<()> {
-    if !ret.is_zero() {
+pub fn mkerr_libc<T: Int>(ret: T) -> IoResult<()> {
+    if ret != Int::zero() {
         Err(last_error())
     } else {
         Ok(())

@@ -15,7 +15,7 @@
 #![allow(deprecated)] // to_be32
 
 use std::iter::range_step;
-use std::num::Zero;
+use std::num::Int;
 use std::slice::bytes::{MutableByteVector, copy_memory};
 use serialize::hex::ToHex;
 
@@ -61,14 +61,14 @@ impl ToBits for u64 {
 
 /// Adds the specified number of bytes to the bit count. panic!() if this would cause numeric
 /// overflow.
-fn add_bytes_to_bits<T: Int + CheckedAdd + ToBits>(bits: T, bytes: T) -> T {
+fn add_bytes_to_bits<T: Int + ToBits>(bits: T, bytes: T) -> T {
     let (new_high_bits, new_low_bits) = bytes.to_bits();
 
-    if new_high_bits > Zero::zero() {
+    if new_high_bits > Int::zero() {
         panic!("numeric overflow occurred.")
     }
 
-    match bits.checked_add(&new_low_bits) {
+    match bits.checked_add(new_low_bits) {
         Some(x) => return x,
         None => panic!("numeric overflow occurred.")
     }
@@ -528,10 +528,10 @@ mod tests {
     extern crate rand;
 
     use super::{Digest, Sha256, FixedBuffer};
-    use std::num::Bounded;
     use self::rand::isaac::IsaacRng;
     use self::rand::Rng;
     use serialize::hex::FromHex;
+    use std::num::Int;
 
     // A normal addition - no overflow occurs
     #[test]
@@ -543,7 +543,7 @@ mod tests {
     #[test]
     #[should_fail]
     fn test_add_bytes_to_bits_overflow() {
-        super::add_bytes_to_bits::<u64>(Bounded::max_value(), 1);
+        super::add_bytes_to_bits::<u64>(Int::max_value(), 1);
     }
 
     struct Test {

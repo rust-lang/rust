@@ -11,7 +11,7 @@
 use std::cmp::PartialEq;
 use std::num::NumCast;
 
-pub trait NumExt: PartialEq + Num + NumCast {}
+pub trait NumExt: PartialEq + NumCast {}
 
 impl NumExt for f32 {}
 impl NumExt for int {}

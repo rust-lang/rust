@@ -34,7 +34,7 @@ use core::prelude::*;
 
 use alloc::arc::Arc;
 use collections::Vec;
-use core::num::next_power_of_two;
+use core::num::UnsignedInt;
 use core::cell::UnsafeCell;
 
 use atomic::{AtomicUint,Relaxed,Release,Acquire};
@@ -66,7 +66,7 @@ impl<T: Send> State<T> {
                 2u
             } else {
                 // use next power of 2 as capacity
-                next_power_of_two(capacity)
+                capacity.next_power_of_two()
             }
         } else {
             capacity

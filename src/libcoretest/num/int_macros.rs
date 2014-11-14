@@ -15,8 +15,8 @@ macro_rules! int_module (($T:ty, $T_i:ident) => (
 mod tests {
     use core::$T_i::*;
     use core::int;
+    use core::num::{Int, SignedInt};
     use num;
-    use core::num::CheckedDiv;
 
     #[test]
     fn test_overflows() {
@@ -35,14 +35,6 @@ mod tests {
         assert!((1 as $T).abs() == 1 as $T);
         assert!((0 as $T).abs() == 0 as $T);
         assert!((-1 as $T).abs() == 1 as $T);
-    }
-
-    #[test]
-    fn test_abs_sub() {
-        assert!((-1 as $T).abs_sub(&(1 as $T)) == 0 as $T);
-        assert!((1 as $T).abs_sub(&(1 as $T)) == 0 as $T);
-        assert!((1 as $T).abs_sub(&(0 as $T)) == 1 as $T);
-        assert!((1 as $T).abs_sub(&(-1 as $T)) == 2 as $T);
     }
 
     #[test]
@@ -160,9 +152,9 @@ mod tests {
 
     #[test]
     fn test_signed_checked_div() {
-        assert!(10i.checked_div(&2) == Some(5));
-        assert!(5i.checked_div(&0) == None);
-        assert!(int::MIN.checked_div(&-1) == None);
+        assert!(10i.checked_div(2) == Some(5));
+        assert!(5i.checked_div(0) == None);
+        assert!(int::MIN.checked_div(-1) == None);
     }
 }
 
