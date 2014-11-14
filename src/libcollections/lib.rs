@@ -31,7 +31,6 @@
 extern crate unicode;
 extern crate alloc;
 
-#[cfg(test)] extern crate native;
 #[cfg(test)] extern crate test;
 
 #[cfg(test)] #[phase(plugin, link)] extern crate std;

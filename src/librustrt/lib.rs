@@ -30,7 +30,6 @@ extern crate collections;
 
 #[cfg(test)] extern crate "rustrt" as realrustrt;
 #[cfg(test)] extern crate test;
-#[cfg(test)] extern crate native;
 
 #[cfg(test)] #[phase(plugin, link)] extern crate std;
 

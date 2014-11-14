@@ -38,7 +38,6 @@ extern crate collections;
 extern crate rustrt;
 
 #[cfg(test)] extern crate test;
-#[cfg(test)] extern crate native;
 #[cfg(test)] #[phase(plugin, link)] extern crate std;
 
 pub use alloc::arc::{Arc, Weak};

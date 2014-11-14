@@ -9,8 +9,6 @@ Source layout:
 | `libcore/`          | The Rust core library                                     |
 | `libdebug/`         | Debugging utilities                                       |
 | `libstd/`           | The standard library (imported and linked by default)     |
-| `libgreen/`         | The M:N runtime library                                   |
-| `libnative/`        | The 1:1 runtime library                                   |
 | `libsyntax/`        | The Rust parser and pretty-printer                        |
 | `libtest/`          | Rust's test-runner code                                   |
 | ------------------- | --------------------------------------------------------- |
