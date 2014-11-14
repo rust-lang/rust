@@ -2315,6 +2315,10 @@ impl ToJson for bool {
     fn to_json(&self) -> Json { Boolean(*self) }
 }
 
+impl ToJson for str {
+    fn to_json(&self) -> Json { String(self.into_string()) }
+}
+
 impl ToJson for string::String {
     fn to_json(&self) -> Json { String((*self).clone()) }
 }
@@ -3714,7 +3718,8 @@ mod tests {
         assert_eq!(f64::NAN.to_json(), Null);
         assert_eq!(true.to_json(), Boolean(true));
         assert_eq!(false.to_json(), Boolean(false));
-        assert_eq!("abc".to_string().to_json(), String("abc".to_string()));
+        assert_eq!("abc".to_json(), String("abc".into_string()));
+        assert_eq!("abc".into_string().to_json(), String("abc".into_string()));
         assert_eq!((1u, 2u).to_json(), list2);
         assert_eq!((1u, 2u, 3u).to_json(), list3);
         assert_eq!([1u, 2].to_json(), list2);
