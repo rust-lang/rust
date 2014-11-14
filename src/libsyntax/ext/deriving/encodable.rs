@@ -22,19 +22,23 @@
 //! would generate two implementations like:
 //!
 //! ```ignore
-//! impl<S:serialize::Encoder> Encodable<S> for Node {
-//!     fn encode(&self, s: &S) {
-//!         s.emit_struct("Node", 1, || {
-//!             s.emit_field("id", 0, || s.emit_uint(self.id))
+//! impl<S: Encoder<E>, E> Encodable<S, E> for Node {
+//!     fn encode(&self, s: &mut S) -> Result<(), E> {
+//!         s.emit_struct("Node", 1, |this| {
+//!             this.emit_struct_field("id", 0, |this| {
+//!                 Encodable::encode(&self.id, this)
+//!                 /* this.emit_uint(self.id) can also be used */
+//!             })
 //!         })
 //!     }
 //! }
 //!
-//! impl<D:Decoder> Decodable for node_id {
-//!     fn decode(d: &D) -> Node {
-//!         d.read_struct("Node", 1, || {
-//!             Node {
-//!                 id: d.read_field("x".to_string(), 0, || decode(d))
+//! impl<D: Decoder<E>, E> Decodable<D, E> for Node {
+//!     fn decode(d: &mut D) -> Result<Node, E> {
+//!         d.read_struct("Node", 1, |this| {
+//!             match this.read_struct_field("id", 0, |this| Decodable::decode(this)) {
+//!                 Ok(id) => Ok(Node { id: id }),
+//!                 Err(e) => Err(e),
 //!             }
 //!         })
 //!     }
@@ -46,37 +50,42 @@
 //!
 //! ```ignore
 //! #[deriving(Encodable, Decodable)]
-//! struct spanned<T> { node: T, span: Span }
+//! struct Spanned<T> { node: T, span: Span }
 //! ```
 //!
 //! would yield functions like:
 //!
 //! ```ignore
-//!     impl<
-//!         S: Encoder,
-//!         T: Encodable<S>
-//!     > spanned<T>: Encodable<S> {
-//!         fn encode<S:Encoder>(s: &S) {
-//!             s.emit_rec(|| {
-//!                 s.emit_field("node", 0, || self.node.encode(s));
-//!                 s.emit_field("span", 1, || self.span.encode(s));
-//!             })
-//!         }
+//! impl<
+//!     S: Encoder<E>,
+//!     E,
+//!     T: Encodable<S, E>
+//! > Encodable<S, E> for Spanned<T> {
+//!     fn encode(&self, s: &mut S) -> Result<(), E> {
+//!         s.emit_struct("Spanned", 2, |this| {
+//!             this.emit_struct_field("node", 0, |this| self.node.encode(this))
+//!                 .ok().unwrap();
+//!             this.emit_struct_field("span", 1, |this| self.span.encode(this))
+//!         })
 //!     }
+//! }
 //!
-//!     impl<
-//!         D: Decoder,
-//!         T: Decodable<D>
-//!     > spanned<T>: Decodable<D> {
-//!         fn decode(d: &D) -> spanned<T> {
-//!             d.read_rec(|| {
-//!                 {
-//!                     node: d.read_field("node".to_string(), 0, || decode(d)),
-//!                     span: d.read_field("span".to_string(), 1, || decode(d)),
-//!                 }
+//! impl<
+//!     D: Decoder<E>,
+//!     E,
+//!     T: Decodable<D, E>
+//! > Decodable<D, E> for Spanned<T> {
+//!     fn decode(d: &mut D) -> Result<Spanned<T>, E> {
+//!         d.read_struct("Spanned", 2, |this| {
+//!             Ok(Spanned {
+//!                 node: this.read_struct_field("node", 0, |this| Decodable::decode(this))
+//!                     .ok().unwrap(),
+//!                 span: this.read_struct_field("span", 1, |this| Decodable::decode(this))
+//!                     .ok().unwrap(),
 //!             })
-//!         }
+//!         })
 //!     }
+//! }
 //! ```
 
 use ast::{MetaItem, Item, Expr, ExprRet, MutMutable, LitNil};
