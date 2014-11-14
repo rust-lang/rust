@@ -31,6 +31,7 @@ pub use self::Lit_::*;
 pub use self::LitIntType::*;
 pub use self::LocalSource::*;
 pub use self::Mac_::*;
+pub use self::MacStmtStyle::*;
 pub use self::MatchSource::*;
 pub use self::MetaItem_::*;
 pub use self::Method_::*;
@@ -615,8 +616,20 @@ pub enum Stmt_ {
     /// Expr with trailing semi-colon (may have any type):
     StmtSemi(P<Expr>, NodeId),
 
-    /// bool: is there a trailing semi-colon?
-    StmtMac(Mac, bool),
+    StmtMac(Mac, MacStmtStyle),
+}
+
+#[deriving(Clone, Copy, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
+pub enum MacStmtStyle {
+    /// The macro statement had a trailing semicolon, e.g. `foo! { ... };`
+    /// `foo!(...);`, `foo![...];`
+    MacStmtWithSemicolon,
+    /// The macro statement had braces; e.g. foo! { ... }
+    MacStmtWithBraces,
+    /// The macro statement had parentheses or brackets and no semicolon; e.g.
+    /// `foo!(...)`. All of these will end up being converted into macro
+    /// expressions.
+    MacStmtWithoutBraces,
 }
 
 /// Where a local declaration came from: either a true `let ... =

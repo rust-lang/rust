@@ -16,7 +16,7 @@ macro_rules! e(
     ($inp:ident) => (
         $nonexistent
     );
-)
+);
 
 fn main() {
     e!(foo);

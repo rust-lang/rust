@@ -478,7 +478,7 @@ fn resolve_socket_addr(s: &str, p: u16) -> IoResult<Vec<SocketAddr>> {
 }
 
 fn parse_and_resolve_socket_addr(s: &str) -> IoResult<Vec<SocketAddr>> {
-    macro_rules! try_opt(
+    macro_rules! try_opt {
         ($e:expr, $msg:expr) => (
             match $e {
                 Some(r) => r,
@@ -489,7 +489,7 @@ fn parse_and_resolve_socket_addr(s: &str) -> IoResult<Vec<SocketAddr>> {
                 })
             }
         )
-    )
+    }
 
     // split the string by ':' and convert the second part to u16
     let mut parts_iter = s.rsplitn(2, ':');

@@ -511,7 +511,7 @@ mod bench {
     use self::test::Bencher;
 
     // why is this a macro? wouldn't an inlined function work just as well?
-    macro_rules! u64_from_be_bytes_bench_impl(
+    macro_rules! u64_from_be_bytes_bench_impl {
         ($b:expr, $size:expr, $stride:expr, $start_index:expr) =>
         ({
             use super::u64_from_be_bytes;
@@ -526,7 +526,7 @@ mod bench {
                 }
             });
         })
-    )
+    }
 
     #[bench]
     fn u64_from_be_bytes_4_aligned(b: &mut Bencher) {

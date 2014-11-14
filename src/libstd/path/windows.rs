@@ -1122,7 +1122,7 @@ mod tests {
     use super::*;
     use super::parse_prefix;
 
-    macro_rules! t(
+    macro_rules! t {
         (s: $path:expr, $exp:expr) => (
             {
                 let path = $path;
@@ -1135,7 +1135,7 @@ mod tests {
                 assert!(path.as_vec() == $exp);
             }
         )
-    )
+    }
 
     #[test]
     fn test_parse_prefix() {
@@ -1149,7 +1149,7 @@ mod tests {
                             "parse_prefix(\"{}\"): expected {}, found {}", path, exp, res);
                 }
             )
-        )
+        );
 
         t!("\\\\SERVER\\share\\foo", Some(UNCPrefix(6,5)));
         t!("\\\\", None);
@@ -1348,7 +1348,7 @@ mod tests {
                     assert_eq!(f, $expf);
                 }
             )
-        )
+        );
 
         t!("foo", "foo", "foo");
         t!("foo\\bar", "foo\\bar", "bar");
@@ -1380,7 +1380,7 @@ mod tests {
                     assert!(path.$op() == $exp);
                 }
             )
-        )
+        );
 
         t!(v: b"a\\b\\c", filename, Some(b"c"));
         t!(s: "a\\b\\c", filename_str, "c");
@@ -1491,7 +1491,7 @@ mod tests {
                     assert!(p1 == p2.join(join));
                 }
             )
-        )
+        );
 
         t!(s: "a\\b\\c", "..");
         t!(s: "\\a\\b\\c", "d");
@@ -1524,7 +1524,7 @@ mod tests {
                     assert_eq!(p.as_str(), Some($exp));
                 }
             )
-        )
+        );
 
         t!(s: "a\\b\\c", "d", "a\\b\\c\\d");
         t!(s: "\\a\\b\\c", "d", "\\a\\b\\c\\d");
@@ -1582,7 +1582,7 @@ mod tests {
                     assert_eq!(p.as_vec(), $exp);
                 }
             )
-        )
+        );
 
         t!(s: "a\\b\\c", ["d", "e"], "a\\b\\c\\d\\e");
         t!(s: "a\\b\\c", ["d", "\\e"], "\\e");
@@ -1617,7 +1617,7 @@ mod tests {
                     assert!(result == $right);
                 }
             )
-        )
+        );
 
         t!(s: "a\\b\\c", "a\\b", true);
         t!(s: "a", ".", true);
@@ -1694,7 +1694,7 @@ mod tests {
                     assert_eq!(res.as_str(), Some($exp));
                 }
             )
-        )
+        );
 
         t!(s: "a\\b\\c", "..", "a\\b");
         t!(s: "\\a\\b\\c", "d", "\\a\\b\\c\\d");
@@ -1723,7 +1723,7 @@ mod tests {
                     assert_eq!(res.as_vec(), $exp);
                 }
             )
-        )
+        );
 
         t!(s: "a\\b\\c", ["d", "e"], "a\\b\\c\\d\\e");
         t!(s: "a\\b\\c", ["..", "d"], "a\\b\\d");
@@ -1749,7 +1749,7 @@ mod tests {
                             pstr, stringify!($op), arg, exp, res.as_str().unwrap());
                 }
             )
-        )
+        );
 
         t!(s: "a\\b\\c", with_filename, "d", "a\\b\\d");
         t!(s: ".", with_filename, "foo", "foo");
@@ -1842,7 +1842,7 @@ mod tests {
                     assert!(p1 == p2.$with(arg));
                 }
             )
-        )
+        );
 
         t!(v: b"a\\b\\c", set_filename, with_filename, b"d");
         t!(v: b"\\", set_filename, with_filename, b"foo");
@@ -1897,7 +1897,7 @@ mod tests {
                     assert!(path.extension() == $ext);
                 }
             )
-        )
+        );
 
         t!(v: Path::new(b"a\\b\\c"), Some(b"c"), b"a\\b", Some(b"c"), None);
         t!(s: Path::new("a\\b\\c"), Some("c"), Some("a\\b"), Some("c"), None);
@@ -1951,7 +1951,7 @@ mod tests {
                             path.as_str().unwrap(), rel, b);
                 }
             )
-        )
+        );
         t!("a\\b\\c", false, false, false, true);
         t!("\\a\\b\\c", false, true, false, false);
         t!("a", false, false, false, true);
@@ -1984,7 +1984,7 @@ mod tests {
                             path.as_str().unwrap(), dest.as_str().unwrap(), exp, res);
                 }
             )
-        )
+        );
 
         t!(s: "a\\b\\c", "a\\b\\c\\d", true);
         t!(s: "a\\b\\c", "a\\b\\c", true);
@@ -2083,7 +2083,7 @@ mod tests {
                     assert_eq!(path.ends_with_path(&child), $exp);
                 }
             );
-        )
+        );
 
         t!(s: "a\\b\\c", "c", true);
         t!(s: "a\\b\\c", "d", false);
@@ -2120,7 +2120,7 @@ mod tests {
                             res.as_ref().and_then(|x| x.as_str()));
                 }
             )
-        )
+        );
 
         t!(s: "a\\b\\c", "a\\b", Some("c"));
         t!(s: "a\\b\\c", "a\\b\\d", Some("..\\c"));
@@ -2255,7 +2255,7 @@ mod tests {
                     assert_eq!(comps, exp);
                 }
             );
-        )
+        );
 
         t!(s: b"a\\b\\c", ["a", "b", "c"]);
         t!(s: "a\\b\\c", ["a", "b", "c"]);
@@ -2311,7 +2311,7 @@ mod tests {
                     assert_eq!(comps, exp);
                 }
             )
-        )
+        );
 
         t!(s: "a\\b\\c", [b"a", b"b", b"c"]);
         t!(s: ".", [b"."]);
@@ -2329,7 +2329,7 @@ mod tests {
                     assert!(make_non_verbatim(&path) == exp);
                 }
             )
-        )
+        );
 
         t!(r"\a\b\c", Some(r"\a\b\c"));
         t!(r"a\b\c", Some(r"a\b\c"));

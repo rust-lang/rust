@@ -40,9 +40,10 @@ use ast::{ItemMac, ItemMod, ItemStruct, ItemTrait, ItemTy};
 use ast::{LifetimeDef, Lit, Lit_};
 use ast::{LitBool, LitChar, LitByte, LitBinary};
 use ast::{LitStr, LitInt, Local, LocalLet};
+use ast::{MacStmtWithBraces, MacStmtWithSemicolon, MacStmtWithoutBraces};
 use ast::{MutImmutable, MutMutable, Mac_, MacInvocTT, MatchNormal};
 use ast::{Method, MutTy, BiMul, Mutability};
-use ast::{MethodImplItem, NamedField, UnNeg, NoReturn, UnNot};
+use ast::{MethodImplItem, NamedField, UnNeg, NoReturn, NodeId, UnNot};
 use ast::{Pat, PatEnum, PatIdent, PatLit, PatRange, PatRegion, PatStruct};
 use ast::{PatTup, PatBox, PatWild, PatWildMulti, PatWildSingle};
 use ast::{PolyTraitRef};
@@ -132,7 +133,7 @@ enum ItemOrViewItem {
 /// macro expansion). Placement of these is not as complex as I feared it would
 /// be. The important thing is to make sure that lookahead doesn't balk at
 /// `token::Interpolated` tokens.
-macro_rules! maybe_whole_expr (
+macro_rules! maybe_whole_expr {
     ($p:expr) => (
         {
             let found = match $p.token {
@@ -170,10 +171,10 @@ macro_rules! maybe_whole_expr (
             }
         }
     )
-)
+}
 
 /// As maybe_whole_expr, but for things other than expressions
-macro_rules! maybe_whole (
+macro_rules! maybe_whole {
     ($p:expr, $constructor:ident) => (
         {
             let found = match ($p).token {
@@ -252,7 +253,7 @@ macro_rules! maybe_whole (
             }
         }
     )
-)
+}
 
 
 fn maybe_append(mut lhs: Vec<Attribute>, rhs: Option<Vec<Attribute>>)
@@ -3708,21 +3709,32 @@ impl<'a> Parser<'a> {
             );
             let hi = self.span.hi;
 
+            let style = if delim == token::Brace {
+                MacStmtWithBraces
+            } else {
+                MacStmtWithoutBraces
+            };
+
             if id.name == token::special_idents::invalid.name {
-                if self.check(&token::Dot) {
-                    let span = self.span;
-                    let token_string = self.this_token_to_string();
-                    self.span_err(span,
-                                  format!("expected statement, found `{}`",
-                                          token_string).as_slice());
-                    let mac_span = mk_sp(lo, hi);
-                    self.span_help(mac_span, "try parenthesizing this macro invocation");
-                    self.abort_if_errors();
-                }
-                P(spanned(lo, hi, StmtMac(
-                    spanned(lo, hi, MacInvocTT(pth, tts, EMPTY_CTXT)), false)))
+                P(spanned(lo,
+                          hi,
+                          StmtMac(spanned(lo,
+                                          hi,
+                                          MacInvocTT(pth, tts, EMPTY_CTXT)),
+                                  style)))
             } else {
                 // if it has a special ident, it's definitely an item
+                //
+                // Require a semicolon or braces.
+                if style != MacStmtWithBraces {
+                    if !self.eat(&token::Semi) {
+                        let last_span = self.last_span;
+                        self.span_err(last_span,
+                                      "macros that expand to items must \
+                                       either be surrounded with braces or \
+                                       followed by a semicolon");
+                    }
+                }
                 P(spanned(lo, hi, StmtDecl(
                     P(spanned(lo, hi, DeclItem(
                         self.mk_item(
@@ -3731,7 +3743,6 @@ impl<'a> Parser<'a> {
                             Inherited, Vec::new(/*no attrs*/))))),
                     ast::DUMMY_NODE_ID)))
             }
-
         } else {
             let found_attrs = !item_attrs.is_empty();
             let item_err = Parser::expected_item_err(item_attrs.as_slice());
@@ -3851,43 +3862,46 @@ impl<'a> Parser<'a> {
                     attributes_box = Vec::new();
                     stmt.and_then(|Spanned {node, span}| match node {
                         StmtExpr(e, stmt_id) => {
-                            // expression without semicolon
-                            if classify::expr_requires_semi_to_be_stmt(&*e) {
-                                // Just check for errors and recover; do not eat semicolon yet.
-                                self.commit_stmt(&[], &[token::Semi,
-                                    token::CloseDelim(token::Brace)]);
-                            }
-
+                            self.handle_expression_like_statement(e,
+                                                                  stmt_id,
+                                                                  span,
+                                                                  &mut stmts,
+                                                                  &mut expr);
+                        }
+                        StmtMac(macro, MacStmtWithoutBraces) => {
+                            // statement macro without braces; might be an
+                            // expr depending on whether a semicolon follows
                             match self.token {
                                 token::Semi => {
-                                    self.bump();
-                                    let span_with_semi = Span {
-                                        lo: span.lo,
-                                        hi: self.last_span.hi,
-                                        expn_id: span.expn_id,
-                                    };
                                     stmts.push(P(Spanned {
-                                        node: StmtSemi(e, stmt_id),
-                                        span: span_with_semi,
+                                        node: StmtMac(macro,
+                                                      MacStmtWithSemicolon),
+                                        span: span,
                                     }));
-                                }
-                                token::CloseDelim(token::Brace) => {
-                                    expr = Some(e);
+                                    self.bump();
                                 }
                                 _ => {
-                                    stmts.push(P(Spanned {
-                                        node: StmtExpr(e, stmt_id),
-                                        span: span
-                                    }));
+                                    let e = self.mk_mac_expr(span.lo,
+                                                             span.hi,
+                                                             macro.node);
+                                    let e =
+                                        self.parse_dot_or_call_expr_with(e);
+                                    self.handle_expression_like_statement(
+                                        e,
+                                        ast::DUMMY_NODE_ID,
+                                        span,
+                                        &mut stmts,
+                                        &mut expr);
                                 }
                             }
                         }
-                        StmtMac(m, semi) => {
+                        StmtMac(m, style) => {
                             // statement macro; might be an expr
                             match self.token {
                                 token::Semi => {
                                     stmts.push(P(Spanned {
-                                        node: StmtMac(m, true),
+                                        node: StmtMac(m,
+                                                      MacStmtWithSemicolon),
                                         span: span,
                                     }));
                                     self.bump();
@@ -3902,7 +3916,7 @@ impl<'a> Parser<'a> {
                                 }
                                 _ => {
                                     stmts.push(P(Spanned {
-                                        node: StmtMac(m, semi),
+                                        node: StmtMac(m, style),
                                         span: span
                                     }));
                                 }
@@ -3939,6 +3953,43 @@ impl<'a> Parser<'a> {
             rules: s,
             span: mk_sp(lo, hi),
         })
+    }
+
+    fn handle_expression_like_statement(
+            &mut self,
+            e: P<Expr>,
+            stmt_id: NodeId,
+            span: Span,
+            stmts: &mut Vec<P<Stmt>>,
+            last_block_expr: &mut Option<P<Expr>>) {
+        // expression without semicolon
+        if classify::expr_requires_semi_to_be_stmt(&*e) {
+            // Just check for errors and recover; do not eat semicolon yet.
+            self.commit_stmt(&[],
+                             &[token::Semi, token::CloseDelim(token::Brace)]);
+        }
+
+        match self.token {
+            token::Semi => {
+                self.bump();
+                let span_with_semi = Span {
+                    lo: span.lo,
+                    hi: self.last_span.hi,
+                    expn_id: span.expn_id,
+                };
+                stmts.push(P(Spanned {
+                    node: StmtSemi(e, stmt_id),
+                    span: span_with_semi,
+                }));
+            }
+            token::CloseDelim(token::Brace) => *last_block_expr = Some(e),
+            _ => {
+                stmts.push(P(Spanned {
+                    node: StmtExpr(e, stmt_id),
+                    span: span
+                }));
+            }
+        }
     }
 
     // Parses a sequence of bounds if a `:` is found,
@@ -4591,6 +4642,9 @@ impl<'a> Parser<'a> {
                 let m: ast::Mac = codemap::Spanned { node: m_,
                                                  span: mk_sp(self.span.lo,
                                                              self.span.hi) };
+                if delim != token::Brace {
+                    self.expect(&token::Semi)
+                }
                 (ast::MethMac(m), self.span.hi, attrs)
             } else {
                 let unsafety = self.parse_unsafety();
@@ -5747,6 +5801,17 @@ impl<'a> Parser<'a> {
             let m: ast::Mac = codemap::Spanned { node: m,
                                              span: mk_sp(self.span.lo,
                                                          self.span.hi) };
+
+            if delim != token::Brace {
+                if !self.eat(&token::Semi) {
+                    let last_span = self.last_span;
+                    self.span_err(last_span,
+                                  "macros that expand to items must either \
+                                   be surrounded with braces or followed by \
+                                   a semicolon");
+                }
+            }
+
             let item_ = ItemMac(m);
             let last_span = self.last_span;
             let item = self.mk_item(lo,

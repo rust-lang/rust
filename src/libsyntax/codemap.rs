@@ -329,7 +329,7 @@ impl FileMap {
         // the new charpos must be > the last one (or it's the first one).
         let mut lines = self.lines.borrow_mut();
         let line_len = lines.len();
-        assert!(line_len == 0 || ((*lines)[line_len - 1] < pos))
+        assert!(line_len == 0 || ((*lines)[line_len - 1] < pos));
         lines.push(pos);
     }
 

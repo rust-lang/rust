@@ -1223,7 +1223,7 @@ pub fn mk_prim_t<'tcx>(primitive: &'tcx TyS<'static>) -> Ty<'tcx> {
 
 // Do not change these from static to const, interning types requires
 // the primitives to have a significant address.
-macro_rules! def_prim_tys(
+macro_rules! def_prim_tys {
     ($($name:ident -> $sty:expr;)*) => (
         $(#[inline] pub fn $name<'tcx>() -> Ty<'tcx> {
             static PRIM_TY: TyS<'static> = TyS {
@@ -1234,7 +1234,7 @@ macro_rules! def_prim_tys(
             mk_prim_t(&PRIM_TY)
         })*
     )
-)
+}
 
 def_prim_tys!{
     mk_bool ->  ty_bool;
@@ -2739,7 +2739,7 @@ pub struct TypeContents {
 
 impl Copy for TypeContents {}
 
-macro_rules! def_type_content_sets(
+macro_rules! def_type_content_sets {
     (mod $mname:ident { $($name:ident = $bits:expr),+ }) => {
         #[allow(non_snake_case)]
         mod $mname {
@@ -2750,9 +2750,9 @@ macro_rules! def_type_content_sets(
              )+
         }
     }
-)
+}
 
-def_type_content_sets!(
+def_type_content_sets! {
     mod TC {
         None                                = 0b0000_0000__0000_0000__0000,
 
@@ -2790,7 +2790,7 @@ def_type_content_sets!(
         // All bits
         All                                 = 0b1111_1111__1111_1111__1111
     }
-)
+}
 
 impl TypeContents {
     pub fn when(&self, cond: bool) -> TypeContents {
@@ -3113,7 +3113,7 @@ pub fn type_contents<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> TypeContents {
 
             ty_open(ty) => {
                 let result = tc_ty(cx, ty, cache);
-                assert!(!result.is_sized(cx))
+                assert!(!result.is_sized(cx));
                 result.unsafe_pointer() | TC::Nonsized
             }
 
@@ -3644,7 +3644,7 @@ pub fn unsized_part_of_type<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
             let unsized_fields: Vec<_> = struct_fields(cx, def_id, substs).iter()
                 .map(|f| f.mt.ty).filter(|ty| !type_is_sized(cx, *ty)).collect();
             // Exactly one of the fields must be unsized.
-            assert!(unsized_fields.len() == 1)
+            assert!(unsized_fields.len() == 1);
 
             unsized_part_of_type(cx, unsized_fields[0])
         }

@@ -30,9 +30,9 @@ macro_rules! test(
             }
         }
     )
-)
+);
 
-test!(x,y,x + y)
+test!(x,y,x + y);
 
 pub fn main() {
     foo(T::A(1), T::A(2));

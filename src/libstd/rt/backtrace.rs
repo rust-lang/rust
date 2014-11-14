@@ -109,7 +109,7 @@ fn demangle(writer: &mut Writer, s: &str) -> IoResult<()> {
             rest = rest.slice_to(i);
             while rest.len() > 0 {
                 if rest.starts_with("$") {
-                    macro_rules! demangle(
+                    macro_rules! demangle {
                         ($($pat:expr => $demangled:expr),*) => ({
                             $(if rest.starts_with($pat) {
                                 try!(writer.write_str($demangled));
@@ -121,7 +121,8 @@ fn demangle(writer: &mut Writer, s: &str) -> IoResult<()> {
                             }
 
                         })
-                    )
+                    }
+
                     // see src/librustc/back/link.rs for these mappings
                     demangle! (
                         "$SP$" => "@",
@@ -933,12 +934,12 @@ mod imp {
             Err(..) => return Ok(()),
         };
 
-        macro_rules! sym( ($e:expr, $t:ident) => (unsafe {
+        macro_rules! sym { ($e:expr, $t:ident) => (unsafe {
             match lib.symbol($e) {
                 Ok(f) => mem::transmute::<*mut u8, $t>(f),
                 Err(..) => return Ok(())
             }
-        }) )
+        }) }
 
         // Fetch the symbols necessary from dbghelp.dll
         let SymFromAddr = sym!("SymFromAddr", SymFromAddrFn);
@@ -1003,11 +1004,13 @@ mod imp {
 #[cfg(test)]
 mod test {
     use prelude::*;
-    macro_rules! t( ($a:expr, $b:expr) => ({
+    use io::MemWriter;
+
+    macro_rules! t { ($a:expr, $b:expr) => ({
         let mut m = Vec::new();
         super::demangle(&mut m, $a).unwrap();
         assert_eq!(String::from_utf8(m).unwrap(), $b);
-    }) )
+    }) }
 
     #[test]
     fn demangle() {

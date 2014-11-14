@@ -18,12 +18,16 @@ use ext::build::AstBuilder;
 use parse::token;
 use ptr::P;
 
-thread_local!(static REGISTERED_DIAGNOSTICS: RefCell<HashMap<Name, Option<Name>>> = {
-    RefCell::new(HashMap::new())
-})
-thread_local!(static USED_DIAGNOSTICS: RefCell<HashMap<Name, Span>> = {
-    RefCell::new(HashMap::new())
-})
+thread_local! {
+    static REGISTERED_DIAGNOSTICS: RefCell<HashMap<Name, Option<Name>>> = {
+        RefCell::new(HashMap::new())
+    }
+}
+thread_local! {
+    static USED_DIAGNOSTICS: RefCell<HashMap<Name, Span>> = {
+        RefCell::new(HashMap::new())
+    }
+}
 
 fn with_registered_diagnostics<T, F>(f: F) -> T where
     F: FnOnce(&mut HashMap<Name, Option<Name>>) -> T,

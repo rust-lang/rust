@@ -11,44 +11,45 @@
 #![macro_escape]
 
 #[macro_export]
-macro_rules! register_diagnostic(
-    ($code:tt, $description:tt) => (__register_diagnostic!($code, $description));
-    ($code:tt) => (__register_diagnostic!($code))
-)
+macro_rules! register_diagnostic {
+    ($code:tt, $description:tt) => (__register_diagnostic! { $code, $description });
+    ($code:tt) => (__register_diagnostic! { $code })
+}
 
 #[macro_export]
-macro_rules! span_err(
+macro_rules! span_err {
     ($session:expr, $span:expr, $code:ident, $($message:tt)*) => ({
         __diagnostic_used!($code);
         $session.span_err_with_code($span, format!($($message)*).as_slice(), stringify!($code))
     })
-)
+}
 
 #[macro_export]
-macro_rules! span_warn(
+macro_rules! span_warn {
     ($session:expr, $span:expr, $code:ident, $($message:tt)*) => ({
         __diagnostic_used!($code);
         $session.span_warn_with_code($span, format!($($message)*).as_slice(), stringify!($code))
     })
-)
+}
 
 #[macro_export]
-macro_rules! span_note(
+macro_rules! span_note {
     ($session:expr, $span:expr, $($message:tt)*) => ({
         ($session).span_note($span, format!($($message)*).as_slice())
     })
-)
+}
 
 #[macro_export]
-macro_rules! span_help(
+macro_rules! span_help {
     ($session:expr, $span:expr, $($message:tt)*) => ({
         ($session).span_help($span, format!($($message)*).as_slice())
     })
-)
+}
 
 #[macro_export]
-macro_rules! register_diagnostics(
+macro_rules! register_diagnostics {
     ($($code:tt),*) => (
-        $(register_diagnostic!($code))*
+        $(register_diagnostic! { $code })*
     )
-)
+}
+

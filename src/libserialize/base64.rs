@@ -385,7 +385,7 @@ mod tests {
 
     #[test]
     fn test_from_base64_invalid_char() {
-        assert!("Zm$=".from_base64().is_err())
+        assert!("Zm$=".from_base64().is_err());
         assert!("Zg==$".from_base64().is_err());
     }
 

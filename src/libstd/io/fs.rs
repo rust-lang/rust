@@ -828,20 +828,20 @@ mod test {
     use ops::Drop;
     use str::StrPrelude;
 
-    macro_rules! check( ($e:expr) => (
+    macro_rules! check { ($e:expr) => (
         match $e {
             Ok(t) => t,
             Err(e) => panic!("{} failed with: {}", stringify!($e), e),
         }
-    ) )
+    ) }
 
-    macro_rules! error( ($e:expr, $s:expr) => (
+    macro_rules! error { ($e:expr, $s:expr) => (
         match $e {
             Ok(_) => panic!("Unexpected success. Should've been: {}", $s),
             Err(ref err) => assert!(err.to_string().contains($s.as_slice()),
                                     format!("`{}` did not contain `{}`", err, $s))
         }
-    ) )
+    ) }
 
     pub struct TempDir(Path);
 

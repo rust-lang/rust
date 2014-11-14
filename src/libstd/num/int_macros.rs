@@ -12,6 +12,6 @@
 #![macro_escape]
 #![doc(hidden)]
 
-macro_rules! int_module (($T:ty) => (
+macro_rules! int_module { ($T:ty) => (
 
-))
+) }

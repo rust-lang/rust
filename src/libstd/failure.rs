@@ -27,9 +27,11 @@ use str::Str;
 use string::String;
 
 // Defined in this module instead of io::stdio so that the unwinding
-thread_local!(pub static LOCAL_STDERR: RefCell<Option<Box<Writer + Send>>> = {
-    RefCell::new(None)
-})
+thread_local! {
+    pub static LOCAL_STDERR: RefCell<Option<Box<Writer + Send>>> = {
+        RefCell::new(None)
+    }
+}
 
 impl Writer for Stdio {
     fn write(&mut self, bytes: &[u8]) -> IoResult<()> {

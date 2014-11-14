@@ -11,7 +11,7 @@
 #![macro_escape]
 
 /// Creates a `std::vec::Vec` containing the arguments.
-macro_rules! vec(
+macro_rules! vec {
     ($($e:expr),*) => ({
         // leading _ to allow empty construction without a warning.
         let mut _temp = ::vec::Vec::new();
@@ -19,4 +19,5 @@ macro_rules! vec(
         _temp
     });
     ($($e:expr),+,) => (vec!($($e),+))
-)
+}
+

@@ -95,9 +95,11 @@ fn src<T, F>(fd: libc::c_int, _readable: bool, f: F) -> T where
     }
 }
 
-thread_local!(static LOCAL_STDOUT: RefCell<Option<Box<Writer + Send>>> = {
-    RefCell::new(None)
-})
+thread_local! {
+    static LOCAL_STDOUT: RefCell<Option<Box<Writer + Send>>> = {
+        RefCell::new(None)
+    }
+}
 
 /// A synchronized wrapper around a buffered reader from stdin
 #[deriving(Clone)]

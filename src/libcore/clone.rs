@@ -46,7 +46,7 @@ impl<'a, Sized? T> Clone for &'a T {
     fn clone(&self) -> &'a T { *self }
 }
 
-macro_rules! clone_impl(
+macro_rules! clone_impl {
     ($t:ty) => {
         impl Clone for $t {
             /// Return a deep copy of the value.
@@ -54,28 +54,28 @@ macro_rules! clone_impl(
             fn clone(&self) -> $t { *self }
         }
     }
-)
+}
 
-clone_impl!(int)
-clone_impl!(i8)
-clone_impl!(i16)
-clone_impl!(i32)
-clone_impl!(i64)
+clone_impl! { int }
+clone_impl! { i8 }
+clone_impl! { i16 }
+clone_impl! { i32 }
+clone_impl! { i64 }
 
-clone_impl!(uint)
-clone_impl!(u8)
-clone_impl!(u16)
-clone_impl!(u32)
-clone_impl!(u64)
+clone_impl! { uint }
+clone_impl! { u8 }
+clone_impl! { u16 }
+clone_impl! { u32 }
+clone_impl! { u64 }
 
-clone_impl!(f32)
-clone_impl!(f64)
+clone_impl! { f32 }
+clone_impl! { f64 }
 
-clone_impl!(())
-clone_impl!(bool)
-clone_impl!(char)
+clone_impl! { () }
+clone_impl! { bool }
+clone_impl! { char }
 
-macro_rules! extern_fn_clone(
+macro_rules! extern_fn_clone {
     ($($A:ident),*) => (
         #[experimental = "this may not be sufficient for fns with region parameters"]
         impl<$($A,)* ReturnType> Clone for extern "Rust" fn($($A),*) -> ReturnType {
@@ -84,15 +84,15 @@ macro_rules! extern_fn_clone(
             fn clone(&self) -> extern "Rust" fn($($A),*) -> ReturnType { *self }
         }
     )
-)
+}
 
-extern_fn_clone!()
-extern_fn_clone!(A)
-extern_fn_clone!(A, B)
-extern_fn_clone!(A, B, C)
-extern_fn_clone!(A, B, C, D)
-extern_fn_clone!(A, B, C, D, E)
-extern_fn_clone!(A, B, C, D, E, F)
-extern_fn_clone!(A, B, C, D, E, F, G)
-extern_fn_clone!(A, B, C, D, E, F, G, H)
+extern_fn_clone! {}
+extern_fn_clone! { A }
+extern_fn_clone! { A, B }
+extern_fn_clone! { A, B, C }
+extern_fn_clone! { A, B, C, D }
+extern_fn_clone! { A, B, C, D, E }
+extern_fn_clone! { A, B, C, D, E, F }
+extern_fn_clone! { A, B, C, D, E, F, G }
+extern_fn_clone! { A, B, C, D, E, F, G, H }
 

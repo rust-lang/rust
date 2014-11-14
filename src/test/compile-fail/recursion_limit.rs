@@ -22,19 +22,19 @@ macro_rules! link {
     }
 }
 
-link!(A,B)
-link!(B,C)
-link!(C,D)
-link!(D,E)
-link!(E,F)
-link!(F,G)
-link!(G,H)
-link!(H,I)
-link!(I,J)
-link!(J,K)
-link!(K,L)
-link!(L,M)
-link!(M,N)
+link! { A, B }
+link! { B, C }
+link! { C, D }
+link! { D, E }
+link! { E, F }
+link! { F, G }
+link! { G, H }
+link! { H, I }
+link! { I, J }
+link! { J, K }
+link! { K, L }
+link! { L, M }
+link! { M, N }
 
 enum N { N(uint) }
 

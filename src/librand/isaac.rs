@@ -434,7 +434,7 @@ impl Rng for Isaac64Rng {
 
         // See corresponding location in IsaacRng.next_u32 for
         // explanation.
-        debug_assert!(self.cnt < RAND_SIZE_64)
+        debug_assert!(self.cnt < RAND_SIZE_64);
         self.rsl[(self.cnt % RAND_SIZE_64) as uint]
     }
 }

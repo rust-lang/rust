@@ -15,22 +15,22 @@
 
 #![macro_escape]
 
-macro_rules! rterrln (
+macro_rules! rterrln {
     ($fmt:expr $($arg:tt)*) => ( {
         format_args!(::util::dumb_print, concat!($fmt, "\n") $($arg)*)
     } )
-)
+}
 
 // Some basic logging. Enabled by passing `--cfg rtdebug` to the libstd build.
-macro_rules! rtdebug (
+macro_rules! rtdebug {
     ($($arg:tt)*) => ( {
         if cfg!(rtdebug) {
             rterrln!($($arg)*)
         }
     })
-)
+}
 
-macro_rules! rtassert (
+macro_rules! rtassert {
     ( $arg:expr ) => ( {
         if ::util::ENFORCE_SANITY {
             if !$arg {
@@ -38,9 +38,9 @@ macro_rules! rtassert (
             }
         }
     } )
-)
+}
 
 
-macro_rules! rtabort (
+macro_rules! rtabort {
     ($($arg:tt)*) => (format_args!(::util::abort, $($arg)*))
-)
+}

@@ -31,7 +31,7 @@ fn main() {
         ($id:ident) =>
             (maybe_run_test(argv.as_slice(),
                             stringify!($id).to_string(),
-                            $id)))
+                            $id)));
 
     bench!(shift_push);
     bench!(read_line);
