@@ -23,7 +23,7 @@ use clean::{Crate, Item, ModuleItem, Module, EnumItem, Enum};
 use clean::{ImplItem, Impl, Trait, TraitItem, TraitMethod, ProvidedMethod, RequiredMethod};
 use clean::{TypeTraitItem, ViewItemItem, PrimitiveItem, Stability};
 
-use html::render::cache_key;
+use html::render::cache;
 
 #[deriving(Zero, Encodable, Decodable, PartialEq, Eq)]
 /// The counts for each stability level.
@@ -116,7 +116,7 @@ fn count_stability(stab: Option<&Stability>) -> Counts {
 }
 
 fn summarize_methods(item: &Item) -> Counts {
-    match cache_key.get().unwrap().impls.get(&item.def_id) {
+    match cache().impls.get(&item.def_id) {
         Some(v) => {
             v.iter().map(|i| {
                 let count = count_stability(i.stability.as_ref());

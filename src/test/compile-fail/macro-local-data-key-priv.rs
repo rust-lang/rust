@@ -11,10 +11,10 @@
 // check that the local data keys are private by default.
 
 mod bar {
-    local_data_key!(baz: f64)
+    thread_local!(static baz: f64 = 0.0)
 }
 
 fn main() {
-    bar::baz.replace(Some(-10.0));
+    bar::baz.with(|_| ());
     //~^ ERROR static `baz` is private
 }

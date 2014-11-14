@@ -29,22 +29,24 @@ out.write(b"Hello, world!");
 
 use self::StdSource::*;
 
-use failure::local_stderr;
+use boxed::Box;
+use cell::RefCell;
+use failure::LOCAL_STDERR;
 use fmt;
 use io::{Reader, Writer, IoResult, IoError, OtherIoError,
          standard_error, EndOfFile, LineBufferedWriter, BufferedReader};
 use iter::Iterator;
 use kinds::Send;
 use libc;
+use mem;
 use option::{Option, Some, None};
-use boxed::Box;
-use sys::{fs, tty};
 use result::{Ok, Err};
 use rustrt;
 use rustrt::local::Local;
 use rustrt::task::Task;
 use slice::SlicePrelude;
 use str::StrPrelude;
+use sys::{fs, tty};
 use uint;
 
 // And so begins the tale of acquiring a uv handle to a stdio stream on all
@@ -87,7 +89,9 @@ fn src<T>(fd: libc::c_int, _readable: bool, f: |StdSource| -> T) -> T {
     }
 }
 
-local_data_key!(local_stdout: Box<Writer + Send>)
+thread_local!(static LOCAL_STDOUT: RefCell<Option<Box<Writer + Send>>> = {
+    RefCell::new(None)
+})
 
 /// Creates a new non-blocking handle to the stdin of the current process.
 ///
@@ -167,7 +171,10 @@ pub fn stderr_raw() -> StdWriter {
 /// Note that this does not need to be called for all new tasks; the default
 /// output handle is to the process's stdout stream.
 pub fn set_stdout(stdout: Box<Writer + Send>) -> Option<Box<Writer + Send>> {
-    local_stdout.replace(Some(stdout)).and_then(|mut s| {
+    let mut new = Some(stdout);
+    LOCAL_STDOUT.with(|slot| {
+        mem::replace(&mut *slot.borrow_mut(), new.take())
+    }).and_then(|mut s| {
         let _ = s.flush();
         Some(s)
     })
@@ -182,7 +189,10 @@ pub fn set_stdout(stdout: Box<Writer + Send>) -> Option<Box<Writer + Send>> {
 /// Note that this does not need to be called for all new tasks; the default
 /// output handle is to the process's stderr stream.
 pub fn set_stderr(stderr: Box<Writer + Send>) -> Option<Box<Writer + Send>> {
-    local_stderr.replace(Some(stderr)).and_then(|mut s| {
+    let mut new = Some(stderr);
+    LOCAL_STDERR.with(|slot| {
+        mem::replace(&mut *slot.borrow_mut(), new.take())
+    }).and_then(|mut s| {
         let _ = s.flush();
         Some(s)
     })
@@ -200,11 +210,16 @@ pub fn set_stderr(stderr: Box<Writer + Send>) -> Option<Box<Writer + Send>> {
 //  })
 fn with_task_stdout(f: |&mut Writer| -> IoResult<()>) {
     let result = if Local::exists(None::<Task>) {
-        let mut my_stdout = local_stdout.replace(None).unwrap_or_else(|| {
+        let mut my_stdout = LOCAL_STDOUT.with(|slot| {
+            slot.borrow_mut().take()
+        }).unwrap_or_else(|| {
             box stdout() as Box<Writer + Send>
         });
         let result = f(&mut *my_stdout);
-        local_stdout.replace(Some(my_stdout));
+        let mut var = Some(my_stdout);
+        LOCAL_STDOUT.with(|slot| {
+            *slot.borrow_mut() = var.take();
+        });
         result
     } else {
         let mut io = rustrt::Stdout;
