@@ -18,7 +18,7 @@ use hash::{Hash, Hasher, RandomSipHasher};
 use iter::{mod, Iterator, FromIterator, Extend};
 use kinds::Sized;
 use mem::{mod, replace};
-use num;
+use num::UnsignedInt;
 use ops::{Deref, Index, IndexMut};
 use option::{Some, None, Option};
 use result::{Result, Ok, Err};
@@ -549,7 +549,7 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     /// ```
     #[inline]
     pub fn with_capacity_and_hasher(capacity: uint, hasher: H) -> HashMap<K, V, H> {
-        let cap = num::next_power_of_two(max(INITIAL_CAPACITY, capacity));
+        let cap = max(INITIAL_CAPACITY, capacity).next_power_of_two();
         HashMap {
             hasher:        hasher,
             resize_policy: DefaultResizePolicy::new(cap),
@@ -572,8 +572,7 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     /// map.reserve(10);
     /// ```
     pub fn reserve(&mut self, new_minimum_capacity: uint) {
-        let cap = num::next_power_of_two(
-            max(INITIAL_CAPACITY, new_minimum_capacity));
+        let cap = max(INITIAL_CAPACITY, new_minimum_capacity).next_power_of_two();
 
         self.resize_policy.reserve(cap);
 
@@ -588,7 +587,7 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     ///   2) Ensure new_capacity is a power of two.
     fn resize(&mut self, new_capacity: uint) {
         assert!(self.table.size() <= new_capacity);
-        assert!(num::is_power_of_two(new_capacity));
+        assert!(new_capacity.is_power_of_two());
 
         let mut old_table = replace(&mut self.table, RawTable::new(new_capacity));
         let old_size = old_table.size();

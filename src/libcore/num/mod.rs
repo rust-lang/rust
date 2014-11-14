@@ -10,7 +10,7 @@
 //
 // ignore-lexer-test FIXME #15679
 
-//! Numeric traits and functions for generic mathematics
+//! Numeric traits and functions for the built-in numeric types.
 
 #![allow(missing_docs)]
 
@@ -19,29 +19,13 @@ use {int, i8, i16, i32, i64};
 use {uint, u8, u16, u32, u64};
 use {f32, f64};
 use clone::Clone;
-use cmp::{Ord, PartialEq, PartialOrd};
+use cmp::{PartialEq, Eq};
+use cmp::{PartialOrd, Ord};
 use kinds::Copy;
 use mem::size_of;
 use ops::{Add, Sub, Mul, Div, Rem, Neg};
 use ops::{Not, BitAnd, BitOr, BitXor, Shl, Shr};
 use option::{Option, Some, None};
-
-/// The base trait for numeric types
-pub trait Num: PartialEq + Zero + One
-             + Neg<Self>
-             + Add<Self,Self>
-             + Sub<Self,Self>
-             + Mul<Self,Self>
-             + Div<Self,Self>
-             + Rem<Self,Self> {}
-
-macro_rules! trait_impl(
-    ($name:ident for $($t:ty)*) => ($(
-        impl $name for $t {}
-    )*)
-)
-
-trait_impl!(Num for uint u8 u16 u32 u64 int i8 i16 i32 i64 f32 f64)
 
 /// Simultaneous division and remainder
 #[inline]
@@ -49,268 +33,7 @@ pub fn div_rem<T: Div<T, T> + Rem<T, T>>(x: T, y: T) -> (T, T) {
     (x / y, x % y)
 }
 
-/// Defines an additive identity element for `Self`.
-///
-/// # Deriving
-///
-/// This trait can be automatically be derived using `#[deriving(Zero)]`
-/// attribute. If you choose to use this, make sure that the laws outlined in
-/// the documentation for `Zero::zero` still hold.
-pub trait Zero: Add<Self, Self> {
-    /// Returns the additive identity element of `Self`, `0`.
-    ///
-    /// # Laws
-    ///
-    /// ```{.text}
-    /// a + 0 = a       ∀ a ∈ Self
-    /// 0 + a = a       ∀ a ∈ Self
-    /// ```
-    ///
-    /// # Purity
-    ///
-    /// This function should return the same result at all times regardless of
-    /// external mutable state, for example values stored in TLS or in
-    /// `static mut`s.
-    // FIXME (#5527): This should be an associated constant
-    fn zero() -> Self;
-
-    /// Returns `true` if `self` is equal to the additive identity.
-    #[inline]
-    fn is_zero(&self) -> bool;
-}
-
-macro_rules! zero_impl(
-    ($t:ty, $v:expr) => {
-        impl Zero for $t {
-            #[inline]
-            fn zero() -> $t { $v }
-            #[inline]
-            fn is_zero(&self) -> bool { *self == $v }
-        }
-    }
-)
-
-zero_impl!(uint, 0u)
-zero_impl!(u8,   0u8)
-zero_impl!(u16,  0u16)
-zero_impl!(u32,  0u32)
-zero_impl!(u64,  0u64)
-
-zero_impl!(int, 0i)
-zero_impl!(i8,  0i8)
-zero_impl!(i16, 0i16)
-zero_impl!(i32, 0i32)
-zero_impl!(i64, 0i64)
-
-zero_impl!(f32, 0.0f32)
-zero_impl!(f64, 0.0f64)
-
-/// Returns the additive identity, `0`.
-#[inline(always)] pub fn zero<T: Zero>() -> T { Zero::zero() }
-
-/// Defines a multiplicative identity element for `Self`.
-pub trait One: Mul<Self, Self> {
-    /// Returns the multiplicative identity element of `Self`, `1`.
-    ///
-    /// # Laws
-    ///
-    /// ```{.text}
-    /// a * 1 = a       ∀ a ∈ Self
-    /// 1 * a = a       ∀ a ∈ Self
-    /// ```
-    ///
-    /// # Purity
-    ///
-    /// This function should return the same result at all times regardless of
-    /// external mutable state, for example values stored in TLS or in
-    /// `static mut`s.
-    // FIXME (#5527): This should be an associated constant
-    fn one() -> Self;
-}
-
-macro_rules! one_impl(
-    ($t:ty, $v:expr) => {
-        impl One for $t {
-            #[inline]
-            fn one() -> $t { $v }
-        }
-    }
-)
-
-one_impl!(uint, 1u)
-one_impl!(u8,  1u8)
-one_impl!(u16, 1u16)
-one_impl!(u32, 1u32)
-one_impl!(u64, 1u64)
-
-one_impl!(int, 1i)
-one_impl!(i8,  1i8)
-one_impl!(i16, 1i16)
-one_impl!(i32, 1i32)
-one_impl!(i64, 1i64)
-
-one_impl!(f32, 1.0f32)
-one_impl!(f64, 1.0f64)
-
-/// Returns the multiplicative identity, `1`.
-#[inline(always)] pub fn one<T: One>() -> T { One::one() }
-
-/// Useful functions for signed numbers (i.e. numbers that can be negative).
-pub trait Signed: Num + Neg<Self> {
-    /// Computes the absolute value.
-    ///
-    /// For `f32` and `f64`, `NaN` will be returned if the number is `NaN`.
-    ///
-    /// For signed integers, `::MIN` will be returned if the number is `::MIN`.
-    fn abs(&self) -> Self;
-
-    /// The positive difference of two numbers.
-    ///
-    /// Returns `zero` if the number is less than or equal to `other`, otherwise the difference
-    /// between `self` and `other` is returned.
-    fn abs_sub(&self, other: &Self) -> Self;
-
-    /// Returns the sign of the number.
-    ///
-    /// For `f32` and `f64`:
-    ///
-    /// * `1.0` if the number is positive, `+0.0` or `INFINITY`
-    /// * `-1.0` if the number is negative, `-0.0` or `NEG_INFINITY`
-    /// * `NaN` if the number is `NaN`
-    ///
-    /// For signed integers:
-    ///
-    /// * `0` if the number is zero
-    /// * `1` if the number is positive
-    /// * `-1` if the number is negative
-    fn signum(&self) -> Self;
-
-    /// Returns true if the number is positive and false if the number is zero or negative.
-    fn is_positive(&self) -> bool;
-
-    /// Returns true if the number is negative and false if the number is zero or positive.
-    fn is_negative(&self) -> bool;
-}
-
-macro_rules! signed_impl(
-    ($($t:ty)*) => ($(
-        impl Signed for $t {
-            #[inline]
-            fn abs(&self) -> $t {
-                if self.is_negative() { -*self } else { *self }
-            }
-
-            #[inline]
-            fn abs_sub(&self, other: &$t) -> $t {
-                if *self <= *other { 0 } else { *self - *other }
-            }
-
-            #[inline]
-            fn signum(&self) -> $t {
-                match *self {
-                    n if n > 0 => 1,
-                    0 => 0,
-                    _ => -1,
-                }
-            }
-
-            #[inline]
-            fn is_positive(&self) -> bool { *self > 0 }
-
-            #[inline]
-            fn is_negative(&self) -> bool { *self < 0 }
-        }
-    )*)
-)
-
-signed_impl!(int i8 i16 i32 i64)
-
-macro_rules! signed_float_impl(
-    ($t:ty, $nan:expr, $inf:expr, $neg_inf:expr, $fabs:path, $fcopysign:path, $fdim:ident) => {
-        impl Signed for $t {
-            /// Computes the absolute value. Returns `NAN` if the number is `NAN`.
-            #[inline]
-            fn abs(&self) -> $t {
-                unsafe { $fabs(*self) }
-            }
-
-            /// The positive difference of two numbers. Returns `0.0` if the number is
-            /// less than or equal to `other`, otherwise the difference between`self`
-            /// and `other` is returned.
-            #[inline]
-            fn abs_sub(&self, other: &$t) -> $t {
-                extern { fn $fdim(a: $t, b: $t) -> $t; }
-                unsafe { $fdim(*self, *other) }
-            }
-
-            /// # Returns
-            ///
-            /// - `1.0` if the number is positive, `+0.0` or `INFINITY`
-            /// - `-1.0` if the number is negative, `-0.0` or `NEG_INFINITY`
-            /// - `NAN` if the number is NaN
-            #[inline]
-            fn signum(&self) -> $t {
-                if self != self { $nan } else {
-                    unsafe { $fcopysign(1.0, *self) }
-                }
-            }
-
-            /// Returns `true` if the number is positive, including `+0.0` and `INFINITY`
-            #[inline]
-            fn is_positive(&self) -> bool { *self > 0.0 || (1.0 / *self) == $inf }
-
-            /// Returns `true` if the number is negative, including `-0.0` and `NEG_INFINITY`
-            #[inline]
-            fn is_negative(&self) -> bool { *self < 0.0 || (1.0 / *self) == $neg_inf }
-        }
-    }
-)
-
-signed_float_impl!(f32, f32::NAN, f32::INFINITY, f32::NEG_INFINITY,
-                   intrinsics::fabsf32, intrinsics::copysignf32, fdimf)
-signed_float_impl!(f64, f64::NAN, f64::INFINITY, f64::NEG_INFINITY,
-                   intrinsics::fabsf64, intrinsics::copysignf64, fdim)
-
-/// Computes the absolute value.
-///
-/// For `f32` and `f64`, `NaN` will be returned if the number is `NaN`
-///
-/// For signed integers, `::MIN` will be returned if the number is `::MIN`.
-#[inline(always)]
-pub fn abs<T: Signed>(value: T) -> T {
-    value.abs()
-}
-
-/// The positive difference of two numbers.
-///
-/// Returns zero if `x` is less than or equal to `y`, otherwise the difference
-/// between `x` and `y` is returned.
-#[inline(always)]
-pub fn abs_sub<T: Signed>(x: T, y: T) -> T {
-    x.abs_sub(&y)
-}
-
-/// Returns the sign of the number.
-///
-/// For `f32` and `f64`:
-///
-/// * `1.0` if the number is positive, `+0.0` or `INFINITY`
-/// * `-1.0` if the number is negative, `-0.0` or `NEG_INFINITY`
-/// * `NaN` if the number is `NaN`
-///
-/// For signed integers:
-///
-/// * `0` if the number is zero
-/// * `1` if the number is positive
-/// * `-1` if the number is negative
-#[inline(always)] pub fn signum<T: Signed>(value: T) -> T { value.signum() }
-
-/// A trait for values which cannot be negative
-pub trait Unsigned: Num {}
-
-trait_impl!(Unsigned for uint u8 u16 u32 u64)
-
-/// Raises a value to the power of exp, using exponentiation by squaring.
+/// Raises a `base` to the power of `exp`, using exponentiation by squaring.
 ///
 /// # Example
 ///
@@ -320,10 +43,10 @@ trait_impl!(Unsigned for uint u8 u16 u32 u64)
 /// assert_eq!(num::pow(2i, 4), 16);
 /// ```
 #[inline]
-pub fn pow<T: One + Mul<T, T>>(mut base: T, mut exp: uint) -> T {
+pub fn pow<T: Int>(mut base: T, mut exp: uint) -> T {
     if exp == 1 { base }
     else {
-        let mut acc = one::<T>();
+        let mut acc: T = Int::one();
         while exp > 0 {
             if (exp & 1) == 1 {
                 acc = acc * base;
@@ -335,85 +58,60 @@ pub fn pow<T: One + Mul<T, T>>(mut base: T, mut exp: uint) -> T {
     }
 }
 
-/// Numbers which have upper and lower bounds
-pub trait Bounded {
-    // FIXME (#5527): These should be associated constants
-    /// returns the smallest finite number this type can represent
+/// A built-in signed or unsigned integer.
+pub trait Int
+    : Copy + Clone
+    + NumCast
+    + PartialOrd + Ord
+    + PartialEq + Eq
+    + Add<Self,Self>
+    + Sub<Self,Self>
+    + Mul<Self,Self>
+    + Div<Self,Self>
+    + Rem<Self,Self>
+    + Not<Self>
+    + BitAnd<Self,Self>
+    + BitOr<Self,Self>
+    + BitXor<Self,Self>
+    + Shl<uint,Self>
+    + Shr<uint,Self>
+{
+    /// Returns the `0` value of this integer type.
+    // FIXME (#5527): Should be an associated constant
+    fn zero() -> Self;
+
+    /// Returns the `1` value of this integer type.
+    // FIXME (#5527): Should be an associated constant
+    fn one() -> Self;
+
+    /// Returns the smallest value that can be represented by this integer type.
+    // FIXME (#5527): Should be and associated constant
     fn min_value() -> Self;
-    /// returns the largest finite number this type can represent
+
+    /// Returns the largest value that can be represented by this integer type.
+    // FIXME (#5527): Should be and associated constant
     fn max_value() -> Self;
-}
 
-macro_rules! bounded_impl(
-    ($t:ty, $min:expr, $max:expr) => {
-        impl Bounded for $t {
-            #[inline]
-            fn min_value() -> $t { $min }
-
-            #[inline]
-            fn max_value() -> $t { $max }
-        }
-    }
-)
-
-bounded_impl!(uint, uint::MIN, uint::MAX)
-bounded_impl!(u8, u8::MIN, u8::MAX)
-bounded_impl!(u16, u16::MIN, u16::MAX)
-bounded_impl!(u32, u32::MIN, u32::MAX)
-bounded_impl!(u64, u64::MIN, u64::MAX)
-
-bounded_impl!(int, int::MIN, int::MAX)
-bounded_impl!(i8, i8::MIN, i8::MAX)
-bounded_impl!(i16, i16::MIN, i16::MAX)
-bounded_impl!(i32, i32::MIN, i32::MAX)
-bounded_impl!(i64, i64::MIN, i64::MAX)
-
-bounded_impl!(f32, f32::MIN_VALUE, f32::MAX_VALUE)
-bounded_impl!(f64, f64::MIN_VALUE, f64::MAX_VALUE)
-
-/// Specifies the available operations common to all of Rust's core numeric primitives.
-/// These may not always make sense from a purely mathematical point of view, but
-/// may be useful for systems programming.
-pub trait Primitive: Copy
-                   + Clone
-                   + Num
-                   + NumCast
-                   + PartialOrd
-                   + Bounded {}
-
-trait_impl!(Primitive for uint u8 u16 u32 u64 int i8 i16 i32 i64 f32 f64)
-
-/// A primitive signed or unsigned integer equipped with various bitwise
-/// operators, bit counting methods, and endian conversion functions.
-pub trait Int: Primitive
-             + Ord
-             + CheckedAdd
-             + CheckedSub
-             + CheckedMul
-             + CheckedDiv
-             + Bounded
-             + Not<Self>
-             + BitAnd<Self,Self>
-             + BitOr<Self,Self>
-             + BitXor<Self,Self>
-             + Shl<uint,Self>
-             + Shr<uint,Self> {
-    /// Returns the number of ones in the binary representation of the integer.
+    /// Returns the number of ones in the binary representation of `self`.
     ///
     /// # Example
     ///
     /// ```rust
+    /// use std::num::Int;
+    ///
     /// let n = 0b01001100u8;
     ///
     /// assert_eq!(n.count_ones(), 3);
     /// ```
     fn count_ones(self) -> uint;
 
-    /// Returns the number of zeros in the binary representation of the integer.
+    /// Returns the number of zeros in the binary representation of `self`.
     ///
     /// # Example
     ///
     /// ```rust
+    /// use std::num::Int;
+    ///
     /// let n = 0b01001100u8;
     ///
     /// assert_eq!(n.count_zeros(), 5);
@@ -424,11 +122,13 @@ pub trait Int: Primitive
     }
 
     /// Returns the number of leading zeros in the binary representation
-    /// of the integer.
+    /// of `self`.
     ///
     /// # Example
     ///
     /// ```rust
+    /// use std::num::Int;
+    ///
     /// let n = 0b0101000u16;
     ///
     /// assert_eq!(n.leading_zeros(), 10);
@@ -436,11 +136,13 @@ pub trait Int: Primitive
     fn leading_zeros(self) -> uint;
 
     /// Returns the number of trailing zeros in the binary representation
-    /// of the integer.
+    /// of `self`.
     ///
     /// # Example
     ///
     /// ```rust
+    /// use std::num::Int;
+    ///
     /// let n = 0b0101000u16;
     ///
     /// assert_eq!(n.trailing_zeros(), 3);
@@ -453,6 +155,8 @@ pub trait Int: Primitive
     /// # Example
     ///
     /// ```rust
+    /// use std::num::Int;
+    ///
     /// let n = 0x0123456789ABCDEFu64;
     /// let m = 0x3456789ABCDEF012u64;
     ///
@@ -466,6 +170,8 @@ pub trait Int: Primitive
     /// # Example
     ///
     /// ```rust
+    /// use std::num::Int;
+    ///
     /// let n = 0x0123456789ABCDEFu64;
     /// let m = 0xDEF0123456789ABCu64;
     ///
@@ -478,6 +184,8 @@ pub trait Int: Primitive
     /// # Example
     ///
     /// ```rust
+    /// use std::num::Int;
+    ///
     /// let n = 0x0123456789ABCDEFu64;
     /// let m = 0xEFCDAB8967452301u64;
     ///
@@ -492,6 +200,8 @@ pub trait Int: Primitive
     /// # Example
     ///
     /// ```rust
+    /// use std::num::Int;
+    ///
     /// let n = 0x0123456789ABCDEFu64;
     ///
     /// if cfg!(target_endian = "big") {
@@ -512,6 +222,8 @@ pub trait Int: Primitive
     /// # Example
     ///
     /// ```rust
+    /// use std::num::Int;
+    ///
     /// let n = 0x0123456789ABCDEFu64;
     ///
     /// if cfg!(target_endian = "little") {
@@ -525,13 +237,15 @@ pub trait Int: Primitive
         if cfg!(target_endian = "little") { x } else { x.swap_bytes() }
     }
 
-    /// Convert the integer to big endian from the target's endianness.
+    /// Convert `self` to big endian from the target's endianness.
     ///
     /// On big endian this is a no-op. On little endian the bytes are swapped.
     ///
     /// # Example
     ///
     /// ```rust
+    /// use std::num::Int;
+    ///
     /// let n = 0x0123456789ABCDEFu64;
     ///
     /// if cfg!(target_endian = "big") {
@@ -545,13 +259,15 @@ pub trait Int: Primitive
         if cfg!(target_endian = "big") { self } else { self.swap_bytes() }
     }
 
-    /// Convert the integer to little endian from the target's endianness.
+    /// Convert `self` to little endian from the target's endianness.
     ///
     /// On little endian this is a no-op. On big endian the bytes are swapped.
     ///
     /// # Example
     ///
     /// ```rust
+    /// use std::num::Int;
+    ///
     /// let n = 0x0123456789ABCDEFu64;
     ///
     /// if cfg!(target_endian = "little") {
@@ -564,19 +280,121 @@ pub trait Int: Primitive
     fn to_le(self) -> Self {
         if cfg!(target_endian = "little") { self } else { self.swap_bytes() }
     }
+
+    /// Checked integer addition. Computes `self + other`, returning `None` if
+    /// overflow occurred.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use std::num::Int;
+    ///
+    /// assert_eq!(5u16.checked_add(65530), Some(65535));
+    /// assert_eq!(6u16.checked_add(65530), None);
+    /// ```
+    fn checked_add(self, other: Self) -> Option<Self>;
+
+    /// Checked integer subtraction. Computes `self + other`, returning `None`
+    /// if underflow occurred.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use std::num::Int;
+    ///
+    /// assert_eq!((-127i8).checked_sub(1), Some(-128));
+    /// assert_eq!((-128i8).checked_sub(1), None);
+    /// ```
+    fn checked_sub(self, other: Self) -> Option<Self>;
+
+    /// Checked integer multiplication. Computes `self + other`, returning
+    /// `None` if underflow or overflow occurred.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use std::num::Int;
+    ///
+    /// assert_eq!(5u8.checked_mul(51), Some(255));
+    /// assert_eq!(5u8.checked_mul(52), None);
+    /// ```
+    fn checked_mul(self, other: Self) -> Option<Self>;
+
+    /// Checked integer division. Computes `self + other` returning `None` if
+    /// `self == 0` or the operation results in underflow or overflow.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use std::num::Int;
+    ///
+    /// assert_eq!((-127i8).checked_div(-1), Some(127));
+    /// assert_eq!((-128i8).checked_div(-1), None);
+    /// assert_eq!((1i8).checked_div(0), None);
+    /// ```
+    #[inline]
+    fn checked_div(self, other: Self) -> Option<Self>;
+
+    /// Saturating integer addition. Computes `self + other`, saturating at
+    /// the numeric bounds instead of overflowing.
+    #[inline]
+    fn saturating_add(self, other: Self) -> Self {
+        match self.checked_add(other) {
+            Some(x)                      => x,
+            None if other >= Int::zero() => Int::max_value(),
+            None                         => Int::min_value(),
+        }
+    }
+
+    /// Saturating integer subtraction. Computes `self - other`, saturating at
+    /// the numeric bounds instead of overflowing.
+    #[inline]
+    fn saturating_sub(self, other: Self) -> Self {
+        match self.checked_sub(other) {
+            Some(x)                      => x,
+            None if other >= Int::zero() => Int::min_value(),
+            None                         => Int::max_value(),
+        }
+    }
 }
 
-macro_rules! int_impl {
-    ($T:ty, $BITS:expr, $ctpop:path, $ctlz:path, $cttz:path, $bswap:path) => {
+macro_rules! checked_op {
+    ($T:ty, $U:ty, $op:path, $x:expr, $y:expr) => {{
+        let (result, overflowed) = unsafe { $op($x as $U, $y as $U) };
+        if overflowed { None } else { Some(result as $T) }
+    }}
+}
+
+macro_rules! uint_impl {
+    ($T:ty = $ActualT:ty, $BITS:expr,
+     $ctpop:path,
+     $ctlz:path,
+     $cttz:path,
+     $bswap:path,
+     $add_with_overflow:path,
+     $sub_with_overflow:path,
+     $mul_with_overflow:path) => {
         impl Int for $T {
             #[inline]
-            fn count_ones(self) -> uint { unsafe { $ctpop(self) as uint } }
+            fn zero() -> $T { 0 }
 
             #[inline]
-            fn leading_zeros(self) -> uint { unsafe { $ctlz(self) as uint } }
+            fn one() -> $T { 1 }
 
             #[inline]
-            fn trailing_zeros(self) -> uint { unsafe { $cttz(self) as uint } }
+            fn min_value() -> $T { 0 }
+
+            #[inline]
+            fn max_value() -> $T { -1 }
+
+            #[inline]
+            fn count_ones(self) -> uint { unsafe { $ctpop(self as $ActualT) as uint } }
+
+            #[inline]
+            fn leading_zeros(self) -> uint { unsafe { $ctlz(self as $ActualT) as uint } }
+
+            #[inline]
+            fn trailing_zeros(self) -> uint { unsafe { $cttz(self as $ActualT) as uint } }
 
             #[inline]
             fn rotate_left(self, n: uint) -> $T {
@@ -593,7 +411,30 @@ macro_rules! int_impl {
             }
 
             #[inline]
-            fn swap_bytes(self) -> $T { unsafe { $bswap(self) } }
+            fn swap_bytes(self) -> $T { unsafe { $bswap(self as $ActualT) as $T } }
+
+            #[inline]
+            fn checked_add(self, other: $T) -> Option<$T> {
+                checked_op!($T, $ActualT, $add_with_overflow, self, other)
+            }
+
+            #[inline]
+            fn checked_sub(self, other: $T) -> Option<$T> {
+                checked_op!($T, $ActualT, $sub_with_overflow, self, other)
+            }
+
+            #[inline]
+            fn checked_mul(self, other: $T) -> Option<$T> {
+                checked_op!($T, $ActualT, $mul_with_overflow, self, other)
+            }
+
+            #[inline]
+            fn checked_div(self, v: $T) -> Option<$T> {
+                match v {
+                    0 => None,
+                    v => Some(self / v),
+                }
+            }
         }
     }
 }
@@ -602,97 +443,255 @@ macro_rules! int_impl {
 /// consistency with the other `bswap` intrinsics.
 unsafe fn bswap8(x: u8) -> u8 { x }
 
-int_impl!(u8, 8,
+uint_impl!(u8 = u8, 8,
     intrinsics::ctpop8,
     intrinsics::ctlz8,
     intrinsics::cttz8,
-    bswap8)
+    bswap8,
+    intrinsics::u8_add_with_overflow,
+    intrinsics::u8_sub_with_overflow,
+    intrinsics::u8_mul_with_overflow)
 
-int_impl!(u16, 16,
+uint_impl!(u16 = u16, 16,
     intrinsics::ctpop16,
     intrinsics::ctlz16,
     intrinsics::cttz16,
-    intrinsics::bswap16)
+    intrinsics::bswap16,
+    intrinsics::u16_add_with_overflow,
+    intrinsics::u16_sub_with_overflow,
+    intrinsics::u16_mul_with_overflow)
 
-int_impl!(u32, 32,
+uint_impl!(u32 = u32, 32,
     intrinsics::ctpop32,
     intrinsics::ctlz32,
     intrinsics::cttz32,
-    intrinsics::bswap32)
+    intrinsics::bswap32,
+    intrinsics::u32_add_with_overflow,
+    intrinsics::u32_sub_with_overflow,
+    intrinsics::u32_mul_with_overflow)
 
-int_impl!(u64, 64,
+uint_impl!(u64 = u64, 64,
     intrinsics::ctpop64,
     intrinsics::ctlz64,
     intrinsics::cttz64,
-    intrinsics::bswap64)
+    intrinsics::bswap64,
+    intrinsics::u64_add_with_overflow,
+    intrinsics::u64_sub_with_overflow,
+    intrinsics::u64_mul_with_overflow)
 
-macro_rules! int_cast_impl {
-    ($T:ty, $U:ty) => {
+#[cfg(target_word_size = "32")]
+uint_impl!(uint = u32, 32,
+    intrinsics::ctpop32,
+    intrinsics::ctlz32,
+    intrinsics::cttz32,
+    intrinsics::bswap32,
+    intrinsics::u32_add_with_overflow,
+    intrinsics::u32_sub_with_overflow,
+    intrinsics::u32_mul_with_overflow)
+
+#[cfg(target_word_size = "64")]
+uint_impl!(uint = u64, 64,
+    intrinsics::ctpop64,
+    intrinsics::ctlz64,
+    intrinsics::cttz64,
+    intrinsics::bswap64,
+    intrinsics::u64_add_with_overflow,
+    intrinsics::u64_sub_with_overflow,
+    intrinsics::u64_mul_with_overflow)
+
+macro_rules! int_impl {
+    ($T:ty = $ActualT:ty, $UnsignedT:ty, $BITS:expr,
+     $add_with_overflow:path,
+     $sub_with_overflow:path,
+     $mul_with_overflow:path) => {
         impl Int for $T {
             #[inline]
-            fn count_ones(self) -> uint { (self as $U).count_ones() }
+            fn zero() -> $T { 0 }
 
             #[inline]
-            fn leading_zeros(self) -> uint { (self as $U).leading_zeros() }
+            fn one() -> $T { 1 }
 
             #[inline]
-            fn trailing_zeros(self) -> uint { (self as $U).trailing_zeros() }
+            fn min_value() -> $T { (-1 as $T) << ($BITS - 1) }
 
             #[inline]
-            fn rotate_left(self, n: uint) -> $T { (self as $U).rotate_left(n) as $T }
+            fn max_value() -> $T { let min: $T = Int::min_value(); !min }
 
             #[inline]
-            fn rotate_right(self, n: uint) -> $T { (self as $U).rotate_right(n) as $T }
+            fn count_ones(self) -> uint { (self as $UnsignedT).count_ones() }
 
             #[inline]
-            fn swap_bytes(self) -> $T { (self as $U).swap_bytes() as $T }
+            fn leading_zeros(self) -> uint { (self as $UnsignedT).leading_zeros() }
+
+            #[inline]
+            fn trailing_zeros(self) -> uint { (self as $UnsignedT).trailing_zeros() }
+
+            #[inline]
+            fn rotate_left(self, n: uint) -> $T { (self as $UnsignedT).rotate_left(n) as $T }
+
+            #[inline]
+            fn rotate_right(self, n: uint) -> $T { (self as $UnsignedT).rotate_right(n) as $T }
+
+            #[inline]
+            fn swap_bytes(self) -> $T { (self as $UnsignedT).swap_bytes() as $T }
+
+            #[inline]
+            fn checked_add(self, other: $T) -> Option<$T> {
+                checked_op!($T, $ActualT, $add_with_overflow, self, other)
+            }
+
+            #[inline]
+            fn checked_sub(self, other: $T) -> Option<$T> {
+                checked_op!($T, $ActualT, $sub_with_overflow, self, other)
+            }
+
+            #[inline]
+            fn checked_mul(self, other: $T) -> Option<$T> {
+                checked_op!($T, $ActualT, $mul_with_overflow, self, other)
+            }
+
+            #[inline]
+            fn checked_div(self, v: $T) -> Option<$T> {
+                match v {
+                    0   => None,
+                   -1 if self == Int::min_value()
+                        => None,
+                    v   => Some(self / v),
+                }
+            }
         }
     }
 }
 
-int_cast_impl!(i8, u8)
-int_cast_impl!(i16, u16)
-int_cast_impl!(i32, u32)
-int_cast_impl!(i64, u64)
+int_impl!(i8 = i8, u8, 8,
+    intrinsics::i8_add_with_overflow,
+    intrinsics::i8_sub_with_overflow,
+    intrinsics::i8_mul_with_overflow)
 
-#[cfg(target_word_size = "32")] int_cast_impl!(uint, u32)
-#[cfg(target_word_size = "64")] int_cast_impl!(uint, u64)
-#[cfg(target_word_size = "32")] int_cast_impl!(int, u32)
-#[cfg(target_word_size = "64")] int_cast_impl!(int, u64)
+int_impl!(i16 = i16, u16, 16,
+    intrinsics::i16_add_with_overflow,
+    intrinsics::i16_sub_with_overflow,
+    intrinsics::i16_mul_with_overflow)
 
-/// Returns the smallest power of 2 greater than or equal to `n`.
-#[inline]
-pub fn next_power_of_two<T: Unsigned + Int>(n: T) -> T {
-    let halfbits = size_of::<T>() * 4;
-    let mut tmp: T = n - one();
-    let mut shift = 1u;
-    while shift <= halfbits {
-        tmp = tmp | (tmp >> shift);
-        shift = shift << 1u;
+int_impl!(i32 = i32, u32, 32,
+    intrinsics::i32_add_with_overflow,
+    intrinsics::i32_sub_with_overflow,
+    intrinsics::i32_mul_with_overflow)
+
+int_impl!(i64 = i64, u64, 64,
+    intrinsics::i64_add_with_overflow,
+    intrinsics::i64_sub_with_overflow,
+    intrinsics::i64_mul_with_overflow)
+
+#[cfg(target_word_size = "32")]
+int_impl!(int = i32, u32, 32,
+    intrinsics::i32_add_with_overflow,
+    intrinsics::i32_sub_with_overflow,
+    intrinsics::i32_mul_with_overflow)
+
+#[cfg(target_word_size = "64")]
+int_impl!(int = i64, u64, 64,
+    intrinsics::i64_add_with_overflow,
+    intrinsics::i64_sub_with_overflow,
+    intrinsics::i64_mul_with_overflow)
+
+/// A built-in two's complement integer.
+pub trait SignedInt
+    : Int
+    + Neg<Self>
+{
+    /// Computes the absolute value of `self`. `Int::min_value()` will be
+    /// returned if the number is `Int::min_value()`.
+    fn abs(self) -> Self;
+
+    /// Returns a number representing sign of `self`.
+    ///
+    /// - `0` if the number is zero
+    /// - `1` if the number is positive
+    /// - `-1` if the number is negative
+    fn signum(self) -> Self;
+
+    /// Returns `true` if `self` is positive and `false` if the number
+    /// is zero or negative.
+    fn is_positive(self) -> bool;
+
+    /// Returns `true` if `self` is negative and `false` if the number
+    /// is zero or positive.
+    fn is_negative(self) -> bool;
+}
+
+macro_rules! signed_int_impl {
+    ($T:ty) => {
+        impl SignedInt for $T {
+            #[inline]
+            fn abs(self) -> $T {
+                if self.is_negative() { -self } else { self }
+            }
+
+            #[inline]
+            fn signum(self) -> $T {
+                match self {
+                    n if n > 0 =>  1,
+                    0          =>  0,
+                    _          => -1,
+                }
+            }
+
+            #[inline]
+            fn is_positive(self) -> bool { self > 0 }
+
+            #[inline]
+            fn is_negative(self) -> bool { self < 0 }
+        }
     }
-    tmp + one()
 }
 
-// Returns `true` iff `n == 2^k` for some k.
-#[inline]
-pub fn is_power_of_two<T: Unsigned + Int>(n: T) -> bool {
-    (n - one()) & n == zero()
-}
+signed_int_impl!(i8)
+signed_int_impl!(i16)
+signed_int_impl!(i32)
+signed_int_impl!(i64)
+signed_int_impl!(int)
 
-/// Returns the smallest power of 2 greater than or equal to `n`. If the next
-/// power of two is greater than the type's maximum value, `None` is returned,
-/// otherwise the power of 2 is wrapped in `Some`.
-#[inline]
-pub fn checked_next_power_of_two<T: Unsigned + Int>(n: T) -> Option<T> {
-    let halfbits = size_of::<T>() * 4;
-    let mut tmp: T = n - one();
-    let mut shift = 1u;
-    while shift <= halfbits {
-        tmp = tmp | (tmp >> shift);
-        shift = shift << 1u;
+/// A built-in unsigned integer.
+pub trait UnsignedInt: Int {
+    /// Returns `true` iff `self == 2^k` for some `k`.
+    fn is_power_of_two(self) -> bool {
+        (self - Int::one()) & self == Int::zero()
     }
-    tmp.checked_add(&one())
+
+    /// Returns the smallest power of two greater than or equal to `self`.
+    #[inline]
+    fn next_power_of_two(self) -> Self {
+        let halfbits = size_of::<Self>() * 4;
+        let mut tmp = self - Int::one();
+        let mut shift = 1u;
+        while shift <= halfbits {
+            tmp = tmp | (tmp >> shift);
+            shift = shift << 1u;
+        }
+        tmp + Int::one()
+    }
+
+    /// Returns the smallest power of two greater than or equal to `n`. If the
+    /// next power of two is greater than the type's maximum value, `None` is
+    /// returned, otherwise the power of two is wrapped in `Some`.
+    fn checked_next_power_of_two(self) -> Option<Self> {
+        let halfbits = size_of::<Self>() * 4;
+        let mut tmp = self - Int::one();
+        let mut shift = 1u;
+        while shift <= halfbits {
+            tmp = tmp | (tmp >> shift);
+            shift = shift << 1u;
+        }
+        tmp.checked_add(Int::one())
+    }
 }
+
+impl UnsignedInt for uint {}
+impl UnsignedInt for u8 {}
+impl UnsignedInt for u16 {}
+impl UnsignedInt for u32 {}
+impl UnsignedInt for u64 {}
 
 /// A generic trait for converting a value to a number.
 pub trait ToPrimitive {
@@ -771,8 +770,8 @@ macro_rules! impl_to_primitive_int_to_int(
                 Some($slf as $DstT)
             } else {
                 let n = $slf as i64;
-                let min_value: $DstT = Bounded::min_value();
-                let max_value: $DstT = Bounded::max_value();
+                let min_value: $DstT = Int::min_value();
+                let max_value: $DstT = Int::max_value();
                 if min_value as i64 <= n && n <= max_value as i64 {
                     Some($slf as $DstT)
                 } else {
@@ -786,8 +785,8 @@ macro_rules! impl_to_primitive_int_to_int(
 macro_rules! impl_to_primitive_int_to_uint(
     ($SrcT:ty, $DstT:ty, $slf:expr) => (
         {
-            let zero: $SrcT = Zero::zero();
-            let max_value: $DstT = Bounded::max_value();
+            let zero: $SrcT = Int::zero();
+            let max_value: $DstT = Int::max_value();
             if zero <= $slf && $slf as u64 <= max_value as u64 {
                 Some($slf as $DstT)
             } else {
@@ -839,7 +838,7 @@ impl_to_primitive_int!(i64)
 macro_rules! impl_to_primitive_uint_to_int(
     ($DstT:ty, $slf:expr) => (
         {
-            let max_value: $DstT = Bounded::max_value();
+            let max_value: $DstT = Int::max_value();
             if $slf as u64 <= max_value as u64 {
                 Some($slf as $DstT)
             } else {
@@ -855,8 +854,8 @@ macro_rules! impl_to_primitive_uint_to_uint(
             if size_of::<$SrcT>() <= size_of::<$DstT>() {
                 Some($slf as $DstT)
             } else {
-                let zero: $SrcT = Zero::zero();
-                let max_value: $DstT = Bounded::max_value();
+                let zero: $SrcT = Int::zero();
+                let max_value: $DstT = Int::max_value();
                 if zero <= $slf && $slf as u64 <= max_value as u64 {
                     Some($slf as $DstT)
                 } else {
@@ -912,7 +911,7 @@ macro_rules! impl_to_primitive_float_to_float(
             Some($slf as $DstT)
         } else {
             let n = $slf as f64;
-            let max_value: $SrcT = Bounded::max_value();
+            let max_value: $SrcT = Float::max_value();
             if -max_value as f64 <= n && n <= max_value as f64 {
                 Some($slf as $DstT)
             } else {
@@ -1182,229 +1181,6 @@ impl_num_cast!(int,   to_int)
 impl_num_cast!(f32,   to_f32)
 impl_num_cast!(f64,   to_f64)
 
-/// Saturating math operations
-pub trait Saturating {
-    /// Saturating addition operator.
-    /// Returns a+b, saturating at the numeric bounds instead of overflowing.
-    fn saturating_add(self, v: Self) -> Self;
-
-    /// Saturating subtraction operator.
-    /// Returns a-b, saturating at the numeric bounds instead of overflowing.
-    fn saturating_sub(self, v: Self) -> Self;
-}
-
-impl<T: CheckedAdd + CheckedSub + Zero + PartialOrd + Bounded> Saturating for T {
-    #[inline]
-    fn saturating_add(self, v: T) -> T {
-        match self.checked_add(&v) {
-            Some(x) => x,
-            None => if v >= Zero::zero() {
-                Bounded::max_value()
-            } else {
-                Bounded::min_value()
-            }
-        }
-    }
-
-    #[inline]
-    fn saturating_sub(self, v: T) -> T {
-        match self.checked_sub(&v) {
-            Some(x) => x,
-            None => if v >= Zero::zero() {
-                Bounded::min_value()
-            } else {
-                Bounded::max_value()
-            }
-        }
-    }
-}
-
-/// Performs addition that returns `None` instead of wrapping around on overflow.
-pub trait CheckedAdd: Add<Self, Self> {
-    /// Adds two numbers, checking for overflow. If overflow happens, `None` is returned.
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// use std::num::CheckedAdd;
-    /// assert_eq!(5u16.checked_add(&65530), Some(65535));
-    /// assert_eq!(6u16.checked_add(&65530), None);
-    /// ```
-    fn checked_add(&self, v: &Self) -> Option<Self>;
-}
-
-macro_rules! checked_impl(
-    ($trait_name:ident, $method:ident, $t:ty, $op:path) => {
-        impl $trait_name for $t {
-            #[inline]
-            fn $method(&self, v: &$t) -> Option<$t> {
-                unsafe {
-                    let (x, y) = $op(*self, *v);
-                    if y { None } else { Some(x) }
-                }
-            }
-        }
-    }
-)
-macro_rules! checked_cast_impl(
-    ($trait_name:ident, $method:ident, $t:ty, $cast:ty, $op:path) => {
-        impl $trait_name for $t {
-            #[inline]
-            fn $method(&self, v: &$t) -> Option<$t> {
-                unsafe {
-                    let (x, y) = $op(*self as $cast, *v as $cast);
-                    if y { None } else { Some(x as $t) }
-                }
-            }
-        }
-    }
-)
-
-#[cfg(target_word_size = "32")]
-checked_cast_impl!(CheckedAdd, checked_add, uint, u32, intrinsics::u32_add_with_overflow)
-#[cfg(target_word_size = "64")]
-checked_cast_impl!(CheckedAdd, checked_add, uint, u64, intrinsics::u64_add_with_overflow)
-
-checked_impl!(CheckedAdd, checked_add, u8,  intrinsics::u8_add_with_overflow)
-checked_impl!(CheckedAdd, checked_add, u16, intrinsics::u16_add_with_overflow)
-checked_impl!(CheckedAdd, checked_add, u32, intrinsics::u32_add_with_overflow)
-checked_impl!(CheckedAdd, checked_add, u64, intrinsics::u64_add_with_overflow)
-
-#[cfg(target_word_size = "32")]
-checked_cast_impl!(CheckedAdd, checked_add, int, i32, intrinsics::i32_add_with_overflow)
-#[cfg(target_word_size = "64")]
-checked_cast_impl!(CheckedAdd, checked_add, int, i64, intrinsics::i64_add_with_overflow)
-
-checked_impl!(CheckedAdd, checked_add, i8,  intrinsics::i8_add_with_overflow)
-checked_impl!(CheckedAdd, checked_add, i16, intrinsics::i16_add_with_overflow)
-checked_impl!(CheckedAdd, checked_add, i32, intrinsics::i32_add_with_overflow)
-checked_impl!(CheckedAdd, checked_add, i64, intrinsics::i64_add_with_overflow)
-
-/// Performs subtraction that returns `None` instead of wrapping around on underflow.
-pub trait CheckedSub: Sub<Self, Self> {
-    /// Subtracts two numbers, checking for underflow. If underflow happens, `None` is returned.
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// use std::num::CheckedSub;
-    /// assert_eq!((-127i8).checked_sub(&1), Some(-128));
-    /// assert_eq!((-128i8).checked_sub(&1), None);
-    /// ```
-    fn checked_sub(&self, v: &Self) -> Option<Self>;
-}
-
-#[cfg(target_word_size = "32")]
-checked_cast_impl!(CheckedSub, checked_sub, uint, u32, intrinsics::u32_sub_with_overflow)
-#[cfg(target_word_size = "64")]
-checked_cast_impl!(CheckedSub, checked_sub, uint, u64, intrinsics::u64_sub_with_overflow)
-
-checked_impl!(CheckedSub, checked_sub, u8,  intrinsics::u8_sub_with_overflow)
-checked_impl!(CheckedSub, checked_sub, u16, intrinsics::u16_sub_with_overflow)
-checked_impl!(CheckedSub, checked_sub, u32, intrinsics::u32_sub_with_overflow)
-checked_impl!(CheckedSub, checked_sub, u64, intrinsics::u64_sub_with_overflow)
-
-#[cfg(target_word_size = "32")]
-checked_cast_impl!(CheckedSub, checked_sub, int, i32, intrinsics::i32_sub_with_overflow)
-#[cfg(target_word_size = "64")]
-checked_cast_impl!(CheckedSub, checked_sub, int, i64, intrinsics::i64_sub_with_overflow)
-
-checked_impl!(CheckedSub, checked_sub, i8,  intrinsics::i8_sub_with_overflow)
-checked_impl!(CheckedSub, checked_sub, i16, intrinsics::i16_sub_with_overflow)
-checked_impl!(CheckedSub, checked_sub, i32, intrinsics::i32_sub_with_overflow)
-checked_impl!(CheckedSub, checked_sub, i64, intrinsics::i64_sub_with_overflow)
-
-/// Performs multiplication that returns `None` instead of wrapping around on underflow or
-/// overflow.
-pub trait CheckedMul: Mul<Self, Self> {
-    /// Multiplies two numbers, checking for underflow or overflow. If underflow or overflow
-    /// happens, `None` is returned.
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// use std::num::CheckedMul;
-    /// assert_eq!(5u8.checked_mul(&51), Some(255));
-    /// assert_eq!(5u8.checked_mul(&52), None);
-    /// ```
-    fn checked_mul(&self, v: &Self) -> Option<Self>;
-}
-
-#[cfg(target_word_size = "32")]
-checked_cast_impl!(CheckedMul, checked_mul, uint, u32, intrinsics::u32_mul_with_overflow)
-#[cfg(target_word_size = "64")]
-checked_cast_impl!(CheckedMul, checked_mul, uint, u64, intrinsics::u64_mul_with_overflow)
-
-checked_impl!(CheckedMul, checked_mul, u8,  intrinsics::u8_mul_with_overflow)
-checked_impl!(CheckedMul, checked_mul, u16, intrinsics::u16_mul_with_overflow)
-checked_impl!(CheckedMul, checked_mul, u32, intrinsics::u32_mul_with_overflow)
-checked_impl!(CheckedMul, checked_mul, u64, intrinsics::u64_mul_with_overflow)
-
-#[cfg(target_word_size = "32")]
-checked_cast_impl!(CheckedMul, checked_mul, int, i32, intrinsics::i32_mul_with_overflow)
-#[cfg(target_word_size = "64")]
-checked_cast_impl!(CheckedMul, checked_mul, int, i64, intrinsics::i64_mul_with_overflow)
-
-checked_impl!(CheckedMul, checked_mul, i8,  intrinsics::i8_mul_with_overflow)
-checked_impl!(CheckedMul, checked_mul, i16, intrinsics::i16_mul_with_overflow)
-checked_impl!(CheckedMul, checked_mul, i32, intrinsics::i32_mul_with_overflow)
-checked_impl!(CheckedMul, checked_mul, i64, intrinsics::i64_mul_with_overflow)
-
-/// Performs division that returns `None` instead of panicking on division by zero and instead of
-/// wrapping around on underflow and overflow.
-pub trait CheckedDiv: Div<Self, Self> {
-    /// Divides two numbers, checking for underflow, overflow and division by zero. If any of that
-    /// happens, `None` is returned.
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// use std::num::CheckedDiv;
-    /// assert_eq!((-127i8).checked_div(&-1), Some(127));
-    /// assert_eq!((-128i8).checked_div(&-1), None);
-    /// assert_eq!((1i8).checked_div(&0), None);
-    /// ```
-    fn checked_div(&self, v: &Self) -> Option<Self>;
-}
-
-macro_rules! checkeddiv_int_impl(
-    ($t:ty, $min:expr) => {
-        impl CheckedDiv for $t {
-            #[inline]
-            fn checked_div(&self, v: &$t) -> Option<$t> {
-                if *v == 0 || (*self == $min && *v == -1) {
-                    None
-                } else {
-                    Some(*self / *v)
-                }
-            }
-        }
-    }
-)
-
-checkeddiv_int_impl!(int, int::MIN)
-checkeddiv_int_impl!(i8, i8::MIN)
-checkeddiv_int_impl!(i16, i16::MIN)
-checkeddiv_int_impl!(i32, i32::MIN)
-checkeddiv_int_impl!(i64, i64::MIN)
-
-macro_rules! checkeddiv_uint_impl(
-    ($($t:ty)*) => ($(
-        impl CheckedDiv for $t {
-            #[inline]
-            fn checked_div(&self, v: &$t) -> Option<$t> {
-                if *v == 0 {
-                    None
-                } else {
-                    Some(*self / *v)
-                }
-            }
-        }
-    )*)
-)
-
-checkeddiv_uint_impl!(uint u8 u16 u32 u64)
-
 /// Used for representing the classification of floating point numbers
 #[deriving(PartialEq, Show)]
 pub enum FPCategory {
@@ -1420,21 +1196,36 @@ pub enum FPCategory {
     FPNormal,
 }
 
-/// Operations on primitive floating point numbers.
+/// A built-in floating point number.
 // FIXME(#5527): In a future version of Rust, many of these functions will
 //               become constants.
 //
 // FIXME(#8888): Several of these functions have a parameter named
 //               `unused_self`. Removing it requires #8888 to be fixed.
-pub trait Float: Signed + Primitive {
+pub trait Float
+    : Copy + Clone
+    + NumCast
+    + PartialOrd
+    + PartialEq
+    + Neg<Self>
+    + Add<Self,Self>
+    + Sub<Self,Self>
+    + Mul<Self,Self>
+    + Div<Self,Self>
+    + Rem<Self,Self>
+{
     /// Returns the NaN value.
     fn nan() -> Self;
     /// Returns the infinite value.
     fn infinity() -> Self;
     /// Returns the negative infinite value.
     fn neg_infinity() -> Self;
+    /// Returns the `0` value.
+    fn zero() -> Self;
     /// Returns -0.0.
     fn neg_zero() -> Self;
+    /// Returns the `1` value.
+    fn one() -> Self;
 
     /// Returns true if this value is NaN and false otherwise.
     fn is_nan(self) -> bool;
@@ -1464,8 +1255,12 @@ pub trait Float: Signed + Primitive {
     fn min_10_exp(unused_self: Option<Self>) -> int;
     /// Returns the maximum base-10 exponent that this type can represent.
     fn max_10_exp(unused_self: Option<Self>) -> int;
+    /// Returns the smallest finite value that this type can represent.
+    fn min_value() -> Self;
     /// Returns the smallest normalized positive number that this type can represent.
     fn min_pos_value(unused_self: Option<Self>) -> Self;
+    /// Returns the largest finite value that this type can represent.
+    fn max_value() -> Self;
 
     /// Returns the mantissa, exponent and sign as integers, respectively.
     fn integer_decode(self) -> (u64, i16, i8);
@@ -1481,6 +1276,22 @@ pub trait Float: Signed + Primitive {
     fn trunc(self) -> Self;
     /// Return the fractional part of a number.
     fn fract(self) -> Self;
+
+    /// Computes the absolute value of `self`. Returns `Float::nan()` if the
+    /// number is `Float::nan()`.
+    fn abs(self) -> Self;
+    /// Returns a number that represents the sign of `self`.
+    ///
+    /// - `1.0` if the number is positive, `+0.0` or `Float::infinity()`
+    /// - `-1.0` if the number is negative, `-0.0` or `Float::neg_infinity()`
+    /// - `Float::nan()` if the number is `Float::nan()`
+    fn signum(self) -> Self;
+    /// Returns `true` if `self` is positive, including `+0.0` and
+    /// `Float::infinity()`.
+    fn is_positive(self) -> bool;
+    /// Returns `true` if `self` is negative, including `-0.0` and
+    /// `Float::neg_infinity()`.
+    fn is_negative(self) -> bool;
 
     /// Fused multiply-add. Computes `(self * a) + b` with only one rounding
     /// error. This produces a more accurate result with better performance than
@@ -1560,3 +1371,135 @@ pub trait Float: Signed + Primitive {
     /// Convert degrees to radians.
     fn to_radians(self) -> Self;
 }
+
+// DEPRECATED
+
+macro_rules! trait_impl {
+    ($name:ident for $($t:ty)*) => {
+        $(#[allow(deprecated)] impl $name for $t {})*
+    };
+}
+
+#[deprecated = "Generalised numbers are no longer supported"]
+#[allow(deprecated)]
+pub trait Num: PartialEq + Zero + One
+             + Neg<Self>
+             + Add<Self,Self>
+             + Sub<Self,Self>
+             + Mul<Self,Self>
+             + Div<Self,Self>
+             + Rem<Self,Self> {}
+trait_impl!(Num for uint u8 u16 u32 u64 int i8 i16 i32 i64 f32 f64)
+
+#[deprecated = "Generalised unsigned numbers are no longer supported"]
+#[allow(deprecated)]
+pub trait Unsigned: Num {}
+trait_impl!(Unsigned for uint u8 u16 u32 u64)
+
+#[deprecated = "Use `Float` or `Int`"]
+#[allow(deprecated)]
+pub trait Primitive: Copy + Clone + Num + NumCast + PartialOrd {}
+trait_impl!(Primitive for uint u8 u16 u32 u64 int i8 i16 i32 i64 f32 f64)
+
+#[deprecated = "The generic `Zero` trait will be removed soon."]
+pub trait Zero: Add<Self, Self> {
+    #[deprecated = "Use `Int::zero()` or `Float::zero()`."]
+    fn zero() -> Self;
+    #[deprecated = "Use `x == Int::zero()` or `x == Float::zero()`."]
+    fn is_zero(&self) -> bool;
+}
+#[deprecated = "Use `Int::zero()` or `Float::zero()`."]
+#[allow(deprecated)]
+pub fn zero<T: Zero>() -> T { Zero::zero() }
+macro_rules! zero_impl {
+    ($t:ty, $v:expr) => {
+        impl Zero for $t {
+            fn zero() -> $t { $v }
+            fn is_zero(&self) -> bool { *self == $v }
+        }
+    }
+}
+zero_impl!(uint, 0u)
+zero_impl!(u8,   0u8)
+zero_impl!(u16,  0u16)
+zero_impl!(u32,  0u32)
+zero_impl!(u64,  0u64)
+zero_impl!(int, 0i)
+zero_impl!(i8,  0i8)
+zero_impl!(i16, 0i16)
+zero_impl!(i32, 0i32)
+zero_impl!(i64, 0i64)
+zero_impl!(f32, 0.0f32)
+zero_impl!(f64, 0.0f64)
+
+#[deprecated = "The generic `One` trait will be removed soon."]
+pub trait One: Mul<Self, Self> {
+    #[deprecated = "Use `Int::one()` or `Float::one()`."]
+    fn one() -> Self;
+}
+#[deprecated = "Use `Int::one()` or `Float::one()`."]
+#[allow(deprecated)]
+pub fn one<T: One>() -> T { One::one() }
+macro_rules! one_impl {
+    ($t:ty, $v:expr) => {
+        impl One for $t {
+            fn one() -> $t { $v }
+        }
+    }
+}
+one_impl!(uint, 1u)
+one_impl!(u8,  1u8)
+one_impl!(u16, 1u16)
+one_impl!(u32, 1u32)
+one_impl!(u64, 1u64)
+one_impl!(int, 1i)
+one_impl!(i8,  1i8)
+one_impl!(i16, 1i16)
+one_impl!(i32, 1i32)
+one_impl!(i64, 1i64)
+one_impl!(f32, 1.0f32)
+one_impl!(f64, 1.0f64)
+
+#[deprecated = "Use `UnsignedInt::next_power_of_two`"]
+pub fn next_power_of_two<T: UnsignedInt>(n: T) -> T {
+    n.next_power_of_two()
+}
+#[deprecated = "Use `UnsignedInt::is_power_of_two`"]
+pub fn is_power_of_two<T: UnsignedInt>(n: T) -> bool {
+    n.is_power_of_two()
+}
+#[deprecated = "Use `UnsignedInt::checked_next_power_of_two`"]
+pub fn checked_next_power_of_two<T: UnsignedInt>(n: T) -> Option<T> {
+    n.checked_next_power_of_two()
+}
+
+#[deprecated = "Generalised bounded values are no longer supported"]
+pub trait Bounded {
+    #[deprecated = "Use `Int::min_value` or `Float::min_value`"]
+    fn min_value() -> Self;
+    #[deprecated = "Use `Int::max_value` or `Float::max_value`"]
+    fn max_value() -> Self;
+}
+macro_rules! bounded_impl {
+    ($T:ty, $min:expr, $max:expr) => {
+        impl Bounded for $T {
+            #[inline]
+            fn min_value() -> $T { $min }
+
+            #[inline]
+            fn max_value() -> $T { $max }
+        }
+    };
+}
+bounded_impl!(uint, uint::MIN, uint::MAX)
+bounded_impl!(u8, u8::MIN, u8::MAX)
+bounded_impl!(u16, u16::MIN, u16::MAX)
+bounded_impl!(u32, u32::MIN, u32::MAX)
+bounded_impl!(u64, u64::MIN, u64::MAX)
+bounded_impl!(int, int::MIN, int::MAX)
+bounded_impl!(i8, i8::MIN, i8::MAX)
+bounded_impl!(i16, i16::MIN, i16::MAX)
+bounded_impl!(i32, i32::MIN, i32::MAX)
+bounded_impl!(i64, i64::MIN, i64::MAX)
+bounded_impl!(f32, f32::MIN_VALUE, f32::MAX_VALUE)
+bounded_impl!(f64, f64::MIN_VALUE, f64::MAX_VALUE)

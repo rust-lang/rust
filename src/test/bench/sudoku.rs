@@ -15,6 +15,7 @@
 use std::io;
 use std::io::stdio::StdReader;
 use std::io::BufferedReader;
+use std::num::Int;
 use std::os;
 
 // Computes a single solution to a given 9x9 sudoku

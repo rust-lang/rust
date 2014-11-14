@@ -190,6 +190,7 @@ like:
 ```rust
 use std::fmt;
 use std::f64;
+use std::num::Float;
 
 struct Vector2D {
     x: int,

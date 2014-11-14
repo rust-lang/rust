@@ -67,9 +67,7 @@
 #[doc(no_inline)] pub use iter::{Iterator, DoubleEndedIterator};
 #[doc(no_inline)] pub use iter::{RandomAccessIterator, CloneableIterator};
 #[doc(no_inline)] pub use iter::{OrdIterator, MutableDoubleEndedIterator};
-#[doc(no_inline)] pub use num::{Num, NumCast, CheckedAdd, CheckedSub, CheckedMul, CheckedDiv};
-#[doc(no_inline)] pub use num::{Signed, Unsigned, Primitive, Int, Float};
-#[doc(no_inline)] pub use num::{FloatMath, ToPrimitive, FromPrimitive};
+#[doc(no_inline)] pub use num::{ToPrimitive, FromPrimitive};
 #[doc(no_inline)] pub use boxed::Box;
 #[doc(no_inline)] pub use option::{Option, Some, None};
 #[doc(no_inline)] pub use path::{GenericPath, Path, PosixPath, WindowsPath};

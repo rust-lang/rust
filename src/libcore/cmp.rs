@@ -19,6 +19,8 @@
 //! operators, you could do the following:
 //!
 //! ```rust
+//! use core::num::SignedInt;
+//!
 //! // Our type.
 //! struct SketchyNum {
 //!     num : int

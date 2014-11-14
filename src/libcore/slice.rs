@@ -40,7 +40,7 @@ use cmp::{PartialEq, PartialOrd, Eq, Ord, Ordering, Less, Equal, Greater, Equiv}
 use cmp;
 use default::Default;
 use iter::*;
-use num::{CheckedAdd, Saturating, div_rem};
+use num::{Int, div_rem};
 use ops;
 use option::{None, Option, Some};
 use ptr;
@@ -1346,7 +1346,7 @@ impl<'a, T> Iterator<&'a [T]> for Windows<'a, T> {
             (0, Some(0))
         } else {
             let x = self.v.len() - self.size;
-            (x.saturating_add(1), x.checked_add(&1u))
+            (x.saturating_add(1), x.checked_add(1u))
         }
     }
 }

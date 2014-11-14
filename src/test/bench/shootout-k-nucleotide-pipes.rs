@@ -19,6 +19,7 @@ extern crate collections;
 
 use std::collections::HashMap;
 use std::mem::replace;
+use std::num::Float;
 use std::option;
 use std::os;
 use std::string::String;

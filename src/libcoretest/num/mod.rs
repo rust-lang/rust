@@ -8,7 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::num::cast;
+use core::cmp::PartialEq;
+use core::fmt::Show;
+use core::num::{NumCast, cast};
+use core::ops::{Add, Sub, Mul, Div, Rem};
 
 mod int_macros;
 mod i8;
@@ -24,7 +27,12 @@ mod u64;
 mod uint;
 
 /// Helper function for testing numeric operations
-pub fn test_num<T:Num + NumCast + ::std::fmt::Show>(ten: T, two: T) {
+pub fn test_num<T>(ten: T, two: T) where
+    T: PartialEq + NumCast
+     + Add<T, T> + Sub<T, T>
+     + Mul<T, T> + Div<T, T>
+     + Rem<T, T> + Show
+{
     assert_eq!(ten.add(&two),  cast(12i).unwrap());
     assert_eq!(ten.sub(&two),  cast(8i).unwrap());
     assert_eq!(ten.mul(&two),  cast(20i).unwrap());

@@ -16,8 +16,7 @@ use std::fmt::Show;
 use std::hash::Hash;
 use std::io;
 use std::mem;
-use std::num::Zero;
-use std::num;
+use std::num::{Float, FloatMath};
 
 fn local_cmp<T:Float>(x: T, y: T) -> Ordering {
     // arbitrarily decide that NaNs are larger than everything.
@@ -145,7 +144,6 @@ pub struct Summary<T> {
 }
 
 impl<T: FloatMath + FromPrimitive> Summary<T> {
-
     /// Construct a new summary of a sample set.
     pub fn new(samples: &[T]) -> Summary<T> {
         Summary {
@@ -166,7 +164,6 @@ impl<T: FloatMath + FromPrimitive> Summary<T> {
 }
 
 impl<'a, T: FloatMath + FromPrimitive> Stats<T> for &'a [T] {
-
     // FIXME #11059 handle NaN, inf and overflow
     fn sum(self) -> T {
         let mut partials = vec![];
@@ -176,15 +173,15 @@ impl<'a, T: FloatMath + FromPrimitive> Stats<T> for &'a [T] {
             // This inner loop applies `hi`/`lo` summation to each
             // partial so that the list of partial sums remains exact.
             for i in range(0, partials.len()) {
-                let mut y = partials[i];
-                if num::abs(x) < num::abs(y) {
+                let mut y: T = partials[i];
+                if x.abs() < y.abs() {
                     mem::swap(&mut x, &mut y);
                 }
                 // Rounded `x+y` is stored in `hi` with round-off stored in
                 // `lo`. Together `hi+lo` are exactly equal to `x+y`.
                 let hi = x + y;
                 let lo = y - (hi - x);
-                if !lo.is_zero() {
+                if lo != Float::zero() {
                     partials[j] = lo;
                     j += 1;
                 }
@@ -197,7 +194,7 @@ impl<'a, T: FloatMath + FromPrimitive> Stats<T> for &'a [T] {
                 partials.truncate(j+1);
             }
         }
-        let zero: T = Zero::zero();
+        let zero: T = Float::zero();
         partials.iter().fold(zero, |p, q| p + *q)
     }
 
@@ -222,10 +219,10 @@ impl<'a, T: FloatMath + FromPrimitive> Stats<T> for &'a [T] {
 
     fn var(self) -> T {
         if self.len() < 2 {
-            Zero::zero()
+            Float::zero()
         } else {
             let mean = self.mean();
-            let mut v: T = Zero::zero();
+            let mut v: T = Float::zero();
             for s in self.iter() {
                 let x = *s - mean;
                 v = v + x*x;
@@ -249,7 +246,7 @@ impl<'a, T: FloatMath + FromPrimitive> Stats<T> for &'a [T] {
 
     fn median_abs_dev(self) -> T {
         let med = self.median();
-        let abs_devs: Vec<T> = self.iter().map(|&v| num::abs(med - v)).collect();
+        let abs_devs: Vec<T> = self.iter().map(|&v| (med - v).abs()).collect();
         // This constant is derived by smarter statistics brains than me, but it is
         // consistent with how R and other packages treat the MAD.
         let number = FromPrimitive::from_f64(1.4826).unwrap();
@@ -294,7 +291,7 @@ fn percentile_of_sorted<T: Float + FromPrimitive>(sorted_samples: &[T],
     if sorted_samples.len() == 1 {
         return sorted_samples[0];
     }
-    let zero: T = Zero::zero();
+    let zero: T = Float::zero();
     assert!(zero <= pct);
     let hundred = FromPrimitive::from_uint(100).unwrap();
     assert!(pct <= hundred);
@@ -370,14 +367,14 @@ pub fn write_boxplot<T: Float + Show + FromPrimitive>(
     let himag = ten.powf(s.max.abs().log10().floor());
 
     // need to consider when the limit is zero
-    let zero: T = Zero::zero();
-    let lo = if lomag.is_zero() {
+    let zero: T = Float::zero();
+    let lo = if lomag == Float::zero() {
         zero
     } else {
         (s.min / lomag).floor() * lomag
     };
 
-    let hi = if himag.is_zero() {
+    let hi = if himag == Float::zero() {
         zero
     } else {
         (s.max / himag).ceil() * himag
@@ -464,6 +461,7 @@ mod tests {
 
     macro_rules! assert_approx_eq(
         ($a:expr, $b:expr) => ({
+            use std::num::Float;
             let (a, b) = (&$a, &$b);
             assert!((*a - *b).abs() < 1.0e-6,
                     "{} is not approximately equal to {}", *a, *b);

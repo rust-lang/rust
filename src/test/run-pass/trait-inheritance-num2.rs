@@ -12,6 +12,7 @@
 // A more complex example of numeric extensions
 
 use std::cmp::{PartialEq, PartialOrd};
+use std::num::NumCast;
 
 pub trait TypeExt {}
 
@@ -32,7 +33,7 @@ impl TypeExt for f32 {}
 impl TypeExt for f64 {}
 
 
-pub trait NumExt: TypeExt + PartialEq + PartialOrd + Num + NumCast {}
+pub trait NumExt: TypeExt + PartialEq + PartialOrd + NumCast {}
 
 impl NumExt for u8 {}
 impl NumExt for u16 {}
