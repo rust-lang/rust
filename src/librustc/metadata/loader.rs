@@ -307,7 +307,8 @@ impl<'a> Context<'a> {
             format!("found possibly newer version of crate `{}`",
                     self.ident)
         } else if self.rejected_via_triple.len() > 0 {
-            format!("found incorrect triple for crate `{}`", self.ident)
+            format!("couldn't find crate `{}` with expected target triple {}",
+                    self.ident, self.triple)
         } else {
             format!("can't find crate for `{}`", self.ident)
         };
@@ -318,15 +319,12 @@ impl<'a> Context<'a> {
         };
         self.sess.span_err(self.span, message.as_slice());
 
-        let mismatches = self.rejected_via_triple.iter();
         if self.rejected_via_triple.len() > 0 {
-            self.sess.span_note(self.span,
-                                format!("expected triple of {}",
-                                        self.triple).as_slice());
+            let mismatches = self.rejected_via_triple.iter();
             for (i, &CrateMismatch{ ref path, ref got }) in mismatches.enumerate() {
                 self.sess.fileline_note(self.span,
-                    format!("crate `{}` path {}{}, triple {}: {}",
-                            self.ident, "#", i+1, got, path.display()).as_slice());
+                    format!("crate `{}`, path #{}, triple {}: {}",
+                            self.ident, i+1, got, path.display()).as_slice());
             }
         }
         if self.rejected_via_hash.len() > 0 {

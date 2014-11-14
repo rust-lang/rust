@@ -8,8 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Tests that the proper help is displayed in the error message
+// ignore-tidy-cr
+// Issue #11669
 
-extern crate foo as bar;
-//~^ ERROR expected `;`, found `as`
-//~^^ HELP perhaps you meant to enclose the crate name `foo` in a string?
+fn main() {
+    // \r\n
+    let ok = "This is \
+ a test";
+    // \r only
+    let bad = "This is \ a test";
+    //~^ ERROR unknown character escape: \r
+    //~^^ HELP this is an isolated carriage return
+
+}
