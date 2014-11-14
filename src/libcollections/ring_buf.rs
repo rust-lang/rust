@@ -22,7 +22,7 @@ use core::raw::Slice as RawSlice;
 use core::ptr;
 use core::kinds::marker;
 use core::mem;
-use core::num;
+use core::num::{Int, UnsignedInt};
 
 use std::hash::{Writer, Hash};
 use std::cmp;
@@ -115,8 +115,8 @@ impl<T> RingBuf<T> {
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn with_capacity(n: uint) -> RingBuf<T> {
         // +1 since the ringbuffer always leaves one space empty
-        let cap = num::next_power_of_two(cmp::max(n + 1, MINIMUM_CAPACITY));
-        let size = cap.checked_mul(&mem::size_of::<T>())
+        let cap = cmp::max(n + 1, MINIMUM_CAPACITY).next_power_of_two();
+        let size = cap.checked_mul(mem::size_of::<T>())
                       .expect("capacity overflow");
 
         let ptr = if mem::size_of::<T>() != 0 {
@@ -280,12 +280,12 @@ impl<T> RingBuf<T> {
         let new_len = self.len() + additional;
         assert!(new_len + 1 > self.len(), "capacity overflow");
         if new_len > self.capacity() {
-            let count = num::next_power_of_two(new_len + 1);
+            let count = (new_len + 1).next_power_of_two();
             assert!(count >= new_len + 1);
 
             if mem::size_of::<T>() != 0 {
                 let old = self.cap * mem::size_of::<T>();
-                let new = count.checked_mul(&mem::size_of::<T>())
+                let new = count.checked_mul(mem::size_of::<T>())
                                .expect("capacity overflow");
                 unsafe {
                     self.ptr = heap::reallocate(self.ptr as *mut u8,
