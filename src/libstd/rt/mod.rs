@@ -54,6 +54,8 @@ Several modules in `core` are clients of `rt`:
 // FIXME: this should not be here.
 #![allow(missing_docs)]
 
+#![allow(dead_code)]
+
 use failure;
 use rustrt;
 
