@@ -1237,9 +1237,9 @@ impl<K: Eq + Hash<S>, V: Clone, S, H: Hasher<S>> HashMap<K, V, H> {
 
     /// Return a copy of the value corresponding to the key.
     ///
-    /// # Failure
+    /// # Panics
     ///
-    /// Fails if the key is not present.
+    /// Panics if the key is not present.
     ///
     /// # Example
     ///

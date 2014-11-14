@@ -1084,7 +1084,7 @@ pub mod raw {
     ///
     /// Returns the substring from [`begin`..`end`).
     ///
-    /// # Failure
+    /// # Panics
     ///
     /// If begin is greater than end.
     /// If end is greater than the length of the string.
@@ -1432,7 +1432,7 @@ pub trait StrPrelude for Sized? {
     ///
     /// This operation is `O(1)`.
     ///
-    /// Fails when `begin` and `end` do not point to valid characters
+    /// Panics when `begin` and `end` do not point to valid characters
     /// or point beyond the last character of the string.
     ///
     /// See also `slice_to` and `slice_from` for slicing prefixes and
@@ -1463,7 +1463,7 @@ pub trait StrPrelude for Sized? {
     ///
     /// Equivalent to `self.slice(begin, self.len())`.
     ///
-    /// Fails when `begin` does not point to a valid character, or is
+    /// Panics when `begin` does not point to a valid character, or is
     /// out of bounds.
     ///
     /// See also `slice`, `slice_to` and `slice_chars`.
@@ -1474,7 +1474,7 @@ pub trait StrPrelude for Sized? {
     ///
     /// Equivalent to `self.slice(0, end)`.
     ///
-    /// Fails when `end` does not point to a valid character, or is
+    /// Panics when `end` does not point to a valid character, or is
     /// out of bounds.
     ///
     /// See also `slice`, `slice_from` and `slice_chars`.
@@ -1493,7 +1493,7 @@ pub trait StrPrelude for Sized? {
     /// variants that use byte indices rather than code point
     /// indices.
     ///
-    /// Fails if `begin` > `end` or the either `begin` or `end` are
+    /// Panics if `begin` > `end` or the either `begin` or `end` are
     /// beyond the last character of the string.
     ///
     /// # Example
@@ -1577,7 +1577,7 @@ pub trait StrPrelude for Sized? {
     /// The start and end of the string (when `index == self.len()`)
     /// are considered to be boundaries.
     ///
-    /// Fails if `index` is greater than `self.len()`.
+    /// Panics if `index` is greater than `self.len()`.
     ///
     /// # Example
     ///
@@ -1645,7 +1645,7 @@ pub trait StrPrelude for Sized? {
     /// A record {ch: char, next: uint} containing the char value and the byte
     /// index of the next Unicode character.
     ///
-    /// # Failure
+    /// # Panics
     ///
     /// If `i` is greater than or equal to the length of the string.
     /// If `i` is not the index of the beginning of a valid UTF-8 character.
@@ -1657,7 +1657,7 @@ pub trait StrPrelude for Sized? {
     ///
     /// Returns 0 for next index if called on start index 0.
     ///
-    /// # Failure
+    /// # Panics
     ///
     /// If `i` is greater than the length of the string.
     /// If `i` is not an index following a valid UTF-8 character.
@@ -1674,7 +1674,7 @@ pub trait StrPrelude for Sized? {
     /// assert_eq!(s.char_at(4), 'c');
     /// ```
     ///
-    /// # Failure
+    /// # Panics
     ///
     /// If `i` is greater than or equal to the length of the string.
     /// If `i` is not the index of the beginning of a valid UTF-8 character.
@@ -1682,7 +1682,7 @@ pub trait StrPrelude for Sized? {
 
     /// Plucks the character ending at the `i`th byte of a string.
     ///
-    /// # Failure
+    /// # Panics
     ///
     /// If `i` is greater than the length of the string.
     /// If `i` is not an index following a valid UTF-8 character.
@@ -1790,7 +1790,7 @@ pub trait StrPrelude for Sized? {
 
     /// Returns the byte offset of an inner slice relative to an enclosing outer slice.
     ///
-    /// Fails if `inner` is not a direct slice contained within self.
+    /// Panics if `inner` is not a direct slice contained within self.
     ///
     /// # Example
     ///

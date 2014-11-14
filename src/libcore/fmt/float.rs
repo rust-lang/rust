@@ -72,11 +72,11 @@ static DIGIT_E_RADIX: uint = ('e' as uint) - ('a' as uint) + 11u;
  * - `f`             - A closure to invoke with the bytes representing the
  *                     float.
  *
- * # Failure
- * - Fails if `radix` < 2 or `radix` > 36.
- * - Fails if `radix` > 14 and `exp_format` is `ExpDec` due to conflict
+ * # Panics
+ * - Panics if `radix` < 2 or `radix` > 36.
+ * - Panics if `radix` > 14 and `exp_format` is `ExpDec` due to conflict
  *   between digit and exponent sign `'e'`.
- * - Fails if `radix` > 25 and `exp_format` is `ExpBin` due to conflict
+ * - Panics if `radix` > 25 and `exp_format` is `ExpBin` due to conflict
  *   between digit and exponent sign `'p'`.
  */
 pub fn float_to_str_bytes_common<T: Float, U>(

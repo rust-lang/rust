@@ -489,9 +489,9 @@ impl<K, V, M: Deref<RawTable<K, V>>> GapThenFull<K, V, M> {
 /// Rounds up to a multiple of a power of two. Returns the closest multiple
 /// of `target_alignment` that is higher or equal to `unrounded`.
 ///
-/// # Failure
+/// # Panics
 ///
-/// Fails if `target_alignment` is not a power of two.
+/// Panics if `target_alignment` is not a power of two.
 fn round_up_to_next(unrounded: uint, target_alignment: uint) -> uint {
     assert!(target_alignment.is_power_of_two());
     (unrounded + target_alignment - 1) & !(target_alignment - 1)
