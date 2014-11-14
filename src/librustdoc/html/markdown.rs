@@ -147,10 +147,14 @@ fn stripped_filtered_line<'a>(s: &'a str) -> Option<&'a str> {
     }
 }
 
-local_data_key!(used_header_map: RefCell<HashMap<String, uint>>)
-local_data_key!(test_idx: Cell<uint>)
-// None == render an example, but there's no crate name
-local_data_key!(pub playground_krate: Option<String>)
+thread_local!(static USED_HEADER_MAP: RefCell<HashMap<String, uint>> = {
+    RefCell::new(HashMap::new())
+})
+thread_local!(static TEST_IDX: Cell<uint> = Cell::new(0))
+
+thread_local!(pub static PLAYGROUND_KRATE: RefCell<Option<Option<String>>> = {
+    RefCell::new(None)
+})
 
 pub fn render(w: &mut fmt::Formatter, s: &str, print_toc: bool) -> fmt::Result {
     extern fn block(ob: *mut hoedown_buffer, orig_text: *const hoedown_buffer,
@@ -183,12 +187,15 @@ pub fn render(w: &mut fmt::Formatter, s: &str, print_toc: bool) -> fmt::Result {
                 stripped_filtered_line(*l).is_none()
             });
             let text = lines.collect::<Vec<&str>>().connect("\n");
-            if !rendered {
+            if rendered { return }
+            PLAYGROUND_KRATE.with(|krate| {
                 let mut s = String::new();
-                let id = playground_krate.get().map(|krate| {
-                    let idx = test_idx.get().unwrap();
-                    let i = idx.get();
-                    idx.set(i + 1);
+                let id = krate.borrow().as_ref().map(|krate| {
+                    let idx = TEST_IDX.with(|slot| {
+                        let i = slot.get();
+                        slot.set(i + 1);
+                        i
+                    });
 
                     let test = origtext.lines().map(|l| {
                         stripped_filtered_line(l).unwrap_or(l)
@@ -197,15 +204,15 @@ pub fn render(w: &mut fmt::Formatter, s: &str, print_toc: bool) -> fmt::Result {
                     let test = test::maketest(test.as_slice(), krate, false, false);
                     s.push_str(format!("<span id='rust-example-raw-{}' \
                                          class='rusttest'>{}</span>",
-                                       i, Escape(test.as_slice())).as_slice());
-                    format!("rust-example-rendered-{}", i)
+                                       idx, Escape(test.as_slice())).as_slice());
+                    format!("rust-example-rendered-{}", idx)
                 });
                 let id = id.as_ref().map(|a| a.as_slice());
                 s.push_str(highlight::highlight(text.as_slice(), None, id)
                                      .as_slice());
                 let output = s.to_c_str();
                 hoedown_buffer_puts(ob, output.as_ptr());
-            }
+            })
         }
     }
 
@@ -229,18 +236,20 @@ pub fn render(w: &mut fmt::Formatter, s: &str, print_toc: bool) -> fmt::Result {
 
         // This is a terrible hack working around how hoedown gives us rendered
         // html for text rather than the raw text.
-        let id = id.replace("<code>", "").replace("</code>", "").to_string();
 
         let opaque = opaque as *mut hoedown_html_renderer_state;
         let opaque = unsafe { &mut *((*opaque).opaque as *mut MyOpaque) };
 
         // Make sure our hyphenated ID is unique for this page
-        let map = used_header_map.get().unwrap();
-        let id = match map.borrow_mut().get_mut(&id) {
-            None => id,
-            Some(a) => { *a += 1; format!("{}-{}", id, *a - 1) }
-        };
-        map.borrow_mut().insert(id.clone(), 1);
+        let id = USED_HEADER_MAP.with(|map| {
+            let id = id.replace("<code>", "").replace("</code>", "").to_string();
+            let id = match map.borrow_mut().get_mut(&id) {
+                None => id,
+                Some(a) => { *a += 1; format!("{}-{}", id, *a - 1) }
+            };
+            map.borrow_mut().insert(id.clone(), 1);
+            id
+        });
 
         let sec = match opaque.toc_builder {
             Some(ref mut builder) => {
@@ -262,9 +271,7 @@ pub fn render(w: &mut fmt::Formatter, s: &str, print_toc: bool) -> fmt::Result {
         text.with_c_str(|p| unsafe { hoedown_buffer_puts(ob, p) });
     }
 
-    if used_header_map.get().is_none() {
-        reset_headers();
-    }
+    reset_headers();
 
     unsafe {
         let ob = hoedown_buffer_new(DEF_OUNIT);
@@ -418,8 +425,8 @@ impl LangString {
 /// used at the beginning of rendering an entire HTML page to reset from the
 /// previous state (if any).
 pub fn reset_headers() {
-    used_header_map.replace(Some(RefCell::new(HashMap::new())));
-    test_idx.replace(Some(Cell::new(0)));
+    USED_HEADER_MAP.with(|s| s.borrow_mut().clear());
+    TEST_IDX.with(|s| s.set(0));
 }
 
 impl<'a> fmt::Show for Markdown<'a> {

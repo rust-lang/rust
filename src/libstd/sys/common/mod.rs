@@ -21,6 +21,7 @@ use collections;
 
 pub mod net;
 pub mod helper_thread;
+pub mod thread_local;
 
 // common error constructors
 

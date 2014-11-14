@@ -170,7 +170,6 @@ pub use core_collections::string;
 pub use core_collections::vec;
 
 pub use rustrt::c_str;
-pub use rustrt::local_data;
 
 pub use unicode::char;
 
@@ -209,16 +208,24 @@ pub mod prelude;
 #[path = "num/f32.rs"]   pub mod f32;
 #[path = "num/f64.rs"]   pub mod f64;
 
-pub mod rand;
-
 pub mod ascii;
-
-pub mod time;
 
 /* Common traits */
 
 pub mod error;
 pub mod num;
+
+/* Runtime and platform support */
+
+pub mod thread_local;
+pub mod c_vec;
+pub mod dynamic_lib;
+pub mod fmt;
+pub mod io;
+pub mod os;
+pub mod path;
+pub mod rand;
+pub mod time;
 
 /* Common data structures */
 
@@ -229,15 +236,6 @@ pub mod hash;
 
 pub mod task;
 pub mod sync;
-
-/* Runtime and platform support */
-
-pub mod c_vec;
-pub mod dynamic_lib;
-pub mod os;
-pub mod io;
-pub mod path;
-pub mod fmt;
 
 #[cfg(unix)]
 #[path = "sys/unix/mod.rs"] mod sys;
@@ -263,10 +261,12 @@ mod std {
     pub use error; // used for try!()
     pub use fmt; // used for any formatting strings
     pub use io; // used for println!()
-    pub use local_data; // used for local_data_key!()
     pub use option; // used for bitflags!{}
     pub use rt; // used for panic!()
     pub use vec; // used for vec![]
+    pub use cell; // used for tls!
+    pub use thread_local; // used for thread_local!
+    pub use kinds; // used for tls!
 
     // The test runner calls ::std::os::args() but really wants realstd
     #[cfg(test)] pub use realstd::os as os;
@@ -276,4 +276,5 @@ mod std {
     pub use slice;
 
     pub use boxed; // used for vec![]
+
 }

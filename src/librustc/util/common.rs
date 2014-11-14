@@ -10,7 +10,7 @@
 
 #![allow(non_camel_case_types)]
 
-use std::cell::RefCell;
+use std::cell::{RefCell, Cell};
 use std::collections::HashMap;
 use std::fmt::Show;
 use std::hash::{Hash, Hasher};
@@ -26,11 +26,14 @@ use syntax::visit::Visitor;
 pub struct ErrorReported;
 
 pub fn time<T, U>(do_it: bool, what: &str, u: U, f: |U| -> T) -> T {
-    local_data_key!(depth: uint);
+    thread_local!(static DEPTH: Cell<uint> = Cell::new(0));
     if !do_it { return f(u); }
 
-    let old = depth.get().map(|d| *d).unwrap_or(0);
-    depth.replace(Some(old + 1));
+    let old = DEPTH.with(|slot| {
+        let r = slot.get();
+        slot.set(r + 1);
+        r
+    });
 
     let mut u = Some(u);
     let mut rv = None;
@@ -41,7 +44,7 @@ pub fn time<T, U>(do_it: bool, what: &str, u: U, f: |U| -> T) -> T {
 
     println!("{}time: {}.{:03} \t{}", "  ".repeat(old),
              dur.num_seconds(), dur.num_milliseconds() % 1000, what);
-    depth.replace(Some(old));
+    DEPTH.with(|slot| slot.set(old));
 
     rv
 }
