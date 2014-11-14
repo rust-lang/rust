@@ -322,9 +322,9 @@ pub fn env_as_bytes() -> Vec<(Vec<u8>,Vec<u8>)> {
 /// Any invalid UTF-8 bytes in the value are replaced by \uFFFD. See
 /// `String::from_utf8_lossy()` for details.
 ///
-/// # Failure
+/// # Panics
 ///
-/// Fails if `n` has any interior NULs.
+/// Panics if `n` has any interior NULs.
 ///
 /// # Example
 ///
@@ -345,9 +345,9 @@ pub fn getenv(n: &str) -> Option<String> {
 /// Fetches the environment variable `n` byte vector from the current process,
 /// returning None if the variable isn't set.
 ///
-/// # Failure
+/// # Panics
 ///
-/// Fails if `n` has any interior NULs.
+/// Panics if `n` has any interior NULs.
 pub fn getenv_as_bytes(n: &str) -> Option<Vec<u8>> {
     use c_str::CString;
 
@@ -889,6 +889,7 @@ pub fn errno() -> uint {
 }
 
 /// Return the string corresponding to an `errno()` value of `errnum`.
+///
 /// # Example
 /// ```rust
 /// use std::os;
@@ -1474,7 +1475,7 @@ impl MemoryMap {
 
 #[cfg(windows)]
 impl Drop for MemoryMap {
-    /// Unmap the mapping. Fails the task if any of `VirtualFree`,
+    /// Unmap the mapping. Panics the task if any of `VirtualFree`,
     /// `UnmapViewOfFile`, or `CloseHandle` fail.
     fn drop(&mut self) {
         use libc::types::os::arch::extra::{LPCVOID, HANDLE};

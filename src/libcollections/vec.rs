@@ -941,9 +941,9 @@ impl<T> Vec<T> {
 
     /// Appends an element to the back of a collection.
     ///
-    /// # Failure
+    /// # Panics
     ///
-    /// Fails if the number of elements in the vector overflows a `uint`.
+    /// Panics if the number of elements in the vector overflows a `uint`.
     ///
     /// # Example
     ///
@@ -1462,9 +1462,9 @@ impl<T> Vec<T> {
     /// Converts a `Vec<T>` to a `Vec<U>` where `T` and `U` have the same
     /// size and in case they are not zero-sized the same minimal alignment.
     ///
-    /// # Failure
+    /// # Panics
     ///
-    /// Fails if `T` and `U` have differing sizes or are not zero-sized and
+    /// Panics if `T` and `U` have differing sizes or are not zero-sized and
     /// have differing minimal alignments.
     ///
     /// # Example

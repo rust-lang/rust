@@ -498,9 +498,9 @@ impl String {
 
     /// Shortens a string to the specified length.
     ///
-    /// # Failure
+    /// # Panics
     ///
-    /// Fails if `new_len` > current length,
+    /// Panics if `new_len` > current length,
     /// or if `new_len` is not a character boundary.
     ///
     /// # Example

@@ -914,9 +914,9 @@ impl<'a> Reader for &'a mut Reader+'a {
 /// Similar to `slice()` except this function only bounds the slice on the
 /// capacity of `v`, not the length.
 ///
-/// # Failure
+/// # Panics
 ///
-/// Fails when `start` or `end` point outside the capacity of `v`, or when
+/// Panics when `start` or `end` point outside the capacity of `v`, or when
 /// `start` > `end`.
 // Private function here because we aren't sure if we want to expose this as
 // API yet. If so, it should be a method on Vec.

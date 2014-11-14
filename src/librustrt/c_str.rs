@@ -141,9 +141,9 @@ impl CString {
     /// API, so avoid calling it with a pointer to memory managed by Rust's
     /// allocator API, as the behaviour would not be well defined.
     ///
-    ///# Failure
+    ///# Panics
     ///
-    /// Fails if `buf` is null
+    /// Panics if `buf` is null
     pub unsafe fn new(buf: *const libc::c_char, owns_buffer: bool) -> CString {
         assert!(!buf.is_null());
         CString { buf: buf, owns_buffer_: owns_buffer }
@@ -291,9 +291,9 @@ impl fmt::Show for CString {
 pub trait ToCStr for Sized? {
     /// Copy the receiver into a CString.
     ///
-    /// # Failure
+    /// # Panics
     ///
-    /// Fails the task if the receiver has an interior null.
+    /// Panics the task if the receiver has an interior null.
     fn to_c_str(&self) -> CString;
 
     /// Unsafe variant of `to_c_str()` that doesn't check for nulls.
@@ -314,9 +314,9 @@ pub trait ToCStr for Sized? {
     /// }
     /// ```
     ///
-    /// # Failure
+    /// # Panics
     ///
-    /// Fails the task if the receiver has an interior null.
+    /// Panics the task if the receiver has an interior null.
     #[inline]
     fn with_c_str<T>(&self, f: |*const libc::c_char| -> T) -> T {
         let c_str = self.to_c_str();

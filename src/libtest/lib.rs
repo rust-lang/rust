@@ -1116,7 +1116,7 @@ impl MetricMap {
 
     /// Load MetricDiff from a file.
     ///
-    /// # Failure
+    /// # Panics
     ///
     /// This function will panic if the path does not exist or the path does not
     /// contain a valid metric map.
