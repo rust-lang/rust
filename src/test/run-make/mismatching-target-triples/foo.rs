@@ -7,9 +7,5 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
-
-// Tests that the proper help is displayed in the error message
-
-extern crate foo as bar;
-//~^ ERROR expected `;`, found `as`
-//~^^ HELP perhaps you meant to enclose the crate name `foo` in a string?
+#![no_std]
+#![crate_type = "lib"]
