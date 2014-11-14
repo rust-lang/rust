@@ -63,7 +63,7 @@ use cmp;
 use cmp::Ord;
 use mem;
 use num::{ToPrimitive, Int};
-use ops::{Add, Mul};
+use ops::Add;
 use option::{Option, Some, None};
 use uint;
 #[deprecated = "renamed to Extend"] pub use self::Extend as Extendable;
@@ -402,7 +402,7 @@ pub trait Iterator<A> {
     ///             .inspect(|&x| println!("filtering {}", x))
     ///             .filter(|&x| x % 2 == 0)
     ///             .inspect(|&x| println!("{} made it through", x))
-    ///             .sum(0);
+    ///             .sum();
     /// println!("{}", sum);
     /// ```
     #[inline]
@@ -784,17 +784,33 @@ pub trait AdditiveIterator<A> {
     ///
     /// let a = [1i, 2, 3, 4, 5];
     /// let mut it = a.iter().map(|&x| x);
-    /// assert!(it.sum(0) == 15);
+    /// assert!(it.sum() == 15);
     /// ```
-    fn sum(&mut self, init: A) -> A;
+    fn sum(&mut self) -> A;
 }
 
-impl<A: Add<A, A>, T: Iterator<A>> AdditiveIterator<A> for T {
-    #[inline]
-    fn sum(&mut self, init: A) -> A {
-        self.fold(init, |s, x| s + x)
-    }
+macro_rules! impl_additive {
+    ($A:ty, $init:expr) => {
+        impl<T: Iterator<$A>> AdditiveIterator<$A> for T {
+            #[inline]
+            fn sum(&mut self) -> $A {
+                self.fold($init, |acc, x| acc + x)
+            }
+        }
+    };
 }
+impl_additive!(i8,   0)
+impl_additive!(i16,  0)
+impl_additive!(i32,  0)
+impl_additive!(i64,  0)
+impl_additive!(int,  0)
+impl_additive!(u8,   0)
+impl_additive!(u16,  0)
+impl_additive!(u32,  0)
+impl_additive!(u64,  0)
+impl_additive!(uint, 0)
+impl_additive!(f32,  0.0)
+impl_additive!(f64,  0.0)
 
 /// A trait for iterators over elements which can be multiplied together.
 pub trait MultiplicativeIterator<A> {
@@ -806,21 +822,37 @@ pub trait MultiplicativeIterator<A> {
     /// use std::iter::{count, MultiplicativeIterator};
     ///
     /// fn factorial(n: uint) -> uint {
-    ///     count(1u, 1).take_while(|&i| i <= n).product(1)
+    ///     count(1u, 1).take_while(|&i| i <= n).product()
     /// }
     /// assert!(factorial(0) == 1);
     /// assert!(factorial(1) == 1);
     /// assert!(factorial(5) == 120);
     /// ```
-    fn product(&mut self, init: A) -> A;
+    fn product(&mut self) -> A;
 }
 
-impl<A: Mul<A, A>, T: Iterator<A>> MultiplicativeIterator<A> for T {
-    #[inline]
-    fn product(&mut self, init: A) -> A {
-        self.fold(init, |p, x| p * x)
-    }
+macro_rules! impl_multiplicative {
+    ($A:ty, $init:expr) => {
+        impl<T: Iterator<$A>> MultiplicativeIterator<$A> for T {
+            #[inline]
+            fn product(&mut self) -> $A {
+                self.fold($init, |acc, x| acc * x)
+            }
+        }
+    };
 }
+impl_multiplicative!(i8,   1)
+impl_multiplicative!(i16,  1)
+impl_multiplicative!(i32,  1)
+impl_multiplicative!(i64,  1)
+impl_multiplicative!(int,  1)
+impl_multiplicative!(u8,   1)
+impl_multiplicative!(u16,  1)
+impl_multiplicative!(u32,  1)
+impl_multiplicative!(u64,  1)
+impl_multiplicative!(uint, 1)
+impl_multiplicative!(f32,  1.0)
+impl_multiplicative!(f64,  1.0)
 
 /// A trait for iterators over elements which can be compared to one another.
 pub trait OrdIterator<A> {

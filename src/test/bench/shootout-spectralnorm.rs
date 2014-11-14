@@ -105,7 +105,7 @@ fn A(i: uint, j: uint) -> f64 {
 }
 
 fn dot(v: &[f64], u: &[f64]) -> f64 {
-    v.iter().zip(u.iter()).map(|(a, b)| *a * *b).sum(0.0)
+    v.iter().zip(u.iter()).map(|(a, b)| *a * *b).sum()
 }
 
 // Executes a closure in parallel over the given mutable slice. The closure `f`

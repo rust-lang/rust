@@ -70,7 +70,7 @@ impl<'a> fmt::Show for Matrix<'a> {
             pretty_printed_matrix.iter().map(|row| row[col].len()).max().unwrap_or(0u)
         }).collect();
 
-        let total_width = column_widths.iter().map(|n| *n).sum(0) + column_count * 3 + 1;
+        let total_width = column_widths.iter().map(|n| *n).sum() + column_count * 3 + 1;
         let br = String::from_char(total_width, '+');
         try!(write!(f, "{}\n", br));
         for row in pretty_printed_matrix.into_iter() {

@@ -116,7 +116,7 @@ impl<S: Str> StrVector for [S] {
         }
 
         // `len` calculation may overflow but push_str will check boundaries
-        let len = self.iter().map(|s| s.as_slice().len()).sum(0);
+        let len = self.iter().map(|s| s.as_slice().len()).sum();
 
         let mut result = String::with_capacity(len);
 
@@ -140,7 +140,7 @@ impl<S: Str> StrVector for [S] {
         // this is wrong without the guarantee that `self` is non-empty
         // `len` calculation may overflow but push_str but will check boundaries
         let len = sep.len() * (self.len() - 1)
-            + self.iter().map(|s| s.as_slice().len()).sum(0);
+            + self.iter().map(|s| s.as_slice().len()).sum();
         let mut result = String::with_capacity(len);
         let mut first = true;
 
@@ -2151,7 +2151,7 @@ mod tests {
     #[test]
     fn test_str_container() {
         fn sum_len(v: &[&str]) -> uint {
-            v.iter().map(|x| x.len()).sum(0)
+            v.iter().map(|x| x.len()).sum()
         }
 
         let s = String::from_str("01234");
