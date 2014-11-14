@@ -1471,7 +1471,7 @@ mod test_map {
         assert_eq!(*m.get(&2).unwrap(), 4);
     }
 
-    local_data_key!(drop_vector: RefCell<Vec<int>>)
+    local_data_key! { drop_vector: RefCell<Vec<int>> }
 
     #[deriving(Hash, PartialEq, Eq)]
     struct Dropable {

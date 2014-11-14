@@ -337,7 +337,7 @@ pub struct TaskRng {
 /// explicitly select an RNG, e.g. `IsaacRng` or `Isaac64Rng`.
 pub fn task_rng() -> TaskRng {
     // used to make space in TLS for a random number generator
-    local_data_key!(TASK_RNG_KEY: Rc<RefCell<TaskRngInner>>)
+    local_data_key!(TASK_RNG_KEY: Rc<RefCell<TaskRngInner>>);
 
     match TASK_RNG_KEY.get() {
         None => {

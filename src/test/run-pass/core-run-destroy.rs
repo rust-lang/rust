@@ -26,7 +26,7 @@ use std::str;
 
 macro_rules! succeed( ($e:expr) => (
     match $e { Ok(..) => {}, Err(e) => panic!("panic: {}", e) }
-) )
+) );
 
 fn test_destroy_once() {
     let mut p = sleeper();

@@ -10,7 +10,7 @@
 
 // Testing that we can't store a reference in task-local storage
 
-local_data_key!(key: Box<&int>)
+local_data_key!(key: Box<&int>);
 //~^ ERROR missing lifetime specifier
 
 fn main() {}

@@ -38,7 +38,7 @@ impl fmt::Show for C {
     }
 }
 
-macro_rules! t(($a:expr, $b:expr) => { assert_eq!($a.as_slice(), $b) })
+macro_rules! t(($a:expr, $b:expr) => { assert_eq!($a.as_slice(), $b) });
 
 pub fn main() {
     // Various edge cases without formats

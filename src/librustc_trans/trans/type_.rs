@@ -31,9 +31,9 @@ pub struct Type {
     rf: TypeRef
 }
 
-macro_rules! ty (
+macro_rules! ty {
     ($e:expr) => ( Type::from_ref(unsafe { $e }))
-)
+}
 
 /**
  * Wrapper for LLVM TypeRef

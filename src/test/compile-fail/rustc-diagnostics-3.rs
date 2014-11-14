@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-__register_diagnostic!(E0001)
+__register_diagnostic!(E0001);
 //~^ ERROR macro undefined: '__register_diagnostic!'
 
 fn main() {
@@ -16,5 +16,5 @@ fn main() {
     //~^ ERROR macro undefined: '__diagnostic_used!'
 }
 
-__build_diagnostic_array!(DIAGNOSTICS)
+__build_diagnostic_array!(DIAGNOSTICS);
 //~^ ERROR macro undefined: '__build_diagnostic_array!'

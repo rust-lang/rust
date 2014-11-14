@@ -15,4 +15,4 @@
 
 pub use core::uint::{BITS, BYTES, MIN, MAX};
 
-uint_module!(uint)
+uint_module! { uint }

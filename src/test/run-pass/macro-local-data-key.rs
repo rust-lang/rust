@@ -8,10 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-local_data_key!(foo: int)
+local_data_key!(foo: int);
 
 mod bar {
-    local_data_key!(pub baz: f64)
+    local_data_key!(pub baz: f64);
 }
 
 pub fn main() {

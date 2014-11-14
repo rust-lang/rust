@@ -176,17 +176,17 @@ pub enum CrateType {
     CrateTypeStaticlib,
 }
 
-macro_rules! debugging_opts(
+macro_rules! debugging_opts {
     ([ $opt:ident ] $cnt:expr ) => (
         pub const $opt: u64 = 1 << $cnt;
     );
     ([ $opt:ident, $($rest:ident),* ] $cnt:expr ) => (
         pub const $opt: u64 = 1 << $cnt;
-        debugging_opts!([ $($rest),* ] $cnt + 1)
+        debugging_opts! { [ $($rest),* ] $cnt + 1 }
     )
-)
+}
 
-debugging_opts!(
+debugging_opts! {
     [
         VERBOSE,
         TIME_PASSES,
@@ -214,7 +214,7 @@ debugging_opts!(
         FLOWGRAPH_PRINT_ALL
     ]
     0
-)
+}
 
 pub fn debugging_opts_map() -> Vec<(&'static str, &'static str, u64)> {
     vec!(("verbose", "in general, enable more debug printouts", VERBOSE),
@@ -281,7 +281,7 @@ impl Passes {
 /// cgsetters module which is a bunch of generated code to parse an option into
 /// its respective field in the struct. There are a few hand-written parsers for
 /// parsing specific types of values in this module.
-macro_rules! cgoptions(
+macro_rules! cgoptions {
     ($($opt:ident : $t:ty = ($init:expr, $parse:ident, $desc:expr)),* ,) =>
 (
     #[deriving(Clone)]
@@ -396,9 +396,9 @@ macro_rules! cgoptions(
             }
         }
     }
-) )
+) }
 
-cgoptions!(
+cgoptions! {
     ar: Option<String> = (None, parse_opt_string,
         "tool to assemble archives with"),
     linker: Option<String> = (None, parse_opt_string,
@@ -447,7 +447,7 @@ cgoptions!(
         "print remarks for these optimization passes (space separated, or \"all\")"),
     no_stack_check: bool = (false, parse_bool,
         "disable checks for stack exhaustion (a memory-safety hazard!)"),
-)
+}
 
 pub fn build_codegen_options(matches: &getopts::Matches) -> CodegenOptions
 {

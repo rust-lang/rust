@@ -1461,7 +1461,7 @@ mod test {
     }
 
     // maybe add to expand.rs...
-    macro_rules! assert_pred (
+    macro_rules! assert_pred {
         ($pred:expr, $predname:expr, $a:expr , $b:expr) => (
             {
                 let pred_val = $pred;
@@ -1473,7 +1473,7 @@ mod test {
                 }
             }
         )
-    )
+    }
 
     // make sure idents get transformed everywhere
     #[test] fn ident_transformation () {
@@ -1499,6 +1499,6 @@ mod test {
             matches_codepattern,
             "matches_codepattern",
             pprust::to_string(|s| fake_print_crate(s, &folded_crate)),
-            "zz!zz((zz$zz:zz$(zz $zz:zz)zz+=>(zz$(zz$zz$zz)+)))".to_string());
+            "zz!zz((zz$zz:zz$(zz $zz:zz)zz+=>(zz$(zz$zz$zz)+)));".to_string());
     }
 }

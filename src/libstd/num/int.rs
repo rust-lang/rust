@@ -15,4 +15,4 @@
 
 pub use core::int::{BITS, BYTES, MIN, MAX};
 
-int_module!(int)
+int_module! { int }

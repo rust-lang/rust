@@ -8,11 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(macro_rules)]
-
-macro_rules! foo ( () => ( x ) )
-
 fn main() {
-    let foo!() = 2;
-    x + 1; //~ ERROR unresolved name `x`
+    assert!(1 == 2)
+    assert!(3 == 4) //~ ERROR expected one of `;`, `}`, found `assert`
+    println!("hello");
 }
+

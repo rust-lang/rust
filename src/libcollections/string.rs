@@ -167,7 +167,7 @@ impl String {
                     subseqidx = i;
                     res.as_mut_vec().push_all(REPLACEMENT);
                 }
-            }))
+            }));
 
             if byte < 128u8 {
                 // subseqidx handles this

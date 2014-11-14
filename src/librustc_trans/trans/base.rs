@@ -100,7 +100,7 @@ use syntax::visit::Visitor;
 use syntax::visit;
 use syntax::{ast, ast_util, ast_map};
 
-local_data_key!(task_local_insn_key: RefCell<Vec<&'static str>>)
+local_data_key! { task_local_insn_key: RefCell<Vec<&'static str>> }
 
 pub fn with_insn_ctxt(blk: |&[&'static str]|) {
     match task_local_insn_key.get() {

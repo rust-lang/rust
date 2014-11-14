@@ -10,11 +10,11 @@
 
 #![feature(rustc_diagnostic_macros)]
 
-__register_diagnostic!(E0001)
-__register_diagnostic!(E0001)
+__register_diagnostic!(E0001);
+__register_diagnostic!(E0001);
 //~^ ERROR diagnostic code E0001 already registered
 
 fn main() {
 }
 
-__build_diagnostic_array!(DIAGNOSTICS)
+__build_diagnostic_array!(DIAGNOSTICS);

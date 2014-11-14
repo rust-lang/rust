@@ -157,7 +157,7 @@ pub fn represent_type(cx: &CrateContext, t: ty::t) -> Rc<Repr> {
     }
 
     let repr = Rc::new(represent_type_uncached(cx, t));
-    debug!("Represented as: {}", repr)
+    debug!("Represented as: {}", repr);
     cx.adt_reprs().borrow_mut().insert(t, repr.clone());
     repr
 }

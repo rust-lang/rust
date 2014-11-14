@@ -636,7 +636,7 @@ impl TypeMap {
 
 // Returns from the enclosing function if the type metadata with the given
 // unique id can be found in the type map
-macro_rules! return_if_metadata_created_in_meantime(
+macro_rules! return_if_metadata_created_in_meantime {
     ($cx: expr, $unique_type_id: expr) => (
         match debug_context($cx).type_map
                                 .borrow()
@@ -645,7 +645,7 @@ macro_rules! return_if_metadata_created_in_meantime(
             None => { /* proceed normally */ }
         };
     )
-)
+}
 
 
 /// A context object for maintaining all state needed by the debuginfo module.

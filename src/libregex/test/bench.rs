@@ -137,7 +137,7 @@ fn one_pass_long_prefix_not(b: &mut Bencher) {
     b.iter(|| re.is_match(text));
 }
 
-macro_rules! throughput(
+macro_rules! throughput {
     ($name:ident, $regex:expr, $size:expr) => (
         #[bench]
         fn $name(b: &mut Bencher) {
@@ -146,7 +146,7 @@ macro_rules! throughput(
             b.iter(|| if $regex.is_match(text.as_slice()) { panic!("match") });
         }
     );
-)
+}
 
 fn easy0() -> Regex { regex!("ABCDEFGHIJKLMNOPQRSTUVWXYZ$") }
 fn easy1() -> Regex { regex!("A[AB]B[BC]C[CD]D[DE]E[EF]F[FG]G[GH]H[HI]I[IJ]J$") }
@@ -165,18 +165,18 @@ fn gen_text(n: uint) -> String {
     String::from_utf8(bytes).unwrap()
 }
 
-throughput!(easy0_32, easy0(), 32)
-throughput!(easy0_1K, easy0(), 1<<10)
-throughput!(easy0_32K, easy0(), 32<<10)
+throughput!{easy0_32, easy0(), 32}
+throughput!{easy0_1K, easy0(), 1<<10}
+throughput!{easy0_32K, easy0(), 32<<10}
 
-throughput!(easy1_32, easy1(), 32)
-throughput!(easy1_1K, easy1(), 1<<10)
-throughput!(easy1_32K, easy1(), 32<<10)
+throughput!{easy1_32, easy1(), 32}
+throughput!{easy1_1K, easy1(), 1<<10}
+throughput!{easy1_32K, easy1(), 32<<10}
 
-throughput!(medium_32, medium(), 32)
-throughput!(medium_1K, medium(), 1<<10)
-throughput!(medium_32K,medium(), 32<<10)
+throughput!{medium_32, medium(), 32}
+throughput!{medium_1K, medium(), 1<<10}
+throughput!{medium_32K,medium(), 32<<10}
 
-throughput!(hard_32, hard(), 32)
-throughput!(hard_1K, hard(), 1<<10)
-throughput!(hard_32K,hard(), 32<<10)
+throughput!{hard_32, hard(), 32}
+throughput!{hard_1K, hard(), 1<<10}
+throughput!{hard_32K,hard(), 32<<10}

@@ -215,7 +215,7 @@ mod test {
     fn test_dropped_future_doesnt_panic() {
         struct Bomb(Sender<bool>);
 
-        local_data_key!(LOCAL: Bomb)
+        local_data_key!(LOCAL: Bomb);
 
         impl Drop for Bomb {
             fn drop(&mut self) {

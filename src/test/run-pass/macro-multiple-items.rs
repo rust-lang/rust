@@ -20,9 +20,9 @@ macro_rules! make_foo(
             fn bar(&self) {}
         }
     )
-)
+);
 
-make_foo!()
+make_foo!();
 
 pub fn main() {
     Foo.bar()

@@ -10,7 +10,7 @@
 
 #![feature(macro_rules)]
 
-macro_rules! expr (($e: expr) => { $e })
+macro_rules! expr (($e: expr) => { $e });
 
 macro_rules! spawn {
     ($($code: tt)*) => {

@@ -13,5 +13,5 @@
 #![unstable]
 #![doc(primitive = "i8")]
 
-int_module!(i8, 8)
+int_module! { i8, 8 }
 

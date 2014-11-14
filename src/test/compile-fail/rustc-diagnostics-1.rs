@@ -10,8 +10,8 @@
 
 #![feature(rustc_diagnostic_macros)]
 
-__register_diagnostic!(E0001)
-__register_diagnostic!(E0003)
+__register_diagnostic!(E0001);
+__register_diagnostic!(E0003);
 
 fn main() {
     __diagnostic_used!(E0002);
@@ -24,5 +24,5 @@ fn main() {
     //~^ WARNING diagnostic code E0001 already used
 }
 
-__build_diagnostic_array!(DIAGNOSTICS)
+__build_diagnostic_array!(DIAGNOSTICS);
 //~^ WARN diagnostic code E0003 never used

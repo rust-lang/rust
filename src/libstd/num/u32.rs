@@ -15,4 +15,4 @@
 
 pub use core::u32::{BITS, BYTES, MIN, MAX};
 
-uint_module!(u32)
+uint_module! { u32 }

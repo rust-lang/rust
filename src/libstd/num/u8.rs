@@ -15,4 +15,4 @@
 
 pub use core::u8::{BITS, BYTES, MIN, MAX};
 
-uint_module!(u8)
+uint_module! { u8 }

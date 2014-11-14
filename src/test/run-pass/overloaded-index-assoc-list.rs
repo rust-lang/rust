@@ -47,9 +47,9 @@ pub fn main() {
     list.push(foo.clone(), 22i);
     list.push(bar.clone(), 44i);
 
-    assert!(list[foo] == 22)
-    assert!(list[bar] == 44)
+    assert!(list[foo] == 22);
+    assert!(list[bar] == 44);
 
-    assert!(list[foo] == 22)
-    assert!(list[bar] == 44)
+    assert!(list[foo] == 22);
+    assert!(list[bar] == 44);
 }

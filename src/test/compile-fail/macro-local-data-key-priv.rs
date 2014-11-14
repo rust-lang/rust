@@ -11,7 +11,7 @@
 // check that the local data keys are private by default.
 
 mod bar {
-    local_data_key!(baz: f64)
+    local_data_key!(baz: f64);
 }
 
 fn main() {

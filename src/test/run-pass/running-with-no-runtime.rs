@@ -15,7 +15,7 @@ use std::os;
 use std::str;
 use std::rt::unwind::try;
 
-local_data_key!(foo: int)
+local_data_key!(foo: int);
 
 #[start]
 fn start(argc: int, argv: *const *const u8) -> int {
