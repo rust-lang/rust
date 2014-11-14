@@ -504,9 +504,9 @@ impl<T: Ord> TreeSet<T> {
     /// # Example
     ///
     /// ```
-    /// use std::collections::BTreeSet;
+    /// use std::collections::TreeSet;
     ///
-    /// let mut set = BTreeSet::new();
+    /// let mut set = TreeSet::new();
     ///
     /// assert_eq!(set.insert(2i), true);
     /// assert_eq!(set.insert(2i), false);
@@ -522,9 +522,9 @@ impl<T: Ord> TreeSet<T> {
     /// # Example
     ///
     /// ```
-    /// use std::collections::BTreeSet;
+    /// use std::collections::TreeSet;
     ///
-    /// let mut set = BTreeSet::new();
+    /// let mut set = TreeSet::new();
     ///
     /// set.insert(2i);
     /// assert_eq!(set.remove(&2), true);
