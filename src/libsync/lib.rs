@@ -54,7 +54,6 @@ pub mod atomic;
 
 // Concurrent data structures
 
-mod mpsc_intrusive;
 pub mod spsc_queue;
 pub mod mpsc_queue;
 pub mod mpmc_bounded_queue;
