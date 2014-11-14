@@ -686,6 +686,18 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
         }
     }
 
+    pub fn report_partial_reinitialization_of_uninitialized_structure(
+            &self,
+            span: Span,
+            lp: &LoanPath<'tcx>) {
+        self.tcx
+            .sess
+            .span_err(span,
+                      (format!("partial reinitialization of uninitialized \
+                               structure `{}`",
+                               self.loan_path_to_string(lp))).as_slice());
+    }
+
     pub fn report_reassigned_immutable_variable(&self,
                                                 span: Span,
                                                 lp: &LoanPath<'tcx>,
