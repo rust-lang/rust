@@ -17,8 +17,8 @@ follows:
 *   Add an `Own` trait that is basically `Send + 'static` for convenience:
 
     ```rust
-    unsafe trait Own : Send + 'static { }
-    unsafe impl<T:Send+'static> Own for T { }
+    trait Own : Send + 'static { }
+    impl<T:Send+'static> Own for T { }
     ```
 *   Evaluate each `Send` bound currently in `libstd` and either leave it as-is, add an
     explicit `'static` bound, or bound it with another lifetime parameter.
@@ -85,11 +85,11 @@ access the the original data is through the unique reference, so it is safe to s
 threads.  Similarly, we allow `&T` where `T` is `Sync`, even if it is not `Send`, since by the definition of `Sync` `&T` is already known to be threadsafe.
 
 Note that this definition of `Send` is identical to the old definition of `Send` when
-restricted to `'static` lifetimes in safe code.  Since `'static mut` items are not accessible
-in safe code, and it is not possible to create a safe `'&'static mut` outside of such an item, we
+restricted to `'static` lifetimes in safe code.  Since `static mut` items are not accessible
+in safe code, and it is not possible to create a safe `&'static mut` outside of such an item, we
 know that if `T: Send + 'static`, it either has only `&'static` references, or has no references at
-all.  Since `'static` references can only be created in `'static` items in safe code, and
-all `'static` items are `Sync`, we know that any such references are `Sync`.  Thus, our
+all.  Since `'static` references can only be created in `static` items and literals in safe code, and
+all `static` items (and literals) are `Sync`, we know that any such references are `Sync`.  Thus, our
 new rule that `T` must be `Sync` for `&'static T` to be `Send` does not actually
 remove `Send` from any existing types.  And since `T` has no `&'static mut` references,
 unless any were created in unsafe code, we also know that our rule allowing `&'static mut T`
@@ -98,9 +98,9 @@ with the old behavior, provided that old interfaces are updated to require `'sta
 create unsafe `'static` and `'static mut` references.  But unsafe types like these were already not
 guaranteed to be threadsafe by Rust's type system.
 
-Another important note is that with this definition, `Send` will fulfill the proposed role of `Sync` in a fork-join concurrency library.  At present, to use `Sync` in a fork-join library one must make the implicit assumption that if `T` is `Sync`, `T` is `Send`.  One might be tempted to codify this by making `Sync` a subtype of `Send`.  Unfortunately, this is not always the case, though it should be most of the time.  A type can be created with `&mut` methods that are not thread safe, but no `&`-methods that are not thread safe.  An example would be a version of `Rc` with a `clone_mut()` method that took `&mut self` and no other `clone()` method.  It could be thread-safely shared provided that a `&mut` reference was not sent to another thread, since then it could only be cloned in its original thread and could not be dropped while shared (hence, it is `Sync`), but a mutable reference could not, nor could it be moved into another thread (hence, it is not `Send`).  However, because `&T` is Send if `T` is Sync (per the new definition), adding a `Send` bound will guarantee that only shared pointers of this type are moved between threads.
+Another important note is that with this definition, `Send` will fulfill the proposed role of `Sync` in a fork-join concurrency library.  At present, to use `Sync` in a fork-join library one must make the implicit assumption that if `T` is `Sync`, `T` is `Send`.  One might be tempted to codify this by making `Sync` a subtype of `Send`.  Unfortunately, this is not always the case, though it should be most of the time.  A type can be created with `&mut` methods that are not thread safe, but no `&`-methods that are not thread safe.  An example would be a version of `Rc` called `RcMut`.  `RcMut` would have a `clone_mut()` method that took `&mut self` and no other `clone()` method.  `RcMut` could be thread-safely shared provided that a `&mut RcMut` was not sent to another thread.  As long as that invariant was upheld, `RcMut` could only be cloned in its original thread and could not be dropped while shared (hence, `RcMut` is `Sync`) but a mutable reference could not be thread-safely shared, nor could it be moved into another thread (hence, `&mut RcMut` is not `Send`, which means that `RcMut` is not `Send`).  Because `&T` is Send if `T` is Sync (per the new definition), adding a `Send` bound will guarantee that only shared pointers of this type are moved between threads, so our new definition of `Send` preserves thread safety in the presence of such types.
 
-Thirdly, we'd add an `Own` trait as specified above.  This would be used mostly as a convenience in user code for the current cases where `Send` is being used as a proxy for `Send + 'static`.  We would probably still want to use `Send + 'static` as an explicit bound in most cases, just in case a user implemented `Own` but not `Send`.
+Thirdly, we'd add an `Own` trait as specified above.  This would be used mostly as a convenience in user and library code for the current cases where `Send` is being used as a proxy for `Send + 'static`.
 
 Finally, we'd hunt through existing instances of `Send` in Rust libraries and replace them with
 sensible defaults.  For example, the `spawn()` APIs should all have `'static` bounds,
