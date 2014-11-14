@@ -58,7 +58,7 @@ Several modules in `core` are clients of `rt`:
 
 use failure;
 use rustrt;
-use startup;
+use os;
 
 // Reexport some of our utilities which are expected by other crates.
 pub use self::util::{default_sched_threads, min_stack, running_on_valgrind};
@@ -66,9 +66,9 @@ pub use self::util::{default_sched_threads, min_stack, running_on_valgrind};
 // Reexport functionality from librustrt and other crates underneath the
 // standard library which work together to create the entire runtime.
 pub use alloc::heap;
-pub use rustrt::{task, local, mutex, exclusive, stack, args, rtio, thread};
+pub use rustrt::{task, local, mutex, exclusive, stack, args, thread};
 pub use rustrt::{Stdio, Stdout, Stderr, begin_unwind, begin_unwind_fmt};
-pub use rustrt::{bookkeeping, at_exit, unwind, DEFAULT_ERROR_CODE, Runtime};
+pub use rustrt::{at_exit, unwind, DEFAULT_ERROR_CODE};
 
 // Simple backtrace functionality (to print on panic)
 pub mod backtrace;
@@ -95,7 +95,7 @@ static OS_DEFAULT_STACK_ESTIMATE: uint = 2 * (1 << 20);
 #[cfg(not(test))]
 #[lang = "start"]
 fn lang_start(main: *const u8, argc: int, argv: *const *const u8) -> int {
-    use std::mem;
+    use mem;
     start(argc, argv, proc() {
         let main: extern "Rust" fn() = unsafe { mem::transmute(main) };
         main();
@@ -147,8 +147,8 @@ pub fn start(argc: int, argv: *const *const u8, main: proc()) -> int {
     init(argc, argv);
     let mut exit_code = None;
     let mut main = Some(main);
-    let mut task = task::new((my_stack_bottom, my_stack_top),
-                             rt::thread::main_guard_page());
+    let mut task = Task::new(Some((my_stack_bottom, my_stack_top)),
+                             Some(rt::thread::main_guard_page()));
     task.name = Some(str::Slice("<main>"));
     drop(task.run(|| {
         unsafe {

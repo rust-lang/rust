@@ -21,7 +21,7 @@
 //! time.
 
 use mem;
-use rt::bookkeeping;
+use rustrt::bookkeeping;
 use rt::mutex::StaticNativeMutex;
 use rt;
 use cell::UnsafeCell;

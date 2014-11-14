@@ -740,8 +740,6 @@ impl Drop for Process {
 mod tests {
     #![allow(unused_imports)]
 
-    extern crate native;
-
     use super::*;
     use prelude::*;
     use io::timer::*;
