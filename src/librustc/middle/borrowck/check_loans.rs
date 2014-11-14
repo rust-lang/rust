@@ -748,13 +748,26 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
                 if mode != euv::Init {
                     check_for_assignment_to_borrowed_path(
                         self, assignment_id, assignment_span, assignee_cmt.clone());
-                    mark_variable_as_used_mut(self, assignee_cmt);
+                    mark_variable_as_used_mut(self, assignee_cmt.clone());
                 }
+            }
+
+            // Check for partial reinitialization of a fully uninitialized structure.
+            match assignee_cmt.cat {
+                mc::cat_interior(ref container_cmt, _) | mc::cat_downcast(ref container_cmt) => {
+                    check_for_illegal_initialization(self,
+                                                     assignment_id,
+                                                     assignment_span,
+                                                     container_cmt);
+                }
+                mc::cat_rvalue(_) | mc::cat_static_item | mc::cat_upvar(_) | mc::cat_local(_) |
+                mc::cat_deref(_, _, _) => {}
             }
             return;
         }
 
-        // Initializations are OK.
+        // Initializations are OK if and only if they aren't partial
+        // reinitialization of a partially-uninitialized structure.
         if mode == euv::Init {
             return
         }
@@ -926,6 +939,39 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
 
             this.each_in_scope_loan_affecting_path(assignment_id, &*loan_path, |loan| {
                 this.report_illegal_mutation(assignment_span, &*loan_path, loan);
+                false
+            });
+        }
+
+        fn check_for_illegal_initialization(this: &CheckLoanCtxt,
+                                            assignment_id: ast::NodeId,
+                                            span: Span,
+                                            assignee_cmt: &mc::cmt) {
+            let local_id = match assignee_cmt.cat {
+                mc::cat_interior(ref container_cmt, _) | mc::cat_downcast(ref container_cmt) => {
+                    return check_for_illegal_initialization(this,
+                                                            assignment_id,
+                                                            span,
+                                                            container_cmt)
+                }
+                mc::cat_local(local_id) => local_id,
+                mc::cat_rvalue(_) | mc::cat_static_item | mc::cat_upvar(_) |
+                mc::cat_deref(..) => return,
+            };
+
+            let struct_id = match ty::get(assignee_cmt.ty).sty {
+                ty::ty_struct(def_id, _) => def_id,
+                _ => return,
+            };
+            if !ty::has_dtor(this.tcx(), struct_id) {
+                return
+            }
+
+            let loan_path = Rc::new(LpVar(local_id));
+            this.move_data.each_move_of(assignment_id, &loan_path, |_, _| {
+                this.bccx.report_partial_reinitialization_of_uninitialized_structure(
+                    span,
+                    &*loan_path);
                 false
             });
         }
