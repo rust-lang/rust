@@ -157,6 +157,7 @@
 
 use clone::Clone;
 use cmp::PartialEq;
+use default::Default;
 use kinds::{marker, Copy};
 use ops::{Deref, DerefMut, Drop};
 use option::{None, Option, Some};
@@ -208,6 +209,13 @@ impl<T:Copy> Cell<T> {
 impl<T:Copy> Clone for Cell<T> {
     fn clone(&self) -> Cell<T> {
         Cell::new(self.get())
+    }
+}
+
+#[unstable]
+impl<T:Default + Copy> Default for Cell<T> {
+    fn default() -> Cell<T> {
+        Cell::new(Default::default())
     }
 }
 
@@ -334,6 +342,13 @@ impl<T> RefCell<T> {
 impl<T: Clone> Clone for RefCell<T> {
     fn clone(&self) -> RefCell<T> {
         RefCell::new(self.borrow().clone())
+    }
+}
+
+#[unstable]
+impl<T:Default> Default for RefCell<T> {
+    fn default() -> RefCell<T> {
+        RefCell::new(Default::default())
     }
 }
 
