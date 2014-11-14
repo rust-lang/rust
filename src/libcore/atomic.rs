@@ -102,9 +102,9 @@ impl AtomicBool {
 
     /// Load the value
     ///
-    /// # Failure
+    /// # Panics
     ///
-    /// Fails if `order` is `Release` or `AcqRel`.
+    /// Panics if `order` is `Release` or `AcqRel`.
     #[inline]
     pub fn load(&self, order: Ordering) -> bool {
         unsafe { atomic_load(self.v.get() as *const uint, order) > 0 }
@@ -112,9 +112,9 @@ impl AtomicBool {
 
     /// Store the value
     ///
-    /// # Failure
+    /// # Panics
     ///
-    /// Fails if `order` is `Acquire` or `AcqRel`.
+    /// Panics if `order` is `Acquire` or `AcqRel`.
     #[inline]
     pub fn store(&self, val: bool, order: Ordering) {
         let val = if val { UINT_TRUE } else { 0 };
@@ -313,9 +313,9 @@ impl AtomicInt {
 
     /// Load the value
     ///
-    /// # Failure
+    /// # Panics
     ///
-    /// Fails if `order` is `Release` or `AcqRel`.
+    /// Panics if `order` is `Release` or `AcqRel`.
     #[inline]
     pub fn load(&self, order: Ordering) -> int {
         unsafe { atomic_load(self.v.get() as *const int, order) }
@@ -323,9 +323,9 @@ impl AtomicInt {
 
     /// Store the value
     ///
-    /// # Failure
+    /// # Panics
     ///
-    /// Fails if `order` is `Acquire` or `AcqRel`.
+    /// Panics if `order` is `Acquire` or `AcqRel`.
     #[inline]
     pub fn store(&self, val: int, order: Ordering) {
         unsafe { atomic_store(self.v.get(), val, order); }
@@ -435,9 +435,9 @@ impl AtomicUint {
 
     /// Load the value
     ///
-    /// # Failure
+    /// # Panics
     ///
-    /// Fails if `order` is `Release` or `AcqRel`.
+    /// Panics if `order` is `Release` or `AcqRel`.
     #[inline]
     pub fn load(&self, order: Ordering) -> uint {
         unsafe { atomic_load(self.v.get() as *const uint, order) }
@@ -445,9 +445,9 @@ impl AtomicUint {
 
     /// Store the value
     ///
-    /// # Failure
+    /// # Panics
     ///
-    /// Fails if `order` is `Acquire` or `AcqRel`.
+    /// Panics if `order` is `Acquire` or `AcqRel`.
     #[inline]
     pub fn store(&self, val: uint, order: Ordering) {
         unsafe { atomic_store(self.v.get(), val, order); }
@@ -557,9 +557,9 @@ impl<T> AtomicPtr<T> {
 
     /// Load the value
     ///
-    /// # Failure
+    /// # Panics
     ///
-    /// Fails if `order` is `Release` or `AcqRel`.
+    /// Panics if `order` is `Release` or `AcqRel`.
     #[inline]
     pub fn load(&self, order: Ordering) -> *mut T {
         unsafe {
@@ -569,9 +569,9 @@ impl<T> AtomicPtr<T> {
 
     /// Store the value
     ///
-    /// # Failure
+    /// # Panics
     ///
-    /// Fails if `order` is `Acquire` or `AcqRel`.
+    /// Panics if `order` is `Acquire` or `AcqRel`.
     #[inline]
     pub fn store(&self, ptr: *mut T, order: Ordering) {
         unsafe { atomic_store(self.p.get(), ptr as uint, order); }
@@ -729,9 +729,9 @@ unsafe fn atomic_xor<T>(dst: *mut T, val: T, order: Ordering) -> T {
 ///
 /// Accepts `Acquire`, `Release`, `AcqRel` and `SeqCst` orderings.
 ///
-/// # Failure
+/// # Panics
 ///
-/// Fails if `order` is `Relaxed`
+/// Panics if `order` is `Relaxed`
 #[inline]
 #[stable]
 pub fn fence(order: Ordering) {

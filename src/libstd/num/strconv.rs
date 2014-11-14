@@ -88,8 +88,8 @@ pub enum SignFormat {
  * It returns a tuple because there can be ambiguity between a special value
  * and a number representation at higher bases.
  *
- * # Failure
- * - Fails if `radix` < 2 or `radix` > 36.
+ * # Panics
+ * - Panics if `radix` < 2 or `radix` > 36.
  */
 fn int_to_str_bytes_common<T: Int>(num: T, radix: uint, sign: SignFormat, f: |u8|) {
     assert!(2 <= radix && radix <= 36);
@@ -172,11 +172,11 @@ fn int_to_str_bytes_common<T: Int>(num: T, radix: uint, sign: SignFormat, f: |u8
  * It returns a tuple because there can be ambiguity between a special value
  * and a number representation at higher bases.
  *
- * # Failure
- * - Fails if `radix` < 2 or `radix` > 36.
- * - Fails if `radix` > 14 and `exp_format` is `ExpDec` due to conflict
+ * # Panics
+ * - Panics if `radix` < 2 or `radix` > 36.
+ * - Panics if `radix` > 14 and `exp_format` is `ExpDec` due to conflict
  *   between digit and exponent sign `'e'`.
- * - Fails if `radix` > 25 and `exp_format` is `ExpBin` due to conflict
+ * - Panics if `radix` > 25 and `exp_format` is `ExpBin` due to conflict
  *   between digit and exponent sign `'p'`.
  */
 pub fn float_to_str_bytes_common<T: Float>(

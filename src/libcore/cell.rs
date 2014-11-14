@@ -274,9 +274,9 @@ impl<T> RefCell<T> {
     /// The borrow lasts until the returned `Ref` exits scope. Multiple
     /// immutable borrows can be taken out at the same time.
     ///
-    /// # Failure
+    /// # Panics
     ///
-    /// Fails if the value is currently mutably borrowed.
+    /// Panics if the value is currently mutably borrowed.
     #[unstable]
     pub fn borrow<'a>(&'a self) -> Ref<'a, T> {
         match self.try_borrow() {
@@ -307,9 +307,9 @@ impl<T> RefCell<T> {
     /// The borrow lasts until the returned `RefMut` exits scope. The value
     /// cannot be borrowed while this borrow is active.
     ///
-    /// # Failure
+    /// # Panics
     ///
-    /// Fails if the value is currently borrowed.
+    /// Panics if the value is currently borrowed.
     #[unstable]
     pub fn borrow_mut<'a>(&'a self) -> RefMut<'a, T> {
         match self.try_borrow_mut() {
