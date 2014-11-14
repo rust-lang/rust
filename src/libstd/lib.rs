@@ -248,9 +248,7 @@ pub mod fmt;
 
 #[path = "sys/common/mod.rs"] mod sys_common;
 
-// FIXME #7809: This shouldn't be pub, and it should be reexported under 'unstable'
-// but name resolution doesn't work without it being pub.
-pub mod rt;
+mod rt;
 mod failure;
 
 // A curious inner-module that's not exported that contains the binding

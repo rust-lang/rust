@@ -58,6 +58,7 @@ Several modules in `core` are clients of `rt`:
 
 use failure;
 use rustrt;
+use startup;
 
 // Reexport some of our utilities which are expected by other crates.
 pub use self::util::{default_sched_threads, min_stack, running_on_valgrind};
@@ -84,6 +85,81 @@ mod util;
 pub fn init(argc: int, argv: *const *const u8) {
     rustrt::init(argc, argv);
     unsafe { unwind::register(failure::on_fail); }
+}
+
+#[cfg(any(windows, android))]
+static OS_DEFAULT_STACK_ESTIMATE: uint = 1 << 20;
+#[cfg(all(unix, not(android)))]
+static OS_DEFAULT_STACK_ESTIMATE: uint = 2 * (1 << 20);
+
+#[cfg(not(test))]
+#[lang = "start"]
+fn lang_start(main: *const u8, argc: int, argv: *const *const u8) -> int {
+    use std::mem;
+    start(argc, argv, proc() {
+        let main: extern "Rust" fn() = unsafe { mem::transmute(main) };
+        main();
+    })
+}
+
+/// Executes the given procedure after initializing the runtime with the given
+/// argc/argv.
+///
+/// This procedure is guaranteed to run on the thread calling this function, but
+/// the stack bounds for this rust task will *not* be set. Care must be taken
+/// for this function to not overflow its stack.
+///
+/// This function will only return once *all* native threads in the system have
+/// exited.
+pub fn start(argc: int, argv: *const *const u8, main: proc()) -> int {
+    use prelude::*;
+    use rt;
+    use rustrt::task::Task;
+    use str;
+
+    let something_around_the_top_of_the_stack = 1;
+    let addr = &something_around_the_top_of_the_stack as *const int;
+    let my_stack_top = addr as uint;
+
+    // FIXME #11359 we just assume that this thread has a stack of a
+    // certain size, and estimate that there's at most 20KB of stack
+    // frames above our current position.
+    let my_stack_bottom = my_stack_top + 20000 - OS_DEFAULT_STACK_ESTIMATE;
+
+    // When using libgreen, one of the first things that we do is to turn off
+    // the SIGPIPE signal (set it to ignore). By default, some platforms will
+    // send a *signal* when a EPIPE error would otherwise be delivered. This
+    // runtime doesn't install a SIGPIPE handler, causing it to kill the
+    // program, which isn't exactly what we want!
+    //
+    // Hence, we set SIGPIPE to ignore when the program starts up in order to
+    // prevent this problem.
+    #[cfg(windows)] fn ignore_sigpipe() {}
+    #[cfg(unix)] fn ignore_sigpipe() {
+        use libc;
+        use libc::funcs::posix01::signal::signal;
+        unsafe {
+            assert!(signal(libc::SIGPIPE, libc::SIG_IGN) != -1);
+        }
+    }
+    ignore_sigpipe();
+
+    init(argc, argv);
+    let mut exit_code = None;
+    let mut main = Some(main);
+    let mut task = task::new((my_stack_bottom, my_stack_top),
+                             rt::thread::main_guard_page());
+    task.name = Some(str::Slice("<main>"));
+    drop(task.run(|| {
+        unsafe {
+            rt::stack::record_os_managed_stack_bounds(my_stack_bottom, my_stack_top);
+        }
+        (main.take().unwrap())();
+        exit_code = Some(os::get_exit_status());
+    }).destroy());
+    unsafe { rt::cleanup(); }
+    // If the exit code wasn't set, then the task block must have panicked.
+    return exit_code.unwrap_or(rt::DEFAULT_ERROR_CODE);
 }
 
 /// One-time runtime cleanup.

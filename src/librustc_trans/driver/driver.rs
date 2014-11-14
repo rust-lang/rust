@@ -198,10 +198,6 @@ pub fn phase_2_configure_and_expand(sess: &Session,
         *sess.features.borrow_mut() = features;
     });
 
-    let any_exe = sess.crate_types.borrow().iter().any(|ty| {
-        *ty == config::CrateTypeExecutable
-    });
-
     // strip before expansion to allow macros to depend on
     // configuration variables e.g/ in
     //
@@ -215,8 +211,7 @@ pub fn phase_2_configure_and_expand(sess: &Session,
 
     krate = time(time_passes, "crate injection", krate, |krate|
                  syntax::std_inject::maybe_inject_crates_ref(krate,
-                                                             sess.opts.alt_std_name.clone(),
-                                                             any_exe));
+                                                             sess.opts.alt_std_name.clone()));
 
     let mut addl_plugins = Some(addl_plugins);
     let Plugins { macros, registrars }
