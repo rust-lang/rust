@@ -649,13 +649,11 @@ mod imp {
 
 #[cfg(test)]
 mod test {
-    extern crate rustrt;
-
     use std::prelude::*;
 
     use std::mem::drop;
     use super::{StaticNativeMutex, NATIVE_MUTEX_INIT};
-    use rustrt::thread::Thread;
+    use thread::Thread;
 
     #[test]
     fn smoke_lock() {

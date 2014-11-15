@@ -544,11 +544,10 @@ impl Death {
 
 #[cfg(test)]
 mod test {
-    extern crate rustrt;
-
     use super::*;
     use std::prelude::*;
     use std::task;
+    use unwind;
 
     #[test]
     fn tls() {
@@ -594,20 +593,20 @@ mod test {
     #[test]
     #[should_fail]
     fn test_begin_unwind() {
-        use rustrt::unwind::begin_unwind;
+        use unwind::begin_unwind;
         begin_unwind("cause", &(file!(), line!()))
     }
 
     #[test]
     fn drop_new_task_ok() {
-        drop(Task::new());
+        drop(Task::new(None, None));
     }
 
     // Task blocking tests
 
     #[test]
     fn block_and_wake() {
-        let task = box Task::new();
+        let task = box Task::new(None, None);
         let task = BlockedTask::block(task).wake().unwrap();
         task.drop();
     }
