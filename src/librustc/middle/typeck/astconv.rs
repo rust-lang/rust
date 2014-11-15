@@ -202,7 +202,7 @@ pub fn opt_ast_region_to_region<'tcx, AC: AstConv<'tcx>, RS: RegionScope>(
     r
 }
 
-fn ast_path_substs<'tcx,AC,RS>(
+fn ast_path_substs_for_ty<'tcx,AC,RS>(
     this: &AC,
     rscope: &RS,
     decl_def_id: ast::DefId,
@@ -233,11 +233,34 @@ fn ast_path_substs<'tcx,AC,RS>(
     assert!(decl_generics.types.all(|d| d.space != FnSpace));
 
     let (regions, types) = match path.segments.last().unwrap().parameters {
-        ast::AngleBracketedParameters(ref data) =>
-            angle_bracketed_parameters(this, rscope, data),
-        ast::ParenthesizedParameters(ref data) =>
-            parenthesized_parameters(this, binder_id, data),
+        ast::AngleBracketedParameters(ref data) => {
+            convert_angle_bracketed_parameters(this, rscope, data)
+        }
+        ast::ParenthesizedParameters(ref data) => {
+            span_err!(tcx.sess, path.span, E0169,
+                      "parenthesized parameters may only be used with a trait");
+            (Vec::new(), convert_parenthesized_parameters(this, data))
+        }
     };
+
+    create_substs_for_ast_path(this, rscope, path.span, decl_def_id,
+                               decl_generics, self_ty, types, regions, associated_ty)
+}
+
+fn create_substs_for_ast_path<'tcx,AC,RS>(
+    this: &AC,
+    rscope: &RS,
+    span: Span,
+    decl_def_id: ast::DefId,
+    decl_generics: &ty::Generics,
+    self_ty: Option<ty::t>,
+    types: Vec<ty::t>,
+    regions: Vec<ty::Region>,
+    associated_ty: Option<ty::t>)
+    -> Substs
+    where AC: AstConv<'tcx>, RS: RegionScope
+{
+    let tcx = this.tcx();
 
     // If the type is parameterized by the this region, then replace this
     // region with the current anon region binding (in other words,
@@ -248,10 +271,10 @@ fn ast_path_substs<'tcx,AC,RS>(
         regions
     } else {
         let anon_regions =
-            rscope.anon_regions(path.span, expected_num_region_params);
+            rscope.anon_regions(span, expected_num_region_params);
 
         if supplied_num_region_params != 0 || anon_regions.is_err() {
-            span_err!(tcx.sess, path.span, E0107,
+            span_err!(tcx.sess, span, E0107,
                       "wrong number of lifetime parameters: expected {}, found {}",
                       expected_num_region_params, supplied_num_region_params);
         }
@@ -283,7 +306,7 @@ fn ast_path_substs<'tcx,AC,RS>(
         } else {
             "expected"
         };
-        this.tcx().sess.span_fatal(path.span,
+        this.tcx().sess.span_fatal(span,
                                    format!("wrong number of type arguments: {} {}, found {}",
                                            expected,
                                            required_ty_param_count,
@@ -294,7 +317,7 @@ fn ast_path_substs<'tcx,AC,RS>(
         } else {
             "expected"
         };
-        this.tcx().sess.span_fatal(path.span,
+        this.tcx().sess.span_fatal(span,
                                    format!("wrong number of type arguments: {} {}, found {}",
                                            expected,
                                            formal_ty_param_count,
@@ -303,9 +326,9 @@ fn ast_path_substs<'tcx,AC,RS>(
 
     if supplied_ty_param_count > required_ty_param_count
         && !this.tcx().sess.features.borrow().default_type_params {
-        span_err!(this.tcx().sess, path.span, E0108,
+        span_err!(this.tcx().sess, span, E0108,
             "default type parameters are experimental and possibly buggy");
-        span_help!(this.tcx().sess, path.span,
+        span_help!(this.tcx().sess, span,
             "add #![feature(default_type_params)] to the crate attributes to enable");
     }
 
@@ -331,12 +354,11 @@ fn ast_path_substs<'tcx,AC,RS>(
                 // This is a default type parameter.
                 let default = default.subst_spanned(tcx,
                                                     &substs,
-                                                    Some(path.span));
+                                                    Some(span));
                 substs.types.push(TypeSpace, default);
             }
             None => {
-                tcx.sess.span_bug(path.span,
-                                  "extra parameter without default");
+                tcx.sess.span_bug(span, "extra parameter without default");
             }
         }
     }
@@ -344,53 +366,54 @@ fn ast_path_substs<'tcx,AC,RS>(
     for param in decl_generics.types.get_slice(AssocSpace).iter() {
         substs.types.push(
             AssocSpace,
-            this.associated_type_binding(path.span,
+            this.associated_type_binding(span,
                                          associated_ty,
                                          decl_def_id,
                                          param.def_id))
     }
 
     return substs;
+}
 
-    fn angle_bracketed_parameters<'tcx, AC, RS>(this: &AC,
-                                                rscope: &RS,
-                                                data: &ast::AngleBracketedParameterData)
-                                                -> (Vec<ty::Region>, Vec<ty::t>)
-        where AC: AstConv<'tcx>, RS: RegionScope
-    {
-        let regions: Vec<_> =
-            data.lifetimes.iter()
-            .map(|l| ast_region_to_region(this.tcx(), l))
-            .collect();
+fn convert_angle_bracketed_parameters<'tcx, AC, RS>(this: &AC,
+                                                    rscope: &RS,
+                                                    data: &ast::AngleBracketedParameterData)
+                                                    -> (Vec<ty::Region>, Vec<ty::t>)
+    where AC: AstConv<'tcx>, RS: RegionScope
+{
+    let regions: Vec<_> =
+        data.lifetimes.iter()
+        .map(|l| ast_region_to_region(this.tcx(), l))
+        .collect();
 
-        let types: Vec<_> =
-            data.types.iter()
-            .map(|t| ast_ty_to_ty(this, rscope, &**t))
-            .collect();
+    let types: Vec<_> =
+        data.types.iter()
+        .map(|t| ast_ty_to_ty(this, rscope, &**t))
+        .collect();
 
-        (regions, types)
-    }
+    (regions, types)
+}
 
-    fn parenthesized_parameters<'tcx,AC>(this: &AC,
-                                         binder_id: ast::NodeId,
-                                         data: &ast::ParenthesizedParameterData)
-                                         -> (Vec<ty::Region>, Vec<ty::t>)
-        where AC: AstConv<'tcx>
-    {
-        let binding_rscope = BindingRscope::new(binder_id);
+fn convert_parenthesized_parameters<'tcx,AC>(this: &AC,
+                                             data: &ast::ParenthesizedParameterData)
+                                             -> Vec<ty::t>
+    where AC: AstConv<'tcx>
+{
+    let binding_rscope = BindingRscope::new();
 
-        let inputs = data.inputs.iter()
-                                .map(|a_t| ast_ty_to_ty(this, &binding_rscope, &**a_t))
-                                .collect();
-        let input_ty = ty::mk_tup(this.tcx(), inputs);
+    let inputs = data.inputs.iter()
+                            .map(|a_t| ast_ty_to_ty(this, &binding_rscope, &**a_t))
+                            .collect();
+    let input_ty = ty::mk_tup(this.tcx(), inputs);
 
-        let output = match data.output {
-            Some(ref output_ty) => ast_ty_to_ty(this, &binding_rscope, &**output_ty),
-            None => ty::mk_nil(this.tcx())
-        };
+    let output = match data.output {
+        Some(ref output_ty) => ast_ty_to_ty(this, &binding_rscope, &**output_ty),
+        None => ty::mk_nil(this.tcx()),
+    };
 
-        (Vec::new(), vec![input_ty, output])
-    }
+    vec![input_ty, output]
+}
+
 }
 
 pub fn instantiate_trait_ref<'tcx,AC,RS>(this: &AC,
