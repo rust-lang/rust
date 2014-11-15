@@ -751,8 +751,9 @@ mod tests {
 
     #[test]
     fn test_pow() {
-        fn naive_pow<T: One + Mul<T, T>>(base: T, exp: uint) -> T {
-            range(0, exp).fold(one::<T>(), |acc, _| acc * base)
+        fn naive_pow<T: Int>(base: T, exp: uint) -> T {
+            let one: T = Int::one();
+            range(0, exp).fold(one, |acc, _| acc * base)
         }
         macro_rules! assert_pow(
             (($num:expr, $exp:expr) => $expected:expr) => {{
