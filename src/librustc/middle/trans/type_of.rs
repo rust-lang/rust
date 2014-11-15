@@ -455,7 +455,12 @@ pub fn llvm_type_name(cx: &CrateContext,
 
     let base = ty::item_path_str(cx.tcx(), did);
     let strings: Vec<String> = tps.iter().map(|t| t.repr(cx.tcx())).collect();
-    let tstr = format!("{}<{}>", base, strings);
+    let tstr = if strings.is_empty() {
+        base
+    } else {
+        format!("{}<{}>", base, strings)
+    };
+
     if did.krate == 0 {
         format!("{}.{}", name, tstr)
     } else {
