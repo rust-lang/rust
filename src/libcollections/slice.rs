@@ -666,6 +666,8 @@ pub mod raw {
 
 #[cfg(test)]
 mod tests {
+    extern crate rustrt;
+
     use std::cell::Cell;
     use std::default::Default;
     use std::mem;
@@ -949,9 +951,9 @@ mod tests {
     #[test]
     fn test_swap_remove_noncopyable() {
         // Tests that we don't accidentally run destructors twice.
-        let mut v = vec![rt::exclusive::Exclusive::new(()),
-                         rt::exclusive::Exclusive::new(()),
-                         rt::exclusive::Exclusive::new(())];
+        let mut v = vec![rustrt::exclusive::Exclusive::new(()),
+                         rustrt::exclusive::Exclusive::new(()),
+                         rustrt::exclusive::Exclusive::new(())];
         let mut _e = v.swap_remove(0);
         assert_eq!(v.len(), 2);
         _e = v.swap_remove(1);

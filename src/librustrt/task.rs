@@ -544,6 +544,8 @@ impl Death {
 
 #[cfg(test)]
 mod test {
+    extern crate rustrt;
+
     use super::*;
     use std::prelude::*;
     use std::task;
@@ -592,7 +594,7 @@ mod test {
     #[test]
     #[should_fail]
     fn test_begin_unwind() {
-        use std::rt::unwind::begin_unwind;
+        use rustrt::unwind::begin_unwind;
         begin_unwind("cause", &(file!(), line!()))
     }
 

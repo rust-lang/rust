@@ -22,8 +22,8 @@
 
 use mem;
 use rustrt::bookkeeping;
-use rt::mutex::StaticNativeMutex;
-use rt;
+use rustrt::mutex::StaticNativeMutex;
+use rustrt;
 use cell::UnsafeCell;
 use sys::helper_signal;
 use prelude::*;
@@ -83,7 +83,7 @@ impl<M: Send> Helper<M> {
                     self.lock.lock().signal()
                 });
 
-                rt::at_exit(proc() { self.shutdown() });
+                rustrt::at_exit(proc() { self.shutdown() });
                 *self.initialized.get() = true;
             }
         }
