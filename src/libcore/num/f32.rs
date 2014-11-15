@@ -16,10 +16,8 @@
 
 use intrinsics;
 use mem;
-use num::{FPNormal, FPCategory, FPZero, FPSubnormal, FPInfinite, FPNaN};
-use num::{Float, FromStrRadix};
-use num::strconv;
-use str::FromStr;
+use num::{Float, FPNormal, FPCategory, FPZero, FPSubnormal, FPInfinite, FPNaN};
+use num::from_str_radix;
 use option::Option;
 
 pub const RADIX: uint = 2u;
@@ -431,61 +429,5 @@ impl Float for f32 {
 #[allow(missing_docs)]
 #[deprecated="Use `FromStrRadix::from_str_radix(src, 16)`"]
 pub fn from_str_hex(src: &str) -> Option<f32> {
-    strconv::from_str_radix_float(src, 16)
-}
-
-impl FromStr for f32 {
-    /// Convert a string in base 10 to a float.
-    /// Accepts an optional decimal exponent.
-    ///
-    /// This function accepts strings such as
-    ///
-    /// * '3.14'
-    /// * '+3.14', equivalent to '3.14'
-    /// * '-3.14'
-    /// * '2.5E10', or equivalently, '2.5e10'
-    /// * '2.5E-10'
-    /// * '.' (understood as 0)
-    /// * '5.'
-    /// * '.5', or, equivalently,  '0.5'
-    /// * '+inf', 'inf', '-inf', 'NaN'
-    ///
-    /// Leading and trailing whitespace represent an error.
-    ///
-    /// # Arguments
-    ///
-    /// * src - A string
-    ///
-    /// # Return value
-    ///
-    /// `None` if the string did not represent a valid number.  Otherwise,
-    /// `Some(n)` where `n` is the floating-point number represented by `src`.
-    #[inline]
-    fn from_str(src: &str) -> Option<f32> {
-        strconv::from_str_radix_float(src, 10u)
-    }
-}
-
-impl FromStrRadix for f32 {
-    /// Convert a string in a given base to a float.
-    ///
-    /// Due to possible conflicts, this function does **not** accept
-    /// the special values `inf`, `-inf`, `+inf` and `NaN`, **nor**
-    /// does it recognize exponents of any kind.
-    ///
-    /// Leading and trailing whitespace represent an error.
-    ///
-    /// # Arguments
-    ///
-    /// * src - A string
-    /// * radix - The base to use. Must lie in the range [2 .. 36]
-    ///
-    /// # Return value
-    ///
-    /// `None` if the string did not represent a valid number. Otherwise,
-    /// `Some(n)` where `n` is the floating-point number represented by `src`.
-    #[inline]
-    fn from_str_radix(src: &str, radix: uint) -> Option<f32> {
-        strconv::from_str_radix_float(src, radix)
-    }
+    from_str_radix(src, 16)
 }
