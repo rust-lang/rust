@@ -50,9 +50,9 @@ use kinds::{Send, marker};
 use option::{None, Some, Option};
 use boxed::Box;
 use result::Result;
-use rt::local::Local;
-use rt::task;
-use rt::task::Task;
+use rustrt::local::Local;
+use rustrt::task;
+use rustrt::task::Task;
 use str::{Str, SendStr, IntoMaybeOwned};
 use string::{String, ToString};
 use sync::Future;
@@ -142,13 +142,13 @@ impl TaskBuilder {
             stack_size: stack_size,
         };
         if stdout.is_some() || stderr.is_some() {
-            spawner.spawn(opts, proc() {
+            Task::spawn(opts, proc() {
                 let _ = stdout.map(stdio::set_stdout);
                 let _ = stderr.map(stdio::set_stderr);
                 f();
             })
         } else {
-            spawner.spawn(opts, f)
+            Task::spawn(opts, f)
         }
     }
 
@@ -237,7 +237,7 @@ pub fn try_future<T:Send>(f: proc():Send -> T) -> Future<Result<T, Box<Any + Sen
 /// Read the name of the current task.
 #[stable]
 pub fn name() -> Option<String> {
-    use rt::task::Task;
+    use rustrt::task::Task;
 
     let task = Local::borrow(None::<Task>);
     match task.name {
@@ -249,7 +249,7 @@ pub fn name() -> Option<String> {
 /// Yield control to the task scheduler.
 #[unstable = "Name will change."]
 pub fn deschedule() {
-    use rt::task::Task;
+    use rustrt::task::Task;
     Task::yield_now();
 }
 
@@ -257,7 +257,7 @@ pub fn deschedule() {
 /// destructor that is run while unwinding the stack after a call to `panic!()`).
 #[unstable = "May move to a different module."]
 pub fn failing() -> bool {
-    use rt::task::Task;
+    use rustrt::task::Task;
     Local::borrow(None::<Task>).unwinder.unwinding()
 }
 

@@ -52,8 +52,10 @@ impl Local<local_ptr::Borrowed<Task>> for Task {
 
 #[cfg(test)]
 mod test {
+    extern crate rustrt;
+
     use std::prelude::*;
-    use std::rt::thread::Thread;
+    use rustrt::thread::Thread;
     use super::*;
     use task::Task;
 

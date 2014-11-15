@@ -162,7 +162,6 @@ pub use core::result;
 pub use core::option;
 
 pub use alloc::boxed;
-
 pub use alloc::rc;
 
 pub use core_collections::slice;
@@ -247,7 +246,7 @@ pub mod fmt;
 
 #[path = "sys/common/mod.rs"] mod sys_common;
 
-mod rt;
+pub mod rt;
 mod failure;
 
 // A curious inner-module that's not exported that contains the binding

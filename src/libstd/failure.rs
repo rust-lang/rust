@@ -18,7 +18,7 @@ use kinds::Send;
 use option::{Some, None};
 use result::Ok;
 use rt::backtrace;
-use rt::{Stderr, Stdio};
+use rustrt::{Stderr, Stdio};
 use rustrt::local::Local;
 use rustrt::task::Task;
 use str::Str;

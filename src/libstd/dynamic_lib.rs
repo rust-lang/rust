@@ -229,7 +229,7 @@ pub mod dl {
     }
 
     pub fn check_for_errors_in<T>(f: || -> T) -> Result<T, String> {
-        use rt::mutex::{StaticNativeMutex, NATIVE_MUTEX_INIT};
+        use rustrt::mutex::{StaticNativeMutex, NATIVE_MUTEX_INIT};
         static LOCK: StaticNativeMutex = NATIVE_MUTEX_INIT;
         unsafe {
             // dlerror isn't thread safe, so we need to lock around this entire

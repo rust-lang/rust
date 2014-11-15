@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+extern crate rustrt;
 
 struct Point {x: int, y: int, z: int}
 
@@ -15,7 +16,7 @@ fn f(p: &mut Point) { p.z = 13; }
 
 pub fn main() {
     unsafe {
-        let x = Some(::std::rt::exclusive::Exclusive::new(true));
+        let x = Some(::rustrt::exclusive::Exclusive::new(true));
         match x {
             Some(ref z) if *z.lock() => {
                 assert!(*z.lock());

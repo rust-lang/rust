@@ -336,6 +336,8 @@ macro_rules! test (
         mod $name {
             #![allow(unused_imports)]
 
+            extern crate rustrt;
+
             use std::prelude::*;
 
             use comm::*;
@@ -1512,7 +1514,7 @@ mod test {
     })
 
     test!(fn sends_off_the_runtime() {
-        use std::rt::thread::Thread;
+        use rustrt::thread::Thread;
 
         let (tx, rx) = channel();
         let t = Thread::start(proc() {
@@ -1527,7 +1529,7 @@ mod test {
     })
 
     test!(fn try_recvs_off_the_runtime() {
-        use std::rt::thread::Thread;
+        use rustrt::thread::Thread;
 
         let (tx, rx) = channel();
         let (cdone, pdone) = channel();
@@ -1977,7 +1979,7 @@ mod sync_tests {
     })
 
     test!(fn try_recvs_off_the_runtime() {
-        use std::rt::thread::Thread;
+        use rustrt::thread::Thread;
 
         let (tx, rx) = sync_channel::<()>(0);
         let (cdone, pdone) = channel();

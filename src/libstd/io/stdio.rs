@@ -40,9 +40,9 @@ use option::{Option, Some, None};
 use boxed::Box;
 use sys::{fs, tty};
 use result::{Ok, Err};
-use rt;
-use rt::local::Local;
-use rt::task::Task;
+use rustrt;
+use rustrt::local::Local;
+use rustrt::task::Task;
 use slice::SlicePrelude;
 use str::StrPrelude;
 use uint;
@@ -207,7 +207,7 @@ fn with_task_stdout(f: |&mut Writer| -> IoResult<()>) {
         local_stdout.replace(Some(my_stdout));
         result
     } else {
-        let mut io = rt::Stdout;
+        let mut io = rustrt::Stdout;
         f(&mut io as &mut Writer)
     };
     match result {

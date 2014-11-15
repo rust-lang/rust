@@ -66,9 +66,7 @@ pub use self::util::{default_sched_threads, min_stack, running_on_valgrind};
 // Reexport functionality from librustrt and other crates underneath the
 // standard library which work together to create the entire runtime.
 pub use alloc::heap;
-pub use rustrt::{task, local, mutex, exclusive, stack, args, thread};
-pub use rustrt::{Stdio, Stdout, Stderr, begin_unwind, begin_unwind_fmt};
-pub use rustrt::{at_exit, unwind, DEFAULT_ERROR_CODE};
+pub use rustrt::{begin_unwind, begin_unwind_fmt, at_exit};
 
 // Simple backtrace functionality (to print on panic)
 pub mod backtrace;
@@ -84,7 +82,7 @@ mod util;
 #[allow(experimental)]
 pub fn init(argc: int, argv: *const *const u8) {
     rustrt::init(argc, argv);
-    unsafe { unwind::register(failure::on_fail); }
+    unsafe { rustrt::unwind::register(failure::on_fail); }
 }
 
 #[cfg(any(windows, android))]
@@ -147,19 +145,19 @@ pub fn start(argc: int, argv: *const *const u8, main: proc()) -> int {
     init(argc, argv);
     let mut exit_code = None;
     let mut main = Some(main);
-    let mut task = Task::new(Some((my_stack_bottom, my_stack_top)),
-                             Some(rt::thread::main_guard_page()));
+    let mut task = box Task::new(Some((my_stack_bottom, my_stack_top)),
+                                 Some(rustrt::thread::main_guard_page()));
     task.name = Some(str::Slice("<main>"));
     drop(task.run(|| {
         unsafe {
-            rt::stack::record_os_managed_stack_bounds(my_stack_bottom, my_stack_top);
+            rustrt::stack::record_os_managed_stack_bounds(my_stack_bottom, my_stack_top);
         }
         (main.take().unwrap())();
         exit_code = Some(os::get_exit_status());
     }).destroy());
     unsafe { rt::cleanup(); }
     // If the exit code wasn't set, then the task block must have panicked.
-    return exit_code.unwrap_or(rt::DEFAULT_ERROR_CODE);
+    return exit_code.unwrap_or(rustrt::DEFAULT_ERROR_CODE);
 }
 
 /// One-time runtime cleanup.
