@@ -130,7 +130,7 @@ fn enc_region_substs(w: &mut SeekableMemWriter, cx: &ctxt, substs: &subst::Regio
 pub fn enc_region(w: &mut SeekableMemWriter, cx: &ctxt, r: ty::Region) {
     match r {
         ty::ReLateBound(id, br) => {
-            mywrite!(w, "b[{}|", id);
+            mywrite!(w, "b[{}|", id.depth);
             enc_bound_region(w, cx, br);
             mywrite!(w, "]");
         }
@@ -331,7 +331,7 @@ pub fn enc_closure_ty(w: &mut SeekableMemWriter, cx: &ctxt, ft: &ty::ClosureTy) 
 }
 
 fn enc_fn_sig(w: &mut SeekableMemWriter, cx: &ctxt, fsig: &ty::FnSig) {
-    mywrite!(w, "[{}|", fsig.binder_id);
+    mywrite!(w, "[");
     for ty in fsig.inputs.iter() {
         enc_ty(w, cx, *ty);
     }

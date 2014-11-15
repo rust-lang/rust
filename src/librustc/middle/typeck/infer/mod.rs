@@ -797,8 +797,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         subst::Substs::new_trait(type_parameters, regions, assoc_type_parameters, self_ty)
     }
 
-    pub fn fresh_bound_region(&self, binder_id: ast::NodeId) -> ty::Region {
-        self.region_vars.new_bound(binder_id)
+    pub fn fresh_bound_region(&self, debruijn: ty::DebruijnIndex) -> ty::Region {
+        self.region_vars.new_bound(debruijn)
     }
 
     pub fn resolve_regions_and_report_errors(&self) {
@@ -968,28 +968,17 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
     pub fn replace_late_bound_regions_with_fresh_var<T>(
         &self,
-        binder_id: ast::NodeId,
         span: Span,
         lbrct: LateBoundRegionConversionTime,
         value: &T)
         -> (T, FnvHashMap<ty::BoundRegion,ty::Region>)
-        where T : TypeFoldable + Repr
+        where T : HigherRankedFoldable
     {
-        let (map, value) =
-            replace_late_bound_regions(
-                self.tcx,
-                binder_id,
-                value,
-                |br| self.next_region_var(LateBoundRegion(span, br, lbrct)));
-        (value, map)
+        ty::replace_late_bound_regions(
+            self.tcx,
+            value,
+            |br, _| self.next_region_var(LateBoundRegion(span, br, lbrct)))
     }
-}
-
-pub fn fold_regions_in_sig(tcx: &ty::ctxt,
-                           fn_sig: &ty::FnSig,
-                           fldr: |r: ty::Region| -> ty::Region)
-                           -> ty::FnSig {
-    ty_fold::RegionFolder::regions(tcx, fldr).fold_sig(fn_sig)
 }
 
 impl TypeTrace {

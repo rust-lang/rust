@@ -334,48 +334,6 @@ pub fn expected_found<'tcx, C: Combine<'tcx>, T>(
     }
 }
 
-pub fn super_fn_sigs<'tcx, C: Combine<'tcx>>(this: &C,
-                                             a: &ty::FnSig,
-                                             b: &ty::FnSig)
-                                             -> cres<ty::FnSig> {
-
-    fn argvecs<'tcx, C: Combine<'tcx>>(this: &C,
-                                       a_args: &[ty::t],
-                                       b_args: &[ty::t])
-                                       -> cres<Vec<ty::t>> {
-        if a_args.len() == b_args.len() {
-            a_args.iter().zip(b_args.iter())
-                  .map(|(a, b)| this.args(*a, *b)).collect()
-        } else {
-            Err(ty::terr_arg_count)
-        }
-    }
-
-    if a.variadic != b.variadic {
-        return Err(ty::terr_variadic_mismatch(expected_found(this, a.variadic, b.variadic)));
-    }
-
-    let inputs = try!(argvecs(this,
-                                a.inputs.as_slice(),
-                                b.inputs.as_slice()));
-
-    let output = try!(match (a.output, b.output) {
-        (ty::FnConverging(a_ty), ty::FnConverging(b_ty)) =>
-            Ok(ty::FnConverging(try!(this.tys(a_ty, b_ty)))),
-        (ty::FnDiverging, ty::FnDiverging) =>
-            Ok(ty::FnDiverging),
-        (a, b) =>
-            Err(ty::terr_convergence_mismatch(
-                expected_found(this, a != ty::FnDiverging, b != ty::FnDiverging)
-            )),
-    });
-
-    Ok(FnSig {binder_id: a.binder_id,
-              inputs: inputs,
-              output: output,
-              variadic: a.variadic})
-}
-
 pub fn super_tys<'tcx, C: Combine<'tcx>>(this: &C, a: ty::t, b: ty::t) -> cres<ty::t> {
 
     let tcx = this.infcx().tcx;

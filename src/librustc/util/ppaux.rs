@@ -252,8 +252,7 @@ pub fn vec_map_to_string<T>(ts: &[T], f: |t: &T| -> String) -> String {
 }
 
 pub fn fn_sig_to_string(cx: &ctxt, typ: &ty::FnSig) -> String {
-    format!("fn{}{} -> {}", typ.binder_id, typ.inputs.repr(cx),
-            typ.output.repr(cx))
+    format!("fn{} -> {}", typ.inputs.repr(cx), typ.output.repr(cx))
 }
 
 pub fn trait_ref_to_string(cx: &ctxt, trait_ref: &ty::TraitRef) -> String {
@@ -262,11 +261,11 @@ pub fn trait_ref_to_string(cx: &ctxt, trait_ref: &ty::TraitRef) -> String {
 
 pub fn ty_to_string(cx: &ctxt, typ: t) -> String {
     fn bare_fn_to_string(cx: &ctxt,
-                      fn_style: ast::FnStyle,
-                      abi: abi::Abi,
-                      ident: Option<ast::Ident>,
-                      sig: &ty::FnSig)
-                      -> String {
+                         fn_style: ast::FnStyle,
+                         abi: abi::Abi,
+                         ident: Option<ast::Ident>,
+                         sig: &ty::FnSig)
+                         -> String {
         let mut s = String::new();
         match fn_style {
             ast::NormalFn => {}
@@ -1301,3 +1300,8 @@ impl<A:Repr,B:Repr> Repr for (A,B) {
     }
 }
 
+impl<T:Repr> Repr for ty::Binder<T> {
+    fn repr(&self, tcx: &ctxt) -> String {
+        format!("Binder({})", self.value.repr(tcx))
+    }
+}

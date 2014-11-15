@@ -125,4 +125,8 @@ impl<'f, 'tcx> Combine<'tcx> for Glb<'f, 'tcx> {
     fn fn_sigs(&self, a: &ty::FnSig, b: &ty::FnSig) -> cres<ty::FnSig> {
         self.higher_ranked_glb(a, b)
     }
+
+    fn trait_refs(&self, a: &ty::TraitRef, b: &ty::TraitRef) -> cres<ty::TraitRef> {
+        self.higher_ranked_glb(a, b)
+    }
 }

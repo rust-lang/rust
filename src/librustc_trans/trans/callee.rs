@@ -269,7 +269,6 @@ pub fn trans_unboxing_shim(bcx: Block,
     let self_type = fty.sig.inputs[0];
     let boxed_self_type = ty::mk_uniq(tcx, self_type);
     let boxed_function_type = ty::FnSig {
-        binder_id: fty.sig.binder_id,
         inputs: fty.sig.inputs.iter().enumerate().map(|(i, typ)| {
             if i == 0 {
                 boxed_self_type
@@ -294,7 +293,6 @@ pub fn trans_unboxing_shim(bcx: Block,
             // RustCall so the untupled arguments can be passed
             // through verbatim.  This is kind of ugly.
             let fake_ty = ty::FnSig {
-                binder_id: fty.sig.binder_id,
                 inputs: type_of::untuple_arguments_if_necessary(ccx,
                                                                 fty.sig.inputs.as_slice(),
                                                                 fty.abi),

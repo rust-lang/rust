@@ -214,12 +214,11 @@ pub fn get_enum_variant_types(ccx: &CrateCtxt,
     for variant in variants.iter() {
         // Nullary enum constructors get turned into constants; n-ary enum
         // constructors get turned into functions.
-        let scope = variant.node.id;
         let result_ty = match variant.node.kind {
             ast::TupleVariantKind(ref args) if args.len() > 0 => {
                 let rs = ExplicitRscope;
                 let input_tys: Vec<_> = args.iter().map(|va| ccx.to_ty(&rs, &*va.ty)).collect();
-                ty::mk_ctor_fn(tcx, scope, input_tys.as_slice(), enum_ty)
+                ty::mk_ctor_fn(tcx, input_tys.as_slice(), enum_ty)
             }
 
             ast::TupleVariantKind(_) => {
@@ -403,7 +402,6 @@ fn collect_trait_methods(ccx: &CrateCtxt,
             let trait_self_ty = ty::mk_self_type(tmcx.tcx(),
                                                  local_def(trait_id));
             astconv::ty_of_method(&tmcx,
-                                  *m_id,
                                   *m_fn_style,
                                   trait_self_ty,
                                   m_explicit_self,
@@ -588,7 +586,6 @@ fn convert_methods<'a,I>(ccx: &CrateCtxt,
                     method_generics: &m_ty_generics,
                 };
                 astconv::ty_of_method(&imcx,
-                                      m.id,
                                       m.pe_fn_style(),
                                       untransformed_rcvr_ty,
                                       m.pe_explicit_self(),
@@ -603,7 +600,6 @@ fn convert_methods<'a,I>(ccx: &CrateCtxt,
                     method_generics: &m_ty_generics,
                 };
                 astconv::ty_of_method(&tmcx,
-                                      m.id,
                                       m.pe_fn_style(),
                                       untransformed_rcvr_ty,
                                       m.pe_explicit_self(),
@@ -1294,7 +1290,6 @@ pub fn convert_struct(ccx: &CrateCtxt,
                         |field| (*tcx.tcache.borrow())[
                             local_def(field.node.id)].ty).collect();
                 let ctor_fn_ty = ty::mk_ctor_fn(tcx,
-                                                ctor_id,
                                                 inputs.as_slice(),
                                                 selfty);
                 write_ty_to_tcx(tcx, ctor_id, ctor_fn_ty);
@@ -1465,11 +1460,7 @@ pub fn ty_of_item(ccx: &CrateCtxt, it: &ast::Item)
                     ccx: ccx,
                     generics: &ty_generics,
                 };
-                astconv::ty_of_bare_fn(&fcx,
-                                       it.id,
-                                       fn_style,
-                                       abi,
-                                       &**decl)
+                astconv::ty_of_bare_fn(&fcx, fn_style, abi, &**decl)
             };
             let pty = Polytype {
                 generics: ty_generics,
@@ -2091,7 +2082,7 @@ pub fn ty_of_foreign_fn_decl(ccx: &CrateCtxt,
             ast_generics,
             ty::Generics::empty(),
             DontCreateTypeParametersForAssociatedTypes);
-    let rb = BindingRscope::new(def_id.node);
+    let rb = BindingRscope::new();
     let input_tys = decl.inputs
                         .iter()
                         .map(|a| ty_of_arg(ccx, &rb, a, None))
@@ -2109,8 +2100,7 @@ pub fn ty_of_foreign_fn_decl(ccx: &CrateCtxt,
         ty::BareFnTy {
             abi: abi,
             fn_style: ast::UnsafeFn,
-            sig: ty::FnSig {binder_id: def_id.node,
-                            inputs: input_tys,
+            sig: ty::FnSig {inputs: input_tys,
                             output: output,
                             variadic: decl.variadic}
         });
