@@ -883,15 +883,8 @@ pub fn ast_ty_to_ty<'tcx, AC: AstConv<'tcx>, RS: RegionScope>(
 
                 ty::mk_closure(tcx, fn_decl)
             }
-            ast::TyPolyTraitRef(ref data) => {
-                // FIXME(#18639) this is just a placeholder for code to come
-                let principal = instantiate_trait_ref(this, rscope, &data.trait_ref, None, None);
-                let bounds = conv_existential_bounds(this,
-                                                     rscope,
-                                                     ast_ty.span,
-                                                     &[principal.clone()],
-                                                     &[]);
-                ty::mk_trait(tcx, (*principal).clone(), bounds)
+            ast::TyPolyTraitRef(ref bounds) => {
+                conv_ty_poly_trait_ref(this, rscope, ast_ty.span, bounds.as_slice())
             }
             ast::TyPath(ref path, ref bounds, id) => {
                 let a_def = match tcx.def_map.borrow().get(&id) {
@@ -1371,15 +1364,66 @@ pub fn conv_existential_bounds<'tcx, AC: AstConv<'tcx>, RS:RegionScope>(
     let ast_bound_refs: Vec<&ast::TyParamBound> =
         ast_bounds.iter().collect();
 
+    let partitioned_bounds =
+        partition_bounds(this.tcx(), span, ast_bound_refs.as_slice());
+
+    conv_existential_bounds_from_partitioned_bounds(
+        this, rscope, span, main_trait_refs, partitioned_bounds)
+}
+
+fn conv_ty_poly_trait_ref<'tcx, AC, RS>(
+    this: &AC,
+    rscope: &RS,
+    span: Span,
+    ast_bounds: &[ast::TyParamBound])
+    -> ty::t
+    where AC: AstConv<'tcx>, RS:RegionScope
+{
+    let ast_bounds: Vec<&ast::TyParamBound> = ast_bounds.iter().collect();
+    let mut partitioned_bounds = partition_bounds(this.tcx(), span, ast_bounds[]);
+
+    let main_trait_bound = match partitioned_bounds.trait_bounds.remove(0) {
+        Some(trait_bound) => {
+            Some(instantiate_poly_trait_ref(this, rscope, trait_bound, None, None))
+        }
+        None => {
+            this.tcx().sess.span_err(
+                span,
+                "at least one non-builtin trait is required for an object type");
+            None
+        }
+    };
+
+    let bounds = conv_existential_bounds_from_partitioned_bounds(this,
+                                                                 rscope,
+                                                                 span,
+                                                                 main_trait_bound.as_slice(),
+                                                                 partitioned_bounds);
+
+    match main_trait_bound {
+        None => ty::mk_err(),
+        Some(principal) => ty::mk_trait(this.tcx(), (*principal).clone(), bounds)
+    }
+}
+
+pub fn conv_existential_bounds_from_partitioned_bounds<'tcx, AC, RS>(
+    this: &AC,
+    rscope: &RS,
+    span: Span,
+    main_trait_refs: &[Rc<ty::TraitRef>],
+    partitioned_bounds: PartitionedBounds)
+    -> ty::ExistentialBounds
+    where AC: AstConv<'tcx>, RS:RegionScope
+{
     let PartitionedBounds { builtin_bounds,
                             trait_bounds,
                             region_bounds } =
-        partition_bounds(this.tcx(), span, ast_bound_refs.as_slice());
+        partitioned_bounds;
 
     if !trait_bounds.is_empty() {
         let b = &trait_bounds[0];
         this.tcx().sess.span_err(
-            b.path.span,
+            b.trait_ref.path.span,
             format!("only the builtin traits can be used \
                      as closure or object bounds").as_slice());
     }
