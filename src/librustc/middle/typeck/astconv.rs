@@ -1215,8 +1215,9 @@ fn determine_explicit_self_category<'tcx, AC: AstConv<'tcx>,
                                     this: &AC,
                                     rscope: &RS,
                                     self_info: &SelfInfo)
-                                    -> ty::ExplicitSelfCategory {
-    match self_info.explicit_self.node {
+                                    -> ty::ExplicitSelfCategory
+{
+    return match self_info.explicit_self.node {
         ast::SelfStatic => ty::StaticExplicitSelfCategory,
         ast::SelfValue(_) => ty::ByValueExplicitSelfCategory,
         ast::SelfRegion(ref lifetime, mutability, _) => {
@@ -1230,57 +1231,63 @@ fn determine_explicit_self_category<'tcx, AC: AstConv<'tcx>,
         ast::SelfExplicit(ref ast_type, _) => {
             let explicit_type = ast_ty_to_ty(this, rscope, &**ast_type);
 
-            {
-                let inference_context = infer::new_infer_ctxt(this.tcx());
-                let expected_self = self_info.untransformed_self_ty;
-                let actual_self = explicit_type;
-                let result = infer::mk_eqty(
-                    &inference_context,
-                    false,
-                    infer::Misc(self_info.explicit_self.span),
-                    expected_self,
-                    actual_self);
-                match result {
-                    Ok(_) => {
-                        inference_context.resolve_regions_and_report_errors();
-                        return ty::ByValueExplicitSelfCategory
-                    }
-                    Err(_) => {}
-                }
-            }
+            // We wish to (for now) categorize an explicit self
+            // declaration like `self: SomeType` into either `self`,
+            // `&self`, `&mut self`, or `Box<self>`. We do this here
+            // by some simple pattern matching. A more precise check
+            // is done later in `check_method_self_type()`.
+            //
+            // Examples:
+            //
+            // ```
+            // impl Foo for &T {
+            //     // Legal declarations:
+            //     fn method1(self: &&T); // ByReferenceExplicitSelfCategory
+            //     fn method2(self: &T); // ByValueExplicitSelfCategory
+            //     fn method3(self: Box<&T>); // ByBoxExplicitSelfCategory
+            //
+            //     // Invalid cases will be caught later by `check_method_self_type`:
+            //     fn method_err1(self: &mut T); // ByReferenceExplicitSelfCategory
+            // }
+            // ```
+            //
+            // To do the check we just count the number of "modifiers"
+            // on each type and compare them. If they are the same or
+            // the impl has more, we call it "by value". Otherwise, we
+            // look at the outermost modifier on the method decl and
+            // call it by-ref, by-box as appropriate. For method1, for
+            // example, the impl type has one modifier, but the method
+            // type has two, so we end up with
+            // ByReferenceExplicitSelfCategory.
 
-            match ty::get(explicit_type).sty {
-                ty::ty_rptr(region, tm) => {
-                    typeck::require_same_types(
-                        this.tcx(),
-                        None,
-                        false,
-                        self_info.explicit_self.span,
-                        self_info.untransformed_self_ty,
-                        tm.ty,
-                        || "not a valid type for `self`".to_string());
-                    return ty::ByReferenceExplicitSelfCategory(region,
-                                                               tm.mutbl)
-                }
-                ty::ty_uniq(typ) => {
-                    typeck::require_same_types(
-                        this.tcx(),
-                        None,
-                        false,
-                        self_info.explicit_self.span,
-                        self_info.untransformed_self_ty,
-                        typ,
-                        || "not a valid type for `self`".to_string());
-                    return ty::ByBoxExplicitSelfCategory
-                }
-                _ => {
-                    this.tcx()
-                        .sess
-                        .span_err(self_info.explicit_self.span,
-                                  "not a valid type for `self`");
-                    return ty::ByValueExplicitSelfCategory
+            let impl_modifiers = count_modifiers(self_info.untransformed_self_ty);
+            let method_modifiers = count_modifiers(explicit_type);
+
+            debug!("determine_explicit_self_category(self_info.untransformed_self_ty={} \
+                   explicit_type={} \
+                   modifiers=({},{})",
+                   self_info.untransformed_self_ty.repr(this.tcx()),
+                   explicit_type.repr(this.tcx()),
+                   impl_modifiers,
+                   method_modifiers);
+
+            if impl_modifiers >= method_modifiers {
+                ty::ByValueExplicitSelfCategory
+            } else {
+                match ty::get(explicit_type).sty {
+                    ty::ty_rptr(r, mt) => ty::ByReferenceExplicitSelfCategory(r, mt.mutbl),
+                    ty::ty_uniq(_) => ty::ByBoxExplicitSelfCategory,
+                    _ => ty::ByValueExplicitSelfCategory,
                 }
             }
+        }
+    };
+
+    fn count_modifiers(ty: ty::t) -> uint {
+        match ty::get(ty).sty {
+            ty::ty_rptr(_, mt) => count_modifiers(mt.ty) + 1,
+            ty::ty_uniq(t) => count_modifiers(t) + 1,
+            _ => 0,
         }
     }
 }
