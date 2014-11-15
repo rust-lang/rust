@@ -25,12 +25,6 @@ pub trait ToString {
     fn to_string(&self) -> String;
 }
 
-/// Trait for converting a type to a string, consuming it in the process.
-pub trait IntoString {
-    /// Consume and convert to a string.
-    fn into_string(self) -> String;
-}
-
 impl<T: fmt::Show> ToString for T {
     fn to_string(&self) -> String {
         format!("{}", *self)

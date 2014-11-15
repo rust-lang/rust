@@ -21,8 +21,7 @@ use mem;
 use option::{Option, Some, None};
 use slice::{SlicePrelude, AsSlice};
 use str::{Str, StrPrelude};
-use string::{mod, String};
-use to_string::IntoString;
+use string::{mod, String, IntoString};
 use vec::Vec;
 
 /// Datatype to hold one ascii character. It wraps a `u8`, with the highest bit always zero.
