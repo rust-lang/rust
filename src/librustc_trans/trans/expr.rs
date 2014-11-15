@@ -329,12 +329,12 @@ fn apply_adjustments<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                           bcx.ty_to_string(unsized_ty)).as_slice())
             },
             &ty::UnsizeVtable(ty::TyTrait { ref principal, .. }, _) => {
-                let substs = principal.substs.with_self_ty(unsized_ty);
+                let substs = principal.substs.with_self_ty(unsized_ty).erase_regions();
                 let trait_ref =
                     Rc::new(ty::TraitRef { def_id: principal.def_id,
                                            substs: substs });
                 let trait_ref =
-                    trait_ref.subst(bcx.tcx(), &bcx.fcx.param_substs.substs);
+                    trait_ref.subst(bcx.tcx(), bcx.fcx.param_substs.substs());
                 let box_ty = mk_ty(unsized_ty);
                 PointerCast(bcx,
                             meth::get_vtable(bcx, box_ty, trait_ref),
@@ -1122,7 +1122,7 @@ fn trans_rvalue_dps_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                              .map(|t| (*t).clone())
                                              .unwrap();
                 let trait_ref =
-                    trait_ref.subst(bcx.tcx(), &bcx.fcx.param_substs.substs);
+                    trait_ref.subst(bcx.tcx(), bcx.fcx.param_substs.substs());
                 let datum = unpack_datum!(bcx, trans(bcx, &**val));
                 meth::trans_trait_cast(bcx, datum, expr.id,
                                        trait_ref, dest)

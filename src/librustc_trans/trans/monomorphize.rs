@@ -63,9 +63,8 @@ pub fn monomorphic_fn(ccx: &CrateContext,
         None => ()
     }
 
-    let psubsts = param_substs {
-        substs: (*real_substs).clone(),
-    };
+    debug!("creating param_substs with real_substs={}", real_substs.repr(ccx.tcx()));
+    let psubsts = param_substs::new((*real_substs).clone());
 
     debug!("monomorphic_fn(\
             fn_id={}, \
