@@ -11,6 +11,7 @@
 // Test that we can parse all the various places that a `for` keyword
 // can appear representing universal quantification.
 
+#![feature(unboxed_closures)]
 #![allow(unused_variables)]
 #![allow(dead_code)]
 

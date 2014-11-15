@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(unboxed_closures, unboxed_closure_sugar)]
+#![feature(unboxed_closures)]
 
 use std::ops::FnOnce;
 

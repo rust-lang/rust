@@ -9,6 +9,7 @@
 // except according to those terms.
 
 struct Three<A,B,C>;
+#![feature(unboxed_closures)]
 
 fn foo(_: Three()) //~ ERROR wrong number of type arguments
 {}

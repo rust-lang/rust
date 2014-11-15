@@ -59,7 +59,6 @@ static KNOWN_FEATURES: &'static [(&'static str, Status)] = &[
     ("linkage", Active),
     ("struct_inherit", Removed),
     ("overloaded_calls", Active),
-    ("unboxed_closure_sugar", Active),
 
     ("quad_precision_float", Removed),
 
@@ -381,7 +380,7 @@ impl<'a, 'v> Visitor<'v> for Context<'a> {
                 fn_decl: &'v ast::FnDecl,
                 block: &'v ast::Block,
                 span: Span,
-                _: NodeId) {
+                _node_id: NodeId) {
         match fn_kind {
             visit::FkItemFn(_, _, _, abi) if abi == RustIntrinsic => {
                 self.gate_feature("intrinsics",
@@ -391,6 +390,19 @@ impl<'a, 'v> Visitor<'v> for Context<'a> {
             _ => {}
         }
         visit::walk_fn(self, fn_kind, fn_decl, block, span);
+    }
+
+    fn visit_path_parameters(&mut self, path_span: Span, parameters: &'v ast::PathParameters) {
+        match *parameters {
+            ast::ParenthesizedParameters(..) => {
+                self.gate_feature("unboxed_closures",
+                                  path_span,
+                                  "parenthetical parameter notation is subject to change");
+            }
+            ast::AngleBracketedParameters(..) => { }
+        }
+
+        visit::walk_path_parameters(self, path_span, parameters)
     }
 }
 

@@ -13,6 +13,7 @@
 // angle brackets. This test covers only simple types and in
 // particular doesn't test bound regions.
 
+#![feature(unboxed_closures)]
 #![allow(dead_code)]
 
 struct Foo<T,U> {
