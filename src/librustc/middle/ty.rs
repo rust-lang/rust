@@ -5824,7 +5824,8 @@ pub fn erase_late_bound_regions<HR>(
 {
     /*!
      * Replace any late-bound regions bound in `value` with `'static`.
-     * Useful in trans.
+     * Useful in trans but also method lookup and a few other places
+     * where precise region relationships are not required.
      */
 
     replace_late_bound_regions(tcx, value, |_, _| ty::ReStatic).0

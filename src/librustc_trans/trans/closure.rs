@@ -486,7 +486,7 @@ pub fn trans_unboxed_closure<'blk, 'tcx>(
     let llfn = get_or_create_declaration_if_unboxed_closure(
         bcx,
         closure_id,
-        &bcx.fcx.param_substs.substs).unwrap();
+        bcx.fcx.param_substs.substs()).unwrap();
 
     let function_type = (*bcx.tcx().unboxed_closures.borrow())[closure_id]
                                                               .closure_type
