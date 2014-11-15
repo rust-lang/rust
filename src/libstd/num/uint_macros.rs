@@ -15,22 +15,6 @@
 
 macro_rules! uint_module (($T:ty) => (
 
-#[experimental = "might need to return Result"]
-impl FromStr for $T {
-    #[inline]
-    fn from_str(s: &str) -> Option<$T> {
-        strconv::from_str_radix_int(s, 10)
-    }
-}
-
-#[experimental = "might need to return Result"]
-impl FromStrRadix for $T {
-    #[inline]
-    fn from_str_radix(s: &str, radix: uint) -> Option<$T> {
-        strconv::from_str_radix_int(s, radix)
-    }
-}
-
 // String conversion functions and impl num -> str
 
 /// Convert to a string as a byte slice in a given base.

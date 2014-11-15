@@ -25,7 +25,7 @@ use core::raw::Slice as RawSlice;
 use hash;
 use slice::CloneSliceAllocPrelude;
 use str;
-use str::{CharRange, StrAllocating, MaybeOwned, Owned};
+use str::{CharRange, FromStr, StrAllocating, MaybeOwned, Owned};
 use str::Slice as MaybeOwnedSlice; // So many `Slice`s...
 use vec::{DerefVec, Vec, as_vec};
 
@@ -793,6 +793,13 @@ impl<'a> Deref<String> for DerefString<'a> {
 #[experimental]
 pub fn as_string<'a>(x: &'a str) -> DerefString<'a> {
     DerefString { x: as_vec(x.as_bytes()) }
+}
+
+impl FromStr for String {
+    #[inline]
+    fn from_str(s: &str) -> Option<String> {
+        Some(String::from_str(s))
+    }
 }
 
 /// Unsafe operations

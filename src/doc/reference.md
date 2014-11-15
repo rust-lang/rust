@@ -3108,11 +3108,10 @@ then the expression completes.
 Some examples of call expressions:
 
 ```
-# use std::from_str::FromStr;
 # fn add(x: int, y: int) -> int { 0 }
 
 let x: int = add(1, 2);
-let pi: Option<f32> = FromStr::from_str("3.14");
+let pi: Option<f32> = from_str("3.14");
 ```
 
 ### Lambda expressions

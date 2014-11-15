@@ -334,8 +334,7 @@ macro_rules! cgoptions(
         }
 
         fn parse_uint(slot: &mut uint, v: Option<&str>) -> bool {
-            use std::from_str::FromStr;
-            match v.and_then(FromStr::from_str) {
+            match v.and_then(from_str) {
                 Some(i) => { *slot = i; true },
                 None => false
             }
