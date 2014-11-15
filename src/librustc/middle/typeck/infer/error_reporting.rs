@@ -1460,8 +1460,8 @@ impl<'a, 'tcx> ErrorReportingHelpers for InferCtxt<'a, 'tcx> {
                 format!(" for {}in function call",
                         bound_region_to_string(self.tcx, "lifetime parameter ", true, br))
             }
-            infer::LateBoundRegion(_, br, infer::FnType) => {
-                format!(" for {}in function type",
+            infer::LateBoundRegion(_, br, infer::HigherRankedType) => {
+                format!(" for {}in generic type",
                         bound_region_to_string(self.tcx, "lifetime parameter ", true, br))
             }
             infer::EarlyBoundRegion(_, name) => {

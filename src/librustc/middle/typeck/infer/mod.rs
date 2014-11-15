@@ -61,6 +61,7 @@ pub mod doc;
 pub mod equate;
 pub mod error_reporting;
 pub mod glb;
+pub mod higher_ranked;
 pub mod lattice;
 pub mod lub;
 pub mod region_inference;
@@ -233,8 +234,8 @@ pub enum LateBoundRegionConversionTime {
     /// when a fn is called
     FnCall,
 
-    /// when two fn types are compared
-    FnType,
+    /// when two higher-ranked types are compared
+    HigherRankedType,
 }
 
 /// Reasons to create a region inference variable
