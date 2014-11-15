@@ -1112,10 +1112,12 @@ pub fn convert(ccx: &CrateCtxt, it: &ast::Item) {
             for impl_item in impl_items.iter() {
                 match *impl_item {
                     ast::MethodImplItem(ref method) => {
+                        let body_id = method.pe_body().id;
                         check_method_self_type(ccx,
-                                               &BindingRscope::new(method.id),
+                                               &BindingRscope::new(),
                                                selfty,
-                                               method.pe_explicit_self());
+                                               method.pe_explicit_self(),
+                                               body_id);
                         methods.push(&**method);
                     }
                     ast::TypeImplItem(ref typedef) => {
@@ -1170,17 +1172,19 @@ pub fn convert(ccx: &CrateCtxt, it: &ast::Item) {
                                              local_def(it.id));
                 match *trait_method {
                     ast::RequiredMethod(ref type_method) => {
-                        let rscope = BindingRscope::new(type_method.id);
+                        let rscope = BindingRscope::new();
                         check_method_self_type(ccx,
                                                &rscope,
                                                self_type,
-                                               &type_method.explicit_self)
+                                               &type_method.explicit_self,
+                                               it.id)
                     }
                     ast::ProvidedMethod(ref method) => {
                         check_method_self_type(ccx,
-                                               &BindingRscope::new(method.id),
+                                               &BindingRscope::new(),
                                                self_type,
-                                               method.pe_explicit_self())
+                                               method.pe_explicit_self(),
+                                               it.id)
                     }
                     ast::TypeTraitItem(ref associated_type) => {
                         convert_associated_type(ccx,
@@ -2132,10 +2136,12 @@ pub fn mk_item_substs(ccx: &CrateCtxt,
 /// Verifies that the explicit self type of a method matches the impl or
 /// trait.
 fn check_method_self_type<RS:RegionScope>(
-                          crate_context: &CrateCtxt,
-                          rs: &RS,
-                          required_type: ty::t,
-                          explicit_self: &ast::ExplicitSelf) {
+    crate_context: &CrateCtxt,
+    rs: &RS,
+    required_type: ty::t,
+    explicit_self: &ast::ExplicitSelf,
+    body_id: ast::NodeId)
+{
     match explicit_self.node {
         ast::SelfExplicit(ref ast_type, _) => {
             let typ = crate_context.to_ty(rs, &**ast_type);
@@ -2144,13 +2150,44 @@ fn check_method_self_type<RS:RegionScope>(
                 ty::ty_uniq(typ) => typ,
                 _ => typ,
             };
+
+            // "Required type" comes from the trait definition. It may
+            // contain late-bound regions from the method, but not the
+            // trait (since traits only have early-bound region
+            // parameters).
+            assert!(!ty::type_escapes_depth(required_type, 1));
+            let required_type_free =
+                ty::liberate_late_bound_regions(
+                    crate_context.tcx,
+                    body_id,
+                    &ty::bind(required_type)).value;
+
+            // The "base type" comes from the impl. It may have late-bound
+            // regions from the impl or the method.
+            let base_type_free = // liberate impl regions:
+                ty::liberate_late_bound_regions(
+                    crate_context.tcx,
+                    body_id,
+                    &ty::bind(ty::bind(base_type))).value.value;
+            let base_type_free = // liberate method regions:
+                ty::liberate_late_bound_regions(
+                    crate_context.tcx,
+                    body_id,
+                    &ty::bind(base_type_free)).value;
+
+            debug!("required_type={} required_type_free={} \
+                    base_type={} base_type_free={}",
+                   required_type.repr(crate_context.tcx),
+                   required_type_free.repr(crate_context.tcx),
+                   base_type.repr(crate_context.tcx),
+                   base_type_free.repr(crate_context.tcx));
             let infcx = infer::new_infer_ctxt(crate_context.tcx);
             drop(typeck::require_same_types(crate_context.tcx,
                                             Some(&infcx),
                                             false,
                                             explicit_self.span,
-                                            base_type,
-                                            required_type,
+                                            base_type_free,
+                                            required_type_free,
                                             || {
                 format!("mismatched self type: expected `{}`",
                         ppaux::ty_to_string(crate_context.tcx, required_type))

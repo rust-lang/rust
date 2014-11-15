@@ -10,7 +10,7 @@
 // except according to those terms.
 
 use middle::subst;
-use middle::subst::{ParamSpace, Subst, Substs, VecPerParamSpace};
+use middle::subst::{ParamSpace, Substs, VecPerParamSpace};
 use middle::typeck::infer::InferCtxt;
 use middle::ty;
 use std::collections::HashSet;
@@ -173,25 +173,25 @@ impl fmt::Show for VtableParamData {
 pub fn obligations_for_generics(tcx: &ty::ctxt,
                                 cause: ObligationCause,
                                 recursion_depth: uint,
-                                generics: &ty::Generics,
-                                substs: &Substs)
+                                generic_bounds: &ty::GenericBounds,
+                                type_substs: &VecPerParamSpace<ty::t>)
                                 -> VecPerParamSpace<Obligation>
 {
     /*! See `super::obligations_for_generics` */
 
-    debug!("obligations_for_generics(generics={}, substs={})",
-           generics.repr(tcx), substs.repr(tcx));
+    debug!("obligations_for_generics(generic_bounds={}, type_substs={})",
+           generic_bounds.repr(tcx), type_substs.repr(tcx));
 
     let mut obligations = VecPerParamSpace::empty();
 
-    for def in generics.types.iter() {
+    for (space, index, bounds) in generic_bounds.types.iter_enumerated() {
         push_obligations_for_param_bounds(tcx,
                                           cause,
                                           recursion_depth,
-                                          def.space,
-                                          def.index,
-                                          &def.bounds,
-                                          substs,
+                                          space,
+                                          index,
+                                          bounds,
+                                          type_substs,
                                           &mut obligations);
     }
 
@@ -207,11 +207,10 @@ fn push_obligations_for_param_bounds(
     space: subst::ParamSpace,
     index: uint,
     param_bounds: &ty::ParamBounds,
-    param_substs: &Substs,
+    param_type_substs: &VecPerParamSpace<ty::t>,
     obligations: &mut VecPerParamSpace<Obligation>)
 {
-    let param_ty = *param_substs.types.get(space, index);
-
+    let param_ty = *param_type_substs.get(space, index);
     for builtin_bound in param_bounds.builtin_bounds.iter() {
         let obligation = obligation_for_builtin_bound(tcx,
                                                       cause,
@@ -225,12 +224,11 @@ fn push_obligations_for_param_bounds(
     }
 
     for bound_trait_ref in param_bounds.trait_bounds.iter() {
-        let bound_trait_ref = bound_trait_ref.subst(tcx, param_substs);
         obligations.push(
             space,
             Obligation { cause: cause,
                          recursion_depth: recursion_depth,
-                         trait_ref: bound_trait_ref });
+                         trait_ref: (*bound_trait_ref).clone() });
     }
 }
 

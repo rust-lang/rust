@@ -184,9 +184,9 @@ pub enum SubregionOrigin {
     // type of the variable outlives the lifetime bound.
     RelateProcBound(Span, ast::NodeId, ty::t),
 
-    // The given type parameter was instantiated with the given type,
+    // Some type parameter was instantiated with the given type,
     // and that type must outlive some region.
-    RelateParamBound(Span, ty::ParamTy, ty::t),
+    RelateParamBound(Span, ty::t),
 
     // The given region parameter was instantiated with a region
     // that must outlive some other region.
@@ -1062,7 +1062,7 @@ impl SubregionOrigin {
             IndexSlice(a) => a,
             RelateObjectBound(a) => a,
             RelateProcBound(a, _, _) => a,
-            RelateParamBound(a, _, _) => a,
+            RelateParamBound(a, _) => a,
             RelateRegionParamBound(a) => a,
             RelateDefaultParamBound(a, _) => a,
             Reborrow(a) => a,
@@ -1112,11 +1112,10 @@ impl Repr for SubregionOrigin {
                         b,
                         c.repr(tcx))
             }
-            RelateParamBound(a, b, c) => {
-                format!("RelateParamBound({},{},{})",
+            RelateParamBound(a, b) => {
+                format!("RelateParamBound({},{})",
                         a.repr(tcx),
-                        b.repr(tcx),
-                        c.repr(tcx))
+                        b.repr(tcx))
             }
             RelateRegionParamBound(a) => {
                 format!("RelateRegionParamBound({})",

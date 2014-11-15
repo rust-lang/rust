@@ -410,6 +410,15 @@ impl TypeFoldable for ty::Generics {
     }
 }
 
+impl TypeFoldable for ty::GenericBounds {
+    fn fold_with<'tcx, F: TypeFolder<'tcx>>(&self, folder: &mut F) -> ty::GenericBounds {
+        ty::GenericBounds {
+            types: self.types.fold_with(folder),
+            regions: self.regions.fold_with(folder),
+        }
+    }
+}
+
 impl TypeFoldable for ty::UnsizeKind {
     fn fold_with<'tcx, F: TypeFolder<'tcx>>(&self, folder: &mut F) -> ty::UnsizeKind {
         match *self {

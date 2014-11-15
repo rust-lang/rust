@@ -467,9 +467,8 @@ pub fn trans_fn_ref_with_substs(
             let impl_or_trait_item = ty::impl_or_trait_item(tcx, source_id);
             match impl_or_trait_item {
                 ty::MethodTraitItem(method) => {
-                    let trait_ref = ty::impl_trait_ref(tcx, impl_id)
-                        .expect("could not find trait_ref for impl with \
-                                 default methods");
+                    let trait_ref = ty::impl_trait_ref(tcx, impl_id).unwrap();
+                    let trait_ref = ty::erase_late_bound_regions(tcx, &trait_ref);
 
                     // Compute the first substitution
                     let first_subst =

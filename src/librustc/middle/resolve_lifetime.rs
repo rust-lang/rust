@@ -105,14 +105,20 @@ impl<'a, 'v> Visitor<'v> for LifetimeContext<'a> {
             ast::ItemTy(_, ref generics) |
             ast::ItemEnum(_, ref generics) |
             ast::ItemStruct(_, ref generics) |
-            ast::ItemTrait(ref generics, _, _, _) |
-            ast::ItemImpl(ref generics, _, _, _) => {
+            ast::ItemTrait(ref generics, _, _, _) => {
                 // These kinds of items have only early bound lifetime parameters.
                 let lifetimes = &generics.lifetimes;
                 self.with(EarlyScope(subst::TypeSpace, lifetimes, &ROOT_SCOPE), |this| {
                     this.check_lifetime_defs(lifetimes);
                     visit::walk_item(this, item);
                 });
+            }
+            ast::ItemImpl(ref generics, _, _, _) => {
+                // Impls have both early- and late-bound lifetimes.
+                self.visit_early_late(subst::TypeSpace, generics, |this| {
+                    this.check_lifetime_defs(&generics.lifetimes);
+                    visit::walk_item(this, item);
+                })
             }
         }
     }
@@ -493,10 +499,10 @@ fn early_bound_lifetime_names(generics: &ast::Generics) -> Vec<ast::Name> {
             FreeLifetimeCollector { early_bound: &mut early_bound,
                                     late_bound: &mut late_bound };
         for ty_param in generics.ty_params.iter() {
-            visit::walk_ty_param_bounds(&mut collector, &ty_param.bounds);
+            visit::walk_ty_param_bounds_helper(&mut collector, &ty_param.bounds);
         }
         for predicate in generics.where_clause.predicates.iter() {
-            visit::walk_ty_param_bounds(&mut collector, &predicate.bounds);
+            visit::walk_ty_param_bounds_helper(&mut collector, &predicate.bounds);
         }
     }
 
