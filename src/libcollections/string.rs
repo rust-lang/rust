@@ -802,6 +802,12 @@ impl FromStr for String {
     }
 }
 
+/// Trait for converting a type to a string, consuming it in the process.
+pub trait IntoString {
+    /// Consume and convert to a string.
+    fn into_string(self) -> String;
+}
+
 /// Unsafe operations
 #[unstable = "waiting on raw module conventions"]
 pub mod raw {
