@@ -42,7 +42,6 @@ use middle::ty;
 use middle::traits;
 use middle::typeck;
 use std::rc::Rc;
-use syntax::ast;
 use syntax::owned_slice::OwnedSlice;
 use util::ppaux::Repr;
 
@@ -477,6 +476,7 @@ impl TypeFoldable for traits::VtableParamData {
 // "super" routines: these are the default implementations for TypeFolder.
 //
 // They should invoke `foo.fold_with()` to do recursive folding.
+
 pub fn super_fold_ty<'tcx, T: TypeFolder<'tcx>>(this: &mut T,
                                                 t: ty::t)
                                                 -> ty::t {
@@ -550,9 +550,21 @@ pub fn super_fold_closure_ty<'tcx, T: TypeFolder<'tcx>>(this: &mut T,
         abi: fty.abi,
     }
 }
+
 pub fn super_fold_trait_ref<'tcx, T: TypeFolder<'tcx>>(this: &mut T,
                                                        t: &ty::TraitRef)
-                                                       -> ty::TraitRef {
+                                                       -> ty::TraitRef
+{
+    this.enter_region_binder();
+    let result = super_fold_trait_ref_contents(this, t);
+    this.exit_region_binder();
+    result
+}
+
+pub fn super_fold_trait_ref_contents<'tcx, T: TypeFolder<'tcx>>(this: &mut T,
+                                                                t: &ty::TraitRef)
+                                                                -> ty::TraitRef
+{
     ty::TraitRef {
         def_id: t.def_id,
         substs: t.substs.fold_with(this),
@@ -691,11 +703,26 @@ impl HigherRankedFoldable for ty::FnSig {
         super_fold_fn_sig_contents(folder, self)
     }
 }
+
+impl HigherRankedFoldable for ty::TraitRef {
+    fn fold_contents<'tcx, F: TypeFolder<'tcx>>(&self, folder: &mut F) -> ty::TraitRef {
+        super_fold_trait_ref_contents(folder, self)
+    }
+}
+
 impl<T:TypeFoldable+Repr> HigherRankedFoldable for ty::Binder<T> {
     fn fold_contents<'tcx, F: TypeFolder<'tcx>>(&self, folder: &mut F) -> ty::Binder<T> {
         ty::bind(self.value.fold_with(folder))
     }
 }
+
+impl<T:HigherRankedFoldable> HigherRankedFoldable for Rc<T> {
+    fn fold_contents<'tcx, F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Rc<T> {
+        Rc::new((**self).fold_contents(folder))
+    }
+}
+
+///////////////////////////////////////////////////////////////////////////
 // Some sample folders
 
 pub struct BottomUpFolder<'a, 'tcx: 'a> {

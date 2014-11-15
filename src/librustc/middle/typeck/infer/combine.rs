@@ -59,6 +59,7 @@ use syntax::codemap::Span;
 
 pub trait Combine<'tcx> {
     fn infcx<'a>(&'a self) -> &'a InferCtxt<'a, 'tcx>;
+    fn tcx<'a>(&'a self) -> &'a ty::ctxt<'tcx> { self.infcx().tcx }
     fn tag(&self) -> String;
     fn a_is_expected(&self) -> bool;
     fn trace(&self) -> TypeTrace;
@@ -296,26 +297,14 @@ pub trait Combine<'tcx> {
                 Err(ty::terr_trait_stores_differ(vk, expected_found(self, a, b)))
             }
         }
-
     }
 
     fn trait_refs(&self,
                   a: &ty::TraitRef,
                   b: &ty::TraitRef)
-                  -> cres<ty::TraitRef> {
-        // Different traits cannot be related
-
-        // - NOTE in the future, expand out subtraits!
-
-        if a.def_id != b.def_id {
-            Err(ty::terr_traits(
-                                expected_found(self, a.def_id, b.def_id)))
-        } else {
-            let substs = try!(self.substs(a.def_id, &a.substs, &b.substs));
-            Ok(ty::TraitRef { def_id: a.def_id,
-                              substs: substs })
-        }
-    }
+                  -> cres<ty::TraitRef>;
+    // this must be overridden to do correctly, so as to account for higher-ranked
+    // behavior
 }
 
 #[deriving(Clone)]

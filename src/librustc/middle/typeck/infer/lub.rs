@@ -47,7 +47,7 @@ impl<'f, 'tcx> Combine<'tcx> for Lub<'f, 'tcx> {
     fn glb<'a>(&'a self) -> Glb<'a, 'tcx> { Glb(self.fields.clone()) }
 
     fn mts(&self, a: &ty::mt, b: &ty::mt) -> cres<ty::mt> {
-        let tcx = self.fields.infcx.tcx;
+        let tcx = self.tcx();
 
         debug!("{}.mts({}, {})",
                self.tag(),
@@ -107,10 +107,10 @@ impl<'f, 'tcx> Combine<'tcx> for Lub<'f, 'tcx> {
     fn regions(&self, a: ty::Region, b: ty::Region) -> cres<ty::Region> {
         debug!("{}.regions({}, {})",
                self.tag(),
-               a.repr(self.fields.infcx.tcx),
-               b.repr(self.fields.infcx.tcx));
+               a.repr(self.tcx()),
+               b.repr(self.tcx()));
 
-        Ok(self.fields.infcx.region_vars.lub_regions(Subtype(self.trace()), a, b))
+        Ok(self.infcx().region_vars.lub_regions(Subtype(self.trace()), a, b))
     }
 
     fn fn_sigs(&self, a: &ty::FnSig, b: &ty::FnSig) -> cres<ty::FnSig> {
@@ -119,5 +119,9 @@ impl<'f, 'tcx> Combine<'tcx> for Lub<'f, 'tcx> {
 
     fn tys(&self, a: ty::t, b: ty::t) -> cres<ty::t> {
         super_lattice_tys(self, a, b)
+    }
+
+    fn trait_refs(&self, a: &ty::TraitRef, b: &ty::TraitRef) -> cres<ty::TraitRef> {
+        self.higher_ranked_lub(a, b)
     }
 }

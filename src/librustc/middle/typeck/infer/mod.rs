@@ -31,10 +31,9 @@ pub use self::skolemize::TypeSkolemizer;
 use middle::subst;
 use middle::subst::Substs;
 use middle::ty::{TyVid, IntVid, FloatVid, RegionVid};
+use middle::ty::replace_late_bound_regions;
 use middle::ty;
-use middle::ty_fold;
-use middle::ty_fold::{TypeFolder, TypeFoldable};
-use middle::typeck::check::regionmanip::replace_late_bound_regions;
+use middle::ty_fold::{HigherRankedFoldable, TypeFolder, TypeFoldable};
 use std::cell::{RefCell};
 use std::rc::Rc;
 use syntax::ast;
@@ -816,8 +815,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         format!("({})", tstrs.connect(", "))
     }
 
-    pub fn trait_ref_to_string(&self, t: &ty::TraitRef) -> String {
-        let t = self.resolve_type_vars_in_trait_ref_if_possible(t);
+    pub fn trait_ref_to_string(&self, t: &Rc<ty::TraitRef>) -> String {
+        let t = self.resolve_type_vars_in_trait_ref_if_possible(&**t);
         trait_ref_to_string(self.tcx, &t)
     }
 

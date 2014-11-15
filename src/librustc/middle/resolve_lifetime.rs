@@ -21,11 +21,13 @@ pub use self::DefRegion::*;
 use self::ScopeChain::*;
 
 use session::Session;
+use middle::def;
+use middle::resolve::DefMap;
 use middle::subst;
+use middle::ty;
 use std::fmt;
 use syntax::ast;
 use syntax::codemap::Span;
-use syntax::owned_slice::OwnedSlice;
 use syntax::parse::token::special_idents;
 use syntax::parse::token;
 use syntax::print::pprust::{lifetime_to_string};
@@ -52,7 +54,8 @@ pub type NamedRegionMap = NodeMap<DefRegion>;
 struct LifetimeContext<'a> {
     sess: &'a Session,
     named_region_map: &'a mut NamedRegionMap,
-    scope: Scope<'a>
+    scope: Scope<'a>,
+    def_map: &'a DefMap,
 }
 
 enum ScopeChain<'a> {
@@ -72,12 +75,13 @@ type Scope<'a> = &'a ScopeChain<'a>;
 
 static ROOT_SCOPE: ScopeChain<'static> = RootScope;
 
-pub fn krate(sess: &Session, krate: &ast::Crate) -> NamedRegionMap {
+pub fn krate(sess: &Session, krate: &ast::Crate, def_map: &DefMap) -> NamedRegionMap {
     let mut named_region_map = NodeMap::new();
     visit::walk_crate(&mut LifetimeContext {
         sess: sess,
         named_region_map: &mut named_region_map,
-        scope: &ROOT_SCOPE
+        scope: &ROOT_SCOPE,
+        def_map: def_map,
     }, krate);
     sess.abort_if_errors();
     named_region_map
@@ -151,6 +155,27 @@ impl<'a, 'v> Visitor<'v> for LifetimeContext<'a> {
                     visit::walk_ty(this, ty);
                 });
             }
+            ast::TyPath(ref path, ref opt_bounds, id) => {
+                // if this path references a trait, then this will resolve to
+                // a trait ref, which introduces a binding scope.
+                match self.def_map.borrow().get(&id) {
+                    Some(&def::DefTrait(..)) => {
+                        self.with(LateScope(&Vec::new(), self.scope), |this| {
+                            this.visit_path(path, id);
+                        });
+
+                        match *opt_bounds {
+                            Some(ref bounds) => {
+                                visit::walk_ty_param_bounds_helper(self, bounds);
+                            }
+                            None => { }
+                        }
+                    }
+                    _ => {
+                        visit::walk_ty(self, ty);
+                    }
+                }
+            }
             _ => {
                 visit::walk_ty(self, ty)
             }
@@ -177,7 +202,7 @@ impl<'a, 'v> Visitor<'v> for LifetimeContext<'a> {
 
     fn visit_generics(&mut self, generics: &ast::Generics) {
         for ty_param in generics.ty_params.iter() {
-            self.visit_ty_param_bounds(&ty_param.bounds);
+            visit::walk_ty_param_bounds_helper(self, &ty_param.bounds);
             match ty_param.default {
                 Some(ref ty) => self.visit_ty(&**ty),
                 None => {}
@@ -185,41 +210,14 @@ impl<'a, 'v> Visitor<'v> for LifetimeContext<'a> {
         }
         for predicate in generics.where_clause.predicates.iter() {
             self.visit_ident(predicate.span, predicate.ident);
-            self.visit_ty_param_bounds(&predicate.bounds);
-        }
-    }
-}
-
-impl<'a> LifetimeContext<'a> {
-    fn with(&mut self, wrap_scope: ScopeChain, f: |&mut LifetimeContext|) {
-        let LifetimeContext {sess, ref mut named_region_map, ..} = *self;
-        let mut this = LifetimeContext {
-            sess: sess,
-            named_region_map: *named_region_map,
-            scope: &wrap_scope
-        };
-        debug!("entering scope {}", this.scope);
-        f(&mut this);
-        debug!("exiting scope {}", this.scope);
-    }
-
-    fn visit_ty_param_bounds(&mut self,
-                             bounds: &OwnedSlice<ast::TyParamBound>) {
-        for bound in bounds.iter() {
-            match *bound {
-                ast::TraitTyParamBound(ref trait_ref) => {
-                    self.visit_poly_trait_ref(trait_ref);
-                }
-                ast::RegionTyParamBound(ref lifetime) => {
-                    self.visit_lifetime_ref(lifetime);
-                }
-            }
+            visit::walk_ty_param_bounds_helper(self, &predicate.bounds);
         }
     }
 
     fn visit_poly_trait_ref(&mut self, trait_ref: &ast::PolyTraitRef) {
-        let ref_id = trait_ref.trait_ref.ref_id;
-        self.with(LateScope(ref_id, &trait_ref.bound_lifetimes, self.scope), |this| {
+        debug!("visit_poly_trait_ref trait_ref={}", trait_ref);
+
+        self.with(LateScope(&trait_ref.bound_lifetimes, self.scope), |this| {
             this.check_lifetime_defs(&trait_ref.bound_lifetimes);
             for lifetime in trait_ref.bound_lifetimes.iter() {
                 this.visit_lifetime_decl(lifetime);
