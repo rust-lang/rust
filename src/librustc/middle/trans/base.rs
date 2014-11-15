@@ -1787,8 +1787,8 @@ pub fn trans_closure(ccx: &CrateContext,
                      abi: Abi,
                      has_env: bool,
                      is_unboxed_closure: IsUnboxedClosureFlag,
-                     maybe_load_env: <'blk, 'tcx> |Block<'blk, 'tcx>, ScopeId|
-                                                  -> Block<'blk, 'tcx>) {
+                     maybe_load_env: for<'blk, 'tcx> |Block<'blk, 'tcx>, ScopeId|
+                                                     -> Block<'blk, 'tcx>) {
     ccx.stats().n_closures.set(ccx.stats().n_closures.get() + 1);
 
     let _icx = push_ctxt("trans_closure");
