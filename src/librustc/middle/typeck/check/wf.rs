@@ -12,10 +12,10 @@ use middle::subst;
 use middle::subst::{Subst};
 use middle::traits;
 use middle::ty;
+use middle::ty::liberate_late_bound_regions;
 use middle::ty_fold::{TypeFolder, TypeFoldable};
 use middle::typeck::astconv::AstConv;
 use middle::typeck::check::{FnCtxt, Inherited, blank_fn_ctxt, vtable, regionck};
-use middle::typeck::check::regionmanip::replace_late_bound_regions;
 use middle::typeck::CrateCtxt;
 use util::ppaux::Repr;
 
@@ -166,16 +166,24 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
             let mut bounds_checker = BoundsChecker::new(fcx, item.span,
                                                         item.id, Some(&mut this.cache));
 
+            // Find the impl self type as seen from the "inside" --
+            // that is, with all type parameters converted from bound
+            // to free, and any late-bound regions on the impl
+            // liberated.
             let self_ty = ty::node_id_to_type(fcx.tcx(), item.id);
             let self_ty = self_ty.subst(fcx.tcx(), &fcx.inh.param_env.free_substs);
+            let self_ty = liberate_late_bound_regions(fcx.tcx(), item.id, &ty::bind(self_ty)).value;
 
             bounds_checker.check_traits_in_ty(self_ty);
 
+            // Similarly, obtain an "inside" reference to the trait
+            // that the impl implements.
             let trait_ref = match ty::impl_trait_ref(fcx.tcx(), local_def(item.id)) {
                 None => { return; }
                 Some(t) => { t }
             };
             let trait_ref = (*trait_ref).subst(fcx.tcx(), &fcx.inh.param_env.free_substs);
+            let trait_ref = liberate_late_bound_regions(fcx.tcx(), item.id, &trait_ref);
 
             // There are special rules that apply to drop.
             if
@@ -215,7 +223,6 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
             // FIXME -- This is a bit ill-factored. There is very similar
             // code in traits::util::obligations_for_generics.
             fcx.add_region_obligations_for_type_parameter(item.span,
-                                                          ty::ParamTy::for_self(trait_ref.def_id),
                                                           &trait_def.bounds,
                                                           trait_ref.self_ty());
             for builtin_bound in trait_def.bounds.builtin_bounds.iter() {
@@ -280,12 +287,13 @@ impl<'cx,'tcx> BoundsChecker<'cx,'tcx> {
 
         let trait_def = ty::lookup_trait_def(self.fcx.tcx(), trait_ref.def_id);
 
+        let bounds = trait_def.generics.to_bounds(self.tcx(), &trait_ref.substs);
         self.fcx.add_obligations_for_parameters(
             traits::ObligationCause::new(
                 self.span,
                 traits::ItemObligation(trait_ref.def_id)),
             &trait_ref.substs,
-            &trait_def.generics);
+            &bounds);
 
         for &ty in trait_ref.substs.types.iter() {
             self.check_traits_in_ty(ty);
@@ -335,7 +343,7 @@ impl<'cx,'tcx> TypeFolder<'tcx> for BoundsChecker<'cx,'tcx> {
                         traits::ObligationCause::new(self.span,
                                                      traits::ItemObligation(type_id)),
                         substs,
-                        &polytype.generics);
+                        &polytype.generics.to_bounds(self.tcx(), substs));
                 } else {
                     // There are two circumstances in which we ignore
                     // region obligations.
@@ -363,7 +371,7 @@ impl<'cx,'tcx> TypeFolder<'tcx> for BoundsChecker<'cx,'tcx> {
                         traits::ObligationCause::new(self.span,
                                                      traits::ItemObligation(type_id)),
                         substs,
-                        &polytype.generics);
+                        &polytype.generics.to_bounds(self.tcx(), substs));
                 }
 
                 self.fold_substs(substs);

@@ -2017,10 +2017,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         impl_substs: &Substs)
                         -> VecPerParamSpace<Obligation>
     {
-        let impl_generics = ty::lookup_item_type(self.tcx(),
-                                                 impl_def_id).generics;
+        let impl_generics = ty::lookup_item_type(self.tcx(), impl_def_id).generics;
+        let bounds = impl_generics.to_bounds(self.tcx(), impl_substs);
         util::obligations_for_generics(self.tcx(), cause, recursion_depth,
-                                       &impl_generics, impl_substs)
+                                       &bounds, &impl_substs.types)
     }
 }
 

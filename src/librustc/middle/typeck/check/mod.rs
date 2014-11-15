@@ -97,12 +97,12 @@ use middle::ty::{FnSig, VariantInfo};
 use middle::ty::{Polytype};
 use middle::ty::{Disr, ParamTy, ParameterEnvironment};
 use middle::ty;
+use middle::ty::{replace_late_bound_regions, liberate_late_bound_regions};
 use middle::ty_fold::TypeFolder;
 use middle::typeck::astconv::AstConv;
 use middle::typeck::astconv::{ast_region_to_region, ast_ty_to_ty};
 use middle::typeck::astconv;
 use middle::typeck::check::_match::pat_ctxt;
-use middle::typeck::check::regionmanip::replace_late_bound_regions;
 use middle::typeck::CrateCtxt;
 use middle::typeck::infer;
 use middle::typeck::rscope::RegionScope;
@@ -738,6 +738,11 @@ fn check_method_body(ccx: &CrateCtxt,
     let param_env = ParameterEnvironment::for_item(ccx.tcx, method.id);
 
     let fty = ty::node_id_to_type(ccx.tcx, method.id);
+    debug!("fty (raw): {}", fty.repr(ccx.tcx));
+
+    let body_id = method.pe_body().id;
+    let fty = liberate_late_bound_regions(ccx.tcx, body_id, &ty::bind(fty)).value;
+    debug!("fty (liberated): {}", fty.repr(ccx.tcx));
 
     check_bare_fn(ccx,
                   &*method.pe_fn_decl(),
@@ -782,7 +787,7 @@ fn check_impl_items_against_trait(ccx: &CrateCtxt,
                                                     impl_method.span,
                                                     impl_method.pe_body().id,
                                                     &**trait_method_ty,
-                                                    &impl_trait_ref.substs);
+                                                    impl_trait_ref);
                             }
                             _ => {
                                 // This is span_bug as it should have already been
@@ -927,10 +932,35 @@ fn compare_impl_method(tcx: &ty::ctxt,
                        impl_m_span: Span,
                        impl_m_body_id: ast::NodeId,
                        trait_m: &ty::Method,
-                       trait_to_impl_substs: &subst::Substs) {
-    debug!("compare_impl_method(trait_to_impl_substs={})",
-           trait_to_impl_substs.repr(tcx));
+                       impl_trait_ref: &ty::TraitRef) {
+    debug!("compare_impl_method(impl_trait_ref={})",
+           impl_trait_ref.repr(tcx));
+
+    // The impl's trait ref may bind late-bound regions from the impl.
+    // Liberate them and assign them the scope of the method body.
+    //
+    // An example would be:
+    //
+    //     impl<'a> Foo<&'a T> for &'a U { ... }
+    //
+    // Here, the region parameter `'a` is late-bound, so the
+    // trait reference associated with the impl will be
+    //
+    //     for<'a> Foo<&'a T>
+    //
+    // liberating will convert this into:
+    //
+    //     Foo<&'A T>
+    //
+    // where `'A` is the `ReFree` version of `'a`.
+    let impl_trait_ref = liberate_late_bound_regions(tcx, impl_m_body_id, impl_trait_ref);
+
+    debug!("impl_trait_ref (liberated) = {}",
+           impl_trait_ref.repr(tcx));
+
     let infcx = infer::new_infer_ctxt(tcx);
+
+    let trait_to_impl_substs = &impl_trait_ref.substs;
 
     // Try to give more informative error messages about self typing
     // mismatches.  Note that any mismatch will also be detected
@@ -995,22 +1025,23 @@ fn compare_impl_method(tcx: &ty::ctxt,
 
     // This code is best explained by example. Consider a trait:
     //
-    //     trait Trait<T> {
-    //          fn method<'a,M>(t: T, m: &'a M) -> Self;
+    //     trait Trait<'t,T> {
+    //          fn method<'a,M>(t: &'t T, m: &'a M) -> Self;
     //     }
     //
     // And an impl:
     //
-    //     impl<'i, U> Trait<&'i U> for Foo {
-    //          fn method<'b,N>(t: &'i U, m: &'b N) -> Foo;
+    //     impl<'i, 'j, U> Trait<'j, &'i U> for Foo {
+    //          fn method<'b,N>(t: &'j &'i U, m: &'b N) -> Foo;
     //     }
     //
     // We wish to decide if those two method types are compatible.
     //
-    // We start out with trait_to_impl_substs, that maps the trait type
-    // parameters to impl type parameters:
+    // We start out with trait_to_impl_substs, that maps the trait
+    // type parameters to impl type parameters. This is taken from the
+    // impl trait reference:
     //
-    //     trait_to_impl_substs = {T => &'i U, Self => Foo}
+    //     trait_to_impl_substs = {'t => 'j, T => &'i U, Self => Foo}
     //
     // We create a mapping `dummy_substs` that maps from the impl type
     // parameters to fresh types and regions. For type parameters,
@@ -1065,6 +1096,7 @@ fn compare_impl_method(tcx: &ty::ctxt,
     if !check_region_bounds_on_impl_method(tcx,
                                            impl_m_span,
                                            impl_m,
+                                           impl_m_body_id,
                                            &trait_m.generics,
                                            &impl_m.generics,
                                            &trait_to_skol_substs,
@@ -1072,15 +1104,50 @@ fn compare_impl_method(tcx: &ty::ctxt,
         return;
     }
 
-    // Check bounds.
-    let it = trait_m.generics.types.get_slice(subst::FnSpace).iter()
-        .zip(impl_m.generics.types.get_slice(subst::FnSpace).iter());
-    for (i, (trait_param_def, impl_param_def)) in it.enumerate() {
+    // Check bounds. Note that the bounds from the impl may reference
+    // late-bound regions declared on the impl, so liberate those.
+    // This requires two artificial binding scopes -- one for the impl,
+    // and one for the method.
+    //
+    // An example would be:
+    //
+    //     trait Foo<T> { fn method<U:Bound<T>>() { ... } }
+    //
+    //     impl<'a> Foo<&'a T> for &'a U {
+    //         fn method<U:Bound<&'a T>>() { ... }
+    //     }
+    //
+    // Here, the region parameter `'a` is late-bound, so in the bound
+    // `Bound<&'a T>`, the lifetime `'a` will be late-bound with a
+    // depth of 3 (it is nested within 3 binders: the impl, method,
+    // and trait-ref itself). So when we do the liberation, we have
+    // two introduce two `ty::bind` scopes, one for the impl and one
+    // the method.
+    //
+    // The only late-bounded regions that can possibly appear here are
+    // from the impl, not the method. This is because region
+    // parameters declared on the method which appear in a type bound
+    // would be early bound. On the trait side, there can be no
+    // late-bound lifetimes because trait definitions do not introduce
+    // a late region binder.
+    let trait_bounds =
+        trait_m.generics.types.get_slice(subst::FnSpace).iter()
+        .map(|trait_param_def| &trait_param_def.bounds);
+    let impl_bounds =
+        impl_m.generics.types.get_slice(subst::FnSpace).iter()
+        .map(|impl_param_def|
+             liberate_late_bound_regions(
+                 tcx,
+                 impl_m_body_id,
+                 &ty::bind(ty::bind(impl_param_def.bounds.clone()))).value.value);
+    for (i, (trait_param_bounds, impl_param_bounds)) in
+        trait_bounds.zip(impl_bounds).enumerate()
+    {
         // Check that the impl does not require any builtin-bounds
         // that the trait does not guarantee:
         let extra_bounds =
-            impl_param_def.bounds.builtin_bounds -
-            trait_param_def.bounds.builtin_bounds;
+            impl_param_bounds.builtin_bounds -
+            trait_param_bounds.builtin_bounds;
         if !extra_bounds.is_empty() {
             span_err!(tcx.sess, impl_m_span, E0051,
                 "in method `{}`, type parameter {} requires `{}`, \
@@ -1097,31 +1164,32 @@ fn compare_impl_method(tcx: &ty::ctxt,
         //
         // FIXME(pcwalton): We could be laxer here regarding sub- and super-
         // traits, but I doubt that'll be wanted often, so meh.
-        for impl_trait_bound in impl_param_def.bounds.trait_bounds.iter() {
+        for impl_trait_bound in impl_param_bounds.trait_bounds.iter() {
             debug!("compare_impl_method(): impl-trait-bound subst");
             let impl_trait_bound =
                 impl_trait_bound.subst(tcx, &impl_to_skol_substs);
 
-            let mut ok = false;
-            for trait_bound in trait_param_def.bounds.trait_bounds.iter() {
-                debug!("compare_impl_method(): trait-bound subst");
-                let trait_bound =
-                    trait_bound.subst(tcx, &trait_to_skol_substs);
-                let infcx = infer::new_infer_ctxt(tcx);
-                match infer::mk_sub_trait_refs(&infcx,
-                                               true,
-                                               infer::Misc(impl_m_span),
-                                               trait_bound,
-                                               impl_trait_bound.clone()) {
-                    Ok(_) => {
-                        ok = true;
-                        break
-                    }
-                    Err(_) => continue,
-                }
-            }
+            // There may be late-bound regions from the impl in the
+            // impl's bound, so "liberate" those. Note that the
+            // trait_to_skol_substs is derived from the impl's
+            // trait-ref, and the late-bound regions appearing there
+            // have already been liberated, so the result should match
+            // up.
 
-            if !ok {
+            let found_match_in_trait =
+                trait_param_bounds.trait_bounds.iter().any(|trait_bound| {
+                    debug!("compare_impl_method(): trait-bound subst");
+                    let trait_bound =
+                        trait_bound.subst(tcx, &trait_to_skol_substs);
+                    let infcx = infer::new_infer_ctxt(tcx);
+                    infer::mk_sub_trait_refs(&infcx,
+                                             true,
+                                             infer::Misc(impl_m_span),
+                                             trait_bound,
+                                             impl_trait_bound.clone()).is_ok()
+                });
+
+            if !found_match_in_trait {
                 span_err!(tcx.sess, impl_m_span, E0052,
                     "in method `{}`, type parameter {} requires bound `{}`, which is not \
                      required by the corresponding type parameter in the trait declaration",
@@ -1132,9 +1200,11 @@ fn compare_impl_method(tcx: &ty::ctxt,
         }
     }
 
-    // Compute skolemized form of impl and trait method tys.
+    // Compute skolemized form of impl and trait method tys. Note
+    // that we must liberate the late-bound regions from the impl.
     let impl_fty = ty::mk_bare_fn(tcx, impl_m.fty.clone());
     let impl_fty = impl_fty.subst(tcx, &impl_to_skol_substs);
+    let impl_fty = liberate_late_bound_regions(tcx, impl_m_body_id, &ty::bind(impl_fty)).value;
     let trait_fty = ty::mk_bare_fn(tcx, trait_m.fty.clone());
     let trait_fty = trait_fty.subst(tcx, &trait_to_skol_substs);
 
@@ -1169,6 +1239,7 @@ fn compare_impl_method(tcx: &ty::ctxt,
     fn check_region_bounds_on_impl_method(tcx: &ty::ctxt,
                                           span: Span,
                                           impl_m: &ty::Method,
+                                          impl_m_body_id: ast::NodeId,
                                           trait_generics: &ty::Generics,
                                           impl_generics: &ty::Generics,
                                           trait_to_skol_substs: &Substs,
@@ -1214,9 +1285,13 @@ fn compare_impl_method(tcx: &ty::ctxt,
 
         debug!("check_region_bounds_on_impl_method: \
                trait_generics={} \
-               impl_generics={}",
+               impl_generics={} \
+               trait_to_skol_substs={} \
+               impl_to_skol_substs={}",
                trait_generics.repr(tcx),
-               impl_generics.repr(tcx));
+               impl_generics.repr(tcx),
+               trait_to_skol_substs.repr(tcx),
+               impl_to_skol_substs.repr(tcx));
 
         // Must have same number of early-bound lifetime parameters.
         // Unfortunately, if the user screws up the bounds, then this
@@ -1246,6 +1321,18 @@ fn compare_impl_method(tcx: &ty::ctxt,
                 trait_param.bounds.subst(tcx, trait_to_skol_substs);
             let impl_bounds =
                 impl_param.bounds.subst(tcx, impl_to_skol_substs);
+
+            // The bounds may reference late-bound regions from the
+            // impl declaration. In that case, we want to replace
+            // those with the liberated variety so as to match the
+            // versions appearing in the `trait_to_skol_substs`.
+            // There are two-levels of binder to be aware of: the
+            // impl, and the method.
+            let impl_bounds =
+                ty::liberate_late_bound_regions(
+                    tcx,
+                    impl_m_body_id,
+                    &ty::bind(ty::bind(impl_bounds))).value.value;
 
             debug!("check_region_bounds_on_impl_method: \
                    trait_param={} \
@@ -1601,15 +1688,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    pub fn write_ty_substs(&self,
-                           node_id: ast::NodeId,
-                           ty: ty::t,
-                           substs: ty::ItemSubsts) {
-        let ty = ty.subst(self.tcx(), &substs.substs);
-        self.write_ty(node_id, ty);
-        self.write_substs(node_id, substs);
-    }
-
     pub fn write_autoderef_adjustment(&self,
                                       node_id: ast::NodeId,
                                       span: Span,
@@ -1707,17 +1785,21 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    pub fn instantiate_item_type(&self,
-                                 span: Span,
-                                 def_id: ast::DefId)
-                                 -> TypeAndSubsts
+    pub fn instantiate_type(&self,
+                            span: Span,
+                            def_id: ast::DefId)
+                            -> TypeAndSubsts
     {
         /*!
          * Returns the type of `def_id` with all generics replaced by
          * by fresh type/region variables. Also returns the
          * substitution from the type parameters on `def_id` to the
-         * fresh variables.  Registers any trait obligations specified
+         * fresh variables. Registers any trait obligations specified
          * on `def_id` at the same time.
+         *
+         * Note that function is only intended to be used with types
+         * (notably, not impls). This is because it doesn't do any
+         * instantiation of late-bound regions.
          */
 
         let polytype =
@@ -1726,12 +1808,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.infcx().fresh_substs_for_generics(
                 span,
                 &polytype.generics);
+        let bounds =
+            polytype.generics.to_bounds(self.tcx(), &substs);
         self.add_obligations_for_parameters(
             traits::ObligationCause::new(
                 span,
                 traits::ItemObligation(def_id)),
             &substs,
-            &polytype.generics);
+            &bounds);
         let monotype =
             polytype.ty.subst(self.tcx(), &substs);
 
@@ -1956,8 +2040,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let mut region_obligations = self.inh.region_obligations.borrow_mut();
         let region_obligation = RegionObligation { sub_region: r,
-                                  sup_type: ty,
-                                  origin: origin };
+                                                   sup_type: ty,
+                                                   origin: origin };
 
         match region_obligations.entry(self.body_id) {
             Vacant(entry) => { entry.set(vec![region_obligation]); },
@@ -1968,12 +2052,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub fn add_obligations_for_parameters(&self,
                                           cause: traits::ObligationCause,
                                           substs: &Substs,
-                                          generics: &ty::Generics)
+                                          generic_bounds: &ty::GenericBounds)
     {
         /*!
-         * Given a set of generic parameter definitions (`generics`)
-         * and the values provided for each of them (`substs`),
-         * creates and registers suitable region obligations.
+         * Given a fully substituted set of bounds (`generic_bounds`),
+         * and the values with which each type/region parameter was
+         * instantiated (`substs`), creates and registers suitable
+         * trait/region obligations.
          *
          * For example, if there is a function:
          *
@@ -1989,60 +2074,60 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
          * locally.
          */
 
-        debug!("add_obligations_for_parameters(substs={}, generics={})",
-               substs.repr(self.tcx()),
-               generics.repr(self.tcx()));
+        assert!(!generic_bounds.has_escaping_regions());
 
-        self.add_trait_obligations_for_generics(cause, substs, generics);
-        self.add_region_obligations_for_generics(cause, substs, generics);
+        debug!("add_obligations_for_parameters(substs={}, generic_bounds={})",
+               substs.repr(self.tcx()),
+               generic_bounds.repr(self.tcx()));
+
+        self.add_trait_obligations_for_generics(cause, substs, generic_bounds);
+        self.add_region_obligations_for_generics(cause, substs, generic_bounds);
     }
 
     fn add_trait_obligations_for_generics(&self,
                                           cause: traits::ObligationCause,
                                           substs: &Substs,
-                                          generics: &ty::Generics) {
+                                          generic_bounds: &ty::GenericBounds) {
+        assert!(!generic_bounds.has_escaping_regions());
+        assert!(!substs.has_regions_escaping_depth(0));
+
         let obligations =
             traits::obligations_for_generics(self.tcx(),
                                              cause,
-                                             generics,
-                                             substs);
+                                             generic_bounds,
+                                             &substs.types);
         obligations.map_move(|o| self.register_obligation(o));
     }
 
     fn add_region_obligations_for_generics(&self,
                                            cause: traits::ObligationCause,
                                            substs: &Substs,
-                                           generics: &ty::Generics)
+                                           generic_bounds: &ty::GenericBounds)
     {
-        assert_eq!(generics.types.iter().len(),
-                   substs.types.iter().len());
-        for (type_def, &type_param) in
-            generics.types.iter().zip(
+        assert!(!generic_bounds.has_escaping_regions());
+        assert_eq!(generic_bounds.types.iter().len(), substs.types.iter().len());
+
+        for (type_bounds, &type_param) in
+            generic_bounds.types.iter().zip(
                 substs.types.iter())
         {
-            let param_ty = ty::ParamTy { space: type_def.space,
-                                         idx: type_def.index,
-                                         def_id: type_def.def_id };
-            let bounds = type_def.bounds.subst(self.tcx(), substs);
             self.add_region_obligations_for_type_parameter(
-                cause.span, param_ty, &bounds, type_param);
+                cause.span, type_bounds, type_param);
         }
 
-        assert_eq!(generics.regions.iter().len(),
+        assert_eq!(generic_bounds.regions.iter().len(),
                    substs.regions().iter().len());
-        for (region_def, &region_param) in
-            generics.regions.iter().zip(
+        for (region_bounds, &region_param) in
+            generic_bounds.regions.iter().zip(
                 substs.regions().iter())
         {
-            let bounds = region_def.bounds.subst(self.tcx(), substs);
             self.add_region_obligations_for_region_parameter(
-                cause.span, bounds.as_slice(), region_param);
+                cause.span, region_bounds.as_slice(), region_param);
         }
     }
 
     fn add_region_obligations_for_type_parameter(&self,
                                                  span: Span,
-                                                 param_ty: ty::ParamTy,
                                                  param_bound: &ty::ParamBounds,
                                                  ty: ty::t)
     {
@@ -2054,7 +2139,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 param_bound.builtin_bounds,
                 param_bound.trait_bounds.as_slice());
         for &r in region_bounds.iter() {
-            let origin = infer::RelateParamBound(span, param_ty, ty);
+            let origin = infer::RelateParamBound(span, ty);
             self.register_region_obligation(origin, ty, r);
         }
     }
@@ -3816,7 +3901,7 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
         let TypeAndSubsts {
             ty: mut struct_type,
             substs: struct_substs
-        } = fcx.instantiate_item_type(span, class_id);
+        } = fcx.instantiate_type(span, class_id);
 
         // Look up and check the fields.
         let class_fields = ty::lookup_struct_fields(tcx, class_id);
@@ -3858,7 +3943,7 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
         let TypeAndSubsts {
             ty: enum_type,
             substs: substitutions
-        } = fcx.instantiate_item_type(span, enum_id);
+        } = fcx.instantiate_type(span, enum_id);
 
         // Look up and check the enum variant fields.
         let variant_fields = ty::lookup_struct_fields(tcx, variant_id);
@@ -5336,14 +5421,39 @@ pub fn instantiate_path(fcx: &FnCtxt,
         assert_eq!(substs.regions().len(space), region_defs.len(space));
     }
 
+    // The things we are substituting into the type should not contain
+    // escaping late-bound regions.
+    assert!(!substs.has_regions_escaping_depth(0));
+
+    // In the case of static items taken from impls, there may be
+    // late-bound regions associated with the impl (not declared on
+    // the fn itself). Those should be replaced with fresh variables
+    // now. These can appear either on the type being referenced, or
+    // on the associated bounds.
+    let bounds = polytype.generics.to_bounds(fcx.tcx(), &substs);
+    let (ty_late_bound, bounds) =
+        fcx.infcx().replace_late_bound_regions_with_fresh_var(
+            span,
+            infer::FnCall,
+            &ty::bind((polytype.ty, bounds))).0.value;
+
+    debug!("after late-bounds have been replaced: ty_late_bound={}", ty_late_bound.repr(fcx.tcx()));
+    debug!("after late-bounds have been replaced: bounds={}", bounds.repr(fcx.tcx()));
+
     fcx.add_obligations_for_parameters(
         traits::ObligationCause::new(span, traits::ItemObligation(def.def_id())),
         &substs,
-        &polytype.generics);
+        &bounds);
 
-    fcx.write_ty_substs(node_id, polytype.ty, ty::ItemSubsts {
-        substs: substs,
-    });
+    // Substitute the values for the type parameters into the type of
+    // the referenced item.
+    let ty_substituted = ty_late_bound.subst(fcx.tcx(), &substs);
+
+    debug!("ty_substituted: ty_substituted={}", ty_substituted.repr(fcx.tcx()));
+
+    fcx.write_ty(node_id, ty_substituted);
+    fcx.write_substs(node_id, ty::ItemSubsts { substs: substs });
+    return;
 
     fn report_error_if_segment_contains_type_parameters(
         fcx: &FnCtxt,
@@ -5736,7 +5846,8 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &ast::ForeignItem) {
             "move_val_init" => {
                 (1u,
                  vec!(
-                    ty::mk_mut_rptr(tcx, ty::ReLateBound(it.id, ty::BrAnon(0)), param(ccx, 0)),
+                    ty::mk_mut_rptr(tcx, ty::ReLateBound(ty::DebruijnIndex::new(1), ty::BrAnon(0)),
+                                    param(ccx, 0)),
                     param(ccx, 0u)
                   ),
                ty::mk_nil(tcx))

@@ -100,6 +100,17 @@ impl Substs {
         regions_is_noop && self.types.is_empty()
     }
 
+    pub fn has_regions_escaping_depth(&self, depth: uint) -> bool {
+        self.types.iter().any(|&t| ty::type_escapes_depth(t, depth)) || {
+            match self.regions {
+                ErasedRegions =>
+                    false,
+                NonerasedRegions(ref regions) =>
+                    regions.iter().any(|r| r.escapes_depth(depth)),
+            }
+        }
+    }
+
     pub fn self_ty(&self) -> Option<ty::t> {
         self.types.get_self().map(|&t| t)
     }
@@ -163,6 +174,13 @@ impl RegionSubsts {
         match self {
             ErasedRegions => ErasedRegions,
             NonerasedRegions(r) => NonerasedRegions(op(r, a))
+        }
+    }
+
+    pub fn is_erased(&self) -> bool {
+        match *self {
+            ErasedRegions => true,
+            NonerasedRegions(_) => false,
         }
     }
 }
@@ -391,6 +409,10 @@ impl<T> VecPerParamSpace<T> {
         self.content.iter()
     }
 
+    pub fn iter_enumerated<'a>(&'a self) -> EnumeratedItems<'a,T> {
+        EnumeratedItems::new(self)
+    }
+
     pub fn as_slice(&self) -> &[T] {
         self.content.as_slice()
     }
@@ -414,6 +436,14 @@ impl<T> VecPerParamSpace<T> {
 
     pub fn map<U>(&self, pred: |&T| -> U) -> VecPerParamSpace<U> {
         let result = self.iter().map(pred).collect();
+        VecPerParamSpace::new_internal(result,
+                                       self.type_limit,
+                                       self.self_limit,
+                                       self.assoc_limit)
+    }
+
+    pub fn map_enumerated<U>(&self, pred: |(ParamSpace, uint, &T)| -> U) -> VecPerParamSpace<U> {
+        let result = self.iter_enumerated().map(pred).collect();
         VecPerParamSpace::new_internal(result,
                                        self.type_limit,
                                        self.self_limit,
@@ -456,6 +486,49 @@ impl<T> VecPerParamSpace<T> {
     }
 }
 
+pub struct EnumeratedItems<'a,T:'a> {
+    vec: &'a VecPerParamSpace<T>,
+    space_index: uint,
+    elem_index: uint
+}
+
+impl<'a,T> EnumeratedItems<'a,T> {
+    fn new(v: &'a VecPerParamSpace<T>) -> EnumeratedItems<'a,T> {
+        let mut result = EnumeratedItems { vec: v, space_index: 0, elem_index: 0 };
+        result.adjust_space();
+        result
+    }
+
+    fn adjust_space(&mut self) {
+        let spaces = ParamSpace::all();
+        while
+            self.space_index < spaces.len() &&
+            self.elem_index >= self.vec.len(spaces[self.space_index])
+        {
+            self.space_index += 1;
+            self.elem_index = 0;
+        }
+    }
+}
+
+impl<'a,T> Iterator<(ParamSpace, uint, &'a T)> for EnumeratedItems<'a,T> {
+    fn next(&mut self) -> Option<(ParamSpace, uint, &'a T)> {
+        let spaces = ParamSpace::all();
+        if self.space_index < spaces.len() {
+            let space = spaces[self.space_index];
+            let index = self.elem_index;
+            let item = self.vec.get(space, index);
+
+            self.elem_index += 1;
+            self.adjust_space();
+
+            Some((space, index, item))
+        } else {
+            None
+        }
+    }
+}
+
 ///////////////////////////////////////////////////////////////////////////
 // Public trait `Subst`
 //
@@ -485,7 +558,8 @@ impl<T:TypeFoldable> Subst for T {
                                        substs: substs,
                                        span: span,
                                        root_ty: None,
-                                       ty_stack_depth: 0 };
+                                       ty_stack_depth: 0,
+                                       region_binders_passed: 0 };
         (*self).fold_with(&mut folder)
     }
 }

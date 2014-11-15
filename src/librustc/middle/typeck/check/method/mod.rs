@@ -200,10 +200,12 @@ pub fn lookup_in_trait_adjusted<'a, 'tcx>(fcx: &'a FnCtxt<'a, 'tcx>,
 
     // Substitute the trait parameters into the method type and
     // instantiate late-bound regions to get the actual method type.
+    //
+    // Note that as the method comes from a trait, it can only have
+    // late-bound regions from the fn itself, not the impl.
     let ref bare_fn_ty = method_ty.fty;
     let fn_sig = bare_fn_ty.sig.subst(tcx, &trait_ref.substs);
-    let fn_sig = fcx.infcx().replace_late_bound_regions_with_fresh_var(fn_sig.binder_id,
-                                                                       span,
+    let fn_sig = fcx.infcx().replace_late_bound_regions_with_fresh_var(span,
                                                                        infer::FnCall,
                                                                        &fn_sig).0;
     let transformed_self_ty = fn_sig.inputs[0];
@@ -222,10 +224,15 @@ pub fn lookup_in_trait_adjusted<'a, 'tcx>(fcx: &'a FnCtxt<'a, 'tcx>,
     // so this also effectively registers `obligation` as well.  (We
     // used to register `obligation` explicitly, but that resulted in
     // double error messages being reported.)
+    //
+    // Note that as the method comes from a trait, it should not have
+    // any late-bound regions appearing in its bounds.
+    let method_bounds = method_ty.generics.to_bounds(fcx.tcx(), &trait_ref.substs);
+    assert!(!method_bounds.has_escaping_regions());
     fcx.add_obligations_for_parameters(
         traits::ObligationCause::misc(span),
         &trait_ref.substs,
-        &method_ty.generics);
+        &method_bounds);
 
     // FIXME(#18653) -- Try to resolve obligations, giving us more
     // typing information, which can sometimes be needed to avoid

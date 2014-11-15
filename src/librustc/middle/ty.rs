@@ -1409,6 +1409,52 @@ impl Generics {
     pub fn has_region_params(&self, space: subst::ParamSpace) -> bool {
         !self.regions.is_empty_in(space)
     }
+
+    pub fn to_bounds(&self, tcx: &ty::ctxt, substs: &Substs) -> GenericBounds {
+        GenericBounds {
+            types: self.types.map(|d| d.bounds.subst(tcx, substs)),
+            regions: self.regions.map(|d| d.bounds.subst(tcx, substs)),
+        }
+    }
+}
+
+/**
+ * Represents the bounds declared on a particular set of type
+ * parameters.  Should eventually be generalized into a flag list of
+ * where clauses.  You can obtain a `GenericBounds` list from a
+ * `Generics` by using the `to_bounds` method. Note that this method
+ * reflects an important semantic invariant of `GenericBounds`: while
+ * the bounds in a `Generics` are expressed in terms of the bound type
+ * parameters of the impl/trait/whatever, a `GenericBounds` instance
+ * represented a set of bounds for some particular instantiation,
+ * meaning that the generic parameters have been substituted with
+ * their values.
+ *
+ * Example:
+ *
+ *     struct Foo<T,U:Bar<T>> { ... }
+ *
+ * Here, the `Generics` for `Foo` would contain a list of bounds like
+ * `[[], [U:Bar<T>]]`.  Now if there were some particular reference
+ * like `Foo<int,uint>`, then the `GenericBounds` would be `[[],
+ * [uint:Bar<int>]]`.
+ */
+#[deriving(Clone, Show)]
+pub struct GenericBounds {
+    pub types: VecPerParamSpace<ParamBounds>,
+    pub regions: VecPerParamSpace<Vec<Region>>,
+}
+
+impl GenericBounds {
+    pub fn empty() -> GenericBounds {
+        GenericBounds { types: VecPerParamSpace::empty(),
+                        regions: VecPerParamSpace::empty() }
+    }
+
+    pub fn has_escaping_regions(&self) -> bool {
+        self.types.any(|pb| pb.trait_bounds.iter().any(|tr| tr.has_escaping_regions())) ||
+            self.regions.any(|rs| rs.iter().any(|r| r.escapes_depth(0)))
+    }
 }
 
 impl TraitRef {
@@ -5632,11 +5678,13 @@ pub fn construct_parameter_environment(
     // Compute the bounds on Self and the type parameters.
     //
 
-    let mut bounds = VecPerParamSpace::empty();
-    for &space in subst::ParamSpace::all().iter() {
-        push_bounds_from_defs(tcx, &mut bounds, space, &free_substs,
-                              generics.types.get_slice(space));
-    }
+    let bounds = generics.to_bounds(tcx, &free_substs);
+    let bounds = liberate_late_bound_regions(tcx, free_id, &bind(bounds)).value;
+    let obligations = traits::obligations_for_generics(tcx,
+                                                       traits::ObligationCause::misc(span),
+                                                       &bounds,
+                                                       &free_substs.types);
+    let type_bounds = bounds.types.subst(tcx, &free_substs);
 
     //
     // Compute region bounds. For now, these relations are stored in a
@@ -5645,24 +5693,20 @@ pub fn construct_parameter_environment(
     //
 
     for &space in subst::ParamSpace::all().iter() {
-        record_region_bounds_from_defs(tcx, space, &free_substs,
-                                       generics.regions.get_slice(space));
+        record_region_bounds(tcx, space, &free_substs, bounds.regions.get_slice(space));
     }
 
 
-    debug!("construct_parameter_environment: free_id={} \
-           free_subst={} \
-           bounds={}",
+    debug!("construct_parameter_environment: free_id={} free_subst={} \
+           obligations={} type_bounds={}",
            free_id,
            free_substs.repr(tcx),
-           bounds.repr(tcx));
-
-    let obligations = traits::obligations_for_generics(tcx, traits::ObligationCause::misc(span),
-                                                       generics, &free_substs);
+           obligations.repr(tcx),
+           type_bounds.repr(tcx));
 
     return ty::ParameterEnvironment {
         free_substs: free_substs,
-        bounds: bounds,
+        bounds: bounds.types,
         implicit_region_bound: ty::ReScope(free_id),
         caller_obligations: obligations,
         selection_cache: traits::SelectionCache::new(),
@@ -5693,28 +5737,16 @@ pub fn construct_parameter_environment(
         }
     }
 
-    fn push_bounds_from_defs(tcx: &ty::ctxt,
-                             bounds: &mut subst::VecPerParamSpace<ParamBounds>,
-                             space: subst::ParamSpace,
-                             free_substs: &subst::Substs,
-                             defs: &[TypeParameterDef]) {
-        for def in defs.iter() {
-            let b = def.bounds.subst(tcx, free_substs);
-            bounds.push(space, b);
-        }
-    }
-
-    fn record_region_bounds_from_defs(tcx: &ty::ctxt,
-                                      space: subst::ParamSpace,
-                                      free_substs: &subst::Substs,
-                                      defs: &[RegionParameterDef]) {
-        for (subst_region, def) in
+    fn record_region_bounds(tcx: &ty::ctxt,
+                            space: subst::ParamSpace,
+                            free_substs: &Substs,
+                            bound_sets: &[Vec<ty::Region>]) {
+        for (subst_region, bound_set) in
             free_substs.regions().get_slice(space).iter().zip(
-                defs.iter())
+                bound_sets.iter())
         {
             // For each region parameter 'subst...
-            let bounds = def.bounds.subst(tcx, free_substs);
-            for bound_region in bounds.iter() {
+            for bound_region in bound_set.iter() {
                 // Which is declared with a bound like 'subst:'bound...
                 match (subst_region, bound_region) {
                     (&ty::ReFree(subst_fr), &ty::ReFree(bound_fr)) => {
@@ -5725,7 +5757,7 @@ pub fn construct_parameter_environment(
                     _ => {
                         // All named regions are instantiated with free regions.
                         tcx.sess.bug(
-                            format!("push_region_bounds_from_defs: \
+                            format!("record_region_bounds: \
                                      non free region: {} / {}",
                                     subst_region.repr(tcx),
                                     bound_region.repr(tcx)).as_slice());
