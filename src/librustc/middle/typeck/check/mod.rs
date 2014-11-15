@@ -4452,8 +4452,7 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
             let type_and_substs = astconv::ast_path_to_ty_relaxed(fcx,
                                                                   fcx.infcx(),
                                                                   struct_id,
-                                                                  path,
-                                                                  expr.id);
+                                                                  path);
             match fcx.mk_subty(false,
                                infer::Misc(path.span),
                                actual_structure_type,
