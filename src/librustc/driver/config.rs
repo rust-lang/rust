@@ -566,6 +566,7 @@ pub fn optgroups() -> Vec<getopts::OptGroup> {
                  "Output dependency info to <filename> after compiling, \
                   in a format suitable for use by Makefiles", "FILENAME"),
         optopt("", "sysroot", "Override the system root", "PATH"),
+        optflag("", "print-sysroot", "Print the system root"),
         optflag("", "test", "Build a test harness"),
         optopt("", "target", "Target triple cpu-manufacturer-kernel[-os]
                             to compile for (see chapter 3.4 of http://www.sourceware.org/autobook/

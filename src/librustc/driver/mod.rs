@@ -73,6 +73,13 @@ fn run_compiler(args: &[String]) {
                 describe_lints(&ls, false);
                 return;
             }
+
+            if matches.opt_present("print-sysroot") {
+                let sess = build_session(sopts, None, descriptions);
+                println!("{}", sess.sysroot().display());
+                return;
+            }
+
             early_error("no input filename given");
         }
         1u => {
