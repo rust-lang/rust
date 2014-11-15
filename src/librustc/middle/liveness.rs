@@ -187,9 +187,8 @@ fn live_node_kind_to_string(lnk: LiveNodeKind, cx: &ty::ctxt) -> String {
 }
 
 impl<'a, 'tcx, 'v> Visitor<'v> for IrMaps<'a, 'tcx> {
-    fn visit_fn(&mut self, fk: FnKind<'v>, fd: &'v FnDecl,
-                b: &'v Block, s: Span, n: NodeId) {
-        visit_fn(self, fk, fd, b, s, n);
+    fn visit_fn(&mut self, fk: FnKind<'v>, fd: &'v FnDecl, b: &'v Block, s: Span, id: ast::NodeId) {
+        visit_fn(self, fk, fd, b, s, id);
     }
     fn visit_local(&mut self, l: &ast::Local) { visit_local(self, l); }
     fn visit_expr(&mut self, ex: &Expr) { visit_expr(self, ex); }
@@ -374,9 +373,8 @@ fn visit_fn(ir: &mut IrMaps,
             decl: &FnDecl,
             body: &Block,
             sp: Span,
-            id: NodeId) {
-    debug!("visit_fn: id={}", id);
-    let _i = ::util::common::indenter();
+            id: ast::NodeId) {
+    debug!("visit_fn");
 
     // swap in a new set of IR maps for this function body:
     let mut fn_maps = IrMaps::new(ir.tcx);
