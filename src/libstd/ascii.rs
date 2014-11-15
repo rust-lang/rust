@@ -22,7 +22,7 @@ use option::{Option, Some, None};
 use slice::{SlicePrelude, AsSlice};
 use str::{Str, StrPrelude};
 use string::{mod, String};
-use to_string::IntoStr;
+use to_string::IntoString;
 use vec::Vec;
 
 /// Datatype to hold one ascii character. It wraps a `u8`, with the highest bit always zero.
@@ -326,7 +326,7 @@ impl AsciiStr for [Ascii] {
     }
 }
 
-impl IntoStr for Vec<Ascii> {
+impl IntoString for Vec<Ascii> {
     #[inline]
     fn into_string(self) -> String {
         unsafe {

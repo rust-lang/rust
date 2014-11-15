@@ -26,7 +26,7 @@ pub trait ToString {
 }
 
 /// Trait for converting a type to a string, consuming it in the process.
-pub trait IntoStr {
+pub trait IntoString {
     /// Consume and convert to a string.
     fn into_string(self) -> String;
 }
