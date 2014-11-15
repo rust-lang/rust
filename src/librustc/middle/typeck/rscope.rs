@@ -104,14 +104,12 @@ impl RegionScope for SpecificRscope {
 /// A scope in which we generate anonymous, late-bound regions for
 /// omitted regions. This occurs in function signatures.
 pub struct BindingRscope {
-    binder_id: ast::NodeId,
     anon_bindings: Cell<uint>,
 }
 
 impl BindingRscope {
-    pub fn new(binder_id: ast::NodeId) -> BindingRscope {
+    pub fn new() -> BindingRscope {
         BindingRscope {
-            binder_id: binder_id,
             anon_bindings: Cell::new(0),
         }
     }
@@ -119,7 +117,7 @@ impl BindingRscope {
     fn next_region(&self) -> ty::Region {
         let idx = self.anon_bindings.get();
         self.anon_bindings.set(idx + 1);
-        ty::ReLateBound(self.binder_id, ty::BrAnon(idx))
+        ty::ReLateBound(ty::DebruijnIndex::new(1), ty::BrAnon(idx))
     }
 }
 

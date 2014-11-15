@@ -609,9 +609,6 @@ pub fn get_vtable(bcx: Block,
                             fn_style: closure_info.closure_type.fn_style,
                             abi: Rust,
                             sig: ty::FnSig {
-                                binder_id: closure_info.closure_type
-                                                       .sig
-                                                       .binder_id,
                                 inputs: new_inputs,
                                 output: new_output,
                                 variadic: false,

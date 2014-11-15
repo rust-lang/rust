@@ -528,9 +528,7 @@ fn check_fn<'a, 'tcx>(ccx: &'a CrateCtxt<'a, 'tcx>,
 
     // First, we have to replace any bound regions in the fn type with free ones.
     // The free region references will be bound the node_id of the body block.
-    let (_, fn_sig) = replace_late_bound_regions(tcx, fn_sig.binder_id, fn_sig, |br| {
-        ty::ReFree(ty::FreeRegion {scope_id: body.id, bound_region: br})
-    });
+    let fn_sig = liberate_late_bound_regions(tcx, body.id, fn_sig);
 
     let arg_tys = fn_sig.inputs.as_slice();
     let ret_ty = fn_sig.output;
@@ -3031,7 +3029,6 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
         // In that case, we check each argument against "error" in order to
         // set up all the node type bindings.
         let error_fn_sig = FnSig {
-            binder_id: ast::CRATE_NODE_ID,
             inputs: err_args(args.len()),
             output: ty::FnConverging(ty::mk_err()),
             variadic: false
@@ -3051,11 +3048,9 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
         // Replace any bound regions that appear in the function
         // signature with region variables
         let fn_sig =
-            fcx.infcx().replace_late_bound_regions_with_fresh_var(
-                fn_sig.binder_id,
-                call_expr.span,
-                infer::FnCall,
-                fn_sig).0;
+            fcx.infcx().replace_late_bound_regions_with_fresh_var(call_expr.span,
+                                                                  infer::FnCall,
+                                                                  fn_sig).0;
 
         // Call the generic checker.
         check_argument_types(fcx,
@@ -3437,7 +3432,6 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
                              body: &ast::Block) {
         let mut fn_ty = astconv::ty_of_closure(
             fcx,
-            expr.id,
             ast::NormalFn,
             ast::Many,
 
@@ -3508,6 +3502,10 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
                      expected: Expectation) {
         let tcx = fcx.ccx.tcx;
 
+        debug!("check_expr_fn(expr={}, expected={})",
+               expr.repr(tcx),
+               expected.repr(tcx));
+
         // Find the expected input/output types (if any). Substitute
         // fresh bound regions for any bound regions we find in the
         // expected types so as to avoid capture.
@@ -3517,10 +3515,11 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
              expected_bounds) = {
             match expected_sty {
                 Some(ty::ty_closure(ref cenv)) => {
-                    let (_, sig) =
+                    let (sig, _) =
                         replace_late_bound_regions(
-                            tcx, cenv.sig.binder_id, &cenv.sig,
-                            |_| fcx.inh.infcx.fresh_bound_region(expr.id));
+                            tcx,
+                            &cenv.sig,
+                            |_, debruijn| fcx.inh.infcx.fresh_bound_region(debruijn));
                     let onceness = match (&store, &cenv.store) {
                         // As the closure type and onceness go, only three
                         // combinations are legit:
@@ -3561,7 +3560,6 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
 
         // construct the function type
         let fn_ty = astconv::ty_of_closure(fcx,
-                                           expr.id,
                                            ast::NormalFn,
                                            expected_onceness,
                                            expected_bounds,
@@ -5943,7 +5941,6 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &ast::ForeignItem) {
         fn_style: ast::UnsafeFn,
         abi: abi::RustIntrinsic,
         sig: FnSig {
-            binder_id: it.id,
             inputs: inputs,
             output: output,
             variadic: false,

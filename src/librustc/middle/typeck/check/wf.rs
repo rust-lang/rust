@@ -372,16 +372,12 @@ impl<'cx,'tcx> TypeFolder<'tcx> for BoundsChecker<'cx,'tcx> {
             ty::ty_closure(box ty::ClosureTy{sig: ref fn_sig, ..}) => {
                 self.binding_count += 1;
 
-                let (_, fn_sig) =
-                    replace_late_bound_regions(
-                        self.fcx.tcx(), fn_sig.binder_id, fn_sig,
-                        |br| ty::ReFree(ty::FreeRegion{scope_id: self.scope_id,
-                                                       bound_region: br}));
+                let fn_sig = liberate_late_bound_regions(self.fcx.tcx(), self.scope_id, fn_sig);
 
                 debug!("late-bound regions replaced: {}",
                        fn_sig.repr(self.tcx()));
 
-                self.fold_sig(&fn_sig);
+                self.fold_fn_sig(&fn_sig);
 
                 self.binding_count -= 1;
             }
