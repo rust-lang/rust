@@ -12,18 +12,16 @@
 use middle::ty::{BuiltinBounds};
 use middle::ty;
 use middle::ty::TyVar;
-use middle::typeck::check::regionmanip::replace_late_bound_regions;
 use middle::typeck::infer::combine::*;
 use middle::typeck::infer::{cres, CresCompare};
 use middle::typeck::infer::equate::Equate;
-use middle::typeck::infer::LateBoundRegionConversionTime::FnType;
 use middle::typeck::infer::glb::Glb;
+use middle::typeck::infer::higher_ranked::HigherRankedRelations;
 use middle::typeck::infer::InferCtxt;
 use middle::typeck::infer::lub::Lub;
 use middle::typeck::infer::{TypeTrace, Subtype};
 use middle::typeck::infer::type_variable::{SubtypeOf, SupertypeOf};
-use util::common::{indenter};
-use util::ppaux::{bound_region_to_string, Repr};
+use util::ppaux::{Repr};
 
 use syntax::ast::{Onceness, FnStyle, MutImmutable, MutMutable};
 
@@ -158,77 +156,7 @@ impl<'f, 'tcx> Combine<'tcx> for Sub<'f, 'tcx> {
     }
 
     fn fn_sigs(&self, a: &ty::FnSig, b: &ty::FnSig) -> cres<ty::FnSig> {
-        debug!("fn_sigs(a={}, b={})",
-               a.repr(self.fields.infcx.tcx), b.repr(self.fields.infcx.tcx));
-        let _indenter = indenter();
-
-        // Rather than checking the subtype relationship between `a` and `b`
-        // as-is, we need to do some extra work here in order to make sure
-        // that function subtyping works correctly with respect to regions
-        //
-        // Note: this is a subtle algorithm.  For a full explanation,
-        // please see the large comment in `region_inference.rs`.
-
-        // Make a mark so we can examine "all bindings that were
-        // created as part of this type comparison".
-        let mark = self.fields.infcx.region_vars.mark();
-
-        // First, we instantiate each bound region in the subtype with a fresh
-        // region variable.
-        let (a_sig, _) =
-            self.fields.infcx.replace_late_bound_regions_with_fresh_var(
-                a.binder_id, self.trace().span(), FnType, a);
-
-        // Second, we instantiate each bound region in the supertype with a
-        // fresh concrete region.
-        let (skol_map, b_sig) = {
-            replace_late_bound_regions(self.fields.infcx.tcx, b.binder_id, b, |br| {
-                let skol = self.fields.infcx.region_vars.new_skolemized(br);
-                debug!("Bound region {} skolemized to {}",
-                       bound_region_to_string(self.fields.infcx.tcx, "", false, br),
-                       skol);
-                skol
-            })
-        };
-
-        debug!("a_sig={}", a_sig.repr(self.fields.infcx.tcx));
-        debug!("b_sig={}", b_sig.repr(self.fields.infcx.tcx));
-
-        // Compare types now that bound regions have been replaced.
-        let sig = try!(super_fn_sigs(self, &a_sig, &b_sig));
-
-        // Presuming type comparison succeeds, we need to check
-        // that the skolemized regions do not "leak".
-        let new_vars =
-            self.fields.infcx.region_vars.vars_created_since_mark(mark);
-        for (&skol_br, &skol) in skol_map.iter() {
-            let tainted = self.fields.infcx.region_vars.tainted(mark, skol);
-            for tainted_region in tainted.iter() {
-                // Each skolemized should only be relatable to itself
-                // or new variables:
-                match *tainted_region {
-                    ty::ReInfer(ty::ReVar(ref vid)) => {
-                        if new_vars.iter().any(|x| x == vid) { continue; }
-                    }
-                    _ => {
-                        if *tainted_region == skol { continue; }
-                    }
-                };
-
-                // A is not as polymorphic as B:
-                if self.a_is_expected() {
-                    debug!("Not as polymorphic!");
-                    return Err(ty::terr_regions_insufficiently_polymorphic(
-                        skol_br, *tainted_region));
-                } else {
-                    debug!("Overly polymorphic!");
-                    return Err(ty::terr_regions_overly_polymorphic(
-                        skol_br, *tainted_region));
-                }
-            }
-        }
-
-        return Ok(sig);
+        self.higher_ranked_sub(a, b)
     }
 }
 
