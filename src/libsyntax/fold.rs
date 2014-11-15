@@ -445,10 +445,12 @@ pub fn noop_fold_ty<T: Folder>(t: P<Ty>, fld: &mut T) -> P<Ty> {
             TyFixedLengthVec(ty, e) => {
                 TyFixedLengthVec(fld.fold_ty(ty), fld.fold_expr(e))
             }
-            TyTypeof(expr) => TyTypeof(fld.fold_expr(expr)),
-            TyPolyTraitRef(poly_trait_ref) => {
-                TyPolyTraitRef(poly_trait_ref.map(|p| fld.fold_poly_trait_ref(p)))
-            },
+            TyTypeof(expr) => {
+                TyTypeof(fld.fold_expr(expr))
+            }
+            TyPolyTraitRef(bounds) => {
+                TyPolyTraitRef(bounds.move_map(|b| fld.fold_ty_param_bound(b)))
+            }
         },
         span: fld.new_span(span)
     })

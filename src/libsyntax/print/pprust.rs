@@ -739,8 +739,8 @@ impl<'a> State<'a> {
             ast::TyPath(ref path, ref bounds, _) => {
                 try!(self.print_bounded_path(path, bounds));
             }
-            ast::TyPolyTraitRef(ref poly_trait_ref) => {
-                try!(self.print_poly_trait_ref(&**poly_trait_ref));
+            ast::TyPolyTraitRef(ref bounds) => {
+                try!(self.print_bounds("", bounds));
             }
             ast::TyQPath(ref qpath) => {
                 try!(word(&mut self.s, "<"));
