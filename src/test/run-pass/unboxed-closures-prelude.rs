@@ -10,7 +10,7 @@
 
 // Tests that the reexports of `FnOnce` et al from the prelude work.
 
-#![feature(unboxed_closures, unboxed_closure_sugar)]
+#![feature(unboxed_closures)]
 
 fn main() {
     let task: Box<FnOnce(int) -> int> = box |: x| x;

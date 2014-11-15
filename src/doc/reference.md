@@ -2560,10 +2560,6 @@ The currently implemented features of the reference compiler are:
 * `trace_macros` - Allows use of the `trace_macros` macro, which is a nasty
                    hack that will certainly be removed.
 
-* `unboxed_closure_sugar` - Allows using `|Foo| -> Bar` as a trait bound
-                            meaning one of the `Fn` traits. Still
-                            experimental.
-
 * `unboxed_closures` - A work in progress feature with many known bugs.
 
 * `unsafe_destructor` - Allows use of the `#[unsafe_destructor]` attribute,
