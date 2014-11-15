@@ -31,9 +31,7 @@ use middle::fast_reject;
 use middle::mem_categorization::Typer;
 use middle::subst::{Subst, Substs, VecPerParamSpace};
 use middle::ty;
-use middle::typeck::check::regionmanip;
 use middle::typeck::infer;
-use middle::typeck::infer::LateBoundRegionConversionTime::*;
 use middle::typeck::infer::{InferCtxt, TypeSkolemizer};
 use middle::ty_fold::TypeFoldable;
 use std::cell::RefCell;
@@ -211,6 +209,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
          */
 
         debug!("select({})", obligation.repr(self.tcx()));
+        assert!(!obligation.trait_ref.has_escaping_regions());
 
         let stack = self.push_stack(None, obligation);
         match try!(self.candidate_from_obligation(&stack)) {
@@ -263,6 +262,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         debug!("evaluate_obligation({})",
                obligation.repr(self.tcx()));
+        assert!(!obligation.trait_ref.has_escaping_regions());
 
         let stack = self.push_stack(None, obligation);
         self.evaluate_stack(&stack).may_apply()
@@ -747,6 +747,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         debug!("candidate_from_obligation(cache_skol_trait_ref={}, obligation={})",
                cache_skol_trait_ref.repr(self.tcx()),
                stack.repr(self.tcx()));
+        assert!(!stack.obligation.trait_ref.has_escaping_regions());
 
         match self.check_candidate_cache(cache_skol_trait_ref.clone()) {
             Some(c) => {
@@ -1707,27 +1708,18 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             }
         };
 
-        // FIXME(pcwalton): This is a bogus thing to do, but
-        // it'll do for now until we get the new trait-bound
-        // region skolemization working.
-        let (_, new_signature) =
-            regionmanip::replace_late_bound_regions(
-                self.tcx(),
-                closure_type.sig.binder_id,
-                &closure_type.sig,
-                |br| self.infcx.next_region_var(
-                         infer::LateBoundRegion(obligation.cause.span, br,
-                                                infer::FnCall)));
-
-        let arguments_tuple = new_signature.inputs[0];
+        let closure_sig = &closure_type.sig;
+        let arguments_tuple = closure_sig.inputs[0];
+        let substs =
+            Substs::new_trait(
+                vec![arguments_tuple.subst(self.tcx(), substs),
+                     closure_sig.output.unwrap().subst(self.tcx(), substs)],
+                vec![],
+                vec![],
+                obligation.self_ty());
         let trait_ref = Rc::new(ty::TraitRef {
             def_id: obligation.trait_ref.def_id,
-            substs: Substs::new_trait(
-                vec![arguments_tuple.subst(self.tcx(), substs),
-                     new_signature.output.unwrap().subst(self.tcx(), substs)],
-                vec![],
-                vec![],
-                obligation.self_ty())
+            substs: substs,
         });
 
         self.confirm(obligation.cause,

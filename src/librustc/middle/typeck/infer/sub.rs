@@ -63,16 +63,16 @@ impl<'f, 'tcx> Combine<'tcx> for Sub<'f, 'tcx> {
     fn regions(&self, a: ty::Region, b: ty::Region) -> cres<ty::Region> {
         debug!("{}.regions({}, {})",
                self.tag(),
-               a.repr(self.fields.infcx.tcx),
-               b.repr(self.fields.infcx.tcx));
-        self.fields.infcx.region_vars.make_subregion(Subtype(self.trace()), a, b);
+               a.repr(self.tcx()),
+               b.repr(self.tcx()));
+        self.infcx().region_vars.make_subregion(Subtype(self.trace()), a, b);
         Ok(a)
     }
 
     fn mts(&self, a: &ty::mt, b: &ty::mt) -> cres<ty::mt> {
         debug!("mts({} <: {})",
-               a.repr(self.fields.infcx.tcx),
-               b.repr(self.fields.infcx.tcx));
+               a.repr(self.tcx()),
+               b.repr(self.tcx()));
 
         if a.mutbl != b.mutbl {
             return Err(ty::terr_mutability);
@@ -121,7 +121,7 @@ impl<'f, 'tcx> Combine<'tcx> for Sub<'f, 'tcx> {
 
     fn tys(&self, a: ty::t, b: ty::t) -> cres<ty::t> {
         debug!("{}.tys({}, {})", self.tag(),
-               a.repr(self.fields.infcx.tcx), b.repr(self.fields.infcx.tcx));
+               a.repr(self.tcx()), b.repr(self.tcx()));
         if a == b { return Ok(a); }
 
         let infcx = self.fields.infcx;
@@ -156,6 +156,10 @@ impl<'f, 'tcx> Combine<'tcx> for Sub<'f, 'tcx> {
     }
 
     fn fn_sigs(&self, a: &ty::FnSig, b: &ty::FnSig) -> cres<ty::FnSig> {
+        self.higher_ranked_sub(a, b)
+    }
+
+    fn trait_refs(&self, a: &ty::TraitRef, b: &ty::TraitRef) -> cres<ty::TraitRef> {
         self.higher_ranked_sub(a, b)
     }
 }

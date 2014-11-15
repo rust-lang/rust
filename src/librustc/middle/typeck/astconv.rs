@@ -55,11 +55,10 @@ use middle::subst::{FnSpace, TypeSpace, AssocSpace, SelfSpace, Subst, Substs};
 use middle::subst::{VecPerParamSpace};
 use middle::ty;
 use middle::typeck::lookup_def_tcx;
-use middle::typeck::infer;
-use middle::typeck::rscope::{UnelidableRscope, RegionScope, SpecificRscope, BindingRscope};
+use middle::typeck::rscope::{UnelidableRscope, RegionScope, SpecificRscope,
+                             ShiftedRscope, BindingRscope};
 use middle::typeck::rscope;
 use middle::typeck::TypeAndSubsts;
-use middle::typeck;
 use util::nodemap::DefIdMap;
 use util::ppaux::{Repr, UserString};
 
@@ -414,6 +413,16 @@ fn convert_parenthesized_parameters<'tcx,AC>(this: &AC,
     vec![input_ty, output]
 }
 
+pub fn instantiate_poly_trait_ref<'tcx,AC,RS>(
+    this: &AC,
+    rscope: &RS,
+    ast_trait_ref: &ast::PolyTraitRef,
+    self_ty: Option<ty::t>,
+    associated_type: Option<ty::t>)
+    -> Rc<ty::TraitRef>
+    where AC: AstConv<'tcx>, RS: RegionScope
+{
+    instantiate_trait_ref(this, rscope, &ast_trait_ref.trait_ref, self_ty, associated_type)
 }
 
 pub fn instantiate_trait_ref<'tcx,AC,RS>(this: &AC,
@@ -434,16 +443,9 @@ pub fn instantiate_trait_ref<'tcx,AC,RS>(this: &AC,
     match lookup_def_tcx(this.tcx(),
                          ast_trait_ref.path.span,
                          ast_trait_ref.ref_id) {
-        def::DefTrait(trait_did) => {
-            let trait_ref =
-                Rc::new(ast_path_to_trait_ref(this,
-                                              rscope,
-                                              trait_did,
-                                              self_ty,
-                                              associated_type,
-                                              &ast_trait_ref.path,
-                                              ast_trait_ref.ref_id));
-
+        def::DefTrait(trait_def_id) => {
+            let trait_ref = Rc::new(ast_path_to_trait_ref(this, rscope, trait_def_id, self_ty,
+                                                          associated_type, &ast_trait_ref.path));
             this.tcx().trait_refs.borrow_mut().insert(ast_trait_ref.ref_id,
                                                       trait_ref.clone());
             trait_ref
@@ -456,28 +458,45 @@ pub fn instantiate_trait_ref<'tcx,AC,RS>(this: &AC,
     }
 }
 
-pub fn ast_path_to_trait_ref<'tcx,AC,RS>(this: &AC,
-                                         rscope: &RS,
-                                         trait_def_id: ast::DefId,
-                                         self_ty: Option<ty::t>,
-                                         associated_type: Option<ty::t>,
-                                         path: &ast::Path,
-                                         binder_id: ast::NodeId)
-                                         -> ty::TraitRef
-                                         where AC: AstConv<'tcx>,
-                                               RS: RegionScope {
+fn ast_path_to_trait_ref<'tcx,AC,RS>(
+    this: &AC,
+    rscope: &RS,
+    trait_def_id: ast::DefId,
+    self_ty: Option<ty::t>,
+    associated_type: Option<ty::t>,
+    path: &ast::Path)
+    -> ty::TraitRef
+    where AC: AstConv<'tcx>, RS: RegionScope
+{
     let trait_def = this.get_trait_def(trait_def_id);
-    ty::TraitRef {
-        def_id: trait_def_id,
-        substs: ast_path_substs(this,
-                                rscope,
-                                trait_def_id,
-                                &trait_def.generics,
-                                self_ty,
-                                associated_type,
-                                path,
-                                binder_id)
-    }
+
+    // the trait reference introduces a binding level here, so
+    // we need to shift the `rscope`. It'd be nice if we could
+    // do away with this rscope stuff and work this knowledge
+    // into resolve_lifetimes, as we do with non-omitted
+    // lifetimes. Oh well, not there yet.
+    let shifted_rscope = ShiftedRscope::new(rscope);
+
+    let (regions, types) = match path.segments.last().unwrap().parameters {
+        ast::AngleBracketedParameters(ref data) => {
+            convert_angle_bracketed_parameters(this, &shifted_rscope, data)
+        }
+        ast::ParenthesizedParameters(ref data) => {
+            (Vec::new(), convert_parenthesized_parameters(this, data))
+        }
+    };
+
+    let substs = create_substs_for_ast_path(this,
+                                            &shifted_rscope,
+                                            path.span,
+                                            trait_def_id,
+                                            &trait_def.generics,
+                                            self_ty,
+                                            types,
+                                            regions,
+                                            associated_type);
+
+    ty::TraitRef::new(trait_def_id, substs)
 }
 
 pub fn ast_path_to_ty<'tcx, AC: AstConv<'tcx>, RS: RegionScope>(
@@ -923,9 +942,9 @@ pub fn ast_ty_to_ty<'tcx, AC: AstConv<'tcx>, RS: RegionScope>(
                                                              ast_ty.span,
                                                              &[Rc::new(result.clone())],
                                                              ast_bounds);
-                        ty::mk_trait(tcx,
-                                     result,
-                                     bounds)
+                        let result_ty = ty::mk_trait(tcx, result, bounds);
+                        debug!("ast_ty_to_ty: result_ty={}", result_ty.repr(this.tcx()));
+                        result_ty
                     }
                     def::DefTy(did, _) | def::DefStruct(did) => {
                         ast_path_to_ty(this, rscope, did, path).ty
@@ -1562,7 +1581,7 @@ fn compute_region_bound<'tcx, AC: AstConv<'tcx>, RS:RegionScope>(
 
 pub struct PartitionedBounds<'a> {
     pub builtin_bounds: ty::BuiltinBounds,
-    pub trait_bounds: Vec<&'a ast::TraitRef>,
+    pub trait_bounds: Vec<&'a ast::PolyTraitRef>,
     pub region_bounds: Vec<&'a ast::Lifetime>,
 }
 
@@ -1584,8 +1603,7 @@ pub fn partition_bounds<'a>(tcx: &ty::ctxt,
     for &ast_bound in ast_bounds.iter() {
         match *ast_bound {
             ast::TraitTyParamBound(ref b) => {
-                let b = &b.trait_ref; // FIXME
-                match lookup_def_tcx(tcx, b.path.span, b.ref_id) {
+                match lookup_def_tcx(tcx, b.trait_ref.path.span, b.trait_ref.ref_id) {
                     def::DefTrait(trait_did) => {
                         match trait_def_ids.get(&trait_did) {
                             // Already seen this trait. We forbid
@@ -1593,10 +1611,10 @@ pub fn partition_bounds<'a>(tcx: &ty::ctxt,
                             // reason).
                             Some(span) => {
                                 span_err!(
-                                    tcx.sess, b.path.span, E0127,
+                                    tcx.sess, b.trait_ref.path.span, E0127,
                                     "trait `{}` already appears in the \
                                      list of bounds",
-                                    b.path.user_string(tcx));
+                                    b.trait_ref.path.user_string(tcx));
                                 tcx.sess.span_note(
                                     *span,
                                     "previous appearance is here");
@@ -1607,7 +1625,7 @@ pub fn partition_bounds<'a>(tcx: &ty::ctxt,
                             None => { }
                         }
 
-                        trait_def_ids.insert(trait_did, b.path.span);
+                        trait_def_ids.insert(trait_did, b.trait_ref.path.span);
 
                         if ty::try_add_builtin_trait(tcx,
                                                      trait_did,
