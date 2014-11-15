@@ -50,9 +50,9 @@
 #[doc(no_inline)] pub use ops::{Fn, FnMut, FnOnce};
 
 // Reexported functions
-#[doc(no_inline)] pub use from_str::from_str;
 #[doc(no_inline)] pub use iter::{range, repeat};
 #[doc(no_inline)] pub use mem::drop;
+#[doc(no_inline)] pub use str::from_str;
 
 // Reexported types and traits
 

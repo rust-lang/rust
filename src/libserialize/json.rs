@@ -200,7 +200,7 @@ use std::{char, f64, fmt, io, num, str};
 use std::io::MemWriter;
 use std::mem::{swap, transmute};
 use std::num::{Float, FPNaN, FPInfinite, Int};
-use std::str::ScalarValue;
+use std::str::{FromStr, ScalarValue};
 use std::string;
 use std::vec::Vec;
 use std::ops;
@@ -1988,7 +1988,7 @@ macro_rules! read_primitive {
                 String(s) => {
                     // re: #12967.. a type w/ numeric keys (ie HashMap<uint, V> etc)
                     // is going to have a string here, as per JSON spec.
-                    match std::from_str::from_str(s.as_slice()) {
+                    match std::str::from_str(s.as_slice()) {
                         Some(f) => Ok(f),
                         None => Err(ExpectedError("Number".to_string(), s)),
                     }
@@ -2027,7 +2027,7 @@ impl ::Decoder<DecoderError> for Decoder {
             String(s) => {
                 // re: #12967.. a type w/ numeric keys (ie HashMap<uint, V> etc)
                 // is going to have a string here, as per JSON spec.
-                match std::from_str::from_str(s.as_slice()) {
+                match std::str::from_str(s.as_slice()) {
                     Some(f) => Ok(f),
                     None => Err(ExpectedError("Number".to_string(), s)),
                 }
@@ -2395,7 +2395,7 @@ impl fmt::Show for Json {
     }
 }
 
-impl std::from_str::FromStr for Json {
+impl FromStr for Json {
     fn from_str(s: &str) -> Option<Json> {
         from_str(s).ok()
     }
@@ -2480,7 +2480,7 @@ mod tests {
     #[test]
     fn test_from_str_trait() {
         let s = "null";
-        assert!(::std::from_str::from_str::<Json>(s).unwrap() == from_str(s).unwrap());
+        assert!(::std::str::from_str::<Json>(s).unwrap() == from_str(s).unwrap());
     }
 
     #[test]

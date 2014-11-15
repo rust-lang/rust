@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::from_str::FromStr;
 use std::fmt;
+use std::str::FromStr;
 use regex::Regex;
 
 #[deriving(Clone, PartialEq)]

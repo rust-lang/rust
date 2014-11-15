@@ -32,4 +32,20 @@ pub const MIN: $T = (-1 as $T) << (BITS - 1);
 #[unstable]
 pub const MAX: $T = !MIN;
 
+#[experimental = "might need to return Result"]
+impl ::str::FromStr for $T {
+    #[inline]
+    fn from_str(s: &str) -> ::option::Option<$T> {
+        ::num::strconv::from_str_radix_int(s, 10)
+    }
+}
+
+#[experimental = "might need to return Result"]
+impl ::num::FromStrRadix for $T {
+    #[inline]
+    fn from_str_radix(s: &str, radix: uint) -> ::option::Option<$T> {
+        ::num::strconv::from_str_radix_int(s, radix)
+    }
+}
+
 ))

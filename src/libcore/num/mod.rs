@@ -27,6 +27,8 @@ use ops::{Add, Sub, Mul, Div, Rem, Neg};
 use ops::{Not, BitAnd, BitOr, BitXor, Shl, Shr};
 use option::{Option, Some, None};
 
+pub mod strconv;
+
 /// Simultaneous division and remainder
 #[inline]
 pub fn div_rem<T: Div<T, T> + Rem<T, T>>(x: T, y: T) -> (T, T) {
@@ -1370,6 +1372,18 @@ pub trait Float
     fn to_degrees(self) -> Self;
     /// Convert degrees to radians.
     fn to_radians(self) -> Self;
+}
+
+/// A generic trait for converting a string with a radix (base) to a value
+#[experimental = "might need to return Result"]
+pub trait FromStrRadix {
+    fn from_str_radix(str: &str, radix: uint) -> Option<Self>;
+}
+
+/// A utility function that just calls FromStrRadix::from_str_radix.
+#[experimental = "might need to return Result"]
+pub fn from_str_radix<T: FromStrRadix>(str: &str, radix: uint) -> Option<T> {
+    FromStrRadix::from_str_radix(str, radix)
 }
 
 // DEPRECATED
