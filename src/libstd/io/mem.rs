@@ -363,6 +363,16 @@ mod test {
     use str::StrPrelude;
 
     #[test]
+    fn test_vec_writer() {
+        let mut writer = Vec::new();
+        writer.write(&[0]).unwrap();
+        writer.write(&[1, 2, 3]).unwrap();
+        writer.write(&[4, 5, 6, 7]).unwrap();
+        let b: &[_] = &[0, 1, 2, 3, 4, 5, 6, 7];
+        assert_eq!(writer.as_slice(), b);
+    }
+
+    #[test]
     fn test_mem_writer() {
         let mut writer = MemWriter::new();
         writer.write(&[0]).unwrap();
@@ -385,6 +395,8 @@ mod test {
             assert_eq!(writer.tell(), Ok(8));
             writer.write(&[]).unwrap();
             assert_eq!(writer.tell(), Ok(8));
+
+            assert!(writer.write(&[1]).is_err());
         }
         let b: &[_] = &[0, 1, 2, 3, 4, 5, 6, 7];
         assert_eq!(buf.as_slice(), b);
