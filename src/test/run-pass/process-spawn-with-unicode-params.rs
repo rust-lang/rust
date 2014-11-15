@@ -16,8 +16,6 @@
 // non-ASCII characters.  The child process ensures all the strings are
 // intact.
 
-extern crate native;
-
 use std::io;
 use std::io::fs;
 use std::io::Command;
