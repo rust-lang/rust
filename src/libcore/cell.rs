@@ -168,9 +168,9 @@ pub struct Cell<T> {
     noshare: marker::NoSync,
 }
 
-#[stable]
 impl<T:Copy> Cell<T> {
     /// Creates a new `Cell` containing the given value.
+    #[stable]
     pub fn new(value: T) -> Cell<T> {
         Cell {
             value: UnsafeCell::new(value),
@@ -180,12 +180,14 @@ impl<T:Copy> Cell<T> {
 
     /// Returns a copy of the contained value.
     #[inline]
+    #[stable]
     pub fn get(&self) -> T {
         unsafe{ *self.value.get() }
     }
 
     /// Sets the contained value.
     #[inline]
+    #[stable]
     pub fn set(&self, value: T) {
         unsafe {
             *self.value.get() = value;
