@@ -9,6 +9,7 @@
 // except according to those terms.
 
 use core::cell::*;
+use core::default::Default;
 use std::mem::drop;
 
 #[test]
@@ -145,4 +146,16 @@ fn as_unsafe_cell() {
     let r2: RefCell<uint> = RefCell::new(0u);
     unsafe { *r2.as_unsafe_cell().get() = 1u; }
     assert_eq!(1u, *r2.borrow());
+}
+
+#[test]
+fn cell_default() {
+    let cell: Cell<u32> = Default::default();
+    assert_eq!(0, cell.get());
+}
+
+#[test]
+fn refcell_default() {
+    let cell: RefCell<u64> = Default::default();
+    assert_eq!(0, *cell.borrow());
 }

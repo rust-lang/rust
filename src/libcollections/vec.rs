@@ -645,7 +645,6 @@ impl<T> Vec<T> {
     /// assert!(vec.capacity() >= 3);
     /// ```
     #[stable]
-    #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn shrink_to_fit(&mut self) {
         if mem::size_of::<T>() == 0 { return }
 
@@ -1650,6 +1649,13 @@ impl<T> Vec<T> {
             unsafe { result.set_len(pv.num_u); }
             result
         }
+    }
+}
+
+impl<'a> fmt::FormatWriter for Vec<u8> {
+    fn write(&mut self, buf: &[u8]) -> fmt::Result {
+        self.push_all(buf);
+        Ok(())
     }
 }
 

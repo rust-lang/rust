@@ -13,11 +13,6 @@
 #![unstable]
 #![doc(primitive = "u16")]
 
-use from_str::FromStr;
-use num::FromStrRadix;
-use num::strconv;
-use option::Option;
-
 pub use core::u16::{BITS, BYTES, MIN, MAX};
 
 uint_module!(u16)

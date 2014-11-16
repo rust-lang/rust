@@ -179,9 +179,9 @@ pub struct Rc<T> {
     _noshare: marker::NoSync
 }
 
-#[stable]
 impl<T> Rc<T> {
     /// Constructs a new reference-counted pointer.
+    #[stable]
     pub fn new(value: T) -> Rc<T> {
         unsafe {
             Rc {
@@ -200,9 +200,7 @@ impl<T> Rc<T> {
             }
         }
     }
-}
 
-impl<T> Rc<T> {
     /// Downgrades the reference-counted pointer to a weak reference.
     #[experimental = "Weak pointers may not belong in this module"]
     pub fn downgrade(&self) -> Weak<T> {

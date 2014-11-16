@@ -14,18 +14,21 @@
 
 #![allow(missing_docs)]
 
-use intrinsics;
 use {int, i8, i16, i32, i64};
 use {uint, u8, u16, u32, u64};
 use {f32, f64};
+use char::Char;
 use clone::Clone;
 use cmp::{PartialEq, Eq};
 use cmp::{PartialOrd, Ord};
+use intrinsics;
+use iter::Iterator;
 use kinds::Copy;
 use mem::size_of;
 use ops::{Add, Sub, Mul, Div, Rem, Neg};
 use ops::{Not, BitAnd, BitOr, BitXor, Shl, Shr};
 use option::{Option, Some, None};
+use str::{FromStr, from_str, StrPrelude};
 
 /// Simultaneous division and remainder
 #[inline]
@@ -1371,6 +1374,290 @@ pub trait Float
     /// Convert degrees to radians.
     fn to_radians(self) -> Self;
 }
+
+/// A generic trait for converting a string with a radix (base) to a value
+#[experimental = "might need to return Result"]
+pub trait FromStrRadix {
+    fn from_str_radix(str: &str, radix: uint) -> Option<Self>;
+}
+
+/// A utility function that just calls FromStrRadix::from_str_radix.
+#[experimental = "might need to return Result"]
+pub fn from_str_radix<T: FromStrRadix>(str: &str, radix: uint) -> Option<T> {
+    FromStrRadix::from_str_radix(str, radix)
+}
+
+macro_rules! from_str_radix_float_impl {
+    ($T:ty) => {
+        #[experimental = "might need to return Result"]
+        impl FromStr for $T {
+            /// Convert a string in base 10 to a float.
+            /// Accepts an optional decimal exponent.
+            ///
+            /// This function accepts strings such as
+            ///
+            /// * '3.14'
+            /// * '+3.14', equivalent to '3.14'
+            /// * '-3.14'
+            /// * '2.5E10', or equivalently, '2.5e10'
+            /// * '2.5E-10'
+            /// * '.' (understood as 0)
+            /// * '5.'
+            /// * '.5', or, equivalently,  '0.5'
+            /// * '+inf', 'inf', '-inf', 'NaN'
+            ///
+            /// Leading and trailing whitespace represent an error.
+            ///
+            /// # Arguments
+            ///
+            /// * src - A string
+            ///
+            /// # Return value
+            ///
+            /// `None` if the string did not represent a valid number.  Otherwise,
+            /// `Some(n)` where `n` is the floating-point number represented by `src`.
+            #[inline]
+            fn from_str(src: &str) -> Option<$T> {
+                from_str_radix(src, 10)
+            }
+        }
+
+        #[experimental = "might need to return Result"]
+        impl FromStrRadix for $T {
+            /// Convert a string in a given base to a float.
+            ///
+            /// Due to possible conflicts, this function does **not** accept
+            /// the special values `inf`, `-inf`, `+inf` and `NaN`, **nor**
+            /// does it recognize exponents of any kind.
+            ///
+            /// Leading and trailing whitespace represent an error.
+            ///
+            /// # Arguments
+            ///
+            /// * src - A string
+            /// * radix - The base to use. Must lie in the range [2 .. 36]
+            ///
+            /// # Return value
+            ///
+            /// `None` if the string did not represent a valid number. Otherwise,
+            /// `Some(n)` where `n` is the floating-point number represented by `src`.
+            fn from_str_radix(src: &str, radix: uint) -> Option<$T> {
+               assert!(radix >= 2 && radix <= 36,
+                       "from_str_radix_float: must lie in the range `[2, 36]` - found {}",
+                       radix);
+
+                // Special values
+                match src {
+                    "inf"   => return Some(Float::infinity()),
+                    "-inf"  => return Some(Float::neg_infinity()),
+                    "NaN"   => return Some(Float::nan()),
+                    _       => {},
+                }
+
+                let (is_positive, src) =  match src.slice_shift_char() {
+                    (None, _)        => return None,
+                    (Some('-'), "")  => return None,
+                    (Some('-'), src) => (false, src),
+                    (Some(_), _)     => (true,  src),
+                };
+
+                // The significand to accumulate
+                let mut sig = if is_positive { 0.0 } else { -0.0 };
+                // Necessary to detect overflow
+                let mut prev_sig = sig;
+                let mut cs = src.chars().enumerate();
+                // Exponent prefix and exponent index offset
+                let mut exp_info = None::<(char, uint)>;
+
+                // Parse the integer part of the significand
+                for (i, c) in cs {
+                    match c.to_digit(radix) {
+                        Some(digit) => {
+                            // shift significand one digit left
+                            sig = sig * (radix as $T);
+
+                            // add/subtract current digit depending on sign
+                            if is_positive {
+                                sig = sig + ((digit as int) as $T);
+                            } else {
+                                sig = sig - ((digit as int) as $T);
+                            }
+
+                            // Detect overflow by comparing to last value, except
+                            // if we've not seen any non-zero digits.
+                            if prev_sig != 0.0 {
+                                if is_positive && sig <= prev_sig
+                                    { return Some(Float::infinity()); }
+                                if !is_positive && sig >= prev_sig
+                                    { return Some(Float::neg_infinity()); }
+
+                                // Detect overflow by reversing the shift-and-add process
+                                if is_positive && (prev_sig != (sig - digit as $T) / radix as $T)
+                                    { return Some(Float::infinity()); }
+                                if !is_positive && (prev_sig != (sig + digit as $T) / radix as $T)
+                                    { return Some(Float::neg_infinity()); }
+                            }
+                            prev_sig = sig;
+                        },
+                        None => match c {
+                            'e' | 'E' | 'p' | 'P' => {
+                                exp_info = Some((c, i + 1));
+                                break;  // start of exponent
+                            },
+                            '.' => {
+                                break;  // start of fractional part
+                            },
+                            _ => {
+                                return None;
+                            },
+                        },
+                    }
+                }
+
+                // If we are not yet at the exponent parse the fractional
+                // part of the significand
+                if exp_info.is_none() {
+                    let mut power = 1.0;
+                    for (i, c) in cs {
+                        match c.to_digit(radix) {
+                            Some(digit) => {
+                                // Decrease power one order of magnitude
+                                power = power / (radix as $T);
+                                // add/subtract current digit depending on sign
+                                sig = if is_positive {
+                                    sig + (digit as $T) * power
+                                } else {
+                                    sig - (digit as $T) * power
+                                };
+                                // Detect overflow by comparing to last value
+                                if is_positive && sig < prev_sig
+                                    { return Some(Float::infinity()); }
+                                if !is_positive && sig > prev_sig
+                                    { return Some(Float::neg_infinity()); }
+                                prev_sig = sig;
+                            },
+                            None => match c {
+                                'e' | 'E' | 'p' | 'P' => {
+                                    exp_info = Some((c, i + 1));
+                                    break; // start of exponent
+                                },
+                                _ => {
+                                    return None; // invalid number
+                                },
+                            },
+                        }
+                    }
+                }
+
+                // Parse and calculate the exponent
+                let exp = match exp_info {
+                    Some((c, offset)) => {
+                        let base = match c {
+                            'E' | 'e' if radix == 10 => 10u as $T,
+                            'P' | 'p' if radix == 16 => 2u as $T,
+                            _ => return None,
+                        };
+
+                        // Parse the exponent as decimal integer
+                        let src = src[offset..];
+                        let (is_positive, exp) = match src.slice_shift_char() {
+                            (Some('-'), src) => (false, from_str::<uint>(src)),
+                            (Some('+'), src) => (true,  from_str::<uint>(src)),
+                            (Some(_), _)     => (true,  from_str::<uint>(src)),
+                            (None, _)        => return None,
+                        };
+
+                        match (is_positive, exp) {
+                            (true,  Some(exp)) => base.powi(exp as i32),
+                            (false, Some(exp)) => 1.0 / base.powi(exp as i32),
+                            (_, None)          => return None,
+                        }
+                    },
+                    None => 1.0, // no exponent
+                };
+
+                Some(sig * exp)
+            }
+        }
+    }
+}
+from_str_radix_float_impl!(f32)
+from_str_radix_float_impl!(f64)
+
+macro_rules! from_str_radix_int_impl {
+    ($T:ty) => {
+        #[experimental = "might need to return Result"]
+        impl FromStr for $T {
+            #[inline]
+            fn from_str(src: &str) -> Option<$T> {
+                from_str_radix(src, 10)
+            }
+        }
+
+        #[experimental = "might need to return Result"]
+        impl FromStrRadix for $T {
+            fn from_str_radix(src: &str, radix: uint) -> Option<$T> {
+                assert!(radix >= 2 && radix <= 36,
+                       "from_str_radix_int: must lie in the range `[2, 36]` - found {}",
+                       radix);
+
+                let is_signed_ty = (0 as $T) > Int::min_value();
+
+                match src.slice_shift_char() {
+                    (Some('-'), src) if is_signed_ty => {
+                        // The number is negative
+                        let mut result = 0;
+                        for c in src.chars() {
+                            let x = match c.to_digit(radix) {
+                                Some(x) => x,
+                                None => return None,
+                            };
+                            result = match result.checked_mul(radix as $T) {
+                                Some(result) => result,
+                                None => return None,
+                            };
+                            result = match result.checked_sub(x as $T) {
+                                Some(result) => result,
+                                None => return None,
+                            };
+                        }
+                        Some(result)
+                    },
+                    (Some(_), _) => {
+                        // The number is signed
+                        let mut result = 0;
+                        for c in src.chars() {
+                            let x = match c.to_digit(radix) {
+                                Some(x) => x,
+                                None => return None,
+                            };
+                            result = match result.checked_mul(radix as $T) {
+                                Some(result) => result,
+                                None => return None,
+                            };
+                            result = match result.checked_add(x as $T) {
+                                Some(result) => result,
+                                None => return None,
+                            };
+                        }
+                        Some(result)
+                    },
+                    (None, _) => None,
+                }
+            }
+        }
+    }
+}
+from_str_radix_int_impl!(int)
+from_str_radix_int_impl!(i8)
+from_str_radix_int_impl!(i16)
+from_str_radix_int_impl!(i32)
+from_str_radix_int_impl!(i64)
+from_str_radix_int_impl!(uint)
+from_str_radix_int_impl!(u8)
+from_str_radix_int_impl!(u16)
+from_str_radix_int_impl!(u32)
+from_str_radix_int_impl!(u64)
 
 // DEPRECATED
 

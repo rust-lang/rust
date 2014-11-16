@@ -15,7 +15,8 @@ macro_rules! int_module (($T:ty, $T_i:ident) => (
 mod tests {
     use core::$T_i::*;
     use core::int;
-    use core::num::{Int, SignedInt};
+    use core::num::{FromStrRadix, Int, SignedInt};
+    use core::str::from_str;
     use num;
 
     #[test]
@@ -155,6 +156,49 @@ mod tests {
         assert!(10i.checked_div(2) == Some(5));
         assert!(5i.checked_div(0) == None);
         assert!(int::MIN.checked_div(-1) == None);
+    }
+
+    #[test]
+    fn test_from_str() {
+        assert_eq!(from_str::<$T>("0"), Some(0 as $T));
+        assert_eq!(from_str::<$T>("3"), Some(3 as $T));
+        assert_eq!(from_str::<$T>("10"), Some(10 as $T));
+        assert_eq!(from_str::<i32>("123456789"), Some(123456789 as i32));
+        assert_eq!(from_str::<$T>("00100"), Some(100 as $T));
+
+        assert_eq!(from_str::<$T>("-1"), Some(-1 as $T));
+        assert_eq!(from_str::<$T>("-3"), Some(-3 as $T));
+        assert_eq!(from_str::<$T>("-10"), Some(-10 as $T));
+        assert_eq!(from_str::<i32>("-123456789"), Some(-123456789 as i32));
+        assert_eq!(from_str::<$T>("-00100"), Some(-100 as $T));
+
+        assert_eq!(from_str::<$T>(""), None);
+        assert_eq!(from_str::<$T>(" "), None);
+        assert_eq!(from_str::<$T>("x"), None);
+    }
+
+    #[test]
+    fn test_from_str_radix() {
+        assert_eq!(FromStrRadix::from_str_radix("123", 10), Some(123 as $T));
+        assert_eq!(FromStrRadix::from_str_radix("1001", 2), Some(9 as $T));
+        assert_eq!(FromStrRadix::from_str_radix("123", 8), Some(83 as $T));
+        assert_eq!(FromStrRadix::from_str_radix("123", 16), Some(291 as i32));
+        assert_eq!(FromStrRadix::from_str_radix("ffff", 16), Some(65535 as i32));
+        assert_eq!(FromStrRadix::from_str_radix("FFFF", 16), Some(65535 as i32));
+        assert_eq!(FromStrRadix::from_str_radix("z", 36), Some(35 as $T));
+        assert_eq!(FromStrRadix::from_str_radix("Z", 36), Some(35 as $T));
+
+        assert_eq!(FromStrRadix::from_str_radix("-123", 10), Some(-123 as $T));
+        assert_eq!(FromStrRadix::from_str_radix("-1001", 2), Some(-9 as $T));
+        assert_eq!(FromStrRadix::from_str_radix("-123", 8), Some(-83 as $T));
+        assert_eq!(FromStrRadix::from_str_radix("-123", 16), Some(-291 as i32));
+        assert_eq!(FromStrRadix::from_str_radix("-ffff", 16), Some(-65535 as i32));
+        assert_eq!(FromStrRadix::from_str_radix("-FFFF", 16), Some(-65535 as i32));
+        assert_eq!(FromStrRadix::from_str_radix("-z", 36), Some(-35 as $T));
+        assert_eq!(FromStrRadix::from_str_radix("-Z", 36), Some(-35 as $T));
+
+        assert_eq!(FromStrRadix::from_str_radix("Z", 35), None::<$T>);
+        assert_eq!(FromStrRadix::from_str_radix("-9", 2), None::<$T>);
     }
 }
 

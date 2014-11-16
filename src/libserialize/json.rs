@@ -200,7 +200,7 @@ use std::{char, f64, fmt, io, num, str};
 use std::io::MemWriter;
 use std::mem::{swap, transmute};
 use std::num::{Float, FPNaN, FPInfinite, Int};
-use std::str::ScalarValue;
+use std::str::{FromStr, ScalarValue};
 use std::string;
 use std::vec::Vec;
 use std::ops;
@@ -1988,7 +1988,7 @@ macro_rules! read_primitive {
                 String(s) => {
                     // re: #12967.. a type w/ numeric keys (ie HashMap<uint, V> etc)
                     // is going to have a string here, as per JSON spec.
-                    match std::from_str::from_str(s.as_slice()) {
+                    match std::str::from_str(s.as_slice()) {
                         Some(f) => Ok(f),
                         None => Err(ExpectedError("Number".to_string(), s)),
                     }
@@ -2027,7 +2027,7 @@ impl ::Decoder<DecoderError> for Decoder {
             String(s) => {
                 // re: #12967.. a type w/ numeric keys (ie HashMap<uint, V> etc)
                 // is going to have a string here, as per JSON spec.
-                match std::from_str::from_str(s.as_slice()) {
+                match std::str::from_str(s.as_slice()) {
                     Some(f) => Ok(f),
                     None => Err(ExpectedError("Number".to_string(), s)),
                 }
@@ -2315,6 +2315,10 @@ impl ToJson for bool {
     fn to_json(&self) -> Json { Boolean(*self) }
 }
 
+impl ToJson for str {
+    fn to_json(&self) -> Json { String(self.into_string()) }
+}
+
 impl ToJson for string::String {
     fn to_json(&self) -> Json { String((*self).clone()) }
 }
@@ -2395,7 +2399,7 @@ impl fmt::Show for Json {
     }
 }
 
-impl std::from_str::FromStr for Json {
+impl FromStr for Json {
     fn from_str(s: &str) -> Option<Json> {
         from_str(s).ok()
     }
@@ -2480,7 +2484,7 @@ mod tests {
     #[test]
     fn test_from_str_trait() {
         let s = "null";
-        assert!(::std::from_str::from_str::<Json>(s).unwrap() == from_str(s).unwrap());
+        assert!(::std::str::from_str::<Json>(s).unwrap() == from_str(s).unwrap());
     }
 
     #[test]
@@ -3714,7 +3718,8 @@ mod tests {
         assert_eq!(f64::NAN.to_json(), Null);
         assert_eq!(true.to_json(), Boolean(true));
         assert_eq!(false.to_json(), Boolean(false));
-        assert_eq!("abc".to_string().to_json(), String("abc".to_string()));
+        assert_eq!("abc".to_json(), String("abc".into_string()));
+        assert_eq!("abc".into_string().to_json(), String("abc".into_string()));
         assert_eq!((1u, 2u).to_json(), list2);
         assert_eq!((1u, 2u, 3u).to_json(), list3);
         assert_eq!([1u, 2].to_json(), list2);

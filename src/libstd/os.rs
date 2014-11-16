@@ -51,8 +51,7 @@ use result::{Err, Ok, Result};
 use slice::{AsSlice, SlicePrelude, PartialEqSlicePrelude};
 use slice::CloneSliceAllocPrelude;
 use str::{Str, StrPrelude, StrAllocating};
-use string::String;
-use to_string::ToString;
+use string::{String, ToString};
 use sync::atomic::{AtomicInt, INIT_ATOMIC_INT, SeqCst};
 use vec::Vec;
 

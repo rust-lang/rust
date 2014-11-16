@@ -19,7 +19,7 @@ use std::num::Zero;
 use syntax::attr::{Deprecated, Experimental, Unstable, Stable, Frozen, Locked};
 use syntax::ast::Public;
 
-use clean::{Crate, Item, ModuleItem, Module, StructItem, Struct, EnumItem, Enum};
+use clean::{Crate, Item, ModuleItem, Module, EnumItem, Enum};
 use clean::{ImplItem, Impl, Trait, TraitItem, TraitMethod, ProvidedMethod, RequiredMethod};
 use clean::{TypeTraitItem, ViewItemItem, PrimitiveItem, Stability};
 
@@ -146,13 +146,12 @@ fn summarize_item(item: &Item) -> (Counts, Option<ModuleSummary>) {
     // considered to have no children.
     match item.inner {
         // Require explicit `pub` to be visible
-        StructItem(Struct { fields: ref subitems, .. }) |
         ImplItem(Impl { items: ref subitems, trait_: None, .. }) => {
             let subcounts = subitems.iter().filter(|i| visible(*i))
                                            .map(summarize_item)
                                            .map(|s| s.val0())
                                            .fold(Counts::zero(), |acc, x| acc + x);
-            (item_counts + subcounts, None)
+            (subcounts, None)
         }
         // `pub` automatically
         EnumItem(Enum { variants: ref subitems, .. }) => {

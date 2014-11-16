@@ -1190,7 +1190,7 @@ mod tests {
             Path::new("/dev/null")
         };
 
-        let mut fdes = match fs::open(&path, Truncate, Write) {
+        let fdes = match fs::open(&path, Truncate, Write) {
             Ok(f) => f,
             Err(_) => panic!("failed to open file descriptor"),
         };
