@@ -15,8 +15,8 @@
 
 #![allow(dead_code)]
 
-struct Foo<T,U> {
-    t: T, u: U
+trait Foo<T,U> {
+    fn dummy(&self) -> (T,U);
 }
 
 trait Eq<X> { }
