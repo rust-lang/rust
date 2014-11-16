@@ -8,10 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(unboxed_closures)]
-
-fn main() {
-    let mut unboxed = |&mut:| {};
-    unboxed();
+trait Typer<'tcx> {
+    fn method(&self, data: &'tcx int) -> &'tcx int { data }
+    fn dummy(&self) { }
 }
 
+fn g(_: |&Typer|) {
+}
+
+fn h() {
+    g(|typer| typer.dummy())
+}
+
+fn main() { }

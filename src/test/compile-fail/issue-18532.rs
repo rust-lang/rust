@@ -12,7 +12,7 @@
 // when a type error or unconstrained type variable propagates
 // into it.
 
-#![feature(overloaded_calls)]
+#![feature(unboxed_closures)]
 
 fn main() {
     (return)((),());
