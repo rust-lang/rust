@@ -129,7 +129,7 @@ impl GenericPathUnsafe for Path {
     unsafe fn set_filename_unchecked<T: BytesContainer>(&mut self, filename: T) {
         let filename = filename.container_as_bytes();
         match self.sepidx {
-            None if b".." == self.repr.as_slice() => {
+            None if self.repr.as_slice() == b".." => {
                 let mut v = Vec::with_capacity(3 + filename.len());
                 v.push_all(dot_dot_static);
                 v.push(SEP_BYTE);
@@ -189,7 +189,7 @@ impl GenericPath for Path {
 
     fn dirname<'a>(&'a self) -> &'a [u8] {
         match self.sepidx {
-            None if b".." == self.repr.as_slice() => self.repr.as_slice(),
+            None if self.repr.as_slice() == b".." => self.repr.as_slice(),
             None => dot_static,
             Some(0) => self.repr[..1],
             Some(idx) if self.repr[idx+1..] == b".." => self.repr.as_slice(),
@@ -199,8 +199,8 @@ impl GenericPath for Path {
 
     fn filename<'a>(&'a self) -> Option<&'a [u8]> {
         match self.sepidx {
-            None if b"." == self.repr.as_slice() ||
-                b".." == self.repr.as_slice() => None,
+            None if self.repr.as_slice() == b"." ||
+                self.repr.as_slice() == b".." => None,
             None => Some(self.repr.as_slice()),
             Some(idx) if self.repr[idx+1..] == b".." => None,
             Some(0) if self.repr[1..].is_empty() => None,
@@ -210,13 +210,13 @@ impl GenericPath for Path {
 
     fn pop(&mut self) -> bool {
         match self.sepidx {
-            None if b"." == self.repr.as_slice() => false,
+            None if self.repr.as_slice() == b"." => false,
             None => {
                 self.repr = vec![b'.'];
                 self.sepidx = None;
                 true
             }
-            Some(0) if b"/" == self.repr.as_slice() => false,
+            Some(0) if self.repr.as_slice() == b"/" => false,
             Some(idx) => {
                 if idx == 0 {
                     self.repr.truncate(idx+1);
@@ -248,7 +248,7 @@ impl GenericPath for Path {
         } else {
             let mut ita = self.components();
             let mut itb = other.components();
-            if b"." == self.repr.as_slice() {
+            if self.repr.as_slice() == b"." {
                 return match itb.next() {
                     None => true,
                     Some(b) => b != b".."

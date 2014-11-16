@@ -2822,8 +2822,11 @@ fn check_lit(fcx: &FnCtxt,
 
     match lit.node {
         ast::LitStr(..) => ty::mk_str_slice(tcx, ty::ReStatic, ast::MutImmutable),
-        ast::LitBinary(..) => {
-            ty::mk_slice(tcx, ty::ReStatic, ty::mt{ ty: ty::mk_u8(), mutbl: ast::MutImmutable })
+        ast::LitBinary(ref v) => {
+            ty::mk_rptr(tcx, ty::ReStatic, ty::mt {
+                ty: ty::mk_vec(tcx, ty::mk_u8(), Some(v.len())),
+                mutbl: ast::MutImmutable,
+            })
         }
         ast::LitByte(_) => ty::mk_u8(),
         ast::LitChar(_) => ty::mk_char(),
