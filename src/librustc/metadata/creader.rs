@@ -13,8 +13,7 @@
 //! Validates all used crates and extern libraries and loads their metadata
 
 use back::svh::Svh;
-use driver::session::Session;
-use driver::driver;
+use session::{config, Session};
 use metadata::cstore;
 use metadata::cstore::{CStore, CrateSource};
 use metadata::decoder;
@@ -455,7 +454,7 @@ impl<'a> PluginMetadataReader<'a> {
     pub fn read_plugin_metadata(&mut self, krate: &ast::ViewItem) -> PluginMetadata {
         let info = extract_crate_info(&self.env, krate).unwrap();
         let target_triple = self.env.sess.opts.target_triple.as_slice();
-        let is_cross = target_triple != driver::host_triple();
+        let is_cross = target_triple != config::host_triple();
         let mut should_link = info.should_link && !is_cross;
         let mut load_ctxt = loader::Context {
             sess: self.env.sess,
@@ -464,7 +463,7 @@ impl<'a> PluginMetadataReader<'a> {
             crate_name: info.name.as_slice(),
             hash: None,
             filesearch: self.env.sess.host_filesearch(),
-            triple: driver::host_triple(),
+            triple: config::host_triple(),
             root: &None,
             rejected_via_hash: vec!(),
             rejected_via_triple: vec!(),
@@ -481,7 +480,7 @@ impl<'a> PluginMetadataReader<'a> {
                 if decoder::get_plugin_registrar_fn(lib.metadata.as_slice()).is_some() {
                     let message = format!("crate `{}` contains a plugin_registrar fn but \
                                   only a version for triple `{}` could be found (need {})",
-                                  info.ident, target_triple, driver::host_triple());
+                                  info.ident, target_triple, config::host_triple());
                     self.env.sess.span_err(krate.span, message.as_slice());
                     // need to abort now because the syntax expansion
                     // code will shortly attempt to load and execute

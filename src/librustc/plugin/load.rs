@@ -10,7 +10,7 @@
 
 //! Used by `rustc` when loading a plugin.
 
-use driver::session::Session;
+use session::Session;
 use metadata::creader::PluginMetadataReader;
 use plugin::registry::Registry;
 
