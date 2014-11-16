@@ -1653,6 +1653,13 @@ impl<T> Vec<T> {
     }
 }
 
+impl<'a> fmt::FormatWriter for Vec<u8> {
+    fn write(&mut self, buf: &[u8]) -> fmt::Result {
+        self.push_all(buf);
+        Ok(())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     extern crate test;

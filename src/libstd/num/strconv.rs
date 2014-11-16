@@ -423,7 +423,7 @@ static DIGIT_E_RADIX: uint = ('e' as uint) - ('a' as uint) + 11u;
 
 #[cfg(test)]
 mod tests {
-    use to_string::ToString;
+    use string::ToString;
 
     #[test]
     fn test_int_to_str_overflow() {
