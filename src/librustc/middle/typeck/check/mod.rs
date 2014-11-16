@@ -2534,7 +2534,8 @@ fn lookup_method_for_for_loop(fcx: &FnCtxt,
                 let ty_string = fcx.infcx().ty_to_string(true_expr_type);
                 fcx.tcx().sess.span_err(iterator_expr.span,
                                         format!("`for` loop expression has type `{}` which does \
-                                                 not implement the `Iterator` trait: maybe try .iter()",
+                                                not implement the `Iterator` trait; \
+                                                maybe try .iter()",
                                                 ty_string).as_slice());
             }
             ty::mk_err()
