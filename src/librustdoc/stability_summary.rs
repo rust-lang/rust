@@ -19,7 +19,7 @@ use std::num::Zero;
 use syntax::attr::{Deprecated, Experimental, Unstable, Stable, Frozen, Locked};
 use syntax::ast::Public;
 
-use clean::{Crate, Item, ModuleItem, Module, StructItem, Struct, EnumItem, Enum};
+use clean::{Crate, Item, ModuleItem, Module, EnumItem, Enum};
 use clean::{ImplItem, Impl, Trait, TraitItem, TraitMethod, ProvidedMethod, RequiredMethod};
 use clean::{TypeTraitItem, ViewItemItem, PrimitiveItem, Stability};
 
