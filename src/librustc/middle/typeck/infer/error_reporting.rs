@@ -973,8 +973,7 @@ impl<'a, 'tcx> Rebuilder<'a, 'tcx> {
                                                    &anon_nums, &region_names);
             inputs = self.rebuild_args_ty(inputs.as_slice(), lifetime,
                                           &anon_nums, &region_names);
-            output = self.rebuild_arg_ty_or_output(&*output, lifetime,
-                                                   &anon_nums, &region_names);
+            output = self.rebuild_output(&output, lifetime, &anon_nums, &region_names);
             ty_params = self.rebuild_ty_params(ty_params, lifetime,
                                                &region_names);
         }
@@ -989,7 +988,6 @@ impl<'a, 'tcx> Rebuilder<'a, 'tcx> {
         let new_fn_decl = ast::FnDecl {
             inputs: inputs,
             output: output,
-            cf: self.fn_decl.cf,
             variadic: self.fn_decl.variadic
         };
         (new_fn_decl, expl_self_opt, generics)
@@ -1206,6 +1204,18 @@ impl<'a, 'tcx> Rebuilder<'a, 'tcx> {
         new_inputs
     }
 
+    fn rebuild_output(&self, ty: &ast::FunctionRetTy,
+                      lifetime: ast::Lifetime,
+                      anon_nums: &HashSet<uint>,
+                      region_names: &HashSet<ast::Name>) -> ast::FunctionRetTy {
+        match *ty {
+            ast::Return(ref ret_ty) => ast::Return(
+                self.rebuild_arg_ty_or_output(&**ret_ty, lifetime, anon_nums, region_names)
+            ),
+            ast::NoReturn(span) => ast::NoReturn(span)
+        }
+    }
+
     fn rebuild_arg_ty_or_output(&self,
                                 ty: &ast::Ty,
                                 lifetime: ast::Lifetime,
@@ -1301,7 +1311,6 @@ impl<'a, 'tcx> Rebuilder<'a, 'tcx> {
                     ty_queue.push(&*mut_ty.ty);
                 }
                 ast::TyVec(ref ty) |
-                ast::TyUniq(ref ty) |
                 ast::TyFixedLengthVec(ref ty, _) => {
                     ty_queue.push(&**ty);
                 }
@@ -1338,7 +1347,6 @@ impl<'a, 'tcx> Rebuilder<'a, 'tcx> {
                         })
                     }
                     ast::TyVec(ty) => ast::TyVec(build_to(ty, to)),
-                    ast::TyUniq(ty) => ast::TyUniq(build_to(ty, to)),
                     ast::TyFixedLengthVec(ty, e) => {
                         ast::TyFixedLengthVec(build_to(ty, to), e)
                     }

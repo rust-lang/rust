@@ -654,7 +654,7 @@ impl<'a, 'b> Context<'a, 'b> {
         //
         // But the nested match expression is proved to perform not as well
         // as series of let's; the first approach does.
-        let pat = self.ecx.pat(self.fmtsp, ast::PatTup(pats));
+        let pat = self.ecx.pat_tuple(self.fmtsp, pats);
         let arm = self.ecx.arm(self.fmtsp, vec!(pat), body);
         let head = self.ecx.expr(self.fmtsp, ast::ExprTup(heads));
         self.ecx.expr_match(self.fmtsp, head, vec!(arm))

@@ -393,10 +393,7 @@ impl fmt::Show for clean::Type {
                            format!("&lt;{:#}&gt;", decl.lifetimes)
                        },
                        args = decl.decl.inputs,
-                       arrow = match decl.decl.output {
-                           clean::Primitive(clean::Unit) => "".to_string(),
-                           _ => format!(" -&gt; {}", decl.decl.output),
-                       },
+                       arrow = decl.decl.output,
                        bounds = {
                            let mut ret = String::new();
                            for bound in decl.bounds.iter() {
@@ -435,10 +432,7 @@ impl fmt::Show for clean::Type {
                                ": {}",
                                m.collect::<Vec<String>>().connect(" + "))
                        },
-                       arrow = match decl.decl.output {
-                           clean::Primitive(clean::Unit) => "".to_string(),
-                           _ => format!(" -&gt; {}", decl.decl.output)
-                       })
+                       arrow = decl.decl.output)
             }
             clean::BareFunction(ref decl) => {
                 write!(f, "{}{}fn{}{}",
@@ -514,14 +508,19 @@ impl fmt::Show for clean::Arguments {
     }
 }
 
+impl fmt::Show for clean::FunctionRetTy {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            clean::Return(clean::Tuple(ref tys)) if tys.is_empty() => Ok(()),
+            clean::Return(ref ty) => write!(f, " -&gt; {}", ty),
+            clean::NoReturn => write!(f, " -&gt; !")
+        }
+    }
+}
+
 impl fmt::Show for clean::FnDecl {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "({args}){arrow}",
-               args = self.inputs,
-               arrow = match self.output {
-                   clean::Primitive(clean::Unit) => "".to_string(),
-                   _ => format!(" -&gt; {}", self.output),
-               })
+        write!(f, "({args}){arrow}", args = self.inputs, arrow = self.output)
     }
 }
 
@@ -551,12 +550,7 @@ impl<'a> fmt::Show for Method<'a> {
             }
             args.push_str(format!("{}", input.type_).as_slice());
         }
-        write!(f, "({args}){arrow}",
-               args = args,
-               arrow = match d.output {
-                   clean::Primitive(clean::Unit) => "".to_string(),
-                   _ => format!(" -&gt; {}", d.output),
-               })
+        write!(f, "({args}){arrow}", args = args, arrow = d.output)
     }
 }
 

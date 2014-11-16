@@ -2096,9 +2096,11 @@ pub fn ty_of_foreign_fn_decl(ccx: &CrateCtxt,
                         .map(|a| ty_of_arg(ccx, &rb, a, None))
                         .collect();
 
-    let output = match decl.output.node {
-        ast::TyBot => ty::FnDiverging,
-        _ => ty::FnConverging(ast_ty_to_ty(ccx, &rb, &*decl.output))
+    let output = match decl.output {
+        ast::Return(ref ty) =>
+            ty::FnConverging(ast_ty_to_ty(ccx, &rb, &**ty)),
+        ast::NoReturn(_) =>
+            ty::FnDiverging
     };
 
     let t_fn = ty::mk_bare_fn(

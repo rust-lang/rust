@@ -922,7 +922,7 @@ impl<'a> MethodDef<'a> {
                 }
 
                 // Here is the pat = `(&VariantK, &VariantK, ...)`
-                let single_pat = cx.pat(sp, ast::PatTup(subpats));
+                let single_pat = cx.pat_tuple(sp, subpats);
 
                 // For the BodyK, we need to delegate to our caller,
                 // passing it an EnumMatching to indicate which case

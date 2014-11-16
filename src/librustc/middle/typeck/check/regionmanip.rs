@@ -91,7 +91,6 @@ impl<'a, 'tcx> Wf<'a, 'tcx> {
                ty.repr(self.tcx));
 
         match ty::get(ty).sty {
-            ty::ty_nil |
             ty::ty_bool |
             ty::ty_char |
             ty::ty_int(..) |

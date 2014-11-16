@@ -360,7 +360,6 @@ fn parse_trait_ref(st: &mut PState, conv: conv_did) -> ty::TraitRef {
 
 fn parse_ty(st: &mut PState, conv: conv_did) -> ty::t {
     match next(st) {
-      'n' => return ty::mk_nil(),
       'b' => return ty::mk_bool(),
       'i' => return ty::mk_int(),
       'u' => return ty::mk_uint(),
