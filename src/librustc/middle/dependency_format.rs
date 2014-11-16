@@ -63,8 +63,8 @@
 
 use syntax::ast;
 
-use driver::session;
-use driver::config;
+use session;
+use session::config;
 use metadata::cstore;
 use metadata::csearch;
 use middle::ty;

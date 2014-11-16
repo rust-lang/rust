@@ -12,6 +12,6 @@
 extern crate "rustdoc" as this;
 
 #[cfg(rustc)]
-extern crate "rustc" as this;
+extern crate "rustc_trans" as this;
 
 fn main() { this::main() }

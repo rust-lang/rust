@@ -82,7 +82,7 @@ use self::Expectation::*;
 use self::IsBinopAssignment::*;
 use self::TupleArgumentsFlag::*;
 
-use driver::session::Session;
+use session::Session;
 use middle::const_eval;
 use middle::def;
 use middle::lang_items::IteratorItem;

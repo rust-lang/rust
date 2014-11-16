@@ -21,7 +21,7 @@
 
 pub use self::LangItem::*;
 
-use driver::session::Session;
+use session::Session;
 use metadata::csearch::each_lang_item;
 use middle::ty;
 use middle::weak_lang_items;

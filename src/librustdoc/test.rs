@@ -19,10 +19,8 @@ use std::string::String;
 
 use std::collections::{HashSet, HashMap};
 use testing;
-use rustc::back::write;
-use rustc::driver::config;
-use rustc::driver::driver;
-use rustc::driver::session;
+use rustc::session::{mod, config};
+use rustc_trans::driver::driver;
 use syntax::ast;
 use syntax::codemap::{CodeMap, dummy_spanned};
 use syntax::diagnostic;
@@ -119,7 +117,7 @@ fn runtest(test: &str, cratename: &str, libs: Vec<Path>, externs: core::Externs,
         maybe_sysroot: Some(os::self_exe_path().unwrap().dir_path()),
         addl_lib_search_paths: RefCell::new(libs),
         crate_types: vec!(config::CrateTypeExecutable),
-        output_types: vec!(write::OutputTypeExe),
+        output_types: vec!(config::OutputTypeExe),
         no_trans: no_run,
         externs: externs,
         cg: config::CodegenOptions {
