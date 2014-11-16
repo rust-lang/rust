@@ -43,13 +43,11 @@ the direction the language is evolving in.
 * [0235-collections-conventions.md](text/0235-collections-conventions.md)
 * [0236-error-conventions.md](text/0236-error-conventions.md)
 * [0240-unsafe-api-location.md](text/0240-unsafe-api-location.md)
-* [0326-restrict-xXX-to-ascii](text/0326-restrict-xXX-to-ascii.md)
 * [0339-statically-sized-literals.md](text/0339-statically-sized-literals.md)
 * [0344-conventions-galore.md](text/0344-conventions-galore.md)
 * [0356-no-module-prefixes.md](text/0356-no-module-prefixes.md)
 * [0378-expr-macros.md](text/0378-expr-macros.md)
 * [0385-module-system-cleanup.md](text/0385-module-system-cleanup.md)
-* [0418-struct-variants.md](text/0418-struct-variants.md)
 
 ## Table of Contents
 [Table of Contents]: #table-of-contents
