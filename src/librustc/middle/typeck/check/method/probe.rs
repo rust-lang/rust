@@ -446,8 +446,8 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
         }
 
         self.assemble_extension_candidates_for_trait_impls(trait_def_id,
-                                                       method.clone(),
-                                                       matching_index);
+                                                           method.clone(),
+                                                           matching_index);
 
         self.assemble_unboxed_closure_candidates(trait_def_id,
                                                  method,
@@ -455,9 +455,9 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
     }
 
     fn assemble_extension_candidates_for_trait_impls(&mut self,
-                                                 trait_def_id: ast::DefId,
-                                                 method: Rc<ty::Method>,
-                                                 method_index: uint)
+                                                     trait_def_id: ast::DefId,
+                                                     method: Rc<ty::Method>,
+                                                     method_index: uint)
     {
         ty::populate_implementations_for_trait_if_necessary(self.tcx(),
                                                             trait_def_id);
