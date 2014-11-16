@@ -716,7 +716,6 @@ impl<T: Default> Option<T> {
 impl<T> AsSlice<T> for Option<T> {
     /// Convert from `Option<T>` to `&[T]` (without copying)
     #[inline]
-    #[stable]
     fn as_slice<'a>(&'a self) -> &'a [T] {
         match *self {
             Some(ref x) => slice::ref_slice(x),
@@ -728,6 +727,7 @@ impl<T> AsSlice<T> for Option<T> {
     }
 }
 
+#[stable]
 impl<T> Default for Option<T> {
     #[inline]
     fn default() -> Option<T> { None }
@@ -772,9 +772,10 @@ impl<A> DoubleEndedIterator<A> for Item<A> {
 impl<A> ExactSize<A> for Item<A> {}
 
 /////////////////////////////////////////////////////////////////////////////
-// Free functions
+// FromIterator
 /////////////////////////////////////////////////////////////////////////////
 
+#[stable]
 impl<A, V: FromIterator<A>> FromIterator<Option<A>> for Option<V> {
     /// Takes each element in the `Iterator`: if it is `None`, no further
     /// elements are taken, and the `None` is returned. Should no `None` occur, a
