@@ -584,3 +584,9 @@ pre.rust { position: relative; }
         height: 1.5em;
     }
 }
+
+@media print {
+    nav.sub, .content .out-of-band, .collapse-toggle {
+        display: none;
+    }
+}
