@@ -52,8 +52,8 @@ impl<'a> Drop for Sentinel<'a> {
 /// # Example
 ///
 /// ```rust
-/// # use sync::TaskPool;
-/// # use iter::AdditiveIterator;
+/// # use std::sync::TaskPool;
+/// # use std::iter::AdditiveIterator;
 ///
 /// let pool = TaskPool::new(4u);
 ///
