@@ -43,7 +43,7 @@ pub struct Node<K, V> {
     // theory, if we take full control of allocation like HashMap's RawTable does,
     // and restrict leaves to max size 256 (not unreasonable for a btree node) we can cut
     // this down to just (ptr, cap: u8, size: u8, is_leaf: bool). With generic
-    // integer arguments, cap can even move into the the type, reducing this just to
+    // integer arguments, cap can even move into the type, reducing this just to
     // (ptr, size, is_leaf). This could also have cache benefits for very small nodes, as keys
     // could bleed into edges and vals.
     //

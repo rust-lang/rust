@@ -1056,7 +1056,7 @@ impl<'a, T> VacantEntry<'a, T> {
             search_stack.map.root.count = temp;
             value_ref
         }
-        // Otherwise, find the predeccessor of the last stack node, and insert as normal.
+        // Otherwise, find the predecessor of the last stack node, and insert as normal.
         else {
             match *search_stack.get_ref(old_length - 2) {
                 Internal(box ref mut parent) => {
@@ -1739,7 +1739,7 @@ mod test {
                     // Update it to i^3 using the returned mutable reference.
                     *inserted_val = i * i * i;
                 },
-                _ => panic!("Non-existant key found.")
+                _ => panic!("Non-existent key found.")
             }
             assert_eq!(map.get(&i).unwrap(), &(i * i * i));
         }
