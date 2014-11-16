@@ -17,15 +17,14 @@
 
 use std::kinds::marker;
 
-struct Foo<'a,T,U> {
-    t: T,
-    u: U,
-    m: marker::InvariantLifetime<'a>
+trait Foo<'a,T,U> {
+    fn dummy(&'a self) -> &'a (T,U);
 }
 
-trait Eq<X> { }
-impl<X> Eq<X> for X { }
-fn eq<A,B:Eq<A>>() { }
+trait Eq<Sized? X> for Sized? { }
+impl<Sized? X> Eq<X> for X { }
+fn eq<Sized? A,Sized? B:Eq<A>>() { }
+
 fn same_type<A,B:Eq<A>>(a: A, b: B) { }
 
 fn test<'a,'b>() {
@@ -34,10 +33,10 @@ fn test<'a,'b>() {
 
     // Here we specify 'static explicitly in angle-bracket version.
     // Parenthesized winds up getting inferred.
-    eq::< Foo<'static, (int,),()>,               Foo(int)                      >();
+    eq::< Foo<'static, (int,),()>,      Foo(int)                      >();
 }
 
-fn test2(x: Foo<(int,),()>, y: Foo(int)) {
+fn test2(x: &Foo<(int,),()>, y: &Foo(int)) {
     // Here, the omitted lifetimes are expanded to distinct things.
     same_type(x, y) //~ ERROR cannot infer
 }
