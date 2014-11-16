@@ -13,11 +13,6 @@
 #![unstable]
 #![doc(primitive = "u64")]
 
-use from_str::FromStr;
-use num::FromStrRadix;
-use num::strconv;
-use option::Option;
-
 pub use core::u64::{BITS, BYTES, MIN, MAX};
 
 uint_module!(u64)

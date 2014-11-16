@@ -388,7 +388,7 @@ mod tests {
     use super::{Duration, MIN, MAX};
     use {i32, i64};
     use option::{Some, None};
-    use to_string::ToString;
+    use string::ToString;
 
     #[test]
     fn test_duration() {
