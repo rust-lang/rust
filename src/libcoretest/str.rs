@@ -8,6 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[test]
+fn test_bool_from_str() {
+    assert_eq!(from_str::<bool>("true"), Some(true));
+    assert_eq!(from_str::<bool>("false"), Some(false));
+    assert_eq!(from_str::<bool>("not even a boolean"), None);
+}
+
 fn check_contains_all_substrings(s: &str) {
     assert!(s.contains(""));
     for i in range(0, s.len()) {

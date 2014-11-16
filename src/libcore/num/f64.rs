@@ -16,8 +16,8 @@
 
 use intrinsics;
 use mem;
-use num::{FPNormal, FPCategory, FPZero, FPSubnormal, FPInfinite, FPNaN};
-use num::Float;
+use num::{Float, FPNormal, FPCategory, FPZero, FPSubnormal, FPInfinite, FPNaN};
+use num::from_str_radix;
 use option::Option;
 
 // FIXME(#5527): These constants should be deprecated once associated
@@ -429,4 +429,11 @@ impl Float for f64 {
         let value: f64 = Float::pi();
         self * (value / 180.0)
     }
+}
+
+#[inline]
+#[allow(missing_docs)]
+#[deprecated="Use `FromStrRadix::from_str_radix(src, 16)`"]
+pub fn from_str_hex(src: &str) -> Option<f64> {
+    from_str_radix(src, 16)
 }

@@ -8,12 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use from_str::FromStr;
-use from_str::from_str;
 use libc::uintptr_t;
 use option::{Some, None, Option};
 use os;
-use str::Str;
+use str::{FromStr, from_str, Str};
 use sync::atomic;
 
 /// Dynamically inquire about whether we're running under V.

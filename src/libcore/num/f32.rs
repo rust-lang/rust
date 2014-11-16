@@ -16,8 +16,8 @@
 
 use intrinsics;
 use mem;
-use num::{FPNormal, FPCategory, FPZero, FPSubnormal, FPInfinite, FPNaN};
-use num::Float;
+use num::{Float, FPNormal, FPCategory, FPZero, FPSubnormal, FPInfinite, FPNaN};
+use num::from_str_radix;
 use option::Option;
 
 pub const RADIX: uint = 2u;
@@ -423,4 +423,11 @@ impl Float for f32 {
         let value: f32 = Float::pi();
         self * (value / 180.0f32)
     }
+}
+
+#[inline]
+#[allow(missing_docs)]
+#[deprecated="Use `FromStrRadix::from_str_radix(src, 16)`"]
+pub fn from_str_hex(src: &str) -> Option<f32> {
+    from_str_radix(src, 16)
 }

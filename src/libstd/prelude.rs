@@ -50,9 +50,9 @@
 #[doc(no_inline)] pub use ops::{Fn, FnMut, FnOnce};
 
 // Reexported functions
-#[doc(no_inline)] pub use from_str::from_str;
 #[doc(no_inline)] pub use iter::{range, repeat};
 #[doc(no_inline)] pub use mem::drop;
+#[doc(no_inline)] pub use str::from_str;
 
 // Reexported types and traits
 
@@ -76,14 +76,13 @@
 #[doc(no_inline)] pub use io::{Buffer, Writer, Reader, Seek, BufferPrelude};
 #[doc(no_inline)] pub use str::{Str, StrVector, StrPrelude};
 #[doc(no_inline)] pub use str::{IntoMaybeOwned, StrAllocating, UnicodeStrPrelude};
-#[doc(no_inline)] pub use to_string::{ToString, IntoStr};
 #[doc(no_inline)] pub use tuple::{Tuple1, Tuple2, Tuple3, Tuple4};
 #[doc(no_inline)] pub use tuple::{Tuple5, Tuple6, Tuple7, Tuple8};
 #[doc(no_inline)] pub use tuple::{Tuple9, Tuple10, Tuple11, Tuple12};
 #[doc(no_inline)] pub use slice::{SlicePrelude, AsSlice, CloneSlicePrelude};
 #[doc(no_inline)] pub use slice::{VectorVector, PartialEqSlicePrelude, OrdSlicePrelude};
 #[doc(no_inline)] pub use slice::{CloneSliceAllocPrelude, OrdSliceAllocPrelude, SliceAllocPrelude};
-#[doc(no_inline)] pub use string::String;
+#[doc(no_inline)] pub use string::{IntoString, String, ToString};
 #[doc(no_inline)] pub use vec::Vec;
 
 // Reexported runtime types

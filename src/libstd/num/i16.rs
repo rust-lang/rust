@@ -13,11 +13,6 @@
 #![unstable]
 #![doc(primitive = "i16")]
 
-use from_str::FromStr;
-use num::FromStrRadix;
-use num::strconv;
-use option::Option;
-
 pub use core::i16::{BITS, BYTES, MIN, MAX};
 
 int_module!(i16)
