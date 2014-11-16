@@ -41,6 +41,7 @@ pub use ops::{Fn, FnMut, FnOnce};
 // Reexported functions
 pub use iter::{range, repeat};
 pub use mem::drop;
+pub use str::from_str;
 
 // Reexported types and traits
 
