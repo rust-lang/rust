@@ -1624,6 +1624,38 @@ impl<'a, T, A: Acceptor<T>> Iterator<IoResult<T>> for IncomingConnections<'a, A>
     }
 }
 
+/// Copies bytes from a `Reader` to a `Writer` until reaching the `reader`'s EOF.
+///
+/// If `read` returns 0 too many times, `NoProgress` will be returned.
+///
+/// # Errors
+///
+/// If an error occurs during this I/O operation, then it is returned as `Err(IoError)`.
+
+pub fn copy<R: Reader, W: Writer>(reader: &mut R, writer: &mut W) -> IoResult<()> {
+    let mut buf = [0, ..DEFAULT_BUF_SIZE];
+    let mut zeroes = 0;
+    loop {
+        let amt = match reader.read(buf) {
+            Ok(0) => {
+                zeroes += 1;
+                if zeroes >= NO_PROGRESS_LIMIT {
+                    return Err(standard_error(NoProgress));
+                };
+                continue
+            }
+            Ok(n) => {
+                zeroes = 0;
+                n
+            }
+            Err(ref e) if e.kind == EndOfFile => { break }
+            Err(e) => return Err(e)
+        };
+        try!(writer.write(buf[..amt]));
+    }
+    Ok(())
+}
+
 /// Creates a standard error for a commonly used flavor of error. The `detail`
 /// field of the returned error will always be `None`.
 ///
@@ -1899,7 +1931,7 @@ impl fmt::Show for FilePermission {
 
 #[cfg(test)]
 mod tests {
-    use super::{IoResult, Reader, MemReader, NoProgress, InvalidInput};
+    use super::{IoResult, Reader, MemReader, MemWriter, NoProgress, InvalidInput, copy};
     use prelude::*;
     use uint;
 
@@ -2015,5 +2047,25 @@ mod tests {
 
     fn _ensure_buffer_is_object_safe<T: Buffer>(x: &T) -> &Buffer {
         x as &Buffer
+    }
+
+    #[test]
+    fn test_copy() {
+        let mut r = MemReader::new(b"hello, world!".to_vec());
+        let mut w = MemWriter::new();
+        assert!(copy(&mut r, &mut w).is_ok());
+        assert_eq!(w.unwrap(), b"hello, world!".to_vec());
+
+        let mut r = BadReader::new(MemReader::new(b"hello, world!".to_vec()),
+                                   vec![BadBehavior(1), GoodBehavior(1),
+                                        BadBehavior(50), GoodBehavior(uint::MAX)]);
+        let mut w = MemWriter::new();
+        assert!(copy(&mut r, &mut w).is_ok());
+        assert_eq!(w.unwrap(), b"hello, world!".to_vec());
+
+        let mut r = BadReader::new(MemReader::new(b"hello, world!".to_vec()),
+                                   vec![BadBehavior(uint::MAX)]);
+        let mut w = MemWriter::new();
+        assert_eq!(copy(&mut r, &mut w).unwrap_err().kind, NoProgress);
     }
 }
