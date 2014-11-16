@@ -133,11 +133,11 @@ pass-by-reference. Basically, languages can make two choices (this is made
 up syntax, it's not Rust):
 
 ```{notrust,ignore}
-fn foo(x) {
+func foo(x) {
     x = 5
 }
 
-fn main() {
+func main() {
     i = 1
     foo(i)
     // what is the value of i here?
@@ -153,11 +153,11 @@ So what do pointers have to do with this? Well, since pointers point to a
 location in memory...
 
 ```{notrust,ignore}
-fn foo(&int x) {
+func foo(&int x) {
     *x = 5
 }
 
-fn main() {
+func main() {
     i = 1
     foo(&i)
     // what is the value of i here?
@@ -192,13 +192,13 @@ When you combine pointers and functions, it's easy to accidentally invalidate
 the memory the pointer is pointing to. For example:
 
 ```{notrust,ignore}
-fn make_pointer(): &int {
+func make_pointer(): &int {
     x = 5;
 
     return &x;
 }
 
-fn main() {
+func main() {
     &int i = make_pointer();
     *i = 5; // uh oh!
 }
@@ -214,11 +214,11 @@ issue. Two pointers are said to alias when they point at the same location
 in memory. Like this:
 
 ```{notrust,ignore}
-fn mutate(&int i, int j) {
+func mutate(&int i, int j) {
     *i = j;
 }
 
-fn main() {
+func main() {
   x = 5;
   y = &x;
   z = &x; //y and z are aliased
