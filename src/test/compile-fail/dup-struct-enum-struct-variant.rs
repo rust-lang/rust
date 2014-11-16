@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(struct_variant)]
-
 enum Foo { C { a: int, b: int } }
 struct C { a: int, b: int }         //~ ERROR error: duplicate definition of type or module `C`
 

@@ -1080,9 +1080,9 @@ impl Clean<Item> for ty::ImplOrTraitItem {
 pub enum Type {
     /// structs/enums/traits (anything that'd be an ast::TyPath)
     ResolvedPath {
-        pub path: Path,
-        pub typarams: Option<Vec<TyParamBound>>,
-        pub did: ast::DefId,
+        path: Path,
+        typarams: Option<Vec<TyParamBound>>,
+        did: ast::DefId,
     },
     // I have no idea how to usefully use this.
     TyParamBinder(ast::NodeId),
@@ -1105,9 +1105,9 @@ pub enum Type {
     Unique(Box<Type>),
     RawPointer(Mutability, Box<Type>),
     BorrowedRef {
-        pub lifetime: Option<Lifetime>,
-        pub mutability: Mutability,
-        pub type_: Box<Type>,
+        lifetime: Option<Lifetime>,
+        mutability: Mutability,
+        type_: Box<Type>,
     },
     // region, raw, other boxes, mutable
 }

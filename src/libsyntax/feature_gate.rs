@@ -37,7 +37,7 @@ use std::slice;
 static KNOWN_FEATURES: &'static [(&'static str, Status)] = &[
     ("globs", Active),
     ("macro_rules", Active),
-    ("struct_variant", Active),
+    ("struct_variant", Accepted),
     ("asm", Active),
     ("managed_boxes", Removed),
     ("non_ascii_idents", Active),
@@ -184,19 +184,6 @@ impl<'a, 'v> Visitor<'v> for Context<'a> {
             }
         }
         match i.node {
-            ast::ItemEnum(ref def, _) => {
-                for variant in def.variants.iter() {
-                    match variant.node.kind {
-                        ast::StructVariantKind(..) => {
-                            self.gate_feature("struct_variant", variant.span,
-                                              "enum struct variants are \
-                                               experimental and possibly buggy");
-                        }
-                        _ => {}
-                    }
-                }
-            }
-
             ast::ItemForeignMod(ref foreign_module) => {
                 if attr::contains_name(i.attrs.as_slice(), "link_args") {
                     self.gate_feature("link_args", i.span,
