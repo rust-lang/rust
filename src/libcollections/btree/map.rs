@@ -53,7 +53,7 @@ use ring_buf::RingBuf;
 /// and possibly other factors. Using linear search, searching for a random element is expected
 /// to take O(B log<sub>B</sub>n) comparisons, which is generally worse than a BST. In practice,
 /// however, performance is excellent. `BTreeMap` is able to readily outperform `TreeMap` under
-/// many workloads, and is competetive where it doesn't. BTreeMap also generally *scales* better
+/// many workloads, and is competitive where it doesn't. BTreeMap also generally *scales* better
 /// than TreeMap, making it more appropriate for large datasets.
 ///
 /// However, `TreeMap` may still be more appropriate to use in many contexts. If elements are very
