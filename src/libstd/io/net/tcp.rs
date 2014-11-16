@@ -661,23 +661,22 @@ mod test {
         let addr = next_test_ip4();
         let mut acceptor = TcpListener::bind(addr).listen();
 
+        let (tx, rx) = channel();
         spawn(proc() {
-            let _stream = TcpStream::connect(addr);
-            // Close
+            drop(TcpStream::connect(addr));
+            tx.send(());
         });
 
         let mut stream = acceptor.accept();
+        rx.recv();
         let buf = [0];
-        loop {
-            match stream.write(buf) {
-                Ok(..) => {}
-                Err(e) => {
-                    assert!(e.kind == ConnectionReset ||
-                            e.kind == BrokenPipe ||
-                            e.kind == ConnectionAborted,
-                            "unknown error: {}", e);
-                    break;
-                }
+        match stream.write(buf) {
+            Ok(..) => {}
+            Err(e) => {
+                assert!(e.kind == ConnectionReset ||
+                        e.kind == BrokenPipe ||
+                        e.kind == ConnectionAborted,
+                        "unknown error: {}", e);
             }
         }
     }
@@ -687,23 +686,22 @@ mod test {
         let addr = next_test_ip6();
         let mut acceptor = TcpListener::bind(addr).listen();
 
+        let (tx, rx) = channel();
         spawn(proc() {
-            let _stream = TcpStream::connect(addr);
-            // Close
+            drop(TcpStream::connect(addr));
+            tx.send(());
         });
 
         let mut stream = acceptor.accept();
+        rx.recv();
         let buf = [0];
-        loop {
-            match stream.write(buf) {
-                Ok(..) => {}
-                Err(e) => {
-                    assert!(e.kind == ConnectionReset ||
-                            e.kind == BrokenPipe ||
-                            e.kind == ConnectionAborted,
-                            "unknown error: {}", e);
-                    break;
-                }
+        match stream.write(buf) {
+            Ok(..) => {}
+            Err(e) => {
+                assert!(e.kind == ConnectionReset ||
+                        e.kind == BrokenPipe ||
+                        e.kind == ConnectionAborted,
+                        "unknown error: {}", e);
             }
         }
     }
