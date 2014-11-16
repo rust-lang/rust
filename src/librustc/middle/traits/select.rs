@@ -27,6 +27,7 @@ use super::{VtableBuiltin, VtableImpl, VtableParam, VtableUnboxedClosure};
 use super::{VtableImplData, VtableParamData, VtableBuiltinData};
 use super::{util};
 
+use middle::fast_reject;
 use middle::mem_categorization::Typer;
 use middle::subst::{Subst, Substs, VecPerParamSpace};
 use middle::ty;
@@ -1767,12 +1768,20 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                   obligation: &Obligation)
                   -> Result<Substs, ()>
     {
+        let impl_trait_ref = ty::impl_trait_ref(self.tcx(),
+                                                impl_def_id).unwrap();
+
+        // Before we create the substitutions and everything, first
+        // consider a "quick reject". This avoids creating more types
+        // and so forth that we need to.
+        if self.fast_reject_trait_refs(obligation, &*impl_trait_ref) {
+            return Err(());
+        }
+
         let impl_substs = util::fresh_substs_for_impl(self.infcx,
                                                       obligation.cause.span,
                                                       impl_def_id);
 
-        let impl_trait_ref = ty::impl_trait_ref(self.tcx(),
-                                                impl_def_id).unwrap();
         let impl_trait_ref = impl_trait_ref.subst(self.tcx(),
                                                   &impl_substs);
 
@@ -1780,6 +1789,29 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             Ok(()) => Ok(impl_substs),
             Err(()) => Err(())
         }
+    }
+
+    fn fast_reject_trait_refs(&mut self,
+                              obligation: &Obligation,
+                              impl_trait_ref: &ty::TraitRef)
+                              -> bool
+    {
+        // We can avoid creating type variables and doing the full
+        // substitution if we find that any of the input types, when
+        // simplified, do not match.
+
+        obligation.trait_ref.input_types().iter()
+            .zip(impl_trait_ref.input_types().iter())
+            .any(|(&obligation_ty, &impl_ty)| {
+                let simplified_obligation_ty =
+                    fast_reject::simplify_type(self.tcx(), obligation_ty, true);
+                let simplified_impl_ty =
+                    fast_reject::simplify_type(self.tcx(), impl_ty, false);
+
+                simplified_obligation_ty.is_some() &&
+                    simplified_impl_ty.is_some() &&
+                    simplified_obligation_ty != simplified_impl_ty
+            })
     }
 
     fn match_trait_refs(&mut self,
