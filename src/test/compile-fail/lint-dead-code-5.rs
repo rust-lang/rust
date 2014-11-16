@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(struct_variant)]
 #![allow(unused_variables)]
 #![deny(dead_code)]
 

@@ -4612,7 +4612,7 @@ impl<'a> Parser<'a> {
             is_tuple_like = false;
             fields = Vec::new();
             while self.token != token::CloseDelim(token::Brace) {
-                fields.push(self.parse_struct_decl_field());
+                fields.push(self.parse_struct_decl_field(true));
             }
             if fields.len() == 0 {
                 self.fatal(format!("unit-like struct definition should be \
@@ -4689,12 +4689,16 @@ impl<'a> Parser<'a> {
     }
 
     /// Parse an element of a struct definition
-    fn parse_struct_decl_field(&mut self) -> StructField {
+    fn parse_struct_decl_field(&mut self, allow_pub: bool) -> StructField {
 
         let attrs = self.parse_outer_attributes();
 
         if self.eat_keyword(keywords::Pub) {
-           return self.parse_single_struct_field(Public, attrs);
+            if !allow_pub {
+                let span = self.last_span;
+                self.span_err(span, "`pub` is not allowed here");
+            }
+            return self.parse_single_struct_field(Public, attrs);
         }
 
         return self.parse_single_struct_field(Inherited, attrs);
@@ -5142,7 +5146,7 @@ impl<'a> Parser<'a> {
     fn parse_struct_def(&mut self) -> P<StructDef> {
         let mut fields: Vec<StructField> = Vec::new();
         while self.token != token::CloseDelim(token::Brace) {
-            fields.push(self.parse_struct_decl_field());
+            fields.push(self.parse_struct_decl_field(false));
         }
         self.bump();
 

@@ -1293,8 +1293,8 @@ pub type Variant = Spanned<Variant_>;
 
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
 pub enum PathListItem_ {
-    PathListIdent { pub name: Ident, pub id: NodeId },
-    PathListMod { pub id: NodeId }
+    PathListIdent { name: Ident, id: NodeId },
+    PathListMod { id: NodeId }
 }
 
 impl PathListItem_ {

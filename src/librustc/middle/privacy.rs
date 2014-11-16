@@ -1239,6 +1239,7 @@ struct VisiblePrivateTypesVisitor<'a, 'tcx: 'a> {
     tcx: &'a ty::ctxt<'tcx>,
     exported_items: &'a ExportedItems,
     public_items: &'a PublicItems,
+    in_variant: bool,
 }
 
 struct CheckTypeForPrivatenessVisitor<'a, 'b: 'a, 'tcx: 'b> {
@@ -1514,13 +1515,15 @@ impl<'a, 'tcx, 'v> Visitor<'v> for VisiblePrivateTypesVisitor<'a, 'tcx> {
 
     fn visit_variant(&mut self, v: &ast::Variant, g: &ast::Generics) {
         if self.exported_items.contains(&v.node.id) {
+            self.in_variant = true;
             visit::walk_variant(self, v, g);
+            self.in_variant = false;
         }
     }
 
     fn visit_struct_field(&mut self, s: &ast::StructField) {
         match s.node.kind {
-            ast::NamedField(_, ast::Public)  => {
+            ast::NamedField(_, vis) if vis == ast::Public || self.in_variant => {
                 visit::walk_struct_field(self, s);
             }
             _ => {}
@@ -1598,7 +1601,8 @@ pub fn check_crate(tcx: &ty::ctxt,
         let mut visitor = VisiblePrivateTypesVisitor {
             tcx: tcx,
             exported_items: &exported_items,
-            public_items: &public_items
+            public_items: &public_items,
+            in_variant: false,
         };
         visit::walk_crate(&mut visitor, krate);
     }

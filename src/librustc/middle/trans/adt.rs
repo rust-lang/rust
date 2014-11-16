@@ -101,9 +101,9 @@ pub enum Repr {
      * otherwise it indicates the other case.
      */
     RawNullablePointer {
-        pub nndiscr: Disr,
-        pub nnty: ty::t,
-        pub nullfields: Vec<ty::t>
+        nndiscr: Disr,
+        nnty: ty::t,
+        nullfields: Vec<ty::t>
     },
     /**
      * Two cases distinguished by a nullable pointer: the case with discriminant
@@ -117,10 +117,10 @@ pub enum Repr {
      * identity function.
      */
     StructWrappedNullablePointer {
-        pub nonnull: Struct,
-        pub nndiscr: Disr,
-        pub ptrfield: PointerField,
-        pub nullfields: Vec<ty::t>,
+        nonnull: Struct,
+        nndiscr: Disr,
+        ptrfield: PointerField,
+        nullfields: Vec<ty::t>,
     }
 }
 

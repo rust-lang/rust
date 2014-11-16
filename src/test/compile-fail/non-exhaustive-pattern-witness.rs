@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(advanced_slice_patterns, struct_variant)]
+#![feature(advanced_slice_patterns)]
 
 struct Foo {
     first: bool,
