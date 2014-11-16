@@ -1399,6 +1399,9 @@ pub struct MissingDoc {
     /// Stack of IDs of struct definitions.
     struct_def_stack: Vec<ast::NodeId>,
 
+    /// True if inside variant definition
+    in_variant: bool,
+
     /// Stack of whether #[doc(hidden)] is set
     /// at each level which has lint attributes.
     doc_hidden_stack: Vec<bool>,
@@ -1408,6 +1411,7 @@ impl MissingDoc {
     pub fn new() -> MissingDoc {
         MissingDoc {
             struct_def_stack: vec!(),
+            in_variant: false,
             doc_hidden_stack: vec!(false),
         }
     }
@@ -1522,7 +1526,7 @@ impl LintPass for MissingDoc {
 
     fn check_struct_field(&mut self, cx: &Context, sf: &ast::StructField) {
         match sf.node.kind {
-            ast::NamedField(_, vis) if vis == ast::Public => {
+            ast::NamedField(_, vis) if vis == ast::Public || self.in_variant => {
                 let cur_struct_def = *self.struct_def_stack.last()
                     .expect("empty struct_def_stack");
                 self.check_missing_docs_attrs(cx, Some(cur_struct_def),
@@ -1536,6 +1540,13 @@ impl LintPass for MissingDoc {
     fn check_variant(&mut self, cx: &Context, v: &ast::Variant, _: &ast::Generics) {
         self.check_missing_docs_attrs(cx, Some(v.node.id), v.node.attrs.as_slice(),
                                      v.span, "a variant");
+        assert!(!self.in_variant);
+        self.in_variant = true;
+    }
+
+    fn check_variant_post(&mut self, _: &Context, _: &ast::Variant, _: &ast::Generics) {
+        assert!(self.in_variant);
+        self.in_variant = false;
     }
 }
 

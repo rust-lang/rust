@@ -665,6 +665,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for Context<'a, 'tcx> {
         self.with_lint_attrs(v.node.attrs.as_slice(), |cx| {
             run_lints!(cx, check_variant, v, g);
             visit::walk_variant(cx, v, g);
+            run_lints!(cx, check_variant_post, v, g);
         })
     }
 

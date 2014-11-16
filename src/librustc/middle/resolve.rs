@@ -102,10 +102,10 @@ pub enum LastPrivate {
     // and whether the import is in fact used for each.
     // If the Option<PrivateDep> fields are None, it means there is no definition
     // in that namespace.
-    LastImport{pub value_priv: Option<PrivateDep>,
-               pub value_used: ImportUse,
-               pub type_priv: Option<PrivateDep>,
-               pub type_used: ImportUse},
+    LastImport{value_priv: Option<PrivateDep>,
+               value_used: ImportUse,
+               type_priv: Option<PrivateDep>,
+               type_used: ImportUse},
 }
 
 #[deriving(Show)]
