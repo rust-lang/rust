@@ -155,7 +155,7 @@ println!("{}", s[0]);
 This does not compile. This is on purpose. In the world of UTF-8, direct
 indexing is basically never what you want to do. The reason is that each
 character can be a variable number of bytes. This means that you have to iterate
-through the characters anyway, which is a O(n) operation. 
+through the characters anyway, which is an O(n) operation.
 
 There's 3 basic levels of unicode (and its encodings):
 
