@@ -159,7 +159,7 @@ pub fn expand_expr(e: P<ast::Expr>, fld: &mut MacroExpander) -> P<ast::Expr> {
             // `_ => [<elseopt> | ()]`
             let else_arm = {
                 let pat_under = fld.cx.pat_wild(span);
-                let else_expr = elseopt.unwrap_or_else(|| fld.cx.expr_lit(span, ast::LitNil));
+                let else_expr = elseopt.unwrap_or_else(|| fld.cx.expr_tuple(span, vec![]));
                 fld.cx.arm(span, vec![pat_under], else_expr)
             };
 

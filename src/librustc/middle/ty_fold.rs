@@ -554,7 +554,7 @@ pub fn super_fold_sty<'tcx, T: TypeFolder<'tcx>>(this: &mut T,
         ty::ty_unboxed_closure(did, ref region, ref substs) => {
             ty::ty_unboxed_closure(did, region.fold_with(this), substs.fold_with(this))
         }
-        ty::ty_nil | ty::ty_bool | ty::ty_char | ty::ty_str |
+        ty::ty_bool | ty::ty_char | ty::ty_str |
         ty::ty_int(_) | ty::ty_uint(_) | ty::ty_float(_) |
         ty::ty_err | ty::ty_infer(_) |
         ty::ty_param(..) => {

@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use middle::const_eval::{compare_const_vals, const_bool, const_float, const_nil, const_val};
+use middle::const_eval::{compare_const_vals, const_bool, const_float, const_val};
 use middle::const_eval::{const_expr_to_pat, eval_const_expr, lookup_const_by_id};
 use middle::def::*;
 use middle::expr_use_visitor::{ConsumeMode, Delegate, ExprUseVisitor, Init};
@@ -332,7 +332,6 @@ fn check_exhaustive(cx: &MatchCheckCtxt, sp: Span, matrix: &Matrix) {
 fn const_val_to_expr(value: &const_val) -> P<Expr> {
     let node = match value {
         &const_bool(b) => LitBool(b),
-        &const_nil => LitNil,
         _ => unreachable!()
     };
     P(Expr {
@@ -497,9 +496,6 @@ fn all_constructors(cx: &MatchCheckCtxt, left_ty: ty::t,
         ty::ty_bool =>
             [true, false].iter().map(|b| ConstantValue(const_bool(*b))).collect(),
 
-        ty::ty_nil =>
-            vec!(ConstantValue(const_nil)),
-
         ty::ty_rptr(_, ty::mt { ty, .. }) => match ty::get(ty).sty {
             ty::ty_vec(_, None) =>
                 range_inclusive(0, max_slice_length).map(|length| Slice(length)).collect(),
@@ -552,7 +548,7 @@ fn is_useful(cx: &MatchCheckCtxt,
         None => v[0]
     };
     let left_ty = if real_pat.id == DUMMY_NODE_ID {
-        ty::mk_nil()
+        ty::mk_nil(cx.tcx)
     } else {
         ty::pat_ty(cx.tcx, &*real_pat)
     };

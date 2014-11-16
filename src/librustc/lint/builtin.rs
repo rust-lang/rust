@@ -447,7 +447,9 @@ impl LintPass for ImproperCTypes {
             for input in decl.inputs.iter() {
                 check_ty(cx, &*input.ty);
             }
-            check_ty(cx, &*decl.output)
+            if let ast::Return(ref ret_ty) = decl.output {
+                check_ty(cx, &**ret_ty);
+            }
         }
 
         match it.node {
@@ -735,7 +737,8 @@ impl LintPass for UnusedResults {
         let t = ty::expr_ty(cx.tcx, expr);
         let mut warned = false;
         match ty::get(t).sty {
-            ty::ty_nil | ty::ty_bool => return,
+            ty::ty_tup(ref tys) if tys.is_empty() => return,
+            ty::ty_bool => return,
             ty::ty_struct(did, _) |
             ty::ty_enum(did, _) => {
                 if ast_util::is_local(did) {

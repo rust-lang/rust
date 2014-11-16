@@ -556,7 +556,7 @@ fn check_fn<'a, 'tcx>(ccx: &'a CrateCtxt<'a, 'tcx>,
         .collect();
 
     if let ty::FnConverging(ret_ty) = ret_ty {
-        fcx.require_type_is_sized(ret_ty, decl.output.span, traits::ReturnType);
+        fcx.require_type_is_sized(ret_ty, decl.output.span(), traits::ReturnType);
         fn_sig_tys.push(ret_ty);
     }
 
@@ -1569,7 +1569,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub fn default_diverging_type_variables_to_nil(&self) {
         for (_, &ref ty) in self.inh.node_types.borrow_mut().iter_mut() {
             if self.infcx().type_var_diverges(self.infcx().resolve_type_vars_if_possible(*ty)) {
-                demand::eqtype(self, codemap::DUMMY_SP, *ty, ty::mk_nil());
+                demand::eqtype(self, codemap::DUMMY_SP, *ty, ty::mk_nil(self.tcx()));
             }
         }
     }
@@ -1741,7 +1741,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     pub fn write_nil(&self, node_id: ast::NodeId) {
-        self.write_ty(node_id, ty::mk_nil());
+        self.write_ty(node_id, ty::mk_nil(self.tcx()));
     }
     pub fn write_error(&self, node_id: ast::NodeId) {
         self.write_ty(node_id, ty::mk_err());
@@ -2664,17 +2664,6 @@ fn check_argument_types<'a>(fcx: &FnCtxt,
                     (*arg_types).clone()
                 }
             }
-            ty::ty_nil => {
-                if args.len() != 0 {
-                    span_err!(tcx.sess, sp, E0058,
-                        "this function takes 0 parameters but {} parameter{} supplied",
-                        args.len(),
-                        if args.len() == 1 {" was"} else {"s were"});
-                    err_args(args.len())
-                } else {
-                    vec![]
-                }
-            }
             _ => {
                 span_err!(tcx.sess, sp, E0059,
                     "cannot use call notation; the first type parameter \
@@ -2865,7 +2854,6 @@ fn check_lit(fcx: &FnCtxt,
             opt_ty.unwrap_or_else(
                 || ty::mk_float_var(tcx, fcx.infcx().next_float_var_id()))
         }
-        ast::LitNil => ty::mk_nil(),
         ast::LitBool(_) => ty::mk_bool()
     }
 }
@@ -3179,7 +3167,7 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
                                         infer::IfExpressionWithNoElse(sp),
                                         false,
                                         then_ty,
-                                        ty::mk_nil())
+                                        ty::mk_nil(fcx.tcx()))
             }
         };
 
@@ -3480,7 +3468,7 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
 
         // Tuple up the arguments and insert the resulting function type into
         // the `unboxed_closures` table.
-        fn_ty.sig.inputs = vec![ty::mk_tup_or_nil(fcx.tcx(), fn_ty.sig.inputs)];
+        fn_ty.sig.inputs = vec![ty::mk_tup(fcx.tcx(), fn_ty.sig.inputs)];
 
         let kind = match kind {
             ast::FnUnboxedClosureKind => ty::FnUnboxedClosureKind,
@@ -4148,7 +4136,7 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
                 match *expr_opt {
                     None =>
                         if let Err(_) = fcx.mk_eqty(false, infer::Misc(expr.span),
-                                                    result_type, ty::mk_nil()) {
+                                                    result_type, ty::mk_nil(fcx.tcx())) {
                             span_err!(tcx.sess, expr.span, E0069,
                                 "`return;` in function returning non-nil");
                         },
@@ -4743,7 +4731,7 @@ pub fn check_stmt(fcx: &FnCtxt, stmt: &ast::Stmt)  {
       ast::StmtExpr(ref expr, id) => {
         node_id = id;
         // Check with expected type of ()
-        check_expr_has_type(fcx, &**expr, ty::mk_nil());
+        check_expr_has_type(fcx, &**expr, ty::mk_nil(fcx.tcx()));
         let expr_ty = fcx.expr_ty(&**expr);
         saw_bot = saw_bot || fcx.infcx().type_var_diverges(expr_ty);
         saw_err = saw_err || ty::type_is_error(expr_ty);
@@ -4769,12 +4757,12 @@ pub fn check_stmt(fcx: &FnCtxt, stmt: &ast::Stmt)  {
 }
 
 pub fn check_block_no_value(fcx: &FnCtxt, blk: &ast::Block)  {
-    check_block_with_expected(fcx, blk, ExpectHasType(ty::mk_nil()));
+    check_block_with_expected(fcx, blk, ExpectHasType(ty::mk_nil(fcx.tcx())));
     let blkty = fcx.node_ty(blk.id);
     if ty::type_is_error(blkty) {
         fcx.write_error(blk.id);
     } else {
-        let nilty = ty::mk_nil();
+        let nilty = ty::mk_nil(fcx.tcx());
         demand::suptype(fcx, blk.span, nilty, blkty);
     }
 }
@@ -5497,7 +5485,7 @@ pub fn instantiate_path(fcx: &FnCtxt,
             data.inputs.iter().map(|ty| fcx.to_ty(&**ty)).collect();
 
         let tuple_ty =
-            ty::mk_tup_or_nil(fcx.tcx(), input_tys);
+            ty::mk_tup(fcx.tcx(), input_tys);
 
         if type_count >= 1 {
             substs.types.push(space, tuple_ty);
@@ -5507,7 +5495,7 @@ pub fn instantiate_path(fcx: &FnCtxt,
             data.output.as_ref().map(|ty| fcx.to_ty(&**ty));
 
         let output_ty =
-            output_ty.unwrap_or(ty::mk_nil());
+            output_ty.unwrap_or(ty::mk_nil(fcx.tcx()));
 
         if type_count >= 2 {
             substs.types.push(space, output_ty);
@@ -5727,7 +5715,7 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &ast::ForeignItem) {
             "load" => (1, vec!(ty::mk_imm_ptr(tcx, param(ccx, 0))),
                        param(ccx, 0)),
             "store" => (1, vec!(ty::mk_mut_ptr(tcx, param(ccx, 0)), param(ccx, 0)),
-                        ty::mk_nil()),
+                        ty::mk_nil(tcx)),
 
             "xchg" | "xadd" | "xsub" | "and"  | "nand" | "or" | "xor" | "max" |
             "min"  | "umax" | "umin" => {
@@ -5735,7 +5723,7 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &ast::ForeignItem) {
                  param(ccx, 0))
             }
             "fence" => {
-                (0, Vec::new(), ty::mk_nil())
+                (0, Vec::new(), ty::mk_nil(tcx))
             }
             op => {
                 span_err!(tcx.sess, it.span, E0092,
@@ -5748,12 +5736,12 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &ast::ForeignItem) {
         (0, Vec::new(), ty::FnDiverging)
     } else {
         let (n_tps, inputs, output) = match name.get() {
-            "breakpoint" => (0, Vec::new(), ty::mk_nil()),
+            "breakpoint" => (0, Vec::new(), ty::mk_nil(tcx)),
             "size_of" |
             "pref_align_of" | "min_align_of" => (1u, Vec::new(), ty::mk_uint()),
             "init" => (1u, Vec::new(), param(ccx, 0u)),
             "uninit" => (1u, Vec::new(), param(ccx, 0u)),
-            "forget" => (1u, vec!( param(ccx, 0) ), ty::mk_nil()),
+            "forget" => (1u, vec!( param(ccx, 0) ), ty::mk_nil(tcx)),
             "transmute" => (2, vec!( param(ccx, 0) ), param(ccx, 1)),
             "move_val_init" => {
                 (1u,
@@ -5761,7 +5749,7 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &ast::ForeignItem) {
                     ty::mk_mut_rptr(tcx, ty::ReLateBound(it.id, ty::BrAnon(0)), param(ccx, 0)),
                     param(ccx, 0u)
                   ),
-               ty::mk_nil())
+               ty::mk_nil(tcx))
             }
             "needs_drop" => (1u, Vec::new(), ty::mk_bool()),
             "owns_managed" => (1u, Vec::new(), ty::mk_bool()),
@@ -5817,7 +5805,7 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &ast::ForeignItem) {
                   }),
                   ty::mk_uint()
                ),
-               ty::mk_nil())
+               ty::mk_nil(tcx))
             }
             "set_memory" | "volatile_set_memory" => {
               (1,
@@ -5829,7 +5817,7 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &ast::ForeignItem) {
                   ty::mk_u8(),
                   ty::mk_uint()
                ),
-               ty::mk_nil())
+               ty::mk_nil(tcx))
             }
             "sqrtf32" => (0, vec!( ty::mk_f32() ), ty::mk_f32()),
             "sqrtf64" => (0, vec!( ty::mk_f64() ), ty::mk_f64()),
@@ -5912,7 +5900,7 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &ast::ForeignItem) {
             "volatile_load" =>
                 (1, vec!( ty::mk_imm_ptr(tcx, param(ccx, 0)) ), param(ccx, 0)),
             "volatile_store" =>
-                (1, vec!( ty::mk_mut_ptr(tcx, param(ccx, 0)), param(ccx, 0) ), ty::mk_nil()),
+                (1, vec!( ty::mk_mut_ptr(tcx, param(ccx, 0)), param(ccx, 0) ), ty::mk_nil(tcx)),
 
             "i8_add_with_overflow" | "i8_sub_with_overflow" | "i8_mul_with_overflow" =>
                 (0, vec!(ty::mk_i8(), ty::mk_i8()),
@@ -5948,7 +5936,7 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &ast::ForeignItem) {
 
             "return_address" => (0, vec![], ty::mk_imm_ptr(tcx, ty::mk_u8())),
 
-            "assume" => (0, vec![ty::mk_bool()], ty::mk_nil()),
+            "assume" => (0, vec![ty::mk_bool()], ty::mk_nil(tcx)),
 
             ref other => {
                 span_err!(tcx.sess, it.span, E0093,

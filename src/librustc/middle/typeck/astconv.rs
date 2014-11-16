@@ -385,11 +385,11 @@ fn ast_path_substs<'tcx,AC,RS>(
         let inputs = data.inputs.iter()
                                 .map(|a_t| ast_ty_to_ty(this, &binding_rscope, &**a_t))
                                 .collect();
-        let input_ty = ty::mk_tup_or_nil(this.tcx(), inputs);
+        let input_ty = ty::mk_tup(this.tcx(), inputs);
 
         let output = match data.output {
             Some(ref output_ty) => ast_ty_to_ty(this, &binding_rscope, &**output_ty),
-            None => ty::mk_nil()
+            None => ty::mk_nil(this.tcx())
         };
 
         (Vec::new(), vec![input_ty, output])
@@ -652,12 +652,6 @@ pub fn ast_ty_to_builtin_ty<'tcx, AC: AstConv<'tcx>, RS: RegionScope>(
     }
 }
 
-#[deriving(Show)]
-enum PointerTy {
-    RPtr(ty::Region),
-    Uniq
-}
-
 // Handle `~`, `Box`, and `&` being able to mean strs and vecs.
 // If a_seq_ty is a str or a vec, make it a str/vec.
 // Also handle first-class trait types.
@@ -666,14 +660,14 @@ fn mk_pointer<'tcx, AC: AstConv<'tcx>, RS: RegionScope>(
         rscope: &RS,
         a_seq_mutbl: ast::Mutability,
         a_seq_ty: &ast::Ty,
-        ptr_ty: PointerTy,
+        region: ty::Region,
         constr: |ty::t| -> ty::t)
         -> ty::t
 {
     let tcx = this.tcx();
 
-    debug!("mk_pointer(ptr_ty={}, a_seq_ty={})",
-           ptr_ty,
+    debug!("mk_pointer(region={}, a_seq_ty={})",
+           region,
            a_seq_ty.repr(tcx));
 
     match a_seq_ty.node {
@@ -688,14 +682,7 @@ fn mk_pointer<'tcx, AC: AstConv<'tcx>, RS: RegionScope>(
             match tcx.def_map.borrow().get(&id) {
                 Some(&def::DefPrimTy(ast::TyStr)) => {
                     check_path_args(tcx, path, NO_TPS | NO_REGIONS);
-                    match ptr_ty {
-                        Uniq => {
-                            return constr(ty::mk_str(tcx));
-                        }
-                        RPtr(r) => {
-                            return ty::mk_str_slice(tcx, r, a_seq_mutbl);
-                        }
-                    }
+                    return ty::mk_str_slice(tcx, region, a_seq_mutbl);
                 }
                 Some(&def::DefTrait(trait_def_id)) => {
                     let result = ast_path_to_trait_ref(this,
@@ -716,14 +703,7 @@ fn mk_pointer<'tcx, AC: AstConv<'tcx>, RS: RegionScope>(
                     let tr = ty::mk_trait(tcx,
                                           result,
                                           existential_bounds);
-                    return match ptr_ty {
-                        Uniq => {
-                            return ty::mk_uniq(tcx, tr);
-                        }
-                        RPtr(r) => {
-                            return ty::mk_rptr(tcx, r, ty::mt{mutbl: a_seq_mutbl, ty: tr});
-                        }
-                    };
+                    return ty::mk_rptr(tcx, region, ty::mt{mutbl: a_seq_mutbl, ty: tr});
                 }
                 _ => {}
             }
@@ -824,12 +804,6 @@ pub fn ast_ty_to_ty<'tcx, AC: AstConv<'tcx>, RS: RegionScope>(
 
     let typ = ast_ty_to_builtin_ty(this, rscope, ast_ty).unwrap_or_else(|| {
         match ast_ty.node {
-            ast::TyNil => ty::mk_nil(),
-            ast::TyBot => unreachable!(),
-            ast::TyUniq(ref ty) => {
-                mk_pointer(this, rscope, ast::MutImmutable, &**ty, Uniq,
-                           |ty| ty::mk_uniq(tcx, ty))
-            }
             ast::TyVec(ref ty) => {
                 ty::mk_vec(tcx, ast_ty_to_ty(this, rscope, &**ty), None)
             }
@@ -842,7 +816,7 @@ pub fn ast_ty_to_ty<'tcx, AC: AstConv<'tcx>, RS: RegionScope>(
             ast::TyRptr(ref region, ref mt) => {
                 let r = opt_ast_region_to_region(this, rscope, ast_ty.span, region);
                 debug!("ty_rptr r={}", r.repr(this.tcx()));
-                mk_pointer(this, rscope, mt.mutbl, &*mt.ty, RPtr(r),
+                mk_pointer(this, rscope, mt.mutbl, &*mt.ty, r,
                            |ty| ty::mk_rptr(tcx, r, ty::mt {ty: ty, mutbl: mt.mutbl}))
             }
             ast::TyTup(ref fields) => {
@@ -1208,22 +1182,24 @@ fn ty_of_method_or_bare_fn<'tcx, AC: AstConv<'tcx>>(
                                                                    .filter(|&(_, l)| l != 0)
                                                                    .collect();
 
-    let output_ty = match decl.output.node {
-        ast::TyBot => ty::FnDiverging,
-        ast::TyInfer => ty::FnConverging(this.ty_infer(decl.output.span)),
-        _ => ty::FnConverging(match implied_output_region {
-            Some(implied_output_region) => {
-                let rb = SpecificRscope::new(implied_output_region);
-                ast_ty_to_ty(this, &rb, &*decl.output)
-            }
-            None => {
-                // All regions must be explicitly specified in the output
-                // if the lifetime elision rules do not apply. This saves
-                // the user from potentially-confusing errors.
-                let rb = UnelidableRscope::new(param_lifetimes);
-                ast_ty_to_ty(this, &rb, &*decl.output)
-            }
-        })
+    let output_ty = match decl.output {
+        ast::Return(ref output) if output.node == ast::TyInfer =>
+            ty::FnConverging(this.ty_infer(output.span)),
+        ast::Return(ref output) =>
+            ty::FnConverging(match implied_output_region {
+                Some(implied_output_region) => {
+                    let rb = SpecificRscope::new(implied_output_region);
+                    ast_ty_to_ty(this, &rb, &**output)
+                }
+                None => {
+                    // All regions must be explicitly specified in the output
+                    // if the lifetime elision rules do not apply. This saves
+                    // the user from potentially-confusing errors.
+                    let rb = UnelidableRscope::new(param_lifetimes);
+                    ast_ty_to_ty(this, &rb, &**output)
+                }
+            }),
+        ast::NoReturn(_) => ty::FnDiverging
     };
 
     (ty::BareFnTy {
@@ -1346,11 +1322,14 @@ pub fn ty_of_closure<'tcx, AC: AstConv<'tcx>>(
 
     let expected_ret_ty = expected_sig.map(|e| e.output);
 
-    let output_ty = match decl.output.node {
-        ast::TyBot => ty::FnDiverging,
-        ast::TyInfer if expected_ret_ty.is_some() => expected_ret_ty.unwrap(),
-        ast::TyInfer => ty::FnConverging(this.ty_infer(decl.output.span)),
-        _ => ty::FnConverging(ast_ty_to_ty(this, &rb, &*decl.output))
+    let output_ty = match decl.output {
+        ast::Return(ref output) if output.node == ast::TyInfer && expected_ret_ty.is_some() =>
+            expected_ret_ty.unwrap(),
+        ast::Return(ref output) if output.node == ast::TyInfer =>
+            ty::FnConverging(this.ty_infer(output.span)),
+        ast::Return(ref output) =>
+            ty::FnConverging(ast_ty_to_ty(this, &rb, &**output)),
+        ast::NoReturn(_) => ty::FnDiverging
     };
 
     ty::ClosureTy {

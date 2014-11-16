@@ -1012,7 +1012,7 @@ fn compile_submatch_continue<'a, 'p, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                          .unwrap_or(DUMMY_NODE_ID);
 
     let left_ty = if pat_id == DUMMY_NODE_ID {
-        ty::mk_nil()
+        ty::mk_nil(tcx)
     } else {
         node_id_type(bcx, pat_id)
     };

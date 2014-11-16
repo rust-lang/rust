@@ -311,8 +311,7 @@ pub enum const_val {
     const_uint(u64),
     const_str(InternedString),
     const_binary(Rc<Vec<u8> >),
-    const_bool(bool),
-    const_nil
+    const_bool(bool)
 }
 
 pub fn const_expr_to_pat(tcx: &ty::ctxt, expr: &Expr) -> P<Pat> {
@@ -589,7 +588,6 @@ pub fn lit_to_const(lit: &Lit) -> const_val {
         LitFloatUnsuffixed(ref n) => {
             const_float(from_str::<f64>(n.get()).unwrap() as f64)
         }
-        LitNil => const_nil,
         LitBool(b) => const_bool(b)
     }
 }
@@ -605,7 +603,6 @@ pub fn compare_const_vals(a: &const_val, b: &const_val) -> Option<int> {
         (&const_str(ref a), &const_str(ref b)) => compare_vals(a, b),
         (&const_bool(a), &const_bool(b)) => compare_vals(a, b),
         (&const_binary(ref a), &const_binary(ref b)) => compare_vals(a, b),
-        (&const_nil, &const_nil) => compare_vals((), ()),
         _ => None
     }
 }

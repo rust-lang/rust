@@ -1227,7 +1227,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             ty::ty_infer(ty::FloatVar(_)) |
             ty::ty_uint(_) |
             ty::ty_int(_) |
-            ty::ty_nil |
             ty::ty_bool |
             ty::ty_float(_) |
             ty::ty_bare_fn(_) |

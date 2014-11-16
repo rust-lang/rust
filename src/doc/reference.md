@@ -458,10 +458,9 @@ Examples of floating-point literals of various forms:
 12E+99_f64;                        // type f64
 ```
 
-##### Unit and boolean literals
+##### Boolean literals
 
-The _unit value_, the only value of the type that has the same name, is written
-as `()`. The two values of the boolean type are written `true` and `false`.
+The two values of the boolean type are written `true` and `false`.
 
 ### Symbols
 
@@ -2717,7 +2716,7 @@ or an item. Path expressions are [lvalues](#lvalues,-rvalues-and-temporaries).
 
 ### Tuple expressions
 
-Tuples are written by enclosing one or more comma-separated expressions in
+Tuples are written by enclosing zero or more comma-separated expressions in
 parentheses. They are used to create [tuple-typed](#tuple-types) values.
 
 ```{.tuple}
@@ -2725,6 +2724,11 @@ parentheses. They are used to create [tuple-typed](#tuple-types) values.
 (0.0, 4.5);
 ("a", 4u, true);
 ```
+
+### Unit expressions
+
+The expression `()` denotes the _unit value_, the only value of the type with
+the same name.
 
 ### Structure expressions
 

@@ -54,11 +54,9 @@ pub trait AstBuilder {
     fn ty_ptr(&self, span: Span,
               ty: P<ast::Ty>,
               mutbl: ast::Mutability) -> P<ast::Ty>;
-    fn ty_uniq(&self, span: Span, ty: P<ast::Ty>) -> P<ast::Ty>;
 
     fn ty_option(&self, ty: P<ast::Ty>) -> P<ast::Ty>;
     fn ty_infer(&self, sp: Span) -> P<ast::Ty>;
-    fn ty_nil(&self) -> P<ast::Ty>;
 
     fn ty_vars(&self, ty_params: &OwnedSlice<ast::TyParam>) -> Vec<P<ast::Ty>> ;
     fn ty_vars_global(&self, ty_params: &OwnedSlice<ast::TyParam>) -> Vec<P<ast::Ty>> ;
@@ -377,9 +375,6 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
         self.ty(span,
                 ast::TyPtr(self.ty_mt(ty, mutbl)))
     }
-    fn ty_uniq(&self, span: Span, ty: P<ast::Ty>) -> P<ast::Ty> {
-        self.ty(span, ast::TyUniq(ty))
-    }
 
     fn ty_option(&self, ty: P<ast::Ty>) -> P<ast::Ty> {
         self.ty_path(
@@ -404,14 +399,6 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
 
     fn ty_infer(&self, span: Span) -> P<ast::Ty> {
         self.ty(span, ast::TyInfer)
-    }
-
-    fn ty_nil(&self) -> P<ast::Ty> {
-        P(ast::Ty {
-            id: ast::DUMMY_NODE_ID,
-            node: ast::TyNil,
-            span: DUMMY_SP,
-        })
     }
 
     fn typaram(&self,
@@ -809,8 +796,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
         self.pat(span, pat)
     }
     fn pat_tuple(&self, span: Span, pats: Vec<P<ast::Pat>>) -> P<ast::Pat> {
-        let pat = ast::PatTup(pats);
-        self.pat(span, pat)
+        self.pat(span, ast::PatTup(pats))
     }
 
     fn pat_some(&self, span: Span, pat: P<ast::Pat>) -> P<ast::Pat> {
@@ -931,11 +917,10 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
     }
 
     // FIXME unused self
-    fn fn_decl(&self, inputs: Vec<ast::Arg> , output: P<ast::Ty>) -> P<ast::FnDecl> {
+    fn fn_decl(&self, inputs: Vec<ast::Arg>, output: P<ast::Ty>) -> P<ast::FnDecl> {
         P(ast::FnDecl {
             inputs: inputs,
-            output: output,
-            cf: ast::Return,
+            output: ast::Return(output),
             variadic: false
         })
     }
